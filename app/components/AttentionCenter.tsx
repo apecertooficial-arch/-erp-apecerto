@@ -24,7 +24,19 @@ const kindInfo: Record<AlertKind, { label: string; icon: string }> = {
 
 const incoming = (direction?: string | null) => !["out", "saida", "saída", "enviada", "sent"].includes((direction || "").toLowerCase());
 const minutesSince = (date?: string | null) => date ? Math.max(0, Math.round((Date.now() - new Date(date).getTime()) / 60000)) : 0;
-const elapsed = (minutes: number) => minutes < 1 ? "agora" : minutes < 60 ? `${minutes} min` : minutes < 1440 ? `${Math.floor(minutes / 60)}h ${minutes % 60}m` : `${Math.floor(minutes / 1440)}d`;
+const elapsed = (minutes: number) => {
+  const value = Math.max(0, Math.round(Number(minutes) || 0));
+  if (value < 1) return "agora";
+  if (value < 60) return `${value} min`;
+  if (value < 1440) return `${Math.floor(value / 60)}h ${value % 60}m`;
+  const days = Math.floor(value / 1440);
+  if (days < 7) return `${days}d ${Math.floor((value % 1440) / 60)}h`;
+  const weeks = Math.floor(days / 7);
+  if (days < 30) return `${weeks} sem ${days % 7}d`;
+  if (days < 365) { const months = Math.floor(days / 30); return `${months} ${months === 1 ? "mês" : "meses"}`; }
+  const years = Math.floor(days / 365);
+  return `${years} ${years === 1 ? "ano" : "anos"}`;
+};
 
 function buildAlerts(crm: CrmAttentionData, chat: ChatData | null, brokerId: number | null) {
   const leadById = new Map(crm.leads.map((lead) => [lead.id, lead]));
