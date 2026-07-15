@@ -19,6 +19,7 @@ export type ChatData = {
   media: Array<{ id: string; empreendimento_id: string; nome: string | null; tipo: string; categoria: string | null; storage_path: string; is_capa: boolean }>;
   activities: Array<{ id: number; lead_id: number | null; tipo: string; texto: string | null; criado_em: string }>;
   approaches: Array<{ id: number; nome: string; mensagens: unknown; produto_id: number | null }>;
+  stages?: Array<{ id: number; nome: string; rotulo: string | null; ordem: number | null }>;
 };
 type ChatFilter = "all" | "unanswered" | "critical";
 export type QuickAction = "callReminder" | "task" | "visit" | "proposal" | "financing" | "transfer" | "note";
@@ -35,6 +36,10 @@ export function LiveChatWorkspace({ accessToken }: { accessToken: string }) {
   const [draft, setDraft] = useState("");
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<ChatFilter>("all");
+  const [filterBroker, setFilterBroker] = useState<number | "">("");
+  const [filterStage, setFilterStage] = useState<number | "">("");
+  const [filterInstance, setFilterInstance] = useState<string>("");
+  const [filterSlaDays, setFilterSlaDays] = useState<number>(0);
   const [instanceId, setInstanceId] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
@@ -81,6 +86,7 @@ export function LiveChatWorkspace({ accessToken }: { accessToken: string }) {
   const contactById = useMemo(() => new Map((data?.contacts ?? []).map((item) => [item.id, item])), [data]);
   const leadById = useMemo(() => new Map((data?.leads ?? []).map((item) => [item.id, item])), [data]);
   const instanceById = useMemo(() => new Map((data?.instances ?? []).map((item) => [item.id, item])), [data]);
+  const dealByLead = useMemo(() => new Map((data?.deals ?? []).map((item) => [item.lead_id, item])), [data]);
   const selected = data?.conversations.find((item) => item.id === selectedId);
   const contact = selected ? contactById.get(selected.contato_id) : null;
   const lead = contact?.lead_id ? leadById.get(contact.lead_id) : null;
@@ -102,10 +108,21 @@ export function LiveChatWorkspace({ accessToken }: { accessToken: string }) {
   };
   const unansweredCount = (data?.conversations ?? []).filter(isUnanswered).length;
   const criticalCount = (data?.conversations ?? []).filter(isCritical).length;
+  const waitingDays = (item: Conversation) => { const l = data?.latest[item.id]; if (!l?.criado_em || isOutgoing(l.direcao)) return 0; return (Date.now() - new Date(l.criado_em).getTime()) / 86_400_000; };
   const filtered = (data?.conversations ?? []).filter((item) => {
     const person = contactById.get(item.contato_id);
-    const matches = `${person?.nome || ""} ${person?.telefone || ""}`.toLowerCase().includes(query.toLowerCase());
-    return matches && (filter === "all" || (filter === "unanswered" && isUnanswered(item)) || (filter === "critical" && isCritical(item)));
+    const leadNome = person?.lead_id ? leadById.get(person.lead_id)?.nome : null;
+    const matches = `${leadNome || ""} ${person?.nome || ""} ${person?.telefone || ""}`.toLowerCase().includes(query.toLowerCase());
+    const deal = person?.lead_id ? dealByLead.get(person.lead_id) : null;
+    const lead = person?.lead_id ? leadById.get(person.lead_id) : null;
+    const corretorId = deal?.corretor_id ?? lead?.corretor_id ?? instanceById.get(item.instancia_id)?.corretor_id ?? null;
+    const stageId = deal?.stage_id ?? null;
+    const okBroker = filterBroker === "" || corretorId === filterBroker;
+    const okStage = filterStage === "" || stageId === filterStage;
+    const okInstance = filterInstance === "" || item.instancia_id === filterInstance;
+    const okSla = filterSlaDays === 0 || waitingDays(item) >= filterSlaDays;
+    return matches && okBroker && okStage && okInstance && okSla
+      && (filter === "all" || (filter === "unanswered" && isUnanswered(item)) || (filter === "critical" && isCritical(item)));
   });
 
   const call = async (body: Record<string, unknown>, endpoint = "/api/live-chat") => {
@@ -179,7 +196,7 @@ export function LiveChatWorkspace({ accessToken }: { accessToken: string }) {
     <header><div><span>WHATSAPP EM TEMPO REAL</span><h1>Chat ao vivo</h1><p>{data?.conversations.length || 0} conversas conectadas às instâncias do Supabase</p></div><label><span>⌕</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar lead ou telefone" /></label></header>
     {notice && <button className="live-notice" type="button" onClick={() => setNotice(null)}>{notice} ×</button>}
     <main>
-      <aside className="conversation-list"><nav><button className={filter === "all" ? "active" : ""} onClick={() => setFilter("all")} type="button">Todas <b>{data?.conversations.length || 0}</b></button><button className={filter === "unanswered" ? "active" : ""} onClick={() => setFilter("unanswered")} type="button">Sem resposta <b>{unansweredCount}</b></button><button className={filter === "critical" ? "active" : ""} onClick={() => setFilter("critical")} type="button">Críticas <b>{criticalCount}</b></button></nav>{filtered.map((item) => { const person = contactById.get(item.contato_id); const leadNome = person?.lead_id ? leadById.get(person.lead_id)?.nome : null; const displayName = leadNome || person?.nome || person?.telefone || "Contato"; const last = data?.latest[item.id]; return <button className={item.id === selectedId ? "active" : ""} type="button" onClick={() => setSelectedId(item.id)} key={item.id}><span>{displayName.slice(0, 2).toUpperCase()}</span><div><strong>{displayName}</strong><small>{last?.conteudo || (last?.tipo ? `◉ ${last.tipo}` : "Conversa iniciada")}</small><em>{item.ultima_msg_em ? when.format(new Date(item.ultima_msg_em)) : ""}</em></div></button>; })}{filtered.length === 0 && <div className="conversation-empty">Nenhuma conversa neste filtro.</div>}</aside>
+      <aside className="conversation-list"><nav><button className={filter === "all" ? "active" : ""} onClick={() => setFilter("all")} type="button">Todas <b>{data?.conversations.length || 0}</b></button><button className={filter === "unanswered" ? "active" : ""} onClick={() => setFilter("unanswered")} type="button">Sem resposta <b>{unansweredCount}</b></button><button className={filter === "critical" ? "active" : ""} onClick={() => setFilter("critical")} type="button">Críticas <b>{criticalCount}</b></button></nav><div className="chat-filter-row"><select aria-label="Filtrar por corretor" value={filterBroker} onChange={(event) => setFilterBroker(event.target.value ? Number(event.target.value) : "")}><option value="">Corretor</option>{(data?.brokers ?? []).map((broker) => <option value={broker.id} key={broker.id}>{broker.nome}</option>)}</select><select aria-label="Filtrar por etapa" value={filterStage} onChange={(event) => setFilterStage(event.target.value ? Number(event.target.value) : "")}><option value="">Etapa</option>{(data?.stages ?? []).map((stage) => <option value={stage.id} key={stage.id}>{stage.rotulo || stage.nome}</option>)}</select><select aria-label="Filtrar por instância" value={filterInstance} onChange={(event) => setFilterInstance(event.target.value)}><option value="">Instância</option>{(data?.instances ?? []).map((inst) => <option value={inst.id} key={inst.id}>{inst.rotulo || inst.session_id}</option>)}</select><select aria-label="Filtrar por tempo sem resposta" value={filterSlaDays} onChange={(event) => setFilterSlaDays(Number(event.target.value))}><option value={0}>SLA</option><option value={1}>+1 dia sem responder</option><option value={3}>+3 dias sem responder</option><option value={5}>+5 dias sem responder</option><option value={7}>+7 dias sem responder</option></select>{(filterBroker !== "" || filterStage !== "" || filterInstance !== "" || filterSlaDays !== 0) && <button type="button" className="chat-filter-clear" onClick={() => { setFilterBroker(""); setFilterStage(""); setFilterInstance(""); setFilterSlaDays(0); }}>Limpar filtros</button>}</div>{filtered.map((item) => { const person = contactById.get(item.contato_id); const leadNome = person?.lead_id ? leadById.get(person.lead_id)?.nome : null; const displayName = leadNome || person?.nome || person?.telefone || "Contato"; const last = data?.latest[item.id]; return <button className={item.id === selectedId ? "active" : ""} type="button" onClick={() => setSelectedId(item.id)} key={item.id}><span>{displayName.slice(0, 2).toUpperCase()}</span><div><strong>{displayName}</strong><small>{last?.conteudo || (last?.tipo ? `◉ ${last.tipo}` : "Conversa iniciada")}</small><em>{item.ultima_msg_em ? when.format(new Date(item.ultima_msg_em)) : ""}</em></div></button>; })}{filtered.length === 0 && <div className="conversation-empty">Nenhuma conversa neste filtro.</div>}</aside>
       <section className="chat-thread">
         <header><div><strong>{contact?.nome || contact?.telefone || "Selecione uma conversa"}</strong><small>ATENDENDO · {instance?.rotulo || instance?.session_id || "Sem instância"}</small>{relatedConversations.length > 0 && <label className="history-instance">Histórico da instância<select aria-label="Instância do histórico" value={selectedId ?? ""} onChange={(event) => setSelectedId(event.target.value)}>{relatedConversations.map((item) => { const linked = instanceById.get(item.instancia_id); return <option value={item.id} key={item.id}>{linked?.rotulo || linked?.session_id || "Instância"} · {item.ultima_msg_em ? when.format(new Date(item.ultima_msg_em)) : "sem data"}</option>; })}</select></label>}</div><span className={dapi?.conectada ? "chat-connection connected" : "chat-connection"}>{dapi?.conectada ? "● conectada" : "○ offline"}</span></header>
         <div className="message-stream" ref={messageStream}>{messages.map((message) => <article className={isOutgoing(message.direcao) ? "out" : "in"} key={message.id}><MessageMedia message={message} /><span>{message.conteudo}</span><small>{(message.enviado_em || message.criado_em) ? when.format(new Date((message.enviado_em || message.criado_em) as string)) : ""}</small></article>)}{messages.length === 0 && <div className="crm-empty-view">Nenhuma mensagem encontrada nesta instância.</div>}</div>

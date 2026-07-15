@@ -262,6 +262,9 @@ button { cursor:pointer; }
 }
 .original-automation-error { display:grid; place-items:center; height:100%; padding:32px; color:#b63d2d; background:#fff0ee; }
 .conversation-list>nav button b { margin-left:3px; font-size:8px; }
+.chat-filter-row { display:flex; flex-wrap:wrap; gap:5px; padding:0 10px 10px; }
+.chat-filter-row select { flex:1 1 46%; min-width:0; border:1px solid #e6dfda; border-radius:8px; padding:5px 6px; background:#fff; color:#5a534e; font-size:9px; }
+.chat-filter-clear { flex:1 1 100%; border:0; background:transparent; color:#bd4a08; font-size:9px; text-decoration:underline; cursor:pointer; text-align:left; padding:2px; }
 .conversation-empty { padding:30px 18px; text-align:center; color:#938b86; font-size:10px; }
 
 /* Páginas operacionais preservadas do HTML final */

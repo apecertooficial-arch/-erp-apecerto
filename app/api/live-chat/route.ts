@@ -83,7 +83,7 @@ export async function GET(request: Request) {
       .eq("conversa_id", conversationId).order("criado_em").limit(600);
     return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ messages: data ?? [] });
   }
-  const [conversations, contacts, instances, messages, leads, deals, brokers, products, media, activities, approaches] = await Promise.all([
+  const [conversations, contacts, instances, messages, leads, deals, brokers, products, media, activities, approaches, stages] = await Promise.all([
     auth.supabase.from("wa_conversas").select("id,contato_id,instancia_id,status,ultima_msg_em,origem").order("ultima_msg_em", { ascending: false, nullsFirst: false }).limit(800),
     auth.supabase.from("wa_contatos").select("id,nome,telefone,lead_id"),
     auth.supabase.from("wa_instancias").select("id,session_id,rotulo,status,corretor_id"),
@@ -95,8 +95,9 @@ export async function GET(request: Request) {
     auth.supabase.from("midias").select("id,empreendimento_id,nome,tipo,categoria,storage_path,is_capa").order("created_at", { ascending: false }),
     auth.supabase.from("crm_atividades").select("id,lead_id,tipo,texto,criado_em").eq("tipo", "observacao").order("criado_em", { ascending: false }).limit(500),
     auth.supabase.from("abordagens").select("id,nome,mensagens,produto_id").eq("ativo", true).order("ordem"),
+    auth.supabase.from("pipeline_stages").select("id,nome,rotulo,ordem").order("ordem"),
   ]);
-  const all = [conversations, contacts, instances, messages, leads, deals, brokers, products, media, activities, approaches];
+  const all = [conversations, contacts, instances, messages, leads, deals, brokers, products, media, activities, approaches, stages];
   const error = all.find((item) => item.error)?.error;
   if (error) return Response.json({ error: error.message }, { status: 502 });
   const leadIds = new Map((leads.data ?? []).map((lead) => [idKey(lead.id), lead.id]));
@@ -117,7 +118,7 @@ export async function GET(request: Request) {
   }
   const sessions = [...new Set((instances.data ?? []).map((instance) => instance.session_id))];
   const dapi = sessions.length ? await auth.supabase.from("instancias").select("id,instancia_dapi,nome,conectada").in("instancia_dapi", sessions) : { data: [], error: null };
-  return Response.json({ conversations: crmConversations, contacts: crmContacts, instances: instances.data ?? [], dapi: dapi.data ?? [], latest: Object.fromEntries(latest), leads: leads.data ?? [], deals: deals.data ?? [], brokers: brokers.data ?? [], products: products.data ?? [], media: media.data ?? [], activities: activities.data ?? [], approaches: approaches.data ?? [] });
+  return Response.json({ conversations: crmConversations, contacts: crmContacts, instances: instances.data ?? [], dapi: dapi.data ?? [], latest: Object.fromEntries(latest), leads: leads.data ?? [], deals: deals.data ?? [], brokers: brokers.data ?? [], products: products.data ?? [], media: media.data ?? [], activities: activities.data ?? [], approaches: approaches.data ?? [], stages: stages.data ?? [] });
 }
 
 async function uploadAndSend(request: Request, auth: NonNullable<Awaited<ReturnType<typeof authClient>>>) {
