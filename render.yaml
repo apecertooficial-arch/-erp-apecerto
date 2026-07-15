@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: apecerto-erp
+    runtime: node
+    plan: free
+    buildCommand: pnpm install && pnpm build
+    startCommand: pnpm start
+    envVars:
+      - key: NEXT_PUBLIC_SUPABASE_URL
+        sync: false
+      - key: NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+        sync: false
+      - key: NEXT_PUBLIC_APECERTO_DATA_MODE
+        value: production-readonly
+      - key: NODE_VERSION
+        value: "22.13.0"
