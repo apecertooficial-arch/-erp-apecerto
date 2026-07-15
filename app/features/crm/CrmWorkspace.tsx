@@ -382,7 +382,6 @@ function LeadDrawer({ accessToken, lead, deal, data, onClose, onMutate, onReload
       setBusy(false);
     }
   };
-  const whatsapp = lead.telefone ? `https://wa.me/55${lead.telefone.replace(/\D/g, "").replace(/^55/, "")}` : null;
   const callExternal = async (body: Record<string, unknown>, endpoint = "/api/live-chat") => {
     const response = await fetch(endpoint, { method: endpoint === "/api/crm" ? "PATCH" : "POST", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify(body) });
     const result = await response.json() as { error?: string };
@@ -405,11 +404,11 @@ function LeadDrawer({ accessToken, lead, deal, data, onClose, onMutate, onReload
     <header className="drawer-hero-v2 lead-classic-hero">
       <button className="drawer-close-v2" type="button" onClick={onClose}>×</button>
       <div className="drawer-identity"><span>{initials(lead.nome)}</span><div><small>LEAD #{lead.id}</small><h2>{lead.nome || "Lead sem nome"}</h2><p>☎ {lead.telefone || "Telefone não informado"}{lead.email ? ` · ${lead.email}` : ""}</p></div></div>
-      <div className="lead-contact-actions">{whatsapp ? <a href={whatsapp} target="_blank" rel="noreferrer"><b>◉</b> WhatsApp</a> : <button disabled type="button"><b>◉</b> WhatsApp</button>}<button type="button" onClick={() => setQuickAction("visit")}><LeadActionIcon name="visit" /> Agendar visita</button></div>
+      <div className="lead-contact-actions"><button type="button" onClick={() => setQuickAction("visit")}><LeadActionIcon name="visit" /> Agendar visita</button></div>
     </header>
     <section className="lead-classic-panel">
       <button className="lead-sale-action" type="button" onClick={() => setSaleOpen(true)}>▤ <span>Enviar para processo de venda</span></button>
-      <article className="lead-next-action"><header><span>✦</span><b>PRÓXIMA MELHOR AÇÃO</b></header><h3>Fazer follow-up com {lead.nome?.split(/\s+/)[0] || "o lead"}</h3><p>Sem interação recente — um retorno curto mantém o lead ativo.</p><button type="button" onClick={() => { setTask(`Fazer follow-up com ${lead.nome || "o lead"}`); setTab("agenda"); setMessage("Sugestão da IA preparada como próxima tarefa."); }}>ϟ Executar ação</button></article>
+      <article className="lead-next-action"><header><span>✦</span><b>PRÓXIMA MELHOR AÇÃO</b></header><h3>Fazer follow-up com {lead.nome?.split(/\s+/)[0] || "o lead"}</h3><p>Sem interação recente — um retorno curto mantém o lead ativo.</p><button type="button" disabled title="Em breve">ϟ Executar ação</button></article>
       <h4>AÇÕES RÁPIDAS</h4>
       <div className="lead-action-grid">
         <button type="button" onClick={() => setQuickAction("task")}><LeadActionIcon name="task" /><span>Tarefas</span></button>
