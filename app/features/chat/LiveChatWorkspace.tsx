@@ -59,7 +59,11 @@ export function LiveChatWorkspace({ accessToken }: { accessToken: string }) {
     const response = await fetch(`/api/live-chat?conversationId=${encodeURIComponent(id)}`, { headers: { Authorization: `Bearer ${accessToken}` } });
     const result = await response.json() as { messages?: Message[]; error?: string };
     if (!response.ok) throw new Error(result.error || "Não foi possível carregar as mensagens.");
-    setMessages(result.messages ?? []);
+    const dbMessages = result.messages ?? [];
+    setMessages((prev) => {
+      const pending = prev.filter((m) => String(m.id).startsWith("temp-") && !dbMessages.some((d) => isOutgoing(d.direcao) && (d.conteudo || "") === (m.conteudo || "")));
+      return [...dbMessages, ...pending];
+    });
   };
 
   useEffect(() => { void load().catch((reason) => setNotice(reason instanceof Error ? reason.message : "Erro ao carregar chat.")); }, [accessToken]);
@@ -121,8 +125,22 @@ export function LiveChatWorkspace({ accessToken }: { accessToken: string }) {
     if (!contact) { setNotice("Selecione uma conversa vinculada a um contato."); throw new Error("Contato não selecionado."); }
     if (!instanceId) { setNotice("Selecione uma instância conectada antes de enviar."); throw new Error("Instância não selecionada."); }
     if (!content.trim() && !mediaId) { setNotice("Escreva uma mensagem ou escolha um material."); throw new Error("Mensagem vazia."); }
-    await call({ action: "send", phone: contact.telefone, instanceId, content, mediaId });
+    const text = content;
+    const tempId = `temp-${Date.now()}`;
     setDraft("");
+    setNotice(null);
+    setMessages((prev) => [...prev, { id: tempId, conversa_id: selectedId || "", direcao: "enviada", tipo: "texto", conteudo: text, media_url: null, criado_em: new Date().toISOString() }]);
+    void (async () => {
+      try {
+        const response = await fetch("/api/live-chat", { method: "POST", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify({ action: "send", phone: contact.telefone, instanceId, content: text, mediaId }) });
+        const result = await response.json() as { error?: string };
+        if (!response.ok) throw new Error(result.error || "Não foi possível enviar.");
+        void load();
+      } catch (reason) {
+        setNotice(reason instanceof Error ? reason.message : "Não foi possível enviar.");
+        setMessages((prev) => prev.map((m) => m.id === tempId ? { ...m, conteudo: `${m.conteudo || ""} ⚠️ (falha ao enviar)` } : m));
+      }
+    })();
   };
   const upload = async (file?: File) => {
     if (!file || !contact || !instanceId) return;
