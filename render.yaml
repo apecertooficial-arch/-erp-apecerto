@@ -2,7 +2,8 @@ services:
   - type: web
     name: apecerto-erp
     runtime: node
-    plan: free
+    region: ohio
+    plan: standard
     buildCommand: pnpm install && pnpm build
     startCommand: pnpm start
     envVars:
