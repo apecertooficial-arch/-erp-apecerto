@@ -53,12 +53,17 @@ function isOverdue(task: Task, now: number) {
 function formatElapsed(minutes: number | null | undefined) {
   if (minutes === null || minutes === undefined || !Number.isFinite(Number(minutes))) return "agora";
   const value = Math.max(0, Math.round(Number(minutes)));
-  const days = Math.floor(value / 1440);
-  const hours = Math.floor((value % 1440) / 60);
   const mins = value % 60;
-  if (days > 0) return `${days}d ${hours}h`;
-  if (hours > 0) return `${hours}h ${String(mins).padStart(2, "0")}m`;
-  return `${mins} min`;
+  const hours = Math.floor((value % 1440) / 60);
+  if (value < 60) return `${mins} min`;
+  if (value < 1440) return `${hours}h ${String(mins).padStart(2, "0")}m`;
+  const days = Math.floor(value / 1440);
+  if (days < 7) return `${days}d ${hours}h`;
+  const weeks = Math.floor(days / 7);
+  if (days < 30) return `${weeks} sem ${days % 7}d`;
+  if (days < 365) { const months = Math.floor(days / 30); return `${months} ${months === 1 ? "mês" : "meses"} ${Math.floor((days % 30) / 7)} sem`; }
+  const years = Math.floor(days / 365);
+  return `${years} ${years === 1 ? "ano" : "anos"} ${Math.floor((days % 365) / 30)} m`;
 }
 
 export function CrmWorkspace({ accessToken, initialDealId = null, onInitialDealHandled, sessionRole = "corretor" }: { accessToken: string; initialDealId?: number | null; onInitialDealHandled?: () => void; sessionRole?: "admin" | "gestor" | "corretor" }) {
@@ -75,6 +80,7 @@ export function CrmWorkspace({ accessToken, initialDealId = null, onInitialDealH
   const [origin, setOrigin] = useState("");
   const [tag, setTag] = useState("");
   const [group, setGroup] = useState<number | null>(null);
+  const [overdueOnly, setOverdueOnly] = useState(false);
   const [selectedDealId, setSelectedDealId] = useState<number | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -129,19 +135,22 @@ export function CrmWorkspace({ accessToken, initialDealId = null, onInitialDealH
   const allTags = useMemo(() => [...new Set((data?.leads ?? []).flatMap((lead) => tagList(lead.tags)))].sort(), [data]);
   const origins = useMemo(() => [...new Set((data?.leads ?? []).map((lead) => lead.origem).filter((item): item is string => Boolean(item)))].sort(), [data]);
   const activeFilterCount = [stageId, brokerId, origin, tag, group].filter(Boolean).length;
+  const slaByDeal = useMemo(() => new Map((data?.sla ?? []).filter((item) => item.negocio_id).map((item) => [item.negocio_id!, item])), [data]);
   const filteredDeals = useMemo(() => (data?.deals ?? []).filter((deal) => {
     const lead = leadById.get(deal.lead_id);
     const stage = activeStages.find((item) => item.id === deal.stage_id);
     if (!lead || deal.pipeline_id !== pipelineId) return false;
+    const sla = slaByDeal.get(deal.id);
+    const overdue = Boolean(sla && (sla.alarme_ativo || sla.cor_ativa === "vermelho"));
     const haystack = `${lead.nome ?? ""} ${lead.telefone ?? ""} ${lead.email ?? ""}`.toLowerCase();
     return (!query || haystack.includes(query.toLowerCase())) && (!stageId || deal.stage_id === stageId)
       && (!brokerId || (deal.corretor_id ?? lead.corretor_id) === brokerId) && (!origin || lead.origem === origin)
-      && (!tag || tagList(lead.tags).includes(tag)) && (!group || stage?.grupo === group);
-  }), [data, leadById, activeStages, pipelineId, query, stageId, brokerId, origin, tag, group]);
+      && (!tag || tagList(lead.tags).includes(tag)) && (!group || stage?.grupo === group) && (!overdueOnly || overdue);
+  }), [data, leadById, activeStages, pipelineId, query, stageId, brokerId, origin, tag, group, overdueOnly, slaByDeal]);
+  const overdueCount = useMemo(() => (data?.deals ?? []).filter((deal) => { const sla = slaByDeal.get(deal.id); return deal.pipeline_id === pipelineId && Boolean(sla && (sla.alarme_ativo || sla.cor_ativa === "vermelho")); }).length, [data, pipelineId, slaByDeal]);
   const visibleStages = useMemo(() => activeStages.filter((stage) => !group || stage.grupo === group), [activeStages, group]);
   const selectedDeal = data?.deals.find((deal) => deal.id === selectedDealId) ?? null;
   const selectedLead = selectedDeal ? leadById.get(selectedDeal.lead_id) ?? null : null;
-  const slaByDeal = useMemo(() => new Map((data?.sla ?? []).filter((item) => item.negocio_id).map((item) => [item.negocio_id!, item])), [data]);
   const pendingAlerts = data?.alerts ?? [];
   const viewHeading = viewHeadings[view];
   const metrics = useMemo(() => ({
@@ -211,6 +220,7 @@ export function CrmWorkspace({ accessToken, initialDealId = null, onInitialDealH
       <select aria-label="Funil" value={pipelineId ?? ""} onChange={(event) => { setPipelineId(Number(event.target.value)); setStageId(null); setGroup(null); }}>{(data?.pipelines ?? []).map((pipeline) => <option value={pipeline.id} key={pipeline.id}>{pipeline.nome}</option>)}</select>
       {view === "pipeline" && <div className="stage-groups"><button className={group === null ? "active" : ""} type="button" onClick={() => setGroup(null)}>Todas</button>{[1, 2, 3, 4].map((item) => <button className={group === item ? "active" : ""} type="button" onClick={() => setGroup(item)} key={item}>{groupNames[item]} <span>{activeStages.filter((stage) => stage.grupo === item).reduce((sum, stage) => sum + filteredDeals.filter((deal) => deal.stage_id === stage.id).length, 0)}</span></button>)}</div>}
       <button className={filtersOpen ? "crm-filter-trigger active" : "crm-filter-trigger"} type="button" onClick={() => setFiltersOpen(!filtersOpen)}>▽ Filtros {activeFilterCount > 0 && <b>{activeFilterCount}</b>}</button>
+      <button className={overdueOnly ? "crm-overdue-trigger active" : "crm-overdue-trigger"} type="button" onClick={() => setOverdueOnly((v) => !v)} title="Mostrar apenas leads que estouraram o SLA">⏰ Leads Atrasados {overdueCount > 0 && <b>{overdueCount}</b>}</button>
       {view === "pipeline" && <button className="crm-bulk-trigger" type="button" onClick={() => setBulkMoveOpen(true)}>⇄ Mover etapa inteira</button>}
       <span className="crm-result-count">{filteredDeals.length} negócios</span>
     </section>
