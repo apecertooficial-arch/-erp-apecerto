@@ -14,6 +14,7 @@ import { AutomationsWorkspace } from "../automations/AutomationsWorkspaceV2";
 import { ApproachesWorkspace } from "../approaches/ApproachesWorkspace";
 import { CampaignWorkspace } from "../campaigns/CampaignWorkspace";
 import { LiveChatWorkspace } from "../chat/LiveChatWorkspace";
+import { HomeWorkspace } from "../home/HomeWorkspace";
 import { LegacyModuleWorkspace } from "../system/LegacyModuleWorkspace";
 import type { ModuleName } from "../system/module-map";
 
@@ -188,7 +189,9 @@ export function ProductCatalog() {
 
   return (
     <AppShell activeItem={activeModule} onNavigate={setActiveModule} onPreviewLogin={() => setLoginPreview(true)} sessionRole={sessionProfile?.role ?? "corretor"} sessionName={sessionProfile?.name ?? "Corretor"}>
-      {activeModule === "CRM" && accessToken ? (
+      {activeModule === "Início" && accessToken ? (
+        <HomeWorkspace accessToken={accessToken} />
+      ) : activeModule === "CRM" && accessToken ? (
         <CrmWorkspace accessToken={accessToken} initialDealId={focusedDealId} onInitialDealHandled={() => setFocusedDealId(null)} />
       ) : activeModule === "Automações" && accessToken ? (
         <AutomationsWorkspace accessToken={accessToken} />
@@ -227,8 +230,8 @@ export function ProductCatalog() {
       </>
       )}
       {accessToken && <AttentionCenter accessToken={accessToken} onOpenLead={(dealId) => { setFocusedDealId(dealId); setActiveModule("CRM"); }} onOpenNotifications={() => setActiveModule("Notificações")} />}
-      {dataState === "auth" && <SupabaseLogin onAuthenticated={(accessToken) => void loadCatalog(accessToken)} />}
-      {loginPreview && <SupabaseLogin preview onClose={() => setLoginPreview(false)} onAuthenticated={(token) => { setLoginPreview(false); void loadCatalog(token); }} />}
+      {dataState === "auth" && <SupabaseLogin onAuthenticated={(accessToken) => { setActiveModule("Início"); void loadCatalog(accessToken); }} />}
+      {loginPreview && <SupabaseLogin preview onClose={() => setLoginPreview(false)} onAuthenticated={(token) => { setLoginPreview(false); setActiveModule("Início"); void loadCatalog(token); }} />}
     </AppShell>
   );
 }
