@@ -44,9 +44,10 @@ export async function PATCH(request: Request) {
     const empreendimentoId = body.empreendimentoId ? text(body.empreendimentoId, 60) : null;
     const grupo = text(body.grupo, 80) || null;
     if (!name) return Response.json({ error: "Dados da abordagem inválidos." }, { status: 422 });
+    const messages = Array.isArray(body.messages) ? body.messages.slice(0, 60) : [];
     const countQuery = auth.supabase.from("abordagens").select("*", { count: "exact", head: true });
     const { count } = empreendimentoId === null ? await countQuery.is("empreendimento_id", null) : await countQuery.eq("empreendimento_id", empreendimentoId);
-    const { error } = await auth.supabase.from("abordagens").insert({ nome: name, empreendimento_id: empreendimentoId, grupo, produto_id: null, mensagens: [], ordem: count ?? 0 });
+    const { error } = await auth.supabase.from("abordagens").insert({ nome: name, empreendimento_id: empreendimentoId, grupo, produto_id: null, mensagens: messages, ordem: count ?? 0 });
     return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
   }
 
