@@ -1244,3 +1244,22 @@ button { cursor:pointer; }
 .delete-sale-confirm>div { display:flex; gap:8px; justify-content:flex-end; }
 .delete-sale-confirm button { border:1px solid #ddd6d1; border-radius:8px; padding:8px 12px; background:#fff; font-size:10px; cursor:pointer; }
 .delete-sale-confirm button.danger { border-color:#bc4035; background:#bc4035; color:#fff; }
+/* #9 — Metas (Financeiro) */
+.metas-tab { display:grid; grid-template-columns:1fr 1fr; gap:16px; padding:16px 28px 40px; }
+.metas-form { display:grid; grid-template-columns:1fr 1fr; gap:10px; padding:14px; }
+.metas-form label { display:flex; flex-direction:column; gap:5px; color:#6d6560; font-size:9px; font-weight:700; }
+.metas-form input, .metas-form select { border:1px solid #ddd6d1; border-radius:8px; padding:9px 10px; font-size:11px; background:#fff; outline:0; }
+.metas-form input:focus, .metas-form select:focus { border-color:#ff9c5e; }
+.metas-form>button { grid-column:1/-1; border:0; border-radius:9px; padding:11px; background:#ff6500; color:#fff; font-size:11px; font-weight:700; cursor:pointer; }
+.metas-form>button:disabled { opacity:.5; }
+.metas-msg { margin:0 14px 12px; padding:8px 10px; border-radius:8px; background:#eef7f0; color:#16834c; font-size:10px; }
+.metas-list article { padding:12px 14px; border-bottom:1px solid #f0ece9; }
+.metas-list-head { display:flex; align-items:center; gap:10px; margin-bottom:8px; }
+.metas-list-head strong { font-size:11px; }
+.metas-list-head span { color:#8a817b; font-size:9px; }
+.metas-list-head button { margin-left:auto; border:1px solid #e7b6b0; border-radius:7px; padding:5px 9px; background:#fff; color:#bd4034; font-size:9px; cursor:pointer; }
+.metas-bar { margin-top:6px; }
+.metas-bar span { display:block; margin-bottom:3px; color:#6d6560; font-size:9px; }
+.metas-bar i { display:block; height:8px; border-radius:999px; background:#f0ece9; overflow:hidden; }
+.metas-bar u { display:block; height:100%; border-radius:999px; background:linear-gradient(90deg,#ff8a3d,#f24b15); }
+@media(max-width:900px){ .metas-tab { grid-template-columns:1fr; } }

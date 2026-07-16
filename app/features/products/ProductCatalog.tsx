@@ -15,6 +15,7 @@ import { ApproachesWorkspace } from "../approaches/ApproachesWorkspace";
 import { CampaignWorkspace } from "../campaigns/CampaignWorkspace";
 import { LiveChatWorkspace } from "../chat/LiveChatWorkspace";
 import { HomeWorkspace } from "../home/HomeWorkspace";
+import { FinanceWorkspace } from "../finance/FinanceWorkspace";
 import { LegacyModuleWorkspace } from "../system/LegacyModuleWorkspace";
 import type { ModuleName } from "../system/module-map";
 
@@ -201,6 +202,8 @@ export function ProductCatalog() {
         <LiveChatWorkspace accessToken={accessToken} />
       ) : activeModule === "Disparos" && accessToken ? (
         <CampaignWorkspace accessToken={accessToken} />
+      ) : activeModule === "Financeiro" && accessToken ? (
+        <FinanceWorkspace accessToken={accessToken} sessionRole={sessionProfile?.role ?? "corretor"} />
       ) : activeModule !== "Produtos" && accessToken ? (
         <LegacyModuleWorkspace moduleName={activeModule} accessToken={accessToken} session={sessionProfile} />
       ) : (

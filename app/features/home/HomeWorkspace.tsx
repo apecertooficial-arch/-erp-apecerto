@@ -29,6 +29,17 @@ function sameMonth(value: string) {
 export function HomeWorkspace({ accessToken }: { accessToken: string }) {
   const [data, setData] = useState<DashboardData | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [metaMesGlobal, setMetaMesGlobal] = useState<number | null>(null);
+
+  useEffect(() => {
+    const now = new Date();
+    void fetch("/api/metas", { headers: { Authorization: `Bearer ${accessToken}` } })
+      .then((response) => response.ok ? response.json() : { metas: [] })
+      .then((json: { metas?: Array<{ corretor_id: number | null; periodo_tipo: string; ano: number; periodo: number; meta_vgv: number }> }) => {
+        const found = (json.metas ?? []).find((m) => m.corretor_id === null && m.periodo_tipo === "mensal" && m.ano === now.getFullYear() && m.periodo === now.getMonth() + 1);
+        setMetaMesGlobal(found ? Number(found.meta_vgv) : null);
+      }).catch(() => setMetaMesGlobal(null));
+  }, [accessToken]);
 
   useEffect(() => {
     const headers = { Authorization: `Bearer ${accessToken}` };
@@ -65,7 +76,8 @@ export function HomeWorkspace({ accessToken }: { accessToken: string }) {
   const brokerSales = data.crm.brokers.map((broker) => ({ broker, sales: data.crm.deals.filter((deal) => deal.corretor_id === broker.id && deal.venda_id).length })).sort((a, b) => b.sales - a.sales).slice(0, 5);
   const saleProducts = [...new Set(data.finance.sales.map((sale) => sale.empreendimento_nome || "Produto não informado"))].map((name) => ({ name, count: data.finance.sales.filter((sale) => (sale.empreendimento_nome || "Produto não informado") === name).length })).sort((a, b) => b.count - a.count).slice(0, 5);
   const leadProducts = [...new Set(data.crm.productLinks.map((link) => link.empreendimentos?.nome || link.empreendimento_id))].map((name) => ({ name, count: data.crm.productLinks.filter((link) => (link.empreendimentos?.nome || link.empreendimento_id) === name).length })).sort((a, b) => b.count - a.count).slice(0, 5);
-  const goalPercent = metrics.goal > 0 ? Math.min(100, metrics.monthVgv / metrics.goal * 100) : 0;
+  const effectiveGoal = metaMesGlobal ?? metrics.goal;
+  const goalPercent = effectiveGoal > 0 ? Math.min(100, metrics.monthVgv / effectiveGoal * 100) : 0;
 
   return <div className="home-workspace">
     <header className="home-header"><div><h1>Início</h1><p>Visão geral da operação</p></div><span>● Dados reais · sessão protegida</span></header>
@@ -79,7 +91,7 @@ export function HomeWorkspace({ accessToken }: { accessToken: string }) {
       <article><i className="green">▤</i><span>Saldo de caixa</span><strong>{compact.format(metrics.balance)}</strong><small>realizado</small></article>
       <article><i className="yellow">△</i><span>Atividades pendentes</span><strong>{metrics.pendingTasks}</strong><small>tarefas em aberto</small></article>
     </section>
-    <section className="home-goal"><header><strong>Meta do mês</strong><b>{goalPercent.toFixed(0)}%</b></header><div><span style={{ width: `${goalPercent}%` }} /></div><footer><span>Vendido <b>{brl.format(metrics.monthVgv)}</b>{metrics.goal > 0 && <> de {brl.format(metrics.goal)}</>}</span>{metrics.goal > 0 && <span>faltam <b>{brl.format(Math.max(0, metrics.goal - metrics.monthVgv))}</b></span>}</footer></section>
+    <section className="home-goal"><header><strong>Meta do mês</strong><b>{goalPercent.toFixed(0)}%</b></header><div><span style={{ width: `${goalPercent}%` }} /></div><footer><span>Vendido <b>{brl.format(metrics.monthVgv)}</b>{effectiveGoal > 0 && <> de {brl.format(effectiveGoal)}</>}</span>{effectiveGoal > 0 && <span>faltam <b>{brl.format(Math.max(0, effectiveGoal - metrics.monthVgv))}</b></span>}</footer></section>
     <section className="home-two-columns">
       <article className="home-panel"><h2>Funil por etapa</h2>{stageRows.map((stage) => <div className="home-funnel-row" key={stage.id}><span><i style={{ background: stage.cor || "#ff6500" }} />{stage.nome}<b>{stage.count} · leads</b></span><div><u style={{ width: `${stage.count / maxStage * 100}%`, background: stage.cor || "#ff6500" }} /></div></div>)}{stageRows.length === 0 && <p>Nenhum negócio aberto no funil.</p>}</article>
       <article className="home-panel"><h2>Ranking de corretores</h2>{brokerSales.map((item, index) => <div className="home-ranking-row" key={item.broker.id}><b>{index + 1}</b><i>{item.broker.nome.slice(0, 1)}</i><span><strong>{item.broker.nome}</strong><small>{item.sales} venda(s)</small></span><em>{item.sales}</em></div>)}{brokerSales.length === 0 && <p>Nenhum corretor disponível.</p>}</article>
