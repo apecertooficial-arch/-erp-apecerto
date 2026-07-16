@@ -3,6 +3,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ModuleName } from "./module-map";
 
+// Anti-cache: forca o iframe a buscar a versao mais nova do ERP legado a cada carregamento de pagina.
+const CACHE_BUST = Date.now();
+
 const legacyScreen: Partial<Record<ModuleName, string>> = {
   "Início": "inicio",
   CRM: "crm",
@@ -92,7 +95,7 @@ export function LegacyModuleWorkspace({ moduleName, accessToken, session }: { mo
       {!opened && <div className="legacy-module-loading"><span />Restaurando {moduleName} exatamente do HTML original…</div>}
       <iframe
         ref={iframeRef}
-        src="/legacy-runtime.html"
+        src={`/legacy-runtime.html?v=${CACHE_BUST}`}
         title={`${moduleName} · estrutura original`}
         onLoad={openOriginalScreen}
       />
