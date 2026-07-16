@@ -1307,3 +1307,28 @@ button { cursor:pointer; }
 .comm-add button { border:0; border-radius:8px; padding:7px 11px; background:#ff6500; color:#fff; font-size:10px; font-weight:700; cursor:pointer; }
 .comm-add button:disabled { opacity:.5; }
 @media(max-width:520px){ .comm-add { grid-template-columns:1fr 1fr; } }
+/* #12 — Conexões (Configurações do corretor) + alerta de desconexão */
+.connections-workspace { min-height:100vh; background:#f7f6f5; padding:0 0 40px; }
+.connections-workspace>header { display:flex; align-items:center; justify-content:space-between; gap:14px; padding:22px 28px; background:#fff; border-bottom:1px solid #ece7e3; flex-wrap:wrap; }
+.connections-workspace>header span { color:#b4480a; font-size:8px; letter-spacing:1px; font-weight:800; }
+.connections-workspace>header h1 { margin:2px 0; font-size:22px; }
+.connections-workspace>header p { margin:0; color:#8b8581; font-size:11px; }
+.connections-workspace>header button { border:1px solid #dfd8d3; border-radius:9px; padding:9px 13px; background:#fff; color:#5f5752; font-size:11px; cursor:pointer; }
+.connections-error { margin:16px 28px 0; padding:11px 13px; border-radius:10px; background:#fff0ee; color:#a43c30; font-size:11px; }
+.connections-warn { margin:16px 28px 0; padding:12px 14px; border-radius:11px; background:#fff3e6; color:#bd4a08; font-size:12px; font-weight:700; }
+.connections-loading, .connections-empty { padding:40px 28px; color:#8a817b; text-align:center; font-size:12px; }
+.connections-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:14px; padding:18px 28px; }
+.conn-card { padding:16px; border:1px solid #e7e1dd; border-radius:14px; background:#fff; display:flex; flex-direction:column; gap:10px; }
+.conn-card.connected { border-color:#bde6cb; }
+.conn-status { display:flex; align-items:center; gap:7px; color:#bd4034; font-size:9px; font-weight:800; text-transform:uppercase; letter-spacing:.4px; }
+.conn-status i { width:9px; height:9px; border-radius:50%; background:#d8323d; }
+.conn-card.connected .conn-status { color:#16834c; }
+.conn-card.connected .conn-status i { background:#19a861; }
+.conn-card strong { font-size:14px; }
+.conn-card button { border:0; border-radius:9px; padding:10px; background:#ff6500; color:#fff; font-size:11px; font-weight:700; cursor:pointer; }
+.conn-card.connected button { background:#fff; border:1px solid #dfd8d3; color:#5f5752; }
+.disconnect-alert { position:fixed; z-index:190; left:50%; bottom:22px; transform:translateX(-50%); width:min(520px,calc(100vw - 32px)); display:flex; align-items:flex-start; gap:12px; padding:16px 44px 16px 18px; border-radius:14px; background:linear-gradient(135deg,#d8323d,#b4232d); color:#fff; box-shadow:0 16px 44px rgba(180,35,45,.4); cursor:pointer; }
+.disconnect-alert>span { font-size:22px; line-height:1; }
+.disconnect-alert strong { display:block; font-size:14px; margin-bottom:3px; }
+.disconnect-alert p { margin:0; font-size:11px; opacity:.92; }
+.disconnect-x { position:absolute; top:10px; right:12px; border:0; background:transparent; color:#fff; font-size:20px; cursor:pointer; opacity:.85; }

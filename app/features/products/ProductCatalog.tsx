@@ -18,6 +18,7 @@ import { HomeWorkspace } from "../home/HomeWorkspace";
 import { FinanceWorkspace } from "../finance/FinanceWorkspace";
 import { TeamWorkspace } from "../team/TeamWorkspace";
 import { CalendarWorkspace } from "../calendar/CalendarWorkspace";
+import { ConnectionsWorkspace } from "../settings/ConnectionsWorkspace";
 import { LegacyModuleWorkspace } from "../system/LegacyModuleWorkspace";
 import type { ModuleName } from "../system/module-map";
 
@@ -47,7 +48,24 @@ type CatalogResponse = {
 
 type SessionProfile = { userId: string; email: string; name: string; role: "admin" | "gestor" | "corretor"; active: boolean; brokerId: number | null; online: boolean };
 
-const brokerModules = new Set<ModuleName>(["Início", "CRM", "Performance", "Produtos", "Financeiro", "Chat ao Vivo", "Financiamento", "Disparos", "Calendário", "Notificações", "Ajuda"]);
+const brokerModules = new Set<ModuleName>(["Início", "CRM", "Performance", "Produtos", "Financeiro", "Chat ao Vivo", "Financiamento", "Disparos", "Calendário", "Notificações", "Configurações", "Ajuda"]);
+
+function DisconnectionAlert({ accessToken, onOpen }: { accessToken: string; onOpen: () => void }) {
+  const [count, setCount] = useState(0);
+  const [dismissed, setDismissed] = useState(false);
+  useEffect(() => {
+    void getBrowserSupabaseClient().functions.invoke("dapi-qr", { body: { action: "list" } }).then(({ data }) => {
+      const result = (data ?? {}) as { instancias?: Array<{ conectada: boolean }> };
+      setCount((result.instancias ?? []).filter((item) => !item.conectada).length);
+    }).catch(() => {});
+  }, [accessToken]);
+  if (dismissed || count === 0) return null;
+  return <div className="disconnect-alert" role="button" tabIndex={0} onClick={onOpen} onKeyDown={(event) => { if (event.key === "Enter") onOpen(); }}>
+    <button className="disconnect-x" type="button" aria-label="Fechar" onClick={(event) => { event.stopPropagation(); setDismissed(true); }}>×</button>
+    <span>⚠</span>
+    <div><strong>{count === 1 ? "1 instância de WhatsApp desconectada" : `${count} instâncias de WhatsApp desconectadas`}</strong><p>Seus atendimentos podem estar parados. Clique aqui para reconectar pelo QR.</p></div>
+  </div>;
+}
 
 const currency = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
 
@@ -212,6 +230,8 @@ export function ProductCatalog() {
         <TeamWorkspace accessToken={accessToken} />
       ) : activeModule === "Calendário" && accessToken ? (
         <CalendarWorkspace accessToken={accessToken} />
+      ) : activeModule === "Configurações" && accessToken ? (
+        <ConnectionsWorkspace accessToken={accessToken} />
       ) : activeModule !== "Produtos" && accessToken ? (
         <LegacyModuleWorkspace moduleName={activeModule} accessToken={accessToken} session={sessionProfile} />
       ) : (
@@ -241,6 +261,7 @@ export function ProductCatalog() {
       </>
       )}
       {accessToken && <AttentionCenter accessToken={accessToken} onOpenLead={(dealId) => { setFocusedDealId(dealId); setActiveModule("CRM"); }} onOpenNotifications={() => setActiveModule("Notificações")} />}
+      {accessToken && <DisconnectionAlert accessToken={accessToken} onOpen={() => setActiveModule("Configurações")} />}
       {dataState === "auth" && <SupabaseLogin onAuthenticated={(accessToken) => { setActiveModule("Início"); void loadCatalog(accessToken); }} />}
       {loginPreview && <SupabaseLogin preview onClose={() => setLoginPreview(false)} onAuthenticated={(token) => { setLoginPreview(false); setActiveModule("Início"); void loadCatalog(token); }} />}
     </AppShell>
