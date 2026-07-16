@@ -26,6 +26,24 @@ export function TeamWorkspace({ accessToken }: { accessToken: string }) {
   const [instanceQuery, setInstanceQuery] = useState("");
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState("");
+  const [qr, setQr] = useState<{ id: number; nome: string; status: string; image: string | null } | null>(null);
+  const [qrBusy, setQrBusy] = useState(false);
+
+  async function openQr(inst: { id: number; nome: string }, restart = false) {
+    setQr({ id: inst.id, nome: inst.nome, status: "carregando", image: null }); setQrBusy(true);
+    try {
+      const { data: result } = await getBrowserSupabaseClient().functions.invoke("dapi-qr", { body: { action: restart ? "restart" : "qr", instanciaId: inst.id } });
+      const r = (result ?? {}) as { status?: string; qrCodeImage?: string | null; conectada?: boolean; error?: string };
+      setQr({ id: inst.id, nome: inst.nome, status: r.error || r.status || "desconhecido", image: r.qrCodeImage ?? null });
+      if (r.conectada) { setToast("Instância conectada!"); await load(); }
+    } catch { setQr((current) => current ? { ...current, status: "erro" } : current); }
+    finally { setQrBusy(false); }
+  }
+  useEffect(() => {
+    if (!qr || qr.status === "connected" || qr.status === "erro") return;
+    const timer = window.setTimeout(() => { const inst = data.instances.find((i) => i.id === qr.id); if (inst) void openQr({ id: inst.id, nome: inst.nome }); }, 4500);
+    return () => window.clearTimeout(timer);
+  }, [qr, data.instances]);
   const rgInput = useRef<HTMLInputElement>(null);
   const contractInput = useRef<HTMLInputElement>(null);
 
@@ -98,7 +116,7 @@ export function TeamWorkspace({ accessToken }: { accessToken: string }) {
         <label className="team-switch-row"><span><strong>Online agora</strong><small>Disponível para receber leads no rodízio.</small></span><input type="checkbox" checked={online} onChange={(event) => setOnline(event.target.checked)} /><i /></label>
         <label className="team-switch-row"><span><strong>Usuário ativo</strong><small>Permite acesso ao ERP e às funções liberadas.</small></span><input type="checkbox" checked={active} onChange={(event) => setActive(event.target.checked)} /><i /></label>
         <h3>Instâncias de WhatsApp</h3>
-        <details className="instance-picker"><summary>Selecionar instâncias <b>{selectedInstances.length || ""}</b></summary><div><input value={instanceQuery} onChange={(event) => setInstanceQuery(event.target.value)} placeholder="Pesquisar instância..." />{data.instances.filter((instance) => instance.nome.toLowerCase().includes(instanceQuery.toLowerCase())).map((instance) => <label key={instance.id}><input type="checkbox" checked={selectedInstances.includes(instance.id)} onChange={() => setSelectedInstances((current) => current.includes(instance.id) ? current.filter((id) => id !== instance.id) : [...current, instance.id])} /><span><strong>{instance.nome}</strong><small>{instance.telefone ?? instance.status_dapi ?? "Sem telefone"}</small></span><i className={instance.conectada ? "connected" : ""}>{instance.conectada ? "Conectada" : "Offline"}</i></label>)}</div></details>
+        <details className="instance-picker"><summary>Selecionar instâncias <b>{selectedInstances.length || ""}</b></summary><div><input value={instanceQuery} onChange={(event) => setInstanceQuery(event.target.value)} placeholder="Pesquisar instância..." />{data.instances.filter((instance) => instance.nome.toLowerCase().includes(instanceQuery.toLowerCase())).map((instance) => <label key={instance.id}><input type="checkbox" checked={selectedInstances.includes(instance.id)} onChange={() => setSelectedInstances((current) => current.includes(instance.id) ? current.filter((id) => id !== instance.id) : [...current, instance.id])} /><span><strong>{instance.nome}</strong><small>{instance.telefone ?? instance.status_dapi ?? "Sem telefone"}</small></span><i className={instance.conectada ? "connected" : ""}>{instance.conectada ? "Conectada" : "Offline"}</i><button type="button" className="instance-qr-btn" onClick={(event) => { event.preventDefault(); event.stopPropagation(); void openQr({ id: instance.id, nome: instance.nome }); }}>{instance.conectada ? "Reconectar" : "QR"}</button></label>)}</div></details>
         <div className="selected-instance-chips">{selectedInstances.map((id) => { const instance = data.instances.find((item) => item.id === id); return instance ? <button type="button" onClick={() => setSelectedInstances((current) => current.filter((item) => item !== id))} key={id}>✓ {instance.nome} ×</button> : null; })}</div>
         <p className="team-hint">O corretor vê apenas conversas das instâncias selecionadas.</p>
         <h3>Documentos</h3>
@@ -110,5 +128,6 @@ export function TeamWorkspace({ accessToken }: { accessToken: string }) {
       </div>
       <footer><button type="button" className="save-team" disabled={saving} onClick={() => void save()}>✓ {saving ? "Salvando..." : "Salvar alterações"}</button><button type="button" onClick={() => setSelectedId(null)}>Fechar</button></footer>
     </aside></div>}
+    {qr && <div className="qr-modal-scrim" onClick={() => setQr(null)}><div className="qr-modal" onClick={(event) => event.stopPropagation()}><header><strong>Conectar · {qr.nome}</strong><button type="button" onClick={() => setQr(null)}>×</button></header>{qr.status === "connected" ? <div className="qr-connected">✓ Conectada com sucesso!</div> : qr.image ? <><img src={qr.image} alt="QR Code da instância" /><p>Abra o WhatsApp → Aparelhos conectados → Conectar aparelho e escaneie. Atualiza sozinho.</p></> : <p className="qr-status">{qr.status === "carregando" ? "Gerando QR…" : qr.status === "erro" ? "Não foi possível gerar o QR. Verifique a apikey da instância." : `Status: ${qr.status}. Aguardando QR…`}</p>}<footer><button type="button" disabled={qrBusy} onClick={() => { const inst = data.instances.find((i) => i.id === qr.id); if (inst) void openQr({ id: inst.id, nome: inst.nome }, true); }}>Gerar novo QR</button><button type="button" onClick={() => setQr(null)}>Fechar</button></footer></div></div>}
   </div>;
 }
