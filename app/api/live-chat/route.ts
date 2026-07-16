@@ -92,7 +92,7 @@ export async function GET(request: Request) {
     auth.supabase.from("negocios").select("id,lead_id,corretor_id,stage_id,empreendimento_id,valor,status"),
     auth.supabase.rpc("listar_corretores_transferencia"),
     auth.supabase.from("empreendimentos").select("id,nome,bairro,cidade,preco,status").order("nome"),
-    auth.supabase.from("midias").select("id,empreendimento_id,nome,tipo,categoria,storage_path,is_capa").order("created_at", { ascending: false }),
+    auth.supabase.from("midias").select("id,empreendimento_id,nome,tipo,categoria,storage_path,is_capa").order("created_at", { ascending: false }).limit(5000),
     auth.supabase.from("crm_atividades").select("id,lead_id,tipo,texto,criado_em").eq("tipo", "observacao").order("criado_em", { ascending: false }).limit(500),
     auth.supabase.from("abordagens").select("id,nome,mensagens,produto_id").eq("ativo", true).order("ordem"),
     auth.supabase.from("pipeline_stages").select("id,nome,rotulo,ordem").order("ordem"),
