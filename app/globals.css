@@ -1398,3 +1398,11 @@ button { cursor:pointer; }
   color:#14834b; background:#f4fbf6; font-size:14px;
 }
 /* ===== fim do ajuste jul/2026 ===== */
+
+/* ===== Escala do CRM (densidade tipo referência) — jul/2026 =====
+   Um único fator encolhe TUDO na área do CRM (fontes, cards, avatares, espaçamento),
+   sem tocar no menu lateral. Ajuste o número (0.80 mais compacto ↔ 0.95 mais folgado)
+   até casar com a referência. Testar ao vivo: no DevTools console →
+   document.querySelector('.crm-v2').style.zoom = 0.85 */
+.crm-v2 { zoom: 0.85; }
+/* ===== fim escala CRM ===== */
