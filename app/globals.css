@@ -1406,3 +1406,26 @@ button { cursor:pointer; }
    document.querySelector('.crm-v2').style.zoom = 0.85 */
 .crm-v2 { zoom: 0.85; }
 /* ===== fim escala CRM ===== */
+
+/* ===== Chat: não encolher com a escala do CRM + tamanho confortável — jul/2026 =====
+   O .crm-v2 está em zoom 0.85 e isso estava encolhendo o chat junto.
+   Aqui o chat é devolvido ao tamanho normal (0.85 × 1.18 ≈ 1.0) e ampliado.
+   OBS: se você mudar o zoom do .crm-v2, recalcule este número: chat = 1 / (zoom do CRM). */
+.chat-layer .lead-chat-drawer{
+  zoom: 1.18;
+  width: 440px; max-width: calc(100vw - 32px);
+  height: 80vh; max-height: 720px;
+}
+/* mensagens legíveis */
+.chat-layer .chat-messages{ padding: 14px 16px; }
+.chat-layer .chat-messages article{ font-size: 14px; }
+.chat-layer .chat-messages article p{ font-size: 14px; line-height: 1.45; }
+/* seletor de instância compacto, sem dominar a janela */
+.chat-layer .chat-instance-bar{ padding: 8px 12px; gap: 8px; }
+.chat-layer .chat-instance-bar label{ font-size: 10px; gap: 3px; }
+.chat-layer .chat-instance-bar select{ height: 34px; font-size: 12px; }
+.chat-layer .chat-instance-bar > span{ font-size: 11px; white-space: nowrap; }
+@media (max-width: 520px){
+  .chat-layer .lead-chat-drawer{ width: 100vw; height: 82vh; }
+}
+/* ===== fim chat ===== */
