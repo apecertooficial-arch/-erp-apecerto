@@ -33,12 +33,14 @@ export async function POST(request: Request) {
   const body = await request.json() as Record<string, unknown>;
   const leadIds = Array.isArray(body.leadIds) ? body.leadIds.map(Number).filter((id) => Number.isSafeInteger(id) && id > 0).slice(0, 500) : [];
   const message = typeof body.message === "string" ? body.message.trim().slice(0, 4000) : "";
+  const messages = Array.isArray(body.messages) ? body.messages.map((m: unknown) => String(m ?? "").trim().slice(0, 4000)).filter(Boolean).slice(0, 20) : [];
+  const pool = messages.length ? messages : (message ? [message] : []);
   const rate = Math.max(1, Math.min(60, Number(body.rate) || 20));
   const sourceStageId = Number(body.sourceStageId);
   const destinationStageId = Number(body.destinationStageId);
   const start = typeof body.start === "string" && !Number.isNaN(Date.parse(body.start)) ? new Date(body.start) : new Date(Date.now() + 60_000);
-  if (!leadIds.length || !message || !Number.isSafeInteger(sourceStageId) || !Number.isSafeInteger(destinationStageId) || sourceStageId === destinationStageId) {
-    return Response.json({ error: "Escolha a etapa de saída, a etapa de destino e escreva a mensagem." }, { status: 422 });
+  if (!leadIds.length || !pool.length || !Number.isSafeInteger(sourceStageId) || !Number.isSafeInteger(destinationStageId) || sourceStageId === destinationStageId) {
+    return Response.json({ error: "Escolha a etapa de saída, a etapa de destino e ao menos uma mensagem/abordagem." }, { status: 422 });
   }
   const { data: stages, error: stagesError } = await auth.supabase.from("pipeline_stages").select("id,pipeline_id").in("id", [sourceStageId, destinationStageId]);
   if (stagesError) return Response.json({ error: stagesError.message }, { status: 502 });
@@ -58,7 +60,7 @@ export async function POST(request: Request) {
     lead_id: lead.id, telefone: lead.telefone!, tipo: "text", status: "agendado", criado_por: auth.user.id,
     campanha_id: campaignId, etapa_origem_id: sourceStageId, etapa_destino_id: destinationStageId,
     quando: new Date(start.getTime() + index * gapMs).toISOString(),
-    texto: message.replaceAll("{primeiro_nome}", (lead.nome ?? "cliente").split(/\s+/)[0] || "cliente"),
+    texto: pool[index % pool.length].replaceAll("{primeiro_nome}", (lead.nome ?? "cliente").split(/\s+/)[0] || "cliente"),
   }));
   const { error } = await auth.supabase.from("mensagens_agendadas").insert(rows);
   return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true, campaignId, scheduled: rows.length, ignored: leadIds.length - rows.length });
