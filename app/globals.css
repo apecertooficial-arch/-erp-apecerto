@@ -1429,3 +1429,25 @@ button { cursor:pointer; }
   .chat-layer .lead-chat-drawer{ width: 100vw; height: 82vh; }
 }
 /* ===== fim chat ===== */
+
+/* ===== Ajustes finos do chat (jul/2026): legibilidade + botão de IA + densidade ===== */
+/* 1) Sobe a janela pra NÃO ficar embaixo do botão de IA (FAB roxo no canto) */
+.chat-layer .lead-chat-drawer{ bottom: 96px; max-height: 700px; }
+/* 2) Cabeçalho: nome e telefone eram brancos no branco → cor escura, fonte maior, menos vazio */
+.chat-layer .lead-chat-drawer > header{ padding: 8px 14px; }
+.chat-layer .lead-chat-drawer > header small{ font-size: 11px; }
+.chat-layer .lead-chat-drawer > header h2{ color: #282421; font-size: 17px; margin: 1px 0; }
+.chat-layer .lead-chat-drawer > header p{ color: #6b6b6b; font-size: 13px; margin: 0; }
+/* 3) Seletor de instância menor e mais enxuto (ocupava espaço demais) */
+.chat-layer .chat-instance-bar{ min-height: auto; padding: 6px 14px; gap: 8px; }
+.chat-layer .chat-instance-bar label{ font-size: 10px; gap: 2px; }
+.chat-layer .chat-instance-bar select{ height: 30px; font-size: 12px; padding: 0 8px; }
+.chat-layer .chat-instance-bar > span{ font-size: 11px; }
+/* 4) Botões Áudio / Documento / Agendar / Abordagem MAIORES */
+.chat-layer .mini-chat-tools{ padding: 8px 12px; gap: 6px; }
+.chat-layer .mini-chat-tools button{ min-height: 38px; padding: 0 12px; font-size: 12px; gap: 6px; }
+.chat-layer .mini-chat-tools svg{ width: 16px; height: 16px; }
+/* ===== fim ajustes finos do chat ===== */
+/* botões de ação em grade 2x2 (mais limpo que a fila que quebrava linha) */
+.chat-layer .mini-chat-tools{ display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 10px 12px; }
+.chat-layer .mini-chat-tools button{ min-height: 40px; margin: 0; justify-content: center; }
