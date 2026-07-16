@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { SaraWidget } from "./components/SaraWidget";
 
 export const metadata: Metadata = {
   title: "ApêCerto — ERP",
@@ -9,7 +10,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="pt-BR">
-      <body>{children}</body>
+      <body>{children}<SaraWidget /></body>
     </html>
   );
 }
