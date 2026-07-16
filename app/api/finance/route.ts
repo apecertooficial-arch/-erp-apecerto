@@ -84,5 +84,18 @@ export async function PATCH(request: Request) {
     }
     return Response.json({ success: true });
   }
+  if (action === "deleteSale") {
+    const saleId = clean(body.saleId, 50);
+    if (!saleId) return Response.json({ error: "Venda inválida." }, { status: 422 });
+    const { data: me } = await auth.supabase.from("usuarios").select("role").eq("id", auth.user.id).maybeSingle();
+    if (!me || !["admin", "gestor"].includes(me.role)) return Response.json({ error: "Apenas administradores podem apagar vendas." }, { status: 403 });
+    await auth.supabase.from("comissoes").delete().eq("venda_id", saleId);
+    await auth.supabase.from("recebimentos").delete().eq("venda_id", saleId);
+    await auth.supabase.from("lancamentos_caixa").update({ venda_id: null }).eq("venda_id", saleId);
+    await auth.supabase.from("negocios").update({ venda_id: null }).eq("venda_id", saleId);
+    const { error } = await auth.supabase.from("vendas").delete().eq("id", saleId);
+    if (error) return Response.json({ error: error.message }, { status: 502 });
+    return Response.json({ success: true });
+  }
   return Response.json({ error: "Ação financeira desconhecida." }, { status: 400 });
 }
