@@ -1292,3 +1292,18 @@ button { cursor:pointer; }
 .qr-connected { padding:30px 0; text-align:center; color:#16834c; font-size:14px; font-weight:700; }
 .qr-modal>footer { display:flex; gap:8px; justify-content:flex-end; margin-top:14px; }
 .qr-modal>footer button { border:1px solid #ddd6d1; border-radius:8px; padding:8px 12px; background:#fff; font-size:10px; cursor:pointer; }
+/* #1b — comissões editáveis (fechar distribuição) */
+.comm-head { display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; margin-bottom:8px; }
+.comm-head span { font-size:9px; font-weight:700; padding:3px 8px; border-radius:999px; }
+.comm-ok { background:#e7f6ec; color:#16834c; }
+.comm-warn { background:#fff1e8; color:#bd4a08; }
+.comm-row { display:grid; grid-template-columns:1fr 110px 30px 30px; align-items:center; gap:6px; padding:6px 0; border-bottom:1px solid #f0ece9; }
+.comm-row>span { font-size:10px; color:#5f5854; text-transform:capitalize; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.comm-row input { border:1px solid #ddd6d1; border-radius:7px; padding:6px 8px; font-size:10px; }
+.comm-row button { width:28px; height:28px; border:1px solid #ddd6d1; border-radius:7px; background:#fff; cursor:pointer; font-size:12px; }
+.comm-row .comm-del { color:#bc4035; border-color:#e7b6b0; }
+.comm-add { display:grid; grid-template-columns:1fr 1fr auto auto; gap:6px; margin-top:10px; }
+.comm-add select, .comm-add input { border:1px solid #ddd6d1; border-radius:7px; padding:7px 8px; font-size:10px; min-width:0; }
+.comm-add button { border:0; border-radius:8px; padding:7px 11px; background:#ff6500; color:#fff; font-size:10px; font-weight:700; cursor:pointer; }
+.comm-add button:disabled { opacity:.5; }
+@media(max-width:520px){ .comm-add { grid-template-columns:1fr 1fr; } }
