@@ -33,6 +33,7 @@ export function LiveChatWorkspace({ accessToken }: { accessToken: string }) {
   const [data, setData] = useState<ChatData | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
+  const activeConversation = useRef<string | null>(null);
   const [draft, setDraft] = useState("");
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<ChatFilter>("all");
@@ -64,6 +65,7 @@ export function LiveChatWorkspace({ accessToken }: { accessToken: string }) {
     const response = await fetch(`/api/live-chat?conversationId=${encodeURIComponent(id)}`, { headers: { Authorization: `Bearer ${accessToken}` } });
     const result = await response.json() as { messages?: Message[]; error?: string };
     if (!response.ok) throw new Error(result.error || "Não foi possível carregar as mensagens.");
+    if (activeConversation.current !== id) return;
     const dbMessages = result.messages ?? [];
     const at = (m: Message) => new Date(m.enviado_em || m.criado_em || 0).getTime();
     setMessages((prev) => {
@@ -73,7 +75,7 @@ export function LiveChatWorkspace({ accessToken }: { accessToken: string }) {
   };
 
   useEffect(() => { void load().catch((reason) => setNotice(reason instanceof Error ? reason.message : "Erro ao carregar chat.")); }, [accessToken]);
-  useEffect(() => { if (selectedId) void loadMessages(selectedId).catch((reason) => setNotice(reason instanceof Error ? reason.message : "Erro ao carregar mensagens.")); }, [selectedId]);
+  useEffect(() => { activeConversation.current = selectedId; if (selectedId) { setMessages([]); void loadMessages(selectedId).catch((reason) => setNotice(reason instanceof Error ? reason.message : "Erro ao carregar mensagens.")); } else { setMessages([]); } }, [selectedId]);
   useEffect(() => { const stream = messageStream.current; if (stream) stream.scrollTop = stream.scrollHeight; }, [messages]);
   useEffect(() => {
     const supabase = getBrowserSupabaseClient();
