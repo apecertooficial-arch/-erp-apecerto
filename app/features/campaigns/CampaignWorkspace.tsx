@@ -21,6 +21,12 @@ function approachText(value: unknown) {
   return "";
 }
 
+function tagName(t: unknown): string {
+  if (typeof t === "string") return t;
+  if (t && typeof t === "object") return String((t as Record<string, unknown>).name ?? (t as Record<string, unknown>).nome ?? "");
+  return String(t ?? "");
+}
+
 function gerarAbordagens(produto: string, intencao: string, media: string, count: number) {
   const p = produto || "o empreendimento";
   const foco = (intencao || "apresentar a oportunidade").trim();
@@ -91,13 +97,13 @@ export function CampaignWorkspace({ accessToken }: { accessToken: string }) {
     setLoading(false);
   }
   useEffect(() => { void load(); }, [accessToken]);
-  const tags = useMemo(() => [...new Set(data.leads.flatMap((lead) => lead.tags ?? []))].sort(), [data.leads]);
+  const tags = useMemo(() => [...new Set(data.leads.flatMap((lead) => (lead.tags ?? []).map(tagName)).filter(Boolean))].sort(), [data.leads]);
   const dealByLead = useMemo(() => new Map(data.deals.map((deal) => [deal.lead_id, deal])), [data.deals]);
   const eligible = useMemo(() => {
     const base = origin === "excel" ? csvLeads : data.leads;
     return base.filter((lead) => {
       const deal = dealByLead.get(lead.id);
-      return !lead.disparo_optout && (!stage || deal?.stage_id === Number(stage)) && (!tag || (lead.tags ?? []).includes(tag)) && (!product || deal?.empreendimento_id === product);
+      return !lead.disparo_optout && (!stage || deal?.stage_id === Number(stage)) && (!tag || (lead.tags ?? []).map(tagName).includes(tag)) && (!product || deal?.empreendimento_id === product);
     });
   }, [origin, csvLeads, data.leads, dealByLead, stage, tag, product]);
   const valid = eligible.filter((lead) => Boolean(lead.telefone));

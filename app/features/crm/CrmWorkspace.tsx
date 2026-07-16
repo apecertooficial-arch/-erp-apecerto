@@ -38,7 +38,7 @@ const viewHeadings: Record<ViewName, { title: string; subtitle: string }> = {
 const discardReasons = ["Contato inválido", "Sem interesse", "Sem capacidade financeira", "Fora da região", "Já comprou", "Duplicado", "Pediu para não receber contato", "Produto incompatível"];
 
 function tagList(tags: unknown) {
-  if (Array.isArray(tags)) return tags.map(String).filter(Boolean);
+  if (Array.isArray(tags)) return tags.map((t) => typeof t === "string" ? t : (t && typeof t === "object" ? String((t as Record<string, unknown>).name ?? (t as Record<string, unknown>).nome ?? "") : String(t ?? ""))).filter(Boolean);
   if (tags && typeof tags === "object") return Object.entries(tags as Record<string, unknown>).filter(([, value]) => Boolean(value)).map(([key]) => key);
   return [];
 }
