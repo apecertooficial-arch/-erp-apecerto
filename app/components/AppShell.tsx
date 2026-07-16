@@ -8,7 +8,7 @@ const adminToolItems: ModuleName[] = ["Abordagens", "Automações", "Financiamen
 const adminSystemItems: ModuleName[] = ["Usuários", "Notificações", "Base de conhecimento", "Auditoria", "Configurações", "Ajuda"];
 const brokerMainItems: ModuleName[] = ["Início", "CRM", "Performance", "Produtos", "Financeiro"];
 const brokerToolItems: ModuleName[] = ["Chat ao Vivo", "Financiamento", "Disparos", "Calendário"];
-const brokerSystemItems: ModuleName[] = ["Notificações", "Configurações", "Ajuda"];
+const brokerSystemItems: ModuleName[] = ["Notificações", "Ajuda"];
 
 function NavIcon({ item }: { item: ModuleName }) {
   const common = { width: 19, height: 19, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.8, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
