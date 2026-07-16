@@ -97,5 +97,28 @@ export async function PATCH(request: Request) {
     if (error) return Response.json({ error: error.message }, { status: 502 });
     return Response.json({ success: true });
   }
+  if (action === "addCommission" || action === "updateCommission" || action === "deleteCommission") {
+    const { data: me } = await auth.supabase.from("usuarios").select("role").eq("id", auth.user.id).maybeSingle();
+    if (!me || !["admin", "gestor"].includes(me.role)) return Response.json({ error: "Apenas administradores podem editar comissões." }, { status: 403 });
+
+    if (action === "addCommission") {
+      const vendaId = clean(body.saleId, 50); const papel = clean(body.papel, 40) || "outro"; const valor = Number(body.valor);
+      const beneficiarioId = clean(body.beneficiarioId, 60) || null;
+      if (!vendaId || !Number.isFinite(valor)) return Response.json({ error: "Informe a venda e o valor." }, { status: 422 });
+      const { error } = await auth.supabase.from("comissoes").insert({ venda_id: vendaId, papel, valor_final: valor, valor_calculado: valor, beneficiario_id: beneficiarioId });
+      return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
+    }
+    if (action === "updateCommission") {
+      const id = clean(body.commissionId, 60); const valor = Number(body.valor);
+      if (!id || !Number.isFinite(valor)) return Response.json({ error: "Comissão inválida." }, { status: 422 });
+      const { error } = await auth.supabase.from("comissoes").update({ valor_final: valor }).eq("id", id);
+      return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
+    }
+    const id = clean(body.commissionId, 60);
+    if (!id) return Response.json({ error: "Comissão inválida." }, { status: 422 });
+    const { error } = await auth.supabase.from("comissoes").delete().eq("id", id);
+    return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
+  }
+
   return Response.json({ error: "Ação financeira desconhecida." }, { status: 400 });
 }
