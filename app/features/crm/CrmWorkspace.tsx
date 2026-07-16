@@ -307,7 +307,19 @@ function LeadChatDrawer({ accessToken, lead, deal, onClose, onResponse }: { acce
   const fileInput = useRef<HTMLInputElement>(null); const recorder = useRef<MediaRecorder | null>(null); const chunks = useRef<Blob[]>([]);
   const listRef = useRef<HTMLElement>(null);
   useEffect(() => { if (loading) return; const el = listRef.current; if (!el) return; const toBottom = () => { el.scrollTop = el.scrollHeight; }; toBottom(); const t = window.setTimeout(toBottom, 80); return () => window.clearTimeout(t); }, [messages, loading]);
-  async function request(body: Record<string, unknown>) { const response = await fetch("/api/crm/chat", { method: "POST", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify(body) }); const result = await response.json() as Record<string, unknown>; if (!response.ok) throw new Error(typeof result.error === "string" ? result.error : "Não foi possível abrir a conversa."); return result; }
+  async function request(body: Record<string, unknown>) {
+    const supa = getBrowserSupabaseClient();
+    const call = (tok: string | null) => fetch("/api/crm/chat", { method: "POST", headers: { Authorization: `Bearer ${tok ?? ""}`, "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    let tok: string | null = accessToken;
+    try { const { data } = await supa.auth.getSession(); if (data.session?.access_token) tok = data.session.access_token; } catch { /* mantem o token atual */ }
+    let response = await call(tok);
+    if (response.status === 401) {
+      try { const { data } = await supa.auth.refreshSession(); if (data.session?.access_token) response = await call(data.session.access_token); } catch { /* segue com 401 */ }
+    }
+    const result = await response.json() as Record<string, unknown>;
+    if (!response.ok) throw new Error(typeof result.error === "string" ? result.error : "Não foi possível abrir a conversa.");
+    return result;
+  }
   async function loadInstances() { setLoading(true); setError(null); try { const result = await request({ action: "list", telefone: lead.telefone }); const list = Array.isArray(result.instancias) ? result.instancias as ChatInstance[] : []; setInstances(list); setSelectedKey((current) => current || list[0]?.key || ""); } catch (reason) { setError(reason instanceof Error ? reason.message : "Não foi possível abrir a conversa."); } finally { setLoading(false); } }
   async function loadMessages(instance: ChatInstance) { setLoading(true); setError(null); try { const result = instance.conversaIds.length ? await request({ action: "messages", conversaIds: instance.conversaIds, limit: 300 }) : await request({ action: "dapi-hist", telefone: lead.telefone, instancia_id: instance.sendBig, page: 1, limit: 300 }); const list = Array.isArray(result.mensagens) ? result.mensagens as ChatMessage[] : []; setMessages([...list].sort((a, b) => String(a.criado_em || "").localeCompare(String(b.criado_em || "")))); } catch (reason) { setError(reason instanceof Error ? reason.message : "Não foi possível carregar as mensagens."); } finally { setLoading(false); } }
   // eslint-disable-next-line react-hooks/exhaustive-deps
