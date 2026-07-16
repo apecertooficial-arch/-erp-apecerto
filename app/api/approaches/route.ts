@@ -17,8 +17,8 @@ export async function GET(request: Request) {
   const auth = await authenticatedClient(request);
   if (!auth) return Response.json({ error: "Sessão inválida ou expirada." }, { status: 401 });
   const [approaches, products] = await Promise.all([
-    auth.supabase.from("abordagens").select("id,nome,mensagens,produto_id,ativo,ordem,criado_em").order("ordem"),
-    auth.supabase.from("produtos").select("id,nome,ativo,criado_em").order("nome"),
+    auth.supabase.from("abordagens").select("id,nome,mensagens,produto_id,empreendimento_id,grupo,ativo,ordem,criado_em").order("ordem"),
+    auth.supabase.from("empreendimentos").select("id,nome").eq("rascunho", false).order("nome").limit(400),
   ]);
   const error = approaches.error ?? products.error;
   return error
@@ -41,11 +41,12 @@ export async function PATCH(request: Request) {
 
   if (action === "createApproach") {
     const name = text(body.name, 120);
-    const productId = body.productId === null || body.productId === undefined ? null : Number(body.productId);
-    if (!name || (productId !== null && !Number.isSafeInteger(productId))) return Response.json({ error: "Dados da abordagem inválidos." }, { status: 422 });
+    const empreendimentoId = body.empreendimentoId ? text(body.empreendimentoId, 60) : null;
+    const grupo = text(body.grupo, 80) || null;
+    if (!name) return Response.json({ error: "Dados da abordagem inválidos." }, { status: 422 });
     const countQuery = auth.supabase.from("abordagens").select("*", { count: "exact", head: true });
-    const { count } = productId === null ? await countQuery.is("produto_id", null) : await countQuery.eq("produto_id", productId);
-    const { error } = await auth.supabase.from("abordagens").insert({ nome: name, produto_id: productId, mensagens: [], ordem: count ?? 0 });
+    const { count } = empreendimentoId === null ? await countQuery.is("empreendimento_id", null) : await countQuery.eq("empreendimento_id", empreendimentoId);
+    const { error } = await auth.supabase.from("abordagens").insert({ nome: name, empreendimento_id: empreendimentoId, grupo, produto_id: null, mensagens: [], ordem: count ?? 0 });
     return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
   }
 
@@ -53,7 +54,9 @@ export async function PATCH(request: Request) {
     const id = Number(body.id); const name = text(body.name, 120);
     const messages = Array.isArray(body.messages) ? body.messages.slice(0, 60) : [];
     if (!Number.isSafeInteger(id) || !name) return Response.json({ error: "Abordagem inválida." }, { status: 422 });
-    const { error } = await auth.supabase.from("abordagens").update({ nome: name, mensagens: messages }).eq("id", id);
+    const update: Record<string, unknown> = { nome: name, mensagens: messages };
+    if (body.grupo !== undefined) update.grupo = text(body.grupo, 80) || null;
+    const { error } = await auth.supabase.from("abordagens").update(update).eq("id", id);
     return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
   }
 

@@ -1263,3 +1263,10 @@ button { cursor:pointer; }
 .metas-bar i { display:block; height:8px; border-radius:999px; background:#f0ece9; overflow:hidden; }
 .metas-bar u { display:block; height:100%; border-radius:999px; background:linear-gradient(90deg,#ff8a3d,#f24b15); }
 @media(max-width:900px){ .metas-tab { grid-template-columns:1fr; } }
+/* #10 — Abordagens: grupos por produto */
+.approach-group { margin-bottom:14px; }
+.approach-group-head { display:flex; align-items:center; gap:10px; padding:8px 4px; border-bottom:1px solid #eee6e0; margin-bottom:8px; }
+.approach-group-head strong { font-size:11px; color:#b64708; }
+.approach-group-head span { color:#948a83; font-size:9px; }
+.approach-group-head button { margin-left:auto; border:1px dashed #f0a060; border-radius:7px; padding:4px 8px; background:#fff8f2; color:#b64708; font-size:9px; cursor:pointer; }
+.approach-grupo-input { margin-top:6px; font-size:11px !important; opacity:.85; }
