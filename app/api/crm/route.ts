@@ -27,13 +27,14 @@ export async function GET(request: Request) {
   const auth = await authenticatedClient(request);
   if (!auth) return Response.json({ error: "Sessão inválida ou expirada." }, { status: 401 });
 
-  const [pipelinesResult, stagesResult, leadsResult, dealsResult, brokersResult, activitiesResult, tasksResult, linksResult, visitsResult, productsResult, slaResult, alertsResult] = await Promise.all([
+  const [pipelinesResult, stagesResult, leadsResult, dealsResult, brokersResult, activitiesResult, historicoResult, tasksResult, linksResult, visitsResult, productsResult, slaResult, alertsResult] = await Promise.all([
     auth.supabase.from("pipelines").select("id,nome,grupo,ordem").order("ordem"),
     auth.supabase.from("pipeline_stages").select("id,pipeline_id,nome,rotulo,ordem,cor,tipo,grupo,chave").order("ordem"),
     auth.supabase.from("leads").select("id,nome,telefone,email,instagram,corretor_id,pipeline_id,status,origem,tags,extras,criado_em,atualizado_em,disparo_optout").order("atualizado_em", { ascending: false, nullsFirst: false }).limit(500),
     auth.supabase.from("negocios").select("id,lead_id,corretor_id,pipeline_id,stage_id,empreendimento_id,valor,status,motivo_perda,criado_em,ultima_movimentacao,estagio_desde,tentativa,max_tentativas").order("ultima_movimentacao", { ascending: false, nullsFirst: false }).limit(1000),
     auth.supabase.rpc("listar_corretores_transferencia"),
     auth.supabase.from("crm_atividades").select("id,lead_id,negocio_id,corretor_id,tipo,texto,criado_em").order("criado_em", { ascending: false }).limit(500),
+    auth.supabase.from("atendimento_acoes").select("id,lead_id,negocio_id,corretor_id,tipo,canal,texto,resultado,criado_em").order("criado_em", { ascending: false }).limit(500),
     auth.supabase.from("crm_tarefas").select("id,lead_id,negocio_id,corretor_id,titulo,descricao,vencimento,concluida,prioridade,criado_em").order("criado_em", { ascending: false }).limit(500),
     auth.supabase.from("lead_produtos").select("lead_id,empreendimento_id,created_at,empreendimentos(id,nome,bairro,cidade,status,preco)").order("created_at", { ascending: false }),
     auth.supabase.from("visitas").select("id,created_by,lead_id,negocio_id,corretor_id,cliente_nome,empreendimento_id,produto,unidade,data,hora_inicio,hora_fim,local,observacoes,participantes,lembrete,com_gerente,status,criado_em").order("data").order("hora_inicio"),
@@ -42,7 +43,7 @@ export async function GET(request: Request) {
     auth.supabase.from("crm_lead_alertas").select("id,negocio_id,corretor_id,criado_em,reconhecido_em,reconhecido_por").is("reconhecido_em", null).order("criado_em", { ascending: false }),
   ]);
 
-  const firstError = [pipelinesResult, stagesResult, leadsResult, dealsResult, brokersResult, activitiesResult, tasksResult, linksResult, visitsResult, productsResult, slaResult, alertsResult].find((result) => result.error)?.error;
+  const firstError = [pipelinesResult, stagesResult, leadsResult, dealsResult, brokersResult, activitiesResult, historicoResult, tasksResult, linksResult, visitsResult, productsResult, slaResult, alertsResult].find((result) => result.error)?.error;
   if (firstError) return Response.json({ error: firstError.message }, { status: 502 });
 
   return Response.json({
@@ -53,6 +54,7 @@ export async function GET(request: Request) {
     deals: dealsResult.data ?? [],
     brokers: brokersResult.data ?? [],
     activities: activitiesResult.data ?? [],
+    historico: historicoResult.data ?? [],
     tasks: tasksResult.data ?? [],
     productLinks: linksResult.data ?? [],
     visits: visitsResult.data ?? [],
