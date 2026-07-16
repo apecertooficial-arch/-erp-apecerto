@@ -6,6 +6,7 @@ dist/
 .wrangler/
 .next/
 build/
+*.tsbuildinfo
 
 # Ambiente
 .env
