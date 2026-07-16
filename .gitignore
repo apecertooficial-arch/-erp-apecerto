@@ -1,0 +1,16 @@
+# Dependencias
+node_modules/
+
+# Build / saida
+dist/
+.wrangler/
+.next/
+build/
+
+# Ambiente
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
