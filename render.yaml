@@ -13,5 +13,7 @@ services:
         sync: false
       - key: NEXT_PUBLIC_APECERTO_DATA_MODE
         value: production-readonly
+      - key: NEXT_PUBLIC_SITE_URL
+        value: https://apecerto-erp.onrender.com
       - key: NODE_VERSION
         value: "22.13.0"

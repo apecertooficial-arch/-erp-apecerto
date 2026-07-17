@@ -6,6 +6,7 @@ import { AppShell } from "../../components/AppShell";
 import { AttentionCenter } from "../../components/AttentionCenter";
 import { ProfilePanel } from "../../components/ProfilePanel";
 import { SupabaseLogin } from "../../components/SupabaseLogin";
+import { ResetPassword } from "../../components/ResetPassword";
 import { getBrowserSupabaseClient } from "../../lib/supabase/browser";
 import { CaptureWizard } from "./CaptureWizard";
 import { ProductDetail } from "./ProductDetail";
@@ -92,6 +93,7 @@ export function ProductCatalog() {
   const [loginPreview, setLoginPreview] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [sessionProfile, setSessionProfile] = useState<SessionProfile | null>(null);
+  const [recoveryMode, setRecoveryMode] = useState(false);
 
   const loadSessionProfile = useCallback(async (token: string) => {
     const response = await fetch("/api/session", { headers: { Authorization: `Bearer ${token}` } });
@@ -152,9 +154,12 @@ export function ProductCatalog() {
   useEffect(() => {
     const supabase = getBrowserSupabaseClient();
     let active = true;
+    const isRecovery = typeof window !== "undefined" && window.location.hash.includes("type=recovery");
+    if (isRecovery) setRecoveryMode(true);
 
     void supabase.auth.getSession().then(async ({ data }) => {
       if (!active) return;
+      if (isRecovery) return;
       if (!data.session) {
         setDataState("auth");
         return;
@@ -173,6 +178,7 @@ export function ProductCatalog() {
 
     const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
       if (!active) return;
+      if (_event === "PASSWORD_RECOVERY") { setRecoveryMode(true); return; }
       if (session) {
         setAccessToken(session.access_token);
         setDataState((current) => current === "auth" ? "loading" : current);
@@ -214,6 +220,9 @@ export function ProductCatalog() {
   const neighborhoods = useMemo(() => [...new Set(products.map((item) => item.neighborhood).filter(Boolean))].sort(), [products]);
   const developers = useMemo(() => [...new Set(products.map((item) => item.developer).filter((item): item is string => Boolean(item)))].sort(), [products]);
 
+  if (recoveryMode) {
+    return <div className="login-page"><ResetPassword onDone={() => { setRecoveryMode(false); void (async () => { const { data } = await getBrowserSupabaseClient().auth.getSession(); if (data.session) { setActiveModule("Início"); await loadCatalog(data.session.access_token); } else { setDataState("auth"); } })(); }} /></div>;
+  }
   if (dataState === "auth" && !accessToken) {
     return <div className="login-page"><SupabaseLogin onAuthenticated={(token) => { setActiveModule("Início"); void loadCatalog(token); }} /></div>;
   }
