@@ -4,6 +4,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AppShell } from "../../components/AppShell";
 import { AttentionCenter } from "../../components/AttentionCenter";
+import { ProfilePanel } from "../../components/ProfilePanel";
 import { SupabaseLogin } from "../../components/SupabaseLogin";
 import { getBrowserSupabaseClient } from "../../lib/supabase/browser";
 import { CaptureWizard } from "./CaptureWizard";
@@ -87,6 +88,7 @@ export function ProductCatalog() {
   const [activeModule, setActiveModule] = useState<ModuleName>("Início");
   const [focusedDealId, setFocusedDealId] = useState<number | null>(null);
   const [loginPreview, setLoginPreview] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
   const [sessionProfile, setSessionProfile] = useState<SessionProfile | null>(null);
 
   const loadSessionProfile = useCallback(async (token: string) => {
@@ -215,7 +217,7 @@ export function ProductCatalog() {
   }
 
   return (
-    <AppShell activeItem={activeModule} onNavigate={setActiveModule} onPreviewLogin={() => setLoginPreview(true)} sessionRole={sessionProfile?.role ?? "corretor"} sessionName={sessionProfile?.name ?? "Corretor"}>
+    <AppShell activeItem={activeModule} onNavigate={setActiveModule} onOpenProfile={() => setProfileOpen(true)} sessionRole={sessionProfile?.role ?? "corretor"} sessionName={sessionProfile?.name ?? "Corretor"}>
       {activeModule === "Início" && accessToken ? (
         <HomeWorkspace accessToken={accessToken} />
       ) : activeModule === "CRM" && accessToken ? (
@@ -269,6 +271,7 @@ export function ProductCatalog() {
       {accessToken && <AttentionCenter accessToken={accessToken} onOpenLead={(dealId) => { setFocusedDealId(dealId); setActiveModule("CRM"); }} onOpenNotifications={() => setActiveModule("Notificações")} />}
       {accessToken && <DisconnectionAlert accessToken={accessToken} onOpen={() => setActiveModule("Configurações")} />}
       {loginPreview && <SupabaseLogin preview onClose={() => setLoginPreview(false)} onAuthenticated={(token) => { setLoginPreview(false); setActiveModule("Início"); void loadCatalog(token); }} />}
+      {profileOpen && accessToken && <ProfilePanel email={sessionProfile?.email ?? ""} onClose={() => setProfileOpen(false)} onPreviewLogin={() => { setProfileOpen(false); setLoginPreview(true); }} onSaved={() => { if (accessToken) void loadSessionProfile(accessToken).catch(() => undefined); }} />}
     </AppShell>
   );
 }

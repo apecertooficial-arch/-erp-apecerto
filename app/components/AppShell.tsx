@@ -48,7 +48,7 @@ function NavGroup({ label, items, activeItem, onNavigate }: { label: string; ite
   );
 }
 
-export function AppShell({ children, activeItem, onNavigate, onPreviewLogin, sessionRole = "corretor", sessionName = "Corretor" }: { children: ReactNode; activeItem: ModuleName; onNavigate: (item: ModuleName) => void; onPreviewLogin?: () => void; sessionRole?: "admin" | "gestor" | "corretor"; sessionName?: string }) {
+export function AppShell({ children, activeItem, onNavigate, onOpenProfile, sessionRole = "corretor", sessionName = "Corretor" }: { children: ReactNode; activeItem: ModuleName; onNavigate: (item: ModuleName) => void; onOpenProfile?: () => void; sessionRole?: "admin" | "gestor" | "corretor"; sessionName?: string }) {
   const isBroker = sessionRole === "corretor";
   const [navCollapsed, setNavCollapsed] = useState(false);
   const mainItems = isBroker ? brokerMainItems : adminMainItems;
@@ -65,7 +65,7 @@ export function AppShell({ children, activeItem, onNavigate, onPreviewLogin, ses
           <NavGroup label="FERRAMENTAS" items={toolItems} activeItem={activeItem} onNavigate={onNavigate} />
           <NavGroup label="SISTEMA" items={systemItems} activeItem={activeItem} onNavigate={onNavigate} />
         </nav>
-        <button className="profile" type="button" onClick={onPreviewLogin} title="Visualizar acesso do corretor"><span>{initial}</span><div><strong>{sessionName}</strong><small>{roleLabel} · apêcerto</small></div><i>⌄</i></button>
+        <button className="profile" type="button" onClick={onOpenProfile} title="Abrir meu perfil"><span>{initial}</span><div><strong>{sessionName}</strong><small>{roleLabel} · apêcerto</small></div><i>⌄</i></button>
       </aside>
       <main className="workspace">{children}</main>
     </div>

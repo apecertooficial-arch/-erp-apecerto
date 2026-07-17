@@ -1582,4 +1582,51 @@ body:has(.chat-layer) .ai-button, body:has(.chat-layer) #sara-fab{ display: none
    para nunca cobrir fechar/salvar/continuar. Voltam ao fechar.
    ============================================================ */
 .attention-trigger,.attention-popover,.disconnect-alert { transition:opacity .18s ease,visibility .18s ease; }
-body:has(.modal-layer,.photo-lightbox,.document-preview-modal,.delete-confirm,.drawer-backdrop,.center-modal-backdrop,.crm-drawer-layer,.crm-center-modal,.chat-layer,.operational-drawer-scrim,.qr-modal-scrim,.team-drawer-scrim,.calendar-modal-layer,.auth-layer,.login-page) :is(.attention-trigger,.attention-popover,.disconnect-alert,#sara-fab,#sara-panel) { opacity:0 !important; visibility:hidden !important; pointer-events:none !important; }
+body:has(.profile-drawer-scrim,.modal-layer,.photo-lightbox,.document-preview-modal,.delete-confirm,.drawer-backdrop,.center-modal-backdrop,.crm-drawer-layer,.crm-center-modal,.chat-layer,.operational-drawer-scrim,.qr-modal-scrim,.team-drawer-scrim,.calendar-modal-layer,.auth-layer,.login-page) :is(.attention-trigger,.attention-popover,.disconnect-alert,#sara-fab,#sara-panel) { opacity:0 !important; visibility:hidden !important; pointer-events:none !important; }
+
+/* ============================================================
+   Doc §15 — Perfil completo do corretor pelo rodapé da sidebar
+   ============================================================ */
+.profile-drawer-scrim { position:fixed; inset:0; z-index:215; display:flex; justify-content:flex-end; background:rgba(35,27,22,.42); backdrop-filter:blur(2px); }
+.profile-drawer { width:min(560px,96vw); height:100%; display:flex; flex-direction:column; background:#faf9f8; box-shadow:-22px 0 70px rgba(21,15,12,.24); }
+.profile-drawer>header { position:relative; display:flex; align-items:flex-start; justify-content:space-between; padding:22px 24px 18px; background:linear-gradient(135deg,#fff 40%,#fff3ea); border-bottom:1px solid #eae3de; }
+.profile-hero { display:flex; align-items:center; gap:15px; }
+.profile-avatar { position:relative; width:64px; height:64px; flex:0 0 64px; display:grid; place-items:center; overflow:hidden; border:2px solid #fff; border-radius:20px; background:linear-gradient(145deg,#8f2ac6,#b246dc); color:#fff; box-shadow:0 10px 24px rgba(126,36,170,.25); cursor:pointer; font-size:24px; font-weight:850; }
+.profile-avatar>img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
+.profile-avatar>i { position:absolute; right:3px; bottom:3px; width:20px; height:20px; display:grid; place-items:center; border-radius:7px; background:rgba(20,13,8,.55); color:#fff; font-size:10px; font-style:normal; }
+.profile-hero small { color:#c2570d; font-size:8px; font-weight:850; letter-spacing:.1em; }
+.profile-hero h2 { margin:3px 0 2px; font-size:20px; }
+.profile-hero p { margin:0; color:#8d837d; font-size:10px; }
+.profile-close { width:32px; height:32px; border:0; border-radius:50%; background:#f2eeeb; color:#615851; font-size:20px; cursor:pointer; }
+.profile-drawer>main { flex:1; overflow:auto; padding:18px 24px 30px; }
+.profile-drawer section { margin-bottom:16px; padding:16px 18px; border:1px solid #eae4df; border-radius:14px; background:#fff; }
+.profile-drawer h3 { margin:0 0 12px; font-size:13px; }
+.profile-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.profile-grid label { display:flex; flex-direction:column; gap:5px; color:#6d6560; font-size:9px; font-weight:700; }
+.profile-grid input { width:100%; border:1px solid #ddd6d1; border-radius:9px; padding:10px 11px; background:#fff; color:#302b28; font-size:11px; outline:0; }
+.profile-grid input:focus { border-color:#ff9c5e; box-shadow:0 0 0 3px rgba(255,101,0,.08); }
+.profile-grid input:disabled { background:#f5f2f0; color:#8f8781; }
+.profile-hint { margin:10px 0 0; color:#958b85; font-size:9px; }
+.profile-toggle { display:grid; grid-template-columns:20px 1fr; align-items:start; gap:10px; padding:9px 0; border-bottom:1px solid #f2eeeb; cursor:pointer; }
+.profile-toggle:last-of-type { border-bottom:0; }
+.profile-toggle input { width:17px; height:17px; margin-top:2px; accent-color:#ff6500; }
+.profile-toggle strong { display:block; font-size:11px; color:#3c3632; }
+.profile-toggle small { color:#958b85; font-size:9px; }
+.profile-instances { display:flex; flex-wrap:wrap; gap:7px; }
+.profile-instances>span { display:inline-flex; align-items:center; gap:6px; padding:8px 11px; border:1px solid #e4ddd8; border-radius:999px; background:#faf8f7; color:#5c534e; font-size:9px; font-weight:700; }
+.profile-instances>span>i { color:#b0a69f; font-style:normal; }
+.profile-instances>span.connected { border-color:#bfe7cd; background:#f0faf3; color:#1d7a4b; }
+.profile-instances>span.connected>i { color:#1da05c; }
+.profile-instances>span>small { color:#a39992; font-size:8px; font-weight:600; }
+.profile-instances>span.connected>small { color:#4c9c72; }
+.profile-note { margin:12px 24px 0; padding:10px 13px; border-radius:9px; font-size:10px; }
+.profile-note.error { background:#fff0ee; color:#ae3d32; }
+.profile-note.ok { background:#eaf8ef; color:#14844b; }
+.profile-loading { padding:30px 24px; color:#8e837c; font-size:11px; }
+.profile-drawer>footer { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:14px 24px; border-top:1px solid #eae3de; background:#fff; }
+.profile-drawer>footer>div { display:flex; align-items:center; gap:10px; }
+.profile-logout { border:1px solid #e7c4c0; border-radius:10px; padding:10px 13px; background:#fff6f5; color:#b23a30; font-size:10px; font-weight:750; cursor:pointer; }
+.profile-preview { border:0; padding:0; background:transparent; color:#7f2ca8; font-size:9px; font-weight:800; cursor:pointer; }
+.profile-save { min-height:40px; border:0; border-radius:10px; padding:0 18px; background:#ff6500; color:#fff; font-size:11px; font-weight:750; cursor:pointer; }
+.profile-save:disabled { opacity:.5; }
+@media (max-width:640px){ .profile-grid { grid-template-columns:1fr; } .profile-drawer>footer { flex-direction:column; align-items:stretch; } .profile-drawer>footer>div { justify-content:space-between; } }
