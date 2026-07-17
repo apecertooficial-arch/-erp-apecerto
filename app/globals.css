@@ -1472,3 +1472,29 @@ body.lead-chat-open .ai-button{ right: 476px; bottom: 24px; transition: right .1
 /* Sara (IA) sai sozinha pro lado quando o chat abre — CSS puro, sem depender de JS/TSX */
 body:has(.chat-layer) .ai-button{ right: 480px; bottom: 24px; transition: right .15s ease; }
 /* ===== fim v2 ===== */
+
+/* ===== Sidebar colapsável (só ícones) — jul/2026 ===== */
+.app-shell.nav-collapsed{ grid-template-columns: 74px 1fr; }
+.nav-collapsed .sidebar{ padding-inline: 10px; }
+.nav-collapsed .brand strong,
+.nav-collapsed .nav-label,
+.nav-collapsed .nav-item > span:not(.nav-icon),
+.nav-collapsed .nav-item small,
+.nav-collapsed .profile div,
+.nav-collapsed .profile > i{ display: none; }
+.nav-collapsed .brand{ flex-direction: column; gap: 10px; padding: 0 0 16px; }
+.nav-collapsed .nav-item{ justify-content: center; }
+.nav-collapsed .profile{ justify-content: center; padding-inline: 0; }
+.nav-collapse-btn{ margin-left: auto; width: 26px; height: 26px; display: grid; place-items: center; border: 1px solid #e5e0db; border-radius: 8px; background: #fff; color: #6b6b6b; cursor: pointer; font-size: 15px; line-height: 1; flex: none; }
+.nav-collapse-btn:hover{ background: #f2efec; }
+.nav-collapsed .nav-collapse-btn{ margin: 0; }
+
+/* ===== Chat minimizado = abinha horizontal no canto ===== */
+.chat-layer .lead-chat-drawer.is-collapsed{ top: auto; bottom: 20px; height: auto; max-height: none; width: 300px; border-radius: 14px; overflow: hidden; }
+.chat-layer .lead-chat-drawer.is-collapsed > header{ padding: 8px 10px; border-bottom: 0; }
+.chat-layer .lead-chat-drawer.is-collapsed > header small,
+.chat-layer .lead-chat-drawer.is-collapsed > header p{ display: none; }
+.chat-layer .lead-chat-drawer.is-collapsed h2{ font-size: 14px; margin: 0; }
+.chat-layer .lead-chat-drawer.is-collapsed > header > div > span{ width: 30px; height: 30px; font-size: 12px; }
+/* minimizado: Sara continua pro lado (não fica atrás da abinha) */
+/* ===== fim ===== */
