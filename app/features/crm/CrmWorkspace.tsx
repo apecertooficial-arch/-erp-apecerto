@@ -330,7 +330,34 @@ function LeadChatDrawer({ accessToken, lead, deal, onClose, onResponse }: { acce
   useEffect(() => { if (loading) return; const el = listRef.current; if (!el) return; const toBottom = () => { el.scrollTop = el.scrollHeight; }; toBottom(); const t = window.setTimeout(toBottom, 80); return () => window.clearTimeout(t); }, [messages, loading]);
   async function request(body: Record<string, unknown>) { const response = await authedFetch("/api/crm/chat", { method: "POST", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify(body) }); const result = await response.json() as Record<string, unknown>; if (!response.ok) throw new Error(typeof result.error === "string" ? result.error : "Não foi possível abrir a conversa."); return result; }
   async function loadInstances() { setLoading(true); setError(null); try { const result = await request({ action: "list", telefone: lead.telefone }); const list = Array.isArray(result.instancias) ? result.instancias as ChatInstance[] : []; setInstances(list); setSelectedKey((current) => current || list[0]?.key || ""); } catch (reason) { setError(reason instanceof Error ? reason.message : "Não foi possível abrir a conversa."); } finally { setLoading(false); } }
-  async function loadMessages(instance: ChatInstance) { setLoading(true); setError(null); try { const result = instance.conversaIds.length ? await request({ action: "messages", conversaIds: instance.conversaIds, limit: 300 }) : await request({ action: "dapi-hist", telefone: lead.telefone, instancia_id: instance.sendBig, page: 1, limit: 300 }); const list = Array.isArray(result.mensagens) ? result.mensagens as ChatMessage[] : []; setMessages([...list].sort((a, b) => String(a.criado_em || "").localeCompare(String(b.criado_em || "")))); } catch (reason) { setError(reason instanceof Error ? reason.message : "Não foi possível carregar as mensagens."); } finally { setLoading(false); } }
+  async function loadMessages(instance: ChatInstance) {
+    setLoading(true); setError(null);
+    try {
+      let list: ChatMessage[] = [];
+      // Fonte primária: d-api (histórico COMPLETO do lead), paginando até o fim.
+      if (instance.sendBig) {
+        let page = 1, more = true, guard = 0;
+        while (more && guard < 60) {
+          guard++;
+          const result = await request({ action: "dapi-hist", telefone: lead.telefone, instancia_id: instance.sendBig, page, limit: 100 });
+          const chunk = Array.isArray(result.mensagens) ? result.mensagens as ChatMessage[] : [];
+          list = list.concat(chunk);
+          more = Boolean(result.hasMore) && chunk.length > 0;
+          page++;
+        }
+      }
+      // Reserva: inbox nativo, caso a d-api não retorne (sem chat / offline).
+      if (!list.length && instance.conversaIds.length) {
+        const result = await request({ action: "messages", conversaIds: instance.conversaIds, limit: 500 });
+        list = Array.isArray(result.mensagens) ? result.mensagens as ChatMessage[] : [];
+      }
+      const seen = new Set<string>();
+      const unique = list.filter((m) => { const k = String(m.wa_message_id || m.id); if (seen.has(k)) return false; seen.add(k); return true; });
+      setMessages(unique.sort((a, b) => String(a.criado_em || "").localeCompare(String(b.criado_em || ""))));
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Não foi possível carregar as mensagens.");
+    } finally { setLoading(false); }
+  }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { const timer = window.setTimeout(() => { void loadInstances(); }, 0); return () => window.clearTimeout(timer); }, [lead.id]);
   // eslint-disable-next-line react-hooks/exhaustive-deps
