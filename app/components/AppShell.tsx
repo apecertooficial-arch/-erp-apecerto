@@ -48,12 +48,18 @@ function NavGroup({ label, items, activeItem, onNavigate }: { label: string; ite
   );
 }
 
-export function AppShell({ children, activeItem, onNavigate, onOpenProfile, sessionRole = "corretor", sessionName = "Corretor" }: { children: ReactNode; activeItem: ModuleName; onNavigate: (item: ModuleName) => void; onOpenProfile?: () => void; sessionRole?: "admin" | "gestor" | "corretor"; sessionName?: string }) {
+export function AppShell({ children, activeItem, onNavigate, onOpenProfile, sessionRole = "corretor", sessionName = "Corretor", modulePermissions = null }: { children: ReactNode; activeItem: ModuleName; onNavigate: (item: ModuleName) => void; onOpenProfile?: () => void; sessionRole?: "admin" | "gestor" | "corretor"; sessionName?: string; modulePermissions?: Record<string, string[]> | null }) {
   const isBroker = sessionRole === "corretor";
   const [navCollapsed, setNavCollapsed] = useState(false);
-  const mainItems = isBroker ? brokerMainItems : adminMainItems;
-  const toolItems = isBroker ? brokerToolItems : adminToolItems;
-  const systemItems = isBroker ? brokerSystemItems : adminSystemItems;
+  /* Doc §14 — sem "ver" no módulo, ele some do menu (admin nunca perde Usuários/Configurações para não se trancar fora) */
+  const canSee = (item: ModuleName) => {
+    if (!modulePermissions || Object.keys(modulePermissions).length === 0) return true;
+    if (sessionRole === "admin" && (item === "Usuários" || item === "Configurações")) return true;
+    return (modulePermissions[item] ?? []).includes("ver");
+  };
+  const mainItems = (isBroker ? brokerMainItems : adminMainItems).filter(canSee);
+  const toolItems = (isBroker ? brokerToolItems : adminToolItems).filter(canSee);
+  const systemItems = (isBroker ? brokerSystemItems : adminSystemItems).filter(canSee);
   const initial = sessionName.trim().slice(0, 1).toUpperCase() || "C";
   const roleLabel = sessionRole === "admin" ? "Admin" : sessionRole === "gestor" ? "Gestor" : "Corretor";
   return (

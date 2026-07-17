@@ -47,7 +47,7 @@ type CatalogResponse = {
   }>;
 };
 
-type SessionProfile = { userId: string; email: string; name: string; role: "admin" | "gestor" | "corretor"; active: boolean; brokerId: number | null; online: boolean };
+type SessionProfile = { userId: string; email: string; name: string; role: "admin" | "gestor" | "corretor"; active: boolean; brokerId: number | null; online: boolean; permissoes?: Record<string, string[]> | null };
 
 const brokerModules = new Set<ModuleName>(["Início", "CRM", "Performance", "Produtos", "Financeiro", "Chat ao Vivo", "Financiamento", "Disparos", "Calendário", "Notificações", "Configurações", "Ajuda"]);
 
@@ -217,7 +217,7 @@ export function ProductCatalog() {
   }
 
   return (
-    <AppShell activeItem={activeModule} onNavigate={setActiveModule} onOpenProfile={() => setProfileOpen(true)} sessionRole={sessionProfile?.role ?? "corretor"} sessionName={sessionProfile?.name ?? "Corretor"}>
+    <AppShell activeItem={activeModule} onNavigate={setActiveModule} onOpenProfile={() => setProfileOpen(true)} sessionRole={sessionProfile?.role ?? "corretor"} sessionName={sessionProfile?.name ?? "Corretor"} modulePermissions={sessionProfile?.permissoes ?? null}>
       {activeModule === "Início" && accessToken ? (
         <HomeWorkspace accessToken={accessToken} />
       ) : activeModule === "CRM" && accessToken ? (

@@ -4,17 +4,32 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { getBrowserSupabaseClient } from "../../lib/supabase/browser";
 
-type User = { id: string; nome: string; role: string; ativo: boolean };
+type User = { id: string; nome: string; role: string; ativo: boolean; permissoes: Record<string, string[]> | null };
+type AuditEntry = { id: number; usuario_nome: string; acao: string; modulo: string; entidade: string | null; entidade_id: string | null; detalhe: string | null; criado_em: string };
 type Broker = { id: number; nome: string; email: string | null; telefone: string | null; usuario_id: string | null; ativo: boolean; online: boolean; no_escritorio: boolean; ultima_presenca: string | null; doc_rg_path: string | null; doc_rg_nome: string | null; doc_rg_em: string | null; doc_contrato_path: string | null; doc_contrato_nome: string | null; doc_contrato_em: string | null };
 type Instance = { id: number; nome: string; telefone: string | null; ativa: boolean; conectada: boolean; status_dapi: string | null; corretor_id: number | null };
 type Link = { corretor_id: number; instancia_id: number };
-type TeamData = { users: User[]; brokers: Broker[]; instances: Instance[]; links: Link[] };
+type TeamData = { users: User[]; brokers: Broker[]; instances: Instance[]; links: Link[]; audits: AuditEntry[] };
 
 const initials = (name: string) => name.split(/\s+/).slice(0, 2).map((part) => part[0]).join("").toUpperCase();
-const roleLabel = (role?: string) => ({ admin: "Admin", gestor: "Gestor", corretor: "Corretor", financeiro: "Financeiro", atendimento: "Atendimento" }[role ?? ""] ?? role ?? "Corretor");
+const roleLabel = (role?: string) => ({ admin: "Admin", gestor: "Gestor", executivo: "Executivo", corretor: "Corretor", financeiro: "Financeiro", atendimento: "Atendimento" }[role ?? ""] ?? role ?? "Corretor");
+
+/* Doc §14 — acesso por módulo */
+const ACCESS_MODULES = ["Início", "CRM", "Performance", "Produtos", "Financeiro", "Abordagens", "Automações", "Financiamento", "Chat ao Vivo", "Disparos", "Calendário", "Agentes de IA", "Usuários", "Notificações", "Base de conhecimento", "Auditoria", "Configurações", "Ajuda"];
+const ACCESS_CAPS: Array<{ key: string; label: string }> = [{ key: "ver", label: "Ver" }, { key: "criar", label: "Criar" }, { key: "editar", label: "Editar" }, { key: "excluir", label: "Excluir" }, { key: "administrar", label: "Administrar" }];
+const BROKER_DEFAULT_MODULES = ["Início", "CRM", "Performance", "Produtos", "Financeiro", "Chat ao Vivo", "Financiamento", "Disparos", "Calendário", "Notificações", "Configurações", "Ajuda"];
+function defaultPermissions(role: string): Record<string, string[]> {
+  if (role === "admin") return Object.fromEntries(ACCESS_MODULES.map((moduleName) => [moduleName, ACCESS_CAPS.map((cap) => cap.key)]));
+  if (role === "executivo") return Object.fromEntries(ACCESS_MODULES.map((moduleName) => [moduleName, ["ver", "criar", "editar"]]));
+  return Object.fromEntries(BROKER_DEFAULT_MODULES.map((moduleName) => [moduleName, ["ver", "criar", "editar"]]));
+}
 
 export function TeamWorkspace({ accessToken }: { accessToken: string }) {
-  const [data, setData] = useState<TeamData>({ users: [], brokers: [], instances: [], links: [] });
+  const [data, setData] = useState<TeamData>({ users: [], brokers: [], instances: [], links: [], audits: [] });
+  const [role, setRole] = useState("corretor");
+  const [permissions, setPermissions] = useState<Record<string, string[]>>({});
+  const [activeUser, setActiveUser] = useState(true);
+  const [accessOpen, setAccessOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [profile, setProfile] = useState("Todos os perfis");
@@ -66,7 +81,19 @@ export function TeamWorkspace({ accessToken }: { accessToken: string }) {
   });
 
   function openBroker(broker: Broker) {
-    setSelectedId(broker.id); setOnline(broker.online); setActive(broker.ativo); setSelectedInstances(linked(broker.id).map((instance) => instance.id)); setInstanceQuery("");
+    setSelectedId(broker.id); setOnline(broker.online); setActive(broker.ativo); setSelectedInstances(linked(broker.id).map((instance) => instance.id)); setInstanceQuery(""); setAccessOpen(false);
+    const user = broker.usuario_id ? usersById.get(broker.usuario_id) : undefined;
+    setRole(user?.role ?? "corretor");
+    setActiveUser(user?.ativo !== false);
+    setPermissions(user?.permissoes && Object.keys(user.permissoes).length ? user.permissoes : defaultPermissions(user?.role ?? "corretor"));
+  }
+
+  function toggleCap(moduleName: string, cap: string) {
+    setPermissions((current) => {
+      const caps = new Set(current[moduleName] ?? []);
+      if (caps.has(cap)) caps.delete(cap); else caps.add(cap);
+      return { ...current, [moduleName]: [...caps] };
+    });
   }
 
   async function save() {
@@ -74,7 +101,13 @@ export function TeamWorkspace({ accessToken }: { accessToken: string }) {
     setSaving(true); setToast("");
     const response = await fetch("/api/team", { method: "PATCH", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify({ action: "saveBroker", brokerId: selected.id, online, active, instanceIds: selectedInstances }) });
     const body = await response.json() as { error?: string };
-    if (!response.ok) setToast(body.error ?? "Não foi possível salvar."); else { setToast("Alterações salvas."); await load(); }
+    if (!response.ok) { setToast(body.error ?? "Não foi possível salvar."); setSaving(false); return; }
+    if (selected.usuario_id) {
+      const accessResponse = await fetch("/api/team", { method: "PATCH", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify({ action: "saveAccess", userId: selected.usuario_id, role, permissoes: permissions, activeUser }) });
+      const accessBody = await accessResponse.json() as { error?: string };
+      if (!accessResponse.ok) { setToast(accessBody.error ?? "Status salvo, mas as permissões falharam."); setSaving(false); return; }
+    }
+    setToast("Alterações salvas."); await load();
     setSaving(false);
   }
 
@@ -114,7 +147,17 @@ export function TeamWorkspace({ accessToken }: { accessToken: string }) {
       <header><div className="team-person"><b>{initials(selected.nome)}</b><em><strong>{selected.nome}</strong><small>{selected.email ?? "Sem e-mail"}</small></em></div><button type="button" onClick={() => setSelectedId(null)}>×</button></header>
       <div className="team-drawer-body">
         <label className="team-switch-row"><span><strong>Online agora</strong><small>Disponível para receber leads no rodízio.</small></span><input type="checkbox" checked={online} onChange={(event) => setOnline(event.target.checked)} /><i /></label>
-        <label className="team-switch-row"><span><strong>Usuário ativo</strong><small>Permite acesso ao ERP e às funções liberadas.</small></span><input type="checkbox" checked={active} onChange={(event) => setActive(event.target.checked)} /><i /></label>
+        <label className="team-switch-row"><span><strong>Usuário ativo</strong><small>Permite acesso ao ERP e às funções liberadas.</small></span><input type="checkbox" checked={active} onChange={(event) => { setActive(event.target.checked); setActiveUser(event.target.checked); }} /><i /></label>
+        {selected.usuario_id && <>
+          <h3>Perfil e permissões <mark className="audited-badge">✓ Auditado</mark></h3>
+          <label className="team-role-row">Papel no sistema<select value={role} onChange={(event) => { setRole(event.target.value); setPermissions(defaultPermissions(event.target.value)); }}><option value="admin">Admin — acesso total</option><option value="executivo">Executivo/Gestor</option><option value="corretor">Corretor</option></select></label>
+          <button className="access-toggle" type="button" onClick={() => setAccessOpen(!accessOpen)}>{accessOpen ? "▾" : "▸"} Acesso por módulo <small>{Object.values(permissions).filter((caps) => caps.includes("ver")).length} módulos visíveis</small></button>
+          {accessOpen && <div className="access-grid">
+            <div className="access-head"><span>Módulo</span>{ACCESS_CAPS.map((cap) => <span key={cap.key}>{cap.label}</span>)}</div>
+            {ACCESS_MODULES.map((moduleName) => <div className="access-row" key={moduleName}><span>{moduleName}</span>{ACCESS_CAPS.map((cap) => <label key={cap.key}><input type="checkbox" checked={(permissions[moduleName] ?? []).includes(cap.key)} onChange={() => toggleCap(moduleName, cap.key)} aria-label={`${cap.label} em ${moduleName}`} /></label>)}</div>)}
+            <p className="team-hint">Sem "Ver", o módulo some do menu do usuário. Alterações são gravadas na auditoria.</p>
+          </div>}
+        </>}
         <h3>Instâncias de WhatsApp</h3>
         <details className="instance-picker"><summary>Selecionar instâncias <b>{selectedInstances.length || ""}</b></summary><div><input value={instanceQuery} onChange={(event) => setInstanceQuery(event.target.value)} placeholder="Pesquisar instância..." />{data.instances.filter((instance) => instance.nome.toLowerCase().includes(instanceQuery.toLowerCase())).map((instance) => <label key={instance.id}><input type="checkbox" checked={selectedInstances.includes(instance.id)} onChange={() => setSelectedInstances((current) => current.includes(instance.id) ? current.filter((id) => id !== instance.id) : [...current, instance.id])} /><span><strong>{instance.nome}</strong><small>{instance.telefone ?? instance.status_dapi ?? "Sem telefone"}</small></span><i className={instance.conectada ? "connected" : ""}>{instance.conectada ? "Conectada" : "Offline"}</i><button type="button" className="instance-qr-btn" onClick={(event) => { event.preventDefault(); event.stopPropagation(); void openQr({ id: instance.id, nome: instance.nome }); }}>{instance.conectada ? "Reconectar" : "QR"}</button></label>)}</div></details>
         <div className="selected-instance-chips">{selectedInstances.map((id) => { const instance = data.instances.find((item) => item.id === id); return instance ? <button type="button" onClick={() => setSelectedInstances((current) => current.filter((item) => item !== id))} key={id}>✓ {instance.nome} ×</button> : null; })}</div>
@@ -124,6 +167,8 @@ export function TeamWorkspace({ accessToken }: { accessToken: string }) {
         <div className="document-card purple"><span>▧</span><div><strong>Contrato de parceria</strong><small>{selected.doc_contrato_nome ?? "Nenhum arquivo enviado"}</small></div>{selected.doc_contrato_path && <button type="button" onClick={() => void viewDocument(selected.doc_contrato_path)}>Abrir</button>}<button type="button" onClick={() => contractInput.current?.click()}>{selected.doc_contrato_path ? "Trocar" : "Adicionar"}</button></div>
         <input ref={rgInput} hidden type="file" accept="application/pdf,image/*" onChange={(event) => void uploadDocument("rg", event.target.files?.[0])} />
         <input ref={contractInput} hidden type="file" accept="application/pdf,image/*" onChange={(event) => void uploadDocument("contrato", event.target.files?.[0])} />
+        <h3>Histórico auditado</h3>
+        {(() => { const trail = data.audits.filter((entry) => (entry.entidade === "corretor" && entry.entidade_id === String(selected.id)) || (entry.entidade === "usuario" && entry.entidade_id === selected.usuario_id)).slice(0, 8); return trail.length ? <div className="audit-trail">{trail.map((entry) => <article key={entry.id}><strong>{entry.detalhe ?? entry.acao}</strong><small>{entry.usuario_nome} · {new Date(entry.criado_em).toLocaleString("pt-BR")}</small></article>)}</div> : <p className="team-hint">Nenhuma alteração registrada ainda — os próximos salvamentos aparecem aqui.</p>; })()}
         {toast && <div className="team-toast">{toast}</div>}
       </div>
       <footer><button type="button" className="save-team" disabled={saving} onClick={() => void save()}>✓ {saving ? "Salvando..." : "Salvar alterações"}</button><button type="button" onClick={() => setSelectedId(null)}>Fechar</button></footer>
