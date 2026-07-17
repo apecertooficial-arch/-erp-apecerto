@@ -1630,3 +1630,21 @@ body:has(.profile-drawer-scrim,.modal-layer,.photo-lightbox,.document-preview-mo
 .profile-save { min-height:40px; border:0; border-radius:10px; padding:0 18px; background:#ff6500; color:#fff; font-size:11px; font-weight:750; cursor:pointer; }
 .profile-save:disabled { opacity:.5; }
 @media (max-width:640px){ .profile-grid { grid-template-columns:1fr; } .profile-drawer>footer { flex-direction:column; align-items:stretch; } .profile-drawer>footer>div { justify-content:space-between; } }
+
+/* Doc §14 — Usuários & Permissões: papel, acesso por módulo e trilha auditada */
+.audited-badge { margin-left:8px; padding:3px 8px; border-radius:999px; background:#e5f6eb; color:#17834c; font-size:8px; font-weight:800; }
+.team-role-row { display:flex; flex-direction:column; gap:6px; margin:10px 0 12px; color:#6d6560; font-size:9px; font-weight:700; }
+.team-role-row select { height:38px; border:1px solid #ddd6d1; border-radius:9px; padding:0 10px; background:#fff; color:#302b28; font-size:10px; }
+.access-toggle { width:100%; display:flex; align-items:center; gap:8px; margin-bottom:8px; padding:11px 13px; border:1px solid #ddd6d1; border-radius:10px; background:#fff; color:#4c443f; font-size:10px; font-weight:750; cursor:pointer; }
+.access-toggle small { margin-left:auto; color:#958b84; font-weight:600; font-size:8px; }
+.access-grid { margin-bottom:14px; border:1px solid #e7e0db; border-radius:12px; background:#fff; overflow:hidden; }
+.access-head, .access-row { display:grid; grid-template-columns:1.6fr repeat(5,1fr); align-items:center; gap:4px; padding:8px 12px; }
+.access-head { background:#f6f3f1; color:#847b75; font-size:7.5px; font-weight:800; text-transform:uppercase; letter-spacing:.04em; }
+.access-head span:not(:first-child), .access-row label { text-align:center; display:grid; place-items:center; }
+.access-row { border-top:1px solid #f2eeeb; font-size:9.5px; color:#4c443f; }
+.access-row input { width:15px; height:15px; accent-color:#ff6500; cursor:pointer; }
+.access-grid .team-hint { padding:0 12px 10px; margin:6px 0 0; }
+.audit-trail { display:grid; gap:6px; }
+.audit-trail article { padding:9px 12px; border:1px solid #eee8e4; border-left:3px solid #8d2bd1; border-radius:9px; background:#fcfbfa; }
+.audit-trail strong { display:block; font-size:9.5px; color:#453e39; }
+.audit-trail small { color:#988e88; font-size:8px; }

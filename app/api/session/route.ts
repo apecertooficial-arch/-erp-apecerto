@@ -12,7 +12,7 @@ export async function GET(request: Request) {
   if (authError || !authData.user) return Response.json({ error: "Sessão inválida ou expirada." }, { status: 401 });
 
   const [{ data: profile, error: profileError }, { data: broker, error: brokerError }] = await Promise.all([
-    supabase.from("usuarios").select("id,nome,role,ativo").eq("id", authData.user.id).maybeSingle(),
+    supabase.from("usuarios").select("id,nome,role,ativo,permissoes").eq("id", authData.user.id).maybeSingle(),
     supabase.from("corretores").select("id,nome,email,usuario_id,ativo,online").eq("usuario_id", authData.user.id).maybeSingle(),
   ]);
   if (profileError || brokerError) return Response.json({ error: profileError?.message || brokerError?.message }, { status: 502 });
@@ -26,5 +26,6 @@ export async function GET(request: Request) {
     active: profile?.ativo !== false && broker?.ativo !== false,
     brokerId: broker?.id ?? null,
     online: broker?.online ?? false,
+    permissoes: (profile as { permissoes?: Record<string, string[]> | null } | null)?.permissoes ?? null,
   });
 }
