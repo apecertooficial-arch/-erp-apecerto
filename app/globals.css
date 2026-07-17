@@ -1933,3 +1933,19 @@ body:has(.profile-drawer-scrim,.modal-layer,.photo-lightbox,.document-preview-mo
 .home-funnel-row.drill:hover, .home-alert.drill:hover { background:#fff6ef; }
 .home-panel-note { margin:-4px 0 10px; color:#998f88; font-size:8px; }
 @media (max-width:900px){ .home-charts { grid-template-columns:1fr; } }
+
+/* Doc §10 — Financeiro: só identidade visual (nenhuma função alterada).
+   Alinha cards, cabeçalhos e tabelas ao design system do redesign. */
+.finance-workspace>header span { letter-spacing:.12em; }
+.finance-workspace h1 { font-size:22px; }
+.finance-kpis article { border-radius:16px; border-color:#efe9e4; box-shadow:0 1px 2px rgba(31,24,19,.03); transition:.15s ease; }
+.finance-kpis article:hover { transform:translateY(-1px); box-shadow:0 8px 22px rgba(31,24,19,.07); }
+.finance-panel, .finance-table, .marketing-sources, .marketing-hero article { border-radius:16px; border-color:#efe9e4; box-shadow:0 1px 2px rgba(31,24,19,.03); }
+.finance-workspace>nav button { font-size:11px; letter-spacing:.01em; }
+.finance-workspace>nav button.active { border-bottom-width:3px; }
+.finance-table-head { background:#f8f5f2; letter-spacing:.05em; }
+.finance-table>button:hover { background:#fff7f0; }
+.finance-bars i { border-radius:8px 8px 3px 3px; box-shadow:0 3px 8px rgba(255,101,0,.18); }
+.finance-workspace>header button { border-radius:11px; box-shadow:0 6px 16px rgba(255,101,0,.22); }
+.sale-drawer>header, .lead-chat-drawer>header { border-radius:0; }
+.finance-table em { border-radius:999px; padding:4px 9px; }
