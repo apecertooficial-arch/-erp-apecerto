@@ -1451,3 +1451,14 @@ button { cursor:pointer; }
 /* botões de ação em grade 2x2 (mais limpo que a fila que quebrava linha) */
 .chat-layer .mini-chat-tools{ display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 10px 12px; }
 .chat-layer .mini-chat-tools button{ min-height: 40px; margin: 0; justify-content: center; }
+
+/* ===== Chat: espaço aproveitado (ref.) + Sara pro lado quando o chat abre — jul/2026 ===== */
+/* altura cheia de novo (a Sara sai do caminho, então não precisa mais "subir" a janela) */
+.chat-layer .lead-chat-drawer{ bottom: 20px; height: 88vh; max-height: 820px; }
+/* Instância do histórico numa LINHA só, compacta (menos espaço em branco) */
+.chat-layer .chat-instance-bar{ flex-direction: row; align-items: center; padding: 6px 12px; gap: 8px; min-height: auto; }
+.chat-layer .chat-instance-bar label{ flex-direction: row; align-items: center; gap: 6px; flex: 1; min-width: 0; font-size: 10px; white-space: nowrap; }
+.chat-layer .chat-instance-bar select{ height: 30px; font-size: 12px; flex: 1; min-width: 0; }
+/* Sara (botão de IA) desliza pra ESQUERDA da janela do chat enquanto ele está aberto */
+body.lead-chat-open .ai-button{ right: 476px; bottom: 24px; transition: right .15s ease; }
+/* ===== fim ===== */
