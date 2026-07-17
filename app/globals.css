@@ -1881,3 +1881,17 @@ body:has(.profile-drawer-scrim,.modal-layer,.photo-lightbox,.document-preview-mo
 .approach-filters select { height:30px; border:1px solid #ddd6d1; border-radius:9px; padding:0 8px; background:#fff; color:#4c443f; font-size:9px; }
 .approach-preview { display:block; margin-top:3px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#9a8f88; font-size:8px; font-style:italic; }
 .approach-group-head button[title="Renomear grupo"], .approach-group-head button[title^="Dissolver"] { border:1px solid #e0d9d4; border-radius:7px; padding:4px 8px; background:#fff; font-size:9px; cursor:pointer; }
+
+/* Doc §13 — Disparos: seletor recolhível e revisão obrigatória */
+.instance-picker-tools { display:flex; gap:6px; margin-bottom:8px; }
+.instance-picker-tools button { border:1px solid #ddd6d1; border-radius:8px; padding:6px 9px; background:#fff; color:#5c534e; font-size:8px; font-weight:750; cursor:pointer; }
+.instance-picker-tools button:first-child { border-color:#19a25d; color:#17834c; }
+.campaign-review { width:min(620px,100%); }
+.review-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:14px; }
+.review-grid article { display:grid; gap:4px; padding:13px; border:1px solid #eee8e4; border-radius:11px; background:#fcfbfa; }
+.review-grid small { color:#b4480a; font-size:7px; font-weight:850; letter-spacing:.08em; }
+.review-grid strong { font-size:12px; }
+.review-grid p { margin:0; color:#776e68; font-size:9px; line-height:1.4; }
+.campaign-review footer { display:flex; justify-content:flex-end; gap:8px; margin-top:16px; }
+.campaign-review footer button:first-child { border:1px solid #ddd6d1; border-radius:9px; padding:0 13px; height:38px; background:#fff; color:#5f5752; font-size:9px; cursor:pointer; }
+@media (max-width:600px){ .review-grid { grid-template-columns:1fr; } }
