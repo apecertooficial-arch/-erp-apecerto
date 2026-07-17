@@ -1575,3 +1575,11 @@ body:has(.chat-layer) .ai-button, body:has(.chat-layer) #sara-fab{ display: none
 .product-card { border-radius:18px !important; border-color:#efe9e4 !important; box-shadow:0 1px 2px rgba(31,24,19,.03) !important; }
 .product-card:hover,.product-card:focus-visible { box-shadow:0 10px 26px rgba(31,24,19,.07) !important; }
 .product-photo { border-radius:18px 18px 0 0; }
+
+/* ============================================================
+   Doc §2 — Eliminar sobreposições: flutuantes (sino, alerta de
+   desconexão, Sara) recolhem quando qualquer drawer/modal abre,
+   para nunca cobrir fechar/salvar/continuar. Voltam ao fechar.
+   ============================================================ */
+.attention-trigger,.attention-popover,.disconnect-alert { transition:opacity .18s ease,visibility .18s ease; }
+body:has(.modal-layer,.photo-lightbox,.document-preview-modal,.delete-confirm,.drawer-backdrop,.center-modal-backdrop,.crm-drawer-layer,.crm-center-modal,.chat-layer,.operational-drawer-scrim,.qr-modal-scrim,.team-drawer-scrim,.calendar-modal-layer,.auth-layer,.login-page) :is(.attention-trigger,.attention-popover,.disconnect-alert,#sara-fab,#sara-panel) { opacity:0 !important; visibility:hidden !important; pointer-events:none !important; }

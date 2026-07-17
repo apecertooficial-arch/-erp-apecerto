@@ -25,11 +25,11 @@ export function SaraWidget() {
       return html;
     }
     var st = document.createElement("style");
-    st.textContent = ["#sara-fab{position:fixed;bottom:24px;right:24px;z-index:2147483600;width:62px;height:62px;border-radius:50%;border:none;cursor:pointer;background:linear-gradient(135deg,#FF7000,#7c3aed);box-shadow:0 10px 30px rgba(124,58,237,.45);display:flex;align-items:center;justify-content:center;transition:transform .18s;}",
+    st.textContent = ["#sara-fab{position:fixed;bottom:24px;right:24px;z-index:170;width:62px;height:62px;border-radius:50%;border:none;cursor:pointer;background:linear-gradient(135deg,#FF7000,#7c3aed);box-shadow:0 10px 30px rgba(124,58,237,.45);display:flex;align-items:center;justify-content:center;transition:transform .18s;}",
     "#sara-fab:hover{transform:scale(1.07) rotate(4deg);}#sara-fab svg{width:28px;height:28px;}",
     "#sara-fab .pulse{position:absolute;inset:0;border-radius:50%;animation:saraP 2.4s infinite;}",
     "@keyframes saraP{0%{box-shadow:0 0 0 0 rgba(124,58,237,.45);}70%{box-shadow:0 0 0 16px rgba(124,58,237,0);}100%{box-shadow:0 0 0 0 rgba(124,58,237,0);}}",
-    "#sara-panel{position:fixed;bottom:98px;right:24px;z-index:2147483600;width:388px;max-width:calc(100vw - 32px);height:min(600px,82vh);background:#fff;border-radius:22px;box-shadow:0 24px 70px rgba(20,17,40,.30);display:none;flex-direction:column;overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;transform:translateY(14px) scale(.98);opacity:0;transition:transform .2s,opacity .2s;}",
+    "#sara-panel{position:fixed;bottom:98px;right:24px;z-index:170;width:388px;max-width:calc(100vw - 32px);height:min(600px,82vh);background:#fff;border-radius:22px;box-shadow:0 24px 70px rgba(20,17,40,.30);display:none;flex-direction:column;overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;transform:translateY(14px) scale(.98);opacity:0;transition:transform .2s,opacity .2s;}",
     "#sara-panel.open{display:flex;transform:translateY(0) scale(1);opacity:1;}",
     "#sara-head{background:linear-gradient(135deg,#FF7000 0%,#a021c9 55%,#7c3aed 100%);color:#fff;padding:16px 18px;display:flex;align-items:center;gap:12px;}",
     "#sara-head .av{width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,.22);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:17px;flex-shrink:0;}",
