@@ -1526,3 +1526,29 @@ body:has(.chat-layer) .ai-button, body:has(.chat-layer) #sara-fab{ display: none
 .chat-layer .mini-chat-tools .mct-ico{ font-size: 19px; line-height: 1; }
 .chat-layer .mini-chat-tools .mct-lbl{ display: none; }            /* só ícone (tooltip no title) */
 /* ===== fim barra vertical ===== */
+
+/* ===== Mídia do chat otimizada (thumbnail) + scroll lateral fino — jul/2026 ===== */
+.chat-messages .chat-image-link{ display: block; margin-top: 6px; }
+.chat-messages .chat-image-link img{ display: block; width: auto; max-width: 240px; max-height: 260px; object-fit: cover; border-radius: 12px; }
+.chat-messages .chat-video{ display: block; width: 100%; max-width: 260px; max-height: 300px; border-radius: 12px; margin-top: 6px; background: #000; }
+.chat-messages .chat-audio{ width: 240px; max-width: 100%; margin-top: 6px; }
+.chat-messages .chat-document{ display: inline-block; margin-top: 6px; font-size: 12px; }
+/* scroll lateral do kanban: fino e discreto (estilo Datacrazy) */
+.crm-kanban-v2{ scrollbar-width: thin; scrollbar-color: #cfc6c0 transparent; }
+.crm-kanban-v2::-webkit-scrollbar{ height: 8px; }
+.crm-kanban-v2::-webkit-scrollbar-thumb{ background: #cfc6c0; border-radius: 8px; }
+.crm-kanban-v2::-webkit-scrollbar-track{ background: transparent; }
+/* ===== fim ===== */
+
+/* ===== Central de atenção mais enxuta — jul/2026 ===== */
+/* esconde a barra Todos / Silenciar 15 min / Marcar todos vistos */
+.attention-popover > nav{ display: none; }
+/* mostra ~2 notificações; o resto aparece rolando */
+.attention-popover > main{ max-height: 240px; min-height: 0; }
+/* tira as setinhas do scroll e deixa a barra fina/discreta */
+.attention-popover > main{ scrollbar-width: thin; scrollbar-color: #d8d0cb transparent; }
+.attention-popover > main::-webkit-scrollbar{ width: 8px; }
+.attention-popover > main::-webkit-scrollbar-button{ display: none; height: 0; width: 0; }
+.attention-popover > main::-webkit-scrollbar-thumb{ background: #d8d0cb; border-radius: 8px; }
+.attention-popover > main::-webkit-scrollbar-track{ background: transparent; }
+/* ===== fim ===== */
