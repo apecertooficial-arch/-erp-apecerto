@@ -17,7 +17,7 @@ export async function GET(request: Request) {
   ]);
   if (profileError || brokerError) return Response.json({ error: profileError?.message || brokerError?.message }, { status: 502 });
 
-  const role = profile?.role === "admin" ? "admin" : profile?.role === "gestor" ? "gestor" : "corretor";
+  const role = profile?.role === "admin" ? "admin" : (profile?.role === "gestor" || profile?.role === "executivo") ? "gestor" : "corretor";
   return Response.json({
     userId: authData.user.id,
     email: authData.user.email ?? broker?.email ?? "",
