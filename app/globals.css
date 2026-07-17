@@ -1552,3 +1552,13 @@ body:has(.chat-layer) .ai-button, body:has(.chat-layer) #sara-fab{ display: none
 .attention-popover > main::-webkit-scrollbar-thumb{ background: #d8d0cb; border-radius: 8px; }
 .attention-popover > main::-webkit-scrollbar-track{ background: transparent; }
 /* ===== fim ===== */
+
+/* ===== Chat: só scroll vertical (sem arrastar pro lado) + barra limpa — jul/2026 ===== */
+.chat-layer .chat-messages{ overflow-x: hidden; overflow-y: auto; scrollbar-width: thin; scrollbar-color: #d8d0cb transparent; }
+.chat-layer .chat-messages::-webkit-scrollbar{ width: 8px; height: 0; }
+.chat-layer .chat-messages::-webkit-scrollbar-button{ display: none; height: 0; width: 0; }
+.chat-layer .chat-messages::-webkit-scrollbar-thumb{ background: #d8d0cb; border-radius: 8px; }
+.chat-layer .chat-messages::-webkit-scrollbar-track{ background: transparent; }
+.chat-layer .chat-messages article{ max-width: 100%; box-sizing: border-box; }
+.chat-layer .chat-messages article p{ overflow-wrap: anywhere; }
+/* ===== fim ===== */
