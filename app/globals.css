@@ -1902,3 +1902,34 @@ body:has(.profile-drawer-scrim,.modal-layer,.photo-lightbox,.document-preview-mo
 .media-view-label { display:grid; gap:2px; padding:7px 9px; }
 .media-view-label strong { font-size:9px; color:#4c443f; }
 .media-view-label small { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#958b85; font-size:7.5px; }
+
+/* Doc §4 — Início: meta em destaque, gráficos com período/legenda e drill-down */
+.home-goal.hero { padding:22px 26px; border:2px solid #ffd9bd; border-radius:18px; background:linear-gradient(135deg,#fff8f2,#fff); box-shadow:0 10px 30px rgba(255,101,0,.08); }
+.home-goal.hero header { align-items:flex-start; }
+.home-goal.hero header small { color:#c2570d; font-size:9px; font-weight:900; letter-spacing:.1em; }
+.home-goal.hero header strong { display:block; margin-top:4px; font-size:26px; color:#2d2825; }
+.home-goal.hero header strong em { color:#8d837d; font-size:12px; font-style:normal; font-weight:600; }
+.home-goal.hero header>b { font-size:30px; color:#ff6500; }
+.home-goal.hero>div { height:14px; border-radius:999px; background:#f3ece6; overflow:hidden; }
+.home-goal.hero>div span { display:block; height:100%; border-radius:999px; background:linear-gradient(90deg,#ff8a3d,#ff6500); transition:width .4s ease; }
+.home-goal.hero footer { display:flex; justify-content:space-between; align-items:center; margin-top:10px; }
+.home-goal.hero footer button { border:0; padding:0; background:transparent; color:#7f2ca8; font-size:9px; font-weight:800; cursor:pointer; }
+.home-charts { display:grid; grid-template-columns:1.2fr 1fr; gap:14px; padding:0 26px 14px; }
+.home-chart-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
+.home-chart-head nav { display:flex; gap:3px; padding:3px; border:1px solid #e4ddd8; border-radius:9px; background:#f6f3f1; }
+.home-chart-head nav button { border:0; border-radius:7px; padding:5px 10px; background:transparent; color:#6f6863; font-size:8px; font-weight:800; cursor:pointer; }
+.home-chart-head nav button.active { background:#fff; color:#d85600; box-shadow:0 1px 3px rgba(31,24,19,.09); }
+.home-bars { height:170px; display:flex; align-items:flex-end; gap:10px; padding-top:16px; }
+.home-bars>div { flex:1; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; gap:4px; }
+.home-bars b { color:#8d5b2d; font-size:7px; }
+.home-bars i { width:70%; max-width:38px; border-radius:7px 7px 2px 2px; background:linear-gradient(#ff8a3d,#ff6500); }
+.home-bars span { color:#9a908a; font-size:8px; text-transform:capitalize; }
+.home-legend { display:flex; gap:14px; margin-top:10px; padding-top:9px; border-top:1px solid #f2eeeb; }
+.home-legend span { display:flex; align-items:center; gap:6px; color:#8d837d; font-size:8px; }
+.home-legend i { width:10px; height:10px; border-radius:3px; }
+.home-legend i.orange { background:#ff6500; }
+.home-legend i.purple { background:#8d2bd1; }
+.home-funnel-row.drill, .home-alert.drill { width:100%; border:0; background:transparent; text-align:left; cursor:pointer; border-radius:8px; }
+.home-funnel-row.drill:hover, .home-alert.drill:hover { background:#fff6ef; }
+.home-panel-note { margin:-4px 0 10px; color:#998f88; font-size:8px; }
+@media (max-width:900px){ .home-charts { grid-template-columns:1fr; } }
