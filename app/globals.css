@@ -1460,7 +1460,7 @@ button { cursor:pointer; }
 .chat-layer .chat-instance-bar label{ flex-direction: row; align-items: center; gap: 6px; flex: 1; min-width: 0; font-size: 10px; white-space: nowrap; }
 .chat-layer .chat-instance-bar select{ height: 30px; font-size: 12px; flex: 1; min-width: 0; }
 /* Sara (botão de IA) desliza pra ESQUERDA da janela do chat enquanto ele está aberto */
-body.lead-chat-open .ai-button{ display: none !important; }
+body.lead-chat-open .ai-button, body.lead-chat-open #sara-fab{ display: none !important; }
 /* ===== fim ===== */
 
 /* ===== Correções chat v2 (jul/2026): fechar visível + não bater no sino + Sara via :has ===== */
@@ -1470,7 +1470,7 @@ body.lead-chat-open .ai-button{ display: none !important; }
 .chat-head-actions button{ color: #4a4a4a; background: #f0eeec; border: 1px solid #e3ddd8; }
 .chat-head-actions button:hover{ background: #e6e2de; }
 /* Sara (IA) sai sozinha pro lado quando o chat abre — CSS puro, sem depender de JS/TSX */
-body:has(.chat-layer) .ai-button{ display: none !important; }
+body:has(.chat-layer) .ai-button, body:has(.chat-layer) #sara-fab{ display: none !important; }
 /* ===== fim v2 ===== */
 
 /* ===== Sidebar colapsável (só ícones) — jul/2026 ===== */
