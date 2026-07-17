@@ -136,7 +136,7 @@ export function AttentionCenter({ accessToken, onOpenLead, onOpenNotifications }
   const signature = alerts.map((alert) => alert.id).join("|");
 
   useEffect(() => {
-    if (!initialized.current) { initialized.current = true; previousSignature.current = signature; if (alerts.length && Date.now() >= mutedUntil) setOpen(true); return; }
+    if (!initialized.current) { initialized.current = true; previousSignature.current = signature; return; }  // não abre sozinha ao entrar
     if (signature && signature !== previousSignature.current && Date.now() >= mutedUntil) setOpen(true);
     previousSignature.current = signature;
   }, [signature, mutedUntil]);
