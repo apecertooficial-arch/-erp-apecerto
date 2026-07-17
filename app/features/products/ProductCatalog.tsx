@@ -20,6 +20,7 @@ import { FinanceWorkspace } from "../finance/FinanceWorkspace";
 import { TeamWorkspace } from "../team/TeamWorkspace";
 import { CalendarWorkspace } from "../calendar/CalendarWorkspace";
 import { SettingsWorkspace } from "../settings/SettingsWorkspace";
+import { AuditWorkspace } from "../audit/AuditWorkspace";
 import { LegacyModuleWorkspace } from "../system/LegacyModuleWorkspace";
 import type { ModuleName } from "../system/module-map";
 
@@ -236,6 +237,8 @@ export function ProductCatalog() {
         <TeamWorkspace accessToken={accessToken} />
       ) : activeModule === "Calendário" && accessToken ? (
         <CalendarWorkspace accessToken={accessToken} />
+      ) : activeModule === "Auditoria" && accessToken ? (
+        <AuditWorkspace />
       ) : activeModule === "Configurações" && accessToken ? (
         <SettingsWorkspace accessToken={accessToken} sessionRole={sessionProfile?.role ?? "corretor"} onNavigate={(moduleName) => setActiveModule(moduleName as ModuleName)} />
       ) : activeModule !== "Produtos" && accessToken ? (
