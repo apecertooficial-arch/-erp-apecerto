@@ -19,7 +19,7 @@ import { HomeWorkspace } from "../home/HomeWorkspace";
 import { FinanceWorkspace } from "../finance/FinanceWorkspace";
 import { TeamWorkspace } from "../team/TeamWorkspace";
 import { CalendarWorkspace } from "../calendar/CalendarWorkspace";
-import { ConnectionsWorkspace } from "../settings/ConnectionsWorkspace";
+import { SettingsWorkspace } from "../settings/SettingsWorkspace";
 import { LegacyModuleWorkspace } from "../system/LegacyModuleWorkspace";
 import type { ModuleName } from "../system/module-map";
 
@@ -237,7 +237,7 @@ export function ProductCatalog() {
       ) : activeModule === "Calendário" && accessToken ? (
         <CalendarWorkspace accessToken={accessToken} />
       ) : activeModule === "Configurações" && accessToken ? (
-        <ConnectionsWorkspace accessToken={accessToken} />
+        <SettingsWorkspace accessToken={accessToken} sessionRole={sessionProfile?.role ?? "corretor"} onNavigate={(moduleName) => setActiveModule(moduleName as ModuleName)} />
       ) : activeModule !== "Produtos" && accessToken ? (
         <LegacyModuleWorkspace moduleName={activeModule} accessToken={accessToken} session={sessionProfile} />
       ) : activeModule === "Produtos" && accessToken ? (
