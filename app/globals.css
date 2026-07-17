@@ -1509,3 +1509,20 @@ body:has(.chat-layer) .ai-button, body:has(.chat-layer) #sara-fab{ display: none
 .crm-stage-body > *{ flex-shrink: 0; }   /* cards não encolhem — rolam por dentro */
 /* nota: o calc(100vh / 0.85) compensa o zoom 0.85 do .crm-v2; se mudar o zoom, ajuste o 0.85 aqui */
 /* ===== fim kanban ===== */
+
+/* ===== Ações do chat como barra VERTICAL ao lado (esquerda) do chat — jul/2026 ===== */
+.chat-layer .lead-chat-drawer{ overflow: visible; }               /* deixa a barra aparecer do lado */
+.chat-layer .mini-chat-tools{
+  position: absolute; right: 100%; top: 50%; transform: translateY(-50%); margin-right: 12px;
+  display: flex; flex-direction: column; gap: 10px; width: auto; padding: 8px;
+  background: #fff; border: 1px solid var(--line,#e7e1dd); border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(20,15,12,.16); flex-wrap: nowrap;
+}
+.chat-layer .mini-chat-tools button{
+  width: 46px; height: 46px; min-height: 0; padding: 0; margin: 0;
+  display: grid; place-items: center; border-radius: 12px; gap: 0;
+}
+.chat-layer .mini-chat-tools button:last-child{ margin: 0; }        /* remove o empurra-direita herdado */
+.chat-layer .mini-chat-tools .mct-ico{ font-size: 19px; line-height: 1; }
+.chat-layer .mini-chat-tools .mct-lbl{ display: none; }            /* só ícone (tooltip no title) */
+/* ===== fim barra vertical ===== */
