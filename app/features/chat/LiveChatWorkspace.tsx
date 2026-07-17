@@ -223,9 +223,9 @@ export function MessageMedia({ message }: { message: Pick<Message, "tipo" | "med
     if (type.includes("documento") || type.includes("document")) return missing("📄 Documento antigo — indisponível");
     return null;
   }
-  if (type.includes("audio")) return <audio className="chat-audio" controls preload="metadata" src={message.media_url} />;
-  if (type.includes("video")) return <video className="chat-video" controls preload="metadata" src={message.media_url} />;
-  if (type.includes("imagem") || type.includes("image") || type.includes("foto") || type.includes("figurinha")) return <a className="chat-image-link" href={message.media_url} target="_blank" rel="noreferrer"><img src={message.media_url} alt={message.conteudo || "Imagem da conversa"} /></a>;
+  if (type.includes("audio")) return <audio className="chat-audio" controls preload="none" src={message.media_url} />;
+  if (type.includes("video")) return <video className="chat-video" controls preload="none" src={message.media_url} />;
+  if (type.includes("imagem") || type.includes("image") || type.includes("foto") || type.includes("figurinha")) return <a className="chat-image-link" href={message.media_url} target="_blank" rel="noreferrer"><img loading="lazy" decoding="async" src={message.media_url} alt={message.conteudo || "Imagem da conversa"} /></a>;
   return <a className="chat-document" href={message.media_url} target="_blank" rel="noreferrer">▤ Abrir documento</a>;
 }
 
