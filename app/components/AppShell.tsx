@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import type { ModuleName } from "../features/system/module-map";
 
 const adminMainItems: ModuleName[] = ["Início", "CRM", "Performance", "Produtos", "Financeiro"];
@@ -50,15 +50,16 @@ function NavGroup({ label, items, activeItem, onNavigate }: { label: string; ite
 
 export function AppShell({ children, activeItem, onNavigate, onPreviewLogin, sessionRole = "corretor", sessionName = "Corretor" }: { children: ReactNode; activeItem: ModuleName; onNavigate: (item: ModuleName) => void; onPreviewLogin?: () => void; sessionRole?: "admin" | "gestor" | "corretor"; sessionName?: string }) {
   const isBroker = sessionRole === "corretor";
+  const [navCollapsed, setNavCollapsed] = useState(false);
   const mainItems = isBroker ? brokerMainItems : adminMainItems;
   const toolItems = isBroker ? brokerToolItems : adminToolItems;
   const systemItems = isBroker ? brokerSystemItems : adminSystemItems;
   const initial = sessionName.trim().slice(0, 1).toUpperCase() || "C";
   const roleLabel = sessionRole === "admin" ? "Admin" : sessionRole === "gestor" ? "Gestor" : "Corretor";
   return (
-    <div className="app-shell">
+    <div className={`app-shell ${navCollapsed ? "nav-collapsed" : ""}`}>
       <aside className="sidebar">
-        <div className="brand"><span className="brand-mark"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M4 14 16 5l12 9v13H7V15" /><path d="m11 15 4 4 7-8" /></svg></span><strong>apê<span>certo</span></strong></div>
+        <div className="brand"><span className="brand-mark"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M4 14 16 5l12 9v13H7V15" /><path d="m11 15 4 4 7-8" /></svg></span><strong>apê<span>certo</span></strong><button className="nav-collapse-btn" type="button" onClick={() => setNavCollapsed((v) => !v)} title={navCollapsed ? "Expandir menu" : "Minimizar menu"} aria-label="Minimizar menu">{navCollapsed ? "»" : "«"}</button></div>
         <nav>
           <NavGroup label="PRINCIPAL" items={mainItems} activeItem={activeItem} onNavigate={onNavigate} />
           <NavGroup label="FERRAMENTAS" items={toolItems} activeItem={activeItem} onNavigate={onNavigate} />
