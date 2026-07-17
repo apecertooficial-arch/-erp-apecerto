@@ -373,6 +373,7 @@ function LeadChatDrawer({ accessToken, lead, deal, corretorNome, onClose, onResp
   const [instances, setInstances] = useState<ChatInstance[]>([]); const [selectedKey, setSelectedKey] = useState(""); const [messages, setMessages] = useState<ChatMessage[]>([]); const [draft, setDraft] = useState(""); const [loading, setLoading] = useState(true); const [sending, setSending] = useState(false); const [error, setError] = useState<string | null>(null); const [recording, setRecording] = useState(false); const [collapsed, setCollapsed] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null); const recorder = useRef<MediaRecorder | null>(null); const chunks = useRef<Blob[]>([]);
   const listRef = useRef<HTMLElement>(null);
+  const seedRef = useRef<{ key: string; msgs: ChatMessage[]; hasMore: boolean } | null>(null);
   useEffect(() => {
     document.body.classList.add("lead-chat-open");
     const fab = document.querySelector<HTMLElement>(".ai-button");
@@ -382,39 +383,44 @@ function LeadChatDrawer({ accessToken, lead, deal, corretorNome, onClose, onResp
   }, []);
   useEffect(() => { if (loading) return; const el = listRef.current; if (!el) return; const toBottom = () => { el.scrollTop = el.scrollHeight; }; toBottom(); const t = window.setTimeout(toBottom, 80); return () => window.clearTimeout(t); }, [messages, loading]);
   async function request(body: Record<string, unknown>) { const response = await authedFetch("/api/crm/chat", { method: "POST", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify(body) }); const result = await response.json() as Record<string, unknown>; if (!response.ok) throw new Error(typeof result.error === "string" ? result.error : "Não foi possível abrir a conversa."); return result; }
-  async function loadInstances() { setLoading(true); setError(null); try { const result = await request({ action: "list", telefone: lead.telefone, corretorId: lead.corretor_id }); const list = Array.isArray(result.instancias) ? result.instancias as ChatInstance[] : []; setInstances(list); setSelectedKey((current) => { if (current) return current; const first = (corretorNome || "").trim().split(/\s+/)[0].toLowerCase(); const owned = first ? list.filter((i) => String(i.corretor || "").trim().toLowerCase().startsWith(first)) : []; const pool = owned.length ? owned : list; const score = (i: ChatInstance) => ((i.dIn || 0) > 0 ? 1 : 0); const pick = pool.slice().sort((a, b) => (score(b) - score(a)) || ((b.dIn || 0) - (a.dIn || 0)) || ((b.dTot || 0) - (a.dTot || 0)) || (b.msgs - a.msgs) || String(b.ultima || "").localeCompare(String(a.ultima || "")))[0]; return pick?.key || list[0]?.key || ""; }); } catch (reason) { setError(reason instanceof Error ? reason.message : "Não foi possível abrir a conversa."); } finally { setLoading(false); } }
-  async function loadMessages(instance: ChatInstance) {
-    setLoading(true); setError(null);
+  async function loadInstances() { setLoading(true); setError(null); try { const result = await request({ action: "list", telefone: lead.telefone, corretorId: lead.corretor_id }); const list = Array.isArray(result.instancias) ? result.instancias as ChatInstance[] : []; const primeira = Array.isArray(result.primeiraPagina) ? result.primeiraPagina as ChatMessage[] : []; const melhorKey = typeof result.melhorKey === "string" ? result.melhorKey : ""; const chosen = melhorKey || (() => { const first = (corretorNome || "").trim().split(/\s+/)[0].toLowerCase(); const owned = first ? list.filter((i) => String(i.corretor || "").trim().toLowerCase().startsWith(first)) : []; const pool = owned.length ? owned : list; const score = (i: ChatInstance) => ((i.dIn || 0) > 0 ? 1 : 0); const pick = pool.slice().sort((a, b) => (score(b) - score(a)) || ((b.dIn || 0) - (a.dIn || 0)) || ((b.dTot || 0) - (a.dTot || 0)) || (b.msgs - a.msgs) || String(b.ultima || "").localeCompare(String(a.ultima || "")))[0]; return pick?.key || list[0]?.key || ""; })(); if (primeira.length && chosen) seedRef.current = { key: chosen, msgs: primeira, hasMore: Boolean(result.primeiraHasMore) }; setInstances(list); setSelectedKey((current) => current || chosen); } catch (reason) { setError(reason instanceof Error ? reason.message : "Não foi possível abrir a conversa."); setLoading(false); } }
+  async function loadMessages(instance: ChatInstance, opts?: { seed?: ChatMessage[]; startPage?: number; hasMore?: boolean }) {
+    const seed = opts?.seed ?? [];
+    const startPage = opts?.startPage ?? 1;
+    const seeded = seed.length > 0;
+    setError(null);
+    let acc: ChatMessage[] = seed.slice();
+    const render = () => { const seen = new Set<string>(); const unique = acc.filter((m) => { const k = String(m.wa_message_id || m.id); if (seen.has(k)) return false; seen.add(k); return true; }); setMessages(unique.sort((a, b) => String(a.criado_em || "").localeCompare(String(b.criado_em || "")))); };
+    // Com a página inicial vinda do "list", pintamos NA HORA e carregamos o histórico antigo por trás.
+    if (seeded) { render(); setLoading(false); } else setLoading(true);
     try {
-      let list: ChatMessage[] = [];
-      // Fonte primária: d-api (histórico COMPLETO do lead), paginando até o fim.
-      if (instance.sendBig) {
-        let page = 1, more = true, guard = 0;
+      // Fonte primária: d-api (histórico COMPLETO), paginando até o fim — cada página aparece assim que chega.
+      if (instance.sendBig && (opts?.hasMore ?? true)) {
+        let page = startPage, more = true, guard = 0;
         while (more && guard < 60) {
           guard++;
           const result = await request({ action: "dapi-hist", telefone: lead.telefone, instancia_id: instance.sendBig, page, limit: 100 });
           const chunk = Array.isArray(result.mensagens) ? result.mensagens as ChatMessage[] : [];
-          list = list.concat(chunk);
+          acc = acc.concat(chunk);
+          render();
           more = Boolean(result.hasMore) && chunk.length > 0;
           page++;
         }
       }
       // Reserva: inbox nativo, caso a d-api não retorne (sem chat / offline).
-      if (!list.length && instance.conversaIds.length) {
+      if (!acc.length && instance.conversaIds.length) {
         const result = await request({ action: "messages", conversaIds: instance.conversaIds, limit: 500 });
-        list = Array.isArray(result.mensagens) ? result.mensagens as ChatMessage[] : [];
+        acc = Array.isArray(result.mensagens) ? result.mensagens as ChatMessage[] : [];
+        render();
       }
-      const seen = new Set<string>();
-      const unique = list.filter((m) => { const k = String(m.wa_message_id || m.id); if (seen.has(k)) return false; seen.add(k); return true; });
-      setMessages(unique.sort((a, b) => String(a.criado_em || "").localeCompare(String(b.criado_em || ""))));
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "Não foi possível carregar as mensagens.");
-    } finally { setLoading(false); }
+      if (!seeded) setError(reason instanceof Error ? reason.message : "Não foi possível carregar as mensagens.");
+    } finally { if (!seeded) setLoading(false); }
   }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { const timer = window.setTimeout(() => { void loadInstances(); }, 0); return () => window.clearTimeout(timer); }, [lead.id]);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { const instance = instances.find((item) => item.key === selectedKey); if (!instance) return; const timer = window.setTimeout(() => { void loadMessages(instance); }, 0); return () => window.clearTimeout(timer); }, [selectedKey, instances]);
+  useEffect(() => { const instance = instances.find((item) => item.key === selectedKey); if (!instance) return; const seed = seedRef.current && seedRef.current.key === instance.key ? seedRef.current : null; seedRef.current = null; const timer = window.setTimeout(() => { if (seed) void loadMessages(instance, { seed: seed.msgs, startPage: 2, hasMore: seed.hasMore }); else void loadMessages(instance); }, 0); return () => window.clearTimeout(timer); }, [selectedKey, instances]);
   const selected = instances.find((item) => item.key === selectedKey) ?? null;
   useEffect(() => {
     if (!selected) return;
