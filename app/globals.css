@@ -1895,3 +1895,10 @@ body:has(.profile-drawer-scrim,.modal-layer,.photo-lightbox,.document-preview-mo
 .campaign-review footer { display:flex; justify-content:flex-end; gap:8px; margin-top:16px; }
 .campaign-review footer button:first-child { border:1px solid #ddd6d1; border-radius:9px; padding:0 13px; height:38px; background:#fff; color:#5f5752; font-size:9px; cursor:pointer; }
 @media (max-width:600px){ .review-grid { grid-template-columns:1fr; } }
+
+/* Doc §9 — Produtos: gestão de imagens só no modo Editar */
+.edit-images-btn { border:1px solid #ddd6d1; border-radius:9px; padding:8px 13px; background:#fff; color:#6f2f9c; font-size:9px; font-weight:800; cursor:pointer; }
+.edit-images-btn.active { border-color:#19a25d; background:#eaf8ef; color:#14844b; }
+.media-view-label { display:grid; gap:2px; padding:7px 9px; }
+.media-view-label strong { font-size:9px; color:#4c443f; }
+.media-view-label small { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#958b85; font-size:7.5px; }
