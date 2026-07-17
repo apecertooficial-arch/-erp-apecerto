@@ -1564,3 +1564,10 @@ body:has(.chat-layer) .ai-button, body:has(.chat-layer) #sara-fab{ display: none
 /* ===== fim ===== */
 /* Doc §3 — login como página exclusiva (sem ERP ao fundo) */
 .login-page { position:fixed; inset:0; z-index:100; background:linear-gradient(135deg,#ffffff 0%,#fff4ec 55%,#ffe4cf 100%); }
+/* Doc §12 — Chat ao Vivo: coluna de nomes/conversas maior, área central menor, nomes sem corte */
+.live-chat>main { grid-template-columns:370px minmax(0,1fr) 320px !important; }
+.conversation-list>button { padding:13px 14px; }
+.conversation-list strong { font-size:12px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; padding-right:40px; }
+.conversation-list small { padding-right:40px; }
+@media (max-width:1240px){ .live-chat>main { grid-template-columns:320px minmax(0,1fr) !important; } }
+@media (max-width:820px){ .live-chat>main { grid-template-columns:minmax(0,1fr) !important; } }
