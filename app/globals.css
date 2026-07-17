@@ -1769,3 +1769,24 @@ body:has(.profile-drawer-scrim,.modal-layer,.photo-lightbox,.document-preview-mo
 .crm-stage { display:flex; flex-direction:column; max-height:100%; }
 .crm-stage-body { flex:1; overflow-y:auto; overscroll-behavior:contain; scrollbar-width:thin; scrollbar-color:#cfc6c0 transparent; }
 @media (max-width:700px){ .stage-config-pipeline { grid-template-columns:1fr 1fr; } }
+
+/* Doc §7 — Analítico do CRM: filtros e drill-down */
+.analytics-filters { display:flex; align-items:center; gap:7px; flex-wrap:wrap; padding:0 24px 4px; }
+.analytics-filters button { border:1px solid #ddd6d1; border-radius:999px; padding:7px 12px; background:#fff; color:#6f6863; font-size:9px; font-weight:750; cursor:pointer; }
+.analytics-filters button.active { border-color:#ff6500; background:#ff6500; color:#fff; }
+.analytics-filters select { height:32px; border:1px solid #ddd6d1; border-radius:9px; padding:0 9px; background:#fff; color:#4c443f; font-size:9px; }
+.drillable { width:100%; border:0; background:transparent; text-align:left; cursor:pointer; border-radius:8px; }
+.drillable:hover { background:#fff6ef; }
+.analytics-drill-card { width:min(560px,96vw); max-height:84vh; display:flex; flex-direction:column; border-radius:16px; background:#fff; box-shadow:0 24px 75px rgba(20,14,10,.25); overflow:hidden; }
+.analytics-drill-card>header { display:flex; justify-content:space-between; gap:15px; padding:18px 20px 14px; border-bottom:1px solid #eee8e4; }
+.analytics-drill-card>header span { color:#b4480a; font-size:7px; letter-spacing:1px; font-weight:800; }
+.analytics-drill-card h2 { margin:3px 0; font-size:17px; }
+.analytics-drill-card>header p { margin:0; color:#938a84; font-size:9px; }
+.analytics-drill-card>header button { border:0; background:transparent; font-size:26px; color:#655d58; cursor:pointer; }
+.analytics-drill-list { overflow:auto; padding:10px 14px 16px; display:grid; gap:6px; }
+.analytics-drill-list>button { display:grid; grid-template-columns:34px 1fr auto; align-items:center; gap:10px; padding:9px 11px; border:1px solid #eee8e4; border-radius:10px; background:#fcfbfa; text-align:left; cursor:pointer; }
+.analytics-drill-list>button:hover { border-color:#f2a475; }
+.analytics-drill-list>button>span { width:32px; height:32px; display:grid; place-items:center; border-radius:9px; background:#f0dcf8; color:#7427a2; font-size:9px; font-weight:850; }
+.analytics-drill-list strong { display:block; font-size:10px; }
+.analytics-drill-list small { color:#948b85; font-size:8px; }
+.analytics-drill-list em { color:#df5508; font-size:9px; font-style:normal; font-weight:750; }
