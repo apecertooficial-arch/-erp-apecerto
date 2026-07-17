@@ -234,7 +234,7 @@ export function ProductCatalog() {
         <ConnectionsWorkspace accessToken={accessToken} />
       ) : activeModule !== "Produtos" && accessToken ? (
         <LegacyModuleWorkspace moduleName={activeModule} accessToken={accessToken} session={sessionProfile} />
-      ) : (
+      ) : activeModule === "Produtos" && accessToken ? (
       <>
       <header className="topbar">
         <div><h1>Produtos</h1><p>{products.length} empreendimentos no portfólio</p></div>
@@ -259,6 +259,8 @@ export function ProductCatalog() {
       }} />}
       {selectedProductId && accessToken && <ProductDetail productId={selectedProductId} accessToken={accessToken} onClose={() => setSelectedProductId(null)} onChanged={() => void loadCatalog(accessToken)} />}
       </>
+      ) : (
+        <div className="workspace-loading"><span /><strong>Carregando seu ERP…</strong></div>
       )}
       {accessToken && <AttentionCenter accessToken={accessToken} onOpenLead={(dealId) => { setFocusedDealId(dealId); setActiveModule("CRM"); }} onOpenNotifications={() => setActiveModule("Notificações")} />}
       {accessToken && <DisconnectionAlert accessToken={accessToken} onOpen={() => setActiveModule("Configurações")} />}
