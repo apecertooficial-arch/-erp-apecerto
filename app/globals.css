@@ -1873,3 +1873,11 @@ body:has(.profile-drawer-scrim,.modal-layer,.photo-lightbox,.document-preview-mo
 .notif-actions button { border:1px solid #ff6500; border-radius:8px; padding:7px 11px; background:#ff6500; color:#fff; font-size:9px; font-weight:750; cursor:pointer; white-space:nowrap; }
 .notif-actions button.ghost { border-color:#ddd6d1; background:#fff; color:#6d645e; }
 @media (max-width:640px){ .notif-item { grid-template-columns:36px minmax(0,1fr); } .notif-actions { grid-column:1/-1; justify-content:flex-end; } }
+
+/* Doc §11 — Abordagens: filtros, prévia e ações de grupo */
+.approach-filters { display:flex; align-items:center; gap:6px; padding:0 0 12px; }
+.approach-filters button { border:1px solid #ddd6d1; border-radius:999px; padding:6px 11px; background:#fff; color:#6f6863; font-size:9px; font-weight:750; cursor:pointer; }
+.approach-filters button.active { border-color:#ff6500; background:#ff6500; color:#fff; }
+.approach-filters select { height:30px; border:1px solid #ddd6d1; border-radius:9px; padding:0 8px; background:#fff; color:#4c443f; font-size:9px; }
+.approach-preview { display:block; margin-top:3px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#9a8f88; font-size:8px; font-style:italic; }
+.approach-group-head button[title="Renomear grupo"], .approach-group-head button[title^="Dissolver"] { border:1px solid #e0d9d4; border-radius:7px; padding:4px 8px; background:#fff; font-size:9px; cursor:pointer; }
