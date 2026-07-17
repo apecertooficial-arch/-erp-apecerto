@@ -1462,3 +1462,13 @@ button { cursor:pointer; }
 /* Sara (botão de IA) desliza pra ESQUERDA da janela do chat enquanto ele está aberto */
 body.lead-chat-open .ai-button{ right: 476px; bottom: 24px; transition: right .15s ease; }
 /* ===== fim ===== */
+
+/* ===== Correções chat v2 (jul/2026): fechar visível + não bater no sino + Sara via :has ===== */
+/* Chat começa ABAIXO do topo (não cobre o sino de notificação) e vai até embaixo */
+.chat-layer .lead-chat-drawer{ top: 78px; bottom: 20px; height: auto; max-height: none; }
+/* Botões Fechar (×) e Minimizar (—) VISÍVEIS no header branco (estavam brancos no branco) */
+.chat-head-actions button{ color: #4a4a4a; background: #f0eeec; border: 1px solid #e3ddd8; }
+.chat-head-actions button:hover{ background: #e6e2de; }
+/* Sara (IA) sai sozinha pro lado quando o chat abre — CSS puro, sem depender de JS/TSX */
+body:has(.chat-layer) .ai-button{ right: 480px; bottom: 24px; transition: right .15s ease; }
+/* ===== fim v2 ===== */
