@@ -221,7 +221,7 @@ export function ProductCatalog() {
   return (
     <AppShell activeItem={activeModule} onNavigate={setActiveModule} onOpenProfile={() => setProfileOpen(true)} sessionRole={sessionProfile?.role ?? "corretor"} sessionName={sessionProfile?.name ?? "Corretor"} modulePermissions={sessionProfile?.permissoes ?? null}>
       {activeModule === "Início" && accessToken ? (
-        <HomeWorkspace accessToken={accessToken} />
+        <HomeWorkspace accessToken={accessToken} sessionName={sessionProfile?.name ?? ""} onNavigate={(moduleName) => setActiveModule(moduleName as ModuleName)} />
       ) : activeModule === "CRM" && accessToken ? (
         <CrmWorkspace accessToken={accessToken} initialDealId={focusedDealId} onInitialDealHandled={() => setFocusedDealId(null)} sessionRole={sessionProfile?.role ?? "corretor"} />
       ) : activeModule === "Automações" && accessToken ? (
