@@ -75,5 +75,17 @@ export async function PATCH(request: Request) {
     return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
   }
 
+  /* Doc §11 — CRUD de grupos: renomear/dissolver move todas as abordagens do grupo */
+  if (action === "renameGroup") {
+    const from = text(body.from, 80) || null;
+    const to = body.to === null ? null : text(body.to, 80) || null;
+    const empreendimentoId = body.empreendimentoId ? text(body.empreendimentoId, 60) : null;
+    let update = auth.supabase.from("abordagens").update({ grupo: to });
+    update = from === null ? update.is("grupo", null) : update.eq("grupo", from);
+    update = empreendimentoId === null ? update.is("empreendimento_id", null) : update.eq("empreendimento_id", empreendimentoId);
+    const { error } = await update;
+    return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
+  }
+
   return Response.json({ error: "Ação desconhecida." }, { status: 400 });
 }

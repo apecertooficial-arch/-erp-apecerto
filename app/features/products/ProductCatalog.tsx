@@ -21,6 +21,7 @@ import { TeamWorkspace } from "../team/TeamWorkspace";
 import { CalendarWorkspace } from "../calendar/CalendarWorkspace";
 import { SettingsWorkspace } from "../settings/SettingsWorkspace";
 import { AuditWorkspace } from "../audit/AuditWorkspace";
+import { NotificationsWorkspace } from "../notifications/NotificationsWorkspace";
 import { LegacyModuleWorkspace } from "../system/LegacyModuleWorkspace";
 import type { ModuleName } from "../system/module-map";
 
@@ -239,6 +240,8 @@ export function ProductCatalog() {
         <CalendarWorkspace accessToken={accessToken} />
       ) : activeModule === "Auditoria" && accessToken ? (
         <AuditWorkspace />
+      ) : activeModule === "Notificações" && accessToken ? (
+        <NotificationsWorkspace accessToken={accessToken} onOpenLead={(dealId) => { setFocusedDealId(dealId); setActiveModule("CRM"); }} />
       ) : activeModule === "Configurações" && accessToken ? (
         <SettingsWorkspace accessToken={accessToken} sessionRole={sessionProfile?.role ?? "corretor"} onNavigate={(moduleName) => setActiveModule(moduleName as ModuleName)} />
       ) : activeModule !== "Produtos" && accessToken ? (
