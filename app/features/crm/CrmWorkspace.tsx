@@ -90,6 +90,7 @@ export function CrmWorkspace({ accessToken, initialDealId = null, onInitialDealH
   const [query, setQuery] = useState("");
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [pipelineId, setPipelineId] = useState<number | null>(null);
+  const [stageConfigOpen, setStageConfigOpen] = useState(false);
   const [stageId, setStageId] = useState<number | null>(null);
   const [brokerId, setBrokerId] = useState<number | null>(null);
   const [origin, setOrigin] = useState("");
@@ -233,6 +234,7 @@ export function CrmWorkspace({ accessToken, initialDealId = null, onInitialDealH
 
     <section className="crm-toolbar-v2">
       <select aria-label="Funil" value={pipelineId ?? ""} onChange={(event) => { setPipelineId(Number(event.target.value)); setStageId(null); setGroup(null); }}>{(data?.pipelines ?? []).map((pipeline) => <option value={pipeline.id} key={pipeline.id}>{pipeline.nome}</option>)}</select>
+      {sessionRole !== "corretor" && <button className="stage-config-trigger" type="button" onClick={() => setStageConfigOpen(true)} title="Configurar funis e etapas">⚙ Etapas</button>}
       {view === "pipeline" && <div className="stage-groups"><button className={group === null ? "active" : ""} type="button" onClick={() => setGroup(null)}>Todas</button>{[1, 2, 3, 4].map((item) => <button className={group === item ? "active" : ""} type="button" onClick={() => setGroup(item)} key={item}>{groupNames[item]} <span>{activeStages.filter((stage) => stage.grupo === item).reduce((sum, stage) => sum + filteredDeals.filter((deal) => deal.stage_id === stage.id).length, 0)}</span></button>)}</div>}
       <button className={filtersOpen ? "crm-filter-trigger active" : "crm-filter-trigger"} type="button" onClick={() => setFiltersOpen(!filtersOpen)}>▽ Filtros {activeFilterCount > 0 && <b>{activeFilterCount}</b>}</button>
       <button className={overdueOnly ? "crm-overdue-trigger active" : "crm-overdue-trigger"} type="button" onClick={() => setOverdueOnly((v) => !v)} title="Mostrar apenas leads que estouraram o SLA">⏰ Leads Atrasados {overdueCount > 0 && <b>{overdueCount}</b>}</button>
@@ -248,9 +250,10 @@ export function CrmWorkspace({ accessToken, initialDealId = null, onInitialDealH
     {!loading && !error && data && view === "agenda" && <AgendaView data={data} leadById={leadById} onMutate={mutate} setMessage={setMessage} />}
     {!loading && !error && data && view === "atividades" && <ActivitiesView data={data} leadById={leadById} brokerById={brokerById} onOpen={(leadId) => setSelectedDealId(data.deals.find((deal) => deal.lead_id === leadId)?.id ?? null)} />}
     {!loading && !error && data && view === "sales" && <SalesProcessView accessToken={accessToken} />}
-    {!loading && !error && data && view === "analytics" && <AnalyticsView data={data} />}
+    {!loading && !error && data && view === "analytics" && <AnalyticsView data={data} onOpen={(dealId) => setSelectedDealId(dealId)} />}
     {selectedDeal && selectedLead && data && <LeadDrawer key={selectedDeal.id} accessToken={accessToken} lead={selectedLead} deal={selectedDeal} data={data} onClose={() => { setSelectedDealId(null); setMessage(null); }} onMutate={mutate} onReload={() => load({ quiet: true })} setMessage={setMessage} />}
     {chatDealId && data && leadById.get(data.deals.find((deal) => deal.id === chatDealId)?.lead_id ?? -1) && <LeadChatDrawer key={chatDealId} accessToken={accessToken} lead={leadById.get(data.deals.find((deal) => deal.id === chatDealId)!.lead_id)!} deal={data.deals.find((deal) => deal.id === chatDealId)!} corretorNome={data.brokers.find((b) => b.id === leadById.get(data.deals.find((deal) => deal.id === chatDealId)!.lead_id)?.corretor_id)?.nome} onClose={() => setChatDealId(null)} onResponse={async () => { await mutate({ action: "acknowledgeResponse", dealId: chatDealId }); setMessage("Resposta registrada e alerta encerrado."); }} />}
+    {stageConfigOpen && data && <StageConfigModal pipelines={data.pipelines} stages={data.stages} deals={data.deals} products={data.products} initialPipelineId={pipelineId} onClose={() => setStageConfigOpen(false)} onChanged={async () => { await load({ quiet: true }); }} />}
     {bulkMoveOpen && data && pipelineId && <BulkMoveModal pipelineId={pipelineId} stages={activeStages} deals={data.deals.filter((deal) => deal.pipeline_id === pipelineId)} onClose={() => setBulkMoveOpen(false)} onMove={async (fromStageId, toStageId) => { await mutate({ action: "bulkMoveStage", pipelineId, fromStageId, toStageId }); setBulkMoveOpen(false); setMessage("Todos os negócios da etapa foram movidos."); }} />}
     {createOpen && data && <CreateLeadModal pipelines={data.pipelines} brokers={data.brokers} initialPipelineId={pipelineId} sessionRole={sessionRole} onClose={() => { setCreateOpen(false); setMessage(null); }} onCreate={async (payload) => { await mutate({ action: "createLead", ...payload }); setCreateOpen(false); setMessage("Novo lead criado e inserido na primeira etapa."); }} />}
   </div>;
@@ -293,9 +296,59 @@ function CreateSaleModal({ data, accessToken, initialDealId = "", onClose, onDon
   return <div className="crm-center-modal"><form onSubmit={(event) => { event.preventDefault(); setBusy(true); void authedFetch("/api/crm/sales", { method: "PATCH", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify({ action: "create", dealId: Number(dealId), productId, vgv: Number(vgv) }) }).then(async (response) => { const result = await response.json() as { error?: string }; if (!response.ok) throw new Error(result.error); await onDone(); }).catch((reason) => setError(reason instanceof Error ? reason.message : "Não foi possível criar a venda.")).finally(() => setBusy(false)); }}><header><div><span>NOVA VENDA</span><h2>Conectar venda ao CRM</h2><p>O registro entra no financeiro e na esteira de documentação.</p></div><button type="button" onClick={onClose}>×</button></header>{error && <div className="modal-error">{error}</div>}<label>Negócio / cliente<select required value={dealId} onChange={(event) => setDealId(event.target.value)}><option value="">Selecione</option>{data.deals.filter((deal) => !deal.venda_id).map((deal) => <option value={deal.id} key={deal.id}>{leadById.get(deal.lead_id)?.nome || `Negócio #${deal.id}`}</option>)}</select></label><label>Produto<select required value={productId} onChange={(event) => setProductId(event.target.value)}><option value="">Selecione</option>{data.products.map((product) => <option value={product.id} key={product.id}>{product.nome}</option>)}</select></label><label>Valor da venda<input required min="1" type="number" value={vgv} onChange={(event) => setVgv(event.target.value)} /></label><footer><button type="button" onClick={onClose}>Cancelar</button><button className="crm-primary" disabled={busy} type="submit">{busy ? "Salvando…" : "Criar venda"}</button></footer></form></div>;
 }
 
-function AnalyticsView({ data }: { data: CrmData }) {
-  const activeDeals = data.deals.filter((deal) => deal.status !== "perdido"); const lost = data.deals.filter((deal) => deal.status === "perdido"); const stageStats = data.stages.filter((stage) => stage.tipo !== "perdido").map((stage) => { const deals = activeDeals.filter((deal) => deal.stage_id === stage.id); const sla = data.sla.filter((entry) => entry.stage_id === stage.id); return { stage, count: deals.length, avg: sla.length ? Math.round(sla.reduce((sum, entry) => sum + Number(entry.min_no_estagio || 0), 0) / sla.length) : 0 }; }); const bottleneck = [...stageStats].sort((a, b) => b.avg - a.avg)[0]; const won = data.deals.filter((deal) => deal.status === "ganho" || data.stages.find((stage) => stage.id === deal.stage_id)?.tipo === "ganho").length; const conversion = data.deals.length ? Math.round((won / data.deals.length) * 100) : 0; const maxCount = Math.max(1, ...stageStats.map((entry) => entry.count)); const maxAvg = Math.max(1, ...stageStats.map((entry) => entry.avg)); const reasonCounts = [...new Set(lost.map((deal) => deal.motivo_perda || "Sem motivo"))].map((reason) => ({ reason, count: lost.filter((deal) => (deal.motivo_perda || "Sem motivo") === reason).length })); const brokerStats = data.brokers.map((broker) => ({ broker, count: data.deals.filter((deal) => deal.corretor_id === broker.id).length })).sort((a, b) => b.count - a.count); const maxBroker = Math.max(1, ...brokerStats.map((entry) => entry.count)); const pending = data.sla.filter((entry) => entry.aguardando_humano && Number(entry.min_aguardando || 0) >= 60).length;
-  return <section className="crm-analytics"><header><span>VISÃO GERENCIAL</span><h2>Analítico de funil</h2><p>Conversão, tempo por etapa, perdas e distribuição — calculados com os dados atuais.</p></header><div className="analytics-kpis"><article><b>{activeDeals.length}</b><span>Leads no funil</span></article><article><b>{conversion}%</b><span>Conversão geral</span></article><article><b>{bottleneck?.stage.rotulo || bottleneck?.stage.nome || "—"}</b><span>Gargalo</span></article><article><b>{lost.length}</b><span>Leads perdidos</span></article><article><b>{pending}</b><span>1º contato pendente</span></article></div><div className="analytics-grid"><article><h3>Conversão do funil</h3>{stageStats.map((entry) => <div className="funnel-row" key={entry.stage.id}><span><b>{entry.stage.rotulo || entry.stage.nome}</b><em>{entry.count}</em></span><i><u style={{ width: `${Math.max(2, (entry.count / maxCount) * 100)}%`, background: entry.stage.cor || "#ff7000" }} /></i></div>)}</article><article><h3>Tempo médio por etapa</h3>{stageStats.map((entry) => <div className={entry.stage.id === bottleneck?.stage.id ? "time-row bottleneck" : "time-row"} key={entry.stage.id}><b>{entry.stage.rotulo || entry.stage.nome}</b><i><u style={{ width: `${Math.max(2, (entry.avg / maxAvg) * 100)}%` }} /></i><span>{formatElapsed(entry.avg)}</span></div>)}</article><article><h3>Motivos de perda</h3>{reasonCounts.length ? reasonCounts.map((entry) => <div className="loss-row" key={entry.reason}><span>{entry.reason}</span><b>{entry.count}</b></div>) : <div className="crm-empty-view compact">Nenhuma perda registrada.</div>}</article><article><h3>Auditoria da distribuição</h3>{brokerStats.map((entry) => <div className="broker-row" key={entry.broker.id}><span>{initials(entry.broker.nome)}</span><div><b>{entry.broker.nome}</b><i><u style={{ width: `${(entry.count / maxBroker) * 100}%` }} /></i></div><em>{entry.count} · {entry.broker.online ? "online" : "offline"}</em></div>)}</article></div></section>;
+/* Doc §7 — Analítico do CRM: filtros, origem, produto, receita potencial, envelhecimento e drill-down até os leads. */
+function AnalyticsView({ data, onOpen }: { data: CrmData; onOpen?: (dealId: number) => void }) {
+  const [periodDays, setPeriodDays] = useState(0);
+  const [brokerFilter, setBrokerFilter] = useState("");
+  const [originFilter, setOriginFilter] = useState("");
+  const [drill, setDrill] = useState<{ title: string; deals: Deal[] } | null>(null);
+  const leadById = useMemo(() => new Map(data.leads.map((lead) => [lead.id, lead])), [data.leads]);
+  const cutoff = periodDays > 0 ? Date.now() - periodDays * 86400000 : 0;
+  const deals = data.deals.filter((deal) => {
+    const lead = leadById.get(deal.lead_id);
+    return (!cutoff || new Date(deal.criado_em).getTime() >= cutoff) &&
+      (!brokerFilter || String(deal.corretor_id ?? lead?.corretor_id ?? "") === brokerFilter) &&
+      (!originFilter || (lead?.origem || "Sem origem") === originFilter);
+  });
+  const activeDeals = deals.filter((deal) => deal.status !== "perdido");
+  const lost = deals.filter((deal) => deal.status === "perdido");
+  const stageStats = data.stages.filter((stage) => stage.tipo !== "perdido").map((stage) => { const stageDeals = activeDeals.filter((deal) => deal.stage_id === stage.id); const sla = data.sla.filter((entry) => entry.stage_id === stage.id); return { stage, deals: stageDeals, count: stageDeals.length, avg: sla.length ? Math.round(sla.reduce((sum, entry) => sum + Number(entry.min_no_estagio || 0), 0) / sla.length) : 0 }; });
+  const bottleneck = [...stageStats].sort((a, b) => b.avg - a.avg)[0];
+  const won = deals.filter((deal) => deal.status === "ganho" || data.stages.find((stage) => stage.id === deal.stage_id)?.tipo === "ganho").length;
+  const conversion = deals.length ? Math.round((won / deals.length) * 100) : 0;
+  const maxCount = Math.max(1, ...stageStats.map((entry) => entry.count));
+  const maxAvg = Math.max(1, ...stageStats.map((entry) => entry.avg));
+  const potential = activeDeals.reduce((sum, deal) => sum + Number(deal.valor || 0), 0);
+  const reasonCounts = [...new Set(lost.map((deal) => deal.motivo_perda || "Sem motivo"))].map((reason) => ({ reason, deals: lost.filter((deal) => (deal.motivo_perda || "Sem motivo") === reason) })).sort((a, b) => b.deals.length - a.deals.length);
+  const brokerStats = data.brokers.map((broker) => ({ broker, deals: deals.filter((deal) => (deal.corretor_id ?? leadById.get(deal.lead_id)?.corretor_id) === broker.id) })).sort((a, b) => b.deals.length - a.deals.length);
+  const maxBroker = Math.max(1, ...brokerStats.map((entry) => entry.deals.length));
+  const pending = data.sla.filter((entry) => entry.aguardando_humano && Number(entry.min_aguardando || 0) >= 60).length;
+  const originStats = [...new Set(deals.map((deal) => leadById.get(deal.lead_id)?.origem || "Sem origem"))].map((origin) => ({ origin, deals: deals.filter((deal) => (leadById.get(deal.lead_id)?.origem || "Sem origem") === origin) })).sort((a, b) => b.deals.length - a.deals.length).slice(0, 8);
+  const maxOrigin = Math.max(1, ...originStats.map((entry) => entry.deals.length));
+  const productStats = [...new Set(activeDeals.map((deal) => deal.empreendimento_id).filter(Boolean))].map((id) => ({ product: data.products.find((product) => product.id === id), deals: activeDeals.filter((deal) => deal.empreendimento_id === id) })).filter((entry) => entry.product).sort((a, b) => b.deals.length - a.deals.length).slice(0, 8);
+  const ageBuckets = [{ label: "Até 7 dias", min: 0, max: 7 }, { label: "7 a 30 dias", min: 7, max: 30 }, { label: "30 a 90 dias", min: 30, max: 90 }, { label: "Mais de 90 dias", min: 90, max: Infinity }].map((bucket) => ({ ...bucket, deals: activeDeals.filter((deal) => { const days = (Date.now() - new Date(deal.criado_em).getTime()) / 86400000; return days >= bucket.min && days < bucket.max; }) }));
+  const maxAge = Math.max(1, ...ageBuckets.map((entry) => entry.deals.length));
+  const origins = [...new Set(data.leads.map((lead) => lead.origem || "Sem origem"))].sort();
+  const drillOpen = (title: string, list: Deal[]) => setDrill({ title, deals: list });
+  return <section className="crm-analytics">
+    <header><span>VISÃO GERENCIAL</span><h2>Analítico de funil</h2><p>Clique em qualquer barra para ver os leads por trás do número.</p></header>
+    <div className="analytics-filters">
+      {[[0, "Tudo"], [7, "7 dias"], [30, "30 dias"], [90, "90 dias"]].map(([days, label]) => <button className={periodDays === days ? "active" : ""} type="button" onClick={() => setPeriodDays(days as number)} key={String(days)}>{label}</button>)}
+      <select value={brokerFilter} onChange={(event) => setBrokerFilter(event.target.value)} aria-label="Corretor"><option value="">Todos os corretores</option>{data.brokers.map((broker) => <option value={broker.id} key={broker.id}>{broker.nome}</option>)}</select>
+      <select value={originFilter} onChange={(event) => setOriginFilter(event.target.value)} aria-label="Origem"><option value="">Todas as origens</option>{origins.map((origin) => <option key={origin}>{origin}</option>)}</select>
+    </div>
+    <div className="analytics-kpis"><article><b>{activeDeals.length}</b><span>Leads no funil</span></article><article><b>{conversion}%</b><span>Conversão geral</span></article><article><b>{money.format(potential)}</b><span>Receita potencial</span></article><article><b>{bottleneck?.stage.rotulo || bottleneck?.stage.nome || "—"}</b><span>Gargalo</span></article><article><b>{lost.length}</b><span>Perdidos</span></article><article><b>{pending}</b><span>1º contato pendente</span></article></div>
+    <div className="analytics-grid">
+      <article><h3>Conversão do funil</h3>{stageStats.map((entry) => <button className="funnel-row drillable" type="button" onClick={() => drillOpen(`Etapa: ${entry.stage.rotulo || entry.stage.nome}`, entry.deals)} key={entry.stage.id}><span><b>{entry.stage.rotulo || entry.stage.nome}</b><em>{entry.count}</em></span><i><u style={{ width: `${Math.max(2, (entry.count / maxCount) * 100)}%`, background: entry.stage.cor || "#ff7000" }} /></i></button>)}</article>
+      <article><h3>Tempo médio por etapa</h3>{stageStats.map((entry) => <div className={entry.stage.id === bottleneck?.stage.id ? "time-row bottleneck" : "time-row"} key={entry.stage.id}><b>{entry.stage.rotulo || entry.stage.nome}</b><i><u style={{ width: `${Math.max(2, (entry.avg / maxAvg) * 100)}%` }} /></i><span>{formatElapsed(entry.avg)}</span></div>)}</article>
+      <article><h3>Origem dos leads</h3>{originStats.map((entry) => <button className="funnel-row drillable" type="button" onClick={() => drillOpen(`Origem: ${entry.origin}`, entry.deals)} key={entry.origin}><span><b>{entry.origin}</b><em>{entry.deals.length}</em></span><i><u style={{ width: `${Math.max(2, (entry.deals.length / maxOrigin) * 100)}%`, background: "#8d2bd1" }} /></i></button>)}</article>
+      <article><h3>Envelhecimento do funil</h3>{ageBuckets.map((entry) => <button className="funnel-row drillable" type="button" onClick={() => drillOpen(`Idade: ${entry.label}`, entry.deals)} key={entry.label}><span><b>{entry.label}</b><em>{entry.deals.length}</em></span><i><u style={{ width: `${Math.max(2, (entry.deals.length / maxAge) * 100)}%`, background: entry.min >= 30 ? "#d0463d" : "#19a25d" }} /></i></button>)}</article>
+      <article><h3>Por produto</h3>{productStats.length ? productStats.map((entry) => <button className="loss-row drillable" type="button" onClick={() => drillOpen(`Produto: ${entry.product!.nome}`, entry.deals)} key={entry.product!.id}><span>{entry.product!.nome}</span><b>{entry.deals.length} · {money.format(entry.deals.reduce((sum, deal) => sum + Number(deal.valor || 0), 0))}</b></button>) : <div className="crm-empty-view compact">Nenhum negócio com produto vinculado.</div>}</article>
+      <article><h3>Motivos de perda</h3>{reasonCounts.length ? reasonCounts.map((entry) => <button className="loss-row drillable" type="button" onClick={() => drillOpen(`Perda: ${entry.reason}`, entry.deals)} key={entry.reason}><span>{entry.reason}</span><b>{entry.deals.length}</b></button>) : <div className="crm-empty-view compact">Nenhuma perda registrada.</div>}</article>
+      <article><h3>Distribuição por corretor</h3>{brokerStats.map((entry) => <button className="broker-row drillable" type="button" onClick={() => drillOpen(`Corretor: ${entry.broker.nome}`, entry.deals)} key={entry.broker.id}><span>{initials(entry.broker.nome)}</span><div><b>{entry.broker.nome}</b><i><u style={{ width: `${(entry.deals.length / maxBroker) * 100}%` }} /></i></div><em>{entry.deals.length} · {entry.broker.online ? "online" : "offline"}</em></button>)}</article>
+    </div>
+    {drill && <div className="crm-center-modal analytics-drill" onMouseDown={(event) => { if (event.target === event.currentTarget) setDrill(null); }}><div className="analytics-drill-card"><header><div><span>DRILL-DOWN</span><h2>{drill.title}</h2><p>{drill.deals.length} negócio{drill.deals.length === 1 ? "" : "s"} · clique para abrir o lead</p></div><button type="button" onClick={() => setDrill(null)}>×</button></header><div className="analytics-drill-list">{drill.deals.map((deal) => { const lead = leadById.get(deal.lead_id); const broker = data.brokers.find((item) => item.id === (deal.corretor_id ?? lead?.corretor_id)); return <button type="button" onClick={() => { setDrill(null); onOpen?.(deal.id); }} key={deal.id}><span>{initials(lead?.nome ?? null)}</span><div><strong>{lead?.nome || "Lead sem nome"}</strong><small>{lead?.telefone || "—"} · {broker?.nome || "sem responsável"}</small></div><em>{deal.valor ? money.format(deal.valor) : "—"}</em></button>; })}{drill.deals.length === 0 && <div className="crm-empty-view compact">Nenhum lead neste recorte.</div>}</div></div></div>}
+  </section>;
 }
 
 function PipelineViewEnhanced({ stages, allStages, deals, leadById, brokerById, brokers, slaByDeal, onOpen, onChat, onMutate, setMessage, draggingId, onDrag, onDrop }: { stages: Stage[]; allStages: Stage[]; deals: Deal[]; leadById: Map<number, Lead>; brokerById: Map<number, Broker>; brokers: Broker[]; slaByDeal: Map<number, SlaInfo>; onOpen: (id: number) => void; onChat: (id: number) => void; onMutate: (body: Record<string, unknown>) => Promise<void>; setMessage: (value: string | null) => void; draggingId: number | null; onDrag: (id: number | null) => void; onDrop: (event: DragEvent, stageId: number) => Promise<void> }) {
@@ -536,4 +589,72 @@ function LeadSaleModal({ accessToken, deal, products, onClose, onDone }: { acces
 function CreateLeadModal({ pipelines, brokers, initialPipelineId, sessionRole = "corretor", onClose, onCreate }: { pipelines: Pipeline[]; brokers: Broker[]; initialPipelineId: number | null; sessionRole?: "admin" | "gestor" | "corretor"; onClose: () => void; onCreate: (payload: Record<string, unknown>) => Promise<void> }) {
   const [form, setForm] = useState({ nome: "", telefone: "", email: "", origem: "manual", pipelineId: String(initialPipelineId ?? pipelines[0]?.id ?? ""), corretorId: "" }); const [busy, setBusy] = useState(false); const [error, setError] = useState<string | null>(null);
   return <div className="crm-center-modal"><form onSubmit={(event) => { event.preventDefault(); setBusy(true); setError(null); void onCreate({ ...form, pipelineId: Number(form.pipelineId), corretorId: form.corretorId || null }).catch((reason) => setError(reason instanceof Error ? reason.message : "Não foi possível criar o lead.")).finally(() => setBusy(false)); }}><header><div><span>NOVO ATENDIMENTO</span><h2>Cadastrar lead</h2><p>O negócio será criado automaticamente na primeira etapa.</p></div><button type="button" onClick={onClose}>×</button></header>{error && <div className="modal-error">{error}</div>}<div className="create-grid"><label>Nome<input required autoFocus value={form.nome} onChange={(event) => setForm({ ...form, nome: event.target.value })} placeholder="Nome do cliente" /></label><label>Telefone<input required value={form.telefone} onChange={(event) => setForm({ ...form, telefone: event.target.value })} placeholder="(11) 99999-9999" /></label><label>E-mail<input type="email" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} /></label><label>Origem<input value={form.origem} onChange={(event) => setForm({ ...form, origem: event.target.value })} /></label><label>Funil<select required value={form.pipelineId} onChange={(event) => setForm({ ...form, pipelineId: event.target.value })}>{pipelines.map((pipeline) => <option value={pipeline.id} key={pipeline.id}>{pipeline.nome}</option>)}</select></label>{sessionRole !== "corretor" && <label>Responsável<select value={form.corretorId} onChange={(event) => setForm({ ...form, corretorId: event.target.value })}><option value="">Distribuição automática</option>{brokers.map((broker) => <option value={broker.id} key={broker.id}>{broker.nome}</option>)}</select></label>}</div>{sessionRole === "corretor" && <p className="quick-action-hint">Este lead será atribuído automaticamente a você.</p>}<footer><button type="button" onClick={onClose}>Cancelar</button><button className="crm-primary" disabled={busy} type="submit">{busy ? "Criando..." : "Criar lead"}</button></footer></form></div>;
+}
+
+/* Doc §6 — Gerenciador de funis e etapas (admin): criar/renomear/reordenar/excluir etapas e funis por produto. */
+function StageConfigModal({ pipelines, stages, deals, products, initialPipelineId, onClose, onChanged }: { pipelines: Array<Pipeline & { empreendimento_id?: string | null }>; stages: Stage[]; deals: Deal[]; products: Product[]; initialPipelineId: number | null; onClose: () => void; onChanged: () => Promise<void> }) {
+  const [pipelineId, setPipelineId] = useState<number | null>(initialPipelineId ?? pipelines[0]?.id ?? null);
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState("");
+  const [newStage, setNewStage] = useState("");
+  const [pipelineName, setPipelineName] = useState("");
+  const [pipelineProduct, setPipelineProduct] = useState("");
+  const [creatingPipeline, setCreatingPipeline] = useState(false);
+  const current = pipelines.find((pipeline) => pipeline.id === pipelineId) ?? null;
+  const currentStages = stages.filter((stage) => stage.pipeline_id === pipelineId).sort((a, b) => a.ordem - b.ordem);
+  const dealCount = (stageId: number) => deals.filter((deal) => deal.stage_id === stageId).length;
+
+  useEffect(() => { setPipelineName(current?.nome ?? ""); setPipelineProduct((current as { empreendimento_id?: string | null } | null)?.empreendimento_id ?? ""); }, [pipelineId, current]);
+
+  const run = async (action: () => Promise<{ error: { message: string } | null }>, success: string) => {
+    setBusy(true); setMessage("");
+    const { error } = await action();
+    if (error) setMessage(error.message);
+    else { setMessage(success); await onChanged(); }
+    setBusy(false);
+  };
+  const rpc = getBrowserSupabaseClient();
+
+  return <div className="crm-center-modal stage-config-modal"><form onSubmit={(event) => event.preventDefault()}>
+    <header><div><span>CONFIGURAÇÃO DO CRM</span><h2>Funis e etapas</h2><p>Criar, renomear, reordenar e excluir — sem perder nenhum negócio.</p></div><button type="button" onClick={onClose}>×</button></header>
+    {message && <div className={message.includes("Etapa tem") || message.includes("apenas") ? "modal-error" : "stage-config-ok"}>{message}</div>}
+    <div className="stage-config-pipeline">
+      <label>Funil<select value={pipelineId ?? ""} onChange={(event) => setPipelineId(Number(event.target.value))}>{pipelines.map((pipeline) => <option value={pipeline.id} key={pipeline.id}>{pipeline.nome}</option>)}</select></label>
+      <label>Renomear<input value={pipelineName} onChange={(event) => setPipelineName(event.target.value)} placeholder="Nome do funil" /></label>
+      <label>Produto vinculado<select value={pipelineProduct} onChange={(event) => setPipelineProduct(event.target.value)}><option value="">Nenhum (funil geral)</option>{products.map((product) => <option value={product.id} key={product.id}>{product.nome}</option>)}</select></label>
+      <button type="button" disabled={busy || !pipelineId} onClick={() => void run(() => rpc.rpc("crm_funil_salvar", { p_id: pipelineId, p_nome: pipelineName, p_empreendimento_id: pipelineProduct || null }), "Funil atualizado.")}>Salvar funil</button>
+    </div>
+    <div className="stage-config-list">
+      {currentStages.map((stage, index) => <StageConfigRow key={stage.id} stage={stage} count={dealCount(stage.id)} busy={busy}
+        onRename={(name, color) => void run(() => rpc.rpc("crm_etapa_salvar", { p_id: stage.id, p_nome: name, p_cor: color }), "Etapa atualizada.")}
+        onMove={(direction) => { const ids = currentStages.map((item) => item.id); const target = index + direction; if (target < 0 || target >= ids.length) return; [ids[index], ids[target]] = [ids[target], ids[index]]; void run(() => rpc.rpc("crm_etapa_reordenar", { p_pipeline_id: pipelineId, p_ids: ids }), "Ordem atualizada."); }}
+        onDelete={() => { if (!window.confirm(`Excluir a etapa "${stage.rotulo || stage.nome}"?`)) return; void run(() => rpc.rpc("crm_etapa_excluir", { p_id: stage.id }), "Etapa excluída."); }} />)}
+    </div>
+    <div className="stage-config-new">
+      <input value={newStage} onChange={(event) => setNewStage(event.target.value)} placeholder="Nome da nova etapa" />
+      <button type="button" disabled={busy || !newStage.trim() || !pipelineId} onClick={() => void run(() => rpc.rpc("crm_etapa_salvar", { p_pipeline_id: pipelineId, p_nome: newStage }), "Etapa criada.").then(() => setNewStage(""))}>＋ Adicionar etapa</button>
+    </div>
+    <div className="stage-config-newpipe">
+      {creatingPipeline ? <>
+        <input autoFocus placeholder="Nome do novo funil (ex.: Funil Reserva Alto da Mata)" value={pipelineName} onChange={(event) => setPipelineName(event.target.value)} />
+        <button type="button" disabled={busy || !pipelineName.trim()} onClick={() => void run(() => rpc.rpc("crm_funil_salvar", { p_nome: pipelineName, p_empreendimento_id: pipelineProduct || null }), "Funil criado com etapas padrão.").then(() => setCreatingPipeline(false))}>Criar funil</button>
+        <button type="button" onClick={() => setCreatingPipeline(false)}>Cancelar</button>
+      </> : <button type="button" onClick={() => { setCreatingPipeline(true); setPipelineName(""); }}>＋ Novo funil por produto</button>}
+    </div>
+    <footer><span className="stage-config-hint">Etapas com negócios não podem ser excluídas — mova os negócios antes (Ações em massa).</span><button type="button" onClick={onClose}>Fechar</button></footer>
+  </form></div>;
+}
+
+function StageConfigRow({ stage, count, busy, onRename, onMove, onDelete }: { stage: Stage; count: number; busy: boolean; onRename: (name: string, color: string) => void; onMove: (direction: number) => void; onDelete: () => void }) {
+  const [name, setName] = useState(stage.rotulo || stage.nome);
+  const [color, setColor] = useState(stage.cor || "#8d2bd1");
+  const dirty = name !== (stage.rotulo || stage.nome) || color !== (stage.cor || "#8d2bd1");
+  return <div className="stage-config-row">
+    <div className="stage-config-order"><button type="button" disabled={busy} onClick={() => onMove(-1)} aria-label="Subir">▲</button><button type="button" disabled={busy} onClick={() => onMove(1)} aria-label="Descer">▼</button></div>
+    <input type="color" value={color} onChange={(event) => setColor(event.target.value)} aria-label="Cor da etapa" />
+    <input className="stage-config-name" value={name} onChange={(event) => setName(event.target.value)} />
+    <span className="stage-config-count">{count} negócio{count === 1 ? "" : "s"}</span>
+    {dirty && <button className="stage-config-save" type="button" disabled={busy} onClick={() => onRename(name, color)}>Salvar</button>}
+    <button className="stage-config-del" type="button" disabled={busy || count > 0} title={count > 0 ? "Mova os negócios antes de excluir" : "Excluir etapa"} onClick={onDelete}>🗑</button>
+  </div>;
 }
