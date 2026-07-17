@@ -1562,3 +1562,5 @@ body:has(.chat-layer) .ai-button, body:has(.chat-layer) #sara-fab{ display: none
 .chat-layer .chat-messages article{ max-width: 100%; box-sizing: border-box; }
 .chat-layer .chat-messages article p{ overflow-wrap: anywhere; }
 /* ===== fim ===== */
+/* Doc §3 — login como página exclusiva (sem ERP ao fundo) */
+.login-page { position:fixed; inset:0; z-index:100; background:linear-gradient(135deg,#ffffff 0%,#fff4ec 55%,#ffe4cf 100%); }

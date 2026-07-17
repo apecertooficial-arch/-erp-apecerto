@@ -210,6 +210,10 @@ export function ProductCatalog() {
   const neighborhoods = useMemo(() => [...new Set(products.map((item) => item.neighborhood).filter(Boolean))].sort(), [products]);
   const developers = useMemo(() => [...new Set(products.map((item) => item.developer).filter((item): item is string => Boolean(item)))].sort(), [products]);
 
+  if (dataState === "auth" && !accessToken) {
+    return <div className="login-page"><SupabaseLogin onAuthenticated={(token) => { setActiveModule("Início"); void loadCatalog(token); }} /></div>;
+  }
+
   return (
     <AppShell activeItem={activeModule} onNavigate={setActiveModule} onPreviewLogin={() => setLoginPreview(true)} sessionRole={sessionProfile?.role ?? "corretor"} sessionName={sessionProfile?.name ?? "Corretor"}>
       {activeModule === "Início" && accessToken ? (
@@ -264,7 +268,6 @@ export function ProductCatalog() {
       )}
       {accessToken && <AttentionCenter accessToken={accessToken} onOpenLead={(dealId) => { setFocusedDealId(dealId); setActiveModule("CRM"); }} onOpenNotifications={() => setActiveModule("Notificações")} />}
       {accessToken && <DisconnectionAlert accessToken={accessToken} onOpen={() => setActiveModule("Configurações")} />}
-      {dataState === "auth" && <SupabaseLogin onAuthenticated={(accessToken) => { setActiveModule("Início"); void loadCatalog(accessToken); }} />}
       {loginPreview && <SupabaseLogin preview onClose={() => setLoginPreview(false)} onAuthenticated={(token) => { setLoginPreview(false); setActiveModule("Início"); void loadCatalog(token); }} />}
     </AppShell>
   );
