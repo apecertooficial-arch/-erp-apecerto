@@ -1734,3 +1734,8 @@ body:has(.profile-drawer-scrim,.modal-layer,.photo-lightbox,.document-preview-mo
 .audit-json { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:12px; }
 .audit-json pre { margin:0; max-height:240px; overflow:auto; padding:10px; border-radius:9px; background:#302b28; color:#e8e2dd; font-size:8.5px; }
 @media (max-width:800px){ .audit-json { grid-template-columns:1fr; } .audit-item>button { grid-template-columns:70px minmax(0,1fr) 20px; } .audit-badge { display:none; } }
+
+/* Doc §5 — abas do painel do lead arrastáveis */
+.draggable-tabs button { cursor:grab; }
+.draggable-tabs button:active { cursor:grabbing; }
+.draggable-tabs button.tab-dragging { opacity:.45; outline:2px dashed #ff9c5e; outline-offset:-2px; border-radius:8px 8px 0 0; }
