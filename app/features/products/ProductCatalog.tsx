@@ -84,7 +84,7 @@ export function ProductCatalog() {
   const [products, setProducts] = useState<Product[]>(fallbackProducts);
   const [dataState, setDataState] = useState<"loading" | "live" | "auth" | "error">("loading");
   const [accessToken, setAccessToken] = useState<string | null>(null);
-  const [activeModule, setActiveModule] = useState<ModuleName>("Produtos");
+  const [activeModule, setActiveModule] = useState<ModuleName>("Início");
   const [focusedDealId, setFocusedDealId] = useState<number | null>(null);
   const [loginPreview, setLoginPreview] = useState(false);
   const [sessionProfile, setSessionProfile] = useState<SessionProfile | null>(null);
