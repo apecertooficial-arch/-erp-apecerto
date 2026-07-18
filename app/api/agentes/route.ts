@@ -27,6 +27,7 @@ export async function GET(request: Request) {
     const { data, error } = await auth.supabase
       .from("agentes_ia")
       .select("id,slug,nome,tipo,categoria,modelo,status,versao_atual,ativo,missao")
+      .order("ativo", { ascending: false })
       .order("id");
     return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ agentes: data ?? [] });
   }

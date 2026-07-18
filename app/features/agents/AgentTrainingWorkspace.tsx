@@ -11,6 +11,7 @@ const STATUS = [
   { v: "revisao", label: "Em revisão" },
   { v: "aprovado", label: "Aprovado" },
   { v: "publicado", label: "Publicado" },
+  { v: "arquivado", label: "Arquivado" },
 ];
 const brl = (n) => n == null ? "—" : n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const usd6 = (n) => n == null ? "—" : "US$ " + Number(n).toFixed(6);
@@ -35,6 +36,7 @@ export function AgentTrainingWorkspace({ accessToken }: { accessToken: string })
   const [running, setRunning] = useState(false);
   const [progress, setProgress] = useState({ done: 0, total: 0 });
   const [batResults, setBatResults] = useState([]);
+  const [showArq, setShowArq] = useState(false);
 
   const api = useCallback(async (method, path, body) => {
     const res = await fetch(path, {
@@ -50,7 +52,10 @@ export function AgentTrainingWorkspace({ accessToken }: { accessToken: string })
   const loadList = useCallback(async () => {
     const p = await api("GET", "/api/agentes");
     setAgentes(p.agentes || []);
-    if (!slug && p.agentes?.length) setSlug(p.agentes[0].slug);
+    if (!slug && p.agentes?.length) {
+      const first = p.agentes.find((a) => a.slug === "sara") || p.agentes.find((a) => a.ativo) || p.agentes[0];
+      setSlug(first.slug);
+    }
   }, [api, slug]);
 
   const loadDetail = useCallback(async (s) => {
@@ -132,16 +137,33 @@ export function AgentTrainingWorkspace({ accessToken }: { accessToken: string })
 
       <div className="lab-body">
         <aside className="lab-agents">
-          <div className="lab-agents-head"><strong>Agentes</strong><small>{agentes.length}</small></div>
-          {agentes.map((a) => (
-            <button key={a.slug} className={a.slug === slug ? "active" : ""} type="button" onClick={() => setSlug(a.slug)}>
-              <b>{a.nome}</b>
-              <em>
-                <span className={`st st-${a.status}`}>{STATUS.find((s) => s.v === a.status)?.label || a.status}</span>
-                <span className="ver">v{a.versao_atual ?? 1}</span>
-              </em>
-            </button>
-          ))}
+          {(() => {
+            const ativos = agentes.filter((a) => a.ativo);
+            const arquivados = agentes.filter((a) => !a.ativo);
+            const item = (a) => (
+              <button key={a.slug} className={a.slug === slug ? "active" : ""} type="button" onClick={() => setSlug(a.slug)}>
+                <b>{a.nome}</b>
+                <em>
+                  <span className={`st st-${a.status}`}>{STATUS.find((s) => s.v === a.status)?.label || a.status}</span>
+                  <span className="ver">v{a.versao_atual ?? 1}</span>
+                </em>
+              </button>
+            );
+            return (
+              <>
+                <div className="lab-agents-head"><strong>Agentes ativos</strong><small>{ativos.length}</small></div>
+                {ativos.map(item)}
+                {arquivados.length > 0 && (
+                  <>
+                    <button className="lab-arq-toggle" type="button" onClick={() => setShowArq(!showArq)}>
+                      {showArq ? "▾" : "▸"} Arquivados ({arquivados.length})
+                    </button>
+                    {showArq && arquivados.map(item)}
+                  </>
+                )}
+              </>
+            );
+          })()}
         </aside>
 
         <section className="lab-main">
