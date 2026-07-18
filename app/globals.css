@@ -9,7 +9,7 @@
   --ink:#1f1c1a; --ink-soft:#4d4842; --muted:#6e6760; --faint:#9a938b;
   --line:#e9e3dc; --line-strong:#d8d0c7; --surface:#ffffff; --page:#faf8f6; --sunken:#f3efeb;
   /* Semânticos */
-  --green:#1fa85a; --green-bg:#e4f6ec; --amber:#f2a82c; --amber-bg:#fdf1d9; --red:#d93e3e; --red-bg:#fbe5e5;
+  --green:#1fa85a; --green-bg:#e4f6ec; --amber:#f2a82c; --amber-bg:#fdf1d9; --red:#d93e3e; --red-bg:#fbe5e5; --blue:#2f6fed;
   /* Raios */
   --radius-card:18px; --radius-input:12px; --radius-pill:999px;
   /* Sombras quentes */
@@ -2500,3 +2500,57 @@ body { overflow:hidden; background:#eee8e2; }
 .analytics-kpis article:nth-child(5)::after{background:#f6cdcd}
 .analytics-kpis article:nth-child(6)::after{background:#f6e3b6}
 .analytics-kpis article > *{position:relative;z-index:1}
+
+/* Ajustes pontuais do Início — cores mais vivas e leitura operacional. */
+.home-panel h2 small { margin-left:7px; color:var(--muted); font-size:10px; font-weight:600; }
+.product-rank { color:#fff!important; font-size:11px; font-weight:800; box-shadow:0 5px 12px rgba(31,24,19,.12); }
+.product-rank.tone-1 { background:#ff6500!important; }
+.product-rank.tone-2 { background:#9638d8!important; }
+.product-rank.tone-3 { background:#20aa64!important; }
+.product-rank.tone-4 { background:#2f6fed!important; }
+.product-rank.tone-5 { background:#e44a47!important; }
+.home-alert>i.purple { background:#9638d8; }
+.home-alert>i.orange { background:#ff6500; }
+
+/* Paleta viva compartilhada pelos cards de indicadores de todos os módulos. */
+:is(.sales-kpis,.operational-kpis) article:nth-child(6n+1) { background:#ffe0c7; border-color:#ff9b57; }
+:is(.sales-kpis,.operational-kpis) article:nth-child(6n+2) { background:#ead2fa; border-color:#bd79e8; }
+:is(.sales-kpis,.operational-kpis) article:nth-child(6n+3) { background:#d5f1e0; border-color:#76cf9c; }
+:is(.sales-kpis,.operational-kpis) article:nth-child(6n+4) { background:#d1efec; border-color:#68c9c1; }
+:is(.sales-kpis,.operational-kpis) article:nth-child(6n+5) { background:#f8d6d5; border-color:#e88b87; }
+:is(.sales-kpis,.operational-kpis) article:nth-child(6n+6) { background:#ffeab8; border-color:#edc55e; }
+
+.home-kpis article:nth-child(1),.home-kpis article:nth-child(5) { background:#ffe0c7; border-color:#ff9b57; }
+.home-kpis article:nth-child(2),.home-kpis article:nth-child(6) { background:#ead2fa; border-color:#bd79e8; }
+.home-kpis article:nth-child(3),.home-kpis article:nth-child(7) { background:#d5f1e0; border-color:#76cf9c; }
+.home-kpis article:nth-child(4) { background:#d1efec; border-color:#68c9c1; }
+.home-kpis article:nth-child(8) { background:#ffeab8; border-color:#edc55e; }
+.home-kpis article::after { background:#ffb783; opacity:.68; }
+.home-kpis article:has(i.purple)::after { background:#d39bea; }
+.home-kpis article:has(i.green)::after { background:#98ddb5; }
+.home-kpis article:has(i.teal)::after { background:#8ed7d0; }
+.home-kpis article:has(i.yellow)::after { background:#f2d170; }
+
+.finance-kpis article:has(i.orange) { background:#ffe0c7; border-color:#ff9b57; }
+.finance-kpis article:has(i.green) { background:#d5f1e0; border-color:#76cf9c; }
+.finance-kpis article:has(i.red) { background:#f8d6d5; border-color:#e88b87; }
+.finance-kpis article:has(i.blue) { background:#d9e5ff; border-color:#85a8f5; }
+.finance-kpis article:has(i.purple) { background:#ead2fa; border-color:#bd79e8; }
+.finance-kpis article::after { background:#ffb783; opacity:.66; }
+.finance-kpis article:has(i.green)::after { background:#98ddb5; }
+.finance-kpis article:has(i.red)::after { background:#efa4a1; }
+.finance-kpis article:has(i.blue)::after { background:#a9c0f7; }
+.finance-kpis article:has(i.purple)::after { background:#d39bea; }
+
+.analytics-kpis article:nth-child(1) { background:#d5f1e0; border-color:#76cf9c; }
+.analytics-kpis article:nth-child(2) { background:#ead2fa; border-color:#bd79e8; }
+.analytics-kpis article:nth-child(3) { background:#ffe0c7; border-color:#ff9b57; }
+.analytics-kpis article:nth-child(4) { background:#f8d6d5; border-color:#e88b87; }
+.analytics-kpis article:nth-child(5) { background:#d1efec; border-color:#68c9c1; }
+.analytics-kpis article:nth-child(6) { background:#ffeab8; border-color:#edc55e; }
+
+.crm-metrics article:has(.metric-icon.orange) { background:#ffe0c7; border-color:#ff9b57; }
+.crm-metrics article:has(.metric-icon.purple) { background:#ead2fa; border-color:#bd79e8; }
+.crm-metrics article:has(.metric-icon.green) { background:#d5f1e0; border-color:#76cf9c; }
+.crm-metrics article:has(.metric-icon.red) { background:#f8d6d5; border-color:#e88b87; }
+.crm-metrics article:has(.metric-icon.blue) { background:#d9e5ff; border-color:#85a8f5; }
