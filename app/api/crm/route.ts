@@ -23,6 +23,28 @@ function cleanText(value: unknown, max = 300) {
   return typeof value === "string" ? value.trim().slice(0, max) : "";
 }
 
+type Authenticated = NonNullable<Awaited<ReturnType<typeof authenticatedClient>>>;
+type PermissionMap = Record<string, string[]>;
+
+async function getEffectiveAccess(auth: Authenticated) {
+  const { data: userProfile, error } = await auth.supabase.from("usuarios").select("role,permissoes").eq("id", auth.user.id).maybeSingle();
+  if (error || !userProfile) return { role: "", permissions: {} as PermissionMap };
+  let permissions = (userProfile as { permissoes?: PermissionMap | null }).permissoes ?? null;
+  if (!permissions || Object.keys(permissions).length === 0) {
+    const { data: roleProfile } = await auth.supabase.from("perfis").select("permissoes").eq("id", userProfile.role).maybeSingle();
+    permissions = (roleProfile as { permissoes?: PermissionMap | null } | null)?.permissoes ?? {};
+  }
+  return { role: userProfile.role, permissions };
+}
+
+function canCrm(access: Awaited<ReturnType<typeof getEffectiveAccess>>, action: "atribuir" | "transferir") {
+  if (access.role === "admin") return true;
+  return ["crm", "leads", "pipeline", "CRM"].some((moduleName) => {
+    const actions = access.permissions[moduleName] ?? [];
+    return actions.includes(action) || actions.includes("administrar");
+  });
+}
+
 export async function GET(request: Request) {
   const auth = await authenticatedClient(request);
   if (!auth) return Response.json({ error: "Sessão inválida ou expirada." }, { status: 401 });
@@ -81,10 +103,14 @@ export async function PATCH(request: Request) {
       instagram: cleanText(input.instagram, 120) || null,
       origem: cleanText(input.origem, 100) || null,
       status: cleanText(input.status, 80) || "novo",
-      corretor_id: input.corretor_id === null || input.corretor_id === "" ? null : positiveInteger(input.corretor_id),
       tags: Array.isArray(input.tags) ? input.tags.map((tag) => cleanText(tag, 50)).filter(Boolean).slice(0, 30) : [],
       atualizado_em: new Date().toISOString(),
     };
+    if (input.corretor_id !== undefined) {
+      const access = await getEffectiveAccess(auth);
+      if (!canCrm(access, "transferir")) return Response.json({ error: "Você não tem permissão para trocar o corretor responsável." }, { status: 403 });
+      update.corretor_id = input.corretor_id === null || input.corretor_id === "" ? null : positiveInteger(input.corretor_id);
+    }
     if (!update.nome || !update.telefone) return Response.json({ error: "Nome e telefone são obrigatórios." }, { status: 422 });
     const { error } = await auth.supabase.from("leads").update(update).eq("id", leadId);
     return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
@@ -125,7 +151,10 @@ export async function PATCH(request: Request) {
     if (!nome || !telefone || !pipelineId) return Response.json({ error: "Informe nome, telefone e funil." }, { status: 422 });
     const { data: pipeline } = await auth.supabase.from("pipelines").select("id").eq("id", pipelineId).maybeSingle();
     if (!pipeline) return Response.json({ error: "Funil inválido." }, { status: 422 });
-    let brokerId = selectedBrokerId;
+    const access = await getEffectiveAccess(auth);
+    const canChooseBroker = canCrm(access, "atribuir") || canCrm(access, "transferir");
+    if (selectedBrokerId && !canChooseBroker) return Response.json({ error: "Você não tem permissão para atribuir este lead a outro corretor." }, { status: 403 });
+    let brokerId = canChooseBroker ? selectedBrokerId : null;
     if (!brokerId) {
       const { data: ownBroker } = await auth.supabase.from("corretores").select("id").eq("usuario_id", auth.user.id).maybeSingle();
       brokerId = ownBroker?.id ?? null;
@@ -181,6 +210,8 @@ export async function PATCH(request: Request) {
     const dealId = positiveInteger(body.dealId);
     const brokerId = positiveInteger(body.brokerId);
     if (!dealId || !brokerId) return Response.json({ error: "Negócio ou corretor inválido." }, { status: 400 });
+    const access = await getEffectiveAccess(auth);
+    if (!canCrm(access, "transferir")) return Response.json({ error: "Você não tem permissão para trocar o corretor responsável." }, { status: 403 });
     const { data, error } = await auth.supabase.rpc("transferir_negocio", { p_negocio_id: dealId, p_corretor_id: brokerId });
     const result = data && typeof data === "object" ? data as Record<string, unknown> : {};
     if (error || result.ok === false) return Response.json({ error: error?.message || cleanText(result.error, 300) || "Não foi possível transferir o negócio." }, { status: 502 });
