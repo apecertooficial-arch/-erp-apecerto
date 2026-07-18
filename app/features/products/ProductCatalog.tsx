@@ -23,6 +23,7 @@ import { FinanceWorkspace } from "../finance/FinanceWorkspace";
 import { TeamWorkspace } from "../team/TeamWorkspace";
 import { CalendarWorkspace } from "../calendar/CalendarWorkspace";
 import { SettingsWorkspace } from "../settings/SettingsWorkspace";
+import { PermissionsWorkspace } from "../permissions/PermissionsWorkspace";
 import { AuditWorkspace } from "../audit/AuditWorkspace";
 import { NotificationsWorkspace } from "../notifications/NotificationsWorkspace";
 import { LegacyModuleWorkspace } from "../system/LegacyModuleWorkspace";
@@ -248,6 +249,8 @@ export function ProductCatalog() {
         <FinanceWorkspace accessToken={accessToken} sessionRole={sessionProfile?.role ?? "corretor"} />
       ) : activeModule === "Usuários" && accessToken ? (
         <TeamWorkspace accessToken={accessToken} />
+      ) : activeModule === "Perfis e Permissões" && accessToken ? (
+        <PermissionsWorkspace accessToken={accessToken} />
       ) : activeModule === "Calendário" && accessToken ? (
         <CalendarWorkspace accessToken={accessToken} />
       ) : activeModule === "Auditoria" && accessToken ? (
