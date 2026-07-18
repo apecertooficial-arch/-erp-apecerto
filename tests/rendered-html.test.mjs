@@ -14,15 +14,17 @@ async function render(pathname = "/") {
   );
 }
 
-test("renderiza a versão evolutiva do ERP como aplicação principal", async () => {
+test("renderiza o shell protegido do ERP como aplicação principal", async () => {
   const response = await render();
   assert.equal(response.status, 200);
   assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
 
   const html = await response.text();
-  assert.match(html, /Cadastrar produto/);
-  assert.match(html, /Inteligência comercial/);
-  assert.match(html, /Botanic Cyrela/);
+  assert.match(html, /Carregando seu ERP/);
+  assert.match(html, />CRM</);
+  assert.match(html, />Produtos</);
+  assert.doesNotMatch(html, /Cadastrar produto/);
+  assert.doesNotMatch(html, /Botanic Cyrela/);
   assert.doesNotMatch(html, /Captação rápida/);
   assert.doesNotMatch(html, /codex-preview/);
 });
