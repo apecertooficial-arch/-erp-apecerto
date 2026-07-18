@@ -303,6 +303,7 @@ function bodyHtml(n){
      `<div style="font-size:11px;color:var(--ink-faint);margin:6px 0 3px">Marque quais abordagens serão enviadas pelo número do corretor (o sistema alterna entre elas):</div>`+
      (abList.length?abList.map(a=>`<label style="display:flex;align-items:center;gap:7px;font-size:12px;padding:3px 0;cursor:pointer"><input type="checkbox" data-distab="${a.id}" ${selAb.indexOf(a.id)>=0?'checked':''} style="width:15px;height:15px;flex:0 0 auto">${esc(a.nome)} <span style="color:var(--ink-faint);font-size:10.5px">(${(a.mensagens||[]).length})</span></label>`).join(''):`<div style="font-size:11px;color:var(--ink-faint)">Sem abordagens aqui. Crie em <b>Abordagens (produtos)</b>.</div>`);
    })()+
+   `<button class="ne-add" data-distreport style="margin-top:9px">\u{1F4CA} Distribu\u00eddos por corretor (per\u00edodo)</button>`+
    (function(){const rv=d.respostaValor||12,ru=d.respostaUnidade||'horas';return `<div style="height:1px;background:var(--line-soft);margin:11px 0 6px"></div><div class="ne-lb" style="margin-top:0">Mapeamento da resposta</div><div style="font-size:11px;color:var(--ink-faint);margin:2px 0 5px">Depois de enviar a abordagem, aguardar resposta por:</div><div class="ne-inline"><input class="ne-inp" type="number" min="1" data-distrespval value="${rv}" style="width:74px"><select class="ne-sel" data-distrespunid style="width:120px"><option ${ru==='minutos'?'selected':''}>minutos</option><option ${ru==='horas'?'selected':''}>horas</option><option ${ru==='dias'?'selected':''}>dias</option></select></div><div style="font-size:10.5px;color:var(--ink-faint);margin-top:4px">Com as saídas de resposta LIGADAS, o lead fica retido neste bloco até responder (sai na hora) ou vencer o prazo — "Próximo passo" não é usado. Sem ligação = comportamento atual.</div>`;})()+
    portRow('respondeu','Caso o lead RESPONDA no prazo','branch')+
    portRow('naoRespondeu','Caso o lead NÃO responda','err')+
@@ -439,7 +440,18 @@ function bindBody(n,el){
   const prd=q('[data-distprod]');if(prd)prd.onchange=()=>{d.produtoId=+prd.value||0;d.abordagemIds=[];setDirty();reNode(n);};
   qa('[data-distab]').forEach(cb=>cb.onchange=()=>{const id=+cb.dataset.distab;d.abordagemIds=d.abordagemIds||[];const ix=d.abordagemIds.indexOf(id);if(cb.checked&&ix<0)d.abordagemIds.push(id);else if(!cb.checked&&ix>=0)d.abordagemIds.splice(ix,1);setDirty();});
   const rvI=q('[data-distrespval]');if(rvI)rvI.onchange=()=>{d.respostaValor=+rvI.value||12;setDirty();};
-  const ruI=q('[data-distrespunid]');if(ruI)ruI.onchange=()=>{d.respostaUnidade=ruI.value;setDirty();};}
+  const ruI=q('[data-distrespunid]');if(ruI)ruI.onchange=()=>{d.respostaUnidade=ruI.value;setDirty();};
+  const rpB=q('[data-distreport]');if(rpB)rpB.onclick=async e=>{e.stopPropagation();
+   showPanel('Distribuídos por corretor','<div style="font-size:12px;color:var(--ink-faint);padding:8px 0">Carregando…</div>');
+   let rows=[];try{rows=await sbGet('/motor_execucoes?automacao_id=eq.'+cur.id+'&bloco_id=eq.'+encodeURIComponent(n.id)+'&evento=eq.distribuicao&status=eq.ok&select=detalhe,criado_em&order=criado_em.desc&limit=2000');}catch(err){showPanel('Distribuídos por corretor','<div style="color:var(--err);font-size:12px">Erro: '+esc(err.message)+'</div>');return;}
+   const nomeDe=t=>{const m=/Lead (?:distribuido para|ja pertence a) ([^\-(]+)/.exec(t||'');return m?m[1].trim():null;};
+   const agora=Date.now(),DIA=86400000;
+   const periodos=[['Hoje',d0=>agora-d0<DIA&&new Date(agora).toDateString()===new Date(d0).toDateString()],['Últimos 7 dias',d0=>agora-d0<7*DIA],['Últimos 30 dias',d0=>agora-d0<30*DIA],['Tudo',()=>true]];
+   const html=periodos.map(([lbl,fn])=>{const c={};let tot=0;rows.forEach(r=>{const nm=nomeDe(r.detalhe);if(!nm)return;if(!fn(new Date(r.criado_em).getTime()))return;c[nm]=(c[nm]||0)+1;tot++;});
+    const ent=Object.entries(c).sort((a,b)=>b[1]-a[1]);const max=Math.max(1,...ent.map(x=>x[1]));
+    return '<div style="margin:14px 0 4px;font-size:12px;font-weight:800;color:var(--ink)">'+lbl+' <span style="color:var(--ink-faint);font-weight:600">('+tot+' leads)</span></div>'+(ent.length?ent.map(([nm,qt])=>'<div style="display:grid;grid-template-columns:110px 1fr 34px;gap:8px;align-items:center;padding:4px 0;font-size:12px"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(nm)+'</span><div style="height:9px;border-radius:6px;background:var(--line-soft);overflow:hidden"><div style="height:100%;width:'+Math.round(qt/max*100)+'%;background:var(--brand);border-radius:6px"></div></div><b style="text-align:right">'+qt+'</b></div>').join(''):'<div style="font-size:11.5px;color:var(--ink-faint)">Nenhum lead no período.</div>');
+   }).join('');
+   showPanel('Distribuídos por corretor — '+esc(cur.nome),html+'<div style="margin-top:14px;font-size:10.5px;color:var(--ink-faint)">Conta distribuições OK deste bloco (inclui leads mantidos com o corretor atual). Fonte: log do motor.</div>');};}
  if(n.type==='send-approach'){const o=n.opts=n.opts||{};
   const sp=q('[data-sapprod]');if(sp)sp.onchange=()=>{o.produtoId=+sp.value||0;o.abordagemIds=[];setDirty();reNode(n);};
   qa('[data-sapab]').forEach(cb=>cb.onchange=()=>{const id=+cb.dataset.sapab;o.abordagemIds=o.abordagemIds||[];const ix=o.abordagemIds.indexOf(id);if(cb.checked&&ix<0)o.abordagemIds.push(id);else if(!cb.checked&&ix>=0)o.abordagemIds.splice(ix,1);setDirty();});}
