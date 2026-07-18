@@ -253,7 +253,7 @@ export function CrmWorkspace({ accessToken, initialDealId = null, onInitialDealH
     {!loading && !error && data && view === "analytics" && <AnalyticsView data={data} onOpen={(dealId) => setSelectedDealId(dealId)} />}
     {selectedDeal && selectedLead && data && <LeadDrawer key={selectedDeal.id} accessToken={accessToken} lead={selectedLead} deal={selectedDeal} data={data} onClose={() => { setSelectedDealId(null); setMessage(null); }} onMutate={mutate} onReload={() => load({ quiet: true })} setMessage={setMessage} />}
     {chatDealId && data && leadById.get(data.deals.find((deal) => deal.id === chatDealId)?.lead_id ?? -1) && <LeadChatDrawer key={chatDealId} accessToken={accessToken} lead={leadById.get(data.deals.find((deal) => deal.id === chatDealId)!.lead_id)!} deal={data.deals.find((deal) => deal.id === chatDealId)!} corretorNome={data.brokers.find((b) => b.id === leadById.get(data.deals.find((deal) => deal.id === chatDealId)!.lead_id)?.corretor_id)?.nome} onClose={() => setChatDealId(null)} onResponse={async () => { await mutate({ action: "acknowledgeResponse", dealId: chatDealId }); setMessage("Resposta registrada e alerta encerrado."); }} />}
-    {stageConfigOpen && data && <StageConfigModal pipelines={data.pipelines} stages={data.stages} deals={data.deals} products={data.products} initialPipelineId={pipelineId} onClose={() => setStageConfigOpen(false)} onChanged={async () => { await load({ quiet: true }); }} />}
+    {stageConfigOpen && data && <StageConfigModal pipelines={data.pipelines} stages={data.stages} deals={data.deals} leads={data.leads} products={data.products} initialPipelineId={pipelineId} onClose={() => setStageConfigOpen(false)} onChanged={async () => { await load({ quiet: true }); }} />}
     {bulkMoveOpen && data && pipelineId && <BulkMoveModal pipelineId={pipelineId} stages={activeStages} deals={data.deals.filter((deal) => deal.pipeline_id === pipelineId)} onClose={() => setBulkMoveOpen(false)} onMove={async (fromStageId, toStageId) => { await mutate({ action: "bulkMoveStage", pipelineId, fromStageId, toStageId }); setBulkMoveOpen(false); setMessage("Todos os negócios da etapa foram movidos."); }} />}
     {createOpen && data && <CreateLeadModal pipelines={data.pipelines} brokers={data.brokers} initialPipelineId={pipelineId} sessionRole={sessionRole} onClose={() => { setCreateOpen(false); setMessage(null); }} onCreate={async (payload) => { await mutate({ action: "createLead", ...payload }); setCreateOpen(false); setMessage("Novo lead criado e inserido na primeira etapa."); }} />}
   </div>;
@@ -598,7 +598,7 @@ function CreateLeadModal({ pipelines, brokers, initialPipelineId, sessionRole = 
 }
 
 /* Doc §6 — Gerenciador de funis e etapas (admin): criar/renomear/reordenar/excluir etapas e funis por produto. */
-function StageConfigModal({ pipelines, stages, deals, products, initialPipelineId, onClose, onChanged }: { pipelines: Array<Pipeline & { empreendimento_id?: string | null }>; stages: Stage[]; deals: Deal[]; products: Product[]; initialPipelineId: number | null; onClose: () => void; onChanged: () => Promise<void> }) {
+function StageConfigModal({ pipelines, stages, deals, leads, products, initialPipelineId, onClose, onChanged }: { pipelines: Array<Pipeline & { empreendimento_id?: string | null }>; stages: Stage[]; deals: Deal[]; leads: Lead[]; products: Product[]; initialPipelineId: number | null; onClose: () => void; onChanged: () => Promise<void> }) {
   const [pipelineId, setPipelineId] = useState<number | null>(initialPipelineId ?? pipelines[0]?.id ?? null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
@@ -606,11 +606,19 @@ function StageConfigModal({ pipelines, stages, deals, products, initialPipelineI
   const [pipelineName, setPipelineName] = useState("");
   const [pipelineProduct, setPipelineProduct] = useState("");
   const [creatingPipeline, setCreatingPipeline] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [confirmText, setConfirmText] = useState("");
+  const [destinoId, setDestinoId] = useState("");
   const current = pipelines.find((pipeline) => pipeline.id === pipelineId) ?? null;
   const currentStages = stages.filter((stage) => stage.pipeline_id === pipelineId).sort((a, b) => a.ordem - b.ordem);
   const dealCount = (stageId: number) => deals.filter((deal) => deal.stage_id === stageId).length;
+  const pipelineDeals = deals.filter((deal) => deal.pipeline_id === pipelineId).length;
+  const pipelineLeads = leads.filter((lead) => lead.pipeline_id === pipelineId).length;
+  const hasContent = pipelineDeals + pipelineLeads > 0;
+  const otherPipelines = pipelines.filter((pipeline) => pipeline.id !== pipelineId);
+  const canConfirmDelete = confirmText.trim().toLowerCase() === "remover" && (!hasContent || !!destinoId);
 
-  useEffect(() => { setPipelineName(current?.nome ?? ""); setPipelineProduct((current as { empreendimento_id?: string | null } | null)?.empreendimento_id ?? ""); }, [pipelineId, current]);
+  useEffect(() => { setPipelineName(current?.nome ?? ""); setPipelineProduct((current as { empreendimento_id?: string | null } | null)?.empreendimento_id ?? ""); setDeleteOpen(false); setConfirmText(""); setDestinoId(""); }, [pipelineId, current]);
 
   const run = async (action: () => Promise<{ error: { message: string } | null }>, success: string) => {
     setBusy(true); setMessage("");
@@ -647,9 +655,31 @@ function StageConfigModal({ pipelines, stages, deals, products, initialPipelineI
         <button type="button" onClick={() => setCreatingPipeline(false)}>Cancelar</button>
       </> : <button type="button" onClick={() => { setCreatingPipeline(true); setPipelineName(""); }}>＋ Novo funil por produto</button>}
     </div>
+    <div className="stage-config-delete" style={{ marginTop: 14, paddingTop: 12, borderTop: "1px solid #f0ece9" }}>
+      {!deleteOpen ? (
+        <button type="button" style={dangerBtn} disabled={busy || !pipelineId || pipelines.length <= 1} title={pipelines.length <= 1 ? "Não é possível excluir o único funil." : "Excluir este funil"} onClick={() => { setDeleteOpen(true); setConfirmText(""); setDestinoId(""); }}>🗑 Excluir funil</button>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 9, padding: 13, border: "1px solid #f0caca", background: "#fdf3f3", borderRadius: 12 }}>
+          <strong style={{ fontSize: 13 }}>Excluir o funil “{current?.nome}”?</strong>
+          {hasContent ? (
+            <>
+              <p style={{ margin: 0, fontSize: 12, color: "#8a4a44" }}>Este funil tem <b>{pipelineDeals}</b> negócio(s) e <b>{pipelineLeads}</b> lead(s). Escolha para qual funil mover tudo — nada será apagado (bolsão):</p>
+              <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12 }}>Mover leads/negócios para<select value={destinoId} onChange={(event) => setDestinoId(event.target.value)}><option value="">Selecione o funil de destino</option>{otherPipelines.map((pipeline) => <option value={pipeline.id} key={pipeline.id}>{pipeline.nome}</option>)}</select></label>
+            </>
+          ) : <p style={{ margin: 0, fontSize: 12, color: "#8a4a44" }}>Este funil está vazio. A exclusão é definitiva.</p>}
+          <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12 }}>Para confirmar, digite <b>remover</b><input autoFocus value={confirmText} onChange={(event) => setConfirmText(event.target.value)} placeholder="remover" /></label>
+          <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+            <button type="button" onClick={() => setDeleteOpen(false)}>Cancelar</button>
+            <button type="button" style={{ ...dangerBtn, opacity: (busy || !canConfirmDelete) ? 0.5 : 1 }} disabled={busy || !canConfirmDelete} onClick={() => { const alvo = pipelineId; void run(() => rpc.rpc("crm_funil_excluir", { p_id: alvo, p_destino_id: hasContent ? Number(destinoId) : null }), "Funil excluído.").then(() => { setDeleteOpen(false); setConfirmText(""); setDestinoId(""); setPipelineId(pipelines.find((pipeline) => pipeline.id !== alvo)?.id ?? null); }); }}>Remover funil</button>
+          </div>
+        </div>
+      )}
+    </div>
     <footer><span className="stage-config-hint">Etapas com negócios não podem ser excluídas — mova os negócios antes (Ações em massa).</span><button type="button" onClick={onClose}>Fechar</button></footer>
   </form></div>;
 }
+
+const dangerBtn: CSSProperties = { background: "#c9443d", color: "#fff", border: 0, borderRadius: 9, padding: "9px 14px", fontWeight: 700, cursor: "pointer" };
 
 function StageConfigRow({ stage, count, busy, onRename, onMove, onDelete }: { stage: Stage; count: number; busy: boolean; onRename: (name: string, color: string) => void; onMove: (direction: number) => void; onDelete: () => void }) {
   const [name, setName] = useState(stage.rotulo || stage.nome);
