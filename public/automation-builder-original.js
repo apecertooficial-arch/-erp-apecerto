@@ -195,14 +195,14 @@ function hydrate(row){
  const nodes={};
  ids.forEach(id=>{const eb=edB[id]||{},ab=optById[id]||{};const type=ab.type||FAM2TYPE[eb.fam]||'action';
   const o=JSON.parse(JSON.stringify(ab.options||{}));
-  ['nextBlockId','errorNextBlockId','trueNextBlockId','falseNextBlockId','timeoutNextBlockId'].forEach(k=>delete o[k]);
+  ['nextBlockId','errorNextBlockId','trueNextBlockId','falseNextBlockId','timeoutNextBlockId','respondeuNextBlockId','naoRespondeuNextBlockId'].forEach(k=>delete o[k]);
   let ramos=(eb.ramos&&eb.ramos.length)?eb.ramos.map(r=>({id:r.id,name:r.name,perc:r.perc})):(o.randomizers||[]).map(r=>({id:r.id,name:r.name,perc:r.perc}));
   if(type==='randomizer')delete o.randomizers;
   if(type==='chat'&&!o.messages)o.messages=[{name:'send-text-message',options:{text:''}}];
   nodes[id]={id,type,sub:eb.sub||'',x:(eb.x??(ab.presentation&&ab.presentation.x)??80),y:(eb.y??(ab.presentation&&ab.presentation.y)??80),note:eb.note||'',ramos,opts:o,sourceBlockId:ab.sourceBlockId||(eb.extra&&eb.extra.sourceBlockId)||undefined};
  });
  let wires=(ed.wires||[]).slice();
- if(!wires.length){(au.blocks||[]).forEach(b=>{const o=b.options||{};if(o.nextBlockId)wires.push({from:b.id,port:'out',to:o.nextBlockId});if(o.trueNextBlockId)wires.push({from:b.id,port:'true',to:o.trueNextBlockId});if(o.falseNextBlockId)wires.push({from:b.id,port:'false',to:o.falseNextBlockId});if(o.errorNextBlockId)wires.push({from:b.id,port:'err',to:o.errorNextBlockId});if(o.timeoutNextBlockId)wires.push({from:b.id,port:'timeout',to:o.timeoutNextBlockId});(o.randomizers||[]).forEach(r=>{if(r.nextBlockId)wires.push({from:b.id,port:r.id,to:r.nextBlockId});});(o.conditions||[]).forEach(c=>{if(c.id&&c.trueNextBlockId)wires.push({from:b.id,port:c.id,to:c.trueNextBlockId});});});}
+ if(!wires.length){(au.blocks||[]).forEach(b=>{const o=b.options||{};if(o.nextBlockId)wires.push({from:b.id,port:'out',to:o.nextBlockId});if(o.trueNextBlockId)wires.push({from:b.id,port:'true',to:o.trueNextBlockId});if(o.falseNextBlockId)wires.push({from:b.id,port:'false',to:o.falseNextBlockId});if(o.errorNextBlockId)wires.push({from:b.id,port:'err',to:o.errorNextBlockId});if(o.timeoutNextBlockId)wires.push({from:b.id,port:'timeout',to:o.timeoutNextBlockId});if(o.respondeuNextBlockId)wires.push({from:b.id,port:'respondeu',to:o.respondeuNextBlockId});if(o.naoRespondeuNextBlockId)wires.push({from:b.id,port:'naoRespondeu',to:o.naoRespondeuNextBlockId});(o.randomizers||[]).forEach(r=>{if(r.nextBlockId)wires.push({from:b.id,port:r.id,to:r.nextBlockId});});(o.conditions||[]).forEach(c=>{if(c.id&&c.trueNextBlockId)wires.push({from:b.id,port:c.id,to:c.trueNextBlockId});});});}
  wires=wires.filter(w=>nodes[w.from]&&nodes[w.to]);
  return {id:row.id,nome:row.nome,grupo:row.grupo,ativa:row.ativa,status:row.status||'publicado',publicado_em:row.publicado_em,arquivada:!!row.arquivada,name:au.name||row.nome,provider:au.provider||'apecerto-erp',anotacoes:au.anotacoes||[],uid:ed.uid||100,notes:ed.notes||{},nodes,wires};
 }
@@ -303,6 +303,9 @@ function bodyHtml(n){
      `<div style="font-size:11px;color:var(--ink-faint);margin:6px 0 3px">Marque quais abordagens serão enviadas pelo número do corretor (o sistema alterna entre elas):</div>`+
      (abList.length?abList.map(a=>`<label style="display:flex;align-items:center;gap:7px;font-size:12px;padding:3px 0;cursor:pointer"><input type="checkbox" data-distab="${a.id}" ${selAb.indexOf(a.id)>=0?'checked':''} style="width:15px;height:15px;flex:0 0 auto">${esc(a.nome)} <span style="color:var(--ink-faint);font-size:10.5px">(${(a.mensagens||[]).length})</span></label>`).join(''):`<div style="font-size:11px;color:var(--ink-faint)">Sem abordagens aqui. Crie em <b>Abordagens (produtos)</b>.</div>`);
    })()+
+   (function(){const rv=d.respostaValor||12,ru=d.respostaUnidade||'horas';return `<div style="height:1px;background:var(--line-soft);margin:11px 0 6px"></div><div class="ne-lb" style="margin-top:0">Mapeamento da resposta</div><div style="font-size:11px;color:var(--ink-faint);margin:2px 0 5px">Depois de enviar a abordagem, aguardar resposta por:</div><div class="ne-inline"><input class="ne-inp" type="number" min="1" data-distrespval value="${rv}" style="width:74px"><select class="ne-sel" data-distrespunid style="width:120px"><option ${ru==='minutos'?'selected':''}>minutos</option><option ${ru==='horas'?'selected':''}>horas</option><option ${ru==='dias'?'selected':''}>dias</option></select></div><div style="font-size:10.5px;color:var(--ink-faint);margin-top:4px">Ligue as saídas abaixo para ativar. Sem ligação = comportamento atual.</div>`;})()+
+   portRow('respondeu','Caso o lead RESPONDA no prazo','branch')+
+   portRow('naoRespondeu','Caso o lead NÃO responda','err')+
    portRow('out','Próximo passo','ok')+portRow('err','Se ninguém disponível','err');
  }
  if(n.type==='send-approach'){const o=n.opts||{};
@@ -434,7 +437,9 @@ function bindBody(n,el){
   const onl=q('[data-distonline]');if(onl)onl.onchange=()=>{d.onlineOnly=onl.checked;setDirty();};
   const neg=q('[data-distneg]');if(neg)neg.onchange=()=>{d.tambemNegocio=neg.checked;setDirty();};
   const prd=q('[data-distprod]');if(prd)prd.onchange=()=>{d.produtoId=+prd.value||0;d.abordagemIds=[];setDirty();reNode(n);};
-  qa('[data-distab]').forEach(cb=>cb.onchange=()=>{const id=+cb.dataset.distab;d.abordagemIds=d.abordagemIds||[];const ix=d.abordagemIds.indexOf(id);if(cb.checked&&ix<0)d.abordagemIds.push(id);else if(!cb.checked&&ix>=0)d.abordagemIds.splice(ix,1);setDirty();});}
+  qa('[data-distab]').forEach(cb=>cb.onchange=()=>{const id=+cb.dataset.distab;d.abordagemIds=d.abordagemIds||[];const ix=d.abordagemIds.indexOf(id);if(cb.checked&&ix<0)d.abordagemIds.push(id);else if(!cb.checked&&ix>=0)d.abordagemIds.splice(ix,1);setDirty();});
+  const rvI=q('[data-distrespval]');if(rvI)rvI.onchange=()=>{d.respostaValor=+rvI.value||12;setDirty();};
+  const ruI=q('[data-distrespunid]');if(ruI)ruI.onchange=()=>{d.respostaUnidade=ruI.value;setDirty();};}
  if(n.type==='send-approach'){const o=n.opts=n.opts||{};
   const sp=q('[data-sapprod]');if(sp)sp.onchange=()=>{o.produtoId=+sp.value||0;o.abordagemIds=[];setDirty();reNode(n);};
   qa('[data-sapab]').forEach(cb=>cb.onchange=()=>{const id=+cb.dataset.sapab;o.abordagemIds=o.abordagemIds||[];const ix=o.abordagemIds.indexOf(id);if(cb.checked&&ix<0)o.abordagemIds.push(id);else if(!cb.checked&&ix>=0)o.abordagemIds.splice(ix,1);setDirty();});}
@@ -524,7 +529,7 @@ function addNode(type,x,y){const id='b'+(cur.uid++);const base={id,type,sub:'',x
 function routeFor(n){const outs=cur.wires.filter(w=>w.from===n.id),by=p=>(outs.find(w=>w.port===p)||{}).to||'';const o=JSON.parse(JSON.stringify(n.opts||{}));
  if(n.type==='condition'){o.trueNextBlockId=by('true');o.falseNextBlockId=by('false');o.conditions=(n.opts.conditions||[]).map(c=>({id:c.id,name:c.name,group:c.group||'',options:c.options||{},trueNextBlockId:by(c.id)}));}
  else if(n.type==='randomizer'){o.randomizers=(n.ramos||[]).map(r=>({id:r.id,name:r.name,perc:r.perc,nextBlockId:by(r.id)}));}
- else{o.nextBlockId=by('out');if(['action','chat','field-operation','api','distribution'].includes(n.type))o.errorNextBlockId=by('err');if(n.type==='chat')o.timeoutNextBlockId=by('timeout');}
+ else{o.nextBlockId=by('out');if(['action','chat','field-operation','api','distribution'].includes(n.type))o.errorNextBlockId=by('err');if(n.type==='chat')o.timeoutNextBlockId=by('timeout');if(n.type==='distribution'){o.respondeuNextBlockId=by('respondeu');o.naoRespondeuNextBlockId=by('naoRespondeu');}}
  return o;}
 function compile(){const blocks=Object.values(cur.nodes).map(n=>{if(!n.sourceBlockId)n.sourceBlockId=_uuid();return {id:n.id,type:n.type,options:routeFor(n),presentation:{x:Math.round(n.x),y:Math.round(n.y)},sourceBlockId:n.sourceBlockId};});
  const eb={};Object.values(cur.nodes).forEach(n=>{eb[n.id]={id:n.id,fam:TYPES[n.type].fam,sub:n.sub||'',x:Math.round(n.x),y:Math.round(n.y),note:n.note||'',extra:{},parts:[],ramos:n.ramos||[],noteOpen:false};});
