@@ -2158,3 +2158,39 @@ input:focus, select:focus, textarea:focus {
   border: 0 !important;
 }
 .auth-brand > span svg { display: none !important; }
+
+/* ==================================================================
+   CARDS COLORIDOS (referência do redesign) — Início e Financeiro
+   Tinge o card inteiro pela cor do ícone, com blob decorativo. CSS only.
+   ================================================================== */
+/* --- Início: KPIs --- */
+.home-kpis article{position:relative;overflow:hidden;background:#fff6ee}
+.home-kpis article:has(i.purple){background:#f9f0fd}
+.home-kpis article:has(i.green){background:#eff9f2}
+.home-kpis article:has(i.teal){background:#e9f6f3}
+.home-kpis article:has(i.yellow){background:#fdf6e6}
+.home-kpis article::after{content:'';position:absolute;right:-24px;top:-24px;width:86px;height:86px;border-radius:50%;background:var(--orange-100);opacity:.55;z-index:0}
+.home-kpis article:has(i.purple)::after{background:#ecd6f7}
+.home-kpis article:has(i.green)::after{background:#c9edd6}
+.home-kpis article:has(i.teal)::after{background:#c4e9e2}
+.home-kpis article:has(i.yellow)::after{background:#f6e3b6}
+.home-kpis article::before{content:'';position:absolute;right:24px;bottom:-32px;width:60px;height:60px;border-radius:50%;background:inherit;opacity:.28;z-index:0}
+.home-kpis article > *{position:relative;z-index:1}
+/* --- Financeiro: KPIs (ícone volta a ser sólido para contraste no card colorido) --- */
+.finance-kpis article{position:relative;overflow:hidden}
+.finance-kpis article:has(i.orange){background:#fff6ee}
+.finance-kpis article:has(i.green){background:#eff9f2}
+.finance-kpis article:has(i.red){background:#fdefef}
+.finance-kpis article:has(i.blue){background:#eef3fd}
+.finance-kpis article:has(i.purple){background:#f9f0fd}
+.finance-kpis i.orange{background:var(--orange)!important;color:#fff!important}
+.finance-kpis i.green{background:var(--green)!important;color:#fff!important}
+.finance-kpis i.red{background:var(--red)!important;color:#fff!important}
+.finance-kpis i.blue{background:var(--blue)!important;color:#fff!important}
+.finance-kpis i.purple{background:var(--purple)!important;color:#fff!important}
+.finance-kpis article::after{content:'';position:absolute;right:-20px;top:-20px;width:72px;height:72px;border-radius:50%;background:var(--orange-100);opacity:.5;z-index:0}
+.finance-kpis article:has(i.green)::after{background:#c9edd6}
+.finance-kpis article:has(i.red)::after{background:#f6cdcd}
+.finance-kpis article:has(i.blue)::after{background:#cfe0fb}
+.finance-kpis article:has(i.purple)::after{background:#ecd6f7}
+.finance-kpis article > *{position:relative;z-index:1}
