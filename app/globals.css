@@ -365,23 +365,23 @@ button { cursor:pointer; }
 .team-filters button { min-height:31px; padding:0 12px; border:1px solid #ded7d2; border-radius:999px; background:#fff; color:#5e5651; font-size:8px; cursor:pointer; }
 .team-filters button.active { border-color:#ff6500; background:#fff0e7; color:#d75505; font-weight:800; }
 .team-table { overflow:hidden; border:1px solid #e8e1dc; border-radius:14px; background:#fff; box-shadow:0 2px 7px rgba(45,32,25,.03); }
-.team-head,.team-row { display:grid; grid-template-columns:2.3fr 1fr 2fr .9fr .9fr .75fr; gap:12px; align-items:center; padding:12px 18px; }
-.team-head { background:#f3f0ee; color:#766d67; font-size:7px; font-weight:850; letter-spacing:.06em; text-transform:uppercase; }
-.team-row { width:100%; min-height:58px; border:0; border-top:1px solid #eee9e5; background:#fff; color:inherit; text-align:left; cursor:pointer; }
+.team-head,.team-row { display:grid; grid-template-columns:2.3fr 1fr 2fr .9fr .9fr .75fr; gap:12px; align-items:center; padding:15px 20px; }
+.team-head { background:#f3f0ee; color:#766d67; font-size:11px; font-weight:850; letter-spacing:.06em; text-transform:uppercase; }
+.team-row { width:100%; min-height:74px; border:0; border-top:1px solid #eee9e5; background:#fff; color:inherit; text-align:left; cursor:pointer; font-size:14px; }
 .team-row:hover { background:#fff9f5; }
-.team-person { min-width:0; display:flex; align-items:center; gap:10px; }
-.team-person>b { width:34px; height:34px; display:grid; place-items:center; flex:0 0 auto; border-radius:50%; background:#ead7f5; color:#752aa1; font-size:9px; }
-.team-person>em { min-width:0; display:flex; flex-direction:column; gap:2px; font-style:normal; }
+.team-person { min-width:0; display:flex; align-items:center; gap:12px; }
+.team-person>b { width:44px; height:44px; display:grid; place-items:center; flex:0 0 auto; border-radius:50%; background:#ead7f5; color:#752aa1; font-size:15px; }
+.team-person>em { min-width:0; display:flex; flex-direction:column; gap:3px; font-style:normal; }
 .team-person strong,.team-person small { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.team-person strong { font-size:9px; }.team-person small { color:#958b85; font-size:7px; }
-.team-row mark { padding:3px 7px; border-radius:999px; background:#f4e6dc; color:#ad570f; font-size:7px; }
-.team-instances { display:flex; gap:4px; flex-wrap:wrap; color:#9b918a; font-size:7px; }
-.team-instances i { padding:3px 6px; border-radius:999px; background:#dff2ee; color:#267b6b; font-style:normal; white-space:nowrap; }
-.status-active,.status-inactive { padding:3px 7px; border-radius:999px; background:#e5f5ea; color:#25814e; font-size:7px; font-style:normal; }
+.team-person strong { font-size:15px; }.team-person small { color:#958b85; font-size:12px; }
+.team-row mark { padding:5px 11px; border-radius:999px; background:#f4e6dc; color:#ad570f; font-size:12px; }
+.team-instances { display:flex; gap:5px; flex-wrap:wrap; color:#9b918a; font-size:12px; }
+.team-instances i { padding:4px 9px; border-radius:999px; background:#dff2ee; color:#267b6b; font-style:normal; white-space:nowrap; }
+.status-active,.status-inactive { padding:5px 11px; border-radius:999px; background:#e5f5ea; color:#25814e; font-size:12px; font-style:normal; }
 .status-inactive { background:#f2efed; color:#8b817a; }
-.online-state { display:flex; align-items:center; gap:6px; color:#766d67; font-size:7px; }
-.online-state>i { width:7px; height:7px; border-radius:50%; background:#c9c2bd; }.online-state>i.on { background:#1dab62; box-shadow:0 0 0 3px #e5f7ed; }
-.row-action { color:#d85a09; font-size:7px; }
+.online-state { display:flex; align-items:center; gap:7px; color:#766d67; font-size:12px; }
+.online-state>i { width:9px; height:9px; border-radius:50%; background:#c9c2bd; }.online-state>i.on { background:#1dab62; box-shadow:0 0 0 3px #e5f7ed; }
+.row-action { color:#d85a09; font-size:13px; font-weight:700; }
 .workspace-loading,.workspace-error { min-height:280px; display:grid; place-items:center; color:#8d837d; font-size:10px; }
 .workspace-error button { margin-left:10px; border:0; border-radius:9px; padding:8px 11px; background:#ff6500; color:#fff; }
 .team-drawer-scrim { position:fixed; inset:0; z-index:210; display:flex; justify-content:flex-end; background:rgba(39,31,27,.3); }
