@@ -38,6 +38,9 @@ export function AgentTrainingWorkspace({ accessToken }: { accessToken: string })
   const [batResults, setBatResults] = useState([]);
   const [showArq, setShowArq] = useState(false);
 
+  // editor de fontes
+  const [fonteEdit, setFonteEdit] = useState(null);
+
   const api = useCallback(async (method, path, body) => {
     const res = await fetch(path, {
       method,
@@ -84,6 +87,25 @@ export function AgentTrainingWorkspace({ accessToken }: { accessToken: string })
     if (!detail) return;
     setBusy(true); setNotice(null);
     try { await api("POST", "/api/agentes", { action: "toggleFerramenta", agente_id: detail.agente.id, ferramenta_id, habilitado }); await loadDetail(slug); }
+    catch (e) { setNotice(e.message); } finally { setBusy(false); }
+  };
+
+  const salvarFonte = async () => {
+    if (!fonteEdit?.titulo?.trim()) { setNotice("Informe o título da fonte."); return; }
+    setBusy(true); setNotice(null);
+    try {
+      await api("POST", "/api/agentes", {
+        action: "salvarFonte", agente_id: detail.agente.id, fonte_id: fonteEdit.id || undefined,
+        titulo: fonteEdit.titulo, tipo: fonteEdit.tipo, conteudo: fonteEdit.conteudo,
+        responsavel: fonteEdit.responsavel, versao: fonteEdit.versao, validade: fonteEdit.validade || null, situacao: fonteEdit.situacao,
+      });
+      setFonteEdit(null); await loadDetail(slug); setNotice("Fonte salva.");
+    } catch (e) { setNotice(e.message); } finally { setBusy(false); }
+  };
+
+  const vincularFonte = async (fonteId, vincular) => {
+    setBusy(true); setNotice(null);
+    try { await api("POST", "/api/agentes", { action: "vincularFonte", agente_id: detail.agente.id, fonte_id: fonteId, vincular }); await loadDetail(slug); }
     catch (e) { setNotice(e.message); } finally { setBusy(false); }
   };
 
@@ -201,13 +223,27 @@ export function AgentTrainingWorkspace({ accessToken }: { accessToken: string })
 
               {tab === "conhecimento" && (
                 <div className="lab-panel">
-                  {detail.fontes.length ? detail.fontes.map((f) => (
-                    <article className="lab-source" key={f.id}>
-                      <div><strong>{f.titulo}</strong><small>{f.tipo || "documento"} · v{f.versao || "?"} · resp. {f.responsavel || "—"}</small></div>
-                      <span className={`badge ${f.situacao === "aprovada" ? "ok" : "warn"}`}>{f.situacao}</span>
-                    </article>
-                  )) : <div className="lab-empty">Nenhuma fonte ligada a este agente ainda.</div>}
-                  <p className="lab-hint">As fontes aprovadas são injetadas na resposta em tempo real como base de conhecimento. Cadastro/edição de fontes entra na próxima etapa deste laboratório.</p>
+                  <div className="lab-battery-head">
+                    <div><strong>Base de conhecimento</strong><small>{(detail.fonteLinks || []).length} vinculada(s) a este agente · {detail.fontes.length} na biblioteca</small></div>
+                    <button className="primary" type="button" onClick={() => setFonteEdit({ id: null, titulo: "", tipo: "Playbook", conteudo: "", responsavel: "", versao: "1.0", validade: "", situacao: "rascunho" })}>＋ Nova fonte</button>
+                  </div>
+                  {detail.fontes.length ? detail.fontes.map((f) => {
+                    const vinc = (detail.fonteLinks || []).includes(f.id);
+                    return (
+                      <article className={`lab-source ${vinc ? "linked" : ""}`} key={f.id}>
+                        <div>
+                          <strong>{f.titulo}</strong>
+                          <small>{f.tipo || "documento"} · v{f.versao || "?"} · resp. {f.responsavel || "—"}{f.validade ? ` · vence ${new Date(f.validade).toLocaleDateString("pt-BR")}` : ""}</small>
+                        </div>
+                        <div className="lab-source-actions">
+                          <span className={`badge ${f.situacao === "aprovada" ? "ok" : f.situacao === "arquivada" || f.situacao === "vencida" ? "bad" : "warn"}`}>{f.situacao}</span>
+                          <button type="button" className="mini" disabled={busy} onClick={() => setFonteEdit({ ...f, validade: f.validade || "" })}>Editar</button>
+                          <button type="button" className={`toggle ${vinc ? "on" : ""}`} disabled={busy} onClick={() => vincularFonte(f.id, !vinc)}>{vinc ? "Vinculada" : "Vincular"}</button>
+                        </div>
+                      </article>
+                    );
+                  }) : <div className="lab-empty">Nenhuma fonte na biblioteca. Crie a primeira com “＋ Nova fonte”.</div>}
+                  <p className="lab-hint">Só fontes com situação <b>aprovada</b> e <b>vinculadas</b> são injetadas nas respostas do agente como verdade. Rascunho, vencida ou arquivada ficam guardadas mas não entram.</p>
                 </div>
               )}
 
@@ -299,6 +335,40 @@ export function AgentTrainingWorkspace({ accessToken }: { accessToken: string })
           )}
         </section>
       </div>
+
+      {fonteEdit && (
+        <div className="lab-drawer-scrim" onClick={() => setFonteEdit(null)}>
+          <aside className="lab-drawer" onClick={(e) => e.stopPropagation()}>
+            <header>
+              <div><span>{fonteEdit.id ? "EDITAR FONTE" : "NOVA FONTE"}</span><h3>Base de conhecimento</h3></div>
+              <button type="button" onClick={() => setFonteEdit(null)}>×</button>
+            </header>
+            <div className="lab-drawer-body">
+              <label className="lab-field"><span>Título</span><input value={fonteEdit.titulo} onChange={(e) => setFonteEdit({ ...fonteEdit, titulo: e.target.value })} placeholder="Ex.: Playbook de Atendimento Comercial" /></label>
+              <div className="lab-row">
+                <label className="lab-field small"><span>Tipo</span>
+                  <input list="lab-fonte-tipos" value={fonteEdit.tipo} onChange={(e) => setFonteEdit({ ...fonteEdit, tipo: e.target.value })} />
+                  <datalist id="lab-fonte-tipos"><option value="Playbook" /><option value="Política" /><option value="Tabela de preços" /><option value="Script" /><option value="FAQ" /><option value="Regras de financiamento" /><option value="Documento" /></datalist>
+                </label>
+                <label className="lab-field small"><span>Versão</span><input value={fonteEdit.versao} onChange={(e) => setFonteEdit({ ...fonteEdit, versao: e.target.value })} placeholder="1.0" /></label>
+              </div>
+              <div className="lab-row">
+                <label className="lab-field small"><span>Responsável</span><input value={fonteEdit.responsavel || ""} onChange={(e) => setFonteEdit({ ...fonteEdit, responsavel: e.target.value })} placeholder="Quem mantém" /></label>
+                <label className="lab-field small"><span>Validade (opcional)</span><input type="date" value={fonteEdit.validade || ""} onChange={(e) => setFonteEdit({ ...fonteEdit, validade: e.target.value })} /></label>
+                <label className="lab-field small"><span>Situação</span><select value={fonteEdit.situacao} onChange={(e) => setFonteEdit({ ...fonteEdit, situacao: e.target.value })}>
+                  <option value="rascunho">Rascunho</option><option value="aprovada">Aprovada</option><option value="vencida">Vencida</option><option value="arquivada">Arquivada</option>
+                </select></label>
+              </div>
+              <label className="lab-field"><span>Conteúdo (o que o agente vai usar como verdade)</span><textarea className="lab-prompt" rows={16} value={fonteEdit.conteudo || ""} onChange={(e) => setFonteEdit({ ...fonteEdit, conteudo: e.target.value })} placeholder="Cole aqui o playbook, a política, a tabela ou as regras. Este texto é injetado nas respostas quando a fonte está aprovada e vinculada." /></label>
+              <p className="lab-hint">Marque <b>Aprovada</b> só quando o conteúdo estiver revisado — é o que autoriza o agente a usá-lo.</p>
+            </div>
+            <footer>
+              <button type="button" onClick={() => setFonteEdit(null)}>Cancelar</button>
+              <button className="primary" type="button" disabled={busy || !fonteEdit.titulo?.trim()} onClick={salvarFonte}>{fonteEdit.id ? "Salvar fonte" : "Criar e vincular"}</button>
+            </footer>
+          </aside>
+        </div>
+      )}
     </div>
   );
 }

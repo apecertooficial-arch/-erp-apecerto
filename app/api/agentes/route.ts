@@ -48,15 +48,11 @@ export async function GET(request: Request) {
     auth.supabase.from("agente_execucoes").select("id,modelo,tokens_entrada,tokens_saida,custo_usd,status,ferramentas_acionadas,fontes_consultadas,latencia_ms,criado_em").eq("agente_id", agente.id).order("criado_em", { ascending: false }).limit(20),
   ]);
 
-  const linkIds = new Set((links.data ?? []).map((l) => l.fonte_id));
-  let fontes: unknown[] = [];
-  if (linkIds.size) {
-    const { data: fdata } = await auth.supabase
-      .from("agente_fontes")
-      .select("id,titulo,tipo,versao,situacao,responsavel,validade")
-      .in("id", [...linkIds]);
-    fontes = fdata ?? [];
-  }
+  const fonteLinks = (links.data ?? []).map((l) => l.fonte_id);
+  const { data: fontes } = await auth.supabase
+    .from("agente_fontes")
+    .select("id,titulo,tipo,conteudo,versao,situacao,responsavel,validade,atualizado_em")
+    .order("id", { ascending: false });
 
   // latest evaluation per cenario
   const latest = new Map<number, { cenario_id: number; agente_versao: number; nota_auto: number; aprovado: boolean; regras_descumpridas: string[] }>();
@@ -64,7 +60,8 @@ export async function GET(request: Request) {
 
   return Response.json({
     agente,
-    fontes,
+    fontes: fontes ?? [],
+    fonteLinks,
     ferramentas: ferrs.data ?? [],
     permissoes: perms.data ?? [],
     cenarios: cenarios.data ?? [],
@@ -100,6 +97,45 @@ export async function POST(request: Request) {
     const { error } = await auth.supabase
       .from("agente_ferramenta_permissoes")
       .upsert({ agente_id: agenteId, ferramenta_id: ferramentaId, habilitado }, { onConflict: "agente_id,ferramenta_id" });
+    return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ ok: true });
+  }
+
+  if (action === "salvarFonte") {
+    const SIT = ["rascunho", "aprovada", "vencida", "arquivada"];
+    const titulo = str(body.titulo, 200).trim();
+    if (!titulo) return Response.json({ error: "Informe o título da fonte." }, { status: 422 });
+    const row: Record<string, unknown> = {
+      titulo,
+      tipo: str(body.tipo, 60) || "documento",
+      conteudo: str(body.conteudo, 40000),
+      responsavel: str(body.responsavel, 120) || null,
+      versao: str(body.versao, 20) || null,
+      validade: (typeof body.validade === "string" && /^\d{4}-\d{2}-\d{2}$/.test(body.validade)) ? body.validade : null,
+      situacao: SIT.includes(body.situacao as string) ? body.situacao : "rascunho",
+      atualizado_em: new Date().toISOString(),
+    };
+    const fonteId = Number(body.fonte_id);
+    if (Number.isSafeInteger(fonteId) && fonteId > 0) {
+      const { error } = await auth.supabase.from("agente_fontes").update(row).eq("id", fonteId);
+      return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ ok: true, fonte_id: fonteId });
+    }
+    const { data, error } = await auth.supabase.from("agente_fontes").insert(row).select("id").maybeSingle();
+    if (error || !data) return Response.json({ error: error?.message || "Falha ao criar fonte." }, { status: 502 });
+    const agenteId = Number(body.agente_id);
+    if (Number.isSafeInteger(agenteId)) {
+      await auth.supabase.from("agente_fonte_links").upsert({ agente_id: agenteId, fonte_id: data.id }, { onConflict: "agente_id,fonte_id" });
+    }
+    return Response.json({ ok: true, fonte_id: data.id });
+  }
+
+  if (action === "vincularFonte") {
+    const agenteId = Number(body.agente_id), fonteId = Number(body.fonte_id);
+    if (!Number.isSafeInteger(agenteId) || !Number.isSafeInteger(fonteId)) return Response.json({ error: "Parâmetros inválidos." }, { status: 422 });
+    if (body.vincular === true) {
+      const { error } = await auth.supabase.from("agente_fonte_links").upsert({ agente_id: agenteId, fonte_id: fonteId }, { onConflict: "agente_id,fonte_id" });
+      return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ ok: true });
+    }
+    const { error } = await auth.supabase.from("agente_fonte_links").delete().eq("agente_id", agenteId).eq("fonte_id", fonteId);
     return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ ok: true });
   }
 
