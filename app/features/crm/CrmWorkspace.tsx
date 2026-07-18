@@ -94,6 +94,9 @@ export function CrmWorkspace({ accessToken, initialDealId = null, onInitialDealH
   const [stageId, setStageId] = useState<number | null>(null);
   const [brokerId, setBrokerId] = useState<number | null>(null);
   const [origin, setOrigin] = useState("");
+  const [dateFrom, setDateFrom] = useState(""); /* Doc: filtro por data de entrada */
+  const [dateTo, setDateTo] = useState("");
+  const [productFilter, setProductFilter] = useState("");
   const [tag, setTag] = useState("");
   const [group, setGroup] = useState<number | null>(null);
   const [overdueOnly, setOverdueOnly] = useState(false);
@@ -150,7 +153,7 @@ export function CrmWorkspace({ accessToken, initialDealId = null, onInitialDealH
   const activeStages = useMemo(() => (data?.stages ?? []).filter((stage) => stage.pipeline_id === pipelineId), [data, pipelineId]);
   const allTags = useMemo(() => [...new Set((data?.leads ?? []).flatMap((lead) => tagList(lead.tags)))].sort(), [data]);
   const origins = useMemo(() => [...new Set((data?.leads ?? []).map((lead) => lead.origem).filter((item): item is string => Boolean(item)))].sort(), [data]);
-  const activeFilterCount = [stageId, brokerId, origin, tag, group].filter(Boolean).length;
+  const activeFilterCount = [stageId, brokerId, origin, tag, group, dateFrom, dateTo, productFilter].filter(Boolean).length;
   const slaByDeal = useMemo(() => new Map((data?.sla ?? []).filter((item) => item.negocio_id).map((item) => [item.negocio_id!, item])), [data]);
   const filteredDeals = useMemo(() => (data?.deals ?? []).filter((deal) => {
     const lead = leadById.get(deal.lead_id);
@@ -161,8 +164,10 @@ export function CrmWorkspace({ accessToken, initialDealId = null, onInitialDealH
     const haystack = `${lead.nome ?? ""} ${lead.telefone ?? ""} ${lead.email ?? ""}`.toLowerCase();
     return (!query || haystack.includes(query.toLowerCase())) && (!stageId || deal.stage_id === stageId)
       && (!brokerId || (deal.corretor_id ?? lead.corretor_id) === brokerId) && (!origin || lead.origem === origin)
-      && (!tag || tagList(lead.tags).includes(tag)) && (!group || stage?.grupo === group) && (!overdueOnly || overdue);
-  }), [data, leadById, activeStages, pipelineId, query, stageId, brokerId, origin, tag, group, overdueOnly, slaByDeal]);
+      && (!tag || tagList(lead.tags).includes(tag)) && (!group || stage?.grupo === group) && (!overdueOnly || overdue)
+      && (!dateFrom || (lead.criado_em ?? "") >= dateFrom) && (!dateTo || (lead.criado_em ?? "") <= `${dateTo}T23:59:59`)
+      && (!productFilter || deal.empreendimento_id === productFilter);
+  }), [data, leadById, activeStages, pipelineId, query, stageId, brokerId, origin, tag, group, overdueOnly, slaByDeal, dateFrom, dateTo, productFilter]);
   const overdueCount = useMemo(() => (data?.deals ?? []).filter((deal) => { const sla = slaByDeal.get(deal.id); return deal.pipeline_id === pipelineId && Boolean(sla && (sla.alarme_ativo || sla.cor_ativa === "vermelho")); }).length, [data, pipelineId, slaByDeal]);
   const visibleStages = useMemo(() => activeStages.filter((stage) => !group || stage.grupo === group), [activeStages, group]);
   const selectedDeal = data?.deals.find((deal) => deal.id === selectedDealId) ?? null;
@@ -241,7 +246,7 @@ export function CrmWorkspace({ accessToken, initialDealId = null, onInitialDealH
       {view === "pipeline" && <button className="crm-bulk-trigger" type="button" onClick={() => setBulkMoveOpen(true)}>⇄ Mover etapa inteira</button>}
       <span className="crm-result-count">{filteredDeals.length} negócios</span>
     </section>
-    {filtersOpen && <section className="crm-filter-sheet"><label>Etapa<select value={stageId ?? ""} onChange={(event) => setStageId(event.target.value ? Number(event.target.value) : null)}><option value="">Todas</option>{activeStages.map((stage) => <option value={stage.id} key={stage.id}>{stage.rotulo || stage.nome}</option>)}</select></label><label>Responsável<select value={brokerId ?? ""} onChange={(event) => setBrokerId(event.target.value ? Number(event.target.value) : null)}><option value="">Todos</option>{(data?.brokers ?? []).map((broker) => <option value={broker.id} key={broker.id}>{broker.nome}</option>)}</select></label><label>Origem<select value={origin} onChange={(event) => setOrigin(event.target.value)}><option value="">Todas</option>{origins.map((item) => <option key={item}>{item}</option>)}</select></label><label>Tag<select value={tag} onChange={(event) => setTag(event.target.value)}><option value="">Todas</option>{allTags.map((item) => <option key={item}>{item}</option>)}</select></label><button type="button" onClick={() => { setStageId(null); setBrokerId(null); setOrigin(""); setTag(""); setGroup(null); }}>Limpar</button></section>}
+    {filtersOpen && <section className="crm-filter-sheet"><label>Etapa<select value={stageId ?? ""} onChange={(event) => setStageId(event.target.value ? Number(event.target.value) : null)}><option value="">Todas</option>{activeStages.map((stage) => <option value={stage.id} key={stage.id}>{stage.rotulo || stage.nome}</option>)}</select></label><label>Responsável<select value={brokerId ?? ""} onChange={(event) => setBrokerId(event.target.value ? Number(event.target.value) : null)}><option value="">Todos</option>{(data?.brokers ?? []).map((broker) => <option value={broker.id} key={broker.id}>{broker.nome}</option>)}</select></label><label>Origem<select value={origin} onChange={(event) => setOrigin(event.target.value)}><option value="">Todas</option>{origins.map((item) => <option key={item}>{item}</option>)}</select></label><label>Tag<select value={tag} onChange={(event) => setTag(event.target.value)}><option value="">Todas</option>{allTags.map((item) => <option key={item}>{item}</option>)}</select></label><label>Entrada de<input type="date" value={dateFrom} onChange={(event) => setDateFrom(event.target.value)} /></label><label>Entrada até<input type="date" value={dateTo} onChange={(event) => setDateTo(event.target.value)} /></label><label>Produto<select value={productFilter} onChange={(event) => setProductFilter(event.target.value)}><option value="">Todos</option>{(data?.products ?? []).map((product) => <option value={product.id} key={product.id}>{product.nome}</option>)}</select></label><button type="button" onClick={() => { setStageId(null); setBrokerId(null); setOrigin(""); setTag(""); setGroup(null); setDateFrom(""); setDateTo(""); setProductFilter(""); }}>Limpar</button></section>}
     {message && <div className="crm-toast" onClick={() => setMessage(null)}>{message}<button type="button">×</button></div>}
     {loading && <div className="crm-loading"><span /><strong>Montando seu CRM com os dados reais…</strong></div>}
     {error && <div className="crm-error">{error}<button type="button" onClick={() => void load()}>Tentar novamente</button></div>}
