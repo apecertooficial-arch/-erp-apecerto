@@ -52,6 +52,7 @@ const TYPES={
  randomizer:{fam:'randomizador',label:'Randomizador',vis:'random',cvar:'--c-random'},
  distribution:{fam:'distribuicao',label:'Distribuir leads (roleta)',vis:'random',cvar:'--c-ai'},
  chat:{fam:'mensagem',label:'Mensagem',vis:'message',cvar:'--c-message'},
+ 'send-approach':{fam:'mensagem',label:'Enviar abordagem (corretor do lead)',vis:'message',cvar:'--c-ai'},
  time:{fam:'espera',label:'Espera',vis:'wait',cvar:'--c-wait'},
  api:{fam:'api',label:'API',vis:'api',cvar:'--c-api'}
 };
@@ -304,6 +305,16 @@ function bodyHtml(n){
    })()+
    portRow('out','Próximo passo','ok')+portRow('err','Se ninguém disponível','err');
  }
+ if(n.type==='send-approach'){const o=n.opts||{};
+  return `<div style="font-size:11.5px;color:var(--ink-soft);padding:2px 0 6px;line-height:1.45">Envia a abordagem <b>pela instância do corretor DONO do lead</b> (definido pela Distribuição). Use depois de um bloco Distribuir, ou em follow-ups.</div>`+
+   (function(){const dprod=o.produtoId||0;const abList=(ref.abordagens||[]).filter(a=>(a.produto_id||0)===dprod);const selAb=o.abordagemIds||[];
+    return `<div class="ne-lb" style="margin-top:0">Produto das abordagens</div>`+
+     `<select class="ne-sel" data-sapprod><option value="0" ${dprod===0?'selected':''}>— Modelos gerais (sem produto) —</option>${(ref.produtos||[]).map(p=>`<option value="${p.id}" ${p.id===dprod?'selected':''}>${esc(p.nome)}</option>`).join('')}</select>`+
+     `<div style="font-size:11px;color:var(--ink-faint);margin:6px 0 3px">Marque as abordagens (o sistema alterna entre elas):</div>`+
+     (abList.length?abList.map(a=>`<label style="display:flex;align-items:center;gap:7px;font-size:12px;padding:3px 0;cursor:pointer"><input type="checkbox" data-sapab="${a.id}" ${selAb.indexOf(a.id)>=0?'checked':''} style="width:15px;height:15px;flex:0 0 auto">${esc(a.nome)} <span style="color:var(--ink-faint);font-size:10.5px">(${(a.mensagens||[]).length})</span></label>`).join(''):`<div style="font-size:11px;color:var(--ink-faint)">Sem abordagens aqui. Crie em <b>Abordagens (produtos)</b>.</div>`);
+   })()+
+   portRow('out','Próximo passo','ok');
+ }
  if(n.type==='chat'){const ms=n.opts.messages||[];const conx=n.opts.instancia||'';
   return `<div style="font-size:11px;color:var(--ink-faint);padding:2px 0">Envie e receba mensagens. Clique para adicionar uma mensagem:</div><div style="font-size:11px;color:var(--ink-soft);margin:3px 0 5px"><b>Conexão:</b> ${conx?esc(conx):'<span style="color:var(--ink-faint)">herda dos anteriores</span>'}</div>${ms.length?ms.map(m=>`<div style="font-size:11px;color:var(--ink-soft);padding:3px 0;border-top:1px solid var(--line-soft)">• ${esc(msgPartLabel(m))}</div>`).join(''):'<div style="font-size:11px;color:var(--ink-faint);padding:2px 0">Nenhuma mensagem ainda</div>'}<button class="ne-add" data-editmsg>${ico('message',14)} adicionar / editar mensagem</button>${portRow('out','Próximo passo','ok')}${portRow('err','Caso ocorrer erro no envio','err')}`;
  }
@@ -424,6 +435,9 @@ function bindBody(n,el){
   const neg=q('[data-distneg]');if(neg)neg.onchange=()=>{d.tambemNegocio=neg.checked;setDirty();};
   const prd=q('[data-distprod]');if(prd)prd.onchange=()=>{d.produtoId=+prd.value||0;d.abordagemIds=[];setDirty();reNode(n);};
   qa('[data-distab]').forEach(cb=>cb.onchange=()=>{const id=+cb.dataset.distab;d.abordagemIds=d.abordagemIds||[];const ix=d.abordagemIds.indexOf(id);if(cb.checked&&ix<0)d.abordagemIds.push(id);else if(!cb.checked&&ix>=0)d.abordagemIds.splice(ix,1);setDirty();});}
+ if(n.type==='send-approach'){const o=n.opts=n.opts||{};
+  const sp=q('[data-sapprod]');if(sp)sp.onchange=()=>{o.produtoId=+sp.value||0;o.abordagemIds=[];setDirty();reNode(n);};
+  qa('[data-sapab]').forEach(cb=>cb.onchange=()=>{const id=+cb.dataset.sapab;o.abordagemIds=o.abordagemIds||[];const ix=o.abordagemIds.indexOf(id);if(cb.checked&&ix<0)o.abordagemIds.push(id);else if(!cb.checked&&ix>=0)o.abordagemIds.splice(ix,1);setDirty();});}
  // randomizer
  if(q('[data-addramo]')){n.ramos=n.ramos||[];q('[data-addramo]').onclick=e=>{e.stopPropagation();n.ramos.push({id:'r'+(cur.uid++),name:'Novo',perc:0});setDirty();reNode(n);};
   qa('[data-rrow]').forEach(row=>{const i=+row.dataset.rrow,r=n.ramos[i];
