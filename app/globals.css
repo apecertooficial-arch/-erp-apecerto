@@ -2194,3 +2194,22 @@ input:focus, select:focus, textarea:focus {
 .finance-kpis article:has(i.blue)::after{background:#cfe0fb}
 .finance-kpis article:has(i.purple)::after{background:#ecd6f7}
 .finance-kpis article > *{position:relative;z-index:1}
+
+/* --- CRM: cards de indicadores do topo coloridos (padroniza com Início/Financeiro) --- */
+.crm-metrics article{position:relative;overflow:hidden}
+.crm-metrics article:has(.metric-icon.purple){background:#f9f0fd;border-color:#ecd6f7}
+.crm-metrics article:has(.metric-icon.orange){background:#fff6ee;border-color:#ffe1cb}
+.crm-metrics article:has(.metric-icon.green){background:#eff9f2;border-color:#c9edd6}
+.crm-metrics article:has(.metric-icon.red){background:#fdefef;border-color:#f6cdcd}
+.crm-metrics article:has(.metric-icon.blue){background:#eef3fd;border-color:#cfe0fb}
+.crm-metrics .metric-icon.purple{background:var(--purple);color:#fff}
+.crm-metrics .metric-icon.orange{background:var(--orange);color:#fff}
+.crm-metrics .metric-icon.green{background:var(--green);color:#fff}
+.crm-metrics .metric-icon.red{background:var(--red);color:#fff}
+.crm-metrics .metric-icon.blue{background:var(--blue);color:#fff}
+.crm-metrics article::after{content:'';position:absolute;right:-18px;top:-18px;width:66px;height:66px;border-radius:50%;background:var(--orange-100);opacity:.5;z-index:0}
+.crm-metrics article:has(.metric-icon.purple)::after{background:#ecd6f7}
+.crm-metrics article:has(.metric-icon.green)::after{background:#c9edd6}
+.crm-metrics article:has(.metric-icon.red)::after{background:#f6cdcd}
+.crm-metrics article:has(.metric-icon.blue)::after{background:#cfe0fb}
+.crm-metrics article > *{position:relative;z-index:1}
