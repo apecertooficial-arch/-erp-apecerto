@@ -2085,3 +2085,10 @@ body:has(.profile-drawer-scrim,.modal-layer,.photo-lightbox,.document-preview-mo
 .perms-actions button{border:1px solid #e2dbd3;background:#fff;border-radius:10px;padding:10px 18px;font-weight:600;color:#6b6560;cursor:pointer;}
 .perms-actions button:disabled{opacity:.55;cursor:default;}
 .perms-primary{background:#ea6a1e !important;border-color:#ea6a1e !important;color:#fff !important;}
+/* Copiloto Sara embutido no CRM */
+.lead-next-action .lead-nota{margin-left:auto;font-style:normal;font-weight:800;font-size:11px;padding:3px 9px;border-radius:999px;background:#eef7f0;color:#17834d}
+.chat-suggestion{display:flex;align-items:center;gap:10px;margin:0 13px 8px;padding:10px 12px;border:1px solid #e2d6f3;background:linear-gradient(180deg,#faf6ff,#f4ecfb);border-radius:12px}
+.chat-suggestion>div{flex:1;min-width:0}
+.chat-suggestion b{display:block;font-size:10px;font-weight:800;letter-spacing:.03em;color:#7c3aed;margin-bottom:3px}
+.chat-suggestion p{font-size:11.5px;color:#4a4550;line-height:1.4;margin:0}
+.chat-suggestion button{flex-shrink:0;border:0;border-radius:9px;padding:8px 14px;font-weight:700;font-size:11.5px;color:#fff;background:linear-gradient(135deg,#FF7000,#7c3aed);cursor:pointer}
