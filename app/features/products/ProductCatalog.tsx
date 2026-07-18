@@ -4,6 +4,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AppShell } from "../../components/AppShell";
 import { AttentionCenter } from "../../components/AttentionCenter";
+import { SaraWidget } from "../../components/SaraWidget";
+import { isSilentUser } from "../../lib/uiPrefs";
 import { ProfilePanel } from "../../components/ProfilePanel";
 import { SupabaseLogin } from "../../components/SupabaseLogin";
 import { ResetPassword } from "../../components/ResetPassword";
@@ -283,7 +285,8 @@ export function ProductCatalog() {
       ) : (
         <div className="workspace-loading"><span /><strong>Carregando seu ERP…</strong></div>
       )}
-      {accessToken && <AttentionCenter accessToken={accessToken} onOpenLead={(dealId) => { setFocusedDealId(dealId); setActiveModule("CRM"); }} onOpenNotifications={() => setActiveModule("Notificações")} />}
+      {accessToken && !isSilentUser(sessionProfile?.email) && <AttentionCenter accessToken={accessToken} onOpenLead={(dealId) => { setFocusedDealId(dealId); setActiveModule("CRM"); }} onOpenNotifications={() => setActiveModule("Notificações")} />}
+      {accessToken && !isSilentUser(sessionProfile?.email) && <SaraWidget />}
       {accessToken && <DisconnectionAlert accessToken={accessToken} onOpen={() => setActiveModule("Configurações")} />}
       {loginPreview && <SupabaseLogin preview onClose={() => setLoginPreview(false)} onAuthenticated={(token) => { setLoginPreview(false); setActiveModule("Início"); void loadCatalog(token); }} />}
       {profileOpen && accessToken && <ProfilePanel email={sessionProfile?.email ?? ""} onClose={() => setProfileOpen(false)} onPreviewLogin={() => { setProfileOpen(false); setLoginPreview(true); }} onSaved={() => { if (accessToken) void loadSessionProfile(accessToken).catch(() => undefined); }} />}
