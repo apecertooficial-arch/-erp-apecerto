@@ -2097,3 +2097,8 @@ body:has(.profile-drawer-scrim,.modal-layer,.photo-lightbox,.document-preview-mo
 .chat-suggestion-actions .cs-use{background:#fff;border:1px solid #d8c6ef;color:#7c3aed}
 .chat-suggestion-actions .cs-send{color:#fff;background:linear-gradient(135deg,#FF7000,#7c3aed)}
 .chat-suggestion-actions .cs-send:disabled{opacity:.5;cursor:default}
+.lead-nota-card{margin-top:10px;padding:12px 14px;border-radius:14px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.22)}
+.lead-nota-card header{display:flex;align-items:center;gap:8px;margin-bottom:5px}
+.lead-nota-card header b{font-size:10.5px;font-weight:800;letter-spacing:.05em;opacity:.9}
+.lead-nota-card header em{margin-left:auto;font-style:normal;font-weight:800;font-size:14px}
+.lead-nota-card p{font-size:11.5px;line-height:1.45;opacity:.95;margin:0}
