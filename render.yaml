@@ -4,8 +4,11 @@ services:
     runtime: node
     region: ohio
     plan: standard
-    buildCommand: pnpm install && pnpm build
-    startCommand: pnpm start
+    # Chamamos o binario vinext direto (sem "pnpm build"/"pnpm start") porque o
+    # pnpm 11 roda um verify-deps-before-run que falha com os build-scripts
+    # nativos ignorados (esbuild/sharp/workerd) e quebrava o deploy.
+    buildCommand: pnpm install && ./node_modules/.bin/vinext build
+    startCommand: ./node_modules/.bin/vinext start
     envVars:
       - key: NEXT_PUBLIC_SUPABASE_URL
         sync: false
