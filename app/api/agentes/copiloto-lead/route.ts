@@ -17,12 +17,23 @@ export async function GET(request: Request) {
   const lead = new URL(request.url).searchParams.get("lead")?.trim();
   if (!lead) return Response.json({ ok: false, error: "Informe o lead." }, { status: 422 });
 
+  // Transcreve os áudios recentes deste lead antes de avaliar (para a nota/feedback "ouvir" os áudios).
+  try {
+    await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/ia-transcrever`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ lead, limite: 5 }),
+    });
+  } catch { /* transcrição é best-effort; segue mesmo se falhar */ }
+
   const override =
     `Voce e a Sara, assistente da Apecerto. Analise o atendimento do cliente/lead "${lead}". ` +
     `Use as ferramentas avaliar_conversa e consultar_lead para ver a conversa e a situacao real dele. ` +
+    `As mensagens de audio aparecem transcritas com o prefixo [audio]; considere-as na avaliacao. ` +
     `Responda SOMENTE um JSON valido, sem nenhum texto fora do JSON, exatamente neste formato: ` +
     `{"nota": <numero de 0 a 10, ou null se nao houver conversa registrada>, ` +
-    `"resumo_nota": "<uma frase curta justificando a nota, ou por que nao ha nota>", ` +
+    `"resumo_nota": "<uma frase curta justificando a nota>", ` +
+    `"feedback": "<feedback do atendimento em 2 frases: o que foi bem e o que melhorar>", ` +
     `"proxima_acao": "<a proxima melhor acao, concreta, com prazo, em 1 frase curta>", ` +
     `"mensagem_sugerida": "<uma mensagem curta, pronta para copiar e enviar ao cliente agora, no tom do playbook, personalizada pela situacao>"}. ` +
     `Nada alem do JSON.`;
@@ -56,6 +67,7 @@ export async function GET(request: Request) {
     ok: true,
     nota: out.nota ?? null,
     resumo_nota: out.resumo_nota ?? null,
+    feedback: out.feedback ?? null,
     proxima_acao: out.proxima_acao ?? null,
     mensagem_sugerida: out.mensagem_sugerida ?? null,
   });
