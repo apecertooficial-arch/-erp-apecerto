@@ -1,0 +1,125 @@
+ERP APECERTO — ESTRUTURA COMPLETA DO PROJETO
+Gerado para edição total (cada tela, botão, função e subpasta).
+Fora do zip só: node_modules (recriável com pnpm install), .next (cache) e .git (tinha credencial).
+
+===== ÁRVORE DE PASTAS =====
+app
+  api
+    agentes
+      copiloto-lead
+    ai-center
+    approaches
+    campaigns
+    capture
+    catalog
+    crm
+      chat
+      sales
+    finance
+    live-chat
+    metas
+    module-summary
+    permissions
+    product
+    session
+    team
+  components
+  features
+    agents
+    approaches
+    audit
+    automations
+    calendar
+    campaigns
+    chat
+    crm
+    finance
+    home
+    notifications
+    permissions
+    products
+    settings
+    system
+    team
+  lib
+    supabase
+  original
+build
+db
+public
+  _vendor
+  brand
+  legacy
+  legacy-assets
+scripts
+tests
+worker
+
+===== TODOS OS ARQUIVOS DE CÓDIGO =====
+app/api/agentes/copiloto-lead/route.ts
+app/api/agentes/route.ts
+app/api/ai-center/route.ts
+app/api/approaches/route.ts
+app/api/campaigns/route.ts
+app/api/capture/route.ts
+app/api/catalog/route.ts
+app/api/crm/chat/route.ts
+app/api/crm/route.ts
+app/api/crm/sales/route.ts
+app/api/finance/route.ts
+app/api/live-chat/route.ts
+app/api/metas/route.ts
+app/api/module-summary/route.ts
+app/api/permissions/route.ts
+app/api/product/route.ts
+app/api/session/route.ts
+app/api/team/route.ts
+app/chatgpt-auth.ts
+app/components/AppShell.tsx
+app/components/AttentionCenter.tsx
+app/components/OriginalErpHost.tsx
+app/components/ProfilePanel.tsx
+app/components/ResetPassword.tsx
+app/components/SaraWidget.tsx
+app/components/SupabaseLogin.tsx
+app/features/agents/AgentTrainingWorkspace.tsx
+app/features/agents/AgentWorkspace.tsx
+app/features/approaches/ApproachesWorkspace.tsx
+app/features/audit/AuditWorkspace.tsx
+app/features/automations/AutomationsWorkspaceV2.tsx
+app/features/calendar/CalendarWorkspace.tsx
+app/features/campaigns/CampaignWorkspace.tsx
+app/features/chat/LiveChatWorkspace.tsx
+app/features/chat/LiveChatWorkspace_1.tsx
+app/features/chat/LiveChatWorkspace_2.tsx
+app/features/crm/CrmWorkspace.tsx
+app/features/crm/CrmWorkspace_1.tsx
+app/features/finance/FinanceWorkspace.tsx
+app/features/home/HomeWorkspace.tsx
+app/features/notifications/NotificationWorkspace.tsx
+app/features/notifications/NotificationsWorkspace.tsx
+app/features/permissions/PermissionsWorkspace.tsx
+app/features/products/CaptureWizard.tsx
+app/features/products/ProductCatalog.tsx
+app/features/products/ProductDetail.tsx
+app/features/products/products.ts
+app/features/settings/ConnectionsWorkspace.tsx
+app/features/settings/SettingsWorkspace.tsx
+app/features/system/LegacyModuleWorkspace.tsx
+app/features/system/ModuleOverview.tsx
+app/features/system/module-map.ts
+app/features/team/TeamWorkspace.tsx
+app/layout.tsx
+app/lib/supabase/browser.ts
+app/lib/supabase/database.types.ts
+app/lib/supabase/server.ts
+app/lib/uiPrefs.ts
+app/original/page.tsx
+app/page.tsx
+build/sites-vite-plugin.ts
+db/index.ts
+db/schema.ts
+scripts/extract-original-automation-builder.mjs
+scripts/extract-original-erp-template.mjs
+scripts/sync-original-erp.mjs
+worker/index.ts
