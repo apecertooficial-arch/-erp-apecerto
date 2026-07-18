@@ -2525,6 +2525,11 @@ body { overflow:hidden; background:#eee8e2; }
 .home-kpis article:nth-child(3),.home-kpis article:nth-child(7) { background:#d5f1e0; border-color:#76cf9c; }
 .home-kpis article:nth-child(4) { background:#d1efec; border-color:#68c9c1; }
 .home-kpis article:nth-child(8) { background:#ffeab8; border-color:#edc55e; }
+.home-kpis article:has(i.orange) { background:#ffe0c7; border-color:#ff9b57; }
+.home-kpis article:has(i.purple) { background:#ead2fa; border-color:#bd79e8; }
+.home-kpis article:has(i.green) { background:#d5f1e0; border-color:#76cf9c; }
+.home-kpis article:has(i.teal) { background:#d1efec; border-color:#68c9c1; }
+.home-kpis article:has(i.yellow) { background:#ffeab8; border-color:#edc55e; }
 .home-kpis article::after { background:#ffb783; opacity:.68; }
 .home-kpis article:has(i.purple)::after { background:#d39bea; }
 .home-kpis article:has(i.green)::after { background:#98ddb5; }
