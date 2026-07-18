@@ -223,6 +223,13 @@ export function ProductCatalog() {
 
   const neighborhoods = useMemo(() => [...new Set(products.map((item) => item.neighborhood).filter(Boolean))].sort(), [products]);
   const developers = useMemo(() => [...new Set(products.map((item) => item.developer).filter((item): item is string => Boolean(item)))].sort(), [products]);
+  const crmPermissions = sessionProfile?.permissoes ?? null;
+  const hasCrmAction = (action: string) => {
+    if (!crmPermissions || Object.keys(crmPermissions).length === 0) return sessionProfile?.role === "admin";
+    return ["crm", "leads", "pipeline", "CRM"].some((moduleName) => (crmPermissions[moduleName] ?? []).includes(action));
+  };
+  const canReassignCrm = hasCrmAction("transferir");
+  const canAssignCrm = hasCrmAction("atribuir") || canReassignCrm;
 
   if (recoveryMode) {
     return <div className="login-page"><ResetPassword onDone={() => { setRecoveryMode(false); void (async () => { const { data } = await getBrowserSupabaseClient().auth.getSession(); if (data.session) { setActiveModule("Início"); await loadCatalog(data.session.access_token); } else { setDataState("auth"); } })(); }} /></div>;
@@ -236,7 +243,7 @@ export function ProductCatalog() {
       {activeModule === "Início" && accessToken ? (
         <HomeWorkspace accessToken={accessToken} sessionName={sessionProfile?.name ?? ""} onNavigate={(moduleName) => setActiveModule(moduleName as ModuleName)} />
       ) : activeModule === "CRM" && accessToken ? (
-        <CrmWorkspace accessToken={accessToken} initialDealId={focusedDealId} onInitialDealHandled={() => setFocusedDealId(null)} sessionRole={sessionProfile?.role ?? "corretor"} />
+        <CrmWorkspace accessToken={accessToken} initialDealId={focusedDealId} onInitialDealHandled={() => setFocusedDealId(null)} sessionRole={sessionProfile?.role ?? "corretor"} canReassign={canReassignCrm} canAssign={canAssignCrm} />
       ) : activeModule === "Automações" && accessToken ? (
         <AutomationsWorkspace accessToken={accessToken} />
       ) : activeModule === "Abordagens" && accessToken ? (
