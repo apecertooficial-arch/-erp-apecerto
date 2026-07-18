@@ -2220,6 +2220,50 @@ input:focus, select:focus, textarea:focus {
 .crm-lead-card-v3>footer time { margin-left:auto; }
 .table-broker-trigger { max-width:170px; }
 
+/* Produtos: quatro cartões, gradientes alternados e ficha lateral estreita
+   como nas capturas aprovadas. */
+.product-grid {
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:14px; padding:0 22px 36px; min-height:calc(100% - 190px);
+  align-items:stretch;
+}
+.product-card { min-width:0; min-height:475px; border-radius:13px!important; }
+.product-card:hover,.product-card:focus-visible { transform:translateY(-4px); }
+.product-photo { height:116px; border-radius:13px 13px 0 0; }
+.product-card:nth-child(4n+1) .product-photo:not(.has-image) { background:linear-gradient(135deg,#f4765e,#a72fc5); }
+.product-card:nth-child(4n+2) .product-photo:not(.has-image) { background:linear-gradient(135deg,#9147e9,#3768ef); }
+.product-card:nth-child(4n+3) .product-photo:not(.has-image) { background:linear-gradient(135deg,#38bd7b,#079a89); }
+.product-card:nth-child(4n+4) .product-photo:not(.has-image) { background:linear-gradient(135deg,#ffb343,#ff6a0a); }
+.product-photo>span { top:9px; left:9px; padding:4px 10px; background:rgba(255,255,255,.92); }
+.product-photo>button { width:27px; height:27px; top:8px; right:8px; border-radius:50%; background:rgba(255,255,255,.94); color:#5a514b; }
+.building-icon { font-size:25px; opacity:.42; }
+.product-info { padding:14px 13px; }
+.product-info .price { background:linear-gradient(90deg,var(--orange),var(--purple)); -webkit-background-clip:text; background-clip:text; color:transparent; font-size:16px; }
+.product-info h2 { font-size:13px; }
+.product-info .specs { gap:6px; }
+.product-info .specs span { padding:4px 7px; border-radius:999px; background:#f3f0ee; font-size:10px; white-space:nowrap; }
+
+.product-detail-panel { width:min(455px,96vw); background:#fbfaf9; }
+.detail-hero { min-height:106px; padding:18px 17px 12px; background:linear-gradient(115deg,#f07b58,#9d2acb); }
+.detail-hero>.icon-button { position:absolute; right:11px; top:10px; width:31px; height:31px; }
+.detail-hero h2 { margin:6px 0 2px; font-size:18px; }
+.detail-hero p { font-size:11px; }
+.detail-hero span { padding:4px 8px; font-size:9px; }
+.detail-hero::after { right:18px; bottom:18px; font-size:14px; }
+.detail-toolbar { min-height:58px; padding:10px 16px; align-items:flex-start; }
+.detail-toolbar>div>strong { font-size:17px; }
+.detail-toolbar small { font-size:10px; }
+.detail-actions { gap:5px; }
+.detail-actions button { padding:8px 9px; font-size:10px; }
+.detail-scroll { padding:14px 16px 40px; }
+.detail-stats { gap:7px; }
+.detail-stats>div { padding:11px 7px; align-items:center; text-align:center; background:#fff; border:1px solid var(--line); }
+.detail-stats strong { font-size:16px; }
+.detail-section { margin-top:14px; padding:14px; border-radius:12px; background:#fff; }
+.detail-section h3,.detail-form h3 { font-size:13px; }
+.detail-section p { font-size:11px; }
+.unit-table>div { grid-template-columns:.55fr 1fr .7fr .7fr 1fr .8fr; gap:5px; padding:8px; font-size:9px; }
+
 /* Modal de troca de corretor reproduz a referência enviada. */
 .broker-picker-layer { position:fixed; z-index:420; inset:0; display:grid; place-items:center; padding:22px; background:rgba(38,31,27,.52); backdrop-filter:blur(4px); }
 .broker-picker-modal { width:min(416px,96vw); max-height:min(620px,92vh); display:flex; flex-direction:column; overflow:hidden; border:1px solid rgba(255,255,255,.7); border-radius:16px; background:#fff; box-shadow:0 28px 70px rgba(31,23,18,.26); }
@@ -2247,6 +2291,14 @@ input:focus, select:focus, textarea:focus {
 .finance-kpis article strong { margin-top:7px; font-size:21px; }
 .finance-kpis article small { margin-top:4px; color:var(--muted); }
 .finance-overview { align-items:start; }
+.finance-period-bar {
+  grid-column:1/-1; display:flex; align-items:end; gap:8px; flex-wrap:wrap;
+  padding:11px 12px; border:1px solid var(--line); border-radius:13px; background:#fff;
+}
+.finance-period-bar label { display:flex; flex-direction:column; gap:4px; color:var(--muted); font-size:9px; font-weight:700; }
+.finance-period-bar select { min-width:112px; height:34px; border:1px solid var(--line-strong); border-radius:9px; padding:0 9px; background:#fff; color:var(--ink-soft); font:inherit; font-size:11px; }
+.finance-period-bar button { height:34px; border:1px solid var(--line-strong); border-radius:999px; padding:0 15px; background:#fff; color:var(--ink-soft); font-size:11px; font-weight:700; }
+.finance-period-bar button.apply { border-color:var(--orange); background:var(--orange); color:#fff; box-shadow:var(--shadow-brand); }
 .finance-vgv-block,.finance-ranking { grid-column:1/-1; }
 .finance-vgv-block { display:grid; grid-template-columns:1.25fr 1fr; gap:12px; }
 .finance-vgv-hero { position:relative; isolation:isolate; overflow:hidden; min-height:190px; display:flex; flex-direction:column; justify-content:center; padding:24px; border-radius:18px; background:linear-gradient(135deg,#ff741b,#f04e00); color:#fff; box-shadow:0 14px 32px rgba(240,78,0,.20); }
@@ -2372,4 +2424,8 @@ body { overflow:hidden; background:#eee8e2; }
   .home-kpis { grid-template-columns:repeat(2,minmax(0,1fr)); padding-inline:14px; }
   .home-kpis article:nth-child(8) { grid-column:auto; }
   .home-goal,.home-two-columns,.home-three-columns,.home-charts { margin-inline:14px; }
+  .product-grid { grid-template-columns:repeat(2,minmax(0,1fr)); padding-inline:14px; }
+}
+@media(max-width:580px){
+  .product-grid { grid-template-columns:1fr; }
 }
