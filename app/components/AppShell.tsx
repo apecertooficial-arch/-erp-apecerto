@@ -53,8 +53,8 @@ export function AppShell({ children, activeItem, onNavigate, onOpenProfile, sess
   const [navCollapsed, setNavCollapsed] = useState(false);
   /* Doc §14 — sem "ver" no módulo, ele some do menu (admin nunca perde Usuários/Configurações para não se trancar fora) */
   const canSee = (item: ModuleName) => {
+    if (sessionRole === "admin") return true;
     if (!modulePermissions || Object.keys(modulePermissions).length === 0) return true;
-    if (sessionRole === "admin" && (item === "Usuários" || item === "Configurações" || item === "Perfis e Permissões")) return true;
     return (modulePermissions[item] ?? []).includes("ver");
   };
   const mainItems = (isBroker ? brokerMainItems : adminMainItems).filter(canSee);

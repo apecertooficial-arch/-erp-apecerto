@@ -225,6 +225,7 @@ export function ProductCatalog() {
   const developers = useMemo(() => [...new Set(products.map((item) => item.developer).filter((item): item is string => Boolean(item)))].sort(), [products]);
   const crmPermissions = sessionProfile?.permissoes ?? null;
   const hasCrmAction = (action: string) => {
+    if (sessionProfile?.role === "admin") return true;
     if (!crmPermissions || Object.keys(crmPermissions).length === 0) return sessionProfile?.role === "admin";
     return ["crm", "leads", "pipeline", "CRM"].some((moduleName) => (crmPermissions[moduleName] ?? []).includes(action));
   };
