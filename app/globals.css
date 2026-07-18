@@ -2429,3 +2429,58 @@ body { overflow:hidden; background:#eee8e2; }
 @media(max-width:580px){
   .product-grid { grid-template-columns:1fr; }
 }
+/* Alterações recentes vindas da main, preservadas durante a integração. */
+/* ==================================================================
+   CARDS COLORIDOS (referência do redesign) — Início e Financeiro
+   Tinge o card inteiro pela cor do ícone, com blob decorativo. CSS only.
+   ================================================================== */
+/* --- Início: KPIs --- */
+.home-kpis article{position:relative;overflow:hidden;background:#fff6ee}
+.home-kpis article:has(i.purple){background:#f9f0fd}
+.home-kpis article:has(i.green){background:#eff9f2}
+.home-kpis article:has(i.teal){background:#e9f6f3}
+.home-kpis article:has(i.yellow){background:#fdf6e6}
+.home-kpis article::after{content:'';position:absolute;right:-24px;top:-24px;width:86px;height:86px;border-radius:50%;background:var(--orange-100);opacity:.55;z-index:0}
+.home-kpis article:has(i.purple)::after{background:#ecd6f7}
+.home-kpis article:has(i.green)::after{background:#c9edd6}
+.home-kpis article:has(i.teal)::after{background:#c4e9e2}
+.home-kpis article:has(i.yellow)::after{background:#f6e3b6}
+.home-kpis article::before{content:'';position:absolute;right:24px;bottom:-32px;width:60px;height:60px;border-radius:50%;background:inherit;opacity:.28;z-index:0}
+.home-kpis article > *{position:relative;z-index:1}
+/* --- Financeiro: KPIs (ícone volta a ser sólido para contraste no card colorido) --- */
+.finance-kpis article{position:relative;overflow:hidden}
+.finance-kpis article:has(i.orange){background:#fff6ee}
+.finance-kpis article:has(i.green){background:#eff9f2}
+.finance-kpis article:has(i.red){background:#fdefef}
+.finance-kpis article:has(i.blue){background:#eef3fd}
+.finance-kpis article:has(i.purple){background:#f9f0fd}
+.finance-kpis i.orange{background:var(--orange)!important;color:#fff!important}
+.finance-kpis i.green{background:var(--green)!important;color:#fff!important}
+.finance-kpis i.red{background:var(--red)!important;color:#fff!important}
+.finance-kpis i.blue{background:var(--blue)!important;color:#fff!important}
+.finance-kpis i.purple{background:var(--purple)!important;color:#fff!important}
+.finance-kpis article::after{content:'';position:absolute;right:-20px;top:-20px;width:72px;height:72px;border-radius:50%;background:var(--orange-100);opacity:.5;z-index:0}
+.finance-kpis article:has(i.green)::after{background:#c9edd6}
+.finance-kpis article:has(i.red)::after{background:#f6cdcd}
+.finance-kpis article:has(i.blue)::after{background:#cfe0fb}
+.finance-kpis article:has(i.purple)::after{background:#ecd6f7}
+.finance-kpis article > *{position:relative;z-index:1}
+
+/* --- CRM: cards de indicadores do topo coloridos (padroniza com Início/Financeiro) --- */
+.crm-metrics article{position:relative;overflow:hidden}
+.crm-metrics article:has(.metric-icon.purple){background:#f9f0fd;border-color:#ecd6f7}
+.crm-metrics article:has(.metric-icon.orange){background:#fff6ee;border-color:#ffe1cb}
+.crm-metrics article:has(.metric-icon.green){background:#eff9f2;border-color:#c9edd6}
+.crm-metrics article:has(.metric-icon.red){background:#fdefef;border-color:#f6cdcd}
+.crm-metrics article:has(.metric-icon.blue){background:#eef3fd;border-color:#cfe0fb}
+.crm-metrics .metric-icon.purple{background:var(--purple);color:#fff}
+.crm-metrics .metric-icon.orange{background:var(--orange);color:#fff}
+.crm-metrics .metric-icon.green{background:var(--green);color:#fff}
+.crm-metrics .metric-icon.red{background:var(--red);color:#fff}
+.crm-metrics .metric-icon.blue{background:var(--blue);color:#fff}
+.crm-metrics article::after{content:'';position:absolute;right:-18px;top:-18px;width:66px;height:66px;border-radius:50%;background:var(--orange-100);opacity:.5;z-index:0}
+.crm-metrics article:has(.metric-icon.purple)::after{background:#ecd6f7}
+.crm-metrics article:has(.metric-icon.green)::after{background:#c9edd6}
+.crm-metrics article:has(.metric-icon.red)::after{background:#f6cdcd}
+.crm-metrics article:has(.metric-icon.blue)::after{background:#cfe0fb}
+.crm-metrics article > *{position:relative;z-index:1}

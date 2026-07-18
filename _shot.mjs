@@ -1,0 +1,12 @@
+import { createRequire } from 'module';
+const require = createRequire('/home/claude/.npm-global/lib/node_modules/x.js');
+const { chromium } = require('playwright');
+const base = process.env.SHOT_URL || 'http://localhost:3000';
+const path = process.env.SHOT_OUT || '/tmp/login_novo.png';
+const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' });
+const p = await b.newPage({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 2 });
+await p.goto(base, { waitUntil: 'networkidle', timeout: 45000 }).catch(e=>console.log('goto:',e.message));
+await p.waitForTimeout(3000);
+await p.screenshot({ path });
+console.log('shot ok; title=', await p.title());
+await b.close();
