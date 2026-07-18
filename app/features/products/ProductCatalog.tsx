@@ -26,6 +26,7 @@ import { SettingsWorkspace } from "../settings/SettingsWorkspace";
 import { AuditWorkspace } from "../audit/AuditWorkspace";
 import { NotificationsWorkspace } from "../notifications/NotificationsWorkspace";
 import { LegacyModuleWorkspace } from "../system/LegacyModuleWorkspace";
+import { AgentTrainingWorkspace } from "../agents/AgentTrainingWorkspace";
 import type { ModuleName } from "../system/module-map";
 
 type CatalogResponse = {
@@ -255,6 +256,8 @@ export function ProductCatalog() {
         <NotificationsWorkspace accessToken={accessToken} onOpenLead={(dealId) => { setFocusedDealId(dealId); setActiveModule("CRM"); }} />
       ) : activeModule === "Configurações" && accessToken ? (
         <SettingsWorkspace accessToken={accessToken} sessionRole={sessionProfile?.role ?? "corretor"} onNavigate={(moduleName) => setActiveModule(moduleName as ModuleName)} />
+      ) : activeModule === "Agentes de IA" && accessToken ? (
+        <AgentTrainingWorkspace accessToken={accessToken} />
       ) : activeModule !== "Produtos" && accessToken ? (
         <LegacyModuleWorkspace moduleName={activeModule} accessToken={accessToken} session={sessionProfile} />
       ) : activeModule === "Produtos" && accessToken ? (
