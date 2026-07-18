@@ -287,7 +287,7 @@ export function ProductCatalog() {
       )}
       {accessToken && !isSilentUser(sessionProfile?.email) && <AttentionCenter accessToken={accessToken} onOpenLead={(dealId) => { setFocusedDealId(dealId); setActiveModule("CRM"); }} onOpenNotifications={() => setActiveModule("Notificações")} />}
       {accessToken && !isSilentUser(sessionProfile?.email) && <SaraWidget />}
-      {accessToken && <DisconnectionAlert accessToken={accessToken} onOpen={() => setActiveModule("Configurações")} />}
+      {accessToken && !isSilentUser(sessionProfile?.email) && <DisconnectionAlert accessToken={accessToken} onOpen={() => setActiveModule("Configurações")} />}
       {loginPreview && <SupabaseLogin preview onClose={() => setLoginPreview(false)} onAuthenticated={(token) => { setLoginPreview(false); setActiveModule("Início"); void loadCatalog(token); }} />}
       {profileOpen && accessToken && <ProfilePanel email={sessionProfile?.email ?? ""} onClose={() => setProfileOpen(false)} onPreviewLogin={() => { setProfileOpen(false); setLoginPreview(true); }} onSaved={() => { if (accessToken) void loadSessionProfile(accessToken).catch(() => undefined); }} />}
     </AppShell>
