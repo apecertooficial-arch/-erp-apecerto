@@ -2158,3 +2158,129 @@ input:focus, select:focus, textarea:focus {
   border: 0 !important;
 }
 .auth-brand > span svg { display: none !important; }
+
+/* ============================================================
+   CONTRATO VISUAL DAS REFERÊNCIAS — 18/07/2026
+   Cards pastéis alternados, bolhas, elevação, ranking e CRM.
+   ============================================================ */
+.sr-only { position:absolute!important; width:1px!important; height:1px!important; padding:0!important; margin:-1px!important; overflow:hidden!important; clip:rect(0,0,0,0)!important; white-space:nowrap!important; border:0!important; }
+
+:is(.home-kpis,.finance-kpis,.analytics-kpis,.sales-kpis,.operational-kpis) article {
+  position:relative; isolation:isolate; overflow:hidden;
+  border-radius:16px; box-shadow:var(--shadow-xs);
+  transition:transform var(--dur) var(--ease), box-shadow var(--dur) var(--ease), border-color var(--dur) var(--ease);
+}
+:is(.home-kpis,.finance-kpis,.analytics-kpis,.sales-kpis,.operational-kpis) article::before,
+:is(.home-kpis,.finance-kpis,.analytics-kpis,.sales-kpis,.operational-kpis) article::after {
+  content:""; position:absolute; z-index:-1; border-radius:50%; pointer-events:none;
+}
+:is(.home-kpis,.finance-kpis,.analytics-kpis,.sales-kpis,.operational-kpis) article::before { width:92px; height:92px; right:-30px; top:-32px; background:rgba(255,255,255,.42); }
+:is(.home-kpis,.finance-kpis,.analytics-kpis,.sales-kpis,.operational-kpis) article::after { width:62px; height:62px; right:12px; bottom:-37px; background:rgba(255,255,255,.35); }
+:is(.home-kpis,.finance-kpis,.analytics-kpis,.sales-kpis,.operational-kpis) article:hover { transform:translateY(-4px); box-shadow:0 13px 28px rgba(45,30,20,.10); }
+
+:is(.home-kpis,.finance-kpis,.analytics-kpis,.sales-kpis,.operational-kpis) article:nth-child(6n+1) { background:#fff0e5; border-color:#ffc79f; }
+:is(.home-kpis,.finance-kpis,.analytics-kpis,.sales-kpis,.operational-kpis) article:nth-child(6n+2) { background:#f4e4fb; border-color:#dfb9f2; }
+:is(.home-kpis,.finance-kpis,.analytics-kpis,.sales-kpis,.operational-kpis) article:nth-child(6n+3) { background:#e4f6ec; border-color:#b9e7cc; }
+:is(.home-kpis,.finance-kpis,.analytics-kpis,.sales-kpis,.operational-kpis) article:nth-child(6n+4) { background:#e6f7f5; border-color:#b7e5df; }
+:is(.home-kpis,.finance-kpis,.analytics-kpis,.sales-kpis,.operational-kpis) article:nth-child(6n+5) { background:#ffe9e8; border-color:#f4c0bd; }
+:is(.home-kpis,.finance-kpis,.analytics-kpis,.sales-kpis,.operational-kpis) article:nth-child(6n+6) { background:#fff4d9; border-color:#efd492; }
+
+.home-kpis article { min-height:130px; }
+.home-kpis article:nth-child(6n+1) i { background:var(--orange); }
+.home-kpis article:nth-child(6n+2) i { background:var(--purple); }
+.home-kpis article:nth-child(6n+3) i { background:var(--green); }
+.home-kpis article:nth-child(6n+4) i { background:#16a39a; }
+.home-kpis article:nth-child(6n+5) i { background:var(--red); }
+.home-kpis article:nth-child(6n+6) i { background:var(--amber); }
+.home-goal>div span { background:linear-gradient(90deg,var(--orange),var(--purple)); }
+
+.home-panel { position:relative; overflow:hidden; box-shadow:var(--shadow-xs); }
+.home-two-columns .home-panel::before,.home-three-columns .home-panel::before { content:""; position:absolute; left:0; right:0; top:0; height:3px; background:linear-gradient(90deg,var(--orange),var(--purple)); }
+.home-three-columns .home-panel:nth-child(2)::before { background:linear-gradient(90deg,var(--purple),#2f6fed); }
+.home-three-columns .home-panel:nth-child(3)::before { background:linear-gradient(90deg,var(--green),#16a39a); }
+.home-ranking-row>b,.home-ranking-row>i { transition:transform var(--dur) var(--ease); }
+.home-ranking-row:hover>b,.home-ranking-row:hover>i { transform:scale(1.06); }
+.home-ranking-row:nth-of-type(3n+1)>b { background:var(--orange); }.home-ranking-row:nth-of-type(3n+2)>b { background:var(--purple); }.home-ranking-row:nth-of-type(3n+3)>b { background:var(--green); }
+.home-ranking-row:nth-of-type(3n+1)>i { background:#ffe5d3; color:#d95808; }.home-ranking-row:nth-of-type(3n+2)>i { background:#eedaf8; color:#7625a8; }.home-ranking-row:nth-of-type(3n+3)>i { background:#ddf4e7; color:#17834b; }
+
+/* CRM: card da referência, corretor clicável e botões Chat/Mover. */
+.crm-stage { border-color:color-mix(in srgb,var(--stage) 32%,var(--line)); background:color-mix(in srgb,var(--stage) 5%,var(--sunken)); }
+.crm-stage>header { border-top:3px solid var(--stage); background:color-mix(in srgb,var(--stage) 5%,white); }
+.crm-lead-card-v3 { overflow:hidden; }
+.card-broker-row-v3 { display:flex; align-items:center; gap:7px; padding:0 13px 9px; }
+.card-broker-row-v3>strong { color:var(--purple-700); font-size:12px; font-weight:650; }
+.broker-trigger-v3,.table-broker-trigger { display:inline-flex; align-items:center; gap:6px; border:0; padding:2px 0; background:transparent; color:var(--purple-700); font-size:12px; font-weight:700; text-decoration:underline; text-decoration-color:var(--purple-100); text-underline-offset:3px; }
+.broker-trigger-v3:hover,.table-broker-trigger:hover { color:var(--purple); text-decoration-color:var(--purple); }
+.broker-trigger-v3 span,.table-broker-trigger span { font-size:11px; text-decoration:none; }
+.card-controls-v3 { grid-template-columns:1fr 1fr; display:grid; padding:0; border-top:1px solid var(--line); background:#fff; }
+.card-controls-v3>button,.card-controls-v3>label { min-width:0; margin:0; }
+.card-controls-v3>button { min-height:38px; border:0; border-right:1px solid var(--line); border-radius:0; background:#fff; color:var(--ink-soft); }
+.card-controls-v3 label select { width:100%; min-height:38px; border:0; border-radius:0; text-align:center; text-align-last:center; background:#fff; color:var(--ink-soft); font-weight:650; }
+.crm-lead-card-v3>footer { min-height:28px; justify-content:flex-end; padding:4px 12px; background:#fbfaf9; }
+.crm-lead-card-v3>footer time { margin-left:auto; }
+.table-broker-trigger { max-width:170px; }
+
+/* Modal de troca de corretor reproduz a referência enviada. */
+.broker-picker-layer { position:fixed; z-index:420; inset:0; display:grid; place-items:center; padding:22px; background:rgba(38,31,27,.52); backdrop-filter:blur(4px); }
+.broker-picker-modal { width:min(416px,96vw); max-height:min(620px,92vh); display:flex; flex-direction:column; overflow:hidden; border:1px solid rgba(255,255,255,.7); border-radius:16px; background:#fff; box-shadow:0 28px 70px rgba(31,23,18,.26); }
+.broker-picker-modal>header { display:flex; align-items:flex-start; justify-content:space-between; gap:18px; padding:22px 20px 10px; }
+.broker-picker-modal h2 { margin:0; font-size:17px; letter-spacing:-.02em; }
+.broker-picker-modal header p { margin:13px 0 0; max-width:170px; color:var(--muted); font-size:11px; line-height:1.45; }
+.broker-picker-modal header>button { flex:0 0 28px; width:28px; height:28px; border:1px solid var(--line); border-radius:50%; background:#fff; color:#756d67; }
+.broker-picker-list { display:grid; gap:7px; overflow:auto; padding:0 18px 8px 212px; margin-top:-55px; }
+.broker-picker-list>button { min-height:44px; display:grid; grid-template-columns:27px 1fr auto; align-items:center; gap:8px; border:1px solid var(--line-strong); border-radius:10px; padding:6px 9px; background:#fff; color:var(--ink); text-align:left; }
+.broker-picker-list>button:hover { border-color:#c184e5; background:#fcf8fe; }
+.broker-picker-list>button.selected { border-color:#a22fe2; background:#f6eaff; box-shadow:0 0 0 1px rgba(162,47,226,.08); }
+.broker-picker-list>button>span { width:27px; height:27px; display:grid; place-items:center; border-radius:50%; background:#9636db; color:#fff; font-size:10px; font-weight:800; }
+.broker-picker-list strong { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:12px; }
+.broker-picker-list small { color:#8c22cc; font-size:10px; font-weight:700; }
+.broker-picker-error { margin:6px 18px 0; padding:8px 10px; border-radius:8px; background:var(--red-bg); color:#ad3732; font-size:11px; }
+.broker-picker-modal>footer { display:flex; justify-content:flex-end; gap:9px; padding:9px 18px 18px; }
+.broker-picker-modal>footer button { min-height:37px; border:1px solid var(--line-strong); border-radius:10px; padding:0 15px; background:#fff; color:var(--ink-soft); font-size:12px; }
+.broker-picker-modal>footer .save { min-width:70px; border:0; border-radius:999px; background:var(--orange); color:#fff; box-shadow:var(--shadow-brand); }
+.broker-picker-modal>footer .save:disabled { opacity:.48; box-shadow:none; }
+
+/* Financeiro: hero VGV e ranking da referência. */
+.finance-kpis article { min-height:128px; display:flex; flex-direction:column; align-items:flex-start; padding:16px; }
+.finance-kpis article i { position:relative; z-index:1; grid-row:auto; flex:0 0 34px; }
+.finance-kpis article span { margin-top:8px; color:var(--ink-soft); font-size:13px; }
+.finance-kpis article strong { margin-top:7px; font-size:21px; }
+.finance-kpis article small { margin-top:4px; color:var(--muted); }
+.finance-overview { align-items:start; }
+.finance-vgv-block,.finance-ranking { grid-column:1/-1; }
+.finance-vgv-block { display:grid; grid-template-columns:1.25fr 1fr; gap:12px; }
+.finance-vgv-hero { position:relative; isolation:isolate; overflow:hidden; min-height:190px; display:flex; flex-direction:column; justify-content:center; padding:24px; border-radius:18px; background:linear-gradient(135deg,#ff741b,#f04e00); color:#fff; box-shadow:0 14px 32px rgba(240,78,0,.20); }
+.finance-vgv-hero::after { content:""; position:absolute; z-index:-1; width:220px; height:220px; right:-55px; top:-60px; border-radius:50%; background:rgba(255,255,255,.15); }
+.finance-vgv-hero>span { font-size:12px; font-weight:800; letter-spacing:.12em; }
+.finance-vgv-hero>strong { margin-top:10px; font-size:34px; letter-spacing:-.04em; }
+.finance-vgv-hero>small { margin-top:4px; color:#fff4eb; font-size:12px; }
+.finance-vgv-hero>p { display:flex; justify-content:space-between; margin:18px 0 7px; font-size:11px; }
+.finance-vgv-hero>i { height:8px; overflow:hidden; border-radius:999px; background:rgba(255,255,255,.34); }
+.finance-vgv-hero>i>u { display:block; height:100%; border-radius:inherit; background:#fff; text-decoration:none; }
+.finance-vgv-side { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.finance-vgv-side article { display:flex; flex-direction:column; justify-content:center; padding:16px; border:1px solid var(--line); border-radius:15px; background:#fff; box-shadow:var(--shadow-xs); }
+.finance-vgv-side span { color:var(--muted); font-size:11px; }.finance-vgv-side strong { margin-top:8px; font-size:18px; }
+.finance-ranking { padding:0; }
+.finance-ranking>header { padding:16px 18px; border-bottom:1px solid var(--line); }
+.finance-ranking>header>span { color:var(--muted); font-size:11px; }
+.finance-ranking>div { padding:0 14px 10px; }
+.finance-ranking>div>article { display:grid; grid-template-columns:28px 34px minmax(160px,1fr) auto; align-items:center; gap:10px; min-height:58px; border-bottom:1px solid var(--line); }
+.finance-ranking>div>article>b { width:24px; height:24px; display:grid; place-items:center; border-radius:7px; background:var(--orange); color:#fff; font-size:11px; }
+.finance-ranking>div>article>i { width:32px; height:32px; display:grid; place-items:center; border-radius:50%; background:#eedaf8; color:var(--purple-700); font-style:normal; font-size:11px; font-weight:800; }
+.finance-ranking>div>article>span { display:grid; grid-template-columns:1fr; gap:2px; }
+.finance-ranking>div>article>span strong { font-size:12px; }.finance-ranking>div>article>span small { color:var(--muted); font-size:11px; }
+.finance-ranking u { display:block; height:5px; margin-top:5px; overflow:hidden; border-radius:99px; background:var(--sunken); text-decoration:none; }.finance-ranking u em { display:block; height:100%; border-radius:inherit; background:linear-gradient(90deg,var(--orange),var(--purple)); }
+.finance-ranking>div>article:nth-child(3n+2)>b { background:var(--purple); }.finance-ranking>div>article:nth-child(3n+3)>b { background:var(--green); }
+.finance-ranking>div>article:nth-child(3n+2)>i { background:#ddf4e7; color:#17834b; }.finance-ranking>div>article:nth-child(3n+3)>i { background:#e4edff; color:#2f6fed; }
+
+@media(max-width:850px){
+  .broker-picker-list { margin-top:0; padding:0 18px 8px; }
+  .broker-picker-modal header p { max-width:none; }
+  .finance-vgv-block { grid-template-columns:1fr; }
+  .finance-vgv-hero>strong { font-size:28px; }
+}
+@media(max-width:560px){
+  .finance-vgv-side { grid-template-columns:1fr 1fr; }
+  .finance-ranking>div>article { grid-template-columns:25px 30px 1fr; }
+  .finance-ranking>div>article>strong { grid-column:3; }
+}
