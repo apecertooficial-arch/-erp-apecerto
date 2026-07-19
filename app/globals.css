@@ -448,20 +448,23 @@ button { cursor:pointer; }
 .attention-popover>header h2 { margin:4px 0 2px; font-size:20px; }
 .attention-popover>header p { margin:0; color:#8d837d; font-size:11px; }
 .attention-popover>header button { width:31px; height:31px; border:0; border-radius:50%; background:#f2eeeb; color:#625953; font-size:20px; }
-.attention-summary { display:grid; grid-template-columns:repeat(4,1fr); gap:7px; padding:0 16px 14px; background:linear-gradient(135deg,#fff 45%,#fff4eb); }
-.attention-summary button { min-width:0; min-height:76px; display:grid; grid-template-columns:24px 1fr; grid-template-rows:28px auto; align-items:center; gap:0 4px; padding:8px; border:1px solid #ebe5e1; border-radius:12px; background:#fff; color:#655c56; text-align:left; }
-.attention-summary button i { width:24px; height:24px; display:grid; place-items:center; border-radius:8px; background:#fff0e7; color:#e05a08; font-style:normal; font-weight:900; }
-.attention-summary button strong { color:#302a27; font-size:18px; }.attention-summary button span { grid-column:1/-1; overflow:hidden; font-size:11px; font-weight:750; white-space:nowrap; text-overflow:ellipsis; }
-.attention-summary button.waiting i { background:#fee8e6; color:#d53e3e; }.attention-summary button.message i { background:#e6f6ec; color:#168a50; }.attention-summary button.risk i { background:#eee9e7; color:#302a27; }
+.attention-summary { display:grid; grid-template-columns:repeat(4,1fr); gap:9px; padding:0 16px 15px; background:linear-gradient(135deg,#fff 45%,#fff4eb); }
+.attention-summary button { min-width:0; min-height:92px; display:flex; flex-direction:column; align-items:flex-start; gap:7px; padding:12px 11px; border:1px solid #ece6e1; border-radius:14px; background:#fff; color:#655c56; text-align:left; }
+.attention-summary button i { width:30px; height:30px; display:grid; place-items:center; border-radius:9px; background:#fff0e7; color:#e05a08; font-style:normal; font-weight:900; }
+.attention-summary button strong { color:#2d2825; font-size:22px; line-height:1; }.attention-summary button span { overflow:hidden; font-size:11px; color:#8d837d; font-weight:600; white-space:normal; line-height:1.25; }
+.attention-summary button.waiting i { background:#fee8e6; color:#d53e3e; }.attention-summary button.message i { background:#e6f6ec; color:#168a50; }.attention-summary button.risk i { background:#fff6e5; color:#e0930c; }
+.attention-summary button.waiting strong { color:#d53e3e; }.attention-summary button.message strong { color:#168a50; }.attention-summary button.risk strong { color:#e0930c; }
 .attention-summary button.active { border-color:#ff7a26; box-shadow:0 0 0 2px rgba(255,101,0,.08); }
 .attention-popover>nav { display:flex; gap:5px; overflow:auto; padding:10px 16px; border-top:1px solid #eee8e4; border-bottom:1px solid #eee8e4; background:#fcfbfa; }
 .attention-popover>nav button { flex:none; border:1px solid #dfd8d3; border-radius:999px; padding:6px 10px; background:#fff; color:#706762; font-size:11px; }.attention-popover>nav button.active { border-color:#ff6500; background:#ff6500; color:#fff; }
 .attention-popover>main { min-height:180px; overflow:auto; padding:12px 16px 5px; background:#fff; }
-.attention-popover>main article { display:grid; grid-template-columns:38px 1fr; gap:10px; margin-bottom:9px; padding:12px; border:1px solid #ebe5e1; border-left:4px solid #ff6500; border-radius:12px; background:#fffdfa; }
-.attention-popover>main article.waiting { border-left-color:#db3d46; background:#fffafa; }.attention-popover>main article.message { border-left-color:#19a25d; background:#fafffb; }.attention-popover>main article.risk { border-left-color:#292522; background:#fbfaf9; }
-.attention-popover>main article>span { width:36px; height:36px; display:grid; place-items:center; border-radius:11px; background:#fff0e7; color:#d85408; font-size:16px; font-weight:900; }
-.attention-popover>main article.waiting>span { background:#fee8e6; color:#d53e3e; }.attention-popover>main article.message>span { background:#e5f6eb; color:#198b51; }.attention-popover>main article.risk>span { background:#ece8e5; color:#2d2926; }
-.attention-popover article>div { min-width:0; }.attention-popover article small { color:#9a8f88; font-size:11px; font-weight:800; letter-spacing:.04em; text-transform:uppercase; }.attention-popover article strong { display:block; margin-top:3px; font-size:12px; }.attention-popover article p { margin:3px 0 9px; color:#776e68; font-size:11px; line-height:1.4; }
+.attention-popover>main article { display:block; margin-bottom:10px; padding:13px 14px; border:1px solid #ece6e1; border-radius:14px; background:#fff; box-shadow:0 1px 3px rgba(45,31,24,.03); }
+.attention-popover>main article>span { display:none; }
+.attention-popover article>div { min-width:0; }
+.attention-popover article small { display:inline-flex; align-items:center; color:#e0930c; font-size:11px; font-weight:800; letter-spacing:.04em; text-transform:uppercase; }
+.attention-popover article small::before { content:""; width:7px; height:7px; margin-right:7px; border-radius:50%; background:currentColor; flex:0 0 auto; }
+.attention-popover>main article.waiting small { color:#db3d46; }.attention-popover>main article.message small { color:#19a25d; }.attention-popover>main article.risk small { color:#9a857a; }
+.attention-popover article strong { display:block; margin-top:6px; font-size:14px; color:#2d2825; }.attention-popover article p { margin:4px 0 11px; color:#776e68; font-size:11.5px; line-height:1.45; }
 .attention-popover article footer { display:flex; gap:6px; }.attention-popover article footer button { border:1px solid #ded6d1; border-radius:8px; padding:6px 9px; background:#fff; color:#6c625c; font-size:11px; font-weight:750; }.attention-popover article footer button:first-child { border-color:#ff6500; background:#ff6500; color:#fff; }
 .attention-empty { min-height:170px; display:flex; flex-direction:column; align-items:center; justify-content:center; color:#8d837d; text-align:center; }.attention-empty>span { width:40px; height:40px; display:grid; place-items:center; margin-bottom:8px; border-radius:50%; background:#e5f6eb; color:#17894f; font-size:18px; }.attention-empty strong { color:#4e4641; font-size:12px; }.attention-empty p { margin:4px 0; font-size:11px; }
 .attention-popover>footer { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:11px 16px 13px; border-top:1px solid #eee8e4; background:#fcfbfa; }.attention-popover>footer button { border:0; padding:0; background:transparent; color:#7f2ca8; font-size:11px; font-weight:800; }.attention-popover>footer span { color:#9b918b; font-size:11px; text-align:right; }
