@@ -140,3 +140,19 @@ test("aplica a referência aprovada em Vendas & comissões", async () => {
   assert.match(css, /\.finance-kpis article::before \{ display:none!important; \}/);
   assert.match(css, /nth-of-type\(4n\+1\)>b \{ background:var\(--orange\)!important; \}/);
 });
+
+test("padroniza indicações, fluxo de caixa e a hierarquia tipográfica financeira", async () => {
+  const finance = await readFile(new URL("../app/features/finance/FinanceWorkspace.tsx", import.meta.url), "utf8");
+  const css = await readFile(new URL("../app/globals.css", import.meta.url), "utf8");
+
+  assert.match(finance, /finance-indications-designer/);
+  assert.match(finance, /finance-cash-toolbar/);
+  assert.match(finance, /finance-indication-row/);
+  assert.match(finance, /finance-cash-row/);
+  assert.match(finance, /finance-receipt-row/);
+  assert.match(finance, /Buscar indicações/);
+  assert.match(finance, /Buscar no fluxo de caixa/);
+  assert.match(css, /--finance-body:12px/);
+  assert.match(css, /\.finance-sales-month>header strong \{ font-size:var\(--finance-sm\)/);
+  assert.match(css, /\.finance-sale-row \{ min-height:49px; font-size:var\(--finance-body\)/);
+});
