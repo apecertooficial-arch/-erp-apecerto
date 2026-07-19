@@ -3307,3 +3307,5 @@ body { overflow:hidden; background:#eee8e2; }
    (antes ficavam como ilha estreita: Perfis 1180px, Config 1360px). */
 .settings-body { max-width:1600px; margin-left:auto; margin-right:auto; }
 .perms-workspace { max-width:1600px; }
+/* Agentes de IA (Laboratório da Sara): mesma largura dos demais (era 1200px, virava ilha) */
+.agents-lab { max-width:1600px; }
