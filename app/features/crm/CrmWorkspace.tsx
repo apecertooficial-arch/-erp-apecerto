@@ -156,6 +156,7 @@ export function CrmWorkspace({ accessToken, initialDealId = null, onInitialDealH
   const [message, setMessage] = useState<string | null>(null);
   const [draggingDealId, setDraggingDealId] = useState<number | null>(null);
   const [bulkMoveOpen, setBulkMoveOpen] = useState(false);
+  const [bulkFromStage, setBulkFromStage] = useState<number | null>(null);
   const [chatDealId, setChatDealId] = useState<number | null>(null);
   const [brokerPickerDealId, setBrokerPickerDealId] = useState<number | null>(null);
 
@@ -256,6 +257,26 @@ export function CrmWorkspace({ accessToken, initialDealId = null, onInitialDealH
     finally { setDraggingDealId(null); }
   }
 
+  const canManageStages = sessionRole !== "corretor";
+  async function reorderStage(stageId: number, direction: number) {
+    const ordered = activeStages.slice().sort((a, b) => a.ordem - b.ordem);
+    const idx = ordered.findIndex((s) => s.id === stageId);
+    const target = idx + direction;
+    if (idx < 0 || target < 0 || target >= ordered.length) return;
+    const ids = ordered.map((s) => s.id);
+    [ids[idx], ids[target]] = [ids[target], ids[idx]];
+    setMessage(null);
+    const { error: rpcError } = await getBrowserSupabaseClient().rpc("crm_etapa_reordenar", { p_pipeline_id: pipelineId, p_ids: ids });
+    if (rpcError) setMessage(rpcError.message); else { await load({ quiet: true }); setMessage("Ordem das etapas atualizada."); }
+  }
+  async function recolorStage(stageId: number, color: string) {
+    const st = activeStages.find((s) => s.id === stageId);
+    setMessage(null);
+    const { error: rpcError } = await getBrowserSupabaseClient().rpc("crm_etapa_salvar", { p_id: stageId, p_nome: st?.rotulo || st?.nome, p_cor: color });
+    if (rpcError) setMessage(rpcError.message); else { await load({ quiet: true }); setMessage("Cor da etapa atualizada."); }
+  }
+  function openBulkFromStage(stageId: number) { setBulkFromStage(stageId); setBulkMoveOpen(true); }
+
   return <div className="crm-v2">
     <header className="crm-v2-header">
       <div><span className="crm-eyebrow">GESTÃO COMERCIAL</span><h1>{viewHeading.title}</h1><p>{viewHeading.subtitle}</p></div>
@@ -287,7 +308,7 @@ export function CrmWorkspace({ accessToken, initialDealId = null, onInitialDealH
     {message && <div className="crm-toast" onClick={() => setMessage(null)}>{message}<button type="button">×</button></div>}
     {loading && <div className="crm-loading"><span /><strong>Montando seu CRM com os dados reais…</strong></div>}
     {error && <div className="crm-error">{error}<button type="button" onClick={() => void load()}>Tentar novamente</button></div>}
-    {!loading && !error && data && view === "pipeline" && <PipelineViewEnhanced stages={visibleStages} allStages={activeStages} deals={filteredDeals} leadById={leadById} brokerById={brokerById} slaByDeal={slaByDeal} canReassign={canReassign} onReassign={setBrokerPickerDealId} onOpen={openDeal} onChat={openChat} onMutate={mutate} setMessage={setMessage} draggingId={draggingDealId} onDrag={setDraggingDealId} onDrop={dropDeal} />}
+    {!loading && !error && data && view === "pipeline" && <PipelineViewEnhanced stages={visibleStages} allStages={activeStages} deals={filteredDeals} leadById={leadById} brokerById={brokerById} slaByDeal={slaByDeal} canReassign={canReassign} onReassign={setBrokerPickerDealId} onOpen={openDeal} onChat={openChat} onMutate={mutate} setMessage={setMessage} draggingId={draggingDealId} onDrag={setDraggingDealId} onDrop={dropDeal} canManageStages={canManageStages} onReorderStage={reorderStage} onRecolorStage={recolorStage} onBulkFromStage={openBulkFromStage} stageCount={activeStages.length} />}
     {!loading && !error && data && view === "leads" && <LeadsViewEnhanced deals={filteredDeals} leadById={leadById} stages={activeStages} brokerById={brokerById} slaByDeal={slaByDeal} canReassign={canReassign} onReassign={setBrokerPickerDealId} onOpen={openDeal} onChat={openChat} onMutate={mutate} setMessage={setMessage} />}
     {!loading && !error && data && view === "agenda" && <AgendaView data={data} leadById={leadById} onMutate={mutate} setMessage={setMessage} />}
     {!loading && !error && data && view === "atividades" && <ActivitiesView data={data} leadById={leadById} brokerById={brokerById} onOpen={(leadId) => setSelectedDealId(data.deals.find((deal) => deal.lead_id === leadId)?.id ?? null)} />}
@@ -296,7 +317,7 @@ export function CrmWorkspace({ accessToken, initialDealId = null, onInitialDealH
     {selectedDeal && selectedLead && data && <LeadDrawer key={selectedDeal.id} accessToken={accessToken} lead={selectedLead} deal={selectedDeal} data={data} canReassign={canReassign} onClose={() => { setSelectedDealId(null); setMessage(null); }} onMutate={mutate} onReload={() => load({ quiet: true })} setMessage={setMessage} />}
     {chatDealId && data && leadById.get(data.deals.find((deal) => deal.id === chatDealId)?.lead_id ?? -1) && <LeadChatDrawer key={chatDealId} accessToken={accessToken} lead={leadById.get(data.deals.find((deal) => deal.id === chatDealId)!.lead_id)!} deal={data.deals.find((deal) => deal.id === chatDealId)!} corretorNome={data.brokers.find((b) => b.id === leadById.get(data.deals.find((deal) => deal.id === chatDealId)!.lead_id)?.corretor_id)?.nome} onClose={() => setChatDealId(null)} onResponse={async () => { await mutate({ action: "acknowledgeResponse", dealId: chatDealId }); setMessage("Resposta registrada e alerta encerrado."); }} />}
     {stageConfigOpen && data && <StageConfigModal pipelines={data.pipelines} stages={data.stages} deals={data.deals} leads={data.leads} products={data.products} initialPipelineId={pipelineId} onClose={() => setStageConfigOpen(false)} onChanged={async () => { await load({ quiet: true }); }} />}
-    {bulkMoveOpen && data && pipelineId && <BulkMoveModal pipelineId={pipelineId} stages={activeStages} deals={data.deals.filter((deal) => deal.pipeline_id === pipelineId)} onClose={() => setBulkMoveOpen(false)} onMove={async (fromStageId, toStageId) => { await mutate({ action: "bulkMoveStage", pipelineId, fromStageId, toStageId }); setBulkMoveOpen(false); setMessage("Todos os negócios da etapa foram movidos."); }} />}
+    {bulkMoveOpen && data && pipelineId && <BulkMoveModal pipelineId={pipelineId} stages={activeStages} deals={data.deals.filter((deal) => deal.pipeline_id === pipelineId)} initialFromStageId={bulkFromStage} onClose={() => { setBulkMoveOpen(false); setBulkFromStage(null); }} onMove={async (fromStageId, toStageId) => { await mutate({ action: "bulkMoveStage", pipelineId, fromStageId, toStageId }); setBulkMoveOpen(false); setBulkFromStage(null); setMessage("Todos os negócios da etapa foram movidos."); }} />}
     {createOpen && data && <CreateLeadModal pipelines={data.pipelines} brokers={data.brokers} initialPipelineId={pipelineId} canAssign={canAssign} onClose={() => { setCreateOpen(false); setMessage(null); }} onCreate={async (payload) => { await mutate({ action: "createLead", ...payload }); setCreateOpen(false); setMessage("Novo lead criado e inserido na primeira etapa."); }} />}
     {brokerPickerDealId && data && <BrokerPickerModal deal={data.deals.find((deal) => deal.id === brokerPickerDealId)!} lead={leadById.get(data.deals.find((deal) => deal.id === brokerPickerDealId)?.lead_id ?? -1)!} brokers={data.brokers} onClose={() => setBrokerPickerDealId(null)} onSave={async (brokerId) => { await mutate({ action: "transferDeal", dealId: brokerPickerDealId, brokerId }); setBrokerPickerDealId(null); setMessage("Corretor responsável atualizado."); }} />}
   </div>;
@@ -323,7 +344,7 @@ const saleStages = [
 ];
 
 function SalesProcessView({ accessToken, initialCreate = false }: { accessToken: string; initialCreate?: boolean }) {
-  const [data, setData] = useState<SalesData | null>(null); const [error, setError] = useState<string | null>(null); const [filter, setFilter] = useState("all"); const [creating, setCreating] = useState(initialCreate); const [busy, setBusy] = useState(false);
+  const [data, setData] = useState<SalesData | null>(null); const [error, setError] = useState<string | null>(null); const [filter, setFilter] = useState("all"); const [creating, setCreating] = useState(initialCreate); const [busy, setBusy] = useState(false); const [chatItem, setChatItem] = useState<{ lead: Lead; deal: Deal; corretorNome?: string } | null>(null);
   const load = async () => { const response = await authedFetch("/api/crm/sales", { headers: { Authorization: `Bearer ${accessToken}` } }); const result = await response.json() as SalesData & { error?: string }; if (!response.ok) throw new Error(result.error || "Não foi possível carregar as vendas."); setData(result); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { void load().catch((reason) => setError(reason instanceof Error ? reason.message : "Erro ao carregar vendas.")); }, [accessToken]);
@@ -359,12 +380,13 @@ function SalesProcessView({ accessToken, initialCreate = false }: { accessToken:
               {tags.length > 0 && <div className="card-tags" aria-label="Tags do lead">{tags.map((tagItem) => <span key={tagItem}>{tagItem}</span>)}</div>}
               <small className="sale-kind">{item.tipo_venda === "revenda" ? "Revenda" : "Construtora"}</small>
             </div>
-            <div className="sale-card-controls"><select aria-label={`Mover ${lead?.nome || "venda"} para outra etapa`} disabled={busy} value={item.etapa} onChange={(event) => void move(item.id, event.target.value)}>{saleStages.filter((target) => !target.resale || item.tipo_venda === "revenda").map((target) => <option value={target.id} key={target.id}>{target.name}</option>)}</select></div>
+            <div className="sale-card-controls">{lead && deal && <button type="button" className="sale-card-chat" onClick={() => setChatItem({ lead: lead as unknown as Lead, deal: deal as unknown as Deal, corretorNome: broker?.nome })}>Chat</button>}<select aria-label={`Mover ${lead?.nome || "venda"} para outra etapa`} disabled={busy} value={item.etapa} onChange={(event) => void move(item.id, event.target.value)}>{saleStages.filter((target) => !target.resale || item.tipo_venda === "revenda").map((target) => <option value={target.id} key={target.id}>{target.name}</option>)}</select></div>
           </article>;
         })}{items.length === 0 && <div className="sales-drop">Solte uma venda aqui</div>}</div>
       </article>;
     })}</div>
     {creating && <CreateSaleModal data={data} accessToken={accessToken} onClose={() => setCreating(false)} onDone={async () => { setCreating(false); await load(); }} />}
+    {chatItem && <LeadChatDrawer key={chatItem.deal.id} accessToken={accessToken} lead={chatItem.lead} deal={chatItem.deal} corretorNome={chatItem.corretorNome} onClose={() => setChatItem(null)} onResponse={async () => {}} />}
   </section>;
 }
 
@@ -433,14 +455,22 @@ function AnalyticsView({ data, onOpen }: { data: CrmData; onOpen?: (dealId: numb
   </section>;
 }
 
-function PipelineViewEnhanced({ stages, allStages, deals, leadById, brokerById, slaByDeal, canReassign, onReassign, onOpen, onChat, onMutate, setMessage, draggingId, onDrag, onDrop }: { stages: Stage[]; allStages: Stage[]; deals: Deal[]; leadById: Map<number, Lead>; brokerById: Map<number, Broker>; slaByDeal: Map<number, SlaInfo>; canReassign: boolean; onReassign: (dealId: number) => void; onOpen: (id: number) => void; onChat: (id: number) => void; onMutate: (body: Record<string, unknown>) => Promise<void>; setMessage: (value: string | null) => void; draggingId: number | null; onDrag: (id: number | null) => void; onDrop: (event: DragEvent, stageId: number) => Promise<void> }) {
+function PipelineViewEnhanced({ stages, allStages, deals, leadById, brokerById, slaByDeal, canReassign, onReassign, onOpen, onChat, onMutate, setMessage, draggingId, onDrag, onDrop, canManageStages, onReorderStage, onRecolorStage, onBulkFromStage, stageCount }: { stages: Stage[]; allStages: Stage[]; deals: Deal[]; leadById: Map<number, Lead>; brokerById: Map<number, Broker>; slaByDeal: Map<number, SlaInfo>; canReassign: boolean; onReassign: (dealId: number) => void; onOpen: (id: number) => void; onChat: (id: number) => void; onMutate: (body: Record<string, unknown>) => Promise<void>; setMessage: (value: string | null) => void; draggingId: number | null; onDrag: (id: number | null) => void; onDrop: (event: DragEvent, stageId: number) => Promise<void>; canManageStages?: boolean; onReorderStage?: (stageId: number, direction: number) => Promise<void>; onRecolorStage?: (stageId: number, color: string) => Promise<void>; onBulkFromStage?: (stageId: number) => void; stageCount?: number }) {
   const [busyId, setBusyId] = useState<number | null>(null);
+  const [menuStage, setMenuStage] = useState<number | null>(null);
   const change = async (body: Record<string, unknown>, success: string, dealId: number) => { setBusyId(dealId); try { await onMutate(body); setMessage(success); } catch (reason) { setMessage(reason instanceof Error ? reason.message : "Não foi possível salvar."); } finally { setBusyId(null); } };
   return <section className="crm-kanban-v2">{stages.map((stage, stageIndex) => {
     const items = deals.filter((deal) => deal.stage_id === stage.id);
     const stageColor = stage.cor || ["#9638d8", "#ff6500", "#386fe7", "#20aa64", "#f2a82c"][stageIndex % 5];
+    const globalIndex = allStages.slice().sort((a, b) => a.ordem - b.ordem).findIndex((s) => s.id === stage.id);
+    const total = stageCount ?? allStages.length;
     return <article className="crm-stage" style={{ "--stage": stageColor } as CSSProperties} key={stage.id} onDragOver={(event) => event.preventDefault()} onDrop={(event) => void onDrop(event, stage.id)}>
-      <header><div><i /><strong>{stage.rotulo || stage.nome}</strong></div><span>{items.length}</span></header>
+      <header><div><i /><strong>{stage.rotulo || stage.nome}</strong></div><div className="crm-stage-head-right"><span>{items.length}</span>{canManageStages && <button type="button" className="crm-stage-cog" title="Opções da etapa" onClick={() => setMenuStage(menuStage === stage.id ? null : stage.id)}>⋯</button>}</div></header>
+      {canManageStages && menuStage === stage.id && <div className="crm-stage-menu">
+        <div className="crm-stage-menu-row"><label className="crm-stage-color">Cor da etapa<input type="color" value={stageColor} onChange={(event) => { void onRecolorStage?.(stage.id, event.target.value); }} /></label></div>
+        <div className="crm-stage-menu-row crm-stage-reorder"><button type="button" disabled={globalIndex <= 0} onClick={() => { void onReorderStage?.(stage.id, -1); }}>◀ Mover para trás</button><button type="button" disabled={globalIndex < 0 || globalIndex >= total - 1} onClick={() => { void onReorderStage?.(stage.id, 1); }}>Mover para frente ▶</button></div>
+        <button type="button" className="crm-stage-bulk" onClick={() => { setMenuStage(null); onBulkFromStage?.(stage.id); }}>⇄ Mover todos os leads desta etapa</button>
+      </div>}
       <div className="crm-stage-body">{items.map((deal) => {
         const lead = leadById.get(deal.lead_id)!;
         const broker = brokerById.get(deal.corretor_id ?? lead.corretor_id ?? -1);
@@ -510,8 +540,8 @@ function BrokerPickerModal({ deal, lead, brokers, onClose, onSave }: { deal: Dea
   </div>;
 }
 
-function BulkMoveModal({ pipelineId, stages, deals, onClose, onMove }: { pipelineId: number; stages: Stage[]; deals: Deal[]; onClose: () => void; onMove: (fromStageId: number, toStageId: number) => Promise<void> }) {
-  const [fromStageId, setFromStageId] = useState(""); const [toStageId, setToStageId] = useState(""); const [busy, setBusy] = useState(false); const [error, setError] = useState<string | null>(null);
+function BulkMoveModal({ pipelineId, stages, deals, initialFromStageId, onClose, onMove }: { pipelineId: number; stages: Stage[]; deals: Deal[]; initialFromStageId?: number | null; onClose: () => void; onMove: (fromStageId: number, toStageId: number) => Promise<void> }) {
+  const [fromStageId, setFromStageId] = useState(initialFromStageId ? String(initialFromStageId) : ""); const [toStageId, setToStageId] = useState(""); const [busy, setBusy] = useState(false); const [error, setError] = useState<string | null>(null);
   const count = deals.filter((deal) => deal.stage_id === Number(fromStageId) && deal.status !== "perdido").length;
   return <div className="crm-center-modal"><form onSubmit={(event) => { event.preventDefault(); setBusy(true); setError(null); void onMove(Number(fromStageId), Number(toStageId)).catch((reason) => setError(reason instanceof Error ? reason.message : "Não foi possível mover a etapa.")).finally(() => setBusy(false)); }}><header><div><span>AÇÃO EM MASSA</span><h2>Mover uma etapa inteira</h2><p>Todos os negócios da etapa escolhida serão enviados para o novo destino.</p></div><button type="button" onClick={onClose}>×</button></header>{error && <div className="modal-error">{error}</div>}<div className="bulk-move-grid"><label>Etapa de origem<select required value={fromStageId} onChange={(event) => setFromStageId(event.target.value)}><option value="">Selecione</option>{stages.map((stage) => <option value={stage.id} key={stage.id}>{stage.rotulo || stage.nome}</option>)}</select></label><div className="bulk-arrow">→</div><label>Etapa de destino<select required value={toStageId} onChange={(event) => setToStageId(event.target.value)}><option value="">Selecione</option>{stages.filter((stage) => String(stage.id) !== fromStageId).map((stage) => <option value={stage.id} key={stage.id}>{stage.rotulo || stage.nome}</option>)}</select></label></div><div className="bulk-warning"><strong>{count} negócio{count === 1 ? "" : "s"}</strong><span>serão movidos dentro do funil #{pipelineId}</span></div><footer><button type="button" onClick={onClose}>Cancelar</button><button className="crm-primary" disabled={busy || !fromStageId || !toStageId || count === 0} type="submit">{busy ? "Movendo..." : `Mover ${count} negócios`}</button></footer></form></div>;
 }

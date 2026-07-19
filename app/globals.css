@@ -3120,3 +3120,22 @@ body { overflow:hidden; background:#eee8e2; }
 .sale-kind{display:block;margin-top:6px;color:#9a918a;font-size:10px}
 .sale-card-controls{padding:7px 9px;border-top:1px solid #eee8e4;background:#fff}
 .sale-card-controls select{width:100%;height:30px;margin:0!important;border:1px solid #ddd5cf;border-radius:7px;background:#fff;color:#544d48;font-size:11px}
+
+/* CRM: controles inline na etapa (cor, reordenar, mover todos) */
+.crm-stage-head-right{display:flex;align-items:center;gap:6px}
+.crm-stage-cog{width:24px;height:24px;border:0;border-radius:7px;background:rgba(0,0,0,.06);color:#5f5752;font-size:15px;line-height:1;cursor:pointer}
+.crm-stage-cog:hover{background:rgba(0,0,0,.12)}
+.crm-stage-menu{margin:8px 10px 4px;padding:10px;border:1px solid #ece7e3;border-radius:10px;background:#fff;box-shadow:0 10px 26px rgba(20,14,10,.12);display:flex;flex-direction:column;gap:8px;position:relative;z-index:5}
+.crm-stage-menu-row{display:flex;gap:8px}
+.crm-stage-color{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;font-size:11px;font-weight:700;color:#5f5752}
+.crm-stage-color input[type=color]{width:44px;height:30px;padding:2px;border:1px solid #ded7d2;border-radius:8px;background:#fff;cursor:pointer}
+.crm-stage-reorder{display:flex;gap:6px}
+.crm-stage-reorder button,.crm-stage-bulk{flex:1;border:1px solid #ded7d2;border-radius:8px;padding:8px 6px;background:#faf9f8;color:#5f5752;font-size:11px;font-weight:700;cursor:pointer}
+.crm-stage-reorder button:hover:not(:disabled),.crm-stage-bulk:hover{border-color:#ff9c5e;color:#d85600}
+.crm-stage-reorder button:disabled{opacity:.4;cursor:not-allowed}
+.crm-stage-bulk{border-color:#ffb57f;color:#d85600;background:#fff7f1}
+/* Vendas em processo: botão de chat no card */
+.sale-card-controls{display:flex;gap:6px;align-items:center}
+.sale-card-controls .sale-card-chat{flex:none;border:1px solid #e3dcd7;border-radius:8px;padding:0 12px;height:30px;background:#fff;color:#4a443f;font-weight:700;font-size:11px;cursor:pointer}
+.sale-card-controls .sale-card-chat:hover{border-color:#ff9c5e;color:#d85600}
+.sale-card-controls select{flex:1;min-width:0}
