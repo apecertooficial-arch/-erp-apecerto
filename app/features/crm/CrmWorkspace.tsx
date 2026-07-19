@@ -276,6 +276,11 @@ export function CrmWorkspace({ accessToken, initialDealId = null, onInitialDealH
     const { error: rpcError } = await getBrowserSupabaseClient().rpc("crm_etapa_salvar", { p_id: stageId, p_nome: st?.rotulo || st?.nome, p_cor: color });
     if (rpcError) setMessage(rpcError.message); else { await load({ quiet: true }); setMessage("Cor da etapa atualizada."); }
   }
+  async function saveStage(stageId: number, nome: string, color: string) {
+    setMessage(null);
+    const { error: rpcError } = await getBrowserSupabaseClient().rpc("crm_etapa_salvar", { p_id: stageId, p_nome: nome, p_cor: color });
+    if (rpcError) setMessage(rpcError.message); else { await load({ quiet: true }); setMessage("Etapa atualizada."); }
+  }
   function openBulkFromStage(stageId: number) { setBulkFromStage(stageId); setBulkMoveOpen(true); }
 
   return <div className="crm-v2">
@@ -309,7 +314,7 @@ export function CrmWorkspace({ accessToken, initialDealId = null, onInitialDealH
     {message && <div className="crm-toast" onClick={() => setMessage(null)}>{message}<button type="button">×</button></div>}
     {loading && <div className="crm-loading"><span /><strong>Montando seu CRM com os dados reais…</strong></div>}
     {error && <div className="crm-error">{error}<button type="button" onClick={() => void load()}>Tentar novamente</button></div>}
-    {!loading && !error && data && view === "pipeline" && <PipelineViewEnhanced stages={visibleStages} allStages={activeStages} deals={filteredDeals} leadById={leadById} brokerById={brokerById} slaByDeal={slaByDeal} canReassign={canReassign} onReassign={setBrokerPickerDealId} onOpen={openDeal} onChat={openChat} onMutate={mutate} setMessage={setMessage} draggingId={draggingDealId} onDrag={setDraggingDealId} onDrop={dropDeal} canManageStages={canManageStages} onReorderStage={reorderStage} onRecolorStage={recolorStage} onBulkFromStage={openBulkFromStage} stageCount={activeStages.length} canMoveDeals={canMoveDeals} />}
+    {!loading && !error && data && view === "pipeline" && <PipelineViewEnhanced stages={visibleStages} allStages={activeStages} deals={filteredDeals} leadById={leadById} brokerById={brokerById} slaByDeal={slaByDeal} canReassign={canReassign} onReassign={setBrokerPickerDealId} onOpen={openDeal} onChat={openChat} onMutate={mutate} setMessage={setMessage} draggingId={draggingDealId} onDrag={setDraggingDealId} onDrop={dropDeal} canManageStages={canManageStages} onReorderStage={reorderStage} onRecolorStage={recolorStage} onSaveStage={saveStage} onBulkFromStage={openBulkFromStage} stageCount={activeStages.length} canMoveDeals={canMoveDeals} />}
     {!loading && !error && data && view === "leads" && <LeadsViewEnhanced deals={filteredDeals} leadById={leadById} stages={activeStages} brokerById={brokerById} slaByDeal={slaByDeal} canReassign={canReassign} onReassign={setBrokerPickerDealId} onOpen={openDeal} onChat={openChat} onMutate={mutate} setMessage={setMessage} canMoveDeals={canMoveDeals} />}
     {!loading && !error && data && view === "agenda" && <AgendaView data={data} leadById={leadById} onMutate={mutate} setMessage={setMessage} />}
     {!loading && !error && data && view === "atividades" && <ActivitiesView data={data} leadById={leadById} brokerById={brokerById} onOpen={(leadId) => setSelectedDealId(data.deals.find((deal) => deal.lead_id === leadId)?.id ?? null)} />}
@@ -473,9 +478,12 @@ function AnalyticsView({ data, onOpen }: { data: CrmData; onOpen?: (dealId: numb
   </section>;
 }
 
-function PipelineViewEnhanced({ stages, allStages, deals, leadById, brokerById, slaByDeal, canReassign, onReassign, onOpen, onChat, onMutate, setMessage, draggingId, onDrag, onDrop, canManageStages, onReorderStage, onRecolorStage, onBulkFromStage, stageCount, canMoveDeals }: { stages: Stage[]; allStages: Stage[]; deals: Deal[]; leadById: Map<number, Lead>; brokerById: Map<number, Broker>; slaByDeal: Map<number, SlaInfo>; canReassign: boolean; onReassign: (dealId: number) => void; onOpen: (id: number) => void; onChat: (id: number) => void; onMutate: (body: Record<string, unknown>) => Promise<void>; setMessage: (value: string | null) => void; draggingId: number | null; onDrag: (id: number | null) => void; onDrop: (event: DragEvent, stageId: number) => Promise<void>; canManageStages?: boolean; onReorderStage?: (stageId: number, direction: number) => Promise<void>; onRecolorStage?: (stageId: number, color: string) => Promise<void>; onBulkFromStage?: (stageId: number) => void; stageCount?: number; canMoveDeals?: boolean }) {
+function PipelineViewEnhanced({ stages, allStages, deals, leadById, brokerById, slaByDeal, canReassign, onReassign, onOpen, onChat, onMutate, setMessage, draggingId, onDrag, onDrop, canManageStages, onReorderStage, onRecolorStage, onBulkFromStage, stageCount, canMoveDeals }: { stages: Stage[]; allStages: Stage[]; deals: Deal[]; leadById: Map<number, Lead>; brokerById: Map<number, Broker>; slaByDeal: Map<number, SlaInfo>; canReassign: boolean; onReassign: (dealId: number) => void; onOpen: (id: number) => void; onChat: (id: number) => void; onMutate: (body: Record<string, unknown>) => Promise<void>; setMessage: (value: string | null) => void; draggingId: number | null; onDrag: (id: number | null) => void; onDrop: (event: DragEvent, stageId: number) => Promise<void>; canManageStages?: boolean; onReorderStage?: (stageId: number, direction: number) => Promise<void>; onRecolorStage?: (stageId: number, color: string) => Promise<void>; onSaveStage?: (stageId: number, nome: string, color: string) => Promise<void>; onBulkFromStage?: (stageId: number) => void; stageCount?: number; canMoveDeals?: boolean }) {
   const [busyId, setBusyId] = useState<number | null>(null);
   const [menuStage, setMenuStage] = useState<number | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editColor, setEditColor] = useState("#9638d8");
+  const STAGE_PALETTE = ["#22a35a", "#2f9e8f", "#3b6fe0", "#7c3aed", "#d61f69", "#d13d3d", "#e8620e", "#e0a520", "#7cb518", "#5b6b7c", "#8a6a4a", "#3f3a36"];
   const change = async (body: Record<string, unknown>, success: string, dealId: number) => { setBusyId(dealId); try { await onMutate(body); setMessage(success); } catch (reason) { setMessage(reason instanceof Error ? reason.message : "Não foi possível salvar."); } finally { setBusyId(null); } };
   return <section className="crm-kanban-v2">{stages.map((stage, stageIndex) => {
     const items = deals.filter((deal) => deal.stage_id === stage.id);
@@ -483,11 +491,14 @@ function PipelineViewEnhanced({ stages, allStages, deals, leadById, brokerById, 
     const globalIndex = allStages.slice().sort((a, b) => a.ordem - b.ordem).findIndex((s) => s.id === stage.id);
     const total = stageCount ?? allStages.length;
     return <article className="crm-stage" style={{ "--stage": stageColor } as CSSProperties} key={stage.id} onDragOver={(event) => event.preventDefault()} onDrop={(event) => void onDrop(event, stage.id)}>
-      <header><div><i /><strong>{stage.rotulo || stage.nome}</strong></div><div className="crm-stage-head-right"><span>{items.length}</span>{canManageStages && <button type="button" className="crm-stage-cog" title="Opções da etapa" onClick={() => setMenuStage(menuStage === stage.id ? null : stage.id)}>⋯</button>}</div></header>
-      {canManageStages && menuStage === stage.id && <div className="crm-stage-menu">
-        <div className="crm-stage-menu-row"><label className="crm-stage-color">Cor da etapa<input type="color" value={stageColor} onChange={(event) => { void onRecolorStage?.(stage.id, event.target.value); }} /></label></div>
-        <div className="crm-stage-menu-row crm-stage-reorder"><button type="button" disabled={globalIndex <= 0} onClick={() => { void onReorderStage?.(stage.id, -1); }}>◀ Mover para trás</button><button type="button" disabled={globalIndex < 0 || globalIndex >= total - 1} onClick={() => { void onReorderStage?.(stage.id, 1); }}>Mover para frente ▶</button></div>
-        <button type="button" className="crm-stage-bulk" onClick={() => { setMenuStage(null); onBulkFromStage?.(stage.id); }}>⇄ Mover todos os leads desta etapa</button>
+      <header><div><i /><strong>{stage.rotulo || stage.nome}</strong></div><div className="crm-stage-head-right"><span>{items.length}</span>{canManageStages && <button type="button" className="crm-stage-cog" title="Editar etapa" onClick={() => { if (menuStage === stage.id) { setMenuStage(null); } else { setMenuStage(stage.id); setEditName(stage.rotulo || stage.nome); setEditColor(stageColor); } }}>⋯</button>}</div></header>
+      {canManageStages && menuStage === stage.id && <div className="crm-stage-editor" onClick={(event) => event.stopPropagation()}>
+        <span className="cse-kicker">EDITAR ETAPA</span>
+        <label className="cse-field"><span>Nome da etapa</span><input value={editName} onChange={(event) => setEditName(event.target.value)} autoFocus /></label>
+        <div className="cse-field"><span>Cor da etapa</span><div className="cse-swatches">{STAGE_PALETTE.map((c) => <button type="button" key={c} className={`cse-swatch ${editColor.toLowerCase() === c.toLowerCase() ? "sel" : ""}`} style={{ background: c }} onClick={() => setEditColor(c)} aria-label={`Cor ${c}`}>{editColor.toLowerCase() === c.toLowerCase() ? "✓" : ""}</button>)}</div></div>
+        <div className="cse-move"><button type="button" disabled={globalIndex <= 0} onClick={() => { void onReorderStage?.(stage.id, -1); }}>‹ Mover atrás</button><button type="button" disabled={globalIndex < 0 || globalIndex >= total - 1} onClick={() => { void onReorderStage?.(stage.id, 1); }}>Mover frente ›</button></div>
+        <button type="button" className="cse-bulk" onClick={() => { setMenuStage(null); onBulkFromStage?.(stage.id); }}>⇄ Mover todos os leads desta etapa</button>
+        <div className="cse-actions"><button type="button" className="cse-cancel" onClick={() => setMenuStage(null)}>Cancelar</button><button type="button" className="cse-save" onClick={() => { void onSaveStage?.(stage.id, editName.trim() || (stage.rotulo || stage.nome), editColor); setMenuStage(null); }}>Salvar</button></div>
       </div>}
       <div className="crm-stage-body">{items.map((deal) => {
         const lead = leadById.get(deal.lead_id)!;

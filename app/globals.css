@@ -3309,3 +3309,25 @@ body { overflow:hidden; background:#eee8e2; }
 .perms-workspace { max-width:1600px; }
 /* Agentes de IA (Laboratório da Sara): mesma largura dos demais (era 1200px, virava ilha) */
 .agents-lab { max-width:1600px; }
+
+/* Editor de etapa do funil (CRM) — fiel à referência "EDITAR ETAPA" */
+.crm-stage-editor{margin:8px 10px 6px;padding:13px;border:1px solid #ece7e3;border-radius:13px;background:#fff;box-shadow:0 14px 34px rgba(20,14,10,.16);display:flex;flex-direction:column;gap:12px;position:relative;z-index:6}
+.crm-stage-editor .cse-kicker{font-size:10px;font-weight:800;letter-spacing:.09em;color:#a79e97;text-transform:uppercase}
+.crm-stage-editor .cse-field{display:flex;flex-direction:column;gap:6px}
+.crm-stage-editor .cse-field>span{font-size:11px;color:#6f6863;font-weight:600}
+.crm-stage-editor .cse-field input{border:1px solid #ded7d2;border-radius:9px;padding:9px 11px;font-size:12px;outline:0;color:#332e2a;font-family:inherit}
+.crm-stage-editor .cse-field input:focus{border-color:#ff8a3d;box-shadow:0 0 0 3px rgba(255,101,0,.12)}
+.cse-swatches{display:grid;grid-template-columns:repeat(6,1fr);gap:8px}
+.cse-swatch{width:100%;aspect-ratio:1/1;border:0;border-radius:50%;cursor:pointer;display:grid;place-items:center;color:#fff;font-size:13px;font-weight:900;box-shadow:0 1px 3px rgba(0,0,0,.18)}
+.cse-swatch.sel{box-shadow:0 0 0 3px #fff,0 0 0 5px rgba(20,14,10,.22)}
+.cse-move{display:flex;gap:8px}
+.cse-move button{flex:1;border:1px solid #ded7d2;border-radius:9px;padding:9px 6px;background:#fff;color:#5f5752;font-size:11px;font-weight:700;cursor:pointer}
+.cse-move button:hover:not(:disabled){border-color:#ff9c5e;color:#d85600}
+.cse-move button:disabled{opacity:.4;cursor:not-allowed}
+.cse-bulk{border:1px solid #ffb279;border-radius:9px;padding:10px;background:#fff6ef;color:#d85f00;font-size:11.5px;font-weight:750;cursor:pointer}
+.cse-bulk:hover{background:#ffefe1}
+.cse-actions{display:flex;gap:8px}
+.cse-actions button{flex:1;border-radius:9px;padding:10px;font-size:12px;font-weight:750;cursor:pointer}
+.cse-cancel{border:1px solid #ded7d2;background:#fff;color:#5f5752}
+.cse-save{border:0;background:#ff6500;color:#fff}
+.cse-save:hover{background:#ec5f00}
