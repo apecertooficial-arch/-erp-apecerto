@@ -2843,3 +2843,38 @@ body { overflow:hidden; background:#eee8e2; }
   .finance-data-total,.finance-data-filterbar>strong { width:100%; margin-left:0; }
   .finance-module-kpis { grid-template-columns:1fr; }
 }
+
+/* ===== Nova venda (lançamento completo) ===== */
+.nova-venda-modal>form{width:min(720px,100%);max-height:92vh;display:flex;flex-direction:column;overflow:hidden}
+.nova-venda-steps{display:flex;gap:6px;margin:14px 0 4px;flex-wrap:wrap}
+.nova-venda-steps button{display:flex;align-items:center;gap:7px;border:1px solid var(--line,#e3ddd9);border-radius:10px;padding:8px 12px;background:#fff;color:#6f6863;font-size:12px;font-weight:700;cursor:pointer}
+.nova-venda-steps button b{display:grid;place-items:center;width:20px;height:20px;border-radius:50%;background:#f0ece9;color:#8c837e;font-size:11px}
+.nova-venda-steps button.active{border-color:#ff6500;color:#d85600;background:#fff6f0}
+.nova-venda-steps button.active b{background:#ff6500;color:#fff}
+.nova-venda-section{overflow:auto;padding:6px 2px 4px;flex:1}
+.nova-venda-block-head{display:flex;align-items:center;justify-content:space-between;margin:16px 0 8px}
+.nova-venda-block-head h3{margin:0;font-size:13px}
+.nova-venda-block-head>button,.nova-venda-quick button,.nova-venda-upload{border:1px solid #ded7d2;border-radius:9px;padding:7px 11px;background:#fff;color:#6f6863;font-size:11px;font-weight:700;cursor:pointer}
+.nova-venda-block-head>button:hover,.nova-venda-quick button:hover{border-color:#ff9c5e;color:#d85600}
+.nova-venda-quick{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+.nova-venda-quick>span{font-size:11px;color:#918b86}
+.nova-venda-row{display:flex;gap:8px;align-items:center;margin-bottom:7px}
+.nova-venda-row>select,.nova-venda-row>input{min-height:40px;border:1px solid #ded7d2;border-radius:9px;padding:8px 10px;background:#fff;font-family:inherit;font-size:12px;min-width:0}
+.nova-venda-row>select{flex:1.4}
+.nova-venda-row>input[type=number]{flex:.7;max-width:120px}
+.nova-venda-row>input[type=date]{flex:1}
+.nova-venda-row>input:not([type]),.nova-venda-row>input[type=text]{flex:1.2}
+.nova-venda-check{display:flex;align-items:center;gap:5px;font-size:11px;color:#6f6863;white-space:nowrap}
+.nova-venda-check input{width:15px;height:15px;min-height:auto}
+.nova-venda-del{width:34px;height:34px;flex:none;border:1px solid #f0d4cd;border-radius:8px;background:#fff6f4;color:#c9443d;font-size:16px;cursor:pointer}
+.nova-venda-hint{margin:8px 0 0;padding:9px 11px;border-radius:9px;background:#f8f3fb;color:#762a98;font-size:11px}
+.nova-venda-hint.ok{background:#e9f8ef;color:#17834b}
+.nova-venda-hint.warn{background:#fff2e9;color:#b45309}
+.nova-venda-hint b{font-weight:800}
+.nova-venda-upload{display:inline-flex;align-items:center;cursor:pointer}
+.nova-venda-doc{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:7px;padding:9px 11px;border:1px solid #ece7e3;border-radius:9px;background:#faf9f8;font-size:11px;color:#5f5752}
+.nova-venda-modal footer{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:14px;padding-top:14px;border-top:1px solid #ece7e3}
+.nova-venda-modal footer>div{display:flex;gap:8px}
+.nova-venda-nav button,.crm-secondary{border:1px solid #ded7d2;border-radius:10px;padding:0 15px;min-height:42px;background:#fff;color:#5f5752;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer}
+.crm-secondary{border-color:#ffb57f;color:#d85600;background:#fff7f1}
+@media(max-width:640px){.nova-venda-row{flex-wrap:wrap}.nova-venda-row>select,.nova-venda-row>input{flex:1 1 100%;max-width:none}.nova-venda-modal footer{flex-direction:column-reverse;align-items:stretch}.nova-venda-modal footer>div{justify-content:space-between}}

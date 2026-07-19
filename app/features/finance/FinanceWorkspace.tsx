@@ -9,7 +9,7 @@ type Detail = { id: string | null; data_venda: string | null; empreendimento: st
 type Commission = { id: string; venda_id: string; beneficiario_id: string | null; papel: string; valor_calculado: number | null; valor_final: number; override_motivo: string | null; created_at: string };
 type Receipt = { id: string; venda_id: string; numero_parcela: number; valor_total: number; data_prevista: string | null; data_recebimento: string | null; status: string; created_at: string };
 type Cash = { id: string; venda_id: string | null; recebimento_id: string | null; data: string; tipo: "entrada" | "saida"; categoria: string; descricao: string | null; valor: number; origem: string | null; papel: string | null; created_at: string };
-type FinanceData = { sales: Sale[]; details: Detail[]; commissions: Commission[]; receipts: Receipt[]; cash: Cash[]; users: Array<{ id: string; nome: string; role: string; ativo: boolean }>; brokers: Array<{ id: number; nome: string; usuario_id: string | null; online: boolean; ativo: boolean }>; goals: Array<{ nome: string; meta_vgv: number; atualizado_em: string }>; leads: Array<{ id: number; nome: string | null; origem: string | null; criado_em: string; corretor_id: number | null }>; deals: Array<{ id: number; lead_id: number; corretor_id: number | null; venda_id: string | null; status: string; valor: number | null; criado_em: string }> };
+type FinanceData = { sales: Sale[]; details: Detail[]; commissions: Commission[]; receipts: Receipt[]; cash: Cash[]; users: Array<{ id: string; nome: string; role: string; ativo: boolean }>; brokers: Array<{ id: number; nome: string; usuario_id: string | null; online: boolean; ativo: boolean }>; goals: Array<{ nome: string; meta_vgv: number; atualizado_em: string }>; leads: Array<{ id: number; nome: string | null; origem: string | null; criado_em: string; corretor_id: number | null }>; deals: Array<{ id: number; lead_id: number; corretor_id: number | null; venda_id: string | null; status: string; valor: number | null; criado_em: string }>; empreendimentos?: Array<{ id: string; nome: string; bairro: string | null; cidade: string | null }> };
 type Meta = { id: string; corretor_id: number | null; periodo_tipo: string; ano: number; periodo: number; meta_vgv: number; meta_vendas: number };
 type Tab = "overview" | "sales" | "cash" | "marketing" | "indications" | "metas" | "ganhos";
 type GanhoRow = { comissao_id: string; venda_id: string; data_venda: string | null; empreendimento: string | null; unidade: string | null; vgv: number | null; status_venda: string; ganho: number; ganho_previsto: number; ganho_recebido: number; situacao: string };
@@ -19,7 +19,7 @@ const compact = new Intl.NumberFormat("pt-BR", { notation: "compact", style: "cu
 const date = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short", year: "numeric" });
 
 export function FinanceWorkspace({ accessToken, sessionRole = "corretor", onNavigateToNewSale }: { accessToken: string; sessionRole?: "admin" | "gestor" | "corretor"; onNavigateToNewSale?: () => void }) {
-  const [data, setData] = useState<FinanceData | null>(null); const [tab, setTab] = useState<Tab>("overview"); const [period, setPeriod] = useState("all"); const [message, setMessage] = useState<string | null>(null); const [cashOpen, setCashOpen] = useState(false); const [receiptOpen, setReceiptOpen] = useState(false); const [selectedSaleId, setSelectedSaleId] = useState<string | null>(null);
+  const [data, setData] = useState<FinanceData | null>(null); const [tab, setTab] = useState<Tab>("overview"); const [period, setPeriod] = useState("all"); const [message, setMessage] = useState<string | null>(null); const [cashOpen, setCashOpen] = useState(false); const [receiptOpen, setReceiptOpen] = useState(false); const [selectedSaleId, setSelectedSaleId] = useState<string | null>(null); const [newSaleOpen, setNewSaleOpen] = useState(false);
   const load = async () => { const response = await fetch("/api/finance", { headers: { Authorization: `Bearer ${accessToken}` } }); const result = await response.json() as FinanceData & { error?: string }; if (!response.ok) throw new Error(result.error || "Não foi possível carregar o financeiro."); setData(result); };
   useEffect(() => { void load().catch((reason) => setMessage(reason instanceof Error ? reason.message : "Erro ao carregar o financeiro.")); }, [accessToken]);
   useEffect(() => { const supabase = getBrowserSupabaseClient(); const channel = supabase.channel("finance-live").on("postgres_changes", { event: "*", schema: "public", table: "lancamentos_caixa" }, () => void load()).on("postgres_changes", { event: "*", schema: "public", table: "recebimentos" }, () => void load()).on("postgres_changes", { event: "*", schema: "public", table: "vendas" }, () => void load()).subscribe(); return () => { void supabase.removeChannel(channel); }; }, [accessToken]);
@@ -57,7 +57,7 @@ export function FinanceWorkspace({ accessToken, sessionRole = "corretor", onNavi
   const unassignedVgv = unassignedSales.reduce((sum, sale) => sum + sale.vgv, 0);
   const ranking: FinanceRankingRow[] = [...brokerRanking.map((item) => ({ id: item.id, name: item.name, sales: item.sales, vgv: item.vgv, generated: item.generated, received: item.received, ticket: item.ticket })), ...(unassignedSales.length ? [{ id: "unassigned", name: "Não atribuído", sales: unassignedSales.length, vgv: unassignedVgv, generated: unassignedSales.reduce((sum, sale) => sum + sale.vgv * Number(sale.percentual_comissao || 0), 0), received: (data?.commissions ?? []).filter((commission) => unassignedIds.has(commission.venda_id)).reduce((sum, commission) => sum + commission.valor_final, 0), ticket: unassignedVgv / unassignedSales.length }] : [])].sort((a, b) => b.vgv - a.vgv);
   if (!data) return <div className="crm-loading"><span /><strong>Conectando vendas, comissões e caixa…</strong></div>;
-  return <div className="finance-workspace"><header><div><span>CONTROLE FINANCEIRO</span><h1>Financeiro</h1><p>Vendas, comissões, recebimentos e caixa em uma única visão.</p></div><div><select aria-label="Filtrar período" value={period} onChange={(event) => setPeriod(event.target.value)}><option value="all">Todo o período</option>{months.map((item) => <option value={`month:${item}`} key={`month:${item}`}>{new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(`${item}-15T12:00:00Z`))}</option>)}{years.flatMap((year) => [<option value={`semester:${year}-1`} key={`semester:${year}-1`}>1º semestre de {year}</option>, <option value={`semester:${year}-2`} key={`semester:${year}-2`}>2º semestre de {year}</option>, <option value={`year:${year}`} key={`year:${year}`}>Ano de {year}</option>])}</select></div></header><nav>{[["overview", "Visão geral"], ["sales", "Vendas & comissões"], ["indications", "Indicações"], ...(sessionRole !== "corretor" ? [["cash", "Fluxo de caixa"]] : []), ["marketing", "Marketing"], ...(sessionRole !== "corretor" ? [["ganhos", "Meus ganhos"], ["metas", "Metas"]] : [])].map(([id, label]) => <button className={tab === id ? "active" : ""} type="button" onClick={() => setTab(id as Tab)} key={id}>{label}</button>)}</nav>{message && <button className="finance-message" type="button" onClick={() => setMessage(null)}>{message} ×</button>}<section className="finance-kpis"><article><i className="orange">R$</i><span>VGV vendido</span><strong>{compact.format(totalVgv)}</strong><small>{sales.length} vendas no período</small></article>{sessionRole !== "corretor" && <><article><i className="green">↙</i><span>Entradas em caixa</span><strong>{compact.format(entries)}</strong><small>Valores efetivamente lançados</small></article><article><i className="red">↗</i><span>Saídas do caixa</span><strong>{compact.format(exits)}</strong><small>Custos e repasses</small></article></>}<article><i className="blue">◷</i><span>Falta receber</span><strong>{compact.format(pending)}</strong><small>Recebimentos pendentes</small></article><article><i className="purple">%</i><span>Comissões calculadas</span><strong>{compact.format(paidCommission || projectedCommission)}</strong><small>{data.commissions.length} lançamentos</small></article></section>{tab === "overview" && <FinanceOverview months={months} receipts={receipts} sales={sales} totalVgv={totalVgv} goal={data.goals[0]?.meta_vgv ?? 0} projectedCommission={projectedCommission} paidCommission={paidCommission} ranking={ranking} commissions={data.commissions} />}{tab === "sales" && <SalesCommissions data={data} sales={sales} onSale={setSelectedSaleId} onNewSale={onNavigateToNewSale} />}{tab === "indications" && <Indicacoes data={data} sales={sales} onSale={setSelectedSaleId} />}{tab === "metas" && sessionRole !== "corretor" && <MetasTab accessToken={accessToken} data={data} />}{tab === "cash" && <CashFlow cash={cash} receipts={receipts} sales={data.sales} onSale={setSelectedSaleId} onNewCash={() => setCashOpen(true)} onNewReceipt={() => setReceiptOpen(true)} onSettle={async (receipt, received) => { try { await mutate({ action: "settleReceipt", receiptId: receipt.id, received }); setMessage(received ? "Recebimento baixado." : "Baixa desfeita."); } catch (reason) { setMessage(reason instanceof Error ? reason.message : "Não foi possível baixar."); } }} />}{tab === "marketing" && <MarketingFinance data={data} cash={cash} sales={sales} />}{tab === "ganhos" && <MeusGanhos />} {selectedSaleId && <SaleDrawer data={data} saleId={selectedSaleId} onClose={() => setSelectedSaleId(null)} onSave={async (payload) => { await mutate(payload); setMessage("Venda atualizada."); }} onDelete={async (saleId) => { await mutate({ action: "deleteSale", saleId }); setSelectedSaleId(null); setMessage("Venda apagada."); }} />}{cashOpen && <CashModal sales={data.sales} onClose={() => setCashOpen(false)} onSave={async (payload) => { await mutate(payload); setCashOpen(false); setMessage("Movimentação registrada no caixa."); }} />}{receiptOpen && <ReceiptModal sales={data.sales} receipts={data.receipts} onClose={() => setReceiptOpen(false)} onSave={async (payload) => { await mutate(payload); setReceiptOpen(false); setMessage("Recebimento programado."); }} />}</div>;
+  return <div className="finance-workspace"><header><div><span>CONTROLE FINANCEIRO</span><h1>Financeiro</h1><p>Vendas, comissões, recebimentos e caixa em uma única visão.</p></div><div><select aria-label="Filtrar período" value={period} onChange={(event) => setPeriod(event.target.value)}><option value="all">Todo o período</option>{months.map((item) => <option value={`month:${item}`} key={`month:${item}`}>{new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(`${item}-15T12:00:00Z`))}</option>)}{years.flatMap((year) => [<option value={`semester:${year}-1`} key={`semester:${year}-1`}>1º semestre de {year}</option>, <option value={`semester:${year}-2`} key={`semester:${year}-2`}>2º semestre de {year}</option>, <option value={`year:${year}`} key={`year:${year}`}>Ano de {year}</option>])}</select></div></header><nav>{[["overview", "Visão geral"], ["sales", "Vendas & comissões"], ["indications", "Indicações"], ...(sessionRole !== "corretor" ? [["cash", "Fluxo de caixa"]] : []), ["marketing", "Marketing"], ...(sessionRole !== "corretor" ? [["ganhos", "Meus ganhos"], ["metas", "Metas"]] : [])].map(([id, label]) => <button className={tab === id ? "active" : ""} type="button" onClick={() => setTab(id as Tab)} key={id}>{label}</button>)}</nav>{message && <button className="finance-message" type="button" onClick={() => setMessage(null)}>{message} ×</button>}<section className="finance-kpis"><article><i className="orange">R$</i><span>VGV vendido</span><strong>{compact.format(totalVgv)}</strong><small>{sales.length} vendas no período</small></article>{sessionRole !== "corretor" && <><article><i className="green">↙</i><span>Entradas em caixa</span><strong>{compact.format(entries)}</strong><small>Valores efetivamente lançados</small></article><article><i className="red">↗</i><span>Saídas do caixa</span><strong>{compact.format(exits)}</strong><small>Custos e repasses</small></article></>}<article><i className="blue">◷</i><span>Falta receber</span><strong>{compact.format(pending)}</strong><small>Recebimentos pendentes</small></article><article><i className="purple">%</i><span>Comissões calculadas</span><strong>{compact.format(paidCommission || projectedCommission)}</strong><small>{data.commissions.length} lançamentos</small></article></section>{tab === "overview" && <FinanceOverview months={months} receipts={receipts} sales={sales} totalVgv={totalVgv} goal={data.goals[0]?.meta_vgv ?? 0} projectedCommission={projectedCommission} paidCommission={paidCommission} ranking={ranking} commissions={data.commissions} />}{tab === "sales" && <SalesCommissions data={data} sales={sales} onSale={setSelectedSaleId} onNewSale={() => setNewSaleOpen(true)} />}{tab === "indications" && <Indicacoes data={data} sales={sales} onSale={setSelectedSaleId} />}{tab === "metas" && sessionRole !== "corretor" && <MetasTab accessToken={accessToken} data={data} />}{tab === "cash" && <CashFlow cash={cash} receipts={receipts} sales={data.sales} onSale={setSelectedSaleId} onNewCash={() => setCashOpen(true)} onNewReceipt={() => setReceiptOpen(true)} onSettle={async (receipt, received) => { try { await mutate({ action: "settleReceipt", receiptId: receipt.id, received }); setMessage(received ? "Recebimento baixado." : "Baixa desfeita."); } catch (reason) { setMessage(reason instanceof Error ? reason.message : "Não foi possível baixar."); } }} />}{tab === "marketing" && <MarketingFinance data={data} cash={cash} sales={sales} />}{tab === "ganhos" && <MeusGanhos />} {selectedSaleId && <SaleDrawer data={data} saleId={selectedSaleId} onClose={() => setSelectedSaleId(null)} onSave={async (payload) => { await mutate(payload); setMessage("Venda atualizada."); }} onDelete={async (saleId) => { await mutate({ action: "deleteSale", saleId }); setSelectedSaleId(null); setMessage("Venda apagada."); }} />}{cashOpen && <CashModal sales={data.sales} onClose={() => setCashOpen(false)} onSave={async (payload) => { await mutate(payload); setCashOpen(false); setMessage("Movimentação registrada no caixa."); }} />}{receiptOpen && <ReceiptModal sales={data.sales} receipts={data.receipts} onClose={() => setReceiptOpen(false)} onSave={async (payload) => { await mutate(payload); setReceiptOpen(false); setMessage("Recebimento programado."); }} />}{newSaleOpen && <NovaVendaModal accessToken={accessToken} data={data} onClose={() => setNewSaleOpen(false)} onSave={async (payload) => { await mutate(payload); setNewSaleOpen(false); setMessage("Venda lançada com sucesso."); }} />}</div>;
 }
 
 function FinancePeriodBar({ months }: { months: string[] }) {
@@ -152,6 +152,156 @@ function SalesCommissions({ data, sales, onSale, onNewSale }: { data: FinanceDat
       <footer className="finance-sales-footer"><span>{filtered.length ? `${(safePage - 1) * pageSize + 1}-${Math.min(safePage * pageSize, filtered.length)} de ${filtered.length} vendas` : "0 vendas"}</span><nav><button disabled={safePage === 1} type="button" onClick={() => setPage((value) => Math.max(1, value - 1))}>‹</button>{Array.from({ length: totalPages }, (_, index) => index + 1).slice(Math.max(0, safePage - 3), Math.max(3, safePage)).map((item) => <button className={item === safePage ? "active" : ""} type="button" onClick={() => setPage(item)} key={item}>{item}</button>)}<button disabled={safePage === totalPages} type="button" onClick={() => setPage((value) => Math.min(totalPages, value + 1))}>›</button></nav></footer>
     </article>
   </section>;
+}
+
+type DocRow = { nome: string; path: string; bucket: string; uploading?: boolean; error?: string };
+type BrokerRow = { corretorId: string; corretorNome: string; fracao: string; ehIndicador: boolean };
+type CommRow = { papel: string; beneficiarioId: string; valor: string };
+type ParcelaRow = { numeroParcela: string; valor: string; dataPrevista: string };
+
+function NovaVendaModal({ accessToken, data, onClose, onSave }: { accessToken: string; data: FinanceData; onClose: () => void; onSave: (payload: Record<string, unknown>) => Promise<void> }) {
+  const today = new Date().toISOString().slice(0, 10);
+  const empreendimentos = data.empreendimentos ?? [];
+  const [form, setForm] = useState({ dataVenda: today, empreendimentoId: "", empreendimentoNome: "", unidade: "", vgv: "", percent: "", custos: "", payment: "", status: "pendente", clienteNome: "", proprietarioNome: "", notes: "", corretorId: "" });
+  const [brokers, setBrokers] = useState<BrokerRow[]>([{ corretorId: "", corretorNome: "", fracao: "1", ehIndicador: false }]);
+  const [commissions, setCommissions] = useState<CommRow[]>([]);
+  const [parcelas, setParcelas] = useState<ParcelaRow[]>([]);
+  const [docs, setDocs] = useState<DocRow[]>([]);
+  const [step, setStep] = useState(1);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const vgvNumber = Number(form.vgv) || 0;
+  const percentNumber = Number(form.percent) || 0;
+  const comissaoBruta = vgvNumber * (percentNumber / 100);
+  const somaComissoes = commissions.reduce((sum, c) => sum + (Number(c.valor) || 0), 0);
+  const somaParcelas = parcelas.reduce((sum, p) => sum + (Number(p.valor) || 0), 0);
+
+  const setBroker = (index: number, patch: Partial<BrokerRow>) => setBrokers((rows) => rows.map((row, i) => i === index ? { ...row, ...patch } : row));
+  const setComm = (index: number, patch: Partial<CommRow>) => setCommissions((rows) => rows.map((row, i) => i === index ? { ...row, ...patch } : row));
+  const setParcela = (index: number, patch: Partial<ParcelaRow>) => setParcelas((rows) => rows.map((row, i) => i === index ? { ...row, ...patch } : row));
+
+  const gerarParcelas = (qtd: number) => {
+    if (!Number.isFinite(qtd) || qtd < 1) return;
+    const valorParcela = comissaoBruta > 0 ? comissaoBruta / qtd : vgvNumber / qtd;
+    const base = new Date(`${form.dataVenda}T12:00:00`);
+    setParcelas(Array.from({ length: qtd }, (_, i) => {
+      const due = new Date(base); due.setMonth(due.getMonth() + i);
+      return { numeroParcela: String(i + 1), valor: valorParcela > 0 ? valorParcela.toFixed(2) : "", dataPrevista: due.toISOString().slice(0, 10) };
+    }));
+  };
+
+  const uploadDoc = async (file: File) => {
+    const placeholder: DocRow = { nome: file.name, path: "", bucket: "esteira-docs", uploading: true };
+    setDocs((rows) => [...rows, placeholder]);
+    try {
+      const supabase = getBrowserSupabaseClient();
+      const safeName = file.name.replace(/[^\w.\-]+/g, "_");
+      const path = `vendas/${form.dataVenda}/${Date.now()}_${safeName}`;
+      const { error: upErr } = await supabase.storage.from("esteira-docs").upload(path, file, { upsert: false });
+      if (upErr) throw new Error(upErr.message);
+      setDocs((rows) => rows.map((row) => row === placeholder ? { nome: file.name, path, bucket: "esteira-docs" } : row));
+    } catch (reason) {
+      setDocs((rows) => rows.map((row) => row === placeholder ? { ...row, uploading: false, error: reason instanceof Error ? reason.message : "Falha no upload" } : row));
+    }
+  };
+
+  const submit = () => {
+    setError(null);
+    if (!form.dataVenda || vgvNumber <= 0) { setError("Informe a data e o VGV da venda."); setStep(1); return; }
+    if (docs.some((d) => d.uploading)) { setError("Aguarde o envio dos documentos terminar."); return; }
+    setBusy(true);
+    const empreendimentoNome = form.empreendimentoId ? (empreendimentos.find((e) => e.id === form.empreendimentoId)?.nome || form.empreendimentoNome) : form.empreendimentoNome;
+    void onSave({
+      action: "createSale",
+      dataVenda: form.dataVenda,
+      empreendimentoId: form.empreendimentoId || null,
+      empreendimentoNome,
+      unidade: form.unidade,
+      vgv: vgvNumber,
+      percent: percentNumber,
+      custos: Number(form.custos) || 0,
+      payment: form.payment,
+      status: form.status,
+      clienteNome: form.clienteNome,
+      proprietarioNome: form.proprietarioNome,
+      notes: form.notes,
+      corretorId: form.corretorId ? Number(form.corretorId) : null,
+      brokers: brokers.filter((b) => b.corretorId || b.corretorNome.trim()).map((b) => {
+        const selected = data.brokers.find((br) => String(br.id) === b.corretorId);
+        return { corretorId: selected?.usuario_id || null, corretorNome: selected?.nome || b.corretorNome.trim(), fracao: Number(b.fracao) || 1, ehIndicador: b.ehIndicador };
+      }),
+      commissions: commissions.filter((c) => Number(c.valor) > 0).map((c) => ({ papel: c.papel, beneficiarioId: c.beneficiarioId || null, valor: Number(c.valor) })),
+      receipts: parcelas.filter((p) => Number(p.valor) > 0).map((p, i) => ({ numeroParcela: Number(p.numeroParcela) || i + 1, valor: Number(p.valor), dataPrevista: p.dataPrevista })),
+      documentos: docs.filter((d) => d.path).map((d) => ({ nome: d.nome, path: d.path, bucket: d.bucket })),
+    }).catch((reason) => { setError(reason instanceof Error ? reason.message : "Não foi possível lançar a venda."); }).finally(() => setBusy(false));
+  };
+
+  const steps = ["Dados da venda", "Corretores & comissões", "Pagamentos", "Cliente & documentos"];
+  return <div className="crm-center-modal nova-venda-modal"><form onSubmit={(event) => { event.preventDefault(); submit(); }}>
+    <header><div><span>LANÇAMENTO DE VENDA</span><h2>Nova venda</h2><p>Preencha todas as informações da venda: produto, corretores, distribuição de comissões, pagamentos, cliente e documentos.</p></div><button type="button" onClick={onClose}>×</button></header>
+    {error && <div className="modal-error">{error}</div>}
+    <nav className="nova-venda-steps">{steps.map((label, index) => <button className={step === index + 1 ? "active" : ""} type="button" key={label} onClick={() => setStep(index + 1)}><b>{index + 1}</b>{label}</button>)}</nav>
+
+    {step === 1 && <div className="nova-venda-section">
+      <div className="finance-form-grid">
+        <label>Data da venda<input required type="date" value={form.dataVenda} onChange={(e) => setForm({ ...form, dataVenda: e.target.value })} /></label>
+        <label>Status<select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}><option value="pendente">Pendente</option><option value="concluido">Concluído</option><option value="pago">Pago</option><option value="distrato">Distrato</option></select></label>
+        <label className="wide">Empreendimento / produto{empreendimentos.length ? <select value={form.empreendimentoId} onChange={(e) => setForm({ ...form, empreendimentoId: e.target.value })}><option value="">Selecione ou digite abaixo…</option>{empreendimentos.map((emp) => <option value={emp.id} key={emp.id}>{emp.nome}{emp.bairro ? ` · ${emp.bairro}` : ""}</option>)}</select> : null}<input placeholder="Nome do empreendimento" value={form.empreendimentoNome} onChange={(e) => setForm({ ...form, empreendimentoNome: e.target.value })} /></label>
+        <label>Unidade<input value={form.unidade} onChange={(e) => setForm({ ...form, unidade: e.target.value })} placeholder="Ex.: Apto 302, Lote 14" /></label>
+        <label>VGV (R$)<input required min="0.01" step="0.01" type="number" value={form.vgv} onChange={(e) => setForm({ ...form, vgv: e.target.value })} /></label>
+        <label>Comissão total (%)<input min="0" max="100" step="0.01" type="number" value={form.percent} onChange={(e) => setForm({ ...form, percent: e.target.value })} placeholder="Ex.: 5" /></label>
+        <label>Custos (R$)<input min="0" step="0.01" type="number" value={form.custos} onChange={(e) => setForm({ ...form, custos: e.target.value })} /></label>
+        <label>Forma de pagamento<input value={form.payment} onChange={(e) => setForm({ ...form, payment: e.target.value })} placeholder="Ex.: Financiamento, À vista" /></label>
+      </div>
+      <p className="nova-venda-hint">Comissão bruta estimada: <b>{brl.format(comissaoBruta)}</b></p>
+    </div>}
+
+    {step === 2 && <div className="nova-venda-section">
+      <div className="nova-venda-block-head"><h3>Corretores</h3><button type="button" onClick={() => setBrokers((rows) => [...rows, { corretorId: "", corretorNome: "", fracao: "1", ehIndicador: false }])}>＋ Adicionar corretor</button></div>
+      {brokers.map((row, index) => <div className="nova-venda-row" key={index}>
+        <select value={row.corretorId} onChange={(e) => setBroker(index, { corretorId: e.target.value })}><option value="">Corretor cadastrado…</option>{data.brokers.map((b) => <option value={String(b.id)} key={b.id}>{b.nome}</option>)}</select>
+        <input placeholder="ou nome livre" value={row.corretorNome} onChange={(e) => setBroker(index, { corretorNome: e.target.value })} />
+        <input type="number" step="0.01" min="0" title="Fração/participação" placeholder="Fração" value={row.fracao} onChange={(e) => setBroker(index, { fracao: e.target.value })} />
+        <label className="nova-venda-check"><input type="checkbox" checked={row.ehIndicador} onChange={(e) => setBroker(index, { ehIndicador: e.target.checked })} />Indicador</label>
+        <button type="button" className="nova-venda-del" onClick={() => setBrokers((rows) => rows.filter((_, i) => i !== index))}>×</button>
+      </div>)}
+      <div className="nova-venda-block-head"><h3>Distribuição de comissões</h3><button type="button" onClick={() => setCommissions((rows) => [...rows, { papel: "corretor", beneficiarioId: "", valor: "" }])}>＋ Adicionar comissão</button></div>
+      {commissions.length === 0 && <p className="nova-venda-hint">Opcional: distribua a comissão bruta entre os papéis. Se deixar em branco, você poderá lançar depois na ficha da venda.</p>}
+      {commissions.map((row, index) => <div className="nova-venda-row" key={index}>
+        <select value={row.papel} onChange={(e) => setComm(index, { papel: e.target.value })}><option value="corretor">Corretor</option><option value="executivo">Executivo</option><option value="apecerto">Apecerto</option><option value="indicacao">Indicação</option></select>
+        <select value={row.beneficiarioId} onChange={(e) => setComm(index, { beneficiarioId: e.target.value })}><option value="">Beneficiário…</option>{data.users.map((u) => <option value={u.id} key={u.id}>{u.nome}</option>)}</select>
+        <input type="number" step="0.01" min="0" placeholder="Valor R$" value={row.valor} onChange={(e) => setComm(index, { valor: e.target.value })} />
+        <button type="button" className="nova-venda-del" onClick={() => setCommissions((rows) => rows.filter((_, i) => i !== index))}>×</button>
+      </div>)}
+      {commissions.length > 0 && <p className={`nova-venda-hint ${Math.abs(comissaoBruta - somaComissoes) < 0.01 ? "ok" : "warn"}`}>Distribuído {brl.format(somaComissoes)} de {brl.format(comissaoBruta)}{comissaoBruta > 0 && Math.abs(comissaoBruta - somaComissoes) >= 0.01 ? ` · diferença ${brl.format(comissaoBruta - somaComissoes)}` : ""}</p>}
+    </div>}
+
+    {step === 3 && <div className="nova-venda-section">
+      <div className="nova-venda-block-head"><h3>Parcelas / pagamentos</h3><div className="nova-venda-quick"><span>Gerar</span>{[1, 2, 3, 6, 12].map((n) => <button type="button" key={n} onClick={() => gerarParcelas(n)}>{n}x</button>)}<button type="button" onClick={() => setParcelas((rows) => [...rows, { numeroParcela: String(rows.length + 1), valor: "", dataPrevista: form.dataVenda }])}>＋ Parcela</button></div></div>
+      {parcelas.length === 0 && <p className="nova-venda-hint">Defina quando e quanto será cada recebimento. Use os botões acima para gerar parcelas automaticamente a partir da comissão bruta.</p>}
+      {parcelas.map((row, index) => <div className="nova-venda-row" key={index}>
+        <input type="number" min="1" title="Nº da parcela" value={row.numeroParcela} onChange={(e) => setParcela(index, { numeroParcela: e.target.value })} />
+        <input type="date" value={row.dataPrevista} onChange={(e) => setParcela(index, { dataPrevista: e.target.value })} />
+        <input type="number" step="0.01" min="0" placeholder="Valor R$" value={row.valor} onChange={(e) => setParcela(index, { valor: e.target.value })} />
+        <button type="button" className="nova-venda-del" onClick={() => setParcelas((rows) => rows.filter((_, i) => i !== index))}>×</button>
+      </div>)}
+      {parcelas.length > 0 && <p className="nova-venda-hint">Total das parcelas: <b>{brl.format(somaParcelas)}</b> em {parcelas.length}x</p>}
+    </div>}
+
+    {step === 4 && <div className="nova-venda-section">
+      <div className="finance-form-grid">
+        <label>Cliente (opcional)<input value={form.clienteNome} onChange={(e) => setForm({ ...form, clienteNome: e.target.value })} placeholder="Nome do cliente comprador" /></label>
+        <label>Proprietário<input value={form.proprietarioNome} onChange={(e) => setForm({ ...form, proprietarioNome: e.target.value })} placeholder="Nome do proprietário / vendedor" /></label>
+        <label className="wide">Observações<textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Detalhes, condições especiais, anotações…" /></label>
+      </div>
+      <div className="nova-venda-block-head"><h3>Documentos da venda</h3><label className="nova-venda-upload">＋ Subir documento<input type="file" hidden multiple onChange={(e) => { const files = Array.from(e.target.files ?? []); files.forEach((file) => void uploadDoc(file)); e.target.value = ""; }} /></label></div>
+      {docs.length === 0 && <p className="nova-venda-hint">Opcional: contratos, propostas, comprovantes. Ficam guardados com segurança nesta venda.</p>}
+      {docs.map((doc, index) => <div className="nova-venda-doc" key={index}><span>{doc.uploading ? "⏳" : doc.error ? "⚠" : "📄"} {doc.nome}{doc.error ? ` · ${doc.error}` : doc.uploading ? " · enviando…" : ""}</span><button type="button" className="nova-venda-del" onClick={() => setDocs((rows) => rows.filter((_, i) => i !== index))}>×</button></div>)}
+    </div>}
+
+    <footer><div className="nova-venda-nav">{step > 1 && <button type="button" onClick={() => setStep((s) => s - 1)}>‹ Voltar</button>}{step < 4 && <button type="button" className="crm-secondary" onClick={() => setStep((s) => s + 1)}>Próximo ›</button>}</div><div><button type="button" onClick={onClose}>Cancelar</button><button className="crm-primary" disabled={busy} type="submit">{busy ? "Lançando…" : "Lançar venda"}</button></div></footer>
+  </form></div>;
 }
 
 function CashFlow({ cash, receipts, sales, onSale, onNewCash, onNewReceipt, onSettle }: { cash: Cash[]; receipts: Receipt[]; sales: Sale[]; onSale: (id: string) => void; onNewCash: () => void; onNewReceipt: () => void; onSettle: (receipt: Receipt, received: boolean) => Promise<void> }) {
