@@ -3190,19 +3190,16 @@ body { overflow:hidden; background:#eee8e2; }
   max-width: 1360px; margin-left: auto; margin-right: auto;
 }
 
-/* Início e CRM: mesma PROPORÇÃO das telas Configurações, Perfis, Sara,
-   Calendário, Disparos e Chat (referências aprovadas) — conteúdo contido
-   numa largura máxima e ALINHADO À ESQUERDA (encostado na sidebar), com a
-   sobra de espaço indo para a direita. NÃO centralizar (centralizar deixava
-   um "ilha" estreita no meio da tela grande). Cabeçalho + todas as seções
-   compartilham a MESMA borda esquerda. */
-.home-workspace { padding-block: 20px 48px; }
+/* Início e CRM: conteúdo contido numa largura máxima GENEROSA e centralizado,
+   PREENCHENDO a maior parte da tela (sem sobrar um vazio enorme à direita).
+   IMPORTANTE: .home-workspace e .crm-v2 são flex-column; usar só max-width +
+   margin auto fazia os grids encolherem para o conteúdo mínimo (KPIs espremidos).
+   width:100% força o filho a preencher a coluna até o teto e aí centraliza. */
 .home-workspace > *:not(.workspace-top) {
-  max-width: 1360px; margin-left: 0; margin-right: auto;
+  width: 100%; max-width: 1600px; margin-left: auto; margin-right: auto;
 }
-/* CRM tem zoom 0.85 — 1600px em CSS renderiza ~1360px visíveis.
-   Alinhado à esquerda; overlays (drawers/modais) ficam de fora. */
-.crm-v2 { padding-inline: 0; }
+/* CRM tem zoom 0.85 — largura maior (o kanban usa o espaço e ainda rola na horizontal).
+   Overlays (drawers/modais) ficam de fora para abrir por cima normalmente. */
 .crm-v2 > *:not(.crm-drawer-layer):not(.crm-center-modal):not(.broker-picker-modal) {
-  max-width: 1600px; margin-left: 0; margin-right: auto;
+  width: 100%; max-width: 1900px; margin-left: auto; margin-right: auto;
 }
