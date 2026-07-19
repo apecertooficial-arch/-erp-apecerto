@@ -20,7 +20,7 @@ export async function GET(request: Request) {
     auth.supabase.from("vendas").select("id,created_at,data_venda,empreendimento_id,empreendimento_nome,unidade_id,vgv,forma_pgto,status,obs").order("created_at", { ascending: false }),
     auth.supabase.from("venda_processos").select("id,venda_id,negocio_id,etapa,tipo_venda,responsavel_usuario_id,prazo_em,observacoes,criado_em,atualizado_em"),
     auth.supabase.from("negocios").select("id,venda_id,lead_id,corretor_id,empreendimento_id,valor,status"),
-    auth.supabase.from("leads").select("id,nome,telefone,email,corretor_id"),
+    auth.supabase.from("leads").select("id,nome,telefone,email,corretor_id,tags,extras"),
     auth.supabase.from("empreendimentos").select("id,nome,origem,bairro,cidade").order("nome"),
     auth.supabase.rpc("listar_corretores_transferencia"),
   ]);
