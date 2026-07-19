@@ -6,7 +6,10 @@ import { getBrowserSupabaseClient } from "../lib/supabase/browser";
 /* Sara — assistente flutuante GLOBAL (nivel do app, aparece em toda tela). */
 export function SaraWidget() {
   useEffect(() => {
-    if (typeof window === "undefined" || window.__saraWidget) return;
+    if (typeof window === "undefined") return;
+    // Remove qualquer versão anterior presa no DOM (evita FAB antigo por baixo do novo)
+    ["sara-fab", "sara-panel", "sara-style"].forEach(function (id) { var e = document.getElementById(id); if (e) e.remove(); });
+    document.querySelectorAll(".ai-button").forEach(function (e) { e.remove(); });
     window.__saraWidget = true;
     var SB = "https://diaegvfveqezispcthwk.supabase.co";
     var ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRpYWVndmZ2ZXFlemlzcGN0aHdrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5OTU4MjIsImV4cCI6MjA5ODU3MTgyMn0.312n8BuI-loQrQ20x9j1hNjKZs2UO71ey9gvIo0eY0I";
@@ -26,7 +29,7 @@ export function SaraWidget() {
       if (list) html += "</" + list + ">";
       return html;
     }
-    var st = document.createElement("style");
+    var st = document.createElement("style"); st.id = "sara-style";
     st.textContent = ["#sara-fab{position:fixed;bottom:24px;right:24px;z-index:170;width:62px;height:62px;border-radius:50%;border:none;cursor:pointer;background:linear-gradient(140deg,#ff6a2b,#e01e63);box-shadow:0 12px 30px rgba(224,30,99,.42);display:flex;align-items:center;justify-content:center;transition:transform .18s;}",
     "#sara-fab:hover{transform:scale(1.07) rotate(4deg);}#sara-fab svg{width:28px;height:28px;}",
     "#sara-fab .pulse{position:absolute;inset:0;border-radius:50%;animation:saraP 2.4s infinite;}",
