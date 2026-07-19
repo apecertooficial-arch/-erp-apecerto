@@ -3355,3 +3355,15 @@ body { overflow:hidden; background:#eee8e2; }
 .product-detail-layer .product-detail-panel { width:min(1180px,96vw); height:min(92vh,900px); margin:0; border-radius:20px; overflow:hidden; box-shadow:0 34px 90px rgba(18,12,8,.34); }
 .product-detail-panel .detail-hero { background-color:#333940; background-image:linear-gradient(135deg,#4a515b,#2b2f36); }
 @media(max-width:900px){ .modal-layer.product-detail-layer{ padding:0; } .product-detail-layer .product-detail-panel{ width:100vw; height:100vh; border-radius:0; } }
+
+/* ============================================================
+   MINI CHAT v2 — painel flutuante CENTRALIZADO + ferramentas
+   FORA do card (na lateral esquerda), fiel à referência.
+   ============================================================ */
+.chat-layer .lead-chat-drawer{ left:50% !important; right:auto !important; top:50% !important; bottom:auto !important; transform:translate(-50%,-50%) !important; overflow:visible !important; height:min(80vh,700px) !important; border-radius:18px !important; }
+.chat-layer .lead-chat-drawer>header{ border-radius:18px 18px 0 0; }
+.chat-layer .lead-chat-drawer>footer{ border-radius:0 0 18px 18px; }
+.chat-layer .lead-chat-drawer.is-collapsed{ transform:translate(-50%,-50%) !important; }
+/* ferramentas para FORA do card, à esquerda */
+.chat-layer .mini-chat-tools{ left:-62px !important; top:50% !important; transform:translateY(-50%) !important; }
+.chat-layer .chat-messages{ padding-left:20px !important; }
