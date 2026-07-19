@@ -2718,6 +2718,7 @@ body { overflow:hidden; background:#eee8e2; }
 .finance-sale-row em { min-height:21px; font-size:var(--finance-xs); }
 .finance-sales-footer { font-size:var(--finance-sm); }
 .finance-sales-footer button { font-size:var(--finance-sm); }
+.finance-workspace .finance-sales-footer { padding-right:92px; }
 
 /* Indicações e fluxo de caixa no mesmo sistema visual de Vendas & comissões. */
 .finance-data-designer { padding:0 26px; }
