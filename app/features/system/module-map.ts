@@ -64,6 +64,10 @@ export const moduleMap = {
     description: "Rastros operacionais disponíveis para auditoria técnica.",
     tables: ["wa_eventos", "perf_eventos", "motor_execucoes"],
   },
+  "Perfis e Permissões": {
+    description: "Controle de acesso: perfis, permissões por módulo/ação e overrides por usuário.",
+    tables: ["perfis", "usuarios"],
+  },
   Configurações: {
     description: "Preferências, regras comerciais e parâmetros da operação.",
     tables: ["escritorio_config", "sla_regras", "config_financeiro"],

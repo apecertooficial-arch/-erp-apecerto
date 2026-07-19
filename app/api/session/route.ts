@@ -17,7 +17,14 @@ export async function GET(request: Request) {
   ]);
   if (profileError || brokerError) return Response.json({ error: profileError?.message || brokerError?.message }, { status: 502 });
 
-  const role = profile?.role === "admin" ? "admin" : profile?.role === "gestor" ? "gestor" : "corretor";
+  const individualPermissions = (profile as { permissoes?: Record<string, string[]> | null } | null)?.permissoes ?? null;
+  let effectivePermissions = individualPermissions;
+  if ((!effectivePermissions || Object.keys(effectivePermissions).length === 0) && profile?.role) {
+    const { data: roleProfile } = await supabase.from("perfis").select("permissoes").eq("id", profile.role).maybeSingle();
+    effectivePermissions = (roleProfile as { permissoes?: Record<string, string[]> | null } | null)?.permissoes ?? null;
+  }
+  const managerRoles = new Set(["gestor", "executivo", "gestor_comercial", "gestor_equipe"]);
+  const role = profile?.role === "admin" ? "admin" : profile?.role && managerRoles.has(profile.role) ? "gestor" : "corretor";
   return Response.json({
     userId: authData.user.id,
     email: authData.user.email ?? broker?.email ?? "",
@@ -26,6 +33,6 @@ export async function GET(request: Request) {
     active: profile?.ativo !== false && broker?.ativo !== false,
     brokerId: broker?.id ?? null,
     online: broker?.online ?? false,
-    permissoes: (profile as { permissoes?: Record<string, string[]> | null } | null)?.permissoes ?? null,
+    permissoes: effectivePermissions,
   });
 }

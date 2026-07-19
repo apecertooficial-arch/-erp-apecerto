@@ -33,7 +33,7 @@ export async function PATCH(request: Request) {
   const action = clean(body.action, 40);
 
   const { data: me } = await auth.supabase.from("usuarios").select("role").eq("id", auth.user.id).maybeSingle();
-  if (!me || !["admin", "gestor"].includes(me.role)) return Response.json({ error: "Apenas administradores podem definir metas." }, { status: 403 });
+  if (!me || !["admin", "gestor", "executivo"].includes(me.role)) return Response.json({ error: "Apenas administradores podem definir metas." }, { status: 403 });
 
   if (action === "save") {
     const corretorId = body.corretorId === null || body.corretorId === "" || body.corretorId === "global" ? null : Number(body.corretorId);

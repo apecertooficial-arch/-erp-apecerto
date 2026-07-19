@@ -1,6 +1,7 @@
 // @ts-nocheck
 "use client";
 import { useEffect } from "react";
+import { getBrowserSupabaseClient } from "../lib/supabase/browser";
 
 /* Sara — assistente flutuante GLOBAL (nivel do app, aparece em toda tela). */
 export function SaraWidget() {
@@ -10,7 +11,8 @@ export function SaraWidget() {
     var SB = "https://diaegvfveqezispcthwk.supabase.co";
     var ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRpYWVndmZ2ZXFlemlzcGN0aHdrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5OTU4MjIsImV4cCI6MjA5ODU3MTgyMn0.312n8BuI-loQrQ20x9j1hNjKZs2UO71ey9gvIo0eY0I";
     var messages = [];
-    function fn(body) { return fetch(SB + "/functions/v1/ia-router", { method: "POST", headers: { Authorization: "Bearer " + ANON, apikey: ANON, "Content-Type": "application/json" }, body: JSON.stringify(body) }).then(function (r) { return r.json(); }); }
+    function currentToken() { try { return getBrowserSupabaseClient().auth.getSession().then(function (r) { return (r && r.data && r.data.session && r.data.session.access_token) || ANON; }).catch(function () { return ANON; }); } catch (e) { return Promise.resolve(ANON); } }
+    function fn(body) { return currentToken().then(function (tok) { return fetch(SB + "/functions/v1/ia-router", { method: "POST", headers: { Authorization: "Bearer " + tok, apikey: ANON, "Content-Type": "application/json" }, body: JSON.stringify(body) }).then(function (r) { return r.json(); }); }); }
     function esc(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
     function md(s) {
       s = esc(s).replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>").replace(/\*(.+?)\*/g, "<em>$1</em>");

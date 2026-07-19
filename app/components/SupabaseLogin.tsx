@@ -30,7 +30,8 @@ export function SupabaseLogin({ onAuthenticated, preview = false, onClose }: { o
   async function resetPassword() {
     if (!email) { setMessage("Digite seu e-mail para receber a recuperação de senha."); return; }
     setLoading(true); setMessage("");
-    const { error } = await getBrowserSupabaseClient().auth.resetPasswordForEmail(email, { redirectTo: window.location.origin });
+    const redirectBase = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
+    const { error } = await getBrowserSupabaseClient().auth.resetPasswordForEmail(email, { redirectTo: redirectBase });
     setMessage(error ? "Não foi possível solicitar a recuperação agora." : "Enviamos as instruções de recuperação para o seu e-mail.");
     setLoading(false);
   }
