@@ -156,3 +156,22 @@ test("padroniza indicações, fluxo de caixa e a hierarquia tipográfica finance
   assert.match(css, /\.finance-sales-month>header strong \{ font-size:var\(--finance-sm\)/);
   assert.match(css, /\.finance-sale-row \{ min-height:49px; font-size:var\(--finance-body\)/);
 });
+
+test("pagina o caixa e estende a identidade financeira aos módulos restantes", async () => {
+  const finance = await readFile(new URL("../app/features/finance/FinanceWorkspace.tsx", import.meta.url), "utf8");
+  const css = await readFile(new URL("../app/globals.css", import.meta.url), "utf8");
+
+  assert.match(finance, /const pageSize = 15/);
+  assert.match(finance, /visibleMovementRows = movementRows\.slice/);
+  assert.match(finance, /aria-label="Próxima página"/);
+  assert.match(finance, /finance-marketing-designer/);
+  assert.match(finance, /finance-earnings-designer/);
+  assert.match(finance, /finance-goals-designer/);
+  assert.match(finance, /<\/select><\/div><\/header><nav>/);
+  assert.doesNotMatch(finance, /<\/select>\{sessionRole !== "corretor" && <button type="button" onClick=\{\(\) => setCashOpen\(true\)\}>＋ Nova movimentação/);
+  assert.match(css, /Marketing, Meus ganhos e Metas — mesma identidade/);
+  assert.match(css, /\.finance-module-kpis \{ display:grid/);
+  assert.match(css, /\.finance-marketing-head,\.finance-marketing-row/);
+  assert.match(css, /\.finance-earnings-head,\.finance-earnings-row/);
+  assert.match(css, /\.finance-goals-designer \{ grid-template-columns/);
+});
