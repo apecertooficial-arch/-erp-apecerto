@@ -3139,3 +3139,14 @@ body { overflow:hidden; background:#eee8e2; }
 .sale-card-controls .sale-card-chat{flex:none;border:1px solid #e3dcd7;border-radius:8px;padding:0 12px;height:30px;background:#fff;color:#4a443f;font-weight:700;font-size:11px;cursor:pointer}
 .sale-card-controls .sale-card-chat:hover{border-color:#ff9c5e;color:#d85600}
 .sale-card-controls select{flex:1;min-width:0}
+
+/* Vendas em processo: configurar etapas */
+.sales-head-actions{display:flex;gap:8px;align-items:center}
+.sales-add-stage{display:flex;gap:8px;align-items:center;margin:10px 0;padding:10px 12px;border:1px solid #ece7e3;border-radius:10px;background:#fff}
+.sales-add-stage input{flex:1;min-height:38px;border:1px solid #ded7d2;border-radius:9px;padding:8px 10px;font-family:inherit;font-size:12px}
+.sales-add-stage button{border:1px solid #ded7d2;border-radius:9px;padding:0 14px;min-height:38px;background:#fff;color:#5f5752;font-weight:700;font-size:12px;cursor:pointer}
+.sales-stage header{display:flex;align-items:center;gap:8px}
+.sales-stage header strong{flex:1;min-width:0}
+.sales-stage .crm-stage-cog{background:rgba(0,0,0,.06)}
+.crm-stage-danger{border-color:#f0d4cd!important;background:#fff6f4!important;color:#c9443d!important}
+.crm-stage-danger:disabled{opacity:.5}
