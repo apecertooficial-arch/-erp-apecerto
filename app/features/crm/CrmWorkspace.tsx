@@ -490,7 +490,11 @@ function LeadChatDrawer({ accessToken, lead, deal, corretorNome, onClose, onResp
           page++;
         }
       }
-      // Reserva: inbox nativo, caso a d-api não retorne (sem chat / offline).
+      // Mescla o banco (traz as mensagens que FALHARAM — elas não existem na d-api). O dedup por wa_message_id mantém a versão da d-api (com ack) quando há duplicata.
+      if (instance.conversaIds.length) {
+        try { const dbRes = await request({ action: "messages", conversaIds: instance.conversaIds, limit: 500 }); const dbMsgs = Array.isArray(dbRes.mensagens) ? dbRes.mensagens as ChatMessage[] : []; if (dbMsgs.length) { acc = acc.concat(dbMsgs); render(); } } catch { /* silencioso */ }
+      }
+      // Reserva: inbox nativo, caso nada tenha vindo (sem chat / offline).
       if (!acc.length && instance.conversaIds.length) {
         const result = await request({ action: "messages", conversaIds: instance.conversaIds, limit: 500 });
         acc = Array.isArray(result.mensagens) ? result.mensagens as ChatMessage[] : [];
