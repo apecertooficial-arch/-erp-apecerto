@@ -110,12 +110,13 @@ function formatElapsed(minutes: number | null | undefined) {
   return `${years} ${years === 1 ? "ano" : "anos"} ${Math.floor((days % 365) / 30)} m`;
 }
 
-export function CrmWorkspace({ accessToken, initialDealId = null, onInitialDealHandled, initialView, onInitialViewHandled, sessionRole = "corretor", canReassign = false, canAssign = false }: { accessToken: string; initialDealId?: number | null; onInitialDealHandled?: () => void; initialView?: ViewName | null; onInitialViewHandled?: () => void; sessionRole?: "admin" | "gestor" | "corretor"; canReassign?: boolean; canAssign?: boolean }) {
+export function CrmWorkspace({ accessToken, initialDealId = null, onInitialDealHandled, initialView, initialCreateSale = false, onInitialViewHandled, sessionRole = "corretor", canReassign = false, canAssign = false }: { accessToken: string; initialDealId?: number | null; onInitialDealHandled?: () => void; initialView?: ViewName | null; initialCreateSale?: boolean; onInitialViewHandled?: () => void; sessionRole?: "admin" | "gestor" | "corretor"; canReassign?: boolean; canAssign?: boolean }) {
   const [now, setNow] = useState(() => Date.now());
+  const [launchSaleOnReady] = useState(initialCreateSale);
   const [data, setData] = useState<CrmData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [view, setView] = useState<ViewName>("pipeline");
+  const [view, setView] = useState<ViewName>(initialView ?? "pipeline");
   const [query, setQuery] = useState("");
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [pipelineId, setPipelineId] = useState<number | null>(null);
@@ -290,7 +291,7 @@ export function CrmWorkspace({ accessToken, initialDealId = null, onInitialDealH
     {!loading && !error && data && view === "leads" && <LeadsViewEnhanced deals={filteredDeals} leadById={leadById} stages={activeStages} brokerById={brokerById} slaByDeal={slaByDeal} canReassign={canReassign} onReassign={setBrokerPickerDealId} onOpen={openDeal} onChat={openChat} onMutate={mutate} setMessage={setMessage} />}
     {!loading && !error && data && view === "agenda" && <AgendaView data={data} leadById={leadById} onMutate={mutate} setMessage={setMessage} />}
     {!loading && !error && data && view === "atividades" && <ActivitiesView data={data} leadById={leadById} brokerById={brokerById} onOpen={(leadId) => setSelectedDealId(data.deals.find((deal) => deal.lead_id === leadId)?.id ?? null)} />}
-    {!loading && !error && data && view === "sales" && <SalesProcessView accessToken={accessToken} />}
+    {!loading && !error && data && view === "sales" && <SalesProcessView accessToken={accessToken} initialCreate={launchSaleOnReady} />}
     {!loading && !error && data && view === "analytics" && <AnalyticsView data={data} onOpen={(dealId) => setSelectedDealId(dealId)} />}
     {selectedDeal && selectedLead && data && <LeadDrawer key={selectedDeal.id} accessToken={accessToken} lead={selectedLead} deal={selectedDeal} data={data} canReassign={canReassign} onClose={() => { setSelectedDealId(null); setMessage(null); }} onMutate={mutate} onReload={() => load({ quiet: true })} setMessage={setMessage} />}
     {chatDealId && data && leadById.get(data.deals.find((deal) => deal.id === chatDealId)?.lead_id ?? -1) && <LeadChatDrawer key={chatDealId} accessToken={accessToken} lead={leadById.get(data.deals.find((deal) => deal.id === chatDealId)!.lead_id)!} deal={data.deals.find((deal) => deal.id === chatDealId)!} corretorNome={data.brokers.find((b) => b.id === leadById.get(data.deals.find((deal) => deal.id === chatDealId)!.lead_id)?.corretor_id)?.nome} onClose={() => setChatDealId(null)} onResponse={async () => { await mutate({ action: "acknowledgeResponse", dealId: chatDealId }); setMessage("Resposta registrada e alerta encerrado."); }} />}
@@ -321,8 +322,8 @@ const saleStages = [
   { id: "registrada", name: "Venda registrada", color: "#1fa85a", role: "Administrador", days: 0 },
 ];
 
-function SalesProcessView({ accessToken }: { accessToken: string }) {
-  const [data, setData] = useState<SalesData | null>(null); const [error, setError] = useState<string | null>(null); const [filter, setFilter] = useState("all"); const [creating, setCreating] = useState(false); const [busy, setBusy] = useState(false);
+function SalesProcessView({ accessToken, initialCreate = false }: { accessToken: string; initialCreate?: boolean }) {
+  const [data, setData] = useState<SalesData | null>(null); const [error, setError] = useState<string | null>(null); const [filter, setFilter] = useState("all"); const [creating, setCreating] = useState(initialCreate); const [busy, setBusy] = useState(false);
   const load = async () => { const response = await authedFetch("/api/crm/sales", { headers: { Authorization: `Bearer ${accessToken}` } }); const result = await response.json() as SalesData & { error?: string }; if (!response.ok) throw new Error(result.error || "Não foi possível carregar as vendas."); setData(result); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { void load().catch((reason) => setError(reason instanceof Error ? reason.message : "Erro ao carregar vendas.")); }, [accessToken]);
