@@ -3178,7 +3178,6 @@ body { overflow:hidden; background:#eee8e2; }
    1360px e centralizado (não estica/distorce em monitor grande).
    Cabeçalhos (header / .workspace-top) seguem full-width.
    ============================================================ */
-.home-workspace > *:not(header):not(.workspace-top),
 .finance-workspace > *:not(header):not(.workspace-top),
 .approaches-workspace > *:not(header):not(.workspace-top),
 .calendar-workspace > *:not(header):not(.workspace-top),
@@ -3190,7 +3189,18 @@ body { overflow:hidden; background:#eee8e2; }
 .product-grid {
   max-width: 1360px; margin-left: auto; margin-right: auto;
 }
-/* CRM tem zoom 0.85 — 1600px renderiza ~1360px na tela */
-.crm-v2 > *:not(header):not(.crm-v2-header) {
-  max-width: 1600px; margin-left: auto; margin-right: auto;
+
+/* Início e CRM: em vez de centralizar cada seção isoladamente (que
+   desalinhava o cabeçalho full-width do resto do conteúdo em telas
+   grandes), centralizamos a COLUNA INTEIRA via padding lateral no root.
+   Cabeçalho + todas as seções compartilham a mesma borda esquerda/direita,
+   exatamente como a Performance. O fundo da página segue ocupando a tela. */
+.home-workspace {
+  padding-inline: max(26px, calc((100% - 1360px) / 2));
+}
+/* CRM tem zoom 0.85 — 1600px em CSS renderiza ~1360px visíveis.
+   Piso de 0 mantém telas normais idênticas ao atual; só telas largas
+   ganham as calhas laterais que centralizam a coluna. */
+.crm-v2 {
+  padding-inline: max(0px, calc((100% - 1600px) / 2));
 }
