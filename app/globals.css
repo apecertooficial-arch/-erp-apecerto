@@ -3168,3 +3168,26 @@ body { overflow:hidden; background:#eee8e2; }
 .finance-form-grid .money-input{width:100%}
 .nova-venda-row .money-input{flex:1;min-width:0}
 .nova-venda-row .money-input input{text-align:left}
+
+/* ============================================================
+   LARGURA MÁXIMA CENTRALIZADA — igual à Performance.
+   Fundo da página ocupa a tela toda; o conteúdo fica contido em
+   1360px e centralizado (não estica/distorce em monitor grande).
+   Cabeçalhos (header / .workspace-top) seguem full-width.
+   ============================================================ */
+.home-workspace > *:not(header):not(.workspace-top),
+.finance-workspace > *:not(header):not(.workspace-top),
+.approaches-workspace > *:not(header):not(.workspace-top),
+.calendar-workspace > *:not(header):not(.workspace-top),
+.notif-workspace > *:not(header):not(.workspace-top),
+.team-workspace > *:not(header):not(.workspace-top),
+.audit-workspace > *:not(header):not(.workspace-top),
+.settings-workspace > *:not(header):not(.workspace-top),
+.catalog-controls,
+.product-grid {
+  max-width: 1360px; margin-left: auto; margin-right: auto;
+}
+/* CRM tem zoom 0.85 — 1600px renderiza ~1360px na tela */
+.crm-v2 > *:not(header):not(.crm-v2-header) {
+  max-width: 1600px; margin-left: auto; margin-right: auto;
+}
