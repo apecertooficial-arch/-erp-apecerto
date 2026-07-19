@@ -3302,3 +3302,8 @@ body { overflow:hidden; background:#eee8e2; }
 .chat-layer .lead-chat-drawer > footer { padding:12px 14px !important; gap:10px !important; }
 .chat-layer .lead-chat-drawer > footer textarea { border:1px solid #e5ddd6 !important; border-radius:22px !important; padding:12px 16px !important; min-height:46px !important; }
 .chat-layer .lead-chat-drawer > footer button { width:46px !important; height:46px !important; border-radius:50% !important; background:#ff6500 !important; }
+
+/* Proporção — Configurações e Perfis preenchem melhor telas grandes
+   (antes ficavam como ilha estreita: Perfis 1180px, Config 1360px). */
+.settings-body { max-width:1600px; margin-left:auto; margin-right:auto; }
+.perms-workspace { max-width:1600px; }
