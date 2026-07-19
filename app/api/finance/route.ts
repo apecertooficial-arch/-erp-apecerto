@@ -151,8 +151,20 @@ export async function PATCH(request: Request) {
     const date = clean(body.date, 10);
     const value = Number(body.value);
     if (!['entrada', 'saida'].includes(type) || !category || !date || !Number.isFinite(value) || value <= 0) return Response.json({ error: "Preencha tipo, categoria, data e valor." }, { status: 422 });
-    const { error } = await auth.supabase.from("lancamentos_caixa").insert({ tipo: type as "entrada" | "saida", categoria: category, data: date, valor: value, descricao: clean(body.description, 500) || null, origem: "erp", venda_id: clean(body.saleId, 50) || null });
-    return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
+    const saleId = clean(body.saleId, 50) || null;
+    const receiptId = clean(body.receiptId, 50) || null;
+    const commissionId = clean(body.commissionId, 60) || null;
+    const beneficiarioId = clean(body.beneficiarioId, 60) || null;
+    const papelRaw = clean(body.papel, 40);
+    const papel = ['corretor', 'executivo', 'indicacao', 'apecerto'].includes(papelRaw) ? papelRaw : null;
+    const insert: Record<string, unknown> = { tipo: type as "entrada" | "saida", categoria: category, data: date, valor: value, descricao: clean(body.description, 500) || null, origem: "erp", venda_id: saleId, recebimento_id: receiptId, comissao_id: commissionId, beneficiario_id: beneficiarioId, papel };
+    const { error } = await auth.supabase.from("lancamentos_caixa").insert(insert as never);
+    if (error) return Response.json({ error: error.message }, { status: 502 });
+    if (receiptId && body.settleReceipt === true) {
+      const { error: settleError } = await auth.supabase.from("recebimentos").update({ status: "recebido", data_recebimento: date }).eq("id", receiptId).neq("status", "recebido");
+      if (settleError) return Response.json({ error: `Lançamento salvo, mas a baixa da parcela falhou: ${settleError.message}` }, { status: 502 });
+    }
+    return Response.json({ success: true });
   }
 
   if (action === "createReceipt") {
