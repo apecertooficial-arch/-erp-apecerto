@@ -3348,3 +3348,10 @@ body { overflow:hidden; background:#eee8e2; }
 .live-chat .composer-tools button svg { width:20px; height:20px; }
 .live-chat .chat-composer textarea { border:1px solid #e5ddd6 !important; border-radius:22px !important; padding:12px 16px !important; min-height:46px !important; }
 .live-chat .chat-composer > button[type=submit] { width:46px !important; height:46px !important; border-radius:50% !important; background:#ff6500 !important; color:#fff !important; }
+
+/* Produtos — modal de DETALHE centralizado com hero escuro (fiel à referência;
+   antes era gaveta lateral com hero laranja). */
+.modal-layer.product-detail-layer { justify-content:center; align-items:center; padding:26px; }
+.product-detail-layer .product-detail-panel { width:min(1180px,96vw); height:min(92vh,900px); margin:0; border-radius:20px; overflow:hidden; box-shadow:0 34px 90px rgba(18,12,8,.34); }
+.product-detail-panel .detail-hero { background-color:#333940; background-image:linear-gradient(135deg,#4a515b,#2b2f36); }
+@media(max-width:900px){ .modal-layer.product-detail-layer{ padding:0; } .product-detail-layer .product-detail-panel{ width:100vw; height:100vh; border-radius:0; } }
