@@ -2922,3 +2922,201 @@ body { overflow:hidden; background:#eee8e2; }
 .settings-cat-del{width:32px;height:32px;flex:none;border:1px solid #f0d4cd;border-radius:7px;background:#fff6f4;color:#c9443d;font-size:15px;cursor:pointer}
 .settings-cat-row input:disabled,.settings-cat-row select:disabled,.settings-cat-del:disabled{opacity:.55}
 @media(max-width:720px){.settings-cat-row{flex-wrap:wrap}.settings-cat-row>input:not([type=color]){flex:1 1 100%}}
+/* ==================================================================
+   CRM — composição final baseada nas telas aprovadas do Claude Designer
+   ================================================================== */
+.crm-v2{
+  zoom:1;
+  min-height:100%;
+  background:#fbfaf9;
+  font-size:13px;
+}
+.crm-v2:has(.crm-kanban-v2){height:100vh;min-height:0;overflow:hidden}
+.chat-layer .lead-chat-drawer{zoom:1}
+.crm-v2-header{
+  min-height:70px;
+  padding:12px 22px;
+  border-bottom:1px solid #e8e1dc;
+  background:#fff;
+}
+.crm-eyebrow{display:none}
+.crm-v2-header h1{margin:0;font-size:19px;line-height:1.15;letter-spacing:-.35px}
+.crm-v2-header p{margin-top:3px;font-size:11px}
+.crm-header-actions{gap:12px}
+.crm-search-v2{width:270px;height:36px;border-radius:999px;background:#fff}
+.crm-search-v2 input{font-size:12px}
+.crm-primary{min-height:38px;border-radius:999px;padding-inline:19px;font-size:12px;box-shadow:0 9px 20px rgba(255,101,0,.18)}
+
+.crm-command-bar{min-height:44px;padding:0 22px;background:#fff}
+.crm-command-bar nav{gap:1px;overflow-x:auto}
+.crm-command-bar nav button{min-width:0;padding:0 18px;font-size:12px;white-space:nowrap}
+.crm-command-bar nav button.active{color:#dc5605}
+.crm-command-bar nav button.active::after{left:12px;right:12px;height:3px;background:#ff6500}
+.crm-live{padding:5px 10px;font-size:11px;white-space:nowrap}
+
+.crm-toolbar-v2{min-height:51px;padding:7px 22px;gap:8px;background:#fff}
+.crm-toolbar-v2>select{height:36px;border-radius:9px;font-size:12px}
+.stage-groups{gap:6px;overflow-x:auto}
+.stage-groups button{height:34px;border-radius:999px;padding-inline:12px;font-size:11px;white-space:nowrap}
+.stage-groups button.active{border-color:#ff6500;background:#fff6f0;color:#d85600}
+.crm-filter-trigger,.crm-overdue-trigger,.crm-bulk-trigger,.stage-config-trigger{height:34px;border-radius:9px;font-size:11px;white-space:nowrap}
+.crm-result-count{margin-left:auto;font-size:11px;white-space:nowrap}
+
+.crm-kanban-v2{gap:10px;padding:12px 18px 24px;background:#fbfaf9}
+.crm-stage{flex-basis:248px;border-radius:13px;background:color-mix(in srgb,var(--stage) 5%,#f7f5f3);box-shadow:none}
+.crm-stage>header{min-height:40px;padding:8px 10px;border-top-width:3px;background:color-mix(in srgb,var(--stage) 6%,#fff)}
+.crm-stage>header strong{font-size:12px;color:color-mix(in srgb,var(--stage) 78%,#26211e)}
+.crm-stage>header>span{padding:2px 7px;background:var(--stage);color:#fff;font-size:11px}
+.crm-stage-body{gap:8px;padding:0 8px 10px}
+.crm-lead-card-v3{border-color:#e6dfda;border-radius:11px;background:#fff;box-shadow:0 3px 9px rgba(44,31,23,.055)}
+.crm-lead-card-v3:hover{transform:translateY(-3px);box-shadow:0 11px 24px rgba(44,31,23,.11)}
+.sla-top-band{height:3px}
+.card-open-v3{padding:10px 10px 8px}
+.card-person{gap:8px}
+.card-person>span{width:32px;height:32px;font-size:11px}
+.card-person strong{font-size:12px}
+.card-person small{font-size:11px}
+.card-broker-inline-v3{display:flex;align-items:center;gap:6px;margin:3px 0 0 40px;min-height:20px}
+.card-broker-inline-v3>strong{color:#7f2cab;font-size:11px;font-weight:650}
+.card-broker-inline-v3 .broker-trigger-v3{font-size:11px}
+.sla-clock-v3{display:flex;align-items:center;gap:5px;margin:7px 0;padding:5px 7px;border-radius:8px}
+.sla-clock-v3 b{font-size:12px;white-space:nowrap}
+.sla-clock-v3 span{font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.card-context{padding-top:7px;border-top:1px solid #f0ebe7}
+.card-context span,.card-context b,.card-context small{font-size:11px}
+.card-tags{margin-top:6px}
+.card-tags span{padding:2px 7px;font-size:10px}
+.crm-lead-card-v3 .card-controls-v3{display:grid;grid-template-columns:1fr 1fr;gap:5px;padding:7px 9px;border-top:1px solid #eee8e4;background:#fff}
+.crm-lead-card-v3 .card-controls-v3>button,.crm-lead-card-v3 .card-controls-v3 select{width:100%;height:30px;min-height:30px;border:1px solid #ddd5cf;border-radius:7px;background:#fff;color:#544d48;font-size:11px}
+.crm-lead-card-v3 .card-controls-v3>button{display:block}
+.crm-lead-card-v3>footer{display:none}
+.crm-empty-stage{margin-top:2px;background:rgba(255,255,255,.38);border-color:color-mix(in srgb,var(--stage) 28%,#d4cbc5)}
+
+.crm-table-wrap{margin:14px 20px 34px;border-radius:14px;box-shadow:0 3px 12px rgba(44,31,23,.055)}
+.crm-leads-table{min-width:1040px}
+.crm-leads-table th{height:45px;padding:11px 13px;background:#f4f0ed;font-size:10px;letter-spacing:.08em}
+.crm-leads-table td{height:62px;padding:10px 13px;font-size:12px}
+.crm-leads-table tbody tr:nth-child(even){background:#fffcfa}
+.crm-leads-table tbody tr:hover{background:#fff6f0}
+.table-person span{width:32px;height:32px;font-size:11px}
+.table-person strong{font-size:12px}
+.crm-leads-table td select{min-height:34px;font-size:11px}
+.table-broker-trigger{font-size:11px}
+.table-actions-v3{gap:6px}
+.table-actions-v3 button{min-height:31px;padding-inline:11px;font-size:11px;background:#fff}
+.table-actions-v3 button:first-child{border-color:#b7e5c8;background:#f5fcf7;color:#16834b}
+.table-actions-v3 button:last-child{border-color:#eadfd8;background:#fff;color:#bd4a08}
+
+.sales-process,.crm-analytics{padding:18px 20px 36px;background:#fbfaf9}
+.sales-process>header,.crm-analytics>header{display:flex;align-items:flex-end;justify-content:space-between;gap:18px}
+.sales-process>header h2,.crm-analytics>header h2{margin:5px 0 2px;font-size:18px}
+.sales-process>header p,.crm-analytics>header p{font-size:11px}
+.sales-kpis,.analytics-kpis{grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;margin:14px 0}
+.sales-kpis article,.analytics-kpis article{min-height:112px;padding:14px;border-radius:14px}
+.sales-kpis article:nth-child(1),.analytics-kpis article:nth-child(3){background:#ffe0c7;border-color:#ff9b57}
+.sales-kpis article:nth-child(2),.analytics-kpis article:nth-child(2){background:#ead2fa;border-color:#bd79e8}
+.sales-kpis article:nth-child(3),.analytics-kpis article:nth-child(1){background:#d5f1e0;border-color:#76cf9c}
+.sales-kpis article:nth-child(4),.analytics-kpis article:nth-child(5){background:#d1efec;border-color:#68c9c1}
+.sales-kpis article:nth-child(5),.analytics-kpis article:nth-child(4){background:#f8d6d5;border-color:#e88b87}
+.sales-kpis article::before,.finance-kpis article::before,.analytics-kpis article::before,.home-kpis article::before{display:block!important;width:84px;height:84px;right:-24px;top:-28px;background:rgba(255,255,255,.36);z-index:0}
+.sales-kpis article::after,.finance-kpis article::after,.analytics-kpis article::after,.home-kpis article::after{width:58px;height:58px;right:15px;top:auto;bottom:-35px;background:rgba(255,255,255,.30);opacity:1;z-index:0}
+:is(.sales-kpis,.finance-kpis,.analytics-kpis,.home-kpis) article>*{position:relative;z-index:1}
+.analytics-kpis article{display:flex;flex-direction:column;align-items:flex-start;justify-content:center}
+.analytics-kpis article>i{position:relative;z-index:1;width:30px;height:30px;display:grid;place-items:center;margin-bottom:9px;border-radius:9px;background:#ff6500;color:#fff;font-size:11px;font-style:normal;font-weight:800;box-shadow:0 5px 12px rgba(44,31,23,.12)}
+.analytics-kpis article:nth-child(1)>i{background:#20aa64}.analytics-kpis article:nth-child(2)>i{background:#9638d8}.analytics-kpis article:nth-child(4)>i{background:#e44a47}.analytics-kpis article:nth-child(5)>i{background:#16a39a}
+.analytics-kpis span{position:relative;z-index:1;color:currentColor;font-size:11px}
+.analytics-kpis b{position:relative;z-index:1;margin-top:5px;color:#211d1a;font-size:21px}
+.analytics-kpis small{position:relative;z-index:1;margin-top:2px;color:currentColor;font-size:10px;opacity:.66}
+.analytics-filters{padding:0;margin-top:13px}
+.analytics-grid{gap:13px}
+.analytics-grid article{padding:16px;border-radius:14px}
+.analytics-grid article:nth-child(4n+1){border-top:3px solid #ff6500}.analytics-grid article:nth-child(4n+2){border-top:3px solid #9638d8}.analytics-grid article:nth-child(4n+3){border-top:3px solid #e44a47}.analytics-grid article:nth-child(4n){border-top:3px solid #20aa64}
+
+.sales-filter{min-height:45px;margin:5px 0 12px;padding:7px 10px;border:1px solid #e4ddd8;border-radius:12px;background:#fff}
+.sales-kanban{gap:10px}
+.sales-stage{flex-basis:250px;padding:9px;border-radius:13px;background:#f4f0ed}
+.sale-card{border-radius:11px;background:#fff;box-shadow:0 3px 9px rgba(44,31,23,.055)}
+
+.crm-agenda-grid{gap:13px;padding:16px 20px 38px;background:#fbfaf9}
+.agenda-panel{border-radius:14px}
+.agenda-panel>header{padding:13px 15px}
+.agenda-panel h2{font-size:15px}
+.agenda-panel header p{font-size:11px}
+.agenda-item,.visit-item{padding:12px 15px}
+.crm-activity-view{margin:16px 20px 38px;border-radius:14px}
+.crm-activity-view>header{padding:14px 16px}
+.activity-feed button:nth-child(even){background:#f7f3f0}
+.activity-feed button:hover{background:#fff6f0}
+
+@media(max-width:1100px){
+  .crm-command-bar nav button{padding-inline:12px}
+  .crm-live{display:none}
+  .sales-kpis,.analytics-kpis{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+@media(max-width:760px){
+  .crm-v2-header{align-items:flex-start;flex-direction:column}
+  .crm-header-actions{width:100%}.crm-search-v2{width:100%}
+  .crm-command-bar{overflow-x:auto}
+  .crm-toolbar-v2{overflow-x:auto}
+  .crm-agenda-grid,.analytics-grid{grid-template-columns:1fr}
+  .sales-kpis,.analytics-kpis{grid-template-columns:1fr 1fr}
+}
+
+/* A ordem visual do funil não depende das cores antigas gravadas no banco. */
+.crm-stage:nth-child(5n+1){--stage:#9638d8!important}
+.crm-stage:nth-child(5n+2){--stage:#ff6500!important}
+.crm-stage:nth-child(5n+3){--stage:#386fe7!important}
+.crm-stage:nth-child(5n+4){--stage:#20aa64!important}
+.crm-stage:nth-child(5n+5){--stage:#f2a82c!important}
+
+/* As duas formas usam a mesma família cromática do próprio card. */
+.analytics-kpis article:nth-child(1)::before,.analytics-kpis article:nth-child(1)::after{background:#78cfa0!important}
+.analytics-kpis article:nth-child(2)::before,.analytics-kpis article:nth-child(2)::after{background:#c78ce7!important}
+.analytics-kpis article:nth-child(3)::before,.analytics-kpis article:nth-child(3)::after{background:#ffab70!important}
+.analytics-kpis article:nth-child(4)::before,.analytics-kpis article:nth-child(4)::after{background:#eb9591!important}
+.analytics-kpis article:nth-child(5)::before,.analytics-kpis article:nth-child(5)::after{background:#76cbc4!important}
+.analytics-kpis article::before{opacity:.28!important}
+.analytics-kpis article::after{opacity:.22!important}
+.finance-kpis article:has(i.orange)::before,.finance-kpis article:has(i.orange)::after,.home-kpis article:has(i.orange)::before,.home-kpis article:has(i.orange)::after{background:#ffab70!important}
+.finance-kpis article:has(i.green)::before,.finance-kpis article:has(i.green)::after,.home-kpis article:has(i.green)::before,.home-kpis article:has(i.green)::after{background:#78cfa0!important}
+.finance-kpis article:has(i.red)::before,.finance-kpis article:has(i.red)::after{background:#eb9591!important}
+.finance-kpis article:has(i.blue)::before,.finance-kpis article:has(i.blue)::after{background:#8fb0f3!important}
+.finance-kpis article:has(i.purple)::before,.finance-kpis article:has(i.purple)::after,.home-kpis article:has(i.purple)::before,.home-kpis article:has(i.purple)::after{background:#c78ce7!important}
+.home-kpis article:has(i.teal)::before,.home-kpis article:has(i.teal)::after{background:#76cbc4!important}
+.home-kpis article:has(i.yellow)::before,.home-kpis article:has(i.yellow)::after{background:#e8c75e!important}
+:is(.finance-kpis,.home-kpis) article::before{opacity:.28!important}
+:is(.finance-kpis,.home-kpis) article::after{opacity:.22!important}
+
+/* Leads: avatar real quando houver foto, cores alternadas e duas tags visíveis. */
+.lead-avatar{overflow:hidden}
+.lead-avatar img{display:block;width:100%;height:100%;object-fit:cover;border-radius:inherit}
+.crm-leads-table-v3 tbody tr.lead-tone-1{border-left-color:#ff6500!important}
+.crm-leads-table-v3 tbody tr.lead-tone-2{border-left-color:#9638d8!important}
+.crm-leads-table-v3 tbody tr.lead-tone-3{border-left-color:#20aa64!important}
+.crm-leads-table-v3 tbody tr.lead-tone-4{border-left-color:#386fe7!important}
+.crm-leads-table-v3 tbody tr.lead-tone-5{border-left-color:#e44a47!important}
+.crm-leads-table-v3 .lead-tone-1 .lead-avatar{background:#ffe2cc;color:#d85600}
+.crm-leads-table-v3 .lead-tone-2 .lead-avatar{background:#eedbfa;color:#7f2cab}
+.crm-leads-table-v3 .lead-tone-3 .lead-avatar{background:#d8f2e3;color:#14834b}
+.crm-leads-table-v3 .lead-tone-4 .lead-avatar{background:#dce7ff;color:#285dc6}
+.crm-leads-table-v3 .lead-tone-5 .lead-avatar{background:#f9dddd;color:#c73d3a}
+.lead-table-tags{display:flex!important;flex-direction:row!important;flex-wrap:wrap;gap:3px;margin-top:3px}
+.lead-table-tags span{max-width:88px;overflow:hidden;text-overflow:ellipsis;padding:2px 6px;border-radius:999px;background:#f3e5fb;color:#7f2cab;font-size:9px;line-height:1.2;white-space:nowrap}
+.crm-leads-limit{padding:11px 15px;border-top:1px solid #eee8e4;background:#faf8f6;color:#827972;font-size:11px;font-weight:650;text-align:right}
+
+/* Vendas em processo: o mesmo desenho dos cards de lead do funil. */
+.sale-card{position:relative;overflow:hidden;padding:0!important;gap:0!important;border-radius:11px!important}
+.sale-card:hover{transform:translateY(-3px);box-shadow:0 11px 24px rgba(44,31,23,.11)}
+.sale-card-content{padding:10px 10px 8px}
+.sale-card .card-person strong{font-size:12px}
+.sale-card .card-person small{font-size:11px}
+.sale-card-broker{display:flex;align-items:center;gap:6px;margin:4px 0 0 40px;color:#7f2cab}
+.sale-card-broker strong{overflow:hidden;text-overflow:ellipsis;font-size:11px;font-weight:650;white-space:nowrap}
+.sale-card .sla-clock-v3{margin:7px 0}
+.sale-card .card-context{margin-top:0;padding-top:7px}
+.sale-card .card-context span{max-width:128px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sale-card .card-context b{white-space:nowrap}
+.sale-card .card-tags{min-height:19px;margin-top:6px}
+.sale-kind{display:block;margin-top:6px;color:#9a918a;font-size:10px}
+.sale-card-controls{padding:7px 9px;border-top:1px solid #eee8e4;background:#fff}
+.sale-card-controls select{width:100%;height:30px;margin:0!important;border:1px solid #ddd5cf;border-radius:7px;background:#fff;color:#544d48;font-size:11px}
