@@ -111,7 +111,6 @@ function formatElapsed(minutes: number | null | undefined) {
 }
 
 export function CrmWorkspace({ accessToken, initialDealId = null, onInitialDealHandled, initialView, initialCreateSale = false, onInitialViewHandled, sessionRole = "corretor", canReassign = false, canAssign = false }: { accessToken: string; initialDealId?: number | null; onInitialDealHandled?: () => void; initialView?: ViewName | null; initialCreateSale?: boolean; onInitialViewHandled?: () => void; sessionRole?: "admin" | "gestor" | "corretor"; canReassign?: boolean; canAssign?: boolean }) {
-  const [now, setNow] = useState(() => Date.now());
   const [launchSaleOnReady] = useState(initialCreateSale);
   const [data, setData] = useState<CrmData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -158,11 +157,6 @@ export function CrmWorkspace({ accessToken, initialDealId = null, onInitialDealH
   useEffect(() => { void load(); }, [accessToken]);
 
   useEffect(() => {
-    const timer = window.setInterval(() => setNow(Date.now()), 30000);
-    return () => window.clearInterval(timer);
-  }, []);
-
-  useEffect(() => {
     const supabase = getBrowserSupabaseClient();
     const channel = supabase.channel("crm-live-updates")
       .on("postgres_changes", { event: "*", schema: "public", table: "negocios" }, () => { void load({ quiet: true }); })
@@ -205,14 +199,6 @@ export function CrmWorkspace({ accessToken, initialDealId = null, onInitialDealH
   const selectedLead = selectedDeal ? leadById.get(selectedDeal.lead_id) ?? null : null;
   const pendingAlerts = data?.alerts ?? [];
   const viewHeading = viewHeadings[view];
-  const metrics = useMemo(() => ({
-    leads: new Set(filteredDeals.map((deal) => deal.lead_id)).size,
-    open: filteredDeals.filter((deal) => deal.status === "aberto").length,
-    value: filteredDeals.reduce((sum, deal) => sum + (deal.valor ?? 0), 0),
-    overdue: (data?.tasks ?? []).filter((task) => isOverdue(task, now)).length,
-    visits: (data?.visits ?? []).filter((visit) => visit.status === "agendada" && new Date(`${visit.data}T${visit.hora_inicio || "00:00"}`).getTime() >= now).length,
-  }), [data, filteredDeals, now]);
-
   useEffect(() => {
     if (!initialDealId || !data) return;
     const deal = data.deals.find((item) => item.id === initialDealId);
@@ -264,14 +250,6 @@ export function CrmWorkspace({ accessToken, initialDealId = null, onInitialDealH
         <button className={view === "atividades" ? "active" : ""} onClick={() => setView("atividades")} type="button"><span>↻</span> Atividades</button>
       </nav>
       <span className="crm-live">● Supabase conectado</span>
-    </section>
-
-    <section className="crm-metrics">
-      <article><span className="metric-icon purple">◎</span><div><strong>{metrics.leads}</strong><small>Leads no recorte</small></div></article>
-      <article><span className="metric-icon orange">↗</span><div><strong>{metrics.open}</strong><small>Negócios abertos</small></div></article>
-      <article><span className="metric-icon green">R$</span><div><strong>{money.format(metrics.value)}</strong><small>Valor em negociação</small></div></article>
-      <article><span className="metric-icon red">!</span><div><strong>{metrics.overdue}</strong><small>Tarefas vencidas</small></div></article>
-      <article><span className="metric-icon blue">◇</span><div><strong>{metrics.visits}</strong><small>Próximas visitas</small></div></article>
     </section>
 
     <section className="crm-toolbar-v2">
@@ -365,7 +343,6 @@ function AnalyticsView({ data, onOpen }: { data: CrmData; onOpen?: (dealId: numb
   const reasonCounts = [...new Set(lost.map((deal) => deal.motivo_perda || "Sem motivo"))].map((reason) => ({ reason, deals: lost.filter((deal) => (deal.motivo_perda || "Sem motivo") === reason) })).sort((a, b) => b.deals.length - a.deals.length);
   const brokerStats = data.brokers.map((broker) => ({ broker, deals: deals.filter((deal) => (deal.corretor_id ?? leadById.get(deal.lead_id)?.corretor_id) === broker.id) })).sort((a, b) => b.deals.length - a.deals.length);
   const maxBroker = Math.max(1, ...brokerStats.map((entry) => entry.deals.length));
-  const pending = data.sla.filter((entry) => entry.aguardando_humano && Number(entry.min_aguardando || 0) >= 60).length;
   const originStats = [...new Set(deals.map((deal) => leadById.get(deal.lead_id)?.origem || "Sem origem"))].map((origin) => ({ origin, deals: deals.filter((deal) => (leadById.get(deal.lead_id)?.origem || "Sem origem") === origin) })).sort((a, b) => b.deals.length - a.deals.length).slice(0, 8);
   const maxOrigin = Math.max(1, ...originStats.map((entry) => entry.deals.length));
   const productStats = [...new Set(activeDeals.map((deal) => deal.empreendimento_id).filter(Boolean))].map((id) => ({ product: data.products.find((product) => product.id === id), deals: activeDeals.filter((deal) => deal.empreendimento_id === id) })).filter((entry) => entry.product).sort((a, b) => b.deals.length - a.deals.length).slice(0, 8);
@@ -380,7 +357,13 @@ function AnalyticsView({ data, onOpen }: { data: CrmData; onOpen?: (dealId: numb
       <select value={brokerFilter} onChange={(event) => setBrokerFilter(event.target.value)} aria-label="Corretor"><option value="">Todos os corretores</option>{data.brokers.map((broker) => <option value={broker.id} key={broker.id}>{broker.nome}</option>)}</select>
       <select value={originFilter} onChange={(event) => setOriginFilter(event.target.value)} aria-label="Origem"><option value="">Todas as origens</option>{origins.map((origin) => <option key={origin}>{origin}</option>)}</select>
     </div>
-    <div className="analytics-kpis"><article><b>{activeDeals.length}</b><span>Leads no funil</span></article><article><b>{conversion}%</b><span>Conversão geral</span></article><article><b>{money.format(potential)}</b><span>Receita potencial</span></article><article><b>{bottleneck?.stage.rotulo || bottleneck?.stage.nome || "—"}</b><span>Gargalo</span></article><article><b>{lost.length}</b><span>Perdidos</span></article><article><b>{pending}</b><span>1º contato pendente</span></article></div>
+    <div className="analytics-kpis">
+      <article><i>↗</i><span>Conversão geral</span><b>{conversion}%</b><small>Leads que fecham</small></article>
+      <article><i>◷</i><span>Ciclo médio</span><b>{formatElapsed(stageStats.length ? Math.round(stageStats.reduce((sum, entry) => sum + entry.avg, 0) / stageStats.length) : 0)}</b><small>Entrada ao fechamento</small></article>
+      <article><i>◎</i><span>Negócios ativos</span><b>{activeDeals.length}</b><small>{money.format(potential)} em negociação</small></article>
+      <article><i>△</i><span>Perdidos no período</span><b>{lost.length}</b><small>Oportunidades perdidas</small></article>
+      <article><i>R$</i><span>Ticket médio</span><b>{money.format(activeDeals.length ? potential / activeDeals.length : 0)}</b><small>Por negócio</small></article>
+    </div>
     <div className="analytics-grid">
       <article><h3>Conversão do funil</h3>{stageStats.map((entry) => <button className="funnel-row drillable" type="button" onClick={() => drillOpen(`Etapa: ${entry.stage.rotulo || entry.stage.nome}`, entry.deals)} key={entry.stage.id}><span><b>{entry.stage.rotulo || entry.stage.nome}</b><em>{entry.count}</em></span><i><u style={{ width: `${Math.max(2, (entry.count / maxCount) * 100)}%`, background: entry.stage.cor || "#ff7000" }} /></i></button>)}</article>
       <article><h3>Tempo médio por etapa</h3>{stageStats.map((entry) => <div className={entry.stage.id === bottleneck?.stage.id ? "time-row bottleneck" : "time-row"} key={entry.stage.id}><b>{entry.stage.rotulo || entry.stage.nome}</b><i><u style={{ width: `${Math.max(2, (entry.avg / maxAvg) * 100)}%` }} /></i><span>{formatElapsed(entry.avg)}</span></div>)}</article>
@@ -397,9 +380,10 @@ function AnalyticsView({ data, onOpen }: { data: CrmData; onOpen?: (dealId: numb
 function PipelineViewEnhanced({ stages, allStages, deals, leadById, brokerById, slaByDeal, canReassign, onReassign, onOpen, onChat, onMutate, setMessage, draggingId, onDrag, onDrop }: { stages: Stage[]; allStages: Stage[]; deals: Deal[]; leadById: Map<number, Lead>; brokerById: Map<number, Broker>; slaByDeal: Map<number, SlaInfo>; canReassign: boolean; onReassign: (dealId: number) => void; onOpen: (id: number) => void; onChat: (id: number) => void; onMutate: (body: Record<string, unknown>) => Promise<void>; setMessage: (value: string | null) => void; draggingId: number | null; onDrag: (id: number | null) => void; onDrop: (event: DragEvent, stageId: number) => Promise<void> }) {
   const [busyId, setBusyId] = useState<number | null>(null);
   const change = async (body: Record<string, unknown>, success: string, dealId: number) => { setBusyId(dealId); try { await onMutate(body); setMessage(success); } catch (reason) { setMessage(reason instanceof Error ? reason.message : "Não foi possível salvar."); } finally { setBusyId(null); } };
-  return <section className="crm-kanban-v2">{stages.map((stage) => {
+  return <section className="crm-kanban-v2">{stages.map((stage, stageIndex) => {
     const items = deals.filter((deal) => deal.stage_id === stage.id);
-    return <article className="crm-stage" style={{ "--stage": stage.cor || "#8d2bd1" } as CSSProperties} key={stage.id} onDragOver={(event) => event.preventDefault()} onDrop={(event) => void onDrop(event, stage.id)}>
+    const stageColor = stage.cor || ["#9638d8", "#ff6500", "#386fe7", "#20aa64", "#f2a82c"][stageIndex % 5];
+    return <article className="crm-stage" style={{ "--stage": stageColor } as CSSProperties} key={stage.id} onDragOver={(event) => event.preventDefault()} onDrop={(event) => void onDrop(event, stage.id)}>
       <header><div><i /><strong>{stage.rotulo || stage.nome}</strong></div><span>{items.length}</span></header>
       <div className="crm-stage-body">{items.map((deal) => {
         const lead = leadById.get(deal.lead_id)!;
@@ -410,15 +394,12 @@ function PipelineViewEnhanced({ stages, allStages, deals, leadById, brokerById, 
         const waiting = sla?.aguardando_humano;
         return <article draggable className={`crm-lead-card-v3 sla-${color} ${draggingId === deal.id ? "dragging" : ""}`} onDragStart={(event) => { if ((event.target as HTMLElement).closest(".card-controls-v3, .broker-trigger-v3")) return event.preventDefault(); event.dataTransfer.setData("text/deal-id", String(deal.id)); onDrag(deal.id); }} onDragEnd={() => onDrag(null)} key={deal.id}>
           <div className={`sla-top-band ${color}`} />
-          <button className="card-open-v3" type="button" onClick={() => onOpen(deal.id)}>
+          <div className="card-open-v3" role="button" tabIndex={0} onClick={() => onOpen(deal.id)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") onOpen(deal.id); }}>
             <div className="card-person"><span>{initials(lead.nome)}</span><div><strong>{lead.nome || "Lead sem nome"}</strong><small>{lead.telefone || "Sem telefone"}</small></div><em>›</em></div>
+            <div className="card-broker-inline-v3"><span className={`presence ${broker?.online ? "online" : ""}`} />{canReassign ? <button className="broker-trigger-v3" type="button" onClick={(event) => { event.stopPropagation(); onReassign(deal.id); }}>{broker?.nome || "Escolher corretor"}<span>⌄</span></button> : <strong>{broker?.nome || "Sem responsável"}</strong>}</div>
             <div className="sla-clock-v3"><b>{formatElapsed(waiting ? sla?.min_aguardando : sla?.min_sem_interacao)}</b><span>{waiting ? "cliente aguardando resposta" : "sem interação com o lead"}</span></div>
             <div className="card-context"><span>{lead.origem || "Sem origem"}</span>{deal.valor ? <b>{money.format(deal.valor)}</b> : <small>Valor a definir</small>}</div>
             {tags.length > 0 && <div className="card-tags">{tags.slice(0, 3).map((item) => <span key={item}>{item}</span>)}</div>}
-          </button>
-          <div className="card-broker-row-v3">
-            <span className={`presence ${broker?.online ? "online" : ""}`} />
-            {canReassign ? <button className="broker-trigger-v3" type="button" onClick={() => onReassign(deal.id)}>{broker?.nome || "Escolher corretor"}<span>⌄</span></button> : <strong>{broker?.nome || "Sem responsável"}</strong>}
           </div>
           <div className="card-controls-v3" onClick={(event) => event.stopPropagation()}>
             <button type="button" onClick={() => onChat(deal.id)}>Chat</button>
@@ -434,7 +415,7 @@ function PipelineViewEnhanced({ stages, allStages, deals, leadById, brokerById, 
 function LeadsViewEnhanced({ deals, leadById, stages, brokerById, slaByDeal, canReassign, onReassign, onOpen, onChat, onMutate, setMessage }: { deals: Deal[]; leadById: Map<number, Lead>; stages: Stage[]; brokerById: Map<number, Broker>; slaByDeal: Map<number, SlaInfo>; canReassign: boolean; onReassign: (dealId: number) => void; onOpen: (id: number) => void; onChat: (id: number) => void; onMutate: (body: Record<string, unknown>) => Promise<void>; setMessage: (value: string | null) => void }) {
   const [busyId, setBusyId] = useState<number | null>(null);
   const change = async (body: Record<string, unknown>, success: string, dealId: number) => { setBusyId(dealId); try { await onMutate(body); setMessage(success); } catch (reason) { setMessage(reason instanceof Error ? reason.message : "Não foi possível salvar."); } finally { setBusyId(null); } };
-  return <section className="crm-table-wrap"><table className="crm-leads-table crm-leads-table-v3"><thead><tr><th>Lead</th><th>Tempo sem interação</th><th>Etapa</th><th>Corretor</th><th>Origem</th><th>Valor</th><th>Ações</th></tr></thead><tbody>{deals.map((deal) => { const lead = leadById.get(deal.lead_id)!; const sla = slaByDeal.get(deal.id); const broker = brokerById.get(deal.corretor_id ?? lead.corretor_id ?? -1); return <tr className={`sla-row-${sla?.cor_ativa || "verde"}`} key={deal.id}><td onClick={() => onOpen(deal.id)}><div className="table-person"><span>{initials(lead.nome)}</span><div><strong>{lead.nome || "Lead sem nome"}</strong><small>{lead.telefone || `#${lead.id}`}</small></div></div></td><td><strong>{formatElapsed(sla?.aguardando_humano ? sla.min_aguardando : sla?.min_sem_interacao)}</strong><small>{sla?.aguardando_humano ? "aguardando resposta" : "sem interação"}</small></td><td><select disabled={busyId === deal.id} value={deal.stage_id ?? ""} onChange={(event) => void change({ action: "moveDeal", dealId: deal.id, stageId: Number(event.target.value) }, "Etapa atualizada.", deal.id)}>{stages.map((stage) => <option value={stage.id} key={stage.id}>{stage.rotulo || stage.nome}</option>)}</select></td><td>{canReassign ? <button className="table-broker-trigger" type="button" onClick={() => onReassign(deal.id)}>{broker?.nome || "Escolher corretor"}<span>⌄</span></button> : <strong>{broker?.nome || "Sem responsável"}</strong>}<small>{broker?.online ? "● online" : "offline"}</small></td><td>{lead.origem || "—"}</td><td>{deal.valor ? money.format(deal.valor) : "—"}</td><td><div className="table-actions-v3"><button type="button" onClick={() => onChat(deal.id)}>Chat</button><button type="button" onClick={() => onOpen(deal.id)}>Abrir</button></div></td></tr>; })}</tbody></table>{deals.length === 0 && <div className="crm-empty-view">Nenhum lead encontrado com esses filtros.</div>}</section>;
+  return <section className="crm-table-wrap"><table className="crm-leads-table crm-leads-table-v3"><thead><tr><th>Lead</th><th>Tempo sem interação</th><th>Etapa</th><th>Corretor</th><th>Origem</th><th>Valor</th><th>Atualização</th><th>Ações</th></tr></thead><tbody>{deals.map((deal) => { const lead = leadById.get(deal.lead_id)!; const sla = slaByDeal.get(deal.id); const broker = brokerById.get(deal.corretor_id ?? lead.corretor_id ?? -1); return <tr className={`sla-row-${sla?.cor_ativa || "verde"}`} key={deal.id}><td onClick={() => onOpen(deal.id)}><div className="table-person"><span>{initials(lead.nome)}</span><div><strong>{lead.nome || "Lead sem nome"}</strong><small>#{lead.id}</small></div></div></td><td><strong>{formatElapsed(sla?.aguardando_humano ? sla.min_aguardando : sla?.min_sem_interacao)}</strong><small>{sla?.aguardando_humano ? "aguardando resposta" : "sem interação"}</small></td><td><select disabled={busyId === deal.id} value={deal.stage_id ?? ""} onChange={(event) => void change({ action: "moveDeal", dealId: deal.id, stageId: Number(event.target.value) }, "Etapa atualizada.", deal.id)}>{stages.map((stage) => <option value={stage.id} key={stage.id}>{stage.rotulo || stage.nome}</option>)}</select></td><td>{canReassign ? <button className="table-broker-trigger" type="button" onClick={() => onReassign(deal.id)}>{broker?.nome || "Escolher corretor"}<span>⌄</span></button> : <strong>{broker?.nome || "Sem responsável"}</strong>}<small>{broker?.online ? "● online" : "offline"}</small></td><td>{lead.origem || "—"}</td><td>{deal.valor ? money.format(deal.valor) : "—"}</td><td>{shortDate.format(new Date(deal.ultima_movimentacao || deal.criado_em))}</td><td><div className="table-actions-v3"><button type="button" onClick={() => onOpen(deal.id)}>Abrir</button><button type="button" onClick={() => onChat(deal.id)}>Chat</button></div></td></tr>; })}</tbody></table>{deals.length === 0 && <div className="crm-empty-view">Nenhum lead encontrado com esses filtros.</div>}</section>;
 }
 
 function BrokerPickerModal({ deal, lead, brokers, onClose, onSave }: { deal: Deal; lead: Lead; brokers: Broker[]; onClose: () => void; onSave: (brokerId: number) => Promise<void> }) {
