@@ -3210,3 +3210,48 @@ body { overflow:hidden; background:#eee8e2; }
 .home-kpis { grid-template-columns: repeat(auto-fill, minmax(176px, 1fr)); }
 .home-kpis article { aspect-ratio: 1 / 1; min-height: 0; justify-content: flex-start; }
 .home-kpis article:nth-child(8) { grid-column: auto; }
+
+/* ============================================================
+   ABORDAGENS — redesign dos cards (grade 2 colunas, cards ricos)
+   Fiel à referência do Claude Design. Dados/funções intactos.
+   ============================================================ */
+.approach-list .approach-cards { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; margin-bottom:8px; }
+.approach-list .approach-card { display:flex; flex-direction:column; gap:12px; background:#fff; border:1px solid #ece5e0; border-radius:16px; padding:16px 16px 14px; box-shadow:0 2px 5px rgba(31,24,19,.03); }
+.approach-list .approach-card.inactive { opacity:.62; }
+.approach-list .approach-card > header { display:flex; align-items:flex-start; gap:11px; }
+.approach-card-ico { width:38px; height:38px; flex:0 0 auto; display:grid; place-items:center; border-radius:11px; background:#f3e8ff; color:#982bc5; font-size:17px; }
+.approach-list .approach-card > header > div { flex:1; min-width:0; }
+.approach-list .approach-card > header strong { display:block; font-size:15px; color:#2c2723; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.approach-card-tags { display:flex; align-items:center; gap:9px; margin-top:5px; }
+.approach-card-tags em { display:inline-flex; align-items:center; gap:5px; border-radius:999px; padding:3px 9px; font-style:normal; font-size:10.5px; font-weight:800; letter-spacing:.03em; }
+.approach-card-tags em.on { background:#e5f7ec; color:#168349; }
+.approach-card-tags em.on::before { content:''; width:6px; height:6px; border-radius:50%; background:#1caf62; }
+.approach-card-tags em.off { background:#f1ece8; color:#8a807a; }
+.approach-card-tags em.off::before { content:''; width:6px; height:6px; border-radius:50%; background:#b3a9a2; }
+.approach-card-tags small { color:#9a908a; font-size:11px; }
+.approach-card-msgs { display:flex; flex-direction:column; gap:8px; }
+.approach-msg-box { display:flex; flex-direction:column; border:1px solid #efe9f5; border-radius:11px; background:#faf7fd; padding:10px 12px; }
+.approach-var-tag { align-self:flex-end; margin-bottom:5px; border-radius:999px; padding:2px 8px; background:#f0e6fb; color:#7626a5; font-size:10px; font-weight:800; }
+.approach-msg-box p { margin:0; color:#5f5854; font-size:12px; line-height:1.45; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+.approach-msg-box.empty { background:#faf8f6; border-color:#eee6df; border-style:dashed; }
+.approach-msg-box.empty p { color:#a89f98; font-style:italic; }
+.approach-list .approach-card > footer { display:flex; align-items:center; gap:8px; margin-top:auto; padding-top:2px; }
+.approach-list .approach-card > footer .approach-edit-btn { flex:1; min-height:38px; border:1px solid #ffb279; border-radius:11px; padding:0 12px; background:#fff6ef; color:#d85f00; font-weight:750; font-size:12.5px; cursor:pointer; }
+.approach-list .approach-card > footer .approach-edit-btn:hover { border-color:#ff8a3d; background:#ffefe1; }
+.approach-list .approach-card > footer .approach-ico-btn { width:38px; height:38px; flex:0 0 auto; display:grid; place-items:center; border:1px solid #ece5e0; border-radius:11px; padding:0; background:#fff; color:#6f665f; font-size:15px; cursor:pointer; }
+.approach-list .approach-card > footer .approach-ico-btn:hover { border-color:#d9d0c9; background:#faf8f6; }
+.approach-list .approach-card > footer .approach-ico-btn.danger { border-color:#f3c9c6; color:#d84540; background:#fff6f5; }
+.approach-list .approach-card > footer .approach-ico-btn.danger:hover { border-color:#e88a85; background:#ffeceb; }
+/* Card pontilhado "Nova abordagem" */
+.approach-new-card { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; min-height:210px; border:2px dashed #e3d9d1; border-radius:16px; background:transparent; color:#9a908a; cursor:pointer; text-align:center; padding:18px; }
+.approach-new-card:hover { border-color:#ffb279; background:#fffaf5; color:#d85f00; }
+.approach-new-card > span { width:44px; height:44px; display:grid; place-items:center; border-radius:12px; background:#f5efe9; color:#c19a70; font-size:22px; }
+.approach-new-card:hover > span { background:#ffe9d6; color:#ff6900; }
+.approach-new-card > strong { font-size:14px; color:#5f5651; }
+.approach-new-card:hover > strong { color:#d85f00; }
+.approach-new-card > small { font-size:11.5px; }
+/* Painel Produtos: pasta + botão Novo grupo */
+.approach-products > button > span.folder { color:#ff6900; font-size:18px; }
+.approach-products .approach-add-group { display:block; text-align:center; margin-top:10px; border:1px dashed #e3d9d1; border-radius:10px; padding:10px; background:transparent; color:#8a807a; font-weight:700; font-size:12px; cursor:pointer; }
+.approach-products .approach-add-group:hover { border-color:#ffad74; color:#ff6900; background:#fffaf5; }
+@media(max-width:1100px){ .approach-list .approach-cards { grid-template-columns:1fr; } }
