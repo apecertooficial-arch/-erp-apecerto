@@ -107,3 +107,21 @@ test("mantém o Início enxuto, priorizado e com cards mais vivos", async () => 
   assert.match(css, /background:#ffe0c7/);
   assert.match(css, /background:#ead2fa/);
 });
+
+test("aplica a composição aprovada do Claude Designer na visão geral financeira", async () => {
+  const finance = await readFile(new URL("../app/features/finance/FinanceWorkspace.tsx", import.meta.url), "utf8");
+  const css = await readFile(new URL("../app/globals.css", import.meta.url), "utf8");
+
+  assert.match(finance, /finance-vgv-hero/);
+  assert.match(finance, /finance-summary-strip/);
+  assert.match(finance, /finance-ranking-designer/);
+  assert.match(finance, />Corretor</);
+  assert.match(finance, />Equipe</);
+  assert.match(finance, />Empreendimento</);
+  assert.match(finance, /range:\$\{start\},\$\{end\}/);
+  assert.doesNotMatch(finance, /className="finance-panel evolution"/);
+  assert.doesNotMatch(finance, /className="finance-panel recent-sales"/);
+  assert.doesNotMatch(finance, /className="finance-panel due-list"/);
+  assert.match(css, /Financeiro — composição fiel ao painel aprovado no Claude Designer/);
+  assert.match(css, /grid-template-columns:repeat\(7,minmax\(0,1fr\)\)/);
+});
