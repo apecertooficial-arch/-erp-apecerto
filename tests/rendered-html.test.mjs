@@ -171,6 +171,7 @@ test("pagina o caixa e estende a identidade financeira aos módulos restantes", 
   assert.doesNotMatch(finance, /<\/select>\{sessionRole !== "corretor" && <button type="button" onClick=\{\(\) => setCashOpen\(true\)\}>＋ Nova movimentação/);
   assert.match(css, /Marketing, Meus ganhos e Metas — mesma identidade/);
   assert.match(css, /\.finance-module-kpis \{ display:grid/);
+  assert.match(css, /\.finance-workspace \.finance-sales-footer \{ padding-right:92px/);
   assert.match(css, /\.finance-marketing-head,\.finance-marketing-row/);
   assert.match(css, /\.finance-earnings-head,\.finance-earnings-row/);
   assert.match(css, /\.finance-goals-designer \{ grid-template-columns/);
