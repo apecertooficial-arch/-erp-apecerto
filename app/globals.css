@@ -2898,3 +2898,27 @@ body { overflow:hidden; background:#eee8e2; }
 .cash-cat-item button{width:30px;height:30px;border:1px solid #e3dcd7;border-radius:7px;background:#fff;color:#6f6863;font-size:13px;cursor:pointer}
 .cash-cat-item button.cash-cat-del{border-color:#f0d4cd;background:#fff6f4;color:#c9443d}
 .cash-cat-item button:disabled{opacity:.5;cursor:not-allowed}
+
+/* Venda 360º: recebimento x repasse de comissão */
+.sale-repasse-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:8px}
+.sale-repasse-grid article{display:flex;flex-direction:column;gap:2px;padding:10px;border-radius:10px;background:#f8f6f4}
+.sale-repasse-grid span{font-size:11px;color:#847c76}
+.sale-repasse-grid strong{font-size:14px}
+.sale-repasse-grid strong.warning{color:#b45309}
+
+/* Configurações: editor de categorias do caixa */
+.settings-cats{margin-top:18px;padding-top:16px;border-top:1px solid #ece7e3}
+.settings-cats h3{margin:0 0 4px;font-size:14px}
+.settings-cat-add{display:flex;gap:8px;align-items:center;margin:10px 0 12px;flex-wrap:wrap}
+.settings-cat-add input[type=color],.settings-cat-row input[type=color]{width:38px;height:38px;padding:2px;border:1px solid #ded7d2;border-radius:8px;background:#fff;cursor:pointer}
+.settings-cat-add>input:not([type=color]){flex:1;min-width:160px;min-height:38px;border:1px solid #ded7d2;border-radius:9px;padding:8px 10px;font-family:inherit;font-size:12px}
+.settings-cat-add select{min-height:38px;border:1px solid #ded7d2;border-radius:9px;padding:8px 10px;background:#fff;font-family:inherit;font-size:12px}
+.settings-cat-add button{border:1px solid #ffb57f;border-radius:9px;padding:0 14px;min-height:38px;background:#fff7f1;color:#d85600;font-weight:700;font-size:12px;cursor:pointer}
+.settings-cat-list{display:flex;flex-direction:column;gap:6px}
+.settings-cat-row{display:flex;gap:8px;align-items:center;padding:6px 8px;border:1px solid #ece7e3;border-radius:9px;background:#fff}
+.settings-cat-row>i{width:16px;height:16px;border-radius:5px;flex:none}
+.settings-cat-row>input:not([type=color]){flex:1;min-width:120px;min-height:34px;border:1px solid #e3dcd7;border-radius:8px;padding:6px 9px;font-family:inherit;font-size:12px}
+.settings-cat-row select{min-height:34px;border:1px solid #e3dcd7;border-radius:8px;padding:6px 8px;background:#fff;font-family:inherit;font-size:11px}
+.settings-cat-del{width:32px;height:32px;flex:none;border:1px solid #f0d4cd;border-radius:7px;background:#fff6f4;color:#c9443d;font-size:15px;cursor:pointer}
+.settings-cat-row input:disabled,.settings-cat-row select:disabled,.settings-cat-del:disabled{opacity:.55}
+@media(max-width:720px){.settings-cat-row{flex-wrap:wrap}.settings-cat-row>input:not([type=color]){flex:1 1 100%}}

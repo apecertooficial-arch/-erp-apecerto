@@ -21,14 +21,14 @@ export async function GET(request: Request) {
     auth.supabase.from("v_vendas_detalhe").select("id,data_venda,empreendimento,unidade,bairro,incorporadora,vgv,percentual_comissao,comissao_bruta,comissao_corretores,comissao_executivo,comissao_apecerto,indicacao,corretores,forma_pgto,status,obs"),
     auth.supabase.from("comissoes").select("id,venda_id,beneficiario_id,papel,valor_calculado,valor_final,override_motivo,created_at"),
     auth.supabase.from("recebimentos").select("id,venda_id,numero_parcela,valor_total,data_prevista,data_recebimento,status,created_at").order("data_prevista", { ascending: true }),
-    auth.supabase.from("lancamentos_caixa").select("id,venda_id,recebimento_id,data,tipo,categoria,descricao,valor,origem,papel,created_at").order("data", { ascending: false }).limit(2000),
+    auth.supabase.from("lancamentos_caixa").select("id,venda_id,recebimento_id,data,tipo,categoria,descricao,valor,origem,papel,beneficiario_id,comissao_id,natureza,created_at").order("data", { ascending: false }).limit(2000),
     auth.supabase.from("usuarios").select("id,nome,role,ativo"),
     auth.supabase.from("corretores").select("id,nome,usuario_id,online,ativo").eq("ativo", true),
     auth.supabase.from("metas_corretor").select("nome,meta_vgv,atualizado_em"),
     auth.supabase.from("leads").select("id,nome,origem,criado_em,corretor_id"),
     auth.supabase.from("negocios").select("id,lead_id,corretor_id,venda_id,status,valor,criado_em"),
     auth.supabase.from("empreendimentos").select("id,nome,bairro,cidade").order("nome", { ascending: true }),
-    auth.supabase.from("categorias_caixa").select("id,nome,tipo,ordem").eq("ativo", true).order("tipo", { ascending: true }).order("ordem", { ascending: true }),
+    auth.supabase.from("categorias_caixa").select("id,nome,tipo,natureza,cor,ordem").eq("ativo", true).order("tipo", { ascending: true }).order("ordem", { ascending: true }),
   ]);
   const firstError = [sales, details, commissions, receipts, cash, users, brokers, goals, leads, deals, empreendimentos, categorias].find((result) => result.error)?.error;
   if (firstError) return Response.json({ error: firstError.message }, { status: 502 });
@@ -54,18 +54,23 @@ export async function PATCH(request: Request) {
   if (action === "createCategory" || action === "renameCategory" || action === "removeCategory") {
     const { data: me } = await auth.supabase.from("usuarios").select("role").eq("id", auth.user.id).maybeSingle();
     if (!me || !["admin", "gestor", "executivo"].includes(me.role)) return Response.json({ error: "Apenas administradores podem gerenciar categorias." }, { status: 403 });
+    const validNatureza = (value: string) => ["normal", "comissao_recebida", "comissao_paga"].includes(value) ? value : "normal";
     if (action === "createCategory") {
       const nome = clean(body.nome, 80);
       const tipo = clean(body.tipo, 10);
-      if (!nome || !["entrada", "saida"].includes(tipo)) return Response.json({ error: "Informe o nome e o tipo da categoria." }, { status: 422 });
-      const { error } = await auth.supabase.from("categorias_caixa").insert({ nome, tipo: tipo as "entrada" | "saida", ordem: 99 } as never);
+      if (!nome || !["entrada", "saida", "ambos"].includes(tipo)) return Response.json({ error: "Informe o nome e o tipo da categoria." }, { status: 422 });
+      const { error } = await auth.supabase.from("categorias_caixa").insert({ nome, tipo: tipo as "entrada" | "saida", natureza: validNatureza(clean(body.natureza, 30)), cor: clean(body.cor, 20) || null, ordem: 99 } as never);
       return error ? Response.json({ error: /duplicate|unique/i.test(error.message) ? "Já existe uma categoria com esse nome." : error.message }, { status: 502 }) : Response.json({ success: true });
     }
     if (action === "renameCategory") {
       const id = clean(body.categoryId, 60);
-      const nome = clean(body.nome, 80);
-      if (!id || !nome) return Response.json({ error: "Informe a categoria e o novo nome." }, { status: 422 });
-      const { error } = await auth.supabase.from("categorias_caixa").update({ nome }).eq("id", id);
+      const patch: Record<string, unknown> = {};
+      if (typeof body.nome === "string" && body.nome.trim()) patch.nome = clean(body.nome, 80);
+      if (["entrada", "saida", "ambos"].includes(clean(body.tipo, 10))) patch.tipo = clean(body.tipo, 10);
+      if (typeof body.natureza === "string") patch.natureza = validNatureza(clean(body.natureza, 30));
+      if (typeof body.cor === "string") patch.cor = clean(body.cor, 20) || null;
+      if (!id || Object.keys(patch).length === 0) return Response.json({ error: "Informe a categoria e o que alterar." }, { status: 422 });
+      const { error } = await auth.supabase.from("categorias_caixa").update(patch as never).eq("id", id);
       return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
     }
     const id = clean(body.categoryId, 60);
@@ -181,7 +186,9 @@ export async function PATCH(request: Request) {
     const beneficiarioId = clean(body.beneficiarioId, 60) || null;
     const papelRaw = clean(body.papel, 40);
     const papel = ['corretor', 'executivo', 'indicacao', 'apecerto'].includes(papelRaw) ? papelRaw : null;
-    const insert: Record<string, unknown> = { tipo: type as "entrada" | "saida", categoria: category, data: date, valor: value, descricao: clean(body.description, 500) || null, origem: "erp", venda_id: saleId, recebimento_id: receiptId, comissao_id: commissionId, beneficiario_id: beneficiarioId, papel };
+    const naturezaRaw = clean(body.natureza, 30);
+    const natureza = ["normal", "comissao_recebida", "comissao_paga"].includes(naturezaRaw) ? naturezaRaw : "normal";
+    const insert: Record<string, unknown> = { tipo: type as "entrada" | "saida", categoria: category, data: date, valor: value, descricao: clean(body.description, 500) || null, origem: "erp", venda_id: saleId, recebimento_id: receiptId, comissao_id: commissionId, beneficiario_id: beneficiarioId, papel, natureza };
     const { error } = await auth.supabase.from("lancamentos_caixa").insert(insert as never);
     if (error) return Response.json({ error: error.message }, { status: 502 });
     if (receiptId && body.settleReceipt === true) {

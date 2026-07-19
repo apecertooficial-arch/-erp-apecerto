@@ -4,6 +4,7 @@
 /* eslint-disable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
 
 import { useEffect, useState } from "react";
+import type { Dispatch, ReactNode, SetStateAction } from "react";
 import { getBrowserSupabaseClient } from "../../lib/supabase/browser";
 import { ConnectionsWorkspace } from "./ConnectionsWorkspace";
 
@@ -78,6 +79,68 @@ export function SettingsWorkspace({ accessToken, sessionRole, onNavigate }: { ac
     <label>{label}<input value={company[key] ?? ""} onChange={(event) => setCompany((current) => ({ ...current, [key]: event.target.value }))} placeholder={placeholder} /></label>
   );
 
+  return <SettingsShell section={section} setSection={setSection} error={error} toast={toast} saving={saving} config={config} company={company} setCompany={setCompany} ipsText={ipsText} setIpsText={setIpsText} saveCompany={saveCompany} toggleDistribution={toggleDistribution} saveIps={saveIps} companyField={companyField} accessToken={accessToken} onNavigate={onNavigate} />;
+}
+
+type Categoria = { id: string; nome: string; tipo: "entrada" | "saida" | "ambos"; natureza: string; cor: string | null; ordem: number };
+
+function CategoriasCaixaEditor({ accessToken }: { accessToken: string }) {
+  const [cats, setCats] = useState<Categoria[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState("");
+  const [form, setForm] = useState({ nome: "", tipo: "saida", natureza: "normal", cor: "#ff6500" });
+  const naturezaLabel: Record<string, string> = { normal: "Normal", comissao_recebida: "Comissão recebida (entra na imobiliária)", comissao_paga: "Comissão paga (repasse à parte)" };
+  const load = async () => {
+    const response = await fetch("/api/finance", { headers: { Authorization: `Bearer ${accessToken}` } });
+    const result = await response.json() as { categorias?: Categoria[]; error?: string };
+    if (!response.ok) { setMsg(result.error || "Não foi possível carregar as categorias."); return; }
+    setCats((result.categorias ?? []).slice().sort((a, b) => a.tipo.localeCompare(b.tipo) || a.ordem - b.ordem));
+    setLoading(false);
+  };
+  useEffect(() => { void load(); }, []);
+  const mutate = async (payload: Record<string, unknown>) => {
+    setBusy(true); setMsg("");
+    try {
+      const response = await fetch("/api/finance", { method: "PATCH", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+      const result = await response.json() as { error?: string };
+      if (!response.ok) throw new Error(result.error || "Falha ao salvar.");
+      await load();
+    } catch (reason) { setMsg(reason instanceof Error ? reason.message : "Falha ao salvar."); }
+    finally { setBusy(false); }
+  };
+  const add = () => { if (!form.nome.trim()) return; void mutate({ action: "createCategory", nome: form.nome.trim(), tipo: form.tipo, natureza: form.natureza, cor: form.cor }); setForm({ ...form, nome: "" }); };
+  if (loading) return <div className="settings-cats"><h3>Categorias do fluxo de caixa</h3><p className="settings-hint">Carregando…</p></div>;
+  return <div className="settings-cats">
+    <h3>Categorias do fluxo de caixa</h3>
+    <p className="settings-hint">Estas categorias aparecem ao lançar movimentações no caixa. Marque “comissão recebida/paga” para o ERP apontar na venda o que já entrou na imobiliária e o que foi repassado às partes.</p>
+    {msg && <div className="settings-toast">{msg}</div>}
+    <div className="settings-cat-add">
+      <input aria-label="Cor" type="color" value={form.cor} onChange={(event) => setForm({ ...form, cor: event.target.value })} />
+      <input aria-label="Nome da categoria" value={form.nome} onChange={(event) => setForm({ ...form, nome: event.target.value })} placeholder="Nome da categoria" onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); add(); } }} />
+      <select aria-label="Tipo" value={form.tipo} onChange={(event) => setForm({ ...form, tipo: event.target.value })}><option value="entrada">Entrada</option><option value="saida">Saída</option><option value="ambos">Entrada e saída</option></select>
+      <select aria-label="Natureza" value={form.natureza} onChange={(event) => setForm({ ...form, natureza: event.target.value })}><option value="normal">Normal</option><option value="comissao_recebida">Comissão recebida</option><option value="comissao_paga">Comissão paga</option></select>
+      <button type="button" disabled={busy || !form.nome.trim()} onClick={add}>＋ Adicionar</button>
+    </div>
+    <div className="settings-cat-list">
+      {cats.map((cat) => <div className="settings-cat-row" key={cat.id}>
+        <i style={{ background: cat.cor || "#ddd" }} />
+        <input value={cat.nome} disabled={busy} onChange={(event) => setCats((rows) => rows.map((r) => r.id === cat.id ? { ...r, nome: event.target.value } : r))} onBlur={(event) => { if (event.target.value.trim() && event.target.value.trim() !== cat.nome) void mutate({ action: "renameCategory", categoryId: cat.id, nome: event.target.value.trim() }); }} />
+        <select value={cat.tipo} disabled={busy} onChange={(event) => void mutate({ action: "renameCategory", categoryId: cat.id, tipo: event.target.value })}><option value="entrada">Entrada</option><option value="saida">Saída</option><option value="ambos">Ambos</option></select>
+        <select value={cat.natureza} disabled={busy} title={naturezaLabel[cat.natureza]} onChange={(event) => void mutate({ action: "renameCategory", categoryId: cat.id, natureza: event.target.value })}><option value="normal">Normal</option><option value="comissao_recebida">Com. recebida</option><option value="comissao_paga">Com. paga</option></select>
+        <input aria-label="Cor" type="color" value={cat.cor || "#cccccc"} disabled={busy} onChange={(event) => void mutate({ action: "renameCategory", categoryId: cat.id, cor: event.target.value })} />
+        <button type="button" className="settings-cat-del" disabled={busy} title="Remover" onClick={() => void mutate({ action: "removeCategory", categoryId: cat.id })}>×</button>
+      </div>)}
+      {cats.length === 0 && <p className="settings-hint">Nenhuma categoria cadastrada.</p>}
+    </div>
+  </div>;
+}
+
+function SettingsShell({ section, setSection, error, toast, saving, config, company, setCompany, ipsText, setIpsText, saveCompany, toggleDistribution, saveIps, companyField, accessToken, onNavigate }: {
+  section: SectionKey; setSection: (key: SectionKey) => void; error: string; toast: string; saving: boolean; config: AdminConfig | null;
+  company: Record<string, string>; setCompany: Dispatch<SetStateAction<Record<string, string>>>; ipsText: string; setIpsText: (value: string) => void;
+  saveCompany: () => Promise<void>; toggleDistribution: (paused: boolean) => Promise<void>; saveIps: () => Promise<void>; companyField: (key: string, label: string, placeholder: string) => ReactNode; accessToken: string; onNavigate?: (module: string) => void;
+}) {
   return <div className="settings-workspace">
     <header className="workspace-top"><div><h1>Configurações</h1><p>Administração do sistema · alterações são auditadas</p></div></header>
     <div className="settings-body">
@@ -118,6 +181,7 @@ export function SettingsWorkspace({ accessToken, sessionRole, onNavigate }: { ac
         {section === "financeiro" && config && <section className="settings-card">
           <h2>Financeiro</h2><p>Regra de comissão vigente aplicada às vendas.</p>
           {config.comissao?.versao ? <div className="settings-commission"><strong>Versão {config.comissao.versao}</strong><small>{config.comissao.descricao ?? "Sem descrição"}</small><small>Vigência: {config.comissao.vigente_de ?? "—"} até {config.comissao.vigente_ate ?? "em aberto"}</small><pre>{JSON.stringify(config.comissao.parametros ?? {}, null, 2)}</pre></div> : <p className="settings-hint">Nenhuma regra de comissão cadastrada.</p>}
+          <CategoriasCaixaEditor accessToken={accessToken} />
           <p className="settings-hint">Metas, indicações e comissões editáveis continuam no módulo Financeiro.</p>
         </section>}
 
