@@ -3150,3 +3150,14 @@ body { overflow:hidden; background:#eee8e2; }
 .sales-stage .crm-stage-cog{background:rgba(0,0,0,.06)}
 .crm-stage-danger{border-color:#f0d4cd!important;background:#fff6f4!important;color:#c9443d!important}
 .crm-stage-danger:disabled{opacity:.5}
+
+/* Metas: input de valor formatado + editar */
+.money-input{display:flex;align-items:center;gap:6px;border:1px solid #ded7d2;border-radius:9px;padding:0 10px;background:#fff}
+.money-input span{color:#918b86;font-size:12px;font-weight:700}
+.money-input input{flex:1;min-width:0;border:0;outline:0;background:transparent;padding:9px 0;font-family:inherit;font-size:13px;text-align:right}
+.metas-form-actions{display:flex;gap:8px;align-items:center}
+.metas-cancel{border:1px solid #ded7d2;border-radius:9px;padding:0 13px;min-height:42px;background:#fff;color:#5f5752;font-weight:700;font-size:12px;cursor:pointer}
+.metas-list-actions{display:flex;gap:6px}
+.metas-list-actions button{border:1px solid #e3dcd7;border-radius:8px;padding:5px 10px;background:#fff;color:#5f5752;font-size:11px;font-weight:700;cursor:pointer}
+.metas-list-actions button:hover{border-color:#ff9c5e;color:#d85600}
+.metas-list-actions button.metas-editing{border-color:#ff6500;color:#fff;background:#ff6500}
