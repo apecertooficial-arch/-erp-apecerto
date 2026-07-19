@@ -3255,3 +3255,50 @@ body { overflow:hidden; background:#eee8e2; }
 .approach-products .approach-add-group { display:block; text-align:center; margin-top:10px; border:1px dashed #e3d9d1; border-radius:10px; padding:10px; background:transparent; color:#8a807a; font-weight:700; font-size:12px; cursor:pointer; }
 .approach-products .approach-add-group:hover { border-color:#ffad74; color:#ff6900; background:#fffaf5; }
 @media(max-width:1100px){ .approach-list .approach-cards { grid-template-columns:1fr; } }
+
+/* ============================================================
+   MINI CHAT DO LEAD — redesign fiel à nova referência (jul/2026)
+   Cabeçalho branco, avatar roxo redondo, ferramentas flutuando
+   em pílula vertical à esquerda (só ícones), balões de mídia
+   quentes, caixa da Sara com Usar/Enviar lado a lado.
+   Bloco final = maior precedência (vence as camadas anteriores).
+   ============================================================ */
+/* Cabeçalho branco */
+.chat-layer .lead-chat-drawer > header { background:#fff !important; color:#2c2723 !important; border-bottom:1px solid #efe7e0; padding:15px 16px !important; }
+.chat-layer .lead-chat-drawer > header > div > span { width:44px !important; height:44px !important; border-radius:50% !important; background:#efe0fb !important; color:#8a2bc0 !important; font-weight:800 !important; font-size:15px !important; }
+.chat-layer .lead-chat-drawer > header small { color:#ff6a00 !important; font-weight:800 !important; letter-spacing:.09em !important; }
+.chat-layer .lead-chat-drawer > header h2 { color:#2c2723 !important; font-size:17px !important; }
+.chat-layer .lead-chat-drawer > header p { color:#8b817b !important; }
+.chat-layer .chat-head-actions button { width:34px !important; height:34px !important; border:1px solid #e7ded7 !important; border-radius:50% !important; background:#faf7f4 !important; color:#7a716b !important; font-size:17px !important; }
+.chat-layer .chat-head-actions button:hover { background:#f1ebe6 !important; }
+/* Barra de instância */
+.chat-layer .chat-instance-bar { background:#fff !important; border-bottom:1px solid #f0e9e2 !important; padding:10px 16px !important; }
+.chat-layer .chat-instance-bar label { color:#a79d96 !important; font-size:10.5px !important; text-transform:uppercase; letter-spacing:.06em; font-weight:800; }
+.chat-layer .chat-instance-bar select { border:1px solid #e5ddd6 !important; border-radius:9px !important; }
+.chat-layer .chat-instance-bar > span.connected { color:#16a34a !important; font-weight:800 !important; }
+/* Área de mensagens: espaço à esquerda p/ a pílula de ferramentas */
+.chat-layer .chat-messages { padding-left:74px !important; }
+.chat-layer .chat-messages article.received { background:#fdf5ef !important; border:1px solid #f3e7db !important; }
+.chat-layer .chat-messages article small { color:#a99f98 !important; font-weight:700; letter-spacing:.05em; }
+/* Pílula de ferramentas flutuante à esquerda (só ícones, redondos) */
+.chat-layer .mini-chat-tools { position:absolute !important; left:14px; top:46%; transform:translateY(-42%); z-index:6; display:flex !important; flex-direction:column !important; flex-wrap:nowrap !important; align-items:center; gap:10px !important; padding:0 !important; border:0 !important; background:transparent !important; }
+.chat-layer .mini-chat-tools button, .chat-layer .mini-chat-tools button:last-child { width:46px !important; height:46px !important; min-height:46px !important; margin:0 !important; padding:0 !important; display:grid !important; place-items:center !important; border:1px solid #ece2d9 !important; border-radius:50% !important; background:#fff !important; color:#6a615b !important; box-shadow:0 6px 16px rgba(40,28,20,.13) !important; }
+.chat-layer .mini-chat-tools button:hover { border-color:#ffb279 !important; color:#d85f00 !important; transform:translateY(-1px); }
+.chat-layer .mini-chat-tools button.recording { border-color:#e34545 !important; background:#fff0f0 !important; color:#c42f2f !important; }
+.chat-layer .mini-chat-tools .mct-lbl { display:none !important; }
+.chat-layer .mini-chat-tools .mct-ico { display:grid; place-items:center; }
+.chat-layer .mini-chat-tools .mct-ico svg { width:20px; height:20px; }
+/* Caixa de Sugestão da Sara: título, texto e botões Usar | Enviar lado a lado */
+.chat-layer .chat-suggestion { flex-direction:column !important; align-items:stretch !important; gap:10px !important; margin:0 14px 10px !important; padding:13px 14px !important; border:1px solid #e6d8f7 !important; background:linear-gradient(180deg,#f9f3ff,#f3e9fc) !important; border-radius:14px !important; }
+.chat-layer .chat-suggestion > div { min-width:0; flex:none !important; }
+.chat-layer .chat-suggestion b { color:#7c3aed !important; font-size:12px !important; }
+.chat-layer .chat-suggestion p { color:#4a4550 !important; font-size:12.5px !important; }
+.chat-layer .chat-suggestion-actions { flex-direction:row !important; gap:10px !important; }
+.chat-layer .chat-suggestion-actions button { flex:1 !important; min-height:42px !important; border-radius:12px !important; font-size:13px !important; font-weight:750 !important; }
+.chat-layer .chat-suggestion-actions .cs-use { background:#fff !important; border:1px solid #d8c6ef !important; color:#7c3aed !important; }
+.chat-layer .chat-suggestion-actions .cs-send { border:0 !important; color:#fff !important; background:linear-gradient(120deg,#ff6d1f,#e21d74) !important; }
+.chat-layer .chat-suggestion-actions .cs-send:disabled { opacity:.5; }
+/* Composer em pílula */
+.chat-layer .lead-chat-drawer > footer { padding:12px 14px !important; gap:10px !important; }
+.chat-layer .lead-chat-drawer > footer textarea { border:1px solid #e5ddd6 !important; border-radius:22px !important; padding:12px 16px !important; min-height:46px !important; }
+.chat-layer .lead-chat-drawer > footer button { width:46px !important; height:46px !important; border-radius:50% !important; background:#ff6500 !important; }
