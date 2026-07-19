@@ -3063,3 +3063,37 @@ body { overflow:hidden; background:#eee8e2; }
 .home-kpis article:has(i.yellow)::before,.home-kpis article:has(i.yellow)::after{background:#e8c75e!important}
 :is(.finance-kpis,.home-kpis) article::before{opacity:.28!important}
 :is(.finance-kpis,.home-kpis) article::after{opacity:.22!important}
+
+/* Leads: avatar real quando houver foto, cores alternadas e duas tags visíveis. */
+.lead-avatar{overflow:hidden}
+.lead-avatar img{display:block;width:100%;height:100%;object-fit:cover;border-radius:inherit}
+.crm-leads-table-v3 tbody tr.lead-tone-1{border-left-color:#ff6500!important}
+.crm-leads-table-v3 tbody tr.lead-tone-2{border-left-color:#9638d8!important}
+.crm-leads-table-v3 tbody tr.lead-tone-3{border-left-color:#20aa64!important}
+.crm-leads-table-v3 tbody tr.lead-tone-4{border-left-color:#386fe7!important}
+.crm-leads-table-v3 tbody tr.lead-tone-5{border-left-color:#e44a47!important}
+.crm-leads-table-v3 .lead-tone-1 .lead-avatar{background:#ffe2cc;color:#d85600}
+.crm-leads-table-v3 .lead-tone-2 .lead-avatar{background:#eedbfa;color:#7f2cab}
+.crm-leads-table-v3 .lead-tone-3 .lead-avatar{background:#d8f2e3;color:#14834b}
+.crm-leads-table-v3 .lead-tone-4 .lead-avatar{background:#dce7ff;color:#285dc6}
+.crm-leads-table-v3 .lead-tone-5 .lead-avatar{background:#f9dddd;color:#c73d3a}
+.lead-table-tags{display:flex!important;flex-direction:row!important;flex-wrap:wrap;gap:3px;margin-top:3px}
+.lead-table-tags span{max-width:88px;overflow:hidden;text-overflow:ellipsis;padding:2px 6px;border-radius:999px;background:#f3e5fb;color:#7f2cab;font-size:9px;line-height:1.2;white-space:nowrap}
+.crm-leads-limit{padding:11px 15px;border-top:1px solid #eee8e4;background:#faf8f6;color:#827972;font-size:11px;font-weight:650;text-align:right}
+
+/* Vendas em processo: o mesmo desenho dos cards de lead do funil. */
+.sale-card{position:relative;overflow:hidden;padding:0!important;gap:0!important;border-radius:11px!important}
+.sale-card:hover{transform:translateY(-3px);box-shadow:0 11px 24px rgba(44,31,23,.11)}
+.sale-card-content{padding:10px 10px 8px}
+.sale-card .card-person strong{font-size:12px}
+.sale-card .card-person small{font-size:11px}
+.sale-card-broker{display:flex;align-items:center;gap:6px;margin:4px 0 0 40px;color:#7f2cab}
+.sale-card-broker strong{overflow:hidden;text-overflow:ellipsis;font-size:11px;font-weight:650;white-space:nowrap}
+.sale-card .sla-clock-v3{margin:7px 0}
+.sale-card .card-context{margin-top:0;padding-top:7px}
+.sale-card .card-context span{max-width:128px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sale-card .card-context b{white-space:nowrap}
+.sale-card .card-tags{min-height:19px;margin-top:6px}
+.sale-kind{display:block;margin-top:6px;color:#9a918a;font-size:10px}
+.sale-card-controls{padding:7px 9px;border-top:1px solid #eee8e4;background:#fff}
+.sale-card-controls select{width:100%;height:30px;margin:0!important;border:1px solid #ddd5cf;border-radius:7px;background:#fff;color:#544d48;font-size:11px}

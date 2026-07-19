@@ -160,6 +160,21 @@ test("aplica o CRM aprovado e mantém as duas formas decorativas nos indicadores
   assert.match(css, /\.finance-kpis article::after,\.analytics-kpis article::after,\.home-kpis article::after\{width:58px/);
 });
 
+test("limita a lista de leads e preserva fotos, tags e cores alternadas nos cards", async () => {
+  const crm = await readFile(new URL("../app/features/crm/CrmWorkspace.tsx", import.meta.url), "utf8");
+  const salesApi = await readFile(new URL("../app/api/crm/sales/route.ts", import.meta.url), "utf8");
+  const css = await readFile(new URL("../app/globals.css", import.meta.url), "utf8");
+
+  assert.match(crm, /const visibleDeals = deals\.slice\(0, 15\)/);
+  assert.match(crm, /lead-tone-\$\{index % 5 \+ 1\}/);
+  assert.match(crm, /function LeadAvatar/);
+  assert.match(crm, /tags\.slice\(0, 2\)/);
+  assert.match(crm, /className="sale-card-content"/);
+  assert.match(salesApi, /id,nome,telefone,email,corretor_id,tags,extras/);
+  assert.match(css, /\.crm-leads-table-v3 tbody tr\.lead-tone-1\{border-left-color:#ff6500!important\}/);
+  assert.match(css, /Vendas em processo: o mesmo desenho dos cards de lead do funil/);
+});
+
 test("padroniza indicações, fluxo de caixa e a hierarquia tipográfica financeira", async () => {
   const finance = await readFile(new URL("../app/features/finance/FinanceWorkspace.tsx", import.meta.url), "utf8");
   const css = await readFile(new URL("../app/globals.css", import.meta.url), "utf8");
