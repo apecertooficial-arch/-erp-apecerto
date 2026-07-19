@@ -25,7 +25,7 @@ export async function GET(request: Request) {
     auth.supabase.from("usuarios").select("id,nome,role,ativo"),
     auth.supabase.from("corretores").select("id,nome,usuario_id,online,ativo").eq("ativo", true),
     auth.supabase.from("metas_corretor").select("nome,meta_vgv,atualizado_em"),
-    auth.supabase.from("leads").select("id,origem,criado_em,corretor_id"),
+    auth.supabase.from("leads").select("id,nome,origem,criado_em,corretor_id"),
     auth.supabase.from("negocios").select("id,lead_id,corretor_id,venda_id,status,valor,criado_em"),
   ]);
   const firstError = [sales, details, commissions, receipts, cash, users, brokers, goals, leads, deals].find((result) => result.error)?.error;

@@ -94,6 +94,7 @@ export function ProductCatalog() {
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [activeModule, setActiveModule] = useState<ModuleName>("Início");
   const [focusedDealId, setFocusedDealId] = useState<number | null>(null);
+  const [crmInitialView, setCrmInitialView] = useState<"sales" | null>(null);
   const [loginPreview, setLoginPreview] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [sessionProfile, setSessionProfile] = useState<SessionProfile | null>(null);
@@ -244,7 +245,7 @@ export function ProductCatalog() {
       {activeModule === "Início" && accessToken ? (
         <HomeWorkspace accessToken={accessToken} sessionName={sessionProfile?.name ?? ""} onNavigate={(moduleName) => setActiveModule(moduleName as ModuleName)} />
       ) : activeModule === "CRM" && accessToken ? (
-        <CrmWorkspace accessToken={accessToken} initialDealId={focusedDealId} onInitialDealHandled={() => setFocusedDealId(null)} sessionRole={sessionProfile?.role ?? "corretor"} canReassign={canReassignCrm} canAssign={canAssignCrm} />
+        <CrmWorkspace accessToken={accessToken} initialDealId={focusedDealId} onInitialDealHandled={() => setFocusedDealId(null)} initialView={crmInitialView} onInitialViewHandled={() => setCrmInitialView(null)} sessionRole={sessionProfile?.role ?? "corretor"} canReassign={canReassignCrm} canAssign={canAssignCrm} />
       ) : activeModule === "Automações" && accessToken ? (
         <AutomationsWorkspace accessToken={accessToken} />
       ) : activeModule === "Abordagens" && accessToken ? (
@@ -254,7 +255,7 @@ export function ProductCatalog() {
       ) : activeModule === "Disparos" && accessToken ? (
         <CampaignWorkspace accessToken={accessToken} />
       ) : activeModule === "Financeiro" && accessToken ? (
-        <FinanceWorkspace accessToken={accessToken} sessionRole={sessionProfile?.role ?? "corretor"} />
+        <FinanceWorkspace accessToken={accessToken} sessionRole={sessionProfile?.role ?? "corretor"} onNavigateToNewSale={() => { setCrmInitialView("sales"); setActiveModule("CRM"); }} />
       ) : activeModule === "Usuários" && accessToken ? (
         <TeamWorkspace accessToken={accessToken} />
       ) : activeModule === "Perfis e Permissões" && accessToken ? (

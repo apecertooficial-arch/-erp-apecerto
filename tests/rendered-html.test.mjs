@@ -125,3 +125,18 @@ test("aplica a composição aprovada do Claude Designer na visão geral financei
   assert.match(css, /Financeiro — composição fiel ao painel aprovado no Claude Designer/);
   assert.match(css, /grid-template-columns:repeat\(7,minmax\(0,1fr\)\)/);
 });
+
+test("aplica a referência aprovada em Vendas & comissões", async () => {
+  const finance = await readFile(new URL("../app/features/finance/FinanceWorkspace.tsx", import.meta.url), "utf8");
+  const api = await readFile(new URL("../app/api/finance/route.ts", import.meta.url), "utf8");
+  const css = await readFile(new URL("../app/globals.css", import.meta.url), "utf8");
+
+  assert.match(finance, /finance-sales-designer/);
+  assert.match(finance, /Lançar nova venda/);
+  assert.match(finance, /finance-sales-month/);
+  assert.match(finance, /Com\. receb\./);
+  assert.match(finance, /Todos os status/);
+  assert.match(api, /id,nome,origem,criado_em,corretor_id/);
+  assert.match(css, /\.finance-kpis article::before \{ display:none!important; \}/);
+  assert.match(css, /nth-of-type\(4n\+1\)>b \{ background:var\(--orange\)!important; \}/);
+});
