@@ -16,7 +16,7 @@ const clean = (value: unknown, max = 500) => typeof value === "string" ? value.t
 export async function GET(request: Request) {
   const auth = await authClient(request);
   if (!auth) return Response.json({ error: "Sessão inválida ou expirada." }, { status: 401 });
-  const [sales, details, commissions, receipts, cash, users, brokers, goals, leads, deals, empreendimentos] = await Promise.all([
+  const [sales, details, commissions, receipts, cash, users, brokers, goals, leads, deals, empreendimentos, categorias] = await Promise.all([
     auth.supabase.from("vendas").select("id,created_at,data_venda,empreendimento_id,empreendimento_nome,unidade_id,vgv,custos,forma_pgto,percentual_comissao,status,obs").order("data_venda", { ascending: false }),
     auth.supabase.from("v_vendas_detalhe").select("id,data_venda,empreendimento,unidade,bairro,incorporadora,vgv,percentual_comissao,comissao_bruta,comissao_corretores,comissao_executivo,comissao_apecerto,indicacao,corretores,forma_pgto,status,obs"),
     auth.supabase.from("comissoes").select("id,venda_id,beneficiario_id,papel,valor_calculado,valor_final,override_motivo,created_at"),
@@ -28,8 +28,9 @@ export async function GET(request: Request) {
     auth.supabase.from("leads").select("id,nome,origem,criado_em,corretor_id"),
     auth.supabase.from("negocios").select("id,lead_id,corretor_id,venda_id,status,valor,criado_em"),
     auth.supabase.from("empreendimentos").select("id,nome,bairro,cidade").order("nome", { ascending: true }),
+    auth.supabase.from("categorias_caixa").select("id,nome,tipo,ordem").eq("ativo", true).order("tipo", { ascending: true }).order("ordem", { ascending: true }),
   ]);
-  const firstError = [sales, details, commissions, receipts, cash, users, brokers, goals, leads, deals, empreendimentos].find((result) => result.error)?.error;
+  const firstError = [sales, details, commissions, receipts, cash, users, brokers, goals, leads, deals, empreendimentos, categorias].find((result) => result.error)?.error;
   if (firstError) return Response.json({ error: firstError.message }, { status: 502 });
   const saleById = new Map((sales.data ?? []).map((sale) => [sale.id, sale]));
   const reconciledReceipts = (receipts.data ?? []).map((receipt) => {
@@ -41,7 +42,7 @@ export async function GET(request: Request) {
       data_recebimento: receipt.data_recebimento || sale.data_venda,
     };
   });
-  return Response.json({ sales: sales.data ?? [], details: details.data ?? [], commissions: commissions.data ?? [], receipts: reconciledReceipts, cash: cash.data ?? [], users: users.data ?? [], brokers: brokers.data ?? [], goals: goals.data ?? [], leads: leads.data ?? [], deals: deals.data ?? [], empreendimentos: empreendimentos.data ?? [] });
+  return Response.json({ sales: sales.data ?? [], details: details.data ?? [], commissions: commissions.data ?? [], receipts: reconciledReceipts, cash: cash.data ?? [], users: users.data ?? [], brokers: brokers.data ?? [], goals: goals.data ?? [], leads: leads.data ?? [], deals: deals.data ?? [], empreendimentos: empreendimentos.data ?? [], categorias: categorias.data ?? [] });
 }
 
 export async function PATCH(request: Request) {
@@ -49,6 +50,29 @@ export async function PATCH(request: Request) {
   if (!auth) return Response.json({ error: "Sessão inválida ou expirada." }, { status: 401 });
   const body = await request.json() as Record<string, unknown>;
   const action = clean(body.action, 40);
+
+  if (action === "createCategory" || action === "renameCategory" || action === "removeCategory") {
+    const { data: me } = await auth.supabase.from("usuarios").select("role").eq("id", auth.user.id).maybeSingle();
+    if (!me || !["admin", "gestor", "executivo"].includes(me.role)) return Response.json({ error: "Apenas administradores podem gerenciar categorias." }, { status: 403 });
+    if (action === "createCategory") {
+      const nome = clean(body.nome, 80);
+      const tipo = clean(body.tipo, 10);
+      if (!nome || !["entrada", "saida"].includes(tipo)) return Response.json({ error: "Informe o nome e o tipo da categoria." }, { status: 422 });
+      const { error } = await auth.supabase.from("categorias_caixa").insert({ nome, tipo: tipo as "entrada" | "saida", ordem: 99 } as never);
+      return error ? Response.json({ error: /duplicate|unique/i.test(error.message) ? "Já existe uma categoria com esse nome." : error.message }, { status: 502 }) : Response.json({ success: true });
+    }
+    if (action === "renameCategory") {
+      const id = clean(body.categoryId, 60);
+      const nome = clean(body.nome, 80);
+      if (!id || !nome) return Response.json({ error: "Informe a categoria e o novo nome." }, { status: 422 });
+      const { error } = await auth.supabase.from("categorias_caixa").update({ nome }).eq("id", id);
+      return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
+    }
+    const id = clean(body.categoryId, 60);
+    if (!id) return Response.json({ error: "Categoria inválida." }, { status: 422 });
+    const { error } = await auth.supabase.from("categorias_caixa").update({ ativo: false }).eq("id", id);
+    return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
+  }
 
   if (action === "createSale") {
     const dataVenda = clean(body.dataVenda, 10);
