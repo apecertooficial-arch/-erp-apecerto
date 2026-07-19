@@ -3038,3 +3038,28 @@ body { overflow:hidden; background:#eee8e2; }
   .crm-agenda-grid,.analytics-grid{grid-template-columns:1fr}
   .sales-kpis,.analytics-kpis{grid-template-columns:1fr 1fr}
 }
+
+/* A ordem visual do funil não depende das cores antigas gravadas no banco. */
+.crm-stage:nth-child(5n+1){--stage:#9638d8!important}
+.crm-stage:nth-child(5n+2){--stage:#ff6500!important}
+.crm-stage:nth-child(5n+3){--stage:#386fe7!important}
+.crm-stage:nth-child(5n+4){--stage:#20aa64!important}
+.crm-stage:nth-child(5n+5){--stage:#f2a82c!important}
+
+/* As duas formas usam a mesma família cromática do próprio card. */
+.analytics-kpis article:nth-child(1)::before,.analytics-kpis article:nth-child(1)::after{background:#78cfa0!important}
+.analytics-kpis article:nth-child(2)::before,.analytics-kpis article:nth-child(2)::after{background:#c78ce7!important}
+.analytics-kpis article:nth-child(3)::before,.analytics-kpis article:nth-child(3)::after{background:#ffab70!important}
+.analytics-kpis article:nth-child(4)::before,.analytics-kpis article:nth-child(4)::after{background:#eb9591!important}
+.analytics-kpis article:nth-child(5)::before,.analytics-kpis article:nth-child(5)::after{background:#76cbc4!important}
+.analytics-kpis article::before{opacity:.28!important}
+.analytics-kpis article::after{opacity:.22!important}
+.finance-kpis article:has(i.orange)::before,.finance-kpis article:has(i.orange)::after,.home-kpis article:has(i.orange)::before,.home-kpis article:has(i.orange)::after{background:#ffab70!important}
+.finance-kpis article:has(i.green)::before,.finance-kpis article:has(i.green)::after,.home-kpis article:has(i.green)::before,.home-kpis article:has(i.green)::after{background:#78cfa0!important}
+.finance-kpis article:has(i.red)::before,.finance-kpis article:has(i.red)::after{background:#eb9591!important}
+.finance-kpis article:has(i.blue)::before,.finance-kpis article:has(i.blue)::after{background:#8fb0f3!important}
+.finance-kpis article:has(i.purple)::before,.finance-kpis article:has(i.purple)::after,.home-kpis article:has(i.purple)::before,.home-kpis article:has(i.purple)::after{background:#c78ce7!important}
+.home-kpis article:has(i.teal)::before,.home-kpis article:has(i.teal)::after{background:#76cbc4!important}
+.home-kpis article:has(i.yellow)::before,.home-kpis article:has(i.yellow)::after{background:#e8c75e!important}
+:is(.finance-kpis,.home-kpis) article::before{opacity:.28!important}
+:is(.finance-kpis,.home-kpis) article::after{opacity:.22!important}
