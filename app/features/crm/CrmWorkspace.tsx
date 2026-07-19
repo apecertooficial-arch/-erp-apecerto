@@ -110,7 +110,7 @@ function formatElapsed(minutes: number | null | undefined) {
   return `${years} ${years === 1 ? "ano" : "anos"} ${Math.floor((days % 365) / 30)} m`;
 }
 
-export function CrmWorkspace({ accessToken, initialDealId = null, onInitialDealHandled, sessionRole = "corretor", canReassign = false, canAssign = false }: { accessToken: string; initialDealId?: number | null; onInitialDealHandled?: () => void; sessionRole?: "admin" | "gestor" | "corretor"; canReassign?: boolean; canAssign?: boolean }) {
+export function CrmWorkspace({ accessToken, initialDealId = null, onInitialDealHandled, initialView, onInitialViewHandled, sessionRole = "corretor", canReassign = false, canAssign = false }: { accessToken: string; initialDealId?: number | null; onInitialDealHandled?: () => void; initialView?: ViewName | null; onInitialViewHandled?: () => void; sessionRole?: "admin" | "gestor" | "corretor"; canReassign?: boolean; canAssign?: boolean }) {
   const [now, setNow] = useState(() => Date.now());
   const [data, setData] = useState<CrmData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -218,6 +218,12 @@ export function CrmWorkspace({ accessToken, initialDealId = null, onInitialDealH
     if (!deal) return;
     setView("pipeline"); setPipelineId(deal.pipeline_id); setSelectedDealId(deal.id); onInitialDealHandled?.();
   }, [initialDealId, data, onInitialDealHandled]);
+
+  useEffect(() => {
+    if (!initialView) return;
+    setView(initialView);
+    onInitialViewHandled?.();
+  }, [initialView, onInitialViewHandled]);
 
   function openDeal(dealId: number) {
     setSelectedDealId(dealId);
