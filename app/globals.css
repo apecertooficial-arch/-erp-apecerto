@@ -3331,3 +3331,5 @@ body { overflow:hidden; background:#eee8e2; }
 .cse-cancel{border:1px solid #ded7d2;background:#fff;color:#5f5752}
 .cse-save{border:0;background:#ff6500;color:#fff}
 .cse-save:hover{background:#ec5f00}
+/* Produtos: catálogo acompanha a mesma largura dos demais módulos (era 1360 → ilha) */
+.catalog-controls, .product-grid { max-width:1600px; }
