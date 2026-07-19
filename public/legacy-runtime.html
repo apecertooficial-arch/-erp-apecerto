@@ -9354,6 +9354,7 @@ class Component extends DCLogic {
       const avatar = (i) => ({ width: '40px', height: '40px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '13px', flexShrink: 0, background: i === 0 ? 'var(--ape-orange)' : i === 1 ? 'var(--ape-purple-100)' : 'var(--bg-sunken)', color: i === 0 ? '#fff' : i === 1 ? 'var(--ape-purple-700)' : 'var(--fg-2)' });
       const avatarMini = () => ({ width: '32px', height: '32px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '12px', flexShrink: 0, background: 'var(--ape-purple-100)', color: 'var(--ape-purple-700)' });
       const faixaOf = (s) => s >= 85 ? { label: 'Elite', cor: '#1FA85A', bg: 'var(--success-bg)' } : s >= 70 ? { label: 'Bom', cor: '#CC5800', bg: 'var(--ape-orange-50)' } : s >= 55 ? { label: 'Atenção', cor: '#E0A400', bg: '#FFF6E0' } : { label: 'Crítico', cor: '#E5484D', bg: 'var(--danger-bg)' };
+      const kpiIcon = (c) => { const soft = (typeof c === 'string' && c[0] === '#' && c.length === 7) ? (c + '1F') : c; return { width: '38px', height: '38px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: c, background: soft, flexShrink: 0 }; };
       const kpi = (label, value, sub, ic, c) => ({ label: label, value: value, sub: sub || '', icon: this.I[ic] || this.I.trend, iconWrap: kpiIcon(c) });
 
       const ativos = (this.corretoresData || []).filter(c => c.tipo === 'Corretor' && c.status === 'ativo');
