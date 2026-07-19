@@ -301,7 +301,7 @@ export function ProductCatalog() {
       ) : (
         <div className="workspace-loading"><span /><strong>Carregando seu ERP…</strong></div>
       )}
-      {accessToken && !isSilentUser(sessionProfile?.email) && <AttentionCenter accessToken={accessToken} onOpenLead={(dealId) => { setFocusedDealId(dealId); setActiveModule("CRM"); }} onOpenNotifications={() => setActiveModule("Notificações")} />}
+      {accessToken && activeModule === "CRM" && !isSilentUser(sessionProfile?.email) && <AttentionCenter accessToken={accessToken} onOpenLead={(dealId) => { setFocusedDealId(dealId); setActiveModule("CRM"); }} onOpenNotifications={() => setActiveModule("Notificações")} />}
       {accessToken && !isSilentUser(sessionProfile?.email) && <SaraWidget />}
       {accessToken && !isSilentUser(sessionProfile?.email) && <DisconnectionAlert accessToken={accessToken} onOpen={() => setActiveModule("Configurações")} />}
       {loginPreview && <SupabaseLogin preview onClose={() => setLoginPreview(false)} onAuthenticated={(token) => { setLoginPreview(false); setActiveModule("Início"); void loadCatalog(token); }} />}

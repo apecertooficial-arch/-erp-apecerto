@@ -16,7 +16,7 @@ const clean = (value: unknown, max = 500) => typeof value === "string" ? value.t
 export async function GET(request: Request) {
   const auth = await authClient(request);
   if (!auth) return Response.json({ error: "Sessão inválida ou expirada." }, { status: 401 });
-  const [sales, details, commissions, receipts, cash, users, brokers, goals, leads, deals] = await Promise.all([
+  const [sales, details, commissions, receipts, cash, users, brokers, goals, leads, deals, empreendimentos] = await Promise.all([
     auth.supabase.from("vendas").select("id,created_at,data_venda,empreendimento_id,empreendimento_nome,unidade_id,vgv,custos,forma_pgto,percentual_comissao,status,obs").order("data_venda", { ascending: false }),
     auth.supabase.from("v_vendas_detalhe").select("id,data_venda,empreendimento,unidade,bairro,incorporadora,vgv,percentual_comissao,comissao_bruta,comissao_corretores,comissao_executivo,comissao_apecerto,indicacao,corretores,forma_pgto,status,obs"),
     auth.supabase.from("comissoes").select("id,venda_id,beneficiario_id,papel,valor_calculado,valor_final,override_motivo,created_at"),
@@ -27,8 +27,9 @@ export async function GET(request: Request) {
     auth.supabase.from("metas_corretor").select("nome,meta_vgv,atualizado_em"),
     auth.supabase.from("leads").select("id,nome,origem,criado_em,corretor_id"),
     auth.supabase.from("negocios").select("id,lead_id,corretor_id,venda_id,status,valor,criado_em"),
+    auth.supabase.from("empreendimentos").select("id,nome,bairro,cidade").order("nome", { ascending: true }),
   ]);
-  const firstError = [sales, details, commissions, receipts, cash, users, brokers, goals, leads, deals].find((result) => result.error)?.error;
+  const firstError = [sales, details, commissions, receipts, cash, users, brokers, goals, leads, deals, empreendimentos].find((result) => result.error)?.error;
   if (firstError) return Response.json({ error: firstError.message }, { status: 502 });
   const saleById = new Map((sales.data ?? []).map((sale) => [sale.id, sale]));
   const reconciledReceipts = (receipts.data ?? []).map((receipt) => {
@@ -40,7 +41,7 @@ export async function GET(request: Request) {
       data_recebimento: receipt.data_recebimento || sale.data_venda,
     };
   });
-  return Response.json({ sales: sales.data ?? [], details: details.data ?? [], commissions: commissions.data ?? [], receipts: reconciledReceipts, cash: cash.data ?? [], users: users.data ?? [], brokers: brokers.data ?? [], goals: goals.data ?? [], leads: leads.data ?? [], deals: deals.data ?? [] });
+  return Response.json({ sales: sales.data ?? [], details: details.data ?? [], commissions: commissions.data ?? [], receipts: reconciledReceipts, cash: cash.data ?? [], users: users.data ?? [], brokers: brokers.data ?? [], goals: goals.data ?? [], leads: leads.data ?? [], deals: deals.data ?? [], empreendimentos: empreendimentos.data ?? [] });
 }
 
 export async function PATCH(request: Request) {
@@ -48,6 +49,101 @@ export async function PATCH(request: Request) {
   if (!auth) return Response.json({ error: "Sessão inválida ou expirada." }, { status: 401 });
   const body = await request.json() as Record<string, unknown>;
   const action = clean(body.action, 40);
+
+  if (action === "createSale") {
+    const dataVenda = clean(body.dataVenda, 10);
+    const vgv = Number(body.vgv);
+    const percentRaw = Number(body.percent);
+    const custos = Number(body.custos);
+    if (!dataVenda || !Number.isFinite(vgv) || vgv <= 0) return Response.json({ error: "Informe a data e o VGV da venda." }, { status: 422 });
+    const validStatus = ["pendente", "concluido", "pago", "distrato"];
+    const status = validStatus.includes(clean(body.status, 20)) ? clean(body.status, 20) : "pendente";
+    const empreendimentoId = clean(body.empreendimentoId, 60) || null;
+    const corretorPrincipal = Number(body.corretorId);
+    const documentos = Array.isArray(body.documentos)
+      ? (body.documentos as unknown[]).filter((doc) => doc && typeof doc === "object").map((doc) => {
+          const d = doc as Record<string, unknown>;
+          return { nome: clean(d.nome, 200), path: clean(d.path, 1000), bucket: clean(d.bucket, 60) || "esteira-docs" };
+        }).filter((doc) => doc.path).slice(0, 30)
+      : [];
+
+    const saleInsert: Record<string, unknown> = {
+      data_venda: dataVenda,
+      vgv,
+      custos: Number.isFinite(custos) && custos >= 0 ? custos : 0,
+      percentual_comissao: Number.isFinite(percentRaw) && percentRaw >= 0 && percentRaw <= 100 ? percentRaw / 100 : null,
+      forma_pgto: clean(body.payment, 100) || null,
+      status: status as "pendente" | "concluido" | "pago" | "distrato",
+      obs: clean(body.notes, 1000) || null,
+      empreendimento_id: empreendimentoId,
+      empreendimento_nome: clean(body.empreendimentoNome, 200) || null,
+      unidade_rotulo: clean(body.unidade, 120) || null,
+      cliente_nome: clean(body.clienteNome, 200) || null,
+      proprietario_nome: clean(body.proprietarioNome, 200) || null,
+      corretor_id: Number.isSafeInteger(corretorPrincipal) && corretorPrincipal > 0 ? corretorPrincipal : null,
+      documentos,
+    };
+    const { data: created, error: saleError } = await auth.supabase.from("vendas").insert(saleInsert as never).select("id").single();
+    if (saleError || !created) return Response.json({ error: saleError?.message || "Não foi possível criar a venda." }, { status: 502 });
+    const saleId = created.id as string;
+
+    const brokerRows = Array.isArray(body.brokers)
+      ? (body.brokers as unknown[]).filter((b) => b && typeof b === "object").map((b) => {
+          const row = b as Record<string, unknown>;
+          const fracao = Number(row.fracao);
+          return {
+            venda_id: saleId,
+            corretor_id: clean(row.corretorId, 60) || null,
+            corretor_nome: clean(row.corretorNome, 200) || null,
+            fracao: Number.isFinite(fracao) && fracao > 0 ? fracao : 1,
+            eh_indicador: row.ehIndicador === true,
+          };
+        }).filter((row) => row.corretor_id || row.corretor_nome)
+      : [];
+    if (brokerRows.length) {
+      const { error } = await auth.supabase.from("venda_corretores").insert(brokerRows);
+      if (error) return Response.json({ error: `Venda criada, mas falha ao vincular corretores: ${error.message}`, saleId }, { status: 502 });
+    }
+
+    const commissionRows = Array.isArray(body.commissions)
+      ? (body.commissions as unknown[]).filter((c) => c && typeof c === "object").map((c) => {
+          const row = c as Record<string, unknown>;
+          const valor = Number(row.valor);
+          return {
+            venda_id: saleId,
+            papel: clean(row.papel, 40) || "corretor",
+            beneficiario_id: clean(row.beneficiarioId, 60) || null,
+            valor_final: Number.isFinite(valor) ? valor : 0,
+            valor_calculado: Number.isFinite(valor) ? valor : 0,
+          };
+        }).filter((row) => row.valor_final > 0)
+      : [];
+    if (commissionRows.length) {
+      const { error } = await auth.supabase.from("comissoes").insert(commissionRows as never);
+      if (error) return Response.json({ error: `Venda criada, mas falha ao lançar comissões: ${error.message}`, saleId }, { status: 502 });
+    }
+
+    const receiptRows = Array.isArray(body.receipts)
+      ? (body.receipts as unknown[]).filter((r) => r && typeof r === "object").map((r, index) => {
+          const row = r as Record<string, unknown>;
+          const valor = Number(row.valor);
+          const parcela = Number(row.numeroParcela);
+          return {
+            venda_id: saleId,
+            numero_parcela: Number.isSafeInteger(parcela) && parcela > 0 ? parcela : index + 1,
+            valor_total: Number.isFinite(valor) ? valor : 0,
+            data_prevista: clean(row.dataPrevista, 10) || null,
+            status: "pendente",
+          };
+        }).filter((row) => row.valor_total > 0)
+      : [];
+    if (receiptRows.length) {
+      const { error } = await auth.supabase.from("recebimentos").insert(receiptRows);
+      if (error) return Response.json({ error: `Venda criada, mas falha ao gerar parcelas: ${error.message}`, saleId }, { status: 502 });
+    }
+
+    return Response.json({ success: true, saleId });
+  }
 
   if (action === "createCash") {
     const type = clean(body.type, 10);
