@@ -3333,3 +3333,18 @@ body { overflow:hidden; background:#eee8e2; }
 .cse-save:hover{background:#ec5f00}
 /* Produtos: catálogo acompanha a mesma largura dos demais módulos (era 1360 → ilha) */
 .catalog-controls, .product-grid { max-width:1600px; }
+
+/* ============================================================
+   CHAT AO VIVO — mesmo visual do mini chat (jul/2026)
+   Balões quentes (recebido creme, enviado verde), ferramentas
+   redondas com ícones SVG, composer em pílula.
+   ============================================================ */
+.live-chat .message-stream article.in { background:#fdf5ef !important; border:1px solid #f3e7db !important; box-shadow:0 1px 4px rgba(45,34,28,.06); }
+.live-chat .message-stream article.out { background:#dcf6e5 !important; border:1px solid #c7ead4 !important; }
+.live-chat .composer-tools { gap:8px !important; }
+.live-chat .composer-tools button { width:44px !important; height:44px !important; border-radius:50% !important; border:1px solid #ece2d9 !important; background:#fff !important; color:#6a615b !important; box-shadow:0 4px 12px rgba(40,28,20,.10) !important; }
+.live-chat .composer-tools button:hover { border-color:#ffb279 !important; color:#d85f00 !important; transform:translateY(-1px); }
+.live-chat .composer-tools button.recording { border-color:#e34545 !important; background:#fff0f0 !important; color:#c42f2f !important; }
+.live-chat .composer-tools button svg { width:20px; height:20px; }
+.live-chat .chat-composer textarea { border:1px solid #e5ddd6 !important; border-radius:22px !important; padding:12px 16px !important; min-height:46px !important; }
+.live-chat .chat-composer > button[type=submit] { width:46px !important; height:46px !important; border-radius:50% !important; background:#ff6500 !important; color:#fff !important; }
