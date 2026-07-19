@@ -3367,3 +3367,37 @@ body { overflow:hidden; background:#eee8e2; }
 /* ferramentas para FORA do card, à esquerda */
 .chat-layer .mini-chat-tools{ left:-62px !important; top:50% !important; transform:translateY(-50%) !important; }
 .chat-layer .chat-messages{ padding-left:20px !important; }
+
+/* ============================================================
+   INÍCIO v2 — saudação com avatar, hero da META em laranja com
+   % em destaque, e KPIs retangulares em 4 colunas (fim dos quadrados).
+   ============================================================ */
+.home-header { align-items:center; gap:14px; margin-bottom:18px; }
+.home-header .home-avatar { width:52px; height:52px; flex:0 0 auto; display:grid; place-items:center; border-radius:50%; background:linear-gradient(145deg,#9333ea,#b246dc); color:#fff; font-weight:800; font-size:20px; box-shadow:0 8px 18px rgba(147,51,234,.22); }
+.home-header > div { flex:1; min-width:0; }
+.home-header small { display:block; color:#ff6a00; font-size:11px; font-weight:800; letter-spacing:.1em; }
+.home-header h1 { margin:2px 0 0; font-size:26px; }
+.home-header p { margin:3px 0 0; color:var(--muted); font-size:12px; }
+.home-header .home-status { flex:0 0 auto; padding:7px 11px; border-radius:999px; background:#eaf8ef; color:#16844c; font-size:11px; font-weight:600; }
+/* Hero da meta em laranja */
+.home-goal.hero { padding:26px 30px; border:0; border-radius:20px; background:linear-gradient(118deg,#ff6a1a 0%,#ff7d2b 52%,#ff9040 100%); box-shadow:0 18px 44px rgba(255,101,0,.26); color:#fff; position:relative; overflow:hidden; }
+.home-goal.hero > * { position:relative; z-index:1; }
+.home-goal.hero::before { content:''; position:absolute; z-index:0; right:-30px; top:-70px; width:320px; height:320px; border-radius:50%; background:rgba(255,255,255,.10); }
+.home-goal.hero::after { content:''; position:absolute; z-index:0; right:150px; bottom:-160px; width:250px; height:250px; border-radius:50%; background:rgba(255,255,255,.08); }
+.home-goal.hero header { align-items:center; }
+.home-goal.hero header small { color:rgba(255,255,255,.85); font-size:11px; font-weight:800; letter-spacing:.12em; }
+.home-goal.hero header strong { display:block; margin-top:6px; font-size:34px; color:#fff; font-weight:800; }
+.home-goal.hero header strong em { color:rgba(255,255,255,.82); font-size:14px; font-style:normal; font-weight:600; }
+.home-goal.hero header > b { font-size:52px; color:#fff; font-weight:800; line-height:1; }
+.home-goal.hero .goal-badge { display:inline-flex; align-items:center; gap:6px; margin-top:12px; padding:5px 11px; border-radius:999px; background:rgba(255,255,255,.2); color:#fff; font-size:11px; font-weight:700; }
+.home-goal.hero > div { height:12px; margin:16px 0 12px; background:rgba(255,255,255,.28); }
+.home-goal.hero > div span { background:#fff; }
+.home-goal.hero footer { color:rgba(255,255,255,.92); font-size:13px; }
+.home-goal.hero footer b { color:#fff; }
+.home-goal.hero footer button { border:0; background:transparent; color:#fff; font-weight:750; cursor:pointer; }
+/* KPIs retangulares em 4 colunas (revertendo os quadrados) */
+.home-kpis { grid-template-columns:repeat(4,minmax(0,1fr)); }
+.home-kpis article { aspect-ratio:auto; min-height:132px; justify-content:flex-start; }
+.home-kpis article:nth-child(8) { grid-column:auto; }
+@media(max-width:1100px){ .home-kpis{ grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media(max-width:640px){ .home-kpis{ grid-template-columns:1fr; } }
