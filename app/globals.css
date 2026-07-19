@@ -3168,3 +3168,7 @@ body { overflow:hidden; background:#eee8e2; }
 .finance-form-grid .money-input{width:100%}
 .nova-venda-row .money-input{flex:1;min-width:0}
 .nova-venda-row .money-input input{text-align:left}
+
+/* Ranking VGV (corretor) e pill estática de etapa */
+.finance-ranking-vgv .finance-ranking-head,.finance-ranking-vgv article{grid-template-columns:36px 1.6fr .7fr 1fr .8fr!important}
+.stage-pill-static{display:inline-block;padding:4px 9px;border-radius:8px;background:#f0eeec;color:#6f6863;font-size:11px;font-weight:700}
