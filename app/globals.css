@@ -2879,3 +2879,8 @@ body { overflow:hidden; background:#eee8e2; }
 .nova-venda-nav button,.crm-secondary{border:1px solid #ded7d2;border-radius:10px;padding:0 15px;min-height:42px;background:#fff;color:#5f5752;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer}
 .crm-secondary{border-color:#ffb57f;color:#d85600;background:#fff7f1}
 @media(max-width:640px){.nova-venda-row{flex-wrap:wrap}.nova-venda-row>select,.nova-venda-row>input{flex:1 1 100%;max-width:none}.nova-venda-modal footer{flex-direction:column-reverse;align-items:stretch}.nova-venda-modal footer>div{justify-content:space-between}}
+
+/* Caixa: campos condicionais */
+.finance-form-grid .nova-venda-hint.wide-hint{grid-column:1/-1;margin-top:2px}
+.finance-form-grid label.cash-settle-line{flex-direction:row;align-items:center;gap:8px;padding:9px 11px;border-radius:9px;background:#f8f6f4;font-weight:600;color:#5f5752}
+.finance-form-grid label.cash-settle-line input{width:16px;height:16px;min-height:auto}
