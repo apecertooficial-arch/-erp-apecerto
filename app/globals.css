@@ -2559,3 +2559,13 @@ body { overflow:hidden; background:#eee8e2; }
 .crm-metrics article:has(.metric-icon.green) { background:#d5f1e0; border-color:#76cf9c; }
 .crm-metrics article:has(.metric-icon.red) { background:#f8d6d5; border-color:#e88b87; }
 .crm-metrics article:has(.metric-icon.blue) { background:#d9e5ff; border-color:#85a8f5; }
+
+/* ===== Status de entrega no chat (estilo WhatsApp) ===== */
+.chat-messages article time { display:inline-flex; align-items:center; gap:5px; }
+.msg-ack { font-style:normal; font-size:12px; line-height:1; letter-spacing:-1px; }
+.msg-ack.enviado, .msg-ack.entregue { color:#93a0ad; }   /* cinza: 1 tique enviado / 2 tiques entregue */
+.msg-ack.lido { color:#34b7f1; }                          /* azul: lido (2 tiques azuis) */
+.msg-ack.pending { color:#b7ad9f; letter-spacing:0; }     /* relógio: enviando */
+.msg-ack.erro { color:#d93e3e; letter-spacing:0; font-size:13px; }
+.msg-erro-motivo { display:block; margin-top:5px; padding:5px 8px; border-radius:8px; background:#fdecea; color:#b3261e; font-size:11px; font-weight:600; }
+.chat-messages article.msg-failed { border:1px solid #f3b4ae; }
