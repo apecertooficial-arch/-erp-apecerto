@@ -137,8 +137,42 @@ test("aplica a referência aprovada em Vendas & comissões", async () => {
   assert.match(finance, /Com\. receb\./);
   assert.match(finance, /Todos os status/);
   assert.match(api, /id,nome,origem,criado_em,corretor_id/);
-  assert.match(css, /\.finance-kpis article::before \{ display:none!important; \}/);
+  assert.match(css, /\.sales-kpis article::before,\.finance-kpis article::before.*display:block!important/);
   assert.match(css, /nth-of-type\(4n\+1\)>b \{ background:var\(--orange\)!important; \}/);
+});
+
+test("aplica o CRM aprovado e mantém as duas formas decorativas nos indicadores", async () => {
+  const crm = await readFile(new URL("../app/features/crm/CrmWorkspace.tsx", import.meta.url), "utf8");
+  const css = await readFile(new URL("../app/globals.css", import.meta.url), "utf8");
+
+  assert.match(crm, /CRM · Funil de vendas/);
+  assert.match(crm, /CRM · Leads/);
+  assert.match(crm, /CRM · Vendas em processo/);
+  assert.match(crm, /CRM · Analítico de funil/);
+  assert.match(crm, /CRM · Agenda/);
+  assert.match(crm, /CRM · Atividades/);
+  assert.match(crm, /card-broker-inline-v3/);
+  assert.match(crm, /<th>Atualização<\/th>/);
+  assert.match(crm, /<span>Conversão geral<\/span>/);
+  assert.doesNotMatch(crm, /<section className="crm-metrics">/);
+  assert.match(css, /CRM — composição final baseada nas telas aprovadas do Claude Designer/);
+  assert.match(css, /\.crm-v2\{\s*zoom:1/);
+  assert.match(css, /\.finance-kpis article::after,\.analytics-kpis article::after,\.home-kpis article::after\{width:58px/);
+});
+
+test("limita a lista de leads e preserva fotos, tags e cores alternadas nos cards", async () => {
+  const crm = await readFile(new URL("../app/features/crm/CrmWorkspace.tsx", import.meta.url), "utf8");
+  const salesApi = await readFile(new URL("../app/api/crm/sales/route.ts", import.meta.url), "utf8");
+  const css = await readFile(new URL("../app/globals.css", import.meta.url), "utf8");
+
+  assert.match(crm, /const visibleDeals = deals\.slice\(0, 15\)/);
+  assert.match(crm, /lead-tone-\$\{index % 5 \+ 1\}/);
+  assert.match(crm, /function LeadAvatar/);
+  assert.match(crm, /tags\.slice\(0, 2\)/);
+  assert.match(crm, /className="sale-card-content"/);
+  assert.match(salesApi, /id,nome,telefone,email,corretor_id,tags,extras/);
+  assert.match(css, /\.crm-leads-table-v3 tbody tr\.lead-tone-1\{border-left-color:#ff6500!important\}/);
+  assert.match(css, /Vendas em processo: o mesmo desenho dos cards de lead do funil/);
 });
 
 test("padroniza indicações, fluxo de caixa e a hierarquia tipográfica financeira", async () => {
