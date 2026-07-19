@@ -594,7 +594,7 @@ button { cursor:pointer; }
 .attention-trigger { border-radius:14px; box-shadow:var(--shadow-sm); border:1px solid var(--line); background:var(--surface); }
 .attention-trigger>b { background:var(--red); }
 .attention-popover { border-radius:18px; border:1px solid var(--line); box-shadow:var(--shadow-lg); }
-.attention-popover>main article { border-radius:14px; border:1px solid var(--line); border-left:4px solid var(--orange); }
+.attention-popover>main article { border-radius:14px; border:1px solid var(--line); }
 .crm-toast, .team-toast { border-radius:14px; box-shadow:var(--shadow-lg); }
 
 /* Campo de busca / inputs — foco de marca ----------------------- */
