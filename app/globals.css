@@ -2685,3 +2685,9 @@ body { overflow:hidden; background:#eee8e2; }
 @media(max-width:800px){
   .finance-sales-designer { padding-inline:12px; }
 }
+.lead-feedbacks{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:5px}
+.lead-feedbacks li{display:flex;gap:7px;align-items:flex-start;font-size:11px;line-height:1.4}
+.lead-feedbacks li span{flex-shrink:0;width:15px;height:15px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;margin-top:1px}
+.lead-feedbacks li.pos span{background:rgba(74,222,128,.25);color:#bbf7d0}
+.lead-feedbacks li.neg span{background:rgba(248,113,113,.28);color:#fecaca}
+.lead-feedbacks li b{font-weight:700}
