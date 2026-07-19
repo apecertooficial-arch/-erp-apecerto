@@ -43,12 +43,20 @@ export function ConnectionsWorkspace({ accessToken }: { accessToken: string }) {
   }, [qr, instances]);
 
   const disconnected = instances.filter((item) => !item.conectada);
+  const conectadas = instances.filter((item) => item.conectada).length;
+  const instaveis = instances.filter((item) => !item.conectada && /connecting/i.test(item.status_dapi || "")).length;
+  const desconectadas = instances.length - conectadas - instaveis;
 
   return <div className="connections-workspace">
-    <header><div><span>CONFIGURAÇÕES</span><h1>Conexões</h1><p>{isAdmin ? "Todas as instâncias da imobiliária." : "Suas instâncias de WhatsApp — conecte ou reconecte pelo QR."}</p></div><button type="button" onClick={() => void load()}>↻ Atualizar</button></header>
+    {!loading && instances.length > 0 && <div className="conn-stats">
+      <div className="conn-stat ok"><span>● Conectadas</span><strong>{conectadas}</strong></div>
+      <div className="conn-stat warn"><span>● Instáveis</span><strong>{instaveis}</strong></div>
+      <div className="conn-stat bad"><span>● Desconectadas</span><strong>{desconectadas}</strong></div>
+    </div>}
+    <header><div><span>CONFIGURAÇÕES</span><h1>Instâncias de WhatsApp</h1><p>{isAdmin ? "Todas as conexões da imobiliária." : "Suas instâncias de WhatsApp — conecte ou reconecte pelo QR."}</p></div><button type="button" onClick={() => void load()}>↻ Atualizar</button></header>
     {error && <div className="connections-error">{error}</div>}
     {disconnected.length > 0 && <div className="connections-warn">⚠ {disconnected.length} instância{disconnected.length === 1 ? "" : "s"} desconectada{disconnected.length === 1 ? "" : "s"} — reconecte para não perder atendimentos.</div>}
-    {loading ? <div className="connections-loading">Carregando conexões…</div> : <div className="connections-grid">{instances.map((inst) => <article className={inst.conectada ? "conn-card connected" : "conn-card"} key={inst.id}><div className="conn-status"><i />{inst.conectada ? "Conectada" : (inst.status_dapi || "Offline")}</div><strong>{inst.nome}</strong><button type="button" onClick={() => void openQr(inst)}>{inst.conectada ? "Reconectar" : "Conectar (QR)"}</button></article>)}{!instances.length && <p className="connections-empty">Nenhuma instância associada a você. Fale com o administrador.</p>}</div>}
+    {loading ? <div className="connections-loading">Carregando conexões…</div> : <div className="connections-grid">{instances.map((inst) => { const unstable = !inst.conectada && /connecting/i.test(inst.status_dapi || ""); return <article className={`conn-card ${inst.conectada ? "connected" : unstable ? "unstable" : "off"}`} key={inst.id}><div className="conn-card-top"><span className="conn-status"><i />{inst.conectada ? "CONECTADA" : (inst.status_dapi || "OFFLINE")}</span><span className="conn-device" aria-hidden>▢</span></div><strong>{inst.nome}</strong><small className="conn-sync">{inst.conectada ? "Sincronizada agora" : "Aguardando reconexão"}</small><button type="button" onClick={() => void openQr(inst)}>{inst.conectada ? "↻ Reconectar" : "▣ Conectar (QR)"}</button></article>; })}{!instances.length && <p className="connections-empty">Nenhuma instância associada a você. Fale com o administrador.</p>}</div>}
     {qr && <div className="qr-modal-scrim" onClick={() => setQr(null)}><div className="qr-modal" onClick={(event) => event.stopPropagation()}><header><strong>Conectar · {qr.nome}</strong><button type="button" onClick={() => setQr(null)}>×</button></header>{qr.status === "connected" ? <div className="qr-connected">✓ Conectada com sucesso!</div> : qr.image ? <><img src={qr.image} alt="QR Code da instância" /><p>Abra o WhatsApp → Aparelhos conectados → Conectar aparelho e escaneie. Atualiza sozinho.</p></> : <p className="qr-status">{qr.status === "carregando" ? "Gerando QR…" : qr.status === "erro" ? "Não foi possível gerar o QR. Verifique a apikey da instância." : `Status: ${qr.status}. Aguardando QR…`}</p>}<footer><button type="button" disabled={qrBusy} onClick={() => { const inst = instances.find((item) => item.id === qr.id); if (inst) void openQr(inst, true); }}>Gerar novo QR</button><button type="button" onClick={() => setQr(null)}>Fechar</button></footer></div></div>}
   </div>;
 }

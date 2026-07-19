@@ -3401,3 +3401,67 @@ body { overflow:hidden; background:#eee8e2; }
 .home-kpis article:nth-child(8) { grid-column:auto; }
 @media(max-width:1100px){ .home-kpis{ grid-template-columns:repeat(2,minmax(0,1fr)); } }
 @media(max-width:640px){ .home-kpis{ grid-template-columns:1fr; } }
+
+/* ============================================================
+   CONFIGURAÇÕES v2 — nav em cards com ícone+subtítulo, header com
+   kicker + selo admin, aba Empresa em cards (Identidade/Contato/
+   Localização) com logo, e Conexões com stats + cards de status.
+   ============================================================ */
+.settings-top { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; }
+.settings-kicker { display:block; color:#ff6a00; font-size:11px; font-weight:800; letter-spacing:.12em; }
+.settings-admin-pill { flex:0 0 auto; padding:7px 13px; border-radius:999px; background:#f3e9fc; color:#7c3aed; font-size:11px; font-weight:700; }
+/* nav lateral em cards */
+.settings-nav { gap:9px !important; padding:0 !important; border:0 !important; background:transparent !important; }
+.settings-nav button { align-items:center !important; gap:12px !important; padding:12px 14px !important; border:1px solid #ece7e3 !important; border-radius:14px !important; background:#fff !important; }
+.settings-nav button.active { border-color:#ffcfa6 !important; background:#fff6ef !important; box-shadow:0 6px 16px rgba(255,101,0,.08); }
+.settings-nav button .settings-nav-ico { width:38px !important; height:38px !important; flex:0 0 auto; display:grid; place-items:center; border-radius:11px; background:#f2efec; color:#8a807a; font-size:16px; text-align:center; }
+.settings-nav button.active .settings-nav-ico { background:#ff6500; color:#fff; }
+.settings-nav button .settings-nav-text { flex:1; min-width:0; display:flex; flex-direction:column; gap:1px; width:auto; text-align:left; color:inherit; }
+.settings-nav button .settings-nav-text strong { font-size:13px; color:#2f2a26; }
+.settings-nav button.active .settings-nav-text strong { color:#d85600; }
+.settings-nav button .settings-nav-text small { color:#9a908a; font-size:11px; font-weight:500; }
+.settings-nav button .settings-nav-chev { flex:0 0 auto; width:auto !important; color:#c4bbb4; font-size:16px; }
+.settings-nav button.active .settings-nav-chev { color:#ff6500; }
+/* aba Empresa */
+.settings-empresa { display:flex; flex-direction:column; gap:16px; max-width:900px; }
+.settings-empresa .settings-card { max-width:none; }
+.settings-identity { display:flex; gap:20px; }
+.settings-logo { flex:0 0 auto; width:96px; height:96px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; border:2px dashed #ffcfa6; border-radius:16px; background:#fff8f2; color:#d85f00; cursor:pointer; font-size:11px; font-weight:700; }
+.settings-logo span { font-size:26px; }
+.settings-identity-body { flex:1; min-width:0; }
+.settings-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+.settings-grid label.wide, .settings-card label.wide { grid-column:1/-1; }
+.settings-card label { display:flex; flex-direction:column; gap:6px; color:#6d6560; font-size:11px; font-weight:700; }
+.settings-card label input, .settings-card label textarea { border:1px solid #e0d9d4; border-radius:10px; padding:11px 12px; font-family:inherit; font-size:12px; outline:0; }
+.settings-card label input:focus { border-color:#ff9c5e; box-shadow:0 0 0 3px rgba(255,101,0,.10); }
+.settings-card h2 .sc-ico { display:inline-grid; place-items:center; width:28px; height:28px; border-radius:9px; margin-right:9px; vertical-align:middle; font-size:14px; }
+.settings-card h2 .sc-ico.phone { background:#e5f7ec; color:#16834c; }
+.settings-card h2 .sc-ico.pin { background:#f3e9fc; color:#7c3aed; }
+.settings-form-footer { display:flex; align-items:center; justify-content:space-between; gap:16px; padding:15px 20px; border:1px solid #ece7e3; border-radius:14px; background:#fff; max-width:900px; }
+.settings-form-footer > span { color:#9a908a; font-size:12px; }
+.settings-form-footer > div { display:flex; gap:10px; }
+.settings-cancel { border:1px solid #ded7d2; border-radius:10px; padding:10px 16px; background:#fff; color:#5f5752; font-weight:600; cursor:pointer; }
+.settings-form-footer .settings-save { border:0; border-radius:10px; padding:10px 18px; background:#ff6500; color:#fff; font-weight:700; cursor:pointer; }
+/* Conexões: stats + cards de status */
+.conn-stats { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; padding:18px 28px 4px; }
+.conn-stat { padding:16px 18px; border:1px solid #e7e1dd; border-radius:14px; background:#fff; display:flex; flex-direction:column; gap:6px; }
+.conn-stat span { font-size:11px; font-weight:700; }
+.conn-stat strong { font-size:30px; line-height:1; }
+.conn-stat.ok span, .conn-stat.ok strong { color:#16834c; }
+.conn-stat.warn span, .conn-stat.warn strong { color:#c98a12; }
+.conn-stat.bad span, .conn-stat.bad strong { color:#c33b32; }
+.conn-card-top { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+.conn-card .conn-status { display:inline-flex; align-items:center; gap:6px; padding:3px 9px; border-radius:999px; font-size:10px; font-weight:800; letter-spacing:.02em; }
+.conn-card.connected .conn-status { background:#e5f7ec; color:#16834c; }
+.conn-card.connected .conn-status i { background:#19a861; }
+.conn-card.unstable .conn-status { background:#fff3da; color:#a9720a; }
+.conn-card.unstable .conn-status i { background:#e0a520; }
+.conn-card.off .conn-status { background:#fdeceb; color:#c33b32; }
+.conn-card.off .conn-status i { background:#d8323d; }
+.conn-card.connected { border-color:#c7ead4; }
+.conn-card.unstable { border-color:#f0dcae; }
+.conn-card.off { border-color:#f2cdc9; }
+.conn-device { width:26px; height:26px; display:grid; place-items:center; border-radius:8px; background:#f4f1ee; color:#9a908a; font-size:12px; }
+.conn-sync { color:#9a908a; font-size:11px; margin-top:-3px; }
+.conn-card strong { font-size:15px; }
+.conn-card.connected button { background:#fff; border:1px solid #dfd8d3; color:#5f5752; }
