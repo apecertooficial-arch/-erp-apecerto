@@ -3190,17 +3190,19 @@ body { overflow:hidden; background:#eee8e2; }
   max-width: 1360px; margin-left: auto; margin-right: auto;
 }
 
-/* Início e CRM: em vez de centralizar cada seção isoladamente (que
-   desalinhava o cabeçalho full-width do resto do conteúdo em telas
-   grandes), centralizamos a COLUNA INTEIRA via padding lateral no root.
-   Cabeçalho + todas as seções compartilham a mesma borda esquerda/direita,
-   exatamente como a Performance. O fundo da página segue ocupando a tela. */
-.home-workspace {
-  padding-inline: max(26px, calc((100% - 1360px) / 2));
+/* Início e CRM: mesma PROPORÇÃO das telas Configurações, Perfis, Sara,
+   Calendário, Disparos e Chat (referências aprovadas) — conteúdo contido
+   numa largura máxima e ALINHADO À ESQUERDA (encostado na sidebar), com a
+   sobra de espaço indo para a direita. NÃO centralizar (centralizar deixava
+   um "ilha" estreita no meio da tela grande). Cabeçalho + todas as seções
+   compartilham a MESMA borda esquerda. */
+.home-workspace { padding-block: 20px 48px; }
+.home-workspace > *:not(.workspace-top) {
+  max-width: 1360px; margin-left: 0; margin-right: auto;
 }
 /* CRM tem zoom 0.85 — 1600px em CSS renderiza ~1360px visíveis.
-   Piso de 0 mantém telas normais idênticas ao atual; só telas largas
-   ganham as calhas laterais que centralizam a coluna. */
-.crm-v2 {
-  padding-inline: max(0px, calc((100% - 1600px) / 2));
+   Alinhado à esquerda; overlays (drawers/modais) ficam de fora. */
+.crm-v2 { padding-inline: 0; }
+.crm-v2 > *:not(.crm-drawer-layer):not(.crm-center-modal):not(.broker-picker-modal) {
+  max-width: 1600px; margin-left: 0; margin-right: auto;
 }
