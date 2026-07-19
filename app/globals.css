@@ -2884,3 +2884,17 @@ body { overflow:hidden; background:#eee8e2; }
 .finance-form-grid .nova-venda-hint.wide-hint{grid-column:1/-1;margin-top:2px}
 .finance-form-grid label.cash-settle-line{flex-direction:row;align-items:center;gap:8px;padding:9px 11px;border-radius:9px;background:#f8f6f4;font-weight:600;color:#5f5752}
 .finance-form-grid label.cash-settle-line input{width:16px;height:16px;min-height:auto}
+
+/* Caixa: gerenciador de categorias */
+.cash-cat-manage{align-self:flex-start;margin-top:4px;border:0;background:none;color:#d85600;font-size:11px;font-weight:700;cursor:pointer;padding:0}
+.cash-cat-manage:hover{text-decoration:underline}
+.cash-cat-panel{margin-top:2px;padding:12px;border:1px solid #ece7e3;border-radius:10px;background:#faf9f8}
+.cash-cat-add{display:flex;gap:8px}
+.cash-cat-add input{flex:1;min-height:38px;border:1px solid #ded7d2;border-radius:9px;padding:8px 10px;background:#fff;font-family:inherit;font-size:12px}
+.cash-cat-add button{border:1px solid #ffb57f;border-radius:9px;padding:0 12px;background:#fff7f1;color:#d85600;font-size:11px;font-weight:700;cursor:pointer}
+.cash-cat-list{margin-top:8px;display:flex;flex-direction:column;gap:6px}
+.cash-cat-item{display:flex;align-items:center;gap:8px;padding:7px 10px;border:1px solid #ece7e3;border-radius:8px;background:#fff;font-size:12px}
+.cash-cat-item span{flex:1;color:#4a443f}
+.cash-cat-item button{width:30px;height:30px;border:1px solid #e3dcd7;border-radius:7px;background:#fff;color:#6f6863;font-size:13px;cursor:pointer}
+.cash-cat-item button.cash-cat-del{border-color:#f0d4cd;background:#fff6f4;color:#c9443d}
+.cash-cat-item button:disabled{opacity:.5;cursor:not-allowed}
