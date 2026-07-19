@@ -4,8 +4,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AppShell } from "../../components/AppShell";
 import { AttentionCenter } from "../../components/AttentionCenter";
+import { SaraWidget } from "../../components/SaraWidget";
+import { isSilentUser } from "../../lib/uiPrefs";
 import { ProfilePanel } from "../../components/ProfilePanel";
 import { SupabaseLogin } from "../../components/SupabaseLogin";
+import { ResetPassword } from "../../components/ResetPassword";
 import { getBrowserSupabaseClient } from "../../lib/supabase/browser";
 import { CaptureWizard } from "./CaptureWizard";
 import { ProductDetail } from "./ProductDetail";
@@ -20,9 +23,11 @@ import { FinanceWorkspace } from "../finance/FinanceWorkspace";
 import { TeamWorkspace } from "../team/TeamWorkspace";
 import { CalendarWorkspace } from "../calendar/CalendarWorkspace";
 import { SettingsWorkspace } from "../settings/SettingsWorkspace";
+import { PermissionsWorkspace } from "../permissions/PermissionsWorkspace";
 import { AuditWorkspace } from "../audit/AuditWorkspace";
 import { NotificationsWorkspace } from "../notifications/NotificationsWorkspace";
 import { LegacyModuleWorkspace } from "../system/LegacyModuleWorkspace";
+import { AgentTrainingWorkspace } from "../agents/AgentTrainingWorkspace";
 import type { ModuleName } from "../system/module-map";
 
 type CatalogResponse = {
@@ -92,6 +97,7 @@ export function ProductCatalog() {
   const [loginPreview, setLoginPreview] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [sessionProfile, setSessionProfile] = useState<SessionProfile | null>(null);
+  const [recoveryMode, setRecoveryMode] = useState(false);
 
   const loadSessionProfile = useCallback(async (token: string) => {
     const response = await fetch("/api/session", { headers: { Authorization: `Bearer ${token}` } });
@@ -152,9 +158,12 @@ export function ProductCatalog() {
   useEffect(() => {
     const supabase = getBrowserSupabaseClient();
     let active = true;
+    const isRecovery = typeof window !== "undefined" && window.location.hash.includes("type=recovery");
+    if (isRecovery) setRecoveryMode(true);
 
     void supabase.auth.getSession().then(async ({ data }) => {
       if (!active) return;
+      if (isRecovery) return;
       if (!data.session) {
         setDataState("auth");
         return;
@@ -173,6 +182,7 @@ export function ProductCatalog() {
 
     const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
       if (!active) return;
+      if (_event === "PASSWORD_RECOVERY") { setRecoveryMode(true); return; }
       if (session) {
         setAccessToken(session.access_token);
         setDataState((current) => current === "auth" ? "loading" : current);
@@ -213,7 +223,18 @@ export function ProductCatalog() {
 
   const neighborhoods = useMemo(() => [...new Set(products.map((item) => item.neighborhood).filter(Boolean))].sort(), [products]);
   const developers = useMemo(() => [...new Set(products.map((item) => item.developer).filter((item): item is string => Boolean(item)))].sort(), [products]);
+  const crmPermissions = sessionProfile?.permissoes ?? null;
+  const hasCrmAction = (action: string) => {
+    if (sessionProfile?.role === "admin") return true;
+    if (!crmPermissions || Object.keys(crmPermissions).length === 0) return sessionProfile?.role === "admin";
+    return ["crm", "leads", "pipeline", "CRM"].some((moduleName) => (crmPermissions[moduleName] ?? []).includes(action));
+  };
+  const canReassignCrm = hasCrmAction("transferir");
+  const canAssignCrm = hasCrmAction("atribuir") || canReassignCrm;
 
+  if (recoveryMode) {
+    return <div className="login-page"><ResetPassword onDone={() => { setRecoveryMode(false); void (async () => { const { data } = await getBrowserSupabaseClient().auth.getSession(); if (data.session) { setActiveModule("Início"); await loadCatalog(data.session.access_token); } else { setDataState("auth"); } })(); }} /></div>;
+  }
   if (dataState === "auth" && !accessToken) {
     return <div className="login-page"><SupabaseLogin onAuthenticated={(token) => { setActiveModule("Início"); void loadCatalog(token); }} /></div>;
   }
@@ -223,7 +244,7 @@ export function ProductCatalog() {
       {activeModule === "Início" && accessToken ? (
         <HomeWorkspace accessToken={accessToken} sessionName={sessionProfile?.name ?? ""} onNavigate={(moduleName) => setActiveModule(moduleName as ModuleName)} />
       ) : activeModule === "CRM" && accessToken ? (
-        <CrmWorkspace accessToken={accessToken} initialDealId={focusedDealId} onInitialDealHandled={() => setFocusedDealId(null)} sessionRole={sessionProfile?.role ?? "corretor"} />
+        <CrmWorkspace accessToken={accessToken} initialDealId={focusedDealId} onInitialDealHandled={() => setFocusedDealId(null)} sessionRole={sessionProfile?.role ?? "corretor"} canReassign={canReassignCrm} canAssign={canAssignCrm} />
       ) : activeModule === "Automações" && accessToken ? (
         <AutomationsWorkspace accessToken={accessToken} />
       ) : activeModule === "Abordagens" && accessToken ? (
@@ -236,6 +257,8 @@ export function ProductCatalog() {
         <FinanceWorkspace accessToken={accessToken} sessionRole={sessionProfile?.role ?? "corretor"} />
       ) : activeModule === "Usuários" && accessToken ? (
         <TeamWorkspace accessToken={accessToken} />
+      ) : activeModule === "Perfis e Permissões" && accessToken ? (
+        <PermissionsWorkspace accessToken={accessToken} />
       ) : activeModule === "Calendário" && accessToken ? (
         <CalendarWorkspace accessToken={accessToken} />
       ) : activeModule === "Auditoria" && accessToken ? (
@@ -244,6 +267,8 @@ export function ProductCatalog() {
         <NotificationsWorkspace accessToken={accessToken} onOpenLead={(dealId) => { setFocusedDealId(dealId); setActiveModule("CRM"); }} />
       ) : activeModule === "Configurações" && accessToken ? (
         <SettingsWorkspace accessToken={accessToken} sessionRole={sessionProfile?.role ?? "corretor"} onNavigate={(moduleName) => setActiveModule(moduleName as ModuleName)} />
+      ) : activeModule === "Agentes de IA" && accessToken ? (
+        <AgentTrainingWorkspace accessToken={accessToken} />
       ) : activeModule !== "Produtos" && accessToken ? (
         <LegacyModuleWorkspace moduleName={activeModule} accessToken={accessToken} session={sessionProfile} />
       ) : activeModule === "Produtos" && accessToken ? (
@@ -274,8 +299,9 @@ export function ProductCatalog() {
       ) : (
         <div className="workspace-loading"><span /><strong>Carregando seu ERP…</strong></div>
       )}
-      {accessToken && <AttentionCenter accessToken={accessToken} onOpenLead={(dealId) => { setFocusedDealId(dealId); setActiveModule("CRM"); }} onOpenNotifications={() => setActiveModule("Notificações")} />}
-      {accessToken && <DisconnectionAlert accessToken={accessToken} onOpen={() => setActiveModule("Configurações")} />}
+      {accessToken && !isSilentUser(sessionProfile?.email) && <AttentionCenter accessToken={accessToken} onOpenLead={(dealId) => { setFocusedDealId(dealId); setActiveModule("CRM"); }} onOpenNotifications={() => setActiveModule("Notificações")} />}
+      {accessToken && !isSilentUser(sessionProfile?.email) && <SaraWidget />}
+      {accessToken && !isSilentUser(sessionProfile?.email) && <DisconnectionAlert accessToken={accessToken} onOpen={() => setActiveModule("Configurações")} />}
       {loginPreview && <SupabaseLogin preview onClose={() => setLoginPreview(false)} onAuthenticated={(token) => { setLoginPreview(false); setActiveModule("Início"); void loadCatalog(token); }} />}
       {profileOpen && accessToken && <ProfilePanel email={sessionProfile?.email ?? ""} onClose={() => setProfileOpen(false)} onPreviewLogin={() => { setProfileOpen(false); setLoginPreview(true); }} onSaved={() => { if (accessToken) void loadSessionProfile(accessToken).catch(() => undefined); }} />}
     </AppShell>

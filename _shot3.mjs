@@ -1,0 +1,14 @@
+import { createRequire } from 'module';
+const require = createRequire('/home/claude/.npm-global/lib/node_modules/x.js');
+const { chromium } = require('playwright');
+const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' });
+const p = await b.newPage({ viewport: { width: 1440, height: 940 }, deviceScaleFactor: 2 });
+await p.goto('file:///tmp/preview2.html', { waitUntil: 'networkidle' });
+await p.waitForTimeout(1200);
+await p.screenshot({ path: '/tmp/prev_inicio.png' });
+await p.click('.nav[data-s=crm]'); await p.waitForTimeout(500);
+await p.screenshot({ path: '/tmp/prev_crm.png' });
+await p.click('.nav[data-s=fin]'); await p.waitForTimeout(500);
+await p.screenshot({ path: '/tmp/prev_fin.png' });
+console.log('ok');
+await b.close();

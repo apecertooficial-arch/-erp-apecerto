@@ -14,15 +14,17 @@ async function render(pathname = "/") {
   );
 }
 
-test("renderiza a versão evolutiva do ERP como aplicação principal", async () => {
+test("renderiza o shell protegido do ERP como aplicação principal", async () => {
   const response = await render();
   assert.equal(response.status, 200);
   assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
 
   const html = await response.text();
-  assert.match(html, /Cadastrar produto/);
-  assert.match(html, /Inteligência comercial/);
-  assert.match(html, /Botanic Cyrela/);
+  assert.match(html, /Carregando seu ERP/);
+  assert.match(html, />CRM</);
+  assert.match(html, />Produtos</);
+  assert.doesNotMatch(html, /Cadastrar produto/);
+  assert.doesNotMatch(html, /Botanic Cyrela/);
   assert.doesNotMatch(html, /Captação rápida/);
   assert.doesNotMatch(html, /codex-preview/);
 });
@@ -88,4 +90,20 @@ test("mostra VGV no destaque e ranking nominal do time", async () => {
   assert.match(runtime, /ranking_vgv_corretores/);
   assert.match(runtime, /nome:me\?'Você · '\+r\.nome:r\.nome/);
   assert.doesNotMatch(runtime, /vendas:me\?.*confidencial/);
+});
+
+test("mantém o Início enxuto, priorizado e com cards mais vivos", async () => {
+  const home = await readFile(new URL("../app/features/home/HomeWorkspace.tsx", import.meta.url), "utf8");
+  const css = await readFile(new URL("../app/globals.css", import.meta.url), "utf8");
+
+  assert.match(home, /slice\(0, 10\)/);
+  assert.match(home, /Top 10 por volume/);
+  assert.match(home, /Pendências prioritárias/);
+  assert.match(home, /product-rank tone-/);
+  assert.doesNotMatch(home, /VGV por mês/);
+  assert.doesNotMatch(home, /Leads por origem/);
+  assert.doesNotMatch(home, /Atalhos operacionais/);
+  assert.match(css, /Paleta viva compartilhada/);
+  assert.match(css, /background:#ffe0c7/);
+  assert.match(css, /background:#ead2fa/);
 });

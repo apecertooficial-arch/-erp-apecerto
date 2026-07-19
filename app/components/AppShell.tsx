@@ -5,7 +5,7 @@ import type { ModuleName } from "../features/system/module-map";
 
 const adminMainItems: ModuleName[] = ["Início", "CRM", "Performance", "Produtos", "Financeiro"];
 const adminToolItems: ModuleName[] = ["Abordagens", "Automações", "Financiamento", "Chat ao Vivo", "Disparos", "Calendário", "Agentes de IA"];
-const adminSystemItems: ModuleName[] = ["Usuários", "Notificações", "Base de conhecimento", "Auditoria", "Configurações", "Ajuda"];
+const adminSystemItems: ModuleName[] = ["Usuários", "Perfis e Permissões", "Notificações", "Base de conhecimento", "Auditoria", "Configurações", "Ajuda"];
 const brokerMainItems: ModuleName[] = ["Início", "CRM", "Performance", "Produtos", "Financeiro"];
 const brokerToolItems: ModuleName[] = ["Chat ao Vivo", "Financiamento", "Disparos", "Calendário"];
 const brokerSystemItems: ModuleName[] = ["Notificações", "Configurações", "Ajuda"];
@@ -53,8 +53,8 @@ export function AppShell({ children, activeItem, onNavigate, onOpenProfile, sess
   const [navCollapsed, setNavCollapsed] = useState(false);
   /* Doc §14 — sem "ver" no módulo, ele some do menu (admin nunca perde Usuários/Configurações para não se trancar fora) */
   const canSee = (item: ModuleName) => {
+    if (sessionRole === "admin") return true;
     if (!modulePermissions || Object.keys(modulePermissions).length === 0) return true;
-    if (sessionRole === "admin" && (item === "Usuários" || item === "Configurações")) return true;
     return (modulePermissions[item] ?? []).includes("ver");
   };
   const mainItems = (isBroker ? brokerMainItems : adminMainItems).filter(canSee);

@@ -88,7 +88,7 @@ export async function PATCH(request: Request) {
     const saleId = clean(body.saleId, 50);
     if (!saleId) return Response.json({ error: "Venda inválida." }, { status: 422 });
     const { data: me } = await auth.supabase.from("usuarios").select("role").eq("id", auth.user.id).maybeSingle();
-    if (!me || !["admin", "gestor"].includes(me.role)) return Response.json({ error: "Apenas administradores podem apagar vendas." }, { status: 403 });
+    if (!me || !["admin", "gestor", "executivo"].includes(me.role)) return Response.json({ error: "Apenas administradores podem apagar vendas." }, { status: 403 });
     await auth.supabase.from("comissoes").delete().eq("venda_id", saleId);
     await auth.supabase.from("recebimentos").delete().eq("venda_id", saleId);
     await auth.supabase.from("lancamentos_caixa").update({ venda_id: null }).eq("venda_id", saleId);
@@ -99,7 +99,7 @@ export async function PATCH(request: Request) {
   }
   if (action === "addCommission" || action === "updateCommission" || action === "deleteCommission") {
     const { data: me } = await auth.supabase.from("usuarios").select("role").eq("id", auth.user.id).maybeSingle();
-    if (!me || !["admin", "gestor"].includes(me.role)) return Response.json({ error: "Apenas administradores podem editar comissões." }, { status: 403 });
+    if (!me || !["admin", "gestor", "executivo"].includes(me.role)) return Response.json({ error: "Apenas administradores podem editar comissões." }, { status: 403 });
 
     if (action === "addCommission") {
       const vendaId = clean(body.saleId, 50); const papel = clean(body.papel, 40) || "outro"; const valor = Number(body.valor);
