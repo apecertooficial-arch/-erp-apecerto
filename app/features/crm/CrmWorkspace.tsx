@@ -715,7 +715,10 @@ function PipelineViewEnhanced({ stages, allStages, deals, leadById, brokerById, 
         const tags = tagList(lead.tags);
         const sla = slaByDeal.get(deal.id);
         const waiting = sla?.aguardando_humano;
-        const color = alertColorByDays(waiting ? sla?.min_aguardando : sla?.min_sem_interacao);
+        // Cliente aguardando → cor pelo tempo de espera. Se o corretor já respondeu
+        // (não está aguardando e há interação humana registrada) → verde. Lead nunca
+        // tocado (sem interação humana) → segue sinalizando pelo tempo sem interação.
+        const color = waiting ? alertColorByDays(sla?.min_aguardando) : (sla?.humano_ultima ? "verde" : alertColorByDays(sla?.min_sem_interacao));
         return <article draggable={canMoveDeals !== false} className={`crm-lead-card-v3 sla-${color} ${draggingId === deal.id ? "dragging" : ""}`} onDragStart={(event) => { if (canMoveDeals === false || (event.target as HTMLElement).closest(".card-controls-v3, .broker-trigger-v3")) return event.preventDefault(); event.dataTransfer.setData("text/deal-id", String(deal.id)); onDrag(deal.id); }} onDragEnd={() => onDrag(null)} key={deal.id}>
           {waiting && <span className="card-resp-bell" title="Cliente respondeu — aguardando você"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10 21h4" /></svg></span>}
           <div className={`sla-top-band ${color}`} />
