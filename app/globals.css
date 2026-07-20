@@ -4043,7 +4043,7 @@ article.tone-red{border-left-color:#d3443e}article.tone-red strong{color:#d3443e
 .crm-lead-card-v3 .card-resp-bell svg { width: 15px; height: 15px; }
 @keyframes resp-bell-pulse { 0%,100% { transform: scale(1); box-shadow: 0 2px 8px rgba(224,168,12,.5); } 50% { transform: scale(1.12); box-shadow: 0 2px 14px rgba(224,168,12,.75); } }
 
-.resp-toast { position: fixed; right: 22px; bottom: 22px; z-index: 2147483000; display: flex; align-items: center; gap: 12px; max-width: 430px; padding: 13px 14px; border-radius: 14px; background: #fff; border: 1px solid #f0e4b8; box-shadow: 0 16px 44px rgba(31,23,12,.24); animation: resp-toast-in .25s ease; }
+.resp-toast { position: fixed !important; right: 22px !important; bottom: 22px !important; left: auto !important; z-index: 2147483000; display: flex; align-items: center; gap: 12px; width: 380px !important; max-width: calc(100vw - 44px) !important; margin: 0 !important; padding: 13px 14px; border-radius: 14px; background: #fff; border: 1px solid #f0e4b8; box-shadow: 0 16px 44px rgba(31,23,12,.24); animation: resp-toast-in .25s ease; }
 @keyframes resp-toast-in { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
 .resp-toast .resp-toast-bell { flex: 0 0 40px; width: 40px; height: 40px; display: grid; place-items: center; border-radius: 12px; background: #fff3cf; color: #a9760a; animation: resp-bell-pulse 1.4s ease-in-out infinite; }
 .resp-toast .resp-toast-bell svg { width: 20px; height: 20px; }
