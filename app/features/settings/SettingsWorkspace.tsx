@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import type { Dispatch, ReactNode, SetStateAction } from "react";
 import { getBrowserSupabaseClient } from "../../lib/supabase/browser";
 import { ConnectionsWorkspace } from "./ConnectionsWorkspace";
+import { PresenceConfig } from "../presence/PresenceConfig";
 
 type PipelineInfo = { id: number; nome: string; grupo: string | null; ordem: number | null; etapas: Array<{ id: number; nome: string; ordem: number | null; cor: string | null }> };
 type AdminConfig = {
@@ -23,6 +24,7 @@ const SECTIONS = [
   { key: "conexoes", label: "Conexões (WhatsApp)", sub: "Instâncias e status", icon: "▤" },
   { key: "usuarios", label: "Usuários & Permissões", sub: "Acessos da equipe", icon: "◫" },
   { key: "crm", label: "CRM & Pipelines", sub: "Etapas e funil", icon: "⌥" },
+  { key: "presenca", label: "Regra de presença", sub: "Corretor online de verdade", icon: "🛡" },
   { key: "financeiro", label: "Financeiro", sub: "Comissões e metas", icon: "▣" },
   { key: "seguranca", label: "Segurança", sub: "Sessões e RLS", icon: "▪" },
   { key: "integracoes", label: "Integrações & IA", sub: "APIs e agentes", icon: "✦" },
@@ -177,6 +179,8 @@ function SettingsShell({ section, setSection, error, toast, saving, config, comp
         </div>}
 
         {section === "conexoes" && <section className="settings-embed"><ConnectionsWorkspace accessToken={accessToken} /></section>}
+
+        {section === "presenca" && <PresenceConfig accessToken={accessToken} />}
 
         {section === "usuarios" && <section className="settings-card">
           <h2>Usuários & Permissões</h2><p>Papéis, acesso por módulo, instâncias e documentos ficam no módulo Usuários.</p>

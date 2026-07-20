@@ -3509,3 +3509,7 @@ body { overflow:hidden; background:#eee8e2; }
 .presence-cfg-modal > footer { display:flex; justify-content:flex-end; gap:10px; }
 .presence-cfg-modal > footer button { border:1px solid #e0d9d4; border-radius:10px; padding:10px 16px; background:#fff; color:#5f5752; font-weight:600; cursor:pointer; }
 .presence-cfg-save { border:0 !important; background:#ff6500 !important; color:#fff !important; font-weight:700; }
+/* ícone da seção Regra de presença + painel inline */
+.settings-card h2 .sc-ico.shield { background:#f3e9fc; color:#7c3aed; }
+.settings-presence .presence-cfg-grid { margin-top:14px; }
+.settings-presence .presence-scope { margin-top:4px; }
