@@ -3888,3 +3888,12 @@ article.tone-red{border-left-color:#d3443e}article.tone-red strong{color:#d3443e
 .crm-kanban-v2::-webkit-scrollbar-thumb { background: #c2b7ae; border-radius: 8px; border: 3px solid #efeae6; }
 .crm-kanban-v2::-webkit-scrollbar-thumb:hover { background: #a89c92; }
 .crm-kanban-v2::-webkit-scrollbar-track { background: #efeae6; border-radius: 8px; }
+
+/* ============================================================
+   Funil: a barra lateral estava caindo ABAIXO da dobra porque
+   calc(100vh/0.85) deixava o .crm-v2 ~18% mais alto que a tela
+   (o zoom 0.85 NÃO compensa a altura em vh como se esperava —
+   medido: 800px numa viewport de 680px). Travando em 100vh a
+   barra horizontal volta pro rodapé visível, sem scroll de página.
+   ============================================================ */
+.crm-v2:has(.crm-kanban-v2) { height: 100vh; min-height: 0; overflow: hidden; }
