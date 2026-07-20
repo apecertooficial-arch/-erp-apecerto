@@ -11748,3 +11748,29 @@ return { mount: mount, unmount: unmount, isMounted: function(){ return mounted; 
 
 </script>
 </body></html>
+<script>
+/* Ajuda: liga o botao "Pergunte a IA" e os cards de duvida na Sara (widget do app pai). Isolado e idempotente. */
+(function(){
+  if (window.__ajudaIAWired2) return; window.__ajudaIAWired2 = true;
+  function askSara(q){ try{ if(window.parent && typeof window.parent.saraAsk === "function"){ window.parent.saraAsk(q||""); return true; } }catch(e){} return false; }
+  document.addEventListener("click", function(e){
+    var t = e.target; if(!t || !t.closest) return;
+    var btn = t.closest("button"); if(!btn) return;
+    // 1) Botao roxo "Pergunte a IA": usa o texto digitado
+    if(/Pergunte\s+a\u0300?\s*IA/i.test(btn.textContent||"") || /Pergunte\s+.\s*IA/i.test(btn.textContent||"")){
+      var inp = document.querySelector('input[placeholder*="palavra-chave" i]');
+      var q = inp && inp.value ? inp.value : "";
+      if(askSara(q)){ e.preventDefault(); e.stopPropagation(); if(inp) inp.value=""; }
+      return;
+    }
+    // 2) Cards de duvida (FAQ): botao cujo texto principal termina com "?"
+    if(btn.classList && btn.classList.contains("cc-tap")){
+      var main = btn.querySelector('div[style*="font-weight:700"]');
+      var q2 = (main ? main.textContent : (btn.textContent||"")).trim();
+      if(q2 && q2.length < 140 && /\?\s*$/.test(q2)){
+        if(askSara(q2)){ e.preventDefault(); e.stopPropagation(); }
+      }
+    }
+  }, true);
+})();
+</script>

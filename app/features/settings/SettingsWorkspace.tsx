@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import type { Dispatch, ReactNode, SetStateAction } from "react";
 import { getBrowserSupabaseClient } from "../../lib/supabase/browser";
 import { ConnectionsWorkspace } from "./ConnectionsWorkspace";
+import { PresenceConfig } from "../presence/PresenceConfig";
 
 type PipelineInfo = { id: number; nome: string; grupo: string | null; ordem: number | null; etapas: Array<{ id: number; nome: string; ordem: number | null; cor: string | null }> };
 type AdminConfig = {
@@ -19,13 +20,14 @@ type AdminConfig = {
 };
 
 const SECTIONS = [
-  { key: "empresa", label: "Empresa", icon: "▦" },
-  { key: "conexoes", label: "Conexões (WhatsApp)", icon: "◎" },
-  { key: "usuarios", label: "Usuários & Permissões", icon: "◫" },
-  { key: "crm", label: "CRM & Pipelines", icon: "▤" },
-  { key: "financeiro", label: "Financeiro", icon: "▣" },
-  { key: "seguranca", label: "Segurança", icon: "▪" },
-  { key: "integracoes", label: "Integrações & IA", icon: "✦" },
+  { key: "empresa", label: "Empresa", sub: "Dados e identidade", icon: "▦" },
+  { key: "conexoes", label: "Conexões (WhatsApp)", sub: "Instâncias e status", icon: "▤" },
+  { key: "usuarios", label: "Usuários & Permissões", sub: "Acessos da equipe", icon: "◫" },
+  { key: "crm", label: "CRM & Pipelines", sub: "Etapas e funil", icon: "⌥" },
+  { key: "presenca", label: "Regra de presença", sub: "Corretor online de verdade", icon: "🛡" },
+  { key: "financeiro", label: "Financeiro", sub: "Comissões e metas", icon: "▣" },
+  { key: "seguranca", label: "Segurança", sub: "Sessões e RLS", icon: "▪" },
+  { key: "integracoes", label: "Integrações & IA", sub: "APIs e agentes", icon: "✦" },
 ] as const;
 type SectionKey = typeof SECTIONS[number]["key"];
 
@@ -142,28 +144,43 @@ function SettingsShell({ section, setSection, error, toast, saving, config, comp
   saveCompany: () => Promise<void>; toggleDistribution: (paused: boolean) => Promise<void>; saveIps: () => Promise<void>; companyField: (key: string, label: string, placeholder: string) => ReactNode; accessToken: string; onNavigate?: (module: string) => void;
 }) {
   return <div className="settings-workspace">
-    <header className="workspace-top"><div><h1>Configurações</h1><p>Administração do sistema · alterações são auditadas</p></div></header>
+    <header className="workspace-top settings-top"><div><span className="settings-kicker">ADMINISTRAÇÃO</span><h1>Configurações</h1><p>Ajustes do sistema · todas as alterações são auditadas.</p></div><span className="settings-admin-pill">🛡 Somente administradores</span></header>
     <div className="settings-body">
-      <nav className="settings-nav">{SECTIONS.map((item) => <button className={section === item.key ? "active" : ""} type="button" onClick={() => setSection(item.key)} key={item.key}><span>{item.icon}</span>{item.label}</button>)}</nav>
+      <nav className="settings-nav">{SECTIONS.map((item) => <button className={section === item.key ? "active" : ""} type="button" onClick={() => setSection(item.key)} key={item.key}><span className="settings-nav-ico">{item.icon}</span><span className="settings-nav-text"><strong>{item.label}</strong><small>{item.sub}</small></span><span className="settings-nav-chev">›</span></button>)}</nav>
       <main className="settings-main">
         {error && <div className="workspace-error">{error}</div>}
         {toast && <div className="settings-toast">{toast}</div>}
 
-        {section === "empresa" && <section className="settings-card">
-          <h2>Dados da empresa</h2><p>Usados em documentos, propostas e no rodapé de mensagens.</p>
-          <div className="settings-grid">
-            {companyField("nome", "Nome da imobiliária", "Apê Certo Imóveis")}
-            {companyField("creci", "CRECI jurídico", "CRECI-SP J00000")}
-            {companyField("cnpj", "CNPJ", "00.000.000/0001-00")}
-            {companyField("telefone", "Telefone", "(11) 0000-0000")}
-            {companyField("email", "E-mail", "contato@apecerto.com.br")}
-            {companyField("site", "Site", "https://apecerto.com.br")}
+        {section === "empresa" && <div className="settings-empresa">
+          <section className="settings-card settings-identity">
+            <button type="button" className="settings-logo"><span>⌂</span><small>Trocar logo</small></button>
+            <div className="settings-identity-body">
+              <h2>Identidade da imobiliária</h2><p>O logo e o nome aparecem em documentos, propostas e no rodapé das mensagens.</p>
+              <div className="settings-grid">
+                {companyField("nome", "Nome da imobiliária", "Apê Certo Imóveis")}
+                {companyField("creci", "CRECI jurídico", "CRECI-SP J00000")}
+              </div>
+            </div>
+          </section>
+          <section className="settings-card">
+            <h2><span className="sc-ico phone">✆</span>Contato</h2>
+            <div className="settings-grid">
+              {companyField("cnpj", "CNPJ", "00.000.000/0001-00")}
+              {companyField("telefone", "Telefone", "(11) 0000-0000")}
+              {companyField("email", "E-mail", "contato@apecerto.com.br")}
+              {companyField("site", "Site", "https://apecerto.com.br")}
+            </div>
+          </section>
+          <section className="settings-card">
+            <h2><span className="sc-ico pin">◉</span>Localização</h2>
             <label className="wide">Endereço<input value={company.endereco ?? ""} onChange={(event) => setCompany((current) => ({ ...current, endereco: event.target.value }))} placeholder="Rua, número, bairro, cidade - UF" /></label>
-          </div>
-          <footer><button className="settings-save" type="button" disabled={saving} onClick={() => void saveCompany()}>{saving ? "Salvando…" : "Salvar empresa"}</button></footer>
-        </section>}
+          </section>
+          <footer className="settings-form-footer"><span>Alterações são registradas na auditoria.</span><div><button type="button" className="settings-cancel" onClick={() => setCompany(config?.empresa ?? {})}>Cancelar</button><button className="settings-save" type="button" disabled={saving} onClick={() => void saveCompany()}>{saving ? "Salvando…" : "✓ Salvar empresa"}</button></div></footer>
+        </div>}
 
         {section === "conexoes" && <section className="settings-embed"><ConnectionsWorkspace accessToken={accessToken} /></section>}
+
+        {section === "presenca" && <PresenceConfig accessToken={accessToken} />}
 
         {section === "usuarios" && <section className="settings-card">
           <h2>Usuários & Permissões</h2><p>Papéis, acesso por módulo, instâncias e documentos ficam no módulo Usuários.</p>
