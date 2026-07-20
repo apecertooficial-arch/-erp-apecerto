@@ -14,18 +14,20 @@ async function authenticatedClient(request: Request) {
 export async function GET(request: Request) {
   const auth = await authenticatedClient(request);
   if (!auth) return Response.json({ error: "Sessão inválida ou expirada." }, { status: 401 });
-  const [leads, deals, stages, approaches, products, recent, instances] = await Promise.all([
+  const [leads, deals, stages, approaches, products, recent, instances, brokers, instanceLinks] = await Promise.all([
     auth.supabase.from("leads").select("id,nome,telefone,tags,status,origem,corretor_id,disparo_optout").order("atualizado_em", { ascending: false }).limit(1500),
     auth.supabase.from("negocios").select("id,lead_id,stage_id,empreendimento_id,status"),
     auth.supabase.from("pipeline_stages").select("id,nome,rotulo,pipeline_id,ordem").order("ordem"),
     auth.supabase.from("abordagens").select("id,nome,mensagens,produto_id,ativo,ordem").eq("ativo", true).order("ordem"),
     auth.supabase.from("empreendimentos").select("id,nome,bairro,status").eq("rascunho", false).order("nome"),
     auth.supabase.from("mensagens_agendadas").select("id,lead_id,telefone,texto,quando,status,resultado,criado_em").order("criado_em", { ascending: false }).limit(80),
-    auth.supabase.from("instancias").select("id,nome,conectada").eq("ativa", true).order("nome"),
+    auth.supabase.from("instancias").select("id,nome,conectada,corretor_id").eq("ativa", true).order("nome"),
+    auth.supabase.from("corretores").select("id,nome").order("nome"),
+    auth.supabase.from("corretor_instancias").select("corretor_id,instancia_id"),
   ]);
-  const firstError = [leads, deals, stages, approaches, products, recent, instances].find((result) => result.error)?.error;
+  const firstError = [leads, deals, stages, approaches, products, recent, instances, brokers, instanceLinks].find((result) => result.error)?.error;
   if (firstError) return Response.json({ error: firstError.message }, { status: 502 });
-  return Response.json({ leads: leads.data ?? [], deals: deals.data ?? [], stages: stages.data ?? [], approaches: approaches.data ?? [], products: products.data ?? [], recent: recent.data ?? [], instances: instances.data ?? [] });
+  return Response.json({ leads: leads.data ?? [], deals: deals.data ?? [], stages: stages.data ?? [], approaches: approaches.data ?? [], products: products.data ?? [], recent: recent.data ?? [], instances: instances.data ?? [], brokers: brokers.data ?? [], instanceLinks: instanceLinks.data ?? [] });
 }
 
 export async function POST(request: Request) {
@@ -55,16 +57,33 @@ export async function POST(request: Request) {
   if (leadsError) return Response.json({ error: leadsError.message }, { status: 502 });
   const valid = (leads ?? []).filter((lead) => lead.telefone && !lead.disparo_optout);
   if (!valid.length) return Response.json({ error: "Nenhum lead elegível possui telefone e autorização para disparo." }, { status: 422 });
-  // instâncias escolhidas — validadas pela RLS (só as do próprio corretor / admin vê todas)
+  // CORRETORES escolhidos → o sistema deriva as instâncias ativas deles (link + dono direto).
+  // Compatível com o formato antigo (instanceIds) caso ainda venha.
+  const brokerIds = Array.isArray(body.brokerIds) ? body.brokerIds.map(Number).filter((id) => Number.isSafeInteger(id) && id > 0) : [];
   const rawInstanceIds = Array.isArray(body.instanceIds) ? body.instanceIds.map(Number).filter((id) => Number.isSafeInteger(id) && id > 0) : [];
   let instanceIds: number[] = [];
-  if (rawInstanceIds.length) {
+  if (brokerIds.length) {
+    const [{ data: ownRows, error: ownErr }, { data: linkRows, error: linkErr }] = await Promise.all([
+      auth.supabase.from("instancias").select("id").in("corretor_id", brokerIds).eq("ativa", true),
+      auth.supabase.from("corretor_instancias").select("instancia_id").in("corretor_id", brokerIds),
+    ]);
+    if (ownErr || linkErr) return Response.json({ error: (ownErr || linkErr)!.message }, { status: 502 });
+    const candidate = new Set<number>();
+    (ownRows ?? []).forEach((row) => candidate.add(row.id));
+    (linkRows ?? []).forEach((row) => candidate.add(row.instancia_id));
+    if (candidate.size) {
+      const { data: activeRows, error: activeErr } = await auth.supabase.from("instancias").select("id").in("id", [...candidate]).eq("ativa", true);
+      if (activeErr) return Response.json({ error: activeErr.message }, { status: 502 });
+      instanceIds = (activeRows ?? []).map((row) => row.id);
+    }
+    if (!instanceIds.length) return Response.json({ error: "Os corretores escolhidos não têm instância ativa para o envio." }, { status: 422 });
+  } else if (rawInstanceIds.length) {
     const { data: instRows, error: instErr } = await auth.supabase.from("instancias").select("id").in("id", rawInstanceIds).eq("ativa", true);
     if (instErr) return Response.json({ error: instErr.message }, { status: 502 });
     const allowed = new Set((instRows ?? []).map((row) => row.id));
-    instanceIds = rawInstanceIds.filter((id) => allowed.has(id)); // preserva a ordem escolhida
+    instanceIds = rawInstanceIds.filter((id) => allowed.has(id));
   }
-  if (!instanceIds.length) return Response.json({ error: "Selecione ao menos uma instância sua para o envio." }, { status: 422 });
+  if (!instanceIds.length) return Response.json({ error: "Selecione ao menos um corretor com instância ativa para o envio." }, { status: 422 });
   const { data: brokerRow } = await auth.supabase.from("corretores").select("nome").eq("usuario_id", auth.user.id).maybeSingle();
   const corretorNome = brokerRow?.nome ?? null;
   // ritmo POR INSTÂNCIA: cada instância envia na velocidade escolhida (vazão total = rate * nº de instâncias)

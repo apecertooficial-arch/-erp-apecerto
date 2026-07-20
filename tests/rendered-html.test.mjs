@@ -107,3 +107,106 @@ test("mantém o Início enxuto, priorizado e com cards mais vivos", async () => 
   assert.match(css, /background:#ffe0c7/);
   assert.match(css, /background:#ead2fa/);
 });
+
+test("aplica a composição aprovada do Claude Designer na visão geral financeira", async () => {
+  const finance = await readFile(new URL("../app/features/finance/FinanceWorkspace.tsx", import.meta.url), "utf8");
+  const css = await readFile(new URL("../app/globals.css", import.meta.url), "utf8");
+
+  assert.match(finance, /finance-vgv-hero/);
+  assert.match(finance, /finance-summary-strip/);
+  assert.match(finance, /finance-ranking-designer/);
+  assert.match(finance, />Corretor</);
+  assert.match(finance, />Equipe</);
+  assert.match(finance, />Empreendimento</);
+  assert.match(finance, /range:\$\{start\},\$\{end\}/);
+  assert.doesNotMatch(finance, /className="finance-panel evolution"/);
+  assert.doesNotMatch(finance, /className="finance-panel recent-sales"/);
+  assert.doesNotMatch(finance, /className="finance-panel due-list"/);
+  assert.match(css, /Financeiro — composição fiel ao painel aprovado no Claude Designer/);
+  assert.match(css, /grid-template-columns:repeat\(7,minmax\(0,1fr\)\)/);
+});
+
+test("aplica a referência aprovada em Vendas & comissões", async () => {
+  const finance = await readFile(new URL("../app/features/finance/FinanceWorkspace.tsx", import.meta.url), "utf8");
+  const api = await readFile(new URL("../app/api/finance/route.ts", import.meta.url), "utf8");
+  const css = await readFile(new URL("../app/globals.css", import.meta.url), "utf8");
+
+  assert.match(finance, /finance-sales-designer/);
+  assert.match(finance, /Lançar nova venda/);
+  assert.match(finance, /finance-sales-month/);
+  assert.match(finance, /Com\. receb\./);
+  assert.match(finance, /Todos os status/);
+  assert.match(api, /id,nome,origem,criado_em,corretor_id/);
+  assert.match(css, /\.sales-kpis article::before,\.finance-kpis article::before.*display:block!important/);
+  assert.match(css, /nth-of-type\(4n\+1\)>b \{ background:var\(--orange\)!important; \}/);
+});
+
+test("aplica o CRM aprovado e mantém as duas formas decorativas nos indicadores", async () => {
+  const crm = await readFile(new URL("../app/features/crm/CrmWorkspace.tsx", import.meta.url), "utf8");
+  const css = await readFile(new URL("../app/globals.css", import.meta.url), "utf8");
+
+  assert.match(crm, /CRM · Funil de vendas/);
+  assert.match(crm, /CRM · Leads/);
+  assert.match(crm, /CRM · Vendas em processo/);
+  assert.match(crm, /CRM · Analítico de funil/);
+  assert.match(crm, /CRM · Agenda/);
+  assert.match(crm, /CRM · Atividades/);
+  assert.match(crm, /card-broker-inline-v3/);
+  assert.match(crm, /<th>Atualização<\/th>/);
+  assert.match(crm, /<span>Conversão geral<\/span>/);
+  assert.doesNotMatch(crm, /<section className="crm-metrics">/);
+  assert.match(css, /CRM — composição final baseada nas telas aprovadas do Claude Designer/);
+  assert.match(css, /\.crm-v2\{\s*zoom:1/);
+  assert.match(css, /\.finance-kpis article::after,\.analytics-kpis article::after,\.home-kpis article::after\{width:58px/);
+});
+
+test("limita a lista de leads e preserva fotos, tags e cores alternadas nos cards", async () => {
+  const crm = await readFile(new URL("../app/features/crm/CrmWorkspace.tsx", import.meta.url), "utf8");
+  const salesApi = await readFile(new URL("../app/api/crm/sales/route.ts", import.meta.url), "utf8");
+  const css = await readFile(new URL("../app/globals.css", import.meta.url), "utf8");
+
+  assert.match(crm, /const visibleDeals = deals\.slice\(0, 15\)/);
+  assert.match(crm, /lead-tone-\$\{index % 5 \+ 1\}/);
+  assert.match(crm, /function LeadAvatar/);
+  assert.match(crm, /tags\.slice\(0, 2\)/);
+  assert.match(crm, /className="sale-card-content"/);
+  assert.match(salesApi, /id,nome,telefone,email,corretor_id,tags,extras/);
+  assert.match(css, /\.crm-leads-table-v3 tbody tr\.lead-tone-1\{border-left-color:#ff6500!important\}/);
+  assert.match(css, /Vendas em processo: o mesmo desenho dos cards de lead do funil/);
+});
+
+test("padroniza indicações, fluxo de caixa e a hierarquia tipográfica financeira", async () => {
+  const finance = await readFile(new URL("../app/features/finance/FinanceWorkspace.tsx", import.meta.url), "utf8");
+  const css = await readFile(new URL("../app/globals.css", import.meta.url), "utf8");
+
+  assert.match(finance, /finance-indications-designer/);
+  assert.match(finance, /finance-cash-toolbar/);
+  assert.match(finance, /finance-indication-row/);
+  assert.match(finance, /finance-cash-row/);
+  assert.match(finance, /finance-receipt-row/);
+  assert.match(finance, /Buscar indicações/);
+  assert.match(finance, /Buscar no fluxo de caixa/);
+  assert.match(css, /--finance-body:12px/);
+  assert.match(css, /\.finance-sales-month>header strong \{ font-size:var\(--finance-sm\)/);
+  assert.match(css, /\.finance-sale-row \{ min-height:49px; font-size:var\(--finance-body\)/);
+});
+
+test("pagina o caixa e estende a identidade financeira aos módulos restantes", async () => {
+  const finance = await readFile(new URL("../app/features/finance/FinanceWorkspace.tsx", import.meta.url), "utf8");
+  const css = await readFile(new URL("../app/globals.css", import.meta.url), "utf8");
+
+  assert.match(finance, /const pageSize = 15/);
+  assert.match(finance, /visibleMovementRows = movementRows\.slice/);
+  assert.match(finance, /aria-label="Próxima página"/);
+  assert.match(finance, /finance-marketing-designer/);
+  assert.match(finance, /finance-earnings-designer/);
+  assert.match(finance, /finance-goals-designer/);
+  assert.match(finance, /<\/select><\/div><\/header><nav>/);
+  assert.doesNotMatch(finance, /<\/select>\{sessionRole !== "corretor" && <button type="button" onClick=\{\(\) => setCashOpen\(true\)\}>＋ Nova movimentação/);
+  assert.match(css, /Marketing, Meus ganhos e Metas — mesma identidade/);
+  assert.match(css, /\.finance-module-kpis \{ display:grid/);
+  assert.match(css, /\.finance-workspace \.finance-sales-footer \{ padding-right:92px/);
+  assert.match(css, /\.finance-marketing-head,\.finance-marketing-row/);
+  assert.match(css, /\.finance-earnings-head,\.finance-earnings-row/);
+  assert.match(css, /\.finance-goals-designer \{ grid-template-columns/);
+});

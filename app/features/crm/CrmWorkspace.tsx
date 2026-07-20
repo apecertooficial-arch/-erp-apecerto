@@ -73,8 +73,40 @@ function initials(name: string | null) {
   return (name || "Lead").split(/\s+/).slice(0, 2).map((part) => part[0]).join("").toUpperCase();
 }
 
+function leadPhoto(extras: unknown) {
+  if (!extras || typeof extras !== "object") return null;
+  const sources = [extras, ...(Object.values(extras as Record<string, unknown>).filter((value) => value && typeof value === "object"))];
+  const keys = ["foto", "foto_url", "foto_perfil", "avatar", "avatar_url", "profile_picture", "profile_pic_url", "profilePicture", "picture", "picture_url", "photo", "photo_url", "image", "image_url"];
+  for (const source of sources) {
+    const record = source as Record<string, unknown>;
+    for (const key of keys) {
+      const value = record[key];
+      if (typeof value === "string" && (/^https?:\/\//i.test(value) || value.startsWith("data:image/"))) return value;
+    }
+  }
+  return null;
+}
+
+function LeadAvatar({ lead }: { lead: { nome: string | null; extras?: unknown } }) {
+  const [failed, setFailed] = useState(false);
+  const photo = leadPhoto(lead.extras);
+  // A URL vem do cadastro do contato e pode pertencer a qualquer provedor externo.
+  // eslint-disable-next-line @next/next/no-img-element
+  return <span className="lead-avatar">{photo && !failed ? <img src={photo} alt="" loading="lazy" referrerPolicy="no-referrer" onError={() => setFailed(true)} /> : initials(lead.nome)}</span>;
+}
+
 function isOverdue(task: Task, now: number) {
   return !task.concluida && Boolean(task.vencimento) && new Date(task.vencimento!).getTime() < now;
+}
+
+/* Cor de alerta por DIAS sem interação (igual à esteira de vendas):
+   até 1 dia = verde · mais de 1 dia = amarelo · mais de 3 = vermelho · mais de 7 = preto. */
+function alertColorByDays(minutes: number | null | undefined) {
+  const dias = (Number(minutes) || 0) / 1440;
+  if (dias <= 1) return "verde";
+  if (dias <= 3) return "amarelo";
+  if (dias <= 7) return "vermelho";
+  return "preto";
 }
 
 function formatElapsed(minutes: number | null | undefined) {
@@ -93,12 +125,12 @@ function formatElapsed(minutes: number | null | undefined) {
   return `${years} ${years === 1 ? "ano" : "anos"} ${Math.floor((days % 365) / 30)} m`;
 }
 
-export function CrmWorkspace({ accessToken, initialDealId = null, onInitialDealHandled, sessionRole = "corretor", canReassign = false, canAssign = false }: { accessToken: string; initialDealId?: number | null; onInitialDealHandled?: () => void; sessionRole?: "admin" | "gestor" | "corretor"; canReassign?: boolean; canAssign?: boolean }) {
-  const [now, setNow] = useState(() => Date.now());
+export function CrmWorkspace({ accessToken, initialDealId = null, onInitialDealHandled, initialView, initialCreateSale = false, onInitialViewHandled, sessionRole = "corretor", canReassign = false, canAssign = false }: { accessToken: string; initialDealId?: number | null; onInitialDealHandled?: () => void; initialView?: ViewName | null; initialCreateSale?: boolean; onInitialViewHandled?: () => void; sessionRole?: "admin" | "gestor" | "corretor"; canReassign?: boolean; canAssign?: boolean }) {
+  const [launchSaleOnReady] = useState(initialCreateSale);
   const [data, setData] = useState<CrmData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [view, setView] = useState<ViewName>("pipeline");
+  const [view, setView] = useState<ViewName>(initialView ?? "pipeline");
   const [query, setQuery] = useState("");
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [pipelineId, setPipelineId] = useState<number | null>(null);
@@ -117,6 +149,7 @@ export function CrmWorkspace({ accessToken, initialDealId = null, onInitialDealH
   const [message, setMessage] = useState<string | null>(null);
   const [draggingDealId, setDraggingDealId] = useState<number | null>(null);
   const [bulkMoveOpen, setBulkMoveOpen] = useState(false);
+  const [bulkFromStage, setBulkFromStage] = useState<number | null>(null);
   const [chatDealId, setChatDealId] = useState<number | null>(null);
   const [brokerPickerDealId, setBrokerPickerDealId] = useState<number | null>(null);
 
@@ -138,11 +171,6 @@ export function CrmWorkspace({ accessToken, initialDealId = null, onInitialDealH
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { void load(); }, [accessToken]);
-
-  useEffect(() => {
-    const timer = window.setInterval(() => setNow(Date.now()), 30000);
-    return () => window.clearInterval(timer);
-  }, []);
 
   useEffect(() => {
     const supabase = getBrowserSupabaseClient();
@@ -187,20 +215,18 @@ export function CrmWorkspace({ accessToken, initialDealId = null, onInitialDealH
   const selectedLead = selectedDeal ? leadById.get(selectedDeal.lead_id) ?? null : null;
   const pendingAlerts = data?.alerts ?? [];
   const viewHeading = viewHeadings[view];
-  const metrics = useMemo(() => ({
-    leads: new Set(filteredDeals.map((deal) => deal.lead_id)).size,
-    open: filteredDeals.filter((deal) => deal.status === "aberto").length,
-    value: filteredDeals.reduce((sum, deal) => sum + (deal.valor ?? 0), 0),
-    overdue: (data?.tasks ?? []).filter((task) => isOverdue(task, now)).length,
-    visits: (data?.visits ?? []).filter((visit) => visit.status === "agendada" && new Date(`${visit.data}T${visit.hora_inicio || "00:00"}`).getTime() >= now).length,
-  }), [data, filteredDeals, now]);
-
   useEffect(() => {
     if (!initialDealId || !data) return;
     const deal = data.deals.find((item) => item.id === initialDealId);
     if (!deal) return;
     setView("pipeline"); setPipelineId(deal.pipeline_id); setSelectedDealId(deal.id); onInitialDealHandled?.();
   }, [initialDealId, data, onInitialDealHandled]);
+
+  useEffect(() => {
+    if (!initialView) return;
+    setView(initialView);
+    onInitialViewHandled?.();
+  }, [initialView, onInitialViewHandled]);
 
   function openDeal(dealId: number) {
     setSelectedDealId(dealId);
@@ -224,6 +250,32 @@ export function CrmWorkspace({ accessToken, initialDealId = null, onInitialDealH
     finally { setDraggingDealId(null); }
   }
 
+  const canManageStages = sessionRole !== "corretor";
+  const canMoveDeals = sessionRole !== "corretor";
+  async function reorderStage(stageId: number, direction: number) {
+    const ordered = activeStages.slice().sort((a, b) => a.ordem - b.ordem);
+    const idx = ordered.findIndex((s) => s.id === stageId);
+    const target = idx + direction;
+    if (idx < 0 || target < 0 || target >= ordered.length) return;
+    const ids = ordered.map((s) => s.id);
+    [ids[idx], ids[target]] = [ids[target], ids[idx]];
+    setMessage(null);
+    const { error: rpcError } = await getBrowserSupabaseClient().rpc("crm_etapa_reordenar", { p_pipeline_id: pipelineId, p_ids: ids });
+    if (rpcError) setMessage(rpcError.message); else { await load({ quiet: true }); setMessage("Ordem das etapas atualizada."); }
+  }
+  async function recolorStage(stageId: number, color: string) {
+    const st = activeStages.find((s) => s.id === stageId);
+    setMessage(null);
+    const { error: rpcError } = await getBrowserSupabaseClient().rpc("crm_etapa_salvar", { p_id: stageId, p_nome: st?.rotulo || st?.nome, p_cor: color });
+    if (rpcError) setMessage(rpcError.message); else { await load({ quiet: true }); setMessage("Cor da etapa atualizada."); }
+  }
+  async function saveStage(stageId: number, nome: string, color: string) {
+    setMessage(null);
+    const { error: rpcError } = await getBrowserSupabaseClient().rpc("crm_etapa_salvar", { p_id: stageId, p_nome: nome, p_cor: color });
+    if (rpcError) setMessage(rpcError.message); else { await load({ quiet: true }); setMessage("Etapa atualizada."); }
+  }
+  function openBulkFromStage(stageId: number) { setBulkFromStage(stageId); setBulkMoveOpen(true); }
+
   return <div className="crm-v2">
     <header className="crm-v2-header">
       <div><span className="crm-eyebrow">GESTÃO COMERCIAL</span><h1>{viewHeading.title}</h1><p>{viewHeading.subtitle}</p></div>
@@ -242,37 +294,29 @@ export function CrmWorkspace({ accessToken, initialDealId = null, onInitialDealH
       <span className="crm-live">● Supabase conectado</span>
     </section>
 
-    <section className="crm-metrics">
-      <article><span className="metric-icon purple">◎</span><div><strong>{metrics.leads}</strong><small>Leads no recorte</small></div></article>
-      <article><span className="metric-icon orange">↗</span><div><strong>{metrics.open}</strong><small>Negócios abertos</small></div></article>
-      <article><span className="metric-icon green">R$</span><div><strong>{money.format(metrics.value)}</strong><small>Valor em negociação</small></div></article>
-      <article><span className="metric-icon red">!</span><div><strong>{metrics.overdue}</strong><small>Tarefas vencidas</small></div></article>
-      <article><span className="metric-icon blue">◇</span><div><strong>{metrics.visits}</strong><small>Próximas visitas</small></div></article>
-    </section>
-
     <section className="crm-toolbar-v2">
       <select aria-label="Funil" value={pipelineId ?? ""} onChange={(event) => { setPipelineId(Number(event.target.value)); setStageId(null); setGroup(null); }}>{(data?.pipelines ?? []).map((pipeline) => <option value={pipeline.id} key={pipeline.id}>{pipeline.nome}</option>)}</select>
       {sessionRole !== "corretor" && <button className="stage-config-trigger" type="button" onClick={() => setStageConfigOpen(true)} title="Configurar funis e etapas">⚙ Etapas</button>}
       {view === "pipeline" && <div className="stage-groups"><button className={group === null ? "active" : ""} type="button" onClick={() => setGroup(null)}>Todas</button>{[1, 2, 3, 4].map((item) => <button className={group === item ? "active" : ""} type="button" onClick={() => setGroup(item)} key={item}>{groupNames[item]} <span>{activeStages.filter((stage) => stage.grupo === item).reduce((sum, stage) => sum + filteredDeals.filter((deal) => deal.stage_id === stage.id).length, 0)}</span></button>)}</div>}
       <button className={filtersOpen ? "crm-filter-trigger active" : "crm-filter-trigger"} type="button" onClick={() => setFiltersOpen(!filtersOpen)}>▽ Filtros {activeFilterCount > 0 && <b>{activeFilterCount}</b>}</button>
       <button className={overdueOnly ? "crm-overdue-trigger active" : "crm-overdue-trigger"} type="button" onClick={() => setOverdueOnly((v) => !v)} title="Mostrar apenas leads que estouraram o SLA">⏰ Leads Atrasados {overdueCount > 0 && <b>{overdueCount}</b>}</button>
-      {view === "pipeline" && <button className="crm-bulk-trigger" type="button" onClick={() => setBulkMoveOpen(true)}>⇄ Mover etapa inteira</button>}
+      {view === "pipeline" && sessionRole !== "corretor" && <button className="crm-bulk-trigger" type="button" onClick={() => setBulkMoveOpen(true)}>⇄ Mover etapa inteira</button>}
       <span className="crm-result-count">{filteredDeals.length} negócios</span>
     </section>
     {filtersOpen && <section className="crm-filter-sheet"><label>Etapa<select value={stageId ?? ""} onChange={(event) => setStageId(event.target.value ? Number(event.target.value) : null)}><option value="">Todas</option>{activeStages.map((stage) => <option value={stage.id} key={stage.id}>{stage.rotulo || stage.nome}</option>)}</select></label><label>Responsável<select value={brokerId ?? ""} onChange={(event) => setBrokerId(event.target.value ? Number(event.target.value) : null)}><option value="">Todos</option>{(data?.brokers ?? []).map((broker) => <option value={broker.id} key={broker.id}>{broker.nome}</option>)}</select></label><label>Origem<select value={origin} onChange={(event) => setOrigin(event.target.value)}><option value="">Todas</option>{origins.map((item) => <option key={item}>{item}</option>)}</select></label><label>Tag<select value={tag} onChange={(event) => setTag(event.target.value)}><option value="">Todas</option>{allTags.map((item) => <option key={item}>{item}</option>)}</select></label><label>Entrada de<input type="date" value={dateFrom} onChange={(event) => setDateFrom(event.target.value)} /></label><label>Entrada até<input type="date" value={dateTo} onChange={(event) => setDateTo(event.target.value)} /></label><label>Produto<select value={productFilter} onChange={(event) => setProductFilter(event.target.value)}><option value="">Todos</option>{(data?.products ?? []).map((product) => <option value={product.id} key={product.id}>{product.nome}</option>)}</select></label><button type="button" onClick={() => { setStageId(null); setBrokerId(null); setOrigin(""); setTag(""); setGroup(null); setDateFrom(""); setDateTo(""); setProductFilter(""); }}>Limpar</button></section>}
     {message && <div className="crm-toast" onClick={() => setMessage(null)}>{message}<button type="button">×</button></div>}
     {loading && <div className="crm-loading"><span /><strong>Montando seu CRM com os dados reais…</strong></div>}
     {error && <div className="crm-error">{error}<button type="button" onClick={() => void load()}>Tentar novamente</button></div>}
-    {!loading && !error && data && view === "pipeline" && <PipelineViewEnhanced stages={visibleStages} allStages={activeStages} deals={filteredDeals} leadById={leadById} brokerById={brokerById} slaByDeal={slaByDeal} canReassign={canReassign} onReassign={setBrokerPickerDealId} onOpen={openDeal} onChat={openChat} onMutate={mutate} setMessage={setMessage} draggingId={draggingDealId} onDrag={setDraggingDealId} onDrop={dropDeal} />}
-    {!loading && !error && data && view === "leads" && <LeadsViewEnhanced deals={filteredDeals} leadById={leadById} stages={activeStages} brokerById={brokerById} slaByDeal={slaByDeal} canReassign={canReassign} onReassign={setBrokerPickerDealId} onOpen={openDeal} onChat={openChat} onMutate={mutate} setMessage={setMessage} />}
+    {!loading && !error && data && view === "pipeline" && <PipelineViewEnhanced stages={visibleStages} allStages={activeStages} deals={filteredDeals} leadById={leadById} brokerById={brokerById} slaByDeal={slaByDeal} canReassign={canReassign} onReassign={setBrokerPickerDealId} onOpen={openDeal} onChat={openChat} onMutate={mutate} setMessage={setMessage} draggingId={draggingDealId} onDrag={setDraggingDealId} onDrop={dropDeal} canManageStages={canManageStages} onReorderStage={reorderStage} onRecolorStage={recolorStage} onSaveStage={saveStage} onBulkFromStage={openBulkFromStage} stageCount={activeStages.length} canMoveDeals={canMoveDeals} />}
+    {!loading && !error && data && view === "leads" && <LeadsViewEnhanced deals={filteredDeals} leadById={leadById} stages={activeStages} brokerById={brokerById} slaByDeal={slaByDeal} canReassign={canReassign} onReassign={setBrokerPickerDealId} onOpen={openDeal} onChat={openChat} onMutate={mutate} setMessage={setMessage} canMoveDeals={canMoveDeals} />}
     {!loading && !error && data && view === "agenda" && <AgendaView data={data} leadById={leadById} onMutate={mutate} setMessage={setMessage} />}
     {!loading && !error && data && view === "atividades" && <ActivitiesView data={data} leadById={leadById} brokerById={brokerById} onOpen={(leadId) => setSelectedDealId(data.deals.find((deal) => deal.lead_id === leadId)?.id ?? null)} />}
-    {!loading && !error && data && view === "sales" && <SalesProcessView accessToken={accessToken} />}
+    {!loading && !error && data && view === "sales" && <SalesProcessView accessToken={accessToken} initialCreate={launchSaleOnReady} sessionRole={sessionRole} />}
     {!loading && !error && data && view === "analytics" && <AnalyticsView data={data} onOpen={(dealId) => setSelectedDealId(dealId)} />}
-    {selectedDeal && selectedLead && data && <LeadDrawer key={selectedDeal.id} accessToken={accessToken} lead={selectedLead} deal={selectedDeal} data={data} canReassign={canReassign} onClose={() => { setSelectedDealId(null); setMessage(null); }} onMutate={mutate} onReload={() => load({ quiet: true })} setMessage={setMessage} />}
+    {selectedDeal && selectedLead && data && <LeadDrawer key={selectedDeal.id} accessToken={accessToken} lead={selectedLead} deal={selectedDeal} data={data} canReassign={canReassign} canMoveDeals={canMoveDeals} onClose={() => { setSelectedDealId(null); setMessage(null); }} onMutate={mutate} onReload={() => load({ quiet: true })} setMessage={setMessage} />}
     {chatDealId && data && leadById.get(data.deals.find((deal) => deal.id === chatDealId)?.lead_id ?? -1) && <LeadChatDrawer key={chatDealId} accessToken={accessToken} lead={leadById.get(data.deals.find((deal) => deal.id === chatDealId)!.lead_id)!} deal={data.deals.find((deal) => deal.id === chatDealId)!} corretorNome={data.brokers.find((b) => b.id === leadById.get(data.deals.find((deal) => deal.id === chatDealId)!.lead_id)?.corretor_id)?.nome} onClose={() => setChatDealId(null)} onResponse={async () => { await mutate({ action: "acknowledgeResponse", dealId: chatDealId }); setMessage("Resposta registrada e alerta encerrado."); }} />}
     {stageConfigOpen && data && <StageConfigModal pipelines={data.pipelines} stages={data.stages} deals={data.deals} leads={data.leads} products={data.products} initialPipelineId={pipelineId} onClose={() => setStageConfigOpen(false)} onChanged={async () => { await load({ quiet: true }); }} />}
-    {bulkMoveOpen && data && pipelineId && <BulkMoveModal pipelineId={pipelineId} stages={activeStages} deals={data.deals.filter((deal) => deal.pipeline_id === pipelineId)} onClose={() => setBulkMoveOpen(false)} onMove={async (fromStageId, toStageId) => { await mutate({ action: "bulkMoveStage", pipelineId, fromStageId, toStageId }); setBulkMoveOpen(false); setMessage("Todos os negócios da etapa foram movidos."); }} />}
+    {bulkMoveOpen && data && pipelineId && <BulkMoveModal pipelineId={pipelineId} stages={activeStages} deals={data.deals.filter((deal) => deal.pipeline_id === pipelineId)} initialFromStageId={bulkFromStage} onClose={() => { setBulkMoveOpen(false); setBulkFromStage(null); }} onMove={async (fromStageId, toStageId) => { await mutate({ action: "bulkMoveStage", pipelineId, fromStageId, toStageId }); setBulkMoveOpen(false); setBulkFromStage(null); setMessage("Todos os negócios da etapa foram movidos."); }} />}
     {createOpen && data && <CreateLeadModal pipelines={data.pipelines} brokers={data.brokers} initialPipelineId={pipelineId} canAssign={canAssign} onClose={() => { setCreateOpen(false); setMessage(null); }} onCreate={async (payload) => { await mutate({ action: "createLead", ...payload }); setCreateOpen(false); setMessage("Novo lead criado e inserido na primeira etapa."); }} />}
     {brokerPickerDealId && data && <BrokerPickerModal deal={data.deals.find((deal) => deal.id === brokerPickerDealId)!} lead={leadById.get(data.deals.find((deal) => deal.id === brokerPickerDealId)?.lead_id ?? -1)!} brokers={data.brokers} onClose={() => setBrokerPickerDealId(null)} onSave={async (brokerId) => { await mutate({ action: "transferDeal", dealId: brokerPickerDealId, brokerId }); setBrokerPickerDealId(null); setMessage("Corretor responsável atualizado."); }} />}
   </div>;
@@ -282,9 +326,10 @@ type SalesData = {
   sales: Array<{ id: string; created_at: string; data_venda: string; empreendimento_id: string | null; empreendimento_nome: string | null; vgv: number; forma_pgto: string | null; status: string; obs: string | null }>;
   processes: Array<{ id: string; venda_id: string; negocio_id: number | null; etapa: string; tipo_venda: string; responsavel_usuario_id: string | null; prazo_em: string | null; atualizado_em: string }>;
   deals: Array<{ id: number; venda_id: string | null; lead_id: number; corretor_id: number | null; empreendimento_id: string | null; valor: number | null; status: string }>;
-  leads: Array<{ id: number; nome: string | null; telefone: string | null; email: string | null; corretor_id: number | null }>;
+  leads: Array<{ id: number; nome: string | null; telefone: string | null; email: string | null; corretor_id: number | null; tags: unknown; extras: unknown }>;
   products: Array<{ id: string; nome: string; origem: string; bairro: string | null; cidade: string | null }>;
   brokers: Array<{ id: number; nome: string; usuario_id: string | null; online: boolean }>;
+  stages?: Array<{ id: string; slug: string; nome: string; cor: string; ordem: number; papel: string; sla_dias: number; resale: boolean }>;
 };
 
 const saleStages = [
@@ -298,16 +343,67 @@ const saleStages = [
   { id: "registrada", name: "Venda registrada", color: "#1fa85a", role: "Administrador", days: 0 },
 ];
 
-function SalesProcessView({ accessToken }: { accessToken: string }) {
-  const [data, setData] = useState<SalesData | null>(null); const [error, setError] = useState<string | null>(null); const [filter, setFilter] = useState("all"); const [creating, setCreating] = useState(false); const [busy, setBusy] = useState(false);
+function SalesProcessView({ accessToken, initialCreate = false, sessionRole = "corretor" }: { accessToken: string; initialCreate?: boolean; sessionRole?: string }) {
+  const [data, setData] = useState<SalesData | null>(null); const [error, setError] = useState<string | null>(null); const [filter, setFilter] = useState("all"); const [creating, setCreating] = useState(initialCreate); const [busy, setBusy] = useState(false); const [chatItem, setChatItem] = useState<{ lead: Lead; deal: Deal; corretorNome?: string } | null>(null); const [menuStage, setMenuStage] = useState<string | null>(null); const [bulkFrom, setBulkFrom] = useState<string | null>(null); const [addingStage, setAddingStage] = useState(false); const [newStageName, setNewStageName] = useState("");
+  const canManageStages = sessionRole !== "corretor";
   const load = async () => { const response = await authedFetch("/api/crm/sales", { headers: { Authorization: `Bearer ${accessToken}` } }); const result = await response.json() as SalesData & { error?: string }; if (!response.ok) throw new Error(result.error || "Não foi possível carregar as vendas."); setData(result); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { void load().catch((reason) => setError(reason instanceof Error ? reason.message : "Erro ao carregar vendas.")); }, [accessToken]);
-  const saleById = new Map((data?.sales ?? []).map((sale) => [sale.id, sale])); const dealBySale = new Map((data?.deals ?? []).filter((deal) => deal.venda_id).map((deal) => [deal.venda_id!, deal])); const leadById = new Map((data?.leads ?? []).map((lead) => [lead.id, lead]));
-  const visible = (data?.processes ?? []).filter((item) => filter === "all" || item.tipo_venda === filter); const overdue = visible.filter((item) => item.etapa !== "registrada" && Date.now() - new Date(item.atualizado_em).getTime() > ((saleStages.find((stage) => stage.id === item.etapa)?.days || 99) * 86400000));
+  const stageList = (data?.stages && data.stages.length) ? data.stages.slice().sort((a, b) => a.ordem - b.ordem).map((s) => ({ id: s.slug, dbId: s.id, name: s.nome, color: s.cor, role: s.papel, days: s.sla_dias, resale: s.resale })) : saleStages.map((s) => ({ ...s, dbId: null as string | null, resale: (s as { resale?: boolean }).resale ?? false }));
+  const saleById = new Map((data?.sales ?? []).map((sale) => [sale.id, sale])); const dealBySale = new Map((data?.deals ?? []).filter((deal) => deal.venda_id).map((deal) => [deal.venda_id!, deal])); const leadById = new Map((data?.leads ?? []).map((lead) => [lead.id, lead])); const brokerById = new Map((data?.brokers ?? []).map((broker) => [broker.id, broker]));
+  const finalSlugs = new Set(stageList.filter((s) => s.days === 0).map((s) => s.id));
+  const visible = (data?.processes ?? []).filter((item) => filter === "all" || item.tipo_venda === filter); const overdue = visible.filter((item) => !finalSlugs.has(item.etapa) && Date.now() - new Date(item.atualizado_em).getTime() > ((stageList.find((stage) => stage.id === item.etapa)?.days || 99) * 86400000));
   const move = async (processId: string, stage: string) => { setBusy(true); setError(null); try { const response = await authedFetch("/api/crm/sales", { method: "PATCH", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify({ action: "move", processId, stage }) }); const result = await response.json() as { error?: string }; if (!response.ok) throw new Error(result.error || "Não foi possível mover a venda."); await load(); } catch (reason) { setError(reason instanceof Error ? reason.message : "Não foi possível mover a venda."); } finally { setBusy(false); } };
+  const mutateStages = async (payload: Record<string, unknown>, success?: string) => { setBusy(true); setError(null); try { const response = await authedFetch("/api/crm/sales", { method: "PATCH", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify(payload) }); const result = await response.json() as { error?: string }; if (!response.ok) throw new Error(result.error || "Não foi possível salvar a etapa."); await load(); if (success) setError(null); } catch (reason) { setError(reason instanceof Error ? reason.message : "Não foi possível salvar a etapa."); } finally { setBusy(false); } };
+  const reorderStage = (index: number, direction: number) => { const ordered = stageList.filter((s) => s.dbId); const target = index + direction; if (target < 0 || target >= ordered.length) return; const ids = ordered.map((s) => s.dbId as string); [ids[index], ids[target]] = [ids[target], ids[index]]; void mutateStages({ action: "reorderStages", ids }); };
   if (!data) return <div className="crm-loading"><span /><strong>Conectando a esteira de vendas…</strong></div>;
-  return <section className="sales-process"><header><div><span>PÓS-FECHAMENTO</span><h2>Esteira de contrato & documentação</h2><p>Todas as vendas reais ligadas ao negócio, produto, cliente e responsável.</p></div><button className="crm-primary" type="button" onClick={() => setCreating(true)}>＋ Nova venda</button></header>{error && <div className="crm-error">{error}</div>}<div className="sales-kpis"><article><strong>{visible.length}</strong><span>em processo</span></article><article className="danger"><strong>{overdue.length}</strong><span>vendas atrasadas</span></article><article><strong>{visible.filter((item) => item.etapa === "minuta_env").length}</strong><span>aguardando assinatura</span></article><article><strong>{visible.filter((item) => ["doc_comp", "doc_vend"].includes(item.etapa)).length}</strong><span>documentos pendentes</span></article><article><strong>{visible.filter((item) => item.etapa === "pagamento").length}</strong><span>aguardando pagamento</span></article></div><div className="sales-filter"><b>Tipo de venda</b>{[["all", "Todas"], ["revenda", "Revenda"], ["construtora", "Construtora"]].map(([id, label]) => <button className={filter === id ? "active" : ""} type="button" onClick={() => setFilter(id)} key={id}>{label}</button>)}<span>Corretor · Gerente · Jurídico · Financeiro</span></div><div className="sales-kanban">{saleStages.map((stage) => { const items = visible.filter((item) => item.etapa === stage.id && (!stage.resale || item.tipo_venda === "revenda")); return <article className="sales-stage" style={{ "--sale-stage": stage.color } as CSSProperties} onDragOver={(event) => event.preventDefault()} onDrop={(event) => { const id = event.dataTransfer.getData("text/process-id"); if (id && !busy) void move(id, stage.id); }} key={stage.id}><header><i /><strong>{stage.name}</strong><span>{items.length}</span></header><small>{stage.role} · SLA {stage.days ? `${stage.days}d` : "concluído"}</small><div>{items.map((item) => { const sale = saleById.get(item.venda_id); const deal = dealBySale.get(item.venda_id); const lead = deal ? leadById.get(deal.lead_id) : null; const late = overdue.some((entry) => entry.id === item.id); return <article className={late ? "sale-card late" : "sale-card"} draggable onDragStart={(event) => event.dataTransfer.setData("text/process-id", item.id)} key={item.id}><b>{lead?.nome || sale?.empreendimento_nome || "Venda"}</b><span>{sale?.empreendimento_nome || "Produto não informado"}</span><strong>{money.format(sale?.vgv || 0)}</strong><small>{item.tipo_venda === "revenda" ? "Revenda" : "Construtora"}{late ? " · em atraso" : ""}</small><select disabled={busy} value={item.etapa} onChange={(event) => void move(item.id, event.target.value)}>{saleStages.filter((target) => !target.resale || item.tipo_venda === "revenda").map((target) => <option value={target.id} key={target.id}>{target.name}</option>)}</select></article>; })}{items.length === 0 && <div className="sales-drop">Solte uma venda aqui</div>}</div></article>; })}</div>{creating && <CreateSaleModal data={data} accessToken={accessToken} onClose={() => setCreating(false)} onDone={async () => { setCreating(false); await load(); }} />}</section>;
+  return <section className="sales-process">
+    <header><div><span>PÓS-FECHAMENTO</span><h2>Esteira de contrato & documentação</h2><p>Todas as vendas reais ligadas ao negócio, produto, cliente e responsável.</p></div><div className="sales-head-actions">{canManageStages && <button className="crm-secondary" type="button" onClick={() => { setAddingStage(true); setNewStageName(""); }}>＋ Nova etapa</button>}<button className="crm-primary" type="button" onClick={() => setCreating(true)}>＋ Nova venda</button></div></header>
+    {error && <div className="crm-error">{error}</div>}
+    {addingStage && <div className="sales-add-stage"><input autoFocus value={newStageName} onChange={(event) => setNewStageName(event.target.value)} placeholder="Nome da nova etapa (ex.: Vistoria)" onKeyDown={(event) => { if (event.key === "Enter" && newStageName.trim()) { void mutateStages({ action: "createStage", nome: newStageName.trim() }); setAddingStage(false); } }} /><button type="button" className="crm-primary small" disabled={busy || !newStageName.trim()} onClick={() => { void mutateStages({ action: "createStage", nome: newStageName.trim() }); setAddingStage(false); }}>Criar etapa</button><button type="button" onClick={() => setAddingStage(false)}>Cancelar</button></div>}
+    <div className="sales-kpis"><article><strong>{visible.length}</strong><span>em processo</span></article><article className="danger"><strong>{overdue.length}</strong><span>vendas atrasadas</span></article><article><strong>{visible.filter((item) => item.etapa === "minuta_env").length}</strong><span>aguardando assinatura</span></article><article><strong>{visible.filter((item) => ["doc_comp", "doc_vend"].includes(item.etapa)).length}</strong><span>documentos pendentes</span></article><article><strong>{visible.filter((item) => item.etapa === "pagamento").length}</strong><span>aguardando pagamento</span></article></div>
+    <div className="sales-filter"><b>Tipo de venda</b>{[["all", "Todas"], ["revenda", "Revenda"], ["construtora", "Construtora"]].map(([id, label]) => <button className={filter === id ? "active" : ""} type="button" onClick={() => setFilter(id)} key={id}>{label}</button>)}<span>Corretor · Gerente · Jurídico · Financeiro</span></div>
+    <div className="sales-kanban">{stageList.map((stage, stageIndex) => {
+      const items = visible.filter((item) => item.etapa === stage.id && (!stage.resale || item.tipo_venda === "revenda"));
+      const configurable = canManageStages && Boolean(stage.dbId);
+      const orderableIndex = stageList.filter((s) => s.dbId).findIndex((s) => s.dbId === stage.dbId);
+      const orderableTotal = stageList.filter((s) => s.dbId).length;
+      return <article className="sales-stage" style={{ "--sale-stage": stage.color } as CSSProperties} onDragOver={(event) => event.preventDefault()} onDrop={(event) => { const id = event.dataTransfer.getData("text/process-id"); if (id && !busy) void move(id, stage.id); }} key={stage.id}>
+        <header><i /><strong>{stage.name}</strong><div className="crm-stage-head-right"><span>{items.length}</span>{configurable && <button type="button" className="crm-stage-cog" title="Opções da etapa" onClick={() => setMenuStage(menuStage === stage.id ? null : stage.id)}>⋯</button>}</div></header><small>{stage.role} · SLA {stage.days ? `${stage.days}d` : "concluído"}</small>
+        {configurable && menuStage === stage.id && <div className="crm-stage-menu">
+          <div className="crm-stage-menu-row"><label className="crm-stage-color">Cor da etapa<input type="color" value={stage.color} onChange={(event) => void mutateStages({ action: "updateStage", stageId: stage.dbId, cor: event.target.value })} /></label></div>
+          <div className="crm-stage-menu-row crm-stage-reorder"><button type="button" disabled={busy || orderableIndex <= 0} onClick={() => reorderStage(orderableIndex, -1)}>◀ Trás</button><button type="button" disabled={busy || orderableIndex < 0 || orderableIndex >= orderableTotal - 1} onClick={() => reorderStage(orderableIndex, 1)}>Frente ▶</button></div>
+          <button type="button" className="crm-stage-bulk" onClick={() => { setMenuStage(null); setBulkFrom(stage.id); }}>⇄ Mover todas as vendas desta etapa</button>
+          <div className="crm-stage-menu-row crm-stage-reorder"><button type="button" disabled={busy} onClick={() => { const nome = window.prompt("Novo nome da etapa:", stage.name); if (nome && nome.trim() && nome.trim() !== stage.name) void mutateStages({ action: "updateStage", stageId: stage.dbId, nome: nome.trim() }); }}>✎ Renomear</button><button type="button" className="crm-stage-danger" disabled={busy || items.length > 0} title={items.length > 0 ? "Mova as vendas antes de excluir" : "Excluir etapa"} onClick={() => { if (window.confirm(`Excluir a etapa "${stage.name}"?`)) void mutateStages({ action: "deleteStage", stageId: stage.dbId }); }}>🗑 Excluir</button></div>
+        </div>}
+        <div>{items.map((item) => {
+          const sale = saleById.get(item.venda_id);
+          const deal = dealBySale.get(item.venda_id);
+          const lead = deal ? leadById.get(deal.lead_id) : null;
+          const broker = brokerById.get(deal?.corretor_id ?? lead?.corretor_id ?? -1);
+          const tags = tagList(lead?.tags).slice(0, 2);
+          const late = overdue.some((entry) => entry.id === item.id);
+          const minutesInStage = Math.max(0, (Date.now() - new Date(item.atualizado_em).getTime()) / 60000);
+          const fallbackLead = { nome: sale?.empreendimento_nome || "Venda", extras: null };
+          return <article className={late ? "sale-card late" : "sale-card"} draggable onDragStart={(event) => event.dataTransfer.setData("text/process-id", item.id)} key={item.id}>
+            <div className={`sla-top-band ${late ? "vermelho" : "verde"}`} />
+            <div className="sale-card-content">
+              <div className="card-person"><LeadAvatar lead={lead ?? fallbackLead} /><div><strong>{lead?.nome || sale?.empreendimento_nome || "Venda"}</strong><small>{lead?.telefone || "Sem telefone"}</small></div></div>
+              <div className="sale-card-broker"><span className={`presence ${broker?.online ? "online" : ""}`} /><strong>{broker?.nome || "Sem responsável"}</strong></div>
+              <div className="sla-clock-v3"><b>{formatElapsed(minutesInStage)}</b><span>{late ? "em atraso nesta etapa" : "nesta etapa"}</span></div>
+              <div className="card-context"><span>{sale?.empreendimento_nome || "Produto não informado"}</span><b>{money.format(sale?.vgv || 0)}</b></div>
+              {tags.length > 0 && <div className="card-tags" aria-label="Tags do lead">{tags.map((tagItem) => <span key={tagItem}>{tagItem}</span>)}</div>}
+              <small className="sale-kind">{item.tipo_venda === "revenda" ? "Revenda" : "Construtora"}</small>
+            </div>
+            <div className="sale-card-controls">{lead && deal && <button type="button" className="sale-card-chat" onClick={() => setChatItem({ lead: lead as unknown as Lead, deal: deal as unknown as Deal, corretorNome: broker?.nome })}>Chat</button>}<select aria-label={`Mover ${lead?.nome || "venda"} para outra etapa`} disabled={busy} value={item.etapa} onChange={(event) => void move(item.id, event.target.value)}>{stageList.filter((target) => !target.resale || item.tipo_venda === "revenda").map((target) => <option value={target.id} key={target.id}>{target.name}</option>)}</select></div>
+          </article>;
+        })}{items.length === 0 && <div className="sales-drop">Solte uma venda aqui</div>}</div>
+      </article>;
+    })}</div>
+    {creating && <CreateSaleModal data={data} accessToken={accessToken} onClose={() => setCreating(false)} onDone={async () => { setCreating(false); await load(); }} />}
+    {chatItem && <LeadChatDrawer key={chatItem.deal.id} accessToken={accessToken} lead={chatItem.lead} deal={chatItem.deal} corretorNome={chatItem.corretorNome} onClose={() => setChatItem(null)} onResponse={async () => {}} />}
+    {bulkFrom && <div className="crm-center-modal"><form onSubmit={(event) => event.preventDefault()}><header><div><span>AÇÃO EM MASSA</span><h2>Mover uma etapa inteira</h2><p>Todas as vendas de <b>{stageList.find((s) => s.id === bulkFrom)?.name}</b> serão enviadas para o destino escolhido.</p></div><button type="button" onClick={() => setBulkFrom(null)}>×</button></header><div className="bulk-move-grid"><label>Etapa de destino<select id="bulk-to" defaultValue=""><option value="">Selecione</option>{stageList.filter((s) => s.id !== bulkFrom).map((s) => <option value={s.id} key={s.id}>{s.name}</option>)}</select></label></div><footer><button type="button" onClick={() => setBulkFrom(null)}>Cancelar</button><button className="crm-primary" type="button" disabled={busy} onClick={() => { const to = (document.getElementById("bulk-to") as HTMLSelectElement | null)?.value; if (!to) { setError("Selecione a etapa de destino."); return; } void mutateStages({ action: "bulkMoveStage", fromSlug: bulkFrom, toSlug: to }); setBulkFrom(null); }}>Mover vendas</button></footer></form></div>}
+  </section>;
 }
 
 function CreateSaleModal({ data, accessToken, initialDealId = "", onClose, onDone }: { data: SalesData; accessToken: string; initialDealId?: string | number; onClose: () => void; onDone: () => Promise<void> }) {
@@ -341,7 +437,6 @@ function AnalyticsView({ data, onOpen }: { data: CrmData; onOpen?: (dealId: numb
   const reasonCounts = [...new Set(lost.map((deal) => deal.motivo_perda || "Sem motivo"))].map((reason) => ({ reason, deals: lost.filter((deal) => (deal.motivo_perda || "Sem motivo") === reason) })).sort((a, b) => b.deals.length - a.deals.length);
   const brokerStats = data.brokers.map((broker) => ({ broker, deals: deals.filter((deal) => (deal.corretor_id ?? leadById.get(deal.lead_id)?.corretor_id) === broker.id) })).sort((a, b) => b.deals.length - a.deals.length);
   const maxBroker = Math.max(1, ...brokerStats.map((entry) => entry.deals.length));
-  const pending = data.sla.filter((entry) => entry.aguardando_humano && Number(entry.min_aguardando || 0) >= 60).length;
   const originStats = [...new Set(deals.map((deal) => leadById.get(deal.lead_id)?.origem || "Sem origem"))].map((origin) => ({ origin, deals: deals.filter((deal) => (leadById.get(deal.lead_id)?.origem || "Sem origem") === origin) })).sort((a, b) => b.deals.length - a.deals.length).slice(0, 8);
   const maxOrigin = Math.max(1, ...originStats.map((entry) => entry.deals.length));
   const productStats = [...new Set(activeDeals.map((deal) => deal.empreendimento_id).filter(Boolean))].map((id) => ({ product: data.products.find((product) => product.id === id), deals: activeDeals.filter((deal) => deal.empreendimento_id === id) })).filter((entry) => entry.product).sort((a, b) => b.deals.length - a.deals.length).slice(0, 8);
@@ -356,7 +451,13 @@ function AnalyticsView({ data, onOpen }: { data: CrmData; onOpen?: (dealId: numb
       <select value={brokerFilter} onChange={(event) => setBrokerFilter(event.target.value)} aria-label="Corretor"><option value="">Todos os corretores</option>{data.brokers.map((broker) => <option value={broker.id} key={broker.id}>{broker.nome}</option>)}</select>
       <select value={originFilter} onChange={(event) => setOriginFilter(event.target.value)} aria-label="Origem"><option value="">Todas as origens</option>{origins.map((origin) => <option key={origin}>{origin}</option>)}</select>
     </div>
-    <div className="analytics-kpis"><article><b>{activeDeals.length}</b><span>Leads no funil</span></article><article><b>{conversion}%</b><span>Conversão geral</span></article><article><b>{money.format(potential)}</b><span>Receita potencial</span></article><article><b>{bottleneck?.stage.rotulo || bottleneck?.stage.nome || "—"}</b><span>Gargalo</span></article><article><b>{lost.length}</b><span>Perdidos</span></article><article><b>{pending}</b><span>1º contato pendente</span></article></div>
+    <div className="analytics-kpis">
+      <article><i>↗</i><span>Conversão geral</span><b>{conversion}%</b><small>Leads que fecham</small></article>
+      <article><i>◷</i><span>Ciclo médio</span><b>{formatElapsed(stageStats.length ? Math.round(stageStats.reduce((sum, entry) => sum + entry.avg, 0) / stageStats.length) : 0)}</b><small>Entrada ao fechamento</small></article>
+      <article><i>◎</i><span>Negócios ativos</span><b>{activeDeals.length}</b><small>{money.format(potential)} em negociação</small></article>
+      <article><i>△</i><span>Perdidos no período</span><b>{lost.length}</b><small>Oportunidades perdidas</small></article>
+      <article><i>R$</i><span>Ticket médio</span><b>{money.format(activeDeals.length ? potential / activeDeals.length : 0)}</b><small>Por negócio</small></article>
+    </div>
     <div className="analytics-grid">
       <article><h3>Conversão do funil</h3>{stageStats.map((entry) => <button className="funnel-row drillable" type="button" onClick={() => drillOpen(`Etapa: ${entry.stage.rotulo || entry.stage.nome}`, entry.deals)} key={entry.stage.id}><span><b>{entry.stage.rotulo || entry.stage.nome}</b><em>{entry.count}</em></span><i><u style={{ width: `${Math.max(2, (entry.count / maxCount) * 100)}%`, background: entry.stage.cor || "#ff7000" }} /></i></button>)}</article>
       <article><h3>Tempo médio por etapa</h3>{stageStats.map((entry) => <div className={entry.stage.id === bottleneck?.stage.id ? "time-row bottleneck" : "time-row"} key={entry.stage.id}><b>{entry.stage.rotulo || entry.stage.nome}</b><i><u style={{ width: `${Math.max(2, (entry.avg / maxAvg) * 100)}%` }} /></i><span>{formatElapsed(entry.avg)}</span></div>)}</article>
@@ -370,35 +471,47 @@ function AnalyticsView({ data, onOpen }: { data: CrmData; onOpen?: (dealId: numb
   </section>;
 }
 
-function PipelineViewEnhanced({ stages, allStages, deals, leadById, brokerById, slaByDeal, canReassign, onReassign, onOpen, onChat, onMutate, setMessage, draggingId, onDrag, onDrop }: { stages: Stage[]; allStages: Stage[]; deals: Deal[]; leadById: Map<number, Lead>; brokerById: Map<number, Broker>; slaByDeal: Map<number, SlaInfo>; canReassign: boolean; onReassign: (dealId: number) => void; onOpen: (id: number) => void; onChat: (id: number) => void; onMutate: (body: Record<string, unknown>) => Promise<void>; setMessage: (value: string | null) => void; draggingId: number | null; onDrag: (id: number | null) => void; onDrop: (event: DragEvent, stageId: number) => Promise<void> }) {
+function PipelineViewEnhanced({ stages, allStages, deals, leadById, brokerById, slaByDeal, canReassign, onReassign, onOpen, onChat, onMutate, setMessage, draggingId, onDrag, onDrop, canManageStages, onReorderStage, onRecolorStage, onBulkFromStage, stageCount, canMoveDeals }: { stages: Stage[]; allStages: Stage[]; deals: Deal[]; leadById: Map<number, Lead>; brokerById: Map<number, Broker>; slaByDeal: Map<number, SlaInfo>; canReassign: boolean; onReassign: (dealId: number) => void; onOpen: (id: number) => void; onChat: (id: number) => void; onMutate: (body: Record<string, unknown>) => Promise<void>; setMessage: (value: string | null) => void; draggingId: number | null; onDrag: (id: number | null) => void; onDrop: (event: DragEvent, stageId: number) => Promise<void>; canManageStages?: boolean; onReorderStage?: (stageId: number, direction: number) => Promise<void>; onRecolorStage?: (stageId: number, color: string) => Promise<void>; onSaveStage?: (stageId: number, nome: string, color: string) => Promise<void>; onBulkFromStage?: (stageId: number) => void; stageCount?: number; canMoveDeals?: boolean }) {
   const [busyId, setBusyId] = useState<number | null>(null);
+  const [menuStage, setMenuStage] = useState<number | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editColor, setEditColor] = useState("#9638d8");
+  const STAGE_PALETTE = ["#22a35a", "#2f9e8f", "#3b6fe0", "#7c3aed", "#d61f69", "#d13d3d", "#e8620e", "#e0a520", "#7cb518", "#5b6b7c", "#8a6a4a", "#3f3a36"];
   const change = async (body: Record<string, unknown>, success: string, dealId: number) => { setBusyId(dealId); try { await onMutate(body); setMessage(success); } catch (reason) { setMessage(reason instanceof Error ? reason.message : "Não foi possível salvar."); } finally { setBusyId(null); } };
-  return <section className="crm-kanban-v2">{stages.map((stage) => {
+  return <section className="crm-kanban-v2">{stages.map((stage, stageIndex) => {
     const items = deals.filter((deal) => deal.stage_id === stage.id);
-    return <article className="crm-stage" style={{ "--stage": stage.cor || "#8d2bd1" } as CSSProperties} key={stage.id} onDragOver={(event) => event.preventDefault()} onDrop={(event) => void onDrop(event, stage.id)}>
-      <header><div><i /><strong>{stage.rotulo || stage.nome}</strong></div><span>{items.length}</span></header>
+    const stageColor = stage.cor || ["#9638d8", "#ff6500", "#386fe7", "#20aa64", "#f2a82c"][stageIndex % 5];
+    const globalIndex = allStages.slice().sort((a, b) => a.ordem - b.ordem).findIndex((s) => s.id === stage.id);
+    const total = stageCount ?? allStages.length;
+    return <article className="crm-stage" style={{ "--stage": stageColor } as CSSProperties} key={stage.id} onDragOver={(event) => event.preventDefault()} onDrop={(event) => void onDrop(event, stage.id)}>
+      <header><div><i /><strong>{stage.rotulo || stage.nome}</strong></div><div className="crm-stage-head-right"><span>{items.length}</span>{canManageStages && <button type="button" className="crm-stage-cog" title="Editar etapa" onClick={() => { if (menuStage === stage.id) { setMenuStage(null); } else { setMenuStage(stage.id); setEditName(stage.rotulo || stage.nome); setEditColor(stageColor); } }}>⋯</button>}</div></header>
+      {canManageStages && menuStage === stage.id && <div className="crm-stage-editor" onClick={(event) => event.stopPropagation()}>
+        <span className="cse-kicker">EDITAR ETAPA</span>
+        <label className="cse-field"><span>Nome da etapa</span><input value={editName} onChange={(event) => setEditName(event.target.value)} autoFocus /></label>
+        <div className="cse-field"><span>Cor da etapa</span><div className="cse-swatches">{STAGE_PALETTE.map((c) => <button type="button" key={c} className={`cse-swatch ${editColor.toLowerCase() === c.toLowerCase() ? "sel" : ""}`} style={{ background: c }} onClick={() => setEditColor(c)} aria-label={`Cor ${c}`}>{editColor.toLowerCase() === c.toLowerCase() ? "✓" : ""}</button>)}</div></div>
+        <div className="cse-move"><button type="button" disabled={globalIndex <= 0} onClick={() => { void onReorderStage?.(stage.id, -1); }}>‹ Mover atrás</button><button type="button" disabled={globalIndex < 0 || globalIndex >= total - 1} onClick={() => { void onReorderStage?.(stage.id, 1); }}>Mover frente ›</button></div>
+        <button type="button" className="cse-bulk" onClick={() => { setMenuStage(null); onBulkFromStage?.(stage.id); }}>⇄ Mover todos os leads desta etapa</button>
+        <div className="cse-actions"><button type="button" className="cse-cancel" onClick={() => setMenuStage(null)}>Cancelar</button><button type="button" className="cse-save" onClick={() => { void onSaveStage?.(stage.id, editName.trim() || (stage.rotulo || stage.nome), editColor); setMenuStage(null); }}>Salvar</button></div>
+      </div>}
       <div className="crm-stage-body">{items.map((deal) => {
         const lead = leadById.get(deal.lead_id)!;
         const broker = brokerById.get(deal.corretor_id ?? lead.corretor_id ?? -1);
         const tags = tagList(lead.tags);
         const sla = slaByDeal.get(deal.id);
-        const color = sla?.cor_ativa || "verde";
         const waiting = sla?.aguardando_humano;
-        return <article draggable className={`crm-lead-card-v3 sla-${color} ${draggingId === deal.id ? "dragging" : ""}`} onDragStart={(event) => { if ((event.target as HTMLElement).closest(".card-controls-v3, .broker-trigger-v3")) return event.preventDefault(); event.dataTransfer.setData("text/deal-id", String(deal.id)); onDrag(deal.id); }} onDragEnd={() => onDrag(null)} key={deal.id}>
+        const color = alertColorByDays(waiting ? sla?.min_aguardando : sla?.min_sem_interacao);
+        return <article draggable={canMoveDeals !== false} className={`crm-lead-card-v3 sla-${color} ${draggingId === deal.id ? "dragging" : ""}`} onDragStart={(event) => { if (canMoveDeals === false || (event.target as HTMLElement).closest(".card-controls-v3, .broker-trigger-v3")) return event.preventDefault(); event.dataTransfer.setData("text/deal-id", String(deal.id)); onDrag(deal.id); }} onDragEnd={() => onDrag(null)} key={deal.id}>
           <div className={`sla-top-band ${color}`} />
-          <button className="card-open-v3" type="button" onClick={() => onOpen(deal.id)}>
-            <div className="card-person"><span>{initials(lead.nome)}</span><div><strong>{lead.nome || "Lead sem nome"}</strong><small>{lead.telefone || "Sem telefone"}</small></div><em>›</em></div>
+          <div className="card-open-v3" role="button" tabIndex={0} onClick={() => onOpen(deal.id)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") onOpen(deal.id); }}>
+            <div className="card-person"><LeadAvatar lead={lead} /><div><strong>{lead.nome || "Lead sem nome"}</strong><small>{lead.telefone || "Sem telefone"}</small></div><em>›</em></div>
+            <div className="card-broker-inline-v3"><span className={`presence ${broker?.online ? "online" : ""}`} />{canReassign ? <button className="broker-trigger-v3" type="button" onClick={(event) => { event.stopPropagation(); onReassign(deal.id); }}>{broker?.nome || "Escolher corretor"}<span>⌄</span></button> : <strong>{broker?.nome || "Sem responsável"}</strong>}</div>
             <div className="sla-clock-v3"><b>{formatElapsed(waiting ? sla?.min_aguardando : sla?.min_sem_interacao)}</b><span>{waiting ? "cliente aguardando resposta" : "sem interação com o lead"}</span></div>
             <div className="card-context"><span>{lead.origem || "Sem origem"}</span>{deal.valor ? <b>{money.format(deal.valor)}</b> : <small>Valor a definir</small>}</div>
-            {tags.length > 0 && <div className="card-tags">{tags.slice(0, 3).map((item) => <span key={item}>{item}</span>)}</div>}
-          </button>
-          <div className="card-broker-row-v3">
-            <span className={`presence ${broker?.online ? "online" : ""}`} />
-            {canReassign ? <button className="broker-trigger-v3" type="button" onClick={() => onReassign(deal.id)}>{broker?.nome || "Escolher corretor"}<span>⌄</span></button> : <strong>{broker?.nome || "Sem responsável"}</strong>}
+            {tags.length > 0 && <div className="card-tags" aria-label="Tags do lead">{tags.slice(0, 2).map((item) => <span key={item}>{item}</span>)}</div>}
           </div>
           <div className="card-controls-v3" onClick={(event) => event.stopPropagation()}>
             <button type="button" onClick={() => onChat(deal.id)}>Chat</button>
-            <label><span className="sr-only">Etapa</span><select aria-label={`Mover ${lead.nome || "lead"} para outra etapa`} disabled={busyId === deal.id} value={deal.stage_id ?? ""} onChange={(event) => void change({ action: "moveDeal", dealId: deal.id, stageId: Number(event.target.value) }, "Etapa atualizada.", deal.id)}>{allStages.map((item) => <option value={item.id} key={item.id}>{item.rotulo || item.nome}</option>)}</select></label>
+            {canMoveDeals !== false && <label><span className="sr-only">Etapa</span><select aria-label={`Mover ${lead.nome || "lead"} para outra etapa`} disabled={busyId === deal.id} value={deal.stage_id ?? ""} onChange={(event) => void change({ action: "moveDeal", dealId: deal.id, stageId: Number(event.target.value) }, "Etapa atualizada.", deal.id)}>{allStages.map((item) => <option value={item.id} key={item.id}>{item.rotulo || item.nome}</option>)}</select></label>}
           </div>
           <footer><time>{sla?.min_no_estagio !== null && sla?.min_no_estagio !== undefined ? `${formatElapsed(sla.min_no_estagio)} na etapa` : shortDate.format(new Date(deal.ultima_movimentacao || deal.criado_em))}</time></footer>
         </article>;
@@ -407,10 +520,31 @@ function PipelineViewEnhanced({ stages, allStages, deals, leadById, brokerById, 
   })}</section>;
 }
 
-function LeadsViewEnhanced({ deals, leadById, stages, brokerById, slaByDeal, canReassign, onReassign, onOpen, onChat, onMutate, setMessage }: { deals: Deal[]; leadById: Map<number, Lead>; stages: Stage[]; brokerById: Map<number, Broker>; slaByDeal: Map<number, SlaInfo>; canReassign: boolean; onReassign: (dealId: number) => void; onOpen: (id: number) => void; onChat: (id: number) => void; onMutate: (body: Record<string, unknown>) => Promise<void>; setMessage: (value: string | null) => void }) {
+function LeadsViewEnhanced({ deals, leadById, stages, brokerById, slaByDeal, canReassign, onReassign, onOpen, onChat, onMutate, setMessage, canMoveDeals }: { deals: Deal[]; leadById: Map<number, Lead>; stages: Stage[]; brokerById: Map<number, Broker>; slaByDeal: Map<number, SlaInfo>; canReassign: boolean; onReassign: (dealId: number) => void; onOpen: (id: number) => void; onChat: (id: number) => void; onMutate: (body: Record<string, unknown>) => Promise<void>; setMessage: (value: string | null) => void; canMoveDeals?: boolean }) {
   const [busyId, setBusyId] = useState<number | null>(null);
   const change = async (body: Record<string, unknown>, success: string, dealId: number) => { setBusyId(dealId); try { await onMutate(body); setMessage(success); } catch (reason) { setMessage(reason instanceof Error ? reason.message : "Não foi possível salvar."); } finally { setBusyId(null); } };
-  return <section className="crm-table-wrap"><table className="crm-leads-table crm-leads-table-v3"><thead><tr><th>Lead</th><th>Tempo sem interação</th><th>Etapa</th><th>Corretor</th><th>Origem</th><th>Valor</th><th>Ações</th></tr></thead><tbody>{deals.map((deal) => { const lead = leadById.get(deal.lead_id)!; const sla = slaByDeal.get(deal.id); const broker = brokerById.get(deal.corretor_id ?? lead.corretor_id ?? -1); return <tr className={`sla-row-${sla?.cor_ativa || "verde"}`} key={deal.id}><td onClick={() => onOpen(deal.id)}><div className="table-person"><span>{initials(lead.nome)}</span><div><strong>{lead.nome || "Lead sem nome"}</strong><small>{lead.telefone || `#${lead.id}`}</small></div></div></td><td><strong>{formatElapsed(sla?.aguardando_humano ? sla.min_aguardando : sla?.min_sem_interacao)}</strong><small>{sla?.aguardando_humano ? "aguardando resposta" : "sem interação"}</small></td><td><select disabled={busyId === deal.id} value={deal.stage_id ?? ""} onChange={(event) => void change({ action: "moveDeal", dealId: deal.id, stageId: Number(event.target.value) }, "Etapa atualizada.", deal.id)}>{stages.map((stage) => <option value={stage.id} key={stage.id}>{stage.rotulo || stage.nome}</option>)}</select></td><td>{canReassign ? <button className="table-broker-trigger" type="button" onClick={() => onReassign(deal.id)}>{broker?.nome || "Escolher corretor"}<span>⌄</span></button> : <strong>{broker?.nome || "Sem responsável"}</strong>}<small>{broker?.online ? "● online" : "offline"}</small></td><td>{lead.origem || "—"}</td><td>{deal.valor ? money.format(deal.valor) : "—"}</td><td><div className="table-actions-v3"><button type="button" onClick={() => onChat(deal.id)}>Chat</button><button type="button" onClick={() => onOpen(deal.id)}>Abrir</button></div></td></tr>; })}</tbody></table>{deals.length === 0 && <div className="crm-empty-view">Nenhum lead encontrado com esses filtros.</div>}</section>;
+  const visibleDeals = deals.slice(0, 15);
+  return <section className="crm-table-wrap">
+    <table className="crm-leads-table crm-leads-table-v3">
+      <thead><tr><th>Lead</th><th>Tempo sem interação</th><th>Etapa</th><th>Corretor</th><th>Origem</th><th>Valor</th><th>Atualização</th><th>Ações</th></tr></thead>
+      <tbody>{visibleDeals.map((deal, index) => {
+        const lead = leadById.get(deal.lead_id)!;
+        const sla = slaByDeal.get(deal.id);
+        const broker = brokerById.get(deal.corretor_id ?? lead.corretor_id ?? -1);
+        const tags = tagList(lead.tags).slice(0, 2);
+        return <tr className={`lead-tone-${index % 5 + 1} sla-row-${sla?.cor_ativa || "verde"}`} key={deal.id}>
+          <td onClick={() => onOpen(deal.id)}><div className="table-person"><LeadAvatar lead={lead} /><div><strong>{lead.nome || "Lead sem nome"}</strong><small>#{lead.id}</small>{tags.length > 0 && <div className="lead-table-tags" aria-label="Tags do lead">{tags.map((item) => <span key={item}>{item}</span>)}</div>}</div></div></td>
+          <td><strong>{formatElapsed(sla?.aguardando_humano ? sla.min_aguardando : sla?.min_sem_interacao)}</strong><small>{sla?.aguardando_humano ? "aguardando resposta" : "sem interação"}</small></td>
+          <td>{canMoveDeals !== false ? <select disabled={busyId === deal.id} value={deal.stage_id ?? ""} onChange={(event) => void change({ action: "moveDeal", dealId: deal.id, stageId: Number(event.target.value) }, "Etapa atualizada.", deal.id)}>{stages.map((stage) => <option value={stage.id} key={stage.id}>{stage.rotulo || stage.nome}</option>)}</select> : <span className="stage-pill-static">{stages.find((s) => s.id === deal.stage_id)?.rotulo || stages.find((s) => s.id === deal.stage_id)?.nome || "—"}</span>}</td>
+          <td>{canReassign ? <button className="table-broker-trigger" type="button" onClick={() => onReassign(deal.id)}>{broker?.nome || "Escolher corretor"}<span>⌄</span></button> : <strong>{broker?.nome || "Sem responsável"}</strong>}<small>{broker?.online ? "● online" : "offline"}</small></td>
+          <td>{lead.origem || "—"}</td><td>{deal.valor ? money.format(deal.valor) : "—"}</td><td>{shortDate.format(new Date(deal.ultima_movimentacao || deal.criado_em))}</td>
+          <td><div className="table-actions-v3"><button type="button" onClick={() => onOpen(deal.id)}>Abrir</button><button type="button" onClick={() => onChat(deal.id)}>Chat</button></div></td>
+        </tr>;
+      })}</tbody>
+    </table>
+    {deals.length > 15 && <div className="crm-leads-limit">Mostrando os primeiros 15 de {deals.length} leads</div>}
+    {deals.length === 0 && <div className="crm-empty-view">Nenhum lead encontrado com esses filtros.</div>}
+  </section>;
 }
 
 function BrokerPickerModal({ deal, lead, brokers, onClose, onSave }: { deal: Deal; lead: Lead; brokers: Broker[]; onClose: () => void; onSave: (brokerId: number) => Promise<void> }) {
@@ -428,14 +562,14 @@ function BrokerPickerModal({ deal, lead, brokers, onClose, onSave }: { deal: Dea
   </div>;
 }
 
-function BulkMoveModal({ pipelineId, stages, deals, onClose, onMove }: { pipelineId: number; stages: Stage[]; deals: Deal[]; onClose: () => void; onMove: (fromStageId: number, toStageId: number) => Promise<void> }) {
-  const [fromStageId, setFromStageId] = useState(""); const [toStageId, setToStageId] = useState(""); const [busy, setBusy] = useState(false); const [error, setError] = useState<string | null>(null);
+function BulkMoveModal({ pipelineId, stages, deals, initialFromStageId, onClose, onMove }: { pipelineId: number; stages: Stage[]; deals: Deal[]; initialFromStageId?: number | null; onClose: () => void; onMove: (fromStageId: number, toStageId: number) => Promise<void> }) {
+  const [fromStageId, setFromStageId] = useState(initialFromStageId ? String(initialFromStageId) : ""); const [toStageId, setToStageId] = useState(""); const [busy, setBusy] = useState(false); const [error, setError] = useState<string | null>(null);
   const count = deals.filter((deal) => deal.stage_id === Number(fromStageId) && deal.status !== "perdido").length;
   return <div className="crm-center-modal"><form onSubmit={(event) => { event.preventDefault(); setBusy(true); setError(null); void onMove(Number(fromStageId), Number(toStageId)).catch((reason) => setError(reason instanceof Error ? reason.message : "Não foi possível mover a etapa.")).finally(() => setBusy(false)); }}><header><div><span>AÇÃO EM MASSA</span><h2>Mover uma etapa inteira</h2><p>Todos os negócios da etapa escolhida serão enviados para o novo destino.</p></div><button type="button" onClick={onClose}>×</button></header>{error && <div className="modal-error">{error}</div>}<div className="bulk-move-grid"><label>Etapa de origem<select required value={fromStageId} onChange={(event) => setFromStageId(event.target.value)}><option value="">Selecione</option>{stages.map((stage) => <option value={stage.id} key={stage.id}>{stage.rotulo || stage.nome}</option>)}</select></label><div className="bulk-arrow">→</div><label>Etapa de destino<select required value={toStageId} onChange={(event) => setToStageId(event.target.value)}><option value="">Selecione</option>{stages.filter((stage) => String(stage.id) !== fromStageId).map((stage) => <option value={stage.id} key={stage.id}>{stage.rotulo || stage.nome}</option>)}</select></label></div><div className="bulk-warning"><strong>{count} negócio{count === 1 ? "" : "s"}</strong><span>serão movidos dentro do funil #{pipelineId}</span></div><footer><button type="button" onClick={onClose}>Cancelar</button><button className="crm-primary" disabled={busy || !fromStageId || !toStageId || count === 0} type="submit">{busy ? "Movendo..." : `Mover ${count} negócios`}</button></footer></form></div>;
 }
 
 function LeadChatDrawer({ accessToken, lead, deal, corretorNome, onClose, onResponse }: { accessToken: string; lead: Lead; deal: Deal; corretorNome?: string; onClose: () => void; onResponse: () => Promise<void> }) {
-  const [instances, setInstances] = useState<ChatInstance[]>([]); const [selectedKey, setSelectedKey] = useState(""); const [messages, setMessages] = useState<ChatMessage[]>([]); const [draft, setDraft] = useState(""); const [loading, setLoading] = useState(true); const [sending, setSending] = useState(false); const [error, setError] = useState<string | null>(null); const [recording, setRecording] = useState(false); const [collapsed, setCollapsed] = useState(false);
+  const [instances, setInstances] = useState<ChatInstance[]>([]); const [selectedKey, setSelectedKey] = useState(""); const [messages, setMessages] = useState<ChatMessage[]>([]); const [draft, setDraft] = useState(""); const [loading, setLoading] = useState(true); const [sending, setSending] = useState(false); const [error, setError] = useState<string | null>(null); const [recording, setRecording] = useState(false); const [collapsed, setCollapsed] = useState(false); const [suggestClosed, setSuggestClosed] = useState(false);
   const copiloto = useLeadCopiloto(accessToken, lead.nome || "");
   const fileInput = useRef<HTMLInputElement>(null); const recorder = useRef<MediaRecorder | null>(null); const chunks = useRef<Blob[]>([]);
   const listRef = useRef<HTMLElement>(null);
@@ -473,7 +607,11 @@ function LeadChatDrawer({ accessToken, lead, deal, corretorNome, onClose, onResp
           page++;
         }
       }
-      // Reserva: inbox nativo, caso a d-api não retorne (sem chat / offline).
+      // Mescla o banco (traz as mensagens que FALHARAM — elas não existem na d-api). O dedup por wa_message_id mantém a versão da d-api (com ack) quando há duplicata.
+      if (instance.conversaIds.length) {
+        try { const dbRes = await request({ action: "messages", conversaIds: instance.conversaIds, limit: 500 }); const dbMsgs = Array.isArray(dbRes.mensagens) ? dbRes.mensagens as ChatMessage[] : []; if (dbMsgs.length) { acc = acc.concat(dbMsgs); render(); } } catch { /* silencioso */ }
+      }
+      // Reserva: inbox nativo, caso nada tenha vindo (sem chat / offline).
       if (!acc.length && instance.conversaIds.length) {
         const result = await request({ action: "messages", conversaIds: instance.conversaIds, limit: 500 });
         acc = Array.isArray(result.mensagens) ? result.mensagens as ChatMessage[] : [];
@@ -512,7 +650,7 @@ function LeadChatDrawer({ accessToken, lead, deal, corretorNome, onClose, onResp
   async function toggleRecording() { if (recording) { recorder.current?.stop(); setRecording(false); return; } try { const stream = await navigator.mediaDevices.getUserMedia({ audio: true }); chunks.current = []; const mediaRecorder = new MediaRecorder(stream); recorder.current = mediaRecorder; mediaRecorder.ondataavailable = (event) => { if (event.data.size) chunks.current.push(event.data); }; mediaRecorder.onstop = () => { const blob = new Blob(chunks.current, { type: mediaRecorder.mimeType || "audio/webm" }); stream.getTracks().forEach((track) => track.stop()); void upload(new File([blob], `audio-${Date.now()}.webm`, { type: blob.type })); }; mediaRecorder.start(); setRecording(true); } catch { setError("Autorize o microfone para gravar o áudio."); } }
   async function scheduleMessage() { if (!selected?.sendBig || !lead.telefone) return; const content = window.prompt("Mensagem que será agendada:", draft); if (!content) return; const date = window.prompt("Data e hora:", new Date(Date.now() + 3_600_000).toISOString().slice(0, 16)); if (!date) return; setSending(true); setError(null); try { await liveAction({ action: "schedule", phone: lead.telefone, instanceId: selected.sendBig, leadId: lead.id, content, when: date }); setDraft(""); } catch (reason) { setError(reason instanceof Error ? reason.message : "Não foi possível agendar."); } finally { setSending(false); } }
   async function sendApproach() { if (!selected?.sendBig || !lead.telefone) return; setSending(true); setError(null); try { const response = await authedFetch("/api/approaches", { headers: { Authorization: `Bearer ${accessToken}` } }); const result = await response.json() as { approaches?: Array<{ id: number; nome: string; ativo: boolean }>; error?: string }; if (!response.ok) throw new Error(result.error || "Não foi possível carregar as abordagens."); const active = (result.approaches ?? []).filter((item) => item.ativo); const choice = window.prompt(`Digite o ID da abordagem:\n${active.map((item) => `${item.id} — ${item.nome}`).join("\n")}`); if (!choice) return; await liveAction({ action: "sendApproach", approachId: Number(choice), phone: lead.telefone, instanceId: selected.sendBig, leadId: lead.id, leadName: lead.nome }); } catch (reason) { setError(reason instanceof Error ? reason.message : "Não foi possível enviar a abordagem."); } finally { setSending(false); } }
-  return <div className="crm-drawer-layer chat-layer" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}><aside className={`lead-chat-drawer ${collapsed ? "is-collapsed" : ""}`}><header><div><span>{initials(lead.nome)}</span><div><small>CONVERSA DO LEAD #{lead.id}</small><h2>{lead.nome || "Lead sem nome"}</h2><p>{lead.telefone || "Telefone não informado"}</p></div></div><div className="chat-head-actions"><button type="button" onClick={() => setCollapsed((v) => !v)} title={collapsed ? "Expandir" : "Minimizar"} aria-label="Minimizar">{collapsed ? "▢" : "—"}</button><button type="button" onClick={onClose} aria-label="Fechar">×</button></div></header><section className="chat-instance-bar"><label>Instância do histórico<select value={selectedKey} onChange={(event) => setSelectedKey(event.target.value)}><option value="">Selecione</option>{instances.map((item) => <option value={item.key} key={item.key}>{item.nome} · {item.corretor || "sem corretor"} · {item.msgs} msgs</option>)}</select></label><span className={selected?.conectada ? "connected" : ""}>{selected?.conectada ? "● conectada" : "○ sem conexão confirmada"}</span></section>{error && <div className="chat-error">{error}</div>}<section className="chat-messages" ref={listRef}>{loading && <div className="chat-loading">Carregando conversa real…</div>}{!loading && messages.map((item) => <article className={`${item.direcao === "enviada" ? "sent" : "received"} ${item.direcao === "enviada" && ackState(item.status) === "erro" ? "msg-failed" : ""}`} key={item.id}><small>{item.tipo}</small><MessageMedia message={item} />{item.conteudo && <p>{item.conteudo}</p>}{item.direcao === "enviada" && ackState(item.status) === "erro" && <span className="msg-erro-motivo">⚠ {item.status_detalhe || "Não foi possível entregar esta mensagem."}</span>}<time>{item.criado_em ? dateTime.format(new Date(item.criado_em)) : ""}{item.direcao === "enviada" && <StatusTick status={item.status} detalhe={item.status_detalhe} />}</time></article>)}{!loading && messages.length === 0 && <div className="crm-empty-view">Nenhuma mensagem encontrada nesta instância.</div>}</section><section className="mini-chat-tools"><button className={recording ? "recording" : ""} type="button" onClick={() => void toggleRecording()} title="Gravar áudio">{recording ? <><span className="mct-ico">■</span><span className="mct-lbl">Parar</span></> : <><span className="mct-ico">🎤</span><span className="mct-lbl">Áudio</span></>}</button><button type="button" onClick={() => fileInput.current?.click()} title="Anexar mídia"><span className="mct-ico">📎</span><span className="mct-lbl">Documento</span></button><button type="button" onClick={() => void scheduleMessage()} title="Agendar mensagem"><span className="mct-ico">🕓</span><span className="mct-lbl">Agendar</span></button><button type="button" onClick={() => void sendApproach()} title="Enviar abordagem"><span className="mct-ico">🏡</span><span className="mct-lbl">Abordagem</span></button><input ref={fileInput} hidden type="file" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx" onChange={(event) => void upload(event.target.files?.[0])} /></section>{copiloto.data?.mensagem_sugerida && <div className="chat-suggestion"><div><b>✦ Sugestão da Sara</b><p>{copiloto.data.mensagem_sugerida}</p></div><div className="chat-suggestion-actions"><button type="button" className="cs-use" onClick={() => setDraft(copiloto.data!.mensagem_sugerida!)}>Usar</button><button type="button" className="cs-send" disabled={!selected?.sendBig || sending} onClick={() => void sendSuggestion(copiloto.data!.mensagem_sugerida!)}>➤ Enviar</button></div></div>}<footer><textarea value={draft} onChange={(event) => setDraft(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); void send(); } }} placeholder={selected?.sendBig ? "Escreva uma mensagem..." : "Selecione uma instância habilitada para envio"} disabled={!selected?.sendBig || sending} /><button type="button" disabled={!selected?.sendBig || !draft.trim() || sending} onClick={() => void send()}>{sending ? "…" : "➤"}</button></footer><div className="chat-deal-status">Negócio #{deal.id} · Histórico, anexos e agendamentos usam a instância escolhida.</div></aside></div>;
+  return <div className="crm-drawer-layer chat-layer" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}><aside className={`lead-chat-drawer ${collapsed ? "is-collapsed" : ""}`}><header><div><span>{initials(lead.nome)}</span><div><small>CONVERSA DO LEAD #{lead.id}</small><h2>{lead.nome || "Lead sem nome"}</h2><p>{lead.telefone || "Telefone não informado"}</p></div></div><div className="chat-head-actions"><button type="button" onClick={() => setCollapsed((v) => !v)} title={collapsed ? "Expandir" : "Minimizar"} aria-label="Minimizar">{collapsed ? "▢" : "—"}</button><button type="button" onClick={onClose} aria-label="Fechar">×</button></div></header><section className="chat-instance-bar"><label>Instância do histórico<select value={selectedKey} onChange={(event) => setSelectedKey(event.target.value)}><option value="">Selecione</option>{instances.map((item) => <option value={item.key} key={item.key}>{item.nome} · {item.corretor || "sem corretor"} · {item.msgs} msgs</option>)}</select></label><span className={selected?.conectada ? "connected" : ""}>{selected?.conectada ? "● conectada" : "○ sem conexão confirmada"}</span></section>{error && <div className="chat-error">{error}</div>}<section className="chat-messages" ref={listRef}>{loading && <div className="chat-loading">Carregando conversa real…</div>}{!loading && messages.map((item) => <article className={`${item.direcao === "enviada" ? "sent" : "received"} ${item.direcao === "enviada" && ackState(item.status) === "erro" ? "msg-failed" : ""}`} key={item.id}><small>{item.tipo}</small><MessageMedia message={item} />{item.conteudo && <p>{item.conteudo}</p>}{item.direcao === "enviada" && ackState(item.status) === "erro" && <span className="msg-erro-motivo">⚠ {item.status_detalhe || "Não foi possível entregar esta mensagem."}</span>}<time>{item.criado_em ? dateTime.format(new Date(item.criado_em)) : ""}{item.direcao === "enviada" && <StatusTick status={item.status} detalhe={item.status_detalhe} />}</time></article>)}{!loading && messages.length === 0 && <div className="crm-empty-view">Nenhuma mensagem encontrada nesta instância.</div>}</section><section className="mini-chat-tools"><button className={recording ? "recording" : ""} type="button" onClick={() => void toggleRecording()} title="Gravar áudio" aria-label="Gravar áudio">{recording ? <span className="mct-ico"><svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2" /></svg></span> : <span className="mct-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="2" width="6" height="12" rx="3" /><path d="M5 10a7 7 0 0 0 14 0" /><line x1="12" y1="17" x2="12" y2="21" /></svg></span>}<span className="mct-lbl">{recording ? "Parar" : "Áudio"}</span></button><button type="button" onClick={() => fileInput.current?.click()} title="Anexar mídia" aria-label="Anexar mídia"><span className="mct-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M21.4 11.05 12.2 20.2a5 5 0 0 1-7.1-7.1l9.2-9.2a3.3 3.3 0 0 1 4.7 4.7l-9.2 9.2a1.6 1.6 0 0 1-2.3-2.3l8.5-8.5" /></svg></span><span className="mct-lbl">Documento</span></button><button type="button" onClick={() => void scheduleMessage()} title="Agendar mensagem" aria-label="Agendar mensagem"><span className="mct-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg></span><span className="mct-lbl">Agendar</span></button><button type="button" onClick={() => void sendApproach()} title="Enviar abordagem" aria-label="Enviar abordagem"><span className="mct-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M3 11.5 12 4l9 7.5" /><path d="M5 10v9a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-9" /></svg></span><span className="mct-lbl">Abordagem</span></button><input ref={fileInput} hidden type="file" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx" onChange={(event) => void upload(event.target.files?.[0])} /></section>{copiloto.data?.mensagem_sugerida && !suggestClosed && <div className="chat-suggestion"><button type="button" className="cs-close" aria-label="Fechar sugestão" title="Fechar sugestão" onClick={() => setSuggestClosed(true)}>×</button><div><b>✦ Sugestão da Sara</b><p>{copiloto.data.mensagem_sugerida}</p></div><div className="chat-suggestion-actions"><button type="button" className="cs-use" onClick={() => setDraft(copiloto.data!.mensagem_sugerida!)}>Usar</button><button type="button" className="cs-send" disabled={!selected?.sendBig || sending} onClick={() => void sendSuggestion(copiloto.data!.mensagem_sugerida!)}>➤ Enviar</button></div></div>}<footer><textarea value={draft} onChange={(event) => setDraft(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); void send(); } }} placeholder={selected?.sendBig ? "Escreva uma mensagem..." : "Selecione uma instância habilitada para envio"} disabled={!selected?.sendBig || sending} /><button type="button" disabled={!selected?.sendBig || !draft.trim() || sending} onClick={() => void send()}>{sending ? "…" : "➤"}</button></footer><div className="chat-deal-status">Negócio #{deal.id} · Histórico, anexos e agendamentos usam a instância escolhida.</div></aside></div>;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -557,7 +695,7 @@ function LeadActionIcon({ name }: { name: LeadActionIconName }) {
 }
 
 function useLeadCopiloto(accessToken: string, leadNome: string) {
-  const [state, setState] = useState<{ loading: boolean; data: { nota?: number | null; resumo_nota?: string | null; feedback?: string | null; proxima_acao?: string | null; mensagem_sugerida?: string | null } | null }>({ loading: true, data: null });
+  const [state, setState] = useState<{ loading: boolean; data: { nota?: number | null; feedbacks?: { criterio?: string; positivo?: boolean; texto?: string }[]; proxima_acao?: string | null; mensagem_sugerida?: string | null } | null }>({ loading: true, data: null });
   useEffect(() => {
     if (!leadNome) { setState({ loading: false, data: null }); return; }
     let alive = true;
@@ -571,7 +709,7 @@ function useLeadCopiloto(accessToken: string, leadNome: string) {
   return state;
 }
 
-function LeadDrawer({ accessToken, lead, deal, data, canReassign, onClose, onMutate, onReload, setMessage }: { accessToken: string; lead: Lead; deal: Deal; data: CrmData; canReassign: boolean; onClose: () => void; onMutate: (body: Record<string, unknown>) => Promise<void>; onReload: () => Promise<void>; setMessage: (value: string | null) => void }) {
+function LeadDrawer({ accessToken, lead, deal, data, canReassign, canMoveDeals, onClose, onMutate, onReload, setMessage }: { accessToken: string; lead: Lead; deal: Deal; data: CrmData; canReassign: boolean; canMoveDeals?: boolean; onClose: () => void; onMutate: (body: Record<string, unknown>) => Promise<void>; onReload: () => Promise<void>; setMessage: (value: string | null) => void }) {
   const copiloto = useLeadCopiloto(accessToken, lead.nome || "");
   const [tab, setTab] = useState<"resumo" | "historico" | "agenda" | "produtos">("resumo");
   /* Doc §5 — abas arrastáveis com ordem persistida */
@@ -642,7 +780,7 @@ function LeadDrawer({ accessToken, lead, deal, data, canReassign, onClose, onMut
     <section className="lead-classic-panel">
       <button className="lead-sale-action" type="button" onClick={() => setSaleOpen(true)}>▤ <span>Enviar para processo de venda</span></button>
       <article className="lead-next-action"><header><span>✦</span><b>PRÓXIMA MELHOR AÇÃO</b></header>{copiloto.loading ? <h3>Sara analisando o atendimento…</h3> : <><h3>{copiloto.data?.proxima_acao || `Fazer follow-up com ${lead.nome?.split(/\s+/)[0] || "o lead"}`}</h3><p>{copiloto.data?.resumo_nota || "Um retorno curto mantém o lead ativo."}</p></>}</article>
-      <article className="lead-nota-card"><header><b>★ NOTA DO ATENDIMENTO</b>{!copiloto.loading && copiloto.data?.nota != null && <em>{copiloto.data.nota}/10</em>}</header>{copiloto.loading ? <p>Ouvindo os áudios e avaliando…</p> : <p>{copiloto.data?.feedback || copiloto.data?.resumo_nota || "Ainda não há conversa suficiente para avaliar este atendimento."}</p>}</article>
+      <article className="lead-nota-card"><header><b>★ NOTA DO ATENDIMENTO</b>{!copiloto.loading && copiloto.data?.nota != null && <em>{copiloto.data.nota}/10</em>}</header>{copiloto.loading ? <p>Ouvindo os áudios e avaliando a conversa…</p> : (copiloto.data?.feedbacks?.length ? <ul className="lead-feedbacks">{copiloto.data.feedbacks.map((f, i) => <li key={i} className={f.positivo ? "pos" : "neg"}><span>{f.positivo ? "✓" : "✗"}</span><div>{f.criterio ? <b>{f.criterio}: </b> : null}{f.texto}</div></li>)}</ul> : <p>Ainda não há conversa suficiente para avaliar este atendimento.</p>)}</article>
       <h4>AÇÕES RÁPIDAS</h4>
       <div className="lead-action-grid">
         <button type="button" onClick={() => setQuickAction("task")}><LeadActionIcon name="task" /><span>Tarefas</span></button>
@@ -656,7 +794,7 @@ function LeadDrawer({ accessToken, lead, deal, data, canReassign, onClose, onMut
         <button type="button" onClick={() => { setTask(`Fazer follow-up com ${lead.nome || "o lead"}`); setTab("agenda"); setMessage("Sugestão da IA preparada como próxima tarefa."); }}><LeadActionIcon name="ai" /><span>Pedir à IA</span></button>
       </div>
       <article className="lead-context-card"><div><small>ORIGEM</small><strong><span>⌘</span>{lead.origem || "Não informada"}</strong></div><div><small>PRODUTO DE INTERESSE</small><strong><span>▥</span>{currentProduct?.nome || "—"}</strong></div><p>ⓘ Origem e interesse são distintos — alimentam o BI de campanhas.</p><footer><small>Corretor responsável</small><strong><span>♧</span>{responsible?.nome || "Não definido"}</strong></footer></article>
-      <article className="lead-funnel-status"><h4>ETAPA DO FUNIL</h4><div className="lead-stage-track">{stages.map((stage, index) => <i className={index <= stageIndex ? "active" : ""} style={{ "--lead-stage-color": stage.cor || "#8b00cc" } as CSSProperties} key={stage.id} />)}</div><select value={deal.stage_id ?? ""} disabled={busy} onChange={(event) => void run({ action: "moveDeal", dealId: deal.id, stageId: Number(event.target.value) }, "Etapa atualizada.")}>{stages.map((stage) => <option value={stage.id} key={stage.id}>{stage.rotulo || stage.nome}</option>)}</select><button type="button" onClick={() => setAction("discard")}>Descartar lead</button></article>
+      <article className="lead-funnel-status"><h4>ETAPA DO FUNIL</h4><div className="lead-stage-track">{stages.map((stage, index) => <i className={index <= stageIndex ? "active" : ""} style={{ "--lead-stage-color": stage.cor || "#8b00cc" } as CSSProperties} key={stage.id} />)}</div>{canMoveDeals !== false && <select value={deal.stage_id ?? ""} disabled={busy} onChange={(event) => void run({ action: "moveDeal", dealId: deal.id, stageId: Number(event.target.value) }, "Etapa atualizada.")}>{stages.map((stage) => <option value={stage.id} key={stage.id}>{stage.rotulo || stage.nome}</option>)}</select>}{canMoveDeals !== false && <button type="button" onClick={() => setAction("discard")}>Descartar lead</button>}</article>
     </section>
     <nav className="drawer-tabs-v2 draggable-tabs">{tabOrder.map((key) => { const label = key === "resumo" ? "Resumo" : key === "historico" ? "Histórico" : key === "agenda" ? "Tarefas e visitas" : `Produtos (${links.length})`; return <button
       className={`${tab === key ? "active" : ""} ${dragTab === key ? "tab-dragging" : ""}`}

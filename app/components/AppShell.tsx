@@ -51,11 +51,33 @@ function NavGroup({ label, items, activeItem, onNavigate }: { label: string; ite
 export function AppShell({ children, activeItem, onNavigate, onOpenProfile, sessionRole = "corretor", sessionName = "Corretor", modulePermissions = null }: { children: ReactNode; activeItem: ModuleName; onNavigate: (item: ModuleName) => void; onOpenProfile?: () => void; sessionRole?: "admin" | "gestor" | "corretor"; sessionName?: string; modulePermissions?: Record<string, string[]> | null }) {
   const isBroker = sessionRole === "corretor";
   const [navCollapsed, setNavCollapsed] = useState(false);
-  /* Doc §14 — sem "ver" no módulo, ele some do menu (admin nunca perde Usuários/Configurações para não se trancar fora) */
+  /* Doc §14 — sem "ver" no módulo, ele some do menu (admin nunca perde Usuários/Configurações para não se trancar fora).
+     IMPORTANTE: as permissões são gravadas por SLUG (dashboard, crm, financeiro…), não pelo rótulo do menu
+     ("Início", "CRM"…). O mapa abaixo liga cada item do menu ao(s) slug(s) de permissão. Sem esse mapa, todo
+     lookup falhava e o corretor ficava com o menu vazio. */
+  const permSlugs: Partial<Record<ModuleName, string[]>> = {
+    "Início": ["dashboard"],
+    CRM: ["crm", "leads", "pipeline"],
+    Performance: ["performance"],
+    Produtos: ["produtos"],
+    Financeiro: ["financeiro", "comissoes", "vendas", "fluxo_caixa"],
+    Abordagens: ["abordagens"],
+    "Automações": ["automacoes"],
+    "Chat ao Vivo": ["chat"],
+    Disparos: ["disparos"],
+    "Calendário": ["calendario"],
+    "Agentes de IA": ["agentes_ia"],
+    "Usuários": ["usuarios"],
+    "Notificações": ["notificacoes"],
+    Auditoria: ["auditoria"],
+    "Configurações": ["configuracoes"],
+  };
   const canSee = (item: ModuleName) => {
     if (sessionRole === "admin") return true;
     if (!modulePermissions || Object.keys(modulePermissions).length === 0) return true;
-    return (modulePermissions[item] ?? []).includes("ver");
+    const slugs = permSlugs[item];
+    if (!slugs) return true; // módulos fora do catálogo de permissões (Financiamento, Ajuda, Base de conhecimento) sempre visíveis
+    return slugs.some((slug) => (modulePermissions[slug] ?? []).includes("ver"));
   };
   const mainItems = (isBroker ? brokerMainItems : adminMainItems).filter(canSee);
   const toolItems = (isBroker ? brokerToolItems : adminToolItems).filter(canSee);
