@@ -24,6 +24,7 @@ const SECTIONS = [
   { key: "conexoes", label: "Conexões (WhatsApp)", sub: "Instâncias e status", icon: "▤" },
   { key: "usuarios", label: "Usuários & Permissões", sub: "Acessos da equipe", icon: "◫" },
   { key: "crm", label: "CRM & Pipelines", sub: "Etapas e funil", icon: "⌥" },
+  { key: "esteira", label: "Esteira de vendas", sub: "Etapas, responsáveis e documentos", icon: "◆" },
   { key: "presenca", label: "Regra de presença", sub: "Corretor online de verdade", icon: "🛡" },
   { key: "financeiro", label: "Financeiro", sub: "Comissões e metas", icon: "▣" },
   { key: "seguranca", label: "Segurança", sub: "Sessões e RLS", icon: "▪" },
@@ -138,6 +139,97 @@ function CategoriasCaixaEditor({ accessToken }: { accessToken: string }) {
   </div>;
 }
 
+type EsteiraStage = { id: string; slug: string; nome: string; cor: string | null; ordem: number; papel: string | null; sla_dias: number | null; resale: boolean; exige_docs: boolean };
+type EsteiraDoc = { id: string; etapa_slug: string; nome: string; obrigatorio: boolean; ordem: number };
+const ESTEIRA_PAPEIS = ["Corretor", "Gerente", "Jurídico", "Financeiro", "Administrador"];
+
+function EsteiraConfig({ accessToken }: { accessToken: string }) {
+  const [stages, setStages] = useState<EsteiraStage[]>([]);
+  const [docs, setDocs] = useState<EsteiraDoc[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState("");
+  const [novoDoc, setNovoDoc] = useState<Record<string, string>>({});
+  const load = async () => {
+    const response = await fetch("/api/crm/sales", { headers: { Authorization: `Bearer ${accessToken}` } });
+    const result = await response.json() as { stages?: EsteiraStage[]; etapaDocs?: EsteiraDoc[]; error?: string };
+    if (!response.ok) { setMsg(result.error || "Não foi possível carregar a esteira."); setLoading(false); return; }
+    setStages((result.stages ?? []).slice().sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0)));
+    setDocs((result.etapaDocs ?? []).slice().sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0)));
+    setLoading(false);
+  };
+  useEffect(() => { void load(); }, []);
+  const mutate = async (payload: Record<string, unknown>) => {
+    setBusy(true); setMsg("");
+    try {
+      const response = await fetch("/api/crm/sales", { method: "PATCH", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+      const result = await response.json() as { error?: string };
+      if (!response.ok) throw new Error(result.error || "Falha ao salvar.");
+      await load();
+    } catch (reason) { setMsg(reason instanceof Error ? reason.message : "Falha ao salvar."); }
+    finally { setBusy(false); }
+  };
+  const addDoc = (slug: string) => {
+    const nome = (novoDoc[slug] ?? "").trim();
+    if (!nome) return;
+    setNovoDoc((current) => ({ ...current, [slug]: "" }));
+    void mutate({ action: "docCreate", etapaSlug: slug, nome, obrigatorio: true });
+  };
+  if (loading) return <section className="settings-card"><h2>Esteira de vendas</h2><p className="settings-hint">Carregando…</p></section>;
+  return <section className="settings-card">
+    <h2>Esteira de vendas</h2>
+    <p>Defina, para cada etapa do negócio, quem é o responsável, o prazo (SLA) e quais documentos são obrigatórios para o lead avançar. Os documentos aparecem no botão <strong>📎 Docs</strong> dentro do card de cada venda.</p>
+    {msg && <div className="settings-toast">{msg}</div>}
+    <div className="esteira-config-list">
+      {stages.map((stage) => {
+        const stageDocs = docs.filter((doc) => doc.etapa_slug === stage.slug);
+        return <div className="esteira-config-stage" key={stage.id}>
+          <div className="esteira-config-head">
+            <input aria-label="Cor da etapa" type="color" value={stage.cor || "#8d2bd1"} disabled={busy} onChange={(event) => void mutate({ action: "updateStage", stageId: stage.id, cor: event.target.value })} />
+            <input className="esteira-config-nome" value={stage.nome} disabled={busy}
+              onChange={(event) => setStages((rows) => rows.map((r) => r.id === stage.id ? { ...r, nome: event.target.value } : r))}
+              onBlur={(event) => { const v = event.target.value.trim(); if (v && v !== stage.nome) void mutate({ action: "updateStage", stageId: stage.id, nome: v }); }} />
+            <label className="esteira-config-field">Responsável
+              <select value={stage.papel || "Corretor"} disabled={busy} onChange={(event) => void mutate({ action: "updateStage", stageId: stage.id, papel: event.target.value })}>
+                {ESTEIRA_PAPEIS.map((papel) => <option key={papel} value={papel}>{papel}</option>)}
+              </select>
+            </label>
+            <label className="esteira-config-field">SLA (dias)
+              <input type="number" min={0} value={stage.sla_dias ?? 0} disabled={busy}
+                onChange={(event) => setStages((rows) => rows.map((r) => r.id === stage.id ? { ...r, sla_dias: Number(event.target.value) } : r))}
+                onBlur={(event) => { const v = Math.max(0, Math.trunc(Number(event.target.value) || 0)); if (v !== (stage.sla_dias ?? 0)) void mutate({ action: "updateStage", stageId: stage.id, slaDias: v }); }} />
+            </label>
+          </div>
+          <label className="esteira-config-gate">
+            <input type="checkbox" checked={stage.exige_docs} disabled={busy} onChange={(event) => void mutate({ action: "updateStage", stageId: stage.id, exigeDocs: event.target.checked })} />
+            <span><strong>Exigir documentos para avançar desta etapa</strong><small>Quando marcado, o lead só passa para a próxima etapa se todos os documentos obrigatórios estiverem anexados.</small></span>
+          </label>
+          <div className="esteira-config-docs">
+            {stageDocs.map((doc) => <div className="esteira-config-doc" key={doc.id}>
+              <input value={doc.nome} disabled={busy}
+                onChange={(event) => setDocs((rows) => rows.map((r) => r.id === doc.id ? { ...r, nome: event.target.value } : r))}
+                onBlur={(event) => { const v = event.target.value.trim(); if (v && v !== doc.nome) void mutate({ action: "docUpdate", docId: doc.id, nome: v }); }} />
+              <label className="esteira-config-obrig" title="Documento obrigatório para avançar">
+                <input type="checkbox" checked={doc.obrigatorio} disabled={busy} onChange={(event) => void mutate({ action: "docUpdate", docId: doc.id, obrigatorio: event.target.checked })} />
+                Obrigatório
+              </label>
+              <button type="button" className="settings-cat-del" disabled={busy} title="Remover documento" onClick={() => void mutate({ action: "docDelete", docId: doc.id })}>×</button>
+            </div>)}
+            {stageDocs.length === 0 && <p className="settings-hint">Nenhum documento configurado para esta etapa.</p>}
+            <div className="esteira-config-doc-add">
+              <input value={novoDoc[stage.slug] ?? ""} disabled={busy} placeholder="Novo documento (ex.: RG do comprador)"
+                onChange={(event) => setNovoDoc((current) => ({ ...current, [stage.slug]: event.target.value }))}
+                onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); addDoc(stage.slug); } }} />
+              <button type="button" disabled={busy || !(novoDoc[stage.slug] ?? "").trim()} onClick={() => addDoc(stage.slug)}>＋ Adicionar documento</button>
+            </div>
+          </div>
+        </div>;
+      })}
+      {stages.length === 0 && <p className="settings-hint">Nenhuma etapa cadastrada. Crie etapas na tela do CRM (Esteira de vendas).</p>}
+    </div>
+  </section>;
+}
+
 function SettingsShell({ section, setSection, error, toast, saving, config, company, setCompany, ipsText, setIpsText, saveCompany, toggleDistribution, saveIps, companyField, accessToken, onNavigate }: {
   section: SectionKey; setSection: (key: SectionKey) => void; error: string; toast: string; saving: boolean; config: AdminConfig | null;
   company: Record<string, string>; setCompany: Dispatch<SetStateAction<Record<string, string>>>; ipsText: string; setIpsText: (value: string) => void;
@@ -181,6 +273,8 @@ function SettingsShell({ section, setSection, error, toast, saving, config, comp
         {section === "conexoes" && <section className="settings-embed"><ConnectionsWorkspace accessToken={accessToken} /></section>}
 
         {section === "presenca" && <PresenceConfig accessToken={accessToken} />}
+
+        {section === "esteira" && <EsteiraConfig accessToken={accessToken} />}
 
         {section === "usuarios" && <section className="settings-card">
           <h2>Usuários & Permissões</h2><p>Papéis, acesso por módulo, instâncias e documentos ficam no módulo Usuários.</p>
