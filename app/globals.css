@@ -3707,3 +3707,17 @@ article.tone-red{border-left-color:#d3443e}article.tone-red strong{color:#d3443e
 .crm-kanban-v2.panning { cursor: grabbing; user-select: none; }
 .crm-kanban-v2.panning .crm-stage-body { pointer-events: none; }
 .crm-lead-card-v3, .card-controls-v3, .crm-stage-editor { cursor: default; }
+
+/* ============================================================
+   #2 — mover lead entre funis (pipes) no drawer (jul/2026)
+   Empilha FUNIL + ETAPA + Descartar em coluna, com rótulos, e
+   tira o botão "Descartar" do position:absolute antigo (que
+   sobrepunha os seletores).
+   ============================================================ */
+.lead-funnel-status { position: relative; display: flex; flex-direction: column; gap: 10px; }
+.lead-funnel-status .lead-stage-track { margin: 8px 0 4px; }
+.lead-pipe-move, .lead-stage-move { display: flex; flex-direction: column; gap: 4px; margin: 0; }
+.lead-pipe-move > span, .lead-stage-move > span { color: #a19892; font-size: 10px; font-weight: 800; letter-spacing: .1em; }
+.lead-funnel-status .lead-pipe-move select, .lead-funnel-status .lead-stage-move select { width: 100%; max-width: none; min-height: 42px; margin: 0; border: 1px solid #e5ded9; border-radius: 10px; padding: 0 12px; background: #fff; color: #33302c; font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+.lead-funnel-status .lead-pipe-move select { border-color: #e7bbf2; background: #fdf8ff; }
+.lead-funnel-status > button { position: static; align-self: flex-start; margin-top: 2px; border: 0; background: transparent; color: #b14a42; font-size: 12px; font-weight: 700; cursor: pointer; }
