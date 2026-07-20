@@ -3539,6 +3539,15 @@ article.tone-red{border-left-color:#d3443e}article.tone-red strong{color:#d3443e
 .conn-device { width:26px; height:26px; display:grid; place-items:center; border-radius:8px; background:#f4f1ee; color:#9a908a; font-size:12px; }
 .conn-sync { color:#9a908a; font-size:11px; margin-top:-3px; }
 .conn-num { color:#2f6b3a; font-size:12px; font-weight:600; margin-top:1px; letter-spacing:.2px; }
+.sales-approvals { border:1px solid #f0d28a; background:#fff8e8; border-radius:12px; padding:12px 14px; margin:10px 0 14px; }
+.sales-approvals-head { display:flex; align-items:center; gap:8px; margin-bottom:8px; color:#8a6d1a; font-size:13px; }
+.sales-approvals-head span { background:#f0b429; color:#3a2c00; border-radius:999px; padding:1px 8px; font-weight:700; font-size:12px; }
+.sales-approval-row { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:8px 0; border-top:1px solid #f2e2b6; }
+.sales-approval-info strong { display:block; font-size:14px; }
+.sales-approval-info small { color:#8a7a4a; }
+.sales-approval-actions { display:flex; gap:8px; flex:none; }
+.sales-approval-actions button { padding:6px 12px; border-radius:8px; border:1px solid #d9c68a; background:#fff; cursor:pointer; font-size:13px; }
+.sales-approval-actions .crm-primary { background:#1fa85a; color:#fff; border-color:#1fa85a; }
 .conn-card strong { font-size:15px; }
 .conn-card.connected button { background:#fff; border:1px solid #dfd8d3; color:#5f5752; }
 
