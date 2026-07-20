@@ -9404,7 +9404,7 @@ class Component extends DCLogic {
         metaPct: Math.round(teamVgv / teamMeta * 100), ticket: teamVendas ? Math.round(teamVgv / teamVendas) : 0,
         visitasReal: sum('visitasReal'), visitasMarc: sum('visitasMarc'), visitasCanc: sum('visitasCanc'), propEmit: sum('propEmit'), propAceit: sum('propAceit'), contratosEnv: sum('contratosEnv'), contratosAss: sum('contratosAss'),
         tempoResp: +avg('tempoResp').toFixed(1), tempoEntre: +avg('tempoEntre').toFixed(1), slaPct: Math.round(avg('slaPct')), aguardando: sum('aguardando'), atrasados: sum('atrasados'), foraSla: sum('foraSla'),
-        msgsEnv: sum('msgsEnv'), msgsRec: sum('msgsRec'), audios: sum('audios'), ligacoes: sum('ligacoes'), ligAtend: sum('ligAtend'), followups: sum('followups'), onlineH: Math.round(avg('onlineH')),
+        msgsEnv: sum('msgsEnv'), msgsRec: sum('msgsRec'), audios: sum('audios'), ligacoes: sum('ligacoes'), ligAtend: sum('ligAtend'), followups: sum('followups'), reativacoes: sum('reativacoes'), onlineH: Math.round(avg('onlineH')),
         parados: sum('parados'), parados48: sum('parados48'), parados72: sum('parados72'), semTarefa: sum('semTarefa'), semQualif: sum('semQualif'), semOrigem: sum('semOrigem'), semInter: sum('semInter'), duplicados: sum('duplicados'), semResponsavel: sum('semResponsavel'),
         convLeadOk: teamLeads > 0 && teamVendas <= teamLeads, convLead: (teamLeads > 0 && teamVendas <= teamLeads) ? teamVendas / teamLeads : 0, convVisita: sum('visitasReal') ? teamVendas / sum('visitasReal') : 0, convProp: sum('propEmit') ? teamVendas / sum('propEmit') : 0,
         score: teamScore, respScore: Math.round(avg('respScore')), crmScore: Math.round(avg('crmScore')), fupScore: Math.round(avg('fupScore')), visitaScore: Math.round(avg('visitaScore')), vendaScore: Math.round(avg('vendaScore')), tarefaScore: Math.round(avg('tarefaScore')),
@@ -9532,22 +9532,22 @@ class Component extends DCLogic {
       };
 
       // ---------- Produtividade ----------
-      const perH = (v) => (v / Math.max(1, cur.onlineH));
+      const perH = (v) => cur.onlineH > 0 ? (v / cur.onlineH).toFixed(1) : '—';
       perf.prod = {
         kpis: [
-          kpi('Mensagens / hora', perH(cur.msgsEnv).toFixed(1), 'online', 'send', '#FF7000'),
-          kpi('Ligações / hora', perH(cur.ligacoes).toFixed(1), 'online', 'phone', '#8B00CC'),
-          kpi('Atendimentos / hora', perH(cur.msgsEnv / 9).toFixed(1), 'conversas', 'chat', '#2F6FED'),
+          kpi('Mensagens / hora', perH(cur.msgsEnv), 'online', 'send', '#FF7000'),
+          kpi('Ligações / hora', perH(cur.ligacoes), 'online', 'phone', '#8B00CC'),
+          kpi('Atendimentos / hora', perH(cur.msgsEnv / 9), 'conversas', 'chat', '#2F6FED'),
           kpi('Visitas / semana', (cur.visitasReal / 4).toFixed(1), 'média', 'calendar', '#1FA85A'),
           kpi('Propostas / semana', (cur.propEmit / 4).toFixed(1), 'média', 'fileText', '#66009A'),
-          kpi('Receita / hora', brlK(cur.com / Math.max(1, cur.onlineH)), 'trabalhada', 'wallet', '#E0A400')
+          kpi('Receita / hora', cur.onlineH > 0 ? brlK(cur.com / cur.onlineH) : '—', 'trabalhada', 'wallet', '#E0A400')
         ],
         tempos: [
           { k: 'Tempo até 1ª visita', v: _ri(cur.nome + 't1', 2, 6) + ' dias', barStyle: bar(38, '#FF7000') },
           { k: 'Tempo até proposta', v: _ri(cur.nome + 't2', 6, 14) + ' dias', barStyle: bar(62, '#8B00CC') },
           { k: 'Tempo até venda (fechamento)', v: _ri(cur.nome + 't3', 18, 42) + ' dias', barStyle: bar(90, '#1FA85A') }
         ],
-        conversaoHora: (cur.vendas / cur.onlineH * 100).toFixed(2)
+        conversaoHora: cur.onlineH > 0 ? (cur.vendas / cur.onlineH * 100).toFixed(2) : '0.00'
       };
 
       // ---------- Ranking (gestor) ----------
