@@ -330,6 +330,7 @@ type SalesData = {
   products: Array<{ id: string; nome: string; origem: string; bairro: string | null; cidade: string | null }>;
   brokers: Array<{ id: number; nome: string; usuario_id: string | null; online: boolean }>;
   stages?: Array<{ id: string; slug: string; nome: string; cor: string; ordem: number; papel: string; sla_dias: number; resale: boolean }>;
+  history?: Array<{ processo_id: string; etapa_de: string | null; etapa_para: string; movido_por: string | null; movido_em: string }>;
 };
 
 const saleStages = [
@@ -402,13 +403,15 @@ function SalesProcessView({ accessToken, initialCreate = false, sessionRole = "c
     })}</div>
     {creating && <CreateSaleModal data={data} accessToken={accessToken} onClose={() => setCreating(false)} onDone={async () => { setCreating(false); await load(); }} />}
     {chatItem && <LeadChatDrawer key={chatItem.deal.id} accessToken={accessToken} lead={chatItem.lead} deal={chatItem.deal} corretorNome={chatItem.corretorNome} onClose={() => setChatItem(null)} onResponse={async () => {}} />}
-    {detailItem && (() => { const sale = saleById.get(detailItem.venda_id); const deal = dealBySale.get(detailItem.venda_id); const lead = deal ? leadById.get(deal.lead_id) : null; const broker = brokerById.get(deal?.corretor_id ?? lead?.corretor_id ?? -1); return <SaleDetailDrawer process={detailItem} sale={sale} lead={lead} broker={broker} stageList={stageList} busy={busy} onMove={async (stage) => { await move(detailItem.id, stage); setDetailItem((cur) => cur ? { ...cur, etapa: stage } : cur); }} onChat={lead && deal ? () => { setDetailItem(null); setChatItem({ lead: lead as unknown as Lead, deal: deal as unknown as Deal, corretorNome: broker?.nome }); } : undefined} onClose={() => setDetailItem(null)} />; })()}
+    {detailItem && (() => { const sale = saleById.get(detailItem.venda_id); const deal = dealBySale.get(detailItem.venda_id); const lead = deal ? leadById.get(deal.lead_id) : null; const broker = brokerById.get(deal?.corretor_id ?? lead?.corretor_id ?? -1); return <SaleDetailDrawer process={detailItem} sale={sale} lead={lead} broker={broker} stageList={stageList} history={(data.history ?? []).filter((h) => h.processo_id === detailItem.id)} busy={busy} onMove={async (stage) => { await move(detailItem.id, stage); setDetailItem((cur) => cur ? { ...cur, etapa: stage } : cur); }} onChat={lead && deal ? () => { setDetailItem(null); setChatItem({ lead: lead as unknown as Lead, deal: deal as unknown as Deal, corretorNome: broker?.nome }); } : undefined} onClose={() => setDetailItem(null)} />; })()}
     {bulkFrom && <div className="crm-center-modal"><form onSubmit={(event) => event.preventDefault()}><header><div><span>AÇÃO EM MASSA</span><h2>Mover uma etapa inteira</h2><p>Todas as vendas de <b>{stageList.find((s) => s.id === bulkFrom)?.name}</b> serão enviadas para o destino escolhido.</p></div><button type="button" onClick={() => setBulkFrom(null)}>×</button></header><div className="bulk-move-grid"><label>Etapa de destino<select id="bulk-to" defaultValue=""><option value="">Selecione</option>{stageList.filter((s) => s.id !== bulkFrom).map((s) => <option value={s.id} key={s.id}>{s.name}</option>)}</select></label></div><footer><button type="button" onClick={() => setBulkFrom(null)}>Cancelar</button><button className="crm-primary" type="button" disabled={busy} onClick={() => { const to = (document.getElementById("bulk-to") as HTMLSelectElement | null)?.value; if (!to) { setError("Selecione a etapa de destino."); return; } void mutateStages({ action: "bulkMoveStage", fromSlug: bulkFrom, toSlug: to }); setBulkFrom(null); }}>Mover vendas</button></footer></form></div>}
   </section>;
 }
 
 type SaleStageItem = { id: string; dbId: string | null; name: string; color: string; role: string; days: number; resale: boolean };
-function SaleDetailDrawer({ process, sale, lead, broker, stageList, busy, onMove, onChat, onClose }: { process: SalesData["processes"][number]; sale?: SalesData["sales"][number]; lead?: SalesData["leads"][number] | null; broker?: SalesData["brokers"][number]; stageList: SaleStageItem[]; busy?: boolean; onMove: (stage: string) => Promise<void>; onChat?: () => void; onClose: () => void }) {
+function SaleDetailDrawer({ process, sale, lead, broker, stageList, history = [], busy, onMove, onChat, onClose }: { process: SalesData["processes"][number]; sale?: SalesData["sales"][number]; lead?: SalesData["leads"][number] | null; broker?: SalesData["brokers"][number]; stageList: SaleStageItem[]; history?: NonNullable<SalesData["history"]>; busy?: boolean; onMove: (stage: string) => Promise<void>; onChat?: () => void; onClose: () => void }) {
+  const stageName = (slug: string) => stageList.find((s) => s.id === slug)?.name || slug;
+  const enteredAt = (slug: string) => { const rows = history.filter((h) => h.etapa_para === slug); return rows.length ? rows[rows.length - 1].movido_em : null; };
   const currentIndex = stageList.findIndex((s) => s.id === process.etapa);
   const stage = currentIndex >= 0 ? stageList[currentIndex] : undefined;
   const total = stageList.length;
@@ -442,7 +445,8 @@ function SaleDetailDrawer({ process, sale, lead, broker, stageList, busy, onMove
         <span>{overdue ? "Em atraso · " : ""}{formatElapsed(minutesInStage)} nesta etapa</span>
       </article>
       <h4>ESTEIRA DE DOCUMENTAÇÃO</h4>
-      <ol className="sale-timeline">{track.map((s, i) => { const state = trackCurrent < 0 ? "todo" : i < trackCurrent ? "done" : i === trackCurrent ? "current" : "todo"; return <li className={`sale-tl ${state}`} style={{ "--tl": s.color } as CSSProperties} key={s.id}><i />{i < track.length - 1 && <u />}<div><strong>{s.name}</strong><small>{s.role}{s.days ? ` · SLA ${s.days}d` : " · conclusão"}</small></div>{i === trackCurrent && <em>Aqui</em>}{state === "done" && <b>✓</b>}</li>; })}</ol>
+      <ol className="sale-timeline">{track.map((s, i) => { const state = trackCurrent < 0 ? "todo" : i < trackCurrent ? "done" : i === trackCurrent ? "current" : "todo"; const ent = enteredAt(s.id); return <li className={`sale-tl ${state}`} style={{ "--tl": s.color } as CSSProperties} key={s.id}><i />{i < track.length - 1 && <u />}<div><strong>{s.name}</strong><small>{s.role}{s.days ? ` · SLA ${s.days}d` : " · conclusão"}</small>{ent && (state === "done" || state === "current") && <time>{state === "current" ? "desde " : "entrou "}{shortDate.format(new Date(ent))}</time>}</div>{i === trackCurrent && <em>Aqui</em>}{state === "done" && <b>✓</b>}</li>; })}</ol>
+      {history.length > 0 && <><h4>MOVIMENTAÇÕES</h4><ul className="sale-moves">{history.slice().reverse().map((h, i) => <li key={i}><b>{dateTime.format(new Date(h.movido_em))}</b><span>{h.etapa_de ? `${stageName(h.etapa_de)} → ${stageName(h.etapa_para)}` : `Entrou em ${stageName(h.etapa_para)}`}</span></li>)}</ul></>}
       {sale?.obs && <article className="sale-detail-note"><small>OBSERVAÇÕES</small><p>{sale.obs}</p></article>}
     </div>
     <footer className="sale-detail-foot">
