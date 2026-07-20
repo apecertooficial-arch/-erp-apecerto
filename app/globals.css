@@ -3696,3 +3696,14 @@ article.tone-red{border-left-color:#d3443e}article.tone-red strong{color:#d3443e
 .login-hero-symbol { width:60px; height:60px; object-fit:contain; filter:brightness(0) invert(1); }
 .login-brand-img { height:24px; width:auto; display:block; }
 .login-brand-pill { padding:8px 15px; }
+
+/* ============================================================
+   #5/#6 — arrastar o fundo do Kanban pra rolar lateral (jul/2026)
+   Segure e arraste qualquer área vazia do funil (fora dos cards)
+   pra puxar as colunas de lado, sem precisar descer até a barra.
+   Combina com o handler de roda do mouse em CrmWorkspace.tsx.
+   ============================================================ */
+.crm-kanban-v2 { cursor: grab; }
+.crm-kanban-v2.panning { cursor: grabbing; user-select: none; }
+.crm-kanban-v2.panning .crm-stage-body { pointer-events: none; }
+.crm-lead-card-v3, .card-controls-v3, .crm-stage-editor { cursor: default; }
