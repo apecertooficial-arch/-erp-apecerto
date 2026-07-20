@@ -2,8 +2,11 @@
 
 import { useCallback, useEffect, useState } from "react";
 
-type Config = { ativa: boolean; dias: string; hora_inicio: string; hora_fim: string; intervalo_min: number; prazo_seg: number; corretores: number[] | null };
+type Config = { ativa: boolean; dias_semana: number[]; hora_inicio: string; hora_fim: string; intervalo_min: number; prazo_seg: number; corretores: number[] | null };
 type Broker = { id: number; nome: string };
+
+// isodow: 1=Seg … 7=Dom. Exibido começando no domingo.
+const DIAS = [{ n: 7, l: "Dom" }, { n: 1, l: "Seg" }, { n: 2, l: "Ter" }, { n: 3, l: "Qua" }, { n: 4, l: "Qui" }, { n: 5, l: "Sex" }, { n: 6, l: "Sáb" }];
 
 /* Painel inline da Regra de Presença — vive dentro de Configurações. */
 export function PresenceConfig({ accessToken }: { accessToken: string }) {
@@ -19,8 +22,8 @@ export function PresenceConfig({ accessToken }: { accessToken: string }) {
       const res = await fetch("/api/presenca?config=1", { headers: { Authorization: `Bearer ${accessToken}` } });
       const data = await res.json() as { config?: Config; corretores?: Broker[]; error?: string };
       if (!res.ok) { setNotice(data.error || "Sem permissão."); return; }
-      const c = data.config ?? { ativa: false, dias: "weekdays", hora_inicio: "09:00", hora_fim: "18:00", intervalo_min: 15, prazo_seg: 60, corretores: null };
-      setCfg({ ...c, hora_inicio: (c.hora_inicio || "09:00").slice(0, 5), hora_fim: (c.hora_fim || "18:00").slice(0, 5) });
+      const c = data.config ?? { ativa: false, dias_semana: [1, 2, 3, 4, 5], hora_inicio: "09:00", hora_fim: "18:00", intervalo_min: 15, prazo_seg: 60, corretores: null };
+      setCfg({ ...c, dias_semana: Array.isArray(c.dias_semana) && c.dias_semana.length ? c.dias_semana : [1, 2, 3, 4, 5], hora_inicio: (c.hora_inicio || "09:00").slice(0, 5), hora_fim: (c.hora_fim || "18:00").slice(0, 5) });
       setTodos(c.corretores == null);
       setBrokers(data.corretores ?? []);
     } catch { setNotice("Falha ao carregar a configuração."); }
@@ -33,7 +36,7 @@ export function PresenceConfig({ accessToken }: { accessToken: string }) {
     setBusy(true); setNotice("");
     try {
       const res = await fetch("/api/presenca", { method: "POST", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify({
-        action: "saveConfig", ativa: cfg.ativa, dias: cfg.dias, horaInicio: cfg.hora_inicio, horaFim: cfg.hora_fim,
+        action: "saveConfig", ativa: cfg.ativa, diasSemana: cfg.dias_semana, horaInicio: cfg.hora_inicio, horaFim: cfg.hora_fim,
         intervaloMin: cfg.intervalo_min, prazoSeg: cfg.prazo_seg, corretores: todos ? null : (cfg.corretores ?? []),
       }) });
       const data = await res.json() as { error?: string };
@@ -44,6 +47,7 @@ export function PresenceConfig({ accessToken }: { accessToken: string }) {
   };
 
   const toggleBroker = (id: number) => setCfg((c) => c ? { ...c, corretores: (c.corretores ?? []).includes(id) ? (c.corretores ?? []).filter((x) => x !== id) : [...(c.corretores ?? []), id] } : c);
+  const toggleDia = (n: number) => setCfg((c) => c ? { ...c, dias_semana: c.dias_semana.includes(n) ? c.dias_semana.filter((x) => x !== n) : [...c.dias_semana, n] } : c);
 
   if (!cfg) return <section className="settings-card"><p className="settings-hint">{notice || "Carregando a regra de presença…"}</p></section>;
 
@@ -51,8 +55,11 @@ export function PresenceConfig({ accessToken }: { accessToken: string }) {
     <h2><span className="sc-ico shield">🛡</span>Regra de presença do corretor</h2>
     <p>Pergunta na tela do corretor, dentro da janela escolhida, se ele ainda está conectado. Se ele não confirmar no prazo, sai do ar (fica offline) e para de receber leads até entrar de novo.</p>
     <label className="presence-switch"><input type="checkbox" checked={cfg.ativa} onChange={(e) => setCfg({ ...cfg, ativa: e.target.checked })} /><div><strong>Regra {cfg.ativa ? "ATIVA" : "desligada"}</strong><small>Quando ativa, o pop-up aparece nos dias e horários abaixo para os corretores selecionados.</small></div></label>
+    <div className="presence-dias">
+      <span className="presence-dias-label">Dias da semana</span>
+      <div className="presence-dias-chips">{DIAS.map((d) => <button type="button" key={d.n} className={cfg.dias_semana.includes(d.n) ? "on" : ""} onClick={() => toggleDia(d.n)}>{d.l}</button>)}</div>
+    </div>
     <div className="presence-cfg-grid">
-      <label>Dias<select value={cfg.dias} onChange={(e) => setCfg({ ...cfg, dias: e.target.value })}><option value="weekdays">Seg a Sex</option><option value="saturday">Seg a Sáb</option><option value="all">Todos os dias</option></select></label>
       <label>Início<input type="time" value={cfg.hora_inicio} onChange={(e) => setCfg({ ...cfg, hora_inicio: e.target.value })} /></label>
       <label>Fim<input type="time" value={cfg.hora_fim} onChange={(e) => setCfg({ ...cfg, hora_fim: e.target.value })} /></label>
       <label>Perguntar a cada (min)<input type="number" min={1} value={cfg.intervalo_min} onChange={(e) => setCfg({ ...cfg, intervalo_min: Number(e.target.value) })} /></label>

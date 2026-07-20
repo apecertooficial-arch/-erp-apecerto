@@ -3513,3 +3513,10 @@ body { overflow:hidden; background:#eee8e2; }
 .settings-card h2 .sc-ico.shield { background:#f3e9fc; color:#7c3aed; }
 .settings-presence .presence-cfg-grid { margin-top:14px; }
 .settings-presence .presence-scope { margin-top:4px; }
+/* seletor de dias da semana (Regra de presença) */
+.presence-cfg-grid label:first-child { grid-column:auto; }
+.presence-dias { margin:14px 0; }
+.presence-dias-label { display:block; margin-bottom:8px; color:#6d6560; font-size:11px; font-weight:700; }
+.presence-dias-chips { display:flex; flex-wrap:wrap; gap:8px; }
+.presence-dias-chips button { min-width:52px; padding:9px 0; border:1px solid #e0d9d4; border-radius:10px; background:#fff; color:#5c534e; font-size:12px; font-weight:700; cursor:pointer; }
+.presence-dias-chips button.on { border-color:#ff8a3d; background:#ff6500; color:#fff; box-shadow:0 4px 12px rgba(255,101,0,.2); }

@@ -47,7 +47,7 @@ export async function POST(request: Request) {
   if (action === "saveConfig") {
     const { data, error } = await a.supabase.rpc("presenca_config_salvar", {
       p_ativa: typeof body.ativa === "boolean" ? body.ativa : null,
-      p_dias: typeof body.dias === "string" ? body.dias : null,
+      p_dias_semana: Array.isArray(body.diasSemana) ? (body.diasSemana as unknown[]).map(Number).filter((n) => Number.isInteger(n) && n >= 1 && n <= 7) : null,
       p_inicio: typeof body.horaInicio === "string" ? body.horaInicio : null,
       p_fim: typeof body.horaFim === "string" ? body.horaFim : null,
       p_intervalo: Number.isFinite(Number(body.intervaloMin)) ? Number(body.intervaloMin) : null,
