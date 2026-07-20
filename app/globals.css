@@ -3843,3 +3843,8 @@ article.tone-red{border-left-color:#d3443e}article.tone-red strong{color:#d3443e
 .sale-moves li:first-child::before { background: #7c3aed; }
 .sale-moves li b { color: #7c726b; font-size: 11px; font-weight: 700; }
 .sale-moves li span { color: #4b433e; font-size: 12px; }
+
+/* Card de venda: card inteiro clicável abre o andamento (jul/2026) */
+.sale-card { cursor: pointer; }
+.sale-card:hover { border-color: #d9b8ee; box-shadow: 0 8px 20px rgba(124,58,237,.1); }
+.sale-card .sale-card-controls { cursor: default; }
