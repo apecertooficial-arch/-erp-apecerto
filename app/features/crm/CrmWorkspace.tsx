@@ -39,12 +39,14 @@ type ChatMessage = { id: string; wa_message_id: string | null; conversa_id?: str
 // Converte códigos técnicos de erro de envio em explicação clara para o corretor.
 function friendlyChatError(raw: string): string {
   const s = (raw || "").toLowerCase();
-  if (s.includes("instancia_nao_resolvida") || s.includes("instância") || s.includes("desconect") || s.includes("nao_conect")) return "Instância desconectada — reconecte o WhatsApp pelo QR.";
-  if (s.includes("telefone_invalido") || s.includes("número inválido") || s.includes("invalid number")) return "Número de telefone inválido.";
-  if (s.includes("not found") || s.includes("nao existe") || s.includes("não existe") || s.includes("not_registered") || s.includes("no account")) return "Este número não existe no WhatsApp.";
-  if (s.includes("texto_vazio")) return "Mensagem vazia.";
-  if (s.includes("dapi_erro") || s.includes("falha_envio") || s.includes("timeout")) return "Falha de conexão com o WhatsApp ao enviar.";
-  if (s.includes("non-2xx") || s.includes("edge function")) return "A instância não conseguiu enviar — verifique a conexão em Configurações → Conexões e tente de novo.";
+  // O backend (dapi-enviar) já devolve motivos claros e específicos — repassamos.
+  // Aqui só normalizamos TOKENS crus de erro; não reclassificamos por palavras soltas
+  // como "instância"/"session" (isso fazia qualquer falha virar "reconecte o QR").
+  if (s.includes("instancia_nao_resolvida")) return "Nenhuma instância de WhatsApp conectada para este corretor — conecte em Configurações → Conexões.";
+  if (s.includes("telefone_invalido") || s === "invalid number") return "Número de telefone inválido.";
+  if (s.includes("texto_vazio")) return "Escreva a mensagem antes de enviar.";
+  if (s.includes("não foi encontrado no whatsapp") || s.includes("nao foi encontrado no whatsapp") || s.includes("not on whatsapp") || s.includes("not_registered") || s.includes("no account")) return "Este número não foi encontrado no WhatsApp (verifique o 9º dígito e o DDD).";
+  if (s.includes("non-2xx") || s.includes("edge function returned") || s.includes("failed to send a request")) return "Não foi possível enviar agora — tente novamente em instantes.";
   return raw || "Não foi possível enviar a mensagem.";
 }
 type Historico = { id: number | string; lead_id: number | null; negocio_id: number | null; corretor_id: number | null; tipo: string; canal?: string | null; texto: string | null; resultado?: string | null; criado_em: string };

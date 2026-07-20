@@ -17,9 +17,21 @@ type CampaignData = { leads: Lead[]; deals: Deal[]; stages: Stage[]; approaches:
 function approachText(value: unknown) {
   if (typeof value === "string") return value;
   if (Array.isArray(value)) {
-    const first = value[0];
-    if (typeof first === "string") return first;
-    if (first && typeof first === "object") return String((first as Record<string, unknown>).texto ?? (first as Record<string, unknown>).mensagem ?? "");
+    // Lê o texto de um passo (estrutura d-api: send-text-message → options.text).
+    const readStep = (step: unknown): string => {
+      if (typeof step === "string") return step;
+      if (step && typeof step === "object") {
+        const s = step as Record<string, unknown>;
+        const opts = (s.options && typeof s.options === "object" ? s.options : {}) as Record<string, unknown>;
+        return String(s.texto ?? s.mensagem ?? s.text ?? opts.text ?? opts.texto ?? opts.mensagem ?? "");
+      }
+      return "";
+    };
+    // Prioriza o passo de texto (a mensagem pode vir depois de vídeo/imagem/delay).
+    const textStep = value.find((step) => step && typeof step === "object" && (step as Record<string, unknown>).name === "send-text-message");
+    if (textStep) { const t = readStep(textStep); if (t) return t; }
+    // Fallback: primeiro passo que tenha algum texto.
+    for (const step of value) { const t = readStep(step); if (t) return t; }
   }
   return "";
 }
