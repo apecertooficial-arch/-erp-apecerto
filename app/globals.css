@@ -4034,3 +4034,22 @@ article.tone-red{border-left-color:#d3443e}article.tone-red strong{color:#d3443e
 .media-link-row input:focus { border-color: #ff9c5e; box-shadow: 0 0 0 3px rgba(255,101,0,.08); }
 .media-link-row button:disabled { opacity: .5; cursor: default; }
 .media-dropzone .media-totals { margin-top: 14px; }
+
+/* ============================================================
+   #8 — cliente respondeu: sino amarelo no card + pop-up no canto
+   inferior direito (jul/2026). O som é gerado via Web Audio.
+   ============================================================ */
+.crm-lead-card-v3 .card-resp-bell { position: absolute; top: 8px; right: 8px; z-index: 4; width: 26px; height: 26px; display: grid; place-items: center; border-radius: 50%; background: #ffd84d; color: #6b4e00; box-shadow: 0 2px 8px rgba(224,168,12,.5); animation: resp-bell-pulse 1.4s ease-in-out infinite; }
+.crm-lead-card-v3 .card-resp-bell svg { width: 15px; height: 15px; }
+@keyframes resp-bell-pulse { 0%,100% { transform: scale(1); box-shadow: 0 2px 8px rgba(224,168,12,.5); } 50% { transform: scale(1.12); box-shadow: 0 2px 14px rgba(224,168,12,.75); } }
+
+.resp-toast { position: fixed; right: 22px; bottom: 22px; z-index: 2147483000; display: flex; align-items: center; gap: 12px; max-width: 430px; padding: 13px 14px; border-radius: 14px; background: #fff; border: 1px solid #f0e4b8; box-shadow: 0 16px 44px rgba(31,23,12,.24); animation: resp-toast-in .25s ease; }
+@keyframes resp-toast-in { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+.resp-toast .resp-toast-bell { flex: 0 0 40px; width: 40px; height: 40px; display: grid; place-items: center; border-radius: 12px; background: #fff3cf; color: #a9760a; animation: resp-bell-pulse 1.4s ease-in-out infinite; }
+.resp-toast .resp-toast-bell svg { width: 20px; height: 20px; }
+.resp-toast .resp-toast-body { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.resp-toast .resp-toast-body strong { color: #2b2622; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.resp-toast .resp-toast-body small { color: #857b74; font-size: 12px; }
+.resp-toast .resp-toast-open { flex: 0 0 auto; border: 0; border-radius: 999px; padding: 8px 14px; background: #ff6500; color: #fff; font-size: 12px; font-weight: 800; cursor: pointer; }
+.resp-toast .resp-toast-open:hover { background: #e85c00; }
+.resp-toast .resp-toast-x { flex: 0 0 auto; width: 24px; height: 24px; border: 0; border-radius: 50%; background: #f1ece8; color: #756d67; font-size: 15px; cursor: pointer; }

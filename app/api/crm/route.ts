@@ -270,7 +270,16 @@ export async function PATCH(request: Request) {
       participantes: cleanText(body.participants, 500) || null,
       lembrete: body.reminder !== false, com_gerente: body.withManager === true, status: "agendada",
     });
-    return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
+    if (error) return Response.json({ error: error.message }, { status: 502 });
+    // #9 — ao agendar, move o lead para o funil "Visita ApeCerto" na etapa "Visita Agendada" (best-effort).
+    try {
+      const { data: pipe } = await auth.supabase.from("pipelines").select("id").ilike("nome", "%visita ape%").order("ordem").limit(1).maybeSingle();
+      if (pipe?.id) {
+        const { data: stage } = await auth.supabase.from("pipeline_stages").select("id").eq("pipeline_id", pipe.id).ilike("nome", "%agendada%").order("ordem").limit(1).maybeSingle();
+        if (stage?.id) await auth.supabase.rpc("mover_negocio", { p_negocio_id: dealId, p_stage_id: stage.id });
+      }
+    } catch { /* mover é best-effort — a visita já foi criada */ }
+    return Response.json({ success: true });
   }
 
   if (action === "updateVisitStatus") {
