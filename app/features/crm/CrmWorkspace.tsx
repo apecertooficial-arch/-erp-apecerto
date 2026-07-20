@@ -4,6 +4,7 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type DragEvent } from "react";
 import { getBrowserSupabaseClient } from "../../lib/supabase/browser";
 import { MessageMedia, ProductSendModal, QuickActionModal, type ChatData, type QuickAction } from "../chat/LiveChatWorkspace";
+import { ackState, StatusTick } from "../chat/statusTick";
 
 // Fetch autenticado resiliente: usa o token fresco da sessão do Supabase e,
 // se ainda vier 401, faz refresh e tenta 1x. Evita "Sessão inválida ou expirada".
@@ -34,17 +35,6 @@ type LeadAlert = { id: number; negocio_id: number; corretor_id: number | null; c
 type ChatInstance = { key: string; sendBig: number | null; nome: string; conectada: boolean | null; corretor: string; conversaIds: string[]; msgs: number; ultima: string; dIn?: number; dTot?: number };
 type ChatMessage = { id: string; wa_message_id: string | null; conversa_id?: string; direcao: string; tipo: string; conteudo: string | null; media_url: string | null; criado_em: string | null; status?: string | number | null; status_detalhe?: string | null };
 
-// Traduz o ack/status cru (d-api ou banco) para um dos estados de leitura estilo WhatsApp.
-function ackState(status: string | number | null | undefined): "enviando" | "enviado" | "entregue" | "lido" | "erro" {
-  if (status === null || status === undefined || status === "") return "enviado";
-  const s = String(status).toLowerCase();
-  if (["3", "read", "read_ack", "lido", "played"].includes(s)) return "lido";
-  if (["2", "delivered", "delivery_ack", "device", "received", "entregue"].includes(s)) return "entregue";
-  if (["1", "sent", "server", "server_ack", "enviado"].includes(s)) return "enviado";
-  if (["0", "-1", "pending", "pendente", "enviando", "clock"].includes(s)) return "enviando";
-  if (["error", "failed", "erro", "falha", "undelivered"].some((k) => s.includes(k))) return "erro";
-  return "enviado";
-}
 // Converte códigos técnicos de erro de envio em explicação clara para o corretor.
 function friendlyChatError(raw: string): string {
   const s = (raw || "").toLowerCase();
@@ -54,13 +44,6 @@ function friendlyChatError(raw: string): string {
   if (s.includes("texto_vazio")) return "Mensagem vazia.";
   if (s.includes("dapi_erro") || s.includes("falha_envio") || s.includes("timeout")) return "Falha de conexão com o WhatsApp ao enviar.";
   return raw || "Não foi possível enviar a mensagem.";
-}
-function StatusTick({ status, detalhe }: { status: string | number | null | undefined; detalhe?: string | null }) {
-  const state = ackState(status);
-  if (state === "enviando") return <i className="msg-ack pending" title="Enviando…">🕓</i>;
-  if (state === "erro") return <i className="msg-ack erro" title={detalhe || "Falha no envio"}>⚠</i>;
-  const label = state === "lido" ? "Lido" : state === "entregue" ? "Entregue" : "Enviado";
-  return <i className={`msg-ack ${state}`} title={label}>{state === "enviado" ? "✓" : "✓✓"}</i>;
 }
 type Historico = { id: number | string; lead_id: number | null; negocio_id: number | null; corretor_id: number | null; tipo: string; canal?: string | null; texto: string | null; resultado?: string | null; criado_em: string };
 type CrmData = { pipelines: Pipeline[]; stages: Stage[]; leads: Lead[]; deals: Deal[]; brokers: Broker[]; activities: Activity[]; historico?: Historico[]; tasks: Task[]; productLinks: ProductLink[]; visits: Visit[]; products: Product[]; sla: SlaInfo[]; alerts: LeadAlert[] };
