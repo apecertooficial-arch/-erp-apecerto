@@ -33,7 +33,17 @@ export async function GET(request: Request) {
   ]);
   const firstError = [sales, details, commissions, receipts, cash, users, brokers, goals, leads, deals, empreendimentos, categorias].find((result) => result.error)?.error;
   if (firstError) return Response.json({ error: firstError.message }, { status: 502 });
-  const saleById = new Map((sales.data ?? []).map((sale) => [sale.id, sale]));
+  // Segurança: o corretor NUNCA pode ver valores totais/brutos de comissão — apenas a comissão que é dele (comissoes já é filtrada por RLS).
+  // Removemos os campos brutos da resposta para que o navegador do corretor nem receba esses números.
+  const { data: me } = await auth.supabase.from("usuarios").select("role").eq("id", auth.user.id).maybeSingle();
+  const isBroker = !me || me.role === "corretor";
+  const safeSales = isBroker
+    ? (sales.data ?? []).map((sale) => ({ ...sale, percentual_comissao: null }))
+    : (sales.data ?? []);
+  const safeDetails = isBroker
+    ? (details.data ?? []).map((detail) => ({ ...detail, percentual_comissao: null, comissao_bruta: null, comissao_corretores: null, comissao_executivo: null, comissao_apecerto: null, indicacao: null }))
+    : (details.data ?? []);
+  const saleById = new Map(safeSales.map((sale) => [sale.id, sale]));
   const reconciledReceipts = (receipts.data ?? []).map((receipt) => {
     const sale = saleById.get(receipt.venda_id);
     if (sale?.status !== "pago") return receipt;
@@ -43,7 +53,7 @@ export async function GET(request: Request) {
       data_recebimento: receipt.data_recebimento || sale.data_venda,
     };
   });
-  return Response.json({ sales: sales.data ?? [], details: details.data ?? [], commissions: commissions.data ?? [], receipts: reconciledReceipts, cash: cash.data ?? [], users: users.data ?? [], brokers: brokers.data ?? [], goals: goals.data ?? [], leads: leads.data ?? [], deals: deals.data ?? [], empreendimentos: empreendimentos.data ?? [], categorias: categorias.data ?? [], rankingVgv: rankingVgv.data ?? [] });
+  return Response.json({ sales: safeSales, details: safeDetails, commissions: commissions.data ?? [], receipts: reconciledReceipts, cash: cash.data ?? [], users: users.data ?? [], brokers: brokers.data ?? [], goals: goals.data ?? [], leads: leads.data ?? [], deals: deals.data ?? [], empreendimentos: empreendimentos.data ?? [], categorias: categorias.data ?? [], rankingVgv: rankingVgv.data ?? [] });
 }
 
 export async function PATCH(request: Request) {
