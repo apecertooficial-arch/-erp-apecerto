@@ -3609,3 +3609,85 @@ article.tone-red{border-left-color:#d3443e}article.tone-red strong{color:#d3443e
 
 /* Financeiro — tabela de vendas do corretor (sem Com. prev. e Saldo, por segurança) */
 .finance-sales-head.slim, .finance-sale-row.slim { min-width:760px; grid-template-columns:56px 68px minmax(76px,1fr) minmax(75px,1fr) minmax(100px,1.25fr) 32px 90px 92px 66px 34px; }
+
+/* =========================================================
+   Tela de login v3 — split (hero gradiente + formulário)
+   ========================================================= */
+.login-split { position:fixed; inset:0; z-index:320; display:flex; background:#fff; font-family:inherit; overflow:auto; }
+.login-split.preview { position:fixed; inset:0; z-index:320; }
+.login-close { position:absolute; top:16px; right:18px; z-index:5; width:34px; height:34px; border:0; border-radius:50%; background:rgba(255,255,255,.9); color:#615851; font-size:20px; cursor:pointer; box-shadow:0 4px 14px rgba(0,0,0,.12); }
+
+/* ---------- Painel esquerdo (hero) ---------- */
+.login-hero { position:relative; flex:1 1 50%; min-width:0; overflow:hidden; display:flex; align-items:center; padding:56px; color:#fff;
+  background:linear-gradient(152deg,#ff6a15 0%,#f4356b 52%,#a51fac 100%); }
+.login-hero-shape { position:absolute; display:block; pointer-events:none; }
+.login-hero-shape.circle { top:9%; left:10%; width:150px; height:150px; border-radius:50%; background:rgba(255,255,255,.13); }
+.login-hero-shape.square { top:26%; left:64%; width:54px; height:54px; border-radius:14px; background:rgba(255,255,255,.10); }
+.login-hero-shape.panel { right:-70px; bottom:6%; width:340px; height:300px; border-radius:34px; background:rgba(255,255,255,.10); transform:rotate(0deg); }
+.login-hero-inner { position:relative; z-index:2; max-width:430px; }
+.login-hero-icon { width:112px; height:112px; display:grid; place-items:center; border-radius:28px; margin-bottom:26px;
+  background:rgba(255,255,255,.16); border:1px solid rgba(255,255,255,.22); backdrop-filter:blur(2px); }
+.login-hero-icon svg { width:56px; height:56px; fill:none; stroke:#fff; stroke-width:2.2; stroke-linecap:round; stroke-linejoin:round; }
+.login-hero-kicker { display:block; font-size:12px; font-weight:800; letter-spacing:.22em; color:rgba(255,255,255,.82); margin-bottom:6px; }
+.login-hero-logo { display:block; font-size:52px; font-weight:800; letter-spacing:-.02em; line-height:1; margin-bottom:22px; color:#fff; }
+.login-hero-logo span { font-weight:400; color:rgba(255,255,255,.9); }
+.login-hero-inner h1 { margin:0 0 14px; font-size:31px; font-weight:800; letter-spacing:-.01em; line-height:1.15; }
+.login-hero-inner p { margin:0 0 26px; max-width:380px; font-size:15px; line-height:1.55; color:rgba(255,255,255,.9); }
+.login-hero-pill { display:inline-flex; align-items:center; gap:9px; padding:9px 16px; border-radius:999px; font-style:normal; font-size:13px; font-weight:700;
+  background:rgba(255,255,255,.16); border:1px solid rgba(255,255,255,.24); color:#fff; }
+.login-hero-pill i { width:9px; height:9px; border-radius:50%; background:#3ddc84; box-shadow:0 0 0 3px rgba(61,220,132,.28); }
+
+/* ---------- Painel direito (formulário) ---------- */
+.login-form-side { flex:1 1 50%; min-width:0; display:flex; align-items:center; justify-content:center; padding:48px 40px; background:#fff; }
+.login-form-inner { width:100%; max-width:388px; }
+.login-brand-pill { display:inline-flex; align-items:center; gap:8px; padding:7px 14px; margin-bottom:30px; border:1px solid #ece7e3; border-radius:999px; }
+.login-brand-pill svg { width:18px; height:18px; fill:none; stroke:#ff6500; stroke-width:2.4; stroke-linecap:round; stroke-linejoin:round; }
+.login-brand-pill svg path:last-child { stroke:#8d2bd1; }
+.login-brand-pill strong { font-size:15px; font-weight:800; color:#ff6500; letter-spacing:-.01em; }
+.login-brand-pill strong span { color:#8d2bd1; }
+.login-heading h2 { margin:0 0 8px; font-size:33px; font-weight:800; letter-spacing:-.02em; color:#20140e; }
+.login-heading p { margin:0 0 26px; font-size:14px; color:#8a807a; }
+.login-heading p b { color:#ff6500; font-weight:700; }
+.login-heading p b::after { content:""; }
+.login-split form { display:flex; flex-direction:column; gap:16px; }
+.login-field { display:flex; flex-direction:column; gap:7px; }
+.login-field > span { font-size:11px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; color:#9a908a; }
+.login-input { position:relative; display:flex; align-items:center; }
+.login-input > svg { position:absolute; left:14px; width:19px; height:19px; fill:none; stroke:#b6aca6; stroke-width:1.9; stroke-linecap:round; stroke-linejoin:round; pointer-events:none; }
+.login-input input { width:100%; height:50px; padding:0 14px 0 42px; border:1px solid #ece7e3; border-radius:13px; background:#f5f2ef; color:#20140e; font-size:14px; font-family:inherit; transition:border-color .15s, box-shadow .15s, background .15s; }
+.login-input input::placeholder { color:#b3a9a2; }
+.login-input input:focus { outline:none; background:#fff; border-color:#ff6500; box-shadow:0 0 0 3px rgba(255,101,0,.14); }
+.login-eye { position:absolute; right:8px; width:34px; height:34px; display:grid; place-items:center; border:0; border-radius:9px; background:transparent; color:#8a7f79; cursor:pointer; }
+.login-eye svg { width:19px; height:19px; fill:none; stroke:currentColor; stroke-width:1.9; stroke-linecap:round; stroke-linejoin:round; }
+.login-eye:hover { color:#8d2bd1; background:#f6eefb; }
+.login-forgot { align-self:flex-end; margin:-4px 0 2px; border:0; padding:0; background:transparent; color:#ff6500; font-size:12.5px; font-weight:700; cursor:pointer; }
+.login-forgot:hover { text-decoration:underline; }
+.login-submit { display:flex; align-items:center; justify-content:center; gap:9px; width:100%; min-height:52px; border:0; border-radius:14px; cursor:pointer;
+  background:linear-gradient(180deg,#ff7a1a,#f9640a); color:#fff; font-size:15px; font-weight:800; letter-spacing:.01em; box-shadow:0 10px 22px rgba(249,100,10,.32); transition:filter .15s, transform .05s; }
+.login-submit:hover { filter:brightness(1.04); }
+.login-submit:active { transform:translateY(1px); }
+.login-submit:disabled { opacity:.7; cursor:default; box-shadow:none; }
+.login-submit svg { width:20px; height:20px; fill:none; stroke:#fff; stroke-width:2.1; stroke-linecap:round; stroke-linejoin:round; }
+.login-error { padding:10px 13px; border-radius:11px; background:#fdeeec; border:1px solid #f4cdc6; color:#c23b2e; font-size:12.5px; font-weight:600; }
+.login-secure { display:flex; align-items:flex-start; gap:11px; padding:13px 15px; border-radius:13px; background:#fff5ee; border:1px solid #ffe2cc; }
+.login-secure > svg { flex:0 0 auto; width:22px; height:22px; margin-top:1px; fill:none; stroke:#ee6a12; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+.login-secure strong { display:block; font-size:13px; font-weight:800; color:#c85a12; }
+.login-secure span { display:block; margin-top:2px; font-size:12px; line-height:1.45; color:#a4805f; }
+.login-foot { display:flex; align-items:center; gap:6px; margin-top:26px; font-size:12px; color:#a99f99; }
+.login-foot svg { width:14px; height:14px; fill:none; stroke:#c4bab4; stroke-width:1.9; stroke-linecap:round; stroke-linejoin:round; }
+.login-foot b { font-weight:800; color:#ff6500; }
+.login-foot b.p { color:#8d2bd1; }
+.login-preview-tag { display:block; margin-top:18px; padding:9px; border-radius:11px; background:#f5ebfa; color:#742997; font-size:12px; font-weight:700; text-align:center; }
+
+/* ---------- Responsivo ---------- */
+@media (max-width:880px) {
+  .login-split { flex-direction:column; }
+  .login-hero { flex:0 0 auto; padding:40px 32px; }
+  .login-hero-icon { width:78px; height:78px; border-radius:20px; margin-bottom:18px; }
+  .login-hero-icon svg { width:40px; height:40px; }
+  .login-hero-logo { font-size:40px; margin-bottom:14px; }
+  .login-hero-inner h1 { font-size:24px; }
+  .login-hero-inner p { font-size:13.5px; margin-bottom:18px; }
+  .login-hero-shape.panel { display:none; }
+  .login-form-side { padding:36px 26px 44px; }
+}
