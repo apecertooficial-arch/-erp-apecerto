@@ -49,7 +49,7 @@ export async function GET(request: Request) {
   const auth = await authenticatedClient(request);
   if (!auth) return Response.json({ error: "Sessão inválida ou expirada." }, { status: 401 });
 
-  const [pipelinesResult, stagesResult, leadsResult, dealsResult, brokersResult, activitiesResult, historicoResult, tasksResult, linksResult, visitsResult, productsResult, slaResult, alertsResult] = await Promise.all([
+  const [pipelinesResult, stagesResult, leadsResult, dealsResult, brokersResult, activitiesResult, historicoResult, tasksResult, linksResult, visitsResult, productsResult, slaResult, alertsResult, leiturasResult] = await Promise.all([
     auth.supabase.from("pipelines").select("id,nome,grupo,ordem").order("ordem"),
     auth.supabase.from("pipeline_stages").select("id,pipeline_id,nome,rotulo,ordem,cor,tipo,grupo,chave").order("ordem"),
     auth.supabase.from("leads").select("id,nome,telefone,email,instagram,corretor_id,pipeline_id,status,origem,tags,extras,criado_em,atualizado_em,disparo_optout").order("atualizado_em", { ascending: false, nullsFirst: false }).limit(500),
@@ -63,6 +63,7 @@ export async function GET(request: Request) {
     auth.supabase.from("empreendimentos").select("id,nome,bairro,cidade,status,preco,origem,rascunho").order("nome").limit(300),
     auth.supabase.from("vw_sla_leads").select("negocio_id,lead_id,stage_id,sla_situacao,aguardando_humano,min_aguardando,min_no_estagio,min_sem_interacao,min_ativo_int,cor_ativa,alarme_ativo,ultima_interacao,cliente_ultima,humano_ultima"),
     auth.supabase.from("crm_lead_alertas").select("id,negocio_id,corretor_id,criado_em,reconhecido_em,reconhecido_por").is("reconhecido_em", null).order("criado_em", { ascending: false }),
+    auth.supabase.from("crm_lead_leituras").select("negocio_id,lido_em").eq("usuario_id", auth.user.id),
   ]);
 
   const firstError = [pipelinesResult, stagesResult, leadsResult, dealsResult, brokersResult, activitiesResult, historicoResult, tasksResult, linksResult, visitsResult, productsResult, slaResult, alertsResult].find((result) => result.error)?.error;
@@ -83,6 +84,7 @@ export async function GET(request: Request) {
     products: productsResult.data ?? [],
     sla: slaResult.data ?? [],
     alerts: alertsResult.data ?? [],
+    leituras: leiturasResult.data ?? [],
   });
 }
 
@@ -222,6 +224,13 @@ export async function PATCH(request: Request) {
     const dealId = positiveInteger(body.dealId);
     if (!dealId) return Response.json({ error: "Negócio inválido." }, { status: 400 });
     const { error } = await auth.supabase.from("crm_lead_alertas").update({ reconhecido_em: new Date().toISOString(), reconhecido_por: auth.user.id }).eq("negocio_id", dealId).is("reconhecido_em", null);
+    return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
+  }
+
+  if (action === "markRead") {
+    const dealId = positiveInteger(body.dealId);
+    if (!dealId) return Response.json({ error: "Negócio inválido." }, { status: 400 });
+    const { error } = await auth.supabase.from("crm_lead_leituras").upsert({ negocio_id: dealId, usuario_id: auth.user.id, lido_em: new Date().toISOString() }, { onConflict: "negocio_id,usuario_id" });
     return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
   }
 
