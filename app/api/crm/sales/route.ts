@@ -27,7 +27,7 @@ async function activeSlugs(auth: Auth) {
 export async function GET(request: Request) {
   const auth = await authClient(request);
   if (!auth) return Response.json({ error: "Sessão inválida ou expirada." }, { status: 401 });
-  const [sales, processes, deals, leads, products, brokers, stages, etapaDocs, anexos, users, history] = await Promise.all([
+  const [sales, processes, deals, leads, products, brokers, stages, etapaDocs, anexos, users, history, verificacoes] = await Promise.all([
     auth.supabase.from("vendas").select("id,created_at,data_venda,empreendimento_id,empreendimento_nome,unidade_id,vgv,forma_pgto,status,obs").order("created_at", { ascending: false }),
     auth.supabase.from("venda_processos").select("id,venda_id,negocio_id,etapa,tipo_venda,responsavel_usuario_id,prazo_em,observacoes,criado_em,atualizado_em"),
     auth.supabase.from("negocios").select("id,venda_id,lead_id,corretor_id,empreendimento_id,valor,status"),
@@ -39,10 +39,11 @@ export async function GET(request: Request) {
     auth.supabase.from("esteira_anexos").select("id,processo_ref,negocio_id,etapa_slug,doc_nome,nome,path,mime,tamanho,criado_em").order("criado_em", { ascending: false }),
     auth.supabase.from("usuarios").select("id,nome,role"),
     auth.supabase.from("venda_processo_historico").select("processo_id,etapa_de,etapa_para,movido_por,movido_em").order("movido_em", { ascending: true }),
+    auth.supabase.from("esteira_etapa_verificacoes").select("id,processo_ref,etapa_slug,verificado_por,verificado_em"),
   ]);
   const error = [sales, processes, deals, leads, products, brokers, stages, etapaDocs, anexos].find((item) => item.error)?.error;
   if (error) return Response.json({ error: error.message }, { status: 502 });
-  return Response.json({ sales: sales.data ?? [], processes: processes.data ?? [], deals: deals.data ?? [], leads: leads.data ?? [], products: products.data ?? [], brokers: brokers.data ?? [], stages: stages.data ?? [], etapaDocs: etapaDocs.data ?? [], anexos: anexos.data ?? [], users: users.data ?? [], history: history.data ?? [] });
+  return Response.json({ sales: sales.data ?? [], processes: processes.data ?? [], deals: deals.data ?? [], leads: leads.data ?? [], products: products.data ?? [], brokers: brokers.data ?? [], stages: stages.data ?? [], etapaDocs: etapaDocs.data ?? [], anexos: anexos.data ?? [], users: users.data ?? [], history: history.data ?? [], verificacoes: verificacoes.data ?? [] });
 }
 
 export async function PATCH(request: Request) {
@@ -63,13 +64,18 @@ export async function PATCH(request: Request) {
     const destino = stageBySlug.get(stage);
     const avancando = atual && destino && Number(destino.ordem) > Number(atual.ordem);
     if (avancando && atual?.exige_docs) {
-      const { data: reqDocs } = await auth.supabase.from("esteira_etapa_docs").select("nome").eq("etapa_slug", proc!.etapa).eq("obrigatorio", true).eq("ativo", true);
-      const exigidos = (reqDocs ?? []).map((d) => (d.nome as string));
-      if (exigidos.length) {
-        const { data: anexados } = await auth.supabase.from("esteira_anexos").select("doc_nome").eq("processo_ref", processId).eq("etapa_slug", proc!.etapa);
-        const anexadosSet = new Set((anexados ?? []).map((a) => (a.doc_nome as string)));
-        const faltando = exigidos.filter((nome) => !anexadosSet.has(nome));
-        if (faltando.length) return Response.json({ error: `Faltam documentos obrigatórios em "${atual.nome}": ${faltando.join(", ")}.` }, { status: 409 });
+      // Modelo híbrido: a etapa que exige documentos só libera avanço depois de VERIFICADA por um gestor.
+      const { data: verif } = await auth.supabase.from("esteira_etapa_verificacoes").select("id").eq("processo_ref", processId).eq("etapa_slug", proc!.etapa).maybeSingle();
+      if (!verif) {
+        const { data: reqDocs } = await auth.supabase.from("esteira_etapa_docs").select("nome").eq("etapa_slug", proc!.etapa).eq("obrigatorio", true).eq("ativo", true);
+        const exigidos = (reqDocs ?? []).map((d) => (d.nome as string));
+        if (exigidos.length) {
+          const { data: anexados } = await auth.supabase.from("esteira_anexos").select("doc_nome").eq("processo_ref", processId).eq("etapa_slug", proc!.etapa);
+          const anexadosSet = new Set((anexados ?? []).map((a) => (a.doc_nome as string)));
+          const faltando = exigidos.filter((nome) => !anexadosSet.has(nome));
+          if (faltando.length) return Response.json({ error: `Faltam documentos obrigatórios em "${atual.nome}": ${faltando.join(", ")}.` }, { status: 409 });
+        }
+        return Response.json({ error: `A etapa "${atual.nome}" precisa ser verificada por um gestor antes de avançar.` }, { status: 409 });
       }
     }
     const isFinal = slugs.get(stage) === 0;
@@ -102,6 +108,47 @@ export async function PATCH(request: Request) {
     };
     const { error } = await auth.supabase.from("esteira_anexos").insert(insert as never);
     return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
+  }
+
+  if (action === "verifyStage" || action === "unverifyStage") {
+    const denied = await requireManager(auth);
+    if (denied) return denied;
+    const processId = clean(body.processId, 60);
+    const etapaSlug = clean(body.etapaSlug, 40);
+    if (!processId || !etapaSlug) return Response.json({ error: "Informe o processo e a etapa." }, { status: 422 });
+    if (action === "unverifyStage") {
+      const { error } = await auth.supabase.from("esteira_etapa_verificacoes").delete().eq("processo_ref", processId).eq("etapa_slug", etapaSlug);
+      return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
+    }
+    // valida documentos obrigatórios antes de aprovar
+    const { data: reqDocs } = await auth.supabase.from("esteira_etapa_docs").select("nome").eq("etapa_slug", etapaSlug).eq("obrigatorio", true).eq("ativo", true);
+    const exigidos = (reqDocs ?? []).map((d) => (d.nome as string));
+    if (exigidos.length) {
+      const { data: anexados } = await auth.supabase.from("esteira_anexos").select("doc_nome").eq("processo_ref", processId).eq("etapa_slug", etapaSlug);
+      const anexadosSet = new Set((anexados ?? []).map((a) => (a.doc_nome as string)));
+      const faltando = exigidos.filter((nome) => !anexadosSet.has(nome));
+      if (faltando.length) return Response.json({ error: `Não é possível verificar: faltam documentos obrigatórios: ${faltando.join(", ")}.` }, { status: 409 });
+    }
+    const { error: verifErr } = await auth.supabase.from("esteira_etapa_verificacoes").upsert({ processo_ref: processId, etapa_slug: etapaSlug, verificado_por: auth.user.id, verificado_em: new Date().toISOString() } as never, { onConflict: "processo_ref,etapa_slug" });
+    if (verifErr) return Response.json({ error: verifErr.message }, { status: 502 });
+    // avanço automático: se a etapa verificada é a atual da venda, empurra para a próxima etapa da esteira
+    const { data: proc } = await auth.supabase.from("venda_processos").select("etapa,tipo_venda").eq("id", processId).maybeSingle();
+    let advancedTo: string | null = null;
+    if (proc && proc.etapa === etapaSlug) {
+      const { data: stageRows } = await auth.supabase.from("esteira_etapas").select("slug,ordem,resale,sla_dias").eq("ativo", true).order("ordem", { ascending: true });
+      const isRevenda = proc.tipo_venda === "revenda";
+      const track = (stageRows ?? []).filter((s) => !s.resale || isRevenda);
+      const idx = track.findIndex((s) => s.slug === etapaSlug);
+      const next = idx >= 0 ? track[idx + 1] : undefined;
+      if (next) {
+        const isFinal = Number(next.sla_dias) === 0;
+        const update = isFinal ? { etapa: next.slug, atualizado_em: new Date().toISOString(), prazo_em: null } : { etapa: next.slug, atualizado_em: new Date().toISOString() };
+        const { error: mvErr } = await auth.supabase.from("venda_processos").update(update as never).eq("id", processId);
+        if (mvErr) return Response.json({ error: mvErr.message }, { status: 502 });
+        advancedTo = next.slug as string;
+      }
+    }
+    return Response.json({ success: true, advancedTo });
   }
 
   if (["docCreate", "docUpdate", "docDelete", "docReorder"].includes(action)) {
