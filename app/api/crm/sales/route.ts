@@ -27,7 +27,7 @@ async function activeSlugs(auth: Auth) {
 export async function GET(request: Request) {
   const auth = await authClient(request);
   if (!auth) return Response.json({ error: "Sessão inválida ou expirada." }, { status: 401 });
-  const [sales, processes, deals, leads, products, brokers, stages, etapaDocs, anexos, users, history, verificacoes] = await Promise.all([
+  const [sales, processes, deals, leads, products, brokers, stages, etapaDocs, anexos, users, history, verificacoes, solicitacoes] = await Promise.all([
     auth.supabase.from("vendas").select("id,created_at,data_venda,empreendimento_id,empreendimento_nome,unidade_id,vgv,forma_pgto,status,obs").order("created_at", { ascending: false }),
     auth.supabase.from("venda_processos").select("id,venda_id,negocio_id,etapa,tipo_venda,responsavel_usuario_id,prazo_em,observacoes,criado_em,atualizado_em"),
     auth.supabase.from("negocios").select("id,venda_id,lead_id,corretor_id,empreendimento_id,valor,status"),
@@ -40,10 +40,11 @@ export async function GET(request: Request) {
     auth.supabase.from("usuarios").select("id,nome,role"),
     auth.supabase.from("venda_processo_historico").select("processo_id,etapa_de,etapa_para,movido_por,movido_em").order("movido_em", { ascending: true }),
     auth.supabase.from("esteira_etapa_verificacoes").select("id,processo_ref,etapa_slug,verificado_por,verificado_em"),
+    auth.supabase.from("venda_solicitacoes").select("id,negocio_id,corretor_id,solicitado_por,produto_id,vgv,forma_pgto,obs,status,criado_em").eq("status", "pendente").order("criado_em", { ascending: true }),
   ]);
   const error = [sales, processes, deals, leads, products, brokers, stages, etapaDocs, anexos].find((item) => item.error)?.error;
   if (error) return Response.json({ error: error.message }, { status: 502 });
-  return Response.json({ sales: sales.data ?? [], processes: processes.data ?? [], deals: deals.data ?? [], leads: leads.data ?? [], products: products.data ?? [], brokers: brokers.data ?? [], stages: stages.data ?? [], etapaDocs: etapaDocs.data ?? [], anexos: anexos.data ?? [], users: users.data ?? [], history: history.data ?? [], verificacoes: verificacoes.data ?? [] });
+  return Response.json({ sales: sales.data ?? [], processes: processes.data ?? [], deals: deals.data ?? [], leads: leads.data ?? [], products: products.data ?? [], brokers: brokers.data ?? [], stages: stages.data ?? [], etapaDocs: etapaDocs.data ?? [], anexos: anexos.data ?? [], users: users.data ?? [], history: history.data ?? [], verificacoes: verificacoes.data ?? [], solicitacoes: solicitacoes.data ?? [] });
 }
 
 export async function PATCH(request: Request) {
@@ -269,6 +270,36 @@ export async function PATCH(request: Request) {
     const { error: processError } = await auth.supabase.from("venda_processos").insert({ venda_id: sale.id, negocio_id: deal.id, etapa: "inicio", tipo_venda: product.origem === "terceiros" ? "revenda" : "construtora", criado_por: auth.user.id });
     if (dealError || processError) return Response.json({ error: dealError?.message || processError?.message }, { status: 502 });
     return Response.json({ success: true, saleId: sale.id });
+  }
+  if (action === "solicitar") {
+    const dealId = Number(body.dealId);
+    const productId = String(body.productId || "");
+    const vgv = Number(body.vgv);
+    if (!Number.isSafeInteger(dealId) || !productId || !Number.isFinite(vgv) || vgv <= 0) return Response.json({ error: "Selecione o negócio, o produto e informe o valor." }, { status: 422 });
+    const { data, error } = await auth.supabase.rpc("solicitar_venda", { p_negocio: dealId, p_produto: productId, p_vgv: vgv, p_forma: String(body.payment || "") || null, p_obs: String(body.notes || "") || null });
+    if (error) return Response.json({ error: error.message }, { status: 502 });
+    const r = (data ?? {}) as { ok?: boolean; erro?: string };
+    if (!r.ok) return Response.json({ error: r.erro === "ja_solicitado" ? "Já existe uma solicitação pendente para este negócio." : r.erro === "ja_tem_venda" ? "Este negócio já virou venda." : r.erro === "sem_permissao_neste_negocio" ? "Você só pode enviar negócios sob sua responsabilidade." : (r.erro || "Não foi possível solicitar.") }, { status: 422 });
+    return Response.json({ success: true });
+  }
+  if (action === "aprovarSolicitacao") {
+    const id = String(body.id || "");
+    if (!id) return Response.json({ error: "Solicitação inválida." }, { status: 422 });
+    const { data, error } = await auth.supabase.rpc("aprovar_solicitacao", { p_id: id });
+    if (error) return Response.json({ error: error.message }, { status: 502 });
+    const r = (data ?? {}) as { ok?: boolean; erro?: string };
+    if (!r.ok) return Response.json({ error: r.erro === "sem_permissao" ? "Apenas admin/gestor pode aprovar." : r.erro === "ja_decidida" ? "Esta solicitação já foi decidida." : (r.erro || "Não foi possível aprovar.") }, { status: 422 });
+    return Response.json({ success: true, saleId: (data as { venda_id?: string }).venda_id });
+  }
+  if (action === "recusarSolicitacao") {
+    const id = String(body.id || "");
+    const motivo = String(body.motivo || "").slice(0, 300);
+    if (!id) return Response.json({ error: "Solicitação inválida." }, { status: 422 });
+    const { data, error } = await auth.supabase.rpc("recusar_solicitacao", { p_id: id, p_motivo: motivo });
+    if (error) return Response.json({ error: error.message }, { status: 502 });
+    const r = (data ?? {}) as { ok?: boolean; erro?: string };
+    if (!r.ok) return Response.json({ error: r.erro === "sem_permissao" ? "Apenas admin/gestor pode recusar." : (r.erro || "Não foi possível recusar.") }, { status: 422 });
+    return Response.json({ success: true });
   }
   return Response.json({ error: "Ação desconhecida." }, { status: 400 });
 }
