@@ -7319,6 +7319,7 @@ class Component extends DCLogic {
       var m={};
       ((j&&j.corretores)||[]).forEach(function(x){ var k=String(x.nome||'').trim().toLowerCase().split(' ')[0]; if(k) m[k]=x; });
       self._perfReal=m;
+      self._perfGlobal={semResponsavel:(j&&j.semResponsavel)||0};
       self.setState(function(st){ return { _rev:(st._rev||0)+1 }; });
     }catch(e){}
   }
@@ -9373,27 +9374,27 @@ class Component extends DCLogic {
         const propEmit = R.propEmit || 0; const propAceit = R.propAceit || 0;
         const contratosEnv = R.contratosEnv || 0; const contratosAss = R.contratosAss || 0;
         const tempoResp = R.tempoResp || 0; const tempoEntre = R.tempoEntre || 0;
-        const slaPct = R.slaPct || 0; const aguardando = R.abertos || 0; const atrasados = R.parados || 0; const foraSla = 0;
+        const slaPct = R.slaPct || 0; const aguardando = R.abertos || 0; const atrasados = R.parados || 0; const foraSla = R.foraSla || 0;
         const msgsEnv = R.msgsEnv || 0; const msgsRec = R.msgsRec || 0; const audios = R.audios || 0;
         const ligacoes = R.ligacoes || 0; const ligAtend = R.ligAtend || 0; const followups = R.followups || 0; const reativacoes = R.reativacoes || 0;
         const onlineH = R.onlineH || 0;
         const parados = R.parados || 0; const parados48 = R.parados48 || 0; const parados72 = R.parados72 || 0;
-        const semTarefa = 0; const semQualif = R.semQualif || 0; const semOrigem = R.semOrigem || 0; const semInter = 0; const duplicados = 0; const semResponsavel = 0;
+        const semTarefa = R.semTarefa || 0; const semQualif = R.semQualif || 0; const semOrigem = R.semOrigem || 0; const semInter = R.semInter || 0; const duplicados = R.duplicados || 0; const semResponsavel = 0;
         const convLeadOk = leads > 0 && vendas <= leads; const convLead = convLeadOk ? vendas / leads : 0; const convVisita = visitasReal ? vendas / visitasReal : 0; const convProp = propEmit ? vendas / propEmit : 0;
         const respScore = (tempoResp>0) ? _cl(Math.round(108 - (tempoResp - 1) * 20), 0, 100) : 0;
         const crmScore = (parados>0 || semTarefa>0) ? _cl(Math.round(100 - parados * 3.2 - semTarefa * 2.4), 0, 100) : 0;
         const fupScore = (followups>0) ? _cl(Math.round(38 + followups / 2.6), 0, 100) : 0;
         const visitaScore = _cl(Math.round(convVisita * 100 * 2.6), 0, 100);
         const vendaScore = _cl(Math.round(convLead * 100 * 5.5), 15, 100);
-        const tarefaScore = _ri(n + 'ts', 58, 98);
+        const tarefaScore = R.tarefaPct || 0;
         const score = Math.round(respScore * 0.30 + crmScore * 0.20 + fupScore * 0.20 + visitaScore * 0.15 + vendaScore * 0.10 + tarefaScore * 0.05);
         const abandonados = parados72 + semInter; const trabalhados = Math.max(0, leads - abandonados);
         const idxEsforco = _cl(Math.round((msgsEnv / 16 + ligacoes / 1.4 + visitasReal * 2.4 + propEmit * 3 + followups / 2) / 6), 0, 100);
         const idxQualidade = Math.round((respScore + crmScore + slaPct + visitaScore) / 4);
         const idxEficiencia = _cl(Math.round(vendas / Math.max(1, (msgsEnv / 120 + visitasReal / 2 + propEmit)) * 60), 0, 100);
         const idxAproveita = leads ? Math.round(trabalhados / leads * 100) : 0;
-        const idxPersist = +(_pr(n + 'pp', 2.1, 5.8)).toFixed(1); const idxFollowup = +(_pr(n + 'fl', 1.6, 4.4)).toFixed(1);
-        return { nome: n, initials: n.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase(), vendas, leads, ticket, vgv, com, meta, metaPct, visitasReal, visitasMarc, visitasCanc, propEmit, propAceit, contratosEnv, contratosAss, tempoResp, tempoEntre, slaPct, aguardando, atrasados, foraSla, msgsEnv, msgsRec, audios, ligacoes, ligAtend, followups, reativacoes, onlineH, parados, parados48, parados72, semTarefa, semQualif, semOrigem, semInter, duplicados, semResponsavel, convLead, convLeadOk, convVisita, convProp, respScore, crmScore, fupScore, visitaScore, vendaScore, tarefaScore, score, abandonados, trabalhados, idxEsforco, idxQualidade, idxEficiencia, idxAproveita, idxPersist, idxFollowup };
+        const idxPersist = Number(R.persistencia) || 0; const idxFollowup = Number(R.fupPorLead) || 0;
+        return { nome: n, initials: n.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase(), vendas, leads, ticket, vgv, com, meta, metaPct, visitasReal, visitasMarc, visitasCanc, propEmit, propAceit, contratosEnv, contratosAss, tempoResp, tempoEntre, slaPct, aguardando, atrasados, foraSla, msgsEnv, msgsRec, audios, ligacoes, ligAtend, followups, reativacoes, onlineH, parados, parados48, parados72, semTarefa, semQualif, semOrigem, semInter, duplicados, semResponsavel, convLead, convLeadOk, convVisita, convProp, respScore, crmScore, fupScore, visitaScore, vendaScore, tarefaScore, score, abandonados, trabalhados, idxEsforco, idxQualidade, idxEficiencia, idxAproveita, idxPersist, idxFollowup, convAbordadas: R.convAbordadas || 0, convRespondidas: R.convRespondidas || 0, perdidos: R.perdidos || 0, limiteCarteira: R.limiteCarteira || 55, cicloVisitaDias: Number(R.cicloVisitaDias) || 0, cicloPropostaDias: Number(R.cicloPropostaDias) || 0, cicloVendaDias: Number(R.cicloVendaDias) || 0, evoScoreReal: Number(R.evoScore) || 0, evoVgvReal: Number(R.evoVgvPct) || 0, propRecusadasReal: R.propRecus || 0, histReal: Array.isArray(R.hist) ? R.hist : [] };
       });
       const sum = (k) => rows.reduce((a, r) => a + r[k], 0);
       const avg = (k) => rows.length ? sum(k) / rows.length : 0;
@@ -9405,7 +9406,8 @@ class Component extends DCLogic {
         visitasReal: sum('visitasReal'), visitasMarc: sum('visitasMarc'), visitasCanc: sum('visitasCanc'), propEmit: sum('propEmit'), propAceit: sum('propAceit'), contratosEnv: sum('contratosEnv'), contratosAss: sum('contratosAss'),
         tempoResp: +avg('tempoResp').toFixed(1), tempoEntre: +avg('tempoEntre').toFixed(1), slaPct: Math.round(avg('slaPct')), aguardando: sum('aguardando'), atrasados: sum('atrasados'), foraSla: sum('foraSla'),
         msgsEnv: sum('msgsEnv'), msgsRec: sum('msgsRec'), audios: sum('audios'), ligacoes: sum('ligacoes'), ligAtend: sum('ligAtend'), followups: sum('followups'), reativacoes: sum('reativacoes'), onlineH: Math.round(avg('onlineH')),
-        parados: sum('parados'), parados48: sum('parados48'), parados72: sum('parados72'), semTarefa: sum('semTarefa'), semQualif: sum('semQualif'), semOrigem: sum('semOrigem'), semInter: sum('semInter'), duplicados: sum('duplicados'), semResponsavel: sum('semResponsavel'),
+        parados: sum('parados'), parados48: sum('parados48'), parados72: sum('parados72'), semTarefa: sum('semTarefa'), semQualif: sum('semQualif'), semOrigem: sum('semOrigem'), semInter: sum('semInter'), duplicados: sum('duplicados'), semResponsavel: (this._perfGlobal && this._perfGlobal.semResponsavel) || 0,
+        convAbordadas: sum('convAbordadas'), convRespondidas: sum('convRespondidas'), perdidos: sum('perdidos'), limiteCarteira: rows.reduce((a, r) => a + (r.limiteCarteira || 55), 0), cicloVisitaDias: Math.round(avg('cicloVisitaDias')), cicloPropostaDias: 0, cicloVendaDias: Math.round(avg('cicloVendaDias')), evoScoreReal: Math.round(avg('evoScoreReal')), evoVgvReal: Math.round(avg('evoVgvReal')), propRecusadasReal: sum('propRecusadasReal'), histReal: [],
         convLeadOk: teamLeads > 0 && teamVendas <= teamLeads, convLead: (teamLeads > 0 && teamVendas <= teamLeads) ? teamVendas / teamLeads : 0, convVisita: sum('visitasReal') ? teamVendas / sum('visitasReal') : 0, convProp: sum('propEmit') ? teamVendas / sum('propEmit') : 0,
         score: teamScore, respScore: Math.round(avg('respScore')), crmScore: Math.round(avg('crmScore')), fupScore: Math.round(avg('fupScore')), visitaScore: Math.round(avg('visitaScore')), vendaScore: Math.round(avg('vendaScore')), tarefaScore: Math.round(avg('tarefaScore')),
         idxEsforco: Math.round(avg('idxEsforco')), idxQualidade: Math.round(avg('idxQualidade')), idxEficiencia: Math.round(avg('idxEficiencia')), idxAproveita: Math.round(avg('idxAproveita')), idxPersist: +avg('idxPersist').toFixed(1), idxFollowup: +avg('idxFollowup').toFixed(1)
@@ -9462,7 +9464,13 @@ class Component extends DCLogic {
         kpi('Meta atingida', cur.metaPct + '%', 'de ' + brlM(cur.meta), 'check', '#E0A400'),
         kpi('Score ApêCerto', cur.score + '/100', fx.label, 'sparkle', '#66009A')
       ];
-      const restante = Math.max(0, cur.meta - cur.vgv); const projec = Math.round(cur.vgv * 1.18);
+      const restante = Math.max(0, cur.meta - cur.vgv);
+      // Projeção pró-rata real: VGV atual dividido pela fração decorrida do período.
+      const _agora = new Date(); let _fracao = 1;
+      if (perfPeriodo === 'tri') { const _i = new Date(_agora.getFullYear(), _agora.getMonth() - 2, 1); const _f = new Date(_agora.getFullYear(), _agora.getMonth() + 1, 1); _fracao = (_agora - _i) / (_f - _i); }
+      else if (perfPeriodo === 'ano') { const _i = new Date(_agora.getFullYear(), 0, 1); const _f = new Date(_agora.getFullYear() + 1, 0, 1); _fracao = (_agora - _i) / (_f - _i); }
+      else { _fracao = _agora.getDate() / new Date(_agora.getFullYear(), _agora.getMonth() + 1, 0).getDate(); }
+      const projec = Math.round(cur.vgv / Math.max(_fracao, 0.03));
       perf.meta = { pctTxt: cur.metaPct + '%', barStyle: bar(cur.metaPct, cur.metaPct >= 100 ? '#1FA85A' : '#FF7000'), atingidoTxt: brlM(cur.vgv), metaTxt: brlM(cur.meta), restanteTxt: brlM(restante), projecaoTxt: brlM(projec), projPctTxt: Math.round(projec / cur.meta * 100) + '% da meta no ritmo atual' };
       const convVis = cur.leads ? cur.visitasReal / cur.leads : 0; const convVP = cur.visitasReal ? cur.propEmit / cur.visitasReal : 0;
       perf.conv = [
@@ -9543,9 +9551,9 @@ class Component extends DCLogic {
           kpi('Receita / hora', cur.onlineH > 0 ? brlK(cur.com / cur.onlineH) : '—', 'trabalhada', 'wallet', '#E0A400')
         ],
         tempos: [
-          { k: 'Tempo até 1ª visita', v: _ri(cur.nome + 't1', 2, 6) + ' dias', barStyle: bar(38, '#FF7000') },
-          { k: 'Tempo até proposta', v: _ri(cur.nome + 't2', 6, 14) + ' dias', barStyle: bar(62, '#8B00CC') },
-          { k: 'Tempo até venda (fechamento)', v: _ri(cur.nome + 't3', 18, 42) + ' dias', barStyle: bar(90, '#1FA85A') }
+          { k: 'Tempo até 1ª visita', v: (cur.cicloVisitaDias || 0) + ' dias', barStyle: bar(_cl((cur.cicloVisitaDias || 0) * 8, 4, 100), '#FF7000') },
+          { k: 'Tempo até proposta', v: cur.cicloPropostaDias ? cur.cicloPropostaDias + ' dias' : 'sem registro', barStyle: bar(_cl((cur.cicloPropostaDias || 0) * 5, 4, 100), '#8B00CC') },
+          { k: 'Tempo até venda (fechamento)', v: (cur.cicloVendaDias || 0) + ' dias', barStyle: bar(_cl((cur.cicloVendaDias || 0) * 2.2, 4, 100), '#1FA85A') }
         ],
         conversaoHora: cur.onlineH > 0 ? (cur.vendas / cur.onlineH * 100).toFixed(2) : '0.00'
       };
@@ -9603,12 +9611,12 @@ class Component extends DCLogic {
       // ---- métricas derivadas: saúde da carteira, capacidade, evolução, negociações ----
       rows.forEach(r => {
         r.saude = _cl(Math.round(94 - r.parados * 2.4 - r.atrasados * 2.0 - r.semTarefa * 1.7 - r.semQualif * 1.3 + r.followups * 0.05 + (r.slaPct - 80) * 0.35), 24, 100);
-        r.limite = 55; r.ocupacao = Math.round(r.leads / r.limite * 100); r.capDisp = Math.max(0, r.limite - r.leads);
-        r.evoScore = _ri(r.nome + 'evs', -9, 13);
-        r.evoVgvPct = _ri(r.nome + 'evv', -16, 34);
-        r.negocAbertas = _ri(r.nome + 'na', 6, 24); r.negocGanhas = r.vendas; r.negocPerdidas = _ri(r.nome + 'np', 2, 12);
+        r.limite = r.limiteCarteira || 55; r.ocupacao = Math.round(r.leads / r.limite * 100); r.capDisp = Math.max(0, r.limite - r.leads);
+        r.evoScore = r.evoScoreReal || 0;
+        r.evoVgvPct = r.evoVgvReal || 0;
+        r.negocAbertas = r.aguardando || 0; r.negocGanhas = r.vendas; r.negocPerdidas = r.perdidos || 0;
         r.reativacoes = r.reativacoes || 0;
-        r.propRecusadas = _ri(r.nome + 'prc', 0, 3); r.propSemRetorno = _ri(r.nome + 'psr', 0, 4);
+        r.propRecusadas = r.propRecusadasReal || 0; r.propSemRetorno = 0;
         r.comparecimento = r.visitasMarc ? Math.round(r.visitasReal / r.visitasMarc * 100) : 0;
         r.resultadoIdx = _cl(Math.round(r.metaPct * 0.42 + r.convLead * 100 * 3.2 + r.score * 0.28), 6, 100);
         // ---- notas de qualidade de atendimento (Avaliador de IA · item 4) ----
@@ -9687,7 +9695,7 @@ class Component extends DCLogic {
         'Follow-ups': ['Retornos ativos a leads que pararam de responder (detectados nas conversas). Persistência recupera negócio.', 'up'],
         'Conversão em visitas': ['Quantas vendas saem das visitas realizadas. Mede a qualidade do agendamento.', 'up'],
         'Conversão em vendas': ['Quantos leads viram venda. Resultado final do funil.', 'up'],
-        'Cumprimento de tarefas': ['Tarefas do CRM concluídas no prazo. (aguardando uso do módulo de tarefas)', 'up']
+        'Cumprimento de tarefas': ['Percentual de tarefas do CRM concluídas dentro do período. Sem tarefas cadastradas, a nota fica em 0.', 'up']
       };
       perf.scoreHero.drivers.forEach(d => { const t = DRIVER_TIPS[d.label]; if (t) { Object.assign(d, mkTip(d.label + ' · peso ' + d.peso, t[0], t[1])); } });
       perf.metaTipC = mkTip('Progresso do período', 'VGV realizado sobre a meta cadastrada em Metas. A projeção estima o fechamento mantendo o ritmo atual.', 'up');
@@ -9704,12 +9712,12 @@ class Component extends DCLogic {
         'Leads parados +24h': 'Negócios abertos sem nenhuma movimentação há mais de 24 horas.',
         'Parados +48h': 'Negócios abertos sem movimentação há mais de 48 horas.',
         'Parados +72h': 'Negócios abertos sem movimentação há mais de 72 horas — risco alto de esfriar.',
-        'Sem próxima tarefa': 'Leads sem nenhuma tarefa futura agendada no CRM. (aguardando uso do módulo de tarefas)',
+        'Sem próxima tarefa': 'Negócios abertos sem nenhuma tarefa futura agendada no CRM.',
         'Sem qualificação': 'Leads sem etiqueta de temperatura/qualificação preenchida.',
         'Sem origem definida': 'Leads sem canal de origem registrado — impede medir o marketing.',
-        'Sem última interação': 'Leads sem registro de interação. (métrica em construção)',
-        'Leads duplicados': 'Possíveis cadastros repetidos do mesmo cliente. (métrica em construção)',
-        'Sem responsável': 'Leads sem corretor atribuído. (métrica em construção)'
+        'Sem última interação': 'Leads sem nenhuma conversa de WhatsApp registrada.',
+        'Leads duplicados': 'Leads que compartilham o mesmo telefone com outro cadastro.',
+        'Sem responsável': 'Leads sem corretor atribuído (visível no total da equipe).'
       };
       perf.org.alertas.forEach(a => { Object.assign(a, mkTip(a.label, ALERT_TIPS[a.label] || 'Indicador de organização do CRM.', 'down')); });
       perf.indices.forEach(i => {
@@ -9718,8 +9726,8 @@ class Component extends DCLogic {
           'Índice de Qualidade': 'Média de tempo de resposta, atualização do CRM, SLA e conversão em visitas.',
           'Índice de Eficiência': 'Resultado (vendas) em relação ao esforço investido — fazer mais com menos.',
           'Aproveitamento da base': 'Leads efetivamente trabalhados sobre o total recebido.',
-          'Índice de Persistência': 'Tentativas médias de contato até obter resposta ou venda. (aguardando fonte)',
-          'Índice de Follow-up': 'Follow-ups médios por lead em aberto. (aguardando fonte)'
+          'Índice de Persistência': 'Mensagens enviadas por conversa abordada — quantas tentativas até engajar o lead.',
+          'Índice de Follow-up': 'Follow-ups médios por conversa abordada no período.'
         };
         Object.assign(i, mkTip(i.nome, IDX_TIPS[i.nome] || i.desc, 'up'));
       });
@@ -9793,8 +9801,8 @@ class Component extends DCLogic {
       const fLeads = cur.leads || 1;
       const fSteps = [
         { k: 'Leads recebidos', n: cur.leads },
-        { k: 'Leads respondidos', n: Math.round(cur.leads * 0.86) },
-        { k: 'Leads qualificados', n: Math.round(cur.leads * 0.52) },
+        { k: 'Leads respondidos', n: Math.min(cur.leads, cur.convRespondidas || 0) },
+        { k: 'Leads qualificados', n: Math.max(0, cur.leads - (cur.semQualif || 0)) },
         { k: 'Visitas marcadas', n: cur.visitasMarc },
         { k: 'Visitas realizadas', n: cur.visitasReal },
         { k: 'Propostas', n: cur.propEmit },
@@ -9914,7 +9922,7 @@ class Component extends DCLogic {
         ];
         const fortes = dCats.slice().sort((a, b) => b.score - a.score).slice(0, 2).map(c => c.label);
         const criticos = dCats.slice().sort((a, b) => a.score - b.score).slice(0, 2).map(c => c.label);
-        const histBase = drRow.score; const hist = [ -5, -3, -4, -1, -2, 0 ].map((d, i) => Math.max(20, Math.min(100, histBase - d - _ri(drRow.nome + 'h' + i, -3, 3))));
+        const hist = (drRow.histReal && drRow.histReal.length > 1) ? drRow.histReal.map(Number) : [drRow.score, drRow.score, drRow.score, drRow.score, drRow.score, drRow.score];
         const histMax = Math.max.apply(null, hist);
         const dkpi = (label, value, sub, ic, c) => ({ label, value, sub: sub || '', icon: this.I[ic] || this.I.trend, iconWrap: kpiIcon(c) });
         const tabDef = [ ['geral', 'Visão geral'], ['atendimento', 'Atendimento'], ['atividade', 'Atividades'], ['funil', 'Funil'], ['qualidade', 'Qualidade'], ['score', 'Score'], ['historico', 'Histórico'] ];
