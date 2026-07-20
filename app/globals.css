@@ -3691,3 +3691,54 @@ article.tone-red{border-left-color:#d3443e}article.tone-red strong{color:#d3443e
   .login-hero-shape.panel { display:none; }
   .login-form-side { padding:36px 26px 44px; }
 }
+
+/* ===== Esteira: anexos de documentos ===== */
+.sale-card-controls .sale-card-docs{flex:none;border:1px solid #e3dcd7;border-radius:8px;padding:0 10px;height:30px;background:#fff;color:#4a443f;font-weight:700;font-size:11px;cursor:pointer}
+.sale-card-controls .sale-card-docs:hover{border-color:#ff9c5e;color:#d85600}
+.esteira-docs-layer{position:fixed;inset:0;z-index:80;background:rgba(30,22,18,.5);backdrop-filter:blur(2px);display:flex;justify-content:flex-end}
+.esteira-docs{width:min(560px,100%);height:100%;overflow:auto;background:#fbfaf9;box-shadow:-20px 0 60px rgba(34,23,15,.22);display:flex;flex-direction:column}
+.esteira-docs>header{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:20px;background:linear-gradient(135deg,#ff6500,#ff7b25);color:#fff}
+.esteira-docs>header span{font-size:11px;letter-spacing:.08em;font-weight:800;opacity:.9}
+.esteira-docs>header h2{margin:4px 0 2px;font-size:19px}
+.esteira-docs>header p{margin:0;font-size:12px;color:#fff;opacity:.92}
+.esteira-docs>header b{font-weight:800}
+.esteira-docs>header button{border:0;background:rgba(255,255,255,.2);color:#fff;width:32px;height:32px;border-radius:50%;font-size:18px;cursor:pointer;flex:none}
+.esteira-docs .modal-error{margin:14px 20px 0}
+.esteira-docs section{margin:16px 20px 0;padding:16px;background:#fff;border:1px solid #eee9e5;border-radius:14px}
+.esteira-docs section:last-child{margin-bottom:20px}
+.esteira-docs h3{margin:0 0 12px;font-size:13px}
+.esteira-doc-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.esteira-doc-head h3{margin:0}
+.esteira-doc-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid #f2efec}
+.esteira-doc-row:last-child{border-bottom:0}
+.esteira-doc-check{width:22px;height:22px;flex:none;display:grid;place-items:center;border-radius:50%;background:#f0eeec;color:#a79e98;font-size:12px;font-weight:800}
+.esteira-doc-row.ok .esteira-doc-check{background:#e5f7ec;color:#17834b}
+.esteira-doc-info{flex:1;min-width:0;display:flex;flex-direction:column}
+.esteira-doc-info strong{font-size:12px}
+.esteira-doc-info small{font-size:11px;color:#918b86;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.esteira-doc-actions{display:flex;gap:6px;flex:none}
+.esteira-doc-actions button,.esteira-doc-up{border:1px solid #ded7d2;border-radius:8px;padding:6px 10px;background:#fff;color:#5f5752;font-size:11px;font-weight:700;cursor:pointer}
+.esteira-doc-up{border-color:#ffb57f;color:#d85600;background:#fff7f1;display:inline-flex;align-items:center}
+.esteira-doc-actions .esteira-doc-del{border-color:#f0d4cd;background:#fff6f4;color:#c9443d;padding:6px 9px}
+.esteira-config-list{display:flex;flex-direction:column;gap:14px;margin-top:16px}
+.esteira-config-stage{border:1px solid #ece7e3;border-radius:14px;background:#fff;padding:14px}
+.esteira-config-head{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap}
+.esteira-config-head input[type=color]{width:38px;height:38px;padding:2px;border:1px solid #ded7d2;border-radius:8px;background:#fff;cursor:pointer;flex:none}
+.esteira-config-nome{flex:1;min-width:160px;min-height:38px;border:1px solid #e3dcd7;border-radius:8px;padding:6px 10px;font-family:inherit;font-size:13px;font-weight:700}
+.esteira-config-field{display:flex;flex-direction:column;gap:3px;font-size:10px;letter-spacing:.03em;color:#918b86;font-weight:700;text-transform:uppercase}
+.esteira-config-field select,.esteira-config-field input{min-height:38px;border:1px solid #e3dcd7;border-radius:8px;padding:6px 9px;background:#fff;font-family:inherit;font-size:12px;font-weight:600;color:#3a3430}
+.esteira-config-field input[type=number]{width:80px}
+.esteira-config-gate{display:flex;gap:9px;align-items:flex-start;margin-top:12px;padding:10px 12px;border:1px solid #ffe0c8;border-radius:10px;background:#fff7f1;cursor:pointer}
+.esteira-config-gate input{margin-top:2px;flex:none}
+.esteira-config-gate span{display:flex;flex-direction:column}
+.esteira-config-gate strong{font-size:12px;color:#3a3430}
+.esteira-config-gate small{font-size:11px;color:#918b86}
+.esteira-config-docs{margin-top:12px;padding-top:12px;border-top:1px dashed #ece7e3;display:flex;flex-direction:column;gap:8px}
+.esteira-config-doc{display:flex;gap:8px;align-items:center}
+.esteira-config-doc>input{flex:1;min-width:120px;min-height:34px;border:1px solid #e3dcd7;border-radius:8px;padding:6px 9px;font-family:inherit;font-size:12px}
+.esteira-config-obrig{display:flex;gap:5px;align-items:center;font-size:11px;font-weight:700;color:#5f5752;white-space:nowrap;flex:none}
+.esteira-config-doc-add{display:flex;gap:8px;align-items:center;margin-top:2px}
+.esteira-config-doc-add input{flex:1;min-height:34px;border:1px solid #e3dcd7;border-radius:8px;padding:6px 9px;font-family:inherit;font-size:12px}
+.esteira-config-doc-add button{border:1px solid #ffb57f;border-radius:8px;padding:7px 12px;background:#fff7f1;color:#d85600;font-weight:700;font-size:11px;cursor:pointer;white-space:nowrap;flex:none}
+.esteira-config-doc-add button:disabled{opacity:.55;cursor:default}
+@media(max-width:720px){.esteira-config-head{flex-direction:column;align-items:stretch}.esteira-config-doc{flex-wrap:wrap}}

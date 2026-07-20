@@ -27,18 +27,21 @@ async function activeSlugs(auth: Auth) {
 export async function GET(request: Request) {
   const auth = await authClient(request);
   if (!auth) return Response.json({ error: "Sessão inválida ou expirada." }, { status: 401 });
-  const [sales, processes, deals, leads, products, brokers, stages] = await Promise.all([
+  const [sales, processes, deals, leads, products, brokers, stages, etapaDocs, anexos, users] = await Promise.all([
     auth.supabase.from("vendas").select("id,created_at,data_venda,empreendimento_id,empreendimento_nome,unidade_id,vgv,forma_pgto,status,obs").order("created_at", { ascending: false }),
     auth.supabase.from("venda_processos").select("id,venda_id,negocio_id,etapa,tipo_venda,responsavel_usuario_id,prazo_em,observacoes,criado_em,atualizado_em"),
     auth.supabase.from("negocios").select("id,venda_id,lead_id,corretor_id,empreendimento_id,valor,status"),
     auth.supabase.from("leads").select("id,nome,telefone,email,corretor_id,tags,extras"),
     auth.supabase.from("empreendimentos").select("id,nome,origem,bairro,cidade").order("nome"),
     auth.supabase.rpc("listar_corretores_transferencia"),
-    auth.supabase.from("esteira_etapas").select("id,slug,nome,cor,ordem,papel,sla_dias,resale").eq("ativo", true).order("ordem", { ascending: true }),
+    auth.supabase.from("esteira_etapas").select("id,slug,nome,cor,ordem,papel,sla_dias,resale,exige_docs").eq("ativo", true).order("ordem", { ascending: true }),
+    auth.supabase.from("esteira_etapa_docs").select("id,etapa_slug,nome,obrigatorio,ordem").eq("ativo", true).order("ordem", { ascending: true }),
+    auth.supabase.from("esteira_anexos").select("id,processo_ref,negocio_id,etapa_slug,doc_nome,nome,path,mime,tamanho,criado_em").order("criado_em", { ascending: false }),
+    auth.supabase.from("usuarios").select("id,nome,role"),
   ]);
-  const error = [sales, processes, deals, leads, products, brokers, stages].find((item) => item.error)?.error;
+  const error = [sales, processes, deals, leads, products, brokers, stages, etapaDocs, anexos].find((item) => item.error)?.error;
   if (error) return Response.json({ error: error.message }, { status: 502 });
-  return Response.json({ sales: sales.data ?? [], processes: processes.data ?? [], deals: deals.data ?? [], leads: leads.data ?? [], products: products.data ?? [], brokers: brokers.data ?? [], stages: stages.data ?? [] });
+  return Response.json({ sales: sales.data ?? [], processes: processes.data ?? [], deals: deals.data ?? [], leads: leads.data ?? [], products: products.data ?? [], brokers: brokers.data ?? [], stages: stages.data ?? [], etapaDocs: etapaDocs.data ?? [], anexos: anexos.data ?? [], users: users.data ?? [] });
 }
 
 export async function PATCH(request: Request) {
@@ -51,11 +54,90 @@ export async function PATCH(request: Request) {
     const stage = String(body.stage || "");
     const slugs = await activeSlugs(auth);
     if (!processId || !slugs.has(stage)) return Response.json({ error: "Etapa inválida." }, { status: 422 });
+    // Trava de documentos: só ao AVANÇAR (etapa destino mais à frente) e só se a etapa atual exigir docs.
+    const { data: stageRows } = await auth.supabase.from("esteira_etapas").select("slug,ordem,nome,exige_docs").eq("ativo", true);
+    const stageBySlug = new Map((stageRows ?? []).map((s) => [s.slug as string, s]));
+    const { data: proc } = await auth.supabase.from("venda_processos").select("etapa,negocio_id").eq("id", processId).maybeSingle();
+    const atual = proc ? stageBySlug.get(proc.etapa as string) : null;
+    const destino = stageBySlug.get(stage);
+    const avancando = atual && destino && Number(destino.ordem) > Number(atual.ordem);
+    if (avancando && atual?.exige_docs) {
+      const { data: reqDocs } = await auth.supabase.from("esteira_etapa_docs").select("nome").eq("etapa_slug", proc!.etapa).eq("obrigatorio", true).eq("ativo", true);
+      const exigidos = (reqDocs ?? []).map((d) => (d.nome as string));
+      if (exigidos.length) {
+        const { data: anexados } = await auth.supabase.from("esteira_anexos").select("doc_nome").eq("processo_ref", processId).eq("etapa_slug", proc!.etapa);
+        const anexadosSet = new Set((anexados ?? []).map((a) => (a.doc_nome as string)));
+        const faltando = exigidos.filter((nome) => !anexadosSet.has(nome));
+        if (faltando.length) return Response.json({ error: `Faltam documentos obrigatórios em "${atual.nome}": ${faltando.join(", ")}.` }, { status: 409 });
+      }
+    }
     const isFinal = slugs.get(stage) === 0;
     const update = isFinal
       ? { etapa: stage, atualizado_em: new Date().toISOString(), prazo_em: null }
       : { etapa: stage, atualizado_em: new Date().toISOString() };
     const { error } = await auth.supabase.from("venda_processos").update(update).eq("id", processId);
+    return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
+  }
+
+  if (action === "addAnexo" || action === "removeAnexo") {
+    if (action === "removeAnexo") {
+      const id = clean(body.anexoId, 60);
+      if (!id) return Response.json({ error: "Anexo inválido." }, { status: 422 });
+      const { error } = await auth.supabase.from("esteira_anexos").delete().eq("id", id);
+      return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
+    }
+    const processo_ref = clean(body.processId, 60);
+    const path = clean(body.path, 400);
+    const nome = clean(body.nome, 200);
+    if (!processo_ref || !path || !nome) return Response.json({ error: "Informe o processo, o arquivo e o nome." }, { status: 422 });
+    const insert: Record<string, unknown> = {
+      processo_ref, nome, path,
+      etapa_slug: clean(body.etapaSlug, 40) || null,
+      doc_nome: clean(body.docNome, 200) || null,
+      mime: clean(body.mime, 100) || null,
+      tamanho: Number.isFinite(Number(body.tamanho)) ? Math.trunc(Number(body.tamanho)) : null,
+      negocio_id: Number.isSafeInteger(Number(body.negocioId)) && Number(body.negocioId) > 0 ? Number(body.negocioId) : null,
+      enviado_por: auth.user.id,
+    };
+    const { error } = await auth.supabase.from("esteira_anexos").insert(insert as never);
+    return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
+  }
+
+  if (["docCreate", "docUpdate", "docDelete", "docReorder"].includes(action)) {
+    const denied = await requireManager(auth);
+    if (denied) return denied;
+    if (action === "docCreate") {
+      const etapaSlug = clean(body.etapaSlug, 40);
+      const nome = clean(body.nome, 120);
+      if (!etapaSlug || !nome) return Response.json({ error: "Informe a etapa e o nome do documento." }, { status: 422 });
+      const { data: last } = await auth.supabase.from("esteira_etapa_docs").select("ordem").eq("etapa_slug", etapaSlug).order("ordem", { ascending: false }).limit(1).maybeSingle();
+      const ordem = (last?.ordem ?? 0) + 1;
+      const { error } = await auth.supabase.from("esteira_etapa_docs").insert({ etapa_slug: etapaSlug, nome, obrigatorio: body.obrigatorio !== false, ordem } as never);
+      return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
+    }
+    if (action === "docUpdate") {
+      const id = clean(body.docId, 60);
+      if (!id) return Response.json({ error: "Documento inválido." }, { status: 422 });
+      const patch: Record<string, unknown> = {};
+      if (typeof body.nome === "string" && body.nome.trim()) patch.nome = clean(body.nome, 120);
+      if (typeof body.obrigatorio === "boolean") patch.obrigatorio = body.obrigatorio;
+      if (Object.keys(patch).length === 0) return Response.json({ error: "Nada para atualizar." }, { status: 422 });
+      const { error } = await auth.supabase.from("esteira_etapa_docs").update(patch as never).eq("id", id);
+      return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
+    }
+    if (action === "docReorder") {
+      const ids = Array.isArray(body.ids) ? (body.ids as unknown[]).map((v) => clean(v, 60)).filter(Boolean) : [];
+      if (!ids.length) return Response.json({ error: "Ordem inválida." }, { status: 422 });
+      for (let index = 0; index < ids.length; index += 1) {
+        const { error } = await auth.supabase.from("esteira_etapa_docs").update({ ordem: index + 1 } as never).eq("id", ids[index]);
+        if (error) return Response.json({ error: error.message }, { status: 502 });
+      }
+      return Response.json({ success: true });
+    }
+    // docDelete
+    const id = clean(body.docId, 60);
+    if (!id) return Response.json({ error: "Documento inválido." }, { status: 422 });
+    const { error } = await auth.supabase.from("esteira_etapa_docs").update({ ativo: false } as never).eq("id", id);
     return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
   }
   if (action === "createStage" || action === "updateStage" || action === "reorderStages" || action === "deleteStage" || action === "bulkMoveStage") {
@@ -82,6 +164,7 @@ export async function PATCH(request: Request) {
       if (typeof body.papel === "string") patch.papel = clean(body.papel, 40);
       if (body.slaDias !== undefined && Number.isFinite(Number(body.slaDias))) patch.sla_dias = Math.max(0, Math.trunc(Number(body.slaDias)));
       if (typeof body.resale === "boolean") patch.resale = body.resale;
+      if (typeof body.exigeDocs === "boolean") patch.exige_docs = body.exigeDocs;
       if (Object.keys(patch).length === 0) return Response.json({ error: "Nada para atualizar." }, { status: 422 });
       const { error } = await auth.supabase.from("esteira_etapas").update(patch as never).eq("id", id);
       return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });

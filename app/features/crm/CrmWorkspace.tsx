@@ -329,7 +329,10 @@ type SalesData = {
   leads: Array<{ id: number; nome: string | null; telefone: string | null; email: string | null; corretor_id: number | null; tags: unknown; extras: unknown }>;
   products: Array<{ id: string; nome: string; origem: string; bairro: string | null; cidade: string | null }>;
   brokers: Array<{ id: number; nome: string; usuario_id: string | null; online: boolean }>;
-  stages?: Array<{ id: string; slug: string; nome: string; cor: string; ordem: number; papel: string; sla_dias: number; resale: boolean }>;
+  stages?: Array<{ id: string; slug: string; nome: string; cor: string; ordem: number; papel: string; sla_dias: number; resale: boolean; exige_docs?: boolean }>;
+  etapaDocs?: Array<{ id: string; etapa_slug: string; nome: string; obrigatorio: boolean; ordem: number }>;
+  anexos?: Array<{ id: string; processo_ref: string; negocio_id: number | null; etapa_slug: string | null; doc_nome: string | null; nome: string; path: string; mime: string | null; tamanho: number | null; criado_em: string }>;
+  users?: Array<{ id: string; nome: string; role: string }>;
 };
 
 const saleStages = [
@@ -344,7 +347,7 @@ const saleStages = [
 ];
 
 function SalesProcessView({ accessToken, initialCreate = false, sessionRole = "corretor" }: { accessToken: string; initialCreate?: boolean; sessionRole?: string }) {
-  const [data, setData] = useState<SalesData | null>(null); const [error, setError] = useState<string | null>(null); const [filter, setFilter] = useState("all"); const [creating, setCreating] = useState(initialCreate); const [busy, setBusy] = useState(false); const [chatItem, setChatItem] = useState<{ lead: Lead; deal: Deal; corretorNome?: string } | null>(null); const [menuStage, setMenuStage] = useState<string | null>(null); const [bulkFrom, setBulkFrom] = useState<string | null>(null); const [addingStage, setAddingStage] = useState(false); const [newStageName, setNewStageName] = useState("");
+  const [data, setData] = useState<SalesData | null>(null); const [error, setError] = useState<string | null>(null); const [filter, setFilter] = useState("all"); const [creating, setCreating] = useState(initialCreate); const [busy, setBusy] = useState(false); const [chatItem, setChatItem] = useState<{ lead: Lead; deal: Deal; corretorNome?: string } | null>(null); const [menuStage, setMenuStage] = useState<string | null>(null); const [bulkFrom, setBulkFrom] = useState<string | null>(null); const [addingStage, setAddingStage] = useState(false); const [newStageName, setNewStageName] = useState(""); const [docsProcessId, setDocsProcessId] = useState<string | null>(null);
   const canManageStages = sessionRole !== "corretor";
   const load = async () => { const response = await authedFetch("/api/crm/sales", { headers: { Authorization: `Bearer ${accessToken}` } }); const result = await response.json() as SalesData & { error?: string }; if (!response.ok) throw new Error(result.error || "Não foi possível carregar as vendas."); setData(result); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -395,15 +398,62 @@ function SalesProcessView({ accessToken, initialCreate = false, sessionRole = "c
               {tags.length > 0 && <div className="card-tags" aria-label="Tags do lead">{tags.map((tagItem) => <span key={tagItem}>{tagItem}</span>)}</div>}
               <small className="sale-kind">{item.tipo_venda === "revenda" ? "Revenda" : "Construtora"}</small>
             </div>
-            <div className="sale-card-controls">{lead && deal && <button type="button" className="sale-card-chat" onClick={() => setChatItem({ lead: lead as unknown as Lead, deal: deal as unknown as Deal, corretorNome: broker?.nome })}>Chat</button>}<select aria-label={`Mover ${lead?.nome || "venda"} para outra etapa`} disabled={busy} value={item.etapa} onChange={(event) => void move(item.id, event.target.value)}>{stageList.filter((target) => !target.resale || item.tipo_venda === "revenda").map((target) => <option value={target.id} key={target.id}>{target.name}</option>)}</select></div>
+            <div className="sale-card-controls">{lead && deal && <button type="button" className="sale-card-chat" onClick={() => setChatItem({ lead: lead as unknown as Lead, deal: deal as unknown as Deal, corretorNome: broker?.nome })}>Chat</button>}<button type="button" className="sale-card-docs" onClick={() => setDocsProcessId(item.id)}>📎 Docs</button><select aria-label={`Mover ${lead?.nome || "venda"} para outra etapa`} disabled={busy} value={item.etapa} onChange={(event) => void move(item.id, event.target.value)}>{stageList.filter((target) => !target.resale || item.tipo_venda === "revenda").map((target) => <option value={target.id} key={target.id}>{target.name}</option>)}</select></div>
           </article>;
         })}{items.length === 0 && <div className="sales-drop">Solte uma venda aqui</div>}</div>
       </article>;
     })}</div>
     {creating && <CreateSaleModal data={data} accessToken={accessToken} onClose={() => setCreating(false)} onDone={async () => { setCreating(false); await load(); }} />}
     {chatItem && <LeadChatDrawer key={chatItem.deal.id} accessToken={accessToken} lead={chatItem.lead} deal={chatItem.deal} corretorNome={chatItem.corretorNome} onClose={() => setChatItem(null)} onResponse={async () => {}} />}
+    {docsProcessId && data && (() => { const proc = data.processes.find((p) => p.id === docsProcessId); if (!proc) return null; const sale = data.sales.find((s) => s.id === proc.venda_id); const dealD = data.deals.find((d) => d.venda_id === proc.venda_id); const leadD = dealD ? data.leads.find((l) => l.id === dealD.lead_id) : null; const st = stageList.find((s) => s.id === proc.etapa); return <EsteiraDocsDrawer accessToken={accessToken} process={proc} saleNome={sale?.empreendimento_nome || "Venda"} clienteNome={leadD?.nome || null} stageName={st?.name || proc.etapa} stageRole={st?.role || ""} etapaDocs={(data.etapaDocs ?? []).filter((d) => d.etapa_slug === proc.etapa)} anexos={(data.anexos ?? []).filter((a) => a.processo_ref === proc.id)} onClose={() => setDocsProcessId(null)} onReload={load} />; })()}
     {bulkFrom && <div className="crm-center-modal"><form onSubmit={(event) => event.preventDefault()}><header><div><span>AÇÃO EM MASSA</span><h2>Mover uma etapa inteira</h2><p>Todas as vendas de <b>{stageList.find((s) => s.id === bulkFrom)?.name}</b> serão enviadas para o destino escolhido.</p></div><button type="button" onClick={() => setBulkFrom(null)}>×</button></header><div className="bulk-move-grid"><label>Etapa de destino<select id="bulk-to" defaultValue=""><option value="">Selecione</option>{stageList.filter((s) => s.id !== bulkFrom).map((s) => <option value={s.id} key={s.id}>{s.name}</option>)}</select></label></div><footer><button type="button" onClick={() => setBulkFrom(null)}>Cancelar</button><button className="crm-primary" type="button" disabled={busy} onClick={() => { const to = (document.getElementById("bulk-to") as HTMLSelectElement | null)?.value; if (!to) { setError("Selecione a etapa de destino."); return; } void mutateStages({ action: "bulkMoveStage", fromSlug: bulkFrom, toSlug: to }); setBulkFrom(null); }}>Mover vendas</button></footer></form></div>}
   </section>;
+}
+
+function EsteiraDocsDrawer({ accessToken, process, saleNome, clienteNome, stageName, stageRole, etapaDocs, anexos, onClose, onReload }: {
+  accessToken: string; process: SalesData["processes"][number]; saleNome: string; clienteNome: string | null; stageName: string; stageRole: string;
+  etapaDocs: NonNullable<SalesData["etapaDocs"]>; anexos: NonNullable<SalesData["anexos"]>; onClose: () => void; onReload: () => Promise<void>;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const api = async (payload: Record<string, unknown>) => {
+    const r = await authedFetch("/api/crm/sales", { method: "PATCH", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+    const j = await r.json() as { error?: string }; if (!r.ok) throw new Error(j.error || "Falha.");
+  };
+  const upload = async (file: File, docNome: string | null) => {
+    setBusy(true); setError(null);
+    try {
+      const supabase = getBrowserSupabaseClient();
+      const safe = file.name.replace(/[^\w.\-]+/g, "_");
+      const path = `esteira/${process.id}/${process.etapa}/${Date.now()}_${safe}`;
+      const { error: upErr } = await supabase.storage.from("esteira-docs").upload(path, file, { upsert: false });
+      if (upErr) throw new Error(upErr.message);
+      await api({ action: "addAnexo", processId: process.id, negocioId: process.negocio_id, etapaSlug: process.etapa, docNome, nome: file.name, path, mime: file.type, tamanho: file.size });
+      await onReload();
+    } catch (reason) { setError(reason instanceof Error ? reason.message : "Falha ao anexar."); }
+    finally { setBusy(false); }
+  };
+  const remove = async (id: string) => { setBusy(true); setError(null); try { await api({ action: "removeAnexo", anexoId: id }); await onReload(); } catch (r) { setError(r instanceof Error ? r.message : "Falha."); } finally { setBusy(false); } };
+  const abrir = async (path: string) => { const { data } = await getBrowserSupabaseClient().storage.from("esteira-docs").createSignedUrl(path, 300); if (data?.signedUrl) window.open(data.signedUrl, "_blank"); };
+  const anexoDe = (docNome: string) => anexos.find((a) => a.doc_nome === docNome);
+  const outros = anexos.filter((a) => !a.doc_nome || !etapaDocs.some((d) => d.nome === a.doc_nome));
+  return <div className="esteira-docs-layer" role="button" tabIndex={-1} onClick={onClose}><aside className="esteira-docs" onClick={(e) => e.stopPropagation()}>
+    <header><div><span>DOCUMENTOS DA VENDA</span><h2>{saleNome}</h2><p>{clienteNome || "Cliente não informado"} · etapa <b>{stageName}</b>{stageRole ? ` · resp.: ${stageRole}` : ""}</p></div><button type="button" onClick={onClose}>×</button></header>
+    {error && <div className="modal-error">{error}</div>}
+    <section><h3>Checklist desta etapa</h3>
+      {etapaDocs.length === 0 && <p className="finance-empty">Nenhum documento configurado para esta etapa. Configure em Configurações → Esteira de vendas.</p>}
+      {etapaDocs.map((d) => { const a = anexoDe(d.nome); return <div className={`esteira-doc-row ${a ? "ok" : ""}`} key={d.id}>
+        <span className="esteira-doc-check">{a ? "✓" : "○"}</span>
+        <div className="esteira-doc-info"><strong>{d.nome}</strong><small>{d.obrigatorio ? "Obrigatório" : "Opcional"}{a ? ` · ${a.nome}` : ""}</small></div>
+        {a ? <div className="esteira-doc-actions"><button type="button" onClick={() => void abrir(a.path)}>Abrir</button><button type="button" className="esteira-doc-del" disabled={busy} onClick={() => void remove(a.id)}>×</button></div>
+          : <label className="esteira-doc-up">📎 Anexar<input type="file" hidden disabled={busy} onChange={(e) => { const f = e.target.files?.[0]; if (f) void upload(f, d.nome); e.target.value = ""; }} /></label>}
+      </div>; })}
+    </section>
+    <section><div className="esteira-doc-head"><h3>Outros anexos</h3><label className="esteira-doc-up">＋ Anexar arquivo<input type="file" hidden disabled={busy} onChange={(e) => { const f = e.target.files?.[0]; if (f) void upload(f, null); e.target.value = ""; }} /></label></div>
+      {outros.length === 0 && <p className="finance-empty">Nenhum anexo adicional.</p>}
+      {outros.map((a) => <div className="esteira-doc-row" key={a.id}><span className="esteira-doc-check">📄</span><div className="esteira-doc-info"><strong>{a.nome}</strong><small>{new Date(a.criado_em).toLocaleDateString("pt-BR")}</small></div><div className="esteira-doc-actions"><button type="button" onClick={() => void abrir(a.path)}>Abrir</button><button type="button" className="esteira-doc-del" disabled={busy} onClick={() => void remove(a.id)}>×</button></div></div>)}
+    </section>
+  </aside></div>;
 }
 
 function CreateSaleModal({ data, accessToken, initialDealId = "", onClose, onDone }: { data: SalesData; accessToken: string; initialDealId?: string | number; onClose: () => void; onDone: () => Promise<void> }) {
@@ -471,7 +521,7 @@ function AnalyticsView({ data, onOpen }: { data: CrmData; onOpen?: (dealId: numb
   </section>;
 }
 
-function PipelineViewEnhanced({ stages, allStages, deals, leadById, brokerById, slaByDeal, canReassign, onReassign, onOpen, onChat, onMutate, setMessage, draggingId, onDrag, onDrop, canManageStages, onReorderStage, onRecolorStage, onBulkFromStage, stageCount, canMoveDeals }: { stages: Stage[]; allStages: Stage[]; deals: Deal[]; leadById: Map<number, Lead>; brokerById: Map<number, Broker>; slaByDeal: Map<number, SlaInfo>; canReassign: boolean; onReassign: (dealId: number) => void; onOpen: (id: number) => void; onChat: (id: number) => void; onMutate: (body: Record<string, unknown>) => Promise<void>; setMessage: (value: string | null) => void; draggingId: number | null; onDrag: (id: number | null) => void; onDrop: (event: DragEvent, stageId: number) => Promise<void>; canManageStages?: boolean; onReorderStage?: (stageId: number, direction: number) => Promise<void>; onRecolorStage?: (stageId: number, color: string) => Promise<void>; onSaveStage?: (stageId: number, nome: string, color: string) => Promise<void>; onBulkFromStage?: (stageId: number) => void; stageCount?: number; canMoveDeals?: boolean }) {
+function PipelineViewEnhanced({ stages, allStages, deals, leadById, brokerById, slaByDeal, canReassign, onReassign, onOpen, onChat, onMutate, setMessage, draggingId, onDrag, onDrop, canManageStages, onReorderStage, onRecolorStage, onSaveStage, onBulkFromStage, stageCount, canMoveDeals }: { stages: Stage[]; allStages: Stage[]; deals: Deal[]; leadById: Map<number, Lead>; brokerById: Map<number, Broker>; slaByDeal: Map<number, SlaInfo>; canReassign: boolean; onReassign: (dealId: number) => void; onOpen: (id: number) => void; onChat: (id: number) => void; onMutate: (body: Record<string, unknown>) => Promise<void>; setMessage: (value: string | null) => void; draggingId: number | null; onDrag: (id: number | null) => void; onDrop: (event: DragEvent, stageId: number) => Promise<void>; canManageStages?: boolean; onReorderStage?: (stageId: number, direction: number) => Promise<void>; onRecolorStage?: (stageId: number, color: string) => Promise<void>; onSaveStage?: (stageId: number, nome: string, color: string) => Promise<void>; onBulkFromStage?: (stageId: number) => void; stageCount?: number; canMoveDeals?: boolean }) {
   const [busyId, setBusyId] = useState<number | null>(null);
   const [menuStage, setMenuStage] = useState<number | null>(null);
   const [editName, setEditName] = useState("");
