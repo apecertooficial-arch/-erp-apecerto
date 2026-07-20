@@ -32,7 +32,8 @@ function mediaType(file: File): Media["tipo"] {
   return "apresentacao";
 }
 
-export function ProductDetail({ productId, accessToken, onClose, onChanged }: { productId: string; accessToken: string; onClose: () => void; onChanged: () => void }) {
+export function ProductDetail({ productId, accessToken, sessionRole = "corretor", onClose, onChanged }: { productId: string; accessToken: string; sessionRole?: string; onClose: () => void; onChanged: () => void }) {
+  const canPublish = sessionRole === "admin" || sessionRole === "gestor" || sessionRole === "executivo";
   const [product, setProduct] = useState<ProductDetailData | null>(null);
   const [draft, setDraft] = useState<Record<string, string | number | null>>({});
   const [owner, setOwner] = useState<Owner | null>(null);
@@ -119,7 +120,7 @@ export function ProductDetail({ productId, accessToken, onClose, onChanged }: { 
         if (insertError) throw insertError;
       }
       await load(); onChanged(); setMessage(`${files.length} material(is) adicionado(s).`);
-    } catch (error) { setMessage(error instanceof Error ? error.message : "Falha no upload."); } finally { setBusy(false); }
+    } catch (error) { console.error("[produto upload]", error); setMessage(error instanceof Error ? `Falha no upload: ${error.message}` : "Falha no upload."); } finally { setBusy(false); }
   }
 
   async function mediaAction(action: "updateMedia" | "deleteMedia", mediaId: string, categoryValue?: string) {
@@ -143,6 +144,16 @@ export function ProductDetail({ productId, accessToken, onClose, onChanged }: { 
     } catch (error) { setMessage(error instanceof Error ? error.message : "Erro ao concluir a ação."); } finally { setBusy(false); }
   }
 
+  async function publishAction(publish: boolean) {
+    setBusy(true); setMessage("");
+    try {
+      const response = await fetch("/api/product", { method: "PATCH", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify({ id: productId, action: publish ? "publish" : "unpublish" }) });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error ?? "Não foi possível concluir a ação.");
+      await load(); onChanged(); setMessage(publish ? "Produto publicado — já aparece no disparo, nas abordagens e no catálogo." : "Produto voltou para rascunho (fica invisível no disparo e nas abordagens).");
+    } catch (error) { setMessage(error instanceof Error ? error.message : "Erro ao publicar."); } finally { setBusy(false); }
+  }
+
   return <div className="modal-layer product-detail-layer">
     <button className="modal-scrim" type="button" onClick={onClose} aria-label="Fechar ficha do produto" />
     <aside className="product-detail-panel" aria-label="Ficha completa do produto">
@@ -151,7 +162,7 @@ export function ProductDetail({ productId, accessToken, onClose, onChanged }: { 
           <button className="icon-button" type="button" onClick={onClose}>×</button>
           <div><span>{product.rascunho ? "Rascunho" : product.status.replace("_", " ")}</span><h2>{product.nome}</h2><p>{product.bairro ?? "Bairro não informado"} · {product.cidade ?? "Cidade não informada"}</p></div>
         </header>
-        <div className="detail-toolbar"><div><strong>{product.summary_price ? money.format(product.summary_price) : "Preço sob consulta"}</strong><small>{product.completion.completed}/{product.completion.total} blocos completos</small></div><div className="detail-actions"><button className="lead-subtle" type="button" onClick={() => setLeadPanelOpen(!leadPanelOpen)}>↗ Vincular lead{product.leads.some((lead) => lead.linked) ? ` · ${product.leads.filter((lead) => lead.linked).length}` : ""}</button><button className={product.is_favorite ? "favorite active" : "favorite"} disabled={busy} type="button" onClick={() => void productAction("toggleFavorite", !product.is_favorite)}>{product.is_favorite ? "★ Favorito" : "☆ Favoritar"}</button><button className="secondary-action" type="button" onClick={() => setEditing(!editing)}>{editing ? "Cancelar edição" : "Editar produto"}</button></div></div>
+        <div className="detail-toolbar"><div><strong>{product.summary_price ? money.format(product.summary_price) : "Preço sob consulta"}</strong><small>{product.completion.completed}/{product.completion.total} blocos completos</small></div><div className="detail-actions"><button className="lead-subtle" type="button" onClick={() => setLeadPanelOpen(!leadPanelOpen)}>↗ Vincular lead{product.leads.some((lead) => lead.linked) ? ` · ${product.leads.filter((lead) => lead.linked).length}` : ""}</button><button className={product.is_favorite ? "favorite active" : "favorite"} disabled={busy} type="button" onClick={() => void productAction("toggleFavorite", !product.is_favorite)}>{product.is_favorite ? "★ Favorito" : "☆ Favoritar"}</button><button className="secondary-action" type="button" onClick={() => setEditing(!editing)}>{editing ? "Cancelar edição" : "Editar produto"}</button>{canPublish && (product.rascunho ? <button className="publish-action" type="button" disabled={busy} title={product.completion.completed < product.completion.total ? `Faltam ${product.completion.total - product.completion.completed} bloco(s) para ficar 100% completo` : "Produto completo"} onClick={() => void publishAction(true)}>✓ Publicar produto{product.completion.completed < product.completion.total ? " (incompleto)" : ""}</button> : <button className="unpublish-action" type="button" disabled={busy} onClick={() => void publishAction(false)}>↩ Voltar a rascunho</button>)}</div></div>
         {leadPanelOpen && <div className="top-lead-panel"><div className="lead-link-form"><select value={leadId} onChange={(event) => setLeadId(event.target.value)}><option value="">Selecione um lead...</option>{product.leads.filter((lead) => !lead.linked).map((lead) => <option value={lead.id} key={lead.id}>{lead.nome || "Lead sem nome"} · {lead.telefone || "sem telefone"}</option>)}</select><button className="primary-action" disabled={busy || !leadId} type="button" onClick={() => void productAction("linkLead", leadId)}>Vincular</button></div><div className="linked-leads">{product.leads.filter((lead) => lead.linked).map((lead) => <span key={lead.id}><strong>{lead.nome || "Lead sem nome"}</strong><small>{lead.telefone}</small><button type="button" disabled={busy} onClick={() => void productAction("unlinkLead", lead.id)}>×</button></span>)}</div></div>}
         <div className="detail-scroll">
           {message && <div className={`detail-message ${message.includes("salv") || message.includes("atualiz") || message.includes("adicionado") ? "success" : ""}`}>{message}</div>}

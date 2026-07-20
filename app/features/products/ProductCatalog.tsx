@@ -297,7 +297,7 @@ export function ProductCatalog() {
         setCaptureOpen(false);
         if (accessToken) void loadCatalog(accessToken);
       }} />}
-      {selectedProductId && accessToken && <ProductDetail productId={selectedProductId} accessToken={accessToken} onClose={() => setSelectedProductId(null)} onChanged={() => void loadCatalog(accessToken)} />}
+      {selectedProductId && accessToken && <ProductDetail productId={selectedProductId} accessToken={accessToken} sessionRole={sessionProfile?.role ?? "corretor"} onClose={() => setSelectedProductId(null)} onChanged={() => void loadCatalog(accessToken)} />}
       </>
       ) : (
         <div className="workspace-loading"><span /><strong>Carregando seu ERP…</strong></div>
