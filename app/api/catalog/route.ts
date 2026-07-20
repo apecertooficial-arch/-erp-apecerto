@@ -37,16 +37,21 @@ export async function GET(request: Request) {
   const { data: authData, error: authError } = await supabase.auth.getUser(accessToken);
   if (authError || !authData.user) return Response.json({ error: "Sessão inválida ou expirada." }, { status: 401 });
 
+  const { data: me } = await supabase.from("usuarios").select("role").eq("id", authData.user.id).maybeSingle();
+  const role = (me as { role?: string } | null)?.role ?? "corretor";
+  const canApprove = role === "admin" || role === "gestor";
+
   const { data, error } = await supabase
     .from("empreendimentos")
     .select(`
       id, nome, incorporadora, bairro, cidade, status, area_util, rascunho,
       dormitorios, suites, vagas, preco, created_at, publicado, origem,
+      aprovacao, reprovacao_motivo, captado_por_usuario,
       unidades (id, area_m2, tipologia, vagas, valor_tabela, valor_promo, disponivel),
       midias (id, tipo, storage_path, categoria, nome, is_capa)
     `)
     .order("created_at", { ascending: false })
-    .limit(50);
+    .limit(120);
 
   if (error) {
     return Response.json({ error: error.message }, { status: 502 });
@@ -90,13 +95,24 @@ export async function GET(request: Request) {
       media: media.length,
       coverUrl: cover ? publicMediaUrl(cover.storage_path) : null,
       draft: item.rascunho,
+      approval: (item as { aprovacao?: string }).aprovacao ?? "aprovado",
+      rejectionReason: (item as { reprovacao_motivo?: string | null }).reprovacao_motivo ?? null,
+      mine: (item as { captado_por_usuario?: string | null }).captado_por_usuario === authData.user.id,
       favorite: favoriteIds.has(item.id),
     };
   });
 
+  // Visibilidade: corretor só enxerga aprovados + os que ele mesmo captou (pra acompanhar pendente/reprovado).
+  // Admin/gestor enxergam tudo (inclusive a fila de pendentes).
+  const visible = canApprove ? catalog : catalog.filter((p) => p.approval === "aprovado" || p.mine);
+  const pendingCount = catalog.filter((p) => p.approval === "pendente" && !p.draft).length;
+
   return Response.json({
     mode: "production-readonly",
-    count: catalog.length,
-    catalog,
+    role,
+    canApprove,
+    pendingCount,
+    count: visible.length,
+    catalog: visible,
   });
 }

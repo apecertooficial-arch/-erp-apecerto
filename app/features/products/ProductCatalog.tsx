@@ -52,7 +52,13 @@ type CatalogResponse = {
     draft: boolean;
     origin: string;
     favorite: boolean;
+    approval?: string;
+    rejectionReason?: string | null;
+    mine?: boolean;
   }>;
+  canApprove?: boolean;
+  pendingCount?: number;
+  role?: string;
 };
 
 type SessionProfile = { userId: string; email: string; name: string; role: "admin" | "gestor" | "corretor"; active: boolean; brokerId: number | null; online: boolean; permissoes?: Record<string, string[]> | null };
@@ -91,6 +97,10 @@ export function ProductCatalog() {
   const [captureOpen, setCaptureOpen] = useState(false);
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
   const [products, setProducts] = useState<Product[]>(fallbackProducts);
+  const [canApprove, setCanApprove] = useState(false);
+  const [pendingCount, setPendingCount] = useState(0);
+  const [approvalFilter, setApprovalFilter] = useState(false);
+  const [decidingId, setDecidingId] = useState<string | null>(null);
   const [dataState, setDataState] = useState<"loading" | "live" | "auth" | "error">("loading");
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [activeModule, setActiveModule] = useState<ModuleName>("Início");
@@ -151,12 +161,31 @@ export function ProductCatalog() {
         origin: item.origin,
         numericPrice: item.price,
         favorite: item.favorite,
+        approval: item.approval ?? "aprovado",
+        rejectionReason: item.rejectionReason ?? null,
+        mine: item.mine ?? false,
       })));
+      setCanApprove(Boolean(result.canApprove));
+      setPendingCount(result.pendingCount ?? 0);
       setDataState("live");
     } catch {
       setDataState("error");
     }
   }, [loadSessionProfile]);
+
+  const decide = useCallback(async (id: string, approve: boolean) => {
+    if (!accessToken) return;
+    let motivo: string | null = null;
+    if (!approve) { motivo = window.prompt("Motivo da reprovação (opcional):", "") ?? ""; }
+    setDecidingId(id);
+    try {
+      const response = await fetch("/api/capture", { method: "PATCH", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify({ action: approve ? "approve" : "reject", id, motivo }) });
+      const result = await response.json() as { error?: string };
+      if (!response.ok) throw new Error(result.error || "Não foi possível concluir.");
+      await loadCatalog(accessToken);
+    } catch (reason) { window.alert(reason instanceof Error ? reason.message : "Não foi possível concluir a aprovação."); }
+    finally { setDecidingId(null); }
+  }, [accessToken, loadCatalog]);
 
   useEffect(() => {
     const supabase = getBrowserSupabaseClient();
@@ -287,11 +316,12 @@ export function ProductCatalog() {
           <span className="filter-symbol">▽</span>
           {["Todos", "Lançamento", "Em obras", "Pronto"].map((item) => <button className={status === item ? "active" : ""} onClick={() => setStatus(item)} type="button" key={item}>{item}</button>)}
           <button className={favoritesOnly ? "favorite-filter active" : "favorite-filter"} onClick={() => setFavoritesOnly(!favoritesOnly)} type="button">★ Meus favoritos</button>
+          {canApprove && <button className={approvalFilter ? "approval-filter active" : "approval-filter"} onClick={() => setApprovalFilter((v) => !v)} type="button">⏳ Pendentes de aprovação{pendingCount > 0 && <b>{pendingCount}</b>}</button>}
         </div>
         <div className="filter-row selects"><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar produto..." /><select aria-label="Bairro" value={neighborhood} onChange={(event) => setNeighborhood(event.target.value)}><option value="Todos">Todos os bairros</option>{neighborhoods.map((item) => <option key={item}>{item}</option>)}</select><select aria-label="Incorporadora" value={developer} onChange={(event) => setDeveloper(event.target.value)}><option value="Todas">Todas as incorporadoras</option>{developers.map((item) => <option key={item}>{item}</option>)}</select><select aria-label="Faixa de preço" value={priceBand} onChange={(event) => setPriceBand(event.target.value)}><option>Todas</option><option>Até 500 mil</option><option>500 mil a 1 mi</option><option>Acima de 1 mi</option></select><select aria-label="Dormitórios" value={bedrooms} onChange={(event) => setBedrooms(event.target.value)}><option value="Qualquer">Qualquer dorm.</option><option value="0">Studio</option><option value="1">1 dorm.</option><option value="2">2 dorm.</option><option value="3">3 dorm.</option><option value="4">4+ dorm.</option></select><label className="toggle"><input type="checkbox" checked={stockOnly} onChange={(event) => setStockOnly(event.target.checked)} /> Com estoque disponível</label><label className="toggle"><input type="checkbox" checked={noMediaOnly} onChange={(event) => setNoMediaOnly(event.target.checked)} /> Sem material (book)</label><span className="product-count">{filtered.length} produtos exibidos</span></div>
       </section>
       <section className="product-grid">
-        {filtered.map((product) => <article className="product-card" role="button" tabIndex={0} onClick={() => product.id && setSelectedProductId(product.id)} onKeyDown={(event) => { if ((event.key === "Enter" || event.key === " ") && product.id) setSelectedProductId(product.id); }} key={product.id ?? product.name}><div className={`product-photo ${product.coverUrl ? "has-image" : ""}`}>{product.coverUrl && <img src={product.coverUrl} alt={`Foto de capa de ${product.name}`} />}<span>{product.draft ? "Rascunho" : product.status?.replace("_", " ") ?? "Pronto"}</span>{!product.coverUrl && <div className="building-icon">▥</div>}<button type="button" onClick={(event) => { event.stopPropagation(); if (product.id) setSelectedProductId(product.id); }} aria-label={`Abrir ficha de ${product.name}`}>•••</button></div><div className="product-info"><strong className="price">{product.price}</strong><h2>{product.name}</h2><p className="location">⌖ {product.neighborhood} · {product.city}</p>{product.developer && <p className="developer">{product.developer}</p>}<div className="specs"><span>{product.area} m²</span><span>{product.bedrooms} dorm.</span><span>{product.parking} vaga</span></div><div className="availability"><span><i /> {product.available} disp.</span><span>· {product.units ?? 0} unidades</span><span>· {product.media ?? 0} mídias</span></div><footer><strong>{product.priceM2}</strong><button type="button" onClick={(event) => event.stopPropagation()}>▦ Comparar</button></footer></div></article>)}
+        {filtered.filter((product) => !approvalFilter || (product.approval === "pendente" && !product.draft)).map((product) => <article className="product-card" role="button" tabIndex={0} onClick={() => product.id && setSelectedProductId(product.id)} onKeyDown={(event) => { if ((event.key === "Enter" || event.key === " ") && product.id) setSelectedProductId(product.id); }} key={product.id ?? product.name}><div className={`product-photo ${product.coverUrl ? "has-image" : ""}`}>{product.coverUrl && <img src={product.coverUrl} alt={`Foto de capa de ${product.name}`} />}<span>{product.draft ? "Rascunho" : product.status?.replace("_", " ") ?? "Pronto"}</span>{!product.draft && product.approval && product.approval !== "aprovado" && <span className={`approval-badge ${product.approval}`}>{product.approval === "pendente" ? "⏳ Pendente" : "✕ Reprovado"}</span>}{!product.coverUrl && <div className="building-icon">▥</div>}<button type="button" onClick={(event) => { event.stopPropagation(); if (product.id) setSelectedProductId(product.id); }} aria-label={`Abrir ficha de ${product.name}`}>•••</button></div><div className="product-info"><strong className="price">{product.price}</strong><h2>{product.name}</h2><p className="location">⌖ {product.neighborhood} · {product.city}</p>{product.developer && <p className="developer">{product.developer}</p>}<div className="specs"><span>{product.area} m²</span><span>{product.bedrooms} dorm.</span><span>{product.parking} vaga</span></div><div className="availability"><span><i /> {product.available} disp.</span><span>· {product.units ?? 0} unidades</span><span>· {product.media ?? 0} mídias</span></div>{product.approval === "reprovado" && product.rejectionReason && <p className="approval-reason">Motivo: {product.rejectionReason}</p>}{canApprove && product.approval === "pendente" && !product.draft && product.id && <div className="approval-actions" onClick={(event) => event.stopPropagation()}><button type="button" className="ap-approve" disabled={decidingId === product.id} onClick={() => void decide(product.id!, true)}>{decidingId === product.id ? "…" : "✓ Aprovar"}</button><button type="button" className="ap-reject" disabled={decidingId === product.id} onClick={() => void decide(product.id!, false)}>✕ Reprovar</button></div>}<footer><strong>{product.priceM2}</strong><button type="button" onClick={(event) => event.stopPropagation()}>▦ Comparar</button></footer></div></article>)}
       </section>
       {captureOpen && <CaptureWizard onClose={() => setCaptureOpen(false)} onSaved={() => {
         setCaptureOpen(false);
