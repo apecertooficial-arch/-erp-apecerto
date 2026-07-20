@@ -4090,3 +4090,26 @@ article.tone-red{border-left-color:#d3443e}article.tone-red strong{color:#d3443e
 .crm-pipe-layout.rail-collapsed .crm-pipe-item .crm-pipe-dot { width: 10px; height: 10px; flex-basis: 10px; }
 .crm-pipe-layout.rail-collapsed .crm-pipe-item strong,
 .crm-pipe-layout.rail-collapsed .crm-pipe-item em { display: none; }
+
+/* RefinedSelect — dropdown custom (substitui o <select> nativo cru) */
+.rselect { position: relative; width: 100%; }
+.rselect-btn { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 44px; padding: 10px 12px; border: 1px solid #ddd6d1; border-radius: 11px; background: #fff; color: #2f2a27; font: inherit; font-size: 13px; text-align: left; cursor: pointer; transition: border-color .12s, box-shadow .12s; }
+.rselect-btn:hover { border-color: #cbbfb6; }
+.rselect.open .rselect-btn { border-color: #ff9c5e; box-shadow: 0 0 0 3px rgba(255,101,0,.12); }
+.rselect-btn.is-placeholder { color: #a49b94; }
+.rselect.disabled { opacity: .55; }
+.rselect.disabled .rselect-btn { cursor: not-allowed; background: #faf8f6; }
+.rselect-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rselect-caret { flex: 0 0 auto; width: 16px; height: 16px; color: #a49b94; transition: transform .16s ease; }
+.rselect.open .rselect-caret { transform: rotate(180deg); color: #ff6500; }
+.rselect-panel { position: absolute; z-index: 90; top: calc(100% + 6px); left: 0; right: 0; margin: 0; padding: 6px; list-style: none; max-height: 264px; overflow-y: auto; border: 1px solid #ece5df; border-radius: 12px; background: #fff; box-shadow: 0 18px 44px rgba(28,18,12,.18); animation: rselect-in .12s ease; }
+@keyframes rselect-in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+.rselect-panel li { margin: 0; }
+.rselect-opt { display: flex; align-items: center; gap: 9px; width: 100%; padding: 9px 10px; border: 0; border-radius: 9px; background: transparent; color: #443d38; font: inherit; font-size: 13px; text-align: left; cursor: pointer; }
+.rselect-opt:hover { background: #f5f0ec; }
+.rselect-opt.active { background: #fff4ec; color: #b94a0b; font-weight: 700; }
+.rselect-dot { flex: 0 0 8px; width: 8px; height: 8px; border-radius: 50%; background: #d5cbc3; }
+.rselect-opt.active .rselect-dot { background: #ff6500; }
+.rselect-opt-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rselect-check { flex: 0 0 auto; width: 15px; height: 15px; color: #ff6500; }
+.rselect-empty { padding: 12px 10px; color: #a49b94; font-size: 12px; text-align: center; }
