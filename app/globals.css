@@ -4018,3 +4018,19 @@ article.tone-red{border-left-color:#d3443e}article.tone-red strong{color:#d3443e
 .chat-messages article .msg-del-confirm .mdc-yes:hover { background: #cf3232; }
 .chat-messages article .msg-del-confirm .mdc-no { border: 0; border-radius: 6px; padding: 4px 9px; background: #f1ece9; color: #6b625c; font-size: 11px; font-weight: 700; cursor: pointer; }
 .chat-messages article .msg-del-confirm .mdc-no:hover { background: #e7e0db; }
+
+/* ============================================================
+   Captação — dropzone de mídia estilo Pixlr (jul/2026):
+   arrastar, colar (Ctrl+V), upload e por link.
+   ============================================================ */
+.media-dropzone { border: 2px dashed #e0d3c8; border-radius: 14px; padding: 18px; background: #fbf8f5; transition: border-color .15s, background .15s; }
+.media-dropzone.dragging { border-color: #ff8a3d; background: #fff5ec; }
+.media-dz-head { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+.media-dz-icon { flex: 0 0 44px; width: 44px; height: 44px; display: grid; place-items: center; border-radius: 12px; background: #fff0e6; color: #e35b00; font-size: 21px; }
+.media-dz-head strong { display: block; font-size: 14px; color: #33302c; }
+.media-dz-head small { color: #8c837d; font-size: 12px; }
+.media-link-row { display: flex; gap: 8px; margin-top: 12px; }
+.media-link-row input { flex: 1; min-width: 0; border: 1px solid #ddd6d1; border-radius: 9px; padding: 10px 12px; font-family: inherit; font-size: 13px; outline: 0; }
+.media-link-row input:focus { border-color: #ff9c5e; box-shadow: 0 0 0 3px rgba(255,101,0,.08); }
+.media-link-row button:disabled { opacity: .5; cursor: default; }
+.media-dropzone .media-totals { margin-top: 14px; }

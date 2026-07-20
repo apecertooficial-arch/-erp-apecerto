@@ -45,6 +45,7 @@ export function CaptureWizard({ onClose, onSaved }: CaptureWizardProps) {
   const [message, setMessage] = useState("");
   const [saving, setSaving] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [mediaUrl, setMediaUrl] = useState("");
 
   const photos = media.filter((item) => item.kind === "foto");
   const videos = media.filter((item) => item.kind === "video");
@@ -101,15 +102,47 @@ export function CaptureWizard({ onClose, onSaved }: CaptureWizardProps) {
     setStep((value) => Math.max(value - 1, 0));
   }
 
-  function addFiles(files: FileList | null, kind: "foto" | "video") {
-    if (!files?.length) return;
+  function addFiles(files: FileList | File[] | null, kind: "foto" | "video") {
+    if (!files) return;
+    // Captura os File AGORA — se deixar pro updater do setMedia, o reset do input
+    // (event.currentTarget.value = "") esvazia o FileList antes de a gente ler.
+    const list = Array.from(files as ArrayLike<File>);
+    if (!list.length) return;
     setMedia((current) => {
       const hasCover = current.some((item) => item.cover);
-      const additions = Array.from(files).map((file, index) => ({
+      const additions = list.map((file, index) => ({
         id: crypto.randomUUID(), file, kind, category: kind === "video" ? "Tour" : "Sala", cover: kind === "foto" && !hasCover && index === 0,
       }));
       return [...current, ...additions];
     });
+  }
+
+  // Roteia por tipo (colar / arrastar / link podem trazer foto e vídeo juntos)
+  function ingestFiles(list: File[]) {
+    const fotos = list.filter((f) => (f.type || "").startsWith("image/"));
+    const vids = list.filter((f) => (f.type || "").startsWith("video/"));
+    if (fotos.length) addFiles(fotos, "foto");
+    if (vids.length) addFiles(vids, "video");
+    if (!fotos.length && !vids.length) setMessage("Cole ou selecione arquivos de imagem ou vídeo.");
+  }
+
+  async function addByUrl(url: string) {
+    const clean = url.trim();
+    if (!clean) return;
+    setMessage("");
+    try {
+      const res = await fetch(clean);
+      if (!res.ok) throw new Error("resposta inválida");
+      const blob = await res.blob();
+      if (!/^image\/|^video\//.test(blob.type)) throw new Error("o link não é imagem nem vídeo");
+      const base = (clean.split("/").pop() || "").split("?")[0] || `midia-${Date.now()}`;
+      const ext = blob.type.startsWith("video/") ? "mp4" : "jpg";
+      const name = /\.[a-z0-9]+$/i.test(base) ? base : `${base}.${ext}`;
+      ingestFiles([new File([blob], name, { type: blob.type })]);
+      setMediaUrl("");
+    } catch {
+      setMessage("Não foi possível baixar a mídia desse link (o site pode bloquear por segurança/CORS). Baixe o arquivo e use Adicionar/Colar.");
+    }
   }
 
   function removeMedia(id: string) {
@@ -123,6 +156,18 @@ export function CaptureWizard({ onClose, onSaved }: CaptureWizardProps) {
       return remaining;
     });
   }
+
+  // Colar (Ctrl+V) imagem/vídeo direto do clipboard no passo de mídia
+  useEffect(() => {
+    if (step !== 5) return;
+    const onPaste = (event: ClipboardEvent) => {
+      const files = event.clipboardData?.files;
+      if (files && files.length) { event.preventDefault(); ingestFiles(Array.from(files)); }
+    };
+    window.addEventListener("paste", onPaste);
+    return () => window.removeEventListener("paste", onPaste);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step]);
 
   function safeFileName(name: string) {
     return name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9._-]/g, "-").toLowerCase();
@@ -224,7 +269,7 @@ export function CaptureWizard({ onClose, onSaved }: CaptureWizardProps) {
 
           {step === 4 && <div className="form-section"><h3>Como entrar no imóvel?</h3><div className="choice-grid compact access-grid">{([['chave_fisica','Chave física'],['chave_digital','Chave digital'],['proprietario','Com proprietário'],['portaria','Portaria'],['outro','Outro']] as const).map(([value, label]) => <button className={accessType === value ? "selected" : ""} onClick={() => setAccessType(value)} type="button" key={value}>{label}</button>)}</div>{accessType === "chave_digital" && <label>Código de acesso<input value={accessCode} onChange={(event) => setAccessCode(event.target.value)} placeholder="Código da fechadura" /></label>}<label>Instruções completas<textarea value={accessInstructions} onChange={(event) => setAccessInstructions(event.target.value)} placeholder="Local da chave, portaria, autorização, horários e todas as instruções..." rows={6} /></label></div>}
 
-          {step === 5 && <div className="form-section media-section"><h3>Fotos, vídeo e identificação</h3><p>São obrigatórias 10 fotos, 1 vídeo, a classificação de cada arquivo e uma foto de capa.</p><div className="media-upload-actions"><label className="upload-button">＋ Adicionar fotos<input type="file" accept="image/*" multiple onChange={(event) => { addFiles(event.target.files, "foto"); event.currentTarget.value = ""; }} /></label><label className="upload-button secondary">＋ Adicionar vídeo<input type="file" accept="video/*" multiple onChange={(event) => { addFiles(event.target.files, "video"); event.currentTarget.value = ""; }} /></label><div className="media-totals"><strong className={photos.length >= 10 ? "ok" : ""}>{photos.length}/10 fotos</strong><strong className={videos.length >= 1 ? "ok" : ""}>{videos.length}/1 vídeo</strong></div></div><div className="media-list">{media.map((item) => <div className="media-row" key={item.id}><span className={`media-kind ${item.kind}`}>{item.kind === "foto" ? "FOTO" : "VÍDEO"}</span><div className="media-name"><strong>{item.file.name}</strong><small>{(item.file.size / 1024 / 1024).toFixed(1)} MB</small></div><select aria-label={`Classificar ${item.file.name}`} value={item.category} onChange={(event) => setMedia(media.map((entry) => entry.id === item.id ? { ...entry, category: event.target.value } : entry))}>{mediaCategories.map((category) => <option key={category}>{category}</option>)}</select>{item.kind === "foto" ? <label className="cover-choice"><input type="radio" name="cover" checked={item.cover} onChange={() => setMedia(media.map((entry) => ({ ...entry, cover: entry.id === item.id })))} /> Capa</label> : <span className="cover-placeholder" />}<button aria-label={`Remover ${item.file.name}`} onClick={() => removeMedia(item.id)} type="button">×</button></div>)}</div></div>}
+          {step === 5 && <div className="form-section media-section"><h3>Fotos, vídeo e identificação</h3><p>São obrigatórias 10 fotos, 1 vídeo, a classificação de cada arquivo e uma foto de capa.</p><div className="media-dropzone" onDragOver={(event) => { event.preventDefault(); event.currentTarget.classList.add("dragging"); }} onDragLeave={(event) => event.currentTarget.classList.remove("dragging")} onDrop={(event) => { event.preventDefault(); event.currentTarget.classList.remove("dragging"); if (event.dataTransfer.files?.length) ingestFiles(Array.from(event.dataTransfer.files)); }}><div className="media-dz-head"><span className="media-dz-icon">⬆</span><div><strong>Arraste aqui, cole (Ctrl+V) ou selecione</strong><small>Fotos e vídeos — ou adicione por link abaixo</small></div></div><div className="media-upload-actions"><label className="upload-button">＋ Adicionar fotos<input type="file" accept="image/*" multiple onChange={(event) => { addFiles(event.target.files, "foto"); event.currentTarget.value = ""; }} /></label><label className="upload-button secondary">＋ Adicionar vídeo<input type="file" accept="video/*" multiple onChange={(event) => { addFiles(event.target.files, "video"); event.currentTarget.value = ""; }} /></label></div><div className="media-link-row"><input type="url" value={mediaUrl} onChange={(event) => setMediaUrl(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); void addByUrl(mediaUrl); } }} placeholder="Cole o link de uma imagem ou vídeo (https://...)" /><button type="button" className="secondary-action" onClick={() => void addByUrl(mediaUrl)} disabled={!mediaUrl.trim()}>Adicionar por link</button></div><div className="media-totals"><strong className={photos.length >= 10 ? "ok" : ""}>{photos.length}/10 fotos</strong><strong className={videos.length >= 1 ? "ok" : ""}>{videos.length}/1 vídeo</strong></div></div><div className="media-list">{media.map((item) => <div className="media-row" key={item.id}><span className={`media-kind ${item.kind}`}>{item.kind === "foto" ? "FOTO" : "VÍDEO"}</span><div className="media-name"><strong>{item.file.name}</strong><small>{(item.file.size / 1024 / 1024).toFixed(1)} MB</small></div><select aria-label={`Classificar ${item.file.name}`} value={item.category} onChange={(event) => setMedia(media.map((entry) => entry.id === item.id ? { ...entry, category: event.target.value } : entry))}>{mediaCategories.map((category) => <option key={category}>{category}</option>)}</select>{item.kind === "foto" ? <label className="cover-choice"><input type="radio" name="cover" checked={item.cover} onChange={() => setMedia(media.map((entry) => ({ ...entry, cover: entry.id === item.id })))} /> Capa</label> : <span className="cover-placeholder" />}<button aria-label={`Remover ${item.file.name}`} onClick={() => removeMedia(item.id)} type="button">×</button></div>)}</div></div>}
 
           {step === 6 && <div className="form-section"><h3>Revisão antes de salvar</h3><div className="review-list"><span className="complete">Condomínio e endereço completo</span><span className={propertyType === "construtora" || Boolean(ownerId || owner.name) ? "complete" : ""}>Proprietário associado</span><span className="complete">Preço, custos e características</span><span className="complete">Instruções de acesso</span><span className={photos.length >= 10 && videos.length >= 1 ? "complete" : ""}>{photos.length} fotos e {videos.length} vídeo(s)</span><span className={photos.some((item) => item.cover) ? "complete" : ""}>Foto de capa escolhida</span>{propertyType === "construtora" && <span className={units.length ? "complete" : ""}>{units.length} unidade(s) cadastrada(s)</span>}</div><div className="notice"><strong>Gravação segura</strong><span>O produto será criado como rascunho, os arquivos serão enviados e somente então a captação será finalizada.</span></div>{saving && <div className="upload-progress"><span style={{ width: `${uploadProgress}%` }} /><strong>Enviando mídias · {uploadProgress}%</strong></div>}</div>}
 
