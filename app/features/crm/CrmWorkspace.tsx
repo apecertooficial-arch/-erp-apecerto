@@ -251,7 +251,7 @@ export function CrmWorkspace({ accessToken, initialDealId = null, onInitialDealH
   }
 
   const canManageStages = sessionRole !== "corretor";
-  const canMoveDeals = sessionRole !== "corretor";
+  const canMoveDeals = true; /* corretor também move os próprios leads (o RLS garante que ele só enxerga/mexe nos dele) */
   async function reorderStage(stageId: number, direction: number) {
     const ordered = activeStages.slice().sort((a, b) => a.ordem - b.ordem);
     const idx = ordered.findIndex((s) => s.id === stageId);
