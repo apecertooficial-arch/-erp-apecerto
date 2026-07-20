@@ -48,7 +48,7 @@ function friendlyChatError(raw: string): string {
   return raw || "Não foi possível enviar a mensagem.";
 }
 type Historico = { id: number | string; lead_id: number | null; negocio_id: number | null; corretor_id: number | null; tipo: string; canal?: string | null; texto: string | null; resultado?: string | null; criado_em: string };
-type CrmData = { pipelines: Pipeline[]; stages: Stage[]; leads: Lead[]; deals: Deal[]; brokers: Broker[]; activities: Activity[]; historico?: Historico[]; tasks: Task[]; productLinks: ProductLink[]; visits: Visit[]; products: Product[]; sla: SlaInfo[]; alerts: LeadAlert[] };
+type CrmData = { pipelines: Pipeline[]; stages: Stage[]; leads: Lead[]; deals: Deal[]; brokers: Broker[]; activities: Activity[]; historico?: Historico[]; tasks: Task[]; productLinks: ProductLink[]; visits: Visit[]; products: Product[]; sla: SlaInfo[]; alerts: LeadAlert[]; leituras?: Array<{ negocio_id: number; lido_em: string }> };
 type ViewName = "pipeline" | "leads" | "sales" | "analytics" | "agenda" | "atividades";
 
 const money = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
@@ -238,6 +238,7 @@ export function CrmWorkspace({ accessToken, initialDealId = null, onInitialDealH
   const origins = useMemo(() => [...new Set((data?.leads ?? []).map((lead) => lead.origem).filter((item): item is string => Boolean(item)))].sort(), [data]);
   const activeFilterCount = [stageId, brokerId, origin, tag, group, dateFrom, dateTo, productFilter].filter(Boolean).length;
   const slaByDeal = useMemo(() => new Map((data?.sla ?? []).filter((item) => item.negocio_id).map((item) => [item.negocio_id!, item])), [data]);
+  const readByDeal = useMemo(() => new Map((data?.leituras ?? []).map((item) => [item.negocio_id, item.lido_em])), [data]);
   const filteredDeals = useMemo(() => (data?.deals ?? []).filter((deal) => {
     const lead = leadById.get(deal.lead_id);
     const stage = activeStages.find((item) => item.id === deal.stage_id);
@@ -277,6 +278,8 @@ export function CrmWorkspace({ accessToken, initialDealId = null, onInitialDealH
 
   function openChat(dealId: number) {
     setChatDealId(dealId);
+    // Marca como lida (abriu a conversa) — o sino passa de vermelho (não lida) para amarelo (lida sem resposta).
+    void mutate({ action: "markRead", dealId }).catch(() => undefined);
     if (pendingAlerts.some((alert) => alert.negocio_id === dealId)) void mutate({ action: "acknowledgeLead", dealId }).catch(() => undefined);
   }
 
@@ -350,7 +353,7 @@ export function CrmWorkspace({ accessToken, initialDealId = null, onInitialDealH
     {respToast && <div className="resp-toast" role="alert"><span className="resp-toast-bell"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10 21h4" /></svg></span><div className="resp-toast-body"><strong>{respToast.nome} respondeu</strong><small>Cliente aguardando você</small></div><button type="button" className="resp-toast-open" onClick={() => { const d = respToast.dealId; setRespToast(null); openChat(d); }}>Ver conversa</button><button type="button" className="resp-toast-x" aria-label="Fechar" onClick={() => setRespToast(null)}>×</button></div>}
     {loading && <div className="crm-loading"><span /><strong>Montando seu CRM com os dados reais…</strong></div>}
     {error && <div className="crm-error">{error}<button type="button" onClick={() => void load()}>Tentar novamente</button></div>}
-    {!loading && !error && data && view === "pipeline" && <PipelineViewEnhanced stages={visibleStages} allStages={activeStages} deals={filteredDeals} leadById={leadById} brokerById={brokerById} slaByDeal={slaByDeal} canReassign={canReassign} onReassign={setBrokerPickerDealId} onOpen={openDeal} onChat={openChat} onMutate={mutate} setMessage={setMessage} draggingId={draggingDealId} onDrag={setDraggingDealId} onDrop={dropDeal} canManageStages={canManageStages} onReorderStage={reorderStage} onRecolorStage={recolorStage} onSaveStage={saveStage} onBulkFromStage={openBulkFromStage} stageCount={activeStages.length} canMoveDeals={canMoveDeals} onPickStage={setStagePickerDealId} />}
+    {!loading && !error && data && view === "pipeline" && <PipelineViewEnhanced stages={visibleStages} allStages={activeStages} deals={filteredDeals} leadById={leadById} brokerById={brokerById} slaByDeal={slaByDeal} canReassign={canReassign} onReassign={setBrokerPickerDealId} onOpen={openDeal} onChat={openChat} onMutate={mutate} setMessage={setMessage} draggingId={draggingDealId} onDrag={setDraggingDealId} onDrop={dropDeal} canManageStages={canManageStages} onReorderStage={reorderStage} onRecolorStage={recolorStage} onSaveStage={saveStage} onBulkFromStage={openBulkFromStage} stageCount={activeStages.length} canMoveDeals={canMoveDeals} onPickStage={setStagePickerDealId} readByDeal={readByDeal} />}
     {!loading && !error && data && view === "leads" && <LeadsViewEnhanced deals={filteredDeals} leadById={leadById} stages={activeStages} brokerById={brokerById} slaByDeal={slaByDeal} canReassign={canReassign} onReassign={setBrokerPickerDealId} onOpen={openDeal} onChat={openChat} onMutate={mutate} setMessage={setMessage} canMoveDeals={canMoveDeals} onPickStage={setStagePickerDealId} />}
     {!loading && !error && data && view === "agenda" && <AgendaView data={data} leadById={leadById} onMutate={mutate} setMessage={setMessage} />}
     {!loading && !error && data && view === "atividades" && <ActivitiesView data={data} leadById={leadById} brokerById={brokerById} onOpen={(leadId) => setSelectedDealId(data.deals.find((deal) => deal.lead_id === leadId)?.id ?? null)} />}
@@ -650,7 +653,7 @@ function AnalyticsView({ data, onOpen }: { data: CrmData; onOpen?: (dealId: numb
   </section>;
 }
 
-function PipelineViewEnhanced({ stages, allStages, deals, leadById, brokerById, slaByDeal, canReassign, onReassign, onOpen, onChat, onMutate, setMessage, draggingId, onDrag, onDrop, canManageStages, onReorderStage, onRecolorStage, onSaveStage, onBulkFromStage, stageCount, canMoveDeals, onPickStage }: { stages: Stage[]; allStages: Stage[]; deals: Deal[]; leadById: Map<number, Lead>; brokerById: Map<number, Broker>; slaByDeal: Map<number, SlaInfo>; canReassign: boolean; onReassign: (dealId: number) => void; onOpen: (id: number) => void; onChat: (id: number) => void; onMutate: (body: Record<string, unknown>) => Promise<void>; setMessage: (value: string | null) => void; draggingId: number | null; onDrag: (id: number | null) => void; onDrop: (event: DragEvent, stageId: number) => Promise<void>; canManageStages?: boolean; onReorderStage?: (stageId: number, direction: number) => Promise<void>; onRecolorStage?: (stageId: number, color: string) => Promise<void>; onSaveStage?: (stageId: number, nome: string, color: string) => Promise<void>; onBulkFromStage?: (stageId: number) => void; stageCount?: number; canMoveDeals?: boolean; onPickStage?: (dealId: number) => void }) {
+function PipelineViewEnhanced({ stages, allStages, deals, leadById, brokerById, slaByDeal, canReassign, onReassign, onOpen, onChat, onMutate, setMessage, draggingId, onDrag, onDrop, canManageStages, onReorderStage, onRecolorStage, onSaveStage, onBulkFromStage, stageCount, canMoveDeals, onPickStage, readByDeal }: { stages: Stage[]; allStages: Stage[]; deals: Deal[]; leadById: Map<number, Lead>; brokerById: Map<number, Broker>; slaByDeal: Map<number, SlaInfo>; canReassign: boolean; onReassign: (dealId: number) => void; onOpen: (id: number) => void; onChat: (id: number) => void; onMutate: (body: Record<string, unknown>) => Promise<void>; setMessage: (value: string | null) => void; draggingId: number | null; onDrag: (id: number | null) => void; onDrop: (event: DragEvent, stageId: number) => Promise<void>; canManageStages?: boolean; onReorderStage?: (stageId: number, direction: number) => Promise<void>; onRecolorStage?: (stageId: number, color: string) => Promise<void>; onSaveStage?: (stageId: number, nome: string, color: string) => Promise<void>; onBulkFromStage?: (stageId: number) => void; stageCount?: number; canMoveDeals?: boolean; onPickStage?: (dealId: number) => void; readByDeal?: Map<number, string> }) {
   const [busyId, setBusyId] = useState<number | null>(null);
   const [menuStage, setMenuStage] = useState<number | null>(null);
   const [editName, setEditName] = useState("");
@@ -719,8 +722,12 @@ function PipelineViewEnhanced({ stages, allStages, deals, leadById, brokerById, 
         // (não está aguardando e há interação humana registrada) → verde. Lead nunca
         // tocado (sem interação humana) → segue sinalizando pelo tempo sem interação.
         const color = waiting ? alertColorByDays(sla?.min_aguardando) : (sla?.humano_ultima ? "verde" : alertColorByDays(sla?.min_sem_interacao));
+        // Sino: só quando o cliente aguarda. Vermelho = ainda não lida (corretor não abriu
+        // desde a última msg do cliente); Amarelo = já abriu (leu) mas não respondeu.
+        const lidoEm = readByDeal?.get(deal.id);
+        const unread = Boolean(waiting) && (!lidoEm || (sla?.cliente_ultima ? String(sla.cliente_ultima) > lidoEm : true));
         return <article draggable={canMoveDeals !== false} className={`crm-lead-card-v3 sla-${color} ${draggingId === deal.id ? "dragging" : ""}`} onDragStart={(event) => { if (canMoveDeals === false || (event.target as HTMLElement).closest(".card-controls-v3, .broker-trigger-v3")) return event.preventDefault(); event.dataTransfer.setData("text/deal-id", String(deal.id)); onDrag(deal.id); }} onDragEnd={() => onDrag(null)} key={deal.id}>
-          {waiting && <span className="card-resp-bell" title="Cliente respondeu — aguardando você"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10 21h4" /></svg></span>}
+          {waiting && <span className={`card-resp-bell ${unread ? "urgente" : "lida"}`} title={unread ? "Cliente respondeu — não lida" : "Lida, mas você ainda não respondeu"}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10 21h4" /></svg></span>}
           <div className={`sla-top-band ${color}`} />
           <div className="card-open-v3" role="button" tabIndex={0} onClick={() => onOpen(deal.id)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") onOpen(deal.id); }}>
             <div className="card-person"><LeadAvatar lead={lead} /><div><strong>{lead.nome || "Lead sem nome"}</strong><small>{lead.telefone || "Sem telefone"}</small></div><em>›</em></div>
