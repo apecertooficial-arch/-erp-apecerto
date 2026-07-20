@@ -155,6 +155,9 @@ export function CrmWorkspace({ accessToken, initialDealId = null, onInitialDealH
   const [chatDealId, setChatDealId] = useState<number | null>(null);
   const [brokerPickerDealId, setBrokerPickerDealId] = useState<number | null>(null);
   const [stagePickerDealId, setStagePickerDealId] = useState<number | null>(null);
+  const [respToast, setRespToast] = useState<{ dealId: number; nome: string } | null>(null);
+  const prevWaitingRef = useRef<Set<number>>(new Set());
+  const waitingInitRef = useRef(false);
 
   async function load({ quiet = false }: { quiet?: boolean } = {}) {
     if (!quiet) setLoading(true);
@@ -184,6 +187,42 @@ export function CrmWorkspace({ accessToken, initialDealId = null, onInitialDealH
     return () => { void supabase.removeChannel(channel); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [accessToken]);
+
+  // #8 — cliente respondeu: som agradável + pop-up no canto quando um lead passa a "aguardando você".
+  function playChime() {
+    try {
+      const Ctx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      const ctx = new Ctx();
+      const now = ctx.currentTime;
+      [880, 1174.66].forEach((freq, i) => {
+        const osc = ctx.createOscillator(); const gain = ctx.createGain();
+        osc.type = "sine"; osc.frequency.value = freq; osc.connect(gain); gain.connect(ctx.destination);
+        const t = now + i * 0.13;
+        gain.gain.setValueAtTime(0, t); gain.gain.linearRampToValueAtTime(0.16, t + 0.02); gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.35);
+        osc.start(t); osc.stop(t + 0.4);
+      });
+      window.setTimeout(() => { void ctx.close().catch(() => {}); }, 1200);
+    } catch { /* som é best-effort (browser pode bloquear sem interação) */ }
+  }
+  useEffect(() => {
+    if (!data) return;
+    const current = new Set<number>();
+    for (const s of data.sla ?? []) { if (s.aguardando_humano && s.negocio_id) current.add(s.negocio_id); }
+    if (waitingInitRef.current) {
+      const novos = [...current].filter((id) => !prevWaitingRef.current.has(id));
+      if (novos.length) {
+        const dealId = novos[novos.length - 1];
+        const deal = (data.deals ?? []).find((d) => d.id === dealId);
+        const nome = deal ? (leadById.get(deal.lead_id)?.nome ?? "Cliente") : "Cliente";
+        playChime();
+        setRespToast({ dealId, nome });
+        window.setTimeout(() => setRespToast((cur) => (cur && cur.dealId === dealId ? null : cur)), 15000);
+      }
+    }
+    prevWaitingRef.current = current;
+    waitingInitRef.current = true;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data]);
 
   async function mutate(body: Record<string, unknown>) {
     const response = await authedFetch("/api/crm", { method: "PATCH", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify(body) });
@@ -308,6 +347,7 @@ export function CrmWorkspace({ accessToken, initialDealId = null, onInitialDealH
     </section>}
     {filtersOpen && view !== "sales" && <section className="crm-filter-sheet"><label>Etapa<select value={stageId ?? ""} onChange={(event) => setStageId(event.target.value ? Number(event.target.value) : null)}><option value="">Todas</option>{activeStages.map((stage) => <option value={stage.id} key={stage.id}>{stage.rotulo || stage.nome}</option>)}</select></label><label>Responsável<select value={brokerId ?? ""} onChange={(event) => setBrokerId(event.target.value ? Number(event.target.value) : null)}><option value="">Todos</option>{(data?.brokers ?? []).map((broker) => <option value={broker.id} key={broker.id}>{broker.nome}</option>)}</select></label><label>Origem<select value={origin} onChange={(event) => setOrigin(event.target.value)}><option value="">Todas</option>{origins.map((item) => <option key={item}>{item}</option>)}</select></label><label>Tag<select value={tag} onChange={(event) => setTag(event.target.value)}><option value="">Todas</option>{allTags.map((item) => <option key={item}>{item}</option>)}</select></label><label>Entrada de<input type="date" value={dateFrom} onChange={(event) => setDateFrom(event.target.value)} /></label><label>Entrada até<input type="date" value={dateTo} onChange={(event) => setDateTo(event.target.value)} /></label><label>Produto<select value={productFilter} onChange={(event) => setProductFilter(event.target.value)}><option value="">Todos</option>{(data?.products ?? []).map((product) => <option value={product.id} key={product.id}>{product.nome}</option>)}</select></label><button type="button" onClick={() => { setStageId(null); setBrokerId(null); setOrigin(""); setTag(""); setGroup(null); setDateFrom(""); setDateTo(""); setProductFilter(""); }}>Limpar</button></section>}
     {message && <div className="crm-toast" onClick={() => setMessage(null)}>{message}<button type="button">×</button></div>}
+    {respToast && <div className="resp-toast" role="alert"><span className="resp-toast-bell"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10 21h4" /></svg></span><div className="resp-toast-body"><strong>{respToast.nome} respondeu</strong><small>Cliente aguardando você</small></div><button type="button" className="resp-toast-open" onClick={() => { const d = respToast.dealId; setRespToast(null); openChat(d); }}>Ver conversa</button><button type="button" className="resp-toast-x" aria-label="Fechar" onClick={() => setRespToast(null)}>×</button></div>}
     {loading && <div className="crm-loading"><span /><strong>Montando seu CRM com os dados reais…</strong></div>}
     {error && <div className="crm-error">{error}<button type="button" onClick={() => void load()}>Tentar novamente</button></div>}
     {!loading && !error && data && view === "pipeline" && <PipelineViewEnhanced stages={visibleStages} allStages={activeStages} deals={filteredDeals} leadById={leadById} brokerById={brokerById} slaByDeal={slaByDeal} canReassign={canReassign} onReassign={setBrokerPickerDealId} onOpen={openDeal} onChat={openChat} onMutate={mutate} setMessage={setMessage} draggingId={draggingDealId} onDrag={setDraggingDealId} onDrop={dropDeal} canManageStages={canManageStages} onReorderStage={reorderStage} onRecolorStage={recolorStage} onSaveStage={saveStage} onBulkFromStage={openBulkFromStage} stageCount={activeStages.length} canMoveDeals={canMoveDeals} onPickStage={setStagePickerDealId} />}
@@ -677,6 +717,7 @@ function PipelineViewEnhanced({ stages, allStages, deals, leadById, brokerById, 
         const waiting = sla?.aguardando_humano;
         const color = alertColorByDays(waiting ? sla?.min_aguardando : sla?.min_sem_interacao);
         return <article draggable={canMoveDeals !== false} className={`crm-lead-card-v3 sla-${color} ${draggingId === deal.id ? "dragging" : ""}`} onDragStart={(event) => { if (canMoveDeals === false || (event.target as HTMLElement).closest(".card-controls-v3, .broker-trigger-v3")) return event.preventDefault(); event.dataTransfer.setData("text/deal-id", String(deal.id)); onDrag(deal.id); }} onDragEnd={() => onDrag(null)} key={deal.id}>
+          {waiting && <span className="card-resp-bell" title="Cliente respondeu — aguardando você"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10 21h4" /></svg></span>}
           <div className={`sla-top-band ${color}`} />
           <div className="card-open-v3" role="button" tabIndex={0} onClick={() => onOpen(deal.id)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") onOpen(deal.id); }}>
             <div className="card-person"><LeadAvatar lead={lead} /><div><strong>{lead.nome || "Lead sem nome"}</strong><small>{lead.telefone || "Sem telefone"}</small></div><em>›</em></div>
