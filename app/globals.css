@@ -3558,3 +3558,17 @@ body { overflow:hidden; background:#eee8e2; }
    ============================================================ */
 .crm-v2 .crm-stage { border:0 !important; border-radius:0 !important; background:#f4f1ee !important; }
 .crm-v2 .crm-stage > header { min-height:auto !important; margin:8px 8px 5px !important; padding:10px 11px !important; background:#fff !important; border:1px solid #ebe7e3 !important; border-left:4px solid var(--stage) !important; border-radius:11px !important; box-shadow:0 1px 3px rgba(38,28,22,.05); }
+
+/* ============================================================
+   KANBAN OCUPA A ALTURA TODA DA TELA
+   O .crm-v2 está em zoom 0.85. Uma regra anterior fixava a altura em
+   100vh, que sob esse zoom rendia só ~85% da tela — sobrava um vão
+   branco embaixo. Aqui a altura volta a compensar o zoom (100vh/0.85)
+   e as colunas do funil esticam até o rodapé, mostrando mais cards.
+   Se mudar o zoom do .crm-v2, recalcule o 0.85 abaixo.
+   ============================================================ */
+.crm-v2:has(.crm-kanban-v2) { height: calc(100vh / 0.85); min-height: 0; overflow: hidden; }
+.crm-kanban-v2 { flex: 1 1 auto; min-height: 0; max-height: none; align-items: stretch; overflow-y: hidden; }
+.crm-v2 .crm-stage { height: 100%; max-height: 100%; display: flex; flex-direction: column; overflow: hidden; }
+.crm-v2 .crm-stage > header { flex: 0 0 auto; }
+.crm-v2 .crm-stage-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
