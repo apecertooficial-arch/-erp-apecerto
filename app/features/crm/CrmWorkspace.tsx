@@ -1,7 +1,7 @@
 "use client";
 /* eslint-disable react-hooks/purity, react-hooks/set-state-in-effect */
 
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type DragEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type DragEvent, type MouseEvent as ReactMouseEvent } from "react";
 import { getBrowserSupabaseClient } from "../../lib/supabase/browser";
 import { MessageMedia, ProductSendModal, QuickActionModal, type ChatData, type QuickAction } from "../chat/LiveChatWorkspace";
 import { ackState, StatusTick } from "../chat/statusTick";
@@ -478,7 +478,44 @@ function PipelineViewEnhanced({ stages, allStages, deals, leadById, brokerById, 
   const [editColor, setEditColor] = useState("#9638d8");
   const STAGE_PALETTE = ["#22a35a", "#2f9e8f", "#3b6fe0", "#7c3aed", "#d61f69", "#d13d3d", "#e8620e", "#e0a520", "#7cb518", "#5b6b7c", "#8a6a4a", "#3f3a36"];
   const change = async (body: Record<string, unknown>, success: string, dealId: number) => { setBusyId(dealId); try { await onMutate(body); setMessage(success); } catch (reason) { setMessage(reason instanceof Error ? reason.message : "Não foi possível salvar."); } finally { setBusyId(null); } };
-  return <section className="crm-kanban-v2">{stages.map((stage, stageIndex) => {
+  /* #5/#6 — arrastar o fundo do funil pra rolar lateral + roda do mouse na vertical vira scroll horizontal
+     quando a coluna sob o cursor já chegou ao fim (ou o cursor está numa área vazia). Sem precisar descer. */
+  const boardRef = useRef<HTMLElement | null>(null);
+  const pan = useRef({ x: 0, left: 0, active: false });
+  useEffect(() => {
+    const board = boardRef.current;
+    if (!board) return;
+    const onWheel = (event: globalThis.WheelEvent) => {
+      if (event.ctrlKey || Math.abs(event.deltaX) > Math.abs(event.deltaY) || event.deltaY === 0) return;
+      const col = (event.target as HTMLElement).closest(".crm-stage-body") as HTMLElement | null;
+      if (col) {
+        const down = event.deltaY > 0 && col.scrollTop + col.clientHeight < col.scrollHeight - 1;
+        const up = event.deltaY < 0 && col.scrollTop > 0;
+        if (down || up) return; // deixa a própria coluna rolar por dentro
+      }
+      board.scrollLeft += event.deltaY;
+      event.preventDefault();
+    };
+    const onMove = (event: globalThis.MouseEvent) => {
+      if (!pan.current.active) return;
+      board.scrollLeft = pan.current.left - (event.clientX - pan.current.x);
+      event.preventDefault();
+    };
+    const onUp = () => { if (pan.current.active) { pan.current.active = false; board.classList.remove("panning"); } };
+    board.addEventListener("wheel", onWheel, { passive: false });
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+    return () => { board.removeEventListener("wheel", onWheel); window.removeEventListener("mousemove", onMove); window.removeEventListener("mouseup", onUp); };
+  }, []);
+  const onBoardDown = (event: ReactMouseEvent) => {
+    if (event.button !== 0) return;
+    if ((event.target as HTMLElement).closest(".crm-lead-card-v3, .crm-stage-editor, button, select, input, textarea, a, [role='button']")) return;
+    const board = boardRef.current;
+    if (!board) return;
+    pan.current = { x: event.clientX, left: board.scrollLeft, active: true };
+    board.classList.add("panning");
+  };
+  return <section className="crm-kanban-v2" ref={boardRef} onMouseDown={onBoardDown}>{stages.map((stage, stageIndex) => {
     const items = deals.filter((deal) => deal.stage_id === stage.id);
     const stageColor = stage.cor || ["#9638d8", "#ff6500", "#386fe7", "#20aa64", "#f2a82c"][stageIndex % 5];
     const globalIndex = allStages.slice().sort((a, b) => a.ordem - b.ordem).findIndex((s) => s.id === stage.id);
