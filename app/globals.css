@@ -3960,3 +3960,25 @@ article.tone-red{border-left-color:#d3443e}article.tone-red strong{color:#d3443e
 .stage-picker-list > button > i { flex:0 0 10px; width:10px; height:10px; border-radius:50%; background:var(--sp,#9638d8); }
 .stage-picker-list > button > strong { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:12.5px; font-weight:650; }
 .stage-picker-list > button > small { flex:0 0 auto; padding:2px 7px; border-radius:999px; background:#f1ece8; color:#8c827b; font-size:10px; font-weight:700; }
+
+/* ============================================================
+   Chat do lead — gravação de áudio estilo WhatsApp + estados
+   (jul/2026): barra captando (waveform + timer), cancelar/enviar,
+   e no envio uma bolinha de carregando -> enviado/erro.
+   ============================================================ */
+.chat-rec-bar { display:flex !important; align-items:center; gap:10px; grid-template-columns:none !important; }
+.chat-rec-bar .rec-cancel, .chat-rec-bar .rec-send { flex:0 0 auto; width:40px; height:40px; display:grid; place-items:center; border:0; border-radius:50%; cursor:pointer; }
+.chat-rec-bar .rec-cancel { background:#f3ece9; color:#b0473d; }
+.chat-rec-bar .rec-cancel:hover { background:#f7e2de; }
+.chat-rec-bar .rec-send { background:#ff6500; color:#fff; box-shadow:0 4px 12px rgba(255,101,0,.3); }
+.chat-rec-bar .rec-cancel svg, .chat-rec-bar .rec-send svg { width:18px; height:18px; }
+.chat-rec-bar .rec-wave { flex:1; min-width:0; height:34px; display:flex; align-items:center; gap:2px; overflow:hidden; padding:0 4px; border-radius:10px; background:#faf5f2; }
+.chat-rec-bar .rec-wave > i { flex:0 0 3px; width:3px; min-height:3px; border-radius:2px; background:#ff8a3d; transition:height .08s linear; }
+.chat-rec-bar .rec-idle { color:#a99f98; font-size:12px; }
+.chat-rec-bar .rec-dot { flex:0 0 9px; width:9px; height:9px; border-radius:50%; background:#e23b3b; animation:rec-pulse 1s infinite; }
+.chat-rec-bar .rec-time { flex:0 0 auto; min-width:38px; color:#5c534e; font-size:13px; font-variant-numeric:tabular-nums; font-weight:700; }
+@keyframes rec-pulse { 0%,100%{opacity:1} 50%{opacity:.25} }
+.chat-messages .audio-state { display:inline-flex; align-items:center; gap:7px; padding:7px 11px; border-radius:9px; background:rgba(255,255,255,.5); color:#6b625c; font-size:12px; font-weight:600; }
+.chat-messages .audio-state.erro { color:#b0473d; }
+.chat-messages .audio-state .audio-spin { width:14px; height:14px; border:2px solid #e4d9d2; border-top-color:#ff6500; border-radius:50%; animation:audio-spin .7s linear infinite; }
+@keyframes audio-spin { to { transform:rotate(360deg) } }
