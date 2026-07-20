@@ -28,6 +28,7 @@ import { AuditWorkspace } from "../audit/AuditWorkspace";
 import { NotificationsWorkspace } from "../notifications/NotificationsWorkspace";
 import { LegacyModuleWorkspace } from "../system/LegacyModuleWorkspace";
 import { AgentTrainingWorkspace } from "../agents/AgentTrainingWorkspace";
+import { PresenceHeartbeat } from "../presence/PresenceHeartbeat";
 import type { ModuleName } from "../system/module-map";
 
 type CatalogResponse = {
@@ -243,6 +244,7 @@ export function ProductCatalog() {
 
   return (
     <AppShell activeItem={activeModule} onNavigate={setActiveModule} onOpenProfile={() => setProfileOpen(true)} sessionRole={sessionProfile?.role ?? "corretor"} sessionName={sessionProfile?.name ?? "Corretor"} modulePermissions={sessionProfile?.permissoes ?? null}>
+      {sessionProfile?.role === "corretor" && accessToken && <PresenceHeartbeat accessToken={accessToken} />}
       {activeModule === "Início" && accessToken ? (
         <HomeWorkspace accessToken={accessToken} sessionName={sessionProfile?.name ?? ""} onNavigate={(moduleName) => setActiveModule(moduleName as ModuleName)} />
       ) : activeModule === "CRM" && accessToken ? (
