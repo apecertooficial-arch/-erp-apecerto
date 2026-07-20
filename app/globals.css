@@ -3618,11 +3618,11 @@ article.tone-red{border-left-color:#d3443e}article.tone-red strong{color:#d3443e
 .login-close { position:absolute; top:16px; right:18px; z-index:5; width:34px; height:34px; border:0; border-radius:50%; background:rgba(255,255,255,.9); color:#615851; font-size:20px; cursor:pointer; box-shadow:0 4px 14px rgba(0,0,0,.12); }
 
 /* ---------- Painel esquerdo (hero) ---------- */
-.login-hero { position:relative; flex:1 1 50%; min-width:0; overflow:hidden; display:flex; align-items:center; padding:56px; color:#fff;
+.login-hero { position:relative; flex:1 1 50%; min-width:0; overflow:hidden; display:flex; align-items:center; justify-content:flex-end; padding:56px clamp(40px,4vw,72px); color:#fff;
   background:linear-gradient(152deg,#ff6a15 0%,#f4356b 52%,#a51fac 100%); }
 .login-hero-shape { position:absolute; display:block; pointer-events:none; }
 .login-hero-shape.circle { top:9%; left:10%; width:150px; height:150px; border-radius:50%; background:rgba(255,255,255,.13); }
-.login-hero-shape.square { top:26%; left:64%; width:54px; height:54px; border-radius:14px; background:rgba(255,255,255,.10); }
+.login-hero-shape.square { top:20%; left:30%; width:54px; height:54px; border-radius:14px; background:rgba(255,255,255,.10); }
 .login-hero-shape.panel { right:-70px; bottom:6%; width:340px; height:300px; border-radius:34px; background:rgba(255,255,255,.10); transform:rotate(0deg); }
 .login-hero-inner { position:relative; z-index:2; max-width:430px; }
 .login-hero-icon { width:112px; height:112px; display:grid; place-items:center; border-radius:28px; margin-bottom:26px;
@@ -3638,7 +3638,7 @@ article.tone-red{border-left-color:#d3443e}article.tone-red strong{color:#d3443e
 .login-hero-pill i { width:9px; height:9px; border-radius:50%; background:#3ddc84; box-shadow:0 0 0 3px rgba(61,220,132,.28); }
 
 /* ---------- Painel direito (formulário) ---------- */
-.login-form-side { flex:1 1 50%; min-width:0; display:flex; align-items:center; justify-content:center; padding:48px 40px; background:#fff; }
+.login-form-side { flex:1 1 50%; min-width:0; display:flex; align-items:center; justify-content:flex-start; padding:48px clamp(40px,4vw,72px); background:#fff; }
 .login-form-inner { width:100%; max-width:388px; }
 .login-brand-pill { display:inline-flex; align-items:center; gap:8px; padding:7px 14px; margin-bottom:30px; border:1px solid #ece7e3; border-radius:999px; }
 .login-brand-pill svg { width:18px; height:18px; fill:none; stroke:#ff6500; stroke-width:2.4; stroke-linecap:round; stroke-linejoin:round; }
@@ -3742,3 +3742,94 @@ article.tone-red{border-left-color:#d3443e}article.tone-red strong{color:#d3443e
 .esteira-config-doc-add button{border:1px solid #ffb57f;border-radius:8px;padding:7px 12px;background:#fff7f1;color:#d85600;font-weight:700;font-size:11px;cursor:pointer;white-space:nowrap;flex:none}
 .esteira-config-doc-add button:disabled{opacity:.55;cursor:default}
 @media(max-width:720px){.esteira-config-head{flex-direction:column;align-items:stretch}.esteira-config-doc{flex-wrap:wrap}}
+/* Login v3 — assets oficiais da marca */
+.login-hero-symbol { width:60px; height:60px; object-fit:contain; filter:brightness(0) invert(1); }
+.login-brand-img { height:24px; width:auto; display:block; }
+.login-brand-pill { padding:8px 15px; }
+
+/* ============================================================
+   #5/#6 — arrastar o fundo do Kanban pra rolar lateral (jul/2026)
+   Segure e arraste qualquer área vazia do funil (fora dos cards)
+   pra puxar as colunas de lado, sem precisar descer até a barra.
+   Combina com o handler de roda do mouse em CrmWorkspace.tsx.
+   ============================================================ */
+.crm-kanban-v2 { cursor: grab; }
+.crm-kanban-v2.panning { cursor: grabbing; user-select: none; }
+.crm-kanban-v2.panning .crm-stage-body { pointer-events: none; }
+.crm-lead-card-v3, .card-controls-v3, .crm-stage-editor { cursor: default; }
+
+/* ============================================================
+   #2 — mover lead entre funis (pipes) no drawer (jul/2026)
+   Empilha FUNIL + ETAPA + Descartar em coluna, com rótulos, e
+   tira o botão "Descartar" do position:absolute antigo (que
+   sobrepunha os seletores).
+   ============================================================ */
+.lead-funnel-status { position: relative; display: flex; flex-direction: column; gap: 10px; }
+.lead-funnel-status .lead-stage-track { margin: 8px 0 4px; }
+.lead-pipe-move, .lead-stage-move { display: flex; flex-direction: column; gap: 4px; margin: 0; }
+.lead-pipe-move > span, .lead-stage-move > span { color: #a19892; font-size: 10px; font-weight: 800; letter-spacing: .1em; }
+.lead-funnel-status .lead-pipe-move select, .lead-funnel-status .lead-stage-move select { width: 100%; max-width: none; min-height: 42px; margin: 0; border: 1px solid #e5ded9; border-radius: 10px; padding: 0 12px; background: #fff; color: #33302c; font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+.lead-funnel-status .lead-pipe-move select { border-color: #e7bbf2; background: #fdf8ff; }
+.lead-funnel-status > button { position: static; align-self: flex-start; margin-top: 2px; border: 0; background: transparent; color: #b14a42; font-size: 12px; font-weight: 700; cursor: pointer; }
+
+/* ============================================================
+   #3 — seletor de etapa do card do kanban mais limpo (jul/2026)
+   Botão Chat e select de etapa com mesma altura, cantos suaves,
+   seta custom consistente e cores que separam ação de navegação.
+   ============================================================ */
+.crm-lead-card-v3 .card-controls-v3 { padding: 8px 9px; gap: 6px; }
+.crm-lead-card-v3 .card-controls-v3 > button,
+.crm-lead-card-v3 .card-controls-v3 label select { height: 32px; min-height: 32px; border-radius: 8px; font-size: 11px; font-weight: 700; }
+.crm-lead-card-v3 .card-controls-v3 > button { border: 1px solid #cfe8da; color: #14804a; background: #f3fbf6; }
+.crm-lead-card-v3 .card-controls-v3 > button:hover { background: #e7f7ee; border-color: #a9dcc1; }
+.crm-lead-card-v3 .card-controls-v3 label select { border: 1px solid #e0d8d2; color: #4b433e; background-color: #fff; padding: 0 22px 0 10px; appearance: none; -webkit-appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%238a7f78' stroke-width='3' stroke-linecap='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 8px center; cursor: pointer; }
+.crm-lead-card-v3 .card-controls-v3 label select:hover { border-color: #c9bfb8; }
+
+/* ============================================================
+   Detalhe da venda em processo — clicar no card abre o andamento
+   (jul/2026). Overlay reaproveita .crm-drawer-layer.
+   ============================================================ */
+.sale-card-content { cursor: pointer; }
+.crm-drawer-v2.sale-detail { width: min(520px, 96vw); display: flex; flex-direction: column; background: #fff; }
+.sale-detail-hero { position: relative; padding: 22px 24px 18px; border-bottom: 1px solid #eee7e2; background: linear-gradient(180deg, #faf7ff, #fff); }
+.sale-detail-hero .drawer-close-v2 { position: absolute; top: 14px; right: 16px; width: 32px; height: 32px; border: 0; border-radius: 50%; background: #f1ece8; color: #5f5851; font-size: 19px; cursor: pointer; }
+.sale-detail-kicker { color: #8a3fd0; font-size: 11px; font-weight: 800; letter-spacing: .12em; }
+.sale-detail-hero h2 { margin: 6px 0 2px; font-size: 19px; color: #2b2622; }
+.sale-detail-hero p { margin: 0; color: #857b74; font-size: 12px; }
+.sale-detail-progress { height: 7px; margin: 14px 0 6px; border-radius: 999px; background: #ece6e1; overflow: hidden; }
+.sale-detail-progress i { display: block; height: 100%; border-radius: 999px; transition: width .3s ease; }
+.sale-detail-hero small { color: #9a908a; font-size: 11px; }
+.sale-detail-body { flex: 1; overflow-y: auto; padding: 18px 24px 8px; }
+.sale-detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 14px; }
+.sale-detail-grid > div { display: flex; flex-direction: column; gap: 3px; }
+.sale-detail-grid small { color: #a29890; font-size: 10px; font-weight: 800; letter-spacing: .06em; }
+.sale-detail-grid strong { color: #2f2a26; font-size: 14px; }
+.sale-detail-grid strong.sale-detail-late { color: #d1453c; }
+.sale-detail-current { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 16px 0 4px; padding: 12px 14px; border: 1px solid #eadff7; border-left: 4px solid var(--sale-stage, #7c3aed); border-radius: 11px; background: #fbf8ff; }
+.sale-detail-current.late { border-color: #f2c9c4; border-left-color: #d1453c; background: #fff5f4; }
+.sale-detail-current small { color: #9a5fd0; font-size: 10px; font-weight: 800; letter-spacing: .05em; }
+.sale-detail-current.late small { color: #c25047; }
+.sale-detail-current strong { display: block; margin-top: 3px; color: #2f2a26; font-size: 14px; }
+.sale-detail-current span { flex: 0 0 auto; color: #7c726b; font-size: 11px; text-align: right; }
+.sale-detail-body h4 { margin: 18px 0 10px; color: #a29890; font-size: 11px; letter-spacing: .1em; }
+.sale-timeline { list-style: none; margin: 0; padding: 0; }
+.sale-timeline li { position: relative; display: flex; align-items: flex-start; gap: 11px; padding: 0 0 16px 2px; }
+.sale-timeline li > i { position: relative; z-index: 2; flex: 0 0 13px; width: 13px; height: 13px; margin-top: 2px; border-radius: 50%; border: 2px solid var(--tl, #cfc6c0); background: #fff; }
+.sale-timeline li > u { position: absolute; left: 7px; top: 15px; bottom: -1px; width: 2px; background: #e7e0da; }
+.sale-timeline li.done > i { background: var(--tl, #1fa85a); border-color: var(--tl, #1fa85a); }
+.sale-timeline li.current > i { border-color: var(--tl, #7c3aed); box-shadow: 0 0 0 4px color-mix(in srgb, var(--tl, #7c3aed) 20%, transparent); }
+.sale-timeline li > div { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.sale-timeline li strong { color: #4b433e; font-size: 13px; font-weight: 650; }
+.sale-timeline li.current strong { color: #2b2622; font-weight: 800; }
+.sale-timeline li.todo strong { color: #a79e97; }
+.sale-timeline li small { color: #a49a93; font-size: 11px; }
+.sale-timeline li em { margin-left: auto; align-self: center; padding: 2px 8px; border-radius: 999px; background: color-mix(in srgb, var(--tl, #7c3aed) 15%, #fff); color: var(--tl, #7c3aed); font-size: 10px; font-weight: 800; font-style: normal; }
+.sale-timeline li b { margin-left: auto; align-self: center; color: var(--tl, #1fa85a); font-size: 13px; }
+.sale-detail-note { margin: 12px 0 4px; padding: 12px 14px; border-radius: 11px; background: #faf8f6; }
+.sale-detail-note small { color: #a29890; font-size: 10px; font-weight: 800; letter-spacing: .06em; }
+.sale-detail-note p { margin: 5px 0 0; color: #4b433e; font-size: 13px; line-height: 1.5; }
+.sale-detail-foot { display: flex; align-items: flex-end; gap: 10px; padding: 14px 24px 18px; border-top: 1px solid #eee7e2; }
+.sale-detail-foot .crm-secondary { flex: 1; }
+.sale-detail-move { display: flex; flex-direction: column; gap: 4px; }
+.sale-detail-move > span { color: #a29890; font-size: 10px; font-weight: 800; letter-spacing: .06em; }
+.sale-detail-move select { min-height: 40px; border: 1px solid #e0d8d2; border-radius: 10px; padding: 0 12px; background: #fff; color: #33302c; font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
