@@ -103,6 +103,14 @@ export async function PATCH(request: Request) {
     return result.error ? Response.json({ error: result.error.message }, { status: 502 }) : Response.json({ success: true });
   }
 
+  if (body.action === "publish" || body.action === "unpublish") {
+    const { data: me } = await auth.supabase.from("usuarios").select("role").eq("id", auth.user.id).maybeSingle();
+    if (!me || !["admin", "gestor", "executivo"].includes(me.role)) return Response.json({ error: "Apenas administradores/gestores podem publicar produtos." }, { status: 403 });
+    const publicar = body.action === "publish";
+    const { error } = await auth.supabase.from("empreendimentos").update({ rascunho: !publicar }).eq("id", id);
+    return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true, rascunho: !publicar });
+  }
+
   if (body.action === "setCover") {
     const mediaId = typeof body.mediaId === "string" ? body.mediaId : "";
     if (!UUID.test(mediaId)) return Response.json({ error: "Mídia inválida." }, { status: 400 });
