@@ -9980,12 +9980,14 @@ class Component extends DCLogic {
       preenchido: { label: 'Preenchido', bg: '#E4EDFB', fg: '#1E4FC4', dot: '#2F6FED' },
       rodada: { label: 'Simulação rodada', bg: '#F3E8FB', fg: '#66009A', dot: '#8B00CC' },
       publicada: { label: 'Publicada', bg: 'var(--success-bg)', fg: '#157a42', dot: '#1FA85A' },
-      pronto: { label: 'Simulação pronta', bg: 'var(--success-bg)', fg: '#157a42', dot: '#1FA85A' }
+      pronto: { label: 'Simulação pronta', bg: 'var(--success-bg)', fg: '#157a42', dot: '#1FA85A' },
+      rascunho: { label: 'Rascunho', bg: '#F0ECE8', fg: '#6B625C', dot: '#9E948E' }
     };
+    const finMetaOf = (s) => finStatusMeta[s] || { label: (s || '—'), bg: '#F0ECE8', fg: '#6B625C', dot: '#9E948E' };
     const brl0 = (n) => 'R$ ' + (Number(n) || 0).toLocaleString('pt-BR');
     const finPill = (m) => ({ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '3px 10px', borderRadius: '999px', fontSize: '11px', fontWeight: 700, background: m.bg, color: m.fg });
     const finAvatar = { width: '38px', height: '38px', borderRadius: '50%', background: 'var(--ape-orange-100)', color: 'var(--ape-orange-700)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '13px', flexShrink: 0 };
-    const finList = this.financiamentos.map(f => { const m = finStatusMeta[f.status]; const sel = f.id === st.finSel; return {
+    const finList = this.financiamentos.map(f => { const m = finMetaOf(f.status); const sel = f.id === st.finSel; return {
       id: f.id, cliente: f.cliente, ape: f.ape, corretor: f.corretor, initials: this.ini(f.cliente), avatarStyle: finAvatar,
       statusLabel: m.label, statusStyle: finPill(m), dot: { width: '8px', height: '8px', borderRadius: '50%', background: m.dot, flexShrink: 0 },
       sel: sel, onSelect: () => this.selectFin(f.id),
@@ -9994,7 +9996,7 @@ class Component extends DCLogic {
     }; });
     const fsel = this._finOf(st.finSel) || this.financiamentos[0] || null;
     let finDetail = null;
-    if (fsel) { const m = finStatusMeta[fsel.status]; const dd = fsel.dados;
+    if (fsel) { const m = finMetaOf(fsel.status); const dd = fsel.dados;
       finDetail = {
         id: fsel.id, cliente: fsel.cliente, tel: fsel.tel || '—', ape: fsel.ape, corretor: fsel.corretor, initials: this.ini(fsel.cliente), avatarStyle: { width: '48px', height: '48px', borderRadius: '50%', background: 'var(--ape-orange-100)', color: 'var(--ape-orange-700)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '17px', flexShrink: 0 },
         statusLabel: m.label, statusStyle: finPill(m),
