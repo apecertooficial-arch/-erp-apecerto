@@ -3843,3 +3843,29 @@ article.tone-red{border-left-color:#d3443e}article.tone-red strong{color:#d3443e
 .sale-moves li:first-child::before { background: #7c3aed; }
 .sale-moves li b { color: #7c726b; font-size: 11px; font-weight: 700; }
 .sale-moves li span { color: #4b433e; font-size: 12px; }
+
+/* Esteira de documentação dentro do drawer de detalhe — etapas expansíveis e verificáveis */
+.sale-esteira { display: flex; flex-direction: column; gap: 8px; margin: 0 0 4px; }
+.sale-esteira-stage { border: 1px solid #ece7e3; border-radius: 12px; background: #fff; overflow: hidden; }
+.sale-esteira-stage.current { border-color: color-mix(in srgb, var(--tl, #7c3aed) 45%, #ece7e3); box-shadow: 0 0 0 2px color-mix(in srgb, var(--tl, #7c3aed) 12%, transparent); }
+.sale-esteira-stage.verified { border-color: #cfe8da; background: #f7fcf9; }
+.sale-esteira-head { width: 100%; display: flex; align-items: center; gap: 10px; padding: 11px 12px; border: 0; background: transparent; cursor: pointer; text-align: left; font-family: inherit; }
+.sale-esteira-dot { flex: 0 0 20px; width: 20px; height: 20px; display: grid; place-items: center; border-radius: 50%; background: #f0eeec; color: var(--tl, #a79e98); font-size: 11px; font-weight: 800; }
+.sale-esteira-stage.done .sale-esteira-dot, .sale-esteira-stage.verified .sale-esteira-dot { background: color-mix(in srgb, var(--tl, #1fa85a) 18%, #fff); color: var(--tl, #1fa85a); }
+.sale-esteira-title { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.sale-esteira-title strong { color: #2f2a26; font-size: 13px; font-weight: 700; }
+.sale-esteira-title small { color: #9a908a; font-size: 11px; }
+.sale-esteira-badge { flex: none; font-size: 10px; font-weight: 800; letter-spacing: .03em; padding: 3px 8px; border-radius: 999px; background: #f2efec; color: #8a7f78; }
+.sale-esteira-stage.verified .sale-esteira-badge { background: #e5f7ec; color: #17834b; }
+.sale-esteira-chev { flex: none; color: #b6aca5; font-size: 11px; }
+.sale-esteira-body { padding: 4px 12px 12px; border-top: 1px solid #f2efec; }
+.sale-esteira-empty { color: #9a908a; font-size: 12px; margin: 10px 2px; }
+.sale-esteira-outros { margin-top: 6px; padding-top: 6px; border-top: 1px dashed #ece7e3; }
+.sale-esteira-outros > small { display: block; color: #a29890; font-size: 10px; font-weight: 800; letter-spacing: .06em; margin: 4px 0; }
+.sale-esteira-add { margin-top: 8px; }
+.sale-esteira-verify { margin-top: 10px; }
+.sale-esteira-approve { width: 100%; border: 0; border-radius: 9px; padding: 10px 12px; background: linear-gradient(135deg, #17a35a, #1fbf6a); color: #fff; font-family: inherit; font-size: 12px; font-weight: 800; cursor: pointer; }
+.sale-esteira-approve:disabled { background: #eee9e5; color: #a79e98; cursor: default; }
+.sale-esteira-verified { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 11px; border-radius: 9px; background: #e5f7ec; color: #14804a; font-size: 12px; font-weight: 700; }
+.sale-esteira-verified button { border: 1px solid #bfe3cd; border-radius: 7px; padding: 4px 10px; background: #fff; color: #14804a; font-size: 11px; font-weight: 700; cursor: pointer; }
+.sale-esteira-wait { margin: 0; padding: 8px 11px; border-radius: 9px; background: #fff7f1; color: #b06a2e; font-size: 12px; }

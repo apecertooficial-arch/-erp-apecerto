@@ -334,6 +334,7 @@ type SalesData = {
   anexos?: Array<{ id: string; processo_ref: string; negocio_id: number | null; etapa_slug: string | null; doc_nome: string | null; nome: string; path: string; mime: string | null; tamanho: number | null; criado_em: string }>;
   users?: Array<{ id: string; nome: string; role: string }>;
   history?: Array<{ processo_id: string; etapa_de: string | null; etapa_para: string; movido_por: string | null; movido_em: string }>;
+  verificacoes?: Array<{ id: string; processo_ref: string; etapa_slug: string; verificado_por: string | null; verificado_em: string }>;
 };
 
 const saleStages = [
@@ -348,7 +349,7 @@ const saleStages = [
 ];
 
 function SalesProcessView({ accessToken, initialCreate = false, sessionRole = "corretor" }: { accessToken: string; initialCreate?: boolean; sessionRole?: string }) {
-  const [data, setData] = useState<SalesData | null>(null); const [error, setError] = useState<string | null>(null); const [filter, setFilter] = useState("all"); const [creating, setCreating] = useState(initialCreate); const [busy, setBusy] = useState(false); const [chatItem, setChatItem] = useState<{ lead: Lead; deal: Deal; corretorNome?: string } | null>(null); const [detailItem, setDetailItem] = useState<SalesData["processes"][number] | null>(null); const [menuStage, setMenuStage] = useState<string | null>(null); const [bulkFrom, setBulkFrom] = useState<string | null>(null); const [addingStage, setAddingStage] = useState(false); const [newStageName, setNewStageName] = useState(""); const [docsProcessId, setDocsProcessId] = useState<string | null>(null);
+  const [data, setData] = useState<SalesData | null>(null); const [error, setError] = useState<string | null>(null); const [filter, setFilter] = useState("all"); const [creating, setCreating] = useState(initialCreate); const [busy, setBusy] = useState(false); const [chatItem, setChatItem] = useState<{ lead: Lead; deal: Deal; corretorNome?: string } | null>(null); const [detailItem, setDetailItem] = useState<SalesData["processes"][number] | null>(null); const [menuStage, setMenuStage] = useState<string | null>(null); const [bulkFrom, setBulkFrom] = useState<string | null>(null); const [addingStage, setAddingStage] = useState(false); const [newStageName, setNewStageName] = useState("");
   const canManageStages = sessionRole !== "corretor";
   const load = async () => { const response = await authedFetch("/api/crm/sales", { headers: { Authorization: `Bearer ${accessToken}` } }); const result = await response.json() as SalesData & { error?: string }; if (!response.ok) throw new Error(result.error || "Não foi possível carregar as vendas."); setData(result); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -399,67 +400,20 @@ function SalesProcessView({ accessToken, initialCreate = false, sessionRole = "c
               {tags.length > 0 && <div className="card-tags" aria-label="Tags do lead">{tags.map((tagItem) => <span key={tagItem}>{tagItem}</span>)}</div>}
               <small className="sale-kind">{item.tipo_venda === "revenda" ? "Revenda" : "Construtora"}</small>
             </div>
-            <div className="sale-card-controls">{lead && deal && <button type="button" className="sale-card-chat" onClick={() => setChatItem({ lead: lead as unknown as Lead, deal: deal as unknown as Deal, corretorNome: broker?.nome })}>Chat</button>}<button type="button" className="sale-card-docs" onClick={() => setDocsProcessId(item.id)}>📎 Docs</button><select aria-label={`Mover ${lead?.nome || "venda"} para outra etapa`} disabled={busy} value={item.etapa} onChange={(event) => void move(item.id, event.target.value)}>{stageList.filter((target) => !target.resale || item.tipo_venda === "revenda").map((target) => <option value={target.id} key={target.id}>{target.name}</option>)}</select></div>
+            <div className="sale-card-controls">{lead && deal && <button type="button" className="sale-card-chat" onClick={() => setChatItem({ lead: lead as unknown as Lead, deal: deal as unknown as Deal, corretorNome: broker?.nome })}>Chat</button>}<select aria-label={`Mover ${lead?.nome || "venda"} para outra etapa`} disabled={busy} value={item.etapa} onChange={(event) => void move(item.id, event.target.value)}>{stageList.filter((target) => !target.resale || item.tipo_venda === "revenda").map((target) => <option value={target.id} key={target.id}>{target.name}</option>)}</select></div>
           </article>;
         })}{items.length === 0 && <div className="sales-drop">Solte uma venda aqui</div>}</div>
       </article>;
     })}</div>
     {creating && <CreateSaleModal data={data} accessToken={accessToken} onClose={() => setCreating(false)} onDone={async () => { setCreating(false); await load(); }} />}
     {chatItem && <LeadChatDrawer key={chatItem.deal.id} accessToken={accessToken} lead={chatItem.lead} deal={chatItem.deal} corretorNome={chatItem.corretorNome} onClose={() => setChatItem(null)} onResponse={async () => {}} />}
-    {docsProcessId && data && (() => { const proc = data.processes.find((p) => p.id === docsProcessId); if (!proc) return null; const sale = data.sales.find((s) => s.id === proc.venda_id); const dealD = data.deals.find((d) => d.venda_id === proc.venda_id); const leadD = dealD ? data.leads.find((l) => l.id === dealD.lead_id) : null; const st = stageList.find((s) => s.id === proc.etapa); return <EsteiraDocsDrawer accessToken={accessToken} process={proc} saleNome={sale?.empreendimento_nome || "Venda"} clienteNome={leadD?.nome || null} stageName={st?.name || proc.etapa} stageRole={st?.role || ""} etapaDocs={(data.etapaDocs ?? []).filter((d) => d.etapa_slug === proc.etapa)} anexos={(data.anexos ?? []).filter((a) => a.processo_ref === proc.id)} onClose={() => setDocsProcessId(null)} onReload={load} />; })()}
-    {detailItem && (() => { const sale = saleById.get(detailItem.venda_id); const deal = dealBySale.get(detailItem.venda_id); const lead = deal ? leadById.get(deal.lead_id) : null; const broker = brokerById.get(deal?.corretor_id ?? lead?.corretor_id ?? -1); return <SaleDetailDrawer process={detailItem} sale={sale} lead={lead} broker={broker} stageList={stageList} history={(data.history ?? []).filter((h) => h.processo_id === detailItem.id)} busy={busy} onMove={async (stage) => { await move(detailItem.id, stage); setDetailItem((cur) => cur ? { ...cur, etapa: stage } : cur); }} onChat={lead && deal ? () => { setDetailItem(null); setChatItem({ lead: lead as unknown as Lead, deal: deal as unknown as Deal, corretorNome: broker?.nome }); } : undefined} onClose={() => setDetailItem(null)} />; })()}
+    {detailItem && (() => { const sale = saleById.get(detailItem.venda_id); const deal = dealBySale.get(detailItem.venda_id); const lead = deal ? leadById.get(deal.lead_id) : null; const broker = brokerById.get(deal?.corretor_id ?? lead?.corretor_id ?? -1); return <SaleDetailDrawer accessToken={accessToken} canApprove={canManageStages} process={detailItem} sale={sale} lead={lead} broker={broker} stageList={stageList} etapaDocs={data.etapaDocs ?? []} anexos={(data.anexos ?? []).filter((a) => a.processo_ref === detailItem.id)} verificacoes={(data.verificacoes ?? []).filter((v) => v.processo_ref === detailItem.id)} history={(data.history ?? []).filter((h) => h.processo_id === detailItem.id)} busy={busy} onReload={load} onMove={async (stage) => { await move(detailItem.id, stage); setDetailItem((cur) => cur ? { ...cur, etapa: stage } : cur); }} onChat={lead && deal ? () => { setDetailItem(null); setChatItem({ lead: lead as unknown as Lead, deal: deal as unknown as Deal, corretorNome: broker?.nome }); } : undefined} onClose={() => setDetailItem(null)} />; })()}
     {bulkFrom && <div className="crm-center-modal"><form onSubmit={(event) => event.preventDefault()}><header><div><span>AÇÃO EM MASSA</span><h2>Mover uma etapa inteira</h2><p>Todas as vendas de <b>{stageList.find((s) => s.id === bulkFrom)?.name}</b> serão enviadas para o destino escolhido.</p></div><button type="button" onClick={() => setBulkFrom(null)}>×</button></header><div className="bulk-move-grid"><label>Etapa de destino<select id="bulk-to" defaultValue=""><option value="">Selecione</option>{stageList.filter((s) => s.id !== bulkFrom).map((s) => <option value={s.id} key={s.id}>{s.name}</option>)}</select></label></div><footer><button type="button" onClick={() => setBulkFrom(null)}>Cancelar</button><button className="crm-primary" type="button" disabled={busy} onClick={() => { const to = (document.getElementById("bulk-to") as HTMLSelectElement | null)?.value; if (!to) { setError("Selecione a etapa de destino."); return; } void mutateStages({ action: "bulkMoveStage", fromSlug: bulkFrom, toSlug: to }); setBulkFrom(null); }}>Mover vendas</button></footer></form></div>}
   </section>;
 }
 
-function EsteiraDocsDrawer({ accessToken, process, saleNome, clienteNome, stageName, stageRole, etapaDocs, anexos, onClose, onReload }: {
-  accessToken: string; process: SalesData["processes"][number]; saleNome: string; clienteNome: string | null; stageName: string; stageRole: string;
-  etapaDocs: NonNullable<SalesData["etapaDocs"]>; anexos: NonNullable<SalesData["anexos"]>; onClose: () => void; onReload: () => Promise<void>;
-}) {
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const api = async (payload: Record<string, unknown>) => {
-    const r = await authedFetch("/api/crm/sales", { method: "PATCH", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify(payload) });
-    const j = await r.json() as { error?: string }; if (!r.ok) throw new Error(j.error || "Falha.");
-  };
-  const upload = async (file: File, docNome: string | null) => {
-    setBusy(true); setError(null);
-    try {
-      const supabase = getBrowserSupabaseClient();
-      const safe = file.name.replace(/[^\w.\-]+/g, "_");
-      const path = `esteira/${process.id}/${process.etapa}/${Date.now()}_${safe}`;
-      const { error: upErr } = await supabase.storage.from("esteira-docs").upload(path, file, { upsert: false });
-      if (upErr) throw new Error(upErr.message);
-      await api({ action: "addAnexo", processId: process.id, negocioId: process.negocio_id, etapaSlug: process.etapa, docNome, nome: file.name, path, mime: file.type, tamanho: file.size });
-      await onReload();
-    } catch (reason) { setError(reason instanceof Error ? reason.message : "Falha ao anexar."); }
-    finally { setBusy(false); }
-  };
-  const remove = async (id: string) => { setBusy(true); setError(null); try { await api({ action: "removeAnexo", anexoId: id }); await onReload(); } catch (r) { setError(r instanceof Error ? r.message : "Falha."); } finally { setBusy(false); } };
-  const abrir = async (path: string) => { const { data } = await getBrowserSupabaseClient().storage.from("esteira-docs").createSignedUrl(path, 300); if (data?.signedUrl) window.open(data.signedUrl, "_blank"); };
-  const anexoDe = (docNome: string) => anexos.find((a) => a.doc_nome === docNome);
-  const outros = anexos.filter((a) => !a.doc_nome || !etapaDocs.some((d) => d.nome === a.doc_nome));
-  return <div className="esteira-docs-layer" role="button" tabIndex={-1} onClick={onClose}><aside className="esteira-docs" onClick={(e) => e.stopPropagation()}>
-    <header><div><span>DOCUMENTOS DA VENDA</span><h2>{saleNome}</h2><p>{clienteNome || "Cliente não informado"} · etapa <b>{stageName}</b>{stageRole ? ` · resp.: ${stageRole}` : ""}</p></div><button type="button" onClick={onClose}>×</button></header>
-    {error && <div className="modal-error">{error}</div>}
-    <section><h3>Checklist desta etapa</h3>
-      {etapaDocs.length === 0 && <p className="finance-empty">Nenhum documento configurado para esta etapa. Configure em Configurações → Esteira de vendas.</p>}
-      {etapaDocs.map((d) => { const a = anexoDe(d.nome); return <div className={`esteira-doc-row ${a ? "ok" : ""}`} key={d.id}>
-        <span className="esteira-doc-check">{a ? "✓" : "○"}</span>
-        <div className="esteira-doc-info"><strong>{d.nome}</strong><small>{d.obrigatorio ? "Obrigatório" : "Opcional"}{a ? ` · ${a.nome}` : ""}</small></div>
-        {a ? <div className="esteira-doc-actions"><button type="button" onClick={() => void abrir(a.path)}>Abrir</button><button type="button" className="esteira-doc-del" disabled={busy} onClick={() => void remove(a.id)}>×</button></div>
-          : <label className="esteira-doc-up">📎 Anexar<input type="file" hidden disabled={busy} onChange={(e) => { const f = e.target.files?.[0]; if (f) void upload(f, d.nome); e.target.value = ""; }} /></label>}
-      </div>; })}
-    </section>
-    <section><div className="esteira-doc-head"><h3>Outros anexos</h3><label className="esteira-doc-up">＋ Anexar arquivo<input type="file" hidden disabled={busy} onChange={(e) => { const f = e.target.files?.[0]; if (f) void upload(f, null); e.target.value = ""; }} /></label></div>
-      {outros.length === 0 && <p className="finance-empty">Nenhum anexo adicional.</p>}
-      {outros.map((a) => <div className="esteira-doc-row" key={a.id}><span className="esteira-doc-check">📄</span><div className="esteira-doc-info"><strong>{a.nome}</strong><small>{new Date(a.criado_em).toLocaleDateString("pt-BR")}</small></div><div className="esteira-doc-actions"><button type="button" onClick={() => void abrir(a.path)}>Abrir</button><button type="button" className="esteira-doc-del" disabled={busy} onClick={() => void remove(a.id)}>×</button></div></div>)}
-    </section>
-  </aside></div>;
-}
-
 type SaleStageItem = { id: string; dbId: string | null; name: string; color: string; role: string; days: number; resale: boolean };
-function SaleDetailDrawer({ process, sale, lead, broker, stageList, history = [], busy, onMove, onChat, onClose }: { process: SalesData["processes"][number]; sale?: SalesData["sales"][number]; lead?: SalesData["leads"][number] | null; broker?: SalesData["brokers"][number]; stageList: SaleStageItem[]; history?: NonNullable<SalesData["history"]>; busy?: boolean; onMove: (stage: string) => Promise<void>; onChat?: () => void; onClose: () => void }) {
+function SaleDetailDrawer({ accessToken, canApprove, process, sale, lead, broker, stageList, etapaDocs, anexos, verificacoes, history = [], busy, onReload, onMove, onChat, onClose }: { accessToken: string; canApprove?: boolean; process: SalesData["processes"][number]; sale?: SalesData["sales"][number]; lead?: SalesData["leads"][number] | null; broker?: SalesData["brokers"][number]; stageList: SaleStageItem[]; etapaDocs: NonNullable<SalesData["etapaDocs"]>; anexos: NonNullable<SalesData["anexos"]>; verificacoes: NonNullable<SalesData["verificacoes"]>; history?: NonNullable<SalesData["history"]>; busy?: boolean; onReload: () => Promise<void>; onMove: (stage: string) => Promise<void>; onChat?: () => void; onClose: () => void }) {
   const stageName = (slug: string) => stageList.find((s) => s.id === slug)?.name || slug;
   const enteredAt = (slug: string) => { const rows = history.filter((h) => h.etapa_para === slug); return rows.length ? rows[rows.length - 1].movido_em : null; };
   const currentIndex = stageList.findIndex((s) => s.id === process.etapa);
@@ -473,6 +427,35 @@ function SaleDetailDrawer({ process, sale, lead, broker, stageList, history = []
   const isRevenda = process.tipo_venda === "revenda";
   const track = stageList.filter((s) => !s.resale || isRevenda);
   const trackCurrent = track.findIndex((s) => s.id === process.etapa);
+
+  const [openStage, setOpenStage] = useState<string>(process.etapa);
+  const [wBusy, setWBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const api = async (payload: Record<string, unknown>) => {
+    const r = await authedFetch("/api/crm/sales", { method: "PATCH", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+    const j = await r.json() as { error?: string }; if (!r.ok) throw new Error(j.error || "Falha.");
+  };
+  const upload = async (file: File, slug: string, docNome: string | null) => {
+    setWBusy(true); setError(null);
+    try {
+      const supabase = getBrowserSupabaseClient();
+      const safe = file.name.replace(/[^\w.\-]+/g, "_");
+      const path = `esteira/${process.id}/${slug}/${Date.now()}_${safe}`;
+      const { error: upErr } = await supabase.storage.from("esteira-docs").upload(path, file, { upsert: false });
+      if (upErr) throw new Error(upErr.message);
+      await api({ action: "addAnexo", processId: process.id, negocioId: process.negocio_id, etapaSlug: slug, docNome, nome: file.name, path, mime: file.type, tamanho: file.size });
+      await onReload();
+    } catch (reason) { setError(reason instanceof Error ? reason.message : "Falha ao anexar."); }
+    finally { setWBusy(false); }
+  };
+  const removeAnexo = async (id: string) => { setWBusy(true); setError(null); try { await api({ action: "removeAnexo", anexoId: id }); await onReload(); } catch (r) { setError(r instanceof Error ? r.message : "Falha."); } finally { setWBusy(false); } };
+  const abrir = async (path: string) => { const { data } = await getBrowserSupabaseClient().storage.from("esteira-docs").createSignedUrl(path, 300); if (data?.signedUrl) window.open(data.signedUrl, "_blank"); };
+  const verify = async (slug: string) => { setWBusy(true); setError(null); try { await api({ action: "verifyStage", processId: process.id, etapaSlug: slug }); await onReload(); } catch (r) { setError(r instanceof Error ? r.message : "Falha ao verificar."); } finally { setWBusy(false); } };
+  const unverify = async (slug: string) => { setWBusy(true); setError(null); try { await api({ action: "unverifyStage", processId: process.id, etapaSlug: slug }); await onReload(); } catch (r) { setError(r instanceof Error ? r.message : "Falha."); } finally { setWBusy(false); } };
+
+  const verifOf = (slug: string) => verificacoes.find((v) => v.etapa_slug === slug) ?? null;
+  const busyAll = busy || wBusy;
+
   return <div className="crm-drawer-layer" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}><aside className="crm-drawer-v2 sale-detail">
     <header className="sale-detail-hero"><button className="drawer-close-v2" type="button" onClick={onClose}>×</button>
       <span className="sale-detail-kicker">ANDAMENTO DA VENDA</span>
@@ -494,14 +477,52 @@ function SaleDetailDrawer({ process, sale, lead, broker, stageList, history = []
         <div><small>ETAPA ATUAL · {stage?.role || "—"}</small><strong>{stage?.name || process.etapa}</strong></div>
         <span>{overdue ? "Em atraso · " : ""}{formatElapsed(minutesInStage)} nesta etapa</span>
       </article>
+
       <h4>ESTEIRA DE DOCUMENTAÇÃO</h4>
-      <ol className="sale-timeline">{track.map((s, i) => { const state = trackCurrent < 0 ? "todo" : i < trackCurrent ? "done" : i === trackCurrent ? "current" : "todo"; const ent = enteredAt(s.id); return <li className={`sale-tl ${state}`} style={{ "--tl": s.color } as CSSProperties} key={s.id}><i />{i < track.length - 1 && <u />}<div><strong>{s.name}</strong><small>{s.role}{s.days ? ` · SLA ${s.days}d` : " · conclusão"}</small>{ent && (state === "done" || state === "current") && <time>{state === "current" ? "desde " : "entrou "}{shortDate.format(new Date(ent))}</time>}</div>{i === trackCurrent && <em>Aqui</em>}{state === "done" && <b>✓</b>}</li>; })}</ol>
+      {error && <div className="modal-error">{error}</div>}
+      <div className="sale-esteira">{track.map((s, i) => {
+        const state = trackCurrent < 0 ? "todo" : i < trackCurrent ? "done" : i === trackCurrent ? "current" : "todo";
+        const docs = etapaDocs.filter((d) => d.etapa_slug === s.id);
+        const stageAnexos = anexos.filter((a) => a.etapa_slug === s.id);
+        const anexoDe = (nome: string) => stageAnexos.find((a) => a.doc_nome === nome);
+        const outros = stageAnexos.filter((a) => !a.doc_nome || !docs.some((d) => d.nome === a.doc_nome));
+        const obrigatorios = docs.filter((d) => d.obrigatorio);
+        const faltando = obrigatorios.filter((d) => !anexoDe(d.nome)).length;
+        const vf = verifOf(s.id);
+        const isOpen = openStage === s.id;
+        const ent = enteredAt(s.id);
+        return <div className={`sale-esteira-stage ${state} ${vf ? "verified" : ""}`} style={{ "--tl": s.color } as CSSProperties} key={s.id}>
+          <button type="button" className="sale-esteira-head" onClick={() => setOpenStage(isOpen ? "" : s.id)}>
+            <span className="sale-esteira-dot">{vf ? "✓" : state === "current" ? "●" : state === "done" ? "✓" : "○"}</span>
+            <span className="sale-esteira-title"><strong>{s.name}</strong><small>{s.role}{s.days ? ` · SLA ${s.days}d` : " · conclusão"}{ent ? ` · ${state === "current" ? "desde" : "entrou"} ${shortDate.format(new Date(ent))}` : ""}</small></span>
+            <span className="sale-esteira-badge">{vf ? "Verificada" : docs.length ? `${docs.length - faltando}/${docs.length} docs` : "sem docs"}</span>
+            <span className="sale-esteira-chev">{isOpen ? "▾" : "▸"}</span>
+          </button>
+          {isOpen && <div className="sale-esteira-body">
+            {docs.length === 0 && outros.length === 0 && <p className="sale-esteira-empty">Nenhum documento configurado para esta etapa. Configure em Configurações → Esteira de vendas.</p>}
+            {docs.map((d) => { const a = anexoDe(d.nome); return <div className={`esteira-doc-row ${a ? "ok" : ""}`} key={d.id}>
+              <span className="esteira-doc-check">{a ? "✓" : "○"}</span>
+              <div className="esteira-doc-info"><strong>{d.nome}</strong><small>{d.obrigatorio ? "Obrigatório" : "Opcional"}{a ? ` · ${a.nome}` : ""}</small></div>
+              {a ? <div className="esteira-doc-actions"><button type="button" onClick={() => void abrir(a.path)}>Abrir</button>{!vf && <button type="button" className="esteira-doc-del" disabled={busyAll} onClick={() => void removeAnexo(a.id)}>×</button>}</div>
+                : <label className="esteira-doc-up">📎 Anexar<input type="file" hidden disabled={busyAll || !!vf} onChange={(e) => { const f = e.target.files?.[0]; if (f) void upload(f, s.id, d.nome); e.target.value = ""; }} /></label>}
+            </div>; })}
+            {outros.length > 0 && <div className="sale-esteira-outros"><small>OUTROS ANEXOS</small>{outros.map((a) => <div className="esteira-doc-row" key={a.id}><span className="esteira-doc-check">📄</span><div className="esteira-doc-info"><strong>{a.nome}</strong><small>{new Date(a.criado_em).toLocaleDateString("pt-BR")}</small></div><div className="esteira-doc-actions"><button type="button" onClick={() => void abrir(a.path)}>Abrir</button>{!vf && <button type="button" className="esteira-doc-del" disabled={busyAll} onClick={() => void removeAnexo(a.id)}>×</button>}</div></div>)}</div>}
+            <label className="esteira-doc-up sale-esteira-add"><input type="file" hidden disabled={busyAll || !!vf} onChange={(e) => { const f = e.target.files?.[0]; if (f) void upload(f, s.id, null); e.target.value = ""; }} />＋ Anexar outro arquivo</label>
+            <div className="sale-esteira-verify">
+              {vf ? <div className="sale-esteira-verified"><span>✓ Etapa verificada em {dateTime.format(new Date(vf.verificado_em))}</span>{canApprove && <button type="button" disabled={busyAll} onClick={() => void unverify(s.id)}>Desfazer</button>}</div>
+                : canApprove ? <button type="button" className="sale-esteira-approve" disabled={busyAll || faltando > 0} onClick={() => void verify(s.id)}>{faltando > 0 ? `Faltam ${faltando} documento(s) obrigatório(s)` : "✓ Verificar etapa e avançar"}</button>
+                : <p className="sale-esteira-wait">{faltando > 0 ? `Faltam ${faltando} documento(s) obrigatório(s).` : "Documentos completos. Aguardando verificação de um gestor."}</p>}
+            </div>
+          </div>}
+        </div>;
+      })}</div>
+
       {history.length > 0 && <><h4>MOVIMENTAÇÕES</h4><ul className="sale-moves">{history.slice().reverse().map((h, i) => <li key={i}><b>{dateTime.format(new Date(h.movido_em))}</b><span>{h.etapa_de ? `${stageName(h.etapa_de)} → ${stageName(h.etapa_para)}` : `Entrou em ${stageName(h.etapa_para)}`}</span></li>)}</ul></>}
       {sale?.obs && <article className="sale-detail-note"><small>OBSERVAÇÕES</small><p>{sale.obs}</p></article>}
     </div>
     <footer className="sale-detail-foot">
       {onChat && <button type="button" className="crm-secondary" onClick={onChat}>Abrir chat do lead</button>}
-      <label className="sale-detail-move"><span>Mover etapa</span><select value={process.etapa} disabled={busy} onChange={(event) => void onMove(event.target.value)}>{track.map((s) => <option value={s.id} key={s.id}>{s.name}</option>)}</select></label>
+      {canApprove && <label className="sale-detail-move"><span>Mover etapa</span><select value={process.etapa} disabled={busyAll} onChange={(event) => void onMove(event.target.value)}>{track.map((s) => <option value={s.id} key={s.id}>{s.name}</option>)}</select></label>}
     </footer>
   </aside></div>;
 }
