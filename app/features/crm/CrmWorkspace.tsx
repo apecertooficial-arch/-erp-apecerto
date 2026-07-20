@@ -807,10 +807,34 @@ function StagePickerModal({ deal, leadNome, stages, onClose, onSave }: { deal: D
   </div>;
 }
 
+function RefinedSelect({ value, onChange, options, placeholder = "Selecione", disabled = false }: { value: string; onChange: (value: string) => void; options: Array<{ value: string; label: string }>; placeholder?: string; disabled?: boolean }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const selected = options.find((option) => option.value === value) ?? null;
+  useEffect(() => {
+    if (!open) return;
+    const onDoc = (event: globalThis.MouseEvent) => { if (ref.current && !ref.current.contains(event.target as Node)) setOpen(false); };
+    const onKey = (event: KeyboardEvent) => { if (event.key === "Escape") setOpen(false); };
+    document.addEventListener("mousedown", onDoc);
+    document.addEventListener("keydown", onKey);
+    return () => { document.removeEventListener("mousedown", onDoc); document.removeEventListener("keydown", onKey); };
+  }, [open]);
+  return <div className={`rselect ${open ? "open" : ""} ${disabled ? "disabled" : ""}`} ref={ref}>
+    <button type="button" className={`rselect-btn ${selected ? "" : "is-placeholder"}`} disabled={disabled} onClick={() => setOpen((prev) => !prev)} aria-haspopup="listbox" aria-expanded={open}>
+      <span className="rselect-label">{selected ? selected.label : placeholder}</span>
+      <svg className="rselect-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9l6 6 6-6" /></svg>
+    </button>
+    {open && <ul className="rselect-panel" role="listbox">
+      {options.length === 0 && <li className="rselect-empty">Nenhuma etapa disponível</li>}
+      {options.map((option) => <li key={option.value}><button type="button" role="option" aria-selected={option.value === value} className={`rselect-opt ${option.value === value ? "active" : ""}`} onClick={() => { onChange(option.value); setOpen(false); }}><span className="rselect-dot" /><span className="rselect-opt-text">{option.label}</span>{option.value === value && <svg className="rselect-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>}</button></li>)}
+    </ul>}
+  </div>;
+}
+
 function BulkMoveModal({ pipelineId, stages, deals, initialFromStageId, onClose, onMove }: { pipelineId: number; stages: Stage[]; deals: Deal[]; initialFromStageId?: number | null; onClose: () => void; onMove: (fromStageId: number, toStageId: number) => Promise<void> }) {
   const [fromStageId, setFromStageId] = useState(initialFromStageId ? String(initialFromStageId) : ""); const [toStageId, setToStageId] = useState(""); const [busy, setBusy] = useState(false); const [error, setError] = useState<string | null>(null);
   const count = deals.filter((deal) => deal.stage_id === Number(fromStageId) && deal.status !== "perdido").length;
-  return <div className="crm-center-modal"><form onSubmit={(event) => { event.preventDefault(); setBusy(true); setError(null); void onMove(Number(fromStageId), Number(toStageId)).catch((reason) => setError(reason instanceof Error ? reason.message : "Não foi possível mover a etapa.")).finally(() => setBusy(false)); }}><header><div><span>AÇÃO EM MASSA</span><h2>Mover uma etapa inteira</h2><p>Todos os negócios da etapa escolhida serão enviados para o novo destino.</p></div><button type="button" onClick={onClose}>×</button></header>{error && <div className="modal-error">{error}</div>}<div className="bulk-move-grid"><label>Etapa de origem<select required value={fromStageId} onChange={(event) => setFromStageId(event.target.value)}><option value="">Selecione</option>{stages.map((stage) => <option value={stage.id} key={stage.id}>{stage.rotulo || stage.nome}</option>)}</select></label><div className="bulk-arrow">→</div><label>Etapa de destino<select required value={toStageId} onChange={(event) => setToStageId(event.target.value)}><option value="">Selecione</option>{stages.filter((stage) => String(stage.id) !== fromStageId).map((stage) => <option value={stage.id} key={stage.id}>{stage.rotulo || stage.nome}</option>)}</select></label></div><div className="bulk-warning"><strong>{count} negócio{count === 1 ? "" : "s"}</strong><span>serão movidos dentro do funil #{pipelineId}</span></div><footer><button type="button" onClick={onClose}>Cancelar</button><button className="crm-primary" disabled={busy || !fromStageId || !toStageId || count === 0} type="submit">{busy ? "Movendo..." : `Mover ${count} negócios`}</button></footer></form></div>;
+  return <div className="crm-center-modal"><form onSubmit={(event) => { event.preventDefault(); setBusy(true); setError(null); void onMove(Number(fromStageId), Number(toStageId)).catch((reason) => setError(reason instanceof Error ? reason.message : "Não foi possível mover a etapa.")).finally(() => setBusy(false)); }}><header><div><span>AÇÃO EM MASSA</span><h2>Mover uma etapa inteira</h2><p>Todos os negócios da etapa escolhida serão enviados para o novo destino.</p></div><button type="button" onClick={onClose}>×</button></header>{error && <div className="modal-error">{error}</div>}<div className="bulk-move-grid"><label>Etapa de origem<RefinedSelect value={fromStageId} onChange={(value) => { setFromStageId(value); if (value === toStageId) setToStageId(""); }} options={stages.map((stage) => ({ value: String(stage.id), label: stage.rotulo || stage.nome }))} /></label><div className="bulk-arrow">→</div><label>Etapa de destino<RefinedSelect value={toStageId} onChange={setToStageId} disabled={!fromStageId} options={stages.filter((stage) => String(stage.id) !== fromStageId).map((stage) => ({ value: String(stage.id), label: stage.rotulo || stage.nome }))} /></label></div><div className="bulk-warning"><strong>{count} negócio{count === 1 ? "" : "s"}</strong><span>serão movidos dentro do funil #{pipelineId}</span></div><footer><button type="button" onClick={onClose}>Cancelar</button><button className="crm-primary" disabled={busy || !fromStageId || !toStageId || count === 0} type="submit">{busy ? "Movendo..." : `Mover ${count} negócios`}</button></footer></form></div>;
 }
 
 function LeadChatDrawer({ accessToken, lead, deal, corretorNome, onClose, onResponse }: { accessToken: string; lead: Lead; deal: Deal; corretorNome?: string; onClose: () => void; onResponse: () => Promise<void> }) {
