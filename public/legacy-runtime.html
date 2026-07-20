@@ -9394,7 +9394,7 @@ class Component extends DCLogic {
         const idxEficiencia = _cl(Math.round(vendas / Math.max(1, (msgsEnv / 120 + visitasReal / 2 + propEmit)) * 60), 0, 100);
         const idxAproveita = leads ? Math.round(trabalhados / leads * 100) : 0;
         const idxPersist = Number(R.persistencia) || 0; const idxFollowup = Number(R.fupPorLead) || 0;
-        return { nome: n, initials: n.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase(), vendas, leads, ticket, vgv, com, meta, metaPct, visitasReal, visitasMarc, visitasCanc, propEmit, propAceit, contratosEnv, contratosAss, tempoResp, tempoEntre, slaPct, aguardando, atrasados, foraSla, msgsEnv, msgsRec, audios, ligacoes, ligAtend, followups, reativacoes, onlineH, parados, parados48, parados72, semTarefa, semQualif, semOrigem, semInter, duplicados, semResponsavel, convLead, convLeadOk, convVisita, convProp, respScore, crmScore, fupScore, visitaScore, vendaScore, tarefaScore, score, abandonados, trabalhados, idxEsforco, idxQualidade, idxEficiencia, idxAproveita, idxPersist, idxFollowup, convAbordadas: R.convAbordadas || 0, convRespondidas: R.convRespondidas || 0, perdidos: R.perdidos || 0, limiteCarteira: R.limiteCarteira || 55, cicloVisitaDias: Number(R.cicloVisitaDias) || 0, cicloPropostaDias: Number(R.cicloPropostaDias) || 0, cicloVendaDias: Number(R.cicloVendaDias) || 0, evoScoreReal: Number(R.evoScore) || 0, evoVgvReal: Number(R.evoVgvPct) || 0, propRecusadasReal: R.propRecus || 0, histReal: Array.isArray(R.hist) ? R.hist : [] };
+        return { nome: n, initials: n.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase(), vendas, leads, ticket, vgv, com, meta, metaPct, visitasReal, visitasMarc, visitasCanc, propEmit, propAceit, contratosEnv, contratosAss, tempoResp, tempoEntre, slaPct, aguardando, atrasados, foraSla, msgsEnv, msgsRec, audios, ligacoes, ligAtend, followups, reativacoes, onlineH, parados, parados48, parados72, semTarefa, semQualif, semOrigem, semInter, duplicados, semResponsavel, convLead, convLeadOk, convVisita, convProp, respScore, crmScore, fupScore, visitaScore, vendaScore, tarefaScore, score, abandonados, trabalhados, idxEsforco, idxQualidade, idxEficiencia, idxAproveita, idxPersist, idxFollowup, convAbordadas: R.convAbordadas || 0, convRespondidas: R.convRespondidas || 0, perdidos: R.perdidos || 0, limiteCarteira: R.limiteCarteira || 55, cicloVisitaDias: Number(R.cicloVisitaDias) || 0, cicloPropostaDias: Number(R.cicloPropostaDias) || 0, cicloVendaDias: Number(R.cicloVendaDias) || 0, evoScoreReal: Number(R.evoScore) || 0, evoVgvReal: Number(R.evoVgvPct) || 0, propRecusadasReal: R.propRecus || 0, histReal: Array.isArray(R.hist) ? R.hist : [], notaClarezaR: R.notaClareza || 0, notaCordialR: R.notaCordial || 0, notaPersonalR: R.notaPersonal || 0, notaQualifR: R.notaQualif || 0, notaConducaoR: R.notaConducao || 0, notaObjecoesR: R.notaObjecoes || 0, notaEscritaR: R.notaEscrita || 0, notaGeralIaR: R.notaGeralIa || 0, convAvaliadasR: R.convAvaliadasPct || 0, convCriticasR: R.convCriticas || 0, convExcelentesR: R.convExcelentes || 0, evoNotaR: Number(R.evoNota) || 0 };
       });
       const sum = (k) => rows.reduce((a, r) => a + r[k], 0);
       const avg = (k) => rows.length ? sum(k) / rows.length : 0;
@@ -9620,11 +9620,11 @@ class Component extends DCLogic {
         r.comparecimento = r.visitasMarc ? Math.round(r.visitasReal / r.visitasMarc * 100) : 0;
         r.resultadoIdx = _cl(Math.round(r.metaPct * 0.42 + r.convLead * 100 * 3.2 + r.score * 0.28), 6, 100);
         // ---- notas de qualidade de atendimento (Avaliador de IA · item 4) ----
-        r.notaClareza = _ri(r.nome + 'ncl', 60, 96); r.notaCordial = _ri(r.nome + 'ncd', 70, 98); r.notaPersonal = _ri(r.nome + 'npe', 52, 95);
-        r.notaQualif = _ri(r.nome + 'nqu', 48, 94); r.notaConducao = _ri(r.nome + 'nco', 55, 95); r.notaObjecoes = _ri(r.nome + 'nob', 46, 92);
-        r.notaEscrita = _ri(r.nome + 'nes', 64, 98); r.notaFollow = _cl(r.fupScore, 0, 100);
-        r.notaAtend = Math.round((r.notaClareza + r.notaCordial + r.notaPersonal + r.notaQualif + r.notaConducao + r.notaObjecoes + r.notaEscrita + r.notaFollow) / 8);
-        r.convAvaliadas = _ri(r.nome + 'nca', 62, 98); r.convCriticas = _ri(r.nome + 'ncc', 0, 6); r.convExcelentes = _ri(r.nome + 'nce', 4, 24); r.evoNota = _ri(r.nome + 'nev', -8, 12);
+        r.notaClareza = r.notaClarezaR || 0; r.notaCordial = r.notaCordialR || 0; r.notaPersonal = r.notaPersonalR || 0;
+        r.notaQualif = r.notaQualifR || 0; r.notaConducao = r.notaConducaoR || 0; r.notaObjecoes = r.notaObjecoesR || 0;
+        r.notaEscrita = r.notaEscritaR || 0; r.notaFollow = _cl(r.fupScore, 0, 100);
+        r.notaAtend = r.notaGeralIaR || 0;
+        r.convAvaliadas = r.convAvaliadasR || 0; r.convCriticas = r.convCriticasR || 0; r.convExcelentes = r.convExcelentesR || 0; r.evoNota = r.evoNotaR || 0;
       });
       const teamAug = (k) => Math.round(rows.reduce((a, r) => a + r[k], 0) / rows.length);
       teamRow.saude = teamAug('saude'); teamRow.ocupacao = teamAug('ocupacao');
@@ -9850,10 +9850,10 @@ class Component extends DCLogic {
           'Atualização do CRM': ['Nota de higiene do CRM: desconta leads parados e sem tarefa.', 'up'],
           'Saúde da carteira': ['Nota 0–100 da carteira: atualização, tarefas, qualificação e oportunidades ativas.', 'up'],
           'Leads atrasados': ['Leads fora do tempo ideal de atendimento.', 'down'],
-          'Melhor atendimento (IA)': ['Nota do Avaliador de IA sobre a qualidade das conversas. (aguardando avaliador)', 'up'],
-          'Qualificação': ['Nota de IA sobre a qualificação feita nas conversas. (aguardando avaliador)', 'up'],
-          'Escrita': ['Nota de IA sobre clareza e escrita nas conversas. (aguardando avaliador)', 'up'],
-          'Tratamento de objeções': ['Nota de IA sobre contorno de objeções. (aguardando avaliador)', 'up']
+          'Melhor atendimento (IA)': ['Nota média do Avaliador de IA sobre as conversas reais de WhatsApp do corretor.', 'up'],
+          'Qualificação': ['Nota de IA: o corretor pergunta antes de oferecer (perfil, região, valor, prazo)?', 'up'],
+          'Escrita': ['Nota de IA: ortografia, pontuação e formatação profissionais nas conversas.', 'up'],
+          'Tratamento de objeções': ['Nota de IA: acolhe e contorna objeções de preço, prazo e dúvidas com argumento real.', 'up']
         };
         const bt = BOARD_TIPS[titulo];
         return { titulo: titulo, subtitulo: rankMode === 'pior' ? 'Exigem maior atenção' : rankMode === 'evolucao' ? 'Quem mais subiu' : rankMode === 'queda' ? 'Quem mais caiu' : '', tipTitle: bt ? titulo : titulo, tipBody: bt ? bt[0] : 'Ranking parametrizado da equipe.', tipGood: bt && bt[1] === 'down' ? 'Quanto menor, melhor' : 'Quanto maior, melhor', rows: sorted.map((r, i) => {
