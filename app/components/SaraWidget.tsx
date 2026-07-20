@@ -96,6 +96,8 @@ export function SaraWidget() {
     panel.querySelector("#sara-send").onclick = function () { enviar(); };
     inEl.addEventListener("keydown", function (e) { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); enviar(); } });
     inEl.addEventListener("input", function () { inEl.style.height = "auto"; inEl.style.height = Math.min(inEl.scrollHeight, 96) + "px"; });
+    // Permite abrir a Sara e ja perguntar de qualquer lugar do app (ex.: campo "Pergunte a IA" da Ajuda)
+    window.saraAsk = function (q) { open(); if (q != null && String(q).trim()) { setTimeout(function () { enviar(String(q)); }, 120); } };
   }, []);
   return null;
 }

@@ -79,7 +79,7 @@ export async function GET(request: Request) {
     }
     if (!registeredLead) return Response.json({ error: "Esta conversa não pertence a um lead cadastrado no CRM." }, { status: 404 });
     const { data, error } = await auth.supabase.from("wa_mensagens")
-      .select("id,wa_message_id,conversa_id,instancia_id,direcao,tipo,conteudo,media_url,raw,criado_em,enviado_em")
+      .select("id,wa_message_id,conversa_id,instancia_id,direcao,tipo,conteudo,media_url,raw,criado_em,enviado_em,status,status_detalhe")
       .eq("conversa_id", conversationId).order("criado_em").limit(600);
     return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ messages: data ?? [] });
   }
