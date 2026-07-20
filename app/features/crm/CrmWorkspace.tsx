@@ -828,7 +828,20 @@ function LeadChatDrawer({ accessToken, lead, deal, corretorNome, onClose, onResp
     const seeded = seed.length > 0;
     setError(null);
     let acc: ChatMessage[] = seed.slice();
-    const render = () => { const seen = new Set<string>(); const unique = acc.filter((m) => { const k = String(m.wa_message_id || m.id); if (seen.has(k)) return false; seen.add(k); return true; }); setMessages(unique.sort((a, b) => String(a.criado_em || "").localeCompare(String(b.criado_em || "")))); };
+    const render = () => {
+      // Dedup por wa_message_id. Mantém a versão da d-api (com ack/status), MAS completa
+      // media_url/conteudo a partir do banco quando a d-api não trouxe (mídia antiga sem s3_url).
+      const byKey = new Map<string, ChatMessage>();
+      for (const m of acc) {
+        const k = String(m.wa_message_id || m.id);
+        const ex = byKey.get(k);
+        if (!ex) { byKey.set(k, { ...m }); continue; }
+        if ((!ex.media_url || ex.media_url === "") && m.media_url) ex.media_url = m.media_url;
+        if ((!ex.conteudo || ex.conteudo === "") && m.conteudo) ex.conteudo = m.conteudo;
+      }
+      const unique = [...byKey.values()];
+      setMessages(unique.sort((a, b) => String(a.criado_em || "").localeCompare(String(b.criado_em || ""))));
+    };
     // Com a página inicial vinda do "list", pintamos NA HORA e carregamos o histórico antigo por trás.
     if (seeded) { render(); setLoading(false); } else setLoading(true);
     try {
