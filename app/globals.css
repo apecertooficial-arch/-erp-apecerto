@@ -4010,3 +4010,11 @@ article.tone-red{border-left-color:#d3443e}article.tone-red strong{color:#d3443e
 .approval-filter:hover { background: #fff4dc; }
 .approval-filter.active { border-color: #e0a92c; background: #ffefc9; }
 .approval-filter b { display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; background: #e0851f; color: #fff; font-size: 10px; }
+
+/* Confirmação antes de apagar mensagem (jul/2026) */
+.chat-messages article .msg-del-confirm { position: absolute; top: 3px; right: 3px; z-index: 4; display: flex; align-items: center; gap: 5px; padding: 3px 4px 3px 9px; border-radius: 10px; background: #fff; box-shadow: 0 3px 14px rgba(0,0,0,.2); white-space: nowrap; }
+.chat-messages article .msg-del-confirm > span { color: #6b625c; font-size: 11px; font-weight: 700; }
+.chat-messages article .msg-del-confirm .mdc-yes { border: 0; border-radius: 6px; padding: 4px 9px; background: #e23b3b; color: #fff; font-size: 11px; font-weight: 800; cursor: pointer; }
+.chat-messages article .msg-del-confirm .mdc-yes:hover { background: #cf3232; }
+.chat-messages article .msg-del-confirm .mdc-no { border: 0; border-radius: 6px; padding: 4px 9px; background: #f1ece9; color: #6b625c; font-size: 11px; font-weight: 700; cursor: pointer; }
+.chat-messages article .msg-del-confirm .mdc-no:hover { background: #e7e0db; }
