@@ -11748,3 +11748,20 @@ return { mount: mount, unmount: unmount, isMounted: function(){ return mounted; 
 
 </script>
 </body></html>
+<script>
+/* Ajuda: liga o botao "Pergunte a IA" na Sara (widget no app pai). Isolado e idempotente. */
+(function(){
+  if (window.__ajudaIAWired) return; window.__ajudaIAWired = true;
+  function askSara(q){ try{ if(window.parent && typeof window.parent.saraAsk === "function"){ window.parent.saraAsk(q||""); return true; } }catch(e){} return false; }
+  document.addEventListener("click", function(e){
+    var t = e.target; if(!t) return;
+    var btn = t.closest ? t.closest("button") : null;
+    if(!btn) return;
+    if(/Pergunte\s+à\s+IA/i.test(btn.textContent||"")){
+      var inp = document.querySelector('input[placeholder*="palavra-chave" i]');
+      var q = inp && inp.value ? inp.value : "";
+      if(askSara(q)){ e.preventDefault(); e.stopPropagation(); if(inp) inp.value=""; }
+    }
+  }, true);
+})();
+</script>
