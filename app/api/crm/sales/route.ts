@@ -27,7 +27,7 @@ async function activeSlugs(auth: Auth) {
 export async function GET(request: Request) {
   const auth = await authClient(request);
   if (!auth) return Response.json({ error: "Sessão inválida ou expirada." }, { status: 401 });
-  const [sales, processes, deals, leads, products, brokers, stages, etapaDocs, anexos, users] = await Promise.all([
+  const [sales, processes, deals, leads, products, brokers, stages, etapaDocs, anexos, users, history] = await Promise.all([
     auth.supabase.from("vendas").select("id,created_at,data_venda,empreendimento_id,empreendimento_nome,unidade_id,vgv,forma_pgto,status,obs").order("created_at", { ascending: false }),
     auth.supabase.from("venda_processos").select("id,venda_id,negocio_id,etapa,tipo_venda,responsavel_usuario_id,prazo_em,observacoes,criado_em,atualizado_em"),
     auth.supabase.from("negocios").select("id,venda_id,lead_id,corretor_id,empreendimento_id,valor,status"),
@@ -38,10 +38,11 @@ export async function GET(request: Request) {
     auth.supabase.from("esteira_etapa_docs").select("id,etapa_slug,nome,obrigatorio,ordem").eq("ativo", true).order("ordem", { ascending: true }),
     auth.supabase.from("esteira_anexos").select("id,processo_ref,negocio_id,etapa_slug,doc_nome,nome,path,mime,tamanho,criado_em").order("criado_em", { ascending: false }),
     auth.supabase.from("usuarios").select("id,nome,role"),
+    auth.supabase.from("venda_processo_historico").select("processo_id,etapa_de,etapa_para,movido_por,movido_em").order("movido_em", { ascending: true }),
   ]);
   const error = [sales, processes, deals, leads, products, brokers, stages, etapaDocs, anexos].find((item) => item.error)?.error;
   if (error) return Response.json({ error: error.message }, { status: 502 });
-  return Response.json({ sales: sales.data ?? [], processes: processes.data ?? [], deals: deals.data ?? [], leads: leads.data ?? [], products: products.data ?? [], brokers: brokers.data ?? [], stages: stages.data ?? [], etapaDocs: etapaDocs.data ?? [], anexos: anexos.data ?? [], users: users.data ?? [] });
+  return Response.json({ sales: sales.data ?? [], processes: processes.data ?? [], deals: deals.data ?? [], leads: leads.data ?? [], products: products.data ?? [], brokers: brokers.data ?? [], stages: stages.data ?? [], etapaDocs: etapaDocs.data ?? [], anexos: anexos.data ?? [], users: users.data ?? [], history: history.data ?? [] });
 }
 
 export async function PATCH(request: Request) {
