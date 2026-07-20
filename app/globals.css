@@ -4076,3 +4076,17 @@ article.tone-red{border-left-color:#d3443e}article.tone-red strong{color:#d3443e
 .crm-pipe-item.active em { background: #fff0e6; color: #d85600; }
 .crm-pipe-layout .crm-kanban-v2 { flex: 1 1 auto; min-width: 0; }
 @media (max-width: 700px) { .crm-pipe-rail { flex-basis: 140px; } }
+
+/* Pipe rail recolhível — DataCrazy-style collapse toggle */
+.crm-pipe-rail-head { display: flex; align-items: center; justify-content: space-between; gap: 6px; padding: 2px 2px 4px; }
+.crm-pipe-rail-toggle { flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border: 1px solid #e7e1dd; border-radius: 7px; background: #fff; color: #8a807a; cursor: pointer; padding: 0; }
+.crm-pipe-rail-toggle:hover { background: #f1ece8; color: #ff6500; border-color: #eadfd7; }
+.crm-pipe-rail-toggle svg { width: 14px; height: 14px; }
+.crm-pipe-layout { transition: none; }
+.crm-pipe-layout.rail-collapsed .crm-pipe-rail { flex-basis: 48px; padding: 12px 6px; align-items: center; }
+.crm-pipe-layout.rail-collapsed .crm-pipe-rail-head { flex-direction: column; gap: 8px; padding-bottom: 6px; }
+.crm-pipe-layout.rail-collapsed .crm-pipe-rail-title { display: none; }
+.crm-pipe-layout.rail-collapsed .crm-pipe-item { justify-content: center; padding: 9px 6px; gap: 0; }
+.crm-pipe-layout.rail-collapsed .crm-pipe-item .crm-pipe-dot { width: 10px; height: 10px; flex-basis: 10px; }
+.crm-pipe-layout.rail-collapsed .crm-pipe-item strong,
+.crm-pipe-layout.rail-collapsed .crm-pipe-item em { display: none; }
