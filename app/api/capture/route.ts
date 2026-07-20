@@ -99,10 +99,8 @@ export async function POST(request: Request) {
     if (mediaError) return Response.json({ error: mediaError.message }, { status: 400 });
 
     const photos = media.filter((item) => item.tipo === "foto").length;
-    const videos = media.filter((item) => item.tipo === "video").length;
-    const covers = media.filter((item) => item.tipo === "foto" && item.is_capa).length;
-    if (photos < 10 || videos < 1 || covers !== 1) {
-      return Response.json({ error: "A captação exige 10 fotos, 1 vídeo e exatamente 1 foto de capa." }, { status: 422 });
+    if (photos < 1) {
+      return Response.json({ error: "Envie pelo menos 1 foto do imóvel." }, { status: 422 });
     }
 
     // Ao publicar (finalizar a captação), o empreendimento entra na fila de aprovação do gestor.
