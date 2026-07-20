@@ -9354,6 +9354,7 @@ class Component extends DCLogic {
       const avatar = (i) => ({ width: '40px', height: '40px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '13px', flexShrink: 0, background: i === 0 ? 'var(--ape-orange)' : i === 1 ? 'var(--ape-purple-100)' : 'var(--bg-sunken)', color: i === 0 ? '#fff' : i === 1 ? 'var(--ape-purple-700)' : 'var(--fg-2)' });
       const avatarMini = () => ({ width: '32px', height: '32px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '12px', flexShrink: 0, background: 'var(--ape-purple-100)', color: 'var(--ape-purple-700)' });
       const faixaOf = (s) => s >= 85 ? { label: 'Elite', cor: '#1FA85A', bg: 'var(--success-bg)' } : s >= 70 ? { label: 'Bom', cor: '#CC5800', bg: 'var(--ape-orange-50)' } : s >= 55 ? { label: 'Atenção', cor: '#E0A400', bg: '#FFF6E0' } : { label: 'Crítico', cor: '#E5484D', bg: 'var(--danger-bg)' };
+      const kpiIcon = (c) => { const soft = (typeof c === 'string' && c[0] === '#' && c.length === 7) ? (c + '1F') : c; return { width: '38px', height: '38px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: c, background: soft, flexShrink: 0 }; };
       const kpi = (label, value, sub, ic, c) => ({ label: label, value: value, sub: sub || '', icon: this.I[ic] || this.I.trend, iconWrap: kpiIcon(c) });
 
       const ativos = (this.corretoresData || []).filter(c => c.tipo === 'Corretor' && c.status === 'ativo');
@@ -11651,7 +11652,8 @@ return { mount: mount, unmount: unmount, isMounted: function(){ return mounted; 
   .apf-rank button,.apf-board button{width:100%;border:0;background:transparent;color:inherit;font:inherit;text-align:left}.apf-rank button{display:grid!important;grid-template-columns:36px 40px 1fr auto;align-items:center}.apf-rank button+button{border-top:1px solid var(--border-soft)}.apf-rank button>b{color:var(--fg-muted);font-size:11px}.apf-rank button>i,.apf-speed i,.apf-board button>i,.apf-table button span>i{font-style:normal}.apf-rank button>span{display:flex;flex-direction:column;gap:3px}.apf-rank button>span small{color:var(--fg-muted);font-size:10px}.apf-rank button>span em{margin-top:3px}.apf-rank button>mark,.apf-board mark{background:transparent;color:var(--ape-orange-700);font-weight:800}
   .apf-ring-panel{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}.apf-ring-panel>div{margin:14px auto}.apf-ring-panel>p:last-child{margin:0;color:var(--fg-muted);font-size:11px}.apf-speed{display:flex;flex-direction:column}.apf-speed>div{display:grid;grid-template-columns:32px 1fr auto;align-items:center;gap:9px;padding:7px 0}.apf-speed>div+div{border-top:1px solid var(--border-soft)}.apf-speed span{display:flex;flex-direction:column;gap:4px}.apf-speed b{font-size:11px}.apf-speed strong{font-size:11px}
   .apf-alerts{display:grid;grid-template-columns:repeat(5,1fr);gap:11px;margin-bottom:14px}.apf-alerts article{min-height:118px;padding:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;border:1px solid var(--border-soft);border-radius:14px;background:#fff;text-align:center}.apf-alerts article>div{font-size:18px}.apf-alerts strong{margin:6px 0 2px;font-size:24px}.apf-alerts span{color:var(--fg-3);font-size:10px}
-  .apf-table-head,.apf-table button{display:grid;grid-template-columns:2fr repeat(3,.65fr) 1fr;align-items:center;gap:10px}.apf-table-head{padding:9px 12px;border-radius:9px;background:var(--bg-sunken);color:var(--fg-muted);font-size:9px;font-weight:800;text-transform:uppercase}.apf-table button{padding:10px 12px;border:0;border-bottom:1px solid var(--border-soft);background:#fff;color:inherit;text-align:left}.apf-table button>span{display:flex;align-items:center;gap:8px}.apf-table button>em{font-style:normal}.apf-table button>strong{display:flex;flex-direction:column;gap:5px}.apf-table button>strong u{width:100%}
+  .apf-table-head,.apf-table button{display:grid;grid-template-columns:2fr repeat(3,.65fr) 1fr;align-items:center;gap:10px}.apf-table-head{padding:9px 12px;border-radius:9px;background:var(--bg-sunken);color:var(--fg-muted);font-size:9px;font-weight:800;text-transform:uppercase}.apf-table button{width:100%;padding:10px 12px;border:0;border-bottom:1px solid var(--border-soft);background:#fff;color:inherit;text-align:left}.apf-table button>span{display:flex;align-items:center;gap:8px}.apf-table button>em{font-style:normal;text-align:center}.apf-table button>strong{display:flex;flex-direction:column;gap:5px}.apf-table button>strong u{width:100%}.apf-table-head span:not(:first-child){text-align:center}
+  .apf-command,.apf-live,.apf-quality,.apf-hero-grid,.apf-kpis,.apf-two,.apf-three,.apf-alerts,.apf-board-grid,.apf-indices,.apf-insights,.apf-root>.apf-card{max-width:1360px;margin-left:auto;margin-right:auto}
   .apf-highlight{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:210px;text-align:center}.apf-highlight>strong{margin:12px 0 4px;color:var(--ape-orange);font-size:42px}.apf-highlight>span{color:var(--fg-muted);font-size:11px}.apf-board-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}.apf-board button{display:grid;grid-template-columns:25px 32px 1fr auto;align-items:center;gap:8px;padding:8px 4px}.apf-board button+button{border-top:1px solid var(--border-soft)}.apf-board button>span{display:flex;flex-direction:column;gap:4px}.apf-board button>span strong{font-size:11px}.apf-board mark{font-size:11px}
   .apf-indices{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:14px}.apf-indices article header{display:flex;justify-content:space-between;gap:10px}.apf-indices article header>strong{color:var(--ape-orange);font-size:24px}.apf-indices article>p{min-height:30px;color:var(--fg-3);font-size:11px}.apf-insights{display:flex;flex-direction:column;gap:9px}.apf-insights article{display:flex;gap:9px;padding:10px;border-left:3px solid;border-radius:9px;background:var(--bg-page)}.apf-insights article>div{font-size:16px}.apf-insights span strong{font-size:11px}.apf-insights span p{margin:3px 0 0;color:var(--fg-3);font-size:10px;line-height:1.45}.apf-actions{display:flex;flex-direction:column;gap:8px}.apf-actions>div{display:flex;align-items:flex-start;gap:9px;padding:10px;border-bottom:1px solid var(--border-soft)}.apf-actions>div>i{width:8px;height:8px;margin-top:4px;border-radius:50%}.apf-actions span{display:flex;flex-direction:column;gap:3px}.apf-actions strong{font-size:11px}.apf-actions small{font-size:9px;font-weight:800;text-transform:uppercase}
   @media(max-width:1100px){.apf-kpis{grid-template-columns:repeat(3,1fr)}.apf-kpis-four{grid-template-columns:repeat(3,1fr)}.apf-alerts{grid-template-columns:repeat(3,1fr)}.apf-command{align-items:flex-start;flex-wrap:wrap}.apf-command-spacer{display:none}.apf-hero-grid,.apf-three{grid-template-columns:1fr}.apf-board-grid{grid-template-columns:1fr}.apf-indices{grid-template-columns:repeat(2,1fr)}}
@@ -11746,3 +11748,29 @@ return { mount: mount, unmount: unmount, isMounted: function(){ return mounted; 
 
 </script>
 </body></html>
+<script>
+/* Ajuda: liga o botao "Pergunte a IA" e os cards de duvida na Sara (widget do app pai). Isolado e idempotente. */
+(function(){
+  if (window.__ajudaIAWired2) return; window.__ajudaIAWired2 = true;
+  function askSara(q){ try{ if(window.parent && typeof window.parent.saraAsk === "function"){ window.parent.saraAsk(q||""); return true; } }catch(e){} return false; }
+  document.addEventListener("click", function(e){
+    var t = e.target; if(!t || !t.closest) return;
+    var btn = t.closest("button"); if(!btn) return;
+    // 1) Botao roxo "Pergunte a IA": usa o texto digitado
+    if(/Pergunte\s+a\u0300?\s*IA/i.test(btn.textContent||"") || /Pergunte\s+.\s*IA/i.test(btn.textContent||"")){
+      var inp = document.querySelector('input[placeholder*="palavra-chave" i]');
+      var q = inp && inp.value ? inp.value : "";
+      if(askSara(q)){ e.preventDefault(); e.stopPropagation(); if(inp) inp.value=""; }
+      return;
+    }
+    // 2) Cards de duvida (FAQ): botao cujo texto principal termina com "?"
+    if(btn.classList && btn.classList.contains("cc-tap")){
+      var main = btn.querySelector('div[style*="font-weight:700"]');
+      var q2 = (main ? main.textContent : (btn.textContent||"")).trim();
+      if(q2 && q2.length < 140 && /\?\s*$/.test(q2)){
+        if(askSara(q2)){ e.preventDefault(); e.stopPropagation(); }
+      }
+    }
+  }, true);
+})();
+</script>

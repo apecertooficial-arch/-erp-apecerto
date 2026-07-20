@@ -11,22 +11,34 @@ async function authClient(request: Request) {
   return error || !data.user ? null : { supabase, user: data.user };
 }
 
-const stages = ["inicio", "doc_comp", "doc_vend", "contrato", "minuta_cnd", "minuta_env", "pagamento", "registrada"];
+const clean = (value: unknown, max = 200) => typeof value === "string" ? value.trim().slice(0, max) : "";
+const slugify = (value: string) => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 40);
+
+type Auth = { supabase: ReturnType<typeof createServerSupabaseClient>; user: { id: string } };
+async function requireManager(auth: Auth) {
+  const { data: me } = await auth.supabase.from("usuarios").select("role").eq("id", auth.user.id).maybeSingle();
+  return me && ["admin", "gestor", "executivo"].includes(me.role) ? null : Response.json({ error: "Apenas administradores podem configurar as etapas." }, { status: 403 });
+}
+async function activeSlugs(auth: Auth) {
+  const { data } = await auth.supabase.from("esteira_etapas").select("slug,sla_dias").eq("ativo", true);
+  return new Map((data ?? []).map((row) => [row.slug as string, Number(row.sla_dias)]));
+}
 
 export async function GET(request: Request) {
   const auth = await authClient(request);
   if (!auth) return Response.json({ error: "Sessão inválida ou expirada." }, { status: 401 });
-  const [sales, processes, deals, leads, products, brokers] = await Promise.all([
+  const [sales, processes, deals, leads, products, brokers, stages] = await Promise.all([
     auth.supabase.from("vendas").select("id,created_at,data_venda,empreendimento_id,empreendimento_nome,unidade_id,vgv,forma_pgto,status,obs").order("created_at", { ascending: false }),
     auth.supabase.from("venda_processos").select("id,venda_id,negocio_id,etapa,tipo_venda,responsavel_usuario_id,prazo_em,observacoes,criado_em,atualizado_em"),
     auth.supabase.from("negocios").select("id,venda_id,lead_id,corretor_id,empreendimento_id,valor,status"),
-    auth.supabase.from("leads").select("id,nome,telefone,email,corretor_id"),
+    auth.supabase.from("leads").select("id,nome,telefone,email,corretor_id,tags,extras"),
     auth.supabase.from("empreendimentos").select("id,nome,origem,bairro,cidade").order("nome"),
     auth.supabase.rpc("listar_corretores_transferencia"),
+    auth.supabase.from("esteira_etapas").select("id,slug,nome,cor,ordem,papel,sla_dias,resale").eq("ativo", true).order("ordem", { ascending: true }),
   ]);
-  const error = [sales, processes, deals, leads, products, brokers].find((item) => item.error)?.error;
+  const error = [sales, processes, deals, leads, products, brokers, stages].find((item) => item.error)?.error;
   if (error) return Response.json({ error: error.message }, { status: 502 });
-  return Response.json({ sales: sales.data ?? [], processes: processes.data ?? [], deals: deals.data ?? [], leads: leads.data ?? [], products: products.data ?? [], brokers: brokers.data ?? [] });
+  return Response.json({ sales: sales.data ?? [], processes: processes.data ?? [], deals: deals.data ?? [], leads: leads.data ?? [], products: products.data ?? [], brokers: brokers.data ?? [], stages: stages.data ?? [] });
 }
 
 export async function PATCH(request: Request) {
@@ -37,11 +49,71 @@ export async function PATCH(request: Request) {
   if (action === "move") {
     const processId = String(body.processId || "");
     const stage = String(body.stage || "");
-    if (!processId || !stages.includes(stage)) return Response.json({ error: "Etapa inválida." }, { status: 422 });
-    const update = stage === "registrada"
+    const slugs = await activeSlugs(auth);
+    if (!processId || !slugs.has(stage)) return Response.json({ error: "Etapa inválida." }, { status: 422 });
+    const isFinal = slugs.get(stage) === 0;
+    const update = isFinal
       ? { etapa: stage, atualizado_em: new Date().toISOString(), prazo_em: null }
       : { etapa: stage, atualizado_em: new Date().toISOString() };
     const { error } = await auth.supabase.from("venda_processos").update(update).eq("id", processId);
+    return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
+  }
+  if (action === "createStage" || action === "updateStage" || action === "reorderStages" || action === "deleteStage" || action === "bulkMoveStage") {
+    const denied = await requireManager(auth);
+    if (denied) return denied;
+    if (action === "createStage") {
+      const nome = clean(body.nome, 80);
+      if (!nome) return Response.json({ error: "Informe o nome da etapa." }, { status: 422 });
+      let slug = slugify(nome);
+      if (!slug) slug = `etapa_${Date.now().toString(36)}`;
+      const { data: existing } = await auth.supabase.from("esteira_etapas").select("slug").eq("slug", slug).maybeSingle();
+      if (existing) slug = `${slug}_${Date.now().toString(36).slice(-4)}`;
+      const { data: last } = await auth.supabase.from("esteira_etapas").select("ordem").order("ordem", { ascending: false }).limit(1).maybeSingle();
+      const ordem = (last?.ordem ?? 0) + 1;
+      const { error } = await auth.supabase.from("esteira_etapas").insert({ slug, nome, cor: clean(body.cor, 20) || "#8d2bd1", papel: clean(body.papel, 40) || "Corretor", sla_dias: Number.isFinite(Number(body.slaDias)) ? Math.max(0, Math.trunc(Number(body.slaDias))) : 3, resale: body.resale === true, ordem } as never);
+      return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
+    }
+    if (action === "updateStage") {
+      const id = clean(body.stageId, 60);
+      if (!id) return Response.json({ error: "Etapa inválida." }, { status: 422 });
+      const patch: Record<string, unknown> = {};
+      if (typeof body.nome === "string" && body.nome.trim()) patch.nome = clean(body.nome, 80);
+      if (typeof body.cor === "string") patch.cor = clean(body.cor, 20);
+      if (typeof body.papel === "string") patch.papel = clean(body.papel, 40);
+      if (body.slaDias !== undefined && Number.isFinite(Number(body.slaDias))) patch.sla_dias = Math.max(0, Math.trunc(Number(body.slaDias)));
+      if (typeof body.resale === "boolean") patch.resale = body.resale;
+      if (Object.keys(patch).length === 0) return Response.json({ error: "Nada para atualizar." }, { status: 422 });
+      const { error } = await auth.supabase.from("esteira_etapas").update(patch as never).eq("id", id);
+      return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
+    }
+    if (action === "reorderStages") {
+      const ids = Array.isArray(body.ids) ? (body.ids as unknown[]).map((value) => clean(value, 60)).filter(Boolean) : [];
+      if (!ids.length) return Response.json({ error: "Ordem inválida." }, { status: 422 });
+      for (let index = 0; index < ids.length; index += 1) {
+        const { error } = await auth.supabase.from("esteira_etapas").update({ ordem: index + 1 } as never).eq("id", ids[index]);
+        if (error) return Response.json({ error: error.message }, { status: 502 });
+      }
+      return Response.json({ success: true });
+    }
+    if (action === "bulkMoveStage") {
+      const from = clean(body.fromSlug, 40);
+      const to = clean(body.toSlug, 40);
+      const slugs = await activeSlugs(auth);
+      if (!from || !to || from === to || !slugs.has(from) || !slugs.has(to)) return Response.json({ error: "Selecione as etapas de origem e destino." }, { status: 422 });
+      const isFinal = slugs.get(to) === 0;
+      const update = isFinal ? { etapa: to, atualizado_em: new Date().toISOString(), prazo_em: null } : { etapa: to, atualizado_em: new Date().toISOString() };
+      const { error } = await auth.supabase.from("venda_processos").update(update).eq("etapa", from);
+      return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
+    }
+    // deleteStage
+    const id = clean(body.stageId, 60);
+    if (!id) return Response.json({ error: "Etapa inválida." }, { status: 422 });
+    const { data: stageRow } = await auth.supabase.from("esteira_etapas").select("slug").eq("id", id).maybeSingle();
+    if (stageRow?.slug) {
+      const { count } = await auth.supabase.from("venda_processos").select("id", { count: "exact", head: true }).eq("etapa", stageRow.slug);
+      if ((count ?? 0) > 0) return Response.json({ error: "Esta etapa tem vendas. Mova-as antes de excluir (Mover todos desta etapa)." }, { status: 409 });
+    }
+    const { error } = await auth.supabase.from("esteira_etapas").update({ ativo: false } as never).eq("id", id);
     return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
   }
   if (action === "assign") {

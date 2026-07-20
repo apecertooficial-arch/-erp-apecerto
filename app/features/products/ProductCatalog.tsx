@@ -28,6 +28,7 @@ import { AuditWorkspace } from "../audit/AuditWorkspace";
 import { NotificationsWorkspace } from "../notifications/NotificationsWorkspace";
 import { LegacyModuleWorkspace } from "../system/LegacyModuleWorkspace";
 import { AgentTrainingWorkspace } from "../agents/AgentTrainingWorkspace";
+import { PresenceHeartbeat } from "../presence/PresenceHeartbeat";
 import type { ModuleName } from "../system/module-map";
 
 type CatalogResponse = {
@@ -94,6 +95,8 @@ export function ProductCatalog() {
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [activeModule, setActiveModule] = useState<ModuleName>("Início");
   const [focusedDealId, setFocusedDealId] = useState<number | null>(null);
+  const [crmInitialView, setCrmInitialView] = useState<"sales" | null>(null);
+  const [crmLaunchNewSale, setCrmLaunchNewSale] = useState(false);
   const [loginPreview, setLoginPreview] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [sessionProfile, setSessionProfile] = useState<SessionProfile | null>(null);
@@ -241,10 +244,11 @@ export function ProductCatalog() {
 
   return (
     <AppShell activeItem={activeModule} onNavigate={setActiveModule} onOpenProfile={() => setProfileOpen(true)} sessionRole={sessionProfile?.role ?? "corretor"} sessionName={sessionProfile?.name ?? "Corretor"} modulePermissions={sessionProfile?.permissoes ?? null}>
+      {sessionProfile?.role === "corretor" && accessToken && <PresenceHeartbeat accessToken={accessToken} />}
       {activeModule === "Início" && accessToken ? (
         <HomeWorkspace accessToken={accessToken} sessionName={sessionProfile?.name ?? ""} onNavigate={(moduleName) => setActiveModule(moduleName as ModuleName)} />
       ) : activeModule === "CRM" && accessToken ? (
-        <CrmWorkspace accessToken={accessToken} initialDealId={focusedDealId} onInitialDealHandled={() => setFocusedDealId(null)} sessionRole={sessionProfile?.role ?? "corretor"} canReassign={canReassignCrm} canAssign={canAssignCrm} />
+        <CrmWorkspace accessToken={accessToken} initialDealId={focusedDealId} onInitialDealHandled={() => setFocusedDealId(null)} initialView={crmInitialView} initialCreateSale={crmLaunchNewSale} onInitialViewHandled={() => { setCrmInitialView(null); setCrmLaunchNewSale(false); }} sessionRole={sessionProfile?.role ?? "corretor"} canReassign={canReassignCrm} canAssign={canAssignCrm} />
       ) : activeModule === "Automações" && accessToken ? (
         <AutomationsWorkspace accessToken={accessToken} />
       ) : activeModule === "Abordagens" && accessToken ? (
@@ -254,7 +258,7 @@ export function ProductCatalog() {
       ) : activeModule === "Disparos" && accessToken ? (
         <CampaignWorkspace accessToken={accessToken} />
       ) : activeModule === "Financeiro" && accessToken ? (
-        <FinanceWorkspace accessToken={accessToken} sessionRole={sessionProfile?.role ?? "corretor"} />
+        <FinanceWorkspace accessToken={accessToken} sessionRole={sessionProfile?.role ?? "corretor"} onNavigateToNewSale={() => { setCrmInitialView("sales"); setCrmLaunchNewSale(true); setActiveModule("CRM"); }} />
       ) : activeModule === "Usuários" && accessToken ? (
         <TeamWorkspace accessToken={accessToken} />
       ) : activeModule === "Perfis e Permissões" && accessToken ? (
@@ -289,7 +293,6 @@ export function ProductCatalog() {
       <section className="product-grid">
         {filtered.map((product) => <article className="product-card" role="button" tabIndex={0} onClick={() => product.id && setSelectedProductId(product.id)} onKeyDown={(event) => { if ((event.key === "Enter" || event.key === " ") && product.id) setSelectedProductId(product.id); }} key={product.id ?? product.name}><div className={`product-photo ${product.coverUrl ? "has-image" : ""}`}>{product.coverUrl && <img src={product.coverUrl} alt={`Foto de capa de ${product.name}`} />}<span>{product.draft ? "Rascunho" : product.status?.replace("_", " ") ?? "Pronto"}</span>{!product.coverUrl && <div className="building-icon">▥</div>}<button type="button" onClick={(event) => { event.stopPropagation(); if (product.id) setSelectedProductId(product.id); }} aria-label={`Abrir ficha de ${product.name}`}>•••</button></div><div className="product-info"><strong className="price">{product.price}</strong><h2>{product.name}</h2><p className="location">⌖ {product.neighborhood} · {product.city}</p>{product.developer && <p className="developer">{product.developer}</p>}<div className="specs"><span>{product.area} m²</span><span>{product.bedrooms} dorm.</span><span>{product.parking} vaga</span></div><div className="availability"><span><i /> {product.available} disp.</span><span>· {product.units ?? 0} unidades</span><span>· {product.media ?? 0} mídias</span></div><footer><strong>{product.priceM2}</strong><button type="button" onClick={(event) => event.stopPropagation()}>▦ Comparar</button></footer></div></article>)}
       </section>
-      <button className="ai-button" type="button" aria-label="Pedir ajuda à IA">✦</button>
       {captureOpen && <CaptureWizard onClose={() => setCaptureOpen(false)} onSaved={() => {
         setCaptureOpen(false);
         if (accessToken) void loadCatalog(accessToken);
@@ -299,7 +302,7 @@ export function ProductCatalog() {
       ) : (
         <div className="workspace-loading"><span /><strong>Carregando seu ERP…</strong></div>
       )}
-      {accessToken && !isSilentUser(sessionProfile?.email) && <AttentionCenter accessToken={accessToken} onOpenLead={(dealId) => { setFocusedDealId(dealId); setActiveModule("CRM"); }} onOpenNotifications={() => setActiveModule("Notificações")} />}
+      {accessToken && activeModule === "CRM" && !isSilentUser(sessionProfile?.email) && <AttentionCenter accessToken={accessToken} onOpenLead={(dealId) => { setFocusedDealId(dealId); setActiveModule("CRM"); }} onOpenNotifications={() => setActiveModule("Notificações")} />}
       {accessToken && !isSilentUser(sessionProfile?.email) && <SaraWidget />}
       {accessToken && !isSilentUser(sessionProfile?.email) && <DisconnectionAlert accessToken={accessToken} onOpen={() => setActiveModule("Configurações")} />}
       {loginPreview && <SupabaseLogin preview onClose={() => setLoginPreview(false)} onAuthenticated={(token) => { setLoginPreview(false); setActiveModule("Início"); void loadCatalog(token); }} />}

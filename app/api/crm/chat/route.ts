@@ -40,7 +40,7 @@ export async function POST(request: Request) {
     });
     if (error) return Response.json({ error: error.message }, { status: 502 });
     const result = data && typeof data === "object" ? data as Record<string, unknown> : {};
-    if (result.error) return Response.json({ error: cleanText(result.error, 300), detail: result.detalhe ?? null }, { status: 502 });
+    if (result.error) return Response.json({ error: cleanText((result.motivo as string) || (result.error as string), 300), detail: result.detalhe ?? null }, { status: 502 });
     return Response.json({ success: true, result });
   }
 
