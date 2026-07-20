@@ -137,23 +137,40 @@ export async function POST(request: Request) {
 
   let condominiumId = condominium.id;
   if (!condominiumId) {
-    const { data, error } = await supabase.from("condominios").insert({
-      nome: condominium.name.trim(), cep: condominium.zipCode.trim() || null,
-      endereco: condominium.address.trim(), numero: condominium.number.trim() || null,
-      complemento: condominium.complement.trim() || null, bairro: condominium.neighborhood.trim() || null,
-      cidade: condominium.city.trim(), uf: condominium.state.trim() || "SP", created_by: authData.user.id,
-    }).select("id").single();
-    if (error) return Response.json({ error: error.message }, { status: 400 });
-    condominiumId = data.id;
+    // Anti-duplicata: reaproveita um condomínio com o mesmo nome + endereço + cidade (case-insensitive).
+    // Evita a enxurrada de repetidos que acontecia quando um cadastro falhava e era refeito.
+    const nomeN = condominium.name.trim();
+    const endN = condominium.address.trim();
+    const cidN = condominium.city.trim();
+    const { data: existingCond } = await supabase.from("condominios").select("id").ilike("nome", nomeN).ilike("endereco", endN).ilike("cidade", cidN).limit(1).maybeSingle();
+    if (existingCond?.id) {
+      condominiumId = existingCond.id;
+    } else {
+      const { data, error } = await supabase.from("condominios").insert({
+        nome: nomeN, cep: condominium.zipCode.trim() || null,
+        endereco: endN, numero: condominium.number.trim() || null,
+        complemento: condominium.complement.trim() || null, bairro: condominium.neighborhood.trim() || null,
+        cidade: cidN, uf: condominium.state.trim() || "SP", created_by: authData.user.id,
+      }).select("id").single();
+      if (error) return Response.json({ error: error.message }, { status: 400 });
+      condominiumId = data.id;
+    }
   }
 
   let ownerId = owner?.id ?? null;
   if (payload.propertyType === "terceiro" && owner && !ownerId) {
-    const { data, error } = await supabase.from("proprietarios").insert({
-      nome: owner.name.trim(), email: owner.email.trim().toLowerCase(), telefone: owner.phone.trim(), created_by: authData.user.id,
-    }).select("id").single();
-    if (error) return Response.json({ error: error.message }, { status: 400 });
-    ownerId = data.id;
+    // Anti-duplicata de proprietário por e-mail.
+    const emailN = owner.email.trim().toLowerCase();
+    const { data: existingOwner } = emailN ? await supabase.from("proprietarios").select("id").ilike("email", emailN).limit(1).maybeSingle() : { data: null };
+    if (existingOwner?.id) {
+      ownerId = existingOwner.id;
+    } else {
+      const { data, error } = await supabase.from("proprietarios").insert({
+        nome: owner.name.trim(), email: emailN, telefone: owner.phone.trim(), created_by: authData.user.id,
+      }).select("id").single();
+      if (error) return Response.json({ error: error.message }, { status: 400 });
+      ownerId = data.id;
+    }
   }
 
   const { data: broker } = await supabase.from("corretores").select("id").eq("usuario_id", authData.user.id).maybeSingle();
