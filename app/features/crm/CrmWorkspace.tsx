@@ -324,7 +324,7 @@ export function CrmWorkspace({ accessToken, initialDealId = null, onInitialDealH
 
 type SalesData = {
   sales: Array<{ id: string; created_at: string; data_venda: string; empreendimento_id: string | null; empreendimento_nome: string | null; vgv: number; forma_pgto: string | null; status: string; obs: string | null }>;
-  processes: Array<{ id: string; venda_id: string; negocio_id: number | null; etapa: string; tipo_venda: string; responsavel_usuario_id: string | null; prazo_em: string | null; atualizado_em: string }>;
+  processes: Array<{ id: string; venda_id: string; negocio_id: number | null; etapa: string; tipo_venda: string; responsavel_usuario_id: string | null; prazo_em: string | null; observacoes?: string | null; criado_em?: string; atualizado_em: string }>;
   deals: Array<{ id: number; venda_id: string | null; lead_id: number; corretor_id: number | null; empreendimento_id: string | null; valor: number | null; status: string }>;
   leads: Array<{ id: number; nome: string | null; telefone: string | null; email: string | null; corretor_id: number | null; tags: unknown; extras: unknown }>;
   products: Array<{ id: string; nome: string; origem: string; bairro: string | null; cidade: string | null }>;
@@ -344,7 +344,7 @@ const saleStages = [
 ];
 
 function SalesProcessView({ accessToken, initialCreate = false, sessionRole = "corretor" }: { accessToken: string; initialCreate?: boolean; sessionRole?: string }) {
-  const [data, setData] = useState<SalesData | null>(null); const [error, setError] = useState<string | null>(null); const [filter, setFilter] = useState("all"); const [creating, setCreating] = useState(initialCreate); const [busy, setBusy] = useState(false); const [chatItem, setChatItem] = useState<{ lead: Lead; deal: Deal; corretorNome?: string } | null>(null); const [menuStage, setMenuStage] = useState<string | null>(null); const [bulkFrom, setBulkFrom] = useState<string | null>(null); const [addingStage, setAddingStage] = useState(false); const [newStageName, setNewStageName] = useState("");
+  const [data, setData] = useState<SalesData | null>(null); const [error, setError] = useState<string | null>(null); const [filter, setFilter] = useState("all"); const [creating, setCreating] = useState(initialCreate); const [busy, setBusy] = useState(false); const [chatItem, setChatItem] = useState<{ lead: Lead; deal: Deal; corretorNome?: string } | null>(null); const [detailItem, setDetailItem] = useState<SalesData["processes"][number] | null>(null); const [menuStage, setMenuStage] = useState<string | null>(null); const [bulkFrom, setBulkFrom] = useState<string | null>(null); const [addingStage, setAddingStage] = useState(false); const [newStageName, setNewStageName] = useState("");
   const canManageStages = sessionRole !== "corretor";
   const load = async () => { const response = await authedFetch("/api/crm/sales", { headers: { Authorization: `Bearer ${accessToken}` } }); const result = await response.json() as SalesData & { error?: string }; if (!response.ok) throw new Error(result.error || "Não foi possível carregar as vendas."); setData(result); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -387,7 +387,7 @@ function SalesProcessView({ accessToken, initialCreate = false, sessionRole = "c
           const fallbackLead = { nome: sale?.empreendimento_nome || "Venda", extras: null };
           return <article className={late ? "sale-card late" : "sale-card"} draggable onDragStart={(event) => event.dataTransfer.setData("text/process-id", item.id)} key={item.id}>
             <div className={`sla-top-band ${late ? "vermelho" : "verde"}`} />
-            <div className="sale-card-content">
+            <div className="sale-card-content" role="button" tabIndex={0} title="Ver andamento da venda" onClick={() => setDetailItem(item)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); setDetailItem(item); } }}>
               <div className="card-person"><LeadAvatar lead={lead ?? fallbackLead} /><div><strong>{lead?.nome || sale?.empreendimento_nome || "Venda"}</strong><small>{lead?.telefone || "Sem telefone"}</small></div></div>
               <div className="sale-card-broker"><span className={`presence ${broker?.online ? "online" : ""}`} /><strong>{broker?.nome || "Sem responsável"}</strong></div>
               <div className="sla-clock-v3"><b>{formatElapsed(minutesInStage)}</b><span>{late ? "em atraso nesta etapa" : "nesta etapa"}</span></div>
@@ -402,10 +402,55 @@ function SalesProcessView({ accessToken, initialCreate = false, sessionRole = "c
     })}</div>
     {creating && <CreateSaleModal data={data} accessToken={accessToken} onClose={() => setCreating(false)} onDone={async () => { setCreating(false); await load(); }} />}
     {chatItem && <LeadChatDrawer key={chatItem.deal.id} accessToken={accessToken} lead={chatItem.lead} deal={chatItem.deal} corretorNome={chatItem.corretorNome} onClose={() => setChatItem(null)} onResponse={async () => {}} />}
+    {detailItem && (() => { const sale = saleById.get(detailItem.venda_id); const deal = dealBySale.get(detailItem.venda_id); const lead = deal ? leadById.get(deal.lead_id) : null; const broker = brokerById.get(deal?.corretor_id ?? lead?.corretor_id ?? -1); return <SaleDetailDrawer process={detailItem} sale={sale} lead={lead} broker={broker} stageList={stageList} busy={busy} onMove={async (stage) => { await move(detailItem.id, stage); setDetailItem((cur) => cur ? { ...cur, etapa: stage } : cur); }} onChat={lead && deal ? () => { setDetailItem(null); setChatItem({ lead: lead as unknown as Lead, deal: deal as unknown as Deal, corretorNome: broker?.nome }); } : undefined} onClose={() => setDetailItem(null)} />; })()}
     {bulkFrom && <div className="crm-center-modal"><form onSubmit={(event) => event.preventDefault()}><header><div><span>AÇÃO EM MASSA</span><h2>Mover uma etapa inteira</h2><p>Todas as vendas de <b>{stageList.find((s) => s.id === bulkFrom)?.name}</b> serão enviadas para o destino escolhido.</p></div><button type="button" onClick={() => setBulkFrom(null)}>×</button></header><div className="bulk-move-grid"><label>Etapa de destino<select id="bulk-to" defaultValue=""><option value="">Selecione</option>{stageList.filter((s) => s.id !== bulkFrom).map((s) => <option value={s.id} key={s.id}>{s.name}</option>)}</select></label></div><footer><button type="button" onClick={() => setBulkFrom(null)}>Cancelar</button><button className="crm-primary" type="button" disabled={busy} onClick={() => { const to = (document.getElementById("bulk-to") as HTMLSelectElement | null)?.value; if (!to) { setError("Selecione a etapa de destino."); return; } void mutateStages({ action: "bulkMoveStage", fromSlug: bulkFrom, toSlug: to }); setBulkFrom(null); }}>Mover vendas</button></footer></form></div>}
   </section>;
 }
 
+type SaleStageItem = { id: string; dbId: string | null; name: string; color: string; role: string; days: number; resale: boolean };
+function SaleDetailDrawer({ process, sale, lead, broker, stageList, busy, onMove, onChat, onClose }: { process: SalesData["processes"][number]; sale?: SalesData["sales"][number]; lead?: SalesData["leads"][number] | null; broker?: SalesData["brokers"][number]; stageList: SaleStageItem[]; busy?: boolean; onMove: (stage: string) => Promise<void>; onChat?: () => void; onClose: () => void }) {
+  const currentIndex = stageList.findIndex((s) => s.id === process.etapa);
+  const stage = currentIndex >= 0 ? stageList[currentIndex] : undefined;
+  const total = stageList.length;
+  const done = currentIndex < 0 ? 0 : currentIndex;
+  const pct = total > 1 ? Math.round((done / (total - 1)) * 100) : 0;
+  const minutesInStage = Math.max(0, (Date.now() - new Date(process.atualizado_em).getTime()) / 60000);
+  const overdue = stage && stage.days > 0 && minutesInStage > stage.days * 1440;
+  const fmtDate = (value?: string | null) => value ? shortDate.format(new Date(`${value.slice(0, 10)}T12:00:00`)) : "—";
+  const isRevenda = process.tipo_venda === "revenda";
+  const track = stageList.filter((s) => !s.resale || isRevenda);
+  const trackCurrent = track.findIndex((s) => s.id === process.etapa);
+  return <div className="crm-drawer-layer" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}><aside className="crm-drawer-v2 sale-detail">
+    <header className="sale-detail-hero"><button className="drawer-close-v2" type="button" onClick={onClose}>×</button>
+      <span className="sale-detail-kicker">ANDAMENTO DA VENDA</span>
+      <h2>{lead?.nome || sale?.empreendimento_nome || "Venda"}</h2>
+      <p>{sale?.empreendimento_nome || "Produto não informado"}{lead?.telefone ? ` · ☎ ${lead.telefone}` : ""}</p>
+      <div className="sale-detail-progress"><i style={{ width: `${pct}%`, background: stage?.color || "#7c3aed" }} /></div>
+      <small>{currentIndex < 0 ? "Etapa fora da esteira ativa" : `${done} de ${total - 1} etapas concluídas`}</small>
+    </header>
+    <div className="sale-detail-body">
+      <div className="sale-detail-grid">
+        <div><small>VALOR (VGV)</small><strong>{money.format(sale?.vgv || 0)}</strong></div>
+        <div><small>FORMA DE PAGAMENTO</small><strong>{sale?.forma_pgto || "—"}</strong></div>
+        <div><small>TIPO</small><strong>{isRevenda ? "Revenda" : "Construtora"}</strong></div>
+        <div><small>DATA DA VENDA</small><strong>{fmtDate(sale?.data_venda)}</strong></div>
+        <div><small>RESPONSÁVEL</small><strong>{broker?.nome || "Não definido"}</strong></div>
+        <div><small>PRAZO DA ETAPA</small><strong className={overdue ? "sale-detail-late" : ""}>{process.prazo_em ? fmtDate(process.prazo_em) : (stage?.days ? `SLA ${stage.days}d` : "—")}</strong></div>
+      </div>
+      <article className={`sale-detail-current ${overdue ? "late" : ""}`} style={{ "--sale-stage": stage?.color || "#7c3aed" } as CSSProperties}>
+        <div><small>ETAPA ATUAL · {stage?.role || "—"}</small><strong>{stage?.name || process.etapa}</strong></div>
+        <span>{overdue ? "Em atraso · " : ""}{formatElapsed(minutesInStage)} nesta etapa</span>
+      </article>
+      <h4>ESTEIRA DE DOCUMENTAÇÃO</h4>
+      <ol className="sale-timeline">{track.map((s, i) => { const state = trackCurrent < 0 ? "todo" : i < trackCurrent ? "done" : i === trackCurrent ? "current" : "todo"; return <li className={`sale-tl ${state}`} style={{ "--tl": s.color } as CSSProperties} key={s.id}><i />{i < track.length - 1 && <u />}<div><strong>{s.name}</strong><small>{s.role}{s.days ? ` · SLA ${s.days}d` : " · conclusão"}</small></div>{i === trackCurrent && <em>Aqui</em>}{state === "done" && <b>✓</b>}</li>; })}</ol>
+      {sale?.obs && <article className="sale-detail-note"><small>OBSERVAÇÕES</small><p>{sale.obs}</p></article>}
+    </div>
+    <footer className="sale-detail-foot">
+      {onChat && <button type="button" className="crm-secondary" onClick={onChat}>Abrir chat do lead</button>}
+      <label className="sale-detail-move"><span>Mover etapa</span><select value={process.etapa} disabled={busy} onChange={(event) => void onMove(event.target.value)}>{track.map((s) => <option value={s.id} key={s.id}>{s.name}</option>)}</select></label>
+    </footer>
+  </aside></div>;
+}
 function CreateSaleModal({ data, accessToken, initialDealId = "", onClose, onDone }: { data: SalesData; accessToken: string; initialDealId?: string | number; onClose: () => void; onDone: () => Promise<void> }) {
   const [dealId, setDealId] = useState(String(initialDealId)); const [productId, setProductId] = useState(""); const [vgv, setVgv] = useState(""); const [busy, setBusy] = useState(false); const [error, setError] = useState<string | null>(null); const leadById = new Map(data.leads.map((lead) => [lead.id, lead]));
   return <div className="crm-center-modal"><form onSubmit={(event) => { event.preventDefault(); setBusy(true); void authedFetch("/api/crm/sales", { method: "PATCH", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify({ action: "create", dealId: Number(dealId), productId, vgv: Number(vgv) }) }).then(async (response) => { const result = await response.json() as { error?: string }; if (!response.ok) throw new Error(result.error); await onDone(); }).catch((reason) => setError(reason instanceof Error ? reason.message : "Não foi possível criar a venda.")).finally(() => setBusy(false)); }}><header><div><span>NOVA VENDA</span><h2>Conectar venda ao CRM</h2><p>O registro entra no financeiro e na esteira de documentação.</p></div><button type="button" onClick={onClose}>×</button></header>{error && <div className="modal-error">{error}</div>}<label>Negócio / cliente<select required value={dealId} onChange={(event) => setDealId(event.target.value)}><option value="">Selecione</option>{data.deals.filter((deal) => !deal.venda_id).map((deal) => <option value={deal.id} key={deal.id}>{leadById.get(deal.lead_id)?.nome || `Negócio #${deal.id}`}</option>)}</select></label><label>Produto<select required value={productId} onChange={(event) => setProductId(event.target.value)}><option value="">Selecione</option>{data.products.map((product) => <option value={product.id} key={product.id}>{product.nome}</option>)}</select></label><label>Valor da venda<input required min="1" type="number" value={vgv} onChange={(event) => setVgv(event.target.value)} /></label><footer><button type="button" onClick={onClose}>Cancelar</button><button className="crm-primary" disabled={busy} type="submit">{busy ? "Salvando…" : "Criar venda"}</button></footer></form></div>;
