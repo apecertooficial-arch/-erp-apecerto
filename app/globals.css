@@ -3537,19 +3537,17 @@ body { overflow:hidden; background:#eee8e2; }
    BORDA colorida por dias sem interação (não tinge o card todo,
    não deixa preto). verde=neutro · amarelo · vermelho · preto.
    ============================================================ */
-.crm-lead-card-v3.sla-verde,
-.crm-lead-card-v3.sla-amarelo,
-.crm-lead-card-v3.sla-vermelho,
-.crm-lead-card-v3.sla-preto { background:#fff !important; color:#282421 !important; border:1px solid #e4ddd8 !important; }
+.crm-lead-card-v3.sla-verde { background:#f2faf5 !important; color:#282421 !important; border:1px solid #cfe9d9 !important; }
+.crm-lead-card-v3.sla-amarelo { background:#fdf8ec !important; color:#282421 !important; border:1px solid #efdcab !important; }
+.crm-lead-card-v3.sla-vermelho { background:#fdf3f1 !important; color:#282421 !important; border:1px solid #f2c9c2 !important; }
+.crm-lead-card-v3.sla-preto { background:#eceae8 !important; color:#282421 !important; border:1px solid #cdc7c2 !important; }
 .crm-lead-card-v3.sla-preto .card-open-v3,
 .crm-lead-card-v3.sla-preto .card-person strong,
 .crm-lead-card-v3.sla-preto > footer strong { color:#282421 !important; }
 .crm-lead-card-v3.sla-preto .card-person small,
 .crm-lead-card-v3.sla-preto .sla-clock-v3 span,
-.crm-lead-card-v3.sla-preto > footer time { color:#81766f !important; }
-.crm-lead-card-v3.sla-preto .card-controls-v3 { border-color:#eee8e4 !important; background:rgba(250,248,247,.82) !important; }
-.crm-lead-card-v3.sla-preto .card-context { border-color:#f0ece9 !important; }
-.crm-lead-card-v3.sla-preto .sla-clock-v3 { background:rgba(31,28,26,.06) !important; }
+.crm-lead-card-v3.sla-preto > footer time { color:#6f665f !important; }
+.crm-lead-card-v3.sla-preto .card-controls-v3 { border-color:#dcd6d1 !important; background:rgba(255,255,255,.55) !important; }
 
 /* ============================================================
    Etapas do FUNIL no estilo de Vendas em processo: cabeçalho é uma
@@ -3572,3 +3570,6 @@ body { overflow:hidden; background:#eee8e2; }
 .crm-v2 .crm-stage { height: 100%; max-height: 100%; display: flex; flex-direction: column; overflow: hidden; }
 .crm-v2 .crm-stage > header { flex: 0 0 auto; }
 .crm-v2 .crm-stage-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+
+/* Financeiro — tabela de vendas do corretor (sem Com. prev. e Saldo, por segurança) */
+.finance-sales-head.slim, .finance-sale-row.slim { min-width:760px; grid-template-columns:56px 68px minmax(76px,1fr) minmax(75px,1fr) minmax(100px,1.25fr) 32px 90px 92px 66px 34px; }
