@@ -2,6 +2,29 @@ import { createServerSupabaseClient } from "../../lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
+function bearer(request: Request) {
+  const authorization = request.headers.get("authorization");
+  return authorization?.startsWith("Bearer ") ? authorization.slice(7) : null;
+}
+
+// Aprovar / reprovar empreendimento (admin/gestor). A RPC valida o papel.
+export async function PATCH(request: Request) {
+  const accessToken = bearer(request);
+  if (!accessToken) return Response.json({ error: "Sessão necessária." }, { status: 401 });
+  const supabase = createServerSupabaseClient(accessToken);
+  const { data: authData, error: authError } = await supabase.auth.getUser(accessToken);
+  if (authError || !authData.user) return Response.json({ error: "Sessão inválida ou expirada." }, { status: 401 });
+  let body: { action?: string; id?: string; motivo?: string };
+  try { body = await request.json() as typeof body; } catch { return Response.json({ error: "Dados inválidos." }, { status: 400 }); }
+  const action = String(body.action || "");
+  const id = String(body.id || "");
+  if ((action !== "approve" && action !== "reject") || !id) return Response.json({ error: "Ação ou empreendimento inválido." }, { status: 422 });
+  const { data, error } = await supabase.rpc("aprovar_empreendimento", { p_id: id, p_aprovar: action === "approve", p_motivo: action === "reject" ? (body.motivo ?? null) : null });
+  const result = data && typeof data === "object" ? data as Record<string, unknown> : {};
+  if (error || result.ok === false) return Response.json({ error: error?.message || (typeof result.error === "string" ? result.error : "Não foi possível concluir a aprovação.") }, { status: error ? 502 : 403 });
+  return Response.json({ ok: true, aprovacao: result.aprovacao });
+}
+
 type UnitInput = {
   number: string;
   type: string;
@@ -82,9 +105,15 @@ export async function POST(request: Request) {
       return Response.json({ error: "A captação exige 10 fotos, 1 vídeo e exatamente 1 foto de capa." }, { status: 422 });
     }
 
-    const { error } = await supabase.from("empreendimentos").update({ rascunho: false }).eq("id", payload.id);
+    // Ao publicar (finalizar a captação), o empreendimento entra na fila de aprovação do gestor.
+    // Se já estava aprovado (edição de algo publicado), mantém aprovado — não re-gateia edições.
+    const { data: cur } = await supabase.from("empreendimentos").select("aprovacao").eq("id", payload.id).maybeSingle();
+    const patch = (cur as { aprovacao?: string } | null)?.aprovacao === "aprovado"
+      ? { rascunho: false }
+      : { rascunho: false, aprovacao: "pendente", reprovacao_motivo: null };
+    const { error } = await supabase.from("empreendimentos").update(patch).eq("id", payload.id);
     if (error) return Response.json({ error: error.message }, { status: 400 });
-    return Response.json({ ok: true, id: payload.id });
+    return Response.json({ ok: true, id: payload.id, aprovacao: (patch as { aprovacao?: string }).aprovacao ?? "aprovado" });
   }
 
   const { property, condominium, owner, access, units } = payload;

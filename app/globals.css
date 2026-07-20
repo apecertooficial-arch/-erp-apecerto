@@ -3989,3 +3989,24 @@ article.tone-red{border-left-color:#d3443e}article.tone-red strong{color:#d3443e
 .chat-messages article:hover .msg-del, .chat-messages article:focus-within .msg-del { opacity: 1; }
 .chat-messages article .msg-del svg { width: 14px; height: 14px; }
 .chat-messages article .msg-del:hover { background: #fff0ee; }
+
+/* ============================================================
+   Aprovação de empreendimento (jul/2026): selo no card, ações
+   de aprovar/reprovar (admin/gestor) e chip de pendentes.
+   ============================================================ */
+.product-photo { position: relative; }
+.product-photo .approval-badge { position: absolute; left: 10px; right: auto; top: auto; bottom: 10px; padding: 4px 10px; border-radius: 999px; font-size: 11px; font-weight: 800; box-shadow: 0 2px 8px rgba(0,0,0,.18); }
+.product-photo .approval-badge.pendente { background: #fff3d6; color: #8a5d00; }
+.product-photo .approval-badge.reprovado { background: #ffe1dd; color: #a83026; }
+.approval-actions { display: flex; gap: 8px; margin: 11px 0 2px; }
+.approval-actions button { flex: 1; min-height: 36px; border-radius: 9px; border: 1px solid; font-size: 12px; font-weight: 800; cursor: pointer; }
+.approval-actions .ap-approve { border-color: #a9dcc1; background: #eefaf2; color: #12864a; }
+.approval-actions .ap-approve:hover { background: #e0f5e9; }
+.approval-actions .ap-reject { border-color: #f0c4bd; background: #fff2f0; color: #b0342a; }
+.approval-actions .ap-reject:hover { background: #ffe6e2; }
+.approval-actions button:disabled { opacity: .5; cursor: default; }
+.approval-reason { margin: 9px 0 0; padding: 7px 10px; border-radius: 8px; background: #fff2f0; color: #a83026; font-size: 11px; line-height: 1.4; }
+.approval-filter { display: inline-flex; align-items: center; gap: 6px; border: 1px solid #e5cf7a; border-radius: 999px; padding: 7px 13px; background: #fffaf0; color: #8a5d00; font-size: 12px; font-weight: 700; cursor: pointer; }
+.approval-filter:hover { background: #fff4dc; }
+.approval-filter.active { border-color: #e0a92c; background: #ffefc9; }
+.approval-filter b { display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; background: #e0851f; color: #fff; font-size: 10px; }
