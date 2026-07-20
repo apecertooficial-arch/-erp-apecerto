@@ -3271,7 +3271,7 @@ article.tone-red{border-left-color:#d3443e}article.tone-red strong{color:#d3443e
 @media(max-width:800px){.perf-section,.perf-kpis{padding-inline:12px}.perf-panel{margin-inline:12px}}
 /* CRM tem zoom 0.85 — largura maior (o kanban usa o espaço e ainda rola na horizontal).
    Overlays (drawers/modais) ficam de fora para abrir por cima normalmente. */
-.crm-v2 > *:not(.crm-drawer-layer):not(.crm-center-modal):not(.broker-picker-modal) {
+.crm-v2 > *:not(.crm-drawer-layer):not(.crm-center-modal):not(.broker-picker-modal):not(.resp-toast) {
   width: 100%; max-width: 1900px; margin-left: auto; margin-right: auto;
 }
 
