@@ -3506,6 +3506,7 @@ article.tone-red{border-left-color:#d3443e}article.tone-red strong{color:#d3443e
 .conn-card.off { border-color:#f2cdc9; }
 .conn-device { width:26px; height:26px; display:grid; place-items:center; border-radius:8px; background:#f4f1ee; color:#9a908a; font-size:12px; }
 .conn-sync { color:#9a908a; font-size:11px; margin-top:-3px; }
+.conn-num { color:#2f6b3a; font-size:12px; font-weight:600; margin-top:1px; letter-spacing:.2px; }
 .conn-card strong { font-size:15px; }
 .conn-card.connected button { background:#fff; border:1px solid #dfd8d3; color:#5f5752; }
 
