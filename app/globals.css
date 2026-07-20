@@ -3721,3 +3721,16 @@ article.tone-red{border-left-color:#d3443e}article.tone-red strong{color:#d3443e
 .lead-funnel-status .lead-pipe-move select, .lead-funnel-status .lead-stage-move select { width: 100%; max-width: none; min-height: 42px; margin: 0; border: 1px solid #e5ded9; border-radius: 10px; padding: 0 12px; background: #fff; color: #33302c; font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
 .lead-funnel-status .lead-pipe-move select { border-color: #e7bbf2; background: #fdf8ff; }
 .lead-funnel-status > button { position: static; align-self: flex-start; margin-top: 2px; border: 0; background: transparent; color: #b14a42; font-size: 12px; font-weight: 700; cursor: pointer; }
+
+/* ============================================================
+   #3 — seletor de etapa do card do kanban mais limpo (jul/2026)
+   Botão Chat e select de etapa com mesma altura, cantos suaves,
+   seta custom consistente e cores que separam ação de navegação.
+   ============================================================ */
+.crm-lead-card-v3 .card-controls-v3 { padding: 8px 9px; gap: 6px; }
+.crm-lead-card-v3 .card-controls-v3 > button,
+.crm-lead-card-v3 .card-controls-v3 label select { height: 32px; min-height: 32px; border-radius: 8px; font-size: 11px; font-weight: 700; }
+.crm-lead-card-v3 .card-controls-v3 > button { border: 1px solid #cfe8da; color: #14804a; background: #f3fbf6; }
+.crm-lead-card-v3 .card-controls-v3 > button:hover { background: #e7f7ee; border-color: #a9dcc1; }
+.crm-lead-card-v3 .card-controls-v3 label select { border: 1px solid #e0d8d2; color: #4b433e; background-color: #fff; padding: 0 22px 0 10px; appearance: none; -webkit-appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%238a7f78' stroke-width='3' stroke-linecap='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 8px center; cursor: pointer; }
+.crm-lead-card-v3 .card-controls-v3 label select:hover { border-color: #c9bfb8; }
