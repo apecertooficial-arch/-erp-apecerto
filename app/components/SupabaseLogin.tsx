@@ -46,7 +46,7 @@ export function SupabaseLogin({ onAuthenticated, preview = false, onClose }: { o
         <span className="login-hero-shape panel" />
         <div className="login-hero-inner">
           <div className="login-hero-icon">
-            <svg viewBox="0 0 32 32"><path d="M4 14 16 5l12 9v13H7V15" /><path d="m11 15 4 4 7-8" /></svg>
+            <img src="/brand/simbolo-cores.png" alt="apêcerto" className="login-hero-symbol" />
           </div>
           <span className="login-hero-kicker">O ERP DA APÊCERTO</span>
           <strong className="login-hero-logo">apê<span>certo</span></strong>
@@ -59,8 +59,7 @@ export function SupabaseLogin({ onAuthenticated, preview = false, onClose }: { o
       <section className="login-form-side" aria-labelledby="login-title">
         <div className="login-form-inner">
           <div className="login-brand-pill">
-            <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M4 14 16 5l12 9v13H7V15" /><path d="m11 15 4 4 7-8" /></svg>
-            <strong>apê<span>certo</span></strong>
+            <img src="/brand/logo-cores.png" alt="apêcerto" className="login-brand-img" />
           </div>
 
           <div className="login-heading">
