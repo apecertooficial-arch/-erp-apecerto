@@ -37,7 +37,7 @@ export function SupabaseLogin({ onAuthenticated, preview = false, onClose }: { o
   }
 
   return (
-    <div className={`login-page login-split ${preview ? "preview" : ""}`}>
+    <div className={`login-split ${preview ? "preview" : ""}`}>
       {onClose && <button className="login-close" type="button" onClick={onClose} aria-label="Fechar prévia do login">×</button>}
 
       <aside className="login-hero" aria-hidden="true">
