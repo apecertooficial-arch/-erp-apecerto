@@ -3357,16 +3357,20 @@ body { overflow:hidden; background:#eee8e2; }
 @media(max-width:900px){ .modal-layer.product-detail-layer{ padding:0; } .product-detail-layer .product-detail-panel{ width:100vw; height:100vh; border-radius:0; } }
 
 /* ============================================================
-   MINI CHAT v2 — painel flutuante CENTRALIZADO + ferramentas
-   FORA do card (na lateral esquerda), fiel à referência.
+   MINI CHAT v2 — ancorado no CANTO INFERIOR DIREITO, ferramentas
+   flutuando FORA do card (lateral esquerda dele).
    ============================================================ */
-.chat-layer .lead-chat-drawer{ left:50% !important; right:auto !important; top:50% !important; bottom:auto !important; transform:translate(-50%,-50%) !important; overflow:visible !important; height:min(80vh,700px) !important; border-radius:18px !important; }
+.chat-layer .lead-chat-drawer{ left:auto !important; right:20px !important; top:auto !important; bottom:20px !important; transform:none !important; overflow:visible !important; height:min(80vh,700px) !important; border-radius:18px !important; }
 .chat-layer .lead-chat-drawer>header{ border-radius:18px 18px 0 0; }
 .chat-layer .lead-chat-drawer>footer{ border-radius:0 0 18px 18px; }
-.chat-layer .lead-chat-drawer.is-collapsed{ transform:translate(-50%,-50%) !important; }
+.chat-layer .lead-chat-drawer.is-collapsed{ transform:none !important; }
 /* ferramentas para FORA do card, à esquerda */
 .chat-layer .mini-chat-tools{ left:-62px !important; top:50% !important; transform:translateY(-50%) !important; }
 .chat-layer .chat-messages{ padding-left:20px !important; }
+/* botão fechar sugestão da Sara */
+.chat-suggestion { position:relative; }
+.chat-suggestion .cs-close { position:absolute; top:6px; right:8px; width:22px; height:22px; display:grid; place-items:center; border:0; border-radius:50%; background:rgba(124,58,237,.10); color:#7c3aed; font-size:15px; line-height:1; cursor:pointer; padding:0; }
+.chat-suggestion .cs-close:hover { background:rgba(124,58,237,.2); }
 
 /* ============================================================
    INÍCIO v2 — saudação com avatar, hero da META em laranja com
@@ -3520,3 +3524,7 @@ body { overflow:hidden; background:#eee8e2; }
 .presence-dias-chips { display:flex; flex-wrap:wrap; gap:8px; }
 .presence-dias-chips button { min-width:52px; padding:9px 0; border:1px solid #e0d9d4; border-radius:10px; background:#fff; color:#5c534e; font-size:12px; font-weight:700; cursor:pointer; }
 .presence-dias-chips button.on { border-color:#ff8a3d; background:#ff6500; color:#fff; box-shadow:0 4px 12px rgba(255,101,0,.2); }
+/* ações no topo do card de conexão (dispositivo + excluir) */
+.conn-card-actions { display:flex; align-items:center; gap:6px; }
+.conn-del { width:26px; height:26px; display:grid; place-items:center; border:1px solid #f2cdc9; border-radius:8px; background:#fff6f5; color:#d8433c; font-size:12px; cursor:pointer; padding:0; }
+.conn-del:hover { border-color:#e88a85; background:#ffeceb; }
