@@ -1584,7 +1584,7 @@ body:has(.chat-layer) .ai-button, body:has(.chat-layer) #sara-fab{ display: none
    para nunca cobrir fechar/salvar/continuar. Voltam ao fechar.
    ============================================================ */
 .attention-trigger,.attention-popover,.disconnect-alert { transition:opacity .18s ease,visibility .18s ease; }
-body:has(.profile-drawer-scrim,.modal-layer,.photo-lightbox,.document-preview-modal,.delete-confirm,.drawer-backdrop,.center-modal-backdrop,.crm-drawer-layer,.crm-center-modal,.chat-layer,.operational-drawer-scrim,.qr-modal-scrim,.team-drawer-scrim,.calendar-modal-layer,.auth-layer,.login-page) :is(.attention-trigger,.attention-popover,.disconnect-alert,#sara-fab,#sara-panel) { opacity:0 !important; visibility:hidden !important; pointer-events:none !important; }
+body:has(.profile-drawer-scrim,.modal-layer,.photo-lightbox,.document-preview-modal,.delete-confirm,.drawer-backdrop,.center-modal-backdrop,.crm-drawer-layer,.crm-center-modal,.chat-layer,.operational-drawer-scrim,.qr-modal-scrim,.team-drawer-scrim,.calendar-modal-layer,.auth-layer,.login-page,.login-split) :is(.attention-trigger,.attention-popover,.disconnect-alert,#sara-fab,#sara-panel) { opacity:0 !important; visibility:hidden !important; pointer-events:none !important; }
 
 /* ============================================================
    Doc §15 — Perfil completo do corretor pelo rodapé da sidebar
