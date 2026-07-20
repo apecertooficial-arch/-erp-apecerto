@@ -23,6 +23,7 @@ import { FinanceWorkspace } from "../finance/FinanceWorkspace";
 import { TeamWorkspace } from "../team/TeamWorkspace";
 import { CalendarWorkspace } from "../calendar/CalendarWorkspace";
 import { SettingsWorkspace } from "../settings/SettingsWorkspace";
+import { PerformanceWorkspace } from "../performance/PerformanceWorkspace";
 import { PermissionsWorkspace } from "../permissions/PermissionsWorkspace";
 import { AuditWorkspace } from "../audit/AuditWorkspace";
 import { NotificationsWorkspace } from "../notifications/NotificationsWorkspace";
@@ -271,6 +272,8 @@ export function ProductCatalog() {
         <SettingsWorkspace accessToken={accessToken} sessionRole={sessionProfile?.role ?? "corretor"} onNavigate={(moduleName) => setActiveModule(moduleName as ModuleName)} />
       ) : activeModule === "Agentes de IA" && accessToken ? (
         <AgentTrainingWorkspace accessToken={accessToken} />
+      ) : activeModule === "Performance" && accessToken ? (
+        <PerformanceWorkspace accessToken={accessToken} sessionRole={sessionProfile?.role ?? "corretor"} />
       ) : activeModule !== "Produtos" && accessToken ? (
         <LegacyModuleWorkspace moduleName={activeModule} accessToken={accessToken} session={sessionProfile} />
       ) : activeModule === "Produtos" && accessToken ? (
