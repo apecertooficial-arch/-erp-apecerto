@@ -4113,3 +4113,7 @@ article.tone-red{border-left-color:#d3443e}article.tone-red strong{color:#d3443e
 .rselect-opt-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .rselect-check { flex: 0 0 auto; width: 15px; height: 15px; color: #ff6500; }
 .rselect-empty { padding: 12px 10px; color: #a49b94; font-size: 12px; text-align: center; }
+
+/* Tags de mídia na prévia de abordagem (disparos) */
+.approach-media-tags { display: inline-flex; flex-wrap: wrap; gap: 5px; margin-left: 8px; }
+.approach-media-tags em { font-style: normal; font-size: 10.5px; font-weight: 700; padding: 2px 7px; border-radius: 999px; background: #eef4ff; color: #2f5fbf; }
