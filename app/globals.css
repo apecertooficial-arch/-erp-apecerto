@@ -3534,10 +3534,10 @@ body { overflow:hidden; background:#eee8e2; }
    BORDA colorida por dias sem interação (não tinge o card todo,
    não deixa preto). verde=neutro · amarelo · vermelho · preto.
    ============================================================ */
-.crm-lead-card-v3.sla-verde { background:#fff; }
-.crm-lead-card-v3.sla-amarelo { background:#fff; border-color:#e8ad3d; box-shadow:inset 0 0 0 1px #f0c976; }
-.crm-lead-card-v3.sla-vermelho { background:#fff; border-color:#ed7068; box-shadow:inset 0 0 0 1px #ed7068, 0 3px 9px rgba(237,112,104,.14); }
-.crm-lead-card-v3.sla-preto { background:#fff !important; color:#282421 !important; border-color:#2a2724 !important; box-shadow:inset 0 0 0 1px #2a2724 !important; }
+.crm-lead-card-v3.sla-verde { background:#fff !important; border:1px solid #e4ddd8 !important; }
+.crm-lead-card-v3.sla-amarelo { background:#fff !important; border:2px solid #e8a20c !important; }
+.crm-lead-card-v3.sla-vermelho { background:#fff !important; border:2px solid #db3b3b !important; }
+.crm-lead-card-v3.sla-preto { background:#fff !important; color:#282421 !important; border:2px solid #1f1c1a !important; }
 .crm-lead-card-v3.sla-preto .card-open-v3,
 .crm-lead-card-v3.sla-preto .card-person strong,
 .crm-lead-card-v3.sla-preto > footer strong { color:#282421 !important; }
