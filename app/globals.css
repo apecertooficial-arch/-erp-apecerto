@@ -3349,7 +3349,7 @@ article.tone-red{border-left-color:#d3443e}article.tone-red strong{color:#d3443e
 .chat-layer .chat-instance-bar > span.connected { color:#16a34a !important; font-weight:800 !important; }
 /* Área de mensagens: espaço à esquerda p/ a pílula de ferramentas */
 .chat-layer .chat-messages { padding-left:74px !important; }
-.chat-layer .chat-messages article.received { background:#fdf5ef !important; border:1px solid #f3e7db !important; }
+.chat-layer .chat-messages article.received { background:#ffffff !important; border:1px solid #ece5df !important; }
 .chat-layer .chat-messages article small { color:#a99f98 !important; font-weight:700; letter-spacing:.05em; }
 /* Pílula de ferramentas flutuante à esquerda (só ícones, redondos) */
 .chat-layer .mini-chat-tools { position:absolute !important; left:14px; top:46%; transform:translateY(-42%); z-index:6; display:flex !important; flex-direction:column !important; flex-wrap:nowrap !important; align-items:center; gap:10px !important; padding:0 !important; border:0 !important; background:transparent !important; }
@@ -3538,6 +3538,7 @@ article.tone-red{border-left-color:#d3443e}article.tone-red strong{color:#d3443e
 .conn-card.off { border-color:#f2cdc9; }
 .conn-device { width:26px; height:26px; display:grid; place-items:center; border-radius:8px; background:#f4f1ee; color:#9a908a; font-size:12px; }
 .conn-sync { color:#9a908a; font-size:11px; margin-top:-3px; }
+.conn-num { color:#2f6b3a; font-size:12px; font-weight:600; margin-top:1px; letter-spacing:.2px; }
 .conn-card strong { font-size:15px; }
 .conn-card.connected button { background:#fff; border:1px solid #dfd8d3; color:#5f5752; }
 
@@ -3905,3 +3906,26 @@ article.tone-red{border-left-color:#d3443e}article.tone-red strong{color:#d3443e
 .sale-card { cursor: pointer; }
 .sale-card:hover { border-color: #d9b8ee; box-shadow: 0 8px 20px rgba(124,58,237,.1); }
 .sale-card .sale-card-controls { cursor: default; }
+
+/* ============================================================
+   Funil: barra de rolagem lateral SEMPRE visível e alcançável
+   (jul/2026). As colunas tinham min-height calc(100vh-300px),
+   o que empurrava a barra horizontal pra baixo da tela — daí ter
+   que descer tudo pra arrastar. Agora a coluna cabe na altura do
+   funil (rola por dentro) e a barra fica no rodapé visível.
+   ============================================================ */
+.crm-v2 .crm-stage { min-height: 0; }
+.crm-kanban-v2 { overflow-x: auto; overflow-y: hidden; scrollbar-width: auto; scrollbar-color: #c2b7ae #efeae6; }
+.crm-kanban-v2::-webkit-scrollbar { height: 13px; }
+.crm-kanban-v2::-webkit-scrollbar-thumb { background: #c2b7ae; border-radius: 8px; border: 3px solid #efeae6; }
+.crm-kanban-v2::-webkit-scrollbar-thumb:hover { background: #a89c92; }
+.crm-kanban-v2::-webkit-scrollbar-track { background: #efeae6; border-radius: 8px; }
+
+/* ============================================================
+   Funil: a barra lateral estava caindo ABAIXO da dobra porque
+   calc(100vh/0.85) deixava o .crm-v2 ~18% mais alto que a tela
+   (o zoom 0.85 NÃO compensa a altura em vh como se esperava —
+   medido: 800px numa viewport de 680px). Travando em 100vh a
+   barra horizontal volta pro rodapé visível, sem scroll de página.
+   ============================================================ */
+.crm-v2:has(.crm-kanban-v2) { height: 100vh; min-height: 0; overflow: hidden; }
