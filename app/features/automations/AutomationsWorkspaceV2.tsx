@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { PresenceConfig } from "../presence/PresenceConfig";
 
 type OriginalAutomationBuilder = {
   mount: (host: HTMLDivElement, context: { authToken: string }) => void;
@@ -64,5 +65,5 @@ export function AutomationsWorkspace({ accessToken }: { accessToken: string }) {
     };
   }, [accessToken]);
 
-  return <div className="original-automation-host" ref={hostRef} />;
+  return <><PresenceConfig accessToken={accessToken} /><div className="original-automation-host" ref={hostRef} /></>;
 }
