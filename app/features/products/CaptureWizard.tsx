@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { getBrowserSupabaseClient } from "../../lib/supabase/browser";
 
 const steps = ["Tipo", "Localização", "Proprietário", "Imóvel", "Acesso", "Mídia", "Revisão"];
@@ -210,6 +210,8 @@ export function CaptureWizard({ onClose, onSaved }: CaptureWizardProps) {
       const created = await createResponse.json() as { id?: string; userId?: string; error?: string };
       if (!createResponse.ok || !created.id || !created.userId) throw new Error(created.error ?? "Não foi possível criar o rascunho.");
 
+      // A capa é sempre a primeira foto na ordem definida na revisão.
+      const coverPhotoId = media.find((entry) => entry.kind === "foto")?.id;
       for (let index = 0; index < media.length; index += 1) {
         const item = media[index];
         const storagePath = `${created.userId}/${created.id}/${crypto.randomUUID()}-${safeFileName(item.file.name)}`;
@@ -218,7 +220,7 @@ export function CaptureWizard({ onClose, onSaved }: CaptureWizardProps) {
 
         const { error: mediaError } = await supabase.from("midias").insert({
           empreendimento_id: created.id, tipo: item.kind, storage_path: storagePath, nome: item.file.name,
-          categoria: item.category.toLowerCase(), is_capa: item.cover,
+          categoria: item.category.toLowerCase(), is_capa: item.id === coverPhotoId,
         });
         if (mediaError) {
           await supabase.storage.from("empreendimentos").remove([storagePath]);
@@ -270,7 +272,7 @@ export function CaptureWizard({ onClose, onSaved }: CaptureWizardProps) {
 
           {step === 5 && <div className="form-section media-section"><h3>Fotos, vídeo e identificação</h3><p>É obrigatória pelo menos 1 foto. Vídeo e foto de capa são opcionais — quanto mais material, melhor o anúncio.</p><div className="media-dropzone" onDragOver={(event) => { event.preventDefault(); event.currentTarget.classList.add("dragging"); }} onDragLeave={(event) => event.currentTarget.classList.remove("dragging")} onDrop={(event) => { event.preventDefault(); event.currentTarget.classList.remove("dragging"); if (event.dataTransfer.files?.length) ingestFiles(Array.from(event.dataTransfer.files)); }}><div className="media-dz-head"><span className="media-dz-icon">⬆</span><div><strong>Arraste aqui, cole (Ctrl+V) ou selecione</strong><small>Fotos e vídeos — ou adicione por link abaixo</small></div></div><div className="media-upload-actions"><label className="upload-button">＋ Adicionar fotos<input type="file" accept="image/*" multiple onChange={(event) => { addFiles(event.target.files, "foto"); event.currentTarget.value = ""; }} /></label><label className="upload-button secondary">＋ Adicionar vídeo<input type="file" accept="video/*" multiple onChange={(event) => { addFiles(event.target.files, "video"); event.currentTarget.value = ""; }} /></label></div><div className="media-link-row"><input type="url" value={mediaUrl} onChange={(event) => setMediaUrl(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); void addByUrl(mediaUrl); } }} placeholder="Cole o link de uma imagem ou vídeo (https://...)" /><button type="button" className="secondary-action" onClick={() => void addByUrl(mediaUrl)} disabled={!mediaUrl.trim()}>Adicionar por link</button></div><div className="media-totals"><strong className={photos.length >= 1 ? "ok" : ""}>{photos.length} foto{photos.length === 1 ? "" : "s"}{photos.length < 1 ? " (mín. 1)" : ""}</strong><strong className={videos.length >= 1 ? "ok" : ""}>{videos.length} vídeo{videos.length === 1 ? "" : "s"} (opcional)</strong></div></div><div className="media-list">{media.map((item) => <div className="media-row" key={item.id}><span className={`media-kind ${item.kind}`}>{item.kind === "foto" ? "FOTO" : "VÍDEO"}</span><div className="media-name"><strong>{item.file.name}</strong><small>{(item.file.size / 1024 / 1024).toFixed(1)} MB</small></div><select aria-label={`Classificar ${item.file.name}`} value={item.category} onChange={(event) => setMedia(media.map((entry) => entry.id === item.id ? { ...entry, category: event.target.value } : entry))}>{mediaCategories.map((category) => <option key={category}>{category}</option>)}</select>{item.kind === "foto" ? <label className="cover-choice"><input type="radio" name="cover" checked={item.cover} onChange={() => setMedia(media.map((entry) => ({ ...entry, cover: entry.id === item.id })))} /> Capa</label> : <span className="cover-placeholder" />}<button aria-label={`Remover ${item.file.name}`} onClick={() => removeMedia(item.id)} type="button">×</button></div>)}</div></div>}
 
-          {step === 6 && <div className="form-section"><h3>Revisão antes de salvar</h3><div className="review-list"><span className="complete">Condomínio e endereço completo</span><span className={propertyType === "construtora" || Boolean(ownerId || owner.name) ? "complete" : ""}>Proprietário associado</span><span className="complete">Preço, custos e características</span><span className="complete">Instruções de acesso</span><span className={photos.length >= 1 ? "complete" : ""}>{photos.length} foto(s) e {videos.length} vídeo(s)</span><span className={photos.some((item) => item.cover) ? "complete" : ""}>Foto de capa {photos.some((item) => item.cover) ? "escolhida" : "(opcional)"}</span>{propertyType === "construtora" && <span className={units.length ? "complete" : ""}>{units.length} unidade(s) cadastrada(s)</span>}</div><div className="notice"><strong>Gravação segura</strong><span>O produto será criado como rascunho, os arquivos serão enviados e somente então a captação será finalizada.</span></div>{saving && <div className="upload-progress"><span style={{ width: `${uploadProgress}%` }} /><strong>Enviando mídias · {uploadProgress}%</strong></div>}</div>}
+          {step === 6 && <div className="form-section"><h3>Revisão antes de salvar</h3><div className="review-list"><span className="complete">Condomínio e endereço completo</span><span className={propertyType === "construtora" || Boolean(ownerId || owner.name) ? "complete" : ""}>Proprietário associado</span><span className="complete">Preço, custos e características</span><span className="complete">Instruções de acesso</span><span className={photos.length >= 1 ? "complete" : ""}>{photos.length} foto(s) e {videos.length} vídeo(s)</span><span className={photos.length ? "complete" : ""}>Capa: a primeira foto da ordem abaixo</span>{propertyType === "construtora" && <span className={units.length ? "complete" : ""}>{units.length} unidade(s) cadastrada(s)</span>}</div>{media.length > 0 && <ReviewMedia media={media} setMedia={setMedia} />}<div className="notice"><strong>Gravação segura</strong><span>O produto será criado como rascunho, os arquivos serão enviados e somente então a captação será finalizada.</span></div>{saving && <div className="upload-progress"><span style={{ width: `${uploadProgress}%` }} /><strong>Enviando mídias · {uploadProgress}%</strong></div>}</div>}
 
           {message && <div className={message.includes("sucesso") ? "form-message success" : "form-message"} role="alert">{message}</div>}
         </div>
@@ -279,4 +281,53 @@ export function CaptureWizard({ onClose, onSaved }: CaptureWizardProps) {
       </section>
     </div>
   );
+}
+
+function ReviewMedia({ media, setMedia }: { media: MediaItem[]; setMedia: (value: MediaItem[] | ((cur: MediaItem[]) => MediaItem[])) => void }) {
+  const cache = useRef(new Map<string, string>());
+  const previewFor = (item: MediaItem) => {
+    const c = cache.current;
+    if (!c.has(item.id)) c.set(item.id, URL.createObjectURL(item.file));
+    return c.get(item.id)!;
+  };
+  useEffect(() => () => { cache.current.forEach((url) => URL.revokeObjectURL(url)); cache.current.clear(); }, []);
+  const [dragId, setDragId] = useState<string | null>(null);
+  const reorder = (fromId: string, toId: string) => setMedia((cur) => {
+    if (fromId === toId) return cur;
+    const arr = [...cur];
+    const from = arr.findIndex((m) => m.id === fromId);
+    const to = arr.findIndex((m) => m.id === toId);
+    if (from < 0 || to < 0) return arr;
+    const [moved] = arr.splice(from, 1);
+    arr.splice(to, 0, moved);
+    return arr;
+  });
+  const makeCover = (id: string) => setMedia((cur) => {
+    const arr = [...cur];
+    const idx = arr.findIndex((m) => m.id === id);
+    if (idx < 0) return arr;
+    const [moved] = arr.splice(idx, 1);
+    arr.unshift(moved);
+    return arr;
+  });
+  const firstPhotoId = media.find((m) => m.kind === "foto")?.id;
+  return <div className="review-media">
+    <div className="review-media-head"><strong>Mídias e ordem de exibição</strong><small>Arraste para reordenar. A primeira foto é a capa do produto.</small></div>
+    <div className="review-media-grid">
+      {media.map((item, index) => {
+        const isCover = item.id === firstPhotoId;
+        return <div className={`rm-tile ${isCover ? "is-cover" : ""} ${dragId === item.id ? "dragging" : ""}`} key={item.id}
+          draggable onDragStart={() => setDragId(item.id)} onDragEnd={() => setDragId(null)}
+          onDragOver={(event) => event.preventDefault()} onDrop={(event) => { event.preventDefault(); if (dragId) reorder(dragId, item.id); setDragId(null); }}>
+          <div className="rm-thumb">
+            {item.kind === "foto" ? <img src={previewFor(item)} alt={item.file.name} /> : <video src={previewFor(item)} muted playsInline preload="metadata" />}
+            <span className="rm-pos">{index + 1}</span>
+            {isCover && <span className="rm-cover-badge">★ Capa</span>}
+            {item.kind === "video" && <span className="rm-video-badge">▶ Vídeo</span>}
+          </div>
+          <div className="rm-meta"><small title={item.file.name}>{item.category}</small>{item.kind === "foto" && !isCover && <button type="button" onClick={() => makeCover(item.id)}>Tornar capa</button>}</div>
+        </div>;
+      })}
+    </div>
+  </div>;
 }

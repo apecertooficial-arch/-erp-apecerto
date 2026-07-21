@@ -4184,3 +4184,23 @@ article.tone-red{border-left-color:#d3443e}article.tone-red strong{color:#d3443e
 .calendar-day .cal-event.with-manager.eliz { border-left-color:#e23b8a; background:#fdeaf3; color:#bf1f6d; }
 .cal-event.with-manager.eliz { border-left-color:#e23b8a; outline-color:#e23b8a; }
 .calendar-nav>span b.manager-eliz { width:9px; height:9px; border-radius:3px; background:#e23b8a; }
+
+/* Revisao: grade de midias com miniaturas e reordenacao (1a foto = capa) */
+.review-media { margin:14px 0 4px; }
+.review-media-head { display:flex; flex-direction:column; gap:1px; margin-bottom:10px; }
+.review-media-head strong { font-size:13px; color:#3a322c; font-weight:750; }
+.review-media-head small { font-size:11px; color:#9a8f87; }
+.review-media-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(128px,1fr)); gap:10px; }
+.rm-tile { border:1px solid #e7ded7; border-radius:12px; overflow:hidden; background:#fff; cursor:grab; transition:box-shadow .15s, border-color .15s, transform .1s; }
+.rm-tile:hover { box-shadow:0 6px 16px rgba(42,30,23,.1); }
+.rm-tile.dragging { opacity:.5; border-color:#ff6500; }
+.rm-tile.is-cover { border-color:#ff6500; box-shadow:0 0 0 2px rgba(255,101,0,.18); }
+.rm-thumb { position:relative; aspect-ratio:4/3; background:#f3efeb; }
+.rm-thumb img, .rm-thumb video { width:100%; height:100%; object-fit:cover; display:block; }
+.rm-pos { position:absolute; top:6px; left:6px; min-width:20px; height:20px; padding:0 5px; display:grid; place-items:center; border-radius:6px; background:rgba(31,24,20,.68); color:#fff; font-size:11px; font-weight:800; }
+.rm-cover-badge { position:absolute; top:6px; right:6px; padding:3px 8px; border-radius:999px; background:#ff6500; color:#fff; font-size:10px; font-weight:850; letter-spacing:.02em; }
+.rm-video-badge { position:absolute; bottom:6px; left:6px; padding:2px 7px; border-radius:6px; background:rgba(31,24,20,.68); color:#fff; font-size:10px; font-weight:750; }
+.rm-meta { display:flex; align-items:center; justify-content:space-between; gap:6px; padding:7px 9px; }
+.rm-meta small { color:#6e645e; font-size:11px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.rm-meta button { flex:none; border:1px solid #ffd9bf; border-radius:999px; padding:3px 9px; background:#fff5ee; color:#c94f00; font-size:10.5px; font-weight:800; cursor:pointer; }
+.rm-meta button:hover { background:#ffe9d7; }
