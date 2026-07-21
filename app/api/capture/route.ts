@@ -174,7 +174,7 @@ export async function POST(request: Request) {
   const { data: broker } = await supabase.from("corretores").select("id").eq("usuario_id", authData.user.id).maybeSingle();
   const { data: development, error: developmentError } = await supabase.from("empreendimentos").insert({
     nome: property.name.trim(), titulo: property.name.trim(), incorporadora: property.developer.trim() || null,
-    status: property.status, origem: payload.propertyType === "terceiro" ? "terceiro" : "construtora",
+    status: property.status, origem: payload.propertyType === "terceiro" ? "terceiros" : "predio",
     condominio_id: condominiumId, proprietario_id: ownerId,
     cep: condominium.zipCode.trim() || null, endereco: condominium.address.trim(), numero: condominium.number.trim() || null,
     complemento: condominium.complement.trim() || null, bairro: condominium.neighborhood.trim() || null,
