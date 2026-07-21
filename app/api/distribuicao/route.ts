@@ -29,11 +29,13 @@ export async function POST(request: Request) {
   const body = await request.json() as Record<string, unknown>;
   const time = (v: unknown) => typeof v === "string" && /^\d{2}:\d{2}/.test(v) ? v.slice(0, 5) : null;
   const modo = typeof body.modoForaJanela === "string" && ["quem_veio_no_dia", "todos_do_bloco", "nao_distribuir"].includes(body.modoForaJanela) ? body.modoForaJanela : null;
+  const modoRodizio = typeof body.modoRodizio === "string" && ["fila_circular", "placar_justo"].includes(body.modoRodizio) ? body.modoRodizio : null;
   const { error } = await auth.supabase.rpc("distribuicao_config_salvar", {
     p_janela_inicio: time(body.janelaInicio),
     p_janela_fim: time(body.janelaFim),
     p_receber_ate: time(body.receberAte),
     p_modo_fora_janela: modo,
+    p_modo_rodizio: modoRodizio,
     p_fds_exige_presencas: Number.isSafeInteger(Number(body.fdsExigePresencas)) ? Number(body.fdsExigePresencas) : null,
     p_failover_envio: typeof body.failoverEnvio === "boolean" ? body.failoverEnvio : null,
     p_failover_transfere_lead: typeof body.failoverTransfereLead === "boolean" ? body.failoverTransfereLead : null,
