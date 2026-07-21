@@ -105,7 +105,7 @@ export function ProductCatalog() {
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [activeModule, setActiveModule] = useState<ModuleName>("Início");
   const [focusedDealId, setFocusedDealId] = useState<number | null>(null);
-  const [focusedChatLeadId, setFocusedChatLeadId] = useState<number | null>(null);
+  const [focusedChatDealId, setFocusedChatDealId] = useState<number | null>(null);
   const [crmInitialView, setCrmInitialView] = useState<"sales" | null>(null);
   const [crmLaunchNewSale, setCrmLaunchNewSale] = useState(false);
   const [loginPreview, setLoginPreview] = useState(false);
@@ -278,13 +278,13 @@ export function ProductCatalog() {
       {activeModule === "Início" && accessToken ? (
         <HomeWorkspace accessToken={accessToken} sessionName={sessionProfile?.name ?? ""} onNavigate={(moduleName) => setActiveModule(moduleName as ModuleName)} />
       ) : activeModule === "CRM" && accessToken ? (
-        <CrmWorkspace accessToken={accessToken} initialDealId={focusedDealId} onInitialDealHandled={() => setFocusedDealId(null)} initialView={crmInitialView} initialCreateSale={crmLaunchNewSale} onInitialViewHandled={() => { setCrmInitialView(null); setCrmLaunchNewSale(false); }} sessionRole={sessionProfile?.role ?? "corretor"} canReassign={canReassignCrm} canAssign={canAssignCrm} />
+        <CrmWorkspace accessToken={accessToken} initialDealId={focusedDealId} onInitialDealHandled={() => setFocusedDealId(null)} initialChatDealId={focusedChatDealId} onInitialChatHandled={() => setFocusedChatDealId(null)} initialView={crmInitialView} initialCreateSale={crmLaunchNewSale} onInitialViewHandled={() => { setCrmInitialView(null); setCrmLaunchNewSale(false); }} sessionRole={sessionProfile?.role ?? "corretor"} canReassign={canReassignCrm} canAssign={canAssignCrm} />
       ) : activeModule === "Automações" && accessToken ? (
         <AutomationsWorkspace accessToken={accessToken} />
       ) : activeModule === "Abordagens" && accessToken ? (
         <ApproachesWorkspace accessToken={accessToken} />
       ) : activeModule === "Chat ao Vivo" && accessToken ? (
-        <LiveChatWorkspace accessToken={accessToken} initialLeadId={focusedChatLeadId} onInitialLeadHandled={() => setFocusedChatLeadId(null)} />
+        <LiveChatWorkspace accessToken={accessToken} />
       ) : activeModule === "Disparos" && accessToken ? (
         <CampaignWorkspace accessToken={accessToken} />
       ) : activeModule === "Financeiro" && accessToken ? (
@@ -333,7 +333,7 @@ export function ProductCatalog() {
       ) : (
         <div className="workspace-loading"><span /><strong>Carregando seu ERP…</strong></div>
       )}
-      {accessToken && activeModule === "CRM" && showsAttentionCenter(sessionProfile?.email) && <AttentionCenter accessToken={accessToken} onOpenLead={(dealId) => { setFocusedDealId(dealId); setActiveModule("CRM"); }} onOpenChat={(leadId) => { setFocusedChatLeadId(leadId); setActiveModule("Chat ao Vivo"); }} onOpenNotifications={() => setActiveModule("Notificações")} />}
+      {accessToken && activeModule === "CRM" && showsAttentionCenter(sessionProfile?.email) && <AttentionCenter accessToken={accessToken} onOpenLead={(dealId) => { setFocusedDealId(dealId); setActiveModule("CRM"); }} onOpenChat={(dealId) => { setFocusedChatDealId(dealId); setActiveModule("CRM"); }} onOpenNotifications={() => setActiveModule("Notificações")} />}
       {accessToken && !isSilentUser(sessionProfile?.email) && <SaraWidget />}
       {accessToken && !isSilentUser(sessionProfile?.email) && <DisconnectionAlert accessToken={accessToken} onOpen={() => setActiveModule("Configurações")} />}
       {loginPreview && <SupabaseLogin preview onClose={() => setLoginPreview(false)} onAuthenticated={(token) => { setLoginPreview(false); setActiveModule("Início"); void loadCatalog(token); }} />}
