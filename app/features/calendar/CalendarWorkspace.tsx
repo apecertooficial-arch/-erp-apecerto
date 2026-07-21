@@ -111,7 +111,8 @@ export function CalendarWorkspace({ accessToken }: { accessToken: string }) {
     return () => { alive = false; window.clearTimeout(timer); };
   }, [editing, editForm.withManager, editForm.date, editForm.startTime, editForm.endTime, accessToken]);
 
-  const eventChip = (item: CalendarItem, compact = false) => <button className={`cal-event type-${item.type} ${item.manager ? "with-manager" : ""} ${item.status}`} type="button" onClick={() => setSelected(item)} key={item.id}>
+  const gerenteNomeDe = (item: CalendarItem) => item.type === "visit" && item.manager ? ((data.gerentes ?? []).find((g) => g.id === (item.raw as Visit).gerente_id)?.nome ?? "") : "";
+  const eventChip = (item: CalendarItem, compact = false) => <button className={`cal-event type-${item.type} ${item.manager ? "with-manager" : ""} ${/eliz/i.test(gerenteNomeDe(item)) ? "eliz" : ""} ${item.status}`} type="button" onClick={() => setSelected(item)} key={item.id}>
     <span>{item.status === "realizada" ? "✓ " : item.status === "cancelada" ? "× " : ""}{item.time !== "—" ? `${item.time} · ` : ""}{item.label}</span>
     {!compact && <small>{item.brokerId ? brokerById.get(item.brokerId) ?? "Sem corretor" : item.type === "task" ? "Tarefa" : "Sem corretor"}</small>}
   </button>;
@@ -129,7 +130,7 @@ export function CalendarWorkspace({ accessToken }: { accessToken: string }) {
         <button type="button" onClick={() => navigate(1)}>›</button>
         <strong>{rangeLabel}</strong>
         <nav className="cal-view-switch">{([["day", "Dia"], ["week", "Semana"], ["month", "Mês"], ["list", "Lista"]] as Array<[ViewMode, string]>).map(([key, label]) => <button className={view === key ? "active" : ""} type="button" onClick={() => setView(key)} key={key}>{label}</button>)}</nav>
-        <i /><span><b className="legend-visit" /> Visita</span><span><b className="legend-task" /> Tarefa</span><span><b className="manager-color" /> Com gerente</span>
+        <i /><span><b className="legend-visit" /> Visita</span><span><b className="legend-task" /> Tarefa</span><span><b className="manager-color" /> Com gerente</span><span><b className="manager-eliz" /> Gerente Eliz</span>
       </div>
       <div className="calendar-filters"><span>▽</span><select aria-label="Corretor" value={broker} onChange={(event) => setBroker(event.target.value)}><option value="">Todos os corretores</option>{data.brokers.map((item) => <option value={item.id} key={item.id}>{item.nome}</option>)}</select><select aria-label="Tipo" value={type} onChange={(event) => setType(event.target.value)}><option value="">Todos os tipos</option><option value="visit">Visitas</option><option value="task">Tarefas</option></select><select aria-label="Acompanhamento" value={manager} onChange={(event) => setManager(event.target.value)}><option value="">Com ou sem gerente</option><option value="yes">Com gerente</option><option value="no">Sem gerente</option></select><select aria-label="Produto" value={product} onChange={(event) => setProduct(event.target.value)}><option value="">Todos os produtos</option>{[...new Set(data.visits.map((visit) => visit.produto).filter(Boolean))].map((item) => <option key={item!}>{item}</option>)}</select><select aria-label="Status" value={status} onChange={(event) => setStatus(event.target.value)}><option value="">Todos os status</option><option value="agendada">Agendada</option><option value="confirmada">Confirmada</option><option value="realizada">Realizada</option><option value="cancelada">Cancelada</option><option value="pendente">Pendente</option></select><button type="button" onClick={clearFilters}>× Limpar</button><i /> <b>{allItems.length} no total</b></div>
 
