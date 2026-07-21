@@ -5,9 +5,15 @@ import { useCallback, useEffect, useState } from "react";
 type Config = {
   janela_inicio: string; janela_fim: string; receber_ate: string;
   modo_fora_janela: "quem_veio_no_dia" | "todos_do_bloco" | "nao_distribuir";
+  modo_rodizio: "fila_circular" | "placar_justo";
   fds_exige_presencas: number;
   failover_envio: boolean; failover_transfere_lead: boolean; resgate_orfaos: boolean;
 };
+
+const RODIZIOS: Array<{ v: Config["modo_rodizio"]; t: string; d: string }> = [
+  { v: "fila_circular", t: "Fila circular — sempre o próximo da fila", d: "Cada corretor recebe na sua vez e vai para o fim da fila. Sem compensação: quem ficou para trás (offline, instância caída) não acumula prioridade." },
+  { v: "placar_justo", t: "Placar justo — prioriza quem recebeu menos", d: "O sistema compensa: quem tem menos leads no placar do dia recebe primeiro, até equilibrar a carteira de todos." },
+];
 type Ocorrencia = { quando: string; evento: string; status: string; lead_nome: string | null; motivo: string };
 type UltimoLead = { nome: string; quando: string; corretor: string; como: string; abordagem_ok: boolean };
 type Saude = {
@@ -75,7 +81,7 @@ export function DistributionConfig({ accessToken }: { accessToken: string }) {
     try {
       const res = await fetch("/api/distribuicao", { method: "POST", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify({
         janelaInicio: cfg.janela_inicio, janelaFim: cfg.janela_fim, receberAte: cfg.receber_ate,
-        modoForaJanela: cfg.modo_fora_janela, fdsExigePresencas: cfg.fds_exige_presencas,
+        modoForaJanela: cfg.modo_fora_janela, modoRodizio: cfg.modo_rodizio, fdsExigePresencas: cfg.fds_exige_presencas,
         failoverEnvio: cfg.failover_envio, failoverTransfereLead: cfg.failover_transfere_lead, resgateOrfaos: cfg.resgate_orfaos,
       }) });
       const data = await res.json() as { error?: string };
@@ -129,6 +135,14 @@ export function DistributionConfig({ accessToken }: { accessToken: string }) {
         <label>Janela termina<input type="time" value={cfg.janela_fim} onChange={(e) => setCfg({ ...cfg, janela_fim: e.target.value })} /></label>
         <label>Recebe leads até<input type="time" value={cfg.receber_ate} onChange={(e) => setCfg({ ...cfg, receber_ate: e.target.value })} /></label>
         <label>Fim de semana exige (dias de presença na semana)<input type="number" min={0} max={5} value={cfg.fds_exige_presencas} onChange={(e) => setCfg({ ...cfg, fds_exige_presencas: Number(e.target.value) })} /></label>
+      </div>
+
+      <div className="dist-modo">
+        <span className="presence-dias-label">Como o rodízio escolhe o corretor?</span>
+        {RODIZIOS.map((m) => <label className={`dist-modo-opt ${cfg.modo_rodizio === m.v ? "on" : ""}`} key={m.v}>
+          <input type="radio" name="modo-rodizio" checked={cfg.modo_rodizio === m.v} onChange={() => setCfg({ ...cfg, modo_rodizio: m.v })} />
+          <div><strong>{m.t}</strong><small>{m.d}</small></div>
+        </label>)}
       </div>
 
       <div className="dist-modo">
