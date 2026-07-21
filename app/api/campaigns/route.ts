@@ -53,7 +53,7 @@ export async function GET(request: Request) {
     auth.supabase.from("empreendimentos").select("id,nome,bairro,status").eq("rascunho", false).order("nome"),
     auth.supabase.from("mensagens_agendadas").select("id,lead_id,telefone,texto,quando,status,resultado,criado_em").order("criado_em", { ascending: false }).limit(80),
     auth.supabase.from("instancias").select("id,nome,conectada,corretor_id").eq("ativa", true).order("nome"),
-    auth.supabase.from("corretores").select("id,nome").order("nome"),
+    auth.supabase.from("corretores").select("id,nome,apelido").order("nome"),
     auth.supabase.from("corretor_instancias").select("corretor_id,instancia_id"),
   ]);
   const firstError = [leads, deals, stages, approaches, products, recent, instances, brokers, instanceLinks].find((result) => result.error)?.error;
@@ -116,17 +116,18 @@ export async function POST(request: Request) {
     instanceIds = rawInstanceIds.filter((id) => allowed.has(id));
   }
   if (!instanceIds.length) return Response.json({ error: "Selecione ao menos um corretor com instância ativa para o envio." }, { status: 422 });
-  const { data: brokerRow } = await auth.supabase.from("corretores").select("nome").eq("usuario_id", auth.user.id).maybeSingle();
-  const corretorNome = brokerRow?.nome ?? null;
+  const { data: brokerRow } = await auth.supabase.from("corretores").select("nome,apelido").eq("usuario_id", auth.user.id).maybeSingle();
+  // Assinatura = apelido (ex.: "Eliz") quando houver, senão o nome.
+  const corretorNome = brokerRow?.apelido || brokerRow?.nome || null;
 
   // Nome do corretor que ASSINA cada instância (dono da instância). Assim, numa campanha
   // com vários corretores, cada mensagem é assinada por quem realmente envia.
   const { data: instOwners } = await auth.supabase.from("instancias").select("id, corretor_id").in("id", instanceIds);
   const ownerIds = [...new Set((instOwners ?? []).map((r) => r.corretor_id).filter((x): x is number => Number.isSafeInteger(x)))];
   const { data: corrNames } = ownerIds.length || brokerIds.length
-    ? await auth.supabase.from("corretores").select("id, nome").in("id", [...new Set([...ownerIds, ...brokerIds])])
-    : { data: [] as Array<{ id: number; nome: string }> };
-  const nameByCorretor = new Map((corrNames ?? []).map((c) => [c.id, c.nome]));
+    ? await auth.supabase.from("corretores").select("id, nome, apelido").in("id", [...new Set([...ownerIds, ...brokerIds])])
+    : { data: [] as Array<{ id: number; nome: string; apelido: string | null }> };
+  const nameByCorretor = new Map((corrNames ?? []).map((c) => [c.id, c.apelido || c.nome]));
   const nameByInstance = new Map<number, string | null>();
   for (const inst of instOwners ?? []) {
     nameByInstance.set(inst.id, (inst.corretor_id && nameByCorretor.get(inst.corretor_id)) || (brokerIds.length ? nameByCorretor.get(brokerIds[0]) : null) || corretorNome);
