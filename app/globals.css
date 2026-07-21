@@ -4179,3 +4179,8 @@ article.tone-red{border-left-color:#d3443e}article.tone-red strong{color:#d3443e
 .calendar-create .cal-disp.livre { background:#e9f7ef; color:#1a8f4c; }
 .calendar-create .cal-disp.conflito { background:#fff4e5; color:#b26a00; }
 .calendar-create label.check .only-admin { color:#a1968f; font-style:normal; font-weight:600; font-size:10.5px; }
+
+/* Atendimento com a Eliz como gerente = rosa (em vez do roxo padrao "com gerente") */
+.calendar-day .cal-event.with-manager.eliz { border-left-color:#e23b8a; background:#fdeaf3; color:#bf1f6d; }
+.cal-event.with-manager.eliz { border-left-color:#e23b8a; outline-color:#e23b8a; }
+.calendar-nav>span b.manager-eliz { width:9px; height:9px; border-radius:3px; background:#e23b8a; }
