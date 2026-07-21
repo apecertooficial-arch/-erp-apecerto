@@ -9,12 +9,30 @@ type Config = {
   failover_envio: boolean; failover_transfere_lead: boolean; resgate_orfaos: boolean;
 };
 type Ocorrencia = { quando: string; evento: string; status: string; lead_nome: string | null; motivo: string };
+type UltimoLead = { nome: string; quando: string; corretor: string; como: string; abordagem_ok: boolean };
 type Saude = {
   orfaosAgora: number; naFilaAgora: number; entradas24h: number; enviosOk24h: number;
   falhasDefinitivas24h: number; failovers24h: number; foraJanela24h: number;
   semAbordagemFunil: number; instanciasConectadas: number; instanciasTotal: number;
+  ultimosLeads?: UltimoLead[];
   ocorrencias: Ocorrencia[];
 };
+
+/* Ocorrências agrupadas: as tentativas do failover geram várias linhas para o mesmo lead
+   no mesmo minuto — aqui viram UMA linha com o contador de tentativas. */
+type OcorrenciaGrupo = Ocorrencia & { repeticoes: number };
+function agruparOcorrencias(list: Ocorrencia[]): OcorrenciaGrupo[] {
+  const out: OcorrenciaGrupo[] = [];
+  for (const o of list) {
+    const prev = out[out.length - 1];
+    if (prev && prev.lead_nome === o.lead_nome && prev.quando === o.quando && prev.status === o.status) {
+      prev.repeticoes += 1;
+      continue;
+    }
+    out.push({ ...o, repeticoes: 1 });
+  }
+  return out;
+}
 
 const MODOS: Array<{ v: Config["modo_fora_janela"]; t: string; d: string }> = [
   { v: "quem_veio_no_dia", t: "Distribuir entre quem compareceu no dia", d: "Fora da janela (noite/madrugada), o lead vai pelo rodízio justo só para quem esteve online durante o dia. Recomendado." },
@@ -28,19 +46,28 @@ export function DistributionConfig({ accessToken }: { accessToken: string }) {
   const [saude, setSaude] = useState<Saude | null>(null);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
+  const [atualizadoAs, setAtualizadoAs] = useState("");
 
-  const load = useCallback(async () => {
-    setNotice("");
+  const load = useCallback(async (silencioso = false) => {
+    if (!silencioso) setNotice("");
     try {
       const res = await fetch("/api/distribuicao", { headers: { Authorization: `Bearer ${accessToken}` } });
       const data = await res.json() as { config?: Config; saude?: Saude; error?: string };
-      if (!res.ok) { setNotice(data.error || "Sem permissão."); return; }
-      if (data.config) setCfg({ ...data.config, janela_inicio: data.config.janela_inicio.slice(0, 5), janela_fim: data.config.janela_fim.slice(0, 5), receber_ate: data.config.receber_ate.slice(0, 5) });
+      if (!res.ok) { if (!silencioso) setNotice(data.error || "Sem permissão."); return; }
+      if (data.config) setCfg((atual) => atual && silencioso ? atual : { ...data.config!, janela_inicio: data.config!.janela_inicio.slice(0, 5), janela_fim: data.config!.janela_fim.slice(0, 5), receber_ate: data.config!.receber_ate.slice(0, 5) });
       setSaude(data.saude ?? null);
-    } catch { setNotice("Falha ao carregar as regras de distribuição."); }
+      setAtualizadoAs(new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" }));
+    } catch { if (!silencioso) setNotice("Falha ao carregar as regras de distribuição."); }
   }, [accessToken]);
 
   useEffect(() => { void load(); }, [load]);
+
+  // Atualização automática: o painel se mantém vivo sozinho a cada 30 segundos
+  // (silencioso: não sobrescreve o que você estiver editando nas regras).
+  useEffect(() => {
+    const timer = window.setInterval(() => { void load(true); }, 30_000);
+    return () => window.clearInterval(timer);
+  }, [load]);
 
   const save = async () => {
     if (!cfg) return;
@@ -66,7 +93,16 @@ export function DistributionConfig({ accessToken }: { accessToken: string }) {
 
   return <div className="dist-config">
     {saude && <section className="settings-card dist-health">
-      <h2><span className="sc-ico shield">⚖</span>Saúde da distribuição — agora</h2>
+      <h2><span className="sc-ico shield">⚖</span>Saúde da distribuição — agora {atualizadoAs && <span className="dist-upd">· atualizado às {atualizadoAs} (renova a cada 30s)</span>}</h2>
+      <div className="dist-last">
+        <h3>Quem recebeu os últimos leads</h3>
+        {(saude.ultimosLeads ?? []).map((u, i) => <div className="dist-last-row" key={i}>
+          <b>{u.quando}</b>
+          <span className="dl-main"><strong>{u.nome}</strong> · {u.como}{u.abordagem_ok ? " · abordagem entregue ✓" : " · ⚠ sem abordagem ainda"}</span>
+          <span className={`dl-cor ${u.corretor.startsWith("—") ? "sem" : ""}`}>{u.corretor}</span>
+        </div>)}
+        {(saude.ultimosLeads ?? []).length === 0 && <p className="settings-hint">Nenhum lead recente.</p>}
+      </div>
       <div className="dist-kpis">
         <article className={saude.orfaosAgora > 0 ? "warn" : "ok"}><strong>{saude.orfaosAgora}</strong><span>Leads sem corretor</span></article>
         <article><strong>{saude.naFilaAgora}</strong><span>Na fila do motor</span></article>
@@ -79,7 +115,7 @@ export function DistributionConfig({ accessToken }: { accessToken: string }) {
       </div>
       <div className="dist-occ">
         <header><h3>Últimas ocorrências (o porquê de cada falha)</h3><button type="button" onClick={() => void load()}>↻ Atualizar</button></header>
-        {(saude.ocorrencias ?? []).map((o, i) => <div className={`dist-occ-row ${o.status === "erro" ? "erro" : "alerta"}`} key={i}><b>{o.quando}</b><em>{o.status === "erro" ? "ERRO" : "alerta"}</em><span title={o.motivo}><strong>{o.lead_nome || "—"}</strong> · {o.motivo}</span></div>)}
+        {agruparOcorrencias(saude.ocorrencias ?? []).map((o, i) => <div className={`dist-occ-row ${o.status === "erro" ? "erro" : "alerta"}`} key={i}><b>{o.quando}</b><em>{o.status === "erro" ? "ERRO" : "alerta"}</em>{o.repeticoes > 1 && <span className="occ-n">×{o.repeticoes} tentativas</span>}<span title={o.motivo}><strong>{o.lead_nome || "—"}</strong> · {o.motivo}</span></div>)}
         {(saude.ocorrencias ?? []).length === 0 && <p className="settings-hint">Nenhuma ocorrência nas últimas 48h — tudo fluindo. ✓</p>}
       </div>
     </section>}
