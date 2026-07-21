@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { AppShell } from "../../components/AppShell";
 import { AttentionCenter } from "../../components/AttentionCenter";
 import { SaraWidget } from "../../components/SaraWidget";
-import { isSilentUser } from "../../lib/uiPrefs";
+import { isSilentUser, showsAttentionCenter } from "../../lib/uiPrefs";
 import { ProfilePanel } from "../../components/ProfilePanel";
 import { SupabaseLogin } from "../../components/SupabaseLogin";
 import { ResetPassword } from "../../components/ResetPassword";
@@ -333,7 +333,7 @@ export function ProductCatalog() {
       ) : (
         <div className="workspace-loading"><span /><strong>Carregando seu ERP…</strong></div>
       )}
-      {accessToken && activeModule === "CRM" && !isSilentUser(sessionProfile?.email) && <AttentionCenter accessToken={accessToken} onOpenLead={(dealId) => { setFocusedDealId(dealId); setActiveModule("CRM"); }} onOpenChat={(leadId) => { setFocusedChatLeadId(leadId); setActiveModule("Chat ao Vivo"); }} onOpenNotifications={() => setActiveModule("Notificações")} />}
+      {accessToken && activeModule === "CRM" && showsAttentionCenter(sessionProfile?.email) && <AttentionCenter accessToken={accessToken} onOpenLead={(dealId) => { setFocusedDealId(dealId); setActiveModule("CRM"); }} onOpenChat={(leadId) => { setFocusedChatLeadId(leadId); setActiveModule("Chat ao Vivo"); }} onOpenNotifications={() => setActiveModule("Notificações")} />}
       {accessToken && !isSilentUser(sessionProfile?.email) && <SaraWidget />}
       {accessToken && !isSilentUser(sessionProfile?.email) && <DisconnectionAlert accessToken={accessToken} onOpen={() => setActiveModule("Configurações")} />}
       {loginPreview && <SupabaseLogin preview onClose={() => setLoginPreview(false)} onAuthenticated={(token) => { setLoginPreview(false); setActiveModule("Início"); void loadCatalog(token); }} />}
