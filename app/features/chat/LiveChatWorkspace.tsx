@@ -30,7 +30,7 @@ const money = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL
 const normalizePhone = (value?: string | null) => (value || "").replace(/\D/g, "").slice(-11);
 const isOutgoing = (direction: string) => ["out", "saida", "saída", "enviada", "sent"].includes(direction.toLowerCase());
 
-export function LiveChatWorkspace({ accessToken }: { accessToken: string }) {
+export function LiveChatWorkspace({ accessToken, initialLeadId = null, onInitialLeadHandled }: { accessToken: string; initialLeadId?: number | null; onInitialLeadHandled?: () => void }) {
   const [data, setData] = useState<ChatData | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -76,6 +76,16 @@ export function LiveChatWorkspace({ accessToken }: { accessToken: string }) {
   };
 
   useEffect(() => { void load().catch((reason) => setNotice(reason instanceof Error ? reason.message : "Erro ao carregar chat.")); }, [accessToken]);
+  // Abre direto na conversa do lead quando chamado pela Central de atenção
+  useEffect(() => {
+    if (initialLeadId == null || !data) return;
+    const contactIds = new Set(data.contacts.filter((c) => c.lead_id === initialLeadId).map((c) => c.id));
+    const convo = data.conversations
+      .filter((c) => contactIds.has(c.contato_id))
+      .sort((a, b) => (b.ultima_msg_em ?? "").localeCompare(a.ultima_msg_em ?? ""))[0];
+    if (convo) setSelectedId(convo.id);
+    onInitialLeadHandled?.();
+  }, [initialLeadId, data]);
   useEffect(() => { activeConversation.current = selectedId; if (selectedId) { setMessages([]); void loadMessages(selectedId).catch((reason) => setNotice(reason instanceof Error ? reason.message : "Erro ao carregar mensagens.")); } else { setMessages([]); } }, [selectedId]);
   useEffect(() => { const stream = messageStream.current; if (stream) stream.scrollTop = stream.scrollHeight; }, [messages]);
   useEffect(() => {

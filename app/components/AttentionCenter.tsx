@@ -89,7 +89,7 @@ function buildAlerts(crm: CrmAttentionData, chat: ChatData | null, brokerId: num
   return [...alerts.values()].sort((a, b) => b.severity - a.severity || a.age - b.age);
 }
 
-export function AttentionCenter({ accessToken, onOpenLead, onOpenNotifications }: { accessToken: string; onOpenLead: (dealId: number) => void; onOpenNotifications: () => void }) {
+export function AttentionCenter({ accessToken, onOpenLead, onOpenChat, onOpenNotifications }: { accessToken: string; onOpenLead: (dealId: number) => void; onOpenChat?: (leadId: number) => void; onOpenNotifications: () => void }) {
   const [crm, setCrm] = useState<CrmAttentionData | null>(null);
   const [chat, setChat] = useState<ChatData | null>(null);
   const [brokerId, setBrokerId] = useState<number | null>(null);
@@ -146,7 +146,17 @@ export function AttentionCenter({ accessToken, onOpenLead, onOpenNotifications }
   }
   function dismissAll() { const next = [...new Set([...dismissed, ...alerts.map((alert) => alert.id)])]; setDismissed(next); window.sessionStorage.setItem("apecerto-alert-dismissed", JSON.stringify(next)); }
   function mute(minutes: number) { const until = Date.now() + minutes * 60000; setMutedUntil(until); window.sessionStorage.setItem("apecerto-alert-muted-until", String(until)); setOpen(false); }
-  function attend(alert: AttentionAlert) { dismiss(alert.id); setOpen(false); onOpenLead(alert.dealId); }
+  function leadHasChat(leadId: number) {
+    if (!chat) return false;
+    const contactIds = new Set(chat.contacts.filter((c) => c.lead_id === leadId).map((c) => c.id));
+    return chat.conversations.some((c) => contactIds.has(c.contato_id));
+  }
+  function attend(alert: AttentionAlert) {
+    dismiss(alert.id); setOpen(false);
+    // Mensagem/cliente aguardando: abre direto no chat pra responder. Sem conversa (lead novo/risco): abre o lead.
+    if (onOpenChat && (alert.kind === "message" || alert.kind === "waiting") && leadHasChat(alert.leadId)) onOpenChat(alert.leadId);
+    else onOpenLead(alert.dealId);
+  }
 
   const counts = Object.fromEntries((["new", "waiting", "message", "risk"] as AlertKind[]).map((kind) => [kind, alerts.filter((alert) => alert.kind === kind).length])) as Record<AlertKind, number>;
   return <>
