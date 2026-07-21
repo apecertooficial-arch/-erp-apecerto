@@ -8,6 +8,7 @@ import type { Dispatch, ReactNode, SetStateAction } from "react";
 import { getBrowserSupabaseClient } from "../../lib/supabase/browser";
 import { ConnectionsWorkspace } from "./ConnectionsWorkspace";
 import { PresenceConfig } from "../presence/PresenceConfig";
+import { DistributionConfig } from "../distribution/DistributionConfig";
 
 type PipelineInfo = { id: number; nome: string; grupo: string | null; ordem: number | null; etapas: Array<{ id: number; nome: string; ordem: number | null; cor: string | null }> };
 type AdminConfig = {
@@ -26,6 +27,7 @@ const SECTIONS = [
   { key: "crm", label: "CRM & Pipelines", sub: "Etapas e funil", icon: "⌥" },
   { key: "esteira", label: "Esteira de vendas", sub: "Etapas, responsáveis e documentos", icon: "◆" },
   { key: "presenca", label: "Regra de presença", sub: "Corretor online de verdade", icon: "🛡" },
+  { key: "distribuicao", label: "Distribuição & Abordagem", sub: "Lead nunca fica sem dono", icon: "⚖" },
   { key: "financeiro", label: "Financeiro", sub: "Comissões e metas", icon: "▣" },
   { key: "seguranca", label: "Segurança", sub: "Sessões e RLS", icon: "▪" },
   { key: "integracoes", label: "Integrações & IA", sub: "APIs e agentes", icon: "✦" },
@@ -273,6 +275,7 @@ function SettingsShell({ section, setSection, error, toast, saving, config, comp
         {section === "conexoes" && <section className="settings-embed"><ConnectionsWorkspace accessToken={accessToken} /></section>}
 
         {section === "presenca" && <PresenceConfig accessToken={accessToken} />}
+        {section === "distribuicao" && <DistributionConfig accessToken={accessToken} />}
 
         {section === "esteira" && <EsteiraConfig accessToken={accessToken} />}
 
