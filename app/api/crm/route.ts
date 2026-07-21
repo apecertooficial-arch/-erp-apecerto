@@ -278,7 +278,11 @@ export async function PATCH(request: Request) {
     const local = cleanText(body.local, 300) || (product ? [product.endereco, product.numero, product.bairro, product.cidade].filter(Boolean).join(", ") : null);
     const comGerente = body.withManager === true;
     let gerenteId: number | null = null;
-    if (comGerente) { const { data: g } = await auth.supabase.rpc("corretor_gerente", { p_corretor: deal.corretor_id }); gerenteId = (g as number | null) ?? null; }
+    if (comGerente) {
+      const chosen = positiveInteger(body.gerenteId);
+      if (chosen) gerenteId = chosen;
+      else { const { data: gg } = await auth.supabase.from("gerentes").select("id").eq("ativo", true).eq("geral", true).maybeSingle(); gerenteId = (gg?.id as number | undefined) ?? null; }
+    }
     const { error } = await auth.supabase.from("visitas").insert({
       created_by: auth.user.id, lead_id: leadId, negocio_id: dealId, corretor_id: deal.corretor_id, cliente_nome: lead.nome,
       empreendimento_id: product?.id ?? null, produto: product?.nome ?? (cleanText(body.productName, 180) || null),
@@ -302,7 +306,7 @@ export async function PATCH(request: Request) {
   if (action === "updateVisit") {
     const visitId = cleanText(body.visitId, 40);
     if (!visitId) return Response.json({ error: "Visita inválida." }, { status: 400 });
-    const { data: cur } = await auth.supabase.from("visitas").select("corretor_id,com_gerente").eq("id", visitId).maybeSingle();
+    const { data: cur } = await auth.supabase.from("visitas").select("corretor_id,com_gerente,gerente_id").eq("id", visitId).maybeSingle();
     if (!cur) return Response.json({ error: "Visita não encontrada." }, { status: 404 });
     const access = await getEffectiveAccess(auth);
     const isAdmin = access.role === "admin" || access.role === "gestor";
@@ -315,9 +319,12 @@ export async function PATCH(request: Request) {
     // "com gerente" só o admin/gestor altera; corretor não mexe nisso.
     let comGerente = cur.com_gerente === true;
     if (isAdmin && body.withManager !== undefined) { comGerente = body.withManager === true; patch.com_gerente = comGerente; }
-    // re-resolve o gerente conforme o corretor da visita
-    if (comGerente) { const { data: g } = await auth.supabase.rpc("corretor_gerente", { p_corretor: cur.corretor_id }); patch.gerente_id = (g as number | null) ?? null; }
-    else patch.gerente_id = null;
+    // gerente do acompanhamento: admin escolhe explicitamente; senão mantém o atual, e se estiver vazio usa o geral (Djair)
+    if (comGerente) {
+      const chosen = positiveInteger(body.gerenteId);
+      if (isAdmin && chosen) patch.gerente_id = chosen;
+      else if (cur.gerente_id == null) { const { data: gg } = await auth.supabase.from("gerentes").select("id").eq("ativo", true).eq("geral", true).maybeSingle(); patch.gerente_id = (gg?.id as number | undefined) ?? null; }
+    } else patch.gerente_id = null;
     const { error } = await auth.supabase.from("visitas").update(patch).eq("id", visitId);
     return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
   }
@@ -329,8 +336,8 @@ export async function PATCH(request: Request) {
     const endTime = cleanText(body.endTime, 8) || null;
     const exclude = cleanText(body.visitId, 40) || null;
     if (!corretorId || !date || !startTime) return Response.json({ ok: true, conflitos: [] });
-    const { data: g } = await auth.supabase.rpc("corretor_gerente", { p_corretor: corretorId });
-    const gerenteId = (g as number | null) ?? null;
+    let gerenteId = positiveInteger(body.gerenteId) || null;
+    if (!gerenteId) { const { data: g } = await auth.supabase.rpc("corretor_gerente", { p_corretor: corretorId }); gerenteId = (g as number | null) ?? null; }
     if (!gerenteId) return Response.json({ ok: true, gerente_id: null, conflitos: [] });
     const { data: conf } = await auth.supabase.rpc("gerente_conflitos", { p_gerente: gerenteId, p_data: date, p_inicio: startTime, p_fim: endTime, p_exclude: exclude });
     return Response.json({ ok: true, gerente_id: gerenteId, conflitos: conf ?? [] });
