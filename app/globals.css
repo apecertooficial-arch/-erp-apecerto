@@ -4156,3 +4156,20 @@ article.tone-red{border-left-color:#d3443e}article.tone-red strong{color:#d3443e
 .dist-modo-opt small { display:block; margin-top:2px; font-size:11px; line-height:1.45; color:#8a807a; }
 .dist-modo-opt.on { border-color:#ff6500; background:#fff8f3; }
 @media (max-width:900px){ .dist-kpis { grid-template-columns:repeat(2,1fr); } }
+
+/* Editar visita no calendário (item 3 — gerente/disponibilidade) */
+.visit-item .visit-actions { display: flex; gap: 6px; align-items: center; margin-left: auto; }
+.visit-edit-btn { border: 1px solid #ddd6d1; border-radius: 8px; padding: 5px 11px; background: #fff; color: #5f5752; font-size: 12px; font-weight: 600; cursor: pointer; }
+.visit-edit-btn:hover { border-color: #ff9c5e; color: #d85600; }
+.visit-edit-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 16px; }
+.visit-edit-grid label, .visit-edit-obs { display: flex; flex-direction: column; gap: 6px; color: #675f5a; font-size: 12px; font-weight: 700; }
+.visit-edit-grid input, .visit-edit-obs textarea { min-height: 42px; border: 1px solid #ddd6d1; border-radius: 10px; padding: 9px 12px; background: #fff; color: #302b28; font: inherit; }
+.visit-edit-obs { margin-top: 10px; }
+.visit-edit-obs textarea { resize: vertical; }
+.visit-manager-row { display: flex; align-items: center; gap: 12px; margin-top: 14px; flex-wrap: wrap; }
+.visit-manager-row .check { display: flex; flex-direction: row; align-items: center; gap: 8px; margin-top: 0; font-size: 13px; font-weight: 600; color: #3a332f; }
+.visit-manager-row .check input { width: 16px; height: 16px; }
+.visit-manager-row small { color: #a1968f; font-size: 11px; }
+.visit-disp { margin-top: 12px; padding: 10px 13px; border-radius: 10px; font-size: 12.5px; font-weight: 600; }
+.visit-disp.livre { background: #e9f7ef; color: #1a8f4c; }
+.visit-disp.conflito { background: #fff4e5; color: #b26a00; }
