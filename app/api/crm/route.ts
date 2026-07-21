@@ -70,9 +70,11 @@ export async function GET(request: Request) {
   if (firstError) return Response.json({ error: firstError.message }, { status: 502 });
 
   const { data: gerentesData } = await auth.supabase.from("gerentes").select("id,nome,geral,corretor_id").eq("ativo", true).order("geral", { ascending: false });
+  const { data: meProfile } = await auth.supabase.from("usuarios").select("role").eq("id", auth.user.id).maybeSingle();
 
   return Response.json({
     mode: "production",
+    role: meProfile?.role ?? "",
     gerentes: gerentesData ?? [],
     pipelines: pipelinesResult.data ?? [],
     stages: stagesResult.data ?? [],
