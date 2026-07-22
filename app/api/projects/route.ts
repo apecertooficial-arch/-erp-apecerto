@@ -257,6 +257,45 @@ export async function PATCH(request: Request) {
     return Response.json({ success: true });
   }
 
+  if (action === "iaCriarTarefas") {
+    const projectId = clean(body.projectId, 60);
+    const texto = clean(body.texto, 4000);
+    if (!projectId || texto.length < 8) return Response.json({ error: "Escreva a ideia ou demanda com um pouco mais de detalhe." }, { status: 422 });
+    const { data: ia, error: iaErr } = await auth.supabase.functions.invoke("ia-router", { body: { agente_slug: "criador-tarefas", input: texto } });
+    if (iaErr) return Response.json({ error: `IA indisponível: ${iaErr.message}` }, { status: 502 });
+    const r = (ia ?? {}) as { ok?: boolean; reason?: string; saida?: unknown; resposta?: string };
+    if (!r.ok) return Response.json({ error: r.reason === "sem_chave" ? "A chave de IA não está configurada (Agentes de IA)." : `IA não respondeu: ${r.reason ?? "erro"}` }, { status: 502 });
+    let payload: unknown = r.saida;
+    if (typeof payload === "string") { const s = payload.replace(/```json|```/g, "").trim(); try { payload = JSON.parse(s); } catch { payload = null; } }
+    let lista = Array.isArray(payload) ? payload : (payload as { tarefas?: unknown[] } | null)?.tarefas;
+    if (!Array.isArray(lista) || !lista.length) {
+      const m = String(r.resposta || "").replace(/```json|```/g, "").match(/\{[\s\S]*\}/);
+      if (m) { try { lista = (JSON.parse(m[0]) as { tarefas?: unknown[] })?.tarefas; } catch { /* segue */ } }
+    }
+    if (!Array.isArray(lista) || !lista.length) return Response.json({ error: "A IA não conseguiu estruturar tarefas a partir desse texto. Tente detalhar mais." }, { status: 502 });
+    const { data: col } = await auth.supabase.from("projeto_colunas").select("id,nome").eq("projeto_id", projectId).eq("arquivada", false).order("ordem", { ascending: true }).limit(1).maybeSingle();
+    if (!col) return Response.json({ error: "O projeto não tem colunas." }, { status: 422 });
+    const { data: last } = await auth.supabase.from("projeto_tarefas").select("ordem").eq("coluna_id", col.id).order("ordem", { ascending: false }).limit(1).maybeSingle();
+    let ordem = Number(last?.ordem ?? 0) + 1000;
+    const criadas: string[] = [];
+    for (const item of (lista as Array<Record<string, unknown>>).slice(0, 8)) {
+      const titulo = clean(item.titulo, 200);
+      if (!titulo) continue;
+      const prio = ["baixa", "media", "alta", "urgente"].includes(String(item.prioridade)) ? String(item.prioridade) : "media";
+      const etiquetas = Array.isArray(item.etiquetas) ? (item.etiquetas as unknown[]).map((v) => clean(v, 40)).filter(Boolean).slice(0, 4) : [];
+      const checklist = Array.isArray(item.checklist) ? (item.checklist as Array<Record<string, unknown>>).map((i) => ({ texto: clean(i?.texto, 200), feito: false })).filter((i) => i.texto).slice(0, 8) : [];
+      const prazo = /^\d{4}-\d{2}-\d{2}$/.test(String(item.prazo ?? "")) ? String(item.prazo) : null;
+      const { error } = await auth.supabase.from("projeto_tarefas").insert({
+        projeto_id: projectId, coluna_id: col.id, titulo, descricao: cleanOrNull(item.descricao, 4000),
+        prioridade: prio, responsavel_id: auth.user.id, prazo, ordem, etiquetas, checklist, criado_por: auth.user.id,
+      } as never);
+      if (!error) { criadas.push(titulo); ordem += 1000; }
+    }
+    if (!criadas.length) return Response.json({ error: "Não foi possível gravar as tarefas." }, { status: 502 });
+    await log(auth, "tarefas_ia", `IA criou ${criadas.length} tarefa(s) em "${col.nome}": ${criadas.join(" · ")}.`, projectId, null);
+    return Response.json({ success: true, criadas, coluna: col.nome });
+  }
+
   if (action === "addAnexoTarefa") {
     const taskId = clean(body.taskId, 60);
     const nome = clean(body.nome, 200);

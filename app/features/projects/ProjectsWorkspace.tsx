@@ -178,6 +178,10 @@ function ProjectForm({ data, initial, participantes = [], busy, onClose, onSave,
 function ProjectBoard({ data, project, busy, isManager, userById, onBack, onOpenTask, onEditProject, mutate }: { data: ApiData; project: Projeto; busy: boolean; isManager: boolean; userById: Map<string, Usuario>; onBack: () => void; onOpenTask: (id: string) => void; onEditProject: () => void; mutate: (body: Record<string, unknown>) => Promise<{ error?: string }> }) {
   const [tab, setTab] = useState<"kanban" | "lista" | "calendario" | "dashboard">("kanban");
   const [addingCol, setAddingCol] = useState(false);
+  const [iaOpen, setIaOpen] = useState(false);
+  const [iaText, setIaText] = useState("");
+  const [iaBusy, setIaBusy] = useState(false);
+  const [iaMsg, setIaMsg] = useState<string | null>(null);
   const [newCol, setNewCol] = useState("");
   const [colMenu, setColMenu] = useState<string | null>(null);
   const [quickAdd, setQuickAdd] = useState<string | null>(null);
@@ -196,9 +200,20 @@ function ProjectBoard({ data, project, busy, isManager, userById, onBack, onOpen
       <p>{project.setor ? `${project.setor} · ` : ""}{resp?.nome ? `resp.: ${resp.nome} · ` : ""}{stats.done}/{stats.total} tarefas · {stats.pct}%{stats.late ? ` · ⚠ ${stats.late} atrasada(s)` : ""}{project.prazo ? ` · prazo ${fullDate.format(new Date(`${project.prazo}T12:00:00`))}` : ""}</p></div>
       <div className="pj-head-actions">
         <nav className="pj-view-tabs">{([["kanban", "Kanban"], ["lista", "Lista"], ["calendario", "Calendário"], ["dashboard", "Dashboard"]] as const).map(([id, label]) => <button className={tab === id ? "active" : ""} type="button" onClick={() => setTab(id)} key={id}>{label}</button>)}</nav>
+        <button className="pj-ia-btn" type="button" onClick={() => { setIaOpen(!iaOpen); setIaMsg(null); }}>✦ Criar com IA</button>
         <button type="button" onClick={onEditProject}>⚙ Projeto</button>
         {tab === "kanban" && <button className="crm-secondary" type="button" onClick={() => { setAddingCol(true); setNewCol(""); }}>＋ Coluna</button>}
       </div></header>
+    {iaOpen && <div className="pj-ia-panel">
+      <div className="pj-ia-head"><b>✦ Transformar ideia em tarefas</b><span>Despeje sua ideia ou demanda em texto livre — a IA cria as tarefas estruturadas (título, descrição, checklist, prioridade) na primeira coluna.</span></div>
+      <textarea autoFocus value={iaText} onChange={(e) => setIaText(e.target.value)} placeholder={"Ex.: precisamos revisar o fluxo de visitas, o corretor esquece de confirmar com o cliente 1 dia antes. E também quero um relatório semanal de leads parados por corretor, todo domingo."} />
+      <div className="pj-ia-foot">
+        {iaMsg && <em className="pj-ia-msg">{iaMsg}</em>}
+        <span className="pj-form-spacer" />
+        <button type="button" onClick={() => { setIaOpen(false); setIaMsg(null); }}>Fechar</button>
+        <button className="crm-primary" type="button" disabled={iaBusy || iaText.trim().length < 8} onClick={() => { setIaBusy(true); setIaMsg(null); void mutate({ action: "iaCriarTarefas", projectId: project.id, texto: iaText.trim() }).then((r) => { const res = r as { criadas?: string[]; coluna?: string }; setIaMsg(`✦ ${res.criadas?.length ?? 0} tarefa(s) criada(s) em "${res.coluna ?? "A fazer"}".`); setIaText(""); }).catch(() => undefined).finally(() => setIaBusy(false)); }}>{iaBusy ? "A IA está estruturando…" : "Gerar tarefas"}</button>
+      </div>
+    </div>}
     {addingCol && <div className="sales-add-stage"><input autoFocus value={newCol} onChange={(e) => setNewCol(e.target.value)} placeholder="Nome da nova coluna" onKeyDown={(e) => { if (e.key === "Enter" && newCol.trim()) { void mutate({ action: "createColumn", projectId: project.id, nome: newCol.trim() }); setAddingCol(false); } }} /><button type="button" className="crm-primary small" disabled={busy || !newCol.trim()} onClick={() => { void mutate({ action: "createColumn", projectId: project.id, nome: newCol.trim() }); setAddingCol(false); }}>Criar</button><button type="button" onClick={() => setAddingCol(false)}>Cancelar</button></div>}
 
     {tab === "kanban" && <div className="pj-kanban">{cols.map((col, index) => {

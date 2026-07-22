@@ -4460,3 +4460,13 @@ article.tone-red{border-left-color:#d3443e}article.tone-red strong{color:#d3443e
 .pj-check span { flex:1; }
 .pj-check button { border:none; background:none; cursor:pointer; color:#c0b4a8; margin-left:auto; font-size:15px; opacity:0; transition:opacity .12s; }
 .pj-check:hover button { opacity:1; }
+/* IA criadora de tarefas */
+.pj-ia-btn { border:1px solid #e5c8f5 !important; background:linear-gradient(135deg,#faf3ff,#fff) !important; color:#8b2bc9 !important; border-radius:9px; padding:7px 13px; cursor:pointer; font-weight:600; }
+.pj-ia-panel { border:1px solid #e5c8f5; background:#fdfaff; border-radius:14px; padding:14px 16px; margin-bottom:12px; display:flex; flex-direction:column; gap:10px; }
+.pj-ia-head b { color:#8b2bc9; font-size:14px; display:block; }
+.pj-ia-head span { color:#8a7f78; font-size:12.5px; }
+.pj-ia-panel textarea { border:1px solid #e5c8f5; border-radius:10px; padding:10px 12px; min-height:88px; font-size:13.5px; resize:vertical; background:#fff; }
+.pj-ia-foot { display:flex; align-items:center; gap:8px; }
+.pj-ia-foot > button { border:1px solid #e8dccd; background:#fff; border-radius:9px; padding:8px 14px; cursor:pointer; }
+.pj-ia-foot > button.crm-primary { background:linear-gradient(135deg,#8b2bc9,#b246dc); border:0; color:#fff; font-weight:700; }
+.pj-ia-msg { color:#1c7a41; font-size:13px; font-style:normal; font-weight:600; }
