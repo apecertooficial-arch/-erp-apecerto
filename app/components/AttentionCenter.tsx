@@ -8,10 +8,11 @@ import type { ChatData } from "../features/chat/LiveChatWorkspace";
 type Lead = { id: number; nome: string | null; telefone: string | null; corretor_id: number | null; criado_em: string; atualizado_em: string | null };
 type Deal = { id: number; lead_id: number; corretor_id: number | null; pipeline_id: number; status: string; ultima_movimentacao: string | null };
 type Broker = { id: number; nome: string; usuario_id: string | null; online: boolean };
-type Sla = { negocio_id: number | null; lead_id: number | null; sla_situacao: string | null; aguardando_humano: boolean | null; min_aguardando: number | string | null; min_sem_interacao: number | string | null; alarme_ativo: boolean | null; ultima_interacao: string | null };
+type Sla = { negocio_id: number | null; lead_id: number | null; sla_situacao: string | null; aguardando_humano: boolean | null; min_aguardando: number | string | null; min_sem_interacao: number | string | null; alarme_ativo: boolean | null; ultima_interacao: string | null; stage_id: number | null };
 type LeadAlarm = { id: number; negocio_id: number; corretor_id: number | null; criado_em: string };
-type CrmAttentionData = { leads: Lead[]; deals: Deal[]; brokers: Broker[]; sla: Sla[]; alerts: LeadAlarm[]; error?: string };
-type AlertKind = "new" | "waiting" | "message" | "risk";
+type Stage = { id: number; nome: string | null };
+type CrmAttentionData = { leads: Lead[]; deals: Deal[]; brokers: Broker[]; sla: Sla[]; alerts: LeadAlarm[]; stages?: Stage[]; error?: string };
+type AlertKind = "new" | "waiting" | "message" | "risk" | "desatualizado";
 type AttentionAlert = { id: string; kind: AlertKind; dealId: number; leadId: number; title: string; description: string; age: number; severity: number; occurredAt: string | null };
 type AlertFilter = "all" | AlertKind;
 
@@ -20,7 +21,20 @@ const kindInfo: Record<AlertKind, { label: string; icon: string }> = {
   waiting: { label: "Sem atendimento", icon: "!" },
   message: { label: "Nova mensagem", icon: "●" },
   risk: { label: "Risco de perda", icon: "↘" },
+  desatualizado: { label: "Desatualizado", icon: "⏳" },
 };
+
+// Classificação da etapa do funil para separar "Risco de perda" (etapa avançada) de "Desatualizado" (etapa fria).
+const normStage = (value?: string | null) => (value || "").normalize("NFD").split("").filter((ch) => { const c = ch.charCodeAt(0); return c < 0x0300 || c > 0x036f; }).join("").replace(/[^a-zA-Z0-9\s]/g, " ").toLowerCase().replace(/\s+/g, " ").trim();
+const STAGE_TERMINAL = ["comprou", "negocio fechado", "venda cancelada", "cancelou a compra", "descarte"];
+const STAGE_AVANCADA = ["visita agendada", "tentando reagendamento", "visita realizada", "em negociacao"];
+function classifyStage(nome?: string | null): "avancada" | "fria" | "terminal" {
+  const n = normStage(nome);
+  if (!n) return "fria";
+  if (STAGE_TERMINAL.some((key) => n.includes(key))) return "terminal";
+  if (STAGE_AVANCADA.some((key) => n.includes(key))) return "avancada";
+  return "fria";
+}
 
 const incoming = (direction?: string | null) => !["out", "saida", "saída", "enviada", "sent"].includes((direction || "").toLowerCase());
 const minutesSince = (date?: string | null) => date ? Math.max(0, Math.round((Date.now() - new Date(date).getTime()) / 60000)) : 0;
@@ -43,6 +57,8 @@ function buildAlerts(crm: CrmAttentionData, chat: ChatData | null, brokerId: num
   const dealByLead = new Map(crm.deals.map((deal) => [deal.lead_id, deal]));
   const dealById = new Map(crm.deals.map((deal) => [deal.id, deal]));
   const owns = (deal: Deal, lead?: Lead) => brokerId === null || (deal.corretor_id ?? lead?.corretor_id) === brokerId;
+  const stageNameById = new Map((crm.stages ?? []).map((stage) => [stage.id, stage.nome]));
+  const staleCandidates: { dealId: number; leadId: number; title: string; inactive: number; occurredAt: string | null }[] = [];
   const alerts = new Map<string, AttentionAlert>();
 
   for (const deal of crm.deals) {
@@ -68,9 +84,14 @@ function buildAlerts(crm: CrmAttentionData, chat: ChatData | null, brokerId: num
     if (sla.aguardando_humano || sla.alarme_ativo) {
       alerts.set(`waiting-${deal.id}`, { id: `waiting-${deal.id}`, kind: "waiting", dealId: deal.id, leadId: lead.id, title: lead.nome || "Cliente aguardando", description: sla.aguardando_humano ? `Cliente esperando resposta há ${elapsed(waiting)}.` : "Atendimento exige ação imediata.", age: waiting, severity: sla.alarme_ativo ? 5 : 4, occurredAt: sla.ultima_interacao });
     }
-    if (inactive >= 1440 || ["atendimento_parado", "erro_abordagem"].includes(sla.sla_situacao || "")) {
+    const stageCat = classifyStage(stageNameById.get(sla.stage_id ?? -1));
+    if (stageCat === "avancada" && (inactive >= 2880 || ["atendimento_parado", "erro_abordagem"].includes(sla.sla_situacao || ""))) {
+      // Risco de perda: oportunidade quente (etapa avançada) esfriando há ≥ 2 dias.
       const level = inactive >= 10080 ? "Crítico" : inactive >= 4320 ? "Alto" : "Atenção";
       alerts.set(`risk-${deal.id}`, { id: `risk-${deal.id}`, kind: "risk", dealId: deal.id, leadId: lead.id, title: lead.nome || "Lead em risco", description: `${level}: ${elapsed(inactive)} sem interação útil.`, age: inactive, severity: inactive >= 4320 ? 4 : 3, occurredAt: sla.ultima_interacao });
+    } else if (stageCat === "fria" && inactive >= 7200) {
+      // Desatualizado: lead frio/esquecido parado há ≥ 5 dias. Entra depois, só se não tiver alerta mais urgente.
+      staleCandidates.push({ dealId: deal.id, leadId: lead.id, title: lead.nome || "Lead desatualizado", inactive, occurredAt: sla.ultima_interacao });
     }
   }
 
@@ -85,6 +106,17 @@ function buildAlerts(crm: CrmAttentionData, chat: ChatData | null, brokerId: num
       const alertId = `message-${deal.id}-${latest.id}`;
       alerts.set(alertId, { id: alertId, kind: "message", dealId: deal.id, leadId: lead.id, title: lead.nome || contact.nome || "Nova mensagem", description: latest.conteudo || `Cliente enviou ${latest.tipo || "uma mensagem"}.`, age, severity: 5, occurredAt: latest.criado_em });
     }
+  }
+
+  // Desatualizado entra por último: só para leads sem nenhum alerta mais urgente (precedência) e com teto para não inundar a Central.
+  const STALE_CAP = 20;
+  staleCandidates.sort((a, b) => b.inactive - a.inactive);
+  let staleAdded = 0;
+  for (const candidate of staleCandidates) {
+    if (staleAdded >= STALE_CAP) break;
+    if ([...alerts.values()].some((alert) => alert.dealId === candidate.dealId)) continue;
+    alerts.set(`desatualizado-${candidate.dealId}`, { id: `desatualizado-${candidate.dealId}`, kind: "desatualizado", dealId: candidate.dealId, leadId: candidate.leadId, title: candidate.title, description: `${elapsed(candidate.inactive)} sem contato — reative ou descarte.`, age: candidate.inactive, severity: 2, occurredAt: candidate.occurredAt });
+    staleAdded += 1;
   }
   return [...alerts.values()].sort((a, b) => b.severity - a.severity || a.age - b.age);
 }
@@ -197,12 +229,12 @@ export function AttentionCenter({ accessToken, onOpenLead, onOpenChat, onOpenNot
     else onOpenLead(alert.dealId);
   }
 
-  const counts = Object.fromEntries((["new", "waiting", "message", "risk"] as AlertKind[]).map((kind) => [kind, alerts.filter((alert) => alert.kind === kind).length])) as Record<AlertKind, number>;
+  const counts = Object.fromEntries((["new", "waiting", "message", "risk", "desatualizado"] as AlertKind[]).map((kind) => [kind, alerts.filter((alert) => alert.kind === kind).length])) as Record<AlertKind, number>;
   return <>
     <button className={`attention-trigger ${alerts.length && Date.now() >= mutedUntil ? "ringing" : ""}`} type="button" onClick={() => { try { if (typeof Notification !== "undefined" && Notification.permission === "default") void Notification.requestPermission(); } catch { /* */ } setOpen(!open); }} aria-label={`Central de alertas, ${alerts.length} pendentes`}><span aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 8-3 8h18s-3-1-3-8" /><path d="M10 20h4" /></svg></span><b>{alerts.length}</b></button>
     {open && <aside className="attention-popover" aria-label="Central de alertas de atendimento">
       <header><div><span>ATENDIMENTO EM TEMPO REAL</span><h2>Central de atenção</h2><p>{alerts.length ? `${alerts.length} ação(ões) pedem sua atenção` : "Tudo em dia por aqui"}</p></div><button type="button" onClick={() => setOpen(false)} aria-label="Fechar">×</button></header>
-      <section className="attention-summary">{(["new", "waiting", "message", "risk"] as AlertKind[]).map((kind) => <button className={filter === kind ? `active ${kind}` : kind} type="button" onClick={() => setFilter(filter === kind ? "all" : kind)} key={kind}><i>{kindInfo[kind].icon}</i><strong>{counts[kind]}</strong><span>{kindInfo[kind].label}</span></button>)}</section>
+      <section className="attention-summary">{(["new", "waiting", "message", "risk", "desatualizado"] as AlertKind[]).map((kind) => <button className={filter === kind ? `active ${kind}` : kind} type="button" onClick={() => setFilter(filter === kind ? "all" : kind)} key={kind}><i>{kindInfo[kind].icon}</i><strong>{counts[kind]}</strong><span>{kindInfo[kind].label}</span></button>)}</section>
       <nav><button className={filter === "all" ? "active" : ""} type="button" onClick={() => setFilter("all")}>Todos</button><button type="button" onClick={() => mute(15)}>Silenciar 15 min</button><button type="button" onClick={dismissAll}>Marcar todos como vistos</button></nav>
       <main>{visible.map((alert) => <article className={alert.kind} key={alert.id}><span>{kindInfo[alert.kind].icon}</span><div><small>{kindInfo[alert.kind].label} · {elapsed(alert.age)}</small><strong>{alert.title}</strong><p>{alert.description}</p><footer><button type="button" onClick={() => attend(alert)}>Abrir e atender</button><button type="button" onClick={() => dismiss(alert.id)}>Agora não</button></footer></div></article>)}{visible.length === 0 && <div className="attention-empty"><span>✓</span><strong>Nenhum alerta neste filtro</strong><p>Novos eventos aparecerão automaticamente.</p></div>}</main>
       <footer><button type="button" onClick={onOpenNotifications}>Abrir histórico de notificações</button><span>{Date.now() < mutedUntil ? `Silenciado por ${elapsed(Math.ceil((mutedUntil - Date.now()) / 60000))}` : "Atualização automática a cada 30 segundos"}</span></footer>
