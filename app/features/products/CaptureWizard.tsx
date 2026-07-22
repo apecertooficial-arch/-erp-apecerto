@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { getBrowserSupabaseClient } from "../../lib/supabase/browser";
 
 const steps = ["Tipo", "Localização", "Proprietário", "Imóvel", "Acesso", "Mídia", "Revisão"];
 const mediaCategories = ["Fachada", "Sala", "Cozinha", "Quarto", "Suíte", "Banheiro", "Varanda", "Piscina", "Lazer", "Planta", "Vista", "Tour", "Outro"];
+const unitTypologies = ["HR", "HIS", "HMP", "R2V"];
 
 type CaptureWizardProps = { onClose: () => void; onSaved: () => void };
 type Condominium = { id: string; nome: string; cep: string | null; endereco: string; numero: string | null; complemento: string | null; bairro: string | null; cidade: string; uf: string };
@@ -45,6 +46,7 @@ export function CaptureWizard({ onClose, onSaved }: CaptureWizardProps) {
   const [message, setMessage] = useState("");
   const [saving, setSaving] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [mediaUrl, setMediaUrl] = useState("");
 
   const photos = media.filter((item) => item.kind === "foto");
   const videos = media.filter((item) => item.kind === "video");
@@ -79,9 +81,7 @@ export function CaptureWizard({ onClose, onSaved }: CaptureWizardProps) {
     if (step === 3 && propertyType === "construtora" && (!units.length || units.some((unit) => !unit.number.trim() || !unit.type.trim() || !unit.area || !unit.price))) return "Preencha número, tipologia, área e preço de cada unidade.";
     if (step === 4 && !accessInstructions.trim()) return "Descreva todas as instruções para entrar no imóvel.";
     if (step === 4 && accessType === "chave_digital" && !accessCode.trim()) return "Informe o código da chave digital.";
-    if (step === 5 && photos.length < 10) return `Adicione mais ${10 - photos.length} foto(s).`;
-    if (step === 5 && videos.length < 1) return "Adicione pelo menos 1 vídeo.";
-    if (step === 5 && photos.filter((item) => item.cover).length !== 1) return "Escolha exatamente uma foto de capa.";
+    if (step === 5 && photos.length < 1) return "Adicione pelo menos 1 foto do imóvel.";
     if (step === 5 && media.some((item) => !item.category)) return "Classifique todas as mídias.";
     return "";
   }
@@ -101,15 +101,47 @@ export function CaptureWizard({ onClose, onSaved }: CaptureWizardProps) {
     setStep((value) => Math.max(value - 1, 0));
   }
 
-  function addFiles(files: FileList | null, kind: "foto" | "video") {
-    if (!files?.length) return;
+  function addFiles(files: FileList | File[] | null, kind: "foto" | "video") {
+    if (!files) return;
+    // Captura os File AGORA — se deixar pro updater do setMedia, o reset do input
+    // (event.currentTarget.value = "") esvazia o FileList antes de a gente ler.
+    const list = Array.from(files as ArrayLike<File>);
+    if (!list.length) return;
     setMedia((current) => {
       const hasCover = current.some((item) => item.cover);
-      const additions = Array.from(files).map((file, index) => ({
+      const additions = list.map((file, index) => ({
         id: crypto.randomUUID(), file, kind, category: kind === "video" ? "Tour" : "Sala", cover: kind === "foto" && !hasCover && index === 0,
       }));
       return [...current, ...additions];
     });
+  }
+
+  // Roteia por tipo (colar / arrastar / link podem trazer foto e vídeo juntos)
+  function ingestFiles(list: File[]) {
+    const fotos = list.filter((f) => (f.type || "").startsWith("image/"));
+    const vids = list.filter((f) => (f.type || "").startsWith("video/"));
+    if (fotos.length) addFiles(fotos, "foto");
+    if (vids.length) addFiles(vids, "video");
+    if (!fotos.length && !vids.length) setMessage("Cole ou selecione arquivos de imagem ou vídeo.");
+  }
+
+  async function addByUrl(url: string) {
+    const clean = url.trim();
+    if (!clean) return;
+    setMessage("");
+    try {
+      const res = await fetch(clean);
+      if (!res.ok) throw new Error("resposta inválida");
+      const blob = await res.blob();
+      if (!/^image\/|^video\//.test(blob.type)) throw new Error("o link não é imagem nem vídeo");
+      const base = (clean.split("/").pop() || "").split("?")[0] || `midia-${Date.now()}`;
+      const ext = blob.type.startsWith("video/") ? "mp4" : "jpg";
+      const name = /\.[a-z0-9]+$/i.test(base) ? base : `${base}.${ext}`;
+      ingestFiles([new File([blob], name, { type: blob.type })]);
+      setMediaUrl("");
+    } catch {
+      setMessage("Não foi possível baixar a mídia desse link (o site pode bloquear por segurança/CORS). Baixe o arquivo e use Adicionar/Colar.");
+    }
   }
 
   function removeMedia(id: string) {
@@ -123,6 +155,18 @@ export function CaptureWizard({ onClose, onSaved }: CaptureWizardProps) {
       return remaining;
     });
   }
+
+  // Colar (Ctrl+V) imagem/vídeo direto do clipboard no passo de mídia
+  useEffect(() => {
+    if (step !== 5) return;
+    const onPaste = (event: ClipboardEvent) => {
+      const files = event.clipboardData?.files;
+      if (files && files.length) { event.preventDefault(); ingestFiles(Array.from(files)); }
+    };
+    window.addEventListener("paste", onPaste);
+    return () => window.removeEventListener("paste", onPaste);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step]);
 
   function safeFileName(name: string) {
     return name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9._-]/g, "-").toLowerCase();
@@ -166,6 +210,8 @@ export function CaptureWizard({ onClose, onSaved }: CaptureWizardProps) {
       const created = await createResponse.json() as { id?: string; userId?: string; error?: string };
       if (!createResponse.ok || !created.id || !created.userId) throw new Error(created.error ?? "Não foi possível criar o rascunho.");
 
+      // A capa é sempre a primeira foto na ordem definida na revisão.
+      const coverPhotoId = media.find((entry) => entry.kind === "foto")?.id;
       for (let index = 0; index < media.length; index += 1) {
         const item = media[index];
         const storagePath = `${created.userId}/${created.id}/${crypto.randomUUID()}-${safeFileName(item.file.name)}`;
@@ -174,7 +220,7 @@ export function CaptureWizard({ onClose, onSaved }: CaptureWizardProps) {
 
         const { error: mediaError } = await supabase.from("midias").insert({
           empreendimento_id: created.id, tipo: item.kind, storage_path: storagePath, nome: item.file.name,
-          categoria: item.category.toLowerCase(), is_capa: item.cover,
+          categoria: item.category.toLowerCase(), is_capa: item.id === coverPhotoId,
         });
         if (mediaError) {
           await supabase.storage.from("empreendimentos").remove([storagePath]);
@@ -220,13 +266,13 @@ export function CaptureWizard({ onClose, onSaved }: CaptureWizardProps) {
 
           {step === 2 && <div className="form-section"><h3>{propertyType === "terceiro" ? "Proprietário responsável" : "Responsável pelo produto"}</h3>{propertyType === "construtora" ? <div className="notice"><strong>Empreendimento de construtora</strong><span>O responsável comercial será identificado pela incorporadora na próxima etapa; proprietário não é obrigatório.</span></div> : <><p>Todo imóvel de terceiro fica associado a um proprietário cadastrado.</p><div className="mode-switch"><button className={ownerMode === "existing" ? "active" : ""} onClick={() => setOwnerMode("existing")} type="button">Selecionar existente</button><button className={ownerMode === "new" ? "active" : ""} onClick={() => setOwnerMode("new")} type="button">＋ Novo proprietário</button></div>{ownerMode === "existing" ? <label>Proprietário<select value={ownerId} onChange={(event) => setOwnerId(event.target.value)}><option value="">Selecione...</option>{owners.map((item) => <option value={item.id} key={item.id}>{item.nome} · {item.telefone}</option>)}</select></label> : <><label>Nome completo<input value={owner.name} onChange={(event) => setOwner({ ...owner, name: event.target.value })} /></label><div className="field-grid"><label>Telefone<input value={owner.phone} onChange={(event) => setOwner({ ...owner, phone: event.target.value })} placeholder="(11) 99999-9999" /></label><label>E-mail<input type="email" value={owner.email} onChange={(event) => setOwner({ ...owner, email: event.target.value })} placeholder="nome@email.com" /></label></div></>}</>}</div>}
 
-          {step === 3 && <div className="form-section"><h3>Dados comerciais e custos</h3><div className="field-grid"><label>Nome do produto<input value={property.name} onChange={(event) => setProperty({ ...property, name: event.target.value })} /></label><label>Incorporadora<input value={property.developer} onChange={(event) => setProperty({ ...property, developer: event.target.value })} /></label><label>Situação<select value={property.status} onChange={(event) => setProperty({ ...property, status: event.target.value as typeof property.status })}><option value="pronto">Pronto</option><option value="em_obras">Em obras</option><option value="lancamento">Lançamento</option></select></label><label>Preço de venda<input type="number" min="0" value={property.price} onChange={(event) => setProperty({ ...property, price: event.target.value })} /></label><label>Condomínio mensal<input type="number" min="0" value={property.condominiumFee} onChange={(event) => setProperty({ ...property, condominiumFee: event.target.value })} /></label><label>IPTU mensal<input type="number" min="0" value={property.propertyTax} onChange={(event) => setProperty({ ...property, propertyTax: event.target.value })} /></label><label>Outros custos<input type="number" min="0" value={property.otherCosts} onChange={(event) => setProperty({ ...property, otherCosts: event.target.value })} /></label><label>Área privativa<input type="number" min="0" step="0.01" value={property.area} onChange={(event) => setProperty({ ...property, area: event.target.value })} /></label><label>Dormitórios<input type="number" min="0" value={property.bedrooms} onChange={(event) => setProperty({ ...property, bedrooms: event.target.value })} /></label><label>Suítes<input type="number" min="0" value={property.suites} onChange={(event) => setProperty({ ...property, suites: event.target.value })} /></label><label>Banheiros<input type="number" min="0" value={property.bathrooms} onChange={(event) => setProperty({ ...property, bathrooms: event.target.value })} /></label><label>Vagas<input type="number" min="0" value={property.parking} onChange={(event) => setProperty({ ...property, parking: event.target.value })} /></label></div>{propertyType === "construtora" && <div className="unit-editor"><div className="section-row"><div><strong>Unidades do empreendimento</strong><small>Preço e tipologia de cada unidade.</small></div><button className="secondary-action" onClick={() => setUnits([...units, newUnit()])} type="button">＋ Adicionar unidade</button></div>{units.map((unit, index) => <div className="unit-row" key={unit.id}><span>{index + 1}</span><input aria-label="Número da unidade" value={unit.number} onChange={(event) => setUnits(units.map((item) => item.id === unit.id ? { ...item, number: event.target.value } : item))} placeholder="Unidade" /><input aria-label="Tipologia" value={unit.type} onChange={(event) => setUnits(units.map((item) => item.id === unit.id ? { ...item, type: event.target.value } : item))} placeholder="Tipologia" /><input aria-label="Área" type="number" min="0" value={unit.area} onChange={(event) => setUnits(units.map((item) => item.id === unit.id ? { ...item, area: event.target.value } : item))} placeholder="m²" /><input aria-label="Vagas" type="number" min="0" value={unit.parking} onChange={(event) => setUnits(units.map((item) => item.id === unit.id ? { ...item, parking: event.target.value } : item))} placeholder="Vagas" /><input aria-label="Preço" type="number" min="0" value={unit.price} onChange={(event) => setUnits(units.map((item) => item.id === unit.id ? { ...item, price: event.target.value } : item))} placeholder="Preço" /><input aria-label="Preço promocional" type="number" min="0" value={unit.promotionalPrice} onChange={(event) => setUnits(units.map((item) => item.id === unit.id ? { ...item, promotionalPrice: event.target.value } : item))} placeholder="Promo" /><button aria-label="Remover unidade" disabled={units.length === 1} onClick={() => setUnits(units.filter((item) => item.id !== unit.id))} type="button">×</button></div>)}</div>}</div>}
+          {step === 3 && <div className="form-section"><h3>Dados comerciais e custos</h3><div className="field-grid"><label>Nome do produto<input value={property.name} onChange={(event) => setProperty({ ...property, name: event.target.value })} /></label><label>Incorporadora<input value={property.developer} onChange={(event) => setProperty({ ...property, developer: event.target.value })} /></label><label>Situação<select value={property.status} onChange={(event) => setProperty({ ...property, status: event.target.value as typeof property.status })}><option value="pronto">Pronto</option><option value="em_obras">Em obras</option><option value="lancamento">Lançamento</option></select></label><label>Preço de venda<input type="number" min="0" value={property.price} onChange={(event) => setProperty({ ...property, price: event.target.value })} /></label><label>Condomínio mensal<input type="number" min="0" value={property.condominiumFee} onChange={(event) => setProperty({ ...property, condominiumFee: event.target.value })} /></label><label>IPTU mensal<input type="number" min="0" value={property.propertyTax} onChange={(event) => setProperty({ ...property, propertyTax: event.target.value })} /></label><label>Outros custos<input type="number" min="0" value={property.otherCosts} onChange={(event) => setProperty({ ...property, otherCosts: event.target.value })} /></label><label>Área privativa<input type="number" min="0" step="0.01" value={property.area} onChange={(event) => setProperty({ ...property, area: event.target.value })} /></label><label>Dormitórios<input type="number" min="0" value={property.bedrooms} onChange={(event) => setProperty({ ...property, bedrooms: event.target.value })} /></label><label>Suítes<input type="number" min="0" value={property.suites} onChange={(event) => setProperty({ ...property, suites: event.target.value })} /></label><label>Banheiros<input type="number" min="0" value={property.bathrooms} onChange={(event) => setProperty({ ...property, bathrooms: event.target.value })} /></label><label>Vagas<input type="number" min="0" value={property.parking} onChange={(event) => setProperty({ ...property, parking: event.target.value })} /></label></div>{propertyType === "construtora" && <div className="unit-editor"><div className="section-row"><div><strong>Unidades do empreendimento</strong><small>Preço e tipologia de cada unidade.</small></div><button className="secondary-action" onClick={() => setUnits([...units, newUnit()])} type="button">＋ Adicionar unidade</button></div>{units.map((unit, index) => <div className="unit-row" key={unit.id}><span>{index + 1}</span><input aria-label="Número da unidade" value={unit.number} onChange={(event) => setUnits(units.map((item) => item.id === unit.id ? { ...item, number: event.target.value } : item))} placeholder="Unidade" /><select aria-label="Tipologia" value={unit.type} onChange={(event) => setUnits(units.map((item) => item.id === unit.id ? { ...item, type: event.target.value } : item))}><option value="">Tipologia</option>{unitTypologies.map((t) => <option key={t} value={t}>{t}</option>)}</select><input aria-label="Área" type="number" min="0" value={unit.area} onChange={(event) => setUnits(units.map((item) => item.id === unit.id ? { ...item, area: event.target.value } : item))} placeholder="m²" /><input aria-label="Vagas" type="number" min="0" value={unit.parking} onChange={(event) => setUnits(units.map((item) => item.id === unit.id ? { ...item, parking: event.target.value } : item))} placeholder="Vagas" /><input aria-label="Preço" type="number" min="0" value={unit.price} onChange={(event) => setUnits(units.map((item) => item.id === unit.id ? { ...item, price: event.target.value } : item))} placeholder="Preço" /><input aria-label="Preço promocional" type="number" min="0" value={unit.promotionalPrice} onChange={(event) => setUnits(units.map((item) => item.id === unit.id ? { ...item, promotionalPrice: event.target.value } : item))} placeholder="Promo" /><button aria-label="Remover unidade" disabled={units.length === 1} onClick={() => setUnits(units.filter((item) => item.id !== unit.id))} type="button">×</button></div>)}</div>}</div>}
 
           {step === 4 && <div className="form-section"><h3>Como entrar no imóvel?</h3><div className="choice-grid compact access-grid">{([['chave_fisica','Chave física'],['chave_digital','Chave digital'],['proprietario','Com proprietário'],['portaria','Portaria'],['outro','Outro']] as const).map(([value, label]) => <button className={accessType === value ? "selected" : ""} onClick={() => setAccessType(value)} type="button" key={value}>{label}</button>)}</div>{accessType === "chave_digital" && <label>Código de acesso<input value={accessCode} onChange={(event) => setAccessCode(event.target.value)} placeholder="Código da fechadura" /></label>}<label>Instruções completas<textarea value={accessInstructions} onChange={(event) => setAccessInstructions(event.target.value)} placeholder="Local da chave, portaria, autorização, horários e todas as instruções..." rows={6} /></label></div>}
 
-          {step === 5 && <div className="form-section media-section"><h3>Fotos, vídeo e identificação</h3><p>São obrigatórias 10 fotos, 1 vídeo, a classificação de cada arquivo e uma foto de capa.</p><div className="media-upload-actions"><label className="upload-button">＋ Adicionar fotos<input type="file" accept="image/*" multiple onChange={(event) => { addFiles(event.target.files, "foto"); event.currentTarget.value = ""; }} /></label><label className="upload-button secondary">＋ Adicionar vídeo<input type="file" accept="video/*" multiple onChange={(event) => { addFiles(event.target.files, "video"); event.currentTarget.value = ""; }} /></label><div className="media-totals"><strong className={photos.length >= 10 ? "ok" : ""}>{photos.length}/10 fotos</strong><strong className={videos.length >= 1 ? "ok" : ""}>{videos.length}/1 vídeo</strong></div></div><div className="media-list">{media.map((item) => <div className="media-row" key={item.id}><span className={`media-kind ${item.kind}`}>{item.kind === "foto" ? "FOTO" : "VÍDEO"}</span><div className="media-name"><strong>{item.file.name}</strong><small>{(item.file.size / 1024 / 1024).toFixed(1)} MB</small></div><select aria-label={`Classificar ${item.file.name}`} value={item.category} onChange={(event) => setMedia(media.map((entry) => entry.id === item.id ? { ...entry, category: event.target.value } : entry))}>{mediaCategories.map((category) => <option key={category}>{category}</option>)}</select>{item.kind === "foto" ? <label className="cover-choice"><input type="radio" name="cover" checked={item.cover} onChange={() => setMedia(media.map((entry) => ({ ...entry, cover: entry.id === item.id })))} /> Capa</label> : <span className="cover-placeholder" />}<button aria-label={`Remover ${item.file.name}`} onClick={() => removeMedia(item.id)} type="button">×</button></div>)}</div></div>}
+          {step === 5 && <div className="form-section media-section"><h3>Fotos, vídeo e identificação</h3><p>É obrigatória pelo menos 1 foto. Vídeo e foto de capa são opcionais — quanto mais material, melhor o anúncio.</p><div className="media-dropzone" onDragOver={(event) => { event.preventDefault(); event.currentTarget.classList.add("dragging"); }} onDragLeave={(event) => event.currentTarget.classList.remove("dragging")} onDrop={(event) => { event.preventDefault(); event.currentTarget.classList.remove("dragging"); if (event.dataTransfer.files?.length) ingestFiles(Array.from(event.dataTransfer.files)); }}><div className="media-dz-head"><span className="media-dz-icon">⬆</span><div><strong>Arraste aqui, cole (Ctrl+V) ou selecione</strong><small>Fotos e vídeos — ou adicione por link abaixo</small></div></div><div className="media-upload-actions"><label className="upload-button">＋ Adicionar fotos<input type="file" accept="image/*" multiple onChange={(event) => { addFiles(event.target.files, "foto"); event.currentTarget.value = ""; }} /></label><label className="upload-button secondary">＋ Adicionar vídeo<input type="file" accept="video/*" multiple onChange={(event) => { addFiles(event.target.files, "video"); event.currentTarget.value = ""; }} /></label></div><div className="media-link-row"><input type="url" value={mediaUrl} onChange={(event) => setMediaUrl(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); void addByUrl(mediaUrl); } }} placeholder="Cole o link de uma imagem ou vídeo (https://...)" /><button type="button" className="secondary-action" onClick={() => void addByUrl(mediaUrl)} disabled={!mediaUrl.trim()}>Adicionar por link</button></div><div className="media-totals"><strong className={photos.length >= 1 ? "ok" : ""}>{photos.length} foto{photos.length === 1 ? "" : "s"}{photos.length < 1 ? " (mín. 1)" : ""}</strong><strong className={videos.length >= 1 ? "ok" : ""}>{videos.length} vídeo{videos.length === 1 ? "" : "s"} (opcional)</strong></div></div><div className="media-list">{media.map((item) => <div className="media-row" key={item.id}><span className={`media-kind ${item.kind}`}>{item.kind === "foto" ? "FOTO" : "VÍDEO"}</span><div className="media-name"><strong>{item.file.name}</strong><small>{(item.file.size / 1024 / 1024).toFixed(1)} MB</small></div><select aria-label={`Classificar ${item.file.name}`} value={item.category} onChange={(event) => setMedia(media.map((entry) => entry.id === item.id ? { ...entry, category: event.target.value } : entry))}>{mediaCategories.map((category) => <option key={category}>{category}</option>)}</select>{item.kind === "foto" ? <label className="cover-choice"><input type="radio" name="cover" checked={item.cover} onChange={() => setMedia(media.map((entry) => ({ ...entry, cover: entry.id === item.id })))} /> Capa</label> : <span className="cover-placeholder" />}<button aria-label={`Remover ${item.file.name}`} onClick={() => removeMedia(item.id)} type="button">×</button></div>)}</div></div>}
 
-          {step === 6 && <div className="form-section"><h3>Revisão antes de salvar</h3><div className="review-list"><span className="complete">Condomínio e endereço completo</span><span className={propertyType === "construtora" || Boolean(ownerId || owner.name) ? "complete" : ""}>Proprietário associado</span><span className="complete">Preço, custos e características</span><span className="complete">Instruções de acesso</span><span className={photos.length >= 10 && videos.length >= 1 ? "complete" : ""}>{photos.length} fotos e {videos.length} vídeo(s)</span><span className={photos.some((item) => item.cover) ? "complete" : ""}>Foto de capa escolhida</span>{propertyType === "construtora" && <span className={units.length ? "complete" : ""}>{units.length} unidade(s) cadastrada(s)</span>}</div><div className="notice"><strong>Gravação segura</strong><span>O produto será criado como rascunho, os arquivos serão enviados e somente então a captação será finalizada.</span></div>{saving && <div className="upload-progress"><span style={{ width: `${uploadProgress}%` }} /><strong>Enviando mídias · {uploadProgress}%</strong></div>}</div>}
+          {step === 6 && <div className="form-section"><h3>Revisão antes de salvar</h3><div className="review-list"><span className="complete">Condomínio e endereço completo</span><span className={propertyType === "construtora" || Boolean(ownerId || owner.name) ? "complete" : ""}>Proprietário associado</span><span className="complete">Preço, custos e características</span><span className="complete">Instruções de acesso</span><span className={photos.length >= 1 ? "complete" : ""}>{photos.length} foto(s) e {videos.length} vídeo(s)</span><span className={photos.length ? "complete" : ""}>Capa: a primeira foto da ordem abaixo</span>{propertyType === "construtora" && <span className={units.length ? "complete" : ""}>{units.length} unidade(s) cadastrada(s)</span>}</div>{media.length > 0 && <ReviewMedia media={media} setMedia={setMedia} />}<div className="notice"><strong>Gravação segura</strong><span>O produto será criado como rascunho, os arquivos serão enviados e somente então a captação será finalizada.</span></div>{saving && <div className="upload-progress"><span style={{ width: `${uploadProgress}%` }} /><strong>Enviando mídias · {uploadProgress}%</strong></div>}</div>}
 
           {message && <div className={message.includes("sucesso") ? "form-message success" : "form-message"} role="alert">{message}</div>}
         </div>
@@ -235,4 +281,53 @@ export function CaptureWizard({ onClose, onSaved }: CaptureWizardProps) {
       </section>
     </div>
   );
+}
+
+function ReviewMedia({ media, setMedia }: { media: MediaItem[]; setMedia: (value: MediaItem[] | ((cur: MediaItem[]) => MediaItem[])) => void }) {
+  const cache = useRef(new Map<string, string>());
+  const previewFor = (item: MediaItem) => {
+    const c = cache.current;
+    if (!c.has(item.id)) c.set(item.id, URL.createObjectURL(item.file));
+    return c.get(item.id)!;
+  };
+  useEffect(() => () => { cache.current.forEach((url) => URL.revokeObjectURL(url)); cache.current.clear(); }, []);
+  const [dragId, setDragId] = useState<string | null>(null);
+  const reorder = (fromId: string, toId: string) => setMedia((cur) => {
+    if (fromId === toId) return cur;
+    const arr = [...cur];
+    const from = arr.findIndex((m) => m.id === fromId);
+    const to = arr.findIndex((m) => m.id === toId);
+    if (from < 0 || to < 0) return arr;
+    const [moved] = arr.splice(from, 1);
+    arr.splice(to, 0, moved);
+    return arr;
+  });
+  const makeCover = (id: string) => setMedia((cur) => {
+    const arr = [...cur];
+    const idx = arr.findIndex((m) => m.id === id);
+    if (idx < 0) return arr;
+    const [moved] = arr.splice(idx, 1);
+    arr.unshift(moved);
+    return arr;
+  });
+  const firstPhotoId = media.find((m) => m.kind === "foto")?.id;
+  return <div className="review-media">
+    <div className="review-media-head"><strong>Mídias e ordem de exibição</strong><small>Arraste para reordenar. A primeira foto é a capa do produto.</small></div>
+    <div className="review-media-grid">
+      {media.map((item, index) => {
+        const isCover = item.id === firstPhotoId;
+        return <div className={`rm-tile ${isCover ? "is-cover" : ""} ${dragId === item.id ? "dragging" : ""}`} key={item.id}
+          draggable onDragStart={() => setDragId(item.id)} onDragEnd={() => setDragId(null)}
+          onDragOver={(event) => event.preventDefault()} onDrop={(event) => { event.preventDefault(); if (dragId) reorder(dragId, item.id); setDragId(null); }}>
+          <div className="rm-thumb">
+            {item.kind === "foto" ? <img src={previewFor(item)} alt={item.file.name} /> : <video src={previewFor(item)} muted playsInline preload="metadata" />}
+            <span className="rm-pos">{index + 1}</span>
+            {isCover && <span className="rm-cover-badge">★ Capa</span>}
+            {item.kind === "video" && <span className="rm-video-badge">▶ Vídeo</span>}
+          </div>
+          <div className="rm-meta"><small title={item.file.name}>{item.category}</small>{item.kind === "foto" && !isCover && <button type="button" onClick={() => makeCover(item.id)}>Tornar capa</button>}</div>
+        </div>;
+      })}
+    </div>
+  </div>;
 }

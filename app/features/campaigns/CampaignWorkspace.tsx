@@ -10,18 +10,45 @@ type Approach = { id: number; nome: string; mensagens: unknown; produto_id: numb
 type Product = { id: string; nome: string; bairro: string | null };
 type Recent = { id: number; lead_id: number | null; telefone: string; texto: string | null; quando: string; status: string | null; resultado: string | null; criado_em: string | null };
 type Instance = { id: number; nome: string | null; conectada: boolean | null; corretor_id: number | null };
-type Broker = { id: number; nome: string };
+type Broker = { id: number; nome: string; apelido?: string | null };
 type InstanceLink = { corretor_id: number; instancia_id: number };
 type CampaignData = { leads: Lead[]; deals: Deal[]; stages: Stage[]; approaches: Approach[]; products: Product[]; recent: Recent[]; instances: Instance[]; brokers: Broker[]; instanceLinks: InstanceLink[] };
 
 function approachText(value: unknown) {
   if (typeof value === "string") return value;
   if (Array.isArray(value)) {
-    const first = value[0];
-    if (typeof first === "string") return first;
-    if (first && typeof first === "object") return String((first as Record<string, unknown>).texto ?? (first as Record<string, unknown>).mensagem ?? "");
+    // Lê o texto de um passo (estrutura d-api: send-text-message → options.text).
+    const readStep = (step: unknown): string => {
+      if (typeof step === "string") return step;
+      if (step && typeof step === "object") {
+        const s = step as Record<string, unknown>;
+        const opts = (s.options && typeof s.options === "object" ? s.options : {}) as Record<string, unknown>;
+        return String(s.texto ?? s.mensagem ?? s.text ?? opts.text ?? opts.texto ?? opts.mensagem ?? "");
+      }
+      return "";
+    };
+    // Prioriza o passo de texto (a mensagem pode vir depois de vídeo/imagem/delay).
+    const textStep = value.find((step) => step && typeof step === "object" && (step as Record<string, unknown>).name === "send-text-message");
+    if (textStep) { const t = readStep(textStep); if (t) return t; }
+    // Fallback: primeiro passo que tenha algum texto.
+    for (const step of value) { const t = readStep(step); if (t) return t; }
   }
   return "";
+}
+
+// Retorna os tipos de mídia presentes numa abordagem (para avisar no preview).
+function approachMedia(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  const out: string[] = [];
+  for (const step of value) {
+    if (!step || typeof step !== "object") continue;
+    const name = String((step as Record<string, unknown>).name ?? "").toLowerCase();
+    if (name === "send-video-message") out.push("🎬 vídeo");
+    else if (name === "send-image-message") out.push("🖼️ imagem");
+    else if (name === "send-audio-message") out.push("🎧 áudio");
+    else if (name === "send-document-message") out.push("📄 documento");
+  }
+  return out;
 }
 
 function tagName(t: unknown): string {
@@ -121,6 +148,12 @@ export function CampaignWorkspace({ accessToken }: { accessToken: string }) {
   const destinationStages = data.stages.filter((item) => item.pipeline_id === selectedStage?.pipeline_id && String(item.id) !== stage);
 
   const approachVariants = useMemo(() => selectedApproaches.map((id) => approachText(data.approaches.find((a) => a.id === id)?.mensagens)).filter(Boolean), [selectedApproaches, data.approaches]);
+  // Nome do corretor mostrado na prévia: 1º corretor selecionado (cada um assina com o seu no envio real).
+  const previewCorretor = useMemo(() => {
+    const b = data.brokers.find((x) => selectedBrokers.includes(x.id)) ?? data.brokers[0];
+    const nome = (b?.apelido ?? b?.nome ?? "").trim();
+    return nome.split(/\s+/)[0] || "corretor";
+  }, [data.brokers, selectedBrokers]);
   const variants = useMemo(() => { const list = [...approachVariants]; if (message.trim()) list.push(message.trim()); return [...new Set(list)]; }, [approachVariants, message]);
   function toggleApproach(id: number) { setSelectedApproaches((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]); }
   function toggleBroker(id: number) { setSelectedBrokers((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]); }
@@ -146,7 +179,9 @@ export function CampaignWorkspace({ accessToken }: { accessToken: string }) {
     if (!activeInstanceIds.length) { setNotice("Os corretores escolhidos não têm instância ativa para envio."); return; }
     setReviewOpen(false);
     setBusy(true); setNotice("");
-    const response = await fetch("/api/campaigns", { method: "POST", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify({ leadIds: valid.filter((lead) => lead.id < 10_000_000).map((lead) => lead.id), messages: variants, message: variants[0], rate: Number(rate), start: `${startDate}T${startTime}:00`, sourceStageId: Number(stage), destinationStageId: Number(destinationStage), brokerIds: selectedBrokers }) });
+    // Envia as ABORDAGENS por id (o backend expande mídia + texto) e, à parte, só a
+    // mensagem digitada como variação de texto. Evita duplicar a abordagem como texto puro.
+    const response = await fetch("/api/campaigns", { method: "POST", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify({ leadIds: valid.filter((lead) => lead.id < 10_000_000).map((lead) => lead.id), approachIds: selectedApproaches, message: message.trim(), rate: Number(rate), start: `${startDate}T${startTime}:00`, sourceStageId: Number(stage), destinationStageId: Number(destinationStage), brokerIds: selectedBrokers }) });
     const body = await response.json() as { error?: string; scheduled?: number };
     if (!response.ok) setNotice(body.error ?? "Não foi possível agendar."); else { setNotice(`${body.scheduled} mensagens agendadas.`); await load(); }
     setBusy(false);
@@ -164,7 +199,7 @@ export function CampaignWorkspace({ accessToken }: { accessToken: string }) {
           <label>Produto associado<select value={product} onChange={(event) => setProduct(event.target.value)} disabled={origin === "excel"}><option value="">Qualquer produto</option>{data.products.map((item) => <option value={item.id} key={item.id}>{item.nome}</option>)}</select></label>
         </div>{origin === "excel" && <label className="csv-upload">＋ Selecionar planilha CSV<input hidden type="file" accept=".csv,text/csv" onChange={(event) => importCsv(event.target.files?.[0])} /></label>}
         <div className="audience-count"><strong>{eligible.length}</strong><span>leads elegíveis neste segmento</span></div><div className="audience-quality"><span>✓ Válidos: <b>{valid.length}</b></span><span>⚠ Sem telefone: <b>{invalid}</b></span><span>⊘ Opt-out removidos automaticamente</span></div>{stage && destinationStage && <div className="campaign-flow-note"><b>{selectedStage?.rotulo || selectedStage?.nome}</b><span>→</span><b>{data.stages.find((item) => String(item.id) === destinationStage)?.rotulo || data.stages.find((item) => String(item.id) === destinationStage)?.nome}</b><small>O lead muda de etapa somente depois que o envio for confirmado.</small></div>}</section>
-        <section className="campaign-card message-card"><header><h2>Mensagem</h2><button type="button" onClick={() => { setGenResults([]); setGenOpen(true); }}>✦ Gerar com IA</button></header><div className="approach-multiselect">{data.approaches.map((item) => <button type="button" className={selectedApproaches.includes(item.id) ? "chip active" : "chip"} onClick={() => toggleApproach(item.id)} key={item.id}>{selectedApproaches.includes(item.id) ? "✓ " : "+ "}{item.nome}</button>)}{!data.approaches.length && <span className="approach-multiselect-empty">Nenhuma abordagem cadastrada ainda.</span>}</div>{selectedApproaches.length > 0 && <div className="approach-previews">{selectedApproaches.map((id) => { const a = data.approaches.find((x) => x.id === id); const txt = approachText(a?.mensagens); return <div className="approach-preview" key={id}><strong>{a?.nome}</strong><p>{txt.replaceAll("{primeiro_nome}", valid[0]?.nome?.split(/\s+/)[0] ?? "cliente") || "(sem texto)"}</p></div>; })}</div>}<textarea value={message} onChange={(event) => setMessage(event.target.value)} placeholder="Mensagem personalizada (opcional — conta como mais uma variação). Use {primeiro_nome}." rows={5} /><small>{variants.length} variação{variants.length === 1 ? "" : "ões"} · {valid.length} leads serão divididos entre elas{variants.length > 1 ? " proporcionalmente" : ""}</small></section>
+        <section className="campaign-card message-card"><header><h2>Mensagem</h2><button type="button" onClick={() => { setGenResults([]); setGenOpen(true); }}>✦ Gerar com IA</button></header><div className="approach-multiselect">{data.approaches.map((item) => <button type="button" className={selectedApproaches.includes(item.id) ? "chip active" : "chip"} onClick={() => toggleApproach(item.id)} key={item.id}>{selectedApproaches.includes(item.id) ? "✓ " : "+ "}{item.nome}</button>)}{!data.approaches.length && <span className="approach-multiselect-empty">Nenhuma abordagem cadastrada ainda.</span>}</div>{selectedApproaches.length > 0 && <div className="approach-previews">{selectedApproaches.map((id) => { const a = data.approaches.find((x) => x.id === id); const txt = approachText(a?.mensagens); const midia = approachMedia(a?.mensagens); return <div className="approach-preview" key={id}><strong>{a?.nome}</strong>{midia.length > 0 && <span className="approach-media-tags">{midia.map((m, i) => <em key={i}>{m}</em>)}</span>}<p>{txt.replaceAll("{primeiro_nome}", valid[0]?.nome?.split(/\s+/)[0] ?? "cliente").replaceAll("{corretor_primeiro_nome}", previewCorretor).replaceAll("{corretor_nome}", previewCorretor) || "(sem texto)"}</p></div>; })}</div>}<textarea value={message} onChange={(event) => setMessage(event.target.value)} placeholder="Mensagem personalizada (opcional — conta como mais uma variação). Use {primeiro_nome}." rows={5} /><small>{variants.length} variação{variants.length === 1 ? "" : "ões"} · {valid.length} leads serão divididos entre elas{variants.length > 1 ? " proporcionalmente" : ""}</small></section>
       </div><aside className="campaign-card cadence-card"><h2>Cadência</h2><div className="campaign-instances"><details className="instance-picker"><summary>Corretores participantes <b>{selectedBrokers.length ? `${selectedBrokers.length} de ${availableBrokers.length}` : "nenhum"}</b></summary><div><div className="instance-picker-tools"><button type="button" onClick={() => setSelectedBrokers(availableBrokers.filter((b) => brokerConnected(b.id)).map((b) => b.id))}>✓ Todos com conexão</button><button type="button" onClick={() => setSelectedBrokers(availableBrokers.map((b) => b.id))}>Todos</button><button type="button" onClick={() => setSelectedBrokers([])}>Limpar</button></div>{availableBrokers.map((b) => { const insts = brokerInstances(b.id); const online = insts.some((i) => i.conectada); return <label key={b.id}><input type="checkbox" checked={selectedBrokers.includes(b.id)} onChange={() => toggleBroker(b.id)} /><span><strong>{b.nome}</strong><small>{insts.length} instância{insts.length === 1 ? "" : "s"}</small></span><i className={online ? "connected" : ""}>{online ? "Conectado" : "Offline"}</i></label>; })}{!availableBrokers.length && <span className="approach-multiselect-empty">Nenhum corretor com instância vinculada.</span>}</div></details><div className="selected-instance-chips">{selectedBrokers.map((id) => { const b = data.brokers.find((item) => item.id === id); return b ? <button type="button" onClick={() => toggleBroker(id)} key={id}>✓ {b.nome} ×</button> : null; })}</div>{selectedBrokers.length > 0 && valid.length > 0 && activeInstanceIds.length > 0 && <small>{valid.length} leads · {selectedBrokers.length} corretor{selectedBrokers.length === 1 ? "" : "es"} · {activeInstanceIds.length} instância{activeInstanceIds.length === 1 ? "" : "s"} · {Number(rate) * activeInstanceIds.length}/h no total</small>}</div><label>Velocidade<select value={rate} onChange={(event) => setRate(event.target.value)}><option value="10">Lento · 10/h</option><option value="20">Normal · 20/h</option><option value="50">Rápido · 50/h</option><option value="60">Super rápido · 60/h</option></select></label><div><label>Início<input type="time" value={startTime} onChange={(event) => setStartTime(event.target.value)} /></label><label>Fim<input type="time" value={endTime} onChange={(event) => setEndTime(event.target.value)} /></label></div><label>Data inicial<input type="date" value={startDate} onChange={(event) => setStartDate(event.target.value)} /></label><label>Período<select value={period} onChange={(event) => setPeriod(event.target.value)}><option value="1">1 dia</option><option value="3">3 dias</option><option value="7">7 dias</option><option value="14">14 dias</option></select></label><label>Dias<select value={days} onChange={(event) => setDays(event.target.value)}><option value="weekdays">Seg a Sex</option><option value="all">Todos os dias</option><option value="saturday">Seg a Sáb</option></select></label><button className="schedule-button" type="button" disabled={busy || origin === "excel" || !valid.length || !variants.length || !stage || !destinationStage || !selectedBrokers.length} onClick={() => setReviewOpen(true)}>➤ Revisar e agendar</button>{origin === "excel" && <p>Revise e cadastre a base nova no CRM antes de agendar o envio.</p>}{notice && <div className="campaign-notice">{notice}</div>}</aside></div>
       <section className="recent-campaigns"><h2>Disparos recentes</h2>{data.recent.length ? data.recent.slice(0, 12).map((item) => <article key={item.id}><span>➤</span><div><strong>{item.telefone}</strong><small>{item.texto?.slice(0, 80) || "Mensagem sem texto"} · {new Date(item.quando).toLocaleString("pt-BR")}</small></div><b className={`campaign-status ${item.status ?? ""}`}>{item.status ?? "agendado"}</b></article>) : <div className="campaign-empty">Nenhum disparo registrado.</div>}</section>
       {reviewOpen && <div className="crm-center-modal" onClick={() => setReviewOpen(false)}><form className="campaign-review" onClick={(event) => event.stopPropagation()} onSubmit={(event) => { event.preventDefault(); void schedule(); }}><header><div><span>REVISÃO OBRIGATÓRIA</span><h2>Confira antes de agendar</h2><p>Público → mensagem → instâncias/cadência → agendamento.</p></div><button type="button" onClick={() => setReviewOpen(false)}>×</button></header>

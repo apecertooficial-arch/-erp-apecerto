@@ -39,12 +39,20 @@ export async function GET(request: Request) {
   const { data: leadRow } = await supabase.from("leads").select("id").or(`nome.ilike.%${lead}%,telefone.ilike.%${lead}%`).order("atualizado_em", { ascending: false, nullsFirst: false }).limit(1).maybeSingle();
   const leadId = leadRow?.id ?? null;
 
+  // Nome de quem está atendendo AGORA (usuário logado) — a mensagem sugerida deve ser
+  // assinada por ele, nunca pelo corretor do lead. Corrige o "Tica" ver o nome "Fabiano".
+  const { data: meCorr } = await supabase.from("corretores").select("nome").eq("usuario_id", auth.user.id).maybeSingle();
+  let meNome = (meCorr as { nome?: string } | null)?.nome ?? "";
+  if (!meNome) { const { data: meUser } = await supabase.from("usuarios").select("nome").eq("id", auth.user.id).maybeSingle(); meNome = (meUser as { nome?: string } | null)?.nome ?? ""; }
+  const meFirst = (meNome.trim().split(/\s+/)[0] || "").trim();
+
   // Sara (ação + mensagem) roda em paralelo com a leitura/geração da nota
   const saraOverride =
     `Voce e a Sara, assistente da Apecerto. Para o lead "${lead}", use as ferramentas consultar_lead e avaliar_conversa. ` +
+    (meFirst ? `IMPORTANTE: quem esta atendendo este lead agora e o corretor "${meFirst}". Se a mensagem citar/assinar o nome do corretor, use SOMENTE "${meFirst}". NUNCA use o nome de outro corretor. ` : "") +
     `Responda SOMENTE um JSON valido: ` +
     `{"proxima_acao":"<a proxima melhor acao, concreta, com prazo, 1 frase>", ` +
-    `"mensagem_sugerida":"<uma mensagem curta, pronta para copiar e enviar ao cliente agora, no tom do playbook, personalizada>"}. Nada alem do JSON.`;
+    `"mensagem_sugerida":"<uma mensagem curta, pronta para copiar e enviar ao cliente agora, no tom do playbook, personalizada${meFirst ? `, assinada como ${meFirst}` : ""}>"}. Nada alem do JSON.`;
 
   async function lerOuGerarAvaliacao(): Promise<{ nota: number | null; feedbacks: unknown[] }> {
     if (!leadId) return { nota: null, feedbacks: [] };

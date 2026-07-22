@@ -2,6 +2,29 @@ import { createServerSupabaseClient } from "../../lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
+function bearer(request: Request) {
+  const authorization = request.headers.get("authorization");
+  return authorization?.startsWith("Bearer ") ? authorization.slice(7) : null;
+}
+
+// Aprovar / reprovar empreendimento (admin/gestor). A RPC valida o papel.
+export async function PATCH(request: Request) {
+  const accessToken = bearer(request);
+  if (!accessToken) return Response.json({ error: "Sessão necessária." }, { status: 401 });
+  const supabase = createServerSupabaseClient(accessToken);
+  const { data: authData, error: authError } = await supabase.auth.getUser(accessToken);
+  if (authError || !authData.user) return Response.json({ error: "Sessão inválida ou expirada." }, { status: 401 });
+  let body: { action?: string; id?: string; motivo?: string };
+  try { body = await request.json() as typeof body; } catch { return Response.json({ error: "Dados inválidos." }, { status: 400 }); }
+  const action = String(body.action || "");
+  const id = String(body.id || "");
+  if ((action !== "approve" && action !== "reject") || !id) return Response.json({ error: "Ação ou empreendimento inválido." }, { status: 422 });
+  const { data, error } = await supabase.rpc("aprovar_empreendimento", { p_id: id, p_aprovar: action === "approve", p_motivo: action === "reject" ? (body.motivo ?? null) : null });
+  const result = data && typeof data === "object" ? data as Record<string, unknown> : {};
+  if (error || result.ok === false) return Response.json({ error: error?.message || (typeof result.error === "string" ? result.error : "Não foi possível concluir a aprovação.") }, { status: error ? 502 : 403 });
+  return Response.json({ ok: true, aprovacao: result.aprovacao });
+}
+
 type UnitInput = {
   number: string;
   type: string;
@@ -76,15 +99,19 @@ export async function POST(request: Request) {
     if (mediaError) return Response.json({ error: mediaError.message }, { status: 400 });
 
     const photos = media.filter((item) => item.tipo === "foto").length;
-    const videos = media.filter((item) => item.tipo === "video").length;
-    const covers = media.filter((item) => item.tipo === "foto" && item.is_capa).length;
-    if (photos < 10 || videos < 1 || covers !== 1) {
-      return Response.json({ error: "A captação exige 10 fotos, 1 vídeo e exatamente 1 foto de capa." }, { status: 422 });
+    if (photos < 1) {
+      return Response.json({ error: "Envie pelo menos 1 foto do imóvel." }, { status: 422 });
     }
 
-    const { error } = await supabase.from("empreendimentos").update({ rascunho: false }).eq("id", payload.id);
+    // Ao publicar (finalizar a captação), o empreendimento entra na fila de aprovação do gestor.
+    // Se já estava aprovado (edição de algo publicado), mantém aprovado — não re-gateia edições.
+    const { data: cur } = await supabase.from("empreendimentos").select("aprovacao").eq("id", payload.id).maybeSingle();
+    const patch = (cur as { aprovacao?: string } | null)?.aprovacao === "aprovado"
+      ? { rascunho: false }
+      : { rascunho: false, aprovacao: "pendente", reprovacao_motivo: null };
+    const { error } = await supabase.from("empreendimentos").update(patch).eq("id", payload.id);
     if (error) return Response.json({ error: error.message }, { status: 400 });
-    return Response.json({ ok: true, id: payload.id });
+    return Response.json({ ok: true, id: payload.id, aprovacao: (patch as { aprovacao?: string }).aprovacao ?? "aprovado" });
   }
 
   const { property, condominium, owner, access, units } = payload;
@@ -108,29 +135,46 @@ export async function POST(request: Request) {
 
   let condominiumId = condominium.id;
   if (!condominiumId) {
-    const { data, error } = await supabase.from("condominios").insert({
-      nome: condominium.name.trim(), cep: condominium.zipCode.trim() || null,
-      endereco: condominium.address.trim(), numero: condominium.number.trim() || null,
-      complemento: condominium.complement.trim() || null, bairro: condominium.neighborhood.trim() || null,
-      cidade: condominium.city.trim(), uf: condominium.state.trim() || "SP", created_by: authData.user.id,
-    }).select("id").single();
-    if (error) return Response.json({ error: error.message }, { status: 400 });
-    condominiumId = data.id;
+    // Anti-duplicata: reaproveita um condomínio com o mesmo nome + endereço + cidade (case-insensitive).
+    // Evita a enxurrada de repetidos que acontecia quando um cadastro falhava e era refeito.
+    const nomeN = condominium.name.trim();
+    const endN = condominium.address.trim();
+    const cidN = condominium.city.trim();
+    const { data: existingCond } = await supabase.from("condominios").select("id").ilike("nome", nomeN).ilike("endereco", endN).ilike("cidade", cidN).limit(1).maybeSingle();
+    if (existingCond?.id) {
+      condominiumId = existingCond.id;
+    } else {
+      const { data, error } = await supabase.from("condominios").insert({
+        nome: nomeN, cep: condominium.zipCode.trim() || null,
+        endereco: endN, numero: condominium.number.trim() || null,
+        complemento: condominium.complement.trim() || null, bairro: condominium.neighborhood.trim() || null,
+        cidade: cidN, uf: condominium.state.trim() || "SP", created_by: authData.user.id,
+      }).select("id").single();
+      if (error) return Response.json({ error: error.message }, { status: 400 });
+      condominiumId = data.id;
+    }
   }
 
   let ownerId = owner?.id ?? null;
   if (payload.propertyType === "terceiro" && owner && !ownerId) {
-    const { data, error } = await supabase.from("proprietarios").insert({
-      nome: owner.name.trim(), email: owner.email.trim().toLowerCase(), telefone: owner.phone.trim(), created_by: authData.user.id,
-    }).select("id").single();
-    if (error) return Response.json({ error: error.message }, { status: 400 });
-    ownerId = data.id;
+    // Anti-duplicata de proprietário por e-mail.
+    const emailN = owner.email.trim().toLowerCase();
+    const { data: existingOwner } = emailN ? await supabase.from("proprietarios").select("id").ilike("email", emailN).limit(1).maybeSingle() : { data: null };
+    if (existingOwner?.id) {
+      ownerId = existingOwner.id;
+    } else {
+      const { data, error } = await supabase.from("proprietarios").insert({
+        nome: owner.name.trim(), email: emailN, telefone: owner.phone.trim(), created_by: authData.user.id,
+      }).select("id").single();
+      if (error) return Response.json({ error: error.message }, { status: 400 });
+      ownerId = data.id;
+    }
   }
 
   const { data: broker } = await supabase.from("corretores").select("id").eq("usuario_id", authData.user.id).maybeSingle();
   const { data: development, error: developmentError } = await supabase.from("empreendimentos").insert({
     nome: property.name.trim(), titulo: property.name.trim(), incorporadora: property.developer.trim() || null,
-    status: property.status, origem: payload.propertyType === "terceiro" ? "terceiro" : "construtora",
+    status: property.status, origem: payload.propertyType === "terceiro" ? "terceiros" : "predio",
     condominio_id: condominiumId, proprietario_id: ownerId,
     cep: condominium.zipCode.trim() || null, endereco: condominium.address.trim(), numero: condominium.number.trim() || null,
     complemento: condominium.complement.trim() || null, bairro: condominium.neighborhood.trim() || null,

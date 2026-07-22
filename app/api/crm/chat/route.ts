@@ -28,6 +28,29 @@ export async function POST(request: Request) {
     return Response.json(data ?? {});
   }
 
+  if (action === "hiddenMessages") {
+    const leadId = Number(body.leadId);
+    let query = auth.supabase.from("wa_mensagens_ocultas").select("wa_message_id");
+    if (Number.isSafeInteger(leadId) && leadId > 0) query = query.eq("lead_id", leadId);
+    const { data, error } = await query.limit(5000);
+    if (error) return Response.json({ error: error.message }, { status: 502 });
+    return Response.json({ ids: (data ?? []).map((row) => row.wa_message_id as string) });
+  }
+
+  if (action === "hideMessage") {
+    const messageId = cleanText(body.messageId, 200);
+    const leadId = Number(body.leadId);
+    if (!messageId) return Response.json({ error: "Mensagem inválida." }, { status: 422 });
+    const { data: userData } = await auth.supabase.auth.getUser();
+    const { error } = await auth.supabase.from("wa_mensagens_ocultas").upsert({
+      wa_message_id: messageId,
+      lead_id: Number.isSafeInteger(leadId) && leadId > 0 ? leadId : null,
+      ocultado_por: userData.user?.id ?? null,
+    }, { onConflict: "wa_message_id" });
+    if (error) return Response.json({ error: error.message }, { status: 502 });
+    return Response.json({ success: true });
+  }
+
   if (action === "send") {
     const telefone = cleanText(body.telefone, 40).replace(/\D/g, "");
     const texto = cleanText(body.texto, 4000);

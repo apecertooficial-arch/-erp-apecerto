@@ -5044,6 +5044,7 @@ code, .mono {
           <div style="display:flex; justify-content:space-between; gap:10px;"><span style="color:var(--fg-3);">Horário</span><span style="font-weight:700;">{{ evDetail.horario }}</span></div>
           <sc-if value="{{ evDetail.temObs }}" hint-placeholder-val="{{ false }}"><div style="padding:9px 11px; border-radius:9px; background:var(--bg-page); font-size:12.5px; color:var(--fg-2);">{{ evDetail.obs }}</div></sc-if>
           <div style="margin-top:2px;"><span style="{{ evDetail.gerStyle }}"><span style="width:8px; height:8px; border-radius:50%; background:currentColor;"></span>{{ evDetail.gerLabel }}</span></div>
+          <sc-if value="{{ evDetail.podeEditar }}" hint-placeholder-val="{{ true }}"><button type="button" onclick="{{ evDetail.onEditar }}" style="width:100%; margin-top:2px; padding:10px; border-radius:11px; border:1.5px solid var(--border-soft); background:var(--bg-surface); color:var(--fg-1); font-family:var(--font-body); font-weight:700; font-size:13.5px; cursor:pointer;">✎ Editar visita</button></sc-if>
           <sc-if value="{{ evDetail.temMotivo }}" hint-placeholder-val="{{ false }}"><div style="padding:9px 11px; border-radius:9px; background:#FDE7E7; color:#C0392B; font-size:12.5px; font-weight:600;">Motivo: {{ evDetail.motivoCancel }}</div></sc-if>
           <sc-if value="{{ evDetail.canAgir }}" hint-placeholder-val="{{ false }}">
             <div style="display:flex; gap:9px; margin-top:8px;">
@@ -6331,14 +6332,15 @@ class Component extends DCLogic {
     var BASE='https://diaegvfveqezispcthwk.supabase.co/rest/v1';
     var KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRpYWVndmZ2ZXFlemlzcGN0aHdrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5OTU4MjIsImV4cCI6MjA5ODU3MTgyMn0.312n8BuI-loQrQ20x9j1hNjKZs2UO71ey9gvIo0eY0I';
     var HH={apikey:KEY, Authorization:'Bearer '+(self._authToken||KEY)};
-    fetch(BASE+'/visitas?select=id,cliente_nome,produto,data,hora_inicio,status,com_gerente&order=data.desc&limit=1000',{headers:HH})
+    fetch(BASE+'/visitas?select=id,cliente_nome,produto,data,hora_inicio,hora_fim,local,observacoes,corretor_id,gerente_id,status,com_gerente&order=data.desc&limit=1000',{headers:HH})
       .then(function(r){ if(!r.ok) throw new Error('visitas '+r.status); return r.json(); })
       .then(function(rows){
         if(!Array.isArray(rows)) return;
+        var corrNome=function(cid){ try{ var c=(self.corretoresData||[]).find(function(x){ return String(x.id)===String(cid); }); return c?(c.nome||''):''; }catch(e){ return ''; } };
         var evs=rows.map(function(v){
           var p=String(v.data||'').slice(0,10).split('-');
           var ano=p[0]?parseInt(p[0],10):2026; var mes=p[1]?parseInt(p[1],10)-1:0; var dia=p[2]?parseInt(p[2],10):1;
-          return { id:'v_'+v.id, tipo:v.status==='realizada'?'visita':'visita', leadId:null, cliente:v.cliente_nome||'—', corretor:'', produto:v.produto||'', ano:ano, mes:mes, dia:dia, hora:(v.hora_inicio||'').slice(0,5), comGerente:!!v.com_gerente, status:v.status||'agendada' };
+          return { id:'v_'+v.id, tipo:v.status==='realizada'?'visita':'visita', leadId:null, cliente:v.cliente_nome||'—', corretor:corrNome(v.corretor_id), corretorId:v.corretor_id||null, produto:v.produto||'', ano:ano, mes:mes, dia:dia, hora:(v.hora_inicio||'').slice(0,5), horaFim:(v.hora_fim||'').slice(0,5), local:v.local||'', obs:v.observacoes||'', gerenteId:v.gerente_id||null, comGerente:!!v.com_gerente, status:v.status||'agendada' };
         });
         try{ self.setState({ eventos: evs }); }catch(e){}
       })
@@ -6400,6 +6402,65 @@ class Component extends DCLogic {
         .then(function(r){ if(!r.ok) return r.text().then(function(t){ throw new Error(r.status+' '+t.slice(0,140)); }); return r.json(); })
         .then(function(){ ov.remove(); self.showToast('✓ Visita agendada e salva no banco'); self._loadVisitasReal(); })
         .catch(function(e){ btn.textContent='Agendar'; btn.disabled=false; self.showToast('Erro ao agendar: '+(e&&e.message||'')); });
+    };
+  }
+  abrirEditarVisita(se) {
+    var self=this; if(!se) return;
+    if (document.getElementById('__visitaEdOv')) return;
+    var isAdmin = String((self.state&&self.state.sessionPerfil)||'').toLowerCase()!=='corretor';
+    var realId = String(se.id||'').replace(/^v_/,'');
+    var BASE='https://diaegvfveqezispcthwk.supabase.co/rest/v1';
+    var KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRpYWVndmZ2ZXFlemlzcGN0aHdrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5OTU4MjIsImV4cCI6MjA5ODU3MTgyMn0.312n8BuI-loQrQ20x9j1hNjKZs2UO71ey9gvIo0eY0I';
+    var HHj={apikey:KEY,Authorization:'Bearer '+(self._authToken||KEY),'Content-Type':'application/json'};
+    var pad=function(n){ return (n<10?'0':'')+n; };
+    var dateStr=(se.ano||2026)+'-'+pad((se.mes||0)+1)+'-'+pad(se.dia||1);
+    var fld=function(k,label,type,val){ return '<label style="display:block;margin-bottom:10px;text-align:left"><span style="font-size:12px;font-weight:700;color:#555;display:block;margin-bottom:4px">'+label+'</span><input data-k="'+k+'" type="'+type+'" value="'+String(val==null?'':val).replace(/"/g,'&quot;')+'" style="width:100%;padding:9px 11px;border:1.5px solid #e6e6e6;border-radius:9px;font-size:13px;box-sizing:border-box"></label>'; };
+    var grid='<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'+fld('data','Data','date',dateStr)+fld('hora_inicio','Início','time',se.hora||'')+fld('hora_fim','Fim','time',se.horaFim||'')+fld('local','Local','text',se.local||'')+'</div>';
+    var obs='<label style="display:block;margin:2px 0 12px;text-align:left"><span style="font-size:12px;font-weight:700;color:#555;display:block;margin-bottom:4px">Observações</span><textarea data-k="observacoes" rows="2" style="width:100%;padding:9px 11px;border:1.5px solid #e6e6e6;border-radius:9px;font-size:13px;box-sizing:border-box;resize:vertical">'+String(se.obs||'').replace(/</g,'&lt;')+'</textarea></label>';
+    var gerRow='<label style="display:flex;align-items:center;gap:8px;margin:2px 0 4px;text-align:left;font-size:12.5px;color:#555"><input id="__edGer" type="checkbox"'+(se.comGerente?' checked':'')+(isAdmin?'':' disabled')+'> Com gerente'+(isAdmin?'':' <span style="color:#a1968f;font-size:11px">(só o admin altera)</span>')+'</label>';
+    var dispBox='<div id="__edDisp" style="display:none;margin:2px 0 12px;padding:9px 12px;border-radius:9px;font-size:12px;font-weight:600"></div>';
+    var ov=document.createElement('div'); ov.id='__visitaEdOv';
+    ov.style.cssText='position:fixed;inset:0;z-index:99998;display:flex;align-items:center;justify-content:center;background:rgba(20,16,12,0.32);padding:20px;';
+    var card=document.createElement('div');
+    card.style.cssText='background:#fff;border-radius:16px;max-width:460px;width:100%;max-height:88vh;overflow:auto;padding:24px;box-shadow:0 24px 60px rgba(0,0,0,.28);font-family:-apple-system,BlinkMacSystemFont,sans-serif;';
+    card.innerHTML='<div style="display:flex;align-items:center;gap:10px;margin-bottom:16px"><div style="width:44px;height:44px;border-radius:12px;background:#FFF0E5;color:#FF7000;display:flex;align-items:center;justify-content:center;font-size:20px">📅</div><div style="flex:1;text-align:left"><div style="font-size:16px;font-weight:800;color:#1a1a1a">Editar visita'+(se.cliente&&se.cliente!=='—'?(' · '+se.cliente):'')+'</div><div style="font-size:12px;color:#888">'+(isAdmin?'Admin: edita tudo, inclusive o gerente.':'Ajuste data, horário e local.')+'</div></div></div>'+grid+obs+gerRow+dispBox+'<div style="display:flex;gap:10px;justify-content:flex-end;margin-top:6px"><button id="__edCancel" style="background:#f2f2f2;color:#333;border:none;border-radius:10px;padding:11px 20px;font-weight:700;cursor:pointer">Cancelar</button><button id="__edSave" style="background:#FF7000;color:#fff;border:none;border-radius:10px;padding:11px 24px;font-weight:700;cursor:pointer">Salvar</button></div>';
+    ov.appendChild(card); document.body.appendChild(ov);
+    ov.addEventListener('click',function(e){ if(e.target===ov) ov.remove(); });
+    document.getElementById('__edCancel').onclick=function(){ ov.remove(); };
+    var dispEl=document.getElementById('__edDisp');
+    var checkDisp=function(){
+      var ger=document.getElementById('__edGer').checked;
+      if(!ger || !se.corretorId){ dispEl.style.display='none'; return; }
+      var data=(card.querySelector('[data-k="data"]').value||''); var hi=(card.querySelector('[data-k="hora_inicio"]').value||''); var hf=(card.querySelector('[data-k="hora_fim"]').value||'');
+      if(!data || !hi){ dispEl.style.display='none'; return; }
+      dispEl.style.display='block'; dispEl.style.background='#F5F2EF'; dispEl.style.color='#7c746e'; dispEl.textContent='Checando a agenda do gerente…';
+      fetch(BASE+'/rpc/gerente_disponibilidade',{method:'POST',headers:HHj,body:JSON.stringify({p_corretor:se.corretorId,p_data:data,p_inicio:hi,p_fim:hf||null,p_exclude:realId})})
+        .then(function(r){ return r.json(); })
+        .then(function(j){ var conf=(j&&j.conflitos)||[]; var gn=(j&&j.gerente_nome)||'O gerente';
+          if(conf.length){ dispEl.style.background='#FFF4E5'; dispEl.style.color='#b26a00'; dispEl.textContent='⚠ '+gn+' já tem '+conf.length+' visita'+(conf.length>1?'s':'')+' nesse horário ('+conf.map(function(c){ return ((c.hora_inicio||'')+' '+(c.cliente_nome||'')).trim(); }).join('; ')+'). Você pode salvar mesmo assim.'; }
+          else { dispEl.style.background='#E9F7EF'; dispEl.style.color='#1a8f4c'; dispEl.textContent='✓ '+gn+' está livre nesse horário.'; }
+        }).catch(function(){ dispEl.style.display='none'; });
+    };
+    document.getElementById('__edGer').onchange=checkDisp;
+    card.querySelectorAll('[data-k="data"],[data-k="hora_inicio"],[data-k="hora_fim"]').forEach(function(inp){ inp.addEventListener('change',checkDisp); });
+    checkDisp();
+    document.getElementById('__edSave').onclick=function(){
+      var body={};
+      card.querySelectorAll('[data-k]').forEach(function(inp){ var k=inp.getAttribute('data-k'); var v=(inp.value||'').trim(); body[k]= v || null; });
+      if(!body.data){ self.showToast('Informe a data da visita.'); return; }
+      var ger=document.getElementById('__edGer').checked;
+      var btn=document.getElementById('__edSave'); btn.textContent='Salvando…'; btn.disabled=true;
+      var doSave=function(gerId){
+        if(isAdmin) body.com_gerente=ger;
+        body.gerente_id = ger ? (gerId||null) : null;
+        var HHp={apikey:KEY,Authorization:'Bearer '+(self._authToken||KEY),'Content-Type':'application/json',Prefer:'return=minimal'};
+        fetch(BASE+'/visitas?id=eq.'+encodeURIComponent(realId),{method:'PATCH',headers:HHp,body:JSON.stringify(body)})
+          .then(function(r){ if(!r.ok) return r.text().then(function(t){ throw new Error(r.status+' '+t.slice(0,140)); }); })
+          .then(function(){ ov.remove(); self.showToast('✓ Visita atualizada'); self._loadVisitasReal(); })
+          .catch(function(e){ btn.textContent='Salvar'; btn.disabled=false; self.showToast('Erro ao salvar: '+(e&&e.message||'')); });
+      };
+      if(ger && se.corretorId){ fetch(BASE+'/rpc/corretor_gerente',{method:'POST',headers:HHj,body:JSON.stringify({p_corretor:se.corretorId})}).then(function(r){ return r.json(); }).then(function(g){ doSave(g); }).catch(function(){ doSave(null); }); }
+      else doSave(null);
     };
   }
   abrirFichaSimulacao(l) {
@@ -9068,7 +9129,7 @@ class Component extends DCLogic {
     // ---- detalhe de evento (mini) ----
     const se = st.selectedEvento;
     let evDetail = null;
-    if (se) { const lead = (st.leads || []).find(l => l.id === se.leadId); const stMap = { agendada: { l: 'Agendada', bg: '#FFE9D6', fg: '#C24E00' }, confirmada: { l: 'Confirmada', bg: '#E4EDFB', fg: '#2F6FED' }, realizada: { l: '✓ Realizada', bg: 'var(--success-bg)', fg: '#157a42' }, 'no-show': { l: 'Não realizada', bg: '#FDE7E7', fg: '#C0392B' } }; const sm = stMap[se.status] || stMap.agendada; const done = se.status === 'realizada', noshow = se.status === 'no-show'; evDetail = { cliente: lead ? lead.nome : (se.cliente || '—'), produto: se.produto || '—', corretor: se.corretor || '—', tipoLabel: se.tipoVisita || 'Visita', temCorretor2: !!se.corretor2, corretor2: se.corretor2 || '', temUnidade: !!se.unidade, unidade: se.unidade || '', temObs: !!se.obs, obs: se.obs || '', horario: (se.dia + '/' + (se.mes + 1)).replace(/\b(\d)\b/g, '0$1') + ' · ' + se.hora.replace(':', 'h'), comGerente: se.comGerente, gerLabel: se.comGerente ? 'Gerente acompanha' : 'Sem gerente — corretor sozinho', gerStyle: { display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '5px 11px', borderRadius: '999px', fontSize: '12px', fontWeight: 700, background: se.comGerente ? '#F3E8FB' : '#FFE9D6', color: se.comGerente ? '#66009A' : '#C24E00' }, statusLabel: sm.l, statusStyle: { display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '4px 10px', borderRadius: '999px', fontSize: '11.5px', fontWeight: 700, background: sm.bg, color: sm.fg }, isDone: done, isNoShow: noshow, canAgir: !done && !noshow, motivoCancel: se.motivoCancel || '', temMotivo: !!se.motivoCancel, onRealizada: () => this.setEventoStatus(se.id, 'realizada'), onNaoAconteceu: () => this.toggleEvMotivo(), evMotivoOpen: !!st.evMotivoOpen, motivos: ['Cliente desistiu', 'Não compareceu', 'Remarcou', 'Outro'].map(m => ({ label: m, onClick: () => this.setEventoStatus(se.id, 'no-show', m) })), onClose: () => this.closeEvento(), stop: (e) => { if (e && e.stopPropagation) e.stopPropagation(); } }; }
+    if (se) { const lead = (st.leads || []).find(l => l.id === se.leadId); const stMap = { agendada: { l: 'Agendada', bg: '#FFE9D6', fg: '#C24E00' }, confirmada: { l: 'Confirmada', bg: '#E4EDFB', fg: '#2F6FED' }, realizada: { l: '✓ Realizada', bg: 'var(--success-bg)', fg: '#157a42' }, 'no-show': { l: 'Não realizada', bg: '#FDE7E7', fg: '#C0392B' } }; const sm = stMap[se.status] || stMap.agendada; const done = se.status === 'realizada', noshow = se.status === 'no-show'; evDetail = { cliente: lead ? lead.nome : (se.cliente || '—'), produto: se.produto || '—', corretor: se.corretor || '—', tipoLabel: se.tipoVisita || 'Visita', temCorretor2: !!se.corretor2, corretor2: se.corretor2 || '', temUnidade: !!se.unidade, unidade: se.unidade || '', temObs: !!se.obs, obs: se.obs || '', horario: (se.dia + '/' + (se.mes + 1)).replace(/\b(\d)\b/g, '0$1') + ' · ' + se.hora.replace(':', 'h'), comGerente: se.comGerente, gerLabel: se.comGerente ? 'Gerente acompanha' : 'Sem gerente — corretor sozinho', gerStyle: { display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '5px 11px', borderRadius: '999px', fontSize: '12px', fontWeight: 700, background: se.comGerente ? '#F3E8FB' : '#FFE9D6', color: se.comGerente ? '#66009A' : '#C24E00' }, statusLabel: sm.l, statusStyle: { display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '4px 10px', borderRadius: '999px', fontSize: '11.5px', fontWeight: 700, background: sm.bg, color: sm.fg }, isDone: done, isNoShow: noshow, canAgir: !done && !noshow, motivoCancel: se.motivoCancel || '', temMotivo: !!se.motivoCancel, onRealizada: () => this.setEventoStatus(se.id, 'realizada'), onNaoAconteceu: () => this.toggleEvMotivo(), evMotivoOpen: !!st.evMotivoOpen, motivos: ['Cliente desistiu', 'Não compareceu', 'Remarcou', 'Outro'].map(m => ({ label: m, onClick: () => this.setEventoStatus(se.id, 'no-show', m) })), podeEditar: String(se.id || '').indexOf('v_') === 0, onEditar: () => { this.closeEvento(); this.abrirEditarVisita(se); }, onClose: () => this.closeEvento(), stop: (e) => { if (e && e.stopPropagation) e.stopPropagation(); } }; }
 
 
     // ---- Notificações ----
@@ -9980,12 +10041,14 @@ class Component extends DCLogic {
       preenchido: { label: 'Preenchido', bg: '#E4EDFB', fg: '#1E4FC4', dot: '#2F6FED' },
       rodada: { label: 'Simulação rodada', bg: '#F3E8FB', fg: '#66009A', dot: '#8B00CC' },
       publicada: { label: 'Publicada', bg: 'var(--success-bg)', fg: '#157a42', dot: '#1FA85A' },
-      pronto: { label: 'Simulação pronta', bg: 'var(--success-bg)', fg: '#157a42', dot: '#1FA85A' }
+      pronto: { label: 'Simulação pronta', bg: 'var(--success-bg)', fg: '#157a42', dot: '#1FA85A' },
+      rascunho: { label: 'Rascunho', bg: '#F0ECE8', fg: '#6B625C', dot: '#9E948E' }
     };
+    const finMetaOf = (s) => finStatusMeta[s] || { label: (s || '—'), bg: '#F0ECE8', fg: '#6B625C', dot: '#9E948E' };
     const brl0 = (n) => 'R$ ' + (Number(n) || 0).toLocaleString('pt-BR');
     const finPill = (m) => ({ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '3px 10px', borderRadius: '999px', fontSize: '11px', fontWeight: 700, background: m.bg, color: m.fg });
     const finAvatar = { width: '38px', height: '38px', borderRadius: '50%', background: 'var(--ape-orange-100)', color: 'var(--ape-orange-700)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '13px', flexShrink: 0 };
-    const finList = this.financiamentos.map(f => { const m = finStatusMeta[f.status]; const sel = f.id === st.finSel; return {
+    const finList = this.financiamentos.map(f => { const m = finMetaOf(f.status); const sel = f.id === st.finSel; return {
       id: f.id, cliente: f.cliente, ape: f.ape, corretor: f.corretor, initials: this.ini(f.cliente), avatarStyle: finAvatar,
       statusLabel: m.label, statusStyle: finPill(m), dot: { width: '8px', height: '8px', borderRadius: '50%', background: m.dot, flexShrink: 0 },
       sel: sel, onSelect: () => this.selectFin(f.id),
@@ -9994,7 +10057,7 @@ class Component extends DCLogic {
     }; });
     const fsel = this._finOf(st.finSel) || this.financiamentos[0] || null;
     let finDetail = null;
-    if (fsel) { const m = finStatusMeta[fsel.status]; const dd = fsel.dados;
+    if (fsel) { const m = finMetaOf(fsel.status); const dd = fsel.dados;
       finDetail = {
         id: fsel.id, cliente: fsel.cliente, tel: fsel.tel || '—', ape: fsel.ape, corretor: fsel.corretor, initials: this.ini(fsel.cliente), avatarStyle: { width: '48px', height: '48px', borderRadius: '50%', background: 'var(--ape-orange-100)', color: 'var(--ape-orange-700)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '17px', flexShrink: 0 },
         statusLabel: m.label, statusStyle: finPill(m),

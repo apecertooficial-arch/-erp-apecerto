@@ -448,13 +448,18 @@ function bindBody(n,el){
    showPanel('Distribuídos por corretor','<div style="font-size:12px;color:var(--ink-faint);padding:8px 0">Carregando…</div>');
    let rows=[];try{rows=await sbGet('/motor_execucoes?automacao_id=eq.'+cur.id+'&bloco_id=eq.'+encodeURIComponent(n.id)+'&evento=eq.distribuicao&status=eq.ok&select=detalhe,criado_em&order=criado_em.desc&limit=2000');}catch(err){showPanel('Distribuídos por corretor','<div style="color:var(--err);font-size:12px">Erro: '+esc(err.message)+'</div>');return;}
    const nomeDe=t=>{const m=/Lead (?:distribuido para|ja pertence a) ([^\-(]+)/.exec(t||'');return m?m[1].trim():null;};
+   // POSSE FINAL: quando o failover transfere o lead, a contagem sai do sorteado e vai para quem ficou com ele.
+   const transfDe=t=>{const m=/lead transferido para (\S+)/.exec(t||'');if(!m)return null;const s=/instancias de (\S+?) indisponiveis/.exec(t||'');return{para:m[1].trim(),de:s?s[1].trim():null};};
    const agora=Date.now(),DIA=86400000;
    const periodos=[['Hoje',d0=>agora-d0<DIA&&new Date(agora).toDateString()===new Date(d0).toDateString()],['Últimos 7 dias',d0=>agora-d0<7*DIA],['Últimos 30 dias',d0=>agora-d0<30*DIA],['Tudo',()=>true]];
-   const html=periodos.map(([lbl,fn])=>{const c={};let tot=0;rows.forEach(r=>{const nm=nomeDe(r.detalhe);if(!nm)return;if(!fn(new Date(r.criado_em).getTime()))return;c[nm]=(c[nm]||0)+1;tot++;});
+   const html=periodos.map(([lbl,fn])=>{const c={};let tot=0;rows.forEach(r=>{if(!fn(new Date(r.criado_em).getTime()))return;
+     const tr=transfDe(r.detalhe);if(tr){c[tr.para]=(c[tr.para]||0)+1;if(tr.de)c[tr.de]=(c[tr.de]||0)-1;return;}
+     const nm=nomeDe(r.detalhe);if(!nm)return;c[nm]=(c[nm]||0)+1;tot++;});
+    Object.keys(c).forEach(k=>{if(c[k]<=0)delete c[k];});
     const ent=Object.entries(c).sort((a,b)=>b[1]-a[1]);const max=Math.max(1,...ent.map(x=>x[1]));
     return '<div style="margin:14px 0 4px;font-size:12px;font-weight:800;color:var(--ink)">'+lbl+' <span style="color:var(--ink-faint);font-weight:600">('+tot+' leads)</span></div>'+(ent.length?ent.map(([nm,qt])=>'<div style="display:grid;grid-template-columns:110px 1fr 34px;gap:8px;align-items:center;padding:4px 0;font-size:12px"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(nm)+'</span><div style="height:9px;border-radius:6px;background:var(--line-soft);overflow:hidden"><div style="height:100%;width:'+Math.round(qt/max*100)+'%;background:var(--brand);border-radius:6px"></div></div><b style="text-align:right">'+qt+'</b></div>').join(''):'<div style="font-size:11.5px;color:var(--ink-faint)">Nenhum lead no período.</div>');
    }).join('');
-   showPanel('Distribuídos por corretor — '+esc(cur.nome),html+'<div style="margin-top:14px;font-size:10.5px;color:var(--ink-faint)">Conta distribuições OK deste bloco (inclui leads mantidos com o corretor atual). Fonte: log do motor.</div>');};}
+   showPanel('Distribuídos por corretor — '+esc(cur.nome),html+'<div style="margin-top:14px;font-size:10.5px;color:var(--ink-faint)">Conta a POSSE FINAL do lead: sorteio do rodízio + transferências do failover (quem enviou de fato ficou com o lead). Fonte: log do motor.</div>');};}
  if(n.type==='send-approach'){const o=n.opts=n.opts||{};
   const sp=q('[data-sapprod]');if(sp)sp.onchange=()=>{o.produtoId=+sp.value||0;o.abordagemIds=[];setDirty();reNode(n);};
   qa('[data-sapab]').forEach(cb=>cb.onchange=()=>{const id=+cb.dataset.sapab;o.abordagemIds=o.abordagemIds||[];const ix=o.abordagemIds.indexOf(id);if(cb.checked&&ix<0)o.abordagemIds.push(id);else if(!cb.checked&&ix>=0)o.abordagemIds.splice(ix,1);setDirty();});}

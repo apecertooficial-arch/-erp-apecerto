@@ -31,24 +31,27 @@ function NavIcon({ item }: { item: ModuleName }) {
   return <svg {...common}><circle cx="12" cy="12" r="10" /><path d="M9 9a3 3 0 1 1 4.5 2.6C12.6 12.1 12 12.7 12 14M12 18h.01" /></svg>;
 }
 
-function NavGroup({ label, items, activeItem, onNavigate }: { label: string; items: ModuleName[]; activeItem: ModuleName; onNavigate: (item: ModuleName) => void }) {
+function NavGroup({ label, items, activeItem, onNavigate, badges }: { label: string; items: ModuleName[]; activeItem: ModuleName; onNavigate: (item: ModuleName) => void; badges?: Partial<Record<ModuleName, number>> }) {
   return (
     <section className="nav-group">
       <span className="nav-label">{label}</span>
-      {items.map((item) => (
-        <button className={`nav-item ${item === activeItem ? "active" : ""}`} key={item} onClick={() => onNavigate(item)} type="button">
-          <span className="nav-icon" aria-hidden="true"><NavIcon item={item} /></span>
-          <span>{item}</span>
-          {item === "CRM" && <small>20</small>}
-          {item === "Produtos" && <small>45</small>}
-          {item === "Automações" && <small>2</small>}
-        </button>
-      ))}
+      {items.map((item) => {
+        const badge = badges?.[item] ?? 0;
+        return (
+          <button className={`nav-item ${item === activeItem ? "active" : ""}`} key={item} onClick={() => onNavigate(item)} type="button">
+            <span className="nav-icon" aria-hidden="true"><NavIcon item={item} /></span>
+            <span>{item}</span>
+            {item === "CRM" && <small>20</small>}
+            {item === "Automações" && <small>2</small>}
+            {item === "Produtos" && badge > 0 && <small className="nav-badge-pending" title={`${badge} produto(s) aguardando aprovação`}>{badge}</small>}
+          </button>
+        );
+      })}
     </section>
   );
 }
 
-export function AppShell({ children, activeItem, onNavigate, onOpenProfile, sessionRole = "corretor", sessionName = "Corretor", modulePermissions = null }: { children: ReactNode; activeItem: ModuleName; onNavigate: (item: ModuleName) => void; onOpenProfile?: () => void; sessionRole?: "admin" | "gestor" | "corretor"; sessionName?: string; modulePermissions?: Record<string, string[]> | null }) {
+export function AppShell({ children, activeItem, onNavigate, onOpenProfile, sessionRole = "corretor", sessionName = "Corretor", modulePermissions = null, badges }: { children: ReactNode; activeItem: ModuleName; onNavigate: (item: ModuleName) => void; onOpenProfile?: () => void; sessionRole?: "admin" | "gestor" | "corretor"; sessionName?: string; modulePermissions?: Record<string, string[]> | null; badges?: Partial<Record<ModuleName, number>> }) {
   const isBroker = sessionRole === "corretor";
   const [navCollapsed, setNavCollapsed] = useState(false);
   /* Doc §14 — sem "ver" no módulo, ele some do menu (admin nunca perde Usuários/Configurações para não se trancar fora).
@@ -89,9 +92,9 @@ export function AppShell({ children, activeItem, onNavigate, onOpenProfile, sess
       <aside className="sidebar">
         <div className="brand"><span className="brand-mark"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M4 14 16 5l12 9v13H7V15" /><path d="m11 15 4 4 7-8" /></svg></span><strong>apê<span>certo</span></strong><button className="nav-collapse-btn" type="button" onClick={() => setNavCollapsed((v) => !v)} title={navCollapsed ? "Expandir menu" : "Minimizar menu"} aria-label="Minimizar menu">{navCollapsed ? "»" : "«"}</button></div>
         <nav>
-          <NavGroup label="PRINCIPAL" items={mainItems} activeItem={activeItem} onNavigate={onNavigate} />
-          <NavGroup label="FERRAMENTAS" items={toolItems} activeItem={activeItem} onNavigate={onNavigate} />
-          <NavGroup label="SISTEMA" items={systemItems} activeItem={activeItem} onNavigate={onNavigate} />
+          <NavGroup label="PRINCIPAL" items={mainItems} activeItem={activeItem} onNavigate={onNavigate} badges={badges} />
+          <NavGroup label="FERRAMENTAS" items={toolItems} activeItem={activeItem} onNavigate={onNavigate} badges={badges} />
+          <NavGroup label="SISTEMA" items={systemItems} activeItem={activeItem} onNavigate={onNavigate} badges={badges} />
         </nav>
         <button className="profile" type="button" onClick={onOpenProfile} title="Abrir meu perfil"><span>{initial}</span><div><strong>{sessionName}</strong><small>{roleLabel} · apêcerto</small></div><i>⌄</i></button>
       </aside>
