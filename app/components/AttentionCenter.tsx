@@ -21,7 +21,7 @@ const kindInfo: Record<AlertKind, { label: string; icon: string }> = {
   waiting: { label: "Sem atendimento", icon: "!" },
   message: { label: "Nova mensagem", icon: "●" },
   risk: { label: "Risco de perda", icon: "↘" },
-  desatualizado: { label: "Desatualizado", icon: "⏳" },
+  desatualizado: { label: "Desatualizado", icon: "◷" },
 };
 
 // Classificação da etapa do funil para separar "Risco de perda" (etapa avançada) de "Desatualizado" (etapa fria).
