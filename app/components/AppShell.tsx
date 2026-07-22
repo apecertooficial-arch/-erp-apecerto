@@ -4,7 +4,7 @@ import { useState, type ReactNode } from "react";
 import type { ModuleName } from "../features/system/module-map";
 
 const adminMainItems: ModuleName[] = ["Início", "CRM", "Performance", "Produtos", "Financeiro"];
-const adminToolItems: ModuleName[] = ["Abordagens", "Automações", "Financiamento", "Chat ao Vivo", "Disparos", "Calendário", "Agentes de IA"];
+const adminToolItems: ModuleName[] = ["Abordagens", "Automações", "Financiamento", "Chat ao Vivo", "Disparos", "Calendário", "Projetos e Tarefas", "Agentes de IA"];
 const adminSystemItems: ModuleName[] = ["Usuários", "Perfis e Permissões", "Notificações", "Base de conhecimento", "Auditoria", "Configurações", "Ajuda"];
 const brokerMainItems: ModuleName[] = ["Início", "CRM", "Performance", "Produtos", "Financeiro"];
 const brokerToolItems: ModuleName[] = ["Chat ao Vivo", "Financiamento", "Disparos", "Calendário"];
@@ -23,6 +23,7 @@ function NavIcon({ item }: { item: ModuleName }) {
   if (item === "Chat ao Vivo") return <svg {...common}><path d="M7.8 20A9 9 0 1 0 4 16l-2 6Z" /></svg>;
   if (item === "Calendário") return <svg {...common}><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M7 3v4M17 3v4M3 10h18" /></svg>;
   if (item === "Agentes de IA") return <svg {...common}><path d="M10 3 8.7 8.7 3 10l5.7 1.3L10 17l1.3-5.7L17 10l-5.7-1.3ZM18 15l-.7 2.3L15 18l2.3.7L18 21l.7-2.3L21 18l-2.3-.7Z" /></svg>;
+  if (item === "Projetos e Tarefas") return <svg {...common}><rect x="3" y="3" width="7" height="13" rx="1.5" /><rect x="14" y="3" width="7" height="8" rx="1.5" /><path d="M3 20h7M14 15h7" /></svg>;
   if (item === "Usuários") return <svg {...common}><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.9M16 3.2a4 4 0 0 1 0 7.6" /></svg>;
   if (item === "Notificações") return <svg {...common}><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10 21h4" /></svg>;
   if (item === "Base de conhecimento") return <svg {...common}><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5Z" /><path d="M4 5.5v14A2.5 2.5 0 0 0 6.5 22H20v-5" /></svg>;
@@ -70,6 +71,7 @@ export function AppShell({ children, activeItem, onNavigate, onOpenProfile, sess
     Disparos: ["disparos"],
     "Calendário": ["calendario"],
     "Agentes de IA": ["agentes_ia"],
+    "Projetos e Tarefas": ["projetos"],
     "Usuários": ["usuarios"],
     "Notificações": ["notificacoes"],
     Auditoria: ["auditoria"],
