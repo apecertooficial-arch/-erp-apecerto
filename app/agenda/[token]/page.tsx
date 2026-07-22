@@ -109,7 +109,7 @@ export default function AgendaPublica({ params }: { params: Promise<{ token: str
           <span className={`agm-num ${ehHoje ? "hj" : ""}`}>{c.num}</span>
           <span className="agm-chips">
             {vs.slice(0, 3).map((v, i) => <em key={i} style={{ background: corDo(v.corretor) }}>
-              {v.corretor.split(" ")[0]}/{v.cliente.split(" ")[0]}
+              {v.corretor.split(" ")[0]}/{v.cliente.split(" ")[0]}{v.produto ? `·${v.produto.split(" ")[0]}` : ""}
             </em>)}
             {vs.length > 3 && <small>+{vs.length - 3}</small>}
           </span>
@@ -124,7 +124,9 @@ export default function AgendaPublica({ params }: { params: Promise<{ token: str
         <div className="agm-hora"><b>{v.hora}</b>{v.horaFim && <small>{v.horaFim}</small>}</div>
         <div className="agm-info">
           <strong>{v.cliente}</strong>
-          {(v.produto || v.unidade) && <span>🏢 {v.produto}{v.unidade ? ` · ${v.unidade}` : ""}</span>}
+          {(v.produto || v.unidade)
+            ? <span className="agm-prod">🏢 {v.produto || "Produto"}{v.unidade ? ` · ${v.unidade}` : ""}</span>
+            : <span className="agm-prod falta">⚠ sem produto informado</span>}
           {v.local && <span>📍 {v.local}</span>}
           <div className="agm-tags">
             <em style={{ background: `${corDo(v.corretor)}1c`, color: corDo(v.corretor) }}>{v.corretor}</em>
@@ -169,6 +171,8 @@ export default function AgendaPublica({ params }: { params: Promise<{ token: str
       .agm-info { flex:1; min-width:0; display:flex; flex-direction:column; gap:2px; }
       .agm-info strong { font-size:14.5px; letter-spacing:-.01em; }
       .agm-info > span { font-size:12px; color:#6d635c; font-weight:600; }
+      .agm-info .agm-prod { color:#C2530A; font-weight:800; }
+      .agm-info .agm-prod.falta { color:#B97A0C; background:#FFF6EA; border-radius:7px; padding:2px 7px; align-self:flex-start; font-size:11px; }
       .agm-tags { display:flex; gap:6px; flex-wrap:wrap; margin-top:5px; }
       .agm-tags em { font-style:normal; font-size:10px; font-weight:800; padding:2.5px 8px; border-radius:999px; }
       .agm-tags em.st-agendada { background:#FFF1E5; color:#C2530A; }
