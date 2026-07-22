@@ -393,11 +393,16 @@ type SalesData = {
   brokers: Array<{ id: number; nome: string; usuario_id: string | null; online: boolean }>;
   stages?: Array<{ id: string; slug: string; nome: string; cor: string; ordem: number; papel: string; sla_dias: number; resale: boolean; exige_docs?: boolean }>;
   etapaDocs?: Array<{ id: string; etapa_slug: string; nome: string; obrigatorio: boolean; ordem: number }>;
-  anexos?: Array<{ id: string; processo_ref: string; negocio_id: number | null; etapa_slug: string | null; doc_nome: string | null; nome: string; path: string; mime: string | null; tamanho: number | null; criado_em: string }>;
+  anexos?: Array<{ id: string; processo_ref: string; negocio_id: number | null; etapa_slug: string | null; doc_nome: string | null; nome: string; path: string; mime: string | null; tamanho: number | null; criado_em: string; grupo?: string | null; status?: string; status_motivo?: string | null; obrigatorio?: boolean; observacao?: string | null; enviado_por?: string | null; revisado_por?: string | null; revisado_em?: string | null }>;
   users?: Array<{ id: string; nome: string; role: string }>;
   history?: Array<{ processo_id: string; etapa_de: string | null; etapa_para: string; movido_por: string | null; movido_em: string }>;
   verificacoes?: Array<{ id: string; processo_ref: string; etapa_slug: string; verificado_por: string | null; verificado_em: string }>;
   solicitacoes?: Array<{ id: string; negocio_id: number | null; corretor_id: number | null; solicitado_por: string | null; produto_id: string | null; vgv: number | null; forma_pgto: string | null; obs: string | null; status: string; criado_em: string }>;
+  docModelo?: Array<{ id: string; grupo: string; nome: string; obrigatorio: boolean; ordem: number }>;
+  condicoes?: Array<{ processo_ref: string; comprador_tem_conjuge: boolean; vendedor_tem_conjuge: boolean; valor_total: number | null; valor_entrada: number | null; data_entrada: string | null; valor_financiado: number | null; valor_fgts: number | null; valor_recursos_proprios: number | null; valor_parcelas_interm: number | null; qtd_parcelas: number | null; valor_parcela: number | null; valor_assinatura: number | null; valor_chaves: number | null; data_assinatura: string | null; data_conclusao: string | null; origem_recursos: Array<{ tipo: string; valor: number | string }> }>;
+  comissao?: Array<{ processo_ref: string; percentual_total: number | null; valor_total: number | null; imobiliaria: string | null; forma_pgto: string | null; participantes: Array<{ nome: string; papel: string; percentual: number | string; valor: number | string }> }>;
+  comissaoParcelas?: Array<{ id: string; processo_ref: string; valor: number | null; gatilho: string | null; data_prevista: string | null; data_efetiva: string | null; responsavel: string | null; status: string; ordem: number }>;
+  observacoes?: Array<{ id: string; processo_ref: string; texto: string; autor: string | null; autor_nome: string | null; criado_em: string }>;
 };
 
 const saleStages = [
@@ -484,13 +489,24 @@ function SalesProcessView({ accessToken, initialCreate = false, sessionRole = "c
     })}</div>
     {creating && <CreateSaleModal data={data} accessToken={accessToken} onClose={() => setCreating(false)} onDone={async () => { setCreating(false); await load(); }} />}
     {chatItem && <LeadChatDrawer key={chatItem.deal.id} accessToken={accessToken} lead={chatItem.lead} deal={chatItem.deal} corretorNome={chatItem.corretorNome} onClose={() => setChatItem(null)} onResponse={async () => {}} />}
-    {detailItem && (() => { const sale = saleById.get(detailItem.venda_id); const deal = dealBySale.get(detailItem.venda_id); const lead = deal ? leadById.get(deal.lead_id) : null; const broker = brokerById.get(deal?.corretor_id ?? lead?.corretor_id ?? -1); return <SaleDetailDrawer accessToken={accessToken} canApprove={canManageStages} process={detailItem} sale={sale} lead={lead} broker={broker} stageList={stageList} etapaDocs={data.etapaDocs ?? []} anexos={(data.anexos ?? []).filter((a) => a.processo_ref === detailItem.id)} verificacoes={(data.verificacoes ?? []).filter((v) => v.processo_ref === detailItem.id)} history={(data.history ?? []).filter((h) => h.processo_id === detailItem.id)} busy={busy} onReload={load} onMove={async (stage) => { await move(detailItem.id, stage); setDetailItem((cur) => cur ? { ...cur, etapa: stage } : cur); }} onChat={lead && deal ? () => { setDetailItem(null); setChatItem({ lead: lead as unknown as Lead, deal: deal as unknown as Deal, corretorNome: broker?.nome }); } : undefined} onClose={() => setDetailItem(null)} />; })()}
+    {detailItem && (() => { const sale = saleById.get(detailItem.venda_id); const deal = dealBySale.get(detailItem.venda_id); const lead = deal ? leadById.get(deal.lead_id) : null; const broker = brokerById.get(deal?.corretor_id ?? lead?.corretor_id ?? -1); return <SaleDetailDrawer accessToken={accessToken} canApprove={canManageStages} process={detailItem} sale={sale} lead={lead} broker={broker} stageList={stageList} docModelo={data.docModelo ?? []} anexos={(data.anexos ?? []).filter((a) => a.processo_ref === detailItem.id)} condicao={(data.condicoes ?? []).find((c) => c.processo_ref === detailItem.id)} comissao={(data.comissao ?? []).find((c) => c.processo_ref === detailItem.id)} comissaoParcelas={(data.comissaoParcelas ?? []).filter((p) => p.processo_ref === detailItem.id)} observacoes={(data.observacoes ?? []).filter((o) => o.processo_ref === detailItem.id)} users={data.users ?? []} history={(data.history ?? []).filter((h) => h.processo_id === detailItem.id)} busy={busy} onReload={load} onMove={async (stage) => { await move(detailItem.id, stage); setDetailItem((cur) => cur ? { ...cur, etapa: stage } : cur); }} onChat={lead && deal ? () => { setDetailItem(null); setChatItem({ lead: lead as unknown as Lead, deal: deal as unknown as Deal, corretorNome: broker?.nome }); } : undefined} onClose={() => setDetailItem(null)} />; })()}
     {bulkFrom && <div className="crm-center-modal"><form onSubmit={(event) => event.preventDefault()}><header><div><span>AÇÃO EM MASSA</span><h2>Mover uma etapa inteira</h2><p>Todas as vendas de <b>{stageList.find((s) => s.id === bulkFrom)?.name}</b> serão enviadas para o destino escolhido.</p></div><button type="button" onClick={() => setBulkFrom(null)}>×</button></header><div className="bulk-move-grid"><label>Etapa de destino<select id="bulk-to" defaultValue=""><option value="">Selecione</option>{stageList.filter((s) => s.id !== bulkFrom).map((s) => <option value={s.id} key={s.id}>{s.name}</option>)}</select></label></div><footer><button type="button" onClick={() => setBulkFrom(null)}>Cancelar</button><button className="crm-primary" type="button" disabled={busy} onClick={() => { const to = (document.getElementById("bulk-to") as HTMLSelectElement | null)?.value; if (!to) { setError("Selecione a etapa de destino."); return; } void mutateStages({ action: "bulkMoveStage", fromSlug: bulkFrom, toSlug: to }); setBulkFrom(null); }}>Mover vendas</button></footer></form></div>}
   </section>;
 }
 
 type SaleStageItem = { id: string; dbId: string | null; name: string; color: string; role: string; days: number; resale: boolean };
-function SaleDetailDrawer({ accessToken, canApprove, process, sale, lead, broker, stageList, etapaDocs, anexos, verificacoes, history = [], busy, onReload, onMove, onChat, onClose }: { accessToken: string; canApprove?: boolean; process: SalesData["processes"][number]; sale?: SalesData["sales"][number]; lead?: SalesData["leads"][number] | null; broker?: SalesData["brokers"][number]; stageList: SaleStageItem[]; etapaDocs: NonNullable<SalesData["etapaDocs"]>; anexos: NonNullable<SalesData["anexos"]>; verificacoes: NonNullable<SalesData["verificacoes"]>; history?: NonNullable<SalesData["history"]>; busy?: boolean; onReload: () => Promise<void>; onMove: (stage: string) => Promise<void>; onChat?: () => void; onClose: () => void }) {
+const DOC_GRUPOS = [
+  { key: "comprador", label: "Documentação do comprador", conjugeFlag: "comprador_tem_conjuge" as const, conjugeGrupo: "conjuge_comprador" },
+  { key: "vendedor", label: "Documentação do vendedor", conjugeFlag: "vendedor_tem_conjuge" as const, conjugeGrupo: "conjuge_vendedor" },
+  { key: "imovel", label: "Documentação do imóvel", conjugeFlag: null, conjugeGrupo: null },
+] as const;
+const GRUPO_LABEL: Record<string, string> = { comprador: "comprador", conjuge_comprador: "cônjuge do comprador", vendedor: "vendedor", conjuge_vendedor: "cônjuge do vendedor", imovel: "imóvel" };
+const DOC_STATUS_LABEL: Record<string, string> = { pendente: "Pendente", anexado: "Anexado", em_analise: "Em análise", aprovado: "Aprovado", recusado: "Recusado", correcao: "Necessita correção" };
+const ORIGEM_OPCOES = ["Recursos próprios", "Financiamento bancário", "FGTS", "Consórcio ou carta de crédito", "Permuta", "Outro"];
+const COMISSAO_GATILHOS = ["Na entrada", "Na primeira parcela", "Na segunda parcela", "Na assinatura", "Na liberação do financiamento", "Na entrega das chaves", "Outra condição"];
+const PARCELA_STATUS = ["previsto", "recebido", "atrasado", "cancelado"];
+
+function SaleDetailDrawer({ accessToken, canApprove, process, sale, lead, broker, stageList, docModelo, anexos, condicao, comissao, comissaoParcelas, observacoes, users, history = [], busy, onReload, onMove, onChat, onClose }: { accessToken: string; canApprove?: boolean; process: SalesData["processes"][number]; sale?: SalesData["sales"][number]; lead?: SalesData["leads"][number] | null; broker?: SalesData["brokers"][number]; stageList: SaleStageItem[]; docModelo: NonNullable<SalesData["docModelo"]>; anexos: NonNullable<SalesData["anexos"]>; condicao?: NonNullable<SalesData["condicoes"]>[number]; comissao?: NonNullable<SalesData["comissao"]>[number]; comissaoParcelas: NonNullable<SalesData["comissaoParcelas"]>; observacoes: NonNullable<SalesData["observacoes"]>; users: NonNullable<SalesData["users"]>; history?: NonNullable<SalesData["history"]>; busy?: boolean; onReload: () => Promise<void>; onMove: (stage: string) => Promise<void>; onChat?: () => void; onClose: () => void }) {
   const stageName = (slug: string) => stageList.find((s) => s.id === slug)?.name || slug;
   const enteredAt = (slug: string) => { const rows = history.filter((h) => h.etapa_para === slug); return rows.length ? rows[rows.length - 1].movido_em : null; };
   const currentIndex = stageList.findIndex((s) => s.id === process.etapa);
@@ -504,104 +520,217 @@ function SaleDetailDrawer({ accessToken, canApprove, process, sale, lead, broker
   const isRevenda = process.tipo_venda === "revenda";
   const track = stageList.filter((s) => !s.resale || isRevenda);
   const trackCurrent = track.findIndex((s) => s.id === process.etapa);
+  const userName = (id?: string | null) => users.find((u) => u.id === id)?.nome || "—";
 
-  const [openStage, setOpenStage] = useState<string>(process.etapa);
+  const [tab, setTab] = useState<"andamento" | "docs" | "condicoes" | "comissao" | "obs">("andamento");
   const [wBusy, setWBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [obsText, setObsText] = useState("");
+  const [novoDoc, setNovoDoc] = useState<Record<string, { nome: string; obrig: boolean; obs: string }>>({});
+  const [cond, setCond] = useState(() => ({
+    comprador_tem_conjuge: condicao?.comprador_tem_conjuge ?? false, vendedor_tem_conjuge: condicao?.vendedor_tem_conjuge ?? false,
+    valor_total: condicao?.valor_total ?? "", valor_entrada: condicao?.valor_entrada ?? "", data_entrada: (condicao?.data_entrada ?? "")?.toString().slice(0, 10),
+    valor_financiado: condicao?.valor_financiado ?? "", valor_fgts: condicao?.valor_fgts ?? "", valor_recursos_proprios: condicao?.valor_recursos_proprios ?? "",
+    valor_parcelas_interm: condicao?.valor_parcelas_interm ?? "", qtd_parcelas: condicao?.qtd_parcelas ?? "", valor_parcela: condicao?.valor_parcela ?? "",
+    valor_assinatura: condicao?.valor_assinatura ?? "", valor_chaves: condicao?.valor_chaves ?? "",
+    data_assinatura: (condicao?.data_assinatura ?? "")?.toString().slice(0, 10), data_conclusao: (condicao?.data_conclusao ?? "")?.toString().slice(0, 10),
+    origem_recursos: (Array.isArray(condicao?.origem_recursos) ? condicao!.origem_recursos : []) as Array<{ tipo: string; valor: number | string }>,
+  }));
+  const [com, setCom] = useState(() => ({
+    percentual_total: comissao?.percentual_total ?? "", valor_total: comissao?.valor_total ?? "", imobiliaria: comissao?.imobiliaria ?? "", forma_pgto: comissao?.forma_pgto ?? "",
+    participantes: (Array.isArray(comissao?.participantes) ? comissao!.participantes : []) as Array<{ nome: string; papel: string; percentual: number | string; valor: number | string }>,
+    parcelas: comissaoParcelas.map((p) => ({ valor: p.valor ?? "", gatilho: p.gatilho ?? "", data_prevista: (p.data_prevista ?? "")?.toString().slice(0, 10), data_efetiva: (p.data_efetiva ?? "")?.toString().slice(0, 10), responsavel: p.responsavel ?? "", status: p.status ?? "previsto" })),
+  }));
+
   const api = async (payload: Record<string, unknown>) => {
     const r = await authedFetch("/api/crm/sales", { method: "PATCH", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify(payload) });
     const j = await r.json() as { error?: string }; if (!r.ok) throw new Error(j.error || "Falha.");
   };
-  const upload = async (file: File, slug: string, docNome: string | null) => {
-    setWBusy(true); setError(null);
-    try {
-      const supabase = getBrowserSupabaseClient();
-      const safe = file.name.replace(/[^\w.\-]+/g, "_");
-      const path = `esteira/${process.id}/${slug}/${Date.now()}_${safe}`;
-      const { error: upErr } = await supabase.storage.from("esteira-docs").upload(path, file, { upsert: false });
-      if (upErr) throw new Error(upErr.message);
-      await api({ action: "addAnexo", processId: process.id, negocioId: process.negocio_id, etapaSlug: slug, docNome, nome: file.name, path, mime: file.type, tamanho: file.size });
-      await onReload();
-    } catch (reason) { setError(reason instanceof Error ? reason.message : "Falha ao anexar."); }
-    finally { setWBusy(false); }
-  };
-  const removeAnexo = async (id: string) => { setWBusy(true); setError(null); try { await api({ action: "removeAnexo", anexoId: id }); await onReload(); } catch (r) { setError(r instanceof Error ? r.message : "Falha."); } finally { setWBusy(false); } };
+  const run = async (fn: () => Promise<void>) => { setWBusy(true); setError(null); try { await fn(); await onReload(); } catch (reason) { setError(reason instanceof Error ? reason.message : "Falha."); } finally { setWBusy(false); } };
+  const upload = (file: File, grupo: string, docNome: string | null, obrigatorio: boolean, observacao: string) => run(async () => {
+    const supabase = getBrowserSupabaseClient();
+    const safe = file.name.replace(/[^\w.\-]+/g, "_");
+    const path = `esteira/${process.id}/${grupo}/${Date.now()}_${safe}`;
+    const { error: upErr } = await supabase.storage.from("esteira-docs").upload(path, file, { upsert: false });
+    if (upErr) throw new Error(upErr.message);
+    await api({ action: "addAnexo", processId: process.id, negocioId: process.negocio_id, grupo, docNome, obrigatorio, observacao, nome: file.name, path, mime: file.type, tamanho: file.size });
+  });
+  const removeAnexo = (id: string) => run(() => api({ action: "removeAnexo", anexoId: id }));
+  const setStatus = (a: NonNullable<SalesData["anexos"]>[number], status: string) => { let motivo = ""; if (status === "recusado" || status === "correcao") { motivo = window.prompt(`Motivo (${DOC_STATUS_LABEL[status]}):`, a.status_motivo || "") || ""; if (!motivo.trim()) return; } void run(() => api({ action: "docStatus", anexoId: a.id, status, motivo })); };
   const abrir = async (path: string) => { const { data } = await getBrowserSupabaseClient().storage.from("esteira-docs").createSignedUrl(path, 300); if (data?.signedUrl) window.open(data.signedUrl, "_blank"); };
-  const verify = async (slug: string) => { setWBusy(true); setError(null); try { await api({ action: "verifyStage", processId: process.id, etapaSlug: slug }); await onReload(); } catch (r) { setError(r instanceof Error ? r.message : "Falha ao verificar."); } finally { setWBusy(false); } };
-  const unverify = async (slug: string) => { setWBusy(true); setError(null); try { await api({ action: "unverifyStage", processId: process.id, etapaSlug: slug }); await onReload(); } catch (r) { setError(r instanceof Error ? r.message : "Falha."); } finally { setWBusy(false); } };
-
-  const verifOf = (slug: string) => verificacoes.find((v) => v.etapa_slug === slug) ?? null;
+  const baixar = async (path: string, nome: string) => { const { data } = await getBrowserSupabaseClient().storage.from("esteira-docs").createSignedUrl(path, 300, { download: nome }); if (data?.signedUrl) window.open(data.signedUrl, "_blank"); };
+  const saveCondicoes = () => run(() => api({ action: "salvarCondicoes", processId: process.id, ...cond }));
+  const saveComissao = () => run(() => api({ action: "salvarComissao", processId: process.id, ...com }));
+  const addObs = () => { if (!obsText.trim()) return; void run(async () => { await api({ action: "addObs", processId: process.id, texto: obsText.trim() }); setObsText(""); }); };
   const busyAll = busy || wBusy;
 
-  return <div className="crm-drawer-layer" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}><aside className="crm-drawer-v2 sale-detail">
-    <header className="sale-detail-hero"><button className="drawer-close-v2" type="button" onClick={onClose}>×</button>
-      <span className="sale-detail-kicker">ANDAMENTO DA VENDA</span>
-      <h2>{lead?.nome || sale?.empreendimento_nome || "Venda"}</h2>
-      <p>{sale?.empreendimento_nome || "Produto não informado"}{lead?.telefone ? ` · ☎ ${lead.telefone}` : ""}</p>
-      <div className="sale-detail-progress"><i style={{ width: `${pct}%`, background: stage?.color || "#7c3aed" }} /></div>
-      <small>{currentIndex < 0 ? "Etapa fora da esteira ativa" : `${done} de ${total - 1} etapas concluídas`}</small>
-    </header>
-    <div className="sale-detail-body">
-      <div className="sale-detail-grid">
-        <div><small>VALOR (VGV)</small><strong>{money.format(sale?.vgv || 0)}</strong></div>
-        <div><small>FORMA DE PAGAMENTO</small><strong>{sale?.forma_pgto || "—"}</strong></div>
-        <div><small>TIPO</small><strong>{isRevenda ? "Revenda" : "Construtora"}</strong></div>
-        <div><small>DATA DA VENDA</small><strong>{fmtDate(sale?.data_venda)}</strong></div>
-        <div><small>RESPONSÁVEL</small><strong>{broker?.nome || "Não definido"}</strong></div>
-        <div><small>PRAZO DA ETAPA</small><strong className={overdue ? "sale-detail-late" : ""}>{process.prazo_em ? fmtDate(process.prazo_em) : (stage?.days ? `SLA ${stage.days}d` : "—")}</strong></div>
+  // grupos ativos conforme cônjuge
+  const gruposAtivos = ["comprador", "vendedor", "imovel", ...(cond.comprador_tem_conjuge ? ["conjuge_comprador"] : []), ...(cond.vendedor_tem_conjuge ? ["conjuge_vendedor"] : [])];
+  const anexoDe = (grupo: string, nome: string) => anexos.find((a) => a.grupo === grupo && a.doc_nome === nome);
+  const aprovadoDe = (grupo: string, nome: string) => { const a = anexoDe(grupo, nome); return a?.status === "aprovado"; };
+  // motivos de bloqueio (espelha o servidor)
+  const blockReasons: string[] = [];
+  const faltaGrupo: Record<string, number> = {};
+  gruposAtivos.forEach((g) => { docModelo.filter((d) => d.grupo === g && d.obrigatorio).forEach((d) => { if (!aprovadoDe(g, d.nome)) faltaGrupo[g] = (faltaGrupo[g] || 0) + 1; }); });
+  const avulsosFalt = anexos.filter((a) => a.obrigatorio && a.status !== "aprovado").length;
+  const partesFalta = Object.entries(faltaGrupo).map(([g, n]) => `${n} ${GRUPO_LABEL[g]}`);
+  if (avulsosFalt) partesFalta.push(`${avulsosFalt} adicional(is)`);
+  if (partesFalta.length) blockReasons.push(`Documentos obrigatórios pendentes de aprovação: ${partesFalta.join(", ")}`);
+  if (cond.valor_total === "" || cond.valor_total == null) blockReasons.push("Condições comerciais (valor total) não preenchidas");
+  const docsAnexados = anexos.length;
+  const docsPendentes = Object.values(faltaGrupo).reduce((a, b) => a + b, 0) + avulsosFalt;
+
+  const somaOrigem = cond.origem_recursos.reduce((sum, o) => sum + (Number(o.valor) || 0), 0);
+  const totalCond = Number(cond.valor_total) || 0;
+  const somaFecha = totalCond > 0 && Math.abs(somaOrigem - totalCond) < 0.01;
+
+  const nextStage = trackCurrent >= 0 && trackCurrent < track.length - 1 ? track[trackCurrent + 1] : null;
+
+  const DocRow = ({ grupo, nome, obrigatorio, modelo }: { grupo: string; nome: string; obrigatorio: boolean; modelo: boolean }) => {
+    const a = anexoDe(grupo, nome);
+    return <div className={`docx-row ${a ? `st-${a.status}` : "st-pendente"}`}>
+      <div className="docx-main">
+        <strong>{nome}</strong>
+        <small>{obrigatorio ? "Obrigatório" : "Opcional"}{a ? ` · ${a.nome} · ${userName(a.enviado_por)} · ${dateTime.format(new Date(a.criado_em))}` : ""}</small>
+        {a?.status_motivo && (a.status === "recusado" || a.status === "correcao") && <em className="docx-motivo">⚠ {a.status_motivo}</em>}
       </div>
-      <article className={`sale-detail-current ${overdue ? "late" : ""}`} style={{ "--sale-stage": stage?.color || "#7c3aed" } as CSSProperties}>
-        <div><small>ETAPA ATUAL · {stage?.role || "—"}</small><strong>{stage?.name || process.etapa}</strong></div>
-        <span>{overdue ? "Em atraso · " : ""}{formatElapsed(minutesInStage)} nesta etapa</span>
-      </article>
+      <span className={`docx-status st-${a?.status || "pendente"}`}>{a ? DOC_STATUS_LABEL[a.status || "anexado"] : "Pendente"}</span>
+      <div className="docx-actions">
+        {a ? <>
+          <button type="button" title="Abrir" onClick={() => void abrir(a.path)}>👁</button>
+          <button type="button" title="Baixar" onClick={() => void baixar(a.path, a.nome)}>⬇</button>
+          <label title="Substituir" className="docx-replace">⟳<input type="file" hidden disabled={busyAll} onChange={(e) => { const f = e.target.files?.[0]; if (f) void run(async () => { await api({ action: "removeAnexo", anexoId: a.id }); const supabase = getBrowserSupabaseClient(); const safe = f.name.replace(/[^\w.\-]+/g, "_"); const path = `esteira/${process.id}/${grupo}/${Date.now()}_${safe}`; const { error: ue } = await supabase.storage.from("esteira-docs").upload(path, f); if (ue) throw new Error(ue.message); await api({ action: "addAnexo", processId: process.id, negocioId: process.negocio_id, grupo, docNome: nome, obrigatorio, nome: f.name, path, mime: f.type, tamanho: f.size }); }); e.target.value = ""; }} /></label>
+          <button type="button" title="Excluir" className="docx-del" disabled={busyAll} onClick={() => removeAnexo(a.id)}>🗑</button>
+          {canApprove && <select className="docx-statussel" value={a.status || "anexado"} disabled={busyAll} onChange={(e) => setStatus(a, e.target.value)} title="Alterar status">{["anexado", "em_analise", "aprovado", "recusado", "correcao"].map((s) => <option value={s} key={s}>{DOC_STATUS_LABEL[s]}</option>)}</select>}
+        </> : <label className="docx-up">📎 Anexar<input type="file" hidden disabled={busyAll} onChange={(e) => { const f = e.target.files?.[0]; if (f) upload(f, grupo, modelo ? nome : null, obrigatorio, ""); e.target.value = ""; }} /></label>}
+      </div>
+    </div>;
+  };
 
-      <h4>ESTEIRA DE DOCUMENTAÇÃO</h4>
-      {error && <div className="modal-error">{error}</div>}
-      <div className="sale-esteira">{track.map((s, i) => {
-        const state = trackCurrent < 0 ? "todo" : i < trackCurrent ? "done" : i === trackCurrent ? "current" : "todo";
-        const docs = etapaDocs.filter((d) => d.etapa_slug === s.id);
-        const stageAnexos = anexos.filter((a) => a.etapa_slug === s.id);
-        const anexoDe = (nome: string) => stageAnexos.find((a) => a.doc_nome === nome);
-        const outros = stageAnexos.filter((a) => !a.doc_nome || !docs.some((d) => d.nome === a.doc_nome));
-        const obrigatorios = docs.filter((d) => d.obrigatorio);
-        const faltando = obrigatorios.filter((d) => !anexoDe(d.nome)).length;
-        const vf = verifOf(s.id);
-        const isOpen = openStage === s.id;
-        const ent = enteredAt(s.id);
-        return <div className={`sale-esteira-stage ${state} ${vf ? "verified" : ""}`} style={{ "--tl": s.color } as CSSProperties} key={s.id}>
-          <button type="button" className="sale-esteira-head" onClick={() => setOpenStage(isOpen ? "" : s.id)}>
-            <span className="sale-esteira-dot">{vf ? "✓" : state === "current" ? "●" : state === "done" ? "✓" : "○"}</span>
-            <span className="sale-esteira-title"><strong>{s.name}</strong><small>{s.role}{s.days ? ` · SLA ${s.days}d` : " · conclusão"}{ent ? ` · ${state === "current" ? "desde" : "entrou"} ${shortDate.format(new Date(ent))}` : ""}</small></span>
-            <span className="sale-esteira-badge">{vf ? "Verificada" : docs.length ? `${docs.length - faltando}/${docs.length} docs` : "sem docs"}</span>
-            <span className="sale-esteira-chev">{isOpen ? "▾" : "▸"}</span>
-          </button>
-          {isOpen && <div className="sale-esteira-body">
-            {docs.length === 0 && outros.length === 0 && <p className="sale-esteira-empty">Nenhum documento configurado para esta etapa. Configure em Configurações → Esteira de vendas.</p>}
-            {docs.map((d) => { const a = anexoDe(d.nome); return <div className={`esteira-doc-row ${a ? "ok" : ""}`} key={d.id}>
-              <span className="esteira-doc-check">{a ? "✓" : "○"}</span>
-              <div className="esteira-doc-info"><strong>{d.nome}</strong><small>{d.obrigatorio ? "Obrigatório" : "Opcional"}{a ? ` · ${a.nome}` : ""}</small></div>
-              {a ? <div className="esteira-doc-actions"><button type="button" onClick={() => void abrir(a.path)}>Abrir</button>{!vf && <button type="button" className="esteira-doc-del" disabled={busyAll} onClick={() => void removeAnexo(a.id)}>×</button>}</div>
-                : <label className="esteira-doc-up">📎 Anexar<input type="file" hidden disabled={busyAll || !!vf} onChange={(e) => { const f = e.target.files?.[0]; if (f) void upload(f, s.id, d.nome); e.target.value = ""; }} /></label>}
-            </div>; })}
-            {outros.length > 0 && <div className="sale-esteira-outros"><small>OUTROS ANEXOS</small>{outros.map((a) => <div className="esteira-doc-row" key={a.id}><span className="esteira-doc-check">📄</span><div className="esteira-doc-info"><strong>{a.nome}</strong><small>{new Date(a.criado_em).toLocaleDateString("pt-BR")}</small></div><div className="esteira-doc-actions"><button type="button" onClick={() => void abrir(a.path)}>Abrir</button>{!vf && <button type="button" className="esteira-doc-del" disabled={busyAll} onClick={() => void removeAnexo(a.id)}>×</button>}</div></div>)}</div>}
-            <label className="esteira-doc-up sale-esteira-add"><input type="file" hidden disabled={busyAll || !!vf} onChange={(e) => { const f = e.target.files?.[0]; if (f) void upload(f, s.id, null); e.target.value = ""; }} />＋ Anexar outro arquivo</label>
-            <div className="sale-esteira-verify">
-              {vf ? <div className="sale-esteira-verified"><span>✓ Etapa verificada em {dateTime.format(new Date(vf.verificado_em))}</span>{canApprove && <button type="button" disabled={busyAll} onClick={() => void unverify(s.id)}>Desfazer</button>}</div>
-                : canApprove ? <button type="button" className="sale-esteira-approve" disabled={busyAll || faltando > 0} onClick={() => void verify(s.id)}>{faltando > 0 ? `Faltam ${faltando} documento(s) obrigatório(s)` : "✓ Verificar etapa e avançar"}</button>
-                : <p className="sale-esteira-wait">{faltando > 0 ? `Faltam ${faltando} documento(s) obrigatório(s).` : "Documentos completos. Aguardando verificação de um gestor."}</p>}
+  return <div className="sale-full-layer">
+    <div className="sale-full">
+      <header className="sale-full-top">
+        <div className="sale-full-title"><span className="sale-full-kicker">ESTEIRA DE VENDAS · NEGOCIAÇÃO</span><h2>{lead?.nome || sale?.empreendimento_nome || "Venda"}</h2><p>{sale?.empreendimento_nome || "Produto não informado"}{lead?.telefone ? ` · ☎ ${lead.telefone}` : ""}</p></div>
+        <button className="sale-full-close" type="button" onClick={onClose} aria-label="Fechar">×</button>
+      </header>
+
+      <div className="sale-full-kpis">
+        <div><small>ETAPA ATUAL</small><strong>{stage?.name || process.etapa}</strong><span>{stage?.role || "—"}</span></div>
+        <div><small>TEMPO NA ETAPA</small><strong className={overdue ? "late" : ""}>{formatElapsed(minutesInStage)}</strong><span>{overdue ? "em atraso" : `SLA ${stage?.days ?? 0}d`}</span></div>
+        <div><small>PRÓXIMA ETAPA</small><strong>{nextStage?.name || "—"}</strong><span>{nextStage?.role || "conclusão"}</span></div>
+        <div><small>DOCUMENTOS</small><strong>{docsAnexados}</strong><span>{docsPendentes} obrigatórios pendentes</span></div>
+        <div><small>VALOR (VGV)</small><strong>{money.format(totalCond || sale?.vgv || 0)}</strong><span>{cond.valor_total ? "condições" : "da venda"}</span></div>
+        <div className={blockReasons.length ? "block on" : "block"}><small>AVANÇO</small><strong>{blockReasons.length ? "Bloqueado" : "Liberado"}</strong><span>{blockReasons.length ? "ver motivo abaixo" : "etapa concluída"}</span></div>
+      </div>
+
+      {blockReasons.length > 0 && <div className="sale-full-block">🔒 <b>Motivo do bloqueio:</b> {blockReasons.join("; ")}.</div>}
+      {error && <div className="sale-full-error">{error}</div>}
+
+      <nav className="sale-full-tabs">
+        {([["andamento", "Andamento"], ["docs", "Documentação"], ["condicoes", "Condições comerciais"], ...(canApprove ? [["comissao", "Comissão"]] : []), ["obs", "Observações"]] as Array<[string, string]>).map(([k, l]) => <button key={k} type="button" className={tab === k ? "active" : ""} onClick={() => setTab(k as typeof tab)}>{l}</button>)}
+      </nav>
+
+      <div className="sale-full-body">
+        {tab === "andamento" && <div className="sale-full-pane">
+          <div className="sale-detail-grid">
+            <div><small>FORMA DE PAGAMENTO</small><strong>{sale?.forma_pgto || "—"}</strong></div>
+            <div><small>TIPO</small><strong>{isRevenda ? "Revenda" : "Construtora"}</strong></div>
+            <div><small>DATA DA VENDA</small><strong>{fmtDate(sale?.data_venda)}</strong></div>
+            <div><small>RESPONSÁVEL</small><strong>{broker?.nome || "Não definido"}</strong></div>
+          </div>
+          <div className="sale-detail-progress big"><i style={{ width: `${pct}%`, background: stage?.color || "#7c3aed" }} /></div>
+          <ol className="sale-timeline">{track.map((s, i) => { const state = trackCurrent < 0 ? "todo" : i < trackCurrent ? "done" : i === trackCurrent ? "current" : "todo"; const ent = enteredAt(s.id); return <li className={`sale-tl ${state}`} style={{ "--tl": s.color } as CSSProperties} key={s.id}><i />{i < track.length - 1 && <u />}<div><strong>{s.name}</strong><small>{s.role}{s.days ? ` · SLA ${s.days}d` : " · conclusão"}{ent ? ` · ${state === "current" ? "desde" : "entrou"} ${shortDate.format(new Date(ent))}` : ""}</small></div>{i === trackCurrent && <em>Aqui</em>}{state === "done" && <b>✓</b>}</li>; })}</ol>
+          {history.length > 0 && <><h4>HISTÓRICO DE MOVIMENTAÇÕES</h4><ul className="sale-moves">{history.slice().reverse().map((h, i) => <li key={i}><b>{dateTime.format(new Date(h.movido_em))}</b><span>{h.etapa_de ? `${stageName(h.etapa_de)} → ${stageName(h.etapa_para)}` : `Entrou em ${stageName(h.etapa_para)}`}{h.movido_por ? ` · ${userName(h.movido_por)}` : ""}</span></li>)}</ul></>}
+        </div>}
+
+        {tab === "docs" && <div className="sale-full-pane">
+          {DOC_GRUPOS.map((g) => <section className="docx-group" key={g.key}>
+            <header><h3>{g.label}</h3>{g.conjugeFlag && <div className="docx-conjuge"><span>Possui cônjuge?</span><button type="button" className={cond[g.conjugeFlag] ? "on" : ""} disabled={busyAll} onClick={() => { const v = { ...cond, [g.conjugeFlag]: true }; setCond(v); void run(() => api({ action: "salvarCondicoes", processId: process.id, ...v })); }}>Sim</button><button type="button" className={!cond[g.conjugeFlag] ? "on" : ""} disabled={busyAll} onClick={() => { const v = { ...cond, [g.conjugeFlag]: false }; setCond(v); void run(() => api({ action: "salvarCondicoes", processId: process.id, ...v })); }}>Não</button></div>}</header>
+            {docModelo.filter((d) => d.grupo === g.key).map((d) => <DocRow key={d.id} grupo={g.key} nome={d.nome} obrigatorio={d.obrigatorio} modelo />)}
+            {anexos.filter((a) => a.grupo === g.key && !docModelo.some((d) => d.grupo === g.key && d.nome === a.doc_nome)).map((a) => <DocRow key={a.id} grupo={g.key} nome={a.doc_nome || a.nome} obrigatorio={a.obrigatorio} modelo={false} />)}
+            <DocAddRow busy={busyAll} value={novoDoc[g.key]} onChange={(v) => setNovoDoc((c) => ({ ...c, [g.key]: v }))} onUpload={(f, nome, obrig, obs) => { upload(f, g.key, nome, obrig, obs); setNovoDoc((c) => ({ ...c, [g.key]: { nome: "", obrig: true, obs: "" } })); }} />
+            {g.conjugeGrupo && cond[g.conjugeFlag] && <div className="docx-conjuge-area">
+              <h4>Documentos do {GRUPO_LABEL[g.conjugeGrupo]}</h4>
+              {docModelo.filter((d) => d.grupo === g.conjugeGrupo).map((d) => <DocRow key={d.id} grupo={g.conjugeGrupo!} nome={d.nome} obrigatorio={d.obrigatorio} modelo />)}
+              {anexos.filter((a) => a.grupo === g.conjugeGrupo && !docModelo.some((d) => d.grupo === g.conjugeGrupo && d.nome === a.doc_nome)).map((a) => <DocRow key={a.id} grupo={g.conjugeGrupo!} nome={a.doc_nome || a.nome} obrigatorio={a.obrigatorio} modelo={false} />)}
+              <DocAddRow busy={busyAll} value={novoDoc[g.conjugeGrupo]} onChange={(v) => setNovoDoc((c) => ({ ...c, [g.conjugeGrupo!]: v }))} onUpload={(f, nome, obrig, obs) => { upload(f, g.conjugeGrupo!, nome, obrig, obs); setNovoDoc((c) => ({ ...c, [g.conjugeGrupo!]: { nome: "", obrig: true, obs: "" } })); }} />
+            </div>}
+          </section>)}
+        </div>}
+
+        {tab === "condicoes" && <div className="sale-full-pane">
+          <section className="condx">
+            <h3>Informações gerais</h3>
+            <div className="condx-grid">
+              {([["valor_total", "Valor total da venda"], ["valor_entrada", "Valor de entrada"], ["data_entrada", "Data da entrada", "date"], ["valor_financiado", "Valor financiado"], ["valor_fgts", "Valor de FGTS"], ["valor_recursos_proprios", "Recursos próprios"], ["valor_parcelas_interm", "Parcelas intermediárias"], ["qtd_parcelas", "Qtd. de parcelas"], ["valor_parcela", "Valor de cada parcela"], ["valor_assinatura", "Pago na assinatura"], ["valor_chaves", "Pago na entrega das chaves"], ["data_assinatura", "Data prevista assinatura", "date"], ["data_conclusao", "Data prevista conclusão", "date"]] as Array<[string, string, string?]>).map(([k, l, t]) => <label key={k}>{l}<input type={t || "number"} value={(cond as Record<string, unknown>)[k] as string ?? ""} onChange={(e) => setCond({ ...cond, [k]: e.target.value })} /></label>)}
             </div>
-          </div>}
-        </div>;
-      })}</div>
+            <h3>Origem dos recursos</h3>
+            <div className="condx-origem">{ORIGEM_OPCOES.map((op) => { const sel = cond.origem_recursos.find((o) => o.tipo === op); return <div className={`condx-origem-row ${sel ? "on" : ""}`} key={op}>
+              <label><input type="checkbox" checked={!!sel} onChange={(e) => { const list = e.target.checked ? [...cond.origem_recursos, { tipo: op, valor: "" }] : cond.origem_recursos.filter((o) => o.tipo !== op); setCond({ ...cond, origem_recursos: list }); }} />{op}</label>
+              {sel && <input type="number" placeholder="Valor" value={sel.valor} onChange={(e) => setCond({ ...cond, origem_recursos: cond.origem_recursos.map((o) => o.tipo === op ? { ...o, valor: e.target.value } : o) })} />}
+            </div>; })}</div>
+            {cond.origem_recursos.length > 0 && <div className={`condx-soma ${somaFecha ? "ok" : "warn"}`}>Soma das formas: <b>{money.format(somaOrigem)}</b> · Valor total: <b>{money.format(totalCond)}</b> — {totalCond <= 0 ? "informe o valor total" : somaFecha ? "✓ valores fecham" : `⚠ diferença de ${money.format(Math.abs(somaOrigem - totalCond))}`}</div>}
+            <footer><button type="button" className="crm-primary" disabled={busyAll} onClick={saveCondicoes}>Salvar condições</button></footer>
+          </section>
+        </div>}
 
-      {history.length > 0 && <><h4>MOVIMENTAÇÕES</h4><ul className="sale-moves">{history.slice().reverse().map((h, i) => <li key={i}><b>{dateTime.format(new Date(h.movido_em))}</b><span>{h.etapa_de ? `${stageName(h.etapa_de)} → ${stageName(h.etapa_para)}` : `Entrou em ${stageName(h.etapa_para)}`}</span></li>)}</ul></>}
-      {sale?.obs && <article className="sale-detail-note"><small>OBSERVAÇÕES</small><p>{sale.obs}</p></article>}
+        {tab === "comissao" && canApprove && <div className="sale-full-pane">
+          <section className="condx">
+            <div className="condx-grid">
+              <label>Percentual total (%)<input type="number" value={com.percentual_total as string} onChange={(e) => setCom({ ...com, percentual_total: e.target.value })} /></label>
+              <label>Valor total da comissão<input type="number" value={com.valor_total as string} onChange={(e) => setCom({ ...com, valor_total: e.target.value })} /></label>
+              <label>Imobiliária responsável<input value={com.imobiliaria as string} onChange={(e) => setCom({ ...com, imobiliaria: e.target.value })} /></label>
+              <label>Forma de pagamento<input value={com.forma_pgto as string} onChange={(e) => setCom({ ...com, forma_pgto: e.target.value })} /></label>
+            </div>
+            <h3>Participantes</h3>
+            {com.participantes.map((p, i) => <div className="condx-part" key={i}>
+              <input placeholder="Nome" value={p.nome} onChange={(e) => setCom({ ...com, participantes: com.participantes.map((x, j) => j === i ? { ...x, nome: e.target.value } : x) })} />
+              <input placeholder="Papel" value={p.papel} onChange={(e) => setCom({ ...com, participantes: com.participantes.map((x, j) => j === i ? { ...x, papel: e.target.value } : x) })} />
+              <input type="number" placeholder="%" value={p.percentual} onChange={(e) => setCom({ ...com, participantes: com.participantes.map((x, j) => j === i ? { ...x, percentual: e.target.value } : x) })} />
+              <input type="number" placeholder="Valor" value={p.valor} onChange={(e) => setCom({ ...com, participantes: com.participantes.map((x, j) => j === i ? { ...x, valor: e.target.value } : x) })} />
+              <button type="button" onClick={() => setCom({ ...com, participantes: com.participantes.filter((_, j) => j !== i) })}>×</button>
+            </div>)}
+            <button type="button" className="condx-add" onClick={() => setCom({ ...com, participantes: [...com.participantes, { nome: "", papel: "", percentual: "", valor: "" }] })}>＋ Adicionar participante</button>
+            <h3>Parcelas da comissão</h3>
+            {com.parcelas.map((p, i) => <div className="condx-parc" key={i}>
+              <input type="number" placeholder="Valor" value={p.valor} onChange={(e) => setCom({ ...com, parcelas: com.parcelas.map((x, j) => j === i ? { ...x, valor: e.target.value } : x) })} />
+              <select value={p.gatilho} onChange={(e) => setCom({ ...com, parcelas: com.parcelas.map((x, j) => j === i ? { ...x, gatilho: e.target.value } : x) })}><option value="">Gatilho…</option>{COMISSAO_GATILHOS.map((g) => <option key={g}>{g}</option>)}</select>
+              <input type="date" title="Prevista" value={p.data_prevista} onChange={(e) => setCom({ ...com, parcelas: com.parcelas.map((x, j) => j === i ? { ...x, data_prevista: e.target.value } : x) })} />
+              <input type="date" title="Efetiva" value={p.data_efetiva} onChange={(e) => setCom({ ...com, parcelas: com.parcelas.map((x, j) => j === i ? { ...x, data_efetiva: e.target.value } : x) })} />
+              <input placeholder="Responsável" value={p.responsavel} onChange={(e) => setCom({ ...com, parcelas: com.parcelas.map((x, j) => j === i ? { ...x, responsavel: e.target.value } : x) })} />
+              <select value={p.status} onChange={(e) => setCom({ ...com, parcelas: com.parcelas.map((x, j) => j === i ? { ...x, status: e.target.value } : x) })}>{PARCELA_STATUS.map((s) => <option key={s} value={s}>{s}</option>)}</select>
+              <button type="button" onClick={() => setCom({ ...com, parcelas: com.parcelas.filter((_, j) => j !== i) })}>×</button>
+            </div>)}
+            <button type="button" className="condx-add" onClick={() => setCom({ ...com, parcelas: [...com.parcelas, { valor: "", gatilho: "", data_prevista: "", data_efetiva: "", responsavel: "", status: "previsto" }] })}>＋ Adicionar parcela</button>
+            <footer><button type="button" className="crm-primary" disabled={busyAll} onClick={saveComissao}>Salvar comissão</button></footer>
+          </section>
+        </div>}
+
+        {tab === "obs" && <div className="sale-full-pane">
+          <div className="obsx-add"><textarea rows={3} placeholder="Registre acordos, exceções, pendências, condições combinadas…" value={obsText} onChange={(e) => setObsText(e.target.value)} /><button type="button" className="crm-primary" disabled={busyAll || !obsText.trim()} onClick={addObs}>Adicionar observação</button></div>
+          <div className="obsx-list">{observacoes.length === 0 && <p className="sale-esteira-empty">Nenhuma observação ainda.</p>}{observacoes.map((o) => <article key={o.id}><p>{o.texto}</p><small>{o.autor_nome || userName(o.autor)} · {dateTime.format(new Date(o.criado_em))}</small></article>)}</div>
+        </div>}
+      </div>
+
+      <footer className="sale-full-foot">
+        {onChat && <button type="button" className="crm-secondary" onClick={onChat}>Abrir chat do lead</button>}
+        <div className="sale-full-foot-right">
+          {blockReasons.length > 0 && <span className="sale-full-foot-block">🔒 avanço bloqueado</span>}
+          {canApprove && <label className="sale-detail-move"><span>Mover etapa</span><select value={process.etapa} disabled={busyAll} onChange={(event) => void onMove(event.target.value)}>{track.map((s) => <option value={s.id} key={s.id}>{s.name}</option>)}</select></label>}
+        </div>
+      </footer>
     </div>
-    <footer className="sale-detail-foot">
-      {onChat && <button type="button" className="crm-secondary" onClick={onChat}>Abrir chat do lead</button>}
-      {canApprove && <label className="sale-detail-move"><span>Mover etapa</span><select value={process.etapa} disabled={busyAll} onChange={(event) => void onMove(event.target.value)}>{track.map((s) => <option value={s.id} key={s.id}>{s.name}</option>)}</select></label>}
-    </footer>
-  </aside></div>;
+  </div>;
+}
+
+function DocAddRow({ busy, value, onChange, onUpload }: { busy?: boolean; value?: { nome: string; obrig: boolean; obs: string }; onChange: (v: { nome: string; obrig: boolean; obs: string }) => void; onUpload: (file: File, nome: string, obrig: boolean, obs: string) => void }) {
+  const v = value ?? { nome: "", obrig: true, obs: "" };
+  return <div className="docx-add">
+    <input placeholder="Anexar outro documento (nome)" value={v.nome} onChange={(e) => onChange({ ...v, nome: e.target.value })} />
+    <label className="docx-add-obrig"><input type="checkbox" checked={v.obrig} onChange={(e) => onChange({ ...v, obrig: e.target.checked })} />Obrigatório</label>
+    <input placeholder="Observação" value={v.obs} onChange={(e) => onChange({ ...v, obs: e.target.value })} />
+    <label className="docx-up"><input type="file" hidden disabled={busy || !v.nome.trim()} onChange={(e) => { const f = e.target.files?.[0]; if (f && v.nome.trim()) onUpload(f, v.nome.trim(), v.obrig, v.obs); e.target.value = ""; }} />＋ Anexar</label>
+  </div>;
 }
 function CreateSaleModal({ data, accessToken, initialDealId = "", onClose, onDone }: { data: SalesData; accessToken: string; initialDealId?: string | number; onClose: () => void; onDone: () => Promise<void> }) {
   const [dealId, setDealId] = useState(String(initialDealId)); const [productId, setProductId] = useState(""); const [vgv, setVgv] = useState(""); const [busy, setBusy] = useState(false); const [error, setError] = useState<string | null>(null); const leadById = new Map(data.leads.map((lead) => [lead.id, lead]));

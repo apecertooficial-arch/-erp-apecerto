@@ -27,7 +27,7 @@ async function activeSlugs(auth: Auth) {
 export async function GET(request: Request) {
   const auth = await authClient(request);
   if (!auth) return Response.json({ error: "Sessão inválida ou expirada." }, { status: 401 });
-  const [sales, processes, deals, leads, products, brokers, stages, etapaDocs, anexos, users, history, verificacoes, solicitacoes] = await Promise.all([
+  const [sales, processes, deals, leads, products, brokers, stages, etapaDocs, anexos, users, history, verificacoes, solicitacoes, docModelo, condicoes, comissao, comissaoParcelas, observacoes] = await Promise.all([
     auth.supabase.from("vendas").select("id,created_at,data_venda,empreendimento_id,empreendimento_nome,unidade_id,vgv,forma_pgto,status,obs").order("created_at", { ascending: false }),
     auth.supabase.from("venda_processos").select("id,venda_id,negocio_id,etapa,tipo_venda,responsavel_usuario_id,prazo_em,observacoes,criado_em,atualizado_em,aprovacao_status,aprovacao_motivo,solicitado_por"),
     auth.supabase.from("negocios").select("id,venda_id,lead_id,corretor_id,empreendimento_id,valor,status"),
@@ -36,15 +36,20 @@ export async function GET(request: Request) {
     auth.supabase.rpc("listar_corretores_transferencia"),
     auth.supabase.from("esteira_etapas").select("id,slug,nome,cor,ordem,papel,sla_dias,resale,exige_docs").eq("ativo", true).order("ordem", { ascending: true }),
     auth.supabase.from("esteira_etapa_docs").select("id,etapa_slug,nome,obrigatorio,ordem").eq("ativo", true).order("ordem", { ascending: true }),
-    auth.supabase.from("esteira_anexos").select("id,processo_ref,negocio_id,etapa_slug,doc_nome,nome,path,mime,tamanho,criado_em").order("criado_em", { ascending: false }),
+    auth.supabase.from("esteira_anexos").select("id,processo_ref,negocio_id,etapa_slug,doc_nome,nome,path,mime,tamanho,criado_em,grupo,status,status_motivo,obrigatorio,observacao,enviado_por,revisado_por,revisado_em").order("criado_em", { ascending: false }),
     auth.supabase.from("usuarios").select("id,nome,role"),
     auth.supabase.from("venda_processo_historico").select("processo_id,etapa_de,etapa_para,movido_por,movido_em").order("movido_em", { ascending: true }),
     auth.supabase.from("esteira_etapa_verificacoes").select("id,processo_ref,etapa_slug,verificado_por,verificado_em"),
     auth.supabase.from("venda_solicitacoes").select("id,negocio_id,corretor_id,solicitado_por,produto_id,vgv,forma_pgto,obs,status,criado_em").eq("status", "pendente").order("criado_em", { ascending: true }),
+    auth.supabase.from("esteira_doc_modelo").select("id,grupo,nome,obrigatorio,ordem").eq("ativo", true).order("ordem", { ascending: true }),
+    auth.supabase.from("venda_condicoes").select("*"),
+    auth.supabase.from("venda_comissao").select("*"),
+    auth.supabase.from("venda_comissao_parcelas").select("*").order("ordem", { ascending: true }),
+    auth.supabase.from("venda_observacoes").select("id,processo_ref,texto,autor,autor_nome,criado_em").order("criado_em", { ascending: false }),
   ]);
   const error = [sales, processes, deals, leads, products, brokers, stages, etapaDocs, anexos].find((item) => item.error)?.error;
   if (error) return Response.json({ error: error.message }, { status: 502 });
-  return Response.json({ sales: sales.data ?? [], processes: processes.data ?? [], deals: deals.data ?? [], leads: leads.data ?? [], products: products.data ?? [], brokers: brokers.data ?? [], stages: stages.data ?? [], etapaDocs: etapaDocs.data ?? [], anexos: anexos.data ?? [], users: users.data ?? [], history: history.data ?? [], verificacoes: verificacoes.data ?? [], solicitacoes: solicitacoes.data ?? [] });
+  return Response.json({ sales: sales.data ?? [], processes: processes.data ?? [], deals: deals.data ?? [], leads: leads.data ?? [], products: products.data ?? [], brokers: brokers.data ?? [], stages: stages.data ?? [], etapaDocs: etapaDocs.data ?? [], anexos: anexos.data ?? [], users: users.data ?? [], history: history.data ?? [], verificacoes: verificacoes.data ?? [], solicitacoes: solicitacoes.data ?? [], docModelo: docModelo.data ?? [], condicoes: condicoes.data ?? [], comissao: comissao.data ?? [], comissaoParcelas: comissaoParcelas.data ?? [], observacoes: observacoes.data ?? [] });
 }
 
 export async function PATCH(request: Request) {
@@ -66,18 +71,31 @@ export async function PATCH(request: Request) {
     const destino = stageBySlug.get(stage);
     const avancando = atual && destino && Number(destino.ordem) > Number(atual.ordem);
     if (avancando && atual?.exige_docs) {
-      // Modelo híbrido: a etapa que exige documentos só libera avanço depois de VERIFICADA por um gestor.
+      // Verificação manual do gestor libera direto (override consciente).
       const { data: verif } = await auth.supabase.from("esteira_etapa_verificacoes").select("id").eq("processo_ref", processId).eq("etapa_slug", proc!.etapa).maybeSingle();
       if (!verif) {
-        const { data: reqDocs } = await auth.supabase.from("esteira_etapa_docs").select("nome").eq("etapa_slug", proc!.etapa).eq("obrigatorio", true).eq("ativo", true);
-        const exigidos = (reqDocs ?? []).map((d) => (d.nome as string));
-        if (exigidos.length) {
-          const { data: anexados } = await auth.supabase.from("esteira_anexos").select("doc_nome").eq("processo_ref", processId).eq("etapa_slug", proc!.etapa);
-          const anexadosSet = new Set((anexados ?? []).map((a) => (a.doc_nome as string)));
-          const faltando = exigidos.filter((nome) => !anexadosSet.has(nome));
-          if (faltando.length) return Response.json({ error: `Faltam documentos obrigatórios em "${atual.nome}": ${faltando.join(", ")}.` }, { status: 409 });
+        const motivos: string[] = [];
+        const { data: cond } = await auth.supabase.from("venda_condicoes").select("valor_total,comprador_tem_conjuge,vendedor_tem_conjuge").eq("processo_ref", processId).maybeSingle();
+        const grupos = ["comprador", "vendedor", "imovel"];
+        if (cond?.comprador_tem_conjuge) grupos.push("conjuge_comprador");
+        if (cond?.vendedor_tem_conjuge) grupos.push("conjuge_vendedor");
+        const [{ data: modelo }, { data: aps }] = await Promise.all([
+          auth.supabase.from("esteira_doc_modelo").select("grupo,nome").eq("obrigatorio", true).eq("ativo", true).in("grupo", grupos),
+          auth.supabase.from("esteira_anexos").select("grupo,doc_nome,status,obrigatorio").eq("processo_ref", processId),
+        ]);
+        const aprov = new Set((aps ?? []).filter((a) => a.status === "aprovado").map((a) => `${a.grupo}::${a.doc_nome}`));
+        const faltamModelo = (modelo ?? []).filter((m) => !aprov.has(`${m.grupo}::${m.nome}`));
+        const faltamAvulsos = (aps ?? []).filter((a) => a.obrigatorio && a.status !== "aprovado").length;
+        if (faltamModelo.length || faltamAvulsos) {
+          const label: Record<string, string> = { comprador: "do comprador", conjuge_comprador: "do cônjuge do comprador", vendedor: "do vendedor", conjuge_vendedor: "do cônjuge do vendedor", imovel: "do imóvel" };
+          const porGrupo: Record<string, number> = {};
+          faltamModelo.forEach((m) => { porGrupo[m.grupo as string] = (porGrupo[m.grupo as string] || 0) + 1; });
+          const partes = Object.entries(porGrupo).map(([g, n]) => `${n} ${label[g] || g}`);
+          if (faltamAvulsos) partes.push(`${faltamAvulsos} adicional(is)`);
+          motivos.push(`Faltam documentos obrigatórios aprovados: ${partes.join(", ")}`);
         }
-        return Response.json({ error: `A etapa "${atual.nome}" precisa ser verificada por um gestor antes de avançar.` }, { status: 409 });
+        if (!cond || cond.valor_total == null) motivos.push("as condições comerciais (valor total) ainda não foram preenchidas");
+        if (motivos.length) return Response.json({ error: `Não é possível avançar de "${atual.nome}": ${motivos.join("; ")}.` }, { status: 409 });
       }
     }
     const isFinal = slugs.get(stage) === 0;
@@ -103,6 +121,10 @@ export async function PATCH(request: Request) {
       processo_ref, nome, path,
       etapa_slug: clean(body.etapaSlug, 40) || null,
       doc_nome: clean(body.docNome, 200) || null,
+      grupo: clean(body.grupo, 40) || null,
+      obrigatorio: body.obrigatorio === true,
+      observacao: clean(body.observacao, 400) || null,
+      status: "anexado",
       mime: clean(body.mime, 100) || null,
       tamanho: Number.isFinite(Number(body.tamanho)) ? Math.trunc(Number(body.tamanho)) : null,
       negocio_id: Number.isSafeInteger(Number(body.negocioId)) && Number(body.negocioId) > 0 ? Number(body.negocioId) : null,
@@ -325,5 +347,109 @@ export async function PATCH(request: Request) {
     if (!r.ok) return Response.json({ error: r.erro === "sem_permissao" ? "Apenas admin/gestor pode recusar." : (r.erro || "Não foi possível recusar.") }, { status: 422 });
     return Response.json({ success: true });
   }
+  // ===== Negociação: status de documento (revisão), condições comerciais, comissão, observações =====
+  if (action === "docStatus") {
+    const denied = await requireManager(auth);
+    if (denied) return denied;
+    const id = clean(body.anexoId, 60);
+    const status = clean(body.status, 20);
+    const validos = ["anexado", "em_analise", "aprovado", "recusado", "correcao"];
+    if (!id || !validos.includes(status)) return Response.json({ error: "Documento ou status inválido." }, { status: 422 });
+    const motivo = clean(body.motivo, 400);
+    if ((status === "recusado" || status === "correcao") && !motivo) return Response.json({ error: "Informe o motivo da recusa/correção." }, { status: 422 });
+    const { error } = await auth.supabase.from("esteira_anexos").update({ status, status_motivo: motivo || null, revisado_por: auth.user.id, revisado_em: new Date().toISOString() } as never).eq("id", id);
+    return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
+  }
+
+  if (action === "docAnexoObrig") {
+    // marca um anexo avulso como obrigatório/opcional (gestor)
+    const denied = await requireManager(auth);
+    if (denied) return denied;
+    const id = clean(body.anexoId, 60);
+    if (!id) return Response.json({ error: "Documento inválido." }, { status: 422 });
+    const { error } = await auth.supabase.from("esteira_anexos").update({ obrigatorio: body.obrigatorio === true } as never).eq("id", id);
+    return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
+  }
+
+  if (["docModeloCreate", "docModeloUpdate", "docModeloDelete"].includes(action)) {
+    const denied = await requireManager(auth);
+    if (denied) return denied;
+    if (action === "docModeloCreate") {
+      const grupo = clean(body.grupo, 40); const nome = clean(body.nome, 120);
+      if (!grupo || !nome) return Response.json({ error: "Informe o grupo e o nome do documento." }, { status: 422 });
+      const { data: last } = await auth.supabase.from("esteira_doc_modelo").select("ordem").eq("grupo", grupo).order("ordem", { ascending: false }).limit(1).maybeSingle();
+      const { error } = await auth.supabase.from("esteira_doc_modelo").insert({ grupo, nome, obrigatorio: body.obrigatorio !== false, ordem: (last?.ordem ?? 0) + 1 } as never);
+      return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
+    }
+    if (action === "docModeloUpdate") {
+      const id = clean(body.id, 60); if (!id) return Response.json({ error: "Documento inválido." }, { status: 422 });
+      const patch: Record<string, unknown> = {};
+      if (typeof body.nome === "string" && body.nome.trim()) patch.nome = clean(body.nome, 120);
+      if (typeof body.obrigatorio === "boolean") patch.obrigatorio = body.obrigatorio;
+      const { error } = await auth.supabase.from("esteira_doc_modelo").update(patch as never).eq("id", id);
+      return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
+    }
+    const id = clean(body.id, 60); if (!id) return Response.json({ error: "Documento inválido." }, { status: 422 });
+    const { error } = await auth.supabase.from("esteira_doc_modelo").update({ ativo: false } as never).eq("id", id);
+    return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
+  }
+
+  if (action === "salvarCondicoes") {
+    const processId = clean(body.processId, 60);
+    if (!processId) return Response.json({ error: "Venda inválida." }, { status: 422 });
+    const num = (v: unknown) => v === "" || v === null || v === undefined || !Number.isFinite(Number(v)) ? null : Number(v);
+    const dt = (v: unknown) => { const s = clean(v, 10); return s || null; };
+    const row: Record<string, unknown> = {
+      processo_ref: processId,
+      comprador_tem_conjuge: body.comprador_tem_conjuge === true,
+      vendedor_tem_conjuge: body.vendedor_tem_conjuge === true,
+      valor_total: num(body.valor_total), valor_entrada: num(body.valor_entrada), data_entrada: dt(body.data_entrada),
+      valor_financiado: num(body.valor_financiado), valor_fgts: num(body.valor_fgts), valor_recursos_proprios: num(body.valor_recursos_proprios),
+      valor_parcelas_interm: num(body.valor_parcelas_interm), qtd_parcelas: num(body.qtd_parcelas), valor_parcela: num(body.valor_parcela),
+      valor_assinatura: num(body.valor_assinatura), valor_chaves: num(body.valor_chaves),
+      data_assinatura: dt(body.data_assinatura), data_conclusao: dt(body.data_conclusao),
+      origem_recursos: Array.isArray(body.origem_recursos) ? body.origem_recursos : [],
+      atualizado_por: auth.user.id, atualizado_em: new Date().toISOString(),
+    };
+    const { error } = await auth.supabase.from("venda_condicoes").upsert(row as never, { onConflict: "processo_ref" });
+    return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
+  }
+
+  if (action === "salvarComissao") {
+    const denied = await requireManager(auth);
+    if (denied) return denied;
+    const processId = clean(body.processId, 60);
+    if (!processId) return Response.json({ error: "Venda inválida." }, { status: 422 });
+    const num = (v: unknown) => v === "" || v === null || v === undefined || !Number.isFinite(Number(v)) ? null : Number(v);
+    const row: Record<string, unknown> = {
+      processo_ref: processId,
+      percentual_total: num(body.percentual_total), valor_total: num(body.valor_total),
+      imobiliaria: clean(body.imobiliaria, 160) || null, forma_pgto: clean(body.forma_pgto, 80) || null,
+      participantes: Array.isArray(body.participantes) ? body.participantes : [],
+      atualizado_por: auth.user.id, atualizado_em: new Date().toISOString(),
+    };
+    const { error } = await auth.supabase.from("venda_comissao").upsert(row as never, { onConflict: "processo_ref" });
+    if (error) return Response.json({ error: error.message }, { status: 502 });
+    if (Array.isArray(body.parcelas)) {
+      await auth.supabase.from("venda_comissao_parcelas").delete().eq("processo_ref", processId);
+      const parcelas = (body.parcelas as Array<Record<string, unknown>>).map((p, i) => ({
+        processo_ref: processId, valor: num(p.valor), gatilho: clean(p.gatilho, 80) || null,
+        data_prevista: clean(p.data_prevista, 10) || null, data_efetiva: clean(p.data_efetiva, 10) || null,
+        responsavel: clean(p.responsavel, 120) || null, status: clean(p.status, 20) || "previsto", ordem: i + 1,
+      }));
+      if (parcelas.length) { const { error: pe } = await auth.supabase.from("venda_comissao_parcelas").insert(parcelas as never); if (pe) return Response.json({ error: pe.message }, { status: 502 }); }
+    }
+    return Response.json({ success: true });
+  }
+
+  if (action === "addObs") {
+    const processId = clean(body.processId, 60);
+    const texto = clean(body.texto, 4000);
+    if (!processId || !texto) return Response.json({ error: "Escreva a observação." }, { status: 422 });
+    const { data: me } = await auth.supabase.from("usuarios").select("nome").eq("id", auth.user.id).maybeSingle();
+    const { error } = await auth.supabase.from("venda_observacoes").insert({ processo_ref: processId, texto, autor: auth.user.id, autor_nome: me?.nome ?? null } as never);
+    return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
+  }
+
   return Response.json({ error: "Ação desconhecida." }, { status: 400 });
 }
