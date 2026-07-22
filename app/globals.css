@@ -4441,3 +4441,10 @@ article.tone-red{border-left-color:#d3443e}article.tone-red strong{color:#d3443e
 .pj-tr-feed-item.activity span { font-size:12px; color:#6d635c; }
 .pj-tr-feed-item time { display:block; font-size:10.5px; color:#a99e93; margin-top:2px; }
 @media (max-width: 860px) { .pj-tr-grid { grid-template-columns:1fr; overflow-y:auto; } .pj-tr-side { border-left:none; border-top:1px solid #f3e8da; } }
+/* checklist estilo Trello */
+.pj-check { display:flex; align-items:center; gap:10px; font-size:13.5px; padding:7px 8px; border-radius:8px; flex-direction:row !important; }
+.pj-check:hover { background:#faf6f0; }
+.pj-check input[type="checkbox"] { width:16px; height:16px; accent-color:#1fa85a; cursor:pointer; flex:none; }
+.pj-check span { flex:1; }
+.pj-check button { border:none; background:none; cursor:pointer; color:#c0b4a8; margin-left:auto; font-size:15px; opacity:0; transition:opacity .12s; }
+.pj-check:hover button { opacity:1; }
