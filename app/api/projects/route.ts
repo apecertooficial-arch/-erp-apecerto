@@ -163,7 +163,7 @@ export async function PATCH(request: Request) {
   if (action === "updateTask") {
     const taskId = clean(body.taskId, 60);
     if (!taskId) return Response.json({ error: "Tarefa inválida." }, { status: 422 });
-    const { data: before } = await auth.supabase.from("projeto_tarefas").select("projeto_id,titulo,responsavel_id,prazo,concluida").eq("id", taskId).maybeSingle();
+    const { data: before } = await auth.supabase.from("projeto_tarefas").select("projeto_id,titulo,responsavel_id,prazo,data_inicio,concluida,checklist,etiquetas,descricao,prioridade,vinculo_rotulo").eq("id", taskId).maybeSingle();
     const patch: Record<string, unknown> = {};
     if (typeof body.titulo === "string") patch.titulo = clean(body.titulo, 200);
     if (typeof body.descricao === "string") patch.descricao = cleanOrNull(body.descricao, 4000);
@@ -178,12 +178,41 @@ export async function PATCH(request: Request) {
     if (body.arquivar === true) patch.arquivada = true;
     const { error } = await auth.supabase.from("projeto_tarefas").update(patch as never).eq("id", taskId);
     if (error) return Response.json({ error: error.message }, { status: 502 });
+    // --- histórico específico: descreve exatamente o que mudou ---
     const projId = before?.projeto_id ?? null;
-    if (typeof body.responsavelId === "string" && body.responsavelId && body.responsavelId !== before?.responsavel_id) await log(auth, "tarefa_atribuida", `Tarefa "${before?.titulo}" atribuída a novo responsável.`, projId, taskId);
-    else if (typeof body.prazo === "string" && body.prazo !== (before?.prazo ?? "")) await log(auth, "prazo_alterado", `Prazo da tarefa "${before?.titulo}" alterado.`, projId, taskId);
-    else if (body.arquivar === true) await log(auth, "tarefa_arquivada", `Tarefa "${before?.titulo}" arquivada.`, projId, taskId);
-    else if (typeof body.concluida === "boolean" && body.concluida !== before?.concluida) await log(auth, body.concluida ? "tarefa_concluida" : "tarefa_reaberta", `Tarefa "${before?.titulo}" ${body.concluida ? "concluída" : "reaberta"}.`, projId, taskId);
-    else await log(auth, "tarefa_editada", `Tarefa "${before?.titulo}" editada.`, projId, taskId);
+    const fmtBR = (d: string | null) => d ? d.split("-").reverse().join("/") : null;
+    const msgs: string[] = [];
+    let acao = "tarefa_editada";
+    if (typeof patch.titulo === "string" && before && patch.titulo !== before.titulo) msgs.push(`renomeou a tarefa para "${patch.titulo}"`);
+    if ("descricao" in patch && before && (patch.descricao ?? "") !== (before.descricao ?? "")) msgs.push("atualizou a descrição");
+    if (typeof patch.prioridade === "string" && before && patch.prioridade !== before.prioridade) msgs.push(`mudou a prioridade para ${patch.prioridade}`);
+    if ("responsavel_id" in patch && before && (patch.responsavel_id ?? null) !== (before.responsavel_id ?? null)) {
+      acao = "tarefa_atribuida";
+      if (patch.responsavel_id) { const { data: u } = await auth.supabase.rpc("pj_listar_usuarios"); const nome = ((u ?? []) as Array<{ id: string; nome: string }>).find((x) => x.id === patch.responsavel_id)?.nome; msgs.push(`definiu ${nome ?? "novo responsável"} como responsável`); }
+      else msgs.push("removeu o responsável");
+    }
+    if ("prazo" in patch && before && (patch.prazo ?? null) !== (before.prazo ?? null)) { acao = "prazo_alterado"; msgs.push(patch.prazo ? `definiu o prazo para ${fmtBR(patch.prazo as string)}` : "removeu o prazo"); }
+    if ("data_inicio" in patch && before && (patch.data_inicio ?? null) !== (before.data_inicio ?? null)) msgs.push(patch.data_inicio ? `definiu o início para ${fmtBR(patch.data_inicio as string)}` : "removeu a data de início");
+    if (Array.isArray(patch.checklist) && before) {
+      const antes = new Map(((before.checklist ?? []) as Array<{ texto: string; feito: boolean }>).map((i) => [i.texto, i.feito]));
+      const depois = new Map((patch.checklist as Array<{ texto: string; feito: boolean }>).map((i) => [i.texto, i.feito]));
+      for (const [texto, feito] of depois) {
+        if (!antes.has(texto)) msgs.push(`adicionou "${texto}" ao checklist`);
+        else if (antes.get(texto) !== feito) msgs.push(feito ? `marcou "${texto}" como feito` : `desmarcou "${texto}"`);
+      }
+      for (const [texto] of antes) if (!depois.has(texto)) msgs.push(`removeu "${texto}" do checklist`);
+      if (msgs.length) acao = "checklist";
+    }
+    if (Array.isArray(patch.etiquetas) && before) {
+      const antes = new Set((before.etiquetas ?? []) as string[]);
+      const depois = new Set(patch.etiquetas as string[]);
+      for (const t of depois) if (!antes.has(t)) msgs.push(`adicionou a etiqueta "${t}"`);
+      for (const t of antes) if (!depois.has(t)) msgs.push(`removeu a etiqueta "${t}"`);
+    }
+    if ("vinculo_rotulo" in patch && before && (patch.vinculo_rotulo ?? null) !== (before.vinculo_rotulo ?? null)) msgs.push(patch.vinculo_rotulo ? `vinculou a "${patch.vinculo_rotulo}"` : "removeu o vínculo");
+    if (typeof body.concluida === "boolean" && before && body.concluida !== before.concluida) { acao = body.concluida ? "tarefa_concluida" : "tarefa_reaberta"; msgs.push(body.concluida ? "concluiu a tarefa" : "reabriu a tarefa"); }
+    if (body.arquivar === true) { acao = "tarefa_arquivada"; msgs.push("arquivou a tarefa"); }
+    if (msgs.length) await log(auth, acao, msgs.map((m) => m.charAt(0).toUpperCase() + m.slice(1)).join("; ") + ".", projId, taskId);
     return Response.json({ success: true });
   }
 
