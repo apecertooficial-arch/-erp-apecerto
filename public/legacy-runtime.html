@@ -3471,6 +3471,7 @@ code, .mono {
             <div style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--fg-3);"><span style="width:11px; height:11px; border-radius:3px; background:#8B00CC;"></span>Gerente acompanha</div>
             <div style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--fg-3);"><span style="width:11px; height:11px; border-radius:3px; background:#FF7000;"></span>Sem gerente</div>
             <button type="button" onclick="{{ cal.onToggleSoGerente }}" style="{{ cal.filterStyle }}"><span style="width:9px; height:9px; border-radius:50%; background:#8B00CC;"></span>Só do gerente (roxas)</button>
+            <button type="button" onclick="{{ cal.onShare }}" style="{{ cal.shareStyle }}" title="Copia o link e abre o compartilhamento — a agenda abre no celular sem precisar de login"><span style="font-size:15px; display:inline-flex;">📤</span>{{ cal.shareLabel }}</button>
           </div>
           <div style="display:flex; align-items:center; gap:9px; margin-bottom:16px; flex-wrap:wrap;">
             <span style="font-size:16px; color:var(--fg-3); display:inline-flex; flex-shrink:0;">{{ icons.filter }}</span>
@@ -6281,6 +6282,26 @@ class Component extends DCLogic {
     return rows.map((r, i) => ({ id: 'evseed' + i, tipo: r[3], leadId: null, cliente: r[6], corretor: r[2], produto: P(r[7]), ano: 2026, mes: 6, dia: r[0], hora: r[1], comGerente: r[4], status: r[5] }));
   }
   calPrev() { this.setState(s => { let m = s.calMonth - 1, y = s.calYear; if (m < 0) { m = 11; y--; } return { calMonth: m, calYear: y }; }); }
+  calCompartilhar() {
+    var self = this;
+    if (self.state.calShareBusy) return;
+    self.setState({ calShareBusy: true, calShareLabel: 'Gerando link…' });
+    var key='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRpYWVndmZ2ZXFlemlzcGN0aHdrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5OTU4MjIsImV4cCI6MjA5ODU3MTgyMn0.312n8BuI-loQrQ20x9j1hNjKZs2UO71ey9gvIo0eY0I';
+    fetch('https://diaegvfveqezispcthwk.supabase.co/rest/v1/rpc/agenda_link_token', {
+      method: 'POST', headers: { apikey: key, Authorization: 'Bearer ' + (this._authToken || key), 'Content-Type': 'application/json' }, body: '{}'
+    }).then(function(r){ return r.json(); }).then(function(tok){
+      if (!tok || typeof tok !== 'string') throw new Error('sem token');
+      var url = window.location.origin + '/agenda/' + tok;
+      var msg = '📅 Agenda ApêCerto — visitas dos próximos dias, direto do celular:\n' + url;
+      var copiar = (navigator.clipboard && navigator.clipboard.writeText) ? navigator.clipboard.writeText(url) : Promise.resolve();
+      copiar.catch(function(){}).then(function(){
+        if (navigator.share) { navigator.share({ title: 'Agenda ApêCerto', text: msg, url: url }).catch(function(){}); }
+        else { window.open('https://wa.me/?text=' + encodeURIComponent(msg), '_blank'); }
+        self.setState({ calShareBusy: false, calShareLabel: '✓ Link copiado!' });
+        setTimeout(function(){ self.setState({ calShareLabel: null }); }, 3500);
+      });
+    }).catch(function(){ self.setState({ calShareBusy: false, calShareLabel: 'Erro — tente de novo' }); setTimeout(function(){ self.setState({ calShareLabel: null }); }, 3500); });
+  }
   calNext() { this.setState(s => { let m = s.calMonth + 1, y = s.calYear; if (m > 11) { m = 0; y++; } return { calMonth: m, calYear: y }; }); }
   toggleSoGerente() { this.setState(s => ({ soGerente: !s.soGerente })); }
   openEvento(ev) { this.setState({ selectedEvento: ev }); }
@@ -9092,7 +9113,7 @@ class Component extends DCLogic {
     const cellBlank = { minHeight: '92px' };
     for (let i = 0; i < firstDow; i++) calCells.push({ blank: true, day: '', cellStyle: cellBlank, dayStyle: {}, chips: [] });
     for (let d = 1; d <= dim; d++) { const today = (cy === 2026 && cm === 6 && d === 6); calCells.push({ blank: false, day: String(d), cellStyle: Object.assign({}, cellBase, today ? { border: '1.5px solid var(--ape-orange)', background: 'var(--ape-orange-50)' } : {}), dayStyle: today ? { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '22px', height: '22px', borderRadius: '50%', background: 'var(--ape-orange)', color: '#fff', fontSize: '12px', fontWeight: 700 } : { fontSize: '12px', fontWeight: 700, color: 'var(--fg-2)' }, chips: (byDay[d] || []).map(chipOf) }); }
-    const calObj = { cells: calCells, monthLabel: mesesNome[cm] + ' ' + cy, onPrev: () => this.calPrev(), onNext: () => this.calNext(), soGerente: st.soGerente, onToggleSoGerente: () => this.toggleSoGerente(), filterStyle: { display: 'inline-flex', alignItems: 'center', gap: '7px', padding: '8px 13px', borderRadius: '999px', border: '1.5px solid ' + (st.soGerente ? 'var(--ape-purple)' : 'var(--border-soft)'), background: st.soGerente ? '#F3E8FB' : 'var(--bg-surface)', color: st.soGerente ? '#66009A' : 'var(--fg-2)', fontFamily: 'var(--font-body)', fontWeight: 700, fontSize: '13px', cursor: 'pointer' } };
+    const calObj = { cells: calCells, monthLabel: mesesNome[cm] + ' ' + cy, onPrev: () => this.calPrev(), onNext: () => this.calNext(), soGerente: st.soGerente, onToggleSoGerente: () => this.toggleSoGerente(), onShare: () => this.calCompartilhar(), shareLabel: st.calShareLabel || 'Compartilhar agenda', shareStyle: { display: 'inline-flex', alignItems: 'center', gap: '7px', padding: '8px 15px', borderRadius: '999px', border: 'none', background: st.calShareLabel && st.calShareLabel.indexOf('✓') === 0 ? '#1FA85A' : 'linear-gradient(120deg, #FF6500, #E5006D)', color: '#fff', fontFamily: 'var(--font-body)', fontWeight: 800, fontSize: '13px', cursor: 'pointer', boxShadow: '0 3px 10px rgba(229,0,109,.25)' }, filterStyle: { display: 'inline-flex', alignItems: 'center', gap: '7px', padding: '8px 13px', borderRadius: '999px', border: '1.5px solid ' + (st.soGerente ? 'var(--ape-purple)' : 'var(--border-soft)'), background: st.soGerente ? '#F3E8FB' : 'var(--bg-surface)', color: st.soGerente ? '#66009A' : 'var(--fg-2)', fontFamily: 'var(--font-body)', fontWeight: 700, fontSize: '13px', cursor: 'pointer' } };
     // ---- barra de filtros da agenda ----
     const _todayEvs = (st.eventos || []).filter(e => e.ano === 2026 && e.mes === 6 && e.dia === 6);
     const _tcount = (t) => _todayEvs.filter(e => (e.tipo || '').toLowerCase().indexOf(t) >= 0).length;
