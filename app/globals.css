@@ -4389,3 +4389,6 @@ article.tone-red{border-left-color:#d3443e}article.tone-red strong{color:#d3443e
 .pj-workspace .module-error { background:#fff0ee; border:1px solid #eec4c0; color:#ae3d32; border-radius:10px; padding:10px 14px; font-size:13px; display:flex; justify-content:space-between; gap:10px; }
 .pj-workspace .module-error button { border:none; background:none; cursor:pointer; color:#ae3d32; font-size:16px; }
 .pj-col-body { min-height:46px; }
+/* fix: botões laranja dentro do módulo Projetos (regras genéricas apagavam o fundo) */
+.pj-form footer button.crm-primary, .pj-quick button.crm-primary { background:linear-gradient(135deg,#ff6500,#ff7b25); color:#fff; border:0; font-weight:700; }
+.pj-quick button.crm-primary.small { margin-top:0; min-height:34px; }
