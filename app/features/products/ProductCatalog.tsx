@@ -22,6 +22,7 @@ import { HomeWorkspace } from "../home/HomeWorkspace";
 import { FinanceWorkspace } from "../finance/FinanceWorkspace";
 import { TeamWorkspace } from "../team/TeamWorkspace";
 import { CalendarWorkspace } from "../calendar/CalendarWorkspace";
+import { ProjectsWorkspace } from "../projects/ProjectsWorkspace";
 import { SettingsWorkspace } from "../settings/SettingsWorkspace";
 import { PermissionsWorkspace } from "../permissions/PermissionsWorkspace";
 import { AuditWorkspace } from "../audit/AuditWorkspace";
@@ -295,6 +296,8 @@ export function ProductCatalog() {
         <PermissionsWorkspace accessToken={accessToken} />
       ) : activeModule === "Calendário" && accessToken ? (
         <CalendarWorkspace accessToken={accessToken} />
+      ) : activeModule === "Projetos e Tarefas" && accessToken ? (
+        <ProjectsWorkspace accessToken={accessToken} />
       ) : activeModule === "Auditoria" && accessToken ? (
         <AuditWorkspace />
       ) : activeModule === "Notificações" && accessToken ? (
