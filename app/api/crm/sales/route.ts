@@ -29,7 +29,7 @@ export async function GET(request: Request) {
   if (!auth) return Response.json({ error: "Sessão inválida ou expirada." }, { status: 401 });
   const [sales, processes, deals, leads, products, brokers, stages, etapaDocs, anexos, users, history, verificacoes] = await Promise.all([
     auth.supabase.from("vendas").select("id,created_at,data_venda,empreendimento_id,empreendimento_nome,unidade_id,vgv,forma_pgto,status,obs").order("created_at", { ascending: false }),
-    auth.supabase.from("venda_processos").select("id,venda_id,negocio_id,etapa,tipo_venda,responsavel_usuario_id,prazo_em,observacoes,criado_em,atualizado_em"),
+    auth.supabase.from("venda_processos").select("id,venda_id,negocio_id,etapa,tipo_venda,responsavel_usuario_id,prazo_em,observacoes,criado_em,atualizado_em,aprovacao_status,aprovacao_motivo,solicitado_por"),
     auth.supabase.from("negocios").select("id,venda_id,lead_id,corretor_id,empreendimento_id,valor,status"),
     auth.supabase.from("leads").select("id,nome,telefone,email,corretor_id,tags,extras"),
     auth.supabase.from("empreendimentos").select("id,nome,origem,bairro,cidade").order("nome"),
@@ -59,7 +59,8 @@ export async function PATCH(request: Request) {
     // Trava de documentos: só ao AVANÇAR (etapa destino mais à frente) e só se a etapa atual exigir docs.
     const { data: stageRows } = await auth.supabase.from("esteira_etapas").select("slug,ordem,nome,exige_docs").eq("ativo", true);
     const stageBySlug = new Map((stageRows ?? []).map((s) => [s.slug as string, s]));
-    const { data: proc } = await auth.supabase.from("venda_processos").select("etapa,negocio_id").eq("id", processId).maybeSingle();
+    const { data: proc } = await auth.supabase.from("venda_processos").select("etapa,negocio_id,aprovacao_status").eq("id", processId).maybeSingle();
+    if (proc && (proc as { aprovacao_status?: string }).aprovacao_status === "pendente") return Response.json({ error: "Esta venda ainda está aguardando aprovação de entrada na esteira." }, { status: 409 });
     const atual = proc ? stageBySlug.get(proc.etapa as string) : null;
     const destino = stageBySlug.get(stage);
     const avancando = atual && destino && Number(destino.ordem) > Number(atual.ordem);
@@ -253,6 +254,25 @@ export async function PATCH(request: Request) {
     const { error } = await auth.supabase.from("venda_processos").update({ responsavel_usuario_id: userId, atualizado_em: new Date().toISOString() }).eq("id", processId);
     return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
   }
+  if (action === "approveSale" || action === "rejectSale") {
+    const denied = await requireManager(auth);
+    if (denied) return denied;
+    const processId = clean(body.processId, 60);
+    if (!processId) return Response.json({ error: "Venda inválida." }, { status: 422 });
+    const { data: proc } = await auth.supabase.from("venda_processos").select("id,negocio_id").eq("id", processId).maybeSingle();
+    if (!proc) return Response.json({ error: "Venda não encontrada." }, { status: 404 });
+    if (action === "approveSale") {
+      const { error } = await auth.supabase.from("venda_processos").update({ aprovacao_status: "aprovada", aprovacao_motivo: null, aprovado_por: auth.user.id, aprovado_em: new Date().toISOString() } as never).eq("id", processId);
+      return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
+    }
+    // rejectSale — devolve o negócio ao corretor (volta ao funil) com o motivo
+    const motivo = clean(body.motivo, 400) || "Entrada recusada pelo gestor.";
+    const { error } = await auth.supabase.from("venda_processos").update({ aprovacao_status: "recusada", aprovacao_motivo: motivo, aprovado_por: auth.user.id, aprovado_em: new Date().toISOString() } as never).eq("id", processId);
+    if (error) return Response.json({ error: error.message }, { status: 502 });
+    if (proc.negocio_id) await auth.supabase.from("negocios").update({ status: "aberto", venda_id: null, ultima_movimentacao: new Date().toISOString() }).eq("id", proc.negocio_id);
+    return Response.json({ success: true });
+  }
+
   if (action === "create") {
     const dealId = Number(body.dealId);
     const productId = String(body.productId || "");
@@ -263,12 +283,16 @@ export async function PATCH(request: Request) {
       auth.supabase.from("empreendimentos").select("id,nome,origem").eq("id", productId).maybeSingle(),
     ]);
     if (!deal || !product) return Response.json({ error: "Negócio ou produto não encontrado." }, { status: 404 });
+    // Gestor/admin que gera a venda já entra aprovada; corretor entra pendente da aprovação do gestor.
+    const { data: me } = await auth.supabase.from("usuarios").select("role").eq("id", auth.user.id).maybeSingle();
+    const gestor = !!me && ["admin", "gestor", "executivo"].includes(me.role);
+    const aprovacao = gestor ? "aprovada" : "pendente";
     const { data: sale, error: saleError } = await auth.supabase.from("vendas").insert({ data_venda: new Date().toISOString().slice(0, 10), empreendimento_id: product.id, empreendimento_nome: product.nome, vgv, forma_pgto: String(body.payment || "") || null, status: "pendente", obs: String(body.notes || "") || null }).select("id").single();
     if (saleError || !sale) return Response.json({ error: saleError?.message || "Não foi possível criar a venda." }, { status: 502 });
-    const { error: dealError } = await auth.supabase.from("negocios").update({ venda_id: sale.id }).eq("id", deal.id);
-    const { error: processError } = await auth.supabase.from("venda_processos").insert({ venda_id: sale.id, negocio_id: deal.id, etapa: "inicio", tipo_venda: product.origem === "terceiros" ? "revenda" : "construtora", criado_por: auth.user.id });
+    const { error: dealError } = await auth.supabase.from("negocios").update({ venda_id: sale.id, status: "ganho", ultima_movimentacao: new Date().toISOString() }).eq("id", deal.id);
+    const { error: processError } = await auth.supabase.from("venda_processos").insert({ venda_id: sale.id, negocio_id: deal.id, etapa: "inicio", tipo_venda: product.origem === "terceiros" ? "revenda" : "construtora", criado_por: auth.user.id, solicitado_por: auth.user.id, aprovacao_status: aprovacao, aprovado_por: gestor ? auth.user.id : null, aprovado_em: gestor ? new Date().toISOString() : null } as never);
     if (dealError || processError) return Response.json({ error: dealError?.message || processError?.message }, { status: 502 });
-    return Response.json({ success: true, saleId: sale.id });
+    return Response.json({ success: true, saleId: sale.id, aprovacao });
   }
   return Response.json({ error: "Ação desconhecida." }, { status: 400 });
 }
