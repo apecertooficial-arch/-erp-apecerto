@@ -39,14 +39,14 @@ export async function GET(request: Request) {
 
   const { data: me } = await supabase.from("usuarios").select("role").eq("id", authData.user.id).maybeSingle();
   const role = (me as { role?: string } | null)?.role ?? "corretor";
-  const canApprove = role === "admin" || role === "gestor";
+  const canApprove = role === "admin" || role === "gestor" || role === "executivo";
 
   const { data, error } = await supabase
     .from("empreendimentos")
     .select(`
       id, nome, incorporadora, bairro, cidade, status, area_util, rascunho,
       dormitorios, suites, vagas, preco, created_at, publicado, origem,
-      aprovacao, reprovacao_motivo, captado_por_usuario,
+      aprovacao, reprovacao_motivo, captado_por_usuario, captador_corretor_id,
       unidades (id, area_m2, tipologia, vagas, valor_tabela, valor_promo, disponivel),
       midias (id, tipo, storage_path, categoria, nome, is_capa)
     `)
@@ -58,6 +58,8 @@ export async function GET(request: Request) {
   }
   const { data: favorites } = await supabase.from("produto_favoritos").select("empreendimento_id").eq("usuario_id", authData.user.id);
   const favoriteIds = new Set((favorites ?? []).map((item) => item.empreendimento_id));
+  const { data: corretoresList } = await supabase.from("corretores").select("id,nome");
+  const corretorNameById = new Map((corretoresList ?? []).map((c) => [c.id, c.nome]));
 
   const catalog = (data ?? []).map((item) => {
     const units = (item.unidades ?? []) as UnitRow[];
@@ -98,6 +100,7 @@ export async function GET(request: Request) {
       approval: (item as { aprovacao?: string }).aprovacao ?? "aprovado",
       rejectionReason: (item as { reprovacao_motivo?: string | null }).reprovacao_motivo ?? null,
       mine: (item as { captado_por_usuario?: string | null }).captado_por_usuario === authData.user.id,
+      capturedBy: corretorNameById.get((item as { captador_corretor_id?: number | null }).captador_corretor_id ?? -1) ?? null,
       favorite: favoriteIds.has(item.id),
     };
   });
