@@ -65,6 +65,13 @@ export async function GET(request: Request) {
     leadsQuery,
   ]);
   const linkedIds = new Set((links ?? []).map((item) => item.lead_id));
+  const captadorCorretorId = (data as { captador_corretor_id?: number | null }).captador_corretor_id ?? null;
+  let capturedByName: string | null = null;
+  if (captadorCorretorId) {
+    const { data: captador } = await auth.supabase.from("corretores").select("nome").eq("id", captadorCorretorId).maybeSingle();
+    capturedByName = captador?.nome ?? null;
+  }
+  const mine = (data as { captado_por_usuario?: string | null }).captado_por_usuario === auth.user.id;
   const checks: Record<string, boolean> = {
     basics: Boolean(data.nome && (data.preco || unitPrices.length) && (data.area_util || unitAreas.length)),
     location: Boolean(data.endereco && data.bairro && data.cidade),
@@ -76,7 +83,7 @@ export async function GET(request: Request) {
     checks.owner = Boolean(data.proprietario_id || (data.proprietario_nome && data.proprietario_tel && data.proprietario_email));
     checks.access = Boolean(data.acesso_tipo && data.acesso_instrucoes && (data.acesso_tipo !== "chave_digital" || data.acesso_codigo));
   }
-  return Response.json({ product: { ...data, midias: media, summary_price: data.preco ?? (unitPrices.length ? Math.min(...unitPrices) : null), summary_area: data.area_util ?? (unitAreas.length ? Math.min(...unitAreas) : null), is_favorite: Boolean(favorite), leads: (leadOptions ?? []).map((lead) => ({ ...lead, linked: linkedIds.has(lead.id) })), completion: { checks, completed: Object.values(checks).filter(Boolean).length, total: Object.keys(checks).length } } });
+  return Response.json({ product: { ...data, midias: media, captado_por_nome: capturedByName, mine, summary_price: data.preco ?? (unitPrices.length ? Math.min(...unitPrices) : null), summary_area: data.area_util ?? (unitAreas.length ? Math.min(...unitAreas) : null), is_favorite: Boolean(favorite), leads: (leadOptions ?? []).map((lead) => ({ ...lead, linked: linkedIds.has(lead.id) })), completion: { checks, completed: Object.values(checks).filter(Boolean).length, total: Object.keys(checks).length } } });
 }
 
 export async function PATCH(request: Request) {
@@ -103,12 +110,31 @@ export async function PATCH(request: Request) {
     return result.error ? Response.json({ error: result.error.message }, { status: 502 }) : Response.json({ success: true });
   }
 
-  if (body.action === "publish" || body.action === "unpublish") {
+  if (body.action === "publish" || body.action === "unpublish" || body.action === "solicitar") {
     const { data: me } = await auth.supabase.from("usuarios").select("role").eq("id", auth.user.id).maybeSingle();
-    if (!me || !["admin", "gestor", "executivo"].includes(me.role)) return Response.json({ error: "Apenas administradores/gestores podem publicar produtos." }, { status: 403 });
-    const publicar = body.action === "publish";
-    const { error } = await auth.supabase.from("empreendimentos").update({ rascunho: !publicar }).eq("id", id);
-    return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true, rascunho: !publicar });
+    const role = (me as { role?: string } | null)?.role ?? "corretor";
+    const isApprover = ["admin", "gestor", "executivo"].includes(role);
+
+    // Corretor (dono) envia solicitação: vira pendente, NÃO vai pro ar. Passa pela alçada de aprovação.
+    if (body.action === "solicitar") {
+      const { data: prod } = await auth.supabase.from("empreendimentos").select("captado_por_usuario, captador_corretor_id").eq("id", id).maybeSingle();
+      const { data: broker } = await auth.supabase.from("corretores").select("id").eq("usuario_id", auth.user.id).maybeSingle();
+      const owns = (prod?.captado_por_usuario != null && prod.captado_por_usuario === auth.user.id)
+        || (broker?.id != null && prod?.captador_corretor_id === broker.id);
+      if (!owns && !isApprover) return Response.json({ error: "Você só pode enviar solicitação de um produto que você captou." }, { status: 403 });
+      const { error } = await auth.supabase.from("empreendimentos").update({ rascunho: false, aprovacao: "pendente", reprovacao_motivo: null }).eq("id", id);
+      return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true, aprovacao: "pendente" });
+    }
+
+    // Publicar / voltar a rascunho: só aprovadores (admin, gestor, executivo).
+    if (!isApprover) return Response.json({ error: "Apenas administradores, gestores ou executivos podem publicar produtos." }, { status: 403 });
+    if (body.action === "unpublish") {
+      const { error } = await auth.supabase.from("empreendimentos").update({ rascunho: true }).eq("id", id);
+      return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true, rascunho: true });
+    }
+    // Publicar: aprovador publica direto — vai pro ar e aprova (limpa a pendência, sai da fila).
+    const { error } = await auth.supabase.from("empreendimentos").update({ rascunho: false, aprovacao: "aprovado", publicado: true, reprovacao_motivo: null }).eq("id", id);
+    return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true, rascunho: false, aprovacao: "aprovado" });
   }
 
   if (body.action === "setCover") {
