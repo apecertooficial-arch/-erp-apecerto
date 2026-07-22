@@ -24,7 +24,8 @@ type Tarefa = { id: string; projeto_id: string; coluna_id: string | null; titulo
 type Comentario = { id: string; tarefa_id: string; usuario_id: string | null; texto: string; criado_em: string };
 type Atividade = { id: number; projeto_id: string | null; tarefa_id: string | null; usuario_id: string | null; acao: string; detalhe: string | null; criado_em: string };
 type Usuario = { id: string; nome: string; role: string; ativo: boolean };
-type ApiData = { projetos: Projeto[]; participantes: Participante[]; colunas: Coluna[]; tarefas: Tarefa[]; comentarios: Comentario[]; atividades: Atividade[]; usuarios: Usuario[]; leads: Array<{ id: number; nome: string | null; telefone: string | null }>; produtos: Array<{ id: string; nome: string }>; vendas: Array<{ id: string; empreendimento_nome: string | null; cliente_nome: string | null }>; me: string; error?: string };
+type Anexo = { id: string; tarefa_id: string; nome: string; path: string; mime: string | null; tamanho: number | null; criado_em: string };
+type ApiData = { projetos: Projeto[]; participantes: Participante[]; colunas: Coluna[]; tarefas: Tarefa[]; comentarios: Comentario[]; atividades: Atividade[]; usuarios: Usuario[]; leads: Array<{ id: number; nome: string | null; telefone: string | null }>; produtos: Array<{ id: string; nome: string }>; vendas: Array<{ id: string; empreendimento_nome: string | null; cliente_nome: string | null }>; anexos: Anexo[]; me: string; error?: string };
 
 const PRIO: Record<string, { label: string; cor: string }> = {
   baixa: { label: "Baixa", cor: "#8d99ae" }, media: { label: "Média", cor: "#2f6fed" },
@@ -256,6 +257,7 @@ function TaskCard({ task, userById, data, onOpen }: { task: Tarefa; userById: Ma
       {task.prazo && <time className={atrasada(task) ? "late" : ""}>{shortDate.format(new Date(`${task.prazo}T12:00:00`))}</time>}
       {task.checklist.length > 0 && <small>☑ {done}/{task.checklist.length}</small>}
       {comments > 0 && <small>💬 {comments}</small>}
+      {(data.anexos ?? []).filter((a) => a.tarefa_id === task.id).length > 0 && <small>📎 {(data.anexos ?? []).filter((a) => a.tarefa_id === task.id).length}</small>}
       {task.vinculo_tipo && <small title={task.vinculo_rotulo || ""}>🔗</small>}
     </footer>
   </article>;
@@ -297,7 +299,26 @@ function TaskPanel({ data, task, project, busy, userById, onClose, mutate }: { d
   const [newCheck, setNewCheck] = useState("");
   const [newTag, setNewTag] = useState("");
   const [comment, setComment] = useState("");
+  const [uploading, setUploading] = useState(false);
   const [vincTipo, setVincTipo] = useState(task.vinculo_tipo ?? "");
+  const anexos = (data.anexos ?? []).filter((a) => a.tarefa_id === task.id);
+  const uploadAnexo = async (file: File | undefined) => {
+    if (!file) return;
+    setUploading(true);
+    try {
+      const supa = getBrowserSupabaseClient();
+      const safe = file.name.replace(/[^\w.\-]+/g, "_");
+      const path = `tarefas/${task.id}/${Date.now()}_${safe}`;
+      const { error: upErr } = await supa.storage.from("projeto-anexos").upload(path, file, { upsert: false });
+      if (upErr) throw new Error(upErr.message);
+      await mutate({ action: "addAnexoTarefa", taskId: task.id, nome: file.name, path, mime: file.type, tamanho: file.size });
+    } catch { /* o mutate já exibe o erro */ }
+    finally { setUploading(false); }
+  };
+  const abrirAnexo = async (path: string) => {
+    const { data: signed } = await getBrowserSupabaseClient().storage.from("projeto-anexos").createSignedUrl(path, 300);
+    if (signed?.signedUrl) window.open(signed.signedUrl, "_blank");
+  };
   const cols = data.colunas.filter((c) => c.projeto_id === project.id).sort((a, b) => a.ordem - b.ordem);
   const comments = data.comentarios.filter((c) => c.tarefa_id === task.id);
   const history = data.atividades.filter((a) => a.tarefa_id === task.id).slice(0, 20);
@@ -319,6 +340,9 @@ function TaskPanel({ data, task, project, busy, userById, onClose, mutate }: { d
           <section><h4>Checklist {task.checklist.length > 0 && <span>{task.checklist.filter((i) => i.feito).length}/{task.checklist.length}</span>}</h4>
             {task.checklist.map((item, index) => <label className="pj-check" key={`${index}-${item.texto}`}><input type="checkbox" checked={item.feito} onChange={() => upd({ checklist: task.checklist.map((i, j) => j === index ? { ...i, feito: !i.feito } : i) })} /><span className={item.feito ? "done" : ""}>{item.texto}</span><button type="button" onClick={() => upd({ checklist: task.checklist.filter((_, j) => j !== index) })}>×</button></label>)}
             <div className="pj-inline-add"><input value={newCheck} onChange={(e) => setNewCheck(e.target.value)} placeholder="Novo item do checklist" onKeyDown={(e) => { if (e.key === "Enter" && newCheck.trim()) { upd({ checklist: [...task.checklist, { texto: newCheck.trim(), feito: false }] }); setNewCheck(""); } }} /><button type="button" disabled={!newCheck.trim()} onClick={() => { upd({ checklist: [...task.checklist, { texto: newCheck.trim(), feito: false }] }); setNewCheck(""); }}>＋</button></div></section>
+          <section><h4>Anexos {anexos.length > 0 && <span>{anexos.length}</span>}</h4>
+            {anexos.map((a) => <div className="pj-anexo" key={a.id}><button type="button" className="pj-anexo-open" onClick={() => void abrirAnexo(a.path)}>📎 {a.nome}</button><small>{a.tamanho ? `${Math.max(1, Math.round(a.tamanho / 1024))} KB` : ""}</small><button type="button" className="pj-anexo-del" title="Remover anexo" onClick={() => { if (window.confirm(`Remover o anexo "${a.nome}"?`)) void mutate({ action: "removeAnexoTarefa", anexoId: a.id }); }}>×</button></div>)}
+            <label className="pj-upload">{uploading ? "Enviando…" : "＋ Anexar arquivo ou imagem"}<input hidden type="file" disabled={uploading || busy} onChange={(e) => { void uploadAnexo(e.target.files?.[0]); e.target.value = ""; }} /></label></section>
           <section><h4>Comentários</h4>
             <div className="pj-comments">{comments.map((c) => <div className="pj-comment" key={c.id}><b>{userById.get(c.usuario_id ?? "")?.nome ?? "Usuário"}</b><p>{c.texto}</p><time>{dateTime.format(new Date(c.criado_em))}</time></div>)}{comments.length === 0 && <small>Sem comentários ainda.</small>}</div>
             <div className="pj-inline-add"><input value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Escreva um comentário…" onKeyDown={(e) => { if (e.key === "Enter" && comment.trim()) { void mutate({ action: "comment", taskId: task.id, texto: comment.trim() }); setComment(""); } }} /><button type="button" disabled={busy || !comment.trim()} onClick={() => { void mutate({ action: "comment", taskId: task.id, texto: comment.trim() }); setComment(""); }}>Enviar</button></div></section>
