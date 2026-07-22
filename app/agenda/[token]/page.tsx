@@ -40,6 +40,15 @@ export default function AgendaPublica({ params }: { params: Promise<{ token: str
   }, [token, ano, mes]);
 
   useEffect(() => {
+    // garantia de viewport mobile (evita a página abrir "espremida" no celular)
+    if (!document.querySelector('meta[name="viewport"]')) {
+      const m = document.createElement("meta");
+      m.name = "viewport"; m.content = "width=device-width, initial-scale=1, viewport-fit=cover";
+      document.head.appendChild(m);
+    }
+  }, []);
+
+  useEffect(() => {
     void load();
     const timer = window.setInterval(() => { void load(); }, 60_000);
     return () => window.clearInterval(timer);
@@ -129,8 +138,9 @@ export default function AgendaPublica({ params }: { params: Promise<{ token: str
     <footer className="agm-rodape">Agenda ApêCerto · atualiza sozinha a cada minuto</footer>
 
     <style>{`
-      html, body { margin:0; padding:0; background:#fff; }
-      .agm { min-height:100vh; max-width:640px; margin:0 auto; font-family:'Nunito', -apple-system, 'Segoe UI', sans-serif; color:#20140e; padding-bottom:30px; }
+      html, body { margin:0; padding:0; background:#fff; width:100%; overflow-x:hidden; }
+      .agm, .agm * { box-sizing:border-box; }
+      .agm { min-height:100vh; width:100%; max-width:640px; margin:0 auto; font-family:'Nunito', -apple-system, 'Segoe UI', sans-serif; color:#20140e; padding-bottom:30px; }
       .agm-topo { display:flex; align-items:center; gap:8px; padding:14px 12px 10px; position:sticky; top:0; background:#fff; z-index:5; border-bottom:1px solid #F0ECE8; }
       .agm-topo img { width:34px; height:34px; object-fit:contain; }
       .agm-topo h1 { flex:1; margin:0; font-size:19px; text-transform:capitalize; letter-spacing:-.02em; text-align:center; }
@@ -138,11 +148,11 @@ export default function AgendaPublica({ params }: { params: Promise<{ token: str
       .agm-topo > button { width:34px; height:34px; border-radius:10px; border:1.5px solid #ECE7E3; background:#fff; color:#6d635c; font-size:19px; cursor:pointer; }
       .agm-topo .agm-hoje-btn { width:auto; padding:0 13px; font-size:12.5px; font-weight:800; color:#C2530A; border-color:#F6D9C2; background:#FFF1E5; }
       .agm-erro { margin:14px; padding:13px 15px; border-radius:13px; background:#FDEAE7; color:#B03227; font-weight:700; font-size:13.5px; }
-      .agm-grade { display:grid; grid-template-columns:repeat(7,1fr); border-bottom:1px solid #F0ECE8; }
+      .agm-grade { display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); width:100%; border-bottom:1px solid #F0ECE8; }
       .agm-sem { text-align:center; font-size:10.5px; font-weight:800; color:#8a807a; padding:8px 0 4px; }
-      .agm-cel { min-height:74px; border:none; border-top:1px solid #F5F1EE; background:#fff; padding:3px 2px; text-align:center; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:2px; font-family:inherit; }
+      .agm-cel { min-width:0; min-height:74px; border:none; border-top:1px solid #F5F1EE; background:#fff; padding:3px 1px; text-align:center; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:2px; font-family:inherit; }
       .agm-cel.fora { opacity:.38; }
-      .agm-cel.sel { background:#FFF7F0; box-shadow:inset 0 0 0 2px #FF6500; border-radius:10px; }
+      .agm-cel.sel { background:#FFF7F0; box-shadow:inset 0 0 0 2px #FF6500; border-radius:8px; }
       .agm-num { width:24px; height:24px; display:flex; align-items:center; justify-content:center; font-size:12.5px; font-weight:700; border-radius:50%; }
       .agm-num.hj { background:#FF6500; color:#fff; }
       .agm-chips { display:flex; flex-direction:column; gap:2px; width:100%; overflow:hidden; }
