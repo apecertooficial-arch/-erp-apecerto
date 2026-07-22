@@ -105,7 +105,7 @@ export function ProjectsWorkspace({ accessToken }: { accessToken: string }) {
       onSave={async (payload) => { await mutate({ action: "updateProject", projectId: editingProject.id, ...payload }); setEditingProject(null); }}
       onArchive={async () => { await mutate({ action: "archiveProject", projectId: editingProject.id, unarchive: editingProject.status === "arquivado" }); setEditingProject(null); setOpenProject(null); }}
       onDelete={isManager ? async () => { if (window.confirm(`Excluir o projeto "${editingProject.nome}" e todas as tarefas? Não dá para desfazer.`)) { await mutate({ action: "deleteProject", projectId: editingProject.id }); setEditingProject(null); setOpenProject(null); } } : undefined} />}
-    {openTask && project && <TaskPanel data={data} task={openTask} project={project} busy={busy} userById={userById} onClose={() => setTaskId(null)} mutate={mutate} />}
+    {openTask && project && <TaskPanel key={openTask.id} data={data} task={openTask} project={project} busy={busy} userById={userById} onClose={() => setTaskId(null)} mutate={mutate} />}
   </div>;
 }
 
@@ -280,7 +280,7 @@ function MyTasks({ data, onOpen }: { data: ApiData; onOpen: (t: Tarefa) => void 
   const groups: Array<[string, Tarefa[]]> = [
     ["Atrasadas", mine.filter(atrasada)],
     ["Hoje", mine.filter((t) => t.prazo === hoje() && !t.concluida)],
-    ["Próximas", mine.filter((t) => Boolean(t.prazo && t.prazo > hoje() && !t.concluida))],
+    ["Próximas", mine.filter((t) => Boolean(t.prazo && t.prazo > hoje() && !t.concluida)).sort((a, b) => (a.prazo || "").localeCompare(b.prazo || ""))],
     ["Sem prazo", mine.filter((t) => !t.prazo && !t.concluida)],
     ["Concluídas", mine.filter((t) => t.concluida).slice(0, 20)],
   ];
