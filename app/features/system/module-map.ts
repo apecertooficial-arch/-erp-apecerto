@@ -31,6 +31,10 @@ export const moduleMap = {
     description: "Fichas de financiamento vinculadas aos atendimentos.",
     tables: ["financiamento_fichas"],
   },
+  "Projetos e Tarefas": {
+    description: "Projetos internos, quadros Kanban e tarefas da equipe administrativa.",
+    tables: ["projetos", "projeto_colunas", "projeto_tarefas", "projeto_comentarios", "projeto_atividades"],
+  },
   "Chat ao Vivo": {
     description: "Contatos, conversas, mensagens e eventos do WhatsApp.",
     tables: ["wa_contatos", "wa_conversas", "wa_mensagens", "wa_eventos"],
