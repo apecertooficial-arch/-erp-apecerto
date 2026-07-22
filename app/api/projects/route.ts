@@ -31,7 +31,7 @@ const DEFAULT_COLUMNS = [
 export async function GET(request: Request) {
   const auth = await authClient(request);
   if (!auth) return Response.json({ error: "Sessão inválida ou expirada." }, { status: 401 });
-  const [projetos, participantes, colunas, tarefas, comentarios, atividades, usuarios, leads, produtos, vendas] = await Promise.all([
+  const [projetos, participantes, colunas, tarefas, comentarios, atividades, usuarios, leads, produtos, vendas, anexos] = await Promise.all([
     auth.supabase.from("projetos").select("*").order("atualizado_em", { ascending: false }),
     auth.supabase.from("projeto_participantes").select("projeto_id,usuario_id"),
     auth.supabase.from("projeto_colunas").select("*").eq("arquivada", false).order("ordem", { ascending: true }),
@@ -42,6 +42,7 @@ export async function GET(request: Request) {
     auth.supabase.from("leads").select("id,nome,telefone").order("id", { ascending: false }).limit(600),
     auth.supabase.from("empreendimentos").select("id,nome").order("nome"),
     auth.supabase.from("vendas").select("id,empreendimento_nome,cliente_nome").order("created_at", { ascending: false }).limit(200),
+    auth.supabase.from("projeto_anexos").select("*").order("criado_em", { ascending: false }),
   ]);
   const error = [projetos, colunas, tarefas, usuarios].find((item) => item.error)?.error;
   if (error) return Response.json({ error: error.message }, { status: 502 });
@@ -49,7 +50,7 @@ export async function GET(request: Request) {
     projetos: projetos.data ?? [], participantes: participantes.data ?? [], colunas: colunas.data ?? [],
     tarefas: tarefas.data ?? [], comentarios: comentarios.data ?? [], atividades: atividades.data ?? [],
     usuarios: usuarios.data ?? [], leads: leads.data ?? [], produtos: produtos.data ?? [], vendas: vendas.data ?? [],
-    me: auth.user.id,
+    anexos: anexos.data ?? [], me: auth.user.id,
   });
 }
 
@@ -227,6 +228,25 @@ export async function PATCH(request: Request) {
     return Response.json({ success: true });
   }
 
+  if (action === "addAnexoTarefa") {
+    const taskId = clean(body.taskId, 60);
+    const nome = clean(body.nome, 200);
+    const path = clean(body.path, 400);
+    if (!taskId || !nome || !path) return Response.json({ error: "Anexo inválido." }, { status: 422 });
+    const { error } = await auth.supabase.from("projeto_anexos").insert({ tarefa_id: taskId, nome, path, mime: cleanOrNull(body.mime, 100), tamanho: Number.isFinite(Number(body.tamanho)) ? Number(body.tamanho) : null, criado_por: auth.user.id } as never);
+    if (error) return Response.json({ error: error.message }, { status: 502 });
+    const { data: t } = await auth.supabase.from("projeto_tarefas").select("projeto_id,titulo").eq("id", taskId).maybeSingle();
+    await log(auth, "anexo_adicionado", `Anexo "${nome}" adicionado em "${t?.titulo}".`, t?.projeto_id ?? null, taskId);
+    return Response.json({ success: true });
+  }
+  if (action === "removeAnexoTarefa") {
+    const id = clean(body.anexoId, 60);
+    const { data: ax } = await auth.supabase.from("projeto_anexos").select("nome,tarefa_id").eq("id", id).maybeSingle();
+    const { error } = await auth.supabase.from("projeto_anexos").delete().eq("id", id);
+    if (error) return Response.json({ error: error.message }, { status: 502 });
+    if (ax) { const { data: t } = await auth.supabase.from("projeto_tarefas").select("projeto_id").eq("id", ax.tarefa_id).maybeSingle(); await log(auth, "anexo_removido", `Anexo "${ax.nome}" removido.`, t?.projeto_id ?? null, ax.tarefa_id); }
+    return Response.json({ success: true });
+  }
   if (action === "comment") {
     const taskId = clean(body.taskId, 60);
     const texto = clean(body.texto, 2000);

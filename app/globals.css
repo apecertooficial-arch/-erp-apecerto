@@ -4392,3 +4392,9 @@ article.tone-red{border-left-color:#d3443e}article.tone-red strong{color:#d3443e
 /* fix: botões laranja dentro do módulo Projetos (regras genéricas apagavam o fundo) */
 .pj-form footer button.crm-primary, .pj-quick button.crm-primary { background:linear-gradient(135deg,#ff6500,#ff7b25); color:#fff; border:0; font-weight:700; }
 .pj-quick button.crm-primary.small { margin-top:0; min-height:34px; }
+.pj-anexo { display:flex; align-items:center; gap:8px; padding:5px 0; border-top:1px solid #f8f0e6; }
+.pj-anexo-open { border:none; background:none; cursor:pointer; color:#2451b3; font-size:13px; text-align:left; flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.pj-anexo small { color:#8a7f78; font-size:11px; flex:none; }
+.pj-anexo-del { border:none; background:none; cursor:pointer; color:#c0b4a8; font-size:15px; }
+.pj-upload { display:inline-flex; align-items:center; gap:6px; margin-top:8px; border:1px dashed #dcc9b2; border-radius:9px; padding:8px 12px; cursor:pointer; color:#8a7f78; font-size:12.5px; }
+.pj-upload:hover { background:#fdf8f1; }
