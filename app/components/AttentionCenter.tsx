@@ -99,6 +99,41 @@ export function AttentionCenter({ accessToken, onOpenLead, onOpenChat, onOpenNot
   const [mutedUntil, setMutedUntil] = useState(0);
   const previousSignature = useRef("");
   const initialized = useRef(false);
+  const audioRef = useRef<AudioContext | null>(null);
+  const notifiedRef = useRef<Set<string> | null>(null);
+
+  const playChime = useCallback(() => {
+    try {
+      const AC = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      if (!AC) return;
+      const ctx = audioRef.current ?? (audioRef.current = new AC());
+      if (ctx.state === "suspended") void ctx.resume();
+      const start = ctx.currentTime;
+      [880, 1174.66].forEach((freq, i) => {
+        const osc = ctx.createOscillator(); const gain = ctx.createGain();
+        osc.type = "sine"; osc.frequency.value = freq;
+        const t = start + i * 0.16;
+        gain.gain.setValueAtTime(0.0001, t);
+        gain.gain.exponentialRampToValueAtTime(0.25, t + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.24);
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.start(t); osc.stop(t + 0.26);
+      });
+    } catch { /* som é best-effort */ }
+  }, []);
+
+  const showDesktopNotif = useCallback((alert: AttentionAlert) => {
+    try {
+      if (typeof Notification === "undefined" || Notification.permission !== "granted") return;
+      if (typeof document !== "undefined" && document.visibilityState === "visible") return;
+      const n = new Notification(kindInfo[alert.kind].label, { body: `${alert.title} — ${alert.description}`, tag: alert.id });
+      n.onclick = () => { try { window.focus(); } catch { /* */ } onOpenLead(alert.dealId); n.close(); };
+    } catch { /* notificação é best-effort */ }
+  }, [onOpenLead]);
+
+  useEffect(() => {
+    try { if (typeof Notification !== "undefined" && Notification.permission === "default") void Notification.requestPermission(); } catch { /* */ }
+  }, []);
 
   const load = useCallback(async () => {
     const headers = { Authorization: `Bearer ${accessToken}` };
@@ -141,6 +176,15 @@ export function AttentionCenter({ accessToken, onOpenLead, onOpenChat, onOpenNot
     previousSignature.current = signature;
   }, [signature, mutedUntil]);
 
+  useEffect(() => {
+    const ids = alerts.map((alert) => alert.id);
+    if (notifiedRef.current === null) { notifiedRef.current = new Set(ids); return; }  // não notifica no primeiro carregamento
+    if (Date.now() < mutedUntil) { ids.forEach((id) => notifiedRef.current!.add(id)); return; }  // silenciado: marca como visto sem tocar/notificar
+    const fresh = alerts.filter((alert) => !notifiedRef.current!.has(alert.id));
+    fresh.forEach((alert) => notifiedRef.current!.add(alert.id));
+    if (fresh.length) { playChime(); fresh.slice(0, 3).forEach(showDesktopNotif); }
+  }, [signature, mutedUntil, playChime, showDesktopNotif]);
+
   function dismiss(id: string) {
     const next = [...new Set([...dismissed, id])]; setDismissed(next); window.sessionStorage.setItem("apecerto-alert-dismissed", JSON.stringify(next));
   }
@@ -155,7 +199,7 @@ export function AttentionCenter({ accessToken, onOpenLead, onOpenChat, onOpenNot
 
   const counts = Object.fromEntries((["new", "waiting", "message", "risk"] as AlertKind[]).map((kind) => [kind, alerts.filter((alert) => alert.kind === kind).length])) as Record<AlertKind, number>;
   return <>
-    <button className={`attention-trigger ${alerts.length && Date.now() >= mutedUntil ? "ringing" : ""}`} type="button" onClick={() => setOpen(!open)} aria-label={`Central de alertas, ${alerts.length} pendentes`}><span aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 8-3 8h18s-3-1-3-8" /><path d="M10 20h4" /></svg></span><b>{alerts.length}</b></button>
+    <button className={`attention-trigger ${alerts.length && Date.now() >= mutedUntil ? "ringing" : ""}`} type="button" onClick={() => { try { if (typeof Notification !== "undefined" && Notification.permission === "default") void Notification.requestPermission(); } catch { /* */ } setOpen(!open); }} aria-label={`Central de alertas, ${alerts.length} pendentes`}><span aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 8-3 8h18s-3-1-3-8" /><path d="M10 20h4" /></svg></span><b>{alerts.length}</b></button>
     {open && <aside className="attention-popover" aria-label="Central de alertas de atendimento">
       <header><div><span>ATENDIMENTO EM TEMPO REAL</span><h2>Central de atenção</h2><p>{alerts.length ? `${alerts.length} ação(ões) pedem sua atenção` : "Tudo em dia por aqui"}</p></div><button type="button" onClick={() => setOpen(false)} aria-label="Fechar">×</button></header>
       <section className="attention-summary">{(["new", "waiting", "message", "risk"] as AlertKind[]).map((kind) => <button className={filter === kind ? `active ${kind}` : kind} type="button" onClick={() => setFilter(filter === kind ? "all" : kind)} key={kind}><i>{kindInfo[kind].icon}</i><strong>{counts[kind]}</strong><span>{kindInfo[kind].label}</span></button>)}</section>
