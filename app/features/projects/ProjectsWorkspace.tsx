@@ -89,7 +89,7 @@ export function ProjectsWorkspace({ accessToken }: { accessToken: string }) {
         <div className="pj-head-actions"><label className="crm-search-v2"><span>⌕</span><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar projeto ou tarefa" /></label><button className="crm-primary" type="button" onClick={() => setCreating(true)}>＋ Novo projeto</button></div></header>
       <nav className="pj-tabs">{([["meus", "Meus projetos"], ["todos", "Todos os projetos"], ["arquivados", "Arquivados"], ["minhas", "Minhas tarefas"]] as const).map(([id, label]) => <button className={homeTab === id ? "active" : ""} type="button" onClick={() => setHomeTab(id)} key={id}>{label}</button>)}
         {homeTab !== "minhas" && <span className="pj-filters">
-          <select value={respFilter} onChange={(e) => setRespFilter(e.target.value)}><option value="">Responsável: todos</option>{data.usuarios.filter((u) => u.ativo !== false).map((u) => <option value={u.id} key={u.id}>{u.nome}</option>)}</select>
+          <select value={respFilter} onChange={(e) => setRespFilter(e.target.value)}><option value="">Responsável: todos</option>{data.usuarios.filter((u) => ["admin", "executivo"].includes(u.role) && u.ativo !== false).map((u) => <option value={u.id} key={u.id}>{u.nome}</option>)}</select>
           <select value={prioFilter} onChange={(e) => setPrioFilter(e.target.value)}><option value="">Prioridade: todas</option>{Object.entries(PRIO).map(([id, p]) => <option value={id} key={id}>{p.label}</option>)}</select>
           <label className="pj-late-filter"><input type="checkbox" checked={lateOnly} onChange={(e) => setLateOnly(e.target.checked)} /> Com tarefas atrasadas</label>
         </span>}
@@ -156,13 +156,13 @@ function ProjectForm({ data, initial, participantes = [], busy, onClose, onSave,
         <label className="wide">Nome<input required value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} placeholder="Ex.: Implantação do novo site" /></label>
         <label className="wide">Descrição<textarea value={form.descricao} onChange={(e) => setForm({ ...form, descricao: e.target.value })} /></label>
         <label>Setor<input value={form.setor} onChange={(e) => setForm({ ...form, setor: e.target.value })} placeholder="Ex.: Marketing" /></label>
-        <label>Responsável<select value={form.responsavelId} onChange={(e) => setForm({ ...form, responsavelId: e.target.value })}><option value="">Selecione</option>{data.usuarios.filter((u) => u.ativo !== false).map((u) => <option value={u.id} key={u.id}>{u.nome}</option>)}</select></label>
+        <label>Responsável<select value={form.responsavelId} onChange={(e) => setForm({ ...form, responsavelId: e.target.value })}><option value="">Selecione</option>{data.usuarios.filter((u) => ["admin", "executivo"].includes(u.role) && u.ativo !== false).map((u) => <option value={u.id} key={u.id}>{u.nome}</option>)}</select></label>
         <label>Início<input type="date" value={form.dataInicio} onChange={(e) => setForm({ ...form, dataInicio: e.target.value })} /></label>
         <label>Prazo final<input type="date" value={form.prazo} onChange={(e) => setForm({ ...form, prazo: e.target.value })} /></label>
         <label>Prioridade<select value={form.prioridade} onChange={(e) => setForm({ ...form, prioridade: e.target.value })}>{Object.entries(PRIO).map(([id, p]) => <option value={id} key={id}>{p.label}</option>)}</select></label>
         <label>Cor<input type="color" value={form.cor || "#ff7000"} onChange={(e) => setForm({ ...form, cor: e.target.value })} /></label>
         <label>Visibilidade<select value={form.visibilidade} onChange={(e) => setForm({ ...form, visibilidade: e.target.value })}><option value="publico">Público (toda a equipe)</option><option value="privado">Privado (só participantes)</option></select></label>
-        <div className="wide pj-parts"><b>Participantes</b><div>{data.usuarios.filter((u) => u.ativo !== false).map((u) => <label key={u.id}><input type="checkbox" checked={parts.includes(u.id)} onChange={(e) => setParts(e.target.checked ? [...parts, u.id] : parts.filter((id) => id !== u.id))} />{u.nome}</label>)}</div></div>
+        <div className="wide pj-parts"><b>Participantes</b><div>{data.usuarios.filter((u) => ["admin", "executivo"].includes(u.role) && u.ativo !== false).map((u) => <label key={u.id}><input type="checkbox" checked={parts.includes(u.id)} onChange={(e) => setParts(e.target.checked ? [...parts, u.id] : parts.filter((id) => id !== u.id))} />{u.nome}</label>)}</div></div>
       </div>
       <footer>
         {onArchive && <button type="button" disabled={busy} onClick={() => void onArchive()}>{initial?.status === "arquivado" ? "Reativar projeto" : "Arquivar projeto"}</button>}
@@ -296,12 +296,29 @@ function MyTasks({ data, onOpen }: { data: ApiData; onOpen: (t: Tarefa) => void 
 function TaskPanel({ data, task, project, busy, userById, onClose, mutate }: { data: ApiData; task: Tarefa; project: Projeto; busy: boolean; userById: Map<string, Usuario>; onClose: () => void; mutate: (body: Record<string, unknown>) => Promise<unknown> }) {
   const [titulo, setTitulo] = useState(task.titulo);
   const [descricao, setDescricao] = useState(task.descricao ?? "");
+  const [editingDesc, setEditingDesc] = useState(false);
   const [newCheck, setNewCheck] = useState("");
   const [newTag, setNewTag] = useState("");
   const [comment, setComment] = useState("");
   const [uploading, setUploading] = useState(false);
+  const [pop, setPop] = useState<null | "etiquetas" | "datas" | "membro" | "prio" | "vinculo">(null);
   const [vincTipo, setVincTipo] = useState(task.vinculo_tipo ?? "");
+  const cols = data.colunas.filter((c) => c.projeto_id === project.id).sort((a, b) => a.ordem - b.ordem);
+  const membros = data.usuarios.filter((u) => ["admin", "executivo"].includes(u.role) && u.ativo !== false);
+  const comments = data.comentarios.filter((c) => c.tarefa_id === task.id);
+  const history = data.atividades.filter((a) => a.tarefa_id === task.id);
   const anexos = (data.anexos ?? []).filter((a) => a.tarefa_id === task.id);
+  const resp = task.responsavel_id ? userById.get(task.responsavel_id) : null;
+  const doneCount = task.checklist.filter((i) => i.feito).length;
+  const pct = task.checklist.length ? Math.round((doneCount / task.checklist.length) * 100) : 0;
+  const upd = (patch: Record<string, unknown>) => void mutate({ action: "updateTask", taskId: task.id, ...patch });
+  const feed = [
+    ...comments.map((c) => ({ kind: "comment" as const, when: c.criado_em, who: userById.get(c.usuario_id ?? "")?.nome ?? "Usuário", text: c.texto })),
+    ...history.map((a) => ({ kind: "activity" as const, when: a.criado_em, who: userById.get(a.usuario_id ?? "")?.nome ?? "Sistema", text: a.detalhe ?? a.acao })),
+  ].sort((a, b) => String(b.when).localeCompare(String(a.when))).slice(0, 40);
+  const vincOptions = vincTipo === "lead" ? data.leads.map((l) => ({ id: String(l.id), rotulo: l.nome || l.telefone || `Lead #${l.id}` }))
+    : vincTipo === "produto" ? data.produtos.map((p) => ({ id: p.id, rotulo: p.nome }))
+    : vincTipo === "venda" ? data.vendas.map((v) => ({ id: v.id, rotulo: `${v.cliente_nome || "Venda"} · ${v.empreendimento_nome || ""}` })) : [];
   const uploadAnexo = async (file: File | undefined) => {
     if (!file) return;
     setUploading(true);
@@ -312,59 +329,99 @@ function TaskPanel({ data, task, project, busy, userById, onClose, mutate }: { d
       const { error: upErr } = await supa.storage.from("projeto-anexos").upload(path, file, { upsert: false });
       if (upErr) throw new Error(upErr.message);
       await mutate({ action: "addAnexoTarefa", taskId: task.id, nome: file.name, path, mime: file.type, tamanho: file.size });
-    } catch { /* o mutate já exibe o erro */ }
+    } catch { /* o mutate ja exibe o erro */ }
     finally { setUploading(false); }
   };
   const abrirAnexo = async (path: string) => {
     const { data: signed } = await getBrowserSupabaseClient().storage.from("projeto-anexos").createSignedUrl(path, 300);
     if (signed?.signedUrl) window.open(signed.signedUrl, "_blank");
   };
-  const cols = data.colunas.filter((c) => c.projeto_id === project.id).sort((a, b) => a.ordem - b.ordem);
-  const comments = data.comentarios.filter((c) => c.tarefa_id === task.id);
-  const history = data.atividades.filter((a) => a.tarefa_id === task.id).slice(0, 20);
-  const upd = (patch: Record<string, unknown>) => void mutate({ action: "updateTask", taskId: task.id, ...patch });
-  const vincOptions = vincTipo === "lead" ? data.leads.map((l) => ({ id: String(l.id), rotulo: l.nome || l.telefone || `Lead #${l.id}` }))
-    : vincTipo === "produto" ? data.produtos.map((p) => ({ id: p.id, rotulo: p.nome }))
-    : vincTipo === "venda" ? data.vendas.map((v) => ({ id: v.id, rotulo: `${v.cliente_nome || "Venda"} · ${v.empreendimento_nome || ""}` })) : [];
+  const addCheck = () => { if (newCheck.trim()) { upd({ checklist: [...task.checklist, { texto: newCheck.trim(), feito: false }] }); setNewCheck(""); } };
+  const sendComment = () => { if (comment.trim()) { void mutate({ action: "comment", taskId: task.id, texto: comment.trim() }); setComment(""); } };
 
   return <div className="crm-drawer-layer" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-    <aside className="pj-task-panel" aria-label="Detalhes da tarefa">
-      <header><div><span>{project.nome} · TAREFA</span>
+    <aside className="pj-task-panel" aria-label="Detalhes da tarefa" onMouseDown={() => pop && setPop(null)}>
+      <header className="pj-tr-head">
+        <select className="pj-tr-col-chip" value={task.coluna_id ?? ""} onChange={(e) => void mutate({ action: "moveTask", taskId: task.id, colunaId: e.target.value })} onMouseDown={(e) => e.stopPropagation()}>
+          {cols.map((c) => <option value={c.id} key={c.id}>{c.nome}</option>)}
+        </select>
+        <span className="pj-tr-proj">{project.nome}</span>
+        <button type="button" className="pj-tr-close" onClick={onClose} aria-label="Fechar">×</button>
+      </header>
+      <div className="pj-tr-title-row">
+        <button type="button" className={`pj-tr-circle ${task.concluida ? "done" : ""}`} title={task.concluida ? "Reabrir" : "Concluir"} disabled={busy} onClick={() => upd({ concluida: !task.concluida })}>{task.concluida ? "✓" : ""}</button>
         <input className="pj-task-title" value={titulo} onChange={(e) => setTitulo(e.target.value)} onBlur={() => { if (titulo.trim() && titulo !== task.titulo) upd({ titulo: titulo.trim() }); }} />
-      </div><div className="pj-panel-actions">
-        <button type="button" className={task.concluida ? "pj-done-btn active" : "pj-done-btn"} disabled={busy} onClick={() => upd({ concluida: !task.concluida })}>{task.concluida ? "✓ Concluída" : "Concluir"}</button>
-        <button type="button" onClick={onClose} aria-label="Fechar">×</button></div></header>
-      <div className="pj-panel-grid">
-        <div className="pj-panel-main">
-          <label>Descrição<textarea value={descricao} onChange={(e) => setDescricao(e.target.value)} onBlur={() => { if (descricao !== (task.descricao ?? "")) upd({ descricao }); }} placeholder="Detalhe o que precisa ser feito…" /></label>
-          <section><h4>Checklist {task.checklist.length > 0 && <span>{task.checklist.filter((i) => i.feito).length}/{task.checklist.length}</span>}</h4>
-            {task.checklist.map((item, index) => <label className="pj-check" key={`${index}-${item.texto}`}><input type="checkbox" checked={item.feito} onChange={() => upd({ checklist: task.checklist.map((i, j) => j === index ? { ...i, feito: !i.feito } : i) })} /><span className={item.feito ? "done" : ""}>{item.texto}</span><button type="button" onClick={() => upd({ checklist: task.checklist.filter((_, j) => j !== index) })}>×</button></label>)}
-            <div className="pj-inline-add"><input value={newCheck} onChange={(e) => setNewCheck(e.target.value)} placeholder="Novo item do checklist" onKeyDown={(e) => { if (e.key === "Enter" && newCheck.trim()) { upd({ checklist: [...task.checklist, { texto: newCheck.trim(), feito: false }] }); setNewCheck(""); } }} /><button type="button" disabled={!newCheck.trim()} onClick={() => { upd({ checklist: [...task.checklist, { texto: newCheck.trim(), feito: false }] }); setNewCheck(""); }}>＋</button></div></section>
-          <section><h4>Anexos {anexos.length > 0 && <span>{anexos.length}</span>}</h4>
-            {anexos.map((a) => <div className="pj-anexo" key={a.id}><button type="button" className="pj-anexo-open" onClick={() => void abrirAnexo(a.path)}>📎 {a.nome}</button><small>{a.tamanho ? `${Math.max(1, Math.round(a.tamanho / 1024))} KB` : ""}</small><button type="button" className="pj-anexo-del" title="Remover anexo" onClick={() => { if (window.confirm(`Remover o anexo "${a.nome}"?`)) void mutate({ action: "removeAnexoTarefa", anexoId: a.id }); }}>×</button></div>)}
-            <label className="pj-upload">{uploading ? "Enviando…" : "＋ Anexar arquivo ou imagem"}<input hidden type="file" disabled={uploading || busy} onChange={(e) => { void uploadAnexo(e.target.files?.[0]); e.target.value = ""; }} /></label></section>
-          <section><h4>Comentários</h4>
-            <div className="pj-comments">{comments.map((c) => <div className="pj-comment" key={c.id}><b>{userById.get(c.usuario_id ?? "")?.nome ?? "Usuário"}</b><p>{c.texto}</p><time>{dateTime.format(new Date(c.criado_em))}</time></div>)}{comments.length === 0 && <small>Sem comentários ainda.</small>}</div>
-            <div className="pj-inline-add"><input value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Escreva um comentário…" onKeyDown={(e) => { if (e.key === "Enter" && comment.trim()) { void mutate({ action: "comment", taskId: task.id, texto: comment.trim() }); setComment(""); } }} /><button type="button" disabled={busy || !comment.trim()} onClick={() => { void mutate({ action: "comment", taskId: task.id, texto: comment.trim() }); setComment(""); }}>Enviar</button></div></section>
-          <section><h4>Histórico</h4><div className="pj-history">{history.map((a) => <div key={a.id}><span>{a.detalhe}</span><time>{userById.get(a.usuario_id ?? "")?.nome ?? ""} · {dateTime.format(new Date(a.criado_em))}</time></div>)}</div></section>
+      </div>
+      <div className="pj-tr-actions" onMouseDown={(e) => e.stopPropagation()}>
+        <div className="pj-tr-act">
+          <button type="button" onClick={() => setPop(pop === "membro" ? null : "membro")}>👤 {resp ? resp.nome.split(" ")[0] : "Membro"}</button>
+          {pop === "membro" && <div className="pj-tr-pop"><b>Responsável</b>
+            <button type="button" className={!task.responsavel_id ? "sel" : ""} onClick={() => { upd({ responsavelId: "" }); setPop(null); }}>Sem responsável</button>
+            {membros.map((u) => <button type="button" className={task.responsavel_id === u.id ? "sel" : ""} key={u.id} onClick={() => { upd({ responsavelId: u.id }); setPop(null); }}><i className="pj-avatar">{initials(u.nome)}</i>{u.nome}</button>)}
+          </div>}
         </div>
-        <div className="pj-panel-side">
-          <label>Coluna<select value={task.coluna_id ?? ""} onChange={(e) => void mutate({ action: "moveTask", taskId: task.id, colunaId: e.target.value })}>{cols.map((c) => <option value={c.id} key={c.id}>{c.nome}</option>)}</select></label>
-          <label>Responsável<select value={task.responsavel_id ?? ""} onChange={(e) => upd({ responsavelId: e.target.value })}><option value="">Sem responsável</option>{data.usuarios.filter((u) => u.ativo !== false).map((u) => <option value={u.id} key={u.id}>{u.nome}</option>)}</select></label>
-          <label>Prioridade<select value={task.prioridade} onChange={(e) => upd({ prioridade: e.target.value })}>{Object.entries(PRIO).map(([id, p]) => <option value={id} key={id}>{p.label}</option>)}</select></label>
-          <label>Início<input type="date" value={task.data_inicio ?? ""} onChange={(e) => upd({ dataInicio: e.target.value })} /></label>
-          <label>Prazo<input type="date" value={task.prazo ?? ""} onChange={(e) => upd({ prazo: e.target.value })} />{atrasada(task) && <em className="pj-late-flag">⚠ atrasada</em>}</label>
-          <section><h4>Etiquetas</h4><div className="pj-task-tags block">{task.etiquetas.map((tag) => <em key={tag}>{tag}<button type="button" onClick={() => upd({ etiquetas: task.etiquetas.filter((t) => t !== tag) })}>×</button></em>)}</div>
-            <div className="pj-inline-add"><input value={newTag} onChange={(e) => setNewTag(e.target.value)} placeholder="Nova etiqueta" onKeyDown={(e) => { if (e.key === "Enter" && newTag.trim()) { upd({ etiquetas: [...task.etiquetas, newTag.trim()] }); setNewTag(""); } }} /><button type="button" disabled={!newTag.trim()} onClick={() => { upd({ etiquetas: [...task.etiquetas, newTag.trim()] }); setNewTag(""); }}>＋</button></div></section>
-          <section><h4>Vínculo com o ERP</h4>
+        <div className="pj-tr-act">
+          <button type="button" onClick={() => setPop(pop === "datas" ? null : "datas")}>🕐 {task.prazo ? shortDate.format(new Date(`${task.prazo}T12:00:00`)) : "Datas"}{atrasada(task) ? " ⚠" : ""}</button>
+          {pop === "datas" && <div className="pj-tr-pop"><b>Datas</b>
+            <label>Início<input type="date" value={task.data_inicio ?? ""} onChange={(e) => upd({ dataInicio: e.target.value })} /></label>
+            <label>Prazo<input type="date" value={task.prazo ?? ""} onChange={(e) => upd({ prazo: e.target.value })} /></label>
+          </div>}
+        </div>
+        <div className="pj-tr-act">
+          <button type="button" onClick={() => setPop(pop === "etiquetas" ? null : "etiquetas")}>🏷 Etiquetas{task.etiquetas.length ? ` (${task.etiquetas.length})` : ""}</button>
+          {pop === "etiquetas" && <div className="pj-tr-pop"><b>Etiquetas</b>
+            {task.etiquetas.map((tag) => <button type="button" className="sel" key={tag} onClick={() => upd({ etiquetas: task.etiquetas.filter((t) => t !== tag) })}>{tag} ×</button>)}
+            <div className="pj-tr-pop-add"><input value={newTag} onChange={(e) => setNewTag(e.target.value)} placeholder="Nova etiqueta" onKeyDown={(e) => { if (e.key === "Enter" && newTag.trim()) { upd({ etiquetas: [...task.etiquetas, newTag.trim()] }); setNewTag(""); } }} /><button type="button" onClick={() => { if (newTag.trim()) { upd({ etiquetas: [...task.etiquetas, newTag.trim()] }); setNewTag(""); } }}>＋</button></div>
+          </div>}
+        </div>
+        <div className="pj-tr-act">
+          <button type="button" onClick={() => setPop(pop === "prio" ? null : "prio")}><span className={`pj-prio dot ${task.prioridade}`} /> {PRIO[task.prioridade]?.label ?? "Prioridade"}</button>
+          {pop === "prio" && <div className="pj-tr-pop"><b>Prioridade</b>
+            {Object.entries(PRIO).map(([id, p]) => <button type="button" className={task.prioridade === id ? "sel" : ""} key={id} onClick={() => { upd({ prioridade: id }); setPop(null); }}><span className={`pj-prio dot ${id}`} /> {p.label}</button>)}
+          </div>}
+        </div>
+        <div className="pj-tr-act">
+          <label className="pj-tr-btn-file">📎 {uploading ? "Enviando…" : "Anexar"}<input hidden type="file" disabled={uploading || busy} onChange={(e) => { void uploadAnexo(e.target.files?.[0]); e.target.value = ""; }} /></label>
+        </div>
+        <div className="pj-tr-act">
+          <button type="button" onClick={() => setPop(pop === "vinculo" ? null : "vinculo")}>🔗 {task.vinculo_rotulo ? task.vinculo_rotulo.slice(0, 18) : "Vínculo"}</button>
+          {pop === "vinculo" && <div className="pj-tr-pop wide"><b>Vínculo com o ERP</b>
             <select value={vincTipo} onChange={(e) => { setVincTipo(e.target.value); if (!e.target.value) upd({ vinculoTipo: "", vinculoId: "", vinculoRotulo: "" }); }}><option value="">Sem vínculo</option><option value="lead">Lead</option><option value="produto">Produto</option><option value="venda">Venda</option></select>
-            {vincTipo && <select value={task.vinculo_id ?? ""} onChange={(e) => { const opt = vincOptions.find((o) => o.id === e.target.value); upd({ vinculoTipo: vincTipo, vinculoId: e.target.value, vinculoRotulo: opt?.rotulo ?? "" }); }}><option value="">Selecione</option>{vincOptions.map((o) => <option value={o.id} key={o.id}>{o.rotulo}</option>)}</select>}
-            {task.vinculo_rotulo && <small className="pj-vinc">🔗 {task.vinculo_rotulo}</small>}</section>
-          <section className="pj-panel-danger">
+            {vincTipo && <select value={task.vinculo_id ?? ""} onChange={(e) => { const opt = vincOptions.find((o) => o.id === e.target.value); upd({ vinculoTipo: vincTipo, vinculoId: e.target.value, vinculoRotulo: opt?.rotulo ?? "" }); setPop(null); }}><option value="">Selecione</option>{vincOptions.map((o) => <option value={o.id} key={o.id}>{o.rotulo}</option>)}</select>}
+          </div>}
+        </div>
+      </div>
+      <div className="pj-tr-grid">
+        <div className="pj-tr-main">
+          <section><h4>≡ Descrição</h4>
+            {editingDesc || !descricao
+              ? <textarea autoFocus={editingDesc} value={descricao} onChange={(e) => setDescricao(e.target.value)} onBlur={() => { setEditingDesc(false); if (descricao !== (task.descricao ?? "")) upd({ descricao }); }} placeholder="Detalhe o que precisa ser feito…" />
+              : <div className="pj-tr-desc" role="button" tabIndex={0} onClick={() => setEditingDesc(true)} onKeyDown={(e) => { if (e.key === "Enter") setEditingDesc(true); }}>{descricao}</div>}
+          </section>
+          <section><h4>☑ Checklist {task.checklist.length > 0 && <em className="pj-tr-pct">{pct}%</em>}</h4>
+            {task.checklist.length > 0 && <div className="pj-tr-bar"><i style={{ width: `${pct}%` }} /></div>}
+            {task.checklist.map((item, index) => <label className="pj-check" key={`${index}-${item.texto}`}><input type="checkbox" checked={item.feito} onChange={() => upd({ checklist: task.checklist.map((i, j) => j === index ? { ...i, feito: !i.feito } : i) })} /><span className={item.feito ? "done" : ""}>{item.texto}</span><button type="button" onClick={() => upd({ checklist: task.checklist.filter((_, j) => j !== index) })}>×</button></label>)}
+            <div className="pj-inline-add"><input value={newCheck} onChange={(e) => setNewCheck(e.target.value)} placeholder="Adicionar item" onKeyDown={(e) => { if (e.key === "Enter") addCheck(); }} /><button type="button" disabled={!newCheck.trim()} onClick={addCheck}>＋</button></div>
+          </section>
+          {anexos.length > 0 && <section><h4>📎 Anexos <span>{anexos.length}</span></h4>
+            {anexos.map((a) => <div className="pj-anexo" key={a.id}><button type="button" className="pj-anexo-open" onClick={() => void abrirAnexo(a.path)}>📎 {a.nome}</button><small>{a.tamanho ? `${Math.max(1, Math.round(a.tamanho / 1024))} KB` : ""}</small><button type="button" className="pj-anexo-del" title="Remover anexo" onClick={() => { if (window.confirm(`Remover o anexo "${a.nome}"?`)) void mutate({ action: "removeAnexoTarefa", anexoId: a.id }); }}>×</button></div>)}
+          </section>}
+          <div className="pj-panel-danger">
             <button type="button" disabled={busy} onClick={() => void mutate({ action: "duplicateTask", taskId: task.id })}>⧉ Duplicar</button>
             <button type="button" disabled={busy} onClick={() => { upd({ arquivar: true }); onClose(); }}>▣ Arquivar</button>
             <button type="button" className="danger" disabled={busy} onClick={() => { if (window.confirm("Excluir esta tarefa? Não dá para desfazer.")) { void mutate({ action: "deleteTask", taskId: task.id }); onClose(); } }}>🗑 Excluir</button>
-          </section>
+          </div>
+        </div>
+        <div className="pj-tr-side">
+          <h4>💬 Comentários e atividade</h4>
+          <div className="pj-inline-add"><input value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Escreva um comentário…" onKeyDown={(e) => { if (e.key === "Enter") sendComment(); }} /><button type="button" disabled={busy || !comment.trim()} onClick={sendComment}>Enviar</button></div>
+          <div className="pj-tr-feed">
+            {feed.map((f, i) => <div className={`pj-tr-feed-item ${f.kind}`} key={i}>
+              <i className="pj-avatar">{initials(f.who)}</i>
+              <div>{f.kind === "comment" ? <><b>{f.who}</b><p>{f.text}</p></> : <span>{f.text}</span>}<time>{dateTime.format(new Date(f.when))}</time></div>
+            </div>)}
+            {feed.length === 0 && <small>Sem atividade ainda.</small>}
+          </div>
         </div>
       </div>
     </aside>
