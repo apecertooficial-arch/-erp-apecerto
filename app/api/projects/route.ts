@@ -17,9 +17,7 @@ const cleanOrNull = (value: unknown, max = 400) => { const v = clean(value, max)
 
 async function log(auth: Auth, acao: string, detalhe: string, projetoId: string | null, tarefaId: string | null) {
   try {
-    await auth.supabase.from("projeto_atividades").insert({ projeto_id: projetoId, tarefa_id: tarefaId, usuario_id: auth.user.id, acao, detalhe } as never);
-    const { data: me } = await auth.supabase.from("usuarios").select("nome").eq("id", auth.user.id).maybeSingle();
-    await auth.supabase.from("erp_auditoria").insert({ usuario_id: auth.user.id, usuario_nome: me?.nome ?? null, acao, modulo: "Projetos e Tarefas", entidade: tarefaId ? "projeto_tarefas" : "projetos", entidade_id: tarefaId ?? projetoId, detalhe } as never);
+    await auth.supabase.rpc("pj_log", { p_acao: acao, p_detalhe: detalhe, p_projeto: projetoId, p_tarefa: tarefaId });
   } catch { /* auditoria nunca derruba a ação */ }
 }
 
@@ -40,7 +38,7 @@ export async function GET(request: Request) {
     auth.supabase.from("projeto_tarefas").select("*").eq("arquivada", false).order("ordem", { ascending: true }),
     auth.supabase.from("projeto_comentarios").select("*").order("criado_em", { ascending: true }),
     auth.supabase.from("projeto_atividades").select("*").order("criado_em", { ascending: false }).limit(200),
-    auth.supabase.from("usuarios").select("id,nome,role,ativo"),
+    auth.supabase.rpc("pj_listar_usuarios"),
     auth.supabase.from("leads").select("id,nome,telefone").order("id", { ascending: false }).limit(600),
     auth.supabase.from("empreendimentos").select("id,nome").order("nome"),
     auth.supabase.from("vendas").select("id,empreendimento_nome,cliente_nome").order("created_at", { ascending: false }).limit(200),
@@ -92,6 +90,7 @@ export async function PATCH(request: Request) {
     for (const [key, col] of [["nome", "nome"], ["descricao", "descricao"], ["setor", "setor"], ["cor", "cor"], ["prioridade", "prioridade"], ["visibilidade", "visibilidade"], ["status", "status"]] as const) {
       if (typeof body[key] === "string") patch[col] = cleanOrNull(body[key], key === "descricao" ? 2000 : 120);
     }
+    if (patch.nome === null) delete patch.nome; // nome nunca pode ficar vazio
     if (typeof body.responsavelId === "string") patch.responsavel_id = cleanOrNull(body.responsavelId, 60);
     if (typeof body.dataInicio === "string") patch.data_inicio = cleanOrNull(body.dataInicio, 12);
     if (typeof body.prazo === "string") patch.prazo = cleanOrNull(body.prazo, 12);
