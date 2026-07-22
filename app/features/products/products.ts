@@ -19,6 +19,9 @@ export type Product = {
   origin?: string;
   numericPrice?: number | null;
   favorite?: boolean;
+  approval?: string;
+  rejectionReason?: string | null;
+  mine?: boolean;
 };
 
 export const products: Product[] = [

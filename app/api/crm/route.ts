@@ -49,7 +49,7 @@ export async function GET(request: Request) {
   const auth = await authenticatedClient(request);
   if (!auth) return Response.json({ error: "Sessão inválida ou expirada." }, { status: 401 });
 
-  const [pipelinesResult, stagesResult, leadsResult, dealsResult, brokersResult, activitiesResult, historicoResult, tasksResult, linksResult, visitsResult, productsResult, slaResult, alertsResult] = await Promise.all([
+  const [pipelinesResult, stagesResult, leadsResult, dealsResult, brokersResult, activitiesResult, historicoResult, tasksResult, linksResult, visitsResult, productsResult, slaResult, alertsResult, leiturasResult] = await Promise.all([
     auth.supabase.from("pipelines").select("id,nome,grupo,ordem").order("ordem"),
     auth.supabase.from("pipeline_stages").select("id,pipeline_id,nome,rotulo,ordem,cor,tipo,grupo,chave").order("ordem"),
     auth.supabase.from("leads").select("id,nome,telefone,email,instagram,corretor_id,pipeline_id,status,origem,tags,extras,criado_em,atualizado_em,disparo_optout").order("atualizado_em", { ascending: false, nullsFirst: false }).limit(500),
@@ -59,17 +59,23 @@ export async function GET(request: Request) {
     auth.supabase.from("atendimento_acoes").select("id,lead_id,negocio_id,corretor_id,tipo,canal,texto,resultado,criado_em").order("criado_em", { ascending: false }).limit(500),
     auth.supabase.from("crm_tarefas").select("id,lead_id,negocio_id,corretor_id,titulo,descricao,vencimento,concluida,prioridade,criado_em").order("criado_em", { ascending: false }).limit(500),
     auth.supabase.from("lead_produtos").select("lead_id,empreendimento_id,created_at,empreendimentos(id,nome,bairro,cidade,status,preco)").order("created_at", { ascending: false }),
-    auth.supabase.from("visitas").select("id,created_by,lead_id,negocio_id,corretor_id,cliente_nome,empreendimento_id,produto,unidade,data,hora_inicio,hora_fim,local,observacoes,participantes,lembrete,com_gerente,status,criado_em").order("data").order("hora_inicio"),
+    auth.supabase.from("visitas").select("id,created_by,lead_id,negocio_id,corretor_id,cliente_nome,empreendimento_id,produto,unidade,data,hora_inicio,hora_fim,local,observacoes,participantes,lembrete,com_gerente,gerente_id,status,criado_em").order("data").order("hora_inicio"),
     auth.supabase.from("empreendimentos").select("id,nome,bairro,cidade,status,preco,origem,rascunho").order("nome").limit(300),
     auth.supabase.from("vw_sla_leads").select("negocio_id,lead_id,stage_id,sla_situacao,aguardando_humano,min_aguardando,min_no_estagio,min_sem_interacao,min_ativo_int,cor_ativa,alarme_ativo,ultima_interacao,cliente_ultima,humano_ultima"),
     auth.supabase.from("crm_lead_alertas").select("id,negocio_id,corretor_id,criado_em,reconhecido_em,reconhecido_por").is("reconhecido_em", null).order("criado_em", { ascending: false }),
+    auth.supabase.from("crm_lead_leituras").select("negocio_id,lido_em").eq("usuario_id", auth.user.id),
   ]);
 
   const firstError = [pipelinesResult, stagesResult, leadsResult, dealsResult, brokersResult, activitiesResult, historicoResult, tasksResult, linksResult, visitsResult, productsResult, slaResult, alertsResult].find((result) => result.error)?.error;
   if (firstError) return Response.json({ error: firstError.message }, { status: 502 });
 
+  const { data: gerentesData } = await auth.supabase.from("gerentes").select("id,nome,geral,corretor_id").eq("ativo", true).order("geral", { ascending: false });
+  const { data: meProfile } = await auth.supabase.from("usuarios").select("role").eq("id", auth.user.id).maybeSingle();
+
   return Response.json({
     mode: "production",
+    role: meProfile?.role ?? "",
+    gerentes: gerentesData ?? [],
     pipelines: pipelinesResult.data ?? [],
     stages: stagesResult.data ?? [],
     leads: leadsResult.data ?? [],
@@ -83,6 +89,7 @@ export async function GET(request: Request) {
     products: productsResult.data ?? [],
     sla: slaResult.data ?? [],
     alerts: alertsResult.data ?? [],
+    leituras: leiturasResult.data ?? [],
   });
 }
 
@@ -225,6 +232,13 @@ export async function PATCH(request: Request) {
     return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
   }
 
+  if (action === "markRead") {
+    const dealId = positiveInteger(body.dealId);
+    if (!dealId) return Response.json({ error: "Negócio inválido." }, { status: 400 });
+    const { error } = await auth.supabase.from("crm_lead_leituras").upsert({ negocio_id: dealId, usuario_id: auth.user.id, lido_em: new Date().toISOString() }, { onConflict: "negocio_id,usuario_id" });
+    return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
+  }
+
   if (action === "acknowledgeResponse") {
     const dealId = positiveInteger(body.dealId);
     if (!dealId) return Response.json({ error: "Negócio inválido." }, { status: 400 });
@@ -262,15 +276,71 @@ export async function PATCH(request: Request) {
     ]);
     if (!lead || !deal) return Response.json({ error: "Lead ou negócio não encontrado." }, { status: 404 });
     const local = cleanText(body.local, 300) || (product ? [product.endereco, product.numero, product.bairro, product.cidade].filter(Boolean).join(", ") : null);
+    const comGerente = body.withManager === true;
+    let gerenteId: number | null = null;
+    if (comGerente) {
+      const chosen = positiveInteger(body.gerenteId);
+      if (chosen) gerenteId = chosen;
+      else { const { data: gg } = await auth.supabase.from("gerentes").select("id").eq("ativo", true).eq("geral", true).maybeSingle(); gerenteId = (gg?.id as number | undefined) ?? null; }
+    }
     const { error } = await auth.supabase.from("visitas").insert({
       created_by: auth.user.id, lead_id: leadId, negocio_id: dealId, corretor_id: deal.corretor_id, cliente_nome: lead.nome,
       empreendimento_id: product?.id ?? null, produto: product?.nome ?? (cleanText(body.productName, 180) || null),
       data: date, hora_inicio: startTime, hora_fim: cleanText(body.endTime, 8) || null,
       local, observacoes: cleanText(body.observations, 1200) || null,
       participantes: cleanText(body.participants, 500) || null,
-      lembrete: body.reminder !== false, com_gerente: body.withManager === true, status: "agendada",
+      lembrete: body.reminder !== false, com_gerente: comGerente, gerente_id: gerenteId, status: "agendada",
     });
+    if (error) return Response.json({ error: error.message }, { status: 502 });
+    // #9 — ao agendar, move o lead para o funil "Visita ApeCerto" na etapa "Visita Agendada" (best-effort).
+    try {
+      const { data: pipe } = await auth.supabase.from("pipelines").select("id").ilike("nome", "%visita ape%").order("ordem").limit(1).maybeSingle();
+      if (pipe?.id) {
+        const { data: stage } = await auth.supabase.from("pipeline_stages").select("id").eq("pipeline_id", pipe.id).ilike("nome", "%agendada%").order("ordem").limit(1).maybeSingle();
+        if (stage?.id) await auth.supabase.rpc("mover_negocio", { p_negocio_id: dealId, p_stage_id: stage.id });
+      }
+    } catch { /* mover é best-effort — a visita já foi criada */ }
+    return Response.json({ success: true });
+  }
+
+  if (action === "updateVisit") {
+    const visitId = cleanText(body.visitId, 40);
+    if (!visitId) return Response.json({ error: "Visita inválida." }, { status: 400 });
+    const { data: cur } = await auth.supabase.from("visitas").select("corretor_id,com_gerente,gerente_id").eq("id", visitId).maybeSingle();
+    if (!cur) return Response.json({ error: "Visita não encontrada." }, { status: 404 });
+    const access = await getEffectiveAccess(auth);
+    const isAdmin = access.role === "admin" || access.role === "gestor";
+    const patch: Record<string, unknown> = { atualizado_em: new Date().toISOString() };
+    if (typeof body.date === "string" && body.date) patch.data = cleanText(body.date, 10);
+    if (body.startTime !== undefined) patch.hora_inicio = cleanText(body.startTime, 8) || null;
+    if (body.endTime !== undefined) patch.hora_fim = cleanText(body.endTime, 8) || null;
+    if (body.local !== undefined) patch.local = cleanText(body.local, 300) || null;
+    if (body.observations !== undefined) patch.observacoes = cleanText(body.observations, 1200) || null;
+    // "com gerente" só o admin/gestor altera; corretor não mexe nisso.
+    let comGerente = cur.com_gerente === true;
+    if (isAdmin && body.withManager !== undefined) { comGerente = body.withManager === true; patch.com_gerente = comGerente; }
+    // gerente do acompanhamento: admin escolhe explicitamente; senão mantém o atual, e se estiver vazio usa o geral (Djair)
+    if (comGerente) {
+      const chosen = positiveInteger(body.gerenteId);
+      if (isAdmin && chosen) patch.gerente_id = chosen;
+      else if (cur.gerente_id == null) { const { data: gg } = await auth.supabase.from("gerentes").select("id").eq("ativo", true).eq("geral", true).maybeSingle(); patch.gerente_id = (gg?.id as number | undefined) ?? null; }
+    } else patch.gerente_id = null;
+    const { error } = await auth.supabase.from("visitas").update(patch).eq("id", visitId);
     return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
+  }
+
+  if (action === "gerenteDisponibilidade") {
+    const corretorId = positiveInteger(body.corretorId);
+    const date = cleanText(body.date, 10);
+    const startTime = cleanText(body.startTime, 8);
+    const endTime = cleanText(body.endTime, 8) || null;
+    const exclude = cleanText(body.visitId, 40) || null;
+    if (!corretorId || !date || !startTime) return Response.json({ ok: true, conflitos: [] });
+    let gerenteId = positiveInteger(body.gerenteId) || null;
+    if (!gerenteId) { const { data: g } = await auth.supabase.rpc("corretor_gerente", { p_corretor: corretorId }); gerenteId = (g as number | null) ?? null; }
+    if (!gerenteId) return Response.json({ ok: true, gerente_id: null, conflitos: [] });
+    const { data: conf } = await auth.supabase.rpc("gerente_conflitos", { p_gerente: gerenteId, p_data: date, p_inicio: startTime, p_fim: endTime, p_exclude: exclude });
+    return Response.json({ ok: true, gerente_id: gerenteId, conflitos: conf ?? [] });
   }
 
   if (action === "updateVisitStatus") {

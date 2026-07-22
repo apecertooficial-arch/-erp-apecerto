@@ -504,10 +504,10 @@ button { cursor:pointer; }
 .calendar-workspace { min-height:100vh; background:#faf8f6; color:#2e2926; }
 .calendar-primary { min-height:37px; border:0; border-radius:11px; padding:0 15px; background:#ff6500; color:#fff; font-size:11px; font-weight:800; cursor:pointer; box-shadow:0 7px 17px rgba(255,101,0,.18); }
 .calendar-main { padding:20px 27px 45px; }
-.today-summary { display:flex; align-items:center; gap:12px; margin-bottom:15px; padding:13px 16px; border:1px solid #eee4dd; border-radius:14px; background:linear-gradient(135deg,#fff6ef,#fbf0fa); }.today-summary>span { width:36px; height:36px; display:grid; place-items:center; border-radius:10px; background:#ff6500; color:#fff; }.today-summary>div { flex:1; display:flex; flex-direction:column; gap:2px; }.today-summary small { color:#c9530a; font-size:11px; font-weight:850; letter-spacing:.08em; }.today-summary strong { font-size:11px; }.today-summary>i { padding:6px 9px; border-radius:999px; background:#fff; color:#6e645e; font-size:11px; font-style:normal; white-space:nowrap; }
+.today-summary { display:flex; align-items:center; gap:12px; margin-bottom:15px; padding:13px 16px; border:1px solid #eee4dd; border-radius:14px; background:linear-gradient(135deg,#fff6ef,#fbf0fa); }.today-summary>span { width:36px; height:36px; display:grid; place-items:center; border-radius:10px; background:#ff6500; color:#fff; }.today-summary>div { flex:1; display:flex; flex-direction:column; gap:2px; }.today-summary small { color:#c9530a; font-size:10.5px; font-weight:850; letter-spacing:.08em; }.today-summary strong { font-size:14px; color:#3a322c; font-weight:750; }.today-summary>i { padding:6px 11px; border-radius:999px; background:#fff; color:#6e645e; font-size:11px; font-style:normal; font-weight:600; white-space:nowrap; }
 .calendar-nav { display:flex; align-items:center; gap:10px; margin-bottom:13px; }.calendar-nav>button { width:32px; height:32px; border:1px solid #ddd6d1; border-radius:9px; background:#fff; color:#625953; font-size:18px; cursor:pointer; }.calendar-nav>strong { min-width:135px; text-align:center; font-size:13px; }.calendar-nav>i { flex:1; }.calendar-nav>span { display:flex; align-items:center; gap:5px; color:#756b65; font-size:11px; }.calendar-nav>span b { width:9px; height:9px; border-radius:3px; background:#ff6500; }.calendar-nav>span b.manager-color { background:#842bac; }
 .calendar-filters { display:flex; align-items:center; gap:7px; flex-wrap:wrap; margin-bottom:14px; }.calendar-filters>span { color:#746b65; }.calendar-filters select,.calendar-filters button { min-height:33px; border:1px solid #ddd6d1; border-radius:9px; padding:0 9px; background:#fff; color:#5a514b; font-size:11px; }.calendar-filters button { cursor:pointer; }.calendar-filters>i { flex:1; }.calendar-filters>b { padding:5px 9px; border-radius:999px; background:#fff0e7; color:#ce550b; font-size:11px; white-space:nowrap; }
-.calendar-grid { padding:17px; border:1px solid #e8e1dd; border-radius:14px; background:#fff; box-shadow:0 2px 7px rgba(42,30,23,.035); }.calendar-weekdays,.calendar-days { display:grid; grid-template-columns:repeat(7,1fr); gap:7px; }.calendar-weekdays span { padding:0 0 5px; color:#8c817a; text-align:center; font-size:11px; font-weight:850; letter-spacing:.06em; text-transform:uppercase; }.calendar-day,.calendar-blank { min-height:88px; padding:6px 7px; border:1px solid #ebe5e1; border-radius:10px; background:#fcfbfa; }.calendar-blank { border-color:transparent; background:transparent; }.calendar-day>strong { color:#635a54; font-size:11px; }.calendar-day.today { border:1.5px solid #ff6500; background:#fff7f1; }.calendar-day.today>strong { width:21px; height:21px; display:grid; place-items:center; border-radius:50%; background:#ff6500; color:#fff; }.calendar-day>div { display:flex; flex-direction:column; gap:3px; margin-top:5px; }.calendar-day button { overflow:hidden; display:flex; flex-direction:column; gap:1px; padding:4px 5px; border:0; border-left:3px solid #ff6500; border-radius:6px; background:#ffe9d8; color:#bd520f; text-align:left; cursor:pointer; }.calendar-day button.with-manager { border-left-color:#842bac; background:#f2e6f8; color:#73249a; }.calendar-day button.realizada { border-left-color:#1b8b50; background:#e6f5eb; color:#1b7b48; }.calendar-day button.cancelada { border-left-color:#c34438; background:#fbe8e6; color:#ae3c33; }.calendar-day button span,.calendar-day button small { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; width:100%; }.calendar-day button span { font-size:11px; font-weight:800; }.calendar-day button small { font-size:11px; opacity:.8; }
+.calendar-grid { border:1px solid #e7ded7; border-radius:14px; overflow:hidden; background:#fff; box-shadow:0 1px 3px rgba(42,30,23,.045); }.calendar-weekdays { display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); background:#faf7f5; border-bottom:1px solid #eee6df; }.calendar-weekdays span { padding:10px 0; color:#9a8f87; text-align:center; font-size:10.5px; font-weight:800; letter-spacing:.09em; text-transform:uppercase; }.calendar-days { display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); }.calendar-day,.calendar-blank { min-height:112px; padding:7px 8px; border-right:1px solid #f0eae4; border-bottom:1px solid #f0eae4; background:#fff; overflow:hidden; }.calendar-days>*:nth-child(7n) { border-right:0; }.calendar-day { display:flex; flex-direction:column; gap:5px; min-width:0; }.calendar-blank { background:#fbf9f7; }.calendar-day>strong { align-self:flex-start; min-width:22px; height:22px; line-height:22px; text-align:center; color:#8a807a; font-size:12px; font-weight:700; }.calendar-day.today { background:#fff8f3; }.calendar-day.today>strong { background:#ff6500; color:#fff; border-radius:50%; }.calendar-day>div { display:flex; flex-direction:column; gap:3px; min-width:0; }.calendar-day .cal-event { overflow:hidden; min-width:0; width:100%; display:flex; flex-direction:column; gap:1px; padding:4px 7px; border:0; border-left:3px solid #ff6500; border-radius:6px; background:#fff3e9; color:#b8500f; text-align:left; cursor:pointer; }.calendar-day .cal-event.with-manager { border-left-color:#8b2bc9; background:#f4e9fb; color:#6f1fa0; }.calendar-day .cal-event.realizada { border-left-color:#199a55; background:#e7f6ed; color:#157a45; }.calendar-day .cal-event.cancelada { border-left-color:#c34438; background:#fbe8e6; color:#ae3c33; }.calendar-day .cal-event span,.calendar-day .cal-event small { width:100%; min-width:0; }.calendar-day .cal-event span { display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; white-space:normal; overflow-wrap:anywhere; word-break:break-word; line-height:1.25; font-size:11px; font-weight:750; }.calendar-day .cal-event small { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:10px; opacity:.82; }
 .calendar-notice { margin-top:10px; padding:9px 11px; border-radius:9px; background:#fff0e7; color:#bd500c; font-size:11px; }
 .calendar-modal-layer { position:fixed; inset:0; z-index:220; display:grid; place-items:center; padding:20px; background:rgba(42,33,28,.36); }.calendar-detail,.calendar-create { width:min(560px,96vw); max-height:90vh; overflow:auto; border-radius:15px; background:#fff; box-shadow:0 24px 55px rgba(38,28,23,.22); }.calendar-detail>header,.calendar-create>header { display:flex; justify-content:space-between; gap:14px; padding:18px 20px; border-bottom:1px solid #eee8e4; }.calendar-detail header small { color:#d65808; font-size:11px; font-weight:850; letter-spacing:.08em; }.calendar-detail header h2,.calendar-create header h2 { margin:4px 0 2px; font-size:15px; }.calendar-detail header p,.calendar-create header p { margin:0; color:#908680; font-size:11px; }.calendar-detail header button,.calendar-create header button { width:29px; height:29px; border:0; border-radius:50%; background:#f3f0ee; color:#6e645e; font-size:17px; cursor:pointer; }.calendar-detail dl { margin:0; padding:12px 20px 20px; }.calendar-detail dl>div { display:grid; grid-template-columns:130px 1fr; gap:10px; padding:10px 0; border-bottom:1px solid #f0ece9; }.calendar-detail dt { color:#928881; font-size:11px; }.calendar-detail dd { margin:0; color:#453e39; font-size:11px; font-weight:700; text-transform:capitalize; }.calendar-detail>footer,.calendar-create>footer { display:flex; justify-content:flex-end; gap:8px; padding:13px 20px; border-top:1px solid #eee8e4; }.calendar-detail footer button,.calendar-create footer button { min-height:37px; border:1px solid #ddd6d1; border-radius:9px; padding:0 13px; background:#fff; color:#5d544e; font-size:11px; font-weight:750; cursor:pointer; }.calendar-detail footer .confirm,.calendar-create footer .confirm { border-color:#ff6500; background:#ff6500; color:#fff; }
 .calendar-create>div { display:grid; grid-template-columns:1fr 1fr; gap:11px; padding:17px 20px; }.calendar-create label { display:flex; flex-direction:column; gap:5px; color:#645b55; font-size:11px; font-weight:800; }.calendar-create label.wide { grid-column:1/-1; }.calendar-create label.check { flex-direction:row; align-items:center; }.calendar-create input,.calendar-create select,.calendar-create textarea { width:100%; border:1px solid #ddd6d1; border-radius:9px; padding:9px 10px; outline:0; font:inherit; font-size:11px; }.calendar-create label.check input { width:auto; }
@@ -1841,7 +1841,7 @@ body:has(.profile-drawer-scrim,.modal-layer,.photo-lightbox,.document-preview-mo
 .analytics-drill-list em { color:#df5508; font-size:11px; font-style:normal; font-weight:750; }
 
 /* Doc §8 — Calendário estilo agenda: visões Dia/Semana/Mês/Lista */
-.cal-today-btn { border:1px solid #ddd6d1!important; border-radius:8px!important; padding:6px 11px!important; background:#fff!important; color:#5c534e!important; font-size:11px!important; font-weight:750!important; }
+.cal-today-btn { width:auto!important; height:auto!important; min-height:32px; border:1px solid #ddd6d1!important; border-radius:8px!important; padding:6px 13px!important; background:#fff!important; color:#5c534e!important; font-size:11px!important; font-weight:750!important; white-space:nowrap; }
 .cal-view-switch { display:flex; gap:2px; margin-left:10px; padding:3px; border:1px solid #e4ddd8; border-radius:10px; background:#f6f3f1; }
 .cal-view-switch button { border:0; border-radius:8px; padding:6px 12px; background:transparent; color:#6f6863; font-size:11px; font-weight:750; cursor:pointer; }
 .cal-view-switch button.active { background:#fff; color:#d85600; box-shadow:0 1px 3px rgba(31,24,19,.09); }
@@ -3286,7 +3286,7 @@ article.tone-red{border-left-color:#d3443e}article.tone-red strong{color:#d3443e
 @media(max-width:800px){.perf-section,.perf-kpis{padding-inline:12px}.perf-panel{margin-inline:12px}}
 /* CRM tem zoom 0.85 — largura maior (o kanban usa o espaço e ainda rola na horizontal).
    Overlays (drawers/modais) ficam de fora para abrir por cima normalmente. */
-.crm-v2 > *:not(.crm-drawer-layer):not(.crm-center-modal):not(.broker-picker-modal) {
+.crm-v2 > *:not(.crm-drawer-layer):not(.crm-center-modal):not(.broker-picker-modal):not(.resp-toast) {
   width: 100%; max-width: 1900px; margin-left: auto; margin-right: auto;
 }
 
@@ -3554,6 +3554,15 @@ article.tone-red{border-left-color:#d3443e}article.tone-red strong{color:#d3443e
 .conn-device { width:26px; height:26px; display:grid; place-items:center; border-radius:8px; background:#f4f1ee; color:#9a908a; font-size:12px; }
 .conn-sync { color:#9a908a; font-size:11px; margin-top:-3px; }
 .conn-num { color:#2f6b3a; font-size:12px; font-weight:600; margin-top:1px; letter-spacing:.2px; }
+.sales-approvals { border:1px solid #f0d28a; background:#fff8e8; border-radius:12px; padding:12px 14px; margin:10px 0 14px; }
+.sales-approvals-head { display:flex; align-items:center; gap:8px; margin-bottom:8px; color:#8a6d1a; font-size:13px; }
+.sales-approvals-head span { background:#f0b429; color:#3a2c00; border-radius:999px; padding:1px 8px; font-weight:700; font-size:12px; }
+.sales-approval-row { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:8px 0; border-top:1px solid #f2e2b6; }
+.sales-approval-info strong { display:block; font-size:14px; }
+.sales-approval-info small { color:#8a7a4a; }
+.sales-approval-actions { display:flex; gap:8px; flex:none; }
+.sales-approval-actions button { padding:6px 12px; border-radius:8px; border:1px solid #d9c68a; background:#fff; cursor:pointer; font-size:13px; }
+.sales-approval-actions .crm-primary { background:#1fa85a; color:#fff; border-color:#1fa85a; }
 .conn-card strong { font-size:15px; }
 .conn-card.connected button { background:#fff; border:1px solid #dfd8d3; color:#5f5752; }
 
@@ -3944,3 +3953,272 @@ article.tone-red{border-left-color:#d3443e}article.tone-red strong{color:#d3443e
    barra horizontal volta pro rodapé visível, sem scroll de página.
    ============================================================ */
 .crm-v2:has(.crm-kanban-v2) { height: 100vh; min-height: 0; overflow: hidden; }
+
+/* ============================================================
+   Seletor de etapa do card/tabela: botão limpo + modal de escolha
+   (jul/2026). Troca o <select> nativo (lista feia do navegador)
+   por um modal com as etapas, cores e a atual destacada — mesmo
+   padrão do "trocar corretor".
+   ============================================================ */
+.stage-pick-btn { min-width:0; width:100%; height:32px; display:flex; align-items:center; gap:7px; border:1px solid #e0d8d2; border-radius:8px; padding:0 8px; background:#fff; color:#4b433e; font-family:inherit; font-size:11px; font-weight:700; cursor:pointer; }
+.stage-pick-btn:hover { border-color:#c9bfb8; background:#fbfaf9; }
+.stage-pick-btn:disabled { opacity:.5; cursor:default; }
+.stage-pick-btn .stage-pick-dot { flex:0 0 8px; width:8px; height:8px; border-radius:50%; }
+.stage-pick-btn > span { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-align:left; }
+.stage-pick-btn > em { flex:0 0 auto; color:#a89e97; font-style:normal; font-size:10px; }
+.stage-pick-btn.table { width:auto; max-width:190px; height:30px; }
+
+.stage-picker-modal .stage-picker-list { display:flex; flex-direction:column; gap:6px; overflow:auto; padding:4px 18px 12px; }
+.stage-picker-list > button { min-height:42px; display:flex; align-items:center; gap:10px; border:1px solid #e6ddd7; border-left:4px solid var(--sp,#9638d8); border-radius:10px; padding:8px 11px; background:#fff; color:#33302c; text-align:left; cursor:pointer; }
+.stage-picker-list > button:hover { border-color:#c184e5; background:#fcf8fe; }
+.stage-picker-list > button.selected { border-color:#a22fe2; background:#f6eaff; box-shadow:0 0 0 1px rgba(162,47,226,.1); }
+.stage-picker-list > button > i { flex:0 0 10px; width:10px; height:10px; border-radius:50%; background:var(--sp,#9638d8); }
+.stage-picker-list > button > strong { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:12.5px; font-weight:650; }
+.stage-picker-list > button > small { flex:0 0 auto; padding:2px 7px; border-radius:999px; background:#f1ece8; color:#8c827b; font-size:10px; font-weight:700; }
+
+/* ============================================================
+   Chat do lead — gravação de áudio estilo WhatsApp + estados
+   (jul/2026): barra captando (waveform + timer), cancelar/enviar,
+   e no envio uma bolinha de carregando -> enviado/erro.
+   ============================================================ */
+.chat-rec-bar { display:flex !important; align-items:center; gap:10px; grid-template-columns:none !important; }
+.chat-rec-bar .rec-cancel, .chat-rec-bar .rec-send { flex:0 0 auto; width:40px; height:40px; display:grid; place-items:center; border:0; border-radius:50%; cursor:pointer; }
+.chat-rec-bar .rec-cancel { background:#f3ece9; color:#b0473d; }
+.chat-rec-bar .rec-cancel:hover { background:#f7e2de; }
+.chat-rec-bar .rec-send { background:#ff6500; color:#fff; box-shadow:0 4px 12px rgba(255,101,0,.3); }
+.chat-rec-bar .rec-cancel svg, .chat-rec-bar .rec-send svg { width:18px; height:18px; }
+.chat-rec-bar .rec-wave { flex:1; min-width:0; height:34px; display:flex; align-items:center; gap:2px; overflow:hidden; padding:0 4px; border-radius:10px; background:#faf5f2; }
+.chat-rec-bar .rec-wave > i { flex:0 0 3px; width:3px; min-height:3px; border-radius:2px; background:#ff8a3d; transition:height .08s linear; }
+.chat-rec-bar .rec-idle { color:#a99f98; font-size:12px; }
+.chat-rec-bar .rec-dot { flex:0 0 9px; width:9px; height:9px; border-radius:50%; background:#e23b3b; animation:rec-pulse 1s infinite; }
+.chat-rec-bar .rec-time { flex:0 0 auto; min-width:38px; color:#5c534e; font-size:13px; font-variant-numeric:tabular-nums; font-weight:700; }
+@keyframes rec-pulse { 0%,100%{opacity:1} 50%{opacity:.25} }
+.chat-messages .audio-state { display:inline-flex; align-items:center; gap:7px; padding:7px 11px; border-radius:9px; background:rgba(255,255,255,.5); color:#6b625c; font-size:12px; font-weight:600; }
+.chat-messages .audio-state.erro { color:#b0473d; }
+.chat-messages .audio-state .audio-spin { width:14px; height:14px; border:2px solid #e4d9d2; border-top-color:#ff6500; border-radius:50%; animation:audio-spin .7s linear infinite; }
+@keyframes audio-spin { to { transform:rotate(360deg) } }
+
+/* Excluir mensagem do chat — aparece ao passar o mouse na bolha (jul/2026) */
+.chat-messages article { position: relative; }
+.chat-messages article .msg-del { position: absolute; top: 3px; right: 3px; width: 24px; height: 24px; display: grid; place-items: center; border: 0; border-radius: 7px; background: rgba(255,255,255,.9); color: #b0473d; box-shadow: 0 1px 4px rgba(0,0,0,.12); opacity: 0; cursor: pointer; transition: opacity .12s ease; z-index: 3; }
+.chat-messages article:hover .msg-del, .chat-messages article:focus-within .msg-del { opacity: 1; }
+.chat-messages article .msg-del svg { width: 14px; height: 14px; }
+.chat-messages article .msg-del:hover { background: #fff0ee; }
+
+/* ============================================================
+   Aprovação de empreendimento (jul/2026): selo no card, ações
+   de aprovar/reprovar (admin/gestor) e chip de pendentes.
+   ============================================================ */
+.product-photo { position: relative; }
+.product-photo .approval-badge { position: absolute; left: 10px; right: auto; top: auto; bottom: 10px; padding: 4px 10px; border-radius: 999px; font-size: 11px; font-weight: 800; box-shadow: 0 2px 8px rgba(0,0,0,.18); }
+.product-photo .approval-badge.pendente { background: #fff3d6; color: #8a5d00; }
+.product-photo .approval-badge.reprovado { background: #ffe1dd; color: #a83026; }
+.approval-actions { display: flex; gap: 8px; margin: 11px 0 2px; }
+.approval-actions button { flex: 1; min-height: 36px; border-radius: 9px; border: 1px solid; font-size: 12px; font-weight: 800; cursor: pointer; }
+.approval-actions .ap-approve { border-color: #a9dcc1; background: #eefaf2; color: #12864a; }
+.approval-actions .ap-approve:hover { background: #e0f5e9; }
+.approval-actions .ap-reject { border-color: #f0c4bd; background: #fff2f0; color: #b0342a; }
+.approval-actions .ap-reject:hover { background: #ffe6e2; }
+.approval-actions button:disabled { opacity: .5; cursor: default; }
+.approval-reason { margin: 9px 0 0; padding: 7px 10px; border-radius: 8px; background: #fff2f0; color: #a83026; font-size: 11px; line-height: 1.4; }
+.approval-filter { display: inline-flex; align-items: center; gap: 6px; border: 1px solid #e5cf7a; border-radius: 999px; padding: 7px 13px; background: #fffaf0; color: #8a5d00; font-size: 12px; font-weight: 700; cursor: pointer; }
+.approval-filter:hover { background: #fff4dc; }
+.approval-filter.active { border-color: #e0a92c; background: #ffefc9; }
+.approval-filter b { display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; background: #e0851f; color: #fff; font-size: 10px; }
+
+/* Confirmação antes de apagar mensagem (jul/2026) */
+.chat-messages article .msg-del-confirm { position: absolute; top: 3px; right: 3px; z-index: 4; display: flex; align-items: center; gap: 5px; padding: 3px 4px 3px 9px; border-radius: 10px; background: #fff; box-shadow: 0 3px 14px rgba(0,0,0,.2); white-space: nowrap; }
+.chat-messages article .msg-del-confirm > span { color: #6b625c; font-size: 11px; font-weight: 700; }
+.chat-messages article .msg-del-confirm .mdc-yes { border: 0; border-radius: 6px; padding: 4px 9px; background: #e23b3b; color: #fff; font-size: 11px; font-weight: 800; cursor: pointer; }
+.chat-messages article .msg-del-confirm .mdc-yes:hover { background: #cf3232; }
+.chat-messages article .msg-del-confirm .mdc-no { border: 0; border-radius: 6px; padding: 4px 9px; background: #f1ece9; color: #6b625c; font-size: 11px; font-weight: 700; cursor: pointer; }
+.chat-messages article .msg-del-confirm .mdc-no:hover { background: #e7e0db; }
+
+/* ============================================================
+   Captação — dropzone de mídia estilo Pixlr (jul/2026):
+   arrastar, colar (Ctrl+V), upload e por link.
+   ============================================================ */
+.media-dropzone { border: 2px dashed #e0d3c8; border-radius: 14px; padding: 18px; background: #fbf8f5; transition: border-color .15s, background .15s; }
+.media-dropzone.dragging { border-color: #ff8a3d; background: #fff5ec; }
+.media-dz-head { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+.media-dz-icon { flex: 0 0 44px; width: 44px; height: 44px; display: grid; place-items: center; border-radius: 12px; background: #fff0e6; color: #e35b00; font-size: 21px; }
+.media-dz-head strong { display: block; font-size: 14px; color: #33302c; }
+.media-dz-head small { color: #8c837d; font-size: 12px; }
+.media-link-row { display: flex; gap: 8px; margin-top: 12px; }
+.media-link-row input { flex: 1; min-width: 0; border: 1px solid #ddd6d1; border-radius: 9px; padding: 10px 12px; font-family: inherit; font-size: 13px; outline: 0; }
+.media-link-row input:focus { border-color: #ff9c5e; box-shadow: 0 0 0 3px rgba(255,101,0,.08); }
+.media-link-row button:disabled { opacity: .5; cursor: default; }
+.media-dropzone .media-totals { margin-top: 14px; }
+
+/* ============================================================
+   #8 — cliente respondeu: sino amarelo no card + pop-up no canto
+   inferior direito (jul/2026). O som é gerado via Web Audio.
+   ============================================================ */
+.crm-lead-card-v3 .card-resp-bell { position: absolute; top: 8px; right: 8px; z-index: 4; width: 26px; height: 26px; display: grid; place-items: center; border-radius: 50%; background: #ffd84d; color: #6b4e00; box-shadow: 0 2px 8px rgba(224,168,12,.5); animation: resp-bell-pulse 1.4s ease-in-out infinite; }
+.crm-lead-card-v3 .card-resp-bell svg { width: 15px; height: 15px; }
+@keyframes resp-bell-pulse { 0%,100% { transform: scale(1); box-shadow: 0 2px 8px rgba(224,168,12,.5); } 50% { transform: scale(1.12); box-shadow: 0 2px 14px rgba(224,168,12,.75); } }
+
+.resp-toast { position: fixed !important; right: 22px !important; bottom: 22px !important; left: auto !important; z-index: 2147483000; display: flex; align-items: center; gap: 12px; width: 380px !important; max-width: calc(100vw - 44px) !important; margin: 0 !important; padding: 13px 14px; border-radius: 14px; background: #fff; border: 1px solid #f0e4b8; box-shadow: 0 16px 44px rgba(31,23,12,.24); animation: resp-toast-in .25s ease; }
+@keyframes resp-toast-in { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+.resp-toast .resp-toast-bell { flex: 0 0 40px; width: 40px; height: 40px; display: grid; place-items: center; border-radius: 12px; background: #fff3cf; color: #a9760a; animation: resp-bell-pulse 1.4s ease-in-out infinite; }
+.resp-toast .resp-toast-bell svg { width: 20px; height: 20px; }
+.resp-toast .resp-toast-body { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.resp-toast .resp-toast-body strong { color: #2b2622; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.resp-toast .resp-toast-body small { color: #857b74; font-size: 12px; }
+.resp-toast .resp-toast-open { flex: 0 0 auto; border: 0; border-radius: 999px; padding: 8px 14px; background: #ff6500; color: #fff; font-size: 12px; font-weight: 800; cursor: pointer; }
+.resp-toast .resp-toast-open:hover { background: #e85c00; }
+.resp-toast .resp-toast-x { flex: 0 0 auto; width: 24px; height: 24px; border: 0; border-radius: 50%; background: #f1ece8; color: #756d67; font-size: 15px; cursor: pointer; }
+
+/* Sino do card: vermelho = não lida (urgente), amarelo = lida sem resposta (jul/2026) */
+.crm-lead-card-v3 .card-resp-bell.urgente { background: #e23b3b; color: #fff; box-shadow: 0 2px 10px rgba(226,59,59,.55); animation: resp-bell-pulse-red 1.05s ease-in-out infinite; }
+@keyframes resp-bell-pulse-red { 0%,100% { transform: scale(1); box-shadow: 0 2px 10px rgba(226,59,59,.55); } 50% { transform: scale(1.15); box-shadow: 0 2px 16px rgba(226,59,59,.82); } }
+
+/* ============================================================
+   Funil: lista lateral de funis (pipes) + kanban à direita
+   estilo DataCrazy (jul/2026).
+   ============================================================ */
+.crm-pipe-layout { flex: 1 1 auto; min-height: 0; display: flex; overflow: hidden; }
+.crm-pipe-rail { flex: 0 0 208px; overflow-y: auto; padding: 12px 10px; border-right: 1px solid #e7e1dd; background: #faf8f6; display: flex; flex-direction: column; gap: 4px; }
+.crm-pipe-rail-title { padding: 4px 8px 6px; color: #a19892; font-size: 10px; font-weight: 800; letter-spacing: .12em; }
+.crm-pipe-item { display: flex; align-items: center; gap: 9px; padding: 10px; border: 1px solid transparent; border-radius: 10px; background: transparent; color: #4b433e; text-align: left; cursor: pointer; }
+.crm-pipe-item:hover { background: #f1ece8; }
+.crm-pipe-item.active { background: #fff; box-shadow: 0 1px 5px rgba(38,28,22,.08); border-color: #eadff7; }
+.crm-pipe-item .crm-pipe-dot { flex: 0 0 8px; width: 8px; height: 8px; border-radius: 50%; background: #cfc6c0; }
+.crm-pipe-item.active .crm-pipe-dot { background: #ff6500; }
+.crm-pipe-item strong { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12.5px; font-weight: 650; }
+.crm-pipe-item.active strong { color: #2b2622; font-weight: 800; }
+.crm-pipe-item em { flex: 0 0 auto; padding: 2px 8px; border-radius: 999px; background: #f1ece8; color: #7c726b; font-size: 11px; font-weight: 700; font-style: normal; }
+.crm-pipe-item.active em { background: #fff0e6; color: #d85600; }
+.crm-pipe-layout .crm-kanban-v2 { flex: 1 1 auto; min-width: 0; }
+@media (max-width: 700px) { .crm-pipe-rail { flex-basis: 140px; } }
+
+/* Pipe rail recolhível — DataCrazy-style collapse toggle */
+.crm-pipe-rail-head { display: flex; align-items: center; justify-content: space-between; gap: 6px; padding: 2px 2px 4px; }
+.crm-pipe-rail-toggle { flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border: 1px solid #e7e1dd; border-radius: 7px; background: #fff; color: #8a807a; cursor: pointer; padding: 0; }
+.crm-pipe-rail-toggle:hover { background: #f1ece8; color: #ff6500; border-color: #eadfd7; }
+.crm-pipe-rail-toggle svg { width: 14px; height: 14px; }
+.crm-pipe-layout { transition: none; }
+.crm-pipe-layout.rail-collapsed .crm-pipe-rail { flex-basis: 48px; padding: 12px 6px; align-items: center; }
+.crm-pipe-layout.rail-collapsed .crm-pipe-rail-head { flex-direction: column; gap: 8px; padding-bottom: 6px; }
+.crm-pipe-layout.rail-collapsed .crm-pipe-rail-title { display: none; }
+.crm-pipe-layout.rail-collapsed .crm-pipe-item { justify-content: center; padding: 9px 6px; gap: 0; }
+.crm-pipe-layout.rail-collapsed .crm-pipe-item .crm-pipe-dot { width: 10px; height: 10px; flex-basis: 10px; }
+.crm-pipe-layout.rail-collapsed .crm-pipe-item strong,
+.crm-pipe-layout.rail-collapsed .crm-pipe-item em { display: none; }
+
+/* RefinedSelect — dropdown custom (substitui o <select> nativo cru) */
+.rselect { position: relative; width: 100%; }
+.rselect-btn { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 44px; padding: 10px 12px; border: 1px solid #ddd6d1; border-radius: 11px; background: #fff; color: #2f2a27; font: inherit; font-size: 13px; text-align: left; cursor: pointer; transition: border-color .12s, box-shadow .12s; }
+.rselect-btn:hover { border-color: #cbbfb6; }
+.rselect.open .rselect-btn { border-color: #ff9c5e; box-shadow: 0 0 0 3px rgba(255,101,0,.12); }
+.rselect-btn.is-placeholder { color: #a49b94; }
+.rselect.disabled { opacity: .55; }
+.rselect.disabled .rselect-btn { cursor: not-allowed; background: #faf8f6; }
+.rselect-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rselect-caret { flex: 0 0 auto; width: 16px; height: 16px; color: #a49b94; transition: transform .16s ease; }
+.rselect.open .rselect-caret { transform: rotate(180deg); color: #ff6500; }
+.rselect-panel { position: absolute; z-index: 90; top: calc(100% + 6px); left: 0; right: 0; margin: 0; padding: 6px; list-style: none; max-height: 264px; overflow-y: auto; border: 1px solid #ece5df; border-radius: 12px; background: #fff; box-shadow: 0 18px 44px rgba(28,18,12,.18); animation: rselect-in .12s ease; }
+@keyframes rselect-in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+.rselect-panel li { margin: 0; }
+.rselect-opt { display: flex; align-items: center; gap: 9px; width: 100%; padding: 9px 10px; border: 0; border-radius: 9px; background: transparent; color: #443d38; font: inherit; font-size: 13px; text-align: left; cursor: pointer; }
+.rselect-opt:hover { background: #f5f0ec; }
+.rselect-opt.active { background: #fff4ec; color: #b94a0b; font-weight: 700; }
+.rselect-dot { flex: 0 0 8px; width: 8px; height: 8px; border-radius: 50%; background: #d5cbc3; }
+.rselect-opt.active .rselect-dot { background: #ff6500; }
+.rselect-opt-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rselect-check { flex: 0 0 auto; width: 15px; height: 15px; color: #ff6500; }
+.rselect-empty { padding: 12px 10px; color: #a49b94; font-size: 12px; text-align: center; }
+
+/* Tags de mídia na prévia de abordagem (disparos) */
+.approach-media-tags { display: inline-flex; flex-wrap: wrap; gap: 5px; margin-left: 8px; }
+.approach-media-tags em { font-style: normal; font-size: 10.5px; font-weight: 700; padding: 2px 7px; border-radius: 999px; background: #eef4ff; color: #2f5fbf; }
+/* ---- Configurações · Distribuição & Abordagem ---- */
+.dist-config { display:flex; flex-direction:column; gap:14px; }
+.dist-kpis { display:grid; grid-template-columns:repeat(4,1fr); gap:9px; margin:12px 0 4px; }
+.dist-kpis article { border:1px solid #ece7e3; border-radius:13px; background:#faf8f6; padding:11px 12px; display:flex; flex-direction:column; gap:2px; }
+.dist-kpis article strong { font-size:20px; letter-spacing:-.02em; color:#20140e; }
+.dist-kpis article span { font-size:10.5px; color:#8a807a; font-weight:650; }
+.dist-kpis article.ok strong { color:#17834b; }
+.dist-kpis article.warn { background:#fff6ea; border-color:#f2dcb6; } .dist-kpis article.warn strong { color:#b97a0c; }
+.dist-kpis article.bad { background:#fdf0ee; border-color:#f2c9c2; } .dist-kpis article.bad strong { color:#c9443d; }
+.dist-occ { margin-top:12px; }
+.dist-occ header { display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
+.dist-occ header h3 { margin:0; font-size:13px; }
+.dist-occ header button { border:1px solid #ece7e3; border-radius:9px; background:#fff; padding:5px 11px; font-size:11px; font-weight:700; color:#6d635c; cursor:pointer; }
+.dist-occ-row { display:flex; align-items:baseline; gap:9px; padding:7px 10px; border-radius:10px; font-size:11.5px; }
+.dist-occ-row b { flex:0 0 auto; color:#8a807a; font-weight:700; font-size:10.5px; }
+.dist-occ-row em { flex:0 0 auto; font-style:normal; font-size:9px; font-weight:800; letter-spacing:.05em; padding:2px 7px; border-radius:999px; }
+.dist-occ-row.alerta em { background:#fff2e2; color:#b96b0c; }
+.dist-occ-row.erro em { background:#fdeae7; color:#c9443d; }
+.dist-occ-row.erro { background:#fdf6f5; }
+.dist-occ-row span { min-width:0; color:#6d635c; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.dist-occ-row span strong { color:#20140e; }
+.dist-last { margin-top:12px; }
+.dist-last h3 { margin:0 0 8px; font-size:13px; }
+.dist-last-row { display:grid; grid-template-columns:64px 1fr auto; gap:10px; align-items:center; padding:7px 10px; border-radius:10px; font-size:11.5px; }
+.dist-last-row:nth-child(even) { background:#faf8f6; }
+.dist-last-row b { color:#8a807a; font-weight:700; font-size:10.5px; }
+.dist-last-row .dl-main { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#6d635c; }
+.dist-last-row .dl-main strong { color:#20140e; }
+.dist-last-row .dl-cor { flex:0 0 auto; font-size:10px; font-weight:800; letter-spacing:.03em; padding:3px 9px; border-radius:999px; background:#fff2e8; color:#c2530a; border:1px solid #f6d9c2; white-space:nowrap; }
+.dist-last-row .dl-cor.sem { background:#fdeae7; color:#c9443d; border-color:#f2c9c2; }
+.dist-upd { font-size:10.5px; color:#8a807a; font-weight:650; }
+.dist-occ-row .occ-n { flex:0 0 auto; font-size:9.5px; font-weight:800; color:#b96b0c; background:#fff2e2; border-radius:999px; padding:2px 7px; }
+.dist-modo { display:flex; flex-direction:column; gap:8px; margin:14px 0; }
+.dist-modo-opt { display:flex; gap:11px; align-items:flex-start; padding:12px 14px; border:1px solid #ece7e3; border-radius:13px; background:#fff; cursor:pointer; transition:border-color .15s, background .15s; }
+.dist-modo-opt input { margin-top:3px; accent-color:#ff6500; }
+.dist-modo-opt strong { display:block; font-size:13px; color:#20140e; }
+.dist-modo-opt small { display:block; margin-top:2px; font-size:11px; line-height:1.45; color:#8a807a; }
+.dist-modo-opt.on { border-color:#ff6500; background:#fff8f3; }
+@media (max-width:900px){ .dist-kpis { grid-template-columns:repeat(2,1fr); } }
+
+/* Editar visita no calendário (item 3 — gerente/disponibilidade) */
+.visit-item .visit-actions { display: flex; gap: 6px; align-items: center; margin-left: auto; }
+.visit-edit-btn { border: 1px solid #ddd6d1; border-radius: 8px; padding: 5px 11px; background: #fff; color: #5f5752; font-size: 12px; font-weight: 600; cursor: pointer; }
+.visit-edit-btn:hover { border-color: #ff9c5e; color: #d85600; }
+.visit-edit-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 16px; }
+.visit-edit-grid label, .visit-edit-obs { display: flex; flex-direction: column; gap: 6px; color: #675f5a; font-size: 12px; font-weight: 700; }
+.visit-edit-grid input, .visit-edit-obs textarea { min-height: 42px; border: 1px solid #ddd6d1; border-radius: 10px; padding: 9px 12px; background: #fff; color: #302b28; font: inherit; }
+.visit-edit-obs { margin-top: 10px; }
+.visit-edit-obs textarea { resize: vertical; }
+.visit-manager-row { display: flex; align-items: center; gap: 12px; margin-top: 14px; flex-wrap: wrap; }
+.visit-manager-row .check { display: flex; flex-direction: row; align-items: center; gap: 8px; margin-top: 0; font-size: 13px; font-weight: 600; color: #3a332f; }
+.visit-manager-row .check input { width: 16px; height: 16px; }
+.visit-manager-row small { color: #a1968f; font-size: 11px; }
+.visit-disp { margin-top: 12px; padding: 10px 13px; border-radius: 10px; font-size: 12.5px; font-weight: 600; }
+.visit-disp.livre { background: #e9f7ef; color: #1a8f4c; }
+.visit-disp.conflito { background: #fff4e5; color: #b26a00; }
+
+/* Aviso de disponibilidade do gerente na edição de visita (Calendário) */
+.calendar-create .cal-disp { grid-column:1/-1; padding:9px 12px; border-radius:9px; font-size:11px; font-weight:700; line-height:1.4; }
+.calendar-create .cal-disp.livre { background:#e9f7ef; color:#1a8f4c; }
+.calendar-create .cal-disp.conflito { background:#fff4e5; color:#b26a00; }
+.calendar-create label.check .only-admin { color:#a1968f; font-style:normal; font-weight:600; font-size:10.5px; }
+
+/* Atendimento com a Eliz como gerente = rosa (em vez do roxo padrao "com gerente") */
+.calendar-day .cal-event.with-manager.eliz { border-left-color:#e23b8a; background:#fdeaf3; color:#bf1f6d; }
+.cal-event.with-manager.eliz { border-left-color:#e23b8a; outline-color:#e23b8a; }
+.calendar-nav>span b.manager-eliz { width:9px; height:9px; border-radius:3px; background:#e23b8a; }
+
+/* Revisao: grade de midias com miniaturas e reordenacao (1a foto = capa) */
+.review-media { margin:14px 0 4px; }
+.review-media-head { display:flex; flex-direction:column; gap:1px; margin-bottom:10px; }
+.review-media-head strong { font-size:13px; color:#3a322c; font-weight:750; }
+.review-media-head small { font-size:11px; color:#9a8f87; }
+.review-media-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(128px,1fr)); gap:10px; }
+.rm-tile { border:1px solid #e7ded7; border-radius:12px; overflow:hidden; background:#fff; cursor:grab; transition:box-shadow .15s, border-color .15s, transform .1s; }
+.rm-tile:hover { box-shadow:0 6px 16px rgba(42,30,23,.1); }
+.rm-tile.dragging { opacity:.5; border-color:#ff6500; }
+.rm-tile.is-cover { border-color:#ff6500; box-shadow:0 0 0 2px rgba(255,101,0,.18); }
+.rm-thumb { position:relative; aspect-ratio:4/3; background:#f3efeb; }
+.rm-thumb img, .rm-thumb video { width:100%; height:100%; object-fit:cover; display:block; }
+.rm-pos { position:absolute; top:6px; left:6px; min-width:20px; height:20px; padding:0 5px; display:grid; place-items:center; border-radius:6px; background:rgba(31,24,20,.68); color:#fff; font-size:11px; font-weight:800; }
+.rm-cover-badge { position:absolute; top:6px; right:6px; padding:3px 8px; border-radius:999px; background:#ff6500; color:#fff; font-size:10px; font-weight:850; letter-spacing:.02em; }
+.rm-video-badge { position:absolute; bottom:6px; left:6px; padding:2px 7px; border-radius:6px; background:rgba(31,24,20,.68); color:#fff; font-size:10px; font-weight:750; }
+.rm-meta { display:flex; align-items:center; justify-content:space-between; gap:6px; padding:7px 9px; }
+.rm-meta small { color:#6e645e; font-size:11px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.rm-meta button { flex:none; border:1px solid #ffd9bf; border-radius:999px; padding:3px 9px; background:#fff5ee; color:#c94f00; font-size:10.5px; font-weight:800; cursor:pointer; }
+.rm-meta button:hover { background:#ffe9d7; }
+
+/* Badge de produtos pendentes de aprovacao no menu (admin/gestor) */
+.nav-item small.nav-badge-pending { background:#ff6500 !important; color:#fff !important; font-weight:800; box-shadow:0 0 0 3px rgba(255,101,0,.16); }

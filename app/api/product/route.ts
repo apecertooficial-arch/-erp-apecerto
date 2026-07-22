@@ -70,9 +70,9 @@ export async function GET(request: Request) {
     location: Boolean(data.endereco && data.bairro && data.cidade),
     costs: data.condominio_valor !== null && data.iptu !== null && data.outros_custos !== null,
     media: photoCount >= 10 && videoCount >= 1 && media.some((item) => item.tipo === "foto" && item.is_capa),
-    units: data.origem === "terceiro" || units.length > 0,
+    units: data.origem === "terceiros" || units.length > 0,
   };
-  if (data.origem === "terceiro") {
+  if (data.origem === "terceiros") {
     checks.owner = Boolean(data.proprietario_id || (data.proprietario_nome && data.proprietario_tel && data.proprietario_email));
     checks.access = Boolean(data.acesso_tipo && data.acesso_instrucoes && (data.acesso_tipo !== "chave_digital" || data.acesso_codigo));
   }
@@ -223,7 +223,7 @@ export async function PATCH(request: Request) {
         valor_tabela: item.valor_tabela === "" || item.valor_tabela == null ? null : Number(item.valor_tabela),
         valor_promo: item.valor_promo === "" || item.valor_promo == null ? null : Number(item.valor_promo),
         disponivel: item.disponivel !== false,
-        de_terceiros: body.origin === "terceiro",
+        de_terceiros: body.origin === "terceiros",
       };
       const unitId = typeof item.id === "string" && existingIds.has(item.id) ? item.id : null;
       const unitResult = unitId ? await auth.supabase.from("unidades").update(row).eq("id", unitId).eq("empreendimento_id", id) : await auth.supabase.from("unidades").insert(row);
