@@ -92,7 +92,7 @@ export function LegacyModuleWorkspace({ moduleName, accessToken, session }: { mo
       {!opened && <div className="legacy-module-loading"><span />Restaurando {moduleName} exatamente do HTML original…</div>}
       <iframe
         ref={iframeRef}
-        src="/legacy-runtime.html?v=visita-edit-20260721"
+        src="/legacy-runtime.html?v=agenda-share-20260721-2"
         title={`${moduleName} · estrutura original`}
         onLoad={openOriginalScreen}
       />
