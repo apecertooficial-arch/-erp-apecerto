@@ -4809,6 +4809,8 @@ article.tone-red{border-left-color:#d3443e}article.tone-red strong{color:#d3443e
 .fv2-unit-detail-ov .fv2-ud-badges { display:flex; gap:6px; margin-bottom:6px; }
 .fv2-unit-detail-ov .fv2-ud-sec { font-size:11px; font-weight:700; letter-spacing:.05em; color:var(--fv-muted); text-transform:uppercase; margin:16px 0 8px; }
 .fv2-unit-detail-ov .fv2-ud-empty { color:#b4a99e; font-size:13px; font-style:italic; }
+.fv2-unit-detail-ov .fv2-ud-gallery { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+.fv2-unit-detail-ov .fv2-ud-photo { aspect-ratio:1/1; border-radius:12px; background-size:cover; background-position:center; border:1px solid var(--fv-line); display:block; }
 
 /* Media library (Galeria tab) — reestilizado */
 .ficha-v2 .fv2-media { margin:0; padding:0; }

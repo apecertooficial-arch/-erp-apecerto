@@ -43,7 +43,7 @@ export async function GET(request: Request) {
       condominios (*),
       proprietarios (*),
       unidades (*),
-      midias (id, tipo, storage_path, categoria, nome, is_capa, created_at)
+      midias (id, tipo, storage_path, categoria, nome, is_capa, created_at, unidade_id)
     `)
     .eq("id", id)
     .single();
