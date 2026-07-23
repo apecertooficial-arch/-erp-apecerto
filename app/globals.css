@@ -4954,3 +4954,14 @@ article.tone-red{border-left-color:#d3443e}article.tone-red strong{color:#d3443e
   cursor: grab;
 }
 .crm-kanban-v2.panning { cursor: grabbing; user-select: none; }
+
+/* Cadastrar unidade (UnitWizard) */
+.uw-photos { display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
+.uw-photos strong { font-size:13px; color:#8a807b; }
+.uw-photos strong.ok { color:#1f8f4e; }
+.uw-photo-list { margin-top:12px; display:flex; flex-direction:column; gap:8px; }
+.uw-photo-row { display:flex; align-items:center; gap:10px; padding:9px 12px; border:1px solid #ded8d4; border-radius:10px; background:#fff; }
+.uw-photo-name { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:13px; color:var(--ink); }
+.uw-photo-row small { color:#8a807b; font-size:12px; }
+.uw-photo-row button { border:none; background:#f1ecee; color:#8a807b; width:26px; height:26px; border-radius:8px; cursor:pointer; font-size:16px; line-height:1; }
+.uw-photo-row button:hover { background:#e9dfe4; color:#6e2a94; }

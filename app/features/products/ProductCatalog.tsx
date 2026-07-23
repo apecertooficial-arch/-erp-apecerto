@@ -11,6 +11,7 @@ import { SupabaseLogin } from "../../components/SupabaseLogin";
 import { ResetPassword } from "../../components/ResetPassword";
 import { getBrowserSupabaseClient } from "../../lib/supabase/browser";
 import { CaptureWizard } from "./CaptureWizard";
+import { UnitWizard } from "./UnitWizard";
 import { ProductDetail } from "./ProductDetail";
 import { products as fallbackProducts, type Product } from "./products";
 import { CrmWorkspace } from "../crm/CrmWorkspace";
@@ -97,6 +98,7 @@ export function ProductCatalog() {
   const [favoritesOnly, setFavoritesOnly] = useState(false);
   const [noMediaOnly, setNoMediaOnly] = useState(false);
   const [captureOpen, setCaptureOpen] = useState(false);
+  const [unitWizardOpen, setUnitWizardOpen] = useState(false);
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
   const [products, setProducts] = useState<Product[]>(fallbackProducts);
   const [canApprove, setCanApprove] = useState(false);
@@ -317,7 +319,7 @@ export function ProductCatalog() {
       <>
       <header className="topbar">
         <div><h1>Produtos</h1><p>{products.length} empreendimentos no portfólio</p></div>
-        <div className="top-actions"><label className="global-search"><span>⌕</span><input placeholder="Buscar lead, telefone, bairro..." /></label><button className="primary-action" onClick={() => setCaptureOpen(true)} type="button">＋ Cadastrar produto</button></div>
+        <div className="top-actions"><label className="global-search"><span>⌕</span><input placeholder="Buscar lead, telefone, bairro..." /></label><button className="secondary-action" onClick={() => setUnitWizardOpen(true)} type="button">＋ Cadastrar unidade</button><button className="primary-action" onClick={() => setCaptureOpen(true)} type="button">＋ Cadastrar produto</button></div>
       </header>
       <section className="catalog-controls">
         <div className="catalog-heading"><div className="tabs"><button className="active" type="button">Catálogo</button><button type="button">Inteligência comercial</button></div><span className={`data-status ${dataState}`}>{dataState === "live" ? "● Dados reais · sessão protegida" : dataState === "loading" ? "○ Conectando ao Supabase..." : dataState === "auth" ? "○ Login necessário" : "○ Erro de conexão"}</span></div>
@@ -343,6 +345,10 @@ export function ProductCatalog() {
       </section>
       {captureOpen && <CaptureWizard onClose={() => setCaptureOpen(false)} onSaved={() => {
         setCaptureOpen(false);
+        if (accessToken) void loadCatalog(accessToken);
+      }} />}
+      {unitWizardOpen && accessToken && <UnitWizard accessToken={accessToken} onClose={() => setUnitWizardOpen(false)} onSaved={() => {
+        setUnitWizardOpen(false);
         if (accessToken) void loadCatalog(accessToken);
       }} />}
       {selectedProductId && accessToken && <ProductDetail productId={selectedProductId} accessToken={accessToken} sessionRole={sessionProfile?.role ?? "corretor"} initialUnitId={initialUnitId} onClose={() => { setSelectedProductId(null); setInitialUnitId(null); }} onChanged={() => void loadCatalog(accessToken)} />}
