@@ -4783,6 +4783,33 @@ article.tone-red{border-left-color:#d3443e}article.tone-red strong{color:#d3443e
 .ficha-v2 .detail-message { margin:0 2px 4px; padding:11px 15px; border-radius:12px; background:#fdecec; color:#b23838; font-size:13px; font-weight:600; }
 .ficha-v2 .detail-message.success { background:#e4f6ec; color:var(--fv-green); }
 
+/* Aba Unidades — lista com origem/indicador/proprietário + detalhe ao clicar */
+.ficha-v2 .fv2-units { display:flex; flex-direction:column; gap:9px; }
+.ficha-v2 .fv2-unit-head { display:grid; grid-template-columns:1.5fr 1fr .8fr .8fr 1fr .9fr; gap:8px; padding:0 14px 2px; font-size:10.5px; font-weight:700; letter-spacing:.04em; color:var(--fv-muted); text-transform:uppercase; }
+.ficha-v2 .fv2-unit-row { display:grid; grid-template-columns:1.5fr 1fr .8fr .8fr 1fr .9fr; gap:8px; align-items:center; width:100%; text-align:left; padding:13px 14px; border:1px solid var(--fv-line); border-radius:14px; background:#fff; cursor:pointer; font-family:inherit; transition:transform .14s, box-shadow .14s, border-color .14s; }
+.ficha-v2 .fv2-unit-row:hover { border-color:#FF7000; box-shadow:0 4px 16px rgba(255,112,0,.08); transform:translateY(-1px); }
+.ficha-v2 .fv2-unit-main { display:flex; flex-direction:column; gap:5px; min-width:0; }
+.ficha-v2 .fv2-unit-num { font-weight:700; font-size:14px; color:var(--fv-ink); }
+.ficha-v2 .fv2-unit-origin { align-self:flex-start; font-size:10px; font-weight:700; padding:2px 9px; border-radius:20px; }
+.ficha-v2 .fv2-unit-origin.constru { background:#eef1f6; color:#5b6472; }
+.ficha-v2 .fv2-unit-origin.indic { background:#f6ecfb; color:#8B00CC; }
+.ficha-v2 .fv2-unit-sub { font-size:11px; color:var(--fv-muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.ficha-v2 .fv2-unit-c { font-size:13px; color:var(--fv-ink); }
+.ficha-v2 .fv2-unit-val { font-size:13.5px; font-weight:700; color:#FF7000; }
+.ficha-v2 .fv2-unit-status { justify-self:start; font-size:11px; font-weight:600; font-style:normal; padding:3px 10px; border-radius:20px; }
+.ficha-v2 .fv2-unit-status.on { background:#e7f7ee; color:var(--fv-green); }
+.ficha-v2 .fv2-unit-status.off { background:#f2eeea; color:var(--fv-muted); }
+/* Modal de detalhe da unidade */
+.fv2-unit-detail-ov { position:fixed; inset:0; background:rgba(31,20,10,.42); display:flex; align-items:center; justify-content:center; padding:20px; z-index:200; }
+.fv2-unit-detail-ov .fv2-unit-detail { background:#fff; border-radius:20px; width:min(540px,100%); max-height:90vh; overflow:auto; box-shadow:0 30px 80px rgba(31,28,26,.3); }
+.fv2-unit-detail-ov .fv2-ud-head { display:flex; align-items:center; justify-content:space-between; padding:17px 20px; background:linear-gradient(120deg,#FF7000,#e0590f); color:#fff; position:sticky; top:0; }
+.fv2-unit-detail-ov .fv2-ud-head h2 { font-size:18px; font-weight:700; }
+.fv2-unit-detail-ov .fv2-ud-head button { background:rgba(255,255,255,.2); border:0; color:#fff; width:30px; height:30px; border-radius:50%; display:grid; place-items:center; cursor:pointer; }
+.fv2-unit-detail-ov .fv2-ud-body { padding:16px 20px 22px; }
+.fv2-unit-detail-ov .fv2-ud-badges { display:flex; gap:6px; margin-bottom:6px; }
+.fv2-unit-detail-ov .fv2-ud-sec { font-size:11px; font-weight:700; letter-spacing:.05em; color:var(--fv-muted); text-transform:uppercase; margin:16px 0 8px; }
+.fv2-unit-detail-ov .fv2-ud-empty { color:#b4a99e; font-size:13px; font-style:italic; }
+
 /* Media library (Galeria tab) — reestilizado */
 .ficha-v2 .fv2-media { margin:0; padding:0; }
 .ficha-v2 .fv2-media .section-row { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; margin-bottom:14px; }
