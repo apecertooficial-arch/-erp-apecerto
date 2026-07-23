@@ -840,7 +840,11 @@ function PipelineViewEnhanced({ stages, allStages, deals, leadById, brokerById, 
         const up = event.deltaY < 0 && col.scrollTop > 0;
         if (down || up) return; // deixa a própria coluna rolar por dentro
       }
-      board.scrollLeft += event.deltaY;
+      // Normaliza a roda: alguns mouses/SO reportam "linhas" (deltaMode 1) ou
+      // "páginas" (2) em vez de pixels. Sem isso, uma roda em linhas anda ~3px
+      // por clique e o board mal desliza.
+      const unit = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? board.clientWidth : 1;
+      board.scrollLeft += event.deltaY * unit;
       event.preventDefault();
     };
     const onMove = (event: globalThis.MouseEvent) => {
