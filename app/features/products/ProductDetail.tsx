@@ -60,6 +60,11 @@ const IcSend = () => <Svg size={17}><path d="M21 3L10.5 13.5M21 3l-6.5 18-4-8-8-
 const IcCheck = () => <Svg size={17}><path d="M4 12.5l5 5 11-11" /></Svg>;
 const IcDownload = () => <Svg size={17}><path d="M12 4v11M7 11l5 5 5-5M5 20h14" /></Svg>;
 
+function acessoLabel(tipo?: string | null): string {
+  if (!tipo) return "—";
+  const map: Record<string, string> = { chave_digital: "Chave digital", chave_fisica: "Chave física", chave: "Chave", porteiro: "Porteiro", corretor: "Com o corretor", proprietario: "Com o proprietário", biometria: "Biometria" };
+  return map[tipo] ?? (tipo.charAt(0).toUpperCase() + tipo.slice(1).replace(/_/g, " "));
+}
 function initials(name?: string | null): string {
   if (!name) return "?";
   const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -348,7 +353,7 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
                   </div>
                 </div>
                 <div className="fv2-cost-tiles">
-                  <div className="fv2-tile"><small>ACESSO</small><strong>{product.acesso_tipo || "—"}</strong></div>
+                  <div className="fv2-tile"><small>ACESSO</small><strong>{acessoLabel(product.acesso_tipo)}</strong></div>
                   <div className="fv2-tile"><small>CÓDIGO</small><strong>{product.acesso_codigo || "—"}</strong></div>
                   <div className="fv2-tile"><small>AUTORIZAÇÃO</small><strong>{product.acesso_instrucoes || "—"}</strong></div>
                 </div>
@@ -411,7 +416,7 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
           <div className="fv2-ud-sec">Corretor indicador</div>
           {ind && u.captador_nome ? <div className="fv2-person-card"><span className="fv2-avatar purple">{initials(u.captador_nome)}</span><div><strong>{u.captador_nome}</strong><small>Indicou esta unidade</small></div></div> : <p className="fv2-ud-empty">Sem indicador — unidade da construtora.</p>}
           <div className="fv2-ud-sec">Acesso</div>
-          <div className="fv2-cost-tiles"><div className="fv2-tile"><small>TIPO</small><strong>{u.acesso_tipo || "—"}</strong></div><div className="fv2-tile"><small>CÓDIGO</small><strong>{u.acesso_codigo || "—"}</strong></div><div className="fv2-tile"><small>INSTRUÇÕES</small><strong>{u.acesso_instrucoes || "—"}</strong></div></div>
+          <div className="fv2-cost-tiles"><div className="fv2-tile"><small>TIPO</small><strong>{acessoLabel(u.acesso_tipo)}</strong></div><div className="fv2-tile"><small>CÓDIGO</small><strong>{u.acesso_codigo || "—"}</strong></div><div className="fv2-tile"><small>INSTRUÇÕES</small><strong>{u.acesso_instrucoes || "—"}</strong></div></div>
           {ind && <><div className="fv2-ud-sec">Fotos da unidade</div>{(() => { const um = product.midias.filter((m) => m.unidade_id === u.id && m.tipo === "foto" && m.url); return um.length ? <div className="fv2-ud-gallery">{um.map((m) => <a key={m.id} href={m.url ?? "#"} target="_blank" rel="noreferrer" className="fv2-ud-photo watermarked-preview" style={{ backgroundImage: `url(${m.url})` }} aria-label="Foto da unidade" />)}</div> : <p className="fv2-ud-empty">Nenhuma foto enviada para esta unidade ainda.</p>; })()}</>}
         </div>
       </div>
