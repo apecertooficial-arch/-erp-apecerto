@@ -218,6 +218,34 @@ export async function POST(request: Request) {
     const { error } = await auth.supabase.from("mensagens_agendadas").insert(rows);
     return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true, scheduled: rows.length });
   }
+  if (action === "scheduleApproach") {
+    const phone = phoneNumber(body.phone); const instanceId = Number(body.instanceId); const approachId = Number(body.approachId); const when = new Date(String(body.when));
+    if (phone.length < 8 || !Number.isSafeInteger(instanceId) || !Number.isSafeInteger(approachId) || Number.isNaN(when.getTime()) || when.getTime() < Date.now() + 30_000) return Response.json({ error: "Escolha a instância, a abordagem e um horário futuro." }, { status: 422 });
+    if (!(await canUseInstance(auth, instanceId)) || !(await canMessagePhone(auth, phone))) return Response.json({ error: "A instância ou o lead não pertence à sua carteira." }, { status: 403 });
+    const { data: approach, error: approachError } = await auth.supabase.from("abordagens").select("mensagens").eq("id", approachId).eq("ativo", true).maybeSingle();
+    if (approachError || !approach || !Array.isArray(approach.mensagens)) return Response.json({ error: approachError?.message || "Abordagem não encontrada." }, { status: 404 });
+    let cursor = when.getTime();
+    const firstName = text(body.leadName, 120).split(/\s+/)[0] || "cliente";
+    const rows: Array<Record<string, unknown>> = [];
+    for (const rawPart of approach.mensagens) {
+      if (!rawPart || typeof rawPart !== "object") continue;
+      const part = rawPart as Record<string, unknown>; const name = text(part.name, 60); const options = part.options && typeof part.options === "object" ? part.options as Record<string, unknown> : {};
+      if (name === "delay") { cursor += delayMilliseconds(options); continue; }
+      const common = { telefone: phone, instancia_id: instanceId, lead_id: Number.isSafeInteger(leadId) ? leadId : null, quando: new Date(cursor).toISOString(), status: "agendado", criado_por: auth.user.id };
+      if (name === "send-text-message") {
+        const content = text(options.text, 4000).replaceAll("{primeiro_nome}", firstName);
+        if (content) rows.push({ ...common, tipo: "text", texto: content });
+      } else if (name.startsWith("send-") && name.endsWith("-message")) {
+        const url = text(options.url, 2000); if (!url) continue;
+        const kind = name.replace("send-", "").replace("-message", "");
+        rows.push({ ...common, tipo: kind, url, texto: text(options.caption, 4000) || null, file_name: text(options.filename, 200) || null, mimetype: text(options.mimetype, 120) || null });
+      }
+      cursor += 1_000;
+    }
+    if (!rows.length) return Response.json({ error: "A abordagem não possui mensagens enviáveis." }, { status: 422 });
+    const { error } = await auth.supabase.from("mensagens_agendadas").insert(rows);
+    return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true, scheduled: rows.length });
+  }
   if (action === "note") {
     const content = text(body.content, 2000);
     if (!Number.isSafeInteger(leadId) || leadId < 1 || !content) return Response.json({ error: "Informe uma observação válida para o lead." }, { status: 422 });

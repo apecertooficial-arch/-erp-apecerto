@@ -335,9 +335,30 @@ export function ProductSendModal({ data, canSend, onClose, onSend }: { data: Cha
   return <div className="crm-center-modal"><form onSubmit={(event) => { event.preventDefault(); if (!product || !canSend) return; setBusy(true); setError(""); void onSend(`${product.nome} · ${product.bairro || ""}, ${product.cidade || ""} · ${product.preco ? money.format(product.preco) : "valor sob consulta"}`, mediaId || undefined).catch((reason) => setError(reason instanceof Error ? reason.message : "Não foi possível enviar o produto.")).finally(() => setBusy(false)); }}><header><div><span>ENVIO PELO CHAT</span><h2>Enviar produto</h2><p>Escolha o imóvel e, se quiser, um material específico.</p></div><button type="button" onClick={onClose}>×</button></header>{!canSend && <div className="modal-error">Selecione uma conversa com contato e uma instância conectada antes de enviar.</div>}<label>Produto<select required value={productId} onChange={(event) => { setProductId(event.target.value); setMediaId(""); }}><option value="">Selecione</option>{data.products.map((item) => <option value={item.id} key={item.id}>{item.nome}</option>)}</select></label><label>Material<select value={mediaId} onChange={(event) => setMediaId(event.target.value)}><option value="">Somente resumo do produto</option>{items.map((item) => <option value={item.id} key={item.id}>{item.tipo} · {item.categoria || item.nome || "material"}</option>)}</select></label>{error && <div className="modal-error">{error}</div>}<footer><button type="button" onClick={onClose}>Cancelar</button><button className="crm-primary" disabled={busy || !productId || !canSend} type="submit">{busy ? "Enviando…" : "Enviar no WhatsApp"}</button></footer></form></div>;
 }
 
-export function ScheduleModal({ initialText, onClose, onSchedule }: { initialText: string; onClose: () => void; onSchedule: (content: string, when: string) => Promise<void> }) {
+export function ScheduleModal({ initialText, accessToken, onClose, onSchedule, onScheduleApproach }: { initialText: string; accessToken?: string; onClose: () => void; onSchedule: (content: string, when: string) => Promise<void>; onScheduleApproach?: (approachId: number, when: string) => Promise<void> }) {
+  const [mode, setMode] = useState<"texto" | "abordagem">("texto");
   const [content, setContent] = useState(initialText); const [scheduledFor, setScheduledFor] = useState(new Date(Date.now() + 3_600_000).toISOString().slice(0, 16)); const [busy, setBusy] = useState(false);
-  return <div className="crm-center-modal"><form onSubmit={(event) => { event.preventDefault(); setBusy(true); void onSchedule(content, scheduledFor).finally(() => setBusy(false)); }}><header><div><span>MENSAGEM PROGRAMADA</span><h2>Agendar mensagem</h2><p>A mensagem entra na fila segura da instância selecionada.</p></div><button type="button" onClick={onClose}>×</button></header><label>Mensagem<textarea required rows={5} value={content} onChange={(event) => setContent(event.target.value)} /></label><label>Data e hora<input required type="datetime-local" value={scheduledFor} onChange={(event) => setScheduledFor(event.target.value)} /></label><footer><button type="button" onClick={onClose}>Cancelar</button><button className="crm-primary" disabled={busy || !content.trim()} type="submit">{busy ? "Agendando…" : "Agendar"}</button></footer></form></div>;
+  const [approaches, setApproaches] = useState<Array<{ id: number; nome: string; ativo: boolean; mensagens: unknown }>>([]);
+  const [approachId, setApproachId] = useState("");
+  useEffect(() => {
+    if (mode !== "abordagem" || !accessToken || approaches.length) return;
+    void fetch("/api/approaches", { headers: { Authorization: `Bearer ${accessToken}` } }).then((r) => r.json()).then((d) => setApproaches(((d?.approaches ?? []) as Array<{ id: number; nome: string; ativo: boolean; mensagens: unknown }>).filter((a) => a.ativo))).catch(() => {});
+  }, [mode, accessToken, approaches.length]);
+  const selected = approaches.find((a) => String(a.id) === approachId);
+  const partes = Array.isArray(selected?.mensagens) ? (selected!.mensagens as unknown[]).length : 0;
+  const submit = (event: { preventDefault: () => void }) => {
+    event.preventDefault(); setBusy(true);
+    if (mode === "abordagem" && onScheduleApproach) void onScheduleApproach(Number(approachId), scheduledFor).finally(() => setBusy(false));
+    else void onSchedule(content, scheduledFor).finally(() => setBusy(false));
+  };
+  return <div className="crm-center-modal"><form onSubmit={submit}><header><div><span>MENSAGEM PROGRAMADA</span><h2>Agendar</h2><p>Entra na fila segura da instância selecionada e sai no horário marcado.</p></div><button type="button" onClick={onClose}>×</button></header>
+    {onScheduleApproach && <div className="sched-mode"><button type="button" className={mode === "texto" ? "active" : ""} onClick={() => setMode("texto")}>Mensagem</button><button type="button" className={mode === "abordagem" ? "active" : ""} onClick={() => setMode("abordagem")}>Abordagem</button></div>}
+    {mode === "texto"
+      ? <label>Mensagem<textarea required rows={5} value={content} onChange={(event) => setContent(event.target.value)} /></label>
+      : <><label>Abordagem<select required value={approachId} onChange={(event) => setApproachId(event.target.value)}><option value="">{approaches.length ? "Selecione a abordagem" : "Carregando…"}</option>{approaches.map((a) => <option value={a.id} key={a.id}>{a.nome}</option>)}</select></label>{selected && <div className="approach-send-summary"><strong>{selected.nome}</strong><span>{partes} parte{partes === 1 ? "" : "s"} · sairão em sequência a partir do horário</span></div>}</>}
+    <label>Data e hora<input required type="datetime-local" value={scheduledFor} onChange={(event) => setScheduledFor(event.target.value)} /></label>
+    <footer><button type="button" onClick={onClose}>Cancelar</button><button className="crm-primary" disabled={busy || (mode === "texto" ? !content.trim() : !approachId)} type="submit">{busy ? "Agendando…" : "Agendar"}</button></footer>
+  </form></div>;
 }
 
 function ApproachModal({ approaches, onClose, onSend }: { approaches: ChatData["approaches"]; onClose: () => void; onSend: (approachId: number) => Promise<void> }) {
