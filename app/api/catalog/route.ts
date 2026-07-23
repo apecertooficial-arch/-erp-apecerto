@@ -87,7 +87,7 @@ export async function GET(request: Request) {
       status: item.status,
       origin: item.origem,
       published: item.publicado,
-      price: prices.length ? Math.min(...prices) : item.preco,
+      price: item.preco ?? (prices.length ? Math.min(...prices) : null),
       area: areas.length ? Math.min(...areas) : item.area_util,
       bedrooms: item.dormitorios ?? (bedroomOptions.length ? Math.max(...bedroomOptions) : null),
       suites: item.suites,
