@@ -426,7 +426,7 @@ function SalesProcessView({ accessToken, initialCreate = false, sessionRole = "c
   const stageList = (data?.stages && data.stages.length) ? data.stages.slice().sort((a, b) => a.ordem - b.ordem).map((s) => ({ id: s.slug, dbId: s.id, name: s.nome, color: s.cor, role: s.papel, days: s.sla_dias, resale: s.resale })) : saleStages.map((s) => ({ ...s, dbId: null as string | null, resale: (s as { resale?: boolean }).resale ?? false }));
   const saleById = new Map((data?.sales ?? []).map((sale) => [sale.id, sale])); const dealBySale = new Map((data?.deals ?? []).filter((deal) => deal.venda_id).map((deal) => [deal.venda_id!, deal])); const leadById = new Map((data?.leads ?? []).map((lead) => [lead.id, lead])); const brokerById = new Map((data?.brokers ?? []).map((broker) => [broker.id, broker]));
   const finalSlugs = new Set(stageList.filter((s) => s.days === 0).map((s) => s.id));
-  const visible = (data?.processes ?? []).filter((item) => item.aprovacao_status !== "pendente" && (filter === "all" || item.tipo_venda === filter)); const overdue = visible.filter((item) => !finalSlugs.has(item.etapa) && Date.now() - new Date(item.atualizado_em).getTime() > ((stageList.find((stage) => stage.id === item.etapa)?.days || 99) * 86400000));
+  const visible = (data?.processes ?? []).filter((item) => !["pendente", "devolvida", "recusada"].includes(item.aprovacao_status ?? "aprovada") && (filter === "all" || item.tipo_venda === filter)); const overdue = visible.filter((item) => !finalSlugs.has(item.etapa) && Date.now() - new Date(item.atualizado_em).getTime() > ((stageList.find((stage) => stage.id === item.etapa)?.days || 99) * 86400000));
   const move = async (processId: string, stage: string) => { setBusy(true); setError(null); try { const response = await authedFetch("/api/crm/sales", { method: "PATCH", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify({ action: "move", processId, stage }) }); const result = await response.json() as { error?: string }; if (!response.ok) throw new Error(result.error || "Não foi possível mover a venda."); await load(); } catch (reason) { setError(reason instanceof Error ? reason.message : "Não foi possível mover a venda."); } finally { setBusy(false); } };
   const mutateStages = async (payload: Record<string, unknown>, success?: string) => { setBusy(true); setError(null); try { const response = await authedFetch("/api/crm/sales", { method: "PATCH", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify(payload) }); const result = await response.json() as { error?: string }; if (!response.ok) throw new Error(result.error || "Não foi possível salvar a etapa."); await load(); if (success) setError(null); } catch (reason) { setError(reason instanceof Error ? reason.message : "Não foi possível salvar a etapa."); } finally { setBusy(false); } };
   const reorderStage = (index: number, direction: number) => { const ordered = stageList.filter((s) => s.dbId); const target = index + direction; if (target < 0 || target >= ordered.length) return; const ids = ordered.map((s) => s.dbId as string); [ids[index], ids[target]] = [ids[target], ids[index]]; void mutateStages({ action: "reorderStages", ids }); };
@@ -562,6 +562,7 @@ function SaleDetailDrawer({ accessToken, canApprove, process, sale, lead, broker
   const saveCondicoes = () => run(() => api({ action: "salvarCondicoes", processId: process.id, ...cond }));
   const saveComissao = () => run(() => api({ action: "salvarComissao", processId: process.id, ...com }));
   const addObs = () => { if (!obsText.trim()) return; void run(async () => { await api({ action: "addObs", processId: process.id, texto: obsText.trim() }); setObsText(""); }); };
+  const devolverFunil = () => { const motivo = window.prompt("Devolver este cliente ao funil de atendimento (follow-up). Motivo (opcional):", ""); if (motivo === null) return; void run(async () => { await api({ action: "devolverFunil", processId: process.id, motivo }); onClose(); }); };
   const busyAll = busy || wBusy;
 
   // grupos ativos conforme cônjuge
@@ -713,7 +714,10 @@ function SaleDetailDrawer({ accessToken, canApprove, process, sale, lead, broker
       </div>
 
       <footer className="sale-full-foot">
-        {onChat && <button type="button" className="crm-secondary" onClick={onChat}>Abrir chat do lead</button>}
+        <div className="sale-full-foot-left">
+          {onChat && <button type="button" className="crm-secondary" onClick={onChat}>Abrir chat do lead</button>}
+          {canApprove && <button type="button" className="sale-full-devolver" disabled={busyAll} onClick={devolverFunil}>↩ Devolver ao atendimento (follow-up)</button>}
+        </div>
         <div className="sale-full-foot-right">
           {blockReasons.length > 0 && <span className="sale-full-foot-block">🔒 avanço bloqueado</span>}
           {canApprove && <label className="sale-detail-move"><span>Mover etapa</span><select value={process.etapa} disabled={busyAll} onChange={(event) => void onMove(event.target.value)}>{track.map((s) => <option value={s.id} key={s.id}>{s.name}</option>)}</select></label>}
