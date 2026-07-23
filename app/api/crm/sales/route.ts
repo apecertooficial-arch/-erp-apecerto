@@ -277,6 +277,30 @@ export async function PATCH(request: Request) {
     const { error } = await auth.supabase.from("venda_processos").update({ responsavel_usuario_id: userId, atualizado_em: new Date().toISOString() }).eq("id", processId);
     return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
   }
+  if (action === "devolverFunil") {
+    // Devolve uma venda da esteira de volta ao funil de atendimento (follow-up). Reabre o negócio.
+    const denied = await requireManager(auth);
+    if (denied) return denied;
+    const processId = clean(body.processId, 60);
+    if (!processId) return Response.json({ error: "Venda inválida." }, { status: 422 });
+    const motivo = clean(body.motivo, 400) || null;
+    const { data: proc } = await auth.supabase.from("venda_processos").select("negocio_id").eq("id", processId).maybeSingle();
+    if (!proc?.negocio_id) return Response.json({ error: "Venda sem negócio vinculado." }, { status: 404 });
+    const { data: neg } = await auth.supabase.from("negocios").select("pipeline_id").eq("id", proc.negocio_id).maybeSingle();
+    let stageId: number | null = null;
+    if (neg?.pipeline_id) {
+      const { data: stgs } = await auth.supabase.from("pipeline_stages").select("id,nome,ordem").eq("pipeline_id", neg.pipeline_id).order("ordem", { ascending: true });
+      const alvo = (stgs ?? []).find((s) => /follow/i.test(String(s.nome))) || (stgs ?? [])[0];
+      stageId = (alvo?.id as number | undefined) ?? null;
+    }
+    const now = new Date().toISOString();
+    const upd: Record<string, unknown> = { status: "aberto", venda_id: null, ultima_movimentacao: now };
+    if (stageId) { upd.stage_id = stageId; upd.estagio_desde = now; }
+    const { error: e1 } = await auth.supabase.from("negocios").update(upd).eq("id", proc.negocio_id);
+    if (e1) return Response.json({ error: e1.message }, { status: 502 });
+    const { error: e2 } = await auth.supabase.from("venda_processos").update({ aprovacao_status: "devolvida", aprovacao_motivo: motivo, atualizado_em: now } as never).eq("id", processId);
+    return e2 ? Response.json({ error: e2.message }, { status: 502 }) : Response.json({ success: true });
+  }
   if (action === "approveSale" || action === "rejectSale") {
     const denied = await requireManager(auth);
     if (denied) return denied;
