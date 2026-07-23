@@ -1022,8 +1022,13 @@ button { cursor:pointer; }
 .wa-audio-wave i{flex:1;min-width:2px;max-width:3px;background:#c4ccd0;border-radius:2px;transition:background .1s}
 .wa-audio-wave i.on{background:#00a884}
 .wa-audio-time{font-size:11px;color:#667781}
+/* Pílula de velocidade (1x → 1,5x → 2x → 1x), estilo WhatsApp. */
+.wa-audio-rate{flex:none;min-width:34px;height:24px;padding:0 8px;border:0;border-radius:999px;background:#e6e9eb;color:#3b4a54;font-size:12px;font-weight:700;line-height:24px;cursor:pointer;transition:background .12s,color .12s}
+.wa-audio-rate:hover{background:#d7dbde}
+.wa-audio-rate.active{background:#00a884;color:#fff}
 .chat-messages article.sent .wa-audio-play{background:#128c7e}
 .chat-messages article.sent .wa-audio-wave i.on{background:#128c7e}
+.chat-messages article.sent .wa-audio-rate.active{background:#128c7e}
 /* Vídeo estilo WhatsApp */
 .wa-video{border-radius:10px;overflow:hidden;max-width:300px;background:#000;line-height:0}
 .wa-video video{display:block;width:100%;max-height:360px;border-radius:10px}
