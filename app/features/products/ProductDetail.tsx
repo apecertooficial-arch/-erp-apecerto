@@ -19,6 +19,7 @@ type ProductDetailData = {
   summary_price: number | null; summary_area: number | null;
   completion: { checks: Record<string, boolean>; completed: number; total: number };
   is_favorite: boolean; leads: LeadOption[];
+  aprovacao?: string | null; captado_por_nome?: string | null; mine?: boolean;
 };
 
 const money = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
@@ -154,15 +155,25 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
     } catch (error) { setMessage(error instanceof Error ? error.message : "Erro ao publicar."); } finally { setBusy(false); }
   }
 
+  async function submitRequest() {
+    setBusy(true); setMessage("");
+    try {
+      const response = await fetch("/api/product", { method: "PATCH", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify({ id: productId, action: "solicitar" }) });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error ?? "Não foi possível enviar a solicitação.");
+      await load(); onChanged(); setMessage("Solicitação enviada — aguardando aprovação do gestor.");
+    } catch (error) { setMessage(error instanceof Error ? error.message : "Erro ao enviar solicitação."); } finally { setBusy(false); }
+  }
+
   return <div className="modal-layer product-detail-layer">
     <button className="modal-scrim" type="button" onClick={onClose} aria-label="Fechar ficha do produto" />
     <aside className="product-detail-panel" aria-label="Ficha completa do produto">
       {!product ? <div className="detail-loading">{message || "Carregando dados reais do produto..."}</div> : <>
         <header className="detail-hero" style={cover?.url ? { backgroundImage: `linear-gradient(180deg,rgba(0,0,0,.08),rgba(0,0,0,.62)),url(${cover.url})` } : undefined}>
           <button className="icon-button" type="button" onClick={onClose}>×</button>
-          <div><span>{product.rascunho ? "Rascunho" : product.status.replace("_", " ")}</span><h2>{product.nome}</h2><p>{product.bairro ?? "Bairro não informado"} · {product.cidade ?? "Cidade não informada"}</p></div>
+          <div><span>{product.rascunho ? "Rascunho" : product.status.replace("_", " ")}</span><h2>{product.nome}</h2><p>{product.bairro ?? "Bairro não informado"} · {product.cidade ?? "Cidade não informada"} · Captado por: {product.captado_por_nome ?? "Não informado"}</p></div>
         </header>
-        <div className="detail-toolbar"><div><strong>{product.summary_price ? money.format(product.summary_price) : "Preço sob consulta"}</strong><small>{product.completion.completed}/{product.completion.total} blocos completos</small></div><div className="detail-actions"><button className="lead-subtle" type="button" onClick={() => setLeadPanelOpen(!leadPanelOpen)}>↗ Vincular lead{product.leads.some((lead) => lead.linked) ? ` · ${product.leads.filter((lead) => lead.linked).length}` : ""}</button><button className={product.is_favorite ? "favorite active" : "favorite"} disabled={busy} type="button" onClick={() => void productAction("toggleFavorite", !product.is_favorite)}>{product.is_favorite ? "★ Favorito" : "☆ Favoritar"}</button><button className="secondary-action" type="button" onClick={() => setEditing(!editing)}>{editing ? "Cancelar edição" : "Editar produto"}</button>{canPublish && (product.rascunho ? <button className="publish-action" type="button" disabled={busy} title={product.completion.completed < product.completion.total ? `Faltam ${product.completion.total - product.completion.completed} bloco(s) para ficar 100% completo` : "Produto completo"} onClick={() => void publishAction(true)}>✓ Publicar produto{product.completion.completed < product.completion.total ? " (incompleto)" : ""}</button> : <button className="unpublish-action" type="button" disabled={busy} onClick={() => void publishAction(false)}>↩ Voltar a rascunho</button>)}</div></div>
+        <div className="detail-toolbar"><div><strong>{product.summary_price ? money.format(product.summary_price) : "Preço sob consulta"}</strong><small>{product.completion.completed}/{product.completion.total} blocos completos</small></div><div className="detail-actions"><button className="lead-subtle" type="button" onClick={() => setLeadPanelOpen(!leadPanelOpen)}>↗ Vincular lead{product.leads.some((lead) => lead.linked) ? ` · ${product.leads.filter((lead) => lead.linked).length}` : ""}</button><button className={product.is_favorite ? "favorite active" : "favorite"} disabled={busy} type="button" onClick={() => void productAction("toggleFavorite", !product.is_favorite)}>{product.is_favorite ? "★ Favorito" : "☆ Favoritar"}</button><button className="secondary-action" type="button" onClick={() => setEditing(!editing)}>{editing ? "Cancelar edição" : "Editar produto"}</button>{canPublish ? (product.rascunho ? <button className="publish-action" type="button" disabled={busy} title={product.completion.completed < product.completion.total ? `Faltam ${product.completion.total - product.completion.completed} bloco(s) para ficar 100% completo` : "Produto completo"} onClick={() => void publishAction(true)}>✓ Publicar produto{product.completion.completed < product.completion.total ? " (incompleto)" : ""}</button> : <button className="unpublish-action" type="button" disabled={busy} onClick={() => void publishAction(false)}>↩ Voltar a rascunho</button>) : (product.aprovacao === "pendente" ? <button className="secondary-action" type="button" disabled title="Aguardando aprovação do gestor">⏳ Aguardando aprovação</button> : (product.mine && (product.rascunho || product.aprovacao === "reprovado") ? <button className="publish-action" type="button" disabled={busy} onClick={() => void submitRequest()}>➤ Enviar solicitação</button> : null))}</div></div>
         {leadPanelOpen && <div className="top-lead-panel"><div className="lead-link-form"><select value={leadId} onChange={(event) => setLeadId(event.target.value)}><option value="">Selecione um lead...</option>{product.leads.filter((lead) => !lead.linked).map((lead) => <option value={lead.id} key={lead.id}>{lead.nome || "Lead sem nome"} · {lead.telefone || "sem telefone"}</option>)}</select><button className="primary-action" disabled={busy || !leadId} type="button" onClick={() => void productAction("linkLead", leadId)}>Vincular</button></div><div className="linked-leads">{product.leads.filter((lead) => lead.linked).map((lead) => <span key={lead.id}><strong>{lead.nome || "Lead sem nome"}</strong><small>{lead.telefone}</small><button type="button" disabled={busy} onClick={() => void productAction("unlinkLead", lead.id)}>×</button></span>)}</div></div>}
         <div className="detail-scroll">
           {message && <div className={`detail-message ${message.includes("salv") || message.includes("atualiz") || message.includes("adicionado") ? "success" : ""}`}>{message}</div>}
