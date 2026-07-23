@@ -92,6 +92,46 @@ export async function PATCH(request: Request) {
   const id = typeof body.id === "string" ? body.id : "";
   if (!UUID.test(id)) return Response.json({ error: "Produto inválido." }, { status: 400 });
 
+  if (body.action === "criarUnidade") {
+    const input = (body.unidade && typeof body.unidade === "object" ? body.unidade : {}) as Record<string, unknown>;
+    const asString = (value: unknown) => (typeof value === "string" ? value.trim() || null : null);
+    const asNumber = (value: unknown) => {
+      if (value === "" || value == null) return null;
+      const parsed = Number(value);
+      return Number.isFinite(parsed) ? parsed : null;
+    };
+    const numero = asString(input.numero);
+    if (!numero) return Response.json({ error: "Informe o número da unidade." }, { status: 400 });
+    const valorTabela = asNumber(input.valor_tabela);
+    if (valorTabela == null) return Response.json({ error: "Informe o valor de tabela da unidade." }, { status: 400 });
+
+    const { data: broker } = await auth.supabase.from("corretores").select("id").eq("usuario_id", auth.user.id).maybeSingle();
+    const unitRow = {
+      empreendimento_id: id, de_terceiros: true, aprovacao: "pendente", disponivel: true,
+      captador_corretor_id: broker?.id ?? null,
+      numero,
+      tipologia: asString(input.tipologia),
+      area_m2: asNumber(input.area_m2),
+      vagas: asNumber(input.vagas),
+      valor_tabela: valorTabela,
+      valor_promo: asNumber(input.valor_promo),
+      proprietario_nome: asString(input.proprietario_nome),
+      proprietario_contato: asString(input.proprietario_contato),
+      acesso_tipo: asString(input.acesso_tipo),
+      acesso_codigo: asString(input.acesso_codigo),
+      acesso_instrucoes: asString(input.acesso_instrucoes),
+    };
+    const { data: novaUnidade, error } = await auth.supabase.from("unidades").insert(unitRow as never).select("id").single();
+    if (error) {
+      const text = `${error.code ?? ""} ${error.message ?? ""}`.toLowerCase();
+      if (error.code === "23505" || text.includes("unique") || text.includes("uq_unidade_indicacao_por_predio")) {
+        return Response.json({ error: "Esta unidade já foi cadastrada neste prédio." }, { status: 409 });
+      }
+      return Response.json({ error: error.message }, { status: 502 });
+    }
+    return Response.json({ unidadeId: novaUnidade.id, userId: auth.user.id });
+  }
+
   if (body.action === "decideUnit") {
     const { data: me } = await auth.supabase.from("usuarios").select("role").eq("id", auth.user.id).maybeSingle();
     const role = (me as { role?: string } | null)?.role ?? "corretor";
