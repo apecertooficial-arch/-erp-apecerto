@@ -4,7 +4,7 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { getBrowserSupabaseClient } from "../../lib/supabase/browser";
 
-type Media = { id: string; tipo: "foto" | "video" | "pdf" | "apresentacao"; storage_path: string; categoria: string | null; nome: string | null; is_capa: boolean; url: string | null };
+type Media = { id: string; tipo: "foto" | "video" | "pdf" | "apresentacao"; storage_path: string; categoria: string | null; nome: string | null; is_capa: boolean; url: string | null; unidade_id?: string | null };
 type Unit = { id: string; numero: string | null; tipologia: string | null; area_m2: number | null; vagas: number | null; valor_tabela: number | null; valor_promo: number | null; disponivel: boolean; de_terceiros?: boolean; captador_nome?: string | null; proprietario_nome?: string | null; proprietario_contato?: string | null; acesso_tipo?: string | null; acesso_codigo?: string | null; acesso_instrucoes?: string | null };
 type Owner = { nome: string; email: string; telefone: string };
 type Condo = { id: string; nome: string; endereco: string; numero: string | null; bairro: string | null; cidade: string; uf: string; cep: string | null };
@@ -113,9 +113,11 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
     const timer = window.setTimeout(() => { void load().catch((error: Error) => setMessage(error.message)); }, 0);
     return () => window.clearTimeout(timer);
   }, [load]);
-  const photos = useMemo(() => product?.midias.filter((item) => item.tipo === "foto") ?? [], [product]);
-  const videos = useMemo(() => product?.midias.filter((item) => item.tipo === "video") ?? [], [product]);
-  const presentations = useMemo(() => product?.midias.filter((item) => item.tipo === "pdf" || item.tipo === "apresentacao") ?? [], [product]);
+  // Galeria do PRÉDIO/produto = mídia sem unidade_id. As fotos de unidade de indicação aparecem no detalhe da unidade.
+  const buildingMedia = useMemo(() => product?.midias.filter((item) => !item.unidade_id) ?? [], [product]);
+  const photos = useMemo(() => buildingMedia.filter((item) => item.tipo === "foto"), [buildingMedia]);
+  const videos = useMemo(() => buildingMedia.filter((item) => item.tipo === "video"), [buildingMedia]);
+  const presentations = useMemo(() => buildingMedia.filter((item) => item.tipo === "pdf" || item.tipo === "apresentacao"), [buildingMedia]);
   const visibleMedia = mediaTab === "fotos" ? photos : mediaTab === "videos" ? videos : presentations;
   const cover = photos.find((item) => item.is_capa) ?? photos[0];
 
@@ -410,6 +412,7 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
           {ind && u.captador_nome ? <div className="fv2-person-card"><span className="fv2-avatar purple">{initials(u.captador_nome)}</span><div><strong>{u.captador_nome}</strong><small>Indicou esta unidade</small></div></div> : <p className="fv2-ud-empty">Sem indicador — unidade da construtora.</p>}
           <div className="fv2-ud-sec">Acesso</div>
           <div className="fv2-cost-tiles"><div className="fv2-tile"><small>TIPO</small><strong>{u.acesso_tipo || "—"}</strong></div><div className="fv2-tile"><small>CÓDIGO</small><strong>{u.acesso_codigo || "—"}</strong></div><div className="fv2-tile"><small>INSTRUÇÕES</small><strong>{u.acesso_instrucoes || "—"}</strong></div></div>
+          {ind && <><div className="fv2-ud-sec">Fotos da unidade</div>{(() => { const um = product.midias.filter((m) => m.unidade_id === u.id && m.tipo === "foto" && m.url); return um.length ? <div className="fv2-ud-gallery">{um.map((m) => <a key={m.id} href={m.url ?? "#"} target="_blank" rel="noreferrer" className="fv2-ud-photo watermarked-preview" style={{ backgroundImage: `url(${m.url})` }} aria-label="Foto da unidade" />)}</div> : <p className="fv2-ud-empty">Nenhuma foto enviada para esta unidade ainda.</p>; })()}</>}
         </div>
       </div>
     </div>; })()}
