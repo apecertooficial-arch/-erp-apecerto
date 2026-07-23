@@ -40,6 +40,25 @@ function agruparOcorrencias(list: Ocorrencia[]): OcorrenciaGrupo[] {
   return out;
 }
 
+/* Botão ⓘ de cada quadradinho da saúde: explica em linguagem simples o que o número significa. */
+function KpiInfo({ texto }: { texto: string }) {
+  return <span className="kpi-info-wrap">
+    <button type="button" className="kpi-info" aria-label="O que significa este número?">i</button>
+    <span className="kpi-tip" role="tooltip">{texto}</span>
+  </span>;
+}
+
+const KPI_INFO = {
+  orfaos: "Leads com telefone que estão NESTE MOMENTO sem nenhum corretor atribuído. O ideal é 0 — se aparecer número aqui, o resgate automático vai distribuí-los assim que houver corretor elegível.",
+  fila: "Leads aguardando na fila do motor de distribuição/abordagem agora. É normal ter alguns por instantes: o motor processa a fila a cada ciclo e o número deve baixar sozinho.",
+  entradas: "Quantos leads novos entraram no motor nas últimas 24 horas (todas as origens). Mede o volume de chegada, não o resultado do envio.",
+  entregues: "Mensagens de abordagem que o motor enviou COM SUCESSO nas últimas 24 horas (inclui texto e vídeo). Pode ser maior que os leads que entraram porque um lead pode receber mais de uma mensagem.",
+  falhas: "Envios que falharam em DEFINITIVO nas últimas 24 horas — o motor tentou (inclusive trocando de instância no failover) e mesmo assim a mensagem não saiu. Esses leads vão para “Erro ao Enviar”; veja o motivo em “Últimas ocorrências” abaixo.",
+  failovers: "Vezes, nas últimas 24 horas, em que uma instância falhou no envio e o sistema acionou automaticamente a PRÓXIMA instância para tentar entregar. Número alto = alguma instância com problema; a maioria termina em entrega mesmo assim.",
+  foraJanela: "Leads distribuídos FORA da janela de atendimento (noite/madrugada/fora do horário configurado) nas últimas 24 horas, seguindo a regra “fora da janela” escolhida abaixo.",
+  instancias: "Instâncias de WhatsApp conectadas agora / total de instâncias vinculadas a corretores. Se estiver abaixo do total, algum corretor está com o WhatsApp desconectado e o failover assume os envios dele.",
+} as const;
+
 const MODOS: Array<{ v: Config["modo_fora_janela"]; t: string; d: string }> = [
   { v: "quem_veio_no_dia", t: "Distribuir entre quem compareceu no dia", d: "Fora da janela (noite/madrugada), o lead vai pelo rodízio justo só para quem esteve online durante o dia. Recomendado." },
   { v: "todos_do_bloco", t: "Distribuir entre todos os corretores", d: "Fora da janela, distribui entre todos os corretores ativos do bloco, mesmo quem não compareceu." },
@@ -110,14 +129,14 @@ export function DistributionConfig({ accessToken }: { accessToken: string }) {
         {(saude.ultimosLeads ?? []).length === 0 && <p className="settings-hint">Nenhum lead recente.</p>}
       </div>
       <div className="dist-kpis">
-        <article className={saude.orfaosAgora > 0 ? "warn" : "ok"}><strong>{saude.orfaosAgora}</strong><span>Leads sem corretor</span></article>
-        <article><strong>{saude.naFilaAgora}</strong><span>Na fila do motor</span></article>
-        <article><strong>{saude.entradas24h}</strong><span>Leads entraram · 24h</span></article>
-        <article className="ok"><strong>{saude.enviosOk24h}</strong><span>Mensagens entregues · 24h</span></article>
-        <article className={saude.falhasDefinitivas24h > 0 ? "bad" : "ok"}><strong>{saude.falhasDefinitivas24h}</strong><span>Falhas definitivas · 24h</span></article>
-        <article><strong>{saude.failovers24h}</strong><span>Failovers acionados · 24h</span></article>
-        <article><strong>{saude.foraJanela24h}</strong><span>Distribuídos fora da janela · 24h</span></article>
-        <article className={saude.instanciasConectadas < saude.instanciasTotal ? "warn" : "ok"}><strong>{saude.instanciasConectadas}/{saude.instanciasTotal}</strong><span>Instâncias conectadas</span></article>
+        <article className={saude.orfaosAgora > 0 ? "warn" : "ok"}><KpiInfo texto={KPI_INFO.orfaos} /><strong>{saude.orfaosAgora}</strong><span>Leads sem corretor</span></article>
+        <article><KpiInfo texto={KPI_INFO.fila} /><strong>{saude.naFilaAgora}</strong><span>Na fila do motor</span></article>
+        <article><KpiInfo texto={KPI_INFO.entradas} /><strong>{saude.entradas24h}</strong><span>Leads entraram · 24h</span></article>
+        <article className="ok"><KpiInfo texto={KPI_INFO.entregues} /><strong>{saude.enviosOk24h}</strong><span>Mensagens entregues · 24h</span></article>
+        <article className={saude.falhasDefinitivas24h > 0 ? "bad" : "ok"}><KpiInfo texto={KPI_INFO.falhas} /><strong>{saude.falhasDefinitivas24h}</strong><span>Falhas definitivas · 24h</span></article>
+        <article><KpiInfo texto={KPI_INFO.failovers} /><strong>{saude.failovers24h}</strong><span>Failovers acionados · 24h</span></article>
+        <article><KpiInfo texto={KPI_INFO.foraJanela} /><strong>{saude.foraJanela24h}</strong><span>Distribuídos fora da janela · 24h</span></article>
+        <article className={saude.instanciasConectadas < saude.instanciasTotal ? "warn" : "ok"}><KpiInfo texto={KPI_INFO.instancias} /><strong>{saude.instanciasConectadas}/{saude.instanciasTotal}</strong><span>Instâncias conectadas</span></article>
       </div>
       <div className="dist-occ">
         <header><h3>Últimas ocorrências (o porquê de cada falha)</h3><button type="button" onClick={() => void load()}>↻ Atualizar</button></header>
