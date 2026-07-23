@@ -4571,3 +4571,12 @@ article.tone-red{border-left-color:#d3443e}article.tone-red strong{color:#d3443e
 .pj-ia-foot > button { border:1px solid #e8dccd; background:#fff; border-radius:9px; padding:8px 14px; cursor:pointer; }
 .pj-ia-foot > button.crm-primary { background:linear-gradient(135deg,#8b2bc9,#b246dc); border:0; color:#fff; font-weight:700; }
 .pj-ia-msg { color:#1c7a41; font-size:13px; font-style:normal; font-weight:600; }
+
+/* ─── Saúde da distribuição: botão ⓘ com explicação de cada indicador ─── */
+.dist-kpis article { position:relative; }
+.dist-kpis article .kpi-info-wrap { position:absolute; top:6px; right:7px; font-size:0; }
+.dist-kpis .kpi-info { width:16px; height:16px; border-radius:50%; border:1px solid #ddd4cd; background:#fff; color:#a2968e; font-size:10px; font-weight:800; font-style:italic; font-family:Georgia,serif; line-height:14px; text-align:center; padding:0; cursor:help; transition:all .15s; }
+.dist-kpis .kpi-info:hover, .dist-kpis .kpi-info:focus-visible { background:#ff7a1a; border-color:#ff7a1a; color:#fff; outline:none; }
+.dist-kpis article .kpi-tip { display:none; position:absolute; z-index:40; top:24px; right:0; width:250px; background:#241a13; color:#fff8f2; font-size:11.5px; font-weight:500; line-height:1.5; padding:10px 12px; border-radius:10px; box-shadow:0 10px 26px rgba(32,20,14,.28); text-align:left; white-space:normal; }
+.dist-kpis article:nth-child(4n+1) .kpi-tip { right:auto; left:0; }
+.dist-kpis .kpi-info-wrap:hover .kpi-tip, .dist-kpis .kpi-info:focus-visible + .kpi-tip { display:block; }
