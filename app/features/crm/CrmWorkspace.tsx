@@ -614,7 +614,7 @@ function SaleDetailDrawer({ accessToken, canApprove, process, sale, lead, broker
     </div>;
   };
 
-  return <div className="sale-full-layer">
+  return <div className="sale-full-layer" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
     <div className="sale-full">
       <header className="sale-full-top">
         <div className="sale-full-title"><span className="sale-full-kicker">ESTEIRA DE VENDAS · NEGOCIAÇÃO</span><h2>{lead?.nome || sale?.empreendimento_nome || "Venda"}</h2><p>{sale?.empreendimento_nome || "Produto não informado"}{lead?.telefone ? ` · ☎ ${lead.telefone}` : ""}</p></div>
