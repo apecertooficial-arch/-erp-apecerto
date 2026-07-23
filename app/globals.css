@@ -1013,6 +1013,28 @@ button { cursor:pointer; }
 .chat-messages article { max-width:74%; padding:9px 13px; border-radius:16px; font-size:14px; line-height:1.4; box-shadow:0 1px 1px rgba(11,20,26,.08); }
 .chat-messages article.received { align-self:flex-start; background:#ffffff; border:0; border-bottom-left-radius:5px; }
 .chat-messages article.sent { align-self:flex-end; background:#d9fdd3; border-bottom-right-radius:5px; }
+/* Áudio estilo WhatsApp */
+.wa-audio{display:flex;align-items:center;gap:9px;min-width:210px;padding:2px 2px 2px 0}
+.wa-audio-play{flex:none;width:36px;height:36px;border:0;border-radius:50%;background:#00a884;color:#fff;display:grid;place-items:center;cursor:pointer}
+.wa-audio-play svg{width:18px;height:18px}
+.wa-audio-body{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.wa-audio-wave{display:flex;align-items:center;gap:2px;height:26px}
+.wa-audio-wave i{flex:1;min-width:2px;max-width:3px;background:#c4ccd0;border-radius:2px;transition:background .1s}
+.wa-audio-wave i.on{background:#00a884}
+.wa-audio-time{font-size:11px;color:#667781}
+.chat-messages article.sent .wa-audio-play{background:#128c7e}
+.chat-messages article.sent .wa-audio-wave i.on{background:#128c7e}
+/* Vídeo estilo WhatsApp */
+.wa-video{border-radius:10px;overflow:hidden;max-width:300px;background:#000;line-height:0}
+.wa-video video{display:block;width:100%;max-height:360px;border-radius:10px}
+/* Emoji */
+.chat-emoji-btn{width:40px;height:40px;flex:none;border:0;border-radius:10px;background:transparent;color:#8a7f79;cursor:pointer;display:grid;place-items:center}
+.chat-emoji-btn svg{width:22px;height:22px}
+.chat-emoji-btn.active{color:#ff6500}
+.chat-emoji-panel{position:absolute;bottom:70px;left:14px;z-index:5;width:min(320px,90%);max-height:190px;overflow:auto;display:grid;grid-template-columns:repeat(8,1fr);gap:2px;padding:10px;background:#fff;border:1px solid #e6ddd7;border-radius:14px;box-shadow:0 12px 34px rgba(20,14,10,.18)}
+.chat-emoji-panel button{border:0;background:transparent;font-size:21px;line-height:1;padding:5px;border-radius:8px;cursor:pointer}
+.chat-emoji-panel button:hover{background:#f2ede9}
+.lead-chat-drawer>footer{position:relative}
 .chat-messages article small { color:var(--faint); font-size:11px; text-transform:uppercase; letter-spacing:.05em; }
 .chat-messages article p { margin:3px 0 2px; }
 .chat-messages article time { display:block; color:var(--faint); font-size:11px; text-align:right; }
