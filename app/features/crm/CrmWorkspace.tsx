@@ -1078,8 +1078,10 @@ function LeadChatDrawer({ accessToken, lead, deal, corretorNome, onClose, onResp
     try {
       // Fonte primária: d-api (histórico COMPLETO), paginando até o fim — cada página aparece assim que chega.
       if (instance.sendBig && (opts?.hasMore ?? true)) {
+        // Abertura leve: 4 páginas da D-API (400 mensagens) — o restante do histórico
+        // vem do banco na mescla abaixo. Antes eram até 60 chamadas sequenciais (~1s cada).
         let page = startPage, more = true, guard = 0;
-        while (more && guard < 60) {
+        while (more && guard < 4) {
           guard++;
           const result = await request({ action: "dapi-hist", telefone: lead.telefone, instancia_id: instance.sendBig, page, limit: 100 });
           const chunk = Array.isArray(result.mensagens) ? result.mensagens as ChatMessage[] : [];
@@ -1129,10 +1131,40 @@ function LeadChatDrawer({ accessToken, lead, deal, corretorNome, onClose, onResp
   useEffect(() => {
     if (!selected) return;
     const supabase = getBrowserSupabaseClient();
+    // Mensagem nova: busca SÓ o banco (leve) e apenas se for DESTA conversa, com freio de 1,5s.
+    // Antes, cada mensagem de qualquer conversa da operação repaginava o histórico inteiro
+    // da D-API em todos os chats abertos — era isso que deixava o chat lento para todos.
+    let timer: number | null = null;
+    const conversas = new Set((selected.conversaIds ?? []).map((id) => String(id)));
+    const refreshDb = async () => {
+      try {
+        if (!selected.conversaIds?.length) return;
+        const res = await request({ action: "messages", conversaIds: selected.conversaIds, limit: 120 });
+        const novas = Array.isArray(res.mensagens) ? res.mensagens as ChatMessage[] : [];
+        if (!novas.length) return;
+        setMessages((prev) => {
+          const byKey = new Map<string, ChatMessage>();
+          for (const m of [...prev, ...novas]) {
+            const k = String(m.wa_message_id || m.id);
+            const ex = byKey.get(k);
+            if (!ex) { byKey.set(k, { ...m }); continue; }
+            if ((!ex.media_url || ex.media_url === "") && m.media_url) ex.media_url = m.media_url;
+            if ((!ex.conteudo || ex.conteudo === "") && m.conteudo) ex.conteudo = m.conteudo;
+            if (m.status && m.status !== ex.status) { ex.status = m.status; ex.status_detalhe = m.status_detalhe; }
+          }
+          return [...byKey.values()].sort((a, b) => String(a.criado_em || "").localeCompare(String(b.criado_em || "")));
+        });
+      } catch { /* silencioso */ }
+    };
     const channel = supabase.channel(`lead-chat-${deal.id}`)
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "wa_mensagens" }, () => { void loadMessages(selected); })
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "wa_mensagens" }, (payload) => {
+        const row = (payload as { new?: { conversa_id?: unknown } }).new;
+        if (row?.conversa_id != null && conversas.size && !conversas.has(String(row.conversa_id))) return;
+        if (timer !== null) return;
+        timer = window.setTimeout(() => { timer = null; void refreshDb(); }, 1_500);
+      })
       .subscribe();
-    return () => { void supabase.removeChannel(channel); };
+    return () => { if (timer !== null) window.clearTimeout(timer); void supabase.removeChannel(channel); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedKey, deal.id]);
   async function send() { if (!draft.trim()) return; if (!selected?.sendBig) { setError(loading ? "Aguarde as instâncias carregarem…" : "Sua instância de WhatsApp não está habilitada para envio. Abra Configurações → Conexões e reconecte pelo QR — ou selecione outra instância acima."); return; } const chosen = selected; const text = draft; const tempId = `temp-${Date.now()}`; setDraft(""); setError(null); setMessages((prev) => [...prev, { id: tempId, wa_message_id: null, direcao: "enviada", tipo: "texto", conteudo: text, media_url: null, criado_em: new Date().toISOString(), status: "enviando" }]); void (async () => { try { await request({ action: "send", telefone: lead.telefone, instanciaId: chosen.sendBig, texto: text }); setMessages((prev) => prev.map((m) => m.id === tempId ? { ...m, status: "enviado" } : m)); await onResponse(); await loadMessages(chosen); } catch (reason) { const motivo = friendlyChatError(reason instanceof Error ? reason.message : ""); setError(motivo); setMessages((prev) => prev.map((m) => m.id === tempId ? { ...m, status: "erro", status_detalhe: motivo } : m)); } })(); }
