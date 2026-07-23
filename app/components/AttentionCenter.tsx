@@ -224,8 +224,8 @@ export function AttentionCenter({ accessToken, onOpenLead, onOpenChat, onOpenNot
   function mute(minutes: number) { const until = Date.now() + minutes * 60000; setMutedUntil(until); window.sessionStorage.setItem("apecerto-alert-muted-until", String(until)); setOpen(false); }
   function attend(alert: AttentionAlert) {
     dismiss(alert.id); setOpen(false);
-    // Mensagem / cliente aguardando: abre direto o chatzinho do lead (no CRM) pra responder. Lead novo/risco: abre o painel do lead.
-    if (onOpenChat && (alert.kind === "message" || alert.kind === "waiting")) onOpenChat(alert.dealId);
+    // "Abrir e atender" sempre abre o chatzinho do lead (no CRM) pra responder na hora, qualquer que seja o tipo de alerta.
+    if (onOpenChat) onOpenChat(alert.dealId);
     else onOpenLead(alert.dealId);
   }
 
