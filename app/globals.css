@@ -3795,6 +3795,11 @@ article.tone-red{border-left-color:#d3443e}article.tone-red strong{color:#d3443e
 .esteira-config-novaetapa button:disabled{opacity:.5;cursor:default}
 .esteira-config-del{border:1px solid #f0d4cd;background:#fff6f4;color:#c0392b;border-radius:8px;width:38px;height:38px;cursor:pointer;flex:none;align-self:flex-end}
 .esteira-config-del:disabled{opacity:.5;cursor:default}
+.esteira-config-ordem{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
+.esteira-config-pos{font-size:11px;font-weight:800;letter-spacing:.04em;color:#ff6500;background:#fff2e8;padding:4px 10px;border-radius:999px}
+.esteira-config-mover{display:flex;gap:6px}
+.esteira-config-mover button{border:1px solid #e3dcd7;background:#fff;border-radius:8px;padding:6px 11px;font-size:12px;font-weight:700;color:#5f5752;cursor:pointer}
+.esteira-config-mover button:disabled{opacity:.4;cursor:default}
 .esteira-config-list{display:flex;flex-direction:column;gap:14px;margin-top:16px}
 .esteira-config-stage{border:1px solid #ece7e3;border-radius:14px;background:#fff;padding:14px}
 .esteira-config-head{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap}

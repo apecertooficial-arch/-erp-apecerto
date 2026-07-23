@@ -188,6 +188,15 @@ function EsteiraConfig({ accessToken }: { accessToken: string }) {
     if (!window.confirm(`Excluir a etapa "${stage.nome}"? (vendas nessa etapa precisam ser movidas antes)`)) return;
     void mutate({ action: "deleteStage", stageId: stage.id });
   };
+  const moveEtapa = (index: number, direction: number) => {
+    const ordered = stages.slice().sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0));
+    const target = index + direction;
+    if (target < 0 || target >= ordered.length) return;
+    const ids = ordered.map((s) => s.id);
+    [ids[index], ids[target]] = [ids[target], ids[index]];
+    setStages(ids.map((id, i) => ({ ...(ordered.find((s) => s.id === id) as EsteiraStage), ordem: i + 1 })));
+    void mutate({ action: "reorderStages", ids });
+  };
   if (loading) return <section className="settings-card"><h2>Esteira de vendas</h2><p className="settings-hint">Carregando…</p></section>;
   return <section className="settings-card">
     <h2>Esteira de vendas</h2>
@@ -198,9 +207,16 @@ function EsteiraConfig({ accessToken }: { accessToken: string }) {
       <button type="button" disabled={busy || !novaEtapa.trim()} onClick={addEtapa}>＋ Adicionar etapa</button>
     </div>
     <div className="esteira-config-list">
-      {stages.map((stage) => {
+      {stages.map((stage, index) => {
         const stageDocs = docs.filter((doc) => doc.etapa_slug === stage.slug);
         return <div className="esteira-config-stage" key={stage.id}>
+          <div className="esteira-config-ordem">
+            <span className="esteira-config-pos">{index + 1}ª etapa</span>
+            <div className="esteira-config-mover">
+              <button type="button" disabled={busy || index === 0} title="Mover para cima (vem antes)" onClick={() => moveEtapa(index, -1)}>▲ Subir</button>
+              <button type="button" disabled={busy || index === stages.length - 1} title="Mover para baixo (vem depois)" onClick={() => moveEtapa(index, 1)}>▼ Descer</button>
+            </div>
+          </div>
           <div className="esteira-config-head">
             <input aria-label="Cor da etapa" type="color" value={stage.cor || "#8d2bd1"} disabled={busy} onChange={(event) => void mutate({ action: "updateStage", stageId: stage.id, cor: event.target.value })} />
             <input className="esteira-config-nome" value={stage.nome} disabled={busy}
