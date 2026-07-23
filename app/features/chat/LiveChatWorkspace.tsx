@@ -229,19 +229,25 @@ function WaAudio({ src }: { src: string }) {
   const [playing, setPlaying] = useState(false);
   const [cur, setCur] = useState(0);
   const [dur, setDur] = useState(0);
+  const [rate, setRate] = useState(1);
   const bars = [30, 55, 40, 70, 45, 85, 60, 35, 75, 50, 90, 42, 65, 38, 80, 48, 58, 33, 72, 52, 44, 68, 36, 78];
   const pct = dur > 0 ? cur / dur : 0;
   const fmt = (s: number) => { if (!Number.isFinite(s)) return "0:00"; const m = Math.floor(s / 60); const r = Math.floor(s % 60); return `${m}:${r < 10 ? "0" : ""}${r}`; };
   const toggle = () => { const a = ref.current; if (!a) return; if (a.paused) { void a.play(); } else { a.pause(); } };
+  // Velocidade estilo WhatsApp: 1x → 1,5x → 2x → 1x. O corretor clica na pílula e cicla.
+  const RATES = [1, 1.5, 2];
+  const cycleRate = () => { const next = RATES[(RATES.indexOf(rate) + 1) % RATES.length]; setRate(next); if (ref.current) ref.current.playbackRate = next; };
+  const rateLabel = rate === 1.5 ? "1,5×" : `${rate}×`;
   return <div className="wa-audio">
     <button type="button" className="wa-audio-play" onClick={toggle} aria-label={playing ? "Pausar" : "Tocar"}>{playing ? <svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1" /><rect x="14" y="5" width="4" height="14" rx="1" /></svg> : <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>}</button>
     <div className="wa-audio-body">
       <div className="wa-audio-wave" style={{ ["--pct" as string]: pct }}>{bars.map((h, i) => <i key={i} className={i / bars.length <= pct ? "on" : ""} style={{ height: `${h}%` }} />)}</div>
       <span className="wa-audio-time">{playing || cur > 0 ? fmt(cur) : fmt(dur)}</span>
     </div>
+    <button type="button" className={`wa-audio-rate${rate > 1 ? " active" : ""}`} onClick={cycleRate} title="Velocidade de reprodução" aria-label={`Velocidade de reprodução ${rateLabel}`}>{rateLabel}</button>
     <audio ref={ref} src={src} preload="metadata"
-      onPlay={() => setPlaying(true)} onPause={() => setPlaying(false)} onEnded={() => { setPlaying(false); setCur(0); }}
-      onLoadedMetadata={(e) => setDur((e.target as HTMLAudioElement).duration)}
+      onPlay={() => { if (ref.current) ref.current.playbackRate = rate; setPlaying(true); }} onPause={() => setPlaying(false)} onEnded={() => { setPlaying(false); setCur(0); }}
+      onLoadedMetadata={(e) => { const a = e.target as HTMLAudioElement; a.playbackRate = rate; setDur(a.duration); }}
       onTimeUpdate={(e) => setCur((e.target as HTMLAudioElement).currentTime)} />
   </div>;
 }
