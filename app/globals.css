@@ -995,6 +995,9 @@ button { cursor:pointer; }
 .lead-chat-drawer { background:var(--page); box-shadow:var(--shadow-xl); }
 .lead-chat-drawer>header { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; padding:20px 22px; background:var(--surface); border-bottom:1px solid var(--line); }
 .lead-chat-drawer>header>div { display:flex; align-items:center; gap:12px; }
+.chat-head-lead.clickable { cursor:pointer; border-radius:10px; padding:4px 8px; margin:-4px -8px; transition:background .12s; }
+.chat-head-lead.clickable:hover { background:rgba(255,255,255,.16); }
+.chat-head-lead.clickable h2 { text-decoration:underline; text-decoration-color:rgba(255,255,255,.4); text-underline-offset:3px; }
 .lead-chat-drawer>header>div>span { width:46px; height:46px; border-radius:14px; background:var(--purple-100); color:var(--purple-700); display:grid; place-items:center; font-weight:700; font-size:15px; flex:none; }
 .lead-chat-drawer>header small { color:var(--orange); font-size:11px; font-weight:700; letter-spacing:.1em; }
 .lead-chat-drawer>header h2 { margin:3px 0 2px; font-size:18px; font-weight:700; letter-spacing:-.02em; }
