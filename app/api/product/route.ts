@@ -65,12 +65,11 @@ export async function GET(request: Request) {
     leadsQuery,
   ]);
   const linkedIds = new Set((links ?? []).map((item) => item.lead_id));
+  const { data: corretoresList } = await auth.supabase.from("corretores").select("id,nome");
+  const corretorNameById = new Map((corretoresList ?? []).map((c) => [c.id, c.nome]));
   const captadorCorretorId = (data as { captador_corretor_id?: number | null }).captador_corretor_id ?? null;
-  let capturedByName: string | null = null;
-  if (captadorCorretorId) {
-    const { data: captador } = await auth.supabase.from("corretores").select("nome").eq("id", captadorCorretorId).maybeSingle();
-    capturedByName = captador?.nome ?? null;
-  }
+  const capturedByName: string | null = captadorCorretorId ? (corretorNameById.get(captadorCorretorId) ?? null) : null;
+  const unidadesEnriched = (data.unidades ?? []).map((u) => ({ ...u, captador_nome: corretorNameById.get((u as { captador_corretor_id?: number | null }).captador_corretor_id ?? -1) ?? null }));
   const mine = (data as { captado_por_usuario?: string | null }).captado_por_usuario === auth.user.id;
   const checks: Record<string, boolean> = {
     basics: Boolean(data.nome && (data.preco || unitPrices.length) && (data.area_util || unitAreas.length)),
@@ -83,7 +82,7 @@ export async function GET(request: Request) {
     checks.owner = Boolean(data.proprietario_id || (data.proprietario_nome && data.proprietario_tel && data.proprietario_email));
     checks.access = Boolean(data.acesso_tipo && data.acesso_instrucoes && (data.acesso_tipo !== "chave_digital" || data.acesso_codigo));
   }
-  return Response.json({ product: { ...data, midias: media, captado_por_nome: capturedByName, mine, summary_price: data.preco ?? (unitPrices.length ? Math.min(...unitPrices) : null), summary_area: data.area_util ?? (unitAreas.length ? Math.min(...unitAreas) : null), is_favorite: Boolean(favorite), leads: (leadOptions ?? []).map((lead) => ({ ...lead, linked: linkedIds.has(lead.id) })), completion: { checks, completed: Object.values(checks).filter(Boolean).length, total: Object.keys(checks).length } } });
+  return Response.json({ product: { ...data, midias: media, unidades: unidadesEnriched, captado_por_nome: capturedByName, mine, summary_price: data.preco ?? (unitPrices.length ? Math.min(...unitPrices) : null), summary_area: data.area_util ?? (unitAreas.length ? Math.min(...unitAreas) : null), is_favorite: Boolean(favorite), leads: (leadOptions ?? []).map((lead) => ({ ...lead, linked: linkedIds.has(lead.id) })), completion: { checks, completed: Object.values(checks).filter(Boolean).length, total: Object.keys(checks).length } } });
 }
 
 export async function PATCH(request: Request) {
