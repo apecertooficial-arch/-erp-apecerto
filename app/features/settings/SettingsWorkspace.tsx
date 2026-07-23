@@ -152,6 +152,7 @@ function EsteiraConfig({ accessToken }: { accessToken: string }) {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
   const [novoDoc, setNovoDoc] = useState<Record<string, string>>({});
+  const [novaEtapa, setNovaEtapa] = useState("");
   const load = async () => {
     const response = await fetch("/api/crm/sales", { headers: { Authorization: `Bearer ${accessToken}` } });
     const result = await response.json() as { stages?: EsteiraStage[]; etapaDocs?: EsteiraDoc[]; error?: string };
@@ -177,11 +178,25 @@ function EsteiraConfig({ accessToken }: { accessToken: string }) {
     setNovoDoc((current) => ({ ...current, [slug]: "" }));
     void mutate({ action: "docCreate", etapaSlug: slug, nome, obrigatorio: true });
   };
+  const addEtapa = () => {
+    const nome = novaEtapa.trim();
+    if (!nome) return;
+    setNovaEtapa("");
+    void mutate({ action: "createStage", nome });
+  };
+  const removeEtapa = (stage: EsteiraStage) => {
+    if (!window.confirm(`Excluir a etapa "${stage.nome}"? (vendas nessa etapa precisam ser movidas antes)`)) return;
+    void mutate({ action: "deleteStage", stageId: stage.id });
+  };
   if (loading) return <section className="settings-card"><h2>Esteira de vendas</h2><p className="settings-hint">Carregando…</p></section>;
   return <section className="settings-card">
     <h2>Esteira de vendas</h2>
     <p>Defina, para cada etapa do negócio, quem é o responsável, o prazo (SLA) e quais documentos são obrigatórios para o lead avançar. Os documentos aparecem no botão <strong>📎 Docs</strong> dentro do card de cada venda.</p>
     {msg && <div className="settings-toast">{msg}</div>}
+    <div className="esteira-config-novaetapa">
+      <input value={novaEtapa} disabled={busy} placeholder="Nome da nova etapa (ex.: Vistoria, Assinatura, Registro)" onChange={(event) => setNovaEtapa(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); addEtapa(); } }} />
+      <button type="button" disabled={busy || !novaEtapa.trim()} onClick={addEtapa}>＋ Adicionar etapa</button>
+    </div>
     <div className="esteira-config-list">
       {stages.map((stage) => {
         const stageDocs = docs.filter((doc) => doc.etapa_slug === stage.slug);
@@ -201,6 +216,7 @@ function EsteiraConfig({ accessToken }: { accessToken: string }) {
                 onChange={(event) => setStages((rows) => rows.map((r) => r.id === stage.id ? { ...r, sla_dias: Number(event.target.value) } : r))}
                 onBlur={(event) => { const v = Math.max(0, Math.trunc(Number(event.target.value) || 0)); if (v !== (stage.sla_dias ?? 0)) void mutate({ action: "updateStage", stageId: stage.id, slaDias: v }); }} />
             </label>
+            <button type="button" className="esteira-config-del" disabled={busy} title="Excluir etapa" onClick={() => removeEtapa(stage)}>🗑</button>
           </div>
           <label className="esteira-config-gate">
             <input type="checkbox" checked={stage.exige_docs} disabled={busy} onChange={(event) => void mutate({ action: "updateStage", stageId: stage.id, exigeDocs: event.target.checked })} />
