@@ -239,8 +239,9 @@ export async function PATCH(request: Request) {
       if (deleteError) return Response.json({ error: deleteError.message }, { status: 502 });
     }
     for (const item of incomingUnits) {
-      const row: UnitInsert = {
-        empreendimento_id: id,
+      // Só os campos COMERCIAIS da unidade. de_terceiros, proprietário, indicador e acesso
+      // são propriedades da unidade/indicação e NUNCA são alterados pela edição do produto.
+      const commonRow = {
         numero: typeof item.numero === "string" ? item.numero.trim() || null : null,
         tipologia: typeof item.tipologia === "string" ? item.tipologia.trim() || null : null,
         area_m2: item.area_m2 === "" || item.area_m2 == null ? null : Number(item.area_m2),
@@ -248,10 +249,11 @@ export async function PATCH(request: Request) {
         valor_tabela: item.valor_tabela === "" || item.valor_tabela == null ? null : Number(item.valor_tabela),
         valor_promo: item.valor_promo === "" || item.valor_promo == null ? null : Number(item.valor_promo),
         disponivel: item.disponivel !== false,
-        de_terceiros: body.origin === "terceiros",
       };
       const unitId = typeof item.id === "string" && existingIds.has(item.id) ? item.id : null;
-      const unitResult = unitId ? await auth.supabase.from("unidades").update(row).eq("id", unitId).eq("empreendimento_id", id) : await auth.supabase.from("unidades").insert(row);
+      const unitResult = unitId
+        ? await auth.supabase.from("unidades").update(commonRow as never).eq("id", unitId).eq("empreendimento_id", id)
+        : await auth.supabase.from("unidades").insert({ ...commonRow, empreendimento_id: id, de_terceiros: body.origin === "terceiros" } as never);
       if (unitResult.error) return Response.json({ error: unitResult.error.message }, { status: 502 });
     }
   }
