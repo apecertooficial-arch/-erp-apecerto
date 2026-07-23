@@ -1042,6 +1042,17 @@ button { cursor:pointer; }
 .lead-chat-drawer>footer>.chat-sara-toggle.ready{color:#7c3aed!important;background:#f3ecfb!important}
 .lead-chat-drawer>footer>.chat-emoji-btn.active{color:#ff6500!important;background:#fff2e8!important}
 .chat-suggestion-actions .cs-outra{background:#fff!important;border:1px solid #e0d8d2!important;color:#6d635c!important}
+.chat-sched{border-top:1px solid #e8e0da;background:#fff9ef}
+.chat-sched-head{width:100%;display:flex;align-items:center;gap:8px;border:0;background:transparent;padding:9px 14px;cursor:pointer;text-align:left}
+.chat-sched-head strong{flex:1;font-size:12px;color:#8a5a1e}
+.chat-sched-head .chat-sched-ico{font-size:14px}
+.chat-sched-head em{font-style:normal;color:#b6906a;font-size:12px}
+.chat-sched-list{padding:0 12px 10px;display:flex;flex-direction:column;gap:6px;max-height:170px;overflow:auto}
+.chat-sched-item{display:flex;align-items:center;gap:10px;background:#fff;border:1px solid #f0e3d2;border-radius:9px;padding:8px 10px}
+.chat-sched-item>div{flex:1;min-width:0;display:flex;flex-direction:column}
+.chat-sched-item b{font-size:11px;color:#c47a1e}
+.chat-sched-item span{font-size:12px;color:#4a443f;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.chat-sched-item>button{flex:none;width:26px;height:26px;border:1px solid #f0d4cd;background:#fff6f4;color:#c0392b;border-radius:7px;cursor:pointer}
 .chat-messages article small { color:var(--faint); font-size:11px; text-transform:uppercase; letter-spacing:.05em; }
 .chat-messages article p { margin:3px 0 2px; }
 .chat-messages article time { display:block; color:var(--faint); font-size:11px; text-align:right; }

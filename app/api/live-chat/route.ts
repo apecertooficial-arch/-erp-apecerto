@@ -179,6 +179,17 @@ export async function POST(request: Request) {
     const { error } = await auth.supabase.from("mensagens_agendadas").insert({ telefone: phone, instancia_id: instanceId, lead_id: Number.isSafeInteger(leadId) ? leadId : null, tipo: "text", texto: content, quando: when.toISOString(), status: "agendado", criado_por: auth.user.id });
     return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true, scheduled: 1 });
   }
+  if (action === "listScheduled") {
+    if (!Number.isSafeInteger(leadId) || leadId < 1) return Response.json({ agendadas: [] });
+    const { data, error } = await auth.supabase.from("mensagens_agendadas").select("id,texto,tipo,quando,status").eq("lead_id", leadId).eq("status", "agendado").order("quando", { ascending: true });
+    return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ agendadas: data ?? [] });
+  }
+  if (action === "cancelScheduled") {
+    const id = Number(body.scheduledId);
+    if (!Number.isSafeInteger(id) || id < 1) return Response.json({ error: "Agendamento inválido." }, { status: 422 });
+    const { error } = await auth.supabase.from("mensagens_agendadas").update({ status: "cancelado" }).eq("id", id).eq("status", "agendado");
+    return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
+  }
   if (action === "sendApproach") {
     const phone = phoneNumber(body.phone); const instanceId = Number(body.instanceId); const approachId = Number(body.approachId);
     if (phone.length < 8 || !Number.isSafeInteger(instanceId) || !Number.isSafeInteger(approachId)) return Response.json({ error: "Escolha a instância e a abordagem." }, { status: 422 });
