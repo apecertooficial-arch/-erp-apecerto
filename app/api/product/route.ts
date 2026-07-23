@@ -92,6 +92,20 @@ export async function PATCH(request: Request) {
   const id = typeof body.id === "string" ? body.id : "";
   if (!UUID.test(id)) return Response.json({ error: "Produto inválido." }, { status: 400 });
 
+  if (body.action === "decideUnit") {
+    const { data: me } = await auth.supabase.from("usuarios").select("role").eq("id", auth.user.id).maybeSingle();
+    const role = (me as { role?: string } | null)?.role ?? "corretor";
+    if (!["admin", "gestor", "executivo"].includes(role)) return Response.json({ error: "Apenas admin, gestor ou executivo podem aprovar unidades." }, { status: 403 });
+    const unidadeId = typeof body.unidadeId === "string" ? body.unidadeId : "";
+    if (!UUID.test(unidadeId)) return Response.json({ error: "Unidade inválida." }, { status: 400 });
+    const approve = body.approve === true;
+    const patch = approve
+      ? { aprovacao: "aprovado", reprovacao_motivo: null }
+      : { aprovacao: "reprovado", reprovacao_motivo: typeof body.motivo === "string" ? body.motivo.slice(0, 300) : null };
+    const { error } = await auth.supabase.from("unidades").update(patch as never).eq("id", unidadeId).eq("empreendimento_id", id);
+    return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true, aprovacao: patch.aprovacao });
+  }
+
   if (body.action === "toggleFavorite") {
     const favorite = body.favorite === true;
     const result = favorite
