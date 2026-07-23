@@ -4,6 +4,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { getBrowserSupabaseClient } from "../../lib/supabase/browser";
 import { StatusTick, ackState } from "./statusTick";
+import { startOpusRecorder, type OpusHandle } from "../../lib/opusMic";
 
 type Message = { id: string; conversa_id: string; direcao: string; tipo: string; conteudo: string | null; media_url?: string | null; raw?: unknown; criado_em: string | null; enviado_em?: string | null; status?: string | number | null; status_detalhe?: string | null };
 type Conversation = { id: string; contato_id: string; instancia_id: string; status: string; ultima_msg_em: string | null; origem: string | null };
@@ -54,8 +55,9 @@ export function LiveChatWorkspace({ accessToken, initialLeadId = null, onInitial
   const [emojiOpen, setEmojiOpen] = useState(false);
   const [scheduled, setScheduled] = useState<Array<{ id: number; texto: string | null; tipo: string; quando: string; status: string }>>([]);
   const fileInput = useRef<HTMLInputElement>(null);
-  const recorder = useRef<MediaRecorder | null>(null);
-  const chunks = useRef<Blob[]>([]);
+  const opusRec = useRef<OpusHandle | null>(null);
+  const recStream = useRef<MediaStream | null>(null);
+  const recCtx = useRef<AudioContext | null>(null);
   const messageStream = useRef<HTMLDivElement>(null);
 
   const load = async () => {
@@ -203,17 +205,21 @@ export function LiveChatWorkspace({ accessToken, initialLeadId = null, onInitial
     } catch (reason) { setNotice(reason instanceof Error ? reason.message : "Não foi possível enviar o arquivo."); }
     finally { setBusy(false); if (fileInput.current) fileInput.current.value = ""; }
   };
+  const cleanupRec = () => {
+    const stream = recStream.current; recStream.current = null;
+    if (stream) stream.getTracks().forEach((track) => track.stop());
+    if (recCtx.current) { void recCtx.current.close().catch(() => {}); recCtx.current = null; }
+  };
   const toggleRecording = async () => {
-    if (recording) { recorder.current?.stop(); setRecording(false); return; }
+    if (recording) { const handle = opusRec.current; opusRec.current = null; setRecording(false); if (handle) handle.stop(true); else cleanupRec(); return; }
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      chunks.current = [];
-      const mediaRecorder = new MediaRecorder(stream);
-      recorder.current = mediaRecorder;
-      mediaRecorder.ondataavailable = (event) => { if (event.data.size) chunks.current.push(event.data); };
-      mediaRecorder.onstop = () => { const blob = new Blob(chunks.current, { type: mediaRecorder.mimeType || "audio/webm" }); stream.getTracks().forEach((track) => track.stop()); void upload(new File([blob], `audio-${Date.now()}.webm`, { type: blob.type })); };
-      mediaRecorder.start(); setRecording(true); setNotice("Gravando áudio. Clique novamente para enviar.");
-    } catch { setNotice("Autorize o microfone no navegador para gravar o áudio."); }
+      recStream.current = stream;
+      const ctx = new AudioContext(); recCtx.current = ctx;
+      const src = ctx.createMediaStreamSource(stream);
+      opusRec.current = await startOpusRecorder(src, (file) => { void upload(file); }, () => cleanupRec());
+      setRecording(true); setNotice("Gravando áudio. Clique novamente para enviar.");
+    } catch (reason) { cleanupRec(); setRecording(false); setNotice(reason instanceof Error && reason.message.includes("gravador") ? reason.message : "Autorize o microfone no navegador para gravar o áudio."); }
   };
 
   const openQuickAction = (action: QuickAction) => {
