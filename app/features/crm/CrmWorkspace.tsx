@@ -186,11 +186,19 @@ export function CrmWorkspace({ accessToken, initialDealId = null, onInitialDealH
 
   useEffect(() => {
     const supabase = getBrowserSupabaseClient();
+    // Recarga com FREIO: cada mensagem/movimentação agenda UMA recarga em 8s e as
+    // rajadas se acumulam nela — antes, cada mensagem de WhatsApp da operação
+    // disparava o recarregamento completo do CRM (12 consultas), deixando tudo lento.
+    let recarga: number | null = null;
+    const agendarRecarga = () => {
+      if (recarga !== null) return;
+      recarga = window.setTimeout(() => { recarga = null; void load({ quiet: true }); }, 8_000);
+    };
     const channel = supabase.channel("crm-live-updates")
-      .on("postgres_changes", { event: "*", schema: "public", table: "negocios" }, () => { void load({ quiet: true }); })
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "wa_mensagens" }, () => { void load({ quiet: true }); })
+      .on("postgres_changes", { event: "*", schema: "public", table: "negocios" }, agendarRecarga)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "wa_mensagens" }, agendarRecarga)
       .subscribe();
-    return () => { void supabase.removeChannel(channel); };
+    return () => { if (recarga !== null) window.clearTimeout(recarga); void supabase.removeChannel(channel); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [accessToken]);
 
