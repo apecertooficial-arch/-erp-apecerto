@@ -1,48 +1,52 @@
 "use client";
 
-import { use, useCallback, useEffect, useState } from "react";
+import { use, useCallback, useEffect, useMemo, useState } from "react";
 
 type Visita = {
-  hora: string; horaFim: string | null; cliente: string; corretor: string;
+  dia: string; hora: string; horaFim: string | null; cliente: string; corretor: string;
   produto: string; unidade: string; local: string; status: string; comGerente: boolean;
 };
-type Dia = { dia: string; rotulo: string; visitas: Visita[] };
-type Agenda = { geradoEm: string; dias: Dia[] };
+type Agenda = { hoje: string; visitas: Visita[] };
 
-const DIAS_PT = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
-const STATUS: Record<string, { t: string; bg: string; fg: string }> = {
-  agendada: { t: "Agendada", bg: "#FFF1E5", fg: "#C2530A" },
-  confirmada: { t: "Confirmada", bg: "#E7F6EC", fg: "#157A42" },
-  realizada: { t: "Realizada ✓", bg: "#EDEBFA", fg: "#4C3FB8" },
+const MESES = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
+const SEMANA = ["D", "S", "T", "Q", "Q", "S", "S"];
+const DIAS_PT = ["domingo", "segunda", "terça", "quarta", "quinta", "sexta", "sábado"];
+const CORES: Record<string, string> = {
+  Claudia: "#FF7000", Elizangela: "#E5006D", Tica: "#8B00CC", Fabiano: "#1E6FD9", Edrisia: "#0FA36B",
 };
+const corDo = (nome: string) => CORES[nome.split(" ")[0]] ?? "#FF7000";
+const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
-function rotuloDia(iso: string) {
-  const [y, m, d] = iso.split("-").map(Number);
-  const dt = new Date(y, m - 1, d);
-  const hoje = new Date();
-  const isHoje = dt.toDateString() === hoje.toDateString();
-  const amanha = new Date(hoje); amanha.setDate(hoje.getDate() + 1);
-  const isAmanha = dt.toDateString() === amanha.toDateString();
-  const base = `${DIAS_PT[dt.getDay()]} · ${String(d).padStart(2, "0")}/${String(m).padStart(2, "0")}`;
-  return isHoje ? `HOJE · ${base}` : isAmanha ? `Amanhã · ${base}` : base;
-}
-
-/* Agenda ApêCerto — versão mobile compartilhável (somente leitura). */
+/* Agenda ApêCerto — visão mensal estilo Google Agenda (link compartilhável, somente leitura). */
 export default function AgendaPublica({ params }: { params: Promise<{ token: string }> }) {
   const { token } = use(params);
+  const hoje = useMemo(() => new Date(), []);
+  const [ano, setAno] = useState(hoje.getFullYear());
+  const [mes, setMes] = useState(hoje.getMonth());
+  const [diaSel, setDiaSel] = useState(iso(hoje));
   const [agenda, setAgenda] = useState<Agenda | null>(null);
   const [erro, setErro] = useState("");
-  const [horaAtualizacao, setHoraAtualizacao] = useState("");
 
   const load = useCallback(async () => {
+    // carrega o mês visível inteiro (incluindo pontas da grade)
+    const de = iso(new Date(ano, mes, 1 - new Date(ano, mes, 1).getDay()));
+    const ate = iso(new Date(ano, mes + 1, 6));
     try {
-      const res = await fetch(`/api/agenda-publica?token=${encodeURIComponent(token)}`);
+      const res = await fetch(`/api/agenda-publica?token=${encodeURIComponent(token)}&de=${de}&ate=${ate}`);
       const data = await res.json() as Agenda & { error?: string };
       if (!res.ok) { setErro(data.error || "Não foi possível abrir a agenda."); return; }
       setAgenda(data); setErro("");
-      setHoraAtualizacao(new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }));
     } catch { setErro("Sem conexão — tente de novo."); }
-  }, [token]);
+  }, [token, ano, mes]);
+
+  useEffect(() => {
+    // garantia de viewport mobile (evita a página abrir "espremida" no celular)
+    if (!document.querySelector('meta[name="viewport"]')) {
+      const m = document.createElement("meta");
+      m.name = "viewport"; m.content = "width=device-width, initial-scale=1, viewport-fit=cover";
+      document.head.appendChild(m);
+    }
+  }, []);
 
   useEffect(() => {
     void load();
@@ -50,70 +54,132 @@ export default function AgendaPublica({ params }: { params: Promise<{ token: str
     return () => window.clearInterval(timer);
   }, [load]);
 
-  const totalVisitas = (agenda?.dias ?? []).reduce((n, d) => n + d.visitas.length, 0);
+  const porDia = useMemo(() => {
+    const m = new Map<string, Visita[]>();
+    for (const v of agenda?.visitas ?? []) {
+      if (!m.has(v.dia)) m.set(v.dia, []);
+      m.get(v.dia)!.push(v);
+    }
+    return m;
+  }, [agenda]);
+
+  // células da grade do mês (começa no domingo)
+  const celulas = useMemo(() => {
+    const primeiro = new Date(ano, mes, 1);
+    const inicio = new Date(ano, mes, 1 - primeiro.getDay());
+    const out: Array<{ d: string; num: number; foraMes: boolean }> = [];
+    for (let i = 0; i < 42; i++) {
+      const dt = new Date(inicio); dt.setDate(inicio.getDate() + i);
+      out.push({ d: iso(dt), num: dt.getDate(), foraMes: dt.getMonth() !== mes });
+      if (i >= 34 && dt.getDay() === 6 && new Date(inicio.getTime() + (i + 1) * 86400000).getMonth() !== mes) break;
+    }
+    return out;
+  }, [ano, mes]);
+
+  const navega = (delta: number) => {
+    let m = mes + delta, a = ano;
+    if (m < 0) { m = 11; a--; } if (m > 11) { m = 0; a++; }
+    setMes(m); setAno(a);
+  };
+
+  const selecionadas = porDia.get(diaSel) ?? [];
+  const [ys, ms, ds] = diaSel.split("-").map(Number);
+  const rotuloSel = `${DIAS_PT[new Date(ys, ms - 1, ds).getDay()]}, ${ds} de ${MESES[ms - 1]}`;
+  const hojeIso = agenda?.hoje ?? iso(hoje);
 
   return <div className="agm">
-    <header className="agm-hero">
-      <img src="/brand/simbolo-cores.png" alt="" style={{ background: "#fff", borderRadius: 12, padding: 5 }} onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
-      <div>
-        <h1>Agenda ApêCerto</h1>
-        <p>{agenda ? `${totalVisitas} compromisso${totalVisitas === 1 ? "" : "s"} nos próximos 14 dias` : "Carregando…"}</p>
-      </div>
+    <header className="agm-topo">
+      <img src="/brand/simbolo-cores.png" alt="ApêCerto" />
+      <button type="button" onClick={() => navega(-1)} aria-label="Mês anterior">‹</button>
+      <h1>{MESES[mes]} <span>{ano}</span></h1>
+      <button type="button" onClick={() => navega(1)} aria-label="Próximo mês">›</button>
+      <button type="button" className="agm-hoje-btn" onClick={() => { setAno(hoje.getFullYear()); setMes(hoje.getMonth()); setDiaSel(hojeIso); }}>Hoje</button>
     </header>
 
     {erro && <div className="agm-erro">{erro}</div>}
 
-    {agenda && agenda.dias.length === 0 && !erro &&
-      <div className="agm-vazio">Nenhuma visita marcada nos próximos 14 dias. 🎉</div>}
-
-    {(agenda?.dias ?? []).map((d) => <section className="agm-dia" key={d.dia}>
-      <h2 className={rotuloDia(d.dia).startsWith("HOJE") ? "hoje" : ""}>{rotuloDia(d.dia)}</h2>
-      {d.visitas.map((v, i) => {
-        const st = STATUS[v.status] ?? STATUS.agendada;
-        return <article className="agm-card" key={i}>
-          <div className="agm-hora"><b>{v.hora}</b>{v.horaFim && <small>até {v.horaFim}</small>}</div>
-          <div className="agm-info">
-            <strong>{v.cliente}</strong>
-            {(v.produto || v.unidade) && <span>🏢 {v.produto}{v.unidade ? ` · ${v.unidade}` : ""}</span>}
-            {v.local && <span>📍 {v.local}</span>}
-            <div className="agm-tags">
-              <em className="cor">{v.corretor}</em>
-              <em style={{ background: st.bg, color: st.fg }}>{st.t}</em>
-              {v.comGerente && <em className="ger">c/ gerente</em>}
-            </div>
-          </div>
-        </article>;
+    <div className="agm-grade">
+      {SEMANA.map((s, i) => <div className="agm-sem" key={i}>{s}</div>)}
+      {celulas.map((c) => {
+        const vs = porDia.get(c.d) ?? [];
+        const ehHoje = c.d === hojeIso;
+        const sel = c.d === diaSel;
+        return <button type="button" key={c.d} onClick={() => setDiaSel(c.d)}
+          className={`agm-cel ${c.foraMes ? "fora" : ""} ${sel ? "sel" : ""}`}>
+          <span className={`agm-num ${ehHoje ? "hj" : ""}`}>{c.num}</span>
+          <span className="agm-chips">
+            {vs.slice(0, 3).map((v, i) => <em key={i} style={{ background: corDo(v.corretor) }}>
+              {v.corretor.split(" ")[0]}/{v.cliente.split(" ")[0]}{v.produto ? `·${v.produto.split(" ")[0]}` : ""}
+            </em>)}
+            {vs.length > 3 && <small>+{vs.length - 3}</small>}
+          </span>
+        </button>;
       })}
-    </section>)}
+    </div>
 
-    {agenda && <footer className="agm-rodape">
-      Atualiza sozinha a cada minuto · atualizada às {horaAtualizacao}
-    </footer>}
+    <section className="agm-dia-detalhe">
+      <h2>{rotuloSel}{selecionadas.length > 0 && <b> · {selecionadas.length} compromisso{selecionadas.length === 1 ? "" : "s"}</b>}</h2>
+      {selecionadas.length === 0 && <p className="agm-livre">Dia livre — nenhuma visita marcada.</p>}
+      {selecionadas.map((v, i) => <article className="agm-card" key={i} style={{ borderLeftColor: corDo(v.corretor) }}>
+        <div className="agm-hora"><b>{v.hora}</b>{v.horaFim && <small>{v.horaFim}</small>}</div>
+        <div className="agm-info">
+          <strong>{v.cliente}</strong>
+          {(v.produto || v.unidade)
+            ? <span className="agm-prod">🏢 {v.produto || "Produto"}{v.unidade ? ` · ${v.unidade}` : ""}</span>
+            : <span className="agm-prod falta">⚠ sem produto informado</span>}
+          {v.local && <span>📍 {v.local}</span>}
+          <div className="agm-tags">
+            <em style={{ background: `${corDo(v.corretor)}1c`, color: corDo(v.corretor) }}>{v.corretor}</em>
+            <em className={`st-${v.status}`}>{v.status === "realizada" ? "Realizada ✓" : v.status === "confirmada" ? "Confirmada" : "Agendada"}</em>
+            {v.comGerente && <em className="ger">c/ gerente</em>}
+          </div>
+        </div>
+      </article>)}
+    </section>
+
+    <footer className="agm-rodape">Agenda ApêCerto · atualiza sozinha a cada minuto</footer>
 
     <style>{`
-      html, body { margin:0; padding:0; background:#F7F4F1; }
-      .agm { min-height:100vh; max-width:560px; margin:0 auto; font-family:'Nunito', -apple-system, 'Segoe UI', sans-serif; color:#20140e; padding-bottom:40px; }
-      .agm-hero { display:flex; align-items:center; gap:14px; padding:22px 18px 20px; background:linear-gradient(120deg, #FF6500 0%, #E5006D 100%); color:#fff; border-radius:0 0 22px 22px; box-shadow:0 8px 24px rgba(229,0,109,.22); }
-      .agm-hero img { width:44px; height:44px; object-fit:contain; }
-      .agm-hero h1 { margin:0; font-size:19px; letter-spacing:-.02em; }
-      .agm-hero p { margin:3px 0 0; font-size:12.5px; opacity:.92; font-weight:600; }
-      .agm-erro { margin:18px 14px; padding:14px 16px; border-radius:14px; background:#FDEAE7; color:#B03227; font-weight:700; font-size:14px; }
-      .agm-vazio { margin:26px 14px; padding:22px; border-radius:16px; background:#fff; text-align:center; font-weight:700; color:#6d635c; box-shadow:0 2px 10px rgba(32,20,14,.05); }
-      .agm-dia { padding:0 12px; }
-      .agm-dia h2 { font-size:12px; letter-spacing:.08em; text-transform:uppercase; color:#8a807a; margin:22px 4px 8px; }
-      .agm-dia h2.hoje { color:#C2530A; }
-      .agm-card { display:flex; gap:12px; background:#fff; border-radius:15px; padding:13px 14px; margin-bottom:9px; box-shadow:0 2px 10px rgba(32,20,14,.06); }
-      .agm-hora { flex:0 0 54px; display:flex; flex-direction:column; align-items:center; padding-top:2px; }
-      .agm-hora b { font-size:16px; color:#FF6500; letter-spacing:-.02em; }
-      .agm-hora small { font-size:10px; color:#8a807a; font-weight:700; margin-top:2px; text-align:center; }
-      .agm-info { flex:1; min-width:0; display:flex; flex-direction:column; gap:3px; }
-      .agm-info strong { font-size:15px; letter-spacing:-.01em; }
-      .agm-info > span { font-size:12px; color:#6d635c; font-weight:600; overflow:hidden; text-overflow:ellipsis; }
+      html, body { margin:0; padding:0; background:#fff; width:100%; overflow-x:hidden; }
+      .agm, .agm * { box-sizing:border-box; }
+      .agm { min-height:100vh; width:100%; max-width:640px; margin:0 auto; font-family:'Nunito', -apple-system, 'Segoe UI', sans-serif; color:#20140e; padding-bottom:30px; }
+      .agm-topo { display:flex; align-items:center; gap:8px; padding:14px 12px 10px; position:sticky; top:0; background:#fff; z-index:5; border-bottom:1px solid #F0ECE8; }
+      .agm-topo img { width:34px; height:34px; object-fit:contain; }
+      .agm-topo h1 { flex:1; margin:0; font-size:19px; text-transform:capitalize; letter-spacing:-.02em; text-align:center; }
+      .agm-topo h1 span { color:#8a807a; font-weight:600; font-size:15px; }
+      .agm-topo > button { width:34px; height:34px; border-radius:10px; border:1.5px solid #ECE7E3; background:#fff; color:#6d635c; font-size:19px; cursor:pointer; }
+      .agm-topo .agm-hoje-btn { width:auto; padding:0 13px; font-size:12.5px; font-weight:800; color:#C2530A; border-color:#F6D9C2; background:#FFF1E5; }
+      .agm-erro { margin:14px; padding:13px 15px; border-radius:13px; background:#FDEAE7; color:#B03227; font-weight:700; font-size:13.5px; }
+      .agm-grade { display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); width:100%; border-bottom:1px solid #F0ECE8; }
+      .agm-sem { text-align:center; font-size:10.5px; font-weight:800; color:#8a807a; padding:8px 0 4px; }
+      .agm-cel { min-width:0; min-height:74px; border:none; border-top:1px solid #F5F1EE; background:#fff; padding:3px 1px; text-align:center; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:2px; font-family:inherit; }
+      .agm-cel.fora { opacity:.38; }
+      .agm-cel.sel { background:#FFF7F0; box-shadow:inset 0 0 0 2px #FF6500; border-radius:8px; }
+      .agm-num { width:24px; height:24px; display:flex; align-items:center; justify-content:center; font-size:12.5px; font-weight:700; border-radius:50%; }
+      .agm-num.hj { background:#FF6500; color:#fff; }
+      .agm-chips { display:flex; flex-direction:column; gap:2px; width:100%; overflow:hidden; }
+      .agm-chips em { font-style:normal; font-size:8.5px; font-weight:800; color:#fff; border-radius:4px; padding:1.5px 3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
+      .agm-chips small { font-size:9px; font-weight:800; color:#8a807a; }
+      .agm-dia-detalhe { padding:14px 14px 0; }
+      .agm-dia-detalhe h2 { font-size:14.5px; margin:2px 0 10px; text-transform:capitalize; }
+      .agm-dia-detalhe h2 b { color:#C2530A; font-weight:800; }
+      .agm-livre { font-size:13px; color:#8a807a; font-weight:650; background:#FAF8F6; border-radius:12px; padding:14px; text-align:center; }
+      .agm-card { display:flex; gap:12px; background:#fff; border:1px solid #F0ECE8; border-left:4px solid #FF6500; border-radius:13px; padding:12px 13px; margin-bottom:8px; box-shadow:0 2px 8px rgba(32,20,14,.05); }
+      .agm-hora { flex:0 0 46px; display:flex; flex-direction:column; align-items:center; padding-top:1px; }
+      .agm-hora b { font-size:15px; letter-spacing:-.02em; }
+      .agm-hora small { font-size:10px; color:#8a807a; font-weight:700; margin-top:1px; }
+      .agm-info { flex:1; min-width:0; display:flex; flex-direction:column; gap:2px; }
+      .agm-info strong { font-size:14.5px; letter-spacing:-.01em; }
+      .agm-info > span { font-size:12px; color:#6d635c; font-weight:600; }
+      .agm-info .agm-prod { color:#C2530A; font-weight:800; }
+      .agm-info .agm-prod.falta { color:#B97A0C; background:#FFF6EA; border-radius:7px; padding:2px 7px; align-self:flex-start; font-size:11px; }
       .agm-tags { display:flex; gap:6px; flex-wrap:wrap; margin-top:5px; }
-      .agm-tags em { font-style:normal; font-size:10.5px; font-weight:800; padding:3px 9px; border-radius:999px; }
-      .agm-tags em.cor { background:#FFF1E5; color:#C2530A; border:1px solid #F6D9C2; }
+      .agm-tags em { font-style:normal; font-size:10px; font-weight:800; padding:2.5px 8px; border-radius:999px; }
+      .agm-tags em.st-agendada { background:#FFF1E5; color:#C2530A; }
+      .agm-tags em.st-confirmada { background:#E7F6EC; color:#157A42; }
+      .agm-tags em.st-realizada { background:#EDEBFA; color:#4C3FB8; }
       .agm-tags em.ger { background:#F3E8FB; color:#66009A; }
-      .agm-rodape { text-align:center; font-size:11px; color:#8a807a; font-weight:650; margin-top:26px; }
+      .agm-rodape { text-align:center; font-size:10.5px; color:#8a807a; font-weight:650; margin-top:22px; }
     `}</style>
   </div>;
 }
