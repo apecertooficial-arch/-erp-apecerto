@@ -71,6 +71,7 @@ export async function GET(request: Request) {
 
   const { data: gerentesData } = await auth.supabase.from("gerentes").select("id,nome,geral,corretor_id").eq("ativo", true).order("geral", { ascending: false });
   const { data: meProfile } = await auth.supabase.from("usuarios").select("role").eq("id", auth.user.id).maybeSingle();
+  const { data: aquarioData } = await auth.supabase.rpc("aquario_status");
 
   return Response.json({
     mode: "production",
@@ -90,6 +91,7 @@ export async function GET(request: Request) {
     sla: slaResult.data ?? [],
     alerts: alertsResult.data ?? [],
     leituras: leiturasResult.data ?? [],
+    aquario: aquarioData ?? null,
   });
 }
 
@@ -174,6 +176,26 @@ export async function PATCH(request: Request) {
       if (dealError) return Response.json({ error: `Lead criado, mas o negócio não foi aberto: ${dealError.message}` }, { status: 502 });
     }
     return Response.json({ success: true, leadId: lead.id });
+  }
+
+  if (action === "aquarioPescar") {
+    const { data, error } = await auth.supabase.rpc("aquario_pescar");
+    const result = data && typeof data === "object" ? data as Record<string, unknown> : {};
+    if (error || result.ok === false) return Response.json({ error: error?.message || cleanText(result.error, 300) || "Não foi possível pescar um lead." }, { status: 409 });
+    return Response.json({ success: true, lead: { id: result.lead_id, nome: result.nome, telefone: result.telefone } });
+  }
+
+  if (action === "aquarioImportar") {
+    const rowsInput = Array.isArray(body.rows) ? body.rows : [];
+    const rows = rowsInput.slice(0, 2000).map((row) => {
+      const r = row && typeof row === "object" ? row as Record<string, unknown> : {};
+      return { nome: cleanText(r.nome, 160), telefone: cleanText(r.telefone, 40), email: cleanText(r.email, 180).toLowerCase() };
+    }).filter((r) => r.nome || r.telefone);
+    if (!rows.length) return Response.json({ error: "Nenhum lead válido para importar." }, { status: 422 });
+    const { data, error } = await auth.supabase.rpc("aquario_importar", { p_rows: rows });
+    const result = data && typeof data === "object" ? data as Record<string, unknown> : {};
+    if (error || result.ok === false) return Response.json({ error: error?.message || cleanText(result.error, 300) || "Não foi possível importar." }, { status: 502 });
+    return Response.json({ success: true, importados: result.importados, duplicados: result.duplicados, invalidos: result.invalidos });
   }
 
   if (action === "addNote") {

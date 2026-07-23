@@ -51,7 +51,7 @@ function friendlyChatError(raw: string): string {
   return raw || "Não foi possível enviar a mensagem.";
 }
 type Historico = { id: number | string; lead_id: number | null; negocio_id: number | null; corretor_id: number | null; tipo: string; canal?: string | null; texto: string | null; resultado?: string | null; criado_em: string };
-type CrmData = { pipelines: Pipeline[]; stages: Stage[]; leads: Lead[]; deals: Deal[]; brokers: Broker[]; activities: Activity[]; historico?: Historico[]; tasks: Task[]; productLinks: ProductLink[]; visits: Visit[]; products: Product[]; sla: SlaInfo[]; alerts: LeadAlert[]; gerentes?: Gerente[]; leituras?: Array<{ negocio_id: number; lido_em: string }> };
+type CrmData = { pipelines: Pipeline[]; stages: Stage[]; leads: Lead[]; deals: Deal[]; brokers: Broker[]; activities: Activity[]; historico?: Historico[]; tasks: Task[]; productLinks: ProductLink[]; visits: Visit[]; products: Product[]; sla: SlaInfo[]; alerts: LeadAlert[]; gerentes?: Gerente[]; leituras?: Array<{ negocio_id: number; lido_em: string }>; aquario?: { stage_id: number | null; disponiveis: number } | null };
 type ViewName = "pipeline" | "leads" | "sales" | "analytics" | "agenda" | "atividades";
 
 const money = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
@@ -152,6 +152,8 @@ export function CrmWorkspace({ accessToken, initialDealId = null, onInitialDealH
   const [overdueOnly, setOverdueOnly] = useState(false);
   const [selectedDealId, setSelectedDealId] = useState<number | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
+  const [aquarioImportOpen, setAquarioImportOpen] = useState(false);
+  const [fishing, setFishing] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [draggingDealId, setDraggingDealId] = useState<number | null>(null);
   const [bulkMoveOpen, setBulkMoveOpen] = useState(false);
@@ -338,6 +340,20 @@ export function CrmWorkspace({ accessToken, initialDealId = null, onInitialDealH
   }
   function openBulkFromStage(stageId: number) { setBulkFromStage(stageId); setBulkMoveOpen(true); }
 
+  // ── Aquário: o corretor pesca um lead e vira o responsável na hora ──
+  async function pescarLead() {
+    if (fishing) return;
+    setFishing(true); setMessage(null);
+    try {
+      const response = await authedFetch("/api/crm", { method: "PATCH", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify({ action: "aquarioPescar" }) });
+      const result = await response.json() as { error?: string; lead?: { nome?: string; telefone?: string } };
+      if (!response.ok) throw new Error(result.error || "Não foi possível pescar um lead.");
+      await load({ quiet: true });
+      setMessage(`🎣 Você pescou ${result.lead?.nome || "um lead"}${result.lead?.telefone ? ` (${result.lead.telefone})` : ""} — agora ele é seu!`);
+    } catch (reason) { setMessage(reason instanceof Error ? reason.message : "Não foi possível pescar um lead."); }
+    finally { setFishing(false); }
+  }
+
   return <div className="crm-v2">
     <header className="crm-v2-header">
       <div><span className="crm-eyebrow">GESTÃO COMERCIAL</span><h1>{viewHeading.title}</h1><p>{viewHeading.subtitle}</p></div>
@@ -371,7 +387,7 @@ export function CrmWorkspace({ accessToken, initialDealId = null, onInitialDealH
     {error && <div className="crm-error">{error}<button type="button" onClick={() => void load()}>Tentar novamente</button></div>}
     {!loading && !error && data && view === "pipeline" && <div className={`crm-pipe-layout ${railCollapsed ? "rail-collapsed" : ""}`}>
       <aside className="crm-pipe-rail"><div className="crm-pipe-rail-head"><span className="crm-pipe-rail-title">FUNIS</span><button type="button" className="crm-pipe-rail-toggle" title={railCollapsed ? "Expandir funis" : "Recolher funis"} aria-label={railCollapsed ? "Expandir funis" : "Recolher funis"} onClick={() => setRailCollapsed((prev) => !prev)}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">{railCollapsed ? <path d="M9 6l6 6-6 6" /> : <path d="M15 6l-6 6 6 6" />}</svg></button></div>{(data.pipelines ?? []).map((pipeline) => { const count = (data.deals ?? []).filter((deal) => deal.pipeline_id === pipeline.id && !["ganho", "perdido", "descartado"].includes(deal.status)).length; return <button type="button" key={pipeline.id} className={`crm-pipe-item ${pipeline.id === pipelineId ? "active" : ""}`} title={pipeline.nome} onClick={() => { setPipelineId(pipeline.id); setStageId(null); setGroup(null); }}><span className="crm-pipe-dot" /><strong>{pipeline.nome}</strong><em>{count}</em></button>; })}</aside>
-      <PipelineViewEnhanced stages={visibleStages} allStages={activeStages} deals={filteredDeals} leadById={leadById} brokerById={brokerById} slaByDeal={slaByDeal} canReassign={canReassign} onReassign={setBrokerPickerDealId} onOpen={openDeal} onChat={openChat} onMutate={mutate} setMessage={setMessage} draggingId={draggingDealId} onDrag={setDraggingDealId} onDrop={dropDeal} canManageStages={canManageStages} onReorderStage={reorderStage} onRecolorStage={recolorStage} onSaveStage={saveStage} onBulkFromStage={openBulkFromStage} stageCount={activeStages.length} canMoveDeals={canMoveDeals} onPickStage={setStagePickerDealId} readByDeal={readByDeal} />
+      <PipelineViewEnhanced stages={visibleStages} allStages={activeStages} deals={filteredDeals} leadById={leadById} brokerById={brokerById} slaByDeal={slaByDeal} canReassign={canReassign} onReassign={setBrokerPickerDealId} onOpen={openDeal} onChat={openChat} onMutate={mutate} setMessage={setMessage} draggingId={draggingDealId} onDrag={setDraggingDealId} onDrop={dropDeal} canManageStages={canManageStages} onReorderStage={reorderStage} onRecolorStage={recolorStage} onSaveStage={saveStage} onBulkFromStage={openBulkFromStage} stageCount={activeStages.length} canMoveDeals={canMoveDeals} onPickStage={setStagePickerDealId} readByDeal={readByDeal} aquario={data.aquario ?? null} fishing={fishing} onPescar={pescarLead} onAquarioImport={canManageStages ? () => setAquarioImportOpen(true) : undefined} />
     </div>}
     {!loading && !error && data && view === "leads" && <LeadsViewEnhanced deals={filteredDeals} leadById={leadById} stages={activeStages} brokerById={brokerById} slaByDeal={slaByDeal} canReassign={canReassign} onReassign={setBrokerPickerDealId} onOpen={openDeal} onChat={openChat} onMutate={mutate} setMessage={setMessage} canMoveDeals={canMoveDeals} onPickStage={setStagePickerDealId} />}
     {!loading && !error && data && view === "agenda" && <AgendaView data={data} leadById={leadById} onMutate={mutate} setMessage={setMessage} sessionRole={sessionRole} accessToken={accessToken} />}
@@ -382,6 +398,13 @@ export function CrmWorkspace({ accessToken, initialDealId = null, onInitialDealH
     {chatDealId && data && leadById.get(data.deals.find((deal) => deal.id === chatDealId)?.lead_id ?? -1) && <LeadChatDrawer key={chatDealId} accessToken={accessToken} lead={leadById.get(data.deals.find((deal) => deal.id === chatDealId)!.lead_id)!} deal={data.deals.find((deal) => deal.id === chatDealId)!} corretorNome={data.brokers.find((b) => b.id === leadById.get(data.deals.find((deal) => deal.id === chatDealId)!.lead_id)?.corretor_id)?.nome} onClose={() => setChatDealId(null)} onResponse={async () => { await mutate({ action: "acknowledgeResponse", dealId: chatDealId }); setMessage("Resposta registrada e alerta encerrado."); }} onOpenLead={() => { const d = chatDealId; setChatDealId(null); openDeal(d); }} />}
     {stageConfigOpen && data && <StageConfigModal pipelines={data.pipelines} stages={data.stages} deals={data.deals} leads={data.leads} products={data.products} initialPipelineId={pipelineId} onClose={() => setStageConfigOpen(false)} onChanged={async () => { await load({ quiet: true }); }} />}
     {bulkMoveOpen && data && pipelineId && <BulkMoveModal pipelineId={pipelineId} stages={activeStages} deals={data.deals.filter((deal) => deal.pipeline_id === pipelineId)} initialFromStageId={bulkFromStage} onClose={() => { setBulkMoveOpen(false); setBulkFromStage(null); }} onMove={async (fromStageId, toStageId) => { await mutate({ action: "bulkMoveStage", pipelineId, fromStageId, toStageId }); setBulkMoveOpen(false); setBulkFromStage(null); setMessage("Todos os negócios da etapa foram movidos."); }} />}
+    {aquarioImportOpen && <AquarioImportModal onClose={() => setAquarioImportOpen(false)} onImport={async (rows) => {
+      const response = await authedFetch("/api/crm", { method: "PATCH", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify({ action: "aquarioImportar", rows }) });
+      const result = await response.json() as { error?: string; importados?: number; duplicados?: number; invalidos?: number };
+      if (!response.ok) throw new Error(result.error || "Não foi possível importar.");
+      await load({ quiet: true });
+      return { importados: Number(result.importados ?? 0), duplicados: Number(result.duplicados ?? 0), invalidos: Number(result.invalidos ?? 0) };
+    }} />}
     {createOpen && data && <CreateLeadModal pipelines={data.pipelines} brokers={data.brokers} initialPipelineId={pipelineId} canAssign={canAssign} onClose={() => { setCreateOpen(false); setMessage(null); }} onCreate={async (payload) => { await mutate({ action: "createLead", ...payload }); setCreateOpen(false); setMessage("Novo lead criado e inserido na primeira etapa."); }} />}
     {brokerPickerDealId && data && <BrokerPickerModal deal={data.deals.find((deal) => deal.id === brokerPickerDealId)!} lead={leadById.get(data.deals.find((deal) => deal.id === brokerPickerDealId)?.lead_id ?? -1)!} brokers={data.brokers} onClose={() => setBrokerPickerDealId(null)} onSave={async (brokerId) => { await mutate({ action: "transferDeal", dealId: brokerPickerDealId, brokerId }); setBrokerPickerDealId(null); setMessage("Corretor responsável atualizado."); }} />}
     {stagePickerDealId && data && (() => { const deal = data.deals.find((d) => d.id === stagePickerDealId); if (!deal) return null; const lead = leadById.get(deal.lead_id); const dealStages = activeStages.filter((s) => s.pipeline_id === deal.pipeline_id); return <StagePickerModal deal={deal} leadNome={lead?.nome ?? null} stages={dealStages.length ? dealStages : activeStages} onClose={() => setStagePickerDealId(null)} onSave={async (stageId) => { await mutate({ action: "moveDeal", dealId: stagePickerDealId, stageId }); setStagePickerDealId(null); setMessage("Etapa atualizada."); }} />; })()}
@@ -818,7 +841,7 @@ function AnalyticsView({ data, onOpen }: { data: CrmData; onOpen?: (dealId: numb
   </section>;
 }
 
-function PipelineViewEnhanced({ stages, allStages, deals, leadById, brokerById, slaByDeal, canReassign, onReassign, onOpen, onChat, onMutate, setMessage, draggingId, onDrag, onDrop, canManageStages, onReorderStage, onRecolorStage, onSaveStage, onBulkFromStage, stageCount, canMoveDeals, onPickStage, readByDeal }: { stages: Stage[]; allStages: Stage[]; deals: Deal[]; leadById: Map<number, Lead>; brokerById: Map<number, Broker>; slaByDeal: Map<number, SlaInfo>; canReassign: boolean; onReassign: (dealId: number) => void; onOpen: (id: number) => void; onChat: (id: number) => void; onMutate: (body: Record<string, unknown>) => Promise<void>; setMessage: (value: string | null) => void; draggingId: number | null; onDrag: (id: number | null) => void; onDrop: (event: DragEvent, stageId: number) => Promise<void>; canManageStages?: boolean; onReorderStage?: (stageId: number, direction: number) => Promise<void>; onRecolorStage?: (stageId: number, color: string) => Promise<void>; onSaveStage?: (stageId: number, nome: string, color: string) => Promise<void>; onBulkFromStage?: (stageId: number) => void; stageCount?: number; canMoveDeals?: boolean; onPickStage?: (dealId: number) => void; readByDeal?: Map<number, string> }) {
+function PipelineViewEnhanced({ stages, allStages, deals, leadById, brokerById, slaByDeal, canReassign, onReassign, onOpen, onChat, onMutate, setMessage, draggingId, onDrag, onDrop, canManageStages, onReorderStage, onRecolorStage, onSaveStage, onBulkFromStage, stageCount, canMoveDeals, onPickStage, readByDeal, aquario, fishing, onPescar, onAquarioImport }: { stages: Stage[]; allStages: Stage[]; deals: Deal[]; leadById: Map<number, Lead>; brokerById: Map<number, Broker>; slaByDeal: Map<number, SlaInfo>; canReassign: boolean; onReassign: (dealId: number) => void; onOpen: (id: number) => void; onChat: (id: number) => void; onMutate: (body: Record<string, unknown>) => Promise<void>; setMessage: (value: string | null) => void; draggingId: number | null; onDrag: (id: number | null) => void; onDrop: (event: DragEvent, stageId: number) => Promise<void>; canManageStages?: boolean; onReorderStage?: (stageId: number, direction: number) => Promise<void>; onRecolorStage?: (stageId: number, color: string) => Promise<void>; onSaveStage?: (stageId: number, nome: string, color: string) => Promise<void>; onBulkFromStage?: (stageId: number) => void; stageCount?: number; canMoveDeals?: boolean; onPickStage?: (dealId: number) => void; readByDeal?: Map<number, string>; aquario?: { stage_id: number | null; disponiveis: number } | null; fishing?: boolean; onPescar?: () => void; onAquarioImport?: () => void }) {
   const [busyId, setBusyId] = useState<number | null>(null);
   const [menuStage, setMenuStage] = useState<number | null>(null);
   const [editName, setEditName] = useState("");
@@ -876,6 +899,11 @@ function PipelineViewEnhanced({ stages, allStages, deals, leadById, brokerById, 
         <div className="cse-move"><button type="button" disabled={globalIndex <= 0} onClick={() => { void onReorderStage?.(stage.id, -1); }}>‹ Mover atrás</button><button type="button" disabled={globalIndex < 0 || globalIndex >= total - 1} onClick={() => { void onReorderStage?.(stage.id, 1); }}>Mover frente ›</button></div>
         <button type="button" className="cse-bulk" onClick={() => { setMenuStage(null); onBulkFromStage?.(stage.id); }}>⇄ Mover todos os leads desta etapa</button>
         <div className="cse-actions"><button type="button" className="cse-cancel" onClick={() => setMenuStage(null)}>Cancelar</button><button type="button" className="cse-save" onClick={() => { void onSaveStage?.(stage.id, editName.trim() || (stage.rotulo || stage.nome), editColor); setMenuStage(null); }}>Salvar</button></div>
+      </div>}
+      {aquario && aquario.stage_id === stage.id && <div className="aq-box">
+        <div className="aq-count"><span className="aq-fish-ico">🐟</span><div><strong>{aquario.disponiveis}</strong><small>{aquario.disponiveis === 1 ? "lead disponível" : "leads disponíveis"} para pescar</small></div></div>
+        <button type="button" className="aq-pescar" disabled={fishing || aquario.disponiveis === 0} onClick={() => onPescar?.()}>{fishing ? "Pescando…" : "🎣 Pescar um lead"}</button>
+        {onAquarioImport && <button type="button" className="aq-import" onClick={onAquarioImport}>⬆ Importar leads no aquário</button>}
       </div>}
       <div className="crm-stage-body">{items.map((deal) => {
         const lead = leadById.get(deal.lead_id)!;
@@ -1489,4 +1517,92 @@ function StageConfigRow({ stage, count, busy, onRename, onMove, onDelete }: { st
     {dirty && <button className="stage-config-save" type="button" disabled={busy} onClick={() => onRename(name, color)}>Salvar</button>}
     <button className="stage-config-del" type="button" disabled={busy || count > 0} title={count > 0 ? "Mova os negócios antes de excluir" : "Excluir etapa"} onClick={onDelete}>🗑</button>
   </div>;
+}
+
+/* ── Aquário: modal de importação do gestor. Aceita planilha CSV (molde para baixar)
+   ou lista colada — o parser identifica sozinho o que é nome, telefone e e-mail. ── */
+type AquarioRow = { nome: string; telefone: string; email: string };
+function parseAquarioLinhas(texto: string): { validas: AquarioRow[]; invalidas: string[] } {
+  const validas: AquarioRow[] = []; const invalidas: string[] = [];
+  for (const raw of texto.split(/\r?\n/)) {
+    const linha = raw.trim();
+    if (!linha) continue;
+    const baixa = linha.toLowerCase();
+    if (baixa.includes("nome") && baixa.includes("telefone")) continue; // cabeçalho do molde
+    const partes = linha.split(/[;,\t]/).map((p) => p.trim().replace(/^"|"$/g, "")).filter(Boolean);
+    let nome = "", telefone = "", email = "";
+    const sobras: string[] = [];
+    for (const parte of partes) {
+      const digitos = parte.replace(/\D/g, "");
+      if (!email && parte.includes("@")) email = parte.toLowerCase();
+      else if (!telefone && digitos.length >= 8 && digitos.length / Math.max(parte.length, 1) > 0.5) telefone = parte;
+      else sobras.push(parte);
+    }
+    nome = sobras.join(" ").trim();
+    if (nome && telefone) validas.push({ nome, telefone, email });
+    else invalidas.push(linha);
+  }
+  return { validas, invalidas };
+}
+
+function AquarioImportModal({ onClose, onImport }: { onClose: () => void; onImport: (rows: AquarioRow[]) => Promise<{ importados: number; duplicados: number; invalidos: number }> }) {
+  const [aba, setAba] = useState<"planilha" | "colar">("planilha");
+  const [texto, setTexto] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
+  const [resultado, setResultado] = useState<{ importados: number; duplicados: number; invalidos: number } | null>(null);
+  const { validas, invalidas } = useMemo(() => parseAquarioLinhas(texto), [texto]);
+
+  const baixarMolde = () => {
+    const blob = new Blob(["nome;telefone;email\nMaria Silva;(11) 99999-0000;maria@email.com\nJoão Souza;11988887777;\n"], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a"); a.href = url; a.download = "molde-aquario.csv"; a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const lerArquivo = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = () => { setTexto(String(reader.result ?? "")); setErro(null); };
+    reader.onerror = () => setErro("Não foi possível ler o arquivo. Salve a planilha como CSV e tente de novo.");
+    reader.readAsText(file, "utf-8");
+  };
+
+  const importar = async () => {
+    if (!validas.length) { setErro("Nenhum lead válido — cada linha precisa de nome e telefone."); return; }
+    setBusy(true); setErro(null);
+    try { setResultado(await onImport(validas)); }
+    catch (reason) { setErro(reason instanceof Error ? reason.message : "Não foi possível importar."); }
+    finally { setBusy(false); }
+  };
+
+  return <div className="crm-center-modal aq-modal-layer"><div className="aq-modal">
+    <header><div><span>AQUÁRIO</span><h2>🐟 Importar leads no aquário</h2><p>Os leads entram sem corretor e sem automação — cada corretor pesca os seus.</p></div><button type="button" onClick={onClose}>×</button></header>
+    {resultado ? <div className="aq-result">
+      <div className="aq-result-num ok"><strong>{resultado.importados}</strong><span>importados</span></div>
+      <div className="aq-result-num"><strong>{resultado.duplicados}</strong><span>duplicados (já existiam)</span></div>
+      <div className="aq-result-num"><strong>{resultado.invalidos}</strong><span>inválidos</span></div>
+      <footer><button type="button" className="crm-primary" onClick={onClose}>Fechar</button></footer>
+    </div> : <>
+      <nav className="aq-tabs">
+        <button type="button" className={aba === "planilha" ? "active" : ""} onClick={() => setAba("planilha")}>📄 Planilha (CSV)</button>
+        <button type="button" className={aba === "colar" ? "active" : ""} onClick={() => setAba("colar")}>📋 Colar lista</button>
+      </nav>
+      {aba === "planilha" && <div className="aq-pane">
+        <p>Use o molde: colunas <b>nome; telefone; email</b> (e-mail é opcional). No Excel, salve como <b>CSV</b>.</p>
+        <button type="button" className="aq-molde" onClick={baixarMolde}>⬇ Baixar molde (molde-aquario.csv)</button>
+        <label className="aq-file">Escolher arquivo CSV<input type="file" accept=".csv,.txt" onChange={(event) => { const f = event.target.files?.[0]; if (f) lerArquivo(f); }} /></label>
+      </div>}
+      {aba === "colar" && <div className="aq-pane">
+        <p>Cole uma linha por lead — eu identifico sozinho o que é nome, telefone e e-mail (separe por vírgula, ponto e vírgula ou tab).</p>
+        <textarea rows={7} value={texto} onChange={(event) => setTexto(event.target.value)} placeholder={"Maria Silva; (11) 99999-0000; maria@email.com\nJoão Souza, 11988887777"} />
+      </div>}
+      {texto.trim() && <div className="aq-preview">
+        <strong>{validas.length} {validas.length === 1 ? "lead pronto" : "leads prontos"} para importar</strong>
+        {invalidas.length > 0 && <em>⚠ {invalidas.length} linha(s) ignorada(s) — faltou nome ou telefone: {invalidas.slice(0, 3).join(" · ")}{invalidas.length > 3 ? "…" : ""}</em>}
+        <div className="aq-preview-rows">{validas.slice(0, 6).map((r, i) => <span key={i}><b>{r.nome}</b> · {r.telefone}{r.email ? ` · ${r.email}` : ""}</span>)}{validas.length > 6 && <span>… e mais {validas.length - 6}</span>}</div>
+      </div>}
+      {erro && <div className="modal-error">{erro}</div>}
+      <footer><button type="button" onClick={onClose}>Cancelar</button><button type="button" className="crm-primary" disabled={busy || !validas.length} onClick={() => void importar()}>{busy ? "Importando…" : `Importar ${validas.length || ""} leads`}</button></footer>
+    </>}
+  </div></div>;
 }
