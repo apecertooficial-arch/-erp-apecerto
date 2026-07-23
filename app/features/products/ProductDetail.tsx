@@ -1,7 +1,7 @@
 "use client";
 /* eslint-disable @next/next/no-img-element */
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { getBrowserSupabaseClient } from "../../lib/supabase/browser";
 
 type Media = { id: string; tipo: "foto" | "video" | "pdf" | "apresentacao"; storage_path: string; categoria: string | null; nome: string | null; is_capa: boolean; url: string | null };
@@ -20,6 +20,7 @@ type ProductDetailData = {
   completion: { checks: Record<string, boolean>; completed: number; total: number };
   is_favorite: boolean; leads: LeadOption[];
   aprovacao?: string | null; captado_por_nome?: string | null; mine?: boolean;
+  latitude?: number | null; longitude?: number | null;
 };
 
 const money = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
@@ -31,6 +32,39 @@ function mediaType(file: File): Media["tipo"] {
   if (file.type.startsWith("video/")) return "video";
   if (file.type === "application/pdf") return "pdf";
   return "apresentacao";
+}
+
+/* --- Ficha v2: ícones SVG inline (traço ~1.9px, arredondado) --- */
+function Svg({ children, size = 22 }: { children: ReactNode; size?: number }) {
+  return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{children}</svg>;
+}
+const IcRuler = () => <Svg><path d="M3 8l5-5 13 13-5 5z" /><path d="M8 8l1.6 1.6M11 5l1.6 1.6M14 8l1.6 1.6M5 11l1.6 1.6" /></Svg>;
+const IcBed = () => <Svg><path d="M2 17v-4a2 2 0 0 1 2-2h12a4 4 0 0 1 4 4v2" /><path d="M2 17h20M2 13V7" /><path d="M6 11V9a1 1 0 0 1 1-1h3a1 1 0 0 1 1 1v2" /></Svg>;
+const IcBath = () => <Svg><path d="M4 12V6a2 2 0 0 1 4 0" /><path d="M2 12h20v2a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4z" /><path d="M7 20l-1 1M18 20l1 1" /></Svg>;
+const IcCar = () => <Svg><path d="M5 13l1.4-4A2 2 0 0 1 8.3 8h7.4a2 2 0 0 1 1.9 1.4L19 13" /><path d="M4 17v-2.5L5 13h14l1 1.5V17a1 1 0 0 1-1 1h-1M7 18H5a1 1 0 0 1-1-1" /><circle cx="7.5" cy="17.5" r="1.4" /><circle cx="16.5" cy="17.5" r="1.4" /></Svg>;
+const IcSeal = () => <Svg><circle cx="12" cy="12" r="9" /><path d="M8.5 12l2.5 2.4 4.5-5" /></Svg>;
+const IcPhone = () => <Svg size={16}><path d="M6 3h3l1.4 5-2 1.4a11 11 0 0 0 5 5l1.4-2 5 1.4V22 21a2 2 0 0 1-2 2A16 16 0 0 1 4 5a2 2 0 0 1 2-2z" /></Svg>;
+const IcMail = () => <Svg size={16}><rect x="3" y="5" width="18" height="14" rx="2" /><path d="M3 7l9 6 9-6" /></Svg>;
+const IcKey = () => <Svg size={18}><circle cx="8" cy="8" r="4" /><path d="M11 11l8 8M16 16l2-2M18 18l2-2" /></Svg>;
+const IcStar = () => <Svg size={18}><path d="M12 3l2.6 5.5 6 .9-4.3 4.2 1 6L12 17l-5.3 2.6 1-6L3.4 9.4l6-.9z" /></Svg>;
+const IcShare = () => <Svg size={18}><circle cx="6" cy="12" r="2.4" /><circle cx="17" cy="6" r="2.4" /><circle cx="17" cy="18" r="2.4" /><path d="M8.1 10.9l6.8-3.7M8.1 13.1l6.8 3.7" /></Svg>;
+const IcEdit = () => <Svg size={18}><path d="M4 20h4l10-10-4-4L4 16z" /><path d="M13.5 6.5l4 4" /></Svg>;
+const IcLink = () => <Svg size={18}><path d="M7 17L17 7M9 7h8v8" /></Svg>;
+const IcImages = () => <Svg><rect x="3" y="5" width="13" height="13" rx="2" /><path d="M3 14l3.5-3.5 3 3 3-3 3.5 3.5" /><circle cx="8" cy="9" r="1.2" /><path d="M17 8h2a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H9" /></Svg>;
+const IcBuilding = () => <Svg><rect x="5" y="3" width="14" height="18" rx="1.5" /><path d="M9 7h2M13 7h2M9 11h2M13 11h2M10 21v-3h4v3" /></Svg>;
+const IcPin = () => <Svg size={18}><path d="M12 21s7-6.3 7-11a7 7 0 0 0-14 0c0 4.7 7 11 7 11z" /><circle cx="12" cy="10" r="2.4" /></Svg>;
+const IcClose = () => <Svg size={18}><path d="M6 6l12 12M18 6L6 18" /></Svg>;
+const IcRotate = () => <Svg size={17}><path d="M4 12a8 8 0 1 0 2.6-5.9M4 4v4h4" /></Svg>;
+const IcClock = () => <Svg size={17}><circle cx="12" cy="12" r="8.5" /><path d="M12 7.5V12l3 2" /></Svg>;
+const IcSend = () => <Svg size={17}><path d="M21 3L10.5 13.5M21 3l-6.5 18-4-8-8-4z" /></Svg>;
+const IcCheck = () => <Svg size={17}><path d="M4 12.5l5 5 11-11" /></Svg>;
+const IcDownload = () => <Svg size={17}><path d="M12 4v11M7 11l5 5 5-5M5 20h14" /></Svg>;
+
+function initials(name?: string | null): string {
+  if (!name) return "?";
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return "?";
+  return ((parts[0][0] ?? "") + (parts.length > 1 ? parts[parts.length - 1][0] : "")).toUpperCase();
 }
 
 export function ProductDetail({ productId, accessToken, sessionRole = "corretor", onClose, onChanged }: { productId: string; accessToken: string; sessionRole?: string; onClose: () => void; onChanged: () => void }) {
@@ -53,6 +87,9 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
   const [leadPanelOpen, setLeadPanelOpen] = useState(false);
   const [documentPreview, setDocumentPreview] = useState<Media | null>(null);
   const [pendingDelete, setPendingDelete] = useState<Media | null>(null);
+  const [tab, setTab] = useState<"resumo" | "localizacao" | "proprietario" | "unidades" | "galeria">("resumo");
+  const [mapCoord, setMapCoord] = useState<{ lat: number; lon: number } | null>(null);
+  const [mapStatus, setMapStatus] = useState<"idle" | "loading" | "done" | "error">("idle");
 
   const load = useCallback(async () => {
     setMessage("");
@@ -80,6 +117,26 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
   const presentations = useMemo(() => product?.midias.filter((item) => item.tipo === "pdf" || item.tipo === "apresentacao") ?? [], [product]);
   const visibleMedia = mediaTab === "fotos" ? photos : mediaTab === "videos" ? videos : presentations;
   const cover = photos.find((item) => item.is_capa) ?? photos[0];
+
+  const addressLine = useMemo(() => [product?.endereco, product?.numero, product?.bairro, product?.cidade, product?.uf, product?.cep].filter(Boolean).join(", "), [product]);
+  useEffect(() => {
+    if (tab !== "localizacao" || !product) return;
+    if (mapStatus !== "idle") return;
+    if (product.latitude != null && product.longitude != null) { setMapCoord({ lat: product.latitude, lon: product.longitude }); setMapStatus("done"); return; }
+    if (!addressLine) { setMapStatus("error"); return; }
+    let alive = true;
+    setMapStatus("loading");
+    (async () => {
+      try {
+        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(addressLine)}`, { headers: { Accept: "application/json" } });
+        const data = await res.json();
+        if (!alive) return;
+        if (Array.isArray(data) && data.length && data[0].lat && data[0].lon) { setMapCoord({ lat: Number(data[0].lat), lon: Number(data[0].lon) }); setMapStatus("done"); }
+        else setMapStatus("error");
+      } catch { if (alive) setMapStatus("error"); }
+    })();
+    return () => { alive = false; };
+  }, [tab, product, addressLine, mapStatus]);
 
   async function save() {
     setBusy(true); setMessage("");
@@ -165,19 +222,39 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
     } catch (error) { setMessage(error instanceof Error ? error.message : "Erro ao enviar solicitação."); } finally { setBusy(false); }
   }
 
+  const completionPct = product ? Math.round((product.completion.completed / product.completion.total) * 100) : 0;
+  const completionLabels: Record<string, string> = { basics: "Dados básicos", location: "Endereço", owner: "Proprietário", costs: "Custos", access: "Acesso", media: "Fotos, vídeo e capa", units: "Unidades" };
+  const otherPhotos = photos.filter((item) => item.id !== cover?.id);
+
+  const publishButton = product && (canPublish
+    ? (product.rascunho
+      ? <button className="fv2-btn fv2-btn-publish" type="button" disabled={busy} title={product.completion.completed < product.completion.total ? `Faltam ${product.completion.total - product.completion.completed} bloco(s) para ficar 100% completo` : "Produto completo"} onClick={() => void publishAction(true)}><IcCheck /> Publicar produto{product.completion.completed < product.completion.total ? " (incompleto)" : ""}</button>
+      : <button className="fv2-btn fv2-btn-ghost" type="button" disabled={busy} onClick={() => void publishAction(false)}><IcRotate /> Voltar a rascunho</button>)
+    : (product.aprovacao === "pendente"
+      ? <button className="fv2-btn fv2-btn-ghost" type="button" disabled title="Aguardando aprovação do gestor"><IcClock /> Aguardando aprovação</button>
+      : (product.mine && (product.rascunho || product.aprovacao === "reprovado")
+        ? <button className="fv2-btn fv2-btn-publish" type="button" disabled={busy} onClick={() => void submitRequest()}><IcSend /> Enviar solicitação</button>
+        : null)));
+
+  const mediaLibrary = product && <section className="detail-section media-library fv2-media">
+    <div className="section-row"><div><h3>Galeria e materiais</h3><small>{photos.length} fotos · {videos.length} vídeos · {presentations.length} apresentações</small></div><button className={editImages ? "edit-images-btn active" : "edit-images-btn"} type="button" onClick={() => setEditImages(!editImages)}>{editImages ? "✓ Concluir edição" : "✎ Editar imagens"}</button></div>
+    <div className="media-tabs"><button className={mediaTab === "fotos" ? "active" : ""} type="button" onClick={() => setMediaTab("fotos")}>Fotos ({photos.length})</button><button className={mediaTab === "videos" ? "active" : ""} type="button" onClick={() => setMediaTab("videos")}>Vídeos ({videos.length})</button><button className={mediaTab === "apresentacoes" ? "active" : ""} type="button" onClick={() => setMediaTab("apresentacoes")}>Apresentações ({presentations.length})</button></div>
+    {editImages && <div className="material-upload">{mediaTab === "fotos" && <select value={category} onChange={(event) => setCategory(event.target.value)}>{mediaCategories.map((item) => <option key={item}>{item}</option>)}</select>}<label className="primary-action">＋ {mediaTab === "fotos" ? "Adicionar fotos" : mediaTab === "videos" ? "Adicionar vídeos" : "Adicionar apresentação PDF"}<input disabled={busy} multiple type="file" accept={mediaTab === "fotos" ? "image/*" : mediaTab === "videos" ? "video/*" : ".pdf,application/pdf,.ppt,.pptx"} onChange={(event) => void upload(event.target.files, mediaTab === "videos" ? "Tour" : mediaTab === "apresentacoes" ? "Apresentação" : undefined)} /></label></div>}
+    {visibleMedia.length ? <div className="detail-gallery">{visibleMedia.map((item) => <article key={item.id}>
+      {editImages && <button className="media-delete" disabled={busy} type="button" onClick={() => setPendingDelete(item)} aria-label={`Excluir ${item.nome ?? "arquivo"}`}>×</button>}
+      {item.tipo === "foto" && item.url ? <button className="gallery-open watermarked-preview" type="button" onClick={() => setLightboxIndex(photos.findIndex((photo) => photo.id === item.id))}><img src={item.url} alt={item.categoria || item.nome || "Foto do imóvel"} /><span>Ampliar</span></button> : item.tipo === "video" && item.url ? <div className="watermarked-preview"><video src={item.url} controls preload="metadata" /></div> : item.url ? <button className="file-tile watermarked-preview" type="button" onClick={() => setDocumentPreview(item)}>Abrir {item.tipo === "pdf" ? "PDF" : "apresentação"}</button> : <div className="file-tile watermarked-preview">{item.tipo.toUpperCase()}</div>}
+      {editImages ? <div><select aria-label={`Classificação de ${item.nome ?? "material"}`} value={item.categoria ?? "Outros"} onChange={(event) => void mediaAction("updateMedia", item.id, event.target.value)}>{mediaCategories.map((entry) => <option key={entry}>{entry}</option>)}</select><small>{item.nome}</small><div className="media-actions">{item.tipo === "foto" && <button disabled={busy || item.is_capa} type="button" onClick={() => void setCover(item.id)}>{item.is_capa ? "✓ Foto de capa" : "Usar como capa"}</button>}</div></div> : <div className="media-view-label"><strong>{item.categoria ?? "Outros"}{item.is_capa ? " · capa" : ""}</strong><small>{item.nome}</small></div>}
+    </article>)}</div> : <p className="empty-media">Nenhum material nesta categoria. Use o botão acima para adicionar.</p>}
+  </section>;
+
   return <div className="modal-layer product-detail-layer">
     <button className="modal-scrim" type="button" onClick={onClose} aria-label="Fechar ficha do produto" />
-    <aside className="product-detail-panel" aria-label="Ficha completa do produto">
-      {!product ? <div className="detail-loading">{message || "Carregando dados reais do produto..."}</div> : <>
-        <header className="detail-hero" style={cover?.url ? { backgroundImage: `linear-gradient(180deg,rgba(0,0,0,.08),rgba(0,0,0,.62)),url(${cover.url})` } : undefined}>
-          <button className="icon-button" type="button" onClick={onClose}>×</button>
-          <div><span>{product.rascunho ? "Rascunho" : product.status.replace("_", " ")}</span><h2>{product.nome}</h2><p>{product.bairro ?? "Bairro não informado"} · {product.cidade ?? "Cidade não informada"} · Captado por: {product.captado_por_nome ?? "Não informado"}</p></div>
-        </header>
-        <div className="detail-toolbar"><div><strong>{product.summary_price ? money.format(product.summary_price) : "Preço sob consulta"}</strong><small>{product.completion.completed}/{product.completion.total} blocos completos</small></div><div className="detail-actions"><button className="lead-subtle" type="button" onClick={() => setLeadPanelOpen(!leadPanelOpen)}>↗ Vincular lead{product.leads.some((lead) => lead.linked) ? ` · ${product.leads.filter((lead) => lead.linked).length}` : ""}</button><button className={product.is_favorite ? "favorite active" : "favorite"} disabled={busy} type="button" onClick={() => void productAction("toggleFavorite", !product.is_favorite)}>{product.is_favorite ? "★ Favorito" : "☆ Favoritar"}</button><button className="secondary-action" type="button" onClick={() => setEditing(!editing)}>{editing ? "Cancelar edição" : "Editar produto"}</button>{canPublish ? (product.rascunho ? <button className="publish-action" type="button" disabled={busy} title={product.completion.completed < product.completion.total ? `Faltam ${product.completion.total - product.completion.completed} bloco(s) para ficar 100% completo` : "Produto completo"} onClick={() => void publishAction(true)}>✓ Publicar produto{product.completion.completed < product.completion.total ? " (incompleto)" : ""}</button> : <button className="unpublish-action" type="button" disabled={busy} onClick={() => void publishAction(false)}>↩ Voltar a rascunho</button>) : (product.aprovacao === "pendente" ? <button className="secondary-action" type="button" disabled title="Aguardando aprovação do gestor">⏳ Aguardando aprovação</button> : (product.mine && (product.rascunho || product.aprovacao === "reprovado") ? <button className="publish-action" type="button" disabled={busy} onClick={() => void submitRequest()}>➤ Enviar solicitação</button> : null))}</div></div>
-        {leadPanelOpen && <div className="top-lead-panel"><div className="lead-link-form"><select value={leadId} onChange={(event) => setLeadId(event.target.value)}><option value="">Selecione um lead...</option>{product.leads.filter((lead) => !lead.linked).map((lead) => <option value={lead.id} key={lead.id}>{lead.nome || "Lead sem nome"} · {lead.telefone || "sem telefone"}</option>)}</select><button className="primary-action" disabled={busy || !leadId} type="button" onClick={() => void productAction("linkLead", leadId)}>Vincular</button></div><div className="linked-leads">{product.leads.filter((lead) => lead.linked).map((lead) => <span key={lead.id}><strong>{lead.nome || "Lead sem nome"}</strong><small>{lead.telefone}</small><button type="button" disabled={busy} onClick={() => void productAction("unlinkLead", lead.id)}>×</button></span>)}</div></div>}
-        <div className="detail-scroll">
+    <aside className="product-detail-panel ficha-v2" aria-label="Ficha completa do produto">
+      {!product ? <div className="detail-loading">{message || "Carregando dados reais do produto..."}</div> : editing ? (
+        <div className="fv2-edit">
+          <div className="fv2-edit-head"><h2>Editar produto</h2><button className="fv2-btn fv2-btn-ghost" type="button" onClick={() => setEditing(false)}>Cancelar edição</button></div>
           {message && <div className={`detail-message ${message.includes("salv") || message.includes("atualiz") || message.includes("adicionado") ? "success" : ""}`}>{message}</div>}
-          {editing ? <div className="detail-form">
+          <div className="detail-form">
             <h3>Dados do imóvel</h3>
             <div className="field-grid">
               {(["nome", "incorporadora", "preco", "area_util", "dormitorios", "suites", "vagas", "banheiros"] as const).map((field) => <label key={field}>{field.replaceAll("_", " ")}<input type={["preco","area_util","dormitorios","suites","vagas","banheiros"].includes(field) ? "number" : "text"} value={draft[field] ?? ""} onChange={(event) => setDraft({ ...draft, [field]: event.target.value })} /></label>)}
@@ -190,26 +267,131 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
             {product.origem === "terceiros" && <><h3>Acesso ao imóvel</h3><div className="field-grid"><label>Tipo<input value={draft.acesso_tipo ?? ""} onChange={(event) => setDraft({ ...draft, acesso_tipo: event.target.value })} /></label><label>Código digital<input value={draft.acesso_codigo ?? ""} onChange={(event) => setDraft({ ...draft, acesso_codigo: event.target.value })} /></label></div><label>Instruções<textarea rows={3} value={draft.acesso_instrucoes ?? ""} onChange={(event) => setDraft({ ...draft, acesso_instrucoes: event.target.value })} /></label>{owner && <><h3>Proprietário</h3><div className="field-grid">{(["nome", "email", "telefone"] as const).map((field) => <label key={field}>{field}<input value={owner[field]} onChange={(event) => setOwner({ ...owner, [field]: event.target.value })} /></label>)}</div></>}</>}
             <h3>Unidades</h3><div className="section-row"><small>Edite estoque, tipologia, área e preço.</small><button className="secondary-action" type="button" onClick={() => setUnits([...units, { id: crypto.randomUUID(), numero: "", tipologia: "", area_m2: null, vagas: 0, valor_tabela: null, valor_promo: null, disponivel: true }])}>＋ Unidade</button></div><div className="edit-units">{units.map((unit, index) => <div key={unit.id}><span>{index + 1}</span><input aria-label="Número" value={unit.numero ?? ""} onChange={(event) => setUnits(units.map((item) => item.id === unit.id ? { ...item, numero: event.target.value } : item))} placeholder="Unidade" /><input aria-label="Tipologia" value={unit.tipologia ?? ""} onChange={(event) => setUnits(units.map((item) => item.id === unit.id ? { ...item, tipologia: event.target.value } : item))} placeholder="Tipologia" /><input aria-label="Área" type="number" value={unit.area_m2 ?? ""} onChange={(event) => setUnits(units.map((item) => item.id === unit.id ? { ...item, area_m2: event.target.value ? Number(event.target.value) : null } : item))} placeholder="m²" /><input aria-label="Vagas" type="number" value={unit.vagas ?? ""} onChange={(event) => setUnits(units.map((item) => item.id === unit.id ? { ...item, vagas: event.target.value ? Number(event.target.value) : null } : item))} /><input aria-label="Preço" type="number" value={unit.valor_tabela ?? ""} onChange={(event) => setUnits(units.map((item) => item.id === unit.id ? { ...item, valor_tabela: event.target.value ? Number(event.target.value) : null } : item))} placeholder="Preço" /><label><input type="checkbox" checked={unit.disponivel} onChange={(event) => setUnits(units.map((item) => item.id === unit.id ? { ...item, disponivel: event.target.checked } : item))} /> disponível</label><button type="button" aria-label="Remover unidade" onClick={() => setUnits(units.filter((item) => item.id !== unit.id))}>×</button></div>)}</div>
             <button className="primary-action" disabled={busy} type="button" onClick={() => void save()}>{busy ? "Salvando..." : "Salvar no Supabase"}</button>
-          </div> : <>
-            <section className="detail-stats"><div><strong>{product.summary_area ?? "—"}</strong><span>m² a partir de</span></div><div><strong>{product.dormitorios ?? "—"}</strong><span>dormitórios</span></div><div><strong>{product.suites ?? "—"}</strong><span>suítes</span></div><div><strong>{product.vagas ?? "—"}</strong><span>vagas</span></div></section>
-            <section className="completion-card"><div><strong>Completude do cadastro</strong><span>{Math.round((product.completion.completed / product.completion.total) * 100)}%</span></div>{Object.entries(product.completion.checks).map(([key, ok]) => <small className={ok ? "done" : ""} key={key}>{ok ? "✓" : "○"} {{ basics:"Dados básicos",location:"Endereço",owner:"Proprietário",costs:"Custos",access:"Acesso",media:"10 fotos + vídeo + capa",units:"Unidades" }[key] ?? key}</small>)}</section>
-            <section className="detail-section"><h3>Resumo</h3><p>{product.descricao || "Sem descrição cadastrada."}</p><div className="detail-pairs"><span>Condomínio<strong>{product.condominio_valor ? money.format(product.condominio_valor) : "—"}</strong></span><span>IPTU<strong>{product.iptu ? money.format(product.iptu) : "—"}</strong></span><span>Outros custos<strong>{product.outros_custos ? money.format(product.outros_custos) : "—"}</strong></span></div></section>
-            <section className="detail-section"><h3>Localização e condomínio</h3><p>{[product.endereco, product.numero, product.complemento, product.bairro, product.cidade, product.uf, product.cep].filter(Boolean).join(", ") || "Endereço não cadastrado."}</p>{product.condominios && <p><strong>{product.condominios.nome}</strong> · condomínio associado</p>}</section>
-            {product.origem === "terceiros" && <section className="detail-section"><h3>Proprietário e acesso</h3><div className="detail-pairs"><span>Proprietário<strong>{product.proprietarios?.nome ?? "—"}</strong></span><span>Telefone<strong>{product.proprietarios?.telefone ?? "—"}</strong></span><span>E-mail<strong>{product.proprietarios?.email ?? "—"}</strong></span><span>Acesso<strong>{product.acesso_tipo ?? "—"}</strong></span><span>Código<strong>{product.acesso_codigo ?? "—"}</strong></span></div><p>{product.acesso_instrucoes || "Sem instruções de acesso."}</p></section>}
-            <section className="detail-section"><div className="section-row"><div><h3>Unidades</h3><small>{product.unidades.length} cadastradas</small></div></div>{product.unidades.length ? <div className="unit-table">{product.unidades.map((unit) => <div key={unit.id}><span>{unit.numero || "—"}</span><span>{unit.tipologia || "—"}</span><span>{unit.area_m2 ?? "—"} m²</span><span>{unit.vagas ?? 0} vaga(s)</span><strong>{money.format(unit.valor_promo ?? unit.valor_tabela ?? 0)}</strong><i className={unit.disponivel ? "available" : ""}>{unit.disponivel ? "Disponível" : "Indisponível"}</i></div>)}</div> : <p>Nenhuma unidade individual cadastrada.</p>}</section>
-            <section className="detail-section media-library">
-              <div className="section-row"><div><h3>Galeria e materiais</h3><small>{photos.length} fotos · {videos.length} vídeos · {presentations.length} apresentações</small></div><button className={editImages ? "edit-images-btn active" : "edit-images-btn"} type="button" onClick={() => setEditImages(!editImages)}>{editImages ? "✓ Concluir edição" : "✎ Editar imagens"}</button></div>
-              <div className="media-tabs"><button className={mediaTab === "fotos" ? "active" : ""} type="button" onClick={() => setMediaTab("fotos")}>Fotos ({photos.length})</button><button className={mediaTab === "videos" ? "active" : ""} type="button" onClick={() => setMediaTab("videos")}>Vídeos ({videos.length})</button><button className={mediaTab === "apresentacoes" ? "active" : ""} type="button" onClick={() => setMediaTab("apresentacoes")}>Apresentações ({presentations.length})</button></div>
-              {editImages && <div className="material-upload">{mediaTab === "fotos" && <select value={category} onChange={(event) => setCategory(event.target.value)}>{mediaCategories.map((item) => <option key={item}>{item}</option>)}</select>}<label className="primary-action">＋ {mediaTab === "fotos" ? "Adicionar fotos" : mediaTab === "videos" ? "Adicionar vídeos" : "Adicionar apresentação PDF"}<input disabled={busy} multiple type="file" accept={mediaTab === "fotos" ? "image/*" : mediaTab === "videos" ? "video/*" : ".pdf,application/pdf,.ppt,.pptx"} onChange={(event) => void upload(event.target.files, mediaTab === "videos" ? "Tour" : mediaTab === "apresentacoes" ? "Apresentação" : undefined)} /></label></div>}
-              {visibleMedia.length ? <div className="detail-gallery">{visibleMedia.map((item) => <article key={item.id}>
-                {editImages && <button className="media-delete" disabled={busy} type="button" onClick={() => setPendingDelete(item)} aria-label={`Excluir ${item.nome ?? "arquivo"}`}>×</button>}
-                {item.tipo === "foto" && item.url ? <button className="gallery-open watermarked-preview" type="button" onClick={() => setLightboxIndex(photos.findIndex((photo) => photo.id === item.id))}><img src={item.url} alt={item.categoria || item.nome || "Foto do imóvel"} /><span>Ampliar</span></button> : item.tipo === "video" && item.url ? <div className="watermarked-preview"><video src={item.url} controls preload="metadata" /></div> : item.url ? <button className="file-tile watermarked-preview" type="button" onClick={() => setDocumentPreview(item)}>Abrir {item.tipo === "pdf" ? "PDF" : "apresentação"}</button> : <div className="file-tile watermarked-preview">{item.tipo.toUpperCase()}</div>}
-                {editImages ? <div><select aria-label={`Classificação de ${item.nome ?? "material"}`} value={item.categoria ?? "Outros"} onChange={(event) => void mediaAction("updateMedia", item.id, event.target.value)}>{mediaCategories.map((entry) => <option key={entry}>{entry}</option>)}</select><small>{item.nome}</small><div className="media-actions">{item.tipo === "foto" && <button disabled={busy || item.is_capa} type="button" onClick={() => void setCover(item.id)}>{item.is_capa ? "✓ Foto de capa" : "Usar como capa"}</button>}</div></div> : <div className="media-view-label"><strong>{item.categoria ?? "Outros"}{item.is_capa ? " · capa" : ""}</strong><small>{item.nome}</small></div>}
-              </article>)}</div> : <p className="empty-media">Nenhum material nesta categoria. Use o botão acima para adicionar.</p>}
-            </section>
-          </>}
+          </div>
         </div>
-      </>}
+      ) : (
+        <div className="fv2-page">
+          <div className="fv2-main">
+            <div className="fv2-mosaic">
+              <button className="fv2-mosaic-cover" type="button" onClick={() => photos.length && setLightboxIndex(0)} style={cover?.url ? { backgroundImage: `url(${cover.url})` } : undefined} aria-label="Ampliar galeria de fotos">
+                <span className={`fv2-status ${product.rascunho ? "draft" : "ready"}`}><i />{product.rascunho ? "Rascunho" : product.status.replace(/_/g, " ")}</span>
+              </button>
+              <div className="fv2-mosaic-side">
+                <div className="fv2-thumb" style={otherPhotos[0]?.url ? { backgroundImage: `url(${otherPhotos[0].url})` } : undefined} />
+                <button className="fv2-thumb fv2-thumb-more" type="button" onClick={() => photos.length && setLightboxIndex(0)}>
+                  <IcImages /><span>Ver {photos.length} foto{photos.length === 1 ? "" : "s"}</span>
+                </button>
+              </div>
+              <button className="fv2-close" type="button" onClick={onClose} aria-label="Fechar ficha do produto"><IcClose /></button>
+            </div>
+
+            <div className="fv2-head">
+              <h2>{product.nome}</h2>
+              <p className="fv2-address"><IcPin /> {[product.bairro, product.cidade, product.uf].filter(Boolean).join(" · ") || "Endereço não informado"} · Captado por: {product.captado_por_nome ?? "Não informado"}</p>
+            </div>
+
+            <div className="fv2-specs">
+              <div className="fv2-spec"><span className="fv2-spec-ic"><IcRuler /></span><strong>{product.summary_area ?? "—"} <em>m²</em></strong><small>a partir de</small></div>
+              <div className="fv2-spec"><span className="fv2-spec-ic"><IcBed /></span><strong>{product.dormitorios ?? "—"}</strong><small>dormitório(s)</small></div>
+              <div className="fv2-spec"><span className="fv2-spec-ic"><IcBath /></span><strong>{product.suites ?? "—"}</strong><small>suíte(s)</small></div>
+              <div className="fv2-spec"><span className="fv2-spec-ic"><IcCar /></span><strong>{product.vagas ?? "—"}</strong><small>vaga(s)</small></div>
+            </div>
+
+            <nav className="fv2-tabs">
+              {([["resumo", "Resumo"], ["localizacao", "Localização"], ["proprietario", "Proprietário"], ["unidades", "Unidades"], ["galeria", "Galeria"]] as const).map(([key, label]) => (
+                (key !== "proprietario" || product.origem === "terceiros") && <button key={key} type="button" className={tab === key ? "active" : ""} onClick={() => setTab(key)}>{label}</button>
+              ))}
+            </nav>
+
+            {message && <div className={`detail-message ${message.includes("salv") || message.includes("atualiz") || message.includes("adicionado") ? "success" : ""}`}>{message}</div>}
+
+            <div className="fv2-tab-body">
+              {tab === "resumo" && <>
+                <div className="fv2-registration">
+                  <span className="fv2-registration-ic"><IcSeal /></span>
+                  <div><strong>Cadastro completo</strong><small>{product.completion.completed} de {product.completion.total} blocos preenchidos</small></div>
+                  <b>{completionPct}%</b>
+                </div>
+                <div className="fv2-chips">{Object.entries(product.completion.checks).map(([key, ok]) => <span key={key} className={ok ? "done" : ""}><IcCheck />{completionLabels[key] ?? key}</span>)}</div>
+                <div className={product.descricao ? "fv2-desc" : "fv2-desc empty"}>
+                  {product.descricao ? <p>{product.descricao}</p> : <><span>Nenhuma descrição cadastrada ainda.</span><button type="button" onClick={() => setEditing(true)}>Adicionar descrição</button></>}
+                </div>
+                <div className="fv2-cost-tiles">
+                  <div className="fv2-tile"><small>CONDOMÍNIO</small><strong>{product.condominio_valor ? money.format(product.condominio_valor) : "—"}</strong></div>
+                  <div className="fv2-tile"><small>IPTU</small><strong>{product.iptu ? money.format(product.iptu) : "—"}</strong></div>
+                  <div className="fv2-tile"><small>OUTROS CUSTOS</small><strong>{product.outros_custos ? money.format(product.outros_custos) : "—"}</strong></div>
+                </div>
+              </>}
+
+              {tab === "localizacao" && <>
+                <h3 className="fv2-loc-title">{[product.endereco, product.numero].filter(Boolean).join(", ") || "Endereço não cadastrado"}</h3>
+                <p className="fv2-loc-sub">{[product.bairro, product.cidade].filter(Boolean).join(" · ")}{product.uf ? ` — ${product.uf}` : ""}{product.cep ? ` · CEP ${product.cep}` : ""}</p>
+                {product.condominios && <div className="fv2-condo"><span className="fv2-condo-ic"><IcBuilding /></span><div><strong>{product.condominios.nome}</strong><small>Condomínio associado</small></div></div>}
+                <div className="fv2-map">
+                  {mapStatus === "done" && mapCoord ? <iframe title="Mapa do imóvel" loading="lazy" src={`https://www.openstreetmap.org/export/embed.html?bbox=${mapCoord.lon - 0.006}%2C${mapCoord.lat - 0.005}%2C${mapCoord.lon + 0.006}%2C${mapCoord.lat + 0.005}&layer=mapnik&marker=${mapCoord.lat}%2C${mapCoord.lon}`} />
+                    : <div className="fv2-map-placeholder">{mapStatus === "error" ? "Mapa indisponível para este endereço." : "Carregando mapa…"}</div>}
+                </div>
+              </>}
+
+              {tab === "proprietario" && product.origem === "terceiros" && <>
+                <div className="fv2-owner-block">
+                  <div className="fv2-owner-lead">
+                    <span className="fv2-avatar">{initials(product.proprietarios?.nome)}</span>
+                    <div><strong>{product.proprietarios?.nome ?? "—"}</strong><small>Proprietária</small></div>
+                  </div>
+                  <div className="fv2-contact-pills">
+                    {product.proprietarios?.telefone && <a className="fv2-pill" href={`tel:${product.proprietarios.telefone}`}><IcPhone />{product.proprietarios.telefone}</a>}
+                    {product.proprietarios?.email && <a className="fv2-pill" href={`mailto:${product.proprietarios.email}`}><IcMail />{product.proprietarios.email}</a>}
+                  </div>
+                </div>
+                <div className="fv2-cost-tiles">
+                  <div className="fv2-tile"><small>ACESSO</small><strong>{product.acesso_tipo || "—"}</strong></div>
+                  <div className="fv2-tile"><small>CÓDIGO</small><strong>{product.acesso_codigo || "—"}</strong></div>
+                  <div className="fv2-tile"><small>AUTORIZAÇÃO</small><strong>{product.acesso_instrucoes || "—"}</strong></div>
+                </div>
+              </>}
+
+              {tab === "unidades" && <div className="detail-section fv2-units">{product.unidades.length ? <div className="unit-table"><div className="unit-head"><span>Unidade</span><span>Tipologia</span><span>Área</span><span>Vagas</span><span>Valor</span><span>Status</span></div>{product.unidades.map((unit) => <div key={unit.id}><span>{unit.numero || "—"}</span><span>{unit.tipologia || "—"}</span><span>{unit.area_m2 ?? "—"} m²</span><span>{unit.vagas ?? 0} vaga(s)</span><strong>{money.format(unit.valor_promo ?? unit.valor_tabela ?? 0)}</strong><i className={unit.disponivel ? "available" : ""}>{unit.disponivel ? "Disponível" : "Indisponível"}</i></div>)}</div> : <p className="empty-media">Nenhuma unidade individual cadastrada.</p>}</div>}
+
+              {tab === "galeria" && mediaLibrary}
+            </div>
+          </div>
+
+          <aside className="fv2-side">
+            <div className="fv2-price-card">
+              <small>VALOR DO IMÓVEL</small>
+              <strong>{product.summary_price ? money.format(product.summary_price) : "Sob consulta"}</strong>
+              {product.summary_price && product.summary_area ? <span className="fv2-price-m2">{money.format(Math.round(product.summary_price / product.summary_area))} por m²</span> : null}
+              <div className="fv2-side-costs">
+                <div><span>Condomínio</span><b>{product.condominio_valor ? money.format(product.condominio_valor) : "—"}</b></div>
+                <div><span>IPTU</span><b>{product.iptu ? money.format(product.iptu) : "—"}</b></div>
+                <div><span>Outros custos</span><b>{product.outros_custos ? money.format(product.outros_custos) : "—"}</b></div>
+              </div>
+            </div>
+
+            <div className="fv2-actions">
+              <button className="fv2-btn fv2-btn-lead" type="button" onClick={() => setLeadPanelOpen(!leadPanelOpen)}><IcLink /> Vincular lead{product.leads.some((lead) => lead.linked) ? ` · ${product.leads.filter((lead) => lead.linked).length}` : ""}</button>
+              {leadPanelOpen && <div className="fv2-lead-panel"><div className="lead-link-form"><select value={leadId} onChange={(event) => setLeadId(event.target.value)}><option value="">Selecione um lead...</option>{product.leads.filter((lead) => !lead.linked).map((lead) => <option value={lead.id} key={lead.id}>{lead.nome || "Lead sem nome"} · {lead.telefone || "sem telefone"}</option>)}</select><button className="primary-action" disabled={busy || !leadId} type="button" onClick={() => void productAction("linkLead", leadId)}>Vincular</button></div><div className="linked-leads">{product.leads.filter((lead) => lead.linked).map((lead) => <span key={lead.id}><strong>{lead.nome || "Lead sem nome"}</strong><small>{lead.telefone}</small><button type="button" disabled={busy} onClick={() => void productAction("unlinkLead", lead.id)}>×</button></span>)}</div></div>}
+              <button className="fv2-btn fv2-btn-outline" type="button" onClick={() => setEditing(true)}><IcEdit /> Editar produto</button>
+              <div className="fv2-action-row">
+                <button className={product.is_favorite ? "fv2-btn fv2-btn-outline active" : "fv2-btn fv2-btn-outline"} disabled={busy} type="button" onClick={() => void productAction("toggleFavorite", !product.is_favorite)}><IcStar /> {product.is_favorite ? "Favorito" : "Favoritar"}</button>
+                <button className="fv2-btn fv2-btn-icon" type="button" aria-label="Compartilhar" title="Compartilhar"><IcShare /></button>
+              </div>
+              {publishButton}
+            </div>
+
+            {product.origem === "terceiros" && <div className="fv2-person-card">
+              <span className="fv2-avatar">{initials(product.proprietarios?.nome)}</span>
+              <div><strong>{product.proprietarios?.nome ?? "—"}</strong><small>Proprietária{product.proprietarios?.telefone ? ` · ${product.proprietarios.telefone}` : ""}</small></div>
+            </div>}
+
+            <div className="fv2-person-card">
+              <span className="fv2-avatar purple">{initials(product.captado_por_nome)}</span>
+              <div><strong>{product.captado_por_nome ?? "Não informado"}</strong><small>Corretor da captação</small></div>
+            </div>
+          </aside>
+        </div>
+      )}
     </aside>
     {lightboxIndex !== null && photos[lightboxIndex]?.url && <div className="photo-lightbox" role="dialog" aria-modal="true" aria-label="Galeria ampliada"><button className="lightbox-close" type="button" onClick={() => setLightboxIndex(null)} aria-label="Fechar galeria">×</button><button className="lightbox-nav previous" type="button" onClick={() => setLightboxIndex((lightboxIndex - 1 + photos.length) % photos.length)} aria-label="Foto anterior">‹</button><div className="lightbox-image watermarked-preview"><img src={photos[lightboxIndex].url ?? ""} alt={photos[lightboxIndex].categoria || photos[lightboxIndex].nome || "Foto ampliada do imóvel"} /></div><div><strong>{photos[lightboxIndex].categoria || "Foto do imóvel"}</strong><span>{lightboxIndex + 1} de {photos.length}</span></div><button className="lightbox-nav next" type="button" onClick={() => setLightboxIndex((lightboxIndex + 1) % photos.length)} aria-label="Próxima foto">›</button></div>}
     {documentPreview?.url && <div className="document-preview-modal" role="dialog" aria-modal="true" aria-label="Visualizar apresentação"><header><strong>{documentPreview.nome || "Apresentação do produto"}</strong><button type="button" onClick={() => setDocumentPreview(null)} aria-label="Fechar apresentação">×</button></header><div className="document-frame watermarked-preview"><iframe src={documentPreview.url} title={documentPreview.nome || "Apresentação do produto"} /></div></div>}
