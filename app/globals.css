@@ -4820,6 +4820,27 @@ article.tone-red{border-left-color:#d3443e}article.tone-red strong{color:#d3443e
 .fv2-unit-detail-ov .fv2-ud-empty { color:#b4a99e; font-size:13px; font-style:italic; }
 .fv2-unit-detail-ov .fv2-ud-gallery { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
 .fv2-unit-detail-ov .fv2-ud-photo { aspect-ratio:1/1; border-radius:12px; background-size:cover; background-position:center; border:1px solid var(--fv-line); display:block; }
+.fv2-unit-detail-ov .fv2-ud-aprov { font-size:11px; font-weight:700; padding:3px 10px; border-radius:20px; }
+.fv2-unit-detail-ov .fv2-ud-aprov.pendente { background:#fff3d6; color:#8a5d00; }
+.fv2-unit-detail-ov .fv2-ud-aprov.reprovado { background:#ffe1dd; color:#a83026; }
+.fv2-unit-detail-ov .fv2-ud-foot { position:sticky; bottom:0; background:#fff; border-top:1px solid var(--fv-line); padding:13px 20px; display:flex; gap:10px; }
+.fv2-unit-detail-ov .fv2-ud-foot button { flex:1; border:0; border-radius:12px; padding:12px; font-weight:700; font-size:14px; cursor:pointer; font-family:inherit; }
+.fv2-unit-detail-ov .fv2-ud-approve { background:var(--fv-green); color:#fff; }
+.fv2-unit-detail-ov .fv2-ud-reject { background:#fff; color:#c62828; border:1px solid #f0c3c3 !important; }
+.fv2-unit-detail-ov .fv2-ud-foot button:disabled { opacity:.5; }
+/* Lista de unidades pendentes (dentro do filtro Pendentes de aprovação em Produtos) */
+.pending-units { margin:6px 0 18px; padding:16px 18px; border:1px solid #f0d9a8; border-radius:16px; background:linear-gradient(180deg,#fffdf8,#fff8ec); }
+.pending-units h3 { font-size:15px; display:flex; align-items:center; gap:8px; color:#8a5d00; }
+.pending-units h3 span { background:#fff3d6; color:#8a5d00; font-size:12px; font-weight:800; padding:1px 9px; border-radius:20px; }
+.pending-units .pu-sub { font-size:12.5px; color:#9a7b3a; margin:2px 0 12px; }
+.pending-units .pu-row { display:flex; align-items:center; gap:13px; background:#fff; border:1px solid #efe3cf; border-radius:13px; padding:11px 13px; margin-bottom:9px; }
+.pending-units .pu-thumb { width:52px; height:52px; border-radius:11px; background-size:cover; background-position:center; background-color:#efe6d7; display:grid; place-items:center; color:#c7b48f; flex-shrink:0; }
+.pending-units .pu-main { flex:1; min-width:0; }
+.pending-units .pu-main strong { font-size:14.5px; display:flex; align-items:center; gap:7px; }
+.pending-units .pu-main small { display:block; font-size:12.5px; color:#8a7f76; margin-top:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.pending-units .pu-chip { font-size:10px; font-weight:700; padding:2px 8px; border-radius:20px; background:#f6ecfb; color:#8B00CC; }
+.pending-units .pu-rev { border:1px solid #d9cdbf; background:#fff; color:#5a5148; font-weight:700; font-size:13px; padding:9px 17px; border-radius:10px; cursor:pointer; flex-shrink:0; }
+.pending-units .pu-rev:hover { border-color:#ff7000; color:#ff7000; }
 
 /* Media library (Galeria tab) — reestilizado */
 .ficha-v2 .fv2-media { margin:0; padding:0; }

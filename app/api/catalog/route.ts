@@ -110,11 +110,37 @@ export async function GET(request: Request) {
   const visible = canApprove ? catalog : catalog.filter((p) => p.approval === "aprovado" || p.mine);
   const pendingCount = catalog.filter((p) => p.approval === "pendente" && !p.draft).length;
 
+  // Fila de UNIDADES de indicação pendentes (só para aprovadores).
+  type PendingUnit = { id: string; numero: string | null; tipologia: string | null; valor: number | null; empreendimentoId: string; predio: string; proprietario: string | null; indicador: string | null; coverUrl: string | null };
+  let pendingUnits: PendingUnit[] = [];
+  if (canApprove) {
+    const { data: pu } = await supabase
+      .from("unidades")
+      .select("id, numero, tipologia, valor_tabela, valor_promo, empreendimento_id, proprietario_nome, captador_corretor_id, empreendimentos(nome)")
+      .eq("de_terceiros", true).eq("aprovacao", "pendente");
+    const unitIds = (pu ?? []).map((u) => u.id);
+    const coverByUnit = new Map<string, string | null>();
+    if (unitIds.length) {
+      const { data: um } = await supabase.from("midias").select("unidade_id, storage_path, is_capa, created_at").in("unidade_id", unitIds).eq("tipo", "foto").order("is_capa", { ascending: false }).order("created_at", { ascending: true });
+      for (const m of (um ?? [])) { const uid = (m as { unidade_id?: string }).unidade_id; if (uid && !coverByUnit.has(uid)) coverByUnit.set(uid, publicMediaUrl((m as { storage_path: string }).storage_path)); }
+    }
+    pendingUnits = (pu ?? []).map((u) => ({
+      id: u.id, numero: u.numero, tipologia: u.tipologia,
+      valor: u.valor_promo ?? u.valor_tabela ?? null,
+      empreendimentoId: u.empreendimento_id,
+      predio: ((u.empreendimentos as { nome?: string } | null)?.nome) ?? "—",
+      proprietario: u.proprietario_nome,
+      indicador: corretorNameById.get(u.captador_corretor_id ?? -1) ?? null,
+      coverUrl: coverByUnit.get(u.id) ?? null,
+    }));
+  }
+
   return Response.json({
     mode: "production-readonly",
     role,
     canApprove,
     pendingCount,
+    pendingUnits,
     count: visible.length,
     catalog: visible,
   });

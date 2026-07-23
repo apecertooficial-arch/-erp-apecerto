@@ -1,11 +1,11 @@
 "use client";
 /* eslint-disable @next/next/no-img-element */
 
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { getBrowserSupabaseClient } from "../../lib/supabase/browser";
 
 type Media = { id: string; tipo: "foto" | "video" | "pdf" | "apresentacao"; storage_path: string; categoria: string | null; nome: string | null; is_capa: boolean; url: string | null; unidade_id?: string | null };
-type Unit = { id: string; numero: string | null; tipologia: string | null; area_m2: number | null; vagas: number | null; valor_tabela: number | null; valor_promo: number | null; disponivel: boolean; de_terceiros?: boolean; captador_nome?: string | null; proprietario_nome?: string | null; proprietario_contato?: string | null; acesso_tipo?: string | null; acesso_codigo?: string | null; acesso_instrucoes?: string | null };
+type Unit = { id: string; numero: string | null; tipologia: string | null; area_m2: number | null; vagas: number | null; valor_tabela: number | null; valor_promo: number | null; disponivel: boolean; de_terceiros?: boolean; captador_nome?: string | null; proprietario_nome?: string | null; proprietario_contato?: string | null; acesso_tipo?: string | null; acesso_codigo?: string | null; acesso_instrucoes?: string | null; aprovacao?: string | null };
 type Owner = { nome: string; email: string; telefone: string };
 type Condo = { id: string; nome: string; endereco: string; numero: string | null; bairro: string | null; cidade: string; uf: string; cep: string | null };
 type LeadOption = { id: number; nome: string | null; telefone: string | null; linked: boolean };
@@ -72,7 +72,7 @@ function initials(name?: string | null): string {
   return ((parts[0][0] ?? "") + (parts.length > 1 ? parts[parts.length - 1][0] : "")).toUpperCase();
 }
 
-export function ProductDetail({ productId, accessToken, sessionRole = "corretor", onClose, onChanged }: { productId: string; accessToken: string; sessionRole?: string; onClose: () => void; onChanged: () => void }) {
+export function ProductDetail({ productId, accessToken, sessionRole = "corretor", initialUnitId, onClose, onChanged }: { productId: string; accessToken: string; sessionRole?: string; initialUnitId?: string | null; onClose: () => void; onChanged: () => void }) {
   const canPublish = sessionRole === "admin" || sessionRole === "gestor" || sessionRole === "executivo";
   const [product, setProduct] = useState<ProductDetailData | null>(null);
   const [draft, setDraft] = useState<Record<string, string | number | null>>({});
@@ -218,6 +218,26 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
       if (!response.ok) throw new Error(result.error ?? "Não foi possível concluir a ação.");
       await load(); onChanged(); setMessage(publish ? "Produto publicado — já aparece no disparo, nas abordagens e no catálogo." : "Produto voltou para rascunho (fica invisível no disparo e nas abordagens).");
     } catch (error) { setMessage(error instanceof Error ? error.message : "Erro ao publicar."); } finally { setBusy(false); }
+  }
+
+  const initialOpened = useRef(false);
+  useEffect(() => {
+    if (!initialOpened.current && initialUnitId && product) {
+      const u = product.unidades.find((x) => x.id === initialUnitId);
+      if (u) { setTab("unidades"); setUnitDetail(u); initialOpened.current = true; }
+    }
+  }, [product, initialUnitId]);
+
+  async function decideUnit(unidadeId: string, approve: boolean) {
+    let motivo: string | null = null;
+    if (!approve) { motivo = window.prompt("Motivo da reprovação (opcional):", "") ?? ""; }
+    setBusy(true); setMessage("");
+    try {
+      const response = await fetch("/api/product", { method: "PATCH", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify({ id: productId, action: "decideUnit", unidadeId, approve, motivo }) });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error ?? "Não foi possível concluir a decisão.");
+      setUnitDetail(null); await load(); onChanged(); setMessage(approve ? "Unidade aprovada." : "Unidade reprovada.");
+    } catch (error) { setMessage(error instanceof Error ? error.message : "Erro ao decidir a unidade."); } finally { setBusy(false); }
   }
 
   async function submitRequest() {
@@ -408,7 +428,7 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
       <div className="fv2-unit-detail">
         <div className="fv2-ud-head"><h2>Unidade {u.numero || "—"}</h2><button type="button" onClick={() => setUnitDetail(null)} aria-label="Fechar"><IcClose /></button></div>
         <div className="fv2-ud-body">
-          <div className="fv2-ud-badges"><span className={`fv2-unit-origin ${ind ? "indic" : "constru"}`}>{ind ? "Indicação" : "Construtora"}</span><span className={`fv2-unit-status ${u.disponivel ? "on" : "off"}`}>{u.disponivel ? "Disponível" : "Indisponível"}</span></div>
+          <div className="fv2-ud-badges"><span className={`fv2-unit-origin ${ind ? "indic" : "constru"}`}>{ind ? "Indicação" : "Construtora"}</span>{ind && u.aprovacao && u.aprovacao !== "aprovado" && <span className={`fv2-ud-aprov ${u.aprovacao}`}>{u.aprovacao === "pendente" ? "⏳ Pendente" : "✕ Reprovado"}</span>}<span className={`fv2-unit-status ${u.disponivel ? "on" : "off"}`}>{u.disponivel ? "Disponível" : "Indisponível"}</span></div>
           <div className="fv2-ud-sec">Dados da unidade</div>
           <div className="fv2-cost-tiles"><div className="fv2-tile"><small>TIPOLOGIA</small><strong>{u.tipologia || "—"}</strong></div><div className="fv2-tile"><small>ÁREA</small><strong>{u.area_m2 ?? "—"} m²</strong></div><div className="fv2-tile"><small>VAGAS</small><strong>{u.vagas ?? 0}</strong></div><div className="fv2-tile"><small>VALOR</small><strong>{money.format(u.valor_promo ?? u.valor_tabela ?? 0)}</strong></div></div>
           <div className="fv2-ud-sec">Proprietário</div>
@@ -419,6 +439,7 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
           <div className="fv2-cost-tiles"><div className="fv2-tile"><small>TIPO</small><strong>{acessoLabel(u.acesso_tipo)}</strong></div><div className="fv2-tile"><small>CÓDIGO</small><strong>{u.acesso_codigo || "—"}</strong></div><div className="fv2-tile"><small>INSTRUÇÕES</small><strong>{u.acesso_instrucoes || "—"}</strong></div></div>
           {ind && <><div className="fv2-ud-sec">Fotos da unidade</div>{(() => { const um = product.midias.filter((m) => m.unidade_id === u.id && m.tipo === "foto" && m.url); return um.length ? <div className="fv2-ud-gallery">{um.map((m) => <a key={m.id} href={m.url ?? "#"} target="_blank" rel="noreferrer" className="fv2-ud-photo watermarked-preview" style={{ backgroundImage: `url(${m.url})` }} aria-label="Foto da unidade" />)}</div> : <p className="fv2-ud-empty">Nenhuma foto enviada para esta unidade ainda.</p>; })()}</>}
         </div>
+        {canPublish && ind && u.aprovacao === "pendente" && <div className="fv2-ud-foot"><button type="button" className="fv2-ud-reject" disabled={busy} onClick={() => void decideUnit(u.id, false)}>✕ Reprovar</button><button type="button" className="fv2-ud-approve" disabled={busy} onClick={() => void decideUnit(u.id, true)}>✓ Aprovar</button></div>}
       </div>
     </div>; })()}
   </div>;
