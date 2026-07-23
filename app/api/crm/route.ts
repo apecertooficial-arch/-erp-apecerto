@@ -152,7 +152,10 @@ export async function PATCH(request: Request) {
 
   if (action === "createLead") {
     const nome = cleanText(body.nome, 160);
-    const telefone = cleanText(body.telefone, 40);
+    // Normaliza telefone BR: só dígitos e prefixa 55 quando vier sem DDI (10/11 dígitos).
+    // Evita salvar número sem código do país (o WhatsApp não entrega e o lead não responde).
+    const telDigits = cleanText(body.telefone, 40).replace(/\D/g, "");
+    const telefone = (telDigits.length === 10 || telDigits.length === 11) ? `55${telDigits}` : telDigits;
     const email = cleanText(body.email, 180).toLowerCase();
     const origem = cleanText(body.origem, 100) || "manual";
     const pipelineId = positiveInteger(body.pipelineId);
