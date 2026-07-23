@@ -4827,3 +4827,46 @@ article.tone-red{border-left-color:#d3443e}article.tone-red strong{color:#d3443e
   .ficha-v2 .fv2-mosaic { height:260px; }
   .ficha-v2 .fv2-specs { grid-template-columns:repeat(2,1fr); }
 }
+/* ─── Aquário: pesque um lead ─── */
+.aq-box { margin:8px 8px 2px; border:1.5px dashed #7dd3fc; background:linear-gradient(180deg,#f0f9ff,#e0f2fe); border-radius:14px; padding:12px; display:flex; flex-direction:column; gap:8px; }
+.aq-count { display:flex; align-items:center; gap:10px; }
+.aq-fish-ico { font-size:24px; }
+.aq-count strong { font-size:20px; color:#075985; letter-spacing:-.02em; display:block; line-height:1; }
+.aq-count small { font-size:10.5px; color:#0369a1; font-weight:650; }
+.aq-pescar { border:none; border-radius:10px; padding:9px 12px; font-weight:800; font-size:12.5px; cursor:pointer; color:#fff; background:linear-gradient(135deg,#0284c7,#0ea5e9); box-shadow:0 4px 12px rgba(2,132,199,.28); transition:transform .12s; }
+.aq-pescar:hover:not(:disabled) { transform:translateY(-1px); }
+.aq-pescar:disabled { opacity:.55; cursor:default; }
+.aq-import { border:1px solid #bae6fd; background:#fff; color:#0369a1; border-radius:10px; padding:7px 10px; font-weight:700; font-size:11.5px; cursor:pointer; }
+.aq-import:hover { background:#f0f9ff; }
+/* modal de importação */
+.aq-modal-layer { display:flex; align-items:center; justify-content:center; }
+.aq-modal { background:#fff; border-radius:18px; width:min(560px,94vw); max-height:88vh; overflow:auto; padding:20px 22px; box-shadow:0 24px 60px rgba(32,20,14,.3); }
+.aq-modal header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px; }
+.aq-modal header span { font-size:10px; font-weight:800; letter-spacing:.12em; color:#0284c7; }
+.aq-modal header h2 { margin:2px 0 4px; font-size:19px; color:#20140e; }
+.aq-modal header p { margin:0; font-size:12.5px; color:#8a807a; }
+.aq-modal header > button { border:none; background:#f5f1ee; border-radius:50%; width:30px; height:30px; font-size:16px; cursor:pointer; color:#6b625c; }
+.aq-tabs { display:flex; gap:6px; margin-bottom:12px; }
+.aq-tabs button { flex:1; border:1px solid #ece7e3; background:#faf8f6; border-radius:10px; padding:9px; font-weight:700; font-size:12.5px; color:#6b625c; cursor:pointer; }
+.aq-tabs button.active { background:#e0f2fe; border-color:#7dd3fc; color:#075985; }
+.aq-pane p { font-size:12.5px; color:#57504b; margin:0 0 10px; }
+.aq-molde { border:1px solid #bae6fd; background:#f0f9ff; color:#0369a1; border-radius:10px; padding:9px 12px; font-weight:700; font-size:12.5px; cursor:pointer; margin-bottom:10px; display:block; }
+.aq-file { display:block; border:1.5px dashed #d6cec8; border-radius:12px; padding:16px; text-align:center; font-weight:700; font-size:13px; color:#57504b; cursor:pointer; background:#faf8f6; }
+.aq-file input { display:block; margin:8px auto 0; font-size:12px; }
+.aq-pane textarea { width:100%; border:1px solid #ece7e3; border-radius:12px; padding:10px 12px; font-size:13px; font-family:inherit; resize:vertical; box-sizing:border-box; }
+.aq-preview { margin-top:12px; border:1px solid #ece7e3; border-radius:12px; padding:10px 12px; background:#faf8f6; }
+.aq-preview strong { font-size:13px; color:#17834b; display:block; }
+.aq-preview em { display:block; font-size:11.5px; color:#b45309; font-style:normal; margin-top:4px; }
+.aq-preview-rows { display:flex; flex-direction:column; gap:2px; margin-top:8px; }
+.aq-preview-rows span { font-size:11.5px; color:#57504b; }
+.aq-modal footer { display:flex; justify-content:flex-end; gap:8px; margin-top:16px; }
+.aq-modal footer button { border:1px solid #ece7e3; background:#fff; border-radius:10px; padding:9px 16px; font-weight:700; font-size:13px; cursor:pointer; color:#57504b; }
+.aq-modal footer button.crm-primary { border:none; color:#fff; background:linear-gradient(135deg,#ff7000,#ff9040); }
+.aq-modal footer button.crm-primary:disabled { opacity:.55; }
+.aq-result { display:flex; gap:10px; flex-wrap:wrap; align-items:stretch; }
+.aq-result-num { flex:1; min-width:120px; border:1px solid #ece7e3; border-radius:12px; padding:14px; text-align:center; background:#faf8f6; }
+.aq-result-num.ok { background:#ecfdf3; border-color:#bbe7cd; }
+.aq-result-num strong { display:block; font-size:24px; color:#20140e; }
+.aq-result-num.ok strong { color:#17834b; }
+.aq-result-num span { font-size:11px; color:#8a807a; font-weight:650; }
+.aq-result footer { width:100%; display:flex; justify-content:flex-end; margin-top:6px; }
