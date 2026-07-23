@@ -1010,7 +1010,7 @@ button { cursor:pointer; }
 .chat-instance-bar>span.connected { color:var(--green); }
 .chat-error { margin:0; padding:11px 22px; background:var(--red-bg); color:var(--red); font-size:13px; font-weight:600; }
 .chat-messages { display:flex; flex-direction:column; gap:8px; padding:20px 22px; overflow:auto; flex:1; background:#efeae2 !important; background-image:none !important; }
-.chat-messages article { max-width:74%; padding:9px 13px; border-radius:16px; font-size:14px; line-height:1.4; box-shadow:0 1px 1px rgba(11,20,26,.08); }
+.chat-messages article { max-width:74%; padding:8px 12px; border-radius:15px; font-size:12.5px; line-height:1.42; box-shadow:0 1px 1px rgba(11,20,26,.08); }
 .chat-messages article.received { align-self:flex-start; background:#ffffff; border:0; border-bottom-left-radius:5px; }
 .chat-messages article.sent { align-self:flex-end; background:#d9fdd3; border-bottom-right-radius:5px; }
 /* Áudio estilo WhatsApp */
