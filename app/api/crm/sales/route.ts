@@ -27,7 +27,7 @@ async function activeSlugs(auth: Auth) {
 export async function GET(request: Request) {
   const auth = await authClient(request);
   if (!auth) return Response.json({ error: "Sessão inválida ou expirada." }, { status: 401 });
-  const [sales, processes, deals, leads, products, brokers, stages, etapaDocs, anexos, users, history, verificacoes, solicitacoes, docModelo, condicoes, comissao, comissaoParcelas, observacoes] = await Promise.all([
+  const [sales, processes, deals, leads, products, brokers, stages, etapaDocs, anexos, users, history, verificacoes, solicitacoes, docModelo, condicoes, comissao, comissaoParcelas, observacoes, pipelines, pipelineStages] = await Promise.all([
     auth.supabase.from("vendas").select("id,created_at,data_venda,empreendimento_id,empreendimento_nome,unidade_id,vgv,forma_pgto,status,obs").order("created_at", { ascending: false }),
     auth.supabase.from("venda_processos").select("id,venda_id,negocio_id,etapa,tipo_venda,responsavel_usuario_id,prazo_em,observacoes,criado_em,atualizado_em,aprovacao_status,aprovacao_motivo,solicitado_por"),
     auth.supabase.from("negocios").select("id,venda_id,lead_id,corretor_id,empreendimento_id,valor,status"),
@@ -46,10 +46,12 @@ export async function GET(request: Request) {
     auth.supabase.from("venda_comissao").select("*"),
     auth.supabase.from("venda_comissao_parcelas").select("*").order("ordem", { ascending: true }),
     auth.supabase.from("venda_observacoes").select("id,processo_ref,texto,autor,autor_nome,criado_em").order("criado_em", { ascending: false }),
+    auth.supabase.from("pipelines").select("id,nome,ordem").order("ordem", { ascending: true }),
+    auth.supabase.from("pipeline_stages").select("id,pipeline_id,nome,ordem").order("ordem", { ascending: true }),
   ]);
   const error = [sales, processes, deals, leads, products, brokers, stages, etapaDocs, anexos].find((item) => item.error)?.error;
   if (error) return Response.json({ error: error.message }, { status: 502 });
-  return Response.json({ sales: sales.data ?? [], processes: processes.data ?? [], deals: deals.data ?? [], leads: leads.data ?? [], products: products.data ?? [], brokers: brokers.data ?? [], stages: stages.data ?? [], etapaDocs: etapaDocs.data ?? [], anexos: anexos.data ?? [], users: users.data ?? [], history: history.data ?? [], verificacoes: verificacoes.data ?? [], solicitacoes: solicitacoes.data ?? [], docModelo: docModelo.data ?? [], condicoes: condicoes.data ?? [], comissao: comissao.data ?? [], comissaoParcelas: comissaoParcelas.data ?? [], observacoes: observacoes.data ?? [] });
+  return Response.json({ sales: sales.data ?? [], processes: processes.data ?? [], deals: deals.data ?? [], leads: leads.data ?? [], products: products.data ?? [], brokers: brokers.data ?? [], stages: stages.data ?? [], etapaDocs: etapaDocs.data ?? [], anexos: anexos.data ?? [], users: users.data ?? [], history: history.data ?? [], verificacoes: verificacoes.data ?? [], solicitacoes: solicitacoes.data ?? [], docModelo: docModelo.data ?? [], condicoes: condicoes.data ?? [], comissao: comissao.data ?? [], comissaoParcelas: comissaoParcelas.data ?? [], observacoes: observacoes.data ?? [], pipelines: pipelines.data ?? [], pipelineStages: pipelineStages.data ?? [] });
 }
 
 export async function PATCH(request: Request) {
@@ -286,15 +288,25 @@ export async function PATCH(request: Request) {
     const motivo = clean(body.motivo, 400) || null;
     const { data: proc } = await auth.supabase.from("venda_processos").select("negocio_id").eq("id", processId).maybeSingle();
     if (!proc?.negocio_id) return Response.json({ error: "Venda sem negócio vinculado." }, { status: 404 });
-    const { data: neg } = await auth.supabase.from("negocios").select("pipeline_id").eq("id", proc.negocio_id).maybeSingle();
-    let stageId: number | null = null;
-    if (neg?.pipeline_id) {
-      const { data: stgs } = await auth.supabase.from("pipeline_stages").select("id,nome,ordem").eq("pipeline_id", neg.pipeline_id).order("ordem", { ascending: true });
-      const alvo = (stgs ?? []).find((s) => /follow/i.test(String(s.nome))) || (stgs ?? [])[0];
-      stageId = (alvo?.id as number | undefined) ?? null;
+    // Etapa de destino: escolhida pelo gestor (qualquer etapa de qualquer funil). Fallback: follow-up do funil atual.
+    let stageId: number | null = Number.isSafeInteger(Number(body.stageId)) && Number(body.stageId) > 0 ? Number(body.stageId) : null;
+    let pipelineId: number | null = null;
+    if (stageId) {
+      const { data: st } = await auth.supabase.from("pipeline_stages").select("id,pipeline_id").eq("id", stageId).maybeSingle();
+      if (!st) return Response.json({ error: "Etapa de destino inválida." }, { status: 422 });
+      pipelineId = st.pipeline_id as number;
+    } else {
+      const { data: neg } = await auth.supabase.from("negocios").select("pipeline_id").eq("id", proc.negocio_id).maybeSingle();
+      if (neg?.pipeline_id) {
+        pipelineId = neg.pipeline_id as number;
+        const { data: stgs } = await auth.supabase.from("pipeline_stages").select("id,nome,ordem").eq("pipeline_id", neg.pipeline_id).order("ordem", { ascending: true });
+        const alvo = (stgs ?? []).find((s) => /follow/i.test(String(s.nome))) || (stgs ?? [])[0];
+        stageId = (alvo?.id as number | undefined) ?? null;
+      }
     }
     const now = new Date().toISOString();
     const upd: Record<string, unknown> = { status: "aberto", venda_id: null, ultima_movimentacao: now };
+    if (pipelineId) upd.pipeline_id = pipelineId;
     if (stageId) { upd.stage_id = stageId; upd.estagio_desde = now; }
     const { error: e1 } = await auth.supabase.from("negocios").update(upd).eq("id", proc.negocio_id);
     if (e1) return Response.json({ error: e1.message }, { status: 502 });

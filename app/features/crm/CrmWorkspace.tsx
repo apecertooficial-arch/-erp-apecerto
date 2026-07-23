@@ -403,6 +403,8 @@ type SalesData = {
   comissao?: Array<{ processo_ref: string; percentual_total: number | null; valor_total: number | null; imobiliaria: string | null; forma_pgto: string | null; participantes: Array<{ nome: string; papel: string; percentual: number | string; valor: number | string }> }>;
   comissaoParcelas?: Array<{ id: string; processo_ref: string; valor: number | null; gatilho: string | null; data_prevista: string | null; data_efetiva: string | null; responsavel: string | null; status: string; ordem: number }>;
   observacoes?: Array<{ id: string; processo_ref: string; texto: string; autor: string | null; autor_nome: string | null; criado_em: string }>;
+  pipelines?: Array<{ id: number; nome: string; ordem: number | null }>;
+  pipelineStages?: Array<{ id: number; pipeline_id: number; nome: string; ordem: number | null }>;
 };
 
 const saleStages = [
@@ -489,7 +491,7 @@ function SalesProcessView({ accessToken, initialCreate = false, sessionRole = "c
     })}</div>
     {creating && <CreateSaleModal data={data} accessToken={accessToken} onClose={() => setCreating(false)} onDone={async () => { setCreating(false); await load(); }} />}
     {chatItem && <LeadChatDrawer key={chatItem.deal.id} accessToken={accessToken} lead={chatItem.lead} deal={chatItem.deal} corretorNome={chatItem.corretorNome} onClose={() => setChatItem(null)} onResponse={async () => {}} />}
-    {detailItem && (() => { const sale = saleById.get(detailItem.venda_id); const deal = dealBySale.get(detailItem.venda_id); const lead = deal ? leadById.get(deal.lead_id) : null; const broker = brokerById.get(deal?.corretor_id ?? lead?.corretor_id ?? -1); return <SaleDetailDrawer accessToken={accessToken} canApprove={canManageStages} process={detailItem} sale={sale} lead={lead} broker={broker} stageList={stageList} docModelo={data.docModelo ?? []} anexos={(data.anexos ?? []).filter((a) => a.processo_ref === detailItem.id)} condicao={(data.condicoes ?? []).find((c) => c.processo_ref === detailItem.id)} comissao={(data.comissao ?? []).find((c) => c.processo_ref === detailItem.id)} comissaoParcelas={(data.comissaoParcelas ?? []).filter((p) => p.processo_ref === detailItem.id)} observacoes={(data.observacoes ?? []).filter((o) => o.processo_ref === detailItem.id)} users={data.users ?? []} history={(data.history ?? []).filter((h) => h.processo_id === detailItem.id)} busy={busy} onReload={load} onMove={async (stage) => { await move(detailItem.id, stage); setDetailItem((cur) => cur ? { ...cur, etapa: stage } : cur); }} onChat={lead && deal ? () => { setDetailItem(null); setChatItem({ lead: lead as unknown as Lead, deal: deal as unknown as Deal, corretorNome: broker?.nome }); } : undefined} onClose={() => setDetailItem(null)} />; })()}
+    {detailItem && (() => { const sale = saleById.get(detailItem.venda_id); const deal = dealBySale.get(detailItem.venda_id); const lead = deal ? leadById.get(deal.lead_id) : null; const broker = brokerById.get(deal?.corretor_id ?? lead?.corretor_id ?? -1); return <SaleDetailDrawer accessToken={accessToken} canApprove={canManageStages} process={detailItem} sale={sale} lead={lead} broker={broker} stageList={stageList} docModelo={data.docModelo ?? []} anexos={(data.anexos ?? []).filter((a) => a.processo_ref === detailItem.id)} condicao={(data.condicoes ?? []).find((c) => c.processo_ref === detailItem.id)} comissao={(data.comissao ?? []).find((c) => c.processo_ref === detailItem.id)} comissaoParcelas={(data.comissaoParcelas ?? []).filter((p) => p.processo_ref === detailItem.id)} observacoes={(data.observacoes ?? []).filter((o) => o.processo_ref === detailItem.id)} users={data.users ?? []} pipelines={data.pipelines ?? []} pipelineStages={data.pipelineStages ?? []} history={(data.history ?? []).filter((h) => h.processo_id === detailItem.id)} busy={busy} onReload={load} onMove={async (stage) => { await move(detailItem.id, stage); setDetailItem((cur) => cur ? { ...cur, etapa: stage } : cur); }} onChat={lead && deal ? () => { setDetailItem(null); setChatItem({ lead: lead as unknown as Lead, deal: deal as unknown as Deal, corretorNome: broker?.nome }); } : undefined} onClose={() => setDetailItem(null)} />; })()}
     {bulkFrom && <div className="crm-center-modal"><form onSubmit={(event) => event.preventDefault()}><header><div><span>AÇÃO EM MASSA</span><h2>Mover uma etapa inteira</h2><p>Todas as vendas de <b>{stageList.find((s) => s.id === bulkFrom)?.name}</b> serão enviadas para o destino escolhido.</p></div><button type="button" onClick={() => setBulkFrom(null)}>×</button></header><div className="bulk-move-grid"><label>Etapa de destino<select id="bulk-to" defaultValue=""><option value="">Selecione</option>{stageList.filter((s) => s.id !== bulkFrom).map((s) => <option value={s.id} key={s.id}>{s.name}</option>)}</select></label></div><footer><button type="button" onClick={() => setBulkFrom(null)}>Cancelar</button><button className="crm-primary" type="button" disabled={busy} onClick={() => { const to = (document.getElementById("bulk-to") as HTMLSelectElement | null)?.value; if (!to) { setError("Selecione a etapa de destino."); return; } void mutateStages({ action: "bulkMoveStage", fromSlug: bulkFrom, toSlug: to }); setBulkFrom(null); }}>Mover vendas</button></footer></form></div>}
   </section>;
 }
@@ -506,7 +508,7 @@ const ORIGEM_OPCOES = ["Recursos próprios", "Financiamento bancário", "FGTS", 
 const COMISSAO_GATILHOS = ["Na entrada", "Na primeira parcela", "Na segunda parcela", "Na assinatura", "Na liberação do financiamento", "Na entrega das chaves", "Outra condição"];
 const PARCELA_STATUS = ["previsto", "recebido", "atrasado", "cancelado"];
 
-function SaleDetailDrawer({ accessToken, canApprove, process, sale, lead, broker, stageList, docModelo, anexos, condicao, comissao, comissaoParcelas, observacoes, users, history = [], busy, onReload, onMove, onChat, onClose }: { accessToken: string; canApprove?: boolean; process: SalesData["processes"][number]; sale?: SalesData["sales"][number]; lead?: SalesData["leads"][number] | null; broker?: SalesData["brokers"][number]; stageList: SaleStageItem[]; docModelo: NonNullable<SalesData["docModelo"]>; anexos: NonNullable<SalesData["anexos"]>; condicao?: NonNullable<SalesData["condicoes"]>[number]; comissao?: NonNullable<SalesData["comissao"]>[number]; comissaoParcelas: NonNullable<SalesData["comissaoParcelas"]>; observacoes: NonNullable<SalesData["observacoes"]>; users: NonNullable<SalesData["users"]>; history?: NonNullable<SalesData["history"]>; busy?: boolean; onReload: () => Promise<void>; onMove: (stage: string) => Promise<void>; onChat?: () => void; onClose: () => void }) {
+function SaleDetailDrawer({ accessToken, canApprove, process, sale, lead, broker, stageList, docModelo, anexos, condicao, comissao, comissaoParcelas, observacoes, users, pipelines, pipelineStages, history = [], busy, onReload, onMove, onChat, onClose }: { accessToken: string; canApprove?: boolean; process: SalesData["processes"][number]; sale?: SalesData["sales"][number]; lead?: SalesData["leads"][number] | null; broker?: SalesData["brokers"][number]; stageList: SaleStageItem[]; docModelo: NonNullable<SalesData["docModelo"]>; anexos: NonNullable<SalesData["anexos"]>; condicao?: NonNullable<SalesData["condicoes"]>[number]; comissao?: NonNullable<SalesData["comissao"]>[number]; comissaoParcelas: NonNullable<SalesData["comissaoParcelas"]>; observacoes: NonNullable<SalesData["observacoes"]>; users: NonNullable<SalesData["users"]>; pipelines: NonNullable<SalesData["pipelines"]>; pipelineStages: NonNullable<SalesData["pipelineStages"]>; history?: NonNullable<SalesData["history"]>; busy?: boolean; onReload: () => Promise<void>; onMove: (stage: string) => Promise<void>; onChat?: () => void; onClose: () => void }) {
   const stageName = (slug: string) => stageList.find((s) => s.id === slug)?.name || slug;
   const enteredAt = (slug: string) => { const rows = history.filter((h) => h.etapa_para === slug); return rows.length ? rows[rows.length - 1].movido_em : null; };
   const currentIndex = stageList.findIndex((s) => s.id === process.etapa);
@@ -526,6 +528,10 @@ function SaleDetailDrawer({ accessToken, canApprove, process, sale, lead, broker
   const [wBusy, setWBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [obsText, setObsText] = useState("");
+  const [devolverOpen, setDevolverOpen] = useState(false);
+  const [devPipe, setDevPipe] = useState<number | "">("");
+  const [devStage, setDevStage] = useState<number | "">("");
+  const [devMotivo, setDevMotivo] = useState("");
   const [novoDoc, setNovoDoc] = useState<Record<string, { nome: string; obrig: boolean; obs: string }>>({});
   const [cond, setCond] = useState(() => ({
     comprador_tem_conjuge: condicao?.comprador_tem_conjuge ?? false, vendedor_tem_conjuge: condicao?.vendedor_tem_conjuge ?? false,
@@ -562,7 +568,7 @@ function SaleDetailDrawer({ accessToken, canApprove, process, sale, lead, broker
   const saveCondicoes = () => run(() => api({ action: "salvarCondicoes", processId: process.id, ...cond }));
   const saveComissao = () => run(() => api({ action: "salvarComissao", processId: process.id, ...com }));
   const addObs = () => { if (!obsText.trim()) return; void run(async () => { await api({ action: "addObs", processId: process.id, texto: obsText.trim() }); setObsText(""); }); };
-  const devolverFunil = () => { const motivo = window.prompt("Devolver este cliente ao funil de atendimento (follow-up). Motivo (opcional):", ""); if (motivo === null) return; void run(async () => { await api({ action: "devolverFunil", processId: process.id, motivo }); onClose(); }); };
+  const devolver = (stageId: number, motivo: string) => run(async () => { await api({ action: "devolverFunil", processId: process.id, stageId, motivo }); onClose(); });
   const busyAll = busy || wBusy;
 
   // grupos ativos conforme cônjuge
@@ -716,7 +722,7 @@ function SaleDetailDrawer({ accessToken, canApprove, process, sale, lead, broker
       <footer className="sale-full-foot">
         <div className="sale-full-foot-left">
           {onChat && <button type="button" className="crm-secondary" onClick={onChat}>Abrir chat do lead</button>}
-          {canApprove && <button type="button" className="sale-full-devolver" disabled={busyAll} onClick={devolverFunil}>↩ Devolver ao atendimento (follow-up)</button>}
+          {canApprove && <button type="button" className="sale-full-devolver" disabled={busyAll} onClick={() => { setDevMotivo(""); setDevPipe(""); setDevStage(""); setDevolverOpen(true); }}>↩ Devolver ao atendimento</button>}
         </div>
         <div className="sale-full-foot-right">
           {blockReasons.length > 0 && <span className="sale-full-foot-block">🔒 avanço bloqueado</span>}
@@ -724,6 +730,13 @@ function SaleDetailDrawer({ accessToken, canApprove, process, sale, lead, broker
         </div>
       </footer>
     </div>
+    {devolverOpen && <div className="crm-center-modal" onMouseDown={(e) => { if (e.target === e.currentTarget) setDevolverOpen(false); }}><form onSubmit={(e) => { e.preventDefault(); if (!devStage) return; void devolver(Number(devStage), devMotivo); }}>
+      <header><div><span>DEVOLVER AO ATENDIMENTO</span><h2>Escolha o funil e a etapa</h2><p>O cliente sai da esteira e volta ao funil na etapa escolhida (qualquer funil, qualquer etapa).</p></div><button type="button" onClick={() => setDevolverOpen(false)}>×</button></header>
+      <label>Funil (pipe)<select value={devPipe} onChange={(e) => { setDevPipe(e.target.value ? Number(e.target.value) : ""); setDevStage(""); }}><option value="">Selecione o funil</option>{pipelines.slice().sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0)).map((p) => <option value={p.id} key={p.id}>{p.nome}</option>)}</select></label>
+      <label>Etapa<select value={devStage} disabled={!devPipe} onChange={(e) => setDevStage(e.target.value ? Number(e.target.value) : "")}><option value="">{devPipe ? "Selecione a etapa" : "Escolha o funil primeiro"}</option>{pipelineStages.filter((s) => s.pipeline_id === devPipe).slice().sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0)).map((s) => <option value={s.id} key={s.id}>{s.nome}</option>)}</select></label>
+      <label>Motivo (opcional)<textarea rows={2} value={devMotivo} onChange={(e) => setDevMotivo(e.target.value)} placeholder="Ex.: proposta em negociação, aguardando retorno do cliente" /></label>
+      <footer><button type="button" onClick={() => setDevolverOpen(false)}>Cancelar</button><button className="crm-primary" type="submit" disabled={busyAll || !devStage}>Devolver ao funil</button></footer>
+    </form></div>}
   </div>;
 }
 
