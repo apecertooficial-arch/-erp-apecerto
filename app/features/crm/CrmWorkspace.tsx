@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties, type DragEven
 import { getBrowserSupabaseClient } from "../../lib/supabase/browser";
 import { MessageMedia, ProductSendModal, QuickActionModal, ScheduleModal, type ChatData, type QuickAction } from "../chat/LiveChatWorkspace";
 import { ackState, StatusTick } from "../chat/statusTick";
+import { startOpusRecorder, type OpusHandle } from "../../lib/opusMic";
 
 // Fetch autenticado resiliente: usa o token fresco da sessão do Supabase e,
 // se ainda vier 401, faz refresh e tenta 1x. Evita "Sessão inválida ou expirada".
@@ -1006,7 +1007,7 @@ function LeadChatDrawer({ accessToken, lead, deal, corretorNome, onClose, onResp
   const [confirmDel, setConfirmDel] = useState<string | null>(null);
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const copiloto = useLeadCopiloto(accessToken, lead.nome || "");
-  const fileInput = useRef<HTMLInputElement>(null); const recorder = useRef<MediaRecorder | null>(null); const chunks = useRef<Blob[]>([]);
+  const fileInput = useRef<HTMLInputElement>(null); const opusRec = useRef<OpusHandle | null>(null);
   const recTimer = useRef<number | null>(null); const audioCtx = useRef<AudioContext | null>(null); const rafId = useRef<number | null>(null); const streamRef = useRef<MediaStream | null>(null); const canceledRef = useRef(false);
   const fmtRec = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
   const listRef = useRef<HTMLElement>(null);
@@ -1132,36 +1133,49 @@ function LeadChatDrawer({ accessToken, lead, deal, corretorNome, onClose, onResp
       if (isAudio) setMessages((prev) => prev.map((m) => m.id === tempId ? { ...m, status: "erro", status_detalhe: motivo } : m)); else setError(motivo);
     } finally { setSending(false); if (fileInput.current) fileInput.current.value = ""; }
   }
+  function cleanupRecording() {
+    const stream = streamRef.current; streamRef.current = null;
+    if (stream) stream.getTracks().forEach((track) => track.stop());
+    if (audioCtx.current) { void audioCtx.current.close().catch(() => {}); audioCtx.current = null; }
+    if (rafId.current) { cancelAnimationFrame(rafId.current); rafId.current = null; }
+    if (recTimer.current) { window.clearInterval(recTimer.current); recTimer.current = null; }
+  }
   function startRecording() {
     if (recording || sending) return;
-    navigator.mediaDevices.getUserMedia({ audio: true }).then((stream) => {
-      streamRef.current = stream; chunks.current = []; canceledRef.current = false;
-      const mr = new MediaRecorder(stream); recorder.current = mr;
-      mr.ondataavailable = (event) => { if (event.data.size) chunks.current.push(event.data); };
-      mr.onstop = () => {
-        stream.getTracks().forEach((track) => track.stop());
-        if (audioCtx.current) { void audioCtx.current.close().catch(() => {}); audioCtx.current = null; }
-        if (rafId.current) { cancelAnimationFrame(rafId.current); rafId.current = null; }
-        if (recTimer.current) { window.clearInterval(recTimer.current); recTimer.current = null; }
-        const wasCanceled = canceledRef.current;
-        setRecording(false); setRecSeconds(0); setRecBars([]);
-        if (wasCanceled) return;
-        const blob = new Blob(chunks.current, { type: mr.mimeType || "audio/webm" });
-        if (blob.size > 0) void upload(new File([blob], `audio-${Date.now()}.webm`, { type: blob.type }), "audio");
-      };
-      mr.start();
-      setRecording(true); setRecSeconds(0); setRecBars([]);
-      recTimer.current = window.setInterval(() => setRecSeconds((s) => s + 1), 1000);
+    navigator.mediaDevices.getUserMedia({ audio: true }).then(async (stream) => {
+      streamRef.current = stream; canceledRef.current = false;
+      // Contexto + onda (visualização). O mesmo sourceNode alimenta o encoder OGG/Opus.
+      const ctx = new AudioContext(); audioCtx.current = ctx;
+      const src = ctx.createMediaStreamSource(stream);
       try {
-        const ctx = new AudioContext(); audioCtx.current = ctx;
-        const src = ctx.createMediaStreamSource(stream); const analyser = ctx.createAnalyser(); analyser.fftSize = 256; src.connect(analyser);
+        const analyser = ctx.createAnalyser(); analyser.fftSize = 256; src.connect(analyser);
         const data = new Uint8Array(analyser.frequencyBinCount);
         const tick = () => { analyser.getByteFrequencyData(data); let sum = 0; for (let i = 0; i < data.length; i++) sum += data[i]; const level = Math.min(100, Math.max(8, Math.round((sum / data.length) / 1.4))); setRecBars((prev) => [...prev.slice(-30), level]); rafId.current = requestAnimationFrame(tick); };
         tick();
       } catch { /* waveform é opcional */ }
+      try {
+        opusRec.current = await startOpusRecorder(
+          src,
+          (file) => { void upload(file, "audio"); },
+          () => cleanupRecording(),
+        );
+      } catch (reason) {
+        cleanupRecording(); setRecording(false); setRecSeconds(0); setRecBars([]);
+        setError(reason instanceof Error ? reason.message : "Não foi possível iniciar o gravador de áudio.");
+        return;
+      }
+      setRecording(true); setRecSeconds(0); setRecBars([]);
+      recTimer.current = window.setInterval(() => setRecSeconds((s) => s + 1), 1000);
     }).catch(() => setError("Autorize o microfone para gravar o áudio."));
   }
-  function stopRecording(sendIt: boolean) { canceledRef.current = !sendIt; try { recorder.current?.stop(); } catch { /* ignore */ } }
+  function stopRecording(sendIt: boolean) {
+    canceledRef.current = !sendIt;
+    setRecording(false); setRecSeconds(0); setRecBars([]);
+    if (rafId.current) { cancelAnimationFrame(rafId.current); rafId.current = null; }
+    if (recTimer.current) { window.clearInterval(recTimer.current); recTimer.current = null; }
+    const handle = opusRec.current; opusRec.current = null;
+    if (handle) handle.stop(sendIt); else cleanupRecording();
+  }
   async function scheduleMessage(content: string, when: string) { if (!selected?.sendBig || !lead.telefone) return; setSending(true); setError(null); try { await liveAction({ action: "schedule", phone: lead.telefone, instanceId: selected.sendBig, leadId: lead.id, content, when }); setDraft(""); setScheduleOpen(false); await loadScheduled(); setSchedOpen(true); } catch (reason) { setError(reason instanceof Error ? reason.message : "Não foi possível agendar."); } finally { setSending(false); } }
   async function scheduleApproachAt(approachId: number, when: string) { if (!selected?.sendBig || !lead.telefone) return; setSending(true); setError(null); try { await liveAction({ action: "scheduleApproach", phone: lead.telefone, instanceId: selected.sendBig, leadId: lead.id, leadName: lead.nome, approachId, when }); setScheduleOpen(false); await loadScheduled(); setSchedOpen(true); } catch (reason) { setError(reason instanceof Error ? reason.message : "Não foi possível agendar a abordagem."); } finally { setSending(false); } }
   async function loadScheduled() { try { const r = await liveAction({ action: "listScheduled", leadId: lead.id }); setScheduled(Array.isArray(r.agendadas) ? r.agendadas as Array<{ id: number; texto: string; tipo: string; quando: string }> : []); } catch { /* silencioso */ } }
