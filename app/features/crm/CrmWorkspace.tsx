@@ -52,7 +52,7 @@ function friendlyChatError(raw: string): string {
   return raw || "Não foi possível enviar a mensagem.";
 }
 type Historico = { id: number | string; lead_id: number | null; negocio_id: number | null; corretor_id: number | null; tipo: string; canal?: string | null; texto: string | null; resultado?: string | null; criado_em: string };
-type CrmData = { pipelines: Pipeline[]; stages: Stage[]; leads: Lead[]; deals: Deal[]; brokers: Broker[]; activities: Activity[]; historico?: Historico[]; tasks: Task[]; productLinks: ProductLink[]; visits: Visit[]; products: Product[]; sla: SlaInfo[]; alerts: LeadAlert[]; gerentes?: Gerente[]; leituras?: Array<{ negocio_id: number; lido_em: string }> };
+type CrmData = { pipelines: Pipeline[]; stages: Stage[]; leads: Lead[]; deals: Deal[]; brokers: Broker[]; activities: Activity[]; historico?: Historico[]; tasks: Task[]; productLinks: ProductLink[]; visits: Visit[]; products: Product[]; sla: SlaInfo[]; alerts: LeadAlert[]; gerentes?: Gerente[]; leituras?: Array<{ negocio_id: number; lido_em: string }>; aquario?: { stage_id: number | null; disponiveis: number } | null };
 type ViewName = "pipeline" | "leads" | "sales" | "analytics" | "agenda" | "atividades";
 
 const money = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
@@ -153,6 +153,7 @@ export function CrmWorkspace({ accessToken, initialDealId = null, onInitialDealH
   const [overdueOnly, setOverdueOnly] = useState(false);
   const [selectedDealId, setSelectedDealId] = useState<number | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
+  const [fishing, setFishing] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [draggingDealId, setDraggingDealId] = useState<number | null>(null);
   const [bulkMoveOpen, setBulkMoveOpen] = useState(false);
@@ -339,6 +340,20 @@ export function CrmWorkspace({ accessToken, initialDealId = null, onInitialDealH
   }
   function openBulkFromStage(stageId: number) { setBulkFromStage(stageId); setBulkMoveOpen(true); }
 
+  // ── Aquário: o corretor pesca um lead e vira o responsável na hora ──
+  async function pescarLead() {
+    if (fishing) return;
+    setFishing(true); setMessage(null);
+    try {
+      const response = await authedFetch("/api/crm", { method: "PATCH", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify({ action: "aquarioPescar" }) });
+      const result = await response.json() as { error?: string; lead?: { nome?: string; telefone?: string } };
+      if (!response.ok) throw new Error(result.error || "Não foi possível pescar um lead.");
+      await load({ quiet: true });
+      setMessage(`🎣 Você pescou ${result.lead?.nome || "um lead"}${result.lead?.telefone ? ` (${result.lead.telefone})` : ""} — agora ele é seu!`);
+    } catch (reason) { setMessage(reason instanceof Error ? reason.message : "Não foi possível pescar um lead."); }
+    finally { setFishing(false); }
+  }
+
   return <div className="crm-v2">
     <header className="crm-v2-header">
       <div><span className="crm-eyebrow">GESTÃO COMERCIAL</span><h1>{viewHeading.title}</h1><p>{viewHeading.subtitle}</p></div>
@@ -372,7 +387,7 @@ export function CrmWorkspace({ accessToken, initialDealId = null, onInitialDealH
     {error && <div className="crm-error">{error}<button type="button" onClick={() => void load()}>Tentar novamente</button></div>}
     {!loading && !error && data && view === "pipeline" && <div className={`crm-pipe-layout ${railCollapsed ? "rail-collapsed" : ""}`}>
       <aside className="crm-pipe-rail"><div className="crm-pipe-rail-head"><span className="crm-pipe-rail-title">FUNIS</span><button type="button" className="crm-pipe-rail-toggle" title={railCollapsed ? "Expandir funis" : "Recolher funis"} aria-label={railCollapsed ? "Expandir funis" : "Recolher funis"} onClick={() => setRailCollapsed((prev) => !prev)}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">{railCollapsed ? <path d="M9 6l6 6-6 6" /> : <path d="M15 6l-6 6 6 6" />}</svg></button></div>{(data.pipelines ?? []).map((pipeline) => { const count = (data.deals ?? []).filter((deal) => deal.pipeline_id === pipeline.id && !["ganho", "perdido", "descartado"].includes(deal.status)).length; return <button type="button" key={pipeline.id} className={`crm-pipe-item ${pipeline.id === pipelineId ? "active" : ""}`} title={pipeline.nome} onClick={() => { setPipelineId(pipeline.id); setStageId(null); setGroup(null); }}><span className="crm-pipe-dot" /><strong>{pipeline.nome}</strong><em>{count}</em></button>; })}</aside>
-      <PipelineViewEnhanced stages={visibleStages} allStages={activeStages} deals={filteredDeals} leadById={leadById} brokerById={brokerById} slaByDeal={slaByDeal} canReassign={canReassign} onReassign={setBrokerPickerDealId} onOpen={openDeal} onChat={openChat} onMutate={mutate} setMessage={setMessage} draggingId={draggingDealId} onDrag={setDraggingDealId} onDrop={dropDeal} canManageStages={canManageStages} onReorderStage={reorderStage} onRecolorStage={recolorStage} onSaveStage={saveStage} onBulkFromStage={openBulkFromStage} stageCount={activeStages.length} canMoveDeals={canMoveDeals} onPickStage={setStagePickerDealId} readByDeal={readByDeal} />
+      <PipelineViewEnhanced stages={visibleStages} allStages={activeStages} deals={filteredDeals} leadById={leadById} brokerById={brokerById} slaByDeal={slaByDeal} canReassign={canReassign} onReassign={setBrokerPickerDealId} onOpen={openDeal} onChat={openChat} onMutate={mutate} setMessage={setMessage} draggingId={draggingDealId} onDrag={setDraggingDealId} onDrop={dropDeal} canManageStages={canManageStages} onReorderStage={reorderStage} onRecolorStage={recolorStage} onSaveStage={saveStage} onBulkFromStage={openBulkFromStage} stageCount={activeStages.length} canMoveDeals={canMoveDeals} onPickStage={setStagePickerDealId} readByDeal={readByDeal} aquario={data.aquario ?? null} fishing={fishing} onPescar={pescarLead} />
     </div>}
     {!loading && !error && data && view === "leads" && <LeadsViewEnhanced deals={filteredDeals} leadById={leadById} stages={activeStages} brokerById={brokerById} slaByDeal={slaByDeal} canReassign={canReassign} onReassign={setBrokerPickerDealId} onOpen={openDeal} onChat={openChat} onMutate={mutate} setMessage={setMessage} canMoveDeals={canMoveDeals} onPickStage={setStagePickerDealId} />}
     {!loading && !error && data && view === "agenda" && <AgendaView data={data} leadById={leadById} onMutate={mutate} setMessage={setMessage} sessionRole={sessionRole} accessToken={accessToken} />}
@@ -819,7 +834,7 @@ function AnalyticsView({ data, onOpen }: { data: CrmData; onOpen?: (dealId: numb
   </section>;
 }
 
-function PipelineViewEnhanced({ stages, allStages, deals, leadById, brokerById, slaByDeal, canReassign, onReassign, onOpen, onChat, onMutate, setMessage, draggingId, onDrag, onDrop, canManageStages, onReorderStage, onRecolorStage, onSaveStage, onBulkFromStage, stageCount, canMoveDeals, onPickStage, readByDeal }: { stages: Stage[]; allStages: Stage[]; deals: Deal[]; leadById: Map<number, Lead>; brokerById: Map<number, Broker>; slaByDeal: Map<number, SlaInfo>; canReassign: boolean; onReassign: (dealId: number) => void; onOpen: (id: number) => void; onChat: (id: number) => void; onMutate: (body: Record<string, unknown>) => Promise<void>; setMessage: (value: string | null) => void; draggingId: number | null; onDrag: (id: number | null) => void; onDrop: (event: DragEvent, stageId: number) => Promise<void>; canManageStages?: boolean; onReorderStage?: (stageId: number, direction: number) => Promise<void>; onRecolorStage?: (stageId: number, color: string) => Promise<void>; onSaveStage?: (stageId: number, nome: string, color: string) => Promise<void>; onBulkFromStage?: (stageId: number) => void; stageCount?: number; canMoveDeals?: boolean; onPickStage?: (dealId: number) => void; readByDeal?: Map<number, string> }) {
+function PipelineViewEnhanced({ stages, allStages, deals, leadById, brokerById, slaByDeal, canReassign, onReassign, onOpen, onChat, onMutate, setMessage, draggingId, onDrag, onDrop, canManageStages, onReorderStage, onRecolorStage, onSaveStage, onBulkFromStage, stageCount, canMoveDeals, onPickStage, readByDeal, aquario, fishing, onPescar }: { stages: Stage[]; allStages: Stage[]; deals: Deal[]; leadById: Map<number, Lead>; brokerById: Map<number, Broker>; slaByDeal: Map<number, SlaInfo>; canReassign: boolean; onReassign: (dealId: number) => void; onOpen: (id: number) => void; onChat: (id: number) => void; onMutate: (body: Record<string, unknown>) => Promise<void>; setMessage: (value: string | null) => void; draggingId: number | null; onDrag: (id: number | null) => void; onDrop: (event: DragEvent, stageId: number) => Promise<void>; canManageStages?: boolean; onReorderStage?: (stageId: number, direction: number) => Promise<void>; onRecolorStage?: (stageId: number, color: string) => Promise<void>; onSaveStage?: (stageId: number, nome: string, color: string) => Promise<void>; onBulkFromStage?: (stageId: number) => void; stageCount?: number; canMoveDeals?: boolean; onPickStage?: (dealId: number) => void; readByDeal?: Map<number, string>; aquario?: { stage_id: number | null; disponiveis: number } | null; fishing?: boolean; onPescar?: () => void }) {
   const [busyId, setBusyId] = useState<number | null>(null);
   const [menuStage, setMenuStage] = useState<number | null>(null);
   const [editName, setEditName] = useState("");
@@ -841,7 +856,11 @@ function PipelineViewEnhanced({ stages, allStages, deals, leadById, brokerById, 
         const up = event.deltaY < 0 && col.scrollTop > 0;
         if (down || up) return; // deixa a própria coluna rolar por dentro
       }
-      board.scrollLeft += event.deltaY;
+      // Normaliza a roda: alguns mouses/SO reportam "linhas" (deltaMode 1) ou
+      // "páginas" (2) em vez de pixels. Sem isso, uma roda em linhas anda ~3px
+      // por clique e o board mal desliza.
+      const unit = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? board.clientWidth : 1;
+      board.scrollLeft += event.deltaY * unit;
       event.preventDefault();
     };
     const onMove = (event: globalThis.MouseEvent) => {
@@ -877,6 +896,10 @@ function PipelineViewEnhanced({ stages, allStages, deals, leadById, brokerById, 
         <div className="cse-move"><button type="button" disabled={globalIndex <= 0} onClick={() => { void onReorderStage?.(stage.id, -1); }}>‹ Mover atrás</button><button type="button" disabled={globalIndex < 0 || globalIndex >= total - 1} onClick={() => { void onReorderStage?.(stage.id, 1); }}>Mover frente ›</button></div>
         <button type="button" className="cse-bulk" onClick={() => { setMenuStage(null); onBulkFromStage?.(stage.id); }}>⇄ Mover todos os leads desta etapa</button>
         <div className="cse-actions"><button type="button" className="cse-cancel" onClick={() => setMenuStage(null)}>Cancelar</button><button type="button" className="cse-save" onClick={() => { void onSaveStage?.(stage.id, editName.trim() || (stage.rotulo || stage.nome), editColor); setMenuStage(null); }}>Salvar</button></div>
+      </div>}
+      {aquario && aquario.stage_id === stage.id && <div className="aq-box">
+        <div className="aq-count"><span className="aq-fish-ico">🐟</span><div><strong>{aquario.disponiveis}</strong><small>{aquario.disponiveis === 1 ? "lead disponível" : "leads disponíveis"} para pescar</small></div></div>
+        <button type="button" className="aq-pescar" disabled={fishing || aquario.disponiveis === 0} onClick={() => onPescar?.()}>{fishing ? "Pescando…" : "🎣 Pescar um lead"}</button>
       </div>}
       <div className="crm-stage-body">{items.map((deal) => {
         const lead = leadById.get(deal.lead_id)!;

@@ -43,7 +43,7 @@ export async function GET(request: Request) {
       condominios (*),
       proprietarios (*),
       unidades (*),
-      midias (id, tipo, storage_path, categoria, nome, is_capa, created_at)
+      midias (id, tipo, storage_path, categoria, nome, is_capa, created_at, unidade_id)
     `)
     .eq("id", id)
     .single();
@@ -65,12 +65,11 @@ export async function GET(request: Request) {
     leadsQuery,
   ]);
   const linkedIds = new Set((links ?? []).map((item) => item.lead_id));
+  const { data: corretoresList } = await auth.supabase.from("corretores").select("id,nome");
+  const corretorNameById = new Map((corretoresList ?? []).map((c) => [c.id, c.nome]));
   const captadorCorretorId = (data as { captador_corretor_id?: number | null }).captador_corretor_id ?? null;
-  let capturedByName: string | null = null;
-  if (captadorCorretorId) {
-    const { data: captador } = await auth.supabase.from("corretores").select("nome").eq("id", captadorCorretorId).maybeSingle();
-    capturedByName = captador?.nome ?? null;
-  }
+  const capturedByName: string | null = captadorCorretorId ? (corretorNameById.get(captadorCorretorId) ?? null) : null;
+  const unidadesEnriched = (data.unidades ?? []).map((u) => ({ ...u, captador_nome: corretorNameById.get((u as { captador_corretor_id?: number | null }).captador_corretor_id ?? -1) ?? null }));
   const mine = (data as { captado_por_usuario?: string | null }).captado_por_usuario === auth.user.id;
   const checks: Record<string, boolean> = {
     basics: Boolean(data.nome && (data.preco || unitPrices.length) && (data.area_util || unitAreas.length)),
@@ -83,7 +82,7 @@ export async function GET(request: Request) {
     checks.owner = Boolean(data.proprietario_id || (data.proprietario_nome && data.proprietario_tel && data.proprietario_email));
     checks.access = Boolean(data.acesso_tipo && data.acesso_instrucoes && (data.acesso_tipo !== "chave_digital" || data.acesso_codigo));
   }
-  return Response.json({ product: { ...data, midias: media, captado_por_nome: capturedByName, mine, summary_price: data.preco ?? (unitPrices.length ? Math.min(...unitPrices) : null), summary_area: data.area_util ?? (unitAreas.length ? Math.min(...unitAreas) : null), is_favorite: Boolean(favorite), leads: (leadOptions ?? []).map((lead) => ({ ...lead, linked: linkedIds.has(lead.id) })), completion: { checks, completed: Object.values(checks).filter(Boolean).length, total: Object.keys(checks).length } } });
+  return Response.json({ product: { ...data, midias: media, unidades: unidadesEnriched, captado_por_nome: capturedByName, mine, summary_price: data.preco ?? (unitPrices.length ? Math.min(...unitPrices) : null), summary_area: data.area_util ?? (unitAreas.length ? Math.min(...unitAreas) : null), is_favorite: Boolean(favorite), leads: (leadOptions ?? []).map((lead) => ({ ...lead, linked: linkedIds.has(lead.id) })), completion: { checks, completed: Object.values(checks).filter(Boolean).length, total: Object.keys(checks).length } } });
 }
 
 export async function PATCH(request: Request) {
@@ -92,6 +91,60 @@ export async function PATCH(request: Request) {
   const body = await request.json() as Record<string, unknown>;
   const id = typeof body.id === "string" ? body.id : "";
   if (!UUID.test(id)) return Response.json({ error: "Produto inválido." }, { status: 400 });
+
+  if (body.action === "criarUnidade") {
+    const input = (body.unidade && typeof body.unidade === "object" ? body.unidade : {}) as Record<string, unknown>;
+    const asString = (value: unknown) => (typeof value === "string" ? value.trim() || null : null);
+    const asNumber = (value: unknown) => {
+      if (value === "" || value == null) return null;
+      const parsed = Number(value);
+      return Number.isFinite(parsed) ? parsed : null;
+    };
+    const numero = asString(input.numero);
+    if (!numero) return Response.json({ error: "Informe o número da unidade." }, { status: 400 });
+    const valorTabela = asNumber(input.valor_tabela);
+    if (valorTabela == null) return Response.json({ error: "Informe o valor de tabela da unidade." }, { status: 400 });
+
+    const { data: broker } = await auth.supabase.from("corretores").select("id").eq("usuario_id", auth.user.id).maybeSingle();
+    const unitRow = {
+      empreendimento_id: id, de_terceiros: true, aprovacao: "pendente", disponivel: true,
+      captador_corretor_id: broker?.id ?? null,
+      numero,
+      tipologia: asString(input.tipologia),
+      area_m2: asNumber(input.area_m2),
+      vagas: asNumber(input.vagas),
+      valor_tabela: valorTabela,
+      valor_promo: asNumber(input.valor_promo),
+      proprietario_nome: asString(input.proprietario_nome),
+      proprietario_contato: asString(input.proprietario_contato),
+      acesso_tipo: asString(input.acesso_tipo),
+      acesso_codigo: asString(input.acesso_codigo),
+      acesso_instrucoes: asString(input.acesso_instrucoes),
+    };
+    const { data: novaUnidade, error } = await auth.supabase.from("unidades").insert(unitRow as never).select("id").single();
+    if (error) {
+      const text = `${error.code ?? ""} ${error.message ?? ""}`.toLowerCase();
+      if (error.code === "23505" || text.includes("unique") || text.includes("uq_unidade_indicacao_por_predio")) {
+        return Response.json({ error: "Esta unidade já foi cadastrada neste prédio." }, { status: 409 });
+      }
+      return Response.json({ error: error.message }, { status: 502 });
+    }
+    return Response.json({ unidadeId: novaUnidade.id, userId: auth.user.id });
+  }
+
+  if (body.action === "decideUnit") {
+    const { data: me } = await auth.supabase.from("usuarios").select("role").eq("id", auth.user.id).maybeSingle();
+    const role = (me as { role?: string } | null)?.role ?? "corretor";
+    if (!["admin", "gestor", "executivo"].includes(role)) return Response.json({ error: "Apenas admin, gestor ou executivo podem aprovar unidades." }, { status: 403 });
+    const unidadeId = typeof body.unidadeId === "string" ? body.unidadeId : "";
+    if (!UUID.test(unidadeId)) return Response.json({ error: "Unidade inválida." }, { status: 400 });
+    const approve = body.approve === true;
+    const patch = approve
+      ? { aprovacao: "aprovado", reprovacao_motivo: null }
+      : { aprovacao: "reprovado", reprovacao_motivo: typeof body.motivo === "string" ? body.motivo.slice(0, 300) : null };
+    const { error } = await auth.supabase.from("unidades").update(patch as never).eq("id", unidadeId).eq("empreendimento_id", id);
+    return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true, aprovacao: patch.aprovacao });
+  }
 
   if (body.action === "toggleFavorite") {
     const favorite = body.favorite === true;
@@ -240,8 +293,9 @@ export async function PATCH(request: Request) {
       if (deleteError) return Response.json({ error: deleteError.message }, { status: 502 });
     }
     for (const item of incomingUnits) {
-      const row: UnitInsert = {
-        empreendimento_id: id,
+      // Só os campos COMERCIAIS da unidade. de_terceiros, proprietário, indicador e acesso
+      // são propriedades da unidade/indicação e NUNCA são alterados pela edição do produto.
+      const commonRow = {
         numero: typeof item.numero === "string" ? item.numero.trim() || null : null,
         tipologia: typeof item.tipologia === "string" ? item.tipologia.trim() || null : null,
         area_m2: item.area_m2 === "" || item.area_m2 == null ? null : Number(item.area_m2),
@@ -249,10 +303,11 @@ export async function PATCH(request: Request) {
         valor_tabela: item.valor_tabela === "" || item.valor_tabela == null ? null : Number(item.valor_tabela),
         valor_promo: item.valor_promo === "" || item.valor_promo == null ? null : Number(item.valor_promo),
         disponivel: item.disponivel !== false,
-        de_terceiros: body.origin === "terceiros",
       };
       const unitId = typeof item.id === "string" && existingIds.has(item.id) ? item.id : null;
-      const unitResult = unitId ? await auth.supabase.from("unidades").update(row).eq("id", unitId).eq("empreendimento_id", id) : await auth.supabase.from("unidades").insert(row);
+      const unitResult = unitId
+        ? await auth.supabase.from("unidades").update(commonRow as never).eq("id", unitId).eq("empreendimento_id", id)
+        : await auth.supabase.from("unidades").insert({ ...commonRow, empreendimento_id: id, de_terceiros: body.origin === "terceiros" } as never);
       if (unitResult.error) return Response.json({ error: unitResult.error.message }, { status: 502 });
     }
   }
