@@ -85,7 +85,7 @@ export function HomeWorkspace({ accessToken, sessionName = "", onNavigate }: { a
   const firstName = sessionName ? sessionName.split(/\s+/)[0] : "";
   const initial = (sessionName || "R").trim().slice(0, 1).toUpperCase();
 
-  return <div className="home-v2">
+  return <div className="home-v2"><div className="hv2-inner">
     <div className="hv2-top">
       <div className="hv2-top-l">
         <span className="hv2-avatar">{initial}</span>
@@ -134,5 +134,5 @@ export function HomeWorkspace({ accessToken, sessionName = "", onNavigate }: { a
         <button className="hv2-ghost-btn" type="button" onClick={() => onNavigate?.("CRM")}>Abrir no CRM →</button>
       </div>
     </div>
-  </div>;
+  </div></div>;
 }

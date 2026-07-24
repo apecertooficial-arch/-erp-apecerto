@@ -5086,8 +5086,11 @@ article.tone-red{border-left-color:#d3443e}article.tone-red strong{color:#d3443e
   font-family:'Quicksand',sans-serif; color:var(--n800);
   background:var(--n50);
   background-image:radial-gradient(90% 420px at 8% 0%, rgba(255,112,0,.055), transparent 70%);
-  min-height:100vh; padding:22px 40px 64px; display:flex; flex-direction:column; gap:34px;
+  min-height:100vh; padding:22px 0 64px;
 }
+/* Conteúdo centralizado com teto de largura — evita cards esticados em 2ª tela/monitor largo */
+.home-v2 .hv2-inner { width:100%; max-width:1320px; margin-inline:auto; padding-inline:40px; display:flex; flex-direction:column; gap:34px; }
+.home-v2 > .hv2-inner > * { animation:ape-in var(--dur-slow,360ms) var(--ease) both; }
 @keyframes ape-in { from { opacity:0; transform:translateY(4px); } to { opacity:1; transform:none; } }
 .home-v2 > * { animation:ape-in var(--dur-slow,360ms) var(--ease) both; }
 
