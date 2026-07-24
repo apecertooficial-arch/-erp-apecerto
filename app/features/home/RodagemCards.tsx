@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { VBars, HBars } from "./charts";
 
 type Rodagem = {
   leads_today: number; leads_week: number; leads_total: number; open_deals: number; parados_7d: number;
@@ -22,43 +23,6 @@ function shortDay(iso: string) { const p = iso.split("-"); return `${p[2]}/${p[1
 function prettyOrigem(k: string) {
   const map: Record<string, string> = { automacao: "Automação", datacrazy_pipe: "DataCrazy (pipe)", datacrazy_mig: "DataCrazy (migração)", manual: "Manual" };
   return map[k] ?? k;
-}
-
-// ---- Gráficos SVG (marcas finas, pontas 4px, rótulos diretos, base recuada) ----
-function VBars({ data, suffix }: { data: { label: string; value: number }[]; suffix?: string }) {
-  const w = 580, h = 240, pad = 30;
-  const bw = (w - pad * 2) / Math.max(1, data.length);
-  const max = Math.max(1, ...data.map((d) => d.value));
-  return <svg viewBox={`0 0 ${w} ${h}`} className="dv-chart" role="img">
-    <line x1={pad} y1={h - pad} x2={w - pad} y2={h - pad} className="dv-base" />
-    {data.map((d, i) => {
-      const bh = (h - pad * 2) * (d.value / max); const x = pad + i * bw; const y = h - pad - bh;
-      return <g key={i}>
-        <rect x={x + 4} y={y} width={Math.max(2, bw - 8)} height={Math.max(2, bh)} rx="4" fill="#E8620E"><title>{d.label}: {d.value}{suffix ?? ""}</title></rect>
-        {i % 2 === 0 && <text x={x + bw / 2} y={h - pad + 15} textAnchor="middle" className="dv-axis">{d.label}</text>}
-        {d.value > 0 && <text x={x + bw / 2} y={y - 5} textAnchor="middle" className="dv-val">{d.value}{suffix ?? ""}</text>}
-      </g>;
-    })}
-  </svg>;
-}
-
-function HBars({ data, colors }: { data: { label: string; value: number; sub?: number }[]; colors?: string[] }) {
-  const w = 580, rowH = 40, pad = 10;
-  const h = data.length * rowH + pad * 2;
-  const max = Math.max(1, ...data.map((d) => d.value));
-  const labelW = 130, barX = labelW + 10, barMax = w - barX - 92;
-  return <svg viewBox={`0 0 ${w} ${h}`} className="dv-chart" role="img">
-    {data.map((d, i) => {
-      const y = pad + i * rowH; const bw = barMax * (d.value / max); const col = (colors && colors[i]) || "#E8620E";
-      const sub = d.sub != null && d.sub > 0 ? barMax * (d.sub / max) : 0;
-      return <g key={i}>
-        <text x={labelW} y={y + rowH / 2} textAnchor="end" dominantBaseline="middle" className="dv-lbl">{d.label}</text>
-        <rect x={barX} y={y + 9} width={Math.max(3, bw)} height={rowH - 20} rx="4" fill={col}><title>{d.label}: {d.value}</title></rect>
-        {sub > 0 && <rect x={barX} y={y + 9} width={Math.max(3, sub)} height={rowH - 20} rx="4" fill="#E5484D"><title>{d.label}: {d.sub} parados</title></rect>}
-        <text x={barX + Math.max(3, bw) + 8} y={y + rowH / 2} dominantBaseline="middle" className="dv-val">{d.value}{d.sub != null && d.sub > 0 ? ` · ${d.sub} parados` : ""}</text>
-      </g>;
-    })}
-  </svg>;
 }
 
 type CardSpec = { key: string; icon: string; tone: string; label: string; value: string; foot: string; title: string; subtitle: string; legend: string; chart: ReactNode };
@@ -89,7 +53,7 @@ export function RodagemCards({ accessToken, onNavigate }: { accessToken: string;
       {
         key: "atendidos", icon: "✓", tone: "green", label: "Taxa de atendimento hoje", value: `${ah.pct}%`, foot: `${ah.atendidos} de ${ah.recebidos} leads de hoje`,
         title: "Taxa de atendimento", subtitle: "% dos leads do dia já atendidos — últimos 7 dias", legend: "Dos leads que entraram, quantos já receberam 1º atendimento do corretor.",
-        chart: <VBars suffix="%" data={data.atend_por_dia.map((x) => ({ label: shortDay(x.d), value: x.pct }))} />,
+        chart: <VBars fmt={(v) => `${v}%`} data={data.atend_por_dia.map((x) => ({ label: shortDay(x.d), value: x.pct }))} />,
       },
       {
         key: "aguardando", icon: "◔", tone: "amber", label: "Aguardando atendimento", value: String(data.aguardando_total), foot: "leads recentes sem 1º contato",
