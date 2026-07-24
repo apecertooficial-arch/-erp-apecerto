@@ -40,7 +40,21 @@ export async function POST(request: Request) {
   const body = (await request.json()) as Record<string, unknown>;
   if (body.action !== "linkFicha") return Response.json({ error: "Ação não reconhecida." }, { status: 400 });
   const leadId = Number(body.leadId);
+  const dealId = Number(body.dealId);
   if (!Number.isSafeInteger(leadId) || leadId <= 0) return Response.json({ error: "Lead inválido." }, { status: 400 });
+
+  // Regra de negócio: a ficha só sai com um produto associado (negócio ou vínculo do lead).
+  let productId: string | null = null;
+  if (Number.isSafeInteger(dealId) && dealId > 0) {
+    const { data: dealRow } = await auth.supabase.from("negocios").select("empreendimento_id").eq("id", dealId).maybeSingle();
+    productId = (dealRow as { empreendimento_id?: string | null } | null)?.empreendimento_id ?? null;
+  }
+  if (!productId) {
+    const { data: linkRow } = await auth.supabase.from("lead_produtos").select("empreendimento_id").eq("lead_id", leadId).order("created_at", { ascending: false }).limit(1).maybeSingle();
+    productId = (linkRow as { empreendimento_id?: string | null } | null)?.empreendimento_id ?? null;
+  }
+  if (!productId) return Response.json({ error: "Associe um produto a este lead antes de enviar a ficha de financiamento." }, { status: 422 });
+  const { data: product } = await auth.supabase.from("empreendimentos").select("nome,preco").eq("id", productId).maybeSingle();
 
   // Ficha existente ainda não concluída → reaproveita o mesmo link.
   const { data: existing } = await auth.supabase
@@ -67,6 +81,8 @@ export async function POST(request: Request) {
     comprador_nome: lead.nome ?? null,
     telefone: lead.telefone ?? null,
     email: lead.email ?? null,
+    produto: (product as { nome?: string | null } | null)?.nome ?? null,
+    valor_imovel: (product as { preco?: number | null } | null)?.preco ?? null,
     status: "enviada",
     link_token: token,
     enviada_em: new Date().toISOString(),

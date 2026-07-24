@@ -6,7 +6,7 @@
 
 import { use, useEffect, useState } from "react";
 
-type FichaInfo = { comprador_nome: string | null; telefone: string | null; email: string | null; status: string | null; corretor_nome: string | null };
+type FichaInfo = { comprador_nome: string | null; telefone: string | null; email: string | null; status: string | null; corretor_nome: string | null; produto: string | null; valor_imovel: number | null };
 
 const CIVIL = [
   { v: "solteiro", l: "Solteiro(a)" }, { v: "casado", l: "Casado(a)" }, { v: "uniao_estavel", l: "União estável" },
@@ -45,7 +45,7 @@ export default function FichaPublica({ params }: { params: Promise<{ token: stri
         const data = (await res.json()) as FichaInfo & { error?: string };
         if (!res.ok) { setErro(data.error || "Não foi possível abrir a ficha."); return; }
         setInfo(data);
-        setF((cur) => ({ ...cur, comprador_nome: data.comprador_nome ?? "", telefone: data.telefone ? maskPhone(data.telefone.replace(/^55/, "")) : "", email: data.email ?? "" }));
+        setF((cur) => ({ ...cur, comprador_nome: data.comprador_nome ?? "", telefone: data.telefone ? maskPhone(data.telefone.replace(/^55/, "")) : "", email: data.email ?? "", valor_imovel: data.valor_imovel ? maskMoney(String(Math.round(data.valor_imovel * 100))) : "" }));
       } catch { setErro("Sem conexão — tente de novo."); }
     })();
   }, [token]);
@@ -103,6 +103,7 @@ export default function FichaPublica({ params }: { params: Promise<{ token: stri
           <span className="ficha-logo">apê<b>certo</b></span>
           <h1>Ficha para análise de financiamento</h1>
           <p>Preencha seus dados para {info.corretor_nome ? `${info.corretor_nome} preparar` : "prepararmos"} a sua simulação. Leva menos de 3 minutos.</p>
+          {info.produto && <p className="ficha-produto">🏢 Imóvel: <b>{info.produto}</b></p>}
         </header>
         {erro && <div className="ficha-erro" role="alert">{erro}</div>}
 
