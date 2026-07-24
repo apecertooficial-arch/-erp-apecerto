@@ -22,6 +22,11 @@ export async function GET(request: Request) {
     if (error) return Response.json({ error: error.message }, { status: 502 });
     return Response.json({ financeiro: data });
   }
+  if (section === "funil") {
+    const { data, error } = await supabase.rpc("admin_dashboard_funil");
+    if (error) return Response.json({ error: error.message }, { status: 502 });
+    return Response.json({ funil: data });
+  }
 
   const { data, error } = await supabase.rpc("admin_dashboard_rodagem");
   if (error) return Response.json({ error: error.message }, { status: 502 });
