@@ -20,7 +20,6 @@ type CatalogItem = { id: string; name: string; available: number; neighborhood: 
 type CatalogData = { catalog: CatalogItem[] };
 type DashboardData = { crm: CrmData; finance: FinanceData; catalog: CatalogData };
 
-const compact = new Intl.NumberFormat("pt-BR", { notation: "compact", style: "currency", currency: "BRL", maximumFractionDigits: 1 });
 const brl = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
 
 function sameMonth(value: string) {
@@ -63,13 +62,9 @@ export function HomeWorkspace({ accessToken, sessionName = "", onNavigate }: { a
     if (!data) return null;
     const openDeals = data.crm.deals.filter((item) => !["perdido", "ganho", "fechado"].includes((item.status || "").toLowerCase()));
     const monthSales = data.finance.sales.filter((item) => sameMonth(item.data_venda));
-    const totalVgv = data.finance.sales.reduce((sum, item) => sum + Number(item.vgv || 0), 0);
     const monthVgv = monthSales.reduce((sum, item) => sum + Number(item.vgv || 0), 0);
-    // percentual_comissao é FRAÇÃO (0.06 = 6%), então NÃO se divide por 100.
-    const commission = data.finance.sales.reduce((sum, item) => sum + Number(item.vgv || 0) * Number(item.percentual_comissao || 0), 0);
-    const balance = data.finance.cash.reduce((sum, item) => sum + (item.tipo === "entrada" ? Number(item.valor || 0) : -Number(item.valor || 0)), 0);
     const goal = data.finance.goals.reduce((sum, item) => sum + Number(item.meta_vgv || 0), 0);
-    return { openDeals, monthSales, totalVgv, monthVgv, commission, balance, goal, pendingTasks: data.crm.tasks.filter((item) => !item.concluida).length };
+    return { openDeals, monthSales, monthVgv, goal };
   }, [data]);
 
   if (error) return <div className="home-state error">{error}</div>;
@@ -93,16 +88,6 @@ export function HomeWorkspace({ accessToken, sessionName = "", onNavigate }: { a
     <FunilCards accessToken={accessToken} onNavigate={onNavigate} />
     <section className="home-goal hero"><header><div><small>META DO MÊS</small><strong>{brl.format(metrics.monthVgv)}<em> vendidos{effectiveGoal > 0 ? ` de ${brl.format(effectiveGoal)}` : ""}</em></strong><span className="goal-badge">● Dados atualizados · {metrics.monthSales.length} vendas válidas</span></div><b>{goalPercent.toFixed(0)}%</b></header><div><span style={{ width: `${goalPercent}%` }} /></div><footer>{effectiveGoal > 0 ? <span>faltam <b>{brl.format(missing)}</b> · ritmo necessário <b>{brl.format(pacePerDay)}/dia</b> nos {daysLeft} dias restantes</span> : <span>Defina a meta do mês no Financeiro → Metas</span>}<button type="button" onClick={() => onNavigate?.("Financeiro")}>Abrir Financeiro →</button></footer></section>
     <FinanceiroCards accessToken={accessToken} onNavigate={onNavigate} />
-    <section className="home-kpis">
-      <article><i className="orange">◎</i><span>Total de leads</span><strong>{data.crm.leads.length}</strong><small>na base do CRM</small></article>
-      <article><i className="purple">↗</i><span>Negócios abertos</span><strong>{metrics.openDeals.length}</strong><small>em negociação</small></article>
-      <article><i className="green">✓</i><span>Ganhos no mês</span><strong>{metrics.monthSales.length}</strong><small>negócios fechados</small></article>
-      <article><i className="teal">▥</i><span>Vendas fechadas</span><strong>{data.finance.sales.length}</strong><small>registradas no ERP</small></article>
-      <article><i className="orange">↗</i><span>VGV total</span><strong>{compact.format(metrics.totalVgv)}</strong><small>volume vendido</small></article>
-      <article><i className="purple">$</i><span>Comissão prevista</span><strong>{compact.format(metrics.commission)}</strong><small>sobre o VGV</small></article>
-      <article><i className="green">▤</i><span>Saldo de caixa</span><strong>{compact.format(metrics.balance)}</strong><small>realizado</small></article>
-      <article><i className="yellow">△</i><span>Atividades pendentes</span><strong>{metrics.pendingTasks}</strong><small>tarefas em aberto</small></article>
-    </section>
     <section className="home-two-columns">
       <article className="home-panel" style={{ gridColumn: "1 / -1" }}><h2>Funil por etapa <small>Top 10 por volume</small></h2>{stageRows.map((stage) => <button className="home-funnel-row drill" type="button" onClick={() => onNavigate?.("CRM")} key={stage.id}><span><i style={{ background: stage.cor || "#ff6500" }} />{stage.nome}<b>{stage.count} · leads</b></span><div><u style={{ width: `${stage.count / maxStage * 100}%`, background: stage.cor || "#ff6500" }} /></div></button>)}{stageRows.length === 0 && <p>Nenhum negócio aberto no funil.</p>}</article>
     </section>
