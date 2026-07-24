@@ -1465,8 +1465,8 @@ button { cursor:pointer; }
 /* header enxuto */
 .chat-layer .lead-chat-drawer>header{ min-height:auto; padding:10px 12px; }
 .chat-layer .lead-chat-drawer>header>div>span{ width:34px; height:34px; border-radius:10px; font-size:13px; }
-.chat-layer .lead-chat-drawer h2{ font-size:14px; }
-.chat-layer .lead-chat-drawer header p{ font-size:11px; }
+.chat-layer .lead-chat-drawer h2{ font-size:var(--chat-nome); }
+.chat-layer .lead-chat-drawer header p{ font-size:var(--chat-meta); }
 .chat-head-actions{ display:flex; align-items:center; gap:4px; }
 .chat-head-actions button{ width:30px; height:30px; display:grid; place-items:center; border:0; border-radius:8px; color:#fff; background:rgba(255,255,255,.16); font-size:18px; line-height:1; cursor:pointer; }
 .chat-head-actions button:hover{ background:rgba(255,255,255,.28); }
@@ -1519,8 +1519,8 @@ button { cursor:pointer; }
 }
 /* mensagens legíveis */
 .chat-layer .chat-messages{ padding: 14px 16px; }
-.chat-layer .chat-messages article{ font-size: 14px; }
-.chat-layer .chat-messages article p{ font-size: 14px; line-height: 1.45; }
+.chat-layer .chat-messages article{ font-size: var(--chat-msg-mini); }
+.chat-layer .chat-messages article p{ font-size: var(--chat-msg-mini); line-height: 1.45; }
 /* seletor de instância compacto, sem dominar a janela */
 .chat-layer .chat-instance-bar{ padding: 8px 12px; gap: 8px; }
 .chat-layer .chat-instance-bar label{ font-size:11px; gap: 3px; }
@@ -3467,7 +3467,7 @@ article.tone-red{border-left-color:#d3443e}article.tone-red strong{color:#d3443e
 .chat-layer .lead-chat-drawer > header { background:#fff !important; color:#2c2723 !important; border-bottom:1px solid #efe7e0; padding:15px 16px !important; }
 .chat-layer .lead-chat-drawer > header > div > span { width:44px !important; height:44px !important; border-radius:50% !important; background:#efe0fb !important; color:#8a2bc0 !important; font-weight:800 !important; font-size:15px !important; }
 .chat-layer .lead-chat-drawer > header small { color:#ff6a00 !important; font-weight:800 !important; letter-spacing:.09em !important; }
-.chat-layer .lead-chat-drawer > header h2 { color:#2c2723 !important; font-size:17px !important; }
+.chat-layer .lead-chat-drawer > header h2 { color:#2c2723 !important; font-size:var(--chat-nome) !important; }
 .chat-layer .lead-chat-drawer > header p { color:#8b817b !important; }
 .chat-layer .chat-head-actions button { width:34px !important; height:34px !important; border:1px solid #e7ded7 !important; border-radius:50% !important; background:#faf7f4 !important; color:#7a716b !important; font-size:17px !important; }
 .chat-layer .chat-head-actions button:hover { background:#f1ebe6 !important; }
@@ -5421,10 +5421,103 @@ article.tone-red{border-left-color:#d3443e}article.tone-red strong{color:#d3443e
 .lead-chat-drawer>footer>.chat-emoji-btn:hover{background:#ece5dd !important;color:#6b625c !important}
 .lead-chat-drawer>footer>.chat-emoji-btn.active{background:#fff2e8 !important;color:#ff6500 !important}
 /* Textarea — fonte legível e encaixe */
-.lead-chat-drawer>footer>textarea{font-size:14px !important;line-height:1.4 !important;padding:12px 16px !important;min-height:46px !important}
+.lead-chat-drawer>footer>textarea{font-size:var(--chat-msg-mini) !important;line-height:1.4 !important;padding:12px 16px !important;min-height:46px !important}
 .lead-chat-drawer>footer>textarea::placeholder{color:#a89e97}
 /* Status de conexão — chip que não corta */
 .chat-instance-bar{align-items:center !important;flex-wrap:wrap;row-gap:8px}
 .chat-instance-bar>label{min-width:180px}
 .chat-instance-bar>span{flex:none;margin-left:auto;white-space:nowrap;padding:4px 11px;border-radius:999px;background:#eef0f2;color:#7c8590;font-weight:700;font-size:11px}
 .chat-instance-bar>span.connected{background:#e4f6ec;color:#17864d}
+.hist-check{width:16px;height:16px;color:#ff6500;flex:none}
+
+/* =====================================================================
+   Tipografia do chat — um lugar só para ajustar.
+   Ajuste estes quatro valores e as duas telas (Chat ao Vivo e mini chat
+   do lead) mudam juntas, sem sair caçando regra espalhada.
+   ===================================================================== */
+:root{
+  --chat-msg:12px;      /* texto da mensagem */
+  --chat-msg-mini:11px; /* mensagem no mini chat do card do lead */
+  --chat-meta:9.5px;    /* hora, status e legendas */
+  --chat-nome:12.5px;   /* nome na lista de conversas */
+}
+
+/* --- Chat ao Vivo --- */
+.message-stream article{font-size:var(--chat-msg);line-height:1.45}
+.message-stream article small{font-size:var(--chat-meta)}
+.message-stream span{font-size:var(--chat-msg)}
+.chat-thread>header strong{font-size:14px}
+.chat-thread>header small{font-size:var(--chat-meta)}
+.conversation-list>button strong{font-size:var(--chat-nome)}
+.conversation-list>button small{font-size:11.5px}
+.conversation-list>button em{font-size:var(--chat-meta)}
+.chat-composer textarea{font-size:var(--chat-msg)}
+.chat-connection{font-size:var(--chat-meta)}
+.history-instance{font-size:var(--chat-meta)}
+.history-instance select{font-size:11.5px!important}
+
+/* --- Mini chat (drawer do lead no CRM) ---
+   Especificidade casada com as regras .chat-layer que existem acima, senão
+   elas venceriam e o ajuste da variável não teria efeito. */
+.chat-messages article,.chat-layer .chat-messages article{font-size:var(--chat-msg-mini);line-height:1.45}
+.chat-messages article p,.chat-layer .chat-messages article p{font-size:var(--chat-msg-mini);line-height:1.45}
+.chat-messages article small,.chat-layer .chat-messages article small,
+.chat-messages article time,.chat-layer .chat-messages article time,
+.chat-messages article a,.chat-layer .chat-messages article a{font-size:var(--chat-meta)}
+.chat-layer .chat-messages .chat-document{font-size:10.5px}
+.chat-layer .chat-messages .audio-state{font-size:10.5px}
+.chat-layer .chat-suggestion p{font-size:11px!important}
+.chat-layer .chat-instance-bar label{font-size:9.5px!important}
+.lead-chat-drawer>header h2{font-size:16px}
+.lead-chat-drawer>header p{font-size:12px}
+.lead-chat-drawer>header small{font-size:10px}
+.lead-chat-drawer>footer textarea{font-size:var(--chat-msg-mini)}
+.chat-instance-bar label,.chat-instance-bar select,.chat-instance-bar>span{font-size:var(--chat-meta)}
+.chat-deal-status{font-size:var(--chat-meta)}
+.mini-chat-tools button{font-size:11px}
+
+/* --- Bolha usada na pré-visualização de mensagem --- */
+.app-wa-bubble p{font-size:12px;line-height:1.45}
+.app-wa-bubble .app-wa-time{font-size:9.5px}
+
+/* --- Barra lateral do chat --- */
+.lead-summary strong{font-size:14px}
+.lead-summary small{font-size:11.5px}
+.ai-summary p{font-size:12px}
+.chat-notes article{font-size:12px}
+.chat-document{font-size:11px}
+
+/* ============================================================================
+   Rodapé do chat — correção de especificidade (v2)
+   O emoji ficava laranja porque ".chat-layer .lead-chat-drawer > footer button"
+   (regra global) tem MAIS especificidade que meu seletor anterior. Aqui igualo
+   o prefixo pra vencer. Também garanto o textarea legível e o status na própria
+   linha (não corta no canto do drawer).
+   ========================================================================== */
+/* Emoji claro (vence a regra laranja global) */
+.chat-layer .lead-chat-drawer > footer button.chat-emoji-btn{background:#f4efe9 !important;color:#8a7f79 !important;box-shadow:none !important}
+.chat-layer .lead-chat-drawer > footer button.chat-emoji-btn:hover{background:#ece5dd !important;color:#6b625c !important}
+.chat-layer .lead-chat-drawer > footer button.chat-emoji-btn.active{background:#fff2e8 !important;color:#ff6500 !important}
+/* Textarea legível (o codemod trocou meu 14px por uma var de 12px) */
+.chat-layer .lead-chat-drawer > footer > textarea{font-size:14px !important;line-height:1.4 !important;padding:12px 16px !important;min-height:46px !important}
+/* Status de conexão sempre na própria linha, à direita — nunca corta */
+.chat-instance-bar > label{flex:1 1 100% !important;min-width:0 !important}
+.chat-instance-bar > span{margin-left:auto !important}
+
+/* ============================================================================
+   Chat do lead — cabeçalho mais compacto + fonte das mensagens maior
+   O header ocupava muito espaço (padding grande + avatar 46px) e um codemod
+   baixou a fonte das mensagens para 11px. Aqui compacto o header e devolvo
+   legibilidade ao texto do chat. (.chat-layer p/ vencer a especificidade.)
+   ========================================================================== */
+/* Cabeçalho compacto */
+.chat-layer .lead-chat-drawer > header{padding:10px 18px !important}
+.chat-layer .lead-chat-drawer > header > div{gap:10px !important}
+.chat-layer .lead-chat-drawer > header > div > span{width:38px !important;height:38px !important;border-radius:11px !important;font-size:13px !important}
+.chat-layer .lead-chat-drawer > header small{font-size:9.5px !important;letter-spacing:.08em !important}
+.chat-layer .lead-chat-drawer h2{font-size:15px !important;margin:1px 0 !important;line-height:1.2 !important}
+.chat-layer .lead-chat-drawer > header p{font-size:11px !important;margin:0 !important}
+.chat-layer .lead-chat-drawer > header button{font-size:22px !important}
+/* Fonte das mensagens maior e legível */
+.chat-layer .lead-chat-drawer .chat-messages article{font-size:13.5px !important;line-height:1.45 !important}
+.chat-layer .lead-chat-drawer .chat-messages article p{font-size:13.5px !important;line-height:1.45 !important}
