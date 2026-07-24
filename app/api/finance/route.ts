@@ -1,4 +1,5 @@
 import { createServerSupabaseClient } from "../../lib/supabase/server";
+import { resolveEffectiveAccess, denyIfCannot } from "../../lib/supabase/authz";
 
 export const dynamic = "force-dynamic";
 
@@ -62,6 +63,12 @@ export async function PATCH(request: Request) {
   const body = await request.json() as Record<string, unknown>;
   const action = clean(body.action, 40);
 
+  // Acesso efetivo resolvido uma vez; admin passa e, sem mapa, libera (RLS é a trava dura).
+  // Observação: a venda iniciada pelo corretor passa por /api/crm/sales — este balcão
+  // financeiro (venda manual, caixa, recebimentos) exige permissão financeira.
+  const access = await resolveEffectiveAccess(auth.supabase, auth.user.id);
+  const guard = (pairs: Array<[string, string]>, msg: string) => denyIfCannot(access, pairs, msg);
+
   if (action === "createCategory" || action === "renameCategory" || action === "removeCategory") {
     const { data: me } = await auth.supabase.from("usuarios").select("role").eq("id", auth.user.id).maybeSingle();
     if (!me || !["admin", "gestor", "executivo"].includes(me.role)) return Response.json({ error: "Apenas administradores podem gerenciar categorias." }, { status: 403 });
@@ -96,6 +103,8 @@ export async function PATCH(request: Request) {
     const percentRaw = Number(body.percent);
     const custos = Number(body.custos);
     if (!dataVenda || !Number.isFinite(vgv) || vgv <= 0) return Response.json({ error: "Informe a data e o VGV da venda." }, { status: 422 });
+    const denied = guard([["vendas", "criar"], ["financeiro", "criar"]], "Você não tem permissão para lançar vendas no financeiro.");
+    if (denied) return denied;
     const validStatus = ["pendente", "concluido", "pago", "distrato"];
     const status = validStatus.includes(clean(body.status, 20)) ? clean(body.status, 20) : "pendente";
     const empreendimentoId = clean(body.empreendimentoId, 60) || null;
@@ -191,6 +200,8 @@ export async function PATCH(request: Request) {
     const date = clean(body.date, 10);
     const value = Number(body.value);
     if (!['entrada', 'saida'].includes(type) || !category || !date || !Number.isFinite(value) || value <= 0) return Response.json({ error: "Preencha tipo, categoria, data e valor." }, { status: 422 });
+    const denied = guard([["fluxo_caixa", "criar"], ["financeiro", "criar"]], "Você não tem permissão para lançar no fluxo de caixa.");
+    if (denied) return denied;
     const saleId = clean(body.saleId, 50) || null;
     const receiptId = clean(body.receiptId, 50) || null;
     const commissionId = clean(body.commissionId, 60) || null;
@@ -212,6 +223,8 @@ export async function PATCH(request: Request) {
   if (action === "createReceipt") {
     const saleId = clean(body.saleId, 50); const value = Number(body.value); const due = clean(body.due, 10); const installment = Number(body.installment);
     if (!saleId || !Number.isFinite(value) || value <= 0 || !due || !Number.isSafeInteger(installment) || installment < 1) return Response.json({ error: "Informe venda, parcela, vencimento e valor." }, { status: 422 });
+    const denied = guard([["financeiro", "criar"], ["fluxo_caixa", "criar"]], "Você não tem permissão para lançar recebimentos.");
+    if (denied) return denied;
     const { error } = await auth.supabase.from("recebimentos").insert({ venda_id: saleId, numero_parcela: installment, valor_total: value, data_prevista: due, status: "pendente" });
     return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
   }
@@ -219,6 +232,8 @@ export async function PATCH(request: Request) {
   if (action === "settleReceipt") {
     const receiptId = clean(body.receiptId, 50); const received = body.received !== false;
     if (!receiptId) return Response.json({ error: "Recebimento inválido." }, { status: 422 });
+    const denied = guard([["fluxo_caixa", "conciliar"], ["financeiro", "editar"]], "Você não tem permissão para dar baixa em recebimentos.");
+    if (denied) return denied;
     const { error } = await auth.supabase.from("recebimentos").update({ status: received ? "recebido" : "pendente", data_recebimento: received ? new Date().toISOString().slice(0, 10) : null }).eq("id", receiptId);
     return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
   }
@@ -226,6 +241,8 @@ export async function PATCH(request: Request) {
   if (action === "updateSale") {
     const saleId = clean(body.saleId, 50); const status = clean(body.status, 20); const percent = Number(body.percent);
     if (!saleId || !['pendente', 'concluido', 'pago', 'distrato'].includes(status) || !Number.isFinite(percent) || percent < 0 || percent > 100) return Response.json({ error: "Dados da venda inválidos." }, { status: 422 });
+    const denied = guard([["vendas", "editar"], ["financeiro", "editar"]], "Você não tem permissão para editar vendas.");
+    if (denied) return denied;
     const { error } = await auth.supabase.from("vendas").update({ status: status as "pendente" | "concluido" | "pago" | "distrato", percentual_comissao: percent / 100, forma_pgto: clean(body.payment, 100) || null, obs: clean(body.notes, 1000) || null }).eq("id", saleId);
     if (error) return Response.json({ error: error.message }, { status: 502 });
     if (status === "pago") {

@@ -21,9 +21,9 @@ function positiveInteger(value: unknown) {
 type AuditInput = { acao: string; modulo?: string; entidade?: string; entidadeId?: string | number | null; antes?: unknown; depois?: unknown; detalhe?: string };
 async function audit(supabase: ReturnType<typeof createServerSupabaseClient>, event: AuditInput) {
   await supabase.rpc("registrar_auditoria", {
-    p_acao: event.acao, p_modulo: event.modulo ?? "Usuários", p_entidade: event.entidade ?? null,
-    p_entidade_id: event.entidadeId === null || event.entidadeId === undefined ? null : String(event.entidadeId),
-    p_antes: event.antes ?? null, p_depois: event.depois ?? null, p_detalhe: event.detalhe ?? null,
+    p_acao: event.acao, p_modulo: event.modulo ?? "Usuários", p_entidade: event.entidade ?? undefined,
+    p_entidade_id: event.entidadeId === null || event.entidadeId === undefined ? undefined : String(event.entidadeId),
+    p_antes: (event.antes ?? undefined) as never, p_depois: (event.depois ?? undefined) as never, p_detalhe: event.detalhe ?? undefined,
   }).then(() => undefined, () => undefined);
 }
 
@@ -31,7 +31,7 @@ export async function GET(request: Request) {
   const auth = await authenticatedClient(request);
   if (!auth) return Response.json({ error: "Acesso restrito à administração." }, { status: 403 });
   const [users, brokers, instances, links, audits] = await Promise.all([
-    auth.supabase.from("usuarios").select("id,nome,role,ativo,permissoes").order("nome"),
+    auth.supabase.from("usuarios").select("id,nome,role,ativo,permissoes,email,telefone,superior_id").order("nome"),
     auth.supabase.from("corretores").select("id,nome,email,telefone,usuario_id,ativo,online,no_escritorio,ultima_presenca,doc_rg_path,doc_rg_nome,doc_rg_em,doc_contrato_path,doc_contrato_nome,doc_contrato_em").order("ordem"),
     auth.supabase.from("instancias").select("id,nome,telefone,ativa,conectada,status_dapi,corretor_id").order("nome"),
     auth.supabase.from("corretor_instancias").select("corretor_id,instancia_id"),
@@ -50,14 +50,18 @@ export async function PATCH(request: Request) {
   if (body.action === "saveAccess") {
     const userId = typeof body.userId === "string" && body.userId.length >= 30 ? body.userId : null;
     if (!userId) return Response.json({ error: "Usuário inválido." }, { status: 422 });
-    const role = ["admin", "corretor", "executivo"].includes(String(body.role)) ? String(body.role) : null;
+    const role = ["admin", "corretor", "executivo", "gerente", "diretor"].includes(String(body.role)) ? String(body.role) : null;
     const permissions = body.permissoes && typeof body.permissoes === "object" ? body.permissoes as Record<string, string[]> : null;
     const activeUser = body.activeUser === undefined ? null : body.activeUser === true;
-    const { data: before } = await auth.supabase.from("usuarios").select("id,nome,role,ativo,permissoes").eq("id", userId).maybeSingle();
-    const update: Record<string, unknown> = {};
-    if (role) update.role = role;
+    const superiorId = body.superiorId === undefined ? undefined : (typeof body.superiorId === "string" && body.superiorId.length >= 30 ? body.superiorId : null);
+    if (superiorId !== undefined && superiorId === userId) return Response.json({ error: "Um usuário não pode ser superior de si mesmo." }, { status: 422 });
+    const { data: before } = await auth.supabase.from("usuarios").select("id,nome,role,ativo,permissoes,superior_id").eq("id", userId).maybeSingle();
+    type UsuarioUpdate = { role?: "admin" | "corretor" | "executivo" | "gerente" | "diretor"; permissoes?: Record<string, string[]>; ativo?: boolean; superior_id?: string | null };
+    const update: UsuarioUpdate = {};
+    if (role) update.role = role as UsuarioUpdate["role"];
     if (permissions !== null) update.permissoes = permissions;
     if (activeUser !== null) update.ativo = activeUser;
+    if (superiorId !== undefined) update.superior_id = superiorId;
     if (Object.keys(update).length === 0) return Response.json({ error: "Nada para salvar." }, { status: 422 });
     const { error } = await auth.supabase.from("usuarios").update(update).eq("id", userId);
     if (error) return Response.json({ error: error.message }, { status: 502 });
