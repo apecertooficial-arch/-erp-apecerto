@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { VBars } from "./charts";
+import { VBars, HBars } from "./charts";
 
 type Financeiro = {
   month_vgv: number; month_count: number; month_comissao: number;
@@ -45,6 +45,11 @@ export function FinanceiroCards({ accessToken, onNavigate }: { accessToken: stri
         key: "comissao", icon: "$", tone: "green", label: "Comissão do mês", value: compact.format(data.month_comissao), foot: `acumulado ${compact.format(data.total_comissao)}`,
         title: "Comissão", subtitle: "Comissão realizada — últimos 6 meses", legend: "Comissão sobre as vendas do mês (percentual real de cada venda).",
         chart: <VBars fmt={(v) => compact.format(v)} data={data.by_month.map((x) => ({ label: monthLabel(x.m), value: Math.round(x.comissao) }))} />,
+      },
+      {
+        key: "ranking", icon: "★", tone: "teal", label: "Corretor destaque", value: data.ranking[0]?.k ?? "—", foot: data.ranking[0] ? `${compact.format(data.ranking[0].vgv)} creditado` : "sem vendas no período",
+        title: "Ranking de corretores", subtitle: "VGV creditado (com rateio do fifty) — últimos 6 meses", legend: "Crédito proporcional de cada venda: fifty conta metade pra cada, venda única conta inteira.",
+        chart: <HBars fmt={(v) => compact.format(v)} data={data.ranking.map((x) => ({ label: x.k, value: Math.round(x.vgv) }))} colors={data.ranking.map((_, i) => ["#E8620E", "#8B00CC", "#16A39A", "#B5700A", "#2D7DD2", "#E5484D", "#12A150", "#9b38d2"][i % 8])} />,
       },
     ];
   }, [data]);
