@@ -52,8 +52,9 @@ export async function GET(request: Request) {
   const auth = await authenticatedClient(request);
   if (!auth) return Response.json({ error: "Sessão inválida ou expirada." }, { status: 401 });
 
-  const [pipelinesResult, stagesResult, leadsResult, dealsResult, brokersResult, activitiesResult, historicoResult, tasksResult, linksResult, visitsResult, productsResult, slaResult, alertsResult, leiturasResult] = await Promise.all([
+  const [pipelinesResult, momentoCatalogoResult, stagesResult, leadsResult, dealsResult, brokersResult, activitiesResult, historicoResult, tasksResult, linksResult, visitsResult, productsResult, slaResult, alertsResult, leiturasResult] = await Promise.all([
     auth.supabase.from("pipelines").select("id,nome,grupo,ordem").order("ordem"),
+    auth.supabase.from("lead_momento_catalogo").select("slug,rotulo,grupo,ordem,cor").eq("ativo", true).order("ordem"),
     auth.supabase.from("pipeline_stages").select("id,pipeline_id,nome,rotulo,ordem,cor,tipo,grupo,chave").order("ordem"),
     fetchAll((from, to) => auth.supabase.from("leads").select("id,nome,telefone,email,instagram,corretor_id,pipeline_id,status,origem,tags,extras,criado_em,atualizado_em,disparo_optout").order("atualizado_em", { ascending: false, nullsFirst: false }).order("id").range(from, to)),
     fetchAll((from, to) => auth.supabase.from("negocios").select("id,lead_id,corretor_id,pipeline_id,stage_id,empreendimento_id,valor,status,motivo_perda,criado_em,ultima_movimentacao,estagio_desde,tentativa,max_tentativas").order("ultima_movimentacao", { ascending: false, nullsFirst: false }).order("id").range(from, to)),
@@ -81,6 +82,7 @@ export async function GET(request: Request) {
     role: meProfile?.role ?? "",
     gerentes: gerentesData ?? [],
     pipelines: pipelinesResult.data ?? [],
+    momentoCatalogo: momentoCatalogoResult.data ?? [],
     stages: stagesResult.data ?? [],
     leads: leadsResult.data ?? [],
     deals: dealsResult.data ?? [],
@@ -135,36 +137,33 @@ export async function PATCH(request: Request) {
     return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
   }
 
-  // ===== Funil Inteligente: o momento do lead é quem move o card =====
-  // Arrastar não é mais o mecanismo desse funil; a etapa é derivada do momento
-  // escolhido dentro do lead. A RPC valida momento, temperatura e permissão.
-  if (action === "atualizarMomento") {
+  // ===== Momento do lead =====
+  // Registrar o momento NÃO move o card, não troca etapa e não troca funil.
+  // É um atributo do lead: em que ponto do atendimento ele está, e quando isso
+  // foi dito pela última vez — é a data que denuncia lead esquecido.
+  if (action === "registrarMomento") {
     const leadId = positiveInteger(body.leadId);
-    const dealId = positiveInteger(body.dealId);
     const momento = cleanText(body.momento, 40);
-    if (!leadId || !dealId || !momento) return Response.json({ error: "Informe o lead, o negócio e o momento." }, { status: 400 });
+    if (!leadId || !momento) return Response.json({ error: "Informe o lead e o momento." }, { status: 400 });
     const denied = guard([["leads", "editar"], ["crm", "editar"]], "Você não tem permissão para atualizar o momento do lead.");
     if (denied) return denied;
-    const quando = cleanText(body.proximaAcaoEm, 40);
-    const { data, error } = await auth.supabase.rpc("atualizar_momento_lead", {
+    const dealId = positiveInteger(body.dealId);
+    const { data, error } = await auth.supabase.rpc("registrar_momento_lead", {
       p_lead_id: leadId,
-      p_negocio_id: dealId,
       p_momento: momento,
-      p_resultado: cleanText(body.resultado, 120) || undefined,
       p_observacao: cleanText(body.observacao, 1000) || undefined,
-      p_proxima_acao: cleanText(body.proximaAcao, 200) || undefined,
-      p_proxima_acao_em: quando || undefined,
-      p_temperatura: cleanText(body.temperatura, 20) || undefined,
+      p_negocio_id: dealId || undefined,
     });
-    if (error) {
-      const msg = error.message || "";
-      if (msg.includes("somente ao Funil Inteligente")) return Response.json({ error: "Este negócio não está no Funil Inteligente." }, { status: 409 });
-      if (msg.includes("seus próprios leads")) return Response.json({ error: "Você só pode atualizar o momento dos seus próprios leads." }, { status: 403 });
-      if (msg.includes("Momento do lead inválido")) return Response.json({ error: "Momento inválido." }, { status: 422 });
-      if (msg.includes("corretor responsável")) return Response.json({ error: "Defina o corretor responsável antes de atualizar o momento." }, { status: 422 });
-      return Response.json({ error: msg || "Não foi possível atualizar o momento." }, { status: 502 });
+    if (error) return Response.json({ error: error.message }, { status: 502 });
+    const r = (data ?? {}) as { ok?: boolean; erro?: string; rotulo?: string };
+    if (!r.ok) {
+      const msg = r.erro === "momento_invalido" ? "Momento inválido."
+        : r.erro === "sem_permissao" ? "Você só pode atualizar o momento dos seus próprios leads."
+        : r.erro === "lead_nao_encontrado" ? "Lead não encontrado."
+        : "Não foi possível atualizar o momento.";
+      return Response.json({ error: msg }, { status: r.erro === "sem_permissao" ? 403 : 422 });
     }
-    return Response.json({ success: true, result: data ?? {} });
+    return Response.json({ success: true, rotulo: r.rotulo });
   }
 
   if (action === "moveDeal") {
@@ -173,12 +172,6 @@ export async function PATCH(request: Request) {
     if (!dealId || !stageId) return Response.json({ error: "Negócio ou etapa inválida." }, { status: 400 });
     const denied = guard([["pipeline", "mover"]], "Você não tem permissão para mover negócios no funil.");
     if (denied) return denied;
-    // No Funil Inteligente a etapa é consequência do momento do lead, nunca do arraste.
-    const { data: alvo } = await auth.supabase.from("negocios").select("pipeline_id, pipelines!inner(grupo)").eq("id", dealId).maybeSingle();
-    const grupoPipe = (alvo as { pipelines?: { grupo?: string | null } } | null)?.pipelines?.grupo ?? null;
-    if (grupoPipe === "crm_inteligente") {
-      return Response.json({ error: "No Funil Inteligente a etapa muda pelo momento do lead — abra o lead e atualize o momento." }, { status: 409 });
-    }
     const { data, error } = await auth.supabase.rpc("mover_negocio", { p_negocio_id: dealId, p_stage_id: stageId });
     const result = data && typeof data === "object" ? data as Record<string, unknown> : {};
     if (error || result.ok === false) return Response.json({ error: error?.message || cleanText(result.error, 300) || "Não foi possível mover o negócio." }, { status: 502 });

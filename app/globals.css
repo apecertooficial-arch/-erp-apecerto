@@ -5536,3 +5536,25 @@ article.tone-red{border-left-color:#d3443e}article.tone-red strong{color:#d3443e
 .momentox-obs textarea{resize:vertical}
 .momentox-destino{margin:9px 0 0;font-size:12px;color:var(--purple-700);background:var(--purple-soft);border-radius:8px;padding:7px 10px}
 .momentox footer{display:flex;justify-content:flex-end;margin-top:10px}
+
+/* ===== Momento do lead ===== */
+.momentox{border:1px solid var(--line);border-radius:12px;background:var(--surface);padding:11px 13px;margin-bottom:12px}
+.momentox.momentox-nunca{border-color:var(--line-strong);background:var(--sunken)}
+.momentox.momentox-ok{border-color:#cfe8da;background:#f7fcf9}
+.momentox.momentox-atencao{border-color:#f0e4c8;background:#fffdf7}
+.momentox.momentox-atrasado{border-color:#f2c9c4;background:#fff6f4}
+.momentox-atual{display:flex;align-items:center;gap:10px}
+.momentox-atual>div{flex:1;min-width:0;display:flex;flex-direction:column}
+.momentox-atual strong{font-size:13px;font-weight:700;color:var(--ink)}
+.momentox-atual small{font-size:11.5px;color:var(--muted)}
+.momentox-dot{flex:none;width:10px;height:10px;border-radius:50%}
+.momentox-btn{flex:none;border:1px solid var(--purple);background:var(--purple-soft);color:var(--purple-700);border-radius:var(--radius-pill);padding:7px 15px;font-size:12.5px;font-weight:700;cursor:pointer}
+.momentox-btn:hover:not(:disabled){background:var(--purple-100)}
+.momentox-btn:disabled{opacity:.5;cursor:not-allowed}
+.momentox-obs-atual{margin:8px 0 0;font-size:12px;color:var(--ink-soft);font-style:italic;line-height:1.4}
+.momentox-selo{display:inline-flex;align-items:center;gap:6px;max-width:100%;margin:4px 0 2px;padding:3px 8px;border-radius:999px;font-size:10.5px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.momentox-selo b{flex:none;font-size:9.5px;opacity:.75}
+.momentox-selo.m-ok{background:var(--green-bg);color:#17834b}
+.momentox-selo.m-atencao{background:var(--amber-bg);color:#8a5d0d}
+.momentox-selo.m-atrasado{background:var(--red-bg);color:#a83232}
+.momentox-selo.m-nunca{background:var(--sunken);color:var(--muted)}

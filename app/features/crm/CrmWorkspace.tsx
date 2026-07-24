@@ -25,7 +25,7 @@ async function authedFetch(input: RequestInfo | URL, init: RequestInit = {}): Pr
 
 type Pipeline = { id: number; nome: string; grupo: string | null; ordem: number };
 type Stage = { id: number; pipeline_id: number; nome: string; rotulo: string | null; ordem: number; cor: string | null; tipo: string; grupo: number | null; chave: string | null };
-type Lead = { id: number; nome: string | null; telefone: string | null; email: string | null; instagram: string | null; corretor_id: number | null; pipeline_id: number | null; status: string; origem: string | null; tags: unknown; extras: unknown; criado_em: string; atualizado_em: string | null; disparo_optout: boolean };
+type Lead = { id: number; nome: string | null; telefone: string | null; email: string | null; instagram: string | null; corretor_id: number | null; pipeline_id: number | null; status: string; origem: string | null; tags: unknown; extras: unknown; criado_em: string; atualizado_em: string | null; disparo_optout: boolean; momento?: string | null; momento_em?: string | null; momento_obs?: string | null;};
 type Deal = { id: number; lead_id: number; corretor_id: number | null; pipeline_id: number; stage_id: number | null; empreendimento_id: string | null; valor: number | null; status: string; motivo_perda: string | null; criado_em: string; ultima_movimentacao: string | null; estagio_desde: string | null; tentativa: number | null; max_tentativas: number | null };
 type Broker = { id: number; nome: string; email: string | null; telefone: string | null; ativo: boolean; online: boolean; usuario_id: string | null };
 type Activity = { id: number; lead_id: number | null; negocio_id: number | null; corretor_id: number | null; tipo: string; texto: string | null; criado_em: string };
@@ -54,7 +54,8 @@ function friendlyChatError(raw: string): string {
   return raw || "Não foi possível enviar a mensagem.";
 }
 type Historico = { id: number | string; lead_id: number | null; negocio_id: number | null; corretor_id: number | null; tipo: string; canal?: string | null; texto: string | null; resultado?: string | null; criado_em: string };
-type CrmData = { pipelines: Pipeline[]; stages: Stage[]; leads: Lead[]; deals: Deal[]; brokers: Broker[]; activities: Activity[]; historico?: Historico[]; tasks: Task[]; productLinks: ProductLink[]; visits: Visit[]; products: Product[]; sla: SlaInfo[]; alerts: LeadAlert[]; gerentes?: Gerente[]; leituras?: Array<{ negocio_id: number; lido_em: string }>; aquario?: { stage_id: number | null; disponiveis: number } | null };
+type MomentoCat = { slug: string; rotulo: string; grupo: string; ordem: number; cor: string | null };
+type CrmData = { momentoCatalogo?: MomentoCat[]; pipelines: Pipeline[]; stages: Stage[]; leads: Lead[]; deals: Deal[]; brokers: Broker[]; activities: Activity[]; historico?: Historico[]; tasks: Task[]; productLinks: ProductLink[]; visits: Visit[]; products: Product[]; sla: SlaInfo[]; alerts: LeadAlert[]; gerentes?: Gerente[]; leituras?: Array<{ negocio_id: number; lido_em: string }>; aquario?: { stage_id: number | null; disponiveis: number } | null };
 type ViewName = "pipeline" | "leads" | "sales" | "analytics" | "agenda" | "atividades";
 
 /** Minúsculas e sem acento, para comparar nome digitado com nome cadastrado. */
@@ -64,43 +65,26 @@ const soDigitos = (v: unknown) => String(v ?? "").replace(/\D/g, "");
 /** Últimos 11 dígitos: iguala 5511999998888, 11999998888 e (11) 99999-8888. */
 const sufixoFone = (v: string) => v.replace(/\D/g, "").slice(-11);
 
-/* Funil Inteligente: o lead muda de etapa pelo MOMENTO, não pelo arraste.
-   Os valores abaixo são exatamente os aceitos pela RPC atualizar_momento_lead;
-   o "destino" mostra ao corretor para onde o card vai antes de ele confirmar. */
-const MOMENTOS_LEAD: Array<{ grupo: string; itens: Array<{ v: string; label: string; destino: string }> }> = [
-  { grupo: "Entrada", itens: [
-    { v: "lead_novo", label: "Lead novo", destino: "Novo" },
-    { v: "primeiro_contato", label: "Fiz o primeiro contato", destino: "Não respondeu" },
-    { v: "sem_resposta", label: "Não respondeu", destino: "Não respondeu" },
-    { v: "respondeu", label: "Respondeu", destino: "Respondeu" },
-  ] },
-  { grupo: "Qualificação", itens: [
-    { v: "qualificando", label: "Qualificando", destino: "Em atendimento" },
-    { v: "interesse_confirmado", label: "Interesse confirmado", destino: "Em atendimento" },
-    { v: "tentando_agendamento", label: "Tentando agendar visita", destino: "Agendamento" },
-  ] },
-  { grupo: "Visita", itens: [
-    { v: "visita_agendada", label: "Visita agendada", destino: "Visita" },
-    { v: "visita_realizada", label: "Visita realizada", destino: "Visita" },
-    { v: "visita_remarcada", label: "Visita remarcada", destino: "Visita" },
-    { v: "visita_cancelada", label: "Visita cancelada", destino: "Visita" },
-  ] },
-  { grupo: "Negociação", itens: [
-    { v: "proposta_em_preparacao", label: "Preparando proposta", destino: "Em atendimento" },
-    { v: "proposta_enviada", label: "Proposta enviada", destino: "Em atendimento" },
-    { v: "negociacao", label: "Em negociação", destino: "Em atendimento" },
-    { v: "venda_em_andamento", label: "Venda em andamento", destino: "Em atendimento" },
-    { v: "vendido", label: "Vendido", destino: "Em atendimento" },
-  ] },
-  { grupo: "Encerramento", itens: [
-    { v: "retomar_futuramente", label: "Retomar mais para frente", destino: "Em atendimento" },
-    { v: "sem_interesse", label: "Sem interesse", destino: "Em atendimento" },
-    { v: "sem_perfil", label: "Sem perfil", destino: "Em atendimento" },
-    { v: "contato_invalido", label: "Contato inválido", destino: "Em atendimento" },
-    { v: "descartado", label: "Descartado", destino: "Em atendimento" },
-  ] },
-];
-const TEMPERATURAS = [{ v: "frio", label: "Frio" }, { v: "morno", label: "Morno" }, { v: "quente", label: "Quente" }];
+/* Momento do lead: em que ponto do atendimento ele está.
+   Não move card, não troca etapa, não troca funil — é um dado do lead.
+   O catálogo vem do banco (lead_momento_catalogo), para a operação ajustar sem deploy. */
+/** Há quantos dias o momento foi atualizado — é o que denuncia lead esquecido. */
+function diasDesde(iso?: string | null): number | null {
+  if (!iso) return null;
+  return Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
+}
+/** Rótulo legível do momento, a partir do catálogo carregado do banco. */
+function momentoRotulo(slug?: string | null, catalogo?: MomentoCat[]): string {
+  if (!slug) return "";
+  return catalogo?.find((m) => m.slug === slug)?.rotulo ?? slug.replace(/_/g, " ");
+}
+/** Verde até 1 dia, amarelo até 3, vermelho depois; cinza quando nunca foi atualizado. */
+function corMomento(dias: number | null): string {
+  if (dias === null) return "nunca";
+  if (dias <= 1) return "ok";
+  if (dias <= 3) return "atencao";
+  return "atrasado";
+}
 
 const money = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
 const dateTime = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
@@ -466,7 +450,7 @@ export function CrmWorkspace({ accessToken, initialDealId = null, onInitialDealH
     {!loading && !error && data && view === "pipeline" && <div className={`crm-pipe-layout ${railCollapsed ? "rail-collapsed" : ""}`}>
       <aside className="crm-pipe-rail"><div className="crm-pipe-rail-head"><span className="crm-pipe-rail-title">FUNIS</span><button type="button" className="crm-pipe-rail-toggle" title={railCollapsed ? "Expandir funis" : "Recolher funis"} aria-label={railCollapsed ? "Expandir funis" : "Recolher funis"} onClick={() => setRailCollapsed((prev) => !prev)}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">{railCollapsed ? <path d="M9 6l6 6-6 6" /> : <path d="M15 6l-6 6 6 6" />}</svg></button></div>{(data.pipelines ?? []).map((pipeline) => { const count = (data.deals ?? []).filter((deal) => deal.pipeline_id === pipeline.id && !["ganho", "perdido", "descartado"].includes(deal.status)).length; return <button type="button" key={pipeline.id} className={`crm-pipe-item ${pipeline.id === kanbanPipeId ? "active" : ""}`} title={pipeline.nome} onClick={() => { setPipelineId(pipeline.id); setStageId(null); setGroup(null); }}><span className="crm-pipe-dot" /><strong>{pipeline.nome}</strong><em>{count}</em></button>; })}</aside>
       {kanbanEhInteligente && <div className="momentox-aviso">Neste funil o card muda de etapa pelo <b>momento do lead</b> — abra o lead e registre o momento. O arraste está desligado de propósito.</div>}
-      <PipelineViewEnhanced stages={visibleStages} allStages={activeStages} deals={filteredDeals} leadById={leadById} brokerById={brokerById} slaByDeal={slaByDeal} canReassign={canReassign} onReassign={setBrokerPickerDealId} onOpen={openDeal} onChat={openChat} onMutate={mutate} setMessage={setMessage} draggingId={draggingDealId} onDrag={setDraggingDealId} onDrop={dropDeal} canManageStages={canManageStages} onReorderStage={reorderStage} onRecolorStage={recolorStage} onSaveStage={saveStage} onBulkFromStage={openBulkFromStage} stageCount={activeStages.length} canMoveDeals={canMoveDeals && !kanbanEhInteligente} onPickStage={setStagePickerDealId} readByDeal={readByDeal} aquario={data.aquario ?? null} fishing={fishing} onPescar={pescarLead} />
+      <PipelineViewEnhanced momentoCatalogo={data.momentoCatalogo} stages={visibleStages} allStages={activeStages} deals={filteredDeals} leadById={leadById} brokerById={brokerById} slaByDeal={slaByDeal} canReassign={canReassign} onReassign={setBrokerPickerDealId} onOpen={openDeal} onChat={openChat} onMutate={mutate} setMessage={setMessage} draggingId={draggingDealId} onDrag={setDraggingDealId} onDrop={dropDeal} canManageStages={canManageStages} onReorderStage={reorderStage} onRecolorStage={recolorStage} onSaveStage={saveStage} onBulkFromStage={openBulkFromStage} stageCount={activeStages.length} canMoveDeals={canMoveDeals && !kanbanEhInteligente} onPickStage={setStagePickerDealId} readByDeal={readByDeal} aquario={data.aquario ?? null} fishing={fishing} onPescar={pescarLead} />
     </div>}
     {!loading && !error && data && view === "leads" && <LeadsViewEnhanced deals={filteredDeals} leadById={leadById} stages={activeStages} brokerById={brokerById} slaByDeal={slaByDeal} canReassign={canReassign} onReassign={setBrokerPickerDealId} onOpen={openDeal} onChat={openChat} onMutate={mutate} setMessage={setMessage} canMoveDeals={canMoveDeals} onPickStage={setStagePickerDealId} />}
     {!loading && !error && data && view === "agenda" && <AgendaView data={data} leadById={leadById} onMutate={mutate} setMessage={setMessage} sessionRole={sessionRole} accessToken={accessToken} />}
@@ -1260,7 +1244,7 @@ function AnalyticsView({ data, onOpen }: { data: CrmData; onOpen?: (dealId: numb
   </section>;
 }
 
-function PipelineViewEnhanced({ stages, allStages, deals, leadById, brokerById, slaByDeal, canReassign, onReassign, onOpen, onChat, onMutate, setMessage, draggingId, onDrag, onDrop, canManageStages, onReorderStage, onRecolorStage, onSaveStage, onBulkFromStage, stageCount, canMoveDeals, onPickStage, readByDeal, aquario, fishing, onPescar }: { stages: Stage[]; allStages: Stage[]; deals: Deal[]; leadById: Map<number, Lead>; brokerById: Map<number, Broker>; slaByDeal: Map<number, SlaInfo>; canReassign: boolean; onReassign: (dealId: number) => void; onOpen: (id: number) => void; onChat: (id: number) => void; onMutate: (body: Record<string, unknown>) => Promise<void>; setMessage: (value: string | null) => void; draggingId: number | null; onDrag: (id: number | null) => void; onDrop: (event: DragEvent, stageId: number) => Promise<void>; canManageStages?: boolean; onReorderStage?: (stageId: number, direction: number) => Promise<void>; onRecolorStage?: (stageId: number, color: string) => Promise<void>; onSaveStage?: (stageId: number, nome: string, color: string) => Promise<void>; onBulkFromStage?: (stageId: number) => void; stageCount?: number; canMoveDeals?: boolean; onPickStage?: (dealId: number) => void; readByDeal?: Map<number, string>; aquario?: { stage_id: number | null; disponiveis: number } | null; fishing?: boolean; onPescar?: () => void }) {
+function PipelineViewEnhanced({ momentoCatalogo, stages, allStages, deals, leadById, brokerById, slaByDeal, canReassign, onReassign, onOpen, onChat, onMutate, setMessage, draggingId, onDrag, onDrop, canManageStages, onReorderStage, onRecolorStage, onSaveStage, onBulkFromStage, stageCount, canMoveDeals, onPickStage, readByDeal, aquario, fishing, onPescar }: { momentoCatalogo?: MomentoCat[]; stages: Stage[]; allStages: Stage[]; deals: Deal[]; leadById: Map<number, Lead>; brokerById: Map<number, Broker>; slaByDeal: Map<number, SlaInfo>; canReassign: boolean; onReassign: (dealId: number) => void; onOpen: (id: number) => void; onChat: (id: number) => void; onMutate: (body: Record<string, unknown>) => Promise<void>; setMessage: (value: string | null) => void; draggingId: number | null; onDrag: (id: number | null) => void; onDrop: (event: DragEvent, stageId: number) => Promise<void>; canManageStages?: boolean; onReorderStage?: (stageId: number, direction: number) => Promise<void>; onRecolorStage?: (stageId: number, color: string) => Promise<void>; onSaveStage?: (stageId: number, nome: string, color: string) => Promise<void>; onBulkFromStage?: (stageId: number) => void; stageCount?: number; canMoveDeals?: boolean; onPickStage?: (dealId: number) => void; readByDeal?: Map<number, string>; aquario?: { stage_id: number | null; disponiveis: number } | null; fishing?: boolean; onPescar?: () => void }) {
   const [busyId, setBusyId] = useState<number | null>(null);
   const [menuStage, setMenuStage] = useState<number | null>(null);
   const [editName, setEditName] = useState("");
@@ -1364,6 +1348,7 @@ function PipelineViewEnhanced({ stages, allStages, deals, leadById, brokerById, 
             <button type="button" onClick={() => onChat(deal.id)}>Chat</button>
             {canMoveDeals !== false && (() => { const cur = allStages.find((s) => s.id === deal.stage_id); return <button type="button" className="stage-pick-btn" aria-label={`Mover ${lead.nome || "lead"} para outra etapa`} disabled={busyId === deal.id} onClick={() => onPickStage?.(deal.id)}><i className="stage-pick-dot" style={{ background: cur?.cor || "#9638d8" }} /><span>{cur?.rotulo || cur?.nome || "Etapa"}</span><em>⌄</em></button>; })()}
           </div>
+          {lead?.momento && <span className={`momentox-selo m-${corMomento(diasDesde(lead.momento_em))}`} title={lead.momento_obs || undefined}>{momentoRotulo(lead.momento, momentoCatalogo)}<b>{(() => { const d = diasDesde(lead.momento_em); return d === null ? "—" : d === 0 ? "hoje" : `${d}d`; })()}</b></span>}
           <footer><time>{sla?.min_no_estagio !== null && sla?.min_no_estagio !== undefined ? `${formatElapsed(sla.min_no_estagio)} na etapa` : shortDate.format(new Date(deal.ultima_movimentacao || deal.criado_em))}</time></footer>
         </article>;
       })}{items.length === 0 && <div className="crm-empty-stage">Arraste um lead para esta etapa</div>}</div>
@@ -1829,12 +1814,24 @@ function useLeadCopiloto(accessToken: string, leadNome: string) {
 
 function LeadDrawer({ accessToken, lead, deal, data, canReassign, canMoveDeals, onClose, onMutate, onReload, setMessage }: { accessToken: string; lead: Lead; deal: Deal; data: CrmData; canReassign: boolean; canMoveDeals?: boolean; onClose: () => void; onMutate: (body: Record<string, unknown>) => Promise<void>; onReload: () => Promise<void>; setMessage: (value: string | null) => void }) {
   const copiloto = useLeadCopiloto(accessToken, lead.nome || "");
-  // ===== Funil Inteligente: o momento do lead comanda a etapa =====
+  // ===== Momento do lead (só no Funil Inteligente, por enquanto) =====
   const pipeDoLead = data.pipelines.find((p) => p.id === deal.pipeline_id);
   const ehFunilInteligente = pipeDoLead?.grupo === "crm_inteligente";
-  const [mom, setMom] = useState({ momento: "", temperatura: "", resultado: "", observacao: "", proximaAcao: "", proximaAcaoEm: "" });
+  const catalogoMomentos = data.momentoCatalogo ?? [];
+  const gruposMomento = [...new Set(catalogoMomentos.map((m) => m.grupo))];
+  const momentoDoLead = catalogoMomentos.find((m) => m.slug === lead.momento);
+  const diasMomento = diasDesde(lead.momento_em);
+  const [momOpen, setMomOpen] = useState(false);
+  const [mom, setMom] = useState({ momento: lead.momento ?? "", observacao: "" });
   const [momBusy, setMomBusy] = useState(false);
-  const momentoAtual = MOMENTOS_LEAD.flatMap((g) => g.itens).find((i) => i.v === mom.momento);
+  const salvarMomento = () => {
+    if (!mom.momento) return;
+    setMomBusy(true);
+    void onMutate({ action: "registrarMomento", leadId: lead.id, dealId: deal.id, momento: mom.momento, observacao: mom.observacao || undefined })
+      .then(() => { setMessage("Momento atualizado."); setMomOpen(false); setMom({ momento: mom.momento, observacao: "" }); })
+      .catch((r) => setMessage(r instanceof Error ? r.message : "Não foi possível atualizar o momento."))
+      .finally(() => setMomBusy(false));
+  };
   const [tab, setTab] = useState<"resumo" | "historico" | "agenda" | "produtos">("resumo");
   /* Doc §5 — abas arrastáveis com ordem persistida */
   const [tabOrder, setTabOrder] = useState<string[]>(["resumo", "historico", "agenda", "produtos"]);
@@ -1949,40 +1946,16 @@ function LeadDrawer({ accessToken, lead, deal, data, canReassign, canMoveDeals, 
         <button type="button" onClick={() => { setTask(`Fazer follow-up com ${lead.nome || "o lead"}`); setTab("agenda"); setMessage("Sugestão da IA preparada como próxima tarefa."); }}><LeadActionIcon name="ai" /><span>Pedir à IA</span></button>
       </div>
       <article className="lead-context-card"><div><small>ORIGEM</small><strong><span>⌘</span>{lead.origem || "Não informada"}</strong></div><div><small>PRODUTO DE INTERESSE</small><strong><span>▥</span>{currentProduct?.nome || "—"}</strong></div><p>ⓘ Origem e interesse são distintos — alimentam o BI de campanhas.</p><footer><small>Corretor responsável</small><strong><span>♧</span>{responsible?.nome || "Não definido"}</strong></footer></article>
-      {ehFunilInteligente && <article className="momentox">
-        <header><h4>MOMENTO DO LEAD</h4><small>Neste funil o card anda pelo momento, não pelo arraste.</small></header>
-        <div className="momentox-grid">
-          <label>Em que ponto está?
-            <select value={mom.momento} disabled={momBusy} onChange={(e) => setMom({ ...mom, momento: e.target.value })}>
-              <option value="">Selecione o momento</option>
-              {MOMENTOS_LEAD.map((g) => <optgroup label={g.grupo} key={g.grupo}>{g.itens.map((i) => <option value={i.v} key={i.v}>{i.label}</option>)}</optgroup>)}
-            </select>
-          </label>
-          <label>Temperatura
-            <select value={mom.temperatura} disabled={momBusy} onChange={(e) => setMom({ ...mom, temperatura: e.target.value })}>
-              <option value="">Não informar</option>
-              {TEMPERATURAS.map((t) => <option value={t.v} key={t.v}>{t.label}</option>)}
-            </select>
-          </label>
-          <label>Próxima ação<input value={mom.proximaAcao} disabled={momBusy} placeholder="Ex.: ligar para confirmar a visita" onChange={(e) => setMom({ ...mom, proximaAcao: e.target.value })} /></label>
-          <label>Quando<input type="datetime-local" value={mom.proximaAcaoEm} disabled={momBusy} onChange={(e) => setMom({ ...mom, proximaAcaoEm: e.target.value })} /></label>
+      {ehFunilInteligente && <article className={`momentox momentox-${corMomento(diasMomento)}`}>
+        <div className="momentox-atual">
+          <span className="momentox-dot" style={{ background: momentoDoLead?.cor || "#9a938b" }} />
+          <div>
+            <strong>{momentoDoLead?.rotulo ?? "Momento não informado"}</strong>
+            <small>{diasMomento === null ? "nunca foi atualizado" : diasMomento === 0 ? "atualizado hoje" : diasMomento === 1 ? "atualizado ontem" : `há ${diasMomento} dias sem atualizar`}</small>
+          </div>
+          <button type="button" className="momentox-btn" disabled={busy} onClick={() => { setMom({ momento: lead.momento ?? "", observacao: "" }); setMomOpen(true); }}>Atualizar</button>
         </div>
-        <label className="momentox-obs">O que aconteceu<textarea rows={2} value={mom.observacao} disabled={momBusy} placeholder="Registre o que foi conversado" onChange={(e) => setMom({ ...mom, observacao: e.target.value })} /></label>
-        {momentoAtual && <p className="momentox-destino">Ao salvar, o card vai para <b>{momentoAtual.destino}</b>.</p>}
-        <footer>
-          <button type="button" className="crm-primary" disabled={momBusy || !mom.momento} onClick={() => {
-            setMomBusy(true);
-            void onMutate({
-              action: "atualizarMomento", leadId: lead.id, dealId: deal.id,
-              momento: mom.momento, temperatura: mom.temperatura || undefined,
-              resultado: mom.resultado || undefined, observacao: mom.observacao || undefined,
-              proximaAcao: mom.proximaAcao || undefined,
-              proximaAcaoEm: mom.proximaAcaoEm ? new Date(mom.proximaAcaoEm).toISOString() : undefined,
-            }).then(() => { setMessage("Momento atualizado — o card já está na etapa certa."); setMom({ momento: "", temperatura: "", resultado: "", observacao: "", proximaAcao: "", proximaAcaoEm: "" }); })
-              .catch((r) => setMessage(r instanceof Error ? r.message : "Não foi possível atualizar o momento."))
-              .finally(() => setMomBusy(false));
-          }}>{momBusy ? "Salvando…" : "Salvar momento"}</button>
-        </footer>
+        {lead.momento_obs && <p className="momentox-obs-atual">“{lead.momento_obs}”</p>}
       </article>}
 
       <article className="lead-funnel-status"><h4>ETAPA DO FUNIL</h4><div className="lead-stage-track">{stages.map((stage, index) => <i className={index <= stageIndex ? "active" : ""} style={{ "--lead-stage-color": stage.cor || "#8b00cc" } as CSSProperties} key={stage.id} />)}</div>{canMoveDeals !== false && data.pipelines.length > 1 && <label className="lead-pipe-move"><span>FUNIL (PIPE)</span><select value={deal.pipeline_id} disabled={busy} onChange={(event) => { const target = Number(event.target.value); if (target === deal.pipeline_id) return; const first = data.stages.filter((s) => s.pipeline_id === target).sort((a, b) => a.ordem - b.ordem)[0]; if (!first) { setMessage("Esse funil ainda não tem etapas configuradas."); return; } const pname = data.pipelines.find((p) => p.id === target)?.nome || "outro funil"; void run({ action: "moveDeal", dealId: deal.id, stageId: first.id }, `Lead movido para o funil ${pname}.`); }}>{data.pipelines.map((p) => <option value={p.id} key={p.id}>{p.nome}</option>)}</select></label>}{canMoveDeals !== false && <label className="lead-stage-move"><span>ETAPA</span><select value={deal.stage_id ?? ""} disabled={busy} onChange={(event) => void run({ action: "moveDeal", dealId: deal.id, stageId: Number(event.target.value) }, "Etapa atualizada.")}>{stages.map((stage) => <option value={stage.id} key={stage.id}>{stage.rotulo || stage.nome}</option>)}</select></label>}{canMoveDeals !== false && <button type="button" onClick={() => setAction("discard")}>Descartar lead</button>}</article>
@@ -2005,6 +1978,19 @@ function LeadDrawer({ accessToken, lead, deal, data, canReassign, canMoveDeals, 
       {productOpen && chatData && <ProductSendModal data={chatData} canSend={Boolean(contact && dapi)} onClose={() => setProductOpen(false)} onSend={async (content, mediaId) => { if (!contact || !dapi) throw new Error("Este lead precisa de uma conversa e uma instância conectada."); await callExternal({ action: "send", leadId: lead.id, dealId: deal.id, phone: contact.telefone, instanceId: dapi.id, content, mediaId }); setProductOpen(false); }} />}
       {saleOpen && <LeadSaleModal accessToken={accessToken} deal={deal} products={data.products} onClose={() => setSaleOpen(false)} onDone={async () => { setSaleOpen(false); await onReload(); setMessage("Venda gerada — o lead saiu do funil e foi para a Esteira de vendas (aguardando aprovação do gestor)."); }} />}
       {action && <div className="drawer-action-modal"><form onSubmit={(event) => { event.preventDefault(); if (action === "visit") void run({ action: "createVisit", leadId: lead.id, dealId: deal.id, ...visit }, "Visita agendada.").then(() => setAction(null)); if (action === "transfer") void run({ action: "transferDeal", dealId: deal.id, brokerId: Number(transferBroker) }, "Negócio transferido.").then(() => setAction(null)); if (action === "discard") void run({ action: "discardDeal", dealId: deal.id, ...discard }, "Negócio descartado.").then(() => { setAction(null); onClose(); }); }}><header><div><h3>{action === "visit" ? "Agendar visita" : action === "transfer" ? "Transferir atendimento" : "Descartar negócio"}</h3><p>{action === "visit" ? "A visita ficará ligada a este lead e ao produto." : action === "transfer" ? "Escolha quem assumirá este atendimento." : "O negócio será movido para a etapa de descarte."}</p></div><button type="button" onClick={() => setAction(null)}>×</button></header>{action === "visit" && <div className="action-form-grid"><label>Data<input required type="date" value={visit.date} onChange={(event) => setVisit({ ...visit, date: event.target.value })} /></label><label>Início<input required type="time" value={visit.startTime} onChange={(event) => setVisit({ ...visit, startTime: event.target.value })} /></label><label>Fim<input type="time" value={visit.endTime} onChange={(event) => setVisit({ ...visit, endTime: event.target.value })} /></label><label>Produto<select value={visit.productId} onChange={(event) => setVisit({ ...visit, productId: event.target.value })}><option value="">Selecionar depois</option>{data.products.map((item) => <option value={item.id} key={item.id}>{item.nome}</option>)}</select></label><label className="wide">Local<input value={visit.local} onChange={(event) => setVisit({ ...visit, local: event.target.value })} placeholder="Preenchido pelo endereço do produto" /></label><label className="wide">Observações<textarea value={visit.observations} onChange={(event) => setVisit({ ...visit, observations: event.target.value })} /></label><label className="check"><input type="checkbox" checked={visit.reminder} onChange={(event) => setVisit({ ...visit, reminder: event.target.checked })} /> Criar lembrete</label><label className="check"><input type="checkbox" checked={visit.withManager} onChange={(event) => setVisit({ ...visit, withManager: event.target.checked })} /> Com gerente</label></div>}{action === "transfer" && <label>Corretor responsável<select required value={transferBroker} onChange={(event) => setTransferBroker(event.target.value)}><option value="">Selecione</option>{data.brokers.filter((broker) => broker.id !== deal.corretor_id).map((broker) => <option value={broker.id} key={broker.id}>{broker.nome}{broker.online ? " · online" : ""}</option>)}</select></label>}{action === "discard" && <><label>Motivo<select required value={discard.reason} onChange={(event) => setDiscard({ ...discard, reason: event.target.value })}><option value="">Selecione</option>{discardReasons.map((item) => <option key={item}>{item}</option>)}</select></label><label>Observação<textarea value={discard.observation} onChange={(event) => setDiscard({ ...discard, observation: event.target.value })} /></label></>}<footer><button type="button" onClick={() => setAction(null)}>Cancelar</button><button className={action === "discard" ? "danger" : ""} disabled={busy} type="submit">Confirmar</button></footer></form></div>}
+    {momOpen && <div className="crm-center-modal" onMouseDown={(e) => { if (e.target === e.currentTarget) setMomOpen(false); }}>
+      <form onSubmit={(e) => { e.preventDefault(); salvarMomento(); }}>
+        <header><div><span>MOMENTO DO LEAD</span><h2>Em que ponto está?</h2><p>{lead.nome || "Lead"} · isso não move o card, só registra a situação do atendimento.</p></div><button type="button" onClick={() => setMomOpen(false)}>×</button></header>
+        <label>Momento
+          <select required value={mom.momento} disabled={momBusy} onChange={(e) => setMom({ ...mom, momento: e.target.value })}>
+            <option value="">Selecione</option>
+            {gruposMomento.map((g) => <optgroup label={g} key={g}>{catalogoMomentos.filter((m) => m.grupo === g).map((m) => <option value={m.slug} key={m.slug}>{m.rotulo}</option>)}</optgroup>)}
+          </select>
+        </label>
+        <label>Observação<textarea rows={3} value={mom.observacao} disabled={momBusy} placeholder="O que aconteceu no último contato" onChange={(e) => setMom({ ...mom, observacao: e.target.value })} /></label>
+        <footer><button type="button" onClick={() => setMomOpen(false)}>Cancelar</button><button className="crm-primary" type="submit" disabled={momBusy || !mom.momento}>{momBusy ? "Salvando…" : "Salvar momento"}</button></footer>
+      </form>
+    </div>}
     </aside></div>;
 }
 
