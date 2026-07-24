@@ -421,18 +421,20 @@ type SalesData = {
   brokers: Array<{ id: number; nome: string; usuario_id: string | null; online: boolean }>;
   stages?: Array<{ id: string; slug: string; nome: string; cor: string; ordem: number; papel: string; sla_dias: number; resale: boolean; exige_docs?: boolean }>;
   etapaDocs?: Array<{ id: string; etapa_slug: string; nome: string; obrigatorio: boolean; ordem: number }>;
-  anexos?: Array<{ id: string; processo_ref: string; negocio_id: number | null; etapa_slug: string | null; doc_nome: string | null; nome: string; path: string; mime: string | null; tamanho: number | null; criado_em: string; grupo?: string | null; status?: string; status_motivo?: string | null; obrigatorio?: boolean; observacao?: string | null; enviado_por?: string | null; revisado_por?: string | null; revisado_em?: string | null }>;
+  anexos?: Array<{ id: string; processo_ref: string; negocio_id: number | null; etapa_slug: string | null; doc_nome: string | null; nome: string; path: string; mime: string | null; tamanho: number | null; criado_em: string; grupo?: string | null; status?: string; status_motivo?: string | null; obrigatorio?: boolean; observacao?: string | null; enviado_por?: string | null; revisado_por?: string | null; revisado_em?: string | null; lote_id?: string | null; origem?: string | null; ia_status?: string | null; ia_grupo?: string | null; ia_doc_nome?: string | null; ia_confianca?: number | null; ia_extraido?: Record<string, unknown> | null; ia_motivo?: string | null; ia_processado_em?: string | null }>;
   users?: Array<{ id: string; nome: string; role: string }>;
   history?: Array<{ processo_id: string; etapa_de: string | null; etapa_para: string; movido_por: string | null; movido_em: string }>;
   verificacoes?: Array<{ id: string; processo_ref: string; etapa_slug: string; verificado_por: string | null; verificado_em: string }>;
   solicitacoes?: Array<{ id: string; negocio_id: number | null; corretor_id: number | null; solicitado_por: string | null; produto_id: string | null; vgv: number | null; forma_pgto: string | null; obs: string | null; status: string; criado_em: string }>;
-  docModelo?: Array<{ id: string; grupo: string; nome: string; obrigatorio: boolean; ordem: number }>;
-  condicoes?: Array<{ processo_ref: string; comprador_tem_conjuge: boolean; vendedor_tem_conjuge: boolean; valor_total: number | null; valor_entrada: number | null; data_entrada: string | null; valor_financiado: number | null; valor_fgts: number | null; valor_recursos_proprios: number | null; valor_parcelas_interm: number | null; qtd_parcelas: number | null; valor_parcela: number | null; valor_assinatura: number | null; valor_chaves: number | null; data_assinatura: string | null; data_conclusao: string | null; origem_recursos: Array<{ tipo: string; valor: number | string }> }>;
+  docModelo?: Array<{ id: string; grupo: string; nome: string; obrigatorio: boolean; ordem: number; condicao?: string | null }>;
+  condicoes?: Array<{ processo_ref: string; forma_pagamento?: string | null; comprador_tem_conjuge: boolean; vendedor_tem_conjuge: boolean; valor_total: number | null; valor_entrada: number | null; data_entrada: string | null; valor_financiado: number | null; valor_fgts: number | null; valor_recursos_proprios: number | null; valor_parcelas_interm: number | null; qtd_parcelas: number | null; valor_parcela: number | null; valor_assinatura: number | null; valor_chaves: number | null; data_assinatura: string | null; data_conclusao: string | null; origem_recursos: Array<{ tipo: string; valor: number | string }> }>;
   comissao?: Array<{ processo_ref: string; percentual_total: number | null; valor_total: number | null; imobiliaria: string | null; forma_pgto: string | null; participantes: Array<{ nome: string; papel: string; percentual: number | string; valor: number | string }> }>;
   comissaoParcelas?: Array<{ id: string; processo_ref: string; valor: number | null; gatilho: string | null; data_prevista: string | null; data_efetiva: string | null; responsavel: string | null; status: string; ordem: number }>;
   observacoes?: Array<{ id: string; processo_ref: string; texto: string; autor: string | null; autor_nome: string | null; criado_em: string }>;
   pipelines?: Array<{ id: number; nome: string; ordem: number | null }>;
   pipelineStages?: Array<{ id: number; pipeline_id: number; nome: string; ordem: number | null }>;
+  partes?: Array<{ id: string; processo_ref: string; papel: string; ordem: number; nome: string | null; telefone: string | null; email: string | null; cpf: string | null; observacao: string | null; atualizado_em: string | null }>;
+  anexoEventos?: Array<{ id: string; anexo_id: string | null; processo_ref: string | null; lote_id: string | null; evento: string; detalhe: Record<string, unknown> | null; ator: string | null; ator_nome: string | null; criado_em: string }>;
 };
 
 const saleStages = [
@@ -519,7 +521,7 @@ function SalesProcessView({ accessToken, initialCreate = false, sessionRole = "c
     })}</div>
     {creating && <CreateSaleModal data={data} accessToken={accessToken} onClose={() => setCreating(false)} onDone={async () => { setCreating(false); await load(); }} />}
     {chatItem && <LeadChatDrawer key={chatItem.deal.id} accessToken={accessToken} lead={chatItem.lead} deal={chatItem.deal} corretorNome={chatItem.corretorNome} onClose={() => setChatItem(null)} onResponse={async () => {}} />}
-    {detailItem && (() => { const sale = saleById.get(detailItem.venda_id); const deal = dealBySale.get(detailItem.venda_id); const lead = deal ? leadById.get(deal.lead_id) : null; const broker = brokerById.get(deal?.corretor_id ?? lead?.corretor_id ?? -1); return <SaleDetailDrawer accessToken={accessToken} canApprove={canManageStages} process={detailItem} sale={sale} lead={lead} broker={broker} stageList={stageList} docModelo={data.docModelo ?? []} anexos={(data.anexos ?? []).filter((a) => a.processo_ref === detailItem.id)} condicao={(data.condicoes ?? []).find((c) => c.processo_ref === detailItem.id)} comissao={(data.comissao ?? []).find((c) => c.processo_ref === detailItem.id)} comissaoParcelas={(data.comissaoParcelas ?? []).filter((p) => p.processo_ref === detailItem.id)} observacoes={(data.observacoes ?? []).filter((o) => o.processo_ref === detailItem.id)} users={data.users ?? []} pipelines={data.pipelines ?? []} pipelineStages={data.pipelineStages ?? []} history={(data.history ?? []).filter((h) => h.processo_id === detailItem.id)} busy={busy} onReload={load} onMove={async (stage) => { await move(detailItem.id, stage); setDetailItem((cur) => cur ? { ...cur, etapa: stage } : cur); }} onChat={lead && deal ? () => { setDetailItem(null); setChatItem({ lead: lead as unknown as Lead, deal: deal as unknown as Deal, corretorNome: broker?.nome }); } : undefined} onClose={() => setDetailItem(null)} />; })()}
+    {detailItem && (() => { const sale = saleById.get(detailItem.venda_id); const deal = dealBySale.get(detailItem.venda_id); const lead = deal ? leadById.get(deal.lead_id) : null; const broker = brokerById.get(deal?.corretor_id ?? lead?.corretor_id ?? -1); return <SaleDetailDrawer accessToken={accessToken} canApprove={canManageStages} process={detailItem} sale={sale} lead={lead} broker={broker} stageList={stageList} docModelo={data.docModelo ?? []} anexos={(data.anexos ?? []).filter((a) => a.processo_ref === detailItem.id)} condicao={(data.condicoes ?? []).find((c) => c.processo_ref === detailItem.id)} comissao={(data.comissao ?? []).find((c) => c.processo_ref === detailItem.id)} comissaoParcelas={(data.comissaoParcelas ?? []).filter((p) => p.processo_ref === detailItem.id)} observacoes={(data.observacoes ?? []).filter((o) => o.processo_ref === detailItem.id)} partes={(data.partes ?? []).filter((p) => p.processo_ref === detailItem.id)} anexoEventos={(data.anexoEventos ?? []).filter((e) => e.processo_ref === detailItem.id)} users={data.users ?? []} pipelines={data.pipelines ?? []} pipelineStages={data.pipelineStages ?? []} history={(data.history ?? []).filter((h) => h.processo_id === detailItem.id)} busy={busy} onReload={load} onMove={async (stage) => { await move(detailItem.id, stage); setDetailItem((cur) => cur ? { ...cur, etapa: stage } : cur); }} onChat={lead && deal ? () => { setDetailItem(null); setChatItem({ lead: lead as unknown as Lead, deal: deal as unknown as Deal, corretorNome: broker?.nome }); } : undefined} onClose={() => setDetailItem(null)} />; })()}
     {bulkFrom && <div className="crm-center-modal"><form onSubmit={(event) => event.preventDefault()}><header><div><span>AÇÃO EM MASSA</span><h2>Mover uma etapa inteira</h2><p>Todas as vendas de <b>{stageList.find((s) => s.id === bulkFrom)?.name}</b> serão enviadas para o destino escolhido.</p></div><button type="button" onClick={() => setBulkFrom(null)}>×</button></header><div className="bulk-move-grid"><label>Etapa de destino<select id="bulk-to" defaultValue=""><option value="">Selecione</option>{stageList.filter((s) => s.id !== bulkFrom).map((s) => <option value={s.id} key={s.id}>{s.name}</option>)}</select></label></div><footer><button type="button" onClick={() => setBulkFrom(null)}>Cancelar</button><button className="crm-primary" type="button" disabled={busy} onClick={() => { const to = (document.getElementById("bulk-to") as HTMLSelectElement | null)?.value; if (!to) { setError("Selecione a etapa de destino."); return; } void mutateStages({ action: "bulkMoveStage", fromSlug: bulkFrom, toSlug: to }); setBulkFrom(null); }}>Mover vendas</button></footer></form></div>}
   </section>;
 }
@@ -531,12 +533,26 @@ const DOC_GRUPOS = [
   { key: "imovel", label: "Documentação do imóvel", conjugeFlag: null, conjugeGrupo: null },
 ] as const;
 const GRUPO_LABEL: Record<string, string> = { comprador: "comprador", conjuge_comprador: "cônjuge do comprador", vendedor: "vendedor", conjuge_vendedor: "cônjuge do vendedor", imovel: "imóvel" };
-const DOC_STATUS_LABEL: Record<string, string> = { pendente: "Pendente", anexado: "Anexado", em_analise: "Em análise", aprovado: "Aprovado", recusado: "Recusado", correcao: "Necessita correção" };
+const DOC_STATUS_LABEL: Record<string, string> = { pendente: "Pendente", anexado: "Anexado", em_analise: "Em análise", aprovado: "Aprovado", recusado: "Recusado", correcao: "Necessita correção", triagem: "Aguardando conferência" };
+// Partes da negociação — cada uma com nome, telefone e e-mail próprios.
+const PAPEIS_PARTE = [
+  { key: "comprador", label: "Comprador", hint: "Titular da compra" },
+  { key: "conjuge_comprador", label: "Cônjuge do comprador", hint: "Quando houver" },
+  { key: "vendedor", label: "Vendedor", hint: "Titular da venda" },
+  { key: "conjuge_vendedor", label: "Cônjuge do vendedor", hint: "Quando houver" },
+] as const;
+// Forma de pagamento define quais documentos o checklist passa a exigir.
+const FORMA_PGTO_OPCOES = [
+  { key: "a_vista", label: "À vista", hint: "Não exige carta de crédito nem aprovação de financiamento" },
+  { key: "financiamento", label: "Financiamento bancário", hint: "Exige a carta de aprovação do financiamento" },
+  { key: "consorcio", label: "Consórcio", hint: "Exige a carta de crédito do consórcio" },
+  { key: "misto", label: "Misto", hint: "Combina recursos próprios com crédito" },
+] as const;
 const ORIGEM_OPCOES = ["Recursos próprios", "Financiamento bancário", "FGTS", "Consórcio ou carta de crédito", "Permuta", "Outro"];
 const COMISSAO_GATILHOS = ["Na entrada", "Na primeira parcela", "Na segunda parcela", "Na assinatura", "Na liberação do financiamento", "Na entrega das chaves", "Outra condição"];
 const PARCELA_STATUS = ["previsto", "recebido", "atrasado", "cancelado"];
 
-function SaleDetailDrawer({ accessToken, canApprove, process, sale, lead, broker, stageList, docModelo, anexos, condicao, comissao, comissaoParcelas, observacoes, users, pipelines, pipelineStages, history = [], busy, onReload, onMove, onChat, onClose }: { accessToken: string; canApprove?: boolean; process: SalesData["processes"][number]; sale?: SalesData["sales"][number]; lead?: SalesData["leads"][number] | null; broker?: SalesData["brokers"][number]; stageList: SaleStageItem[]; docModelo: NonNullable<SalesData["docModelo"]>; anexos: NonNullable<SalesData["anexos"]>; condicao?: NonNullable<SalesData["condicoes"]>[number]; comissao?: NonNullable<SalesData["comissao"]>[number]; comissaoParcelas: NonNullable<SalesData["comissaoParcelas"]>; observacoes: NonNullable<SalesData["observacoes"]>; users: NonNullable<SalesData["users"]>; pipelines: NonNullable<SalesData["pipelines"]>; pipelineStages: NonNullable<SalesData["pipelineStages"]>; history?: NonNullable<SalesData["history"]>; busy?: boolean; onReload: () => Promise<void>; onMove: (stage: string) => Promise<void>; onChat?: () => void; onClose: () => void }) {
+function SaleDetailDrawer({ accessToken, canApprove, process, sale, lead, broker, stageList, docModelo, anexos, condicao, comissao, comissaoParcelas, observacoes, partes = [], anexoEventos = [], users, pipelines, pipelineStages, history = [], busy, onReload, onMove, onChat, onClose }: { accessToken: string; canApprove?: boolean; process: SalesData["processes"][number]; sale?: SalesData["sales"][number]; lead?: SalesData["leads"][number] | null; broker?: SalesData["brokers"][number]; stageList: SaleStageItem[]; docModelo: NonNullable<SalesData["docModelo"]>; anexos: NonNullable<SalesData["anexos"]>; condicao?: NonNullable<SalesData["condicoes"]>[number]; comissao?: NonNullable<SalesData["comissao"]>[number]; comissaoParcelas: NonNullable<SalesData["comissaoParcelas"]>; observacoes: NonNullable<SalesData["observacoes"]>; partes?: NonNullable<SalesData["partes"]>; anexoEventos?: NonNullable<SalesData["anexoEventos"]>; users: NonNullable<SalesData["users"]>; pipelines: NonNullable<SalesData["pipelines"]>; pipelineStages: NonNullable<SalesData["pipelineStages"]>; history?: NonNullable<SalesData["history"]>; busy?: boolean; onReload: () => Promise<void>; onMove: (stage: string) => Promise<void>; onChat?: () => void; onClose: () => void }) {
   const stageName = (slug: string) => stageList.find((s) => s.id === slug)?.name || slug;
   const enteredAt = (slug: string) => { const rows = history.filter((h) => h.etapa_para === slug); return rows.length ? rows[rows.length - 1].movido_em : null; };
   const currentIndex = stageList.findIndex((s) => s.id === process.etapa);
@@ -552,7 +568,7 @@ function SaleDetailDrawer({ accessToken, canApprove, process, sale, lead, broker
   const trackCurrent = track.findIndex((s) => s.id === process.etapa);
   const userName = (id?: string | null) => users.find((u) => u.id === id)?.nome || "—";
 
-  const [tab, setTab] = useState<"andamento" | "docs" | "condicoes" | "comissao" | "obs">("andamento");
+  const [tab, setTab] = useState<"andamento" | "partes" | "docs" | "condicoes" | "comissao" | "obs">("andamento");
   const [wBusy, setWBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [obsText, setObsText] = useState("");
@@ -562,6 +578,7 @@ function SaleDetailDrawer({ accessToken, canApprove, process, sale, lead, broker
   const [devMotivo, setDevMotivo] = useState("");
   const [novoDoc, setNovoDoc] = useState<Record<string, { nome: string; obrig: boolean; obs: string }>>({});
   const [cond, setCond] = useState(() => ({
+    forma_pagamento: condicao?.forma_pagamento ?? "",
     comprador_tem_conjuge: condicao?.comprador_tem_conjuge ?? false, vendedor_tem_conjuge: condicao?.vendedor_tem_conjuge ?? false,
     valor_total: condicao?.valor_total ?? "", valor_entrada: condicao?.valor_entrada ?? "", data_entrada: (condicao?.data_entrada ?? "")?.toString().slice(0, 10),
     valor_financiado: condicao?.valor_financiado ?? "", valor_fgts: condicao?.valor_fgts ?? "", valor_recursos_proprios: condicao?.valor_recursos_proprios ?? "",
@@ -599,17 +616,71 @@ function SaleDetailDrawer({ accessToken, canApprove, process, sale, lead, broker
   const devolver = (stageId: number, motivo: string) => run(async () => { await api({ action: "devolverFunil", processId: process.id, stageId, motivo }); onClose(); });
   const busyAll = busy || wBusy;
 
+  // ===== Envio em lote + organização automática pela Sara =====
+  const [loteMsg, setLoteMsg] = useState<string | null>(null);
+  const [loteFase, setLoteFase] = useState<"" | "enviando" | "lendo">("");
+  const enviarLote = (files: FileList | File[]) => {
+    const lista = Array.from(files).slice(0, 15);
+    if (!lista.length) return;
+    void run(async () => {
+      setLoteMsg(null);
+      setLoteFase("enviando");
+      try {
+        const supabase = getBrowserSupabaseClient();
+        const loteId = (globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`);
+        const enviados: Array<{ nome: string; path: string; mime: string; tamanho: number }> = [];
+        for (const file of lista) {
+          const safe = file.name.replace(/[^\w.\-]+/g, "_");
+          const path = `esteira/${process.id}/_lote/${loteId}/${Date.now()}_${safe}`;
+          const { error: upErr } = await supabase.storage.from("esteira-docs").upload(path, file, { upsert: false });
+          if (upErr) throw new Error(`${file.name}: ${upErr.message}`);
+          enviados.push({ nome: file.name, path, mime: file.type, tamanho: file.size });
+        }
+        await api({ action: "addAnexoLote", processId: process.id, negocioId: process.negocio_id, loteId, arquivos: enviados });
+        setLoteFase("lendo");
+        const r = await authedFetch("/api/crm/sales", { method: "PATCH", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify({ action: "classificarLote", processId: process.id, loteId }) });
+        const j = await r.json() as { error?: string; classificados?: number; triagem?: number; processados?: number };
+        if (!r.ok) throw new Error(j.error || "A Sara não conseguiu ler os documentos.");
+        setLoteMsg(`Sara leu ${j.processados ?? 0} arquivo(s): ${j.classificados ?? 0} arquivado(s) automaticamente e ${j.triagem ?? 0} para você conferir.`);
+      } finally {
+        setLoteFase("");
+      }
+    });
+  };
+  const confirmarTriagem = (anexoId: string, grupo: string, docNome: string, obrigatorio: boolean) => run(() => api({ action: "triagemConfirmar", anexoId, grupo, docNome, obrigatorio }));
+
+  // ===== Partes da negociação =====
+  const parteDe = (papel: string) => partes.find((p) => p.papel === papel);
+  const [parteEdit, setParteEdit] = useState<Record<string, { nome: string; telefone: string; email: string; cpf: string }>>(() => {
+    const base: Record<string, { nome: string; telefone: string; email: string; cpf: string }> = {};
+    PAPEIS_PARTE.forEach((p) => { const row = partes.find((x) => x.papel === p.key); base[p.key] = { nome: row?.nome ?? "", telefone: row?.telefone ?? "", email: row?.email ?? "", cpf: row?.cpf ?? "" }; });
+    return base;
+  });
+  const salvarParte = (papel: string) => { const v = parteEdit[papel]; if (!v) return; void run(() => api({ action: "salvarParte", processId: process.id, papel, ...v })); };
+
   // grupos ativos conforme cônjuge
   const gruposAtivos = ["comprador", "vendedor", "imovel", ...(cond.comprador_tem_conjuge ? ["conjuge_comprador"] : []), ...(cond.vendedor_tem_conjuge ? ["conjuge_vendedor"] : [])];
   const anexoDe = (grupo: string, nome: string) => anexos.find((a) => a.grupo === grupo && a.doc_nome === nome);
   const aprovadoDe = (grupo: string, nome: string) => { const a = anexoDe(grupo, nome); return a?.status === "aprovado"; };
+
+  // Documento condicional: só é cobrado quando a forma de pagamento o justifica.
+  // À vista não exige carta de crédito nem aprovação de financiamento.
+  const forma = String(cond.forma_pagamento || "");
+  const docExigido = (c?: string | null) => { if (!c) return true; if (!forma) return false; if (c === "financiamento") return forma === "financiamento" || forma === "misto"; if (c === "consorcio") return forma === "consorcio" || forma === "misto"; if (c === "nao_a_vista") return forma !== "a_vista"; return true; };
+  const docVisivel = (c?: string | null) => { if (!c) return true; if (!forma) return true; return docExigido(c); };
+  const docsDoGrupo = (g: string) => docModelo.filter((d) => d.grupo === g && docVisivel(d.condicao));
+
+  // Fila de triagem: arquivos do lote que a Sara não conseguiu encaixar com segurança.
+  const triagem = anexos.filter((a) => a.status === "triagem");
+
   // motivos de bloqueio (espelha o servidor)
   const blockReasons: string[] = [];
   const faltaGrupo: Record<string, number> = {};
-  gruposAtivos.forEach((g) => { docModelo.filter((d) => d.grupo === g && d.obrigatorio).forEach((d) => { if (!aprovadoDe(g, d.nome)) faltaGrupo[g] = (faltaGrupo[g] || 0) + 1; }); });
-  const avulsosFalt = anexos.filter((a) => a.obrigatorio && a.status !== "aprovado").length;
+  gruposAtivos.forEach((g) => { docModelo.filter((d) => d.grupo === g && d.obrigatorio && docExigido(d.condicao)).forEach((d) => { if (!aprovadoDe(g, d.nome)) faltaGrupo[g] = (faltaGrupo[g] || 0) + 1; }); });
+  const avulsosFalt = anexos.filter((a) => a.obrigatorio && a.status !== "aprovado" && a.status !== "triagem").length;
   const partesFalta = Object.entries(faltaGrupo).map(([g, n]) => `${n} ${GRUPO_LABEL[g]}`);
   if (avulsosFalt) partesFalta.push(`${avulsosFalt} adicional(is)`);
+  if (triagem.length) blockReasons.push(`${triagem.length} documento(s) do lote aguardando conferência da classificação`);
   if (partesFalta.length) blockReasons.push(`Documentos obrigatórios pendentes de aprovação: ${partesFalta.join(", ")}`);
   if (cond.valor_total === "" || cond.valor_total == null) blockReasons.push("Condições comerciais (valor total) não preenchidas");
   const docsAnexados = anexos.length;
@@ -621,11 +692,13 @@ function SaleDetailDrawer({ accessToken, canApprove, process, sale, lead, broker
 
   const nextStage = trackCurrent >= 0 && trackCurrent < track.length - 1 ? track[trackCurrent + 1] : null;
 
-  const DocRow = ({ grupo, nome, obrigatorio, modelo }: { grupo: string; nome: string; obrigatorio: boolean; modelo: boolean }) => {
+  const DocRow = ({ grupo, nome, obrigatorio, modelo, condicao }: { grupo: string; nome: string; obrigatorio: boolean; modelo: boolean; condicao?: string | null }) => {
     const a = anexoDe(grupo, nome);
+    const viaIA = a?.origem === "lote_ia";
     return <div className={`docx-row ${a ? `st-${a.status}` : "st-pendente"}`}>
       <div className="docx-main">
-        <strong>{nome}</strong>
+        <strong>{nome}{condicao && !obrigatorio ? <em className="docx-cond"> · só se {condicao === "financiamento" ? "financiado" : condicao === "consorcio" ? "consórcio" : "não for à vista"}</em> : null}</strong>
+        {viaIA && <span className="docx-ia" title={a?.ia_motivo || undefined}>✨ organizado pela Sara{typeof a?.ia_confianca === "number" ? ` · ${Math.round(a.ia_confianca * 100)}% de confiança` : ""}</span>}
         <small>{obrigatorio ? "Obrigatório" : "Opcional"}{a ? ` · ${a.nome} · ${userName(a.enviado_por)} · ${dateTime.format(new Date(a.criado_em))}` : ""}</small>
         {a?.status_motivo && (a.status === "recusado" || a.status === "correcao") && <em className="docx-motivo">⚠ {a.status_motivo}</em>}
       </div>
@@ -662,7 +735,7 @@ function SaleDetailDrawer({ accessToken, canApprove, process, sale, lead, broker
       {error && <div className="sale-full-error">{error}</div>}
 
       <nav className="sale-full-tabs">
-        {([["andamento", "Andamento"], ["docs", "Documentação"], ["condicoes", "Condições comerciais"], ...(canApprove ? [["comissao", "Comissão"]] : []), ["obs", "Observações"]] as Array<[string, string]>).map(([k, l]) => <button key={k} type="button" className={tab === k ? "active" : ""} onClick={() => setTab(k as typeof tab)}>{l}</button>)}
+        {([["andamento", "Andamento"], ["partes", "Partes"], ["docs", `Documentação${triagem.length ? ` (${triagem.length}!)` : ""}`], ["condicoes", "Condições comerciais"], ...(canApprove ? [["comissao", "Comissão"]] : []), ["obs", "Observações"]] as Array<[string, string]>).map(([k, l]) => <button key={k} type="button" className={tab === k ? "active" : ""} onClick={() => setTab(k as typeof tab)}>{l}</button>)}
       </nav>
 
       <div className="sale-full-body">
@@ -678,19 +751,86 @@ function SaleDetailDrawer({ accessToken, canApprove, process, sale, lead, broker
           {history.length > 0 && <><h4>HISTÓRICO DE MOVIMENTAÇÕES</h4><ul className="sale-moves">{history.slice().reverse().map((h, i) => <li key={i}><b>{dateTime.format(new Date(h.movido_em))}</b><span>{h.etapa_de ? `${stageName(h.etapa_de)} → ${stageName(h.etapa_para)}` : `Entrou em ${stageName(h.etapa_para)}`}{h.movido_por ? ` · ${userName(h.movido_por)}` : ""}</span></li>)}</ul></>}
         </div>}
 
+        {tab === "partes" && <div className="sale-full-pane">
+          <section className="condx">
+            <h3>Forma de pagamento</h3>
+            <p className="partesx-hint">Define quais documentos o checklist vai exigir. À vista dispensa carta de crédito e aprovação de financiamento.</p>
+            <div className="partesx-pgto">{FORMA_PGTO_OPCOES.map((f) => <button key={f.key} type="button" className={cond.forma_pagamento === f.key ? "on" : ""} disabled={busyAll} title={f.hint} onClick={() => { const v = { ...cond, forma_pagamento: f.key }; setCond(v); void run(() => api({ action: "salvarCondicoes", processId: process.id, ...v })); }}><strong>{f.label}</strong><small>{f.hint}</small></button>)}</div>
+          </section>
+          <section className="condx">
+            <h3>Qualificação das partes</h3>
+            <p className="partesx-hint">Nome, telefone e e-mail de cada parte. A Sara usa esses nomes para saber de quem é cada documento enviado em lote.</p>
+            {PAPEIS_PARTE.map((p) => {
+              const conjuge = p.key === "conjuge_comprador" ? cond.comprador_tem_conjuge : p.key === "conjuge_vendedor" ? cond.vendedor_tem_conjuge : true;
+              if (!conjuge) return null;
+              const v = parteEdit[p.key] ?? { nome: "", telefone: "", email: "", cpf: "" };
+              const salvo = parteDe(p.key);
+              return <div className="partesx-card" key={p.key}>
+                <header><strong>{p.label}</strong><small>{salvo?.atualizado_em ? `atualizado ${shortDate.format(new Date(salvo.atualizado_em))}` : p.hint}</small></header>
+                <div className="partesx-grid">
+                  <label>Nome completo<input value={v.nome} disabled={busyAll} onChange={(e) => setParteEdit((c) => ({ ...c, [p.key]: { ...v, nome: e.target.value } }))} /></label>
+                  <label>Telefone<input value={v.telefone} disabled={busyAll} placeholder="(00) 00000-0000" onChange={(e) => setParteEdit((c) => ({ ...c, [p.key]: { ...v, telefone: e.target.value } }))} /></label>
+                  <label>E-mail<input type="email" value={v.email} disabled={busyAll} onChange={(e) => setParteEdit((c) => ({ ...c, [p.key]: { ...v, email: e.target.value } }))} /></label>
+                  <label>CPF<input value={v.cpf} disabled={busyAll} onChange={(e) => setParteEdit((c) => ({ ...c, [p.key]: { ...v, cpf: e.target.value } }))} /></label>
+                </div>
+                <footer><button type="button" className="crm-primary" disabled={busyAll} onClick={() => salvarParte(p.key)}>Salvar {p.label.toLowerCase()}</button></footer>
+              </div>;
+            })}
+            <p className="partesx-hint">Os cônjuges aparecem aqui quando o toggle &quot;Possui cônjuge?&quot; estiver ligado na aba Documentação.</p>
+          </section>
+        </div>}
+
         {tab === "docs" && <div className="sale-full-pane">
+          <section className="lotex">
+            <header>
+              <div><h3>Enviar tudo de uma vez</h3><p>Solte até 15 arquivos (fotos ou PDFs). A Sara lê cada um, identifica de quem é e arquiva no lugar certo. O que ela não tiver certeza vem para você conferir.</p></div>
+              <label className={`lotex-drop ${loteFase ? "busy" : ""}`}
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={(e) => { e.preventDefault(); if (!busyAll && e.dataTransfer?.files?.length) enviarLote(e.dataTransfer.files); }}>
+                <input type="file" hidden multiple accept="image/*,application/pdf" disabled={busyAll} onChange={(e) => { if (e.target.files?.length) enviarLote(e.target.files); e.target.value = ""; }} />
+                <strong>{loteFase === "enviando" ? "Enviando arquivos…" : loteFase === "lendo" ? "Sara lendo os documentos…" : "📎 Solte os arquivos aqui ou clique para escolher"}</strong>
+                <small>{loteFase ? "Isso pode levar alguns segundos por arquivo." : "Imagens e PDFs · até 8 MB cada"}</small>
+              </label>
+            </header>
+            {loteMsg && <div className="lotex-msg">✓ {loteMsg}</div>}
+          </section>
+
+          {triagem.length > 0 && <section className="triagemx">
+            <h3>Conferir classificação da Sara <b>{triagem.length}</b></h3>
+            <p>Confirme o destino sugerido ou corrija antes de arquivar. Enquanto houver itens aqui, o avanço de etapa fica bloqueado.</p>
+            {triagem.map((a) => <TriagemRow key={a.id} anexo={a} gruposAtivos={gruposAtivos} docsDoGrupo={docsDoGrupo} busy={busyAll} onAbrir={() => void abrir(a.path)} onConfirmar={confirmarTriagem} onDescartar={() => removeAnexo(a.id)} />)}
+          </section>}
+
           {DOC_GRUPOS.map((g) => <section className="docx-group" key={g.key}>
             <header><h3>{g.label}</h3>{g.conjugeFlag && <div className="docx-conjuge"><span>Possui cônjuge?</span><button type="button" className={cond[g.conjugeFlag] ? "on" : ""} disabled={busyAll} onClick={() => { const v = { ...cond, [g.conjugeFlag]: true }; setCond(v); void run(() => api({ action: "salvarCondicoes", processId: process.id, ...v })); }}>Sim</button><button type="button" className={!cond[g.conjugeFlag] ? "on" : ""} disabled={busyAll} onClick={() => { const v = { ...cond, [g.conjugeFlag]: false }; setCond(v); void run(() => api({ action: "salvarCondicoes", processId: process.id, ...v })); }}>Não</button></div>}</header>
-            {docModelo.filter((d) => d.grupo === g.key).map((d) => <DocRow key={d.id} grupo={g.key} nome={d.nome} obrigatorio={d.obrigatorio} modelo />)}
-            {anexos.filter((a) => a.grupo === g.key && !docModelo.some((d) => d.grupo === g.key && d.nome === a.doc_nome)).map((a) => <DocRow key={a.id} grupo={g.key} nome={a.doc_nome || a.nome} obrigatorio={a.obrigatorio} modelo={false} />)}
+            {docsDoGrupo(g.key).map((d) => <DocRow key={d.id} grupo={g.key} nome={d.nome} obrigatorio={d.obrigatorio && docExigido(d.condicao)} modelo condicao={d.condicao} />)}
+            {anexos.filter((a) => a.grupo === g.key && a.status !== "triagem" && !docModelo.some((d) => d.grupo === g.key && d.nome === a.doc_nome)).map((a) => <DocRow key={a.id} grupo={g.key} nome={a.doc_nome || a.nome} obrigatorio={a.obrigatorio} modelo={false} />)}
             <DocAddRow busy={busyAll} value={novoDoc[g.key]} onChange={(v) => setNovoDoc((c) => ({ ...c, [g.key]: v }))} onUpload={(f, nome, obrig, obs) => { upload(f, g.key, nome, obrig, obs); setNovoDoc((c) => ({ ...c, [g.key]: { nome: "", obrig: true, obs: "" } })); }} />
             {g.conjugeGrupo && cond[g.conjugeFlag] && <div className="docx-conjuge-area">
               <h4>Documentos do {GRUPO_LABEL[g.conjugeGrupo]}</h4>
-              {docModelo.filter((d) => d.grupo === g.conjugeGrupo).map((d) => <DocRow key={d.id} grupo={g.conjugeGrupo!} nome={d.nome} obrigatorio={d.obrigatorio} modelo />)}
-              {anexos.filter((a) => a.grupo === g.conjugeGrupo && !docModelo.some((d) => d.grupo === g.conjugeGrupo && d.nome === a.doc_nome)).map((a) => <DocRow key={a.id} grupo={g.conjugeGrupo!} nome={a.doc_nome || a.nome} obrigatorio={a.obrigatorio} modelo={false} />)}
+              {docsDoGrupo(g.conjugeGrupo).map((d) => <DocRow key={d.id} grupo={g.conjugeGrupo!} nome={d.nome} obrigatorio={d.obrigatorio && docExigido(d.condicao)} modelo condicao={d.condicao} />)}
+              {anexos.filter((a) => a.grupo === g.conjugeGrupo && a.status !== "triagem" && !docModelo.some((d) => d.grupo === g.conjugeGrupo && d.nome === a.doc_nome)).map((a) => <DocRow key={a.id} grupo={g.conjugeGrupo!} nome={a.doc_nome || a.nome} obrigatorio={a.obrigatorio} modelo={false} />)}
               <DocAddRow busy={busyAll} value={novoDoc[g.conjugeGrupo]} onChange={(v) => setNovoDoc((c) => ({ ...c, [g.conjugeGrupo!]: v }))} onUpload={(f, nome, obrig, obs) => { upload(f, g.conjugeGrupo!, nome, obrig, obs); setNovoDoc((c) => ({ ...c, [g.conjugeGrupo!]: { nome: "", obrig: true, obs: "" } })); }} />
             </div>}
           </section>)}
+
+          {anexoEventos.length > 0 && <section className="trilhax">
+            <h3>Trilha dos documentos</h3>
+            <ul>{anexoEventos.slice(0, 40).map((ev) => {
+              const d = (ev.detalhe ?? {}) as Record<string, unknown>;
+              const arquivo = typeof d.arquivo === "string" ? d.arquivo : typeof d.quantidade === "number" ? `${d.quantidade} arquivo(s)` : "documento";
+              const texto = ev.evento === "upload" ? `anexou ${arquivo}`
+                : ev.evento === "upload_lote" ? `enviou ${arquivo} em lote`
+                  : ev.evento === "classificado_ia" ? `Sara arquivou ${arquivo} em ${GRUPO_LABEL[String(d.grupo)] || d.grupo} · ${d.doc_nome}`
+                    : ev.evento === "triagem_ia" ? `Sara mandou ${arquivo} para conferência`
+                      : ev.evento === "confirmado" ? `confirmou a classificação de ${arquivo}`
+                        : ev.evento === "corrigido" ? `corrigiu o destino de ${arquivo}`
+                          : ev.evento === "status_alterado" ? `mudou ${arquivo} para ${DOC_STATUS_LABEL[String(d.para)] || d.para}${d.motivo ? ` — ${d.motivo}` : ""}`
+                            : ev.evento === "removido" ? `removeu ${arquivo}`
+                              : ev.evento;
+              return <li key={ev.id}><b>{dateTime.format(new Date(ev.criado_em))}</b><span>{ev.evento.endsWith("_ia") ? "" : `${ev.ator_nome || userName(ev.ator)} `}{texto}</span></li>;
+            })}</ul>
+          </section>}
         </div>}
 
         {tab === "condicoes" && <div className="sale-full-pane">
@@ -765,6 +905,44 @@ function SaleDetailDrawer({ accessToken, canApprove, process, sale, lead, broker
       <label>Motivo (opcional)<textarea rows={2} value={devMotivo} onChange={(e) => setDevMotivo(e.target.value)} placeholder="Ex.: proposta em negociação, aguardando retorno do cliente" /></label>
       <footer><button type="button" onClick={() => setDevolverOpen(false)}>Cancelar</button><button className="crm-primary" type="submit" disabled={busyAll || !devStage}>Devolver ao funil</button></footer>
     </form></div>}
+  </div>;
+}
+
+/* Linha da fila de triagem: mostra o palpite da Sara e deixa confirmar ou corrigir antes de arquivar. */
+function TriagemRow({ anexo, gruposAtivos, docsDoGrupo, busy, onAbrir, onConfirmar, onDescartar }: { anexo: NonNullable<SalesData["anexos"]>[number]; gruposAtivos: string[]; docsDoGrupo: (g: string) => NonNullable<SalesData["docModelo"]>; busy?: boolean; onAbrir: () => void; onConfirmar: (id: string, grupo: string, docNome: string, obrigatorio: boolean) => void; onDescartar: () => void }) {
+  const sugGrupo = anexo.ia_grupo && gruposAtivos.includes(anexo.ia_grupo) ? anexo.ia_grupo : "";
+  const [grupo, setGrupo] = useState(sugGrupo);
+  const [docNome, setDocNome] = useState(anexo.ia_doc_nome ?? "");
+  const opcoes = grupo ? docsDoGrupo(grupo) : [];
+  const conf = typeof anexo.ia_confianca === "number" ? Math.round(anexo.ia_confianca * 100) : null;
+  const extraido = (anexo.ia_extraido ?? {}) as Record<string, unknown>;
+  const lidos = ["nome_completo", "cpf", "numero_matricula", "inscricao_iptu"].map((k) => extraido[k]).filter((v) => typeof v === "string" && v) as string[];
+  return <div className={`triagemx-row ${anexo.ia_status === "falhou" ? "falhou" : ""}`}>
+    <div className="triagemx-main">
+      <strong>{anexo.nome}</strong>
+      <small>
+        {anexo.ia_status === "falhou" ? `⚠ ${anexo.ia_motivo || "Não consegui ler este arquivo."}` :
+          anexo.ia_doc_nome ? `Sara acha que é ${anexo.ia_doc_nome}${conf !== null ? ` (${conf}% de confiança)` : ""}` :
+            anexo.ia_motivo || "Sara não reconheceu o documento — escolha o destino."}
+      </small>
+      {lidos.length > 0 && <em className="triagemx-lido">Leu no documento: {lidos.join(" · ")}</em>}
+    </div>
+    <div className="triagemx-pick">
+      <select value={grupo} disabled={busy} onChange={(e) => { setGrupo(e.target.value); setDocNome(""); }}>
+        <option value="">De quem é?</option>
+        {gruposAtivos.map((g) => <option key={g} value={g}>{GRUPO_LABEL[g]}</option>)}
+      </select>
+      <select value={docNome} disabled={busy || !grupo} onChange={(e) => setDocNome(e.target.value)}>
+        <option value="">{grupo ? "Qual documento?" : "escolha a parte"}</option>
+        {opcoes.map((d) => <option key={d.id} value={d.nome}>{d.nome}</option>)}
+        {docNome && !opcoes.some((d) => d.nome === docNome) && <option value={docNome}>{docNome}</option>}
+      </select>
+    </div>
+    <div className="triagemx-actions">
+      <button type="button" title="Abrir arquivo" onClick={onAbrir}>👁</button>
+      <button type="button" className="crm-primary" disabled={busy || !grupo || !docNome} onClick={() => onConfirmar(anexo.id, grupo, docNome, false)}>Arquivar</button>
+      <button type="button" className="docx-del" disabled={busy} title="Descartar arquivo" onClick={onDescartar}>🗑</button>
+    </div>
   </div>;
 }
 
