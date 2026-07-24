@@ -5486,3 +5486,38 @@ article.tone-red{border-left-color:#d3443e}article.tone-red strong{color:#d3443e
 .ai-summary p{font-size:12px}
 .chat-notes article{font-size:12px}
 .chat-document{font-size:11px}
+
+/* ============================================================================
+   Rodapé do chat — correção de especificidade (v2)
+   O emoji ficava laranja porque ".chat-layer .lead-chat-drawer > footer button"
+   (regra global) tem MAIS especificidade que meu seletor anterior. Aqui igualo
+   o prefixo pra vencer. Também garanto o textarea legível e o status na própria
+   linha (não corta no canto do drawer).
+   ========================================================================== */
+/* Emoji claro (vence a regra laranja global) */
+.chat-layer .lead-chat-drawer > footer button.chat-emoji-btn{background:#f4efe9 !important;color:#8a7f79 !important;box-shadow:none !important}
+.chat-layer .lead-chat-drawer > footer button.chat-emoji-btn:hover{background:#ece5dd !important;color:#6b625c !important}
+.chat-layer .lead-chat-drawer > footer button.chat-emoji-btn.active{background:#fff2e8 !important;color:#ff6500 !important}
+/* Textarea legível (o codemod trocou meu 14px por uma var de 12px) */
+.chat-layer .lead-chat-drawer > footer > textarea{font-size:14px !important;line-height:1.4 !important;padding:12px 16px !important;min-height:46px !important}
+/* Status de conexão sempre na própria linha, à direita — nunca corta */
+.chat-instance-bar > label{flex:1 1 100% !important;min-width:0 !important}
+.chat-instance-bar > span{margin-left:auto !important}
+
+/* ============================================================================
+   Chat do lead — cabeçalho mais compacto + fonte das mensagens maior
+   O header ocupava muito espaço (padding grande + avatar 46px) e um codemod
+   baixou a fonte das mensagens para 11px. Aqui compacto o header e devolvo
+   legibilidade ao texto do chat. (.chat-layer p/ vencer a especificidade.)
+   ========================================================================== */
+/* Cabeçalho compacto */
+.chat-layer .lead-chat-drawer > header{padding:10px 18px !important}
+.chat-layer .lead-chat-drawer > header > div{gap:10px !important}
+.chat-layer .lead-chat-drawer > header > div > span{width:38px !important;height:38px !important;border-radius:11px !important;font-size:13px !important}
+.chat-layer .lead-chat-drawer > header small{font-size:9.5px !important;letter-spacing:.08em !important}
+.chat-layer .lead-chat-drawer h2{font-size:15px !important;margin:1px 0 !important;line-height:1.2 !important}
+.chat-layer .lead-chat-drawer > header p{font-size:11px !important;margin:0 !important}
+.chat-layer .lead-chat-drawer > header button{font-size:22px !important}
+/* Fonte das mensagens maior e legível */
+.chat-layer .lead-chat-drawer .chat-messages article{font-size:13.5px !important;line-height:1.45 !important}
+.chat-layer .lead-chat-drawer .chat-messages article p{font-size:13.5px !important;line-height:1.45 !important}
