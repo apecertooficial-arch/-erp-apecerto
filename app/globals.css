@@ -5605,3 +5605,9 @@ article.tone-red{border-left-color:#d3443e}article.tone-red strong{color:#d3443e
 .momentox-selo.m-atencao{background:var(--amber-bg);color:#8a5d0d}
 .momentox-selo.m-atrasado{background:var(--red-bg);color:#a83232}
 .momentox-selo.m-nunca{background:var(--sunken);color:var(--muted)}
+
+/* Selo do momento é clicável: atualizar direto do card e da lista */
+button.momentox-selo{border:1px solid transparent;cursor:pointer;font-family:inherit;transition:filter var(--dur) var(--ease),border-color var(--dur) var(--ease)}
+button.momentox-selo:hover{filter:brightness(.96);border-color:currentColor}
+.crm-lead-card-v3 .momentox-selo{align-self:flex-start;max-width:100%}
+.table-person .momentox-selo{margin-top:3px}
