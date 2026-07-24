@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { RodagemCards } from "./RodagemCards";
+import { FinanceiroCards } from "./FinanceiroCards";
 
 type Lead = { id: number; nome?: string | null };
 type Deal = { id: number; lead_id: number; corretor_id?: number | null; stage_id?: number | null; status?: string | null; venda_id?: string | null };
@@ -63,7 +64,8 @@ export function HomeWorkspace({ accessToken, sessionName = "", onNavigate }: { a
     const monthSales = data.finance.sales.filter((item) => sameMonth(item.data_venda));
     const totalVgv = data.finance.sales.reduce((sum, item) => sum + Number(item.vgv || 0), 0);
     const monthVgv = monthSales.reduce((sum, item) => sum + Number(item.vgv || 0), 0);
-    const commission = data.finance.sales.reduce((sum, item) => sum + Number(item.vgv || 0) * Number(item.percentual_comissao || 0) / 100, 0);
+    // percentual_comissao é FRAÇÃO (0.06 = 6%), então NÃO se divide por 100.
+    const commission = data.finance.sales.reduce((sum, item) => sum + Number(item.vgv || 0) * Number(item.percentual_comissao || 0), 0);
     const balance = data.finance.cash.reduce((sum, item) => sum + (item.tipo === "entrada" ? Number(item.valor || 0) : -Number(item.valor || 0)), 0);
     const goal = data.finance.goals.reduce((sum, item) => sum + Number(item.meta_vgv || 0), 0);
     return { openDeals, monthSales, totalVgv, monthVgv, commission, balance, goal, pendingTasks: data.crm.tasks.filter((item) => !item.concluida).length };
@@ -79,11 +81,17 @@ export function HomeWorkspace({ accessToken, sessionName = "", onNavigate }: { a
   const leadProducts = [...new Set(data.crm.productLinks.map((link) => link.empreendimentos?.nome || link.empreendimento_id))].map((name) => ({ name, count: data.crm.productLinks.filter((link) => (link.empreendimentos?.nome || link.empreendimento_id) === name).length })).sort((a, b) => b.count - a.count).slice(0, 5);
   const effectiveGoal = metaMesGlobal ?? metrics.goal;
   const goalPercent = effectiveGoal > 0 ? Math.min(100, metrics.monthVgv / effectiveGoal * 100) : 0;
+  const nowRef = new Date();
+  const daysInMonth = new Date(nowRef.getFullYear(), nowRef.getMonth() + 1, 0).getDate();
+  const daysLeft = Math.max(1, daysInMonth - nowRef.getDate() + 1);
+  const missing = Math.max(0, effectiveGoal - metrics.monthVgv);
+  const pacePerDay = missing / daysLeft;
 
   return <div className="home-workspace">
     <header className="home-header"><span className="home-avatar">{(sessionName || "S").trim().slice(0, 1).toUpperCase()}</span><div><small>BEM-VINDO DE VOLTA 👋</small><h1>Olá, {sessionName ? sessionName.split(/\s+/)[0] : "Samuel"}</h1><p>Visão geral da operação em tempo real</p></div><span className="home-status">● Dados reais · sessão protegida</span></header>
     <RodagemCards accessToken={accessToken} onNavigate={onNavigate} />
-    <section className="home-goal hero"><header><div><small>META DO MÊS</small><strong>{brl.format(metrics.monthVgv)}<em> vendidos{effectiveGoal > 0 ? ` de ${brl.format(effectiveGoal)}` : ""}</em></strong><span className="goal-badge">● Dados atualizados · {metrics.monthSales.length} vendas válidas</span></div><b>{goalPercent.toFixed(0)}%</b></header><div><span style={{ width: `${goalPercent}%` }} /></div><footer>{effectiveGoal > 0 ? <span>faltam <b>{brl.format(Math.max(0, effectiveGoal - metrics.monthVgv))}</b> para bater a meta</span> : <span>Defina a meta do mês no Financeiro → Metas</span>}<button type="button" onClick={() => onNavigate?.("Financeiro")}>Abrir Financeiro →</button></footer></section>
+    <section className="home-goal hero"><header><div><small>META DO MÊS</small><strong>{brl.format(metrics.monthVgv)}<em> vendidos{effectiveGoal > 0 ? ` de ${brl.format(effectiveGoal)}` : ""}</em></strong><span className="goal-badge">● Dados atualizados · {metrics.monthSales.length} vendas válidas</span></div><b>{goalPercent.toFixed(0)}%</b></header><div><span style={{ width: `${goalPercent}%` }} /></div><footer>{effectiveGoal > 0 ? <span>faltam <b>{brl.format(missing)}</b> · ritmo necessário <b>{brl.format(pacePerDay)}/dia</b> nos {daysLeft} dias restantes</span> : <span>Defina a meta do mês no Financeiro → Metas</span>}<button type="button" onClick={() => onNavigate?.("Financeiro")}>Abrir Financeiro →</button></footer></section>
+    <FinanceiroCards accessToken={accessToken} onNavigate={onNavigate} />
     <section className="home-kpis">
       <article><i className="orange">◎</i><span>Total de leads</span><strong>{data.crm.leads.length}</strong><small>na base do CRM</small></article>
       <article><i className="purple">↗</i><span>Negócios abertos</span><strong>{metrics.openDeals.length}</strong><small>em negociação</small></article>
