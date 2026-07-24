@@ -8,6 +8,11 @@ type Rodagem = {
   leads_by_origem: { k: string; n: number }[];
   parados_faixa: { f7_14: number; f14_30: number; f30: number };
   open_by_corretor: { k: string; n: number; parados: number }[];
+  atend_hoje: { recebidos: number; atendidos: number; pct: number };
+  atend_por_dia: { d: string; pct: number }[];
+  tempo_resp_min: number;
+  aguardando_total: number;
+  aguardando_por_corretor: { k: string; n: number }[];
 };
 
 // Paleta categórica validada (dataviz): laranja, roxo, teal, âmbar escuro, azul.
@@ -20,18 +25,18 @@ function prettyOrigem(k: string) {
 }
 
 // ---- Gráficos SVG (marcas finas, pontas 4px, rótulos diretos, base recuada) ----
-function VBars({ data }: { data: { label: string; value: number }[] }) {
+function VBars({ data, suffix }: { data: { label: string; value: number }[]; suffix?: string }) {
   const w = 580, h = 240, pad = 30;
   const bw = (w - pad * 2) / Math.max(1, data.length);
   const max = Math.max(1, ...data.map((d) => d.value));
-  return <svg viewBox={`0 0 ${w} ${h}`} className="dv-chart" role="img" aria-label="Leads por dia">
+  return <svg viewBox={`0 0 ${w} ${h}`} className="dv-chart" role="img">
     <line x1={pad} y1={h - pad} x2={w - pad} y2={h - pad} className="dv-base" />
     {data.map((d, i) => {
       const bh = (h - pad * 2) * (d.value / max); const x = pad + i * bw; const y = h - pad - bh;
       return <g key={i}>
-        <rect x={x + 4} y={y} width={Math.max(2, bw - 8)} height={Math.max(2, bh)} rx="4" fill="#E8620E"><title>{d.label}: {d.value} leads</title></rect>
+        <rect x={x + 4} y={y} width={Math.max(2, bw - 8)} height={Math.max(2, bh)} rx="4" fill="#E8620E"><title>{d.label}: {d.value}{suffix ?? ""}</title></rect>
         {i % 2 === 0 && <text x={x + bw / 2} y={h - pad + 15} textAnchor="middle" className="dv-axis">{d.label}</text>}
-        {d.value > 0 && <text x={x + bw / 2} y={y - 5} textAnchor="middle" className="dv-val">{d.value}</text>}
+        {d.value > 0 && <text x={x + bw / 2} y={y - 5} textAnchor="middle" className="dv-val">{d.value}{suffix ?? ""}</text>}
       </g>;
     })}
   </svg>;
@@ -56,7 +61,7 @@ function HBars({ data, colors }: { data: { label: string; value: number; sub?: n
   </svg>;
 }
 
-type CardSpec = { key: string; icon: string; iconClass: string; alert?: boolean; label: string; value: string; foot: string; title: string; subtitle: string; legend: string; chart: ReactNode };
+type CardSpec = { key: string; icon: string; tone: string; label: string; value: string; foot: string; title: string; subtitle: string; legend: string; chart: ReactNode };
 
 export function RodagemCards({ accessToken, onNavigate }: { accessToken: string; onNavigate?: (module: string) => void }) {
   const [data, setData] = useState<Rodagem | null>(null);
@@ -74,26 +79,37 @@ export function RodagemCards({ accessToken, onNavigate }: { accessToken: string;
     if (!data) return [];
     const pf = data.parados_faixa;
     const pctParados = data.open_deals > 0 ? Math.round(data.parados_7d / data.open_deals * 100) : 0;
+    const ah = data.atend_hoje;
     return [
       {
-        key: "leads_dia", icon: "◎", iconClass: "orange", label: "Leads que entraram hoje", value: String(data.leads_today), foot: `${data.leads_week} nos últimos 7 dias`,
+        key: "leads_dia", icon: "◎", tone: "orange", label: "Leads que entraram hoje", value: String(data.leads_today), foot: `${data.leads_week} nos últimos 7 dias`,
         title: "Entrada de leads", subtitle: "Últimos 14 dias", legend: "Quantos leads entraram por dia. Ajuda a ver picos e quedas de captação.",
         chart: <VBars data={data.leads_per_day.map((x) => ({ label: shortDay(x.d), value: x.n }))} />,
       },
       {
-        key: "origem", icon: "↘", iconClass: "purple", label: "Leads na semana", value: String(data.leads_week), foot: "por canal de origem",
-        title: "Origem dos leads", subtitle: "Últimos 7 dias", legend: "De onde vieram os leads recentes. Mostra em que canal investir.",
-        chart: <HBars data={data.leads_by_origem.map((x) => ({ label: prettyOrigem(x.k), value: x.n }))} colors={CAT} />,
+        key: "atendidos", icon: "✓", tone: "green", label: "Taxa de atendimento hoje", value: `${ah.pct}%`, foot: `${ah.atendidos} de ${ah.recebidos} leads de hoje`,
+        title: "Taxa de atendimento", subtitle: "% dos leads do dia já atendidos — últimos 7 dias", legend: "Dos leads que entraram, quantos já receberam 1º atendimento do corretor.",
+        chart: <VBars suffix="%" data={data.atend_por_dia.map((x) => ({ label: shortDay(x.d), value: x.pct }))} />,
       },
       {
-        key: "parados", icon: "◷", iconClass: "red", alert: true, label: "Negócios parados +7 dias", value: String(data.parados_7d), foot: `${pctParados}% do pipeline sem movimento`,
+        key: "aguardando", icon: "◔", tone: "amber", label: "Aguardando atendimento", value: String(data.aguardando_total), foot: "leads recentes sem 1º contato",
+        title: "Aguardando atendimento", subtitle: "Leads dos últimos 30 dias ainda sem atendimento, por corretor", legend: "Backlog por corretor. Priorize quem tem mais leads parados na fila.",
+        chart: <HBars data={data.aguardando_por_corretor.map((x) => ({ label: x.k, value: x.n }))} colors={data.aguardando_por_corretor.map(() => "#B5700A")} />,
+      },
+      {
+        key: "parados", icon: "◷", tone: "red", label: "Negócios parados +7 dias", value: String(data.parados_7d), foot: `${pctParados}% do pipeline sem movimento`,
         title: "Negócios parados", subtitle: "Abertos, sem movimentação, por tempo parado", legend: "Quanto mais escuro/vermelho, mais crítico. Estes precisam de ação urgente.",
         chart: <HBars data={[{ label: "7 a 14 dias", value: pf.f7_14 }, { label: "14 a 30 dias", value: pf.f14_30 }, { label: "+30 dias", value: pf.f30 }]} colors={["#B5700A", "#E8620E", "#E5484D"]} />,
       },
       {
-        key: "carteira", icon: "▦", iconClass: "teal", label: "Negócios abertos", value: String(data.open_deals), foot: "carteira ativa por corretor",
+        key: "carteira", icon: "▦", tone: "teal", label: "Negócios abertos", value: String(data.open_deals), foot: "carteira ativa por corretor",
         title: "Carteira por corretor", subtitle: "Negócios abertos · em vermelho os parados +7d", legend: "Tamanho da carteira de cada corretor e quanto dela está travada.",
         chart: <HBars data={data.open_by_corretor.map((x) => ({ label: x.k, value: x.n, sub: x.parados }))} />,
+      },
+      {
+        key: "origem", icon: "↘", tone: "purple", label: "Leads na semana", value: String(data.leads_week), foot: "por canal de origem",
+        title: "Origem dos leads", subtitle: "Últimos 7 dias", legend: "De onde vieram os leads recentes. Mostra em que canal investir.",
+        chart: <HBars data={data.leads_by_origem.map((x) => ({ label: prettyOrigem(x.k), value: x.n }))} colors={CAT} />,
       },
     ];
   }, [data]);
@@ -104,9 +120,9 @@ export function RodagemCards({ accessToken, onNavigate }: { accessToken: string;
     <div className="rodagem-head"><h2>Rodagem do atendimento</h2><small>Toque em um card para ver o gráfico</small></div>
     <section className="home-kpis rodagem-cards">
       {!data ? <article className="rodagem-skel">Carregando indicadores…</article> : cards.map((c) => (
-        <article key={c.key} className={`drill${c.alert ? " is-alert" : ""}`} role="button" tabIndex={0}
+        <article key={c.key} className={`drill tone-${c.tone}`} role="button" tabIndex={0}
           onClick={() => setActive(c)} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setActive(c); } }}>
-          <i className={c.iconClass}>{c.icon}</i>
+          <i>{c.icon}</i>
           <span>{c.label}</span>
           <strong>{c.value}</strong>
           <small>{c.foot}</small>
