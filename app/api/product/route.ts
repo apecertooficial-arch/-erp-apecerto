@@ -1,5 +1,6 @@
 import { createServerSupabaseClient } from "../../lib/supabase/server";
 import type { Database } from "../../lib/supabase/database.types";
+import { resolveEffectiveAccess, denyIfCannot } from "../../lib/supabase/authz";
 
 export const dynamic = "force-dynamic";
 
@@ -92,7 +93,14 @@ export async function PATCH(request: Request) {
   const id = typeof body.id === "string" ? body.id : "";
   if (!UUID.test(id)) return Response.json({ error: "Produto inválido." }, { status: 400 });
 
+  // Acesso efetivo resolvido uma vez; admin passa e, sem mapa, libera (RLS é a trava dura).
+  // Aprovação/publicação continuam por role logo abaixo (decideUnit/publish).
+  const access = await resolveEffectiveAccess(auth.supabase, auth.user.id);
+  const guard = (pairs: Array<[string, string]>, msg: string) => denyIfCannot(access, pairs, msg);
+
   if (body.action === "criarUnidade") {
+    const denied = guard([["produtos", "criar"], ["produtos", "editar"]], "Você não tem permissão para cadastrar unidades.");
+    if (denied) return denied;
     const input = (body.unidade && typeof body.unidade === "object" ? body.unidade : {}) as Record<string, unknown>;
     const asString = (value: unknown) => (typeof value === "string" ? value.trim() || null : null);
     const asNumber = (value: unknown) => {
@@ -157,6 +165,8 @@ export async function PATCH(request: Request) {
   if (body.action === "linkLead" || body.action === "unlinkLead") {
     const leadId = Number(body.leadId);
     if (!Number.isSafeInteger(leadId) || leadId <= 0) return Response.json({ error: "Lead inválido." }, { status: 400 });
+    const denied = guard([["produtos", "editar"], ["leads", "editar"]], "Você não tem permissão para vincular leads a produtos.");
+    if (denied) return denied;
     const result = body.action === "linkLead"
       ? await auth.supabase.from("lead_produtos").insert({ lead_id: leadId, empreendimento_id: id, vinculado_por: auth.user.id })
       : await auth.supabase.from("lead_produtos").delete().eq("lead_id", leadId).eq("empreendimento_id", id);
@@ -193,6 +203,8 @@ export async function PATCH(request: Request) {
   if (body.action === "setCover") {
     const mediaId = typeof body.mediaId === "string" ? body.mediaId : "";
     if (!UUID.test(mediaId)) return Response.json({ error: "Mídia inválida." }, { status: 400 });
+    const denied = guard([["produtos", "editar"]], "Você não tem permissão para editar mídias do produto.");
+    if (denied) return denied;
     const { error: clearError } = await auth.supabase.from("midias").update({ is_capa: false }).eq("empreendimento_id", id);
     if (clearError) return Response.json({ error: clearError.message }, { status: 502 });
     const { error } = await auth.supabase.from("midias").update({ is_capa: true }).eq("id", mediaId).eq("empreendimento_id", id).eq("tipo", "foto");
@@ -203,6 +215,8 @@ export async function PATCH(request: Request) {
     const mediaId = typeof body.mediaId === "string" ? body.mediaId : "";
     const categoria = typeof body.category === "string" ? body.category.trim() : "";
     if (!UUID.test(mediaId) || !categoria) return Response.json({ error: "Mídia ou classificação inválida." }, { status: 400 });
+    const denied = guard([["produtos", "editar"]], "Você não tem permissão para editar mídias do produto.");
+    if (denied) return denied;
     const { error } = await auth.supabase.from("midias").update({ categoria }).eq("id", mediaId).eq("empreendimento_id", id);
     return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
   }
@@ -210,6 +224,8 @@ export async function PATCH(request: Request) {
   if (body.action === "deleteMedia") {
     const mediaId = typeof body.mediaId === "string" ? body.mediaId : "";
     if (!UUID.test(mediaId)) return Response.json({ error: "Mídia inválida." }, { status: 400 });
+    const denied = guard([["produtos", "editar"], ["produtos", "excluir"]], "Você não tem permissão para excluir mídias do produto.");
+    if (denied) return denied;
     const { data: media, error: readError } = await auth.supabase.from("midias").select("storage_path,is_capa,tipo").eq("id", mediaId).eq("empreendimento_id", id).single();
     if (readError) return Response.json({ error: readError.message }, { status: 502 });
     const { error: storageError } = await auth.supabase.storage.from("empreendimentos").remove([media.storage_path]);
@@ -223,6 +239,9 @@ export async function PATCH(request: Request) {
     return Response.json({ success: true });
   }
 
+  // Bloco final = edição geral do produto (nome, dados, proprietário, condomínio).
+  const deniedEdit = guard([["produtos", "editar"]], "Você não tem permissão para editar produtos.");
+  if (deniedEdit) return deniedEdit;
   const incoming = (body.product && typeof body.product === "object" ? body.product : {}) as Record<string, unknown>;
   const update: ProductUpdate = {};
   for (const field of productFields) {

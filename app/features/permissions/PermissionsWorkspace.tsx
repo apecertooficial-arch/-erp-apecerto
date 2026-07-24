@@ -1,29 +1,16 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import {
+  MODULE_CAPABILITIES, MODULE_ORDER, MODULE_LABELS, ACTION_LABELS,
+  ACCESS_LEVELS, actionsForLevel, levelForActions,
+  label, type PermissionMap, type AccessLevel,
+} from "../../lib/permissions";
 
-type Perms = Record<string, string[]>;
+type Perms = PermissionMap;
 type Perfil = { id: string; nome: string; is_system: boolean; permissoes: Perms; atualizado_em?: string | null };
 type Usuario = { id: string; nome: string; role: string; ativo: boolean; permissoes: Perms | null };
 
-const MODULE_LABELS: Record<string, string> = {
-  dashboard: "Início / Dashboard", crm: "CRM", leads: "Leads", pipeline: "Funil (Pipeline)", chat: "Chat ao Vivo",
-  disparos: "Disparos", abordagens: "Abordagens", produtos: "Produtos", vendas: "Vendas", comissoes: "Comissões",
-  financeiro: "Financeiro", fluxo_caixa: "Fluxo de caixa", metas: "Metas", performance: "Performance",
-  calendario: "Calendário", automacoes: "Automações", agentes_ia: "Agentes de IA", notificacoes: "Notificações",
-  configuracoes: "Configurações", usuarios: "Usuários", auditoria: "Auditoria",
-};
-const MODULE_ORDER = ["dashboard", "crm", "leads", "pipeline", "chat", "disparos", "abordagens", "produtos", "vendas", "comissoes", "financeiro", "fluxo_caixa", "metas", "performance", "calendario", "automacoes", "agentes_ia", "notificacoes", "configuracoes", "usuarios", "auditoria"];
-const ACTION_LABELS: Record<string, string> = {
-  ver: "Ver", criar: "Criar", editar: "Editar", excluir: "Excluir", exportar: "Exportar", importar: "Importar",
-  aprovar: "Aprovar", enviar: "Enviar", cancelar: "Cancelar", conciliar: "Conciliar", mover: "Mover", reordenar: "Reordenar",
-  atribuir: "Atribuir", atribuir_proprio: "Atribuir (próprio)", transferir: "Transferir", publicar: "Publicar",
-  configurar: "Configurar", executar: "Executar", gerenciar_permissoes: "Gerenciar permissões", ver_conexoes: "Ver conexões",
-  visualizar_historico: "Ver histórico", consultar_execucoes: "Consultar execuções",
-};
-const ACTION_ORDER = ["ver", "criar", "editar", "excluir", "exportar", "importar", "aprovar", "enviar", "cancelar", "conciliar", "mover", "reordenar", "atribuir", "atribuir_proprio", "transferir", "publicar", "configurar", "executar", "gerenciar_permissoes", "ver_conexoes", "visualizar_historico", "consultar_execucoes"];
-
-const label = (dict: Record<string, string>, key: string) => dict[key] ?? key.replace(/_/g, " ");
 const scopeOf = (id: string) => (id === "admin" || id === "auditor" || id === "financeiro" || id === "gestor_comercial" ? "todos" : id === "gestor_equipe" ? "equipe" : "proprio");
 const SCOPE_LABEL: Record<string, string> = { proprio: "Somente os próprios dados", equipe: "Dados da própria equipe", todos: "Todos os dados da empresa" };
 
@@ -37,6 +24,7 @@ export function PermissionsWorkspace({ accessToken }: { accessToken: string }) {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
   const load = async () => {
     const res = await fetch("/api/permissions", { headers: { Authorization: `Bearer ${accessToken}` } });
@@ -46,17 +34,6 @@ export function PermissionsWorkspace({ accessToken }: { accessToken: string }) {
     setUsuarios(json.usuarios ?? []);
   };
   useEffect(() => { void load().catch((e) => setError(e instanceof Error ? e.message : "Erro ao carregar.")); }, [accessToken]);
-
-  // Catálogo: módulos e ações realmente usados em qualquer perfil (fonte da verdade do que o sistema verifica)
-  const catalog = useMemo(() => {
-    const map: Record<string, Set<string>> = {};
-    for (const p of perfis) for (const [mod, acts] of Object.entries(p.permissoes || {})) { (map[mod] ??= new Set()); (acts || []).forEach((a) => map[mod].add(a)); }
-    for (const m of MODULE_ORDER) map[m] ??= new Set(["ver"]);
-    const modules = Object.keys(map).sort((a, b) => (MODULE_ORDER.indexOf(a) + 1 || 99) - (MODULE_ORDER.indexOf(b) + 1 || 99) || a.localeCompare(b));
-    const actionsByMod: Record<string, string[]> = {};
-    for (const m of modules) actionsByMod[m] = [...map[m]].sort((a, b) => (ACTION_ORDER.indexOf(a) + 1 || 99) - (ACTION_ORDER.indexOf(b) + 1 || 99) || a.localeCompare(b));
-    return { modules, actionsByMod };
-  }, [perfis]);
 
   const perfilById = useMemo(() => new Map(perfis.map((p) => [p.id, p])), [perfis]);
   const userById = useMemo(() => new Map(usuarios.map((u) => [u.id, u])), [usuarios]);
@@ -81,6 +58,21 @@ export function PermissionsWorkspace({ accessToken }: { accessToken: string }) {
     });
   };
   const has = (mod: string, act: string) => (draft[mod] ?? []).includes(act);
+
+  // Define o nível de acesso de um módulo (escreve o conjunto de ações correspondente).
+  const setLevel = (mod: string, level: AccessLevel) => {
+    setDraft((prev) => {
+      const next = structuredClone(prev);
+      const acts = actionsForLevel(mod, level);
+      if (acts.length) next[mod] = acts; else delete next[mod];
+      return next;
+    });
+  };
+  const toggleExpand = (mod: string) => setExpanded((prev) => {
+    const next = new Set(prev);
+    if (next.has(mod)) next.delete(mod); else next.add(mod);
+    return next;
+  });
 
   const saveProfile = async () => {
     setBusy(true); setMessage(null); setError(null);
@@ -159,26 +151,49 @@ export function PermissionsWorkspace({ accessToken }: { accessToken: string }) {
                   <span>{selUserObj.permissoes && Object.keys(selUserObj.permissoes).length ? "Este usuário tem permissões individuais (override) sobre o perfil." : `Sem override — seguindo o perfil "${perfilById.get(selUserObj.role)?.nome ?? selUserObj.role}". Ajuste abaixo para personalizar.`}</span>
                 </div>
               )}
-              <div className="perms-matrix-wrap">
-                <table className="perms-matrix">
-                  <thead>
-                    <tr><th className="mod-col">Módulo</th>{ACTION_ORDER.filter((a) => catalog.modules.some((m) => catalog.actionsByMod[m].includes(a))).map((a) => <th key={a}>{label(ACTION_LABELS, a)}</th>)}</tr>
-                  </thead>
-                  <tbody>
-                    {catalog.modules.map((m) => {
-                      const cols = ACTION_ORDER.filter((a) => catalog.modules.some((mm) => catalog.actionsByMod[mm].includes(a)));
-                      return (
-                        <tr key={m}>
-                          <td className="mod-col"><strong>{label(MODULE_LABELS, m)}</strong></td>
-                          {cols.map((a) => {
-                            const applicable = catalog.actionsByMod[m].includes(a);
-                            return <td key={a} className={applicable ? "" : "na"}>{applicable ? <input type="checkbox" checked={has(m, a)} onChange={() => toggle(m, a)} aria-label={`${label(MODULE_LABELS, m)} · ${label(ACTION_LABELS, a)}`} /> : <span>—</span>}</td>;
+              <div className="perms-levels">
+                {MODULE_ORDER.map((m) => {
+                  const lvl = levelForActions(m, draft[m] ?? []);
+                  const caps = MODULE_CAPABILITIES[m] ?? [];
+                  const open = expanded.has(m);
+                  return (
+                    <div className={`perm-row ${open ? "open" : ""}`} key={m}>
+                      <div className="perm-row-head">
+                        <strong className="perm-row-name">{label(MODULE_LABELS, m)}</strong>
+                        <div className="perm-seg" role="group" aria-label={`Nível de acesso · ${label(MODULE_LABELS, m)}`}>
+                          {ACCESS_LEVELS.map((opt) => (
+                            <button
+                              key={opt.key}
+                              type="button"
+                              className={`plvl ${lvl === opt.key ? "active" : ""}`}
+                              onClick={() => setLevel(m, opt.key)}
+                              title={opt.hint}
+                            >{opt.label}</button>
+                          ))}
+                          {lvl === "custom" && <span className="plvl-custom" title="Ajuste manual — não corresponde a um nível">Personalizado</span>}
+                        </div>
+                        <button type="button" className="perm-personalizar" onClick={() => toggleExpand(m)}>{open ? "Fechar" : "Personalizar"}</button>
+                      </div>
+                      {open && (
+                        <div className="perm-detail">
+                          {caps.map((a) => {
+                            const on = has(m, a);
+                            return (
+                              <button
+                                key={a}
+                                type="button"
+                                role="switch"
+                                aria-checked={on}
+                                className={`perm-chip ${on ? "on" : "off"}`}
+                                onClick={() => toggle(m, a)}
+                              >{label(ACTION_LABELS, a)}<span>{on ? "Sim" : "Não"}</span></button>
+                            );
                           })}
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
 
               <footer className="perms-actions">
