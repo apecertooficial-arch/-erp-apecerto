@@ -5006,3 +5006,7 @@ article.tone-red{border-left-color:#d3443e}article.tone-red strong{color:#d3443e
 .home-kpis.rodagem-cards.financeiro-cards { grid-template-columns:repeat(4,1fr); }
 @media (max-width:1100px) { .home-kpis.rodagem-cards.financeiro-cards { grid-template-columns:repeat(2,1fr); } }
 @media (max-width:640px) { .home-kpis.rodagem-cards.financeiro-cards { grid-template-columns:1fr; } }
+
+/* Lightbox das fotos da unidade: botão sem aparência default + acima do modal da unidade */
+.fv2-unit-detail-ov .fv2-ud-photo { padding:0; cursor:pointer; }
+.photo-lightbox.unit-lightbox { z-index:1200; }
