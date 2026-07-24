@@ -62,6 +62,7 @@ type CatalogResponse = {
   }>;
   canApprove?: boolean;
   pendingCount?: number;
+  pendingUnits?: Array<{ id: string; numero: string | null; tipologia: string | null; valor: number | null; empreendimentoId: string; predio: string; proprietario: string | null; indicador: string | null; coverUrl: string | null }>;
   role?: string;
 };
 
@@ -269,7 +270,7 @@ export function ProductCatalog() {
   const crmPermissions = sessionProfile?.permissoes ?? null;
   const hasCrmAction = (action: string) => {
     if (sessionProfile?.role === "admin") return true;
-    if (!crmPermissions || Object.keys(crmPermissions).length === 0) return sessionProfile?.role === "admin";
+    if (!crmPermissions || Object.keys(crmPermissions).length === 0) return false;
     return ["crm", "leads", "pipeline", "CRM"].some((moduleName) => (crmPermissions[moduleName] ?? []).includes(action));
   };
   const canReassignCrm = hasCrmAction("transferir");

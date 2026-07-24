@@ -1,4 +1,5 @@
 import { createServerSupabaseClient } from "../../../lib/supabase/server";
+import { blocoAberto, completudeBloco, docExigido, etapaDoBloco, pendenciasParaAvancar, podeEditarEtapa, type BlocoEsteira, type DadosCompletude, type EtapaRegra } from "../../../lib/esteira";
 
 export const dynamic = "force-dynamic";
 
@@ -14,6 +15,100 @@ async function authClient(request: Request) {
 const clean = (value: unknown, max = 200) => typeof value === "string" ? value.trim().slice(0, max) : "";
 const slugify = (value: string) => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 40);
 
+// Pap\u00e9is das partes de uma negocia\u00e7\u00e3o (comprador/vendedor e respectivos c\u00f4njuges).
+const PAPEIS_PARTE = ["comprador", "conjuge_comprador", "vendedor", "conjuge_vendedor"] as const;
+const FORMAS_PGTO = ["a_vista", "financiamento", "consorcio", "misto"] as const;
+
+/** Bloco de documentos correspondente a cada grupo do checklist. */
+const GRUPO_BLOCO: Record<string, BlocoEsteira> = {
+  comprador: "docs_comprador", conjuge_comprador: "docs_comprador",
+  vendedor: "docs_vendedor", conjuge_vendedor: "docs_vendedor",
+  imovel: "docs_imovel",
+};
+
+/**
+ * Carrega tudo que a cascata precisa avaliar para um processo:
+ * etapas configuradas, etapa atual, condi\u00e7\u00f5es, comiss\u00e3o, partes, checklist e anexos.
+ */
+async function contexto(auth: Auth, processId: string) {
+  const [{ data: proc }, { data: etapasRaw }, { data: cond }, { data: com }, { data: partes }, { data: modelo }, { data: anexos }, { data: me }] = await Promise.all([
+    auth.supabase.from("venda_processos").select("id,etapa,negocio_id,tipo_venda,aprovacao_status").eq("id", processId).maybeSingle(),
+    auth.supabase.from("esteira_etapas").select("slug,nome,ordem,libera,restrito_a,exige_docs").eq("ativo", true).order("ordem", { ascending: true }),
+    auth.supabase.from("venda_condicoes").select("valor_total,forma_pagamento,comprador_tem_conjuge,vendedor_tem_conjuge").eq("processo_ref", processId).maybeSingle(),
+    auth.supabase.from("venda_comissao").select("percentual_total,valor_total").eq("processo_ref", processId).maybeSingle(),
+    auth.supabase.from("venda_partes").select("papel,nome,telefone,email").eq("processo_ref", processId),
+    auth.supabase.from("esteira_doc_modelo").select("grupo,nome,obrigatorio,condicao").eq("ativo", true),
+    auth.supabase.from("esteira_anexos").select("grupo,doc_nome,status,obrigatorio").eq("processo_ref", processId),
+    auth.supabase.from("usuarios").select("role,nome").eq("id", auth.user.id).maybeSingle(),
+  ]);
+  const etapas = (etapasRaw ?? []) as unknown as EtapaRegra[];
+  const atual = proc ? etapas.find((e) => e.slug === (proc as { etapa: string }).etapa) ?? null : null;
+  const dados: DadosCompletude = {
+    condicao: (cond ?? null) as DadosCompletude["condicao"],
+    comissao: (com ?? null) as DadosCompletude["comissao"],
+    partes: (partes ?? []) as DadosCompletude["partes"],
+    modelo: (modelo ?? []) as DadosCompletude["modelo"],
+    anexos: (anexos ?? []) as DadosCompletude["anexos"],
+    temConjugeComprador: Boolean((cond as { comprador_tem_conjuge?: boolean } | null)?.comprador_tem_conjuge),
+    temConjugeVendedor: Boolean((cond as { vendedor_tem_conjuge?: boolean } | null)?.vendedor_tem_conjuge),
+  };
+  return { proc, etapas, atual, dados, role: (me?.role as string | undefined) ?? null };
+}
+
+/** Primeiro bloco de documentos aberto na etapa atual (para arquivos de lote ainda sem grupo). */
+function blocoDocsAberto(ctx: { atual: EtapaRegra | null }): BlocoEsteira | null {
+  const abertos = (ctx.atual?.libera ?? []).filter((b) => b.startsWith("docs_")) as BlocoEsteira[];
+  return abertos[0] ?? null;
+}
+
+/**
+ * Trava de cascata: o bloco s\u00f3 pode ser preenchido na etapa que o libera,
+ * e s\u00f3 por quem tem papel para aquela etapa. Devolve null quando est\u00e1 liberado.
+ */
+async function guardBloco(auth: Auth, processId: string, bloco: BlocoEsteira) {
+  const ctx = await contexto(auth, processId);
+  if (!ctx.proc) return { deny: Response.json({ error: "Venda n\u00e3o encontrada." }, { status: 404 }), ctx };
+  if (!blocoAberto(ctx.atual, bloco)) {
+    const alvo = etapaDoBloco(ctx.etapas, bloco);
+    const onde = alvo ? `Isso \u00e9 preenchido na etapa "${alvo.nome}".` : "Este bloco n\u00e3o est\u00e1 habilitado em nenhuma etapa.";
+    return { deny: Response.json({ error: `A venda est\u00e1 em "${ctx.atual?.nome ?? "etapa desconhecida"}". ${onde}` }, { status: 409 }), ctx };
+  }
+  if (!podeEditarEtapa(ctx.role, ctx.atual)) {
+    const quem = (ctx.atual?.restrito_a ?? []).join(" ou ");
+    return { deny: Response.json({ error: `S\u00f3 ${quem} pode preencher a etapa "${ctx.atual?.nome}".` }, { status: 403 }), ctx };
+  }
+  return { deny: null, ctx };
+}
+
+/**
+ * Mant\u00e9m venda_condicoes.{comprador,vendedor}_tem_conjuge coerente com a exist\u00eancia
+ * da parte c\u00f4njuge \u2014 \u00e9 essa flag que liga o grupo de documentos do c\u00f4njuge.
+ */
+async function sincronizarConjuge(auth: Auth, processId: string, papel: string) {
+  const coluna = papel === "conjuge_comprador" ? "comprador_tem_conjuge" : "vendedor_tem_conjuge";
+  const { count } = await auth.supabase.from("venda_partes").select("id", { count: "exact", head: true }).eq("processo_ref", processId).eq("papel", papel);
+  await auth.supabase.from("venda_condicoes").upsert(
+    { processo_ref: processId, [coluna]: (count ?? 0) > 0, atualizado_em: new Date().toISOString() } as never,
+    { onConflict: "processo_ref" },
+  );
+}
+
+/** Registra um evento na trilha de auditoria dos anexos (nunca derruba a requisi\u00e7\u00e3o principal). */
+async function trilha(auth: Auth, evento: string, dados: { anexoId?: string | null; processoRef?: string | null; loteId?: string | null; detalhe?: unknown }) {
+  try {
+    const { data: me } = await auth.supabase.from("usuarios").select("nome").eq("id", auth.user.id).maybeSingle();
+    await auth.supabase.from("esteira_anexo_eventos").insert({
+      anexo_id: dados.anexoId ?? null,
+      processo_ref: dados.processoRef ?? null,
+      lote_id: dados.loteId ?? null,
+      evento,
+      detalhe: (dados.detalhe ?? null) as never,
+      ator: auth.user.id,
+      ator_nome: me?.nome ?? null,
+    } as never);
+  } catch { /* auditoria \u00e9 best-effort */ }
+}
+
 type Auth = { supabase: ReturnType<typeof createServerSupabaseClient>; user: { id: string } };
 async function requireManager(auth: Auth) {
   const { data: me } = await auth.supabase.from("usuarios").select("role").eq("id", auth.user.id).maybeSingle();
@@ -27,31 +122,33 @@ async function activeSlugs(auth: Auth) {
 export async function GET(request: Request) {
   const auth = await authClient(request);
   if (!auth) return Response.json({ error: "Sessão inválida ou expirada." }, { status: 401 });
-  const [sales, processes, deals, leads, products, brokers, stages, etapaDocs, anexos, users, history, verificacoes, solicitacoes, docModelo, condicoes, comissao, comissaoParcelas, observacoes, pipelines, pipelineStages] = await Promise.all([
+  const [sales, processes, deals, leads, products, brokers, stages, etapaDocs, anexos, users, history, verificacoes, solicitacoes, docModelo, condicoes, comissao, comissaoParcelas, observacoes, pipelines, pipelineStages, partes, anexoEventos] = await Promise.all([
     auth.supabase.from("vendas").select("id,created_at,data_venda,empreendimento_id,empreendimento_nome,unidade_id,vgv,forma_pgto,status,obs").order("created_at", { ascending: false }),
     auth.supabase.from("venda_processos").select("id,venda_id,negocio_id,etapa,tipo_venda,responsavel_usuario_id,prazo_em,observacoes,criado_em,atualizado_em,aprovacao_status,aprovacao_motivo,solicitado_por"),
     auth.supabase.from("negocios").select("id,venda_id,lead_id,corretor_id,empreendimento_id,valor,status"),
     auth.supabase.from("leads").select("id,nome,telefone,email,corretor_id,tags,extras"),
     auth.supabase.from("empreendimentos").select("id,nome,origem,bairro,cidade").order("nome"),
     auth.supabase.rpc("listar_corretores_transferencia"),
-    auth.supabase.from("esteira_etapas").select("id,slug,nome,cor,ordem,papel,sla_dias,resale,exige_docs").eq("ativo", true).order("ordem", { ascending: true }),
+    auth.supabase.from("esteira_etapas").select("id,slug,nome,cor,ordem,papel,sla_dias,resale,exige_docs,libera,restrito_a").eq("ativo", true).order("ordem", { ascending: true }),
     auth.supabase.from("esteira_etapa_docs").select("id,etapa_slug,nome,obrigatorio,ordem").eq("ativo", true).order("ordem", { ascending: true }),
-    auth.supabase.from("esteira_anexos").select("id,processo_ref,negocio_id,etapa_slug,doc_nome,nome,path,mime,tamanho,criado_em,grupo,status,status_motivo,obrigatorio,observacao,enviado_por,revisado_por,revisado_em").order("criado_em", { ascending: false }),
+    auth.supabase.from("esteira_anexos").select("id,processo_ref,negocio_id,etapa_slug,doc_nome,nome,path,mime,tamanho,criado_em,grupo,status,status_motivo,obrigatorio,observacao,enviado_por,revisado_por,revisado_em,lote_id,origem,ia_status,ia_grupo,ia_doc_nome,ia_confianca,ia_extraido,ia_motivo,ia_processado_em").order("criado_em", { ascending: false }),
     auth.supabase.from("usuarios").select("id,nome,role"),
     auth.supabase.from("venda_processo_historico").select("processo_id,etapa_de,etapa_para,movido_por,movido_em").order("movido_em", { ascending: true }),
     auth.supabase.from("esteira_etapa_verificacoes").select("id,processo_ref,etapa_slug,verificado_por,verificado_em"),
     auth.supabase.from("venda_solicitacoes").select("id,negocio_id,corretor_id,solicitado_por,produto_id,vgv,forma_pgto,obs,status,criado_em").eq("status", "pendente").order("criado_em", { ascending: true }),
-    auth.supabase.from("esteira_doc_modelo").select("id,grupo,nome,obrigatorio,ordem").eq("ativo", true).order("ordem", { ascending: true }),
+    auth.supabase.from("esteira_doc_modelo").select("id,grupo,nome,obrigatorio,ordem,condicao").eq("ativo", true).order("ordem", { ascending: true }),
     auth.supabase.from("venda_condicoes").select("*"),
     auth.supabase.from("venda_comissao").select("*"),
     auth.supabase.from("venda_comissao_parcelas").select("*").order("ordem", { ascending: true }),
     auth.supabase.from("venda_observacoes").select("id,processo_ref,texto,autor,autor_nome,criado_em").order("criado_em", { ascending: false }),
     auth.supabase.from("pipelines").select("id,nome,ordem").order("ordem", { ascending: true }),
     auth.supabase.from("pipeline_stages").select("id,pipeline_id,nome,ordem").order("ordem", { ascending: true }),
+    auth.supabase.from("venda_partes").select("id,processo_ref,papel,ordem,nome,telefone,email,cpf,observacao,atualizado_em").order("ordem", { ascending: true }),
+    auth.supabase.from("esteira_anexo_eventos").select("id,anexo_id,processo_ref,lote_id,evento,detalhe,ator,ator_nome,criado_em").order("criado_em", { ascending: false }).limit(400),
   ]);
   const error = [sales, processes, deals, leads, products, brokers, stages, etapaDocs, anexos].find((item) => item.error)?.error;
   if (error) return Response.json({ error: error.message }, { status: 502 });
-  return Response.json({ sales: sales.data ?? [], processes: processes.data ?? [], deals: deals.data ?? [], leads: leads.data ?? [], products: products.data ?? [], brokers: brokers.data ?? [], stages: stages.data ?? [], etapaDocs: etapaDocs.data ?? [], anexos: anexos.data ?? [], users: users.data ?? [], history: history.data ?? [], verificacoes: verificacoes.data ?? [], solicitacoes: solicitacoes.data ?? [], docModelo: docModelo.data ?? [], condicoes: condicoes.data ?? [], comissao: comissao.data ?? [], comissaoParcelas: comissaoParcelas.data ?? [], observacoes: observacoes.data ?? [], pipelines: pipelines.data ?? [], pipelineStages: pipelineStages.data ?? [] });
+  return Response.json({ sales: sales.data ?? [], processes: processes.data ?? [], deals: deals.data ?? [], leads: leads.data ?? [], products: products.data ?? [], brokers: brokers.data ?? [], stages: stages.data ?? [], etapaDocs: etapaDocs.data ?? [], anexos: anexos.data ?? [], users: users.data ?? [], history: history.data ?? [], verificacoes: verificacoes.data ?? [], solicitacoes: solicitacoes.data ?? [], docModelo: docModelo.data ?? [], condicoes: condicoes.data ?? [], comissao: comissao.data ?? [], comissaoParcelas: comissaoParcelas.data ?? [], observacoes: observacoes.data ?? [], pipelines: pipelines.data ?? [], pipelineStages: pipelineStages.data ?? [], partes: partes.data ?? [], anexoEventos: anexoEventos.data ?? [] });
 }
 
 export async function PATCH(request: Request) {
@@ -64,40 +161,27 @@ export async function PATCH(request: Request) {
     const stage = String(body.stage || "");
     const slugs = await activeSlugs(auth);
     if (!processId || !slugs.has(stage)) return Response.json({ error: "Etapa inválida." }, { status: 422 });
-    // Trava de documentos: só ao AVANÇAR (etapa destino mais à frente) e só se a etapa atual exigir docs.
-    const { data: stageRows } = await auth.supabase.from("esteira_etapas").select("slug,ordem,nome,exige_docs").eq("ativo", true);
-    const stageBySlug = new Map((stageRows ?? []).map((s) => [s.slug as string, s]));
-    const { data: proc } = await auth.supabase.from("venda_processos").select("etapa,negocio_id,aprovacao_status").eq("id", processId).maybeSingle();
-    if (proc && (proc as { aprovacao_status?: string }).aprovacao_status === "pendente") return Response.json({ error: "Esta venda ainda está aguardando aprovação de entrada na esteira." }, { status: 409 });
-    const atual = proc ? stageBySlug.get(proc.etapa as string) : null;
-    const destino = stageBySlug.get(stage);
-    const avancando = atual && destino && Number(destino.ordem) > Number(atual.ordem);
-    if (avancando && atual?.exige_docs) {
-      // Verificação manual do gestor libera direto (override consciente).
-      const { data: verif } = await auth.supabase.from("esteira_etapa_verificacoes").select("id").eq("processo_ref", processId).eq("etapa_slug", proc!.etapa).maybeSingle();
+    // ===== Cascata de etapas =====
+    // Ao AVANÇAR, tudo que a etapa atual liberou para preenchimento precisa estar completo.
+    // A configuração vive em esteira_etapas.libera, então o gestor muda a regra sem deploy.
+    const ctx = await contexto(auth, processId);
+    if (!ctx.proc) return Response.json({ error: "Venda não encontrada." }, { status: 404 });
+    if ((ctx.proc as { aprovacao_status?: string }).aprovacao_status === "pendente") {
+      return Response.json({ error: "Esta venda ainda está aguardando aprovação de entrada na esteira." }, { status: 409 });
+    }
+    const destino = ctx.etapas.find((e) => e.slug === stage);
+    const avancando = ctx.atual && destino && Number(destino.ordem) > Number(ctx.atual.ordem);
+    if (avancando) {
+      // Verificação manual do gestor libera direto (override consciente e auditado).
+      const { data: verif } = await auth.supabase.from("esteira_etapa_verificacoes").select("id").eq("processo_ref", processId).eq("etapa_slug", ctx.atual!.slug).maybeSingle();
       if (!verif) {
-        const motivos: string[] = [];
-        const { data: cond } = await auth.supabase.from("venda_condicoes").select("valor_total,comprador_tem_conjuge,vendedor_tem_conjuge").eq("processo_ref", processId).maybeSingle();
-        const grupos = ["comprador", "vendedor", "imovel"];
-        if (cond?.comprador_tem_conjuge) grupos.push("conjuge_comprador");
-        if (cond?.vendedor_tem_conjuge) grupos.push("conjuge_vendedor");
-        const [{ data: modelo }, { data: aps }] = await Promise.all([
-          auth.supabase.from("esteira_doc_modelo").select("grupo,nome").eq("obrigatorio", true).eq("ativo", true).in("grupo", grupos),
-          auth.supabase.from("esteira_anexos").select("grupo,doc_nome,status,obrigatorio").eq("processo_ref", processId),
-        ]);
-        const aprov = new Set((aps ?? []).filter((a) => a.status === "aprovado").map((a) => `${a.grupo}::${a.doc_nome}`));
-        const faltamModelo = (modelo ?? []).filter((m) => !aprov.has(`${m.grupo}::${m.nome}`));
-        const faltamAvulsos = (aps ?? []).filter((a) => a.obrigatorio && a.status !== "aprovado").length;
-        if (faltamModelo.length || faltamAvulsos) {
-          const label: Record<string, string> = { comprador: "do comprador", conjuge_comprador: "do cônjuge do comprador", vendedor: "do vendedor", conjuge_vendedor: "do cônjuge do vendedor", imovel: "do imóvel" };
-          const porGrupo: Record<string, number> = {};
-          faltamModelo.forEach((m) => { porGrupo[m.grupo as string] = (porGrupo[m.grupo as string] || 0) + 1; });
-          const partes = Object.entries(porGrupo).map(([g, n]) => `${n} ${label[g] || g}`);
-          if (faltamAvulsos) partes.push(`${faltamAvulsos} adicional(is)`);
-          motivos.push(`Faltam documentos obrigatórios aprovados: ${partes.join(", ")}`);
+        const pendencias = pendenciasParaAvancar(ctx.atual, ctx.dados);
+        // Anexos avulsos marcados como obrigatórios continuam travando, venham de onde vierem.
+        const avulsos = ctx.dados.anexos.filter((a) => a.obrigatorio && a.status !== "aprovado" && a.status !== "triagem").length;
+        if (avulsos) pendencias.push(`${avulsos} documento(s) adicional(is) marcado(s) como obrigatório(s) sem aprovação`);
+        if (pendencias.length) {
+          return Response.json({ error: `Não é possível sair de "${ctx.atual!.nome}" — ${pendencias.join("; ")}.` }, { status: 409 });
         }
-        if (!cond || cond.valor_total == null) motivos.push("as condições comerciais (valor total) ainda não foram preenchidas");
-        if (motivos.length) return Response.json({ error: `Não é possível avançar de "${atual.nome}": ${motivos.join("; ")}.` }, { status: 409 });
       }
     }
     const isFinal = slugs.get(stage) === 0;
@@ -112,13 +196,27 @@ export async function PATCH(request: Request) {
     if (action === "removeAnexo") {
       const id = clean(body.anexoId, 60);
       if (!id) return Response.json({ error: "Anexo inválido." }, { status: 422 });
+      const { data: antes } = await auth.supabase.from("esteira_anexos").select("processo_ref,grupo,doc_nome,nome,path,status").eq("id", id).maybeSingle();
+      if (antes?.processo_ref) {
+        // Arquivo ainda em triagem não tem grupo: liberado enquanto qualquer bloco de documentos estiver aberto.
+        const bloco = GRUPO_BLOCO[String(antes.grupo ?? "")] ?? null;
+        const g = await guardBloco(auth, String(antes.processo_ref), bloco ?? blocoDocsAberto(await contexto(auth, String(antes.processo_ref))) ?? "docs_comprador");
+        if (g.deny) return g.deny;
+      }
       const { error } = await auth.supabase.from("esteira_anexos").delete().eq("id", id);
-      return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
+      if (error) return Response.json({ error: error.message }, { status: 502 });
+      await trilha(auth, "removido", { processoRef: (antes?.processo_ref as string) ?? null, detalhe: antes ?? { id } });
+      return Response.json({ success: true });
     }
     const processo_ref = clean(body.processId, 60);
     const path = clean(body.path, 400);
     const nome = clean(body.nome, 200);
     if (!processo_ref || !path || !nome) return Response.json({ error: "Informe o processo, o arquivo e o nome." }, { status: 422 });
+    const grupoAlvo = clean(body.grupo, 40);
+    const blocoAlvo = GRUPO_BLOCO[grupoAlvo];
+    if (!blocoAlvo) return Response.json({ error: "Grupo de documento inválido." }, { status: 422 });
+    const gAnexo = await guardBloco(auth, processo_ref, blocoAlvo);
+    if (gAnexo.deny) return gAnexo.deny;
     const insert: Record<string, unknown> = {
       processo_ref, nome, path,
       etapa_slug: clean(body.etapaSlug, 40) || null,
@@ -132,8 +230,10 @@ export async function PATCH(request: Request) {
       negocio_id: Number.isSafeInteger(Number(body.negocioId)) && Number(body.negocioId) > 0 ? Number(body.negocioId) : null,
       enviado_por: auth.user.id,
     };
-    const { error } = await auth.supabase.from("esteira_anexos").insert(insert as never);
-    return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
+    const { data: criado, error } = await auth.supabase.from("esteira_anexos").insert(insert as never).select("id").maybeSingle();
+    if (error) return Response.json({ error: error.message }, { status: 502 });
+    await trilha(auth, "upload", { anexoId: (criado?.id as string) ?? null, processoRef: processo_ref, detalhe: { arquivo: nome, grupo: insert.grupo, doc_nome: insert.doc_nome, origem: "manual" } });
+    return Response.json({ success: true });
   }
 
   if (action === "verifyStage" || action === "unverifyStage") {
@@ -393,8 +493,11 @@ export async function PATCH(request: Request) {
     if (!id || !validos.includes(status)) return Response.json({ error: "Documento ou status inválido." }, { status: 422 });
     const motivo = clean(body.motivo, 400);
     if ((status === "recusado" || status === "correcao") && !motivo) return Response.json({ error: "Informe o motivo da recusa/correção." }, { status: 422 });
+    const { data: antes } = await auth.supabase.from("esteira_anexos").select("processo_ref,status,grupo,doc_nome,nome").eq("id", id).maybeSingle();
     const { error } = await auth.supabase.from("esteira_anexos").update({ status, status_motivo: motivo || null, revisado_por: auth.user.id, revisado_em: new Date().toISOString() } as never).eq("id", id);
-    return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
+    if (error) return Response.json({ error: error.message }, { status: 502 });
+    await trilha(auth, "status_alterado", { anexoId: id, processoRef: (antes?.processo_ref as string) ?? null, detalhe: { arquivo: antes?.nome ?? null, de: antes?.status ?? null, para: status, motivo: motivo || null } });
+    return Response.json({ success: true });
   }
 
   if (action === "docAnexoObrig") {
@@ -413,8 +516,10 @@ export async function PATCH(request: Request) {
     if (action === "docModeloCreate") {
       const grupo = clean(body.grupo, 40); const nome = clean(body.nome, 120);
       if (!grupo || !nome) return Response.json({ error: "Informe o grupo e o nome do documento." }, { status: 422 });
+      const condicaoNova = clean(body.condicao, 20) || null;
+      if (condicaoNova && !["financiamento", "consorcio", "nao_a_vista"].includes(condicaoNova)) return Response.json({ error: "Condição inválida." }, { status: 422 });
       const { data: last } = await auth.supabase.from("esteira_doc_modelo").select("ordem").eq("grupo", grupo).order("ordem", { ascending: false }).limit(1).maybeSingle();
-      const { error } = await auth.supabase.from("esteira_doc_modelo").insert({ grupo, nome, obrigatorio: body.obrigatorio !== false, ordem: (last?.ordem ?? 0) + 1 } as never);
+      const { error } = await auth.supabase.from("esteira_doc_modelo").insert({ grupo, nome, obrigatorio: body.obrigatorio !== false, ordem: (last?.ordem ?? 0) + 1, condicao: condicaoNova } as never);
       return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
     }
     if (action === "docModeloUpdate") {
@@ -422,6 +527,11 @@ export async function PATCH(request: Request) {
       const patch: Record<string, unknown> = {};
       if (typeof body.nome === "string" && body.nome.trim()) patch.nome = clean(body.nome, 120);
       if (typeof body.obrigatorio === "boolean") patch.obrigatorio = body.obrigatorio;
+      if (body.condicao !== undefined) {
+        const c = clean(body.condicao, 20) || null;
+        if (c && !["financiamento", "consorcio", "nao_a_vista"].includes(c)) return Response.json({ error: "Condição inválida." }, { status: 422 });
+        patch.condicao = c;
+      }
       const { error } = await auth.supabase.from("esteira_doc_modelo").update(patch as never).eq("id", id);
       return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
     }
@@ -433,6 +543,12 @@ export async function PATCH(request: Request) {
   if (action === "salvarCondicoes") {
     const processId = clean(body.processId, 60);
     if (!processId) return Response.json({ error: "Venda inválida." }, { status: 422 });
+    // O toggle "possui cônjuge?" mora nesta tabela mas pertence à documentação —
+    // por isso ele é aceito fora da etapa de proposta; o resto respeita a cascata.
+    if (body.somenteConjuge !== true) {
+      const g = await guardBloco(auth, processId, "condicoes");
+      if (g.deny) return g.deny;
+    }
     const num = (v: unknown) => v === "" || v === null || v === undefined || !Number.isFinite(Number(v)) ? null : Number(v);
     const dt = (v: unknown) => { const s = clean(v, 10); return s || null; };
     const row: Record<string, unknown> = {
@@ -447,15 +563,23 @@ export async function PATCH(request: Request) {
       origem_recursos: Array.isArray(body.origem_recursos) ? body.origem_recursos : [],
       atualizado_por: auth.user.id, atualizado_em: new Date().toISOString(),
     };
+    // Forma de pagamento governa quais documentos o checklist passa a exigir.
+    const forma = clean(body.forma_pagamento, 20);
+    if (forma) {
+      if (!(FORMAS_PGTO as readonly string[]).includes(forma)) return Response.json({ error: "Forma de pagamento inválida." }, { status: 422 });
+      row.forma_pagamento = forma;
+    } else if (body.forma_pagamento === null) {
+      row.forma_pagamento = null;
+    }
     const { error } = await auth.supabase.from("venda_condicoes").upsert(row as never, { onConflict: "processo_ref" });
     return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
   }
 
   if (action === "salvarComissao") {
-    const denied = await requireManager(auth);
-    if (denied) return denied;
     const processId = clean(body.processId, 60);
     if (!processId) return Response.json({ error: "Venda inválida." }, { status: 422 });
+    const g = await guardBloco(auth, processId, "comissao");
+    if (g.deny) return g.deny;
     const num = (v: unknown) => v === "" || v === null || v === undefined || !Number.isFinite(Number(v)) ? null : Number(v);
     const row: Record<string, unknown> = {
       processo_ref: processId,
@@ -476,6 +600,171 @@ export async function PATCH(request: Request) {
       if (parcelas.length) { const { error: pe } = await auth.supabase.from("venda_comissao_parcelas").insert(parcelas as never); if (pe) return Response.json({ error: pe.message }, { status: 502 }); }
     }
     return Response.json({ success: true });
+  }
+
+  // ===== Partes da negociação: nome, telefone e e-mail de comprador, vendedor e cônjuges =====
+  // A presença de uma parte "conjuge_*" é o que liga o grupo de documentos do cônjuge,
+  // por isso adicionar/remover cônjuge sincroniza a flag em venda_condicoes.
+  if (action === "salvarParte" || action === "adicionarParte") {
+    const processId = clean(body.processId, 60);
+    const papel = clean(body.papel, 30);
+    if (!processId || !(PAPEIS_PARTE as readonly string[]).includes(papel)) return Response.json({ error: "Informe a venda e o papel da parte." }, { status: 422 });
+    const g = await guardBloco(auth, processId, papel.includes("vendedor") ? "partes_vendedor" : "partes_comprador");
+    if (g.deny) return g.deny;
+    const email = clean(body.email, 160).toLowerCase();
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return Response.json({ error: "E-mail inválido." }, { status: 422 });
+
+    let ordem = Number.isSafeInteger(Number(body.ordem)) && Number(body.ordem) > 0 ? Number(body.ordem) : 0;
+    if (!ordem) {
+      // Sem ordem explícita: "adicionarParte" cria a próxima; "salvarParte" edita a primeira.
+      const { data: ult } = await auth.supabase.from("venda_partes").select("ordem").eq("processo_ref", processId).eq("papel", papel).order("ordem", { ascending: false }).limit(1).maybeSingle();
+      ordem = action === "adicionarParte" ? Number(ult?.ordem ?? 0) + 1 : Number(ult?.ordem ?? 0) || 1;
+      if (action === "adicionarParte" && ordem > 6) return Response.json({ error: "Limite de 6 pessoas por papel." }, { status: 422 });
+    }
+    const row: Record<string, unknown> = {
+      processo_ref: processId, papel, ordem,
+      nome: clean(body.nome, 160) || null,
+      telefone: clean(body.telefone, 40) || null,
+      email: email || null,
+      cpf: clean(body.cpf, 20) || null,
+      observacao: clean(body.observacao, 400) || null,
+      atualizado_por: auth.user.id, atualizado_em: new Date().toISOString(),
+    };
+    const { error } = await auth.supabase.from("venda_partes").upsert(row as never, { onConflict: "processo_ref,papel,ordem" });
+    if (error) return Response.json({ error: error.message }, { status: 502 });
+    if (papel.startsWith("conjuge_")) await sincronizarConjuge(auth, processId, papel);
+    return Response.json({ success: true, ordem });
+  }
+
+  if (action === "removerParte") {
+    const id = clean(body.parteId, 60);
+    if (!id) return Response.json({ error: "Parte inválida." }, { status: 422 });
+    const { data: alvo } = await auth.supabase.from("venda_partes").select("processo_ref,papel,ordem").eq("id", id).maybeSingle();
+    if (!alvo) return Response.json({ error: "Parte não encontrada." }, { status: 404 });
+    const papel = String(alvo.papel);
+    const processId = String(alvo.processo_ref);
+    const g = await guardBloco(auth, processId, papel.includes("vendedor") ? "partes_vendedor" : "partes_comprador");
+    if (g.deny) return g.deny;
+    if (!papel.startsWith("conjuge_") && Number(alvo.ordem) === 1) {
+      return Response.json({ error: "O titular não pode ser removido — edite os dados ou devolva a venda ao atendimento." }, { status: 409 });
+    }
+    const { error } = await auth.supabase.from("venda_partes").delete().eq("id", id);
+    if (error) return Response.json({ error: error.message }, { status: 502 });
+    if (papel.startsWith("conjuge_")) await sincronizarConjuge(auth, processId, papel);
+    return Response.json({ success: true });
+  }
+
+  // ===== Upload em lote: o corretor manda tudo de uma vez e a Sara organiza =====
+  if (action === "addAnexoLote") {
+    const processo_ref = clean(body.processId, 60);
+    const loteId = clean(body.loteId, 60);
+    const arquivos = Array.isArray(body.arquivos) ? (body.arquivos as Array<Record<string, unknown>>) : [];
+    if (!processo_ref || !loteId) return Response.json({ error: "Venda ou lote inválido." }, { status: 422 });
+    if (!arquivos.length) return Response.json({ error: "Nenhum arquivo enviado." }, { status: 422 });
+    if (arquivos.length > 15) return Response.json({ error: "Envie no máximo 15 arquivos por lote." }, { status: 422 });
+    // O lote entra sem grupo definido, então basta que a etapa tenha algum bloco de documentos aberto.
+    const ctxLote = await contexto(auth, processo_ref);
+    const blocoLote = blocoDocsAberto(ctxLote);
+    if (!blocoLote) {
+      const alvo = etapaDoBloco(ctxLote.etapas, "docs_comprador");
+      return Response.json({ error: `A venda está em "${ctxLote.atual?.nome ?? "etapa desconhecida"}". Documentos começam na etapa "${alvo?.nome ?? "Documentação do comprador"}".` }, { status: 409 });
+    }
+    const gLote = await guardBloco(auth, processo_ref, blocoLote);
+    if (gLote.deny) return gLote.deny;
+    const negocioId = Number.isSafeInteger(Number(body.negocioId)) && Number(body.negocioId) > 0 ? Number(body.negocioId) : null;
+    const linhas = arquivos.map((a) => ({
+      processo_ref, negocio_id: negocioId,
+      nome: clean(a.nome, 200), path: clean(a.path, 400),
+      mime: clean(a.mime, 100) || null,
+      tamanho: Number.isFinite(Number(a.tamanho)) ? Math.trunc(Number(a.tamanho)) : null,
+      etapa_slug: clean(body.etapaSlug, 40) || null,
+      grupo: null, doc_nome: null, obrigatorio: false,
+      status: "triagem", origem: "lote_ia", ia_status: "nao_processado",
+      lote_id: loteId, enviado_por: auth.user.id,
+    })).filter((l) => l.nome && l.path);
+    if (!linhas.length) return Response.json({ error: "Arquivos inválidos." }, { status: 422 });
+    const { data: criados, error } = await auth.supabase.from("esteira_anexos").insert(linhas as never).select("id,nome");
+    if (error) return Response.json({ error: error.message }, { status: 502 });
+    await trilha(auth, "upload_lote", { processoRef: processo_ref, loteId, detalhe: { quantidade: linhas.length, arquivos: linhas.map((l) => l.nome) } });
+    return Response.json({ success: true, loteId, anexos: criados ?? [] });
+  }
+
+  if (action === "classificarLote") {
+    const processId = clean(body.processId, 60);
+    const loteId = clean(body.loteId, 60) || null;
+    const anexoIds = Array.isArray(body.anexoIds) ? (body.anexoIds as unknown[]).map((v) => clean(v, 60)).filter(Boolean) : [];
+    if (!processId || (!loteId && !anexoIds.length)) return Response.json({ error: "Informe a venda e o lote a classificar." }, { status: 422 });
+    const { data, error } = await auth.supabase.functions.invoke("ia-docs-classificar", {
+      body: { processo_ref: processId, lote_id: loteId, anexo_ids: anexoIds },
+    });
+    if (error) {
+      let detalhe = error.message;
+      try { const ctx = await (error as { context?: Response }).context?.json(); if (ctx?.reason) detalhe = String(ctx.detalhe || ctx.reason); } catch { /* mantém a mensagem original */ }
+      return Response.json({ error: `A Sara não conseguiu ler os documentos: ${detalhe}` }, { status: 502 });
+    }
+    const r = (data ?? {}) as { ok?: boolean; reason?: string; processados?: number; classificados?: number; triagem?: number; resultados?: unknown[] };
+    if (!r.ok) return Response.json({ error: r.reason === "sem_chave" ? "A chave da IA não está configurada no ambiente." : `Não foi possível classificar: ${r.reason || "erro desconhecido"}.` }, { status: 502 });
+    return Response.json({ success: true, processados: r.processados ?? 0, classificados: r.classificados ?? 0, triagem: r.triagem ?? 0, resultados: r.resultados ?? [] });
+  }
+
+  if (action === "triagemConfirmar") {
+    // O corretor/gestor confirma (ou corrige) o destino sugerido pela Sara.
+    const id = clean(body.anexoId, 60);
+    const grupo = clean(body.grupo, 40);
+    const docNome = clean(body.docNome, 200);
+    if (!id || !grupo) return Response.json({ error: "Informe o documento e o grupo." }, { status: 422 });
+    const { data: antes } = await auth.supabase.from("esteira_anexos").select("processo_ref,nome,ia_grupo,ia_doc_nome,ia_confianca").eq("id", id).maybeSingle();
+    if (!antes?.processo_ref) return Response.json({ error: "Documento não encontrado." }, { status: 404 });
+    const blocoTriagem = GRUPO_BLOCO[grupo];
+    if (!blocoTriagem) return Response.json({ error: "Grupo de documento inválido." }, { status: 422 });
+    const gTriagem = await guardBloco(auth, String(antes.processo_ref), blocoTriagem);
+    if (gTriagem.deny) return gTriagem.deny;
+    const corrigido = antes ? (antes.ia_grupo !== grupo || (antes.ia_doc_nome ?? "") !== docNome) : false;
+    const { error } = await auth.supabase.from("esteira_anexos").update({
+      grupo, doc_nome: docNome || null, status: "anexado",
+      obrigatorio: body.obrigatorio === true,
+      confirmado_por: auth.user.id, confirmado_em: new Date().toISOString(),
+    } as never).eq("id", id);
+    if (error) return Response.json({ error: error.message }, { status: 502 });
+    await trilha(auth, corrigido ? "corrigido" : "confirmado", {
+      anexoId: id, processoRef: (antes?.processo_ref as string) ?? null,
+      detalhe: { arquivo: antes?.nome ?? null, sugerido: { grupo: antes?.ia_grupo ?? null, doc_nome: antes?.ia_doc_nome ?? null, confianca: antes?.ia_confianca ?? null }, aplicado: { grupo, doc_nome: docNome || null } },
+    });
+    return Response.json({ success: true });
+  }
+
+  // ===== Exclusão definitiva da venda (admin e diretor) =====
+  if (action === "excluirVenda") {
+    const processId = clean(body.processId, 60);
+    if (!processId) return Response.json({ error: "Venda inválida." }, { status: 422 });
+    const { data, error } = await auth.supabase.rpc("excluir_venda_esteira", {
+      p_processo: processId,
+      p_motivo: clean(body.motivo, 400) || null,
+      p_forcar: body.forcar === true,
+      p_descartar_lead: body.descartarLead === true,
+    });
+    if (error) return Response.json({ error: error.message }, { status: 502 });
+    const r = (data ?? {}) as { ok?: boolean; erro?: string; bloqueios?: string[]; paths?: string[]; lead?: string; forcada?: boolean };
+    if (!r.ok) {
+      if (r.erro === "sem_permissao") return Response.json({ error: "Apenas administrador ou diretor pode excluir uma venda." }, { status: 403 });
+      if (r.erro === "processo_nao_encontrado") return Response.json({ error: "Venda não encontrada." }, { status: 404 });
+      if (r.erro === "impacto_financeiro") {
+        return Response.json({
+          error: `Esta venda já movimentou o financeiro: ${(r.bloqueios ?? []).join(", ")}. Confirme a exclusão para apagar mesmo assim.`,
+          bloqueios: r.bloqueios ?? [],
+          precisaForcar: true,
+        }, { status: 409 });
+      }
+      return Response.json({ error: r.erro || "Não foi possível excluir a venda." }, { status: 422 });
+    }
+    // O snapshot já está salvo em venda_exclusoes; agora limpamos os arquivos do bucket.
+    const paths = Array.isArray(r.paths) ? r.paths.filter((x): x is string => typeof x === "string" && x.length > 0) : [];
+    let arquivosRemovidos = 0;
+    if (paths.length) {
+      const { error: stErr } = await auth.supabase.storage.from("esteira-docs").remove(paths);
+      if (!stErr) arquivosRemovidos = paths.length;
+    }
+    return Response.json({ success: true, arquivosRemovidos, arquivosTotal: paths.length, lead: r.lead, forcada: r.forcada === true });
   }
 
   if (action === "addObs") {

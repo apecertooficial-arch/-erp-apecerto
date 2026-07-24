@@ -60,20 +60,19 @@ export function HomeWorkspace({ accessToken, sessionName = "", onNavigate }: { a
 
   const metrics = useMemo(() => {
     if (!data) return null;
-    const openDeals = data.crm.deals.filter((item) => !["perdido", "ganho", "fechado"].includes((item.status || "").toLowerCase()));
     const monthSales = data.finance.sales.filter((item) => sameMonth(item.data_venda));
     const monthVgv = monthSales.reduce((sum, item) => sum + Number(item.vgv || 0), 0);
     const goal = data.finance.goals.reduce((sum, item) => sum + Number(item.meta_vgv || 0), 0);
-    return { openDeals, monthSales, monthVgv, goal };
+    return { monthSales, monthVgv, goal };
   }, [data]);
 
   if (error) return <div className="home-state error">{error}</div>;
   if (!data || !metrics) return <div className="home-state">Conectando indicadores reais do ERP…</div>;
 
-  const stageRows = data.crm.stages.map((stage) => ({ ...stage, count: metrics.openDeals.filter((deal) => deal.stage_id === stage.id).length })).filter((stage) => stage.count > 0).sort((a, b) => b.count - a.count || Number(a.ordem || 0) - Number(b.ordem || 0)).slice(0, 10);
-  const maxStage = Math.max(1, ...stageRows.map((item) => item.count));
   const saleProducts = [...new Set(data.finance.sales.map((sale) => sale.empreendimento_nome || "Produto não informado"))].map((name) => ({ name, count: data.finance.sales.filter((sale) => (sale.empreendimento_nome || "Produto não informado") === name).length })).sort((a, b) => b.count - a.count).slice(0, 5);
-  const leadProducts = [...new Set(data.crm.productLinks.map((link) => link.empreendimentos?.nome || link.empreendimento_id))].map((name) => ({ name, count: data.crm.productLinks.filter((link) => (link.empreendimentos?.nome || link.empreendimento_id) === name).length })).sort((a, b) => b.count - a.count).slice(0, 5);
+  const totalSales = data.finance.sales.length;
+  const leader = saleProducts[0] ?? null;
+  const maxProd = Math.max(1, ...saleProducts.map((p) => p.count));
   const effectiveGoal = metaMesGlobal ?? metrics.goal;
   const goalPercent = effectiveGoal > 0 ? Math.min(100, metrics.monthVgv / effectiveGoal * 100) : 0;
   const nowRef = new Date();
@@ -81,20 +80,59 @@ export function HomeWorkspace({ accessToken, sessionName = "", onNavigate }: { a
   const daysLeft = Math.max(1, daysInMonth - nowRef.getDate() + 1);
   const missing = Math.max(0, effectiveGoal - metrics.monthVgv);
   const pacePerDay = missing / daysLeft;
+  const monthName = new Intl.DateTimeFormat("pt-BR", { month: "long" }).format(nowRef);
+  const dateStr = new Intl.DateTimeFormat("pt-BR", { weekday: "long", day: "numeric", month: "long" }).format(nowRef).replace("-feira", "");
+  const firstName = sessionName ? sessionName.split(/\s+/)[0] : "";
+  const initial = (sessionName || "R").trim().slice(0, 1).toUpperCase();
 
-  return <div className="home-workspace">
-    <header className="home-header"><span className="home-avatar">{(sessionName || "S").trim().slice(0, 1).toUpperCase()}</span><div><small>BEM-VINDO DE VOLTA 👋</small><h1>Olá, {sessionName ? sessionName.split(/\s+/)[0] : "Samuel"}</h1><p>Visão geral da operação em tempo real</p></div><span className="home-status">● Dados reais · sessão protegida</span></header>
+  return <div className="home-v2"><div className="hv2-inner">
+    <div className="hv2-top">
+      <div className="hv2-top-l">
+        <span className="hv2-avatar">{initial}</span>
+        <div><div className="hv2-eyebrow">Bem-vindo de volta</div><div className="hv2-hello">Olá, {firstName || "Rômulo"}</div></div>
+      </div>
+      <div className="hv2-top-r">
+        <div className="hv2-date">{dateStr} · {daysLeft} {daysLeft === 1 ? "dia" : "dias"} pra fechar o mês</div>
+        <span className="hv2-badge"><i />Dados reais · sessão protegida</span>
+      </div>
+    </div>
+
+    <section className="hv2-hero">
+      <div>
+        <div className="hv2-hero-eyebrow">Meta do mês · {monthName}</div>
+        <div className="hv2-hero-val">{brl.format(metrics.monthVgv)}</div>
+        <div className="hv2-hero-sub">vendidos de {effectiveGoal > 0 ? brl.format(effectiveGoal) : "—"}</div>
+        <div className="hv2-hero-bar"><span style={{ width: `${Math.max(1.5, goalPercent)}%` }} /></div>
+        <div className="hv2-chips">
+          {effectiveGoal > 0 && <span className="hv2-chip">faltam <b>{brl.format(missing)}</b></span>}
+          {effectiveGoal > 0 && <span className="hv2-chip">ritmo necessário <b>{brl.format(pacePerDay)}/dia</b></span>}
+          <span className="hv2-chip">{metrics.monthSales.length} {metrics.monthSales.length === 1 ? "venda válida" : "vendas válidas"}</span>
+        </div>
+      </div>
+      <div className="hv2-hero-r">
+        <div className="hv2-ring"><b>{goalPercent.toFixed(0)}%</b><small>da meta</small></div>
+        <button className="hv2-hero-btn" type="button" onClick={() => onNavigate?.("Financeiro")}>Abrir Financeiro →</button>
+      </div>
+    </section>
+
     <RodagemCards accessToken={accessToken} onNavigate={onNavigate} />
     <FunilCards accessToken={accessToken} onNavigate={onNavigate} />
-    <section className="home-goal hero"><header><div><small>META DO MÊS</small><strong>{brl.format(metrics.monthVgv)}<em> vendidos{effectiveGoal > 0 ? ` de ${brl.format(effectiveGoal)}` : ""}</em></strong><span className="goal-badge">● Dados atualizados · {metrics.monthSales.length} vendas válidas</span></div><b>{goalPercent.toFixed(0)}%</b></header><div><span style={{ width: `${goalPercent}%` }} /></div><footer>{effectiveGoal > 0 ? <span>faltam <b>{brl.format(missing)}</b> · ritmo necessário <b>{brl.format(pacePerDay)}/dia</b> nos {daysLeft} dias restantes</span> : <span>Defina a meta do mês no Financeiro → Metas</span>}<button type="button" onClick={() => onNavigate?.("Financeiro")}>Abrir Financeiro →</button></footer></section>
     <FinanceiroCards accessToken={accessToken} onNavigate={onNavigate} />
-    <section className="home-two-columns">
-      <article className="home-panel" style={{ gridColumn: "1 / -1" }}><h2>Funil por etapa <small>Top 10 por volume</small></h2>{stageRows.map((stage) => <button className="home-funnel-row drill" type="button" onClick={() => onNavigate?.("CRM")} key={stage.id}><span><i style={{ background: stage.cor || "#ff6500" }} />{stage.nome}<b>{stage.count} · leads</b></span><div><u style={{ width: `${stage.count / maxStage * 100}%`, background: stage.cor || "#ff6500" }} /></div></button>)}{stageRows.length === 0 && <p>Nenhum negócio aberto no funil.</p>}</article>
-    </section>
-    <section className="home-three-columns">
-      <article className="home-panel"><h2>Produtos mais vendidos</h2>{saleProducts.map((item, index) => <div className="home-list-row" key={item.name}><i className={`product-rank tone-${index + 1}`}>{index + 1}</i><span>{item.name}</span><b>{item.count} vendas</b></div>)}</article>
-      <article className="home-panel"><h2>Produtos com mais leads</h2>{leadProducts.map((item, index) => <div className="home-list-row" key={item.name}><i className={`product-rank tone-${index + 1}`}>{String(item.name).trim().slice(0, 1).toUpperCase()}</i><span>{item.name}</span><b>{item.count} leads</b></div>)}</article>
-      <article className="home-panel"><h2>Pendências prioritárias</h2><p className="home-panel-note">Pontos que precisam de ação para a operação continuar fluindo.</p><button className="home-alert drill" type="button" onClick={() => onNavigate?.("CRM")}><i className="purple">●</i><span><b>{metrics.openDeals.filter((deal) => !deal.corretor_id).length} negócios sem corretor</b><small>Distribuir responsáveis no CRM</small></span></button><button className="home-alert drill" type="button" onClick={() => onNavigate?.("CRM")}><i className="orange">↗</i><span><b>{metrics.openDeals.filter((deal) => !deal.stage_id).length} negócios sem etapa</b><small>Organizar no funil de vendas</small></span></button><button className="home-alert drill" type="button" onClick={() => onNavigate?.("Financeiro")}><i className="yellow">$</i><span><b>{data.finance.receipts.filter((item) => item.status !== "recebido").length} recebimentos pendentes</b><small>Conferir no Financeiro</small></span></button></article>
-    </section>
-  </div>;
+
+    <div className="hv2-prod">
+      <div className="hv2-panel">
+        <div className="hv2-panel-h"><h3>Produtos mais vendidos</h3><small>últimos 6 meses · {totalSales} no total</small></div>
+        {leader ? <>
+          <div className="hv2-leader"><span className="tp">★</span><div className="nm"><strong>{leader.name}</strong><small>líder do período · {totalSales ? Math.round(leader.count / totalSales * 100) : 0}% das vendas</small></div><div className="qt">{leader.count} vendas</div></div>
+          {saleProducts.slice(1).map((p, i) => <div className="hv2-prow" key={p.name}><span className="hv2-rank">{i + 2}</span><span className="pn">{p.name}</span><span className="pb"><u style={{ width: `${p.count / maxProd * 100}%` }} /></span><span className="pv">{p.count}</span></div>)}
+          <button className="hv2-link-btn" type="button" onClick={() => onNavigate?.("Produtos")}>Ver todos os produtos →</button>
+        </> : <p className="hv2-sup">Sem vendas no período.</p>}
+      </div>
+      <div className="hv2-panel hv2-empty">
+        <h3>Produtos com mais leads</h3>
+        <p>Nenhum lead vinculado a produto ainda. Quando os corretores associarem leads a empreendimentos no CRM, o ranking aparece aqui.</p>
+        <button className="hv2-ghost-btn" type="button" onClick={() => onNavigate?.("CRM")}>Abrir no CRM →</button>
+      </div>
+    </div>
+  </div></div>;
 }
