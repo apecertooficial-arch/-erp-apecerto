@@ -27,6 +27,11 @@ export async function GET(request: Request) {
     if (error) return Response.json({ error: error.message }, { status: 502 });
     return Response.json({ funil: data });
   }
+  if (section === "namesa") {
+    const { data, error } = await supabase.rpc("admin_dashboard_na_mesa");
+    if (error) return Response.json({ error: error.message }, { status: 502 });
+    return Response.json({ naMesa: data });
+  }
 
   const { data, error } = await supabase.rpc("admin_dashboard_rodagem");
   if (error) return Response.json({ error: error.message }, { status: 502 });
