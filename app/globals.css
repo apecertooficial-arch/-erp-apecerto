@@ -5257,3 +5257,38 @@ article.tone-red{border-left-color:#d3443e}article.tone-red strong{color:#d3443e
 .calendar-detail .cal-lead-acts a[href^="https://wa.me"] { background:#e9f9ef; border-color:#bfe6cd; color:#0f7a3d; }
 .calendar-detail .cal-lead-acts a:hover { border-color:#FF7000; color:#CC5800; }
 .calendar-detail .cal-lead-empty { font-size:12px; color:#9a938b; font-style:italic; }
+/* ===== Esteira · cascata de etapas (blocos travados) ===== */
+.bloqx{display:flex;align-items:center;gap:8px;padding:10px 13px;border-radius:10px;background:var(--sunken);border:1px solid var(--line-strong);color:var(--muted);font-size:12.5px;font-weight:600;margin-bottom:12px}
+.sale-full-tabs button.travada{opacity:.55}
+.sale-full-tabs button.travada:not(.active){color:var(--faint)}
+.docx-group.travado{opacity:.72}
+.docx-group.travado .docx-row{background:var(--sunken)}
+
+.partesx-lado{margin-bottom:16px}
+.partesx-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:4px}
+.partesx-head h3{margin:0}
+.partesx-selo{font-size:10.5px;font-weight:800;letter-spacing:.3px;text-transform:uppercase;padding:3px 9px;border-radius:999px}
+.partesx-selo.ok{background:var(--green-bg);color:#17834b}
+.partesx-selo.pend{background:var(--amber-bg);color:#8a5d0d}
+.partesx-papel{margin-bottom:10px}
+.partesx-card.vazio{border-style:dashed}
+.partesx-head-right{display:flex;align-items:center;gap:8px}
+.partesx-del{border:1px solid var(--line-strong);background:#fff;border-radius:8px;padding:3px 8px;font-size:12px;cursor:pointer;color:var(--red)}
+.partesx-del:hover:not(:disabled){background:var(--red-bg);border-color:var(--red)}
+.partesx-del:disabled{opacity:.4;cursor:not-allowed}
+.partesx-grid input:disabled{background:var(--sunken);color:var(--muted);cursor:not-allowed}
+.partesx-pgto button:disabled{opacity:.55;cursor:not-allowed}
+.condx-grid input:disabled{background:var(--sunken);color:var(--muted);cursor:not-allowed}
+
+/* ===== Esteira · exclusão definitiva da venda ===== */
+.sale-full-excluir{border:1px solid var(--line-strong);background:#fff;color:var(--red);border-radius:var(--radius-pill);padding:8px 15px;font-size:12.5px;font-weight:700;cursor:pointer;transition:all var(--dur) var(--ease)}
+.sale-full-excluir:hover:not(:disabled){background:var(--red-bg);border-color:var(--red)}
+.sale-full-excluir:disabled{opacity:.5;cursor:not-allowed}
+.excx header span{color:var(--red)}
+.excx-aviso{background:var(--red-bg);border:1px solid #f2c9c4;border-radius:10px;padding:11px 13px;font-size:12.5px;line-height:1.5;color:#8a2b2b;margin-bottom:12px}
+.excx-financeiro{background:var(--amber-bg);border:1px solid #f0d9a8;border-radius:10px;padding:11px 13px;font-size:12.5px;line-height:1.5;color:#7a5510;margin-bottom:12px}
+.excx-check{flex-direction:row!important;align-items:flex-start;gap:8px;font-size:12.5px;font-weight:500;color:var(--ink-soft);text-transform:none;letter-spacing:0}
+.excx-check input{width:auto;margin-top:2px}
+.excx-btn{background:var(--red);color:#fff;border:none;border-radius:var(--radius-pill);padding:9px 18px;font-size:13px;font-weight:700;cursor:pointer}
+.excx-btn:hover:not(:disabled){background:#bf3232}
+.excx-btn:disabled{opacity:.45;cursor:not-allowed}
