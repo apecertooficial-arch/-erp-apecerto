@@ -257,23 +257,25 @@ export function CrmWorkspace({ accessToken, initialDealId = null, onInitialDealH
   const readByDeal = useMemo(() => new Map((data?.leituras ?? []).map((item) => [item.negocio_id, item.lido_em])), [data]);
   const filteredDeals = useMemo(() => (data?.deals ?? []).filter((deal) => {
     const lead = leadById.get(deal.lead_id);
-    const stage = activeStages.find((item) => item.id === deal.stage_id);
+    const stage = (data?.stages ?? []).find((item) => item.id === deal.stage_id);
     // Negócio SEM lead carregado ainda aparece (card com dados mínimos) — nunca some do funil.
-    if (deal.pipeline_id !== pipelineId) return false;
+    // Na tela de Leads a busca é GLOBAL (todos os funis); no Kanban confina ao funil atual.
+    if (view !== "leads" && deal.pipeline_id !== pipelineId) return false;
     if (deal.status === "ganho") return false; // virou venda → saiu do funil, está na Esteira de vendas
     const sla = slaByDeal.get(deal.id);
     const overdue = Boolean(sla && (sla.alarme_ativo || sla.cor_ativa === "vermelho"));
     const norm = (s: string) => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
     const q = norm(query.trim());
-    const qDigits = query.replace(/\D/g, "");
-    const foneDigits = (lead?.telefone ?? "").replace(/\D/g, "");
-    const buscaOk = !q || norm(`${lead?.nome ?? ""} ${lead?.email ?? ""}`).includes(q) || (qDigits.length >= 3 && foneDigits.includes(qDigits));
+    // telefone: só dígitos, sem DDI (55) dos dois lados — casa com/sem DDI, DDD e formatação
+    const qDigits = query.replace(/\D/g, "").replace(/^55/, "");
+    const foneDigits = (lead?.telefone ?? "").replace(/\D/g, "").replace(/^55/, "");
+    const buscaOk = !q || norm(`${lead?.nome ?? ""} ${lead?.email ?? ""}`).includes(q) || (qDigits.length >= 4 && (foneDigits.includes(qDigits) || qDigits.includes(foneDigits)));
     return buscaOk && (!stageId || deal.stage_id === stageId)
       && (!brokerId || (deal.corretor_id ?? lead?.corretor_id) === brokerId) && (!origin || lead?.origem === origin)
       && (!tag || (lead ? tagList(lead.tags) : []).includes(tag)) && (!group || stage?.grupo === group) && (!overdueOnly || overdue)
       && (!dateFrom || (lead?.criado_em ?? deal.criado_em ?? "") >= dateFrom) && (!dateTo || (lead?.criado_em ?? deal.criado_em ?? "") <= `${dateTo}T23:59:59`)
       && (!productFilter || deal.empreendimento_id === productFilter);
-  }), [data, leadById, activeStages, pipelineId, query, stageId, brokerId, origin, tag, group, overdueOnly, slaByDeal, dateFrom, dateTo, productFilter]);
+  }), [data, leadById, activeStages, pipelineId, view, query, stageId, brokerId, origin, tag, group, overdueOnly, slaByDeal, dateFrom, dateTo, productFilter]);
   const overdueCount = useMemo(() => (data?.deals ?? []).filter((deal) => { const sla = slaByDeal.get(deal.id); return deal.pipeline_id === pipelineId && Boolean(sla && (sla.alarme_ativo || sla.cor_ativa === "vermelho")); }).length, [data, pipelineId, slaByDeal]);
   const visibleStages = useMemo(() => activeStages.filter((stage) => !group || stage.grupo === group), [activeStages, group]);
   const selectedDeal = data?.deals.find((deal) => deal.id === selectedDealId) ?? null;
@@ -400,7 +402,7 @@ export function CrmWorkspace({ accessToken, initialDealId = null, onInitialDealH
       <aside className="crm-pipe-rail"><div className="crm-pipe-rail-head"><span className="crm-pipe-rail-title">FUNIS</span><button type="button" className="crm-pipe-rail-toggle" title={railCollapsed ? "Expandir funis" : "Recolher funis"} aria-label={railCollapsed ? "Expandir funis" : "Recolher funis"} onClick={() => setRailCollapsed((prev) => !prev)}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">{railCollapsed ? <path d="M9 6l6 6-6 6" /> : <path d="M15 6l-6 6 6 6" />}</svg></button></div>{(data.pipelines ?? []).map((pipeline) => { const count = (data.deals ?? []).filter((deal) => deal.pipeline_id === pipeline.id && !["ganho", "perdido", "descartado"].includes(deal.status)).length; return <button type="button" key={pipeline.id} className={`crm-pipe-item ${pipeline.id === pipelineId ? "active" : ""}`} title={pipeline.nome} onClick={() => { setPipelineId(pipeline.id); setStageId(null); setGroup(null); }}><span className="crm-pipe-dot" /><strong>{pipeline.nome}</strong><em>{count}</em></button>; })}</aside>
       <PipelineViewEnhanced stages={visibleStages} allStages={activeStages} deals={filteredDeals} leadById={leadById} brokerById={brokerById} slaByDeal={slaByDeal} canReassign={canReassign} onReassign={setBrokerPickerDealId} onOpen={openDeal} onChat={openChat} onMutate={mutate} setMessage={setMessage} draggingId={draggingDealId} onDrag={setDraggingDealId} onDrop={dropDeal} canManageStages={canManageStages} onReorderStage={reorderStage} onRecolorStage={recolorStage} onSaveStage={saveStage} onBulkFromStage={openBulkFromStage} stageCount={activeStages.length} canMoveDeals={canMoveDeals} onPickStage={setStagePickerDealId} readByDeal={readByDeal} aquario={data.aquario ?? null} fishing={fishing} onPescar={pescarLead} />
     </div>}
-    {!loading && !error && data && view === "leads" && <LeadsViewEnhanced deals={filteredDeals} leadById={leadById} stages={activeStages} brokerById={brokerById} slaByDeal={slaByDeal} canReassign={canReassign} onReassign={setBrokerPickerDealId} onOpen={openDeal} onChat={openChat} onMutate={mutate} setMessage={setMessage} canMoveDeals={canMoveDeals} onPickStage={setStagePickerDealId} />}
+    {!loading && !error && data && view === "leads" && <LeadsViewEnhanced deals={filteredDeals} leadById={leadById} stages={data.stages} brokerById={brokerById} slaByDeal={slaByDeal} canReassign={canReassign} onReassign={setBrokerPickerDealId} onOpen={openDeal} onChat={openChat} onMutate={mutate} setMessage={setMessage} canMoveDeals={canMoveDeals} onPickStage={setStagePickerDealId} />}
     {!loading && !error && data && view === "agenda" && <AgendaView data={data} leadById={leadById} onMutate={mutate} setMessage={setMessage} sessionRole={sessionRole} accessToken={accessToken} />}
     {!loading && !error && data && view === "atividades" && <ActivitiesView data={data} leadById={leadById} brokerById={brokerById} onOpen={(leadId) => setSelectedDealId(data.deals.find((deal) => deal.lead_id === leadId)?.id ?? null)} />}
     {!loading && !error && data && view === "sales" && <SalesProcessView accessToken={accessToken} initialCreate={launchSaleOnReady} sessionRole={sessionRole} />}
