@@ -25,6 +25,7 @@ import { TeamWorkspace } from "../team/TeamWorkspace";
 import { CalendarWorkspace } from "../calendar/CalendarWorkspace";
 import { ProjectsWorkspace } from "../projects/ProjectsWorkspace";
 import { SettingsWorkspace } from "../settings/SettingsWorkspace";
+import { EquipeWorkspace } from "../team/EquipeWorkspace";
 import { PermissionsWorkspace } from "../permissions/PermissionsWorkspace";
 import { AuditWorkspace } from "../audit/AuditWorkspace";
 import { NotificationsWorkspace } from "../notifications/NotificationsWorkspace";
@@ -64,9 +65,10 @@ type CatalogResponse = {
   role?: string;
 };
 
-type SessionProfile = { userId: string; email: string; name: string; role: "admin" | "gestor" | "corretor"; active: boolean; brokerId: number | null; online: boolean; permissoes?: Record<string, string[]> | null };
+type SessionProfile = { userId: string; email: string; name: string; role: "admin" | "gestor" | "corretor"; perfil?: string | null; active: boolean; brokerId: number | null; online: boolean; permissoes?: Record<string, string[]> | null };
+const MANAGER_ROLES = new Set(["admin", "executivo", "diretor", "gerente", "gestor_comercial", "gestor_equipe"]);
 
-const brokerModules = new Set<ModuleName>(["Início", "CRM", "Performance", "Produtos", "Financeiro", "Chat ao Vivo", "Financiamento", "Disparos", "Calendário", "Notificações", "Configurações", "Ajuda"]);
+const brokerModules = new Set<ModuleName>(["Início", "CRM", "Performance", "Produtos", "Financeiro", "Chat ao Vivo", "Financiamento", "Disparos", "Calendário", "Notificações", "Configurações", "Ajuda", "Minha Equipe"]);
 
 function DisconnectionAlert({ accessToken, onOpen }: { accessToken: string; onOpen: () => void }) {
   const [count, setCount] = useState(0);
@@ -281,7 +283,7 @@ export function ProductCatalog() {
   }
 
   return (
-    <AppShell activeItem={activeModule} onNavigate={setActiveModule} onOpenProfile={() => setProfileOpen(true)} sessionRole={sessionProfile?.role ?? "corretor"} sessionName={sessionProfile?.name ?? "Corretor"} modulePermissions={sessionProfile?.permissoes ?? null} badges={{ Produtos: canApprove ? pendingCount + pendingUnits.length : 0 }}>
+    <AppShell activeItem={activeModule} onNavigate={setActiveModule} onOpenProfile={() => setProfileOpen(true)} sessionRole={sessionProfile?.role ?? "corretor"} sessionName={sessionProfile?.name ?? "Corretor"} modulePermissions={sessionProfile?.permissoes ?? null} isManager={MANAGER_ROLES.has(sessionProfile?.perfil ?? "")} badges={{ Produtos: canApprove ? pendingCount + pendingUnits.length : 0 }}>
       {sessionProfile?.role === "corretor" && accessToken && <PresenceHeartbeat accessToken={accessToken} />}
       {activeModule === "Início" && accessToken ? (
         <HomeWorkspace accessToken={accessToken} sessionName={sessionProfile?.name ?? ""} onNavigate={(moduleName) => setActiveModule(moduleName as ModuleName)} />
@@ -296,7 +298,7 @@ export function ProductCatalog() {
       ) : activeModule === "Disparos" && accessToken ? (
         <CampaignWorkspace accessToken={accessToken} />
       ) : activeModule === "Financeiro" && accessToken ? (
-        <FinanceWorkspace accessToken={accessToken} sessionRole={sessionProfile?.role ?? "corretor"} onNavigateToNewSale={() => { setCrmInitialView("sales"); setCrmLaunchNewSale(true); setActiveModule("CRM"); }} />
+        <FinanceWorkspace accessToken={accessToken} sessionRole={sessionProfile?.role ?? "corretor"} perfil={sessionProfile?.perfil ?? null} sessionUserId={sessionProfile?.userId ?? null} onNavigateToNewSale={() => { setCrmInitialView("sales"); setCrmLaunchNewSale(true); setActiveModule("CRM"); }} />
       ) : activeModule === "Usuários" && accessToken ? (
         <TeamWorkspace accessToken={accessToken} />
       ) : activeModule === "Perfis e Permissões" && accessToken ? (
@@ -309,6 +311,8 @@ export function ProductCatalog() {
         <AuditWorkspace />
       ) : activeModule === "Notificações" && accessToken ? (
         <NotificationsWorkspace accessToken={accessToken} onOpenLead={(dealId) => { setFocusedDealId(dealId); setActiveModule("CRM"); }} />
+      ) : activeModule === "Minha Equipe" && accessToken ? (
+        <EquipeWorkspace accessToken={accessToken} />
       ) : activeModule === "Configurações" && accessToken ? (
         <SettingsWorkspace accessToken={accessToken} sessionRole={sessionProfile?.role ?? "corretor"} onNavigate={(moduleName) => setActiveModule(moduleName as ModuleName)} />
       ) : activeModule === "Agentes de IA" && accessToken ? (

@@ -1980,6 +1980,30 @@ body:has(.profile-drawer-scrim,.modal-layer,.photo-lightbox,.document-preview-mo
 .notif-actions button.ghost:hover { background:#f7f4f1; }
 @media (max-width:640px){ .notif-item { grid-template-columns:38px minmax(0,1fr); } .notif-actions { grid-column:1/-1; justify-content:flex-end; } }
 
+/* ===== Minha Equipe (leitura de performance + VGV) ===== */
+.equipe-workspace { min-height:100%; background:#faf9f7; padding:0 0 40px; }
+.equipe-filtro { display:flex; gap:7px; flex-wrap:wrap; padding:14px 26px 0; }
+.equipe-filtro button { border:1px solid #e4ddd7; border-radius:999px; padding:7px 13px; background:#fff; color:#6f6863; font-size:12px; font-weight:650; cursor:pointer; }
+.equipe-filtro button:hover { border-color:#d8cfc7; }
+.equipe-filtro button.active { border-color:#ff6500; background:#fff3ec; color:#c2410c; }
+.equipe-resumo { display:flex; gap:12px; flex-wrap:wrap; padding:16px 26px 4px; }
+.equipe-resumo>div { flex:1 1 150px; background:#fff; border:1px solid #eae4df; border-radius:13px; padding:14px 16px; display:flex; flex-direction:column; gap:3px; }
+.equipe-resumo span { font-size:11px; letter-spacing:.05em; color:#a89e97; font-weight:700; text-transform:uppercase; }
+.equipe-resumo strong { font-size:20px; color:#2b2723; font-weight:700; }
+.equipe-lista { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:12px; padding:16px 26px; }
+.equipe-card { background:#fff; border:1px solid #eae4df; border-radius:14px; padding:15px 16px; display:flex; flex-direction:column; gap:11px; }
+.equipe-card.self { border-color:#f3d9c2; background:#fffaf5; }
+.equipe-card-top { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+.equipe-card-top strong { font-size:14px; color:#2b2723; font-weight:650; display:flex; align-items:center; gap:7px; }
+.equipe-card-top strong em { font-style:normal; font-size:10px; font-weight:800; letter-spacing:.03em; color:#c2410c; background:#fdf1e5; border-radius:999px; padding:2px 8px; }
+.equipe-score { min-width:34px; height:34px; display:grid; place-items:center; border-radius:10px; background:#eef7f0; color:#17834d; font-weight:800; font-size:14px; }
+.equipe-metrics { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+.equipe-metrics span { display:block; font-size:10.5px; color:#a89e97; font-weight:700; text-transform:uppercase; letter-spacing:.03em; }
+.equipe-metrics b { font-size:13px; color:#2b2723; font-weight:700; }
+.equipe-meta-bar { position:relative; height:20px; background:#f2ede8; border-radius:999px; overflow:hidden; display:flex; align-items:center; }
+.equipe-meta-bar i { position:absolute; left:0; top:0; bottom:0; background:linear-gradient(90deg,#ffb066,#ff6500); border-radius:999px; }
+.equipe-meta-bar small { position:relative; margin-left:10px; font-size:10.5px; font-weight:750; color:#5f574f; }
+
 /* Doc §11 — Abordagens: filtros, prévia e ações de grupo */
 .approach-filters { display:flex; align-items:center; gap:6px; padding:0 0 12px; }
 .approach-filters button { border:1px solid #ddd6d1; border-radius:999px; padding:6px 11px; background:#fff; color:#6f6863; font-size:11px; font-weight:750; cursor:pointer; }
