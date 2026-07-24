@@ -41,6 +41,29 @@ function classifica(score: number) {
   return { rotulo: "Crítico", cor: "#dc2626" };
 }
 
+// cor de status por valor 0–100 (verde/azul/âmbar/vermelho) — sempre acompanhada do número
+function statusCor(v: number) {
+  if (v >= 75) return "#16a34a";
+  if (v >= 50) return "#2563eb";
+  if (v >= 30) return "#d97706";
+  return "#dc2626";
+}
+
+// card de destaque grande com barra de progresso opcional
+function Hero({ rotulo, valor, sub, cor, pct, seta }: { rotulo: string; valor: string; sub?: string; cor?: string; pct?: number; seta?: number }) {
+  return (
+    <div className="pn-hero" style={cor ? { borderTopColor: cor } : undefined}>
+      <span className="pn-hero-r">{rotulo}</span>
+      <strong className="pn-hero-v" style={cor ? { color: cor } : undefined}>
+        {valor}
+        {typeof seta === "number" && seta !== 0 ? <em className={seta > 0 ? "up" : "down"}>{seta > 0 ? "▲" : "▼"}{Math.abs(seta)}</em> : null}
+      </strong>
+      {typeof pct === "number" ? <div className="pn-hero-bar"><i style={{ width: `${Math.min(100, Math.max(2, pct))}%`, background: cor ?? "#f97316" }} /></div> : null}
+      {sub ? <small className="pn-hero-s">{sub}</small> : null}
+    </div>
+  );
+}
+
 function Kpi({ titulo, valor, sub, hint }: { titulo: string; valor: string; sub?: string; hint?: string }) {
   return (
     <div className="pn-kpi" title={hint}>
@@ -97,6 +120,7 @@ export function PerformanceWorkspace({ accessToken }: { accessToken: string }) {
     () => [...corretores].sort((a, b) => num(b.vgv) - num(a.vgv) || num(b.score) - num(a.score)),
     [corretores],
   );
+  const rankScore = useMemo(() => [...corretores].sort((a, b) => num(b.score) - num(a.score)), [corretores]);
 
   const atual = sel === "equipe" ? null : corretores.find((c) => Number(c.corretor_id) === sel) ?? null;
 
@@ -134,6 +158,50 @@ export function PerformanceWorkspace({ accessToken }: { accessToken: string }) {
       ) : (
         <>
           <p className="pn-intro">O <b>Score ApêCerto</b> (0–100) resume o desempenho a partir de 6 indicadores com pesos diferentes. Escolha um corretor ou veja a equipe, e passe o mouse nos <span className="pn-help">?</span> para entender cada número.</p>
+
+          {(() => {
+            const total = corretores.length;
+            const isC = !!atual;
+            const sc = num(atual ? atual.score : equipe.score);
+            const cls = classifica(sc);
+            const vals = PESOS.map((p) => ({ label: p.label, v: atual ? num(atual[p.key]) : Math.round(equipe.media(p.key)) }));
+            const forte = vals.reduce((a, b) => (b.v > a.v ? b : a));
+            const fraco = vals.reduce((a, b) => (b.v < a.v ? b : a));
+            const pos = atual ? rankScore.findIndex((c) => Number(c.corretor_id) === Number(atual.corretor_id)) + 1 : 0;
+            const trm = num(atual ? atual.tempoRespComercial : equipe.media("tempoRespComercial"));
+            const respCor = trm > 0 && trm <= 5 ? "#16a34a" : trm <= 15 ? "#2563eb" : trm <= 30 ? "#d97706" : "#dc2626";
+            return (
+              <>
+                <p className="pn-leitura" style={{ borderLeftColor: cls.cor }}>
+                  <b style={{ color: cls.cor }}>{cls.rotulo} · {sc}/100.</b>{" "}
+                  {isC ? <>{String(atual!.nome)} está em <b>#{pos} de {total}</b>. </> : <>Equipe com {total} corretores. </>}
+                  Ponto forte: <b>{forte.label}</b> ({forte.v}). A melhorar: <b>{fraco.label}</b> ({fraco.v}).
+                </p>
+                <div className="pn-hero-row">
+                  {isC ? (
+                    <>
+                      <Hero rotulo="Score ApêCerto" valor={`${sc}`} sub={cls.rotulo} cor={cls.cor} seta={num(atual!.evoScore)} />
+                      <Hero rotulo="Posição no time" valor={`#${pos}`} sub={`de ${total} corretores`} />
+                      <Hero rotulo="VGV do mês" valor={brlM(atual!.vgv)} sub="meta R$ 2,5M" pct={(num(atual!.vgv) / 2_500_000) * 100} cor={statusCor(Math.min(100, (num(atual!.vgv) / 2_500_000) * 100))} />
+                      <Hero rotulo="Visitas realizadas" valor={`${int(atual!.visitasReal)}/15`} sub="meta do mês" pct={(num(atual!.visitasReal) / 15) * 100} cor={statusCor(Math.min(100, (num(atual!.visitasReal) / 15) * 100))} />
+                      <Hero rotulo="1ª resposta" valor={min1(atual!.tempoRespComercial)} sub="comercial · ótimo ≤5 min" cor={respCor} />
+                      <Hero rotulo="Qualidade (IA)" valor={`${int(atual!.notaGeralIa)}`} sub="nota das conversas" cor={statusCor(num(atual!.notaGeralIa))} />
+                    </>
+                  ) : (
+                    <>
+                      <Hero rotulo="Score médio" valor={`${sc}`} sub={cls.rotulo} cor={cls.cor} />
+                      <Hero rotulo="VGV do time" valor={brlM(equipe.vgv)} sub={`${equipe.vendas} venda(s) no mês`} />
+                      <Hero rotulo="Destaque do mês" valor={String(rankScore[0]?.nome ?? "—")} sub={`${num(rankScore[0]?.score)} pts`} cor="#16a34a" />
+                      <Hero rotulo="Precisa de atenção" valor={String(rankScore[rankScore.length - 1]?.nome ?? "—")} sub={`${num(rankScore[rankScore.length - 1]?.score)} pts`} cor="#dc2626" />
+                      <Hero rotulo="1ª resposta média" valor={min1(equipe.media("tempoRespComercial"))} sub="horário comercial" cor={respCor} />
+                      <Hero rotulo="Visitas do time" valor={int(corretores.reduce((a, c) => a + num(c.visitasReal), 0))} sub="realizadas no mês" />
+                    </>
+                  )}
+                </div>
+              </>
+            );
+          })()}
+
           {/* Score */}
           <div className="pn-score-row">
             {(() => {
@@ -164,8 +232,8 @@ export function PerformanceWorkspace({ accessToken }: { accessToken: string }) {
                   const v = atual ? num(atual[p.key]) : Math.round(equipe.media(p.key));
                   return (
                     <div key={p.key} className="pn-comp-item" title={p.desc}>
-                      <div className="pn-comp-head"><span>{p.label} <em>{p.peso}%</em> <span className="pn-help">?</span></span><b>{v}/100</b></div>
-                      <div className="pn-bar"><i style={{ width: `${Math.min(100, v)}%` }} /></div>
+                      <div className="pn-comp-head"><span><i className="pn-dot" style={{ background: statusCor(v) }} />{p.label} <em>{p.peso}%</em> <span className="pn-help">?</span></span><b style={{ color: statusCor(v) }}>{v}/100</b></div>
+                      <div className="pn-bar"><i style={{ width: `${Math.min(100, v)}%`, background: statusCor(v) }} /></div>
                     </div>
                   );
                 })}
@@ -268,7 +336,18 @@ const CSS = `
 .pn-score-num{font-size:52px;font-weight:800;line-height:1}
 .pn-score-num em{font-size:18px;color:#9ca3af;font-weight:600;font-style:normal}
 .pn-badge{display:inline-block;color:#fff;font-size:11px;font-weight:700;padding:3px 12px;border-radius:20px;margin-top:8px}
-.pn-intro{background:#fff;border:1px solid #eef0f3;border-radius:12px;padding:12px 16px;margin:0 0 16px;font-size:13.5px;color:#4b5563;line-height:1.5}
+.pn-intro{background:#fff;border:1px solid #eef0f3;border-radius:12px;padding:12px 16px;margin:0 0 14px;font-size:13.5px;color:#4b5563;line-height:1.5}
+.pn-leitura{background:#fff;border:1px solid #eef0f3;border-left:4px solid #94a3b8;border-radius:10px;padding:11px 15px;margin:0 0 14px;font-size:14px;color:#374151;line-height:1.5}
+.pn-hero-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(165px,1fr));gap:12px;margin-bottom:20px}
+.pn-hero{background:#fff;border:1px solid #eef0f3;border-top:3px solid #f97316;border-radius:14px;padding:14px 16px;display:flex;flex-direction:column;gap:4px;min-height:96px}
+.pn-hero-r{font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:#9ca3af;font-weight:700}
+.pn-hero-v{font-size:26px;font-weight:800;line-height:1.1;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pn-hero-v em{font-size:12px;font-weight:700;font-style:normal;margin-left:7px}
+.pn-hero-v em.up{color:#16a34a}.pn-hero-v em.down{color:#dc2626}
+.pn-hero-bar{height:6px;background:#f1f3f5;border-radius:6px;overflow:hidden;margin:3px 0 1px}
+.pn-hero-bar i{display:block;height:100%;border-radius:6px}
+.pn-hero-s{font-size:12px;color:#9ca3af}
+.pn-dot{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:6px;vertical-align:middle}
 .pn-help{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;border-radius:50%;background:#e5e7eb;color:#6b7280;font-size:10px;font-weight:700;margin-left:4px;cursor:help;vertical-align:middle}
 .pn-faixas{display:flex;flex-wrap:wrap;gap:4px 12px;margin-top:14px;padding-top:12px;border-top:1px solid #f1f3f5}
 .pn-faixas span{display:inline-flex;align-items:center;gap:5px;font-size:11px;color:#9ca3af;opacity:.6}
