@@ -5334,3 +5334,11 @@ article.tone-red{border-left-color:#d3443e}article.tone-red strong{color:#d3443e
 .quick-action-form .cal-disp.conflito { background:#fdeceb; color:#b23b32; }
 .ficha-produto{margin-top:8px !important;display:inline-block;background:#fff3ec;color:#c2410c;border-radius:999px;padding:6px 14px;font-size:13px !important;font-weight:650;}
 .ficha-produto b{font-weight:800;}
+
+/* Campo de moeda desabilitado (cascata de etapas) e variante de percentual */
+.money-input.off{background:var(--sunken);border-color:var(--line);opacity:.75}
+.money-input.off input{color:var(--muted);cursor:not-allowed}
+.money-input.pct span{order:2}
+.money-input.pct input{text-align:right}
+.condx-grid .money-input,.condx-part .money-input,.condx-parc .money-input,.condx-origem-row .money-input{width:100%}
+.condx-grid label .money-input{margin-top:4px}

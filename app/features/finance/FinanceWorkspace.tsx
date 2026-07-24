@@ -2,6 +2,7 @@
 /* eslint-disable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
 
 import { useEffect, useMemo, useState } from "react";
+import { MoneyInput as MoneyField, PercentInput } from "../../components/MoneyInput";
 import { getBrowserSupabaseClient } from "../../lib/supabase/browser";
 
 type Sale = { id: string; created_at: string; data_venda: string; data_conclusao?: string | null; empreendimento_id: string | null; empreendimento_nome: string | null; unidade_id: string | null; vgv: number; custos: number; forma_pgto: string | null; percentual_comissao: number | null; status: string; obs: string | null };
@@ -261,7 +262,7 @@ function NovaVendaModal({ accessToken, data, onClose, onSave }: { accessToken: s
         <label className="wide">Empreendimento / produto{empreendimentos.length ? <select value={form.empreendimentoId} onChange={(e) => setForm({ ...form, empreendimentoId: e.target.value })}><option value="">Selecione ou digite abaixo…</option>{empreendimentos.map((emp) => <option value={emp.id} key={emp.id}>{emp.nome}{emp.bairro ? ` · ${emp.bairro}` : ""}</option>)}</select> : null}<input placeholder="Nome do empreendimento" value={form.empreendimentoNome} onChange={(e) => setForm({ ...form, empreendimentoNome: e.target.value })} /></label>
         <label>Unidade<input value={form.unidade} onChange={(e) => setForm({ ...form, unidade: e.target.value })} placeholder="Ex.: Apto 302, Lote 14" /></label>
         <label>VGV<MoneyInput value={form.vgv} ariaLabel="VGV em reais" onChange={(raw) => setForm({ ...form, vgv: raw })} /></label>
-        <label>Comissão total (%)<input min="0" max="100" step="0.01" type="number" value={form.percent} onChange={(e) => setForm({ ...form, percent: e.target.value })} placeholder="Ex.: 5" /></label>
+        <label>Comissão total<PercentInput value={form.percent} onChange={(v) => setForm({ ...form, percent: v === "" ? "" : String(v) })} placeholder="Ex.: 6" /></label>
         <label>Custos<MoneyInput value={form.custos} ariaLabel="Custos em reais" onChange={(raw) => setForm({ ...form, custos: raw })} /></label>
         <label>Forma de pagamento<input value={form.payment} onChange={(e) => setForm({ ...form, payment: e.target.value })} placeholder="Ex.: Financiamento, À vista" /></label>
       </div>
@@ -457,10 +458,9 @@ function CashModal({ data, onClose, onSave, onManage }: { data: FinanceData; onC
 
 function ReceiptModal({ sales, receipts, onClose, onSave }: { sales: Sale[]; receipts: Receipt[]; onClose: () => void; onSave: (payload: Record<string, unknown>) => Promise<void> }) { const [form, setForm] = useState({ saleId: "", installment: "1", due: new Date().toISOString().slice(0, 10), value: "" }); const [busy, setBusy] = useState(false); return <div className="crm-center-modal"><form onSubmit={(event) => { event.preventDefault(); setBusy(true); void onSave({ action: "createReceipt", ...form, installment: Number(form.installment), value: Number(form.value) }).finally(() => setBusy(false)); }}><header><div><span>CONTAS A RECEBER</span><h2>Programar recebimento</h2><p>Crie uma parcela prevista ligada à venda.</p></div><button type="button" onClick={onClose}>×</button></header><label>Venda<select required value={form.saleId} onChange={(event) => { const saleId = event.target.value; setForm({ ...form, saleId, installment: String(receipts.filter((item) => item.venda_id === saleId).length + 1) }); }}><option value="">Selecione</option>{sales.map((item) => <option value={item.id} key={item.id}>{item.empreendimento_nome || item.id}</option>)}</select></label><div className="finance-form-grid"><label>Parcela<input required min="1" type="number" value={form.installment} onChange={(event) => setForm({ ...form, installment: event.target.value })} /></label><label>Vencimento<input required type="date" value={form.due} onChange={(event) => setForm({ ...form, due: event.target.value })} /></label><label className="wide">Valor<MoneyInput value={form.value} ariaLabel="Valor" onChange={(raw) => setForm({ ...form, value: raw })} /></label></div><footer><button type="button" onClick={onClose}>Cancelar</button><button className="crm-primary" disabled={busy} type="submit">Programar</button></footer></form></div>; }
 
+// Mantém a assinatura em string usada aqui, delegando a máscara ao componente compartilhado.
 function MoneyInput({ value, onChange, ariaLabel, placeholder }: { value: string; onChange: (raw: string) => void; ariaLabel?: string; placeholder?: string }) {
-  const n = Number(value) || 0;
-  const display = value === "" || n === 0 ? (value === "" ? "" : "0,00") : n.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  return <div className="money-input"><span>R$</span><input inputMode="numeric" aria-label={ariaLabel} placeholder={placeholder || "0,00"} value={display} onChange={(event) => { const digits = event.target.value.replace(/\D/g, ""); onChange(digits ? String(Number(digits) / 100) : ""); }} /></div>;
+  return <MoneyField value={value} aria-label={ariaLabel} placeholder={placeholder} onChange={(valor) => onChange(valor === "" ? "" : String(valor))} />;
 }
 
 function MetasTab({ accessToken, data }: { accessToken: string; data: FinanceData }) {
