@@ -76,7 +76,6 @@ export function HomeWorkspace({ accessToken, sessionName = "", onNavigate }: { a
 
   const stageRows = data.crm.stages.map((stage) => ({ ...stage, count: metrics.openDeals.filter((deal) => deal.stage_id === stage.id).length })).filter((stage) => stage.count > 0).sort((a, b) => b.count - a.count || Number(a.ordem || 0) - Number(b.ordem || 0)).slice(0, 10);
   const maxStage = Math.max(1, ...stageRows.map((item) => item.count));
-  const brokerSales = data.crm.brokers.map((broker) => ({ broker, sales: data.crm.deals.filter((deal) => deal.corretor_id === broker.id && deal.venda_id).length })).sort((a, b) => b.sales - a.sales).slice(0, 5);
   const saleProducts = [...new Set(data.finance.sales.map((sale) => sale.empreendimento_nome || "Produto não informado"))].map((name) => ({ name, count: data.finance.sales.filter((sale) => (sale.empreendimento_nome || "Produto não informado") === name).length })).sort((a, b) => b.count - a.count).slice(0, 5);
   const leadProducts = [...new Set(data.crm.productLinks.map((link) => link.empreendimentos?.nome || link.empreendimento_id))].map((name) => ({ name, count: data.crm.productLinks.filter((link) => (link.empreendimentos?.nome || link.empreendimento_id) === name).length })).sort((a, b) => b.count - a.count).slice(0, 5);
   const effectiveGoal = metaMesGlobal ?? metrics.goal;
@@ -103,8 +102,7 @@ export function HomeWorkspace({ accessToken, sessionName = "", onNavigate }: { a
       <article><i className="yellow">△</i><span>Atividades pendentes</span><strong>{metrics.pendingTasks}</strong><small>tarefas em aberto</small></article>
     </section>
     <section className="home-two-columns">
-      <article className="home-panel"><h2>Funil por etapa <small>Top 10 por volume</small></h2>{stageRows.map((stage) => <button className="home-funnel-row drill" type="button" onClick={() => onNavigate?.("CRM")} key={stage.id}><span><i style={{ background: stage.cor || "#ff6500" }} />{stage.nome}<b>{stage.count} · leads</b></span><div><u style={{ width: `${stage.count / maxStage * 100}%`, background: stage.cor || "#ff6500" }} /></div></button>)}{stageRows.length === 0 && <p>Nenhum negócio aberto no funil.</p>}</article>
-      <article className="home-panel"><h2>Ranking de corretores</h2>{brokerSales.map((item, index) => <div className="home-ranking-row" key={item.broker.id}><b>{index + 1}</b><i>{item.broker.nome.slice(0, 1)}</i><span><strong>{item.broker.nome}</strong><small>{item.sales} venda(s)</small></span><em>{item.sales}</em></div>)}{brokerSales.length === 0 && <p>Nenhum corretor disponível.</p>}</article>
+      <article className="home-panel" style={{ gridColumn: "1 / -1" }}><h2>Funil por etapa <small>Top 10 por volume</small></h2>{stageRows.map((stage) => <button className="home-funnel-row drill" type="button" onClick={() => onNavigate?.("CRM")} key={stage.id}><span><i style={{ background: stage.cor || "#ff6500" }} />{stage.nome}<b>{stage.count} · leads</b></span><div><u style={{ width: `${stage.count / maxStage * 100}%`, background: stage.cor || "#ff6500" }} /></div></button>)}{stageRows.length === 0 && <p>Nenhum negócio aberto no funil.</p>}</article>
     </section>
     <section className="home-three-columns">
       <article className="home-panel"><h2>Produtos mais vendidos</h2>{saleProducts.map((item, index) => <div className="home-list-row" key={item.name}><i className={`product-rank tone-${index + 1}`}>{index + 1}</i><span>{item.name}</span><b>{item.count} vendas</b></div>)}</article>
