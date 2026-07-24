@@ -1,29 +1,15 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import {
+  MODULE_CAPABILITIES, MODULE_ORDER, MODULE_LABELS, ACTION_ORDER, ACTION_LABELS,
+  label, isCapability, type PermissionMap,
+} from "../../lib/permissions";
 
-type Perms = Record<string, string[]>;
+type Perms = PermissionMap;
 type Perfil = { id: string; nome: string; is_system: boolean; permissoes: Perms; atualizado_em?: string | null };
 type Usuario = { id: string; nome: string; role: string; ativo: boolean; permissoes: Perms | null };
 
-const MODULE_LABELS: Record<string, string> = {
-  dashboard: "Início / Dashboard", crm: "CRM", leads: "Leads", pipeline: "Funil (Pipeline)", chat: "Chat ao Vivo",
-  disparos: "Disparos", abordagens: "Abordagens", produtos: "Produtos", vendas: "Vendas", comissoes: "Comissões",
-  financeiro: "Financeiro", fluxo_caixa: "Fluxo de caixa", metas: "Metas", performance: "Performance",
-  calendario: "Calendário", automacoes: "Automações", agentes_ia: "Agentes de IA", notificacoes: "Notificações",
-  configuracoes: "Configurações", usuarios: "Usuários", auditoria: "Auditoria",
-};
-const MODULE_ORDER = ["dashboard", "crm", "leads", "pipeline", "chat", "disparos", "abordagens", "produtos", "vendas", "comissoes", "financeiro", "fluxo_caixa", "metas", "performance", "calendario", "automacoes", "agentes_ia", "notificacoes", "configuracoes", "usuarios", "auditoria"];
-const ACTION_LABELS: Record<string, string> = {
-  ver: "Ver", criar: "Criar", editar: "Editar", excluir: "Excluir", exportar: "Exportar", importar: "Importar",
-  aprovar: "Aprovar", enviar: "Enviar", cancelar: "Cancelar", conciliar: "Conciliar", mover: "Mover", reordenar: "Reordenar",
-  atribuir: "Atribuir", atribuir_proprio: "Atribuir (próprio)", transferir: "Transferir", publicar: "Publicar",
-  configurar: "Configurar", executar: "Executar", gerenciar_permissoes: "Gerenciar permissões", ver_conexoes: "Ver conexões",
-  visualizar_historico: "Ver histórico", consultar_execucoes: "Consultar execuções",
-};
-const ACTION_ORDER = ["ver", "criar", "editar", "excluir", "exportar", "importar", "aprovar", "enviar", "cancelar", "conciliar", "mover", "reordenar", "atribuir", "atribuir_proprio", "transferir", "publicar", "configurar", "executar", "gerenciar_permissoes", "ver_conexoes", "visualizar_historico", "consultar_execucoes"];
-
-const label = (dict: Record<string, string>, key: string) => dict[key] ?? key.replace(/_/g, " ");
 const scopeOf = (id: string) => (id === "admin" || id === "auditor" || id === "financeiro" || id === "gestor_comercial" ? "todos" : id === "gestor_equipe" ? "equipe" : "proprio");
 const SCOPE_LABEL: Record<string, string> = { proprio: "Somente os próprios dados", equipe: "Dados da própria equipe", todos: "Todos os dados da empresa" };
 
@@ -47,16 +33,15 @@ export function PermissionsWorkspace({ accessToken }: { accessToken: string }) {
   };
   useEffect(() => { void load().catch((e) => setError(e instanceof Error ? e.message : "Erro ao carregar.")); }, [accessToken]);
 
-  // Catálogo: módulos e ações realmente usados em qualquer perfil (fonte da verdade do que o sistema verifica)
+  // Catálogo = FONTE DA VERDADE (app/lib/permissions). Cada módulo mostra apenas as
+  // ações que fazem sentido; as colunas são a união das ações válidas, na ordem canônica.
   const catalog = useMemo(() => {
-    const map: Record<string, Set<string>> = {};
-    for (const p of perfis) for (const [mod, acts] of Object.entries(p.permissoes || {})) { (map[mod] ??= new Set()); (acts || []).forEach((a) => map[mod].add(a)); }
-    for (const m of MODULE_ORDER) map[m] ??= new Set(["ver"]);
-    const modules = Object.keys(map).sort((a, b) => (MODULE_ORDER.indexOf(a) + 1 || 99) - (MODULE_ORDER.indexOf(b) + 1 || 99) || a.localeCompare(b));
-    const actionsByMod: Record<string, string[]> = {};
-    for (const m of modules) actionsByMod[m] = [...map[m]].sort((a, b) => (ACTION_ORDER.indexOf(a) + 1 || 99) - (ACTION_ORDER.indexOf(b) + 1 || 99) || a.localeCompare(b));
-    return { modules, actionsByMod };
-  }, [perfis]);
+    const modules = MODULE_ORDER.filter((m) => (MODULE_CAPABILITIES[m] ?? []).length > 0);
+    const actionsByMod: Record<string, readonly string[]> = {};
+    for (const m of modules) actionsByMod[m] = MODULE_CAPABILITIES[m] ?? [];
+    const cols = ACTION_ORDER.filter((a) => modules.some((m) => isCapability(m, a)));
+    return { modules, actionsByMod, cols };
+  }, []);
 
   const perfilById = useMemo(() => new Map(perfis.map((p) => [p.id, p])), [perfis]);
   const userById = useMemo(() => new Map(usuarios.map((u) => [u.id, u])), [usuarios]);
@@ -162,21 +147,31 @@ export function PermissionsWorkspace({ accessToken }: { accessToken: string }) {
               <div className="perms-matrix-wrap">
                 <table className="perms-matrix">
                   <thead>
-                    <tr><th className="mod-col">Módulo</th>{ACTION_ORDER.filter((a) => catalog.modules.some((m) => catalog.actionsByMod[m].includes(a))).map((a) => <th key={a}>{label(ACTION_LABELS, a)}</th>)}</tr>
+                    <tr><th className="mod-col">Módulo</th>{catalog.cols.map((a) => <th key={a}>{label(ACTION_LABELS, a)}</th>)}</tr>
                   </thead>
                   <tbody>
-                    {catalog.modules.map((m) => {
-                      const cols = ACTION_ORDER.filter((a) => catalog.modules.some((mm) => catalog.actionsByMod[mm].includes(a)));
-                      return (
-                        <tr key={m}>
-                          <td className="mod-col"><strong>{label(MODULE_LABELS, m)}</strong></td>
-                          {cols.map((a) => {
-                            const applicable = catalog.actionsByMod[m].includes(a);
-                            return <td key={a} className={applicable ? "" : "na"}>{applicable ? <input type="checkbox" checked={has(m, a)} onChange={() => toggle(m, a)} aria-label={`${label(MODULE_LABELS, m)} · ${label(ACTION_LABELS, a)}`} /> : <span>—</span>}</td>;
-                          })}
-                        </tr>
-                      );
-                    })}
+                    {catalog.modules.map((m) => (
+                      <tr key={m}>
+                        <td className="mod-col"><strong>{label(MODULE_LABELS, m)}</strong></td>
+                        {catalog.cols.map((a) => {
+                          if (!isCapability(m, a)) return <td key={a} className="perm-blank" aria-hidden="true" />;
+                          const on = has(m, a);
+                          return (
+                            <td key={a}>
+                              <button
+                                type="button"
+                                role="switch"
+                                aria-checked={on}
+                                className={`perm-toggle ${on ? "on" : "off"}`}
+                                onClick={() => toggle(m, a)}
+                                title={`${label(MODULE_LABELS, m)} · ${label(ACTION_LABELS, a)}: ${on ? "permitido" : "bloqueado"}`}
+                                aria-label={`${label(MODULE_LABELS, m)} · ${label(ACTION_LABELS, a)}`}
+                              >{on ? "Sim" : "Não"}</button>
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
               </div>
