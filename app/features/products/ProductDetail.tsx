@@ -294,6 +294,7 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
         </div>
       ) : (
         <div className="fv2-page">
+          <button className="fv2-close" type="button" onClick={onClose} aria-label="Fechar ficha do produto"><IcClose /></button>
           <div className="fv2-main">
             <div className="fv2-mosaic">
               <button className="fv2-mosaic-cover" type="button" onClick={() => photos.length && setLightboxIndex(0)} style={cover?.url ? { backgroundImage: `url(${cover.url})` } : undefined} aria-label="Ampliar galeria de fotos">
@@ -305,7 +306,6 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
                   <IcImages /><span>Ver {photos.length} foto{photos.length === 1 ? "" : "s"}</span>
                 </button>
               </div>
-              <button className="fv2-close" type="button" onClick={onClose} aria-label="Fechar ficha do produto"><IcClose /></button>
             </div>
 
             <div className="fv2-head">
