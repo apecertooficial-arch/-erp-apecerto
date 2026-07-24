@@ -1,4 +1,5 @@
 import { createServerSupabaseClient } from "../../../lib/supabase/server";
+import { blocoAberto, completudeBloco, docExigido, etapaDoBloco, pendenciasParaAvancar, podeEditarEtapa, type BlocoEsteira, type DadosCompletude, type EtapaRegra } from "../../../lib/esteira";
 
 export const dynamic = "force-dynamic";
 
@@ -18,21 +19,78 @@ const slugify = (value: string) => value.normalize("NFD").replace(/[\u0300-\u036
 const PAPEIS_PARTE = ["comprador", "conjuge_comprador", "vendedor", "conjuge_vendedor"] as const;
 const FORMAS_PGTO = ["a_vista", "financiamento", "consorcio", "misto"] as const;
 
+/** Bloco de documentos correspondente a cada grupo do checklist. */
+const GRUPO_BLOCO: Record<string, BlocoEsteira> = {
+  comprador: "docs_comprador", conjuge_comprador: "docs_comprador",
+  vendedor: "docs_vendedor", conjuge_vendedor: "docs_vendedor",
+  imovel: "docs_imovel",
+};
+
 /**
- * Regra de documento condicional.
- * condicao null  \u2192 sempre exigido.
- * 'financiamento' \u2192 s\u00f3 quando a venda \u00e9 financiada (ou mista).
- * 'consorcio'     \u2192 s\u00f3 quando a venda \u00e9 por cons\u00f3rcio (ou mista).
- * 'nao_a_vista'   \u2192 qualquer forma que n\u00e3o seja \u00e0 vista.
- * Sem forma de pagamento definida, o documento permanece vis\u00edvel mas n\u00e3o trava o avan\u00e7o.
+ * Carrega tudo que a cascata precisa avaliar para um processo:
+ * etapas configuradas, etapa atual, condi\u00e7\u00f5es, comiss\u00e3o, partes, checklist e anexos.
  */
-function docExigido(condicao: string | null, forma: string | null): boolean {
-  if (!condicao) return true;
-  if (!forma) return false;
-  if (condicao === "financiamento") return forma === "financiamento" || forma === "misto";
-  if (condicao === "consorcio") return forma === "consorcio" || forma === "misto";
-  if (condicao === "nao_a_vista") return forma !== "a_vista";
-  return true;
+async function contexto(auth: Auth, processId: string) {
+  const [{ data: proc }, { data: etapasRaw }, { data: cond }, { data: com }, { data: partes }, { data: modelo }, { data: anexos }, { data: me }] = await Promise.all([
+    auth.supabase.from("venda_processos").select("id,etapa,negocio_id,tipo_venda,aprovacao_status").eq("id", processId).maybeSingle(),
+    auth.supabase.from("esteira_etapas").select("slug,nome,ordem,libera,restrito_a,exige_docs").eq("ativo", true).order("ordem", { ascending: true }),
+    auth.supabase.from("venda_condicoes").select("valor_total,forma_pagamento,comprador_tem_conjuge,vendedor_tem_conjuge").eq("processo_ref", processId).maybeSingle(),
+    auth.supabase.from("venda_comissao").select("percentual_total,valor_total").eq("processo_ref", processId).maybeSingle(),
+    auth.supabase.from("venda_partes").select("papel,nome,telefone,email").eq("processo_ref", processId),
+    auth.supabase.from("esteira_doc_modelo").select("grupo,nome,obrigatorio,condicao").eq("ativo", true),
+    auth.supabase.from("esteira_anexos").select("grupo,doc_nome,status,obrigatorio").eq("processo_ref", processId),
+    auth.supabase.from("usuarios").select("role,nome").eq("id", auth.user.id).maybeSingle(),
+  ]);
+  const etapas = (etapasRaw ?? []) as unknown as EtapaRegra[];
+  const atual = proc ? etapas.find((e) => e.slug === (proc as { etapa: string }).etapa) ?? null : null;
+  const dados: DadosCompletude = {
+    condicao: (cond ?? null) as DadosCompletude["condicao"],
+    comissao: (com ?? null) as DadosCompletude["comissao"],
+    partes: (partes ?? []) as DadosCompletude["partes"],
+    modelo: (modelo ?? []) as DadosCompletude["modelo"],
+    anexos: (anexos ?? []) as DadosCompletude["anexos"],
+    temConjugeComprador: Boolean((cond as { comprador_tem_conjuge?: boolean } | null)?.comprador_tem_conjuge),
+    temConjugeVendedor: Boolean((cond as { vendedor_tem_conjuge?: boolean } | null)?.vendedor_tem_conjuge),
+  };
+  return { proc, etapas, atual, dados, role: (me?.role as string | undefined) ?? null };
+}
+
+/** Primeiro bloco de documentos aberto na etapa atual (para arquivos de lote ainda sem grupo). */
+function blocoDocsAberto(ctx: { atual: EtapaRegra | null }): BlocoEsteira | null {
+  const abertos = (ctx.atual?.libera ?? []).filter((b) => b.startsWith("docs_")) as BlocoEsteira[];
+  return abertos[0] ?? null;
+}
+
+/**
+ * Trava de cascata: o bloco s\u00f3 pode ser preenchido na etapa que o libera,
+ * e s\u00f3 por quem tem papel para aquela etapa. Devolve null quando est\u00e1 liberado.
+ */
+async function guardBloco(auth: Auth, processId: string, bloco: BlocoEsteira) {
+  const ctx = await contexto(auth, processId);
+  if (!ctx.proc) return { deny: Response.json({ error: "Venda n\u00e3o encontrada." }, { status: 404 }), ctx };
+  if (!blocoAberto(ctx.atual, bloco)) {
+    const alvo = etapaDoBloco(ctx.etapas, bloco);
+    const onde = alvo ? `Isso \u00e9 preenchido na etapa "${alvo.nome}".` : "Este bloco n\u00e3o est\u00e1 habilitado em nenhuma etapa.";
+    return { deny: Response.json({ error: `A venda est\u00e1 em "${ctx.atual?.nome ?? "etapa desconhecida"}". ${onde}` }, { status: 409 }), ctx };
+  }
+  if (!podeEditarEtapa(ctx.role, ctx.atual)) {
+    const quem = (ctx.atual?.restrito_a ?? []).join(" ou ");
+    return { deny: Response.json({ error: `S\u00f3 ${quem} pode preencher a etapa "${ctx.atual?.nome}".` }, { status: 403 }), ctx };
+  }
+  return { deny: null, ctx };
+}
+
+/**
+ * Mant\u00e9m venda_condicoes.{comprador,vendedor}_tem_conjuge coerente com a exist\u00eancia
+ * da parte c\u00f4njuge \u2014 \u00e9 essa flag que liga o grupo de documentos do c\u00f4njuge.
+ */
+async function sincronizarConjuge(auth: Auth, processId: string, papel: string) {
+  const coluna = papel === "conjuge_comprador" ? "comprador_tem_conjuge" : "vendedor_tem_conjuge";
+  const { count } = await auth.supabase.from("venda_partes").select("id", { count: "exact", head: true }).eq("processo_ref", processId).eq("papel", papel);
+  await auth.supabase.from("venda_condicoes").upsert(
+    { processo_ref: processId, [coluna]: (count ?? 0) > 0, atualizado_em: new Date().toISOString() } as never,
+    { onConflict: "processo_ref" },
+  );
 }
 
 /** Registra um evento na trilha de auditoria dos anexos (nunca derruba a requisi\u00e7\u00e3o principal). */
@@ -71,7 +129,7 @@ export async function GET(request: Request) {
     auth.supabase.from("leads").select("id,nome,telefone,email,corretor_id,tags,extras"),
     auth.supabase.from("empreendimentos").select("id,nome,origem,bairro,cidade").order("nome"),
     auth.supabase.rpc("listar_corretores_transferencia"),
-    auth.supabase.from("esteira_etapas").select("id,slug,nome,cor,ordem,papel,sla_dias,resale,exige_docs").eq("ativo", true).order("ordem", { ascending: true }),
+    auth.supabase.from("esteira_etapas").select("id,slug,nome,cor,ordem,papel,sla_dias,resale,exige_docs,libera,restrito_a").eq("ativo", true).order("ordem", { ascending: true }),
     auth.supabase.from("esteira_etapa_docs").select("id,etapa_slug,nome,obrigatorio,ordem").eq("ativo", true).order("ordem", { ascending: true }),
     auth.supabase.from("esteira_anexos").select("id,processo_ref,negocio_id,etapa_slug,doc_nome,nome,path,mime,tamanho,criado_em,grupo,status,status_motivo,obrigatorio,observacao,enviado_por,revisado_por,revisado_em,lote_id,origem,ia_status,ia_grupo,ia_doc_nome,ia_confianca,ia_extraido,ia_motivo,ia_processado_em").order("criado_em", { ascending: false }),
     auth.supabase.from("usuarios").select("id,nome,role"),
@@ -103,46 +161,27 @@ export async function PATCH(request: Request) {
     const stage = String(body.stage || "");
     const slugs = await activeSlugs(auth);
     if (!processId || !slugs.has(stage)) return Response.json({ error: "Etapa inválida." }, { status: 422 });
-    // Trava de documentos: só ao AVANÇAR (etapa destino mais à frente) e só se a etapa atual exigir docs.
-    const { data: stageRows } = await auth.supabase.from("esteira_etapas").select("slug,ordem,nome,exige_docs").eq("ativo", true);
-    const stageBySlug = new Map((stageRows ?? []).map((s) => [s.slug as string, s]));
-    const { data: proc } = await auth.supabase.from("venda_processos").select("etapa,negocio_id,aprovacao_status").eq("id", processId).maybeSingle();
-    if (proc && (proc as { aprovacao_status?: string }).aprovacao_status === "pendente") return Response.json({ error: "Esta venda ainda está aguardando aprovação de entrada na esteira." }, { status: 409 });
-    const atual = proc ? stageBySlug.get(proc.etapa as string) : null;
-    const destino = stageBySlug.get(stage);
-    const avancando = atual && destino && Number(destino.ordem) > Number(atual.ordem);
-    if (avancando && atual?.exige_docs) {
-      // Verificação manual do gestor libera direto (override consciente).
-      const { data: verif } = await auth.supabase.from("esteira_etapa_verificacoes").select("id").eq("processo_ref", processId).eq("etapa_slug", proc!.etapa).maybeSingle();
+    // ===== Cascata de etapas =====
+    // Ao AVANÇAR, tudo que a etapa atual liberou para preenchimento precisa estar completo.
+    // A configuração vive em esteira_etapas.libera, então o gestor muda a regra sem deploy.
+    const ctx = await contexto(auth, processId);
+    if (!ctx.proc) return Response.json({ error: "Venda não encontrada." }, { status: 404 });
+    if ((ctx.proc as { aprovacao_status?: string }).aprovacao_status === "pendente") {
+      return Response.json({ error: "Esta venda ainda está aguardando aprovação de entrada na esteira." }, { status: 409 });
+    }
+    const destino = ctx.etapas.find((e) => e.slug === stage);
+    const avancando = ctx.atual && destino && Number(destino.ordem) > Number(ctx.atual.ordem);
+    if (avancando) {
+      // Verificação manual do gestor libera direto (override consciente e auditado).
+      const { data: verif } = await auth.supabase.from("esteira_etapa_verificacoes").select("id").eq("processo_ref", processId).eq("etapa_slug", ctx.atual!.slug).maybeSingle();
       if (!verif) {
-        const motivos: string[] = [];
-        const { data: cond } = await auth.supabase.from("venda_condicoes").select("valor_total,comprador_tem_conjuge,vendedor_tem_conjuge,forma_pagamento").eq("processo_ref", processId).maybeSingle();
-        const grupos = ["comprador", "vendedor", "imovel"];
-        if (cond?.comprador_tem_conjuge) grupos.push("conjuge_comprador");
-        if (cond?.vendedor_tem_conjuge) grupos.push("conjuge_vendedor");
-        const [{ data: modeloRaw }, { data: aps }] = await Promise.all([
-          auth.supabase.from("esteira_doc_modelo").select("grupo,nome,condicao").eq("obrigatorio", true).eq("ativo", true).in("grupo", grupos),
-          auth.supabase.from("esteira_anexos").select("grupo,doc_nome,status,obrigatorio").eq("processo_ref", processId),
-        ]);
-        // Documentos condicionais: só entram na conta quando a forma de pagamento da venda os exige.
-        // À vista não pede carta de crédito nem aprovação de financiamento.
-        const forma = (cond as { forma_pagamento?: string | null } | null)?.forma_pagamento ?? null;
-        const modelo = (modeloRaw ?? []).filter((m) => docExigido((m as { condicao?: string | null }).condicao ?? null, forma));
-        const aprov = new Set((aps ?? []).filter((a) => a.status === "aprovado").map((a) => `${a.grupo}::${a.doc_nome}`));
-        const faltamModelo = modelo.filter((m) => !aprov.has(`${m.grupo}::${m.nome}`));
-        const faltamAvulsos = (aps ?? []).filter((a) => a.obrigatorio && a.status !== "aprovado").length;
-        const emTriagem = (aps ?? []).filter((a) => a.status === "triagem").length;
-        if (emTriagem) motivos.push(`${emTriagem} documento(s) enviado(s) em lote ainda aguardam conferência da classificação da Sara`);
-        if (faltamModelo.length || faltamAvulsos) {
-          const label: Record<string, string> = { comprador: "do comprador", conjuge_comprador: "do cônjuge do comprador", vendedor: "do vendedor", conjuge_vendedor: "do cônjuge do vendedor", imovel: "do imóvel" };
-          const porGrupo: Record<string, number> = {};
-          faltamModelo.forEach((m) => { porGrupo[m.grupo as string] = (porGrupo[m.grupo as string] || 0) + 1; });
-          const partes = Object.entries(porGrupo).map(([g, n]) => `${n} ${label[g] || g}`);
-          if (faltamAvulsos) partes.push(`${faltamAvulsos} adicional(is)`);
-          motivos.push(`Faltam documentos obrigatórios aprovados: ${partes.join(", ")}`);
+        const pendencias = pendenciasParaAvancar(ctx.atual, ctx.dados);
+        // Anexos avulsos marcados como obrigatórios continuam travando, venham de onde vierem.
+        const avulsos = ctx.dados.anexos.filter((a) => a.obrigatorio && a.status !== "aprovado" && a.status !== "triagem").length;
+        if (avulsos) pendencias.push(`${avulsos} documento(s) adicional(is) marcado(s) como obrigatório(s) sem aprovação`);
+        if (pendencias.length) {
+          return Response.json({ error: `Não é possível sair de "${ctx.atual!.nome}" — ${pendencias.join("; ")}.` }, { status: 409 });
         }
-        if (!cond || cond.valor_total == null) motivos.push("as condições comerciais (valor total) ainda não foram preenchidas");
-        if (motivos.length) return Response.json({ error: `Não é possível avançar de "${atual.nome}": ${motivos.join("; ")}.` }, { status: 409 });
       }
     }
     const isFinal = slugs.get(stage) === 0;
@@ -157,7 +196,13 @@ export async function PATCH(request: Request) {
     if (action === "removeAnexo") {
       const id = clean(body.anexoId, 60);
       if (!id) return Response.json({ error: "Anexo inválido." }, { status: 422 });
-      const { data: antes } = await auth.supabase.from("esteira_anexos").select("processo_ref,grupo,doc_nome,nome,path").eq("id", id).maybeSingle();
+      const { data: antes } = await auth.supabase.from("esteira_anexos").select("processo_ref,grupo,doc_nome,nome,path,status").eq("id", id).maybeSingle();
+      if (antes?.processo_ref) {
+        // Arquivo ainda em triagem não tem grupo: liberado enquanto qualquer bloco de documentos estiver aberto.
+        const bloco = GRUPO_BLOCO[String(antes.grupo ?? "")] ?? null;
+        const g = await guardBloco(auth, String(antes.processo_ref), bloco ?? blocoDocsAberto(await contexto(auth, String(antes.processo_ref))) ?? "docs_comprador");
+        if (g.deny) return g.deny;
+      }
       const { error } = await auth.supabase.from("esteira_anexos").delete().eq("id", id);
       if (error) return Response.json({ error: error.message }, { status: 502 });
       await trilha(auth, "removido", { processoRef: (antes?.processo_ref as string) ?? null, detalhe: antes ?? { id } });
@@ -167,6 +212,11 @@ export async function PATCH(request: Request) {
     const path = clean(body.path, 400);
     const nome = clean(body.nome, 200);
     if (!processo_ref || !path || !nome) return Response.json({ error: "Informe o processo, o arquivo e o nome." }, { status: 422 });
+    const grupoAlvo = clean(body.grupo, 40);
+    const blocoAlvo = GRUPO_BLOCO[grupoAlvo];
+    if (!blocoAlvo) return Response.json({ error: "Grupo de documento inválido." }, { status: 422 });
+    const gAnexo = await guardBloco(auth, processo_ref, blocoAlvo);
+    if (gAnexo.deny) return gAnexo.deny;
     const insert: Record<string, unknown> = {
       processo_ref, nome, path,
       etapa_slug: clean(body.etapaSlug, 40) || null,
@@ -493,6 +543,12 @@ export async function PATCH(request: Request) {
   if (action === "salvarCondicoes") {
     const processId = clean(body.processId, 60);
     if (!processId) return Response.json({ error: "Venda inválida." }, { status: 422 });
+    // O toggle "possui cônjuge?" mora nesta tabela mas pertence à documentação —
+    // por isso ele é aceito fora da etapa de proposta; o resto respeita a cascata.
+    if (body.somenteConjuge !== true) {
+      const g = await guardBloco(auth, processId, "condicoes");
+      if (g.deny) return g.deny;
+    }
     const num = (v: unknown) => v === "" || v === null || v === undefined || !Number.isFinite(Number(v)) ? null : Number(v);
     const dt = (v: unknown) => { const s = clean(v, 10); return s || null; };
     const row: Record<string, unknown> = {
@@ -520,10 +576,10 @@ export async function PATCH(request: Request) {
   }
 
   if (action === "salvarComissao") {
-    const denied = await requireManager(auth);
-    if (denied) return denied;
     const processId = clean(body.processId, 60);
     if (!processId) return Response.json({ error: "Venda inválida." }, { status: 422 });
+    const g = await guardBloco(auth, processId, "comissao");
+    if (g.deny) return g.deny;
     const num = (v: unknown) => v === "" || v === null || v === undefined || !Number.isFinite(Number(v)) ? null : Number(v);
     const row: Record<string, unknown> = {
       processo_ref: processId,
@@ -547,13 +603,24 @@ export async function PATCH(request: Request) {
   }
 
   // ===== Partes da negociação: nome, telefone e e-mail de comprador, vendedor e cônjuges =====
-  if (action === "salvarParte") {
+  // A presença de uma parte "conjuge_*" é o que liga o grupo de documentos do cônjuge,
+  // por isso adicionar/remover cônjuge sincroniza a flag em venda_condicoes.
+  if (action === "salvarParte" || action === "adicionarParte") {
     const processId = clean(body.processId, 60);
     const papel = clean(body.papel, 30);
     if (!processId || !(PAPEIS_PARTE as readonly string[]).includes(papel)) return Response.json({ error: "Informe a venda e o papel da parte." }, { status: 422 });
-    const ordem = Number.isSafeInteger(Number(body.ordem)) && Number(body.ordem) > 0 ? Number(body.ordem) : 1;
+    const g = await guardBloco(auth, processId, papel.includes("vendedor") ? "partes_vendedor" : "partes_comprador");
+    if (g.deny) return g.deny;
     const email = clean(body.email, 160).toLowerCase();
     if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return Response.json({ error: "E-mail inválido." }, { status: 422 });
+
+    let ordem = Number.isSafeInteger(Number(body.ordem)) && Number(body.ordem) > 0 ? Number(body.ordem) : 0;
+    if (!ordem) {
+      // Sem ordem explícita: "adicionarParte" cria a próxima; "salvarParte" edita a primeira.
+      const { data: ult } = await auth.supabase.from("venda_partes").select("ordem").eq("processo_ref", processId).eq("papel", papel).order("ordem", { ascending: false }).limit(1).maybeSingle();
+      ordem = action === "adicionarParte" ? Number(ult?.ordem ?? 0) + 1 : Number(ult?.ordem ?? 0) || 1;
+      if (action === "adicionarParte" && ordem > 6) return Response.json({ error: "Limite de 6 pessoas por papel." }, { status: 422 });
+    }
     const row: Record<string, unknown> = {
       processo_ref: processId, papel, ordem,
       nome: clean(body.nome, 160) || null,
@@ -564,14 +631,27 @@ export async function PATCH(request: Request) {
       atualizado_por: auth.user.id, atualizado_em: new Date().toISOString(),
     };
     const { error } = await auth.supabase.from("venda_partes").upsert(row as never, { onConflict: "processo_ref,papel,ordem" });
-    return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
+    if (error) return Response.json({ error: error.message }, { status: 502 });
+    if (papel.startsWith("conjuge_")) await sincronizarConjuge(auth, processId, papel);
+    return Response.json({ success: true, ordem });
   }
 
   if (action === "removerParte") {
     const id = clean(body.parteId, 60);
     if (!id) return Response.json({ error: "Parte inválida." }, { status: 422 });
+    const { data: alvo } = await auth.supabase.from("venda_partes").select("processo_ref,papel,ordem").eq("id", id).maybeSingle();
+    if (!alvo) return Response.json({ error: "Parte não encontrada." }, { status: 404 });
+    const papel = String(alvo.papel);
+    const processId = String(alvo.processo_ref);
+    const g = await guardBloco(auth, processId, papel.includes("vendedor") ? "partes_vendedor" : "partes_comprador");
+    if (g.deny) return g.deny;
+    if (!papel.startsWith("conjuge_") && Number(alvo.ordem) === 1) {
+      return Response.json({ error: "O titular não pode ser removido — edite os dados ou devolva a venda ao atendimento." }, { status: 409 });
+    }
     const { error } = await auth.supabase.from("venda_partes").delete().eq("id", id);
-    return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
+    if (error) return Response.json({ error: error.message }, { status: 502 });
+    if (papel.startsWith("conjuge_")) await sincronizarConjuge(auth, processId, papel);
+    return Response.json({ success: true });
   }
 
   // ===== Upload em lote: o corretor manda tudo de uma vez e a Sara organiza =====
@@ -582,6 +662,15 @@ export async function PATCH(request: Request) {
     if (!processo_ref || !loteId) return Response.json({ error: "Venda ou lote inválido." }, { status: 422 });
     if (!arquivos.length) return Response.json({ error: "Nenhum arquivo enviado." }, { status: 422 });
     if (arquivos.length > 15) return Response.json({ error: "Envie no máximo 15 arquivos por lote." }, { status: 422 });
+    // O lote entra sem grupo definido, então basta que a etapa tenha algum bloco de documentos aberto.
+    const ctxLote = await contexto(auth, processo_ref);
+    const blocoLote = blocoDocsAberto(ctxLote);
+    if (!blocoLote) {
+      const alvo = etapaDoBloco(ctxLote.etapas, "docs_comprador");
+      return Response.json({ error: `A venda está em "${ctxLote.atual?.nome ?? "etapa desconhecida"}". Documentos começam na etapa "${alvo?.nome ?? "Documentação do comprador"}".` }, { status: 409 });
+    }
+    const gLote = await guardBloco(auth, processo_ref, blocoLote);
+    if (gLote.deny) return gLote.deny;
     const negocioId = Number.isSafeInteger(Number(body.negocioId)) && Number(body.negocioId) > 0 ? Number(body.negocioId) : null;
     const linhas = arquivos.map((a) => ({
       processo_ref, negocio_id: negocioId,
@@ -625,6 +714,11 @@ export async function PATCH(request: Request) {
     const docNome = clean(body.docNome, 200);
     if (!id || !grupo) return Response.json({ error: "Informe o documento e o grupo." }, { status: 422 });
     const { data: antes } = await auth.supabase.from("esteira_anexos").select("processo_ref,nome,ia_grupo,ia_doc_nome,ia_confianca").eq("id", id).maybeSingle();
+    if (!antes?.processo_ref) return Response.json({ error: "Documento não encontrado." }, { status: 404 });
+    const blocoTriagem = GRUPO_BLOCO[grupo];
+    if (!blocoTriagem) return Response.json({ error: "Grupo de documento inválido." }, { status: 422 });
+    const gTriagem = await guardBloco(auth, String(antes.processo_ref), blocoTriagem);
+    if (gTriagem.deny) return gTriagem.deny;
     const corrigido = antes ? (antes.ia_grupo !== grupo || (antes.ia_doc_nome ?? "") !== docNome) : false;
     const { error } = await auth.supabase.from("esteira_anexos").update({
       grupo, doc_nome: docNome || null, status: "anexado",
