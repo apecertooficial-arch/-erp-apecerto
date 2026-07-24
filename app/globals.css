@@ -1603,10 +1603,12 @@ body:has(.chat-layer) .ai-button, body:has(.chat-layer) #sara-fab{ display: none
 /* ===== Kanban estilo Datacrazy: cada etapa rola por dentro; a página não desce — jul/2026 ===== */
 /* Escopo: só quando a view de Funil (kanban) está aberta — NÃO afeta Leads/Analítico/Agenda */
 .crm-v2:has(.crm-kanban-v2){ height: calc(100vh / 0.85); min-height: 0; overflow: hidden; }
-.crm-kanban-v2{ flex: 1; min-height: 0; align-items: stretch; overflow-x: auto; overflow-y: hidden; }
+.crm-kanban-v2{ flex: 1; min-height: 0; align-items: stretch; overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; }
 .crm-stage{ height: 100%; max-height: 100%; overflow: hidden; display: flex; flex-direction: column; }
 .crm-stage > header{ flex: 0 0 auto; }
-.crm-stage-body{ flex: 1 1 auto; min-height: 0; overflow-y: auto; }
+/* Etapa: SÓ rola na vertical; o gesto lateral do trackpad passa direto pro pipe */
+.crm-stage-body{ flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden; }
+.crm-stage-body > *{ max-width: 100%; }
 .crm-stage-body > *{ flex-shrink: 0; }   /* cards não encolhem — rolam por dentro */
 /* nota: o calc(100vh / 0.85) compensa o zoom 0.85 do .crm-v2; se mudar o zoom, ajuste o 0.85 aqui */
 /* ===== fim kanban ===== */
