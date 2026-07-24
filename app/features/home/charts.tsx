@@ -1,5 +1,23 @@
 "use client";
 
+// Micro-gráfico dentro do card: sparkline (última barra na cor cheia, resto no tint).
+export function Sparkline({ data, color, tint }: { data: number[]; color: string; tint: string }) {
+  const max = Math.max(1, ...data);
+  return <div className="hv2-spark" aria-hidden="true">
+    {data.map((v, i) => <span key={i} style={{ height: `${Math.max(9, (v / max) * 100)}%`, background: i === data.length - 1 ? color : tint }} />)}
+  </div>;
+}
+
+// Micro-gráfico de composição: segmentos na mesma cor com opacidade decrescente.
+export function CompositionBar({ segments, color }: { segments: number[]; color: string }) {
+  const ops = [1, 0.72, 0.52, 0.36, 0.22];
+  const parts = segments.slice(0, 5).map((v) => Math.max(0, v));
+  const total = parts.reduce((a, b) => a + b, 0) || 1;
+  return <div className="hv2-comp" aria-hidden="true">
+    {parts.map((v, i) => v > 0 && <span key={i} style={{ flexGrow: v / total, background: color, opacity: ops[i] ?? 0.22 }} />)}
+  </div>;
+}
+
 // Gráficos SVG compartilhados (dataviz): marcas finas, pontas 4px, rótulos diretos.
 
 export function VBars({ data, fmt = (v: number) => String(v) }: { data: { label: string; value: number }[]; fmt?: (v: number) => string }) {
