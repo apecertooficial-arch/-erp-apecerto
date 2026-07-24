@@ -5521,3 +5521,18 @@ article.tone-red{border-left-color:#d3443e}article.tone-red strong{color:#d3443e
 /* Fonte das mensagens maior e legível */
 .chat-layer .lead-chat-drawer .chat-messages article{font-size:13.5px !important;line-height:1.45 !important}
 .chat-layer .lead-chat-drawer .chat-messages article p{font-size:13.5px !important;line-height:1.45 !important}
+
+/* ===== Funil Inteligente · momento do lead ===== */
+.momentox-aviso{margin:0 0 12px;padding:10px 14px;border:1px solid var(--purple-100);border-radius:10px;background:var(--purple-soft);color:var(--purple-700);font-size:12.5px;font-weight:600}
+.momentox{border:1px solid var(--purple-100);border-radius:14px;background:linear-gradient(180deg,#fdfaff,#fff);padding:14px;margin-bottom:12px}
+.momentox>header{display:flex;flex-direction:column;gap:2px;margin-bottom:10px}
+.momentox>header h4{margin:0;font-size:11px;font-weight:800;letter-spacing:.08em;color:var(--purple-700)}
+.momentox>header small{font-size:11.5px;color:var(--muted)}
+.momentox-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:9px}
+.momentox-grid label,.momentox-obs{display:flex;flex-direction:column;gap:4px;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.03em}
+.momentox-grid select,.momentox-grid input,.momentox-obs textarea{border:1px solid var(--line-strong);border-radius:var(--radius-input);padding:8px 10px;font-family:inherit;font-size:12.5px;font-weight:500;color:var(--ink);text-transform:none;letter-spacing:0;background:#fff}
+.momentox-grid select:focus,.momentox-grid input:focus,.momentox-obs textarea:focus{outline:none;border-color:var(--purple);box-shadow:0 0 0 3px var(--purple-soft)}
+.momentox-obs{margin-top:9px}
+.momentox-obs textarea{resize:vertical}
+.momentox-destino{margin:9px 0 0;font-size:12px;color:var(--purple-700);background:var(--purple-soft);border-radius:8px;padding:7px 10px}
+.momentox footer{display:flex;justify-content:flex-end;margin-top:10px}
