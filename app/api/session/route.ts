@@ -30,6 +30,7 @@ export async function GET(request: Request) {
     email: authData.user.email ?? broker?.email ?? "",
     name: profile?.nome || broker?.nome || authData.user.email?.split("@")[0] || "Corretor",
     role,
+    perfil: profile?.role ?? null, // papel bruto (gerente/diretor/…) — o campo `role` acima é normalizado
     active: profile?.ativo !== false && broker?.ativo !== false,
     brokerId: broker?.id ?? null,
     online: broker?.online ?? false,

@@ -29,6 +29,7 @@ function NavIcon({ item }: { item: ModuleName }) {
   if (item === "Base de conhecimento") return <svg {...common}><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5Z" /><path d="M4 5.5v14A2.5 2.5 0 0 0 6.5 22H20v-5" /></svg>;
   if (item === "Auditoria") return <svg {...common}><rect x="5" y="10" width="14" height="11" rx="2" /><path d="M8 10V7a4 4 0 0 1 8 0v3" /></svg>;
   if (item === "Configurações") return <svg {...common}><circle cx="12" cy="12" r="3" /><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M6.3 17.7l-1.4 1.4M19.1 4.9l-1.4 1.4" /></svg>;
+  if (item === "Minha Equipe") return <svg {...common}><path d="M17 21v-2a4 4 0 0 0-3-3.87M9 21v-2a4 4 0 0 1 3-3.87M12 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM4 21v-1a3 3 0 0 1 3-3M20 21v-1a3 3 0 0 0-3-3" /></svg>;
   return <svg {...common}><circle cx="12" cy="12" r="10" /><path d="M9 9a3 3 0 1 1 4.5 2.6C12.6 12.1 12 12.7 12 14M12 18h.01" /></svg>;
 }
 
@@ -52,7 +53,7 @@ function NavGroup({ label, items, activeItem, onNavigate, badges }: { label: str
   );
 }
 
-export function AppShell({ children, activeItem, onNavigate, onOpenProfile, sessionRole = "corretor", sessionName = "Corretor", modulePermissions = null, badges }: { children: ReactNode; activeItem: ModuleName; onNavigate: (item: ModuleName) => void; onOpenProfile?: () => void; sessionRole?: "admin" | "gestor" | "corretor"; sessionName?: string; modulePermissions?: Record<string, string[]> | null; badges?: Partial<Record<ModuleName, number>> }) {
+export function AppShell({ children, activeItem, onNavigate, onOpenProfile, sessionRole = "corretor", sessionName = "Corretor", modulePermissions = null, isManager = false, badges }: { children: ReactNode; activeItem: ModuleName; onNavigate: (item: ModuleName) => void; onOpenProfile?: () => void; sessionRole?: "admin" | "gestor" | "corretor"; sessionName?: string; modulePermissions?: Record<string, string[]> | null; isManager?: boolean; badges?: Partial<Record<ModuleName, number>> }) {
   const isBroker = sessionRole === "corretor";
   const [navCollapsed, setNavCollapsed] = useState(false);
   /* Doc §14 — sem "ver" no módulo, ele some do menu (admin nunca perde Usuários/Configurações para não se trancar fora).
@@ -86,6 +87,9 @@ export function AppShell({ children, activeItem, onNavigate, onOpenProfile, sess
   };
   const mainItems = (isBroker ? brokerMainItems : adminMainItems).filter(canSee);
   const toolItems = (isBroker ? brokerToolItems : adminToolItems).filter(canSee);
+  // "Minha Equipe": visível só para gestores (gerente/diretor/admin/executivo).
+  // Não entra no filtro de permissões — é liberado pelo papel real (isManager).
+  if (isManager && !toolItems.includes("Minha Equipe")) toolItems.unshift("Minha Equipe");
   const systemItems = (isBroker ? brokerSystemItems : adminSystemItems).filter(canSee);
   const initial = sessionName.trim().slice(0, 1).toUpperCase() || "C";
   const roleLabel = sessionRole === "admin" ? "Admin" : sessionRole === "gestor" ? "Gestor" : "Corretor";

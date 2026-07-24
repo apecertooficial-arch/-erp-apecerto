@@ -11,8 +11,17 @@ type Perms = PermissionMap;
 type Perfil = { id: string; nome: string; is_system: boolean; permissoes: Perms; atualizado_em?: string | null };
 type Usuario = { id: string; nome: string; role: string; ativo: boolean; permissoes: Perms | null };
 
-const scopeOf = (id: string) => (id === "admin" || id === "auditor" || id === "financeiro" || id === "gestor_comercial" ? "todos" : id === "gestor_equipe" ? "equipe" : "proprio");
-const SCOPE_LABEL: Record<string, string> = { proprio: "Somente os próprios dados", equipe: "Dados da própria equipe", todos: "Todos os dados da empresa" };
+const scopeOf = (id: string) =>
+  (id === "admin" || id === "auditor" || id === "financeiro" || id === "gestor_comercial" || id === "executivo") ? "todos"
+  : id === "diretor" ? "estrutura"
+  : (id === "gestor_equipe" || id === "gerente") ? "equipe"
+  : "proprio";
+const SCOPE_LABEL: Record<string, string> = {
+  proprio: "Somente os próprios dados",
+  equipe: "Os próprios + os da equipe direta",
+  estrutura: "Toda a estrutura abaixo dele",
+  todos: "Todos os dados da empresa",
+};
 
 export function PermissionsWorkspace({ accessToken }: { accessToken: string }) {
   const [perfis, setPerfis] = useState<Perfil[]>([]);

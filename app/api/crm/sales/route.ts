@@ -14,6 +14,43 @@ async function authClient(request: Request) {
 const clean = (value: unknown, max = 200) => typeof value === "string" ? value.trim().slice(0, max) : "";
 const slugify = (value: string) => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 40);
 
+// Pap\u00e9is das partes de uma negocia\u00e7\u00e3o (comprador/vendedor e respectivos c\u00f4njuges).
+const PAPEIS_PARTE = ["comprador", "conjuge_comprador", "vendedor", "conjuge_vendedor"] as const;
+const FORMAS_PGTO = ["a_vista", "financiamento", "consorcio", "misto"] as const;
+
+/**
+ * Regra de documento condicional.
+ * condicao null  \u2192 sempre exigido.
+ * 'financiamento' \u2192 s\u00f3 quando a venda \u00e9 financiada (ou mista).
+ * 'consorcio'     \u2192 s\u00f3 quando a venda \u00e9 por cons\u00f3rcio (ou mista).
+ * 'nao_a_vista'   \u2192 qualquer forma que n\u00e3o seja \u00e0 vista.
+ * Sem forma de pagamento definida, o documento permanece vis\u00edvel mas n\u00e3o trava o avan\u00e7o.
+ */
+function docExigido(condicao: string | null, forma: string | null): boolean {
+  if (!condicao) return true;
+  if (!forma) return false;
+  if (condicao === "financiamento") return forma === "financiamento" || forma === "misto";
+  if (condicao === "consorcio") return forma === "consorcio" || forma === "misto";
+  if (condicao === "nao_a_vista") return forma !== "a_vista";
+  return true;
+}
+
+/** Registra um evento na trilha de auditoria dos anexos (nunca derruba a requisi\u00e7\u00e3o principal). */
+async function trilha(auth: Auth, evento: string, dados: { anexoId?: string | null; processoRef?: string | null; loteId?: string | null; detalhe?: unknown }) {
+  try {
+    const { data: me } = await auth.supabase.from("usuarios").select("nome").eq("id", auth.user.id).maybeSingle();
+    await auth.supabase.from("esteira_anexo_eventos").insert({
+      anexo_id: dados.anexoId ?? null,
+      processo_ref: dados.processoRef ?? null,
+      lote_id: dados.loteId ?? null,
+      evento,
+      detalhe: (dados.detalhe ?? null) as never,
+      ator: auth.user.id,
+      ator_nome: me?.nome ?? null,
+    } as never);
+  } catch { /* auditoria \u00e9 best-effort */ }
+}
+
 type Auth = { supabase: ReturnType<typeof createServerSupabaseClient>; user: { id: string } };
 async function requireManager(auth: Auth) {
   const { data: me } = await auth.supabase.from("usuarios").select("role").eq("id", auth.user.id).maybeSingle();
@@ -27,7 +64,7 @@ async function activeSlugs(auth: Auth) {
 export async function GET(request: Request) {
   const auth = await authClient(request);
   if (!auth) return Response.json({ error: "Sessão inválida ou expirada." }, { status: 401 });
-  const [sales, processes, deals, leads, products, brokers, stages, etapaDocs, anexos, users, history, verificacoes, solicitacoes, docModelo, condicoes, comissao, comissaoParcelas, observacoes, pipelines, pipelineStages] = await Promise.all([
+  const [sales, processes, deals, leads, products, brokers, stages, etapaDocs, anexos, users, history, verificacoes, solicitacoes, docModelo, condicoes, comissao, comissaoParcelas, observacoes, pipelines, pipelineStages, partes, anexoEventos] = await Promise.all([
     auth.supabase.from("vendas").select("id,created_at,data_venda,empreendimento_id,empreendimento_nome,unidade_id,vgv,forma_pgto,status,obs").order("created_at", { ascending: false }),
     auth.supabase.from("venda_processos").select("id,venda_id,negocio_id,etapa,tipo_venda,responsavel_usuario_id,prazo_em,observacoes,criado_em,atualizado_em,aprovacao_status,aprovacao_motivo,solicitado_por"),
     auth.supabase.from("negocios").select("id,venda_id,lead_id,corretor_id,empreendimento_id,valor,status"),
@@ -36,22 +73,24 @@ export async function GET(request: Request) {
     auth.supabase.rpc("listar_corretores_transferencia"),
     auth.supabase.from("esteira_etapas").select("id,slug,nome,cor,ordem,papel,sla_dias,resale,exige_docs").eq("ativo", true).order("ordem", { ascending: true }),
     auth.supabase.from("esteira_etapa_docs").select("id,etapa_slug,nome,obrigatorio,ordem").eq("ativo", true).order("ordem", { ascending: true }),
-    auth.supabase.from("esteira_anexos").select("id,processo_ref,negocio_id,etapa_slug,doc_nome,nome,path,mime,tamanho,criado_em,grupo,status,status_motivo,obrigatorio,observacao,enviado_por,revisado_por,revisado_em").order("criado_em", { ascending: false }),
+    auth.supabase.from("esteira_anexos").select("id,processo_ref,negocio_id,etapa_slug,doc_nome,nome,path,mime,tamanho,criado_em,grupo,status,status_motivo,obrigatorio,observacao,enviado_por,revisado_por,revisado_em,lote_id,origem,ia_status,ia_grupo,ia_doc_nome,ia_confianca,ia_extraido,ia_motivo,ia_processado_em").order("criado_em", { ascending: false }),
     auth.supabase.from("usuarios").select("id,nome,role"),
     auth.supabase.from("venda_processo_historico").select("processo_id,etapa_de,etapa_para,movido_por,movido_em").order("movido_em", { ascending: true }),
     auth.supabase.from("esteira_etapa_verificacoes").select("id,processo_ref,etapa_slug,verificado_por,verificado_em"),
     auth.supabase.from("venda_solicitacoes").select("id,negocio_id,corretor_id,solicitado_por,produto_id,vgv,forma_pgto,obs,status,criado_em").eq("status", "pendente").order("criado_em", { ascending: true }),
-    auth.supabase.from("esteira_doc_modelo").select("id,grupo,nome,obrigatorio,ordem").eq("ativo", true).order("ordem", { ascending: true }),
+    auth.supabase.from("esteira_doc_modelo").select("id,grupo,nome,obrigatorio,ordem,condicao").eq("ativo", true).order("ordem", { ascending: true }),
     auth.supabase.from("venda_condicoes").select("*"),
     auth.supabase.from("venda_comissao").select("*"),
     auth.supabase.from("venda_comissao_parcelas").select("*").order("ordem", { ascending: true }),
     auth.supabase.from("venda_observacoes").select("id,processo_ref,texto,autor,autor_nome,criado_em").order("criado_em", { ascending: false }),
     auth.supabase.from("pipelines").select("id,nome,ordem").order("ordem", { ascending: true }),
     auth.supabase.from("pipeline_stages").select("id,pipeline_id,nome,ordem").order("ordem", { ascending: true }),
+    auth.supabase.from("venda_partes").select("id,processo_ref,papel,ordem,nome,telefone,email,cpf,observacao,atualizado_em").order("ordem", { ascending: true }),
+    auth.supabase.from("esteira_anexo_eventos").select("id,anexo_id,processo_ref,lote_id,evento,detalhe,ator,ator_nome,criado_em").order("criado_em", { ascending: false }).limit(400),
   ]);
   const error = [sales, processes, deals, leads, products, brokers, stages, etapaDocs, anexos].find((item) => item.error)?.error;
   if (error) return Response.json({ error: error.message }, { status: 502 });
-  return Response.json({ sales: sales.data ?? [], processes: processes.data ?? [], deals: deals.data ?? [], leads: leads.data ?? [], products: products.data ?? [], brokers: brokers.data ?? [], stages: stages.data ?? [], etapaDocs: etapaDocs.data ?? [], anexos: anexos.data ?? [], users: users.data ?? [], history: history.data ?? [], verificacoes: verificacoes.data ?? [], solicitacoes: solicitacoes.data ?? [], docModelo: docModelo.data ?? [], condicoes: condicoes.data ?? [], comissao: comissao.data ?? [], comissaoParcelas: comissaoParcelas.data ?? [], observacoes: observacoes.data ?? [], pipelines: pipelines.data ?? [], pipelineStages: pipelineStages.data ?? [] });
+  return Response.json({ sales: sales.data ?? [], processes: processes.data ?? [], deals: deals.data ?? [], leads: leads.data ?? [], products: products.data ?? [], brokers: brokers.data ?? [], stages: stages.data ?? [], etapaDocs: etapaDocs.data ?? [], anexos: anexos.data ?? [], users: users.data ?? [], history: history.data ?? [], verificacoes: verificacoes.data ?? [], solicitacoes: solicitacoes.data ?? [], docModelo: docModelo.data ?? [], condicoes: condicoes.data ?? [], comissao: comissao.data ?? [], comissaoParcelas: comissaoParcelas.data ?? [], observacoes: observacoes.data ?? [], pipelines: pipelines.data ?? [], pipelineStages: pipelineStages.data ?? [], partes: partes.data ?? [], anexoEventos: anexoEventos.data ?? [] });
 }
 
 export async function PATCH(request: Request) {
@@ -77,17 +116,23 @@ export async function PATCH(request: Request) {
       const { data: verif } = await auth.supabase.from("esteira_etapa_verificacoes").select("id").eq("processo_ref", processId).eq("etapa_slug", proc!.etapa).maybeSingle();
       if (!verif) {
         const motivos: string[] = [];
-        const { data: cond } = await auth.supabase.from("venda_condicoes").select("valor_total,comprador_tem_conjuge,vendedor_tem_conjuge").eq("processo_ref", processId).maybeSingle();
+        const { data: cond } = await auth.supabase.from("venda_condicoes").select("valor_total,comprador_tem_conjuge,vendedor_tem_conjuge,forma_pagamento").eq("processo_ref", processId).maybeSingle();
         const grupos = ["comprador", "vendedor", "imovel"];
         if (cond?.comprador_tem_conjuge) grupos.push("conjuge_comprador");
         if (cond?.vendedor_tem_conjuge) grupos.push("conjuge_vendedor");
-        const [{ data: modelo }, { data: aps }] = await Promise.all([
-          auth.supabase.from("esteira_doc_modelo").select("grupo,nome").eq("obrigatorio", true).eq("ativo", true).in("grupo", grupos),
+        const [{ data: modeloRaw }, { data: aps }] = await Promise.all([
+          auth.supabase.from("esteira_doc_modelo").select("grupo,nome,condicao").eq("obrigatorio", true).eq("ativo", true).in("grupo", grupos),
           auth.supabase.from("esteira_anexos").select("grupo,doc_nome,status,obrigatorio").eq("processo_ref", processId),
         ]);
+        // Documentos condicionais: só entram na conta quando a forma de pagamento da venda os exige.
+        // À vista não pede carta de crédito nem aprovação de financiamento.
+        const forma = (cond as { forma_pagamento?: string | null } | null)?.forma_pagamento ?? null;
+        const modelo = (modeloRaw ?? []).filter((m) => docExigido((m as { condicao?: string | null }).condicao ?? null, forma));
         const aprov = new Set((aps ?? []).filter((a) => a.status === "aprovado").map((a) => `${a.grupo}::${a.doc_nome}`));
-        const faltamModelo = (modelo ?? []).filter((m) => !aprov.has(`${m.grupo}::${m.nome}`));
+        const faltamModelo = modelo.filter((m) => !aprov.has(`${m.grupo}::${m.nome}`));
         const faltamAvulsos = (aps ?? []).filter((a) => a.obrigatorio && a.status !== "aprovado").length;
+        const emTriagem = (aps ?? []).filter((a) => a.status === "triagem").length;
+        if (emTriagem) motivos.push(`${emTriagem} documento(s) enviado(s) em lote ainda aguardam conferência da classificação da Sara`);
         if (faltamModelo.length || faltamAvulsos) {
           const label: Record<string, string> = { comprador: "do comprador", conjuge_comprador: "do cônjuge do comprador", vendedor: "do vendedor", conjuge_vendedor: "do cônjuge do vendedor", imovel: "do imóvel" };
           const porGrupo: Record<string, number> = {};
@@ -112,8 +157,11 @@ export async function PATCH(request: Request) {
     if (action === "removeAnexo") {
       const id = clean(body.anexoId, 60);
       if (!id) return Response.json({ error: "Anexo inválido." }, { status: 422 });
+      const { data: antes } = await auth.supabase.from("esteira_anexos").select("processo_ref,grupo,doc_nome,nome,path").eq("id", id).maybeSingle();
       const { error } = await auth.supabase.from("esteira_anexos").delete().eq("id", id);
-      return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
+      if (error) return Response.json({ error: error.message }, { status: 502 });
+      await trilha(auth, "removido", { processoRef: (antes?.processo_ref as string) ?? null, detalhe: antes ?? { id } });
+      return Response.json({ success: true });
     }
     const processo_ref = clean(body.processId, 60);
     const path = clean(body.path, 400);
@@ -132,8 +180,10 @@ export async function PATCH(request: Request) {
       negocio_id: Number.isSafeInteger(Number(body.negocioId)) && Number(body.negocioId) > 0 ? Number(body.negocioId) : null,
       enviado_por: auth.user.id,
     };
-    const { error } = await auth.supabase.from("esteira_anexos").insert(insert as never);
-    return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
+    const { data: criado, error } = await auth.supabase.from("esteira_anexos").insert(insert as never).select("id").maybeSingle();
+    if (error) return Response.json({ error: error.message }, { status: 502 });
+    await trilha(auth, "upload", { anexoId: (criado?.id as string) ?? null, processoRef: processo_ref, detalhe: { arquivo: nome, grupo: insert.grupo, doc_nome: insert.doc_nome, origem: "manual" } });
+    return Response.json({ success: true });
   }
 
   if (action === "verifyStage" || action === "unverifyStage") {
@@ -393,8 +443,11 @@ export async function PATCH(request: Request) {
     if (!id || !validos.includes(status)) return Response.json({ error: "Documento ou status inválido." }, { status: 422 });
     const motivo = clean(body.motivo, 400);
     if ((status === "recusado" || status === "correcao") && !motivo) return Response.json({ error: "Informe o motivo da recusa/correção." }, { status: 422 });
+    const { data: antes } = await auth.supabase.from("esteira_anexos").select("processo_ref,status,grupo,doc_nome,nome").eq("id", id).maybeSingle();
     const { error } = await auth.supabase.from("esteira_anexos").update({ status, status_motivo: motivo || null, revisado_por: auth.user.id, revisado_em: new Date().toISOString() } as never).eq("id", id);
-    return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
+    if (error) return Response.json({ error: error.message }, { status: 502 });
+    await trilha(auth, "status_alterado", { anexoId: id, processoRef: (antes?.processo_ref as string) ?? null, detalhe: { arquivo: antes?.nome ?? null, de: antes?.status ?? null, para: status, motivo: motivo || null } });
+    return Response.json({ success: true });
   }
 
   if (action === "docAnexoObrig") {
@@ -413,8 +466,10 @@ export async function PATCH(request: Request) {
     if (action === "docModeloCreate") {
       const grupo = clean(body.grupo, 40); const nome = clean(body.nome, 120);
       if (!grupo || !nome) return Response.json({ error: "Informe o grupo e o nome do documento." }, { status: 422 });
+      const condicaoNova = clean(body.condicao, 20) || null;
+      if (condicaoNova && !["financiamento", "consorcio", "nao_a_vista"].includes(condicaoNova)) return Response.json({ error: "Condição inválida." }, { status: 422 });
       const { data: last } = await auth.supabase.from("esteira_doc_modelo").select("ordem").eq("grupo", grupo).order("ordem", { ascending: false }).limit(1).maybeSingle();
-      const { error } = await auth.supabase.from("esteira_doc_modelo").insert({ grupo, nome, obrigatorio: body.obrigatorio !== false, ordem: (last?.ordem ?? 0) + 1 } as never);
+      const { error } = await auth.supabase.from("esteira_doc_modelo").insert({ grupo, nome, obrigatorio: body.obrigatorio !== false, ordem: (last?.ordem ?? 0) + 1, condicao: condicaoNova } as never);
       return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
     }
     if (action === "docModeloUpdate") {
@@ -422,6 +477,11 @@ export async function PATCH(request: Request) {
       const patch: Record<string, unknown> = {};
       if (typeof body.nome === "string" && body.nome.trim()) patch.nome = clean(body.nome, 120);
       if (typeof body.obrigatorio === "boolean") patch.obrigatorio = body.obrigatorio;
+      if (body.condicao !== undefined) {
+        const c = clean(body.condicao, 20) || null;
+        if (c && !["financiamento", "consorcio", "nao_a_vista"].includes(c)) return Response.json({ error: "Condição inválida." }, { status: 422 });
+        patch.condicao = c;
+      }
       const { error } = await auth.supabase.from("esteira_doc_modelo").update(patch as never).eq("id", id);
       return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
     }
@@ -447,6 +507,14 @@ export async function PATCH(request: Request) {
       origem_recursos: Array.isArray(body.origem_recursos) ? body.origem_recursos : [],
       atualizado_por: auth.user.id, atualizado_em: new Date().toISOString(),
     };
+    // Forma de pagamento governa quais documentos o checklist passa a exigir.
+    const forma = clean(body.forma_pagamento, 20);
+    if (forma) {
+      if (!(FORMAS_PGTO as readonly string[]).includes(forma)) return Response.json({ error: "Forma de pagamento inválida." }, { status: 422 });
+      row.forma_pagamento = forma;
+    } else if (body.forma_pagamento === null) {
+      row.forma_pagamento = null;
+    }
     const { error } = await auth.supabase.from("venda_condicoes").upsert(row as never, { onConflict: "processo_ref" });
     return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
   }
@@ -475,6 +543,99 @@ export async function PATCH(request: Request) {
       }));
       if (parcelas.length) { const { error: pe } = await auth.supabase.from("venda_comissao_parcelas").insert(parcelas as never); if (pe) return Response.json({ error: pe.message }, { status: 502 }); }
     }
+    return Response.json({ success: true });
+  }
+
+  // ===== Partes da negociação: nome, telefone e e-mail de comprador, vendedor e cônjuges =====
+  if (action === "salvarParte") {
+    const processId = clean(body.processId, 60);
+    const papel = clean(body.papel, 30);
+    if (!processId || !(PAPEIS_PARTE as readonly string[]).includes(papel)) return Response.json({ error: "Informe a venda e o papel da parte." }, { status: 422 });
+    const ordem = Number.isSafeInteger(Number(body.ordem)) && Number(body.ordem) > 0 ? Number(body.ordem) : 1;
+    const email = clean(body.email, 160).toLowerCase();
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return Response.json({ error: "E-mail inválido." }, { status: 422 });
+    const row: Record<string, unknown> = {
+      processo_ref: processId, papel, ordem,
+      nome: clean(body.nome, 160) || null,
+      telefone: clean(body.telefone, 40) || null,
+      email: email || null,
+      cpf: clean(body.cpf, 20) || null,
+      observacao: clean(body.observacao, 400) || null,
+      atualizado_por: auth.user.id, atualizado_em: new Date().toISOString(),
+    };
+    const { error } = await auth.supabase.from("venda_partes").upsert(row as never, { onConflict: "processo_ref,papel,ordem" });
+    return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
+  }
+
+  if (action === "removerParte") {
+    const id = clean(body.parteId, 60);
+    if (!id) return Response.json({ error: "Parte inválida." }, { status: 422 });
+    const { error } = await auth.supabase.from("venda_partes").delete().eq("id", id);
+    return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
+  }
+
+  // ===== Upload em lote: o corretor manda tudo de uma vez e a Sara organiza =====
+  if (action === "addAnexoLote") {
+    const processo_ref = clean(body.processId, 60);
+    const loteId = clean(body.loteId, 60);
+    const arquivos = Array.isArray(body.arquivos) ? (body.arquivos as Array<Record<string, unknown>>) : [];
+    if (!processo_ref || !loteId) return Response.json({ error: "Venda ou lote inválido." }, { status: 422 });
+    if (!arquivos.length) return Response.json({ error: "Nenhum arquivo enviado." }, { status: 422 });
+    if (arquivos.length > 15) return Response.json({ error: "Envie no máximo 15 arquivos por lote." }, { status: 422 });
+    const negocioId = Number.isSafeInteger(Number(body.negocioId)) && Number(body.negocioId) > 0 ? Number(body.negocioId) : null;
+    const linhas = arquivos.map((a) => ({
+      processo_ref, negocio_id: negocioId,
+      nome: clean(a.nome, 200), path: clean(a.path, 400),
+      mime: clean(a.mime, 100) || null,
+      tamanho: Number.isFinite(Number(a.tamanho)) ? Math.trunc(Number(a.tamanho)) : null,
+      etapa_slug: clean(body.etapaSlug, 40) || null,
+      grupo: null, doc_nome: null, obrigatorio: false,
+      status: "triagem", origem: "lote_ia", ia_status: "nao_processado",
+      lote_id: loteId, enviado_por: auth.user.id,
+    })).filter((l) => l.nome && l.path);
+    if (!linhas.length) return Response.json({ error: "Arquivos inválidos." }, { status: 422 });
+    const { data: criados, error } = await auth.supabase.from("esteira_anexos").insert(linhas as never).select("id,nome");
+    if (error) return Response.json({ error: error.message }, { status: 502 });
+    await trilha(auth, "upload_lote", { processoRef: processo_ref, loteId, detalhe: { quantidade: linhas.length, arquivos: linhas.map((l) => l.nome) } });
+    return Response.json({ success: true, loteId, anexos: criados ?? [] });
+  }
+
+  if (action === "classificarLote") {
+    const processId = clean(body.processId, 60);
+    const loteId = clean(body.loteId, 60) || null;
+    const anexoIds = Array.isArray(body.anexoIds) ? (body.anexoIds as unknown[]).map((v) => clean(v, 60)).filter(Boolean) : [];
+    if (!processId || (!loteId && !anexoIds.length)) return Response.json({ error: "Informe a venda e o lote a classificar." }, { status: 422 });
+    const { data, error } = await auth.supabase.functions.invoke("ia-docs-classificar", {
+      body: { processo_ref: processId, lote_id: loteId, anexo_ids: anexoIds },
+    });
+    if (error) {
+      let detalhe = error.message;
+      try { const ctx = await (error as { context?: Response }).context?.json(); if (ctx?.reason) detalhe = String(ctx.detalhe || ctx.reason); } catch { /* mantém a mensagem original */ }
+      return Response.json({ error: `A Sara não conseguiu ler os documentos: ${detalhe}` }, { status: 502 });
+    }
+    const r = (data ?? {}) as { ok?: boolean; reason?: string; processados?: number; classificados?: number; triagem?: number; resultados?: unknown[] };
+    if (!r.ok) return Response.json({ error: r.reason === "sem_chave" ? "A chave da IA não está configurada no ambiente." : `Não foi possível classificar: ${r.reason || "erro desconhecido"}.` }, { status: 502 });
+    return Response.json({ success: true, processados: r.processados ?? 0, classificados: r.classificados ?? 0, triagem: r.triagem ?? 0, resultados: r.resultados ?? [] });
+  }
+
+  if (action === "triagemConfirmar") {
+    // O corretor/gestor confirma (ou corrige) o destino sugerido pela Sara.
+    const id = clean(body.anexoId, 60);
+    const grupo = clean(body.grupo, 40);
+    const docNome = clean(body.docNome, 200);
+    if (!id || !grupo) return Response.json({ error: "Informe o documento e o grupo." }, { status: 422 });
+    const { data: antes } = await auth.supabase.from("esteira_anexos").select("processo_ref,nome,ia_grupo,ia_doc_nome,ia_confianca").eq("id", id).maybeSingle();
+    const corrigido = antes ? (antes.ia_grupo !== grupo || (antes.ia_doc_nome ?? "") !== docNome) : false;
+    const { error } = await auth.supabase.from("esteira_anexos").update({
+      grupo, doc_nome: docNome || null, status: "anexado",
+      obrigatorio: body.obrigatorio === true,
+      confirmado_por: auth.user.id, confirmado_em: new Date().toISOString(),
+    } as never).eq("id", id);
+    if (error) return Response.json({ error: error.message }, { status: 502 });
+    await trilha(auth, corrigido ? "corrigido" : "confirmado", {
+      anexoId: id, processoRef: (antes?.processo_ref as string) ?? null,
+      detalhe: { arquivo: antes?.nome ?? null, sugerido: { grupo: antes?.ia_grupo ?? null, doc_nome: antes?.ia_doc_nome ?? null, confianca: antes?.ia_confianca ?? null }, aplicado: { grupo, doc_nome: docNome || null } },
+    });
     return Response.json({ success: true });
   }
 
