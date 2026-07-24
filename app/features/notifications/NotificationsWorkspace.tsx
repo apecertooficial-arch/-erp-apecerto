@@ -114,15 +114,20 @@ export function NotificationsWorkspace({ accessToken, onOpenLead }: { accessToke
     <div className="notif-filters">
       <button className={category === "todas" ? "active" : ""} type="button" onClick={() => setCategory("todas")}>Todas</button>
       {CATEGORIES.map((entry) => <button className={category === entry.key ? "active" : ""} type="button" onClick={() => setCategory(entry.key)} key={entry.key}>{entry.icon} {entry.label} <b>{counts[entry.key]}</b></button>)}
-      <i />
-      {(["todas", "alta", "media", "baixa"] as const).map((level) => <button className={`prio ${priority === level ? "active" : ""}`} type="button" onClick={() => setPriority(level)} key={level}>{level === "todas" ? "Toda prioridade" : level === "media" ? "Média" : level.charAt(0).toUpperCase() + level.slice(1)}</button>)}
+      <span className="notif-filter-sep" aria-hidden="true" />
+      <select className="notif-prio-select" value={priority} onChange={(event) => setPriority(event.target.value as Priority | "todas")} aria-label="Filtrar por prioridade">
+        <option value="todas">Toda prioridade</option>
+        <option value="alta">Prioridade alta</option>
+        <option value="media">Prioridade média</option>
+        <option value="baixa">Prioridade baixa</option>
+      </select>
       <label className="notif-unread"><input type="checkbox" checked={unreadOnly} onChange={(event) => setUnreadOnly(event.target.checked)} /> Só não lidas</label>
     </div>
     {loading ? <div className="workspace-loading">Carregando notificações…</div> : error ? <div className="workspace-error">{error}</div> : <main className="notif-list">
       {visible.length === 0 && <div className="audit-empty">Nenhuma notificação neste filtro. Tudo em dia ✓</div>}
       {visible.map((item) => { const isRead = read.includes(item.id); return <article className={`notif-item ${item.priority} ${isRead ? "read" : ""}`} key={item.id}>
         <span className={`notif-icon ${item.category}`}>{CATEGORIES.find((entry) => entry.key === item.category)?.icon}</span>
-        <div className="notif-body"><strong>{item.title}{item.count > 1 && <em className="notif-count">×{item.count}</em>}</strong><p>{item.context}</p><small>{CATEGORIES.find((entry) => entry.key === item.category)?.label} · prioridade {item.priority} · {ago(item.when)}</small></div>
+        <div className="notif-body"><strong>{item.title}{item.count > 1 && <em className="notif-count">×{item.count}</em>}</strong><p>{item.context}</p><small>{CATEGORIES.find((entry) => entry.key === item.category)?.label} · {ago(item.when)}</small></div>
         <div className="notif-actions">
           {item.dealId && <button type="button" onClick={() => { markRead([item.id]); onOpenLead(item.dealId!); }}>Abrir lead</button>}
           {!isRead && <button className="ghost" type="button" onClick={() => markRead([item.id])}>Lida</button>}
