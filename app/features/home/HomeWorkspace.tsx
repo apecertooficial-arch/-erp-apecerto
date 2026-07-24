@@ -121,10 +121,10 @@ export function HomeWorkspace({ accessToken, sessionName = "", onNavigate }: { a
       </div>
     </section>
 
+    <NaMesaCards accessToken={accessToken} onNavigate={onNavigate} />
     <RodagemCards accessToken={accessToken} onNavigate={onNavigate} />
     <FunilCards accessToken={accessToken} onNavigate={onNavigate} />
     <FinanceiroCards accessToken={accessToken} onNavigate={onNavigate} />
-    <NaMesaCards accessToken={accessToken} onNavigate={onNavigate} />
 
     <div className="hv2-prod">
       <div className="hv2-panel">
