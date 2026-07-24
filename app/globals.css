@@ -4971,14 +4971,19 @@ article.tone-red{border-left-color:#d3443e}article.tone-red strong{color:#d3443e
 .rodagem-head { display:flex; align-items:baseline; gap:10px; margin:6px 0 12px; }
 .rodagem-head h2 { font-size:16px; font-weight:700; color:var(--ink); }
 .rodagem-head small { font-size:12px; color:#8b827c; }
-.home-kpis.rodagem-cards { grid-template-columns:repeat(4,1fr); margin-bottom:26px; }
+.home-kpis.rodagem-cards { grid-template-columns:repeat(3,1fr); margin-bottom:26px; }
 .rodagem-cards article.drill { cursor:pointer; }
-.rodagem-cards article.is-alert { background:#ffe9e8; border-color:#f4c0bd; }
-.rodagem-cards article.is-alert i { background:var(--red, #E5484D); }
+.rodagem-cards article.tone-orange { background:#fff0e5; border-color:#ffc79f; } .rodagem-cards article.tone-orange i { background:var(--orange,#FF7000); }
+.rodagem-cards article.tone-purple { background:#f4e4fb; border-color:#dfb9f2; } .rodagem-cards article.tone-purple i { background:#8B00CC; }
+.rodagem-cards article.tone-teal   { background:#e6f7f5; border-color:#b7e5df; } .rodagem-cards article.tone-teal i   { background:#16a39a; }
+.rodagem-cards article.tone-green  { background:#e4f6ec; border-color:#b9e7cc; } .rodagem-cards article.tone-green i  { background:#12A150; }
+.rodagem-cards article.tone-red    { background:#ffe9e8; border-color:#f4c0bd; } .rodagem-cards article.tone-red i    { background:#E5484D; }
+.rodagem-cards article.tone-amber  { background:#fff4d9; border-color:#efd492; } .rodagem-cards article.tone-amber i  { background:#E5A800; }
 .rodagem-cards .rodagem-cta { margin-top:9px; font-size:11px; font-weight:700; color:#7a726c; font-style:normal; opacity:.75; }
 .rodagem-cards article.drill:hover .rodagem-cta { opacity:1; color:var(--orange); }
 .rodagem-skel { min-height:130px; display:grid; place-items:center; color:#8b827c; font-size:13px; grid-column:1 / -1; }
 @media (max-width:1100px) { .home-kpis.rodagem-cards { grid-template-columns:repeat(2,1fr); } }
+@media (max-width:640px) { .home-kpis.rodagem-cards { grid-template-columns:1fr; } }
 
 .dv-modal-layer { position:fixed; inset:0; z-index:1200; display:grid; place-items:center; padding:20px; }
 .dv-scrim { position:absolute; inset:0; background:rgba(31,24,19,.5); border:0; }
