@@ -1600,7 +1600,7 @@ function LeadDrawer({ accessToken, lead, deal, data, canReassign, canMoveDeals, 
     </header>
     <section className="lead-classic-panel">
       <button className="lead-sale-action" type="button" onClick={() => setSaleOpen(true)}>▤ <span>Enviar para processo de venda</span></button>
-      <article className="lead-next-action"><header><span>✦</span><b>PRÓXIMA MELHOR AÇÃO</b></header>{copiloto.loading ? <h3>Sara analisando o atendimento…</h3> : <><h3>{copiloto.data?.proxima_acao || `Fazer follow-up com ${lead.nome?.split(/\s+/)[0] || "o lead"}`}</h3><p>{copiloto.data?.resumo_nota || "Um retorno curto mantém o lead ativo."}</p></>}</article>
+      <article className="lead-next-action"><header><span>✦</span><b>PRÓXIMA MELHOR AÇÃO</b></header>{copiloto.loading ? <h3>Sara analisando o atendimento…</h3> : <><h3>{copiloto.data?.proxima_acao || `Fazer follow-up com ${lead.nome?.split(/\s+/)[0] || "o lead"}`}</h3><p>{copiloto.data?.mensagem_sugerida || "Um retorno curto mantém o lead ativo."}</p></>}</article>
       <article className="lead-nota-card"><header><b>★ NOTA DO ATENDIMENTO</b>{!copiloto.loading && copiloto.data?.nota != null && <em>{copiloto.data.nota}/10</em>}</header>{copiloto.loading ? <p>Ouvindo os áudios e avaliando a conversa…</p> : (copiloto.data?.feedbacks?.length ? <ul className="lead-feedbacks">{copiloto.data.feedbacks.map((f, i) => <li key={i} className={f.positivo ? "pos" : "neg"}><span>{f.positivo ? "✓" : "✗"}</span><div>{f.criterio ? <b>{f.criterio}: </b> : null}{f.texto}</div></li>)}</ul> : <p>Ainda não há conversa suficiente para avaliar este atendimento.</p>)}</article>
       <h4>AÇÕES RÁPIDAS</h4>
       <div className="lead-action-grid">
