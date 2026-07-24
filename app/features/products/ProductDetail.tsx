@@ -127,24 +127,51 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
   const cover = photos.find((item) => item.is_capa) ?? photos[0];
 
   const addressLine = useMemo(() => [product?.endereco, product?.numero, product?.bairro, product?.cidade, product?.uf, product?.cep].filter(Boolean).join(", "), [product]);
+  // Endereços vêm bagunçados (sem cidade/UF, vírgula sobrando). Montamos queries
+  // limpas com fallback: endereço completo → CEP → bairro. Cidade default São Paulo.
+  const geocodeQueries = useMemo(() => {
+    if (!product) return [] as string[];
+    const clean = (s?: string | null) => (s ?? "").replace(/[;,·\-–—\s]+$/g, "").replace(/\s+/g, " ").trim();
+    const rua = clean(product.endereco);
+    const num = clean(product.numero);
+    const bairro = clean(product.bairro);
+    const cidade = clean(product.cidade) || "São Paulo";
+    const uf = clean(product.uf) || "SP";
+    const cep = clean(product.cep);
+    const q1 = [rua && num ? `${rua}, ${num}` : rua, bairro, cidade, uf, "Brasil"].filter(Boolean).join(", ");
+    const q2 = cep ? [cep, cidade, "Brasil"].filter(Boolean).join(", ") : "";
+    const q3 = [bairro, cidade, uf, "Brasil"].filter(Boolean).join(", ");
+    return Array.from(new Set([q1, q2, q3].filter(Boolean)));
+  }, [product]);
   useEffect(() => {
     if (tab !== "localizacao" || !product) return;
     if (mapStatus !== "idle") return;
-    if (product.latitude != null && product.longitude != null) { setMapCoord({ lat: product.latitude, lon: product.longitude }); setMapStatus("done"); return; }
-    if (!addressLine) { setMapStatus("error"); return; }
+    if (product.latitude != null && product.longitude != null) { setMapCoord({ lat: Number(product.latitude), lon: Number(product.longitude) }); setMapStatus("done"); return; }
+    if (!geocodeQueries.length) { setMapStatus("error"); return; }
     let alive = true;
     setMapStatus("loading");
     (async () => {
-      try {
-        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(addressLine)}`, { headers: { Accept: "application/json" } });
-        const data = await res.json();
-        if (!alive) return;
-        if (Array.isArray(data) && data.length && data[0].lat && data[0].lon) { setMapCoord({ lat: Number(data[0].lat), lon: Number(data[0].lon) }); setMapStatus("done"); }
-        else setMapStatus("error");
-      } catch { if (alive) setMapStatus("error"); }
+      for (const q of geocodeQueries) {
+        try {
+          const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=br&q=${encodeURIComponent(q)}`, { headers: { Accept: "application/json" } });
+          if (!res.ok) continue;
+          const data = await res.json();
+          if (!alive) return;
+          if (Array.isArray(data) && data.length && data[0].lat && data[0].lon) {
+            const lat = Number(data[0].lat), lon = Number(data[0].lon);
+            setMapCoord({ lat, lon });
+            setMapStatus("done");
+            // Cacheia a coordenada no banco (idempotente, só grava se estiver nula),
+            // pra próxima abertura ser instantânea e não repetir o geocoding.
+            try { await getBrowserSupabaseClient().rpc("set_empreendimento_coords", { p_id: product.id, p_lat: lat, p_lon: lon }); } catch { /* best-effort */ }
+            return;
+          }
+        } catch { /* tenta a próxima query */ }
+      }
+      if (alive) setMapStatus("error");
     })();
     return () => { alive = false; };
-  }, [tab, product, addressLine, mapStatus]);
+  }, [tab, product, geocodeQueries, mapStatus]);
 
   async function save() {
     setBusy(true); setMessage("");
@@ -357,7 +384,8 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
                 {product.condominios && <div className="fv2-condo"><span className="fv2-condo-ic"><IcBuilding /></span><div><strong>{product.condominios.nome}</strong><small>Condomínio associado</small></div></div>}
                 <div className="fv2-map">
                   {mapStatus === "done" && mapCoord ? <iframe title="Mapa do imóvel" loading="lazy" src={`https://www.openstreetmap.org/export/embed.html?bbox=${mapCoord.lon - 0.006}%2C${mapCoord.lat - 0.005}%2C${mapCoord.lon + 0.006}%2C${mapCoord.lat + 0.005}&layer=mapnik&marker=${mapCoord.lat}%2C${mapCoord.lon}`} />
-                    : <div className="fv2-map-placeholder">{mapStatus === "error" ? "Mapa indisponível para este endereço." : "Carregando mapa…"}</div>}
+                    : mapStatus === "error" ? <div className="fv2-map-placeholder">Não foi possível posicionar o mapa automaticamente.{addressLine && <> <a href={`https://www.openstreetmap.org/search?query=${encodeURIComponent(addressLine)}`} target="_blank" rel="noreferrer">Abrir no mapa</a></>}</div>
+                    : <div className="fv2-map-placeholder">Carregando mapa…</div>}
                 </div>
               </>}
 
