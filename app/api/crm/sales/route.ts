@@ -435,8 +435,9 @@ export async function PATCH(request: Request) {
   if (action === "create") {
     const dealId = Number(body.dealId);
     const productId = String(body.productId || "");
-    const vgv = Number(body.vgv);
-    if (!Number.isSafeInteger(dealId) || !productId || !Number.isFinite(vgv) || vgv <= 0) return Response.json({ error: "Selecione o negócio, o produto e informe o valor." }, { status: 422 });
+    // O valor não entra aqui: é definido nas Condições comerciais, na etapa de Proposta.
+    const vgv = Number.isFinite(Number(body.vgv)) && Number(body.vgv) > 0 ? Number(body.vgv) : 0;
+    if (!Number.isSafeInteger(dealId) || !productId) return Response.json({ error: "Selecione o negócio e o produto." }, { status: 422 });
     const [{ data: deal }, { data: product }] = await Promise.all([
       auth.supabase.from("negocios").select("id,lead_id,empreendimento_id").eq("id", dealId).maybeSingle(),
       auth.supabase.from("empreendimentos").select("id,nome,origem").eq("id", productId).maybeSingle(),
@@ -456,8 +457,8 @@ export async function PATCH(request: Request) {
   if (action === "solicitar") {
     const dealId = Number(body.dealId);
     const productId = String(body.productId || "");
-    const vgv = Number(body.vgv);
-    if (!Number.isSafeInteger(dealId) || !productId || !Number.isFinite(vgv) || vgv <= 0) return Response.json({ error: "Selecione o negócio, o produto e informe o valor." }, { status: 422 });
+    const vgv = Number.isFinite(Number(body.vgv)) && Number(body.vgv) > 0 ? Number(body.vgv) : 0;
+    if (!Number.isSafeInteger(dealId) || !productId) return Response.json({ error: "Selecione o negócio e o produto." }, { status: 422 });
     const { data, error } = await auth.supabase.rpc("solicitar_venda", { p_negocio: dealId, p_produto: productId, p_vgv: vgv, p_forma: String(body.payment || "") || null, p_obs: String(body.notes || "") || null });
     if (error) return Response.json({ error: error.message }, { status: 502 });
     const r = (data ?? {}) as { ok?: boolean; erro?: string };
@@ -739,7 +740,7 @@ export async function PATCH(request: Request) {
     if (!processId) return Response.json({ error: "Venda inválida." }, { status: 422 });
     const { data, error } = await auth.supabase.rpc("excluir_venda_esteira", {
       p_processo: processId,
-      p_motivo: clean(body.motivo, 400) || null,
+      p_motivo: clean(body.motivo, 400) || undefined,
       p_forcar: body.forcar === true,
       p_descartar_lead: body.descartarLead === true,
     });
