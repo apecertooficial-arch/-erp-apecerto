@@ -1,4 +1,5 @@
 import { createServerSupabaseClient } from "../../../lib/supabase/server";
+import { textoRepetidoRecente } from "../../../lib/anti-repeticao";
 
 export const dynamic = "force-dynamic";
 
@@ -14,6 +15,7 @@ async function authenticatedClient(request: Request) {
   const { data, error } = await supabase.auth.getUser(token);
   return error || !data.user ? null : { supabase };
 }
+
 
 export async function POST(request: Request) {
   const auth = await authenticatedClient(request);
@@ -58,6 +60,8 @@ export async function POST(request: Request) {
     if (telefone.length < 8 || !texto || !Number.isSafeInteger(instanciaId) || instanciaId <= 0) {
       return Response.json({ error: "Selecione a instância e escreva a mensagem." }, { status: 422 });
     }
+    const repetida = await textoRepetidoRecente(auth.supabase, telefone, texto);
+    if (repetida) return Response.json({ error: repetida }, { status: 409 });
     const { data, error } = await auth.supabase.functions.invoke("dapi-enviar", {
       body: { telefone, instancia_id: instanciaId, tipo: "texto", texto },
     });

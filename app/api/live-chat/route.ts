@@ -1,4 +1,5 @@
 import { createServerSupabaseClient } from "../../lib/supabase/server";
+import { textoRepetidoRecente } from "../../lib/anti-repeticao";
 
 export const dynamic = "force-dynamic";
 
@@ -160,6 +161,10 @@ export async function POST(request: Request) {
     const phone = phoneNumber(body.phone); const content = text(body.content, 4000); const instanceId = Number(body.instanceId); const mediaId = text(body.mediaId, 50);
     if (phone.length < 8 || !Number.isSafeInteger(instanceId) || (!content && !mediaId)) return Response.json({ error: "Mensagem, telefone ou instância inválidos." }, { status: 422 });
     if (!(await canUseInstance(auth, instanceId)) || !(await canMessagePhone(auth, phone))) return Response.json({ error: "A instância ou o lead não pertence à sua carteira." }, { status: 403 });
+    if (content && !mediaId) {
+      const repetida = await textoRepetidoRecente(auth.supabase, phone, content);
+      if (repetida) return Response.json({ error: repetida }, { status: 409 });
+    }
     let payload: Record<string, unknown> = { telefone: phone, instancia_id: instanceId, tipo: "texto", texto: content };
     if (mediaId) {
       const { data: media } = await auth.supabase.from("midias").select("tipo,storage_path,nome").eq("id", mediaId).maybeSingle();

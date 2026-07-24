@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties, type DragEven
 import { getBrowserSupabaseClient } from "../../lib/supabase/browser";
 import { MessageMedia, ProductSendModal, QuickActionModal, ScheduleModal, type ChatData, type QuickAction } from "../chat/LiveChatWorkspace";
 import { ackState, StatusTick } from "../chat/statusTick";
+import { startOpusRecorder, type OpusHandle } from "../../lib/opusMic";
 
 // Fetch autenticado resiliente: usa o token fresco da sessão do Supabase e,
 // se ainda vier 401, faz refresh e tenta 1x. Evita "Sessão inválida ou expirada".
@@ -185,11 +186,19 @@ export function CrmWorkspace({ accessToken, initialDealId = null, onInitialDealH
 
   useEffect(() => {
     const supabase = getBrowserSupabaseClient();
+    // Recarga com FREIO: cada mensagem/movimentação agenda UMA recarga em 8s e as
+    // rajadas se acumulam nela — antes, cada mensagem de WhatsApp da operação
+    // disparava o recarregamento completo do CRM (12 consultas), deixando tudo lento.
+    let recarga: number | null = null;
+    const agendarRecarga = () => {
+      if (recarga !== null) return;
+      recarga = window.setTimeout(() => { recarga = null; void load({ quiet: true }); }, 8_000);
+    };
     const channel = supabase.channel("crm-live-updates")
-      .on("postgres_changes", { event: "*", schema: "public", table: "negocios" }, () => { void load({ quiet: true }); })
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "wa_mensagens" }, () => { void load({ quiet: true }); })
+      .on("postgres_changes", { event: "*", schema: "public", table: "negocios" }, agendarRecarga)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "wa_mensagens" }, agendarRecarga)
       .subscribe();
-    return () => { void supabase.removeChannel(channel); };
+    return () => { if (recarga !== null) window.clearTimeout(recarga); void supabase.removeChannel(channel); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [accessToken]);
 
@@ -1029,7 +1038,7 @@ function LeadChatDrawer({ accessToken, lead, deal, corretorNome, onClose, onResp
   const [confirmDel, setConfirmDel] = useState<string | null>(null);
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const copiloto = useLeadCopiloto(accessToken, lead.nome || "");
-  const fileInput = useRef<HTMLInputElement>(null); const recorder = useRef<MediaRecorder | null>(null); const chunks = useRef<Blob[]>([]);
+  const fileInput = useRef<HTMLInputElement>(null); const opusRec = useRef<OpusHandle | null>(null);
   const recTimer = useRef<number | null>(null); const audioCtx = useRef<AudioContext | null>(null); const rafId = useRef<number | null>(null); const streamRef = useRef<MediaStream | null>(null); const canceledRef = useRef(false);
   const fmtRec = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
   const listRef = useRef<HTMLElement>(null);
@@ -1069,8 +1078,10 @@ function LeadChatDrawer({ accessToken, lead, deal, corretorNome, onClose, onResp
     try {
       // Fonte primária: d-api (histórico COMPLETO), paginando até o fim — cada página aparece assim que chega.
       if (instance.sendBig && (opts?.hasMore ?? true)) {
+        // Abertura leve: 4 páginas da D-API (400 mensagens) — o restante do histórico
+        // vem do banco na mescla abaixo. Antes eram até 60 chamadas sequenciais (~1s cada).
         let page = startPage, more = true, guard = 0;
-        while (more && guard < 60) {
+        while (more && guard < 4) {
           guard++;
           const result = await request({ action: "dapi-hist", telefone: lead.telefone, instancia_id: instance.sendBig, page, limit: 100 });
           const chunk = Array.isArray(result.mensagens) ? result.mensagens as ChatMessage[] : [];
@@ -1120,10 +1131,40 @@ function LeadChatDrawer({ accessToken, lead, deal, corretorNome, onClose, onResp
   useEffect(() => {
     if (!selected) return;
     const supabase = getBrowserSupabaseClient();
+    // Mensagem nova: busca SÓ o banco (leve) e apenas se for DESTA conversa, com freio de 1,5s.
+    // Antes, cada mensagem de qualquer conversa da operação repaginava o histórico inteiro
+    // da D-API em todos os chats abertos — era isso que deixava o chat lento para todos.
+    let timer: number | null = null;
+    const conversas = new Set((selected.conversaIds ?? []).map((id) => String(id)));
+    const refreshDb = async () => {
+      try {
+        if (!selected.conversaIds?.length) return;
+        const res = await request({ action: "messages", conversaIds: selected.conversaIds, limit: 120 });
+        const novas = Array.isArray(res.mensagens) ? res.mensagens as ChatMessage[] : [];
+        if (!novas.length) return;
+        setMessages((prev) => {
+          const byKey = new Map<string, ChatMessage>();
+          for (const m of [...prev, ...novas]) {
+            const k = String(m.wa_message_id || m.id);
+            const ex = byKey.get(k);
+            if (!ex) { byKey.set(k, { ...m }); continue; }
+            if ((!ex.media_url || ex.media_url === "") && m.media_url) ex.media_url = m.media_url;
+            if ((!ex.conteudo || ex.conteudo === "") && m.conteudo) ex.conteudo = m.conteudo;
+            if (m.status && m.status !== ex.status) { ex.status = m.status; ex.status_detalhe = m.status_detalhe; }
+          }
+          return [...byKey.values()].sort((a, b) => String(a.criado_em || "").localeCompare(String(b.criado_em || "")));
+        });
+      } catch { /* silencioso */ }
+    };
     const channel = supabase.channel(`lead-chat-${deal.id}`)
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "wa_mensagens" }, () => { void loadMessages(selected); })
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "wa_mensagens" }, (payload) => {
+        const row = (payload as { new?: { conversa_id?: unknown } }).new;
+        if (row?.conversa_id != null && conversas.size && !conversas.has(String(row.conversa_id))) return;
+        if (timer !== null) return;
+        timer = window.setTimeout(() => { timer = null; void refreshDb(); }, 1_500);
+      })
       .subscribe();
-    return () => { void supabase.removeChannel(channel); };
+    return () => { if (timer !== null) window.clearTimeout(timer); void supabase.removeChannel(channel); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedKey, deal.id]);
   async function send() { if (!draft.trim()) return; if (!selected?.sendBig) { setError(loading ? "Aguarde as instâncias carregarem…" : "Sua instância de WhatsApp não está habilitada para envio. Abra Configurações → Conexões e reconecte pelo QR — ou selecione outra instância acima."); return; } const chosen = selected; const text = draft; const tempId = `temp-${Date.now()}`; setDraft(""); setError(null); setMessages((prev) => [...prev, { id: tempId, wa_message_id: null, direcao: "enviada", tipo: "texto", conteudo: text, media_url: null, criado_em: new Date().toISOString(), status: "enviando" }]); void (async () => { try { await request({ action: "send", telefone: lead.telefone, instanciaId: chosen.sendBig, texto: text }); setMessages((prev) => prev.map((m) => m.id === tempId ? { ...m, status: "enviado" } : m)); await onResponse(); await loadMessages(chosen); } catch (reason) { const motivo = friendlyChatError(reason instanceof Error ? reason.message : ""); setError(motivo); setMessages((prev) => prev.map((m) => m.id === tempId ? { ...m, status: "erro", status_detalhe: motivo } : m)); } })(); }
@@ -1155,36 +1196,49 @@ function LeadChatDrawer({ accessToken, lead, deal, corretorNome, onClose, onResp
       if (isAudio) setMessages((prev) => prev.map((m) => m.id === tempId ? { ...m, status: "erro", status_detalhe: motivo } : m)); else setError(motivo);
     } finally { setSending(false); if (fileInput.current) fileInput.current.value = ""; }
   }
+  function cleanupRecording() {
+    const stream = streamRef.current; streamRef.current = null;
+    if (stream) stream.getTracks().forEach((track) => track.stop());
+    if (audioCtx.current) { void audioCtx.current.close().catch(() => {}); audioCtx.current = null; }
+    if (rafId.current) { cancelAnimationFrame(rafId.current); rafId.current = null; }
+    if (recTimer.current) { window.clearInterval(recTimer.current); recTimer.current = null; }
+  }
   function startRecording() {
     if (recording || sending) return;
-    navigator.mediaDevices.getUserMedia({ audio: true }).then((stream) => {
-      streamRef.current = stream; chunks.current = []; canceledRef.current = false;
-      const mr = new MediaRecorder(stream); recorder.current = mr;
-      mr.ondataavailable = (event) => { if (event.data.size) chunks.current.push(event.data); };
-      mr.onstop = () => {
-        stream.getTracks().forEach((track) => track.stop());
-        if (audioCtx.current) { void audioCtx.current.close().catch(() => {}); audioCtx.current = null; }
-        if (rafId.current) { cancelAnimationFrame(rafId.current); rafId.current = null; }
-        if (recTimer.current) { window.clearInterval(recTimer.current); recTimer.current = null; }
-        const wasCanceled = canceledRef.current;
-        setRecording(false); setRecSeconds(0); setRecBars([]);
-        if (wasCanceled) return;
-        const blob = new Blob(chunks.current, { type: mr.mimeType || "audio/webm" });
-        if (blob.size > 0) void upload(new File([blob], `audio-${Date.now()}.webm`, { type: blob.type }), "audio");
-      };
-      mr.start();
-      setRecording(true); setRecSeconds(0); setRecBars([]);
-      recTimer.current = window.setInterval(() => setRecSeconds((s) => s + 1), 1000);
+    navigator.mediaDevices.getUserMedia({ audio: true }).then(async (stream) => {
+      streamRef.current = stream; canceledRef.current = false;
+      // Contexto + onda (visualização). O mesmo sourceNode alimenta o encoder OGG/Opus.
+      const ctx = new AudioContext(); audioCtx.current = ctx;
+      const src = ctx.createMediaStreamSource(stream);
       try {
-        const ctx = new AudioContext(); audioCtx.current = ctx;
-        const src = ctx.createMediaStreamSource(stream); const analyser = ctx.createAnalyser(); analyser.fftSize = 256; src.connect(analyser);
+        const analyser = ctx.createAnalyser(); analyser.fftSize = 256; src.connect(analyser);
         const data = new Uint8Array(analyser.frequencyBinCount);
         const tick = () => { analyser.getByteFrequencyData(data); let sum = 0; for (let i = 0; i < data.length; i++) sum += data[i]; const level = Math.min(100, Math.max(8, Math.round((sum / data.length) / 1.4))); setRecBars((prev) => [...prev.slice(-30), level]); rafId.current = requestAnimationFrame(tick); };
         tick();
       } catch { /* waveform é opcional */ }
+      try {
+        opusRec.current = await startOpusRecorder(
+          src,
+          (file) => { void upload(file, "audio"); },
+          () => cleanupRecording(),
+        );
+      } catch (reason) {
+        cleanupRecording(); setRecording(false); setRecSeconds(0); setRecBars([]);
+        setError(reason instanceof Error ? reason.message : "Não foi possível iniciar o gravador de áudio.");
+        return;
+      }
+      setRecording(true); setRecSeconds(0); setRecBars([]);
+      recTimer.current = window.setInterval(() => setRecSeconds((s) => s + 1), 1000);
     }).catch(() => setError("Autorize o microfone para gravar o áudio."));
   }
-  function stopRecording(sendIt: boolean) { canceledRef.current = !sendIt; try { recorder.current?.stop(); } catch { /* ignore */ } }
+  function stopRecording(sendIt: boolean) {
+    canceledRef.current = !sendIt;
+    setRecording(false); setRecSeconds(0); setRecBars([]);
+    if (rafId.current) { cancelAnimationFrame(rafId.current); rafId.current = null; }
+    if (recTimer.current) { window.clearInterval(recTimer.current); recTimer.current = null; }
+    const handle = opusRec.current; opusRec.current = null;
+    if (handle) handle.stop(sendIt); else cleanupRecording();
+  }
   async function scheduleMessage(content: string, when: string) { if (!selected?.sendBig || !lead.telefone) return; setSending(true); setError(null); try { await liveAction({ action: "schedule", phone: lead.telefone, instanceId: selected.sendBig, leadId: lead.id, content, when }); setDraft(""); setScheduleOpen(false); await loadScheduled(); setSchedOpen(true); } catch (reason) { setError(reason instanceof Error ? reason.message : "Não foi possível agendar."); } finally { setSending(false); } }
   async function scheduleApproachAt(approachId: number, when: string) { if (!selected?.sendBig || !lead.telefone) return; setSending(true); setError(null); try { await liveAction({ action: "scheduleApproach", phone: lead.telefone, instanceId: selected.sendBig, leadId: lead.id, leadName: lead.nome, approachId, when }); setScheduleOpen(false); await loadScheduled(); setSchedOpen(true); } catch (reason) { setError(reason instanceof Error ? reason.message : "Não foi possível agendar a abordagem."); } finally { setSending(false); } }
   async function loadScheduled() { try { const r = await liveAction({ action: "listScheduled", leadId: lead.id }); setScheduled(Array.isArray(r.agendadas) ? r.agendadas as Array<{ id: number; texto: string; tipo: string; quando: string }> : []); } catch { /* silencioso */ } }
