@@ -95,7 +95,6 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
   const [tab, setTab] = useState<"resumo" | "localizacao" | "proprietario" | "unidades" | "galeria">("resumo");
   const [unitDetail, setUnitDetail] = useState<Unit | null>(null);
   const [mapCoord, setMapCoord] = useState<{ lat: number; lon: number } | null>(null);
-  const [mapStatus, setMapStatus] = useState<"idle" | "loading" | "done" | "error">("idle");
 
   const load = useCallback(async () => {
     setMessage("");
@@ -127,26 +126,19 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
   const cover = photos.find((item) => item.is_capa) ?? photos[0];
 
   const addressLine = useMemo(() => [product?.endereco, product?.numero, product?.bairro, product?.cidade, product?.uf, product?.cep].filter(Boolean).join(", "), [product]);
+  // Query pro embed do Google (por texto) — sempre com cidade/UF/Brasil pra melhorar o acerto.
+  const mapQuery = useMemo(() => addressLine ? encodeURIComponent(`${addressLine}${product?.cidade ? "" : ", São Paulo, SP"}, Brasil`) : "", [addressLine, product]);
   useEffect(() => {
     if (tab !== "localizacao" || !product) return;
-    if (mapStatus !== "idle") return;
-    if (product.latitude != null && product.longitude != null) { setMapCoord({ lat: Number(product.latitude), lon: Number(product.longitude) }); setMapStatus("done"); return; }
-    let alive = true;
-    setMapStatus("loading");
-    (async () => {
-      try {
-        // Geocoding pelo NOSSO servidor (mesma origem) — Brave Shields/adblock não bloqueiam.
-        const res = await fetch(`/api/geocode?id=${product.id}`, { headers: { Authorization: `Bearer ${accessToken}` } });
-        if (!alive) return;
-        if (res.ok) {
-          const j = await res.json() as { lat?: number; lon?: number };
-          if (typeof j.lat === "number" && typeof j.lon === "number") { setMapCoord({ lat: j.lat, lon: j.lon }); setMapStatus("done"); return; }
-        }
-        setMapStatus("error");
-      } catch { if (alive) setMapStatus("error"); }
-    })();
-    return () => { alive = false; };
-  }, [tab, product, accessToken, mapStatus]);
+    // Se já tem coordenada salva, usa o OpenStreetMap direto.
+    if (product.latitude != null && product.longitude != null) {
+      if (!mapCoord) setMapCoord({ lat: Number(product.latitude), lon: Number(product.longitude) });
+      return;
+    }
+    // Sem coordenada: mostra o embed do Google na hora (render abaixo) e dispara o
+    // geocoding NO SERVIDOR só pra CACHEAR — na próxima abertura já vem OSM.
+    void fetch(`/api/geocode?id=${product.id}`, { headers: { Authorization: `Bearer ${accessToken}` } }).catch(() => {});
+  }, [tab, product, accessToken, mapCoord]);
 
   async function save() {
     setBusy(true); setMessage("");
@@ -358,9 +350,8 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
                 <p className="fv2-loc-sub">{[product.bairro, product.cidade].filter(Boolean).join(" · ")}{product.uf ? ` — ${product.uf}` : ""}{product.cep ? ` · CEP ${product.cep}` : ""}</p>
                 {product.condominios && <div className="fv2-condo"><span className="fv2-condo-ic"><IcBuilding /></span><div><strong>{product.condominios.nome}</strong><small>Condomínio associado</small></div></div>}
                 <div className="fv2-map">
-                  {mapStatus === "done" && mapCoord ? <iframe title="Mapa do imóvel" loading="lazy" src={`https://www.openstreetmap.org/export/embed.html?bbox=${mapCoord.lon - 0.006}%2C${mapCoord.lat - 0.005}%2C${mapCoord.lon + 0.006}%2C${mapCoord.lat + 0.005}&layer=mapnik&marker=${mapCoord.lat}%2C${mapCoord.lon}`} />
-                    : mapStatus === "loading" ? <div className="fv2-map-placeholder">Carregando mapa…</div>
-                    : addressLine ? <iframe title="Mapa do imóvel" loading="lazy" src={`https://www.google.com/maps?q=${encodeURIComponent(addressLine)}&output=embed`} />
+                  {mapCoord ? <iframe title="Mapa do imóvel" loading="lazy" src={`https://www.openstreetmap.org/export/embed.html?bbox=${mapCoord.lon - 0.006}%2C${mapCoord.lat - 0.005}%2C${mapCoord.lon + 0.006}%2C${mapCoord.lat + 0.005}&layer=mapnik&marker=${mapCoord.lat}%2C${mapCoord.lon}`} />
+                    : mapQuery ? <iframe title="Mapa do imóvel" loading="lazy" referrerPolicy="no-referrer-when-downgrade" src={`https://www.google.com/maps?q=${mapQuery}&output=embed`} />
                     : <div className="fv2-map-placeholder">Endereço não cadastrado.</div>}
                 </div>
               </>}
