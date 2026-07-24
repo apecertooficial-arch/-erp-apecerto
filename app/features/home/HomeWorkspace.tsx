@@ -15,7 +15,7 @@ type CrmData = { leads: Lead[]; deals: Deal[]; stages: Stage[]; brokers: Broker[
 type Sale = { id: string; empreendimento_id?: string | null; empreendimento_nome?: string | null; vgv: number; percentual_comissao?: number | null; data_venda: string; data_conclusao?: string | null; status?: string | null };
 type Cash = { tipo: string; valor: number };
 type Goal = { nome?: string | null; meta_vgv?: number | null };
-type FinanceData = { sales: Sale[]; cash: Cash[]; goals: Goal[]; receipts: Array<{ status?: string | null }> };
+type FinanceData = { sales: Sale[]; cash: Cash[]; goals: Goal[]; receipts: Array<{ status?: string | null }>; naMesa?: { count: number; vgv: number } };
 type CatalogItem = { id: string; name: string; available: number; neighborhood: string };
 type CatalogData = { catalog: CatalogItem[] };
 type DashboardData = { crm: CrmData; finance: FinanceData; catalog: CatalogData };
@@ -111,6 +111,7 @@ export function HomeWorkspace({ accessToken, sessionName = "", onNavigate }: { a
           {effectiveGoal > 0 && <span className="hv2-chip">faltam <b>{brl.format(missing)}</b></span>}
           {effectiveGoal > 0 && <span className="hv2-chip">ritmo necessário <b>{brl.format(pacePerDay)}/dia</b></span>}
           <span className="hv2-chip">{metrics.monthSales.length} {metrics.monthSales.length === 1 ? "venda concluída" : "vendas concluídas"}</span>
+          {(data.finance.naMesa?.count ?? 0) > 0 && <span className="hv2-chip">na mesa <b>{data.finance.naMesa!.count}</b>{data.finance.naMesa!.vgv > 0 ? ` · ${brl.format(data.finance.naMesa!.vgv)}` : ""}</span>}
           {metrics.negociacao.length > 0 && <span className="hv2-chip">em negociação <b>{brl.format(metrics.negociacaoVgv)}</b> · {metrics.negociacao.length}</span>}
         </div>
       </div>

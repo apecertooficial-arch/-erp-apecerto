@@ -1603,10 +1603,12 @@ body:has(.chat-layer) .ai-button, body:has(.chat-layer) #sara-fab{ display: none
 /* ===== Kanban estilo Datacrazy: cada etapa rola por dentro; a página não desce — jul/2026 ===== */
 /* Escopo: só quando a view de Funil (kanban) está aberta — NÃO afeta Leads/Analítico/Agenda */
 .crm-v2:has(.crm-kanban-v2){ height: calc(100vh / 0.85); min-height: 0; overflow: hidden; }
-.crm-kanban-v2{ flex: 1; min-height: 0; align-items: stretch; overflow-x: auto; overflow-y: hidden; }
+.crm-kanban-v2{ flex: 1; min-height: 0; align-items: stretch; overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; }
 .crm-stage{ height: 100%; max-height: 100%; overflow: hidden; display: flex; flex-direction: column; }
 .crm-stage > header{ flex: 0 0 auto; }
-.crm-stage-body{ flex: 1 1 auto; min-height: 0; overflow-y: auto; }
+/* Etapa: SÓ rola na vertical; o gesto lateral do trackpad passa direto pro pipe */
+.crm-stage-body{ flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden; }
+.crm-stage-body > *{ max-width: 100%; }
 .crm-stage-body > *{ flex-shrink: 0; }   /* cards não encolhem — rolam por dentro */
 /* nota: o calc(100vh / 0.85) compensa o zoom 0.85 do .crm-v2; se mudar o zoom, ajuste o 0.85 aqui */
 /* ===== fim kanban ===== */
@@ -5354,3 +5356,42 @@ article.tone-red{border-left-color:#d3443e}article.tone-red strong{color:#d3443e
 .salvax button:disabled{opacity:.55;cursor:not-allowed}
 .partesx-pend{font-style:normal;font-size:11px;font-weight:700;color:#8a5d0d;background:var(--amber-bg);border-radius:999px;padding:3px 9px;margin-right:auto}
 .partesx-card footer{align-items:center;gap:10px}
+
+/* ============================================================================
+   Seletor "Instância do histórico" (CRM chat) — dropdown customizado
+   Substitui o <select> nativo. Status por cor, corretor como sublinha e a
+   contagem de mensagens como badge discreto (some quando é 0).
+   ========================================================================== */
+.hist-select{position:relative;width:100%}
+.hist-btn{width:100%;display:flex;align-items:center;gap:8px;height:38px;padding:0 10px;border:1px solid #e2dad5;border-radius:10px;background:#fff;color:#3f3a36;font-family:inherit;font-size:12px;cursor:pointer;transition:border-color .12s,box-shadow .12s}
+.hist-btn:hover{border-color:#d8b48f}
+.hist-select.open .hist-btn{border-color:#ff8a3d;box-shadow:0 0 0 3px rgba(255,101,0,.10)}
+.hist-btn-main{flex:1;min-width:0;display:flex;align-items:center;gap:7px;overflow:hidden;white-space:nowrap}
+.hist-btn-main b{font-weight:700;font-size:12px;color:#2c2723;overflow:hidden;text-overflow:ellipsis}
+.hist-btn-main em{font-style:normal;color:#9a8f88;font-size:11px;flex:none}
+.hist-btn.is-placeholder .hist-btn-main{color:#a49a93}
+.hist-caret{width:16px;height:16px;color:#b1a79f;flex:none;transition:transform .15s}
+.hist-select.open .hist-caret{transform:rotate(180deg)}
+.hist-dot{width:8px;height:8px;border-radius:50%;flex:none;background:#c4bcb4}
+.hist-dot.on{background:#19a861;box-shadow:0 0 0 3px rgba(25,168,97,.14)}
+.hist-dot.off{background:#e0a52a;box-shadow:0 0 0 3px rgba(224,165,42,.14)}
+.hist-dot.hist{background:#b9b0a8}
+.hist-panel{position:absolute;z-index:60;top:calc(100% + 6px);left:0;right:0;max-height:320px;overflow:auto;margin:0;padding:6px;list-style:none;background:#fff;border:1px solid #ece3dc;border-radius:12px;box-shadow:0 16px 40px rgba(38,28,22,.16)}
+.hist-panel::-webkit-scrollbar{width:8px}.hist-panel::-webkit-scrollbar-thumb{background:#d9cfc7;border-radius:8px}
+.hist-empty{padding:14px;text-align:center;color:#a49a93;font-size:12px}
+.hist-opt{width:100%;display:flex;align-items:center;gap:9px;padding:8px 9px;border:0;border-radius:9px;background:transparent;text-align:left;cursor:pointer;font-family:inherit}
+.hist-opt:hover{background:#f7f3ef}
+.hist-opt.active{background:#fff4ec}
+.hist-opt-body{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.hist-opt-top{display:flex;align-items:baseline;gap:6px;min-width:0}
+.hist-opt-top b{font-weight:700;font-size:12.5px;color:#2c2723;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hist-opt-top em{font-style:normal;color:#9a8f88;font-size:11px;flex:none}
+.hist-opt-sub{display:flex;align-items:center;gap:7px;min-width:0;color:#8a807a;font-size:11px}
+.hist-corretor{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hist-tag{flex:none;font-style:normal;padding:1px 7px;border-radius:999px;font-size:10px;font-weight:700;letter-spacing:.02em}
+.hist-tag.on{background:#e4f6ec;color:#17864d}
+.hist-tag.off{background:#fdf0d9;color:#a9750f}
+.hist-tag.hist{background:#f0ece8;color:#8a807a}
+.hist-count{flex:none;min-width:22px;height:20px;padding:0 6px;display:grid;place-items:center;border-radius:999px;background:#efeae6;color:#7a716a;font-size:11px;font-weight:700}
+.hist-opt.active .hist-count{background:#ffe4cf;color:#c15a12}
+.hist-check{width:16px;height:16px;color:#ff6500;flex:none}
