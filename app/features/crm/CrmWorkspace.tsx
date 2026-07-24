@@ -615,6 +615,25 @@ function SaleDetailDrawer({ accessToken, canApprove, sessionRole = "corretor", p
   const saveComissao = () => run(() => api({ action: "salvarComissao", processId: process.id, ...com }));
   const addObs = () => { if (!obsText.trim()) return; void run(async () => { await api({ action: "addObs", processId: process.id, texto: obsText.trim() }); setObsText(""); }); };
   const devolver = (stageId: number, motivo: string) => run(async () => { await api({ action: "devolverFunil", processId: process.id, stageId, motivo }); onClose(); });
+
+  // ===== Exclusão definitiva (admin e diretor) =====
+  const podeExcluir = sessionRole === "admin" || sessionRole === "diretor";
+  const [excluirOpen, setExcluirOpen] = useState(false);
+  const [excMotivo, setExcMotivo] = useState("");
+  const [excDescartar, setExcDescartar] = useState(false);
+  const [excConfirma, setExcConfirma] = useState("");
+  const [excBloqueios, setExcBloqueios] = useState<string[] | null>(null);
+  const excluirVenda = (forcar: boolean) => run(async () => {
+    const r = await authedFetch("/api/crm/sales", { method: "PATCH", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify({ action: "excluirVenda", processId: process.id, motivo: excMotivo, forcar, descartarLead: excDescartar }) });
+    const j = await r.json() as { error?: string; bloqueios?: string[]; precisaForcar?: boolean };
+    if (!r.ok) {
+      // Impacto financeiro: mostra o que será perdido e exige uma segunda confirmação.
+      if (j.precisaForcar) { setExcBloqueios(j.bloqueios ?? []); throw new Error(j.error || "Esta venda movimentou o financeiro."); }
+      throw new Error(j.error || "Não foi possível excluir.");
+    }
+    setExcluirOpen(false);
+    onClose();
+  });
   const busyAll = busy || wBusy;
 
   // ===== Envio em lote + organização automática pela Sara =====
@@ -972,6 +991,7 @@ function SaleDetailDrawer({ accessToken, canApprove, sessionRole = "corretor", p
         <div className="sale-full-foot-left">
           {onChat && <button type="button" className="crm-secondary" onClick={onChat}>Abrir chat do lead</button>}
           {canApprove && <button type="button" className="sale-full-devolver" disabled={busyAll} onClick={() => { setDevMotivo(""); setDevPipe(""); setDevStage(""); setDevolverOpen(true); }}>↩ Devolver ao atendimento</button>}
+          {podeExcluir && <button type="button" className="sale-full-excluir" disabled={busyAll} onClick={() => { setExcMotivo(""); setExcDescartar(false); setExcConfirma(""); setExcBloqueios(null); setExcluirOpen(true); }}>🗑 Excluir venda</button>}
         </div>
         <div className="sale-full-foot-right">
           {blockReasons.length > 0 && <span className="sale-full-foot-block">🔒 avanço bloqueado</span>}
@@ -979,6 +999,22 @@ function SaleDetailDrawer({ accessToken, canApprove, sessionRole = "corretor", p
         </div>
       </footer>
     </div>
+    {excluirOpen && <div className="crm-center-modal" onMouseDown={(e) => { if (e.target === e.currentTarget) setExcluirOpen(false); }}><form className="excx" onSubmit={(e) => { e.preventDefault(); if (excConfirma.trim().toUpperCase() !== "EXCLUIR") return; void excluirVenda(excBloqueios !== null); }}>
+      <header><div><span>EXCLUSÃO DEFINITIVA</span><h2>Excluir esta venda da esteira</h2><p>{lead?.nome || sale?.empreendimento_nome || "Venda"} · {money.format(totalCond || sale?.vgv || 0)}</p></div><button type="button" onClick={() => setExcluirOpen(false)}>×</button></header>
+      {error && <div className="modal-error">{error}</div>}
+      <div className="excx-aviso">
+        <strong>Não tem desfazer.</strong> Serão apagados: o card da esteira, as condições comerciais, a comissão, os dados das partes, {docsAnexados} documento(s) anexado(s) e o histórico de movimentações.
+        <br />Um registro do que foi excluído fica guardado para auditoria.
+      </div>
+      {excBloqueios && excBloqueios.length > 0 && <div className="excx-financeiro">
+        ⚠ <b>Esta venda já movimentou o financeiro:</b> {excBloqueios.join(", ")}.
+        <br />Confirmando agora, esses registros também serão apagados.
+      </div>}
+      <label>Motivo da exclusão<textarea rows={2} value={excMotivo} onChange={(e) => setExcMotivo(e.target.value)} placeholder="Ex.: venda duplicada, lançada por engano, distrato antes do contrato" /></label>
+      <label className="excx-check"><input type="checkbox" checked={excDescartar} onChange={(e) => setExcDescartar(e.target.checked)} />Descartar também o lead (sem marcar, ele volta ao funil como negócio aberto)</label>
+      <label>Digite <b>EXCLUIR</b> para confirmar<input value={excConfirma} onChange={(e) => setExcConfirma(e.target.value)} placeholder="EXCLUIR" autoComplete="off" /></label>
+      <footer><button type="button" onClick={() => setExcluirOpen(false)}>Cancelar</button><button className="excx-btn" type="submit" disabled={busyAll || excConfirma.trim().toUpperCase() !== "EXCLUIR"}>{excBloqueios ? "Excluir mesmo assim" : "Excluir definitivamente"}</button></footer>
+    </form></div>}
     {devolverOpen && <div className="crm-center-modal" onMouseDown={(e) => { if (e.target === e.currentTarget) setDevolverOpen(false); }}><form onSubmit={(e) => { e.preventDefault(); if (!devStage) return; void devolver(Number(devStage), devMotivo); }}>
       <header><div><span>DEVOLVER AO ATENDIMENTO</span><h2>Escolha o funil e a etapa</h2><p>O cliente sai da esteira e volta ao funil na etapa escolhida (qualquer funil, qualquer etapa).</p></div><button type="button" onClick={() => setDevolverOpen(false)}>×</button></header>
       <label>Funil (pipe)<select value={devPipe} onChange={(e) => { setDevPipe(e.target.value ? Number(e.target.value) : ""); setDevStage(""); }}><option value="">Selecione o funil</option>{pipelines.slice().sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0)).map((p) => <option value={p.id} key={p.id}>{p.nome}</option>)}</select></label>
