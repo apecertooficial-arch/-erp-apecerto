@@ -35,13 +35,8 @@ export function PermissionsWorkspace({ accessToken }: { accessToken: string }) {
 
   // Catálogo = FONTE DA VERDADE (app/lib/permissions). Cada módulo mostra apenas as
   // ações que fazem sentido; as colunas são a união das ações válidas, na ordem canônica.
-  const catalog = useMemo(() => {
-    const modules = MODULE_ORDER.filter((m) => (MODULE_CAPABILITIES[m] ?? []).length > 0);
-    const actionsByMod: Record<string, readonly string[]> = {};
-    for (const m of modules) actionsByMod[m] = MODULE_CAPABILITIES[m] ?? [];
-    const cols = ACTION_ORDER.filter((a) => modules.some((m) => isCapability(m, a)));
-    return { modules, actionsByMod, cols };
-  }, []);
+  // Grade completa: TODOS os módulos × TODAS as ações têm botão Sim/Não.
+  const catalog = useMemo(() => ({ modules: MODULE_ORDER, cols: ACTION_ORDER }), []);
 
   const perfilById = useMemo(() => new Map(perfis.map((p) => [p.id, p])), [perfis]);
   const userById = useMemo(() => new Map(usuarios.map((u) => [u.id, u])), [usuarios]);
@@ -154,15 +149,15 @@ export function PermissionsWorkspace({ accessToken }: { accessToken: string }) {
                       <tr key={m}>
                         <td className="mod-col"><strong>{label(MODULE_LABELS, m)}</strong></td>
                         {catalog.cols.map((a) => {
-                          if (!isCapability(m, a)) return <td key={a} className="perm-blank" aria-hidden="true" />;
                           const on = has(m, a);
+                          const core = isCapability(m, a); // ação central do módulo (destaque leve)
                           return (
                             <td key={a}>
                               <button
                                 type="button"
                                 role="switch"
                                 aria-checked={on}
-                                className={`perm-toggle ${on ? "on" : "off"}`}
+                                className={`perm-toggle ${on ? "on" : "off"}${core ? " core" : ""}`}
                                 onClick={() => toggle(m, a)}
                                 title={`${label(MODULE_LABELS, m)} · ${label(ACTION_LABELS, a)}: ${on ? "permitido" : "bloqueado"}`}
                                 aria-label={`${label(MODULE_LABELS, m)} · ${label(ACTION_LABELS, a)}`}
