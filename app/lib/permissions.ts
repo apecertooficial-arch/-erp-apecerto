@@ -70,6 +70,46 @@ export function isCapability(moduleName: string, action: string): boolean {
   return (MODULE_CAPABILITIES[moduleName] ?? []).includes(action);
 }
 
+// ============================================================================
+// NÍVEIS DE ACESSO — a "inteligência" que simplifica a tela.
+// Cada módulo é controlado por um nível; o nível expande para o conjunto exato
+// de ações granulares (mantém o mesmo modelo de permissão salvo no banco).
+//   Sem acesso → nada   |   Ver → só leitura
+//   Operar → leitura + operação do dia a dia   |   Gerenciar → tudo do módulo
+// ============================================================================
+export type AccessLevel = "none" | "ver" | "operar" | "gerenciar";
+
+export const ACCESS_LEVELS: { key: AccessLevel; label: string; hint: string }[] = [
+  { key: "none", label: "Sem acesso", hint: "Não vê nem usa o módulo" },
+  { key: "ver", label: "Ver", hint: "Só visualiza" },
+  { key: "operar", label: "Operar", hint: "Vê, cria e edita no dia a dia" },
+  { key: "gerenciar", label: "Gerenciar", hint: "Controle total do módulo" },
+];
+
+// Ações de leitura e de operação. O que não estiver aqui é tratado como
+// "gerência" (excluir, aprovar, importar, transferir, configurar, publicar…).
+const READ_ACTIONS = new Set(["ver", "ver_conexoes", "visualizar_historico", "consultar_execucoes"]);
+const OPERATE_ACTIONS = new Set(["criar", "editar", "mover", "reordenar", "enviar", "conciliar", "atribuir_proprio", "exportar"]);
+
+/** Conjunto de ações que um nível representa dentro de um módulo. */
+export function actionsForLevel(moduleName: string, level: AccessLevel): string[] {
+  const caps = MODULE_CAPABILITIES[moduleName] ?? [];
+  if (level === "none") return [];
+  if (level === "gerenciar") return [...caps];
+  if (level === "ver") return caps.filter((a) => READ_ACTIONS.has(a));
+  return caps.filter((a) => READ_ACTIONS.has(a) || OPERATE_ACTIONS.has(a)); // operar
+}
+
+/** Descobre o nível a partir das ações salvas; "custom" se não bate com nenhum preset. */
+export function levelForActions(moduleName: string, actions: string[]): AccessLevel | "custom" {
+  const set = new Set(actions);
+  for (const { key } of ACCESS_LEVELS) {
+    const target = actionsForLevel(moduleName, key);
+    if (target.length === set.size && target.every((a) => set.has(a))) return key;
+  }
+  return "custom";
+}
+
 /** A permissão está concedida no mapa? (presença = concedido; ausência = negado) */
 export function hasPermission(perms: PermissionMap | null | undefined, moduleName: string, action: string): boolean {
   return Boolean(perms && (perms[moduleName] ?? []).includes(action));
