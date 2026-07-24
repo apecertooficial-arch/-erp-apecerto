@@ -415,7 +415,7 @@ export function CrmWorkspace({ accessToken, initialDealId = null, onInitialDealH
 }
 
 type SalesData = {
-  sales: Array<{ id: string; created_at: string; data_venda: string; empreendimento_id: string | null; empreendimento_nome: string | null; vgv: number; forma_pgto: string | null; status: string; obs: string | null }>;
+  sales: Array<{ id: string; created_at: string; data_venda: string; data_conclusao?: string | null; cliente_nome?: string | null; empreendimento_id: string | null; empreendimento_nome: string | null; vgv: number; forma_pgto: string | null; status: string; obs: string | null }>;
   processes: Array<{ id: string; venda_id: string; negocio_id: number | null; etapa: string; tipo_venda: string; responsavel_usuario_id: string | null; prazo_em: string | null; observacoes?: string | null; criado_em?: string; atualizado_em: string; aprovacao_status?: string; aprovacao_motivo?: string | null; solicitado_por?: string | null }>;
   deals: Array<{ id: number; venda_id: string | null; lead_id: number; corretor_id: number | null; empreendimento_id: string | null; valor: number | null; status: string }>;
   leads: Array<{ id: number; nome: string | null; telefone: string | null; email: string | null; corretor_id: number | null; tags: unknown; extras: unknown }>;
@@ -505,11 +505,13 @@ function SalesProcessView({ accessToken, initialCreate = false, sessionRole = "c
           const tags = tagList(lead?.tags).slice(0, 2);
           const late = overdue.some((entry) => entry.id === item.id);
           const minutesInStage = Math.max(0, (Date.now() - new Date(item.atualizado_em).getTime()) / 60000);
-          const fallbackLead = { nome: sale?.empreendimento_nome || "Venda", extras: null };
+          // Nome do cliente vem do lead; se ele não estiver carregado, cai no que foi gravado na venda.
+          const nomeCliente = lead?.nome || sale?.cliente_nome || "Cliente não identificado";
+          const fallbackLead = { nome: nomeCliente, extras: null };
           return <article className={late ? "sale-card late" : "sale-card"} role="button" tabIndex={0} title="Ver andamento da venda" draggable onDragStart={(event) => event.dataTransfer.setData("text/process-id", item.id)} onClick={() => setDetailItem(item)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); setDetailItem(item); } }} key={item.id}>
             <div className={`sla-top-band ${late ? "vermelho" : "verde"}`} />
             <div className="sale-card-content">
-              <div className="card-person"><LeadAvatar lead={lead ?? fallbackLead} /><div><strong>{lead?.nome || sale?.empreendimento_nome || "Venda"}</strong><small>{lead?.telefone || "Sem telefone"}</small></div></div>
+              <div className="card-person"><LeadAvatar lead={lead ?? fallbackLead} /><div><strong>{nomeCliente}</strong><small>{sale?.empreendimento_nome || "Produto não informado"}</small></div></div>
               <div className="sale-card-broker"><span className={`presence ${broker?.online ? "online" : ""}`} /><strong>{broker?.nome || "Sem responsável"}</strong></div>
               <div className="sla-clock-v3"><b>{formatElapsed(minutesInStage)}</b><span>{late ? "em atraso nesta etapa" : "nesta etapa"}</span></div>
               <div className="card-context"><span>{sale?.empreendimento_nome || "Produto não informado"}</span><b>{money.format(sale?.vgv || 0)}</b></div>
@@ -812,7 +814,7 @@ function SaleDetailDrawer({ accessToken, canApprove, sessionRole = "corretor", p
   return <div className="sale-full-layer" onMouseDown={(e) => { if (e.target === e.currentTarget) fecharComAviso(); }}>
     <div className="sale-full">
       <header className="sale-full-top">
-        <div className="sale-full-title"><span className="sale-full-kicker">ESTEIRA DE VENDAS · NEGOCIAÇÃO</span><h2>{lead?.nome || sale?.empreendimento_nome || "Venda"}</h2><p>{sale?.empreendimento_nome || "Produto não informado"}{lead?.telefone ? ` · ☎ ${lead.telefone}` : ""}</p></div>
+        <div className="sale-full-title"><span className="sale-full-kicker">ESTEIRA DE VENDAS · NEGOCIAÇÃO</span><h2>{lead?.nome || sale?.cliente_nome || "Cliente não identificado"}</h2><p>{sale?.empreendimento_nome || "Produto não informado"}{lead?.telefone ? ` · ☎ ${lead.telefone}` : ""}</p></div>
         <button className="sale-full-close" type="button" onClick={fecharComAviso} aria-label="Fechar">×</button>
       </header>
 
