@@ -5046,3 +5046,62 @@ article.tone-red{border-left-color:#d3443e}article.tone-red strong{color:#d3443e
 /* Lightbox das fotos da unidade: botão sem aparência default + acima do modal da unidade */
 .fv2-unit-detail-ov .fv2-ud-photo { padding:0; cursor:pointer; }
 .photo-lightbox.unit-lightbox { z-index:1200; }
+
+/* ===== Esteira · envio em lote, triagem da Sara, partes e trilha ===== */
+.lotex{border:1px dashed var(--purple-100);background:linear-gradient(180deg,#fdfaff,#fff);border-radius:14px;padding:16px;margin-bottom:16px}
+.lotex header{display:flex;gap:18px;align-items:center;flex-wrap:wrap}
+.lotex header>div{flex:1;min-width:240px}
+.lotex h3{margin:0 0 4px;font-size:15px;font-weight:800;color:var(--ink)}
+.lotex p{margin:0;font-size:12.5px;color:var(--muted);line-height:1.45}
+.lotex-drop{flex:1;min-width:280px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;text-align:center;padding:18px 16px;border:2px dashed var(--purple-100);border-radius:12px;background:#fff;cursor:pointer;transition:border-color var(--dur) var(--ease),background var(--dur) var(--ease)}
+.lotex-drop:hover{border-color:var(--purple);background:var(--purple-soft)}
+.lotex-drop.busy{border-color:var(--orange);background:var(--orange-50);cursor:progress}
+.lotex-drop strong{font-size:13px;color:var(--purple-700)}
+.lotex-drop small{font-size:11px;color:var(--faint)}
+.lotex-msg{margin-top:12px;padding:9px 12px;border-radius:10px;background:var(--green-bg);color:#0f6b3c;font-size:12.5px;font-weight:600}
+
+.triagemx{border:1px solid var(--amber);background:#fffdf7;border-radius:14px;padding:16px;margin-bottom:18px}
+.triagemx h3{margin:0 0 4px;font-size:15px;font-weight:800;color:#8a5d0d;display:flex;align-items:center;gap:8px}
+.triagemx h3 b{font-size:11px;background:var(--amber);color:#fff;border-radius:999px;padding:2px 8px}
+.triagemx>p{margin:0 0 12px;font-size:12.5px;color:var(--muted)}
+.triagemx-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px;border:1px solid #f0e4c8;border-radius:10px;background:#fff;margin-bottom:8px}
+.triagemx-row.falhou{border-color:#f2c9c4;background:#fff8f7}
+.triagemx-main{flex:1;min-width:220px;display:flex;flex-direction:column;gap:2px}
+.triagemx-main strong{font-size:13px;font-weight:700;color:var(--ink)}
+.triagemx-main small{font-size:11.5px;color:var(--muted)}
+.triagemx-lido{font-size:11px;color:var(--purple-700);font-style:normal;background:var(--purple-soft);border-radius:6px;padding:2px 6px;align-self:flex-start}
+.triagemx-pick{display:flex;gap:6px;flex-wrap:wrap}
+.triagemx-pick select{border:1px solid var(--line-strong);border-radius:8px;padding:6px 8px;font-size:12px;background:#fff;min-width:150px}
+.triagemx-actions{display:flex;gap:6px;align-items:center}
+.triagemx-actions button{border:1px solid var(--line-strong);background:#fff;border-radius:8px;padding:6px 10px;font-size:12px;cursor:pointer}
+.triagemx-actions .crm-primary{border-color:transparent}
+.triagemx-actions button:disabled{opacity:.5;cursor:not-allowed}
+
+.docx-ia{font-size:10.5px;font-weight:700;color:var(--purple-700);background:var(--purple-soft);border-radius:999px;padding:2px 8px;align-self:flex-start;margin:2px 0}
+.docx-cond{font-style:normal;font-weight:500;font-size:11px;color:var(--faint)}
+.docx-row.st-triagem{border-color:#f0e4c8;background:#fffdf7}
+.docx-status.st-triagem{background:var(--amber-bg);color:#8a5d0d}
+
+.partesx-hint{margin:0 0 12px;font-size:12.5px;color:var(--muted);line-height:1.45}
+.partesx-pgto{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;margin-bottom:6px}
+.partesx-pgto button{display:flex;flex-direction:column;gap:3px;text-align:left;padding:11px 13px;border:1px solid var(--line-strong);border-radius:12px;background:#fff;cursor:pointer;transition:all var(--dur) var(--ease)}
+.partesx-pgto button:hover{border-color:var(--purple)}
+.partesx-pgto button.on{border-color:var(--purple);background:var(--purple-soft);box-shadow:0 0 0 1px var(--purple) inset}
+.partesx-pgto button strong{font-size:13px;color:var(--ink)}
+.partesx-pgto button small{font-size:11px;color:var(--muted);line-height:1.35}
+.partesx-card{border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:10px;background:#fff}
+.partesx-card header{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:10px}
+.partesx-card header strong{font-size:13.5px;font-weight:800;color:var(--ink)}
+.partesx-card header small{font-size:11px;color:var(--faint)}
+.partesx-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px}
+.partesx-grid label{display:flex;flex-direction:column;gap:4px;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.3px}
+.partesx-grid input{border:1px solid var(--line-strong);border-radius:var(--radius-input);padding:8px 10px;font-size:13px;font-weight:500;color:var(--ink);text-transform:none;letter-spacing:0}
+.partesx-grid input:focus{outline:none;border-color:var(--purple);box-shadow:0 0 0 3px var(--purple-soft)}
+.partesx-card footer{display:flex;justify-content:flex-end;margin-top:12px}
+
+.trilhax{border-top:1px solid var(--line);padding-top:16px;margin-top:8px}
+.trilhax h3{margin:0 0 10px;font-size:13px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;color:var(--muted)}
+.trilhax ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:5px;max-height:320px;overflow-y:auto}
+.trilhax li{display:flex;gap:10px;font-size:12px;padding:5px 0;border-bottom:1px dashed var(--line)}
+.trilhax li b{flex:none;width:132px;color:var(--faint);font-weight:600}
+.trilhax li span{color:var(--ink-soft)}

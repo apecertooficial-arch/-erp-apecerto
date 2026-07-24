@@ -2213,19 +2213,74 @@ export type Database = {
         }
         Relationships: []
       }
+      esteira_anexo_eventos: {
+        Row: {
+          anexo_id: string | null
+          ator: string | null
+          ator_nome: string | null
+          criado_em: string
+          detalhe: Json | null
+          evento: string
+          id: string
+          lote_id: string | null
+          processo_ref: string | null
+        }
+        Insert: {
+          anexo_id?: string | null
+          ator?: string | null
+          ator_nome?: string | null
+          criado_em?: string
+          detalhe?: Json | null
+          evento: string
+          id?: string
+          lote_id?: string | null
+          processo_ref?: string | null
+        }
+        Update: {
+          anexo_id?: string | null
+          ator?: string | null
+          ator_nome?: string | null
+          criado_em?: string
+          detalhe?: Json | null
+          evento?: string
+          id?: string
+          lote_id?: string | null
+          processo_ref?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "esteira_anexo_eventos_anexo_id_fkey"
+            columns: ["anexo_id"]
+            isOneToOne: false
+            referencedRelation: "esteira_anexos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       esteira_anexos: {
         Row: {
+          confirmado_em: string | null
+          confirmado_por: string | null
           criado_em: string
           doc_nome: string | null
           enviado_por: string | null
           etapa_slug: string | null
           grupo: string | null
+          ia_confianca: number | null
+          ia_doc_nome: string | null
+          ia_extraido: Json | null
+          ia_grupo: string | null
+          ia_motivo: string | null
+          ia_processado_em: string | null
+          ia_status: string
           id: string
+          lote_id: string | null
           mime: string | null
           negocio_id: number | null
           nome: string
           obrigatorio: boolean
           observacao: string | null
+          origem: string
           path: string
           processo_ref: string
           revisado_em: string | null
@@ -2235,17 +2290,28 @@ export type Database = {
           tamanho: number | null
         }
         Insert: {
+          confirmado_em?: string | null
+          confirmado_por?: string | null
           criado_em?: string
           doc_nome?: string | null
           enviado_por?: string | null
           etapa_slug?: string | null
           grupo?: string | null
+          ia_confianca?: number | null
+          ia_doc_nome?: string | null
+          ia_extraido?: Json | null
+          ia_grupo?: string | null
+          ia_motivo?: string | null
+          ia_processado_em?: string | null
+          ia_status?: string
           id?: string
+          lote_id?: string | null
           mime?: string | null
           negocio_id?: number | null
           nome: string
           obrigatorio?: boolean
           observacao?: string | null
+          origem?: string
           path: string
           processo_ref: string
           revisado_em?: string | null
@@ -2255,17 +2321,28 @@ export type Database = {
           tamanho?: number | null
         }
         Update: {
+          confirmado_em?: string | null
+          confirmado_por?: string | null
           criado_em?: string
           doc_nome?: string | null
           enviado_por?: string | null
           etapa_slug?: string | null
           grupo?: string | null
+          ia_confianca?: number | null
+          ia_doc_nome?: string | null
+          ia_extraido?: Json | null
+          ia_grupo?: string | null
+          ia_motivo?: string | null
+          ia_processado_em?: string | null
+          ia_status?: string
           id?: string
+          lote_id?: string | null
           mime?: string | null
           negocio_id?: number | null
           nome?: string
           obrigatorio?: boolean
           observacao?: string | null
+          origem?: string
           path?: string
           processo_ref?: string
           revisado_em?: string | null
@@ -2279,6 +2356,7 @@ export type Database = {
       esteira_doc_modelo: {
         Row: {
           ativo: boolean
+          condicao: string | null
           criado_em: string
           grupo: string
           id: string
@@ -2288,6 +2366,7 @@ export type Database = {
         }
         Insert: {
           ativo?: boolean
+          condicao?: string | null
           criado_em?: string
           grupo: string
           id?: string
@@ -2297,6 +2376,7 @@ export type Database = {
         }
         Update: {
           ativo?: boolean
+          condicao?: string | null
           criado_em?: string
           grupo?: string
           id?: string
@@ -3642,6 +3722,42 @@ export type Database = {
           corretor_id?: number
           peso?: number
           recebidos?: number
+        }
+        Relationships: []
+      }
+      negocio_estagio_historico: {
+        Row: {
+          corretor_id: number | null
+          etapa_de: string | null
+          etapa_para: string | null
+          id: number
+          lead_id: number | null
+          movido_em: string
+          negocio_id: number
+          stage_de: number | null
+          stage_para: number | null
+        }
+        Insert: {
+          corretor_id?: number | null
+          etapa_de?: string | null
+          etapa_para?: string | null
+          id?: number
+          lead_id?: number | null
+          movido_em?: string
+          negocio_id: number
+          stage_de?: number | null
+          stage_para?: number | null
+        }
+        Update: {
+          corretor_id?: number | null
+          etapa_de?: string | null
+          etapa_para?: string | null
+          id?: number
+          lead_id?: number | null
+          movido_em?: string
+          negocio_id?: number
+          stage_de?: number | null
+          stage_para?: number | null
         }
         Relationships: []
       }
@@ -5304,6 +5420,7 @@ export type Database = {
           data_assinatura: string | null
           data_conclusao: string | null
           data_entrada: string | null
+          forma_pagamento: string | null
           origem_recursos: Json
           processo_ref: string
           qtd_parcelas: number | null
@@ -5325,6 +5442,7 @@ export type Database = {
           data_assinatura?: string | null
           data_conclusao?: string | null
           data_entrada?: string | null
+          forma_pagamento?: string | null
           origem_recursos?: Json
           processo_ref: string
           qtd_parcelas?: number | null
@@ -5346,6 +5464,7 @@ export type Database = {
           data_assinatura?: string | null
           data_conclusao?: string | null
           data_entrada?: string | null
+          forma_pagamento?: string | null
           origem_recursos?: Json
           processo_ref?: string
           qtd_parcelas?: number | null
@@ -5468,6 +5587,59 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "venda_observacoes_processo_ref_fkey"
+            columns: ["processo_ref"]
+            isOneToOne: false
+            referencedRelation: "venda_processos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      venda_partes: {
+        Row: {
+          atualizado_em: string
+          atualizado_por: string | null
+          cpf: string | null
+          criado_em: string
+          email: string | null
+          id: string
+          nome: string | null
+          observacao: string | null
+          ordem: number
+          papel: string
+          processo_ref: string
+          telefone: string | null
+        }
+        Insert: {
+          atualizado_em?: string
+          atualizado_por?: string | null
+          cpf?: string | null
+          criado_em?: string
+          email?: string | null
+          id?: string
+          nome?: string | null
+          observacao?: string | null
+          ordem?: number
+          papel: string
+          processo_ref: string
+          telefone?: string | null
+        }
+        Update: {
+          atualizado_em?: string
+          atualizado_por?: string | null
+          cpf?: string | null
+          criado_em?: string
+          email?: string | null
+          id?: string
+          nome?: string | null
+          observacao?: string | null
+          ordem?: number
+          papel?: string
+          processo_ref?: string
+          telefone?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "venda_partes_processo_ref_fkey"
             columns: ["processo_ref"]
             isOneToOne: false
             referencedRelation: "venda_processos"
@@ -6933,6 +7105,7 @@ export type Database = {
       _stage_aguardando: { Args: { p_stage: number }; Returns: boolean }
       aceitar_transferencia: { Args: { p_negocio: number }; Returns: Json }
       admin_dashboard_financeiro: { Args: never; Returns: Json }
+      admin_dashboard_funil: { Args: never; Returns: Json }
       admin_dashboard_rodagem: { Args: never; Returns: Json }
       agenda_link_regenerar: { Args: never; Returns: string }
       agenda_link_token: { Args: never; Returns: string }
@@ -7139,6 +7312,18 @@ export type Database = {
       distribuicao_saude: { Args: never; Returns: Json }
       distribuir_leads_orfaos: { Args: never; Returns: number }
       enviar_abordagem_lead: { Args: { p_lead: number }; Returns: Json }
+      equipe_visao: {
+        Args: never
+        Returns: {
+          corretor_id: number
+          is_self: boolean
+          meta_vgv: number
+          nome: string
+          score: number
+          vendas_mes: number
+          vgv_mes: number
+        }[]
+      }
       erp_config_atual: { Args: never; Returns: Json }
       erp_salvar_ips: { Args: { p_ips: string[] }; Returns: undefined }
       erp_settings_salvar: {
@@ -7292,6 +7477,7 @@ export type Database = {
       instancias_vincular_corretores: { Args: never; Returns: number }
       is_admin: { Args: never; Returns: boolean }
       is_admin_exec: { Args: never; Returns: boolean }
+      lead_trajetoria: { Args: { p_lead: number }; Returns: Json }
       lead_vincular_wa: { Args: { p_lead_id: number }; Returns: string }
       listar_aquario_leads: { Args: never; Returns: Json }
       listar_corretores_transferencia: {
@@ -7302,6 +7488,7 @@ export type Database = {
           online: boolean
         }[]
       }
+      manages_broker: { Args: { p_corretor_id: number }; Returns: boolean }
       meu_perfil: { Args: never; Returns: Json }
       migrar_negocios_funil: {
         Args: {
@@ -7652,7 +7839,12 @@ export type Database = {
       }
     }
     Enums: {
-      papel_comissao: "corretor" | "executivo" | "indicacao" | "apecerto"
+      papel_comissao:
+        | "corretor"
+        | "executivo"
+        | "indicacao"
+        | "apecerto"
+        | "gerente"
       status_empreend: "pronto" | "em_obras" | "lancamento"
       status_venda: "pendente" | "concluido" | "pago" | "distrato"
       tipo_caixa: "entrada" | "saida"
@@ -7785,7 +7977,13 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      papel_comissao: ["corretor", "executivo", "indicacao", "apecerto"],
+      papel_comissao: [
+        "corretor",
+        "executivo",
+        "indicacao",
+        "apecerto",
+        "gerente",
+      ],
       status_empreend: ["pronto", "em_obras", "lancamento"],
       status_venda: ["pendente", "concluido", "pago", "distrato"],
       tipo_caixa: ["entrada", "saida"],
