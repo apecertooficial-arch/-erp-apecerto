@@ -5129,3 +5129,26 @@ article.tone-red{border-left-color:#d3443e}article.tone-red strong{color:#d3443e
 .trilhax li{display:flex;gap:10px;font-size:12px;padding:5px 0;border-bottom:1px dashed var(--line)}
 .trilhax li b{flex:none;width:132px;color:var(--faint);font-weight:600}
 .trilhax li span{color:var(--ink-soft)}
+
+/* ===== Esteira · cascata de etapas (blocos travados) ===== */
+.bloqx{display:flex;align-items:center;gap:8px;padding:10px 13px;border-radius:10px;background:var(--sunken);border:1px solid var(--line-strong);color:var(--muted);font-size:12.5px;font-weight:600;margin-bottom:12px}
+.sale-full-tabs button.travada{opacity:.55}
+.sale-full-tabs button.travada:not(.active){color:var(--faint)}
+.docx-group.travado{opacity:.72}
+.docx-group.travado .docx-row{background:var(--sunken)}
+
+.partesx-lado{margin-bottom:16px}
+.partesx-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:4px}
+.partesx-head h3{margin:0}
+.partesx-selo{font-size:10.5px;font-weight:800;letter-spacing:.3px;text-transform:uppercase;padding:3px 9px;border-radius:999px}
+.partesx-selo.ok{background:var(--green-bg);color:#17834b}
+.partesx-selo.pend{background:var(--amber-bg);color:#8a5d0d}
+.partesx-papel{margin-bottom:10px}
+.partesx-card.vazio{border-style:dashed}
+.partesx-head-right{display:flex;align-items:center;gap:8px}
+.partesx-del{border:1px solid var(--line-strong);background:#fff;border-radius:8px;padding:3px 8px;font-size:12px;cursor:pointer;color:var(--red)}
+.partesx-del:hover:not(:disabled){background:var(--red-bg);border-color:var(--red)}
+.partesx-del:disabled{opacity:.4;cursor:not-allowed}
+.partesx-grid input:disabled{background:var(--sunken);color:var(--muted);cursor:not-allowed}
+.partesx-pgto button:disabled{opacity:.55;cursor:not-allowed}
+.condx-grid input:disabled{background:var(--sunken);color:var(--muted);cursor:not-allowed}
