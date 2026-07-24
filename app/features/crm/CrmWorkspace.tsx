@@ -258,19 +258,20 @@ export function CrmWorkspace({ accessToken, initialDealId = null, onInitialDealH
   const filteredDeals = useMemo(() => (data?.deals ?? []).filter((deal) => {
     const lead = leadById.get(deal.lead_id);
     const stage = activeStages.find((item) => item.id === deal.stage_id);
-    if (!lead || deal.pipeline_id !== pipelineId) return false;
+    // Negócio SEM lead carregado ainda aparece (card com dados mínimos) — nunca some do funil.
+    if (deal.pipeline_id !== pipelineId) return false;
     if (deal.status === "ganho") return false; // virou venda → saiu do funil, está na Esteira de vendas
     const sla = slaByDeal.get(deal.id);
     const overdue = Boolean(sla && (sla.alarme_ativo || sla.cor_ativa === "vermelho"));
     const norm = (s: string) => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
     const q = norm(query.trim());
     const qDigits = query.replace(/\D/g, "");
-    const foneDigits = (lead.telefone ?? "").replace(/\D/g, "");
-    const buscaOk = !q || norm(`${lead.nome ?? ""} ${lead.email ?? ""}`).includes(q) || (qDigits.length >= 3 && foneDigits.includes(qDigits));
+    const foneDigits = (lead?.telefone ?? "").replace(/\D/g, "");
+    const buscaOk = !q || norm(`${lead?.nome ?? ""} ${lead?.email ?? ""}`).includes(q) || (qDigits.length >= 3 && foneDigits.includes(qDigits));
     return buscaOk && (!stageId || deal.stage_id === stageId)
-      && (!brokerId || (deal.corretor_id ?? lead.corretor_id) === brokerId) && (!origin || lead.origem === origin)
-      && (!tag || tagList(lead.tags).includes(tag)) && (!group || stage?.grupo === group) && (!overdueOnly || overdue)
-      && (!dateFrom || (lead.criado_em ?? "") >= dateFrom) && (!dateTo || (lead.criado_em ?? "") <= `${dateTo}T23:59:59`)
+      && (!brokerId || (deal.corretor_id ?? lead?.corretor_id) === brokerId) && (!origin || lead?.origem === origin)
+      && (!tag || (lead ? tagList(lead.tags) : []).includes(tag)) && (!group || stage?.grupo === group) && (!overdueOnly || overdue)
+      && (!dateFrom || (lead?.criado_em ?? deal.criado_em ?? "") >= dateFrom) && (!dateTo || (lead?.criado_em ?? deal.criado_em ?? "") <= `${dateTo}T23:59:59`)
       && (!productFilter || deal.empreendimento_id === productFilter);
   }), [data, leadById, activeStages, pipelineId, query, stageId, brokerId, origin, tag, group, overdueOnly, slaByDeal, dateFrom, dateTo, productFilter]);
   const overdueCount = useMemo(() => (data?.deals ?? []).filter((deal) => { const sla = slaByDeal.get(deal.id); return deal.pipeline_id === pipelineId && Boolean(sla && (sla.alarme_ativo || sla.cor_ativa === "vermelho")); }).length, [data, pipelineId, slaByDeal]);
@@ -1208,7 +1209,7 @@ function PipelineViewEnhanced({ stages, allStages, deals, leadById, brokerById, 
         <button type="button" className="aq-pescar" disabled={fishing || aquario.disponiveis === 0} onClick={() => onPescar?.()}>{fishing ? "Pescando…" : "🎣 Pescar um lead"}</button>
       </div>}
       <div className="crm-stage-body">{items.map((deal) => {
-        const lead = leadById.get(deal.lead_id)!;
+        const lead = leadById.get(deal.lead_id) ?? ({ id: deal.lead_id, nome: `Lead #${deal.lead_id}`, telefone: null, email: null, instagram: null, corretor_id: deal.corretor_id, pipeline_id: deal.pipeline_id, status: "novo", origem: null, tags: [], extras: null, criado_em: deal.criado_em, atualizado_em: deal.criado_em, disparo_optout: null } as unknown as Lead);
         const broker = brokerById.get(deal.corretor_id ?? lead.corretor_id ?? -1);
         const tags = tagList(lead.tags);
         const sla = slaByDeal.get(deal.id);
@@ -1551,7 +1552,7 @@ function LeadChatDrawer({ accessToken, lead, deal, corretorNome, onClose, onResp
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 function PipelineView({ stages, deals, leadById, brokerById, onOpen, draggingId, onDrag, onDrop }: { stages: Stage[]; deals: Deal[]; leadById: Map<number, Lead>; brokerById: Map<number, Broker>; onOpen: (id: number) => void; draggingId: number | null; onDrag: (id: number | null) => void; onDrop: (event: DragEvent, stageId: number) => Promise<void> }) {
-  return <section className="crm-kanban-v2">{stages.map((stage) => { const items = deals.filter((deal) => deal.stage_id === stage.id); return <article className="crm-stage" style={{ "--stage": stage.cor || "#8d2bd1" } as CSSProperties} key={stage.id} onDragOver={(event) => event.preventDefault()} onDrop={(event) => void onDrop(event, stage.id)}><header><div><i /><strong>{stage.rotulo || stage.nome}</strong></div><span>{items.length}</span></header><div className="crm-stage-body">{items.map((deal) => { const lead = leadById.get(deal.lead_id)!; const broker = brokerById.get(deal.corretor_id ?? lead.corretor_id ?? -1); const tags = tagList(lead.tags); return <button draggable type="button" className={`crm-lead-card ${draggingId === deal.id ? "dragging" : ""}`} onDragStart={(event) => { event.dataTransfer.setData("text/deal-id", String(deal.id)); onDrag(deal.id); }} onDragEnd={() => onDrag(null)} onClick={() => onOpen(deal.id)} key={deal.id}><div className="card-person"><span>{initials(lead.nome)}</span><div><strong>{lead.nome || "Lead sem nome"}</strong><small>{lead.telefone || "Sem telefone"}</small></div><em>⋮</em></div><div className="card-context"><span>{lead.origem || "Sem origem"}</span>{deal.valor ? <b>{money.format(deal.valor)}</b> : <small>Valor a definir</small>}</div>{tags.length > 0 && <div className="card-tags">{tags.slice(0, 3).map((item) => <span key={item}>{item}</span>)}</div>}<footer><span className={`presence ${broker?.online ? "online" : ""}`} /> <strong>{broker?.nome || "Sem responsável"}</strong><time>{shortDate.format(new Date(deal.ultima_movimentacao || deal.criado_em))}</time></footer></button>; })}{items.length === 0 && <div className="crm-empty-stage">Arraste um lead para esta etapa</div>}</div></article>; })}</section>;
+  return <section className="crm-kanban-v2">{stages.map((stage) => { const items = deals.filter((deal) => deal.stage_id === stage.id); return <article className="crm-stage" style={{ "--stage": stage.cor || "#8d2bd1" } as CSSProperties} key={stage.id} onDragOver={(event) => event.preventDefault()} onDrop={(event) => void onDrop(event, stage.id)}><header><div><i /><strong>{stage.rotulo || stage.nome}</strong></div><span>{items.length}</span></header><div className="crm-stage-body">{items.map((deal) => { const lead = leadById.get(deal.lead_id) ?? ({ id: deal.lead_id, nome: `Lead #${deal.lead_id}`, telefone: null, email: null, instagram: null, corretor_id: deal.corretor_id, pipeline_id: deal.pipeline_id, status: "novo", origem: null, tags: [], extras: null, criado_em: deal.criado_em, atualizado_em: deal.criado_em, disparo_optout: null } as unknown as Lead); const broker = brokerById.get(deal.corretor_id ?? lead.corretor_id ?? -1); const tags = tagList(lead.tags); return <button draggable type="button" className={`crm-lead-card ${draggingId === deal.id ? "dragging" : ""}`} onDragStart={(event) => { event.dataTransfer.setData("text/deal-id", String(deal.id)); onDrag(deal.id); }} onDragEnd={() => onDrag(null)} onClick={() => onOpen(deal.id)} key={deal.id}><div className="card-person"><span>{initials(lead.nome)}</span><div><strong>{lead.nome || "Lead sem nome"}</strong><small>{lead.telefone || "Sem telefone"}</small></div><em>⋮</em></div><div className="card-context"><span>{lead.origem || "Sem origem"}</span>{deal.valor ? <b>{money.format(deal.valor)}</b> : <small>Valor a definir</small>}</div>{tags.length > 0 && <div className="card-tags">{tags.slice(0, 3).map((item) => <span key={item}>{item}</span>)}</div>}<footer><span className={`presence ${broker?.online ? "online" : ""}`} /> <strong>{broker?.nome || "Sem responsável"}</strong><time>{shortDate.format(new Date(deal.ultima_movimentacao || deal.criado_em))}</time></footer></button>; })}{items.length === 0 && <div className="crm-empty-stage">Arraste um lead para esta etapa</div>}</div></article>; })}</section>;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
