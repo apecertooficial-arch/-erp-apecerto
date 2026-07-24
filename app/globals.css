@@ -4699,7 +4699,7 @@ article.tone-red{border-left-color:#d3443e}article.tone-red strong{color:#d3443e
 .ficha-v2 .fv2-status { position:absolute; top:14px; left:14px; display:inline-flex; align-items:center; gap:7px; padding:7px 14px; border-radius:999px; background:rgba(255,255,255,.94); font-size:12.5px; font-weight:600; box-shadow:0 4px 14px rgba(31,28,26,.14); }
 .ficha-v2 .fv2-status i { width:8px; height:8px; border-radius:50%; background:var(--fv-green); }
 .ficha-v2 .fv2-status.draft i { background:#c99a12; }
-.ficha-v2 .fv2-close { position:absolute; top:14px; right:14px; width:40px; height:40px; border:0; border-radius:50%; background:#fff; color:#3f3a36; display:grid; place-items:center; cursor:pointer; box-shadow:0 6px 18px rgba(31,28,26,.18); }
+.ficha-v2 .fv2-close { position:absolute; top:16px; right:16px; z-index:30; width:40px; height:40px; border:0; border-radius:50%; background:#fff; color:#3f3a36; display:grid; place-items:center; cursor:pointer; box-shadow:0 6px 18px rgba(31,28,26,.22); }
 .ficha-v2 .fv2-close:hover { background:#f4efea; }
 
 /* Head */
