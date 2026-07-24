@@ -94,6 +94,7 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
   const [pendingDelete, setPendingDelete] = useState<Media | null>(null);
   const [tab, setTab] = useState<"resumo" | "localizacao" | "proprietario" | "unidades" | "galeria">("resumo");
   const [unitDetail, setUnitDetail] = useState<Unit | null>(null);
+  const [unitLightbox, setUnitLightbox] = useState<{ items: { url: string; label: string }[]; index: number } | null>(null);
   const [mapCoord, setMapCoord] = useState<{ lat: number; lon: number } | null>(null);
 
   const load = useCallback(async () => {
@@ -293,6 +294,7 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
         </div>
       ) : (
         <div className="fv2-page">
+          <button className="fv2-close" type="button" onClick={onClose} aria-label="Fechar ficha do produto"><IcClose /></button>
           <div className="fv2-main">
             <div className="fv2-mosaic">
               <button className="fv2-mosaic-cover" type="button" onClick={() => photos.length && setLightboxIndex(0)} style={cover?.url ? { backgroundImage: `url(${cover.url})` } : undefined} aria-label="Ampliar galeria de fotos">
@@ -304,7 +306,6 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
                   <IcImages /><span>Ver {photos.length} foto{photos.length === 1 ? "" : "s"}</span>
                 </button>
               </div>
-              <button className="fv2-close" type="button" onClick={onClose} aria-label="Fechar ficha do produto"><IcClose /></button>
             </div>
 
             <div className="fv2-head">
@@ -432,10 +433,11 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
           {ind && u.captador_nome ? <div className="fv2-person-card"><span className="fv2-avatar purple">{initials(u.captador_nome)}</span><div><strong>{u.captador_nome}</strong><small>Indicou esta unidade</small></div></div> : <p className="fv2-ud-empty">Sem indicador — unidade da construtora.</p>}
           <div className="fv2-ud-sec">Acesso</div>
           <div className="fv2-cost-tiles"><div className="fv2-tile"><small>TIPO</small><strong>{acessoLabel(u.acesso_tipo)}</strong></div><div className="fv2-tile"><small>CÓDIGO</small><strong>{u.acesso_codigo || "—"}</strong></div><div className="fv2-tile"><small>INSTRUÇÕES</small><strong>{u.acesso_instrucoes || "—"}</strong></div></div>
-          {ind && <><div className="fv2-ud-sec">Fotos da unidade</div>{(() => { const um = product.midias.filter((m) => m.unidade_id === u.id && m.tipo === "foto" && m.url); return um.length ? <div className="fv2-ud-gallery">{um.map((m) => <a key={m.id} href={m.url ?? "#"} target="_blank" rel="noreferrer" className="fv2-ud-photo watermarked-preview" style={{ backgroundImage: `url(${m.url})` }} aria-label="Foto da unidade" />)}</div> : <p className="fv2-ud-empty">Nenhuma foto enviada para esta unidade ainda.</p>; })()}</>}
+          {ind && <><div className="fv2-ud-sec">Fotos da unidade</div>{(() => { const um = product.midias.filter((m) => m.unidade_id === u.id && m.tipo === "foto" && m.url); return um.length ? <div className="fv2-ud-gallery">{um.map((m, i) => <button key={m.id} type="button" onClick={() => setUnitLightbox({ items: um.map((x) => ({ url: x.url ?? "", label: x.categoria || x.nome || "Foto da unidade" })), index: i })} className="fv2-ud-photo watermarked-preview" style={{ backgroundImage: `url(${m.url})` }} aria-label="Ampliar foto da unidade" />)}</div> : <p className="fv2-ud-empty">Nenhuma foto enviada para esta unidade ainda.</p>; })()}</>}
         </div>
         {canPublish && ind && u.aprovacao === "pendente" && <div className="fv2-ud-foot"><button type="button" className="fv2-ud-reject" disabled={busy} onClick={() => void decideUnit(u.id, false)}>✕ Reprovar</button><button type="button" className="fv2-ud-approve" disabled={busy} onClick={() => void decideUnit(u.id, true)}>✓ Aprovar</button></div>}
       </div>
     </div>; })()}
+    {unitLightbox && unitLightbox.items[unitLightbox.index]?.url && <div className="photo-lightbox unit-lightbox" role="dialog" aria-modal="true" aria-label="Foto da unidade ampliada"><button className="lightbox-close" type="button" onClick={() => setUnitLightbox(null)} aria-label="Fechar galeria">×</button>{unitLightbox.items.length > 1 && <button className="lightbox-nav previous" type="button" onClick={() => setUnitLightbox((s) => s && ({ ...s, index: (s.index - 1 + s.items.length) % s.items.length }))} aria-label="Foto anterior">‹</button>}<div className="lightbox-image watermarked-preview"><img src={unitLightbox.items[unitLightbox.index].url} alt={unitLightbox.items[unitLightbox.index].label} /></div><div><span>{unitLightbox.index + 1} de {unitLightbox.items.length}</span></div>{unitLightbox.items.length > 1 && <button className="lightbox-nav next" type="button" onClick={() => setUnitLightbox((s) => s && ({ ...s, index: (s.index + 1) % s.items.length }))} aria-label="Próxima foto">›</button>}</div>}
   </div>;
 }
