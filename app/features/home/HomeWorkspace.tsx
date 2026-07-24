@@ -12,7 +12,7 @@ type Broker = { id: number; nome: string };
 type Task = { id: number; concluida?: boolean | null };
 type ProductLink = { lead_id: number; empreendimento_id: string; empreendimentos?: { nome?: string | null } | null };
 type CrmData = { leads: Lead[]; deals: Deal[]; stages: Stage[]; brokers: Broker[]; tasks: Task[]; alerts: unknown[]; productLinks: ProductLink[] };
-type Sale = { id: string; empreendimento_id?: string | null; empreendimento_nome?: string | null; vgv: number; percentual_comissao?: number | null; data_venda: string; status?: string | null };
+type Sale = { id: string; empreendimento_id?: string | null; empreendimento_nome?: string | null; vgv: number; percentual_comissao?: number | null; data_venda: string; data_conclusao?: string | null; status?: string | null };
 type Cash = { tipo: string; valor: number };
 type Goal = { nome?: string | null; meta_vgv?: number | null };
 type FinanceData = { sales: Sale[]; cash: Cash[]; goals: Goal[]; receipts: Array<{ status?: string | null }> };
@@ -60,10 +60,14 @@ export function HomeWorkspace({ accessToken, sessionName = "", onNavigate }: { a
 
   const metrics = useMemo(() => {
     if (!data) return null;
-    const monthSales = data.finance.sales.filter((item) => sameMonth(item.data_venda));
+    // Meta do mês = só venda concluída, contada no mês em que fechou.
+    const monthSales = data.finance.sales.filter((item) => item.data_conclusao && sameMonth(item.data_conclusao));
     const monthVgv = monthSales.reduce((sum, item) => sum + Number(item.vgv || 0), 0);
+    // O que ainda está na esteira aparece como negociação em aberto, nunca somado à meta.
+    const negociacao = data.finance.sales.filter((item) => !item.data_conclusao && item.status !== "distrato");
+    const negociacaoVgv = negociacao.reduce((sum, item) => sum + Number(item.vgv || 0), 0);
     const goal = data.finance.goals.reduce((sum, item) => sum + Number(item.meta_vgv || 0), 0);
-    return { monthSales, monthVgv, goal };
+    return { monthSales, monthVgv, goal, negociacao, negociacaoVgv };
   }, [data]);
 
   if (error) return <div className="home-state error">{error}</div>;
@@ -106,7 +110,8 @@ export function HomeWorkspace({ accessToken, sessionName = "", onNavigate }: { a
         <div className="hv2-chips">
           {effectiveGoal > 0 && <span className="hv2-chip">faltam <b>{brl.format(missing)}</b></span>}
           {effectiveGoal > 0 && <span className="hv2-chip">ritmo necessário <b>{brl.format(pacePerDay)}/dia</b></span>}
-          <span className="hv2-chip">{metrics.monthSales.length} {metrics.monthSales.length === 1 ? "venda válida" : "vendas válidas"}</span>
+          <span className="hv2-chip">{metrics.monthSales.length} {metrics.monthSales.length === 1 ? "venda concluída" : "vendas concluídas"}</span>
+          {metrics.negociacao.length > 0 && <span className="hv2-chip">em negociação <b>{brl.format(metrics.negociacaoVgv)}</b> · {metrics.negociacao.length}</span>}
         </div>
       </div>
       <div className="hv2-hero-r">
