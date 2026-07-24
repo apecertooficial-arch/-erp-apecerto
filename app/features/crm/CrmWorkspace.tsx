@@ -64,6 +64,44 @@ const soDigitos = (v: unknown) => String(v ?? "").replace(/\D/g, "");
 /** Últimos 11 dígitos: iguala 5511999998888, 11999998888 e (11) 99999-8888. */
 const sufixoFone = (v: string) => v.replace(/\D/g, "").slice(-11);
 
+/* Funil Inteligente: o lead muda de etapa pelo MOMENTO, não pelo arraste.
+   Os valores abaixo são exatamente os aceitos pela RPC atualizar_momento_lead;
+   o "destino" mostra ao corretor para onde o card vai antes de ele confirmar. */
+const MOMENTOS_LEAD: Array<{ grupo: string; itens: Array<{ v: string; label: string; destino: string }> }> = [
+  { grupo: "Entrada", itens: [
+    { v: "lead_novo", label: "Lead novo", destino: "Novo" },
+    { v: "primeiro_contato", label: "Fiz o primeiro contato", destino: "Não respondeu" },
+    { v: "sem_resposta", label: "Não respondeu", destino: "Não respondeu" },
+    { v: "respondeu", label: "Respondeu", destino: "Respondeu" },
+  ] },
+  { grupo: "Qualificação", itens: [
+    { v: "qualificando", label: "Qualificando", destino: "Em atendimento" },
+    { v: "interesse_confirmado", label: "Interesse confirmado", destino: "Em atendimento" },
+    { v: "tentando_agendamento", label: "Tentando agendar visita", destino: "Agendamento" },
+  ] },
+  { grupo: "Visita", itens: [
+    { v: "visita_agendada", label: "Visita agendada", destino: "Visita" },
+    { v: "visita_realizada", label: "Visita realizada", destino: "Visita" },
+    { v: "visita_remarcada", label: "Visita remarcada", destino: "Visita" },
+    { v: "visita_cancelada", label: "Visita cancelada", destino: "Visita" },
+  ] },
+  { grupo: "Negociação", itens: [
+    { v: "proposta_em_preparacao", label: "Preparando proposta", destino: "Em atendimento" },
+    { v: "proposta_enviada", label: "Proposta enviada", destino: "Em atendimento" },
+    { v: "negociacao", label: "Em negociação", destino: "Em atendimento" },
+    { v: "venda_em_andamento", label: "Venda em andamento", destino: "Em atendimento" },
+    { v: "vendido", label: "Vendido", destino: "Em atendimento" },
+  ] },
+  { grupo: "Encerramento", itens: [
+    { v: "retomar_futuramente", label: "Retomar mais para frente", destino: "Em atendimento" },
+    { v: "sem_interesse", label: "Sem interesse", destino: "Em atendimento" },
+    { v: "sem_perfil", label: "Sem perfil", destino: "Em atendimento" },
+    { v: "contato_invalido", label: "Contato inválido", destino: "Em atendimento" },
+    { v: "descartado", label: "Descartado", destino: "Em atendimento" },
+  ] },
+];
+const TEMPERATURAS = [{ v: "frio", label: "Frio" }, { v: "morno", label: "Morno" }, { v: "quente", label: "Quente" }];
+
 const money = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
 const dateTime = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
 const shortDate = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short" });
@@ -353,6 +391,9 @@ export function CrmWorkspace({ accessToken, initialDealId = null, onInitialDealH
 
   const canManageStages = sessionRole !== "corretor";
   const canMoveDeals = true; /* corretor também move os próprios leads (o RLS garante que ele só enxerga/mexe nos dele) */
+  // No Funil Inteligente o card não anda por arraste: a etapa é consequência do
+  // momento registrado dentro do lead. O servidor recusa moveDeal nesse funil.
+  const kanbanEhInteligente = (data?.pipelines ?? []).find((p) => p.id === kanbanPipeId)?.grupo === "crm_inteligente";
   async function reorderStage(stageId: number, direction: number) {
     const ordered = activeStages.slice().sort((a, b) => a.ordem - b.ordem);
     const idx = ordered.findIndex((s) => s.id === stageId);
@@ -424,7 +465,8 @@ export function CrmWorkspace({ accessToken, initialDealId = null, onInitialDealH
     {error && <div className="crm-error">{error}<button type="button" onClick={() => void load()}>Tentar novamente</button></div>}
     {!loading && !error && data && view === "pipeline" && <div className={`crm-pipe-layout ${railCollapsed ? "rail-collapsed" : ""}`}>
       <aside className="crm-pipe-rail"><div className="crm-pipe-rail-head"><span className="crm-pipe-rail-title">FUNIS</span><button type="button" className="crm-pipe-rail-toggle" title={railCollapsed ? "Expandir funis" : "Recolher funis"} aria-label={railCollapsed ? "Expandir funis" : "Recolher funis"} onClick={() => setRailCollapsed((prev) => !prev)}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">{railCollapsed ? <path d="M9 6l6 6-6 6" /> : <path d="M15 6l-6 6 6 6" />}</svg></button></div>{(data.pipelines ?? []).map((pipeline) => { const count = (data.deals ?? []).filter((deal) => deal.pipeline_id === pipeline.id && !["ganho", "perdido", "descartado"].includes(deal.status)).length; return <button type="button" key={pipeline.id} className={`crm-pipe-item ${pipeline.id === kanbanPipeId ? "active" : ""}`} title={pipeline.nome} onClick={() => { setPipelineId(pipeline.id); setStageId(null); setGroup(null); }}><span className="crm-pipe-dot" /><strong>{pipeline.nome}</strong><em>{count}</em></button>; })}</aside>
-      <PipelineViewEnhanced stages={visibleStages} allStages={activeStages} deals={filteredDeals} leadById={leadById} brokerById={brokerById} slaByDeal={slaByDeal} canReassign={canReassign} onReassign={setBrokerPickerDealId} onOpen={openDeal} onChat={openChat} onMutate={mutate} setMessage={setMessage} draggingId={draggingDealId} onDrag={setDraggingDealId} onDrop={dropDeal} canManageStages={canManageStages} onReorderStage={reorderStage} onRecolorStage={recolorStage} onSaveStage={saveStage} onBulkFromStage={openBulkFromStage} stageCount={activeStages.length} canMoveDeals={canMoveDeals} onPickStage={setStagePickerDealId} readByDeal={readByDeal} aquario={data.aquario ?? null} fishing={fishing} onPescar={pescarLead} />
+      {kanbanEhInteligente && <div className="momentox-aviso">Neste funil o card muda de etapa pelo <b>momento do lead</b> — abra o lead e registre o momento. O arraste está desligado de propósito.</div>}
+      <PipelineViewEnhanced stages={visibleStages} allStages={activeStages} deals={filteredDeals} leadById={leadById} brokerById={brokerById} slaByDeal={slaByDeal} canReassign={canReassign} onReassign={setBrokerPickerDealId} onOpen={openDeal} onChat={openChat} onMutate={mutate} setMessage={setMessage} draggingId={draggingDealId} onDrag={setDraggingDealId} onDrop={dropDeal} canManageStages={canManageStages} onReorderStage={reorderStage} onRecolorStage={recolorStage} onSaveStage={saveStage} onBulkFromStage={openBulkFromStage} stageCount={activeStages.length} canMoveDeals={canMoveDeals && !kanbanEhInteligente} onPickStage={setStagePickerDealId} readByDeal={readByDeal} aquario={data.aquario ?? null} fishing={fishing} onPescar={pescarLead} />
     </div>}
     {!loading && !error && data && view === "leads" && <LeadsViewEnhanced deals={filteredDeals} leadById={leadById} stages={activeStages} brokerById={brokerById} slaByDeal={slaByDeal} canReassign={canReassign} onReassign={setBrokerPickerDealId} onOpen={openDeal} onChat={openChat} onMutate={mutate} setMessage={setMessage} canMoveDeals={canMoveDeals} onPickStage={setStagePickerDealId} />}
     {!loading && !error && data && view === "agenda" && <AgendaView data={data} leadById={leadById} onMutate={mutate} setMessage={setMessage} sessionRole={sessionRole} accessToken={accessToken} />}
@@ -1787,6 +1829,12 @@ function useLeadCopiloto(accessToken: string, leadNome: string) {
 
 function LeadDrawer({ accessToken, lead, deal, data, canReassign, canMoveDeals, onClose, onMutate, onReload, setMessage }: { accessToken: string; lead: Lead; deal: Deal; data: CrmData; canReassign: boolean; canMoveDeals?: boolean; onClose: () => void; onMutate: (body: Record<string, unknown>) => Promise<void>; onReload: () => Promise<void>; setMessage: (value: string | null) => void }) {
   const copiloto = useLeadCopiloto(accessToken, lead.nome || "");
+  // ===== Funil Inteligente: o momento do lead comanda a etapa =====
+  const pipeDoLead = data.pipelines.find((p) => p.id === deal.pipeline_id);
+  const ehFunilInteligente = pipeDoLead?.grupo === "crm_inteligente";
+  const [mom, setMom] = useState({ momento: "", temperatura: "", resultado: "", observacao: "", proximaAcao: "", proximaAcaoEm: "" });
+  const [momBusy, setMomBusy] = useState(false);
+  const momentoAtual = MOMENTOS_LEAD.flatMap((g) => g.itens).find((i) => i.v === mom.momento);
   const [tab, setTab] = useState<"resumo" | "historico" | "agenda" | "produtos">("resumo");
   /* Doc §5 — abas arrastáveis com ordem persistida */
   const [tabOrder, setTabOrder] = useState<string[]>(["resumo", "historico", "agenda", "produtos"]);
@@ -1901,6 +1949,42 @@ function LeadDrawer({ accessToken, lead, deal, data, canReassign, canMoveDeals, 
         <button type="button" onClick={() => { setTask(`Fazer follow-up com ${lead.nome || "o lead"}`); setTab("agenda"); setMessage("Sugestão da IA preparada como próxima tarefa."); }}><LeadActionIcon name="ai" /><span>Pedir à IA</span></button>
       </div>
       <article className="lead-context-card"><div><small>ORIGEM</small><strong><span>⌘</span>{lead.origem || "Não informada"}</strong></div><div><small>PRODUTO DE INTERESSE</small><strong><span>▥</span>{currentProduct?.nome || "—"}</strong></div><p>ⓘ Origem e interesse são distintos — alimentam o BI de campanhas.</p><footer><small>Corretor responsável</small><strong><span>♧</span>{responsible?.nome || "Não definido"}</strong></footer></article>
+      {ehFunilInteligente && <article className="momentox">
+        <header><h4>MOMENTO DO LEAD</h4><small>Neste funil o card anda pelo momento, não pelo arraste.</small></header>
+        <div className="momentox-grid">
+          <label>Em que ponto está?
+            <select value={mom.momento} disabled={momBusy} onChange={(e) => setMom({ ...mom, momento: e.target.value })}>
+              <option value="">Selecione o momento</option>
+              {MOMENTOS_LEAD.map((g) => <optgroup label={g.grupo} key={g.grupo}>{g.itens.map((i) => <option value={i.v} key={i.v}>{i.label}</option>)}</optgroup>)}
+            </select>
+          </label>
+          <label>Temperatura
+            <select value={mom.temperatura} disabled={momBusy} onChange={(e) => setMom({ ...mom, temperatura: e.target.value })}>
+              <option value="">Não informar</option>
+              {TEMPERATURAS.map((t) => <option value={t.v} key={t.v}>{t.label}</option>)}
+            </select>
+          </label>
+          <label>Próxima ação<input value={mom.proximaAcao} disabled={momBusy} placeholder="Ex.: ligar para confirmar a visita" onChange={(e) => setMom({ ...mom, proximaAcao: e.target.value })} /></label>
+          <label>Quando<input type="datetime-local" value={mom.proximaAcaoEm} disabled={momBusy} onChange={(e) => setMom({ ...mom, proximaAcaoEm: e.target.value })} /></label>
+        </div>
+        <label className="momentox-obs">O que aconteceu<textarea rows={2} value={mom.observacao} disabled={momBusy} placeholder="Registre o que foi conversado" onChange={(e) => setMom({ ...mom, observacao: e.target.value })} /></label>
+        {momentoAtual && <p className="momentox-destino">Ao salvar, o card vai para <b>{momentoAtual.destino}</b>.</p>}
+        <footer>
+          <button type="button" className="crm-primary" disabled={momBusy || !mom.momento} onClick={() => {
+            setMomBusy(true);
+            void onMutate({
+              action: "atualizarMomento", leadId: lead.id, dealId: deal.id,
+              momento: mom.momento, temperatura: mom.temperatura || undefined,
+              resultado: mom.resultado || undefined, observacao: mom.observacao || undefined,
+              proximaAcao: mom.proximaAcao || undefined,
+              proximaAcaoEm: mom.proximaAcaoEm ? new Date(mom.proximaAcaoEm).toISOString() : undefined,
+            }).then(() => { setMessage("Momento atualizado — o card já está na etapa certa."); setMom({ momento: "", temperatura: "", resultado: "", observacao: "", proximaAcao: "", proximaAcaoEm: "" }); })
+              .catch((r) => setMessage(r instanceof Error ? r.message : "Não foi possível atualizar o momento."))
+              .finally(() => setMomBusy(false));
+          }}>{momBusy ? "Salvando…" : "Salvar momento"}</button>
+        </footer>
+      </article>}
+
       <article className="lead-funnel-status"><h4>ETAPA DO FUNIL</h4><div className="lead-stage-track">{stages.map((stage, index) => <i className={index <= stageIndex ? "active" : ""} style={{ "--lead-stage-color": stage.cor || "#8b00cc" } as CSSProperties} key={stage.id} />)}</div>{canMoveDeals !== false && data.pipelines.length > 1 && <label className="lead-pipe-move"><span>FUNIL (PIPE)</span><select value={deal.pipeline_id} disabled={busy} onChange={(event) => { const target = Number(event.target.value); if (target === deal.pipeline_id) return; const first = data.stages.filter((s) => s.pipeline_id === target).sort((a, b) => a.ordem - b.ordem)[0]; if (!first) { setMessage("Esse funil ainda não tem etapas configuradas."); return; } const pname = data.pipelines.find((p) => p.id === target)?.nome || "outro funil"; void run({ action: "moveDeal", dealId: deal.id, stageId: first.id }, `Lead movido para o funil ${pname}.`); }}>{data.pipelines.map((p) => <option value={p.id} key={p.id}>{p.nome}</option>)}</select></label>}{canMoveDeals !== false && <label className="lead-stage-move"><span>ETAPA</span><select value={deal.stage_id ?? ""} disabled={busy} onChange={(event) => void run({ action: "moveDeal", dealId: deal.id, stageId: Number(event.target.value) }, "Etapa atualizada.")}>{stages.map((stage) => <option value={stage.id} key={stage.id}>{stage.rotulo || stage.nome}</option>)}</select></label>}{canMoveDeals !== false && <button type="button" onClick={() => setAction("discard")}>Descartar lead</button>}</article>
     </section>
     <nav className="drawer-tabs-v2 draggable-tabs">{tabOrder.map((key) => { const label = key === "resumo" ? "Resumo" : key === "historico" ? "Histórico" : key === "agenda" ? "Tarefas e visitas" : `Produtos (${links.length})`; return <button
