@@ -2986,6 +2986,33 @@ export type Database = {
         }
         Relationships: []
       }
+      lead_momento_catalogo: {
+        Row: {
+          ativo: boolean
+          cor: string | null
+          grupo: string
+          ordem: number
+          rotulo: string
+          slug: string
+        }
+        Insert: {
+          ativo?: boolean
+          cor?: string | null
+          grupo: string
+          ordem?: number
+          rotulo: string
+          slug: string
+        }
+        Update: {
+          ativo?: boolean
+          cor?: string | null
+          grupo?: string
+          ordem?: number
+          rotulo?: string
+          slug?: string
+        }
+        Relationships: []
+      }
       lead_momentos: {
         Row: {
           atualizado_por: string
@@ -3233,9 +3260,13 @@ export type Database = {
           extras: Json | null
           id: number
           instagram: string | null
+          momento: string | null
           momento_atual: string | null
           momento_atualizado_em: string | null
           momento_atualizado_por: string | null
+          momento_em: string | null
+          momento_obs: string | null
+          momento_por: string | null
           nome: string | null
           origem: string | null
           pipeline_id: number | null
@@ -3257,9 +3288,13 @@ export type Database = {
           extras?: Json | null
           id?: never
           instagram?: string | null
+          momento?: string | null
           momento_atual?: string | null
           momento_atualizado_em?: string | null
           momento_atualizado_por?: string | null
+          momento_em?: string | null
+          momento_obs?: string | null
+          momento_por?: string | null
           nome?: string | null
           origem?: string | null
           pipeline_id?: number | null
@@ -3281,9 +3316,13 @@ export type Database = {
           extras?: Json | null
           id?: never
           instagram?: string | null
+          momento?: string | null
           momento_atual?: string | null
           momento_atualizado_em?: string | null
           momento_atualizado_por?: string | null
+          momento_em?: string | null
+          momento_obs?: string | null
+          momento_por?: string | null
           nome?: string | null
           origem?: string | null
           pipeline_id?: number | null
@@ -7196,6 +7235,7 @@ export type Database = {
       aceitar_transferencia: { Args: { p_negocio: number }; Returns: Json }
       admin_dashboard_financeiro: { Args: never; Returns: Json }
       admin_dashboard_funil: { Args: never; Returns: Json }
+      admin_dashboard_na_mesa: { Args: never; Returns: Json }
       admin_dashboard_rodagem: { Args: never; Returns: Json }
       agenda_link_regenerar: { Args: never; Returns: string }
       agenda_link_token: { Args: never; Returns: string }
@@ -7813,6 +7853,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      pode_ver_processo: { Args: { p_ref: string }; Returns: boolean }
       posicao_solo: {
         Args: { p_corretor: string; p_venda: string }
         Returns: number
@@ -7873,6 +7914,15 @@ export type Database = {
           p_modulo: string
         }
         Returns: undefined
+      }
+      registrar_momento_lead: {
+        Args: {
+          p_lead_id: number
+          p_momento: string
+          p_negocio_id?: number
+          p_observacao?: string
+        }
+        Returns: Json
       }
       registrar_observacao: {
         Args: { p_lead_id: number; p_texto: string }
