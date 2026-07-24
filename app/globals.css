@@ -5325,5 +5325,12 @@ article.tone-red{border-left-color:#d3443e}article.tone-red strong{color:#d3443e
 .excx-btn{background:var(--red);color:#fff;border:none;border-radius:var(--radius-pill);padding:9px 18px;font-size:13px;font-weight:700;cursor:pointer}
 .excx-btn:hover:not(:disabled){background:#bf3232}
 .excx-btn:disabled{opacity:.45;cursor:not-allowed}
+
+/* Checkbox nos modais de ação/visita: evita herdar width:100% + min-height:42px (ficava um quadradão) */
+.crm-center-modal input[type="checkbox"], .quick-action-form input[type="checkbox"], .drawer-action-modal input[type="checkbox"], .calendar-create input[type="checkbox"], .action-form-grid input[type="checkbox"] { width:17px; height:17px; min-height:0; flex:none; margin:0 6px 0 0; accent-color:#FF7000; cursor:pointer; }
+.quick-action-form label.check { flex-direction:row; align-items:center; gap:6px; padding:10px 12px; border-radius:9px; background:#faf8f7; }
+.quick-action-form .cal-disp { grid-column:1/-1; padding:9px 12px; border-radius:9px; font-size:12px; font-weight:600; }
+.quick-action-form .cal-disp.livre { background:#e7f7ee; color:#0f7a3d; }
+.quick-action-form .cal-disp.conflito { background:#fdeceb; color:#b23b32; }
 .ficha-produto{margin-top:8px !important;display:inline-block;background:#fff3ec;color:#c2410c;border-radius:999px;padding:6px 14px;font-size:13px !important;font-weight:650;}
 .ficha-produto b{font-weight:800;}
