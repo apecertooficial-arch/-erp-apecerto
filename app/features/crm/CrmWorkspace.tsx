@@ -1207,7 +1207,16 @@ function PipelineViewEnhanced({ stages, allStages, deals, leadById, brokerById, 
     const board = boardRef.current;
     if (!board) return;
     const onWheel = (event: globalThis.WheelEvent) => {
-      if (event.ctrlKey || Math.abs(event.deltaX) > Math.abs(event.deltaY) || event.deltaY === 0) return;
+      if (event.ctrlKey) return;
+      // Gesto lateral do trackpad (dois dedos pro lado): move o PIPE, nunca a coluna
+      if (Math.abs(event.deltaX) > Math.abs(event.deltaY)) {
+        if (event.deltaX === 0) return;
+        const unitX = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? board.clientWidth : 1;
+        board.scrollLeft += event.deltaX * unitX;
+        event.preventDefault();
+        return;
+      }
+      if (event.deltaY === 0) return;
       const col = (event.target as HTMLElement).closest(".crm-stage-body") as HTMLElement | null;
       if (col) {
         const down = event.deltaY > 0 && col.scrollTop + col.clientHeight < col.scrollHeight - 1;
