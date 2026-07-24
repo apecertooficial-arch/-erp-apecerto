@@ -55,11 +55,12 @@ export async function GET(request: Request) {
     };
   });
   // "Na mesa" = vendas rodando na esteira de contrato, de "Pedido aprovado" (inicio) até
-  // "Aguardando pagamento" (pagamento) — antes de virar "Venda registrada".
+  // "Aguardando pagamento" (pagamento), E ainda em aberto (sem data_conclusao). Venda já
+  // concluída NÃO conta, mesmo que a esteira não tenha sido movida para "registrada".
   const { data: esteiraRows } = await auth.supabase.from("venda_processos").select("venda_id").in("etapa", ["inicio", "doc_comp", "doc_vend", "contrato", "minuta_cnd", "minuta_env", "pagamento"]);
-  const naMesaIds = new Set((esteiraRows ?? []).map((p) => p.venda_id));
-  const naMesaVgv = safeSales.filter((s) => naMesaIds.has(s.id)).reduce((sum, s) => sum + Number(s.vgv || 0), 0);
-  const naMesa = { count: naMesaIds.size, vgv: naMesaVgv };
+  const esteiraIds = new Set((esteiraRows ?? []).map((p) => p.venda_id));
+  const naMesaSales = safeSales.filter((s) => esteiraIds.has(s.id) && !s.data_conclusao && s.status !== "distrato");
+  const naMesa = { count: naMesaSales.length, vgv: naMesaSales.reduce((sum, s) => sum + Number(s.vgv || 0), 0) };
   return Response.json({ sales: safeSales, details: safeDetails, commissions: commissions.data ?? [], receipts: reconciledReceipts, cash: cash.data ?? [], users: users.data ?? [], brokers: brokers.data ?? [], goals: goals.data ?? [], leads: leads.data ?? [], deals: deals.data ?? [], empreendimentos: empreendimentos.data ?? [], categorias: categorias.data ?? [], rankingVgv: rankingVgv.data ?? [], naMesa });
 }
 
