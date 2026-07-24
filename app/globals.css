@@ -5001,3 +5001,8 @@ article.tone-red{border-left-color:#d3443e}article.tone-red strong{color:#d3443e
 .dv-chart .dv-axis { fill:#a79e97; font-size:11px; font-weight:600; }
 .dv-chart .dv-val { fill:#5b534d; font-size:12px; font-weight:700; }
 .dv-chart .dv-lbl { fill:#3f3833; font-size:12px; font-weight:600; }
+
+/* Financeiro do mês: 4 cards por linha */
+.home-kpis.rodagem-cards.financeiro-cards { grid-template-columns:repeat(4,1fr); }
+@media (max-width:1100px) { .home-kpis.rodagem-cards.financeiro-cards { grid-template-columns:repeat(2,1fr); } }
+@media (max-width:640px) { .home-kpis.rodagem-cards.financeiro-cards { grid-template-columns:1fr; } }
