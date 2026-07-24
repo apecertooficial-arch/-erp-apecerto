@@ -5404,3 +5404,27 @@ article.tone-red{border-left-color:#d3443e}article.tone-red strong{color:#d3443e
 .hist-count-ic{width:11px;height:11px;opacity:.65}
 .hist-opt.active .hist-count{background:#ffe4cf;color:#c15a12}
 .hist-check{flex:none;width:16px;height:16px;color:#ff6500}
+
+/* ============================================================================
+   Rodapé/barra do chat do lead — refino visual
+   • botão de IA (Sara) e de emoji mais claros (saíam escuros);
+   • status "conectada · final XXXX" vira chip que não corta (quebra se faltar);
+   • textarea "Escreva uma mensagem" com fonte legível e melhor encaixe.
+   ========================================================================== */
+/* Botão de IA (Sara) — claro, roxo suave no lugar do gradiente escuro */
+.chat-layer .lead-chat-drawer > footer button.chat-sara-toggle{background:#f4ecfb !important;color:#7c3aed !important;box-shadow:none !important}
+.chat-layer .lead-chat-drawer > footer button.chat-sara-toggle:hover:not(:disabled){background:#ebddfa !important}
+.chat-layer .lead-chat-drawer > footer button.chat-sara-toggle.active{box-shadow:0 0 0 3px rgba(124,58,237,.20) !important}
+.chat-layer .lead-chat-drawer > footer button.chat-sara-toggle:disabled{background:#f2eee9 !important;color:#bcb2aa !important}
+/* Botão de emoji — claro, laranja só quando ativo */
+.lead-chat-drawer>footer>.chat-emoji-btn{background:#f4efe9 !important;color:#8a7f79 !important}
+.lead-chat-drawer>footer>.chat-emoji-btn:hover{background:#ece5dd !important;color:#6b625c !important}
+.lead-chat-drawer>footer>.chat-emoji-btn.active{background:#fff2e8 !important;color:#ff6500 !important}
+/* Textarea — fonte legível e encaixe */
+.lead-chat-drawer>footer>textarea{font-size:14px !important;line-height:1.4 !important;padding:12px 16px !important;min-height:46px !important}
+.lead-chat-drawer>footer>textarea::placeholder{color:#a89e97}
+/* Status de conexão — chip que não corta */
+.chat-instance-bar{align-items:center !important;flex-wrap:wrap;row-gap:8px}
+.chat-instance-bar>label{min-width:180px}
+.chat-instance-bar>span{flex:none;margin-left:auto;white-space:nowrap;padding:4px 11px;border-radius:999px;background:#eef0f2;color:#7c8590;font-weight:700;font-size:11px}
+.chat-instance-bar>span.connected{background:#e4f6ec;color:#17864d}
