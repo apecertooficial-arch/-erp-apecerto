@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { RodagemCards } from "./RodagemCards";
+import { FunilCards } from "./FunilCards";
 import { FinanceiroCards } from "./FinanceiroCards";
 
 type Lead = { id: number; nome?: string | null };
@@ -89,6 +90,7 @@ export function HomeWorkspace({ accessToken, sessionName = "", onNavigate }: { a
   return <div className="home-workspace">
     <header className="home-header"><span className="home-avatar">{(sessionName || "S").trim().slice(0, 1).toUpperCase()}</span><div><small>BEM-VINDO DE VOLTA 👋</small><h1>Olá, {sessionName ? sessionName.split(/\s+/)[0] : "Samuel"}</h1><p>Visão geral da operação em tempo real</p></div><span className="home-status">● Dados reais · sessão protegida</span></header>
     <RodagemCards accessToken={accessToken} onNavigate={onNavigate} />
+    <FunilCards accessToken={accessToken} onNavigate={onNavigate} />
     <section className="home-goal hero"><header><div><small>META DO MÊS</small><strong>{brl.format(metrics.monthVgv)}<em> vendidos{effectiveGoal > 0 ? ` de ${brl.format(effectiveGoal)}` : ""}</em></strong><span className="goal-badge">● Dados atualizados · {metrics.monthSales.length} vendas válidas</span></div><b>{goalPercent.toFixed(0)}%</b></header><div><span style={{ width: `${goalPercent}%` }} /></div><footer>{effectiveGoal > 0 ? <span>faltam <b>{brl.format(missing)}</b> · ritmo necessário <b>{brl.format(pacePerDay)}/dia</b> nos {daysLeft} dias restantes</span> : <span>Defina a meta do mês no Financeiro → Metas</span>}<button type="button" onClick={() => onNavigate?.("Financeiro")}>Abrir Financeiro →</button></footer></section>
     <FinanceiroCards accessToken={accessToken} onNavigate={onNavigate} />
     <section className="home-kpis">
