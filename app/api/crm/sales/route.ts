@@ -123,10 +123,12 @@ export async function GET(request: Request) {
   const auth = await authClient(request);
   if (!auth) return Response.json({ error: "Sessão inválida ou expirada." }, { status: 401 });
   const [sales, processes, deals, leads, products, brokers, stages, etapaDocs, anexos, users, history, verificacoes, solicitacoes, docModelo, condicoes, comissao, comissaoParcelas, observacoes, pipelines, pipelineStages, partes, anexoEventos] = await Promise.all([
-    auth.supabase.from("vendas").select("id,created_at,data_venda,empreendimento_id,empreendimento_nome,unidade_id,vgv,forma_pgto,status,obs").order("created_at", { ascending: false }),
+    auth.supabase.from("vendas").select("id,created_at,data_venda,data_conclusao,cliente_nome,empreendimento_id,empreendimento_nome,unidade_id,vgv,forma_pgto,status,obs").order("created_at", { ascending: false }),
     auth.supabase.from("venda_processos").select("id,venda_id,negocio_id,etapa,tipo_venda,responsavel_usuario_id,prazo_em,observacoes,criado_em,atualizado_em,aprovacao_status,aprovacao_motivo,solicitado_por"),
-    auth.supabase.from("negocios").select("id,venda_id,lead_id,corretor_id,empreendimento_id,valor,status"),
-    auth.supabase.from("leads").select("id,nome,telefone,email,corretor_id,tags,extras"),
+    // range explícito: sem ele o PostgREST corta em 1000 linhas e a ficha da venda
+    // perde o nome do cliente quando o lead está além dessa posição.
+    auth.supabase.from("negocios").select("id,venda_id,lead_id,corretor_id,empreendimento_id,valor,status").order("id", { ascending: false }).range(0, 19999),
+    auth.supabase.from("leads").select("id,nome,telefone,email,corretor_id,tags,extras").order("id", { ascending: false }).range(0, 19999),
     auth.supabase.from("empreendimentos").select("id,nome,origem,bairro,cidade").order("nome"),
     auth.supabase.rpc("listar_corretores_transferencia"),
     auth.supabase.from("esteira_etapas").select("id,slug,nome,cor,ordem,papel,sla_dias,resale,exige_docs,libera,restrito_a").eq("ativo", true).order("ordem", { ascending: true }),
