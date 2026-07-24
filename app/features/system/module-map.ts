@@ -76,6 +76,10 @@ export const moduleMap = {
     description: "Preferências, regras comerciais e parâmetros da operação.",
     tables: ["escritorio_config", "sla_regras", "config_financeiro"],
   },
+  "Minha Equipe": {
+    description: "Performance e VGV da equipe (leitura), para gerentes e diretores.",
+    tables: ["perf_snapshots", "vendas", "metas_corretor"],
+  },
   Ajuda: {
     description: "Tutoriais e orientações de uso preservados do ERP original.",
     tables: [],
