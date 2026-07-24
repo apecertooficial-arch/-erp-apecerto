@@ -5358,40 +5358,49 @@ article.tone-red{border-left-color:#d3443e}article.tone-red strong{color:#d3443e
 .partesx-card footer{align-items:center;gap:10px}
 
 /* ============================================================================
-   Seletor "Instância do histórico" (CRM chat) — dropdown customizado
-   Substitui o <select> nativo. Status por cor, corretor como sublinha e a
-   contagem de mensagens como badge discreto (some quando é 0).
+   Seletor "Instância do histórico" (CRM chat) — dropdown customizado (v3 compacto)
+   Otimizado para largura estreita: nome com prioridade (não some), "final ·
+   corretor · status" numa sublinha discreta que corta com elegância, badge de
+   mensagens enxuto (some quando é 0) e destaque lateral na opção ativa.
    ========================================================================== */
 .hist-select{position:relative;width:100%}
-.hist-btn{width:100%;display:flex;align-items:center;gap:8px;height:38px;padding:0 10px;border:1px solid #e2dad5;border-radius:10px;background:#fff;color:#3f3a36;font-family:inherit;font-size:12px;cursor:pointer;transition:border-color .12s,box-shadow .12s}
-.hist-btn:hover{border-color:#d8b48f}
-.hist-select.open .hist-btn{border-color:#ff8a3d;box-shadow:0 0 0 3px rgba(255,101,0,.10)}
-.hist-btn-main{flex:1;min-width:0;display:flex;align-items:center;gap:7px;overflow:hidden;white-space:nowrap}
-.hist-btn-main b{font-weight:700;font-size:12px;color:#2c2723;overflow:hidden;text-overflow:ellipsis}
-.hist-btn-main em{font-style:normal;color:#9a8f88;font-size:11px;flex:none}
-.hist-btn.is-placeholder .hist-btn-main{color:#a49a93}
-.hist-caret{width:16px;height:16px;color:#b1a79f;flex:none;transition:transform .15s}
+.hist-btn{width:100%;display:flex;align-items:center;gap:9px;height:42px;padding:0 10px;border:1px solid #e4ddd6;border-radius:11px;background:#fff;color:#3f3a36;font-family:inherit;font-size:12px;cursor:pointer;transition:border-color .14s,box-shadow .14s}
+.hist-btn:hover{border-color:#e0b591}
+.hist-select.open .hist-btn{border-color:#ff8a3d;box-shadow:0 0 0 3px rgba(255,101,0,.12)}
+.hist-btn-main{flex:1;min-width:0;display:flex;align-items:center;gap:8px;overflow:hidden}
+.hist-btn-txt{min-width:0;display:flex;flex-direction:column;gap:1px;overflow:hidden}
+.hist-btn-txt b{font-weight:700;font-size:12.5px;color:#2c2723;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hist-btn-txt em{font-style:normal;color:#9a8f88;font-size:10.5px;line-height:1.2}
+.hist-btn-txt.placeholder{color:#a49a93;font-weight:600}
+.hist-caret{width:16px;height:16px;color:#b1a79f;flex:none;transition:transform .18s ease}
 .hist-select.open .hist-caret{transform:rotate(180deg)}
-.hist-dot{width:8px;height:8px;border-radius:50%;flex:none;background:#c4bcb4}
-.hist-dot.on{background:#19a861;box-shadow:0 0 0 3px rgba(25,168,97,.14)}
-.hist-dot.off{background:#e0a52a;box-shadow:0 0 0 3px rgba(224,165,42,.14)}
-.hist-dot.hist{background:#b9b0a8}
-.hist-panel{position:absolute;z-index:60;top:calc(100% + 6px);left:0;right:0;max-height:320px;overflow:auto;margin:0;padding:6px;list-style:none;background:#fff;border:1px solid #ece3dc;border-radius:12px;box-shadow:0 16px 40px rgba(38,28,22,.16)}
-.hist-panel::-webkit-scrollbar{width:8px}.hist-panel::-webkit-scrollbar-thumb{background:#d9cfc7;border-radius:8px}
-.hist-empty{padding:14px;text-align:center;color:#a49a93;font-size:12px}
-.hist-opt{width:100%;display:flex;align-items:center;gap:9px;padding:8px 9px;border:0;border-radius:9px;background:transparent;text-align:left;cursor:pointer;font-family:inherit}
+/* Dot de status */
+.hist-dot2{flex:none;width:9px;height:9px;border-radius:50%;background:#c4bcb4}
+.hist-dot2.on{background:#19a861;box-shadow:0 0 0 3px rgba(25,168,97,.16)}
+.hist-dot2.off{background:#e0a52a;box-shadow:0 0 0 3px rgba(224,165,42,.16)}
+.hist-dot2.hist{background:#aeb4bb}
+/* Painel */
+.hist-panel{position:absolute;z-index:60;top:calc(100% + 6px);left:0;right:0;min-width:250px;max-height:340px;overflow-y:auto;overflow-x:hidden;margin:0;padding:6px;list-style:none;background:#fff;border:1px solid #ece3dc;border-radius:13px;box-shadow:0 18px 44px rgba(38,28,22,.17);transform-origin:top center;animation:hist-in .15s cubic-bezier(.2,.8,.2,1)}
+@keyframes hist-in{from{opacity:0;transform:translateY(-5px) scale(.99)}to{opacity:1;transform:none}}
+.hist-panel::-webkit-scrollbar{width:8px}
+.hist-panel::-webkit-scrollbar-thumb{background:#dcd2ca;border-radius:8px;border:2px solid #fff}
+.hist-empty{padding:16px;text-align:center;color:#a49a93;font-size:12px}
+.hist-opt{position:relative;width:100%;display:flex;align-items:center;gap:9px;padding:8px 10px;border:0;border-radius:10px;background:transparent;text-align:left;cursor:pointer;font-family:inherit;transition:background .12s}
 .hist-opt:hover{background:#f7f3ef}
-.hist-opt.active{background:#fff4ec}
+.hist-opt.active{background:#fff5ee}
+.hist-opt.active::before{content:"";position:absolute;left:1px;top:8px;bottom:8px;width:3px;border-radius:3px;background:#ff6500}
 .hist-opt-body{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
-.hist-opt-top{display:flex;align-items:baseline;gap:6px;min-width:0}
-.hist-opt-top b{font-weight:700;font-size:12.5px;color:#2c2723;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.hist-opt-top em{font-style:normal;color:#9a8f88;font-size:11px;flex:none}
-.hist-opt-sub{display:flex;align-items:center;gap:7px;min-width:0;color:#8a807a;font-size:11px}
+.hist-line1{display:flex;align-items:center;gap:7px;min-width:0}
+.hist-name{flex:1;min-width:0;font-weight:700;font-size:12.5px;color:#2c2723;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hist-line2{display:flex;align-items:center;gap:5px;min-width:0;color:#8a807a;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hist-line2 em{flex:none;font-style:normal;color:#9a8f88}
 .hist-corretor{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.hist-tag{flex:none;font-style:normal;padding:1px 7px;border-radius:999px;font-size:10px;font-weight:700;letter-spacing:.02em}
-.hist-tag.on{background:#e4f6ec;color:#17864d}
-.hist-tag.off{background:#fdf0d9;color:#a9750f}
-.hist-tag.hist{background:#f0ece8;color:#8a807a}
-.hist-count{flex:none;min-width:22px;height:20px;padding:0 6px;display:grid;place-items:center;border-radius:999px;background:#efeae6;color:#7a716a;font-size:11px;font-weight:700}
+.hist-sep{flex:none;color:#cdc3ba}
+.hist-st{flex:none;font-style:normal;font-weight:700}
+.hist-st.on{color:#17864d}
+.hist-st.off{color:#bd7f12}
+.hist-st.hist{color:#8a8f97}
+.hist-count{flex:none;display:inline-flex;align-items:center;gap:3px;height:20px;padding:0 7px;border-radius:999px;background:#efeae6;color:#7a716a;font-size:11px;font-weight:700}
+.hist-count-ic{width:11px;height:11px;opacity:.65}
 .hist-opt.active .hist-count{background:#ffe4cf;color:#c15a12}
-.hist-check{width:16px;height:16px;color:#ff6500;flex:none}
+.hist-check{flex:none;width:16px;height:16px;color:#ff6500}
