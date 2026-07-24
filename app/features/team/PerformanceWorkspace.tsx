@@ -83,11 +83,93 @@ function Secao({ titulo, desc, children }: { titulo: string; desc?: string; chil
   );
 }
 
+type Col = { key: string; label: string; tipo: "score" | "num" | "min" | "pct" | "vgv" | "nota"; hint: string };
+const COLS: Col[] = [
+  { key: "score", label: "Score", tipo: "score", hint: "Score ApêCerto (0–100)" },
+  { key: "tempoRespComercial", label: "1ª resp", tipo: "min", hint: "Mediana de 1ª resposta no horário comercial (min) — menor é melhor" },
+  { key: "slaPct", label: "SLA", tipo: "pct", hint: "% de respostas em até 15 min (comercial)" },
+  { key: "followups", label: "Follow-ups", tipo: "num", hint: "Follow-ups no período" },
+  { key: "visitasReal", label: "Visitas", tipo: "num", hint: "Visitas realizadas no período" },
+  { key: "leads", label: "Leads", tipo: "num", hint: "Leads recebidos no período" },
+  { key: "notaGeralIa", label: "Nota IA", tipo: "nota", hint: "Nota média de atendimento (IA)" },
+  { key: "onlineH", label: "Online", tipo: "num", hint: "Horas online no período" },
+  { key: "vgv", label: "VGV", tipo: "vgv", hint: "VGV de vendas fechadas" },
+];
+const PERIODO_LABEL: Record<Periodo, string> = { mes: "Mês", trimestre: "Trimestre", ano: "Ano" };
+
+function fmtCol(c: Perf, col: Col): string {
+  const v = num(c[col.key]);
+  if (col.tipo === "min") return v ? v.toLocaleString("pt-BR", { maximumFractionDigits: 1 }) : "—";
+  if (col.tipo === "pct") return `${Math.round(v)}%`;
+  if (col.tipo === "vgv") return brlM(v);
+  if (col.tipo === "score" || col.tipo === "nota") return String(Math.round(v));
+  return int(v);
+}
+function corCol(c: Perf, col: Col): string | undefined {
+  const v = num(c[col.key]);
+  if (col.tipo === "score" || col.tipo === "pct" || col.tipo === "nota") return statusCor(v);
+  if (col.tipo === "min") return v <= 0 ? undefined : v <= 5 ? "#16a34a" : v <= 15 ? "#2563eb" : v <= 30 ? "#d97706" : "#dc2626";
+  return undefined;
+}
+
+function Comparativo({ corretores, periodo, onAbrir }: { corretores: Perf[]; periodo: Periodo; onAbrir: (id: number) => void }) {
+  const [sortKey, setSortKey] = useState("score");
+  const [dir, setDir] = useState<1 | -1>(-1);
+  const rows = useMemo(() => [...corretores].sort((a, b) => (num(a[sortKey]) - num(b[sortKey])) * dir), [corretores, sortKey, dir]);
+  const setSort = (k: string) => {
+    if (k === sortKey) setDir((d) => (d === 1 ? -1 : 1));
+    else { setSortKey(k); setDir(k === "tempoRespComercial" ? 1 : -1); }
+  };
+  const exportCsv = () => {
+    const header = ["Corretor", ...COLS.map((c) => c.label)];
+    const linhas = rows.map((c) => [String(c.nome), ...COLS.map((col) => String(num(c[col.key])).replace(".", ","))]);
+    const csv = [header, ...linhas].map((r) => r.map((cell) => `"${cell}"`).join(";")).join("\r\n");
+    const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = `performance_${PERIODO_LABEL[periodo].toLowerCase()}.csv`;
+    a.click(); URL.revokeObjectURL(url);
+  };
+  return (
+    <div className="pn-tbl-wrap">
+      <div className="pn-tbl-top">
+        <div><b>Ranking da equipe · {PERIODO_LABEL[periodo]}</b><span className="pn-tbl-sub">Clique num indicador para ordenar. Clique no corretor para ver o detalhe.</span></div>
+        <button type="button" className="pn-export" onClick={exportCsv}>⬇ Exportar CSV</button>
+      </div>
+      <div className="pn-tbl-scroll">
+        <table className="pn-tbl">
+          <thead>
+            <tr>
+              <th className="pn-th-pos">#</th>
+              <th className="pn-th-nome">Corretor</th>
+              {COLS.map((col) => (
+                <th key={col.key} title={col.hint} className={sortKey === col.key ? "on" : ""} onClick={() => setSort(col.key)}>
+                  {col.label}{sortKey === col.key ? (dir === -1 ? " ▼" : " ▲") : ""}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((c, i) => (
+              <tr key={c.corretor_id} onClick={() => onAbrir(Number(c.corretor_id))}>
+                <td className="pn-th-pos">{i + 1}</td>
+                <td className="pn-th-nome">{String(c.nome)}</td>
+                {COLS.map((col) => { const cor = corCol(c, col); return <td key={col.key} className={sortKey === col.key ? "on" : ""} style={cor ? { color: cor, fontWeight: 700 } : undefined}>{fmtCol(c, col)}</td>; })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 export function PerformanceWorkspace({ accessToken }: { accessToken: string }) {
   const [periodo, setPeriodo] = useState<Periodo>("mes");
   const [corretores, setCorretores] = useState<Perf[]>([]);
   const [semResp, setSemResp] = useState(0);
   const [sel, setSel] = useState<number | "equipe">("equipe");
+  const [modo, setModo] = useState<"individual" | "comparar">("comparar");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -133,12 +215,18 @@ export function PerformanceWorkspace({ accessToken }: { accessToken: string }) {
           <p>{atual ? `Desempenho de ${String(atual.nome)}` : "Operação · visão da equipe"}</p>
         </div>
         <div className="pn-controls">
-          <select value={String(sel)} onChange={(e) => setSel(e.target.value === "equipe" ? "equipe" : Number(e.target.value))}>
-            <option value="equipe">Equipe (todos)</option>
-            {corretores.map((c) => (
-              <option key={c.corretor_id} value={c.corretor_id}>{String(c.nome)}</option>
-            ))}
-          </select>
+          <div className="pn-periodo">
+            <button type="button" className={modo === "comparar" ? "on" : ""} onClick={() => setModo("comparar")}>Comparar equipe</button>
+            <button type="button" className={modo === "individual" ? "on" : ""} onClick={() => setModo("individual")}>Individual</button>
+          </div>
+          {modo === "individual" && (
+            <select value={String(sel)} onChange={(e) => setSel(e.target.value === "equipe" ? "equipe" : Number(e.target.value))}>
+              <option value="equipe">Equipe (todos)</option>
+              {corretores.map((c) => (
+                <option key={c.corretor_id} value={c.corretor_id}>{String(c.nome)}</option>
+              ))}
+            </select>
+          )}
           <div className="pn-periodo">
             {(["mes", "trimestre", "ano"] as Periodo[]).map((p) => (
               <button key={p} type="button" className={periodo === p ? "on" : ""} onClick={() => setPeriodo(p)}>
@@ -155,6 +243,8 @@ export function PerformanceWorkspace({ accessToken }: { accessToken: string }) {
         <div className="pn-msg erro">{error}</div>
       ) : corretores.length === 0 ? (
         <div className="pn-msg">Nenhum corretor no seu escopo de visão.</div>
+      ) : modo === "comparar" ? (
+        <Comparativo corretores={corretores} periodo={periodo} onAbrir={(id) => { setSel(id); setModo("individual"); }} />
       ) : (
         <>
           <p className="pn-intro">O <b>Score ApêCerto</b> (0–100) resume o desempenho a partir de 6 indicadores com pesos diferentes. Escolha um corretor ou veja a equipe, e passe o mouse nos <span className="pn-help">?</span> para entender cada número.</p>
@@ -348,6 +438,22 @@ const CSS = `
 .pn-hero-bar i{display:block;height:100%;border-radius:6px}
 .pn-hero-s{font-size:12px;color:#9ca3af}
 .pn-dot{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:6px;vertical-align:middle}
+.pn-tbl-wrap{background:#fff;border:1px solid #eef0f3;border-radius:16px;padding:16px 18px;margin-bottom:18px}
+.pn-tbl-top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:10px}
+.pn-tbl-sub{display:block;font-size:12px;color:#9ca3af;font-weight:400;margin-top:2px}
+.pn-export{border:1px solid #e5e7eb;background:#fff;color:#374151;font-size:13px;font-weight:600;padding:7px 13px;border-radius:9px;cursor:pointer}
+.pn-export:hover{background:#f9fafb}
+.pn-tbl-scroll{overflow-x:auto}
+.pn-tbl{width:100%;border-collapse:collapse;font-size:13.5px;min-width:760px}
+.pn-tbl th,.pn-tbl td{padding:10px 12px;text-align:right;border-bottom:1px solid #f1f3f5;white-space:nowrap;font-variant-numeric:tabular-nums}
+.pn-tbl th{color:#9ca3af;font-size:11px;text-transform:uppercase;letter-spacing:.3px;cursor:pointer;user-select:none}
+.pn-tbl th:hover{color:#6b7280}
+.pn-tbl th.on,.pn-tbl td.on{background:#fafbfc}
+.pn-tbl th.on{color:#f97316}
+.pn-th-pos{width:36px;text-align:center !important;color:#9ca3af}
+.pn-th-nome{text-align:left !important;font-weight:600;color:#1f2937}
+.pn-tbl tbody tr{cursor:pointer}
+.pn-tbl tbody tr:hover{background:#fafafa}
 .pn-help{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;border-radius:50%;background:#e5e7eb;color:#6b7280;font-size:10px;font-weight:700;margin-left:4px;cursor:help;vertical-align:middle}
 .pn-faixas{display:flex;flex-wrap:wrap;gap:4px 12px;margin-top:14px;padding-top:12px;border-top:1px solid #f1f3f5}
 .pn-faixas span{display:inline-flex;align-items:center;gap:5px;font-size:11px;color:#9ca3af;opacity:.6}
