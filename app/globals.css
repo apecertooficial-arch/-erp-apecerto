@@ -5395,3 +5395,54 @@ article.tone-red{border-left-color:#d3443e}article.tone-red strong{color:#d3443e
 .hist-count{flex:none;min-width:22px;height:20px;padding:0 6px;display:grid;place-items:center;border-radius:999px;background:#efeae6;color:#7a716a;font-size:11px;font-weight:700}
 .hist-opt.active .hist-count{background:#ffe4cf;color:#c15a12}
 .hist-check{width:16px;height:16px;color:#ff6500;flex:none}
+
+/* =====================================================================
+   Tipografia do chat — um lugar só para ajustar.
+   Ajuste estes quatro valores e as duas telas (Chat ao Vivo e mini chat
+   do lead) mudam juntas, sem sair caçando regra espalhada.
+   ===================================================================== */
+:root{
+  --chat-msg:12.5px;    /* texto da mensagem */
+  --chat-msg-mini:12px; /* mensagem no mini chat do card do lead */
+  --chat-meta:10.5px;   /* hora, status e legendas */
+  --chat-nome:13px;     /* nome na lista de conversas */
+}
+
+/* --- Chat ao Vivo --- */
+.message-stream article{font-size:var(--chat-msg);line-height:1.45}
+.message-stream article small{font-size:var(--chat-meta)}
+.message-stream span{font-size:var(--chat-msg)}
+.chat-thread>header strong{font-size:14px}
+.chat-thread>header small{font-size:var(--chat-meta)}
+.conversation-list>button strong{font-size:var(--chat-nome)}
+.conversation-list>button small{font-size:11.5px}
+.conversation-list>button em{font-size:var(--chat-meta)}
+.chat-composer textarea{font-size:var(--chat-msg)}
+.chat-connection{font-size:var(--chat-meta)}
+.history-instance{font-size:var(--chat-meta)}
+.history-instance select{font-size:11.5px!important}
+
+/* --- Mini chat (drawer do lead no CRM) --- */
+.chat-messages article{font-size:var(--chat-msg-mini);line-height:1.45}
+.chat-messages article p{font-size:var(--chat-msg-mini);line-height:1.45}
+.chat-messages article small,
+.chat-messages article time,
+.chat-messages article a{font-size:var(--chat-meta)}
+.lead-chat-drawer>header h2{font-size:16px}
+.lead-chat-drawer>header p{font-size:12px}
+.lead-chat-drawer>header small{font-size:10px}
+.lead-chat-drawer>footer textarea{font-size:var(--chat-msg-mini)}
+.chat-instance-bar label,.chat-instance-bar select,.chat-instance-bar>span{font-size:var(--chat-meta)}
+.chat-deal-status{font-size:var(--chat-meta)}
+.mini-chat-tools button{font-size:11px}
+
+/* --- Bolha usada na pré-visualização de mensagem --- */
+.app-wa-bubble p{font-size:12px;line-height:1.45}
+.app-wa-bubble .app-wa-time{font-size:9.5px}
+
+/* --- Barra lateral do chat --- */
+.lead-summary strong{font-size:14px}
+.lead-summary small{font-size:11.5px}
+.ai-summary p{font-size:12px}
+.chat-notes article{font-size:12px}
+.chat-document{font-size:11px}
