@@ -5072,7 +5072,7 @@ article.tone-red{border-left-color:#d3443e}article.tone-red strong{color:#d3443e
 .photo-lightbox.unit-lightbox { z-index:1200; }
 
 /* ===== Ficha pública de financiamento (/ficha/<token>) ===== */
-.ficha-page{min-height:100vh;background:linear-gradient(180deg,#fff7f1 0%,#faf9f7 240px);display:flex;justify-content:center;padding:28px 14px 60px;font-family:inherit;}
+.ficha-page{position:fixed;inset:0;overflow-y:auto;-webkit-overflow-scrolling:touch;background:linear-gradient(180deg,#fff7f1 0%,#faf9f7 240px);display:flex;justify-content:center;align-items:flex-start;padding:28px 14px 80px;font-family:inherit;}
 .ficha-card{width:100%;max-width:640px;background:#fff;border:1px solid #f0e8e1;border-radius:20px;padding:30px 28px 34px;box-shadow:0 6px 30px rgba(120,80,40,.07);height:fit-content;}
 .ficha-center{text-align:center;padding:56px 30px;}
 .ficha-logo{display:inline-block;font-size:21px;font-weight:800;color:#2b2723;margin-bottom:14px;}
@@ -5325,3 +5325,5 @@ article.tone-red{border-left-color:#d3443e}article.tone-red strong{color:#d3443e
 .excx-btn{background:var(--red);color:#fff;border:none;border-radius:var(--radius-pill);padding:9px 18px;font-size:13px;font-weight:700;cursor:pointer}
 .excx-btn:hover:not(:disabled){background:#bf3232}
 .excx-btn:disabled{opacity:.45;cursor:not-allowed}
+.ficha-produto{margin-top:8px !important;display:inline-block;background:#fff3ec;color:#c2410c;border-radius:999px;padding:6px 14px;font-size:13px !important;font-weight:650;}
+.ficha-produto b{font-weight:800;}

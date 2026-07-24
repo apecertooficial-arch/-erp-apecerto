@@ -1689,9 +1689,16 @@ function LeadDrawer({ accessToken, lead, deal, data, canReassign, canMoveDeals, 
     })();
   }, [accessToken, lead.id]);
   const copyFichaLink = async () => {
+    // Regra: só envia ficha com um produto associado ao negócio (ou vinculado ao lead).
+    const hasProduct = Boolean(deal.empreendimento_id) || links.length > 0;
+    if (!hasProduct) {
+      setMessage("Antes de enviar a ficha, associe um produto a este lead — use a aba \"Produtos\" aqui do painel.");
+      setTab("produtos");
+      return;
+    }
     setBusy(true);
     try {
-      const response = await authedFetch("/api/financiamento", { method: "POST", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify({ action: "linkFicha", leadId: lead.id }) });
+      const response = await authedFetch("/api/financiamento", { method: "POST", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify({ action: "linkFicha", leadId: lead.id, dealId: deal.id }) });
       const result = await response.json() as { token?: string; error?: string };
       if (!response.ok || !result.token) throw new Error(result.error || "Não foi possível gerar o link.");
       const url = `${window.location.origin}/ficha/${result.token}`;
