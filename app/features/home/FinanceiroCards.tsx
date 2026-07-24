@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { VBars, HBars, Sparkline, CompositionBar } from "./charts";
+import { ModalPortal } from "./ModalPortal";
 
 type Financeiro = {
   month_vgv: number; month_count: number; month_comissao: number;
@@ -78,13 +79,13 @@ export function FinanceiroCards({ accessToken, onNavigate }: { accessToken: stri
       ))}
     </div>
 
-    {active && <div className="dv-modal-layer" role="dialog" aria-modal="true" aria-label={active.title}>
+    {active && <ModalPortal><div className="dv-modal-layer" role="dialog" aria-modal="true" aria-label={active.title}>
       <button className="dv-scrim" type="button" aria-label="Fechar" onClick={() => setActive(null)} />
       <div className="dv-modal">
         <header><div><h3>{active.title}</h3><small>{active.subtitle}</small></div><button type="button" className="dv-close" aria-label="Fechar" onClick={() => setActive(null)}>×</button></header>
         <div className="dv-body">{active.chart}</div>
         <footer><span className="dv-legend">{active.legend}</span><button type="button" className="dv-cta" onClick={() => { setActive(null); onNavigate?.("Financeiro"); }}>Abrir Financeiro →</button></footer>
       </div>
-    </div>}
+    </div></ModalPortal>}
   </>;
 }
