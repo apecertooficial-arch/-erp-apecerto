@@ -6,6 +6,7 @@ import { VBars, HBars, Sparkline, CompositionBar } from "./charts";
 type Financeiro = {
   month_vgv: number; month_count: number; month_comissao: number;
   total_vgv: number; total_count: number; total_comissao: number;
+  processo_vgv: number; processo_count: number;
   meta_mes: number;
   by_month: { m: string; vgv: number; count: number; comissao: number }[];
   ranking: { k: string; vgv: number; n: number }[];
@@ -35,15 +36,15 @@ export function FinanceiroCards({ accessToken, onNavigate }: { accessToken: stri
     if (!data) return [];
     return [
       {
-        key: "vgv", icon: "↗", tone: "orange", label: "VGV do mês", value: compact.format(data.month_vgv), foot: `meta ${compact.format(data.meta_mes)}`,
+        key: "vgv", icon: "↗", tone: "orange", label: "VGV do mês", value: compact.format(data.month_vgv), foot: `meta ${compact.format(data.meta_mes)} · ${compact.format(data.processo_vgv ?? 0)} em processo`,
         micro: <Sparkline data={data.by_month.map((x) => Math.round(x.vgv))} color={TONE.orange.c} tint={TONE.orange.t} />,
-        title: "VGV vendido", subtitle: "Volume geral de vendas — últimos 6 meses", legend: "Volume vendido por mês. Barra atual em relação ao histórico recente.",
+        title: "VGV vendido", subtitle: "Vendas concluídas — últimos 6 meses", legend: `Só entra aqui a venda concluída, contada no mês em que fechou. Hoje há ${compact.format(data.processo_vgv ?? 0)} em ${data.processo_count ?? 0} venda(s) ainda na esteira.`,
         chart: <VBars fmt={(v) => compact.format(v)} data={data.by_month.map((x) => ({ label: monthLabel(x.m), value: Math.round(x.vgv) }))} />,
       },
       {
         key: "vendas", icon: "▥", tone: "purple", label: "Vendas do mês", value: String(data.month_count), foot: `${data.total_count} nos últimos 12 meses`,
         micro: <Sparkline data={data.by_month.map((x) => x.count)} color={TONE.purple.c} tint={TONE.purple.t} />,
-        title: "Vendas fechadas", subtitle: "Número de vendas — últimos 6 meses", legend: "Quantas vendas foram registradas por mês.",
+        title: "Vendas fechadas", subtitle: "Número de vendas concluídas — últimos 6 meses", legend: "Quantas vendas foram concluídas por mês. Vendas ainda na esteira não entram.",
         chart: <VBars data={data.by_month.map((x) => ({ label: monthLabel(x.m), value: x.count }))} />,
       },
       {
