@@ -733,6 +733,40 @@ export async function PATCH(request: Request) {
     return Response.json({ success: true });
   }
 
+  // ===== Exclusão definitiva da venda (admin e diretor) =====
+  if (action === "excluirVenda") {
+    const processId = clean(body.processId, 60);
+    if (!processId) return Response.json({ error: "Venda inválida." }, { status: 422 });
+    const { data, error } = await auth.supabase.rpc("excluir_venda_esteira", {
+      p_processo: processId,
+      p_motivo: clean(body.motivo, 400) || null,
+      p_forcar: body.forcar === true,
+      p_descartar_lead: body.descartarLead === true,
+    });
+    if (error) return Response.json({ error: error.message }, { status: 502 });
+    const r = (data ?? {}) as { ok?: boolean; erro?: string; bloqueios?: string[]; paths?: string[]; lead?: string; forcada?: boolean };
+    if (!r.ok) {
+      if (r.erro === "sem_permissao") return Response.json({ error: "Apenas administrador ou diretor pode excluir uma venda." }, { status: 403 });
+      if (r.erro === "processo_nao_encontrado") return Response.json({ error: "Venda não encontrada." }, { status: 404 });
+      if (r.erro === "impacto_financeiro") {
+        return Response.json({
+          error: `Esta venda já movimentou o financeiro: ${(r.bloqueios ?? []).join(", ")}. Confirme a exclusão para apagar mesmo assim.`,
+          bloqueios: r.bloqueios ?? [],
+          precisaForcar: true,
+        }, { status: 409 });
+      }
+      return Response.json({ error: r.erro || "Não foi possível excluir a venda." }, { status: 422 });
+    }
+    // O snapshot já está salvo em venda_exclusoes; agora limpamos os arquivos do bucket.
+    const paths = Array.isArray(r.paths) ? r.paths.filter((x): x is string => typeof x === "string" && x.length > 0) : [];
+    let arquivosRemovidos = 0;
+    if (paths.length) {
+      const { error: stErr } = await auth.supabase.storage.from("esteira-docs").remove(paths);
+      if (!stErr) arquivosRemovidos = paths.length;
+    }
+    return Response.json({ success: true, arquivosRemovidos, arquivosTotal: paths.length, lead: r.lead, forcada: r.forcada === true });
+  }
+
   if (action === "addObs") {
     const processId = clean(body.processId, 60);
     const texto = clean(body.texto, 4000);
