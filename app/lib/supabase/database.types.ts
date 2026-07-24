@@ -2451,40 +2451,49 @@ export type Database = {
       esteira_etapas: {
         Row: {
           ativo: boolean
+          conclui_venda: boolean
           cor: string
           created_at: string
           exige_docs: boolean
           id: string
+          libera: string[]
           nome: string
           ordem: number
           papel: string
           resale: boolean
+          restrito_a: string[] | null
           sla_dias: number
           slug: string
         }
         Insert: {
           ativo?: boolean
+          conclui_venda?: boolean
           cor?: string
           created_at?: string
           exige_docs?: boolean
           id?: string
+          libera?: string[]
           nome: string
           ordem?: number
           papel?: string
           resale?: boolean
+          restrito_a?: string[] | null
           sla_dias?: number
           slug: string
         }
         Update: {
           ativo?: boolean
+          conclui_venda?: boolean
           cor?: string
           created_at?: string
           exige_docs?: boolean
           id?: string
+          libera?: string[]
           nome?: string
           ordem?: number
           papel?: string
           resale?: boolean
+          restrito_a?: string[] | null
           sla_dias?: number
           slug?: string
         }
@@ -2499,6 +2508,7 @@ export type Database = {
           concluida_em: string | null
           conjuge_cpf: string | null
           conjuge_data_nascimento: string | null
+          conjuge_email: string | null
           conjuge_nome: string | null
           conjuge_renda: number | null
           conjuge_rg: string | null
@@ -2514,6 +2524,7 @@ export type Database = {
           enviada_em: string | null
           estado_civil: string | null
           id: string
+          lead_id: number | null
           link_token: string | null
           preenchida_em: string | null
           produto: string | null
@@ -2534,6 +2545,7 @@ export type Database = {
           concluida_em?: string | null
           conjuge_cpf?: string | null
           conjuge_data_nascimento?: string | null
+          conjuge_email?: string | null
           conjuge_nome?: string | null
           conjuge_renda?: number | null
           conjuge_rg?: string | null
@@ -2549,6 +2561,7 @@ export type Database = {
           enviada_em?: string | null
           estado_civil?: string | null
           id?: string
+          lead_id?: number | null
           link_token?: string | null
           preenchida_em?: string | null
           produto?: string | null
@@ -2569,6 +2582,7 @@ export type Database = {
           concluida_em?: string | null
           conjuge_cpf?: string | null
           conjuge_data_nascimento?: string | null
+          conjuge_email?: string | null
           conjuge_nome?: string | null
           conjuge_renda?: number | null
           conjuge_rg?: string | null
@@ -2584,6 +2598,7 @@ export type Database = {
           enviada_em?: string | null
           estado_civil?: string | null
           id?: string
+          lead_id?: number | null
           link_token?: string | null
           preenchida_em?: string | null
           produto?: string | null
@@ -2617,6 +2632,27 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "vw_negocios_kanban"
             referencedColumns: ["corretor_id"]
+          },
+          {
+            foreignKeyName: "financiamento_fichas_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financiamento_fichas_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "vw_erros_envio"
+            referencedColumns: ["lead_id"]
+          },
+          {
+            foreignKeyName: "financiamento_fichas_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "vw_negocios_kanban"
+            referencedColumns: ["lead_id"]
           },
         ]
       }
@@ -5559,6 +5595,57 @@ export type Database = {
           },
         ]
       }
+      venda_exclusoes: {
+        Row: {
+          cliente: string | null
+          empreendimento: string | null
+          etapa: string | null
+          excluido_em: string
+          excluido_por: string | null
+          excluido_por_nome: string | null
+          forcada: boolean
+          id: string
+          motivo: string | null
+          negocio_id: number | null
+          processo_id: string | null
+          snapshot: Json | null
+          venda_id: string | null
+          vgv: number | null
+        }
+        Insert: {
+          cliente?: string | null
+          empreendimento?: string | null
+          etapa?: string | null
+          excluido_em?: string
+          excluido_por?: string | null
+          excluido_por_nome?: string | null
+          forcada?: boolean
+          id?: string
+          motivo?: string | null
+          negocio_id?: number | null
+          processo_id?: string | null
+          snapshot?: Json | null
+          venda_id?: string | null
+          vgv?: number | null
+        }
+        Update: {
+          cliente?: string | null
+          empreendimento?: string | null
+          etapa?: string | null
+          excluido_em?: string
+          excluido_por?: string | null
+          excluido_por_nome?: string | null
+          forcada?: boolean
+          id?: string
+          motivo?: string | null
+          negocio_id?: number | null
+          processo_id?: string | null
+          snapshot?: Json | null
+          venda_id?: string | null
+          vgv?: number | null
+        }
+        Relationships: []
+      }
       venda_observacoes: {
         Row: {
           autor: string | null
@@ -5927,6 +6014,7 @@ export type Database = {
           corretor_id: number | null
           created_at: string
           custos: number
+          data_conclusao: string | null
           data_venda: string
           documentos: Json
           empreendimento_id: string | null
@@ -5946,6 +6034,7 @@ export type Database = {
           corretor_id?: number | null
           created_at?: string
           custos?: number
+          data_conclusao?: string | null
           data_venda: string
           documentos?: Json
           empreendimento_id?: string | null
@@ -5965,6 +6054,7 @@ export type Database = {
           corretor_id?: number | null
           created_at?: string
           custos?: number
+          data_conclusao?: string | null
           data_venda?: string
           documentos?: Json
           empreendimento_id?: string | null
@@ -7335,6 +7425,20 @@ export type Database = {
         Returns: undefined
       }
       excluir_instancia: { Args: { p_id: number }; Returns: Json }
+      excluir_venda_esteira: {
+        Args: {
+          p_descartar_lead?: boolean
+          p_forcar?: boolean
+          p_motivo?: string
+          p_processo: string
+        }
+        Returns: Json
+      }
+      ficha_publica_enviar: {
+        Args: { p_dados: Json; p_token: string }
+        Returns: Json
+      }
+      ficha_publica_obter: { Args: { p_token: string }; Returns: Json }
       fmt_brl_compact: { Args: { v: number }; Returns: string }
       gerar_comissoes: { Args: { p_venda: string }; Returns: Json }
       gerente_conflitos: {
@@ -7659,6 +7763,19 @@ export type Database = {
           venda_score: number
           vendas: number
           vgv: number
+          visita_score: number
+        }[]
+      }
+      perf_scores_corretores: {
+        Args: { p_fim?: string; p_inicio?: string }
+        Returns: {
+          corretor_id: number
+          crm_score: number
+          fup_score: number
+          resp_score: number
+          score: number
+          tarefa_score: number
+          venda_score: number
           visita_score: number
         }[]
       }
