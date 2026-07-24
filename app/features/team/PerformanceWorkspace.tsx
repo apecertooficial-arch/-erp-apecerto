@@ -18,13 +18,20 @@ const brlM = (v: unknown) => `R$ ${(num(v) / 1_000_000).toLocaleString("pt-BR", 
 const min1 = (v: unknown) => `${num(v).toLocaleString("pt-BR", { maximumFractionDigits: 1 })} min`;
 const int = (v: unknown) => Math.round(num(v)).toLocaleString("pt-BR");
 
-const PESOS: Array<{ key: string; label: string; peso: number }> = [
-  { key: "respScore", label: "Tempo de resposta", peso: 30 },
-  { key: "crmScore", label: "Atualização do CRM", peso: 20 },
-  { key: "fupScore", label: "Follow-ups", peso: 20 },
-  { key: "visitaScore", label: "Conversão em visitas", peso: 15 },
-  { key: "vendaScore", label: "Conversão em vendas", peso: 10 },
-  { key: "tarefaScore", label: "Cumprimento de tarefas", peso: 5 },
+const PESOS: Array<{ key: string; label: string; peso: number; desc: string }> = [
+  { key: "respScore", label: "Tempo de resposta", peso: 25, desc: "Rapidez da 1ª resposta no horário comercial (seg–sex, 9:30–18h). Nota cheia = 75%+ das respostas em até 15 min (ótimo ≤5 min)." },
+  { key: "crmScore", label: "Atualização do CRM", peso: 25, desc: "Quanto da sua carteira aberta você mexeu nas últimas 24h. Nota cheia = 40%+ da carteira trabalhada por dia." },
+  { key: "fupScore", label: "Follow-ups", peso: 20, desc: "Reinvestidas nos leads que ficaram sem resposta. Quanto mais follow-up ativo, maior a nota." },
+  { key: "vendaScore", label: "Conversão em vendas", peso: 15, desc: "VGV de vendas fechadas (concluídas/pagas) no mês. Nota cheia = R$ 2,5 mi. Venda em esteira/pendente não conta." },
+  { key: "visitaScore", label: "Conversão em visitas", peso: 10, desc: "Visitas realizadas no mês. Nota cheia = 15 visitas." },
+  { key: "tarefaScore", label: "Cumprimento de tarefas", peso: 5, desc: "Tarefas do CRM concluídas no mês. Nota cheia = 8 tarefas." },
+];
+
+const FAIXAS = [
+  { rotulo: "Crítico", cor: "#dc2626", faixa: "0–29" },
+  { rotulo: "Atenção", cor: "#d97706", faixa: "30–49" },
+  { rotulo: "Bom", cor: "#2563eb", faixa: "50–74" },
+  { rotulo: "Excelente", cor: "#16a34a", faixa: "75–100" },
 ];
 
 function classifica(score: number) {
@@ -34,20 +41,20 @@ function classifica(score: number) {
   return { rotulo: "Crítico", cor: "#dc2626" };
 }
 
-function Kpi({ titulo, valor, sub }: { titulo: string; valor: string; sub?: string }) {
+function Kpi({ titulo, valor, sub, hint }: { titulo: string; valor: string; sub?: string; hint?: string }) {
   return (
-    <div className="pn-kpi">
-      <span className="pn-kpi-t">{titulo}</span>
+    <div className="pn-kpi" title={hint}>
+      <span className="pn-kpi-t">{titulo}{hint ? <span className="pn-help" aria-label={hint}>?</span> : null}</span>
       <strong className="pn-kpi-v">{valor}</strong>
       {sub ? <small className="pn-kpi-s">{sub}</small> : null}
     </div>
   );
 }
 
-function Secao({ titulo, children }: { titulo: string; children: React.ReactNode }) {
+function Secao({ titulo, desc, children }: { titulo: string; desc?: string; children: React.ReactNode }) {
   return (
     <section className="pn-sec">
-      <h3>{titulo}</h3>
+      <h3>{titulo}{desc ? <span className="pn-sec-desc">{desc}</span> : null}</h3>
       <div className="pn-grid">{children}</div>
     </section>
   );
@@ -126,6 +133,7 @@ export function PerformanceWorkspace({ accessToken }: { accessToken: string }) {
         <div className="pn-msg">Nenhum corretor no seu escopo de visão.</div>
       ) : (
         <>
+          <p className="pn-intro">O <b>Score ApêCerto</b> (0–100) resume o desempenho a partir de 6 indicadores com pesos diferentes. Escolha um corretor ou veja a equipe, e passe o mouse nos <span className="pn-help">?</span> para entender cada número.</p>
           {/* Score */}
           <div className="pn-score-row">
             {(() => {
@@ -138,17 +146,25 @@ export function PerformanceWorkspace({ accessToken }: { accessToken: string }) {
                   <strong className="pn-score-nome">{String(atual ? atual.nome : "Equipe ApêCerto")}</strong>
                   <div className="pn-score-num" style={{ color: cls.cor }}>{sc}<em>/100</em></div>
                   <span className="pn-badge" style={{ background: cls.cor }}>{cls.rotulo}</span>
+                  <div className="pn-faixas">
+                    {FAIXAS.map((f) => (
+                      <span key={f.rotulo} className={f.rotulo === cls.rotulo ? "on" : ""}>
+                        <i style={{ background: f.cor }} />{f.rotulo} <em>{f.faixa}</em>
+                      </span>
+                    ))}
+                  </div>
                 </div>
               );
             })()}
             <div className="pn-comp">
               <span className="pn-comp-t">Composição do score · indicadores ponderados</span>
+              <p className="pn-comp-exp">Cada indicador vale de 0 a 100. A nota final é a média ponderada pelos pesos (%). Passe o mouse em cada um para ver como pontua.</p>
               <div className="pn-comp-grid">
                 {PESOS.map((p) => {
                   const v = atual ? num(atual[p.key]) : Math.round(equipe.media(p.key));
                   return (
-                    <div key={p.key} className="pn-comp-item">
-                      <div className="pn-comp-head"><span>{p.label} <em>{p.peso}%</em></span><b>{v}/100</b></div>
+                    <div key={p.key} className="pn-comp-item" title={p.desc}>
+                      <div className="pn-comp-head"><span>{p.label} <em>{p.peso}%</em> <span className="pn-help">?</span></span><b>{v}/100</b></div>
                       <div className="pn-bar"><i style={{ width: `${Math.min(100, v)}%` }} /></div>
                     </div>
                   );
@@ -158,16 +174,20 @@ export function PerformanceWorkspace({ accessToken }: { accessToken: string }) {
           </div>
 
           {/* KPIs principais */}
-          <Secao titulo="Resultados">
-            <Kpi titulo="VGV" valor={brlM(atual ? atual.vgv : equipe.vgv)} sub={`${int(atual ? atual.vendas : equipe.vendas)} venda(s)`} />
+          <Secao titulo="Resultados" desc="Vendas fechadas no período. Meta de VGV: R$ 2,5 mi/mês por corretor.">
+            <Kpi titulo="VGV" valor={brlM(atual ? atual.vgv : equipe.vgv)} sub={`${int(atual ? atual.vendas : equipe.vendas)} venda(s)`}
+              hint="Valor Geral de Vendas fechadas (concluídas/pagas) no período. Venda em esteira ou pendente não entra aqui." />
             <Kpi titulo="Comissão gerada" valor={brl(atual ? atual.comissao : corretores.reduce((a, c) => a + num(c.comissao), 0))} />
             <Kpi titulo="Propostas" valor={int(atual ? atual.propEmit : corretores.reduce((a, c) => a + num(c.propEmit), 0))} sub={`${int(atual ? atual.propAceit : corretores.reduce((a, c) => a + num(c.propAceit), 0))} aceitas`} />
             <Kpi titulo="Contratos assinados" valor={int(atual ? atual.contratosAss : corretores.reduce((a, c) => a + num(c.contratosAss), 0))} />
           </Secao>
 
-          <Secao titulo="Atendimento">
-            <Kpi titulo="Tempo 1ª resposta" valor={min1(atual ? atual.tempoResp : equipe.media("tempoResp"))} sub="média" />
-            <Kpi titulo="SLA cumprido" valor={`${int(atual ? atual.slaPct : equipe.media("slaPct"))}%`} sub="dentro da meta" />
+          <Secao titulo="Atendimento" desc="Velocidade e volume no atendimento aos leads.">
+            <Kpi titulo="1ª resposta (comercial)" valor={min1(atual ? atual.tempoRespComercial : equipe.media("tempoRespComercial"))}
+              sub={`mediana · ótimo ≤5 · bom ≤15 min`}
+              hint={`Mediana do tempo de 1ª resposta dentro do horário comercial (seg–sex, 9:30–18h). Faixas: ótimo ≤5 min, bom ≤15, atenção 15–60, ruim >60. Média geral (24h): ${min1(atual ? atual.tempoResp : equipe.media("tempoResp"))} — puxada por leads de madrugada.`} />
+            <Kpi titulo="SLA cumprido" valor={`${int(atual ? atual.slaPct : equipe.media("slaPct"))}%`} sub="≤15 min no comercial"
+              hint="% das 1ªs respostas feitas em até 15 minutos, dentro do horário comercial. Meta da equipe: ≥75%." />
             <Kpi titulo="Fora do SLA" valor={int(atual ? atual.foraSla : corretores.reduce((a, c) => a + num(c.foraSla), 0))} />
             <Kpi titulo="Mensagens enviadas" valor={int(atual ? atual.msgsEnv : corretores.reduce((a, c) => a + num(c.msgsEnv), 0))} sub={`${int(atual ? atual.msgsRec : corretores.reduce((a, c) => a + num(c.msgsRec), 0))} recebidas`} />
             <Kpi titulo="Áudios enviados" valor={int(atual ? atual.audios : corretores.reduce((a, c) => a + num(c.audios), 0))} />
@@ -176,7 +196,7 @@ export function PerformanceWorkspace({ accessToken }: { accessToken: string }) {
             <Kpi titulo="Tempo online" valor={`${int(atual ? atual.onlineH : equipe.media("onlineH"))}h`} />
           </Secao>
 
-          <Secao titulo="CRM e carteira">
+          <Secao titulo="CRM e carteira" desc="Tamanho da carteira e o quanto está sendo trabalhada. Ideal: manter poucos negócios parados e todos com próxima tarefa.">
             <Kpi titulo="Leads (período)" valor={int(atual ? atual.leads : corretores.reduce((a, c) => a + num(c.leads), 0))} sub={`${int(atual ? atual.leadsTotal : corretores.reduce((a, c) => a + num(c.leadsTotal), 0))} no total`} />
             <Kpi titulo="Negócios abertos" valor={int(atual ? atual.abertos : corretores.reduce((a, c) => a + num(c.abertos), 0))} />
             <Kpi titulo="Parados +24h" valor={int(atual ? atual.parados : corretores.reduce((a, c) => a + num(c.parados), 0))} sub={`${int(atual ? atual.parados72 : corretores.reduce((a, c) => a + num(c.parados72), 0))} há +72h`} />
@@ -185,14 +205,14 @@ export function PerformanceWorkspace({ accessToken }: { accessToken: string }) {
             <Kpi titulo="Cobertura da carteira" valor={`${int(atual ? atual.coberturaMomento : equipe.media("coberturaMomento"))}%`} sub="mexida hoje" />
           </Secao>
 
-          <Secao titulo="Visitas">
+          <Secao titulo="Visitas" desc="Visitas do mês. O score conta as realizadas — meta cheia: 15/mês.">
             <Kpi titulo="Marcadas" valor={int(atual ? atual.visitasMarc : corretores.reduce((a, c) => a + num(c.visitasMarc), 0))} />
             <Kpi titulo="Realizadas" valor={int(atual ? atual.visitasReal : corretores.reduce((a, c) => a + num(c.visitasReal), 0))} />
             <Kpi titulo="Canceladas" valor={int(atual ? atual.visitasCanc : corretores.reduce((a, c) => a + num(c.visitasCanc), 0))} />
             <Kpi titulo="Ciclo até visita" valor={`${int(atual ? atual.cicloVisitaDias : equipe.media("cicloVisitaDias"))} dias`} />
           </Secao>
 
-          <Secao titulo="Qualidade do atendimento (IA)">
+          <Secao titulo="Qualidade do atendimento (IA)" desc="Avaliação da Sara sobre as conversas: clareza, condução, objeções e nota geral (0–100).">
             <Kpi titulo="Nota geral IA" valor={`${int(atual ? atual.notaGeralIa : equipe.media("notaGeralIa"))}/100`} />
             <Kpi titulo="Clareza" valor={int(atual ? atual.notaClareza : equipe.media("notaClareza"))} />
             <Kpi titulo="Cordialidade" valor={int(atual ? atual.notaCordial : equipe.media("notaCordial"))} />
@@ -248,6 +268,16 @@ const CSS = `
 .pn-score-num{font-size:52px;font-weight:800;line-height:1}
 .pn-score-num em{font-size:18px;color:#9ca3af;font-weight:600;font-style:normal}
 .pn-badge{display:inline-block;color:#fff;font-size:11px;font-weight:700;padding:3px 12px;border-radius:20px;margin-top:8px}
+.pn-intro{background:#fff;border:1px solid #eef0f3;border-radius:12px;padding:12px 16px;margin:0 0 16px;font-size:13.5px;color:#4b5563;line-height:1.5}
+.pn-help{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;border-radius:50%;background:#e5e7eb;color:#6b7280;font-size:10px;font-weight:700;margin-left:4px;cursor:help;vertical-align:middle}
+.pn-faixas{display:flex;flex-wrap:wrap;gap:4px 12px;margin-top:14px;padding-top:12px;border-top:1px solid #f1f3f5}
+.pn-faixas span{display:inline-flex;align-items:center;gap:5px;font-size:11px;color:#9ca3af;opacity:.6}
+.pn-faixas span.on{opacity:1;color:#374151;font-weight:600}
+.pn-faixas i{width:9px;height:9px;border-radius:2px;display:inline-block}
+.pn-faixas em{font-style:normal;color:#b0b7c3}
+.pn-comp-exp{font-size:12px;color:#9ca3af;margin:6px 0 0;line-height:1.45}
+.pn-comp-item{cursor:help}
+.pn-sec-desc{font-size:12.5px;color:#9ca3af;font-weight:400;margin-left:10px}
 .pn-comp-t{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:#9ca3af;font-weight:700}
 .pn-comp-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px 22px;margin-top:12px}
 @media(max-width:640px){.pn-comp-grid{grid-template-columns:1fr}}
@@ -257,7 +287,7 @@ const CSS = `
 .pn-bar{height:7px;background:#f1f3f5;border-radius:6px;overflow:hidden}
 .pn-bar i{display:block;height:100%;background:linear-gradient(90deg,#f97316,#fb923c);border-radius:6px}
 .pn-sec{margin-top:20px}
-.pn-sec h3{font-size:14px;margin:0 0 10px;color:#374151;display:flex;align-items:center;gap:10px}
+.pn-sec h3{font-size:14px;margin:0 0 10px;color:#374151;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
 .pn-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px}
 .pn-kpi{background:#fff;border:1px solid #eef0f3;border-radius:14px;padding:14px 16px;display:flex;flex-direction:column;gap:3px}
 .pn-kpi-t{font-size:12px;color:#6b7280}
