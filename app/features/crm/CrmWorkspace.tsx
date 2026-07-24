@@ -859,11 +859,10 @@ function PipelineViewEnhanced({ stages, allStages, deals, leadById, brokerById, 
     const onWheel = (event: globalThis.WheelEvent) => {
       if (event.ctrlKey || Math.abs(event.deltaX) > Math.abs(event.deltaY) || event.deltaY === 0) return;
       const col = (event.target as HTMLElement).closest(".crm-stage-body") as HTMLElement | null;
-      if (col) {
-        const down = event.deltaY > 0 && col.scrollTop + col.clientHeight < col.scrollHeight - 1;
-        const up = event.deltaY < 0 && col.scrollTop > 0;
-        if (down || up) return; // deixa a própria coluna rolar por dentro
-      }
+      // Com o cursor SOBRE uma coluna, mantém a rolagem vertical normal e NUNCA desliza o
+      // board pro lado — nem quando a coluna chega ao fim. O scroll horizontal continua
+      // disponível na área vazia do quadro, no arrastar do fundo e no Shift+roda nativo.
+      if (col) return;
       // Normaliza a roda: alguns mouses/SO reportam "linhas" (deltaMode 1) ou
       // "páginas" (2) em vez de pixels. Sem isso, uma roda em linhas anda ~3px
       // por clique e o board mal desliza.
