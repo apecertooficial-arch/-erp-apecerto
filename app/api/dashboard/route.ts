@@ -16,6 +16,13 @@ export async function GET(request: Request) {
     return Response.json({ error: "Sem permissão." }, { status: 403 });
   }
 
+  const section = new URL(request.url).searchParams.get("section");
+  if (section === "financeiro") {
+    const { data, error } = await supabase.rpc("admin_dashboard_financeiro");
+    if (error) return Response.json({ error: error.message }, { status: 502 });
+    return Response.json({ financeiro: data });
+  }
+
   const { data, error } = await supabase.rpc("admin_dashboard_rodagem");
   if (error) return Response.json({ error: error.message }, { status: 502 });
   return Response.json({ rodagem: data });
