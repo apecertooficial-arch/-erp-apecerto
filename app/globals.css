@@ -5558,3 +5558,29 @@ article.tone-red{border-left-color:#d3443e}article.tone-red strong{color:#d3443e
 .live-chat .chat-sidebar h3,.live-chat .chat-sidebar>h3{margin:14px 0 8px !important}
 .live-chat .quick-actions{gap:6px !important;margin:8px 0 12px !important}
 .live-chat .quick-actions button{padding:8px 9px !important;font-size:11px !important}
+
+/* ============================================================================
+   Chat ao vivo — passe de coesão (cabeçalho, filtros e lista de conversas)
+   Ajustes de espaçamento/hierarquia nos elementos mais "crus" da coluna
+   esquerda + topo. (.live-chat p/ especificidade.)
+   ========================================================================== */
+/* Cabeçalho da página mais enxuto */
+.live-chat > header{padding:12px 24px !important}
+.live-chat > header h1{font-size:19px !important;margin:2px 0 1px !important}
+/* Chips de filtro (Todas / Sem resposta / Críticas) */
+.live-chat .conversation-list > nav{padding:12px 12px 8px !important;gap:6px !important}
+.live-chat .conversation-list > nav button{min-height:34px !important;border-radius:999px !important;font-size:12px !important;font-weight:600 !important}
+.live-chat .conversation-list > nav button.active{background:#fff2e9 !important;border-color:#ffb279 !important;color:#e05e00 !important}
+/* Selects de filtro — mais respiráveis, com seta própria e consistentes */
+.live-chat .chat-filter-row{gap:6px !important;padding:0 12px 12px !important}
+.live-chat .chat-filter-row select{min-height:34px !important;border-radius:9px !important;padding:0 26px 0 10px !important;font-size:11.5px !important;background-color:#fff !important;color:#5a534e !important;border-color:#e6ded7 !important;cursor:pointer;-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23b1a79f' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'><path d='M6 9l6 6 6-6'/></svg>");background-repeat:no-repeat;background-position:right 9px center}
+.live-chat .chat-filter-row select:hover{border-color:#e0b591 !important}
+.live-chat .chat-filter-row select:focus{outline:none;border-color:#ff8a3d !important;box-shadow:0 0 0 3px rgba(255,101,0,.12)}
+/* Itens de conversa — hierarquia e estado ativo mais claros */
+.live-chat .conversation-list > button{padding:11px 14px !important;gap:11px !important;border-top-color:#f2ede8 !important;transition:background .12s}
+.live-chat .conversation-list > button:hover{background:#faf7f4 !important}
+.live-chat .conversation-list > button.active{background:#fff5ee !important;box-shadow:inset 3px 0 #ff6500 !important}
+.live-chat .conversation-list > button > span{width:40px !important;height:40px !important;border-radius:12px !important;font-size:13px !important}
+.live-chat .conversation-list > button strong{font-size:13px !important}
+.live-chat .conversation-list > button small{font-size:11.5px !important;color:#8b8480 !important}
+.live-chat .conversation-list > button em{font-size:10.5px !important;color:#ada49d !important}
