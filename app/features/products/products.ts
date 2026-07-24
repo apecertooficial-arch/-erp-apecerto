@@ -22,6 +22,7 @@ export type Product = {
   approval?: string;
   rejectionReason?: string | null;
   mine?: boolean;
+  capturedBy?: string | null;
 };
 
 export const products: Product[] = [
