@@ -1207,7 +1207,16 @@ function PipelineViewEnhanced({ stages, allStages, deals, leadById, brokerById, 
     const board = boardRef.current;
     if (!board) return;
     const onWheel = (event: globalThis.WheelEvent) => {
-      if (event.ctrlKey || Math.abs(event.deltaX) > Math.abs(event.deltaY) || event.deltaY === 0) return;
+      if (event.ctrlKey) return;
+      // Gesto lateral do trackpad (dois dedos pro lado): move o PIPE, nunca a coluna
+      if (Math.abs(event.deltaX) > Math.abs(event.deltaY)) {
+        if (event.deltaX === 0) return;
+        const unitX = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? board.clientWidth : 1;
+        board.scrollLeft += event.deltaX * unitX;
+        event.preventDefault();
+        return;
+      }
+      if (event.deltaY === 0) return;
       const col = (event.target as HTMLElement).closest(".crm-stage-body") as HTMLElement | null;
       if (col) {
         const down = event.deltaY > 0 && col.scrollTop + col.clientHeight < col.scrollHeight - 1;
@@ -1391,24 +1400,32 @@ function HistoryInstanceSelect({ instances, value, onChange }: { instances: Chat
     return () => { document.removeEventListener("mousedown", onDoc); document.removeEventListener("keydown", onKey); };
   }, [open]);
   const statusOf = (item: ChatInstance) => item.sendBig ? (item.conectada ? { t: "conectada", c: "on" } : { t: "desconectada", c: "off" }) : { t: "só histórico", c: "hist" };
+  const bubble = <svg className="hist-count-ic" viewBox="0 0 24 24" fill="currentColor"><path d="M20 2H4a2 2 0 0 0-2 2v18l4-4h14a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2z" /></svg>;
   return <div className={`hist-select ${open ? "open" : ""}`} ref={ref}>
     <button type="button" className={`hist-btn ${sel ? "" : "is-placeholder"}`} onClick={() => setOpen((prev) => !prev)} aria-haspopup="listbox" aria-expanded={open}>
       {sel
-        ? <span className="hist-btn-main"><span className={`hist-dot ${statusOf(sel).c}`} /><b>{sel.nome}</b>{last4(sel.numero) && <em>final {last4(sel.numero)}</em>}</span>
-        : <span className="hist-btn-main">Selecione a instância</span>}
+        ? <span className="hist-btn-main"><span className={`hist-dot2 ${statusOf(sel).c}`} /><span className="hist-btn-txt"><b>{sel.nome}</b>{last4(sel.numero) && <em>final {last4(sel.numero)}</em>}</span></span>
+        : <span className="hist-btn-main"><span className="hist-dot2" /><span className="hist-btn-txt placeholder">Selecione a instância</span></span>}
       <svg className="hist-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9l6 6 6-6" /></svg>
     </button>
     {open && <ul className="hist-panel" role="listbox">
       {instances.length === 0 && <li className="hist-empty">Nenhuma instância encontrada</li>}
       {instances.map((item) => { const st = statusOf(item); const active = item.key === value; return <li key={item.key}>
         <button type="button" role="option" aria-selected={active} className={`hist-opt ${active ? "active" : ""}`} onClick={() => { onChange(item.key); setOpen(false); }}>
-          <span className={`hist-dot ${st.c}`} />
+          <span className={`hist-dot2 ${st.c}`} />
           <span className="hist-opt-body">
-            <span className="hist-opt-top"><b>{item.nome}</b>{last4(item.numero) && <em>final {last4(item.numero)}</em>}</span>
-            <span className="hist-opt-sub"><span className="hist-corretor">{item.corretor || "sem corretor"}</span><i className={`hist-tag ${st.c}`}>{st.t}</i></span>
+            <span className="hist-line1">
+              <b className="hist-name">{item.nome}</b>
+              {item.msgs > 0 && <span className="hist-count" title={`${item.msgs} ${item.msgs === 1 ? "mensagem" : "mensagens"}`}>{bubble}{item.msgs > 99 ? "99+" : item.msgs}</span>}
+              {active && <svg className="hist-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>}
+            </span>
+            <span className="hist-line2">
+              {last4(item.numero) && <><em>final {last4(item.numero)}</em><span className="hist-sep">·</span></>}
+              <span className="hist-corretor">{item.corretor || "sem corretor"}</span>
+              <span className="hist-sep">·</span>
+              <i className={`hist-st ${st.c}`}>{st.t}</i>
+            </span>
           </span>
-          {item.msgs > 0 && <span className="hist-count" title={`${item.msgs} ${item.msgs === 1 ? "mensagem" : "mensagens"}`}>{item.msgs > 99 ? "99+" : item.msgs}</span>}
-          {active && <svg className="hist-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>}
         </button>
       </li>; })}
     </ul>}
