@@ -33,6 +33,21 @@ function canCrm(access: EffectiveAccess, action: "atribuir" | "transferir") {
   return ["crm", "leads", "pipeline"].some((moduleName) => accessCan(access, moduleName, action));
 }
 
+// O PostgREST/Supabase corta QUALQUER consulta em 1000 linhas (max-rows padrão),
+// mesmo com .limit() maior. Para tabelas que já passaram disso (leads/negócios),
+// buscamos em páginas de 1000 até esgotar.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function fetchAll<T>(build: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: any }>): Promise<{ data: T[] | null; error: any }> {
+  const rows: T[] = [];
+  for (let page = 0; page < 10; page++) {
+    const { data, error } = await build(page * 1000, page * 1000 + 999);
+    if (error) return { data: null, error };
+    rows.push(...(data ?? []));
+    if (!data || data.length < 1000) break;
+  }
+  return { data: rows, error: null };
+}
+
 export async function GET(request: Request) {
   const auth = await authenticatedClient(request);
   if (!auth) return Response.json({ error: "Sessão inválida ou expirada." }, { status: 401 });
@@ -40,8 +55,8 @@ export async function GET(request: Request) {
   const [pipelinesResult, stagesResult, leadsResult, dealsResult, brokersResult, activitiesResult, historicoResult, tasksResult, linksResult, visitsResult, productsResult, slaResult, alertsResult, leiturasResult] = await Promise.all([
     auth.supabase.from("pipelines").select("id,nome,grupo,ordem").order("ordem"),
     auth.supabase.from("pipeline_stages").select("id,pipeline_id,nome,rotulo,ordem,cor,tipo,grupo,chave").order("ordem"),
-    auth.supabase.from("leads").select("id,nome,telefone,email,instagram,corretor_id,pipeline_id,status,origem,tags,extras,criado_em,atualizado_em,disparo_optout").order("atualizado_em", { ascending: false, nullsFirst: false }).limit(5000),
-    auth.supabase.from("negocios").select("id,lead_id,corretor_id,pipeline_id,stage_id,empreendimento_id,valor,status,motivo_perda,criado_em,ultima_movimentacao,estagio_desde,tentativa,max_tentativas").order("ultima_movimentacao", { ascending: false, nullsFirst: false }).limit(5000),
+    fetchAll((from, to) => auth.supabase.from("leads").select("id,nome,telefone,email,instagram,corretor_id,pipeline_id,status,origem,tags,extras,criado_em,atualizado_em,disparo_optout").order("atualizado_em", { ascending: false, nullsFirst: false }).order("id").range(from, to)),
+    fetchAll((from, to) => auth.supabase.from("negocios").select("id,lead_id,corretor_id,pipeline_id,stage_id,empreendimento_id,valor,status,motivo_perda,criado_em,ultima_movimentacao,estagio_desde,tentativa,max_tentativas").order("ultima_movimentacao", { ascending: false, nullsFirst: false }).order("id").range(from, to)),
     auth.supabase.rpc("listar_corretores_transferencia"),
     auth.supabase.from("crm_atividades").select("id,lead_id,negocio_id,corretor_id,tipo,texto,criado_em").order("criado_em", { ascending: false }).limit(500),
     auth.supabase.from("atendimento_acoes").select("id,lead_id,negocio_id,corretor_id,tipo,canal,texto,resultado,criado_em").order("criado_em", { ascending: false }).limit(500),
