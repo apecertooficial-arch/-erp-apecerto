@@ -355,6 +355,17 @@ export async function PATCH(request: Request) {
     if (body.endTime !== undefined) patch.hora_fim = cleanText(body.endTime, 8) || null;
     if (body.local !== undefined) patch.local = cleanText(body.local, 300) || null;
     if (body.observations !== undefined) patch.observacoes = cleanText(body.observations, 1200) || null;
+    // Produto da visita (empreendimento que o lead vai visitar); auto-preenche o local pelo endereço se vazio.
+    if (body.productId !== undefined) {
+      const pid = cleanText(body.productId, 40) || null;
+      if (pid) {
+        const { data: product } = await auth.supabase.from("empreendimentos").select("id,nome,endereco,numero,bairro,cidade").eq("id", pid).maybeSingle();
+        patch.empreendimento_id = product?.id ?? null;
+        patch.produto = product?.nome ?? null;
+        const localEnviado = body.local !== undefined ? cleanText(body.local, 300) : "";
+        if (!localEnviado && product) patch.local = [product.endereco, product.numero, product.bairro, product.cidade].filter(Boolean).join(", ") || null;
+      } else { patch.empreendimento_id = null; patch.produto = null; }
+    }
     // "com gerente" só o admin/gestor altera; corretor não mexe nisso.
     let comGerente = cur.com_gerente === true;
     if (isAdmin && body.withManager !== undefined) { comGerente = body.withManager === true; patch.com_gerente = comGerente; }
