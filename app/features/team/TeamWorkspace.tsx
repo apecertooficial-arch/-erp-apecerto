@@ -14,16 +14,10 @@ type TeamData = { users: User[]; brokers: Broker[]; instances: Instance[]; links
 const initials = (name: string) => name.split(/\s+/).slice(0, 2).map((part) => part[0]).join("").toUpperCase();
 const roleLabel = (role?: string) => ({ admin: "Admin", gestor: "Gestor", executivo: "Executivo", diretor: "Diretor", gerente: "Gerente", corretor: "Corretor", financeiro: "Financeiro", atendimento: "Atendimento" }[role ?? ""] ?? role ?? "Corretor");
 
-/* Doc §14 — acesso por módulo */
-const ACCESS_MODULES = ["Início", "CRM", "Performance", "Produtos", "Financeiro", "Abordagens", "Automações", "Financiamento", "Chat ao Vivo", "Disparos", "Calendário", "Agentes de IA", "Usuários", "Notificações", "Base de conhecimento", "Auditoria", "Configurações", "Ajuda"];
-const ACCESS_CAPS: Array<{ key: string; label: string }> = [{ key: "ver", label: "Ver" }, { key: "criar", label: "Criar" }, { key: "editar", label: "Editar" }, { key: "excluir", label: "Excluir" }, { key: "administrar", label: "Administrar" }];
-const BROKER_DEFAULT_MODULES = ["Início", "CRM", "Performance", "Produtos", "Financeiro", "Chat ao Vivo", "Financiamento", "Disparos", "Calendário", "Notificações", "Configurações", "Ajuda"];
-function defaultPermissions(role: string): Record<string, string[]> {
-  if (role === "admin") return Object.fromEntries(ACCESS_MODULES.map((moduleName) => [moduleName, ACCESS_CAPS.map((cap) => cap.key)]));
-  if (role === "diretor") return Object.fromEntries(ACCESS_MODULES.map((moduleName) => [moduleName, ["ver", "criar", "editar", "excluir"]]));
-  if (role === "executivo" || role === "gerente") return Object.fromEntries(ACCESS_MODULES.map((moduleName) => [moduleName, ["ver", "criar", "editar"]]));
-  return Object.fromEntries(BROKER_DEFAULT_MODULES.map((moduleName) => [moduleName, ["ver", "criar", "editar"]]));
-}
+/* Doc §14 — o acesso por módulo saiu desta tela: permissões agora seguem o perfil
+   do papel (tabela perfis) e ajustes finos ficam em "Perfis e Permissões". Esta tela
+   NÃO grava mais usuarios.permissoes — o formato antigo por rótulo quebrava o
+   enforcement (chaves como "CRM"/"Início" não são slugs). */
 
 /* Quem pode ser superior de alguém na hierarquia (Diretor → Gerente → Corretor) */
 const SUPERIOR_ROLES = ["admin", "diretor", "gerente"];
@@ -31,9 +25,7 @@ const SUPERIOR_ROLES = ["admin", "diretor", "gerente"];
 export function TeamWorkspace({ accessToken }: { accessToken: string }) {
   const [data, setData] = useState<TeamData>({ users: [], brokers: [], instances: [], links: [], audits: [] });
   const [role, setRole] = useState("corretor");
-  const [permissions, setPermissions] = useState<Record<string, string[]>>({});
   const [activeUser, setActiveUser] = useState(true);
-  const [accessOpen, setAccessOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [profile, setProfile] = useState("Todos os perfis");
@@ -62,7 +54,7 @@ export function TeamWorkspace({ accessToken }: { accessToken: string }) {
     setCreating(true);
     try {
       const { data: result, error: fnError } = await getBrowserSupabaseClient().functions.invoke("admin-usuarios", {
-        body: { action: "criar", nome: newUser.nome.trim(), email: newUser.email.trim(), telefone: newUser.telefone.trim() || null, role: newUser.role, superiorId: newUser.superiorId || null, criarCorretor: newUser.criarCorretor, permissoes: defaultPermissions(newUser.role) },
+        body: { action: "criar", nome: newUser.nome.trim(), email: newUser.email.trim(), telefone: newUser.telefone.trim() || null, role: newUser.role, superiorId: newUser.superiorId || null, criarCorretor: newUser.criarCorretor, permissoes: null },
       });
       const r = (result ?? {}) as { ok?: boolean; motivo?: string; detalhe?: string; token?: string | null; aviso?: string };
       if (fnError || !r.ok) {
@@ -128,20 +120,11 @@ export function TeamWorkspace({ accessToken }: { accessToken: string }) {
   });
 
   function openBroker(broker: Broker) {
-    setSelectedId(broker.id); setOnline(broker.online); setActive(broker.ativo); setSelectedInstances(linked(broker.id).map((instance) => instance.id)); setInstanceQuery(""); setAccessOpen(false);
+    setSelectedId(broker.id); setOnline(broker.online); setActive(broker.ativo); setSelectedInstances(linked(broker.id).map((instance) => instance.id)); setInstanceQuery("");
     const user = broker.usuario_id ? usersById.get(broker.usuario_id) : undefined;
     setRole(user?.role ?? "corretor");
     setSuperior(user?.superior_id ?? "");
     setActiveUser(user?.ativo !== false);
-    setPermissions(user?.permissoes && Object.keys(user.permissoes).length ? user.permissoes : defaultPermissions(user?.role ?? "corretor"));
-  }
-
-  function toggleCap(moduleName: string, cap: string) {
-    setPermissions((current) => {
-      const caps = new Set(current[moduleName] ?? []);
-      if (caps.has(cap)) caps.delete(cap); else caps.add(cap);
-      return { ...current, [moduleName]: [...caps] };
-    });
   }
 
   async function save() {
@@ -151,7 +134,9 @@ export function TeamWorkspace({ accessToken }: { accessToken: string }) {
     const body = await response.json() as { error?: string };
     if (!response.ok) { setToast(body.error ?? "Não foi possível salvar."); setSaving(false); return; }
     if (selected.usuario_id) {
-      const accessResponse = await fetch("/api/team", { method: "PATCH", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify({ action: "saveAccess", userId: selected.usuario_id, role, permissoes: permissions, activeUser, superiorId: superior || null }) });
+      // Permissões não são mais gravadas por aqui (evita o formato antigo por rótulo).
+      // O usuário segue o perfil do papel; ajustes finos ficam em Perfis e Permissões.
+      const accessResponse = await fetch("/api/team", { method: "PATCH", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify({ action: "saveAccess", userId: selected.usuario_id, role, activeUser, superiorId: superior || null }) });
       const accessBody = await accessResponse.json() as { error?: string };
       if (!accessResponse.ok) { setToast(accessBody.error ?? "Status salvo, mas as permissões falharam."); setSaving(false); return; }
     }
@@ -215,15 +200,10 @@ export function TeamWorkspace({ accessToken }: { accessToken: string }) {
         <label className="team-switch-row"><span><strong>Usuário ativo</strong><small>Permite acesso ao ERP e às funções liberadas.</small></span><input type="checkbox" checked={active} onChange={(event) => { setActive(event.target.checked); setActiveUser(event.target.checked); }} /><i /></label>
         {selected.usuario_id && <>
           <h3>Perfil e permissões <mark className="audited-badge">✓ Auditado</mark></h3>
-          <label className="team-role-row">Papel no sistema<select value={role} onChange={(event) => { setRole(event.target.value); setPermissions(defaultPermissions(event.target.value)); }}><option value="admin">Admin — acesso total</option><option value="diretor">Diretor</option><option value="gerente">Gerente</option><option value="executivo">Executivo/Gestor</option><option value="corretor">Corretor</option></select></label>
+          <label className="team-role-row">Papel no sistema<select value={role} onChange={(event) => setRole(event.target.value)}><option value="admin">Admin — acesso total</option><option value="diretor">Diretor</option><option value="gerente">Gerente</option><option value="executivo">Executivo/Gestor</option><option value="corretor">Corretor</option></select></label>
           <label className="team-role-row">Responde a (hierarquia)<select value={superior} onChange={(event) => setSuperior(event.target.value)}><option value="">— Ninguém (topo) —</option>{data.users.filter((user) => SUPERIOR_ROLES.includes(user.role) && user.id !== selected.usuario_id && user.ativo).map((user) => <option value={user.id} key={user.id}>{user.nome} · {roleLabel(user.role)}</option>)}</select></label>
           <button className="access-toggle" type="button" disabled={saving} onClick={() => void resendInvite(selected.usuario_id as string, selected.nome)}>↻ Gerar novo link de acesso (definir senha)</button>
-          <button className="access-toggle" type="button" onClick={() => setAccessOpen(!accessOpen)}>{accessOpen ? "▾" : "▸"} Acesso por módulo <small>{Object.values(permissions).filter((caps) => caps.includes("ver")).length} módulos visíveis</small></button>
-          {accessOpen && <div className="access-grid">
-            <div className="access-head"><span>Módulo</span>{ACCESS_CAPS.map((cap) => <span key={cap.key}>{cap.label}</span>)}</div>
-            {ACCESS_MODULES.map((moduleName) => <div className="access-row" key={moduleName}><span>{moduleName}</span>{ACCESS_CAPS.map((cap) => <label key={cap.key}><input type="checkbox" checked={(permissions[moduleName] ?? []).includes(cap.key)} onChange={() => toggleCap(moduleName, cap.key)} aria-label={`${cap.label} em ${moduleName}`} /></label>)}</div>)}
-            <p className="team-hint">Sem &quot;Ver&quot;, o módulo some do menu do usuário. Alterações são gravadas na auditoria.</p>
-          </div>}
+          <p className="team-hint">As permissões deste usuário seguem o papel acima. Ajustes finos ficam em <strong>Perfis e Permissões</strong> (aba &quot;Por usuário&quot;).</p>
         </>}
         <h3>Instâncias de WhatsApp</h3>
         <details className="instance-picker"><summary>Selecionar instâncias <b>{selectedInstances.length || ""}</b></summary><div><input value={instanceQuery} onChange={(event) => setInstanceQuery(event.target.value)} placeholder="Pesquisar instância..." />{data.instances.filter((instance) => instance.nome.toLowerCase().includes(instanceQuery.toLowerCase())).map((instance) => <label key={instance.id}><input type="checkbox" checked={selectedInstances.includes(instance.id)} onChange={() => setSelectedInstances((current) => current.includes(instance.id) ? current.filter((id) => id !== instance.id) : [...current, instance.id])} /><span><strong>{instance.nome}</strong><small>{instance.telefone ?? instance.status_dapi ?? "Sem telefone"}</small></span><i className={instance.conectada ? "connected" : ""}>{instance.conectada ? "Conectada" : "Offline"}</i><button type="button" className="instance-qr-btn" onClick={(event) => { event.preventDefault(); event.stopPropagation(); void openQr({ id: instance.id, nome: instance.nome }); }}>{instance.conectada ? "Reconectar" : "QR"}</button></label>)}</div></details>
