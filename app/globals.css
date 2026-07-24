@@ -1465,8 +1465,8 @@ button { cursor:pointer; }
 /* header enxuto */
 .chat-layer .lead-chat-drawer>header{ min-height:auto; padding:10px 12px; }
 .chat-layer .lead-chat-drawer>header>div>span{ width:34px; height:34px; border-radius:10px; font-size:13px; }
-.chat-layer .lead-chat-drawer h2{ font-size:14px; }
-.chat-layer .lead-chat-drawer header p{ font-size:11px; }
+.chat-layer .lead-chat-drawer h2{ font-size:var(--chat-nome); }
+.chat-layer .lead-chat-drawer header p{ font-size:var(--chat-meta); }
 .chat-head-actions{ display:flex; align-items:center; gap:4px; }
 .chat-head-actions button{ width:30px; height:30px; display:grid; place-items:center; border:0; border-radius:8px; color:#fff; background:rgba(255,255,255,.16); font-size:18px; line-height:1; cursor:pointer; }
 .chat-head-actions button:hover{ background:rgba(255,255,255,.28); }
@@ -1519,8 +1519,8 @@ button { cursor:pointer; }
 }
 /* mensagens legíveis */
 .chat-layer .chat-messages{ padding: 14px 16px; }
-.chat-layer .chat-messages article{ font-size: 14px; }
-.chat-layer .chat-messages article p{ font-size: 14px; line-height: 1.45; }
+.chat-layer .chat-messages article{ font-size: var(--chat-msg-mini); }
+.chat-layer .chat-messages article p{ font-size: var(--chat-msg-mini); line-height: 1.45; }
 /* seletor de instância compacto, sem dominar a janela */
 .chat-layer .chat-instance-bar{ padding: 8px 12px; gap: 8px; }
 .chat-layer .chat-instance-bar label{ font-size:11px; gap: 3px; }
@@ -3467,7 +3467,7 @@ article.tone-red{border-left-color:#d3443e}article.tone-red strong{color:#d3443e
 .chat-layer .lead-chat-drawer > header { background:#fff !important; color:#2c2723 !important; border-bottom:1px solid #efe7e0; padding:15px 16px !important; }
 .chat-layer .lead-chat-drawer > header > div > span { width:44px !important; height:44px !important; border-radius:50% !important; background:#efe0fb !important; color:#8a2bc0 !important; font-weight:800 !important; font-size:15px !important; }
 .chat-layer .lead-chat-drawer > header small { color:#ff6a00 !important; font-weight:800 !important; letter-spacing:.09em !important; }
-.chat-layer .lead-chat-drawer > header h2 { color:#2c2723 !important; font-size:17px !important; }
+.chat-layer .lead-chat-drawer > header h2 { color:#2c2723 !important; font-size:var(--chat-nome) !important; }
 .chat-layer .lead-chat-drawer > header p { color:#8b817b !important; }
 .chat-layer .chat-head-actions button { width:34px !important; height:34px !important; border:1px solid #e7ded7 !important; border-radius:50% !important; background:#faf7f4 !important; color:#7a716b !important; font-size:17px !important; }
 .chat-layer .chat-head-actions button:hover { background:#f1ebe6 !important; }
@@ -5436,10 +5436,10 @@ article.tone-red{border-left-color:#d3443e}article.tone-red strong{color:#d3443e
    do lead) mudam juntas, sem sair caçando regra espalhada.
    ===================================================================== */
 :root{
-  --chat-msg:12.5px;    /* texto da mensagem */
-  --chat-msg-mini:12px; /* mensagem no mini chat do card do lead */
-  --chat-meta:10.5px;   /* hora, status e legendas */
-  --chat-nome:13px;     /* nome na lista de conversas */
+  --chat-msg:12px;      /* texto da mensagem */
+  --chat-msg-mini:11px; /* mensagem no mini chat do card do lead */
+  --chat-meta:9.5px;    /* hora, status e legendas */
+  --chat-nome:12.5px;   /* nome na lista de conversas */
 }
 
 /* --- Chat ao Vivo --- */
@@ -5456,12 +5456,18 @@ article.tone-red{border-left-color:#d3443e}article.tone-red strong{color:#d3443e
 .history-instance{font-size:var(--chat-meta)}
 .history-instance select{font-size:11.5px!important}
 
-/* --- Mini chat (drawer do lead no CRM) --- */
-.chat-messages article{font-size:var(--chat-msg-mini);line-height:1.45}
-.chat-messages article p{font-size:var(--chat-msg-mini);line-height:1.45}
-.chat-messages article small,
-.chat-messages article time,
-.chat-messages article a{font-size:var(--chat-meta)}
+/* --- Mini chat (drawer do lead no CRM) ---
+   Especificidade casada com as regras .chat-layer que existem acima, senão
+   elas venceriam e o ajuste da variável não teria efeito. */
+.chat-messages article,.chat-layer .chat-messages article{font-size:var(--chat-msg-mini);line-height:1.45}
+.chat-messages article p,.chat-layer .chat-messages article p{font-size:var(--chat-msg-mini);line-height:1.45}
+.chat-messages article small,.chat-layer .chat-messages article small,
+.chat-messages article time,.chat-layer .chat-messages article time,
+.chat-messages article a,.chat-layer .chat-messages article a{font-size:var(--chat-meta)}
+.chat-layer .chat-messages .chat-document{font-size:10.5px}
+.chat-layer .chat-messages .audio-state{font-size:10.5px}
+.chat-layer .chat-suggestion p{font-size:11px!important}
+.chat-layer .chat-instance-bar label{font-size:9.5px!important}
 .lead-chat-drawer>header h2{font-size:16px}
 .lead-chat-drawer>header p{font-size:12px}
 .lead-chat-drawer>header small{font-size:10px}
