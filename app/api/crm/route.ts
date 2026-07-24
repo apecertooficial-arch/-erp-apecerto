@@ -1,5 +1,6 @@
 import { createServerSupabaseClient } from "../../lib/supabase/server";
 import type { Database } from "../../lib/supabase/database.types";
+import { resolveEffectiveAccess, accessCan, denyIfCannot, type EffectiveAccess } from "../../lib/supabase/authz";
 
 export const dynamic = "force-dynamic";
 
@@ -24,25 +25,12 @@ function cleanText(value: unknown, max = 300) {
 }
 
 type Authenticated = NonNullable<Awaited<ReturnType<typeof authenticatedClient>>>;
-type PermissionMap = Record<string, string[]>;
 
-async function getEffectiveAccess(auth: Authenticated) {
-  const { data: userProfile, error } = await auth.supabase.from("usuarios").select("role,permissoes").eq("id", auth.user.id).maybeSingle();
-  if (error || !userProfile) return { role: "", permissions: {} as PermissionMap };
-  let permissions = (userProfile as { permissoes?: PermissionMap | null }).permissoes ?? null;
-  if (!permissions || Object.keys(permissions).length === 0) {
-    const { data: roleProfile } = await auth.supabase.from("perfis").select("permissoes").eq("id", userProfile.role).maybeSingle();
-    permissions = (roleProfile as { permissoes?: PermissionMap | null } | null)?.permissoes ?? {};
-  }
-  return { role: userProfile.role, permissions };
-}
+const getEffectiveAccess = (auth: Authenticated) => resolveEffectiveAccess(auth.supabase, auth.user.id);
 
-function canCrm(access: Awaited<ReturnType<typeof getEffectiveAccess>>, action: "atribuir" | "transferir") {
-  if (access.role === "admin") return true;
-  return ["crm", "leads", "pipeline", "CRM"].some((moduleName) => {
-    const actions = access.permissions[moduleName] ?? [];
-    return actions.includes(action) || actions.includes("administrar");
-  });
+// "atribuir"/"transferir" fazem sentido em crm, leads ou pipeline — basta um conceder.
+function canCrm(access: EffectiveAccess, action: "atribuir" | "transferir") {
+  return ["crm", "leads", "pipeline"].some((moduleName) => accessCan(access, moduleName, action));
 }
 
 export async function GET(request: Request) {
@@ -101,9 +89,17 @@ export async function PATCH(request: Request) {
   const body = await request.json() as Record<string, unknown>;
   const action = cleanText(body.action, 40);
 
+  // Acesso efetivo do usuário resolvido uma única vez; cada ação de escrita é
+  // validada contra o par (módulo, ação) correspondente. admin sempre passa e,
+  // sem mapa de permissões, libera (fail-open) — o RLS continua sendo a trava dura.
+  const access = await getEffectiveAccess(auth);
+  const guard = (pairs: Array<[string, string]>, msg: string) => denyIfCannot(access, pairs, msg);
+
   if (action === "updateLead") {
     const leadId = positiveInteger(body.leadId);
     if (!leadId) return Response.json({ error: "Lead inválido." }, { status: 400 });
+    const denied = guard([["leads", "editar"], ["crm", "editar"]], "Você não tem permissão para editar leads.");
+    if (denied) return denied;
     const input = body.lead && typeof body.lead === "object" ? body.lead as Record<string, unknown> : {};
     const update: LeadUpdate = {
       nome: cleanText(input.nome, 160) || null,
@@ -116,7 +112,6 @@ export async function PATCH(request: Request) {
       atualizado_em: new Date().toISOString(),
     };
     if (input.corretor_id !== undefined) {
-      const access = await getEffectiveAccess(auth);
       if (!canCrm(access, "transferir")) return Response.json({ error: "Você não tem permissão para trocar o corretor responsável." }, { status: 403 });
       update.corretor_id = input.corretor_id === null || input.corretor_id === "" ? null : positiveInteger(input.corretor_id);
     }
@@ -129,6 +124,8 @@ export async function PATCH(request: Request) {
     const dealId = positiveInteger(body.dealId);
     const stageId = positiveInteger(body.stageId);
     if (!dealId || !stageId) return Response.json({ error: "Negócio ou etapa inválida." }, { status: 400 });
+    const denied = guard([["pipeline", "mover"]], "Você não tem permissão para mover negócios no funil.");
+    if (denied) return denied;
     const { data, error } = await auth.supabase.rpc("mover_negocio", { p_negocio_id: dealId, p_stage_id: stageId });
     const result = data && typeof data === "object" ? data as Record<string, unknown> : {};
     if (error || result.ok === false) return Response.json({ error: error?.message || cleanText(result.error, 300) || "Não foi possível mover o negócio." }, { status: 502 });
@@ -140,6 +137,8 @@ export async function PATCH(request: Request) {
     const fromStageId = positiveInteger(body.fromStageId);
     const toStageId = positiveInteger(body.toStageId);
     if (!pipelineId || !fromStageId || !toStageId || fromStageId === toStageId) return Response.json({ error: "Escolha etapas de origem e destino diferentes." }, { status: 422 });
+    const denied = guard([["pipeline", "reordenar"], ["pipeline", "editar"]], "Você não tem permissão para mover negócios em massa.");
+    if (denied) return denied;
     const { data, error } = await auth.supabase.rpc("transferir_negocios_massa", {
       p_from_pipeline: pipelineId,
       p_to_pipeline: pipelineId,
@@ -161,9 +160,10 @@ export async function PATCH(request: Request) {
     const pipelineId = positiveInteger(body.pipelineId);
     const selectedBrokerId = body.corretorId === null || body.corretorId === "" ? null : positiveInteger(body.corretorId);
     if (!nome || !telefone || !pipelineId) return Response.json({ error: "Informe nome, telefone e funil." }, { status: 422 });
+    const denied = guard([["leads", "criar"], ["crm", "criar"]], "Você não tem permissão para criar leads.");
+    if (denied) return denied;
     const { data: pipeline } = await auth.supabase.from("pipelines").select("id").eq("id", pipelineId).maybeSingle();
     if (!pipeline) return Response.json({ error: "Funil inválido." }, { status: 422 });
-    const access = await getEffectiveAccess(auth);
     const canChooseBroker = canCrm(access, "atribuir") || canCrm(access, "transferir");
     if (selectedBrokerId && !canChooseBroker) return Response.json({ error: "Você não tem permissão para atribuir este lead a outro corretor." }, { status: 403 });
     let brokerId = canChooseBroker ? selectedBrokerId : null;
@@ -189,6 +189,8 @@ export async function PATCH(request: Request) {
   }
 
   if (action === "aquarioImportar") {
+    const denied = guard([["leads", "importar"]], "Você não tem permissão para importar leads.");
+    if (denied) return denied;
     const rowsInput = Array.isArray(body.rows) ? body.rows : [];
     const rows = rowsInput.slice(0, 2000).map((row) => {
       const r = row && typeof row === "object" ? row as Record<string, unknown> : {};
@@ -206,6 +208,8 @@ export async function PATCH(request: Request) {
     const dealId = body.dealId === null || body.dealId === "" ? null : positiveInteger(body.dealId);
     const texto = cleanText(body.texto, 2000);
     if (!leadId || !texto) return Response.json({ error: "Escreva uma observação." }, { status: 422 });
+    const denied = guard([["crm", "editar"], ["crm", "criar"]], "Você não tem permissão para registrar observações.");
+    if (denied) return denied;
     const { data: broker } = await auth.supabase.from("corretores").select("id").eq("usuario_id", auth.user.id).maybeSingle();
     const { error } = await auth.supabase.from("crm_atividades").insert({ lead_id: leadId, negocio_id: dealId, corretor_id: broker?.id ?? null, tipo: "observacao", texto, criado_por: auth.user.id });
     return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
@@ -217,6 +221,8 @@ export async function PATCH(request: Request) {
     const titulo = cleanText(body.titulo, 180);
     const vencimento = cleanText(body.vencimento, 40);
     if (!leadId || !titulo) return Response.json({ error: "Informe o título da tarefa." }, { status: 422 });
+    const denied = guard([["calendario", "criar"], ["crm", "criar"]], "Você não tem permissão para criar tarefas.");
+    if (denied) return denied;
     const { data: broker } = await auth.supabase.from("corretores").select("id").eq("usuario_id", auth.user.id).maybeSingle();
     const { error } = await auth.supabase.from("crm_tarefas").insert({ lead_id: leadId, negocio_id: dealId, corretor_id: broker?.id ?? null, titulo, vencimento: vencimento ? new Date(vencimento).toISOString() : null, prioridade: cleanText(body.prioridade, 30) || "normal", criado_por: auth.user.id });
     return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
@@ -225,6 +231,8 @@ export async function PATCH(request: Request) {
   if (action === "toggleTask") {
     const taskId = positiveInteger(body.taskId);
     if (!taskId) return Response.json({ error: "Tarefa inválida." }, { status: 400 });
+    const denied = guard([["calendario", "editar"], ["crm", "editar"]], "Você não tem permissão para atualizar tarefas.");
+    if (denied) return denied;
     const { error } = await auth.supabase.from("crm_tarefas").update({ concluida: body.completed === true }).eq("id", taskId);
     return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
   }
@@ -234,6 +242,8 @@ export async function PATCH(request: Request) {
     if (!dealId) return Response.json({ error: "Negócio inválido." }, { status: 400 });
     const valor = body.valor === "" || body.valor === null ? null : Number(body.valor);
     if (valor !== null && (!Number.isFinite(valor) || valor < 0)) return Response.json({ error: "Valor inválido." }, { status: 422 });
+    const denied = guard([["crm", "editar"], ["pipeline", "editar"]], "Você não tem permissão para editar negócios.");
+    if (denied) return denied;
     const { error } = await auth.supabase.from("negocios").update({ valor, ultima_movimentacao: new Date().toISOString() }).eq("id", dealId);
     return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
   }
@@ -242,7 +252,6 @@ export async function PATCH(request: Request) {
     const dealId = positiveInteger(body.dealId);
     const brokerId = positiveInteger(body.brokerId);
     if (!dealId || !brokerId) return Response.json({ error: "Negócio ou corretor inválido." }, { status: 400 });
-    const access = await getEffectiveAccess(auth);
     if (!canCrm(access, "transferir")) return Response.json({ error: "Você não tem permissão para trocar o corretor responsável." }, { status: 403 });
     const { data, error } = await auth.supabase.rpc("transferir_negocio", { p_negocio_id: dealId, p_corretor_id: brokerId });
     const result = data && typeof data === "object" ? data as Record<string, unknown> : {};
@@ -277,6 +286,8 @@ export async function PATCH(request: Request) {
     const reason = cleanText(body.reason, 180);
     const observation = cleanText(body.observation, 1000);
     if (!dealId || !reason) return Response.json({ error: "Selecione o motivo do descarte." }, { status: 422 });
+    const denied = guard([["crm", "editar"], ["pipeline", "editar"]], "Você não tem permissão para descartar negócios.");
+    if (denied) return denied;
     const { data: deal } = await auth.supabase.from("negocios").select("id,lead_id,pipeline_id").eq("id", dealId).maybeSingle();
     if (!deal) return Response.json({ error: "Negócio não encontrado." }, { status: 404 });
     const { data: lostStage } = await auth.supabase.from("pipeline_stages").select("id").eq("pipeline_id", deal.pipeline_id).eq("tipo", "perdido").order("ordem").limit(1).maybeSingle();
@@ -294,6 +305,8 @@ export async function PATCH(request: Request) {
     const startTime = cleanText(body.startTime, 8);
     const productId = cleanText(body.productId, 40) || null;
     if (!leadId || !dealId || !date || !startTime) return Response.json({ error: "Informe data e horário da visita." }, { status: 422 });
+    const denied = guard([["calendario", "criar"], ["crm", "criar"]], "Você não tem permissão para agendar visitas.");
+    if (denied) return denied;
     const [{ data: lead }, { data: deal }, { data: product }] = await Promise.all([
       auth.supabase.from("leads").select("nome").eq("id", leadId).maybeSingle(),
       auth.supabase.from("negocios").select("corretor_id").eq("id", dealId).maybeSingle(),
@@ -331,9 +344,10 @@ export async function PATCH(request: Request) {
   if (action === "updateVisit") {
     const visitId = cleanText(body.visitId, 40);
     if (!visitId) return Response.json({ error: "Visita inválida." }, { status: 400 });
+    const denied = guard([["calendario", "editar"], ["crm", "editar"]], "Você não tem permissão para editar visitas.");
+    if (denied) return denied;
     const { data: cur } = await auth.supabase.from("visitas").select("corretor_id,com_gerente,gerente_id").eq("id", visitId).maybeSingle();
     if (!cur) return Response.json({ error: "Visita não encontrada." }, { status: 404 });
-    const access = await getEffectiveAccess(auth);
     const isAdmin = access.role === "admin" || access.role === "gestor";
     const patch: Record<string, unknown> = { atualizado_em: new Date().toISOString() };
     if (typeof body.date === "string" && body.date) patch.data = cleanText(body.date, 10);
@@ -372,6 +386,8 @@ export async function PATCH(request: Request) {
     const visitId = cleanText(body.visitId, 40);
     const status = cleanText(body.status, 30);
     if (!visitId || !["agendada", "realizada", "cancelada"].includes(status)) return Response.json({ error: "Visita ou status inválido." }, { status: 400 });
+    const denied = guard([["calendario", "editar"], ["crm", "editar"]], "Você não tem permissão para alterar o status de visitas.");
+    if (denied) return denied;
     const { error } = await auth.supabase.from("visitas").update({ status, motivo_cancelamento: status === "cancelada" ? cleanText(body.reason, 500) || null : null, atualizado_em: new Date().toISOString() }).eq("id", visitId);
     return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
   }
@@ -380,6 +396,8 @@ export async function PATCH(request: Request) {
     const leadId = positiveInteger(body.leadId);
     const productId = cleanText(body.productId, 40);
     if (!leadId || !productId) return Response.json({ error: "Lead ou produto inválido." }, { status: 400 });
+    const denied = guard([["crm", "editar"], ["leads", "editar"]], "Você não tem permissão para vincular produtos ao lead.");
+    if (denied) return denied;
     const result = action === "linkProduct"
       ? await auth.supabase.from("lead_produtos").insert({ lead_id: leadId, empreendimento_id: productId, vinculado_por: auth.user.id })
       : await auth.supabase.from("lead_produtos").delete().eq("lead_id", leadId).eq("empreendimento_id", productId);
