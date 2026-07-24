@@ -580,7 +580,7 @@ function SaleDetailDrawer({ accessToken, canApprove, sessionRole = "corretor", p
   const [devStage, setDevStage] = useState<number | "">("");
   const [devMotivo, setDevMotivo] = useState("");
   const [novoDoc, setNovoDoc] = useState<Record<string, { nome: string; obrig: boolean; obs: string }>>({});
-  const [cond, setCond] = useState(() => ({
+  const condDoBanco = () => ({
     forma_pagamento: condicao?.forma_pagamento ?? "",
     comprador_tem_conjuge: condicao?.comprador_tem_conjuge ?? false, vendedor_tem_conjuge: condicao?.vendedor_tem_conjuge ?? false,
     valor_total: condicao?.valor_total ?? "", valor_entrada: condicao?.valor_entrada ?? "", data_entrada: (condicao?.data_entrada ?? "")?.toString().slice(0, 10),
@@ -589,12 +589,17 @@ function SaleDetailDrawer({ accessToken, canApprove, sessionRole = "corretor", p
     valor_assinatura: condicao?.valor_assinatura ?? "", valor_chaves: condicao?.valor_chaves ?? "",
     data_assinatura: (condicao?.data_assinatura ?? "")?.toString().slice(0, 10), data_conclusao: (condicao?.data_conclusao ?? "")?.toString().slice(0, 10),
     origem_recursos: (Array.isArray(condicao?.origem_recursos) ? condicao!.origem_recursos : []) as Array<{ tipo: string; valor: number | string }>,
-  }));
-  const [com, setCom] = useState(() => ({
+  });
+  const [cond, setCond] = useState(condDoBanco);
+  const comDoBanco = () => ({
     percentual_total: comissao?.percentual_total ?? "", valor_total: comissao?.valor_total ?? "", imobiliaria: comissao?.imobiliaria ?? "", forma_pgto: comissao?.forma_pgto ?? "",
     participantes: (Array.isArray(comissao?.participantes) ? comissao!.participantes : []) as Array<{ nome: string; papel: string; percentual: number | string; valor: number | string }>,
     parcelas: comissaoParcelas.map((p) => ({ valor: p.valor ?? "", gatilho: p.gatilho ?? "", data_prevista: (p.data_prevista ?? "")?.toString().slice(0, 10), data_efetiva: (p.data_efetiva ?? "")?.toString().slice(0, 10), responsavel: p.responsavel ?? "", status: p.status ?? "previsto" })),
-  }));
+  });
+  const [com, setCom] = useState(comDoBanco);
+  // Marcadores do que já está gravado: qualquer divergência acende a barra de salvar.
+  const [condRef, setCondRef] = useState(() => JSON.stringify(condDoBanco()));
+  const [comRef, setComRef] = useState(() => JSON.stringify(comDoBanco()));
 
   const api = async (payload: Record<string, unknown>) => {
     const r = await authedFetch("/api/crm/sales", { method: "PATCH", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify(payload) });
@@ -613,8 +618,8 @@ function SaleDetailDrawer({ accessToken, canApprove, sessionRole = "corretor", p
   const setStatus = (a: NonNullable<SalesData["anexos"]>[number], status: string) => { let motivo = ""; if (status === "recusado" || status === "correcao") { motivo = window.prompt(`Motivo (${DOC_STATUS_LABEL[status]}):`, a.status_motivo || "") || ""; if (!motivo.trim()) return; } void run(() => api({ action: "docStatus", anexoId: a.id, status, motivo })); };
   const abrir = async (path: string) => { const { data } = await getBrowserSupabaseClient().storage.from("esteira-docs").createSignedUrl(path, 300); if (data?.signedUrl) window.open(data.signedUrl, "_blank"); };
   const baixar = async (path: string, nome: string) => { const { data } = await getBrowserSupabaseClient().storage.from("esteira-docs").createSignedUrl(path, 300, { download: nome }); if (data?.signedUrl) window.open(data.signedUrl, "_blank"); };
-  const saveCondicoes = () => run(() => api({ action: "salvarCondicoes", processId: process.id, ...cond }));
-  const saveComissao = () => run(() => api({ action: "salvarComissao", processId: process.id, ...com }));
+  const saveCondicoes = () => run(async () => { await api({ action: "salvarCondicoes", processId: process.id, ...cond }); setCondRef(JSON.stringify(cond)); });
+  const saveComissao = () => run(async () => { await api({ action: "salvarComissao", processId: process.id, ...com }); setComRef(JSON.stringify(com)); });
   const addObs = () => { if (!obsText.trim()) return; void run(async () => { await api({ action: "addObs", processId: process.id, texto: obsText.trim() }); setObsText(""); }); };
   const devolver = (stageId: number, motivo: string) => run(async () => { await api({ action: "devolverFunil", processId: process.id, stageId, motivo }); onClose(); });
 
@@ -680,6 +685,9 @@ function SaleDetailDrawer({ accessToken, canApprove, sessionRole = "corretor", p
     PAPEIS_PARTE.forEach((p) => { if (!p.conjuge && !base[`${p.key}#1`]) base[`${p.key}#1`] = { nome: "", telefone: "", email: "", cpf: "" }; });
     return base;
   });
+  const parteDoBanco = (papel: string, ordem: number) => { const row = partes.find((x) => x.papel === papel && (x.ordem ?? 1) === ordem); return { nome: row?.nome ?? "", telefone: row?.telefone ?? "", email: row?.email ?? "", cpf: row?.cpf ?? "" }; };
+  const parteSuja = (papel: string, ordem: number) => JSON.stringify(parteEdit[chave(papel, ordem)] ?? parteDoBanco(papel, ordem)) !== JSON.stringify(parteDoBanco(papel, ordem));
+  const partesSujas = () => Object.keys(parteEdit).filter((k) => { const [papel, ordem] = k.split("#"); return parteSuja(papel, Number(ordem)); });
   const salvarParte = (papel: string, ordem: number) => { const v = parteEdit[chave(papel, ordem)]; if (!v) return; void run(() => api({ action: "salvarParte", processId: process.id, papel, ordem, ...v })); };
   const adicionarParte = (papel: string) => run(async () => {
     const r = await authedFetch("/api/crm/sales", { method: "PATCH", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify({ action: "adicionarParte", processId: process.id, papel }) });
@@ -743,6 +751,39 @@ function SaleDetailDrawer({ accessToken, canApprove, sessionRole = "corretor", p
   const totalCond = Number(cond.valor_total) || 0;
   const somaFecha = totalCond > 0 && Math.abs(somaOrigem - totalCond) < 0.01;
 
+  // ===== Alterações não salvas =====
+  const condSujo = JSON.stringify(cond) !== condRef;
+  const comSujo = JSON.stringify(com) !== comRef;
+  const sujasPartes = partesSujas();
+  const temPendencia = condSujo || comSujo || sujasPartes.length > 0;
+  const oQueMudou = [
+    condSujo ? "condições comerciais" : null,
+    comSujo ? "comissão" : null,
+    sujasPartes.length ? `${sujasPartes.length} cadastro(s) de parte` : null,
+  ].filter(Boolean).join(" · ");
+  const salvarTudo = () => run(async () => {
+    if (condSujo) { await api({ action: "salvarCondicoes", processId: process.id, ...cond }); setCondRef(JSON.stringify(cond)); }
+    if (comSujo) { await api({ action: "salvarComissao", processId: process.id, ...com }); setComRef(JSON.stringify(com)); }
+    for (const k of sujasPartes) {
+      const [papel, ordem] = k.split("#");
+      await api({ action: "salvarParte", processId: process.id, papel, ordem: Number(ordem), ...parteEdit[k] });
+    }
+  });
+  const descartarAlteracoes = () => { setCond(condDoBanco()); setCom(comDoBanco()); setCondRef(JSON.stringify(condDoBanco())); setComRef(JSON.stringify(comDoBanco())); setParteEdit((c) => { const novo = { ...c }; sujasPartes.forEach((k) => { const [papel, ordem] = k.split("#"); novo[k] = parteDoBanco(papel, Number(ordem)); }); return novo; }); };
+
+  // Avisa antes de fechar a aba com edição pendente.
+  useEffect(() => {
+    if (!temPendencia) return;
+    const aviso = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = ""; };
+    window.addEventListener("beforeunload", aviso);
+    return () => window.removeEventListener("beforeunload", aviso);
+  }, [temPendencia]);
+
+  const fecharComAviso = () => {
+    if (temPendencia && !window.confirm("Você tem alterações não salvas. Fechar mesmo assim?")) return;
+    onClose();
+  };
+
   const nextStage = trackCurrent >= 0 && trackCurrent < track.length - 1 ? track[trackCurrent + 1] : null;
 
   const DocRow = ({ grupo, nome, obrigatorio, modelo, condicao, travado }: { grupo: string; nome: string; obrigatorio: boolean; modelo: boolean; condicao?: string | null; travado?: boolean }) => {
@@ -769,11 +810,11 @@ function SaleDetailDrawer({ accessToken, canApprove, sessionRole = "corretor", p
     </div>;
   };
 
-  return <div className="sale-full-layer" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+  return <div className="sale-full-layer" onMouseDown={(e) => { if (e.target === e.currentTarget) fecharComAviso(); }}>
     <div className="sale-full">
       <header className="sale-full-top">
         <div className="sale-full-title"><span className="sale-full-kicker">ESTEIRA DE VENDAS · NEGOCIAÇÃO</span><h2>{lead?.nome || sale?.empreendimento_nome || "Venda"}</h2><p>{sale?.empreendimento_nome || "Produto não informado"}{lead?.telefone ? ` · ☎ ${lead.telefone}` : ""}</p></div>
-        <button className="sale-full-close" type="button" onClick={onClose} aria-label="Fechar">×</button>
+        <button className="sale-full-close" type="button" onClick={fecharComAviso} aria-label="Fechar">×</button>
       </header>
 
       <div className="sale-full-kpis">
@@ -849,7 +890,7 @@ function SaleDetailDrawer({ accessToken, canApprove, sessionRole = "corretor", p
                         <label>E-mail<input type="email" value={v.email} disabled={busyAll || !editavel} onChange={(e) => setParteEdit((c) => ({ ...c, [k]: { ...v, email: e.target.value } }))} /></label>
                         <label>CPF<input value={v.cpf} disabled={busyAll || !editavel} onChange={(e) => setParteEdit((c) => ({ ...c, [k]: { ...v, cpf: e.target.value } }))} /></label>
                       </div>
-                      <footer><button type="button" className="crm-primary" disabled={busyAll || !editavel} onClick={() => salvarParte(p.key, row.ordem ?? idx + 1)}>Salvar</button></footer>
+                      <footer>{parteSuja(p.key, row.ordem ?? idx + 1) && <em className="partesx-pend">alterado</em>}<button type="button" className="crm-primary" disabled={busyAll || !editavel} onClick={() => salvarParte(p.key, row.ordem ?? idx + 1)}>Salvar</button></footer>
                     </div>;
                   })}
                   {linhas.length === 0 && !p.conjuge && <div className="partesx-card vazio">
@@ -897,7 +938,7 @@ function SaleDetailDrawer({ accessToken, canApprove, sessionRole = "corretor", p
           </section>}
 
           {DOC_GRUPOS.map((g) => { const editavelG = aberto(g.bloco); const travaG = travaDe(g.bloco); const stG = statusBloco(g.bloco); return <section className={`docx-group ${editavelG ? "" : "travado"}`} key={g.key}>
-            <header><h3>{g.label}</h3>{g.conjugeFlag && <div className="docx-conjuge"><span>Possui cônjuge?</span><button type="button" className={cond[g.conjugeFlag] ? "on" : ""} disabled={busyAll} onClick={() => { const v = { ...cond, [g.conjugeFlag]: true }; setCond(v); void run(() => api({ action: "salvarCondicoes", processId: process.id, somenteConjuge: true, ...v })); }}>Sim</button><button type="button" className={!cond[g.conjugeFlag] ? "on" : ""} disabled={busyAll} onClick={() => { const v = { ...cond, [g.conjugeFlag]: false }; setCond(v); void run(() => api({ action: "salvarCondicoes", processId: process.id, somenteConjuge: true, ...v })); }}>Não</button></div>}</header>
+            <header><h3>{g.label}</h3>{g.conjugeFlag && <div className="docx-conjuge"><span>Possui cônjuge?</span><button type="button" className={cond[g.conjugeFlag] ? "on" : ""} disabled={busyAll} onClick={() => { const v = { ...cond, [g.conjugeFlag]: true }; setCond(v); void run(async () => { await api({ action: "salvarCondicoes", processId: process.id, somenteConjuge: true, ...v }); setCondRef(JSON.stringify(v)); }); }}>Sim</button><button type="button" className={!cond[g.conjugeFlag] ? "on" : ""} disabled={busyAll} onClick={() => { const v = { ...cond, [g.conjugeFlag]: false }; setCond(v); void run(async () => { await api({ action: "salvarCondicoes", processId: process.id, somenteConjuge: true, ...v }); setCondRef(JSON.stringify(v)); }); }}>Não</button></div>}</header>
             {travaG && <div className="bloqx">🔒 {travaG}</div>}
             {docsDoGrupo(g.key).map((d) => <DocRow key={d.id} grupo={g.key} nome={d.nome} obrigatorio={d.obrigatorio && docExigido(d.condicao)} modelo condicao={d.condicao} travado={!editavelG} />)}
             {anexos.filter((a) => a.grupo === g.key && a.status !== "triagem" && !docModelo.some((d) => d.grupo === g.key && d.nome === a.doc_nome)).map((a) => <DocRow key={a.id} grupo={g.key} nome={a.doc_nome || a.nome} obrigatorio={a.obrigatorio} modelo={false} travado={!editavelG} />)}
@@ -935,7 +976,7 @@ function SaleDetailDrawer({ accessToken, canApprove, sessionRole = "corretor", p
           <section className="condx">
             <h3>Forma de pagamento</h3>
             <p className="partesx-hint">Define quais documentos o checklist vai exigir. À vista dispensa carta de crédito e carta de aprovação de financiamento.</p>
-            <div className="partesx-pgto">{FORMA_PGTO_OPCOES.map((f) => <button key={f.key} type="button" className={cond.forma_pagamento === f.key ? "on" : ""} disabled={busyAll || !aberto("condicoes")} title={f.hint} onClick={() => { const v = { ...cond, forma_pagamento: f.key }; setCond(v); void run(() => api({ action: "salvarCondicoes", processId: process.id, ...v })); }}><strong>{f.label}</strong><small>{f.hint}</small></button>)}</div>
+            <div className="partesx-pgto">{FORMA_PGTO_OPCOES.map((f) => <button key={f.key} type="button" className={cond.forma_pagamento === f.key ? "on" : ""} disabled={busyAll || !aberto("condicoes")} title={f.hint} onClick={() => { const v = { ...cond, forma_pagamento: f.key }; setCond(v); void run(async () => { await api({ action: "salvarCondicoes", processId: process.id, ...v }); setCondRef(JSON.stringify(v)); }); }}><strong>{f.label}</strong><small>{f.hint}</small></button>)}</div>
             <h3>Informações gerais</h3>
             <div className="condx-grid">
               {([["valor_total", "Valor total da venda", "money"], ["valor_entrada", "Valor de entrada", "money"], ["data_entrada", "Data da entrada", "date"], ["valor_financiado", "Valor financiado", "money"], ["valor_fgts", "Valor de FGTS", "money"], ["valor_recursos_proprios", "Recursos próprios", "money"], ["valor_parcelas_interm", "Parcelas intermediárias", "money"], ["qtd_parcelas", "Qtd. de parcelas", "int"], ["valor_parcela", "Valor de cada parcela", "money"], ["valor_assinatura", "Pago na assinatura", "money"], ["valor_chaves", "Pago na entrega das chaves", "money"], ["data_assinatura", "Data prevista assinatura", "date"], ["data_conclusao", "Data prevista conclusão", "date"]] as Array<[string, string, string]>).map(([k, l, t]) => <label key={k}>{l}{t === "money"
@@ -990,6 +1031,14 @@ function SaleDetailDrawer({ accessToken, canApprove, sessionRole = "corretor", p
           <div className="obsx-list">{observacoes.length === 0 && <p className="sale-esteira-empty">Nenhuma observação ainda.</p>}{observacoes.map((o) => <article key={o.id}><p>{o.texto}</p><small>{o.autor_nome || userName(o.autor)} · {dateTime.format(new Date(o.criado_em))}</small></article>)}</div>
         </div>}
       </div>
+
+      {temPendencia && <div className="salvax">
+        <span>● Alterações não salvas <small>{oQueMudou}</small></span>
+        <div>
+          <button type="button" onClick={descartarAlteracoes} disabled={busyAll}>Descartar</button>
+          <button type="button" className="crm-primary" onClick={salvarTudo} disabled={busyAll}>{busyAll ? "Salvando…" : "Salvar alterações"}</button>
+        </div>
+      </div>}
 
       <footer className="sale-full-foot">
         <div className="sale-full-foot-left">

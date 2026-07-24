@@ -5342,3 +5342,15 @@ article.tone-red{border-left-color:#d3443e}article.tone-red strong{color:#d3443e
 .money-input.pct input{text-align:right}
 .condx-grid .money-input,.condx-part .money-input,.condx-parc .money-input,.condx-origem-row .money-input{width:100%}
 .condx-grid label .money-input{margin-top:4px}
+
+/* Barra de alterações não salvas na ficha da venda */
+.salvax{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;padding:11px 20px;background:var(--amber-bg);border-top:1px solid #f0d9a8;border-bottom:1px solid #f0d9a8}
+.salvax>span{font-size:13px;font-weight:800;color:#8a5d0d;display:flex;align-items:center;gap:8px}
+.salvax>span small{font-weight:500;font-size:12px;color:#a07a2c;text-transform:none}
+.salvax>div{display:flex;gap:8px}
+.salvax button{border:1px solid var(--line-strong);background:#fff;border-radius:var(--radius-pill);padding:8px 16px;font-size:12.5px;font-weight:700;cursor:pointer}
+.salvax button:hover:not(:disabled){border-color:var(--ink-soft)}
+.salvax .crm-primary{border-color:transparent}
+.salvax button:disabled{opacity:.55;cursor:not-allowed}
+.partesx-pend{font-style:normal;font-size:11px;font-weight:700;color:#8a5d0d;background:var(--amber-bg);border-radius:999px;padding:3px 9px;margin-right:auto}
+.partesx-card footer{align-items:center;gap:10px}
