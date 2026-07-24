@@ -298,7 +298,7 @@ export function ProductCatalog() {
       ) : activeModule === "Disparos" && accessToken ? (
         <CampaignWorkspace accessToken={accessToken} />
       ) : activeModule === "Financeiro" && accessToken ? (
-        <FinanceWorkspace accessToken={accessToken} sessionRole={sessionProfile?.role ?? "corretor"} onNavigateToNewSale={() => { setCrmInitialView("sales"); setCrmLaunchNewSale(true); setActiveModule("CRM"); }} />
+        <FinanceWorkspace accessToken={accessToken} sessionRole={sessionProfile?.role ?? "corretor"} perfil={sessionProfile?.perfil ?? null} sessionUserId={sessionProfile?.userId ?? null} onNavigateToNewSale={() => { setCrmInitialView("sales"); setCrmLaunchNewSale(true); setActiveModule("CRM"); }} />
       ) : activeModule === "Usuários" && accessToken ? (
         <TeamWorkspace accessToken={accessToken} />
       ) : activeModule === "Perfis e Permissões" && accessToken ? (
