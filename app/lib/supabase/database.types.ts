@@ -2992,6 +2992,7 @@ export type Database = {
           cor: string | null
           grupo: string
           ordem: number
+          prazo_dias: number
           rotulo: string
           slug: string
         }
@@ -3000,6 +3001,7 @@ export type Database = {
           cor?: string | null
           grupo: string
           ordem?: number
+          prazo_dias?: number
           rotulo: string
           slug: string
         }
@@ -3008,6 +3010,7 @@ export type Database = {
           cor?: string | null
           grupo?: string
           ordem?: number
+          prazo_dias?: number
           rotulo?: string
           slug?: string
         }
@@ -7726,6 +7729,19 @@ export type Database = {
           isOneToOne: false
           isSetofReturn: true
         }
+      }
+      motor_momento_lead: {
+        Args: {
+          p_auto: number
+          p_bloco: string
+          p_lead: Json
+          p_lead_id: number
+          p_momento: string
+          p_neg_id: number
+          p_nome: string
+          p_observacao: string
+        }
+        Returns: undefined
       }
       motor_processar_fila: { Args: never; Returns: number }
       motor_resolve_valor: {
