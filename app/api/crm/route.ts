@@ -65,7 +65,7 @@ export async function GET(request: Request) {
     auth.supabase.from("lead_produtos").select("lead_id,empreendimento_id,created_at,empreendimentos(id,nome,bairro,cidade,status,preco)").order("created_at", { ascending: false }),
     auth.supabase.from("visitas").select("id,created_by,lead_id,negocio_id,corretor_id,cliente_nome,empreendimento_id,produto,unidade,data,hora_inicio,hora_fim,local,observacoes,participantes,lembrete,com_gerente,gerente_id,status,criado_em").order("data").order("hora_inicio"),
     auth.supabase.from("empreendimentos").select("id,nome,bairro,cidade,status,preco,origem,rascunho").order("nome").limit(300),
-    auth.supabase.from("vw_sla_leads").select("negocio_id,lead_id,stage_id,sla_situacao,aguardando_humano,min_aguardando,min_no_estagio,min_sem_interacao,min_ativo_int,cor_ativa,alarme_ativo,ultima_interacao,cliente_ultima,humano_ultima"),
+    fetchAll((from, to) => auth.supabase.from("vw_sla_leads").select("negocio_id,lead_id,stage_id,sla_situacao,aguardando_humano,min_aguardando,min_no_estagio,min_sem_interacao,min_ativo_int,cor_ativa,alarme_ativo,ultima_interacao,cliente_ultima,humano_ultima").order("negocio_id").range(from, to)),
     auth.supabase.from("crm_lead_alertas").select("id,negocio_id,corretor_id,criado_em,reconhecido_em,reconhecido_por").is("reconhecido_em", null).order("criado_em", { ascending: false }),
     auth.supabase.from("crm_lead_leituras").select("negocio_id,lido_em").eq("usuario_id", auth.user.id),
   ]);
