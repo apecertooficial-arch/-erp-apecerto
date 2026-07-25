@@ -91,6 +91,10 @@ const COLS: Col[] = [
   { key: "followups", label: "Follow-ups", tipo: "num", hint: "Follow-ups no período" },
   { key: "visitasReal", label: "Visitas", tipo: "num", hint: "Visitas realizadas no período" },
   { key: "leads", label: "Leads", tipo: "num", hint: "Leads recebidos no período" },
+  { key: "leadsAtualizados", label: "Atualiz.", tipo: "num", hint: "Leads atualizados no período" },
+  { key: "convLeadVenda", label: "Conv→Venda", tipo: "pct", hint: "Conversão sobre leads recebidos (%)" },
+  { key: "convAgendRealizada", label: "Conv Visita", tipo: "pct", hint: "Visita agendada → realizada (%)" },
+  { key: "diasAtivos", label: "Assiduid.", tipo: "num", hint: "Dias ativos no sistema no período" },
   { key: "notaGeralIa", label: "Nota IA", tipo: "nota", hint: "Nota média de atendimento (IA)" },
   { key: "onlineH", label: "Online", tipo: "num", hint: "Horas online no período" },
   { key: "vgv", label: "VGV", tipo: "vgv", hint: "VGV de vendas fechadas" },
@@ -379,6 +383,27 @@ export function PerformanceWorkspace({ accessToken }: { accessToken: string }) {
             <Kpi titulo="Objeções" valor={int(atual ? atual.notaObjecoes : equipe.media("notaObjecoes"))} />
             <Kpi titulo="Conversas avaliadas" valor={`${int(atual ? atual.convAvaliadasPct : equipe.media("convAvaliadasPct"))}%`} sub={`${int(atual ? atual.convExcelentes : corretores.reduce((a, c) => a + num(c.convExcelentes), 0))} excelentes`} />
             <Kpi titulo="Críticas" valor={int(atual ? atual.convCriticas : corretores.reduce((a, c) => a + num(c.convCriticas), 0))} />
+          </Secao>
+
+          <Secao titulo="Atualização e produtividade" desc="Quanto o corretor trabalha e mantém a carteira em dia.">
+            <Kpi titulo="Leads atualizados" valor={int(atual ? atual.leadsAtualizados : corretores.reduce((a, c) => a + num(c.leadsAtualizados), 0))} hint="Nº de atualizações de lead no período." />
+            <Kpi titulo="Cliques em 'atualizar momento'" valor={int(atual ? atual.cliquesMomento : corretores.reduce((a, c) => a + num(c.cliquesMomento), 0))} hint="Registros de momento feitos dentro do lead (Funil Inteligente)." />
+            <Kpi titulo="Leads desatualizados" valor={int(atual ? atual.desatualizados : corretores.reduce((a, c) => a + num(c.desatualizados), 0))} sub={`${int(atual ? atual.desatualizadosPct : equipe.media("desatualizadosPct"))}% da carteira ativa`} hint="Leads no Funil Inteligente que entraram e ainda não tiveram o momento atualizado." />
+            <Kpi titulo="Tempo até atualizar" valor={min1(atual ? atual.tempoAteAtualizar : equipe.media("tempoAteAtualizar"))} hint="Tempo médio entre o lead entrar e ter o 1º momento registrado." />
+            <Kpi titulo="Assiduidade" valor={`${int(atual ? atual.diasAtivos : equipe.media("diasAtivos"))} dias`} sub="ativos no período" hint="Dias distintos em que o corretor teve atividade no sistema." />
+          </Secao>
+
+          <Secao titulo="Conversão do funil" desc="Da entrada do lead até a venda fechada.">
+            <Kpi titulo="Conversão lead → venda" valor={`${int(atual ? atual.convLeadVenda : equipe.media("convLeadVenda"))}%`} hint="Vendas fechadas sobre leads recebidos no período." />
+            <Kpi titulo="Agendada → realizada" valor={`${int(atual ? atual.convAgendRealizada : equipe.media("convAgendRealizada"))}%`} hint="Das visitas agendadas, quantas foram realizadas." />
+            <Kpi titulo="Realizada → venda" valor={`${int(atual ? atual.convRealizadaVenda : equipe.media("convRealizadaVenda"))}%`} hint="Das visitas realizadas, quantas viraram venda fechada." />
+            <Kpi titulo="Comissão média/venda" valor={brl(atual ? atual.comissaoMedia : equipe.media("comissaoMedia"))} hint="Retorno médio por venda — separa quem vende volume de quem vende com retorno alto." />
+          </Secao>
+
+          <Secao titulo="Distribuição e engajamento" desc="Recebimento de leads e uso das ferramentas.">
+            <Kpi titulo="Leads recebidos" valor={int(atual ? atual.leadsRecebidos : corretores.reduce((a, c) => a + num(c.leadsRecebidos), 0))} hint="Leads que chegaram ao corretor no período." />
+            <Kpi titulo="Pescados no aquário" valor={int(atual ? atual.pescados : corretores.reduce((a, c) => a + num(c.pescados), 0))} hint="Leads que o corretor puxou do aquário/pool. (passa a contar a partir de agora)" />
+            <Kpi titulo="Perguntas à Sara" valor={int(atual ? atual.saraPerguntas : corretores.reduce((a, c) => a + num(c.saraPerguntas), 0))} hint="Consultas ao copiloto Sara no período. (passa a contar a partir de agora)" />
           </Secao>
 
           {/* Ranking (só na visão equipe) */}

@@ -37,9 +37,12 @@ export async function GET(request: Request) {
   const url = new URL(request.url);
   const { inicio, fim } = periodo(url.searchParams.get("periodo"));
 
-  const [rich, base] = await Promise.all([
+  // performance_extra é nova e ainda não está nos tipos gerados — cast pontual.
+  const rpcAny = auth.supabase.rpc.bind(auth.supabase) as unknown as (fn: string, args?: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }>;
+  const [rich, base, extra] = await Promise.all([
     auth.supabase.rpc("performance_corretores", { p_inicio: inicio, p_fim: fim }),
     auth.supabase.rpc("perf_scores_corretores", { p_inicio: inicio, p_fim: fim }),
+    rpcAny("performance_extra", { p_inicio: inicio, p_fim: fim }),
   ]);
 
   if (rich.error) return Response.json({ error: rich.error.message }, { status: 502 });
@@ -59,8 +62,17 @@ export async function GET(request: Request) {
     for (const row of base.data as BaseRow[]) scoreById.set(Number(row.corretor_id), row);
   }
 
+  // Métricas extras (produtividade, conversão, atualização, engajamento) por corretor.
+  type ExtraRow = { corretor_id: number; [k: string]: number };
+  const extraById = new Map<number, ExtraRow>();
+  if (!extra.error && Array.isArray(extra.data)) {
+    for (const row of extra.data as ExtraRow[]) extraById.set(Number(row.corretor_id), row);
+  }
+  const n = (v: unknown) => (typeof v === "number" ? v : Number(v) || 0);
+
   const corretores = (payload.corretores ?? []).map((c) => {
     const s = scoreById.get(Number(c.corretor_id));
+    const e = extraById.get(Number(c.corretor_id));
     return {
       ...c,
       score: s?.score ?? 0,
@@ -70,6 +82,21 @@ export async function GET(request: Request) {
       visitaScore: s?.visita_score ?? 0,
       vendaScore: s?.venda_score ?? 0,
       tarefaScore: s?.tarefa_score ?? 0,
+      // extras
+      leadsAtualizados: n(e?.leads_atualizados),
+      diasAtivos: n(e?.dias_ativos),
+      cliquesMomento: n(e?.cliques_momento),
+      desatualizados: n(e?.desatualizados),
+      desatualizadosPct: n(e?.desatualizados_pct),
+      tempoAteAtualizar: n(e?.tempo_ate_atualizar_min),
+      leadsRecebidos: n(e?.leads_recebidos),
+      convLeadVenda: n(e?.conv_lead_venda_pct),
+      convAgendRealizada: n(e?.conv_agend_real_pct),
+      convRealizadaVenda: n(e?.conv_real_venda_pct),
+      comissaoMedia: n(e?.comissao_media),
+      pescados: n(e?.pescados),
+      saraPerguntas: n(e?.sara_perguntas),
+      quedas: n(e?.instancia_quedas),
     };
   });
 
