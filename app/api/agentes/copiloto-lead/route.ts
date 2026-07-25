@@ -32,6 +32,9 @@ export async function GET(request: Request) {
   const { data: auth, error: authErr } = await supabase.auth.getUser(token);
   if (authErr || !auth.user) return Response.json({ ok: false, error: "Sessão inválida." }, { status: 401 });
 
+  // Performance: registra a consulta à Sara por corretor (fire-and-forget, nunca bloqueia)
+  void supabase.rpc("perf_log_sessao", { p_tipo: "sara_pergunta" }).then(() => {}, () => {});
+
   const lead = new URL(request.url).searchParams.get("lead")?.trim();
   if (!lead) return Response.json({ ok: false, error: "Informe o lead." }, { status: 422 });
 
