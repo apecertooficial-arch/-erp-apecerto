@@ -54,7 +54,7 @@ export async function GET(request: Request) {
 
   const [pipelinesResult, momentoCatalogoResult, stagesResult, leadsResult, dealsResult, brokersResult, activitiesResult, historicoResult, tasksResult, linksResult, visitsResult, productsResult, slaResult, alertsResult, leiturasResult] = await Promise.all([
     auth.supabase.from("pipelines").select("id,nome,grupo,ordem").order("ordem"),
-    auth.supabase.from("lead_momento_catalogo").select("slug,rotulo,grupo,ordem,cor").eq("ativo", true).order("ordem"),
+    auth.supabase.from("lead_momento_catalogo").select("slug,rotulo,grupo,ordem,cor,prazo_dias").eq("ativo", true).order("ordem"),
     auth.supabase.from("pipeline_stages").select("id,pipeline_id,nome,rotulo,ordem,cor,tipo,grupo,chave").order("ordem"),
     fetchAll((from, to) => auth.supabase.from("leads").select("id,nome,telefone,email,instagram,corretor_id,pipeline_id,status,origem,tags,extras,criado_em,atualizado_em,disparo_optout").order("atualizado_em", { ascending: false, nullsFirst: false }).order("id").range(from, to)),
     fetchAll((from, to) => auth.supabase.from("negocios").select("id,lead_id,corretor_id,pipeline_id,stage_id,empreendimento_id,valor,status,motivo_perda,criado_em,ultima_movimentacao,estagio_desde,tentativa,max_tentativas").order("ultima_movimentacao", { ascending: false, nullsFirst: false }).order("id").range(from, to)),

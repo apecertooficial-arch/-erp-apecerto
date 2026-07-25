@@ -54,7 +54,7 @@ function friendlyChatError(raw: string): string {
   return raw || "Não foi possível enviar a mensagem.";
 }
 type Historico = { id: number | string; lead_id: number | null; negocio_id: number | null; corretor_id: number | null; tipo: string; canal?: string | null; texto: string | null; resultado?: string | null; criado_em: string };
-type MomentoCat = { slug: string; rotulo: string; grupo: string; ordem: number; cor: string | null };
+type MomentoCat = { slug: string; rotulo: string; grupo: string; ordem: number; cor: string | null; prazo_dias?: number };
 type CrmData = { momentoCatalogo?: MomentoCat[]; pipelines: Pipeline[]; stages: Stage[]; leads: Lead[]; deals: Deal[]; brokers: Broker[]; activities: Activity[]; historico?: Historico[]; tasks: Task[]; productLinks: ProductLink[]; visits: Visit[]; products: Product[]; sla: SlaInfo[]; alerts: LeadAlert[]; gerentes?: Gerente[]; leituras?: Array<{ negocio_id: number; lido_em: string }>; aquario?: { stage_id: number | null; disponiveis: number } | null };
 type ViewName = "pipeline" | "leads" | "sales" | "analytics" | "agenda" | "atividades";
 
@@ -78,12 +78,18 @@ function momentoRotulo(slug?: string | null, catalogo?: MomentoCat[]): string {
   if (!slug) return "";
   return catalogo?.find((m) => m.slug === slug)?.rotulo ?? slug.replace(/_/g, " ");
 }
-/** Verde até 1 dia, amarelo até 3, vermelho depois; cinza quando nunca foi atualizado. */
-function corMomento(dias: number | null): string {
+/** Cada momento tem seu prazo (Configurações → Momentos do lead):
+    verde dentro do prazo, amarelo na véspera de vencer, vermelho a partir do prazo. */
+function corMomento(dias: number | null, prazo = 3): string {
   if (dias === null) return "nunca";
-  if (dias <= 1) return "ok";
-  if (dias <= 3) return "atencao";
-  return "atrasado";
+  const p = Math.max(1, prazo);
+  if (dias >= p) return "atrasado";
+  if (dias >= p - 1) return "atencao";
+  return "ok";
+}
+/** Prazo (em dias) do momento, vindo do catálogo. */
+function momentoPrazo(slug?: string | null, catalogo?: MomentoCat[]): number {
+  return catalogo?.find((m) => m.slug === slug)?.prazo_dias ?? 3;
 }
 
 const money = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
@@ -1356,7 +1362,7 @@ function PipelineViewEnhanced({ onMomento, momentoCatalogo, stages, allStages, d
             <button type="button" onClick={() => onChat(deal.id)}>Chat</button>
             {canMoveDeals !== false && (() => { const cur = allStages.find((s) => s.id === deal.stage_id); return <button type="button" className="stage-pick-btn" aria-label={`Mover ${lead.nome || "lead"} para outra etapa`} disabled={busyId === deal.id} onClick={() => onPickStage?.(deal.id)}><i className="stage-pick-dot" style={{ background: cur?.cor || "#9638d8" }} /><span>{cur?.rotulo || cur?.nome || "Etapa"}</span><em>⌄</em></button>; })()}
           </div>
-          {onMomento && <button type="button" className={`momentox-selo m-${corMomento(diasDesde(lead?.momento_em))}`} title={lead?.momento_obs || "Atualizar o momento deste lead"} onClick={(e) => { e.stopPropagation(); onMomento(deal.id); }}>{lead?.momento ? <>{momentoRotulo(lead.momento, momentoCatalogo)}<b>{(() => { const d = diasDesde(lead.momento_em); return d === null ? "—" : d === 0 ? "hoje" : `${d}d`; })()}</b></> : <>Informar momento<b>＋</b></>}</button>}
+          {onMomento && <button type="button" className={`momentox-selo m-${corMomento(diasDesde(lead?.momento_em), momentoPrazo(lead?.momento, momentoCatalogo))}`} title={lead?.momento_obs || "Atualizar o momento deste lead"} onClick={(e) => { e.stopPropagation(); onMomento(deal.id); }}>{lead?.momento ? <>{momentoRotulo(lead.momento, momentoCatalogo)}<b>{(() => { const d = diasDesde(lead.momento_em); return d === null ? "—" : d === 0 ? "hoje" : `${d}d`; })()}</b></> : <>Informar momento<b>＋</b></>}</button>}
           <footer><time>{sla?.min_no_estagio !== null && sla?.min_no_estagio !== undefined ? `${formatElapsed(sla.min_no_estagio)} na etapa` : shortDate.format(new Date(deal.ultima_movimentacao || deal.criado_em))}</time></footer>
         </article>;
       })}{items.length === 0 && <div className="crm-empty-stage">Arraste um lead para esta etapa</div>}</div>
@@ -1377,7 +1383,7 @@ function LeadsViewEnhanced({ onMomento, momentoCatalogo, deals, leadById, stages
         const broker = brokerById.get(deal.corretor_id ?? lead.corretor_id ?? -1);
         const tags = tagList(lead.tags).slice(0, 2);
         return <tr className={`lead-tone-${index % 5 + 1} sla-row-${sla?.cor_ativa || "verde"}`} key={deal.id}>
-          <td onClick={() => onOpen(deal.id)}><div className="table-person"><LeadAvatar lead={lead} /><div><strong>{lead.nome || "Lead sem nome"}</strong><small>#{lead.id}</small>{onMomento && <button type="button" className={`momentox-selo m-${corMomento(diasDesde(lead.momento_em))}`} title={lead.momento_obs || "Atualizar o momento deste lead"} onClick={(e) => { e.stopPropagation(); onMomento(deal.id); }}>{lead.momento ? <>{momentoRotulo(lead.momento, momentoCatalogo)}<b>{(() => { const d = diasDesde(lead.momento_em); return d === null ? "—" : d === 0 ? "hoje" : `${d}d`; })()}</b></> : <>Informar momento<b>＋</b></>}</button>}{tags.length > 0 && <div className="lead-table-tags" aria-label="Tags do lead">{tags.map((item) => <span key={item}>{item}</span>)}</div>}</div></div></td>
+          <td onClick={() => onOpen(deal.id)}><div className="table-person"><LeadAvatar lead={lead} /><div><strong>{lead.nome || "Lead sem nome"}</strong><small>#{lead.id}</small>{onMomento && <button type="button" className={`momentox-selo m-${corMomento(diasDesde(lead.momento_em), momentoPrazo(lead.momento, momentoCatalogo))}`} title={lead.momento_obs || "Atualizar o momento deste lead"} onClick={(e) => { e.stopPropagation(); onMomento(deal.id); }}>{lead.momento ? <>{momentoRotulo(lead.momento, momentoCatalogo)}<b>{(() => { const d = diasDesde(lead.momento_em); return d === null ? "—" : d === 0 ? "hoje" : `${d}d`; })()}</b></> : <>Informar momento<b>＋</b></>}</button>}{tags.length > 0 && <div className="lead-table-tags" aria-label="Tags do lead">{tags.map((item) => <span key={item}>{item}</span>)}</div>}</div></div></td>
           <td><strong>{formatElapsed(sla?.aguardando_humano ? sla.min_aguardando : sla?.min_sem_interacao)}</strong><small>{sla?.aguardando_humano ? "aguardando resposta" : "sem interação"}</small></td>
           <td>{canMoveDeals !== false ? (() => { const cur = stages.find((s) => s.id === deal.stage_id); return <button type="button" className="stage-pick-btn table" disabled={busyId === deal.id} onClick={() => onPickStage?.(deal.id)}><i className="stage-pick-dot" style={{ background: cur?.cor || "#9638d8" }} /><span>{cur?.rotulo || cur?.nome || "Etapa"}</span><em>⌄</em></button>; })() : <span className="stage-pill-static">{stages.find((s) => s.id === deal.stage_id)?.rotulo || stages.find((s) => s.id === deal.stage_id)?.nome || "—"}</span>}</td>
           <td>{canReassign ? <button className="table-broker-trigger" type="button" onClick={() => onReassign(deal.id)}>{broker?.nome || "Escolher corretor"}<span>⌄</span></button> : <strong>{broker?.nome || "Sem responsável"}</strong>}<small>{broker?.online ? "● online" : "offline"}</small></td>
@@ -1987,7 +1993,7 @@ function LeadDrawer({ accessToken, lead, deal, data, canReassign, canMoveDeals, 
         <button type="button" onClick={() => { setTask(`Fazer follow-up com ${lead.nome || "o lead"}`); setTab("agenda"); setMessage("Sugestão da IA preparada como próxima tarefa."); }}><LeadActionIcon name="ai" /><span>Pedir à IA</span></button>
       </div>
       <article className="lead-context-card"><div><small>ORIGEM</small><strong><span>⌘</span>{lead.origem || "Não informada"}</strong></div><div><small>PRODUTO DE INTERESSE</small><strong><span>▥</span>{currentProduct?.nome || "—"}</strong></div><p>ⓘ Origem e interesse são distintos — alimentam o BI de campanhas.</p><footer><small>Corretor responsável</small><strong><span>♧</span>{responsible?.nome || "Não definido"}</strong></footer></article>
-      {ehFunilInteligente && <article className={`momentox momentox-${corMomento(diasMomento)}`}>
+      {ehFunilInteligente && <article className={`momentox momentox-${corMomento(diasMomento, momentoDoLead?.prazo_dias ?? 3)}`}>
         <div className="momentox-atual">
           <span className="momentox-dot" style={{ background: momentoDoLead?.cor || "#9a938b" }} />
           <div>
