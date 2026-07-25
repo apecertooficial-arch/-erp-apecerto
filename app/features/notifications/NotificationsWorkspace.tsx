@@ -9,16 +9,17 @@ import { getBrowserSupabaseClient } from "../../lib/supabase/browser";
 import type { ChatData } from "../chat/LiveChatWorkspace";
 
 type Lead = { id: number; nome: string | null; telefone: string | null; corretor_id: number | null; criado_em: string };
-type Deal = { id: number; lead_id: number; corretor_id: number | null; status: string };
+type Deal = { id: number; lead_id: number; corretor_id: number | null; status: string; ultima_movimentacao?: string | null; criado_em?: string | null };
 type Task = { id: number; lead_id: number | null; corretor_id: number | null; titulo: string; vencimento: string | null; concluida: boolean };
 type Sla = { negocio_id: number | null; sla_situacao: string | null; aguardando_humano: boolean | null; min_aguardando: number | string | null; min_sem_interacao: number | string | null; alarme_ativo: boolean | null };
 type CrmData = { leads: Lead[]; deals: Deal[]; tasks: Task[]; sla: Sla[]; brokers: Array<{ id: number; usuario_id: string | null }>; error?: string };
-type Category = "leads" | "mensagens" | "tarefas" | "vendas" | "sistema";
+type Category = "leads" | "desatualizados" | "mensagens" | "tarefas" | "vendas" | "sistema";
 type Priority = "alta" | "media" | "baixa";
 type Notification = { id: string; category: Category; priority: Priority; title: string; context: string; when: string; dealId: number | null; count: number };
 
 const CATEGORIES: Array<{ key: Category; label: string; icon: string }> = [
-  { key: "leads", label: "Leads", icon: "✦" }, { key: "mensagens", label: "Mensagens", icon: "●" },
+  { key: "leads", label: "Leads", icon: "✦" }, { key: "desatualizados", label: "Desatualizados", icon: "⏳" },
+  { key: "mensagens", label: "Mensagens", icon: "●" },
   { key: "tarefas", label: "Tarefas", icon: "✓" }, { key: "vendas", label: "Vendas", icon: "▣" },
   { key: "sistema", label: "Sistema", icon: "⚙" },
 ];
@@ -88,6 +89,28 @@ export function NotificationsWorkspace({ accessToken, onOpenLead }: { accessToke
       const deal = task.lead_id ? dealByLead.get(task.lead_id) : null;
       list.push({ id: `task-${task.id}`, category: "tarefas", priority: overdue ? "alta" : "media", title: overdue ? `Tarefa vencida: ${task.titulo}` : `Vence hoje: ${task.titulo}`, context: task.lead_id ? `Lead: ${leadById.get(task.lead_id)?.nome || `#${task.lead_id}`}` : "Tarefa geral", when: task.vencimento, dealId: deal?.id ?? null, count: 1 });
     }
+    /* Desatualizados: negócio aberto sem movimentação há 2+ dias (alta com 5+).
+       Mostra os 200 mais parados para não travar a tela; o total aparece no chip. */
+    const DIA = 1440;
+    const parados = crm.deals
+      .filter((deal) => deal.status === "aberto" && minutesSince(deal.ultima_movimentacao ?? deal.criado_em) >= 2 * DIA)
+      .sort((a, b) => minutesSince(b.ultima_movimentacao ?? b.criado_em) - minutesSince(a.ultima_movimentacao ?? a.criado_em));
+    for (const deal of parados.slice(0, 200)) {
+      const lead = leadById.get(deal.lead_id);
+      const idle = minutesSince(deal.ultima_movimentacao ?? deal.criado_em);
+      list.push({
+        id: `stale-${deal.id}`,
+        category: "desatualizados",
+        priority: idle >= 5 * DIA ? "alta" : "media",
+        title: `Lead parado: ${lead?.nome || `#${deal.lead_id}`}`,
+        context: `Sem movimentação há ${Math.floor(idle / DIA)} dia(s)${lead?.telefone ? ` · ${lead.telefone}` : ""}`,
+        when: deal.ultima_movimentacao ?? deal.criado_em ?? new Date().toISOString(),
+        dealId: deal.id,
+        count: 1,
+      });
+    }
+    if (parados.length > 200) list.push({ id: "stale-more", category: "desatualizados", priority: "media", title: `+${parados.length - 200} leads parados além dos listados`, context: "Abra o CRM e filtre por atrasados para ver todos.", when: new Date().toISOString(), dealId: null, count: 1 });
+
     for (const deal of crm.deals) {
       if (deal.status === "ganho") { const lead = leadById.get(deal.lead_id); list.push({ id: `sale-${deal.id}`, category: "vendas", priority: "media", title: `Negócio ganho: ${lead?.nome || `#${deal.id}`}`, context: "Enviado para o processo de venda", when: new Date().toISOString(), dealId: deal.id, count: 1 }); }
     }
