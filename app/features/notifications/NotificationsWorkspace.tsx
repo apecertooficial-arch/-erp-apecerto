@@ -89,11 +89,11 @@ export function NotificationsWorkspace({ accessToken, onOpenLead }: { accessToke
       const deal = task.lead_id ? dealByLead.get(task.lead_id) : null;
       list.push({ id: `task-${task.id}`, category: "tarefas", priority: overdue ? "alta" : "media", title: overdue ? `Tarefa vencida: ${task.titulo}` : `Vence hoje: ${task.titulo}`, context: task.lead_id ? `Lead: ${leadById.get(task.lead_id)?.nome || `#${task.lead_id}`}` : "Tarefa geral", when: task.vencimento, dealId: deal?.id ?? null, count: 1 });
     }
-    /* Desatualizados: negócio aberto sem movimentação há 2+ dias (alta com 5+).
+    /* Desatualizados: negócio aberto sem movimentação há 24h+ (alta com 2+ dias).
        Mostra os 200 mais parados para não travar a tela; o total aparece no chip. */
     const DIA = 1440;
     const parados = crm.deals
-      .filter((deal) => deal.status === "aberto" && minutesSince(deal.ultima_movimentacao ?? deal.criado_em) >= 2 * DIA)
+      .filter((deal) => deal.status === "aberto" && minutesSince(deal.ultima_movimentacao ?? deal.criado_em) >= DIA)
       .sort((a, b) => minutesSince(b.ultima_movimentacao ?? b.criado_em) - minutesSince(a.ultima_movimentacao ?? a.criado_em));
     for (const deal of parados.slice(0, 200)) {
       const lead = leadById.get(deal.lead_id);
@@ -101,9 +101,9 @@ export function NotificationsWorkspace({ accessToken, onOpenLead }: { accessToke
       list.push({
         id: `stale-${deal.id}`,
         category: "desatualizados",
-        priority: idle >= 5 * DIA ? "alta" : "media",
+        priority: idle >= 2 * DIA ? "alta" : "media",
         title: `Lead parado: ${lead?.nome || `#${deal.lead_id}`}`,
-        context: `Sem movimentação há ${Math.floor(idle / DIA)} dia(s)${lead?.telefone ? ` · ${lead.telefone}` : ""}`,
+        context: `Sem movimentação há ${idle >= DIA ? `${Math.floor(idle / DIA)} dia(s)` : `${Math.floor(idle / 60)}h`}${lead?.telefone ? ` · ${lead.telefone}` : ""}`,
         when: deal.ultima_movimentacao ?? deal.criado_em ?? new Date().toISOString(),
         dealId: deal.id,
         count: 1,
