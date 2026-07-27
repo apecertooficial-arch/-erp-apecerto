@@ -89,8 +89,9 @@ function buildAlerts(crm: CrmAttentionData, chat: ChatData | null, brokerId: num
       // Risco de perda: oportunidade quente (etapa avançada) esfriando há ≥ 2 dias.
       const level = inactive >= 10080 ? "Crítico" : inactive >= 4320 ? "Alto" : "Atenção";
       alerts.set(`risk-${deal.id}`, { id: `risk-${deal.id}`, kind: "risk", dealId: deal.id, leadId: lead.id, title: lead.nome || "Lead em risco", description: `${level}: ${elapsed(inactive)} sem interação útil.`, age: inactive, severity: inactive >= 4320 ? 4 : 3, occurredAt: sla.ultima_interacao });
-    } else if (stageCat === "fria" && inactive >= 7200) {
-      // Desatualizado: lead frio/esquecido parado há ≥ 5 dias. Entra depois, só se não tiver alerta mais urgente.
+    } else if (stageCat === "fria" && inactive >= 4320) {
+      // Desatualizado: mesma régua do card do funil — preto a partir de 72h sem interação.
+      // Entra depois, só se não tiver alerta mais urgente.
       staleCandidates.push({ dealId: deal.id, leadId: lead.id, title: lead.nome || "Lead desatualizado", inactive, occurredAt: sla.ultima_interacao });
     }
   }
@@ -108,15 +109,14 @@ function buildAlerts(crm: CrmAttentionData, chat: ChatData | null, brokerId: num
     }
   }
 
-  // Desatualizado entra por último: só para leads sem nenhum alerta mais urgente (precedência) e com teto para não inundar a Central.
-  const STALE_CAP = 20;
+  // Desatualizado entra por último: só para leads sem nenhum alerta mais urgente (precedência).
+  // Sem teto — o contador precisa refletir o tamanho real do problema; a lista é rolável
+  // e o pior caso vem primeiro (mais tempo parado no topo).
   staleCandidates.sort((a, b) => b.inactive - a.inactive);
-  let staleAdded = 0;
+  const dealsComAlerta = new Set([...alerts.values()].map((alert) => alert.dealId));
   for (const candidate of staleCandidates) {
-    if (staleAdded >= STALE_CAP) break;
-    if ([...alerts.values()].some((alert) => alert.dealId === candidate.dealId)) continue;
+    if (dealsComAlerta.has(candidate.dealId)) continue;
     alerts.set(`desatualizado-${candidate.dealId}`, { id: `desatualizado-${candidate.dealId}`, kind: "desatualizado", dealId: candidate.dealId, leadId: candidate.leadId, title: candidate.title, description: `${elapsed(candidate.inactive)} sem contato — reative ou descarte.`, age: candidate.inactive, severity: 2, occurredAt: candidate.occurredAt });
-    staleAdded += 1;
   }
   return [...alerts.values()].sort((a, b) => b.severity - a.severity || a.age - b.age);
 }
@@ -236,7 +236,7 @@ export function AttentionCenter({ accessToken, onOpenLead, onOpenChat, onOpenNot
       <header><div><span>ATENDIMENTO EM TEMPO REAL</span><h2>Central de atenção</h2><p>{alerts.length ? `${alerts.length} ação(ões) pedem sua atenção` : "Tudo em dia por aqui"}</p></div><button type="button" onClick={() => setOpen(false)} aria-label="Fechar">×</button></header>
       <section className="attention-summary">{(["new", "waiting", "message", "risk", "desatualizado"] as AlertKind[]).map((kind) => <button className={filter === kind ? `active ${kind}` : kind} type="button" onClick={() => setFilter(filter === kind ? "all" : kind)} key={kind}><i>{kindInfo[kind].icon}</i><strong>{counts[kind]}</strong><span>{kindInfo[kind].label}</span></button>)}</section>
       <nav><button className={filter === "all" ? "active" : ""} type="button" onClick={() => setFilter("all")}>Todos</button><button type="button" onClick={() => mute(15)}>Silenciar 15 min</button><button type="button" onClick={dismissAll}>Marcar todos como vistos</button></nav>
-      <main>{visible.map((alert) => <article className={alert.kind} key={alert.id}><span>{kindInfo[alert.kind].icon}</span><div><small>{kindInfo[alert.kind].label} · {elapsed(alert.age)}</small><strong>{alert.title}</strong><p>{alert.description}</p><footer><button type="button" onClick={() => attend(alert)}>Abrir e atender</button><button type="button" onClick={() => dismiss(alert.id)}>Agora não</button></footer></div></article>)}{visible.length === 0 && <div className="attention-empty"><span>✓</span><strong>Nenhum alerta neste filtro</strong><p>Novos eventos aparecerão automaticamente.</p></div>}</main>
+      <main>{visible.slice(0, 120).map((alert) => <article className={alert.kind} key={alert.id}><span>{kindInfo[alert.kind].icon}</span><div><small>{kindInfo[alert.kind].label} · {elapsed(alert.age)}</small><strong>{alert.title}</strong><p>{alert.description}</p><footer><button type="button" onClick={() => attend(alert)}>Abrir e atender</button><button type="button" onClick={() => dismiss(alert.id)}>Agora não</button></footer></div></article>)}{visible.length > 120 && <p className="attention-more">Mostrando os 120 mais urgentes de {visible.length} — use os filtros acima para afunilar.</p>}{visible.length === 0 && <div className="attention-empty"><span>✓</span><strong>Nenhum alerta neste filtro</strong><p>Novos eventos aparecerão automaticamente.</p></div>}</main>
       <footer><button type="button" onClick={onOpenNotifications}>Abrir histórico de notificações</button><span>{Date.now() < mutedUntil ? `Silenciado por ${elapsed(Math.ceil((mutedUntil - Date.now()) / 60000))}` : "Atualização automática a cada 30 segundos"}</span></footer>
     </aside>}
   </>;
