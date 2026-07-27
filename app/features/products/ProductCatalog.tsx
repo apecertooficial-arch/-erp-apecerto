@@ -314,7 +314,7 @@ export function ProductCatalog() {
       ) : activeModule === "Notificações" && accessToken ? (
         <NotificationsWorkspace accessToken={accessToken} onOpenLead={(dealId) => { setFocusedDealId(dealId); setActiveModule("CRM"); }} />
       ) : activeModule === "Performance" && accessToken ? (
-        <PerformanceWorkspace accessToken={accessToken} />
+        <PerformanceWorkspace accessToken={accessToken} sessionRole={sessionProfile?.role ?? "corretor"} />
       ) : activeModule === "Minha Equipe" && accessToken ? (
         <EquipeWorkspace accessToken={accessToken} />
       ) : activeModule === "Configurações" && accessToken ? (
