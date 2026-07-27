@@ -144,11 +144,13 @@ function isOverdue(task: Task, now: number) {
 
 /* Cor de alerta por DIAS sem interação (igual à esteira de vendas):
    até 1 dia = verde · mais de 1 dia = amarelo · mais de 3 = vermelho · mais de 7 = preto. */
+/** Cor do card por tempo sem atendimento:
+    até 24h verde · 24–48h amarelo · 48–72h vermelho · acima de 72h preto. */
 function alertColorByDays(minutes: number | null | undefined) {
-  const dias = (Number(minutes) || 0) / 1440;
-  if (dias <= 1) return "verde";
-  if (dias <= 3) return "amarelo";
-  if (dias <= 7) return "vermelho";
+  const horas = (Number(minutes) || 0) / 60;
+  if (horas < 24) return "verde";
+  if (horas < 48) return "amarelo";
+  if (horas < 72) return "vermelho";
   return "preto";
 }
 
@@ -1343,7 +1345,7 @@ function PipelineViewEnhanced({ onMomento, momentoCatalogo, stages, allStages, d
         // Cliente aguardando → cor pelo tempo de espera. Se o corretor já respondeu
         // (não está aguardando e há interação humana registrada) → verde. Lead nunca
         // tocado (sem interação humana) → segue sinalizando pelo tempo sem interação.
-        const color = waiting ? alertColorByDays(sla?.min_aguardando) : (sla?.humano_ultima ? "verde" : alertColorByDays(sla?.min_sem_interacao));
+        const color = alertColorByDays(waiting ? sla?.min_aguardando : sla?.min_sem_interacao);
         // Sino: só quando o cliente aguarda. Vermelho = ainda não lida (corretor não abriu
         // desde a última msg do cliente); Amarelo = já abriu (leu) mas não respondeu.
         const lidoEm = readByDeal?.get(deal.id);
