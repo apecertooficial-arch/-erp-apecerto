@@ -43,9 +43,27 @@ export function TeamWorkspace({ accessToken }: { accessToken: string }) {
   const [view, setView] = useState<"lista" | "hierarquia">("lista");
   const [addOpen, setAddOpen] = useState(false);
   const [newUser, setNewUser] = useState({ nome: "", email: "", telefone: "", role: "corretor", superiorId: "", criarCorretor: true });
-  const [invite, setInvite] = useState<{ nome: string; link: string; copied: boolean } | null>(null);
+  const [invite, setInvite] = useState<{ nome: string; link: string; copied: boolean; tipo?: "senha" | "cadastro" } | null>(null);
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState("");
+  const [linkBusy, setLinkBusy] = useState(false);
+
+  /* Convite por link (autocadastro): gera um token, grava em cadastro_convites (RLS: só gestão)
+     e mostra o link /cadastro?t=<token> — o corretor preenche os próprios dados por lá. */
+  async function gerarLinkCadastro() {
+    setLinkBusy(true); setToast("");
+    try {
+      const sb = getBrowserSupabaseClient();
+      const token = (crypto.randomUUID() + crypto.randomUUID()).replaceAll("-", "");
+      const { data: sess } = await sb.auth.getUser();
+      const criadoPor = sess?.user?.id ?? null;
+      const criadoPorNome = (sess?.user?.user_metadata?.nome as string | undefined) ?? sess?.user?.email ?? null;
+      const { error: insError } = await sb.from("cadastro_convites").insert({ token, role: "corretor", criado_por: criadoPor, criado_por_nome: criadoPorNome } as never);
+      if (insError) { setToast(/permission|policy|denied/i.test(insError.message) ? "Apenas a gestão pode gerar convites por link." : insError.message); }
+      else setInvite({ nome: "Autocadastro de corretor", link: `${window.location.origin}/cadastro?t=${token}`, copied: false, tipo: "cadastro" });
+    } catch { setToast("Não foi possível gerar o link agora. Tente novamente."); }
+    setLinkBusy(false);
+  }
 
   async function createUser() {
     setCreateError("");
@@ -166,7 +184,7 @@ export function TeamWorkspace({ accessToken }: { accessToken: string }) {
   }
 
   return <div className="team-workspace">
-    <header className="workspace-top"><div><h1>Usuários</h1><p>{data.brokers.length} usuários · gestão de acessos da equipe</p></div><div style={{ display: "flex", gap: 12, alignItems: "center" }}><button type="button" className="save-team" onClick={() => { setAddOpen(true); setCreateError(""); }}>＋ Adicionar usuário</button><label className="workspace-search">⌕ <input placeholder="Buscar usuário..." /></label></div></header>
+    <header className="workspace-top"><div><h1>Usuários</h1><p>{data.brokers.length} usuários · gestão de acessos da equipe</p></div><div style={{ display: "flex", gap: 12, alignItems: "center" }}><button type="button" className="save-team" disabled={linkBusy} onClick={() => void gerarLinkCadastro()} title="Gera um link para o corretor fazer o próprio cadastro">{linkBusy ? "Gerando…" : "🔗 Convite por link"}</button><button type="button" className="save-team" onClick={() => { setAddOpen(true); setCreateError(""); }}>＋ Adicionar usuário</button><label className="workspace-search">⌕ <input placeholder="Buscar usuário..." /></label></div></header>
     <main className="team-main">
       <div className="team-filters"><span>▽</span>{["Todos os perfis", "Admin", "Diretor", "Gerente", "Executivo", "Corretor"].map((item) => <button className={profile === item ? "active" : ""} onClick={() => setProfile(item)} type="button" key={item}>{item}</button>)}<i />{["Todos", "Ativos", "Online", "Inativos"].map((item) => <button className={status === item ? "active" : ""} onClick={() => setStatus(item)} type="button" key={item}>{item}</button>)}<i />{([["lista", "☰ Lista"], ["hierarquia", "⌥ Hierarquia"]] as const).map(([key, label]) => <button className={view === key ? "active" : ""} onClick={() => setView(key)} type="button" key={key}>{label}</button>)}</div>
       {loading ? <div className="workspace-loading">Carregando equipe...</div> : error ? <div className="workspace-error">{error}<button type="button" onClick={() => void load()}>Tentar novamente</button></div> : view === "hierarquia" ? <section className="team-table" style={{ padding: 16 }}>
@@ -234,9 +252,11 @@ export function TeamWorkspace({ accessToken }: { accessToken: string }) {
       <footer><button type="button" className="save-team" disabled={creating} onClick={() => void createUser()}>{creating ? "Criando..." : "✓ Criar e gerar convite"}</button><button type="button" onClick={() => setAddOpen(false)}>Cancelar</button></footer>
     </div></div>}
     {invite && <div className="qr-modal-scrim" onClick={() => setInvite(null)}><div className="qr-modal" onClick={(event) => event.stopPropagation()} style={{ maxWidth: 480, width: "94%" }}>
-      <header><strong>Convite de acesso · {invite.nome}</strong><button type="button" onClick={() => setInvite(null)}>×</button></header>
+      <header><strong>{invite.tipo === "cadastro" ? "Convite por link · Autocadastro" : `Convite de acesso · ${invite.nome}`}</strong><button type="button" onClick={() => setInvite(null)}>×</button></header>
       {invite.link ? <div style={{ padding: "14px 2px", display: "grid", gap: 10 }}>
-        <p>Envie este link para <strong>{invite.nome}</strong> definir a senha (válido por 7 dias):</p>
+        {invite.tipo === "cadastro"
+          ? <p>Envie este link para o corretor: ele preenche <strong>nome, telefone, e-mail e senha</strong> e já sai com o acesso criado. Válido por 7 dias e para <strong>um único cadastro</strong> — gere um link para cada corretor.</p>
+          : <p>Envie este link para <strong>{invite.nome}</strong> definir a senha (válido por 7 dias):</p>}
         <code style={{ wordBreak: "break-all", padding: 10, borderRadius: 8, background: "rgba(120,120,160,.12)", fontSize: 12 }}>{invite.link}</code>
         <button type="button" className="save-team" onClick={() => { void navigator.clipboard.writeText(invite.link).then(() => setInvite({ ...invite, copied: true })); }}>{invite.copied ? "✓ Copiado!" : "Copiar link"}</button>
       </div> : <p style={{ padding: 14 }}>Usuário criado, mas o convite falhou. Abra a ficha e use &quot;reenviar convite&quot;.</p>}
