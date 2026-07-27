@@ -284,7 +284,13 @@ function bodyHtml(n){
  if(n.type==='randomizer'){const rs=n.ramos||[];
   return `${rs.map((r,i)=>ramoRow(r,i)).join('')}<button class="ne-add" data-addramo>${ico('plus',14)} adicionar caminho</button>`;
  }
- if(n.type==='distribution'){const d=(n.opts&&n.opts.distribuicao)||{items:[],onlineOnly:false,tambemNegocio:false};const its=d.items||[];const totPeso=its.filter(x=>x.on!==false).reduce((s,x)=>s+(+x.peso||0),0)||0;
+ if(n.type==='distribution'){if(!n.opts)n.opts={};const d=n.opts.distribuicao=n.opts.distribuicao||{items:[],onlineOnly:false,tambemNegocio:false};const its=d.items=d.items||[];
+  /* Sincroniza com o cadastro: corretor ATIVO que ainda não está na lista (ex.: recém-criado)
+     aparece automaticamente, DESLIGADO — o gestor marca o checkbox e publica para incluir na roleta. */
+  (function(){const nomes=its.map(x=>String(x.corretor||'').trim().toLowerCase());
+   (ref.corretores||[]).filter(c=>c.ativo!==false&&nomes.indexOf(String(c.nome||'').trim().toLowerCase())<0)
+    .forEach(c=>its.push({corretor:c.nome,peso:(c.peso||1),on:false}));})();
+  const totPeso=its.filter(x=>x.on!==false).reduce((s,x)=>s+(+x.peso||0),0)||0;
   const linhas=its.map((it,i)=>{const pct=totPeso>0&&it.on!==false?Math.round((+it.peso||0)/totPeso*100):0;
     return `<div class="ne-row" data-distrow="${i}" style="padding:8px 9px"><div style="display:flex;align-items:center;gap:8px">`+
      `<input type="checkbox" data-diston ${it.on!==false?'checked':''} title="Participa da distribuição" style="width:15px;height:15px;flex:0 0 auto">`+
