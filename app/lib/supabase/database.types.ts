@@ -918,6 +918,74 @@ export type Database = {
         }
         Relationships: []
       }
+      cadastro_convites: {
+        Row: {
+          criado_em: string
+          criado_por: string | null
+          criado_por_nome: string | null
+          expira_em: string
+          id: string
+          role: string
+          token: string
+          usado_em: string | null
+          usado_email: string | null
+          usado_usuario_id: string | null
+        }
+        Insert: {
+          criado_em?: string
+          criado_por?: string | null
+          criado_por_nome?: string | null
+          expira_em?: string
+          id?: string
+          role?: string
+          token: string
+          usado_em?: string | null
+          usado_email?: string | null
+          usado_usuario_id?: string | null
+        }
+        Update: {
+          criado_em?: string
+          criado_por?: string | null
+          criado_por_nome?: string | null
+          expira_em?: string
+          id?: string
+          role?: string
+          token?: string
+          usado_em?: string | null
+          usado_email?: string | null
+          usado_usuario_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cadastro_convites_criado_por_fkey"
+            columns: ["criado_por"]
+            isOneToOne: false
+            referencedRelation: "usuarios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cadastro_convites_criado_por_fkey"
+            columns: ["criado_por"]
+            isOneToOne: false
+            referencedRelation: "v_painel_corretor"
+            referencedColumns: ["corretor_id"]
+          },
+          {
+            foreignKeyName: "cadastro_convites_criado_por_fkey"
+            columns: ["criado_por"]
+            isOneToOne: false
+            referencedRelation: "v_painel_socio"
+            referencedColumns: ["socio_id"]
+          },
+          {
+            foreignKeyName: "cadastro_convites_criado_por_fkey"
+            columns: ["criado_por"]
+            isOneToOne: false
+            referencedRelation: "vw_ranking_vgv"
+            referencedColumns: ["corretor_id"]
+          },
+        ]
+      }
       caixa_keywords: {
         Row: {
           categoria: string
@@ -1281,6 +1349,7 @@ export type Database = {
           doc_rg_nome: string | null
           doc_rg_path: string | null
           email: string | null
+          forcar_distribuicao: boolean
           foto_path: string | null
           gerente_id: number | null
           id: number
@@ -1309,6 +1378,7 @@ export type Database = {
           doc_rg_nome?: string | null
           doc_rg_path?: string | null
           email?: string | null
+          forcar_distribuicao?: boolean
           foto_path?: string | null
           gerente_id?: number | null
           id?: never
@@ -1337,6 +1407,7 @@ export type Database = {
           doc_rg_nome?: string | null
           doc_rg_path?: string | null
           email?: string | null
+          forcar_distribuicao?: boolean
           foto_path?: string | null
           gerente_id?: number | null
           id?: never
@@ -7790,6 +7861,7 @@ export type Database = {
         Args: { p_motivo?: string; p_negocio_id: number; p_stage_id: number }
         Returns: Json
       }
+      nome_normalizado: { Args: { t: string }; Returns: string }
       perf_amostrar_online: { Args: never; Returns: undefined }
       perf_derivar_eventos: { Args: { p_desde?: string }; Returns: Json }
       perf_log: {
@@ -7843,6 +7915,30 @@ export type Database = {
       performance_corretores_base: {
         Args: { p_fim?: string; p_inicio?: string }
         Returns: Json
+      }
+      performance_extra: {
+        Args: { p_fim?: string; p_inicio?: string }
+        Returns: {
+          cliques_momento: number
+          comissao: number
+          comissao_media: number
+          conv_agend_real_pct: number
+          conv_lead_venda_pct: number
+          conv_real_venda_pct: number
+          corretor_id: number
+          desatualizados: number
+          desatualizados_pct: number
+          dias_ativos: number
+          instancia_quedas: number
+          leads_atualizados: number
+          leads_recebidos: number
+          pescados: number
+          sara_perguntas: number
+          tempo_ate_atualizar_min: number
+          visitas_agendadas: number
+          visitas_canceladas: number
+          visitas_realizadas: number
+        }[]
       }
       performance_operacional: {
         Args: { p_fim?: string; p_inicio?: string }
