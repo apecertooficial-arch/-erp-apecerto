@@ -168,7 +168,8 @@ function Comparativo({ corretores, periodo, onAbrir }: { corretores: Perf[]; per
   );
 }
 
-export function PerformanceWorkspace({ accessToken }: { accessToken: string }) {
+export function PerformanceWorkspace({ accessToken, sessionRole = "corretor" }: { accessToken: string; sessionRole?: string }) {
+  const soAdmin = sessionRole === "admin";
   const [periodo, setPeriodo] = useState<Periodo>("mes");
   const [corretores, setCorretores] = useState<Perf[]>([]);
   const [semResp, setSemResp] = useState(0);
@@ -178,6 +179,7 @@ export function PerformanceWorkspace({ accessToken }: { accessToken: string }) {
   const [error, setError] = useState("");
 
   useEffect(() => {
+    if (!soAdmin) { setLoading(false); return; }
     let alive = true;
     setLoading(true);
     setError("");
@@ -209,6 +211,25 @@ export function PerformanceWorkspace({ accessToken }: { accessToken: string }) {
   const rankScore = useMemo(() => [...corretores].sort((a, b) => num(b.score) - num(a.score)), [corretores]);
 
   const atual = sel === "equipe" ? null : corretores.find((c) => Number(c.corretor_id) === sel) ?? null;
+
+  if (!soAdmin) {
+    return (
+      <div className="pn-wrap pn-maint-wrap">
+        <style>{CSS}</style>
+        <div className="pn-maint">
+          <div className="pn-maint-ico" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 2v3M12 19v3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M2 12h3M19 12h3M4.9 19.1 7 17M17 7l2.1-2.1" />
+              <circle cx="12" cy="12" r="3.2" />
+            </svg>
+          </div>
+          <h1>Estamos em atualização</h1>
+          <p>A Central de Performance está passando por melhorias para ficar mais precisa e completa. Em breve ela estará disponível para você.</p>
+          <span className="pn-maint-tag">ApêCerto · Performance</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="pn-wrap">
@@ -463,6 +484,14 @@ const CSS = `
 .pn-hero-bar i{display:block;height:100%;border-radius:6px}
 .pn-hero-s{font-size:12px;color:#9ca3af}
 .pn-dot{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:6px;vertical-align:middle}
+.pn-maint-wrap{max-width:none;min-height:calc(100vh - 82px);display:flex;align-items:center;justify-content:center;padding:24px}
+.pn-maint{max-width:520px;width:100%;margin:0 auto;background:#fff;border:1px solid #eef0f3;border-radius:20px;padding:44px 34px;text-align:center;box-shadow:0 10px 30px rgba(15,20,32,.05)}
+.pn-maint-ico{width:76px;height:76px;margin:0 auto 20px;border-radius:50%;background:linear-gradient(135deg,#fff3e9,#ffe3cc);display:flex;align-items:center;justify-content:center;color:#f97316}
+.pn-maint-ico svg{width:38px;height:38px;animation:pn-spin 6s linear infinite}
+@keyframes pn-spin{to{transform:rotate(360deg)}}
+.pn-maint h1{font-size:22px;margin:0 0 10px;color:#1f2937}
+.pn-maint p{font-size:15px;color:#6b7280;line-height:1.6;margin:0 auto;max-width:420px}
+.pn-maint-tag{display:inline-block;margin-top:22px;font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#f97316;background:#fff7ed;border:1px solid #fed7aa;padding:5px 14px;border-radius:20px}
 .pn-tbl-wrap{background:#fff;border:1px solid #eef0f3;border-radius:16px;padding:16px 18px;margin-bottom:18px}
 .pn-tbl-top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:10px}
 .pn-tbl-sub{display:block;font-size:12px;color:#9ca3af;font-weight:400;margin-top:2px}
