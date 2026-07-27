@@ -1345,7 +1345,10 @@ function PipelineViewEnhanced({ onMomento, momentoCatalogo, stages, allStages, d
         // Cliente aguardando → cor pelo tempo de espera. Se o corretor já respondeu
         // (não está aguardando e há interação humana registrada) → verde. Lead nunca
         // tocado (sem interação humana) → segue sinalizando pelo tempo sem interação.
-        const color = alertColorByDays(waiting ? sla?.min_aguardando : sla?.min_sem_interacao);
+        // Sem linha de SLA (cache atrasado, negócio recém-criado), a cor sai da
+        // última movimentação do próprio negócio — nunca de um "0 minutos" fictício.
+        const minutosFallback = (Date.now() - new Date(deal.ultima_movimentacao || deal.criado_em || 0).getTime()) / 60000;
+        const color = alertColorByDays(waiting ? (sla?.min_aguardando ?? minutosFallback) : (sla?.min_sem_interacao ?? minutosFallback));
         // Sino: só quando o cliente aguarda. Vermelho = ainda não lida (corretor não abriu
         // desde a última msg do cliente); Amarelo = já abriu (leu) mas não respondeu.
         const lidoEm = readByDeal?.get(deal.id);
@@ -1384,7 +1387,8 @@ function LeadsViewEnhanced({ onMomento, momentoCatalogo, deals, leadById, stages
         const sla = slaByDeal.get(deal.id);
         const broker = brokerById.get(deal.corretor_id ?? lead.corretor_id ?? -1);
         const tags = tagList(lead.tags).slice(0, 2);
-        return <tr className={`lead-tone-${index % 5 + 1} sla-row-${sla?.cor_ativa || "verde"}`} key={deal.id}>
+        const corLinha = alertColorByDays(sla?.min_sem_interacao ?? ((Date.now() - new Date(deal.ultima_movimentacao || deal.criado_em || 0).getTime()) / 60000));
+        return <tr className={`lead-tone-${index % 5 + 1} sla-row-${corLinha}`} key={deal.id}>
           <td onClick={() => onOpen(deal.id)}><div className="table-person"><LeadAvatar lead={lead} /><div><strong>{lead.nome || "Lead sem nome"}</strong><small>#{lead.id}</small>{onMomento && <button type="button" className={`momentox-selo m-${corMomento(diasDesde(lead.momento_em), momentoPrazo(lead.momento, momentoCatalogo))}`} title={lead.momento_obs || "Atualizar o momento deste lead"} onClick={(e) => { e.stopPropagation(); onMomento(deal.id); }}>{lead.momento ? <>{momentoRotulo(lead.momento, momentoCatalogo)}<b>{(() => { const d = diasDesde(lead.momento_em); return d === null ? "—" : d === 0 ? "hoje" : `${d}d`; })()}</b></> : <>Informar momento<b>＋</b></>}</button>}{tags.length > 0 && <div className="lead-table-tags" aria-label="Tags do lead">{tags.map((item) => <span key={item}>{item}</span>)}</div>}</div></div></td>
           <td><strong>{formatElapsed(sla?.aguardando_humano ? sla.min_aguardando : sla?.min_sem_interacao)}</strong><small>{sla?.aguardando_humano ? "aguardando resposta" : "sem interação"}</small></td>
           <td>{canMoveDeals !== false ? (() => { const cur = stages.find((s) => s.id === deal.stage_id); return <button type="button" className="stage-pick-btn table" disabled={busyId === deal.id} onClick={() => onPickStage?.(deal.id)}><i className="stage-pick-dot" style={{ background: cur?.cor || "#9638d8" }} /><span>{cur?.rotulo || cur?.nome || "Etapa"}</span><em>⌄</em></button>; })() : <span className="stage-pill-static">{stages.find((s) => s.id === deal.stage_id)?.rotulo || stages.find((s) => s.id === deal.stage_id)?.nome || "—"}</span>}</td>
