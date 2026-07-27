@@ -68,6 +68,7 @@ const MODOS: Array<{ v: Config["modo_fora_janela"]; t: string; d: string }> = [
 /* Painel Regras de Distribuição & Abordagem — vive dentro de Configurações. */
 export function DistributionConfig({ accessToken }: { accessToken: string }) {
   const [cfg, setCfg] = useState<Config | null>(null);
+  const [corretores, setCorretores] = useState<Array<{ id: number; nome: string; forcar_distribuicao: boolean }>>([]);
   const [saude, setSaude] = useState<Saude | null>(null);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
@@ -77,8 +78,9 @@ export function DistributionConfig({ accessToken }: { accessToken: string }) {
     if (!silencioso) setNotice("");
     try {
       const res = await fetch("/api/distribuicao", { headers: { Authorization: `Bearer ${accessToken}` } });
-      const data = await res.json() as { config?: Config; saude?: Saude; error?: string };
+      const data = await res.json() as { config?: Config; saude?: Saude; corretores?: Array<{ id: number; nome: string; forcar_distribuicao: boolean }>; error?: string };
       if (!res.ok) { if (!silencioso) setNotice(data.error || "Sem permissão."); return; }
+      if (data.corretores) setCorretores(data.corretores);
       if (data.config) setCfg((atual) => atual && silencioso ? atual : { ...data.config!, janela_inicio: data.config!.janela_inicio.slice(0, 5), janela_fim: data.config!.janela_fim.slice(0, 5), receber_ate: data.config!.receber_ate.slice(0, 5) });
       setSaude(data.saude ?? null);
       setAtualizadoAs(new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" }));
@@ -111,6 +113,18 @@ export function DistributionConfig({ accessToken }: { accessToken: string }) {
   };
 
   if (!cfg) return <section className="settings-card"><p className="settings-hint">{notice || "Carregando as regras de distribuição…"}</p></section>;
+
+  const toggleMinerva = async (corretorId: number, on: boolean) => {
+    setBusy(true); setNotice("");
+    try {
+      const res = await fetch("/api/distribuicao", { method: "POST", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify({ action: "minerva", corretorId, on }) });
+      const data = await res.json() as { error?: string };
+      if (!res.ok) { setNotice(data.error || "Não foi possível alterar."); return; }
+      setCorretores((cur) => cur.map((c) => c.id === corretorId ? { ...c, forcar_distribuicao: on } : c));
+      setNotice(on ? "Voto de minerva LIGADO — este corretor recebe leads ignorando todas as regras." : "Voto de minerva desligado — voltam a valer as regras normais.");
+    } catch { setNotice("Falha ao alterar."); }
+    finally { setBusy(false); }
+  };
 
   const sw = (key: keyof Pick<Config, "failover_envio" | "failover_transfere_lead" | "resgate_orfaos">, title: string, sub: string) => (
     <label className="presence-switch"><input type="checkbox" checked={cfg[key]} onChange={(e) => setCfg({ ...cfg, [key]: e.target.checked })} /><div><strong>{title}</strong><small>{sub}</small></div></label>
@@ -175,6 +189,17 @@ export function DistributionConfig({ accessToken }: { accessToken: string }) {
       {sw("failover_envio", "Failover de envio (nunca deixar de abordar)", "Se o envio falhar numa instância, tenta a outra do corretor; esgotou, passa para a próxima instância conectada da operação até entregar.")}
       {sw("failover_transfere_lead", "Transferir o lead para quem enviou", "Quando o failover envia por outro corretor, o lead passa para ele — o cliente responde no WhatsApp de quem mandou. Desligado, o lead fica com o corretor original.")}
       {sw("resgate_orfaos", "Resgate automático de leads sem corretor", "A cada 15 minutos, qualquer lead que tenha ficado sem dono é redistribuído assim que houver corretor elegível.")}
+
+      <div className="minerva-box">
+        <div className="minerva-head"><strong>⚖ Voto de minerva (só administrador)</strong><p>Ligado, o corretor entra no sorteio SEMPRE — ignora janela, presença e regra de fim de semana. Use para exceções pontuais; a preferência por instância saudável continua valendo no envio.</p></div>
+        {corretores.map((c) => (
+          <label className="minerva-row" key={c.id}>
+            <span>{c.nome}</span>
+            {c.forcar_distribuicao && <em>ignorando todas as regras</em>}
+            <button type="button" role="switch" aria-checked={c.forcar_distribuicao} disabled={busy} className={`minerva-toggle ${c.forcar_distribuicao ? "on" : ""}`} onClick={() => void toggleMinerva(c.id, !c.forcar_distribuicao)}>{c.forcar_distribuicao ? "LIGADO" : "desligado"}</button>
+          </label>
+        ))}
+      </div>
 
       {notice && <div className="presence-cfg-notice">{notice}</div>}
       <footer className="settings-form-footer"><span>As regras valem para o motor imediatamente após salvar.</span><div><button type="button" className="presence-cfg-save settings-save" disabled={busy} onClick={() => void save()}>{busy ? "Salvando…" : "✓ Salvar regras"}</button></div></footer>
