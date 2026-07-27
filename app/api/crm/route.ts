@@ -39,7 +39,7 @@ function canCrm(access: EffectiveAccess, action: "atribuir" | "transferir") {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function fetchAll<T>(build: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: any }>): Promise<{ data: T[] | null; error: any }> {
   const rows: T[] = [];
-  for (let page = 0; page < 10; page++) {
+  for (let page = 0; page < 30; page++) {
     const { data, error } = await build(page * 1000, page * 1000 + 999);
     if (error) return { data: null, error };
     rows.push(...(data ?? []));
@@ -52,12 +52,21 @@ export async function GET(request: Request) {
   const auth = await authenticatedClient(request);
   if (!auth) return Response.json({ error: "Sessão inválida ou expirada." }, { status: 401 });
 
+  // Leads do aquário (sem corretor, esperando pescaria) NÃO entram no payload do
+  // CRM — só o contador. Com milhares de leads no aquário, mandá-los para a tela
+  // estoura o kanban e o limite de linhas. Depois de pescado (corretor definido),
+  // o lead aparece normalmente.
+  const { data: aquarioData } = await auth.supabase.rpc("aquario_status");
+  const aqInfo = aquarioData && typeof aquarioData === "object" ? aquarioData as { stage_id?: number | null } : {};
+  const aqStage = Number(aqInfo.stage_id ?? 0) || 0;
+  const foraDoAquarioNegocios = aqStage ? `corretor_id.not.is.null,stage_id.neq.${aqStage}` : "";
+
   const [pipelinesResult, momentoCatalogoResult, stagesResult, leadsResult, dealsResult, brokersResult, activitiesResult, historicoResult, tasksResult, linksResult, visitsResult, productsResult, slaResult, alertsResult, leiturasResult] = await Promise.all([
     auth.supabase.from("pipelines").select("id,nome,grupo,ordem").order("ordem"),
     auth.supabase.from("lead_momento_catalogo").select("slug,rotulo,grupo,ordem,cor,prazo_dias").eq("ativo", true).order("ordem"),
     auth.supabase.from("pipeline_stages").select("id,pipeline_id,nome,rotulo,ordem,cor,tipo,grupo,chave").order("ordem"),
-    fetchAll((from, to) => auth.supabase.from("leads").select("id,nome,telefone,email,instagram,corretor_id,pipeline_id,status,origem,tags,extras,criado_em,atualizado_em,disparo_optout").order("atualizado_em", { ascending: false, nullsFirst: false }).order("id").range(from, to)),
-    fetchAll((from, to) => auth.supabase.from("negocios").select("id,lead_id,corretor_id,pipeline_id,stage_id,empreendimento_id,valor,status,motivo_perda,criado_em,ultima_movimentacao,estagio_desde,tentativa,max_tentativas").order("ultima_movimentacao", { ascending: false, nullsFirst: false }).order("id").range(from, to)),
+    fetchAll((from, to) => auth.supabase.from("leads").select("id,nome,telefone,email,instagram,corretor_id,pipeline_id,status,origem,tags,extras,criado_em,atualizado_em,disparo_optout").or("corretor_id.not.is.null,origem.is.null,origem.neq.Aquário").order("atualizado_em", { ascending: false, nullsFirst: false }).order("id").range(from, to)),
+    fetchAll((from, to) => { let q = auth.supabase.from("negocios").select("id,lead_id,corretor_id,pipeline_id,stage_id,empreendimento_id,valor,status,motivo_perda,criado_em,ultima_movimentacao,estagio_desde,tentativa,max_tentativas"); if (foraDoAquarioNegocios) q = q.or(foraDoAquarioNegocios); return q.order("ultima_movimentacao", { ascending: false, nullsFirst: false }).order("id").range(from, to); }),
     auth.supabase.rpc("listar_corretores_transferencia"),
     auth.supabase.from("crm_atividades").select("id,lead_id,negocio_id,corretor_id,tipo,texto,criado_em").order("criado_em", { ascending: false }).limit(500),
     auth.supabase.from("atendimento_acoes").select("id,lead_id,negocio_id,corretor_id,tipo,canal,texto,resultado,criado_em").order("criado_em", { ascending: false }).limit(500),
@@ -65,7 +74,7 @@ export async function GET(request: Request) {
     auth.supabase.from("lead_produtos").select("lead_id,empreendimento_id,created_at,empreendimentos(id,nome,bairro,cidade,status,preco)").order("created_at", { ascending: false }),
     auth.supabase.from("visitas").select("id,created_by,lead_id,negocio_id,corretor_id,cliente_nome,empreendimento_id,produto,unidade,data,hora_inicio,hora_fim,local,observacoes,participantes,lembrete,com_gerente,gerente_id,status,criado_em").order("data").order("hora_inicio"),
     auth.supabase.from("empreendimentos").select("id,nome,bairro,cidade,status,preco,origem,rascunho").order("nome").limit(300),
-    fetchAll((from, to) => auth.supabase.from("vw_sla_leads").select("negocio_id,lead_id,stage_id,sla_situacao,aguardando_humano,min_aguardando,min_no_estagio,min_sem_interacao,min_ativo_int,cor_ativa,alarme_ativo,ultima_interacao,cliente_ultima,humano_ultima").order("negocio_id").range(from, to)),
+    fetchAll((from, to) => { let q = auth.supabase.from("vw_sla_leads").select("negocio_id,lead_id,stage_id,sla_situacao,aguardando_humano,min_aguardando,min_no_estagio,min_sem_interacao,min_ativo_int,cor_ativa,alarme_ativo,ultima_interacao,cliente_ultima,humano_ultima"); if (foraDoAquarioNegocios) q = q.or(foraDoAquarioNegocios); return q.order("negocio_id").range(from, to); }),
     auth.supabase.from("crm_lead_alertas").select("id,negocio_id,corretor_id,criado_em,reconhecido_em,reconhecido_por").is("reconhecido_em", null).order("criado_em", { ascending: false }),
     auth.supabase.from("crm_lead_leituras").select("negocio_id,lido_em").eq("usuario_id", auth.user.id),
   ]);
@@ -75,7 +84,6 @@ export async function GET(request: Request) {
 
   const { data: gerentesData } = await auth.supabase.from("gerentes").select("id,nome,geral,corretor_id").eq("ativo", true).order("geral", { ascending: false });
   const { data: meProfile } = await auth.supabase.from("usuarios").select("role").eq("id", auth.user.id).maybeSingle();
-  const { data: aquarioData } = await auth.supabase.rpc("aquario_status");
 
   return Response.json({
     mode: "production",
