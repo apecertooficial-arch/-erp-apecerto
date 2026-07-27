@@ -214,7 +214,7 @@ export function PerformanceWorkspace({ accessToken, sessionRole = "corretor" }: 
 
   if (!soAdmin) {
     return (
-      <div className="pn-wrap">
+      <div className="pn-wrap pn-maint-wrap">
         <style>{CSS}</style>
         <div className="pn-maint">
           <div className="pn-maint-ico" aria-hidden="true">
@@ -484,7 +484,8 @@ const CSS = `
 .pn-hero-bar i{display:block;height:100%;border-radius:6px}
 .pn-hero-s{font-size:12px;color:#9ca3af}
 .pn-dot{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:6px;vertical-align:middle}
-.pn-maint{max-width:520px;margin:8vh auto 0;background:#fff;border:1px solid #eef0f3;border-radius:20px;padding:44px 34px;text-align:center;box-shadow:0 10px 30px rgba(15,20,32,.05)}
+.pn-maint-wrap{max-width:none;min-height:calc(100vh - 82px);display:flex;align-items:center;justify-content:center;padding:24px}
+.pn-maint{max-width:520px;width:100%;margin:0 auto;background:#fff;border:1px solid #eef0f3;border-radius:20px;padding:44px 34px;text-align:center;box-shadow:0 10px 30px rgba(15,20,32,.05)}
 .pn-maint-ico{width:76px;height:76px;margin:0 auto 20px;border-radius:50%;background:linear-gradient(135deg,#fff3e9,#ffe3cc);display:flex;align-items:center;justify-content:center;color:#f97316}
 .pn-maint-ico svg{width:38px;height:38px;animation:pn-spin 6s linear infinite}
 @keyframes pn-spin{to{transform:rotate(360deg)}}
