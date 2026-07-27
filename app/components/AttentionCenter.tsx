@@ -12,17 +12,27 @@ type Sla = { negocio_id: number | null; lead_id: number | null; sla_situacao: st
 type LeadAlarm = { id: number; negocio_id: number; corretor_id: number | null; criado_em: string };
 type Stage = { id: number; nome: string | null };
 type CrmAttentionData = { leads: Lead[]; deals: Deal[]; brokers: Broker[]; sla: Sla[]; alerts: LeadAlarm[]; stages?: Stage[]; error?: string };
-type AlertKind = "new" | "waiting" | "message" | "risk" | "desatualizado";
+type AlertKind = "new" | "message" | "verde" | "amarelo" | "vermelho" | "preto";
 type AttentionAlert = { id: string; kind: AlertKind; dealId: number; leadId: number; title: string; description: string; age: number; severity: number; occurredAt: string | null };
 type AlertFilter = "all" | AlertKind;
 
 const kindInfo: Record<AlertKind, { label: string; icon: string }> = {
   new: { label: "Chegaram agora", icon: "✦" },
-  waiting: { label: "Sem atendimento", icon: "!" },
-  message: { label: "Nova mensagem", icon: "●" },
-  risk: { label: "Risco de perda", icon: "↘" },
-  desatualizado: { label: "Desatualizado", icon: "◷" },
+  message: { label: "Nova mensagem", icon: "✉" },
+  verde: { label: "Verde · em dia", icon: "●" },
+  amarelo: { label: "Amarelo · 24–48h", icon: "●" },
+  vermelho: { label: "Vermelho · 48–72h", icon: "●" },
+  preto: { label: "Preto · +72h", icon: "●" },
 };
+const KINDS: AlertKind[] = ["new", "message", "verde", "amarelo", "vermelho", "preto"];
+/* Mesma régua do card do funil: 24/48/72 horas. */
+function corPorMinutos(minutes: number) {
+  const horas = (Number(minutes) || 0) / 60;
+  if (horas < 24) return "verde" as const;
+  if (horas < 48) return "amarelo" as const;
+  if (horas < 72) return "vermelho" as const;
+  return "preto" as const;
+}
 
 // Classificação da etapa do funil para separar "Risco de perda" (etapa avançada) de "Desatualizado" (etapa fria).
 const normStage = (value?: string | null) => (value || "").normalize("NFD").split("").filter((ch) => { const c = ch.charCodeAt(0); return c < 0x0300 || c > 0x036f; }).join("").replace(/[^a-zA-Z0-9\s]/g, " ").toLowerCase().replace(/\s+/g, " ").trim();
@@ -55,47 +65,12 @@ const elapsed = (minutes: number) => {
 function buildAlerts(crm: CrmAttentionData, chat: ChatData | null, brokerId: number | null) {
   const leadById = new Map(crm.leads.map((lead) => [lead.id, lead]));
   const dealByLead = new Map(crm.deals.map((deal) => [deal.lead_id, deal]));
-  const dealById = new Map(crm.deals.map((deal) => [deal.id, deal]));
+  const slaByDeal = new Map(crm.sla.filter((sla) => sla.negocio_id).map((sla) => [sla.negocio_id as number, sla]));
   const owns = (deal: Deal, lead?: Lead) => brokerId === null || (deal.corretor_id ?? lead?.corretor_id) === brokerId;
-  const stageNameById = new Map((crm.stages ?? []).map((stage) => [stage.id, stage.nome]));
-  const staleCandidates: { dealId: number; leadId: number; title: string; inactive: number; occurredAt: string | null }[] = [];
   const alerts = new Map<string, AttentionAlert>();
+  const severidade: Record<AlertKind, number> = { message: 6, new: 5, preto: 4, vermelho: 3, amarelo: 2, verde: 1 };
 
-  for (const deal of crm.deals) {
-    const lead = leadById.get(deal.lead_id);
-    if (!lead || !owns(deal, lead) || deal.status === "perdido" || deal.status === "ganho") continue;
-    const age = minutesSince(lead.criado_em);
-    if (age <= 60) alerts.set(`new-${deal.id}`, { id: `new-${deal.id}`, kind: "new", dealId: deal.id, leadId: lead.id, title: lead.nome || "Novo lead", description: "Lead recebido agora — faça o primeiro contato.", age, severity: age <= 15 ? 5 : 4, occurredAt: lead.criado_em });
-  }
-
-  for (const alarm of crm.alerts) {
-    const deal = dealById.get(alarm.negocio_id); const lead = deal && leadById.get(deal.lead_id);
-    if (!deal || !lead || !owns(deal, lead)) continue;
-    const age = minutesSince(alarm.criado_em);
-    alerts.set(`waiting-${deal.id}`, { id: `waiting-${deal.id}`, kind: "waiting", dealId: deal.id, leadId: lead.id, title: lead.nome || "Lead aguardando", description: `Ainda sem atendimento há ${elapsed(age)}.`, age, severity: 5, occurredAt: alarm.criado_em });
-  }
-
-  for (const sla of crm.sla) {
-    if (!sla.negocio_id) continue;
-    const deal = dealById.get(sla.negocio_id); const lead = deal && leadById.get(deal.lead_id);
-    if (!deal || !lead || !owns(deal, lead)) continue;
-    const waiting = Number(sla.min_aguardando || 0);
-    const inactive = Number(sla.min_sem_interacao || 0);
-    if (sla.aguardando_humano || sla.alarme_ativo) {
-      alerts.set(`waiting-${deal.id}`, { id: `waiting-${deal.id}`, kind: "waiting", dealId: deal.id, leadId: lead.id, title: lead.nome || "Cliente aguardando", description: sla.aguardando_humano ? `Cliente esperando resposta há ${elapsed(waiting)}.` : "Atendimento exige ação imediata.", age: waiting, severity: sla.alarme_ativo ? 5 : 4, occurredAt: sla.ultima_interacao });
-    }
-    const stageCat = classifyStage(stageNameById.get(sla.stage_id ?? -1));
-    if (stageCat === "avancada" && (inactive >= 2880 || ["atendimento_parado", "erro_abordagem"].includes(sla.sla_situacao || ""))) {
-      // Risco de perda: oportunidade quente (etapa avançada) esfriando há ≥ 2 dias.
-      const level = inactive >= 10080 ? "Crítico" : inactive >= 4320 ? "Alto" : "Atenção";
-      alerts.set(`risk-${deal.id}`, { id: `risk-${deal.id}`, kind: "risk", dealId: deal.id, leadId: lead.id, title: lead.nome || "Lead em risco", description: `${level}: ${elapsed(inactive)} sem interação útil.`, age: inactive, severity: inactive >= 4320 ? 4 : 3, occurredAt: sla.ultima_interacao });
-    } else if (stageCat === "fria" && inactive >= 4320) {
-      // Desatualizado: mesma régua do card do funil — preto a partir de 72h sem interação.
-      // Entra depois, só se não tiver alerta mais urgente.
-      staleCandidates.push({ dealId: deal.id, leadId: lead.id, title: lead.nome || "Lead desatualizado", inactive, occurredAt: sla.ultima_interacao });
-    }
-  }
-
+  // Nova mensagem (últimos 30 min) tem precedência sobre tudo.
   if (chat) {
     const contactById = new Map(chat.contacts.map((contact) => [contact.id, contact]));
     for (const conversation of chat.conversations) {
@@ -103,22 +78,40 @@ function buildAlerts(crm: CrmAttentionData, chat: ChatData | null, brokerId: num
       if (!latest?.criado_em || !contact?.lead_id || !incoming(latest.direcao)) continue;
       const age = minutesSince(latest.criado_em); if (age > 30) continue;
       const deal = dealByLead.get(contact.lead_id); const lead = leadById.get(contact.lead_id);
-      if (!deal || !lead || !owns(deal, lead)) continue;
-      const alertId = `message-${deal.id}-${latest.id}`;
-      alerts.set(alertId, { id: alertId, kind: "message", dealId: deal.id, leadId: lead.id, title: lead.nome || contact.nome || "Nova mensagem", description: latest.conteudo || `Cliente enviou ${latest.tipo || "uma mensagem"}.`, age, severity: 5, occurredAt: latest.criado_em });
+      if (!deal || !lead || !owns(deal, lead) || deal.status === "perdido" || deal.status === "ganho") continue;
+      alerts.set(`message-${deal.id}`, { id: `message-${deal.id}-${latest.id}`, kind: "message", dealId: deal.id, leadId: lead.id, title: lead.nome || contact.nome || "Nova mensagem", description: latest.conteudo || `Cliente enviou ${latest.tipo || "uma mensagem"}.`, age, severity: severidade.message, occurredAt: latest.criado_em });
     }
   }
 
-  // Desatualizado entra por último: só para leads sem nenhum alerta mais urgente (precedência).
-  // Sem teto — o contador precisa refletir o tamanho real do problema; a lista é rolável
-  // e o pior caso vem primeiro (mais tempo parado no topo).
-  staleCandidates.sort((a, b) => b.inactive - a.inactive);
-  const dealsComAlerta = new Set([...alerts.values()].map((alert) => alert.dealId));
-  for (const candidate of staleCandidates) {
-    if (dealsComAlerta.has(candidate.dealId)) continue;
-    alerts.set(`desatualizado-${candidate.dealId}`, { id: `desatualizado-${candidate.dealId}`, kind: "desatualizado", dealId: candidate.dealId, leadId: candidate.leadId, title: candidate.title, description: `${elapsed(candidate.inactive)} sem contato — reative ou descarte.`, age: candidate.inactive, severity: 2, occurredAt: candidate.occurredAt });
+  // Todo negócio aberto entra em exatamente um balde: chegou agora ou a cor da régua.
+  for (const deal of crm.deals) {
+    const lead = leadById.get(deal.lead_id);
+    if (!lead || !owns(deal, lead) || deal.status === "perdido" || deal.status === "ganho") continue;
+    if (alerts.has(`message-${deal.id}`)) continue;
+
+    const idade = minutesSince(lead.criado_em);
+    if (idade <= 60) {
+      alerts.set(`new-${deal.id}`, { id: `new-${deal.id}`, kind: "new", dealId: deal.id, leadId: lead.id, title: lead.nome || "Novo lead", description: "Lead recebido agora — faça o primeiro contato.", age: idade, severity: severidade.new, occurredAt: lead.criado_em });
+      continue;
+    }
+
+    const sla = slaByDeal.get(deal.id);
+    const fallback = minutesSince(deal.ultima_movimentacao || lead.atualizado_em || lead.criado_em);
+    const aguardando = Boolean(sla?.aguardando_humano);
+    const minutos = aguardando
+      ? Number(sla?.min_aguardando ?? fallback)
+      : (sla?.min_sem_interacao !== null && sla?.min_sem_interacao !== undefined ? Number(sla.min_sem_interacao) : fallback);
+    const cor = corPorMinutos(minutos);
+    const descricao = aguardando
+      ? `Cliente esperando resposta há ${elapsed(minutos)}.`
+      : cor === "verde"
+        ? `Atualizado há ${elapsed(minutos)} — em dia.`
+        : `${elapsed(minutos)} sem atualização — abra e atualize hoje.`;
+    alerts.set(`${cor}-${deal.id}`, { id: `${cor}-${deal.id}`, kind: cor, dealId: deal.id, leadId: lead.id, title: lead.nome || `Lead #${lead.id}`, description: descricao, age: minutos, severity: severidade[cor] + (aguardando ? 0.5 : 0), occurredAt: sla?.ultima_interacao ?? deal.ultima_movimentacao });
   }
-  return [...alerts.values()].sort((a, b) => b.severity - a.severity || a.age - b.age);
+
+  // Urgência primeiro; dentro das cores, quem está parado há mais tempo no topo.
+  return [...alerts.values()].sort((a, b) => b.severity - a.severity || b.age - a.age);
 }
 
 export function AttentionCenter({ accessToken, onOpenLead, onOpenChat, onOpenNotifications }: { accessToken: string; onOpenLead: (dealId: number) => void; onOpenChat?: (dealId: number) => void; onOpenNotifications: () => void }) {
@@ -199,8 +192,11 @@ export function AttentionCenter({ accessToken, onOpenLead, onOpenChat, onOpenNot
 
   const allAlerts = useMemo(() => crm ? buildAlerts(crm, chat, brokerId) : [], [crm, chat, brokerId]);
   const alerts = allAlerts.filter((alert) => !dismissed.includes(alert.id));
-  const visible = filter === "all" ? alerts : alerts.filter((alert) => alert.kind === filter);
-  const signature = alerts.map((alert) => alert.id).join("|");
+  const visible = filter === "all" ? alerts.filter((alert) => alert.kind !== "verde") : alerts.filter((alert) => alert.kind === filter);
+  // Verde é "em dia": aparece no chip para o corretor varrer, mas não conta como pendência,
+  // não toca sino e não abre o painel sozinho.
+  const pendentes = alerts.filter((alert) => alert.kind !== "verde");
+  const signature = pendentes.map((alert) => alert.id).join("|");
 
   useEffect(() => {
     if (!initialized.current) { initialized.current = true; previousSignature.current = signature; return; }  // não abre sozinha ao entrar
@@ -209,10 +205,10 @@ export function AttentionCenter({ accessToken, onOpenLead, onOpenChat, onOpenNot
   }, [signature, mutedUntil]);
 
   useEffect(() => {
-    const ids = alerts.map((alert) => alert.id);
+    const ids = pendentes.map((alert) => alert.id);
     if (notifiedRef.current === null) { notifiedRef.current = new Set(ids); return; }  // não notifica no primeiro carregamento
     if (Date.now() < mutedUntil) { ids.forEach((id) => notifiedRef.current!.add(id)); return; }  // silenciado: marca como visto sem tocar/notificar
-    const fresh = alerts.filter((alert) => !notifiedRef.current!.has(alert.id));
+    const fresh = pendentes.filter((alert) => !notifiedRef.current!.has(alert.id));
     fresh.forEach((alert) => notifiedRef.current!.add(alert.id));
     if (fresh.length) { playChime(); fresh.slice(0, 3).forEach(showDesktopNotif); }
   }, [signature, mutedUntil, playChime, showDesktopNotif]);
@@ -229,12 +225,12 @@ export function AttentionCenter({ accessToken, onOpenLead, onOpenChat, onOpenNot
     else onOpenLead(alert.dealId);
   }
 
-  const counts = Object.fromEntries((["new", "waiting", "message", "risk", "desatualizado"] as AlertKind[]).map((kind) => [kind, alerts.filter((alert) => alert.kind === kind).length])) as Record<AlertKind, number>;
+  const counts = Object.fromEntries(KINDS.map((kind) => [kind, alerts.filter((alert) => alert.kind === kind).length])) as Record<AlertKind, number>;
   return <>
-    <button className={`attention-trigger ${alerts.length && Date.now() >= mutedUntil ? "ringing" : ""}`} type="button" onClick={() => { try { if (typeof Notification !== "undefined" && Notification.permission === "default") void Notification.requestPermission(); } catch { /* */ } setOpen(!open); }} aria-label={`Central de alertas, ${alerts.length} pendentes`}><span aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 8-3 8h18s-3-1-3-8" /><path d="M10 20h4" /></svg></span><b>{alerts.length}</b></button>
+    <button className={`attention-trigger ${pendentes.length && Date.now() >= mutedUntil ? "ringing" : ""}`} type="button" onClick={() => { try { if (typeof Notification !== "undefined" && Notification.permission === "default") void Notification.requestPermission(); } catch { /* */ } setOpen(!open); }} aria-label={`Central de alertas, ${pendentes.length} pendentes`}><span aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 8-3 8h18s-3-1-3-8" /><path d="M10 20h4" /></svg></span><b>{pendentes.length}</b></button>
     {open && <aside className="attention-popover" aria-label="Central de alertas de atendimento">
-      <header><div><span>ATENDIMENTO EM TEMPO REAL</span><h2>Central de atenção</h2><p>{alerts.length ? `${alerts.length} ação(ões) pedem sua atenção` : "Tudo em dia por aqui"}</p></div><button type="button" onClick={() => setOpen(false)} aria-label="Fechar">×</button></header>
-      <section className="attention-summary">{(["new", "waiting", "message", "risk", "desatualizado"] as AlertKind[]).map((kind) => <button className={filter === kind ? `active ${kind}` : kind} type="button" onClick={() => setFilter(filter === kind ? "all" : kind)} key={kind}><i>{kindInfo[kind].icon}</i><strong>{counts[kind]}</strong><span>{kindInfo[kind].label}</span></button>)}</section>
+      <header><div><span>ATENDIMENTO EM TEMPO REAL</span><h2>Central de atenção</h2><p>{pendentes.length ? `${pendentes.length} ação(ões) pedem sua atenção` : "Tudo em dia por aqui"}</p></div><button type="button" onClick={() => setOpen(false)} aria-label="Fechar">×</button></header>
+      <section className="attention-summary">{KINDS.map((kind) => <button className={filter === kind ? `active ${kind}` : kind} type="button" onClick={() => setFilter(filter === kind ? "all" : kind)} key={kind}><i>{kindInfo[kind].icon}</i><strong>{counts[kind]}</strong><span>{kindInfo[kind].label}</span></button>)}</section>
       <nav><button className={filter === "all" ? "active" : ""} type="button" onClick={() => setFilter("all")}>Todos</button><button type="button" onClick={() => mute(15)}>Silenciar 15 min</button><button type="button" onClick={dismissAll}>Marcar todos como vistos</button></nav>
       <main>{visible.slice(0, 120).map((alert) => <article className={alert.kind} key={alert.id}><span>{kindInfo[alert.kind].icon}</span><div><small>{kindInfo[alert.kind].label} · {elapsed(alert.age)}</small><strong>{alert.title}</strong><p>{alert.description}</p><footer><button type="button" onClick={() => attend(alert)}>Abrir e atender</button><button type="button" onClick={() => dismiss(alert.id)}>Agora não</button></footer></div></article>)}{visible.length > 120 && <p className="attention-more">Mostrando os 120 mais urgentes de {visible.length} — use os filtros acima para afunilar.</p>}{visible.length === 0 && <div className="attention-empty"><span>✓</span><strong>Nenhum alerta neste filtro</strong><p>Novos eventos aparecerão automaticamente.</p></div>}</main>
       <footer><button type="button" onClick={onOpenNotifications}>Abrir histórico de notificações</button><span>{Date.now() < mutedUntil ? `Silenciado por ${elapsed(Math.ceil((mutedUntil - Date.now()) / 60000))}` : "Atualização automática a cada 30 segundos"}</span></footer>
