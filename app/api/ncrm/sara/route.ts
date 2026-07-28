@@ -18,6 +18,15 @@ import { inteiroPositivo, textoLimitado } from "../validate";
 
 export const dynamic = "force-dynamic";
 
+const MAX_SUGESTAO_BYTES = 6000; // limita o tamanho total do JSON da sugestão
+
+/** Hash estável (djb2) para idempotência por sugestão+decisão. */
+function hashEstavel(s: string): string {
+  let h = 5381;
+  for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0;
+  return (h >>> 0).toString(36);
+}
+
 const OVERRIDE =
   "Você é a Sara, co-piloto comercial imobiliário da Apecerto. Use as ferramentas consultar_lead e " +
   "avaliar_conversa (mensagens reais, áudios transcritos e avaliações). Responda SOMENTE um JSON válido " +
@@ -97,12 +106,17 @@ export async function POST(request: Request) {
   if (negocioId === null) return Response.json({ error: "negocio inválido" }, { status: 422 });
   const sugestao = (body.sugestao && typeof body.sugestao === "object" && !Array.isArray(body.sugestao)) ? body.sugestao : null;
   if (!sugestao) return Response.json({ error: "sugestão inválida" }, { status: 422 });
-  const confRaw = (sugestao as { confianca?: unknown }).confianca;
-  const confianca = typeof confRaw === "number" ? confRaw : Number(confRaw);
-  if (!Number.isFinite(confianca) || confianca < 0 || confianca > 1) return Response.json({ error: "confiança inválida" }, { status: 422 });
+  // Limite de tamanho: não aceitar objeto arbitrário enorme.
+  const sugestaoStr = JSON.stringify(sugestao);
+  if (sugestaoStr.length > MAX_SUGESTAO_BYTES) return Response.json({ error: "sugestão excede o tamanho máximo permitido." }, { status: 413 });
+  // Revalida a sugestão pelo MESMO schema explícito do GET.
+  const norm = normalizarSugestaoSara(sugestao);
+  if (!norm.ok) return Response.json({ error: "sugestão inválida para persistência.", motivo: norm.erro }, { status: 422 });
+  const confianca = norm.sugestao.confianca;
   const justificativa = textoLimitado(body.justificativa, 500);
   const baseVersao = inteiroPositivo(body.baseVersao) ?? 1;
-  const idem = textoLimitado(body.idem, 120) ?? `sara:${decisao}:${negocioId}:${crypto.randomUUID()}`;
+  // Idempotência ESTÁVEL por (decisão, negócio, sugestão): mesma decisão sobre a mesma sugestão não duplica.
+  const idem = `sara:${decisao}:${negocioId}:${hashEstavel(sugestaoStr)}`;
 
   // Persiste a DECISÃO HUMANA de forma AUDITÁVEL via RPC autenticada (pode_operar no banco).
   // registrado=true SÓ depois da persistência real. Sem engolir erro.

@@ -40,9 +40,34 @@ CREATE TABLE public.negocios (
 CREATE INDEX idx_negocios_corretor ON public.negocios (corretor_id);   -- reproduz índice real
 CREATE TABLE public.visitas (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(), negocio_id bigint REFERENCES public.negocios(id),
-  created_by uuid, corretor_id bigint, status text NOT NULL DEFAULT 'agendada', data date
+  created_by uuid, corretor_id bigint, status text NOT NULL DEFAULT 'agendada', data date,
+  lead_id bigint, cliente_nome text, empreendimento_id uuid, produto text, hora_inicio text,
+  com_gerente boolean DEFAULT false, gerente_id bigint
 );
 CREATE TABLE public.vendas (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), vgv numeric NOT NULL DEFAULT 0, status text NOT NULL DEFAULT 'pendente');
+
+-- Stubs do caminho reconciliação/esteira (tipos reais capturados por descoberta read-only)
+CREATE TABLE public.wa_contatos (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), lead_id bigint, telefone text, criado_em timestamptz DEFAULT now());
+CREATE TABLE public.wa_conversas (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), contato_id uuid, instancia_id uuid, status text, criado_em timestamptz DEFAULT now());
+CREATE TABLE public.wa_mensagens (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(), wa_message_id text, conversa_id uuid, instancia_id uuid,
+  direcao text, tipo text, conteudo text, media_url text, raw jsonb, status text, transcricao text,
+  criado_em timestamptz NOT NULL DEFAULT now(), enviado_em timestamptz
+);
+CREATE TABLE public.venda_solicitacoes (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(), negocio_id bigint, corretor_id bigint, solicitado_por uuid,
+  produto_id uuid, vgv numeric, forma_pgto text, obs text, status text NOT NULL DEFAULT 'pendente', criado_em timestamptz DEFAULT now()
+);
+-- Stub de solicitar_venda: SÓ insere venda_solicitacoes (como a produção confirmada). Retorna jsonb.
+CREATE OR REPLACE FUNCTION public.solicitar_venda(p_negocio bigint, p_produto uuid, p_vgv numeric, p_forma text, p_obs text)
+  RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'public' AS $$
+DECLARE v_id uuid;
+BEGIN
+  INSERT INTO public.venda_solicitacoes (negocio_id, produto_id, vgv, forma_pgto, obs, status, solicitado_por)
+  VALUES (p_negocio, p_produto, p_vgv, p_forma, p_obs, 'pendente', (select auth.uid()))
+  RETURNING id INTO v_id;
+  RETURN jsonb_build_object('ok', true, 'id', v_id);
+END $$;
 
 -- Helpers REAIS (corpos capturados da produção; owner = superusuário local => bypassam RLS legada)
 CREATE OR REPLACE FUNCTION public.can_manage_all() RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path TO 'public' AS $$
@@ -75,6 +100,8 @@ begin
   return false;
 end $$;
 GRANT EXECUTE ON FUNCTION public.can_manage_all(), public.current_broker_id(), public.manages_broker(bigint), public.has_perm(text,text) TO anon, authenticated, service_role;
+-- Leitura das tabelas legadas para VERIFICAÇÃO nos testes de integração (no ambiente real há RLS; aqui basta SELECT).
+GRANT SELECT ON public.visitas, public.venda_solicitacoes, public.vendas, public.negocios, public.leads TO authenticated, service_role;
 
 -- Seed de identidades
 INSERT INTO public.perfis (id, permissoes) VALUES
