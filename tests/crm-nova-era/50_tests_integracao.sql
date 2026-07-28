@@ -15,13 +15,17 @@ INSERT INTO public.negocios (id, lead_id, corretor_id, status) VALUES
   (1000,50,10,'aberto'),(1001,51,10,'aberto'),(1002,52,10,'aberto'),(1003,53,10,'aberto'),
   (1004,54,10,'aberto'),(1005,55,10,'aberto'),(1006,56,10,'aberto'),
   -- E: lead 58 só GANHO; lead 59 tem GANHO + ABERTO (resolver deve pegar o ABERTO).
-  (1008,58,10,'ganho'),(1009,59,10,'ganho'),(1010,59,10,'aberto');
+  (1008,58,10,'ganho'),(1009,59,10,'ganho'),(1010,59,10,'aberto'),
+  -- G: proposta / solicitação pendente divergente.
+  (1011,60,10,'aberto'),(1012,50,10,'aberto');
 SET ROLE service_role; SELECT set_config('request.jwt.claims','{}',false);
 SELECT public.ncrm_registrar_msg_automatica(1000,'a1000',now());
 SELECT public.ncrm_registrar_msg_automatica(1001,'a1001',now());
 SELECT public.ncrm_registrar_msg_automatica(1002,'a1002',now());
 SELECT public.ncrm_registrar_msg_automatica(1003,'a1003',now());
 SELECT public.ncrm_registrar_msg_automatica(1004,'a1004',now());
+SELECT public.ncrm_registrar_msg_automatica(1011,'a1011',now());
+SELECT public.ncrm_registrar_msg_automatica(1012,'a1012',now());
 RESET ROLE;
 
 -- ===== A. VISITA ATÔMICA + MOVE NO PIPE REAL (1000) =====
@@ -107,6 +111,10 @@ INSERT INTO public.wa_mensagens (id, wa_message_id, conversa_id, direcao, raw, c
 SELECT ncrm_private.reconciliar_mensagens(500) AS e0 \gset
 SELECT public.test_assert((SELECT count(*) FROM public.ncrm_ingest_checkpoint)=0,'E0 ingest DESLIGADO não processa nada (0 checkpoints)');
 SELECT public.test_assert((:'e0'::jsonb ->> 'inativo')='true','E0 reconciliação retorna inativo=true');
+-- ingest começa DESLIGADO (deploy/flag não ativam): status via RPC autenticada de admin.
+SELECT set_config('request.jwt.claims', json_build_object('sub',:ADMIN,'role','authenticated')::text, false); SET ROLE authenticated;
+SELECT public.test_assert((public.ncrm_status_ingest() ->> 'ativo')::boolean IS FALSE,'E0 status inicial ativo=false (deploy/flag NÃO ativam)');
+RESET ROLE;
 
 -- E1: guardas de ativação — só admin, confirmação explícita, sem retroação acidental.
 SELECT set_config('request.jwt.claims', json_build_object('sub',:A,'role','authenticated')::text, false); SET ROLE authenticated;
@@ -178,5 +186,59 @@ INSERT INTO public.wa_mensagens (id, wa_message_id, conversa_id, direcao, raw, c
   ('c0000000-0000-4000-8000-0000000000d8','wam-motor-pos-off','c0000000-0000-4000-8000-0000000000b1','enviada','{"origem":"motor"}'::jsonb, now()+interval '10 min');
 SELECT ncrm_private.reconciliar_mensagens(500);
 SELECT public.test_assert((SELECT count(*) FROM public.ncrm_ingest_checkpoint WHERE wa_message_id='wam-motor-pos-off')=0,'E5 após desativar, nova mensagem não é processada');
+
+-- ===== F. STATUS/AUTORIZAÇÃO DO INGEST (RPC autenticada — o que o endpoint /api/ncrm/ingest chama) =====
+-- auditoria: ao menos 1 ativar + 1 desativar registrados (blocos E2/E5).
+SELECT public.test_assert((SELECT count(*) FROM public.ncrm_ingest_audit WHERE acao='ativar')>=1 AND (SELECT count(*) FROM public.ncrm_ingest_audit WHERE acao='desativar')>=1,'F auditoria: ativação e desativação registradas');
+-- admin consulta status; reflete desativado + última auditoria = desativar.
+SELECT set_config('request.jwt.claims', json_build_object('sub',:ADMIN,'role','authenticated')::text, false); SET ROLE authenticated;
+SELECT public.test_assert((public.ncrm_status_ingest() ->> 'ok')::boolean,'F admin consulta o status (ok)');
+SELECT public.test_assert((public.ncrm_status_ingest() ->> 'ativo')::boolean IS FALSE,'F status reflete ingest desativado');
+SELECT public.test_assert((public.ncrm_status_ingest() -> 'ultima_auditoria' ->> 'acao')='desativar','F status traz última auditoria (desativar)');
+RESET ROLE;
+-- corretor NÃO consulta / NÃO ativa / NÃO desativa.
+SELECT set_config('request.jwt.claims', json_build_object('sub',:A,'role','authenticated')::text, false); SET ROLE authenticated;
+SELECT public.test_assert((public.ncrm_status_ingest() ->> 'erro')='sem_permissao','F corretor não consulta status');
+SELECT public.test_assert((public.ncrm_ativar_ingest(true) ->> 'erro')='sem_permissao','F corretor não ativa');
+SELECT public.test_assert((public.ncrm_desativar_ingest(true) ->> 'erro')='sem_permissao','F corretor não desativa');
+RESET ROLE;
+-- SQL sem JWT (auth.uid() nulo) NÃO ativa nem consulta — como o SQL Editor.
+SELECT set_config('request.jwt.claims','{}',false);
+SELECT public.test_assert((public.ncrm_ativar_ingest(true) ->> 'erro')='nao_autenticado','F SQL sem JWT não ativa (nao_autenticado)');
+SELECT public.test_assert((public.ncrm_status_ingest() ->> 'erro')='nao_autenticado','F SQL sem JWT não consulta status');
+
+-- ===== G. PROPOSTA: SOLICITAÇÃO PENDENTE DIVERGENTE =====
+\set OUTRO '''a1111111-2222-4333-8444-555566667777'''
+RESET ROLE;
+-- G1: pendente COMPATÍVEL (mesmo produto e valor) é reutilizada — sem duplicar solicitação.
+INSERT INTO public.venda_solicitacoes (negocio_id, produto_id, vgv, status) VALUES (1011, :PROD, 500000, 'pendente');
+SELECT set_config('request.jwt.claims', json_build_object('sub',:A,'role','authenticated')::text, false); SET ROLE authenticated;
+SELECT versao AS v FROM public.ncrm_estado WHERE negocio_id=1011 \gset
+SELECT public.test_assert((public.ncrm_registrar_proposta_esteira(1011,:v,:PROD,500000,'avista','ok','ui:g1') ->> 'ok')::boolean,'G1 pendente compatível reutilizada (ok)');
+SELECT public.test_assert((SELECT count(*) FROM public.venda_solicitacoes WHERE negocio_id=1011)=1,'G1 NÃO duplicou solicitação (reutilizou a pendente)');
+SELECT public.test_assert((SELECT venda_solicitacao_id=(SELECT id FROM public.venda_solicitacoes WHERE negocio_id=1011) FROM public.ncrm_proposta WHERE negocio_id=1011),'G1 proposta vinculada à solicitação pendente reutilizada');
+SELECT public.test_assert((SELECT saida='esteira_vendas' FROM public.ncrm_estado WHERE negocio_id=1011),'G1 estado encaminhado (compatível é atômico)');
+RESET ROLE;
+
+-- G2/G3: pendente DIVERGENTE (produto ou valor diferentes) NÃO é sobrescrita; nada muda.
+RESET ROLE;
+INSERT INTO public.venda_solicitacoes (id, negocio_id, produto_id, vgv, status)
+  VALUES ('b2222222-2222-4222-8222-222222222222', 1012, :PROD, 500000, 'pendente');
+SELECT set_config('request.jwt.claims', json_build_object('sub',:A,'role','authenticated')::text, false); SET ROLE authenticated;
+SELECT versao AS v FROM public.ncrm_estado WHERE negocio_id=1012 \gset
+-- produto diferente
+SELECT public.ncrm_registrar_proposta_esteira(1012,:v,:OUTRO,500000,'avista','x','ui:g2') AS g2 \gset
+SELECT public.test_assert((:'g2'::jsonb ->> 'erro')='solicitacao_pendente_divergente','G2 produto diferente => solicitacao_pendente_divergente');
+SELECT public.test_assert((:'g2'::jsonb ->> 'solicitacao_id')='b2222222-2222-4222-8222-222222222222','G2 retorna a solicitacao_id existente');
+SELECT public.test_assert((:'g2'::jsonb ->> 'produto_id_existente')=(SELECT produto_id::text FROM public.venda_solicitacoes WHERE id='b2222222-2222-4222-8222-222222222222'),'G2 retorna produto_id_existente');
+SELECT public.test_assert(((:'g2'::jsonb ->> 'valor_existente')::numeric)=500000,'G2 retorna valor_existente');
+-- valor diferente
+SELECT public.ncrm_registrar_proposta_esteira(1012,:v,:PROD,999999,'avista','x','ui:g3') AS g3 \gset
+SELECT public.test_assert((:'g3'::jsonb ->> 'erro')='solicitacao_pendente_divergente','G3 valor diferente => solicitacao_pendente_divergente');
+-- nada mudou: 1 solicitação, sem proposta, estado sem saída, versão intacta.
+SELECT public.test_assert((SELECT count(*) FROM public.venda_solicitacoes WHERE negocio_id=1012)=1,'G divergente: venda_solicitacoes inalterada (sem 2ª solicitação)');
+SELECT public.test_assert((SELECT count(*) FROM public.ncrm_proposta WHERE negocio_id=1012)=0,'G divergente: NENHUMA ncrm_proposta criada');
+SELECT public.test_assert((SELECT saida IS NULL AND versao=:v FROM public.ncrm_estado WHERE negocio_id=1012),'G divergente: ncrm_estado inalterado');
+RESET ROLE;
 
 SELECT '==== TESTES DE INTEGRAÇÃO OK ====' AS resultado;

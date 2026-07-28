@@ -5,6 +5,7 @@ EXCEPTION WHEN others THEN NULL; END $do$;
 DROP FUNCTION IF EXISTS public.ncrm_reprocessar_ingest(int);
 DROP FUNCTION IF EXISTS public.ncrm_ativar_ingest(boolean,timestamptz);
 DROP FUNCTION IF EXISTS public.ncrm_desativar_ingest(boolean);
+DROP FUNCTION IF EXISTS public.ncrm_status_ingest();
 DROP FUNCTION IF EXISTS ncrm_private.reconciliar_mensagens(int,int,interval);
 DROP FUNCTION IF EXISTS ncrm_private.resolver_negocio_por_conversa(uuid);
 DROP TABLE IF EXISTS public.ncrm_ingest_audit;

@@ -12,7 +12,7 @@ CREATE FUNCTION public.ncrm_registrar_proposta_esteira(
     p_negocio_id bigint, p_versao int, p_produto_id uuid, p_valor numeric, p_forma text, p_obs text, p_idem text)
   RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $fn$
 DECLARE v_uid uuid := auth.uid(); v_lead bigint; v_corretor bigint; v_antes int; v_cfg bigint;
-        v_saida text; v_sol uuid; v_prop uuid; v_venda jsonb;
+        v_saida text; v_sol uuid; v_prop uuid; v_venda jsonb; v_sol_prod uuid; v_sol_vgv numeric;
 BEGIN
   PERFORM ncrm_private.assert_idem(p_idem);
   IF v_uid IS NULL THEN RETURN jsonb_build_object('ok',false,'erro','nao_autenticado'); END IF;
@@ -29,9 +29,17 @@ BEGIN
   IF p_versao <> v_antes THEN RETURN jsonb_build_object('ok',false,'erro','versao_conflito'); END IF;
   IF v_saida IS NOT NULL THEN RETURN jsonb_build_object('ok',false,'erro','ja_em_saida'); END IF;
 
-  -- 1) reutiliza solicitação PENDENTE existente; senão cria via a RPC oficial da Esteira.
-  SELECT id INTO v_sol FROM public.venda_solicitacoes WHERE negocio_id = p_negocio_id AND status = 'pendente' ORDER BY criado_em DESC LIMIT 1;
-  IF v_sol IS NULL THEN
+  -- 1) reutiliza solicitação PENDENTE existente SÓ se produto e valor coincidirem; senão cria.
+  --    Divergência (produto/valor diferente) NÃO sobrescreve, NÃO cria 2ª solicitação, NÃO
+  --    encaminha estado nem cria proposta: retorna erro para revisão manual na Esteira.
+  SELECT id, produto_id, vgv INTO v_sol, v_sol_prod, v_sol_vgv
+    FROM public.venda_solicitacoes WHERE negocio_id = p_negocio_id AND status = 'pendente' ORDER BY criado_em DESC LIMIT 1;
+  IF v_sol IS NOT NULL THEN
+    IF v_sol_prod IS DISTINCT FROM p_produto_id OR v_sol_vgv IS DISTINCT FROM p_valor THEN
+      RETURN jsonb_build_object('ok', false, 'erro', 'solicitacao_pendente_divergente',
+        'solicitacao_id', v_sol, 'produto_id_existente', v_sol_prod, 'valor_existente', v_sol_vgv);
+    END IF;
+  ELSE
     v_venda := public.solicitar_venda(p_negocio_id, p_produto_id, p_valor, p_forma, p_obs);  -- só insere venda_solicitacoes
     IF COALESCE((v_venda->>'ok')::boolean, false) IS TRUE AND (v_venda->>'id') IS NOT NULL THEN
       v_sol := (v_venda->>'id')::uuid;
