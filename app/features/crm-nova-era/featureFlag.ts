@@ -21,6 +21,18 @@ const FLAG_AMBIENTE =
       process.env.CRM_NOVA_ERA_ENABLED)) ||
   "false";
 
+/**
+ * Canary compilado temporário.
+ *
+ * O runtime vinext usado em produção não refletiu a flag NEXT_PUBLIC_* no
+ * bundle do navegador após o rebuild. Manter o piloto preso a UUIDs explícitos
+ * permite validar a interface sem liberar a equipe inteira. Remover quando a
+ * configuração runtime/client for centralizada.
+ */
+const CANARY_USUARIOS = new Set([
+  "4dfdffae-0009-41de-8d6f-2365a06dc066", // Samuel
+]);
+
 /** true somente se o ambiente habilitou explicitamente a flag. Default: false. */
 export function crmNovaEraFlagAmbiente(): boolean {
   return String(FLAG_AMBIENTE).trim().toLowerCase() === "true";
@@ -58,8 +70,10 @@ export function crmNovaEraLiberado(
   usuarioId?: string | null,
   opts?: { role?: string | null },
 ): boolean {
-  if (!crmNovaEraFlagAmbiente()) return false; // ambiente não habilitou => padrão antigo
   if (!usuarioId) return false;
+  const canaryCompilado = CANARY_USUARIOS.has(usuarioId);
+  if (!crmNovaEraFlagAmbiente() && !canaryCompilado) return false;
+  if (canaryCompilado) return true;
   if ((opts?.role ?? "") === "admin") return true; // canário: admin sempre pode
   const lista = allowlist();
   return lista.size > 0 && lista.has(usuarioId);
