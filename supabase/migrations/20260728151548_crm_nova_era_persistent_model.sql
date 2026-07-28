@@ -34,7 +34,9 @@ CREATE TABLE public.ncrm_workflow_config (
   publicado_em              timestamptz NULL,
   CHECK (janela_fim > janela_inicio),
   CHECK (vigencia_fim IS NULL OR (vigencia_inicio IS NOT NULL AND vigencia_fim > vigencia_inicio)),
-  CHECK (status <> 'publicada' OR vigencia_inicio IS NOT NULL)
+  CHECK (status <> 'publicada' OR vigencia_inicio IS NOT NULL),
+  CONSTRAINT ck_publicada_sem_fim  CHECK (status <> 'publicada' OR vigencia_fim IS NULL),
+  CONSTRAINT ck_encerrada_com_fim  CHECK (status <> 'encerrada' OR vigencia_fim IS NOT NULL)
 );
 COMMENT ON TABLE public.ncrm_workflow_config IS 'CRM Nova Era: cadência versionada; imutável após publicar (trigger).';
 CREATE UNIQUE INDEX ux_ncrm_config_publicada_ativa
@@ -207,7 +209,12 @@ BEGIN
       RAISE EXCEPTION 'config_publicada_regras_imutaveis';
     END IF;
     IF NEW.status NOT IN ('publicada','encerrada') THEN RAISE EXCEPTION 'config_transicao_invalida'; END IF;  -- bloqueia ->rascunho
-    IF NEW.status = 'encerrada' AND NEW.vigencia_fim IS NULL THEN RAISE EXCEPTION 'config_encerramento_exige_vigencia_fim'; END IF;
+    -- publicada não pode receber vigencia_fim sem mudar, na MESMA operação, para encerrada.
+    IF NEW.status = 'publicada' AND NEW.vigencia_fim IS NOT NULL THEN RAISE EXCEPTION 'config_publicada_nao_recebe_vigencia_fim'; END IF;
+    IF NEW.status = 'encerrada' THEN
+      IF NEW.vigencia_fim IS NULL THEN RAISE EXCEPTION 'config_encerramento_exige_vigencia_fim'; END IF;
+      IF NEW.vigencia_fim <= NEW.vigencia_inicio THEN RAISE EXCEPTION 'config_vigencia_fim_incoerente'; END IF;
+    END IF;
   ELSE -- OLD.status = 'rascunho'
     IF NEW.status NOT IN ('rascunho','publicada') THEN RAISE EXCEPTION 'config_transicao_invalida'; END IF;
     IF NEW.status = 'publicada' THEN
@@ -223,10 +230,18 @@ CREATE TRIGGER trg_ncrm_config_imutavel BEFORE UPDATE OR DELETE ON public.ncrm_w
 
 -- Passos só podem ser inseridos/alterados/apagados quando a config-mãe está em rascunho.
 CREATE FUNCTION ncrm_private.passo_imutavel() RETURNS trigger LANGUAGE plpgsql SET search_path = '' AS $fn$
-DECLARE v_status text;
+DECLARE v_status_old text; v_status_new text;
 BEGIN
-  SELECT status INTO v_status FROM public.ncrm_workflow_config WHERE id = COALESCE(NEW.config_id, OLD.config_id);
-  IF v_status IS DISTINCT FROM 'rascunho' THEN RAISE EXCEPTION 'passos_imutaveis_config_nao_rascunho'; END IF;
+  -- INSERT valida NEW; DELETE valida OLD; UPDATE valida AMBAS (origem e destino do passo).
+  -- Fecha a brecha de "mover" um passo de config publicada/encerrada para uma config em rascunho.
+  IF TG_OP IN ('UPDATE','DELETE') THEN
+    SELECT status INTO v_status_old FROM public.ncrm_workflow_config WHERE id = OLD.config_id;
+    IF v_status_old IS DISTINCT FROM 'rascunho' THEN RAISE EXCEPTION 'passos_imutaveis_config_nao_rascunho'; END IF;
+  END IF;
+  IF TG_OP IN ('UPDATE','INSERT') THEN
+    SELECT status INTO v_status_new FROM public.ncrm_workflow_config WHERE id = NEW.config_id;
+    IF v_status_new IS DISTINCT FROM 'rascunho' THEN RAISE EXCEPTION 'passos_imutaveis_config_nao_rascunho'; END IF;
+  END IF;
   RETURN COALESCE(NEW, OLD);
 END $fn$;
 REVOKE ALL ON FUNCTION ncrm_private.passo_imutavel() FROM PUBLIC;
@@ -301,6 +316,7 @@ DECLARE v_lead bigint; v_corretor bigint; v_cfg bigint; v_idem text; v_prox time
 BEGIN
   v_msg := btrim(COALESCE(p_message_id,''));
   IF v_msg = '' THEN RETURN jsonb_build_object('ok',false,'erro','message_id_obrigatorio'); END IF;  -- rejeita NULL/vazio/espaços
+  IF p_enviado_em IS NULL THEN RETURN jsonb_build_object('ok',false,'erro','enviado_em_obrigatorio'); END IF;  -- timestamp controlado
   v_idem := 'auto:' || v_msg;
   SELECT n.lead_id, n.corretor_id INTO v_lead, v_corretor FROM public.negocios n WHERE n.id = p_negocio_id;
   IF NOT FOUND THEN RETURN jsonb_build_object('ok',false,'erro','negocio_inexistente'); END IF;
@@ -328,14 +344,21 @@ END $fn$;
 REVOKE ALL ON FUNCTION public.ncrm_registrar_msg_automatica(bigint,text,timestamptz) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.ncrm_registrar_msg_automatica(bigint,text,timestamptz) TO service_role;
 
--- 7.1 Registrar tentativa (cadência).
+-- 7.1 Registrar tentativa (cadência CALCULADA PELO BANCO).
+--   Sem resposta: o cliente NÃO decide a próxima ação. O banco deriva de ncrm_workflow_passo
+--   (ordem N+1), intervalo_min, timezone/janela e clamp_janela. Última tentativa -> avaliar_descarte.
+--   Toda tentativa humana incrementa tentativas_feitas (qualquer resultado). numero_tentativa = novo valor.
+--   Resposta (respondeu/pediu_retorno): encerra a cadência e exige próxima ação COMERCIAL do humano.
 CREATE FUNCTION public.ncrm_registrar_tentativa(
     p_negocio_id bigint, p_versao int, p_canal text, p_resultado text, p_obs text,
     p_proxima_tipo text, p_proxima_titulo text, p_proxima_em timestamptz, p_idem text)
   RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $fn$
 DECLARE v_uid uuid := auth.uid(); v_lead bigint; v_corretor bigint; v_antes int; v_cfg bigint;
         v_respondeu boolean; v_prim timestamptz; v_pend boolean; v_etapa text; v_tent int;
-        v_saida text; v_resp_atual boolean; v_max int;
+        v_saida text; v_resp_atual boolean; v_max int; v_cfg_versao int; v_num int;
+        v_ordem_exec int; v_prox_ordem int; v_prox_intervalo int;
+        v_prox_tipo text; v_prox_titulo text; v_prox_canal text; v_prox_em timestamptz;
+        v_passo_prox public.ncrm_workflow_passo%ROWTYPE; v_tem_prox boolean;
 BEGIN
   PERFORM ncrm_private.assert_idem(p_idem);
   IF v_uid IS NULL THEN RETURN jsonb_build_object('ok',false,'erro','nao_autenticado'); END IF;
@@ -345,41 +368,64 @@ BEGIN
   IF p_canal NOT IN ('ligacao','whatsapp','email','presencial') THEN RETURN jsonb_build_object('ok',false,'erro','canal_invalido'); END IF;
   IF p_resultado NOT IN ('nao_respondeu','respondeu','telefone_invalido','pediu_retorno','sem_interesse','contato_inadequado') THEN
     RETURN jsonb_build_object('ok',false,'erro','resultado_invalido'); END IF;
-  IF p_proxima_tipo IS NULL OR p_proxima_titulo IS NULL OR p_proxima_em IS NULL THEN
-    RETURN jsonb_build_object('ok',false,'erro','proxima_acao_obrigatoria'); END IF;
   IF EXISTS (SELECT 1 FROM public.ncrm_evento WHERE idempotency_key = p_idem) THEN
     RETURN jsonb_build_object('ok',true,'ja_processado',true); END IF;
 
-  SELECT e.versao, e.workflow_config_id, e.tentativas_feitas, e.saida, e.respondeu, c.max_tentativas
-    INTO v_antes, v_cfg, v_tent, v_saida, v_resp_atual, v_max
+  SELECT e.versao, e.workflow_config_id, e.tentativas_feitas, e.saida, e.respondeu, c.max_tentativas, c.versao
+    INTO v_antes, v_cfg, v_tent, v_saida, v_resp_atual, v_max, v_cfg_versao
     FROM public.ncrm_estado e JOIN public.ncrm_workflow_config c ON c.id = e.workflow_config_id
     WHERE e.negocio_id = p_negocio_id FOR UPDATE OF e;
   IF NOT FOUND THEN RETURN jsonb_build_object('ok',false,'erro','estado_inexistente'); END IF;
   IF p_versao <> v_antes THEN RETURN jsonb_build_object('ok',false,'erro','versao_conflito'); END IF;
   IF v_saida IS NOT NULL THEN RETURN jsonb_build_object('ok',false,'erro','estado_em_saida'); END IF;
-  IF v_resp_atual THEN RETURN jsonb_build_object('ok',false,'erro','cadencia_encerrada'); END IF;  -- prospecção após resposta negada
+  IF v_resp_atual THEN RETURN jsonb_build_object('ok',false,'erro','cadencia_encerrada'); END IF;   -- já respondeu antes
+  IF v_tent >= v_max THEN RETURN jsonb_build_object('ok',false,'erro','cadencia_esgotada'); END IF; -- nenhuma nova tentativa após esgotar
 
   v_respondeu := (p_resultado IN ('respondeu','pediu_retorno'));
-  -- valida que a próxima ação pertence ao fluxo correto
+  v_num := v_tent + 1;                 -- número desta tentativa humana (== novo tentativas_feitas)
+  v_ordem_exec := v_num;               -- passo executado nesta tentativa (ordem == número)
+
   IF v_respondeu THEN
+    -- Encerra cadência; a próxima ação COMERCIAL vem do humano (não do banco). Campos do cliente exigidos e validados.
+    IF p_proxima_tipo IS NULL OR p_proxima_titulo IS NULL OR p_proxima_em IS NULL THEN
+      RETURN jsonb_build_object('ok',false,'erro','proxima_acao_obrigatoria'); END IF;
     IF p_proxima_tipo = 'tentativa_cadencia' THEN RETURN jsonb_build_object('ok',false,'erro','proxima_acao_fora_do_fluxo'); END IF;
+    IF p_proxima_em < now() THEN RETURN jsonb_build_object('ok',false,'erro','proxima_acao_em_no_passado'); END IF;
+    v_prox_tipo := p_proxima_tipo; v_prox_titulo := p_proxima_titulo; v_prox_em := p_proxima_em; v_prox_canal := NULL;
+    v_prox_ordem := NULL; v_prox_intervalo := NULL; v_tem_prox := false;
   ELSE
-    IF p_proxima_tipo <> 'tentativa_cadencia' THEN RETURN jsonb_build_object('ok',false,'erro','proxima_acao_fora_do_fluxo'); END IF;
-    IF v_tent >= v_max THEN RETURN jsonb_build_object('ok',false,'erro','cadencia_esgotada'); END IF;  -- limite máximo
+    -- Sem resposta: BANCO calcula. Ignora integralmente os campos de próxima ação enviados pelo cliente.
+    v_prox_ordem := v_ordem_exec + 1;  -- próximo passo da cadência
+    SELECT * INTO v_passo_prox FROM public.ncrm_workflow_passo WHERE config_id = v_cfg AND ordem = v_prox_ordem;
+    v_tem_prox := FOUND AND (v_num < v_max);   -- existe próximo passo E ainda há tentativas permitidas
+    IF v_tem_prox THEN
+      v_prox_tipo   := 'tentativa_cadencia';
+      v_prox_titulo := v_passo_prox.rotulo;
+      v_prox_canal  := v_passo_prox.canal_sugerido;
+      v_prox_intervalo := v_passo_prox.intervalo_min;
+      v_prox_em     := ncrm_private.clamp_janela(now() + make_interval(mins => v_prox_intervalo), v_cfg);
+    ELSE
+      -- Última tentativa: não cria 5ª tarefa impossível; entrega decisão ao corretor.
+      v_prox_tipo   := 'avaliar_descarte';
+      v_prox_titulo := 'Avaliar descarte ou nutrição';
+      v_prox_canal  := NULL;
+      v_prox_ordem  := NULL; v_prox_intervalo := NULL;
+      v_prox_em     := ncrm_private.clamp_janela(now(), v_cfg);
+    END IF;
   END IF;
 
   v_prim := CASE WHEN v_respondeu THEN now() ELSE NULL END;
   v_pend := (p_resultado = 'respondeu');
   v_etapa := CASE WHEN NOT v_respondeu THEN 'tentando_contato'
-                  WHEN p_proxima_tipo IN ('enviar_opcoes','solicitar_documentacao','ligar_retorno','retornar_contato','agendar_visita','preparar_proposta')
+                  WHEN v_prox_tipo IN ('enviar_opcoes','solicitar_documentacao','ligar_retorno','retornar_contato','agendar_visita','preparar_proposta')
                     THEN 'em_acompanhamento' ELSE 'em_atendimento' END;
 
   UPDATE public.ncrm_estado SET
-    tentativas_feitas = CASE WHEN v_respondeu THEN tentativas_feitas ELSE tentativas_feitas + 1 END,
+    tentativas_feitas = tentativas_feitas + 1,     -- SEMPRE incrementa (qualquer resultado humano)
     respondeu = respondeu OR v_respondeu,
     primeira_resposta_em = COALESCE(primeira_resposta_em, v_prim),
     resposta_pendente = v_pend, aguardando_automacao = false,
-    proxima_acao_tipo = p_proxima_tipo, proxima_acao_titulo = p_proxima_titulo, proxima_acao_em = p_proxima_em,
+    proxima_acao_tipo = v_prox_tipo, proxima_acao_titulo = v_prox_titulo, proxima_acao_em = v_prox_em,
     ultima_interacao_em = now(), etapa = v_etapa,
     versao = v_antes + 1, atualizado_em = now(), atualizado_por = v_uid,
     origem_ultima = 'usuario', ultima_decisao_humana_em = now()
@@ -388,8 +434,20 @@ BEGIN
   INSERT INTO public.ncrm_evento (negocio_id, lead_id, corretor_id_no_evento, workflow_config_id, tipo,
      numero_tentativa, canal, resultado, payload, origem, executado_por, idempotency_key, estado_versao_antes, estado_versao_apos)
   VALUES (p_negocio_id, v_lead, v_corretor, v_cfg, 'tentativa',
-     v_tent + 1, p_canal, p_resultado, jsonb_build_object('obs', p_obs), 'usuario', v_uid, p_idem, v_antes, v_antes + 1);
-  RETURN jsonb_build_object('ok',true,'versao', v_antes + 1);
+     v_num, p_canal, p_resultado,
+     jsonb_build_object(
+       'obs', p_obs,
+       'passo_executado', v_ordem_exec,
+       'canal_executado', p_canal,
+       'proximo_passo', v_prox_ordem,
+       'proxima_acao_tipo', v_prox_tipo,
+       'canal_sugerido_seguinte', v_prox_canal,
+       'prazo_calculado', v_prox_em,
+       'config_id', v_cfg,
+       'config_versao', v_cfg_versao,
+       'estado_versao', v_antes + 1),
+     'usuario', v_uid, p_idem, v_antes, v_antes + 1);
+  RETURN jsonb_build_object('ok',true,'versao', v_antes + 1, 'proxima_acao_tipo', v_prox_tipo, 'proxima_acao_em', v_prox_em);
 EXCEPTION WHEN unique_violation THEN
   IF EXISTS (SELECT 1 FROM public.ncrm_evento WHERE idempotency_key = p_idem) THEN
     RETURN jsonb_build_object('ok',true,'ja_processado',true);
@@ -525,6 +583,7 @@ BEGIN
   IF ncrm_private.pode_operar_negocio(p_negocio_id) IS NOT TRUE THEN RETURN jsonb_build_object('ok',false,'erro','sem_permissao'); END IF;
   IF p_proxima_tipo IS NULL OR p_proxima_titulo IS NULL OR p_proxima_em IS NULL THEN
     RETURN jsonb_build_object('ok',false,'erro','proxima_acao_obrigatoria'); END IF;
+  IF p_proxima_em < now() THEN RETURN jsonb_build_object('ok',false,'erro','proxima_acao_em_no_passado'); END IF;  -- data controlada
   IF p_etapa NOT IN ('novo','tentando_contato','em_atendimento','em_acompanhamento') THEN
     RETURN jsonb_build_object('ok',false,'erro','etapa_invalida'); END IF;
   IF EXISTS (SELECT 1 FROM public.ncrm_evento WHERE idempotency_key = p_idem) THEN
@@ -590,6 +649,7 @@ DECLARE v_lead bigint; v_corretor bigint; v_antes int; v_cfg bigint; v_idem text
 BEGIN
   v_msg := btrim(COALESCE(p_message_id,''));
   IF v_msg = '' THEN RETURN jsonb_build_object('ok',false,'erro','message_id_obrigatorio'); END IF;
+  IF p_em IS NULL THEN RETURN jsonb_build_object('ok',false,'erro','em_obrigatorio'); END IF;  -- timestamp controlado
   v_idem := 'wa:' || v_msg;
   SELECT n.lead_id, n.corretor_id INTO v_lead, v_corretor FROM public.negocios n WHERE n.id = p_negocio_id;
   IF NOT FOUND THEN RETURN jsonb_build_object('ok',false,'erro','negocio_inexistente'); END IF;
@@ -634,6 +694,7 @@ BEGIN
   IF p_resultado IS NULL OR btrim(p_resultado) = '' THEN RETURN jsonb_build_object('ok',false,'erro','resultado_obrigatorio'); END IF;
   IF p_proxima_tipo IS NULL OR p_proxima_titulo IS NULL OR p_proxima_em IS NULL OR p_proxima_tipo = 'tentativa_cadencia' THEN
     RETURN jsonb_build_object('ok',false,'erro','proxima_acao_obrigatoria'); END IF;   -- exige próxima ação comercial
+  IF p_proxima_em < now() THEN RETURN jsonb_build_object('ok',false,'erro','proxima_acao_em_no_passado'); END IF;  -- data controlada
   IF EXISTS (SELECT 1 FROM public.ncrm_evento WHERE idempotency_key = p_idem) THEN
     RETURN jsonb_build_object('ok',true,'ja_processado',true); END IF;
   SELECT versao, workflow_config_id, saida, respondeu INTO v_antes, v_cfg, v_saida, v_resp FROM public.ncrm_estado WHERE negocio_id = p_negocio_id FOR UPDATE;
@@ -740,6 +801,7 @@ BEGIN
   IF p_motivo IS NULL OR btrim(p_motivo) = '' THEN RETURN jsonb_build_object('ok',false,'erro','motivo_obrigatorio'); END IF;
   IF p_etapa NOT IN ('novo','tentando_contato','em_atendimento','em_acompanhamento') THEN RETURN jsonb_build_object('ok',false,'erro','etapa_invalida'); END IF;
   IF p_proxima_tipo IS NULL OR p_proxima_titulo IS NULL OR p_proxima_em IS NULL THEN RETURN jsonb_build_object('ok',false,'erro','proxima_acao_obrigatoria'); END IF;
+  IF p_proxima_em < now() THEN RETURN jsonb_build_object('ok',false,'erro','proxima_acao_em_no_passado'); END IF;  -- data controlada
   IF EXISTS (SELECT 1 FROM public.ncrm_evento WHERE idempotency_key = p_idem) THEN
     RETURN jsonb_build_object('ok',true,'ja_processado',true); END IF;
   SELECT versao, workflow_config_id, saida INTO v_antes, v_cfg, v_saida FROM public.ncrm_estado WHERE negocio_id = p_negocio_id FOR UPDATE;

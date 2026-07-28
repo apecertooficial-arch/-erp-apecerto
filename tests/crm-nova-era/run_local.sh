@@ -10,8 +10,9 @@ cp "$ROOT/supabase/rollbacks/20260728151548_crm_nova_era_persistent_model.down.s
 cp "$ROOT/tests/crm-nova-era/00_local_harness.sql" "$STAGE/harness.sql"
 cp "$ROOT/tests/crm-nova-era/10_tests_core.sql" "$STAGE/core.sql"
 cp "$ROOT/tests/crm-nova-era/20_tests_correcoes.sql" "$STAGE/core2.sql"
+cp "$ROOT/tests/crm-nova-era/30_tests_delta_cadencia.sql" "$STAGE/core3.sql"
 chmod -R a+rX "$STAGE"
-MIG="$STAGE/mig.sql"; DOWN="$STAGE/down.sql"; HARNESS="$STAGE/harness.sql"; CORE="$STAGE/core.sql"; CORE2="$STAGE/core2.sql"
+MIG="$STAGE/mig.sql"; DOWN="$STAGE/down.sql"; HARNESS="$STAGE/harness.sql"; CORE="$STAGE/core.sql"; CORE2="$STAGE/core2.sql"; CORE3="$STAGE/core3.sql"
 PGBIN=/usr/lib/postgresql/16/bin
 PGDATA=/tmp/ncrm_pgdata
 SOCK=/tmp/ncrm_sock
@@ -51,6 +52,9 @@ PSQL -c "SELECT public.test_assert(
 
 echo "### testes das CORREÇÕES (fail-closed, imutabilidade, Sara, message_id, novas RPCs, cadência, unique)"
 PSQL -f "$CORE2"
+
+echo "### testes do DELTA (cadência calculada pelo banco, última tentativa, contador, timestamps)"
+PSQL -f "$CORE3"
 
 echo "### #29 rollback remove só objetos ncrm_*"
 PSQL -f "$DOWN"

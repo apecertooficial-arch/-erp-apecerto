@@ -116,3 +116,38 @@ staging (item do GO/NO-GO, doc 20). Nenhuma alteração foi feita em produção 
 
 Resultado dos testes: **95 PASS / 0 FALHAS** (`RESULTS.txt`), incluindo migration→testes→rollback→migration.
 Contagem de vendas inalterada (2). Nenhuma execução em produção.
+
+---
+
+## Último delta operacional (sobre 7f934ec) — sem nova fase documental
+
+1. **Cadência calculada pelo banco:** em `ncrm_registrar_tentativa`, resultado SEM resposta ignora
+   `proxima_acao_tipo/titulo/em` do cliente. O banco deriva do `ncrm_workflow_passo` (ordem N+1),
+   `intervalo_min`, timezone/janela e `ncrm_private.clamp_janela`. Título e canal sugerido vêm do passo;
+   o prazo é calculado. O payload do evento registra: passo executado, próximo passo, canal executado,
+   canal sugerido seguinte, prazo calculado, config e versão.
+2. **Última tentativa:** após a última permitida sem resposta, a próxima ação vira `avaliar_descarte`
+   ('Avaliar descarte ou nutrição'), com prazo definido pelo banco; o lead permanece ativo/visível até o
+   corretor escolher descarte/nutrição/correção/etc. Não há 5ª tarefa; nova `ncrm_registrar_tentativa`
+   é negada com `cadencia_esgotada`.
+3. **Contador:** toda tentativa humana incrementa `tentativas_feitas` (qualquer resultado). Mensagem
+   automática e resposta inbound do WhatsApp não contam. `numero_tentativa` do evento == novo `tentativas_feitas`.
+4. **Resposta durante tentativa:** `respondeu`/`pediu_retorno` incrementa o contador, encerra a cadência,
+   não gera próximo passo, exige próxima ação COMERCIAL do humano (validada: não-cadência, prazo não no passado),
+   e mantém a rejeição de prospecção posterior.
+5. **Parâmetros do cliente:** assinatura preservada; para sem-resposta os campos de próxima ação são
+   ignorados (banco decide); o cliente não antecipa, atrasa nem pula passos.
+6. **Imutabilidade de passo:** trigger valida OLD e NEW no UPDATE (ambas rascunho), NEW no INSERT, OLD no
+   DELETE — bloqueia mover passo de config publicada/encerrada para rascunho.
+7. **Status/vigência da config:** CHECKs de tabela `status='publicada' ⟹ vigencia_fim NULL` e
+   `status='encerrada' ⟹ vigencia_fim NOT NULL`; trigger nega publicada recebendo `vigencia_fim` sem
+   encerrar na mesma operação; `vigencia_fim > vigencia_inicio`; encerrada permanece imutável.
+8. **Timestamps:** rejeição controlada de `p_enviado_em` NULL (msg automática), `p_em` NULL (resposta
+   cliente), próxima ação comercial NULL e prazo anterior ao momento permitido — sem depender de CHECK genérico.
+9. **Testes (arquivo 30):** prazo adulterado ignorado; 1ª–4ª seguem o `workflow_passo`; após a 4ª →
+   `avaliar_descarte`; sem 5ª tarefa; 5ª tentativa negada; resposta incrementa; inbound/automação não
+   incrementam; `numero_tentativa` == estado; mover passo publicado→rascunho negado; publicada com
+   `vigencia_fim` negada; timestamps NULL rejeitados.
+
+Resultado: **101 PASS / 0 FALHAS** (`RESULTS.txt`), sequência migration→testes→rollback→migration.
+Contagem de vendas inalterada (2). Nenhuma execução em produção.
