@@ -1,6 +1,6 @@
 # Resultado dos testes locais — CRM Nova Era (Postgres 16 local efêmero)
-# Ambiente: initdb local em /tmp (NÃO produção). Todos os 30 requisitos cobertos.
-# PASS total: 53 · ASSERT FAIL: 0
+# Ambiente: initdb local em /tmp (NÃO produção). migration -> testes -> rollback -> migration.
+# PASS: 95 · ASSERT FAIL: 0 · contagem de vendas final: inalterada (2).
 
 PASS: #2 RLS habilitada em todas ncrm_*
 PASS (erro esperado): #3 anon SELECT ncrm_estado negado
@@ -48,10 +48,52 @@ PASS: #23 estado 300 reativado (saida limpa, próxima ação definida)
 PASS: #24 nova proposta após ciclo terminal permitida
 PASS: #24 duas propostas no histórico do negócio 300
 PASS: #28 Sara com base velha NÃO sobrescreve (precedência humana)
+PASS: #28 Sara não incrementou a versão do estado (foi a tentativa humana)
 PASS: #28 sugestão da Sara registrada como não aplicada
  ==== TODOS OS TESTES SQL PASSARAM ====
 NOTICE:  PASS: #15 concorrência mesma chave: exatamente 1 evento
 NOTICE:  PASS: #15 vencedor avançou (v=2) e perdedor revertido (v=1): unique_violation reverteu o UPDATE
+PASS: C-msgid: espaços rejeitado
+PASS: C-msgid: NULL rejeitado
+PASS: C-msgid: resposta_cliente espaços rejeitado
+PASS: C-cadencia: msg automática não conta tentativa (tentativas_feitas=0)
+PASS: C-cadencia: só evento mensagem_automatica, 0 tentativa
+PASS: C-cadencia: 4 tentativas registradas
+PASS: C-cadencia: 5ª tentativa acima do limite negada
+PASS: C-resposta: registrar_resposta_cliente ok
+PASS: C-resposta: estado marca respondeu/pendente/próxima ação padrão
+PASS: C-resposta: tentativa de prospecção após resposta negada
+PASS: C-concluir: sem próxima ação rejeitado
+PASS: C-concluir: com próxima ação ok
+PASS: C-concluir: resposta_pendente=false e próxima ação atualizada
+PASS: C-concluir: evento acao_comercial gravado
+PASS: C-descarte: outro sem detalhe rejeitado
+PASS: C-descarte: motivo estruturado ok
+PASS: C-descarte: estado descartado sem próxima ação
+PASS: C-nutricao: saída nutrição ok
+PASS: C-nutricao: estado nutricao sem próxima ação
+PASS: C-reativar: sem próxima ação rejeitado
+PASS: C-reativar: reativação comum ok
+PASS: C-reativar: saída limpa e próxima ação definida
+PASS: C-sara: nunca aplica (aplicado=false)
+PASS: C-sara: versão do estado inalterada
+PASS: C-sara: evento aplicado=false / aguardando_aprovacao_humana
+PASS: C-authz: current_broker_id NULL negado
+PASS: C-authz: usuário sem corretor não vê nada
+PASS: C-authz: usuário inexistente negado
+PASS: C-authz: token sem sub negado
+PASS: C-authz: has_perm NULL negado (fail-closed)
+PASS: C-authz: manages_broker NULL -> gestor não vê (fail-closed)
+PASS (erro esperado): C-unique: colisão não-idempotente é RELANÇADA (não engolida como ja_processado)
+PASS: C-unique: nenhum evento DUP criado (rollback atômico)
+PASS (erro esperado): C-config: INSERT passo em config publicada negado
+PASS (erro esperado): C-config: UPDATE passo em config publicada negado
+PASS (erro esperado): C-config: DELETE passo em config publicada negado
+PASS (erro esperado): C-config: publicada->rascunho negado
+PASS (erro esperado): C-config: alterar regra de config publicada negado
+PASS: C-config: publicada->encerrada permitido
+PASS (erro esperado): C-config: encerrada->publicada negado
+ ==== TODOS OS TESTES DE CORREÇÃO PASSARAM ====
 NOTICE:  PASS: #29 rollback: objetos ncrm_* removidos
 NOTICE:  PASS: #29 rollback preservou objetos legados
 NOTICE:  PASS: #30 migration reaplicada com sucesso

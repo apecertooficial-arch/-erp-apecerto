@@ -92,3 +92,27 @@ staging (item do GO/NO-GO, doc 20). Nenhuma alteração foi feita em produção 
 - Testes executados em **Postgres 16 local efêmero** (`/tmp`), destruído ao fim.
 - **Nenhum objeto de produção alterado. Nenhum dado real alterado. Nenhuma venda criada. Nenhum
   objeto legado modificado.** Sem migration aplicada, sem deploy, sem push.
+
+---
+
+## Correções (commit d501715, sobre 8950ccc) — sem nova fase documental
+
+1. **Autorização fail-closed:** `pode_ver_negocio`/`pode_operar_negocio` usam `COALESCE(...,false)`;
+   todas as RPCs validam `pode_operar_negocio(...) IS NOT TRUE`. Testado com `has_perm`/`manages_broker`
+   retornando NULL, `current_broker_id` NULL, usuário inexistente e token sem `sub` — todos negados.
+2. **Imutabilidade da config:** trigger de passo `BEFORE INSERT OR UPDATE OR DELETE`; transições
+   fechadas (rascunho→publicada seta `publicado_em`; publicada→encerrada exige `vigencia_fim`;
+   publicada→rascunho e encerrada→qualquer proibidas; regras/passos imutáveis após publicar).
+3. **Sara suggestion-only:** nunca altera `ncrm_estado`, nunca incrementa versão, sempre
+   `aplicado=false` com motivo (`aguardando_aprovacao_humana`/`precedencia_humana`).
+4. **message_id da automação:** rejeita NULL/vazio/espaços antes de montar `auto:<id>`/`wa:<id>`.
+5. **RPCs mínimas adicionadas:** `ncrm_registrar_resposta_cliente` (service_role), `ncrm_concluir_acao`,
+   `ncrm_saida_descarte`, `ncrm_saida_nutricao`, `ncrm_reativar` — todas com auth+authz fail-closed+
+   idempotência+FOR UPDATE+versão+UPDATE+evento+rollback atômico.
+6. **Cadência:** consulta `max_tentativas` da config; bloqueia acima do limite; `mensagem_automatica`
+   não conta como tentativa; prospecção após resposta é negada; valida próxima ação por fluxo.
+7. **unique_violation:** só vira `ja_processado` se existir evento com a mesma `idempotency_key`;
+   caso contrário, o erro é **relançado** (testado com colisão de outra constraint).
+
+Resultado dos testes: **95 PASS / 0 FALHAS** (`RESULTS.txt`), incluindo migration→testes→rollback→migration.
+Contagem de vendas inalterada (2). Nenhuma execução em produção.

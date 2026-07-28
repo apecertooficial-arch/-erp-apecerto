@@ -85,16 +85,21 @@ INSERT INTO public.usuarios (id, nome, role, ativo, superior_id) VALUES
   ('aaaaaaaa-0000-0000-0000-000000000001','Admin','admin',true,NULL),
   ('bbbbbbbb-0000-0000-0000-000000000001','Gerente','gerente',true,'aaaaaaaa-0000-0000-0000-000000000001'),
   ('cccccccc-0000-0000-0000-000000000001','Corretor A','corretor',true,'bbbbbbbb-0000-0000-0000-000000000001'),
-  ('dddddddd-0000-0000-0000-000000000001','Corretor B','corretor',true,'aaaaaaaa-0000-0000-0000-000000000001');
+  ('dddddddd-0000-0000-0000-000000000001','Corretor B','corretor',true,'aaaaaaaa-0000-0000-0000-000000000001'),
+  ('ffffffff-0000-0000-0000-000000000001','Sem Corretor','corretor',true,'aaaaaaaa-0000-0000-0000-000000000001');  -- SEM linha em corretores
 INSERT INTO public.corretores (id, usuario_id) VALUES
   (10,'cccccccc-0000-0000-0000-000000000001'),
   (20,'dddddddd-0000-0000-0000-000000000001'),
   (30,'bbbbbbbb-0000-0000-0000-000000000001');
 -- Leads e negócios (A=10, B=20)
-INSERT INTO public.leads (id, nome) SELECT g, 'Lead '||g FROM generate_series(1,8) g;
+INSERT INTO public.leads (id, nome) SELECT g, 'Lead '||g FROM generate_series(1,30) g;
 INSERT INTO public.negocios (id, lead_id, corretor_id, status) VALUES
   (100,1,10,'aberto'),(200,2,20,'aberto'),(300,3,10,'aberto'),(400,4,10,'aberto'),
-  (500,5,10,'aberto'),(600,6,10,'aberto'),(700,7,10,'aberto'),(710,8,10,'aberto');
+  (500,5,10,'aberto'),(600,6,10,'aberto'),(700,7,10,'aberto'),(710,8,10,'aberto'),
+  -- negócios para os testes de correção (A=10, exceto 850=B)
+  (800,9,10,'aberto'),(810,10,10,'aberto'),(820,11,10,'aberto'),(830,12,10,'aberto'),
+  (840,13,10,'aberto'),(841,15,10,'aberto'),(842,16,10,'aberto'),(843,17,10,'aberto'),
+  (844,18,10,'aberto'),(845,19,10,'aberto'),(850,14,20,'aberto');
 -- Empreendimento/unidade e vendas (baseline de contagem)
 INSERT INTO public.empreendimentos (id, nome) VALUES ('11111111-1111-1111-1111-111111111111','Emp Demo');
 INSERT INTO public.unidades (id, empreendimento_id) VALUES ('22222222-2222-2222-2222-222222222222','11111111-1111-1111-1111-111111111111');

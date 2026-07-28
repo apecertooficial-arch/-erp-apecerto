@@ -188,19 +188,31 @@ REVOKE ALL ON FUNCTION ncrm_private.evento_imutavel() FROM PUBLIC;
 CREATE TRIGGER trg_ncrm_evento_imutavel BEFORE UPDATE OR DELETE ON public.ncrm_evento
   FOR EACH ROW EXECUTE FUNCTION ncrm_private.evento_imutavel();
 
+-- Transições: rascunho->publicada (set publicado_em) e publicada->encerrada (exige vigencia_fim);
+-- publicada->rascunho e encerrada->qualquer são proibidas; regras imutáveis após publicar.
 CREATE FUNCTION ncrm_private.config_imutavel() RETURNS trigger LANGUAGE plpgsql SET search_path = '' AS $fn$
 BEGIN
   IF TG_OP = 'DELETE' THEN
-    IF OLD.status <> 'rascunho' THEN RAISE EXCEPTION 'Config publicada/encerrada não pode ser apagada.'; END IF;
+    IF OLD.status <> 'rascunho' THEN RAISE EXCEPTION 'config_nao_rascunho_nao_apaga'; END IF;
     RETURN OLD;
   END IF;
-  IF OLD.status <> 'rascunho' THEN
+  IF OLD.status = 'encerrada' THEN
+    RAISE EXCEPTION 'config_encerrada_imutavel';
+  ELSIF OLD.status = 'publicada' THEN
     IF NEW.versao IS DISTINCT FROM OLD.versao OR NEW.janela_inicio IS DISTINCT FROM OLD.janela_inicio
        OR NEW.janela_fim IS DISTINCT FROM OLD.janela_fim OR NEW.timezone IS DISTINCT FROM OLD.timezone
        OR NEW.espera_apos_automacao_min IS DISTINCT FROM OLD.espera_apos_automacao_min
        OR NEW.max_tentativas IS DISTINCT FROM OLD.max_tentativas OR NEW.fds_operacional IS DISTINCT FROM OLD.fds_operacional
-       OR NEW.vigencia_inicio IS DISTINCT FROM OLD.vigencia_inicio THEN
-      RAISE EXCEPTION 'Config publicada é imutável (colunas de regra).';
+       OR NEW.vigencia_inicio IS DISTINCT FROM OLD.vigencia_inicio OR NEW.publicado_em IS DISTINCT FROM OLD.publicado_em THEN
+      RAISE EXCEPTION 'config_publicada_regras_imutaveis';
+    END IF;
+    IF NEW.status NOT IN ('publicada','encerrada') THEN RAISE EXCEPTION 'config_transicao_invalida'; END IF;  -- bloqueia ->rascunho
+    IF NEW.status = 'encerrada' AND NEW.vigencia_fim IS NULL THEN RAISE EXCEPTION 'config_encerramento_exige_vigencia_fim'; END IF;
+  ELSE -- OLD.status = 'rascunho'
+    IF NEW.status NOT IN ('rascunho','publicada') THEN RAISE EXCEPTION 'config_transicao_invalida'; END IF;
+    IF NEW.status = 'publicada' THEN
+      IF NEW.vigencia_inicio IS NULL THEN RAISE EXCEPTION 'config_publicacao_exige_vigencia_inicio'; END IF;
+      NEW.publicado_em := COALESCE(NEW.publicado_em, now());
     END IF;
   END IF;
   RETURN NEW;
@@ -209,15 +221,16 @@ REVOKE ALL ON FUNCTION ncrm_private.config_imutavel() FROM PUBLIC;
 CREATE TRIGGER trg_ncrm_config_imutavel BEFORE UPDATE OR DELETE ON public.ncrm_workflow_config
   FOR EACH ROW EXECUTE FUNCTION ncrm_private.config_imutavel();
 
+-- Passos só podem ser inseridos/alterados/apagados quando a config-mãe está em rascunho.
 CREATE FUNCTION ncrm_private.passo_imutavel() RETURNS trigger LANGUAGE plpgsql SET search_path = '' AS $fn$
 DECLARE v_status text;
 BEGIN
   SELECT status INTO v_status FROM public.ncrm_workflow_config WHERE id = COALESCE(NEW.config_id, OLD.config_id);
-  IF v_status <> 'rascunho' THEN RAISE EXCEPTION 'Passos de config publicada são imutáveis.'; END IF;
+  IF v_status IS DISTINCT FROM 'rascunho' THEN RAISE EXCEPTION 'passos_imutaveis_config_nao_rascunho'; END IF;
   RETURN COALESCE(NEW, OLD);
 END $fn$;
 REVOKE ALL ON FUNCTION ncrm_private.passo_imutavel() FROM PUBLIC;
-CREATE TRIGGER trg_ncrm_passo_imutavel BEFORE UPDATE OR DELETE ON public.ncrm_workflow_passo
+CREATE TRIGGER trg_ncrm_passo_imutavel BEFORE INSERT OR UPDATE OR DELETE ON public.ncrm_workflow_passo
   FOR EACH ROW EXECUTE FUNCTION ncrm_private.passo_imutavel();
 
 -- ============================================================================
@@ -229,21 +242,24 @@ CREATE FUNCTION ncrm_private.negocio_corretor(p_negocio_id bigint)
 $fn$;
 REVOKE ALL ON FUNCTION ncrm_private.negocio_corretor(bigint) FROM PUBLIC;
 
+-- FAIL-CLOSED: só concede quando o resultado é explicitamente TRUE (COALESCE em todas as partes).
 CREATE FUNCTION ncrm_private.pode_ver_negocio(p_negocio_id bigint)
   RETURNS boolean LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = '' AS $fn$
 DECLARE v_corretor bigint;
 BEGIN
-  IF public.can_manage_all() THEN RETURN true; END IF;
+  IF COALESCE(public.can_manage_all(), false) THEN RETURN true; END IF;
   v_corretor := ncrm_private.negocio_corretor(p_negocio_id);
   IF v_corretor IS NULL THEN RETURN false; END IF;
-  RETURN v_corretor = public.current_broker_id() OR public.manages_broker(v_corretor);
+  RETURN COALESCE(v_corretor = public.current_broker_id(), false)
+      OR COALESCE(public.manages_broker(v_corretor), false);
 END $fn$;
 REVOKE ALL ON FUNCTION ncrm_private.pode_ver_negocio(bigint) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION ncrm_private.pode_ver_negocio(bigint) TO authenticated;
 
 CREATE FUNCTION ncrm_private.pode_operar_negocio(p_negocio_id bigint)
   RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path = '' AS $fn$
-  SELECT ncrm_private.pode_ver_negocio(p_negocio_id) AND public.has_perm('crm','editar')
+  SELECT COALESCE(ncrm_private.pode_ver_negocio(p_negocio_id), false)
+     AND COALESCE(public.has_perm('crm','editar'), false)
 $fn$;
 REVOKE ALL ON FUNCTION ncrm_private.pode_operar_negocio(bigint) FROM PUBLIC;
 
@@ -281,10 +297,11 @@ REVOKE ALL ON FUNCTION ncrm_private.clamp_janela(timestamptz,bigint) FROM PUBLIC
 -- 7.0 Automação de entrada (service_role): cria o snapshot se não existir.
 CREATE FUNCTION public.ncrm_registrar_msg_automatica(p_negocio_id bigint, p_message_id text, p_enviado_em timestamptz)
   RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $fn$
-DECLARE v_lead bigint; v_corretor bigint; v_cfg bigint; v_idem text; v_prox timestamptz; v_espera int;
+DECLARE v_lead bigint; v_corretor bigint; v_cfg bigint; v_idem text; v_prox timestamptz; v_espera int; v_msg text;
 BEGIN
-  v_idem := 'auto:' || COALESCE(p_message_id,'');
-  PERFORM ncrm_private.assert_idem(v_idem);
+  v_msg := btrim(COALESCE(p_message_id,''));
+  IF v_msg = '' THEN RETURN jsonb_build_object('ok',false,'erro','message_id_obrigatorio'); END IF;  -- rejeita NULL/vazio/espaços
+  v_idem := 'auto:' || v_msg;
   SELECT n.lead_id, n.corretor_id INTO v_lead, v_corretor FROM public.negocios n WHERE n.id = p_negocio_id;
   IF NOT FOUND THEN RETURN jsonb_build_object('ok',false,'erro','negocio_inexistente'); END IF;
   IF EXISTS (SELECT 1 FROM public.ncrm_evento WHERE idempotency_key = v_idem) THEN
@@ -301,9 +318,12 @@ BEGIN
   INSERT INTO public.ncrm_evento (negocio_id, lead_id, corretor_id_no_evento, workflow_config_id, tipo,
      payload, origem, idempotency_key, estado_versao_antes, estado_versao_apos)
   VALUES (p_negocio_id, v_lead, v_corretor, v_cfg, 'mensagem_automatica',
-     jsonb_build_object('message_id', p_message_id), 'automacao', v_idem, 0, 1);
+     jsonb_build_object('message_id', v_msg), 'automacao', v_idem, 0, 1);
   RETURN jsonb_build_object('ok',true,'versao',1);
-EXCEPTION WHEN unique_violation THEN RETURN jsonb_build_object('ok',true,'ja_processado',true);
+EXCEPTION WHEN unique_violation THEN
+  IF EXISTS (SELECT 1 FROM public.ncrm_evento WHERE idempotency_key = v_idem) THEN
+    RETURN jsonb_build_object('ok',true,'ja_processado',true);
+  ELSE RAISE; END IF;
 END $fn$;
 REVOKE ALL ON FUNCTION public.ncrm_registrar_msg_automatica(bigint,text,timestamptz) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.ncrm_registrar_msg_automatica(bigint,text,timestamptz) TO service_role;
@@ -315,12 +335,13 @@ CREATE FUNCTION public.ncrm_registrar_tentativa(
   RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $fn$
 DECLARE v_uid uuid := auth.uid(); v_lead bigint; v_corretor bigint; v_antes int; v_cfg bigint;
         v_respondeu boolean; v_prim timestamptz; v_pend boolean; v_etapa text; v_tent int;
+        v_saida text; v_resp_atual boolean; v_max int;
 BEGIN
   PERFORM ncrm_private.assert_idem(p_idem);
   IF v_uid IS NULL THEN RETURN jsonb_build_object('ok',false,'erro','nao_autenticado'); END IF;
   SELECT n.lead_id, n.corretor_id INTO v_lead, v_corretor FROM public.negocios n WHERE n.id = p_negocio_id;
   IF NOT FOUND THEN RETURN jsonb_build_object('ok',false,'erro','negocio_inexistente'); END IF;
-  IF NOT ncrm_private.pode_operar_negocio(p_negocio_id) THEN RETURN jsonb_build_object('ok',false,'erro','sem_permissao'); END IF;
+  IF ncrm_private.pode_operar_negocio(p_negocio_id) IS NOT TRUE THEN RETURN jsonb_build_object('ok',false,'erro','sem_permissao'); END IF;  -- fail-closed
   IF p_canal NOT IN ('ligacao','whatsapp','email','presencial') THEN RETURN jsonb_build_object('ok',false,'erro','canal_invalido'); END IF;
   IF p_resultado NOT IN ('nao_respondeu','respondeu','telefone_invalido','pediu_retorno','sem_interesse','contato_inadequado') THEN
     RETURN jsonb_build_object('ok',false,'erro','resultado_invalido'); END IF;
@@ -328,12 +349,25 @@ BEGIN
     RETURN jsonb_build_object('ok',false,'erro','proxima_acao_obrigatoria'); END IF;
   IF EXISTS (SELECT 1 FROM public.ncrm_evento WHERE idempotency_key = p_idem) THEN
     RETURN jsonb_build_object('ok',true,'ja_processado',true); END IF;
-  SELECT versao, workflow_config_id, tentativas_feitas INTO v_antes, v_cfg, v_tent
-    FROM public.ncrm_estado WHERE negocio_id = p_negocio_id FOR UPDATE;
+
+  SELECT e.versao, e.workflow_config_id, e.tentativas_feitas, e.saida, e.respondeu, c.max_tentativas
+    INTO v_antes, v_cfg, v_tent, v_saida, v_resp_atual, v_max
+    FROM public.ncrm_estado e JOIN public.ncrm_workflow_config c ON c.id = e.workflow_config_id
+    WHERE e.negocio_id = p_negocio_id FOR UPDATE OF e;
   IF NOT FOUND THEN RETURN jsonb_build_object('ok',false,'erro','estado_inexistente'); END IF;
   IF p_versao <> v_antes THEN RETURN jsonb_build_object('ok',false,'erro','versao_conflito'); END IF;
+  IF v_saida IS NOT NULL THEN RETURN jsonb_build_object('ok',false,'erro','estado_em_saida'); END IF;
+  IF v_resp_atual THEN RETURN jsonb_build_object('ok',false,'erro','cadencia_encerrada'); END IF;  -- prospecção após resposta negada
 
   v_respondeu := (p_resultado IN ('respondeu','pediu_retorno'));
+  -- valida que a próxima ação pertence ao fluxo correto
+  IF v_respondeu THEN
+    IF p_proxima_tipo = 'tentativa_cadencia' THEN RETURN jsonb_build_object('ok',false,'erro','proxima_acao_fora_do_fluxo'); END IF;
+  ELSE
+    IF p_proxima_tipo <> 'tentativa_cadencia' THEN RETURN jsonb_build_object('ok',false,'erro','proxima_acao_fora_do_fluxo'); END IF;
+    IF v_tent >= v_max THEN RETURN jsonb_build_object('ok',false,'erro','cadencia_esgotada'); END IF;  -- limite máximo
+  END IF;
+
   v_prim := CASE WHEN v_respondeu THEN now() ELSE NULL END;
   v_pend := (p_resultado = 'respondeu');
   v_etapa := CASE WHEN NOT v_respondeu THEN 'tentando_contato'
@@ -356,7 +390,10 @@ BEGIN
   VALUES (p_negocio_id, v_lead, v_corretor, v_cfg, 'tentativa',
      v_tent + 1, p_canal, p_resultado, jsonb_build_object('obs', p_obs), 'usuario', v_uid, p_idem, v_antes, v_antes + 1);
   RETURN jsonb_build_object('ok',true,'versao', v_antes + 1);
-EXCEPTION WHEN unique_violation THEN RETURN jsonb_build_object('ok',true,'ja_processado',true);
+EXCEPTION WHEN unique_violation THEN
+  IF EXISTS (SELECT 1 FROM public.ncrm_evento WHERE idempotency_key = p_idem) THEN
+    RETURN jsonb_build_object('ok',true,'ja_processado',true);
+  ELSE RAISE; END IF;
 END $fn$;
 REVOKE ALL ON FUNCTION public.ncrm_registrar_tentativa(bigint,int,text,text,text,text,text,timestamptz,text) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.ncrm_registrar_tentativa(bigint,int,text,text,text,text,text,timestamptz,text) TO authenticated;
@@ -364,20 +401,21 @@ GRANT EXECUTE ON FUNCTION public.ncrm_registrar_tentativa(bigint,int,text,text,t
 -- 7.2 Saída visita (consome visita existente; NÃO insere em visitas).
 CREATE FUNCTION public.ncrm_saida_visita(p_negocio_id bigint, p_versao int, p_visita_id uuid, p_idem text)
   RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $fn$
-DECLARE v_uid uuid := auth.uid(); v_lead bigint; v_corretor bigint; v_antes int; v_cfg bigint;
+DECLARE v_uid uuid := auth.uid(); v_lead bigint; v_corretor bigint; v_antes int; v_cfg bigint; v_saida text;
 BEGIN
   PERFORM ncrm_private.assert_idem(p_idem);
   IF v_uid IS NULL THEN RETURN jsonb_build_object('ok',false,'erro','nao_autenticado'); END IF;
   SELECT n.lead_id, n.corretor_id INTO v_lead, v_corretor FROM public.negocios n WHERE n.id = p_negocio_id;
   IF NOT FOUND THEN RETURN jsonb_build_object('ok',false,'erro','negocio_inexistente'); END IF;
-  IF NOT ncrm_private.pode_operar_negocio(p_negocio_id) THEN RETURN jsonb_build_object('ok',false,'erro','sem_permissao'); END IF;
+  IF ncrm_private.pode_operar_negocio(p_negocio_id) IS NOT TRUE THEN RETURN jsonb_build_object('ok',false,'erro','sem_permissao'); END IF;
   IF p_visita_id IS NULL OR NOT EXISTS (SELECT 1 FROM public.visitas v WHERE v.id = p_visita_id AND v.negocio_id = p_negocio_id) THEN
     RETURN jsonb_build_object('ok',false,'erro','visita_invalida'); END IF;
   IF EXISTS (SELECT 1 FROM public.ncrm_evento WHERE idempotency_key = p_idem) THEN
     RETURN jsonb_build_object('ok',true,'ja_processado',true); END IF;
-  SELECT versao, workflow_config_id INTO v_antes, v_cfg FROM public.ncrm_estado WHERE negocio_id = p_negocio_id FOR UPDATE;
+  SELECT versao, workflow_config_id, saida INTO v_antes, v_cfg, v_saida FROM public.ncrm_estado WHERE negocio_id = p_negocio_id FOR UPDATE;
   IF NOT FOUND THEN RETURN jsonb_build_object('ok',false,'erro','estado_inexistente'); END IF;
   IF p_versao <> v_antes THEN RETURN jsonb_build_object('ok',false,'erro','versao_conflito'); END IF;
+  IF v_saida IS NOT NULL THEN RETURN jsonb_build_object('ok',false,'erro','ja_em_saida'); END IF;
   UPDATE public.ncrm_estado SET saida='pipeline_visitas', saida_em=now(), visita_id=p_visita_id,
      proxima_acao_tipo=NULL, proxima_acao_titulo=NULL, proxima_acao_em=NULL, resposta_pendente=false,
      versao=v_antes+1, atualizado_em=now(), atualizado_por=v_uid, origem_ultima='usuario', ultima_decisao_humana_em=now()
@@ -385,7 +423,10 @@ BEGIN
   INSERT INTO public.ncrm_evento (negocio_id, lead_id, corretor_id_no_evento, workflow_config_id, tipo, payload, origem, executado_por, idempotency_key, estado_versao_antes, estado_versao_apos)
   VALUES (p_negocio_id, v_lead, v_corretor, v_cfg, 'visita_agendada', jsonb_build_object('visita_id', p_visita_id), 'usuario', v_uid, p_idem, v_antes, v_antes+1);
   RETURN jsonb_build_object('ok',true,'versao', v_antes+1);
-EXCEPTION WHEN unique_violation THEN RETURN jsonb_build_object('ok',true,'ja_processado',true);
+EXCEPTION WHEN unique_violation THEN
+  IF EXISTS (SELECT 1 FROM public.ncrm_evento WHERE idempotency_key = p_idem) THEN
+    RETURN jsonb_build_object('ok',true,'ja_processado',true);
+  ELSE RAISE; END IF;
 END $fn$;
 REVOKE ALL ON FUNCTION public.ncrm_saida_visita(bigint,int,uuid,text) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.ncrm_saida_visita(bigint,int,uuid,text) TO authenticated;
@@ -394,19 +435,20 @@ GRANT EXECUTE ON FUNCTION public.ncrm_saida_visita(bigint,int,uuid,text) TO auth
 CREATE FUNCTION public.ncrm_saida_proposta(p_negocio_id bigint, p_versao int, p_empreendimento_id uuid, p_unidade_id uuid,
     p_valor numeric, p_data timestamptz, p_obs text, p_idem text)
   RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $fn$
-DECLARE v_uid uuid := auth.uid(); v_lead bigint; v_corretor bigint; v_antes int; v_cfg bigint; v_prop uuid;
+DECLARE v_uid uuid := auth.uid(); v_lead bigint; v_corretor bigint; v_antes int; v_cfg bigint; v_prop uuid; v_saida text;
 BEGIN
   PERFORM ncrm_private.assert_idem(p_idem);
   IF v_uid IS NULL THEN RETURN jsonb_build_object('ok',false,'erro','nao_autenticado'); END IF;
   SELECT n.lead_id, n.corretor_id INTO v_lead, v_corretor FROM public.negocios n WHERE n.id = p_negocio_id;
   IF NOT FOUND THEN RETURN jsonb_build_object('ok',false,'erro','negocio_inexistente'); END IF;
-  IF NOT ncrm_private.pode_operar_negocio(p_negocio_id) THEN RETURN jsonb_build_object('ok',false,'erro','sem_permissao'); END IF;
+  IF ncrm_private.pode_operar_negocio(p_negocio_id) IS NOT TRUE THEN RETURN jsonb_build_object('ok',false,'erro','sem_permissao'); END IF;
   IF p_valor IS NULL OR p_valor <= 0 THEN RETURN jsonb_build_object('ok',false,'erro','valor_invalido'); END IF;
   IF EXISTS (SELECT 1 FROM public.ncrm_evento WHERE idempotency_key = p_idem) THEN
     RETURN jsonb_build_object('ok',true,'ja_processado',true); END IF;
-  SELECT versao, workflow_config_id INTO v_antes, v_cfg FROM public.ncrm_estado WHERE negocio_id = p_negocio_id FOR UPDATE;
+  SELECT versao, workflow_config_id, saida INTO v_antes, v_cfg, v_saida FROM public.ncrm_estado WHERE negocio_id = p_negocio_id FOR UPDATE;
   IF NOT FOUND THEN RETURN jsonb_build_object('ok',false,'erro','estado_inexistente'); END IF;
   IF p_versao <> v_antes THEN RETURN jsonb_build_object('ok',false,'erro','versao_conflito'); END IF;
+  IF v_saida IS NOT NULL THEN RETURN jsonb_build_object('ok',false,'erro','ja_em_saida'); END IF;
   SELECT id INTO v_prop FROM public.ncrm_proposta WHERE negocio_id=p_negocio_id AND status IN ('registrada','em_negociacao','aceita');
   IF v_prop IS NULL THEN
     INSERT INTO public.ncrm_proposta (negocio_id, lead_id, corretor_id, empreendimento_id, unidade_id, valor, data_proposta, status, observacao, idempotency_key, criada_por)
@@ -420,7 +462,10 @@ BEGIN
   INSERT INTO public.ncrm_evento (negocio_id, lead_id, corretor_id_no_evento, workflow_config_id, tipo, payload, origem, executado_por, idempotency_key, estado_versao_antes, estado_versao_apos)
   VALUES (p_negocio_id, v_lead, v_corretor, v_cfg, 'proposta_registrada', jsonb_build_object('proposta_id', v_prop, 'valor', p_valor), 'usuario', v_uid, p_idem, v_antes, v_antes+1);
   RETURN jsonb_build_object('ok',true,'versao', v_antes+1, 'proposta_id', v_prop);
-EXCEPTION WHEN unique_violation THEN RETURN jsonb_build_object('ok',true,'ja_processado',true);
+EXCEPTION WHEN unique_violation THEN
+  IF EXISTS (SELECT 1 FROM public.ncrm_evento WHERE idempotency_key = p_idem) THEN
+    RETURN jsonb_build_object('ok',true,'ja_processado',true);
+  ELSE RAISE; END IF;
 END $fn$;
 REVOKE ALL ON FUNCTION public.ncrm_saida_proposta(bigint,int,uuid,uuid,numeric,timestamptz,text,text) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.ncrm_saida_proposta(bigint,int,uuid,uuid,numeric,timestamptz,text,text) TO authenticated;
@@ -434,7 +479,7 @@ BEGIN
   IF v_uid IS NULL THEN RETURN jsonb_build_object('ok',false,'erro','nao_autenticado'); END IF;
   SELECT * INTO r FROM public.ncrm_proposta WHERE id = p_proposta_id FOR UPDATE;
   IF NOT FOUND THEN RETURN jsonb_build_object('ok',false,'erro','proposta_inexistente'); END IF;
-  IF NOT ncrm_private.pode_operar_negocio(r.negocio_id) THEN RETURN jsonb_build_object('ok',false,'erro','sem_permissao'); END IF;
+  IF ncrm_private.pode_operar_negocio(r.negocio_id) IS NOT TRUE THEN RETURN jsonb_build_object('ok',false,'erro','sem_permissao'); END IF;
   IF p_versao_prop <> r.versao THEN RETURN jsonb_build_object('ok',false,'erro','versao_conflito'); END IF;
   IF p_novo_status NOT IN ('em_negociacao','aceita','recusada','expirada','cancelada') THEN
     RETURN jsonb_build_object('ok',false,'erro','status_invalido'); END IF;
@@ -458,7 +503,10 @@ BEGIN
   VALUES (r.negocio_id, r.lead_id, r.corretor_id, v_cfg, 'proposta_transicao',
      jsonb_build_object('proposta_id', p_proposta_id, 'de', r.status, 'para', p_novo_status, 'motivo', p_motivo), 'usuario', v_uid, p_idem);
   RETURN jsonb_build_object('ok',true,'status', p_novo_status);
-EXCEPTION WHEN unique_violation THEN RETURN jsonb_build_object('ok',true,'ja_processado',true);
+EXCEPTION WHEN unique_violation THEN
+  IF EXISTS (SELECT 1 FROM public.ncrm_evento WHERE idempotency_key = p_idem) THEN
+    RETURN jsonb_build_object('ok',true,'ja_processado',true);
+  ELSE RAISE; END IF;
 END $fn$;
 REVOKE ALL ON FUNCTION public.ncrm_proposta_transicao(uuid,int,text,text,text) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.ncrm_proposta_transicao(uuid,int,text,text,text) TO authenticated;
@@ -474,7 +522,7 @@ BEGIN
   IF v_uid IS NULL THEN RETURN jsonb_build_object('ok',false,'erro','nao_autenticado'); END IF;
   SELECT n.lead_id, n.corretor_id INTO v_lead, v_corretor FROM public.negocios n WHERE n.id = p_negocio_id;
   IF NOT FOUND THEN RETURN jsonb_build_object('ok',false,'erro','negocio_inexistente'); END IF;
-  IF NOT ncrm_private.pode_operar_negocio(p_negocio_id) THEN RETURN jsonb_build_object('ok',false,'erro','sem_permissao'); END IF;
+  IF ncrm_private.pode_operar_negocio(p_negocio_id) IS NOT TRUE THEN RETURN jsonb_build_object('ok',false,'erro','sem_permissao'); END IF;
   IF p_proxima_tipo IS NULL OR p_proxima_titulo IS NULL OR p_proxima_em IS NULL THEN
     RETURN jsonb_build_object('ok',false,'erro','proxima_acao_obrigatoria'); END IF;
   IF p_etapa NOT IN ('novo','tentando_contato','em_atendimento','em_acompanhamento') THEN
@@ -497,7 +545,10 @@ BEGIN
   VALUES (p_negocio_id, v_lead, v_corretor, v_cfg, 'reativacao',
      jsonb_build_object('proposta_id', v_prop, 'motivo', p_motivo, 'origem_saida', 'esteira_vendas'), 'usuario', v_uid, p_idem, v_antes, v_antes+1);
   RETURN jsonb_build_object('ok',true,'versao', v_antes+1);
-EXCEPTION WHEN unique_violation THEN RETURN jsonb_build_object('ok',true,'ja_processado',true);
+EXCEPTION WHEN unique_violation THEN
+  IF EXISTS (SELECT 1 FROM public.ncrm_evento WHERE idempotency_key = p_idem) THEN
+    RETURN jsonb_build_object('ok',true,'ja_processado',true);
+  ELSE RAISE; END IF;
 END $fn$;
 REVOKE ALL ON FUNCTION public.ncrm_reativar_apos_proposta(bigint,int,text,text,text,text,timestamptz,text) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.ncrm_reativar_apos_proposta(bigint,int,text,text,text,text,timestamptz,text) TO authenticated;
@@ -505,7 +556,7 @@ GRANT EXECUTE ON FUNCTION public.ncrm_reativar_apos_proposta(bigint,int,text,tex
 -- 7.6 Sara: sugestão com precedência humana (claim em app_metadata; nunca user_metadata).
 CREATE FUNCTION public.ncrm_sara_classificar(p_negocio_id bigint, p_base_versao int, p_sugestao jsonb, p_idem text)
   RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $fn$
-DECLARE v_lead bigint; v_corretor bigint; v_atual int; v_cfg bigint; v_role text;
+DECLARE v_lead bigint; v_corretor bigint; v_atual int; v_cfg bigint; v_role text; v_motivo text;
 BEGIN
   PERFORM ncrm_private.assert_idem(p_idem);
   v_role := (auth.jwt() -> 'app_metadata' ->> 'app_role');
@@ -514,22 +565,201 @@ BEGIN
   IF NOT FOUND THEN RETURN jsonb_build_object('ok',false,'erro','negocio_inexistente'); END IF;
   IF EXISTS (SELECT 1 FROM public.ncrm_evento WHERE idempotency_key = p_idem) THEN
     RETURN jsonb_build_object('ok',true,'ja_processado',true); END IF;
-  SELECT versao, workflow_config_id INTO v_atual, v_cfg FROM public.ncrm_estado WHERE negocio_id = p_negocio_id FOR UPDATE;
+  -- SUGGESTION-ONLY: Sara NUNCA altera ncrm_estado, nunca incrementa versão, sempre aplicado=false.
+  -- (a aplicação de uma sugestão será feita por uma RPC humana auditável, em migration futura.)
+  SELECT versao, workflow_config_id INTO v_atual, v_cfg FROM public.ncrm_estado WHERE negocio_id = p_negocio_id;
   IF NOT FOUND THEN RETURN jsonb_build_object('ok',false,'erro','estado_inexistente'); END IF;
-  IF v_atual <> p_base_versao THEN
-    INSERT INTO public.ncrm_evento (negocio_id, lead_id, corretor_id_no_evento, workflow_config_id, tipo, payload, origem, idempotency_key)
-    VALUES (p_negocio_id, v_lead, v_corretor, v_cfg, 'classificacao_sara',
-       jsonb_build_object('aplicado', false, 'sugestao', p_sugestao, 'base_versao', p_base_versao, 'versao_atual', v_atual), 'sara', p_idem);
-    RETURN jsonb_build_object('ok',true,'aplicado',false,'erro','precedencia_humana');
-  END IF;
+  v_motivo := CASE WHEN v_atual <> p_base_versao THEN 'precedencia_humana' ELSE 'aguardando_aprovacao_humana' END;
   INSERT INTO public.ncrm_evento (negocio_id, lead_id, corretor_id_no_evento, workflow_config_id, tipo, payload, origem, idempotency_key)
   VALUES (p_negocio_id, v_lead, v_corretor, v_cfg, 'classificacao_sara',
-     jsonb_build_object('aplicado', true, 'sugestao', p_sugestao, 'base_versao', p_base_versao), 'sara', p_idem);
-  RETURN jsonb_build_object('ok',true,'aplicado',true);
-EXCEPTION WHEN unique_violation THEN RETURN jsonb_build_object('ok',true,'ja_processado',true);
+     jsonb_build_object('aplicado', false, 'motivo', v_motivo, 'sugestao', p_sugestao,
+                        'base_versao', p_base_versao, 'versao_atual', v_atual), 'sara', p_idem);
+  RETURN jsonb_build_object('ok',true,'aplicado',false,'motivo',v_motivo);
+EXCEPTION WHEN unique_violation THEN
+  IF EXISTS (SELECT 1 FROM public.ncrm_evento WHERE idempotency_key = p_idem) THEN
+    RETURN jsonb_build_object('ok',true,'ja_processado',true);
+  ELSE RAISE; END IF;
 END $fn$;
 REVOKE ALL ON FUNCTION public.ncrm_sara_classificar(bigint,int,jsonb,text) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.ncrm_sara_classificar(bigint,int,jsonb,text) TO authenticated;
+
+-- 7.7 Resposta do cliente (service_role / ingestão WhatsApp). Encerra a cadência de prospecção.
+CREATE FUNCTION public.ncrm_registrar_resposta_cliente(p_negocio_id bigint, p_message_id text, p_em timestamptz)
+  RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $fn$
+DECLARE v_lead bigint; v_corretor bigint; v_antes int; v_cfg bigint; v_idem text; v_msg text; v_saida text;
+BEGIN
+  v_msg := btrim(COALESCE(p_message_id,''));
+  IF v_msg = '' THEN RETURN jsonb_build_object('ok',false,'erro','message_id_obrigatorio'); END IF;
+  v_idem := 'wa:' || v_msg;
+  SELECT n.lead_id, n.corretor_id INTO v_lead, v_corretor FROM public.negocios n WHERE n.id = p_negocio_id;
+  IF NOT FOUND THEN RETURN jsonb_build_object('ok',false,'erro','negocio_inexistente'); END IF;
+  IF EXISTS (SELECT 1 FROM public.ncrm_evento WHERE idempotency_key = v_idem) THEN
+    RETURN jsonb_build_object('ok',true,'ja_processado',true); END IF;
+  SELECT versao, workflow_config_id, saida INTO v_antes, v_cfg, v_saida FROM public.ncrm_estado WHERE negocio_id = p_negocio_id FOR UPDATE;
+  IF NOT FOUND THEN RETURN jsonb_build_object('ok',false,'erro','estado_inexistente'); END IF;
+  IF v_saida IS NOT NULL THEN RETURN jsonb_build_object('ok',false,'erro','estado_em_saida'); END IF;
+  UPDATE public.ncrm_estado SET
+    respondeu = true,
+    primeira_resposta_em = COALESCE(primeira_resposta_em, p_em),
+    resposta_pendente = true,
+    aguardando_automacao = false,
+    etapa = 'em_atendimento',
+    -- próxima ação comercial PADRÃO (mantém a invariante de estado ativo); o corretor refina depois
+    proxima_acao_tipo = 'entender_necessidade', proxima_acao_titulo = 'Entender necessidade do cliente', proxima_acao_em = p_em,
+    ultima_interacao_em = p_em,
+    versao = v_antes + 1, atualizado_em = now(), origem_ultima = 'automacao'
+  WHERE negocio_id = p_negocio_id AND versao = v_antes;
+  INSERT INTO public.ncrm_evento (negocio_id, lead_id, corretor_id_no_evento, workflow_config_id, tipo, resultado, payload, origem, idempotency_key, estado_versao_antes, estado_versao_apos)
+  VALUES (p_negocio_id, v_lead, v_corretor, v_cfg, 'resposta_cliente', 'respondeu', jsonb_build_object('message_id', v_msg), 'automacao', v_idem, v_antes, v_antes + 1);
+  RETURN jsonb_build_object('ok',true,'versao', v_antes + 1);
+EXCEPTION WHEN unique_violation THEN
+  IF EXISTS (SELECT 1 FROM public.ncrm_evento WHERE idempotency_key = v_idem) THEN
+    RETURN jsonb_build_object('ok',true,'ja_processado',true);
+  ELSE RAISE; END IF;
+END $fn$;
+REVOKE ALL ON FUNCTION public.ncrm_registrar_resposta_cliente(bigint,text,timestamptz) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.ncrm_registrar_resposta_cliente(bigint,text,timestamptz) TO service_role;
+
+-- 7.8 Concluir ação comercial (authenticated). Cliente já respondeu; exige a próxima ação.
+CREATE FUNCTION public.ncrm_concluir_acao(p_negocio_id bigint, p_versao int, p_resultado text, p_obs text,
+    p_proxima_tipo text, p_proxima_titulo text, p_proxima_em timestamptz, p_idem text)
+  RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $fn$
+DECLARE v_uid uuid := auth.uid(); v_lead bigint; v_corretor bigint; v_antes int; v_cfg bigint; v_saida text; v_resp boolean; v_etapa text;
+BEGIN
+  PERFORM ncrm_private.assert_idem(p_idem);
+  IF v_uid IS NULL THEN RETURN jsonb_build_object('ok',false,'erro','nao_autenticado'); END IF;
+  SELECT n.lead_id, n.corretor_id INTO v_lead, v_corretor FROM public.negocios n WHERE n.id = p_negocio_id;
+  IF NOT FOUND THEN RETURN jsonb_build_object('ok',false,'erro','negocio_inexistente'); END IF;
+  IF ncrm_private.pode_operar_negocio(p_negocio_id) IS NOT TRUE THEN RETURN jsonb_build_object('ok',false,'erro','sem_permissao'); END IF;
+  IF p_resultado IS NULL OR btrim(p_resultado) = '' THEN RETURN jsonb_build_object('ok',false,'erro','resultado_obrigatorio'); END IF;
+  IF p_proxima_tipo IS NULL OR p_proxima_titulo IS NULL OR p_proxima_em IS NULL OR p_proxima_tipo = 'tentativa_cadencia' THEN
+    RETURN jsonb_build_object('ok',false,'erro','proxima_acao_obrigatoria'); END IF;   -- exige próxima ação comercial
+  IF EXISTS (SELECT 1 FROM public.ncrm_evento WHERE idempotency_key = p_idem) THEN
+    RETURN jsonb_build_object('ok',true,'ja_processado',true); END IF;
+  SELECT versao, workflow_config_id, saida, respondeu INTO v_antes, v_cfg, v_saida, v_resp FROM public.ncrm_estado WHERE negocio_id = p_negocio_id FOR UPDATE;
+  IF NOT FOUND THEN RETURN jsonb_build_object('ok',false,'erro','estado_inexistente'); END IF;
+  IF p_versao <> v_antes THEN RETURN jsonb_build_object('ok',false,'erro','versao_conflito'); END IF;
+  IF v_saida IS NOT NULL THEN RETURN jsonb_build_object('ok',false,'erro','estado_em_saida'); END IF;
+  IF NOT v_resp THEN RETURN jsonb_build_object('ok',false,'erro','lead_nao_respondeu'); END IF;
+  v_etapa := CASE WHEN p_proxima_tipo IN ('enviar_opcoes','solicitar_documentacao','ligar_retorno','retornar_contato','agendar_visita','preparar_proposta')
+                  THEN 'em_acompanhamento' ELSE 'em_atendimento' END;
+  UPDATE public.ncrm_estado SET
+    resposta_pendente = false, aguardando_automacao = false,
+    proxima_acao_tipo = p_proxima_tipo, proxima_acao_titulo = p_proxima_titulo, proxima_acao_em = p_proxima_em,
+    ultima_interacao_em = now(), etapa = v_etapa,
+    versao = v_antes + 1, atualizado_em = now(), atualizado_por = v_uid, origem_ultima = 'usuario', ultima_decisao_humana_em = now()
+  WHERE negocio_id = p_negocio_id AND versao = v_antes;
+  INSERT INTO public.ncrm_evento (negocio_id, lead_id, corretor_id_no_evento, workflow_config_id, tipo, resultado, payload, origem, executado_por, idempotency_key, estado_versao_antes, estado_versao_apos)
+  VALUES (p_negocio_id, v_lead, v_corretor, v_cfg, 'acao_comercial', p_resultado, jsonb_build_object('obs', p_obs), 'usuario', v_uid, p_idem, v_antes, v_antes + 1);
+  RETURN jsonb_build_object('ok',true,'versao', v_antes + 1);
+EXCEPTION WHEN unique_violation THEN
+  IF EXISTS (SELECT 1 FROM public.ncrm_evento WHERE idempotency_key = p_idem) THEN
+    RETURN jsonb_build_object('ok',true,'ja_processado',true);
+  ELSE RAISE; END IF;
+END $fn$;
+REVOKE ALL ON FUNCTION public.ncrm_concluir_acao(bigint,int,text,text,text,text,timestamptz,text) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.ncrm_concluir_acao(bigint,int,text,text,text,text,timestamptz,text) TO authenticated;
+
+-- 7.9 Saída: descarte estruturado.
+CREATE FUNCTION public.ncrm_saida_descarte(p_negocio_id bigint, p_versao int, p_motivo text, p_detalhe text, p_idem text)
+  RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $fn$
+DECLARE v_uid uuid := auth.uid(); v_lead bigint; v_corretor bigint; v_antes int; v_cfg bigint; v_saida text;
+BEGIN
+  PERFORM ncrm_private.assert_idem(p_idem);
+  IF v_uid IS NULL THEN RETURN jsonb_build_object('ok',false,'erro','nao_autenticado'); END IF;
+  SELECT n.lead_id, n.corretor_id INTO v_lead, v_corretor FROM public.negocios n WHERE n.id = p_negocio_id;
+  IF NOT FOUND THEN RETURN jsonb_build_object('ok',false,'erro','negocio_inexistente'); END IF;
+  IF ncrm_private.pode_operar_negocio(p_negocio_id) IS NOT TRUE THEN RETURN jsonb_build_object('ok',false,'erro','sem_permissao'); END IF;
+  IF p_motivo NOT IN ('sem_interesse','sem_perfil_financeiro','numero_invalido','ja_comprou_concorrente','duplicado','outro') THEN
+    RETURN jsonb_build_object('ok',false,'erro','motivo_invalido'); END IF;
+  IF p_motivo = 'outro' AND (p_detalhe IS NULL OR btrim(p_detalhe) = '') THEN
+    RETURN jsonb_build_object('ok',false,'erro','detalhe_obrigatorio'); END IF;
+  IF EXISTS (SELECT 1 FROM public.ncrm_evento WHERE idempotency_key = p_idem) THEN
+    RETURN jsonb_build_object('ok',true,'ja_processado',true); END IF;
+  SELECT versao, workflow_config_id, saida INTO v_antes, v_cfg, v_saida FROM public.ncrm_estado WHERE negocio_id = p_negocio_id FOR UPDATE;
+  IF NOT FOUND THEN RETURN jsonb_build_object('ok',false,'erro','estado_inexistente'); END IF;
+  IF p_versao <> v_antes THEN RETURN jsonb_build_object('ok',false,'erro','versao_conflito'); END IF;
+  IF v_saida IS NOT NULL THEN RETURN jsonb_build_object('ok',false,'erro','ja_em_saida'); END IF;
+  UPDATE public.ncrm_estado SET saida='descartado', saida_em=now(), descarte_motivo=p_motivo, descarte_detalhe=p_detalhe,
+     proxima_acao_tipo=NULL, proxima_acao_titulo=NULL, proxima_acao_em=NULL, resposta_pendente=false,
+     versao=v_antes+1, atualizado_em=now(), atualizado_por=v_uid, origem_ultima='usuario', ultima_decisao_humana_em=now()
+  WHERE negocio_id=p_negocio_id AND versao=v_antes;
+  INSERT INTO public.ncrm_evento (negocio_id, lead_id, corretor_id_no_evento, workflow_config_id, tipo, payload, origem, executado_por, idempotency_key, estado_versao_antes, estado_versao_apos)
+  VALUES (p_negocio_id, v_lead, v_corretor, v_cfg, 'descarte', jsonb_build_object('motivo', p_motivo, 'detalhe', p_detalhe), 'usuario', v_uid, p_idem, v_antes, v_antes+1);
+  RETURN jsonb_build_object('ok',true,'versao', v_antes+1);
+EXCEPTION WHEN unique_violation THEN
+  IF EXISTS (SELECT 1 FROM public.ncrm_evento WHERE idempotency_key = p_idem) THEN
+    RETURN jsonb_build_object('ok',true,'ja_processado',true);
+  ELSE RAISE; END IF;
+END $fn$;
+REVOKE ALL ON FUNCTION public.ncrm_saida_descarte(bigint,int,text,text,text) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.ncrm_saida_descarte(bigint,int,text,text,text) TO authenticated;
+
+-- 7.10 Saída: nutrição/arquivamento formal.
+CREATE FUNCTION public.ncrm_saida_nutricao(p_negocio_id bigint, p_versao int, p_motivo text, p_idem text)
+  RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $fn$
+DECLARE v_uid uuid := auth.uid(); v_lead bigint; v_corretor bigint; v_antes int; v_cfg bigint; v_saida text;
+BEGIN
+  PERFORM ncrm_private.assert_idem(p_idem);
+  IF v_uid IS NULL THEN RETURN jsonb_build_object('ok',false,'erro','nao_autenticado'); END IF;
+  SELECT n.lead_id, n.corretor_id INTO v_lead, v_corretor FROM public.negocios n WHERE n.id = p_negocio_id;
+  IF NOT FOUND THEN RETURN jsonb_build_object('ok',false,'erro','negocio_inexistente'); END IF;
+  IF ncrm_private.pode_operar_negocio(p_negocio_id) IS NOT TRUE THEN RETURN jsonb_build_object('ok',false,'erro','sem_permissao'); END IF;
+  IF EXISTS (SELECT 1 FROM public.ncrm_evento WHERE idempotency_key = p_idem) THEN
+    RETURN jsonb_build_object('ok',true,'ja_processado',true); END IF;
+  SELECT versao, workflow_config_id, saida INTO v_antes, v_cfg, v_saida FROM public.ncrm_estado WHERE negocio_id = p_negocio_id FOR UPDATE;
+  IF NOT FOUND THEN RETURN jsonb_build_object('ok',false,'erro','estado_inexistente'); END IF;
+  IF p_versao <> v_antes THEN RETURN jsonb_build_object('ok',false,'erro','versao_conflito'); END IF;
+  IF v_saida IS NOT NULL THEN RETURN jsonb_build_object('ok',false,'erro','ja_em_saida'); END IF;
+  UPDATE public.ncrm_estado SET saida='nutricao', saida_em=now(),
+     proxima_acao_tipo=NULL, proxima_acao_titulo=NULL, proxima_acao_em=NULL, resposta_pendente=false,
+     versao=v_antes+1, atualizado_em=now(), atualizado_por=v_uid, origem_ultima='usuario', ultima_decisao_humana_em=now()
+  WHERE negocio_id=p_negocio_id AND versao=v_antes;
+  INSERT INTO public.ncrm_evento (negocio_id, lead_id, corretor_id_no_evento, workflow_config_id, tipo, payload, origem, executado_por, idempotency_key, estado_versao_antes, estado_versao_apos)
+  VALUES (p_negocio_id, v_lead, v_corretor, v_cfg, 'nutricao', jsonb_build_object('motivo', p_motivo), 'usuario', v_uid, p_idem, v_antes, v_antes+1);
+  RETURN jsonb_build_object('ok',true,'versao', v_antes+1);
+EXCEPTION WHEN unique_violation THEN
+  IF EXISTS (SELECT 1 FROM public.ncrm_evento WHERE idempotency_key = p_idem) THEN
+    RETURN jsonb_build_object('ok',true,'ja_processado',true);
+  ELSE RAISE; END IF;
+END $fn$;
+REVOKE ALL ON FUNCTION public.ncrm_saida_nutricao(bigint,int,text,text) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.ncrm_saida_nutricao(bigint,int,text,text) TO authenticated;
+
+-- 7.11 Reativação genérica (somente de descartado/nutricao). Exige motivo, etapa e próxima ação completa.
+CREATE FUNCTION public.ncrm_reativar(p_negocio_id bigint, p_versao int, p_motivo text, p_etapa text,
+    p_proxima_tipo text, p_proxima_titulo text, p_proxima_em timestamptz, p_idem text)
+  RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $fn$
+DECLARE v_uid uuid := auth.uid(); v_lead bigint; v_corretor bigint; v_antes int; v_cfg bigint; v_saida text;
+BEGIN
+  PERFORM ncrm_private.assert_idem(p_idem);
+  IF v_uid IS NULL THEN RETURN jsonb_build_object('ok',false,'erro','nao_autenticado'); END IF;
+  SELECT n.lead_id, n.corretor_id INTO v_lead, v_corretor FROM public.negocios n WHERE n.id = p_negocio_id;
+  IF NOT FOUND THEN RETURN jsonb_build_object('ok',false,'erro','negocio_inexistente'); END IF;
+  IF ncrm_private.pode_operar_negocio(p_negocio_id) IS NOT TRUE THEN RETURN jsonb_build_object('ok',false,'erro','sem_permissao'); END IF;
+  IF p_motivo IS NULL OR btrim(p_motivo) = '' THEN RETURN jsonb_build_object('ok',false,'erro','motivo_obrigatorio'); END IF;
+  IF p_etapa NOT IN ('novo','tentando_contato','em_atendimento','em_acompanhamento') THEN RETURN jsonb_build_object('ok',false,'erro','etapa_invalida'); END IF;
+  IF p_proxima_tipo IS NULL OR p_proxima_titulo IS NULL OR p_proxima_em IS NULL THEN RETURN jsonb_build_object('ok',false,'erro','proxima_acao_obrigatoria'); END IF;
+  IF EXISTS (SELECT 1 FROM public.ncrm_evento WHERE idempotency_key = p_idem) THEN
+    RETURN jsonb_build_object('ok',true,'ja_processado',true); END IF;
+  SELECT versao, workflow_config_id, saida INTO v_antes, v_cfg, v_saida FROM public.ncrm_estado WHERE negocio_id = p_negocio_id FOR UPDATE;
+  IF NOT FOUND THEN RETURN jsonb_build_object('ok',false,'erro','estado_inexistente'); END IF;
+  IF p_versao <> v_antes THEN RETURN jsonb_build_object('ok',false,'erro','versao_conflito'); END IF;
+  IF v_saida NOT IN ('descartado','nutricao') THEN RETURN jsonb_build_object('ok',false,'erro','saida_nao_reativavel'); END IF;
+  UPDATE public.ncrm_estado SET saida=NULL, saida_em=NULL, descarte_motivo=NULL, descarte_detalhe=NULL, proposta_id=NULL,
+     etapa=p_etapa, proxima_acao_tipo=p_proxima_tipo, proxima_acao_titulo=p_proxima_titulo, proxima_acao_em=p_proxima_em,
+     versao=v_antes+1, atualizado_em=now(), atualizado_por=v_uid, origem_ultima='usuario', ultima_decisao_humana_em=now()
+  WHERE negocio_id=p_negocio_id AND versao=v_antes;
+  INSERT INTO public.ncrm_evento (negocio_id, lead_id, corretor_id_no_evento, workflow_config_id, tipo, payload, origem, executado_por, idempotency_key, estado_versao_antes, estado_versao_apos)
+  VALUES (p_negocio_id, v_lead, v_corretor, v_cfg, 'reativacao', jsonb_build_object('motivo', p_motivo, 'origem_saida', v_saida), 'usuario', v_uid, p_idem, v_antes, v_antes+1);
+  RETURN jsonb_build_object('ok',true,'versao', v_antes+1);
+EXCEPTION WHEN unique_violation THEN
+  IF EXISTS (SELECT 1 FROM public.ncrm_evento WHERE idempotency_key = p_idem) THEN
+    RETURN jsonb_build_object('ok',true,'ja_processado',true);
+  ELSE RAISE; END IF;
+END $fn$;
+REVOKE ALL ON FUNCTION public.ncrm_reativar(bigint,int,text,text,text,text,timestamptz,text) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.ncrm_reativar(bigint,int,text,text,text,text,timestamptz,text) TO authenticated;
 
 -- ============================================================================
 -- 8. GRANTS de tabela + RLS + policies (SELECT-only; escrita só por RPC)
@@ -554,8 +784,9 @@ CREATE POLICY ncrm_proposta_sel ON public.ncrm_proposta FOR SELECT TO authentica
 -- ============================================================================
 -- 9. SEED da config v1 (dados ncrm_*, não legado) — valores provisórios da Fase 1.2
 -- ============================================================================
-INSERT INTO public.ncrm_workflow_config (versao, status, vigencia_inicio, espera_apos_automacao_min, max_tentativas)
-VALUES (1, 'publicada', now(), 120, 4);
+-- 1) cria em RASCUNHO, 2) insere passos (permitido só em rascunho), 3) PUBLICA (trigger seta publicado_em).
+INSERT INTO public.ncrm_workflow_config (versao, status, espera_apos_automacao_min, max_tentativas)
+VALUES (1, 'rascunho', 120, 4);
 INSERT INTO public.ncrm_workflow_passo (config_id, ordem, canal_sugerido, intervalo_min, rotulo)
 SELECT c.id, v.ordem, v.canal, v.intervalo, v.rotulo
 FROM public.ncrm_workflow_config c,
@@ -564,3 +795,4 @@ FROM public.ncrm_workflow_config c,
              (3,'ligacao',1440,'Terceira tentativa'),
              (4,'whatsapp',2880,'Tentativa final')) AS v(ordem,canal,intervalo,rotulo)
 WHERE c.versao = 1;
+UPDATE public.ncrm_workflow_config SET status='publicada', vigencia_inicio=now() WHERE versao = 1;
