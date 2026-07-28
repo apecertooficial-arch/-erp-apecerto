@@ -123,6 +123,26 @@ export function validarAcao(body: Record<string, unknown>): Val<{ action: string
       const titulo = textoLimitado(body.proximaTitulo, 200) ?? tipo.replace(/_/g, " ");
       return { ok: true, value: { action, args: { negocioId, versao, motivo, etapa: body.etapa, proximaTipo: tipo, proximaTitulo: titulo, proximaEm: em } } };
     }
+    case "registrarPropostaEsteira": {
+      const e = precisaAlvo(); if (e) return { ok: false, erro: e };
+      const produtoId = uuidValido(body.produtoId); if (!produtoId) return { ok: false, erro: "produto inválido" };
+      const valor = typeof body.valor === "number" ? body.valor : Number(body.valor);
+      if (!Number.isFinite(valor) || valor <= 0 || valor > 1e12) return { ok: false, erro: "valor da proposta inválido" };
+      const forma = body.forma == null ? null : textoLimitado(body.forma, 60);
+      return { ok: true, value: { action, args: { negocioId, versao, produtoId, valor, forma, obs } } };
+    }
+    case "agendarVisita": {
+      const e = precisaAlvo(); if (e) return { ok: false, erro: e };
+      const leadId = inteiroPositivo(body.leadId); if (leadId === null) return { ok: false, erro: "lead inválido" };
+      if (typeof body.data !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(body.data) || Number.isNaN(Date.parse(body.data))) return { ok: false, erro: "data inválida" };
+      if (typeof body.horaInicio !== "string" || !/^\d{2}:\d{2}(:\d{2})?$/.test(body.horaInicio)) return { ok: false, erro: "hora inválida" };
+      const empreendimentoId = body.empreendimentoId == null ? null : uuidValido(body.empreendimentoId);
+      if (body.empreendimentoId != null && empreendimentoId === null) return { ok: false, erro: "empreendimento inválido" };
+      const produto = body.produto == null ? null : textoLimitado(body.produto, 180);
+      const comGerente = body.comGerente === true;
+      const gerenteId = body.gerenteId == null ? null : inteiroPositivo(body.gerenteId);
+      return { ok: true, value: { action, args: { negocioId, versao, leadId, data: body.data, horaInicio: body.horaInicio, empreendimentoId, produto, comGerente, gerenteId } } };
+    }
     case "propostaTransicao": {
       const propostaId = uuidValido(body.propostaId); if (!propostaId) return { ok: false, erro: "proposta inválida" };
       const versaoProp = inteiroNaoNeg(body.versaoProp); if (versaoProp === null) return { ok: false, erro: "versão da proposta inválida" };

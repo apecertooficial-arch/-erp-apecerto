@@ -124,6 +124,21 @@ const ACOES: Record<string, { rpc: string; args: (c: Ctx) => Record<string, unkn
       p_obs: b.obs ?? null, p_idem: idem,
     }),
   },
+  registrarPropostaEsteira: {
+    rpc: "ncrm_registrar_proposta_esteira",
+    args: ({ negocio_id, versao, idem, b }) => ({
+      p_negocio_id: negocio_id, p_versao: versao, p_produto_id: b.produtoId, p_valor: b.valor,
+      p_forma: b.forma ?? null, p_obs: b.obs ?? null, p_idem: idem,
+    }),
+  },
+  agendarVisita: {
+    rpc: "ncrm_agendar_visita_e_encaminhar",
+    args: ({ negocio_id, versao, idem, b }) => ({
+      p_negocio_id: negocio_id, p_versao: versao, p_lead_id: b.leadId, p_data: b.data, p_hora_inicio: b.horaInicio,
+      p_empreendimento_id: b.empreendimentoId ?? null, p_produto: b.produto ?? null,
+      p_com_gerente: b.comGerente ?? false, p_gerente_id: b.gerenteId ?? null, p_idem: idem,
+    }),
+  },
   propostaTransicao: {
     rpc: "ncrm_proposta_transicao",
     args: ({ idem, b }) => ({ p_proposta_id: b.propostaId, p_versao_prop: b.versaoProp, p_novo_status: b.novoStatus, p_motivo: b.motivo ?? null, p_idem: idem }),
@@ -166,6 +181,12 @@ const ERRO_HUMANO: Record<string, string> = {
   lead_nao_respondeu: "Conclua a ação apenas após o cliente responder.",
   nao_autenticado: "Sessão inválida. Faça login novamente.",
   idempotency_key_obrigatoria: "Falha técnica de idempotência. Tente novamente.",
+  produto_obrigatorio: "Selecione o produto/empreendimento da proposta.",
+  valor_invalido: "Informe um valor de proposta válido.",
+  lead_incoerente: "Lead não corresponde ao negócio.",
+  data_hora_obrigatorias: "Informe data e hora da visita.",
+  data_no_passado: "A data da visita não pode estar no passado.",
+  falha_ao_criar_solicitacao_esteira: "Não foi possível criar a proposta na Esteira. Nada foi encaminhado.",
 };
 
 export async function PATCH(request: Request) {

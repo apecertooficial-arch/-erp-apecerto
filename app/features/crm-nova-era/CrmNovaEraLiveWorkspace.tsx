@@ -23,7 +23,6 @@ import {
   mapEstadoToLead, enriquecerComEventos,
   type EstadoRow, type EventoRow, type PropostaRow,
 } from "./live/adapter";
-import { proximoEstadoVisita } from "./live/reconciliacao";
 
 const MAX_TENTATIVAS = 4; // config v1 publicada (seed). O banco é a fonte da verdade.
 
@@ -50,7 +49,6 @@ export function CrmNovaEraLiveWorkspace({ accessToken, profile }: { accessToken:
   const [detalheLeadId, setDetalheLeadId] = useState<number | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [pendenteVisita, setPendenteVisita] = useState<{ negocioId: number; versao: number; visitaId: string } | null>(null);
 
   const leads = useMemo(() => itens.map(mapEstadoToLead), [itens]);
 
@@ -90,38 +88,12 @@ export function CrmNovaEraLiveWorkspace({ accessToken, profile }: { accessToken:
     if (selId) await abrirLead(selId);
   }, [accessToken, busy, carregarQuadro, selId, abrirLead]);
 
-  // Encaminha (idempotente pelo visita_id) — usado no fluxo e na RECONCILIAÇÃO.
-  const encaminharVisita = useCallback(async (negocioId: number, versao: number, visitaId: string): Promise<boolean> => {
-    const idem = `ui:saidaVisita:${negocioId}:${visitaId}`; // estável => retry não duplica
-    const enc = await api(`/api/ncrm`, accessToken, { method: "PATCH", body: JSON.stringify({ action: "saidaVisita", negocioId, versao, visitaId, idem }) });
-    return enc.ok;
-  }, [accessToken]);
-
-  // Visita REAL: cria pelo fluxo existente do CRM/Agenda, obtém o ID e só então encaminha (fail-safe + reconciliação).
-  const criarVisitaEEncaminhar = useCallback(async (negocioId: number, versao: number, leadId: number | null, date: string, startTime: string) => {
+  // Visita ATÔMICA: uma RPC cria a visita real e encaminha (rollback integral em falha). Sem estado pendente em memória.
+  const agendarVisita = useCallback(async (negocioId: number, versao: number, leadId: number | null, date: string, startTime: string) => {
     if (!leadId) { setToast("Lead sem vínculo para agendar visita."); return; }
-    if (busy) return;
-    setBusy(true); setToast(null);
-    const cv = await api(`/api/crm`, accessToken, { method: "PATCH", body: JSON.stringify({ action: "createVisit", leadId, dealId: negocioId, date, startTime }) });
-    const criacao = { ok: cv.ok, visitaId: (cv.json as { visitaId?: string }).visitaId ?? null, erro: (cv.json.error as string) ?? null };
-    if (proximoEstadoVisita(criacao, null).status === "falha_criacao") { setBusy(false); setToast(criacao.erro || "Falha ao criar a visita — o lead foi mantido no funil."); return; }
-    const encOk = await encaminharVisita(negocioId, versao, criacao.visitaId as string);
-    setBusy(false);
-    const est = proximoEstadoVisita(criacao, encOk);
-    if (est.status === "pendente") { setPendenteVisita({ negocioId, versao, visitaId: est.visitaId }); setToast(est.mensagem); }
-    else { setPendenteVisita(null); setToast("Visita criada e encaminhada."); }
-    await carregarQuadro(); if (selId) await abrirLead(selId);
-  }, [accessToken, busy, encaminharVisita, carregarQuadro, selId, abrirLead]);
-
-  // RECONCILIAÇÃO: repete o encaminhamento da visita já criada (idempotente; nunca apaga a visita).
-  const reconciliarVisita = useCallback(async () => {
-    if (!pendenteVisita || busy) return;
-    setBusy(true); setToast(null);
-    const ok = await encaminharVisita(pendenteVisita.negocioId, pendenteVisita.versao, pendenteVisita.visitaId);
-    setBusy(false);
-    if (ok) { setPendenteVisita(null); setToast("Encaminhamento concluído."); await carregarQuadro(); if (selId) await abrirLead(selId); }
-    else setToast("Ainda pendente — tente novamente em instantes.");
-  }, [pendenteVisita, busy, encaminharVisita, carregarQuadro, selId, abrirLead]);
+    await executar({ action: "agendarVisita", negocioId, versao, leadId, data: date, horaInicio: startTime,
+      idem: `ui:agendarVisita:${negocioId}:${date}:${startTime}` });
+  }, [executar]);
 
   const porColuna = useMemo(() => {
     const m: Record<ColunaChave, LeadNova[]> = { novo: [], tentando_contato: [], em_atendimento: [], em_acompanhamento: [] };
@@ -146,12 +118,6 @@ export function CrmNovaEraLiveWorkspace({ accessToken, profile }: { accessToken:
       </div>
 
       {erro && <div className="nova-crm-notice" style={{ color: "var(--nc-red, #b42318)" }}>{erro}</div>}
-      {pendenteVisita && (
-        <div className="nova-crm-notice" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
-          <span>Visita criada, encaminhamento ao Pipe de Visitas pendente (negócio {pendenteVisita.negocioId}).</span>
-          <button className="nova-crm-btn" disabled={busy} onClick={() => void reconciliarVisita()}>Repetir encaminhamento</button>
-        </div>
-      )}
       {loading && <div className="nova-crm-empty">Carregando carteira…</div>}
 
       {!loading && !erro && (
@@ -200,7 +166,7 @@ export function CrmNovaEraLiveWorkspace({ accessToken, profile }: { accessToken:
               lead={detalhe} busy={busy} accessToken={accessToken} leadId={detalheLeadId}
               onClose={() => { setSelId(null); setDetalhe(null); setDetalheLeadId(null); }}
               onExecutar={executar} onToast={setToast}
-              onCriarVisita={(date, start) => criarVisitaEEncaminhar(Number(detalhe.id), itens.find((i) => String(i.negocio_id) === detalhe.id)?.versao ?? 1, detalheLeadId, date, start)}
+              onCriarVisita={(date, start) => agendarVisita(Number(detalhe.id), itens.find((i) => String(i.negocio_id) === detalhe.id)?.versao ?? 1, detalheLeadId, date, start)}
               versao={itens.find((i) => String(i.negocio_id) === detalhe.id)?.versao ?? 1}
             />
           )}
@@ -325,6 +291,8 @@ function LivePanel({
               onSubmit={async (p) => { await onExecutar(p); setForm(null); setPrefill({}); }} />
           )}
 
+          <ConversaLead accessToken={accessToken} negocioId={Number(lead.id)} />
+
           {/* Trilha */}
           <div className="nova-crm-tl-wrap">
             <b>Histórico</b>
@@ -344,6 +312,43 @@ function LivePanel({
   );
 }
 
+/* --------------------------- Conversa real do lead --------------------------- */
+type MsgConversa = { id: string; direcao: string | null; tipo: string | null; conteudo: string | null; media_url: string | null; enviado_em: string | null; criado_em: string | null; status: string | null; transcricao: string | null };
+function ConversaLead({ accessToken, negocioId }: { accessToken: string; negocioId: number }) {
+  const [msgs, setMsgs] = useState<MsgConversa[] | null>(null);
+  const [erro, setErro] = useState<string | null>(null);
+  useEffect(() => {
+    let vivo = true;
+    void fetch(`/api/ncrm/conversa?negocio=${negocioId}&limit=60`, { headers: { Authorization: `Bearer ${accessToken}` } })
+      .then((r) => r.json().then((j) => ({ ok: r.ok, j })))
+      .then(({ ok, j }) => { if (!vivo) return; if (ok) setMsgs((j.mensagens as MsgConversa[]) ?? []); else setErro((j.error as string) || "Conversa indisponível."); })
+      .catch(() => { if (vivo) setErro("Conversa indisponível."); });
+    return () => { vivo = false; };
+  }, [accessToken, negocioId]);
+  return (
+    <div className="nova-crm-tl-wrap">
+      <b>Conversa (WhatsApp)</b>
+      {erro && <div className="nova-crm-hint">{erro}</div>}
+      {!msgs && !erro && <div className="nova-crm-hint">Carregando conversa…</div>}
+      {msgs && msgs.length === 0 && <div className="nova-crm-hint">Sem mensagens para este lead.</div>}
+      {msgs && msgs.length > 0 && (
+        <ul className="nova-crm-tl-list" style={{ maxHeight: 260, overflow: "auto" }}>
+          {msgs.map((m) => (
+            <li key={m.id} style={{ display: "flex", flexDirection: "column", gap: 2, padding: "4px 0" }}>
+              <span>{(m.direcao || "?").toUpperCase()} · {m.enviado_em ? new Date(m.enviado_em).toLocaleString("pt-BR") : (m.criado_em ? new Date(m.criado_em).toLocaleString("pt-BR") : "—")} {m.status ? `· ${m.status}` : ""}</span>
+              {m.tipo === "audio" && m.media_url && <audio controls preload="none" src={m.media_url} style={{ maxWidth: "100%" }} />}
+              {(m.tipo === "imagem" || m.tipo === "foto") && m.media_url && <a href={m.media_url} target="_blank" rel="noreferrer">imagem</a>}
+              {m.conteudo && <span>{m.conteudo}</span>}
+              {m.transcricao && <span style={{ fontStyle: "italic", color: "var(--nc-muted)" }}>“{m.transcricao}”</span>}
+              {!m.conteudo && !m.transcricao && !m.media_url && <span className="nova-crm-hint">({m.tipo || "mensagem"})</span>}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 /* --------------------------- Formulários de ação --------------------------- */
 function FormAcao({
   tipo, lead, versao, busy, leadId, inicial, onCancel, onSubmit, onCriarVisita,
@@ -360,6 +365,8 @@ function FormAcao({
   const [proximaTipo, setProximaTipo] = useState(inicial?.proximaTipo ?? "entender_necessidade");
   const [proximaEm, setProximaEm] = useState(inicial?.prazo ?? "");
   const [valor, setValor] = useState("");
+  const [produtoId, setProdutoId] = useState("");
+  const [forma, setForma] = useState("");
   const [vData, setVData] = useState("");
   const [vHora, setVHora] = useState("");
   const [motivo, setMotivo] = useState("sem_interesse");
@@ -450,12 +457,14 @@ function FormAcao({
 
       {tipo === "proposta" && (
         <>
-          <p className="nova-crm-hint">Proposta ≠ venda. Registrar encaminha o lead à Esteira de Vendas sem contabilizar venda.</p>
+          <p className="nova-crm-hint">Proposta ≠ venda. Cria a solicitação REAL na Esteira (venda_solicitacoes, pendente) e encaminha — sem contabilizar venda, atômico (rollback se qualquer etapa falhar).</p>
+          <label>Produto/empreendimento (ID)<input value={produtoId} onChange={(e) => setProdutoId(e.target.value)} placeholder="uuid do produto" /></label>
           <label>Valor (R$)<input type="number" value={valor} onChange={(e) => setValor(e.target.value)} /></label>
+          <label>Forma de pagamento<input value={forma} onChange={(e) => setForma(e.target.value)} placeholder="opcional" /></label>
           <label>Observação<input value={obs} onChange={(e) => setObs(e.target.value)} /></label>
           <div className="nova-crm-form-actions">
             <button className="nova-crm-btn ghost" onClick={onCancel}>Cancelar</button>
-            <button className="nova-crm-btn" disabled={busy || !valor} onClick={() => onSubmit({ action: "saidaProposta", ...base, valor: Number(valor), obs })}>Registrar proposta</button>
+            <button className="nova-crm-btn" disabled={busy || !valor || !produtoId} onClick={() => onSubmit({ action: "registrarPropostaEsteira", ...base, produtoId, valor: Number(valor), forma: forma || null, obs })}>Registrar proposta na Esteira</button>
           </div>
         </>
       )}
