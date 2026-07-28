@@ -375,14 +375,14 @@ export async function PATCH(request: Request) {
       if (chosen) gerenteId = chosen;
       else { const { data: gg } = await auth.supabase.from("gerentes").select("id").eq("ativo", true).eq("geral", true).maybeSingle(); gerenteId = (gg?.id as number | undefined) ?? null; }
     }
-    const { error } = await auth.supabase.from("visitas").insert({
+    const { data: createdVisit, error } = await auth.supabase.from("visitas").insert({
       created_by: auth.user.id, lead_id: leadId, negocio_id: dealId, corretor_id: deal.corretor_id, cliente_nome: lead.nome,
       empreendimento_id: product?.id ?? null, produto: product?.nome ?? (cleanText(body.productName, 180) || null),
       data: date, hora_inicio: startTime, hora_fim: cleanText(body.endTime, 8) || null,
       local, observacoes: cleanText(body.observations, 1200) || null,
       participantes: cleanText(body.participants, 500) || null,
       lembrete: body.reminder !== false, com_gerente: comGerente, gerente_id: gerenteId, status: "agendada",
-    });
+    }).select("id").maybeSingle();
     if (error) return Response.json({ error: error.message }, { status: 502 });
     // #9 — ao agendar, move o lead para o funil "Visita ApeCerto" na etapa "Visita Agendada" (best-effort).
     try {
@@ -392,7 +392,8 @@ export async function PATCH(request: Request) {
         if (stage?.id) await auth.supabase.rpc("mover_negocio", { p_negocio_id: dealId, p_stage_id: stage.id });
       }
     } catch { /* mover é best-effort — a visita já foi criada */ }
-    return Response.json({ success: true });
+    // Retorna o ID real da visita criada (aditivo): consumido pelo CRM Nova Era para ncrm_saida_visita.
+    return Response.json({ success: true, visitaId: (createdVisit as { id?: string } | null)?.id ?? null });
   }
 
   if (action === "updateVisit") {
