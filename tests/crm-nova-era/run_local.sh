@@ -11,8 +11,10 @@ cp "$ROOT/tests/crm-nova-era/00_local_harness.sql" "$STAGE/harness.sql"
 cp "$ROOT/tests/crm-nova-era/10_tests_core.sql" "$STAGE/core.sql"
 cp "$ROOT/tests/crm-nova-era/20_tests_correcoes.sql" "$STAGE/core2.sql"
 cp "$ROOT/tests/crm-nova-era/30_tests_delta_cadencia.sql" "$STAGE/core3.sql"
+cp "$ROOT/tests/crm-nova-era/40_tests_sara_decisao.sql" "$STAGE/core4.sql"
+cp "$ROOT/supabase/migrations/20260728190000_ncrm_sara_decisao.sql" "$STAGE/mig_sara.sql"
 chmod -R a+rX "$STAGE"
-MIG="$STAGE/mig.sql"; DOWN="$STAGE/down.sql"; HARNESS="$STAGE/harness.sql"; CORE="$STAGE/core.sql"; CORE2="$STAGE/core2.sql"; CORE3="$STAGE/core3.sql"
+MIG="$STAGE/mig.sql"; DOWN="$STAGE/down.sql"; HARNESS="$STAGE/harness.sql"; CORE="$STAGE/core.sql"; CORE2="$STAGE/core2.sql"; CORE3="$STAGE/core3.sql"; CORE4="$STAGE/core4.sql"; MIG_SARA="$STAGE/mig_sara.sql"
 PGBIN=/usr/lib/postgresql/16/bin
 PGDATA=/tmp/ncrm_pgdata
 SOCK=/tmp/ncrm_sock
@@ -55,6 +57,10 @@ PSQL -f "$CORE2"
 
 echo "### testes do DELTA (cadência calculada pelo banco, última tentativa, contador, timestamps)"
 PSQL -f "$CORE3"
+
+echo "### correção auditável da Sara: aplica migration corretiva + testes de decisão humana"
+PSQL -f "$MIG_SARA"
+PSQL -f "$CORE4"
 
 echo "### #29 rollback remove só objetos ncrm_*"
 PSQL -f "$DOWN"

@@ -95,18 +95,25 @@ export async function POST(request: Request) {
   if (!decisao) return Response.json({ error: "decisao inválida (aceita|rejeitada)" }, { status: 422 });
   const negocioId = inteiroPositivo(body.negocioId);
   if (negocioId === null) return Response.json({ error: "negocio inválido" }, { status: 422 });
+  const sugestao = (body.sugestao && typeof body.sugestao === "object" && !Array.isArray(body.sugestao)) ? body.sugestao : null;
+  if (!sugestao) return Response.json({ error: "sugestão inválida" }, { status: 422 });
+  const confRaw = (sugestao as { confianca?: unknown }).confianca;
+  const confianca = typeof confRaw === "number" ? confRaw : Number(confRaw);
+  if (!Number.isFinite(confianca) || confianca < 0 || confianca > 1) return Response.json({ error: "confiança inválida" }, { status: 422 });
   const justificativa = textoLimitado(body.justificativa, 500);
+  const baseVersao = inteiroPositivo(body.baseVersao) ?? 1;
+  const idem = textoLimitado(body.idem, 120) ?? `sara:${decisao}:${negocioId}:${crypto.randomUUID()}`;
 
-  // Persiste o feedback (telemetria real). NÃO responde "registrado" se falhar (sem engolir erro).
-  const { error } = await supabase.rpc("perf_log_sessao", { p_tipo: `ncrm_sara_${decisao}` });
-  if (error) return Response.json({ ok: false, error: "Falha ao registrar o feedback da Sara.", detalhe: error.message }, { status: 502 });
-
-  return Response.json({
-    ok: true,
-    registrado: true,
-    decisao,
-    justificativa,
-    // O evento auditável classificacao_sara (papel `sara`) é persistido pela edge function service_role.
-    evento_auditavel: "delegado_ao_ncrm_ingest",
+  // Persiste a DECISÃO HUMANA de forma AUDITÁVEL via RPC autenticada (pode_operar no banco).
+  // registrado=true SÓ depois da persistência real. Sem engolir erro.
+  const db = supabase as unknown as import("@supabase/supabase-js").SupabaseClient;
+  const { data, error } = await db.rpc("ncrm_registrar_decisao_sara", {
+    p_negocio_id: negocioId, p_base_versao: baseVersao, p_decisao: decisao,
+    p_sugestao: sugestao, p_confianca: confianca, p_justificativa: justificativa, p_idem: idem,
   });
+  if (error) return Response.json({ ok: false, error: "Falha ao registrar a decisão da Sara.", detalhe: error.message }, { status: 502 });
+  const res = (data ?? {}) as { ok?: boolean; erro?: string };
+  if (res.ok === false) return Response.json({ ok: false, erro: res.erro, error: "Decisão não permitida." }, { status: 409 });
+
+  return Response.json({ ok: true, registrado: true, decisao, justificativa });
 }
