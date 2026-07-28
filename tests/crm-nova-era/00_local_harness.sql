@@ -21,8 +21,11 @@ $$;
 CREATE OR REPLACE FUNCTION auth.jwt() RETURNS jsonb LANGUAGE sql STABLE AS $$
   SELECT COALESCE(current_setting('request.jwt.claims', true),'{}')::jsonb
 $$;
+CREATE OR REPLACE FUNCTION auth.role() RETURNS text LANGUAGE sql STABLE AS $$
+  SELECT COALESCE(NULLIF(current_setting('request.jwt.claims', true)::jsonb->>'role',''), 'anon')
+$$;
 GRANT USAGE ON SCHEMA auth TO anon, authenticated, service_role;
-GRANT EXECUTE ON FUNCTION auth.uid(), auth.jwt() TO anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION auth.uid(), auth.jwt(), auth.role() TO anon, authenticated, service_role;
 
 -- Tabelas legadas mínimas (tipos reais)
 CREATE TABLE public.usuarios (
@@ -31,11 +34,13 @@ CREATE TABLE public.usuarios (
 CREATE TABLE public.perfis (id text PRIMARY KEY, nome text, permissoes jsonb, is_system boolean DEFAULT true);
 CREATE TABLE public.corretores (id bigint PRIMARY KEY, usuario_id uuid REFERENCES public.usuarios(id), ativo boolean DEFAULT true);
 CREATE TABLE public.leads (id bigint PRIMARY KEY, nome text);
-CREATE TABLE public.empreendimentos (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), nome text);
+CREATE TABLE public.empreendimentos (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), nome text, bairro text, cidade text, preco numeric, publicado boolean DEFAULT true);
 CREATE TABLE public.unidades (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), empreendimento_id uuid);
 CREATE TABLE public.negocios (
   id bigint PRIMARY KEY, lead_id bigint NOT NULL REFERENCES public.leads(id),
-  corretor_id bigint REFERENCES public.corretores(id), status text NOT NULL DEFAULT 'aberto'
+  corretor_id bigint REFERENCES public.corretores(id), status text NOT NULL DEFAULT 'aberto',
+  criado_em timestamptz NOT NULL DEFAULT now(),
+  stage_id bigint, pipeline_id bigint, ultima_movimentacao timestamptz, motivo_perda text, venda_id uuid
 );
 CREATE INDEX idx_negocios_corretor ON public.negocios (corretor_id);   -- reproduz índice real
 CREATE TABLE public.visitas (
@@ -68,6 +73,45 @@ BEGIN
   RETURNING id INTO v_id;
   RETURN jsonb_build_object('ok', true, 'id', v_id);
 END $$;
+
+-- Pipelines/etapas reais (tipos descobertos read-only) + seed do Pipe de Visitas.
+CREATE TABLE public.pipelines (id bigint PRIMARY KEY, nome text, grupo text, ordem integer, empreendimento_id uuid);
+CREATE TABLE public.pipeline_stages (
+  id bigint PRIMARY KEY, pipeline_id bigint REFERENCES public.pipelines(id), nome text, ordem integer, tipo text
+);
+INSERT INTO public.pipelines (id, nome, ordem) VALUES (2,'PIPE ATENDIMENTO',0),(3,'Visita ApeCerto',1),(4,'FECHAMENTO',2);
+INSERT INTO public.pipeline_stages (id, pipeline_id, nome, ordem, tipo) VALUES
+  (20,2,'Lead Novo',1,'aberto'),
+  (53,3,'📅 Visita Agendada',0,'aberto'),
+  (54,3,'👀 Visita Realizada',2,'aberto'),
+  (49,3,'✅ Negócio Fechado',5,'ganho'),
+  (51,4,'Visita Agendada',0,'aberto');   -- homônima em outro pipe: a RPC deve preferir "Visita ApeCerto"
+GRANT SELECT ON public.pipelines, public.pipeline_stages TO authenticated, service_role;
+
+-- Stub FIEL de mover_negocio (mesma lógica capturada em produção): ownership + status por tipo.
+CREATE OR REPLACE FUNCTION public.mover_negocio(p_negocio_id bigint, p_stage_id bigint, p_motivo text DEFAULT NULL)
+  RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'public' AS $$
+declare v_role text := coalesce((select auth.role()), ''); v_neg public.negocios%rowtype;
+        v_stage public.pipeline_stages%rowtype; v_status text;
+begin
+  if v_role not in ('authenticated','service_role') then return jsonb_build_object('ok', false, 'error', 'nao autorizado'); end if;
+  select * into v_neg from public.negocios where id = p_negocio_id;
+  if not found then return jsonb_build_object('ok', false, 'error', 'negocio nao encontrado'); end if;
+  if v_role = 'authenticated' and not public.can_manage_all() then
+    if not exists (select 1 from public.corretores c where c.usuario_id = (select auth.uid()) and c.id = v_neg.corretor_id) then
+      return jsonb_build_object('ok', false, 'error', 'Voce so pode movimentar os seus proprios leads.');
+    end if;
+  end if;
+  select * into v_stage from public.pipeline_stages where id = p_stage_id;
+  if not found then return jsonb_build_object('ok', false, 'error', 'etapa nao encontrada'); end if;
+  v_status := case v_stage.tipo when 'ganho' then 'ganho' when 'perdido' then 'perdido' else 'aberto' end;
+  update public.negocios set stage_id = v_stage.id, pipeline_id = v_stage.pipeline_id, status = v_status,
+         motivo_perda = case when v_stage.tipo = 'perdido' then coalesce(p_motivo, v_neg.motivo_perda) else null end,
+         ultima_movimentacao = now()
+   where id = p_negocio_id;
+  return jsonb_build_object('ok', true, 'negocio_id', p_negocio_id, 'stage_id', v_stage.id, 'stage_nome', v_stage.nome, 'pipeline_id', v_stage.pipeline_id, 'status', v_status);
+end $$;
+GRANT EXECUTE ON FUNCTION public.mover_negocio(bigint,bigint,text) TO authenticated, service_role;
 
 -- Helpers REAIS (corpos capturados da produção; owner = superusuário local => bypassam RLS legada)
 CREATE OR REPLACE FUNCTION public.can_manage_all() RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path TO 'public' AS $$

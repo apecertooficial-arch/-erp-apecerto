@@ -12,7 +12,7 @@ CREATE FUNCTION public.ncrm_registrar_proposta_esteira(
     p_negocio_id bigint, p_versao int, p_produto_id uuid, p_valor numeric, p_forma text, p_obs text, p_idem text)
   RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $fn$
 DECLARE v_uid uuid := auth.uid(); v_lead bigint; v_corretor bigint; v_antes int; v_cfg bigint;
-        v_saida text; v_sol uuid; v_prop uuid;
+        v_saida text; v_sol uuid; v_prop uuid; v_venda jsonb;
 BEGIN
   PERFORM ncrm_private.assert_idem(p_idem);
   IF v_uid IS NULL THEN RETURN jsonb_build_object('ok',false,'erro','nao_autenticado'); END IF;
@@ -32,10 +32,15 @@ BEGIN
   -- 1) reutiliza solicitação PENDENTE existente; senão cria via a RPC oficial da Esteira.
   SELECT id INTO v_sol FROM public.venda_solicitacoes WHERE negocio_id = p_negocio_id AND status = 'pendente' ORDER BY criado_em DESC LIMIT 1;
   IF v_sol IS NULL THEN
-    PERFORM public.solicitar_venda(p_negocio_id, p_produto_id, p_valor, p_forma, p_obs);  -- só insere venda_solicitacoes
-    SELECT id INTO v_sol FROM public.venda_solicitacoes WHERE negocio_id = p_negocio_id AND status = 'pendente' ORDER BY criado_em DESC LIMIT 1;
-  END IF;
-  IF v_sol IS NULL THEN RAISE EXCEPTION 'falha_ao_criar_solicitacao_esteira';  -- rollback integral
+    v_venda := public.solicitar_venda(p_negocio_id, p_produto_id, p_valor, p_forma, p_obs);  -- só insere venda_solicitacoes
+    IF COALESCE((v_venda->>'ok')::boolean, false) IS TRUE AND (v_venda->>'id') IS NOT NULL THEN
+      v_sol := (v_venda->>'id')::uuid;
+    ELSE
+      SELECT id INTO v_sol FROM public.venda_solicitacoes WHERE negocio_id = p_negocio_id AND status = 'pendente' ORDER BY criado_em DESC LIMIT 1;
+    END IF;
+    IF v_sol IS NULL THEN
+      RAISE EXCEPTION 'falha_ao_criar_solicitacao_esteira: %', COALESCE(v_venda->>'erro', 'desconhecido');  -- rollback integral
+    END IF;
   END IF;
 
   -- 2) cria/vincula ncrm_proposta -> solicitação real

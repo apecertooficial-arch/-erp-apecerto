@@ -285,7 +285,7 @@ function LivePanel({
           </div>
 
           {form && (
-            <FormAcao tipo={form} lead={lead} versao={versao} busy={busy} leadId={leadId} inicial={prefill}
+            <FormAcao tipo={form} lead={lead} versao={versao} busy={busy} leadId={leadId} inicial={prefill} accessToken={accessToken}
               onCancel={() => { setForm(null); setPrefill({}); }}
               onCriarVisita={onCriarVisita}
               onSubmit={async (p) => { await onExecutar(p); setForm(null); setPrefill({}); }} />
@@ -351,11 +351,11 @@ function ConversaLead({ accessToken, negocioId }: { accessToken: string; negocio
 
 /* --------------------------- Formulários de ação --------------------------- */
 function FormAcao({
-  tipo, lead, versao, busy, leadId, inicial, onCancel, onSubmit, onCriarVisita,
+  tipo, lead, versao, busy, leadId, inicial, accessToken, onCancel, onSubmit, onCriarVisita,
 }: {
   tipo: "tentativa" | "concluir" | "visita" | "proposta" | "descarte" | "nutricao";
   lead: LeadNova; versao: number; busy: boolean; leadId: number | null;
-  inicial?: { proximaTipo?: string; prazo?: string };
+  inicial?: { proximaTipo?: string; prazo?: string }; accessToken: string;
   onCancel: () => void; onSubmit: (p: Record<string, unknown>) => void | Promise<void>;
   onCriarVisita: (date: string, startTime: string) => void | Promise<void>;
 }) {
@@ -366,6 +366,9 @@ function FormAcao({
   const [proximaEm, setProximaEm] = useState(inicial?.prazo ?? "");
   const [valor, setValor] = useState("");
   const [produtoId, setProdutoId] = useState("");
+  const [produtos, setProdutos] = useState<Array<{ id: string; rotulo: string }>>([]);
+  const [produtoBusca, setProdutoBusca] = useState("");
+  const [produtosErro, setProdutosErro] = useState<string | null>(null);
   const [forma, setForma] = useState("");
   const [vData, setVData] = useState("");
   const [vHora, setVHora] = useState("");
@@ -374,6 +377,20 @@ function FormAcao({
   const base = { negocioId: Number(lead.id), versao };
   const respondeuAgora = resultado === "respondeu" || resultado === "pediu_retorno";
   const proxIso = proximaEm ? new Date(proximaEm).toISOString() : null;
+
+  // Carrega produtos/empreendimentos VISÍVEIS (RLS) para o select — o usuário nunca digita UUID.
+  useEffect(() => {
+    if (tipo !== "proposta") return;
+    const ctrl = new AbortController();
+    const q = produtoBusca.trim();
+    const t = setTimeout(() => {
+      void fetch(`/api/ncrm/produtos${q ? `?q=${encodeURIComponent(q)}` : ""}`, { headers: { Authorization: `Bearer ${accessToken}` }, signal: ctrl.signal })
+        .then((r) => r.ok ? r.json() : Promise.reject(new Error("falha")))
+        .then((j: { produtos?: Array<{ id: string; rotulo: string }> }) => { setProdutos(j.produtos ?? []); setProdutosErro(null); })
+        .catch((e) => { if (e?.name !== "AbortError") setProdutosErro("Não foi possível carregar os produtos."); });
+    }, 250);
+    return () => { ctrl.abort(); clearTimeout(t); };
+  }, [tipo, produtoBusca, accessToken]);
 
   return (
     <div className="nova-crm-form">
@@ -458,7 +475,14 @@ function FormAcao({
       {tipo === "proposta" && (
         <>
           <p className="nova-crm-hint">Proposta ≠ venda. Cria a solicitação REAL na Esteira (venda_solicitacoes, pendente) e encaminha — sem contabilizar venda, atômico (rollback se qualquer etapa falhar).</p>
-          <label>Produto/empreendimento (ID)<input value={produtoId} onChange={(e) => setProdutoId(e.target.value)} placeholder="uuid do produto" /></label>
+          <label>Buscar produto/empreendimento<input value={produtoBusca} onChange={(e) => setProdutoBusca(e.target.value)} placeholder="digite o nome ou bairro" /></label>
+          <label>Produto/empreendimento
+            <select value={produtoId} onChange={(e) => setProdutoId(e.target.value)}>
+              <option value="">— selecione pelo nome —</option>
+              {produtos.map((p) => <option key={p.id} value={p.id}>{p.rotulo}</option>)}
+            </select>
+          </label>
+          {produtosErro && <p className="nova-crm-hint" style={{ color: "#b91c1c" }}>{produtosErro}</p>}
           <label>Valor (R$)<input type="number" value={valor} onChange={(e) => setValor(e.target.value)} /></label>
           <label>Forma de pagamento<input value={forma} onChange={(e) => setForma(e.target.value)} placeholder="opcional" /></label>
           <label>Observação<input value={obs} onChange={(e) => setObs(e.target.value)} /></label>
