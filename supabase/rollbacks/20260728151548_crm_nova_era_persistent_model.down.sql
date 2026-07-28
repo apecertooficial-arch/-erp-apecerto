@@ -29,6 +29,22 @@ DROP TRIGGER IF EXISTS trg_ncrm_passo_imutavel  ON public.ncrm_workflow_passo;
 DROP TRIGGER IF EXISTS trg_ncrm_config_imutavel ON public.ncrm_workflow_config;
 DROP TRIGGER IF EXISTS trg_ncrm_evento_imutavel ON public.ncrm_evento;
 
+-- 3.5 Índices de cobertura de FKs ncrm_* (redundante ao DROP TABLE; explícito para registro)
+DROP INDEX IF EXISTS public.ix_ncrm_evento_executado_por;
+DROP INDEX IF EXISTS public.ix_ncrm_evento_config;
+DROP INDEX IF EXISTS public.ix_ncrm_evento_corretor;
+DROP INDEX IF EXISTS public.ix_ncrm_evento_lead;
+DROP INDEX IF EXISTS public.ix_ncrm_estado_atualizado_por;
+DROP INDEX IF EXISTS public.ix_ncrm_estado_proposta;
+DROP INDEX IF EXISTS public.ix_ncrm_estado_visita;
+DROP INDEX IF EXISTS public.ix_ncrm_estado_config;
+DROP INDEX IF EXISTS public.ix_ncrm_proposta_criada_por;
+DROP INDEX IF EXISTS public.ix_ncrm_proposta_unidade;
+DROP INDEX IF EXISTS public.ix_ncrm_proposta_empreendimento;
+DROP INDEX IF EXISTS public.ix_ncrm_proposta_corretor;
+DROP INDEX IF EXISTS public.ix_ncrm_proposta_lead;
+DROP INDEX IF EXISTS public.ix_ncrm_config_criado_por;
+
 -- 4. Tabelas ncrm_* (ordem inversa das FKs internas: evento -> estado -> proposta -> passo -> config)
 DROP TABLE IF EXISTS public.ncrm_evento;
 DROP TABLE IF EXISTS public.ncrm_estado;

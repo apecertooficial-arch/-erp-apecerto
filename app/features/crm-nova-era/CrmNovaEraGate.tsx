@@ -1,49 +1,78 @@
 "use client";
 /**
- * CrmNovaEraGate — SELETOR de acesso entre o CRM atual e o CRM Nova Era (Experimental).
+ * CrmNovaEraGate — SELETOR entre o CRM atual e o CRM Nova Era (funcional).
  * ------------------------------------------------------------------
- * - Default SEMPRE "Funil atual": renderiza o CRM vigente (recebido em `current`)
- *   sem alterar seu comportamento. Só troca quando o usuário escolhe "Nova Era".
- * - Sem persistência em banco: a escolha vive em estado local + query string (?crm=nova-era).
- * - Injeta o CSS isolado (nova-crm-*) via <style>, sem tocar globals.css/layout.
- *
- * Integração: ProductCatalog envolve o branch "CRM" com este Gate (mudança cirúrgica).
+ * - Gate real: só exibe a opção "CRM Nova Era" quando `crmNovaEraLiberado`
+ *   (flag do ambiente ligada E (admin OU allowlist)). Corretor sem permissão
+ *   vê APENAS o CRM antigo. Acesso direto por ?crm=nova-era é bloqueado quando
+ *   não liberado (cai no CRM antigo e limpa a query).
+ * - A flag controla só a VISIBILIDADE; a autorização de dados é sempre do banco
+ *   (RLS + RPC fail-closed). Nenhum segredo/serviço aqui.
+ * - Persiste a última escolha por usuário (localStorage), sem afetar os demais.
+ * - Default: "Funil atual" (CRM de produção inalterado).
  */
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { NOVA_CRM_CSS } from "./styles";
-import { CrmNovaEraWorkspace } from "./CrmNovaEraWorkspace";
+import { crmNovaEraLiberado } from "./featureFlag";
+import { CrmNovaEraLiveWorkspace } from "./CrmNovaEraLiveWorkspace";
 
 type Variante = "atual" | "nova-era";
+type Profile = { userId: string | null; role: string | null; name: string | null };
 
-function varianteInicial(): Variante {
+function chave(userId: string | null) {
+  return `ncrm:variante:${userId ?? "anon"}`;
+}
+
+function escolhaSalva(userId: string | null): Variante {
   if (typeof window === "undefined") return "atual";
   try {
-    const p = new URLSearchParams(window.location.search).get("crm");
-    return p === "nova-era" ? "nova-era" : "atual";
+    if (new URLSearchParams(window.location.search).get("crm") === "nova-era") return "nova-era";
+    return window.localStorage.getItem(chave(userId)) === "nova-era" ? "nova-era" : "atual";
   } catch {
     return "atual";
   }
 }
 
-function refletirNaUrl(v: Variante) {
+function refletirUrl(v: Variante, userId: string | null) {
   if (typeof window === "undefined") return;
   try {
     const url = new URL(window.location.href);
     if (v === "nova-era") url.searchParams.set("crm", "nova-era");
     else url.searchParams.delete("crm");
     window.history.replaceState(null, "", url.toString());
+    window.localStorage.setItem(chave(userId), v);
   } catch {
-    /* no-op: query string é só conveniência, nunca crítico */
+    /* no-op */
   }
 }
 
-export function CrmNovaEraGate({ current }: { current: ReactNode }) {
-  const [variante, setVariante] = useState<Variante>(varianteInicial);
+export function CrmNovaEraGate({
+  current,
+  accessToken,
+  profile,
+}: {
+  current: ReactNode;
+  accessToken?: string | null;
+  profile?: Profile;
+}) {
+  const liberado = crmNovaEraLiberado(profile?.userId ?? null, { role: profile?.role ?? null });
+  // Escolha inicial já considerando o gate (sem setState em efeito).
+  const [variante, setVariante] = useState<Variante>(() => (liberado ? escolhaSalva(profile?.userId ?? null) : "atual"));
+
+  // Se não liberado, apenas limpa ?crm=nova-era da URL (sync com sistema externo — sem setState).
+  useEffect(() => {
+    if (!liberado) refletirUrl("atual", profile?.userId ?? null);
+  }, [liberado, profile?.userId]);
+
+  // Não liberado: nada de Nova Era, nem seletor — CRM antigo puro.
+  if (!liberado) return <>{current}</>;
 
   function escolher(v: Variante) {
     setVariante(v);
-    refletirNaUrl(v);
+    refletirUrl(v, profile?.userId ?? null);
   }
+
+  const podeLive = !!accessToken && !!profile?.userId;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", minHeight: 0 }}>
@@ -51,41 +80,28 @@ export function CrmNovaEraGate({ current }: { current: ReactNode }) {
 
       <div className="nova-crm-topbar" style={{ borderBottom: "1px solid var(--nc-line)" }}>
         <div className="nova-crm-seg" role="tablist" aria-label="Selecionar experiência de CRM">
-          <button
-            className={variante === "atual" ? "on" : ""}
-            onClick={() => escolher("atual")}
-            role="tab"
-            aria-selected={variante === "atual"}
-          >
+          <button className={variante === "atual" ? "on" : ""} onClick={() => escolher("atual")} role="tab" aria-selected={variante === "atual"}>
             Funil atual
           </button>
-          <button
-            className={variante === "nova-era" ? "on" : ""}
-            onClick={() => escolher("nova-era")}
-            role="tab"
-            aria-selected={variante === "nova-era"}
-          >
-            CRM Nova Era <span className="nova-crm-badge-exp" style={{ marginLeft: 6 }}>Experimental</span>
+          <button className={variante === "nova-era" ? "on" : ""} onClick={() => escolher("nova-era")} role="tab" aria-selected={variante === "nova-era"}>
+            CRM Nova Era <span className="nova-crm-badge-exp" style={{ marginLeft: 6 }}>Piloto</span>
           </button>
         </div>
         <span className="nova-crm-seghint">
-          {variante === "atual"
-            ? "Você está no CRM de produção (inalterado)."
-            : "Protótipo de avaliação — dados fictícios, sem gravação."}
+          {variante === "atual" ? "Você está no CRM de produção (inalterado)." : "Piloto funcional — dados reais, escrita só por RPC autorizada."}
         </span>
       </div>
-
-      {variante === "nova-era" && (
-        <div className="nova-crm-notice">
-          ⚠️ <b>Ambiente de demonstração.</b> Leads e ações abaixo são fictícios e existem apenas nesta sessão do navegador. Nada é salvo, enviado ou integrado à produção.
-        </div>
-      )}
 
       <div style={{ flex: 1, minHeight: 0, display: "flex" }}>
         {variante === "atual" ? (
           <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>{current}</div>
+        ) : podeLive ? (
+          <CrmNovaEraLiveWorkspace
+            accessToken={accessToken as string}
+            profile={{ userId: profile!.userId as string, role: profile?.role ?? "corretor", name: profile?.name ?? "Corretor" }}
+          />
         ) : (
-          <CrmNovaEraWorkspace />
+          <div className="nova-crm-empty">Sessão necessária para carregar o CRM Nova Era.</div>
         )}
       </div>
     </div>

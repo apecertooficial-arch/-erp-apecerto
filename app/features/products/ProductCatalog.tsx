@@ -291,7 +291,7 @@ export function ProductCatalog() {
       {activeModule === "Início" && accessToken ? (
         <HomeWorkspace accessToken={accessToken} sessionName={sessionProfile?.name ?? ""} onNavigate={(moduleName) => setActiveModule(moduleName as ModuleName)} />
       ) : activeModule === "CRM" && accessToken ? (
-        <CrmNovaEraGate current={<CrmWorkspace accessToken={accessToken} initialDealId={focusedDealId} onInitialDealHandled={() => setFocusedDealId(null)} initialChatDealId={focusedChatDealId} onInitialChatHandled={() => setFocusedChatDealId(null)} initialView={crmInitialView} initialCreateSale={crmLaunchNewSale} onInitialViewHandled={() => { setCrmInitialView(null); setCrmLaunchNewSale(false); }} sessionRole={sessionProfile?.role ?? "corretor"} canReassign={canReassignCrm} canAssign={canAssignCrm} />} />
+        <CrmNovaEraGate accessToken={accessToken} profile={{ userId: sessionProfile?.userId ?? null, role: sessionProfile?.role ?? null, name: sessionProfile?.name ?? null }} current={<CrmWorkspace accessToken={accessToken} initialDealId={focusedDealId} onInitialDealHandled={() => setFocusedDealId(null)} initialChatDealId={focusedChatDealId} onInitialChatHandled={() => setFocusedChatDealId(null)} initialView={crmInitialView} initialCreateSale={crmLaunchNewSale} onInitialViewHandled={() => { setCrmInitialView(null); setCrmLaunchNewSale(false); }} sessionRole={sessionProfile?.role ?? "corretor"} canReassign={canReassignCrm} canAssign={canAssignCrm} />} />
       ) : activeModule === "Automações" && accessToken ? (
         <AutomationsWorkspace accessToken={accessToken} />
       ) : activeModule === "Abordagens" && accessToken ? (
