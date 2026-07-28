@@ -94,6 +94,29 @@ END $fn$;
 REVOKE ALL ON FUNCTION public.ncrm_desativar_ingest(boolean) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.ncrm_desativar_ingest(boolean) TO authenticated;
 
+-- Leitura de status (admin autenticado): estado atual + último evento de auditoria.
+-- Permite operar o kill-switch pelo ERP (JWT do admin) — nunca pelo SQL Editor (sem auth.uid()).
+CREATE FUNCTION public.ncrm_status_ingest()
+  RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $fn$
+DECLARE v_uid uuid := auth.uid(); v_cfg record; v_aud record;
+BEGIN
+  IF v_uid IS NULL THEN RETURN jsonb_build_object('ok',false,'erro','nao_autenticado'); END IF;
+  IF COALESCE(public.can_manage_all(), false) IS NOT TRUE THEN RETURN jsonb_build_object('ok',false,'erro','sem_permissao'); END IF;
+  SELECT ativo, ativo_desde, atualizado_em, atualizado_por INTO v_cfg FROM public.ncrm_ingest_config WHERE id = true;
+  SELECT acao, ativo_desde, atualizado_por, criado_em INTO v_aud FROM public.ncrm_ingest_audit ORDER BY id DESC LIMIT 1;
+  RETURN jsonb_build_object(
+    'ok', true,
+    'ativo', COALESCE(v_cfg.ativo, false),
+    'ativo_desde', v_cfg.ativo_desde,
+    'atualizado_em', v_cfg.atualizado_em,
+    'atualizado_por', v_cfg.atualizado_por,
+    'ultima_auditoria', CASE WHEN v_aud IS NULL THEN NULL ELSE jsonb_build_object(
+      'acao', v_aud.acao, 'ativo_desde', v_aud.ativo_desde, 'atualizado_por', v_aud.atualizado_por, 'criado_em', v_aud.criado_em) END
+  );
+END $fn$;
+REVOKE ALL ON FUNCTION public.ncrm_status_ingest() FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.ncrm_status_ingest() TO authenticated;
+
 -- Resolve o negócio ABERTO mais recente a partir da conversa (conversa->contato->lead->negocio).
 -- Nunca seleciona ganho/perdido; determinístico (mais recente por criado_em, desempate por id).
 CREATE FUNCTION ncrm_private.resolver_negocio_por_conversa(p_conversa_id uuid)

@@ -114,7 +114,10 @@ export function CrmNovaEraLiveWorkspace({ accessToken, profile }: { accessToken:
             <button className={vista === "gerencial" ? "on" : ""} onClick={() => setVista("gerencial")}>Visão gerencial</button>
           )}
         </div>
-        <button className="nova-crm-btn ghost" onClick={() => void carregarQuadro()} disabled={loading}>↻ Atualizar</button>
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          {["admin", "executivo"].includes(profile.role) && <IngestAdminControl accessToken={accessToken} />}
+          <button className="nova-crm-btn ghost" onClick={() => void carregarQuadro()} disabled={loading}>↻ Atualizar</button>
+        </div>
       </div>
 
       {erro && <div className="nova-crm-notice" style={{ color: "var(--nc-red, #b42318)" }}>{erro}</div>}
@@ -519,6 +522,70 @@ function FormAcao({
           </div>
         </>
       )}
+    </div>
+  );
+}
+
+/* ----------------------- Controle admin do Ingest ----------------------- */
+/** Visível só para admin/executivo. Liga/desliga a reconciliação pelo JWT do admin.
+ *  NUNCA ativa sozinho (nem no deploy/flag): exige clique + confirmação humana explícita. */
+function IngestAdminControl({ accessToken }: { accessToken: string }) {
+  const [status, setStatus] = useState<{ ativo: boolean; ativo_desde: string | null } | null>(null);
+  const [erro, setErro] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [confirmar, setConfirmar] = useState<null | "ativar" | "desativar">(null);
+
+  const carregar = useCallback(async () => {
+    setErro(null);
+    const r = await fetch(`/api/ncrm/ingest`, { headers: { Authorization: `Bearer ${accessToken}` } });
+    const j = (await r.json().catch(() => ({}))) as Record<string, unknown>;
+    if (!r.ok) { setErro((j.mensagem as string) || (j.error as string) || "Falha ao consultar o ingest."); setStatus(null); return; }
+    setStatus({ ativo: Boolean(j.ativo), ativo_desde: (j.ativo_desde as string) ?? null });
+  }, [accessToken]);
+
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => { void carregar(); }, [carregar]);
+
+  const aplicar = useCallback(async (action: "ativar" | "desativar") => {
+    setBusy(true); setErro(null); setConfirmar(null);
+    const r = await fetch(`/api/ncrm/ingest`, { method: "POST", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify({ action }) });
+    const j = (await r.json().catch(() => ({}))) as Record<string, unknown>;
+    setBusy(false);
+    if (!r.ok) { setErro((j.mensagem as string) || (j.error as string) || "Operação não permitida."); return; }
+    await carregar();
+  }, [accessToken, carregar]);
+
+  const rotulo = status == null ? "Ingest: —" : status.ativo
+    ? `Ingest ativo${status.ativo_desde ? ` desde ${new Date(status.ativo_desde).toLocaleString("pt-BR")}` : ""}`
+    : "Ingest desligado";
+
+  return (
+    <div style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 12 }}>
+      <span title="Reconciliação de mensagens" style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+        <span aria-hidden style={{ width: 8, height: 8, borderRadius: 8, background: status?.ativo ? "#16a34a" : "#9ca3af", display: "inline-block" }} />
+        {rotulo}
+      </span>
+      {confirmar === null && status != null && !status.ativo && (
+        <button className="nova-crm-btn ghost" disabled={busy} onClick={() => setConfirmar("ativar")}>Ativar a partir de agora</button>
+      )}
+      {confirmar === null && status?.ativo && (
+        <button className="nova-crm-btn ghost" disabled={busy} onClick={() => setConfirmar("desativar")} style={{ color: "#b91c1c" }}>Desativar ingest</button>
+      )}
+      {confirmar === "ativar" && (
+        <span style={{ display: "inline-flex", gap: 6, alignItems: "center" }}>
+          Confirmar ativação (só mensagens novas)?
+          <button className="nova-crm-btn" disabled={busy} onClick={() => void aplicar("ativar")}>Confirmar</button>
+          <button className="nova-crm-btn ghost" disabled={busy} onClick={() => setConfirmar(null)}>Cancelar</button>
+        </span>
+      )}
+      {confirmar === "desativar" && (
+        <span style={{ display: "inline-flex", gap: 6, alignItems: "center" }}>
+          Desativar o ingest agora?
+          <button className="nova-crm-btn" disabled={busy} onClick={() => void aplicar("desativar")} style={{ color: "#b91c1c" }}>Confirmar</button>
+          <button className="nova-crm-btn ghost" disabled={busy} onClick={() => setConfirmar(null)}>Cancelar</button>
+        </span>
+      )}
+      {erro && <span style={{ color: "#b91c1c" }}>{erro}</span>}
     </div>
   );
 }

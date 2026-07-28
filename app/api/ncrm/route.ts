@@ -187,6 +187,7 @@ const ERRO_HUMANO: Record<string, string> = {
   data_hora_obrigatorias: "Informe data e hora da visita.",
   data_no_passado: "A data da visita não pode estar no passado.",
   falha_ao_criar_solicitacao_esteira: "Não foi possível criar a proposta na Esteira. Nada foi encaminhado.",
+  solicitacao_pendente_divergente: "Já existe uma proposta pendente para outro produto ou valor. Revise a solicitação na Esteira antes de continuar.",
 };
 
 export async function PATCH(request: Request) {
@@ -217,12 +218,14 @@ export async function PATCH(request: Request) {
   const { data, error } = await db.rpc(def.rpc, args);
   if (error) return Response.json({ error: error.message }, { status: 502 });
 
-  const res = (data ?? {}) as { ok?: boolean; erro?: string };
+  const res = (data ?? {}) as { ok?: boolean; erro?: string; solicitacao_id?: unknown; produto_id_existente?: unknown; valor_existente?: unknown };
   if (res.ok === false) {
-    return Response.json(
-      { ok: false, erro: res.erro, mensagem: (res.erro && ERRO_HUMANO[res.erro]) || "Ação não permitida." },
-      { status: 409 },
-    );
+    const corpo: Record<string, unknown> = { ok: false, erro: res.erro, mensagem: (res.erro && ERRO_HUMANO[res.erro]) || "Ação não permitida." };
+    // Solicitação pendente divergente: devolve os dados para orientar a revisão na Esteira (sem vazar interno).
+    if (res.erro === "solicitacao_pendente_divergente") {
+      corpo.detalhes = { solicitacao_id: res.solicitacao_id ?? null, produto_id_existente: res.produto_id_existente ?? null, valor_existente: res.valor_existente ?? null };
+    }
+    return Response.json(corpo, { status: 409 });
   }
   return Response.json({ ok: true, resultado: data });
 }
