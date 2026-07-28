@@ -23,6 +23,13 @@ test("flag desligada => sempre false (todos veem o CRM antigo)", async () => {
   });
 });
 
+test("canário compilado libera somente Samuel mesmo sem flag client-side", async () => {
+  await withEnv({ NEXT_PUBLIC_CRM_NOVA_ERA_ENABLED: "false", NEXT_PUBLIC_CRM_NOVA_ERA_ALLOWLIST: "" }, (m) => {
+    assert.equal(m.crmNovaEraLiberado("4dfdffae-0009-41de-8d6f-2365a06dc066", { role: "admin" }), true);
+    assert.equal(m.crmNovaEraLiberado("outro-admin", { role: "admin" }), false);
+  });
+});
+
 test("flag ligada: admin sempre liberado; corretor fora da allowlist não", async () => {
   await withEnv({ NEXT_PUBLIC_CRM_NOVA_ERA_ENABLED: "true", NEXT_PUBLIC_CRM_NOVA_ERA_ALLOWLIST: "" }, (m) => {
     assert.equal(m.crmNovaEraLiberado("qualquer", { role: "admin" }), true);
