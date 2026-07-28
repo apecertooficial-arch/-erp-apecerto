@@ -23,6 +23,7 @@ import {
   mapEstadoToLead, enriquecerComEventos,
   type EstadoRow, type EventoRow, type PropostaRow,
 } from "./live/adapter";
+import { proximoEstadoVisita } from "./live/reconciliacao";
 
 const MAX_TENTATIVAS = 4; // config v1 publicada (seed). O banco é a fonte da verdade.
 
@@ -49,6 +50,7 @@ export function CrmNovaEraLiveWorkspace({ accessToken, profile }: { accessToken:
   const [detalheLeadId, setDetalheLeadId] = useState<number | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [pendenteVisita, setPendenteVisita] = useState<{ negocioId: number; versao: number; visitaId: string } | null>(null);
 
   const leads = useMemo(() => itens.map(mapEstadoToLead), [itens]);
 
@@ -88,17 +90,38 @@ export function CrmNovaEraLiveWorkspace({ accessToken, profile }: { accessToken:
     if (selId) await abrirLead(selId);
   }, [accessToken, busy, carregarQuadro, selId, abrirLead]);
 
-  // Visita REAL: cria pelo fluxo existente do CRM/Agenda, obtém o ID e só então encaminha (fail-safe).
+  // Encaminha (idempotente pelo visita_id) — usado no fluxo e na RECONCILIAÇÃO.
+  const encaminharVisita = useCallback(async (negocioId: number, versao: number, visitaId: string): Promise<boolean> => {
+    const idem = `ui:saidaVisita:${negocioId}:${visitaId}`; // estável => retry não duplica
+    const enc = await api(`/api/ncrm`, accessToken, { method: "PATCH", body: JSON.stringify({ action: "saidaVisita", negocioId, versao, visitaId, idem }) });
+    return enc.ok;
+  }, [accessToken]);
+
+  // Visita REAL: cria pelo fluxo existente do CRM/Agenda, obtém o ID e só então encaminha (fail-safe + reconciliação).
   const criarVisitaEEncaminhar = useCallback(async (negocioId: number, versao: number, leadId: number | null, date: string, startTime: string) => {
     if (!leadId) { setToast("Lead sem vínculo para agendar visita."); return; }
     if (busy) return;
     setBusy(true); setToast(null);
     const cv = await api(`/api/crm`, accessToken, { method: "PATCH", body: JSON.stringify({ action: "createVisit", leadId, dealId: negocioId, date, startTime }) });
+    const criacao = { ok: cv.ok, visitaId: (cv.json as { visitaId?: string }).visitaId ?? null, erro: (cv.json.error as string) ?? null };
+    if (proximoEstadoVisita(criacao, null).status === "falha_criacao") { setBusy(false); setToast(criacao.erro || "Falha ao criar a visita — o lead foi mantido no funil."); return; }
+    const encOk = await encaminharVisita(negocioId, versao, criacao.visitaId as string);
     setBusy(false);
-    const visitaId = (cv.json as { visitaId?: string }).visitaId;
-    if (!cv.ok || !visitaId) { setToast((cv.json.error as string) || "Falha ao criar a visita — o lead foi mantido no funil."); return; }
-    await executar({ action: "saidaVisita", negocioId, versao, visitaId }); // só sai do funil após a visita real existir
-  }, [accessToken, busy, executar]);
+    const est = proximoEstadoVisita(criacao, encOk);
+    if (est.status === "pendente") { setPendenteVisita({ negocioId, versao, visitaId: est.visitaId }); setToast(est.mensagem); }
+    else { setPendenteVisita(null); setToast("Visita criada e encaminhada."); }
+    await carregarQuadro(); if (selId) await abrirLead(selId);
+  }, [accessToken, busy, encaminharVisita, carregarQuadro, selId, abrirLead]);
+
+  // RECONCILIAÇÃO: repete o encaminhamento da visita já criada (idempotente; nunca apaga a visita).
+  const reconciliarVisita = useCallback(async () => {
+    if (!pendenteVisita || busy) return;
+    setBusy(true); setToast(null);
+    const ok = await encaminharVisita(pendenteVisita.negocioId, pendenteVisita.versao, pendenteVisita.visitaId);
+    setBusy(false);
+    if (ok) { setPendenteVisita(null); setToast("Encaminhamento concluído."); await carregarQuadro(); if (selId) await abrirLead(selId); }
+    else setToast("Ainda pendente — tente novamente em instantes.");
+  }, [pendenteVisita, busy, encaminharVisita, carregarQuadro, selId, abrirLead]);
 
   const porColuna = useMemo(() => {
     const m: Record<ColunaChave, LeadNova[]> = { novo: [], tentando_contato: [], em_atendimento: [], em_acompanhamento: [] };
@@ -123,6 +146,12 @@ export function CrmNovaEraLiveWorkspace({ accessToken, profile }: { accessToken:
       </div>
 
       {erro && <div className="nova-crm-notice" style={{ color: "var(--nc-red, #b42318)" }}>{erro}</div>}
+      {pendenteVisita && (
+        <div className="nova-crm-notice" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+          <span>Visita criada, encaminhamento ao Pipe de Visitas pendente (negócio {pendenteVisita.negocioId}).</span>
+          <button className="nova-crm-btn" disabled={busy} onClick={() => void reconciliarVisita()}>Repetir encaminhamento</button>
+        </div>
+      )}
       {loading && <div className="nova-crm-empty">Carregando carteira…</div>}
 
       {!loading && !erro && (
@@ -259,14 +288,17 @@ function LivePanel({
                   )}
                 </ul>
                 <div style={{ display: "flex", gap: 8 }}>
-                  <button className="nova-crm-btn" disabled={busy} onClick={() => {
+                  <button className="nova-crm-btn" disabled={busy} onClick={async () => {
+                    // registra a DECISÃO HUMANA "aceita" (auditável) antes de abrir o formulário
+                    const r = await fetch(`/api/ncrm/sara`, { method: "POST", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify({ negocioId: Number(lead.id), baseVersao: versao, decisao: "aceita", sugestao: sara }) });
+                    if (!r.ok) { onToast("Falha ao registrar o aceite — tente novamente."); return; }
                     const tipo = sara.possibilidade_proposta === "alta" ? "preparar_proposta" : sara.possibilidade_visita === "alta" ? "agendar_visita" : "entender_necessidade";
                     const prazo = typeof sara.prazo_sugerido === "string" ? sara.prazo_sugerido.slice(0, 16) : undefined;
                     setPrefill({ proximaTipo: tipo, prazo });
                     setForm(lead.respondeu ? "concluir" : "tentativa"); // humano confirma no formulário
-                  }}>Aplicar (confirmar no formulário)</button>
+                  }}>Aceitar e confirmar no formulário</button>
                   <button className="nova-crm-btn ghost" disabled={busy} onClick={async () => {
-                    const r = await fetch(`/api/ncrm/sara`, { method: "POST", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify({ negocioId: Number(lead.id), decisao: "rejeitada", sugestao: sara }) });
+                    const r = await fetch(`/api/ncrm/sara`, { method: "POST", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify({ negocioId: Number(lead.id), baseVersao: versao, decisao: "rejeitada", sugestao: sara }) });
                     if (!r.ok) { onToast("Falha ao registrar a rejeição — tente novamente."); return; } // não engole o erro
                     onToast("Sugestão rejeitada — feedback registrado.");
                     setSara(null);
