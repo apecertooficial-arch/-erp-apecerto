@@ -46,6 +46,7 @@ export function CrmNovaEraLiveWorkspace({ accessToken, profile }: { accessToken:
   const [vista, setVista] = useState<Vista>("quadro");
   const [selId, setSelId] = useState<string | null>(null);
   const [detalhe, setDetalhe] = useState<LeadNova | null>(null);
+  const [detalheLeadId, setDetalheLeadId] = useState<number | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -69,6 +70,7 @@ export function CrmNovaEraLiveWorkspace({ accessToken, profile }: { accessToken:
     if (!ok) { setToast((json.error as string) || "Não foi possível abrir o lead."); return; }
     const base = mapEstadoToLead(json.estado as EstadoRow);
     setDetalhe(enriquecerComEventos(base, (json.eventos as EventoRow[]) ?? [], (json.propostas as PropostaRow[]) ?? []));
+    setDetalheLeadId((json.estado as EstadoRow).negocios?.lead_id ?? null);
   }, [accessToken]);
 
   const executar = useCallback(async (payload: Record<string, unknown>) => {
@@ -85,6 +87,18 @@ export function CrmNovaEraLiveWorkspace({ accessToken, profile }: { accessToken:
     await carregarQuadro();
     if (selId) await abrirLead(selId);
   }, [accessToken, busy, carregarQuadro, selId, abrirLead]);
+
+  // Visita REAL: cria pelo fluxo existente do CRM/Agenda, obtém o ID e só então encaminha (fail-safe).
+  const criarVisitaEEncaminhar = useCallback(async (negocioId: number, versao: number, leadId: number | null, date: string, startTime: string) => {
+    if (!leadId) { setToast("Lead sem vínculo para agendar visita."); return; }
+    if (busy) return;
+    setBusy(true); setToast(null);
+    const cv = await api(`/api/crm`, accessToken, { method: "PATCH", body: JSON.stringify({ action: "createVisit", leadId, dealId: negocioId, date, startTime }) });
+    setBusy(false);
+    const visitaId = (cv.json as { visitaId?: string }).visitaId;
+    if (!cv.ok || !visitaId) { setToast((cv.json.error as string) || "Falha ao criar a visita — o lead foi mantido no funil."); return; }
+    await executar({ action: "saidaVisita", negocioId, versao, visitaId }); // só sai do funil após a visita real existir
+  }, [accessToken, busy, executar]);
 
   const porColuna = useMemo(() => {
     const m: Record<ColunaChave, LeadNova[]> = { novo: [], tentando_contato: [], em_atendimento: [], em_acompanhamento: [] };
@@ -148,15 +162,16 @@ export function CrmNovaEraLiveWorkspace({ accessToken, profile }: { accessToken:
             )}
 
             {vista === "gerencial" && profile.role !== "corretor" && (
-              <PainelGerencial leads={leads} agora={agora} />
+              <PainelGerencial leads={leads} agora={agora} accessToken={accessToken} />
             )}
           </div>
 
           {detalhe && (
             <LivePanel
-              lead={detalhe} busy={busy} accessToken={accessToken}
-              onClose={() => { setSelId(null); setDetalhe(null); }}
+              lead={detalhe} busy={busy} accessToken={accessToken} leadId={detalheLeadId}
+              onClose={() => { setSelId(null); setDetalhe(null); setDetalheLeadId(null); }}
               onExecutar={executar} onToast={setToast}
+              onCriarVisita={(date, start) => criarVisitaEEncaminhar(Number(detalhe.id), itens.find((i) => String(i.negocio_id) === detalhe.id)?.versao ?? 1, detalheLeadId, date, start)}
               versao={itens.find((i) => String(i.negocio_id) === detalhe.id)?.versao ?? 1}
             />
           )}
@@ -170,16 +185,18 @@ export function CrmNovaEraLiveWorkspace({ accessToken, profile }: { accessToken:
 
 /* --------------------------- Painel do lead (live) --------------------------- */
 function LivePanel({
-  lead, versao, busy, accessToken, onClose, onExecutar, onToast,
+  lead, versao, busy, accessToken, leadId, onClose, onExecutar, onToast, onCriarVisita,
 }: {
-  lead: LeadNova; versao: number; busy: boolean; accessToken: string;
+  lead: LeadNova; versao: number; busy: boolean; accessToken: string; leadId: number | null;
   onClose: () => void;
   onExecutar: (p: Record<string, unknown>) => void | Promise<void>;
   onToast: (m: string) => void;
+  onCriarVisita: (date: string, startTime: string) => void | Promise<void>;
 }) {
   const [form, setForm] = useState<null | "tentativa" | "concluir" | "visita" | "proposta" | "descarte" | "nutricao">(null);
   const [sara, setSara] = useState<Record<string, unknown> | null>(null);
   const [saraLoad, setSaraLoad] = useState(false);
+  const [prefill, setPrefill] = useState<{ proximaTipo?: string; prazo?: string }>({});
   const timeline = montarTimeline(lead);
   const emSaida = !!(lead.visitaAgendadaEm || lead.proposta || lead.descartadoMotivo || lead.nutricao);
 
@@ -231,12 +248,26 @@ function LivePanel({
             </button>
             {sara && (
               <div className="nova-crm-sara-card">
-                <div><b>Sugestão da Sara</b> (você decide — a Sara não altera nada sozinha)</div>
-                <pre style={{ whiteSpace: "pre-wrap", fontSize: 12 }}>{JSON.stringify(sara, null, 2)}</pre>
+                <div><b>Sugestão da Sara</b> — você decide (a Sara não altera nada sozinha).</div>
+                <ul className="nova-crm-tl-list">
+                  <li><b>Próxima ação:</b> {String(sara.proxima_acao ?? "—")}</li>
+                  <li><b>Temperatura:</b> {String(sara.temperatura ?? "—")} · <b>Risco:</b> {String(sara.risco_abandono ?? "—")}</li>
+                  <li><b>Visita:</b> {String(sara.possibilidade_visita ?? "—")} · <b>Proposta:</b> {String(sara.possibilidade_proposta ?? "—")}</li>
+                  <li><b>Confiança:</b> {Math.round(Number(sara.confianca ?? 0) * 100)}%</li>
+                  {Array.isArray(sara.evidencias) && (sara.evidencias as string[]).length > 0 && (
+                    <li><b>Evidências:</b> {(sara.evidencias as string[]).slice(0, 3).join(" · ")}</li>
+                  )}
+                </ul>
                 <div style={{ display: "flex", gap: 8 }}>
-                  <button className="nova-crm-btn" disabled={busy} onClick={() => setForm(lead.respondeu ? "concluir" : "tentativa")}>Aplicar manualmente</button>
-                  <button className="nova-crm-btn ghost" onClick={() => {
-                    void fetch(`/api/ncrm/sara`, { method: "POST", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify({ negocioId: Number(lead.id), decisao: "rejeitada", sugestao: sara }) });
+                  <button className="nova-crm-btn" disabled={busy} onClick={() => {
+                    const tipo = sara.possibilidade_proposta === "alta" ? "preparar_proposta" : sara.possibilidade_visita === "alta" ? "agendar_visita" : "entender_necessidade";
+                    const prazo = typeof sara.prazo_sugerido === "string" ? sara.prazo_sugerido.slice(0, 16) : undefined;
+                    setPrefill({ proximaTipo: tipo, prazo });
+                    setForm(lead.respondeu ? "concluir" : "tentativa"); // humano confirma no formulário
+                  }}>Aplicar (confirmar no formulário)</button>
+                  <button className="nova-crm-btn ghost" disabled={busy} onClick={async () => {
+                    const r = await fetch(`/api/ncrm/sara`, { method: "POST", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify({ negocioId: Number(lead.id), decisao: "rejeitada", sugestao: sara }) });
+                    if (!r.ok) { onToast("Falha ao registrar a rejeição — tente novamente."); return; } // não engole o erro
                     onToast("Sugestão rejeitada — feedback registrado.");
                     setSara(null);
                   }}>Rejeitar</button>
@@ -256,9 +287,10 @@ function LivePanel({
           </div>
 
           {form && (
-            <FormAcao tipo={form} lead={lead} versao={versao} busy={busy}
-              onCancel={() => setForm(null)}
-              onSubmit={async (p) => { await onExecutar(p); setForm(null); }} />
+            <FormAcao tipo={form} lead={lead} versao={versao} busy={busy} leadId={leadId} inicial={prefill}
+              onCancel={() => { setForm(null); setPrefill({}); }}
+              onCriarVisita={onCriarVisita}
+              onSubmit={async (p) => { await onExecutar(p); setForm(null); setPrefill({}); }} />
           )}
 
           {/* Trilha */}
@@ -282,19 +314,22 @@ function LivePanel({
 
 /* --------------------------- Formulários de ação --------------------------- */
 function FormAcao({
-  tipo, lead, versao, busy, onCancel, onSubmit,
+  tipo, lead, versao, busy, leadId, inicial, onCancel, onSubmit, onCriarVisita,
 }: {
   tipo: "tentativa" | "concluir" | "visita" | "proposta" | "descarte" | "nutricao";
-  lead: LeadNova; versao: number; busy: boolean;
+  lead: LeadNova; versao: number; busy: boolean; leadId: number | null;
+  inicial?: { proximaTipo?: string; prazo?: string };
   onCancel: () => void; onSubmit: (p: Record<string, unknown>) => void | Promise<void>;
+  onCriarVisita: (date: string, startTime: string) => void | Promise<void>;
 }) {
   const [canal, setCanal] = useState("whatsapp");
   const [resultado, setResultado] = useState(tipo === "concluir" ? "acao_concluida" : "nao_respondeu");
   const [obs, setObs] = useState("");
-  const [proximaTipo, setProximaTipo] = useState("entender_necessidade");
-  const [proximaEm, setProximaEm] = useState("");
+  const [proximaTipo, setProximaTipo] = useState(inicial?.proximaTipo ?? "entender_necessidade");
+  const [proximaEm, setProximaEm] = useState(inicial?.prazo ?? "");
   const [valor, setValor] = useState("");
-  const [visitaId, setVisitaId] = useState("");
+  const [vData, setVData] = useState("");
+  const [vHora, setVHora] = useState("");
   const [motivo, setMotivo] = useState("sem_interesse");
   const [detalhe, setDetalhe] = useState("");
   const base = { negocioId: Number(lead.id), versao };
@@ -371,11 +406,12 @@ function FormAcao({
 
       {tipo === "visita" && (
         <>
-          <p className="nova-crm-hint">Cole o ID real da visita já agendada no módulo de Agenda/Visitas. A intenção de visitar não conta como visita.</p>
-          <label>ID da visita<input value={visitaId} onChange={(e) => setVisitaId(e.target.value)} placeholder="uuid da visita" /></label>
+          <p className="nova-crm-hint">Agenda uma visita REAL (mesmo fluxo do CRM/Agenda). Só depois de criada, o lead vai ao Pipe de Visitas. Intenção de visitar não conta.</p>
+          <label>Data<input type="date" value={vData} onChange={(e) => setVData(e.target.value)} /></label>
+          <label>Hora de início<input type="time" value={vHora} onChange={(e) => setVHora(e.target.value)} /></label>
           <div className="nova-crm-form-actions">
             <button className="nova-crm-btn ghost" onClick={onCancel}>Cancelar</button>
-            <button className="nova-crm-btn" disabled={busy || !visitaId} onClick={() => onSubmit({ action: "saidaVisita", ...base, visitaId })}>Encaminhar ao Pipe de Visitas</button>
+            <button className="nova-crm-btn" disabled={busy || !vData || !vHora || !leadId} onClick={() => onCriarVisita(vData, vHora)}>Criar visita e encaminhar</button>
           </div>
         </>
       )}
@@ -423,30 +459,40 @@ function FormAcao({
 }
 
 /* --------------------------- Visão gerencial --------------------------- */
-function PainelGerencial({ leads, agora }: { leads: LeadNova[]; agora: string }) {
-  const ativos = leads.filter((l) => !l.visitaAgendadaEm && !l.proposta && !l.descartadoMotivo && !l.nutricao);
-  const responderam = leads.filter((l) => l.respondeu).length;
-  const semProxima = ativos.filter((l) => !l.proximaAcaoEm).length;
-  const visitas = leads.filter((l) => l.visitaAgendadaEm).length;
-  const propostas = leads.filter((l) => l.proposta).length;
-  const atrasados = ativos.filter((l) => calcularAtraso(l, agora, SEVERIDADE_PADRAO).atrasadoMin > 0).length;
-  const taxaResp = leads.length ? Math.round((responderam / leads.length) * 100) : 0;
-  const kpis = [
-    ["Leads na carteira (página)", leads.length],
-    ["Taxa de resposta", `${taxaResp}%`],
-    ["Visitas encaminhadas", visitas],
-    ["Propostas (não venda)", propostas],
-    ["Atrasados", atrasados],
-    ["Sem próxima ação", semProxima],
-  ] as const;
+function PainelGerencial({ leads, agora, accessToken }: { leads: LeadNova[]; agora: string; accessToken: string }) {
+  const [m, setM] = useState<Record<string, number> | null>(null);
+  const [erroM, setErroM] = useState<string | null>(null);
+  useEffect(() => {
+    let vivo = true;
+    void fetch(`/api/ncrm/metricas`, { headers: { Authorization: `Bearer ${accessToken}` } })
+      .then((r) => r.json().then((j) => ({ ok: r.ok, j })))
+      .then(({ ok, j }) => { if (!vivo) return; if (ok) setM(j.metricas as Record<string, number>); else setErroM((j.error as string) || "Falha nas métricas."); })
+      .catch(() => { if (vivo) setErroM("Falha nas métricas."); });
+    return () => { vivo = false; };
+  }, [accessToken]);
+
+  // Fallback (página atual) — claramente rotulado até a métrica agregada carregar.
+  const ativosPg = leads.filter((l) => !l.visitaAgendadaEm && !l.proposta && !l.descartadoMotivo && !l.nutricao).length;
+  const atrasadosPg = leads.filter((l) => !l.visitaAgendadaEm && !l.proposta && !l.descartadoMotivo && !l.nutricao && calcularAtraso(l, agora, SEVERIDADE_PADRAO).atrasadoMin > 0).length;
+
+  if (m) {
+    const kpis: [string, number | string][] = [
+      ["Carteira autorizada", m.total], ["Ativos", m.ativos], ["Taxa de resposta", `${m.taxa_resposta_pct}%`],
+      ["Visitas agendadas", m.visitas_agendadas], ["Propostas (não venda)", m.propostas], ["Atrasados", m.atrasados],
+      ["Sem próxima ação", m.sem_proxima_acao], ["Descartados", m.descartados], ["Nutrição", m.nutricao],
+    ];
+    return (
+      <div className="nova-crm-kpis">
+        {kpis.map(([k, v]) => (<article key={k} className="nova-crm-kpi"><span className="v">{v}</span><span className="k">{k}</span></article>))}
+        <p className="nova-crm-hint" style={{ gridColumn: "1/-1" }}>Agregado sobre a carteira autorizada (RLS). Proposta não é venda; a venda permanece na Esteira.</p>
+      </div>
+    );
+  }
   return (
     <div className="nova-crm-kpis">
-      {kpis.map(([k, v]) => (
-        <article key={k} className="nova-crm-kpi"><span className="v">{v}</span><span className="k">{k}</span></article>
-      ))}
-      <p className="nova-crm-hint" style={{ gridColumn: "1/-1" }}>
-        Indicadores calculados sobre a página carregada. Proposta não é venda; a venda permanece no fluxo atual da Esteira.
-      </p>
+      <article className="nova-crm-kpi"><span className="v">{ativosPg}</span><span className="k">Ativos (página atual)</span></article>
+      <article className="nova-crm-kpi"><span className="v">{atrasadosPg}</span><span className="k">Atrasados (página atual)</span></article>
+      <p className="nova-crm-hint" style={{ gridColumn: "1/-1" }}>{erroM ? `Métrica agregada indisponível: ${erroM}` : "Carregando métrica agregada da carteira autorizada…"} Os números acima são apenas da página carregada.</p>
     </div>
   );
 }

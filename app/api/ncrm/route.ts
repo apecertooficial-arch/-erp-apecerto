@@ -9,6 +9,7 @@
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createServerSupabaseClient } from "../../lib/supabase/server";
+import { validarAcao, validarQuery, inteiroPositivo } from "./validate";
 
 export const dynamic = "force-dynamic";
 
@@ -40,8 +41,8 @@ export async function GET(request: Request) {
 
   // ---- Detalhe de um lead (estado + eventos + propostas) ----
   if (negocio) {
-    const nid = Number(negocio);
-    if (!Number.isFinite(nid)) return Response.json({ error: "negocio inválido" }, { status: 400 });
+    const nid = inteiroPositivo(negocio);
+    if (nid === null) return Response.json({ error: "negocio inválido" }, { status: 422 });
     const [{ data: estado, error: e1 }, { data: eventos, error: e2 }, { data: propostas, error: e3 }] =
       await Promise.all([
         db.from("ncrm_estado").select(EMBED).eq("negocio_id", nid).maybeSingle(),
@@ -63,9 +64,9 @@ export async function GET(request: Request) {
   }
 
   // ---- Quadro / saídas / tudo (paginado) ----
-  const scope = url.searchParams.get("scope") ?? "board"; // board | saidas | all
-  const limit = Math.min(Math.max(Number(url.searchParams.get("limit") ?? "60"), 1), 200);
-  const offset = Math.max(Number(url.searchParams.get("offset") ?? "0"), 0);
+  const vq = validarQuery(url.searchParams);
+  if (!vq.ok) return Response.json({ error: vq.erro }, { status: 422 });
+  const { scope, limit, offset } = vq.value;
 
   let q = db.from("ncrm_estado").select(EMBED, { count: "exact" });
   if (scope === "board") q = q.is("saida", null);
@@ -181,16 +182,17 @@ export async function PATCH(request: Request) {
   } catch {
     return Response.json({ error: "JSON inválido." }, { status: 400 });
   }
-  const action = String(body.action ?? "");
+  const v = validarAcao(body);
+  if (!v.ok) return Response.json({ error: v.erro }, { status: 422 });
+  const { action, args: valid } = v.value;
   const def = ACOES[action];
   if (!def) return Response.json({ error: "Ação desconhecida." }, { status: 400 });
 
-  const negocio_id = Number(body.negocioId);
-  const versao = Number(body.versao);
-  // idempotência determinística por (ação, negócio, cliente) — o cliente pode enviar a sua própria.
-  const idem = String(body.idem ?? `ui:${action}:${negocio_id}:${crypto.randomUUID()}`);
-
-  const args = def.args({ negocio_id, versao, idem, b: body });
+  const negocio_id = Number(valid.negocioId ?? 0);
+  const versao = Number(valid.versao ?? 0);
+  const idem = String(body.idem ?? `ui:${action}:${negocio_id || valid.propostaId}:${crypto.randomUUID()}`);
+  // Constrói os parâmetros da RPC a partir dos campos JÁ validados/normalizados.
+  const args = def.args({ negocio_id, versao, idem, b: valid });
   const { data, error } = await db.rpc(def.rpc, args);
   if (error) return Response.json({ error: error.message }, { status: 502 });
 
