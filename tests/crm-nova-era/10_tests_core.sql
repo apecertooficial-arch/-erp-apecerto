@@ -156,8 +156,9 @@ SELECT public.ncrm_registrar_tentativa(200,:v200,'whatsapp','nao_respondeu','hum
 RESET ROLE;
 -- Sara com base_versao ANTIGA (:v200) enquanto o estado já avançou -> precedência humana
 SELECT set_config('request.jwt.claims', json_build_object('sub',:B,'role','authenticated','app_metadata', json_build_object('app_role','sara'))::text, false); SET ROLE authenticated;
-SELECT public.test_assert((public.ncrm_sara_classificar(200,:v200,'{"temperatura":"quente"}'::jsonb,'ui:s28') ->> 'erro') = 'precedencia_humana', '#28 Sara com base velha NÃO sobrescreve (precedência humana)');
-SELECT public.test_assert((SELECT NOT EXISTS (SELECT 1 FROM public.ncrm_evento WHERE idempotency_key='ui:s28' AND (payload->>'aplicado')::boolean IS TRUE)), '#28 sugestão da Sara registrada como não aplicada');
+SELECT public.test_assert((public.ncrm_sara_classificar(200,:v200,'{"temperatura":"quente"}'::jsonb,'ui:s28') ->> 'motivo') = 'precedencia_humana', '#28 Sara com base velha NÃO sobrescreve (precedência humana)');
+SELECT public.test_assert((SELECT versao FROM public.ncrm_estado WHERE negocio_id=200) = (:v200 + 1), '#28 Sara não incrementou a versão do estado (foi a tentativa humana)');
+SELECT public.test_assert((SELECT (payload->>'aplicado')::boolean = false FROM public.ncrm_evento WHERE idempotency_key='ui:s28'), '#28 sugestão da Sara registrada como não aplicada');
 RESET ROLE;
 
 SELECT '==== TODOS OS TESTES SQL PASSARAM ====' AS resultado;

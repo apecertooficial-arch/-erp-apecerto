@@ -9,8 +9,9 @@ cp "$ROOT/supabase/migrations/20260728151548_crm_nova_era_persistent_model.sql" 
 cp "$ROOT/supabase/rollbacks/20260728151548_crm_nova_era_persistent_model.down.sql" "$STAGE/down.sql"
 cp "$ROOT/tests/crm-nova-era/00_local_harness.sql" "$STAGE/harness.sql"
 cp "$ROOT/tests/crm-nova-era/10_tests_core.sql" "$STAGE/core.sql"
+cp "$ROOT/tests/crm-nova-era/20_tests_correcoes.sql" "$STAGE/core2.sql"
 chmod -R a+rX "$STAGE"
-MIG="$STAGE/mig.sql"; DOWN="$STAGE/down.sql"; HARNESS="$STAGE/harness.sql"; CORE="$STAGE/core.sql"
+MIG="$STAGE/mig.sql"; DOWN="$STAGE/down.sql"; HARNESS="$STAGE/harness.sql"; CORE="$STAGE/core.sql"; CORE2="$STAGE/core2.sql"
 PGBIN=/usr/lib/postgresql/16/bin
 PGDATA=/tmp/ncrm_pgdata
 SOCK=/tmp/ncrm_sock
@@ -47,6 +48,9 @@ PSQL -c "SELECT public.test_assert((SELECT count(*) FROM public.ncrm_evento WHER
 PSQL -c "SELECT public.test_assert(
    ((SELECT versao FROM public.ncrm_estado WHERE negocio_id=700) + (SELECT versao FROM public.ncrm_estado WHERE negocio_id=710)) = 3,
    '#15 vencedor avançou (v=2) e perdedor revertido (v=1): unique_violation reverteu o UPDATE');"
+
+echo "### testes das CORREÇÕES (fail-closed, imutabilidade, Sara, message_id, novas RPCs, cadência, unique)"
+PSQL -f "$CORE2"
 
 echo "### #29 rollback remove só objetos ncrm_*"
 PSQL -f "$DOWN"

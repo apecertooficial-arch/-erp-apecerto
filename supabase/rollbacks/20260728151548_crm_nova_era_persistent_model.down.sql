@@ -11,6 +11,11 @@ DROP POLICY IF EXISTS ncrm_passo_sel    ON public.ncrm_workflow_passo;
 DROP POLICY IF EXISTS ncrm_config_sel   ON public.ncrm_workflow_config;
 
 -- 2. RPCs públicas (assinaturas explícitas)
+DROP FUNCTION IF EXISTS public.ncrm_reativar(bigint,int,text,text,text,text,timestamptz,text);
+DROP FUNCTION IF EXISTS public.ncrm_saida_nutricao(bigint,int,text,text);
+DROP FUNCTION IF EXISTS public.ncrm_saida_descarte(bigint,int,text,text,text);
+DROP FUNCTION IF EXISTS public.ncrm_concluir_acao(bigint,int,text,text,text,text,timestamptz,text);
+DROP FUNCTION IF EXISTS public.ncrm_registrar_resposta_cliente(bigint,text,timestamptz);
 DROP FUNCTION IF EXISTS public.ncrm_sara_classificar(bigint,int,jsonb,text);
 DROP FUNCTION IF EXISTS public.ncrm_reativar_apos_proposta(bigint,int,text,text,text,text,timestamptz,text);
 DROP FUNCTION IF EXISTS public.ncrm_proposta_transicao(uuid,int,text,text,text);
