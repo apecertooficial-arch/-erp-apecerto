@@ -1,0 +1,351 @@
+-- DRAFT
+-- DO NOT APPLY
+-- NÃO EXECUTAR EM PRODUÇÃO
+-- MODELO SUJEITO A REVISÃO
+--
+-- CRM Nova Era — FASE 2.2 — modelo persistente (rascunho de estudo, NÃO EXECUTÁVEL)
+-- Substitui DRAFT-FASE-2-modelo-persistente.sql (removido). Correções desta fase:
+--   1. ncrm_estado SEM corretor_id denormalizado;
+--   2. SEM trigger de sincronização sobre negocios;
+--   3. RLS consulta a POSSE ATUAL diretamente em public.negocios (via helper DEFINER);
+--   4. invariantes BIDIRECIONAIS (saída/visita/proposta/resposta) — doc 16;
+--   5. ordem transacional canônica estado↔evento — doc 15;
+--   6. ciclo de vida da proposta (recusada/cancelada/expirada) + reativação — doc 18;
+--   7. funções SECURITY DEFINER simplificadas e endurecidas — doc 19.
+--
+-- ============================================================================
+-- BARREIRA TÉCNICA — aborta se alguém tentar executar. TODO o DDL está COMENTADO.
+-- A migration real será um arquivo SEPARADO, revisado, fora de docs/, após GO (doc 20).
+-- ============================================================================
+DO $draft_guard$
+BEGIN
+  RAISE EXCEPTION
+    'DRAFT FASE 2.2 — proibido executar. Gere uma migration revisada separadamente após GO. '
+    'Todo o DDL neste arquivo está comentado e é apenas especificação.';
+END
+$draft_guard$;
+
+
+-- ############################################################################
+-- SEÇÃO A — ESPECIFICAÇÃO (texto normativo)
+-- ############################################################################
+-- ENTIDADES (prefixo ncrm_, zero alteração no legado):
+--   public.ncrm_workflow_config / _passo   — cadência versionada e imutável após publicar
+--   public.ncrm_proposta                   — proposta comercial (≠ venda; venda_id só na conversão)
+--   public.ncrm_estado                     — snapshot 1:1 com negocios (SEM corretor_id; SEM lead_id)
+--   public.ncrm_evento                     — histórico imutável (append-only)
+--   SCHEMA ncrm_private                    — helpers de posse + lógica privilegiada (não exposto)
+--
+-- POSSE E RLS (correções 1-3): o snapshot NÃO guarda corretor_id. A autorização por linha lê a
+--   POSSE ATUAL em public.negocios através de um helper SECURITY DEFINER STABLE
+--   (ncrm_private.pode_ver_negocio) — assim uma transferência de corretor no legado passa a valer
+--   IMEDIATAMENTE, sem trigger de sincronização e sem risco de espelho divergente.
+
+
+-- ############################################################################
+-- SEÇÃO B — DDL ILUSTRATIVO (INTEGRALMENTE COMENTADO — não executa)
+-- ############################################################################
+
+-- ---------------------------------------------------------------------------
+-- B.0  Schema privado (não exposto ao PostgREST)
+-- ---------------------------------------------------------------------------
+-- CREATE SCHEMA IF NOT EXISTS ncrm_private;
+-- REVOKE ALL ON SCHEMA ncrm_private FROM PUBLIC, anon, authenticated;
+
+-- ---------------------------------------------------------------------------
+-- B.1  Helpers de POSSE (correção 3) — leem negocios; base da RLS
+-- ---------------------------------------------------------------------------
+-- -- Owner = role dona das tabelas (bypassa RLS de negocios; verificar que negocios NÃO é FORCE RLS
+-- -- — se for, o owner precisa de BYPASSRLS: BLOQUEIO a confirmar, doc 20). STABLE => avaliado 1x
+-- -- por linha candidata, com plano estável.
+-- CREATE FUNCTION ncrm_private.negocio_corretor(p_negocio_id bigint)
+--   RETURNS bigint LANGUAGE sql STABLE SECURITY DEFINER SET search_path = '' AS $fn$
+--     SELECT n.corretor_id FROM public.negocios n WHERE n.id = p_negocio_id
+--   $fn$;
+-- CREATE FUNCTION ncrm_private.pode_ver_negocio(p_negocio_id bigint)
+--   RETURNS boolean LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = '' AS $fn$
+--   DECLARE v_corretor bigint;
+--   BEGIN
+--     IF public.can_manage_all() THEN RETURN true; END IF;              -- admin/direção
+--     v_corretor := ncrm_private.negocio_corretor(p_negocio_id);
+--     RETURN v_corretor IS NOT NULL
+--        AND ( v_corretor = public.current_broker_id()                 -- dono ATUAL (negocios)
+--              OR public.manages_broker(v_corretor) );                 -- gestor do dono atual
+--   END $fn$;
+-- REVOKE ALL ON FUNCTION ncrm_private.negocio_corretor(bigint), ncrm_private.pode_ver_negocio(bigint)
+--   FROM PUBLIC, anon;
+-- GRANT EXECUTE ON FUNCTION ncrm_private.pode_ver_negocio(bigint) TO authenticated; -- usada nas policies
+-- -- ncrm_private.pode_operar_negocio(p_negocio_id): idem + has_perm('crm','operar') — usada nas RPCs.
+-- -- NÃO há recursão RLS: o helper é DEFINER e lê negocios como owner (RLS de negocios não reentra).
+
+-- ---------------------------------------------------------------------------
+-- B.2  Config versionada e IMUTÁVEL (rascunho -> publicada -> encerrada)
+-- ---------------------------------------------------------------------------
+-- CREATE TABLE public.ncrm_workflow_config (
+--   id                        bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+--   versao                    integer NOT NULL UNIQUE,
+--   status                    text NOT NULL DEFAULT 'rascunho' CHECK (status IN ('rascunho','publicada','encerrada')),
+--   vigencia_inicio           timestamptz NULL,
+--   vigencia_fim              timestamptz NULL,
+--   timezone                  text NOT NULL DEFAULT 'America/Sao_Paulo',
+--   janela_inicio             time NOT NULL DEFAULT time '09:30',
+--   janela_fim                time NOT NULL DEFAULT time '18:00',
+--   espera_apos_automacao_min integer NOT NULL DEFAULT 120 CHECK (espera_apos_automacao_min >= 0),
+--   max_tentativas            integer NOT NULL DEFAULT 4   CHECK (max_tentativas BETWEEN 1 AND 20),
+--   fds_operacional           boolean NOT NULL DEFAULT true,
+--   criado_em                 timestamptz NOT NULL DEFAULT now(),
+--   criado_por                uuid NULL REFERENCES public.usuarios(id),
+--   publicado_em              timestamptz NULL,
+--   CHECK (janela_fim > janela_inicio),
+--   CHECK (vigencia_fim IS NULL OR (vigencia_inicio IS NOT NULL AND vigencia_fim > vigencia_inicio)),
+--   CHECK (status <> 'publicada' OR vigencia_inicio IS NOT NULL)
+-- );
+-- CREATE UNIQUE INDEX ux_ncrm_config_publicada_ativa
+--   ON public.ncrm_workflow_config ((true)) WHERE status = 'publicada' AND vigencia_fim IS NULL;
+-- -- Vigências não sobrepostas: EXCLUDE USING gist (requer btree_gist) — avaliar na migration real.
+-- -- Imutabilidade: trigger ncrm_private.config_imutavel() bloqueia UPDATE de colunas de regra e
+-- -- DELETE quando status='publicada'; passo imutável quando a config-mãe é publicada.
+
+-- CREATE TABLE public.ncrm_workflow_passo (
+--   id               bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+--   config_id        bigint  NOT NULL REFERENCES public.ncrm_workflow_config(id) ON DELETE RESTRICT,
+--   ordem            integer NOT NULL CHECK (ordem >= 1),
+--   canal_sugerido   text    NOT NULL CHECK (canal_sugerido IN ('ligacao','whatsapp','email','presencial')),
+--   intervalo_min    integer NOT NULL CHECK (intervalo_min >= 0),
+--   rotulo           text    NOT NULL,
+--   texto_orientacao text    NULL,
+--   CONSTRAINT ux_ncrm_passo UNIQUE (config_id, ordem)
+-- );
+
+-- ---------------------------------------------------------------------------
+-- B.3  PROPOSTA COMERCIAL (≠ venda) + ciclo de vida (correção 6)
+-- ---------------------------------------------------------------------------
+-- CREATE TABLE public.ncrm_proposta (
+--   id                uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+--   negocio_id        bigint NOT NULL REFERENCES public.negocios(id),
+--   lead_id           bigint NOT NULL REFERENCES public.leads(id),        -- ATRIBUIÇÃO (derivada no INSERT)
+--   corretor_id       bigint NULL REFERENCES public.corretores(id),       -- ATRIBUIÇÃO point-in-time (NÃO usada em RLS)
+--   empreendimento_id uuid   NULL REFERENCES public.empreendimentos(id),
+--   unidade_id        uuid   NULL REFERENCES public.unidades(id),
+--   valor             numeric(14,2) NOT NULL CHECK (valor > 0),
+--   data_proposta     timestamptz NOT NULL,
+--   status            text NOT NULL DEFAULT 'registrada'
+--     CHECK (status IN ('registrada','em_negociacao','aceita','recusada','expirada','cancelada','convertida')),
+--   motivo_encerramento text NULL,                     -- recusada/cancelada/expirada: motivo estruturado (doc 18)
+--   observacao        text NULL,
+--   idempotency_key   text NULL,
+--   venda_id          uuid NULL REFERENCES public.vendas(id),  -- SÓ na conversão real
+--   criada_por        uuid NOT NULL REFERENCES public.usuarios(id),
+--   criada_em         timestamptz NOT NULL DEFAULT now(),
+--   atualizada_em     timestamptz NOT NULL DEFAULT now(),
+--   aceita_em         timestamptz NULL,
+--   encerrada_em      timestamptz NULL,                -- recusada/expirada/cancelada
+--   convertida_em     timestamptz NULL,
+--   versao            integer NOT NULL DEFAULT 1 CHECK (versao >= 1),
+--   -- coerência de ciclo:
+--   CHECK (status <> 'aceita'     OR aceita_em IS NOT NULL),
+--   CHECK (status NOT IN ('recusada','expirada','cancelada') OR (encerrada_em IS NOT NULL AND motivo_encerramento IS NOT NULL)),
+--   CHECK (status <> 'convertida' OR (venda_id IS NOT NULL AND convertida_em IS NOT NULL)),
+--   CHECK (venda_id IS NULL OR status = 'convertida')      -- venda existe apenas convertida
+-- );
+-- CREATE UNIQUE INDEX ux_ncrm_proposta_idem ON public.ncrm_proposta (idempotency_key) WHERE idempotency_key IS NOT NULL;
+-- CREATE INDEX ix_ncrm_proposta_negocio ON public.ncrm_proposta (negocio_id, criada_em DESC);
+-- -- No máximo UMA proposta "viva" por negócio:
+-- CREATE UNIQUE INDEX ux_ncrm_proposta_viva ON public.ncrm_proposta (negocio_id)
+--   WHERE status IN ('registrada','em_negociacao','aceita');
+-- -- Transições válidas (correção 6) são impostas na RPC/trigger (não em CHECK, pois dependem de OLD):
+-- --   registrada    -> em_negociacao | aceita | recusada | expirada | cancelada
+-- --   em_negociacao -> aceita | recusada | expirada | cancelada
+-- --   aceita        -> convertida | cancelada
+-- --   recusada|expirada|cancelada|convertida -> TERMINAIS (reativação cria NOVA proposta)
+
+-- ---------------------------------------------------------------------------
+-- B.4  SNAPSHOT (correções 1 e 4) — SEM corretor_id, SEM lead_id; invariantes bidirecionais
+-- ---------------------------------------------------------------------------
+-- CREATE TABLE public.ncrm_estado (
+--   negocio_id           bigint PRIMARY KEY REFERENCES public.negocios(id),
+--   workflow_config_id   bigint NOT NULL REFERENCES public.ncrm_workflow_config(id) ON DELETE RESTRICT,
+--   etapa                text NOT NULL DEFAULT 'novo'
+--     CHECK (etapa IN ('novo','tentando_contato','em_atendimento','em_acompanhamento')),
+--   msg_automatica_em    timestamptz NULL,
+--   aguardando_automacao boolean NOT NULL DEFAULT false,
+--   respondeu            boolean NOT NULL DEFAULT false,
+--   primeira_resposta_em timestamptz NULL,
+--   resposta_pendente    boolean NOT NULL DEFAULT false,
+--   tentativas_feitas    integer NOT NULL DEFAULT 0 CHECK (tentativas_feitas >= 0),
+--   proxima_acao_tipo    text NULL CHECK (proxima_acao_tipo IN (
+--     'tentativa_cadencia','retornar_contato','entender_necessidade','enviar_opcoes',
+--     'confirmar_recebimento','ligar_retorno','solicitar_documentacao','agendar_visita',
+--     'preparar_proposta','corrigir_cadastro','avaliar_descarte','outro')),
+--   proxima_acao_titulo  text NULL,
+--   proxima_acao_em      timestamptz NULL,
+--   ultima_interacao_em  timestamptz NULL,
+--   temperatura          text NULL CHECK (temperatura IN ('frio','morno','quente','negociando')),
+--   saida                text NULL CHECK (saida IN ('pipeline_visitas','esteira_vendas','descartado','nutricao')),
+--   saida_em             timestamptz NULL,
+--   visita_id            uuid NULL REFERENCES public.visitas(id),
+--   proposta_id          uuid NULL REFERENCES public.ncrm_proposta(id),
+--   descarte_motivo      text NULL CHECK (descarte_motivo IS NULL OR descarte_motivo IN (
+--     'sem_interesse','sem_perfil_financeiro','numero_invalido','ja_comprou_concorrente','duplicado','outro')),
+--   descarte_detalhe     text NULL,
+--   versao               integer NOT NULL DEFAULT 1 CHECK (versao >= 1),
+--   ultima_decisao_humana_em timestamptz NULL,
+--   origem_ultima        text NOT NULL DEFAULT 'sistema' CHECK (origem_ultima IN ('usuario','automacao','sara','sistema','migracao')),
+--   atualizado_em        timestamptz NOT NULL DEFAULT now(),
+--   atualizado_por       uuid NULL REFERENCES public.usuarios(id),
+--
+--   -- ===== INVARIANTES BIDIRECIONAIS (correção 4; tabela-verdade no doc 16) =====
+--   -- (a) ativo  <=> próxima ação completa
+--   CONSTRAINT ck_ativo_tem_proxima  CHECK (saida IS NOT NULL OR (proxima_acao_tipo IS NOT NULL AND proxima_acao_titulo IS NOT NULL AND proxima_acao_em IS NOT NULL)),
+--   CONSTRAINT ck_saida_sem_proxima  CHECK (saida IS NULL     OR (proxima_acao_tipo IS NULL     AND proxima_acao_titulo IS NULL     AND proxima_acao_em IS NULL)),
+--   -- (b) saida <=> saida_em
+--   CONSTRAINT ck_saida_impl_data    CHECK (saida IS NULL OR saida_em IS NOT NULL),
+--   CONSTRAINT ck_data_impl_saida    CHECK (saida_em IS NULL OR saida IS NOT NULL),
+--   -- (c) saida='pipeline_visitas' <=> visita_id NOT NULL
+--   CONSTRAINT ck_visita_impl_saida  CHECK (visita_id IS NULL OR saida = 'pipeline_visitas'),
+--   CONSTRAINT ck_saida_impl_visita  CHECK (saida <> 'pipeline_visitas' OR visita_id IS NOT NULL),
+--   -- (d) saida='esteira_vendas' <=> proposta_id NOT NULL
+--   CONSTRAINT ck_prop_impl_saida    CHECK (proposta_id IS NULL OR saida = 'esteira_vendas'),
+--   CONSTRAINT ck_saida_impl_prop    CHECK (saida <> 'esteira_vendas' OR proposta_id IS NOT NULL),
+--   -- (e) saida='descartado' <=> descarte_motivo NOT NULL
+--   CONSTRAINT ck_motivo_impl_saida  CHECK (descarte_motivo IS NULL OR saida = 'descartado'),
+--   CONSTRAINT ck_saida_impl_motivo  CHECK (saida <> 'descartado' OR descarte_motivo IS NOT NULL),
+--   CONSTRAINT ck_descarte_outro     CHECK (descarte_motivo <> 'outro' OR (descarte_detalhe IS NOT NULL AND btrim(descarte_detalhe) <> '')),
+--   -- (f) respondeu <=> primeira_resposta_em NOT NULL
+--   CONSTRAINT ck_resp_impl_data     CHECK (NOT respondeu OR primeira_resposta_em IS NOT NULL),
+--   CONSTRAINT ck_data_impl_resp     CHECK (primeira_resposta_em IS NULL OR respondeu),
+--   -- (g) implicações unidirecionais coerentes
+--   CONSTRAINT ck_pend_impl_resp     CHECK (NOT resposta_pendente OR respondeu),
+--   CONSTRAINT ck_auto_impl_msg      CHECK (NOT aguardando_automacao OR msg_automatica_em IS NOT NULL),
+--   CONSTRAINT ck_auto_nao_respondeu CHECK (NOT (aguardando_automacao AND respondeu))
+--   -- NOTA: tentativas_feitas <= config.max_tentativas é garantido pela RPC (cross-row).
+-- );
+-- COMMENT ON TABLE public.ncrm_estado IS
+--   'Snapshot 1:1 com negocios. NÃO guarda corretor_id nem lead_id: posse e lead vêm de '
+--   'public.negocios em tempo de consulta/policy (helper ncrm_private.pode_ver_negocio). Escrita '
+--   'só via RPC (versao = optimistic lock). Invariantes bidirecionais garantem que nenhum estado '
+--   'ativo fica sem próxima ação e nenhuma saída fica inconsistente (doc 16).';
+--
+-- CREATE INDEX ix_ncrm_estado_quadro ON public.ncrm_estado (etapa, proxima_acao_em, negocio_id) WHERE saida IS NULL;
+-- CREATE INDEX ix_ncrm_estado_prazo  ON public.ncrm_estado (proxima_acao_em, negocio_id) WHERE saida IS NULL;
+-- CREATE INDEX ix_ncrm_estado_resp   ON public.ncrm_estado (ultima_interacao_em DESC, negocio_id) WHERE resposta_pendente AND saida IS NULL;
+-- CREATE INDEX ix_ncrm_estado_saida  ON public.ncrm_estado (saida, saida_em, negocio_id) WHERE saida IS NOT NULL;
+-- -- Escopo por corretor agora vem do JOIN a negocios; DEPENDÊNCIA: índice em public.negocios(corretor_id).
+-- -- NÃO é criado aqui (proibido alterar negocios). Verificar existência / agendar na migration real (doc 20).
+
+-- ---------------------------------------------------------------------------
+-- B.5  EVENTO IMUTÁVEL (sem corretor_id de RLS; atribuição point-in-time)
+-- ---------------------------------------------------------------------------
+-- CREATE TABLE public.ncrm_evento (
+--   id                    bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+--   negocio_id            bigint NOT NULL REFERENCES public.negocios(id),
+--   lead_id               bigint NOT NULL REFERENCES public.leads(id),        -- point-in-time
+--   corretor_id_no_evento bigint NULL REFERENCES public.corretores(id),        -- ATRIBUIÇÃO (NÃO RLS)
+--   workflow_config_id    bigint NOT NULL REFERENCES public.ncrm_workflow_config(id) ON DELETE RESTRICT,
+--   tipo                  text NOT NULL CHECK (tipo IN (
+--     'mensagem_automatica','tentativa','resposta_cliente','acao_comercial','reagendamento','mudanca_etapa',
+--     'transferencia','visita_agendada','proposta_registrada','proposta_transicao','proposta_convertida',
+--     'descarte','nutricao','reativacao','classificacao_sara','correcao_manual')),
+--   numero_tentativa      integer NULL CHECK (numero_tentativa IS NULL OR numero_tentativa >= 1),
+--   canal                 text NULL CHECK (canal IS NULL OR canal IN ('ligacao','whatsapp','email','presencial')),
+--   resultado             text NULL,
+--   payload               jsonb NOT NULL DEFAULT '{}'::jsonb,
+--   origem                text NOT NULL CHECK (origem IN ('usuario','automacao','sara','sistema','migracao')),
+--   executado_por         uuid NULL REFERENCES public.usuarios(id),
+--   idempotency_key       text NULL,
+--   estado_versao_antes   integer NULL,     -- 0 = criação do snapshot (pré-existência)
+--   estado_versao_apos    integer NULL,
+--   criado_em             timestamptz NOT NULL DEFAULT now(),
+--   CONSTRAINT ck_payload_obj  CHECK (jsonb_typeof(payload) = 'object'),
+--   CONSTRAINT ck_payload_size CHECK (pg_column_size(payload) <= 8192),
+--   CHECK (tipo <> 'tentativa'      OR (numero_tentativa IS NOT NULL AND canal IS NOT NULL AND resultado IS NOT NULL)),
+--   CHECK (tipo <> 'acao_comercial' OR resultado IS NOT NULL),
+--   CHECK (origem <> 'usuario'      OR executado_por IS NOT NULL),
+--   -- eventos que alteram estado: apos = antes + 1 (antes=0 na criação). Sugestivos: ambos NULL.
+--   CHECK ((estado_versao_antes IS NULL AND estado_versao_apos IS NULL) OR (estado_versao_apos = estado_versao_antes + 1))
+-- );
+-- CREATE INDEX ix_ncrm_evento_negocio ON public.ncrm_evento (negocio_id, id);
+-- CREATE INDEX ix_ncrm_evento_ind     ON public.ncrm_evento (criado_em, tipo, negocio_id);
+-- CREATE UNIQUE INDEX ux_ncrm_evento_idem ON public.ncrm_evento (idempotency_key) WHERE idempotency_key IS NOT NULL;
+-- -- Imutabilidade:
+-- CREATE FUNCTION ncrm_private.evento_imutavel() RETURNS trigger LANGUAGE plpgsql SET search_path = '' AS $fn$
+--   BEGIN RAISE EXCEPTION 'public.ncrm_evento é append-only (%).', TG_OP USING ERRCODE='raise_exception'; END $fn$;
+-- ALTER FUNCTION ncrm_private.evento_imutavel() OWNER TO <role_owner_migration>;
+-- REVOKE ALL ON FUNCTION ncrm_private.evento_imutavel() FROM PUBLIC, anon, authenticated;
+-- CREATE TRIGGER trg_ncrm_evento_imutavel BEFORE UPDATE OR DELETE ON public.ncrm_evento
+--   FOR EACH ROW EXECUTE FUNCTION ncrm_private.evento_imutavel();
+
+-- ---------------------------------------------------------------------------
+-- B.6  ORDEM TRANSACIONAL CANÔNICA (correção 5) — detalhada no doc 15
+-- ---------------------------------------------------------------------------
+-- Toda RPC de escrita de estado segue EXATAMENTE esta ordem, numa única transação:
+--   1) SELECT versao FROM public.ncrm_estado WHERE negocio_id = p_negocio_id FOR UPDATE;  -- trava a linha (v_antes)
+--   2) IF NOT FOUND -> criação controlada (só automação/migração) OU erro 'estado_inexistente';
+--   3) IF p_versao <> v_antes -> RETURN 'versao_conflito';                                 -- lock otimista sob trava
+--   4) validar regras de negócio (espelho das funções puras da Fase 1.2);
+--   5) UPDATE public.ncrm_estado SET <campos>, versao = v_antes + 1, atualizado_em = now()
+--        WHERE negocio_id = p_negocio_id AND versao = v_antes;                             -- 1 linha (garantido pela trava)
+--   6) INSERT INTO public.ncrm_evento (..., estado_versao_antes = v_antes, estado_versao_apos = v_antes + 1,
+--        idempotency_key = p_idem);   -- EVENTO POR ÚLTIMO: só é durável se o snapshot avançou;
+--                                     -- a UNIQUE(idempotency_key) é o desempate final de concorrência
+--                                     -- (conflito -> ROLLBACK de TUDO -> caller trata 'ja_processado').
+--   7) COMMIT implícito ao retornar.
+-- Justificativa da ordem (evento por último): garante que todo evento reflete um estado que REALMENTE
+-- mudou; e o UNIQUE do idempotency_key transforma corrida em rollback atômico, nunca em estado órfão.
+
+-- ---------------------------------------------------------------------------
+-- B.7  GRANTS mínimos
+-- ---------------------------------------------------------------------------
+-- REVOKE ALL ON public.ncrm_workflow_config, public.ncrm_workflow_passo,
+--               public.ncrm_proposta, public.ncrm_estado, public.ncrm_evento FROM PUBLIC, anon, authenticated;
+-- GRANT SELECT ON public.ncrm_workflow_config, public.ncrm_workflow_passo TO authenticated;
+-- GRANT SELECT ON public.ncrm_proposta, public.ncrm_estado, public.ncrm_evento TO authenticated;  -- filtrado por RLS
+-- -- Nenhum INSERT/UPDATE/DELETE a papel de navegador. Escrita só via wrappers públicos -> ncrm_private.
+
+-- ---------------------------------------------------------------------------
+-- B.8  RLS habilitada + políticas via POSSE ATUAL EM negocios (correção 3)
+-- ---------------------------------------------------------------------------
+-- ALTER TABLE public.ncrm_workflow_config ENABLE ROW LEVEL SECURITY;
+-- ALTER TABLE public.ncrm_workflow_passo  ENABLE ROW LEVEL SECURITY;
+-- ALTER TABLE public.ncrm_proposta        ENABLE ROW LEVEL SECURITY;
+-- ALTER TABLE public.ncrm_estado          ENABLE ROW LEVEL SECURITY;
+-- ALTER TABLE public.ncrm_evento          ENABLE ROW LEVEL SECURITY;
+-- -- SELECT-only; escrita só via RPC. Posse derivada de negocios (NUNCA de coluna denormalizada):
+-- -- CREATE POLICY ncrm_estado_sel   ON public.ncrm_estado   FOR SELECT TO authenticated
+-- --   USING (ncrm_private.pode_ver_negocio(negocio_id));
+-- -- CREATE POLICY ncrm_evento_sel   ON public.ncrm_evento   FOR SELECT TO authenticated
+-- --   USING (ncrm_private.pode_ver_negocio(negocio_id));
+-- -- CREATE POLICY ncrm_proposta_sel ON public.ncrm_proposta FOR SELECT TO authenticated
+-- --   USING (ncrm_private.pode_ver_negocio(negocio_id));
+-- -- CREATE POLICY ncrm_config_sel   ON public.ncrm_workflow_config FOR SELECT TO authenticated USING (true);
+-- -- CREATE POLICY ncrm_passo_sel    ON public.ncrm_workflow_passo  FOR SELECT TO authenticated USING (true);
+-- -- CONSEQUÊNCIA: transferência de corretor no legado vale IMEDIATAMENTE (a policy relê negocios);
+-- -- o corretor antigo deixa de ver na hora, sem trigger de sincronização.
+
+-- ---------------------------------------------------------------------------
+-- B.9  WRAPPERS PÚBLICOS mínimos -> lógica privilegiada (correção 7) — ESBOÇO
+-- ---------------------------------------------------------------------------
+-- Pseudocódigo completo em docs/crm-nova-era/15-contrato-transacional-eventos.md.
+-- Princípios: SET search_path=''; refs qualificadas; origem/ids/permissão DERIVADOS do banco;
+-- NUNCA confiar em p_origem/p_corretor_id/p_lead_id do cliente; SECURITY DEFINER só para concentrar
+-- a transação (não para furar RLS — a autorização é explícita via ncrm_private.pode_operar_negocio).
+-- Sara: exige claim de app_metadata (nunca user_metadata); aplica só com precedência humana.
+
+-- ---------------------------------------------------------------------------
+-- B.10  ROLLBACK CONCEITUAL (nada legado referencia ncrm_*; SEM trigger em negocios)
+-- ---------------------------------------------------------------------------
+-- DROP TRIGGER  IF EXISTS trg_ncrm_evento_imutavel ON public.ncrm_evento;
+-- DROP FUNCTION IF EXISTS ncrm_private.evento_imutavel();
+-- DROP FUNCTION IF EXISTS ncrm_private.pode_ver_negocio(bigint);
+-- DROP FUNCTION IF EXISTS ncrm_private.negocio_corretor(bigint);
+-- DROP TABLE    IF EXISTS public.ncrm_evento;
+-- DROP TABLE    IF EXISTS public.ncrm_estado;
+-- DROP TABLE    IF EXISTS public.ncrm_proposta;
+-- DROP TABLE    IF EXISTS public.ncrm_workflow_passo;
+-- DROP TABLE    IF EXISTS public.ncrm_workflow_config;
+-- DROP SCHEMA   IF EXISTS ncrm_private;
+
+-- ############################################################################
+-- FIM — sem COMMIT. A barreira DO $draft_guard$ no topo aborta qualquer execução.
+-- ############################################################################
+ROLLBACK;

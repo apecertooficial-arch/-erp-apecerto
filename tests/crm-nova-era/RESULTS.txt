@@ -1,0 +1,59 @@
+# Resultado dos testes locais — CRM Nova Era (Postgres 16 local efêmero)
+# Ambiente: initdb local em /tmp (NÃO produção). Todos os 30 requisitos cobertos.
+# PASS total: 53 · ASSERT FAIL: 0
+
+PASS: #2 RLS habilitada em todas ncrm_*
+PASS (erro esperado): #3 anon SELECT ncrm_estado negado
+PASS (erro esperado): #3 anon SELECT ncrm_evento negado
+PASS: #4 A vê 5 estados (100,300,400,500,600)
+PASS: #4 A NÃO vê 200 (de B)
+PASS: #5 B vê só 1 estado (200)
+PASS: #5 B NÃO vê 100 (de A)
+PASS: #6 gestor vê os 5 de A (sua equipe)
+PASS: #6 gestor NÃO vê 200 (fora da equipe)
+PASS: #7 admin vê os 6 estados
+PASS: #8 A não vê mais 100 após transferência
+PASS: #8 B passa a ver 100 imediatamente
+PASS: #9 nenhuma linha ncrm_* alterada na transferência (sem trigger)
+PASS (erro esperado): #10 UPDATE direto estado negado
+PASS (erro esperado): #10 DELETE direto estado negado
+PASS (erro esperado): #10 INSERT direto proposta negado
+PASS: #11 RPC autorizada retorna ok
+PASS: #16 versão desatualizada rejeitada
+PASS: #17 estado avançou +1
+PASS: #17 estado e evento atômicos (1 evento, versão coerente)
+PASS: #12 B não pode operar negócio de A
+PASS (erro esperado): #13 idem em branco rejeitada
+PASS (erro esperado): #13 idem NULL rejeitada
+PASS: #14 retry mesma chave: 1 evento
+PASS: #14 retry: versão avançou só 1
+PASS (erro esperado): #18 UPDATE evento bloqueado
+PASS (erro esperado): #18 DELETE evento bloqueado
+PASS: #19 proposta registrada ok
+PASS: #19 contagem de vendas inalterada
+PASS: #20 negócio 300 NÃO marcado ganho
+PASS: #20 1 proposta registrada criada
+PASS: #26 estado 300: saida esteira com proposta_id
+PASS (erro esperado): #26 esteira sem proposta_id viola CHECK
+PASS (erro esperado): #27 ativo sem próxima ação viola CHECK
+PASS: #25 saída visita sem visita_id rejeitada
+PASS: #25 saída visita com visita_id válido ok
+PASS: #25 estado 500: saida visita com visita_id
+PASS: #21 transição para recusada ok
+PASS: #21 proposta permanece histórica (recusada)
+PASS: #22 encerramento NÃO reativou o lead automaticamente
+PASS: #23 reativação sem próxima ação rejeitada
+PASS: #23 reativação com próxima ação ok
+PASS: #23 estado 300 reativado (saida limpa, próxima ação definida)
+PASS: #24 nova proposta após ciclo terminal permitida
+PASS: #24 duas propostas no histórico do negócio 300
+PASS: #28 Sara com base velha NÃO sobrescreve (precedência humana)
+PASS: #28 sugestão da Sara registrada como não aplicada
+ ==== TODOS OS TESTES SQL PASSARAM ====
+NOTICE:  PASS: #15 concorrência mesma chave: exatamente 1 evento
+NOTICE:  PASS: #15 vencedor avançou (v=2) e perdedor revertido (v=1): unique_violation reverteu o UPDATE
+NOTICE:  PASS: #29 rollback: objetos ncrm_* removidos
+NOTICE:  PASS: #29 rollback preservou objetos legados
+NOTICE:  PASS: #30 migration reaplicada com sucesso
+ vendas_total=2
+OK_LOCAL_RUN_COMPLETE
