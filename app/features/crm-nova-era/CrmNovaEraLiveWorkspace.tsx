@@ -18,6 +18,7 @@ import {
   type ColunaChave, type LeadNova,
 } from "./lib/rules";
 import { LeadCard } from "./components/LeadCard";
+import { PainelPiloto, DiagnosticoLegado } from "./components/PainelPiloto";
 import { WorkQueue } from "./components/WorkQueue";
 import {
   mapEstadoToLead, enriquecerComEventos,
@@ -156,11 +157,16 @@ export function CrmNovaEraLiveWorkspace({ accessToken, profile }: { accessToken:
                   <span>Propostas: <b>{indic.propostasRegistradas}</b></span>
                 </div>
                 <WorkQueue itens={fila} selectedId={selId} onOpenAction={(id) => void abrirLead(id)} />
+                {/* Regra 1: carteira antiga (não migrada) separada e SÓ leitura — nunca some com a fila Nova Era. */}
+                {["admin", "executivo", "gerente"].includes(profile.role) && <DiagnosticoLegado accessToken={accessToken} />}
               </div>
             )}
 
             {vista === "gerencial" && profile.role !== "corretor" && (
-              <PainelGerencial leads={leads} agora={agora} accessToken={accessToken} />
+              <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                {["admin", "executivo"].includes(profile.role) && <PainelPiloto accessToken={accessToken} />}
+                <PainelGerencial leads={leads} agora={agora} accessToken={accessToken} />
+              </div>
             )}
           </div>
 
