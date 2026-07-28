@@ -126,4 +126,26 @@ export const NOVA_CRM_CSS = `
 .nova-crm-filters select{border:1px solid var(--nc-line);border-radius:9px;padding:6px 9px;font-size:12.5px;background:var(--nc-card);}
 .nova-crm-fchip{border:1px solid var(--nc-line);background:var(--nc-card);border-radius:999px;padding:5px 12px;font-size:12px;font-weight:600;color:#4b5563;cursor:pointer;}
 .nova-crm-fchip.on{background:var(--nc-orange);border-color:var(--nc-orange);color:#fff;}
+/* ---- CRM Nova Era (live) — classes adicionais ---- */
+.nova-crm-toolbar{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 12px;border-bottom:1px solid var(--nc-line);background:var(--nc-card);}
+.nova-crm-count{display:inline-flex;min-width:20px;justify-content:center;background:var(--nc-bg);border:1px solid var(--nc-line);border-radius:999px;padding:0 7px;font-size:11px;font-weight:700;margin-left:6px;}
+.nova-crm-col-body{display:flex;flex-direction:column;gap:8px;padding:8px 4px;}
+.nova-crm-fila-wrap{display:flex;flex-direction:column;gap:10px;}
+.nova-crm-indic{display:flex;flex-wrap:wrap;gap:14px;font-size:12.5px;color:var(--nc-muted);}
+.nova-crm-indic b{color:var(--nc-ink);}
+.nova-crm-panel-next{margin-top:8px;font-size:13px;}
+.nova-crm-panel-body{display:flex;flex-direction:column;gap:12px;padding:12px;overflow:auto;}
+.nova-crm-coach{background:var(--nc-bg);border:1px solid var(--nc-line);border-radius:12px;padding:10px 12px;font-size:13px;}
+.nova-crm-coach p{margin:4px 0 0;color:var(--nc-muted);}
+.nova-crm-sara-card{margin-top:8px;border:1px solid var(--nc-line);border-radius:12px;padding:10px;background:var(--nc-card);}
+.nova-crm-acoes{display:flex;flex-wrap:wrap;gap:8px;}
+.nova-crm-form{display:flex;flex-direction:column;gap:8px;border:1px solid var(--nc-line);border-radius:12px;padding:12px;background:var(--nc-card);}
+.nova-crm-form label{display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:600;color:#4b5563;}
+.nova-crm-form select,.nova-crm-form input{border:1px solid var(--nc-line);border-radius:9px;padding:7px 9px;font-size:13px;background:#fff;}
+.nova-crm-form-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:4px;}
+.nova-crm-hint{font-size:12px;color:var(--nc-muted);}
+.nova-crm-saida-resumo{background:var(--nc-bg);border:1px solid var(--nc-line);border-radius:12px;padding:12px;font-size:13px;}
+.nova-crm-tl-wrap{display:flex;flex-direction:column;gap:6px;}
+.nova-crm-tl-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px;font-size:12px;color:#4b5563;}
+.nova-crm-tl-list li span{color:var(--nc-muted);}
 `;

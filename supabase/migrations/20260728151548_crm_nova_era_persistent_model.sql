@@ -341,7 +341,7 @@ EXCEPTION WHEN unique_violation THEN
     RETURN jsonb_build_object('ok',true,'ja_processado',true);
   ELSE RAISE; END IF;
 END $fn$;
-REVOKE ALL ON FUNCTION public.ncrm_registrar_msg_automatica(bigint,text,timestamptz) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.ncrm_registrar_msg_automatica(bigint,text,timestamptz) FROM PUBLIC, anon, authenticated;  -- service_role-only (não valida pode_operar)
 GRANT EXECUTE ON FUNCTION public.ncrm_registrar_msg_automatica(bigint,text,timestamptz) TO service_role;
 
 -- 7.1 Registrar tentativa (cadência CALCULADA PELO BANCO).
@@ -677,7 +677,7 @@ EXCEPTION WHEN unique_violation THEN
     RETURN jsonb_build_object('ok',true,'ja_processado',true);
   ELSE RAISE; END IF;
 END $fn$;
-REVOKE ALL ON FUNCTION public.ncrm_registrar_resposta_cliente(bigint,text,timestamptz) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.ncrm_registrar_resposta_cliente(bigint,text,timestamptz) FROM PUBLIC, anon, authenticated;  -- service_role-only (não valida pode_operar)
 GRANT EXECUTE ON FUNCTION public.ncrm_registrar_resposta_cliente(bigint,text,timestamptz) TO service_role;
 
 -- 7.8 Concluir ação comercial (authenticated). Cliente já respondeu; exige a próxima ação.
@@ -822,6 +822,24 @@ EXCEPTION WHEN unique_violation THEN
 END $fn$;
 REVOKE ALL ON FUNCTION public.ncrm_reativar(bigint,int,text,text,text,text,timestamptz,text) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.ncrm_reativar(bigint,int,text,text,text,text,timestamptz,text) TO authenticated;
+
+-- ============================================================================
+-- 7.12 Índices de cobertura das FKs ncrm_* (hardening; nomes determinísticos; só tabelas ncrm_*)
+-- ============================================================================
+CREATE INDEX IF NOT EXISTS ix_ncrm_config_criado_por       ON public.ncrm_workflow_config (criado_por);
+CREATE INDEX IF NOT EXISTS ix_ncrm_proposta_lead           ON public.ncrm_proposta (lead_id);
+CREATE INDEX IF NOT EXISTS ix_ncrm_proposta_corretor       ON public.ncrm_proposta (corretor_id);
+CREATE INDEX IF NOT EXISTS ix_ncrm_proposta_empreendimento ON public.ncrm_proposta (empreendimento_id);
+CREATE INDEX IF NOT EXISTS ix_ncrm_proposta_unidade        ON public.ncrm_proposta (unidade_id);
+CREATE INDEX IF NOT EXISTS ix_ncrm_proposta_criada_por     ON public.ncrm_proposta (criada_por);
+CREATE INDEX IF NOT EXISTS ix_ncrm_estado_config           ON public.ncrm_estado (workflow_config_id);
+CREATE INDEX IF NOT EXISTS ix_ncrm_estado_visita           ON public.ncrm_estado (visita_id);
+CREATE INDEX IF NOT EXISTS ix_ncrm_estado_proposta         ON public.ncrm_estado (proposta_id);
+CREATE INDEX IF NOT EXISTS ix_ncrm_estado_atualizado_por   ON public.ncrm_estado (atualizado_por);
+CREATE INDEX IF NOT EXISTS ix_ncrm_evento_lead             ON public.ncrm_evento (lead_id);
+CREATE INDEX IF NOT EXISTS ix_ncrm_evento_corretor         ON public.ncrm_evento (corretor_id_no_evento);
+CREATE INDEX IF NOT EXISTS ix_ncrm_evento_config           ON public.ncrm_evento (workflow_config_id);
+CREATE INDEX IF NOT EXISTS ix_ncrm_evento_executado_por    ON public.ncrm_evento (executado_por);
 
 -- ============================================================================
 -- 8. GRANTS de tabela + RLS + policies (SELECT-only; escrita só por RPC)

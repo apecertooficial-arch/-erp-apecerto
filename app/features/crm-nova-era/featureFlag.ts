@@ -47,10 +47,20 @@ function allowlist(): Set<string> {
 /**
  * Decisão final (client-side, apenas para EXIBIR o seletor). A autorização efetiva de dados
  * é sempre reforçada no banco (RLS + RPC fail-closed) — esta função nunca concede acesso a dados.
+ *
+ * Regras (ordem):
+ *  - flag do ambiente desligada => sempre false (todos veem só o CRM antigo);
+ *  - com a flag ligada: administrador SEMPRE liberado (piloto canário);
+ *  - com a flag ligada: usuário na allowlist liberado;
+ *  - qualquer outro (corretor sem permissão) => false.
  */
-export function crmNovaEraLiberado(usuarioId?: string | null): boolean {
+export function crmNovaEraLiberado(
+  usuarioId?: string | null,
+  opts?: { role?: string | null },
+): boolean {
   if (!crmNovaEraFlagAmbiente()) return false; // ambiente não habilitou => padrão antigo
   if (!usuarioId) return false;
+  if ((opts?.role ?? "") === "admin") return true; // canário: admin sempre pode
   const lista = allowlist();
   return lista.size > 0 && lista.has(usuarioId);
 }
