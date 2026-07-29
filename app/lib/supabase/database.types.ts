@@ -918,6 +918,74 @@ export type Database = {
         }
         Relationships: []
       }
+      cadastro_convites: {
+        Row: {
+          criado_em: string
+          criado_por: string | null
+          criado_por_nome: string | null
+          expira_em: string
+          id: string
+          role: string
+          token: string
+          usado_em: string | null
+          usado_email: string | null
+          usado_usuario_id: string | null
+        }
+        Insert: {
+          criado_em?: string
+          criado_por?: string | null
+          criado_por_nome?: string | null
+          expira_em?: string
+          id?: string
+          role?: string
+          token: string
+          usado_em?: string | null
+          usado_email?: string | null
+          usado_usuario_id?: string | null
+        }
+        Update: {
+          criado_em?: string
+          criado_por?: string | null
+          criado_por_nome?: string | null
+          expira_em?: string
+          id?: string
+          role?: string
+          token?: string
+          usado_em?: string | null
+          usado_email?: string | null
+          usado_usuario_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cadastro_convites_criado_por_fkey"
+            columns: ["criado_por"]
+            isOneToOne: false
+            referencedRelation: "usuarios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cadastro_convites_criado_por_fkey"
+            columns: ["criado_por"]
+            isOneToOne: false
+            referencedRelation: "v_painel_corretor"
+            referencedColumns: ["corretor_id"]
+          },
+          {
+            foreignKeyName: "cadastro_convites_criado_por_fkey"
+            columns: ["criado_por"]
+            isOneToOne: false
+            referencedRelation: "v_painel_socio"
+            referencedColumns: ["socio_id"]
+          },
+          {
+            foreignKeyName: "cadastro_convites_criado_por_fkey"
+            columns: ["criado_por"]
+            isOneToOne: false
+            referencedRelation: "vw_ranking_vgv"
+            referencedColumns: ["corretor_id"]
+          },
+        ]
+      }
       caixa_keywords: {
         Row: {
           categoria: string
@@ -1281,6 +1349,7 @@ export type Database = {
           doc_rg_nome: string | null
           doc_rg_path: string | null
           email: string | null
+          forcar_distribuicao: boolean
           foto_path: string | null
           gerente_id: number | null
           id: number
@@ -1309,6 +1378,7 @@ export type Database = {
           doc_rg_nome?: string | null
           doc_rg_path?: string | null
           email?: string | null
+          forcar_distribuicao?: boolean
           foto_path?: string | null
           gerente_id?: number | null
           id?: never
@@ -1337,6 +1407,7 @@ export type Database = {
           doc_rg_nome?: string | null
           doc_rg_path?: string | null
           email?: string | null
+          forcar_distribuicao?: boolean
           foto_path?: string | null
           gerente_id?: number | null
           id?: never
@@ -2986,6 +3057,36 @@ export type Database = {
         }
         Relationships: []
       }
+      lead_momento_catalogo: {
+        Row: {
+          ativo: boolean
+          cor: string | null
+          grupo: string
+          ordem: number
+          prazo_dias: number
+          rotulo: string
+          slug: string
+        }
+        Insert: {
+          ativo?: boolean
+          cor?: string | null
+          grupo: string
+          ordem?: number
+          prazo_dias?: number
+          rotulo: string
+          slug: string
+        }
+        Update: {
+          ativo?: boolean
+          cor?: string | null
+          grupo?: string
+          ordem?: number
+          prazo_dias?: number
+          rotulo?: string
+          slug?: string
+        }
+        Relationships: []
+      }
       lead_momentos: {
         Row: {
           atualizado_por: string
@@ -3233,9 +3334,13 @@ export type Database = {
           extras: Json | null
           id: number
           instagram: string | null
+          momento: string | null
           momento_atual: string | null
           momento_atualizado_em: string | null
           momento_atualizado_por: string | null
+          momento_em: string | null
+          momento_obs: string | null
+          momento_por: string | null
           nome: string | null
           origem: string | null
           pipeline_id: number | null
@@ -3257,9 +3362,13 @@ export type Database = {
           extras?: Json | null
           id?: never
           instagram?: string | null
+          momento?: string | null
           momento_atual?: string | null
           momento_atualizado_em?: string | null
           momento_atualizado_por?: string | null
+          momento_em?: string | null
+          momento_obs?: string | null
+          momento_por?: string | null
           nome?: string | null
           origem?: string | null
           pipeline_id?: number | null
@@ -3281,9 +3390,13 @@ export type Database = {
           extras?: Json | null
           id?: never
           instagram?: string | null
+          momento?: string | null
           momento_atual?: string | null
           momento_atualizado_em?: string | null
           momento_atualizado_por?: string | null
+          momento_em?: string | null
+          momento_obs?: string | null
+          momento_por?: string | null
           nome?: string | null
           origem?: string | null
           pipeline_id?: number | null
@@ -7196,6 +7309,7 @@ export type Database = {
       aceitar_transferencia: { Args: { p_negocio: number }; Returns: Json }
       admin_dashboard_financeiro: { Args: never; Returns: Json }
       admin_dashboard_funil: { Args: never; Returns: Json }
+      admin_dashboard_na_mesa: { Args: never; Returns: Json }
       admin_dashboard_rodagem: { Args: never; Returns: Json }
       agenda_link_regenerar: { Args: never; Returns: string }
       agenda_link_token: { Args: never; Returns: string }
@@ -7687,6 +7801,19 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      motor_momento_lead: {
+        Args: {
+          p_auto: number
+          p_bloco: string
+          p_lead: Json
+          p_lead_id: number
+          p_momento: string
+          p_neg_id: number
+          p_nome: string
+          p_observacao: string
+        }
+        Returns: undefined
+      }
       motor_processar_fila: { Args: never; Returns: number }
       motor_resolve_valor: {
         Args: { p_lead: Json; p_raw: string }
@@ -7734,6 +7861,7 @@ export type Database = {
         Args: { p_motivo?: string; p_negocio_id: number; p_stage_id: number }
         Returns: Json
       }
+      nome_normalizado: { Args: { t: string }; Returns: string }
       perf_amostrar_online: { Args: never; Returns: undefined }
       perf_derivar_eventos: { Args: { p_desde?: string }; Returns: Json }
       perf_log: {
@@ -7788,6 +7916,30 @@ export type Database = {
         Args: { p_fim?: string; p_inicio?: string }
         Returns: Json
       }
+      performance_extra: {
+        Args: { p_fim?: string; p_inicio?: string }
+        Returns: {
+          cliques_momento: number
+          comissao: number
+          comissao_media: number
+          conv_agend_real_pct: number
+          conv_lead_venda_pct: number
+          conv_real_venda_pct: number
+          corretor_id: number
+          desatualizados: number
+          desatualizados_pct: number
+          dias_ativos: number
+          instancia_quedas: number
+          leads_atualizados: number
+          leads_recebidos: number
+          pescados: number
+          sara_perguntas: number
+          tempo_ate_atualizar_min: number
+          visitas_agendadas: number
+          visitas_canceladas: number
+          visitas_realizadas: number
+        }[]
+      }
       performance_operacional: {
         Args: { p_fim?: string; p_inicio?: string }
         Returns: Json
@@ -7813,6 +7965,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      pode_ver_processo: { Args: { p_ref: string }; Returns: boolean }
       posicao_solo: {
         Args: { p_corretor: string; p_venda: string }
         Returns: number
@@ -7873,6 +8026,15 @@ export type Database = {
           p_modulo: string
         }
         Returns: undefined
+      }
+      registrar_momento_lead: {
+        Args: {
+          p_lead_id: number
+          p_momento: string
+          p_negocio_id?: number
+          p_observacao?: string
+        }
+        Returns: Json
       }
       registrar_observacao: {
         Args: { p_lead_id: number; p_texto: string }

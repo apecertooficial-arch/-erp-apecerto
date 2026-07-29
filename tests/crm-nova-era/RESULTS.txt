@@ -1,0 +1,131 @@
+# CRM Nova Era — RESULTADOS DOS TESTES (Postgres 16 local efêmero)
+#
+# PASS: 101 · ASSERT FAIL: 0 · contagem de vendas final: inalterada (2).
+# Sequência: harness -> migration -> core (30) -> concorrência #15 -> correções -> DELTA (cadência banco) -> rollback #29 -> migration #30.
+#
+psql:/tmp/ncrm_sql/core.sql:24: NOTICE:  PASS: #2 RLS habilitada em todas ncrm_*
+psql:/tmp/ncrm_sql/core.sql:28: NOTICE:  PASS (erro esperado): #3 anon SELECT ncrm_estado negado
+psql:/tmp/ncrm_sql/core.sql:29: NOTICE:  PASS (erro esperado): #3 anon SELECT ncrm_evento negado
+psql:/tmp/ncrm_sql/core.sql:34: NOTICE:  PASS: #4 A vê 5 estados (100,300,400,500,600)
+psql:/tmp/ncrm_sql/core.sql:35: NOTICE:  PASS: #4 A NÃO vê 200 (de B)
+psql:/tmp/ncrm_sql/core.sql:38: NOTICE:  PASS: #5 B vê só 1 estado (200)
+psql:/tmp/ncrm_sql/core.sql:39: NOTICE:  PASS: #5 B NÃO vê 100 (de A)
+psql:/tmp/ncrm_sql/core.sql:44: NOTICE:  PASS: #6 gestor vê os 5 de A (sua equipe)
+psql:/tmp/ncrm_sql/core.sql:45: NOTICE:  PASS: #6 gestor NÃO vê 200 (fora da equipe)
+psql:/tmp/ncrm_sql/core.sql:50: NOTICE:  PASS: #7 admin vê os 6 estados
+psql:/tmp/ncrm_sql/core.sql:58: NOTICE:  PASS: #8 A não vê mais 100 após transferência
+psql:/tmp/ncrm_sql/core.sql:61: NOTICE:  PASS: #8 B passa a ver 100 imediatamente
+psql:/tmp/ncrm_sql/core.sql:66: NOTICE:  PASS: #9 nenhuma linha ncrm_* alterada na transferência (sem trigger)
+psql:/tmp/ncrm_sql/core.sql:70: NOTICE:  PASS (erro esperado): #10 UPDATE direto estado negado
+psql:/tmp/ncrm_sql/core.sql:71: NOTICE:  PASS (erro esperado): #10 DELETE direto estado negado
+psql:/tmp/ncrm_sql/core.sql:72: NOTICE:  PASS (erro esperado): #10 INSERT direto proposta negado
+psql:/tmp/ncrm_sql/core.sql:78: NOTICE:  PASS: #11 RPC autorizada retorna ok
+psql:/tmp/ncrm_sql/core.sql:79: NOTICE:  PASS: #16 versão desatualizada rejeitada
+psql:/tmp/ncrm_sql/core.sql:80: NOTICE:  PASS: #17 estado avançou +1
+psql:/tmp/ncrm_sql/core.sql:83: NOTICE:  PASS: #17 estado e evento atômicos (1 evento, versão coerente)
+psql:/tmp/ncrm_sql/core.sql:88: NOTICE:  PASS: #12 B não pode operar negócio de A
+psql:/tmp/ncrm_sql/core.sql:93: NOTICE:  PASS (erro esperado): #13 idem em branco rejeitada
+psql:/tmp/ncrm_sql/core.sql:94: NOTICE:  PASS (erro esperado): #13 idem NULL rejeitada
+psql:/tmp/ncrm_sql/core.sql:100: NOTICE:  PASS: #14 retry mesma chave: 1 evento
+psql:/tmp/ncrm_sql/core.sql:101: NOTICE:  PASS: #14 retry: versão avançou só 1
+psql:/tmp/ncrm_sql/core.sql:105: NOTICE:  PASS (erro esperado): #18 UPDATE evento bloqueado
+psql:/tmp/ncrm_sql/core.sql:106: NOTICE:  PASS (erro esperado): #18 DELETE evento bloqueado
+psql:/tmp/ncrm_sql/core.sql:112: NOTICE:  PASS: #19 proposta registrada ok
+psql:/tmp/ncrm_sql/core.sql:114: NOTICE:  PASS: #19 contagem de vendas inalterada
+psql:/tmp/ncrm_sql/core.sql:115: NOTICE:  PASS: #20 negócio 300 NÃO marcado ganho
+psql:/tmp/ncrm_sql/core.sql:116: NOTICE:  PASS: #20 1 proposta registrada criada
+psql:/tmp/ncrm_sql/core.sql:119: NOTICE:  PASS: #26 estado 300: saida esteira com proposta_id
+psql:/tmp/ncrm_sql/core.sql:120: NOTICE:  PASS (erro esperado): #26 esteira sem proposta_id viola CHECK
+psql:/tmp/ncrm_sql/core.sql:123: NOTICE:  PASS (erro esperado): #27 ativo sem próxima ação viola CHECK
+psql:/tmp/ncrm_sql/core.sql:128: NOTICE:  PASS: #25 saída visita sem visita_id rejeitada
+psql:/tmp/ncrm_sql/core.sql:129: NOTICE:  PASS: #25 saída visita com visita_id válido ok
+psql:/tmp/ncrm_sql/core.sql:130: NOTICE:  PASS: #25 estado 500: saida visita com visita_id
+psql:/tmp/ncrm_sql/core.sql:136: NOTICE:  PASS: #21 transição para recusada ok
+psql:/tmp/ncrm_sql/core.sql:138: NOTICE:  PASS: #21 proposta permanece histórica (recusada)
+psql:/tmp/ncrm_sql/core.sql:139: NOTICE:  PASS: #22 encerramento NÃO reativou o lead automaticamente
+psql:/tmp/ncrm_sql/core.sql:144: NOTICE:  PASS: #23 reativação sem próxima ação rejeitada
+psql:/tmp/ncrm_sql/core.sql:145: NOTICE:  PASS: #23 reativação com próxima ação ok
+psql:/tmp/ncrm_sql/core.sql:146: NOTICE:  PASS: #23 estado 300 reativado (saida limpa, próxima ação definida)
+psql:/tmp/ncrm_sql/core.sql:148: NOTICE:  PASS: #24 nova proposta após ciclo terminal permitida
+psql:/tmp/ncrm_sql/core.sql:149: NOTICE:  PASS: #24 duas propostas no histórico do negócio 300
+psql:/tmp/ncrm_sql/core.sql:159: NOTICE:  PASS: #28 Sara com base velha NÃO sobrescreve (precedência humana)
+psql:/tmp/ncrm_sql/core.sql:160: NOTICE:  PASS: #28 Sara não incrementou a versão do estado (foi a tentativa humana)
+psql:/tmp/ncrm_sql/core.sql:161: NOTICE:  PASS: #28 sugestão da Sara registrada como não aplicada
+ ==== TODOS OS TESTES SQL PASSARAM ====
+PASS: #15 concorrência mesma chave: exatamente 1 evento
+PASS: #15 vencedor avançou (v=2) e perdedor revertido (v=1): unique_violation reverteu o UPDATE
+psql:/tmp/ncrm_sql/core2.sql:26: NOTICE:  PASS: C-msgid: espaços rejeitado
+psql:/tmp/ncrm_sql/core2.sql:27: NOTICE:  PASS: C-msgid: NULL rejeitado
+psql:/tmp/ncrm_sql/core2.sql:28: NOTICE:  PASS: C-msgid: resposta_cliente espaços rejeitado
+psql:/tmp/ncrm_sql/core2.sql:33: NOTICE:  PASS: C-cadencia: msg automática não conta tentativa (tentativas_feitas=0)
+psql:/tmp/ncrm_sql/core2.sql:35: NOTICE:  PASS: C-cadencia: só evento mensagem_automatica, 0 tentativa
+psql:/tmp/ncrm_sql/core2.sql:49: NOTICE:  PASS: C-cadencia: 4 tentativas registradas
+psql:/tmp/ncrm_sql/core2.sql:50: NOTICE:  PASS: C-cadencia: 5ª tentativa acima do limite negada
+psql:/tmp/ncrm_sql/core2.sql:55: NOTICE:  PASS: C-resposta: registrar_resposta_cliente ok
+psql:/tmp/ncrm_sql/core2.sql:58: NOTICE:  PASS: C-resposta: estado marca respondeu/pendente/próxima ação padrão
+psql:/tmp/ncrm_sql/core2.sql:60: NOTICE:  PASS: C-resposta: tentativa de prospecção após resposta negada
+psql:/tmp/ncrm_sql/core2.sql:69: NOTICE:  PASS: C-concluir: sem próxima ação rejeitado
+psql:/tmp/ncrm_sql/core2.sql:70: NOTICE:  PASS: C-concluir: com próxima ação ok
+psql:/tmp/ncrm_sql/core2.sql:71: NOTICE:  PASS: C-concluir: resposta_pendente=false e próxima ação atualizada
+psql:/tmp/ncrm_sql/core2.sql:72: NOTICE:  PASS: C-concluir: evento acao_comercial gravado
+psql:/tmp/ncrm_sql/core2.sql:78: NOTICE:  PASS: C-descarte: outro sem detalhe rejeitado
+psql:/tmp/ncrm_sql/core2.sql:79: NOTICE:  PASS: C-descarte: motivo estruturado ok
+psql:/tmp/ncrm_sql/core2.sql:80: NOTICE:  PASS: C-descarte: estado descartado sem próxima ação
+psql:/tmp/ncrm_sql/core2.sql:86: NOTICE:  PASS: C-nutricao: saída nutrição ok
+psql:/tmp/ncrm_sql/core2.sql:87: NOTICE:  PASS: C-nutricao: estado nutricao sem próxima ação
+psql:/tmp/ncrm_sql/core2.sql:89: NOTICE:  PASS: C-reativar: sem próxima ação rejeitado
+psql:/tmp/ncrm_sql/core2.sql:90: NOTICE:  PASS: C-reativar: reativação comum ok
+psql:/tmp/ncrm_sql/core2.sql:91: NOTICE:  PASS: C-reativar: saída limpa e próxima ação definida
+psql:/tmp/ncrm_sql/core2.sql:98: NOTICE:  PASS: C-sara: nunca aplica (aplicado=false)
+psql:/tmp/ncrm_sql/core2.sql:99: NOTICE:  PASS: C-sara: versão do estado inalterada
+psql:/tmp/ncrm_sql/core2.sql:100: NOTICE:  PASS: C-sara: evento aplicado=false / aguardando_aprovacao_humana
+psql:/tmp/ncrm_sql/core2.sql:106: NOTICE:  PASS: C-authz: current_broker_id NULL negado
+psql:/tmp/ncrm_sql/core2.sql:107: NOTICE:  PASS: C-authz: usuário sem corretor não vê nada
+psql:/tmp/ncrm_sql/core2.sql:111: NOTICE:  PASS: C-authz: usuário inexistente negado
+psql:/tmp/ncrm_sql/core2.sql:115: NOTICE:  PASS: C-authz: token sem sub negado
+psql:/tmp/ncrm_sql/core2.sql:120: NOTICE:  PASS: C-authz: has_perm NULL negado (fail-closed)
+psql:/tmp/ncrm_sql/core2.sql:137: NOTICE:  PASS: C-authz: manages_broker NULL -> gestor não vê (fail-closed)
+psql:/tmp/ncrm_sql/core2.sql:159: NOTICE:  PASS (erro esperado): C-unique: colisão não-idempotente é RELANÇADA (não engolida como ja_processado)
+psql:/tmp/ncrm_sql/core2.sql:160: NOTICE:  PASS: C-unique: nenhum evento DUP criado (rollback atômico)
+psql:/tmp/ncrm_sql/core2.sql:165: NOTICE:  PASS (erro esperado): C-config: INSERT passo em config publicada negado
+psql:/tmp/ncrm_sql/core2.sql:166: NOTICE:  PASS (erro esperado): C-config: UPDATE passo em config publicada negado
+psql:/tmp/ncrm_sql/core2.sql:167: NOTICE:  PASS (erro esperado): C-config: DELETE passo em config publicada negado
+psql:/tmp/ncrm_sql/core2.sql:168: NOTICE:  PASS (erro esperado): C-config: publicada->rascunho negado
+psql:/tmp/ncrm_sql/core2.sql:169: NOTICE:  PASS (erro esperado): C-config: alterar regra de config publicada negado
+psql:/tmp/ncrm_sql/core2.sql:172: NOTICE:  PASS: C-config: publicada->encerrada permitido
+psql:/tmp/ncrm_sql/core2.sql:173: NOTICE:  PASS (erro esperado): C-config: encerrada->publicada negado
+ ==== TODOS OS TESTES DE CORREÇÃO PASSARAM ====
+psql:/tmp/ncrm_sql/core3.sql:48: NOTICE:  PASS: D1: próxima ação derivada do passo 2 (título/tipo do banco, não do cliente)
+psql:/tmp/ncrm_sql/core3.sql:51: NOTICE:  PASS: D1: prazo adulterado (999 dias) IGNORADO; banco usa intervalo do passo
+psql:/tmp/ncrm_sql/core3.sql:56: NOTICE:  PASS: D1: payload registra passo executado/próximo/canais/config
+psql:/tmp/ncrm_sql/core3.sql:63: NOTICE:  PASS: D2: após 1ª -> passo 2
+psql:/tmp/ncrm_sql/core3.sql:66: NOTICE:  PASS: D2: após 2ª -> passo 3
+psql:/tmp/ncrm_sql/core3.sql:69: NOTICE:  PASS: D2: após 3ª -> passo 4
+psql:/tmp/ncrm_sql/core3.sql:73: NOTICE:  PASS: D2/D3: após 4ª -> avaliar_descarte (lead ativo, sem saída)
+psql:/tmp/ncrm_sql/core3.sql:75: NOTICE:  PASS: D3: nenhuma 5ª tarefa de tentativa agendada
+psql:/tmp/ncrm_sql/core3.sql:78: NOTICE:  PASS: D3: 5ª tentativa rejeitada (cadencia_esgotada)
+psql:/tmp/ncrm_sql/core3.sql:80: NOTICE:  PASS: D6: numero_tentativa sequencial 1..4
+psql:/tmp/ncrm_sql/core3.sql:81: NOTICE:  PASS: D6: max(numero_tentativa) == tentativas_feitas
+psql:/tmp/ncrm_sql/core3.sql:84: NOTICE:  PASS: D3: após esgotar, corretor descarta normalmente
+psql:/tmp/ncrm_sql/core3.sql:92: NOTICE:  PASS: D4: tentativa com resposta ok
+psql:/tmp/ncrm_sql/core3.sql:93: NOTICE:  PASS: D4: resposta incrementou contador (2) e exigiu ação comercial
+psql:/tmp/ncrm_sql/core3.sql:94: NOTICE:  PASS: D4: numero_tentativa do evento respondido == 2
+psql:/tmp/ncrm_sql/core3.sql:97: NOTICE:  PASS: D4: prospecção após resposta negada
+psql:/tmp/ncrm_sql/core3.sql:100: NOTICE:  PASS: D4: resposta com próxima=cadência é rejeitada
+psql:/tmp/ncrm_sql/core3.sql:102: NOTICE:  PASS: D4: resposta sem próxima ação é rejeitada
+psql:/tmp/ncrm_sql/core3.sql:103: NOTICE:  PASS: D4: resposta com prazo no passado é rejeitada
+psql:/tmp/ncrm_sql/core3.sql:114: NOTICE:  PASS: D5: inbound não incrementa tentativas (permanece 1)
+psql:/tmp/ncrm_sql/core3.sql:115: NOTICE:  PASS: D5: automação inicial não conta como tentativa (904=0)
+psql:/tmp/ncrm_sql/core3.sql:121: NOTICE:  PASS (erro esperado): D7: mover passo de config publicada->rascunho negado
+psql:/tmp/ncrm_sql/core3.sql:122: NOTICE:  PASS: D7: passos da config publicada intactos
+psql:/tmp/ncrm_sql/core3.sql:125: NOTICE:  PASS (erro esperado): D8: publicada com vigencia_fim (sem encerrar) negada
+psql:/tmp/ncrm_sql/core3.sql:126: NOTICE:  PASS: D8: config v2 permanece publicada e sem vigencia_fim
+psql:/tmp/ncrm_sql/core3.sql:130: NOTICE:  PASS: D9: msg_automatica enviado_em NULL rejeitado
+psql:/tmp/ncrm_sql/core3.sql:131: NOTICE:  PASS: D9: resposta_cliente p_em NULL rejeitado
+psql:/tmp/ncrm_sql/core3.sql:136: NOTICE:  PASS: D9: concluir_acao prazo no passado rejeitado
+ ==== TODOS OS TESTES DE DELTA PASSARAM ====
+PASS: #29 rollback: objetos ncrm_* removidos
+PASS: #29 rollback preservou objetos legados
+PASS: #30 migration reaplicada com sucesso
+ vendas_total=2
+OK_LOCAL_RUN_COMPLETE

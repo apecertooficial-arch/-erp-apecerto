@@ -1,0 +1,68 @@
+# DRESS-REHEARSAL do pacote de staging — Postgres 16 local efêmero (NÃO é o staging real)
+# Objetivo: provar estrutura+seed+migration+smoke+rollback+reaplicação antes de criar o projeto.
+# PASS: 47 · ASSERT FAIL: 0 · vendas: 0 (inalterada).
+#
+ SEED_FICTICIO_OK vendas=0
+ negocios=12
+ leads=12
+ vendas=0
+checksum negocios ANTES=fbafe865ac69b5010d8bd8d2d8f8e134
+PASS: objetos ncrm_* criados
+PASS: nenhuma trigger adicionada a tabela legada
+checksum negocios DEPOIS=fbafe865ac69b5010d8bd8d2d8f8e134
+PASS: legado (negocios) inalterado pela migration
+PASS: vendas continua 0 após migration
+psql:/tmp/ncrm_stg/03.sql:36: NOTICE:  PASS: S6 automação criou os 12 estados
+psql:/tmp/ncrm_stg/03.sql:41: NOTICE:  PASS: S1 corretor A vê só sua carteira (10)
+psql:/tmp/ncrm_stg/03.sql:42: NOTICE:  PASS: S1 A NÃO vê negócio 9 (de B)
+psql:/tmp/ncrm_stg/03.sql:45: NOTICE:  PASS: S1 corretor B vê só o seu (1)
+psql:/tmp/ncrm_stg/03.sql:48: NOTICE:  PASS: S1 gestor vê a equipe A+B (11), não C
+psql:/tmp/ncrm_stg/03.sql:49: NOTICE:  PASS: S1 gestor NÃO vê 11 (corretor C fora da equipe)
+psql:/tmp/ncrm_stg/03.sql:52: NOTICE:  PASS: S1 admin vê todos (12)
+psql:/tmp/ncrm_stg/03.sql:57: NOTICE:  PASS (erro esperado): S3 anon SELECT ncrm_estado negado
+psql:/tmp/ncrm_stg/03.sql:58: NOTICE:  PASS (erro esperado): S3 anon SELECT ncrm_evento negado
+psql:/tmp/ncrm_stg/03.sql:63: NOTICE:  PASS (erro esperado): S2 UPDATE direto ncrm_estado negado
+psql:/tmp/ncrm_stg/03.sql:64: NOTICE:  PASS (erro esperado): S2 DELETE direto ncrm_estado negado
+psql:/tmp/ncrm_stg/03.sql:65: NOTICE:  PASS (erro esperado): S2 INSERT direto ncrm_proposta negado
+psql:/tmp/ncrm_stg/03.sql:72: NOTICE:  PASS: S4 RPC autorizada (A opera 1) ok
+psql:/tmp/ncrm_stg/03.sql:73: NOTICE:  PASS: S8 próxima ação derivada do passo 2 (banco, não cliente)
+psql:/tmp/ncrm_stg/03.sql:74: NOTICE:  PASS: S8 prazo adulterado (999d) ignorado; banco usa intervalo do passo
+psql:/tmp/ncrm_stg/03.sql:78: NOTICE:  PASS: S5 B não pode operar negócio de A
+psql:/tmp/ncrm_stg/03.sql:91: NOTICE:  PASS: S8b após 4ª -> avaliar_descarte (lead ativo)
+psql:/tmp/ncrm_stg/03.sql:93: NOTICE:  PASS: S8b 5ª tentativa negada (cadencia_esgotada)
+psql:/tmp/ncrm_stg/03.sql:94: NOTICE:  PASS: S8b numero_tentativa sequencial 1..4
+psql:/tmp/ncrm_stg/03.sql:103: NOTICE:  PASS: S7 inbound registrado
+psql:/tmp/ncrm_stg/03.sql:106: NOTICE:  PASS: S7 inbound encerra cadência sem contar como tentativa
+psql:/tmp/ncrm_stg/03.sql:108: NOTICE:  PASS: S7 prospecção após resposta negada
+psql:/tmp/ncrm_stg/03.sql:114: NOTICE:  PASS: S11 saída visita ok
+psql:/tmp/ncrm_stg/03.sql:115: NOTICE:  PASS: S11 negócio 3 saiu para pipeline_visitas
+psql:/tmp/ncrm_stg/03.sql:122: NOTICE:  PASS: S10 proposta registrada ok
+psql:/tmp/ncrm_stg/03.sql:124: NOTICE:  PASS: S10 contagem de vendas inalterada
+psql:/tmp/ncrm_stg/03.sql:125: NOTICE:  PASS: S10 negócio 4 NÃO marcado ganho
+psql:/tmp/ncrm_stg/03.sql:126: NOTICE:  PASS: S10 negócio 4 na esteira com proposta
+psql:/tmp/ncrm_stg/03.sql:131: NOTICE:  PASS: S12 descarte ok
+psql:/tmp/ncrm_stg/03.sql:132: NOTICE:  PASS: S12 negócio 5 descartado
+psql:/tmp/ncrm_stg/03.sql:134: NOTICE:  PASS: S13 nutrição ok
+psql:/tmp/ncrm_stg/03.sql:135: NOTICE:  PASS: S13 negócio 6 em nutrição
+psql:/tmp/ncrm_stg/03.sql:140: NOTICE:  PASS: S14 reativação ok
+psql:/tmp/ncrm_stg/03.sql:141: NOTICE:  PASS: S14 negócio 7 reativado
+psql:/tmp/ncrm_stg/03.sql:147: NOTICE:  PASS: S15 Sara nunca aplica (aplicado=false)
+psql:/tmp/ncrm_stg/03.sql:148: NOTICE:  PASS: S15 Sara não altera o estado (versão intacta)
+psql:/tmp/ncrm_stg/03.sql:156: NOTICE:  PASS: S16 idempotência: 1 único evento
+psql:/tmp/ncrm_stg/03.sql:158: NOTICE:  PASS: S16 conflito de versão rejeitado
+psql:/tmp/ncrm_stg/03.sql:162: NOTICE:  PASS (erro esperado): S17 UPDATE evento bloqueado
+psql:/tmp/ncrm_stg/03.sql:163: NOTICE:  PASS (erro esperado): S17 DELETE evento bloqueado
+psql:/tmp/ncrm_stg/03.sql:170: NOTICE:  PASS (erro esperado): S18 colisão não-idem é RELANÇADA
+psql:/tmp/ncrm_stg/03.sql:171: NOTICE:  PASS: S18 nenhum evento STGDUP (rollback atômico)
+psql:/tmp/ncrm_stg/03.sql:172: NOTICE:  PASS: S18 estado 12 permanece ativo (UPDATE revertido)
+psql:/tmp/ncrm_stg/03.sql:177: NOTICE:  PASS: S1b A vê 10 antes da transferência
+psql:/tmp/ncrm_stg/03.sql:181: NOTICE:  PASS: S1b A deixa de ver 10 após transferência
+psql:/tmp/ncrm_stg/03.sql:184: NOTICE:  PASS: S1b B passa a ver 10 imediatamente
+ ==== SMOKE TESTS DE STAGING: TODOS PASSARAM ====
+PASS: rollback removeu objetos ncrm_*
+PASS: rollback preservou o legado
+PASS: vendas inalterada após rollback
+checksum negocios PÓS-ROLLBACK=33092d527eab9ec23b51003599071329 (transferência do smoke persiste no legado, esperado)
+PASS: reaplicação: estado recriado e visível ao dono
+PASS: reaplicação: vendas continua 0
+OK_STAGING_REHEARSAL_COMPLETE
