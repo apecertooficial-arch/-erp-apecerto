@@ -13,6 +13,13 @@ ALTER TABLE public.leads           ADD COLUMN IF NOT EXISTS origem text;
 ALTER TABLE public.leads           ADD COLUMN IF NOT EXISTS criado_em timestamptz NOT NULL DEFAULT now();
 ALTER TABLE public.pipeline_stages ADD COLUMN IF NOT EXISTS rotulo text;
 ALTER TABLE public.wa_mensagens    ADD COLUMN IF NOT EXISTS is_grupo boolean DEFAULT false;
+-- ncrm_sara_runner_config nasce na migration do cron (pg_cron/vault), fora do harness local:
+-- aqui basta o formato real da tabela para exercitar o kill-switch da leitura.
+CREATE TABLE IF NOT EXISTS public.ncrm_sara_runner_config (
+  id boolean PRIMARY KEY DEFAULT true CHECK (id), enabled boolean NOT NULL DEFAULT false,
+  edge_url text, atualizado_em timestamptz NOT NULL DEFAULT now(), atualizado_por uuid
+);
+INSERT INTO public.ncrm_sara_runner_config (id, enabled) VALUES (true, true) ON CONFLICT (id) DO NOTHING;
 CREATE TABLE IF NOT EXISTS public.wa_instancias (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(), session_id text, corretor_id bigint,
   rotulo text, telefone text, status text, ultimo_heartbeat timestamptz
@@ -246,7 +253,7 @@ SELECT public.test_assert(
       AND p.proname IN ('ncrm_migracao_preview','ncrm_migracao_aprovar','ncrm_migracao_rollback',
                         'ncrm_migracao_contexto','ncrm_migracao_registrar_analise','ncrm_saude','ncrm_saude_acao',
                         'ncrm_treinamento_meu','ncrm_treinamento_marcar','ncrm_treinamento_equipe')
-      AND p.proconfig @> ARRAY['search_path=']) = 10,
+      AND array_to_string(p.proconfig, ',') LIKE 'search_path=%') = 10,
   'F6B segurança: todas as funções novas têm search_path fixo');
 SELECT public.test_assert(
   (SELECT provolatile FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace

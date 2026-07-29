@@ -277,7 +277,7 @@ CREATE FUNCTION public.ncrm_migracao_aprovar(
     p_negocio_id bigint, p_etapa text, p_proxima_acao_tipo text, p_proxima_acao_titulo text,
     p_prazo timestamptz, p_confirmacao text)
   RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $fn$
-DECLARE v_uid uuid := auth.uid(); v_wf bigint; v_corretor bigint; v_a public.ncrm_migracao_analise%ROWTYPE;
+DECLARE v_uid uuid := auth.uid(); v_wf bigint; v_corretor bigint; v_lead bigint; v_a public.ncrm_migracao_analise%ROWTYPE;
 BEGIN
   IF v_uid IS NULL THEN RETURN jsonb_build_object('ok',false,'erro','nao_autenticado'); END IF;
   IF COALESCE(public.can_manage_all(), false) IS NOT TRUE THEN RETURN jsonb_build_object('ok',false,'erro','sem_permissao'); END IF;
@@ -291,7 +291,7 @@ BEGIN
   IF NULLIF(btrim(COALESCE(p_proxima_acao_titulo,'')),'') IS NULL THEN RETURN jsonb_build_object('ok',false,'erro','proxima_acao_sem_titulo'); END IF;
   IF p_prazo IS NULL THEN RETURN jsonb_build_object('ok',false,'erro','prazo_obrigatorio'); END IF;
 
-  SELECT corretor_id INTO v_corretor FROM public.negocios WHERE id = p_negocio_id AND status = 'aberto' FOR UPDATE;
+  SELECT corretor_id, lead_id INTO v_corretor, v_lead FROM public.negocios WHERE id = p_negocio_id AND status = 'aberto' FOR UPDATE;
   IF NOT FOUND THEN RETURN jsonb_build_object('ok',false,'erro','negocio_invalido'); END IF;
   IF EXISTS (SELECT 1 FROM public.ncrm_estado WHERE negocio_id = p_negocio_id) THEN RETURN jsonb_build_object('ok',false,'erro','ja_existe_atendimento'); END IF;
 
@@ -318,9 +318,9 @@ BEGIN
       etapa_aprovada = EXCLUDED.etapa_aprovada, proxima_acao_aprovada = EXCLUDED.proxima_acao_aprovada,
       prazo_aprovado = EXCLUDED.prazo_aprovado, desativado_por = NULL, desativado_em = NULL;
 
-  INSERT INTO public.ncrm_evento (negocio_id, workflow_config_id, tipo, resultado, origem, executado_por,
+  INSERT INTO public.ncrm_evento (negocio_id, lead_id, workflow_config_id, tipo, resultado, origem, executado_por,
       corretor_id_no_evento, idempotency_key, payload)
-  VALUES (p_negocio_id, v_wf, 'mudanca_etapa', 'ok', 'migracao', v_uid, v_corretor,
+  VALUES (p_negocio_id, v_lead, v_wf, 'mudanca_etapa', 'ok', 'migracao', v_uid, v_corretor,
       'migracao_assistida:' || p_negocio_id::text,
       jsonb_build_object('acao','migracao_assistida','etapa_sugerida', v_a.etapa_sugerida,
                          'etapa_aprovada', p_etapa, 'aprovador', v_uid,
