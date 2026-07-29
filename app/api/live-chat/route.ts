@@ -32,6 +32,22 @@ function providerError(data: unknown) {
   return result.error ? text(result.error, 400) || "O provedor recusou o envio." : null;
 }
 
+// Desembrulha o motivo real da função (o invoke esconde o corpo em error.context)
+// e nunca vaza a string técnica "Edge Function returned a non-2xx status code".
+async function invokeErrorMessage(error: unknown, fallback: string): Promise<string> {
+  const e = error as { message?: string; context?: Response } | null;
+  let motivo = e?.message || fallback;
+  try {
+    const ctx = e?.context;
+    if (ctx && typeof ctx.json === "function") {
+      const d = await ctx.json() as { motivo?: string; error?: string };
+      motivo = d.motivo || d.error || motivo;
+    }
+  } catch { /* mantém a mensagem padrão */ }
+  if (/non-2xx status code/i.test(motivo)) motivo = fallback;
+  return motivo;
+}
+
 function mediaKind(mime: string) {
   if (mime.startsWith("image/")) return "imagem";
   if (mime.startsWith("video/")) return "video";
@@ -143,7 +159,8 @@ async function uploadAndSend(request: Request, auth: NonNullable<Awaited<ReturnT
   const remoteError = providerError(data);
   if (error || remoteError) {
     await auth.supabase.storage.from("chat-midia").remove([path]);
-    return Response.json({ error: remoteError || error?.message || "Não foi possível enviar a mídia." }, { status: 502 });
+    const motivo = remoteError || (error ? await invokeErrorMessage(error, "Não foi possível enviar a imagem agora — tente novamente em instantes.") : "Não foi possível enviar a mídia.");
+    return Response.json({ error: motivo }, { status: 502 });
   }
   return Response.json({ success: true, url: publicUrl.publicUrl, type: kind, result: data });
 }
@@ -175,7 +192,11 @@ export async function POST(request: Request) {
     }
     const { data, error } = await auth.supabase.functions.invoke("dapi-enviar", { body: payload });
     const remoteError = providerError(data);
-    return error || remoteError ? Response.json({ error: remoteError || error?.message }, { status: 502 }) : Response.json({ success: true, result: data });
+    if (error || remoteError) {
+      const motivo = remoteError || (error ? await invokeErrorMessage(error, "Não foi possível enviar agora — tente novamente em instantes.") : "Não foi possível enviar.");
+      return Response.json({ error: motivo }, { status: 502 });
+    }
+    return Response.json({ success: true, result: data });
   }
   if (action === "schedule") {
     const phone = phoneNumber(body.phone); const content = text(body.content, 4000); const instanceId = Number(body.instanceId); const when = new Date(String(body.when));
