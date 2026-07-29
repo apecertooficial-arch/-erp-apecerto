@@ -50,7 +50,7 @@ export const NOVA_CRM_CSS = `
 .nova-crm-dot.r-numero_invalido{background:var(--nc-red);border-color:#a82c2c;}
 .nova-crm-dot.pend{background:transparent;border-style:dashed;}
 /* Painel lateral */
-.nova-crm-panel{width:400px;flex-shrink:0;background:var(--nc-card);border-left:1px solid var(--nc-line);display:flex;flex-direction:column;overflow:auto;}
+.nova-crm-panel{width:520px;max-width:46vw;flex-shrink:0;background:var(--nc-card);border-left:1px solid var(--nc-line);display:flex;flex-direction:column;overflow:auto;}
 .nova-crm-panel-head{padding:16px 18px;border-bottom:1px solid var(--nc-line);position:sticky;top:0;background:var(--nc-card);z-index:1;}
 .nova-crm-panel-head h2{margin:0;font-size:17px;}
 .nova-crm-panel-head .sub{font-size:12px;color:var(--nc-muted);margin-top:2px;}
@@ -148,4 +148,5 @@ export const NOVA_CRM_CSS = `
 .nova-crm-tl-wrap{display:flex;flex-direction:column;gap:6px;}
 .nova-crm-tl-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px;font-size:12px;color:#4b5563;}
 .nova-crm-tl-list li span{color:var(--nc-muted);}
+@media (max-width: 980px){.nova-crm-panel{width:100vw;max-width:100vw;position:fixed;inset:0;z-index:60;}}
 `;

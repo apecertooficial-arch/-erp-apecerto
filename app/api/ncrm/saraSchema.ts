@@ -16,6 +16,13 @@ export interface SugestaoSara {
   justificativa: string | null;
   confianca: number; // 0..1
   evidencias: string[];
+  /* Coach (Fase 5) — opcionais e tolerantes; nunca inventados pelo normalizador. */
+  objetivo_abordagem: string | null;
+  roteiro_ligacao: string[];
+  whatsapp_sugerido: string | null;
+  perguntas_faltantes: string[];
+  cuidados: string[];
+  evidencia_suficiente: boolean;
 }
 
 const ETAPAS = ["novo", "tentando_contato", "em_atendimento", "em_acompanhamento"];
@@ -69,6 +76,12 @@ export function normalizarSugestaoSara(raw: unknown): { ok: true; sugestao: Suge
       justificativa: strOuNull(o.justificativa),
       confianca: conf,
       evidencias: arrStr(o.evidencias),
+      objetivo_abordagem: strOuNull(o.objetivo_abordagem, 300),
+      roteiro_ligacao: arrStr(o.roteiro_ligacao, 6, 200),
+      whatsapp_sugerido: strOuNull(o.whatsapp_sugerido, 300),
+      perguntas_faltantes: arrStr(o.perguntas_faltantes, 8, 200),
+      cuidados: arrStr(o.cuidados, 8, 200),
+      evidencia_suficiente: o.evidencia_suficiente !== false,
     },
   };
 }

@@ -22,6 +22,13 @@ import { FaseBanner } from "./components/FaseBanner";
 import { mensagemQuadroVazio } from "./lib/faseBanner";
 import { PainelPiloto, DiagnosticoLegado } from "./components/PainelPiloto";
 import { WorkQueue } from "./components/WorkQueue";
+import { MeuDia } from "./components/MeuDia";
+import { GestaoOperacional, CadenciaConfig } from "./components/GestaoOperacional";
+import { OnboardingNovaEra } from "./components/OnboardingNovaEra";
+import { AcessoPilotos } from "./components/AcessoPilotos";
+import { RolloutChecklist, AdocaoPainel } from "./components/RolloutAdocao";
+import { LeadChatDrawer, type Deal as DealLegado, type Lead as LeadLegado } from "../crm/CrmWorkspace";
+import { rotuloIngest, rotuloSara, rotuloRunner } from "./lib/linguagem";
 import {
   mapEstadoToLead, enriquecerComEventos,
   type EstadoRow, type EventoRow, type PropostaRow,
@@ -46,13 +53,24 @@ export function CrmNovaEraLiveWorkspace({ accessToken, profile }: { accessToken:
   const [itens, setItens] = useState<EstadoRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
-  const [vista, setVista] = useState<Vista>("quadro");
+  const [vista, setVista] = useState<Vista>("fila");
+  const [drillCorretor, setDrillCorretor] = useState<number | null>(null);
   const [selId, setSelId] = useState<string | null>(null);
   const [detalhe, setDetalhe] = useState<LeadNova | null>(null);
   const [detalheLeadId, setDetalheLeadId] = useState<number | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [ingestInfo, setIngestInfo] = useState<{ ativo: boolean | null; desde: string | null }>({ ativo: null, desde: null });
+  // Chat REAL: reaproveita o MESMO drawer do CRM antigo (mesma conversa, contato,
+  // instância, permissões e histórico). Nada é criado nem enviado ao abrir.
+  const [chatNegocio, setChatNegocio] = useState<EstadoRow | null>(null);
+  const abrirChat = useCallback(async (negocioId: string) => {
+    const achado = itens.find((i) => String(i.negocio_id) === String(negocioId));
+    if (achado) { setChatNegocio(achado); return; }
+    const { ok, json } = await api(`/api/ncrm?negocio=${negocioId}`, accessToken);
+    if (!ok) { setToast((json.error as string) || "Não foi possível abrir a conversa."); return; }
+    setChatNegocio(json.estado as EstadoRow);
+  }, [itens, accessToken]);
 
   const leads = useMemo(() => itens.map(mapEstadoToLead), [itens]);
 
@@ -67,6 +85,11 @@ export function CrmNovaEraLiveWorkspace({ accessToken, profile }: { accessToken:
   // Carga inicial: busca o quadro no banco (padrão fetch-on-mount).
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { void carregarQuadro(); }, [carregarQuadro]);
+
+  // Adoção: registra a abertura do CRM Nova Era (idempotente por dia). Não altera nada comercial.
+  useEffect(() => {
+    void fetch("/api/ncrm/acesso", { method: "POST", headers: { Authorization: `Bearer ${accessToken}` } }).catch(() => {});
+  }, [accessToken]);
 
   const abrirLead = useCallback(async (id: string) => {
     setSelId(id);
@@ -112,13 +135,14 @@ export function CrmNovaEraLiveWorkspace({ accessToken, profile }: { accessToken:
     <div className="nova-crm-root" style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
       <div className="nova-crm-toolbar">
         <div className="nova-crm-seg" role="tablist">
+          <button className={vista === "fila" ? "on" : ""} onClick={() => { setDrillCorretor(null); setVista("fila"); }}>Meu dia</button>
           <button className={vista === "quadro" ? "on" : ""} onClick={() => setVista("quadro")}>Quadro</button>
-          <button className={vista === "fila" ? "on" : ""} onClick={() => setVista("fila")}>Central de atenção</button>
           {profile.role !== "corretor" && (
             <button className={vista === "gerencial" ? "on" : ""} onClick={() => setVista("gerencial")}>Visão gerencial</button>
           )}
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <OnboardingNovaEra userId={profile.userId} />
           {["admin", "executivo"].includes(profile.role) && <IngestAdminControl accessToken={accessToken} />}
           <button className="nova-crm-btn ghost" onClick={() => void carregarQuadro()} disabled={loading}>↻ Atualizar</button>
         </div>
@@ -161,7 +185,13 @@ export function CrmNovaEraLiveWorkspace({ accessToken, profile }: { accessToken:
 
             {vista === "fila" && (
               <div className="nova-crm-fila-wrap">
-                <div className="nova-crm-indic">
+                {drillCorretor != null && (
+                  <div className="nova-crm-notice" style={{ marginBottom: 8 }}>
+                    Vendo a fila do corretor #{drillCorretor}. <button className="nova-crm-btn ghost" onClick={() => setDrillCorretor(null)}>Ver minha fila</button>
+                  </div>
+                )}
+                <MeuDia accessToken={accessToken} corretorFiltro={drillCorretor} onAbrir={(id) => void abrirLead(id)} onAbrirChat={(id) => void abrirChat(id)} />
+                <div className="nova-crm-indic" style={{ marginTop: 14 }}>
                   <span>Vencidas: <b>{indic.vencidas}</b></span>
                   <span>Aguardando você: <b>{indic.respostasAguardando}</b></span>
                   <span>Novos sem atuação: <b>{indic.novosSemAtuacao}</b></span>
@@ -176,6 +206,11 @@ export function CrmNovaEraLiveWorkspace({ accessToken, profile }: { accessToken:
 
             {vista === "gerencial" && profile.role !== "corretor" && (
               <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+{["admin", "executivo"].includes(profile.role) && <RolloutChecklist accessToken={accessToken} />}
+                                <GestaoOperacional accessToken={accessToken} onDrill={(cid) => { setDrillCorretor(cid); setVista("fila"); }} />
+                {["admin", "executivo"].includes(profile.role) && <AdocaoPainel accessToken={accessToken} />}
+                {["admin", "executivo"].includes(profile.role) && <AcessoPilotos accessToken={accessToken} />}
+                {["admin", "executivo"].includes(profile.role) && <CadenciaConfig accessToken={accessToken} />}
                 {["admin", "executivo"].includes(profile.role) && <PainelPiloto accessToken={accessToken} />}
                 <PainelGerencial leads={leads} agora={agora} accessToken={accessToken} />
               </div>
@@ -187,11 +222,30 @@ export function CrmNovaEraLiveWorkspace({ accessToken, profile }: { accessToken:
               lead={detalhe} busy={busy} accessToken={accessToken} leadId={detalheLeadId}
               onClose={() => { setSelId(null); setDetalhe(null); setDetalheLeadId(null); }}
               onExecutar={executar} onToast={setToast}
+              onAbrirChat={() => void abrirChat(detalhe.id)}
               onCriarVisita={(date, start) => agendarVisita(Number(detalhe.id), itens.find((i) => String(i.negocio_id) === detalhe.id)?.versao ?? 1, detalheLeadId, date, start)}
               versao={itens.find((i) => String(i.negocio_id) === detalhe.id)?.versao ?? 1}
             />
           )}
         </div>
+      )}
+
+      {chatNegocio && chatNegocio.negocios && (
+        <LeadChatDrawer
+          key={chatNegocio.negocio_id}
+          accessToken={accessToken}
+          lead={{
+            id: chatNegocio.negocios.lead_id,
+            nome: chatNegocio.negocios.leads?.nome ?? null,
+            telefone: chatNegocio.negocios.leads?.telefone ?? null,
+            corretor_id: chatNegocio.negocios.corretor_id ?? null,
+          } as unknown as LeadLegado}
+          deal={{ id: chatNegocio.negocio_id, lead_id: chatNegocio.negocios.lead_id } as unknown as DealLegado}
+          corretorNome={chatNegocio.negocios.corretores?.nome ?? undefined}
+          onClose={() => setChatNegocio(null)}
+          onResponse={async () => { await carregarQuadro(); }}
+          onOpenLead={() => { const id = String(chatNegocio.negocio_id); setChatNegocio(null); void abrirLead(id); }}
+        />
       )}
 
       {toast && <div className="nova-crm-toast" onAnimationEnd={() => setToast(null)}>{toast}</div>}
@@ -201,10 +255,10 @@ export function CrmNovaEraLiveWorkspace({ accessToken, profile }: { accessToken:
 
 /* --------------------------- Painel do lead (live) --------------------------- */
 function LivePanel({
-  lead, versao, busy, accessToken, leadId, onClose, onExecutar, onToast, onCriarVisita,
+  lead, versao, busy, accessToken, leadId, onClose, onExecutar, onToast, onCriarVisita, onAbrirChat,
 }: {
   lead: LeadNova; versao: number; busy: boolean; accessToken: string; leadId: number | null;
-  onClose: () => void;
+  onClose: () => void; onAbrirChat: () => void;
   onExecutar: (p: Record<string, unknown>) => void | Promise<void>;
   onToast: (m: string) => void;
   onCriarVisita: (date: string, startTime: string) => void | Promise<void>;
@@ -213,6 +267,10 @@ function LivePanel({
   const [sara, setSara] = useState<Record<string, unknown> | null>(null);
   const [saraLoad, setSaraLoad] = useState(false);
   const [prefill, setPrefill] = useState<{ proximaTipo?: string; prazo?: string }>({});
+  const [justif, setJustif] = useState<null | { aberto: boolean; texto: string; msg: string | null }>(null);
+  const [maisAcoes, setMaisAcoes] = useState(false);
+  const [agoraMs] = useState(() => Date.now());
+  const acaoVencida = !!(lead.proximaAcaoEm && Date.parse(lead.proximaAcaoEm) < agoraMs);
   const timeline = montarTimeline(lead);
   const emSaida = !!(lead.visitaAgendadaEm || lead.proposta || lead.descartadoMotivo || lead.nutricao);
 
@@ -229,7 +287,17 @@ function LivePanel({
     <aside className="nova-crm-panel" aria-label={`Ficha de ${lead.nome}`}>
       <div className="nova-crm-panel-head">
         <div style={{ display: "flex", justifyContent: "space-between" }}>
-          <div><h2>{lead.nome}</h2><div className="sub">{lead.corretorNome} · {lead.telefone}</div></div>
+          <div style={{ minWidth: 0 }}>
+            <h2 style={{ margin: 0 }}>{lead.nome}</h2>
+            <div className="sub">Corretor: {lead.corretorNome}</div>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 4, fontSize: 12 }}>
+              <span style={{ background: "#f1f5f9", borderRadius: 999, padding: "2px 8px" }}>
+                {lead.respondeu ? (lead.respostaPendenteCorretor ? "Cliente respondeu — aguardando você" : "Em atendimento") : "Aguardando resposta do cliente"}
+              </span>
+              {lead.temperatura && <span style={{ background: "#fff7ed", borderRadius: 999, padding: "2px 8px" }}>Temperatura: {lead.temperatura}</span>}
+              {acaoVencida && <span style={{ background: "#fef2f2", color: "#b91c1c", borderRadius: 999, padding: "2px 8px" }}>Risco: ação vencida</span>}
+            </div>
+          </div>
           <button className="nova-crm-btn ghost" onClick={onClose}>✕</button>
         </div>
         <div className="nova-crm-panel-next">
@@ -257,23 +325,88 @@ function LivePanel({
               : "Cliente ainda não respondeu — registre a tentativa; o banco calcula o próximo passo da cadência."}</p>
           </div>
 
+          {acaoVencida && !emSaida && (
+            <div style={{ border: "1px solid #fecaca", background: "#fef2f2", borderRadius: 8, padding: 10, fontSize: 13 }}>
+              <b style={{ color: "#b91c1c" }}>Ação vencida</b> — atualize a próxima ação ou registre uma justificativa (vai para auditoria e gestão).
+              {!justif?.aberto && (
+                <div style={{ marginTop: 6 }}>
+                  <button className="nova-crm-btn ghost" onClick={() => setJustif({ aberto: true, texto: "", msg: null })}>Justificar atraso</button>
+                </div>
+              )}
+              {justif?.aberto && (
+                <div style={{ marginTop: 6, display: "flex", flexDirection: "column", gap: 6 }}>
+                  <textarea value={justif.texto} rows={2} placeholder="Explique o motivo (mín. 5 caracteres)…"
+                    onChange={(e) => setJustif({ ...justif, texto: e.target.value })} />
+                  <div style={{ display: "flex", gap: 6 }}>
+                    <button className="nova-crm-btn" disabled={busy || justif.texto.trim().length < 5} onClick={() => {
+                      void (async () => {
+                        const r = await fetch(`/api/ncrm/justificar`, { method: "POST", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+                          body: JSON.stringify({ negocioId: Number(lead.id), tipo: "acao_vencida", texto: justif.texto.trim() }) });
+                        const j = await r.json().catch(() => ({}));
+                        if (!r.ok) { setJustif({ ...justif, msg: (j.erro as string) || "Falha ao registrar." }); return; }
+                        setJustif({ aberto: false, texto: "", msg: null });
+                        onToast("Justificativa registrada.");
+                      })();
+                    }}>Registrar</button>
+                    <button className="nova-crm-btn ghost" onClick={() => setJustif(null)}>Cancelar</button>
+                  </div>
+                  {justif.msg && <span style={{ color: "#b91c1c", fontSize: 12 }}>{justif.msg}</span>}
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Sara (sugestão) */}
           <div className="nova-crm-sara">
-            <button className="nova-crm-btn" onClick={() => void analisarSara()} disabled={saraLoad}>
-              {saraLoad ? "Analisando…" : "🧠 Analisar com a Sara"}
-            </button>
             {sara && (
               <div className="nova-crm-sara-card">
-                <div><b>Sugestão da Sara</b> — você decide (a Sara não altera nada sozinha).</div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                  <b>Sugestão da Sara</b>
+                  <span style={{ fontSize: 12, color: "#6b7280" }}>
+                    A Sara apenas sugere. Nada é enviado nem alterado automaticamente — a ação só acontece quando você confirmar no formulário.
+                  </span>
+                </div>
+                {sara.evidencia_suficiente === false && (
+                  <div style={{ background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 8, padding: 8, fontSize: 12, margin: "6px 0" }}>
+                    <b>Evidência insuficiente</b> — a conversa ainda não sustenta conclusões fortes. A Sara limitou-se ao que existe; priorize coletar as respostas que faltam.
+                  </div>
+                )}
                 <ul className="nova-crm-tl-list">
-                  <li><b>Próxima ação:</b> {String(sara.proxima_acao ?? "—")}</li>
+                  {sara.justificativa != null && <li><b>Resumo:</b> {String(sara.justificativa)}</li>}
+                  {sara.intencao_detectada != null && <li><b>O que o cliente procura:</b> {String(sara.intencao_detectada)}</li>}
+                  <li><b>Próxima ação:</b> {String(sara.proxima_acao ?? "—")}{sara.prazo_sugerido ? ` · até ${new Date(String(sara.prazo_sugerido)).toLocaleString("pt-BR")}` : ""}</li>
                   <li><b>Temperatura:</b> {String(sara.temperatura ?? "—")} · <b>Risco:</b> {String(sara.risco_abandono ?? "—")}</li>
                   <li><b>Visita:</b> {String(sara.possibilidade_visita ?? "—")} · <b>Proposta:</b> {String(sara.possibilidade_proposta ?? "—")}</li>
+                  {Array.isArray(sara.objecoes) && (sara.objecoes as string[]).length > 0 && (
+                    <li><b>Objeções:</b> {(sara.objecoes as string[]).slice(0, 4).join(" · ")}</li>
+                  )}
                   <li><b>Confiança:</b> {Math.round(Number(sara.confianca ?? 0) * 100)}%</li>
                   {Array.isArray(sara.evidencias) && (sara.evidencias as string[]).length > 0 && (
                     <li><b>Evidências:</b> {(sara.evidencias as string[]).slice(0, 3).join(" · ")}</li>
                   )}
                 </ul>
+                {(sara.objetivo_abordagem || sara.whatsapp_sugerido || (Array.isArray(sara.roteiro_ligacao) && (sara.roteiro_ligacao as string[]).length > 0)) && (
+                  <div style={{ borderTop: "1px dashed #e5e7eb", marginTop: 6, paddingTop: 6, fontSize: 13 }}>
+                    <b>Coach da abordagem</b>
+                    {sara.objetivo_abordagem != null && <p style={{ margin: "4px 0" }}><b>Objetivo:</b> {String(sara.objetivo_abordagem)}</p>}
+                    {Array.isArray(sara.roteiro_ligacao) && (sara.roteiro_ligacao as string[]).length > 0 && (
+                      <ol style={{ margin: "4px 0 4px 18px", padding: 0 }}>
+                        {(sara.roteiro_ligacao as string[]).map((r, i) => <li key={i}>{r}</li>)}
+                      </ol>
+                    )}
+                    {sara.whatsapp_sugerido != null && (
+                      <p style={{ margin: "4px 0", background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 8, padding: 6 }}>
+                        <b>WhatsApp sugerido</b> (você envia, se quiser): “{String(sara.whatsapp_sugerido)}”
+                      </p>
+                    )}
+                    {Array.isArray(sara.perguntas_faltantes) && (sara.perguntas_faltantes as string[]).length > 0 && (
+                      <p style={{ margin: "4px 0" }}><b>Perguntas que faltam:</b> {(sara.perguntas_faltantes as string[]).join(" · ")}</p>
+                    )}
+                    {Array.isArray(sara.cuidados) && (sara.cuidados as string[]).length > 0 && (
+                      <p style={{ margin: "4px 0", color: "#92400e" }}><b>Cuidados:</b> {(sara.cuidados as string[]).join(" · ")}</p>
+                    )}
+                  </div>
+                )}
                 <div style={{ display: "flex", gap: 8 }}>
                   <button className="nova-crm-btn" disabled={busy} onClick={async () => {
                     // registra a DECISÃO HUMANA "aceita" (auditável) antes de abrir o formulário
@@ -283,7 +416,7 @@ function LivePanel({
                     const prazo = typeof sara.prazo_sugerido === "string" ? sara.prazo_sugerido.slice(0, 16) : undefined;
                     setPrefill({ proximaTipo: tipo, prazo });
                     setForm(lead.respondeu ? "concluir" : "tentativa"); // humano confirma no formulário
-                  }}>Aceitar e confirmar no formulário</button>
+                  }}>Ação que será confirmada por você →</button>
                   <button className="nova-crm-btn ghost" disabled={busy} onClick={async () => {
                     const r = await fetch(`/api/ncrm/sara`, { method: "POST", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify({ negocioId: Number(lead.id), baseVersao: versao, decisao: "rejeitada", sugestao: sara }) });
                     if (!r.ok) { onToast("Falha ao registrar a rejeição — tente novamente."); return; } // não engole o erro
@@ -297,12 +430,25 @@ function LivePanel({
 
           {/* Ações */}
           <div className="nova-crm-acoes">
-            {!lead.respondeu && <button className="nova-crm-btn" onClick={() => setForm("tentativa")}>Registrar tentativa</button>}
-            {lead.respondeu && <button className="nova-crm-btn" onClick={() => setForm("concluir")}>Concluir ação</button>}
-            <button className="nova-crm-btn" onClick={() => setForm("visita")}>Agendar visita</button>
-            <button className="nova-crm-btn" onClick={() => setForm("proposta")}>Registrar proposta</button>
-            <button className="nova-crm-btn ghost" onClick={() => setForm("descarte")}>Descartar</button>
-            <button className="nova-crm-btn ghost" onClick={() => setForm("nutricao")}>Nutrição</button>
+            {/* Ações principais, na ordem de uso real do corretor. */}
+            <button className="nova-crm-btn" onClick={onAbrirChat}>💬 Abrir chat</button>
+            {!lead.respondeu && <button className="nova-crm-btn" onClick={() => setForm("tentativa")}>Registrar resultado</button>}
+            {lead.respondeu && <button className="nova-crm-btn" onClick={() => setForm("concluir")}>Registrar resultado</button>}
+            <button className="nova-crm-btn ghost" onClick={() => setForm(lead.respondeu ? "concluir" : "tentativa")}>Definir próxima ação</button>
+            <button className="nova-crm-btn ghost" onClick={() => void analisarSara()} disabled={saraLoad}>
+              {saraLoad ? "Consultando…" : "Ver sugestão da Sara"}
+            </button>
+            <button className="nova-crm-btn ghost" onClick={() => setMaisAcoes((v) => !v)}>
+              {maisAcoes ? "Menos ações" : "Mais ações"}
+            </button>
+            {maisAcoes && (
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap", width: "100%", paddingTop: 6, borderTop: "1px dashed #e5e7eb" }}>
+                <button className="nova-crm-btn ghost" onClick={() => setForm("visita")}>Agendar visita</button>
+                <button className="nova-crm-btn ghost" onClick={() => setForm("proposta")}>Registrar proposta</button>
+                <button className="nova-crm-btn ghost" onClick={() => setForm("nutricao")}>Nutrição</button>
+                <button className="nova-crm-btn ghost" onClick={() => setForm("descarte")}>Descartar</button>
+              </div>
+            )}
           </div>
 
           {form && (
@@ -353,17 +499,25 @@ function ConversaLead({ accessToken, negocioId }: { accessToken: string; negocio
       {!msgs && !erro && <div className="nova-crm-hint">Carregando conversa…</div>}
       {msgs && msgs.length === 0 && <div className="nova-crm-hint">Sem mensagens para este lead.</div>}
       {msgs && msgs.length > 0 && (
-        <ul className="nova-crm-tl-list" style={{ maxHeight: 260, overflow: "auto" }}>
-          {msgs.map((m) => (
-            <li key={m.id} style={{ display: "flex", flexDirection: "column", gap: 2, padding: "4px 0" }}>
-              <span>{(m.direcao || "?").toUpperCase()} · {m.enviado_em ? new Date(m.enviado_em).toLocaleString("pt-BR") : (m.criado_em ? new Date(m.criado_em).toLocaleString("pt-BR") : "—")} {m.status ? `· ${m.status}` : ""}</span>
-              {m.tipo === "audio" && m.media_url && <audio controls preload="none" src={m.media_url} style={{ maxWidth: "100%" }} />}
-              {(m.tipo === "imagem" || m.tipo === "foto") && m.media_url && <a href={m.media_url} target="_blank" rel="noreferrer">imagem</a>}
-              {m.conteudo && <span>{m.conteudo}</span>}
-              {m.transcricao && <span style={{ fontStyle: "italic", color: "var(--nc-muted)" }}>“{m.transcricao}”</span>}
-              {!m.conteudo && !m.transcricao && !m.media_url && <span className="nova-crm-hint">({m.tipo || "mensagem"})</span>}
-            </li>
-          ))}
+        <ul className="nova-crm-tl-list" style={{ maxHeight: 320, overflow: "auto", display: "flex", flexDirection: "column", gap: 6, padding: 4 }}>
+          {msgs.map((m) => {
+            const doCliente = ["recebida", "entrada", "in", "inbound", "received"].includes(String(m.direcao ?? "").toLowerCase());
+            return (
+              <li key={m.id} style={{ display: "flex", justifyContent: doCliente ? "flex-start" : "flex-end", listStyle: "none" }}>
+                <div style={{ maxWidth: "82%", borderRadius: 12, padding: "6px 10px", fontSize: 13,
+                  background: doCliente ? "#f1f5f9" : "#dcfce7", border: "1px solid " + (doCliente ? "#e2e8f0" : "#bbf7d0") }}>
+                  <div style={{ fontSize: 10, color: "#6b7280", marginBottom: 2 }}>
+                    {doCliente ? "Cliente" : "Corretor"} · {m.enviado_em ? new Date(m.enviado_em).toLocaleString("pt-BR") : (m.criado_em ? new Date(m.criado_em).toLocaleString("pt-BR") : "—")}{m.status ? ` · ${m.status}` : ""}
+                  </div>
+                  {m.tipo === "audio" && m.media_url && <audio controls preload="none" src={m.media_url} style={{ maxWidth: "100%" }} />}
+                  {(m.tipo === "imagem" || m.tipo === "foto") && m.media_url && <a href={m.media_url} target="_blank" rel="noreferrer">imagem</a>}
+                  {m.conteudo && <div>{m.conteudo}</div>}
+                  {m.transcricao && <div style={{ fontStyle: "italic", color: "#475569", marginTop: 2 }}>transcrição: “{m.transcricao}”</div>}
+                  {!m.conteudo && !m.transcricao && !m.media_url && <span className="nova-crm-hint">({m.tipo || "mensagem"})</span>}
+                </div>
+              </li>
+            );
+          })}
         </ul>
       )}
     </div>
