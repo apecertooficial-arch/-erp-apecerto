@@ -36,9 +36,21 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   const { erro, db } = await autenticar(request);
   if (erro || !db) return erro!;
-  let body: { acao?: string; alvo?: string; confirmacao?: string };
+  let body: { acao?: string; alvo?: string; confirmacao?: string; limite?: number };
   try { body = await request.json(); } catch { return Response.json({ ok: false, erro: "payload_invalido" }, { status: 400 }); }
   const acao = typeof body.acao === "string" ? body.acao : "";
+
+  // Classificação do backlog: pura reclassificação da fila. Não cria atendimento,
+  // não aciona a Sara, não envia mensagem e não apaga nenhum registro.
+  if (acao === "classificar_backlog") {
+    const limite = Number(body.limite);
+    const { data, error } = await db.rpc("ncrm_ingest_classificar_backlog", {
+      p_limite: Number.isFinite(limite) && limite > 0 ? Math.min(Math.trunc(limite), 5000) : 1000,
+      p_confirmacao: typeof body.confirmacao === "string" ? body.confirmacao : "",
+    });
+    return responder(data, error);
+  }
+
   if (!ACOES.has(acao)) return Response.json({ ok: false, erro: "acao_invalida" }, { status: 400 });
   const { data, error } = await db.rpc("ncrm_saude_acao", {
     p_acao: acao,
