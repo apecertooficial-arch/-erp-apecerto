@@ -50,6 +50,11 @@ cp "$ROOT/supabase/migrations/20260802100000_ncrm_ingest_lifecycle.sql" "$STAGE/
 cp "$ROOT/supabase/rollbacks/20260802100000_ncrm_ingest_lifecycle.down.sql" "$STAGE/down_f61.sql"
 cp "$ROOT/tests/crm-nova-era/95_tests_ingest_lifecycle.sql" "$STAGE/f61.sql"
 cp "$ROOT/tests/crm-nova-era/97_tests_revoke_anon.sql" "$STAGE/rev.sql"
+cp "$ROOT/supabase/migrations/20260804100000_ncrm_entrada_humana.sql" "$STAGE/mig_eh.sql"
+cp "$ROOT/supabase/rollbacks/20260804100000_ncrm_entrada_humana.down.sql" "$STAGE/down_eh.sql"
+cp "$ROOT/supabase/migrations/20260804100100_ncrm_sara_assist_notificacoes.sql" "$STAGE/mig_sa.sql"
+cp "$ROOT/supabase/rollbacks/20260804100100_ncrm_sara_assist_notificacoes.down.sql" "$STAGE/down_sa.sql"
+cp "$ROOT/tests/crm-nova-era/98_tests_entrada_humana.sql" "$STAGE/eh.sql"
 chmod -R a+rX "$STAGE"
 MIG="$STAGE/mig.sql"; DOWN="$STAGE/down.sql"; HARNESS="$STAGE/harness.sql"; CORE="$STAGE/core.sql"; CORE2="$STAGE/core2.sql"; CORE3="$STAGE/core3.sql"; CORE4="$STAGE/core4.sql"; MIG_SARA="$STAGE/mig_sara.sql"
 MIG_INGEST="$STAGE/mig_ingest.sql"; MIG_PROP="$STAGE/mig_prop.sql"; MIG_VISITA="$STAGE/mig_visita.sql"
@@ -64,6 +69,8 @@ MIG_F6A="$STAGE/mig_f6a.sql"; DOWN_F6A="$STAGE/down_f6a.sql"
 MIG_F6B="$STAGE/mig_f6b.sql"; DOWN_F6B="$STAGE/down_f6b.sql"; F6B="$STAGE/f6b.sql"
 MIG_F61="$STAGE/mig_f61.sql"; DOWN_F61="$STAGE/down_f61.sql"; F61="$STAGE/f61.sql"
 REV="$STAGE/rev.sql"
+MIG_EH="$STAGE/mig_eh.sql"; DOWN_EH="$STAGE/down_eh.sql"
+MIG_SA="$STAGE/mig_sa.sql"; DOWN_SA="$STAGE/down_sa.sql"; EH="$STAGE/eh.sql"
 PGBIN=/usr/lib/postgresql/16/bin
 PGDATA=/tmp/ncrm_pgdata
 SOCK=/tmp/ncrm_sock
@@ -155,6 +162,21 @@ PSQL -f "$F61"
 
 echo "### Hotfix de seguranca: REVOKE de anon nas 5 tabelas ncrm_ (com rollback e reaplicacao)"
 PSQL -f "$REV"
+
+echo "### Entrada pela distribuicao + primeira abordagem humana + Sara assist + notificacoes"
+PSQL -f "$MIG_EH"
+PSQL -f "$MIG_SA"
+PSQL -f "$EH"
+echo "### rollback e reaplicacao (assist/notificacoes e entrada humana)"
+PSQL -f "$DOWN_SA"
+PSQL -c "SELECT public.test_assert(to_regclass('public.ncrm_notificacao') IS NULL AND to_regclass('public.ncrm_sara_acao') IS NULL, 'EH down: assist/notificacoes removidos');"
+PSQL -c "SELECT public.test_assert((SELECT modo FROM public.ncrm_sara_config WHERE id) IN ('observer','suggest','off'), 'EH down: Sara volta para observer');"
+PSQL -f "$DOWN_EH"
+PSQL -c "SELECT public.test_assert(to_regclass('public.ncrm_entrada_config') IS NULL AND to_regproc('public.ncrm_registrar_primeira_humana') IS NULL, 'EH down: entrada humana removida');"
+PSQL -c "SELECT public.test_assert((SELECT count(*) FROM public.ncrm_estado) > 0 AND (SELECT count(*) FROM public.ncrm_evento) > 0, 'EH down: nenhum atendimento ou evento apagado');"
+PSQL -f "$MIG_EH"
+PSQL -f "$MIG_SA"
+PSQL -c "SELECT public.test_assert(to_regproc('public.ncrm_notificacoes') IS NOT NULL AND to_regclass('public.ncrm_entrada_config') IS NOT NULL, 'EH migrations reaplicadas');"
 PSQL -f "$DOWN_F61"
 PSQL -c "SELECT public.test_assert(to_regclass('public.ncrm_ingest_lifecycle_config') IS NULL
          AND to_regproc('public.ncrm_ingest_classificar_backlog') IS NULL
