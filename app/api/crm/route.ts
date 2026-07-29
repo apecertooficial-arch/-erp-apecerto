@@ -39,7 +39,7 @@ function canCrm(access: EffectiveAccess, action: "atribuir" | "transferir") {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function fetchAll<T>(build: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: any }>): Promise<{ data: T[] | null; error: any }> {
   const rows: T[] = [];
-  for (let page = 0; page < 10; page++) {
+  for (let page = 0; page < 30; page++) {
     const { data, error } = await build(page * 1000, page * 1000 + 999);
     if (error) return { data: null, error };
     rows.push(...(data ?? []));
@@ -52,11 +52,21 @@ export async function GET(request: Request) {
   const auth = await authenticatedClient(request);
   if (!auth) return Response.json({ error: "Sessão inválida ou expirada." }, { status: 401 });
 
-  const [pipelinesResult, stagesResult, leadsResult, dealsResult, brokersResult, activitiesResult, historicoResult, tasksResult, linksResult, visitsResult, productsResult, slaResult, alertsResult, leiturasResult] = await Promise.all([
+  // Leads do aquário (sem corretor, esperando pescaria) NÃO entram no payload do
+  // CRM — só o contador. Com milhares de leads no aquário, mandá-los para a tela
+  // estoura o kanban e o limite de linhas. Depois de pescado (corretor definido),
+  // o lead aparece normalmente.
+  const { data: aquarioData } = await auth.supabase.rpc("aquario_status");
+  const aqInfo = aquarioData && typeof aquarioData === "object" ? aquarioData as { stage_id?: number | null } : {};
+  const aqStage = Number(aqInfo.stage_id ?? 0) || 0;
+  const foraDoAquarioNegocios = aqStage ? `corretor_id.not.is.null,stage_id.neq.${aqStage}` : "";
+
+  const [pipelinesResult, momentoCatalogoResult, stagesResult, leadsResult, dealsResult, brokersResult, activitiesResult, historicoResult, tasksResult, linksResult, visitsResult, productsResult, slaResult, alertsResult, leiturasResult] = await Promise.all([
     auth.supabase.from("pipelines").select("id,nome,grupo,ordem").order("ordem"),
+    auth.supabase.from("lead_momento_catalogo").select("slug,rotulo,grupo,ordem,cor,prazo_dias").eq("ativo", true).order("ordem"),
     auth.supabase.from("pipeline_stages").select("id,pipeline_id,nome,rotulo,ordem,cor,tipo,grupo,chave").order("ordem"),
-    fetchAll((from, to) => auth.supabase.from("leads").select("id,nome,telefone,email,instagram,corretor_id,pipeline_id,status,origem,tags,extras,criado_em,atualizado_em,disparo_optout").order("atualizado_em", { ascending: false, nullsFirst: false }).order("id").range(from, to)),
-    fetchAll((from, to) => auth.supabase.from("negocios").select("id,lead_id,corretor_id,pipeline_id,stage_id,empreendimento_id,valor,status,motivo_perda,criado_em,ultima_movimentacao,estagio_desde,tentativa,max_tentativas").order("ultima_movimentacao", { ascending: false, nullsFirst: false }).order("id").range(from, to)),
+    fetchAll((from, to) => auth.supabase.from("leads").select("id,nome,telefone,email,instagram,corretor_id,pipeline_id,status,origem,tags,extras,criado_em,atualizado_em,disparo_optout").or("corretor_id.not.is.null,origem.is.null,origem.neq.Aquário").order("atualizado_em", { ascending: false, nullsFirst: false }).order("id").range(from, to)),
+    fetchAll((from, to) => { let q = auth.supabase.from("negocios").select("id,lead_id,corretor_id,pipeline_id,stage_id,empreendimento_id,valor,status,motivo_perda,criado_em,ultima_movimentacao,estagio_desde,tentativa,max_tentativas"); if (foraDoAquarioNegocios) q = q.or(foraDoAquarioNegocios); return q.order("ultima_movimentacao", { ascending: false, nullsFirst: false }).order("id").range(from, to); }),
     auth.supabase.rpc("listar_corretores_transferencia"),
     auth.supabase.from("crm_atividades").select("id,lead_id,negocio_id,corretor_id,tipo,texto,criado_em").order("criado_em", { ascending: false }).limit(500),
     auth.supabase.from("atendimento_acoes").select("id,lead_id,negocio_id,corretor_id,tipo,canal,texto,resultado,criado_em").order("criado_em", { ascending: false }).limit(500),
@@ -64,7 +74,7 @@ export async function GET(request: Request) {
     auth.supabase.from("lead_produtos").select("lead_id,empreendimento_id,created_at,empreendimentos(id,nome,bairro,cidade,status,preco)").order("created_at", { ascending: false }),
     auth.supabase.from("visitas").select("id,created_by,lead_id,negocio_id,corretor_id,cliente_nome,empreendimento_id,produto,unidade,data,hora_inicio,hora_fim,local,observacoes,participantes,lembrete,com_gerente,gerente_id,status,criado_em").order("data").order("hora_inicio"),
     auth.supabase.from("empreendimentos").select("id,nome,bairro,cidade,status,preco,origem,rascunho").order("nome").limit(300),
-    auth.supabase.from("vw_sla_leads").select("negocio_id,lead_id,stage_id,sla_situacao,aguardando_humano,min_aguardando,min_no_estagio,min_sem_interacao,min_ativo_int,cor_ativa,alarme_ativo,ultima_interacao,cliente_ultima,humano_ultima"),
+    fetchAll((from, to) => { let q = auth.supabase.from("vw_sla_leads").select("negocio_id,lead_id,stage_id,sla_situacao,aguardando_humano,min_aguardando,min_no_estagio,min_sem_interacao,min_ativo_int,cor_ativa,alarme_ativo,ultima_interacao,cliente_ultima,humano_ultima"); if (foraDoAquarioNegocios) q = q.or(foraDoAquarioNegocios); return q.order("negocio_id").range(from, to); }),
     auth.supabase.from("crm_lead_alertas").select("id,negocio_id,corretor_id,criado_em,reconhecido_em,reconhecido_por").is("reconhecido_em", null).order("criado_em", { ascending: false }),
     auth.supabase.from("crm_lead_leituras").select("negocio_id,lido_em").eq("usuario_id", auth.user.id),
   ]);
@@ -74,7 +84,6 @@ export async function GET(request: Request) {
 
   const { data: gerentesData } = await auth.supabase.from("gerentes").select("id,nome,geral,corretor_id").eq("ativo", true).order("geral", { ascending: false });
   const { data: meProfile } = await auth.supabase.from("usuarios").select("role").eq("id", auth.user.id).maybeSingle();
-  const { data: aquarioData } = await auth.supabase.rpc("aquario_status");
 
   // Visibilidade da agenda: gestão (admin/gestor/executivo) enxerga todas as
   // visitas; corretor enxerga só as próprias (as que estão sob o corretor_id dele).
@@ -93,6 +102,7 @@ export async function GET(request: Request) {
     role,
     gerentes: gerentesData ?? [],
     pipelines: pipelinesResult.data ?? [],
+    momentoCatalogo: momentoCatalogoResult.data ?? [],
     stages: stagesResult.data ?? [],
     leads: leadsResult.data ?? [],
     deals: dealsResult.data ?? [],
@@ -145,6 +155,35 @@ export async function PATCH(request: Request) {
     if (!update.nome || !update.telefone) return Response.json({ error: "Nome e telefone são obrigatórios." }, { status: 422 });
     const { error } = await auth.supabase.from("leads").update(update).eq("id", leadId);
     return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
+  }
+
+  // ===== Momento do lead =====
+  // Registrar o momento NÃO move o card, não troca etapa e não troca funil.
+  // É um atributo do lead: em que ponto do atendimento ele está, e quando isso
+  // foi dito pela última vez — é a data que denuncia lead esquecido.
+  if (action === "registrarMomento") {
+    const leadId = positiveInteger(body.leadId);
+    const momento = cleanText(body.momento, 40);
+    if (!leadId || !momento) return Response.json({ error: "Informe o lead e o momento." }, { status: 400 });
+    const denied = guard([["leads", "editar"], ["crm", "editar"]], "Você não tem permissão para atualizar o momento do lead.");
+    if (denied) return denied;
+    const dealId = positiveInteger(body.dealId);
+    const { data, error } = await auth.supabase.rpc("registrar_momento_lead", {
+      p_lead_id: leadId,
+      p_momento: momento,
+      p_observacao: cleanText(body.observacao, 1000) || undefined,
+      p_negocio_id: dealId || undefined,
+    });
+    if (error) return Response.json({ error: error.message }, { status: 502 });
+    const r = (data ?? {}) as { ok?: boolean; erro?: string; rotulo?: string };
+    if (!r.ok) {
+      const msg = r.erro === "momento_invalido" ? "Momento inválido."
+        : r.erro === "sem_permissao" ? "Você só pode atualizar o momento dos seus próprios leads."
+        : r.erro === "lead_nao_encontrado" ? "Lead não encontrado."
+        : "Não foi possível atualizar o momento.";
+      return Response.json({ error: msg }, { status: r.erro === "sem_permissao" ? 403 : 422 });
+    }
+    return Response.json({ success: true, rotulo: r.rotulo });
   }
 
   if (action === "moveDeal") {
@@ -348,14 +387,14 @@ export async function PATCH(request: Request) {
       if (chosen) gerenteId = chosen;
       else { const { data: gg } = await auth.supabase.from("gerentes").select("id").eq("ativo", true).eq("geral", true).maybeSingle(); gerenteId = (gg?.id as number | undefined) ?? null; }
     }
-    const { error } = await auth.supabase.from("visitas").insert({
+    const { data: createdVisit, error } = await auth.supabase.from("visitas").insert({
       created_by: auth.user.id, lead_id: leadId, negocio_id: dealId, corretor_id: deal.corretor_id, cliente_nome: lead.nome,
       empreendimento_id: product?.id ?? null, produto: product?.nome ?? (cleanText(body.productName, 180) || null),
       data: date, hora_inicio: startTime, hora_fim: cleanText(body.endTime, 8) || null,
       local, observacoes: cleanText(body.observations, 1200) || null,
       participantes: cleanText(body.participants, 500) || null,
       lembrete: body.reminder !== false, com_gerente: comGerente, gerente_id: gerenteId, status: "agendada",
-    });
+    }).select("id").maybeSingle();
     if (error) return Response.json({ error: error.message }, { status: 502 });
     // #9 — ao agendar, move o lead para o funil "Visita ApeCerto" na etapa "Visita Agendada" (best-effort).
     try {
@@ -365,7 +404,8 @@ export async function PATCH(request: Request) {
         if (stage?.id) await auth.supabase.rpc("mover_negocio", { p_negocio_id: dealId, p_stage_id: stage.id });
       }
     } catch { /* mover é best-effort — a visita já foi criada */ }
-    return Response.json({ success: true });
+    // Retorna o ID real da visita criada (aditivo): consumido pelo CRM Nova Era para ncrm_saida_visita.
+    return Response.json({ success: true, visitaId: (createdVisit as { id?: string } | null)?.id ?? null });
   }
 
   if (action === "updateVisit") {

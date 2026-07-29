@@ -8,7 +8,7 @@ async function authClient(request: Request) {
   if (!token) return null;
   const supabase = createServerSupabaseClient(token);
   const { data, error } = await supabase.auth.getUser(token);
-  return error || !data.user ? null : { supabase };
+  return error || !data.user ? null : { supabase, userId: data.user.id };
 }
 
 export async function GET(request: Request) {
@@ -20,13 +20,27 @@ export async function GET(request: Request) {
   ]);
   if (cfg.error) return Response.json({ error: cfg.error.message }, { status: 502 });
   if (!cfg.data) return Response.json({ error: "Apenas administradores podem ver as regras de distribuição." }, { status: 403 });
-  return Response.json({ config: cfg.data, saude: saude.data ?? null });
+  const { data: corretores } = await auth.supabase.from("corretores").select("id,nome,ativo,forcar_distribuicao").eq("ativo", true).order("nome");
+  return Response.json({ config: cfg.data, saude: saude.data ?? null, corretores: corretores ?? [] });
 }
 
 export async function POST(request: Request) {
   const auth = await authClient(request);
   if (!auth) return Response.json({ error: "Sessão inválida ou expirada." }, { status: 401 });
   const body = await request.json() as Record<string, unknown>;
+
+  // Voto de minerva — SÓ admin liga/desliga, por corretor. Auditado.
+  if (body.action === "minerva") {
+    const { data: me } = await auth.supabase.from("usuarios").select("role,nome").eq("id", auth.userId).maybeSingle();
+    if ((me as { role?: string } | null)?.role !== "admin") return Response.json({ error: "Só administradores podem usar o voto de minerva." }, { status: 403 });
+    const corretorId = Number(body.corretorId);
+    const ligado = body.on === true;
+    if (!Number.isSafeInteger(corretorId) || corretorId <= 0) return Response.json({ error: "Corretor inválido." }, { status: 422 });
+    const { error } = await auth.supabase.from("corretores").update({ forcar_distribuicao: ligado } as never).eq("id", corretorId);
+    if (error) return Response.json({ error: error.message }, { status: 502 });
+    return Response.json({ success: true });
+  }
+
   const time = (v: unknown) => typeof v === "string" && /^\d{2}:\d{2}/.test(v) ? v.slice(0, 5) : null;
   const modo = typeof body.modoForaJanela === "string" && ["quem_veio_no_dia", "todos_do_bloco", "nao_distribuir"].includes(body.modoForaJanela) ? body.modoForaJanela : null;
   const modoRodizio = typeof body.modoRodizio === "string" && ["fila_circular", "placar_justo"].includes(body.modoRodizio) ? body.modoRodizio : null;

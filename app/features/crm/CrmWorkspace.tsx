@@ -1,7 +1,7 @@
 "use client";
 /* eslint-disable react-hooks/purity, react-hooks/set-state-in-effect */
 
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type DragEvent, type MouseEvent as ReactMouseEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type DragEvent, type MouseEvent as ReactMouseEvent } from "react";
 import { blocoAberto, BLOCO_LABEL, completudeBloco, docExigido as regraDocExigido, docVisivel as regraDocVisivel, etapaDoBloco, podeEditarEtapa, type BlocoEsteira, type DadosCompletude, type EtapaRegra } from "../../lib/esteira";
 import { MoneyInput, PercentInput } from "../../components/MoneyInput";
 import { getBrowserSupabaseClient } from "../../lib/supabase/browser";
@@ -25,7 +25,7 @@ async function authedFetch(input: RequestInfo | URL, init: RequestInit = {}): Pr
 
 type Pipeline = { id: number; nome: string; grupo: string | null; ordem: number };
 type Stage = { id: number; pipeline_id: number; nome: string; rotulo: string | null; ordem: number; cor: string | null; tipo: string; grupo: number | null; chave: string | null };
-type Lead = { id: number; nome: string | null; telefone: string | null; email: string | null; instagram: string | null; corretor_id: number | null; pipeline_id: number | null; status: string; origem: string | null; tags: unknown; extras: unknown; criado_em: string; atualizado_em: string | null; disparo_optout: boolean };
+type Lead = { id: number; nome: string | null; telefone: string | null; email: string | null; instagram: string | null; corretor_id: number | null; pipeline_id: number | null; status: string; origem: string | null; tags: unknown; extras: unknown; criado_em: string; atualizado_em: string | null; disparo_optout: boolean; momento?: string | null; momento_em?: string | null; momento_obs?: string | null;};
 type Deal = { id: number; lead_id: number; corretor_id: number | null; pipeline_id: number; stage_id: number | null; empreendimento_id: string | null; valor: number | null; status: string; motivo_perda: string | null; criado_em: string; ultima_movimentacao: string | null; estagio_desde: string | null; tentativa: number | null; max_tentativas: number | null };
 type Broker = { id: number; nome: string; email: string | null; telefone: string | null; ativo: boolean; online: boolean; usuario_id: string | null };
 type Activity = { id: number; lead_id: number | null; negocio_id: number | null; corretor_id: number | null; tipo: string; texto: string | null; criado_em: string };
@@ -54,8 +54,43 @@ function friendlyChatError(raw: string): string {
   return raw || "Não foi possível enviar a mensagem.";
 }
 type Historico = { id: number | string; lead_id: number | null; negocio_id: number | null; corretor_id: number | null; tipo: string; canal?: string | null; texto: string | null; resultado?: string | null; criado_em: string };
-type CrmData = { pipelines: Pipeline[]; stages: Stage[]; leads: Lead[]; deals: Deal[]; brokers: Broker[]; activities: Activity[]; historico?: Historico[]; tasks: Task[]; productLinks: ProductLink[]; visits: Visit[]; products: Product[]; sla: SlaInfo[]; alerts: LeadAlert[]; gerentes?: Gerente[]; leituras?: Array<{ negocio_id: number; lido_em: string }>; aquario?: { stage_id: number | null; disponiveis: number } | null };
+type MomentoCat = { slug: string; rotulo: string; grupo: string; ordem: number; cor: string | null; prazo_dias?: number };
+type CrmData = { momentoCatalogo?: MomentoCat[]; pipelines: Pipeline[]; stages: Stage[]; leads: Lead[]; deals: Deal[]; brokers: Broker[]; activities: Activity[]; historico?: Historico[]; tasks: Task[]; productLinks: ProductLink[]; visits: Visit[]; products: Product[]; sla: SlaInfo[]; alerts: LeadAlert[]; gerentes?: Gerente[]; leituras?: Array<{ negocio_id: number; lido_em: string }>; aquario?: { stage_id: number | null; disponiveis: number } | null };
 type ViewName = "pipeline" | "leads" | "sales" | "analytics" | "agenda" | "atividades";
+
+/** Minúsculas e sem acento, para comparar nome digitado com nome cadastrado. */
+const normalizarTexto = (v: unknown) => String(v ?? "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+/** Só os dígitos de um telefone. */
+const soDigitos = (v: unknown) => String(v ?? "").replace(/\D/g, "");
+/** Últimos 11 dígitos: iguala 5511999998888, 11999998888 e (11) 99999-8888. */
+const sufixoFone = (v: string) => v.replace(/\D/g, "").slice(-11);
+
+/* Momento do lead: em que ponto do atendimento ele está.
+   Não move card, não troca etapa, não troca funil — é um dado do lead.
+   O catálogo vem do banco (lead_momento_catalogo), para a operação ajustar sem deploy. */
+/** Há quantos dias o momento foi atualizado — é o que denuncia lead esquecido. */
+function diasDesde(iso?: string | null): number | null {
+  if (!iso) return null;
+  return Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
+}
+/** Rótulo legível do momento, a partir do catálogo carregado do banco. */
+function momentoRotulo(slug?: string | null, catalogo?: MomentoCat[]): string {
+  if (!slug) return "";
+  return catalogo?.find((m) => m.slug === slug)?.rotulo ?? slug.replace(/_/g, " ");
+}
+/** Cada momento tem seu prazo (Configurações → Momentos do lead):
+    verde dentro do prazo, amarelo na véspera de vencer, vermelho a partir do prazo. */
+function corMomento(dias: number | null, prazo = 3): string {
+  if (dias === null) return "nunca";
+  const p = Math.max(1, prazo);
+  if (dias >= p) return "atrasado";
+  if (dias >= p - 1) return "atencao";
+  return "ok";
+}
+/** Prazo (em dias) do momento, vindo do catálogo. */
+function momentoPrazo(slug?: string | null, catalogo?: MomentoCat[]): number {
+  return catalogo?.find((m) => m.slug === slug)?.prazo_dias ?? 3;
+}
 
 const money = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
 const dateTime = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
@@ -109,11 +144,13 @@ function isOverdue(task: Task, now: number) {
 
 /* Cor de alerta por DIAS sem interação (igual à esteira de vendas):
    até 1 dia = verde · mais de 1 dia = amarelo · mais de 3 = vermelho · mais de 7 = preto. */
+/** Cor do card por tempo sem atendimento:
+    até 24h verde · 24–48h amarelo · 48–72h vermelho · acima de 72h preto. */
 function alertColorByDays(minutes: number | null | undefined) {
-  const dias = (Number(minutes) || 0) / 1440;
-  if (dias <= 1) return "verde";
-  if (dias <= 3) return "amarelo";
-  if (dias <= 7) return "vermelho";
+  const horas = (Number(minutes) || 0) / 60;
+  if (horas < 24) return "verde";
+  if (horas < 48) return "amarelo";
+  if (horas < 72) return "vermelho";
   return "preto";
 }
 
@@ -142,8 +179,12 @@ export function CrmWorkspace({ accessToken, initialDealId = null, onInitialDealH
   const [query, setQuery] = useState("");
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [railCollapsed, setRailCollapsed] = useState(false);
+  // null = TODOS os funis. A tela de Leads abre assim; o kanban escolhe um funil
+  // concreto por conta própria (kanbanPipeId), porque um quadro precisa de etapas de um funil só.
   const [pipelineId, setPipelineId] = useState<number | null>(null);
   const [stageConfigOpen, setStageConfigOpen] = useState(false);
+  // Momento pode ser atualizado direto do card, sem abrir a ficha inteira.
+  const [momentoDealId, setMomentoDealId] = useState<number | null>(null);
   const [stageId, setStageId] = useState<number | null>(null);
   const [brokerId, setBrokerId] = useState<number | null>(null);
   const [origin, setOrigin] = useState("");
@@ -175,7 +216,6 @@ export function CrmWorkspace({ accessToken, initialDealId = null, onInitialDealH
       const result = await response.json() as CrmData & { error?: string };
       if (!response.ok) throw new Error(result.error || "Não foi possível consultar o CRM.");
       setData(result);
-      setPipelineId((current) => current ?? result.pipelines[0]?.id ?? null);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Erro ao carregar o CRM.");
     } finally {
@@ -249,32 +289,50 @@ export function CrmWorkspace({ accessToken, initialDealId = null, onInitialDealH
 
   const leadById = useMemo(() => new Map((data?.leads ?? []).map((lead) => [lead.id, lead])), [data]);
   const brokerById = useMemo(() => new Map((data?.brokers ?? []).map((broker) => [broker.id, broker])), [data]);
-  const activeStages = useMemo(() => (data?.stages ?? []).filter((stage) => stage.pipeline_id === pipelineId), [data, pipelineId]);
+  // O quadro do funil precisa de um funil selecionado; se o usuário está em "todos", usa o primeiro.
+  const kanbanPipeId = pipelineId ?? (data?.pipelines?.[0]?.id ?? null);
+  // Filtro de funil aplicado à lista: no kanban é sempre um funil, nas demais telas respeita "todos".
+  const pipeFiltro = view === "pipeline" ? kanbanPipeId : pipelineId;
+  const activeStages = useMemo(() => (data?.stages ?? []).filter((stage) => stage.pipeline_id === kanbanPipeId), [data, kanbanPipeId]);
   const allTags = useMemo(() => [...new Set((data?.leads ?? []).flatMap((lead) => tagList(lead.tags)))].sort(), [data]);
   const origins = useMemo(() => [...new Set((data?.leads ?? []).map((lead) => lead.origem).filter((item): item is string => Boolean(item)))].sort(), [data]);
   const activeFilterCount = [stageId, brokerId, origin, tag, group, dateFrom, dateTo, productFilter].filter(Boolean).length;
   const slaByDeal = useMemo(() => new Map((data?.sla ?? []).filter((item) => item.negocio_id).map((item) => [item.negocio_id!, item])), [data]);
   const readByDeal = useMemo(() => new Map((data?.leituras ?? []).map((item) => [item.negocio_id, item.lido_em])), [data]);
+  // ===== Busca de lead: nome, telefone, e-mail, instagram e #id =====
+  // Nome é comparado por palavras soltas (ordem livre) e sem acento; telefone compara
+  // os últimos 11 dígitos, então acha com ou sem DDI 55, DDD e qualquer formatação.
+  const termos = useMemo(() => normalizarTexto(query).split(/\s+/).filter(Boolean), [query]);
+  const buscaDigitos = useMemo(() => query.replace(/\D/g, ""), [query]);
+  const buscando = termos.length > 0 || buscaDigitos.length >= 3;
+  const casaBusca = useCallback((lead: Lead | undefined, deal: Deal) => {
+    if (buscaDigitos.length >= 3) {
+      const fone = soDigitos(lead?.telefone);
+      if (fone && (fone.endsWith(sufixoFone(buscaDigitos)) || fone.includes(buscaDigitos))) return true;
+      if (String(lead?.id ?? "") === buscaDigitos || String(deal.id) === buscaDigitos) return true;
+    }
+    if (!termos.length) return false;
+    const alvo = normalizarTexto(`${lead?.nome ?? ""} ${lead?.email ?? ""} ${lead?.instagram ?? ""}`);
+    return termos.every((t) => alvo.includes(t));
+  }, [termos, buscaDigitos]);
+
   const filteredDeals = useMemo(() => (data?.deals ?? []).filter((deal) => {
     const lead = leadById.get(deal.lead_id);
-    const stage = activeStages.find((item) => item.id === deal.stage_id);
-    // Negócio SEM lead carregado ainda aparece (card com dados mínimos) — nunca some do funil.
-    if (deal.pipeline_id !== pipelineId) return false;
+    const stage = (data?.stages ?? []).find((item) => item.id === deal.stage_id);
+    // Buscar é procurar em TODA a base: com texto digitado, o filtro de funil sai do caminho.
+    // Sem busca, respeita o funil escolhido (null = todos).
+    if (!buscando && pipeFiltro !== null && deal.pipeline_id !== pipeFiltro) return false;
     if (deal.status === "ganho") return false; // virou venda → saiu do funil, está na Esteira de vendas
     const sla = slaByDeal.get(deal.id);
     const overdue = Boolean(sla && (sla.alarme_ativo || sla.cor_ativa === "vermelho"));
-    const norm = (s: string) => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-    const q = norm(query.trim());
-    const qDigits = query.replace(/\D/g, "");
-    const foneDigits = (lead?.telefone ?? "").replace(/\D/g, "");
-    const buscaOk = !q || norm(`${lead?.nome ?? ""} ${lead?.email ?? ""}`).includes(q) || (qDigits.length >= 3 && foneDigits.includes(qDigits));
+    const buscaOk = !buscando || casaBusca(lead, deal);
     return buscaOk && (!stageId || deal.stage_id === stageId)
       && (!brokerId || (deal.corretor_id ?? lead?.corretor_id) === brokerId) && (!origin || lead?.origem === origin)
       && (!tag || (lead ? tagList(lead.tags) : []).includes(tag)) && (!group || stage?.grupo === group) && (!overdueOnly || overdue)
       && (!dateFrom || (lead?.criado_em ?? deal.criado_em ?? "") >= dateFrom) && (!dateTo || (lead?.criado_em ?? deal.criado_em ?? "") <= `${dateTo}T23:59:59`)
       && (!productFilter || deal.empreendimento_id === productFilter);
-  }), [data, leadById, activeStages, pipelineId, query, stageId, brokerId, origin, tag, group, overdueOnly, slaByDeal, dateFrom, dateTo, productFilter]);
-  const overdueCount = useMemo(() => (data?.deals ?? []).filter((deal) => { const sla = slaByDeal.get(deal.id); return deal.pipeline_id === pipelineId && Boolean(sla && (sla.alarme_ativo || sla.cor_ativa === "vermelho")); }).length, [data, pipelineId, slaByDeal]);
+  }), [data, leadById, pipeFiltro, buscando, casaBusca, stageId, brokerId, origin, tag, group, overdueOnly, slaByDeal, dateFrom, dateTo, productFilter]);
+  const overdueCount = useMemo(() => (data?.deals ?? []).filter((deal) => { const sla = slaByDeal.get(deal.id); return (pipeFiltro === null || deal.pipeline_id === pipeFiltro) && Boolean(sla && (sla.alarme_ativo || sla.cor_ativa === "vermelho")); }).length, [data, pipelineId, slaByDeal]);
   const visibleStages = useMemo(() => activeStages.filter((stage) => !group || stage.grupo === group), [activeStages, group]);
   const selectedDeal = data?.deals.find((deal) => deal.id === selectedDealId) ?? null;
   const selectedLead = selectedDeal ? leadById.get(selectedDeal.lead_id) ?? null : null;
@@ -327,6 +385,9 @@ export function CrmWorkspace({ accessToken, initialDealId = null, onInitialDealH
 
   const canManageStages = sessionRole !== "corretor";
   const canMoveDeals = true; /* corretor também move os próprios leads (o RLS garante que ele só enxerga/mexe nos dele) */
+  // No Funil Inteligente o card não anda por arraste: a etapa é consequência do
+  // momento registrado dentro do lead. O servidor recusa moveDeal nesse funil.
+  const kanbanEhInteligente = (data?.pipelines ?? []).find((p) => p.id === kanbanPipeId)?.grupo === "crm_inteligente";
   async function reorderStage(stageId: number, direction: number) {
     const ordered = activeStages.slice().sort((a, b) => a.ordem - b.ordem);
     const idx = ordered.findIndex((s) => s.id === stageId);
@@ -335,7 +396,7 @@ export function CrmWorkspace({ accessToken, initialDealId = null, onInitialDealH
     const ids = ordered.map((s) => s.id);
     [ids[idx], ids[target]] = [ids[target], ids[idx]];
     setMessage(null);
-    const { error: rpcError } = await getBrowserSupabaseClient().rpc("crm_etapa_reordenar", { p_pipeline_id: pipelineId, p_ids: ids });
+    const { error: rpcError } = await getBrowserSupabaseClient().rpc("crm_etapa_reordenar", { p_pipeline_id: kanbanPipeId as number, p_ids: ids });
     if (rpcError) setMessage(rpcError.message); else { await load({ quiet: true }); setMessage("Ordem das etapas atualizada."); }
   }
   async function recolorStage(stageId: number, color: string) {
@@ -384,7 +445,7 @@ export function CrmWorkspace({ accessToken, initialDealId = null, onInitialDealH
     </section>
 
     {view !== "sales" && <section className="crm-toolbar-v2">
-      {view !== "pipeline" && <select aria-label="Funil" value={pipelineId ?? ""} onChange={(event) => { setPipelineId(Number(event.target.value)); setStageId(null); setGroup(null); }}>{(data?.pipelines ?? []).map((pipeline) => <option value={pipeline.id} key={pipeline.id}>{pipeline.nome}</option>)}</select>}
+      {view !== "pipeline" && <select aria-label="Funil" value={pipelineId ?? ""} onChange={(e) => { setPipelineId(e.target.value === "" ? null : Number(e.target.value)); setStageId(null); setGroup(null); }}><option value="">Todos os funis</option>{(data?.pipelines ?? []).map((p) => <option value={p.id} key={p.id}>{p.nome}</option>)}</select>}
       {sessionRole !== "corretor" && <button className="stage-config-trigger" type="button" onClick={() => setStageConfigOpen(true)} title="Configurar funis e etapas">⚙ Etapas</button>}
       <button className={filtersOpen ? "crm-filter-trigger active" : "crm-filter-trigger"} type="button" onClick={() => setFiltersOpen(!filtersOpen)}>▽ Filtros {activeFilterCount > 0 && <b>{activeFilterCount}</b>}</button>
       <button className={overdueOnly ? "crm-overdue-trigger active" : "crm-overdue-trigger"} type="button" onClick={() => setOverdueOnly((v) => !v)} title="Mostrar apenas leads que estouraram o SLA">⏰ Leads Atrasados {overdueCount > 0 && <b>{overdueCount}</b>}</button>
@@ -397,19 +458,26 @@ export function CrmWorkspace({ accessToken, initialDealId = null, onInitialDealH
     {loading && <div className="crm-loading"><span /><strong>Montando seu CRM com os dados reais…</strong></div>}
     {error && <div className="crm-error">{error}<button type="button" onClick={() => void load()}>Tentar novamente</button></div>}
     {!loading && !error && data && view === "pipeline" && <div className={`crm-pipe-layout ${railCollapsed ? "rail-collapsed" : ""}`}>
-      <aside className="crm-pipe-rail"><div className="crm-pipe-rail-head"><span className="crm-pipe-rail-title">FUNIS</span><button type="button" className="crm-pipe-rail-toggle" title={railCollapsed ? "Expandir funis" : "Recolher funis"} aria-label={railCollapsed ? "Expandir funis" : "Recolher funis"} onClick={() => setRailCollapsed((prev) => !prev)}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">{railCollapsed ? <path d="M9 6l6 6-6 6" /> : <path d="M15 6l-6 6 6 6" />}</svg></button></div>{(data.pipelines ?? []).map((pipeline) => { const count = (data.deals ?? []).filter((deal) => deal.pipeline_id === pipeline.id && !["ganho", "perdido", "descartado"].includes(deal.status)).length; return <button type="button" key={pipeline.id} className={`crm-pipe-item ${pipeline.id === pipelineId ? "active" : ""}`} title={pipeline.nome} onClick={() => { setPipelineId(pipeline.id); setStageId(null); setGroup(null); }}><span className="crm-pipe-dot" /><strong>{pipeline.nome}</strong><em>{count}</em></button>; })}</aside>
-      <PipelineViewEnhanced stages={visibleStages} allStages={activeStages} deals={filteredDeals} leadById={leadById} brokerById={brokerById} slaByDeal={slaByDeal} canReassign={canReassign} onReassign={setBrokerPickerDealId} onOpen={openDeal} onChat={openChat} onMutate={mutate} setMessage={setMessage} draggingId={draggingDealId} onDrag={setDraggingDealId} onDrop={dropDeal} canManageStages={canManageStages} onReorderStage={reorderStage} onRecolorStage={recolorStage} onSaveStage={saveStage} onBulkFromStage={openBulkFromStage} stageCount={activeStages.length} canMoveDeals={canMoveDeals} onPickStage={setStagePickerDealId} readByDeal={readByDeal} aquario={data.aquario ?? null} fishing={fishing} onPescar={pescarLead} />
+      <aside className="crm-pipe-rail"><div className="crm-pipe-rail-head"><span className="crm-pipe-rail-title">FUNIS</span><button type="button" className="crm-pipe-rail-toggle" title={railCollapsed ? "Expandir funis" : "Recolher funis"} aria-label={railCollapsed ? "Expandir funis" : "Recolher funis"} onClick={() => setRailCollapsed((prev) => !prev)}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">{railCollapsed ? <path d="M9 6l6 6-6 6" /> : <path d="M15 6l-6 6 6 6" />}</svg></button></div>{(data.pipelines ?? []).map((pipeline) => { const count = (data.deals ?? []).filter((deal) => deal.pipeline_id === pipeline.id && !["ganho", "perdido", "descartado"].includes(deal.status)).length; return <button type="button" key={pipeline.id} className={`crm-pipe-item ${pipeline.id === kanbanPipeId ? "active" : ""}`} title={pipeline.nome} onClick={() => { setPipelineId(pipeline.id); setStageId(null); setGroup(null); }}><span className="crm-pipe-dot" /><strong>{pipeline.nome}</strong><em>{count}</em></button>; })}</aside>
+      {kanbanEhInteligente && <div className="momentox-aviso">Neste funil o card muda de etapa pelo <b>momento do lead</b> — abra o lead e registre o momento. O arraste está desligado de propósito.</div>}
+      <PipelineViewEnhanced onMomento={(id) => setMomentoDealId(id)} momentoCatalogo={data.momentoCatalogo} stages={visibleStages} allStages={activeStages} deals={filteredDeals} leadById={leadById} brokerById={brokerById} slaByDeal={slaByDeal} canReassign={canReassign} onReassign={setBrokerPickerDealId} onOpen={openDeal} onChat={openChat} onMutate={mutate} setMessage={setMessage} draggingId={draggingDealId} onDrag={setDraggingDealId} onDrop={dropDeal} canManageStages={canManageStages} onReorderStage={reorderStage} onRecolorStage={recolorStage} onSaveStage={saveStage} onBulkFromStage={openBulkFromStage} stageCount={activeStages.length} canMoveDeals={canMoveDeals && !kanbanEhInteligente} onPickStage={setStagePickerDealId} readByDeal={readByDeal} aquario={data.aquario ?? null} fishing={fishing} onPescar={pescarLead} />
     </div>}
-    {!loading && !error && data && view === "leads" && <LeadsViewEnhanced deals={filteredDeals} leadById={leadById} stages={activeStages} brokerById={brokerById} slaByDeal={slaByDeal} canReassign={canReassign} onReassign={setBrokerPickerDealId} onOpen={openDeal} onChat={openChat} onMutate={mutate} setMessage={setMessage} canMoveDeals={canMoveDeals} onPickStage={setStagePickerDealId} />}
+    {!loading && !error && data && view === "leads" && <LeadsViewEnhanced onMomento={(id) => setMomentoDealId(id)} momentoCatalogo={data.momentoCatalogo} deals={filteredDeals} leadById={leadById} stages={activeStages} brokerById={brokerById} slaByDeal={slaByDeal} canReassign={canReassign} onReassign={setBrokerPickerDealId} onOpen={openDeal} onChat={openChat} onMutate={mutate} setMessage={setMessage} canMoveDeals={canMoveDeals} onPickStage={setStagePickerDealId} />}
     {!loading && !error && data && view === "agenda" && <AgendaView data={data} leadById={leadById} onMutate={mutate} setMessage={setMessage} sessionRole={sessionRole} accessToken={accessToken} />}
     {!loading && !error && data && view === "atividades" && <ActivitiesView data={data} leadById={leadById} brokerById={brokerById} onOpen={(leadId) => setSelectedDealId(data.deals.find((deal) => deal.lead_id === leadId)?.id ?? null)} />}
     {!loading && !error && data && view === "sales" && <SalesProcessView accessToken={accessToken} initialCreate={launchSaleOnReady} sessionRole={sessionRole} />}
     {!loading && !error && data && view === "analytics" && <AnalyticsView data={data} onOpen={(dealId) => setSelectedDealId(dealId)} />}
+    {momentoDealId !== null && data && (() => {
+      const d = data.deals.find((x) => x.id === momentoDealId);
+      const l = d ? leadById.get(d.lead_id) : undefined;
+      if (!d || !l) return null;
+      return <MomentoModal lead={l} dealId={d.id} catalogo={data.momentoCatalogo ?? []} onClose={() => setMomentoDealId(null)} onSalvar={mutate} onMessage={setMessage} />;
+    })()}
     {selectedDeal && selectedLead && data && <LeadDrawer key={selectedDeal.id} accessToken={accessToken} lead={selectedLead} deal={selectedDeal} data={data} canReassign={canReassign} canMoveDeals={canMoveDeals} onClose={() => { setSelectedDealId(null); setMessage(null); }} onMutate={mutate} onReload={() => load({ quiet: true })} setMessage={setMessage} />}
     {chatDealId && data && leadById.get(data.deals.find((deal) => deal.id === chatDealId)?.lead_id ?? -1) && <LeadChatDrawer key={chatDealId} accessToken={accessToken} lead={leadById.get(data.deals.find((deal) => deal.id === chatDealId)!.lead_id)!} deal={data.deals.find((deal) => deal.id === chatDealId)!} corretorNome={data.brokers.find((b) => b.id === leadById.get(data.deals.find((deal) => deal.id === chatDealId)!.lead_id)?.corretor_id)?.nome} onClose={() => setChatDealId(null)} onResponse={async () => { await mutate({ action: "acknowledgeResponse", dealId: chatDealId }); setMessage("Resposta registrada e alerta encerrado."); }} onOpenLead={() => { const d = chatDealId; setChatDealId(null); openDeal(d); }} />}
     {stageConfigOpen && data && <StageConfigModal pipelines={data.pipelines} stages={data.stages} deals={data.deals} leads={data.leads} products={data.products} initialPipelineId={pipelineId} onClose={() => setStageConfigOpen(false)} onChanged={async () => { await load({ quiet: true }); }} />}
-    {bulkMoveOpen && data && pipelineId && <BulkMoveModal pipelineId={pipelineId} stages={activeStages} deals={data.deals.filter((deal) => deal.pipeline_id === pipelineId)} initialFromStageId={bulkFromStage} onClose={() => { setBulkMoveOpen(false); setBulkFromStage(null); }} onMove={async (fromStageId, toStageId) => { await mutate({ action: "bulkMoveStage", pipelineId, fromStageId, toStageId }); setBulkMoveOpen(false); setBulkFromStage(null); setMessage("Todos os negócios da etapa foram movidos."); }} />}
-    {createOpen && data && <CreateLeadModal pipelines={data.pipelines} brokers={data.brokers} initialPipelineId={pipelineId} canAssign={canAssign} onClose={() => { setCreateOpen(false); setMessage(null); }} onCreate={async (payload) => { await mutate({ action: "createLead", ...payload }); setCreateOpen(false); setMessage("Novo lead criado e inserido na primeira etapa."); }} />}
+    {bulkMoveOpen && data && kanbanPipeId && <BulkMoveModal pipelineId={kanbanPipeId} stages={activeStages} deals={data.deals.filter((deal) => deal.pipeline_id === pipelineId)} initialFromStageId={bulkFromStage} onClose={() => { setBulkMoveOpen(false); setBulkFromStage(null); }} onMove={async (fromStageId, toStageId) => { await mutate({ action: "bulkMoveStage", pipelineId, fromStageId, toStageId }); setBulkMoveOpen(false); setBulkFromStage(null); setMessage("Todos os negócios da etapa foram movidos."); }} />}
+    {createOpen && data && <CreateLeadModal pipelines={data.pipelines} brokers={data.brokers} initialPipelineId={kanbanPipeId} canAssign={canAssign} onClose={() => { setCreateOpen(false); setMessage(null); }} onCreate={async (payload) => { await mutate({ action: "createLead", ...payload }); setCreateOpen(false); setMessage("Novo lead criado e inserido na primeira etapa."); }} />}
     {brokerPickerDealId && data && <BrokerPickerModal deal={data.deals.find((deal) => deal.id === brokerPickerDealId)!} lead={leadById.get(data.deals.find((deal) => deal.id === brokerPickerDealId)?.lead_id ?? -1)!} brokers={data.brokers} onClose={() => setBrokerPickerDealId(null)} onSave={async (brokerId) => { await mutate({ action: "transferDeal", dealId: brokerPickerDealId, brokerId }); setBrokerPickerDealId(null); setMessage("Corretor responsável atualizado."); }} />}
     {stagePickerDealId && data && (() => { const deal = data.deals.find((d) => d.id === stagePickerDealId); if (!deal) return null; const lead = leadById.get(deal.lead_id); const dealStages = activeStages.filter((s) => s.pipeline_id === deal.pipeline_id); return <StagePickerModal deal={deal} leadNome={lead?.nome ?? null} stages={dealStages.length ? dealStages : activeStages} onClose={() => setStagePickerDealId(null)} onSave={async (stageId) => { await mutate({ action: "moveDeal", dealId: stagePickerDealId, stageId }); setStagePickerDealId(null); setMessage("Etapa atualizada."); }} />; })()}
   </div>;
@@ -1192,7 +1260,7 @@ function AnalyticsView({ data, onOpen }: { data: CrmData; onOpen?: (dealId: numb
   </section>;
 }
 
-function PipelineViewEnhanced({ stages, allStages, deals, leadById, brokerById, slaByDeal, canReassign, onReassign, onOpen, onChat, onMutate, setMessage, draggingId, onDrag, onDrop, canManageStages, onReorderStage, onRecolorStage, onSaveStage, onBulkFromStage, stageCount, canMoveDeals, onPickStage, readByDeal, aquario, fishing, onPescar }: { stages: Stage[]; allStages: Stage[]; deals: Deal[]; leadById: Map<number, Lead>; brokerById: Map<number, Broker>; slaByDeal: Map<number, SlaInfo>; canReassign: boolean; onReassign: (dealId: number) => void; onOpen: (id: number) => void; onChat: (id: number) => void; onMutate: (body: Record<string, unknown>) => Promise<void>; setMessage: (value: string | null) => void; draggingId: number | null; onDrag: (id: number | null) => void; onDrop: (event: DragEvent, stageId: number) => Promise<void>; canManageStages?: boolean; onReorderStage?: (stageId: number, direction: number) => Promise<void>; onRecolorStage?: (stageId: number, color: string) => Promise<void>; onSaveStage?: (stageId: number, nome: string, color: string) => Promise<void>; onBulkFromStage?: (stageId: number) => void; stageCount?: number; canMoveDeals?: boolean; onPickStage?: (dealId: number) => void; readByDeal?: Map<number, string>; aquario?: { stage_id: number | null; disponiveis: number } | null; fishing?: boolean; onPescar?: () => void }) {
+function PipelineViewEnhanced({ onMomento, momentoCatalogo, stages, allStages, deals, leadById, brokerById, slaByDeal, canReassign, onReassign, onOpen, onChat, onMutate, setMessage, draggingId, onDrag, onDrop, canManageStages, onReorderStage, onRecolorStage, onSaveStage, onBulkFromStage, stageCount, canMoveDeals, onPickStage, readByDeal, aquario, fishing, onPescar }: { onMomento?: (dealId: number) => void; momentoCatalogo?: MomentoCat[]; stages: Stage[]; allStages: Stage[]; deals: Deal[]; leadById: Map<number, Lead>; brokerById: Map<number, Broker>; slaByDeal: Map<number, SlaInfo>; canReassign: boolean; onReassign: (dealId: number) => void; onOpen: (id: number) => void; onChat: (id: number) => void; onMutate: (body: Record<string, unknown>) => Promise<void>; setMessage: (value: string | null) => void; draggingId: number | null; onDrag: (id: number | null) => void; onDrop: (event: DragEvent, stageId: number) => Promise<void>; canManageStages?: boolean; onReorderStage?: (stageId: number, direction: number) => Promise<void>; onRecolorStage?: (stageId: number, color: string) => Promise<void>; onSaveStage?: (stageId: number, nome: string, color: string) => Promise<void>; onBulkFromStage?: (stageId: number) => void; stageCount?: number; canMoveDeals?: boolean; onPickStage?: (dealId: number) => void; readByDeal?: Map<number, string>; aquario?: { stage_id: number | null; disponiveis: number } | null; fishing?: boolean; onPescar?: () => void }) {
   const [busyId, setBusyId] = useState<number | null>(null);
   const [menuStage, setMenuStage] = useState<number | null>(null);
   const [editName, setEditName] = useState("");
@@ -1277,7 +1345,10 @@ function PipelineViewEnhanced({ stages, allStages, deals, leadById, brokerById, 
         // Cliente aguardando → cor pelo tempo de espera. Se o corretor já respondeu
         // (não está aguardando e há interação humana registrada) → verde. Lead nunca
         // tocado (sem interação humana) → segue sinalizando pelo tempo sem interação.
-        const color = waiting ? alertColorByDays(sla?.min_aguardando) : (sla?.humano_ultima ? "verde" : alertColorByDays(sla?.min_sem_interacao));
+        // Sem linha de SLA (cache atrasado, negócio recém-criado), a cor sai da
+        // última movimentação do próprio negócio — nunca de um "0 minutos" fictício.
+        const minutosFallback = (Date.now() - new Date(deal.ultima_movimentacao || deal.criado_em || 0).getTime()) / 60000;
+        const color = alertColorByDays(waiting ? (sla?.min_aguardando ?? minutosFallback) : (sla?.min_sem_interacao ?? minutosFallback));
         // Sino: só quando o cliente aguarda. Vermelho = ainda não lida (corretor não abriu
         // desde a última msg do cliente); Amarelo = já abriu (leu) mas não respondeu.
         const lidoEm = readByDeal?.get(deal.id);
@@ -1296,6 +1367,7 @@ function PipelineViewEnhanced({ stages, allStages, deals, leadById, brokerById, 
             <button type="button" onClick={() => onChat(deal.id)}>Chat</button>
             {canMoveDeals !== false && (() => { const cur = allStages.find((s) => s.id === deal.stage_id); return <button type="button" className="stage-pick-btn" aria-label={`Mover ${lead.nome || "lead"} para outra etapa`} disabled={busyId === deal.id} onClick={() => onPickStage?.(deal.id)}><i className="stage-pick-dot" style={{ background: cur?.cor || "#9638d8" }} /><span>{cur?.rotulo || cur?.nome || "Etapa"}</span><em>⌄</em></button>; })()}
           </div>
+          {onMomento && <button type="button" className={`momentox-selo m-${corMomento(diasDesde(lead?.momento_em), momentoPrazo(lead?.momento, momentoCatalogo))}`} title={lead?.momento_obs || "Atualizar o momento deste lead"} onClick={(e) => { e.stopPropagation(); onMomento(deal.id); }}>{lead?.momento ? <>{momentoRotulo(lead.momento, momentoCatalogo)}<b>{(() => { const d = diasDesde(lead.momento_em); return d === null ? "—" : d === 0 ? "hoje" : `${d}d`; })()}</b></> : <>Informar momento<b>＋</b></>}</button>}
           <footer><time>{sla?.min_no_estagio !== null && sla?.min_no_estagio !== undefined ? `${formatElapsed(sla.min_no_estagio)} na etapa` : shortDate.format(new Date(deal.ultima_movimentacao || deal.criado_em))}</time></footer>
         </article>;
       })}{items.length === 0 && <div className="crm-empty-stage">Arraste um lead para esta etapa</div>}</div>
@@ -1303,20 +1375,21 @@ function PipelineViewEnhanced({ stages, allStages, deals, leadById, brokerById, 
   })}</section>;
 }
 
-function LeadsViewEnhanced({ deals, leadById, stages, brokerById, slaByDeal, canReassign, onReassign, onOpen, onChat, onMutate, setMessage, canMoveDeals, onPickStage }: { deals: Deal[]; leadById: Map<number, Lead>; stages: Stage[]; brokerById: Map<number, Broker>; slaByDeal: Map<number, SlaInfo>; canReassign: boolean; onReassign: (dealId: number) => void; onOpen: (id: number) => void; onChat: (id: number) => void; onMutate: (body: Record<string, unknown>) => Promise<void>; setMessage: (value: string | null) => void; canMoveDeals?: boolean; onPickStage?: (dealId: number) => void }) {
+function LeadsViewEnhanced({ onMomento, momentoCatalogo, deals, leadById, stages, brokerById, slaByDeal, canReassign, onReassign, onOpen, onChat, onMutate, setMessage, canMoveDeals, onPickStage }: { onMomento?: (dealId: number) => void; momentoCatalogo?: MomentoCat[]; deals: Deal[]; leadById: Map<number, Lead>; stages: Stage[]; brokerById: Map<number, Broker>; slaByDeal: Map<number, SlaInfo>; canReassign: boolean; onReassign: (dealId: number) => void; onOpen: (id: number) => void; onChat: (id: number) => void; onMutate: (body: Record<string, unknown>) => Promise<void>; setMessage: (value: string | null) => void; canMoveDeals?: boolean; onPickStage?: (dealId: number) => void }) {
   const [busyId, setBusyId] = useState<number | null>(null);
   const change = async (body: Record<string, unknown>, success: string, dealId: number) => { setBusyId(dealId); try { await onMutate(body); setMessage(success); } catch (reason) { setMessage(reason instanceof Error ? reason.message : "Não foi possível salvar."); } finally { setBusyId(null); } };
-  const visibleDeals = deals.slice(0, 15);
+  const visibleDeals = deals.slice(0, 200);
   return <section className="crm-table-wrap">
     <table className="crm-leads-table crm-leads-table-v3">
       <thead><tr><th>Lead</th><th>Tempo sem interação</th><th>Etapa</th><th>Corretor</th><th>Origem</th><th>Valor</th><th>Atualização</th><th>Ações</th></tr></thead>
       <tbody>{visibleDeals.map((deal, index) => {
-        const lead = leadById.get(deal.lead_id)!;
+        const lead = leadById.get(deal.lead_id) ?? ({ id: deal.lead_id, nome: `Lead #${deal.lead_id}`, telefone: null, email: null, corretor_id: deal.corretor_id, tags: null, extras: null, origem: null } as unknown as Lead);
         const sla = slaByDeal.get(deal.id);
         const broker = brokerById.get(deal.corretor_id ?? lead.corretor_id ?? -1);
         const tags = tagList(lead.tags).slice(0, 2);
-        return <tr className={`lead-tone-${index % 5 + 1} sla-row-${sla?.cor_ativa || "verde"}`} key={deal.id}>
-          <td onClick={() => onOpen(deal.id)}><div className="table-person"><LeadAvatar lead={lead} /><div><strong>{lead.nome || "Lead sem nome"}</strong><small>#{lead.id}</small>{tags.length > 0 && <div className="lead-table-tags" aria-label="Tags do lead">{tags.map((item) => <span key={item}>{item}</span>)}</div>}</div></div></td>
+        const corLinha = alertColorByDays(sla?.min_sem_interacao ?? ((Date.now() - new Date(deal.ultima_movimentacao || deal.criado_em || 0).getTime()) / 60000));
+        return <tr className={`lead-tone-${index % 5 + 1} sla-row-${corLinha}`} key={deal.id}>
+          <td onClick={() => onOpen(deal.id)}><div className="table-person"><LeadAvatar lead={lead} /><div><strong>{lead.nome || "Lead sem nome"}</strong><small>#{lead.id}</small>{onMomento && <button type="button" className={`momentox-selo m-${corMomento(diasDesde(lead.momento_em), momentoPrazo(lead.momento, momentoCatalogo))}`} title={lead.momento_obs || "Atualizar o momento deste lead"} onClick={(e) => { e.stopPropagation(); onMomento(deal.id); }}>{lead.momento ? <>{momentoRotulo(lead.momento, momentoCatalogo)}<b>{(() => { const d = diasDesde(lead.momento_em); return d === null ? "—" : d === 0 ? "hoje" : `${d}d`; })()}</b></> : <>Informar momento<b>＋</b></>}</button>}{tags.length > 0 && <div className="lead-table-tags" aria-label="Tags do lead">{tags.map((item) => <span key={item}>{item}</span>)}</div>}</div></div></td>
           <td><strong>{formatElapsed(sla?.aguardando_humano ? sla.min_aguardando : sla?.min_sem_interacao)}</strong><small>{sla?.aguardando_humano ? "aguardando resposta" : "sem interação"}</small></td>
           <td>{canMoveDeals !== false ? (() => { const cur = stages.find((s) => s.id === deal.stage_id); return <button type="button" className="stage-pick-btn table" disabled={busyId === deal.id} onClick={() => onPickStage?.(deal.id)}><i className="stage-pick-dot" style={{ background: cur?.cor || "#9638d8" }} /><span>{cur?.rotulo || cur?.nome || "Etapa"}</span><em>⌄</em></button>; })() : <span className="stage-pill-static">{stages.find((s) => s.id === deal.stage_id)?.rotulo || stages.find((s) => s.id === deal.stage_id)?.nome || "—"}</span>}</td>
           <td>{canReassign ? <button className="table-broker-trigger" type="button" onClick={() => onReassign(deal.id)}>{broker?.nome || "Escolher corretor"}<span>⌄</span></button> : <strong>{broker?.nome || "Sem responsável"}</strong>}<small>{broker?.online ? "● online" : "offline"}</small></td>
@@ -1325,7 +1398,7 @@ function LeadsViewEnhanced({ deals, leadById, stages, brokerById, slaByDeal, can
         </tr>;
       })}</tbody>
     </table>
-    {deals.length > 15 && <div className="crm-leads-limit">Mostrando os primeiros 15 de {deals.length} leads</div>}
+    {deals.length > 200 && <div className="crm-leads-limit">Mostrando os primeiros 200 de {deals.length} leads</div>}
     {deals.length === 0 && <div className="crm-empty-view">Nenhum lead encontrado com esses filtros.</div>}
   </section>;
 }
@@ -1759,8 +1832,59 @@ function useLeadCopiloto(accessToken: string, leadNome: string) {
   return { ...state, refresh: () => setNonce((n) => n + 1) };
 }
 
+/* Modal de momento: usado tanto pelo card do funil quanto pela ficha do lead.
+   Dois campos apenas — momento e observação — porque a ideia é ser rápido de
+   preencher todo dia; se der trabalho, o corretor não faz. */
+function MomentoModal({ lead, dealId, catalogo, onClose, onSalvar, onMessage }: { lead: Lead; dealId: number; catalogo: MomentoCat[]; onClose: () => void; onSalvar: (body: Record<string, unknown>) => Promise<void>; onMessage: (v: string | null) => void }) {
+  const [momento, setMomento] = useState(lead.momento ?? "");
+  const [observacao, setObservacao] = useState("");
+  const [busy, setBusy] = useState(false);
+  const grupos = [...new Set(catalogo.map((m) => m.grupo))];
+  const dias = diasDesde(lead.momento_em);
+  const salvar = () => {
+    if (!momento) return;
+    setBusy(true);
+    void onSalvar({ action: "registrarMomento", leadId: lead.id, dealId, momento, observacao: observacao || undefined })
+      .then(() => { onMessage("Momento atualizado."); onClose(); })
+      .catch((r) => onMessage(r instanceof Error ? r.message : "Não foi possível atualizar o momento."))
+      .finally(() => setBusy(false));
+  };
+  return <div className="crm-center-modal" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+    <form onSubmit={(e) => { e.preventDefault(); salvar(); }}>
+      <header><div><span>MOMENTO DO LEAD</span><h2>Em que ponto está?</h2><p>{lead.nome || `Lead #${lead.id}`}{lead.momento_em ? ` · atualizado ${dias === 0 ? "hoje" : dias === 1 ? "ontem" : `há ${dias} dias`}` : " · nunca atualizado"}</p></div><button type="button" onClick={onClose}>×</button></header>
+      <label>Momento
+        <select required value={momento} disabled={busy} onChange={(e) => setMomento(e.target.value)}>
+          <option value="">Selecione</option>
+          {grupos.map((g) => <optgroup label={g} key={g}>{catalogo.filter((m) => m.grupo === g).map((m) => <option value={m.slug} key={m.slug}>{m.rotulo}</option>)}</optgroup>)}
+        </select>
+      </label>
+      <label>Observação<textarea rows={3} value={observacao} disabled={busy} placeholder="O que aconteceu no último contato" onChange={(e) => setObservacao(e.target.value)} /></label>
+      {lead.momento_obs && <p className="momentox-obs-atual">Última anotação: “{lead.momento_obs}”</p>}
+      <footer><button type="button" onClick={onClose}>Cancelar</button><button className="crm-primary" type="submit" disabled={busy || !momento}>{busy ? "Salvando…" : "Salvar momento"}</button></footer>
+    </form>
+  </div>;
+}
+
 function LeadDrawer({ accessToken, lead, deal, data, canReassign, canMoveDeals, onClose, onMutate, onReload, setMessage }: { accessToken: string; lead: Lead; deal: Deal; data: CrmData; canReassign: boolean; canMoveDeals?: boolean; onClose: () => void; onMutate: (body: Record<string, unknown>) => Promise<void>; onReload: () => Promise<void>; setMessage: (value: string | null) => void }) {
   const copiloto = useLeadCopiloto(accessToken, lead.nome || "");
+  // ===== Momento do lead (só no Funil Inteligente, por enquanto) =====
+  const pipeDoLead = data.pipelines.find((p) => p.id === deal.pipeline_id);
+  const ehFunilInteligente = pipeDoLead?.grupo === "crm_inteligente";
+  const catalogoMomentos = data.momentoCatalogo ?? [];
+  const gruposMomento = [...new Set(catalogoMomentos.map((m) => m.grupo))];
+  const momentoDoLead = catalogoMomentos.find((m) => m.slug === lead.momento);
+  const diasMomento = diasDesde(lead.momento_em);
+  const [momOpen, setMomOpen] = useState(false);
+  const [mom, setMom] = useState({ momento: lead.momento ?? "", observacao: "" });
+  const [momBusy, setMomBusy] = useState(false);
+  const salvarMomento = () => {
+    if (!mom.momento) return;
+    setMomBusy(true);
+    void onMutate({ action: "registrarMomento", leadId: lead.id, dealId: deal.id, momento: mom.momento, observacao: mom.observacao || undefined })
+      .then(() => { setMessage("Momento atualizado."); setMomOpen(false); setMom({ momento: mom.momento, observacao: "" }); })
+      .catch((r) => setMessage(r instanceof Error ? r.message : "Não foi possível atualizar o momento."))
+      .finally(() => setMomBusy(false));
+  };
   const [tab, setTab] = useState<"resumo" | "historico" | "agenda" | "produtos">("resumo");
   /* Doc §5 — abas arrastáveis com ordem persistida */
   const [tabOrder, setTabOrder] = useState<string[]>(["resumo", "historico", "agenda", "produtos"]);
@@ -1875,6 +1999,18 @@ function LeadDrawer({ accessToken, lead, deal, data, canReassign, canMoveDeals, 
         <button type="button" onClick={() => { setTask(`Fazer follow-up com ${lead.nome || "o lead"}`); setTab("agenda"); setMessage("Sugestão da IA preparada como próxima tarefa."); }}><LeadActionIcon name="ai" /><span>Pedir à IA</span></button>
       </div>
       <article className="lead-context-card"><div><small>ORIGEM</small><strong><span>⌘</span>{lead.origem || "Não informada"}</strong></div><div><small>PRODUTO DE INTERESSE</small><strong><span>▥</span>{currentProduct?.nome || "—"}</strong></div><p>ⓘ Origem e interesse são distintos — alimentam o BI de campanhas.</p><footer><small>Corretor responsável</small><strong><span>♧</span>{responsible?.nome || "Não definido"}</strong></footer></article>
+      {ehFunilInteligente && <article className={`momentox momentox-${corMomento(diasMomento, momentoDoLead?.prazo_dias ?? 3)}`}>
+        <div className="momentox-atual">
+          <span className="momentox-dot" style={{ background: momentoDoLead?.cor || "#9a938b" }} />
+          <div>
+            <strong>{momentoDoLead?.rotulo ?? "Momento não informado"}</strong>
+            <small>{diasMomento === null ? "nunca foi atualizado" : diasMomento === 0 ? "atualizado hoje" : diasMomento === 1 ? "atualizado ontem" : `há ${diasMomento} dias sem atualizar`}</small>
+          </div>
+          <button type="button" className="momentox-btn" disabled={busy} onClick={() => { setMom({ momento: lead.momento ?? "", observacao: "" }); setMomOpen(true); }}>Atualizar</button>
+        </div>
+        {lead.momento_obs && <p className="momentox-obs-atual">“{lead.momento_obs}”</p>}
+      </article>}
+
       <article className="lead-funnel-status"><h4>ETAPA DO FUNIL</h4><div className="lead-stage-track">{stages.map((stage, index) => <i className={index <= stageIndex ? "active" : ""} style={{ "--lead-stage-color": stage.cor || "#8b00cc" } as CSSProperties} key={stage.id} />)}</div>{canMoveDeals !== false && data.pipelines.length > 1 && <label className="lead-pipe-move"><span>FUNIL (PIPE)</span><select value={deal.pipeline_id} disabled={busy} onChange={(event) => { const target = Number(event.target.value); if (target === deal.pipeline_id) return; const first = data.stages.filter((s) => s.pipeline_id === target).sort((a, b) => a.ordem - b.ordem)[0]; if (!first) { setMessage("Esse funil ainda não tem etapas configuradas."); return; } const pname = data.pipelines.find((p) => p.id === target)?.nome || "outro funil"; void run({ action: "moveDeal", dealId: deal.id, stageId: first.id }, `Lead movido para o funil ${pname}.`); }}>{data.pipelines.map((p) => <option value={p.id} key={p.id}>{p.nome}</option>)}</select></label>}{canMoveDeals !== false && <label className="lead-stage-move"><span>ETAPA</span><select value={deal.stage_id ?? ""} disabled={busy} onChange={(event) => void run({ action: "moveDeal", dealId: deal.id, stageId: Number(event.target.value) }, "Etapa atualizada.")}>{stages.map((stage) => <option value={stage.id} key={stage.id}>{stage.rotulo || stage.nome}</option>)}</select></label>}{canMoveDeals !== false && <button type="button" onClick={() => setAction("discard")}>Descartar lead</button>}</article>
     </section>
     <nav className="drawer-tabs-v2 draggable-tabs">{tabOrder.map((key) => { const label = key === "resumo" ? "Resumo" : key === "historico" ? "Histórico" : key === "agenda" ? "Tarefas e visitas" : `Produtos (${links.length})`; return <button
@@ -1895,6 +2031,7 @@ function LeadDrawer({ accessToken, lead, deal, data, canReassign, canMoveDeals, 
       {productOpen && chatData && <ProductSendModal data={chatData} canSend={Boolean(contact && dapi)} onClose={() => setProductOpen(false)} onSend={async (content, mediaId) => { if (!contact || !dapi) throw new Error("Este lead precisa de uma conversa e uma instância conectada."); await callExternal({ action: "send", leadId: lead.id, dealId: deal.id, phone: contact.telefone, instanceId: dapi.id, content, mediaId }); setProductOpen(false); }} />}
       {saleOpen && <LeadSaleModal accessToken={accessToken} deal={deal} products={data.products} onClose={() => setSaleOpen(false)} onDone={async () => { setSaleOpen(false); await onReload(); setMessage("Venda gerada — o lead saiu do funil e foi para a Esteira de vendas (aguardando aprovação do gestor)."); }} />}
       {action && <div className="drawer-action-modal"><form onSubmit={(event) => { event.preventDefault(); if (action === "visit") void run({ action: "createVisit", leadId: lead.id, dealId: deal.id, ...visit }, "Visita agendada.").then(() => setAction(null)); if (action === "transfer") void run({ action: "transferDeal", dealId: deal.id, brokerId: Number(transferBroker) }, "Negócio transferido.").then(() => setAction(null)); if (action === "discard") void run({ action: "discardDeal", dealId: deal.id, ...discard }, "Negócio descartado.").then(() => { setAction(null); onClose(); }); }}><header><div><h3>{action === "visit" ? "Agendar visita" : action === "transfer" ? "Transferir atendimento" : "Descartar negócio"}</h3><p>{action === "visit" ? "A visita ficará ligada a este lead e ao produto." : action === "transfer" ? "Escolha quem assumirá este atendimento." : "O negócio será movido para a etapa de descarte."}</p></div><button type="button" onClick={() => setAction(null)}>×</button></header>{action === "visit" && <div className="action-form-grid"><label>Data<input required type="date" value={visit.date} onChange={(event) => setVisit({ ...visit, date: event.target.value })} /></label><label>Início<input required type="time" value={visit.startTime} onChange={(event) => setVisit({ ...visit, startTime: event.target.value })} /></label><label>Fim<input type="time" value={visit.endTime} onChange={(event) => setVisit({ ...visit, endTime: event.target.value })} /></label><label>Produto<select value={visit.productId} onChange={(event) => setVisit({ ...visit, productId: event.target.value })}><option value="">Selecionar depois</option>{data.products.map((item) => <option value={item.id} key={item.id}>{item.nome}</option>)}</select></label><label className="wide">Local<input value={visit.local} onChange={(event) => setVisit({ ...visit, local: event.target.value })} placeholder="Preenchido pelo endereço do produto" /></label><label className="wide">Observações<textarea value={visit.observations} onChange={(event) => setVisit({ ...visit, observations: event.target.value })} /></label><label className="check"><input type="checkbox" checked={visit.reminder} onChange={(event) => setVisit({ ...visit, reminder: event.target.checked })} /> Criar lembrete</label><label className="check"><input type="checkbox" checked={visit.withManager} onChange={(event) => setVisit({ ...visit, withManager: event.target.checked })} /> Com gerente</label></div>}{action === "transfer" && <label>Corretor responsável<select required value={transferBroker} onChange={(event) => setTransferBroker(event.target.value)}><option value="">Selecione</option>{data.brokers.filter((broker) => broker.id !== deal.corretor_id).map((broker) => <option value={broker.id} key={broker.id}>{broker.nome}{broker.online ? " · online" : ""}</option>)}</select></label>}{action === "discard" && <><label>Motivo<select required value={discard.reason} onChange={(event) => setDiscard({ ...discard, reason: event.target.value })}><option value="">Selecione</option>{discardReasons.map((item) => <option key={item}>{item}</option>)}</select></label><label>Observação<textarea value={discard.observation} onChange={(event) => setDiscard({ ...discard, observation: event.target.value })} /></label></>}<footer><button type="button" onClick={() => setAction(null)}>Cancelar</button><button className={action === "discard" ? "danger" : ""} disabled={busy} type="submit">Confirmar</button></footer></form></div>}
+    {momOpen && <MomentoModal lead={lead} dealId={deal.id} catalogo={data.momentoCatalogo ?? []} onClose={() => setMomOpen(false)} onSalvar={onMutate} onMessage={setMessage} />}
     </aside></div>;
 }
 
@@ -1953,12 +2090,12 @@ function StageConfigModal({ pipelines, stages, deals, leads, products, initialPi
     <div className="stage-config-list">
       {currentStages.map((stage, index) => <StageConfigRow key={stage.id} stage={stage} count={dealCount(stage.id)} busy={busy}
         onRename={(name, color) => void run(() => rpc.rpc("crm_etapa_salvar", { p_id: stage.id, p_nome: name, p_cor: color }), "Etapa atualizada.")}
-        onMove={(direction) => { const ids = currentStages.map((item) => item.id); const target = index + direction; if (target < 0 || target >= ids.length) return; [ids[index], ids[target]] = [ids[target], ids[index]]; void run(() => rpc.rpc("crm_etapa_reordenar", { p_pipeline_id: pipelineId, p_ids: ids }), "Ordem atualizada."); }}
+        onMove={(direction) => { const ids = currentStages.map((item) => item.id); const target = index + direction; if (target < 0 || target >= ids.length) return; [ids[index], ids[target]] = [ids[target], ids[index]]; void run(() => rpc.rpc("crm_etapa_reordenar", { p_pipeline_id: kanbanPipeId as number, p_ids: ids }), "Ordem atualizada."); }}
         onDelete={() => { if (!window.confirm(`Excluir a etapa "${stage.rotulo || stage.nome}"?`)) return; void run(() => rpc.rpc("crm_etapa_excluir", { p_id: stage.id }), "Etapa excluída."); }} />)}
     </div>
     <div className="stage-config-new">
       <input value={newStage} onChange={(event) => setNewStage(event.target.value)} placeholder="Nome da nova etapa" />
-      <button type="button" disabled={busy || !newStage.trim() || !pipelineId} onClick={() => void run(() => rpc.rpc("crm_etapa_salvar", { p_pipeline_id: pipelineId, p_nome: newStage }), "Etapa criada.").then(() => setNewStage(""))}>＋ Adicionar etapa</button>
+      <button type="button" disabled={busy || !newStage.trim() || !pipelineId} onClick={() => void run(() => rpc.rpc("crm_etapa_salvar", { p_pipeline_id: kanbanPipeId as number, p_nome: newStage }), "Etapa criada.").then(() => setNewStage(""))}>＋ Adicionar etapa</button>
     </div>
     <div className="stage-config-newpipe">
       {creatingPipeline ? <>
