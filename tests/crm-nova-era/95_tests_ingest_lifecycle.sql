@@ -178,7 +178,8 @@ SELECT public.test_assert((SELECT status FROM public.ncrm_ingest_checkpoint WHER
 INSERT INTO public.ncrm_ingest_checkpoint (mensagem_id, wa_message_id, tipo, negocio_id, status, tentativas, criado_em)
 VALUES ('8d000000-0000-0000-0000-0000000000a1','f61-bl-fora','resposta_inbound', 81002, 'pendente', 5, now() - interval '4 hours'),
        ('8d000000-0000-0000-0000-0000000000a2','f61-bl-sem', 'resposta_inbound', NULL,  'pendente', 5, now() - interval '4 hours'),
-       ('8d000000-0000-0000-0000-0000000000a3','f61-bl-novo','resposta_inbound', NULL,  'pendente', 5, now() - interval '2 minutes')
+       ('8d000000-0000-0000-0000-0000000000a3','f61-bl-novo','resposta_inbound', NULL,  'pendente', 5, now() - interval '2 minutes'),
+       ('8d000000-0000-0000-0000-0000000000a4','f61-bl-teto','resposta_inbound', NULL,  'pendente', 8, now() - interval '2 minutes')
 ON CONFLICT (mensagem_id) DO NOTHING;
 
 SELECT set_config('request.jwt.claims', json_build_object('sub','88888888-0000-0000-0000-000000000001','role','authenticated')::text, false);
@@ -192,9 +193,12 @@ SELECT public.test_assert((SELECT status FROM public.ncrm_ingest_checkpoint WHER
   'F61 G: backlog com negócio fora do piloto vira fora do escopo');
 SELECT public.test_assert((SELECT status FROM public.ncrm_ingest_checkpoint WHERE wa_message_id='f61-bl-sem') = 'noop_sem_negocio_expirado',
   'F61 G: backlog sem negócio e expirado vira sem negócio expirado');
-SELECT public.test_assert((SELECT status = 'pendente' AND tentativas = 0
+SELECT public.test_assert((SELECT status = 'pendente' AND finalizado_em IS NULL
                            FROM public.ncrm_ingest_checkpoint WHERE wa_message_id='f61-bl-novo'),
-  'F61 G: item ainda dentro da janela continua aguardando e é destravado');
+  'F61 G: item ainda dentro da janela continua aguardando');
+SELECT public.test_assert((SELECT status = 'pendente' AND tentativas = 0
+                           FROM public.ncrm_ingest_checkpoint WHERE wa_message_id='f61-bl-teto'),
+  'F61 G: item preso no teto de tentativas e destravado em vez de ficar orfao');
 SELECT public.test_assert(NOT EXISTS (SELECT 1 FROM public.ncrm_estado WHERE negocio_id = 81002),
   'F61 G: a classificação NÃO cria atendimento para negócio fora do piloto');
 
@@ -205,7 +209,7 @@ SELECT public.test_assert(((public.ncrm_ingest_classificar_backlog(1000, 'CLASSI
 RESET ROLE;
 
 -- Nada foi apagado.
-SELECT public.test_assert((SELECT count(*) FROM public.ncrm_ingest_checkpoint) >= 9,
+SELECT public.test_assert((SELECT count(*) FROM public.ncrm_ingest_checkpoint) >= 10,
   'F61 G: nenhum registro da fila foi apagado');
 
 -- ===================== H. PERMISSÃO E SEGURANÇA ============================
