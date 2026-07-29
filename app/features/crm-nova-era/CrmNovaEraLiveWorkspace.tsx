@@ -18,6 +18,8 @@ import {
   type ColunaChave, type LeadNova,
 } from "./lib/rules";
 import { LeadCard } from "./components/LeadCard";
+import { FaseBanner } from "./components/FaseBanner";
+import { mensagemQuadroVazio } from "./lib/faseBanner";
 import { PainelPiloto, DiagnosticoLegado } from "./components/PainelPiloto";
 import { WorkQueue } from "./components/WorkQueue";
 import {
@@ -50,6 +52,7 @@ export function CrmNovaEraLiveWorkspace({ accessToken, profile }: { accessToken:
   const [detalheLeadId, setDetalheLeadId] = useState<number | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [ingestInfo, setIngestInfo] = useState<{ ativo: boolean | null; desde: string | null }>({ ativo: null, desde: null });
 
   const leads = useMemo(() => itens.map(mapEstadoToLead), [itens]);
 
@@ -121,12 +124,21 @@ export function CrmNovaEraLiveWorkspace({ accessToken, profile }: { accessToken:
         </div>
       </div>
 
+      <FaseBanner accessToken={accessToken} souAdmin={["admin", "executivo"].includes(profile.role)}
+        totalLeads={leads.length}
+        onIngest={(ativo, desde) => setIngestInfo((cur) => (cur.ativo === ativo && cur.desde === desde ? cur : { ativo, desde }))} />
+
       {erro && <div className="nova-crm-notice" style={{ color: "var(--nc-red, #b42318)" }}>{erro}</div>}
       {loading && <div className="nova-crm-empty">Carregando carteira…</div>}
 
       {!loading && !erro && (
         <div style={{ flex: 1, minHeight: 0, display: "flex" }}>
           <div style={{ flex: 1, minHeight: 0, overflow: "auto", padding: 12 }}>
+            {vista === "quadro" && leads.length === 0 && (
+              <div className="nova-crm-notice" style={{ margin: "0 0 10px", color: "#374151" }}>
+                {mensagemQuadroVazio({ ingestAtivo: ingestInfo.ativo, ativoDesde: ingestInfo.desde, souAdmin: ["admin", "executivo"].includes(profile.role) })}
+              </div>
+            )}
             {vista === "quadro" && (
               <div className="nova-crm-board">
                 {COLUNAS.map((c) => (
