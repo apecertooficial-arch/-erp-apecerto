@@ -27,6 +27,9 @@ import { GestaoOperacional, CadenciaConfig } from "./components/GestaoOperaciona
 import { OnboardingNovaEra } from "./components/OnboardingNovaEra";
 import { AcessoPilotos } from "./components/AcessoPilotos";
 import { RolloutChecklist, AdocaoPainel } from "./components/RolloutAdocao";
+import { CentralTreinamento } from "./components/CentralTreinamento";
+import { CarteiraAntiga } from "./components/CarteiraAntiga";
+import { SaudeCrm } from "./components/SaudeCrm";
 import { LeadChatDrawer, type Deal as DealLegado, type Lead as LeadLegado } from "../crm/CrmWorkspace";
 import { rotuloIngest, rotuloSara, rotuloRunner } from "./lib/linguagem";
 import {
@@ -36,7 +39,15 @@ import {
 
 const MAX_TENTATIVAS = 4; // config v1 publicada (seed). O banco é a fonte da verdade.
 
-type Vista = "quadro" | "fila" | "gerencial";
+type Vista = "quadro" | "fila" | "gerencial" | "treinamento";
+/** Abas internas da Visão gerencial — evitam uma única página com rolagem interminável. */
+type Aba = "operacao" | "rollout" | "carteira" | "saude";
+const ABAS: { id: Aba; titulo: string }[] = [
+  { id: "operacao", titulo: "Operação" },
+  { id: "rollout", titulo: "Rollout e adoção" },
+  { id: "carteira", titulo: "Carteira antiga" },
+  { id: "saude", titulo: "Saúde" },
+];
 type SessionProfile = { userId: string; role: string; name: string };
 
 async function api(path: string, token: string, init?: RequestInit) {
@@ -54,6 +65,8 @@ export function CrmNovaEraLiveWorkspace({ accessToken, profile }: { accessToken:
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
   const [vista, setVista] = useState<Vista>("fila");
+  const [aba, setAba] = useState<Aba>("operacao");
+  const ehAdmin = ["admin", "executivo"].includes(profile.role);
   const [drillCorretor, setDrillCorretor] = useState<number | null>(null);
   const [selId, setSelId] = useState<string | null>(null);
   const [detalhe, setDetalhe] = useState<LeadNova | null>(null);
@@ -137,6 +150,7 @@ export function CrmNovaEraLiveWorkspace({ accessToken, profile }: { accessToken:
         <div className="nova-crm-seg" role="tablist">
           <button className={vista === "fila" ? "on" : ""} onClick={() => { setDrillCorretor(null); setVista("fila"); }}>Meu dia</button>
           <button className={vista === "quadro" ? "on" : ""} onClick={() => setVista("quadro")}>Quadro</button>
+          <button className={vista === "treinamento" ? "on" : ""} onClick={() => setVista("treinamento")}>Treinamento</button>
           {profile.role !== "corretor" && (
             <button className={vista === "gerencial" ? "on" : ""} onClick={() => setVista("gerencial")}>Visão gerencial</button>
           )}
@@ -204,15 +218,37 @@ export function CrmNovaEraLiveWorkspace({ accessToken, profile }: { accessToken:
               </div>
             )}
 
+            {vista === "treinamento" && (
+              <CentralTreinamento accessToken={accessToken} podeGerir={["admin", "executivo"].includes(profile.role)} />
+            )}
+
             {vista === "gerencial" && profile.role !== "corretor" && (
-              <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-{["admin", "executivo"].includes(profile.role) && <RolloutChecklist accessToken={accessToken} />}
-                                <GestaoOperacional accessToken={accessToken} onDrill={(cid) => { setDrillCorretor(cid); setVista("fila"); }} />
-                {["admin", "executivo"].includes(profile.role) && <AdocaoPainel accessToken={accessToken} />}
-                {["admin", "executivo"].includes(profile.role) && <AcessoPilotos accessToken={accessToken} />}
-                {["admin", "executivo"].includes(profile.role) && <CadenciaConfig accessToken={accessToken} />}
-                {["admin", "executivo"].includes(profile.role) && <PainelPiloto accessToken={accessToken} />}
-                <PainelGerencial leads={leads} agora={agora} accessToken={accessToken} />
+              <div style={{ display: "flex", flexDirection: "column", gap: 14, maxWidth: 900 }}>
+                <div className="nova-crm-seg" role="tablist" style={{ alignSelf: "flex-start" }}>
+                  {ABAS.filter((a) => a.id === "operacao" || ehAdmin).map((a) => (
+                    <button key={a.id} className={aba === a.id ? "on" : ""} onClick={() => setAba(a.id)}>{a.titulo}</button>
+                  ))}
+                </div>
+
+                {aba === "operacao" && (
+                  <>
+                    <GestaoOperacional accessToken={accessToken} onDrill={(cid) => { setDrillCorretor(cid); setVista("fila"); }} />
+                    <PainelGerencial leads={leads} agora={agora} accessToken={accessToken} />
+                  </>
+                )}
+
+                {aba === "rollout" && ehAdmin && (
+                  <>
+                    <RolloutChecklist accessToken={accessToken} />
+                    <AdocaoPainel accessToken={accessToken} />
+                    <AcessoPilotos accessToken={accessToken} />
+                    <CadenciaConfig accessToken={accessToken} />
+                    <PainelPiloto accessToken={accessToken} />
+                  </>
+                )}
+
+                {aba === "carteira" && ehAdmin && <CarteiraAntiga accessToken={accessToken} />}
+                {aba === "saude" && ehAdmin && <SaudeCrm accessToken={accessToken} />}
               </div>
             )}
           </div>

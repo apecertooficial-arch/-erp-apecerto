@@ -38,6 +38,12 @@ cp "$ROOT/tests/crm-nova-era/71_tests_sara_registrar_ajustes.sql" "$STAGE/ajuste
 cp "$ROOT/supabase/migrations/20260730100000_ncrm_fase5_operacao.sql" "$STAGE/mig_f5.sql"
 cp "$ROOT/supabase/rollbacks/20260730100000_ncrm_fase5_operacao.down.sql" "$STAGE/down_f5.sql"
 cp "$ROOT/tests/crm-nova-era/80_tests_fase5_operacao.sql" "$STAGE/f5.sql"
+# Fase 6 (PR A pilotos + PR B treinamento/carteira antiga/saude)
+cp "$ROOT/supabase/migrations/20260731100000_ncrm_fase6_pilotos.sql" "$STAGE/mig_f6a.sql"
+cp "$ROOT/supabase/rollbacks/20260731100000_ncrm_fase6_pilotos.down.sql" "$STAGE/down_f6a.sql"
+cp "$ROOT/supabase/migrations/20260801100000_ncrm_fase6b_carteira_saude.sql" "$STAGE/mig_f6b.sql"
+cp "$ROOT/supabase/rollbacks/20260801100000_ncrm_fase6b_carteira_saude.down.sql" "$STAGE/down_f6b.sql"
+cp "$ROOT/tests/crm-nova-era/90_tests_fase6b.sql" "$STAGE/f6b.sql"
 chmod -R a+rX "$STAGE"
 MIG="$STAGE/mig.sql"; DOWN="$STAGE/down.sql"; HARNESS="$STAGE/harness.sql"; CORE="$STAGE/core.sql"; CORE2="$STAGE/core2.sql"; CORE3="$STAGE/core3.sql"; CORE4="$STAGE/core4.sql"; MIG_SARA="$STAGE/mig_sara.sql"
 MIG_INGEST="$STAGE/mig_ingest.sql"; MIG_PROP="$STAGE/mig_prop.sql"; MIG_VISITA="$STAGE/mig_visita.sql"
@@ -47,6 +53,8 @@ MIG_ADMIN="$STAGE/mig_admin.sql"; DOWN_ADMIN="$STAGE/down_admin.sql"
 MIG_RETRY="$STAGE/mig_retry.sql"; DOWN_RETRY="$STAGE/down_retry.sql"; RETRY="$STAGE/retry.sql"
 MIG_AJUSTES="$STAGE/mig_ajustes.sql"; DOWN_AJUSTES="$STAGE/down_ajustes.sql"; AJUSTES="$STAGE/ajustes.sql"
 MIG_F5="$STAGE/mig_f5.sql"; DOWN_F5="$STAGE/down_f5.sql"; F5="$STAGE/f5.sql"
+MIG_F6A="$STAGE/mig_f6a.sql"; DOWN_F6A="$STAGE/down_f6a.sql"
+MIG_F6B="$STAGE/mig_f6b.sql"; DOWN_F6B="$STAGE/down_f6b.sql"; F6B="$STAGE/f6b.sql"
 PGBIN=/usr/lib/postgresql/16/bin
 PGDATA=/tmp/ncrm_pgdata
 SOCK=/tmp/ncrm_sock
@@ -124,6 +132,26 @@ PSQL -f "$F5"
 PSQL -f "$DOWN_F5"
 PSQL -c "SELECT public.test_assert(to_regclass('public.ncrm_cadencia_config') IS NULL AND to_regproc('public.ncrm_fila_trabalho') IS NULL, 'F5 down removeu objetos aditivos');"
 PSQL -f "$MIG_F5"
+
+echo "### Fase 6 (PR A + PR B): migrations + testes de treinamento, carteira antiga e saude"
+PSQL -f "$MIG_F6A"
+PSQL -f "$MIG_F6B"
+PSQL -f "$F6B"
+echo "### Fase 6 PR B: rollback versionado remove SO os objetos novos e reaplica"
+PSQL -f "$DOWN_F6B"
+PSQL -c "SELECT public.test_assert(to_regclass('public.ncrm_treinamento') IS NULL AND to_regclass('public.ncrm_migracao_item') IS NULL
+         AND to_regclass('public.ncrm_migracao_analise') IS NULL AND to_regclass('public.ncrm_saude_acao_audit') IS NULL
+         AND to_regproc('public.ncrm_migracao_preview') IS NULL AND to_regproc('public.ncrm_saude') IS NULL,
+         'F6B down: objetos novos removidos');"
+PSQL -c "SELECT public.test_assert(to_regclass('public.ncrm_estado') IS NOT NULL AND to_regclass('public.negocios') IS NOT NULL
+         AND to_regclass('public.ncrm_piloto') IS NOT NULL AND to_regclass('public.vendas') IS NOT NULL,
+         'F6B down: nada do legado nem das fases anteriores foi removido');"
+PSQL -f "$MIG_F6B"
+PSQL -c "SELECT public.test_assert(to_regproc('public.ncrm_migracao_preview') IS NOT NULL AND to_regproc('public.ncrm_saude') IS NOT NULL,
+         'F6B migration reaplicada apos rollback');"
+PSQL -f "$DOWN_F6B"
+PSQL -f "$DOWN_F6A"
+
 PSQL -f "$DOWN_RETRY"
 PSQL -c "SELECT public.test_assert(to_regproc('ncrm_private.reconciliar_mensagens') IS NOT NULL, 'down retry preservou a função de reconciliação (comportamento original)');"
 PSQL -f "$MIG_RETRY"
