@@ -14,6 +14,26 @@
 
 import type { LeadNova, ProximaAcaoTipo } from "./rules";
 
+/* Janela comercial (inlined, autossuficiente p/ node --test; canônico em ./janelaComercial.ts).
+   America/Sao_Paulo (offset fixo -180, sem horário de verão); dias úteis seg..sex; sem feriados. */
+const TZ_OFFSET_MIN = -180;
+const COMERCIAL_INICIO_MIN = 9 * 60;
+const DIAS_UTEIS = [1, 2, 3, 4, 5];
+/** Início da manhã comercial do PRÓXIMO dia útil estritamente após o dia local de `iso`. */
+export function proximaManhaComercialSeguinte(iso: string): string {
+  const t = Date.parse(iso);
+  if (Number.isNaN(t)) return iso;
+  const local = new Date(t + TZ_OFFSET_MIN * 60000);
+  let y = local.getUTCFullYear(), mo = local.getUTCMonth(), d = local.getUTCDate();
+  for (let i = 0; i < 8; i++) {
+    const nx = new Date(Date.UTC(y, mo, d)); nx.setUTCDate(nx.getUTCDate() + 1);
+    y = nx.getUTCFullYear(); mo = nx.getUTCMonth(); d = nx.getUTCDate();
+    if (DIAS_UTEIS.includes(nx.getUTCDay())) break;
+  }
+  const utcMs = Date.UTC(y, mo, d, Math.floor(COMERCIAL_INICIO_MIN / 60), COMERCIAL_INICIO_MIN % 60) - TZ_OFFSET_MIN * 60000;
+  return new Date(utcMs).toISOString();
+}
+
 /* Helpers puros inlined (mantém o módulo autossuficiente para node --test). */
 function minutosEntre(aISO: string, bISO: string): number {
   const a = Date.parse(aISO), b = Date.parse(bISO);
@@ -64,8 +84,9 @@ export const PLANO_CADENCIA_OFICIAL: {
     { numero: 1, rotulo: "Assumir atendimento", canalPreferido: "livre", minMin: 0, maxMin: 5, nota: "Até 5 min após a mensagem automática: ler o contexto e assumir. Se respondeu, ir para Em atendimento." },
     { numero: 2, rotulo: "2ª tentativa", canalPreferido: "whatsapp", minMin: 30, maxMin: 60, nota: "WhatsApp curto e contextual — não repetir a mesma mensagem." },
     { numero: 3, rotulo: "3ª tentativa", canalPreferido: "ligacao", minMin: 3 * H, maxMin: 4 * H, nota: "Abordagem diferente: ligação ou áudio curto quando apropriado." },
-    { numero: 4, rotulo: "4ª tentativa", canalPreferido: "whatsapp", minMin: 1 * D, maxMin: 1 * D, nota: "Próximo período comercial ou manhã do dia seguinte: nova abordagem com produto/oportunidade/pergunta objetiva." },
-    { numero: 5, rotulo: "5ª tentativa (última intensiva)", canalPreferido: "livre", minMin: 1 * D, maxMin: 2 * D, nota: "24–48h. Sem resposta, entra em acompanhamento espaçado." },
+    // T4 é ancorada na JANELA COMERCIAL (manhã do dia seguinte), não em 24h fixas — ver proximaEtapaCadenciaOficial.
+    { numero: 4, rotulo: "4ª tentativa", canalPreferido: "whatsapp", minMin: 1 * D, maxMin: 1 * D, nota: "Próximo período comercial (manhã do dia seguinte, janela comercial): nova abordagem com produto/oportunidade/pergunta objetiva." },
+    { numero: 5, rotulo: "5ª tentativa (última intensiva)", canalPreferido: "livre", minMin: 1 * D, maxMin: 2 * D, nota: "24–48h, SEMPRE após a T4 (sem sobreposição). Sem resposta, entra em acompanhamento espaçado." },
   ],
   acompanhamentoDias: [3, 7, 14, 30],
 };
@@ -95,12 +116,27 @@ export function proximaEtapaCadenciaOficial(
   const ancora = lead.mensagemAutomaticaEnviadaEm ?? lead.criadoEm;
   if (feitas < PLANO_CADENCIA_OFICIAL.intensiva.length) {
     const p = PLANO_CADENCIA_OFICIAL.intensiva[feitas];
+    let de: string, ate: string;
+    if (p.numero === 4) {
+      // T4: manhã comercial do dia seguinte (janela comercial configurável), NÃO 24h fixas.
+      const manha = proximaManhaComercialSeguinte(ancora);
+      de = manha; ate = somaHoras(manha, 3); // janela da manhã (~09:00–12:00)
+    } else if (p.numero === 5) {
+      // T5: 24–48h, mas SEMPRE estritamente após a T4 (sem sobreposição de 24h).
+      const t4ate = somaHoras(proximaManhaComercialSeguinte(ancora), 3);
+      const deMs = Math.max(Date.parse(somaHoras(ancora, 24)), Date.parse(t4ate) + 60000);
+      de = new Date(deMs).toISOString();
+      ate = new Date(Math.max(Date.parse(somaHoras(ancora, 48)), deMs + 12 * 3600000)).toISOString();
+    } else {
+      de = somaHoras(ancora, p.minMin / 60);
+      ate = somaHoras(ancora, p.maxMin / 60);
+    }
     return {
       fase: "intensiva",
       numero: p.numero,
       rotulo: `Tentativa ${p.numero} de ${MAX_TENTATIVAS_OFICIAL} — ${p.rotulo}`,
       canalPreferido: p.canalPreferido,
-      janelaAlvoISO: { de: somaHoras(ancora, p.minMin / 60), ate: somaHoras(ancora, p.maxMin / 60) },
+      janelaAlvoISO: { de, ate },
       nota: p.nota,
     };
   }
