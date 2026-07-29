@@ -27,12 +27,17 @@ cp "$ROOT/supabase/rollbacks/20260728210000_ncrm_sara_observer.down.sql" "$STAGE
 cp "$ROOT/tests/crm-nova-era/60_tests_sara_observer.sql" "$STAGE/sara_obs.sql"
 cp "$ROOT/supabase/migrations/20260728210100_ncrm_admin_status.sql" "$STAGE/mig_admin.sql"
 cp "$ROOT/supabase/rollbacks/20260728210100_ncrm_admin_status.down.sql" "$STAGE/down_admin.sql"
+# Fase 4: retry do ingest para motor sem negócio (corrida real) + teste
+cp "$ROOT/supabase/migrations/20260729150000_ncrm_ingest_retry_sem_negocio.sql" "$STAGE/mig_retry.sql"
+cp "$ROOT/supabase/rollbacks/20260729150000_ncrm_ingest_retry_sem_negocio.down.sql" "$STAGE/down_retry.sql"
+cp "$ROOT/tests/crm-nova-era/70_tests_ingest_retry.sql" "$STAGE/retry.sql"
 chmod -R a+rX "$STAGE"
 MIG="$STAGE/mig.sql"; DOWN="$STAGE/down.sql"; HARNESS="$STAGE/harness.sql"; CORE="$STAGE/core.sql"; CORE2="$STAGE/core2.sql"; CORE3="$STAGE/core3.sql"; CORE4="$STAGE/core4.sql"; MIG_SARA="$STAGE/mig_sara.sql"
 MIG_INGEST="$STAGE/mig_ingest.sql"; MIG_PROP="$STAGE/mig_prop.sql"; MIG_VISITA="$STAGE/mig_visita.sql"
 DOWN_INGEST="$STAGE/down_ingest.sql"; DOWN_PROP="$STAGE/down_prop.sql"; DOWN_VISITA="$STAGE/down_visita.sql"; INTEG="$STAGE/integ.sql"
 MIG_SARA_OBS="$STAGE/mig_sara_obs.sql"; DOWN_SARA_OBS="$STAGE/down_sara_obs.sql"; SARA_OBS="$STAGE/sara_obs.sql"
 MIG_ADMIN="$STAGE/mig_admin.sql"; DOWN_ADMIN="$STAGE/down_admin.sql"
+MIG_RETRY="$STAGE/mig_retry.sql"; DOWN_RETRY="$STAGE/down_retry.sql"; RETRY="$STAGE/retry.sql"
 PGBIN=/usr/lib/postgresql/16/bin
 PGDATA=/tmp/ncrm_pgdata
 SOCK=/tmp/ncrm_sock
@@ -93,6 +98,13 @@ PSQL -f "$MIG_SARA_OBS"
 PSQL -f "$SARA_OBS"
 PSQL -f "$MIG_ADMIN"
 PSQL -c "SELECT set_config('request.jwt.claims', json_build_object('sub','aaaaaaaa-0000-0000-0000-000000000001','role','authenticated')::text, false); SET ROLE authenticated; SELECT public.test_assert((public.ncrm_admin_status()->>'ok')::boolean, 'Regra 7: ncrm_admin_status responde ok para admin'); RESET ROLE;"
+
+echo "### Fase 4: retry do ingest (motor sem negócio) — migration corretiva + testes"
+PSQL -f "$MIG_RETRY"
+PSQL -f "$RETRY"
+PSQL -f "$DOWN_RETRY"
+PSQL -c "SELECT public.test_assert(to_regproc('ncrm_private.reconciliar_mensagens') IS NOT NULL, 'down retry preservou a função de reconciliação (comportamento original)');"
+PSQL -f "$MIG_RETRY"
 
 echo "### #29 rollback remove só objetos ncrm_* (downs aditivos ANTES do down principal)"
 PSQL -f "$DOWN_ADMIN"
