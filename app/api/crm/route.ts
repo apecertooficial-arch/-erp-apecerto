@@ -76,9 +76,21 @@ export async function GET(request: Request) {
   const { data: meProfile } = await auth.supabase.from("usuarios").select("role").eq("id", auth.user.id).maybeSingle();
   const { data: aquarioData } = await auth.supabase.rpc("aquario_status");
 
+  // Visibilidade da agenda: gestão (admin/gestor/executivo) enxerga todas as
+  // visitas; corretor enxerga só as próprias (as que estão sob o corretor_id dele).
+  const role = meProfile?.role ?? "";
+  const restrictVisits = role === "corretor";
+  let myCorretorId: number | null = null;
+  if (restrictVisits) {
+    const { data: myBroker } = await auth.supabase.from("corretores").select("id").eq("usuario_id", auth.user.id).maybeSingle();
+    myCorretorId = (myBroker?.id as number | undefined) ?? null;
+  }
+  const allVisits = visitsResult.data ?? [];
+  const visibleVisits = restrictVisits ? allVisits.filter((visit) => visit.corretor_id === myCorretorId) : allVisits;
+
   return Response.json({
     mode: "production",
-    role: meProfile?.role ?? "",
+    role,
     gerentes: gerentesData ?? [],
     pipelines: pipelinesResult.data ?? [],
     stages: stagesResult.data ?? [],
@@ -89,7 +101,7 @@ export async function GET(request: Request) {
     historico: historicoResult.data ?? [],
     tasks: tasksResult.data ?? [],
     productLinks: linksResult.data ?? [],
-    visits: visitsResult.data ?? [],
+    visits: visibleVisits,
     products: productsResult.data ?? [],
     sla: slaResult.data ?? [],
     alerts: alertsResult.data ?? [],
