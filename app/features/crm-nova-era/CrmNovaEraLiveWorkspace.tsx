@@ -25,6 +25,8 @@ import { WorkQueue } from "./components/WorkQueue";
 import { MeuDia } from "./components/MeuDia";
 import { GestaoOperacional, CadenciaConfig } from "./components/GestaoOperacional";
 import { OnboardingNovaEra } from "./components/OnboardingNovaEra";
+import { AcessoPilotos } from "./components/AcessoPilotos";
+import { RolloutChecklist, AdocaoPainel } from "./components/RolloutAdocao";
 import { LeadChatDrawer, type Deal as DealLegado, type Lead as LeadLegado } from "../crm/CrmWorkspace";
 import { rotuloIngest, rotuloSara, rotuloRunner } from "./lib/linguagem";
 import {
@@ -83,6 +85,11 @@ export function CrmNovaEraLiveWorkspace({ accessToken, profile }: { accessToken:
   // Carga inicial: busca o quadro no banco (padrão fetch-on-mount).
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { void carregarQuadro(); }, [carregarQuadro]);
+
+  // Adoção: registra a abertura do CRM Nova Era (idempotente por dia). Não altera nada comercial.
+  useEffect(() => {
+    void fetch("/api/ncrm/acesso", { method: "POST", headers: { Authorization: `Bearer ${accessToken}` } }).catch(() => {});
+  }, [accessToken]);
 
   const abrirLead = useCallback(async (id: string) => {
     setSelId(id);
@@ -199,7 +206,10 @@ export function CrmNovaEraLiveWorkspace({ accessToken, profile }: { accessToken:
 
             {vista === "gerencial" && profile.role !== "corretor" && (
               <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-                <GestaoOperacional accessToken={accessToken} onDrill={(cid) => { setDrillCorretor(cid); setVista("fila"); }} />
+{["admin", "executivo"].includes(profile.role) && <RolloutChecklist accessToken={accessToken} />}
+                                <GestaoOperacional accessToken={accessToken} onDrill={(cid) => { setDrillCorretor(cid); setVista("fila"); }} />
+                {["admin", "executivo"].includes(profile.role) && <AdocaoPainel accessToken={accessToken} />}
+                {["admin", "executivo"].includes(profile.role) && <AcessoPilotos accessToken={accessToken} />}
                 {["admin", "executivo"].includes(profile.role) && <CadenciaConfig accessToken={accessToken} />}
                 {["admin", "executivo"].includes(profile.role) && <PainelPiloto accessToken={accessToken} />}
                 <PainelGerencial leads={leads} agora={agora} accessToken={accessToken} />
