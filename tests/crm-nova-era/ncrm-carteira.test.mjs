@@ -51,6 +51,18 @@ test("carteira Nova Era vazia quando ncrm_estado = 0", () => {
   assert.equal(cheia.total, 12);
 });
 
+test("P1: exclusão sem dupla contagem funciona ACIMA de 5000 ids ingeridos", () => {
+  // 8000 alertas legados; 6000 já ingeridos (acima do antigo teto de 5000) devem ser excluídos.
+  const alertas = Array.from({ length: 8000 }, (_, i) => ({ negocioId: i + 1, atrasoHoras: 30 }));
+  const ingeridos = Array.from({ length: 6000 }, (_, i) => i + 1); // ids 1..6000 migrados
+  const d = diagnosticoCarteiraLegada(alertas, ingeridos);
+  assert.equal(d.totalLegado, 8000);
+  assert.equal(d.ignoradosJaMigrados, 6000);
+  assert.equal(d.totalConsiderado, 2000);
+  const soma = Object.values(d.porFaixa).reduce((a, b) => a + b, 0);
+  assert.equal(soma, 2000); // nenhum id > teto antigo escapou da exclusão
+});
+
 test("cenário atual: ~1118 alertas legados, carteira Nova Era vazia, sem dupla contagem", () => {
   const alertas = Array.from({ length: 1118 }, (_, i) => ({ negocioId: i + 1, atrasoHoras: (i % 5) * 20 }));
   const d = diagnosticoCarteiraLegada(alertas, []); // nada migrado ainda
