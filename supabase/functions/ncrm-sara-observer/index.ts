@@ -50,8 +50,11 @@ Deno.serve(async (req: Request) => {
     contatos: async (leadId: number) => await db.from("wa_contatos").select("id").eq("lead_id", leadId),
     conversas: async (cids: string[]) => await db.from("wa_conversas").select("id").in("contato_id", cids),
     mensagens: async (convIds: string[]) => {
-      const { data, error } = await comTimeout(db.from("wa_mensagens").select("id,direcao,tipo,conteudo,transcricao,enviado_em").in("conversa_id", convIds).order("enviado_em", { ascending: false }).limit(20), 10000);
-      return { data: (data ?? []).map((m: any) => ({ id: m.id, direcao: m.direcao, tipo: m.tipo, conteudo: m.conteudo, transcricao: m.transcricao, enviadoEm: m.enviado_em })), error };
+      // enviado_em pode ser NULL (DESC poria NULLs primeiro, roubando o limit). Ordena por
+      // criado_em (NOT NULL, ordem de chegada) e mapeia DATA EFETIVA = enviado_em ?? criado_em;
+      // montarContexto reordena pela data efetiva => 20 mais recentes corretas.
+      const { data, error } = await comTimeout(db.from("wa_mensagens").select("id,direcao,tipo,conteudo,transcricao,enviado_em,criado_em").in("conversa_id", convIds).order("criado_em", { ascending: false }).limit(20), 10000);
+      return { data: (data ?? []).map((m: any) => ({ id: m.id, direcao: m.direcao, tipo: m.tipo, conteudo: m.conteudo, transcricao: m.transcricao, enviadoEm: m.enviado_em ?? m.criado_em })), error };
     },
     // lead_avaliacoes REAL: nota, contexto (Json), feedbacks (Json), criado_em. NÃO existe "resumo".
     avaliacoes: async (leadId: number) => await db.from("lead_avaliacoes").select("nota,contexto,feedbacks,criado_em").eq("lead_id", leadId).limit(5),
@@ -103,9 +106,13 @@ Deno.serve(async (req: Request) => {
       if (error) throw new Error("registro_falhou");
       return { ok: data?.ok !== false, ja: !!data?.ja_analisado };
     },
-    // Marca TODO negócio processado (fila justa / backoff). Best-effort.
+    // Marca TODO negócio processado (fila justa / backoff). Best-effort mas NÃO silencioso:
+    // supabase-js NÃO lança em erro de RPC — verificamos {data,error} e LANÇAMOS para o runner
+    // logar sanitizado e contar em marcacoes_falhas (falha aqui compromete a rotação da fila).
     marcarResultado: async (negocioId: number, status: string, erro?: string) => {
-      await db.rpc("ncrm_sara_runner_marcar_item", { p_negocio_id: negocioId, p_status: status, p_run_id: runId, p_erro: erro ?? null });
+      const { data, error } = await db.rpc("ncrm_sara_runner_marcar_item", { p_negocio_id: negocioId, p_status: status, p_run_id: runId, p_erro: erro ?? null });
+      if (error) throw new Error(`marcar_item_rpc: ${error.message ?? "erro"}`);
+      if (data?.ok === false) throw new Error(`marcar_item_recusado: ${data?.erro ?? "erro"}`);
     },
     log: (m: string) => console.log(m),
   };

@@ -158,3 +158,22 @@ test("sanitizarErro remove tokens longos e trunca", () => {
   assert.doesNotMatch(s, /eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9/);
   assert.ok(s.length <= 200);
 });
+
+test("marcarResultado com FALHA: não derruba o lote, mas NÃO é silencioso (log + contador)", async () => {
+  const logs = [];
+  const { d, registrados } = deps({
+    listarElegiveis: async () => [{ negocioId: 1 }, { negocioId: 2 }],
+    marcarResultado: async (n) => { if (n === 1) throw new Error("marcar_item_rpc: permission denied token-eyJhbGciOiJIUzI1NiIsInR5cCJ9"); },
+    log: (m) => logs.push(m),
+  });
+  const r = await saraObserverRunner(d, OPTS);
+  assert.equal(r.processados, 2);                       // lote completo (best-effort)
+  assert.equal(r.analisados, 2);
+  assert.equal(registrados.length, 2);
+  assert.equal(r.marcacoes_falhas, 1);                  // falha CONTADA no resultado
+  const det = r.detalhes.find((x) => x.negocioId === 1);
+  assert.equal(det.marcacaoFalhou, true);               // visível no detalhe
+  const log = logs.find((l) => l.includes("marcar_item falhou"));
+  assert.ok(log, "falha de marcação deve aparecer no log");
+  assert.doesNotMatch(log, /eyJhbGciOiJIUzI1NiIsInR5cCJ9/); // sanitizado
+});

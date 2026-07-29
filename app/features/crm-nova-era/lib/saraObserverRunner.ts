@@ -47,8 +47,11 @@ export interface RunnerResultado {
   invalidos: number;
   erros: number;
   sem_contexto: number;
+  /** Falhas ao marcar item na fila justa (ncrm_sara_runner_marcar_item). Best-effort mas
+   *  NUNCA silencioso: cada falha é logada sanitizada e contada aqui — >0 = rotação em risco. */
+  marcacoes_falhas: number;
   ultimoNegocioId: number | null;
-  detalhes: Array<{ negocioId: number; status: ItemStatus; erro?: string }>;
+  detalhes: Array<{ negocioId: number; status: ItemStatus; erro?: string; marcacaoFalhou?: boolean }>;
 }
 
 /** Remove segredos/tokens prováveis e trunca — nunca vaza detalhe cru. */
@@ -80,7 +83,7 @@ async function comTimeoutRetry<T>(fn: () => Promise<T> | T, timeoutMs: number, m
 export async function saraObserverRunner(deps: RunnerDeps, opts: RunnerOpts): Promise<RunnerResultado> {
   // ERRO ao consultar modo NÃO deve virar "observer": deps.getModo() LANÇA em falha de banco.
   const modo = await deps.getModo();
-  const base: RunnerResultado = { executou: false, modo, processados: 0, analisados: 0, pulados_ja_analisado: 0, invalidos: 0, erros: 0, sem_contexto: 0, ultimoNegocioId: null, detalhes: [] };
+  const base: RunnerResultado = { executou: false, modo, processados: 0, analisados: 0, pulados_ja_analisado: 0, invalidos: 0, erros: 0, sem_contexto: 0, marcacoes_falhas: 0, ultimoNegocioId: null, detalhes: [] };
 
   // KILL-SWITCH / gate: processa SOMENTE em observer. off/suggest/execute não rodam o runner.
   if (modo !== "observer") { deps.log?.(`runner ignorado: modo=${modo}`); return base; }
@@ -98,8 +101,17 @@ export async function saraObserverRunner(deps: RunnerDeps, opts: RunnerOpts): Pr
     else if (status === "invalido") base.invalidos++;
     else if (status === "sem_contexto") base.sem_contexto++;
     else base.erros++;
-    base.detalhes.push({ negocioId, status, ...(erro ? { erro } : {}) });
-    if (deps.marcarResultado) { try { await deps.marcarResultado(negocioId, status, erro); } catch { /* marcar nunca derruba o lote */ } }
+    const detalhe: { negocioId: number; status: ItemStatus; erro?: string; marcacaoFalhou?: boolean } = { negocioId, status, ...(erro ? { erro } : {}) };
+    if (deps.marcarResultado) {
+      try { await deps.marcarResultado(negocioId, status, erro); }
+      catch (e) {
+        // Best-effort ≠ silencioso: não derruba o lote, mas aparece no log E no resultado.
+        base.marcacoes_falhas++;
+        detalhe.marcacaoFalhou = true;
+        deps.log?.(`marcar_item falhou negocio=${negocioId}: ${sanitizarErro(e)}`);
+      }
+    }
+    base.detalhes.push(detalhe);
   };
 
   for (const el of elegiveis) {
