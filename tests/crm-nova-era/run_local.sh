@@ -46,6 +46,9 @@ cp "$ROOT/supabase/rollbacks/20260731100000_ncrm_fase6_pilotos.down.sql" "$STAGE
 cp "$ROOT/supabase/migrations/20260801100000_ncrm_fase6b_carteira_saude.sql" "$STAGE/mig_f6b.sql"
 cp "$ROOT/supabase/rollbacks/20260801100000_ncrm_fase6b_carteira_saude.down.sql" "$STAGE/down_f6b.sql"
 cp "$ROOT/tests/crm-nova-era/90_tests_fase6b.sql" "$STAGE/f6b.sql"
+cp "$ROOT/supabase/migrations/20260802100000_ncrm_ingest_lifecycle.sql" "$STAGE/mig_f61.sql"
+cp "$ROOT/supabase/rollbacks/20260802100000_ncrm_ingest_lifecycle.down.sql" "$STAGE/down_f61.sql"
+cp "$ROOT/tests/crm-nova-era/95_tests_ingest_lifecycle.sql" "$STAGE/f61.sql"
 chmod -R a+rX "$STAGE"
 MIG="$STAGE/mig.sql"; DOWN="$STAGE/down.sql"; HARNESS="$STAGE/harness.sql"; CORE="$STAGE/core.sql"; CORE2="$STAGE/core2.sql"; CORE3="$STAGE/core3.sql"; CORE4="$STAGE/core4.sql"; MIG_SARA="$STAGE/mig_sara.sql"
 MIG_INGEST="$STAGE/mig_ingest.sql"; MIG_PROP="$STAGE/mig_prop.sql"; MIG_VISITA="$STAGE/mig_visita.sql"
@@ -58,6 +61,7 @@ MIG_AJUSTES="$STAGE/mig_ajustes.sql"; DOWN_AJUSTES="$STAGE/down_ajustes.sql"; AJ
 MIG_F5="$STAGE/mig_f5.sql"; DOWN_F5="$STAGE/down_f5.sql"; F5="$STAGE/f5.sql"
 MIG_F6A="$STAGE/mig_f6a.sql"; DOWN_F6A="$STAGE/down_f6a.sql"
 MIG_F6B="$STAGE/mig_f6b.sql"; DOWN_F6B="$STAGE/down_f6b.sql"; F6B="$STAGE/f6b.sql"
+MIG_F61="$STAGE/mig_f61.sql"; DOWN_F61="$STAGE/down_f61.sql"; F61="$STAGE/f61.sql"
 PGBIN=/usr/lib/postgresql/16/bin
 PGDATA=/tmp/ncrm_pgdata
 SOCK=/tmp/ncrm_sock
@@ -143,6 +147,20 @@ echo "### Fase 6 (PR A + PR B): migrations + testes de treinamento, carteira ant
 PSQL -f "$MIG_F6A"
 PSQL -f "$MIG_F6B"
 PSQL -f "$F6B"
+echo "### Fase 6.1: ciclo de vida da fila de ingest + testes + rollback/reaplicacao"
+PSQL -f "$MIG_F61"
+PSQL -f "$F61"
+PSQL -f "$DOWN_F61"
+PSQL -c "SELECT public.test_assert(to_regclass('public.ncrm_ingest_lifecycle_config') IS NULL
+         AND to_regproc('public.ncrm_ingest_classificar_backlog') IS NULL
+         AND to_regproc('public.ncrm_ingest_fila_resumo') IS NULL, 'F61 down: objetos novos removidos');"
+PSQL -c "SELECT public.test_assert(to_regclass('public.ncrm_ingest_checkpoint') IS NOT NULL
+         AND (SELECT count(*) FROM public.ncrm_ingest_checkpoint) > 0
+         AND to_regproc('ncrm_private.reconciliar_mensagens') IS NOT NULL,
+         'F61 down: fila preservada e reconciliacao anterior restaurada');"
+PSQL -f "$MIG_F61"
+PSQL -c "SELECT public.test_assert(to_regproc('public.ncrm_ingest_fila_resumo') IS NOT NULL, 'F61 migration reaplicada apos rollback');"
+
 echo "### Fase 6 PR B: rollback versionado remove SO os objetos novos e reaplica"
 PSQL -f "$DOWN_F6B"
 PSQL -c "SELECT public.test_assert(to_regclass('public.ncrm_treinamento') IS NULL AND to_regclass('public.ncrm_migracao_item') IS NULL
@@ -155,6 +173,7 @@ PSQL -c "SELECT public.test_assert(to_regclass('public.ncrm_estado') IS NOT NULL
 PSQL -f "$MIG_F6B"
 PSQL -c "SELECT public.test_assert(to_regproc('public.ncrm_migracao_preview') IS NOT NULL AND to_regproc('public.ncrm_saude') IS NOT NULL,
          'F6B migration reaplicada apos rollback');"
+PSQL -f "$DOWN_F61"
 PSQL -f "$DOWN_F6B"
 PSQL -f "$DOWN_F6A"
 
