@@ -21,10 +21,18 @@ cp "$ROOT/supabase/rollbacks/20260728200000_ncrm_ingest_checkpoint.down.sql" "$S
 cp "$ROOT/supabase/rollbacks/20260728200100_ncrm_proposta_esteira.down.sql" "$STAGE/down_prop.sql"
 cp "$ROOT/supabase/rollbacks/20260728200200_ncrm_visita_atomica.down.sql" "$STAGE/down_visita.sql"
 cp "$ROOT/tests/crm-nova-era/50_tests_integracao.sql" "$STAGE/integ.sql"
+# Fase 3: Sara modo observador (migration aditiva + down + testes)
+cp "$ROOT/supabase/migrations/20260728210000_ncrm_sara_observer.sql" "$STAGE/mig_sara_obs.sql"
+cp "$ROOT/supabase/rollbacks/20260728210000_ncrm_sara_observer.down.sql" "$STAGE/down_sara_obs.sql"
+cp "$ROOT/tests/crm-nova-era/60_tests_sara_observer.sql" "$STAGE/sara_obs.sql"
+cp "$ROOT/supabase/migrations/20260728210100_ncrm_admin_status.sql" "$STAGE/mig_admin.sql"
+cp "$ROOT/supabase/rollbacks/20260728210100_ncrm_admin_status.down.sql" "$STAGE/down_admin.sql"
 chmod -R a+rX "$STAGE"
 MIG="$STAGE/mig.sql"; DOWN="$STAGE/down.sql"; HARNESS="$STAGE/harness.sql"; CORE="$STAGE/core.sql"; CORE2="$STAGE/core2.sql"; CORE3="$STAGE/core3.sql"; CORE4="$STAGE/core4.sql"; MIG_SARA="$STAGE/mig_sara.sql"
 MIG_INGEST="$STAGE/mig_ingest.sql"; MIG_PROP="$STAGE/mig_prop.sql"; MIG_VISITA="$STAGE/mig_visita.sql"
 DOWN_INGEST="$STAGE/down_ingest.sql"; DOWN_PROP="$STAGE/down_prop.sql"; DOWN_VISITA="$STAGE/down_visita.sql"; INTEG="$STAGE/integ.sql"
+MIG_SARA_OBS="$STAGE/mig_sara_obs.sql"; DOWN_SARA_OBS="$STAGE/down_sara_obs.sql"; SARA_OBS="$STAGE/sara_obs.sql"
+MIG_ADMIN="$STAGE/mig_admin.sql"; DOWN_ADMIN="$STAGE/down_admin.sql"
 PGBIN=/usr/lib/postgresql/16/bin
 PGDATA=/tmp/ncrm_pgdata
 SOCK=/tmp/ncrm_sock
@@ -80,7 +88,16 @@ PSQL -f "$MIG_VISITA"
 echo "### testes de INTEGRAÇÃO (visita atômica + rollback, proposta atômica + not-venda + rollback, reconciliação)"
 PSQL -f "$INTEG"
 
+echo "### Fase 3: Sara modo observador (migration aditiva) + testes"
+PSQL -f "$MIG_SARA_OBS"
+PSQL -f "$SARA_OBS"
+PSQL -f "$MIG_ADMIN"
+PSQL -c "SELECT set_config('request.jwt.claims', json_build_object('sub','aaaaaaaa-0000-0000-0000-000000000001','role','authenticated')::text, false); SET ROLE authenticated; SELECT public.test_assert((public.ncrm_admin_status()->>'ok')::boolean, 'Regra 7: ncrm_admin_status responde ok para admin'); RESET ROLE;"
+
 echo "### #29 rollback remove só objetos ncrm_* (downs aditivos ANTES do down principal)"
+PSQL -f "$DOWN_ADMIN"
+PSQL -f "$DOWN_SARA_OBS"
+PSQL -c "SELECT public.test_assert(to_regclass('public.ncrm_sara_config') IS NULL AND to_regclass('public.ncrm_sara_analise') IS NULL AND to_regproc('public.ncrm_sara_definir_modo') IS NULL, '#29 down Sara observer: objetos removidos');"
 PSQL -f "$DOWN_VISITA"
 PSQL -f "$DOWN_PROP"
 PSQL -f "$DOWN_INGEST"
@@ -100,10 +117,14 @@ PSQL -f "$MIG"
 PSQL -f "$MIG_INGEST"
 PSQL -f "$MIG_PROP"
 PSQL -f "$MIG_VISITA"
+PSQL -f "$MIG_SARA_OBS"
+PSQL -f "$MIG_ADMIN"
 PSQL -c "SELECT public.test_assert(to_regclass('public.ncrm_estado') IS NOT NULL AND to_regnamespace('ncrm_private') IS NOT NULL
          AND to_regclass('public.ncrm_ingest_checkpoint') IS NOT NULL
          AND to_regproc('public.ncrm_registrar_proposta_esteira') IS NOT NULL
-         AND to_regproc('public.ncrm_agendar_visita_e_encaminhar') IS NOT NULL, '#30 migration (core + integração) reaplicada com sucesso');"
+         AND to_regproc('public.ncrm_agendar_visita_e_encaminhar') IS NOT NULL
+         AND to_regclass('public.ncrm_sara_config') IS NOT NULL
+         AND to_regproc('public.ncrm_sara_registrar_analise') IS NOT NULL, '#30 migration (core + integração + Sara observer) reaplicada com sucesso');"
 
 echo "### baseline de vendas (nunca deve mudar por proposta) ==> confirmação final"
 PSQL -c "SELECT 'vendas_total='||count(*) FROM public.vendas;"
