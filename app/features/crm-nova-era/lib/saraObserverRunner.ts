@@ -22,18 +22,21 @@ export interface Contexto { hash: string; texto: string; etapaAtual: string | nu
 export interface RunnerDeps {
   getModo(): Promise<SaraModoRunner>;
   listarElegiveis(lote: number): Promise<Elegivel[]>;
-  lerContexto(negocioId: number): Promise<Contexto>;
+  /** null => SEM CONTEXTO (legítimo). LANÇAR => erro de banco (fail-closed). */
+  lerContexto(negocioId: number): Promise<Contexto | null>;
   /** Idempotência por (negócio, contexto): mesmo texto em negócios diferentes NÃO colide. */
   jaAnalisado(negocioId: number, hash: string): Promise<boolean>;
   chamarIaRouter(input: { negocioId: number; texto: string }): Promise<unknown>;
   validar(raw: unknown, ctx: Contexto): { ok: boolean; analise?: Record<string, unknown> };
   registrar(negocioId: number, hash: string, analise: Record<string, unknown>): Promise<{ ok: boolean; ja?: boolean }>;
+  /** Marca o RESULTADO de CADA negócio processado (fila justa / backoff). Opcional. */
+  marcarResultado?: (negocioId: number, status: ItemStatus, erro?: string) => Promise<void>;
   log?: (msg: string) => void;
 }
 
 export interface RunnerOpts { lote: number; timeoutMs: number; maxRetries: number; }
 
-export type ItemStatus = "analisado" | "pulado" | "invalido" | "erro";
+export type ItemStatus = "analisado" | "ja_analisado" | "invalido" | "erro" | "sem_contexto";
 
 export interface RunnerResultado {
   executou: boolean;
@@ -43,6 +46,8 @@ export interface RunnerResultado {
   pulados_ja_analisado: number;
   invalidos: number;
   erros: number;
+  sem_contexto: number;
+  ultimoNegocioId: number | null;
   detalhes: Array<{ negocioId: number; status: ItemStatus; erro?: string }>;
 }
 
@@ -73,8 +78,9 @@ async function comTimeoutRetry<T>(fn: () => Promise<T> | T, timeoutMs: number, m
 }
 
 export async function saraObserverRunner(deps: RunnerDeps, opts: RunnerOpts): Promise<RunnerResultado> {
+  // ERRO ao consultar modo NÃO deve virar "observer": deps.getModo() LANÇA em falha de banco.
   const modo = await deps.getModo();
-  const base: RunnerResultado = { executou: false, modo, processados: 0, analisados: 0, pulados_ja_analisado: 0, invalidos: 0, erros: 0, detalhes: [] };
+  const base: RunnerResultado = { executou: false, modo, processados: 0, analisados: 0, pulados_ja_analisado: 0, invalidos: 0, erros: 0, sem_contexto: 0, ultimoNegocioId: null, detalhes: [] };
 
   // KILL-SWITCH / gate: processa SOMENTE em observer. off/suggest/execute não rodam o runner.
   if (modo !== "observer") { deps.log?.(`runner ignorado: modo=${modo}`); return base; }
@@ -83,23 +89,35 @@ export async function saraObserverRunner(deps: RunnerDeps, opts: RunnerOpts): Pr
   const lote = Math.max(0, Math.min(opts.lote, 500));
   const elegiveis = await deps.listarElegiveis(lote);
 
-  for (const el of elegiveis) {
+  // Marca o RESULTADO de TODO negócio processado (não só quando registra) — participa da fila justa.
+  const finalizar = async (negocioId: number, status: ItemStatus, erro?: string) => {
     base.processados++;
+    base.ultimoNegocioId = negocioId;
+    if (status === "analisado") base.analisados++;
+    else if (status === "ja_analisado") base.pulados_ja_analisado++;
+    else if (status === "invalido") base.invalidos++;
+    else if (status === "sem_contexto") base.sem_contexto++;
+    else base.erros++;
+    base.detalhes.push({ negocioId, status, ...(erro ? { erro } : {}) });
+    if (deps.marcarResultado) { try { await deps.marcarResultado(negocioId, status, erro); } catch { /* marcar nunca derruba o lote */ } }
+  };
+
+  for (const el of elegiveis) {
     try {
       const ctx = await deps.lerContexto(el.negocioId);
+      if (ctx === null) { await finalizar(el.negocioId, "sem_contexto"); continue; } // sem contexto legítimo
       // NÃO chama IA para contexto já analisado (economia + idempotência por negócio+hash).
-      if (await deps.jaAnalisado(el.negocioId, ctx.hash)) { base.pulados_ja_analisado++; base.detalhes.push({ negocioId: el.negocioId, status: "pulado" }); continue; }
+      if (await deps.jaAnalisado(el.negocioId, ctx.hash)) { await finalizar(el.negocioId, "ja_analisado"); continue; }
       const raw = await comTimeoutRetry(() => deps.chamarIaRouter({ negocioId: el.negocioId, texto: ctx.texto }), opts.timeoutMs, opts.maxRetries);
       const v = deps.validar(raw, ctx);
-      if (!v.ok || !v.analise) { base.invalidos++; base.detalhes.push({ negocioId: el.negocioId, status: "invalido", erro: "resposta_invalida" }); continue; }
+      if (!v.ok || !v.analise) { await finalizar(el.negocioId, "invalido", "resposta_invalida"); continue; }
       const r = await deps.registrar(el.negocioId, ctx.hash, v.analise);
-      if (r.ja) { base.pulados_ja_analisado++; base.detalhes.push({ negocioId: el.negocioId, status: "pulado" }); }
-      else if (r.ok) { base.analisados++; base.detalhes.push({ negocioId: el.negocioId, status: "analisado" }); }
-      else { base.erros++; base.detalhes.push({ negocioId: el.negocioId, status: "erro", erro: "registro_recusado" }); }
+      if (r.ja) await finalizar(el.negocioId, "ja_analisado");
+      else if (r.ok) await finalizar(el.negocioId, "analisado");
+      else await finalizar(el.negocioId, "erro", "registro_recusado");
     } catch (e) {
       // FALHA ISOLADA POR NEGÓCIO: nunca interrompe o lote; erro sanitizado.
-      base.erros++;
-      base.detalhes.push({ negocioId: el.negocioId, status: "erro", erro: sanitizarErro(e) });
+      await finalizar(el.negocioId, "erro", sanitizarErro(e));
     }
   }
   return base;

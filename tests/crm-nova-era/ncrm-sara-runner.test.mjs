@@ -113,6 +113,46 @@ test("handler: segredo correto => 200 e roda o runner", async () => {
   assert.equal(registrados.length, 3);
 });
 
+test("getModo com erro de banco => NÃO executa (não assume observer)", async () => {
+  const { d, registrados } = deps({ getModo: async () => { throw new Error("erro_modo"); } });
+  await assert.rejects(() => saraObserverRunner(d, OPTS)); // propaga => Edge retorna 500, não roda
+  assert.equal(registrados.length, 0);
+});
+
+test("lerContexto null => status sem_contexto (não chama IA, não registra)", async () => {
+  let ia = 0;
+  const { d, registrados } = deps({
+    listarElegiveis: async () => [{ negocioId: 1 }, { negocioId: 2 }],
+    lerContexto: async (n) => (n === 1 ? null : CTX(n)),
+    chamarIaRouter: async () => { ia++; return {}; },
+  });
+  const r = await saraObserverRunner(d, OPTS);
+  assert.equal(r.sem_contexto, 1);
+  assert.equal(r.analisados, 1);
+  assert.equal(ia, 1);
+  assert.equal(registrados.length, 1);
+});
+
+test("marcarResultado é chamado para TODO negócio processado (todos os status)", async () => {
+  const marcados = [];
+  const { d } = deps({
+    listarElegiveis: async () => [{ negocioId: 1 }, { negocioId: 2 }, { negocioId: 3 }, { negocioId: 4 }],
+    lerContexto: async (n) => (n === 4 ? null : CTX(n)),                 // 4 => sem_contexto
+    jaAnalisado: async (n) => n === 2,                                    // 2 => ja_analisado
+    validar: (raw, ctx) => (ctx.negocioId === 3 ? { ok: false } : { ok: true, analise: analiseOk }), // 3 => invalido
+    marcarResultado: async (n, status, erro) => { marcados.push({ n, status }); },
+  });
+  const r = await saraObserverRunner(d, OPTS);
+  assert.equal(marcados.length, 4); // um por negócio processado
+  assert.equal(r.processados, 4);
+  const porStatus = Object.fromEntries(marcados.map((m) => [m.n, m.status]));
+  assert.equal(porStatus[1], "analisado");
+  assert.equal(porStatus[2], "ja_analisado");
+  assert.equal(porStatus[3], "invalido");
+  assert.equal(porStatus[4], "sem_contexto");
+  assert.equal(r.ultimoNegocioId, 4);
+});
+
 test("sanitizarErro remove tokens longos e trunca", () => {
   const s = sanitizarErro(new Error("falha eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9 no banco"));
   assert.doesNotMatch(s, /eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9/);

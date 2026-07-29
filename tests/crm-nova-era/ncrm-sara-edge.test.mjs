@@ -49,12 +49,23 @@ test("segredo incorreto => 401, sem escrever", async () => {
   assert.equal(escritas.length, 0);
 });
 
-test("contexto indisponível (404/500) => erro isolado, sem escrever", async () => {
-  const { d, escritas } = deps({ lerContexto: async () => { throw new Error("contexto_indisponivel"); } });
+test("erro de banco no contexto => erro isolado (fail-closed), sem escrever nem chamar IA", async () => {
+  let ia = 0;
+  const { d, escritas } = deps({ lerContexto: async () => { throw new Error("erro_estado"); }, chamarIaRouter: async () => { ia++; return sugestaoValida; } });
   const r = await run(d);
   assert.equal(r.status, 200);
   assert.equal(r.body.erros, 1);
+  assert.equal(ia, 0);            // não chama IA em falha de banco
+  assert.equal(escritas.length, 0);
+});
+
+test("sem_contexto (lerContexto null) => status sem_contexto, sem IA, sem escrita", async () => {
+  let ia = 0;
+  const { d, escritas } = deps({ lerContexto: async () => null, chamarIaRouter: async () => { ia++; return sugestaoValida; } });
+  const r = await run(d);
+  assert.equal(r.body.sem_contexto, 1);
   assert.equal(r.body.analisados, 0);
+  assert.equal(ia, 0);
   assert.equal(escritas.length, 0);
 });
 
