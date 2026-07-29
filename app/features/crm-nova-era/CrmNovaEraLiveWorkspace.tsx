@@ -24,6 +24,7 @@ import { PainelPiloto, DiagnosticoLegado } from "./components/PainelPiloto";
 import { WorkQueue } from "./components/WorkQueue";
 import { MeuDia } from "./components/MeuDia";
 import { GestaoOperacional, CadenciaConfig } from "./components/GestaoOperacional";
+import { OnboardingNovaEra } from "./components/OnboardingNovaEra";
 import {
   mapEstadoToLead, enriquecerComEventos,
   type EstadoRow, type EventoRow, type PropostaRow,
@@ -122,6 +123,7 @@ export function CrmNovaEraLiveWorkspace({ accessToken, profile }: { accessToken:
           )}
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <OnboardingNovaEra userId={profile.userId} />
           {["admin", "executivo"].includes(profile.role) && <IngestAdminControl accessToken={accessToken} />}
           <button className="nova-crm-btn ghost" onClick={() => void carregarQuadro()} disabled={loading}>↻ Atualizar</button>
         </div>
@@ -225,7 +227,8 @@ function LivePanel({
   const [saraLoad, setSaraLoad] = useState(false);
   const [prefill, setPrefill] = useState<{ proximaTipo?: string; prazo?: string }>({});
   const [justif, setJustif] = useState<null | { aberto: boolean; texto: string; msg: string | null }>(null);
-  const acaoVencida = !!(lead.proximaAcaoEm && Date.parse(lead.proximaAcaoEm) < Date.now());
+  const [agoraMs] = useState(() => Date.now());
+  const acaoVencida = !!(lead.proximaAcaoEm && Date.parse(lead.proximaAcaoEm) < agoraMs);
   const timeline = montarTimeline(lead);
   const emSaida = !!(lead.visitaAgendadaEm || lead.proposta || lead.descartadoMotivo || lead.nutricao);
 
@@ -309,15 +312,47 @@ function LivePanel({
             {sara && (
               <div className="nova-crm-sara-card">
                 <div><b>Sugestão da Sara</b> — você decide (a Sara não altera nada sozinha).</div>
+                {sara.evidencia_suficiente === false && (
+                  <div style={{ background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 8, padding: 8, fontSize: 12, margin: "6px 0" }}>
+                    <b>Evidência insuficiente</b> — a conversa ainda não sustenta conclusões fortes. A Sara limitou-se ao que existe; priorize coletar as respostas que faltam.
+                  </div>
+                )}
                 <ul className="nova-crm-tl-list">
-                  <li><b>Próxima ação:</b> {String(sara.proxima_acao ?? "—")}</li>
+                  {sara.justificativa != null && <li><b>Resumo:</b> {String(sara.justificativa)}</li>}
+                  {sara.intencao_detectada != null && <li><b>O que o cliente procura:</b> {String(sara.intencao_detectada)}</li>}
+                  <li><b>Próxima ação:</b> {String(sara.proxima_acao ?? "—")}{sara.prazo_sugerido ? ` · até ${new Date(String(sara.prazo_sugerido)).toLocaleString("pt-BR")}` : ""}</li>
                   <li><b>Temperatura:</b> {String(sara.temperatura ?? "—")} · <b>Risco:</b> {String(sara.risco_abandono ?? "—")}</li>
                   <li><b>Visita:</b> {String(sara.possibilidade_visita ?? "—")} · <b>Proposta:</b> {String(sara.possibilidade_proposta ?? "—")}</li>
+                  {Array.isArray(sara.objecoes) && (sara.objecoes as string[]).length > 0 && (
+                    <li><b>Objeções:</b> {(sara.objecoes as string[]).slice(0, 4).join(" · ")}</li>
+                  )}
                   <li><b>Confiança:</b> {Math.round(Number(sara.confianca ?? 0) * 100)}%</li>
                   {Array.isArray(sara.evidencias) && (sara.evidencias as string[]).length > 0 && (
                     <li><b>Evidências:</b> {(sara.evidencias as string[]).slice(0, 3).join(" · ")}</li>
                   )}
                 </ul>
+                {(sara.objetivo_abordagem || sara.whatsapp_sugerido || (Array.isArray(sara.roteiro_ligacao) && (sara.roteiro_ligacao as string[]).length > 0)) && (
+                  <div style={{ borderTop: "1px dashed #e5e7eb", marginTop: 6, paddingTop: 6, fontSize: 13 }}>
+                    <b>Coach da abordagem</b>
+                    {sara.objetivo_abordagem != null && <p style={{ margin: "4px 0" }}><b>Objetivo:</b> {String(sara.objetivo_abordagem)}</p>}
+                    {Array.isArray(sara.roteiro_ligacao) && (sara.roteiro_ligacao as string[]).length > 0 && (
+                      <ol style={{ margin: "4px 0 4px 18px", padding: 0 }}>
+                        {(sara.roteiro_ligacao as string[]).map((r, i) => <li key={i}>{r}</li>)}
+                      </ol>
+                    )}
+                    {sara.whatsapp_sugerido != null && (
+                      <p style={{ margin: "4px 0", background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 8, padding: 6 }}>
+                        <b>WhatsApp sugerido</b> (você envia, se quiser): “{String(sara.whatsapp_sugerido)}”
+                      </p>
+                    )}
+                    {Array.isArray(sara.perguntas_faltantes) && (sara.perguntas_faltantes as string[]).length > 0 && (
+                      <p style={{ margin: "4px 0" }}><b>Perguntas que faltam:</b> {(sara.perguntas_faltantes as string[]).join(" · ")}</p>
+                    )}
+                    {Array.isArray(sara.cuidados) && (sara.cuidados as string[]).length > 0 && (
+                      <p style={{ margin: "4px 0", color: "#92400e" }}><b>Cuidados:</b> {(sara.cuidados as string[]).join(" · ")}</p>
+                    )}
+                  </div>
+                )}
                 <div style={{ display: "flex", gap: 8 }}>
                   <button className="nova-crm-btn" disabled={busy} onClick={async () => {
                     // registra a DECISÃO HUMANA "aceita" (auditável) antes de abrir o formulário
@@ -397,17 +432,25 @@ function ConversaLead({ accessToken, negocioId }: { accessToken: string; negocio
       {!msgs && !erro && <div className="nova-crm-hint">Carregando conversa…</div>}
       {msgs && msgs.length === 0 && <div className="nova-crm-hint">Sem mensagens para este lead.</div>}
       {msgs && msgs.length > 0 && (
-        <ul className="nova-crm-tl-list" style={{ maxHeight: 260, overflow: "auto" }}>
-          {msgs.map((m) => (
-            <li key={m.id} style={{ display: "flex", flexDirection: "column", gap: 2, padding: "4px 0" }}>
-              <span>{(m.direcao || "?").toUpperCase()} · {m.enviado_em ? new Date(m.enviado_em).toLocaleString("pt-BR") : (m.criado_em ? new Date(m.criado_em).toLocaleString("pt-BR") : "—")} {m.status ? `· ${m.status}` : ""}</span>
-              {m.tipo === "audio" && m.media_url && <audio controls preload="none" src={m.media_url} style={{ maxWidth: "100%" }} />}
-              {(m.tipo === "imagem" || m.tipo === "foto") && m.media_url && <a href={m.media_url} target="_blank" rel="noreferrer">imagem</a>}
-              {m.conteudo && <span>{m.conteudo}</span>}
-              {m.transcricao && <span style={{ fontStyle: "italic", color: "var(--nc-muted)" }}>“{m.transcricao}”</span>}
-              {!m.conteudo && !m.transcricao && !m.media_url && <span className="nova-crm-hint">({m.tipo || "mensagem"})</span>}
-            </li>
-          ))}
+        <ul className="nova-crm-tl-list" style={{ maxHeight: 320, overflow: "auto", display: "flex", flexDirection: "column", gap: 6, padding: 4 }}>
+          {msgs.map((m) => {
+            const doCliente = ["recebida", "entrada", "in", "inbound", "received"].includes(String(m.direcao ?? "").toLowerCase());
+            return (
+              <li key={m.id} style={{ display: "flex", justifyContent: doCliente ? "flex-start" : "flex-end", listStyle: "none" }}>
+                <div style={{ maxWidth: "82%", borderRadius: 12, padding: "6px 10px", fontSize: 13,
+                  background: doCliente ? "#f1f5f9" : "#dcfce7", border: "1px solid " + (doCliente ? "#e2e8f0" : "#bbf7d0") }}>
+                  <div style={{ fontSize: 10, color: "#6b7280", marginBottom: 2 }}>
+                    {doCliente ? "Cliente" : "Corretor"} · {m.enviado_em ? new Date(m.enviado_em).toLocaleString("pt-BR") : (m.criado_em ? new Date(m.criado_em).toLocaleString("pt-BR") : "—")}{m.status ? ` · ${m.status}` : ""}
+                  </div>
+                  {m.tipo === "audio" && m.media_url && <audio controls preload="none" src={m.media_url} style={{ maxWidth: "100%" }} />}
+                  {(m.tipo === "imagem" || m.tipo === "foto") && m.media_url && <a href={m.media_url} target="_blank" rel="noreferrer">imagem</a>}
+                  {m.conteudo && <div>{m.conteudo}</div>}
+                  {m.transcricao && <div style={{ fontStyle: "italic", color: "#475569", marginTop: 2 }}>transcrição: “{m.transcricao}”</div>}
+                  {!m.conteudo && !m.transcricao && !m.media_url && <span className="nova-crm-hint">({m.tipo || "mensagem"})</span>}
+                </div>
+              </li>
+            );
+          })}
         </ul>
       )}
     </div>

@@ -202,6 +202,18 @@ export function PainelPiloto({ accessToken }: { accessToken: string }) {
         </div>
       )}
 
+      <div style={{ marginTop: 10, borderTop: "1px dashed #e5e7eb", paddingTop: 8, fontSize: 12, color: "#374151" }}>
+        <b>Rollout controlado (Fase 5)</b>
+        <p style={{ margin: "4px 0" }}>
+          Pilotos: canário compilado (Samuel) + allowlist via <code>CRM_NOVA_ERA_ALLOWLIST</code>.
+          Allowlist vazia = somente Samuel. O CRM antigo continua disponível para todos.
+        </p>
+        <p style={{ margin: "4px 0", color: "#6b7280" }}>
+          Classificação assistida da carteira antiga pela Sara: <b>preparada, não executada</b> — depende de
+          autorização futura. Nenhuma migração em massa é feita por este painel.
+        </p>
+      </div>
+
       {modal && <ModalAtivacao token={accessToken} ativo={ativo} onFechar={() => setModal(false)} onMudou={() => void carregar()} />}
     </div>
   );

@@ -6,6 +6,7 @@
  * Só leitura + navegação: nenhuma ação automática.
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { esperaHumana } from "../lib/meuDia";
 
 type Json = Record<string, unknown>;
 
@@ -38,12 +39,6 @@ const COR_PRIORIDADE: Record<number, string> = {
   1: "#16a34a", 2: "#2563eb", 3: "#dc2626", 4: "#d97706", 5: "#b91c1c", 6: "#7c3aed", 7: "#6b7280",
 };
 
-export function esperaHumana(min: number): string {
-  if (!Number.isFinite(min) || min <= 0) return "agora";
-  if (min < 60) return `${Math.round(min)} min`;
-  if (min < 60 * 24) return `${Math.floor(min / 60)}h ${Math.round(min % 60)}min`;
-  return `${Math.floor(min / (60 * 24))}d ${Math.floor((min % (60 * 24)) / 60)}h`;
-}
 
 export function MeuDia({ accessToken, corretorFiltro, onAbrir }: {
   accessToken: string;
@@ -92,7 +87,7 @@ export function MeuDia({ accessToken, corretorFiltro, onAbrir }: {
       {carregando && <div className="nova-crm-empty">Carregando sua fila…</div>}
       {erro && <div className="nova-crm-notice" style={{ color: "#b42318" }}>{erro}</div>}
       {!carregando && !erro && itens.length === 0 && (
-        <div className="nova-crm-empty">Nada pendente neste filtro. Bom trabalho — confira "Próximos" para se antecipar.</div>
+        <div className="nova-crm-empty">Nada pendente neste filtro. Bom trabalho — confira o filtro Próximos para se antecipar.</div>
       )}
 
       {itens.map((i) => (
