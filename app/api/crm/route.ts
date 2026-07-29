@@ -85,17 +85,19 @@ export async function GET(request: Request) {
   const { data: gerentesData } = await auth.supabase.from("gerentes").select("id,nome,geral,corretor_id").eq("ativo", true).order("geral", { ascending: false });
   const { data: meProfile } = await auth.supabase.from("usuarios").select("role").eq("id", auth.user.id).maybeSingle();
 
-  // Visibilidade da agenda: gestão (admin/gestor/executivo) enxerga todas as
-  // visitas; corretor enxerga só as próprias (as que estão sob o corretor_id dele).
+  // Visibilidade da agenda:
+  //  - Visitas: todos veem todas (agenda compartilhada da equipe).
+  //  - Tarefas: privadas por corretor — cada corretor só vê as suas; gestão
+  //    (admin/gestor/executivo) continua vendo todas.
   const role = meProfile?.role ?? "";
-  const restrictVisits = role === "corretor";
+  const restrictTasks = role === "corretor";
   let myCorretorId: number | null = null;
-  if (restrictVisits) {
+  if (restrictTasks) {
     const { data: myBroker } = await auth.supabase.from("corretores").select("id").eq("usuario_id", auth.user.id).maybeSingle();
     myCorretorId = (myBroker?.id as number | undefined) ?? null;
   }
-  const allVisits = visitsResult.data ?? [];
-  const visibleVisits = restrictVisits ? allVisits.filter((visit) => visit.corretor_id === myCorretorId) : allVisits;
+  const allTasks = tasksResult.data ?? [];
+  const visibleTasks = restrictTasks ? allTasks.filter((task) => task.corretor_id === myCorretorId) : allTasks;
 
   return Response.json({
     mode: "production",
@@ -109,9 +111,9 @@ export async function GET(request: Request) {
     brokers: brokersResult.data ?? [],
     activities: activitiesResult.data ?? [],
     historico: historicoResult.data ?? [],
-    tasks: tasksResult.data ?? [],
+    tasks: visibleTasks,
     productLinks: linksResult.data ?? [],
-    visits: visibleVisits,
+    visits: visitsResult.data ?? [],
     products: productsResult.data ?? [],
     sla: slaResult.data ?? [],
     alerts: alertsResult.data ?? [],
