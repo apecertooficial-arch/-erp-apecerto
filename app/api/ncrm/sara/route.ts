@@ -34,7 +34,13 @@ const OVERRIDE =
   "temperatura (frio|morno|quente|negociando), intencao_detectada, proxima_acao (1 frase concreta), " +
   "prazo_sugerido (ISO 8601), objecoes (array), risco_abandono (baixo|medio|alto), " +
   "possibilidade_visita (baixa|media|alta), possibilidade_proposta (baixa|media|alta), justificativa, " +
-  "confianca (0..1), evidencias (array de trechos reais da conversa). Nada além do JSON. Você apenas sugere.";
+  "confianca (0..1), evidencias (array de trechos reais da conversa), " +
+  "objetivo_abordagem (1 frase), roteiro_ligacao (array de 3 a 5 passos curtos), " +
+  "whatsapp_sugerido (mensagem curta e humana, sem pressão, <=300 chars), " +
+  "perguntas_faltantes (array), cuidados (array de cuidados para não pressionar o cliente), " +
+  "evidencia_suficiente (true/false — false quando a conversa não sustenta conclusões). " +
+  "NUNCA invente informação que não esteja na conversa; com pouca evidência, use evidencia_suficiente=false " +
+  "e limite-se ao que existe. Nada além do JSON. Você apenas sugere.";
 
 function tokenDe(request: Request): string | null {
   const a = request.headers.get("authorization");
