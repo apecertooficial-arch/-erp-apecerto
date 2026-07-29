@@ -18,6 +18,7 @@ import {
   type ColunaChave, type LeadNova,
 } from "./lib/rules";
 import { LeadCard } from "./components/LeadCard";
+import { PainelPiloto, DiagnosticoLegado } from "./components/PainelPiloto";
 import { WorkQueue } from "./components/WorkQueue";
 import {
   mapEstadoToLead, enriquecerComEventos,
@@ -156,11 +157,16 @@ export function CrmNovaEraLiveWorkspace({ accessToken, profile }: { accessToken:
                   <span>Propostas: <b>{indic.propostasRegistradas}</b></span>
                 </div>
                 <WorkQueue itens={fila} selectedId={selId} onOpenAction={(id) => void abrirLead(id)} />
+                {/* Regra 1: carteira antiga (não migrada) separada e SÓ leitura — nunca some com a fila Nova Era. */}
+                {["admin", "executivo", "gerente"].includes(profile.role) && <DiagnosticoLegado accessToken={accessToken} />}
               </div>
             )}
 
             {vista === "gerencial" && profile.role !== "corretor" && (
-              <PainelGerencial leads={leads} agora={agora} accessToken={accessToken} />
+              <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                {["admin", "executivo"].includes(profile.role) && <PainelPiloto accessToken={accessToken} />}
+                <PainelGerencial leads={leads} agora={agora} accessToken={accessToken} />
+              </div>
             )}
           </div>
 
@@ -527,13 +533,14 @@ function FormAcao({
 }
 
 /* ----------------------- Controle admin do Ingest ----------------------- */
-/** Visível só para admin/executivo. Liga/desliga a reconciliação pelo JWT do admin.
- *  NUNCA ativa sozinho (nem no deploy/flag): exige clique + confirmação humana explícita. */
+/** Visível só para admin/executivo. INDICADOR de status (só leitura) + DESATIVAÇÃO
+ *  emergencial. NÃO ativa: o ÚNICO caminho de ativação é PainelPiloto → ModalAtivacao
+ *  (confirmação digitada "ATIVAR"). Aqui não existe botão nem chamada de ativação. */
 function IngestAdminControl({ accessToken }: { accessToken: string }) {
   const [status, setStatus] = useState<{ ativo: boolean; ativo_desde: string | null } | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [confirmar, setConfirmar] = useState<null | "ativar" | "desativar">(null);
+  const [confirmar, setConfirmar] = useState(false);
 
   const carregar = useCallback(async () => {
     setErro(null);
@@ -546,9 +553,10 @@ function IngestAdminControl({ accessToken }: { accessToken: string }) {
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { void carregar(); }, [carregar]);
 
-  const aplicar = useCallback(async (action: "ativar" | "desativar") => {
-    setBusy(true); setErro(null); setConfirmar(null);
-    const r = await fetch(`/api/ncrm/ingest`, { method: "POST", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify({ action }) });
+  // SOMENTE desativação emergencial (kill-switch). Nunca ativa.
+  const desativar = useCallback(async () => {
+    setBusy(true); setErro(null); setConfirmar(false);
+    const r = await fetch(`/api/ncrm/ingest`, { method: "POST", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify({ action: "desativar" }) });
     const j = (await r.json().catch(() => ({}))) as Record<string, unknown>;
     setBusy(false);
     if (!r.ok) { setErro((j.mensagem as string) || (j.error as string) || "Operação não permitida."); return; }
@@ -561,28 +569,19 @@ function IngestAdminControl({ accessToken }: { accessToken: string }) {
 
   return (
     <div style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 12 }}>
-      <span title="Reconciliação de mensagens" style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+      <span title="Reconciliação de mensagens (ativação só pelo Painel do piloto)" style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
         <span aria-hidden style={{ width: 8, height: 8, borderRadius: 8, background: status?.ativo ? "#16a34a" : "#9ca3af", display: "inline-block" }} />
         {rotulo}
       </span>
-      {confirmar === null && status != null && !status.ativo && (
-        <button className="nova-crm-btn ghost" disabled={busy} onClick={() => setConfirmar("ativar")}>Ativar a partir de agora</button>
+      {/* Ativação NÃO fica aqui: só em Visão gerencial → Painel do piloto → digitar "ATIVAR". */}
+      {status?.ativo && !confirmar && (
+        <button className="nova-crm-btn ghost" disabled={busy} onClick={() => setConfirmar(true)} style={{ color: "#b91c1c" }}>Desativar ingest (emergência)</button>
       )}
-      {confirmar === null && status?.ativo && (
-        <button className="nova-crm-btn ghost" disabled={busy} onClick={() => setConfirmar("desativar")} style={{ color: "#b91c1c" }}>Desativar ingest</button>
-      )}
-      {confirmar === "ativar" && (
-        <span style={{ display: "inline-flex", gap: 6, alignItems: "center" }}>
-          Confirmar ativação (só mensagens novas)?
-          <button className="nova-crm-btn" disabled={busy} onClick={() => void aplicar("ativar")}>Confirmar</button>
-          <button className="nova-crm-btn ghost" disabled={busy} onClick={() => setConfirmar(null)}>Cancelar</button>
-        </span>
-      )}
-      {confirmar === "desativar" && (
+      {status?.ativo && confirmar && (
         <span style={{ display: "inline-flex", gap: 6, alignItems: "center" }}>
           Desativar o ingest agora?
-          <button className="nova-crm-btn" disabled={busy} onClick={() => void aplicar("desativar")} style={{ color: "#b91c1c" }}>Confirmar</button>
-          <button className="nova-crm-btn ghost" disabled={busy} onClick={() => setConfirmar(null)}>Cancelar</button>
+          <button className="nova-crm-btn" disabled={busy} onClick={() => void desativar()} style={{ color: "#b91c1c" }}>Confirmar</button>
+          <button className="nova-crm-btn ghost" disabled={busy} onClick={() => setConfirmar(false)}>Cancelar</button>
         </span>
       )}
       {erro && <span style={{ color: "#b91c1c" }}>{erro}</span>}
