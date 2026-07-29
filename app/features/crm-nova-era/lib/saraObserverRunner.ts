@@ -23,7 +23,8 @@ export interface RunnerDeps {
   getModo(): Promise<SaraModoRunner>;
   listarElegiveis(lote: number): Promise<Elegivel[]>;
   lerContexto(negocioId: number): Promise<Contexto>;
-  jaAnalisado(hash: string): Promise<boolean>;
+  /** Idempotência por (negócio, contexto): mesmo texto em negócios diferentes NÃO colide. */
+  jaAnalisado(negocioId: number, hash: string): Promise<boolean>;
   chamarIaRouter(input: { negocioId: number; texto: string }): Promise<unknown>;
   validar(raw: unknown, ctx: Contexto): { ok: boolean; analise?: Record<string, unknown> };
   registrar(negocioId: number, hash: string, analise: Record<string, unknown>): Promise<{ ok: boolean; ja?: boolean }>;
@@ -86,7 +87,8 @@ export async function saraObserverRunner(deps: RunnerDeps, opts: RunnerOpts): Pr
     base.processados++;
     try {
       const ctx = await deps.lerContexto(el.negocioId);
-      if (await deps.jaAnalisado(ctx.hash)) { base.pulados_ja_analisado++; base.detalhes.push({ negocioId: el.negocioId, status: "pulado" }); continue; }
+      // NÃO chama IA para contexto já analisado (economia + idempotência por negócio+hash).
+      if (await deps.jaAnalisado(el.negocioId, ctx.hash)) { base.pulados_ja_analisado++; base.detalhes.push({ negocioId: el.negocioId, status: "pulado" }); continue; }
       const raw = await comTimeoutRetry(() => deps.chamarIaRouter({ negocioId: el.negocioId, texto: ctx.texto }), opts.timeoutMs, opts.maxRetries);
       const v = deps.validar(raw, ctx);
       if (!v.ok || !v.analise) { base.invalidos++; base.detalhes.push({ negocioId: el.negocioId, status: "invalido", erro: "resposta_invalida" }); continue; }
@@ -101,4 +103,35 @@ export async function saraObserverRunner(deps: RunnerDeps, opts: RunnerOpts): Pr
     }
   }
   return base;
+}
+
+/* ============================ Autenticação cron → Edge ============================ */
+
+/** Comparação de segredo em tempo ~constante, SEM logar o valor. */
+export function compararSegredo(recebido: string | null | undefined, esperado: string | null | undefined): boolean {
+  const a = String(recebido ?? "");
+  const b = String(esperado ?? "");
+  if (!b || a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < b.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
+}
+
+export interface HandlerResultado { status: number; body: Record<string, unknown>; }
+
+/**
+ * Handler concreto da Edge (testável em node): valida o SEGREDO antes de QUALQUER leitura;
+ * ausente/incorreto => 401. Só então roda o runner (que respeita o kill-switch observer).
+ * Nunca loga o segredo. Não recebe service_role como Bearer — a autorização é o x-cron-secret.
+ */
+export async function tratarRequisicaoObserver(
+  entrada: { segredoRecebido: string | null | undefined; segredoEsperado: string | null | undefined },
+  deps: RunnerDeps,
+  opts: RunnerOpts,
+): Promise<HandlerResultado> {
+  if (!compararSegredo(entrada.segredoRecebido, entrada.segredoEsperado)) {
+    return { status: 401, body: { ok: false, erro: "nao_autorizado" } };
+  }
+  const res = await saraObserverRunner(deps, opts);
+  return { status: 200, body: res as unknown as Record<string, unknown> };
 }

@@ -43,11 +43,16 @@ SELECT public.test_assert((public.ncrm_sara_registrar_analise(
    '11111111-1111-4111-8111-111111111111'::uuid,'ctx-1000-a1',1000,'em_atendimento','em_acompanhamento','enviar_opcoes',now(),
    'Cliente pediu 2 dorms', jsonb_build_array('msg 14:02','audio 14:05'), 0.72, true, false, false, false, 'sara-obs-v1','gpt-x') ->> 'ok')::boolean,
    'SARA runner registra análise (service_role)');
--- idempotência por context_hash: mesmo contexto NÃO gera análise duplicada
+-- idempotência por (negocio_id, context_hash): mesmo contexto NÃO gera análise duplicada
 SELECT public.test_assert((public.ncrm_sara_registrar_analise(
    '22222222-2222-4222-8222-222222222222'::uuid,'ctx-1000-a1',1000,'em_atendimento','em_acompanhamento','enviar_opcoes',now(),
    'reanalise', '[]'::jsonb, 0.9, true, false, false, false, 'sara-obs-v1','gpt-x') ->> 'ja_analisado')::boolean,
-   'SARA idempotente: mesmo context_hash não duplica');
+   'SARA idempotente: mesmo (negócio,hash) não duplica');
+-- MESMO context_hash em NEGÓCIO diferente (1001) NÃO colide (unicidade é por negocio_id+hash)
+SELECT public.test_assert((public.ncrm_sara_registrar_analise(
+   '33333333-3333-4333-8333-333333333333'::uuid,'ctx-1000-a1',1001,'x','em_atendimento','enviar_opcoes',now(),
+   'analise 1001', '[]'::jsonb, 0.6, true, false, false, false, 'sara-obs-v1','gpt-x') ->> 'ok')::boolean,
+   'SARA mesmo hash em negócio diferente NÃO colide');
 -- validação dura: confiança fora de 0..1
 SELECT public.test_assert((public.ncrm_sara_registrar_analise(
    gen_random_uuid(),'ctx-1000-bad',1000,'x','em_atendimento','enviar_opcoes',now(),'j','[]'::jsonb,1.5,true,false,false,false,'v1','m1') ->> 'erro')='confianca_invalida',
@@ -81,12 +86,32 @@ SELECT public.test_assert((SELECT decisao FROM public.ncrm_sara_analise WHERE id
 SELECT public.test_assert((SELECT count(*) FROM public.ncrm_evento WHERE negocio_id=1000 AND tipo='classificacao_sara' AND (payload->>'analise_id')::bigint=:aid)=1,'SARA decisão gera 1 evento classificacao_sara vinculado');
 SELECT public.test_assert((SELECT versao FROM public.ncrm_estado WHERE negocio_id=1000)=:v_antes,'SARA decisão NÃO muta estado');
 
--- ===== KILL-SWITCH: modo off recusa análise do runner =====
+-- ===== FILA JUSTA: menos recentemente analisados primeiro; analisado não fica de fora =====
+-- corretor/authenticated não acessa a fila do runner (sem EXECUTE => service-only)
+SELECT set_config('request.jwt.claims', json_build_object('sub',:A,'role','authenticated')::text, false); SET ROLE authenticated;
+SELECT public.test_expect_error('SELECT public.ncrm_sara_elegiveis(100)','permission denied','SARA fila é service-only (corretor sem EXECUTE)');
+RESET ROLE;
+SELECT set_config('request.jwt.claims', json_build_object('role','service_role')::text, false); SET ROLE service_role;
+-- 1000 já foi analisado; existem negócios com estado nunca analisados => estes vêm ANTES de 1000
+SELECT public.test_assert((public.ncrm_sara_elegiveis(100) -> 'negocios' ->> 0)::bigint <> 1000,'SARA fila justa: negócio já analisado NÃO é o primeiro');
+SELECT public.test_assert((public.ncrm_sara_elegiveis(500) -> 'negocios') @> '1000'::jsonb,'SARA fila justa: analisado ainda aparece (não fica eternamente fora)');
+-- cursor de execução
+SELECT public.test_assert((public.ncrm_sara_runner_marcar_execucao(gen_random_uuid(),1000,5) ->> 'ok')::boolean,'SARA cursor de execução registrado');
+RESET ROLE;
+SELECT public.test_assert((SELECT ultima_execucao IS NOT NULL AND processados=5 FROM public.ncrm_sara_runner_estado WHERE id=true),'SARA cursor persistido');
+
+-- ===== KILL-SWITCH: registro automático SÓ em observer (suggest/off recusam) =====
+SELECT set_config('request.jwt.claims', json_build_object('sub',:ADMIN,'role','authenticated')::text, false); SET ROLE authenticated;
+SELECT public.ncrm_sara_definir_modo('suggest', true);
+RESET ROLE;
+SELECT set_config('request.jwt.claims', json_build_object('role','service_role')::text, false); SET ROLE service_role;
+SELECT public.test_assert((public.ncrm_sara_registrar_analise(gen_random_uuid(),'ctx-suggest',1000,'x','em_atendimento','enviar_opcoes',now(),'j','[]'::jsonb,0.7,true,false,false,false,'v1','m1') ->> 'erro')='sara_nao_em_observer','SARA suggest NÃO registra automático (só observer)');
+RESET ROLE;
 SELECT set_config('request.jwt.claims', json_build_object('sub',:ADMIN,'role','authenticated')::text, false); SET ROLE authenticated;
 SELECT public.ncrm_sara_definir_modo('off', true);
 RESET ROLE;
 SELECT set_config('request.jwt.claims', json_build_object('role','service_role')::text, false); SET ROLE service_role;
-SELECT public.test_assert((public.ncrm_sara_registrar_analise(gen_random_uuid(),'ctx-off',1000,'x','em_atendimento','enviar_opcoes',now(),'j','[]'::jsonb,0.7,true,false,false,false,'v1','m1') ->> 'erro')='sara_desligada','SARA off recusa análise (kill-switch)');
+SELECT public.test_assert((public.ncrm_sara_registrar_analise(gen_random_uuid(),'ctx-off',1000,'x','em_atendimento','enviar_opcoes',now(),'j','[]'::jsonb,0.7,true,false,false,false,'v1','m1') ->> 'erro')='sara_nao_em_observer','SARA off recusa análise (kill-switch)');
 RESET ROLE;
 SELECT set_config('request.jwt.claims', json_build_object('sub',:ADMIN,'role','authenticated')::text, false); SET ROLE authenticated;
 SELECT public.ncrm_sara_definir_modo('observer', true);

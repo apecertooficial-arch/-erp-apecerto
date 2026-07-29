@@ -52,7 +52,8 @@ CREATE TABLE public.ncrm_sara_analise (
   decidido_em           timestamptz NULL,
   justificativa_decisao text NULL,
   criado_em             timestamptz NOT NULL DEFAULT now(),
-  CONSTRAINT ux_ncrm_sara_context UNIQUE (context_hash)         -- não reanalisa o mesmo contexto
+  -- idempotência por NEGÓCIO + contexto: o mesmo texto em negócios diferentes NÃO colide.
+  CONSTRAINT ux_ncrm_sara_context UNIQUE (negocio_id, context_hash)
 );
 CREATE INDEX ix_ncrm_sara_analise_negocio ON public.ncrm_sara_analise (negocio_id, id DESC);
 CREATE INDEX ix_ncrm_sara_analise_pendentes ON public.ncrm_sara_analise (decisao, id DESC) WHERE decisao = 'pendente';
@@ -106,7 +107,8 @@ BEGIN
   -- PROVENIÊNCIA: só o SERVIÇO (runner) grava análise automática. Nunca um corretor.
   IF COALESCE(auth.role(),'') <> 'service_role' THEN RETURN jsonb_build_object('ok',false,'erro','somente_servico'); END IF;
   SELECT modo INTO v_modo FROM public.ncrm_sara_config WHERE id = true;
-  IF COALESCE(v_modo,'observer') = 'off' THEN RETURN jsonb_build_object('ok',false,'erro','sara_desligada'); END IF;
+  -- Registro automático SOMENTE em observer (não apenas "diferente de off"). execute segue bloqueado.
+  IF COALESCE(v_modo,'observer') <> 'observer' THEN RETURN jsonb_build_object('ok',false,'erro','sara_nao_em_observer','modo',COALESCE(v_modo,'observer')); END IF;
   -- validação dura (rejeita valores inesperados independentemente da API)
   IF p_run_id IS NULL THEN RETURN jsonb_build_object('ok',false,'erro','run_id_obrigatorio'); END IF;
   IF p_context_hash IS NULL OR length(btrim(p_context_hash)) NOT BETWEEN 8 AND 200 THEN RETURN jsonb_build_object('ok',false,'erro','context_hash_invalido'); END IF;
@@ -125,7 +127,7 @@ BEGIN
      p_proxima_acao_sugerida, p_prazo_sugerido, p_justificativa, COALESCE(p_evidencias,'[]'::jsonb), p_confianca,
      COALESCE(p_cliente_aguardando,false), COALESCE(p_promessa_retorno,false), COALESCE(p_visita_mencionada,false),
      COALESCE(p_proposta_mencionada,false), p_versao_prompt, p_versao_modelo, COALESCE(v_modo,'observer'), now())
-  ON CONFLICT (context_hash) DO NOTHING
+  ON CONFLICT (negocio_id, context_hash) DO NOTHING
   RETURNING id INTO v_id;
 
   IF v_id IS NULL THEN RETURN jsonb_build_object('ok',true,'ja_analisado',true); END IF;  -- idempotência
@@ -163,6 +165,55 @@ EXCEPTION WHEN unique_violation THEN
 END $fn$;
 REVOKE ALL ON FUNCTION public.ncrm_sara_decidir_analise(bigint,text,text) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.ncrm_sara_decidir_analise(bigint,text,text) TO authenticated;
+
+-- ============================ FILA JUSTA + CURSOR (P0-B #3) ============================
+-- Estado/cursor do runner (última execução, último negócio, run_id, contagem).
+CREATE TABLE public.ncrm_sara_runner_estado (
+  id               boolean PRIMARY KEY DEFAULT true,
+  ultima_execucao  timestamptz NULL,
+  ultimo_run_id    uuid NULL,
+  ultimo_negocio_id bigint NULL,
+  processados      integer NOT NULL DEFAULT 0,
+  CONSTRAINT ck_ncrm_sara_runner_estado_singleton CHECK (id = true)
+);
+INSERT INTO public.ncrm_sara_runner_estado (id) VALUES (true) ON CONFLICT (id) DO NOTHING;
+REVOKE ALL ON public.ncrm_sara_runner_estado FROM PUBLIC, anon, authenticated;
+ALTER TABLE public.ncrm_sara_runner_estado ENABLE ROW LEVEL SECURITY;
+
+-- Elegíveis do runner: negócios com estado, ordenados pelos MENOS RECENTEMENTE analisados
+-- (nunca analisados primeiro), determinístico por negócio. Ninguém fica eternamente de fora.
+CREATE FUNCTION public.ncrm_sara_elegiveis(p_lote int DEFAULT 100)
+  RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $fn$
+DECLARE v_lim int := LEAST(GREATEST(COALESCE(p_lote,100),1),500);
+BEGIN
+  IF COALESCE(auth.role(),'') <> 'service_role' THEN RETURN jsonb_build_object('ok',false,'erro','somente_servico'); END IF;
+  RETURN jsonb_build_object('ok',true,'negocios', COALESCE((
+    SELECT jsonb_agg(x.negocio_id ORDER BY x.ult NULLS FIRST, x.negocio_id)
+    FROM (
+      SELECT e.negocio_id, max(a.analisado_em) AS ult
+      FROM public.ncrm_estado e
+      LEFT JOIN public.ncrm_sara_analise a ON a.negocio_id = e.negocio_id
+      GROUP BY e.negocio_id
+      ORDER BY max(a.analisado_em) NULLS FIRST, e.negocio_id
+      LIMIT v_lim
+    ) x), '[]'::jsonb));
+END $fn$;
+REVOKE ALL ON FUNCTION public.ncrm_sara_elegiveis(int) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.ncrm_sara_elegiveis(int) TO service_role;
+
+-- Marca a execução (cursor) — service-only.
+CREATE FUNCTION public.ncrm_sara_runner_marcar_execucao(p_run_id uuid, p_ultimo_negocio_id bigint, p_processados int)
+  RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $fn$
+BEGIN
+  IF COALESCE(auth.role(),'') <> 'service_role' THEN RETURN jsonb_build_object('ok',false,'erro','somente_servico'); END IF;
+  UPDATE public.ncrm_sara_runner_estado
+     SET ultima_execucao = now(), ultimo_run_id = p_run_id, ultimo_negocio_id = p_ultimo_negocio_id,
+         processados = COALESCE(p_processados,0)
+   WHERE id = true;
+  RETURN jsonb_build_object('ok',true);
+END $fn$;
+REVOKE ALL ON FUNCTION public.ncrm_sara_runner_marcar_execucao(uuid,bigint,int) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.ncrm_sara_runner_marcar_execucao(uuid,bigint,int) TO service_role;
 
 -- Leitura das análises recentes (admin).
 CREATE FUNCTION public.ncrm_sara_analises_recentes(p_limite int DEFAULT 50)

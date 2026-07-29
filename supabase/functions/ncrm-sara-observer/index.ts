@@ -1,98 +1,132 @@
-// CRM Nova Era — Edge Function do RUNNER da Sara em modo OBSERVADOR (Fase 3).
+// CRM Nova Era — Edge Function do RUNNER da Sara em modo OBSERVADOR (Fase 3 correção final).
 // PREPARADO, NÃO IMPLANTADO nesta rodada (não fazer deploy de Edge Function).
 // -----------------------------------------------------------------------------
-// Autenticação (contrato):
-//  - Invocada pelo pg_cron via net.http_post com header `x-cron-secret: <CRON_SECRET>`
-//    (segredo em Vault) OU `Authorization: Bearer <SERVICE_ROLE_KEY>`.
-//  - Usa SUPABASE_SERVICE_ROLE_KEY (server-side; NUNCA no frontend) para o cliente
-//    Supabase — a RPC de registro é service-only. Identidade = serviço "sara_runner"
-//    (jamais um corretor).
-// Garantias (idênticas ao núcleo testado app/features/crm-nova-era/lib/saraObserverRunner.ts):
-//  - só roda quando modo=observer (kill-switch off); nunca muta operacional;
-//  - idempotente por context_hash; lote/timeout/retry; falha isolada por negócio;
-//  - reutiliza o contrato real do ia-router; erro sanitizado.
-// Deno runtime (Supabase Edge). Tipos `Deno`/import remoto só existem no deploy.
+// Autenticação (config.toml: verify_jwt = false):
+//   - EXIGE header `x-cron-secret: <CRON_SECRET>` (segredo forte em Vault) validado ANTES de
+//     qualquer leitura; ausente/incorreto => 401. Comparação sem logar o valor.
+//   - service_role fica SÓ dentro da Edge (para o banco). NUNCA trafega como Bearer entre
+//     cron e Edge; NUNCA no frontend.
+// Reusa o NÚCLEO TESTADO (app/features/crm-nova-era/lib/*) — mesmas garantias unitárias:
+//   só observer (kill-switch), nunca muta, idempotente por (negocio_id, context_hash),
+//   lote/timeout/retry, falha isolada por negócio, contrato real da Sara (saraSchema).
+// Deno runtime (Supabase Edge). @ts-nocheck: tipos Deno/remotos só existem no deploy.
 // @ts-nocheck
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { tratarRequisicaoObserver, sanitizarErro } from "../../../app/features/crm-nova-era/lib/saraObserverRunner.ts";
+import { montarContexto, mapearSugestaoParaAnalise } from "../../../app/features/crm-nova-era/lib/saraContexto.ts";
+import { normalizarSugestaoSara } from "../../../app/api/ncrm/saraSchema.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const CRON_SECRET = Deno.env.get("CRON_SECRET") ?? "";
 const VERSAO_PROMPT = "sara-observer-v1";
 const VERSAO_MODELO = Deno.env.get("SARA_MODELO") ?? "ia-router";
-const LOTE = 100, TIMEOUT_MS = 20000, MAX_RETRIES = 1;
+const OPTS = { lote: Number(Deno.env.get("SARA_LOTE") ?? 100), timeoutMs: 20000, maxRetries: 1 };
 
-function sanitizarErro(e: unknown): string {
-  const m = e instanceof Error ? e.message : String(e);
-  return m.replace(/[A-Za-z0-9_-]{20,}/g, "***").slice(0, 200) || "erro";
-}
-async function comTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
-  return await Promise.race([p, new Promise<T>((_, rej) => setTimeout(() => rej(new Error("timeout")), ms))]);
+const OVERRIDE =
+  "Você é a Sara, co-piloto comercial imobiliário da Apecerto. Use as ferramentas consultar_lead e " +
+  "avaliar_conversa (mensagens reais, áudios transcritos e avaliações). Responda SOMENTE um JSON válido " +
+  "com as chaves: etapa_sugerida (novo|tentando_contato|em_atendimento|em_acompanhamento), " +
+  "temperatura (frio|morno|quente|negociando), intencao_detectada, proxima_acao (1 frase concreta), " +
+  "prazo_sugerido (ISO 8601), objecoes (array), risco_abandono (baixo|medio|alto), " +
+  "possibilidade_visita (baixa|media|alta), possibilidade_proposta (baixa|media|alta), justificativa, " +
+  "confianca (0..1), evidencias (array de trechos reais da conversa). Nada além do JSON. Você apenas sugere.";
+
+function comTimeout(p, ms) {
+  return Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error("timeout")), ms))]);
 }
 
 Deno.serve(async (req: Request) => {
-  // AUTORIZAÇÃO: só o cron/serviço pode invocar.
-  const auth = req.headers.get("authorization") ?? "";
-  const cron = req.headers.get("x-cron-secret") ?? "";
-  const okAuth = (CRON_SECRET && cron === CRON_SECRET) || auth === `Bearer ${SERVICE_ROLE_KEY}`;
-  if (!okAuth) return new Response(JSON.stringify({ ok: false, erro: "nao_autorizado" }), { status: 401 });
-
   const db = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, { auth: { persistSession: false } });
   const runId = crypto.randomUUID();
+  let ultimoNegocio: number | null = null, processados = 0;
 
-  // modo (kill-switch): só observer roda.
-  const { data: cfg } = await db.from("ncrm_sara_config").select("modo").eq("id", true).maybeSingle();
-  const modo = cfg?.modo ?? "observer";
-  if (modo !== "observer") return Response.json({ ok: true, executou: false, modo });
-
-  // elegíveis: negócios com estado que ainda não têm análise recente (limite de lote).
-  const { data: estados } = await db.from("ncrm_estado").select("negocio_id").limit(LOTE);
-  const resumo = { ok: true, executou: true, modo, run_id: runId, processados: 0, analisados: 0, pulados: 0, erros: 0 };
-
-  for (const e of estados ?? []) {
-    resumo.processados++;
-    const negocioId = e.negocio_id;
-    try {
-      // contexto real: histórico via API interna (mensagens sem `raw`) — hash estável do conteúdo.
-      const contexto = await comTimeout(fetch(`${SUPABASE_URL}/functions/v1/ncrm-contexto?negocio=${negocioId}`, {
-        headers: { Authorization: `Bearer ${SERVICE_ROLE_KEY}` },
-      }).then((r) => r.json()), TIMEOUT_MS);
-      const texto: string = contexto?.texto ?? "";
-      const hash: string = contexto?.hash ?? "";
-      if (!hash) { resumo.erros++; continue; }
-
-      // chama o ia-router no MESMO contrato já usado em produção.
-      let raw: any = null;
-      for (let i = 0; i <= MAX_RETRIES; i++) {
-        try {
-          raw = await comTimeout(fetch(`${SUPABASE_URL}/functions/v1/ia-router`, {
-            method: "POST", headers: { Authorization: `Bearer ${SERVICE_ROLE_KEY}`, "Content-Type": "application/json" },
-            body: JSON.stringify({ agente_slug: "sara", input: texto }),
-          }).then((r) => r.json()), TIMEOUT_MS);
-          break;
-        } catch (err) { if (i === MAX_RETRIES) throw err; }
+  const deps = {
+    getModo: async () => {
+      const { data } = await db.from("ncrm_sara_config").select("modo").eq("id", true).maybeSingle();
+      return data?.modo ?? "observer";
+    },
+    listarElegiveis: async (lote: number) => {
+      const { data, error } = await db.rpc("ncrm_sara_elegiveis", { p_lote: lote });
+      if (error || data?.ok === false) throw new Error("elegiveis_falhou");
+      return (data?.negocios ?? []).map((negocioId: number) => ({ negocioId }));
+    },
+    lerContexto: async (negocioId: number) => {
+      const { data: est, error: e1 } = await comTimeout(
+        db.from("ncrm_estado").select("etapa,proxima_acao_titulo,ultima_interacao_em,negocios(lead_id,corretor_id,leads(nome),corretores(nome))").eq("negocio_id", negocioId).maybeSingle(),
+        10000);
+      if (e1 || !est) throw new Error("contexto_indisponivel");
+      const leadId = est?.negocios?.lead_id ?? null;
+      let mensagens: any[] = [];
+      if (leadId) {
+        const { data: contatos } = await db.from("wa_contatos").select("id").eq("lead_id", leadId);
+        const cids = (contatos ?? []).map((c: any) => c.id);
+        if (cids.length) {
+          const { data: convs } = await db.from("wa_conversas").select("id").in("contato_id", cids);
+          const convIds = (convs ?? []).map((c: any) => c.id);
+          if (convIds.length) {
+            const { data: msgs } = await comTimeout(
+              db.from("wa_mensagens").select("id,direcao,tipo,conteudo,transcricao,enviado_em").in("conversa_id", convIds).order("enviado_em", { ascending: false }).limit(20), 10000);
+            mensagens = (msgs ?? []).map((m: any) => ({ id: m.id, direcao: m.direcao, tipo: m.tipo, conteudo: m.conteudo, transcricao: m.transcricao, enviadoEm: m.enviado_em }));
+          }
+        }
       }
-      const sug = raw?.saida ?? raw?.resposta ?? null;
-      if (!sug || typeof sug !== "object") { resumo.erros++; continue; }
-
-      // registra a ANÁLISE automática (service-only, idempotente por context_hash).
-      const { data: reg } = await db.rpc("ncrm_sara_registrar_analise", {
+      let avaliacoes: any[] = [];
+      try { const { data: av } = await db.from("lead_avaliacoes").select("nota,resumo,criado_em").eq("lead_id", leadId).limit(5); avaliacoes = (av ?? []).map((a: any) => ({ nota: a.nota, resumo: a.resumo, criadoEm: a.criado_em })); } catch { /* opcional */ }
+      return montarContexto({
+        negocioId, leadNome: est?.negocios?.leads?.nome ?? null, corretorNome: est?.negocios?.corretores?.nome ?? null,
+        etapaAtual: est?.etapa ?? null, proximaAcao: est?.proxima_acao_titulo ?? null, ultimaInteracaoEm: est?.ultima_interacao_em ?? null,
+        mensagens, avaliacoes,
+      });
+    },
+    jaAnalisado: async (negocioId: number, hash: string) => {
+      const { data } = await db.from("ncrm_sara_analise").select("id").eq("negocio_id", negocioId).eq("context_hash", hash).maybeSingle();
+      return !!data;
+    },
+    chamarIaRouter: async ({ texto }: { texto: string }) => {
+      const r = await comTimeout(fetch(`${SUPABASE_URL}/functions/v1/ia-router`, {
+        method: "POST", headers: { Authorization: `Bearer ${SERVICE_ROLE_KEY}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ agente_slug: "sara", input: texto, override_prompt: OVERRIDE }),
+      }), OPTS.timeoutMs);
+      if (!r.ok) throw new Error(`ia_router_http_${r.status}`);
+      const j = await r.json();
+      return (j && typeof j.saida === "object") ? j.saida : (j.resposta ?? j);
+    },
+    validar: (raw: unknown, ctx: any) => {
+      const n = normalizarSugestaoSara(raw);
+      if (!n.ok) return { ok: false };                 // resposta inválida => NÃO cria análise falsa
+      const a = mapearSugestaoParaAnalise(n.sugestao as any, ctx);
+      if (!a) return { ok: false };                    // sem justificativa real => inválida
+      return { ok: true, analise: { ...a, etapaAtual: ctx.etapaAtual } };
+    },
+    registrar: async (negocioId: number, hash: string, analise: any) => {
+      ultimoNegocio = negocioId; processados++;
+      const { data, error } = await db.rpc("ncrm_sara_registrar_analise", {
         p_run_id: runId, p_context_hash: hash, p_negocio_id: negocioId,
-        p_etapa_atual: sug.etapa_atual ?? null, p_etapa_sugerida: sug.etapa_sugerida ?? null,
-        p_proxima_acao_sugerida: sug.proxima_acao ?? null, p_prazo_sugerido: sug.prazo_sugerido ?? null,
-        p_justificativa: sug.justificativa ?? "sem justificativa", p_evidencias: sug.evidencias ?? [],
-        p_confianca: typeof sug.confianca === "number" ? sug.confianca : 0.5,
-        p_cliente_aguardando: !!sug.cliente_aguardando, p_promessa_retorno: !!sug.promessa_retorno,
-        p_visita_mencionada: !!sug.visita_mencionada, p_proposta_mencionada: !!sug.proposta_mencionada,
+        p_etapa_atual: analise.etapaAtual ?? null, p_etapa_sugerida: analise.etapaSugerida ?? null,
+        p_proxima_acao_sugerida: analise.proximaAcaoSugerida ?? null, p_prazo_sugerido: analise.prazoSugerido ?? null,
+        p_justificativa: analise.justificativa, p_evidencias: analise.evidencias ?? [], p_confianca: analise.confianca,
+        p_cliente_aguardando: !!analise.clienteAguardando, p_promessa_retorno: !!analise.promessaRetorno,
+        p_visita_mencionada: !!analise.visitaMencionada, p_proposta_mencionada: !!analise.propostaMencionada,
         p_versao_prompt: VERSAO_PROMPT, p_versao_modelo: VERSAO_MODELO,
       });
-      if (reg?.ja_analisado) resumo.pulados++;
-      else if (reg?.ok) resumo.analisados++;
-      else resumo.erros++;
-    } catch (err) {
-      resumo.erros++;
-      console.error(`sara-observer negocio ${negocioId}:`, sanitizarErro(err)); // detalhe server-side sanitizado
+      if (error) throw new Error("registro_falhou");
+      return { ok: data?.ok !== false, ja: !!data?.ja_analisado };
+    },
+    log: (m: string) => console.log(m),
+  };
+
+  try {
+    const { status, body } = await tratarRequisicaoObserver(
+      { segredoRecebido: req.headers.get("x-cron-secret"), segredoEsperado: CRON_SECRET },
+      deps, OPTS,
+    );
+    if (status === 200) {
+      try { await db.rpc("ncrm_sara_runner_marcar_execucao", { p_run_id: runId, p_ultimo_negocio_id: ultimoNegocio, p_processados: processados }); } catch { /* best-effort */ }
     }
+    return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
+  } catch (e) {
+    console.error("ncrm-sara-observer:", sanitizarErro(e));
+    return new Response(JSON.stringify({ ok: false, erro: "falha_interna" }), { status: 500, headers: { "Content-Type": "application/json" } });
   }
-  return Response.json(resumo);
 });
