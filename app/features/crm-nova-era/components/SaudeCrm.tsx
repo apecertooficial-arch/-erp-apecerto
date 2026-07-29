@@ -21,7 +21,11 @@ const ACAO_ROTULO: Record<string, string> = {
   desligar_entrada: "Desligar a entrada de conversas",
   religar_runner_observador: "Religar a leitura (só observação)",
   atualizar_diagnostico: "Atualizar diagnóstico",
+  classificar_backlog: "Classificar a fila acumulada",
 };
+/** Ações que exigem uma palavra própria de confirmação. */
+const CONFIRMACAO: Record<string, string> = { classificar_backlog: "CLASSIFICAR" };
+function palavraDe(acao: string): string { return CONFIRMACAO[acao] ?? "CONFIRMAR"; }
 
 function quando(s: unknown): string {
   if (typeof s !== "string") return "—";
@@ -29,6 +33,13 @@ function quando(s: unknown): string {
   return Number.isNaN(d.getTime()) ? "—" : d.toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
 }
 function num(v: unknown): string { return typeof v === "number" ? String(v) : "—"; }
+/** Idade em minutos → texto curto. Encerrados nunca entram nesta conta. */
+function idade(v: unknown): string {
+  if (typeof v !== "number" || !Number.isFinite(v)) return "nenhuma";
+  if (v < 60) return `${v} min`;
+  const h = Math.floor(v / 60);
+  return h < 24 ? `${h} h` : `${Math.floor(h / 24)} d`;
+}
 
 function Bloco({ titulo, children }: { titulo: string; children: React.ReactNode }) {
   return (
@@ -77,12 +88,15 @@ export function SaudeCrm({ accessToken }: { accessToken: string }) {
     });
     const j = (await r.json().catch(() => ({}))) as { ok?: boolean; detalhe?: string; erro?: string };
     if (!r.ok || j.ok === false) {
-      setErro(j.erro === "confirmacao_obrigatoria" ? "Digite CONFIRMAR para executar."
+      setErro(j.erro === "confirmacao_obrigatoria" ? `Digite ${palavraDe(pendente.acao)} para executar.`
         : j.erro === "sara_fora_de_observacao" ? "Só é possível religar com a Sara em modo de observação."
         : "Não foi possível executar essa ação.");
       return;
     }
-    setMsg(j.detalhe ?? "Feito.");
+    const c = j as unknown as { fora_do_escopo?: number; sem_negocio_expirado?: number; reabilitados?: number };
+    setMsg(pendente.acao === "classificar_backlog"
+      ? `Fila classificada: ${c.fora_do_escopo ?? 0} fora do piloto, ${c.sem_negocio_expirado ?? 0} sem negócio, ${c.reabilitados ?? 0} reabilitados. Nada foi apagado.`
+      : (j.detalhe ?? "Feito."));
     setPendente(null); setConfirmacao(""); setAlvo("");
     await carregar();
   }, [accessToken, pendente, confirmacao, carregar]);
@@ -114,8 +128,14 @@ export function SaudeCrm({ accessToken }: { accessToken: string }) {
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(270px, 1fr))", gap: 10 }}>
         <Bloco titulo="Entrada de conversas">
           <Linha r="Situação" v={ent.ligada ? "Ligada" : "Desligada"} />
-          <Linha r="Na fila" v={num(ent.fila)} alerta={Number(ent.fila) > 50} />
-          <Linha r="Com erro" v={num(ent.erros)} alerta={Number(ent.erros) > 0} />
+          <Linha r="A processar" v={num(ent.processaveis)} alerta={Number(ent.processaveis) > 50} />
+          <Linha r="Aguardando o negócio" v={num(ent.aguardando_negocio)} />
+          <Linha r="Falhas técnicas" v={num(ent.falhas_tecnicas)} alerta={Number(ent.falhas_tecnicas) > 0} />
+          <Linha r="Espera mais antiga" v={idade(ent.idade_mais_antigo_min)} alerta={Number(ent.idade_mais_antigo_min) > 120} />
+          <Linha r="Processados" v={num(ent.processados)} />
+          <Linha r="Encerrados fora do piloto" v={num(ent.fora_do_piloto)} />
+          <Linha r="Encerrados sem negócio" v={num(ent.sem_negocio_expirado)} />
+          <Linha r="Encerrados por outro motivo" v={num(ent.encerrados_outros)} />
           <Linha r="Últimas 24 h" v={num(ent.volume_24h)} />
           <Linha r="Último processamento" v={quando(ent.ultimo_processado_em)} />
         </Bloco>
@@ -169,14 +189,15 @@ export function SaudeCrm({ accessToken }: { accessToken: string }) {
           <button className="nova-crm-btn ghost" onClick={() => pedir("desligar_runner")}>Desligar leitura da Sara</button>
           <button className="nova-crm-btn ghost" onClick={() => pedir("desligar_entrada")}>Desligar entrada</button>
           <button className="nova-crm-btn ghost" onClick={() => pedir("religar_runner_observador")}>Religar leitura (só observação)</button>
+          <button className="nova-crm-btn ghost" onClick={() => pedir("classificar_backlog")}>Classificar fila acumulada</button>
         </div>
 
         {pendente && (
           <div style={{ marginTop: 10, borderTop: "1px solid #f1f5f9", paddingTop: 10, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "flex-end" }}>
             <span style={{ fontSize: 12.5 }}>Confirmar: <b>{ACAO_ROTULO[pendente.acao] ?? pendente.acao}</b>{pendente.alvo ? ` (${pendente.alvo})` : ""}</span>
             <label style={{ display: "flex", flexDirection: "column", gap: 3, fontSize: 12, color: "#475569" }}>
-              Digite CONFIRMAR
-              <input value={confirmacao} onChange={(e) => setConfirmacao(e.target.value)} placeholder="CONFIRMAR"
+              Digite {palavraDe(pendente.acao)}
+              <input value={confirmacao} onChange={(e) => setConfirmacao(e.target.value)} placeholder={palavraDe(pendente.acao)}
                 style={{ border: "1px solid #cbd5e1", borderRadius: 8, padding: "6px 8px", fontSize: 13, width: 130 }} />
             </label>
             <button className="nova-crm-btn" onClick={() => void executar()}>Executar</button>
