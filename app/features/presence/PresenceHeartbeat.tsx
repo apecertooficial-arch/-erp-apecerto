@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { getBrowserSupabaseClient } from "../../lib/supabase/browser";
 
 /* Batimento de presença do corretor.
    A cada ~20s consulta /api/presenca. Quando o servidor pede confirmação
@@ -16,6 +17,18 @@ export function PresenceHeartbeat({ accessToken, initialOnline }: { accessToken:
   const [actionError, setActionError] = useState("");
   const [returning, setReturning] = useState(false);
   const draining = useRef(false);
+
+  // G2c: consulta o estado canônico persistido. Isso cobre refresh, nova aba e
+  // novo login sem depender apenas do valor carregado junto ao catálogo.
+  useEffect(() => {
+    let stopped = false;
+    void getBrowserSupabaseClient().rpc("wa_v7_minha_presenca").then(({ data, error }) => {
+      if (stopped || error || !data) return;
+      const estado = data as { na_distribuicao?: boolean };
+      if (typeof estado.na_distribuicao === "boolean") setForaDaFila(!estado.na_distribuicao);
+    });
+    return () => { stopped = true; };
+  }, [accessToken]);
 
   /* V7.2 — deixar o prazo vencer NÃO desconecta mais a pessoa do ERP.
      Antes, perder uma janela de 60 segundos executava `auth.signOut()` e

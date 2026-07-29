@@ -8105,6 +8105,7 @@ export type Database = {
       wa_move_respondeu: { Args: { p_lead: number }; Returns: undefined }
       wa_proxima_instancia: { Args: { p_corretor: number }; Returns: string }
       wa_v7_painel: { Args: Record<string, never>; Returns: Json }
+      wa_v7_minha_presenca: { Args: Record<string, never>; Returns: Json }
       wa_registrar_saida: {
         Args: {
           p_conteudo: string

@@ -21,7 +21,14 @@ type Contagens = {
   desconhecidas: number; arquivadas: number; em_quarentena: number;
   sincronizacao_fresca: boolean; ultimo_snapshot_completo_em: string | null;
 };
-type Painel = { contagens: Contagens | null; sessoes: Sessao[]; arquivadas: Arquivada[]; modo: string | null; gerado_em: string };
+type Painel = {
+  pode_ver_tudo: boolean;
+  contagens: Contagens | null;
+  sessoes: Sessao[];
+  arquivadas: Arquivada[];
+  modo: string | null;
+  gerado_em: string;
+};
 
 
 export function ConnectionsWorkspace({ accessToken }: { accessToken: string }) {
@@ -35,18 +42,16 @@ export function ConnectionsWorkspace({ accessToken }: { accessToken: string }) {
      números dos cartões — antes os cartões diziam 9/1/2 e o alerta dizia 3. */
   const sessoes = useMemo(() => painel?.sessoes ?? [], [painel?.sessoes]);
   const c = painel?.contagens ?? null;
-  /* `wa_v7_painel` filtra `sessoes` pelo usuário, mas as `contagens` da RPC
-     ainda são globais. Calcular pelos cartões visíveis impede que a Tica veja
-     o alerta da sessão desconectada da Kapri, por exemplo. Para admin, a lista
-     contém toda a operação e produz os mesmos 10/9/1 do provedor. */
-  const conectadas = sessoes.filter((item) => item.estado === "connected").length;
-  const instaveis = sessoes.filter((item) => item.estado === "connecting").length;
-  const desconectadas = sessoes.filter((item) => item.estado === "disconnected" || item.estado === "desconhecido").length;
+  /* G2c escopa cartões e contagens no servidor pela capacidade do usuário.
+     A Tica recebe 1/1/0; admin recebe o inventário global 10/9/1. */
+  const conectadas = c?.conectadas ?? sessoes.filter((item) => item.estado === "connected").length;
+  const instaveis = c?.conectando ?? sessoes.filter((item) => item.estado === "connecting").length;
+  const desconectadas = c
+    ? c.desconectadas + c.desconhecidas
+    : sessoes.filter((item) => item.estado === "disconnected" || item.estado === "desconhecido").length;
   const arquivadas = painel?.arquivadas ?? [];
   const desatualizado = c ? !c.sincronizacao_fresca : false;
-  // A RPC já filtra por capacidade: quem não pode ver tudo recebe `arquivadas`
-  // vazio. Derivar daqui evita um segundo estado e um segundo round-trip.
-  const isAdmin = arquivadas.length > 0;
+  const isAdmin = Boolean(painel?.pode_ver_tudo);
 
   const load = useCallback(async () => {
     setLoading(true); setError("");

@@ -87,11 +87,9 @@ function DisconnectionAlert({ accessToken, onOpen }: { accessToken: string; onOp
       try {
         const { data, error } = await getBrowserSupabaseClient().rpc("wa_v7_painel");
         if (error || !data || stopped) return;
-        const sessoes = (data as { sessoes?: Array<{ estado?: string }> }).sessoes ?? [];
-        // A RPC filtra as sessões pelo usuário. Derivar da lista visível evita
-        // mostrar à Tica uma desconexão da Kapri; admin continua vendo o total
-        // da operação. "connecting" e consulta atrasada não são desconexão.
-        setCount(sessoes.filter((item) => item.estado === "disconnected" || item.estado === "desconhecido").length);
+        const contagens = (data as { contagens?: { desconectadas?: number; desconhecidas?: number } }).contagens;
+        // Desde o G2c, a própria RPC escopa as contagens pela capacidade.
+        setCount((contagens?.desconectadas ?? 0) + (contagens?.desconhecidas ?? 0));
       } catch { /* ignore */ }
     };
     void load();
