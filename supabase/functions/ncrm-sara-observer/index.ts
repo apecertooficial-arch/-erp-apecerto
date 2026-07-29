@@ -19,7 +19,7 @@ const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const CRON_SECRET = Deno.env.get("CRON_SECRET") ?? "";
 const VERSAO_PROMPT = "sara-observer-v1";
 const VERSAO_MODELO = Deno.env.get("SARA_MODELO") ?? "ia-router";
-const OPTS = { lote: Number(Deno.env.get("SARA_LOTE") ?? 100), timeoutMs: 20000, maxRetries: 1 };
+const OPTS = { lote: Number(Deno.env.get("SARA_LOTE") ?? 3), timeoutMs: 20000, maxRetries: 1 }; // piloto: lote 3 por padrão
 
 const OVERRIDE =
   "Você é a Sara, co-piloto comercial imobiliário da Apecerto. Use as ferramentas consultar_lead e " +
