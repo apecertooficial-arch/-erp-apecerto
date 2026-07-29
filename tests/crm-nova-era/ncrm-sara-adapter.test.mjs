@@ -59,3 +59,18 @@ test("resumoAvaliacaoSeguro: extrai texto, remove raw sensível, null quando vaz
   assert.equal(resumoAvaliacaoSeguro(null, null), null);   // vazio => null (não inventa)
   assert.equal(resumoAvaliacaoSeguro({}, []), null);
 });
+
+test("mensagens com data efetiva (enviado_em ?? criado_em): contexto ordena cronologicamente e nada é perdido", async () => {
+  // Simula o contrato da Edge pós-correção: enviadoEm SEMPRE presente (fallback p/ criado_em).
+  const c = await carregarContextoAdaptador(1, queries({
+    mensagens: async () => ({ data: [
+      { id: "m3", direcao: "recebida", tipo: "texto", conteudo: "terceira", enviadoEm: "2026-07-28T15:00:00.000Z" },
+      { id: "m1", direcao: "recebida", tipo: "texto", conteudo: "primeira", enviadoEm: "2026-07-28T13:00:00.000Z" }, // veio de criado_em (enviado_em era NULL)
+      { id: "m2", direcao: "enviada",  tipo: "texto", conteudo: "segunda",  enviadoEm: "2026-07-28T14:00:00.000Z" },
+    ], error: null }),
+  }));
+  assert.notEqual(c, null);
+  const iPrimeira = c.texto.indexOf("primeira"), iSegunda = c.texto.indexOf("segunda"), iTerceira = c.texto.indexOf("terceira");
+  assert.ok(iPrimeira >= 0 && iSegunda > iPrimeira && iTerceira > iSegunda, "ordem cronológica pela data efetiva");
+  assert.equal(c.ultimaMensagemEm, "2026-07-28T15:00:00.000Z");
+});
