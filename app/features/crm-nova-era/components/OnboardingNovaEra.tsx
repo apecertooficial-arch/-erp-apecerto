@@ -7,22 +7,23 @@
 import { useEffect, useState } from "react";
 
 const PASSOS: Array<{ titulo: string; texto: string }> = [
-  { titulo: "As 4 etapas", texto: "Novo → Tentando contato → Em atendimento → Em acompanhamento. Visita e proposta NÃO são colunas: visita vai para o Pipe de Visitas quando estiver agendada de verdade; proposta vai para a Esteira de Vendas (proposta não é venda)." },
-  { titulo: "Meu dia", texto: "Sua tela principal. A fila mostra, em ordem de prioridade, o que fazer agora: cliente que respondeu, lead novo, ação vencida, promessa vencendo, cadência, sem próxima ação e acompanhamentos." },
-  { titulo: "Cadência", texto: "O sistema calcula o próximo passo e o prazo (dentro do horário comercial). Você executa e registra; nada é enviado automaticamente por você." },
-  { titulo: "Registrar tentativa", texto: "A cada contato, use 'Registrar tentativa' com canal e resultado. O banco calcula o próximo passo da cadência." },
-  { titulo: "Próxima ação", texto: "Depois que o cliente responde, é obrigatório definir a próxima ação com prazo. Lead sem próxima ação aparece na sua fila." },
-  { titulo: "Sara", texto: "A Sara observa e sugere (resumo, temperatura, risco, roteiro e mensagem sugerida). Aceitar ou rejeitar é decisão sua e fica registrado. Ela nunca envia mensagens nem move leads." },
-  { titulo: "Visita e proposta", texto: "Use 'Agendar visita' só com data/horário reais (cria a visita no Pipe). Use 'Registrar proposta' quando houver proposta de fato — ela vai para a Esteira e não conta como venda." },
-  { titulo: "Descarte e nutrição", texto: "Sem perfil ou sem interesse? Descarte com motivo. Sem momento de compra agora? Nutrição. Ambos saem da fila ativa e ficam auditáveis." },
+  { titulo: "1. Encontre o próximo cliente", texto: "Abra 'Meu dia'. A lista já vem na ordem certa, em 4 blocos: Atenda agora, Faça hoje, Agendados e Aguardando cliente. O primeiro item do topo é sempre o mais urgente." },
+  { titulo: "2. Abra o chat", texto: "Clique em 'Abrir chat' direto no item da fila, no card do quadro ou no topo da ficha. É a mesma conversa do CRM de sempre — mesmo contato, mesmo histórico, mesmo número. Abrir não envia nada." },
+  { titulo: "3. Registre o resultado", texto: "Depois de falar com o cliente, use 'Registrar resultado'. Diga o que aconteceu (respondeu, não respondeu, pediu retorno). É isso que mantém o seu dia organizado." },
+  { titulo: "4. Defina a próxima ação", texto: "Sempre deixe combinado o próximo passo e o prazo. Atendimento sem próxima ação volta para a sua fila como pendência." },
+  { titulo: "5. Consulte a Sara", texto: "Em 'Ver sugestão da Sara' você recebe resumo da conversa, o que o cliente procura, objeções, risco e uma sugestão de abordagem. Ela só sugere: nada é enviado nem alterado sem você confirmar." },
+  { titulo: "6. Agende a visita", texto: "Em 'Mais ações' → 'Agendar visita', com data e horário reais. A visita passa a existir no Pipe de Visitas — use apenas quando estiver combinada de verdade." },
+  { titulo: "7. Registre a proposta", texto: "Em 'Mais ações' → 'Registrar proposta'. Ela segue para a Esteira de Vendas. Atenção: proposta não é venda — a venda continua sendo fechada na Esteira." },
+  { titulo: "As 4 etapas", texto: "Novo → Tentando contato → Em atendimento → Em acompanhamento. Visita e proposta não são colunas: são saídas para o Pipe de Visitas e para a Esteira." },
 ];
 
+
 const CHECKLIST = [
-  "Abrir o Meu dia e atender primeiro quem respondeu",
-  "Registrar a 1ª tentativa de um lead novo",
-  "Definir próxima ação com prazo após uma resposta",
-  "Pedir uma análise da Sara e aceitar/rejeitar",
-  "Registrar uma visita real ou uma proposta",
+  "Abrir o Meu dia e atender o primeiro de 'Atenda agora'",
+  "Abrir o chat desse cliente e responder",
+  "Registrar o resultado do contato",
+  "Definir a próxima ação com prazo",
+  "Ver a sugestão da Sara e decidir",
 ];
 
 function chave(userId: string) { return `ncrm_onboarding_v1_${userId}`; }
@@ -61,7 +62,7 @@ export function OnboardingNovaEra({ userId }: { userId: string }) {
           </div>
         )}
         <div style={{ display: "flex", gap: 8, justifyContent: "space-between", marginTop: 12 }}>
-          <button className="nova-crm-btn ghost" onClick={() => fechar(false)}>Pular</button>
+          <button className="nova-crm-btn ghost" onClick={() => fechar(false)}>Pular e atender agora</button>
           <div style={{ display: "flex", gap: 8 }}>
             {passo > 0 && <button className="nova-crm-btn ghost" onClick={() => setPasso(passo - 1)}>Voltar</button>}
             {passo < PASSOS.length - 1
