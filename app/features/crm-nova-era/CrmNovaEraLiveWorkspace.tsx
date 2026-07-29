@@ -25,6 +25,8 @@ import { WorkQueue } from "./components/WorkQueue";
 import { MeuDia } from "./components/MeuDia";
 import { GestaoOperacional, CadenciaConfig } from "./components/GestaoOperacional";
 import { OnboardingNovaEra } from "./components/OnboardingNovaEra";
+import { LeadChatDrawer, type Deal as DealLegado, type Lead as LeadLegado } from "../crm/CrmWorkspace";
+import { rotuloIngest, rotuloSara, rotuloRunner } from "./lib/linguagem";
 import {
   mapEstadoToLead, enriquecerComEventos,
   type EstadoRow, type EventoRow, type PropostaRow,
@@ -57,6 +59,16 @@ export function CrmNovaEraLiveWorkspace({ accessToken, profile }: { accessToken:
   const [toast, setToast] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [ingestInfo, setIngestInfo] = useState<{ ativo: boolean | null; desde: string | null }>({ ativo: null, desde: null });
+  // Chat REAL: reaproveita o MESMO drawer do CRM antigo (mesma conversa, contato,
+  // instância, permissões e histórico). Nada é criado nem enviado ao abrir.
+  const [chatNegocio, setChatNegocio] = useState<EstadoRow | null>(null);
+  const abrirChat = useCallback(async (negocioId: string) => {
+    const achado = itens.find((i) => String(i.negocio_id) === String(negocioId));
+    if (achado) { setChatNegocio(achado); return; }
+    const { ok, json } = await api(`/api/ncrm?negocio=${negocioId}`, accessToken);
+    if (!ok) { setToast((json.error as string) || "Não foi possível abrir a conversa."); return; }
+    setChatNegocio(json.estado as EstadoRow);
+  }, [itens, accessToken]);
 
   const leads = useMemo(() => itens.map(mapEstadoToLead), [itens]);
 
@@ -171,7 +183,7 @@ export function CrmNovaEraLiveWorkspace({ accessToken, profile }: { accessToken:
                     Vendo a fila do corretor #{drillCorretor}. <button className="nova-crm-btn ghost" onClick={() => setDrillCorretor(null)}>Ver minha fila</button>
                   </div>
                 )}
-                <MeuDia accessToken={accessToken} corretorFiltro={drillCorretor} onAbrir={(id) => void abrirLead(id)} />
+                <MeuDia accessToken={accessToken} corretorFiltro={drillCorretor} onAbrir={(id) => void abrirLead(id)} onAbrirChat={(id) => void abrirChat(id)} />
                 <div className="nova-crm-indic" style={{ marginTop: 14 }}>
                   <span>Vencidas: <b>{indic.vencidas}</b></span>
                   <span>Aguardando você: <b>{indic.respostasAguardando}</b></span>
@@ -200,11 +212,30 @@ export function CrmNovaEraLiveWorkspace({ accessToken, profile }: { accessToken:
               lead={detalhe} busy={busy} accessToken={accessToken} leadId={detalheLeadId}
               onClose={() => { setSelId(null); setDetalhe(null); setDetalheLeadId(null); }}
               onExecutar={executar} onToast={setToast}
+              onAbrirChat={() => void abrirChat(detalhe.id)}
               onCriarVisita={(date, start) => agendarVisita(Number(detalhe.id), itens.find((i) => String(i.negocio_id) === detalhe.id)?.versao ?? 1, detalheLeadId, date, start)}
               versao={itens.find((i) => String(i.negocio_id) === detalhe.id)?.versao ?? 1}
             />
           )}
         </div>
+      )}
+
+      {chatNegocio && chatNegocio.negocios && (
+        <LeadChatDrawer
+          key={chatNegocio.negocio_id}
+          accessToken={accessToken}
+          lead={{
+            id: chatNegocio.negocios.lead_id,
+            nome: chatNegocio.negocios.leads?.nome ?? null,
+            telefone: chatNegocio.negocios.leads?.telefone ?? null,
+            corretor_id: chatNegocio.negocios.corretor_id ?? null,
+          } as unknown as LeadLegado}
+          deal={{ id: chatNegocio.negocio_id, lead_id: chatNegocio.negocios.lead_id } as unknown as DealLegado}
+          corretorNome={chatNegocio.negocios.corretores?.nome ?? undefined}
+          onClose={() => setChatNegocio(null)}
+          onResponse={async () => { await carregarQuadro(); }}
+          onOpenLead={() => { const id = String(chatNegocio.negocio_id); setChatNegocio(null); void abrirLead(id); }}
+        />
       )}
 
       {toast && <div className="nova-crm-toast" onAnimationEnd={() => setToast(null)}>{toast}</div>}
@@ -214,10 +245,10 @@ export function CrmNovaEraLiveWorkspace({ accessToken, profile }: { accessToken:
 
 /* --------------------------- Painel do lead (live) --------------------------- */
 function LivePanel({
-  lead, versao, busy, accessToken, leadId, onClose, onExecutar, onToast, onCriarVisita,
+  lead, versao, busy, accessToken, leadId, onClose, onExecutar, onToast, onCriarVisita, onAbrirChat,
 }: {
   lead: LeadNova; versao: number; busy: boolean; accessToken: string; leadId: number | null;
-  onClose: () => void;
+  onClose: () => void; onAbrirChat: () => void;
   onExecutar: (p: Record<string, unknown>) => void | Promise<void>;
   onToast: (m: string) => void;
   onCriarVisita: (date: string, startTime: string) => void | Promise<void>;
@@ -227,6 +258,7 @@ function LivePanel({
   const [saraLoad, setSaraLoad] = useState(false);
   const [prefill, setPrefill] = useState<{ proximaTipo?: string; prazo?: string }>({});
   const [justif, setJustif] = useState<null | { aberto: boolean; texto: string; msg: string | null }>(null);
+  const [maisAcoes, setMaisAcoes] = useState(false);
   const [agoraMs] = useState(() => Date.now());
   const acaoVencida = !!(lead.proximaAcaoEm && Date.parse(lead.proximaAcaoEm) < agoraMs);
   const timeline = montarTimeline(lead);
@@ -245,7 +277,17 @@ function LivePanel({
     <aside className="nova-crm-panel" aria-label={`Ficha de ${lead.nome}`}>
       <div className="nova-crm-panel-head">
         <div style={{ display: "flex", justifyContent: "space-between" }}>
-          <div><h2>{lead.nome}</h2><div className="sub">{lead.corretorNome} · {lead.telefone}</div></div>
+          <div style={{ minWidth: 0 }}>
+            <h2 style={{ margin: 0 }}>{lead.nome}</h2>
+            <div className="sub">Corretor: {lead.corretorNome}</div>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 4, fontSize: 12 }}>
+              <span style={{ background: "#f1f5f9", borderRadius: 999, padding: "2px 8px" }}>
+                {lead.respondeu ? (lead.respostaPendenteCorretor ? "Cliente respondeu — aguardando você" : "Em atendimento") : "Aguardando resposta do cliente"}
+              </span>
+              {lead.temperatura && <span style={{ background: "#fff7ed", borderRadius: 999, padding: "2px 8px" }}>Temperatura: {lead.temperatura}</span>}
+              {acaoVencida && <span style={{ background: "#fef2f2", color: "#b91c1c", borderRadius: 999, padding: "2px 8px" }}>Risco: ação vencida</span>}
+            </div>
+          </div>
           <button className="nova-crm-btn ghost" onClick={onClose}>✕</button>
         </div>
         <div className="nova-crm-panel-next">
@@ -306,12 +348,14 @@ function LivePanel({
 
           {/* Sara (sugestão) */}
           <div className="nova-crm-sara">
-            <button className="nova-crm-btn" onClick={() => void analisarSara()} disabled={saraLoad}>
-              {saraLoad ? "Analisando…" : "🧠 Analisar com a Sara"}
-            </button>
             {sara && (
               <div className="nova-crm-sara-card">
-                <div><b>Sugestão da Sara</b> — você decide (a Sara não altera nada sozinha).</div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                  <b>Sugestão da Sara</b>
+                  <span style={{ fontSize: 12, color: "#6b7280" }}>
+                    A Sara apenas sugere. Nada é enviado nem alterado automaticamente — a ação só acontece quando você confirmar no formulário.
+                  </span>
+                </div>
                 {sara.evidencia_suficiente === false && (
                   <div style={{ background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 8, padding: 8, fontSize: 12, margin: "6px 0" }}>
                     <b>Evidência insuficiente</b> — a conversa ainda não sustenta conclusões fortes. A Sara limitou-se ao que existe; priorize coletar as respostas que faltam.
@@ -362,7 +406,7 @@ function LivePanel({
                     const prazo = typeof sara.prazo_sugerido === "string" ? sara.prazo_sugerido.slice(0, 16) : undefined;
                     setPrefill({ proximaTipo: tipo, prazo });
                     setForm(lead.respondeu ? "concluir" : "tentativa"); // humano confirma no formulário
-                  }}>Aceitar e confirmar no formulário</button>
+                  }}>Ação que será confirmada por você →</button>
                   <button className="nova-crm-btn ghost" disabled={busy} onClick={async () => {
                     const r = await fetch(`/api/ncrm/sara`, { method: "POST", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify({ negocioId: Number(lead.id), baseVersao: versao, decisao: "rejeitada", sugestao: sara }) });
                     if (!r.ok) { onToast("Falha ao registrar a rejeição — tente novamente."); return; } // não engole o erro
@@ -376,12 +420,25 @@ function LivePanel({
 
           {/* Ações */}
           <div className="nova-crm-acoes">
-            {!lead.respondeu && <button className="nova-crm-btn" onClick={() => setForm("tentativa")}>Registrar tentativa</button>}
-            {lead.respondeu && <button className="nova-crm-btn" onClick={() => setForm("concluir")}>Concluir ação</button>}
-            <button className="nova-crm-btn" onClick={() => setForm("visita")}>Agendar visita</button>
-            <button className="nova-crm-btn" onClick={() => setForm("proposta")}>Registrar proposta</button>
-            <button className="nova-crm-btn ghost" onClick={() => setForm("descarte")}>Descartar</button>
-            <button className="nova-crm-btn ghost" onClick={() => setForm("nutricao")}>Nutrição</button>
+            {/* Ações principais, na ordem de uso real do corretor. */}
+            <button className="nova-crm-btn" onClick={onAbrirChat}>💬 Abrir chat</button>
+            {!lead.respondeu && <button className="nova-crm-btn" onClick={() => setForm("tentativa")}>Registrar resultado</button>}
+            {lead.respondeu && <button className="nova-crm-btn" onClick={() => setForm("concluir")}>Registrar resultado</button>}
+            <button className="nova-crm-btn ghost" onClick={() => setForm(lead.respondeu ? "concluir" : "tentativa")}>Definir próxima ação</button>
+            <button className="nova-crm-btn ghost" onClick={() => void analisarSara()} disabled={saraLoad}>
+              {saraLoad ? "Consultando…" : "Ver sugestão da Sara"}
+            </button>
+            <button className="nova-crm-btn ghost" onClick={() => setMaisAcoes((v) => !v)}>
+              {maisAcoes ? "Menos ações" : "Mais ações"}
+            </button>
+            {maisAcoes && (
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap", width: "100%", paddingTop: 6, borderTop: "1px dashed #e5e7eb" }}>
+                <button className="nova-crm-btn ghost" onClick={() => setForm("visita")}>Agendar visita</button>
+                <button className="nova-crm-btn ghost" onClick={() => setForm("proposta")}>Registrar proposta</button>
+                <button className="nova-crm-btn ghost" onClick={() => setForm("nutricao")}>Nutrição</button>
+                <button className="nova-crm-btn ghost" onClick={() => setForm("descarte")}>Descartar</button>
+              </div>
+            )}
           </div>
 
           {form && (
