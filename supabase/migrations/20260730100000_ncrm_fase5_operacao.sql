@@ -177,7 +177,7 @@ BEGIN
           WHEN e.resposta_pendente THEN 'Cliente respondeu — aguardando você'
           WHEN e.etapa = 'novo' AND e.tentativas_feitas = 0 AND NOT e.respondeu THEN 'Lead novo sem primeira atuação'
           WHEN e.proxima_acao_em IS NOT NULL AND e.proxima_acao_em < now()
-               AND e.proxima_acao_tipo = 'tentativa_cadencia' THEN 'Cadência vencida'
+               AND e.proxima_acao_tipo = 'tentativa_cadencia' THEN 'Cadencia vencida'
           WHEN e.proxima_acao_em IS NOT NULL AND e.proxima_acao_em < now() THEN 'Próxima ação vencida'
           WHEN e.proxima_acao_tipo IN ('retornar_contato','ligar_retorno')
                AND e.proxima_acao_em < now() + make_interval(mins => v_tol) THEN 'Promessa de retorno vencendo'

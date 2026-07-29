@@ -129,6 +129,7 @@ PSQL -c "SELECT public.test_assert(to_regproc('ncrm_private.reconciliar_mensagen
 PSQL -f "$MIG_RETRY"
 
 echo "### #29 rollback remove só objetos ncrm_* (downs aditivos ANTES do down principal)"
+PSQL -f "$DOWN_F5"
 PSQL -f "$DOWN_ADMIN"
 PSQL -f "$DOWN_SARA_OBS"
 PSQL -c "SELECT public.test_assert(to_regclass('public.ncrm_sara_config') IS NULL AND to_regclass('public.ncrm_sara_analise') IS NULL AND to_regproc('public.ncrm_sara_definir_modo') IS NULL, '#29 down Sara observer: objetos removidos');"
@@ -153,6 +154,7 @@ PSQL -f "$MIG_PROP"
 PSQL -f "$MIG_VISITA"
 PSQL -f "$MIG_SARA_OBS"
 PSQL -f "$MIG_ADMIN"
+PSQL -f "$MIG_F5"
 PSQL -c "SELECT public.test_assert(to_regclass('public.ncrm_estado') IS NOT NULL AND to_regnamespace('ncrm_private') IS NOT NULL
          AND to_regclass('public.ncrm_ingest_checkpoint') IS NOT NULL
          AND to_regproc('public.ncrm_registrar_proposta_esteira') IS NOT NULL
