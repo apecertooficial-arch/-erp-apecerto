@@ -73,20 +73,34 @@ const MANAGER_ROLES = new Set(["admin", "executivo", "diretor", "gerente", "gest
 
 const brokerModules = new Set<ModuleName>(["Início", "CRM", "Performance", "Produtos", "Financeiro", "Chat ao Vivo", "Financiamento", "Disparos", "Calendário", "Notificações", "Configurações", "Ajuda", "Minha Equipe"]);
 
+/* V7.2 — o alerta global passa a ler a MESMA fonte e a MESMA fórmula da tela de
+   Conexões (`wa_v7_painel`). Antes ele contava `!conectada` sobre os 12
+   registros locais e dizia "3 desconectadas" enquanto os cartões diziam
+   "9 conectadas / 1 instável / 2 desconectadas" — dois números para o mesmo
+   fato, e ambos divergentes do provedor, que tem 10 sessões. */
 function DisconnectionAlert({ accessToken, onOpen }: { accessToken: string; onOpen: () => void }) {
   const [count, setCount] = useState(0);
   const [dismissed, setDismissed] = useState(false);
   useEffect(() => {
-    void getBrowserSupabaseClient().functions.invoke("dapi-qr", { body: { action: "list" } }).then(({ data }) => {
-      const result = (data ?? {}) as { instancias?: Array<{ conectada: boolean }> };
-      setCount((result.instancias ?? []).filter((item) => !item.conectada).length);
-    }).catch(() => {});
+    let stopped = false;
+    const load = async () => {
+      try {
+        const { data, error } = await getBrowserSupabaseClient().rpc("wa_v7_painel");
+        if (error || !data || stopped) return;
+        const contagens = (data as { contagens?: { desconectadas?: number; desconhecidas?: number } }).contagens;
+        // Desde o G2c, a própria RPC escopa as contagens pela capacidade.
+        setCount((contagens?.desconectadas ?? 0) + (contagens?.desconhecidas ?? 0));
+      } catch { /* ignore */ }
+    };
+    void load();
+    const id = window.setInterval(() => void load(), 30000);
+    return () => { stopped = true; window.clearInterval(id); };
   }, [accessToken]);
   if (dismissed || count === 0) return null;
   return <div className="disconnect-alert" role="button" tabIndex={0} onClick={onOpen} onKeyDown={(event) => { if (event.key === "Enter") onOpen(); }}>
     <button className="disconnect-x" type="button" aria-label="Fechar" onClick={(event) => { event.stopPropagation(); setDismissed(true); }}>×</button>
     <span>⚠</span>
-    <div><strong>{count === 1 ? "1 instância de WhatsApp desconectada" : `${count} instâncias de WhatsApp desconectadas`}</strong><p>Seus atendimentos podem estar parados. Clique aqui para reconectar pelo QR.</p></div>
+    <div><strong>{count === 1 ? "1 sessão de WhatsApp desconectada" : `${count} sessões de WhatsApp desconectadas`}</strong><p>Seus atendimentos podem estar parados. Clique aqui para reconectar pelo QR.</p></div>
   </div>;
 }
 
@@ -287,7 +301,7 @@ export function ProductCatalog() {
 
   return (
     <AppShell activeItem={activeModule} onNavigate={setActiveModule} onOpenProfile={() => setProfileOpen(true)} sessionRole={sessionProfile?.role ?? "corretor"} sessionName={sessionProfile?.name ?? "Corretor"} modulePermissions={sessionProfile?.permissoes ?? null} isManager={MANAGER_ROLES.has(sessionProfile?.perfil ?? "")} badges={{ Produtos: canApprove ? pendingCount + pendingUnits.length : 0 }}>
-      {sessionProfile?.role === "corretor" && accessToken && <PresenceHeartbeat accessToken={accessToken} />}
+      {sessionProfile?.role === "corretor" && accessToken && <PresenceHeartbeat accessToken={accessToken} initialOnline={sessionProfile.online} />}
       {activeModule === "Início" && accessToken ? (
         <HomeWorkspace accessToken={accessToken} sessionName={sessionProfile?.name ?? ""} onNavigate={(moduleName) => setActiveModule(moduleName as ModuleName)} />
       ) : activeModule === "CRM" && accessToken ? (

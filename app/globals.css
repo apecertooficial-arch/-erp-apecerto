@@ -5660,3 +5660,19 @@ button.momentox-selo:hover{filter:brightness(.96);border-color:currentColor}
 .attention-popover main article.vermelho>span{background:var(--red-bg);color:#c0392b}
 .attention-popover main article.preto>span{background:#e8e5e2;color:#1f1c1a}
 @media(max-width:620px){.attention-summary{grid-template-columns:repeat(3,1fr)}}
+
+
+/* V7.2 — aviso persistente de "fora da distribuicao". Substitui o logout
+   automatico que expulsava a corretora do ERP quando o prompt de presenca
+   vencia. */
+.presence-offline-bar{position:fixed;left:50%;transform:translateX(-50%);bottom:18px;z-index:9000;
+  display:flex;align-items:center;gap:14px;max-width:640px;padding:14px 18px;border-radius:14px;
+  background:#3a2a06;color:#ffe9b0;border:1px solid #7a5a10;box-shadow:0 10px 30px rgba(0,0,0,.35)}
+.presence-offline-bar>span{font-size:22px;line-height:1}
+.presence-offline-bar strong{display:block;font-size:14px}
+.presence-offline-bar p{margin:2px 0 0;font-size:12px;opacity:.85}
+.presence-offline-bar .presence-yes{white-space:nowrap}
+.connections-legacy{margin-top:22px;padding:14px 16px;border:1px dashed var(--border,#333);border-radius:12px;opacity:.85}
+.connections-legacy h2{font-size:14px;margin:0 0 4px}
+.connections-legacy p{font-size:12px;margin:0 0 8px;opacity:.8}
+.connections-legacy ul{margin:0;padding-left:18px;font-size:12px}
