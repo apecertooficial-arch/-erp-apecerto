@@ -1,6 +1,8 @@
 -- Rollback: Sara modo observador (só objetos ncrm_*).
+DROP FUNCTION IF EXISTS public.ncrm_sara_runner_marcar_item(bigint,text,uuid,text);
 DROP FUNCTION IF EXISTS public.ncrm_sara_runner_marcar_execucao(uuid,bigint,int);
 DROP FUNCTION IF EXISTS public.ncrm_sara_elegiveis(int);
+DROP TABLE IF EXISTS public.ncrm_sara_runner_item;
 DROP TABLE IF EXISTS public.ncrm_sara_runner_estado;
 DROP FUNCTION IF EXISTS public.ncrm_sara_analises_recentes(int);
 DROP FUNCTION IF EXISTS public.ncrm_sara_decidir_analise(bigint,text,text);

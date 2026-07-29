@@ -86,18 +86,33 @@ SELECT public.test_assert((SELECT decisao FROM public.ncrm_sara_analise WHERE id
 SELECT public.test_assert((SELECT count(*) FROM public.ncrm_evento WHERE negocio_id=1000 AND tipo='classificacao_sara' AND (payload->>'analise_id')::bigint=:aid)=1,'SARA decisão gera 1 evento classificacao_sara vinculado');
 SELECT public.test_assert((SELECT versao FROM public.ncrm_estado WHERE negocio_id=1000)=:v_antes,'SARA decisão NÃO muta estado');
 
--- ===== FILA JUSTA: menos recentemente analisados primeiro; analisado não fica de fora =====
--- corretor/authenticated não acessa a fila do runner (sem EXECUTE => service-only)
+-- ===== FILA JUSTA + ANTI-STARVATION (backoff por item) =====
+-- corretor/authenticated não acessa a fila nem o marcador (service-only)
 SELECT set_config('request.jwt.claims', json_build_object('sub',:A,'role','authenticated')::text, false); SET ROLE authenticated;
 SELECT public.test_expect_error('SELECT public.ncrm_sara_elegiveis(100)','permission denied','SARA fila é service-only (corretor sem EXECUTE)');
+SELECT public.test_expect_error('SELECT public.ncrm_sara_runner_marcar_item(1000,''erro'',gen_random_uuid(),''x'')','permission denied','SARA marcar_item é service-only');
 RESET ROLE;
 SELECT set_config('request.jwt.claims', json_build_object('role','service_role')::text, false); SET ROLE service_role;
--- 1000 já foi analisado; existem negócios com estado nunca analisados => estes vêm ANTES de 1000
-SELECT public.test_assert((public.ncrm_sara_elegiveis(100) -> 'negocios' ->> 0)::bigint <> 1000,'SARA fila justa: negócio já analisado NÃO é o primeiro');
-SELECT public.test_assert((public.ncrm_sara_elegiveis(500) -> 'negocios') @> '1000'::jsonb,'SARA fila justa: analisado ainda aparece (não fica eternamente fora)');
--- cursor de execução
-SELECT public.test_assert((public.ncrm_sara_runner_marcar_execucao(gen_random_uuid(),1000,5) ->> 'ok')::boolean,'SARA cursor de execução registrado');
+-- lote 1 (3 negócios). Marca os 3 como ERRO => entram em backoff (proxima_tentativa_em futura).
+DROP TABLE IF EXISTS _lote1; DROP TABLE IF EXISTS _lote2;
+CREATE TEMP TABLE _lote1 AS SELECT (jsonb_array_elements_text(public.ncrm_sara_elegiveis(3) -> 'negocios'))::bigint AS negocio_id;
+SELECT public.ncrm_sara_runner_marcar_item(negocio_id,'erro',gen_random_uuid(),'falhou') FROM _lote1;
+-- lote 2: os que falharam NÃO bloqueiam — próxima execução alcança os SEGUINTES (disjunto do lote 1)
+CREATE TEMP TABLE _lote2 AS SELECT (jsonb_array_elements_text(public.ncrm_sara_elegiveis(3) -> 'negocios'))::bigint AS negocio_id;
+-- backoff diferenciado: inválido (min do lote2) reagenda com prazo maior; sucesso (max) zera tentativas
+SELECT public.ncrm_sara_runner_marcar_item((SELECT min(negocio_id) FROM _lote2),'invalido',gen_random_uuid(),NULL);
+SELECT public.ncrm_sara_runner_marcar_item((SELECT max(negocio_id) FROM _lote2),'analisado',gen_random_uuid(),NULL);
+SELECT public.ncrm_sara_runner_marcar_execucao(gen_random_uuid(),1000,5);
 RESET ROLE;
+-- Verificações (como postgres; a tabela runner_item é fechada a service_role/authenticated)
+SELECT public.test_assert((SELECT count(*) FROM _lote1)=3,'SARA fila: lote 1 tem 3 negócios');
+SELECT public.test_assert((SELECT count(*) FROM _lote2 WHERE negocio_id IN (SELECT negocio_id FROM _lote1))=0,'SARA anti-starvation: itens que falharam não ocupam a frente (lote 2 disjunto)');
+SELECT public.test_assert((SELECT bool_and(proxima_tentativa_em > now()) FROM public.ncrm_sara_runner_item WHERE negocio_id IN (SELECT negocio_id FROM _lote1)),'SARA backoff: falha agenda proxima_tentativa_em futura');
+SELECT public.test_assert(
+  (SELECT proxima_tentativa_em FROM public.ncrm_sara_runner_item WHERE negocio_id=(SELECT min(negocio_id) FROM _lote2))
+   > (SELECT max(proxima_tentativa_em) FROM public.ncrm_sara_runner_item WHERE negocio_id IN (SELECT negocio_id FROM _lote1)),
+  'SARA backoff: inválido reagenda com prazo maior que erro');
+SELECT public.test_assert((SELECT tentativas_consecutivas=0 AND proxima_tentativa_em > now() FROM public.ncrm_sara_runner_item WHERE negocio_id=(SELECT max(negocio_id) FROM _lote2)),'SARA sucesso: zera tentativas e reagenda');
 SELECT public.test_assert((SELECT ultima_execucao IS NOT NULL AND processados=5 FROM public.ncrm_sara_runner_estado WHERE id=true),'SARA cursor persistido');
 
 -- ===== KILL-SWITCH: registro automático SÓ em observer (suggest/off recusam) =====

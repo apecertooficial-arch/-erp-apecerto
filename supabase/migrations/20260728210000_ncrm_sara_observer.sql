@@ -180,26 +180,75 @@ INSERT INTO public.ncrm_sara_runner_estado (id) VALUES (true) ON CONFLICT (id) D
 REVOKE ALL ON public.ncrm_sara_runner_estado FROM PUBLIC, anon, authenticated;
 ALTER TABLE public.ncrm_sara_runner_estado ENABLE ROW LEVEL SECURITY;
 
--- Elegíveis do runner: negócios com estado, ordenados pelos MENOS RECENTEMENTE analisados
--- (nunca analisados primeiro), determinístico por negócio. Ninguém fica eternamente de fora.
+-- CONTROLE DE TENTATIVA POR NEGÓCIO (anti-starvation). Cada negócio processado é marcado
+-- com status/backoff; a fila usa proxima_tentativa_em para NÃO travar nos primeiros 100.
+CREATE TABLE public.ncrm_sara_runner_item (
+  negocio_id             bigint PRIMARY KEY,
+  ultima_tentativa_em    timestamptz NULL,
+  ultimo_status          text NULL CHECK (ultimo_status IS NULL OR ultimo_status IN ('analisado','ja_analisado','invalido','erro','sem_contexto')),
+  tentativas_consecutivas integer NOT NULL DEFAULT 0,
+  proxima_tentativa_em   timestamptz NULL,
+  ultimo_erro            text NULL,
+  ultimo_run_id          uuid NULL
+);
+REVOKE ALL ON public.ncrm_sara_runner_item FROM PUBLIC, anon, authenticated;
+ALTER TABLE public.ncrm_sara_runner_item ENABLE ROW LEVEL SECURITY;
+
+-- Elegíveis do runner (fila JUSTA, sem starvation):
+--   1) nunca tentados; 2) tentativa VENCIDA por proxima_tentativa_em; 3) menos recentemente
+--   processados; 4) desempate por negocio_id. Itens em backoff (proxima_tentativa_em no futuro)
+--   ficam FORA até vencer — não bloqueiam os posteriores.
 CREATE FUNCTION public.ncrm_sara_elegiveis(p_lote int DEFAULT 100)
   RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $fn$
 DECLARE v_lim int := LEAST(GREATEST(COALESCE(p_lote,100),1),500);
 BEGIN
   IF COALESCE(auth.role(),'') <> 'service_role' THEN RETURN jsonb_build_object('ok',false,'erro','somente_servico'); END IF;
   RETURN jsonb_build_object('ok',true,'negocios', COALESCE((
-    SELECT jsonb_agg(x.negocio_id ORDER BY x.ult NULLS FIRST, x.negocio_id)
+    SELECT jsonb_agg(x.negocio_id ORDER BY x.nunca DESC, x.prox ASC NULLS FIRST, x.ult ASC NULLS FIRST, x.negocio_id)
     FROM (
-      SELECT e.negocio_id, max(a.analisado_em) AS ult
+      SELECT e.negocio_id,
+             (i.negocio_id IS NULL) AS nunca,
+             i.proxima_tentativa_em AS prox,
+             i.ultima_tentativa_em AS ult
       FROM public.ncrm_estado e
-      LEFT JOIN public.ncrm_sara_analise a ON a.negocio_id = e.negocio_id
-      GROUP BY e.negocio_id
-      ORDER BY max(a.analisado_em) NULLS FIRST, e.negocio_id
+      LEFT JOIN public.ncrm_sara_runner_item i ON i.negocio_id = e.negocio_id
+      WHERE i.negocio_id IS NULL OR i.proxima_tentativa_em IS NULL OR i.proxima_tentativa_em <= now()
+      ORDER BY (i.negocio_id IS NULL) DESC, i.proxima_tentativa_em ASC NULLS FIRST, i.ultima_tentativa_em ASC NULLS FIRST, e.negocio_id
       LIMIT v_lim
     ) x), '[]'::jsonb));
 END $fn$;
 REVOKE ALL ON FUNCTION public.ncrm_sara_elegiveis(int) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.ncrm_sara_elegiveis(int) TO service_role;
+
+-- Marca o RESULTADO de um negócio processado + BACKOFF (service-only). Todo negócio processado
+-- passa por aqui (não só quando registra análise): garante rotação da fila.
+CREATE FUNCTION public.ncrm_sara_runner_marcar_item(p_negocio_id bigint, p_status text, p_run_id uuid, p_erro text DEFAULT NULL)
+  RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $fn$
+DECLARE v_tent int; v_prox timestamptz; v_erro text := left(COALESCE(p_erro,''), 200);
+BEGIN
+  IF COALESCE(auth.role(),'') <> 'service_role' THEN RETURN jsonb_build_object('ok',false,'erro','somente_servico'); END IF;
+  IF p_status NOT IN ('analisado','ja_analisado','invalido','erro','sem_contexto') THEN RETURN jsonb_build_object('ok',false,'erro','status_invalido'); END IF;
+  SELECT COALESCE(tentativas_consecutivas,0) INTO v_tent FROM public.ncrm_sara_runner_item WHERE negocio_id = p_negocio_id;
+  v_tent := COALESCE(v_tent,0);
+  IF p_status IN ('analisado','ja_analisado') THEN
+    v_tent := 0;
+    v_prox := now() + interval '6 hours';                                   -- sucesso: revisita mais tarde
+  ELSIF p_status = 'invalido' THEN
+    v_tent := v_tent + 1;
+    v_prox := now() + LEAST(interval '1 hour' * power(2, v_tent), interval '1 day');  -- IA inválida: backoff maior
+  ELSE  -- erro / sem_contexto
+    v_tent := v_tent + 1;
+    v_prox := now() + LEAST(interval '5 minutes' * power(2, v_tent), interval '2 hours'); -- reagenda com backoff
+  END IF;
+  INSERT INTO public.ncrm_sara_runner_item (negocio_id, ultima_tentativa_em, ultimo_status, tentativas_consecutivas, proxima_tentativa_em, ultimo_erro, ultimo_run_id)
+  VALUES (p_negocio_id, now(), p_status, v_tent, v_prox, NULLIF(v_erro,''), p_run_id)
+  ON CONFLICT (negocio_id) DO UPDATE SET
+    ultima_tentativa_em = now(), ultimo_status = EXCLUDED.ultimo_status, tentativas_consecutivas = EXCLUDED.tentativas_consecutivas,
+    proxima_tentativa_em = EXCLUDED.proxima_tentativa_em, ultimo_erro = EXCLUDED.ultimo_erro, ultimo_run_id = EXCLUDED.ultimo_run_id;
+  RETURN jsonb_build_object('ok',true,'proxima_tentativa_em',v_prox);
+END $fn$;
+REVOKE ALL ON FUNCTION public.ncrm_sara_runner_marcar_item(bigint,text,uuid,text) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.ncrm_sara_runner_marcar_item(bigint,text,uuid,text) TO service_role;
 
 -- Marca a execução (cursor) — service-only.
 CREATE FUNCTION public.ncrm_sara_runner_marcar_execucao(p_run_id uuid, p_ultimo_negocio_id bigint, p_processados int)
