@@ -350,12 +350,15 @@ BEGIN
   IF NOT FOUND THEN RETURN jsonb_build_object('ok',false,'erro','conflito_versao'); END IF;
 
   INSERT INTO public.ncrm_evento (negocio_id, lead_id, corretor_id_no_evento, workflow_config_id,
-      tipo, numero_tentativa, canal, resultado, payload, origem, idempotency_key,
+      tipo, numero_tentativa, canal, resultado, payload, origem, executado_por, idempotency_key,
       estado_versao_antes, estado_versao_apos)
   VALUES (p_negocio_id, v_lead, v_corretor, v_cfg, 'tentativa', 1, 'whatsapp', 'sem_resposta',
       jsonb_build_object('message_id', v_msg, 'primeira_abordagem','humana',
                          'sla_min', GREATEST(0, (EXTRACT(epoch FROM (p_em - v_criado))/60)::int)),
-      'usuario', v_idem, v_antes, v_antes + 1);
+      CASE WHEN (SELECT u.usuario_id FROM public.corretores u WHERE u.id = v_corretor) IS NOT NULL
+           THEN 'usuario' ELSE 'sistema' END,
+      (SELECT u.usuario_id FROM public.corretores u WHERE u.id = v_corretor),
+      v_idem, v_antes, v_antes + 1);
 
   RETURN jsonb_build_object('ok',true,'versao', v_antes + 1,
                             'sla_min', GREATEST(0, (EXTRACT(epoch FROM (p_em - v_criado))/60)::int));
