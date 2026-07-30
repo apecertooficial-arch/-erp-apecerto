@@ -1,0 +1,214 @@
+name: CRM Nova Era — validação
+
+# Roda apenas em PR para main e sob demanda. NUNCA em pull_request_target.
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+# Somente leitura do repositório. Sem environments, sem secrets.
+permissions:
+  contents: read
+
+# Um push novo na mesma branch cancela a execução anterior.
+concurrency:
+  group: crm-nova-era-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  harness-sql:
+    name: Harness SQL (Postgres 16 efêmero)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      # Postgres 16 LOCAL, criado e destruído dentro do runner.
+      # Nenhuma conexão com Supabase, Render, D-API ou qualquer host externo.
+      - name: Instalar PostgreSQL 16
+        run: |
+          set -euo pipefail
+          sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+          curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --dearmor -o /usr/share/keyrings/pgdg.gpg
+          sudo sed -i 's|deb http|deb [signed-by=/usr/share/keyrings/pgdg.gpg] http|' /etc/apt/sources.list.d/pgdg.list
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-16 postgresql-contrib-16
+          /usr/lib/postgresql/16/bin/postgres --version
+
+      - name: Executar harness completo (inclui rollback e reaplicação)
+        id: harness
+        run: |
+          set -o pipefail
+          sudo bash tests/crm-nova-era/run_local.sh 2>&1 | tee harness.log
+        continue-on-error: true
+
+      - name: Resumo do harness
+        if: always()
+        run: |
+          echo "exit_code=${{ steps.harness.outcome }}"
+          echo "asserções aprovadas: $(grep -c 'PASS:' harness.log || true)"
+          echo "cenários A-G: $(grep -c 'PASS: AG' harness.log || true)"
+          echo "entrada humana: $(grep -c 'PASS: EH' harness.log || true)"
+          {
+            echo "### Harness SQL"
+            echo ""
+            echo "- Asserções aprovadas: **$(grep -c 'PASS:' harness.log || true)**"
+            echo "- Cenários A–G: **$(grep -c 'PASS: AG' harness.log || true)**"
+            echo "- Resultado: \`$(tail -1 harness.log)\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+          if grep -q 'ASSERT FAIL' harness.log; then
+            echo "::error::Asserção falhou"
+            grep -n 'ASSERT FAIL' harness.log | head -5
+          fi
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: harness-sql
+          path: harness.log
+          retention-days: 14
+
+      - name: Falhar se o harness não terminou verde
+        if: steps.harness.outcome != 'success'
+        run: exit 1
+
+  aplicacao:
+    name: Node, lint e build
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.13.0'
+          cache: pnpm
+
+      - name: Instalar dependências (lockfile)
+        run: pnpm install --frozen-lockfile
+
+      - name: Testes Node do CRM Nova Era
+        id: node
+        run: |
+          set -o pipefail
+          node --experimental-strip-types --test tests/crm-nova-era/*.test.mjs 2>&1 | tee node-tests.log
+        continue-on-error: true
+
+      - name: Lint
+        id: lint
+        run: |
+          set -o pipefail
+          ./node_modules/.bin/eslint app/features/crm-nova-era app/api/ncrm 2>&1 | tee lint.log
+        continue-on-error: true
+
+      - name: Build
+        id: build
+        run: |
+          set -o pipefail
+          pnpm run build 2>&1 | tee build.log
+        continue-on-error: true
+
+      - name: Resumo
+        if: always()
+        run: |
+          {
+            echo "### Aplicação"
+            echo ""
+            echo "| Etapa | Resultado |"
+            echo "|---|---|"
+            echo "| Testes Node | ${{ steps.node.outcome }} |"
+            echo "| Lint | ${{ steps.lint.outcome }} |"
+            echo "| Build | ${{ steps.build.outcome }} |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: aplicacao
+          path: |
+            node-tests.log
+            lint.log
+            build.log
+          retention-days: 14
+
+      - name: Falhar se alguma etapa quebrou
+        if: steps.node.outcome != 'success' || steps.lint.outcome != 'success' || steps.build.outcome != 'success'
+        run: exit 1
+
+  typecheck:
+    name: Typecheck (branch × baseline)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.13.0'
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # O repositório tem erros de tipo pré-existentes. Em vez de mascarar com `|| true`
+      # ou afrouxar o tsconfig, comparamos o conjunto de erros da branch com o de main.
+      # Só falha se a branch INTRODUZIR erro novo.
+      - name: Coletar erros da branch
+        run: |
+          ./node_modules/.bin/tsc --noEmit -p tsconfig.json 2>&1 | grep -E 'error TS' | sed -E 's/\(([0-9]+),([0-9]+)\)//' | sort -u > branch.txt || true
+          echo "erros na branch: $(wc -l < branch.txt)"
+
+      - name: Coletar erros do baseline (origin/main)
+        run: |
+          git worktree add /tmp/baseline origin/main
+          cp -r node_modules /tmp/baseline/node_modules
+          cd /tmp/baseline
+          ./node_modules/.bin/tsc --noEmit -p tsconfig.json 2>&1 | grep -E 'error TS' | sed -E 's/\(([0-9]+),([0-9]+)\)//' | sort -u > /tmp/baseline.txt || true
+          echo "erros no baseline: $(wc -l < /tmp/baseline.txt)"
+
+      - name: Comparar
+        run: |
+          comm -13 /tmp/baseline.txt branch.txt > novos.txt || true
+          comm -23 /tmp/baseline.txt branch.txt > resolvidos.txt || true
+          {
+            echo "### Typecheck"
+            echo ""
+            echo "| | Quantidade |"
+            echo "|---|---|"
+            echo "| Baseline (main) | $(wc -l < /tmp/baseline.txt) |"
+            echo "| Branch | $(wc -l < branch.txt) |"
+            echo "| **Novos** | **$(wc -l < novos.txt)** |"
+            echo "| Resolvidos | $(wc -l < resolvidos.txt) |"
+            if [ -s novos.txt ]; then
+              echo ""
+              echo "#### Erros introduzidos por esta branch"
+              echo '```'
+              head -30 novos.txt
+              echo '```'
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+          cp /tmp/baseline.txt baseline.txt
+          if [ -s novos.txt ]; then
+            echo "::error::A branch introduziu $(wc -l < novos.txt) erro(s) de tipo novo(s)"
+            exit 1
+          fi
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: typecheck
+          path: |
+            branch.txt
+            baseline.txt
+            novos.txt
+            resolvidos.txt
+          retention-days: 14
