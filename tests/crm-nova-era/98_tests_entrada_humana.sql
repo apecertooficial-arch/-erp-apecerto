@@ -184,13 +184,8 @@ SELECT public.test_assert((SELECT operacao FROM public.ncrm_sara_assist_config W
   'EH H: assist comeca em shadow (nao altera nada)');
 
 -- Análise com evidência e confiança alta, sugerindo transição válida.
-INSERT INTO public.ncrm_sara_analise (negocio_id, origem, ator, run_id, context_hash, etapa_atual,
-    etapa_sugerida, proxima_acao_sugerida, prazo_sugerido, justificativa, evidencias, confianca,
-    versao_modelo, modo, analisado_em)
-VALUES (71501,'sara_runner','sara', gen_random_uuid(), 'eh-ctx-1', 'em_atendimento',
-    'em_acompanhamento', 'Enviar opcoes de 2 quartos', now() + interval '1 day',
-    'O cliente pediu opcoes e combinou retorno', '["quero ver opcoes de 2 quartos"]'::jsonb, 0.9,
-    'sara/ia-router','observer', now())
+INSERT INTO public.ncrm_sara_analise (negocio_id, origem, ator, run_id, context_hash, etapa_atual, etapa_sugerida, proxima_acao_sugerida, prazo_sugerido, justificativa, evidencias, confianca, versao_modelo, versao_prompt, modo, analisado_em)
+VALUES (71501, 'sara_runner', 'sara', gen_random_uuid(), 'eh-ctx-1', 'em_atendimento', 'em_acompanhamento', 'Enviar opcoes de 2 quartos', now() + interval '1 day', 'O cliente pediu opcoes e combinou retorno', '["quero ver opcoes de 2 quartos"]'::jsonb, 0.9, 'sara/ia-router', 'v1', 'observer', now())
 RETURNING id AS _a1 \gset
 SELECT public.test_assert((public.ncrm_sara_organizar(71501, :_a1)->>'aplicado')::boolean = false,
   'EH H: em shadow a Sara registra mas NAO altera');
@@ -212,10 +207,8 @@ SELECT public.test_assert((SELECT origem_ultima FROM public.ncrm_estado WHERE ne
   'EH H: origem registrada como sara');
 
 -- Confiança insuficiente não altera.
-INSERT INTO public.ncrm_sara_analise (negocio_id, origem, ator, run_id, context_hash, etapa_atual,
-    etapa_sugerida, justificativa, evidencias, confianca, modo, analisado_em)
-VALUES (71501,'sara_runner','sara', gen_random_uuid(), 'eh-ctx-2', 'em_acompanhamento',
-    'em_atendimento', 'talvez', '["oi"]'::jsonb, 0.4, 'observer', now())
+INSERT INTO public.ncrm_sara_analise (negocio_id, origem, ator, run_id, context_hash, etapa_atual, etapa_sugerida, justificativa, evidencias, confianca, versao_prompt, modo, analisado_em)
+VALUES (71501, 'sara_runner', 'sara', gen_random_uuid(), 'eh-ctx-2', 'em_acompanhamento', 'em_atendimento', 'talvez', '["oi"]'::jsonb, 0.4, 'v1', 'observer', now())
 RETURNING id AS _a2 \gset
 SELECT public.test_assert((public.ncrm_sara_organizar(71501, :_a2)->>'erro') = 'confianca_insuficiente',
   'EH H: confianca baixa NAO altera nada');
@@ -223,39 +216,31 @@ SELECT public.test_assert((public.ncrm_sara_organizar(71501, :_a2)->>'mensagem')
   'EH H: mensagem humana quando falta informacao');
 
 -- Sem evidência não altera.
-INSERT INTO public.ncrm_sara_analise (negocio_id, origem, ator, run_id, context_hash, etapa_atual,
-    etapa_sugerida, evidencias, confianca, modo, analisado_em)
-VALUES (71501,'sara_runner','sara', gen_random_uuid(), 'eh-ctx-3', 'em_acompanhamento',
-    'em_atendimento', '[]'::jsonb, 0.95, 'observer', now())
+INSERT INTO public.ncrm_sara_analise (negocio_id, origem, ator, run_id, context_hash, etapa_atual, etapa_sugerida, justificativa, evidencias, confianca, versao_prompt, modo, analisado_em)
+VALUES (71501, 'sara_runner', 'sara', gen_random_uuid(), 'eh-ctx-3', 'em_acompanhamento', 'em_atendimento', 'sem evidencia suficiente', '[]'::jsonb, 0.95, 'v1', 'observer', now())
 RETURNING id AS _a3 \gset
 SELECT public.test_assert((public.ncrm_sara_organizar(71501, :_a3)->>'erro') = 'sem_evidencia',
   'EH H: sem evidencia NAO altera nada');
 
 -- Transição fora da whitelist é recusada.
-INSERT INTO public.ncrm_sara_analise (negocio_id, origem, ator, run_id, context_hash, etapa_atual,
-    etapa_sugerida, evidencias, confianca, modo, analisado_em)
-VALUES (71501,'sara_runner','sara', gen_random_uuid(), 'eh-ctx-4', 'em_acompanhamento',
-    'novo', '["texto"]'::jsonb, 0.95, 'observer', now())
+INSERT INTO public.ncrm_sara_analise (negocio_id, origem, ator, run_id, context_hash, etapa_atual, etapa_sugerida, justificativa, evidencias, confianca, versao_prompt, modo, analisado_em)
+VALUES (71501, 'sara_runner', 'sara', gen_random_uuid(), 'eh-ctx-4', 'em_acompanhamento', 'novo', 'justificativa de teste', '["texto"]'::jsonb, 0.95, 'v1', 'observer', now())
 RETURNING id AS _a4 \gset
 SELECT public.test_assert((public.ncrm_sara_organizar(71501, :_a4)->>'erro') = 'transicao_fora_da_whitelist',
   'EH H: transicao fora da whitelist e recusada');
 
 -- Ação humana mais recente prevalece.
 UPDATE public.ncrm_estado SET ultima_decisao_humana_em = now() + interval '1 minute' WHERE negocio_id = 71501;
-INSERT INTO public.ncrm_sara_analise (negocio_id, origem, ator, run_id, context_hash, etapa_atual,
-    etapa_sugerida, evidencias, confianca, modo, analisado_em)
-VALUES (71501,'sara_runner','sara', gen_random_uuid(), 'eh-ctx-5', 'em_acompanhamento',
-    'em_atendimento', '["texto"]'::jsonb, 0.95, 'observer', now())
+INSERT INTO public.ncrm_sara_analise (negocio_id, origem, ator, run_id, context_hash, etapa_atual, etapa_sugerida, justificativa, evidencias, confianca, versao_prompt, modo, analisado_em)
+VALUES (71501, 'sara_runner', 'sara', gen_random_uuid(), 'eh-ctx-5', 'em_acompanhamento', 'em_atendimento', 'justificativa de teste', '["texto"]'::jsonb, 0.95, 'v1', 'observer', now())
 RETURNING id AS _a5 \gset
 SELECT public.test_assert((public.ncrm_sara_organizar(71501, :_a5)->>'erro') = 'acao_humana_mais_recente',
   'EH H: acao humana prevalece sobre a Sara');
 UPDATE public.ncrm_estado SET ultima_decisao_humana_em = NULL WHERE negocio_id = 71501;
 
 -- Estado mudou desde a análise (conflito de versão lógico).
-INSERT INTO public.ncrm_sara_analise (negocio_id, origem, ator, run_id, context_hash, etapa_atual,
-    etapa_sugerida, evidencias, confianca, modo, analisado_em)
-VALUES (71501,'sara_runner','sara', gen_random_uuid(), 'eh-ctx-6', 'novo',
-    'tentando_contato', '["texto"]'::jsonb, 0.95, 'observer', now())
+INSERT INTO public.ncrm_sara_analise (negocio_id, origem, ator, run_id, context_hash, etapa_atual, etapa_sugerida, justificativa, evidencias, confianca, versao_prompt, modo, analisado_em)
+VALUES (71501, 'sara_runner', 'sara', gen_random_uuid(), 'eh-ctx-6', 'novo', 'tentando_contato', 'justificativa de teste', '["texto"]'::jsonb, 0.95, 'v1', 'observer', now())
 RETURNING id AS _a6 \gset
 SELECT public.test_assert((public.ncrm_sara_organizar(71501, :_a6)->>'erro') = 'estado_mudou_desde_a_analise',
   'EH H: analise sobre estado antigo e recusada');
@@ -540,18 +525,21 @@ SELECT ncrm_private.reconciliar_mensagens(100);
 SELECT public.test_assert(NOT EXISTS (SELECT 1 FROM public.ncrm_estado WHERE negocio_id = 72001),
   'AG A: ZERO ncrm_estado — mensagem do motor nao cria card fora do escopo');
 SELECT public.test_assert(
-  (SELECT status FROM public.ncrm_ingest_checkpoint c
+  (SELECT c.status FROM public.ncrm_ingest_checkpoint c
      JOIN public.wa_mensagens m ON m.id = c.mensagem_id
     WHERE m.conversa_id='72c00000-0000-0000-0000-000000000001') = 'noop_fora_do_escopo',
   'AG A: item encerrado como noop_fora_do_escopo');
 SELECT public.test_assert(
-  (SELECT motivo_final = 'negocio_fora_do_piloto' AND finalizado_em IS NOT NULL
+  (SELECT c.motivo_final = 'negocio_fora_do_piloto' AND c.finalizado_em IS NOT NULL
      FROM public.ncrm_ingest_checkpoint c JOIN public.wa_mensagens m ON m.id = c.mensagem_id
     WHERE m.conversa_id='72c00000-0000-0000-0000-000000000001'),
   'AG A: motivo_final e finalizado_em registrados');
 SELECT public.test_assert((SELECT count(*) FROM public.ncrm_sara_analise WHERE negocio_id = 72001) = 0,
   'AG A: ZERO Sara para negocio fora do escopo');
-SELECT public.test_assert((SELECT count(*) FROM public.ncrm_ingest_checkpoint WHERE status='erro') = 0,
+-- Escopado ao proprio cenario: secoes anteriores exercitam erros de proposito.
+SELECT public.test_assert(
+  (SELECT count(*) FROM public.ncrm_ingest_checkpoint c JOIN public.wa_mensagens m ON m.id = c.mensagem_id
+    WHERE m.conversa_id='72c00000-0000-0000-0000-000000000001' AND c.status='erro') = 0,
   'AG A: ZERO erro tecnico');
 SELECT ncrm_private.reconciliar_mensagens(100);
 SELECT public.test_assert(NOT EXISTS (SELECT 1 FROM public.ncrm_estado WHERE negocio_id = 72001),
@@ -648,11 +636,17 @@ SELECT public.test_assert((SELECT count(*) FROM public.ncrm_estado WHERE negocio
 SELECT public.test_assert(
   (SELECT count(*) FROM public.ncrm_evento WHERE idempotency_key = 'entrada_distribuicao:72004') <= 1,
   'AG E: evento de entrada nao duplica na corrida');
+-- A mensagem do motor na conversa 004 foi enviada em AG D, quando o corretor estava FORA
+-- do piloto. Comparar aquele envio com o bloqueio de agora mediria dois instantes distintos.
+-- O que importa para consistencia e: depois de religar, o motor nao pode enviar de novo.
+SELECT public.motor_envia_abordagem(0,'Boas-vindas','START',
+  jsonb_build_object('nome','AG Pos Remocao','telefone','5511920000004'), 7204, 7201, NULL, '[1]'::jsonb);
+SELECT public.test_assert(public.ncrm_bloqueia_abordagem_automatica(7204),
+  'AG E: apos religar, o motor volta a ser bloqueado');
 SELECT public.test_assert(
-  NOT (public.ncrm_bloqueia_abordagem_automatica(7204)
-       AND (SELECT count(*) FROM public.wa_mensagens WHERE conversa_id='72c00000-0000-0000-0000-000000000004'
-              AND raw->>'origem'='motor' AND criado_em > now() - interval '5 seconds') > 0),
-  'AG E: decisao consistente — nao ha envio e bloqueio simultaneos');
+  (SELECT count(*) FROM public.wa_mensagens WHERE conversa_id='72c00000-0000-0000-0000-000000000004'
+     AND raw->>'origem'='motor') = 1,
+  'AG E: decisao consistente — nenhuma mensagem nova apos religar');
 
 -- ---------- F. mensagem ANTERIOR a distribuicao ----------
 INSERT INTO public.wa_mensagens (id, wa_message_id, conversa_id, direcao, tipo, conteudo, criado_em)
@@ -668,6 +662,12 @@ SELECT public.test_assert((SELECT count(*) FROM public.ncrm_evento WHERE idempot
   'AG F: nao conta como primeira atuacao humana');
 SELECT public.test_assert((SELECT ultima_decisao_humana_em IS NULL FROM public.ncrm_estado WHERE negocio_id = 72005),
   'AG F: nenhum SLA humano registrado');
+-- A notificacao de primeira abordagem precisa NASCER enquanto o card esta em Novo.
+-- So assim o cenario G consegue provar que ela se resolve sozinha depois da atuacao.
+SELECT ncrm_private.notificacoes_sincronizar();
+SELECT public.test_assert(
+  (SELECT count(*) FROM public.ncrm_notificacao WHERE chave = 'novo:72005' AND resolvida_em IS NULL) = 1,
+  'AG F: notificacao de primeira abordagem nasce pendente');
 
 -- ---------- G. primeira outbound humana valida ----------
 INSERT INTO public.wa_mensagens (id, wa_message_id, conversa_id, direcao, tipo, conteudo, criado_em)
@@ -701,6 +701,10 @@ SELECT public.test_assert((public.ncrm_registrar_primeira_humana(72005,'',now())
   'AG H: message_id obrigatorio');
 SELECT public.test_assert((public.ncrm_registrar_primeira_humana(72005,'ag-hum-6',now())->>'ja_processado')::boolean,
   'AG H: mensagem duplicada e idempotente');
-SELECT public.test_assert(NOT ncrm_private.negocio_elegivel_nova_era(72001),
-  'AG H: negocio sem liberacao segue nao elegivel');
+-- 72001 e do corretor 7201, que foi RELIGADO em AG E: hoje ele e elegivel, e correto.
+-- Para provar o outro lado usamos 71502, do corretor 7002, que nunca foi liberado.
+SELECT public.test_assert(NOT ncrm_private.negocio_elegivel_nova_era(71502),
+  'AG H: negocio de corretor nunca liberado segue nao elegivel');
+SELECT public.test_assert(ncrm_private.negocio_elegivel_nova_era(72001),
+  'AG H: negocio do corretor religado volta a ser elegivel');
 UPDATE public.ncrm_entrada_config SET escopo = 'nenhum', modo_primeira_abordagem = 'automatica' WHERE id;
