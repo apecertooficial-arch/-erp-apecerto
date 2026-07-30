@@ -54,6 +54,7 @@ cp "$ROOT/supabase/migrations/20260804100000_ncrm_entrada_humana.sql" "$STAGE/mi
 cp "$ROOT/supabase/rollbacks/20260804100000_ncrm_entrada_humana.down.sql" "$STAGE/down_eh.sql"
 cp "$ROOT/supabase/migrations/20260804100100_ncrm_sara_assist_notificacoes.sql" "$STAGE/mig_sa.sql"
 cp "$ROOT/supabase/rollbacks/20260804100100_ncrm_sara_assist_notificacoes.down.sql" "$STAGE/down_sa.sql"
+cp "$ROOT/tests/crm-nova-era/97b_pre_stub_motor.sql" "$STAGE/prestub.sql"
 cp "$ROOT/tests/crm-nova-era/98_tests_entrada_humana.sql" "$STAGE/eh.sql"
 chmod -R a+rX "$STAGE"
 MIG="$STAGE/mig.sql"; DOWN="$STAGE/down.sql"; HARNESS="$STAGE/harness.sql"; CORE="$STAGE/core.sql"; CORE2="$STAGE/core2.sql"; CORE3="$STAGE/core3.sql"; CORE4="$STAGE/core4.sql"; MIG_SARA="$STAGE/mig_sara.sql"
@@ -69,6 +70,7 @@ MIG_F6A="$STAGE/mig_f6a.sql"; DOWN_F6A="$STAGE/down_f6a.sql"
 MIG_F6B="$STAGE/mig_f6b.sql"; DOWN_F6B="$STAGE/down_f6b.sql"; F6B="$STAGE/f6b.sql"
 MIG_F61="$STAGE/mig_f61.sql"; DOWN_F61="$STAGE/down_f61.sql"; F61="$STAGE/f61.sql"
 REV="$STAGE/rev.sql"
+PRESTUB="$STAGE/prestub.sql"
 MIG_EH="$STAGE/mig_eh.sql"; DOWN_EH="$STAGE/down_eh.sql"
 MIG_SA="$STAGE/mig_sa.sql"; DOWN_SA="$STAGE/down_sa.sql"; EH="$STAGE/eh.sql"
 PGBIN=/usr/lib/postgresql/16/bin
@@ -164,6 +166,7 @@ echo "### Hotfix de seguranca: REVOKE de anon nas 5 tabelas ncrm_ (com rollback 
 PSQL -f "$REV"
 
 echo "### Entrada pela distribuicao + primeira abordagem humana + Sara assist + notificacoes"
+PSQL -f "$PRESTUB"
 PSQL -f "$MIG_EH"
 PSQL -f "$MIG_SA"
 PSQL -f "$EH"

@@ -1,26 +1,26 @@
 -- ROLLBACK versionado. Remove o guarda do motor e os objetos novos.
 -- Nenhum registro é apagado: atendimentos, eventos e fila permanecem.
 
--- 1) Remove APENAS o guarda do CRM Nova Era de motor_envia_abordagem, preservando
---    o restante da função exatamente como está (inclusive melhorias posteriores).
+-- 1) Restaura motor_envia_abordagem com a definição EXATA salva antes da troca.
+--    Nada de reconstrução aproximada: usamos o texto original preservado.
 DO $rb$
-DECLARE v_def text; v_ini int; v_fim int; v_bloco text;
+DECLARE v_def text; v_owner text;
 BEGIN
-  SELECT pg_get_functiondef(p.oid) INTO v_def
-    FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
-   WHERE n.nspname = 'public' AND p.proname = 'motor_envia_abordagem';
-  IF v_def IS NULL OR position('ncrm_bloqueia_abordagem_automatica' in v_def) = 0 THEN
-    RAISE NOTICE 'guarda ausente; nada a remover'; RETURN;
+  SELECT definicao, owner_antes INTO v_def, v_owner
+    FROM public.ncrm_funcao_legada_backup
+   WHERE funcao = 'motor_envia_abordagem'
+   ORDER BY criado_em DESC LIMIT 1;
+  IF v_def IS NULL THEN
+    RAISE NOTICE 'sem backup da definicao anterior; motor_envia_abordagem NAO foi tocada';
+  ELSE
+    EXECUTE v_def;
+    IF (SELECT md5(pg_get_functiondef(p.oid)) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
+         WHERE n.nspname='public' AND p.proname='motor_envia_abordagem')
+       <> (SELECT checksum FROM public.ncrm_funcao_legada_backup
+            WHERE funcao='motor_envia_abordagem' ORDER BY criado_em DESC LIMIT 1)
+    THEN RAISE EXCEPTION 'restauracao nao bateu com o checksum original'; END IF;
+    RAISE NOTICE 'motor_envia_abordagem restaurada e conferida pelo checksum';
   END IF;
-  v_ini := position('  -- CRM NOVA ERA: primeira abordagem humana.' in v_def);
-  v_fim := position('  select failover_envio, failover_transfere_lead into _cfg_failover' in v_def);
-  IF v_ini = 0 OR v_fim = 0 OR v_fim <= v_ini THEN
-    RAISE EXCEPTION 'nao foi possivel delimitar o guarda com seguranca — remova manualmente';
-  END IF;
-  v_bloco := substr(v_def, v_ini, v_fim - v_ini);
-  v_def := replace(v_def, v_bloco, '');
-  EXECUTE v_def;
-  RAISE NOTICE 'guarda removido de motor_envia_abordagem';
 END $rb$;
 
 -- 2) Reconciliação volta a ignorar a saída humana (comportamento da Fase 6.1).
@@ -38,6 +38,11 @@ ALTER TABLE public.ncrm_ingest_checkpoint DROP CONSTRAINT IF EXISTS ncrm_ingest_
 ALTER TABLE public.ncrm_ingest_checkpoint ADD CONSTRAINT ncrm_ingest_checkpoint_tipo_check
   CHECK (tipo IN ('msg_automatica','resposta_inbound','ignorado'));
 
+DROP FUNCTION IF EXISTS public.ncrm_abordagem_humana_definir(bigint,boolean,text);
+DROP FUNCTION IF EXISTS public.ncrm_abordagem_humana_listar();
+DROP TABLE IF EXISTS public.ncrm_abordagem_humana_audit;
+DROP TABLE IF EXISTS public.ncrm_abordagem_humana;
+DROP TABLE IF EXISTS public.ncrm_funcao_legada_backup;
 DROP TABLE IF EXISTS public.ncrm_entrada_config_audit;
 DROP TABLE IF EXISTS public.ncrm_entrada_config;
 
