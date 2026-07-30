@@ -149,4 +149,52 @@ export const NOVA_CRM_CSS = `
 .nova-crm-tl-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px;font-size:12px;color:#4b5563;}
 .nova-crm-tl-list li span{color:var(--nc-muted);}
 @media (max-width: 980px){.nova-crm-panel{width:100vw;max-width:100vw;position:fixed;inset:0;z-index:60;}}
+
+/* ============ BOTAO DO WHATSAPP NATIVO ============ */
+.ncrm-wa{display:flex;flex-direction:column;gap:8px;margin:12px 0;}
+.ncrm-wa-principal{width:100%;min-height:52px;padding:14px 18px;font-size:16px;font-weight:700;
+  color:#fff;background:#22a35a;border:0;border-radius:14px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  box-shadow:0 2px 8px rgba(34,163,90,.28);transition:filter .12s,transform .12s;}
+.ncrm-wa-principal:hover{filter:brightness(1.05);}
+.ncrm-wa-principal:active{transform:translateY(1px);}
+.ncrm-wa-secundarias{display:flex;flex-wrap:wrap;gap:8px;}
+.ncrm-wa-link{flex:1;min-width:140px;min-height:40px;padding:9px 12px;font-size:13px;font-weight:600;
+  color:var(--nc-ink);background:var(--nc-bg);border:1px solid var(--nc-line);border-radius:10px;cursor:pointer;}
+.ncrm-wa-link:hover{background:#eef0f3;}
+.ncrm-wa-nota{margin:0;font-size:12px;line-height:1.4;color:var(--nc-muted);}
+.ncrm-wa-compacto{margin:8px 0 0;}
+.ncrm-wa-compacto .ncrm-wa-principal{min-height:44px;font-size:15px;border-radius:12px;}
+.ncrm-wa-erro{display:flex;flex-direction:column;gap:4px;margin:12px 0;padding:12px 14px;
+  background:#fff4f4;border:1px solid #f3c9c9;border-left:4px solid var(--nc-red);border-radius:12px;}
+.ncrm-wa-erro strong{font-size:14px;color:var(--nc-red);}
+.ncrm-wa-erro span{font-size:13px;color:var(--nc-ink);}
+.ncrm-wa-erro-dica{color:var(--nc-muted)!important;font-size:12px!important;}
+
+/* ============ MOBILE ============
+   O quadro de 4 colunas e o painel de 520px foram desenhados para desktop.
+   No celular o corretor precisa de uma coluna, alvos de toque grandes e
+   nada de rolagem horizontal. */
+@media (max-width: 900px){
+  .nova-crm-board{grid-template-columns:1fr;gap:10px;}
+  .nova-crm-col{min-height:0;}
+  .nova-crm-topbar{padding:10px 12px;gap:10px;}
+  .nova-crm-body{padding:12px;}
+  .nova-crm-card{padding:14px;border-radius:14px;}
+  .nova-crm-btn{min-height:44px;}
+}
+@media (max-width: 460px){
+  .nova-crm-topbar{padding:8px 10px;gap:8px;}
+  .nova-crm-topbar .nova-crm-seg{width:100%;}
+  .nova-crm-body{padding:10px;}
+  .nova-crm-card{padding:13px 14px;}
+  .ncrm-wa-link{min-width:100%;}
+}
+/* Respeita o recorte da tela em iPhone com a PWA instalada. */
+@supports (padding: max(0px)){
+  @media (display-mode: standalone){
+    .nova-crm-topbar{padding-top:max(14px, env(safe-area-inset-top));}
+    .nova-crm-body{padding-bottom:max(16px, env(safe-area-inset-bottom));}
+  }
+}
 `;
