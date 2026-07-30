@@ -130,76 +130,22 @@ REVOKE ALL ON FUNCTION public.ncrm_bloqueia_abordagem_automatica(bigint) FROM PU
 GRANT EXECUTE ON FUNCTION public.ncrm_bloqueia_abordagem_automatica(bigint) TO service_role;
 
 -- ============================================================================
--- GUARDA 2 — public.motor_rodar_unchecked e wa_core.canario_texto
+-- GUARDA 2 — as outras duas saidas de rede em SQL
 --
--- Sao as outras duas saidas de rede em SQL. O corpo delas nao e transcrito a
--- mao: e lido de pg_proc e reescrito por substituicao mecanica, inserindo a
--- guarda logo depois do BEGIN principal. Se o corpo nao tiver a forma esperada,
--- a migration ABORTA em vez de adivinhar.
+-- public.motor_rodar_unchecked e wa_core.canario_texto tambem fazem POST para
+-- api.d-api.cloud. Nao foram fechadas nesta migration, e o motivo importa:
+--
+-- Fechar cada uma exige reescrever o corpo por substituicao mecanica sobre o
+-- prosrc em producao, como o V7.2 GATE 1 fez com motor_envia_abordagem. Esse
+-- procedimento so e seguro com o corpo auditado e um checksum versionado — foi
+-- exatamente assim que o GATE 1 evitou estragar a funcao. Inserir a guarda as
+-- cegas, sem conhecer o corpo, seria trocar um risco conhecido por um pior.
+--
+-- Ficam registradas abaixo como pendencia, com o mesmo peso das Edge Functions.
+-- Nenhuma das duas e alcancada pelo corretor no piloto: o aplicativo nao chama
+-- motor_rodar_unchecked (quem chama e o cron motor-fila, ja barrado antes pelo
+-- adaptador acima) nem o canario (operacao manual).
 -- ============================================================================
-DO $mig$
-DECLARE
-  r            record;
-  v_src        text;
-  v_novo       text;
-  v_pos        int;
-  v_guarda     text;
-  v_assin      text;
-  v_alvos      text[] := ARRAY['public.motor_rodar_unchecked','wa_core.canario_texto'];
-  v_nome       text;
-  v_schema     text;
-  v_func       text;
-BEGIN
-  FOREACH v_nome IN ARRAY v_alvos LOOP
-    v_schema := split_part(v_nome,'.',1);
-    v_func   := split_part(v_nome,'.',2);
-
-    FOR r IN
-      SELECT p.oid, p.prosrc, pg_get_function_identity_arguments(p.oid) AS args,
-             pg_get_function_result(p.oid) AS retorno, l.lanname,
-             p.prosecdef, array_to_string(p.proconfig, ',') AS cfg
-        FROM pg_proc p
-        JOIN pg_namespace n ON n.oid = p.pronamespace
-        JOIN pg_language l ON l.oid = p.prolang
-       WHERE n.nspname = v_schema AND p.proname = v_func
-    LOOP
-      v_src := r.prosrc;
-
-      -- Confere que e mesmo um emissor: precisa falar com o D-API.
-      IF position('d-api.cloud' in v_src) = 0 THEN
-        RAISE EXCEPTION 'ABORTADO: % nao parece emissor (sem d-api.cloud no corpo)', v_nome;
-      END IF;
-      -- Ja protegida? Nada a fazer.
-      IF position('pode_enviar_pelo_erp' in v_src) > 0 THEN
-        RAISE NOTICE '% ja possui a guarda', v_nome;
-        CONTINUE;
-      END IF;
-
-      -- Ancora: o primeiro BEGIN de bloco no corpo.
-      v_pos := position(E'\nBEGIN' in v_src);
-      IF v_pos = 0 THEN v_pos := position(E'\nbegin' in v_src); END IF;
-      IF v_pos = 0 THEN
-        RAISE EXCEPTION 'ABORTADO: nao encontrei o BEGIN principal de %', v_nome;
-      END IF;
-
-      -- A guarda so sabe o lead quando a funcao recebe um. Sem lead, ela
-      -- consulta com NULL e a canonica devolve "pode" — legado preservado.
-      v_guarda := E'\n  -- CRM Nova Era: o ERP nao envia por corretor da abordagem humana.\n'
-               || E'  IF NOT ncrm_private.pode_enviar_pelo_erp(NULL, NULL, NULL) THEN\n'
-               || E'    PERFORM ncrm_private.registrar_envio_bloqueado(' || quote_literal(v_nome)
-               || E', NULL, NULL, NULL, ''{}''::jsonb);\n'
-               || E'    RETURN;\n  END IF;\n';
-
-      v_novo := left(v_src, v_pos + 6) || v_guarda || substr(v_src, v_pos + 7);
-
-      INSERT INTO public.ncrm_funcao_legada_backup (funcao, definicao, checksum, dono, grants, criado_em)
-      VALUES (v_nome, v_src, md5(v_src), 'migracao', '{}'::jsonb, now())
-      ON CONFLICT DO NOTHING;
-
-      RAISE NOTICE 'guarda preparada para % (a insercao real exige revisao do corpo)', v_nome;
-    END LOOP;
-  END LOOP;
-END $mig$;
 
 -- ============================================================================
 -- PENDENCIA REGISTRADA — as duas Edge Functions de envio
@@ -228,5 +174,7 @@ ALTER TABLE public.ncrm_pendencia_bloqueio ENABLE ROW LEVEL SECURITY;
 
 INSERT INTO public.ncrm_pendencia_bloqueio (emissor, tipo, motivo) VALUES
   ('dapi-enviar','edge','Nao versionada no repositorio; exige deploy proprio para consultar pode_enviar_pelo_erp.'),
-  ('enviar-whatsapp','edge','Nao versionada no repositorio; exige deploy proprio. Hoje aceita qualquer JWT sem validar posse da instancia.')
+  ('enviar-whatsapp','edge','Nao versionada no repositorio; exige deploy proprio. Hoje aceita qualquer JWT sem validar posse da instancia.'),
+  ('motor_rodar_unchecked','sql','Faz POST direto ao D-API. Fechar exige reescrita mecanica do corpo com checksum versionado, como no V7.2 GATE 1.'),
+  ('wa_core.canario_texto','sql','Envio de teste instancia a instancia. Mesmo procedimento de reescrita mecanica.')
 ON CONFLICT (emissor) DO UPDATE SET motivo = EXCLUDED.motivo, registrado_em = now();
