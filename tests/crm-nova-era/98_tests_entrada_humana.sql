@@ -39,6 +39,7 @@ INSERT INTO public.wa_conversas (id, contato_id) VALUES
   ('7c000000-0000-0000-0000-000000000002','7a000000-0000-0000-0000-000000000002')
 ON CONFLICT (id) DO NOTHING;
 
+
 -- ============ A. FAIL-CLOSED: ESCOPO 'nenhum' NÃO MUDA NADA ============
 SELECT public.test_assert((SELECT escopo FROM public.ncrm_entrada_config WHERE id) = 'nenhum',
   'EH A: escopo nasce fail-closed em nenhum');
@@ -55,18 +56,22 @@ SELECT public.test_assert((SELECT count(*) FROM public.ncrm_estado WHERE negocio
 -- ============ B. ESCOPO 'pilotos': SO O PILOTO ENTRA ============
 SELECT set_config('request.jwt.claims', json_build_object('sub','77777777-0000-0000-0000-000000000001','role','authenticated')::text, false);
 SET ROLE authenticated;
-SELECT public.test_assert((public.ncrm_entrada_config_set('{"escopo":"pilotos","modo_primeira_abordagem":"humana"}'::jsonb,'nao')->>'erro') = 'confirmacao_obrigatoria',
+SELECT public.test_assert((public.ncrm_entrada_config_set('{"escopo":"liberados","modo_primeira_abordagem":"humana"}'::jsonb,'nao')->>'erro') = 'confirmacao_obrigatoria',
   'EH B: virada exige confirmacao digitada');
-SELECT public.ncrm_entrada_config_set('{"escopo":"pilotos","modo_primeira_abordagem":"humana","motivo":"teste"}'::jsonb,'CONFIRMAR');
+SELECT public.ncrm_entrada_config_set('{"escopo":"liberados","modo_primeira_abordagem":"humana","motivo":"teste"}'::jsonb,'CONFIRMAR');
+-- Liberação por NOME, uma dimensão separada do acesso à tela.
+SELECT public.test_assert((public.ncrm_abordagem_humana_definir(7001, true, 'CONFIRMAR')->>'erro') = 'confirmacao_obrigatoria',
+  'EH B: ligar abordagem humana exige a palavra forte');
+SELECT public.ncrm_abordagem_humana_definir(7001, true, 'ATIVAR ABORDAGEM HUMANA');
 RESET ROLE;
 SELECT public.test_assert((SELECT vigente_desde IS NOT NULL FROM public.ncrm_entrada_config WHERE id),
   'EH B: o corte e registrado na virada para humana');
 SELECT public.test_assert((SELECT count(*) FROM public.ncrm_entrada_config_audit) = 1,
   'EH B: a virada fica auditada');
 SELECT public.test_assert(ncrm_private.negocio_elegivel_nova_era(71001),
-  'EH B: negocio do corretor piloto e elegivel');
+  'EH B: negocio do corretor LIBERADO e elegivel');
 SELECT public.test_assert(NOT ncrm_private.negocio_elegivel_nova_era(71002),
-  'EH B: negocio de corretor fora do piloto NAO e elegivel');
+  'EH B: negocio de corretor nao liberado NAO e elegivel');
 
 -- ============ C. BLOQUEIO SELETIVO DA ABORDAGEM AUTOMATICA ============
 SELECT public.test_assert(public.ncrm_bloqueia_abordagem_automatica(7101),
@@ -327,10 +332,152 @@ SELECT public.test_assert(
 -- Corretor não administra.
 SELECT set_config('request.jwt.claims', json_build_object('sub','77777777-0000-0000-0000-000000000002','role','authenticated')::text, false);
 SET ROLE authenticated;
-SELECT public.test_assert((public.ncrm_entrada_config_set('{"escopo":"todos"}'::jsonb,'CONFIRMAR')->>'erro') = 'sem_permissao',
+SELECT public.test_assert((public.ncrm_entrada_config_set('{"escopo":"liberados"}'::jsonb,'CONFIRMAR')->>'erro') = 'sem_permissao',
   'EH J: corretor nao muda o modo de entrada');
 SELECT public.test_assert((public.ncrm_sara_assist_config_set('ativo',0.5,'CONFIRMAR')->>'erro') = 'sem_permissao',
   'EH J: corretor nao configura a Sara');
 RESET ROLE;
-SELECT public.test_assert((SELECT escopo FROM public.ncrm_entrada_config WHERE id) = 'pilotos',
+SELECT public.test_assert((SELECT escopo FROM public.ncrm_entrada_config WHERE id) = 'liberados',
   'EH J: configuracao intacta apos tentativa do corretor');
+
+-- ============ K. FONTE DE ELEGIBILIDADE — TODOS OS CASOS ============
+-- Fixtures extras: corretor com ACESSO ao CRM mas FORA do modo humano; admin; sem corretor.
+INSERT INTO public.usuarios (id, nome, email, role, ativo) VALUES
+  ('77777777-0000-0000-0000-000000000004','Corretor So Acesso','ehsa@x','corretor',true)
+ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.corretores (id, usuario_id, ativo) VALUES (7003,'77777777-0000-0000-0000-000000000004',true)
+ON CONFLICT (id) DO NOTHING;
+-- Tem ACESSO a tela (ncrm_piloto), mas NAO foi liberado para abordagem humana.
+INSERT INTO public.ncrm_piloto (usuario_id, ativo) VALUES ('77777777-0000-0000-0000-000000000004', true)
+ON CONFLICT (usuario_id) DO UPDATE SET ativo = true;
+-- Corretor do ADMIN.
+INSERT INTO public.corretores (id, usuario_id, ativo) VALUES (7004,'77777777-0000-0000-0000-000000000001',true)
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO public.leads (id, nome, telefone) VALUES
+  (7103,'Cliente So Acesso','5511900000003'), (7104,'Cliente Admin','5511900000004'),
+  (7105,'Cliente Antigo','5511900000005'), (7106,'Cliente Sem Corretor','5511900000006')
+ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.negocios (id, lead_id, corretor_id, status, stage_id, criado_em) VALUES
+  (71003, 7103, 7003, 'aberto', 20, now() - interval '4 minutes'),
+  (71004, 7104, 7004, 'aberto', 20, now() - interval '4 minutes'),
+  (71005, 7105, 7001, 'aberto', 20, now() - interval '60 days'),   -- ANTES do corte
+  (71006, 7106, NULL, 'aberto', 20, now() - interval '4 minutes')  -- SEM corretor
+ON CONFLICT (id) DO NOTHING;
+
+SELECT public.test_assert(ncrm_private.negocio_elegivel_nova_era(71001),
+  'EH K1: corretor com acesso E liberado para abordagem humana => elegivel');
+SELECT public.test_assert(NOT ncrm_private.negocio_elegivel_nova_era(71003),
+  'EH K2: corretor COM acesso a tela mas FORA do modo humano => NAO elegivel');
+SELECT public.test_assert(NOT ncrm_private.negocio_elegivel_nova_era(71002),
+  'EH K3: corretor sem acesso e sem liberacao => NAO elegivel');
+SELECT public.test_assert(NOT ncrm_private.negocio_elegivel_nova_era(71004),
+  'EH K4: ADMIN enxerga tudo, mas os negocios dele NAO sao elegiveis');
+SELECT public.test_assert(NOT ncrm_private.negocio_elegivel_nova_era(71005),
+  'EH K5: negocio ANTERIOR ao corte => NAO elegivel');
+SELECT public.test_assert(NOT ncrm_private.negocio_elegivel_nova_era(71006),
+  'EH K6: negocio SEM corretor => NAO elegivel');
+SELECT public.test_assert(NOT public.ncrm_bloqueia_abordagem_automatica(7103),
+  'EH K7: motor segue enviando para quem so tem acesso a tela');
+SELECT public.test_assert(NOT public.ncrm_bloqueia_abordagem_automatica(7104),
+  'EH K8: motor segue enviando para o admin');
+
+-- Troca de corretor ANTES da primeira atuacao muda a elegibilidade.
+UPDATE public.negocios SET corretor_id = 7002 WHERE id = 71003;
+SELECT public.test_assert(NOT ncrm_private.negocio_elegivel_nova_era(71003),
+  'EH K9: troca para corretor nao liberado mantem NAO elegivel');
+UPDATE public.negocios SET corretor_id = 7001 WHERE id = 71003;
+SELECT public.test_assert(ncrm_private.negocio_elegivel_nova_era(71003),
+  'EH K9: troca para corretor liberado torna elegivel');
+UPDATE public.negocios SET corretor_id = 7003 WHERE id = 71003;
+
+-- Configuracao incompleta / inconsistente => fail-closed, legado preservado.
+UPDATE public.ncrm_entrada_config SET escopo = 'nenhum' WHERE id;
+SELECT public.test_assert(NOT ncrm_private.negocio_elegivel_nova_era(71001),
+  'EH K10: escopo nenhum => ninguem elegivel');
+SELECT public.test_assert(NOT public.ncrm_bloqueia_abordagem_automatica(7101),
+  'EH K10: escopo nenhum => motor NUNCA bloqueado');
+UPDATE public.ncrm_entrada_config SET escopo = 'liberados', modo_primeira_abordagem = 'automatica' WHERE id;
+SELECT public.test_assert(NOT public.ncrm_bloqueia_abordagem_automatica(7101),
+  'EH K11: modo automatico => motor nao bloqueado mesmo com corretor liberado');
+UPDATE public.ncrm_ingest_config SET ativo = false WHERE id;
+SELECT public.test_assert(NOT ncrm_private.negocio_elegivel_nova_era(71001),
+  'EH K12: entrada desligada => fail-closed');
+UPDATE public.ncrm_ingest_config SET ativo = true WHERE id;
+UPDATE public.ncrm_entrada_config SET modo_primeira_abordagem = 'humana' WHERE id;
+
+-- ============ L. CAMINHO AUTOMATICO DO LEGADO REALMENTE ENVIA ============
+SELECT public.motor_envia_abordagem(0,'Boas-vindas','START',
+  jsonb_build_object('nome','Cliente Legado','telefone','5511900000002'), 7102, 7002, NULL, '[1]'::jsonb);
+SELECT public.test_assert(
+  (SELECT count(*) FROM public.wa_mensagens m JOIN public.wa_conversas cv ON cv.id = m.conversa_id
+     JOIN public.wa_contatos ct ON ct.id = cv.contato_id
+    WHERE ct.lead_id = 7102 AND m.raw->>'origem' = 'motor') = 1,
+  'EH L: LEGADO continua enviando a primeira abordagem automatica');
+
+-- ============ M. CAMINHO HUMANO NAO ENVIA ============
+SELECT public.motor_envia_abordagem(0,'Boas-vindas','START',
+  jsonb_build_object('nome','Cliente Piloto','telefone','5511900000001'), 7101, 7001, NULL, '[1]'::jsonb);
+SELECT public.test_assert(
+  (SELECT count(*) FROM public.wa_mensagens m JOIN public.wa_conversas cv ON cv.id = m.conversa_id
+     JOIN public.wa_contatos ct ON ct.id = cv.contato_id
+    WHERE ct.lead_id = 7101 AND m.raw->>'origem' = 'motor'
+      AND m.criado_em > now() - interval '10 seconds') = 0,
+  'EH M: NOVA ERA nao recebe primeira mensagem automatica');
+SELECT public.test_assert(
+  (SELECT count(*) FROM public.motor_execucoes
+    WHERE detalhe LIKE 'CRM NOVA ERA: primeira abordagem e humana%') >= 1,
+  'EH M: o bloqueio fica registrado no log do motor, nao em silencio');
+
+-- ============ N. REMOCAO DO PILOTO ============
+SELECT set_config('request.jwt.claims', json_build_object('sub','77777777-0000-0000-0000-000000000001','role','authenticated')::text, false);
+SET ROLE authenticated;
+SELECT public.ncrm_abordagem_humana_definir(7001, false, 'CONFIRMAR');
+RESET ROLE;
+SELECT public.test_assert(NOT ncrm_private.negocio_elegivel_nova_era(71001),
+  'EH N: removido do piloto => novos negocios voltam ao legado');
+SELECT public.test_assert(EXISTS (SELECT 1 FROM public.ncrm_estado WHERE negocio_id = 71001),
+  'EH N: atendimento ja criado NAO e apagado');
+SELECT public.test_assert((SELECT count(*) FROM public.ncrm_evento WHERE negocio_id = 71001) >= 1,
+  'EH N: historico do negocio Nova Era continua auditavel');
+SELECT public.test_assert((SELECT count(*) FROM public.ncrm_abordagem_humana_audit WHERE corretor_id = 7001) = 2,
+  'EH N: entrada e saida do modo humano ficam auditadas');
+SELECT public.test_assert(NOT public.ncrm_bloqueia_abordagem_automatica(7101),
+  'EH N: motor volta a poder enviar para esse corretor');
+-- Sem envio duplicado para quem ja tinha card.
+SELECT ncrm_private.reconciliar_mensagens(50);
+SELECT public.test_assert((SELECT count(*) FROM public.ncrm_estado WHERE negocio_id = 71001) = 1,
+  'EH N: nenhum card duplicado apos a remocao');
+-- Reativa para o restante da suite.
+SELECT set_config('request.jwt.claims', json_build_object('sub','77777777-0000-0000-0000-000000000001','role','authenticated')::text, false);
+SET ROLE authenticated;
+SELECT public.ncrm_abordagem_humana_definir(7001, true, 'ATIVAR ABORDAGEM HUMANA');
+SELECT public.test_assert((public.ncrm_abordagem_humana_listar()->>'ok')::boolean,
+  'EH N: administrador lista corretores por NOME, com as duas dimensoes');
+SELECT public.test_assert(
+  EXISTS (SELECT 1 FROM jsonb_array_elements(public.ncrm_abordagem_humana_listar()->'corretores') x
+           WHERE (x->>'corretor_id')::bigint = 7003 AND (x->>'acessa_crm')::boolean
+             AND NOT (x->>'abordagem_humana')::boolean),
+  'EH N: a lista separa acesso ao CRM de participacao na abordagem humana');
+RESET ROLE;
+
+-- ============ O. PROTECAO DA FUNCAO LEGADA ============
+SELECT public.test_assert((SELECT count(*) FROM public.ncrm_funcao_legada_backup
+                            WHERE funcao='motor_envia_abordagem') = 1,
+  'EH O: definicao anterior de motor_envia_abordagem foi salva antes da troca');
+SELECT public.test_assert(
+  (SELECT position('ncrm_bloqueia_abordagem_automatica' in definicao) = 0
+     FROM public.ncrm_funcao_legada_backup WHERE funcao='motor_envia_abordagem'),
+  'EH O: o backup guarda a versao SEM o guarda');
+SELECT public.test_assert(
+  (SELECT prosecdef FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
+    WHERE n.nspname='public' AND p.proname='motor_envia_abordagem'),
+  'EH O: SECURITY DEFINER preservado apos a troca');
+SELECT public.test_assert(
+  (SELECT array_to_string(proconfig,',') FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
+    WHERE n.nspname='public' AND p.proname='motor_envia_abordagem') LIKE 'search_path=%',
+  'EH O: search_path preservado apos a troca');
+SELECT public.test_assert(
+  (SELECT count(*) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
+    WHERE n.nspname='public' AND p.proname='motor_envia_abordagem') = 1,
+  'EH O: continua sem overloads');

@@ -20,9 +20,10 @@ CREATE TABLE public.ncrm_entrada_config (
   -- 'automatica' = comportamento de hoje (o motor envia). 'humana' = o corretor envia.
   modo_primeira_abordagem  text NOT NULL DEFAULT 'automatica'
                              CHECK (modo_primeira_abordagem IN ('automatica','humana')),
-  -- Quem é considerado CRM Nova Era. 'nenhum' é o padrão seguro.
+  -- Kill-switch global. A elegibilidade real é SEMPRE por corretor liberado
+  -- (ncrm_abordagem_humana). 'nenhum' desliga tudo; 'liberados' respeita a lista.
   escopo                   text NOT NULL DEFAULT 'nenhum'
-                             CHECK (escopo IN ('nenhum','pilotos','todos')),
+                             CHECK (escopo IN ('nenhum','liberados')),
   -- Prazo comercial para a primeira abordagem humana, em minutos.
   prazo_primeira_abordagem_min int NOT NULL DEFAULT 15 CHECK (prazo_primeira_abordagem_min BETWEEN 1 AND 1440),
   -- Momento a partir do qual a regra vale. Nada antes disso é reescrito.
@@ -59,25 +60,124 @@ DECLARE v_escopo text; v_vigente timestamptz; v_ing_ativo boolean; v_ing_desde t
 BEGIN
   IF p_negocio_id IS NULL THEN RETURN false; END IF;
   SELECT escopo, vigente_desde INTO v_escopo, v_vigente FROM public.ncrm_entrada_config WHERE id;
-  IF COALESCE(v_escopo,'nenhum') = 'nenhum' THEN RETURN false; END IF;
+  IF COALESCE(v_escopo,'nenhum') <> 'liberados' THEN RETURN false; END IF;   -- fail-closed
 
   SELECT ativo, ativo_desde INTO v_ing_ativo, v_ing_desde FROM public.ncrm_ingest_config WHERE id;
   IF COALESCE(v_ing_ativo,false) IS NOT TRUE OR v_ing_desde IS NULL THEN RETURN false; END IF;
 
   SELECT criado_em, corretor_id INTO v_criado, v_corretor
     FROM public.negocios WHERE id = p_negocio_id AND status = 'aberto';
-  IF v_criado IS NULL THEN RETURN false; END IF;
-  IF v_criado < v_ing_desde THEN RETURN false; END IF;                    -- respeita o corte
+  IF v_criado IS NULL OR v_corretor IS NULL THEN RETURN false; END IF;
+  IF v_criado < v_ing_desde THEN RETURN false; END IF;                        -- respeita o corte
   IF v_vigente IS NOT NULL AND v_criado < v_vigente THEN RETURN false; END IF;
-  IF v_corretor IS NULL THEN RETURN false; END IF;                        -- sem corretor, não é Nova Era
 
-  IF v_escopo = 'todos' THEN RETURN true; END IF;
-  -- 'pilotos': o corretor do negócio precisa pertencer a um usuário liberado no piloto.
-  RETURN EXISTS (SELECT 1 FROM public.corretores c
-                   JOIN public.ncrm_piloto p ON p.usuario_id = c.usuario_id AND p.ativo
-                  WHERE c.id = v_corretor);
+  -- ÚNICA fonte de elegibilidade: o corretor DO NEGÓCIO está liberado, por nome,
+  -- para a primeira abordagem humana. Ter acesso à tela (ncrm_tem_acesso, que inclui
+  -- admin e canary) NÃO torna ninguém elegível.
+  RETURN EXISTS (SELECT 1 FROM public.ncrm_abordagem_humana ah
+                  WHERE ah.corretor_id = v_corretor AND ah.ativo);
 END $fn$;
 REVOKE ALL ON FUNCTION ncrm_private.negocio_elegivel_nova_era(bigint) FROM PUBLIC, anon, authenticated;
+
+-- ============ LISTA CANÔNICA: QUEM PARTICIPA DA ABORDAGEM HUMANA ============
+-- Dois conceitos SEPARADOS, por decisão explícita:
+--   * acesso à tela do CRM Nova Era  → public.ncrm_piloto (criada na Fase 6, por nome)
+--   * participação na abordagem humana → esta tabela, POR CORRETOR
+-- O admin enxerga o CRM inteiro por `can_manage_all`, mas isso NUNCA torna os negócios
+-- dele elegíveis. A elegibilidade acompanha `negocios.corretor_id`, que é o que a
+-- distribuição realmente decide.
+CREATE TABLE public.ncrm_abordagem_humana (
+  corretor_id   bigint PRIMARY KEY REFERENCES public.corretores(id),
+  ativo         boolean NOT NULL DEFAULT true,
+  liberado_por  uuid NOT NULL REFERENCES public.usuarios(id),
+  liberado_em   timestamptz NOT NULL DEFAULT now(),
+  removido_por  uuid NULL REFERENCES public.usuarios(id),
+  removido_em   timestamptz NULL
+);
+REVOKE ALL ON public.ncrm_abordagem_humana FROM PUBLIC, anon, authenticated;
+ALTER TABLE public.ncrm_abordagem_humana ENABLE ROW LEVEL SECURITY;
+
+CREATE TABLE public.ncrm_abordagem_humana_audit (
+  id            bigserial PRIMARY KEY,
+  corretor_id   bigint NOT NULL,
+  corretor_nome text NULL,
+  estado_antes  text NOT NULL,
+  estado_depois text NOT NULL,
+  alterado_por  uuid NOT NULL REFERENCES public.usuarios(id),
+  criado_em     timestamptz NOT NULL DEFAULT now()
+);
+REVOKE ALL ON public.ncrm_abordagem_humana_audit FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON SEQUENCE public.ncrm_abordagem_humana_audit_id_seq FROM PUBLIC, anon, authenticated;
+ALTER TABLE public.ncrm_abordagem_humana_audit ENABLE ROW LEVEL SECURITY;
+
+-- Tela do administrador: nomes, nunca UUID digitado. Mostra as duas dimensões.
+CREATE FUNCTION public.ncrm_abordagem_humana_listar()
+  RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = '' AS $fn$
+DECLARE v_uid uuid := auth.uid();
+BEGIN
+  IF v_uid IS NULL THEN RETURN jsonb_build_object('ok',false,'erro','nao_autenticado'); END IF;
+  IF COALESCE(public.can_manage_all(), false) IS NOT TRUE THEN RETURN jsonb_build_object('ok',false,'erro','sem_permissao'); END IF;
+  RETURN jsonb_build_object('ok',true,
+    'modo_global', (SELECT modo_primeira_abordagem FROM public.ncrm_entrada_config WHERE id),
+    'escopo', (SELECT escopo FROM public.ncrm_entrada_config WHERE id),
+    'corretores', COALESCE((
+      SELECT jsonb_agg(jsonb_build_object(
+        'corretor_id', c.id,
+        'nome', COALESCE(c.apelido, c.nome, '—'),
+        'ativo_no_erp', COALESCE(c.ativo,false),
+        -- pode abrir a tela do CRM Nova Era
+        'acessa_crm', COALESCE(EXISTS (SELECT 1 FROM public.ncrm_piloto p
+                                        WHERE p.usuario_id = c.usuario_id AND p.ativo), false),
+        -- participa da primeira abordagem humana
+        'abordagem_humana', COALESCE(ah.ativo, false),
+        'liberado_em', ah.liberado_em,
+        'clientes_ativos', (SELECT count(*) FROM public.ncrm_estado e
+                              JOIN public.negocios n ON n.id = e.negocio_id
+                             WHERE n.corretor_id = c.id AND e.saida IS NULL)
+      ) ORDER BY COALESCE(c.apelido, c.nome))
+      FROM public.corretores c
+      LEFT JOIN public.ncrm_abordagem_humana ah ON ah.corretor_id = c.id
+      WHERE COALESCE(c.ativo,false)), '[]'::jsonb));
+END $fn$;
+REVOKE ALL ON FUNCTION public.ncrm_abordagem_humana_listar() FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.ncrm_abordagem_humana_listar() TO authenticated;
+
+-- Colocar/tirar um corretor do modo humano. Exige confirmação digitada e fica auditado.
+-- Ninguém é liberado automaticamente, em nenhuma hipótese.
+CREATE FUNCTION public.ncrm_abordagem_humana_definir(p_corretor_id bigint, p_ativo boolean, p_confirmacao text)
+  RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $fn$
+DECLARE v_uid uuid := auth.uid(); v_antes boolean; v_nome text; v_palavra text;
+BEGIN
+  IF v_uid IS NULL THEN RETURN jsonb_build_object('ok',false,'erro','nao_autenticado'); END IF;
+  IF COALESCE(public.can_manage_all(), false) IS NOT TRUE THEN RETURN jsonb_build_object('ok',false,'erro','sem_permissao'); END IF;
+  -- Ligar exige uma palavra mais forte que desligar: ligar muda o comportamento comercial.
+  v_palavra := CASE WHEN COALESCE(p_ativo,false) THEN 'ATIVAR ABORDAGEM HUMANA' ELSE 'CONFIRMAR' END;
+  IF upper(btrim(COALESCE(p_confirmacao,''))) <> v_palavra
+    THEN RETURN jsonb_build_object('ok',false,'erro','confirmacao_obrigatoria','palavra',v_palavra); END IF;
+
+  SELECT COALESCE(apelido, nome) INTO v_nome FROM public.corretores WHERE id = p_corretor_id AND COALESCE(ativo,false);
+  IF v_nome IS NULL THEN RETURN jsonb_build_object('ok',false,'erro','corretor_invalido'); END IF;
+  SELECT ah.ativo INTO v_antes FROM public.ncrm_abordagem_humana ah WHERE ah.corretor_id = p_corretor_id;
+
+  INSERT INTO public.ncrm_abordagem_humana (corretor_id, ativo, liberado_por)
+  VALUES (p_corretor_id, COALESCE(p_ativo,false), v_uid)
+  ON CONFLICT (corretor_id) DO UPDATE SET
+    ativo = COALESCE(p_ativo,false),
+    liberado_por  = CASE WHEN COALESCE(p_ativo,false) THEN v_uid ELSE public.ncrm_abordagem_humana.liberado_por END,
+    liberado_em   = CASE WHEN COALESCE(p_ativo,false) THEN now() ELSE public.ncrm_abordagem_humana.liberado_em END,
+    removido_por  = CASE WHEN COALESCE(p_ativo,false) THEN NULL ELSE v_uid END,
+    removido_em   = CASE WHEN COALESCE(p_ativo,false) THEN NULL ELSE now() END;
+
+  INSERT INTO public.ncrm_abordagem_humana_audit (corretor_id, corretor_nome, estado_antes, estado_depois, alterado_por)
+  VALUES (p_corretor_id, v_nome,
+          CASE WHEN COALESCE(v_antes,false) THEN 'humana' ELSE 'automatica' END,
+          CASE WHEN COALESCE(p_ativo,false) THEN 'humana' ELSE 'automatica' END, v_uid);
+
+  RETURN jsonb_build_object('ok',true,'corretor', v_nome,
+    'abordagem', CASE WHEN COALESCE(p_ativo,false) THEN 'humana' ELSE 'automatica' END);
+END $fn$;
+REVOKE ALL ON FUNCTION public.ncrm_abordagem_humana_definir(bigint,boolean,text) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.ncrm_abordagem_humana_definir(bigint,boolean,text) TO authenticated;
 
 -- Resposta única para o motor: devo segurar a primeira abordagem deste lead?
 CREATE FUNCTION public.ncrm_bloqueia_abordagem_automatica(p_lead_id bigint)
@@ -124,7 +224,7 @@ BEGIN
   v_escopo := COALESCE(NULLIF(p->>'escopo',''), a.escopo);
   v_prazo  := COALESCE(NULLIF(p->>'prazo_primeira_abordagem_min','')::int, a.prazo_primeira_abordagem_min);
   IF v_modo   NOT IN ('automatica','humana')     THEN RETURN jsonb_build_object('ok',false,'erro','modo_invalido'); END IF;
-  IF v_escopo NOT IN ('nenhum','pilotos','todos') THEN RETURN jsonb_build_object('ok',false,'erro','escopo_invalido'); END IF;
+  IF v_escopo NOT IN ('nenhum','liberados') THEN RETURN jsonb_build_object('ok',false,'erro','escopo_invalido'); END IF;
 
   UPDATE public.ncrm_entrada_config SET
     modo_primeira_abordagem = v_modo, escopo = v_escopo, prazo_primeira_abordagem_min = v_prazo,
@@ -398,30 +498,84 @@ ALTER TABLE public.ncrm_ingest_checkpoint ADD CONSTRAINT ncrm_ingest_checkpoint_
   CHECK (tipo IN ('msg_automatica','resposta_inbound','saida_humana','ignorado'));
 
 -- ============ 5. BLOQUEIO SELETIVO DA PRIMEIRA ABORDAGEM AUTOMÁTICA ============
--- Único ponto legado tocado. O guarda entra no MESMO lugar e no MESMO padrão dos guardas
--- de anti-duplicidade que já existiam ali: registra em `motor_execucoes` e retorna,
--- antes de resolver instância e antes de qualquer chamada HTTP.
+-- Único ponto legado tocado. Não existe hook nem tabela de decisão nessa automação:
+-- o envio é feito direto por `motor_envia_abordagem`. Por isso o guarda entra ali,
+-- no MESMO lugar e no MESMO padrão dos guardas de anti-duplicidade que já existiam,
+-- antes de resolver instância e antes de qualquer HTTP.
 --
--- Só age quando modo = 'humana' E o negócio é elegível ao Nova Era. Com escopo 'nenhum'
--- (padrão), `ncrm_bloqueia_abordagem_automatica` devolve false e o motor segue idêntico.
--- Qualquer exceção dentro do guarda devolve false: o legado nunca fica preso por isso.
-DO $mig$
-DECLARE v_def text; v_anchor text; v_guard text;
-BEGIN
-  SELECT pg_get_functiondef(p.oid) INTO v_def
-    FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
-   WHERE n.nspname = 'public' AND p.proname = 'motor_envia_abordagem';
-  IF v_def IS NULL THEN RAISE EXCEPTION 'motor_envia_abordagem nao encontrada'; END IF;
+-- A definição anterior é guardada INTEGRALMENTE antes da troca, para que o rollback
+-- restaure exatamente o que existia — e não uma reconstrução aproximada.
+-- Versões da função legada que foram AUDITADAS e para as quais a âncora é conhecida.
+-- A migration só altera a função se o checksum atual estiver nesta lista.
+CREATE TABLE IF NOT EXISTS public.ncrm_funcao_legada_esperada (
+  funcao   text NOT NULL,
+  checksum text NOT NULL,
+  origem   text NOT NULL,
+  PRIMARY KEY (funcao, checksum)
+);
+REVOKE ALL ON public.ncrm_funcao_legada_esperada FROM PUBLIC, anon, authenticated;
+ALTER TABLE public.ncrm_funcao_legada_esperada ENABLE ROW LEVEL SECURITY;
+INSERT INTO public.ncrm_funcao_legada_esperada (funcao, checksum, origem)
+VALUES ('motor_envia_abordagem','fbe9db01f73671e118e20fa3b0f365f0','producao auditada em 29/07/2026')
+ON CONFLICT DO NOTHING;
 
-  IF position('ncrm_bloqueia_abordagem_automatica' in v_def) > 0 THEN
-    RAISE NOTICE 'guarda ja aplicado; nada a fazer';
-    RETURN;
+CREATE TABLE IF NOT EXISTS public.ncrm_funcao_legada_backup (
+  id            bigserial PRIMARY KEY,
+  funcao        text NOT NULL,
+  assinatura    text NOT NULL,
+  definicao     text NOT NULL,
+  checksum      text NOT NULL,
+  owner_antes   text NOT NULL,
+  grants_antes  text NULL,
+  criado_em     timestamptz NOT NULL DEFAULT now()
+);
+REVOKE ALL ON public.ncrm_funcao_legada_backup FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON SEQUENCE public.ncrm_funcao_legada_backup_id_seq FROM PUBLIC, anon, authenticated;
+ALTER TABLE public.ncrm_funcao_legada_backup ENABLE ROW LEVEL SECURITY;
+
+DO $mig$
+DECLARE v_oid oid; v_def text; v_sum text; v_owner text; v_grants text; v_over int;
+        v_anchor text; v_guard text; v_novo text;
+        c_assinatura constant text := 'motor_envia_abordagem(bigint,text,text,jsonb,bigint,bigint,bigint,jsonb)';
+BEGIN
+  SELECT count(*) INTO v_over FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+   WHERE n.nspname='public' AND p.proname='motor_envia_abordagem';
+  IF v_over = 0 THEN
+    RAISE EXCEPTION 'motor_envia_abordagem ausente — ambiente nao corresponde ao auditado';
+  ELSIF v_over > 1 THEN
+    RAISE EXCEPTION 'motor_envia_abordagem tem % overloads; a auditoria previa exatamente 1 — abortando', v_over;
   END IF;
 
-  -- Âncora estável: a primeira instrução do corpo, que lê a config de distribuição.
+  SELECT p.oid, pg_get_functiondef(p.oid), md5(pg_get_functiondef(p.oid)), pg_get_userbyid(p.proowner)
+    INTO v_oid, v_def, v_sum, v_owner
+    FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+   WHERE n.nspname='public' AND p.proname='motor_envia_abordagem';
+
+  IF position('ncrm_bloqueia_abordagem_automatica' in v_def) > 0 THEN
+    RAISE NOTICE 'guarda ja presente; nada a fazer'; RETURN;
+  END IF;
+
+  IF v_oid::regprocedure::text <> c_assinatura THEN
+    RAISE EXCEPTION 'assinatura divergente: % (esperada %) — abortando', v_oid::regprocedure::text, c_assinatura;
+  END IF;
+
+  -- Precondição estrutural. Se a função não for uma das versões auditadas, o guarda
+  -- pode cair no lugar errado: melhor abortar a migration do que arriscar o legado.
+  IF NOT EXISTS (SELECT 1 FROM public.ncrm_funcao_legada_esperada
+                  WHERE funcao = 'motor_envia_abordagem' AND checksum = v_sum) THEN
+    RAISE EXCEPTION 'motor_envia_abordagem nao corresponde a nenhuma versao auditada (checksum %) — revisar a ancora antes de aplicar', v_sum;
+  END IF;
+
+  SELECT string_agg(grantee||':'||privilege_type, ', ' ORDER BY grantee, privilege_type) INTO v_grants
+    FROM information_schema.role_routine_grants
+   WHERE routine_schema='public' AND routine_name='motor_envia_abordagem';
+
+  INSERT INTO public.ncrm_funcao_legada_backup (funcao, assinatura, definicao, checksum, owner_antes, grants_antes)
+  VALUES ('motor_envia_abordagem', c_assinatura, v_def, v_sum, v_owner, v_grants);
+
   v_anchor := '  select failover_envio, failover_transfere_lead into _cfg_failover, _cfg_transfere from distribuicao_config where id=1;';
   IF position(v_anchor in v_def) = 0 THEN
-    RAISE EXCEPTION 'ancora nao encontrada em motor_envia_abordagem — abortando para nao alterar o legado as cegas';
+    RAISE EXCEPTION 'ancora nao encontrada — abortando para nao alterar o legado as cegas';
   END IF;
 
   v_guard :=
@@ -435,7 +589,14 @@ BEGIN
     '  end if;' || E'\n' ||
     v_anchor;
 
-  v_def := replace(v_def, v_anchor, v_guard);
-  EXECUTE v_def;
-  RAISE NOTICE 'guarda do CRM Nova Era aplicado em motor_envia_abordagem';
+  v_novo := replace(v_def, v_anchor, v_guard);
+  IF v_novo = v_def THEN RAISE EXCEPTION 'substituicao nao teve efeito — abortando'; END IF;
+  -- CREATE OR REPLACE preserva owner, grants, volatility, security mode e search_path.
+  EXECUTE v_novo;
+
+  -- Confere que nada além do guarda mudou nos atributos.
+  IF (SELECT pg_get_userbyid(proowner) FROM pg_proc WHERE oid = v_oid) <> v_owner THEN
+    RAISE EXCEPTION 'owner mudou apos a troca — abortando';
+  END IF;
+  RAISE NOTICE 'guarda do CRM Nova Era aplicado; definicao anterior salva em ncrm_funcao_legada_backup';
 END $mig$;
