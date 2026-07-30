@@ -531,7 +531,13 @@ CREATE TABLE IF NOT EXISTS public.ncrm_funcao_legada_esperada (
 REVOKE ALL ON public.ncrm_funcao_legada_esperada FROM PUBLIC, anon, authenticated;
 ALTER TABLE public.ncrm_funcao_legada_esperada ENABLE ROW LEVEL SECURITY;
 INSERT INTO public.ncrm_funcao_legada_esperada (funcao, checksum, origem)
-VALUES ('motor_envia_abordagem','fbe9db01f73671e118e20fa3b0f365f0','producao auditada em 29/07/2026')
+VALUES ('motor_envia_abordagem','fbe9db01f73671e118e20fa3b0f365f0','producao auditada em 29/07/2026'),
+  -- A migration V7.2 GATE 1 (20260729165508_v72_g1_freio_e_seguranca_envio.sql) reescreveu
+  -- o corpo por substituicao mecanica sobre o corpo auditado: removeu a escrita destrutiva
+  -- de estado em instancias e estreitou a montagem de sessionId. Assinatura, overloads e
+  -- ancora permaneceram intactos - so o corpo mudou, e a mudanca e rastreavel no repo.
+  -- Checksum conferido em producao em 30/07/2026.
+  ('motor_envia_abordagem','0fae179b2391322cc884b827ea0184df','pos V7.2 GATE 1, auditada em 30/07/2026')
 ON CONFLICT DO NOTHING;
 
 CREATE TABLE IF NOT EXISTS public.ncrm_funcao_legada_backup (
