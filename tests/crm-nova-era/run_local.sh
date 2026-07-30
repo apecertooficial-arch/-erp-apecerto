@@ -215,6 +215,10 @@ echo "### #29 rollback remove só objetos ncrm_* (downs aditivos ANTES do down p
 PSQL -f "$DOWN_F5"
 PSQL -f "$DOWN_ADMIN"
 PSQL -f "$DOWN_RUNNER"
+# Os objetos novos (ncrm_sara_acao, ncrm_notificacao) dependem de ncrm_sara_analise.
+# Os rollbacks precisam correr na ordem inversa da aplicacao: primeiro os novos.
+PSQL -f "$DOWN_SA"
+PSQL -f "$DOWN_EH"
 PSQL -f "$DOWN_SARA_OBS"
 PSQL -c "SELECT public.test_assert(to_regclass('public.ncrm_sara_config') IS NULL AND to_regclass('public.ncrm_sara_analise') IS NULL AND to_regproc('public.ncrm_sara_definir_modo') IS NULL, '#29 down Sara observer: objetos removidos');"
 PSQL -f "$DOWN_VISITA"
