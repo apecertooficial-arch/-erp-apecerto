@@ -4,15 +4,48 @@
 // o aplicativo. Clicar aqui e INTENCAO, nunca prova de envio: a atuacao so e
 // confirmada quando o outbound correspondente volta pelo webhook do D-API.
 
+// Lista canonica de DDDs em uso no Brasil (Plano Nacional de Numeracao).
+//
+// A versao anterior aceitava qualquer numero de 11 a 99 e, quando recusava,
+// dizia "DDD nao existe" — afirmacao que ela nao tinha como sustentar, porque
+// 20, 23, 25, 26, 29, 36, 39, 40, 50, 52, 56-60, 70, 72, 76, 78, 80 e 90 caem
+// nessa faixa e nao existem. Agora ou o DDD esta nesta lista, ou nao existe.
+//
+// Fonte: PNN/Anatel. Se a Anatel abrir um DDD novo, basta acrescentar aqui.
+export const DDDS_VALIDOS: readonly number[] = Object.freeze([
+  // Sao Paulo
+  11, 12, 13, 14, 15, 16, 17, 18, 19,
+  // Rio de Janeiro / Espirito Santo
+  21, 22, 24, 27, 28,
+  // Minas Gerais
+  31, 32, 33, 34, 35, 37, 38,
+  // Parana / Santa Catarina
+  41, 42, 43, 44, 45, 46, 47, 48, 49,
+  // Rio Grande do Sul
+  51, 53, 54, 55,
+  // Centro-Oeste e Norte
+  61, 62, 63, 64, 65, 66, 67, 68, 69,
+  // Bahia / Sergipe
+  71, 73, 74, 75, 77, 79,
+  // Nordeste
+  81, 82, 83, 84, 85, 86, 87, 88, 89,
+  // Norte
+  91, 92, 93, 94, 95, 96, 97, 98, 99,
+]);
+
+const CONJUNTO = new Set<number>(DDDS_VALIDOS);
+
+export function dddExiste(ddd: number | string): boolean {
+  const n = typeof ddd === "number" ? ddd : Number(String(ddd).trim());
+  return Number.isInteger(n) && CONJUNTO.has(n);
+}
+
 export type TelefoneOk = { ok: true; e164: string; exibicao: string };
 export type MotivoTelefoneInvalido =
   | "vazio" | "curto_demais" | "longo_demais"
   | "ddd_invalido" | "celular_sem_nove" | "pais_nao_suportado";
 export type TelefoneErro = { ok: false; motivo: MotivoTelefoneInvalido; explicacao: string };
 export type ResultadoTelefone = TelefoneOk | TelefoneErro;
-
-const DDD_MIN = 11;
-const DDD_MAX = 99;
 
 function somenteDigitos(bruto: string): string {
   return (bruto || "").replace(/\D+/g, "");
@@ -44,9 +77,8 @@ export function normalizarTelefone(bruto: string | null | undefined): ResultadoT
 
   const ddd = corpo.slice(0, 2);
   const numero = corpo.slice(2);
-  const dddNum = Number(ddd);
-  if (!Number.isFinite(dddNum) || dddNum < DDD_MIN || dddNum > DDD_MAX) {
-    return { ok: false, motivo: "ddd_invalido", explicacao: `DDD ${ddd} nao existe. Confira o cadastro.` };
+  if (!dddExiste(ddd)) {
+    return { ok: false, motivo: "ddd_invalido", explicacao: `DDD ${ddd} nao existe no Brasil. Confira o cadastro.` };
   }
   if (numero.length === 9 && !numero.startsWith("9")) {
     return { ok: false, motivo: "celular_sem_nove", explicacao: "Numero de 9 digitos precisa comecar com 9." };
