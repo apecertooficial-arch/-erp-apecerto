@@ -22,6 +22,8 @@ import { FaseBanner } from "./components/FaseBanner";
 import { mensagemQuadroVazio } from "./lib/faseBanner";
 import { PainelPiloto, DiagnosticoLegado } from "./components/PainelPiloto";
 import { WorkQueue } from "./components/WorkQueue";
+import { BotaoWhatsApp } from "./components/BotaoWhatsApp";
+import { marcarWhatsappAberto } from "./lib/whatsappAberto";
 import { MeuDia } from "./components/MeuDia";
 import { GestaoOperacional, CadenciaConfig } from "./components/GestaoOperacional";
 import { OnboardingNovaEra } from "./components/OnboardingNovaEra";
@@ -340,6 +342,15 @@ function LivePanel({
           <b>{lead.proximaAcaoTitulo ?? "Definir próxima ação"}</b>
           <span> · {lead.proximaAcaoEm ? new Date(lead.proximaAcaoEm).toLocaleString("pt-BR") : "—"}</span>
         </div>
+
+        {/* O corretor fala pelo WhatsApp do proprio celular. O ERP nao envia. */}
+        <BotaoWhatsApp
+          telefone={lead.telefone}
+          negocioId={lead.id}
+          rotulo={lead.ultimaInteracaoEm ? "Responder no WhatsApp" : "Chamar no WhatsApp"}
+          sugestao={typeof sara?.whatsapp_sugerido === "string" ? sara.whatsapp_sugerido : null}
+          onAbriu={(id) => marcarWhatsappAberto(id)}
+        />
       </div>
 
       {emSaida ? (
