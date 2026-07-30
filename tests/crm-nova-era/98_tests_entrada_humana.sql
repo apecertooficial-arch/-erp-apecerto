@@ -2,6 +2,9 @@
 -- ENTRADA PELA DISTRIBUIÇÃO + PRIMEIRA ABORDAGEM HUMANA + SARA ASSIST + NOTIFICAÇÕES
 -- ============================================================================
 ALTER TABLE public.wa_mensagens ADD COLUMN IF NOT EXISTS is_grupo boolean DEFAULT false;
+ALTER TABLE public.leads ADD COLUMN IF NOT EXISTS telefone text;
+ALTER TABLE public.corretores ADD COLUMN IF NOT EXISTS nome text;
+ALTER TABLE public.corretores ADD COLUMN IF NOT EXISTS apelido text;
 CREATE TABLE IF NOT EXISTS public.motor_execucoes (
   id bigserial PRIMARY KEY, automacao_id bigint, automacao_nome text, bloco_id text,
   evento text, status text, lead_nome text, lead_telefone text, detalhe text,
@@ -21,7 +24,7 @@ ON CONFLICT (id) DO NOTHING;
 INSERT INTO public.corretores (id, usuario_id, ativo) VALUES
   (7001,'77777777-0000-0000-0000-000000000002',true), (7002,'77777777-0000-0000-0000-000000000003',true)
 ON CONFLICT (id) DO NOTHING;
-INSERT INTO public.ncrm_piloto (usuario_id, ativo) VALUES ('77777777-0000-0000-0000-000000000002', true)
+INSERT INTO public.ncrm_piloto (usuario_id, ativo, liberado_por) VALUES ('77777777-0000-0000-0000-000000000002', true, '77777777-0000-0000-0000-000000000001')
 ON CONFLICT (usuario_id) DO UPDATE SET ativo = true;
 INSERT INTO public.leads (id, nome, telefone) VALUES
   (7101,'Cliente Piloto','5511900000001'), (7102,'Cliente Legado','5511900000002')
@@ -348,7 +351,7 @@ ON CONFLICT (id) DO NOTHING;
 INSERT INTO public.corretores (id, usuario_id, ativo) VALUES (7003,'77777777-0000-0000-0000-000000000004',true)
 ON CONFLICT (id) DO NOTHING;
 -- Tem ACESSO a tela (ncrm_piloto), mas NAO foi liberado para abordagem humana.
-INSERT INTO public.ncrm_piloto (usuario_id, ativo) VALUES ('77777777-0000-0000-0000-000000000004', true)
+INSERT INTO public.ncrm_piloto (usuario_id, ativo, liberado_por) VALUES ('77777777-0000-0000-0000-000000000004', true, '77777777-0000-0000-0000-000000000001')
 ON CONFLICT (usuario_id) DO UPDATE SET ativo = true;
 -- Corretor do ADMIN.
 INSERT INTO public.corretores (id, usuario_id, ativo) VALUES (7004,'77777777-0000-0000-0000-000000000001',true)
