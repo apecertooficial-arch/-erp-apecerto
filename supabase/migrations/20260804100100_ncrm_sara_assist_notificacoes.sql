@@ -54,7 +54,7 @@ REVOKE ALL ON SEQUENCE public.ncrm_sara_acao_id_seq FROM PUBLIC, anon, authentic
 ALTER TABLE public.ncrm_sara_acao ENABLE ROW LEVEL SECURITY;
 
 -- Whitelist de transições que a Sara pode fazer sozinha. Tudo fora disso é humano.
-CREATE FUNCTION ncrm_private.sara_transicao_permitida(p_de text, p_para text)
+CREATE OR REPLACE FUNCTION ncrm_private.sara_transicao_permitida(p_de text, p_para text)
   RETURNS boolean LANGUAGE sql IMMUTABLE SET search_path = '' AS $fn$
   SELECT (p_de, p_para) IN (
     ('novo','tentando_contato'),
@@ -66,7 +66,7 @@ $fn$;
 REVOKE ALL ON FUNCTION ncrm_private.sara_transicao_permitida(text,text) FROM PUBLIC, anon, authenticated;
 
 -- Aplicação controlada. Devolve sempre o que faria, mesmo em shadow.
-CREATE FUNCTION public.ncrm_sara_organizar(p_negocio_id bigint, p_analise_id bigint)
+CREATE OR REPLACE FUNCTION public.ncrm_sara_organizar(p_negocio_id bigint, p_analise_id bigint)
   RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $fn$
 DECLARE cfg public.ncrm_sara_assist_config%ROWTYPE; v_modo text; a public.ncrm_sara_analise%ROWTYPE;
         e public.ncrm_estado%ROWTYPE; v_aplica boolean; v_prazo timestamptz; v_motivo text; v_bloqueio text;
@@ -134,7 +134,7 @@ REVOKE ALL ON FUNCTION public.ncrm_sara_organizar(bigint,bigint) FROM PUBLIC, an
 GRANT EXECUTE ON FUNCTION public.ncrm_sara_organizar(bigint,bigint) TO authenticated, service_role;
 
 -- Desfazer uma organização da Sara. Ação humana sempre prevalece.
-CREATE FUNCTION public.ncrm_sara_reverter(p_acao_id bigint)
+CREATE OR REPLACE FUNCTION public.ncrm_sara_reverter(p_acao_id bigint)
   RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $fn$
 DECLARE v_uid uuid := auth.uid(); s public.ncrm_sara_acao%ROWTYPE; v_ver int;
 BEGIN
@@ -160,7 +160,7 @@ REVOKE ALL ON FUNCTION public.ncrm_sara_reverter(bigint) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.ncrm_sara_reverter(bigint) TO authenticated;
 
 -- Relatório de divergências do shadow: o que a Sara faria × o que está lá.
-CREATE FUNCTION public.ncrm_sara_assist_relatorio(p_dias int DEFAULT 7)
+CREATE OR REPLACE FUNCTION public.ncrm_sara_assist_relatorio(p_dias int DEFAULT 7)
   RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = '' AS $fn$
 DECLARE v_uid uuid := auth.uid();
 BEGIN
@@ -217,7 +217,7 @@ ALTER TABLE public.ncrm_notificacao ENABLE ROW LEVEL SECURITY;
 
 -- Reconstrói o quadro de pendências a partir do estado real e resolve sozinha o que
 -- deixou de ser pendência. Idempotente: rodar de novo não duplica nada.
-CREATE FUNCTION ncrm_private.notificacoes_sincronizar()
+CREATE OR REPLACE FUNCTION ncrm_private.notificacoes_sincronizar()
   RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $fn$
 DECLARE v_novas int := 0; v_resolvidas int := 0; cfg public.ncrm_entrada_config%ROWTYPE;
 BEGIN
@@ -279,7 +279,7 @@ END $fn$;
 REVOKE ALL ON FUNCTION ncrm_private.notificacoes_sincronizar() FROM PUBLIC, anon, authenticated;
 
 -- Leitura por papel. O corretor vê apenas os clientes dele; a gestão vê o time.
-CREATE FUNCTION public.ncrm_notificacoes()
+CREATE OR REPLACE FUNCTION public.ncrm_notificacoes()
   RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $fn$
 DECLARE v_uid uuid := auth.uid(); v_gestor boolean; v_corretor bigint;
 BEGIN
@@ -307,7 +307,7 @@ END $fn$;
 REVOKE ALL ON FUNCTION public.ncrm_notificacoes() FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.ncrm_notificacoes() TO authenticated;
 
-CREATE FUNCTION public.ncrm_notificacao_vista(p_id bigint)
+CREATE OR REPLACE FUNCTION public.ncrm_notificacao_vista(p_id bigint)
   RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $fn$
 DECLARE v_uid uuid := auth.uid(); v_neg bigint;
 BEGIN
@@ -346,7 +346,7 @@ BEGIN
   RETURN jsonb_build_object('ok',true,'modo',p_modo);
 END $function$;
 
-CREATE FUNCTION public.ncrm_sara_assist_config_set(p_operacao text, p_confianca numeric, p_confirmacao text)
+CREATE OR REPLACE FUNCTION public.ncrm_sara_assist_config_set(p_operacao text, p_confianca numeric, p_confirmacao text)
   RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $fn$
 DECLARE v_uid uuid := auth.uid();
 BEGIN

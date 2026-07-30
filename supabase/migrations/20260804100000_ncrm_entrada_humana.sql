@@ -53,7 +53,7 @@ ALTER TABLE public.ncrm_entrada_config_audit ENABLE ROW LEVEL SECURITY;
 
 -- Elegibilidade ao CRM Nova Era. Esta é a ÚNICA definição de "lead Nova Era" do sistema.
 -- Fail-closed: qualquer dúvida devolve false, e um false nunca bloqueia o motor.
-CREATE FUNCTION ncrm_private.negocio_elegivel_nova_era(p_negocio_id bigint)
+CREATE OR REPLACE FUNCTION ncrm_private.negocio_elegivel_nova_era(p_negocio_id bigint)
   RETURNS boolean LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = '' AS $fn$
 DECLARE v_escopo text; v_vigente timestamptz; v_ing_ativo boolean; v_ing_desde timestamptz;
         v_criado timestamptz; v_corretor bigint;
@@ -111,7 +111,7 @@ REVOKE ALL ON SEQUENCE public.ncrm_abordagem_humana_audit_id_seq FROM PUBLIC, an
 ALTER TABLE public.ncrm_abordagem_humana_audit ENABLE ROW LEVEL SECURITY;
 
 -- Tela do administrador: nomes, nunca UUID digitado. Mostra as duas dimensões.
-CREATE FUNCTION public.ncrm_abordagem_humana_listar()
+CREATE OR REPLACE FUNCTION public.ncrm_abordagem_humana_listar()
   RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = '' AS $fn$
 DECLARE v_uid uuid := auth.uid();
 BEGIN
@@ -144,7 +144,7 @@ GRANT EXECUTE ON FUNCTION public.ncrm_abordagem_humana_listar() TO authenticated
 
 -- Colocar/tirar um corretor do modo humano. Exige confirmação digitada e fica auditado.
 -- Ninguém é liberado automaticamente, em nenhuma hipótese.
-CREATE FUNCTION public.ncrm_abordagem_humana_definir(p_corretor_id bigint, p_ativo boolean, p_confirmacao text)
+CREATE OR REPLACE FUNCTION public.ncrm_abordagem_humana_definir(p_corretor_id bigint, p_ativo boolean, p_confirmacao text)
   RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $fn$
 DECLARE v_uid uuid := auth.uid(); v_antes boolean; v_nome text; v_palavra text;
 BEGIN
@@ -180,7 +180,7 @@ REVOKE ALL ON FUNCTION public.ncrm_abordagem_humana_definir(bigint,boolean,text)
 GRANT EXECUTE ON FUNCTION public.ncrm_abordagem_humana_definir(bigint,boolean,text) TO authenticated;
 
 -- Resposta única para o motor: devo segurar a primeira abordagem deste lead?
-CREATE FUNCTION public.ncrm_bloqueia_abordagem_automatica(p_lead_id bigint)
+CREATE OR REPLACE FUNCTION public.ncrm_bloqueia_abordagem_automatica(p_lead_id bigint)
   RETURNS boolean LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = '' AS $fn$
 DECLARE v_modo text; v_neg bigint;
 BEGIN
@@ -196,7 +196,7 @@ END $fn$;
 REVOKE ALL ON FUNCTION public.ncrm_bloqueia_abordagem_automatica(bigint) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.ncrm_bloqueia_abordagem_automatica(bigint) TO authenticated, service_role;
 
-CREATE FUNCTION public.ncrm_entrada_config_get()
+CREATE OR REPLACE FUNCTION public.ncrm_entrada_config_get()
   RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = '' AS $fn$
 DECLARE v_uid uuid := auth.uid(); c public.ncrm_entrada_config%ROWTYPE;
 BEGIN
@@ -211,7 +211,7 @@ REVOKE ALL ON FUNCTION public.ncrm_entrada_config_get() FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.ncrm_entrada_config_get() TO authenticated;
 
 -- Virada de modo/escopo: exige admin, confirmação digitada e fica auditada.
-CREATE FUNCTION public.ncrm_entrada_config_set(p jsonb, p_confirmacao text)
+CREATE OR REPLACE FUNCTION public.ncrm_entrada_config_set(p jsonb, p_confirmacao text)
   RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $fn$
 DECLARE v_uid uuid := auth.uid(); a public.ncrm_entrada_config%ROWTYPE;
         v_modo text; v_escopo text; v_prazo int;
@@ -250,7 +250,7 @@ GRANT EXECUTE ON FUNCTION public.ncrm_entrada_config_set(jsonb,text) TO authenti
 -- distribuição e herda o retry e o ciclo de vida finito que a fila já tem.
 --
 -- Não envia mensagem. Não chama a Sara. Não move o CRM antigo.
-CREATE FUNCTION ncrm_private.entrada_por_distribuicao(p_limite int DEFAULT 200)
+CREATE OR REPLACE FUNCTION ncrm_private.entrada_por_distribuicao(p_limite int DEFAULT 200)
   RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $fn$
 DECLARE r record; cfg public.ncrm_entrada_config%ROWTYPE; v_wf bigint; v_prazo timestamptz;
         v_criados int := 0; v_ignorados int := 0;
@@ -309,7 +309,7 @@ REVOKE ALL ON FUNCTION ncrm_private.entrada_por_distribuicao(int) FROM PUBLIC, a
 -- Reconhece a primeira mensagem de saída REALMENTE escrita pelo corretor no chat interno.
 -- Não conta como atuação humana: mensagem do motor, template, webhook, robô, job,
 -- mensagem anterior à distribuição, nem mensagem sem autor humano identificável.
-CREATE FUNCTION public.ncrm_registrar_primeira_humana(p_negocio_id bigint, p_message_id text, p_em timestamptz)
+CREATE OR REPLACE FUNCTION public.ncrm_registrar_primeira_humana(p_negocio_id bigint, p_message_id text, p_em timestamptz)
   RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $fn$
 DECLARE v_lead bigint; v_corretor bigint; v_antes int; v_cfg bigint; v_etapa text;
         v_idem text; v_msg text; v_saida text; v_prox timestamptz; v_criado timestamptz;
