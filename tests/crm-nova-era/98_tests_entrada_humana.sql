@@ -484,3 +484,214 @@ SELECT public.test_assert(
   (SELECT count(*) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
     WHERE n.nspname='public' AND p.proname='motor_envia_abordagem') = 1,
   'EH O: continua sem overloads');
+
+-- ==========================================================================
+-- CENARIOS A-G — criacao x continuidade do atendimento
+-- ==========================================================================
+-- Fixtures proprias (faixa 72xxx) para nao depender do estado das secoes anteriores.
+INSERT INTO public.usuarios (id, nome, email, role, ativo) VALUES
+  ('72000000-0000-0000-0000-000000000001','Corretor AG','ag@x','corretor',true)
+ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.corretores (id, usuario_id, ativo, nome) VALUES (7201,'72000000-0000-0000-0000-000000000001',true,'Corretor AG')
+ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.leads (id, nome, telefone) VALUES
+  (7201,'AG Sem Estado','5511920000001'), (7202,'AG Com Estado','5511920000002'),
+  (7203,'AG Liberado','5511920000003'),   (7204,'AG Pos Remocao','5511920000004'),
+  (7205,'AG Antes Dist','5511920000005')
+ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.wa_contatos (id, lead_id, telefone) VALUES
+  ('72a00000-0000-0000-0000-000000000001', 7201, '5511920000001'),
+  ('72a00000-0000-0000-0000-000000000002', 7202, '5511920000002'),
+  ('72a00000-0000-0000-0000-000000000003', 7203, '5511920000003'),
+  ('72a00000-0000-0000-0000-000000000004', 7204, '5511920000004'),
+  ('72a00000-0000-0000-0000-000000000005', 7205, '5511920000005')
+ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.wa_conversas (id, contato_id) VALUES
+  ('72c00000-0000-0000-0000-000000000001','72a00000-0000-0000-0000-000000000001'),
+  ('72c00000-0000-0000-0000-000000000002','72a00000-0000-0000-0000-000000000002'),
+  ('72c00000-0000-0000-0000-000000000003','72a00000-0000-0000-0000-000000000003'),
+  ('72c00000-0000-0000-0000-000000000004','72a00000-0000-0000-0000-000000000004'),
+  ('72c00000-0000-0000-0000-000000000005','72a00000-0000-0000-0000-000000000005')
+ON CONFLICT (id) DO NOTHING;
+
+-- ---------- A. escopo nenhum + negocio SEM estado + mensagem do motor ----------
+UPDATE public.ncrm_entrada_config SET escopo = 'nenhum', modo_primeira_abordagem = 'automatica' WHERE id;
+INSERT INTO public.negocios (id, lead_id, corretor_id, status, stage_id, criado_em)
+VALUES (72001, 7201, 7201, 'aberto', 20, now() - interval '3 minutes') ON CONFLICT (id) DO NOTHING;
+
+SELECT public.test_assert(NOT public.ncrm_bloqueia_abordagem_automatica(7201),
+  'AG A: motor automatico PERMITIDO com escopo nenhum');
+SELECT public.motor_envia_abordagem(0,'Boas-vindas','START',
+  jsonb_build_object('nome','AG Sem Estado','telefone','5511920000001'), 7201, 7201, NULL, '[1]'::jsonb);
+SELECT public.test_assert(
+  (SELECT count(*) FROM public.wa_mensagens WHERE conversa_id='72c00000-0000-0000-0000-000000000001'
+     AND raw->>'origem'='motor') = 1,
+  'AG A: mensagem automatica foi REGISTRADA (legado funcionando)');
+SELECT ncrm_private.reconciliar_mensagens(100);
+SELECT public.test_assert(NOT EXISTS (SELECT 1 FROM public.ncrm_estado WHERE negocio_id = 72001),
+  'AG A: ZERO ncrm_estado — mensagem do motor nao cria card fora do escopo');
+SELECT public.test_assert(
+  (SELECT status FROM public.ncrm_ingest_checkpoint c
+     JOIN public.wa_mensagens m ON m.id = c.mensagem_id
+    WHERE m.conversa_id='72c00000-0000-0000-0000-000000000001') = 'noop_fora_do_escopo',
+  'AG A: item encerrado como noop_fora_do_escopo');
+SELECT public.test_assert(
+  (SELECT motivo_final = 'negocio_fora_do_piloto' AND finalizado_em IS NOT NULL
+     FROM public.ncrm_ingest_checkpoint c JOIN public.wa_mensagens m ON m.id = c.mensagem_id
+    WHERE m.conversa_id='72c00000-0000-0000-0000-000000000001'),
+  'AG A: motivo_final e finalizado_em registrados');
+SELECT public.test_assert((SELECT count(*) FROM public.ncrm_sara_analise WHERE negocio_id = 72001) = 0,
+  'AG A: ZERO Sara para negocio fora do escopo');
+SELECT public.test_assert((SELECT count(*) FROM public.ncrm_ingest_checkpoint WHERE status='erro') = 0,
+  'AG A: ZERO erro tecnico');
+SELECT ncrm_private.reconciliar_mensagens(100);
+SELECT public.test_assert(NOT EXISTS (SELECT 1 FROM public.ncrm_estado WHERE negocio_id = 72001),
+  'AG A: reprocessar nao cria card');
+
+-- ---------- B. escopo nenhum + atendimento JA existente + inbound ----------
+INSERT INTO public.negocios (id, lead_id, corretor_id, status, stage_id, criado_em)
+VALUES (72002, 7202, 7201, 'aberto', 20, now() - interval '3 minutes') ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.ncrm_estado (negocio_id, workflow_config_id, etapa, proxima_acao_tipo,
+    proxima_acao_titulo, proxima_acao_em, origem_ultima)
+SELECT 72002, id, 'tentando_contato', 'tentativa_cadencia', 'Aguardar retorno', now() + interval '1 day', 'sistema'
+  FROM public.ncrm_workflow_config WHERE status='publicada' ORDER BY versao DESC LIMIT 1
+ON CONFLICT (negocio_id) DO NOTHING;
+
+INSERT INTO public.wa_mensagens (id, wa_message_id, conversa_id, direcao, tipo, conteudo, criado_em)
+VALUES ('72d00000-0000-0000-0000-000000000002','ag-in-2','72c00000-0000-0000-0000-000000000002',
+        'recebida','texto','Quero saber o valor', now())
+ON CONFLICT (id) DO NOTHING;
+SELECT ncrm_private.reconciliar_mensagens(100);
+SELECT public.test_assert((SELECT etapa FROM public.ncrm_estado WHERE negocio_id = 72002) = 'em_atendimento',
+  'AG B: atendimento existente CONTINUA sendo processado mesmo fora do escopo');
+SELECT public.test_assert((SELECT respondeu AND resposta_pendente FROM public.ncrm_estado WHERE negocio_id = 72002),
+  'AG B: resposta do cliente reconhecida');
+SELECT public.test_assert((SELECT count(*) FROM public.ncrm_estado WHERE negocio_id = 72002) = 1,
+  'AG B: ZERO duplicidade de atendimento');
+SELECT public.test_assert((SELECT count(*) FROM public.ncrm_evento WHERE idempotency_key = 'wa:ag-in-2') = 1,
+  'AG B: evento unico');
+
+-- ---------- C. corretor liberado + novo negocio ----------
+SELECT set_config('request.jwt.claims', json_build_object('sub','77777777-0000-0000-0000-000000000001','role','authenticated')::text, false);
+SET ROLE authenticated;
+SELECT public.ncrm_entrada_config_set('{"escopo":"liberados","modo_primeira_abordagem":"humana"}'::jsonb,'CONFIRMAR');
+SELECT public.ncrm_abordagem_humana_definir(7201, true, 'ATIVAR ABORDAGEM HUMANA');
+RESET ROLE;
+INSERT INTO public.negocios (id, lead_id, corretor_id, status, stage_id, criado_em)
+VALUES (72003, 7203, 7201, 'aberto', 20, now() - interval '2 minutes') ON CONFLICT (id) DO NOTHING;
+SELECT ncrm_private.reconciliar_mensagens(100);
+SELECT public.test_assert(EXISTS (SELECT 1 FROM public.ncrm_estado WHERE negocio_id = 72003),
+  'AG C: card nasce pela DISTRIBUICAO');
+SELECT public.test_assert((SELECT etapa FROM public.ncrm_estado WHERE negocio_id = 72003) = 'novo',
+  'AG C: nasce no momento Novo');
+SELECT public.test_assert(
+  (SELECT proxima_acao_titulo LIKE '%Primeira abordagem%' FROM public.ncrm_estado WHERE negocio_id = 72003),
+  'AG C: tarefa de chamar o cliente criada');
+SELECT public.test_assert(public.ncrm_bloqueia_abordagem_automatica(7203),
+  'AG C: motor BLOQUEADO antes de instancia/HTTP');
+SELECT public.motor_envia_abordagem(0,'Boas-vindas','START',
+  jsonb_build_object('nome','AG Liberado','telefone','5511920000003'), 7203, 7201, NULL, '[1]'::jsonb);
+SELECT public.test_assert(
+  (SELECT count(*) FROM public.wa_mensagens WHERE conversa_id='72c00000-0000-0000-0000-000000000003') = 0,
+  'AG C: ZERO mensagem automatica enviada');
+
+-- ---------- D. corretor removido DEPOIS da criacao ----------
+SELECT set_config('request.jwt.claims', json_build_object('sub','77777777-0000-0000-0000-000000000001','role','authenticated')::text, false);
+SET ROLE authenticated;
+SELECT public.ncrm_abordagem_humana_definir(7201, false, 'CONFIRMAR');
+RESET ROLE;
+SELECT public.test_assert(EXISTS (SELECT 1 FROM public.ncrm_estado WHERE negocio_id = 72003),
+  'AG D: atendimento existente PRESERVADO apos remocao');
+INSERT INTO public.wa_mensagens (id, wa_message_id, conversa_id, direcao, tipo, conteudo, criado_em)
+VALUES ('72d00000-0000-0000-0000-000000000003','ag-in-3','72c00000-0000-0000-0000-000000000003',
+        'recebida','texto','Oi', now())
+ON CONFLICT (id) DO NOTHING;
+SELECT ncrm_private.reconciliar_mensagens(100);
+SELECT public.test_assert((SELECT etapa FROM public.ncrm_estado WHERE negocio_id = 72003) = 'em_atendimento',
+  'AG D: inbound continua sendo processado no atendimento existente');
+INSERT INTO public.negocios (id, lead_id, corretor_id, status, stage_id, criado_em)
+VALUES (72004, 7204, 7201, 'aberto', 20, now() - interval '1 minute') ON CONFLICT (id) DO NOTHING;
+SELECT ncrm_private.reconciliar_mensagens(100);
+SELECT public.test_assert(NOT EXISTS (SELECT 1 FROM public.ncrm_estado WHERE negocio_id = 72004),
+  'AG D: novo negocio do corretor removido NAO cria card');
+SELECT public.test_assert(NOT public.ncrm_bloqueia_abordagem_automatica(7204),
+  'AG D: motor volta a enviar nesses novos negocios');
+SELECT public.motor_envia_abordagem(0,'Boas-vindas','START',
+  jsonb_build_object('nome','AG Pos Remocao','telefone','5511920000004'), 7204, 7201, NULL, '[1]'::jsonb);
+SELECT public.test_assert(
+  (SELECT count(*) FROM public.wa_mensagens WHERE conversa_id='72c00000-0000-0000-0000-000000000004'
+     AND raw->>'origem'='motor') = 1,
+  'AG D: legado automatico voltou a funcionar');
+SELECT ncrm_private.reconciliar_mensagens(100);
+SELECT public.test_assert(NOT EXISTS (SELECT 1 FROM public.ncrm_estado WHERE negocio_id = 72004),
+  'AG D: nem mesmo a mensagem do motor cria card apos a remocao');
+
+-- ---------- E. corrida distribuicao x motor ----------
+SELECT set_config('request.jwt.claims', json_build_object('sub','77777777-0000-0000-0000-000000000001','role','authenticated')::text, false);
+SET ROLE authenticated;
+SELECT public.ncrm_abordagem_humana_definir(7201, true, 'ATIVAR ABORDAGEM HUMANA');
+RESET ROLE;
+SELECT ncrm_private.reconciliar_mensagens(100);
+SELECT ncrm_private.reconciliar_mensagens(100);
+SELECT ncrm_private.reconciliar_mensagens(100);
+SELECT public.test_assert((SELECT count(*) FROM public.ncrm_estado WHERE negocio_id = 72004) <= 1,
+  'AG E: retry idempotente — nunca mais de um card');
+SELECT public.test_assert(
+  (SELECT count(*) FROM public.ncrm_evento WHERE idempotency_key = 'entrada_distribuicao:72004') <= 1,
+  'AG E: evento de entrada nao duplica na corrida');
+SELECT public.test_assert(
+  NOT (public.ncrm_bloqueia_abordagem_automatica(7204)
+       AND (SELECT count(*) FROM public.wa_mensagens WHERE conversa_id='72c00000-0000-0000-0000-000000000004'
+              AND raw->>'origem'='motor' AND criado_em > now() - interval '5 seconds') > 0),
+  'AG E: decisao consistente — nao ha envio e bloqueio simultaneos');
+
+-- ---------- F. mensagem ANTERIOR a distribuicao ----------
+INSERT INTO public.wa_mensagens (id, wa_message_id, conversa_id, direcao, tipo, conteudo, criado_em)
+VALUES ('72d00000-0000-0000-0000-000000000005','ag-pre-5','72c00000-0000-0000-0000-000000000005',
+        'enviada','texto','mensagem antiga', now() - interval '10 days')
+ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.negocios (id, lead_id, corretor_id, status, stage_id, criado_em)
+VALUES (72005, 7205, 7201, 'aberto', 20, now() - interval '1 minute') ON CONFLICT (id) DO NOTHING;
+SELECT ncrm_private.reconciliar_mensagens(100);
+SELECT public.test_assert((SELECT etapa FROM public.ncrm_estado WHERE negocio_id = 72005) = 'novo',
+  'AG F: mensagem anterior a distribuicao NAO move a etapa');
+SELECT public.test_assert((SELECT count(*) FROM public.ncrm_evento WHERE idempotency_key = 'humana:ag-pre-5') = 0,
+  'AG F: nao conta como primeira atuacao humana');
+SELECT public.test_assert((SELECT ultima_decisao_humana_em IS NULL FROM public.ncrm_estado WHERE negocio_id = 72005),
+  'AG F: nenhum SLA humano registrado');
+
+-- ---------- G. primeira outbound humana valida ----------
+INSERT INTO public.wa_mensagens (id, wa_message_id, conversa_id, direcao, tipo, conteudo, criado_em)
+VALUES ('72d00000-0000-0000-0000-000000000006','ag-hum-6','72c00000-0000-0000-0000-000000000005',
+        'enviada','texto','Ola! Sou seu corretor.', now())
+ON CONFLICT (id) DO NOTHING;
+SELECT ncrm_private.reconciliar_mensagens(100);
+SELECT public.test_assert((SELECT etapa FROM public.ncrm_estado WHERE negocio_id = 72005) = 'tentando_contato',
+  'AG G: primeira outbound humana move Novo -> Tentando contato');
+SELECT public.test_assert((SELECT count(*) FROM public.ncrm_evento WHERE idempotency_key = 'humana:ag-hum-6') = 1,
+  'AG G: evento unico');
+SELECT public.test_assert(
+  (SELECT (payload->>'sla_min')::int >= 0 FROM public.ncrm_evento WHERE idempotency_key = 'humana:ag-hum-6'),
+  'AG G: SLA calculado e nunca negativo');
+SELECT public.test_assert(
+  (SELECT proxima_acao_em IS NOT NULL AND proxima_acao_titulo IS NOT NULL
+     FROM public.ncrm_estado WHERE negocio_id = 72005),
+  'AG G: proxima acao criada');
+SELECT ncrm_private.notificacoes_sincronizar();
+SELECT public.test_assert(
+  (SELECT resolvida_por FROM public.ncrm_notificacao WHERE chave = 'novo:72005') = 'automatica',
+  'AG G: notificacao de primeira abordagem resolvida automaticamente');
+SELECT ncrm_private.reconciliar_mensagens(100);
+SELECT public.test_assert((SELECT count(*) FROM public.ncrm_evento WHERE idempotency_key = 'humana:ag-hum-6') = 1,
+  'AG G: reprocessamento sem duplicidade');
+
+-- ---------- complementares ----------
+SELECT public.test_assert((public.ncrm_registrar_primeira_humana(999999,'x',now())->>'erro') = 'negocio_inexistente',
+  'AG H: negocio inexistente e recusado');
+SELECT public.test_assert((public.ncrm_registrar_primeira_humana(72005,'',now())->>'erro') = 'message_id_obrigatorio',
+  'AG H: message_id obrigatorio');
+SELECT public.test_assert((public.ncrm_registrar_primeira_humana(72005,'ag-hum-6',now())->>'ja_processado')::boolean,
+  'AG H: mensagem duplicada e idempotente');
+SELECT public.test_assert(NOT ncrm_private.negocio_elegivel_nova_era(72001),
+  'AG H: negocio sem liberacao segue nao elegivel');
+UPDATE public.ncrm_entrada_config SET escopo = 'nenhum', modo_primeira_abordagem = 'automatica' WHERE id;
