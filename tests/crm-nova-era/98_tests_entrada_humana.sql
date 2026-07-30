@@ -63,10 +63,11 @@ SELECT public.test_assert((public.ncrm_entrada_config_set('{"escopo":"liberados"
   'EH B: virada exige confirmacao digitada');
 SELECT public.ncrm_entrada_config_set('{"escopo":"liberados","modo_primeira_abordagem":"humana","motivo":"teste"}'::jsonb,'CONFIRMAR');
 RESET ROLE;
--- Os negocios da secao A nasceram ANTES da virada, quando o escopo ainda era 'nenhum'.
--- A regra de produto e clara: negocio anterior ao corte permanece no legado.
--- Daqui em diante o cenario simula a operacao real - leads que chegam DEPOIS do corte.
-UPDATE public.negocios SET criado_em = now() WHERE id IN (71501,71502);
+-- A virada acabou de ocorrer, entao vigente_desde = now() e TODO negocio ja existente
+-- ficaria fora do piloto - correto em producao, inutil para o teste.
+-- Recuamos o corte para simular um piloto ativado ha 10 minutos. Assim os negocios da
+-- secao A sao posteriores ao corte e os SLAs relativos das secoes seguintes continuam validos.
+UPDATE public.ncrm_entrada_config SET vigente_desde = now() - interval '10 minutes' WHERE id;
 SET ROLE authenticated;
 
 -- Liberação por NOME, uma dimensão separada do acesso à tela.
