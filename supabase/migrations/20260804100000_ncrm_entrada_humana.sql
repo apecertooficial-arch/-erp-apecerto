@@ -429,10 +429,22 @@ BEGIN
         END IF;
 
       ELSIF v_tipo = 'msg_automatica' THEN
-        v_res := public.ncrm_registrar_msg_automatica(v_neg, v_idem, r.quando);
-        IF (v_res->>'ok')::boolean THEN v_st := 'processado'; v_motivo := 'processado'; v_final := now();
-        ELSIF v_res->>'erro' = 'estado_ja_existe' THEN v_st := 'noop'; v_motivo := 'estado_ja_existe'; v_final := now();
-        ELSE v_st := 'erro'; v_err := v_res->>'erro'; v_motivo := v_res->>'erro'; END IF;
+        -- CRIACAO x CONTINUIDADE (causa raiz corrigida aqui).
+        -- ncrm_registrar_msg_automatica nunca consultou elegibilidade: uma mensagem do
+        -- motor fazia nascer card mesmo com escopo 'nenhum' e corretor fora do piloto.
+        -- Agora a mensagem automatica so pode FAZER NASCER um atendimento quando o
+        -- negocio for elegivel pela funcao canonica. Se o atendimento JA existe, segue o
+        -- fluxo normal, independentemente da elegibilidade atual - e isso que preserva os
+        -- atendimentos quando um corretor sai do piloto.
+        IF NOT EXISTS (SELECT 1 FROM public.ncrm_estado e WHERE e.negocio_id = v_neg)
+           AND NOT COALESCE(ncrm_private.negocio_elegivel_nova_era(v_neg), false) THEN
+          v_st := 'noop_fora_do_escopo'; v_motivo := 'negocio_fora_do_piloto'; v_final := now();
+        ELSE
+          v_res := public.ncrm_registrar_msg_automatica(v_neg, v_idem, r.quando);
+          IF (v_res->>'ok')::boolean THEN v_st := 'processado'; v_motivo := 'processado'; v_final := now();
+          ELSIF v_res->>'erro' = 'estado_ja_existe' THEN v_st := 'noop'; v_motivo := 'estado_ja_existe'; v_final := now();
+          ELSE v_st := 'erro'; v_err := v_res->>'erro'; v_motivo := v_res->>'erro'; END IF;
+        END IF;
 
       ELSIF v_tipo = 'saida_humana' THEN
         v_res := public.ncrm_registrar_primeira_humana(v_neg, v_idem, r.quando);
