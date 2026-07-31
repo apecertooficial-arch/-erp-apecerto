@@ -10,6 +10,7 @@ import "./styles/tela-corretor.css";
 import "./styles/tela-crm.css";
 import "./styles/tela-avisos.css";
 import "./styles/tela-agenda.css";
+import "./styles/tela-agenda-mes.css";
 import "./styles/telas-prototipo.css";
 /* A ÚLTIMA de todas. Corrige o que só apareceu no aparelho de verdade:
    cabeçalho em dobro, cor do botão do WhatsApp, ícone do CRM e o tamanho de
@@ -50,7 +51,7 @@ export const viewport: Viewport = {
 
      CONTRAPARTIDA, assumida: isto remove a capacidade de ampliar a tela, que é
      recurso de acessibilidade. Só é aceitável porque (a) o app foi desenhado
-     com fonte de 14–16px e alvos de 44–52px, e (b) o ERP completo continua
+     com fonte de 14–17px e alvos de 44–52px, e (b) o ERP completo continua
      acessível pelo navegador, sem esta trava. */
   maximumScale: 1,
   userScalable: false,
