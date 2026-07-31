@@ -78,17 +78,24 @@ export function RegistroPwa() {
 
 /* Prefixos que pertencem ao ApeCerto. Tudo fora desta lista fica intacto.
  *
- * A versao anterior apagava TODOS os caches e TODAS as chaves de localStorage
- * menos "theme". Mesmo com o storage sendo escopado por origem, isso e amplo
- * demais: qualquer chave gravada por outra parte do dominio sumia no logout.
- * Agora a limpeza e nominal.
+ * A versao anterior apagava TODAS as chaves menos "theme" -- amplo demais.
+ * A primeira tentativa de estreitar errou para o outro lado: cobria so
+ * "apecerto-" e "sb-", e a homologacao em producao mostrou que ficavam para
+ * tras apecerto_os_v1, ncrm_onboarding_v1_<uuid> e ncrm:variante:<uuid>.
+ * As duas ultimas carregam o ID do usuario. Em aparelho compartilhado -- o
+ * caso normal numa imobiliaria -- isso e vazamento entre pessoas.
  *
- * apecerto-  -> chaves do proprio ERP (apecerto-notif-read, apecerto-lead-tab-order,
- *               apecerto-alert-dismissed, apecerto-alert-muted-until)
- * sb-        -> token de sessao do supabase-js (sb-<ref>-auth-token)
+ * A lista abaixo saiu das chaves REAIS observadas em producao, nao de
+ * suposicao. Os dois separadores existem de fato ("-" e "_").
+ *
+ * apecerto-  apecerto-notif-read, apecerto-lead-tab-order, apecerto-alert-*
+ * apecerto_  apecerto_os_v1, apecerto_kb, apecerto_onboard
+ * ncrm_      ncrm_onboarding_v1_<uuid>
+ * ncrm:      ncrm:variante:<uuid>, ncrm:wa*
+ * sb-        token de sessao do supabase-js
  */
-const PREFIXOS_APECERTO: readonly string[] = ["apecerto-", "sb-"];
-const PREFIXOS_SESSAO: readonly string[] = ["apecerto-"];
+const PREFIXOS_APECERTO: readonly string[] = ["apecerto-", "apecerto_", "ncrm_", "ncrm:", "sb-"];
+const PREFIXOS_SESSAO: readonly string[] = ["apecerto-", "apecerto_", "ncrm_", "ncrm:"];
 
 const pertenceAoApp = (chave: string, prefixos: readonly string[]) => prefixos.some((p) => chave.startsWith(p));
 
