@@ -61,6 +61,8 @@ export type LeadExibicao = {
   versao: number;
   leadId: number | null;
   tentativasFeitas: number;
+  /** Visita em aberto (quando o cliente está no Pipe): habilita registrar o resultado. */
+  visitaId: string | null;
 };
 
 export function paraExibicao(row: EstadoRow3): LeadExibicao {
@@ -76,6 +78,7 @@ export function paraExibicao(row: EstadoRow3): LeadExibicao {
     versao: row.versao,
     leadId: row.negocios?.lead_id ?? null,
     tentativasFeitas: row.tentativas_feitas ?? 0,
+    visitaId: row.visita_id ?? null,
   };
 }
 
