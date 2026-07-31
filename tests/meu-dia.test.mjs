@@ -14,8 +14,12 @@ import { grupoDoItem as grupoCanon, grupoVisivel as visivelCanon } from "../app/
 
 const ler = (p) => readFileSync(new URL(p, import.meta.url), "utf8");
 const item = (id, prio, extra = {}) => ({
-  negocio_id: id, lead_nome: `Lead ${id}`, etapa: "em_atendimento", motivo: "Cliente respondeu — aguardando você",
-  espera_min: 90, prioridade: prio, respondeu: true, proxima_acao_titulo: null, proxima_acao_em: null, ...extra,
+  negocio_id: id, lead_id: id, nome: `Lead ${id}`, etapa: "em_atendimento",
+  motivo_prioridade: "Cliente respondeu — aguardando você", tempo_espera: 90,
+  prioridade: prio, respondeu: true, telefone_normalizado: null, interesse_resumo: null,
+  sara_orientacao_curta: null, proxima_acao_tipo: null, proxima_acao_prazo: null,
+  outbound_real_confirmado: false, aguardando_sincronizacao: false,
+  deep_link: `/crm?lead=${id}`, ...extra,
 });
 
 test("a copia da regra concorda com a fonte canonica", () => {
@@ -53,23 +57,21 @@ test("\"Você tem X clientes\" conta so a urgencia", () => {
   assert.equal(paraAtender(itens), 2, "faca_combinado e acompanhe nao entram na chamada do topo");
 });
 
-test("acao principal: WhatsApp so com telefone em maos", () => {
-  const i = item(1, 1);
-  // A fila NAO devolve telefone -- conferido em producao. Prometer discagem que
-  // nao acontece seria pior do que um toque a mais.
-  assert.equal(acaoDoItem(i, false), "atendimento");
-  assert.equal(acaoDoItem(i, true), "whatsapp");
+test("acao principal: WhatsApp so com telefone valido no payload", () => {
+  assert.equal(acaoDoItem(item(1, 1)), "atendimento");
+  assert.equal(acaoDoItem(item(1, 1, { telefone_normalizado: "5511947292840" })), "whatsapp");
 });
 
 test("compromisso operacional vira Ver tarefa, nao conversa", () => {
-  for (const t of ["Agendar visita ao decorado", "Coletar documentos", "Enviar proposta", "Assinatura do contrato"]) {
-    assert.equal(acaoDoItem(item(1, 1, { proxima_acao_titulo: t }), true), "tarefa", `"${t}" deveria ser tarefa`);
+  const tel = { telefone_normalizado: "5511947292840" };
+  for (const t of ["agendar_visita", "coletar_documentos", "enviar_proposta", "assinatura_contrato"]) {
+    assert.equal(acaoDoItem(item(1, 1, { ...tel, proxima_acao_tipo: t })), "tarefa", `"${t}" deveria ser tarefa`);
   }
-  assert.equal(acaoDoItem(item(1, 1, { proxima_acao_titulo: "Entender necessidade do cliente" }), true), "whatsapp");
+  assert.equal(acaoDoItem(item(1, 1, { ...tel, proxima_acao_tipo: "entender_necessidade" })), "whatsapp");
 });
 
 test("card carrega nome, motivo, tempo e etapa", () => {
-  const [b] = montarBlocos([item(7, 1, { espera_min: 130 })]);
+  const [b] = montarBlocos([item(7, 1, { tempo_espera: 130 })]);
   const c = b.cards[0];
   assert.equal(c.nome, "Lead 7");
   assert.equal(c.motivo, "Cliente respondeu — aguardando você");
@@ -78,13 +80,13 @@ test("card carrega nome, motivo, tempo e etapa", () => {
 });
 
 test("lead sem nome nao vira card em branco", () => {
-  const [b] = montarBlocos([item(9, 1, { lead_nome: "   " })]);
+  const [b] = montarBlocos([item(9, 1, { nome: "   " })]);
   assert.equal(b.cards[0].nome, "Atendimento 9");
 });
 
 test("acao vencida e marcada", () => {
-  const vencida = item(1, 1, { proxima_acao_em: new Date(Date.now() - 3600e3).toISOString() });
-  const futura = item(2, 1, { proxima_acao_em: new Date(Date.now() + 3600e3).toISOString() });
+  const vencida = item(1, 1, { proxima_acao_prazo: new Date(Date.now() - 3600e3).toISOString() });
+  const futura = item(2, 1, { proxima_acao_prazo: new Date(Date.now() + 3600e3).toISOString() });
   assert.equal(montarBlocos([vencida])[0].cards[0].vencida, true);
   assert.equal(montarBlocos([futura])[0].cards[0].vencida, false);
 });
@@ -120,7 +122,8 @@ test("a tela do corretor nao mostra gestao antes da fila", () => {
 
 test("o toque no card nao afirma que houve contato", () => {
   const c = ler("../app/features/home/MeuDiaCorretor.tsx");
-  assert.match(c, /Aguardando a mensagem aparecer no histórico/);
+  // Frase alinhada a spec da Entrega 2.
+  assert.match(c, /aguardando sincronização/);
   // Olha o que e RENDERIZADO: o comentario do arquivo cita a frase proibida de
   // proposito, para explicar por que ela nao existe.
   const semComentarios = c.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
@@ -148,4 +151,44 @@ test("alvo principal grande e sem overflow escondido", () => {
   assert.match(bloco, /\.md-acao \{[^}]*min-height: 48px/s);
   assert.ok(!/overflow-x:\s*hidden/.test(bloco));
   assert.match(bloco, /overflow-wrap: anywhere/);
+});
+
+
+/* ---------------- Entrega 2: WhatsApp no card ---------------- */
+
+test("o card usa a fila-operacional, nao a fila crua", () => {
+  const c = ler("../app/features/home/MeuDiaCorretor.tssx".replace('.tssx','.tsx'));
+  assert.match(c, /\/api\/ncrm\/fila-operacional/);
+  assert.ok(!/fila\?filtro=/.test(c), "a fila crua nao tem telefone nem Sara");
+});
+
+test("WhatsApp e link real com fallback, e o clique so registra intencao", () => {
+  const c = ler("../app/features/home/MeuDiaCorretor.tsx");
+  assert.match(c, /href=\{`whatsapp:\/\/send\?phone=\$\{c\.telefone\}`\}/);
+  assert.match(c, /href=\{`https:\/\/wa\.me\/\$\{c\.telefone\}`\}/, "fallback wa.me visivel");
+  assert.match(c, /marcarWhatsappAberto\(c\.negocioId\)/);
+  // o clique nao pode disparar rede nem escrita
+  const onClicks = [...c.matchAll(/onClick=\{\(\) => ([^}]+)\}/g)].map((m) => m[1]);
+  for (const h of onClicks) {
+    assert.ok(!/fetch|post|update|concluir|etapa/i.test(h), `onClick faz mais que registrar intencao: ${h}`);
+  }
+});
+
+test("aguardando sincronizacao: servidor OU local, e outbound real apaga", () => {
+  const c = ler("../app/features/home/MeuDiaCorretor.tsx");
+  assert.match(c, /!c\.outboundConfirmado && \(c\.aguardandoServidor \|\| abriuLocal\)/);
+  assert.match(c, /limparWhatsappAberto\(c\.negocioId\)/, "confirmacao real limpa o aviso local");
+  assert.match(c, /WhatsApp aberto — aguardando sincronização/);
+});
+
+test("sem <a> dentro de <button>: o corpo e a acao sao irmaos", () => {
+  const c = ler("../app/features/home/MeuDiaCorretor.tsx");
+  const corpo = c.slice(c.indexOf("md-card-corpo"), c.indexOf("</button>", c.indexOf("md-card-corpo")));
+  assert.ok(!corpo.includes("<a"), "link dentro de botao e HTML invalido e quebra leitor de tela");
+});
+
+test("card mostra interesse e orientacao da Sara quando existem", () => {
+  const c = ler("../app/features/home/MeuDiaCorretor.tsx");
+  assert.match(c, /c\.interesse && <span className="md-interesse"/);
+  assert.match(c, /c\.orientacaoSara && <span className="md-sara"/);
 });

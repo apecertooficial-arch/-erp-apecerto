@@ -530,3 +530,20 @@
   .md-erro strong { display: block; font-size: 14px; color: #7a4412; }
   .md-erro button { margin-top: 10px; min-height: 44px; padding: 0 16px; border: 0; border-radius: 10px; background: var(--orange); color: #fff; font-weight: 600; cursor: pointer; }
 }
+
+/* Entrega 2 — WhatsApp direto no card do Meu Dia. */
+@media (max-width: 900px) {
+  .md-card { border: 1px solid var(--line); border-radius: 14px; background: #fff; padding: 0 0 12px; }
+  .md-card.vencida { border-left: 4px solid #dc2626; }
+  .md-card-corpo {
+    width: 100%; display: grid; gap: 4px; text-align: left; cursor: pointer;
+    padding: 14px 14px 6px; border: 0; background: transparent;
+  }
+  .md-interesse { font-size: 12px; color: var(--ink); }
+  .md-sara { font-size: 12px; color: #6d28d9; overflow-wrap: anywhere; }
+  /* Acao verde do WhatsApp, no padrao do restante do sistema. */
+  a.md-acao { background: #25d366; text-decoration: none; }
+  .md-acao { margin: 8px 14px 0; min-height: 48px; display: flex; align-items: center; justify-content: center; border: 0; border-radius: 12px; background: var(--orange); color: #fff; font-size: 15px; font-weight: 700; cursor: pointer; }
+  .md-wa-fallback { display: block; margin: 6px 14px 0; min-height: 44px; display: flex; align-items: center; justify-content: center; font-size: 13px; color: var(--muted); text-decoration: underline; }
+  .md-aguardando { display: block; margin: 8px 14px 0; font-size: 12px; color: #7a4412; background: #fff6ef; border-radius: 8px; padding: 6px 8px; }
+}
