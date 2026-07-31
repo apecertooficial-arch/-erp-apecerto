@@ -13,9 +13,11 @@ import type { ItemFila3 } from "../lib/meuDia3";
 
 type Faixa = { chave: "respondeu" | "vencidos"; titulo: string; ajuda: string; tom: string };
 
+/* Protótipo: a barrinha conta o TIPO — laranja respondeu, roxo lead novo,
+   vermelho prazo estourado. */
 const FAIXAS: readonly Faixa[] = Object.freeze([
-  { chave: "respondeu", titulo: "Clientes que responderam", ajuda: "A conversa voltou e está esperando você.", tom: "tom-vermelho" },
-  { chave: "vencidos", titulo: "Prazos estourados", ajuda: "Ações que passaram do combinado.", tom: "tom-amarelo" },
+  { chave: "respondeu", titulo: "Clientes que responderam", ajuda: "A conversa voltou e está esperando você.", tom: "tom-laranja" },
+  { chave: "vencidos", titulo: "Prazos estourados", ajuda: "Ações que passaram do combinado.", tom: "tom-vermelho" },
 ]);
 
 export function Avisos3({ accessToken, onAbrir }: { accessToken: string; onAbrir: (negocioId: string) => void }) {
@@ -69,7 +71,7 @@ export function Avisos3({ accessToken, onAbrir }: { accessToken: string; onAbrir
             </div>
             <p className="ncrm3-secao-ajuda">{f.ajuda}</p>
             {itens.slice(0, 30).map((i) => (
-              <article key={i.negocio_id} className={`ncrm3-item ${f.tom}`}>
+              <article key={i.negocio_id} className={`ncrm3-item ${(i.motivo || "").toLowerCase().includes("novo") ? "tom-roxo" : f.tom}`}>
                 <div className="ncrm3-item-corpo">
                   <div className="ncrm3-item-linha">
                     <strong>{i.lead_nome ?? `Atendimento ${i.negocio_id}`}</strong>
