@@ -43,9 +43,11 @@ ALTER TABLE public.ncrm_notificacao ADD CONSTRAINT ncrm_notificacao_tipo_check
 -- prefixo da chave, que ja identifica o tipo de pendencia.
 UPDATE public.ncrm_notificacao
    SET deep_link = CASE
-     WHEN chave LIKE 'resp:%'   THEN '/negocio/' || negocio_id || '/conversa'
-     WHEN chave LIKE 'novo:%'   THEN '/negocio/' || negocio_id
-     WHEN chave LIKE 'venc:%'   THEN '/negocio/' || negocio_id
+     -- negocio_id nulo anula a concatenacao inteira e o destino voltaria a
+     -- ser NULL, que e justamente o que estamos corrigindo.
+     WHEN chave LIKE 'resp:%' AND negocio_id IS NOT NULL THEN '/negocio/' || negocio_id || '/conversa'
+     WHEN chave LIKE 'novo:%' AND negocio_id IS NOT NULL THEN '/negocio/' || negocio_id
+     WHEN chave LIKE 'venc:%' AND negocio_id IS NOT NULL THEN '/negocio/' || negocio_id
      WHEN chave LIKE 'sla:%'    THEN '/gestao/sla'
      WHEN chave LIKE 'semcor:%' THEN '/gestao/distribuicao'
      WHEN chave LIKE 'visita:%' THEN '/agenda'
@@ -91,19 +93,19 @@ BEGIN
   WITH candidatas AS (
     SELECT 'resp:'||e.negocio_id AS chave, 'cliente_respondeu' AS tipo, 'corretor' AS publico, 1 AS prioridade,
            'Cliente respondeu' AS titulo, 'Responda agora para nao esfriar' AS detalhe,
-           e.negocio_id, n.corretor_id, '/negocio/'||e.negocio_id||'/conversa' AS deep_link
+           e.negocio_id, n.corretor_id, coalesce('/negocio/'||e.negocio_id||'/conversa','/notificacoes') AS deep_link
       FROM public.ncrm_estado e JOIN public.negocios n ON n.id = e.negocio_id
      WHERE e.saida IS NULL AND e.resposta_pendente
     UNION ALL
     SELECT 'novo:'||e.negocio_id, 'primeira_abordagem_pendente', 'corretor', 1,
            'Lead novo esperando o primeiro contato', 'Chame o cliente pelo WhatsApp',
-           e.negocio_id, n.corretor_id, '/negocio/'||e.negocio_id
+           e.negocio_id, n.corretor_id, coalesce('/negocio/'||e.negocio_id,'/notificacoes')
       FROM public.ncrm_estado e JOIN public.negocios n ON n.id = e.negocio_id
      WHERE e.saida IS NULL AND e.etapa = 'novo'
     UNION ALL
     SELECT 'venc:'||e.negocio_id, 'acao_vencida', 'corretor', 2,
            'Combinado vencido', e.proxima_acao_titulo,
-           e.negocio_id, n.corretor_id, '/negocio/'||e.negocio_id
+           e.negocio_id, n.corretor_id, coalesce('/negocio/'||e.negocio_id,'/notificacoes')
       FROM public.ncrm_estado e JOIN public.negocios n ON n.id = e.negocio_id
      WHERE e.saida IS NULL AND e.proxima_acao_em IS NOT NULL AND e.proxima_acao_em < now()
     UNION ALL
