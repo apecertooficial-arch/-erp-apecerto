@@ -4,7 +4,7 @@
  * - Usa o MESMO contrato do ia-router já em produção (app/api/agentes/copiloto-lead):
  *   POST {NEXT_PUBLIC_SUPABASE_URL}/functions/v1/ia-router com { agente_slug:"sara", input, override_prompt }.
  *   A Edge Function usa as ferramentas reais (consultar_lead / avaliar_conversa: mensagens,
- *   áudios transcritos e avaliações), com a chave server-side. NENHUMA chave de IA no frontend.
+ *   áudios transcritos, avaliações), com a chave server-side. NENHUMA chave de IA no frontend.
  * - Resposta validada/normalizada por schema explícito (saraSchema). Se não for JSON válido
  *   no formato esperado => FALHA CONTROLADA (nunca devolve string/JSON cru como sugestão).
  * - A Sara NÃO altera etapa, NÃO envia WhatsApp, NÃO cria visita/proposta.
@@ -154,13 +154,25 @@ export async function GET(request: Request) {
 
   void supabase.rpc("perf_log_sessao", { p_tipo: "ncrm_sara_pergunta" }).then(() => {}, () => {});
 
-  const ia = await chamarIaRouter(token, input);
-  if (!ia.ok) return Response.json({ error: "Sara indisponível no momento.", motivo: ia.erro }, { status: 503 });
-
-  const norm = normalizarSugestaoSara(ia.raw);
-  if (!norm.ok) return Response.json({ error: "A Sara não retornou uma sugestão válida.", motivo: norm.erro }, { status: 422 });
-
-  return Response.json({ ok: true, negocio: nid, sugestao: norm.sugestao });
+  /* O modelo às vezes responde prosa em vez do JSON pedido (~metade das
+     chamadas, medido em produção em 31/07). Falha estocástica se resolve
+     tentando de novo: até 3 tentativas, devolvendo a primeira válida. O
+     custo é segundos; a alternativa era o corretor ver "sugestão inválida"
+     e desistir da Sara. */
+  const MAX_TENTATIVAS_IA = 3;
+  let ultimaFalha = "ia_indisponivel";
+  for (let i = 0; i < MAX_TENTATIVAS_IA; i++) {
+    const ia = await chamarIaRouter(token, input);
+    if (!ia.ok) { ultimaFalha = ia.erro; continue; }
+    const norm = normalizarSugestaoSara(ia.raw);
+    if (norm.ok) return Response.json({ ok: true, negocio: nid, sugestao: norm.sugestao, tentativa: i + 1 });
+    ultimaFalha = norm.erro;
+  }
+  const ehFormato = ultimaFalha.startsWith("resposta_") || ultimaFalha.startsWith("sugestao_") || ultimaFalha === "confianca_invalida";
+  return Response.json(
+    { error: ehFormato ? "A Sara não retornou uma sugestão válida." : "Sara indisponível no momento.", motivo: ultimaFalha },
+    { status: ehFormato ? 422 : 503 },
+  );
 }
 
 export async function POST(request: Request) {
