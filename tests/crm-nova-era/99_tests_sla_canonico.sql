@@ -362,6 +362,132 @@ SELECT public.test_assert(
     WHERE negocio_id = 73002 AND tipo = 'tentativa' AND numero_tentativa = 1) = 1,
   'AUTO10: nenhuma tentativa duplicada pelo caminho legado de reconhecimento');
 
+-- =============================================================================
+-- FALSOS POSITIVOS: o criterio negativo nao pode mais registrar atuacao humana
+--
+-- Um helper monta um negocio + conversa + uma mensagem de saida com o raw que
+-- se quer testar, roda o CAMINHO REAL (reconciliar_mensagens) e devolve se
+-- houve confirmacao. Nenhum destes testes chama a funcao pura.
+-- =============================================================================
+
+CREATE OR REPLACE FUNCTION public.tst_saida(p_seq int, p_raw jsonb, p_direcao text)
+RETURNS jsonb LANGUAGE plpgsql AS $tst$
+DECLARE v_neg bigint; v_lead bigint; v_msg text; v_uid uuid; v_conv uuid;
+BEGIN
+  v_neg  := 74000 + p_seq;  v_lead := 7400 + p_seq;
+  v_msg  := 'MSG-FP-' || p_seq;
+  v_conv := ('eeeeeeee-0000-0000-0000-0000000000' || lpad(p_seq::text, 2, '0'))::uuid;
+  v_uid  := ('ffffffff-0000-0000-0000-0000000000' || lpad(p_seq::text, 2, '0'))::uuid;
+
+  INSERT INTO public.leads (id, nome, telefone)
+  VALUES (v_lead, 'Cliente FP ' || p_seq, '55119000' || (74000 + p_seq))
+  ON CONFLICT (id) DO NOTHING;
+
+  INSERT INTO public.negocios (id, lead_id, corretor_id, status, stage_id, criado_em)
+  VALUES (v_neg, v_lead, 7001, 'aberto', 20, now() - interval '10 minutes')
+  ON CONFLICT (id) DO NOTHING;
+
+  INSERT INTO public.ncrm_estado (negocio_id, workflow_config_id, etapa,
+    proxima_acao_tipo, proxima_acao_titulo, proxima_acao_em, origem_ultima, distribuido_em)
+  SELECT v_neg, id, 'novo', 'tentativa_cadencia', 'Primeira abordagem',
+         now() + interval '5 minutes', 'sistema', now() - interval '10 minutes'
+    FROM public.ncrm_workflow_config WHERE status='publicada' ORDER BY versao DESC LIMIT 1
+  ON CONFLICT (negocio_id) DO NOTHING;
+
+  INSERT INTO public.wa_contatos (id, lead_id, telefone)
+  VALUES (v_uid, v_lead, '55119000' || (74000 + p_seq)) ON CONFLICT (id) DO NOTHING;
+
+  INSERT INTO public.wa_conversas (id, contato_id, instancia_id, status)
+  VALUES (v_conv, v_uid, 'aaaaaaaa-0000-0000-0000-000000000001', 'aberta')
+  ON CONFLICT (id) DO NOTHING;
+
+  INSERT INTO public.wa_mensagens (id, wa_message_id, conversa_id, instancia_id, direcao,
+    tipo, conteudo, raw, criado_em, enviado_em)
+  VALUES (gen_random_uuid(), v_msg, v_conv, 'aaaaaaaa-0000-0000-0000-000000000001',
+          p_direcao, 'texto', 'mensagem de teste', p_raw,
+          now() - interval '7 minutes', now() - interval '7 minutes')
+  ON CONFLICT DO NOTHING;
+
+  PERFORM ncrm_private.reconciliar_mensagens(100);
+
+  RETURN jsonb_build_object(
+    'confirmou',  (SELECT primeira_saida_humana_em IS NOT NULL FROM public.ncrm_estado WHERE negocio_id = v_neg),
+    'etapa',      (SELECT etapa FROM public.ncrm_estado WHERE negocio_id = v_neg),
+    'sla',        (SELECT sla_minutos FROM public.ncrm_estado WHERE negocio_id = v_neg),
+    'eventos',    (SELECT count(*) FROM public.ncrm_evento WHERE idempotency_key = 'humana:' || v_msg),
+    'negocio_id', v_neg, 'message_id', v_msg);
+END $tst$;
+
+-- 1. D-API fromMe=true -> confirma uma vez
+SELECT public.test_assert(
+  (public.tst_saida(1, '{"fromMe":true,"id":"MSG-FP-1"}'::jsonb, 'enviada')->>'confirmou')::boolean
+  AND (public.tst_saida(1, '{"fromMe":true,"id":"MSG-FP-1"}'::jsonb, 'enviada')->>'eventos')::int = 1,
+  'FP1: outbound D-API com fromMe confirma, e cria exatamente um evento');
+
+-- 2. repeticao -> zero duplicidade
+SELECT ncrm_private.reconciliar_mensagens(100);
+SELECT ncrm_private.reconciliar_mensagens(100);
+SELECT public.test_assert(
+  (SELECT count(*) FROM public.ncrm_evento WHERE idempotency_key = 'humana:MSG-FP-1') = 1,
+  'FP2: passagens repetidas do reconciliador nao duplicam o evento');
+
+-- 3. chat do ERP (via=crm)
+SELECT public.test_assert(
+  NOT (public.tst_saida(3, '{"fromMe":true,"via":"crm"}'::jsonb, 'enviada')->>'confirmou')::boolean,
+  'FP3: chat interno do ERP NAO vira primeira abordagem humana');
+
+-- 4. motor
+SELECT public.test_assert(
+  NOT (public.tst_saida(4, '{"fromMe":true,"origem":"motor"}'::jsonb, 'enviada')->>'confirmou')::boolean,
+  'FP4: mensagem do motor NAO vira primeira abordagem humana');
+
+-- 5. espelho antigo
+SELECT public.test_assert(
+  NOT (public.tst_saida(5, '{"fromMe":true,"status":"sent","wa_message_id":"X"}'::jsonb, 'enviada')->>'confirmou')::boolean,
+  'FP5: espelho interno NAO vira primeira abordagem humana');
+
+-- 6. fromMe=false
+SELECT public.test_assert(
+  NOT (public.tst_saida(6, '{"fromMe":false}'::jsonb, 'enviada')->>'confirmou')::boolean,
+  'FP6: fromMe=false NAO vira primeira abordagem humana');
+
+-- 7. mensagem recebida
+SELECT public.test_assert(
+  NOT (public.tst_saida(7, '{"fromMe":true}'::jsonb, 'recebida')->>'confirmou')::boolean,
+  'FP7: mensagem recebida NAO vira primeira abordagem humana');
+
+-- 8. sem fromMe nem from_me
+SELECT public.test_assert(
+  NOT (public.tst_saida(8, '{"id":"MSG-FP-8"}'::jsonb, 'enviada')->>'confirmou')::boolean,
+  'FP8: saida sem marcador da D-API NAO vira primeira abordagem humana');
+
+-- 10. nenhuma das recusadas moveu etapa nem criou evento humana:
+SELECT public.test_assert(
+  NOT EXISTS (SELECT 1 FROM public.ncrm_estado
+               WHERE negocio_id IN (74003,74004,74005,74006,74007,74008)
+                 AND (etapa <> 'novo' OR primeira_saida_humana_em IS NOT NULL
+                      OR sla_minutos IS NOT NULL)),
+  'FP10a: nenhuma saida recusada moveu etapa, gravou primeira saida ou SLA');
+
+SELECT public.test_assert(
+  (SELECT count(*) FROM public.ncrm_evento
+    WHERE idempotency_key IN ('humana:MSG-FP-3','humana:MSG-FP-4','humana:MSG-FP-5',
+                              'humana:MSG-FP-6','humana:MSG-FP-7','humana:MSG-FP-8')) = 0,
+  'FP10b: nenhuma saida recusada criou evento humana:');
+
+-- 9. chamada DIRETA da RPC com chat do ERP -> recusa sem mutacao
+SELECT public.test_assert(
+  (public.ncrm_registrar_primeira_humana(74003, 'MSG-FP-3', now())->>'erro')
+    = 'nao_e_outbound_manual_confirmado',
+  'FP9: a RPC recusa chat do ERP mesmo chamada diretamente');
+
+SELECT public.test_assert(
+  (SELECT etapa = 'novo' AND primeira_saida_humana_em IS NULL
+     FROM public.ncrm_estado WHERE negocio_id = 74003),
+  'FP9b: a recusa da RPC nao deixou mutacao nenhuma para tras');
+
+DROP FUNCTION IF EXISTS public.tst_saida(int, jsonb, text);
+
 -- ------------------------------------------------- devolve a config ao estado
 -- neutro para nao contaminar as fases seguintes do harness.
 UPDATE public.ncrm_entrada_config
