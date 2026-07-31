@@ -177,6 +177,12 @@ ON CONFLICT (endpoint) WHERE revogada_em IS NULL DO NOTHING;
 INSERT INTO public.ncrm_push_subscription (usuario_id, endpoint, p256dh, auth, user_agent)
 VALUES ('77777777-0000-0000-0000-000000000002','https://push.exemplo/notebook','k2','a2','notebook')
 ON CONFLICT (endpoint) WHERE revogada_em IS NULL DO NOTHING;
+-- dispositivo do ADMIN (...0001), que responde pela operacao e deve receber
+-- push de gestao. Sem ele nao ha como distinguir "gestao recebe" de "ninguem
+-- recebe": os dois dariam fila vazia.
+INSERT INTO public.ncrm_push_subscription (usuario_id, endpoint, p256dh, auth, user_agent)
+VALUES ('77777777-0000-0000-0000-000000000001','https://push.exemplo/admin','k0','a0','admin')
+ON CONFLICT (endpoint) WHERE revogada_em IS NULL DO NOTHING;
 -- dispositivo de um corretor comum, que NAO pode receber push de gestao
 INSERT INTO public.ncrm_push_subscription (usuario_id, endpoint, p256dh, auth, user_agent)
 VALUES ('77777777-0000-0000-0000-000000000003','https://push.exemplo/outro','k3','a3','outro')
@@ -202,7 +208,7 @@ SELECT public.test_assert(
            JOIN public.ncrm_notificacao n ON n.id=f.notificacao_id
            JOIN public.ncrm_push_subscription s ON s.id=f.subscription_id
            JOIN public.usuarios u ON u.id=s.usuario_id
-          WHERE n.publico='gestao' AND u.role IN ('admin','diretor','gerente')),
+          WHERE n.publico='gestao' AND u.role IN ('admin','diretor','gerente','executivo')),
   'PU3: notificacao de gestao chega a quem responde pela operacao');
 
 SELECT public.test_assert(
@@ -210,7 +216,7 @@ SELECT public.test_assert(
                JOIN public.ncrm_notificacao n ON n.id=f.notificacao_id
                JOIN public.ncrm_push_subscription s ON s.id=f.subscription_id
                JOIN public.usuarios u ON u.id=s.usuario_id
-              WHERE n.publico='gestao' AND u.role NOT IN ('admin','diretor','gerente')),
+              WHERE n.publico='gestao' AND u.role NOT IN ('admin','diretor','gerente','executivo')),
   'PU4: corretor comum NAO recebe push de gestao');
 
 -- ---- payload minimo
