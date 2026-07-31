@@ -62,7 +62,7 @@ export function chaveCliente(item: ItemFila3): string {
   const nome = String(item.lead_nome ?? "")
     .toLowerCase()
     .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
+    .replace(/\p{Diacritic}/gu, "")
     .replace(/\s+/g, " ")
     .trim();
   if (!nome) return `negocio:${item.negocio_id}`;
