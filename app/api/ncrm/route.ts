@@ -26,6 +26,7 @@ const EMBED =
   "proxima_acao_tipo,proxima_acao_titulo,proxima_acao_em,ultima_interacao_em,temperatura," +
   "saida,saida_em,visita_id,proposta_id,descarte_motivo,descarte_detalhe,versao,atualizado_em," +
   "msg_automatica_em,primeira_resposta_em," +
+  "ncrm_workflow_config(max_tentativas)," +
   "negocios(id,status,lead_id,corretor_id,leads(nome,telefone,email,origem,extras),corretores(id,nome))";
 
 export async function GET(request: Request) {
