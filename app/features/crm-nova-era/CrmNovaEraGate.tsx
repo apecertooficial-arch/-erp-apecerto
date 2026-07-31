@@ -10,11 +10,16 @@
  *   (RLS + RPC fail-closed). Nenhum segredo/serviço aqui.
  * - Persiste a última escolha por usuário (localStorage), sem afetar os demais.
  * - Default: "Funil atual" (CRM de produção inalterado).
+ *
+ * CELULAR: monta a TelaCrmMobile, no desenho do protótipo. Antes, celular e
+ * desktop caíam os dois no Crm3Workspace, que foi feito para tela grande.
  */
 import { useEffect, useState, type ReactNode } from "react";
 import { NOVA_CRM_CSS } from "./styles";
 import { crmNovaEraLiberado } from "./featureFlag";
 import { Crm3Workspace } from "../crm-nova-era-3/Crm3Workspace";
+import { TelaCrmMobile } from "./TelaCrmMobile";
+import { useEhCelular } from "../system/useFormato";
 
 type Variante = "atual" | "nova-era";
 type Profile = { userId: string | null; role: string | null; name: string | null };
@@ -65,6 +70,10 @@ export function CrmNovaEraGate({
   const liberado = crmNovaEraLiberado(profile?.userId ?? null, { role: profile?.role ?? null });
   // Escolha inicial já considerando o gate (sem setState em efeito).
   const [variante, setVariante] = useState<Variante>(() => (liberado ? escolhaSalva(profile?.userId ?? null) : "atual"));
+  /* null durante a primeira renderização no servidor: não dá para adivinhar a
+     largura antes de o navegador existir, e chutar causaria troca de tela
+     piscando na frente do corretor. */
+  const ehCelular = useEhCelular();
 
   // Se não liberado, apenas limpa ?crm=nova-era da URL (sync com sistema externo — sem setState).
   useEffect(() => {
@@ -80,6 +89,29 @@ export function CrmNovaEraGate({
   }
 
   const podeLive = !!accessToken && !!profile?.userId;
+
+  /* ------------------------------ CELULAR ------------------------------
+     Tela própria, no desenho do protótipo. A barra "Funil atual / CRM Nova
+     Era 3.0" NÃO aparece aqui: é vocabulário de piloto, e o pacote de design
+     proíbe isso na tela do corretor. No desktop ela continua, porque lá é
+     ferramenta de quem está comparando as duas versões. */
+  if (ehCelular === true && variante === "nova-era" && podeLive) {
+    return (
+      <>
+        <style>{NOVA_CRM_CSS}</style>
+        <TelaCrmMobile
+          accessToken={accessToken as string}
+          nome={profile?.name ?? "Corretor"}
+          onAbrirLead={(id) => {
+            /* Mesmo deep link que a página de CRM já sabe traduzir. Sem rota
+               nova e sem estado paralelo: a ficha continua sendo a de sempre. */
+            if (typeof window !== "undefined") window.location.assign(`/crm?lead=${id}&crm=nova-era`);
+          }}
+          onIr={(destino) => { if (typeof window !== "undefined") window.location.assign(destino); }}
+        />
+      </>
+    );
+  }
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", minHeight: 0 }}>
