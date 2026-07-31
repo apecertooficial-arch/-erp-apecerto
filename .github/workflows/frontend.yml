@@ -28,9 +28,13 @@ jobs:
         with:
           version: 10
 
+      # 22.18+ e obrigatorio, nao preferencia: os testes importam modulos .ts
+      # diretamente, e o type stripping do Node so passou a ser ligado por
+      # padrao no 22.18. Em 22.13 o import morre com ERR_UNKNOWN_FILE_EXTENSION.
+      # Versao fixa = a mesma em que a branch foi validada.
       - uses: actions/setup-node@v4
         with:
-          node-version: "22.13.0"
+          node-version: "22.22.3"
           cache: pnpm
 
       - name: Instalar dependências
