@@ -1,11 +1,12 @@
 /**
- * Agenda do dia para o app do corretor.
+ * Agenda do app do corretor.
  *
- * GET ?data=YYYY-MM-DD (opcional; padrão é hoje no fuso de São Paulo)
+ * GET ?data=YYYY-MM-DD&periodo=dia|semana|mes
  *   -> ncrm_agenda_corretor
  *
- * A rota NÃO aceita corretor_id: o escopo é decidido dentro do banco.
- * Aceitar aqui deixaria qualquer um ler a agenda alheia.
+ * A rota NÃO aceita corretor_id. O escopo é decidido dentro do banco — e a
+ * agenda é da imobiliária inteira de propósito: sem isso dois corretores saem
+ * para o mesmo empreendimento no mesmo horário sem saber.
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createServerSupabaseClient } from "../../../lib/supabase/server";
@@ -18,6 +19,11 @@ function lerData(bruto: string | null): string | null {
   return Number.isNaN(Date.parse(bruto)) ? null : bruto;
 }
 
+/** Lista fechada: qualquer outra coisa vira "dia". */
+function lerPeriodo(bruto: string | null): "dia" | "semana" | "mes" {
+  return bruto === "semana" || bruto === "mes" ? bruto : "dia";
+}
+
 export async function GET(request: Request) {
   const a = request.headers.get("authorization");
   const token = a?.startsWith("Bearer ") ? a.slice(7) : null;
@@ -28,9 +34,12 @@ export async function GET(request: Request) {
   if (authErr || !auth.user) return Response.json({ error: "Sessão inválida." }, { status: 401 });
 
   const db = supabase as unknown as SupabaseClient;
-  const dia = lerData(new URL(request.url).searchParams.get("data"));
+  const params = new URL(request.url).searchParams;
 
-  const { data, error } = await db.rpc("ncrm_agenda_corretor", { p_data: dia });
+  const { data, error } = await db.rpc("ncrm_agenda_corretor", {
+    p_data: lerData(params.get("data")),
+    p_periodo: lerPeriodo(params.get("periodo")),
+  });
   if (error) return Response.json({ ok: false, error: "Falha ao carregar a agenda." }, { status: 502 });
 
   const res = (data ?? {}) as { ok?: boolean; erro?: string };
