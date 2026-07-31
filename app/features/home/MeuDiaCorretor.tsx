@@ -2,12 +2,14 @@
 
 /* MEU DIA — a tela do corretor no celular.
  *
- * Nao e o Inicio gerencial encolhido. Responde uma pergunta so: "quem eu atendo
- * agora, e por que?". Meta, VGV, funil e ranking nao aparecem antes da fila --
- * numero de gestao em cima de lista de trabalho nao ajuda ninguem a trabalhar.
+ * Nao e o Inicio gerencial encolhido. Responde duas perguntas, nesta ordem:
+ * "como eu estou?" (painel) e "quem eu atendo agora, e por que?" (fila).
  *
- * Fonte: /api/ncrm/fila (8 KB), prioridade calculada no banco e ja escopada por
- * carteira e papel. Nada e recalculado aqui.
+ * VGV, meta, ranking e funil continuam fora: isso e conversa de gestao e vive
+ * no ERP pelo navegador. O app existe para o corretor trabalhar.
+ *
+ * Fonte da fila: /api/ncrm/fila-operacional (8 KB), prioridade calculada no
+ * banco e ja escopada por carteira e papel. Nada e recalculado aqui.
  */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -16,6 +18,7 @@ import {
 } from "./meuDia.logica";
 import { marcarWhatsappAberto, whatsappAbertoEm, limparWhatsappAberto } from "../crm-nova-era/lib/whatsappAberto";
 import { AvisoNotificacoes } from "./AvisoNotificacoes";
+import { PainelCorretor } from "./PainelCorretor";
 
 const ATUALIZA_MS = 60_000;
 
@@ -45,8 +48,13 @@ function CardLead({ c, onAbrir }: { c: Card; onAbrir: (id: number) => void }) {
         </span>
         <span className="md-motivo">{c.motivo}</span>
         {c.interesse && <span className="md-interesse">{c.interesse}</span>}
-        {c.orientacaoSara && <span className="md-sara">Sara: {c.orientacaoSara}</span>}
+
+        {/* ETAPA ANTES DA SARA, de proposito. Separadas, o corretor lia
+            "ligar hoje a tarde" sem saber em que ponto do atendimento o cliente
+            esta -- e e isso que decide o tom da conversa. Juntas, a linha vira
+            "Em atendimento -> ligar hoje a tarde, ficou de avaliar". */}
         <span className="md-meta"><span className="md-etapa">{c.etapa}</span></span>
+        {c.orientacaoSara && <span className="md-sara">Sara: {c.orientacaoSara}</span>}
       </button>
 
       {c.acao === "whatsapp" && c.telefone ? (
@@ -123,15 +131,23 @@ export function MeuDiaCorretor({ accessToken, nome, onAbrirLead, onIr }: {
 
   const blocos = useMemo(() => montarBlocos(itens ?? []), [itens]);
   const aAtender = useMemo(() => paraAtender(itens ?? []), [itens]);
-  const primeiro = (nome || "").trim().split(/\s+/)[0] || "corretor";
   const vazio = itens !== null && blocos.every((b) => b.total === 0);
 
   return (
     <div className="md-wrap">
+      {/* PAINEL PRIMEIRO: onde eu estou. Carrega em paralelo com a fila e tem
+          esqueleto da mesma altura, entao a tela nao pula. */}
+      <PainelCorretor accessToken={accessToken} nome={nome} onIr={onIr} />
+
+      {/* Ligar os avisos: enquanto o aparelho nao recebe, e a coisa mais util
+          da tela. Some sozinha quando o aparelho ja esta inscrito. */}
+      <AvisoNotificacoes accessToken={accessToken} />
+
       <header className="md-topo">
-        <p className="md-ola">{saudacao(new Date().getHours())}, {primeiro}</p>
+        {/* Sem "Ola, fulano" aqui: o painel acima ja cumprimentou. Duas
+            saudacoes na mesma tela e ruido. */}
         <p className="md-chamada">
-          {itens === null ? "Carregando sua fila…"
+          {itens === null ? `${saudacao(new Date().getHours())}, carregando sua fila…`
             : aAtender === 0 ? "Nenhum cliente esperando agora."
             : `Você tem ${aAtender} ${aAtender === 1 ? "cliente" : "clientes"} para atender`}
         </p>
@@ -142,11 +158,6 @@ export function MeuDiaCorretor({ accessToken, nome, onAbrirLead, onIr }: {
           </p>
         )}
       </header>
-
-      {/* Depois do cabecalho e ANTES da fila: enquanto o aparelho nao recebe
-          aviso, ligar isso e a coisa mais util da tela. Some sozinha quando
-          o aparelho ja esta inscrito -- nao vira mais um banner permanente. */}
-      <AvisoNotificacoes accessToken={accessToken} />
 
       {itens === null && (
         <div className="md-esqueleto" aria-hidden="true">{[0, 1, 2].map((i) => <span key={i} />)}</div>
