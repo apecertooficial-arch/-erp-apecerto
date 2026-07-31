@@ -5,6 +5,8 @@ import { RodagemCards } from "./RodagemCards";
 import { FunilCards } from "./FunilCards";
 import { FinanceiroCards } from "./FinanceiroCards";
 import { NaMesaCards } from "./NaMesaCards";
+import { SeuDia } from "./SeuDia";
+import { useEhCelular } from "../system/useFormato";
 
 type Lead = { id: number; nome?: string | null };
 type Deal = { id: number; lead_id: number; corretor_id?: number | null; stage_id?: number | null; status?: string | null; venda_id?: string | null };
@@ -29,10 +31,13 @@ function sameMonth(value: string) {
   return date.getFullYear() === now.getFullYear() && date.getMonth() === now.getMonth();
 }
 
-export function HomeWorkspace({ accessToken, sessionName = "", onNavigate }: { accessToken: string; sessionName?: string; onNavigate?: (module: string) => void }) {
+export function HomeWorkspace({ accessToken, sessionName = "", onNavigate, onIr }: { accessToken: string; sessionName?: string; onNavigate?: (module: string) => void; onIr?: (destino: string) => void }) {
   const [data, setData] = useState<DashboardData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [metaMesGlobal, setMetaMesGlobal] = useState<number | null>(null);
+  const [gestaoAberta, setGestaoAberta] = useState(false);
+  const ehCelular = useEhCelular();
+  const ehDesktop = ehCelular === false;
 
   useEffect(() => {
     const now = new Date();
@@ -45,6 +50,10 @@ export function HomeWorkspace({ accessToken, sessionName = "", onNavigate }: { a
   }, [accessToken]);
 
   useEffect(() => {
+    /* 1,8 MB (1.523 leads + 1.524 negocios). No celular isso nunca e buscado:
+       a tela de la e a SeuDia, que custa 8 KB. Esconder por CSS faria o
+       aparelho baixar tudo e jogar fora. */
+    if (!ehDesktop) return;
     const headers = { Authorization: `Bearer ${accessToken}` };
     void Promise.all([
       fetch("/api/crm", { headers }),
@@ -57,7 +66,7 @@ export function HomeWorkspace({ accessToken, sessionName = "", onNavigate }: { a
       setError(null);
       setData({ crm, finance, catalog } as DashboardData);
     }).catch((reason) => setError(reason instanceof Error ? reason.message : "Erro ao carregar o início."));
-  }, [accessToken]);
+  }, [accessToken, ehDesktop]);
 
   const metrics = useMemo(() => {
     if (!data) return null;
@@ -70,6 +79,38 @@ export function HomeWorkspace({ accessToken, sessionName = "", onNavigate }: { a
     const goal = data.finance.goals.reduce((sum, item) => sum + Number(item.meta_vgv || 0), 0);
     return { monthSales, monthVgv, goal, negociacao, negociacaoVgv };
   }, [data]);
+
+  const irPara = (destino: string) => { if (onIr) onIr(destino); else if (onNavigate) onNavigate(destino); };
+
+  /* CELULAR: tela operacional. A gestao existe, mas recolhida e resumida --
+     numero de meta em cima de lista de tarefa nao ajuda ninguem a trabalhar. */
+  if (ehCelular === true) {
+    return (
+      <div className="home-mobile">
+        <SeuDia accessToken={accessToken} onAbrirLead={(id) => irPara(`/crm?lead=${id}`)} onIr={irPara} />
+
+        <section className="hm-gestao">
+          <button type="button" className="hm-gestao-toggle" aria-expanded={gestaoAberta} onClick={() => setGestaoAberta((v) => !v)}>
+            Resumo da gestão
+            <span aria-hidden="true">{gestaoAberta ? "−" : "+"}</span>
+          </button>
+          {gestaoAberta && (
+            <div className="hm-gestao-corpo">
+              {/* Cards leves (1 KB cada, agregados no banco). O painel completo
+                  -- meta, funil, VGV, rankings -- fica no desktop e em Performance. */}
+              <NaMesaCards accessToken={accessToken} onNavigate={onNavigate} />
+              <FunilCards accessToken={accessToken} onNavigate={onNavigate} />
+              <button type="button" className="hm-gestao-link" onClick={() => irPara("/performance")}>
+                Ver performance completa
+              </button>
+            </div>
+          )}
+        </section>
+      </div>
+    );
+  }
+
+  if (ehCelular === null) return <div className="home-state">Abrindo…</div>;
 
   if (error) return <div className="home-state error">{error}</div>;
   if (!data || !metrics) return <div className="home-state">Conectando indicadores reais do ERP…</div>;
