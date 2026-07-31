@@ -16,17 +16,43 @@ import { useEffect, useState, type ReactNode } from "react";
 import { AppShell } from "../../components/AppShell";
 import { ProfilePanel } from "../../components/ProfilePanel";
 import { ConviteInstalar } from "../../components/ConviteInstalar";
+import { sairDaConta } from "../../lib/sair-da-conta";
 import type { ModuleName } from "./module-map";
-import { moduloDoPath, pathDoModulo, rotasModulo, itensDaNavegacao } from "./erp-routes";
+import { moduloDoPath, pathDoModulo, rotasModulo, itensDaNavegacao, gruposDoMais } from "./erp-routes";
+import { IconeModulo, type IconeExtra } from "./IconeModulo";
 import { useErpSession } from "./ErpSession";
 
-function IconeBarra({ modulo }: { modulo: ModuleName | "Mais" }) {
-  const c = { width: 22, height: 22, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.8, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
-  if (modulo === "Início") return <svg {...c}><path d="M3 10 12 3l9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1Z" /></svg>;
-  if (modulo === "CRM") return <svg {...c}><path d="M3 4h18l-7 8v7l-4 2v-9Z" /></svg>;
-  if (modulo === "Calendário") return <svg {...c}><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M7 3v4M17 3v4M3 10h18" /></svg>;
-  if (modulo === "Notificações") return <svg {...c}><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10 21h4" /></svg>;
-  return <svg {...c}><path d="M4 12h16M4 6h16M4 18h16" /></svg>;
+/* Chevron do item da folha. Fica aqui e nao no IconeModulo porque nao e icone
+   de modulo: e o mesmo desenho em toda linha, so dizendo "isto abre". */
+function Chevron() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="m9 18 6-6-6-6" />
+    </svg>
+  );
+}
+
+/* Item da folha "Mais". Vira <a> quando leva a uma rota e <button> quando
+   dispara uma acao -- <a href="#"> com onClick quebra abrir-em-nova-aba,
+   arrastar para a barra de favoritos e leitor de tela. */
+function ItemMais({ icone, rotulo, href, onClick, className }: {
+  icone: ModuleName | IconeExtra;
+  rotulo: string;
+  href?: string;
+  onClick?: () => void;
+  className?: string;
+}) {
+  const dentro = (
+    <>
+      <span className="ami-icone" aria-hidden="true"><IconeModulo modulo={icone} tamanho={18} /></span>
+      <span>{rotulo}</span>
+      <Chevron />
+    </>
+  );
+  const classe = `app-mais-item${className ? ` ${className}` : ""}`;
+  return href
+    ? <Link href={href} className={classe} onClick={onClick}>{dentro}</Link>
+    : <button type="button" className={classe} onClick={onClick}>{dentro}</button>;
 }
 
 export function ErpShell({ children }: { children: ReactNode }) {
@@ -46,6 +72,9 @@ export function ErpShell({ children }: { children: ReactNode }) {
   const naoLidas = badges["Notificações"] ?? 0;
   const rotuloSino = naoLidas > 0 ? `Notificações: ${naoLidas} não lidas` : "Notificações";
   const { barra: itensBarra, mais: noMais } = itensDaNavegacao({ role, permissoes, carregado: perfilCarregado, isManager });
+  /* Agrupamento do print 13. A regra e pura e mora em erp-routes.ts: a casca
+     so desenha o que ela devolve. */
+  const grupos = gruposDoMais(noMais);
 
   // Trocar de rota volta o scroll pro topo. Sem setState aqui: a folha "Mais"
   // e fechada no proprio clique do link, que e onde a intencao acontece.
@@ -110,13 +139,13 @@ export function ErpShell({ children }: { children: ReactNode }) {
             className={m === moduloAtual ? "active" : ""}
             aria-current={m === moduloAtual ? "page" : undefined}
           >
-            <IconeBarra modulo={m} />
+            <IconeModulo modulo={m} tamanho={22} />
             <span>{rotasModulo[m].rotuloCurto ?? m}</span>
             {(badges[m] ?? 0) > 0 && <i className="abn-badge" aria-hidden="true">{(badges[m] ?? 0) > 99 ? "99+" : badges[m]}</i>}
           </Link>
         ))}
         <button type="button" onClick={() => setMaisAberto((v) => !v)} aria-expanded={maisAberto} className={maisAberto ? "active" : ""}>
-          <IconeBarra modulo="Mais" />
+          <IconeModulo modulo="Mais" tamanho={22} />
           <span>Mais</span>
         </button>
       </nav>
@@ -129,18 +158,60 @@ export function ErpShell({ children }: { children: ReactNode }) {
         />
       )}
 
+      {/* Folha "Mais" — desenho do print 13.
+          Grupos por classe (Rotina / Gestao / Ferramentas) + Conta no fim.
+          O corretor comum ve duas secoes; o admin ve quatro. Grupo vazio nao
+          renderiza, entao ninguem leva rotulo orfao na tela. */}
       {maisAberto && (
-        <div className="app-mais-overlay" role="dialog" aria-label="Mais módulos" onClick={() => setMaisAberto(false)}>
+        <div className="app-mais-overlay" role="dialog" aria-modal="true" aria-label="Mais" onClick={() => setMaisAberto(false)}>
           <div className="app-mais-folha" onClick={(e) => e.stopPropagation()}>
-            <header><strong>Mais</strong><button type="button" onClick={() => setMaisAberto(false)} aria-label="Fechar">×</button></header>
-            <ConviteInstalar />
-            {noMais.length === 0
-              ? <p className="app-mais-vazio">Nenhum outro módulo liberado para o seu acesso.</p>
-              : <div className="app-mais-grid">
-                  {noMais.map((m) => (
-                    <Link key={m} href={pathDoModulo(m)} onClick={() => setMaisAberto(false)}>{rotasModulo[m].rotuloCurto ?? m}</Link>
+            <header>
+              <strong>Mais</strong>
+              <button type="button" onClick={() => setMaisAberto(false)} aria-label="Fechar" />
+            </header>
+
+            {grupos.length === 0 && (
+              <p className="app-mais-vazio">Nenhum outro módulo liberado para o seu acesso.</p>
+            )}
+
+            {grupos.map((grupo) => (
+              <section key={grupo.titulo} className="app-mais-grupo">
+                <h2>{grupo.titulo}</h2>
+                <div>
+                  {grupo.itens.map((m) => (
+                    <ItemMais
+                      key={m}
+                      icone={m}
+                      rotulo={rotasModulo[m].rotuloCurto ?? m}
+                      href={pathDoModulo(m)}
+                      onClick={() => setMaisAberto(false)}
+                    />
                   ))}
-                </div>}
+                </div>
+              </section>
+            ))}
+
+            {/* Conta. Nao sao modulos: nao tem rota nem permissao, e por isso
+                nao passam por gruposDoMais(). Aparecem sempre -- toda sessao
+                tem um perfil e toda sessao pode ser encerrada. */}
+            <section className="app-mais-grupo">
+              <h2>Conta</h2>
+              <div>
+                <ItemMais
+                  icone="Perfil"
+                  rotulo="Meu perfil"
+                  onClick={() => { setMaisAberto(false); setPerfilAberto(true); }}
+                />
+                <ItemMais
+                  icone="Sair"
+                  rotulo="Sair"
+                  className="sair"
+                  onClick={() => { void sairDaConta(); }}
+                />
+              </div>
+            </section>
+
+            <ConviteInstalar />
           </div>
         </div>
       )}
