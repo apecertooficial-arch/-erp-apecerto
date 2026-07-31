@@ -1,6 +1,6 @@
 "use client";
 /**
- * CrmNovaEraGate — SELETOR entre o CRM atual e o CRM Nova Era (funcional).
+ * CrmNovaEraGate — SELETOR entre o CRM atual e o CRM Nova Era 3.0.
  * ------------------------------------------------------------------
  * - Gate real: só exibe a opção "CRM Nova Era" quando `crmNovaEraLiberado`
  *   (flag do ambiente ligada E (admin OU allowlist)). Corretor sem permissão
@@ -14,7 +14,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { NOVA_CRM_CSS } from "./styles";
 import { crmNovaEraLiberado } from "./featureFlag";
-import { CrmNovaEraLiveWorkspace } from "./CrmNovaEraLiveWorkspace";
+import { Crm3Workspace } from "../crm-nova-era-3/Crm3Workspace";
 
 type Variante = "atual" | "nova-era";
 type Profile = { userId: string | null; role: string | null; name: string | null };
@@ -84,7 +84,7 @@ export function CrmNovaEraGate({
             Funil atual
           </button>
           <button className={variante === "nova-era" ? "on" : ""} onClick={() => escolher("nova-era")} role="tab" aria-selected={variante === "nova-era"}>
-            CRM Nova Era <span className="nova-crm-badge-exp" style={{ marginLeft: 6 }}>Piloto</span>
+            CRM Nova Era <span className="nova-crm-badge-exp" style={{ marginLeft: 6 }}>3.0</span>
           </button>
         </div>
         <span className="nova-crm-seghint">
@@ -96,7 +96,7 @@ export function CrmNovaEraGate({
         {variante === "atual" ? (
           <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>{current}</div>
         ) : podeLive ? (
-          <CrmNovaEraLiveWorkspace
+          <Crm3Workspace
             accessToken={accessToken as string}
             profile={{ userId: profile!.userId as string, role: profile?.role ?? "corretor", name: profile?.name ?? "Corretor" }}
           />
