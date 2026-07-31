@@ -12,6 +12,34 @@
    Fora do @media de propósito: vale para tablet também. */
 html, body { touch-action: manipulation; }
 
+/* =====================================================================
+   A CONVERSA EM MODO LEITURA — `body.conversa-leitura`
+   ---------------------------------------------------------------------
+   Ligada pelo botão roxo "Abrir conversa" (gestor), via `?ler=1`.
+
+   FORA DO @media DE PROPÓSITO: isto é regra de PAPEL, não de largura.
+   O gestor não responde pelo próprio número num monitor de 27" pelo
+   mesmo motivo que não responde num celular — atendimento sem dono e
+   sem histórico. A geometria de folha de tela cheia, essa sim, é só de
+   celular e fica lá embaixo.
+
+   A regra já estava escrita no topo de TelaCorretor.tsx. O que faltava
+   era o `LeadChatDrawer` obedecê-la: ele abre com compositor, botão de
+   enviar, gravador de áudio e as ferramentas de Documento/Agendar/
+   Abordagem. Abrir o drawer inteiro para o gestor entregava justamente
+   o que a regra proíbe.
+
+   O histórico continua inteiro: envio e recebimento já vêm da D-API, é
+   dela que a Sara lê. Aqui é espelho, não terminal.
+
+   Tudo preso a `.conversa-leitura` — sem ela, o CRM do corretor não
+   muda em nada.
+   ===================================================================== */
+body.conversa-leitura .chat-layer .lead-chat-drawer > footer,
+body.conversa-leitura .chat-layer .mini-chat-tools {
+  display: none !important;
+}
+
 @media (max-width: 900px) {
 
   /* ===================================================================
@@ -163,4 +191,49 @@ html, body { touch-action: manipulation; }
     -webkit-mask-position: center; mask-position: center;
     -webkit-mask-size: contain; mask-size: contain;
   }
+
+  /* ===================================================================
+     5. GEOMETRIA DA CONVERSA NO CELULAR
+     ---------------------------------------------------------------
+     O `LeadChatDrawer` é uma janelinha de canto de 440px ancorada em
+     `right:20px; bottom:20px`, feita para conviver com o kanban ao lado
+     numa tela grande. Em 390px sobra uma caixa de 358px com 12px de
+     margem de cada lado — ler conversa assim é pior do que não abrir.
+
+     Vira folha de tela cheia, o mesmo gesto das outras folhas do app.
+
+     Só o modo leitura: o CRM do corretor continua com a janelinha, que
+     é o que deixa ele ver a lista e a conversa ao mesmo tempo.
+     =================================================================== */
+  body.conversa-leitura .chat-layer .lead-chat-drawer {
+    left: 0 !important; right: 0 !important;
+    top: auto !important; bottom: 0 !important;
+    width: 100vw !important; max-width: 100vw !important;
+    height: 88dvh !important; max-height: none !important;
+    border-radius: 16px 16px 0 0 !important;
+    /* Trava o vazamento: nada aqui dentro pode ficar fora da tela. */
+    overflow: hidden !important;
+  }
+
+  /* O recuo de 20px na lista existia para as mensagens não passarem por
+     baixo da coluna flutuante de ferramentas. Sem ferramentas, sem recuo.
+     Embaixo entra o espaço que era do compositor, mais o home indicator. */
+  body.conversa-leitura .chat-layer .chat-messages {
+    padding-left: 14px !important;
+    padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  /* Fechar e minimizar vinham com 34px, num app que exige 44 em tudo.
+     Aqui fechar é a única saída: `.crm-drawer-layer.chat-layer` tem
+     `pointer-events: none` para o clique passar para o kanban, e é nele
+     que mora o handler de fechar ao tocar fora — ou seja, tocar fora
+     nunca funcionou. */
+  body.conversa-leitura .chat-layer .chat-head-actions button {
+    width: 44px !important;
+    height: 44px !important;
+  }
+
+  /* A barra inferior fica 100% coberta pela folha (z-index 45 contra 85).
+     Sumir é mais honesto do que deixar uma faixa que não responde. */
+  body.conversa-leitura .app-bottom-nav { display: none !important; }
 }
