@@ -1,5 +1,5 @@
 /* =====================================================================
-   CRM, AGENDA E RODAPÉ — desenho do protótipo (prints 04 e 08)
+   CRM, AGENDA E RODAPÉ — desenho do protótipo (prints 02 a 08)
    ---------------------------------------------------------------------
    Estas telas já existem e funcionam. O que muda aqui é COMO elas se
    parecem, não o que fazem: nenhum componente foi tocado.
@@ -17,9 +17,10 @@
 
   /* ===================================================================
      RODAPÉ — barra inferior
-     O ativo ganha pílula laranja clara atrás do ícone, como no print.
-     Sem isso, "ativo" era só uma cor de texto de 10px — invisível em
-     tela de sol.
+     O ativo ganha uma caixa com CONTORNO laranja em volta do ícone, como
+     nos prints da Agenda e dos Avisos. Contorno e não preenchimento: a
+     barra tem cinco itens e cinco pílulas cheias competiriam com o botão
+     de ação da tela.
      =================================================================== */
   .app-bottom-nav {
     background: var(--bg-surface);
@@ -41,13 +42,15 @@
 
   .app-bottom-nav > a.active,
   .app-bottom-nav > button.active { color: var(--ape-orange); }
-  /* A pílula fica ATRÁS do ícone, não do rótulo: o dedo mira o ícone. */
+  /* A caixa fica ATRÁS do ícone, não do rótulo: o dedo mira o ícone. */
   .app-bottom-nav > a.active::before,
   .app-bottom-nav > button.active::before {
     content: "";
-    position: absolute; top: 4px; left: 50%; transform: translateX(-50%);
-    width: 44px; height: 28px; border-radius: var(--radius-pill);
-    background: var(--ape-orange-50); z-index: 0;
+    position: absolute; top: 2px; left: 50%; transform: translateX(-50%);
+    width: 46px; height: 34px;
+    border: 1.5px solid var(--ape-orange);
+    border-radius: var(--radius-md);
+    background: transparent; z-index: 0;
   }
   .app-bottom-nav > a.active > svg,
   .app-bottom-nav > button.active > svg { position: relative; z-index: 1; }
@@ -122,8 +125,8 @@
   }
 
   /* Linha de lead compacta: nome em cima, motivo em laranja embaixo,
-     tempo à direita. É a densidade do print — cabe o dobro de leads na
-     tela sem virar planilha. */
+     tempo à direita. É a densidade do print — cabem quatro leads na
+     primeira dobra sem a tela virar planilha. */
   .ncrm-dia-card { padding: 12px 14px !important; }
   .ncrm-dia-card b,
   .ncrm-dia-card strong { font-size: var(--text-sm); font-weight: var(--weight-bold); color: var(--fg-1); }
@@ -153,14 +156,19 @@
     color: var(--ape-orange-700);
   }
 
-  /* Ficha do lead: a barra de ação embaixo vira pílula laranja também. */
+  /* ---------------- Ficha do lead ----------------
+     Aqui o CTA é VERDE, e na lista é laranja. Não é inconsistência: na
+     lista o laranja diz "esta é A ação desta tela"; dentro da ficha, com
+     a conversa na frente, o verde diz "isto abre o WhatsApp". Contextos
+     diferentes, sinais diferentes — e o print confirma os dois. */
   .ncrm-ficha-acao > a,
   .nova-crm-panel .ncrm-wa-principal {
     border-radius: var(--radius-pill);
-    background: var(--ape-orange);
+    background: var(--whatsapp);
+    color: #fff;
     font-family: var(--font-body);
     font-weight: var(--weight-bold);
-    box-shadow: var(--shadow-brand);
+    box-shadow: 0 10px 24px rgba(37, 211, 102, .28);
   }
   .nova-crm-panel-head h2 { font-family: var(--font-display); font-weight: var(--weight-bold); }
 
@@ -241,7 +249,7 @@
   }
 
   /* ===================================================================
-     LISTAS E TABELAS DO ERP
+     AVISOS, PRODUTOS E LISTAS DO ERP
      Herdam a superfície nova sem redesenho de componente.
      =================================================================== */
   .notification-list article,
@@ -252,27 +260,41 @@
   .legacy-aviso {
     border-radius: var(--radius-lg);
     border-color: var(--border-soft);
+    box-shadow: var(--shadow-xs);
   }
   .notification-tabs button {
     min-height: 40px;
+    padding: 0 16px;
+    border: 1px solid var(--border-soft);
     border-radius: var(--radius-pill);
+    background: var(--bg-surface);
+    color: var(--fg-2);
     font-family: var(--font-body);
     font-weight: var(--weight-semibold);
   }
   .notification-tabs button.active,
   .notification-tabs button.on {
     background: var(--neutral-800);
+    border-color: var(--neutral-800);
     color: var(--fg-inverse);
+  }
+  /* Ação do card de aviso em laranja, com a seta do print. */
+  .notif-actions > button {
+    border-radius: var(--radius-pill);
+    background: transparent;
+    border: 0;
+    color: var(--ape-orange);
+    font-weight: var(--weight-semibold);
   }
 }
 
 /* =====================================================================
    O QUE ESTE ARQUIVO NÃO RESOLVE
    ---------------------------------------------------------------------
-   CSS muda aparência, não estrutura. Estes itens dos prints 04 e 08
-   exigem mexer no componente e ficam para um PR próprio:
+   CSS muda aparência, não estrutura. Estes itens dos prints exigem mexer
+   no componente e ficam para um PR próprio:
 
-   CRM (print 04)
+   CRM (print 02)
    - Cartão roxo "SARA · BRIEFING DO DIA" com os dois botões: não existe
      no DOM hoje. É componente novo, alimentado por uma leitura nova.
    - Abas "Meu Dia / Funil / Leads / Visitas": hoje são "Meu dia /
@@ -280,10 +302,18 @@
    - Botão "Filtros" com a folha de filtros (print 14).
    - Chevron ">" no fim de cada linha de lead.
 
-   AGENDA (print 08)
+   FICHA (print 03)
+   - Bloco roxo "O QUE FAZER AGORA" com "para quando" e "evidência".
+   - Abas Conversa / Sara / Dados / Histórico.
+
+   AGENDA (print 05)
    - Linha do tempo com a coluna de horário e os pontos à esquerda.
    - Botões "Abrir no mapa" e "Ver ficha" no cartão do próximo.
-   - Alternância Dia / Semana.
+   - Alternância Dia / Semana e o botão "+ Visita".
+
+   AVISOS (print 04)
+   - Ícone redondo por tipo de aviso, à esquerda de cada card.
+   - Filtro "Só não lidas" e ordenação por prioridade.
 
    Nenhum deles é risco para o que já funciona — são adições. Mas são
    componente, não folha de estilo.
