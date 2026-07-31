@@ -34,19 +34,12 @@ export function BotaoWhatsApp({ telefone, negocioId, rotulo = "Chamar no WhatsAp
     } catch { /* sem area de transferencia: o numero continua visivel na tela */ }
   }, []);
 
-  const abrir = useCallback(() => {
-    if (!preparo.ok) return;
+  /* Registra a INTENCAO. Nao confirma contato, nao muda etapa, nao inicia SLA,
+     nao chama endpoint de envio. Roda no proprio clique — a navegacao para
+     whatsapp:// e feita pelo href do <a>, dentro da ativacao do usuario. */
+  const registrarIntencao = useCallback(() => {
     onAbriu?.(negocioId);
-    // Tenta o aplicativo instalado. Se o esquema nao for tratado, o navegador
-    // segue na mesma pagina e o fallback oficial assume.
-    const inicio = Date.now();
-    window.location.href = preparo.app;
-    setTimeout(() => {
-      if (document.visibilityState === "visible" && Date.now() - inicio < 2500) {
-        window.open(preparo.web, "_blank", "noopener,noreferrer");
-      }
-    }, 1200);
-  }, [preparo, negocioId, onAbriu]);
+  }, [negocioId, onAbriu]);
 
   if (!preparo.ok) {
     return (
@@ -60,12 +53,34 @@ export function BotaoWhatsApp({ telefone, negocioId, rotulo = "Chamar no WhatsAp
 
   return (
     <div className={compacto ? "ncrm-wa ncrm-wa-compacto" : "ncrm-wa"}>
-      <button type="button" className="ncrm-wa-principal" onClick={abrir}>
+      {/* Ancora, nao botao: o whatsapp:// e seguido pelo proprio navegador na
+          interacao do usuario. A versao anterior usava window.open depois de
+          setTimeout(1200ms) — fora da janela de ativacao, o iOS Safari e os
+          bloqueadores de popup descartavam o fallback e o corretor ficava sem
+          nada acontecendo. */}
+      <a
+        className="ncrm-wa-principal"
+        href={preparo.app}
+        onClick={registrarIntencao}
+        data-e164={preparo.e164}
+      >
         <span aria-hidden="true">💬</span> {rotulo}
-      </button>
+      </a>
 
       {!compacto && (
         <div className="ncrm-wa-secundarias">
+          {/* Fallback oficial, sempre visivel. Serve no desktop (sem app
+              instalado) e no celular quando o esquema whatsapp:// nao abre.
+              Visivel de proposito: nada de heuristica de tempo. */}
+          <a
+            className="ncrm-wa-link"
+            href={preparo.web}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={registrarIntencao}
+          >
+            Nao abriu? Abrir pelo WhatsApp Web
+          </a>
           <button type="button" className="ncrm-wa-link" onClick={() => void copiar(preparo.exibicao, "numero")}>
             {copiado === "numero" ? "Numero copiado" : `Copiar ${preparo.exibicao}`}
           </button>
