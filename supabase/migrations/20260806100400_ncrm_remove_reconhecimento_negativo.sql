@@ -68,7 +68,10 @@ BEGIN
     E'        -- Saida real, mas sem confirmacao da D-API: chat do ERP, espelho,\n' ||
     E'        -- automacao nao marcada. Fica registrada e finalizada; nao vira\n' ||
     E'        -- primeira abordagem, nao gera SLA, nao move etapa, nao cria evento.\n' ||
-    E'        v_st := ''noop_saida_nao_humana'';\n' ||
+    E'        -- status ''noop'': ncrm_ingest_checkpoint_status_check nao aceita\n' ||
+    E'        -- valor novo, e nao ha por que ampliar o vocabulario. O que a\n' ||
+    E'        -- mensagem foi fica em motivo_final, que e o campo livre.\n' ||
+    E'        v_st := ''noop'';\n' ||
     E'        v_motivo := ''saida_sem_confirmacao_dapi'';\n' ||
     E'        v_final := now();\n\n' ||
     v_ancora_ramo);
