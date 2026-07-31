@@ -48,7 +48,12 @@ COMMENT ON TABLE public.ncrm_push_subscription IS
 CREATE TABLE IF NOT EXISTS public.ncrm_push_fila (
   id              bigserial PRIMARY KEY,
   subscription_id bigint NOT NULL REFERENCES public.ncrm_push_subscription(id) ON DELETE CASCADE,
-  notificacao_id  bigint NULL REFERENCES public.ncrm_notificacao(id) ON DELETE SET NULL,
+  -- Sem FK de proposito. A fila e efemera e o vinculo com a notificacao e
+  -- informativo: se a notificacao deixar de existir, o push perdeu o sentido de
+  -- qualquer forma. Com FK, esta tabela passaria a impedir o DROP de
+  -- ncrm_notificacao no rollback de migrations anteriores -- uma tabela de
+  -- entrega segurando o esquema de quem ela apenas observa.
+  notificacao_id  bigint NULL,
   idempotency_key text NOT NULL,
   titulo          text NOT NULL,
   corpo           text NULL,

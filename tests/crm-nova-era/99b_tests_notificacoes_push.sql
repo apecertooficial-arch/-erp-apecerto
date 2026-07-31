@@ -240,12 +240,17 @@ SELECT public.test_assert(
   'PU7: enfileirar varias vezes nao duplica push para o mesmo dispositivo');
 
 -- ---- claim/lease: dois workers nao levam o mesmo item
+-- A tabela nasce FORA do bloco e sem ON COMMIT DROP: o psql roda cada statement
+-- em autocommit, entao uma temp com ON COMMIT DROP criada dentro de um DO
+-- desaparece assim que o bloco termina, e os asserts seguintes nao a encontram.
+CREATE TEMP TABLE IF NOT EXISTS _claim (quem text, fila_id bigint);
+TRUNCATE _claim;
+
 DO $c$
-DECLARE v_a jsonb; v_b jsonb; v_ids_a text; v_ids_b text;
+DECLARE v_a jsonb; v_b jsonb;
 BEGIN
   v_a := ncrm_private.push_reservar('worker-A', 50, 120);
   v_b := ncrm_private.push_reservar('worker-B', 50, 120);
-  CREATE TEMP TABLE _claim (quem text, fila_id bigint) ON COMMIT DROP;
   INSERT INTO _claim SELECT 'A', (x->>'fila_id')::bigint FROM jsonb_array_elements(v_a->'itens') x;
   INSERT INTO _claim SELECT 'B', (x->>'fila_id')::bigint FROM jsonb_array_elements(v_b->'itens') x;
 END $c$;
@@ -369,5 +374,7 @@ SELECT public.test_assert(
 SELECT public.test_assert(
   NOT EXISTS (SELECT 1 FROM public.ncrm_push_fila WHERE status='entregue'),
   'PU21: nenhum push foi entregue de verdade durante o harness');
+
+DROP TABLE IF EXISTS _claim;
 
 SELECT 'testes de notificacoes e web push concluidos' AS resultado;
