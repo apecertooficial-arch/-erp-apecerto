@@ -1,0 +1,287 @@
+/* Camada de aplicativo do ERP ApêCerto — celular.
+ *
+ * Vive em arquivo proprio, e nao no fim de globals.css (5.678 linhas), por
+ * dois motivos: revisao de PR fica legivel, e o CSS do aplicativo passa a ter
+ * um lugar obvio para crescer.
+ *
+ * REGRA DESTE ARQUIVO: nenhuma regra fora de @media (max-width: ...).
+ * Tablet e desktop nao podem ser afetados por nada aqui dentro.
+ */
+/* =====================================================================
+   CASCA DO APLICATIVO (mobile)
+   ---------------------------------------------------------------------
+   Uma arvore so para os dois formatos. No desktop, tudo aqui fica oculto
+   e a sidebar existente manda. Abaixo de 900px a sidebar sai e entram
+   cabecalho compacto + barra inferior.
+
+   Nada acima de 900px e alterado: tablet e desktop seguem como estavam.
+   ===================================================================== */
+
+/* Elementos exclusivos do celular: invisiveis por padrao. */
+.app-mobile-top,
+.app-bottom-nav,
+.app-mais-overlay { display: none; }
+
+.app-mobile-scroll { display: contents; }
+
+.modulo-sem-acesso {
+  margin: 24px auto; max-width: 420px; padding: 22px;
+  border: 1px solid var(--line); border-radius: 14px; background: #fff; text-align: center;
+}
+.modulo-sem-acesso strong { display: block; font-size: 15px; color: var(--ink); }
+.modulo-sem-acesso p { margin: 8px 0 0; font-size: 13px; color: var(--muted); }
+
+@media (max-width: 900px) {
+  /* Uma coluna. A sidebar sai do fluxo (nao e so ocultada: se ficasse com
+     largura, criaria scroll horizontal em 360px). */
+  .app-shell,
+  .app-shell.nav-collapsed { grid-template-columns: 1fr; }
+  .app-shell .sidebar { display: none; }
+
+  /* Trava de scroll horizontal em toda a arvore do app. */
+  html, body { max-width: 100%; overflow-x: hidden; }
+  .app-shell, .workspace { min-width: 0; max-width: 100vw; overflow-x: hidden; }
+
+  .workspace {
+    /* Espaco para o cabecalho fixo e para a barra inferior + safe-area do iPhone. */
+    padding-top: 52px;
+    padding-bottom: calc(60px + env(safe-area-inset-bottom, 0px));
+  }
+
+  /* --- Cabecalho compacto --- */
+  .app-mobile-top {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 40;
+    display: flex; align-items: center; gap: 10px;
+    height: calc(52px + env(safe-area-inset-top, 0px));
+    padding: env(safe-area-inset-top, 0px) 16px 0;
+    background: #fff; border-bottom: 1px solid var(--line);
+  }
+  .app-mobile-top strong {
+    font-size: 16px; letter-spacing: -.01em; color: var(--ink);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+
+  /* --- Barra inferior --- */
+  .app-bottom-nav {
+    position: fixed; bottom: 0; left: 0; right: 0; z-index: 45;
+    display: grid; grid-auto-flow: column; grid-auto-columns: 1fr;
+    background: #fff; border-top: 1px solid var(--line);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  .app-bottom-nav > a,
+  .app-bottom-nav > button {
+    /* 44px e o minimo de alvo de toque. Aqui sao 56px. */
+    min-height: 56px; min-width: 44px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+    border: 0; background: transparent; cursor: pointer;
+    color: #6f6862; font-size: 10px; font-weight: 600;
+    text-decoration: none; padding: 6px 2px;
+  }
+  .app-bottom-nav > a > span,
+  .app-bottom-nav > button > span {
+    max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .app-bottom-nav > a.active,
+  .app-bottom-nav > button.active { color: var(--orange); }
+  .app-bottom-nav > a.active svg { stroke-width: 2.2; }
+  .app-bottom-nav > a:focus-visible,
+  .app-bottom-nav > button:focus-visible { outline: 2px solid var(--orange); outline-offset: -3px; }
+
+  /* --- Folha "Mais" --- */
+  .app-mais-overlay {
+    position: fixed; inset: 0; z-index: 50;
+    display: flex; align-items: flex-end;
+    background: rgba(28, 22, 18, .42);
+  }
+  .app-mais-folha {
+    width: 100%; max-height: 76vh; overflow-y: auto;
+    background: #fff; border-radius: 18px 18px 0 0;
+    padding: 8px 16px calc(16px + 60px + env(safe-area-inset-bottom, 0px));
+  }
+  .app-mais-folha header {
+    position: sticky; top: 0; background: #fff;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 0 10px; border-bottom: 1px solid var(--line); margin-bottom: 12px;
+  }
+  .app-mais-folha header strong { font-size: 16px; }
+  .app-mais-folha header button {
+    min-width: 44px; min-height: 44px;
+    border: 0; background: transparent; font-size: 24px; line-height: 1; color: var(--muted); cursor: pointer;
+  }
+  .app-mais-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .app-mais-grid > a {
+    min-height: 52px; display: flex; align-items: center; padding: 0 14px;
+    border: 1px solid var(--line); border-radius: 12px;
+    color: var(--ink); text-decoration: none; font-size: 14px; font-weight: 600;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .app-mais-grid > a:active { background: var(--orange-soft); }
+  .app-mais-vazio { padding: 24px 4px; color: var(--muted); font-size: 13px; text-align: center; }
+}
+
+/* Telas estreitas de verdade (360px): rotulos menores, ainda legiveis. */
+@media (max-width: 380px) {
+  .app-bottom-nav > a, .app-bottom-nav > button { font-size: 9px; }
+  .app-mais-grid { grid-template-columns: 1fr; }
+}
+
+/* =====================================================================
+   CRM NOVA ERA — CELULAR
+   Segmentos de etapa e cards compactos. Acima de 900px nada muda:
+   o quadro volta a ter as quatro colunas lado a lado.
+   ===================================================================== */
+
+/* Segmentos existem so no celular. */
+.nova-crm-etapas { display: none; }
+
+/* Ajuda do grupo do Meu Dia: some no desktop, onde o titulo ja basta. */
+.ncrm-dia-ajuda { display: none; }
+
+/* Fallback do WhatsApp e sempre visivel — nao e popup. */
+.ncrm-wa-principal { display: inline-flex; align-items: center; gap: 8px; min-height: 48px; }
+
+@media (max-width: 900px) {
+  /* --- Quadro: uma etapa por vez --- */
+  .nova-crm-etapas {
+    display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none;
+    padding: 4px 0 10px; -webkit-overflow-scrolling: touch;
+  }
+  .nova-crm-etapas::-webkit-scrollbar { display: none; }
+  .nova-crm-etapas > button {
+    flex: 0 0 auto; min-height: 44px; padding: 0 14px;
+    border: 1px solid var(--line); border-radius: 999px; background: #fff;
+    color: #55504b; font-size: 13px; font-weight: 600; white-space: nowrap; cursor: pointer;
+  }
+  .nova-crm-etapas > button > b {
+    margin-left: 6px; padding: 1px 7px; border-radius: 999px;
+    background: #f1ece8; color: #6f6862; font-size: 11px;
+  }
+  .nova-crm-etapas > button.on { border-color: var(--orange); background: var(--orange-soft); color: #b94300; }
+  .nova-crm-etapas > button.on > b { background: var(--orange); color: #fff; }
+
+  /* Uma coluna por vez: as demais saem do fluxo. */
+  .nova-crm-board { display: block; }
+  .nova-crm-board > .nova-crm-col { display: none; }
+  .nova-crm-board[data-etapa-mobile="novo"] > [data-coluna="novo"],
+  .nova-crm-board[data-etapa-mobile="tentando_contato"] > [data-coluna="tentando_contato"],
+  .nova-crm-board[data-etapa-mobile="em_atendimento"] > [data-coluna="em_atendimento"],
+  .nova-crm-board[data-etapa-mobile="em_acompanhamento"] > [data-coluna="em_acompanhamento"] {
+    display: block; width: 100%; max-width: 100%;
+  }
+  /* O titulo da coluna vira redundante: o segmento ativo ja diz a etapa. */
+  .nova-crm-board .nova-crm-col-head > b,
+  .nova-crm-board .nova-crm-col-head > .nova-crm-count { display: none; }
+  .nova-crm-col-body { max-height: none; overflow: visible; }
+
+  /* --- Cards compactos --- */
+  .nova-crm-card, .ncrm-dia-card { padding: 12px !important; border-radius: 12px !important; }
+  .ncrm-dia-card { align-items: stretch !important; }
+  .ncrm-dia-card > div:first-child { min-width: 0 !important; }
+  .ncrm-dia-acao { width: 100%; }
+  .ncrm-dia-acao > .nova-crm-btn { width: 100%; min-height: 46px; }
+
+  .ncrm-dia-ajuda {
+    display: block; margin: 2px 0 4px; font-size: 12px; color: var(--muted);
+  }
+
+  /* --- WhatsApp: acao principal larga e alcancavel com o polegar --- */
+  .ncrm-wa-principal { width: 100%; justify-content: center; min-height: 52px; font-size: 16px; }
+  .ncrm-wa-secundarias { display: flex; flex-direction: column; gap: 4px; }
+  .ncrm-wa-secundarias > a, .ncrm-wa-secundarias > button { min-height: 44px; text-align: left; }
+
+  /* Nada do CRM pode empurrar a tela para o lado. */
+  .nova-crm-board, .nova-crm-col, .nova-crm-fila-wrap { min-width: 0; max-width: 100%; }
+  .nova-crm-indic { flex-wrap: wrap; }
+}
+
+/* =====================================================================
+   MODULOS DO ERP — CELULAR
+   Correcao de quebras estruturais nas telas que ja existem. Nenhum modulo
+   foi redesenhado: o que muda e como o conteudo se acomoda em 360-430px.
+   Tudo sob max-width: nada acima de 900px e afetado.
+   ===================================================================== */
+
+/* Aviso de modulo legado: so no celular, onde a tela original nao cabe. */
+.legacy-aviso { display: none; }
+
+@media (max-width: 900px) {
+  /* ---------------- INICIO ----------------
+     .home-kpis era repeat(7, minmax(135px,1fr)) = 945px de largura minima.
+     Em 360px isso empurrava a tela inteira para o lado. */
+  .home-workspace { padding: 14px 14px 28px; }
+  .home-header { flex-direction: column; align-items: flex-start; gap: 8px; }
+  .home-header h1 { font-size: 19px; }
+  .home-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .home-kpis article { min-height: 0; padding: 14px; }
+  .home-kpis article:nth-child(8) { grid-column: auto; }
+  .home-kpis strong { font-size: 21px; }
+  .home-two-columns, .home-three-columns { grid-template-columns: 1fr; gap: 12px; }
+  .home-panel { min-height: 0; padding: 16px; }
+  .home-goal { padding: 16px; }
+  .home-goal header, .home-goal footer { flex-wrap: wrap; gap: 4px; }
+
+  /* Atalhos rapidos do corretor. Renderizados pelo shell, nao pelo modulo. */
+  .home-atalhos { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 12px 0 4px; }
+  .home-atalhos > a {
+    min-height: 52px; display: flex; align-items: center; justify-content: center;
+    border: 1px solid var(--line); border-radius: 12px; background: #fff;
+    color: var(--ink); text-decoration: none; font-size: 13px; font-weight: 600;
+  }
+
+  /* ---------------- PRODUTOS ---------------- */
+  .product-grid { grid-template-columns: 1fr !important; gap: 12px; }
+  .catalog-controls { padding-inline: 0; }
+  .filter-row { flex-wrap: wrap; gap: 6px; }
+  .filter-row.selects { display: grid; grid-template-columns: 1fr 1fr; }
+  .filter-row.selects > input,
+  .filter-row.selects > .product-count { grid-column: 1 / -1; }
+  .filter-row select, .filter-row input { min-height: 44px; width: 100%; min-width: 0; }
+  .topbar { flex-direction: column; align-items: stretch; gap: 10px; }
+  .top-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .top-actions > .global-search { grid-column: 1 / -1; }
+  .top-actions button { min-height: 44px; }
+  .pu-row { flex-wrap: wrap; }
+
+  /* ---------------- TAREFAS / PROJETOS ----------------
+     O quadro desktop e horizontal; no celular vira lista vertical. */
+  .projeto-board, .kanban-board { display: block !important; }
+  .projeto-coluna, .kanban-col { width: 100% !important; max-width: 100%; margin-bottom: 12px; }
+
+  /* ---------------- AGENDA ---------------- */
+  .cal-grid, .calendar-grid { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .cal-toolbar, .calendar-toolbar { flex-wrap: wrap; gap: 8px; }
+
+  /* ---------------- NOTIFICACOES ---------------- */
+  .notification-tabs { overflow-x: auto; scrollbar-width: none; }
+  .notification-tabs::-webkit-scrollbar { display: none; }
+  .notification-tabs button { min-height: 44px; white-space: nowrap; }
+  .notification-list article p { white-space: normal; max-width: 100%; }
+
+  /* ---------------- TABELAS LARGAS ----------------
+     Tabelas com min-width alto continuam largas por natureza. Em vez de
+     espremer (ilegivel), damos rolagem HORIZONTAL ao container — o scroll
+     fica dentro da tabela, nunca na pagina. */
+  .crm-leads-table-v3, .finance-table, .team-table {
+    display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; max-width: 100%;
+  }
+
+  /* ---------------- MODULO LEGADO ---------------- */
+  .legacy-aviso {
+    display: block; margin: 0 0 12px; padding: 14px;
+    border: 1px solid #f0d9a8; border-radius: 12px; background: #fff9ec;
+  }
+  .legacy-aviso strong { display: block; font-size: 14px; color: #6b4c12; }
+  .legacy-aviso p { margin: 6px 0 10px; font-size: 13px; color: #7a6642; }
+  .legacy-aviso-link {
+    display: inline-flex; align-items: center; min-height: 44px; padding: 0 16px;
+    border-radius: 10px; background: var(--orange); color: #fff;
+    text-decoration: none; font-weight: 600; font-size: 14px;
+  }
+  .legacy-module-workspace iframe { width: 100%; min-height: 60vh; border: 0; }
+
+  /* ---------------- OFFLINE ---------------- */
+  .erp-offline {
+    margin: 12px 0; padding: 14px; border: 1px solid var(--line);
+    border-radius: 12px; background: #fbfaf9;
+  }
+}
