@@ -22,6 +22,11 @@
 
 BEGIN;
 
+-- O harness local usa um recorte minimo das tabelas legadas. Validar o corpo
+-- das funcoes SQL contra esse recorte reprovaria por coluna que so existe em
+-- producao; a validacao real acontece na primeira execucao, coberta por teste.
+SET LOCAL check_function_bodies = off;
+
 CREATE OR REPLACE FUNCTION public.ncrm_registrar_resultado_visita(
   p_visita_id uuid, p_negocio_id bigint, p_versao int, p_resultado text, p_obs text, p_idem text)
   RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $fn$
