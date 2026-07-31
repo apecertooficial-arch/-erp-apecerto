@@ -305,3 +305,90 @@
   .convite-instalar-ok { border: 0; background: var(--orange); color: #fff; }
   .convite-instalar-nao { border: 1px solid var(--line); background: #fff; color: var(--muted); }
 }
+
+/* =====================================================================
+   INICIO DO CELULAR — tela operacional ("Seu dia")
+   Tudo sob max-width. O painel gerencial do desktop nao e tocado.
+   ===================================================================== */
+
+.home-mobile { display: none; }
+
+@media (max-width: 900px) {
+  .home-mobile { display: block; padding: 12px 14px calc(16px + env(safe-area-inset-bottom, 0px)); }
+
+  /* --- Atalhos grandes: quatro destinos, alvo confortavel --- */
+  .sd-atalhos { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 18px; }
+  .sd-atalhos > button {
+    min-height: 56px; border: 1px solid var(--line); border-radius: 14px; background: #fff;
+    color: var(--ink); font-size: 15px; font-weight: 600; cursor: pointer;
+  }
+  .sd-atalhos > button:active { background: var(--orange-soft); }
+
+  .sd-titulo { margin: 0 0 10px; font-size: 18px; letter-spacing: -.01em; }
+
+  /* --- Grupos: no maximo tres itens, contador e "Ver todos" --- */
+  .sd-grupo { margin-bottom: 18px; }
+  .sd-grupo > header { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .sd-grupo h3 { margin: 0; font-size: 14px; font-weight: 700; color: var(--ink); }
+  .sd-contador {
+    min-width: 22px; padding: 1px 7px; border-radius: 999px;
+    background: var(--orange-soft); color: #b94300; font-size: 12px; font-weight: 700; text-align: center;
+  }
+  .sd-grupo ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+  .sd-grupo li > button {
+    width: 100%; min-height: 56px; display: grid; gap: 2px; text-align: left;
+    padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; background: #fff; cursor: pointer;
+    grid-template-areas: "nome tempo" "motivo tempo"; grid-template-columns: 1fr auto;
+  }
+  .sd-nome { grid-area: nome; font-size: 15px; font-weight: 600; color: var(--ink); }
+  /* Texto longo encurta com reticencia em vez de empurrar a tela. */
+  .sd-nome, .sd-motivo { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+  .sd-motivo { grid-area: motivo; font-size: 13px; color: var(--muted); }
+  .sd-tempo { grid-area: tempo; align-self: center; font-size: 12px; color: var(--muted); white-space: nowrap; }
+  .sd-ver-todos {
+    margin-top: 8px; min-height: 44px; width: 100%; border: 0; border-radius: 10px;
+    background: transparent; color: #b94300; font-size: 14px; font-weight: 600; cursor: pointer;
+  }
+
+  /* --- Estados: esqueleto, vazio util, erro com acao --- */
+  .sd-esqueleto { display: grid; gap: 14px; }
+  .sd-esq-bloco { display: grid; gap: 6px; }
+  .sd-esq-bloco > span { height: 56px; border-radius: 12px; background: linear-gradient(90deg,#f3f0ee,#e9e5e2,#f3f0ee); background-size: 200% 100%; animation: sd-brilho 1.2s ease-in-out infinite; }
+  @keyframes sd-brilho { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+  @media (prefers-reduced-motion: reduce) { .sd-esq-bloco > span { animation: none; } }
+  .sd-vazio { padding: 24px 4px; color: var(--muted); font-size: 14px; }
+  .sd-erro { padding: 14px; border: 1px solid #f0c8a8; border-radius: 12px; background: #fff6ef; }
+  .sd-erro strong { display: block; font-size: 14px; color: #7a4412; }
+  .sd-erro button { margin-top: 10px; min-height: 44px; padding: 0 16px; border: 0; border-radius: 10px; background: var(--orange); color: #fff; font-weight: 600; cursor: pointer; }
+
+  /* --- Gestao recolhida --- */
+  .hm-gestao { margin-top: 8px; border-top: 1px solid var(--line); padding-top: 12px; }
+  .hm-gestao-toggle {
+    width: 100%; min-height: 48px; display: flex; align-items: center; justify-content: space-between;
+    border: 0; background: transparent; color: var(--muted); font-size: 14px; font-weight: 600; cursor: pointer;
+  }
+  .hm-gestao-corpo { padding-top: 8px; }
+  .hm-gestao-link { margin-top: 12px; min-height: 44px; width: 100%; border: 1px solid var(--line); border-radius: 10px; background: #fff; font-size: 14px; font-weight: 600; cursor: pointer; }
+
+  /* --- Cabecalho do app: saudacao, sino com badge, perfil --- */
+  .app-mobile-top { justify-content: space-between; }
+  .amt-esq { display: grid; min-width: 0; }
+  .amt-esq strong { font-size: 16px; line-height: 1.2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .amt-esq small { font-size: 11px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .amt-dir { display: flex; align-items: center; gap: 4px; flex: 0 0 auto; }
+  .amt-sino, .amt-perfil {
+    position: relative; min-width: 44px; min-height: 44px;
+    display: inline-flex; align-items: center; justify-content: center;
+    border: 0; background: transparent; color: var(--ink); cursor: pointer; text-decoration: none;
+  }
+  .amt-perfil { font-size: 13px; font-weight: 700; }
+  .amt-perfil::before { content: ""; position: absolute; inset: 6px; border-radius: 50%; background: var(--orange-soft); z-index: -1; }
+  .amt-sino > b, .abn-badge {
+    position: absolute; top: 4px; right: 2px; min-width: 17px; height: 17px; padding: 0 4px;
+    display: inline-flex; align-items: center; justify-content: center;
+    border-radius: 999px; background: #dc2626; color: #fff;
+    font-size: 10px; font-weight: 700; font-style: normal; line-height: 1;
+  }
+  .app-bottom-nav > a { position: relative; }
+  .abn-badge { top: 6px; right: calc(50% - 22px); }
+}
