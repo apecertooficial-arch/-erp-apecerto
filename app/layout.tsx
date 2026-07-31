@@ -12,8 +12,8 @@ import "./styles/tela-avisos.css";
 import "./styles/tela-agenda.css";
 import "./styles/telas-prototipo.css";
 /* A ÚLTIMA de todas. Corrige o que só apareceu no aparelho de verdade:
-   cabeçalho em dobro, cor do botão do WhatsApp e o ícone do CRM na barra.
-   Precisa vir depois de todas para vencer sem seletor mais específico. */
+   cabeçalho em dobro, cor do botão do WhatsApp, ícone do CRM e o tamanho de
+   fonte. Precisa vir depois de todas para vencer sem seletor mais específico. */
 import "./styles/correcoes-celular.css";
 import { RegistroPwa } from "./components/RegistroPwa";
 
@@ -42,9 +42,21 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  /* Laranja oficial da marca (#FF7000). Era #ff6500, que não existe na
-     paleta. É a cor da barra de status no Android com o app instalado — a
-     primeira coisa que o corretor vê, antes de qualquer tela carregar. */
+
+  /* TRAVA DE ZOOM — comportamento de aplicativo, não de site.
+     O corretor usa isto com uma mão, andando. Zoom por pinça e duplo toque
+     fazia a tela sair do lugar sozinha, e ele tinha que reenquadrar antes de
+     conseguir tocar em qualquer coisa.
+
+     CONTRAPARTIDA, assumida: isto remove a capacidade de ampliar a tela, que é
+     recurso de acessibilidade. Só é aceitável porque (a) o app foi desenhado
+     com fonte de 14–16px e alvos de 44–52px, e (b) o ERP completo continua
+     acessível pelo navegador, sem esta trava. */
+  maximumScale: 1,
+  userScalable: false,
+
+  /* Laranja oficial da marca (#FF7000). É a cor da barra de status no Android
+     com o app instalado — a primeira coisa que o corretor vê. */
   themeColor: "#FF7000",
 };
 
