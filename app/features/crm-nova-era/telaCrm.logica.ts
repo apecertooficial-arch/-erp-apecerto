@@ -11,7 +11,14 @@ export type Aba = "meu_dia" | "funil" | "leads" | "visitas";
 /** Só dígitos: o corretor digita "(11) 9 8888" e o banco guarda E.164. */
 const soDigitos = (s: string) => s.replace(/\D/g, "");
 
-/** Sem acento e em minúscula: "aragao" tem que achar "Aragão". */
+/**
+ * Sem acento e em minúscula: "aragao" tem que achar "Aragão".
+ *
+ * O bloco de diacríticos vai por escape (̀-ͯ) e não colado literal:
+ * caractere combinante literal depende de editor, encoding e build
+ * preservarem os bytes — e basta um deles normalizar para a busca parar de
+ * funcionar sem ninguém entender por quê.
+ */
 function normalizar(s: string): string {
   return s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
 }
@@ -20,8 +27,8 @@ function normalizar(s: string): string {
  * Busca por nome OU telefone.
  *
  * Termo com dígito procura no telefone; sem dígito, no nome. Buscar os dois
- * sempre faria "11" casar com todo lead cujo nome tem "11" em algum lugar do
- * telefone — ruído que atrapalha justamente quem está com pressa.
+ * sempre faria "11" casar com todo lead cujo telefone tem "11" em algum lugar
+ * — ruído que atrapalha justamente quem está com pressa.
  */
 export function buscar(itens: ItemTela[], termo: string): ItemTela[] {
   const t = termo.trim();
@@ -42,7 +49,7 @@ export type Briefing = { texto: string; primeiroId: number; tarefas: number };
 /**
  * Texto do cartão roxo: por onde começar e o que vem depois.
  *
- * Monta a frase a partir da fila real — não é um texto fixo nem uma segunda
+ * Monta a frase a partir da fila real — não é texto fixo nem uma segunda
  * chamada de IA. A Sara já disse o que fazer em cada lead; aqui ela só diz a
  * ORDEM, que é a decisão que o corretor mais erra sozinho.
  *
