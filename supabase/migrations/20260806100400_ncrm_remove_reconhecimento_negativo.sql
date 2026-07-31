@@ -36,7 +36,7 @@ BEGIN
     RAISE NOTICE 'reconciliar_mensagens ausente; nada a corrigir'; RETURN;
   END IF;
 
-  IF position('saida_nao_humana' in v_src) > 0 THEN
+  IF position('saida_sem_confirmacao_dapi' in v_src) > 0 THEN
     RAISE NOTICE 'reconciliador ja exige o contrato positivo'; RETURN;
   END IF;
 
@@ -59,12 +59,12 @@ BEGIN
     E'      -- automacao, entao "nao parece robo" nunca foi criterio para dizer que\n' ||
     E'      -- a mensagem saiu do celular do corretor.\n' ||
     E'      IF ncrm_private.eh_outbound_manual(r.raw, r.direcao) THEN v_tipo := ''saida_humana'';\n' ||
-    E'      ELSE v_tipo := ''saida_nao_humana'';\n' ||
+    E'      ELSE v_tipo := ''ignorado'';\n' ||
     E'      END IF;');
 
   -- 2. Ramo proprio: registra e finaliza, sem tocar em nada de atuacao humana.
   v_novo := replace(v_novo, v_ancora_ramo,
-    E'      ELSIF v_tipo = ''saida_nao_humana'' THEN\n' ||
+    E'      ELSIF v_tipo = ''ignorado'' THEN\n' ||
     E'        -- Saida real, mas sem confirmacao da D-API: chat do ERP, espelho,\n' ||
     E'        -- automacao nao marcada. Fica registrada e finalizada; nao vira\n' ||
     E'        -- primeira abordagem, nao gera SLA, nao move etapa, nao cria evento.\n' ||
