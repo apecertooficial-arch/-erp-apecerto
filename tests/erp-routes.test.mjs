@@ -36,7 +36,18 @@ test("slug com 'ver' libera; sem 'ver' nao libera", () => {
 });
 
 test("basta UM slug da lista ter 'ver'", () => {
-  assert.equal(podeVer("Financeiro", corretor({ comissoes: ["ver"] })), true);
+  // CRM aceita crm, leads ou pipeline -- sao tres nomes para a mesma area.
+  // (Este teste usava Financeiro + comissoes. Estava errado: comissoes existe
+  // em TODOS os perfis, entao aceitar comissoes abria o Financeiro para o
+  // corretor. Descoberto na homologacao em producao.)
+  assert.equal(podeVer("CRM", corretor({ leads: ["ver"] })), true);
+  assert.equal(podeVer("CRM", corretor({ pipeline: ["ver"] })), true);
+});
+
+test("ver a propria comissao NAO abre o modulo Financeiro", () => {
+  assert.equal(podeVer("Financeiro", corretor({ comissoes: ["ver"] })), false);
+  assert.equal(podeVer("Financeiro", corretor({ vendas: ["ver"] })), false);
+  assert.equal(podeVer("Financeiro", corretor({ financeiro: ["ver"] })), true);
 });
 
 test("modulo sem slug de controle fica sempre visivel", () => {
