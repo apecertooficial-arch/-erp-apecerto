@@ -8,8 +8,11 @@
  * `crm-toolbar-v2`, `crm-filter-sheet`, `lead-avatar`.
  *
  * Só o que é novo na 3.0 ganha classe: prefixo `ncrm3-`.
- * PALETA DO PROTÓTIPO (prints-apecerto/crm-desktop): Sara sempre em LILÁS,
- * WhatsApp em VERDE, ação de registro em PRETO, tons de marca nos resúmos.
+ * TOKENS DO HANDOFF v3 (entrega-crm/_ds): laranja #FF7000 é a ação primária
+ * (inclusive o WhatsApp — verde é só o estado CONFIRMADO), roxo #8B00CC é a
+ * Sara, registro em preto, e o código de cores por significado vale no CRM
+ * todo: laranja=respondeu, roxo=lead novo, âmbar=aguardando, vermelho=prazo
+ * estourado, verde=confirmado.
  */
 export const CRM3_CSS = `
 .ncrm3 { display:flex; flex-direction:column; min-height:0; }
@@ -37,7 +40,7 @@ export const CRM3_CSS = `
 .ncrm3-item.tom-amarelo { border-left-color:var(--amber); }
 .ncrm3-item.tom-verde { border-left-color:var(--green); }
 .ncrm3-item.tom-laranja { border-left-color:var(--orange); }
-.ncrm3-item.tom-roxo { border-left-color:#b98af7; }
+.ncrm3-item.tom-roxo { border-left-color:#8B00CC; }
 .ncrm3-item-corpo { flex:1; min-width:0; display:flex; flex-direction:column; gap:3px; }
 .ncrm3-item-linha { display:flex; align-items:baseline; gap:8px; flex-wrap:wrap; }
 .ncrm3-item-linha strong { font-size:15px; font-weight:650; }
@@ -51,10 +54,10 @@ export const CRM3_CSS = `
 .ncrm3-abertura-numeros { display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:10px; }
 .ncrm3-abertura-numeros article { display:flex; flex-direction:column; gap:1px; padding:10px 12px; border-radius:var(--radius-input); background:var(--sunken); }
 .ncrm3-abertura-numeros article:nth-child(1) { background:var(--orange-50); } .ncrm3-abertura-numeros article:nth-child(1) b { color:var(--orange-700); }
-.ncrm3-abertura-numeros article:nth-child(2) { background:#f3eafe; } .ncrm3-abertura-numeros article:nth-child(2) b { color:#7c3aed; }
-.ncrm3-abertura-numeros article:nth-child(3) { background:#fdf3e2; } .ncrm3-abertura-numeros article:nth-child(3) b { color:#a16207; }
-.ncrm3-abertura-numeros article:nth-child(4) { background:#e8f7ef; } .ncrm3-abertura-numeros article:nth-child(4) b { color:#1c7c4e; }
-.ncrm3-abertura-numeros article:nth-child(4) button { color:#1c7c4e; }
+.ncrm3-abertura-numeros article:nth-child(2) { background:#F7ECFC; } .ncrm3-abertura-numeros article:nth-child(2) b { color:#8B00CC; }
+.ncrm3-abertura-numeros article:nth-child(3) { background:#FFF8E8; } .ncrm3-abertura-numeros article:nth-child(3) b { color:#8A6100; }
+.ncrm3-abertura-numeros article:nth-child(4) { background:#E6F5EC; } .ncrm3-abertura-numeros article:nth-child(4) b { color:#136B3D; }
+.ncrm3-abertura-numeros article:nth-child(4) button { color:#136B3D; }
 .ncrm3-abertura-numeros b { font-size:24px; font-weight:700; line-height:1.1; letter-spacing:-.02em; }
 .ncrm3-abertura-numeros span { color:var(--muted); font-size:11.5px; }
 .ncrm3-abertura-numeros article.link button { align-self:flex-start; padding:0; border:0; background:transparent; color:var(--orange-700); font-family:inherit; font-size:14px; font-weight:650; text-align:left; cursor:pointer; }
@@ -90,14 +93,14 @@ export const CRM3_CSS = `
 .ncrm3-coluna { position:relative; display:flex; flex-direction:column; gap:10px; min-width:0; padding:14px 12px 12px; border:1px solid var(--line); border-radius:var(--radius-card); background:var(--sunken); overflow:hidden; }
 .ncrm3-coluna::before { content:""; position:absolute; top:0; left:0; right:0; height:4px; background:var(--line-strong); }
 .ncrm3-coluna[data-momento="novo"]::before { background:var(--orange); }
-.ncrm3-coluna[data-momento="tentando_contato"]::before { background:#f2b04a; }
-.ncrm3-coluna[data-momento="em_atendimento"]::before { background:#4ec08d; }
-.ncrm3-coluna[data-momento="em_acompanhamento"]::before { background:#c9c2bb; }
+.ncrm3-coluna[data-momento="tentando_contato"]::before { background:#E8A317; }
+.ncrm3-coluna[data-momento="em_atendimento"]::before { background:#1E9E5A; }
+.ncrm3-coluna[data-momento="em_acompanhamento"]::before { background:#B8B0A8; }
 .ncrm3-coluna-cab strong::before { content:""; width:8px; height:8px; border-radius:999px; background:var(--line-strong); }
 .ncrm3-coluna[data-momento="novo"] .ncrm3-coluna-cab strong::before { background:var(--orange); }
-.ncrm3-coluna[data-momento="tentando_contato"] .ncrm3-coluna-cab strong::before { background:#f2b04a; }
-.ncrm3-coluna[data-momento="em_atendimento"] .ncrm3-coluna-cab strong::before { background:#4ec08d; }
-.ncrm3-coluna[data-momento="em_acompanhamento"] .ncrm3-coluna-cab strong::before { background:#c9c2bb; }
+.ncrm3-coluna[data-momento="tentando_contato"] .ncrm3-coluna-cab strong::before { background:#E8A317; }
+.ncrm3-coluna[data-momento="em_atendimento"] .ncrm3-coluna-cab strong::before { background:#1E9E5A; }
+.ncrm3-coluna[data-momento="em_acompanhamento"] .ncrm3-coluna-cab strong::before { background:#B8B0A8; }
 .ncrm3-coluna-cab { display:flex; flex-direction:column; gap:2px; }
 .ncrm3-coluna-cab strong { display:flex; align-items:center; gap:7px; font-size:14px; font-weight:700; }
 .ncrm3-coluna-cab strong b { padding:0 8px; border-radius:var(--radius-pill); background:var(--surface); color:var(--muted); font-size:11px; font-weight:700; }
@@ -129,9 +132,9 @@ export const CRM3_CSS = `
 .ncrm3-pendente { display:inline-flex; align-items:center; gap:5px; padding:3px 9px; border-radius:var(--radius-pill); background:#eaf0fb; color:#2456b5; font-size:11.5px; font-weight:700; }
 .ncrm3-card-proxima { padding:7px 9px; border-radius:var(--radius-input); background:var(--sunken); color:var(--ink-soft); font-size:12.5px; }
 .ncrm3-card-proxima b { display:block; font-weight:650; }
-.ncrm3-card-sara { display:flex; flex-direction:column; gap:4px; padding:8px 10px; border:1px solid #ead9fb; border-radius:var(--radius-input); background:#f6effd; color:#5b3f8f; font-size:12px; line-height:1.4; }
-.ncrm3-card-sara > span:first-child { color:#7c3aed; font-size:10.5px; font-weight:700; letter-spacing:.08em; }
-.ncrm3-card-sara b { color:#4c1d95; }
+.ncrm3-card-sara { display:flex; flex-direction:column; gap:4px; padding:8px 10px; border:1px solid #EBD1F5; border-radius:var(--radius-input); background:#F7ECFC; color:#66009A; font-size:12px; line-height:1.4; }
+.ncrm3-card-sara > span:first-child { color:#8B00CC; font-size:10.5px; font-weight:700; letter-spacing:.08em; }
+.ncrm3-card-sara b { color:#66009A; }
 .ncrm3-card-rodape { display:flex; align-items:center; justify-content:space-between; gap:8px; color:var(--faint); font-size:11.5px; }
 .ncrm3-card-acoes { display:flex; align-items:center; gap:6px; }
 .ncrm3-card-acoes .ncrm3-principal { flex:1; }
@@ -140,8 +143,8 @@ export const CRM3_CSS = `
 .ncrm3-principal:disabled { opacity:.4; cursor:default; }
 .ncrm3-secundario { display:inline-flex; align-items:center; justify-content:center; gap:6px; min-height:40px; padding:0 14px; border:1px solid var(--line-strong); border-radius:var(--radius-pill); background:var(--surface); color:var(--ink-soft); font-family:inherit; font-size:13px; font-weight:600; cursor:pointer; text-decoration:none; }
 .ncrm3-secundario:hover { background:var(--sunken); }
-.ncrm3-whatsapp { display:inline-flex; align-items:center; justify-content:center; gap:6px; min-height:44px; padding:0 16px; border:0; border-radius:var(--radius-pill); background:#22a05a; color:#fff; font-family:inherit; font-size:13.5px; font-weight:700; cursor:pointer; text-decoration:none; }
-.ncrm3-whatsapp:hover { background:#1b8b4d; }
+.ncrm3-whatsapp { display:inline-flex; align-items:center; justify-content:center; gap:6px; min-height:44px; padding:0 16px; border:0; border-radius:var(--radius-pill); background:#FF7000; color:#fff; font-family:inherit; font-size:13.5px; font-weight:700; cursor:pointer; text-decoration:none; }
+.ncrm3-whatsapp:hover { background:#E66200; }
 .ncrm3-preto { display:inline-flex; align-items:center; justify-content:center; gap:6px; min-height:40px; padding:0 16px; border:0; border-radius:var(--radius-pill); background:#211d1a; color:#fff; font-family:inherit; font-size:13px; font-weight:600; cursor:pointer; }
 .ncrm3-preto:hover { background:#3a3430; }
 .ncrm3-mais { position:relative; }
@@ -151,7 +154,7 @@ export const CRM3_CSS = `
 .ncrm3-menu button:hover { background:var(--sunken); }
 
 /* ---------- Ficha ---------- */
-.ncrm3-ficha { display:flex; flex-direction:column; width:520px; max-width:44vw; flex:0 0 auto; border-left:1px solid var(--line); background:var(--surface); overflow:auto; }
+.ncrm3-ficha { display:flex; flex-direction:column; width:420px; max-width:44vw; flex:0 0 auto; border-left:1px solid var(--line); background:var(--surface); overflow:auto; }
 .ncrm3-ficha-topo { position:sticky; top:0; z-index:2; display:flex; align-items:flex-start; gap:12px; padding:16px 20px; border-bottom:1px solid var(--line); background:var(--surface); }
 .ncrm3-ficha-topo h2 { margin:0; font-size:18px; font-weight:700; letter-spacing:-.02em; }
 .ncrm3-ficha-topo .ncrm3-situacao { display:block; margin-top:3px; color:var(--muted); font-size:12.5px; }
@@ -175,15 +178,15 @@ export const CRM3_CSS = `
 .ncrm3-avancadas { display:flex; flex-wrap:wrap; gap:8px; }
 
 /* ---------- Sara (LILÁS, como no protótipo) ---------- */
-.ncrm3-sara { display:flex; flex-direction:column; gap:9px; padding:12px 13px; border:1px solid #ead9fb; border-radius:var(--radius-card); background:#f6effd; }
+.ncrm3-sara { display:flex; flex-direction:column; gap:9px; padding:12px 13px; border:1px solid #EBD1F5; border-radius:var(--radius-card); background:#F7ECFC; }
 .ncrm3-sara h4 { margin:0; font-size:13.5px; font-weight:700; }
-.ncrm3-sara p { margin:0; color:#5b3f8f; font-size:12.5px; line-height:1.45; }
+.ncrm3-sara p { margin:0; color:#66009A; font-size:12.5px; line-height:1.45; }
 .ncrm3-sara-campos { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:5px; color:var(--ink-soft); font-size:12.5px; }
 .ncrm3-sara-campos li b { font-weight:650; }
-.ncrm3-sara-copiar { padding:8px 10px; border:1px dashed #c9a8ef; border-radius:var(--radius-input); background:var(--surface); color:var(--ink-soft); font-size:12.5px; line-height:1.45; }
+.ncrm3-sara-copiar { padding:8px 10px; border:1px dashed #B24DDD; border-radius:var(--radius-input); background:var(--surface); color:var(--ink-soft); font-size:12.5px; line-height:1.45; }
 .ncrm3-sara-acoes { display:flex; flex-wrap:wrap; gap:7px; }
 .ncrm3-sara-acoes button { min-height:38px; padding:0 14px; border:1px solid var(--line-strong); border-radius:var(--radius-pill); background:var(--surface); color:var(--ink-soft); font-family:inherit; font-size:12.5px; font-weight:600; cursor:pointer; }
-.ncrm3-sara-acoes button.usar { border-color:#7c3aed; background:#7c3aed; color:#fff; }
+.ncrm3-sara-acoes button.usar { border-color:#8B00CC; background:#8B00CC; color:#fff; }
 .ncrm3-sara-acoes button:disabled { opacity:.5; cursor:default; }
 
 /* ---------- Gestão ---------- */
@@ -202,30 +205,30 @@ export const CRM3_CSS = `
 .ncrm3-leads-filtros { display:flex; gap:6px; flex-wrap:wrap; }
 .ncrm3-leads-filtros button { min-height:34px; padding:0 12px; border:1px solid var(--line); border-radius:var(--radius-pill); background:var(--surface); color:var(--ink-soft); font-family:inherit; font-size:12.5px; font-weight:600; cursor:pointer; }
 .ncrm3-leads-filtros button.on { background:var(--ink); border-color:var(--ink); color:#fff; }
-.ncrm3-leads-filtros .ncrm3-leads-atrasados { background:var(--red-50, #fdeaea); border-color:transparent; color:var(--red-600, #c62f2f); }
-.ncrm3-leads-filtros .ncrm3-leads-atrasados.on { background:var(--red-600, #c62f2f); color:#fff; }
+.ncrm3-leads-filtros .ncrm3-leads-atrasados { background:var(--red-50, #FBE5E5); border-color:transparent; color:var(--red-600, #A32C2C); }
+.ncrm3-leads-filtros .ncrm3-leads-atrasados.on { background:var(--red-600, #A32C2C); color:#fff; }
 .ncrm3-leads-total { color:var(--muted); font-size:12px; }
 .ncrm3-tabela { border:1px solid var(--line); border-radius:var(--radius-card); background:var(--surface); overflow:hidden; }
 .ncrm3-tr { display:grid; grid-template-columns:minmax(230px,2fr) minmax(105px,1fr) minmax(150px,1.2fr) minmax(110px,1fr) minmax(90px,.9fr) minmax(60px,.5fr) minmax(85px,.8fr) 74px; align-items:center; gap:10px; padding:10px 14px; border-bottom:1px solid var(--line); border-left:3px solid transparent; }
 .ncrm3-tr:last-child { border-bottom:none; }
 .ncrm3-tr.cab { padding:9px 14px; background:var(--surface-soft, #faf8f6); color:var(--muted); font-size:10.5px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; border-left-color:transparent; }
-.ncrm3-tr.etapa-novo { border-left-color:#b98af7; }
-.ncrm3-tr.etapa-tentando_contato { border-left-color:var(--orange); }
-.ncrm3-tr.etapa-em_atendimento { border-left-color:#f2b04a; }
-.ncrm3-tr.etapa-em_acompanhamento { border-left-color:#4ec08d; }
+.ncrm3-tr.etapa-novo { border-left-color:#8B00CC; }
+.ncrm3-tr.etapa-tentando_contato { border-left-color:#E8A317; }
+.ncrm3-tr.etapa-em_atendimento { border-left-color:#FF7000; }
+.ncrm3-tr.etapa-em_acompanhamento { border-left-color:#1E9E5A; }
 .ncrm3-td-lead { display:flex; align-items:center; gap:10px; min-width:0; }
 .ncrm3-td-nome { display:flex; flex-direction:column; min-width:0; }
 .ncrm3-td-nome b { font-size:13.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .ncrm3-td-nome small { color:var(--muted); font-size:11.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .ncrm3-td-tempo { display:flex; flex-direction:column; font-size:13px; font-weight:600; }
-.ncrm3-td-tempo.atrasado { color:var(--red-600, #c62f2f); }
+.ncrm3-td-tempo.atrasado { color:var(--red-600, #A32C2C); }
 .ncrm3-td-tempo small { color:var(--muted); font-size:11px; font-weight:500; }
 .ncrm3-chip-etapa { font-style:normal; display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border-radius:var(--radius-pill); font-size:11.5px; font-weight:600; background:var(--surface-soft, #f6f2ee); color:var(--ink-soft); }
 .ncrm3-chip-etapa::before { content:""; width:6px; height:6px; border-radius:999px; background:currentColor; }
-.ncrm3-chip-etapa.e-novo { background:#f3eafe; color:#7c3aed; }
-.ncrm3-chip-etapa.e-tentando_contato { background:var(--orange-50); color:var(--orange-700); }
-.ncrm3-chip-etapa.e-em_atendimento { background:#fdf3e2; color:#a16a12; }
-.ncrm3-chip-etapa.e-em_acompanhamento { background:#e8f7ef; color:#1c7c4e; }
+.ncrm3-chip-etapa.e-novo { background:#F7ECFC; color:#8B00CC; }
+.ncrm3-chip-etapa.e-tentando_contato { background:#FFF8E8; color:#8A6100; }
+.ncrm3-chip-etapa.e-em_atendimento { background:#FFF3EA; color:#CC5800; }
+.ncrm3-chip-etapa.e-em_acompanhamento { background:#E6F5EC; color:#136B3D; }
 .ncrm3-td-corretor { font-size:13px; font-weight:600; }
 .ncrm3-td-origem, .ncrm3-td-data { color:var(--muted); font-size:12.5px; }
 .ncrm3-abrir { min-height:32px; padding:0 14px; border:none; border-radius:var(--radius-pill); background:var(--orange); color:#fff; font-family:inherit; font-size:12.5px; font-weight:700; cursor:pointer; }
@@ -247,10 +250,10 @@ export const CRM3_CSS = `
 .ncrm3-visita-corpo b { font-size:14px; font-weight:650; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .ncrm3-visita-corpo small { color:var(--muted); font-size:12px; }
 .ncrm3-visita-status { flex:0 0 auto; font-style:normal; padding:4px 12px; border-radius:var(--radius-pill); font-size:11.5px; font-weight:600; }
-.ncrm3-visita-status.ok { background:#e8f7ef; color:#1c7c4e; }
-.ncrm3-visita-status.espera { background:#fdf3e2; color:#a16207; }
+.ncrm3-visita-status.ok { background:#E6F5EC; color:#136B3D; }
+.ncrm3-visita-status.espera { background:#FFF8E8; color:#8A6100; }
 .ncrm3-visita-status.feita { background:var(--sunken); color:var(--muted); }
-.ncrm3-visita-status.falta { background:#fdeaea; color:#b91c1c; }
+.ncrm3-visita-status.falta { background:#FBE5E5; color:#A32C2C; }
 
 /* ---------- Avisos ---------- */
 .ncrm3-avisos { display:flex; flex-direction:column; gap:10px; max-width:920px; }
@@ -273,6 +276,78 @@ export const CRM3_CSS = `
 .ncrm3-so-visitas .crm-v2-header { display:none; }
 .ncrm3-so-visitas .crm-agenda-grid { grid-template-columns:1fr; }
 .ncrm3-so-visitas .crm-agenda-grid > .agenda-panel:not(.visits) { display:none; }
+
+/* ---------- HANDOFF v3 (entrega-crm): topbar, estados do WhatsApp, chips de motivo,
+   presenca do corretor e skin das visoes oficiais (Esteira, Agenda e Gestao).
+   Tokens do design system oficial: laranja #FF7000, roxo #8B00CC, sucesso #1FA85A,
+   atencao #F2A82C, perigo #D93E3E, neutros quentes. O CRM atual NAO e alterado:
+   o skin vale so dentro da 3.0 (.ncrm3-oficial / .ncrm3-gestao). ---------- */
+.ncrm3-topbar { display:flex; align-items:center; gap:14px; padding:10px 28px; border-bottom:1px solid var(--line); background:var(--surface); flex-wrap:wrap; }
+.ncrm3-topbar-seletor { display:inline-flex; align-items:center; padding:3px; border:1px solid var(--line); border-radius:var(--radius-pill); background:var(--sunken); }
+.ncrm3-topbar-seletor button { display:inline-flex; align-items:center; gap:6px; min-height:32px; padding:0 13px; border:0; border-radius:var(--radius-pill); background:transparent; color:var(--muted); font-family:inherit; font-size:12px; font-weight:600; cursor:pointer; white-space:nowrap; }
+.ncrm3-topbar-seletor button.on { background:var(--surface); color:var(--ink); box-shadow:var(--shadow-xs); font-weight:700; }
+.ncrm3-topbar-seletor button.on i { font-style:normal; padding:1px 6px; border-radius:var(--radius-pill); background:#FFE4D1; color:#CC5800; font-size:9.5px; font-weight:800; }
+.ncrm3-topbar-nota { color:var(--muted); font-size:12px; }
+.ncrm3-topbar-busca { display:flex; align-items:center; gap:7px; margin-left:auto; min-width:230px; padding:0 13px; min-height:38px; border:1px solid var(--line); border-radius:var(--radius-pill); background:var(--surface); }
+.ncrm3-topbar-busca span { color:var(--faint); }
+.ncrm3-topbar-busca input { flex:1; border:0; outline:0; background:transparent; color:var(--ink); font-family:inherit; font-size:12.5px; }
+.ncrm3-novolead { display:inline-flex; align-items:center; gap:6px; min-height:38px; padding:0 16px; border:0; border-radius:var(--radius-pill); background:#FF7000; color:#fff; font-family:inherit; font-size:12.5px; font-weight:700; cursor:pointer; }
+.ncrm3-novolead:hover { background:#E66200; }
+
+/* Chips de motivo (Meu Dia e Avisos): laranja = respondeu, roxo = lead novo, vermelho = prazo estourado. */
+.ncrm3-chip-motivo { display:inline-flex; align-items:center; padding:2px 10px; border-radius:var(--radius-pill); background:var(--sunken); color:var(--ink-soft); font-size:11px; font-weight:700; }
+.ncrm3-chip-motivo.m-laranja { background:#FFE4D1; color:#CC5800; }
+.ncrm3-chip-motivo.m-roxo { background:#EBD1F5; color:#66009A; }
+.ncrm3-chip-motivo.m-vermelho { background:#FBE5E5; color:#A32C2C; }
+.ncrm3-eyebrow { display:flex; align-items:baseline; gap:8px; color:#CC5800; font-size:11px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; }
+.ncrm3-eyebrow b { padding:1px 8px; border-radius:var(--radius-pill); background:var(--sunken); color:var(--muted); font-size:11px; letter-spacing:0; }
+.ncrm3-eyebrow small { color:var(--faint); font-size:11.5px; font-weight:500; letter-spacing:0; text-transform:none; }
+
+/* Presenca do corretor na tabela de Leads. */
+.ncrm3-online { display:flex; flex-direction:column; }
+.ncrm3-online small { display:inline-flex; align-items:center; gap:5px; color:#1FA85A; font-size:10.5px; font-weight:700; }
+.ncrm3-online small::before { content:""; width:6px; height:6px; border-radius:999px; background:#1FA85A; }
+.ncrm3-online.off small { color:#B8B0A8; }
+.ncrm3-online.off small::before { background:#B8B0A8; }
+
+/* WhatsApp honesto: aberto -> aguardando sincronizacao (ambar) -> confirmado (verde). */
+.ncrm3-wa-aguardando { display:flex; flex-direction:column; gap:7px; padding:11px 14px; border:1px solid #F2A82C; border-radius:var(--radius-input); background:#FDF1D9; color:#8A6100; font-size:12.5px; font-weight:700; }
+.ncrm3-wa-aguardando i { display:block; height:4px; border-radius:999px; background:#F5E3B8; overflow:hidden; position:relative; }
+.ncrm3-wa-aguardando i::after { content:""; position:absolute; inset:0; width:38%; border-radius:999px; background:#F2A82C; animation:ncrm3-sync 1.2s ease-in-out infinite alternate; }
+@keyframes ncrm3-sync { from { transform:translateX(-10%); } to { transform:translateX(180%); } }
+.ncrm3-wa-confirmado { display:flex; flex-direction:column; gap:3px; padding:11px 14px; border:1px solid #9BD9B4; border-radius:var(--radius-input); background:#E4F6EC; color:#136B3D; font-size:12.5px; font-weight:700; }
+.ncrm3-wa-confirmado small { color:#1FA85A; font-size:11px; font-weight:600; }
+
+/* Skin da Esteira oficial dentro da 3.0 (print 05): KPIs coloridos e cards do DS. */
+.ncrm3-oficial .sales-kpis article { border:0; border-radius:18px; }
+.ncrm3-oficial .sales-kpis article:nth-child(1) { background:#FFF3EA; } .ncrm3-oficial .sales-kpis article:nth-child(1) strong { color:#CC5800; }
+.ncrm3-oficial .sales-kpis article:nth-child(2) { background:#F7ECFC; } .ncrm3-oficial .sales-kpis article:nth-child(2) strong { color:#66009A; }
+.ncrm3-oficial .sales-kpis article:nth-child(3) { background:#E6F5EC; } .ncrm3-oficial .sales-kpis article:nth-child(3) strong { color:#136B3D; }
+.ncrm3-oficial .sales-kpis article:nth-child(4) { background:#FFF8E8; } .ncrm3-oficial .sales-kpis article:nth-child(4) strong { color:#8A6100; }
+.ncrm3-oficial .sales-kpis article:nth-child(5) { background:#FBE5E5; } .ncrm3-oficial .sales-kpis article:nth-child(5) strong { color:#A32C2C; }
+.ncrm3-oficial .sales-process>header span { color:#CC5800; letter-spacing:.12em; }
+.ncrm3-oficial .sales-stage { border-radius:18px; }
+.ncrm3-oficial .sales-filter button.active { background:#211D1A; border-color:#211D1A; color:#fff; }
+
+/* Skin da Agenda oficial dentro da 3.0 (print 06): check verde, data laranja, atraso vermelho. */
+.ncrm3-oficial .agenda-panel { border-radius:18px; }
+.ncrm3-oficial .agenda-item.done>button { background:#1E9E5A; border-color:#1E9E5A; color:#fff; }
+.ncrm3-oficial .agenda-item.overdue time { color:#A32C2C; font-weight:700; }
+.ncrm3-oficial .visit-item .visit-date { background:#FFF3EA; border-radius:12px; }
+.ncrm3-oficial .visit-item .visit-date strong { color:#CC5800; }
+.ncrm3-oficial .visit-item .visit-date span { color:#CC5800; text-transform:uppercase; font-weight:700; }
+
+/* Gestao (prints 08-11): sub-aba ativa em pill preto, como no prototipo. */
+.ncrm3-gestao-abas button.on { border-color:#211D1A; background:#211D1A; color:#fff; }
+
+.ncrm3-dia .ncrm3-secao-cab h3 { color:#CC5800; }
+.ncrm3-modal-fundo { position:fixed; inset:0; z-index:60; display:flex; align-items:center; justify-content:center; padding:20px; background:rgba(31,28,26,.45); }
+.ncrm3-modal { display:flex; flex-direction:column; gap:12px; width:min(420px,94vw); padding:20px; border-radius:18px; background:var(--surface); box-shadow:var(--shadow-lg); }
+.ncrm3-modal h3 { margin:0; font-size:16px; font-weight:700; letter-spacing:-.02em; }
+.ncrm3-modal label { display:flex; flex-direction:column; gap:5px; color:var(--muted); font-size:12px; font-weight:600; }
+.ncrm3-modal input, .ncrm3-modal select { min-height:40px; padding:0 12px; border:1px solid var(--line); border-radius:12px; background:var(--surface); color:var(--ink); font-family:inherit; font-size:13px; outline:0; }
+.ncrm3-modal input:focus, .ncrm3-modal select:focus { border-color:#FF7000; }
+.ncrm3-modal-acoes { display:flex; justify-content:flex-end; gap:8px; }
 
 /* ---------- Responsivo (tablet, 430px e 390px) ---------- */
 @media (max-width:1180px) {
