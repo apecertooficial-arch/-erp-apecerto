@@ -146,3 +146,41 @@ export function itensDaNavegacao(opcoes: Parameters<typeof podeVer>[1]): ItensNa
   const mais = visiveis.filter((m) => !barra.includes(m));
   return { barra, mais };
 }
+
+/* Agrupamento da folha "Mais" (print 13).
+ *
+ * O protipo mostra 7 itens em 3 grupos porque a persona dele era um corretor.
+ * O app real vai de 2 itens (corretor) a 17 (admin), e a lista de quem ve o
+ * que ja e decidida por podeVer(). Entao o grupo NAO pode ser uma lista
+ * escrita a mao: seria a segunda fonte de verdade da navegacao, e o dia em que
+ * alguem adicionasse um modulo sem lembrar de mexer aqui, ele sumiria do
+ * celular sem erro nenhum.
+ *
+ * O titulo sai da `classe` que a tabela acima ja carrega desde a FASE 1:
+ *   A (essencial)      -> Rotina
+ *   B (conforme papel) -> Gestao
+ *   C (baixa frequencia) -> Ferramentas
+ *
+ * "Ferramentas" e o quarto grupo que o print nao tem — o print nao tinha onde
+ * pendurar Chat, Disparos, Base e Ajustes. Grupo vazio nao renderiza, entao o
+ * corretor continua vendo exatamente as duas secoes do desenho.
+ *
+ * "Conta" (Meu perfil / Sair) nao entra aqui: nao sao modulos, nao tem rota
+ * de permissao e sao montados direto pela casca.
+ */
+export type GrupoMais = { titulo: string; itens: ModuleName[] };
+
+const TITULO_DO_GRUPO: Record<ClasseApp, string> = {
+  A: "Rotina",
+  B: "Gestão",
+  C: "Ferramentas",
+};
+
+export function gruposDoMais(mais: ModuleName[]): GrupoMais[] {
+  return (["A", "B", "C"] as const)
+    .map((classe) => ({
+      titulo: TITULO_DO_GRUPO[classe],
+      itens: mais.filter((m) => rotasModulo[m].classe === classe),
+    }))
+    .filter((grupo) => grupo.itens.length > 0);
+}
