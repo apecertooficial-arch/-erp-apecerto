@@ -1,10 +1,16 @@
 /* =====================================================================
    CORREÇÕES DE CELULAR — o que só apareceu no aparelho de verdade
    ---------------------------------------------------------------------
-   Última folha do bundle. Existe para corrigir sem reescrever as telas
-   inteiras: cada regra aqui tem um porquê observado em print de uso real,
-   não em protótipo.
+   Última folha do bundle. Cada regra aqui tem um porquê observado em
+   print de uso real, não em protótipo.
    ===================================================================== */
+
+/* ZOOM TRAVADO, parte 2. A meta tag do layout resolve a pinça; o duplo
+   toque para ampliar escapa dela em vários Android. `manipulation` diz
+   ao navegador que não há gesto de zoom para esperar — e de quebra tira
+   os 300ms de atraso que ele segurava antes de despachar o toque.
+   Fora do @media de propósito: vale para tablet também. */
+html, body { touch-action: manipulation; }
 
 @media (max-width: 900px) {
 
@@ -14,32 +20,79 @@
      A casca do app (.app-mobile-top) já desenha saudação, data, sino e
      avatar, FIXA no topo. As telas novas desenhavam a mesma coisa de
      novo logo abaixo — no aparelho aparecia "Olá, Samuel / sexta, 31 de
-     julho" e, dois centímetros abaixo, "Boa tarde, Samuel / sexta, 31 de
-     julho". No CRM, "CRM" duas vezes.
+     julho" e, dois centímetros abaixo, "Boa tarde, Samuel". No CRM,
+     "CRM" duas vezes.
 
-     Fica o da casca, não o da tela: ele é fixo na rolagem e já tem o
-     contador de avisos ligado no servidor. O da tela rolaria para fora e
-     levaria o sino junto.
+     Fica o da casca: ele é fixo na rolagem e já tem o contador de avisos
+     ligado no servidor. O da tela rolaria para fora e levaria o sino.
      =================================================================== */
   .tc-topo,
   .cm-topo { display: none !important; }
-
-  /* Sem o cabeçalho próprio, a tela precisa do respiro que ele dava. */
   .tc-wrap,
   .cm-wrap { padding-top: 12px; }
-
-  .amt-esq small { display: block; font-size: 11px; color: var(--fg-3); }
+  .amt-esq small { display: block; font-size: 12px; color: var(--fg-3); }
 
   /* ===================================================================
-     2. WHATSAPP É VERDE
+     2. TAMANHO DE FONTE
+     ---------------------------------------------------------------
+     Estava um degrau abaixo do desenho. O protótipo tem 390px de
+     largura e eu dimensionei para CABER — mas quem lê isto está andando
+     na rua, com o celular a meio braço de distância e sol na tela.
+     Cada linha abaixo sobe um degrau, mantendo a hierarquia.
+     =================================================================== */
+
+  /* Manchete: é o número que o corretor lê de longe. */
+  .tc-manchete { font-size: 32px; line-height: 1.12; }
+
+  /* Nome do cliente — a informação mais importante de cada card. */
+  .tc-nome,
+  .cm-nome { font-size: 17px; }
+  .tc-sub,
+  .cm-motivo { font-size: 13px; }
+
+  /* Orientação da Sara: é texto para LER, não etiqueta. */
+  .tc-sara p { font-size: 15px; line-height: 1.5; }
+  .cm-briefing-texto { font-size: 17px; }
+
+  /* Ação: o alvo do polegar merece texto de tamanho normal. */
+  .tc-cta,
+  .ag-btn-cheio,
+  .ag-btn-vazado,
+  .cm-btn-claro,
+  .cm-btn-vazado { font-size: 16px; }
+
+  /* Etiquetas, chips e contadores. */
+  .tc-tag,
+  .tc-tempo,
+  .av-tempo,
+  .ag-local,
+  .cm-tempo { font-size: 12px; }
+  .tc-chip,
+  .cm-aba,
+  .av-chip,
+  .ag-chip { font-size: 13px; min-height: 38px; }
+  .tc-num > b { font-size: 22px; }
+  .tc-num > span { font-size: 12px; }
+
+  /* Avisos e agenda. */
+  .av-titulo { font-size: 15px; }
+  .av-detalhe { font-size: 13px; }
+  .av-acao,
+  .ag-cliente { font-size: 15px; }
+  .ag-hora { font-size: 13px; }
+  .ag-prox-cliente { font-size: 16px; }
+  .ag-prox-local { font-size: 13px; }
+
+  /* Os "eyebrow" em caixa alta ficam pequenos DE PROPÓSITO: são rótulo
+     de seção, não conteúdo. Subir junto tiraria a hierarquia. */
+
+  /* ===================================================================
+     3. WHATSAPP É VERDE
      ---------------------------------------------------------------
      Li o print como laranja e errei. Verde é a cor que o corretor
-     reconhece sem ler, e este é o botão mais tocado do aplicativo —
-     meio segundo de hesitação por toque, vezes dezenas de toques por
-     dia, é tempo de resposta perdido.
-
-     O laranja continua sendo a cor da marca e da ação em tudo o mais:
-     "Ligar avisos", "Atender agora", "Tentar de novo".
+     reconhece sem ler, e este é o botão mais tocado do aplicativo.
+     O laranja continua em tudo o mais: "Ligar avisos", "Atender agora",
+     "Abrir no mapa", "Tentar de novo".
      =================================================================== */
   a.tc-cta,
   .tc-cta,
@@ -54,21 +107,16 @@
   .tc-cta:active,
   a.md-acao:active { background: #1FB855 !important; }
 
-  /* O botão de "Abrir atendimento" (lead sem telefone) NÃO é WhatsApp —
-     esse continua laranja, senão promete abrir uma conversa que não
-     existe. Regra depois da de cima para vencer por ordem. */
+  /* "Abrir atendimento" (lead sem telefone) NÃO é WhatsApp — continua
+     laranja, senão promete abrir uma conversa que não existe. */
   button.tc-cta {
     background: var(--ape-orange) !important;
     box-shadow: var(--shadow-brand) !important;
   }
 
   /* ===================================================================
-     3. BARRA INFERIOR
+     4. BARRA INFERIOR
      =================================================================== */
-
-  /* Caixa de contorno laranja no ativo, como nos prints. Sem
-     preenchimento: cinco itens preenchidos competiriam com o botão de
-     ação da tela. */
   .app-bottom-nav > a.active::before,
   .app-bottom-nav > button.active::before {
     content: "";
@@ -83,25 +131,20 @@
   .app-bottom-nav > a.active > svg,
   .app-bottom-nav > button.active > svg { position: relative; z-index: 1; }
 
-  /* ---------------- Ícone do CRM: grade, não funil ----------------
-     No protótipo o CRM é uma grade 2x2. No app estava um funil, que é
-     símbolo de FILTRO, não de carteira — e funil ainda por cima colide
-     com o vocabulário de "funil de vendas", que é outra coisa.
+  /* Ícone do CRM: grade de quatro quadrados, não funil. Funil é símbolo
+     de FILTRO e ainda colide com "funil de vendas", que é outra coisa.
 
-     Desenhado em CSS em vez de trocado no componente de propósito: a
-     barra inferior é a navegação de TODO o aplicativo. Um erro de edição
-     no ErpShell derruba o acesso a todos os módulos de uma vez, e o
-     ganho de um ícone não paga esse risco.
-
-     `currentColor` mantém o estado ativo funcionando sozinho: quando o
-     item fica laranja, a grade fica junto. */
+     Desenhado em CSS em vez de trocado no componente: a barra inferior é
+     a navegação de TODO o aplicativo, e um erro de edição ali derruba o
+     acesso a todos os módulos de uma vez. */
   .app-bottom-nav > a[href^="/crm"] > svg { display: none; }
+  .app-bottom-nav > a[href^="/crm"] { flex-direction: column; }
   .app-bottom-nav > a[href^="/crm"]::after {
     content: "";
+    order: -1;
     position: relative; z-index: 1;
     width: 22px; height: 22px;
     background-color: currentColor;
-    /* Quatro quadrados de cantos arredondados, como no protótipo. */
     -webkit-mask-image: url("data:image/svg+xml;utf8,\
 <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'>\
 <rect x='3' y='3' width='7.5' height='7.5' rx='2'/>\
@@ -120,8 +163,4 @@
     -webkit-mask-position: center; mask-position: center;
     -webkit-mask-size: contain; mask-size: contain;
   }
-  /* A ordem no flex column precisa colocar a grade ANTES do rótulo,
-     senão o texto "CRM" sobe para cima do ícone. */
-  .app-bottom-nav > a[href^="/crm"] { flex-direction: column; }
-  .app-bottom-nav > a[href^="/crm"]::after { order: -1; }
 }
