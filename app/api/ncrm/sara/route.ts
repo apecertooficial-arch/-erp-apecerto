@@ -38,7 +38,21 @@ const OVERRIDE =
   "objetivo_abordagem (1 frase), roteiro_ligacao (array de 3 a 5 passos curtos), " +
   "whatsapp_sugerido (mensagem curta e humana, sem pressão, <=300 chars), " +
   "perguntas_faltantes (array), cuidados (array de cuidados para não pressionar o cliente), " +
-  "evidencia_suficiente (true/false — false quando a conversa não sustenta conclusões). " +
+  "evidencia_suficiente (true/false — false quando a conversa não sustenta conclusões), " +
+  // Checklist de qualificação: a Sara devolve o que JÁ descobriu, campo a campo.
+  // É isto que permite ao corretor ver o que falta perguntar sem reler a conversa.
+  "informacoes_descobertas (objeto com EXATAMENTE estas chaves: regiao, tipo_imovel, metragem, " +
+  "dormitorios, vagas, faixa_valor, forma_pagamento, prazo_compra, motivo_compra, quem_decide, " +
+  "disponibilidade_visita — cada uma com o valor dito PELO CLIENTE em poucas palavras, ou null " +
+  "quando o cliente ainda não disse). " +
+  "REGRA DE OURO do checklist: só preencha um campo se o CLIENTE afirmou aquilo na conversa. " +
+  "Suposição, dedução a partir da campanha, do bairro do anúncio ou do preço do imóvel divulgado " +
+  "NÃO valem — nesses casos o valor é null. Preencher um campo que o cliente não disse faz o " +
+  "corretor deixar de perguntar, e ele perde a venda por informação que nunca existiu. " +
+  "A proxima_acao deve atacar o campo faltante mais importante, nesta ordem de prioridade: " +
+  "regiao, tipo_imovel, dormitorios, faixa_valor, forma_pagamento, prazo_compra, " +
+  "disponibilidade_visita, e só depois metragem, vagas, motivo_compra e quem_decide. " +
+  "Se o cliente fez uma pergunta ainda sem resposta, responder a ele vem antes de qualificar. " +
   "NUNCA invente informação que não esteja na conversa; com pouca evidência, use evidencia_suficiente=false " +
   "e limite-se ao que existe. Nada além do JSON. Você apenas sugere.";
 

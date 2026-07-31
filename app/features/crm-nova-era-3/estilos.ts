@@ -42,6 +42,34 @@ export const CRM3_CSS = `
 .ncrm3-item-acao { color:var(--ink-soft); font-size:12.5px; }
 .ncrm3-item-botao { flex:0 0 auto; }
 
+/* ---------- Painel de abertura do Meu Dia ---------- */
+.ncrm3-abertura { display:flex; flex-direction:column; gap:12px; padding:14px 16px; border:1px solid var(--line); border-radius:var(--radius-card); background:var(--surface); box-shadow:var(--shadow-xs); }
+.ncrm3-abertura-numeros { display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:10px; }
+.ncrm3-abertura-numeros article { display:flex; flex-direction:column; gap:1px; padding:8px 10px; border-radius:var(--radius-input); background:var(--sunken); }
+.ncrm3-abertura-numeros b { font-size:24px; font-weight:700; line-height:1.1; letter-spacing:-.02em; }
+.ncrm3-abertura-numeros span { color:var(--muted); font-size:11.5px; }
+.ncrm3-abertura-numeros article.link button { align-self:flex-start; padding:0; border:0; background:transparent; color:var(--orange-700); font-family:inherit; font-size:14px; font-weight:650; text-align:left; cursor:pointer; }
+.ncrm3-abertura-proximo { display:flex; align-items:center; gap:14px; flex-wrap:wrap; padding:12px 14px; border:1px solid var(--orange-100); border-radius:var(--radius-input); background:var(--orange-50); }
+.ncrm3-abertura-proximo > div { flex:1; min-width:200px; display:flex; flex-direction:column; gap:2px; }
+.ncrm3-abertura-rotulo { color:var(--orange-700); font-size:10.5px; font-weight:700; letter-spacing:.11em; text-transform:uppercase; }
+.ncrm3-abertura-proximo strong { font-size:16px; font-weight:700; }
+.ncrm3-abertura-proximo em { color:var(--muted); font-size:12px; font-style:normal; }
+.ncrm3-abertura-proximo p { margin:2px 0 0; color:var(--ink-soft); font-size:13px; }
+
+/* ---------- Checklist de qualificacao (dentro da Sara) ---------- */
+.ncrm3-checklist { display:flex; flex-direction:column; gap:7px; padding:9px 10px; border:1px solid var(--line); border-radius:var(--radius-input); background:var(--surface); }
+.ncrm3-checklist-topo { display:flex; align-items:center; gap:10px; font-size:12.5px; }
+.ncrm3-checklist-barra { flex:1; height:5px; border-radius:999px; background:var(--sunken); overflow:hidden; }
+.ncrm3-checklist-barra i { display:block; height:100%; background:var(--orange); }
+.ncrm3-checklist ul { list-style:none; margin:0; padding:0; display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:3px 12px; }
+.ncrm3-checklist li { display:flex; align-items:baseline; gap:6px; font-size:12px; }
+.ncrm3-checklist li span { flex:0 0 auto; width:12px; }
+.ncrm3-checklist li b { font-weight:600; color:var(--ink-soft); }
+.ncrm3-checklist li em { color:var(--muted); font-style:normal; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.ncrm3-checklist li.ok span { color:var(--green); }
+.ncrm3-checklist li.falta { opacity:.72; }
+.ncrm3-checklist li.falta span { color:var(--faint); }
+
 /* ---------- Funil ---------- */
 .ncrm3-momentos { display:flex; gap:6px; margin-bottom:14px; overflow:auto; padding-bottom:2px; }
 .ncrm3-momentos button { flex:0 0 auto; display:inline-flex; align-items:center; gap:7px; min-height:38px; padding:0 14px; border:1px solid var(--line); border-radius:var(--radius-pill); background:var(--surface); color:var(--ink-soft); font-family:inherit; font-size:13px; font-weight:600; cursor:pointer; }
@@ -131,6 +159,7 @@ export const CRM3_CSS = `
 .ncrm3-sara-acoes { display:flex; flex-wrap:wrap; gap:7px; }
 .ncrm3-sara-acoes button { min-height:38px; padding:0 14px; border:1px solid var(--line-strong); border-radius:var(--radius-pill); background:var(--surface); color:var(--ink-soft); font-family:inherit; font-size:12.5px; font-weight:600; cursor:pointer; }
 .ncrm3-sara-acoes button.usar { border-color:var(--orange); background:var(--orange); color:#fff; }
+.ncrm3-sara-acoes button:disabled { opacity:.5; cursor:default; }
 
 /* ---------- Gestão ---------- */
 .ncrm3-gestao { display:flex; flex-direction:column; gap:16px; max-width:960px; }
@@ -173,6 +202,9 @@ export const CRM3_CSS = `
   .ncrm3-quadro[data-momento="em_acompanhamento"] .ncrm3-coluna:not([data-momento="em_acompanhamento"]) { display:none; }
   /* Ficha em tela cheia no celular. */
   .ncrm3-ficha { position:fixed; inset:0; z-index:80; width:100vw; max-width:100vw; border-left:0; }
+  .ncrm3-abertura-numeros { grid-template-columns:1fr 1fr; }
+  .ncrm3-checklist ul { grid-template-columns:1fr; }
+  .ncrm3-abertura-proximo .ncrm3-principal { width:100%; }
   .ncrm3-item { flex-wrap:wrap; }
   .ncrm3-item-botao, .ncrm3-item-botao .ncrm3-principal { width:100%; }
 }
