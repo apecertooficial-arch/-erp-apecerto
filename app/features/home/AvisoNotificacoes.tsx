@@ -11,6 +11,10 @@
  * ele reverte nas configuracoes do aparelho. Por isso: primeiro a faixa
  * explicando o porque, o pedido do navegador so depois do toque.
  *
+ * ESTILO: reaproveita `.convite-instalar` de app-mobile.css. Ja e mobile-only e
+ * ja e a linguagem visual de faixa informativa do aplicativo -- criar uma classe
+ * nova seria uma segunda linguagem para a mesma coisa.
+ *
  * CONTRATO: a notificacao carrega titulo curto e link. Nao carrega nome de
  * cliente, telefone nem conversa -- o payload passa por servidor de terceiro
  * (Google/Apple) antes de chegar no aparelho.
@@ -106,8 +110,8 @@ export function AvisoNotificacoes({ accessToken }: { accessToken: string }) {
 
   if (estado === "ios_sem_instalar") {
     return (
-      <div className="md-aviso-push" role="status">
-        <b>Instale o app para receber avisos</b>
+      <div className="convite-instalar" role="status">
+        <strong>Instale o app para receber avisos</strong>
         <p>No iPhone, toque em Compartilhar e depois em &ldquo;Adicionar à Tela de Início&rdquo;. Sem isso o iPhone não entrega aviso nenhum.</p>
       </div>
     );
@@ -115,21 +119,23 @@ export function AvisoNotificacoes({ accessToken }: { accessToken: string }) {
 
   if (estado === "negado") {
     return (
-      <div className="md-aviso-push negado" role="status">
-        <b>Avisos bloqueados neste aparelho</b>
+      <div className="convite-instalar" role="status">
+        <strong>Avisos bloqueados neste aparelho</strong>
         <p>Você vai continuar sem saber de lead novo até abrir o app. Para reativar, entre nas configurações do navegador, procure este site e libere as notificações.</p>
       </div>
     );
   }
 
   return (
-    <div className="md-aviso-push" role="status">
-      <b>Receba aviso de lead novo</b>
+    <div className="convite-instalar" role="status">
+      <strong>Receba aviso de lead novo</strong>
       <p>Chega igual mensagem no celular, na hora que o lead cai para você. Quem responde primeiro vende.</p>
-      {erro && <p className="md-aviso-erro">{erro}</p>}
-      <button type="button" className="md-acao" disabled={ocupado} onClick={() => void ligar()}>
-        {ocupado ? "Ligando…" : "Ligar avisos"}
-      </button>
+      {erro && <p style={{ color: "#b91c1c" }}>{erro}</p>}
+      <div className="convite-instalar-acoes">
+        <button type="button" className="convite-instalar-ok" disabled={ocupado} onClick={() => void ligar()}>
+          {ocupado ? "Ligando…" : "Ligar avisos"}
+        </button>
+      </div>
     </div>
   );
 }
