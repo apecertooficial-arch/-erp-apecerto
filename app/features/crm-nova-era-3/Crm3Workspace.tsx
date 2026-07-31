@@ -37,6 +37,7 @@ import { MeuDia3 } from "./components/MeuDia3";
 import { Funil3 } from "./components/Funil3";
 import { Ficha3, type ImovelDoLead } from "./components/Ficha3";
 import { Avisos3 } from "./components/Avisos3";
+import { Perdidos3 } from "./components/Perdidos3";
 import { Gestao3 } from "./components/Gestao3";
 import type { AcaoMenu, DadosCard } from "./components/Card3";
 
@@ -52,10 +53,12 @@ const ACOES_CARD: AcaoMenu[] = [
 
 const CHAVE_SARA = "ncrm3:sara";
 
-/** Orientações da Sara já pedidas nesta sessão (some ao fechar a aba). */
+/* Orientações da Sara já pedidas NESTE APARELHO. localStorage, não session:
+   o resumo no card sobrevive a fechar a aba. A persistência de verdade (para
+   todos os aparelhos) exige a análise automática ser gravada no banco. */
 function lerCacheSara(): Record<string, string> {
   try {
-    const bruto = sessionStorage.getItem(CHAVE_SARA);
+    const bruto = localStorage.getItem(CHAVE_SARA);
     return bruto ? (JSON.parse(bruto) as Record<string, string>) : {};
   } catch { return {}; }
 }
@@ -85,6 +88,7 @@ export function Crm3Workspace({ accessToken, profile }: { accessToken: string; p
   const [busy, setBusy] = useState(false);
   const [aviso, setAviso] = useState<string | null>(null);
   const [drillCorretor, setDrillCorretor] = useState<number | null>(null);
+  const [formPedido, setFormPedido] = useState<"resultado" | "proxima" | "visita" | "proposta" | null>(null);
   const [saraCache, setSaraCache] = useState<Record<string, string>>({});
 
   // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -94,7 +98,7 @@ export function Crm3Workspace({ accessToken, profile }: { accessToken: string; p
     setSaraCache((atual) => {
       const proximo = { ...atual };
       if (orientacao) proximo[negocioId] = orientacao; else delete proximo[negocioId];
-      try { sessionStorage.setItem(CHAVE_SARA, JSON.stringify(proximo)); } catch { /* sessão sem storage: só perde o resumo do card */ }
+      try { localStorage.setItem(CHAVE_SARA, JSON.stringify(proximo)); } catch { /* sessão sem storage: só perde o resumo do card */ }
       return proximo;
     });
   }, []);
@@ -295,7 +299,7 @@ export function Crm3Workspace({ accessToken, profile }: { accessToken: string; p
                   corretorFiltro={drillCorretor}
                   busca={busca}
                   nome={profile.name}
-                  onAbrir={(id) => void abrirAtendimento(id)}
+                  onAbrir={(id) => { setFormPedido(null); void abrirAtendimento(id); }}
                   onIrParaVisitas={() => trocarAba("visitas")}
                 />
               )}
@@ -311,14 +315,22 @@ export function Crm3Workspace({ accessToken, profile }: { accessToken: string; p
                       selecionadoId={selId}
                       acoes={ACOES_CARD}
                       onTrocarMomento={setMomento}
-                      onAbrir={(id) => void abrirAtendimento(id)}
-                      onAcao={(id) => void abrirAtendimento(id)}
+                      onAbrir={(id) => { setFormPedido(null); void abrirAtendimento(id); }}
+                      onAcao={(id, chave) => {
+                        /* O menu "..." agora cumpre o que o rotulo promete: a
+                           ficha abre ja com o formulario escolhido. */
+                        setFormPedido(chave as "resultado" | "proxima" | "visita" | "proposta");
+                        void abrirAtendimento(id);
+                      }}
                     />
+                  )}
+                  {!carregando && !erro && (
+                    <Perdidos3 accessToken={accessToken} onAbrir={(id) => { setFormPedido(null); void abrirAtendimento(id); }} />
                   )}
                 </>
               )}
 
-              {aba === "avisos" && <Avisos3 accessToken={accessToken} onAbrir={(id) => void abrirAtendimento(id)} />}
+              {aba === "avisos" && <Avisos3 accessToken={accessToken} onAbrir={(id) => { setFormPedido(null); void abrirAtendimento(id); }} />}
 
               {aba === "gestao" && gestaoLiberada && (
                 <Gestao3
@@ -332,6 +344,8 @@ export function Crm3Workspace({ accessToken, profile }: { accessToken: string; p
 
             {detalhe && slaDetalhe && (
               <Ficha3
+                key={`${detalhe.lead.id}:${formPedido ?? ""}`}
+                formInicial={formPedido}
                 lead={detalhe.lead}
                 versao={detalhe.versao}
                 leadId={detalhe.leadId}
@@ -343,7 +357,7 @@ export function Crm3Workspace({ accessToken, profile }: { accessToken: string; p
                 email={detalhe.email}
                 fotoUrl={detalhe.fotoUrl}
                 imoveis={imoveis}
-                onFechar={() => { setSelId(null); setDetalhe(null); setImoveis([]); }}
+                onFechar={() => { setSelId(null); setDetalhe(null); setImoveis([]); setFormPedido(null); }}
                 onExecutar={executar}
                 onCriarVisita={criarVisita}
                 onAviso={setAviso}
