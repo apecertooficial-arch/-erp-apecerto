@@ -1,23 +1,22 @@
 "use client";
 /* TELA DO CORRETOR — desenho do protótipo (print 01).
  *
- * Reconstrução da tela, não repintura: cabeçalho com saudação e data, manchete
- * grande com o número de pessoas esperando, três cartões de número, chips de
- * filtro e card com avatar, tags, bloco da Sara e ação em pílula.
+ * Cabeçalho com saudação e data, manchete com o número de pessoas esperando,
+ * três cartões de número, chips de filtro e card com avatar, tags, bloco da
+ * Sara e ação em pílula.
  *
- * CTA LARANJA, NÃO VERDE. O LEIA-ME do pacote deixou isso em aberto
- * ("confirmar se o CTA fica verde ou laranja") e o print decide: laranja da
- * marca. Nada muda no comportamento — continua sendo link `whatsapp://` com
- * fallback wa.me, o ERP não envia nada.
+ * DUAS AÇÕES, POR PAPEL. O corretor ATENDE: o botão dele abre o WhatsApp do
+ * aparelho — verde, link `whatsapp://` com fallback wa.me, e o ERP continua
+ * sem enviar nada. O gestor ACOMPANHA: o botão dele abre a conversa entre o
+ * lead e o corretor dentro do ERP, em roxo. Gestor mandando mensagem pelo
+ * próprio número é o começo de um atendimento sem dono e sem histórico.
  *
- * REGRAS DE PRODUTO PRESERVADAS, as mesmas do pacote:
+ * REGRAS DE PRODUTO PRESERVADAS:
  *   - clique no WhatsApp não confirma contato; só a integração confirma;
  *   - Sara orienta, nunca envia;
- *   - nada de vocabulário técnico na tela do corretor.
+ *   - nada de vocabulário técnico na tela.
  *
- * As regras puras (iniciais, tempo, filtro, manchete) vivem em
- * telaCorretor.logica.ts — é de lá que os testes leem. Cópia em dois lugares é
- * o caminho mais curto para a tela e o teste discordarem sem ninguém perceber.
+ * As regras puras vivem em telaCorretor.logica.ts — é de lá que os testes leem.
  */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -28,14 +27,23 @@ import {
 } from "./telaCorretor.logica";
 import { marcarWhatsappAberto, whatsappAbertoEm, limparWhatsappAberto } from "../crm-nova-era/lib/whatsappAberto";
 import { AvisoNotificacoes } from "./AvisoNotificacoes";
+import { useErpSession } from "../system/ErpSession";
 
 const ATUALIZA_MS = 60_000;
 
 type Numeros = { leads_novos: number; acoes_hoje: number; leads_base: number };
 
+/** Quem acompanha em vez de atender. Vem da sessão, não de prop. */
+const PAPEIS_GESTAO = ["admin", "executivo", "diretor", "gerente"];
+
 /* --------------------------------- card --------------------------------- */
 
-function CardLead({ i, onAbrir }: { i: ItemTela; onAbrir: (id: number) => void }) {
+function CardLead({ i, onAbrir, onConversa, ehGestao }: {
+  i: ItemTela;
+  onAbrir: (id: number) => void;
+  onConversa: (id: number) => void;
+  ehGestao: boolean;
+}) {
   /* sessionStorage não é reativo; este tick força o re-render para o aviso
      aparecer NA HORA em que o corretor volta do WhatsApp. */
   const [, setTick] = useState(0);
@@ -73,11 +81,17 @@ function CardLead({ i, onAbrir }: { i: ItemTela; onAbrir: (id: number) => void }
       </button>
 
       <div className="tc-acoes">
-        {i.telefone_normalizado ? (
-          /* Link REAL para o WhatsApp oficial. Sem texto, sem API, sem popup:
-             quem envia é o corretor, do aparelho dele. O clique só registra a
-             intenção local — não muda etapa, não confirma contato, não inicia
-             SLA, não conclui tarefa. */
+        {ehGestao ? (
+          /* GESTOR: lê a conversa entre lead e corretor dentro do ERP. Roxo,
+             não verde — verde promete WhatsApp, e não é isso que abre. */
+          <button type="button" className="tc-cta gestao" onClick={() => onConversa(i.negocio_id)}>
+            Abrir conversa
+          </button>
+        ) : i.telefone_normalizado ? (
+          /* CORRETOR: link REAL para o WhatsApp oficial. Sem texto, sem API,
+             sem popup: quem envia é ele, do aparelho dele. O clique só
+             registra a intenção local — não muda etapa, não confirma contato,
+             não inicia SLA, não conclui tarefa. */
           <a
             className="tc-cta"
             href={`whatsapp://send?phone=${i.telefone_normalizado}`}
@@ -101,12 +115,11 @@ function CardLead({ i, onAbrir }: { i: ItemTela; onAbrir: (id: number) => void }
         </button>
       </div>
 
-      {/* FALLBACK wa.me. O print não mostra este link, e por isso ele quase
-          saiu daqui — mas existe por motivo funcional, não estético:
-          `whatsapp://` não abre em alguns aparelhos nem no navegador do
-          desktop, e sem ele o corretor toca e não acontece nada. Fica
-          discreto, embaixo da ação principal, sem competir com ela. */}
-      {i.telefone_normalizado && (
+      {/* FALLBACK wa.me. O print não mostra este link, mas ele existe por
+          motivo funcional: `whatsapp://` não abre em alguns aparelhos nem no
+          navegador do desktop, e sem ele o corretor toca e não acontece nada.
+          Não aparece para gestão — lá o botão não é WhatsApp. */}
+      {!ehGestao && i.telefone_normalizado && (
         <a
           className="tc-fallback"
           href={`https://wa.me/${i.telefone_normalizado}`}
@@ -118,7 +131,7 @@ function CardLead({ i, onAbrir }: { i: ItemTela; onAbrir: (id: number) => void }
         </a>
       )}
 
-      {aguardando && (
+      {aguardando && !ehGestao && (
         <p className="tc-aguardando">WhatsApp aberto — aguardando sincronização.</p>
       )}
       {i.outbound_real_confirmado && !aguardando && (
@@ -142,6 +155,11 @@ export function TelaCorretor({ accessToken, nome, onAbrirLead, onIr }: {
   const [tentativa, setTentativa] = useState(0);
   const [atualizadoEm, setAtualizadoEm] = useState<Date | null>(null);
   const [filtro, setFiltro] = useState<Filtro>("agora");
+
+  /* O papel vem da sessão, não de prop: quem monta a tela não precisa saber
+     disso, e prop nova em HomeWorkspace seria mexer na tela mais crítica. */
+  const { role } = useErpSession();
+  const ehGestao = PAPEIS_GESTAO.includes(String(role ?? "").toLowerCase());
 
   const carregar = useCallback(async (sinal: AbortSignal) => {
     /* Fila e números em paralelo: são duas rotas independentes e serializar
@@ -179,6 +197,10 @@ export function TelaCorretor({ accessToken, nome, onAbrirLead, onIr }: {
   const primeiro = (nome || "").trim().split(/\s+/)[0] || "corretor";
   const agoraQtd = agora.length;
 
+  /* Deep link que a página de CRM já sabe traduzir (?chat=). Sem rota nova e
+     sem estado paralelo: a conversa continua sendo a de sempre. */
+  const abrirConversa = useCallback((negocioId: number) => onIr(`/crm?chat=${negocioId}`), [onIr]);
+
   return (
     <div className="tc-wrap">
       <header className="tc-topo">
@@ -188,7 +210,6 @@ export function TelaCorretor({ accessToken, nome, onAbrirLead, onIr }: {
         </div>
         <div className="tc-topo-acoes">
           <button type="button" className="tc-sino" aria-label="Avisos" onClick={() => onIr("/notificacoes")}>
-            {/* Sino em SVG inline: um ícone não justifica uma dependência. */}
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
               <path d="M13.7 21a2 2 0 0 1-3.4 0" />
@@ -201,7 +222,7 @@ export function TelaCorretor({ accessToken, nome, onAbrirLead, onIr }: {
         </div>
       </header>
 
-      <p className="tc-eyebrow">Sua fila de hoje</p>
+      <p className="tc-eyebrow">{ehGestao ? "Fila da equipe" : "Sua fila de hoje"}</p>
       <h1 className="tc-manchete">{manchete(agoraQtd, itens === null)}</h1>
 
       {atualizadoEm && (
@@ -225,7 +246,9 @@ export function TelaCorretor({ accessToken, nome, onAbrirLead, onIr }: {
         </div>
       )}
 
-      <AvisoNotificacoes accessToken={accessToken} />
+      {/* Gestão não precisa de aviso de lead novo no aparelho: o lead não cai
+          para ela. A faixa só aparece para quem atende. */}
+      {!ehGestao && <AvisoNotificacoes accessToken={accessToken} />}
 
       <div className="tc-chips" role="tablist" aria-label="Filtro da fila">
         {([["agora", "Agora", agora.length], ["hoje", "Hoje", hoje.length], ["todos", "Todos", todos.length]] as const)
@@ -266,7 +289,15 @@ export function TelaCorretor({ accessToken, nome, onAbrirLead, onIr }: {
 
       {visiveis.length > 0 && (
         <ul className="tc-lista">
-          {visiveis.map((i) => <CardLead key={i.negocio_id} i={i} onAbrir={onAbrirLead} />)}
+          {visiveis.map((i) => (
+            <CardLead
+              key={i.negocio_id}
+              i={i}
+              onAbrir={onAbrirLead}
+              onConversa={abrirConversa}
+              ehGestao={ehGestao}
+            />
+          ))}
         </ul>
       )}
 
