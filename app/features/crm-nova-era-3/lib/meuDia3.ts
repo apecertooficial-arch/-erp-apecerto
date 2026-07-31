@@ -162,3 +162,60 @@ export function botaoPrincipal(cartao: CartaoDia): { rotulo: string; acao: "abri
   if (cartao.secao === "fazer_hoje") return { rotulo: "Abrir atendimento", acao: "abrir_atendimento" };
   return { rotulo: "Ver atendimento", acao: "abrir_atendimento" };
 }
+
+/* ==================== Painel de abertura ====================
+ *
+ * A primeira coisa que o corretor le nao deveria ser uma lista: deveria ser o
+ * tamanho do dia dele, em numeros que ele reconhece.
+ *
+ * Os tres contadores saem da MESMA fila que a tela ja carrega. Visitas do dia
+ * NAO entram: a fila de trabalho nao devolve visita, e inventar um numero que
+ * o corretor nao consegue conferir e pior do que nao mostrar. Visita tem aba
+ * propria, e e la que ela e contada.
+ */
+
+export type PainelAbertura = {
+  aguardandoResposta: number;
+  leadsNovos: number;
+  retornosHoje: number;
+  /** O cliente que deve ser atendido agora, ja sem repeticao. */
+  proximo: CartaoDia | null;
+};
+
+function ehHoje(iso: string | null, agora: Date): boolean {
+  if (!iso) return false;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return false;
+  return d.getFullYear() === agora.getFullYear()
+    && d.getMonth() === agora.getMonth()
+    && d.getDate() === agora.getDate();
+}
+
+export function painelDeAbertura(itens: ItemFila3[], agora: Date = new Date()): PainelAbertura {
+  const unicos = unificarPorCliente(itens);
+  let aguardandoResposta = 0;
+  let leadsNovos = 0;
+  let retornosHoje = 0;
+
+  for (const { item } of unicos) {
+    if (item.respondeu) aguardandoResposta++;
+    if (item.etapa === "novo") leadsNovos++;
+    if (!item.respondeu && item.etapa !== "novo" && ehHoje(item.proxima_acao_em, agora)) retornosHoje++;
+    else if (item.respondeu && ehHoje(item.proxima_acao_em, agora)) retornosHoje++;
+  }
+
+  const primeiroUrgente = unicos.find(({ item }) => secaoDoItem(item) === "atender_agora");
+  const proximo = primeiroUrgente
+    ? paraCartao(primeiroUrgente.item, "atender_agora", primeiroUrgente.outros)
+    : null;
+
+  return { aguardandoResposta, leadsNovos, retornosHoje, proximo };
+}
+
+/** Saudacao pela hora do dia. Sem exclamacao: e uma ferramenta de trabalho. */
+export function saudacao(nome: string, agora: Date = new Date()): string {
+  const h = agora.getHours();
+  const parte = h < 12 ? "Bom dia" : h < 18 ? "Boa tarde" : "Boa noite";
+  const primeiro = String(nome ?? "").trim().split(/\s+/)[0] || "corretor";
+  return `${parte}, ${primeiro}`;
+}
