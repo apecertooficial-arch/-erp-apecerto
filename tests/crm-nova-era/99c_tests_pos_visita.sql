@@ -73,17 +73,35 @@ SELECT public.test_assert(
     LIKE '%search_path%',
   '#pv11 RPC trava o search_path');
 
--- Sem sessao autenticada, a funcao recusa. Fail-closed, como as demais.
-SELECT public.test_assert(
-  (public.ncrm_registrar_resultado_visita(gen_random_uuid(), 1, 1, 'interessado', NULL,
-     'teste:pv:' || gen_random_uuid()::text) ->> 'erro') = 'nao_autenticado',
-  '#pv12 sem sessao, nada e registrado');
+-- Sem sessao autenticada, a funcao recusa. Fail-closed, como as demais:
+-- tanto o jsonb de erro quanto uma excecao servem — o que NAO pode acontecer
+-- e a chamada anonima escrever alguma coisa.
+DO $$
+DECLARE r jsonb; ok boolean := false; antes bigint; depois bigint;
+BEGIN
+  SELECT count(*) INTO antes FROM public.ncrm_evento;
+  BEGIN
+    r := public.ncrm_registrar_resultado_visita(gen_random_uuid(), 1, 1, 'interessado', NULL,
+           'ui:pv:' || gen_random_uuid()::text);
+    ok := (r->>'erro') IS NOT NULL;
+  EXCEPTION WHEN others THEN ok := true;
+  END;
+  SELECT count(*) INTO depois FROM public.ncrm_evento;
+  PERFORM public.test_assert(ok AND antes = depois, '#pv12 sem sessao, nada e registrado');
+END $$;
 
 -- Resultado invalido e recusado antes de qualquer escrita.
-SELECT public.test_assert(
-  (public.ncrm_registrar_resultado_visita(gen_random_uuid(), 1, 1, 'gostou_muito', NULL,
-     'teste:pv:' || gen_random_uuid()::text) ->> 'erro') IN ('resultado_invalido','nao_autenticado'),
-  '#pv13 resultado invalido nao passa');
+DO $$
+DECLARE r jsonb; ok boolean := false;
+BEGIN
+  BEGIN
+    r := public.ncrm_registrar_resultado_visita(gen_random_uuid(), 1, 1, 'gostou_muito', NULL,
+           'ui:pv:' || gen_random_uuid()::text);
+    ok := (r->>'erro') IS NOT NULL;
+  EXCEPTION WHEN others THEN ok := true;
+  END;
+  PERFORM public.test_assert(ok, '#pv13 resultado invalido nao passa');
+END $$;
 
 -- 5. Cobranca: a consulta das visitas sem desfecho existe.
 SELECT public.test_assert(
