@@ -26,7 +26,7 @@ const EMBED =
   "proxima_acao_tipo,proxima_acao_titulo,proxima_acao_em,ultima_interacao_em,temperatura," +
   "saida,saida_em,visita_id,proposta_id,descarte_motivo,descarte_detalhe,versao,atualizado_em," +
   "msg_automatica_em,primeira_resposta_em," +
-  "negocios(id,status,lead_id,corretor_id,leads(nome,telefone,email),corretores(id,nome))";
+  "negocios(id,status,lead_id,corretor_id,leads(nome,telefone,email,origem,extras),corretores(id,nome))";
 
 export async function GET(request: Request) {
   const token = tokenDe(request);
@@ -60,7 +60,21 @@ export async function GET(request: Request) {
       ]);
     if (e1 || e2 || e3) return Response.json({ error: e1?.message || e2?.message || e3?.message }, { status: 502 });
     if (!estado) return Response.json({ error: "Lead não visível ou inexistente." }, { status: 404 });
-    return Response.json({ estado, eventos: eventos ?? [], propostas: propostas ?? [] });
+
+    /* Imóveis do cliente: MESMA tabela e MESMO embed que o CRM atual já lê em
+       /api/crm (lead_produtos). Nenhuma tabela nova, nenhuma regra nova — só
+       evita que a ficha do CRM 3.0 tenha de baixar o CRM inteiro para mostrar
+       o bloco "Imóveis". A RLS continua sendo quem autoriza. */
+    const leadId = (estado as { negocios?: { lead_id?: number | null } | null }).negocios?.lead_id ?? null;
+    const { data: imoveis } = leadId
+      ? await db
+          .from("lead_produtos")
+          .select("empreendimento_id,empreendimentos(id,nome,bairro,cidade)")
+          .eq("lead_id", leadId)
+          .limit(30)
+      : { data: [] as unknown[] };
+
+    return Response.json({ estado, eventos: eventos ?? [], propostas: propostas ?? [], imoveis: imoveis ?? [] });
   }
 
   // ---- Quadro / saídas / tudo (paginado) ----
