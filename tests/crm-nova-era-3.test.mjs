@@ -374,14 +374,18 @@ test("a Sara não tem execute em lugar nenhum da 3.0", () => {
   }
 });
 
-test("Leads, Visitas, Esteira e Agenda usam a visão oficial, sem reconstrução", () => {
+test("Esteira e Agenda usam a visão oficial; Leads e Visitas são telas nativas do protótipo", () => {
+  /* Decisão de 31/07 (prints-apecerto/crm-desktop 03 e 04): Leads e Visitas
+     ganharam telas próprias da 3.0 — etapa do funil novo e agenda comercial no
+     desenho aprovado. Esteira e Agenda continuam montando as oficiais. */
   const casca = ler(base + "Crm3Workspace.tsx");
   assert.match(casca, /import \{ CrmWorkspace \} from "\.\.\/crm\/CrmWorkspace"/);
-  for (const view of ['view: "leads"', 'view: "sales"', 'view: "agenda"']) {
+  for (const view of ['view: "sales"', 'view: "agenda"']) {
     assert.ok(casca.includes(view), `a aba oficial ${view} sumiu`);
   }
-  // Visitas é o Pipe que já existe dentro da Agenda: recorte, não tabela nova.
-  assert.match(casca, /visitas: \{ view: "agenda", recorte: "ncrm3-so-visitas" \}/);
+  assert.match(casca, /import \{ Leads3 \}/, "a tela nativa de Leads sumiu");
+  assert.match(casca, /import \{ Visitas3 \}/, "a tela nativa de Visitas sumiu");
+  assert.ok(!/leads: \{ view:/.test(casca), "Leads nao deve mais montar a tabela antiga");
 });
 
 test("nenhuma linha do CRM atual foi alterada por esta frente", () => {
