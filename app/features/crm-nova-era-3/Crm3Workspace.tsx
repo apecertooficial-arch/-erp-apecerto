@@ -39,6 +39,7 @@ import { Avisos3 } from "./components/Avisos3";
 import { Perdidos3 } from "./components/Perdidos3";
 import { Gestao3 } from "./components/Gestao3";
 import { Leads3 } from "./components/Leads3";
+import { Visitas3 } from "./components/Visitas3";
 import type { AcaoMenu, DadosCard } from "./components/Card3";
 
 type Perfil = { userId: string; role: string; name: string };
@@ -273,8 +274,8 @@ export function Crm3Workspace({ accessToken, profile }: { accessToken: string; p
      da Agenda: o mesmo dado, as mesmas ações (editar, concluir) e o mesmo CSS.
      Aqui só recortamos a tela para o painel de visitas — nada é duplicado. */
   const VISAO_OFICIAL: Record<string, { view: "leads" | "sales" | "agenda"; recorte?: string }> = {
-    /* Leads deixou de montar a tabela antiga: a 3.0 tem a própria (protótipo 03). */
-    visitas: { view: "agenda", recorte: "ncrm3-so-visitas" },
+    /* Leads e Visitas viraram telas NATIVAS da 3.0 (protótipos 03 e 04);
+       Esteira e Agenda seguem sendo as visões oficiais montadas. */
     esteira: { view: "sales" },
     agenda: { view: "agenda" },
   };
@@ -371,6 +372,8 @@ export function Crm3Workspace({ accessToken, profile }: { accessToken: string; p
               {aba === "leads" && (
                 <Leads3 accessToken={accessToken} busca={busca} onAbrir={(id) => { setFormPedido(null); void abrirAtendimento(id); }} />
               )}
+
+              {aba === "visitas" && <Visitas3 accessToken={accessToken} onIrParaAgenda={() => trocarAba("agenda")} />}
 
               {aba === "avisos" && <Avisos3 accessToken={accessToken} onAbrir={(id) => { setFormPedido(null); void abrirAtendimento(id); }} />}
 

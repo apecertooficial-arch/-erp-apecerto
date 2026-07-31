@@ -256,7 +256,7 @@ export function Ficha3({
         {chamada.ok && (
           <>
             <a
-              className="ncrm3-principal"
+              className="ncrm3-whatsapp"
               href={chamada.app}
               data-e164={chamada.e164}
               onClick={() => marcarWhatsappAberto(lead.id)}
@@ -284,7 +284,7 @@ export function Ficha3({
         </div>
         {!emSaida && (
           <div className="ncrm3-avancadas">
-            <button type="button" className="ncrm3-principal" onClick={() => { setInicial({}); setForm("resultado"); }}>
+            <button type="button" className="ncrm3-preto" onClick={() => { setInicial({}); setForm("resultado"); }}>
               Registrar o que aconteceu
             </button>
             <button type="button" className="ncrm3-secundario" onClick={() => { setInicial({}); setForm("proxima"); }}>
