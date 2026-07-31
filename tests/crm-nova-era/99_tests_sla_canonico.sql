@@ -84,11 +84,77 @@ SELECT public.test_assert(
   (ncrm_private.elegivel_sla_piloto(73001, now())->>'motivo') = 'corretor_fora_da_abordagem_humana',
   'I: corretor fora da abordagem humana nao produz SLA do piloto');
 
+-- =============================================================================
+-- PARTICIPACAO HISTORICA NO PILOTO (casos A-F do P0-2)
+--
+-- A pergunta nao e "o corretor esta no piloto?", e "estava no piloto quando a
+-- mensagem saiu?". Se fosse o estado atual, a medicao de julho mudaria de valor
+-- toda vez que alguem entrasse ou saisse do piloto depois.
+--
+-- Referencia de tempo: a mensagem saiu ha 30 minutos.
+-- =============================================================================
+
 -- liberado_por e NOT NULL de proposito: entrar na abordagem humana e uma
 -- decisao de alguem, nao um estado que aparece sozinho.
 INSERT INTO public.ncrm_abordagem_humana (corretor_id, ativo, liberado_por, liberado_em)
-VALUES (7001, true, '77777777-0000-0000-0000-000000000001', now())
-ON CONFLICT (corretor_id) DO UPDATE SET ativo = true, removido_em = NULL;
+VALUES (7001, true, '77777777-0000-0000-0000-000000000001', now() - interval '2 hours')
+ON CONFLICT (corretor_id) DO UPDATE SET ativo = true,
+  liberado_em = now() - interval '2 hours', removido_em = NULL;
+
+-- A. liberado ANTES da mensagem -> elegivel
+SELECT public.test_assert(
+  (ncrm_private.elegivel_sla_piloto(73001, now() - interval '30 minutes')->>'elegivel')::boolean,
+  'PA: liberado antes da mensagem, elegivel');
+
+-- B. liberado DEPOIS da mensagem -> nao elegivel
+UPDATE public.ncrm_abordagem_humana SET liberado_em = now() - interval '10 minutes' WHERE corretor_id = 7001;
+SELECT public.test_assert(
+  (ncrm_private.elegivel_sla_piloto(73001, now() - interval '30 minutes')->>'motivo')
+    = 'corretor_fora_da_abordagem_humana',
+  'PB: liberado depois da mensagem, nao elegivel');
+
+-- C. removido ANTES da mensagem -> nao elegivel
+UPDATE public.ncrm_abordagem_humana
+   SET liberado_em = now() - interval '3 hours', removido_em = now() - interval '2 hours'
+ WHERE corretor_id = 7001;
+SELECT public.test_assert(
+  (ncrm_private.elegivel_sla_piloto(73001, now() - interval '30 minutes')->>'motivo')
+    = 'corretor_fora_da_abordagem_humana',
+  'PC: removido antes da mensagem, nao elegivel');
+
+-- D. removido DEPOIS da mensagem -> elegivel
+UPDATE public.ncrm_abordagem_humana
+   SET liberado_em = now() - interval '3 hours', removido_em = now() - interval '10 minutes'
+ WHERE corretor_id = 7001;
+SELECT public.test_assert(
+  (ncrm_private.elegivel_sla_piloto(73001, now() - interval '30 minutes')->>'elegivel')::boolean,
+  'PD: removido depois da mensagem, elegivel');
+
+-- E. removido antes do PROCESSAMENTO mas depois da MENSAGEM -> continua elegivel.
+-- Este e o caso que o booleano ah.ativo erraria: hoje ele esta fora do piloto,
+-- e mesmo assim o fato de 30 minutos atras continua valendo.
+UPDATE public.ncrm_abordagem_humana
+   SET ativo = false, liberado_em = now() - interval '3 hours', removido_em = now() - interval '5 minutes'
+ WHERE corretor_id = 7001;
+SELECT public.test_assert(
+  (ncrm_private.elegivel_sla_piloto(73001, now() - interval '30 minutes')->>'elegivel')::boolean,
+  'PE: removido depois da mensagem e antes do processamento, continua elegivel');
+SELECT public.test_assert(
+  NOT (SELECT ativo FROM public.ncrm_abordagem_humana WHERE corretor_id = 7001),
+  'PE2: e o corretor esta com ativo=false agora, provando que a regra nao le o booleano');
+
+-- F. nunca liberado -> nao elegivel
+DELETE FROM public.ncrm_abordagem_humana WHERE corretor_id = 7001;
+SELECT public.test_assert(
+  (ncrm_private.elegivel_sla_piloto(73001, now() - interval '30 minutes')->>'motivo')
+    = 'corretor_fora_da_abordagem_humana',
+  'PF: nunca liberado, nao elegivel');
+
+-- estado final para os testes seguintes: liberado ha 2 horas, nunca removido
+INSERT INTO public.ncrm_abordagem_humana (corretor_id, ativo, liberado_por, liberado_em)
+VALUES (7001, true, '77777777-0000-0000-0000-000000000001', now() - interval '2 hours')
+ON CONFLICT (corretor_id) DO UPDATE SET ativo = true,
+  liberado_em = now() - interval '2 hours', removido_em = NULL;
 
 -- ------------------------------------------- H: distribuicao antes do corte
 UPDATE public.ncrm_estado SET distribuido_em = now() - interval '3 days' WHERE negocio_id = 73001;
@@ -181,6 +247,111 @@ SELECT public.test_assert(
   (ncrm_private.confirmar_primeiras_saidas(50)->>'ok')::boolean
   AND (ncrm_private.confirmar_primeiras_saidas(50)->>'confirmadas')::int = 0,
   'N4: sem outbound real sincronizado, nada e confirmado');
+
+-- =============================================================================
+-- ACIONAMENTO AUTOMATICO (P0-1)
+--
+-- Nao chamamos confirmar_primeiras_saidas diretamente. Chamamos o caminho real:
+-- ncrm_private.reconciliar_mensagens, que e o que o cron executa a cada minuto.
+-- Se a ligacao nao existir, estes testes falham - que e exatamente o ponto.
+-- =============================================================================
+
+-- corte declarado e prazo de 5 minutos
+UPDATE public.ncrm_entrada_config
+   SET vigente_desde = now() - interval '1 day', prazo_primeira_abordagem_min = 5 WHERE id;
+
+-- a sessao da D-API pertence ao corretor 7001
+INSERT INTO public.wa_instancias (id, session_id, corretor_id, telefone, status)
+VALUES ('aaaaaaaa-0000-0000-0000-000000000001', 'sessao-7001', 7001, '5511900007001', 'connected')
+ON CONFLICT (id) DO UPDATE SET corretor_id = 7001;
+
+INSERT INTO public.leads (id, nome, telefone) VALUES (7302, 'Cliente Auto', '5511900007302')
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO public.negocios (id, lead_id, corretor_id, status, stage_id, criado_em)
+VALUES (73002, 7302, 7001, 'aberto', 20, now() - interval '10 minutes')
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO public.ncrm_estado (negocio_id, workflow_config_id, etapa,
+  proxima_acao_tipo, proxima_acao_titulo, proxima_acao_em, origem_ultima, distribuido_em)
+SELECT 73002, id, 'novo', 'tentativa_cadencia', 'Primeira abordagem',
+       now() + interval '5 minutes', 'sistema', now() - interval '10 minutes'
+  FROM public.ncrm_workflow_config WHERE status='publicada' ORDER BY versao DESC LIMIT 1
+ON CONFLICT (negocio_id) DO NOTHING;
+
+INSERT INTO public.wa_contatos (id, lead_id, telefone)
+VALUES ('bbbbbbbb-0000-0000-0000-000000000001', 7302, '5511900007302')
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO public.wa_conversas (id, contato_id, instancia_id, status)
+VALUES ('cccccccc-0000-0000-0000-000000000001', 'bbbbbbbb-0000-0000-0000-000000000001',
+        'aaaaaaaa-0000-0000-0000-000000000001', 'aberta')
+ON CONFLICT (id) DO NOTHING;
+
+-- outbound REAL: veio pelo webhook da D-API, com fromMe. Saiu 3 minutos depois
+-- da distribuicao, entao esta dentro do prazo de 5.
+INSERT INTO public.wa_mensagens (id, wa_message_id, conversa_id, instancia_id, direcao, tipo,
+  conteudo, raw, criado_em, enviado_em)
+VALUES ('dddddddd-0000-0000-0000-000000000001', 'MSG-AUTO-1',
+        'cccccccc-0000-0000-0000-000000000001', 'aaaaaaaa-0000-0000-0000-000000000001',
+        'enviada', 'texto', 'oi, tudo bem?', '{"fromMe":true,"id":"MSG-AUTO-1"}'::jsonb,
+        now() - interval '7 minutes', now() - interval '7 minutes')
+ON CONFLICT (id) DO NOTHING;
+
+-- ---- roda o caminho automatico real, o mesmo que o cron chama
+SELECT ncrm_private.reconciliar_mensagens(100);
+
+SELECT public.test_assert(
+  (SELECT primeira_saida_humana_em IS NOT NULL FROM public.ncrm_estado WHERE negocio_id = 73002),
+  'AUTO1: o caminho automatico confirmou a primeira saida humana');
+
+SELECT public.test_assert(
+  (SELECT primeira_saida_message_id = 'MSG-AUTO-1' FROM public.ncrm_estado WHERE negocio_id = 73002),
+  'AUTO2: gravou o message_id que veio da D-API');
+
+SELECT public.test_assert(
+  (SELECT sla_evidencia = 'dapi_webhook_outbound' FROM public.ncrm_estado WHERE negocio_id = 73002),
+  'AUTO3: evidencia e o webhook da D-API, nao o clique');
+
+SELECT public.test_assert(
+  (SELECT sla_minutos = 3 AND sla_dentro_5min AND sla_prazo_min = 5
+     FROM public.ncrm_estado WHERE negocio_id = 73002),
+  'AUTO4: SLA de 3 minutos, dentro do prazo de 5 congelado no registro');
+
+SELECT public.test_assert(
+  (SELECT etapa <> 'novo' FROM public.ncrm_estado WHERE negocio_id = 73002),
+  'AUTO5: card saiu de novo, porque ha conversa iniciada');
+
+-- ---- autoria do evento (P0-3)
+SELECT public.test_assert(
+  EXISTS (SELECT 1 FROM public.ncrm_evento
+           WHERE idempotency_key = 'humana:MSG-AUTO-1'
+             AND origem = 'sistema' AND executado_por IS NULL),
+  'AUTO6: evento registrado pela integracao, sem afirmar que um usuario executou');
+
+SELECT public.test_assert(
+  (SELECT corretor_id_no_evento = 7001 FROM public.ncrm_evento
+    WHERE idempotency_key = 'humana:MSG-AUTO-1'),
+  'AUTO7: o corretor continua identificado no evento');
+
+SELECT public.test_assert(
+  (SELECT payload->>'enviado_por' = 'whatsapp_nativo_do_corretor'
+      AND payload->>'confirmado_por' = 'dapi_webhook'
+     FROM public.ncrm_evento WHERE idempotency_key = 'humana:MSG-AUTO-1'),
+  'AUTO8: payload diz que a mensagem saiu do WhatsApp do corretor e foi confirmada pela D-API');
+
+-- ---- idempotencia: rodar de novo nao pode duplicar nada
+SELECT ncrm_private.reconciliar_mensagens(100);
+SELECT ncrm_private.reconciliar_mensagens(100);
+
+SELECT public.test_assert(
+  (SELECT count(*) FROM public.ncrm_evento WHERE idempotency_key = 'humana:MSG-AUTO-1') = 1,
+  'AUTO9: tres passagens do reconciliador, um unico evento');
+
+SELECT public.test_assert(
+  (SELECT count(*) FROM public.ncrm_evento
+    WHERE negocio_id = 73002 AND tipo = 'tentativa' AND numero_tentativa = 1) = 1,
+  'AUTO10: nenhuma tentativa duplicada pelo caminho legado de reconhecimento');
 
 -- ------------------------------------------------- devolve a config ao estado
 -- neutro para nao contaminar as fases seguintes do harness.
