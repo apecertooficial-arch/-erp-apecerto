@@ -5676,3 +5676,11 @@ button.momentox-selo:hover{filter:brightness(.96);border-color:currentColor}
 .connections-legacy h2{font-size:14px;margin:0 0 4px}
 .connections-legacy p{font-size:12px;margin:0 0 8px;opacity:.8}
 .connections-legacy ul{margin:0;padding-left:18px;font-size:12px}
+
+/* ============================================================================
+   Configurações — correções de honestidade (auditoria)
+   Status "não verificado aqui" neutro (cinza) em vez de verde falso, e o botão
+   de logo desabilitado até existir upload de verdade.
+   ========================================================================== */
+.settings-integrations em.na{background:#eef0f2 !important;color:#7c8590 !important;font-weight:600}
+.settings-logo:disabled{opacity:.6;cursor:not-allowed}
