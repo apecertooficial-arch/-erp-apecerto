@@ -3,18 +3,18 @@
  *
  * Fonte: /api/ncrm/agenda (RPC ncrm_agenda_corretor).
  *
- * ESCOPO: mostra a agenda da IMOBILIÁRIA INTEIRA, com o nome de quem atende.
- * Sem isso, dois corretores saem para o mesmo empreendimento no mesmo horário
- * sem saber. O que é meu ganha marca laranja; o dos colegas fica neutro — dá
- * contexto sem competir com o próprio trabalho.
+ * ESCOPO: a agenda da IMOBILIÁRIA INTEIRA, com o nome de quem atende. Sem
+ * isso, dois corretores saem para o mesmo empreendimento no mesmo horário sem
+ * saber. O que é meu aparece normal; o dos colegas mostra o nome.
  *
- * Conversa, telefone e ficha do lead continuam escopados por carteira nas
- * outras telas. Agenda é compromisso, não é o cliente.
+ * MÊS É CALENDÁRIO, não lista. Quarenta compromissos empilhados não respondem
+ * "que dia eu estou livre?", que é a única pergunta que se faz olhando um mês.
  */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  diaPorExtenso, hojeISO, jaPassou, proximo, quandoComeca, resumoDoDia, somarDias,
+  diaPorExtenso, gradeDoMes, hojeISO, jaPassou, proximo, quandoComeca,
+  resumoDoDia, somarDias,
   type Compromisso, type Periodo,
 } from "./telaAgenda.logica";
 
@@ -49,24 +49,30 @@ export function TelaAgendaMobile({ accessToken, onAbrirLead }: {
 
   const lista = itens ?? [];
   const prox = useMemo(() => proximo(lista), [lista]);
+  const grade = useMemo(() => (periodo === "mes" ? gradeDoMes(dia, lista) : []), [periodo, dia, lista]);
 
-  /* Em semana e mês a lista precisa de cabeçalho por dia, senão vira um monte
-     de horários sem data. No dia, um cabeçalho só já está acima. */
+  /* No mês, a lista abaixo do calendário é só do dia selecionado. Em semana,
+     é tudo, agrupado por dia. */
+  const paraListar = useMemo(() => {
+    if (periodo === "mes") return lista.filter((c) => c.data === dia);
+    return lista;
+  }, [lista, periodo, dia]);
+
   const porDia = useMemo(() => {
     const mapa = new Map<string, Compromisso[]>();
-    for (const c of [...lista].sort((a, b) => (a.data + a.hora).localeCompare(b.data + b.hora))) {
+    for (const c of [...paraListar].sort((a, b) => (a.data + a.hora).localeCompare(b.data + b.hora))) {
       const atual = mapa.get(c.data) ?? [];
       atual.push(c);
       mapa.set(c.data, atual);
     }
     return [...mapa.entries()];
-  }, [lista]);
+  }, [paraListar]);
 
   const passo = periodo === "dia" ? 1 : periodo === "semana" ? 7 : 30;
 
   return (
     <div className="ag-wrap">
-      {prox && (
+      {prox && periodo !== "mes" && (
         <section className="ag-proximo" aria-label="Próximo compromisso">
           <p className="ag-eyebrow">
             Próximo compromisso <span className="ag-quando">{quandoComeca(prox.faltam_min)}</span>
@@ -76,8 +82,6 @@ export function TelaAgendaMobile({ accessToken, onAbrirLead }: {
           {!prox.meu && <p className="ag-prox-dono">com {prox.corretor}</p>}
           {prox.local && <p className="ag-prox-local">📍 {prox.local}</p>}
           <div className="ag-prox-acoes">
-            {/* Abre o app de mapas do aparelho. Sem mapa embutido: o corretor
-                já confia no navegador dele mais do que confiaria no nosso. */}
             {prox.local ? (
               <a
                 className="ag-btn-cheio"
@@ -119,15 +123,49 @@ export function TelaAgendaMobile({ accessToken, onAbrirLead }: {
         </div>
         <div className="ag-navega">
           <button type="button" aria-label="Anterior" onClick={() => setDia((d) => somarDias(d, -passo))}>‹</button>
-          <button type="button" aria-label="Hoje" className="ag-hoje" onClick={() => setDia(hojeISO())}>Hoje</button>
+          <button type="button" className="ag-hoje" onClick={() => setDia(hojeISO())}>Hoje</button>
           <button type="button" aria-label="Próximo" onClick={() => setDia((d) => somarDias(d, passo))}>›</button>
         </div>
       </div>
 
+      {/* ---------------- MÊS: calendário de verdade ----------------
+          Sete colunas, começando na segunda. O ponto sob o número diz que
+          há compromisso; o número de compromissos NÃO entra na célula —
+          em 44px de largura viraria borrão. Tocar no dia abre a lista. */}
+      {periodo === "mes" && (
+        <section className="ag-mes" aria-label="Calendário do mês">
+          <div className="ag-mes-cabeca" aria-hidden="true">
+            {["seg", "ter", "qua", "qui", "sex", "sáb", "dom"].map((d) => <span key={d}>{d}</span>)}
+          </div>
+          <div className="ag-mes-grade">
+            {grade.map((celula) => (
+              <button
+                key={celula.iso}
+                type="button"
+                className={[
+                  "ag-cel",
+                  celula.foraDoMes ? "fora" : "",
+                  celula.iso === dia ? "sel" : "",
+                  celula.iso === hojeISO() ? "hoje" : "",
+                ].filter(Boolean).join(" ")}
+                onClick={() => setDia(celula.iso)}
+                aria-label={`${celula.numero}, ${celula.total} compromisso(s)`}
+                aria-pressed={celula.iso === dia}
+              >
+                <span className="ag-cel-num">{celula.numero}</span>
+                {celula.total > 0 && <span className="ag-cel-ponto" aria-hidden="true" />}
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
+
       <p className="ag-dia">
-        {periodo === "dia" ? diaPorExtenso(dia) : `${periodo === "semana" ? "semana de" : "mês de"} ${diaPorExtenso(dia)}`}
+        {periodo === "semana"
+          ? `semana de ${diaPorExtenso(dia)}`
+          : diaPorExtenso(dia)}
         {" · "}
-        {itens === null ? "carregando…" : resumoDoDia(lista.length)}
+        {itens === null ? "carregando…" : resumoDoDia(paraListar.length)}
       </p>
 
       {itens === null && (
@@ -143,13 +181,15 @@ export function TelaAgendaMobile({ accessToken, onAbrirLead }: {
         </div>
       )}
 
-      {itens !== null && !erro && lista.length === 0 && (
-        <p className="ag-vazio">Nada marcado neste período.</p>
+      {itens !== null && !erro && paraListar.length === 0 && (
+        <p className="ag-vazio">
+          {periodo === "mes" ? "Nada marcado neste dia." : "Nada marcado neste período."}
+        </p>
       )}
 
       {porDia.map(([data, doDia]) => (
         <div key={data}>
-          {periodo !== "dia" && <p className="ag-subdia">{diaPorExtenso(data)}</p>}
+          {periodo === "semana" && <p className="ag-subdia">{diaPorExtenso(data)}</p>}
           <ol className="ag-linha">
             {doDia.map((c) => (
               <li key={c.id} className={`ag-item${jaPassou(c) ? " passou" : ""}${c.meu ? " meu" : ""}`}>
