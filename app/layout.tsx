@@ -5,8 +5,9 @@ import "./styles/app-mobile.css";
    para os tokens da marca; carregada antes, o CSS antigo a sobrescreveria. */
 import "./styles/apecerto-identidade.css";
 /* Depois da identidade: usam os tokens dela. Tudo dentro de max-width — o
-   desktop não é tocado por nenhuma das duas. */
+   desktop não é tocado por nenhuma delas. */
 import "./styles/tela-corretor.css";
+import "./styles/tela-crm.css";
 import "./styles/telas-prototipo.css";
 import { RegistroPwa } from "./components/RegistroPwa";
 
