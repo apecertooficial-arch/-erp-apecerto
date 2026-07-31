@@ -1,6 +1,9 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import "./styles/app-mobile.css";
+/* POR ÚLTIMO, sempre. Esta folha remapeia --orange, --ink, --line e --muted
+   para os tokens da marca; carregada antes, o CSS antigo a sobrescreveria. */
+import "./styles/apecerto-identidade.css";
 import { RegistroPwa } from "./components/RegistroPwa";
 
 export const metadata: Metadata = {
@@ -28,7 +31,10 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  themeColor: "#ff6500",
+  /* Laranja oficial da marca (#FF7000). Era #ff6500, que não existe na
+     paleta. É a cor da barra de status no Android com o app instalado — a
+     primeira coisa que o corretor vê, antes de qualquer tela carregar. */
+  themeColor: "#FF7000",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
