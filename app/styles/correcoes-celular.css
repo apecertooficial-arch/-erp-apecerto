@@ -28,8 +28,6 @@
   .tc-wrap,
   .cm-wrap { padding-top: 12px; }
 
-  /* A casca ganha o subtítulo que estava na tela ("seu dia, em ordem",
-     a data). Uma linha só, discreta, no lugar certo. */
   .amt-esq small { display: block; font-size: 11px; color: var(--fg-3); }
 
   /* ===================================================================
@@ -66,11 +64,11 @@
 
   /* ===================================================================
      3. BARRA INFERIOR
-     ---------------------------------------------------------------
-     Caixa de contorno laranja no ativo, como nos prints. Sem
-     preenchimento: cinco itens preenchidos competiriam com o botão de
-     ação da tela.
      =================================================================== */
+
+  /* Caixa de contorno laranja no ativo, como nos prints. Sem
+     preenchimento: cinco itens preenchidos competiriam com o botão de
+     ação da tela. */
   .app-bottom-nav > a.active::before,
   .app-bottom-nav > button.active::before {
     content: "";
@@ -84,4 +82,46 @@
   .app-bottom-nav > button.active { color: var(--ape-orange); }
   .app-bottom-nav > a.active > svg,
   .app-bottom-nav > button.active > svg { position: relative; z-index: 1; }
+
+  /* ---------------- Ícone do CRM: grade, não funil ----------------
+     No protótipo o CRM é uma grade 2x2. No app estava um funil, que é
+     símbolo de FILTRO, não de carteira — e funil ainda por cima colide
+     com o vocabulário de "funil de vendas", que é outra coisa.
+
+     Desenhado em CSS em vez de trocado no componente de propósito: a
+     barra inferior é a navegação de TODO o aplicativo. Um erro de edição
+     no ErpShell derruba o acesso a todos os módulos de uma vez, e o
+     ganho de um ícone não paga esse risco.
+
+     `currentColor` mantém o estado ativo funcionando sozinho: quando o
+     item fica laranja, a grade fica junto. */
+  .app-bottom-nav > a[href^="/crm"] > svg { display: none; }
+  .app-bottom-nav > a[href^="/crm"]::after {
+    content: "";
+    position: relative; z-index: 1;
+    width: 22px; height: 22px;
+    background-color: currentColor;
+    /* Quatro quadrados de cantos arredondados, como no protótipo. */
+    -webkit-mask-image: url("data:image/svg+xml;utf8,\
+<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'>\
+<rect x='3' y='3' width='7.5' height='7.5' rx='2'/>\
+<rect x='13.5' y='3' width='7.5' height='7.5' rx='2'/>\
+<rect x='3' y='13.5' width='7.5' height='7.5' rx='2'/>\
+<rect x='13.5' y='13.5' width='7.5' height='7.5' rx='2'/>\
+</svg>");
+    mask-image: url("data:image/svg+xml;utf8,\
+<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'>\
+<rect x='3' y='3' width='7.5' height='7.5' rx='2'/>\
+<rect x='13.5' y='3' width='7.5' height='7.5' rx='2'/>\
+<rect x='3' y='13.5' width='7.5' height='7.5' rx='2'/>\
+<rect x='13.5' y='13.5' width='7.5' height='7.5' rx='2'/>\
+</svg>");
+    -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
+    -webkit-mask-position: center; mask-position: center;
+    -webkit-mask-size: contain; mask-size: contain;
+  }
+  /* A ordem no flex column precisa colocar a grade ANTES do rótulo,
+     senão o texto "CRM" sobe para cima do ícone. */
+  .app-bottom-nav > a[href^="/crm"] { flex-direction: column; }
+  .app-bottom-nav > a[href^="/crm"]::after { order: -1; }
 }
