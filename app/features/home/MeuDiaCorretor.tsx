@@ -1,196 +1,22 @@
 "use client";
 
-/* MEU DIA — a tela do corretor no celular.
+/* MEU DIA — mantido como casca fina sobre a TelaCorretor.
  *
- * Nao e o Inicio gerencial encolhido. Responde duas perguntas, nesta ordem:
- * "como eu estou?" (painel) e "quem eu atendo agora, e por que?" (fila).
+ * A tela foi reconstruída no desenho do protótipo e vive em TelaCorretor.tsx.
+ * Este arquivo continua existindo porque HomeWorkspace e os testes importam
+ * `MeuDiaCorretor` — trocar a montagem lá dentro mexeria na tela mais crítica
+ * do app para não ganhar nada. A casca custa oito linhas e zero risco.
  *
- * VGV, meta, ranking e funil continuam fora: isso e conversa de gestao e vive
- * no ERP pelo navegador. O app existe para o corretor trabalhar.
- *
- * Fonte da fila: /api/ncrm/fila-operacional (8 KB), prioridade calculada no
- * banco e ja escopada por carteira e papel. Nada e recalculado aqui.
+ * As props são idênticas; quem monta não precisa saber de nada disso.
  */
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import {
-  montarBlocos, paraAtender, saudacao, ROTULO_ACAO, type ItemFila, type Card,
-} from "./meuDia.logica";
-import { marcarWhatsappAberto, whatsappAbertoEm, limparWhatsappAberto } from "../crm-nova-era/lib/whatsappAberto";
-import { AvisoNotificacoes } from "./AvisoNotificacoes";
-import { PainelCorretor } from "./PainelCorretor";
+import { TelaCorretor } from "./TelaCorretor";
 
-const ATUALIZA_MS = 60_000;
-
-function CardLead({ c, onAbrir }: { c: Card; onAbrir: (id: number) => void }) {
-  /* O clique registra a intencao no sessionStorage, que nao e reativo. Este
-     tick forca o re-render para o aviso aparecer NA HORA em que o corretor
-     volta do WhatsApp -- nao no proximo ciclo de 60s. */
-  const [, setTick] = useState(0);
-  const marcou = () => { marcarWhatsappAberto(c.negocioId); setTick((t) => t + 1); };
-  /* "Aguardando sincronizacao" tem duas fontes e nenhuma delas e envio:
-     - servidor: ncrm_whatsapp_intencao ainda sem confirmacao da D-API;
-     - local: o corretor abriu o WhatsApp NESTE aparelho (sessionStorage).
-     Quando o outbound real chega, as duas se apagam. Nunca "contato realizado":
-     o toque nao prova que ele falou com ninguem. */
-  const abriuLocal = whatsappAbertoEm(c.negocioId) != null;
-  if (c.outboundConfirmado && abriuLocal) limparWhatsappAberto(c.negocioId);
-  const aguardando = !c.outboundConfirmado && (c.aguardandoServidor || abriuLocal);
-
-  return (
-    <li className={`md-card${c.vencida ? " vencida" : ""}`}>
-      {/* O corpo abre a ficha; a acao principal vive FORA dele porque <a> dentro
-          de <button> e HTML invalido e quebra leitor de tela. */}
-      <button type="button" className="md-card-corpo" onClick={() => onAbrir(c.negocioId)}>
-        <span className="md-linha1">
-          <b className="md-nome">{c.nome}</b>
-          <span className="md-espera">{c.espera}</span>
-        </span>
-        <span className="md-motivo">{c.motivo}</span>
-        {c.interesse && <span className="md-interesse">{c.interesse}</span>}
-
-        {/* ETAPA ANTES DA SARA, de proposito. Separadas, o corretor lia
-            "ligar hoje a tarde" sem saber em que ponto do atendimento o cliente
-            esta -- e e isso que decide o tom da conversa. Juntas, a linha vira
-            "Em atendimento -> ligar hoje a tarde, ficou de avaliar". */}
-        <span className="md-meta"><span className="md-etapa">{c.etapa}</span></span>
-        {c.orientacaoSara && <span className="md-sara">Sara: {c.orientacaoSara}</span>}
-      </button>
-
-      {c.acao === "whatsapp" && c.telefone ? (
-        <>
-          {/* Link REAL para o WhatsApp oficial. Sem texto, sem API, sem popup:
-              quem envia e o corretor, do aparelho dele. O clique so registra a
-              intencao local -- nao muda etapa, nao confirma contato, nao inicia
-              SLA, nao conclui tarefa. */}
-          <a
-            className="md-acao"
-            href={`whatsapp://send?phone=${c.telefone}`}
-            data-e164={c.telefone}
-            onClick={marcou}
-          >
-            Chamar no WhatsApp
-          </a>
-          <a
-            className="md-wa-fallback"
-            href={`https://wa.me/${c.telefone}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={marcou}
-          >
-            Não abriu? Abrir pelo WhatsApp Web
-          </a>
-        </>
-      ) : (
-        <button type="button" className="md-acao" onClick={() => onAbrir(c.negocioId)}>
-          {ROTULO_ACAO[c.acao]}
-        </button>
-      )}
-
-      {aguardando && (
-        <span className="md-aguardando">WhatsApp aberto — aguardando sincronização.</span>
-      )}
-    </li>
-  );
-}
-
-export function MeuDiaCorretor({ accessToken, nome, onAbrirLead, onIr }: {
+export function MeuDiaCorretor(props: {
   accessToken: string;
   nome: string;
   onAbrirLead: (negocioId: number) => void;
   onIr: (destino: string) => void;
 }) {
-  const [itens, setItens] = useState<ItemFila[] | null>(null);
-  const [erro, setErro] = useState(false);
-  const [tentativa, setTentativa] = useState(0);
-  const [atualizadoEm, setAtualizadoEm] = useState<Date | null>(null);
-
-  const carregar = useCallback(async (sinal: AbortSignal) => {
-    const r = await fetch("/api/ncrm/fila-operacional", {
-      headers: { Authorization: `Bearer ${accessToken}` }, signal: sinal,
-    });
-    if (!r.ok) throw new Error(String(r.status));
-    const j = await r.json();
-    return (j.itens as ItemFila[]) ?? [];
-  }, [accessToken]);
-
-  useEffect(() => {
-    const ctrl = new AbortController();
-    let vivo = true;
-    carregar(ctrl.signal)
-      .then((l) => { if (vivo) { setItens(l); setErro(false); setAtualizadoEm(new Date()); } })
-      .catch((e) => { if (vivo && e?.name !== "AbortError") { setErro(true); setItens([]); } });
-    return () => { vivo = false; ctrl.abort(); };
-  }, [carregar, tentativa]);
-
-  // Reatualiza sozinho: o corretor deixa o app aberto entre atendimentos.
-  useEffect(() => {
-    const t = setInterval(() => setTentativa((n) => n + 1), ATUALIZA_MS);
-    return () => clearInterval(t);
-  }, []);
-
-  const blocos = useMemo(() => montarBlocos(itens ?? []), [itens]);
-  const aAtender = useMemo(() => paraAtender(itens ?? []), [itens]);
-  const vazio = itens !== null && blocos.every((b) => b.total === 0);
-
-  return (
-    <div className="md-wrap">
-      {/* PAINEL PRIMEIRO: onde eu estou. Carrega em paralelo com a fila e tem
-          esqueleto da mesma altura, entao a tela nao pula. */}
-      <PainelCorretor accessToken={accessToken} nome={nome} onIr={onIr} />
-
-      {/* Ligar os avisos: enquanto o aparelho nao recebe, e a coisa mais util
-          da tela. Some sozinha quando o aparelho ja esta inscrito. */}
-      <AvisoNotificacoes accessToken={accessToken} />
-
-      <header className="md-topo">
-        {/* Sem "Ola, fulano" aqui: o painel acima ja cumprimentou. Duas
-            saudacoes na mesma tela e ruido. */}
-        <p className="md-chamada">
-          {itens === null ? `${saudacao(new Date().getHours())}, carregando sua fila…`
-            : aAtender === 0 ? "Nenhum cliente esperando agora."
-            : `Você tem ${aAtender} ${aAtender === 1 ? "cliente" : "clientes"} para atender`}
-        </p>
-        {atualizadoEm && (
-          <p className="md-atualizado">
-            Atualizado {atualizadoEm.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
-            <button type="button" onClick={() => setTentativa((n) => n + 1)}>Atualizar</button>
-          </p>
-        )}
-      </header>
-
-      {itens === null && (
-        <div className="md-esqueleto" aria-hidden="true">{[0, 1, 2].map((i) => <span key={i} />)}</div>
-      )}
-
-      {erro && (
-        <div className="md-erro" role="alert">
-          <strong>Não foi possível carregar sua fila.</strong>
-          <button type="button" onClick={() => { setErro(false); setItens(null); setTentativa((n) => n + 1); }}>
-            Tentar novamente
-          </button>
-        </div>
-      )}
-
-      {vazio && !erro && (
-        <p className="md-vazio">Nada pendente agora. Quando um cliente responder ou uma ação vencer, aparece aqui.</p>
-      )}
-
-      {itens !== null && blocos.filter((b) => b.total > 0).map((b) => (
-        <section key={b.chave} className={`md-bloco ${b.chave}`} aria-labelledby={`md-${b.chave}`}>
-          <header>
-            <h2 id={`md-${b.chave}`}>{b.titulo}</h2>
-            <span className="md-contador">{b.total}</span>
-          </header>
-          <p className="md-ajuda">{b.ajuda}</p>
-          <ul>{b.cards.map((c) => <CardLead key={c.id} c={c} onAbrir={onAbrirLead} />)}</ul>
-          {b.total > b.cards.length && (
-            <button type="button" className="md-ver-todos" onClick={() => onIr("/crm")}>
-              Ver todos ({b.total})
-            </button>
-          )}
-        </section>
-      ))}
-    </div>
-  );
+  return <TelaCorretor {...props} />;
 }
