@@ -38,8 +38,14 @@ test("alvos de toque >= 44px", () => {
   const alvos = [...bloco.matchAll(/min-height:\s*(\d+)px/g)].map((m) => Number(m[1]));
   assert.ok(alvos.length >= 3, `esperado >=3 alvos com min-height; achei ${alvos.length}`);
   for (const v of alvos) assert.ok(v >= 44, `alvo de toque com ${v}px viola o minimo de 44px`);
-  const larguras = [...bloco.matchAll(/min-width:\s*(\d+)px/g)].map((m) => Number(m[1]));
-  for (const v of larguras) assert.ok(v >= 44, `alvo com min-width ${v}px viola o minimo de 44px`);
+  /* min-width so vale como alvo de toque em elemento INTERATIVO. Contador e
+     badge sao <span>/<i> decorativos: ninguem toca neles, e exigir 44px ali
+     deformaria o card. A regra continua valendo onde importa. */
+  const regras = [...bloco.matchAll(/([^{}]+)\{([^}]*min-width:\s*(\d+)px[^}]*)\}/g)];
+  for (const [, seletor, , px] of regras) {
+    const interativo = /button|(^|[\s,>])a[\s.,:{]|input|\[role="button"\]/.test(seletor);
+    if (interativo) assert.ok(Number(px) >= 44, `alvo interativo "${seletor.trim()}" tem min-width ${px}px`);
+  }
 });
 
 test("barra inferior e fixa e ocupa a largura toda", () => {
