@@ -70,6 +70,9 @@ export function CrmNovaEraLiveWorkspace({ accessToken, profile }: { accessToken:
   const [aba, setAba] = useState<Aba>("operacao");
   const ehAdmin = ["admin", "executivo"].includes(profile.role);
   const [drillCorretor, setDrillCorretor] = useState<number | null>(null);
+  /* Celular: uma etapa por vez. No desktop este estado nao tem efeito — o CSS
+     acima de 900px volta a exibir as quatro colunas lado a lado. */
+  const [etapaMobile, setEtapaMobile] = useState<ColunaChave>("novo");
   const [selId, setSelId] = useState<string | null>(null);
   const [detalhe, setDetalhe] = useState<LeadNova | null>(null);
   const [detalheLeadId, setDetalheLeadId] = useState<number | null>(null);
@@ -180,9 +183,24 @@ export function CrmNovaEraLiveWorkspace({ accessToken, profile }: { accessToken:
               </div>
             )}
             {vista === "quadro" && (
-              <div className="nova-crm-board">
+              <nav className="nova-crm-etapas" aria-label="Etapa do quadro">
                 {COLUNAS.map((c) => (
-                  <section key={c.chave} className="nova-crm-col">
+                  <button
+                    key={c.chave}
+                    type="button"
+                    className={c.chave === etapaMobile ? "on" : ""}
+                    aria-pressed={c.chave === etapaMobile}
+                    onClick={() => setEtapaMobile(c.chave)}
+                  >
+                    {c.titulo} <b>{porColuna[c.chave].length}</b>
+                  </button>
+                ))}
+              </nav>
+            )}
+            {vista === "quadro" && (
+              <div className="nova-crm-board" data-etapa-mobile={etapaMobile}>
+                {COLUNAS.map((c) => (
+                  <section key={c.chave} className="nova-crm-col" data-coluna={c.chave}>
                     <header className="nova-crm-col-head">
                       <b>{c.titulo}</b> <span className="nova-crm-count">{porColuna[c.chave].length}</span>
                       <small>{c.descricao}</small>

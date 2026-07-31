@@ -89,6 +89,15 @@ export function LegacyModuleWorkspace({ moduleName, accessToken, session }: { mo
 
   return (
     <div className="legacy-module-workspace">
+      {/* FASE 9: este modulo ainda e servido pela versao original em iframe, que
+          nao foi adaptada para o celular. Em vez de esconder o modulo (o usuario
+          tem permissao para ele) ou fingir que esta adaptado, dizemos a verdade e
+          oferecemos a versao completa. Some acima de 900px. */}
+      <div className="legacy-aviso" role="note">
+        <strong>{moduleName} ainda usa a versão completa do sistema.</strong>
+        <p>Esta tela não foi adaptada para o celular nesta atualização. Ela funciona, mas fica mais confortável em tela maior.</p>
+        <a className="legacy-aviso-link" href="/original" target="_blank" rel="noopener noreferrer">Abrir versão completa</a>
+      </div>
       {!opened && <div className="legacy-module-loading"><span />Restaurando {moduleName} exatamente do HTML original…</div>}
       <iframe
         ref={iframeRef}

@@ -13,6 +13,8 @@ const eslintConfig = defineConfig([
     "build/**",
     "public/legacy-assets/**",
     "next-env.d.ts",
+    // Bundle gerado pelo harness de teste do shell — nao e codigo-fonte.
+    "tests/shell/.build/**",
   ]),
 ]);
 

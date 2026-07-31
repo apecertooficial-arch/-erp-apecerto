@@ -1,0 +1,62 @@
+name: Frontend — validação
+
+# Workflow SEPARADO. Não altera crm-nova-era.yml (harness SQL), que continua
+# rodando como sempre.
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: frontend-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validar:
+    name: Testes, lint, typecheck e build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      # 22.18+ e obrigatorio, nao preferencia: os testes importam modulos .ts
+      # diretamente, e o type stripping do Node so passou a ser ligado por
+      # padrao no 22.18. Em 22.13 o import morre com ERR_UNKNOWN_FILE_EXTENSION.
+      # Versao fixa = a mesma em que a branch foi validada.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22.22.3"
+          cache: pnpm
+
+      - name: Instalar dependências
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      # Testes puros: sem rede, sem banco, sem Supabase.
+      - name: Testes do frontend
+        run: pnpm run test:frontend
+
+      # O repositório já tinha erros de tipo antes desta validação existir.
+      # Reprovar tudo travaria todo PR; então comparamos com a base do PR e
+      # falhamos apenas se a branch INTRODUZIR erro novo.
+      - name: Typecheck — apenas regressões novas
+        run: node scripts/ci-typecheck-delta.mjs
+
+      - name: Lint — apenas arquivos alterados no PR
+        run: node scripts/ci-lint-delta.mjs
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+
+      - name: Build
+        run: ./node_modules/.bin/vinext build
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://exemplo.supabase.co
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_ci_placeholder

@@ -67,7 +67,10 @@ self.addEventListener("fetch", (evento) => {
 self.addEventListener("message", (evento) => {
   if (evento.data === "ATUALIZAR_AGORA") self.skipWaiting();
   if (evento.data === "LIMPAR_TUDO") {
-    // Chamado no logout: remove qualquer resquicio do usuario anterior.
-    caches.keys().then((nomes) => Promise.all(nomes.map((n) => caches.delete(n))));
+    // Logout: remove resquicio do usuario anterior, mas SO dos caches deste app.
+    // Apagar caches.keys() inteiro atingiria qualquer cache da origem.
+    caches.keys().then((nomes) =>
+      Promise.all(nomes.filter((n) => n.includes("apecerto")).map((n) => caches.delete(n))),
+    );
   }
 });
