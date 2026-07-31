@@ -76,7 +76,26 @@ export function RegistroPwa() {
   );
 }
 
-/** Chamado no logout: apaga caches e estado local do usuario anterior. */
+/* Prefixos que pertencem ao ApeCerto. Tudo fora desta lista fica intacto.
+ *
+ * A versao anterior apagava TODOS os caches e TODAS as chaves de localStorage
+ * menos "theme". Mesmo com o storage sendo escopado por origem, isso e amplo
+ * demais: qualquer chave gravada por outra parte do dominio sumia no logout.
+ * Agora a limpeza e nominal.
+ *
+ * apecerto-  -> chaves do proprio ERP (apecerto-notif-read, apecerto-lead-tab-order,
+ *               apecerto-alert-dismissed, apecerto-alert-muted-until)
+ * sb-        -> token de sessao do supabase-js (sb-<ref>-auth-token)
+ */
+const PREFIXOS_APECERTO: readonly string[] = ["apecerto-", "sb-"];
+const PREFIXOS_SESSAO: readonly string[] = ["apecerto-"];
+
+const pertenceAoApp = (chave: string, prefixos: readonly string[]) => prefixos.some((p) => chave.startsWith(p));
+
+/** Nome de cache criado por este app (ver public/sw.js: apecerto-v1, estatico-apecerto-v1). */
+const cacheDoApp = (nome: string) => nome.includes("apecerto");
+
+/** Chamado no logout: apaga caches e estado local DO APECERTO. Nada mais. */
 export async function limparDadosLocais() {
   try {
     if ("serviceWorker" in navigator) {
@@ -85,14 +104,14 @@ export async function limparDadosLocais() {
     }
     if ("caches" in window) {
       const nomes = await caches.keys();
-      await Promise.all(nomes.map((n) => caches.delete(n)));
+      await Promise.all(nomes.filter(cacheDoApp).map((n) => caches.delete(n)));
     }
-    // Preserva apenas o que nao identifica ninguem.
-    const preservar = new Set(["theme"]);
     for (const chave of Object.keys(localStorage)) {
-      if (!preservar.has(chave)) localStorage.removeItem(chave);
+      if (pertenceAoApp(chave, PREFIXOS_APECERTO)) localStorage.removeItem(chave);
     }
-    sessionStorage.clear();
+    for (const chave of Object.keys(sessionStorage)) {
+      if (pertenceAoApp(chave, PREFIXOS_SESSAO)) sessionStorage.removeItem(chave);
+    }
   } catch {
     // Melhor esforco: falha aqui nao pode impedir o logout.
   }
