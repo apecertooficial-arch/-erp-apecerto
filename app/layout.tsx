@@ -4,9 +4,10 @@ import "./styles/app-mobile.css";
 /* POR ÚLTIMO, sempre. Esta folha remapeia --orange, --ink, --line e --muted
    para os tokens da marca; carregada antes, o CSS antigo a sobrescreveria. */
 import "./styles/apecerto-identidade.css";
-/* Depois da identidade: usa os tokens dela e desenha a tela do corretor no
-   layout do protótipo. Tudo dentro de max-width — desktop não é tocado. */
+/* Depois da identidade: usam os tokens dela. Tudo dentro de max-width — o
+   desktop não é tocado por nenhuma das duas. */
 import "./styles/tela-corretor.css";
+import "./styles/telas-prototipo.css";
 import { RegistroPwa } from "./components/RegistroPwa";
 
 export const metadata: Metadata = {
