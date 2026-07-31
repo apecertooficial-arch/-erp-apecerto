@@ -226,6 +226,7 @@ export function Crm3Workspace({ accessToken, profile }: { accessToken: string; p
         fotoUrl: e.fotoUrl,
         orientacaoSara: saraCache[e.lead.id] ?? null,
         analise: analises[Number(e.lead.id)] ?? null,
+        maxTentativas: e.maxTentativas,
         sla: slaDoLead(
           {
             momento: e.lead.coluna,
