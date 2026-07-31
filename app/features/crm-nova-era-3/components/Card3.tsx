@@ -3,8 +3,8 @@
  * CARD 3.0 — o cartão do funil.
  *
  * Mostra, nesta ordem: avatar, nome, corretor, origem, interesse, temperatura,
- * última interação, tempo, mensagem pendente, próxima ação, SLA e a orientação
- * curta da Sara.
+ * última interação, tempo, mensagem pendente, próxima ação, SLA, cadência e a
+ * orientação curta da Sara.
  *
  * Ações: UM botão principal e um menu "...". Nada de fileira de botões
  * competindo pela atenção de quem atende.
@@ -59,7 +59,7 @@ export type DadosCard = {
   interesse: string | null;
   fotoUrl: string | null;
   sla: SaidaSla;
-  /** Orientação da Sara já carregada nesta sessão. null = ainda não analisou. */
+  /** Orientação da Sara já carregada neste aparelho. null = ainda não analisou. */
   orientacaoSara: string | null;
 };
 
@@ -140,6 +140,18 @@ export function Card3({
 
       <div className="ncrm3-card-rodape">
         <span>Última interação: {tempoDesde(lead.ultimaInteracaoEm)}</span>
+        {/* Cadência: só enquanto o cliente NÃO respondeu — depois vira ação
+            comercial e as bolinhas mentiriam. Classes nova-crm-dot vêm do CSS
+            do Gate, que envolve toda a 3.0. Regressão da entrega anterior. */}
+        {!lead.respondeu && (
+          <span className="nova-crm-dots" title={`Tentativa ${lead.tentativas.length} de 4`}
+            aria-label={`Cadência: ${lead.tentativas.length} de 4 tentativas`}>
+            {[0, 1, 2, 3].map((i) => {
+              const t = lead.tentativas[i];
+              return <i key={i} className={`nova-crm-dot ${t ? `r-${t.resultado}` : "pend"}`} />;
+            })}
+          </span>
+        )}
       </div>
 
       <div className="ncrm3-card-acoes" onClick={(e) => e.stopPropagation()}>
