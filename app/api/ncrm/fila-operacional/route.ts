@@ -115,6 +115,11 @@ export async function GET(request: Request) {
       telefone_normalizado: normalizarTelefone(lead?.telefone),
       interesse_resumo: neg?.empreendimento_id ? (emps.get(String(neg.empreendimento_id))?.nome ?? null) : null,
       motivo_prioridade: i.motivo,
+      /* Campos de agrupamento do Meu Dia. Aditivos ao contrato: o front decide
+         o bloco com a MESMA regra do banco, sem recalcular prioridade. */
+      prioridade: i.prioridade,
+      respondeu: !!i.respondeu,
+      etapa: i.etapa,
       tempo_espera: Math.round(Number(i.espera_min) || 0),
       sara_orientacao_curta: orientacaoCurta(s?.proxima_acao_sugerida ?? s?.justificativa),
       proxima_acao_tipo: est?.proxima_acao_tipo ?? null,
