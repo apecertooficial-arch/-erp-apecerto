@@ -36,6 +36,15 @@ export function ErpShell({ children }: { children: ReactNode }) {
   const [perfilAberto, setPerfilAberto] = useState(false);
 
   const moduloAtual = moduloDoPath(pathname) ?? "Início";
+  const primeiroNome = (profile?.name ?? "").trim().split(/\s+/)[0] || "corretor";
+  const inicial = (profile?.name ?? "C").trim().slice(0, 1).toUpperCase();
+  const dataDeHoje = new Intl.DateTimeFormat("pt-BR", { weekday: "long", day: "numeric", month: "long" })
+    .format(new Date()).replace("-feira", "");
+  /* Badge real: so o que os modulos publicam. Zero significa zero -- nada de
+     numero decorativo. O publisher de Notificacoes chega junto com a rodada
+     daquele modulo; ate la o sino aparece limpo, que e a verdade. */
+  const naoLidas = badges["Notificações"] ?? 0;
+  const rotuloSino = naoLidas > 0 ? `Notificações: ${naoLidas} não lidas` : "Notificações";
   const { barra: itensBarra, mais: noMais } = itensDaNavegacao({ role, permissoes, carregado: perfilCarregado, isManager });
 
   // Trocar de rota volta o scroll pro topo. Sem setState aqui: a folha "Mais"
@@ -64,8 +73,31 @@ export function ErpShell({ children }: { children: ReactNode }) {
       perfilCarregado={perfilCarregado}
       badges={badges as Partial<Record<ModuleName, number>>}
     >
+      {/* Cabecalho unico do celular. No Inicio ele vira a saudacao; nos demais
+          modulos, o nome do modulo. Isso evita o titulo aparecer duas vezes --
+          uma na barra e outra dentro do conteudo. */}
       <header className="app-mobile-top">
-        <strong>{moduloAtual}</strong>
+        <div className="amt-esq">
+          {moduloAtual === "Início" ? (
+            <>
+              <strong>Olá, {primeiroNome}</strong>
+              <small>{dataDeHoje}</small>
+            </>
+          ) : (
+            <strong>{moduloAtual}</strong>
+          )}
+        </div>
+        <div className="amt-dir">
+          <Link href={pathDoModulo("Notificações")} className="amt-sino" aria-label={rotuloSino}>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10 21h4" />
+            </svg>
+            {naoLidas > 0 && <b aria-hidden="true">{naoLidas > 99 ? "99+" : naoLidas}</b>}
+          </Link>
+          <button type="button" className="amt-perfil" onClick={() => setPerfilAberto(true)} aria-label="Abrir meu perfil">
+            {inicial}
+          </button>
+        </div>
       </header>
 
       <div className="app-mobile-scroll">{children}</div>
@@ -80,6 +112,7 @@ export function ErpShell({ children }: { children: ReactNode }) {
           >
             <IconeBarra modulo={m} />
             <span>{rotasModulo[m].rotuloCurto ?? m}</span>
+            {(badges[m] ?? 0) > 0 && <i className="abn-badge" aria-hidden="true">{(badges[m] ?? 0) > 99 ? "99+" : badges[m]}</i>}
           </Link>
         ))}
         <button type="button" onClick={() => setMaisAberto((v) => !v)} aria-expanded={maisAberto} className={maisAberto ? "active" : ""}>

@@ -17,6 +17,7 @@ export default function Pagina() {
           accessToken={t}
           sessionName={profile?.name ?? ""}
           onNavigate={(nome) => { if (isModuleName(nome)) router.push(pathDoModulo(nome)); }}
+          onIr={(destino) => router.push(destino)}
         />
       )}
     </GuardaModulo>
