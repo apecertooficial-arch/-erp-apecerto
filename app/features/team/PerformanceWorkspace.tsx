@@ -175,26 +175,56 @@ export function PerformanceWorkspace({ accessToken, sessionRole = "corretor" }: 
   const [semResp, setSemResp] = useState(0);
   const [sel, setSel] = useState<number | "equipe">("equipe");
   const [modo, setModo] = useState<"individual" | "comparar">("comparar");
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  /* Nenhum setState sincrono dentro do efeito -- isso dispara render em cascata
+     (react-hooks/set-state-in-effect). Em vez de MARCAR "carregando", guardamos
+     a qual busca o resultado pertence e DERIVAMOS o resto: se o resultado na
+     mao nao e o da busca atual, e porque ainda esta carregando. */
+  const [tentativa, setTentativa] = useState(0);
+  const chaveAtual = `${periodo}:${tentativa}`;
+  const [resultado, setResultado] = useState<{ chave: string; ok: boolean } | null>(null);
 
   useEffect(() => {
-    if (!soAdmin) { setLoading(false); return; }
+    // Nao-admin nem chega na tela de dados: ha um return antecipado abaixo.
+    if (!soAdmin) return;
     let alive = true;
-    setLoading(true);
-    setError("");
-    fetch(`/api/performance?periodo=${periodo}`, { headers: { Authorization: `Bearer ${accessToken}` } })
+    const ctrl = new AbortController();
+    const chave = `${periodo}:${tentativa}`;
+
+    fetch(`/api/performance?periodo=${periodo}`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+      signal: ctrl.signal,
+    })
       .then((r) => r.json() as Promise<ApiResp>)
       .then((json) => {
         if (!alive) return;
-        if (json.error) { setError(json.error); return; }
+        if (json.error) {
+          /* O backend devolve coisas como "canceling statement due to statement
+             timeout". Isso e diagnostico, nao recado para quem usa: fica no
+             console. E NAO limpamos corretores -- se ja havia numero na tela,
+             ele continua la, com o aviso por cima dizendo que nao atualizou.
+             Sumir com o dado bom por causa de uma atualizacao que falhou e pior
+             do que mostrar dado de um minuto atras, desde que fique dito. */
+          console.error("[performance] /api/performance falhou:", json.error);
+          setResultado({ chave, ok: false });
+          return;
+        }
         setCorretores(json.corretores ?? []);
         setSemResp(json.semResponsavel ?? 0);
+        setResultado({ chave, ok: true });
       })
-      .catch((e) => { if (alive) setError(e instanceof Error ? e.message : "Erro ao carregar."); })
-      .finally(() => { if (alive) setLoading(false); });
-    return () => { alive = false; };
-  }, [accessToken, periodo]);
+      .catch((e) => {
+        if (!alive || ctrl.signal.aborted) return;
+        console.error("[performance] /api/performance falhou:", e);
+        setResultado({ chave, ok: false });
+      });
+
+    return () => { alive = false; ctrl.abort(); };
+  }, [accessToken, periodo, soAdmin, tentativa]);
+
+  const tentarDeNovo = () => setTentativa((n) => n + 1);
+  const loading = resultado?.chave !== chaveAtual;
+  const falhou = resultado?.chave === chaveAtual && !resultado.ok;
+  const temDadoAnterior = corretores.length > 0;
 
   const equipe = useMemo(() => {
     const vgv = corretores.reduce((a, c) => a + num(c.vgv), 0);
@@ -262,11 +292,20 @@ export function PerformanceWorkspace({ accessToken, sessionRole = "corretor" }: 
         </div>
       </header>
 
+      {/* Falha COM dado anterior: mostra o aviso e mantem os numeros embaixo.
+          Falha SEM dado: so o aviso -- nada de tela vazia fingindo sucesso. */}
+      {falhou && (
+        <div className="pn-msg erro" role="alert">
+          <strong>Não foi possível carregar a performance agora.</strong>
+          {temDadoAnterior && <span> Os números abaixo são da última atualização que deu certo.</span>}
+          <button type="button" className="pn-retry" onClick={tentarDeNovo}>Tentar novamente</button>
+        </div>
+      )}
+
       {loading ? (
         <div className="pn-msg">Carregando performance…</div>
-      ) : error ? (
-        <div className="pn-msg erro">{error}</div>
-      ) : corretores.length === 0 ? (
+      ) : falhou && !temDadoAnterior ? null
+        : corretores.length === 0 ? (
         <div className="pn-msg">Nenhum corretor no seu escopo de visão.</div>
       ) : modo === "comparar" ? (
         <Comparativo corretores={corretores} periodo={periodo} onAbrir={(id) => { setSel(id); setModo("individual"); }} />
@@ -462,6 +501,8 @@ const CSS = `
 .pn-periodo{display:inline-flex;background:#f3f4f6;border-radius:10px;padding:3px}
 .pn-periodo button{border:0;background:transparent;padding:6px 14px;border-radius:8px;font-size:13px;color:#6b7280;cursor:pointer}
 .pn-periodo button.on{background:#f97316;color:#fff;font-weight:600}
+.pn-retry{display:inline-flex;align-items:center;min-height:44px;margin-left:12px;padding:0 16px;border:0;border-radius:10px;background:var(--orange,#ff6500);color:#fff;font:600 14px/1 inherit;cursor:pointer}
+.pn-retry:focus-visible{outline:2px solid #1d1d1f;outline-offset:2px}
 .pn-msg{padding:40px;text-align:center;color:#6b7280}
 .pn-msg.erro{color:#dc2626}
 .pn-score-row{display:grid;grid-template-columns:280px 1fr;gap:16px;margin-bottom:18px}
