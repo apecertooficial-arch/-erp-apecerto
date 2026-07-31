@@ -1,0 +1,183 @@
+/* Folha "Mais" — desenho do protótipo (print 13).
+ *
+ * Substitui a grade de dois textos por lista agrupada: rótulo em versalete,
+ * item em card com ícone laranja em quadrado branco e chevron à direita.
+ *
+ * REGRA DESTE ARQUIVO, igual à de app-mobile.css: nenhuma regra fora de
+ * @media (max-width: 900px). O desktop tem sidebar e não tem folha nenhuma.
+ *
+ * ORDEM DE CARGA: entra depois de app-mobile.css e de telas-prototipo.css.
+ * Precisa disso — `.app-mais-folha header` ganha borda inferior em
+ * app-mobile.css e o print não tem borda ali.
+ *
+ * As classes são novas de propósito (`app-mais-grupo`, `app-mais-item`). As
+ * antigas (`.app-mais-grid > a`) recebem override de raio em
+ * telas-prototipo.css; herdar o nome seria herdar a briga de cascata.
+ */
+
+@media (max-width: 900px) {
+  /* --- fundo --- */
+  .app-mais-overlay {
+    /* Mesma tinta do protótipo: --neutral-800 a 42%. Escuro o bastante para
+       a folha branca destacar, claro o bastante para o corretor reconhecer a
+       fila atrás e saber que não trocou de tela. */
+    background: rgba(31, 28, 26, .42);
+  }
+
+  /* --- folha --- */
+  .app-mais-folha {
+    /* O canto de 24px (--radius-xl) já vem de apecerto-identidade.css. */
+    padding: 10px 20px calc(30px + env(safe-area-inset-bottom, 0px));
+    animation: folhaMaisSobe var(--dur-base, 200ms) var(--ease-out, cubic-bezier(.2, .8, .2, 1));
+    box-shadow: var(--shadow-lg);
+  }
+
+  /* Pegador. Decorativo, mas é o que diz "isto se arrasta para baixo" antes
+     de o corretor procurar o ×. */
+  .app-mais-folha::before {
+    content: "";
+    display: block;
+    width: 44px;
+    height: 4px;
+    margin: 6px auto 12px;
+    border-radius: var(--radius-pill);
+    background: var(--neutral-200);
+  }
+
+  /* --- título --- */
+  .app-mais-folha header {
+    /* Sticky continua: a folha rola e o × tem que permanecer alcançável.
+       A borda sai — o print separa por espaço, não por linha. */
+    border-bottom: 0;
+    padding: 0;
+    margin-bottom: 14px;
+  }
+  .app-mais-folha header strong {
+    font-family: var(--font-display);
+    font-size: 19px;
+    font-weight: var(--weight-bold);
+    letter-spacing: var(--tracking-snug);
+    color: var(--fg-1);
+  }
+  /* O círculo do print tem 36px, mas o alvo de toque não pode ter menos de
+     44px. O botão fica com 44 e o círculo é desenhado por trás, em 36. */
+  .app-mais-folha header button {
+    position: relative;
+    min-width: 44px;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: -4px;
+    font-size: 0;
+    color: var(--neutral-500);
+  }
+  .app-mais-folha header button::before {
+    content: "";
+    position: absolute;
+    width: 36px;
+    height: 36px;
+    border-radius: var(--radius-pill);
+    background: var(--neutral-100);
+  }
+  .app-mais-folha header button::after {
+    content: "×";
+    position: relative;
+    font-size: 22px;
+    line-height: 1;
+    font-weight: var(--weight-medium);
+  }
+
+  /* --- grupo --- */
+  .app-mais-grupo { margin-bottom: 18px; }
+  .app-mais-grupo:last-of-type { margin-bottom: 0; }
+
+  .app-mais-grupo > h2 {
+    margin: 0 0 8px;
+    font-family: var(--font-body);
+    font-size: 11px;
+    font-weight: var(--weight-bold);
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--neutral-400);
+  }
+
+  .app-mais-grupo > div {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  /* --- item --- */
+  .app-mais-item {
+    /* 13 + 34 + 13 = 60px de altura: bem acima dos 44px mínimos. */
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    padding: 13px 14px;
+    border: 0;
+    border-radius: 14px;
+    background: var(--neutral-50);
+    font-family: var(--font-body);
+    text-align: left;
+    text-decoration: none;
+    cursor: pointer;
+  }
+  .app-mais-item:active { background: var(--neutral-100); }
+  .app-mais-item:focus-visible {
+    outline: 2px solid var(--ape-orange);
+    outline-offset: 2px;
+  }
+
+  /* Quadrado branco atrás do ícone. É o que separa o item do fundo bege sem
+     precisar de borda. */
+  .app-mais-item > .ami-icone {
+    flex: none;
+    width: 34px;
+    height: 34px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 11px;
+    background: var(--bg-surface);
+    color: var(--ape-orange);
+  }
+
+  .app-mais-item > span:not(.ami-icone) {
+    flex: 1;
+    min-width: 0;
+    font-size: 15px;
+    font-weight: var(--weight-semibold);
+    color: var(--fg-1);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .app-mais-item > svg:last-child {
+    flex: none;
+    color: var(--neutral-300);
+  }
+
+  /* Sair é a única ação destrutiva da folha. Não vira botão vermelho — o
+     print não pede alarme, e alarme em item de menu vira ruído. Só o ícone
+     muda de cor, o suficiente para o dedo não errar de linha. */
+  .app-mais-item.sair > .ami-icone { color: var(--danger); }
+
+  /* O convite de instalação não está no print. Continua na folha porque é o
+     único lugar onde ele não interrompe atendimento, mas foi para o fim:
+     antes dos grupos, empurrava o menu inteiro para baixo da dobra. */
+  .app-mais-folha .convite-instalar { margin: 18px 0 0; }
+}
+
+@keyframes folhaMaisSobe {
+  from { transform: translateY(100%); }
+  to { transform: none; }
+}
+
+/* Quem pediu menos movimento no sistema recebe a folha já posicionada. */
+@media (prefers-reduced-motion: reduce) {
+  .app-mais-folha { animation: none; }
+}
