@@ -14,35 +14,68 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   montarBlocos, paraAtender, saudacao, ROTULO_ACAO, type ItemFila, type Card,
 } from "./meuDia.logica";
-import { whatsappAbertoEm } from "../crm-nova-era/lib/whatsappAberto";
+import { marcarWhatsappAberto, whatsappAbertoEm, limparWhatsappAberto } from "../crm-nova-era/lib/whatsappAberto";
 
 const ATUALIZA_MS = 60_000;
 
 function CardLead({ c, onAbrir }: { c: Card; onAbrir: (id: number) => void }) {
-  /* Se o corretor abriu o WhatsApp deste cliente e o outbound ainda nao voltou
-     pelo D-API, dizemos exatamente isso. Nunca "contato realizado": o toque no
-     botao nao prova que ele falou com ninguem. */
-  const abertoEm = whatsappAbertoEm(c.negocioId);
+  /* "Aguardando sincronizacao" tem duas fontes e nenhuma delas e envio:
+     - servidor: ncrm_whatsapp_intencao ainda sem confirmacao da D-API;
+     - local: o corretor abriu o WhatsApp NESTE aparelho (sessionStorage).
+     Quando o outbound real chega, as duas se apagam. Nunca "contato realizado":
+     o toque nao prova que ele falou com ninguem. */
+  const abriuLocal = whatsappAbertoEm(c.negocioId) != null;
+  if (c.outboundConfirmado && abriuLocal) limparWhatsappAberto(c.negocioId);
+  const aguardando = !c.outboundConfirmado && (c.aguardandoServidor || abriuLocal);
 
   return (
     <li className={`md-card${c.vencida ? " vencida" : ""}`}>
-      <button type="button" onClick={() => onAbrir(c.negocioId)}>
+      {/* O corpo abre a ficha; a acao principal vive FORA dele porque <a> dentro
+          de <button> e HTML invalido e quebra leitor de tela. */}
+      <button type="button" className="md-card-corpo" onClick={() => onAbrir(c.negocioId)}>
         <span className="md-linha1">
           <b className="md-nome">{c.nome}</b>
           <span className="md-espera">{c.espera}</span>
         </span>
         <span className="md-motivo">{c.motivo}</span>
-        <span className="md-meta">
-          <span className="md-etapa">{c.etapa}</span>
-          {c.proximaAcao && <span className="md-proxima">{c.proximaAcao}</span>}
-        </span>
-        {abertoEm && (
-          <span className="md-aguardando">
-            WhatsApp aberto. Aguardando a mensagem aparecer no histórico.
-          </span>
-        )}
-        <span className="md-acao">{ROTULO_ACAO[c.acao]}</span>
+        {c.interesse && <span className="md-interesse">{c.interesse}</span>}
+        {c.orientacaoSara && <span className="md-sara">Sara: {c.orientacaoSara}</span>}
+        <span className="md-meta"><span className="md-etapa">{c.etapa}</span></span>
       </button>
+
+      {c.acao === "whatsapp" && c.telefone ? (
+        <>
+          {/* Link REAL para o WhatsApp oficial. Sem texto, sem API, sem popup:
+              quem envia e o corretor, do aparelho dele. O clique so registra a
+              intencao local -- nao muda etapa, nao confirma contato, nao inicia
+              SLA, nao conclui tarefa. */}
+          <a
+            className="md-acao"
+            href={`whatsapp://send?phone=${c.telefone}`}
+            data-e164={c.telefone}
+            onClick={() => marcarWhatsappAberto(c.negocioId)}
+          >
+            Chamar no WhatsApp
+          </a>
+          <a
+            className="md-wa-fallback"
+            href={`https://wa.me/${c.telefone}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={() => marcarWhatsappAberto(c.negocioId)}
+          >
+            Não abriu? Abrir pelo WhatsApp Web
+          </a>
+        </>
+      ) : (
+        <button type="button" className="md-acao" onClick={() => onAbrir(c.negocioId)}>
+          {ROTULO_ACAO[c.acao]}
+        </button>
+      )}
+
+      {aguardando && (
+        <span className="md-aguardando">WhatsApp aberto — aguardando sincronização.</span>
+      )}
     </li>
   );
 }
@@ -59,7 +92,7 @@ export function MeuDiaCorretor({ accessToken, nome, onAbrirLead, onIr }: {
   const [atualizadoEm, setAtualizadoEm] = useState<Date | null>(null);
 
   const carregar = useCallback(async (sinal: AbortSignal) => {
-    const r = await fetch("/api/ncrm/fila?filtro=agora", {
+    const r = await fetch("/api/ncrm/fila-operacional", {
       headers: { Authorization: `Bearer ${accessToken}` }, signal: sinal,
     });
     if (!r.ok) throw new Error(String(r.status));

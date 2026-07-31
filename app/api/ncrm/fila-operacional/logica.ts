@@ -8,6 +8,7 @@ export const POR_PAGINA = 20;
 
 export type ItemFila = {
   negocio_id: number;
+  respondeu?: boolean;
   lead_nome: string | null;
   etapa: string;
   motivo: string;
