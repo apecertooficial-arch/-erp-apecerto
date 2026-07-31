@@ -476,3 +476,57 @@
   .notif-esq-item > span:last-child { width: 60%; }
   @media (prefers-reduced-motion: reduce) { .notif-esq-item > span { animation: none; } }
 }
+
+/* =====================================================================
+   MEU DIA DO CORRETOR — a tela do app, nao o ERP encolhido
+   ===================================================================== */
+.md-wrap { display: none; }
+
+@media (max-width: 900px) {
+  .md-wrap { display: block; }
+
+  .md-topo { padding: 4px 0 14px; }
+  .md-ola { margin: 0; font-size: 13px; color: var(--muted); }
+  .md-chamada { margin: 2px 0 0; font-size: 20px; font-weight: 700; letter-spacing: -.01em; color: var(--ink); }
+  .md-atualizado { margin: 8px 0 0; font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 10px; }
+  .md-atualizado > button { min-height: 44px; padding: 0 12px; border: 0; background: transparent; color: #b94300; font-size: 13px; font-weight: 600; cursor: pointer; }
+
+  .md-bloco { margin-bottom: 20px; }
+  .md-bloco > header { display: flex; align-items: center; gap: 8px; }
+  .md-bloco h2 { margin: 0; font-size: 15px; font-weight: 700; }
+  .md-contador { min-width: 22px; padding: 1px 7px; border-radius: 999px; background: var(--orange-soft); color: #b94300; font-size: 12px; font-weight: 700; text-align: center; }
+  .md-ajuda { margin: 2px 0 10px; font-size: 12px; color: var(--muted); }
+  .md-bloco ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+
+  /* Uma coluna, card compacto, UMA acao. */
+  .md-card > button {
+    width: 100%; display: grid; gap: 4px; text-align: left; cursor: pointer;
+    padding: 14px; border: 1px solid var(--line); border-radius: 14px; background: #fff;
+  }
+  .md-card.vencida > button { border-left: 4px solid #dc2626; }
+  .md-linha1 { display: flex; align-items: baseline; gap: 8px; }
+  .md-nome { flex: 1; min-width: 0; font-size: 16px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .md-espera { flex: 0 0 auto; font-size: 12px; color: var(--muted); }
+  .md-motivo { font-size: 13px; color: #b94300; font-weight: 600; overflow-wrap: anywhere; }
+  .md-meta { display: flex; flex-wrap: wrap; gap: 6px; font-size: 12px; color: var(--muted); }
+  .md-etapa { padding: 1px 8px; border-radius: 999px; background: #f1ece8; }
+  .md-proxima { overflow-wrap: anywhere; }
+  .md-aguardando { margin-top: 4px; font-size: 12px; color: #7a4412; background: #fff6ef; border-radius: 8px; padding: 6px 8px; }
+  /* Alvo principal grande, alcancavel com o polegar. */
+  .md-acao {
+    margin-top: 8px; min-height: 48px; display: flex; align-items: center; justify-content: center;
+    border-radius: 12px; background: var(--orange); color: #fff; font-size: 15px; font-weight: 700;
+  }
+  .md-ver-todos { margin-top: 10px; width: 100%; min-height: 44px; border: 0; background: transparent; color: #b94300; font-size: 14px; font-weight: 600; cursor: pointer; }
+
+  .md-atalhos { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 4px 0 18px; }
+  .md-atalhos > button { min-height: 52px; border: 1px solid var(--line); border-radius: 12px; background: #fff; font-size: 13px; font-weight: 600; cursor: pointer; }
+
+  .md-esqueleto { display: grid; gap: 10px; }
+  .md-esqueleto > span { height: 104px; border-radius: 14px; background: linear-gradient(90deg,#f3f0ee,#e9e5e2,#f3f0ee); background-size: 200% 100%; animation: sd-brilho 1.2s ease-in-out infinite; }
+  @media (prefers-reduced-motion: reduce) { .md-esqueleto > span { animation: none; } }
+  .md-vazio { padding: 24px 4px; font-size: 14px; color: var(--muted); }
+  .md-erro { padding: 14px; border: 1px solid #f0c8a8; border-radius: 12px; background: #fff6ef; }
+  .md-erro strong { display: block; font-size: 14px; color: #7a4412; }
+  .md-erro button { margin-top: 10px; min-height: 44px; padding: 0 16px; border: 0; border-radius: 10px; background: var(--orange); color: #fff; font-weight: 600; cursor: pointer; }
+}
