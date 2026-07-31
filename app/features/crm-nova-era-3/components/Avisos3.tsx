@@ -65,18 +65,19 @@ export function Avisos3({ accessToken, onAbrir }: { accessToken: string; onAbrir
         if (itens.length === 0) return null;
         return (
           <section key={f.chave} className="ncrm3-secao">
-            <div className="ncrm3-secao-cab">
-              <h3>{f.titulo}</h3>
+            {/* Eyebrow laranja do protótipo 07: TÍTULO · contagem · ajuda. */}
+            <div className="ncrm3-eyebrow">
+              {f.titulo}
               <b>{itens.length}</b>
+              <small>{f.ajuda}</small>
             </div>
-            <p className="ncrm3-secao-ajuda">{f.ajuda}</p>
             {itens.slice(0, 30).map((i) => (
               <article key={i.negocio_id} className={`ncrm3-item ${(i.motivo || "").toLowerCase().includes("novo") ? "tom-roxo" : f.tom}`}>
                 <div className="ncrm3-item-corpo">
                   <div className="ncrm3-item-linha">
                     <strong>{i.lead_nome ?? `Atendimento ${i.negocio_id}`}</strong>
                     <span className="ncrm3-item-meta">{i.corretor_nome ?? "Sem corretor"}</span>
-                    <span className="ncrm3-item-motivo">{i.motivo}</span>
+                    <span className={`ncrm3-chip-motivo ${(i.motivo || "").toLowerCase().includes("novo") ? "m-roxo" : f.chave === "respondeu" ? "m-laranja" : "m-vermelho"}`}>{i.motivo}</span>
                     <span className="ncrm3-item-meta">espera {esperaHumana(i.espera_min)}</span>
                   </div>
                   <div className="ncrm3-item-acao">{i.proxima_acao_titulo ?? "Definir próxima ação"}</div>

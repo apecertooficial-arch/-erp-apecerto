@@ -13,7 +13,7 @@
  */
 import { useCallback, useEffect, useState } from "react";
 import { montarTimeline, type LeadNova } from "../../crm-nova-era/lib/rules";
-import { marcarWhatsappAberto } from "../../crm-nova-era/lib/whatsappAberto";
+import { marcarWhatsappAberto, whatsappAbertoEm } from "../../crm-nova-era/lib/whatsappAberto";
 import { frasedaSituacao, prepararChamada, TITULO_BLOCO } from "../lib/ficha3";
 import { rotuloCurtoSla } from "../lib/sla3";
 import type { SaidaSla } from "../../crm-nova-era/lib/slaPrimeiraAbordagem";
@@ -41,6 +41,16 @@ const AVANCADAS: ReadonlyArray<{ tipo: TipoForm; rotulo: string }> = Object.free
   { tipo: "nutricao", rotulo: "Enviar para nutrição" },
   { tipo: "descarte", rotulo: "Descartar" },
 ]);
+
+/** (11) 9 ****-2869 — como no protótipo. O botão Copiar copia o número real. */
+function mascararFone(exibicao: string): string {
+  const d = exibicao.replace(/\D/g, "");
+  if (d.length < 8) return exibicao;
+  const fim = d.slice(-4);
+  const ddd = d.length >= 10 ? d.slice(-11, -9) || d.slice(0, 2) : "";
+  const nono = d.length >= 11 ? `${d.slice(-9, -8)} ` : "";
+  return ddd ? `(${ddd}) ${nono}****-${fim}` : `****-${fim}`;
+}
 
 function dataLonga(iso: string | null | undefined): string {
   if (!iso) return "—";
@@ -131,6 +141,19 @@ export function Ficha3({
   const [saraCarregando, setSaraCarregando] = useState(false);
   const [aplicandoSara, setAplicandoSara] = useState(false);
   const [copiado, setCopiado] = useState(false);
+  /* WhatsApp honesto (prints 12-14): clicar só ABRE o app. O estado fica âmbar
+     "aguardando sincronização" e vira verde quando a integração oficial
+     identifica uma mensagem enviada DEPOIS do clique. */
+  const [waAbertoAgora, setWaAbertoAgora] = useState(false);
+  const waAbertoEm = whatsappAbertoEm(lead.id) ?? (waAbertoAgora ? new Date() : null);
+  const waConfirmadoEm = (() => {
+    if (!waAbertoEm) return null;
+    for (const t of lead.tentativas) {
+      const em = Date.parse(t.em);
+      if (Number.isFinite(em) && em > waAbertoEm.getTime()) return t.em;
+    }
+    return null;
+  })();
 
   const chamada = prepararChamada(lead.telefone);
   const checklistSara = normalizarSara(sara)?.checklist ?? null;
@@ -226,12 +249,12 @@ export function Ficha3({
         </div>
       </section>
 
-      {/* 3. Telefone */}
+      {/* 3. Telefone — mascarado como no protótipo; Copiar copia o número real */}
       <section className="ncrm3-bloco">
         <h3>{TITULO_BLOCO.telefone}</h3>
         {chamada.ok ? (
           <div className="ncrm3-fone">
-            <span>{chamada.exibicao}</span>
+            <span>{mascararFone(chamada.exibicao)}</span>
             <button
               type="button" className="ncrm3-secundario"
               onClick={() => {
@@ -250,26 +273,38 @@ export function Ficha3({
         )}
       </section>
 
-      {/* 4. Chamar no WhatsApp — intenção, nunca envio */}
+      {/* 4. Chamar no WhatsApp — intenção, nunca envio (3 estados do protótipo) */}
       <section className="ncrm3-bloco">
         <h3>{TITULO_BLOCO.chamar_whatsapp}</h3>
-        {chamada.ok && (
+        {chamada.ok && waConfirmadoEm && (
+          <div className="ncrm3-wa-confirmado" role="status">
+            ✓ Mensagem identificada no histórico
+            <small>{new Date(waConfirmadoEm).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })} · confirmado pela integração oficial</small>
+          </div>
+        )}
+        {chamada.ok && !waConfirmadoEm && waAbertoEm && (
+          <div className="ncrm3-wa-aguardando" role="status">
+            WhatsApp aberto — aguardando sincronização
+            <i aria-hidden="true" />
+          </div>
+        )}
+        {chamada.ok && !waConfirmadoEm && (
           <>
             <a
               className="ncrm3-whatsapp"
               href={chamada.app}
               data-e164={chamada.e164}
-              onClick={() => marcarWhatsappAberto(lead.id)}
+              onClick={() => { marcarWhatsappAberto(lead.id); setWaAbertoAgora(true); }}
             >
               <span aria-hidden="true">💬</span>
               {lead.ultimaInteracaoEm ? "Responder no WhatsApp" : "Chamar no WhatsApp"}
             </a>
-            <a className="ncrm3-secundario" href={chamada.fallback} target="_blank" rel="noopener noreferrer" onClick={() => marcarWhatsappAberto(lead.id)}>
+            <a className="ncrm3-secundario" href={chamada.fallback} target="_blank" rel="noopener noreferrer" onClick={() => { marcarWhatsappAberto(lead.id); setWaAbertoAgora(true); }}>
               Não abriu? Abrir pelo WhatsApp Web
             </a>
             <p className="ncrm3-nota">
-              A mensagem sai do WhatsApp do seu celular, escrita por você. O ERP não envia nada. Abrir aqui não
-              encerra o prazo nem muda o momento do cliente — isso acontece quando a mensagem enviada é confirmada.
+              A mensagem sai do WhatsApp do seu celular, escrita por você. O ERP não envia nada — o contato só
+              conta quando a mensagem enviada é confirmada.
             </p>
           </>
         )}
@@ -303,7 +338,7 @@ export function Ficha3({
 
       {/* 7. Histórico — a conversa real, como voltou pelo WhatsApp */}
       <section className="ncrm3-bloco">
-        <h3>{TITULO_BLOCO.historico}</h3>
+        <h3>{TITULO_BLOCO.historico} <span style={{ fontWeight: 500, letterSpacing: 0, textTransform: "none", opacity: .8 }}>· somente leitura</span></h3>
         <Conversa3 accessToken={accessToken} negocioId={Number(lead.id)} />
       </section>
 
