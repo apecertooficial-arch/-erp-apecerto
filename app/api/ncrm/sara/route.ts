@@ -28,19 +28,26 @@ function hashEstavel(s: string): string {
 }
 
 const OVERRIDE =
-  "Você é a Sara, co-piloto comercial imobiliário da Apecerto. Use as ferramentas consultar_lead e " +
-  "avaliar_conversa (mensagens reais, áudios transcritos e avaliações). Responda SOMENTE um JSON válido " +
-  "com as chaves: etapa_sugerida (novo|tentando_contato|em_atendimento|em_acompanhamento), " +
-  "temperatura (frio|morno|quente|negociando), intencao_detectada, proxima_acao (1 frase concreta), " +
-  "prazo_sugerido (ISO 8601), objecoes (array), risco_abandono (baixo|medio|alto), " +
-  "possibilidade_visita (baixa|media|alta), possibilidade_proposta (baixa|media|alta), justificativa, " +
-  "confianca (0..1), evidencias (array de trechos reais da conversa), " +
+  "Você é a Sara, gestora comercial sênior de imobiliária — o nível de leitura de quem já fechou " +
+  "centenas de vendas. O INPUT contém a DATA DE HOJE, os dados do atendimento, a CONVERSA REAL na " +
+  "íntegra e, quando houver, a ANÁLISE ANTERIOR — use a conversa como fonte primária; as ferramentas " +
+  "consultar_lead e avaliar_conversa são complementares. PERCEPÇÃO AGUÇADA: leia o que o cliente NÃO " +
+  "disse — sinais de compra (pergunta de preço, condição, prazo de entrega), urgência real vs " +
+  "curiosidade, objeção escondida atrás de 'vou pensar', esfriamento no tom e no tempo de resposta, " +
+  "quem decide de verdade. Diagnóstico direto, sem genérico: 'entender a necessidade' não é ação; " +
+  "'perguntar se a compra é para morar ou investir, porque ele citou aluguel' é. " +
+  "COMPONHA com a análise anterior: diga o que MUDOU desde ela e ajuste temperatura e confiança em vez " +
+  "de recomeçar do zero — a nota evolui, não reinicia. " +
+  "Responda SOMENTE um JSON válido com as chaves: etapa_sugerida (novo|tentando_contato|em_atendimento|em_acompanhamento), " +
+  "temperatura (frio|morno|quente|negociando), intencao_detectada, proxima_acao (1 frase concreta e específica), " +
+  "prazo_sugerido (ISO 8601, sempre posterior à data de HOJE do input), objecoes (array), risco_abandono (baixo|medio|alto), " +
+  "possibilidade_visita (baixa|media|alta), possibilidade_proposta (baixa|media|alta), " +
+  "justificativa (o diagnóstico em 1-2 frases, citando o sinal que o sustenta), " +
+  "confianca (0..1), evidencias (array de trechos REAIS da conversa), " +
   "objetivo_abordagem (1 frase), roteiro_ligacao (array de 3 a 5 passos curtos), " +
   "whatsapp_sugerido (mensagem curta e humana, sem pressão, <=300 chars), " +
   "perguntas_faltantes (array), cuidados (array de cuidados para não pressionar o cliente), " +
   "evidencia_suficiente (true/false — false quando a conversa não sustenta conclusões), " +
-  // Checklist de qualificação: a Sara devolve o que JÁ descobriu, campo a campo.
-  // É isto que permite ao corretor ver o que falta perguntar sem reler a conversa.
   "informacoes_descobertas (objeto com EXATAMENTE estas chaves: regiao, tipo_imovel, metragem, " +
   "dormitorios, vagas, faixa_valor, forma_pagamento, prazo_compra, motivo_compra, quem_decide, " +
   "disponibilidade_visita — cada uma com o valor dito PELO CLIENTE em poucas palavras, ou null " +
@@ -54,15 +61,8 @@ const OVERRIDE =
   "disponibilidade_visita, e só depois metragem, vagas, motivo_compra e quem_decide. " +
   "Se o cliente fez uma pergunta ainda sem resposta, responder a ele vem antes de qualificar. " +
   "NUNCA invente informação que não esteja na conversa; com pouca evidência, use evidencia_suficiente=false " +
-  "e limite-se ao que existe. " +
-  // A CONVERSA REAL vem no próprio input. Vimos em produção o agente responder
-  // 'sem interação recente' para lead com resposta de 1h atrás: as ferramentas
-  // nem sempre localizam o histórico pelo nome. O input passa a ser a fonte
-  // primária; as ferramentas viram complemento.
-  "O INPUT do usuário contém a DATA DE HOJE, os dados do atendimento e a CONVERSA REAL na íntegra — " +
-  "use-a como fonte primária; as ferramentas são complementares. prazo_sugerido DEVE ser posterior à " +
-  "data de hoje informada no input (nunca no passado). Responda SOMENTE o objeto JSON, sem markdown, " +
-  "sem cerca de código e sem texto antes ou depois. Você apenas sugere.";
+  "e limite-se ao que existe. Responda SOMENTE o objeto JSON, sem markdown, sem cerca de código e sem " +
+  "texto antes ou depois. Você apenas sugere.";
 
 function tokenDe(request: Request): string | null {
   const a = request.headers.get("authorization");
@@ -144,13 +144,29 @@ export async function GET(request: Request) {
     }
   }
 
+  /* Análise anterior: a Sara COMPÕE em vez de recomeçar (a nota evolui). */
+  let anteriorTxt = "";
+  {
+    const { data: ant } = await db
+      .from("ncrm_sara_analise")
+      .select("proxima_acao_sugerida,justificativa,prazo_sugerido,confianca,analisado_em")
+      .eq("negocio_id", nid).order("analisado_em", { ascending: false }).limit(1).maybeSingle();
+    const a = ant as { proxima_acao_sugerida?: string | null; justificativa?: string | null; prazo_sugerido?: string | null; confianca?: number | null; analisado_em?: string | null } | null;
+    if (a && (a.justificativa || a.proxima_acao_sugerida)) {
+      anteriorTxt =
+        `\nANÁLISE ANTERIOR DA SARA (${a.analisado_em ?? "sem data"}, confiança ${a.confianca ?? "—"}) — componha com ela, dizendo o que mudou:\n` +
+        `- Diagnóstico anterior: ${(a.justificativa ?? "—").slice(0, 300)}\n` +
+        `- Ação anterior: ${(a.proxima_acao_sugerida ?? "—").slice(0, 200)} (prazo ${a.prazo_sugerido ?? "—"})`;
+    }
+  }
+
   const input =
     `HOJE: ${new Date().toISOString()}\n` +
     `ATENDIMENTO: ${nome} (negócio ${nid}) · etapa atual: ${est.etapa ?? "novo"} · ` +
     `cliente respondeu: ${est.respondeu ? "sim" : "não"} · aguardando o corretor: ${est.resposta_pendente ? "sim" : "não"} · ` +
     `tentativas humanas: ${est.tentativas_feitas ?? 0} · última interação: ${est.ultima_interacao_em ?? "nunca"} · ` +
     `próxima ação registrada: ${est.proxima_acao_titulo ?? "nenhuma"} (${est.proxima_acao_em ?? "sem prazo"})\n` +
-    `CONVERSA REAL (ordem cronológica):\n${conversaTxt}`;
+    `CONVERSA REAL (ordem cronológica):\n${conversaTxt}` + anteriorTxt;
 
   void supabase.rpc("perf_log_sessao", { p_tipo: "ncrm_sara_pergunta" }).then(() => {}, () => {});
 
