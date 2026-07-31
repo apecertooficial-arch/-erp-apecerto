@@ -79,6 +79,43 @@ export function paraExibicao(row: EstadoRow3): LeadExibicao {
   };
 }
 
+/* ---------------- Análise persistida da Sara ---------------- */
+
+export type AnaliseSara = {
+  negocio_id: number;
+  proxima_acao_sugerida: string | null;
+  justificativa: string | null;
+  prazo_sugerido: string | null;
+  confianca: number | null;
+  etapa_sugerida: string | null;
+  analisado_em: string | null;
+};
+
+/** Normaliza o mapa devolvido pelo board. Chave string -> número. */
+export function analisesDoBoard(bruto: unknown): Record<number, AnaliseSara> {
+  const saida: Record<number, AnaliseSara> = {};
+  if (!bruto || typeof bruto !== "object") return saida;
+  for (const [k, v] of Object.entries(bruto as Record<string, unknown>)) {
+    const n = Number(k);
+    if (Number.isFinite(n) && v && typeof v === "object") saida[n] = v as AnaliseSara;
+  }
+  return saida;
+}
+
+/**
+ * A análise ficou para trás? Verdade quando não existe, ou quando o cliente
+ * interagiu DEPOIS dela. É este predicado que dispara a atualização automática
+ * — e só ele: analisar quem não mudou é queimar dinheiro.
+ */
+export function analiseDesatualizada(
+  analise: AnaliseSara | undefined,
+  ultimaInteracaoEm: string | null,
+): boolean {
+  if (!analise?.analisado_em) return true;
+  if (!ultimaInteracaoEm) return false;
+  return Date.parse(ultimaInteracaoEm) > Date.parse(analise.analisado_em);
+}
+
 export type ImovelBruto = { empreendimento_id: string; empreendimentos?: { id: string; nome: string | null; bairro: string | null; cidade: string | null } | null };
 
 export function imoveisDoLead(brutos: ImovelBruto[] | null | undefined) {

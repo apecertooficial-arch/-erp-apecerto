@@ -13,6 +13,7 @@ import { useState } from "react";
 import type { LeadNova } from "../../crm-nova-era/lib/rules";
 import { rotuloCurtoSla, tomDoSla } from "../lib/sla3";
 import type { SaidaSla } from "../../crm-nova-era/lib/slaPrimeiraAbordagem";
+import type { AnaliseSara } from "../lib/adapter3";
 
 export type AcaoMenu = { chave: string; rotulo: string };
 
@@ -61,6 +62,8 @@ export type DadosCard = {
   sla: SaidaSla;
   /** Orientação da Sara já carregada neste aparelho. null = ainda não analisou. */
   orientacaoSara: string | null;
+  /** Análise persistida no banco — vale para todos os aparelhos. */
+  analise?: AnaliseSara | null;
 };
 
 export function Card3({
@@ -135,7 +138,18 @@ export function Card3({
 
       <div className="ncrm3-card-sara">
         <span aria-hidden="true">✦</span>
-        <span>{dados.orientacaoSara ?? "Sara ainda não analisou este cliente — abra a ficha para pedir a orientação."}</span>
+        {dados.analise?.proxima_acao_sugerida ? (
+          <span>
+            {dados.analise.justificativa ? <>{dados.analise.justificativa}<br /></> : null}
+            <b>→ {dados.analise.proxima_acao_sugerida}</b>
+            {dados.analise.prazo_sugerido ? ` · até ${dataCurta(dados.analise.prazo_sugerido)}` : ""}
+            <em style={{ display: "block", fontStyle: "normal", opacity: .7 }}>
+              Sara analisou {tempoDesde(dados.analise.analisado_em)}
+            </em>
+          </span>
+        ) : (
+          <span>{dados.orientacaoSara ?? "Sara ainda não analisou este cliente — abra a ficha para pedir a orientação."}</span>
+        )}
       </div>
 
       <div className="ncrm3-card-rodape">

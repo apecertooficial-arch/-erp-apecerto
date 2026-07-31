@@ -4,7 +4,7 @@
  * - Usa o MESMO contrato do ia-router já em produção (app/api/agentes/copiloto-lead):
  *   POST {NEXT_PUBLIC_SUPABASE_URL}/functions/v1/ia-router com { agente_slug:"sara", input, override_prompt }.
  *   A Edge Function usa as ferramentas reais (consultar_lead / avaliar_conversa: mensagens,
- *   áudios transcritos, avaliações), com a chave server-side. NENHUMA chave de IA no frontend.
+ *   áudios transcritos e avaliações), com a chave server-side. NENHUMA chave de IA no frontend.
  * - Resposta validada/normalizada por schema explícito (saraSchema). Se não for JSON válido
  *   no formato esperado => FALHA CONTROLADA (nunca devolve string/JSON cru como sugestão).
  * - A Sara NÃO altera etapa, NÃO envia WhatsApp, NÃO cria visita/proposta.
@@ -165,7 +165,25 @@ export async function GET(request: Request) {
     const ia = await chamarIaRouter(token, input);
     if (!ia.ok) { ultimaFalha = ia.erro; continue; }
     const norm = normalizarSugestaoSara(ia.raw);
-    if (norm.ok) return Response.json({ ok: true, negocio: nid, sugestao: norm.sugestao, tentativa: i + 1 });
+    if (norm.ok) {
+      /* Persiste a análise: é isto que faz o card de TODO aparelho mostrar o
+         diagnóstico, a próxima ação e o prazo — sem depender do navegador de
+         quem pediu. Hash do input = mesma conversa não duplica linha. */
+      const sug = norm.sugestao;
+      const { data: grava } = await db.rpc("ncrm_sara_analise_usuario", {
+        p_negocio_id: nid,
+        p_etapa_atual: est.etapa ?? "novo",
+        p_etapa_sugerida: sug.etapa_sugerida,
+        p_proxima_acao: sug.proxima_acao,
+        p_prazo: sug.prazo_sugerido,
+        p_justificativa: sug.justificativa,
+        p_evidencias: JSON.parse(JSON.stringify(sug.evidencias ?? [])),
+        p_confianca: sug.confianca,
+        p_hash: `ui:${hashEstavel(input)}`,
+      });
+      const gr = (grava ?? {}) as { ok?: boolean };
+      return Response.json({ ok: true, negocio: nid, sugestao: sug, tentativa: i + 1, persistida: gr.ok === true });
+    }
     ultimaFalha = norm.erro;
   }
   const ehFormato = ultimaFalha.startsWith("resposta_") || ultimaFalha.startsWith("sugestao_") || ultimaFalha === "confianca_invalida";
