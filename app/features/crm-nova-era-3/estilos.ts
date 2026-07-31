@@ -162,7 +162,7 @@ export const CRM3_CSS = `
 .ncrm3-sara-acoes button:disabled { opacity:.5; cursor:default; }
 
 /* ---------- Gestão ---------- */
-.ncrm3-gestao { display:flex; flex-direction:column; gap:16px; max-width:960px; }
+.ncrm3-gestao { display:flex; flex-direction:column; gap:16px; }
 .ncrm3-gestao-abas { display:flex; flex-wrap:wrap; gap:6px; }
 .ncrm3-gestao-abas button { min-height:38px; padding:0 14px; border:1px solid var(--line); border-radius:var(--radius-pill); background:var(--surface); color:var(--ink-soft); font-family:inherit; font-size:13px; font-weight:600; cursor:pointer; }
 .ncrm3-gestao-abas button.on { border-color:var(--orange); background:var(--orange-50); color:var(--orange-700); }
@@ -171,8 +171,42 @@ export const CRM3_CSS = `
 .ncrm3-kpi b { display:block; font-size:22px; font-weight:700; letter-spacing:-.02em; }
 .ncrm3-kpi span { color:var(--muted); font-size:11.5px; }
 
+/* ---------- Leads 3.0 (tabela do protótipo) ---------- */
+.ncrm3-leads { display:flex; flex-direction:column; gap:12px; }
+.ncrm3-leads-topo { display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; }
+.ncrm3-leads-filtros { display:flex; gap:6px; flex-wrap:wrap; }
+.ncrm3-leads-filtros button { min-height:34px; padding:0 12px; border:1px solid var(--line); border-radius:var(--radius-pill); background:var(--surface); color:var(--ink-soft); font-family:inherit; font-size:12.5px; font-weight:600; cursor:pointer; }
+.ncrm3-leads-filtros button.on { background:var(--ink); border-color:var(--ink); color:#fff; }
+.ncrm3-leads-filtros .ncrm3-leads-atrasados { background:var(--red-50, #fdeaea); border-color:transparent; color:var(--red-600, #c62f2f); }
+.ncrm3-leads-filtros .ncrm3-leads-atrasados.on { background:var(--red-600, #c62f2f); color:#fff; }
+.ncrm3-leads-total { color:var(--muted); font-size:12px; }
+.ncrm3-tabela { border:1px solid var(--line); border-radius:var(--radius-card); background:var(--surface); overflow:hidden; }
+.ncrm3-tr { display:grid; grid-template-columns:minmax(240px,2fr) minmax(110px,1fr) minmax(150px,1.2fr) minmax(120px,1fr) minmax(100px,.9fr) minmax(90px,.8fr) 74px; align-items:center; gap:10px; padding:10px 14px; border-bottom:1px solid var(--line); border-left:3px solid transparent; }
+.ncrm3-tr:last-child { border-bottom:none; }
+.ncrm3-tr.cab { padding:9px 14px; background:var(--surface-soft, #faf8f6); color:var(--muted); font-size:10.5px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; border-left-color:transparent; }
+.ncrm3-tr.etapa-novo { border-left-color:#b98af7; }
+.ncrm3-tr.etapa-tentando_contato { border-left-color:var(--orange); }
+.ncrm3-tr.etapa-em_atendimento { border-left-color:#f2b04a; }
+.ncrm3-tr.etapa-em_acompanhamento { border-left-color:#4ec08d; }
+.ncrm3-td-lead { display:flex; align-items:center; gap:10px; min-width:0; }
+.ncrm3-td-nome { display:flex; flex-direction:column; min-width:0; }
+.ncrm3-td-nome b { font-size:13.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.ncrm3-td-nome small { color:var(--muted); font-size:11.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.ncrm3-td-tempo { display:flex; flex-direction:column; font-size:13px; font-weight:600; }
+.ncrm3-td-tempo.atrasado { color:var(--red-600, #c62f2f); }
+.ncrm3-td-tempo small { color:var(--muted); font-size:11px; font-weight:500; }
+.ncrm3-chip-etapa { font-style:normal; display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border-radius:var(--radius-pill); font-size:11.5px; font-weight:600; background:var(--surface-soft, #f6f2ee); color:var(--ink-soft); }
+.ncrm3-chip-etapa.e-novo { background:#f3eafe; color:#7c3aed; }
+.ncrm3-chip-etapa.e-tentando_contato { background:var(--orange-50); color:var(--orange-700); }
+.ncrm3-chip-etapa.e-em_atendimento { background:#fdf3e2; color:#a16a12; }
+.ncrm3-chip-etapa.e-em_acompanhamento { background:#e8f7ef; color:#1c7c4e; }
+.ncrm3-td-corretor { font-size:13px; font-weight:600; }
+.ncrm3-td-origem, .ncrm3-td-data { color:var(--muted); font-size:12.5px; }
+.ncrm3-abrir { min-height:32px; padding:0 14px; border:none; border-radius:var(--radius-pill); background:var(--orange); color:#fff; font-family:inherit; font-size:12.5px; font-weight:700; cursor:pointer; }
+.ncrm3-tabela-rodape { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 14px; color:var(--muted); font-size:12px; background:var(--surface); }
+
 /* ---------- Avisos ---------- */
-.ncrm3-avisos { display:flex; flex-direction:column; gap:10px; max-width:820px; }
+.ncrm3-avisos { display:flex; flex-direction:column; gap:10px; max-width:920px; }
 
 /* ---------- Visões oficiais do CRM atual, montadas dentro da 3.0 ----------
    O CRM atual NÃO foi alterado. Aqui só escondemos a barra de visões dele
@@ -184,6 +218,12 @@ export const CRM3_CSS = `
    entao a visao oficial aninhada herdava o zoom duas vezes (.85 x .85 = 72%)
    e Leads, Esteira e Agenda apareciam menores que no CRM atual. */
 .ncrm3-oficial .crm-command-bar { display:none; }
+/* O protótipo não tem a barra de filtros do CRM antigo dentro da 3.0 (Todos os
+   funis / Etapas / Leads Atrasados): quem filtra é a própria tela nova. */
+.ncrm3-oficial .crm-toolbar-v2 { display:none; }
+/* Na aba Visitas o cabeçalho é o da 3.0 ("CRM · Visitas"); o da Agenda oficial
+   sai de cena para não apresentar a tela com o nome errado. */
+.ncrm3-so-visitas .crm-v2-header { display:none; }
 .ncrm3-so-visitas .crm-agenda-grid { grid-template-columns:1fr; }
 .ncrm3-so-visitas .crm-agenda-grid > .agenda-panel:not(.visits) { display:none; }
 

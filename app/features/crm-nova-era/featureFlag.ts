@@ -39,24 +39,6 @@ export function crmNovaEraFlagAmbiente(): boolean {
 }
 
 /**
- * Allowlist de usuários autorizados (ids de `usuarios`). Vazio = ninguém, mesmo com flag on.
- * Fonte da lista fica fora do código (env/config por ambiente); aqui só o parser.
- */
-function allowlist(): Set<string> {
-  const raw =
-    (typeof process !== "undefined" &&
-      (process.env.NEXT_PUBLIC_CRM_NOVA_ERA_ALLOWLIST ??
-        process.env.CRM_NOVA_ERA_ALLOWLIST)) ||
-    "";
-  return new Set(
-    String(raw)
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean),
-  );
-}
-
-/**
  * Decisão final (client-side, apenas para EXIBIR o seletor). A autorização efetiva de dados
  * é sempre reforçada no banco (RLS + RPC fail-closed) — esta função nunca concede acesso a dados.
  *
@@ -68,13 +50,17 @@ function allowlist(): Set<string> {
  */
 export function crmNovaEraLiberado(
   usuarioId?: string | null,
-  opts?: { role?: string | null },
+  _opts?: { role?: string | null },
 ): boolean {
+  /* Desde 31/07 o CRM Nova Era 3.0 é o CRM OFICIAL da operação: a carteira
+     inteira dos pipes foi migrada e a entrada de leads novos acontece só nele.
+     Todo usuário autenticado usa o 3.0. O desligamento de emergência vive no
+     ambiente (CRM_NOVA_ERA_KILL=true volta todo mundo ao CRM antigo). */
+  void _opts; // assinatura preservada para os chamadores existentes
   if (!usuarioId) return false;
-  const canaryCompilado = CANARY_USUARIOS.has(usuarioId);
-  if (!crmNovaEraFlagAmbiente() && !canaryCompilado) return false;
-  if (canaryCompilado) return true;
-  if ((opts?.role ?? "") === "admin") return true; // canário: admin sempre pode
-  const lista = allowlist();
-  return lista.size > 0 && lista.has(usuarioId);
+  const kill =
+    (typeof process !== "undefined" &&
+      (process.env.NEXT_PUBLIC_CRM_NOVA_ERA_KILL ?? process.env.CRM_NOVA_ERA_KILL)) || "false";
+  if (String(kill).trim().toLowerCase() === "true") return CANARY_USUARIOS.has(usuarioId);
+  return true;
 }

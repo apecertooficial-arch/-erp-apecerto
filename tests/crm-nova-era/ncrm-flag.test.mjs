@@ -16,31 +16,36 @@ async function withEnv(env, fn) {
   }
 }
 
-test("flag desligada => sempre false (todos veem o CRM antigo)", async () => {
-  await withEnv({ NEXT_PUBLIC_CRM_NOVA_ERA_ENABLED: "false", NEXT_PUBLIC_CRM_NOVA_ERA_ALLOWLIST: "u1" }, (m) => {
-    assert.equal(m.crmNovaEraLiberado("u1", { role: "admin" }), false);
-    assert.equal(m.crmNovaEraLiberado("u1", { role: "corretor" }), false);
+/* Desde 31/07 o 3.0 e o CRM OFICIAL: liberado para todo usuario autenticado.
+   O que estes testes prendem agora e a regra nova — e o kill-switch. */
+
+test("CRM oficial: todo usuario autenticado usa o 3.0", async () => {
+  await withEnv({ NEXT_PUBLIC_CRM_NOVA_ERA_KILL: "false" }, (m) => {
+    assert.equal(m.crmNovaEraLiberado("u1", { role: "admin" }), true);
+    assert.equal(m.crmNovaEraLiberado("u2", { role: "corretor" }), true);
+    assert.equal(m.crmNovaEraLiberado("qualquer"), true);
   });
 });
 
-test("canário compilado libera somente Samuel mesmo sem flag client-side", async () => {
-  await withEnv({ NEXT_PUBLIC_CRM_NOVA_ERA_ENABLED: "false", NEXT_PUBLIC_CRM_NOVA_ERA_ALLOWLIST: "" }, (m) => {
-    assert.equal(m.crmNovaEraLiberado("4dfdffae-0009-41de-8d6f-2365a06dc066", { role: "admin" }), true);
-    assert.equal(m.crmNovaEraLiberado("outro-admin", { role: "admin" }), false);
+test("sem usuario autenticado nao ha CRM nenhum", async () => {
+  await withEnv({ NEXT_PUBLIC_CRM_NOVA_ERA_KILL: "false" }, (m) => {
+    assert.equal(m.crmNovaEraLiberado(null, { role: "admin" }), false);
+    assert.equal(m.crmNovaEraLiberado(undefined), false);
+    assert.equal(m.crmNovaEraLiberado(""), false);
   });
 });
 
-test("flag ligada: admin sempre liberado; corretor fora da allowlist não", async () => {
-  await withEnv({ NEXT_PUBLIC_CRM_NOVA_ERA_ENABLED: "true", NEXT_PUBLIC_CRM_NOVA_ERA_ALLOWLIST: "" }, (m) => {
-    assert.equal(m.crmNovaEraLiberado("qualquer", { role: "admin" }), true);
-    assert.equal(m.crmNovaEraLiberado("qualquer", { role: "corretor" }), false);
-    assert.equal(m.crmNovaEraLiberado(null, { role: "admin" }), false, "sem userId => false");
+test("kill-switch devolve todos ao CRM antigo, menos o canario", async () => {
+  await withEnv({ NEXT_PUBLIC_CRM_NOVA_ERA_KILL: "true" }, (m) => {
+    assert.equal(m.crmNovaEraLiberado("u1", { role: "admin" }), false, "admin comum volta ao antigo");
+    assert.equal(m.crmNovaEraLiberado("u2", { role: "corretor" }), false);
+    assert.equal(m.crmNovaEraLiberado("4dfdffae-0009-41de-8d6f-2365a06dc066"), true, "canario segue no 3.0 para diagnosticar");
   });
 });
 
-test("flag ligada: allowlist libera apenas os ids listados", async () => {
-  await withEnv({ NEXT_PUBLIC_CRM_NOVA_ERA_ENABLED: "true", NEXT_PUBLIC_CRM_NOVA_ERA_ALLOWLIST: "u1,u2" }, (m) => {
-    assert.equal(m.crmNovaEraLiberado("u1", { role: "corretor" }), true);
-    assert.equal(m.crmNovaEraLiberado("u3", { role: "corretor" }), false);
+test("a flag antiga de ambiente nao manda mais na liberacao", async () => {
+  await withEnv({ NEXT_PUBLIC_CRM_NOVA_ERA_ENABLED: "false", NEXT_PUBLIC_CRM_NOVA_ERA_KILL: "false" }, (m) => {
+    assert.equal(m.crmNovaEraLiberado("u1", { role: "corretor" }), true,
+      "com o 3.0 oficial, ENABLED=false nao esconde mais o CRM de ninguem");
   });
 });
