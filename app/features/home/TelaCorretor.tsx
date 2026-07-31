@@ -197,9 +197,23 @@ export function TelaCorretor({ accessToken, nome, onAbrirLead, onIr }: {
   const primeiro = (nome || "").trim().split(/\s+/)[0] || "corretor";
   const agoraQtd = agora.length;
 
-  /* Deep link que a página de CRM já sabe traduzir (?chat=). Sem rota nova e
-     sem estado paralelo: a conversa continua sendo a de sempre. */
-  const abrirConversa = useCallback((negocioId: number) => onIr(`/crm?chat=${negocioId}`), [onIr]);
+  /* O botão roxo abre a CONVERSA entre o lead e o corretor, para LER.
+   *
+   * `?chat=` é o único parâmetro que chega no mini chat: a página de CRM o
+   * traduz em `initialChatDealId` e o CrmWorkspace monta o LeadChatDrawer.
+   * `?lead=` abriria a ficha — outra tela, e o botão aqui promete conversa.
+   *
+   * `&ler=1` é o que faz valer a regra do topo deste arquivo. O drawer nasceu
+   * para o corretor: vem com compositor, enviar, gravador de áudio e as
+   * ferramentas de Documento/Agendar/Abordagem. Abri-lo inteiro para o gestor
+   * entregava exatamente o que a regra proíbe. Com `ler=1` a página marca o
+   * body e o CSS esconde tudo que escreve — sobra o histórico, que é o que a
+   * D-API já grava e a Sara já lê.
+   *
+   * ISTO NÃO FUNCIONAVA NO CELULAR, e não era culpa desta linha: o
+   * CrmNovaEraGate trocava a tela inteira pela TelaCrmMobile e o CrmWorkspace
+   * nunca montava, então o parâmetro morria na URL. Corrigido no gate. */
+  const abrirConversa = useCallback((negocioId: number) => onIr(`/crm?chat=${negocioId}&ler=1`), [onIr]);
 
   return (
     <div className="tc-wrap">

@@ -37,7 +37,10 @@ test("icones incluem maskable e os dois tamanhos", () => {
 
 test("display standalone e cor da marca preservada", () => {
   assert.equal(manifest.display, "standalone");
-  assert.equal(manifest.theme_color, "#ff6500");
+  /* Laranja oficial: --ape-orange em apecerto-identidade.css e o themeColor
+     de layout.tsx. Comparado em minusculas porque #FF7000 e #ff7000 sao a
+     mesma cor -- a caixa da letra nao pode derrubar a suite. */
+  assert.equal(String(manifest.theme_color).toLowerCase(), "#ff7000");
 });
 
 test("service worker nunca cacheia conteudo sensivel", () => {

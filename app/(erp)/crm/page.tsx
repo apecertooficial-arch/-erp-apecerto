@@ -1,11 +1,11 @@
 "use client";
 
 /* O CRM Nova Era nao e reconstruido aqui. Esta pagina so o monta e traduz
-   deep-link (?lead=, ?chat=, ?vista=, ?novaVenda=) nas props que o
+   deep-link (?lead=, ?chat=, ?ler=, ?vista=, ?novaVenda=) nas props que o
    CrmWorkspace/CrmNovaEraGate ja aceitavam quando a navegacao era useState. */
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { CrmNovaEraGate } from "../../features/crm-nova-era/CrmNovaEraGate";
 import { CrmWorkspace } from "../../features/crm/CrmWorkspace";
 import { GuardaModulo } from "../../features/system/GuardaModulo";
@@ -31,6 +31,41 @@ export default function Pagina() {
     router.replace(q ? `/crm?${q}` : "/crm", { scroll: false });
   }, [params, router]);
 
+  /* MODO LEITURA — `?ler=1`.
+   *
+   * Quem manda e o botao roxo "Abrir conversa", da tela de Inicio. O gestor
+   * ACOMPANHA: ele abre o historico que a D-API ja grava, para LER. Nao
+   * responde dali. A regra esta no topo de TelaCorretor.tsx e existe por um
+   * motivo operacional -- gestor mandando mensagem pelo proprio numero e o
+   * comeco de um atendimento sem dono e sem historico.
+   *
+   * O LeadChatDrawer nao tem prop de somente-leitura, e criar uma exigiria
+   * abrir o CrmWorkspace (265 KB, a tela mais critica do ERP). Uma classe no
+   * body resolve sem tocar nele: o CSS esconde compositor, gravador e
+   * ferramentas so quando ela esta presente. O CRM do corretor nao muda.
+   *
+   * CLASSE NO BODY, NAO DIV EM VOLTA: o CrmWorkspace tem cadeia de altura
+   * (`.crm-v2 { height: 100vh }`, kanban com `overflow` proprio) e um wrapper
+   * novo no meio quebraria o layout. Classe nao entra no fluxo.
+   *
+   * LATCH: a query e apagada assim que o deep link e consumido. Relendo a URL
+   * a cada render, a conversa abriria em leitura e ganharia compositor no
+   * instante seguinte. */
+  const [somenteLeitura] = useState(() => {
+    if (typeof window === "undefined") return false;
+    try {
+      return new URLSearchParams(window.location.search).get("ler") === "1";
+    } catch {
+      return false;
+    }
+  });
+
+  useEffect(() => {
+    if (!somenteLeitura) return;
+    document.body.classList.add("conversa-leitura");
+    return () => document.body.classList.remove("conversa-leitura");
+  }, [somenteLeitura]);
+
   const podeAcao = (acao: string) => {
     if (role === "admin") return true;
     if (!permissoes || Object.keys(permissoes).length === 0) return false;
@@ -50,7 +85,8 @@ export default function Pagina() {
               initialDealId={num("lead")}
               onInitialDealHandled={() => limpar(["lead"])}
               initialChatDealId={num("chat")}
-              onInitialChatHandled={() => limpar(["chat"])}
+              /* `ler` sai junto: quem segura o modo e o latch acima, nao a URL. */
+              onInitialChatHandled={() => limpar(["chat", "ler"])}
               initialView={params?.get("vista") === "vendas" ? "sales" : null}
               initialCreateSale={params?.get("novaVenda") === "1"}
               onInitialViewHandled={() => limpar(["vista", "novaVenda"])}

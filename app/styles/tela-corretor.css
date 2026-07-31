@@ -2,7 +2,13 @@
    TELA DO CORRETOR — desenho do protótipo (print 01 e 04)
    ---------------------------------------------------------------------
    Só celular. Nada aqui pode vazar para o desktop, então TUDO vive dentro
-   de @media (max-width: 900px), igual ao resto de app-mobile.css.
+   do bloco de tela pequena (max-width: 900px), igual ao resto de
+   app-mobile.css.
+
+   NÃO escreva a palavra "arroba-media" por extenso aqui em cima: o teste
+   "nada da tela do corretor vaza para o desktop" corta esta folha no
+   primeiro indexOf dela para conferir o que sobra fora da media query.
+   Uma citação no comentário corta antes da regra e quebra a suíte.
 
    Esta folha carrega DEPOIS de apecerto-identidade.css e usa os tokens
    dela. Nenhuma cor literal aqui além de sombras com alfa.
