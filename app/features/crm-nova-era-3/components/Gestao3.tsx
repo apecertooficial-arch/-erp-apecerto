@@ -12,6 +12,7 @@
 import { useEffect, useState } from "react";
 import { GestaoOperacional, CadenciaConfig } from "../../crm-nova-era/components/GestaoOperacional";
 import { PainelPiloto, DiagnosticoLegado } from "../../crm-nova-era/components/PainelPiloto";
+import { PainelSaraRevisao } from "../../crm-nova-era/components/PainelSaraRevisao";
 import { RolloutChecklist, AdocaoPainel } from "../../crm-nova-era/components/RolloutAdocao";
 import { AcessoPilotos } from "../../crm-nova-era/components/AcessoPilotos";
 import { CarteiraAntiga } from "../../crm-nova-era/components/CarteiraAntiga";
@@ -67,6 +68,10 @@ export function Gestao3({
           <AdocaoPainel accessToken={accessToken} />
           <AcessoPilotos accessToken={accessToken} />
           <CadenciaConfig accessToken={accessToken} />
+          {/* ACIMA do PainelPiloto de propósito: é lá que se muda o modo da
+              Sara, e o placar precisa estar na frente de quem for encostar
+              nesse botão. Julgar sugestão não move lead nenhum. */}
+          <PainelSaraRevisao accessToken={accessToken} />
           <PainelPiloto accessToken={accessToken} />
         </>
       )}
