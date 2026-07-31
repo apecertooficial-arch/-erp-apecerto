@@ -92,7 +92,26 @@ export async function GET(request: Request) {
 
   const { data, error, count } = await q;
   if (error) return Response.json({ error: error.message }, { status: 502 });
+
+  /* Última análise da Sara por negócio — o card mostra diagnóstico, próxima
+     ação e prazo sem nenhuma chamada de IA no carregamento. Colunas lidas são
+     as liberadas para authenticated; uma consulta indexada, custo constante. */
+  const analises: Record<number, unknown> = {};
+  const ids = ((data ?? []) as unknown as Array<{ negocio_id: number }>).map((i) => i.negocio_id);
+  if (ids.length > 0) {
+    const { data: an } = await db
+      .from("ncrm_sara_analise")
+      .select("negocio_id,proxima_acao_sugerida,justificativa,prazo_sugerido,confianca,etapa_sugerida,analisado_em")
+      .in("negocio_id", ids)
+      .order("analisado_em", { ascending: false })
+      .limit(Math.min(400, ids.length * 3));
+    for (const a of (an ?? []) as Array<{ negocio_id: number }>) {
+      if (!(a.negocio_id in analises)) analises[a.negocio_id] = a;
+    }
+  }
+
   return Response.json({
+    analises,
     itens: data ?? [],
     total: count ?? (data?.length ?? 0),
     offset,

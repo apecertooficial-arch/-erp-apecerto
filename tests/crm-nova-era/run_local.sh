@@ -13,6 +13,10 @@ cp "$ROOT/supabase/migrations/20260808110000_ncrm_pos_visita_descarte_e_origem.s
 cp "$ROOT/supabase/migrations/20260808110100_ncrm_resultado_visita_rpc.sql" "$STAGE/mig_pv_rpc.sql"
 cp "$ROOT/supabase/rollbacks/20260808110000_ncrm_pos_visita_descarte_e_origem.down.sql" "$STAGE/down_pv.sql"
 cp "$ROOT/tests/crm-nova-era/99c_tests_pos_visita.sql" "$STAGE/pv.sql"
+# Analise da Sara pedida pelo corretor (origem 'usuario' + RPC autenticada)
+cp "$ROOT/supabase/migrations/20260808120000_ncrm_sara_analise_usuario.sql" "$STAGE/mig_su.sql"
+cp "$ROOT/supabase/rollbacks/20260808120000_ncrm_sara_analise_usuario.down.sql" "$STAGE/down_su.sql"
+cp "$ROOT/tests/crm-nova-era/99d_tests_sara_analise_usuario.sql" "$STAGE/su.sql"
 cp "$ROOT/tests/crm-nova-era/10_tests_core.sql" "$STAGE/core.sql"
 cp "$ROOT/tests/crm-nova-era/20_tests_correcoes.sql" "$STAGE/core2.sql"
 cp "$ROOT/tests/crm-nova-era/30_tests_delta_cadencia.sql" "$STAGE/core3.sql"
@@ -395,6 +399,20 @@ PSQL -f "$STAGE/mig_pv.sql"
 PSQL -f "$STAGE/mig_pv_rpc.sql"
 PSQL -c "SELECT public.test_assert(to_regproc('public.ncrm_registrar_resultado_visita') IS NOT NULL,
          '#pv17 migration do pos-visita reaplicada com sucesso');"
+
+echo "### analise da Sara pedida pelo corretor: RPC autenticada e origem 'usuario'"
+PSQL -f "$STAGE/mig_su.sql"
+PSQL -f "$STAGE/su.sql"
+
+echo "### analise do corretor: rollback devolve o CHECK do motor e a migration sobe de novo"
+PSQL -f "$STAGE/down_su.sql"
+PSQL -c "SELECT public.test_assert(to_regproc('public.ncrm_sara_analise_usuario') IS NULL
+         AND (SELECT pg_get_constraintdef(oid) FROM pg_constraint WHERE conname='ncrm_sara_analise_origem_check')
+             NOT LIKE '%usuario%',
+         '#su8 rollback removeu a RPC e refechou a origem');"
+PSQL -f "$STAGE/mig_su.sql"
+PSQL -c "SELECT public.test_assert(to_regproc('public.ncrm_sara_analise_usuario') IS NOT NULL,
+         '#su9 migration da analise do corretor reaplicada com sucesso');"
 
 echo "### teardown"
 sudo -u pg "$PGBIN/pg_ctl" -D "$PGDATA" stop >/dev/null 2>&1 || true
