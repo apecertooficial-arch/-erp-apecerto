@@ -2,16 +2,20 @@
 /**
  * MEU DIA 3.0 — a primeira tela de quem atende.
  *
- * Três seções (Atender agora · Fazer hoje · Acompanhar depois), um cliente
- * aparece uma única vez, e cada linha traz nome, corretor, motivo, tempo,
- * próxima ação, SLA e UM botão principal.
+ * Abre com o tamanho do dia (quantos aguardam resposta, quantos leads novos,
+ * quantos retornos) e com o próximo cliente NOMEADO — o corretor não precisa
+ * ler a lista inteira para saber por onde começar.
+ *
+ * Depois, três seções (Atender agora · Fazer hoje · Acompanhar depois), um
+ * cliente aparece uma única vez, e cada linha traz nome, corretor, motivo,
+ * tempo, próxima ação e UM botão principal.
  *
  * A prioridade e a ordem continuam vindo do banco (ncrm_fila_trabalho). Esta
  * tela não reordena nada: só agrupa e traduz.
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  botaoPrincipal, montarSecoes, totalParaAtender,
+  botaoPrincipal, montarSecoes, painelDeAbertura, saudacao, totalParaAtender,
   type ItemFila3,
 } from "../lib/meuDia3";
 
@@ -45,12 +49,17 @@ export function MeuDia3({
   accessToken,
   corretorFiltro,
   busca,
+  nome,
   onAbrir,
+  onIrParaVisitas,
 }: {
   accessToken: string;
   corretorFiltro?: number | null;
   busca: string;
+  /** Nome de quem está atendendo, para a saudação. */
+  nome?: string;
   onAbrir: (negocioId: string) => void;
+  onIrParaVisitas?: () => void;
 }) {
   const [filtro, setFiltro] = useState("agora");
   const [filtrosAbertos, setFiltrosAbertos] = useState(false);
@@ -87,12 +96,13 @@ export function MeuDia3({
   const restantes = Math.max(0, filtrados.length - visiveis.length);
   const secoes = useMemo(() => montarSecoes(visiveis), [visiveis]);
   const urgentes = useMemo(() => totalParaAtender(filtrados), [filtrados]);
+  const painel = useMemo(() => painelDeAbertura(filtrados), [filtrados]);
   const vazio = !carregando && !erro && filtrados.length === 0;
 
   return (
     <div className="ncrm3-dia">
       <div className="ncrm3-dia-chamada">
-        <h2>Meu Dia</h2>
+        <h2>{saudacao(nome ?? "")}</h2>
         <span>
           {urgentes > 0
             ? `${urgentes} ${urgentes === 1 ? "cliente precisa" : "clientes precisam"} de você agora`
@@ -119,6 +129,39 @@ export function MeuDia3({
             </button>
           ))}
         </div>
+      )}
+
+      {/* O tamanho do dia, em numeros que o corretor confere sozinho.
+          Visitas nao entram: a fila de trabalho nao devolve visita, e numero
+          que nao da para conferir vale menos do que numero nenhum. */}
+      {!carregando && !erro && filtrados.length > 0 && (
+        <section className="ncrm3-abertura" aria-label="Resumo do seu dia">
+          <div className="ncrm3-abertura-numeros">
+            <article><b>{painel.aguardandoResposta}</b><span>aguardando sua resposta</span></article>
+            <article><b>{painel.leadsNovos}</b><span>{painel.leadsNovos === 1 ? "lead novo" : "leads novos"}</span></article>
+            <article><b>{painel.retornosHoje}</b><span>{painel.retornosHoje === 1 ? "retorno para hoje" : "retornos para hoje"}</span></article>
+            {onIrParaVisitas && (
+              <article className="link">
+                <button type="button" onClick={onIrParaVisitas}>Ver visitas do dia</button>
+                <span>na aba Visitas</span>
+              </article>
+            )}
+          </div>
+
+          {painel.proximo && (
+            <div className="ncrm3-abertura-proximo">
+              <div>
+                <span className="ncrm3-abertura-rotulo">Próximo atendimento</span>
+                <strong>{painel.proximo.nome}</strong>
+                <em>{painel.proximo.motivo} · espera {painel.proximo.tempo}</em>
+                <p>{painel.proximo.proximaAcao}</p>
+              </div>
+              <button type="button" className="ncrm3-principal" onClick={() => onAbrir(String(painel.proximo!.negocioId))}>
+                Atender agora
+              </button>
+            </div>
+          )}
+        </section>
       )}
 
       {erro && <div className="ncrm3-erro">{erro}</div>}
