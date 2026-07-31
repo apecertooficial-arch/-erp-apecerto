@@ -97,7 +97,7 @@ export async function GET(request: Request) {
      ação e prazo sem nenhuma chamada de IA no carregamento. Colunas lidas são
      as liberadas para authenticated; uma consulta indexada, custo constante. */
   const analises: Record<number, unknown> = {};
-  const ids = (data ?? []).map((i: { negocio_id: number }) => i.negocio_id);
+  const ids = ((data ?? []) as unknown as Array<{ negocio_id: number }>).map((i) => i.negocio_id);
   if (ids.length > 0) {
     const { data: an } = await db
       .from("ncrm_sara_analise")
