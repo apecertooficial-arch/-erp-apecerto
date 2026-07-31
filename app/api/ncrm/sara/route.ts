@@ -4,7 +4,7 @@
  * - Usa o MESMO contrato do ia-router já em produção (app/api/agentes/copiloto-lead):
  *   POST {NEXT_PUBLIC_SUPABASE_URL}/functions/v1/ia-router com { agente_slug:"sara", input, override_prompt }.
  *   A Edge Function usa as ferramentas reais (consultar_lead / avaliar_conversa: mensagens,
- *   áudios transcritos, avaliações), com a chave server-side. NENHUMA chave de IA no frontend.
+ *   áudios transcritos e avaliações), com a chave server-side. NENHUMA chave de IA no frontend.
  * - Resposta validada/normalizada por schema explícito (saraSchema). Se não for JSON válido
  *   no formato esperado => FALHA CONTROLADA (nunca devolve string/JSON cru como sugestão).
  * - A Sara NÃO altera etapa, NÃO envia WhatsApp, NÃO cria visita/proposta.
@@ -54,7 +54,15 @@ const OVERRIDE =
   "disponibilidade_visita, e só depois metragem, vagas, motivo_compra e quem_decide. " +
   "Se o cliente fez uma pergunta ainda sem resposta, responder a ele vem antes de qualificar. " +
   "NUNCA invente informação que não esteja na conversa; com pouca evidência, use evidencia_suficiente=false " +
-  "e limite-se ao que existe. Nada além do JSON. Você apenas sugere.";
+  "e limite-se ao que existe. " +
+  // A CONVERSA REAL vem no próprio input. Vimos em produção o agente responder
+  // 'sem interação recente' para lead com resposta de 1h atrás: as ferramentas
+  // nem sempre localizam o histórico pelo nome. O input passa a ser a fonte
+  // primária; as ferramentas viram complemento.
+  "O INPUT do usuário contém a DATA DE HOJE, os dados do atendimento e a CONVERSA REAL na íntegra — " +
+  "use-a como fonte primária; as ferramentas são complementares. prazo_sugerido DEVE ser posterior à " +
+  "data de hoje informada no input (nunca no passado). Responda SOMENTE o objeto JSON, sem markdown, " +
+  "sem cerca de código e sem texto antes ou depois. Você apenas sugere.";
 
 function tokenDe(request: Request): string | null {
   const a = request.headers.get("authorization");
@@ -92,12 +100,57 @@ export async function GET(request: Request) {
   const nid = inteiroPositivo(new URL(request.url).searchParams.get("negocio"));
   if (nid === null) return Response.json({ error: "negocio inválido" }, { status: 422 });
 
-  // Contexto visível ao usuário (RLS): nome do lead para orientar a ferramenta consultar_lead.
+  /* Contexto sob RLS. O input carrega a CONVERSA REAL: em produção o agente
+     respondia "sem interação recente" para cliente que respondeu havia 1h,
+     porque as ferramentas nem sempre acham o histórico só pelo nome. */
   const db = supabase as unknown as import("@supabase/supabase-js").SupabaseClient;
-  const { data: estado } = await db.from("ncrm_estado").select("negocio_id,negocios(lead_id,leads(nome,telefone))").eq("negocio_id", nid).maybeSingle();
+  const { data: estado } = await db
+    .from("ncrm_estado")
+    .select("negocio_id,etapa,respondeu,resposta_pendente,tentativas_feitas,ultima_interacao_em,proxima_acao_titulo,proxima_acao_em,negocios(lead_id,leads(nome,telefone))")
+    .eq("negocio_id", nid).maybeSingle();
   if (!estado) return Response.json({ error: "Lead não visível." }, { status: 404 });
-  const leadObj = (estado as { negocios?: { leads?: { nome?: string; telefone?: string } } }).negocios?.leads ?? null;
-  const input = (leadObj?.nome || leadObj?.telefone || `negócio ${nid}`) as string;
+  const est = estado as {
+    etapa?: string; respondeu?: boolean; resposta_pendente?: boolean; tentativas_feitas?: number;
+    ultima_interacao_em?: string | null; proxima_acao_titulo?: string | null; proxima_acao_em?: string | null;
+    negocios?: { lead_id?: number; leads?: { nome?: string; telefone?: string } };
+  };
+  const leadObj = est.negocios?.leads ?? null;
+  const nome = (leadObj?.nome || leadObj?.telefone || `negócio ${nid}`) as string;
+
+  // Conversa real (mesmo caminho da rota /api/ncrm/conversa): últimas 40 mensagens.
+  let conversaTxt = "(nenhuma mensagem registrada)";
+  const leadId = est.negocios?.lead_id ?? null;
+  if (leadId) {
+    const { data: contatos } = await db.from("wa_contatos").select("id").eq("lead_id", leadId);
+    const contatoIds = (contatos ?? []).map((c: { id: string }) => c.id);
+    if (contatoIds.length > 0) {
+      const { data: conversas } = await db.from("wa_conversas").select("id").in("contato_id", contatoIds);
+      const conversaIds = (conversas ?? []).map((c: { id: string }) => c.id);
+      if (conversaIds.length > 0) {
+        const { data: msgs } = await db
+          .from("wa_mensagens")
+          .select("direcao,tipo,conteudo,transcricao,criado_em,enviado_em")
+          .in("conversa_id", conversaIds)
+          .order("criado_em", { ascending: false })
+          .limit(40);
+        const linhas = (msgs ?? []).reverse().map((m: { direcao?: string | null; tipo?: string | null; conteudo?: string | null; transcricao?: string | null; criado_em?: string | null; enviado_em?: string | null }) => {
+          const doCliente = ["recebida", "entrada", "in", "inbound", "received"].includes(String(m.direcao ?? "").toLowerCase());
+          const quando = (m.enviado_em ?? m.criado_em ?? "").slice(0, 16).replace("T", " ");
+          const texto = m.conteudo || (m.transcricao ? `(áudio transcrito) ${m.transcricao}` : `(${m.tipo || "mensagem"} sem texto)`);
+          return `[${doCliente ? "CLIENTE" : "CORRETOR"} ${quando}] ${texto}`;
+        });
+        if (linhas.length > 0) conversaTxt = linhas.join("\n");
+      }
+    }
+  }
+
+  const input =
+    `HOJE: ${new Date().toISOString()}\n` +
+    `ATENDIMENTO: ${nome} (negócio ${nid}) · etapa atual: ${est.etapa ?? "novo"} · ` +
+    `cliente respondeu: ${est.respondeu ? "sim" : "não"} · aguardando o corretor: ${est.resposta_pendente ? "sim" : "não"} · ` +
+    `tentativas humanas: ${est.tentativas_feitas ?? 0} · última interação: ${est.ultima_interacao_em ?? "nunca"} · ` +
+    `próxima ação registrada: ${est.proxima_acao_titulo ?? "nenhuma"} (${est.proxima_acao_em ?? "sem prazo"})\n` +
+    `CONVERSA REAL (ordem cronológica):\n${conversaTxt}`;
 
   void supabase.rpc("perf_log_sessao", { p_tipo: "ncrm_sara_pergunta" }).then(() => {}, () => {});
 
