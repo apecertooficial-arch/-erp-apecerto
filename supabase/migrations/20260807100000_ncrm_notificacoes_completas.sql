@@ -37,6 +37,24 @@ ALTER TABLE public.ncrm_notificacao ADD CONSTRAINT ncrm_notificacao_tipo_check
     'falha_rotina','qualidade_dados',
     'visita_proxima','falha_sincronizacao','escalonamento']));
 
+-- Backfill: notificacoes abertas criadas antes desta migration nasceram sem
+-- destino. Deixa-las assim manteria exatamente o problema que deep_link resolve
+-- -- o corretor recebe o aviso e nao sabe para onde ir. O destino e derivado do
+-- prefixo da chave, que ja identifica o tipo de pendencia.
+UPDATE public.ncrm_notificacao
+   SET deep_link = CASE
+     WHEN chave LIKE 'resp:%'   THEN '/negocio/' || negocio_id || '/conversa'
+     WHEN chave LIKE 'novo:%'   THEN '/negocio/' || negocio_id
+     WHEN chave LIKE 'venc:%'   THEN '/negocio/' || negocio_id
+     WHEN chave LIKE 'sla:%'    THEN '/gestao/sla'
+     WHEN chave LIKE 'semcor:%' THEN '/gestao/distribuicao'
+     WHEN chave LIKE 'visita:%' THEN '/agenda'
+     WHEN chave LIKE 'sync:%'   THEN '/gestao/saude'
+     WHEN chave LIKE 'escal:%'  THEN '/gestao/escalonamentos'
+     ELSE '/notificacoes'
+   END
+ WHERE resolvida_em IS NULL AND deep_link IS NULL;
+
 -- O historico de repeticao sobrevive a resolucao: e como sabemos que uma
 -- pendencia e cronica em vez de pontual.
 CREATE TABLE IF NOT EXISTS public.ncrm_notificacao_silencio (
