@@ -88,8 +88,18 @@ function Conversa3({ accessToken, negocioId }: { accessToken: string; negocioId:
   );
 }
 
+const RESULTADOS_VISITA: ReadonlyArray<{ valor: string; rotulo: string }> = Object.freeze([
+  { valor: "fara_proposta", rotulo: "Vai fazer proposta" },
+  { valor: "interessado", rotulo: "Gostou — seguir o contato" },
+  { valor: "quer_outra_opcao", rotulo: "Quer outra opção" },
+  { valor: "precisa_conversar", rotulo: "Precisa conversar em casa" },
+  { valor: "remarcar", rotulo: "Remarcar a visita" },
+  { valor: "nao_compareceu", rotulo: "Não compareceu" },
+  { valor: "nao_gostou", rotulo: "Não gostou" },
+]);
+
 export function Ficha3({
-  lead, versao, leadId, accessToken, busy, sla, origem, interesse, email, fotoUrl, imoveis,
+  lead, versao, leadId, accessToken, busy, sla, origem, interesse, email, fotoUrl, imoveis, visitaId,
   formInicial, onFechar, onExecutar, onCriarVisita, onAviso, onSaraCarregada,
 }: {
   lead: LeadNova;
@@ -103,6 +113,8 @@ export function Ficha3({
   email: string | null;
   fotoUrl: string | null;
   imoveis: ImovelDoLead[];
+  /** Visita em aberto no Pipe — habilita registrar o desfecho aqui mesmo. */
+  visitaId?: string | null;
   /* Formulario que deve abrir junto com a ficha (menu "..." do card).
      Antes, as quatro opcoes do menu faziam a mesma coisa: so abriam a ficha.
      Botao que promete uma acao e entrega outra ensina o corretor a nao clicar. */
@@ -356,12 +368,31 @@ export function Ficha3({
       <section className="ncrm3-bloco">
         <h3>{TITULO_BLOCO.acoes_avancadas}</h3>
         {emSaida ? (
-          <p className="ncrm3-nota">
-            {lead.visitaAgendadaEm && "Este cliente está no Pipe de Visitas."}
-            {lead.proposta && "Este cliente está na Esteira de Vendas (proposta registrada — não é venda)."}
-            {lead.descartadoMotivo && `Descartado: ${lead.descartadoMotivo}.`}
-            {lead.nutricao && "Em nutrição."}
-          </p>
+          <>
+            <p className="ncrm3-nota">
+              {lead.visitaAgendadaEm && "Este cliente está no Pipe de Visitas."}
+              {lead.proposta && "Este cliente está na Esteira de Vendas (proposta registrada — não é venda)."}
+              {lead.descartadoMotivo && `Descartado: ${lead.descartadoMotivo}.`}
+              {lead.nutricao && "Em nutrição."}
+            </p>
+            {/* O que aconteceu na visita? Cada desfecho leva o cliente a algum
+                lugar — quem decide o destino é o banco, nunca a tela. */}
+            {lead.visitaAgendadaEm && visitaId && (
+              <div className="ncrm3-avancadas" style={{ marginTop: 8 }}>
+                <p className="ncrm3-nota"><b>Como foi a visita?</b> Registre o desfecho — o cliente volta ao lugar certo do funil.</p>
+                {RESULTADOS_VISITA.map((r) => (
+                  <button key={r.valor} type="button" className="ncrm3-secundario" disabled={busy}
+                    onClick={() => void onExecutar({
+                      action: "registrarResultadoVisita",
+                      negocioId: Number(lead.id), versao, visitaId, resultado: r.valor,
+                      idem: `ui3:resultadoVisita:${visitaId}:${r.valor}`,
+                    })}>
+                    {r.rotulo}
+                  </button>
+                ))}
+              </div>
+            )}
+          </>
         ) : (
           <div className="ncrm3-avancadas">
             {AVANCADAS.map((a) => (

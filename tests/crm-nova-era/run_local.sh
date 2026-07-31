@@ -17,6 +17,10 @@ cp "$ROOT/tests/crm-nova-era/99c_tests_pos_visita.sql" "$STAGE/pv.sql"
 cp "$ROOT/supabase/migrations/20260808120000_ncrm_sara_analise_usuario.sql" "$STAGE/mig_su.sql"
 cp "$ROOT/supabase/rollbacks/20260808120000_ncrm_sara_analise_usuario.down.sql" "$STAGE/down_su.sql"
 cp "$ROOT/tests/crm-nova-era/99d_tests_sara_analise_usuario.sql" "$STAGE/su.sql"
+# Elegiveis com prioridade de novidade + manual operacional
+cp "$ROOT/supabase/migrations/20260809100000_ncrm_elegiveis_novidade_e_manual.sql" "$STAGE/mig_em.sql"
+cp "$ROOT/supabase/rollbacks/20260809100000_ncrm_elegiveis_novidade_e_manual.down.sql" "$STAGE/down_em.sql"
+cp "$ROOT/tests/crm-nova-era/99e_tests_elegiveis_manual.sql" "$STAGE/em.sql"
 cp "$ROOT/tests/crm-nova-era/10_tests_core.sql" "$STAGE/core.sql"
 cp "$ROOT/tests/crm-nova-era/20_tests_correcoes.sql" "$STAGE/core2.sql"
 cp "$ROOT/tests/crm-nova-era/30_tests_delta_cadencia.sql" "$STAGE/core3.sql"
@@ -413,6 +417,14 @@ PSQL -c "SELECT public.test_assert(to_regproc('public.ncrm_sara_analise_usuario'
 PSQL -f "$STAGE/mig_su.sql"
 PSQL -c "SELECT public.test_assert(to_regproc('public.ncrm_sara_analise_usuario') IS NOT NULL,
          '#su9 migration da analise do corretor reaplicada com sucesso');"
+
+echo "### elegiveis com prioridade de novidade + manual operacional"
+PSQL -f "$STAGE/mig_em.sql"
+PSQL -f "$STAGE/em.sql"
+PSQL -f "$STAGE/down_em.sql"
+PSQL -c "SELECT public.test_assert(to_regclass('public.ncrm_manual_operacional') IS NULL, '#em8 rollback removeu o manual');"
+PSQL -f "$STAGE/mig_em.sql"
+PSQL -c "SELECT public.test_assert(to_regproc('public.ncrm_manual_salvar') IS NOT NULL, '#em9 migration reaplicada');"
 
 echo "### teardown"
 sudo -u pg "$PGBIN/pg_ctl" -D "$PGDATA" stop >/dev/null 2>&1 || true

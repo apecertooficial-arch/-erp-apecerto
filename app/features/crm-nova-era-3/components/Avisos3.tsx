@@ -7,6 +7,7 @@
  * worker e o módulo Notificações são outra frente e não são tocados.
  */
 import { useCallback, useEffect, useState } from "react";
+import { Manual3 } from "./Manual3";
 import { esperaHumana } from "../../crm-nova-era/lib/meuDia";
 import type { ItemFila3 } from "../lib/meuDia3";
 
@@ -88,6 +89,8 @@ export function Avisos3({ accessToken, onAbrir }: { accessToken: string; onAbrir
           </section>
         );
       })}
+      {/* O combinado da operação: todo corretor lê aqui; a edição é do admin, na Gestão. */}
+      <Manual3 accessToken={accessToken} podeEditar={false} />
     </div>
   );
 }

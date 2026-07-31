@@ -393,6 +393,7 @@ export function Crm3Workspace({ accessToken, profile }: { accessToken: string; p
                 email={detalhe.email}
                 fotoUrl={detalhe.fotoUrl}
                 imoveis={imoveis}
+                visitaId={detalhe.visitaId}
                 onFechar={() => { setSelId(null); setDetalhe(null); setImoveis([]); setFormPedido(null); }}
                 onExecutar={executar}
                 onCriarVisita={criarVisita}
