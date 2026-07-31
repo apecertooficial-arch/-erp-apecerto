@@ -102,24 +102,69 @@ const pertenceAoApp = (chave: string, prefixos: readonly string[]) => prefixos.s
 /** Nome de cache criado por este app (ver public/sw.js: apecerto-v1, estatico-apecerto-v1). */
 const cacheDoApp = (nome: string) => nome.includes("apecerto");
 
-/** Chamado no logout: apaga caches e estado local DO APECERTO. Nada mais. */
-export async function limparDadosLocais() {
+export type ResultadoLimpeza = { tipo: "LIMPEZA_CONCLUIDA"; recacheado: boolean };
+
+/* Teto de espera pela confirmacao do service worker.
+ * Sem teto, um worker travado penduraria o logout para sempre -- e ficar preso
+ * numa tela de saida e pior do que sair com o cache em estado incerto. O dado
+ * sensivel (localStorage e sessionStorage) e limpo aqui de qualquer forma. */
+const LIMITE_CONFIRMACAO_MS = 4000;
+
+/* Pede a limpeza ao service worker e ESPERA a confirmacao.
+ *
+ * Antes isso era postMessage e segue o baile: a pagina recarregava enquanto o
+ * worker ainda apagava, e nada recriava a tela offline. Agora ha porta de volta
+ * (MessageChannel) e o worker so responde depois de apagar E recriar.
+ *
+ * Devolve null quando nao ha worker ou quando ele nao responde a tempo -- ai a
+ * propria pagina faz a parte dela. */
+function pedirLimpezaAoServiceWorker(): Promise<ResultadoLimpeza | null> {
+  return new Promise((resolve) => {
+    if (typeof navigator === "undefined" || !("serviceWorker" in navigator)) { resolve(null); return; }
+    navigator.serviceWorker.getRegistration()
+      .then((reg) => {
+        const worker = reg?.active;
+        if (!worker) { resolve(null); return; }
+        const canal = new MessageChannel();
+        const relogio = setTimeout(() => resolve(null), LIMITE_CONFIRMACAO_MS);
+        canal.port1.onmessage = (e: MessageEvent) => { clearTimeout(relogio); resolve(e.data ?? null); };
+        worker.postMessage("LIMPAR_TUDO", [canal.port2]);
+      })
+      .catch(() => resolve(null));
+  });
+}
+
+/** Chamado no logout: apaga caches e estado local DO APECERTO. Nada mais.
+ *
+ * Quem manda nos caches e o service worker: ele apaga e recria a casca publica
+ * (so /offline.html) numa operacao so, e confirma no fim. Esperar essa
+ * confirmacao e o que evita o reload pegar a limpeza pela metade. */
+export async function limparDadosLocais(): Promise<ResultadoLimpeza | null> {
+  const confirmacao = await pedirLimpezaAoServiceWorker();
+
+  /* Sem worker, ou sem resposta a tempo: a pagina apaga os caches deste app.
+     Nao recriamos nada por aqui de proposito -- recriar exige rede, e o logout
+     nao pode ficar dependente disso. Fica sem tela offline ate a proxima visita,
+     que e exatamente o que o sw.js ja resolve sozinho. */
+  if (!confirmacao) {
+    try {
+      if (typeof window !== "undefined" && "caches" in window) {
+        const nomes = await caches.keys();
+        await Promise.all(nomes.filter(cacheDoApp).map((n) => caches.delete(n)));
+      }
+    } catch { /* melhor esforco: nao pode impedir o logout */ }
+  }
+
+  /* Storage e sempre limpo, em bloco proprio: uma falha no cache nao pode
+     deixar token e estado do usuario anterior no aparelho. */
   try {
-    if ("serviceWorker" in navigator) {
-      const reg = await navigator.serviceWorker.getRegistration();
-      reg?.active?.postMessage("LIMPAR_TUDO");
-    }
-    if ("caches" in window) {
-      const nomes = await caches.keys();
-      await Promise.all(nomes.filter(cacheDoApp).map((n) => caches.delete(n)));
-    }
     for (const chave of Object.keys(localStorage)) {
       if (pertenceAoApp(chave, PREFIXOS_APECERTO)) localStorage.removeItem(chave);
     }
     for (const chave of Object.keys(sessionStorage)) {
       if (pertenceAoApp(chave, PREFIXOS_SESSAO)) sessionStorage.removeItem(chave);
     }
-  } catch {
-    // Melhor esforco: falha aqui nao pode impedir o logout.
-  }
+  } catch { /* modo privado pode barrar o acesso ao storage */ }
+
+  return confirmacao;
 }
