@@ -27,6 +27,13 @@ export interface EntradaContexto {
   ultimaInteracaoEm?: string | null;
   mensagens: EntradaMensagem[];
   avaliacoes?: EntradaAvaliacao[];
+  /** Data de referência (ISO). Entra APENAS no texto — nunca no canonical/hash. */
+  hoje?: string | null;
+  /** Análise anterior da Sara, para COMPOR (nota evolui, não reinicia). Só texto; fora do hash. */
+  analiseAnterior?: {
+    proximaAcao?: string | null; justificativa?: string | null; prazo?: string | null;
+    confianca?: number | null; analisadoEm?: string | null;
+  } | null;
 }
 
 export interface Contexto {
@@ -83,12 +90,22 @@ export function montarContexto(e: EntradaContexto): Contexto {
 
   const avals = (e.avaliacoes ?? []).slice(-5).map((a) => `- Avaliação${a.nota != null ? ` (nota ${a.nota})` : ""}: ${(a.resumo ?? "").slice(0, 200)}`);
 
+  const ant = e.analiseAnterior ?? null;
+  const linhasAnterior = ant && (ant.justificativa || ant.proximaAcao)
+    ? [
+        `Análise anterior da Sara (${ant.analisadoEm ?? "sem data"}, confiança ${ant.confianca ?? "—"}) — COMPONHA com ela, dizendo o que mudou:`,
+        `- Diagnóstico anterior: ${(ant.justificativa ?? "—").slice(0, 300)}`,
+        `- Ação anterior: ${(ant.proximaAcao ?? "—").slice(0, 200)} (prazo ${ant.prazo ?? "—"})`,
+      ]
+    : [];
   const texto = [
+    ...(e.hoje ? [`HOJE: ${e.hoje}`] : []),
     `Lead: ${e.leadNome ?? "—"} · Corretor: ${e.corretorNome ?? "—"}`,
     `Etapa atual: ${e.etapaAtual ?? "—"} · Próxima ação: ${e.proximaAcao ?? "—"} · Última interação: ${e.ultimaInteracaoEm ?? "—"}`,
     "Últimas mensagens:",
     ...(linhas.length ? linhas : ["- (sem mensagens)"]),
     ...(avals.length ? ["Avaliações:", ...avals] : []),
+    ...linhasAnterior,
   ].join("\n");
 
   // canonical inclui negocio_id (evita colisão entre negócios) + itens estáveis do contexto.
@@ -200,6 +217,11 @@ export interface CtxQueries {
   conversas(contatoIds: string[]): Promise<RespostaQuery<{ id: string }[]>>;
   mensagens(conversaIds: string[]): Promise<RespostaQuery<EntradaMensagem[]>>;
   avaliacoes(leadId: number): Promise<RespostaQuery<LinhaAvaliacao[]>>;
+  /** Última análise da Sara (opcional). Erro aqui NÃO derruba o contexto: composição é bônus. */
+  analiseAnterior?(negocioId: number): Promise<RespostaQuery<{
+    proxima_acao_sugerida?: string | null; justificativa?: string | null; prazo_sugerido?: string | null;
+    confianca?: number | null; analisado_em?: string | null;
+  }>>;
 }
 
 /**
@@ -241,10 +263,25 @@ export async function carregarContextoAdaptador(negocioId: number, q: CtxQueries
     else avaliacoes = (av.data ?? []).map((a) => ({ nota: a.nota ?? null, resumo: resumoAvaliacaoSeguro(a.contexto, a.feedbacks), criadoEm: a.criado_em ?? null }));
   }
 
+  let analiseAnterior: EntradaContexto["analiseAnterior"] = null;
+  if (q.analiseAnterior) {
+    try {
+      const aa = await q.analiseAnterior(negocioId);
+      if (!aa.error && aa.data) {
+        analiseAnterior = {
+          proximaAcao: aa.data.proxima_acao_sugerida ?? null, justificativa: aa.data.justificativa ?? null,
+          prazo: aa.data.prazo_sugerido ?? null, confianca: aa.data.confianca ?? null,
+          analisadoEm: aa.data.analisado_em ?? null,
+        };
+      }
+    } catch { /* composição é bônus: sem análise anterior o contexto continua válido */ }
+  }
+
   const ctx = montarContexto({
     negocioId, leadNome: est.data.lead_nome ?? null, corretorNome: est.data.corretor_nome ?? null,
     etapaAtual: est.data.etapa ?? null, proximaAcao: est.data.proxima_acao_titulo ?? null,
     ultimaInteracaoEm: est.data.ultima_interacao_em ?? null, mensagens, avaliacoes,
+    hoje: new Date().toISOString(), analiseAnterior,
   });
   if (avaliacoesErro) ctx.avaliacoesErro = avaliacoesErro;
   return ctx;

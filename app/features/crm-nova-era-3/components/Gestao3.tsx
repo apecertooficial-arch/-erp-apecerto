@@ -18,6 +18,7 @@ import { AcessoPilotos } from "../../crm-nova-era/components/AcessoPilotos";
 import { CarteiraAntiga } from "../../crm-nova-era/components/CarteiraAntiga";
 import { SaudeCrm } from "../../crm-nova-era/components/SaudeCrm";
 import { FaseBanner } from "../../crm-nova-era/components/FaseBanner";
+import { Manual3 } from "./Manual3";
 
 type AbaGestao = "operacao" | "rollout" | "carteira" | "saude";
 
@@ -58,6 +59,9 @@ export function Gestao3({
           {ehAdmin && <FaseBanner accessToken={accessToken} souAdmin totalLeads={totalNoFunil} />}
           <MetricasGestao accessToken={accessToken} />
           <GestaoOperacional accessToken={accessToken} onDrill={onDrillCorretor} />
+          {/* O manual que os corretores leem nos Avisos. Editar é só do admin —
+              e quem barra de verdade é o banco (is_admin na função de salvar). */}
+          <Manual3 accessToken={accessToken} podeEditar={ehAdmin} />
           {["admin", "executivo", "gerente"].includes(papel) && <DiagnosticoLegado accessToken={accessToken} />}
         </>
       )}
