@@ -5,7 +5,7 @@ import { RodagemCards } from "./RodagemCards";
 import { FunilCards } from "./FunilCards";
 import { FinanceiroCards } from "./FinanceiroCards";
 import { NaMesaCards } from "./NaMesaCards";
-import { SeuDia } from "./SeuDia";
+import { MeuDiaCorretor } from "./MeuDiaCorretor";
 import { useEhCelular } from "../system/useFormato";
 
 type Lead = { id: number; nome?: string | null };
@@ -87,7 +87,21 @@ export function HomeWorkspace({ accessToken, sessionName = "", onNavigate, onIr 
   if (ehCelular === true) {
     return (
       <div className="home-mobile">
-        <SeuDia accessToken={accessToken} onAbrirLead={(id) => irPara(`/crm?lead=${id}`)} onIr={irPara} />
+        {/* A fila vem PRIMEIRO. Meta, VGV, funil e ranking ficam abaixo e
+            recolhidos: o corretor abre o app para atender, nao para se medir. */}
+        <MeuDiaCorretor
+          accessToken={accessToken}
+          nome={sessionName}
+          onAbrirLead={(id) => irPara(`/crm?lead=${id}`)}
+          onIr={irPara}
+        />
+
+        <nav className="md-atalhos" aria-label="Atalhos">
+          <button type="button" onClick={() => irPara("/agenda")}>Agenda</button>
+          <button type="button" onClick={() => irPara("/tarefas")}>Tarefas</button>
+          <button type="button" onClick={() => irPara("/produtos")}>Produtos</button>
+          <button type="button" onClick={() => irPara("/notificacoes")}>Avisos</button>
+        </nav>
 
         <section className="hm-gestao">
           <button type="button" className="hm-gestao-toggle" aria-expanded={gestaoAberta} onClick={() => setGestaoAberta((v) => !v)}>
@@ -96,8 +110,6 @@ export function HomeWorkspace({ accessToken, sessionName = "", onNavigate, onIr 
           </button>
           {gestaoAberta && (
             <div className="hm-gestao-corpo">
-              {/* Cards leves (1 KB cada, agregados no banco). O painel completo
-                  -- meta, funil, VGV, rankings -- fica no desktop e em Performance. */}
               <NaMesaCards accessToken={accessToken} onNavigate={onNavigate} />
               <FunilCards accessToken={accessToken} onNavigate={onNavigate} />
               <button type="button" className="hm-gestao-link" onClick={() => irPara("/performance")}>
