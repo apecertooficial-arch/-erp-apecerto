@@ -21,8 +21,14 @@ test("limparDadosLocais apaga SOMENTE caches do ApeCerto", () => {
 });
 
 test("limparDadosLocais apaga SOMENTE chaves com prefixo conhecido", () => {
-  assert.ok(/PREFIXOS_APECERTO[^=]*=\s*\["apecerto-", "sb-"\]/.test(registro),
-    "prefixos precisam ser nominais: apecerto- (ERP) e sb- (sessao supabase)");
+  // Nominais, nunca clear(). A lista saiu das chaves REAIS de producao: a
+  // versao anterior deste teste exigia so ["apecerto-", "sb-"] e por isso
+  // deixou passar apecerto_os_v1, ncrm_onboarding_v1_<uuid> e ncrm:variante:<uuid>.
+  const linha = registro.match(/const PREFIXOS_APECERTO[^;]+;/)[0];
+  for (const p of ["apecerto-", "apecerto_", "ncrm_", "ncrm:", "sb-"]) {
+    assert.ok(linha.includes(`"${p}"`), `falta o prefixo ${p} na limpeza de logout`);
+  }
+  assert.ok(!/"theme"/.test(linha), "lista de prefixos nao e lista de excecoes");
   assert.ok(/pertenceAoApp\(chave, PREFIXOS_APECERTO\)/.test(registro));
   assert.ok(!/localStorage\.clear\(\)/.test(registro), "clear() apagaria armazenamento alheio");
   assert.ok(!/sessionStorage\.clear\(\)/.test(registro), "clear() apagaria armazenamento alheio");
