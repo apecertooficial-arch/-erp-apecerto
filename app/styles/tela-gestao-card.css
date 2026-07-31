@@ -1,0 +1,23 @@
+/* =====================================================================
+   AÇÃO DE GESTÃO NO CARD
+   ---------------------------------------------------------------------
+   O botão do gestor abre a CONVERSA dentro do ERP, não o WhatsApp.
+
+   Roxo e não verde de propósito: verde é a promessa de "isto abre o
+   WhatsApp". Usar verde aqui faria o gestor achar que mandou mensagem
+   quando na verdade só leu — e é justamente isso que a separação de
+   papéis existe para impedir.
+
+   Vem depois de correcoes-celular.css, que pinta `.tc-cta` de verde com
+   !important. Por isso o !important aqui também: é a exceção da regra,
+   não uma segunda regra concorrente.
+   ===================================================================== */
+
+@media (max-width: 900px) {
+  .tc-cta.gestao {
+    background: var(--ape-purple) !important;
+    color: #fff !important;
+    box-shadow: 0 10px 24px rgba(139, 0, 204, .26) !important;
+  }
+  .tc-cta.gestao:active { background: var(--ape-purple-700) !important; }
+}
