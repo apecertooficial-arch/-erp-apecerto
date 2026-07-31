@@ -5,6 +5,7 @@
  *
  * REGRA DESTE ARQUIVO, igual à de app-mobile.css: nenhuma regra fora de
  * @media (max-width: 900px). O desktop tem sidebar e não tem folha nenhuma.
+ * A única exceção é o @keyframes, que é inerte até alguém referenciá-lo.
  *
  * ORDEM DE CARGA: entra depois de app-mobile.css e de telas-prototipo.css.
  * Precisa disso — `.app-mais-folha header` ganha borda inferior em
@@ -31,6 +32,10 @@
     animation: folhaMaisSobe var(--dur-base, 200ms) var(--ease-out, cubic-bezier(.2, .8, .2, 1));
     box-shadow: var(--shadow-lg);
   }
+  /* A folha recebe foco por código ao abrir (tabIndex -1). Sem isto o
+     navegador desenha um anel em volta da folha inteira, que não é o que a
+     pessoa está prestes a acionar. Os itens dentro mantêm o foco visível. */
+  .app-mais-folha:focus { outline: none; }
 
   /* Pegador. Decorativo, mas é o que diz "isto se arrasta para baixo" antes
      de o corretor procurar o ×. */
@@ -47,12 +52,15 @@
   /* --- título --- */
   .app-mais-folha header {
     /* Sticky continua: a folha rola e o × tem que permanecer alcançável.
-       A borda sai — o print separa por espaço, não por linha. */
+       A borda sai — o print separa por espaço, não por linha. O padding
+       embaixo fica: sem ele os cards passam raspando no texto "Mais"
+       enquanto a lista rola por baixo. */
     border-bottom: 0;
-    padding: 0;
-    margin-bottom: 14px;
+    padding: 0 0 10px;
+    margin-bottom: 4px;
   }
-  .app-mais-folha header strong {
+  .app-mais-folha header h2 {
+    margin: 0;
     font-family: var(--font-display);
     font-size: 19px;
     font-weight: var(--weight-bold);
@@ -92,7 +100,7 @@
   .app-mais-grupo { margin-bottom: 18px; }
   .app-mais-grupo:last-of-type { margin-bottom: 0; }
 
-  .app-mais-grupo > h2 {
+  .app-mais-grupo > h3 {
     margin: 0 0 8px;
     font-family: var(--font-body);
     font-size: 11px;
@@ -110,7 +118,8 @@
 
   /* --- item --- */
   .app-mais-item {
-    /* 13 + 34 + 13 = 60px de altura: bem acima dos 44px mínimos. */
+    /* 13 + 34 + 13 = 60px de altura real. O mínimo declarado é o piso de
+       alvo de toque da casa, não a altura de desenho. */
     min-height: 44px;
     display: flex;
     align-items: center;
@@ -131,8 +140,10 @@
     outline-offset: 2px;
   }
 
-  /* Quadrado branco atrás do ícone. É o que separa o item do fundo bege sem
-     precisar de borda. */
+  /* Quadrado branco atrás do ícone: recorta o bege do card e devolve o fundo
+     da folha, dando ao ícone uma caixa própria sem precisar de borda. É um
+     degrau de luminosidade curto de propósito — quem carrega o contraste é o
+     laranja do traço, não a caixa. */
   .app-mais-item > .ami-icone {
     flex: none;
     width: 34px;
@@ -172,12 +183,13 @@
   .app-mais-folha .convite-instalar { margin: 18px 0 0; }
 }
 
+/* Quem pediu menos movimento no sistema recebe a folha já posicionada.
+   Preso ao mesmo breakpoint: acima de 900px não existe folha para animar. */
+@media (max-width: 900px) and (prefers-reduced-motion: reduce) {
+  .app-mais-folha { animation: none; }
+}
+
 @keyframes folhaMaisSobe {
   from { transform: translateY(100%); }
   to { transform: none; }
-}
-
-/* Quem pediu menos movimento no sistema recebe a folha já posicionada. */
-@media (prefers-reduced-motion: reduce) {
-  .app-mais-folha { animation: none; }
 }
