@@ -19,6 +19,11 @@ import { marcarWhatsappAberto, whatsappAbertoEm, limparWhatsappAberto } from "..
 const ATUALIZA_MS = 60_000;
 
 function CardLead({ c, onAbrir }: { c: Card; onAbrir: (id: number) => void }) {
+  /* O clique registra a intencao no sessionStorage, que nao e reativo. Este
+     tick forca o re-render para o aviso aparecer NA HORA em que o corretor
+     volta do WhatsApp -- nao no proximo ciclo de 60s. */
+  const [, setTick] = useState(0);
+  const marcou = () => { marcarWhatsappAberto(c.negocioId); setTick((t) => t + 1); };
   /* "Aguardando sincronizacao" tem duas fontes e nenhuma delas e envio:
      - servidor: ncrm_whatsapp_intencao ainda sem confirmacao da D-API;
      - local: o corretor abriu o WhatsApp NESTE aparelho (sessionStorage).
@@ -53,7 +58,7 @@ function CardLead({ c, onAbrir }: { c: Card; onAbrir: (id: number) => void }) {
             className="md-acao"
             href={`whatsapp://send?phone=${c.telefone}`}
             data-e164={c.telefone}
-            onClick={() => marcarWhatsappAberto(c.negocioId)}
+            onClick={marcou}
           >
             Chamar no WhatsApp
           </a>
@@ -62,7 +67,7 @@ function CardLead({ c, onAbrir }: { c: Card; onAbrir: (id: number) => void }) {
             href={`https://wa.me/${c.telefone}`}
             target="_blank"
             rel="noopener noreferrer"
-            onClick={() => marcarWhatsappAberto(c.negocioId)}
+            onClick={marcou}
           >
             Não abriu? Abrir pelo WhatsApp Web
           </a>
