@@ -17,10 +17,10 @@ async function post(path: string, token: string, body: Json): Promise<{ ok: bool
   return { ok: r.ok, json: (await r.json().catch(() => ({}))) as Json };
 }
 
-const ADERENCIA_ROTULO: Record<string, { txt: string; cor: string }> = {
-  em_dia: { txt: "Em dia", cor: "#16a34a" },
-  atencao: { txt: "Atenção", cor: "#d97706" },
-  critico: { txt: "Crítico", cor: "#b91c1c" },
+const ADERENCIA_ROTULO: Record<string, { txt: string; cor: string; fundo: string }> = {
+  em_dia: { txt: "Em dia", cor: "#16a34a", fundo: "#e8f7ef" },
+  atencao: { txt: "Atenção", cor: "#a16207", fundo: "#fdf3e2" },
+  critico: { txt: "Crítico", cor: "#b91c1c", fundo: "#fdeaea" },
 };
 
 export function GestaoOperacional({ accessToken, onDrill }: { accessToken: string; onDrill: (corretorId: number) => void }) {
@@ -81,7 +81,7 @@ export function GestaoOperacional({ accessToken, onDrill }: { accessToken: strin
                       <td>{String(c.sem_proxima_acao ?? 0)}</td>
                       <td>{Number(c.sla_min_medio ?? 0).toFixed(0)} min</td>
                       <td style={{ color: Number(c.escalar) > 0 ? "#b91c1c" : undefined }}>{String(c.escalar ?? 0)}</td>
-                      <td><span style={{ color: ad.cor, fontWeight: 700 }}>{ad.txt}</span></td>
+                      <td><span style={{ padding: "3px 10px", borderRadius: 999, fontSize: 11.5, fontWeight: 600, color: ad.cor, background: ad.fundo }}>{ad.txt}</span></td>
                       <td><button className="nova-crm-btn ghost" onClick={() => onDrill(Number(c.corretor_id))}>Abrir leads</button></td>
                     </tr>
                   );

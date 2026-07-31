@@ -20,12 +20,16 @@ test("a visao oficial aninhada nao herda o zoom da casca duas vezes", () => {
   assert.match(css, /\.ncrm3-oficial \.crm-v2 \{ min-height:0; zoom:1; \}/, "faltou o reset de zoom da visao oficial");
 });
 
-test("a barra de visoes do CRM atual some, e so ela", () => {
-  // Quem navega e a barra de oito abas da 3.0. Esconder mais do que isso
-  // esconderia a busca e os filtros oficiais junto.
+test("a barra de visoes e os filtros do CRM atual somem dentro da 3.0", () => {
+  /* Prototipo de 31/07 (prints-apecerto/crm-desktop): dentro da 3.0 quem navega
+     e a barra de oito abas, e quem filtra sao as telas novas (Leads 3.0 tem os
+     proprios filtros). A barra de filtros antiga confundia com dois vocabularios. */
   assert.match(css, /\.ncrm3-oficial \.crm-command-bar \{ display:none; \}/);
-  assert.ok(!/\.ncrm3-oficial \.crm-v2-header \{ display:none/.test(css), "o cabecalho oficial nao pode ser escondido: e ele que traz a busca");
-  assert.ok(!/\.ncrm3-oficial \.crm-toolbar-v2 \{ display:none/.test(css), "os filtros oficiais nao podem ser escondidos");
+  assert.match(css, /\.ncrm3-oficial \.crm-toolbar-v2 \{ display:none; \}/);
+  /* O cabecalho oficial continua nas visoes montadas, EXCETO na aba Visitas,
+     onde ele diria "CRM - Agenda" para uma tela chamada Visitas. */
+  assert.ok(!/\.ncrm3-oficial \.crm-v2-header \{ display:none/.test(css), "o cabecalho oficial das visoes montadas fica");
+  assert.match(css, /\.ncrm3-so-visitas \.crm-v2-header \{ display:none; \}/);
 });
 
 test("a aba Visitas recorta a Agenda, nao cria um pipe paralelo", () => {

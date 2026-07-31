@@ -29,19 +29,17 @@ function chave(userId: string | null) {
 }
 
 function escolhaSalva(userId: string | null): Variante {
-  if (typeof window === "undefined") return "atual";
+  /* Desde 31/07 o 3.0 é o CRM oficial: padrão para TODOS, em qualquer tela.
+     O CRM antigo só abre pelo atalho explícito ?crm=atual (rota de emergência
+     da gestão) — escolha salva no aparelho deixou de contar, senão quem um dia
+     clicou em "Funil atual" ficaria preso no passado. */
+  void userId;
+  if (typeof window === "undefined") return "nova-era";
   try {
-    if (new URLSearchParams(window.location.search).get("crm") === "nova-era") return "nova-era";
-    const salva = window.localStorage.getItem(chave(userId));
-    if (salva === "nova-era") return "nova-era";
-    if (salva === "atual") return "atual";
-    /* Sem escolha salva: no CELULAR o padrao e a rotina operacional (Meu Dia),
-       nao o funil desktop espremido. So vale para quem ja e liberado -- o gate
-       barra antes. No desktop nada muda: padrao continua "Funil atual". */
-    if (window.matchMedia("(max-width: 900px)").matches) return "nova-era";
-    return "atual";
+    if (new URLSearchParams(window.location.search).get("crm") === "atual") return "atual";
+    return "nova-era";
   } catch {
-    return "atual";
+    return "nova-era";
   }
 }
 
@@ -117,19 +115,22 @@ export function CrmNovaEraGate({
     <div style={{ display: "flex", flexDirection: "column", height: "100%", minHeight: 0 }}>
       <style>{NOVA_CRM_CSS}</style>
 
-      <div className="nova-crm-topbar" style={{ borderBottom: "1px solid var(--nc-line)" }}>
-        <div className="nova-crm-seg" role="tablist" aria-label="Selecionar experiência de CRM">
-          <button className={variante === "atual" ? "on" : ""} onClick={() => escolher("atual")} role="tab" aria-selected={variante === "atual"}>
-            Funil atual
-          </button>
-          <button className={variante === "nova-era" ? "on" : ""} onClick={() => escolher("nova-era")} role="tab" aria-selected={variante === "nova-era"}>
-            CRM Nova Era <span className="nova-crm-badge-exp" style={{ marginLeft: 6 }}>3.0</span>
-          </button>
+      {/* A barra de comparação aposentou-se com o CRM antigo: o 3.0 é o CRM.
+          O antigo ainda abre por ?crm=atual (emergência da gestão) e, só
+          nesse caso, mostramos o caminho de volta. */}
+      {variante === "atual" && (
+        <div className="nova-crm-topbar" style={{ borderBottom: "1px solid var(--nc-line)" }}>
+          <div className="nova-crm-seg" role="tablist" aria-label="Selecionar experiência de CRM">
+            <button className="on" onClick={() => escolher("atual")} role="tab" aria-selected>
+              Funil antigo (consulta)
+            </button>
+            <button onClick={() => escolher("nova-era")} role="tab" aria-selected={false}>
+              Voltar ao CRM <span className="nova-crm-badge-exp" style={{ marginLeft: 6 }}>3.0</span>
+            </button>
+          </div>
+          <span className="nova-crm-seghint">O CRM oficial agora é o 3.0 — esta tela antiga é somente consulta.</span>
         </div>
-        <span className="nova-crm-seghint">
-          {variante === "atual" ? "Você está no CRM de produção (inalterado)." : "Piloto funcional — dados reais, escrita só por RPC autorizada."}
-        </span>
-      </div>
+      )}
 
       <div style={{ flex: 1, minHeight: 0, display: "flex" }}>
         {variante === "atual" ? (

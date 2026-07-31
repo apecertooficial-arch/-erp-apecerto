@@ -17,11 +17,10 @@
  *  - não mostra entrada de atendimentos, análise automática, reconciliação nem
  *    desligamento de emergência fora da aba Gestão.
  *
- * Leads, Visitas, Esteira e Agenda NÃO foram reconstruídos e NÃO foram
- * migrados: são as visões oficiais do CRM atual, montadas como estão (mesma
- * carga, mesmo SLA, mesmas permissões, mesmas ações). A navegação 3.0 substitui
- * a barra de visões interna delas — o CRM atual não foi alterado por esta
- * branch, nem por uma linha.
+ * Visitas, Esteira e Agenda são as visões oficiais do CRM atual, montadas como
+ * estão (mesma carga, mesmo SLA, mesmas permissões, mesmas ações). Leads passou
+ * a ser tela NATIVA da 3.0 (protótipo 03): etapa do funil novo, não os estágios
+ * antigos. A navegação 3.0 substitui a barra de visões interna das oficiais.
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { CrmWorkspace } from "../crm/CrmWorkspace";
@@ -39,6 +38,7 @@ import { Ficha3, type ImovelDoLead } from "./components/Ficha3";
 import { Avisos3 } from "./components/Avisos3";
 import { Perdidos3 } from "./components/Perdidos3";
 import { Gestao3 } from "./components/Gestao3";
+import { Leads3 } from "./components/Leads3";
 import type { AcaoMenu, DadosCard } from "./components/Card3";
 
 type Perfil = { userId: string; role: string; name: string };
@@ -104,8 +104,9 @@ export function Crm3Workspace({ accessToken, profile }: { accessToken: string; p
     });
   }, []);
 
-  /* O funil é a única aba que carrega o quadro. Leads, Visitas, Esteira e
-     Agenda são as visões oficiais e carregam os próprios dados. */
+  /* O funil é a única aba que carrega o quadro. Visitas, Esteira e Agenda são
+     as visões oficiais e carregam os próprios dados; Leads 3.0 também carrega
+     o próprio recorte paginado. */
   const precisaDoQuadro = aba === "funil" || aba === "gestao";
 
   const carregarQuadro = useCallback(async () => {
@@ -264,15 +265,15 @@ export function Crm3Workspace({ accessToken, profile }: { accessToken: string; p
 
   const cabecalho = definicaoDaAba(aba);
   const abas = abasVisiveis(profile.role);
-  /* Nas telas 3.0 a busca fica no cabeçalho e filtra a fila e o funil. Nas
-     visões oficiais quem busca é a busca do próprio CRM atual, que já existe e
-     procura em toda a base (nome, telefone, e-mail, instagram e #id). */
-  const buscaNoCabecalho = aba === "meu_dia" || aba === "funil";
+  /* Nas telas 3.0 a busca fica no cabeçalho e filtra a fila, o funil e a
+     tabela de leads. Nas visões oficiais quem busca é a busca do próprio CRM
+     atual, que já existe e procura em toda a base. */
+  const buscaNoCabecalho = aba === "meu_dia" || aba === "funil" || aba === "leads";
   /* Aba -> visão oficial do CRM atual. "Visitas" é o Pipe que já existe dentro
      da Agenda: o mesmo dado, as mesmas ações (editar, concluir) e o mesmo CSS.
      Aqui só recortamos a tela para o painel de visitas — nada é duplicado. */
   const VISAO_OFICIAL: Record<string, { view: "leads" | "sales" | "agenda"; recorte?: string }> = {
-    leads: { view: "leads" },
+    /* Leads deixou de montar a tabela antiga: a 3.0 tem a própria (protótipo 03). */
     visitas: { view: "agenda", recorte: "ncrm3-so-visitas" },
     esteira: { view: "sales" },
     agenda: { view: "agenda" },
@@ -283,9 +284,9 @@ export function Crm3Workspace({ accessToken, profile }: { accessToken: string; p
     <div className="crm-v2 ncrm3">
       <style>{CRM3_CSS}</style>
 
-      {/* Nas visões oficiais o cabeçalho é o do próprio CRM atual (mesma
-          identidade, mesma busca) — mostrar dois seria ruído. */}
-      {!oficial && (
+      {/* Nas visões oficiais o cabeçalho é o do próprio CRM atual — exceto na
+          aba Visitas, onde o oficial diria "Agenda" e o da 3.0 assume. */}
+      {(!oficial || aba === "visitas") && (
         <header className="crm-v2-header">
           <div>
             <span className="crm-eyebrow">GESTÃO COMERCIAL</span>
@@ -365,6 +366,10 @@ export function Crm3Workspace({ accessToken, profile }: { accessToken: string; p
                     <Perdidos3 accessToken={accessToken} onAbrir={(id) => { setFormPedido(null); void abrirAtendimento(id); }} />
                   )}
                 </>
+              )}
+
+              {aba === "leads" && (
+                <Leads3 accessToken={accessToken} busca={busca} onAbrir={(id) => { setFormPedido(null); void abrirAtendimento(id); }} />
               )}
 
               {aba === "avisos" && <Avisos3 accessToken={accessToken} onAbrir={(id) => { setFormPedido(null); void abrirAtendimento(id); }} />}
