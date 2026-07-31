@@ -197,12 +197,20 @@ export function TelaCorretor({ accessToken, nome, onAbrirLead, onIr }: {
   const primeiro = (nome || "").trim().split(/\s+/)[0] || "corretor";
   const agoraQtd = agora.length;
 
-  /* Deep link da rota de CRM. `?chat=` só existia dentro do CrmWorkspace, que
-     no celular nem chega a montar — o CrmNovaEraGate troca a tela inteira pela
-     TelaCrmMobile. O gestor tocava no botão e nada acontecia. `?lead=` com
-     `crm=nova-era` é o MESMO deep link que a TelaCrmMobile já emite: um
-     formato só, sem rota nova e sem estado paralelo. */
-  const abrirConversa = useCallback((negocioId: number) => onIr(`/crm?lead=${negocioId}&crm=nova-era`), [onIr]);
+  /* O botão roxo abre a CONVERSA entre o lead e o corretor, não a ficha.
+   *
+   * `?chat=` é o único parâmetro que faz isso: a página de CRM o traduz em
+   * `initialChatDealId` e o CrmWorkspace monta o LeadChatDrawer. `?lead=`
+   * abriria a ficha — outra tela, e o botão aqui promete conversa.
+   *
+   * ISTO NÃO FUNCIONAVA NO CELULAR, e não era culpa desta linha: o
+   * CrmNovaEraGate trocava a tela inteira pela TelaCrmMobile e o CrmWorkspace
+   * nunca montava, então o parâmetro morria na URL. Corrigido no gate, que
+   * agora monta o CRM de verdade quando a URL pede ficha ou conversa.
+   *
+   * Sem `&crm=nova-era`: o gate ignora a variante quando há deep link, então
+   * o parâmetro extra só sujaria a barra de endereço. */
+  const abrirConversa = useCallback((negocioId: number) => onIr(`/crm?chat=${negocioId}`), [onIr]);
 
   return (
     <div className="tc-wrap">
