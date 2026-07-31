@@ -197,9 +197,12 @@ export function TelaCorretor({ accessToken, nome, onAbrirLead, onIr }: {
   const primeiro = (nome || "").trim().split(/\s+/)[0] || "corretor";
   const agoraQtd = agora.length;
 
-  /* Deep link que a página de CRM já sabe traduzir (?chat=). Sem rota nova e
-     sem estado paralelo: a conversa continua sendo a de sempre. */
-  const abrirConversa = useCallback((negocioId: number) => onIr(`/crm?chat=${negocioId}`), [onIr]);
+  /* Deep link da rota de CRM. `?chat=` só existia dentro do CrmWorkspace, que
+     no celular nem chega a montar — o CrmNovaEraGate troca a tela inteira pela
+     TelaCrmMobile. O gestor tocava no botão e nada acontecia. `?lead=` com
+     `crm=nova-era` é o MESMO deep link que a TelaCrmMobile já emite: um
+     formato só, sem rota nova e sem estado paralelo. */
+  const abrirConversa = useCallback((negocioId: number) => onIr(`/crm?lead=${negocioId}&crm=nova-era`), [onIr]);
 
   return (
     <div className="tc-wrap">
