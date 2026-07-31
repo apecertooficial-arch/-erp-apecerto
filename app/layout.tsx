@@ -8,10 +8,11 @@ import "./styles/apecerto-identidade.css";
    desktop não é tocado por nenhuma delas. */
 import "./styles/tela-corretor.css";
 import "./styles/tela-crm.css";
+import "./styles/tela-avisos.css";
 import "./styles/telas-prototipo.css";
 /* A ÚLTIMA de todas. Corrige o que só apareceu no aparelho de verdade:
-   cabeçalho em dobro e a cor do botão do WhatsApp. Precisa vir depois de
-   todas para vencer sem precisar de seletor mais específico. */
+   cabeçalho em dobro, cor do botão do WhatsApp e o ícone do CRM na barra.
+   Precisa vir depois de todas para vencer sem seletor mais específico. */
 import "./styles/correcoes-celular.css";
 import { RegistroPwa } from "./components/RegistroPwa";
 
