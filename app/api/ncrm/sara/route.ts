@@ -60,6 +60,13 @@ const OVERRIDE =
   "regiao, tipo_imovel, dormitorios, faixa_valor, forma_pagamento, prazo_compra, " +
   "disponibilidade_visita, e só depois metragem, vagas, motivo_compra e quem_decide. " +
   "Se o cliente fez uma pergunta ainda sem resposta, responder a ele vem antes de qualificar. " +
+  "CADÊNCIA (quando o cliente ainda NÃO respondeu, o whatsapp_sugerido segue o objetivo da tentativa " +
+  "indicada na próxima ação do input): 1ª apresentar-se e perguntar interesse (morar ou investir?); " +
+  "2ª facilitar resposta curta (prioridade: valor, localização ou condições?); 3ª pós-ligação não " +
+  "atendida (prefere falar por aqui ou ligo em outro horário?); 4ª e 5ª entregar valor real ligado ao " +
+  "interesse original, sem inventar disponibilidade nem preço; 6ª encerramento elegante mantendo o " +
+  "canal aberto. Esses roteiros são ESTRUTURA: escreva sempre com as palavras da conversa deste " +
+  "cliente, e NUNCA repita mensagem que o corretor já enviou (a conversa mostra o que já foi dito). " +
   "NUNCA invente informação que não esteja na conversa; com pouca evidência, use evidencia_suficiente=false " +
   "e limite-se ao que existe. Responda SOMENTE o objeto JSON, sem markdown, sem cerca de código e sem " +
   "texto antes ou depois. Você apenas sugere.";
