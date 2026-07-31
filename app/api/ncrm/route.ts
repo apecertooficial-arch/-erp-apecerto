@@ -149,6 +149,13 @@ const ACOES: Record<string, { rpc: string; args: (c: Ctx) => Record<string, unkn
     rpc: "ncrm_saida_visita",
     args: ({ negocio_id, versao, idem, b }) => ({ p_negocio_id: negocio_id, p_versao: versao, p_visita_id: b.visitaId, p_idem: idem }),
   },
+  registrarResultadoVisita: {
+    rpc: "ncrm_registrar_resultado_visita",
+    args: ({ negocio_id, versao, idem, b }) => ({
+      p_visita_id: b.visitaId, p_negocio_id: negocio_id, p_versao: versao,
+      p_resultado: b.resultado, p_obs: b.obs ?? null, p_idem: idem,
+    }),
+  },
   saidaProposta: {
     rpc: "ncrm_saida_proposta",
     args: ({ negocio_id, versao, idem, b }) => ({
@@ -210,6 +217,7 @@ const ERRO_HUMANO: Record<string, string> = {
   proxima_acao_fora_do_fluxo: "A próxima ação não pertence ao fluxo permitido.",
   proxima_acao_em_no_passado: "O prazo da próxima ação não pode estar no passado.",
   visita_invalida: "Visita inválida ou não pertence a este lead.",
+  resultado_invalido: "Escolha um dos resultados de visita da lista.",
   ja_em_saida: "O lead já está em uma saída.",
   lead_nao_respondeu: "Conclua a ação apenas após o cliente responder.",
   nao_autenticado: "Sessão inválida. Faça login novamente.",
