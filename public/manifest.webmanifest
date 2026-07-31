@@ -1,9 +1,9 @@
 {
-  "name": "ApeCerto — CRM Nova Era",
-  "short_name": "ApeCerto",
-  "description": "Atenda seus clientes pelo WhatsApp com o acompanhamento do CRM Nova Era.",
-  "id": "/?crm=nova-era",
-  "start_url": "/?crm=nova-era&origem=pwa",
+  "name": "ApêCerto — ERP",
+  "short_name": "ApêCerto",
+  "description": "Sistema operacional imobiliário da ApêCerto: CRM, agenda, produtos e gestão.",
+  "id": "/",
+  "start_url": "/inicio?origem=pwa",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
@@ -17,5 +17,11 @@
     { "src": "/icons/icone-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
     { "src": "/icons/maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
     { "src": "/icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Início", "short_name": "Início", "url": "/inicio?origem=atalho", "icons": [{ "src": "/icons/icone-192.png", "sizes": "192x192" }] },
+    { "name": "CRM", "short_name": "CRM", "url": "/crm?origem=atalho", "icons": [{ "src": "/icons/icone-192.png", "sizes": "192x192" }] },
+    { "name": "Agenda", "short_name": "Agenda", "url": "/agenda?origem=atalho", "icons": [{ "src": "/icons/icone-192.png", "sizes": "192x192" }] },
+    { "name": "Notificações", "short_name": "Avisos", "url": "/notificacoes?origem=atalho", "icons": [{ "src": "/icons/icone-192.png", "sizes": "192x192" }] }
   ]
 }
