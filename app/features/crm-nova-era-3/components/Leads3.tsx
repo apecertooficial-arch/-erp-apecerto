@@ -107,6 +107,7 @@ export function Leads3({
             <span role="columnheader">Etapa</span>
             <span role="columnheader">Corretor</span>
             <span role="columnheader">Origem</span>
+            <span role="columnheader">Valor</span>
             <span role="columnheader">Atualização</span>
             <span role="columnheader" aria-label="Ações" />
           </div>
@@ -135,6 +136,7 @@ export function Leads3({
                 <span role="cell"><i className={`ncrm3-chip-etapa e-${e.lead.coluna}`}>{ETAPA_ROTULO[e.lead.coluna as Etapa] ?? e.lead.coluna}</i></span>
                 <span role="cell" className="ncrm3-td-corretor">{e.lead.corretorNome}</span>
                 <span role="cell" className="ncrm3-td-origem">{e.origem ?? "—"}</span>
+                <span role="cell" className="ncrm3-td-origem">—</span>
                 <span role="cell" className="ncrm3-td-data">{e.lead.ultimaInteracaoEm ? new Date(e.lead.ultimaInteracaoEm).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" }) : "—"}</span>
                 <span role="cell"><button type="button" className="ncrm3-abrir" onClick={() => onAbrir(e.lead.id)}>Abrir</button></span>
               </div>

@@ -38,6 +38,16 @@ function tomDaSecao(secao: string): string {
   return "tom-verde";
 }
 
+/* Protótipo: a barrinha conta o TIPO do chamado, não a seção.
+   Laranja = cliente respondeu · roxo = lead novo · vermelho = prazo estourado. */
+function tomDoMotivo(motivo: string, secao: string): string {
+  const m = (motivo || "").toLowerCase();
+  if (m.includes("respondeu")) return "tom-laranja";
+  if (m.includes("novo")) return "tom-roxo";
+  if (m.includes("estourado") || m.includes("venceu") || m.includes("atras")) return "tom-vermelho";
+  return tomDaSecao(secao);
+}
+
 function prazoCurto(iso: string | null): string {
   if (!iso) return "sem prazo";
   const d = new Date(iso);
@@ -185,7 +195,7 @@ export function MeuDia3({
             {bloco.cartoes.map((c) => {
               const botao = botaoPrincipal(c);
               return (
-                <article key={c.negocioId} className={`ncrm3-item ${tomDaSecao(c.secao)}`}>
+                <article key={c.negocioId} className={`ncrm3-item ${tomDoMotivo(c.motivo, c.secao)}`}>
                   <div className="ncrm3-item-corpo">
                     <div className="ncrm3-item-linha">
                       <strong>{c.nome}</strong>
