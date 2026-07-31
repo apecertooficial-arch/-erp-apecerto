@@ -1,24 +1,33 @@
 /* Ficha do lead no celular — print 06.
  *
- * O teste mais importante é o último bloco: ele trava o caminho do toque.
- * Abrir lead com `location.assign('/crm?lead=N')` recarregava o documento,
- * caía no CRM de desktop, baixava ~1,8 MB e — quando o negócio não estava
- * naquele payload — morria num `if (!deal) return;` mudo. Do lado do
- * corretor: "cliquei e não abriu". Se alguém reintroduzir esse caminho,
- * a suíte cai aqui e não em produção.
+ * Dois testes carregam o peso desta suíte:
  *
- * Importamos do .logica, nunca do .tsx: o strip-types do node não entende
- * JSX e derrubaria a suíte inteira antes do primeiro assert. O que é do
- * .tsx é conferido como TEXTO.
+ *   1. "a cópia de espera concorda com a fonte canônica" — fichaLead.logica
+ *      não pode importar valor de outro módulo (o strip-types do node só
+ *      apaga `import type`), então ela carrega uma cópia. Cópia sem teste
+ *      é divergência marcada para acontecer: duas telas escrevendo "24h" e
+ *      "1 d" para o mesmo lead.
+ *
+ *   2. "REGRESSÃO: tocar num lead não pode recarregar a página" — abrir
+ *      lead com `location.assign('/crm?lead=N')` recarregava o documento,
+ *      caía no CRM de desktop, baixava ~1,8 MB e, quando o negócio não
+ *      estava naquele payload, morria num `if (!deal) return;` mudo. Do
+ *      lado do corretor: "cliquei e não abriu". Se alguém reintroduzir
+ *      esse caminho, a suíte cai aqui e não em produção.
+ *
+ * Importamos do .logica, nunca do .tsx: o strip-types não entende JSX e
+ * derrubaria a suíte antes do primeiro assert. O que é do .tsx é
+ * conferido como TEXTO.
  */
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import {
-  ABAS_FICHA, ABA_INICIAL, estadoWhatsapp, etapaHumana, evidencia,
+  ABAS_FICHA, ABA_INICIAL, esperaCurta, estadoWhatsapp, etapaHumana, evidencia,
   lerConversa, lerDetalhe, linhasDeDados, oQueFazerAgora, porQueAgora,
   prazoHumano, quandoHumano, rotuloEvento, telefoneExibicao,
 } from "../app/features/crm-nova-era/fichaLead.logica.ts";
+import { espera } from "../app/features/home/telaCorretor.logica.ts";
 
 const ler = (p) => readFileSync(new URL(p, import.meta.url), "utf8");
 const FICHA = "../app/features/crm-nova-era/FichaLeadMobile.tsx";
@@ -31,6 +40,15 @@ const item = (extra = {}) => ({
   sara_orientacao_curta: "Confirmar o valor com condomínio e propor visita",
   proxima_acao_prazo: null, outbound_real_confirmado: false, aguardando_sincronizacao: false,
   ...extra,
+});
+
+/* ---------------- a cópia amarrada ---------------- */
+
+test("a cópia de espera concorda com a fonte canônica", () => {
+  const casos = [-5, 0, 1, 12, 45, 59, 60, 90, 120, 1439, 1440, 2879, 2880, 4320, 10080, 99999];
+  for (const m of casos) {
+    assert.equal(esperaCurta(m), espera(m), `divergiu em ${m} minutos`);
+  }
 });
 
 /* ---------------- telefone ---------------- */
@@ -252,14 +270,14 @@ test("a ficha é somente leitura: não envia nem muda etapa", () => {
 
 test("nada da ficha vaza para o desktop", () => {
   const css = ler("../app/styles/tela-crm.css");
-  /* Sem os comentários antes de fatiar: um "arroba-media" citado na
+  /* Sem os comentários antes de fatiar: uma citação de media query na
      documentação cortaria a fatia antes da regra e derrubaria o teste
      sem nenhum CSS ter mudado. */
   const limpo = css.replace(/\/\*[\s\S]*?\*\//g, "");
   const fora = limpo.slice(0, limpo.indexOf("@media"));
-  assert.match(fora, /\.fl-wrap \{ display: none; \}/);
   assert.match(fora, /\.cm-wrap \{ display: none; \}/);
   assert.ok(!/min-height|grid-template|padding:/.test(fora), "só as regras de ocultar podem viver fora");
+  assert.match(limpo, /\.fl-wrap \{ display: none; \}/, "a ficha também não pode vazar");
 });
 
 test("alvo de toque grande na ficha", () => {
