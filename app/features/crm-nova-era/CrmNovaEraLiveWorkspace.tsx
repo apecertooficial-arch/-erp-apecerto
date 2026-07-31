@@ -68,6 +68,7 @@ export function CrmNovaEraLiveWorkspace({ accessToken, profile }: { accessToken:
   const [erro, setErro] = useState<string | null>(null);
   const [vista, setVista] = useState<Vista>("fila");
   const [aba, setAba] = useState<Aba>("operacao");
+  const [maisAberto, setMaisAberto] = useState(false);
   const ehAdmin = ["admin", "executivo"].includes(profile.role);
   const [drillCorretor, setDrillCorretor] = useState<number | null>(null);
   /* Celular: uma etapa por vez. No desktop este estado nao tem efeito — o CSS
@@ -155,21 +156,29 @@ export function CrmNovaEraLiveWorkspace({ accessToken, profile }: { accessToken:
         <div className="nova-crm-seg" role="tablist">
           <button className={vista === "fila" ? "on" : ""} onClick={() => { setDrillCorretor(null); setVista("fila"); }}>Meu dia</button>
           <button className={vista === "quadro" ? "on" : ""} onClick={() => setVista("quadro")}>Quadro</button>
-          <button className={vista === "treinamento" ? "on" : ""} onClick={() => setVista("treinamento")}>Treinamento</button>
+          {/* No celular estes dois somem da barra e vao para "Mais" (CSS). */}
+          <button className="ncrm-seg-extra" onClick={() => setVista("treinamento")}>Treinamento</button>
           {profile.role !== "corretor" && (
-            <button className={vista === "gerencial" ? "on" : ""} onClick={() => setVista("gerencial")}>Visão gerencial</button>
+            <button className="ncrm-seg-extra" onClick={() => setVista("gerencial")}>Visão gerencial</button>
           )}
+          <button type="button" className="ncrm-seg-mais" aria-expanded={maisAberto} onClick={() => setMaisAberto((v) => !v)}>Mais</button>
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
           <OnboardingNovaEra userId={profile.userId} />
-          {["admin", "executivo"].includes(profile.role) && <IngestAdminControl accessToken={accessToken} />}
           <button className="nova-crm-btn ghost" onClick={() => void carregarQuadro()} disabled={loading}>↻ Atualizar</button>
         </div>
       </div>
 
-      <FaseBanner accessToken={accessToken} souAdmin={["admin", "executivo"].includes(profile.role)}
-        totalLeads={leads.length}
-        onIngest={(ativo, desde) => setIngestInfo((cur) => (cur.ativo === ativo && cur.desde === desde ? cur : { ativo, desde }))} />
+      {maisAberto && (
+        <div className="ncrm-mais-folha" role="dialog" aria-label="Mais no CRM" onClick={() => setMaisAberto(false)}>
+          <div onClick={(e) => e.stopPropagation()}>
+            <button type="button" onClick={() => { setVista("treinamento"); setMaisAberto(false); }}>Treinamento</button>
+            {profile.role !== "corretor" && (
+              <button type="button" onClick={() => { setVista("gerencial"); setMaisAberto(false); }}>Visão gerencial</button>
+            )}
+          </div>
+        </div>
+      )}
 
       {erro && <div className="nova-crm-notice" style={{ color: "var(--nc-red, #b42318)" }}>{erro}</div>}
       {loading && <div className="nova-crm-empty">Carregando carteira…</div>}
@@ -250,6 +259,17 @@ export function CrmNovaEraLiveWorkspace({ accessToken, profile }: { accessToken:
                   ))}
                 </div>
 
+                {/* Fase, ingest, runner, observer e RPC vivem AQUI -- area
+                    administrativa autorizada -- e nao na tela de quem atende.
+                    Quem trabalha lead nao precisa saber o que e um runner. */}
+                {aba === "operacao" && ehAdmin && (
+                  <div className="ncrm-admin-tecnico">
+                    <IngestAdminControl accessToken={accessToken} />
+                    <FaseBanner accessToken={accessToken} souAdmin
+                      totalLeads={leads.length}
+                      onIngest={(ativo, desde) => setIngestInfo((cur) => (cur.ativo === ativo && cur.desde === desde ? cur : { ativo, desde }))} />
+                  </div>
+                )}
                 {aba === "operacao" && (
                   <>
                     <GestaoOperacional accessToken={accessToken} onDrill={(cid) => { setDrillCorretor(cid); setVista("fila"); }} />

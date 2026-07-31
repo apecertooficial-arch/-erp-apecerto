@@ -392,3 +392,87 @@
   .app-bottom-nav > a { position: relative; }
   .abn-badge { top: 6px; right: calc(50% - 22px); }
 }
+
+/* =====================================================================
+   CRM, FICHA E NOTIFICACOES NO CELULAR
+   Tudo sob max-width. Desktop acima de 900px nao e tocado.
+   ===================================================================== */
+
+/* "Mais" do CRM so existe no celular; as abas extras so no desktop. */
+.ncrm-seg-mais { display: none; }
+.ncrm-mais-folha { display: none; }
+
+@media (max-width: 900px) {
+  /* Meu Dia / Quadro / Mais. Treinamento e Visao gerencial vao para a folha. */
+  .ncrm-seg-extra { display: none !important; }
+  .ncrm-seg-mais {
+    display: inline-flex; align-items: center; min-height: 44px; padding: 0 14px;
+    border: 1px solid var(--line); border-radius: 999px; background: #fff;
+    font-size: 13px; font-weight: 600; cursor: pointer;
+  }
+  .ncrm-mais-folha {
+    display: flex; position: fixed; inset: 0; z-index: 60; align-items: flex-end;
+    background: rgba(28, 22, 18, .42);
+  }
+  .ncrm-mais-folha > div {
+    width: 100%; background: #fff; border-radius: 18px 18px 0 0; display: grid; gap: 8px;
+    padding: 16px 16px calc(16px + 60px + env(safe-area-inset-bottom, 0px));
+  }
+  .ncrm-mais-folha button {
+    min-height: 52px; border: 1px solid var(--line); border-radius: 12px; background: #fff;
+    font-size: 15px; font-weight: 600; text-align: left; padding: 0 14px; cursor: pointer;
+  }
+
+  /* Busca da fila e "Carregar mais" */
+  .ncrm-dia-busca > input {
+    width: 100%; min-height: 44px; padding: 0 14px;
+    border: 1px solid var(--line); border-radius: 10px; font-size: 16px; /* 16px evita zoom no iOS */
+  }
+  .ncrm-dia-mais, .notif-mais {
+    width: 100%; min-height: 48px; margin-top: 12px; border: 1px solid var(--line);
+    border-radius: 12px; background: #fff; font-size: 15px; font-weight: 600; cursor: pointer;
+  }
+
+  /* --- FICHA EM TELA INTEIRA --- */
+  .ncrm-ficha {
+    position: fixed; inset: 0; z-index: 70; display: flex; flex-direction: column;
+    background: #fff;
+  }
+  .ncrm-ficha-topo {
+    position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: 10px;
+    padding: env(safe-area-inset-top, 0px) 12px 0;
+    min-height: calc(56px + env(safe-area-inset-top, 0px));
+    background: #fff; border-bottom: 1px solid var(--line);
+  }
+  .ncrm-ficha-voltar { min-width: 44px; min-height: 44px; border: 0; background: transparent; font-size: 22px; cursor: pointer; }
+  .ncrm-ficha-nome { flex: 1; min-width: 0; font-size: 16px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* O conteudo rola; a barra de acao nao. Um scroll so, nunca dois concorrentes. */
+  .ncrm-ficha-corpo {
+    flex: 1; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch;
+    padding: 12px 14px calc(84px + env(safe-area-inset-bottom, 0px));
+  }
+  .ncrm-ficha-abas { display: flex; gap: 6px; position: sticky; top: 0; background: #fff; padding: 8px 0; z-index: 1; }
+  .ncrm-ficha-abas > button { min-height: 44px; padding: 0 14px; border: 1px solid var(--line); border-radius: 999px; background: #fff; font-size: 13px; font-weight: 600; cursor: pointer; }
+  .ncrm-ficha-abas > button.on { border-color: var(--orange); background: var(--orange-soft); color: #b94300; }
+  /* WhatsApp fixo embaixo, acima da safe-area do iPhone. */
+  .ncrm-ficha-acao {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 3;
+    padding: 10px 14px calc(10px + env(safe-area-inset-bottom, 0px));
+    background: #fff; border-top: 1px solid var(--line);
+  }
+  .ncrm-ficha-acao > a { width: 100%; min-height: 52px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; border-radius: 12px; background: #25d366; color: #fff; font-size: 16px; font-weight: 700; text-decoration: none; }
+
+  /* --- NOTIFICACOES --- */
+  .notif-secao-titulo { margin: 18px 0 8px; font-size: 13px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+  .notif-secao-titulo > b { margin-left: 6px; color: var(--ink); }
+  .notif-item { align-items: flex-start; }
+  .notif-body strong, .notif-body p { overflow-wrap: anywhere; }
+  .notif-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+  .notif-actions > button { min-height: 44px; padding: 0 14px; border-radius: 10px; }
+  .notif-lida { display: inline-flex; align-items: center; min-height: 44px; padding: 0 10px; font-size: 12px; color: var(--muted); }
+  .notif-esqueleto { display: grid; gap: 10px; padding: 8px 0; }
+  .notif-esq-item { display: grid; gap: 6px; }
+  .notif-esq-item > span { height: 22px; border-radius: 8px; background: linear-gradient(90deg,#f3f0ee,#e9e5e2,#f3f0ee); background-size: 200% 100%; animation: sd-brilho 1.2s ease-in-out infinite; }
+  .notif-esq-item > span:last-child { width: 60%; }
+  @media (prefers-reduced-motion: reduce) { .notif-esq-item > span { animation: none; } }
+}
