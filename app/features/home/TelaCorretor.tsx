@@ -165,6 +165,23 @@ function CardLead({ i, onAbrir }: { i: Item; onAbrir: (id: number) => void }) {
         </button>
       </div>
 
+      {/* FALLBACK wa.me. O print não mostra este link, e por isso ele quase
+          saiu daqui — mas ele existe por motivo funcional, não estético:
+          `whatsapp://` não abre em alguns aparelhos nem no navegador do
+          desktop, e sem ele o corretor toca e não acontece nada. Fica
+          discreto, embaixo da ação principal, sem competir com ela. */}
+      {i.telefone_normalizado && (
+        <a
+          className="tc-fallback"
+          href={`https://wa.me/${i.telefone_normalizado}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={marcou}
+        >
+          Não abriu? Abrir pelo WhatsApp Web
+        </a>
+      )}
+
       {aguardando && (
         <p className="tc-aguardando">WhatsApp aberto — aguardando sincronização.</p>
       )}
