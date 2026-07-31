@@ -26,14 +26,14 @@ const SECTIONS = [
   { key: "empresa", label: "Empresa", sub: "Dados e identidade", icon: "▦" },
   { key: "conexoes", label: "Conexões (WhatsApp)", sub: "Instâncias e status", icon: "▤" },
   { key: "usuarios", label: "Usuários & Permissões", sub: "Acessos da equipe", icon: "◫" },
-  { key: "crm", label: "CRM & Pipelines", sub: "Etapas e funil", icon: "⌥" },
+  { key: "crm", label: "CRM & Pipelines", sub: "Roleta e visão dos funis", icon: "⌥" },
   { key: "esteira", label: "Esteira de vendas", sub: "Etapas, responsáveis e documentos", icon: "◆" },
   { key: "presenca", label: "Regra de presença", sub: "Corretor online de verdade", icon: "🛡" },
   { key: "distribuicao", label: "Distribuição & Abordagem", sub: "Lead nunca fica sem dono", icon: "⚖" },
   { key: "aquario", label: "Aquário", sub: "Subir leads para pescaria", icon: "🐟" },
   { key: "momentos", label: "Momentos do lead", sub: "Nome, cor e prazo de atualização", icon: "◔" },
-  { key: "financeiro", label: "Financeiro", sub: "Comissões e metas", icon: "▣" },
-  { key: "seguranca", label: "Segurança", sub: "Sessões e RLS", icon: "▪" },
+  { key: "financeiro", label: "Financeiro", sub: "Comissões (visão) e categorias", icon: "▣" },
+  { key: "seguranca", label: "Segurança", sub: "IPs autorizados e auditoria", icon: "▪" },
   { key: "integracoes", label: "Integrações & IA", sub: "APIs e agentes", icon: "✦" },
 ] as const;
 type SectionKey = typeof SECTIONS[number]["key"];
@@ -64,7 +64,11 @@ export function SettingsWorkspace({ accessToken, sessionRole, onNavigate }: { ac
   async function saveCompany() {
     setSaving(true); setToast("");
     const { error: rpcError } = await getBrowserSupabaseClient().rpc("erp_settings_salvar", { p_chave: "empresa", p_valor: company });
-    setToast(rpcError ? rpcError.message : "Dados da empresa salvos.");
+    if (rpcError) { setToast(rpcError.message); setSaving(false); return; }
+    // Recarrega a config para que um "Cancelar" posterior reverta para o valor SALVO, não para o antigo em memória.
+    const { data } = await getBrowserSupabaseClient().rpc("erp_config_atual");
+    if (data) { const r = data as AdminConfig; setConfig(r); setCompany(r.empresa ?? {}); }
+    setToast("Dados da empresa salvos.");
     setSaving(false);
   }
 
@@ -79,6 +83,10 @@ export function SettingsWorkspace({ accessToken, sessionRole, onNavigate }: { ac
   async function saveIps() {
     setSaving(true); setToast("");
     const ips = ipsText.split(/\n|,/).map((item) => item.trim()).filter(Boolean);
+    // Valida formato IPv4 antes de salvar (evita gravar texto qualquer).
+    const ipv4 = /^(25[0-5]|2[0-4]\d|1?\d?\d)(\.(25[0-5]|2[0-4]\d|1?\d?\d)){3}$/;
+    const invalidos = ips.filter((ip) => !ipv4.test(ip));
+    if (invalidos.length) { setToast(`IP inválido: ${invalidos.slice(0, 3).join(", ")}${invalidos.length > 3 ? "…" : ""}. Use o formato 200.100.10.1 (um por linha).`); setSaving(false); return; }
     const { error: rpcError } = await getBrowserSupabaseClient().rpc("erp_salvar_ips", { p_ips: ips });
     setToast(rpcError ? rpcError.message : `${ips.length} IP(s) salvos.`);
     setSaving(false);
@@ -283,9 +291,9 @@ function SettingsShell({ section, setSection, error, toast, saving, config, comp
 
         {section === "empresa" && <div className="settings-empresa">
           <section className="settings-card settings-identity">
-            <button type="button" className="settings-logo"><span>⌂</span><small>Trocar logo</small></button>
+            <button type="button" className="settings-logo" disabled title="Upload de logo — em breve"><span>⌂</span><small>Logo (em breve)</small></button>
             <div className="settings-identity-body">
-              <h2>Identidade da imobiliária</h2><p>O logo e o nome aparecem em documentos, propostas e no rodapé das mensagens.</p>
+              <h2>Identidade da imobiliária</h2><p>O nome da imobiliária aparece em documentos, propostas e no rodapé das mensagens. O upload de logo entra em breve.</p>
               <div className="settings-grid">
                 {companyField("nome", "Nome da imobiliária", "Apê Certo Imóveis")}
                 {companyField("creci", "CRECI jurídico", "CRECI-SP J00000")}
@@ -331,7 +339,7 @@ function SettingsShell({ section, setSection, error, toast, saving, config, comp
         </section>}
 
         {section === "financeiro" && config && <section className="settings-card">
-          <h2>Financeiro</h2><p>Regra de comissão vigente aplicada às vendas.</p>
+          <h2>Financeiro</h2><p>Regra de comissão vigente (somente leitura aqui) e categorias do caixa. Metas e comissões editáveis ficam no módulo Financeiro.</p>
           {config.comissao?.versao ? <div className="settings-commission"><strong>Versão {config.comissao.versao}</strong><small>{config.comissao.descricao ?? "Sem descrição"}</small><small>Vigência: {config.comissao.vigente_de ?? "—"} até {config.comissao.vigente_ate ?? "em aberto"}</small><pre>{JSON.stringify(config.comissao.parametros ?? {}, null, 2)}</pre></div> : <p className="settings-hint">Nenhuma regra de comissão cadastrada.</p>}
           <CategoriasCaixaEditor accessToken={accessToken} />
           <p className="settings-hint">Metas, indicações e comissões editáveis continuam no módulo Financeiro.</p>
@@ -349,10 +357,10 @@ function SettingsShell({ section, setSection, error, toast, saving, config, comp
           <div className="settings-integrations">
             <article><strong>WhatsApp (D-API)</strong><small>{config.instancias.filter((instance) => instance.conectada).length}/{config.instancias.length} instâncias conectadas</small><em className={config.instancias.some((instance) => instance.conectada) ? "ok" : "warn"}>{config.instancias.some((instance) => instance.conectada) ? "Operacional" : "Atenção"}</em></article>
             <article><strong>Supabase</strong><small>Banco, autenticação e arquivos</small><em className="ok">Operacional</em></article>
-            <article><strong>Datacrazy</strong><small>Histórico de atendimento</small><em className="ok">Configurada</em></article>
-            <article><strong>Agentes de IA</strong><small>Sara e agentes do módulo Agentes de IA</small><em className="ok">Ativos</em></article>
+            <article><strong>Datacrazy</strong><small>Histórico de atendimento</small><em className="na">não verificado aqui</em></article>
+            <article><strong>Agentes de IA</strong><small>Sara e agentes do módulo Agentes de IA</small><em className="na">não verificado aqui</em></article>
           </div>
-          <p className="settings-hint">Chaves e credenciais são gerenciadas no Supabase/Render — não ficam expostas aqui.</p>
+          <p className="settings-hint">O status do WhatsApp é ao vivo. Datacrazy e Agentes de IA <strong>não têm verificação automática nesta tela</strong> — confira o status real no módulo de cada um. Chaves e credenciais ficam no Supabase/Render, não expostas aqui.</p>
         </section>}
       </main>
     </div>
