@@ -462,12 +462,24 @@ SELECT public.test_assert(
   'FP8: saida sem marcador da D-API NAO vira primeira abordagem humana');
 
 -- 10. nenhuma das recusadas moveu etapa nem criou evento humana:
+-- Vale para TODOS os recusados, inclusive o inbound: nenhum deles pode ter
+-- primeira saida humana nem SLA.
 SELECT public.test_assert(
   NOT EXISTS (SELECT 1 FROM public.ncrm_estado
                WHERE negocio_id IN (74003,74004,74005,74006,74007,74008)
-                 AND (etapa <> 'novo' OR primeira_saida_humana_em IS NOT NULL
-                      OR sla_minutos IS NOT NULL)),
-  'FP10a: nenhuma saida recusada moveu etapa, gravou primeira saida ou SLA');
+                 AND (primeira_saida_humana_em IS NOT NULL OR sla_minutos IS NOT NULL
+                      OR sla_evidencia IS NOT NULL)),
+  'FP10a: nenhuma mensagem recusada gravou primeira saida humana, SLA ou evidencia');
+
+-- A etapa so e cobrada nos casos de SAIDA. O caso 7 e mensagem RECEBIDA, e
+-- resposta de cliente move o card legitimamente, por outro caminho que nao tem
+-- nada a ver com atuacao humana do corretor. Exigir 'novo' ali seria testar a
+-- coisa errada.
+SELECT public.test_assert(
+  NOT EXISTS (SELECT 1 FROM public.ncrm_estado
+               WHERE negocio_id IN (74003,74004,74005,74006,74008)
+                 AND etapa <> 'novo'),
+  'FP10c: nenhuma SAIDA recusada tirou o card de novo');
 
 SELECT public.test_assert(
   (SELECT count(*) FROM public.ncrm_evento
