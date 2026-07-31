@@ -2,6 +2,7 @@
 /* Doc §15 — Perfil completo do corretor aberto pelo botão do rodapé da sidebar. */
 
 import { useEffect, useRef, useState } from "react";
+import { limparDadosLocais } from "./RegistroPwa";
 import { getBrowserSupabaseClient } from "../lib/supabase/browser";
 
 type ProfileBroker = { id: number; nome: string | null; email: string | null; telefone: string | null; creci: string | null; foto_path: string | null; ativo: boolean; online: boolean; notif_leads: boolean; notif_mensagens: boolean; notif_som: boolean };
@@ -18,7 +19,7 @@ const emptyBank: BankData = { titular_nome: "", titular_cpf: "", banco_nome: "",
 type Endereco = { cep: string; logradouro: string; numero: string; complemento: string; bairro: string; cidade: string; uf: string };
 const emptyEndereco: Endereco = { cep: "", logradouro: "", numero: "", complemento: "", bairro: "", cidade: "", uf: "" };
 
-export function ProfilePanel({ email, onClose, onPreviewLogin, onSaved }: { email: string; onClose: () => void; onPreviewLogin: () => void; onSaved: () => void }) {
+export function ProfilePanel({ email, onClose, onPreviewLogin, onSaved }: { email: string; onClose: () => void; onPreviewLogin?: () => void; onSaved: () => void }) {
   const [data, setData] = useState<ProfileData | null>(null);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
@@ -114,8 +115,21 @@ export function ProfilePanel({ email, onClose, onPreviewLogin, onSaved }: { emai
   }
 
   async function signOut() {
-    await getBrowserSupabaseClient().auth.signOut();
-    onClose();
+    /* Ordem importa: encerra a sessao PRIMEIRO (senao o refresh automatico do
+       supabase-js poderia regravar o token que acabamos de apagar), depois
+       limpa caches, localStorage e sessionStorage do aparelho.
+
+       Sem esta limpeza, o proximo usuario do mesmo celular herdava cache e
+       storage do anterior. limparDadosLocais() existia desde o PR #39, mas
+       nao era chamada em lugar nenhum. */
+    try {
+      await getBrowserSupabaseClient().auth.signOut();
+    } finally {
+      await limparDadosLocais();
+      onClose();
+      // Recarrega em rota limpa: derruba qualquer estado em memoria do ERP.
+      window.location.replace("/");
+    }
   }
 
   const roleLabel = ({ admin: "Admin", diretor: "Diretor", gerente: "Gerente", executivo: "Executivo", gestor: "Gestor" } as Record<string, string>)[data?.usuario?.role ?? ""] ?? "Corretor";
@@ -202,7 +216,7 @@ export function ProfilePanel({ email, onClose, onPreviewLogin, onSaved }: { emai
       <footer>
         <button className="profile-logout" type="button" onClick={() => void signOut()}>⎋ Sair da conta</button>
         <div>
-          <button className="profile-preview" type="button" onClick={onPreviewLogin}>Prévia da tela de login</button>
+          {onPreviewLogin && <button className="profile-preview" type="button" onClick={onPreviewLogin}>Prévia da tela de login</button>}
           <button className="profile-save" type="button" disabled={saving || !data} onClick={() => void save()}>{saving ? "Salvando…" : "Salvar alterações"}</button>
         </div>
       </footer>

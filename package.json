@@ -12,7 +12,8 @@
     "start": "WRANGLER_LOG_PATH=.wrangler/wrangler.log vinext start",
     "test": "pnpm run build && node --test tests/rendered-html.test.mjs",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
-    "db:generate": "drizzle-kit generate"
+    "db:generate": "drizzle-kit generate",
+    "test:frontend": "node --test tests/erp-routes.test.mjs tests/nav-perfis.test.mjs tests/pwa.test.mjs tests/crm-whatsapp.test.mjs tests/crm-kanban-resultados.test.mjs tests/erp-modulos.test.mjs tests/shell/css-mobile.test.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "2.110.2",
