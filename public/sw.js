@@ -76,14 +76,46 @@ self.addEventListener("fetch", (evento) => {
   }
 });
 
+/* Casca minima recriada depois do logout.
+   So a tela offline. Nada aqui identifica ninguem, e nada aqui exige sessao. */
+const PUBLICO_MINIMO = [OFFLINE];
+
+/* Logout: apaga o que e deste app e recria a casca publica.
+ *
+ * A ORDEM importa mais que o resultado do recache. Apagamos primeiro: se a rede
+ * estiver fora e o recache falhar, o dado do usuario anterior ja saiu do
+ * aparelho de qualquer jeito. O contrario -- tentar recriar antes de apagar --
+ * deixaria dado do usuario anterior no aparelho quando a rede falhasse.
+ *
+ * Devolve se conseguiu recriar. Nunca inventa sucesso: sem rede volta false, e
+ * quem pediu decide o que fazer com isso.
+ */
+async function limparERecriar() {
+  const nomes = await caches.keys();
+  await Promise.all(nomes.filter((n) => n.includes("apecerto")).map((n) => caches.delete(n)));
+
+  try {
+    const c = await caches.open(CACHE_ESTATICO);
+    // addAll e atomico: se qualquer item falhar, NADA entra. Sem cache pela metade.
+    await c.addAll(PUBLICO_MINIMO);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 // Atualizacao controlada: so troca de versao quando a pagina manda.
 self.addEventListener("message", (evento) => {
   if (evento.data === "ATUALIZAR_AGORA") self.skipWaiting();
+
   if (evento.data === "LIMPAR_TUDO") {
-    // Logout: remove resquicio do usuario anterior, mas SO dos caches deste app.
-    // Apagar caches.keys() inteiro atingiria qualquer cache da origem.
-    caches.keys().then((nomes) =>
-      Promise.all(nomes.filter((n) => n.includes("apecerto")).map((n) => caches.delete(n))),
-    );
+    const porta = evento.ports && evento.ports[0];
+    /* Confirma SO no fim, e SEMPRE -- inclusive quando falha. A pagina espera
+       esta resposta antes de recarregar; ficar em silencio penduraria o logout
+       ate o limite de tempo dela. */
+    const responder = (recacheado) => { if (porta) porta.postMessage({ tipo: "LIMPEZA_CONCLUIDA", recacheado }); };
+    const tarefa = limparERecriar().then(responder, () => responder(false));
+    // waitUntil impede o navegador de matar o worker no meio da limpeza.
+    if (evento.waitUntil) evento.waitUntil(tarefa);
   }
 });
