@@ -12,10 +12,12 @@ import "./styles/tela-avisos.css";
 import "./styles/tela-agenda.css";
 import "./styles/tela-agenda-mes.css";
 import "./styles/telas-prototipo.css";
-/* A ÚLTIMA de todas. Corrige o que só apareceu no aparelho de verdade:
-   cabeçalho em dobro, cor do botão do WhatsApp, ícone do CRM e o tamanho de
-   fonte. Precisa vir depois de todas para vencer sem seletor mais específico. */
+/* Correções vindas de uso real: cabeçalho em dobro, WhatsApp verde, ícone do
+   CRM e tamanho de fonte. Depois de todas para vencer sem seletor extra. */
 import "./styles/correcoes-celular.css";
+/* A ÚLTIMA: a ação de gestão é a exceção da regra do verde, então precisa
+   vir depois de quem pinta de verde. */
+import "./styles/tela-gestao-card.css";
 import { RegistroPwa } from "./components/RegistroPwa";
 
 export const metadata: Metadata = {
