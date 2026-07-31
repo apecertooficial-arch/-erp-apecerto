@@ -1,3 +1,15 @@
+-- Helper local: proconfig devolve search_path="" para search_path vazio, e
+-- reinterpolar isso como identificador gera 'zero-length delimited identifier'.
+-- Aqui o valor volta a ser o literal '' que o CREATE FUNCTION espera.
+CREATE OR REPLACE FUNCTION ncrm_private.ncrm_sp_literal(p_cfg text)
+RETURNS text LANGUAGE sql IMMUTABLE AS $f$
+  SELECT CASE
+    WHEN p_cfg IS NULL THEN ''''''
+    WHEN replace(p_cfg, 'search_path=', '') IN ('""', '') THEN ''''''
+    ELSE replace(p_cfg, 'search_path=', '')
+  END;
+$f$;
+
 -- Remove APENAS a ligacao nova: o reconciliador volta a nao chamar
 -- confirmar_primeiras_saidas. A funcao de confirmacao continua existindo, os
 -- dados ja confirmados continuam la e a correcao de autoria NAO e revertida --
@@ -35,6 +47,6 @@ BEGIN
   EXECUTE format(
     'CREATE OR REPLACE FUNCTION ncrm_private.reconciliar_mensagens(%s) RETURNS %s '
     'LANGUAGE plpgsql SECURITY DEFINER SET search_path TO %s AS %L',
-    v_args, v_ret, coalesce(replace(v_cfg,'search_path=',''), ''''''), v_novo);
+    v_args, v_ret, ncrm_private.ncrm_sp_literal(v_cfg), v_novo);
   RAISE NOTICE 'ligacao removida do reconciliador';
 END $rb$;
