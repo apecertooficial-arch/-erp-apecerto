@@ -109,7 +109,7 @@ BEGIN
       FROM public.visitas v
      WHERE coalesce(v.status,'') NOT IN ('cancelada','realizada','nao_compareceu')
        AND v.data IS NOT NULL
-       AND (v.data + coalesce(v.hora_inicio, '00:00'::time)) BETWEEN now() AND now() + interval '24 hours'
+       AND (v.data::date + coalesce(nullif(v.hora_inicio::text,''),'00:00')::time) BETWEEN now() AND now() + interval '24 hours'
     UNION ALL
     -- NOVO: conversa que o CRM nao conseguiu processar. Cegueira silenciosa.
     SELECT 'sync:'||cp.id::text, 'falha_sincronizacao', 'gestao', 2,
@@ -151,7 +151,7 @@ BEGIN
     UNION ALL SELECT 'visita:'||v.id::text FROM public.visitas v
                WHERE coalesce(v.status,'') NOT IN ('cancelada','realizada','nao_compareceu')
                  AND v.data IS NOT NULL
-                 AND (v.data + coalesce(v.hora_inicio,'00:00'::time)) BETWEEN now() AND now() + interval '24 hours'
+                 AND (v.data::date + coalesce(nullif(v.hora_inicio::text,''),'00:00')::time) BETWEEN now() AND now() + interval '24 hours'
     UNION ALL SELECT 'sync:'||cp.id::text FROM public.ncrm_ingest_checkpoint cp
                WHERE cp.status='erro' AND coalesce(cp.motivo_final,'') LIKE '%persistente%'
                  AND cp.atualizado_em > now() - interval '7 days'
