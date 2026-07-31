@@ -9,6 +9,10 @@ import "./styles/apecerto-identidade.css";
 import "./styles/tela-corretor.css";
 import "./styles/tela-crm.css";
 import "./styles/telas-prototipo.css";
+/* A ÚLTIMA de todas. Corrige o que só apareceu no aparelho de verdade:
+   cabeçalho em dobro e a cor do botão do WhatsApp. Precisa vir depois de
+   todas para vencer sem precisar de seletor mais específico. */
+import "./styles/correcoes-celular.css";
 import { RegistroPwa } from "./components/RegistroPwa";
 
 export const metadata: Metadata = {
