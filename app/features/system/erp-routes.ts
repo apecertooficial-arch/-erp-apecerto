@@ -149,21 +149,27 @@ export function itensDaNavegacao(opcoes: Parameters<typeof podeVer>[1]): ItensNa
 
 /* Agrupamento da folha "Mais" (print 13).
  *
- * O protipo mostra 7 itens em 3 grupos porque a persona dele era um corretor.
- * O app real vai de 2 itens (corretor) a 17 (admin), e a lista de quem ve o
- * que ja e decidida por podeVer(). Entao o grupo NAO pode ser uma lista
- * escrita a mao: seria a segunda fonte de verdade da navegacao, e o dia em que
- * alguem adicionasse um modulo sem lembrar de mexer aqui, ele sumiria do
- * celular sem erro nenhum.
+ * O prototipo mostra 7 itens em 3 grupos porque a persona dele era um corretor
+ * com um recorte enxuto de modulos. O app real vai de 12 itens (corretor) a 17
+ * (admin), e quem ve o que ja e decidido por podeVer(). Entao o grupo NAO pode
+ * ser uma lista escrita a mao: seria a segunda fonte de verdade da navegacao,
+ * e o dia em que alguem adicionasse um modulo sem lembrar de mexer aqui, ele
+ * sumiria do celular sem erro nenhum.
  *
  * O titulo sai da `classe` que a tabela acima ja carrega desde a FASE 1:
- *   A (essencial)      -> Rotina
- *   B (conforme papel) -> Gestao
+ *   A (essencial)        -> Rotina
+ *   B (conforme papel)   -> Gestao
  *   C (baixa frequencia) -> Ferramentas
  *
- * "Ferramentas" e o quarto grupo que o print nao tem — o print nao tinha onde
- * pendurar Chat, Disparos, Base e Ajustes. Grupo vazio nao renderiza, entao o
- * corretor continua vendo exatamente as duas secoes do desenho.
+ * "Ferramentas" e o quarto grupo, que o print nao tem: o desenho nao tinha
+ * onde pendurar Chat, Disparos, Financiamento, Base e Ajustes.
+ *
+ * NAO ESPERE DUAS SECOES NA TELA DO CORRETOR. Rodando o conjunto de permissao
+ * real de corretor, ele alcanca as QUATRO -- Financiamento, Base de
+ * conhecimento e Ajuda tem `slugs: []`, entao passam por podeVer para todo
+ * mundo e enchem "Ferramentas" sozinhas. Se o desenho de 3 grupos for
+ * requisito, o caminho e dar slug a esses tres no banco, nao filtrar aqui:
+ * esconder na folha e deixar acessivel por URL e mentira de menu.
  *
  * "Conta" (Meu perfil / Sair) nao entra aqui: nao sao modulos, nao tem rota
  * de permissao e sao montados direto pela casca.
