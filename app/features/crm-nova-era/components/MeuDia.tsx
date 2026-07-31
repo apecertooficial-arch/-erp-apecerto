@@ -51,6 +51,11 @@ export function MeuDia({ accessToken, corretorFiltro, onAbrir }: {
 }) {
   const [filtro, setFiltro] = useState("agora");
   const [filtrosAvancados, setFiltrosAvancados] = useState(false);
+  /* Carga inicial limitada. A fila pode trazer centenas; ninguem atende
+     centenas. 20 e o que cabe numa sessao de trabalho -- o resto vem quando a
+     pessoa pedir. */
+  const [limite, setLimite] = useState(20);
+  const [busca, setBusca] = useState("");
   const [itens, setItens] = useState<ItemFila[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
@@ -79,11 +84,22 @@ export function MeuDia({ accessToken, corretorFiltro, onAbrir }: {
      A ordem DENTRO de cada bloco e a que o banco devolveu (prioridade
      calculada em ncrm_fila_trabalho) — nao reordenamos no cliente, senao a
      tela discordaria da regra. */
+  /* A busca filtra ANTES do agrupamento, e cada item vai para exatamente UM
+     bloco (grupoVisivel e uma particao). Por isso nenhum lead aparece em duas
+     listas -- ha teste que prende isso. */
+  const filtrados = useMemo(() => {
+    const t = busca.trim().toLowerCase();
+    return t ? itens.filter((i) => (i.lead_nome ?? "").toLowerCase().includes(t)) : itens;
+  }, [itens, busca]);
+
+  const visiveis = useMemo(() => filtrados.slice(0, limite), [filtrados, limite]);
+  const restantes = Math.max(0, filtrados.length - visiveis.length);
+
   const grupos = useMemo(() => {
     const g: Record<GrupoVisivel, ItemFila[]> = { atenda_agora: [], faca_combinado: [], acompanhe: [] };
-    for (const i of itens) g[grupoVisivel(grupoDoItem(i))].push(i);
+    for (const i of visiveis) g[grupoVisivel(grupoDoItem(i))].push(i);
     return g;
-  }, [itens]);
+  }, [visiveis]);
 
   const Item = ({ i }: { i: ItemFila }) => (
     <article key={i.negocio_id} className="ncrm-dia-card" style={{ display: "flex", gap: 12, alignItems: "center", border: "1px solid var(--nc-line,#e5e7eb)", borderLeft: `4px solid ${COR_PRIORIDADE[i.prioridade] ?? "#6b7280"}`, borderRadius: 10, padding: "10px 12px", background: "#fff", flexWrap: "wrap" }}>
@@ -134,6 +150,11 @@ export function MeuDia({ accessToken, corretorFiltro, onAbrir }: {
         <div className="nova-crm-empty">Nada pendente neste filtro. Bom trabalho — confira o filtro Próximos para se antecipar.</div>
       )}
 
+      <div className="ncrm-dia-busca">
+        <input type="search" value={busca} onChange={(e) => { setBusca(e.target.value); setLimite(20); }}
+          placeholder="Buscar por nome do cliente" aria-label="Buscar na fila" />
+      </div>
+
       {!carregando && !erro && GRUPO_VISIVEL_ORDEM.map((g) => (
         grupos[g].length === 0 ? null : (
           <section key={g} className="ncrm-dia-grupo" style={{ display: "flex", flexDirection: "column", gap: 6 }}>
@@ -145,6 +166,11 @@ export function MeuDia({ accessToken, corretorFiltro, onAbrir }: {
           </section>
         )
       ))}
+      {!carregando && !erro && restantes > 0 && (
+        <button type="button" className="ncrm-dia-mais" onClick={() => setLimite((n) => n + 20)}>
+          Carregar mais ({restantes} restantes)
+        </button>
+      )}
     </div>
   );
 }
