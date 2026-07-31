@@ -1,7 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import { useState, type ReactNode } from "react";
 import type { ModuleName } from "../features/system/module-map";
+import { pathDoModulo, podeVer } from "../features/system/erp-routes";
 
 const adminMainItems: ModuleName[] = ["Início", "CRM", "Performance", "Produtos", "Financeiro"];
 const adminToolItems: ModuleName[] = ["Abordagens", "Automações", "Financiamento", "Chat ao Vivo", "Disparos", "Calendário", "Projetos e Tarefas", "Agentes de IA"];
@@ -40,56 +42,36 @@ function NavGroup({ label, items, activeItem, onNavigate, badges }: { label: str
       {items.map((item) => {
         const badge = badges?.[item] ?? 0;
         return (
-          <button className={`nav-item ${item === activeItem ? "active" : ""}`} key={item} onClick={() => onNavigate(item)} type="button">
+          <Link className={`nav-item ${item === activeItem ? "active" : ""}`} key={item} href={pathDoModulo(item)} onClick={() => onNavigate(item)} aria-current={item === activeItem ? "page" : undefined}>
             <span className="nav-icon" aria-hidden="true"><NavIcon item={item} /></span>
             <span>{item}</span>
             {item === "CRM" && <small>20</small>}
             {item === "Automações" && <small>2</small>}
             {item === "Produtos" && badge > 0 && <small className="nav-badge-pending" title={`${badge} produto(s) aguardando aprovação`}>{badge}</small>}
-          </button>
+          </Link>
         );
       })}
     </section>
   );
 }
 
-export function AppShell({ children, activeItem, onNavigate, onOpenProfile, sessionRole = "corretor", sessionName = "Corretor", modulePermissions = null, isManager = false, badges }: { children: ReactNode; activeItem: ModuleName; onNavigate: (item: ModuleName) => void; onOpenProfile?: () => void; sessionRole?: "admin" | "gestor" | "corretor"; sessionName?: string; modulePermissions?: Record<string, string[]> | null; isManager?: boolean; badges?: Partial<Record<ModuleName, number>> }) {
+export function AppShell({ children, activeItem, onNavigate, onOpenProfile, sessionRole = "corretor", sessionName = "Corretor", modulePermissions = null, isManager = false, badges, perfilCarregado = false }: { children: ReactNode; activeItem: ModuleName; onNavigate: (item: ModuleName) => void; onOpenProfile?: () => void; sessionRole?: "admin" | "gestor" | "corretor"; sessionName?: string; modulePermissions?: Record<string, string[]> | null; isManager?: boolean; badges?: Partial<Record<ModuleName, number>>; perfilCarregado?: boolean }) {
   const isBroker = sessionRole === "corretor";
   const [navCollapsed, setNavCollapsed] = useState(false);
-  /* Doc §14 — sem "ver" no módulo, ele some do menu (admin nunca perde Usuários/Configurações para não se trancar fora).
-     IMPORTANTE: as permissões são gravadas por SLUG (dashboard, crm, financeiro…), não pelo rótulo do menu
-     ("Início", "CRM"…). O mapa abaixo liga cada item do menu ao(s) slug(s) de permissão. Sem esse mapa, todo
-     lookup falhava e o corretor ficava com o menu vazio. */
-  const permSlugs: Partial<Record<ModuleName, string[]>> = {
-    "Início": ["dashboard"],
-    CRM: ["crm", "leads", "pipeline"],
-    Performance: ["performance"],
-    Produtos: ["produtos"],
-    Financeiro: ["financeiro", "comissoes", "vendas", "fluxo_caixa"],
-    Abordagens: ["abordagens"],
-    "Automações": ["automacoes"],
-    "Chat ao Vivo": ["chat"],
-    Disparos: ["disparos"],
-    "Calendário": ["calendario"],
-    "Agentes de IA": ["agentes_ia"],
-    "Projetos e Tarefas": ["projetos"],
-    "Usuários": ["usuarios"],
-    "Notificações": ["notificacoes"],
-    Auditoria: ["auditoria"],
-    "Configurações": ["configuracoes"],
-  };
-  const canSee = (item: ModuleName) => {
-    if (sessionRole === "admin") return true;
-    if (!modulePermissions || Object.keys(modulePermissions).length === 0) return true;
-    const slugs = permSlugs[item];
-    if (!slugs) return true; // módulos fora do catálogo de permissões (Financiamento, Ajuda, Base de conhecimento) sempre visíveis
-    return slugs.some((slug) => (modulePermissions[slug] ?? []).includes("ver"));
-  };
+  /* Doc §14 — sem "ver" no módulo, ele some do menu.
+     A tabela de slugs saiu daqui e virou fonte única em features/system/erp-routes.ts,
+     porque o menu do celular precisa da MESMA regra. Duas cópias divergiriam.
+
+     ATENÇÃO — isto controla EXPOSIÇÃO DE MENU, não autorização de dados.
+     Quem autoriza dado é /api/* e a RLS do Supabase. Esconder o item aqui
+     reduz superfície de navegação; não substitui checagem no servidor. */
+  const canSee = (item: ModuleName) =>
+    podeVer(item, { role: sessionRole, permissoes: modulePermissions, carregado: perfilCarregado, isManager });
+
   const mainItems = (isBroker ? brokerMainItems : adminMainItems).filter(canSee);
   const toolItems = (isBroker ? brokerToolItems : adminToolItems).filter(canSee);
-  // "Minha Equipe": visível só para gestores (gerente/diretor/admin/executivo).
-  // Não entra no filtro de permissões — é liberado pelo papel real (isManager).
-  if (isManager && !toolItems.includes("Minha Equipe")) toolItems.unshift("Minha Equipe");
+  // "Minha Equipe" é liberada por papel real (isManager), não por slug — regra vive em podeVer().
+  if (canSee("Minha Equipe") && !toolItems.includes("Minha Equipe")) toolItems.unshift("Minha Equipe");
   const systemItems = (isBroker ? brokerSystemItems : adminSystemItems).filter(canSee);
   const initial = sessionName.trim().slice(0, 1).toUpperCase() || "C";
   const roleLabel = sessionRole === "admin" ? "Admin" : sessionRole === "gestor" ? "Gestor" : "Corretor";
