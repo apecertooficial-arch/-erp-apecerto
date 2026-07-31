@@ -15,6 +15,9 @@ import "./styles/telas-prototipo.css";
 /* Correções vindas de uso real: cabeçalho em dobro, WhatsApp verde, ícone do
    CRM e tamanho de fonte. Depois de todas para vencer sem seletor extra. */
 import "./styles/correcoes-celular.css";
+/* Folha "Mais" no desenho do print 13. Depois de app-mobile.css porque
+   precisa remover a borda do cabeçalho que aquela folha desenha. */
+import "./styles/folha-mais.css";
 /* A ÚLTIMA: a ação de gestão é a exceção da regra do verde, então precisa
    vir depois de quem pinta de verde. */
 import "./styles/tela-gestao-card.css";
