@@ -57,11 +57,11 @@ export function FaseBanner({ accessToken, souAdmin, totalLeads, onIngest }: {
 
   return (
     <div role="status" aria-label="Fase do piloto"
-      style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", padding: "8px 12px", margin: "0 12px",
-        border: "1px solid var(--nc-line,#e5e7eb)", borderRadius: 10, background: "var(--nc-soft,#f8fafc)", fontSize: 12 }}>
-      <b style={{ fontSize: 13 }}>{TITULO_FASE}</b>
+      style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", padding: "12px 16px", margin: "0 12px",
+        border: "1px solid #ead9fb", borderRadius: 14, background: "#f6effd", fontSize: 12 }}>
+      <b style={{ fontSize: 13, color: "#c2410c" }}>{TITULO_FASE}</b>
       {chips.map((c) => (
-        <span key={c} style={{ padding: "2px 8px", borderRadius: 999, background: "#fff", border: "1px solid var(--nc-line,#e5e7eb)", color: "#374151" }}>
+        <span key={c} style={{ padding: "3px 10px", borderRadius: 999, background: "#fff", border: "1px solid #ead9fb", color: "#4b5563" }}>
           {c}
         </span>
       ))}
