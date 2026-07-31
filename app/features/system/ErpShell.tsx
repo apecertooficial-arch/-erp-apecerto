@@ -15,6 +15,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import { AppShell } from "../../components/AppShell";
 import { ProfilePanel } from "../../components/ProfilePanel";
+import { ConviteInstalar } from "../../components/ConviteInstalar";
 import type { ModuleName } from "./module-map";
 import { moduloDoPath, pathDoModulo, rotasModulo, itensDaNavegacao } from "./erp-routes";
 import { useErpSession } from "./ErpSession";
@@ -99,6 +100,7 @@ export function ErpShell({ children }: { children: ReactNode }) {
         <div className="app-mais-overlay" role="dialog" aria-label="Mais módulos" onClick={() => setMaisAberto(false)}>
           <div className="app-mais-folha" onClick={(e) => e.stopPropagation()}>
             <header><strong>Mais</strong><button type="button" onClick={() => setMaisAberto(false)} aria-label="Fechar">×</button></header>
+            <ConviteInstalar />
             {noMais.length === 0
               ? <p className="app-mais-vazio">Nenhum outro módulo liberado para o seu acesso.</p>
               : <div className="app-mais-grid">
