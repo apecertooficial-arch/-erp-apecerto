@@ -108,32 +108,35 @@ DECLARE v_tentativa uuid := gen_random_uuid();
 BEGIN
   PERFORM ncrm_private.push_liberar_leases();
 
-  RETURN (
-    WITH reservados AS (
-      SELECT id FROM public.ncrm_push_fila
-       WHERE status = 'pendente' AND (proxima_em IS NULL OR proxima_em <= now())
-       ORDER BY id
-       LIMIT GREATEST(LEAST(p_limite, 200), 1)
-       FOR UPDATE SKIP LOCKED
-    ), marcados AS (
-      UPDATE public.ncrm_push_fila f
-         SET status='processando', processando_em=now(),
-             lease_ate = now() + make_interval(secs => GREATEST(LEAST(p_lease_seg, 600), 30)),
-             tentativa_id = v_tentativa,
-             worker_id = left(coalesce(p_worker_id,'desconhecido'), 60)
-        FROM reservados r WHERE f.id = r.id
-      RETURNING f.*
-    )
-    SELECT jsonb_build_object(
+  -- O UPDATE precisa ser statement de topo. Um CTE que modifica dados dentro de
+  -- uma expressao (RETURN (WITH ... UPDATE ...)) e recusado pelo Postgres, e foi
+  -- o que o harness pegou. Reserva primeiro, monta a resposta depois.
+  WITH reservados AS (
+    SELECT id FROM public.ncrm_push_fila
+     WHERE status = 'pendente' AND (proxima_em IS NULL OR proxima_em <= now())
+     ORDER BY id
+     LIMIT GREATEST(LEAST(p_limite, 200), 1)
+     FOR UPDATE SKIP LOCKED
+  )
+  UPDATE public.ncrm_push_fila f
+     SET status='processando', processando_em=now(),
+         lease_ate = now() + make_interval(secs => GREATEST(LEAST(p_lease_seg, 600), 30)),
+         tentativa_id = v_tentativa,
+         worker_id = left(coalesce(p_worker_id,'desconhecido'), 60)
+    FROM reservados r WHERE f.id = r.id;
+
+  -- A resposta sai da propria marca da reserva: so vem o que este worker pegou.
+  RETURN (SELECT jsonb_build_object(
       'ok', true, 'tentativa_id', v_tentativa,
       'itens', COALESCE(jsonb_agg(jsonb_build_object(
-        'fila_id', m.id, 'tentativa_id', m.tentativa_id,
+        'fila_id', f.id, 'tentativa_id', f.tentativa_id,
         'endpoint', s.endpoint, 'p256dh', s.p256dh, 'auth', s.auth,
-        'titulo', m.titulo, 'corpo', m.corpo, 'deep_link', m.deep_link,
-        'tipo', m.tipo, 'tentativas', m.tentativas)), '[]'::jsonb))
-      FROM marcados m
-      JOIN public.ncrm_push_subscription s
-        ON s.id = m.subscription_id AND s.revogada_em IS NULL);
+        'titulo', f.titulo, 'corpo', f.corpo, 'deep_link', f.deep_link,
+        'tipo', f.tipo, 'tentativas', f.tentativas)), '[]'::jsonb))
+    FROM public.ncrm_push_fila f
+    JOIN public.ncrm_push_subscription s
+      ON s.id = f.subscription_id AND s.revogada_em IS NULL
+   WHERE f.tentativa_id = v_tentativa AND f.status = 'processando');
 END $fn$;
 
 REVOKE ALL ON FUNCTION ncrm_private.push_reservar(text,int,int) FROM PUBLIC, anon, authenticated;
@@ -263,8 +266,12 @@ BEGIN
          END,
          n.deep_link, n.tipo
     FROM public.ncrm_notificacao n
+    -- Papeis de gestao. A lista cobre o vocabulario de producao
+    -- (admin/diretor/gerente) e o de ambientes que usam 'executivo'. Nao da para
+    -- reaproveitar can_manage_all() aqui porque ela responde sobre auth.uid(),
+    -- e este INSERT precisa LISTAR destinatarios, nao testar o chamador.
     JOIN public.usuarios u ON coalesce(u.ativo, true)
-                          AND u.role IN ('admin','diretor','gerente')
+                          AND u.role IN ('admin','diretor','gerente','executivo')
     JOIN public.ncrm_push_subscription s ON s.usuario_id = u.id AND s.revogada_em IS NULL
    WHERE n.resolvida_em IS NULL AND n.vista_em IS NULL
      AND n.prioridade = 1 AND n.publico = 'gestao'
