@@ -21,6 +21,10 @@ cp "$ROOT/tests/crm-nova-era/99d_tests_sara_analise_usuario.sql" "$STAGE/su.sql"
 cp "$ROOT/supabase/migrations/20260809100000_ncrm_elegiveis_novidade_e_manual.sql" "$STAGE/mig_em.sql"
 cp "$ROOT/supabase/rollbacks/20260809100000_ncrm_elegiveis_novidade_e_manual.down.sql" "$STAGE/down_em.sql"
 cp "$ROOT/tests/crm-nova-era/99e_tests_elegiveis_manual.sql" "$STAGE/em.sql"
+# Programa comercial da cadencia (workflow v2, janela, reativacao, SLA)
+cp "$ROOT/supabase/migrations/20260809110000_ncrm_cadencia_programa_comercial.sql" "$STAGE/mig_cp.sql"
+cp "$ROOT/supabase/rollbacks/20260809110000_ncrm_cadencia_programa_comercial.down.sql" "$STAGE/down_cp.sql"
+cp "$ROOT/tests/crm-nova-era/99f_tests_cadencia_programa.sql" "$STAGE/cp.sql"
 cp "$ROOT/tests/crm-nova-era/10_tests_core.sql" "$STAGE/core.sql"
 cp "$ROOT/tests/crm-nova-era/20_tests_correcoes.sql" "$STAGE/core2.sql"
 cp "$ROOT/tests/crm-nova-era/30_tests_delta_cadencia.sql" "$STAGE/core3.sql"
@@ -425,6 +429,18 @@ PSQL -f "$STAGE/down_em.sql"
 PSQL -c "SELECT public.test_assert(to_regclass('public.ncrm_manual_operacional') IS NULL, '#em8 rollback removeu o manual');"
 PSQL -f "$STAGE/mig_em.sql"
 PSQL -c "SELECT public.test_assert(to_regproc('public.ncrm_manual_salvar') IS NOT NULL, '#em9 migration reaplicada');"
+
+echo "### programa comercial da cadencia: workflow v2, janela seg-sex, reativacao e SLA"
+PSQL -f "$STAGE/mig_cp.sql"
+PSQL -f "$STAGE/cp.sql"
+PSQL -f "$STAGE/down_cp.sql"
+PSQL -c "SELECT public.test_assert(NOT EXISTS (SELECT 1 FROM public.ncrm_workflow_config WHERE versao=2 AND status='publicada')
+         AND to_regproc('ncrm_private.sla_redistribuir') IS NULL
+         AND EXISTS (SELECT 1 FROM public.ncrm_workflow_config WHERE status='publicada' AND max_tentativas=4),
+         '#cp9 rollback: v2 encerrada, regra anterior de volta, automacoes removidas');"
+PSQL -f "$STAGE/mig_cp.sql"
+PSQL -c "SELECT public.test_assert(EXISTS (SELECT 1 FROM public.ncrm_workflow_config WHERE versao=2),
+         '#cp10 migration do programa reaplicada');"
 
 echo "### teardown"
 sudo -u pg "$PGBIN/pg_ctl" -D "$PGDATA" stop >/dev/null 2>&1 || true

@@ -64,6 +64,8 @@ export type DadosCard = {
   orientacaoSara: string | null;
   /** Análise persistida no banco — vale para todos os aparelhos. */
   analise?: AnaliseSara | null;
+  /** Máximo de tentativas da régua deste lead (workflow versionado). */
+  maxTentativas?: number;
 };
 
 export function Card3({
@@ -158,9 +160,9 @@ export function Card3({
             comercial e as bolinhas mentiriam. Classes nova-crm-dot vêm do CSS
             do Gate, que envolve toda a 3.0. Regressão da entrega anterior. */}
         {!lead.respondeu && (
-          <span className="nova-crm-dots" title={`Tentativa ${lead.tentativas.length} de 4`}
-            aria-label={`Cadência: ${lead.tentativas.length} de 4 tentativas`}>
-            {[0, 1, 2, 3].map((i) => {
+          <span className="nova-crm-dots" title={`Tentativa ${lead.tentativas.length} de ${dados.maxTentativas ?? 4}`}
+            aria-label={`Cadência: ${lead.tentativas.length} de ${dados.maxTentativas ?? 4} tentativas`}>
+            {Array.from({ length: dados.maxTentativas ?? 4 }, (_, i) => {
               const t = lead.tentativas[i];
               return <i key={i} className={`nova-crm-dot ${t ? `r-${t.resultado}` : "pend"}`} />;
             })}

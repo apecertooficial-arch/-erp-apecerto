@@ -9,6 +9,7 @@ import { mapEstadoToLead, type EstadoRow } from "../../crm-nova-era/live/adapter
 import type { LeadNova } from "../../crm-nova-era/lib/rules.ts";
 
 export type EstadoRow3 = EstadoRow & {
+  ncrm_workflow_config?: { max_tentativas?: number | null } | null;
   negocios:
     | (EstadoRow["negocios"] & {
         leads: { nome: string | null; telefone: string | null; email: string | null; origem?: string | null; extras?: unknown } | null;
@@ -63,6 +64,8 @@ export type LeadExibicao = {
   tentativasFeitas: number;
   /** Visita em aberto (quando o cliente está no Pipe): habilita registrar o resultado. */
   visitaId: string | null;
+  /** Máximo de tentativas da régua DESTE lead (workflow versionado; leads antigos podem ter outro). */
+  maxTentativas: number;
 };
 
 export function paraExibicao(row: EstadoRow3): LeadExibicao {
@@ -79,6 +82,7 @@ export function paraExibicao(row: EstadoRow3): LeadExibicao {
     leadId: row.negocios?.lead_id ?? null,
     tentativasFeitas: row.tentativas_feitas ?? 0,
     visitaId: row.visita_id ?? null,
+    maxTentativas: row.ncrm_workflow_config?.max_tentativas ?? 4,
   };
 }
 
