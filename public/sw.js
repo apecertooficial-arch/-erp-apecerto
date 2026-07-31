@@ -18,10 +18,23 @@ function ehPrivado(url) {
   return PRIVADO.some((re) => re.test(url.pathname) || re.test(url.hostname));
 }
 
+/* Casca publica cacheavel. Tudo aqui e conteudo fixo do aplicativo: nao ha
+   como um dado de cliente cair nesta lista.
+   Os tres primeiros sao versionados de fato (nome muda a cada build).
+
+   OFFLINE e a excecao consciente: nao e versionado, mas precisa estar aqui.
+   Ele so entrava no cache pelo addAll(PRECACHE) do evento install, que NAO roda
+   de novo para um service worker ja instalado. Depois do logout -- que apaga os
+   caches do ApeCerto de proposito -- a tela offline sumia e nao voltava, entao
+   quem ficasse sem sinal via a tela de erro do navegador em vez dela. Estando
+   aqui, a primeira visita a /offline.html recoloca o arquivo no cache.
+
+   Comparacao exata de caminho, nunca prefixo: "/offline.html" e so ele mesmo. */
 function ehEstaticoVersionado(url) {
   return url.pathname.startsWith("/_next/static/")
     || url.pathname.startsWith("/icons/")
-    || url.pathname === "/manifest.webmanifest";
+    || url.pathname === "/manifest.webmanifest"
+    || url.pathname === OFFLINE;
 }
 
 self.addEventListener("install", (evento) => {
