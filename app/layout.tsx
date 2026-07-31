@@ -9,6 +9,7 @@ import "./styles/apecerto-identidade.css";
 import "./styles/tela-corretor.css";
 import "./styles/tela-crm.css";
 import "./styles/tela-avisos.css";
+import "./styles/tela-agenda.css";
 import "./styles/telas-prototipo.css";
 /* A ÚLTIMA de todas. Corrige o que só apareceu no aparelho de verdade:
    cabeçalho em dobro, cor do botão do WhatsApp e o ícone do CRM na barra.
