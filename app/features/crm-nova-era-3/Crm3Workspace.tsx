@@ -73,6 +73,88 @@ async function api(path: string, token: string, init?: RequestInit) {
   return { ok: res.ok, status: res.status, json };
 }
 
+/** Topbar do handoff v3: seletor de CRM, nota do piloto, busca global e novo lead. */
+function TopbarCrm3({ busca, onBusca, onNovoLead }: { busca: string; onBusca: (v: string) => void; onNovoLead: () => void }) {
+  return (
+    <div className="ncrm3-topbar">
+      <div className="ncrm3-topbar-seletor" role="group" aria-label="Escolher CRM">
+        <button type="button" onClick={() => { window.location.href = "/crm?crm=atual"; }}>Funil atual</button>
+        <button type="button" className="on">CRM Nova Era <i>3.0</i></button>
+      </div>
+      <span className="ncrm3-topbar-nota">Piloto com dados reais · a Sara só observa, nunca envia</span>
+      <label className="crm-search-v2 ncrm3-topbar-busca">
+        <span aria-hidden="true">⌕</span>
+        <input value={busca} onChange={(e) => onBusca(e.target.value)} placeholder="Buscar nome, telefone ou e-mail" />
+      </label>
+      <button type="button" className="ncrm3-novolead" onClick={onNovoLead}>+ Novo lead</button>
+    </div>
+  );
+}
+
+/** Novo lead pela 3.0 — mesma acao createLead do CRM, nada paralelo. */
+function NovoLead3({ accessToken, onFechar, onCriado }: { accessToken: string; onFechar: () => void; onCriado: (msg: string) => void }) {
+  const [nome, setNome] = useState("");
+  const [telefone, setTelefone] = useState("");
+  const [origem, setOrigem] = useState("manual");
+  const [funis, setFunis] = useState<Array<{ id: number; nome: string }>>([]);
+  const [funilId, setFunilId] = useState<number | null>(null);
+  const [salvando, setSalvando] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
+
+  useEffect(() => {
+    let vivo = true;
+    void fetch(`/api/crm`, { headers: { Authorization: `Bearer ${accessToken}` } })
+      .then((r) => r.json())
+      .then((j: { pipelines?: Array<{ id: number; nome: string }> }) => {
+        if (!vivo) return;
+        const ps = j.pipelines ?? [];
+        setFunis(ps);
+        if (ps.length > 0) setFunilId(ps[0].id);
+      })
+      .catch(() => { if (vivo) setErro("Não foi possível carregar os funis."); });
+    return () => { vivo = false; };
+  }, [accessToken]);
+
+  const criar = async () => {
+    if (!nome.trim() || !telefone.trim() || !funilId) { setErro("Informe nome, telefone e funil."); return; }
+    setSalvando(true);
+    setErro(null);
+    const r = await fetch(`/api/crm`, {
+      method: "PATCH",
+      headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "createLead", nome: nome.trim(), telefone: telefone.trim(), origem, pipelineId: funilId }),
+    });
+    const j = (await r.json().catch(() => ({}))) as Json;
+    setSalvando(false);
+    if (!r.ok) { setErro((j.error as string) || "Não foi possível criar o lead."); return; }
+    onCriado(`Lead ${nome.trim()} criado — ele entra no CRM pela distribuição automática.`);
+    onFechar();
+  };
+
+  return (
+    <div className="ncrm3-modal-fundo" role="dialog" aria-label="Novo lead" onClick={onFechar}>
+      <div className="ncrm3-modal" onClick={(e) => e.stopPropagation()}>
+        <h3>Novo lead</h3>
+        {erro && <div className="ncrm3-erro" style={{ margin: 0 }}>{erro}</div>}
+        <label>Nome<input autoFocus value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Nome do cliente" /></label>
+        <label>Telefone<input value={telefone} onChange={(e) => setTelefone(e.target.value)} placeholder="(11) 98765-4321" inputMode="tel" /></label>
+        <label>Origem<input value={origem} onChange={(e) => setOrigem(e.target.value)} /></label>
+        <label>Funil
+          <select value={funilId ?? ""} onChange={(e) => setFunilId(e.target.value ? Number(e.target.value) : null)}>
+            {funis.map((f) => <option key={f.id} value={f.id}>{f.nome}</option>)}
+          </select>
+        </label>
+        <div className="ncrm3-modal-acoes">
+          <button type="button" className="ncrm3-secundario" onClick={onFechar}>Cancelar</button>
+          <button type="button" className="ncrm3-novolead" disabled={salvando} onClick={() => void criar()}>
+            {salvando ? "Criando…" : "Criar lead"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function Crm3Workspace({ accessToken, profile }: { accessToken: string; profile: Perfil }) {
   const gestaoLiberada = podeVerGestao(profile.role);
   const [aba, setAba] = useState<Aba3>(() =>
@@ -92,6 +174,7 @@ export function Crm3Workspace({ accessToken, profile }: { accessToken: string; p
   const [formPedido, setFormPedido] = useState<"resultado" | "proxima" | "visita" | "proposta" | null>(null);
   const [saraCache, setSaraCache] = useState<Record<string, string>>({});
   const [analises, setAnalises] = useState<Record<number, AnaliseSara>>({});
+  const [novoLead, setNovoLead] = useState(false);
 
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { setSaraCache(lerCacheSara()); }, []);
@@ -266,10 +349,7 @@ export function Crm3Workspace({ accessToken, profile }: { accessToken: string; p
 
   const cabecalho = definicaoDaAba(aba);
   const abas = abasVisiveis(profile.role);
-  /* Nas telas 3.0 a busca fica no cabeçalho e filtra a fila, o funil e a
-     tabela de leads. Nas visões oficiais quem busca é a busca do próprio CRM
-     atual, que já existe e procura em toda a base. */
-  const buscaNoCabecalho = aba === "meu_dia" || aba === "funil" || aba === "leads";
+  /* A busca vive no topbar (protótipo) e filtra as telas nativas da 3.0. */
   /* Aba -> visão oficial do CRM atual. "Visitas" é o Pipe que já existe dentro
      da Agenda: o mesmo dado, as mesmas ações (editar, concluir) e o mesmo CSS.
      Aqui só recortamos a tela para o painel de visitas — nada é duplicado. */
@@ -285,6 +365,10 @@ export function Crm3Workspace({ accessToken, profile }: { accessToken: string; p
     <div className="crm-v2 ncrm3">
       <style>{CRM3_CSS}</style>
 
+      {/* Topbar do protótipo: seletor, nota do piloto, busca global e novo lead. */}
+      <TopbarCrm3 busca={busca} onBusca={setBusca} onNovoLead={() => setNovoLead(true)} />
+      {novoLead && <NovoLead3 accessToken={accessToken} onFechar={() => setNovoLead(false)} onCriado={setAviso} />}
+
       {/* Nas visões oficiais o cabeçalho é o do próprio CRM atual — exceto na
           aba Visitas, onde o oficial diria "Agenda" e o da 3.0 assume. */}
       {(!oficial || aba === "visitas") && (
@@ -293,14 +377,6 @@ export function Crm3Workspace({ accessToken, profile }: { accessToken: string; p
             <span className="crm-eyebrow">GESTÃO COMERCIAL</span>
             <h1>CRM · {cabecalho.titulo}</h1>
             <p>{cabecalho.subtitulo}</p>
-          </div>
-          <div className="crm-header-actions">
-            {buscaNoCabecalho && (
-              <label className="crm-search-v2">
-                <span>⌕</span>
-                <input value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Buscar cliente" />
-              </label>
-            )}
           </div>
         </header>
       )}
@@ -340,6 +416,7 @@ export function Crm3Workspace({ accessToken, profile }: { accessToken: string; p
                   nome={profile.name}
                   onAbrir={(id) => { setFormPedido(null); void abrirAtendimento(id); }}
                   onIrParaVisitas={() => trocarAba("visitas")}
+                  onIrParaAba={(a) => trocarAba(a as Aba3)}
                 />
               )}
 

@@ -32,6 +32,14 @@ const FILTROS: ReadonlyArray<{ chave: string; rotulo: string }> = Object.freeze(
   { chave: "quente", rotulo: "Quente" },
 ]);
 
+function chipDoMotivo(motivo: string): string {
+  const m = (motivo || "").toLowerCase();
+  if (m.includes("respondeu")) return "ncrm3-chip-motivo m-laranja";
+  if (m.includes("novo")) return "ncrm3-chip-motivo m-roxo";
+  if (m.includes("estourado") || m.includes("venceu") || m.includes("atras")) return "ncrm3-chip-motivo m-vermelho";
+  return "ncrm3-chip-motivo";
+}
+
 function tomDaSecao(secao: string): string {
   if (secao === "atender_agora") return "tom-vermelho";
   if (secao === "fazer_hoje") return "tom-amarelo";
@@ -62,6 +70,7 @@ export function MeuDia3({
   nome,
   onAbrir,
   onIrParaVisitas,
+  onIrParaAba,
 }: {
   accessToken: string;
   corretorFiltro?: number | null;
@@ -70,6 +79,8 @@ export function MeuDia3({
   nome?: string;
   onAbrir: (negocioId: string) => void;
   onIrParaVisitas?: () => void;
+  /** Cards de resumo clicáveis (protótipo 01): cada número leva à aba correspondente. */
+  onIrParaAba?: (aba: string) => void;
 }) {
   const [filtro, setFiltro] = useState("agora");
   const [filtrosAbertos, setFiltrosAbertos] = useState(false);
@@ -147,9 +158,9 @@ export function MeuDia3({
       {!carregando && !erro && filtrados.length > 0 && (
         <section className="ncrm3-abertura" aria-label="Resumo do seu dia">
           <div className="ncrm3-abertura-numeros">
-            <article><b>{painel.aguardandoResposta}</b><span>aguardando sua resposta</span></article>
-            <article><b>{painel.leadsNovos}</b><span>{painel.leadsNovos === 1 ? "lead novo" : "leads novos"}</span></article>
-            <article><b>{painel.retornosHoje}</b><span>{painel.retornosHoje === 1 ? "retorno para hoje" : "retornos para hoje"}</span></article>
+            <article role="button" tabIndex={0} style={{ cursor: "pointer" }} onClick={() => onIrParaAba?.("avisos")}><b>{painel.aguardandoResposta}</b><span>aguardando sua resposta</span></article>
+            <article role="button" tabIndex={0} style={{ cursor: "pointer" }} onClick={() => onIrParaAba?.("funil")}><b>{painel.leadsNovos}</b><span>{painel.leadsNovos === 1 ? "lead novo" : "leads novos"}</span></article>
+            <article role="button" tabIndex={0} style={{ cursor: "pointer" }} onClick={() => onIrParaAba?.("agenda")}><b>{painel.retornosHoje}</b><span>{painel.retornosHoje === 1 ? "retorno para hoje" : "retornos para hoje"}</span></article>
             {onIrParaVisitas && (
               <article className="link">
                 <button type="button" onClick={onIrParaVisitas}>Ver visitas do dia</button>
@@ -200,7 +211,7 @@ export function MeuDia3({
                     <div className="ncrm3-item-linha">
                       <strong>{c.nome}</strong>
                       <span className="ncrm3-item-meta">{c.corretor}</span>
-                      <span className="ncrm3-item-motivo">{c.motivo}</span>
+                      <span className={chipDoMotivo(c.motivo)}>{c.motivo}</span>
                       <span className="ncrm3-item-meta">espera {c.tempo}</span>
                       {c.outrosAtendimentos > 0 && (
                         <span className="ncrm3-item-meta">

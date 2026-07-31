@@ -36,8 +36,8 @@ export function Sara3({
   if (!s) {
     return (
       <div className="ncrm3-sara">
-        <h4>Sara</h4>
-        <p>A Sara lê a conversa real e diz qual é o próximo passo. Ela nunca envia mensagem por você.</p>
+        <h4>✦ Leitura da Sara</h4>
+        <p>Ela lê a conversa real e sugere — nunca envia mensagem por você.</p>
         <div className="ncrm3-sara-acoes">
           <button type="button" className="usar" onClick={onPedir} disabled={carregando}>
             {carregando ? "Consultando…" : "Pedir orientação da Sara"}
@@ -49,7 +49,7 @@ export function Sara3({
 
   return (
     <div className="ncrm3-sara">
-      <h4>Orientação da Sara</h4>
+      <h4>✦ Leitura da Sara</h4>
       <p>Sugestão, não ordem. Nenhuma mensagem é enviada; nada muda até você clicar.</p>
 
       {!s.evidenciaSuficiente && (
