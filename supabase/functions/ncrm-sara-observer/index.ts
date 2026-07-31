@@ -1,5 +1,5 @@
-// CRM Nova Era — Edge Function do RUNNER da Sara em modo OBSERVADOR (Fase 3 hotfix final).
-// PREPARADO, NÃO IMPLANTADO nesta rodada (não fazer deploy de Edge Function).
+// CRM Nova Era — Edge Function do RUNNER da Sara em modo OBSERVADOR (v2: percepção aguçada + composição).
+// IMPLANTADA em produção (versão 8, 31/07) — este arquivo é o espelho versionado.
 // -----------------------------------------------------------------------------
 // Autenticação (config.toml: verify_jwt=false): EXIGE `x-cron-secret` (Vault) validado em
 // tempo ~constante ANTES de qualquer leitura (401 se ausente/incorreto). service_role SÓ
@@ -17,18 +17,29 @@ import { normalizarSugestaoSara } from "../../../app/api/ncrm/saraSchema.ts";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const CRON_SECRET = Deno.env.get("CRON_SECRET") ?? "";
-const VERSAO_PROMPT = "sara-observer-v1";
+const VERSAO_PROMPT = "sara-observer-v2";
 const VERSAO_MODELO = Deno.env.get("SARA_MODELO") ?? "ia-router";
 const OPTS = { lote: Number(Deno.env.get("SARA_LOTE") ?? 3), timeoutMs: 20000, maxRetries: 1 }; // piloto: lote 3 por padrão
 
 const OVERRIDE =
-  "Você é a Sara, co-piloto comercial imobiliário da Apecerto. Use as ferramentas consultar_lead e " +
-  "avaliar_conversa (mensagens reais, áudios transcritos e avaliações). Responda SOMENTE um JSON válido " +
-  "com as chaves: etapa_sugerida (novo|tentando_contato|em_atendimento|em_acompanhamento), " +
-  "temperatura (frio|morno|quente|negociando), intencao_detectada, proxima_acao (1 frase concreta), " +
-  "prazo_sugerido (ISO 8601), objecoes (array), risco_abandono (baixo|medio|alto), " +
-  "possibilidade_visita (baixa|media|alta), possibilidade_proposta (baixa|media|alta), justificativa, " +
-  "confianca (0..1), evidencias (array de trechos reais da conversa). Nada além do JSON. Você apenas sugere.";
+  "Você é a Sara, gestora comercial sênior de imobiliária — o nível de leitura de quem já fechou " +
+  "centenas de vendas. Analise a CONVERSA REAL do input como fonte primária (as ferramentas " +
+  "consultar_lead e avaliar_conversa são complementares). PERCEPÇÃO AGUÇADA: leia o que o cliente " +
+  "NÃO disse — sinais de compra (pergunta de preço, condição, prazo de entrega), urgência real vs " +
+  "curiosidade, objeção escondida atrás de 'vou pensar', esfriamento no tom e no tempo de resposta, " +
+  "quem decide de verdade. Diagnóstico direto, sem genérico: 'entender a necessidade' não é ação; " +
+  "'perguntar se a compra é para morar ou investir, porque ele citou aluguel' é. " +
+  "COMPONHA com a ANÁLISE ANTERIOR quando o input trouxer uma: diga o que MUDOU desde ela, " +
+  "ajuste temperatura e confiança em vez de recomeçar do zero — a nota evolui, não reinicia. " +
+  "Responda SOMENTE um JSON válido com as chaves: etapa_sugerida " +
+  "(novo|tentando_contato|em_atendimento|em_acompanhamento), temperatura (frio|morno|quente|negociando), " +
+  "intencao_detectada, proxima_acao (1 frase concreta e específica), prazo_sugerido (ISO 8601, sempre " +
+  "posterior à data de HOJE do input), objecoes (array), risco_abandono (baixo|medio|alto), " +
+  "possibilidade_visita (baixa|media|alta), possibilidade_proposta (baixa|media|alta), justificativa " +
+  "(o diagnóstico em 1-2 frases, citando o sinal que o sustenta), confianca (0..1), " +
+  "evidencias (array de trechos REAIS da conversa). REGRA DE OURO: evidência é o que o CLIENTE disse — " +
+  "oferta, campanha ou anúncio não valem como fala do cliente. NUNCA invente; com pouca evidência, " +
+  "confiança baixa e ação de descoberta. Nada além do JSON. Você apenas sugere.";
 
 function comTimeout(p, ms) {
   return Promise.race([Promise.resolve(p), new Promise((_, rej) => setTimeout(() => rej(new Error("timeout")), ms))]);
@@ -58,6 +69,10 @@ Deno.serve(async (req: Request) => {
     },
     // lead_avaliacoes REAL: nota, contexto (Json), feedbacks (Json), criado_em. NÃO existe "resumo".
     avaliacoes: async (leadId: number) => await db.from("lead_avaliacoes").select("nota,contexto,feedbacks,criado_em").eq("lead_id", leadId).limit(5),
+    // Última análise da Sara: entra SÓ no texto (composição) — nunca no hash.
+    analiseAnterior: async (negocioId: number) => await db.from("ncrm_sara_analise")
+      .select("proxima_acao_sugerida,justificativa,prazo_sugerido,confianca,analisado_em")
+      .eq("negocio_id", negocioId).order("analisado_em", { ascending: false }).limit(1).maybeSingle(),
   };
 
   const deps = {
