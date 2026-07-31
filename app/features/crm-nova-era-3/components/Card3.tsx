@@ -4,7 +4,7 @@
  *
  * Mostra, nesta ordem: avatar, nome, corretor, origem, interesse, temperatura,
  * última interação, tempo, mensagem pendente, próxima ação, SLA, cadência e a
- * orientação curta da Sara.
+ * orientação curta da Sara (bloco LILÁS, como no protótipo).
  *
  * Ações: UM botão principal e um menu "...". Nada de fileira de botões
  * competindo pela atenção de quem atende.
@@ -139,14 +139,13 @@ export function Card3({
       </div>
 
       <div className="ncrm3-card-sara">
-        <span aria-hidden="true">✦</span>
+        <span aria-hidden="true">✦ SARA</span>
         {dados.analise?.proxima_acao_sugerida ? (
           <span>
-            {dados.analise.justificativa ? <>{dados.analise.justificativa}<br /></> : null}
+            {dados.analise.justificativa ? <>{dados.analise.justificativa} </> : null}
             <b>→ {dados.analise.proxima_acao_sugerida}</b>
-            {dados.analise.prazo_sugerido ? ` · até ${dataCurta(dados.analise.prazo_sugerido)}` : ""}
-            <em style={{ display: "block", fontStyle: "normal", opacity: .7 }}>
-              Sara analisou {tempoDesde(dados.analise.analisado_em)}
+            <em style={{ display: "block", marginTop: 3, fontStyle: "normal", opacity: .75, fontSize: 11 }}>
+              {dados.analise.prazo_sugerido ? `até ${dataCurta(dados.analise.prazo_sugerido)} · ` : ""}Sara analisou {tempoDesde(dados.analise.analisado_em)}
             </em>
           </span>
         ) : (
