@@ -14,7 +14,7 @@ Captura em 2026-07-31, pela API de gerenciamento do Supabase.
 | --- | --- | --- | --- | --- | --- |
 | `dapi-enviar` | 13 | `false` | `90b4a70364e2dcf8b4680d01ef4902e8383b5a8154c43c0cd7faa38f4685ddce` | Envio real de WhatsApp pela D-API — texto, áudio, imagem, vídeo e documento. Resolve qual instância usar, tenta as duas formas do 9º dígito e registra a mensagem em `wa_mensagens`. | `enviar-produto` (máquina). No repo: `app/api/crm/chat/route.ts`, `app/api/live-chat/route.ts`, `app/features/crm/CrmWorkspace.tsx`, `public/legacy-runtime.html`, `public/legacy/CRM_ApeCerto_FINAL.html`, `public/_test-runtime.html`. |
 | `enviar-produto` | 6 | `false` | `ce7225e4065e310e3a357e65be3496f09f5203137d2f998c52c0a7030b10ee39` | Envia o pack de um empreendimento numa única chamada — fotos ordenadas (capa, fachada, decorado, lazer, planta, sala) mais o book em PDF. Delega cada envio a `dapi-enviar`. Aceita `dry_run` para conferir o plano sem disparar nada. | Nenhum caller no repositório. Só automações externas, em modo máquina. |
-| `enviar-whatsapp` | 4 | `true` | `9ac27c04a524118786c4841f62f866ce1434ba6eaaef775571303c6e61e624fe` | Envio simples de texto pela D-API a partir de `instancia_id`, `to` e `text`. Versão antiga, sem nenhuma das proteções que `dapi-enviar` ganhou depois. | Nenhum caller conhecido — nem no repositório, nem em outra Edge Function. |
+| `enviar-whatsapp` | 5 | `true` | `7b1f19b92db00d61c4e7c2ebba20e25a66aae5264173717edbfebd2bfdf8434f` | Envio de texto por uma instancia. A instancia e resolvida no servidor por `ncrm_resolver_envio_autorizado`; o `instancia_id` do body virou apenas um pedido. Consulta a autoridade do piloto antes de enviar. | Nenhum caller conhecido no repositorio. Mantida por precaucao, mas fechada. |
 
 O `ezbr_sha256` identifica o **bundle publicado** (o eszip que a plataforma executa),
 não o texto do arquivo. Ele serve para afirmar "esta é exatamente a build que estava
@@ -53,13 +53,30 @@ consultada sempre, inclusive no modo máquina.
 
 ### `enviar-whatsapp`
 
-`verify_jwt = true`: a plataforma exige um JWT válido antes de a função rodar. Não há
-verificação adicional no corpo e não foram encontrados callers. É candidata natural a
-remoção, mas nada foi mexido nela nesta versionagem.
+**v5** — `verify_jwt = true`, `ezbr_sha256 = 7b1f19b92db00d61c4e7c2ebba20e25a66aae5264173717edbfebd2bfdf8434f`
 
-## Aviso sobre deploy
+Ate a v4 esta funcao recebia `instancia_id` no corpo da requisicao e enviava por
+ela, sem verificar nada. `verify_jwt = true` garantia apenas que havia **um**
+usuario logado, nao que aquele usuario tivesse direito aquela instancia:
+qualquer corretor podia enviar pela instancia de qualquer outro, e bastava
+iterar ids para descobri-las.
 
-Estes arquivos são um espelho, não uma fonte de deploy automático. Antes de qualquer
-`supabase functions deploy` a partir daqui, confirme que o source ainda é idêntico ao
-que está ativo no painel — outras alterações podem ter sido feitas pelo painel desde a
-captura.
+**Protecao de posse (v5).** A instancia passou a ser resolvida no servidor, a
+partir de quem o usuario realmente e:
+
+1. `Authorization` precisa representar uma **pessoa**. A anon key e um JWT
+   valido mas nao tem usuario, entao nao passa.
+2. `ncrm_resolver_envio_autorizado(user_id, telefone, instancia_id)` decide qual
+   instancia pode ser usada. Corretor so usa a propria; admin, diretor e gerente
+   respondem pela operacao. O `instancia_id` do body virou apenas um pedido, e
+   pedido negado vira `403 sem_permissao`.
+3. `ncrm_pode_enviar_pelo_erp(...)` e consultada em seguida: o ERP nao envia por
+   corretor que esta na abordagem humana. Bloqueio devolve `409 envio_bloqueado`.
+4. So depois disso a credencial da instancia e lida e a D-API e chamada.
+
+Toda decisao de autorizacao fica registrada em `ncrm_envio_autorizacao_log`.
+
+**Proveniencia.** O `ezbr_sha256` acima e o do bundle publicado em producao,
+lido de `list_edge_functions` em 31/07/2026. O arquivo neste repositorio e o
+mesmo codigo que esta deployado — foi essa divergencia entre Git e producao que
+o PR #41 fechou.
