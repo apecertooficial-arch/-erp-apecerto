@@ -14,90 +14,28 @@
  *   - clique no WhatsApp não confirma contato; só a integração confirma;
  *   - Sara orienta, nunca envia;
  *   - nada de vocabulário técnico na tela do corretor.
+ *
+ * As regras puras (iniciais, tempo, filtro, manchete) vivem em
+ * telaCorretor.logica.ts — é de lá que os testes leem. Cópia em dois lugares é
+ * o caminho mais curto para a tela e o teste discordarem sem ninguém perceber.
  */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ROTULO_ETAPA } from "./meuDia.logica";
+import {
+  dataPorExtenso, ehVencida, espera, filtrar, iniciais, manchete, saudacaoHora,
+  type Filtro, type ItemTela,
+} from "./telaCorretor.logica";
 import { marcarWhatsappAberto, whatsappAbertoEm, limparWhatsappAberto } from "../crm-nova-era/lib/whatsappAberto";
 import { AvisoNotificacoes } from "./AvisoNotificacoes";
 
 const ATUALIZA_MS = 60_000;
 
-/* Payload de /api/ncrm/fila-operacional. Tipado aqui, e não importado, para
-   esta tela não depender de detalhe interno de outro módulo. */
-type Item = {
-  negocio_id: number;
-  nome: string | null;
-  telefone_normalizado: string | null;
-  interesse_resumo: string | null;
-  motivo_prioridade: string;
-  prioridade: number;
-  respondeu: boolean;
-  etapa: string;
-  tempo_espera: number;
-  sara_orientacao_curta: string | null;
-  proxima_acao_prazo: string | null;
-  outbound_real_confirmado: boolean;
-  aguardando_sincronizacao: boolean;
-};
-
 type Numeros = { leads_novos: number; acoes_hoje: number; leads_base: number };
-type Filtro = "agora" | "hoje" | "todos";
-
-/* ------------------------------ formatação ------------------------------ */
-
-/** Duas iniciais. Nome de uma palavra usa as duas primeiras letras. */
-export function iniciais(nome: string | null): string {
-  const partes = (nome ?? "").trim().split(/\s+/).filter(Boolean);
-  if (partes.length === 0) return "?";
-  if (partes.length === 1) return partes[0].slice(0, 2).toUpperCase();
-  return (partes[0][0] + partes[partes.length - 1][0]).toUpperCase();
-}
-
-/** "24h", "12 min", "3 d". Minuto cheio não interessa depois de 1 hora. */
-export function espera(minutos: number): string {
-  const m = Math.max(0, Math.round(Number(minutos) || 0));
-  if (m < 60) return `${m} min`;
-  const h = Math.round(m / 60);
-  if (h < 48) return `${h}h`;
-  return `${Math.round(h / 24)} d`;
-}
-
-/** "sexta, 31 de julho" — em minúscula, como no protótipo. */
-export function dataPorExtenso(d: Date): string {
-  return d.toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" })
-    .replace("-feira", "")
-    .toLowerCase();
-}
-
-export function saudacaoHora(h: number): string {
-  if (h < 12) return "Bom dia";
-  if (h < 18) return "Boa tarde";
-  return "Boa noite";
-}
-
-/** Hoje no fuso de São Paulo — o corretor pensa no dia dele, não em UTC. */
-function ehHoje(iso: string | null): boolean {
-  if (!iso) return false;
-  const fuso = "America/Sao_Paulo";
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return false;
-  const fmt = (x: Date) => x.toLocaleDateString("pt-BR", { timeZone: fuso });
-  return fmt(d) === fmt(new Date());
-}
-
-/** Prioridade 1 e 2 é quem espera AGORA: respondeu, ou lead novo sem atuação. */
-const ehAgora = (i: Item) => i.prioridade <= 2;
-
-export function filtrar(itens: Item[], f: Filtro): Item[] {
-  if (f === "agora") return itens.filter(ehAgora);
-  if (f === "hoje") return itens.filter((i) => ehHoje(i.proxima_acao_prazo) || ehAgora(i));
-  return itens;
-}
 
 /* --------------------------------- card --------------------------------- */
 
-function CardLead({ i, onAbrir }: { i: Item; onAbrir: (id: number) => void }) {
+function CardLead({ i, onAbrir }: { i: ItemTela; onAbrir: (id: number) => void }) {
   /* sessionStorage não é reativo; este tick força o re-render para o aviso
      aparecer NA HORA em que o corretor volta do WhatsApp. */
   const [, setTick] = useState(0);
@@ -107,10 +45,8 @@ function CardLead({ i, onAbrir }: { i: Item; onAbrir: (id: number) => void }) {
   if (i.outbound_real_confirmado && abriuLocal) limparWhatsappAberto(i.negocio_id);
   const aguardando = !i.outbound_real_confirmado && (i.aguardando_sincronizacao || abriuLocal);
 
-  const vencida = i.prioridade === 3 || i.prioridade === 5;
-
   return (
-    <li className={`tc-card${vencida ? " vencida" : ""}`}>
+    <li className={`tc-card${ehVencida(i) ? " vencida" : ""}`}>
       {/* O corpo abre a ficha. A ação principal fica FORA dele: <a> dentro de
           <button> é HTML inválido e quebra leitor de tela. */}
       <button type="button" className="tc-card-corpo" onClick={() => onAbrir(i.negocio_id)}>
@@ -166,7 +102,7 @@ function CardLead({ i, onAbrir }: { i: Item; onAbrir: (id: number) => void }) {
       </div>
 
       {/* FALLBACK wa.me. O print não mostra este link, e por isso ele quase
-          saiu daqui — mas ele existe por motivo funcional, não estético:
+          saiu daqui — mas existe por motivo funcional, não estético:
           `whatsapp://` não abre em alguns aparelhos nem no navegador do
           desktop, e sem ele o corretor toca e não acontece nada. Fica
           discreto, embaixo da ação principal, sem competir com ela. */}
@@ -200,7 +136,7 @@ export function TelaCorretor({ accessToken, nome, onAbrirLead, onIr }: {
   onAbrirLead: (negocioId: number) => void;
   onIr: (destino: string) => void;
 }) {
-  const [itens, setItens] = useState<Item[] | null>(null);
+  const [itens, setItens] = useState<ItemTela[] | null>(null);
   const [numeros, setNumeros] = useState<Numeros | null>(null);
   const [erro, setErro] = useState(false);
   const [tentativa, setTentativa] = useState(0);
@@ -218,7 +154,7 @@ export function TelaCorretor({ accessToken, nome, onAbrirLead, onIr }: {
     const jf = await rf.json();
     /* Os números são acessórios: se falharem, a fila ainda serve para trabalhar. */
     const jn = rn.ok ? await rn.json() : null;
-    return { itens: (jf.itens as Item[]) ?? [], numeros: jn as Numeros | null };
+    return { itens: (jf.itens as ItemTela[]) ?? [], numeros: jn as Numeros | null };
   }, [accessToken]);
 
   useEffect(() => {
@@ -266,11 +202,7 @@ export function TelaCorretor({ accessToken, nome, onAbrirLead, onIr }: {
       </header>
 
       <p className="tc-eyebrow">Sua fila de hoje</p>
-      <h1 className="tc-manchete">
-        {itens === null ? "Carregando sua fila…"
-          : agoraQtd === 0 ? "Ninguém esperando agora"
-          : `${agoraQtd} ${agoraQtd === 1 ? "pessoa espera" : "pessoas esperam"} você agora`}
-      </h1>
+      <h1 className="tc-manchete">{manchete(agoraQtd, itens === null)}</h1>
 
       {atualizadoEm && (
         <p className="tc-atualizado">
