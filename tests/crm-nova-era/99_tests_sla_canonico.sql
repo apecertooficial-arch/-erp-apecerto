@@ -94,6 +94,12 @@ SELECT public.test_assert(
 -- Referencia de tempo: a mensagem saiu ha 30 minutos.
 -- =============================================================================
 
+-- A mensagem de referencia destes casos saiu ha 30 minutos, entao a
+-- distribuicao precisa ser anterior a isso. Sem este ajuste o criterio 4
+-- (mensagem posterior a distribuicao) recusa antes de chegar na participacao,
+-- e o teste mediria outra coisa.
+UPDATE public.ncrm_estado SET distribuido_em = now() - interval '1 hour' WHERE negocio_id = 73001;
+
 -- liberado_por e NOT NULL de proposito: entrar na abordagem humana e uma
 -- decisao de alguem, nao um estado que aparece sozinho.
 INSERT INTO public.ncrm_abordagem_humana (corretor_id, ativo, liberado_por, liberado_em)
@@ -155,6 +161,9 @@ INSERT INTO public.ncrm_abordagem_humana (corretor_id, ativo, liberado_por, libe
 VALUES (7001, true, '77777777-0000-0000-0000-000000000001', now() - interval '2 hours')
 ON CONFLICT (corretor_id) DO UPDATE SET ativo = true,
   liberado_em = now() - interval '2 hours', removido_em = NULL;
+
+-- devolve a distribuicao ao valor que os testes H, K e J esperam
+UPDATE public.ncrm_estado SET distribuido_em = now() - interval '10 minutes' WHERE negocio_id = 73001;
 
 -- ------------------------------------------- H: distribuicao antes do corte
 UPDATE public.ncrm_estado SET distribuido_em = now() - interval '3 days' WHERE negocio_id = 73001;
