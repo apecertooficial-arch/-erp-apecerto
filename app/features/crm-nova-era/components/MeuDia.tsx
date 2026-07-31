@@ -7,7 +7,7 @@
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { esperaHumana } from "../lib/meuDia";
-import { GRUPO_ORDEM, GRUPO_ROTULO, grupoDoItem, type GrupoMeuDia } from "../lib/linguagem";
+import { GRUPO_VISIVEL_ORDEM, GRUPO_VISIVEL_ROTULO, GRUPO_VISIVEL_AJUDA, grupoDoItem, grupoVisivel, type GrupoVisivel } from "../lib/linguagem";
 
 type Json = Record<string, unknown>;
 
@@ -41,11 +41,13 @@ const COR_PRIORIDADE: Record<number, string> = {
 };
 
 
-export function MeuDia({ accessToken, corretorFiltro, onAbrir, onAbrirChat }: {
+export function MeuDia({ accessToken, corretorFiltro, onAbrir }: {
   accessToken: string;
   corretorFiltro?: number | null;
   onAbrir: (negocioId: string) => void;
-  onAbrirChat: (negocioId: string) => void;
+  /** Mantido por compatibilidade com quem ja montava MeuDia; o card passou
+      a ter uma acao principal unica, entao nao e mais usado aqui. */
+  onAbrirChat?: (negocioId: string) => void;
 }) {
   const [filtro, setFiltro] = useState("agora");
   const [filtrosAvancados, setFiltrosAvancados] = useState(false);
@@ -73,15 +75,18 @@ export function MeuDia({ accessToken, corretorFiltro, onAbrir, onAbrirChat }: {
     return m;
   }, [itens]);
 
-  /** Agrupa em 4 blocos visuais: Atenda agora / Faça hoje / Agendados / Aguardando cliente. */
+  /* Tres blocos no celular: Atenda agora / Faca o combinado / Acompanhe.
+     A ordem DENTRO de cada bloco e a que o banco devolveu (prioridade
+     calculada em ncrm_fila_trabalho) — nao reordenamos no cliente, senao a
+     tela discordaria da regra. */
   const grupos = useMemo(() => {
-    const g: Record<GrupoMeuDia, ItemFila[]> = { atenda_agora: [], faca_hoje: [], agendados: [], aguardando_cliente: [] };
-    for (const i of itens) g[grupoDoItem(i)].push(i);
+    const g: Record<GrupoVisivel, ItemFila[]> = { atenda_agora: [], faca_combinado: [], acompanhe: [] };
+    for (const i of itens) g[grupoVisivel(grupoDoItem(i))].push(i);
     return g;
   }, [itens]);
 
   const Item = ({ i }: { i: ItemFila }) => (
-    <article key={i.negocio_id} style={{ display: "flex", gap: 12, alignItems: "center", border: "1px solid var(--nc-line,#e5e7eb)", borderLeft: `4px solid ${COR_PRIORIDADE[i.prioridade] ?? "#6b7280"}`, borderRadius: 10, padding: "10px 12px", background: "#fff", flexWrap: "wrap" }}>
+    <article key={i.negocio_id} className="ncrm-dia-card" style={{ display: "flex", gap: 12, alignItems: "center", border: "1px solid var(--nc-line,#e5e7eb)", borderLeft: `4px solid ${COR_PRIORIDADE[i.prioridade] ?? "#6b7280"}`, borderRadius: 10, padding: "10px 12px", background: "#fff", flexWrap: "wrap" }}>
       <div style={{ flex: 1, minWidth: 200 }}>
         <div style={{ display: "flex", gap: 8, alignItems: "baseline", flexWrap: "wrap" }}>
           <b style={{ fontSize: 15 }}>{i.lead_nome ?? `Atendimento ${i.negocio_id}`}</b>
@@ -93,9 +98,10 @@ export function MeuDia({ accessToken, corretorFiltro, onAbrir, onAbrirChat }: {
           {i.proxima_acao_em ? ` · até ${new Date(i.proxima_acao_em).toLocaleString("pt-BR")}` : ""}
         </div>
       </div>
-      <div style={{ display: "flex", gap: 6 }}>
-        <button className="nova-crm-btn" onClick={() => onAbrirChat(String(i.negocio_id))}>💬 Abrir chat</button>
-        <button className="nova-crm-btn ghost" onClick={() => onAbrir(String(i.negocio_id))}>Abrir ficha</button>
+      {/* UMA acao principal. A ficha ja abre o historico completo, entao um
+          segundo botao "Abrir chat" so competia pela atencao do corretor. */}
+      <div className="ncrm-dia-acao">
+        <button className="nova-crm-btn" onClick={() => onAbrir(String(i.negocio_id))}>Abrir atendimento</button>
       </div>
     </article>
   );
@@ -128,12 +134,13 @@ export function MeuDia({ accessToken, corretorFiltro, onAbrir, onAbrirChat }: {
         <div className="nova-crm-empty">Nada pendente neste filtro. Bom trabalho — confira o filtro Próximos para se antecipar.</div>
       )}
 
-      {!carregando && !erro && GRUPO_ORDEM.map((g) => (
+      {!carregando && !erro && GRUPO_VISIVEL_ORDEM.map((g) => (
         grupos[g].length === 0 ? null : (
-          <section key={g} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          <section key={g} className="ncrm-dia-grupo" style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             <h3 style={{ fontSize: 13, margin: "6px 0 0", color: "#374151", textTransform: "uppercase", letterSpacing: .4 }}>
-              {GRUPO_ROTULO[g]} <span style={{ color: "#9ca3af" }}>({grupos[g].length})</span>
+              {GRUPO_VISIVEL_ROTULO[g]} <span style={{ color: "#9ca3af" }}>({grupos[g].length})</span>
             </h3>
+            <p className="ncrm-dia-ajuda">{GRUPO_VISIVEL_AJUDA[g]}</p>
             {grupos[g].map((i) => <Item key={i.negocio_id} i={i} />)}
           </section>
         )
