@@ -9,6 +9,10 @@
  *
  * MÊS É CALENDÁRIO, não lista. Quarenta compromissos empilhados não respondem
  * "que dia eu estou livre?", que é a única pergunta que se faz olhando um mês.
+ *
+ * O TOPO É ÂNCORA. O cartão do próximo compromisso fica igual em Dia, Semana
+ * e Mês. Só o miolo muda — que é o que a aba promete mudar. Sumir com o topo
+ * ao trocar de aba faz a tela pular e o corretor perde a referência.
  */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -40,7 +44,9 @@ export function TelaAgendaMobile({ accessToken, onAbrirLead }: {
   useEffect(() => {
     const ctrl = new AbortController();
     let vivo = true;
-    setItens(null);
+    /* NÃO zeramos a lista aqui: manter o que já está na tela enquanto a nova
+       chega evita o pisca-e-encolhe ao trocar de aba. O esqueleto só aparece
+       no primeiro carregamento. */
     carregar(ctrl.signal)
       .then((l) => { if (vivo) { setItens(l); setErro(false); } })
       .catch((e) => { if (vivo && e?.name !== "AbortError") { setErro(true); setItens([]); } });
@@ -51,12 +57,12 @@ export function TelaAgendaMobile({ accessToken, onAbrirLead }: {
   const prox = useMemo(() => proximo(lista), [lista]);
   const grade = useMemo(() => (periodo === "mes" ? gradeDoMes(dia, lista) : []), [periodo, dia, lista]);
 
-  /* No mês, a lista abaixo do calendário é só do dia selecionado. Em semana,
-     é tudo, agrupado por dia. */
-  const paraListar = useMemo(() => {
-    if (periodo === "mes") return lista.filter((c) => c.data === dia);
-    return lista;
-  }, [lista, periodo, dia]);
+  /* No mês, a lista abaixo do calendário é só do dia selecionado. Em dia e
+     semana, é tudo o que veio. */
+  const paraListar = useMemo(
+    () => (periodo === "mes" ? lista.filter((c) => c.data === dia) : lista),
+    [lista, periodo, dia],
+  );
 
   const porDia = useMemo(() => {
     const mapa = new Map<string, Compromisso[]>();
@@ -72,7 +78,10 @@ export function TelaAgendaMobile({ accessToken, onAbrirLead }: {
 
   return (
     <div className="ag-wrap">
-      {prox && periodo !== "mes" && (
+      {/* TOPO FIXO — igual em Dia, Semana e Mês.
+          Quando não há nada à frente, o espaço não some: vira uma linha
+          discreta. Sumir o bloco inteiro faria a tela pular do mesmo jeito. */}
+      {prox ? (
         <section className="ag-proximo" aria-label="Próximo compromisso">
           <p className="ag-eyebrow">
             Próximo compromisso <span className="ag-quando">{quandoComeca(prox.faltam_min)}</span>
@@ -82,6 +91,8 @@ export function TelaAgendaMobile({ accessToken, onAbrirLead }: {
           {!prox.meu && <p className="ag-prox-dono">com {prox.corretor}</p>}
           {prox.local && <p className="ag-prox-local">📍 {prox.local}</p>}
           <div className="ag-prox-acoes">
+            {/* Abre o app de mapas do aparelho. Sem mapa embutido: o corretor
+                já confia no navegador dele mais do que confiaria no nosso. */}
             {prox.local ? (
               <a
                 className="ag-btn-cheio"
@@ -103,6 +114,13 @@ export function TelaAgendaMobile({ accessToken, onAbrirLead }: {
               Ver ficha
             </button>
           </div>
+        </section>
+      ) : (
+        <section className="ag-proximo vazio" aria-label="Próximo compromisso">
+          <p className="ag-eyebrow">Próximo compromisso</p>
+          <p className="ag-prox-cliente">
+            {itens === null ? "Carregando…" : "Nada à frente neste período."}
+          </p>
         </section>
       )}
 
@@ -128,10 +146,10 @@ export function TelaAgendaMobile({ accessToken, onAbrirLead }: {
         </div>
       </div>
 
-      {/* ---------------- MÊS: calendário de verdade ----------------
-          Sete colunas, começando na segunda. O ponto sob o número diz que
-          há compromisso; o número de compromissos NÃO entra na célula —
-          em 44px de largura viraria borrão. Tocar no dia abre a lista. */}
+      {/* ---------------- MÊS: calendário ----------------
+          Sete colunas, começando na segunda. O ponto sob o número diz que há
+          compromisso; a quantidade NÃO entra na célula — em 44px viraria
+          borrão. Tocar no dia abre a lista dele embaixo. */}
       {periodo === "mes" && (
         <section className="ag-mes" aria-label="Calendário do mês">
           <div className="ag-mes-cabeca" aria-hidden="true">
@@ -161,9 +179,7 @@ export function TelaAgendaMobile({ accessToken, onAbrirLead }: {
       )}
 
       <p className="ag-dia">
-        {periodo === "semana"
-          ? `semana de ${diaPorExtenso(dia)}`
-          : diaPorExtenso(dia)}
+        {periodo === "semana" ? `semana de ${diaPorExtenso(dia)}` : diaPorExtenso(dia)}
         {" · "}
         {itens === null ? "carregando…" : resumoDoDia(paraListar.length)}
       </p>
