@@ -150,7 +150,10 @@ export const CRM3_CSS = `
    (a navegação 3.0 já faz esse papel, com oito abas) e, na aba Visitas,
    recortamos a Agenda para o painel do Pipe de Visitas que já existe. */
 .ncrm3-oficial { flex:1; min-width:0; min-height:0; overflow:auto; }
-.ncrm3-oficial .crm-v2 { min-height:0; }
+.ncrm3-oficial .crm-v2 { min-height:0; zoom:1; }
+/* O globals.css aplica zoom:.85 em .crm-v2. A casca da 3.0 tambem e .crm-v2,
+   entao a visao oficial aninhada herdava o zoom duas vezes (.85 x .85 = 72%)
+   e Leads, Esteira e Agenda apareciam menores que no CRM atual. */
 .ncrm3-oficial .crm-command-bar { display:none; }
 .ncrm3-so-visitas .crm-agenda-grid { grid-template-columns:1fr; }
 .ncrm3-so-visitas .crm-agenda-grid > .agenda-panel:not(.visits) { display:none; }
