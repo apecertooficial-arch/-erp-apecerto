@@ -3,8 +3,11 @@
  * Em .ts porque o runner de teste usa strip-types do node, que não entende JSX.
  */
 
+export type Periodo = "dia" | "semana" | "mes";
+
 export type Compromisso = {
   id: string;
+  data: string;            // "2026-07-31"
   hora: string;            // "11:30"
   tipo: string;            // "visita", "visita com gerente"
   cliente: string;
@@ -12,22 +15,24 @@ export type Compromisso = {
   produto: string | null;
   negocio_id: number | null;
   status: string | null;
+  corretor: string;        // quem atende
+  meu: boolean;            // é do corretor logado
   faltam_min: number;      // negativo = já passou
 };
 
 /**
  * O próximo compromisso é o primeiro que AINDA NÃO começou.
  *
- * Se todos já passaram, devolve null em vez do último: o cartão de destaque
- * diz "próximo", e apontar para algo que já aconteceu seria mentira na tela.
+ * Se todos já passaram, devolve null em vez do último: o cartão diz
+ * "próximo", e apontar para algo que já aconteceu seria mentira na tela.
  */
 export function proximo(itens: Compromisso[]): Compromisso | null {
   const futuros = itens.filter((i) => i.faltam_min >= 0).sort((a, b) => a.faltam_min - b.faltam_min);
   return futuros[0] ?? null;
 }
 
-/** "em 26 min", "em 2 h", "agora". Nunca em horário absoluto: o corretor
- *  quer saber quanto tempo tem, não que horas são. */
+/** "em 26 min", "em 2 h", "agora". Nunca horário absoluto: o corretor quer
+ *  saber quanto tempo TEM, não que horas são. */
 export function quandoComeca(faltamMin: number): string {
   const m = Math.round(faltamMin);
   if (m <= 0) return "agora";
@@ -46,7 +51,7 @@ export function diaPorExtenso(iso: string): string {
     .toLowerCase();
 }
 
-/** Soma dias a uma data ISO sem passar por fuso — o dia é o dia. */
+/** Soma dias sem passar por fuso — o dia é o dia. */
 export function somarDias(iso: string, dias: number): string {
   const [a, m, d] = iso.split("-").map(Number);
   const base = new Date(Date.UTC(a, m - 1, d));
@@ -63,5 +68,5 @@ export function resumoDoDia(total: number): string {
   return `${total} ${total === 1 ? "compromisso" : "compromissos"}`;
 }
 
-/** Passou da hora e ninguém encerrou: o ponto da linha do tempo fica apagado. */
+/** Passou da hora e ninguém encerrou: o ponto da linha do tempo apaga. */
 export const jaPassou = (c: Compromisso) => c.faltam_min < 0;
