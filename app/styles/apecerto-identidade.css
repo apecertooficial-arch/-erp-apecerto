@@ -1,0 +1,299 @@
+/* =====================================================================
+   IDENTIDADE VISUAL APÊCERTO
+   ---------------------------------------------------------------------
+   Tokens oficiais do design system, vindos do pacote do Claude Design.
+
+   POR QUE ESTA FOLHA EXISTE, E POR QUE ELA É A ÚLTIMA A CARREGAR:
+
+   O ERP tem 5.678 linhas em globals.css e mais 700 em app-mobile.css,
+   escritas ao longo de meses com cores literais e com um punhado de
+   variáveis próprias (--orange, --ink, --line, --muted). Repintar isso
+   arquivo por arquivo levaria semanas e quebraria tela que ninguém abriu
+   nos últimos dois meses.
+
+   A saída é aqui: definimos os tokens novos E remapeamos as variáveis
+   antigas para eles. Toda tela que já usava `var(--orange)` passa a
+   receber o laranja oficial da marca sem uma linha de mudança. O que
+   ainda usa cor literal continua igual — esse é o resíduo a limpar
+   depois, tela por tela, sem pressa e sem risco.
+
+   REGRA: nada aqui pode depender de largura de tela. Isto é identidade,
+   não layout. Layout continua em app-mobile.css.
+   ===================================================================== */
+
+/* Quicksand pelo Google Fonts em vez dos .ttf do pacote: fonte servida por
+   CDN chega comprimida em woff2 (cerca de 1/3 do tamanho do ttf), tem cache
+   compartilhado entre sites e não engorda o repositório em 1 MB de binário.
+   O service worker ignora origem externa, então isto não entra no cache do
+   app nem atrapalha o modo offline. */
+@import url("https://fonts.googleapis.com/css2?family=Quicksand:wght@300;400;500;600;700&display=swap");
+
+:root {
+  /* ============================
+     MARCA — apê (laranja) e certo (roxo)
+     ============================ */
+  --ape-orange:     #FF7000;
+  --ape-orange-600: #E66200;
+  --ape-orange-700: #CC5800;
+  --ape-orange-300: #FF9A4D;
+  --ape-orange-100: #FFE4D1;
+  --ape-orange-50:  #FFF3EA;
+
+  --ape-purple:     #8B00CC;
+  --ape-purple-600: #7A00B3;
+  --ape-purple-700: #66009A;
+  --ape-purple-300: #B24DDD;
+  --ape-purple-100: #EBD1F5;
+  --ape-purple-50:  #F7ECFC;
+
+  /* ============================
+     NEUTROS — quentes, levemente areia
+     ============================ */
+  --neutral-0:   #FFFFFF;
+  --neutral-50:  #FAF8F6;
+  --neutral-100: #F2EFEC;
+  --neutral-200: #E4DFD9;
+  --neutral-300: #C9C2BA;
+  --neutral-400: #9A938B;
+  --neutral-500: #6E6760;
+  --neutral-600: #4D4842;
+  --neutral-700: #332F2B;
+  --neutral-800: #1F1C1A;
+  --neutral-900: #100E0D;
+
+  /* ============================
+     SEMÂNTICOS
+     ============================ */
+  --fg-1:       var(--neutral-800);
+  --fg-2:       var(--neutral-600);
+  --fg-3:       var(--neutral-500);
+  --fg-muted:   var(--neutral-400);
+  --fg-inverse: var(--neutral-0);
+  --fg-brand:   var(--ape-orange);
+  --fg-accent:  var(--ape-purple);
+
+  --bg-page:        var(--neutral-50);
+  --bg-surface:     var(--neutral-0);
+  --bg-raised:      var(--neutral-0);
+  --bg-sunken:      var(--neutral-100);
+  --bg-tint-orange: var(--ape-orange-50);
+  --bg-tint-purple: var(--ape-purple-50);
+
+  --border-soft:    var(--neutral-200);
+  --border-default: var(--neutral-300);
+  --border-strong:  var(--neutral-700);
+  --border-brand:   var(--ape-orange);
+
+  --success:    #1FA85A;  --success-bg: #E4F6EC;
+  --warning:    #F2A82C;  --warning-bg: #FDF1D9;
+  --danger:     #D93E3E;  --danger-bg:  #FBE5E5;
+  --info:       var(--ape-purple);
+  --info-bg:    var(--ape-purple-50);
+
+  /* WhatsApp fica verde. É a cor que o corretor já associa ao aplicativo do
+     cliente, e trocar por laranja da marca faria ele hesitar meio segundo
+     antes de cada toque — no botão mais usado do app inteiro. */
+  --whatsapp: #25D366;
+
+  /* ============================
+     TIPOGRAFIA
+     ============================ */
+  --font-display: "Quicksand", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-body:    "Quicksand", system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  --weight-light: 300; --weight-regular: 400; --weight-medium: 500;
+  --weight-semibold: 600; --weight-bold: 700;
+
+  --text-xs: 12px; --text-sm: 14px; --text-base: 16px; --text-md: 18px;
+  --text-lg: 20px; --text-xl: 24px; --text-2xl: 30px; --text-3xl: 38px;
+
+  --leading-tight: 1.1; --leading-snug: 1.25;
+  --leading-normal: 1.45; --leading-relaxed: 1.6;
+  --tracking-tight: -0.02em; --tracking-snug: -0.01em; --tracking-caps: 0.12em;
+
+  /* ============================
+     ESPAÇO, RAIO, SOMBRA
+     ============================ */
+  --space-1: 4px;  --space-2: 8px;  --space-3: 12px; --space-4: 16px;
+  --space-5: 20px; --space-6: 24px; --space-8: 32px; --space-10: 40px;
+
+  --radius-xs: 4px;  --radius-sm: 8px;  --radius-md: 12px;
+  --radius-lg: 18px; --radius-xl: 24px; --radius-2xl: 32px; --radius-pill: 999px;
+
+  --shadow-xs: 0 1px 2px rgba(31,28,26,.04);
+  --shadow-sm: 0 2px 6px rgba(31,28,26,.06);
+  --shadow-md: 0 8px 20px rgba(31,28,26,.08);
+  --shadow-lg: 0 16px 40px rgba(31,28,26,.10);
+  --shadow-brand: 0 12px 28px rgba(255,112,0,.28);
+
+  --ease-out: cubic-bezier(.2,.8,.2,1);
+  --dur-fast: 120ms; --dur-base: 200ms;
+
+  /* =====================================================================
+     PONTE COM O CÓDIGO ANTIGO
+     ---------------------------------------------------------------------
+     Aqui está o truque que repinta o ERP inteiro. Estes quatro nomes são
+     usados em centenas de lugares no globals.css e no app-mobile.css.
+     Apontá-los para os tokens novos troca a cor de tudo de uma vez.
+
+     `--orange-soft` era um creme mais saturado; virou o tint oficial.
+     `--line` era cinza frio; vira o neutro quente, senão a borda briga com
+     o fundo areia e a tela parece "suja".
+     ===================================================================== */
+  --orange:      var(--ape-orange);
+  --orange-soft: var(--ape-orange-50);
+  --ink:         var(--fg-1);
+  --muted:       var(--fg-3);
+  --line:        var(--border-soft);
+}
+
+/* =====================================================================
+   BASE
+   ===================================================================== */
+html {
+  /* Fundo também no html: no iPhone, o "arrasto elástico" além do fim da
+     página mostra o fundo do html, não do body. Sem isto aparece uma faixa
+     branca gritante no meio da rolagem. */
+  background: var(--bg-page);
+}
+
+body {
+  font-family: var(--font-body);
+  font-weight: var(--weight-regular);
+  color: var(--fg-1);
+  background: var(--bg-page);
+  line-height: var(--leading-normal);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Títulos na fonte de display, com o peso da marca. Sem mexer em tamanho:
+   o tamanho já foi resolvido tela a tela e mudar aqui quebraria layout. */
+h1, h2, h3, h4, h5,
+.home-header h1, .sd-titulo, .md-chamada {
+  font-family: var(--font-display);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-snug);
+  color: var(--fg-1);
+}
+
+/* =====================================================================
+   SUPERFÍCIES E CANTOS — o "friendly, rounded" do design system.
+   Só o que já é card no app; nada de regra genérica em div.
+   ===================================================================== */
+.md-card,
+.pc-card,
+.home-panel,
+.home-goal,
+.nova-crm-card,
+.ncrm-dia-card,
+.convite-instalar,
+.legacy-aviso,
+.modulo-sem-acesso {
+  border-radius: var(--radius-lg);
+  border-color: var(--border-soft);
+}
+
+.md-card,
+.home-panel,
+.nova-crm-card {
+  box-shadow: var(--shadow-xs);
+}
+
+/* Chips, segmentos e contadores: pílula, como no protótipo. */
+.md-etapa,
+.md-contador,
+.sd-contador,
+.nova-crm-etapas > button,
+.ncrm-seg-mais,
+.ncrm-ficha-abas > button {
+  border-radius: var(--radius-pill);
+}
+
+/* =====================================================================
+   AÇÕES
+   ===================================================================== */
+
+/* Ação principal: laranja da marca, canto arredondado, sombra quente.
+   `a.md-acao` (WhatsApp) é a exceção logo abaixo. */
+.md-acao,
+.convite-instalar-ok,
+.sd-erro button,
+.md-erro button {
+  background: var(--ape-orange);
+  color: var(--fg-inverse);
+  border-radius: var(--radius-md);
+  font-family: var(--font-body);
+  font-weight: var(--weight-semibold);
+  transition: background var(--dur-fast) var(--ease-out),
+              transform var(--dur-fast) var(--ease-out);
+}
+.md-acao:active,
+.convite-instalar-ok:active { background: var(--ape-orange-700); transform: scale(.985); }
+
+/* WhatsApp continua verde. Decisão de produto, não de estética: é o botão
+   mais tocado do app e a cor é o que o corretor reconhece sem ler. */
+a.md-acao,
+.ncrm-ficha-acao > a,
+.nova-crm-panel .ncrm-wa-principal {
+  background: var(--whatsapp);
+  color: #fff;
+}
+a.md-acao:active { background: #1FB855; }
+
+/* Roxo é o "certo" da marca: fica com a Sara, que é a parte que confere e
+   organiza. Assim a cor carrega significado em vez de enfeitar. */
+.md-sara {
+  color: var(--ape-purple);
+  background: var(--ape-purple-50);
+  border-radius: var(--radius-sm);
+  padding: 4px 8px;
+}
+
+/* Estados de alerta na paleta oficial. */
+.md-card.vencida { border-left-color: var(--danger); }
+.md-aguardando   { color: #8A5A17; background: var(--warning-bg); border-radius: var(--radius-sm); }
+.md-motivo       { color: var(--ape-orange-700); }
+.md-contador,
+.sd-contador     { background: var(--ape-orange-100); color: var(--ape-orange-700); }
+.md-etapa        { background: var(--bg-sunken); color: var(--fg-2); }
+
+/* =====================================================================
+   CASCA DO APLICATIVO
+   ===================================================================== */
+@media (max-width: 900px) {
+  .app-mobile-top {
+    background: var(--bg-surface);
+    border-bottom-color: var(--border-soft);
+  }
+  .app-bottom-nav {
+    background: var(--bg-surface);
+    border-top-color: var(--border-soft);
+    box-shadow: 0 -2px 12px rgba(31, 28, 26, .05);
+  }
+  .app-bottom-nav > a,
+  .app-bottom-nav > button { color: var(--fg-3); font-family: var(--font-body); }
+  .app-bottom-nav > a.active,
+  .app-bottom-nav > button.active { color: var(--ape-orange); }
+  .abn-badge, .amt-sino > b { background: var(--danger); }
+
+  /* Folhas que sobem de baixo: canto grande, do design system. */
+  .app-mais-folha,
+  .ncrm-mais-folha > div { border-radius: var(--radius-xl) var(--radius-xl) 0 0; }
+}
+
+/* =====================================================================
+   ACESSIBILIDADE
+   Foco visível na cor da marca. Alvo de toque continua definido no
+   app-mobile.css — isto aqui é só a cor.
+   ===================================================================== */
+:where(button, a, input, select, textarea):focus-visible {
+  outline: 2px solid var(--ape-orange);
+  outline-offset: 2px;
+  border-radius: var(--radius-xs);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .md-acao, .convite-instalar-ok { transition: none; }
+  .md-acao:active, .convite-instalar-ok:active { transform: none; }
+}
