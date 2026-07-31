@@ -1,18 +1,22 @@
 /**
  * SARA NA FICHA 3.0 — normalização da sugestão. PURO.
  *
- * A Sara continua observer/assist: ela SUGERE. Não envia mensagem, não move
- * etapa, não conclui ação. `execute` permanece bloqueado — este módulo não
- * tem, e não pode ter, nenhuma chamada de execução.
+ * A Sara SUGERE; quem executa é o corretor, com um clique. Ela não envia
+ * mensagem e não escreve etapa em lugar nenhum — o momento do cliente é
+ * recalculado pelo banco a partir da ação registrada.
  *
- * Exibimos sempre os mesmos oito campos, na mesma ordem, e três decisões
- * humanas: usar, ajustar ou dizer que não faz sentido.
+ * Este módulo é PURO: monta o payload da ação a partir da sugestão, e nada
+ * mais. Quem chama a rede é a ficha.
  */
+
+import { montarChecklist, type Checklist } from "./qualificacao.ts";
 
 export type SugestaoBruta = Record<string, unknown>;
 
 export type SaraNaTela = {
   evidencias: string[];
+  /** O que a Sara achou na conversa, campo a campo. */
+  checklist: Checklist;
   evidenciaSuficiente: boolean;
   momentoSugerido: string | null;
   proximaAcao: string | null;
@@ -26,9 +30,20 @@ export type SaraNaTela = {
 
 export type DecisaoSara = "aceita" | "ajustada" | "rejeitada";
 
+/**
+ * O ciclo que esta tela existe para fechar:
+ *   Sara le o historico -> devolve o momento e a proxima acao -> o corretor
+ *   confirma com UM clique -> o banco registra e recalcula o momento -> a
+ *   proxima analise da Sara ja parte do estado novo.
+ *
+ * "Usar orientacao" nao abre formulario: executa a acao que a Sara sugeriu.
+ * Continua sendo decisao humana (o clique) e continua auditada (decisao=aceita),
+ * mas o corretor deixa de reescrever o que a Sara ja escreveu.
+ */
+
 export const ACOES_SARA: ReadonlyArray<{ decisao: DecisaoSara; rotulo: string; ajuda: string }> = Object.freeze([
-  { decisao: "aceita", rotulo: "Usar orientação", ajuda: "Abre o formulário já preenchido. Você ainda confirma." },
-  { decisao: "ajustada", rotulo: "Ajustar", ajuda: "Abre o formulário em branco para você escrever o que vale." },
+  { decisao: "aceita", rotulo: "Usar orientação", ajuda: "Registra a ação da Sara e atualiza o momento do cliente." },
+  { decisao: "ajustada", rotulo: "Ajustar", ajuda: "Abre o formulário para você escrever o que realmente vale." },
   { decisao: "rejeitada", rotulo: "Não faz sentido", ajuda: "Descarta a sugestão e registra o retorno para a Sara aprender." },
 ]);
 
@@ -48,6 +63,7 @@ export function normalizarSara(bruta: SugestaoBruta | null | undefined): SaraNaT
   const confianca = Number(bruta.confianca ?? 0);
   return {
     evidencias: lista(bruta.evidencias, 4),
+    checklist: montarChecklist(bruta.informacoes_descobertas),
     evidenciaSuficiente: bruta.evidencia_suficiente !== false,
     momentoSugerido: texto(bruta.temperatura) ?? texto(bruta.intencao_detectada),
     proximaAcao: texto(bruta.proxima_acao),
@@ -71,6 +87,78 @@ export function proximaAcaoSugerida(bruta: SugestaoBruta | null | undefined): st
   return "entender_necessidade";
 }
 
-/** A Sara nunca envia. Trava explícita para o teste e para quem editar depois. */
+/** A Sara nunca envia mensagem. Trava explícita, com teste. */
 export const SARA_PODE_ENVIAR = false as const;
+
+/**
+ * A Sara continua sem mover etapa SOZINHA: quem move é a ação registrada
+ * depois do clique do corretor. O momento não é escrito à mão em lugar nenhum
+ * — o banco recalcula a partir da próxima ação e de quem respondeu.
+ */
 export const SARA_PODE_MOVER_ETAPA = false as const;
+
+export type AcaoConfirmada = {
+  /** Contrato que já existia; nenhuma ação nova foi inventada. */
+  action: "concluirAcao" | "registrarTentativa";
+  payload: Record<string, unknown>;
+  /** O que o corretor vai ver como confirmação. */
+  resumo: string;
+};
+
+/** Prazo padrão quando a Sara não sugeriu um: daqui a duas horas. */
+export function prazoOuPadrao(prazo: string | null | undefined, agora: Date = new Date()): string {
+  if (typeof prazo === "string") {
+    const t = Date.parse(prazo);
+    if (Number.isFinite(t)) return new Date(t).toISOString();
+  }
+  return new Date(agora.getTime() + 2 * 60 * 60 * 1000).toISOString();
+}
+
+/**
+ * Traduz a sugestão da Sara na chamada que o banco já aceita.
+ *
+ * Cliente que respondeu -> `concluirAcao` (acompanhamento comercial).
+ * Cliente que ainda não respondeu -> `registrarTentativa`, porque o que existe
+ * ali é cadência de prospecção, não ação comercial. Confundir os dois zeraria a
+ * contagem de tentativas.
+ */
+export function acaoConfirmadaDaSara(
+  bruta: SugestaoBruta | null | undefined,
+  lead: { id: string; respondeu: boolean },
+  versao: number,
+  agora: Date = new Date(),
+): AcaoConfirmada | null {
+  const s = normalizarSara(bruta);
+  if (!s || !s.proximaAcao) return null;
+
+  const tipo = proximaAcaoSugerida(bruta);
+  const prazo = prazoOuPadrao(s.prazo, agora);
+  const base = { negocioId: Number(lead.id), versao };
+  const titulo = s.proximaAcao.slice(0, 120);
+
+  if (lead.respondeu) {
+    return {
+      action: "concluirAcao",
+      payload: {
+        action: "concluirAcao", ...base,
+        resultado: "acao_concluida",
+        obs: `Orientação da Sara aceita: ${titulo}`,
+        proximaTipo: tipo, proximaTitulo: titulo, proximaEm: prazo,
+        idem: `ui3:sara:${lead.id}:${versao}`,
+      },
+      resumo: `${titulo} · até ${new Date(prazo).toLocaleString("pt-BR")}`,
+    };
+  }
+
+  return {
+    action: "registrarTentativa",
+    payload: {
+      action: "registrarTentativa", ...base,
+      canal: "whatsapp", resultado: "nao_respondeu",
+      obs: `Orientação da Sara aceita: ${titulo}`,
+      proximaTipo: null, proximaTitulo: null, proximaEm: null,
+      idem: `ui3:sara:${lead.id}:${versao}`,
+    },
+    resumo: "Tentativa registrada — a cadência define o próximo contato.",
+  };
+}

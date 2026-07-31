@@ -23,6 +23,29 @@ export interface SugestaoSara {
   perguntas_faltantes: string[];
   cuidados: string[];
   evidencia_suficiente: boolean;
+  /** Checklist de qualificação: chave canônica -> valor dito pelo cliente. */
+  informacoes_descobertas: Record<string, string>;
+}
+
+/* Onze campos, e só eles. Chave que a IA inventar é descartada aqui — o
+   normalizador é a fronteira entre o que o modelo diz e o que a tela mostra. */
+const CAMPOS_QUALIFICACAO = [
+  "regiao", "tipo_imovel", "metragem", "dormitorios", "vagas", "faixa_valor",
+  "forma_pagamento", "prazo_compra", "motivo_compra", "quem_decide", "disponibilidade_visita",
+] as const;
+
+function checklist(v: unknown): Record<string, string> {
+  if (!v || typeof v !== "object" || Array.isArray(v)) return {};
+  const bruto = v as Record<string, unknown>;
+  const saida: Record<string, string> = {};
+  for (const chave of CAMPOS_QUALIFICACAO) {
+    const valor = bruto[chave];
+    if (typeof valor !== "string") continue;
+    const t = valor.trim();
+    if (!t || t.toLowerCase() === "null" || t.toLowerCase() === "nao informado") continue;
+    saida[chave] = t.slice(0, 120);
+  }
+  return saida;
 }
 
 const ETAPAS = ["novo", "tentando_contato", "em_atendimento", "em_acompanhamento"];
@@ -76,6 +99,7 @@ export function normalizarSugestaoSara(raw: unknown): { ok: true; sugestao: Suge
       justificativa: strOuNull(o.justificativa),
       confianca: conf,
       evidencias: arrStr(o.evidencias),
+      informacoes_descobertas: checklist(o.informacoes_descobertas),
       objetivo_abordagem: strOuNull(o.objetivo_abordagem, 300),
       roteiro_ligacao: arrStr(o.roteiro_ligacao, 6, 200),
       whatsapp_sugerido: strOuNull(o.whatsapp_sugerido, 300),

@@ -17,7 +17,7 @@ import { marcarWhatsappAberto } from "../../crm-nova-era/lib/whatsappAberto";
 import { frasedaSituacao, prepararChamada, TITULO_BLOCO } from "../lib/ficha3";
 import { rotuloCurtoSla } from "../lib/sla3";
 import type { SaidaSla } from "../../crm-nova-era/lib/slaPrimeiraAbordagem";
-import { proximaAcaoSugerida, type DecisaoSara, type SugestaoBruta } from "../lib/sara3";
+import { acaoConfirmadaDaSara, normalizarSara, proximaAcaoSugerida, type DecisaoSara, type SugestaoBruta } from "../lib/sara3";
 import { Sara3 } from "./Sara3";
 import { FormAcao3, type TipoForm } from "./FormAcao3";
 import { iniciais, tempoDesde } from "./Card3";
@@ -113,9 +113,11 @@ export function Ficha3({
   const [inicial, setInicial] = useState<{ proximaTipo?: string; prazo?: string }>({});
   const [sara, setSara] = useState<SugestaoBruta | null>(null);
   const [saraCarregando, setSaraCarregando] = useState(false);
+  const [aplicandoSara, setAplicandoSara] = useState(false);
   const [copiado, setCopiado] = useState(false);
 
   const chamada = prepararChamada(lead.telefone);
+  const checklistSara = normalizarSara(sara)?.checklist ?? null;
   const emSaida = Boolean(lead.visitaAgendadaEm || lead.proposta || lead.descartadoMotivo || lead.nutricao);
   const timeline = montarTimeline(lead);
 
@@ -132,9 +134,9 @@ export function Ficha3({
 
   const decidirSara = useCallback(async (decisao: DecisaoSara) => {
     if (!sara) return;
-    // "ajustar" é decisão humana de recusar o texto e escrever o próprio:
-    // registra como rejeitada (é isso que o contrato de feedback aceita) e
-    // abre o formulário em branco.
+    /* O feedback aceita "aceita" ou "rejeitada". "Ajustar" é o corretor
+       recusando o texto para escrever o próprio — do ponto de vista do
+       aprendizado da Sara, isso é uma rejeição, e é assim que fica registrado. */
     const registrar: DecisaoSara = decisao === "aceita" ? "aceita" : "rejeitada";
     const r = await fetch(`/api/ncrm/sara`, {
       method: "POST",
@@ -142,17 +144,38 @@ export function Ficha3({
       body: JSON.stringify({ negocioId: Number(lead.id), baseVersao: versao, decisao: registrar, sugestao: sara }),
     });
     if (!r.ok) { onAviso("Não foi possível registrar a sua decisão — tente de novo."); return; }
+
+    /* ACEITAR EXECUTA. O corretor não reescreve o que a Sara já escreveu: a
+       ação sugerida vira registro pelo contrato que já existia, e o momento do
+       cliente é recalculado pelo banco. Se por algum motivo a sugestão não
+       virar uma ação válida, caímos no formulário em vez de engolir o clique. */
     if (decisao === "aceita") {
+      const confirmada = acaoConfirmadaDaSara(sara, { id: lead.id, respondeu: lead.respondeu }, versao);
+      if (!confirmada) {
+        const prazo = typeof sara.prazo_sugerido === "string" ? sara.prazo_sugerido.slice(0, 16) : undefined;
+        setInicial({ proximaTipo: proximaAcaoSugerida(sara), prazo });
+        setForm("resultado");
+        onAviso("A orientação não trouxe uma ação completa — confirme no formulário.");
+        return;
+      }
+      setAplicandoSara(true);
+      await onExecutar(confirmada.payload);
+      setAplicandoSara(false);
+      onAviso(`Registrado: ${confirmada.resumo}`);
+      return;
+    }
+
+    if (decisao === "ajustada") {
       const prazo = typeof sara.prazo_sugerido === "string" ? sara.prazo_sugerido.slice(0, 16) : undefined;
       setInicial({ proximaTipo: proximaAcaoSugerida(sara), prazo });
       setForm("resultado");
       return;
     }
-    if (decisao === "ajustada") { setInicial({}); setForm("resultado"); return; }
+
     setSara(null);
     onSaraCarregada(lead.id, null);
     onAviso("Orientação descartada — a Sara recebeu o retorno.");
-  }, [accessToken, lead.id, onAviso, onSaraCarregada, sara, versao]);
+  }, [accessToken, lead.id, lead.respondeu, onAviso, onExecutar, onSaraCarregada, sara, versao]);
 
   return (
     <aside className="ncrm3-ficha" aria-label={`Ficha de ${lead.nome}`}>
@@ -258,7 +281,8 @@ export function Ficha3({
       {/* 6. Sara */}
       <section className="ncrm3-bloco">
         <h3>{TITULO_BLOCO.sara}</h3>
-        <Sara3 sugestao={sara} carregando={saraCarregando} onPedir={() => void pedirSara()} onDecidir={(d) => void decidirSara(d)} />
+        <Sara3 sugestao={sara} carregando={saraCarregando} aplicando={aplicandoSara}
+          onPedir={() => void pedirSara()} onDecidir={(d) => void decidirSara(d)} />
       </section>
 
       {/* 7. Histórico — a conversa real, como voltou pelo WhatsApp */}
@@ -276,6 +300,18 @@ export function Ficha3({
           <div className="ncrm3-linha"><span>Última interação</span><b>{tempoDesde(lead.ultimaInteracaoEm)}</b></div>
           <div className="ncrm3-linha"><span>Abordagens confirmadas</span><b>{lead.tentativas.length}</b></div>
         </div>
+        {/* O que o cliente já disse sobre o que procura. Sai da conversa real,
+            pela análise da Sara — não é um formulário que alguém preenche. */}
+        {checklistSara && (
+          <div className="ncrm3-linhas" style={{ marginTop: 4 }}>
+            {checklistSara.descobertos.map((i) => (
+              <div key={i.chave} className="ncrm3-linha"><span>{i.rotulo}</span><b>{i.valor}</b></div>
+            ))}
+            {checklistSara.descobertos.length === 0 && (
+              <p className="ncrm3-nota">A conversa ainda não revelou o que este cliente procura.</p>
+            )}
+          </div>
+        )}
       </section>
 
       {/* 9. Imóveis */}
