@@ -12,7 +12,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { AppShell } from "../../components/AppShell";
 import { ProfilePanel } from "../../components/ProfilePanel";
 import { ConviteInstalar } from "../../components/ConviteInstalar";
@@ -60,6 +60,8 @@ export function ErpShell({ children }: { children: ReactNode }) {
   const { profile, permissoes, role, isManager, perfilCarregado, badges, recarregarPerfil } = useErpSession();
   const [maisAberto, setMaisAberto] = useState(false);
   const [perfilAberto, setPerfilAberto] = useState(false);
+  const folhaRef = useRef<HTMLDivElement>(null);
+  const botaoMaisRef = useRef<HTMLButtonElement>(null);
 
   const moduloAtual = moduloDoPath(pathname) ?? "Início";
   const primeiroNome = (profile?.name ?? "").trim().split(/\s+/)[0] || "corretor";
@@ -88,6 +90,39 @@ export function ErpShell({ children }: { children: ReactNode }) {
     const fechar = () => setMaisAberto(false);
     window.addEventListener("popstate", fechar);
     return () => window.removeEventListener("popstate", fechar);
+  }, [maisAberto]);
+
+  /* Teclado dentro da folha.
+   *
+   * A folha e um dialogo: enquanto esta aberta, o resto da tela nao deve
+   * receber foco. Sem isto, o Tab saia da folha e passeava pela fila atras do
+   * fundo escuro -- conteudo que o leitor de tela ja tinha sido instruido a
+   * ignorar -- e nao havia como fechar sem mouse.
+   *
+   * Ao fechar, o foco volta para o botao "Mais". Quem abriu por teclado
+   * continua de onde parou, em vez de ser jogado no inicio da pagina. */
+  useEffect(() => {
+    if (!maisAberto) return;
+    const folha = folhaRef.current;
+    folha?.focus();
+
+    const aoTeclar = (e: KeyboardEvent) => {
+      if (e.key === "Escape") { setMaisAberto(false); return; }
+      if (e.key !== "Tab" || !folha) return;
+      const focaveis = folha.querySelectorAll<HTMLElement>("a[href], button:not([disabled])");
+      if (focaveis.length === 0) return;
+      const primeiro = focaveis[0];
+      const ultimo = focaveis[focaveis.length - 1];
+      const ativo = document.activeElement;
+      if (e.shiftKey && (ativo === primeiro || ativo === folha)) { e.preventDefault(); ultimo.focus(); }
+      else if (!e.shiftKey && ativo === ultimo) { e.preventDefault(); primeiro.focus(); }
+    };
+
+    document.addEventListener("keydown", aoTeclar);
+    return () => {
+      document.removeEventListener("keydown", aoTeclar);
+      botaoMaisRef.current?.focus();
+    };
   }, [maisAberto]);
 
   return (
@@ -144,7 +179,7 @@ export function ErpShell({ children }: { children: ReactNode }) {
             {(badges[m] ?? 0) > 0 && <i className="abn-badge" aria-hidden="true">{(badges[m] ?? 0) > 99 ? "99+" : badges[m]}</i>}
           </Link>
         ))}
-        <button type="button" onClick={() => setMaisAberto((v) => !v)} aria-expanded={maisAberto} className={maisAberto ? "active" : ""}>
+        <button ref={botaoMaisRef} type="button" onClick={() => setMaisAberto((v) => !v)} aria-expanded={maisAberto} className={maisAberto ? "active" : ""}>
           <IconeModulo modulo="Mais" tamanho={22} />
           <span>Mais</span>
         </button>
@@ -160,23 +195,37 @@ export function ErpShell({ children }: { children: ReactNode }) {
 
       {/* Folha "Mais" — desenho do print 13.
           Grupos por classe (Rotina / Gestao / Ferramentas) + Conta no fim.
-          O corretor comum ve duas secoes; o admin ve quatro. Grupo vazio nao
-          renderiza, entao ninguem leva rotulo orfao na tela. */}
+          Quantas secoes aparecem depende so da permissao: o corretor comum
+          alcanca as quatro, porque Chat, Disparos, Financiamento, Base e
+          Ajuda nao tem slug de controle no banco. Grupo vazio nao renderiza,
+          entao ninguem leva rotulo orfao na tela. */}
       {maisAberto && (
-        <div className="app-mais-overlay" role="dialog" aria-modal="true" aria-label="Mais" onClick={() => setMaisAberto(false)}>
-          <div className="app-mais-folha" onClick={(e) => e.stopPropagation()}>
+        <div className="app-mais-overlay" role="presentation" onClick={() => setMaisAberto(false)}>
+          <div
+            ref={folhaRef}
+            className="app-mais-folha"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="app-mais-titulo"
+            tabIndex={-1}
+            onClick={(e) => e.stopPropagation()}
+          >
             <header>
-              <strong>Mais</strong>
+              <h2 id="app-mais-titulo">Mais</h2>
               <button type="button" onClick={() => setMaisAberto(false)} aria-label="Fechar" />
             </header>
 
+            {/* Hoje inalcancavel — todo perfil enxerga ao menos os modulos sem
+                slug. Fica porque o dia em que criarem o slug que falta para
+                Financiamento, Base e Ajuda, o corretor mais restrito pode
+                chegar aqui, e folha em branco nao explica nada. */}
             {grupos.length === 0 && (
               <p className="app-mais-vazio">Nenhum outro módulo liberado para o seu acesso.</p>
             )}
 
             {grupos.map((grupo) => (
               <section key={grupo.titulo} className="app-mais-grupo">
-                <h2>{grupo.titulo}</h2>
+                <h3>{grupo.titulo}</h3>
                 <div>
                   {grupo.itens.map((m) => (
                     <ItemMais
@@ -195,7 +244,7 @@ export function ErpShell({ children }: { children: ReactNode }) {
                 nao passam por gruposDoMais(). Aparecem sempre -- toda sessao
                 tem um perfil e toda sessao pode ser encerrada. */}
             <section className="app-mais-grupo">
-              <h2>Conta</h2>
+              <h3>Conta</h3>
               <div>
                 <ItemMais
                   icone="Perfil"
