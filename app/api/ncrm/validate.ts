@@ -13,7 +13,15 @@ const PROX_TIPOS = new Set([
   "tentativa_cadencia", "retornar_contato", "entender_necessidade", "enviar_opcoes", "confirmar_recebimento",
   "ligar_retorno", "solicitar_documentacao", "agendar_visita", "preparar_proposta", "corrigir_cadastro", "avaliar_descarte", "outro",
 ]);
-const MOTIVOS_DESCARTE = new Set(["sem_interesse", "sem_perfil_financeiro", "numero_invalido", "ja_comprou_concorrente", "duplicado", "outro"]);
+const MOTIVOS_DESCARTE = new Set([
+  "sem_interesse", "sem_perfil_financeiro", "numero_invalido", "ja_comprou_concorrente", "duplicado", "outro",
+  // ampliados na migration 20260808110000 — mesma whitelist do banco
+  "sem_resposta", "fora_da_regiao", "desistiu", "nao_quer_contato", "produto_incompativel",
+]);
+const RESULT_VISITA = new Set([
+  "interessado", "quer_outra_opcao", "precisa_conversar", "nao_gostou",
+  "nao_compareceu", "remarcar", "fara_proposta",
+]);
 const STATUS_PROPOSTA = new Set(["em_negociacao", "aceita", "recusada", "expirada", "cancelada"]);
 const ETAPAS = new Set(["novo", "tentando_contato", "em_atendimento", "em_acompanhamento"]);
 const MAX_SAFE = Number.MAX_SAFE_INTEGER;
@@ -90,6 +98,12 @@ export function validarAcao(body: Record<string, unknown>): Val<{ action: string
       const e = precisaAlvo(); if (e) return { ok: false, erro: e };
       const visitaId = uuidValido(body.visitaId); if (!visitaId) return { ok: false, erro: "id de visita inválido" };
       return { ok: true, value: { action, args: { negocioId, versao, visitaId } } };
+    }
+    case "registrarResultadoVisita": {
+      const e = precisaAlvo(); if (e) return { ok: false, erro: e };
+      const visitaId = uuidValido(body.visitaId); if (!visitaId) return { ok: false, erro: "id de visita inválido" };
+      if (!RESULT_VISITA.has(String(body.resultado))) return { ok: false, erro: "resultado de visita inválido" };
+      return { ok: true, value: { action, args: { negocioId, versao, visitaId, resultado: body.resultado, obs } } };
     }
     case "saidaProposta": {
       const e = precisaAlvo(); if (e) return { ok: false, erro: e };
