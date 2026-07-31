@@ -32,7 +32,12 @@ export const rotasModulo: Record<ModuleName, RotaModulo> = {
   "Calendário": { path: "/agenda", slugs: ["calendario"], classe: "A", rotuloCurto: "Agenda" },
   "Notificações": { path: "/notificacoes", slugs: ["notificacoes"], classe: "A", rotuloCurto: "Avisos" },
   Produtos: { path: "/produtos", slugs: ["produtos"], classe: "A", rotuloCurto: "Produtos" },
-  "Projetos e Tarefas": { path: "/tarefas", slugs: ["projetos"], classe: "A", rotuloCurto: "Tarefas" },
+  /* "projetos" NAO existe no catalogo de permissoes do banco -- conferido na
+     homologacao contra /api/permissions. Como podeVer() e fail-closed, um slug
+     inexistente escondia Tarefas de TODO mundo que nao fosse admin. Sem
+     conceito de permissao no banco, o modulo nao e gateado. Se um dia criarem
+     o slug "projetos", basta devolve-lo aqui. */
+  "Projetos e Tarefas": { path: "/tarefas", slugs: [], classe: "A", rotuloCurto: "Tarefas" },
 
   "Minha Equipe": { path: "/equipe", slugs: [], classe: "B", rotuloCurto: "Equipe" },
   Performance: { path: "/performance", slugs: ["performance"], classe: "B", rotuloCurto: "Performance" },
@@ -41,7 +46,13 @@ export const rotasModulo: Record<ModuleName, RotaModulo> = {
   "Agentes de IA": { path: "/agentes-ia", slugs: ["agentes_ia"], classe: "B", rotuloCurto: "Agentes" },
   "Usuários": { path: "/usuarios", slugs: ["usuarios"], classe: "B" },
   "Perfis e Permissões": { path: "/permissoes", slugs: ["usuarios"], classe: "B", rotuloCurto: "Permissões" },
-  Financeiro: { path: "/financeiro", slugs: ["financeiro", "comissoes", "vendas", "fluxo_caixa"], classe: "B" },
+  /* So o slug "financeiro". O AppShell antigo aceitava tambem comissoes,
+     vendas e fluxo_caixa com .some() -- e TODOS os 8 perfis tem
+     "comissoes: ver", inclusive corretor. Resultado observado em producao:
+     corretor enxergava o modulo Financeiro inteiro. Ver a propria comissao
+     nao e o mesmo que abrir o Financeiro da imobiliaria.
+     Quem tem o slug hoje: admin, auditor, diretor, financeiro. */
+  Financeiro: { path: "/financeiro", slugs: ["financeiro"], classe: "B" },
   Auditoria: { path: "/auditoria", slugs: ["auditoria"], classe: "B" },
 
   "Chat ao Vivo": { path: "/chat", slugs: ["chat"], classe: "C", rotuloCurto: "Chat" },
