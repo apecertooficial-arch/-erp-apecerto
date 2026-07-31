@@ -5,6 +5,12 @@
  * não entende JSX — regra escrita dentro do componente é regra que nunca
  * vai ser testada.
  *
+ * SÓ `import type` AQUI, e não é estilo: o strip-types APAGA import de
+ * tipo, mas mantém import de valor. Mantido, o Node ESM exigiria extensão
+ * explícita (`.ts`) no caminho, que por sua vez o build do aplicativo não
+ * aceita. É a mesma razão pela qual meuDia.logica.ts não importa nada e
+ * carrega uma cópia da regra canônica.
+ *
  * REGRAS DE PRODUTO que este arquivo faz valer (README do pacote, §57-64):
  *   - "Sem vocabulário técnico na tela do corretor": `rotuloEvento` traduz
  *     por lista fechada e cai num rótulo genérico no desconhecido. É o
@@ -15,7 +21,19 @@
  *     devolve "confirmado" por toque — só quando o servidor confirma.
  */
 
-import { espera, type ItemTela } from "../home/telaCorretor.logica";
+import type { ItemTela } from "../home/telaCorretor.logica";
+
+/* Cópia de `espera` de telaCorretor.logica.ts — ver o cabeçalho acima.
+   AMARRADA POR TESTE: tests/ficha-lead-celular.test.mjs importa as duas e
+   falha se discordarem em qualquer valor. Duas telas que escrevem "24h" e
+   "1 d" para o mesmo lead é defeito que o corretor vê antes de nós. */
+export function esperaCurta(minutos: number): string {
+  const m = Math.max(0, Math.round(Number(minutos) || 0));
+  if (m < 60) return `${m} min`;
+  const h = Math.round(m / 60);
+  if (h < 48) return `${h}h`;
+  return `${Math.round(h / 24)} d`;
+}
 
 export type AbaFicha = "conversa" | "sara" | "dados" | "historico";
 
@@ -59,7 +77,7 @@ export function prazoHumano(iso: string | null | undefined, agora: Date = new Da
   if (Number.isNaN(d.getTime())) return "Sem prazo";
 
   if (d.getTime() < agora.getTime()) {
-    return `Venceu ${espera(Math.round((agora.getTime() - d.getTime()) / MIN_MS))} atrás`;
+    return `Venceu ${esperaCurta(Math.round((agora.getTime() - d.getTime()) / MIN_MS))} atrás`;
   }
 
   const min = d.getMinutes();
@@ -72,7 +90,7 @@ export function prazoHumano(iso: string | null | undefined, agora: Date = new Da
 
 /** A "evidência" do print: por que este lead está aqui, em fato observável. */
 export function evidencia(i: ItemTela): string {
-  const t = espera(i.tempo_espera);
+  const t = esperaCurta(i.tempo_espera);
   return i.respondeu ? `Respondeu há ${t}` : `Sem resposta há ${t}`;
 }
 
@@ -208,15 +226,15 @@ export type LinhaDado = { k: string; v: string };
 /** As linhas da aba Dados, na ordem do print. Campo vazio não vira linha. */
 export function linhasDeDados(i: ItemTela, det: DetalheFicha | null): LinhaDado[] {
   const linhas: LinhaDado[] = [];
-  const põe = (k: string, v: string | null | undefined) => {
+  const poe = (k: string, v: string | null | undefined) => {
     const s = (v ?? "").trim();
     if (s) linhas.push({ k, v: s });
   };
-  põe("Corretor", det?.corretor);
-  põe("Origem", det?.origem);
-  põe("Interesse", i.interesse_resumo);
-  põe("E-mail", det?.email);
-  põe("Primeira resposta", det?.primeiraResposta);
+  poe("Corretor", det?.corretor);
+  poe("Origem", det?.origem);
+  poe("Interesse", i.interesse_resumo);
+  poe("E-mail", det?.email);
+  poe("Primeira resposta", det?.primeiraResposta);
   return linhas;
 }
 
