@@ -15,6 +15,7 @@ import {
   montarBlocos, paraAtender, saudacao, ROTULO_ACAO, type ItemFila, type Card,
 } from "./meuDia.logica";
 import { marcarWhatsappAberto, whatsappAbertoEm, limparWhatsappAberto } from "../crm-nova-era/lib/whatsappAberto";
+import { AvisoNotificacoes } from "./AvisoNotificacoes";
 
 const ATUALIZA_MS = 60_000;
 
@@ -141,6 +142,11 @@ export function MeuDiaCorretor({ accessToken, nome, onAbrirLead, onIr }: {
           </p>
         )}
       </header>
+
+      {/* Depois do cabecalho e ANTES da fila: enquanto o aparelho nao recebe
+          aviso, ligar isso e a coisa mais util da tela. Some sozinha quando
+          o aparelho ja esta inscrito -- nao vira mais um banner permanente. */}
+      <AvisoNotificacoes accessToken={accessToken} />
 
       {itens === null && (
         <div className="md-esqueleto" aria-hidden="true">{[0, 1, 2].map((i) => <span key={i} />)}</div>

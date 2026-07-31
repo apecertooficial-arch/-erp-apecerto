@@ -4,7 +4,7 @@
 // telefones, leads, sessao e respostas do Supabase passam direto para a rede e
 // nunca sao gravadas. O cache guarda apenas a casca publica do aplicativo.
 
-const VERSAO = "apecerto-v1";
+const VERSAO = "apecerto-v2";
 const CACHE_ESTATICO = `estatico-${VERSAO}`;
 const OFFLINE = "/offline.html";
 
@@ -76,6 +76,116 @@ self.addEventListener("fetch", (evento) => {
   }
 });
 
+/* ==========================================================================
+   AVISOS NO CELULAR (Web Push)
+   ==========================================================================
+
+   O corretor precisa saber do lead novo sem depender de abrir o aplicativo.
+   Quem responde primeiro vende: o aviso existe para encurtar esse tempo.
+
+   O QUE VEM NO PACOTE. Titulo curto, uma linha de corpo e o link da tela. NAO
+   vem nome de cliente, telefone nem trecho de conversa -- o pacote passa por
+   servidor de terceiro (Google, Mozilla, Apple) antes de chegar aqui, e o que
+   nao viaja nao vaza. O nome do cliente o corretor le dentro do aplicativo,
+   depois de tocar.
+
+   O aviso tambem NAO muda nada: nao marca contato, nao inicia SLA, nao conclui
+   tarefa. Ele so acorda a tela.
+   ========================================================================== */
+
+const AVISO_PADRAO = {
+  title: "ApeCerto",
+  body: "Abra o aplicativo para ver",
+  url: "/notificacoes",
+  tag: "ncrm",
+};
+
+/* Pacote corrompido ou vazio nao pode derrubar o handler. Em push com
+   userVisibleOnly o navegador COBRA uma notificacao visivel: se engolirmos o
+   erro em silencio, o Chrome mostra "Este site foi atualizado em segundo plano"
+   -- pior do que um aviso generico nosso. */
+function lerPacote(evento) {
+  try {
+    const d = evento.data ? evento.data.json() : null;
+    if (!d || typeof d !== "object") return AVISO_PADRAO;
+    return {
+      title: typeof d.title === "string" && d.title.trim() ? d.title.slice(0, 80) : AVISO_PADRAO.title,
+      body: typeof d.body === "string" ? d.body.slice(0, 160) : "",
+      // So caminho interno: URL absoluta vinda do pacote abriria site de fora.
+      url: typeof d.url === "string" && d.url.startsWith("/") ? d.url : AVISO_PADRAO.url,
+      tag: typeof d.tag === "string" && d.tag ? d.tag.slice(0, 40) : AVISO_PADRAO.tag,
+    };
+  } catch {
+    return AVISO_PADRAO;
+  }
+}
+
+self.addEventListener("push", (evento) => {
+  const aviso = lerPacote(evento);
+
+  /* Dois leads novos seguidos precisam virar DOIS avisos, nao um substituindo o
+     outro em silencio -- por isso a tag ganha timestamp no que e urgente. Ja
+     dez "combinado vencido" colapsam num so, de proposito. */
+  const urgente = aviso.tag === "primeira_abordagem_pendente" || aviso.tag === "cliente_respondeu";
+
+  evento.waitUntil(
+    self.registration.showNotification(aviso.title, {
+      body: aviso.body,
+      icon: "/icons/icone-192.png",
+      badge: "/icons/icone-192.png",
+      tag: urgente ? `${aviso.tag}-${Date.now()}` : aviso.tag,
+      renotify: urgente,
+      requireInteraction: false,
+      // Vibra so no que exige acao agora. O resto chega quieto.
+      vibrate: urgente ? [180, 80, 180] : undefined,
+      data: { url: aviso.url },
+    }),
+  );
+});
+
+/* Tocar no aviso leva DIRETO para a tela do lead.
+   Se o aplicativo ja estiver aberto, reaproveita a janela e navega nela: abrir
+   uma segunda aba do mesmo app confunde e perde o estado da fila. */
+self.addEventListener("notificationclick", (evento) => {
+  evento.notification.close();
+  const destino = (evento.notification.data && evento.notification.data.url) || "/notificacoes";
+
+  evento.waitUntil((async () => {
+    const janelas = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+    for (const j of janelas) {
+      if (new URL(j.url).origin !== self.location.origin) continue;
+      await j.focus();
+      // navigate pode falhar em janela sem controle do worker; o foco ja valeu.
+      if ("navigate" in j) { try { await j.navigate(destino); } catch { /* segue focado */ } }
+      return;
+    }
+    await self.clients.openWindow(destino);
+  })());
+});
+
+/* O navegador pode trocar a inscricao sozinho (renovacao de chave, limpeza).
+   Sem tratar isso, o aparelho para de receber e ninguem percebe -- o corretor
+   simplesmente deixa de ser avisado. Reinscrevemos com a mesma chave e avisamos
+   a pagina, que reenvia ao servidor quando houver sessao. */
+self.addEventListener("pushsubscriptionchange", (evento) => {
+  evento.waitUntil((async () => {
+    try {
+      const antiga = evento.oldSubscription || (await self.registration.pushManager.getSubscription());
+      const chave = antiga && antiga.options && antiga.options.applicationServerKey;
+      if (!chave) return;
+      const nova = await self.registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: chave,
+      });
+      const janelas = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+      for (const j of janelas) j.postMessage({ tipo: "PUSH_REINSCRITO", endpoint: nova.endpoint });
+    } catch {
+      /* Sem rede ou sem permissao: a tela do Meu Dia detecta na proxima
+         abertura e oferece ligar de novo. Nao ha o que fazer aqui. */
+    }
+  })());
+});
+
 /* Casca minima recriada depois do logout.
    So a tela offline. Nada aqui identifica ninguem, e nada aqui exige sessao. */
 const PUBLICO_MINIMO = [OFFLINE];
@@ -93,6 +203,15 @@ const PUBLICO_MINIMO = [OFFLINE];
 async function limparERecriar() {
   const nomes = await caches.keys();
   await Promise.all(nomes.filter((n) => n.includes("apecerto")).map((n) => caches.delete(n)));
+
+  /* A inscricao de push tambem sai no logout. Deixar ficar entregaria aviso do
+     corretor anterior no aparelho de quem logar depois -- vazamento de carteira
+     por descuido. Fica ANTES do recache de proposito: e limpeza de dado, e
+     limpeza de dado nunca depende de a rede estar boa. */
+  try {
+    const sub = await self.registration.pushManager.getSubscription();
+    if (sub) await sub.unsubscribe();
+  } catch { /* sem inscricao ou sem permissao: nada a desfazer */ }
 
   try {
     const c = await caches.open(CACHE_ESTATICO);
