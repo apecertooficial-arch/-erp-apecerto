@@ -163,4 +163,72 @@ html, body { touch-action: manipulation; }
     -webkit-mask-position: center; mask-position: center;
     -webkit-mask-size: contain; mask-size: contain;
   }
+
+  /* ===================================================================
+     5. A CONVERSA (botão roxo "Abrir conversa", do gestor)
+     ---------------------------------------------------------------
+     O `LeadChatDrawer` é uma janelinha de canto de 440px, ancorada em
+     `right:20px; bottom:20px`, feita para conviver com o kanban ao lado
+     numa tela grande. Fazer o deep link `?chat=` chegar até ele não
+     bastava — a geometria não é de celular.
+
+     O que quebrava em 390px, medido:
+       - as quatro ferramentas (Áudio, Documento, Agendar, Abordagem)
+         ficam em `left:-62px` DE PROPÓSITO, para sobrar por fora do card
+         no desktop. Aqui caíam em x = -50px: fora da tela, inalcançáveis;
+       - fechar tocando fora estava morto — `.crm-drawer-layer.chat-layer`
+         tem `pointer-events:none` para o clique passar para o kanban, e o
+         `onMouseDown` que fecha mora justamente nele;
+       - fechar/minimizar com 34px, num app que exige 44 em tudo;
+       - `bottom:20px` fixo: o botão de enviar caía dentro da faixa do
+         gesto de home do iPhone;
+       - a barra inferior ficava 100% coberta (z-index 45 contra 85),
+         virando faixa morta sob a conversa.
+
+     Vira folha de tela cheia. É o mesmo gesto das outras folhas do app.
+
+     `92dvh`, não `92vh`: com `vh` o drawer não encolhe quando o teclado
+     sobe, e o campo de digitar some atrás dele — que é o pior lugar
+     possível para o defeito estar, já que digitar é o que se veio fazer.
+     =================================================================== */
+  .chat-layer .lead-chat-drawer {
+    left: 0 !important; right: 0 !important;
+    top: auto !important; bottom: 0 !important;
+    width: 100vw !important; max-width: 100vw !important;
+    height: 92dvh !important; max-height: none !important;
+    border-radius: 16px 16px 0 0 !important;
+    /* Trava o vazamento: nada aqui dentro pode ficar fora da tela. */
+    overflow: hidden !important;
+  }
+
+  /* Ferramentas para DENTRO do card, em linha. Deixam de ser uma coluna
+     flutuante à esquerda e viram uma barra acima do compositor. */
+  .chat-layer .mini-chat-tools {
+    position: static !important;
+    left: auto !important; top: auto !important; transform: none !important;
+    flex-direction: row !important;
+    justify-content: space-around !important;
+    gap: 8px !important;
+    padding: 8px 12px !important;
+    background: var(--bg-surface, #fff) !important;
+    border-top: 1px solid var(--border-soft, #efe7e0) !important;
+  }
+  /* O recuo de 20px existia para a lista não passar por baixo da coluna
+     flutuante. Sem coluna, sem recuo. */
+  .chat-layer .chat-messages { padding-left: 14px !important; }
+
+  /* Compositor acima do home indicator. */
+  .chat-layer .lead-chat-drawer > footer {
+    padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  /* Alvo de toque real em fechar e minimizar — ficam lado a lado. */
+  .chat-layer .chat-head-actions button {
+    width: 44px !important;
+    height: 44px !important;
+  }
+
+  /* A barra inferior fica coberta de qualquer jeito. Sumir é mais honesto
+     do que deixar uma faixa que não responde ao toque. */
+  body:has(.chat-layer) .app-bottom-nav { display: none !important; }
 }
