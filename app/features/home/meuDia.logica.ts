@@ -25,16 +25,24 @@ export function grupoVisivel(grupo: string): GrupoVisivel {
   return "faca_combinado";
 }
 
+/* Payload de GET /api/ncrm/fila-operacional — o contrato do app. */
 export type ItemFila = {
   negocio_id: number;
-  lead_nome: string | null;
+  lead_id: number | null;
+  nome: string | null;
   etapa: string;
-  motivo: string;
-  espera_min: number;
+  motivo_prioridade: string;
+  tempo_espera: number;
   prioridade: number;
   respondeu: boolean;
-  proxima_acao_titulo: string | null;
-  proxima_acao_em: string | null;
+  telefone_normalizado: string | null;
+  interesse_resumo: string | null;
+  sara_orientacao_curta: string | null;
+  proxima_acao_tipo: string | null;
+  proxima_acao_prazo: string | null;
+  outbound_real_confirmado: boolean;
+  aguardando_sincronizacao: boolean;
+  deep_link: string;
 };
 
 /* Etapas do funil inteligente, na linguagem de quem atende. */
@@ -59,9 +67,9 @@ export type Acao = "whatsapp" | "atendimento" | "tarefa";
  */
 const PALAVRAS_TAREFA = /visita|document|proposta|contrato|reuni|assinatura|vistoria/i;
 
-export function acaoDoItem(i: ItemFila, temTelefone = false): Acao {
-  if (i.proxima_acao_titulo && PALAVRAS_TAREFA.test(i.proxima_acao_titulo)) return "tarefa";
-  if (temTelefone) return "whatsapp";
+export function acaoDoItem(i: ItemFila): Acao {
+  if (i.proxima_acao_tipo && PALAVRAS_TAREFA.test(i.proxima_acao_tipo)) return "tarefa";
+  if (i.telefone_normalizado) return "whatsapp";
   return "atendimento";
 }
 
@@ -94,8 +102,13 @@ export type Card = {
   motivo: string;
   espera: string;
   etapa: string;
-  proximaAcao: string | null;
+  interesse: string | null;
+  orientacaoSara: string | null;
+  telefone: string | null;
   vencida: boolean;
+  aguardandoServidor: boolean;
+  outboundConfirmado: boolean;
+  deepLink: string;
   acao: Acao;
 };
 
@@ -118,12 +131,17 @@ function paraCard(i: ItemFila): Card {
   return {
     id: `n${i.negocio_id}`,
     negocioId: i.negocio_id,
-    nome: i.lead_nome?.trim() || `Atendimento ${i.negocio_id}`,
-    motivo: i.motivo,
-    espera: esperaHumana(i.espera_min),
+    nome: i.nome?.trim() || `Atendimento ${i.negocio_id}`,
+    motivo: i.motivo_prioridade,
+    espera: esperaHumana(i.tempo_espera),
     etapa: ROTULO_ETAPA[i.etapa] ?? i.etapa,
-    proximaAcao: i.proxima_acao_titulo,
-    vencida: !!i.proxima_acao_em && new Date(i.proxima_acao_em).getTime() < Date.now(),
+    interesse: i.interesse_resumo,
+    orientacaoSara: i.sara_orientacao_curta,
+    telefone: i.telefone_normalizado,
+    vencida: !!i.proxima_acao_prazo && new Date(i.proxima_acao_prazo).getTime() < Date.now(),
+    aguardandoServidor: i.aguardando_sincronizacao,
+    outboundConfirmado: i.outbound_real_confirmado,
+    deepLink: i.deep_link,
     acao: acaoDoItem(i),
   };
 }
@@ -135,7 +153,7 @@ function paraCard(i: ItemFila): Card {
  */
 export function montarBlocos(itens: ItemFila[], porBloco = 3): Bloco[] {
   const balde: Record<GrupoVisivel, ItemFila[]> = { atenda_agora: [], faca_combinado: [], acompanhe: [] };
-  for (const i of itens) balde[grupoVisivel(grupoDoItem(i))].push(i);
+  for (const i of itens) balde[grupoVisivel(grupoDoItem({ prioridade: i.prioridade, respondeu: i.respondeu, proxima_acao_em: i.proxima_acao_prazo }))].push(i);
 
   return ORDEM_BLOCOS.map((chave) => ({
     chave,
@@ -148,7 +166,7 @@ export function montarBlocos(itens: ItemFila[], porBloco = 3): Bloco[] {
 
 /** "Você tem X clientes para atender" — só o bloco de urgência conta. */
 export function paraAtender(itens: ItemFila[]): number {
-  return itens.filter((i) => grupoVisivel(grupoDoItem(i)) === "atenda_agora").length;
+  return itens.filter((i) => grupoVisivel(grupoDoItem({ prioridade: i.prioridade, respondeu: i.respondeu, proxima_acao_em: i.proxima_acao_prazo })) === "atenda_agora").length;
 }
 
 /** Progresso do dia: o que saiu da urgência sobre o que entrou. */
