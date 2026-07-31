@@ -29,7 +29,7 @@ import { CRM3_CSS } from "./estilos";
 import { abaDaUrl, abasVisiveis, definicaoDaAba, podeVerGestao, type Aba3 } from "./lib/navegacao";
 import type { Momento } from "./lib/momentos";
 import { slaDoLead } from "./lib/sla3";
-import { imoveisDoLead, paraExibicao, type EstadoRow3, type ImovelBruto, type LeadExibicao } from "./lib/adapter3";
+import { analiseDesatualizada, analisesDoBoard, imoveisDoLead, paraExibicao, type AnaliseSara, type EstadoRow3, type ImovelBruto, type LeadExibicao } from "./lib/adapter3";
 import { whatsappAbertoEm } from "../crm-nova-era/lib/whatsappAberto";
 import type { EventoRow, PropostaRow } from "../crm-nova-era/live/adapter";
 import { enriquecerComEventos } from "../crm-nova-era/live/adapter";
@@ -90,6 +90,7 @@ export function Crm3Workspace({ accessToken, profile }: { accessToken: string; p
   const [drillCorretor, setDrillCorretor] = useState<number | null>(null);
   const [formPedido, setFormPedido] = useState<"resultado" | "proxima" | "visita" | "proposta" | null>(null);
   const [saraCache, setSaraCache] = useState<Record<string, string>>({});
+  const [analises, setAnalises] = useState<Record<number, AnaliseSara>>({});
 
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { setSaraCache(lerCacheSara()); }, []);
@@ -114,10 +115,44 @@ export function Crm3Workspace({ accessToken, profile }: { accessToken: string; p
     setCarregando(false);
     if (!ok) { setErro((json.error as string) || "Não foi possível carregar o funil."); return; }
     setItens((json.itens as EstadoRow3[]) ?? []);
+    setAnalises(analisesDoBoard(json.analises));
   }, [accessToken]);
 
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { if (precisaDoQuadro) void carregarQuadro(); }, [precisaDoQuadro, carregarQuadro]);
+
+  /* ATUALIZAÇÃO AUTOMÁTICA, do jeito barato: só reanalisa quem tem MENSAGEM
+     mais nova que a última análise, no máximo 2 por carregamento, com
+     cooldown de 30min por lead (localStorage). Sem evento novo, custo zero.
+     A análise persiste no banco, então UM aparelho analisando serve todos. */
+  useEffect(() => {
+    if (itens.length === 0) return;
+    const CD_CHAVE = "ncrm3:sara:cooldown";
+    let cooldown: Record<string, number> = {};
+    try { cooldown = JSON.parse(localStorage.getItem(CD_CHAVE) ?? "{}"); } catch { /* ok */ }
+    const agoraMs = Date.now();
+    const candidatos = itens
+      .filter((i) => !i.saida)
+      .filter((i) => analiseDesatualizada(analises[i.negocio_id], i.ultima_interacao_em))
+      .filter((i) => (cooldown[String(i.negocio_id)] ?? 0) < agoraMs - 30 * 60 * 1000)
+      .slice(0, 2);
+    if (candidatos.length === 0) return;
+    for (const c of candidatos) cooldown[String(c.negocio_id)] = agoraMs;
+    try { localStorage.setItem(CD_CHAVE, JSON.stringify(cooldown)); } catch { /* ok */ }
+    let vivo = true;
+    void (async () => {
+      for (const c of candidatos) {
+        const { ok } = await api(`/api/ncrm/sara?negocio=${c.negocio_id}`, accessToken);
+        if (!vivo) return;
+        if (ok) {
+          const { ok: ok2, json: j2 } = await api(`/api/ncrm?scope=board&limit=120`, accessToken);
+          if (vivo && ok2) setAnalises(analisesDoBoard(j2.analises));
+        }
+      }
+    })();
+    return () => { vivo = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [itens, accessToken]);
 
   // Adoção: registra a abertura do CRM (idempotente por dia). Nada comercial muda.
   useEffect(() => {
@@ -190,6 +225,7 @@ export function Crm3Workspace({ accessToken, profile }: { accessToken: string; p
         interesse: e.interesse,
         fotoUrl: e.fotoUrl,
         orientacaoSara: saraCache[e.lead.id] ?? null,
+        analise: analises[Number(e.lead.id)] ?? null,
         sla: slaDoLead(
           {
             momento: e.lead.coluna,
@@ -202,7 +238,7 @@ export function Crm3Workspace({ accessToken, profile }: { accessToken: string; p
           agora,
         ),
       }));
-  }, [itens, busca, saraCache, agora]);
+  }, [itens, busca, saraCache, analises, agora]);
 
   const porMomento = useMemo(() => {
     const m: Record<Momento, DadosCard[]> = { novo: [], tentando_contato: [], em_atendimento: [], em_acompanhamento: [] };
