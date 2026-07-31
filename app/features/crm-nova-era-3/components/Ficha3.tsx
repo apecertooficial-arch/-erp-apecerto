@@ -90,7 +90,7 @@ function Conversa3({ accessToken, negocioId }: { accessToken: string; negocioId:
 
 export function Ficha3({
   lead, versao, leadId, accessToken, busy, sla, origem, interesse, email, fotoUrl, imoveis,
-  onFechar, onExecutar, onCriarVisita, onAviso, onSaraCarregada,
+  formInicial, onFechar, onExecutar, onCriarVisita, onAviso, onSaraCarregada,
 }: {
   lead: LeadNova;
   versao: number;
@@ -103,13 +103,17 @@ export function Ficha3({
   email: string | null;
   fotoUrl: string | null;
   imoveis: ImovelDoLead[];
+  /* Formulario que deve abrir junto com a ficha (menu "..." do card).
+     Antes, as quatro opcoes do menu faziam a mesma coisa: so abriam a ficha.
+     Botao que promete uma acao e entrega outra ensina o corretor a nao clicar. */
+  formInicial?: TipoForm | null;
   onFechar: () => void;
   onExecutar: (payload: Record<string, unknown>) => void | Promise<void>;
   onCriarVisita: (data: string, hora: string) => void | Promise<void>;
   onAviso: (texto: string) => void;
   onSaraCarregada: (negocioId: string, orientacao: string | null) => void;
 }) {
-  const [form, setForm] = useState<TipoForm | null>(null);
+  const [form, setForm] = useState<TipoForm | null>(formInicial ?? null);
   const [inicial, setInicial] = useState<{ proximaTipo?: string; prazo?: string }>({});
   const [sara, setSara] = useState<SugestaoBruta | null>(null);
   const [saraCarregando, setSaraCarregando] = useState(false);
