@@ -2,6 +2,14 @@
  * O teste mais importante e o primeiro: a copia da regra de grupos aqui tem
  * que concordar com a fonte canonica do CRM. Se divergirem, o corretor ve o
  * lead num bloco na home e noutro no CRM.
+ *
+ * A TELA foi reconstruida no desenho do prototipo e vive em TelaCorretor.tsx;
+ * as regras puras dela, em telaCorretor.logica.ts. MeuDiaCorretor.tsx virou
+ * casca fina. As garantias abaixo nao mudaram de conteudo -- so de arquivo e
+ * de nome de classe.
+ *
+ * Importamos do .logica, nunca do .tsx: o strip-types do node nao entende JSX
+ * e derrubaria a suite inteira antes do primeiro assert.
  */
 import test from "node:test";
 import assert from "node:assert/strict";
@@ -11,6 +19,9 @@ import {
   grupoDoItem as grupoLocal, grupoVisivel as visivelLocal, ORDEM_BLOCOS,
 } from "../app/features/home/meuDia.logica.ts";
 import { grupoDoItem as grupoCanon, grupoVisivel as visivelCanon } from "../app/features/crm-nova-era/lib/linguagem.ts";
+import {
+  iniciais, espera, filtrar, saudacaoHora, manchete, ehVencida,
+} from "../app/features/home/telaCorretor.logica.ts";
 
 const ler = (p) => readFileSync(new URL(p, import.meta.url), "utf8");
 const item = (id, prio, extra = {}) => ({
@@ -109,7 +120,53 @@ test("listas de 0, 3, 20 e muitos leads", () => {
   }
 });
 
+/* ---------------- regras da tela nova ---------------- */
+
+test("iniciais nunca ficam em branco", () => {
+  assert.equal(iniciais("Camila Aragão"), "CA");
+  assert.equal(iniciais("Rodrigo dos Santos Sampaio"), "RS");
+  assert.equal(iniciais("Ana"), "AN");
+  assert.equal(iniciais("   "), "?", "lead sem nome nao pode virar bolinha vazia");
+  assert.equal(iniciais(null), "?");
+});
+
+test("tempo de espera encurta conforme cresce", () => {
+  assert.equal(espera(12), "12 min");
+  assert.equal(espera(0), "0 min");
+  assert.equal(espera(60 * 24), "24h");
+  assert.equal(espera(60 * 24 * 3), "3 d", "depois de dois dias o minuto nao interessa");
+  assert.equal(espera(-5), "0 min", "tempo negativo nao existe na tela");
+});
+
+test("saudacao da tela nova bate com a antiga", () => {
+  for (const h of [0, 8, 11, 12, 17, 18, 23]) assert.equal(saudacaoHora(h), saudacao(h));
+});
+
+test("manchete fala de gente, no singular e no plural", () => {
+  assert.equal(manchete(0, true), "Carregando sua fila…");
+  assert.equal(manchete(0, false), "Ninguém esperando agora");
+  assert.equal(manchete(1, false), "1 pessoa espera você agora");
+  assert.equal(manchete(4, false), "4 pessoas esperam você agora");
+});
+
+test("filtro Agora so traz quem espera de verdade", () => {
+  const itens = [item(1, 1), item(2, 2), item(3, 5), item(4, 7)];
+  assert.equal(filtrar(itens, "agora").length, 2, "prioridade 1 e 2 e quem espera agora");
+  assert.equal(filtrar(itens, "todos").length, 4);
+  /* Hoje CONTEM Agora: quem espera agora tambem e coisa de hoje. Se nao
+     contivesse, o corretor trocaria para "Hoje" e perderia os urgentes. */
+  assert.ok(filtrar(itens, "hoje").length >= filtrar(itens, "agora").length);
+});
+
+test("vencida marca cadencia e proxima acao atrasadas", () => {
+  assert.equal(ehVencida(item(1, 3)), true);
+  assert.equal(ehVencida(item(2, 5)), true);
+  assert.equal(ehVencida(item(3, 1)), false);
+});
+
 /* ---------------- a tela ---------------- */
+
+const TELA = "../app/features/home/TelaCorretor.tsx";
 
 test("a tela do corretor nao mostra gestao antes da fila", () => {
   const home = ler("../app/features/home/HomeWorkspace.tsx");
@@ -120,8 +177,14 @@ test("a tela do corretor nao mostra gestao antes da fila", () => {
   assert.ok(!/hv2-hero|Abrir Financeiro/.test(celular), "meta e Financeiro nao aparecem na tela do corretor");
 });
 
+test("MeuDiaCorretor continua exportado: HomeWorkspace importa dele", () => {
+  const casca = ler("../app/features/home/MeuDiaCorretor.tsx");
+  assert.match(casca, /export function MeuDiaCorretor/);
+  assert.match(casca, /TelaCorretor/, "a casca tem que delegar para a tela nova");
+});
+
 test("o toque no card nao afirma que houve contato", () => {
-  const c = ler("../app/features/home/MeuDiaCorretor.tsx");
+  const c = ler(TELA);
   // Frase alinhada a spec da Entrega 2.
   assert.match(c, /aguardando sincronização/);
   // Olha o que e RENDERIZADO: o comentario do arquivo cita a frase proibida de
@@ -131,42 +194,40 @@ test("o toque no card nao afirma que houve contato", () => {
   assert.match(c, /whatsappAbertoEm/, "o estado vem do registro local de intencao, nao de envio");
 });
 
-test("Meu Dia nao baixa /api/crm", () => {
-  const c = ler("../app/features/home/MeuDiaCorretor.tsx");
+test("a tela nao baixa /api/crm", () => {
+  const c = ler(TELA);
   assert.ok(!/\/api\/crm/.test(c));
   assert.match(c, /\/api\/ncrm\/fila/);
 });
 
-test("nada do Meu Dia vaza para o desktop", () => {
-  const css = ler("../app/styles/app-mobile.css");
-  const bloco = css.slice(css.indexOf("MEU DIA DO CORRETOR"));
-  const fora = bloco.slice(0, bloco.indexOf("@media"));
-  assert.match(fora, /\.md-wrap \{ display: none; \}/);
-  assert.ok(!/min-height|grid-template|padding:/.test(fora));
+test("nada da tela do corretor vaza para o desktop", () => {
+  const css = ler("../app/styles/tela-corretor.css");
+  const fora = css.slice(0, css.indexOf("@media"));
+  assert.match(fora, /\.tc-wrap \{ display: none; \}/);
+  assert.ok(!/min-height|grid-template|padding:/.test(fora), "so a regra de ocultar pode viver fora do @media");
 });
 
 test("alvo principal grande e sem overflow escondido", () => {
-  const css = ler("../app/styles/app-mobile.css");
-  const bloco = css.slice(css.indexOf("MEU DIA DO CORRETOR"));
-  assert.match(bloco, /\.md-acao \{[^}]*min-height: 48px/s);
-  assert.ok(!/overflow-x:\s*hidden/.test(bloco));
-  assert.match(bloco, /overflow-wrap: anywhere/);
+  const css = ler("../app/styles/tela-corretor.css");
+  assert.match(css, /\.tc-cta \{[^}]*min-height: 52px/s);
+  assert.match(css, /\.tc-fallback \{[^}]*min-height: 44px/s, "o fallback tambem precisa de alvo de toque");
+  assert.ok(!/overflow-x:\s*hidden/.test(css));
+  assert.match(css, /overflow-wrap: anywhere/, "texto da Sara nao pode empurrar a tela para o lado");
 });
-
 
 /* ---------------- Entrega 2: WhatsApp no card ---------------- */
 
 test("o card usa a fila-operacional, nao a fila crua", () => {
-  const c = ler("../app/features/home/MeuDiaCorretor.tssx".replace('.tssx','.tsx'));
+  const c = ler(TELA);
   assert.match(c, /\/api\/ncrm\/fila-operacional/);
   assert.ok(!/fila\?filtro=/.test(c), "a fila crua nao tem telefone nem Sara");
 });
 
 test("WhatsApp e link real com fallback, e o clique so registra intencao", () => {
-  const c = ler("../app/features/home/MeuDiaCorretor.tsx");
-  assert.match(c, /href=\{`whatsapp:\/\/send\?phone=\$\{c\.telefone\}`\}/);
-  assert.match(c, /href=\{`https:\/\/wa\.me\/\$\{c\.telefone\}`\}/, "fallback wa.me visivel");
-  assert.match(c, /marcarWhatsappAberto\(c\.negocioId\)/);
+  const c = ler(TELA);
+  assert.match(c, /href=\{`whatsapp:\/\/send\?phone=\$\{i\.telefone_normalizado\}`\}/);
+  assert.match(c, /href=\{`https:\/\/wa\.me\/\$\{i\.telefone_normalizado\}`\}/, "fallback wa.me visivel");
+  assert.match(c, /marcarWhatsappAberto\(i\.negocio_id\)/);
   // o clique nao pode disparar rede nem escrita
   const onClicks = [...c.matchAll(/onClick=\{\(\) => ([^}]+)\}/g)].map((m) => m[1]);
   for (const h of onClicks) {
@@ -175,20 +236,30 @@ test("WhatsApp e link real com fallback, e o clique so registra intencao", () =>
 });
 
 test("aguardando sincronizacao: servidor OU local, e outbound real apaga", () => {
-  const c = ler("../app/features/home/MeuDiaCorretor.tsx");
-  assert.match(c, /!c\.outboundConfirmado && \(c\.aguardandoServidor \|\| abriuLocal\)/);
-  assert.match(c, /limparWhatsappAberto\(c\.negocioId\)/, "confirmacao real limpa o aviso local");
+  const c = ler(TELA);
+  assert.match(c, /!i\.outbound_real_confirmado && \(i\.aguardando_sincronizacao \|\| abriuLocal\)/);
+  assert.match(c, /limparWhatsappAberto\(i\.negocio_id\)/, "confirmacao real limpa o aviso local");
   assert.match(c, /WhatsApp aberto — aguardando sincronização/);
 });
 
 test("sem <a> dentro de <button>: o corpo e a acao sao irmaos", () => {
-  const c = ler("../app/features/home/MeuDiaCorretor.tsx");
-  const corpo = c.slice(c.indexOf("md-card-corpo"), c.indexOf("</button>", c.indexOf("md-card-corpo")));
+  const c = ler(TELA);
+  const corpo = c.slice(c.indexOf("tc-card-corpo"), c.indexOf("</button>", c.indexOf("tc-card-corpo")));
   assert.ok(!corpo.includes("<a"), "link dentro de botao e HTML invalido e quebra leitor de tela");
 });
 
 test("card mostra interesse e orientacao da Sara quando existem", () => {
-  const c = ler("../app/features/home/MeuDiaCorretor.tsx");
-  assert.match(c, /c\.interesse && <span className="md-interesse"/);
-  assert.match(c, /c\.orientacaoSara && <span className="md-sara"/);
+  const c = ler(TELA);
+  assert.match(c, /i\.interesse_resumo && <span className="tc-sub"/);
+  assert.match(c, /i\.sara_orientacao_curta && \(/);
+  assert.match(c, /className="tc-sara"/);
+});
+
+test("a Sara aparece rotulada, sem vocabulario tecnico", () => {
+  const c = ler(TELA);
+  assert.match(c, /Sara · o que fazer/, "o bloco roxo precisa dizer de quem e a orientacao");
+  const semComentarios = c.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+  for (const termo of ["piloto", "RPC", "ingest", "runner", "observer"]) {
+    assert.ok(!new RegExp(`>[^<]*${termo}`, "i").test(semComentarios), `"${termo}" nao pode aparecer na tela do corretor`);
+  }
 });
