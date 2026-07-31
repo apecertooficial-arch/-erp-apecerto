@@ -8,6 +8,11 @@ STAGE=/tmp/ncrm_sql; rm -rf "$STAGE"; mkdir -p "$STAGE"
 cp "$ROOT/supabase/migrations/20260728151548_crm_nova_era_persistent_model.sql" "$STAGE/mig.sql"
 cp "$ROOT/supabase/rollbacks/20260728151548_crm_nova_era_persistent_model.down.sql" "$STAGE/down.sql"
 cp "$ROOT/tests/crm-nova-era/00_local_harness.sql" "$STAGE/harness.sql"
+# Pos-visita: resultado da visita, dez motivos de descarte e origem da proxima acao
+cp "$ROOT/supabase/migrations/20260808110000_ncrm_pos_visita_descarte_e_origem.sql" "$STAGE/mig_pv.sql"
+cp "$ROOT/supabase/migrations/20260808110100_ncrm_resultado_visita_rpc.sql" "$STAGE/mig_pv_rpc.sql"
+cp "$ROOT/supabase/rollbacks/20260808110000_ncrm_pos_visita_descarte_e_origem.down.sql" "$STAGE/down_pv.sql"
+cp "$ROOT/tests/crm-nova-era/99c_tests_pos_visita.sql" "$STAGE/pv.sql"
 cp "$ROOT/tests/crm-nova-era/10_tests_core.sql" "$STAGE/core.sql"
 cp "$ROOT/tests/crm-nova-era/20_tests_correcoes.sql" "$STAGE/core2.sql"
 cp "$ROOT/tests/crm-nova-era/30_tests_delta_cadencia.sql" "$STAGE/core3.sql"
@@ -374,6 +379,22 @@ PSQL -c "SELECT public.test_assert(to_regclass('public.ncrm_estado') IS NOT NULL
 
 echo "### baseline de vendas (nunca deve mudar por proposta) ==> confirmação final"
 PSQL -c "SELECT 'vendas_total='||count(*) FROM public.vendas;"
+
+echo "### pos-visita: resultado da visita, descarte com dez motivos, origem da proxima acao"
+PSQL -f "$STAGE/mig_pv.sql"
+PSQL -f "$STAGE/mig_pv_rpc.sql"
+PSQL -f "$STAGE/pv.sql"
+
+echo "### pos-visita: rollback limpa tudo e a migration sobe de novo"
+PSQL -f "$STAGE/down_pv.sql"
+PSQL -c "SELECT public.test_assert(to_regproc('public.ncrm_registrar_resultado_visita') IS NULL
+         AND NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public'
+                          AND table_name='visitas' AND column_name='resultado'),
+         '#pv16 rollback removeu resultado da visita e a RPC');"
+PSQL -f "$STAGE/mig_pv.sql"
+PSQL -f "$STAGE/mig_pv_rpc.sql"
+PSQL -c "SELECT public.test_assert(to_regproc('public.ncrm_registrar_resultado_visita') IS NOT NULL,
+         '#pv17 migration do pos-visita reaplicada com sucesso');"
 
 echo "### teardown"
 sudo -u pg "$PGBIN/pg_ctl" -D "$PGDATA" stop >/dev/null 2>&1 || true
