@@ -290,7 +290,14 @@ export function Crm3Workspace({ accessToken, profile }: { accessToken: string; p
           <>
             <div className="ncrm3-conteudo">
               {aba === "meu_dia" && (
-                <MeuDia3 accessToken={accessToken} corretorFiltro={drillCorretor} busca={busca} onAbrir={(id) => void abrirAtendimento(id)} />
+                <MeuDia3
+                  accessToken={accessToken}
+                  corretorFiltro={drillCorretor}
+                  busca={busca}
+                  nome={profile.name}
+                  onAbrir={(id) => void abrirAtendimento(id)}
+                  onIrParaVisitas={() => trocarAba("visitas")}
+                />
               )}
 
               {aba === "funil" && (
