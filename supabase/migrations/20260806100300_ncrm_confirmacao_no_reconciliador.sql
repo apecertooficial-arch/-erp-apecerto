@@ -33,20 +33,9 @@
 -- que a funcao existe, que tem uma unica assinatura e que ainda nao foi ligada.
 -- =============================================================================
 
--- Helper local: proconfig devolve search_path="" para search_path vazio, e
--- reinterpolar isso como identificador gera 'zero-length delimited identifier'.
--- Aqui o valor volta a ser o literal '' que o CREATE FUNCTION espera.
-CREATE OR REPLACE FUNCTION ncrm_private.ncrm_sp_literal(p_cfg text)
-RETURNS text LANGUAGE sql IMMUTABLE AS $f$
-  SELECT CASE
-    WHEN p_cfg IS NULL THEN ''''''
-    WHEN replace(p_cfg, 'search_path=', '') IN ('""', '') THEN ''''''
-    ELSE replace(p_cfg, 'search_path=', '')
-  END;
-$f$;
-
 DO $mig$
 DECLARE
+  v_sp text;
   v_src text; v_novo text; v_over int; v_args text; v_ret text; v_cfg text;
   v_ancora_decl text; v_ancora_bloco text; v_ancora_ret text;
 BEGIN
@@ -102,10 +91,18 @@ BEGIN
   v_novo := replace(v_novo, v_ancora_ret,
     '''finalizados'',v_fim,''entrada'',v_entrada,''confirmacao_humana'',v_conf);');
 
+  -- proconfig devolve search_path="" quando o search_path e vazio; reinterpolar
+  -- isso como identificador da 'zero-length delimited identifier'.
+  v_sp := CASE
+    WHEN v_cfg IS NULL THEN ''''''
+    WHEN replace(v_cfg, 'search_path=', '') IN ('""', '') THEN ''''''
+    ELSE replace(v_cfg, 'search_path=', '')
+  END;
+
   EXECUTE format(
     'CREATE OR REPLACE FUNCTION ncrm_private.reconciliar_mensagens(%s) RETURNS %s '
     'LANGUAGE plpgsql SECURITY DEFINER SET search_path TO %s AS %L',
-    v_args, v_ret, ncrm_private.ncrm_sp_literal(v_cfg), v_novo);
+    v_args, v_ret, v_sp, v_novo);
 
   RAISE NOTICE 'reconciliador ligado a confirmar_primeiras_saidas';
 END $mig$;
@@ -127,7 +124,7 @@ GRANT EXECUTE ON FUNCTION ncrm_private.reconciliar_mensagens(integer,integer,int
 -- =============================================================================
 
 DO $mig$
-DECLARE v_src text; v_novo text; v_over int; v_args text; v_ret text; v_cfg text; v_ancora text;
+DECLARE v_sp text; v_src text; v_novo text; v_over int; v_args text; v_ret text; v_cfg text; v_ancora text;
 BEGIN
   SELECT p.prosrc, pg_get_function_arguments(p.oid), pg_get_function_result(p.oid),
          array_to_string(p.proconfig, ', ')
@@ -163,10 +160,18 @@ BEGIN
     E'\n                         ''enviado_por'',''whatsapp_nativo_do_corretor'',' ||
     E'\n                         ''registrado_por'',''reconciliador_ncrm'',');
 
+  -- proconfig devolve search_path="" quando o search_path e vazio; reinterpolar
+  -- isso como identificador da 'zero-length delimited identifier'.
+  v_sp := CASE
+    WHEN v_cfg IS NULL THEN ''''''
+    WHEN replace(v_cfg, 'search_path=', '') IN ('""', '') THEN ''''''
+    ELSE replace(v_cfg, 'search_path=', '')
+  END;
+
   EXECUTE format(
     'CREATE OR REPLACE FUNCTION public.ncrm_registrar_primeira_humana(%s) RETURNS %s '
     'LANGUAGE plpgsql SECURITY DEFINER SET search_path TO %s AS %L',
-    v_args, v_ret, ncrm_private.ncrm_sp_literal(v_cfg), v_novo);
+    v_args, v_ret, v_sp, v_novo);
 
   RAISE NOTICE 'autoria corrigida em ncrm_registrar_primeira_humana';
 END $mig$;

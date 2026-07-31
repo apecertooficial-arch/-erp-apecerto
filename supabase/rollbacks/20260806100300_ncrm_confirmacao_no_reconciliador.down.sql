@@ -1,21 +1,9 @@
--- Helper local: proconfig devolve search_path="" para search_path vazio, e
--- reinterpolar isso como identificador gera 'zero-length delimited identifier'.
--- Aqui o valor volta a ser o literal '' que o CREATE FUNCTION espera.
-CREATE OR REPLACE FUNCTION ncrm_private.ncrm_sp_literal(p_cfg text)
-RETURNS text LANGUAGE sql IMMUTABLE AS $f$
-  SELECT CASE
-    WHEN p_cfg IS NULL THEN ''''''
-    WHEN replace(p_cfg, 'search_path=', '') IN ('""', '') THEN ''''''
-    ELSE replace(p_cfg, 'search_path=', '')
-  END;
-$f$;
-
 -- Remove APENAS a ligacao nova: o reconciliador volta a nao chamar
 -- confirmar_primeiras_saidas. A funcao de confirmacao continua existindo, os
 -- dados ja confirmados continuam la e a correcao de autoria NAO e revertida --
 -- desfazer uma correcao de auditoria seria voltar a afirmar algo falso.
 DO $rb$
-DECLARE v_src text; v_novo text; v_args text; v_ret text; v_cfg text; v_i int; v_j int;
+DECLARE v_sp text; v_src text; v_novo text; v_args text; v_ret text; v_cfg text; v_i int; v_j int;
 BEGIN
   SELECT p.prosrc, pg_get_function_arguments(p.oid), pg_get_function_result(p.oid),
          array_to_string(p.proconfig, ', ')
@@ -44,9 +32,17 @@ BEGIN
     RAISE EXCEPTION 'ABORTADO: sobrou referencia a confirmacao apos o recorte';
   END IF;
 
+  -- proconfig devolve search_path="" quando o search_path e vazio; reinterpolar
+  -- isso como identificador da 'zero-length delimited identifier'.
+  v_sp := CASE
+    WHEN v_cfg IS NULL THEN ''''''
+    WHEN replace(v_cfg, 'search_path=', '') IN ('""', '') THEN ''''''
+    ELSE replace(v_cfg, 'search_path=', '')
+  END;
+
   EXECUTE format(
     'CREATE OR REPLACE FUNCTION ncrm_private.reconciliar_mensagens(%s) RETURNS %s '
     'LANGUAGE plpgsql SECURITY DEFINER SET search_path TO %s AS %L',
-    v_args, v_ret, ncrm_private.ncrm_sp_literal(v_cfg), v_novo);
+    v_args, v_ret, v_sp, v_novo);
   RAISE NOTICE 'ligacao removida do reconciliador';
 END $rb$;
