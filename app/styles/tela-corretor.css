@@ -134,7 +134,7 @@
 
   /* ---------------- Bloco da Sara ---------------- */
   .tc-sara {
-    margin: 10px 0 0; padding: 10px 12px;
+    display: block; margin: 10px 0 0; padding: 10px 12px;
     border-radius: var(--radius-md); background: var(--ape-purple-50);
   }
   .tc-sara-topo {
@@ -146,18 +146,21 @@
     content: ""; width: 8px; height: 8px; border-radius: var(--radius-pill);
     background: var(--ape-purple); flex: 0 0 auto;
   }
-  .tc-sara p { margin: 0; font-size: var(--text-sm); line-height: var(--leading-normal); color: var(--fg-2); }
+  .tc-sara p {
+    margin: 0; font-size: var(--text-sm); line-height: var(--leading-normal);
+    color: var(--fg-2); overflow-wrap: anywhere;
+  }
 
   /* ---------------- Ação ---------------- */
-  .tc-acoes { display: flex; gap: 8px; align-items: stretch; padding: 12px 14px 14px; }
-  /* Pílula laranja larga: é o alvo do polegar e o unico botao cheio do card. */
+  .tc-acoes { display: flex; gap: 8px; align-items: stretch; padding: 12px 14px 0; }
+  /* Pílula laranja larga: é o alvo do polegar e o único botão cheio do card. */
   .tc-cta {
     flex: 1; min-height: 52px;
     display: inline-flex; align-items: center; justify-content: center; gap: 8px;
     border: 0; border-radius: var(--radius-pill);
     background: var(--ape-orange); color: var(--fg-inverse);
     font-size: var(--text-sm); font-weight: var(--weight-bold);
-    text-decoration: none; box-shadow: var(--shadow-brand);
+    text-decoration: none; box-shadow: var(--shadow-brand); cursor: pointer;
     transition: background var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out);
   }
   .tc-cta:active { background: var(--ape-orange-700); transform: scale(.985); }
@@ -168,14 +171,27 @@
     font-size: var(--text-lg); line-height: 1; cursor: pointer;
   }
 
-  .tc-aguardando {
-    margin: 0 14px 14px; padding: 8px 10px; border-radius: var(--radius-sm);
-    background: var(--warning-bg); color: #8A5A17; font-size: var(--text-xs);
+  /* Fallback wa.me: discreto e sublinhado, NUNCA com cara de botão. Se
+     competir com a ação principal, o corretor passa a usar o caminho de
+     exceção por padrão — e aí perde o deep link do aplicativo nativo. */
+  .tc-fallback {
+    display: flex; align-items: center; justify-content: center;
+    min-height: 44px; margin: 2px 14px 0;
+    font-size: var(--text-xs); color: var(--fg-3); text-decoration: underline;
   }
+
+  .tc-aguardando,
   .tc-confirmado {
-    margin: 0 14px 14px; padding: 8px 10px; border-radius: var(--radius-sm);
-    background: var(--success-bg); color: #146B39; font-size: var(--text-xs);
+    margin: 4px 14px 14px; padding: 8px 10px;
+    border-radius: var(--radius-sm); font-size: var(--text-xs);
   }
+  .tc-aguardando { background: var(--warning-bg); color: #8A5A17; }
+  .tc-confirmado { background: var(--success-bg); color: #146B39; }
+
+  /* Sem aviso nenhum embaixo, o card ainda precisa fechar com respiro. */
+  .tc-card > .tc-acoes:last-child,
+  .tc-card > .tc-fallback:last-child { padding-bottom: 14px; margin-bottom: 0; }
+  .tc-card > .tc-fallback:last-child { margin-bottom: 10px; }
 
   /* ---------------- Estados ---------------- */
   .tc-esqueleto { display: grid; gap: 12px; }
