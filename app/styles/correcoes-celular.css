@@ -1,0 +1,87 @@
+/* =====================================================================
+   CORREÇÕES DE CELULAR — o que só apareceu no aparelho de verdade
+   ---------------------------------------------------------------------
+   Última folha do bundle. Existe para corrigir sem reescrever as telas
+   inteiras: cada regra aqui tem um porquê observado em print de uso real,
+   não em protótipo.
+   ===================================================================== */
+
+@media (max-width: 900px) {
+
+  /* ===================================================================
+     1. CABEÇALHO EM DOBRO
+     ---------------------------------------------------------------
+     A casca do app (.app-mobile-top) já desenha saudação, data, sino e
+     avatar, FIXA no topo. As telas novas desenhavam a mesma coisa de
+     novo logo abaixo — no aparelho aparecia "Olá, Samuel / sexta, 31 de
+     julho" e, dois centímetros abaixo, "Boa tarde, Samuel / sexta, 31 de
+     julho". No CRM, "CRM" duas vezes.
+
+     Fica o da casca, não o da tela: ele é fixo na rolagem e já tem o
+     contador de avisos ligado no servidor. O da tela rolaria para fora e
+     levaria o sino junto.
+     =================================================================== */
+  .tc-topo,
+  .cm-topo { display: none !important; }
+
+  /* Sem o cabeçalho próprio, a tela precisa do respiro que ele dava. */
+  .tc-wrap,
+  .cm-wrap { padding-top: 12px; }
+
+  /* A casca ganha o subtítulo que estava na tela ("seu dia, em ordem",
+     a data). Uma linha só, discreta, no lugar certo. */
+  .amt-esq small { display: block; font-size: 11px; color: var(--fg-3); }
+
+  /* ===================================================================
+     2. WHATSAPP É VERDE
+     ---------------------------------------------------------------
+     Li o print como laranja e errei. Verde é a cor que o corretor
+     reconhece sem ler, e este é o botão mais tocado do aplicativo —
+     meio segundo de hesitação por toque, vezes dezenas de toques por
+     dia, é tempo de resposta perdido.
+
+     O laranja continua sendo a cor da marca e da ação em tudo o mais:
+     "Ligar avisos", "Atender agora", "Tentar de novo".
+     =================================================================== */
+  a.tc-cta,
+  .tc-cta,
+  .ncrm-ficha-acao > a,
+  .nova-crm-panel .ncrm-wa-principal,
+  a.md-acao {
+    background: var(--whatsapp, #25D366) !important;
+    color: #fff !important;
+    box-shadow: 0 10px 24px rgba(37, 211, 102, .28) !important;
+  }
+  a.tc-cta:active,
+  .tc-cta:active,
+  a.md-acao:active { background: #1FB855 !important; }
+
+  /* O botão de "Abrir atendimento" (lead sem telefone) NÃO é WhatsApp —
+     esse continua laranja, senão promete abrir uma conversa que não
+     existe. Regra depois da de cima para vencer por ordem. */
+  button.tc-cta {
+    background: var(--ape-orange) !important;
+    box-shadow: var(--shadow-brand) !important;
+  }
+
+  /* ===================================================================
+     3. BARRA INFERIOR
+     ---------------------------------------------------------------
+     Caixa de contorno laranja no ativo, como nos prints. Sem
+     preenchimento: cinco itens preenchidos competiriam com o botão de
+     ação da tela.
+     =================================================================== */
+  .app-bottom-nav > a.active::before,
+  .app-bottom-nav > button.active::before {
+    content: "";
+    position: absolute; top: 2px; left: 50%; transform: translateX(-50%);
+    width: 46px; height: 34px;
+    border: 1.5px solid var(--ape-orange);
+    border-radius: var(--radius-md);
+    background: transparent; z-index: 0;
+  }
+  .app-bottom-nav > a.active,
+  .app-bottom-nav > button.active { color: var(--ape-orange); }
+  .app-bottom-nav > a.active > svg,
+  .app-bottom-nav > button.active > svg { position: relative; z-index: 1; }
+}
