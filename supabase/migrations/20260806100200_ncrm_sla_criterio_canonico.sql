@@ -86,8 +86,20 @@ BEGIN
   IF v_corretor IS NULL THEN
     RETURN jsonb_build_object('elegivel', false, 'motivo', 'negocio_sem_corretor');
   END IF;
+  -- Participacao HISTORICA, nao estado atual. ah.ativo responde "o corretor esta
+  -- no piloto agora"; a metrica precisa de "estava no piloto quando a mensagem
+  -- saiu". Usar o booleano faria a medicao de julho mudar de valor quando alguem
+  -- entrasse ou saisse do piloto em agosto.
+  --
+  -- A janela canonica e liberado_em/removido_em, que sao as colunas temporais da
+  -- tabela. liberado_em <= p_quando e (removido_em nulo ou posterior a p_quando).
+  -- Removido depois da mensagem continua elegivel: o fato aconteceu sob a regra
+  -- vigente na epoca.
   IF NOT EXISTS (SELECT 1 FROM public.ncrm_abordagem_humana ah
-                  WHERE ah.corretor_id = v_corretor AND ah.ativo) THEN
+                  WHERE ah.corretor_id = v_corretor
+                    AND ah.liberado_em IS NOT NULL
+                    AND ah.liberado_em <= p_quando
+                    AND (ah.removido_em IS NULL OR ah.removido_em > p_quando)) THEN
     RETURN jsonb_build_object('elegivel', false, 'motivo', 'corretor_fora_da_abordagem_humana');
   END IF;
 
@@ -127,7 +139,7 @@ DECLARE
   r record;
   v_conf int := 0; v_visto int := 0; v_com_sla int := 0;
   v_min int; v_eleg jsonb; v_elegivel boolean; v_motivo text; v_prazo int;
-  v_cfg bigint; v_uid uuid; v_evid text;
+  v_cfg bigint; v_evid text;
 BEGIN
   FOR r IN
     SELECT m.wa_message_id, m.direcao, m.raw,
@@ -199,8 +211,6 @@ BEGIN
          SET confirmada_em = r.quando
        WHERE negocio_id = r.negocio_id AND confirmada_em IS NULL AND expirada_em IS NULL;
 
-      SELECT c.usuario_id INTO v_uid FROM public.corretores c WHERE c.id = r.corretor_id;
-
       INSERT INTO public.ncrm_evento (negocio_id, lead_id, corretor_id_no_evento, workflow_config_id,
         tipo, numero_tentativa, canal, resultado, payload, origem, executado_por, idempotency_key,
         estado_versao_antes, estado_versao_apos)
@@ -210,11 +220,20 @@ BEGIN
                            'sla_min', CASE WHEN v_elegivel THEN v_min ELSE NULL END,
                            'prazo_min', CASE WHEN v_elegivel THEN v_prazo ELSE NULL END,
                            'conta_para_sla', v_elegivel, 'motivo_elegibilidade', v_motivo,
-                           'evidencia','dapi_webhook_outbound'),
-        -- a sincronizacao da D-API nao tem auth.uid(); sem o usuario do corretor
-        -- o CHECK de ncrm_evento exige origem 'sistema'.
-        CASE WHEN v_uid IS NOT NULL THEN 'usuario' ELSE 'sistema' END,
-        v_uid, 'humana:' || r.wa_message_id, r.versao, r.versao + 1);
+                           'evidencia','dapi_webhook_outbound',
+                           -- quem mandou a mensagem e quem registrou o evento sao
+                           -- coisas diferentes, e o payload diz as duas.
+                           'enviado_por','whatsapp_nativo_do_corretor',
+                           'confirmado_por','dapi_webhook',
+                           'registrado_por','reconciliador_ncrm'),
+        -- AUTORIA: quem executa esta rotina e o cron, nao o corretor. Gravar
+        -- origem 'usuario' com o usuario_id do corretor so porque ele existe
+        -- faria a auditoria afirmar que aquela pessoa rodou a RPC - e ela nao
+        -- rodou; ela mandou uma mensagem pelo WhatsApp do celular dela.
+        -- O corretor continua identificado em corretor_id_no_evento.
+        'sistema',
+        NULL,
+        'humana:' || r.wa_message_id, r.versao, r.versao + 1);
     END IF;
   END LOOP;
 
