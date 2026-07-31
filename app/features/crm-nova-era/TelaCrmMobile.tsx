@@ -1,0 +1,194 @@
+"use client";
+/* CRM NO CELULAR — desenho do print 02.
+ *
+ * Componente novo, escrito a partir do print. Não substitui o CRM inteiro:
+ * é a vista do celular, com a mesma fonte de dados de sempre
+ * (/api/ncrm/fila-operacional), já escopada por carteira dentro do banco.
+ *
+ * O que o print manda e está aqui:
+ *   - "CRM · seu dia, em ordem" no cabeçalho;
+ *   - busca por cliente ou telefone;
+ *   - abas Meu Dia / Funil / Leads / Visitas;
+ *   - cartão roxo "SARA · BRIEFING DO DIA" com duas ações;
+ *   - "AGORA · n" e o botão Filtros;
+ *   - linha compacta: avatar, nome, motivo em laranja, tempo, chevron.
+ *
+ * REGRAS DE PRODUTO, iguais às da tela de Início:
+ *   - a Sara orienta, nunca envia;
+ *   - abrir a ficha não confirma contato;
+ *   - nada de vocabulário técnico.
+ */
+
+import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  espera, filtrar, iniciais, type ItemTela,
+} from "../home/telaCorretor.logica";
+import { briefingDaSara, buscar, type Aba } from "./telaCrm.logica";
+
+const ATUALIZA_MS = 60_000;
+
+export function TelaCrmMobile({ accessToken, nome, onAbrirLead, onIr }: {
+  accessToken: string;
+  nome: string;
+  onAbrirLead: (negocioId: number) => void;
+  onIr: (destino: string) => void;
+}) {
+  const [itens, setItens] = useState<ItemTela[] | null>(null);
+  const [erro, setErro] = useState(false);
+  const [tentativa, setTentativa] = useState(0);
+  const [aba, setAba] = useState<Aba>("meu_dia");
+  const [termo, setTermo] = useState("");
+
+  const carregar = useCallback(async (sinal: AbortSignal) => {
+    const r = await fetch("/api/ncrm/fila-operacional", {
+      headers: { Authorization: `Bearer ${accessToken}` }, signal: sinal,
+    });
+    if (!r.ok) throw new Error(String(r.status));
+    const j = await r.json();
+    return (j.itens as ItemTela[]) ?? [];
+  }, [accessToken]);
+
+  useEffect(() => {
+    const ctrl = new AbortController();
+    let vivo = true;
+    carregar(ctrl.signal)
+      .then((l) => { if (vivo) { setItens(l); setErro(false); } })
+      .catch((e) => { if (vivo && e?.name !== "AbortError") { setErro(true); setItens([]); } });
+    return () => { vivo = false; ctrl.abort(); };
+  }, [carregar, tentativa]);
+
+  useEffect(() => {
+    const t = setInterval(() => setTentativa((n) => n + 1), ATUALIZA_MS);
+    return () => clearInterval(t);
+  }, []);
+
+  const todos = itens ?? [];
+  const agora = useMemo(() => filtrar(todos, "agora"), [todos]);
+  const visiveis = useMemo(() => buscar(aba === "meu_dia" ? agora : todos, termo), [agora, todos, aba, termo]);
+  const briefing = useMemo(() => briefingDaSara(agora), [agora]);
+  const primeiro = (nome || "").trim().split(/\s+/)[0] || "corretor";
+
+  return (
+    <div className="cm-wrap">
+      <header className="cm-topo">
+        <div>
+          <p className="cm-titulo">CRM</p>
+          <p className="cm-sub">seu dia, em ordem</p>
+        </div>
+        <div className="cm-topo-acoes">
+          <button type="button" className="cm-sino" aria-label="Avisos" onClick={() => onIr("/notificacoes")}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+              <path d="M13.7 21a2 2 0 0 1-3.4 0" />
+            </svg>
+            {agora.length > 0 && <b>{agora.length}</b>}
+          </button>
+          <button type="button" className="cm-perfil" aria-label="Seu perfil" onClick={() => onIr("/perfil")}>
+            {primeiro.slice(0, 1).toUpperCase()}
+          </button>
+        </div>
+      </header>
+
+      <div className="cm-busca">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+          <circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" />
+        </svg>
+        <input
+          type="search"
+          inputMode="search"
+          value={termo}
+          onChange={(e) => setTermo(e.target.value)}
+          placeholder="Buscar cliente ou telefone"
+          aria-label="Buscar cliente ou telefone"
+        />
+      </div>
+
+      <div className="cm-abas" role="tablist" aria-label="Vistas do CRM">
+        {([["meu_dia", "Meu Dia"], ["funil", "Funil"], ["leads", "Leads"], ["visitas", "Visitas"]] as const)
+          .map(([chave, rotulo]) => (
+            <button
+              key={chave}
+              type="button"
+              role="tab"
+              aria-selected={aba === chave}
+              className={`cm-aba${aba === chave ? " on" : ""}`}
+              onClick={() => {
+                /* Funil, Leads e Visitas continuam nas telas completas: a
+                   vista do celular é a fila. Levar para lá é melhor do que
+                   fingir uma versão pobre aqui. */
+                if (chave === "funil") onIr("/crm?vista=quadro");
+                else if (chave === "visitas") onIr("/agenda");
+                else setAba(chave);
+              }}
+            >
+              {rotulo}
+            </button>
+          ))}
+      </div>
+
+      {/* CARTÃO ROXO DA SARA. Fica sempre no mesmo lugar — topo da lista —
+          porque previsibilidade é o que faz o corretor confiar nela. Ela
+          orienta por onde começar; não envia nada, não move nada. */}
+      {briefing && (
+        <section className="cm-briefing" aria-label="Briefing da Sara">
+          <p className="cm-briefing-topo">Sara · briefing do dia</p>
+          <p className="cm-briefing-texto">{briefing.texto}</p>
+          <div className="cm-briefing-acoes">
+            <button type="button" className="cm-btn-claro" onClick={() => onAbrirLead(briefing.primeiroId)}>
+              Atender agora
+            </button>
+            <button type="button" className="cm-btn-vazado" onClick={() => onIr("/notificacoes")}>
+              Ver as {briefing.tarefas} tarefas
+            </button>
+          </div>
+        </section>
+      )}
+
+      <div className="cm-secao">
+        <span className="cm-eyebrow">
+          {aba === "meu_dia" ? "Agora" : "Todos"} · {visiveis.length}
+        </span>
+        <button type="button" className="cm-filtros" onClick={() => onIr("/crm?vista=quadro")}>
+          Filtros
+        </button>
+      </div>
+
+      {itens === null && (
+        <div className="cm-esqueleto" aria-hidden="true">{[0, 1, 2, 3].map((i) => <span key={i} />)}</div>
+      )}
+
+      {erro && (
+        <div className="cm-erro" role="alert">
+          <strong>Não foi possível carregar a lista.</strong>
+          <button type="button" onClick={() => { setErro(false); setItens(null); setTentativa((n) => n + 1); }}>
+            Tentar de novo
+          </button>
+        </div>
+      )}
+
+      {itens !== null && !erro && visiveis.length === 0 && (
+        <p className="cm-vazio">
+          {termo ? "Nenhum cliente com esse nome ou telefone." : "Nada por aqui agora."}
+        </p>
+      )}
+
+      {visiveis.length > 0 && (
+        <ul className="cm-lista">
+          {visiveis.map((i) => (
+            <li key={i.negocio_id}>
+              <button type="button" className="cm-linha" onClick={() => onAbrirLead(i.negocio_id)}>
+                <span className="cm-avatar" aria-hidden="true">{iniciais(i.nome)}</span>
+                <span className="cm-quem">
+                  <span className="cm-nome">{i.nome ?? `Negócio ${i.negocio_id}`}</span>
+                  <span className="cm-motivo">{i.motivo_prioridade}</span>
+                </span>
+                <span className="cm-tempo">{espera(i.tempo_espera)}</span>
+                <span className="cm-chevron" aria-hidden="true">›</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
