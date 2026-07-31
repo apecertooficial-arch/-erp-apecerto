@@ -9,7 +9,7 @@ export type Compromisso = {
   id: string;
   data: string;            // "2026-07-31"
   hora: string;            // "11:30"
-  tipo: string;            // "visita", "visita com gerente"
+  tipo: string;
   cliente: string;
   local: string | null;
   produto: string | null;
@@ -70,3 +70,40 @@ export function resumoDoDia(total: number): string {
 
 /** Passou da hora e ninguém encerrou: o ponto da linha do tempo apaga. */
 export const jaPassou = (c: Compromisso) => c.faltam_min < 0;
+
+export type Celula = { iso: string; numero: number; foraDoMes: boolean; total: number };
+
+/**
+ * Grade do mês, começando na SEGUNDA.
+ *
+ * SEMPRE 42 células (6 semanas), mesmo quando o mês cabe em 5. Número
+ * variável de linhas faria o calendário mudar de altura ao trocar de mês e
+ * empurrar a lista de baixo na cara do corretor — o tipo de tremida que faz
+ * o dedo acertar o dia errado.
+ *
+ * Os dias de fora do mês aparecem apagados em vez de vazios: célula em branco
+ * quebra a leitura da grade.
+ */
+export function gradeDoMes(isoNoMes: string, compromissos: Compromisso[]): Celula[] {
+  const [ano, mes] = isoNoMes.split("-").map(Number);
+  const primeiro = new Date(Date.UTC(ano, mes - 1, 1));
+
+  /* getUTCDay(): 0=domingo. Queremos 0=segunda, então domingo vira 6. */
+  const desloca = (primeiro.getUTCDay() + 6) % 7;
+
+  const contagem = new Map<string, number>();
+  for (const c of compromissos) contagem.set(c.data, (contagem.get(c.data) ?? 0) + 1);
+
+  const celulas: Celula[] = [];
+  for (let i = 0; i < 42; i++) {
+    const d = new Date(Date.UTC(ano, mes - 1, 1 - desloca + i));
+    const iso = d.toISOString().slice(0, 10);
+    celulas.push({
+      iso,
+      numero: d.getUTCDate(),
+      foraDoMes: d.getUTCMonth() !== mes - 1,
+      total: contagem.get(iso) ?? 0,
+    });
+  }
+  return celulas;
+}
