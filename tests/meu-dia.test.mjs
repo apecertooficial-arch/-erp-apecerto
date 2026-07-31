@@ -3,9 +3,13 @@
  * que concordar com a fonte canonica do CRM. Se divergirem, o corretor ve o
  * lead num bloco na home e noutro no CRM.
  *
- * A TELA foi reconstruida no desenho do prototipo e vive em TelaCorretor.tsx.
- * MeuDiaCorretor.tsx virou casca fina. As garantias abaixo nao mudaram de
- * conteudo -- so de arquivo e de nome de classe.
+ * A TELA foi reconstruida no desenho do prototipo e vive em TelaCorretor.tsx;
+ * as regras puras dela, em telaCorretor.logica.ts. MeuDiaCorretor.tsx virou
+ * casca fina. As garantias abaixo nao mudaram de conteudo -- so de arquivo e
+ * de nome de classe.
+ *
+ * Importamos do .logica, nunca do .tsx: o strip-types do node nao entende JSX
+ * e derrubaria a suite inteira antes do primeiro assert.
  */
 import test from "node:test";
 import assert from "node:assert/strict";
@@ -15,7 +19,9 @@ import {
   grupoDoItem as grupoLocal, grupoVisivel as visivelLocal, ORDEM_BLOCOS,
 } from "../app/features/home/meuDia.logica.ts";
 import { grupoDoItem as grupoCanon, grupoVisivel as visivelCanon } from "../app/features/crm-nova-era/lib/linguagem.ts";
-import { iniciais, espera, filtrar, saudacaoHora } from "../app/features/home/TelaCorretor.tsx";
+import {
+  iniciais, espera, filtrar, saudacaoHora, manchete, ehVencida,
+} from "../app/features/home/telaCorretor.logica.ts";
 
 const ler = (p) => readFileSync(new URL(p, import.meta.url), "utf8");
 const item = (id, prio, extra = {}) => ({
@@ -114,7 +120,7 @@ test("listas de 0, 3, 20 e muitos leads", () => {
   }
 });
 
-/* ---------------- formatacao da tela nova ---------------- */
+/* ---------------- regras da tela nova ---------------- */
 
 test("iniciais nunca ficam em branco", () => {
   assert.equal(iniciais("Camila Aragão"), "CA");
@@ -136,6 +142,13 @@ test("saudacao da tela nova bate com a antiga", () => {
   for (const h of [0, 8, 11, 12, 17, 18, 23]) assert.equal(saudacaoHora(h), saudacao(h));
 });
 
+test("manchete fala de gente, no singular e no plural", () => {
+  assert.equal(manchete(0, true), "Carregando sua fila…");
+  assert.equal(manchete(0, false), "Ninguém esperando agora");
+  assert.equal(manchete(1, false), "1 pessoa espera você agora");
+  assert.equal(manchete(4, false), "4 pessoas esperam você agora");
+});
+
 test("filtro Agora so traz quem espera de verdade", () => {
   const itens = [item(1, 1), item(2, 2), item(3, 5), item(4, 7)];
   assert.equal(filtrar(itens, "agora").length, 2, "prioridade 1 e 2 e quem espera agora");
@@ -143,6 +156,12 @@ test("filtro Agora so traz quem espera de verdade", () => {
   /* Hoje CONTEM Agora: quem espera agora tambem e coisa de hoje. Se nao
      contivesse, o corretor trocaria para "Hoje" e perderia os urgentes. */
   assert.ok(filtrar(itens, "hoje").length >= filtrar(itens, "agora").length);
+});
+
+test("vencida marca cadencia e proxima acao atrasadas", () => {
+  assert.equal(ehVencida(item(1, 3)), true);
+  assert.equal(ehVencida(item(2, 5)), true);
+  assert.equal(ehVencida(item(3, 1)), false);
 });
 
 /* ---------------- a tela ---------------- */
