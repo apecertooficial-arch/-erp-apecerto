@@ -38,6 +38,23 @@ export function Leads3({
   const [erro, setErro] = useState<string | null>(null);
   const [etapaFiltro, setEtapaFiltro] = useState<Etapa | null>(null);
   const [soAtrasados, setSoAtrasados] = useState(false);
+  /* Presença honesta: "online" = abriu o ERP nos últimos 15 minutos (registro
+     de acesso que já existe). Sem dado, a coluna simplesmente não afirma nada. */
+  const [online, setOnline] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    let vivo = true;
+    void fetch(`/api/ncrm/equipe-online`, { headers: { Authorization: `Bearer ${accessToken}` } })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j: { equipe?: Array<{ nome: string; online: boolean }> } | null) => {
+        if (!vivo || !j?.equipe) return;
+        const mapa: Record<string, boolean> = {};
+        for (const c of j.equipe) mapa[c.nome] = c.online;
+        setOnline(mapa);
+      })
+      .catch(() => { /* presença é informativa; a tabela funciona sem ela */ });
+    return () => { vivo = false; };
+  }, [accessToken]);
 
   const carregar = useCallback(async (offset: number) => {
     setCarregando(true);
@@ -134,11 +151,17 @@ export function Leads3({
                   <small>{e.lead.respostaPendenteCorretor ? "aguardando resposta" : "sem interação"}</small>
                 </span>
                 <span role="cell"><i className={`ncrm3-chip-etapa e-${e.lead.coluna}`}>{ETAPA_ROTULO[e.lead.coluna as Etapa] ?? e.lead.coluna}</i></span>
-                <span role="cell" className="ncrm3-td-corretor">{e.lead.corretorNome}</span>
+                <span role="cell" className={`ncrm3-td-corretor ncrm3-online ${online[e.lead.corretorNome] ? "" : "off"}`}>
+                  {e.lead.corretorNome}
+                  {e.lead.corretorNome in online && <small>{online[e.lead.corretorNome] ? "online" : "offline"}</small>}
+                </span>
                 <span role="cell" className="ncrm3-td-origem">{e.origem ?? "—"}</span>
                 <span role="cell" className="ncrm3-td-origem">—</span>
                 <span role="cell" className="ncrm3-td-data">{e.lead.ultimaInteracaoEm ? new Date(e.lead.ultimaInteracaoEm).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" }) : "—"}</span>
-                <span role="cell"><button type="button" className="ncrm3-abrir" onClick={() => onAbrir(e.lead.id)}>Abrir</button></span>
+                <span role="cell" style={{ display: "flex", gap: 6 }}>
+                  <button type="button" className="ncrm3-abrir" onClick={() => onAbrir(e.lead.id)}>Abrir</button>
+                  <button type="button" className="ncrm3-secundario" style={{ minHeight: 32, padding: "0 12px", fontSize: 12 }} onClick={() => onAbrir(e.lead.id)} title="A conversa aparece na ficha — somente leitura">Chat</button>
+                </span>
               </div>
             );
           })}
