@@ -27,7 +27,14 @@ function escolhaSalva(userId: string | null): Variante {
   if (typeof window === "undefined") return "atual";
   try {
     if (new URLSearchParams(window.location.search).get("crm") === "nova-era") return "nova-era";
-    return window.localStorage.getItem(chave(userId)) === "nova-era" ? "nova-era" : "atual";
+    const salva = window.localStorage.getItem(chave(userId));
+    if (salva === "nova-era") return "nova-era";
+    if (salva === "atual") return "atual";
+    /* Sem escolha salva: no CELULAR o padrao e a rotina operacional (Meu Dia),
+       nao o funil desktop espremido. So vale para quem ja e liberado -- o gate
+       barra antes. No desktop nada muda: padrao continua "Funil atual". */
+    if (window.matchMedia("(max-width: 900px)").matches) return "nova-era";
+    return "atual";
   } catch {
     return "atual";
   }
