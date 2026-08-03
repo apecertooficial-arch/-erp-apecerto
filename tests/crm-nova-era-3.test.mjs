@@ -125,6 +125,19 @@ test("visita e proposta nunca viram coluna", () => {
   assert.equal(ehMomentoValido("novo"), true);
 });
 
+test("o visual explica a estrutura etapa, momento, ação e prazo", () => {
+  const funil = ler(base + "components/Funil3.tsx");
+  const card = ler(base + "components/Card3.tsx");
+  const ficha = ler(base + "components/Ficha3.tsx");
+  assert.match(funil, /MAPA DA OPERAÇÃO/);
+  assert.match(funil, /Etapa organiza\. Momento explica\. Ação e prazo movem o dia\./);
+  assert.match(card, />ETAPA</);
+  assert.match(card, />PRÓXIMA AÇÃO</);
+  assert.match(card, />PRAZO</);
+  assert.match(ficha, /ORDEM DO CRM/);
+  assert.match(ficha, /Ação feita/);
+});
+
 /* ============================ MEU DIA ============================ */
 
 test("três seções, na ordem do trabalho", () => {
@@ -260,6 +273,15 @@ test("a ficha expõe os três comandos principais e concentra atualizações no 
   assert.match(ficha, /ncrm3-atualizar-menu/);
   assert.match(ficha, /Marcar ação como feita/);
   assert.doesNotMatch(ficha, /AÇÕES AVANÇADAS/);
+});
+
+test("o Pipe de Visitas explica o fluxo e o próximo destino", () => {
+  const visitas = ler(base + "components/Visitas3.tsx");
+  assert.match(visitas, /PIPE PARALELO DE VISITAS/);
+  assert.match(visitas, /Agendada/);
+  assert.match(visitas, /Realizada/);
+  assert.match(visitas, /Próximo destino/);
+  assert.match(visitas, /acompanhamento ou proposta/);
 });
 
 test("chamar no WhatsApp abre o app, tem alternativa e não preenche texto", () => {
