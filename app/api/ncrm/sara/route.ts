@@ -39,6 +39,7 @@ const OVERRIDE =
   "COMPONHA com a análise anterior: diga o que MUDOU desde ela e ajuste temperatura e confiança em vez " +
   "de recomeçar do zero — a nota evolui, não reinicia. " +
   "Responda SOMENTE um JSON válido com as chaves: etapa_sugerida (novo|tentando_contato|em_atendimento|em_acompanhamento), " +
+  "acao_padrao_codigo (RESPONDER_CLIENTE|QUALIFICAR_NECESSIDADE|QUALIFICAR_REGIAO|QUALIFICAR_IMOVEL|QUALIFICAR_ORCAMENTO|QUALIFICAR_PRAZO|ENVIAR_OPCOES|VALIDAR_OPCOES|CONTORNAR_OBJECAO|CONVIDAR_VISITA|CONFIRMAR_VISITA|RETOMAR_COMBINADO|LIGAR_CLIENTE|ENCERRAR_SEM_RESPOSTA|REVISAR_MANUALMENTE), " +
   "temperatura (frio|morno|quente|negociando), intencao_detectada, proxima_acao (1 frase concreta e específica), " +
   "prazo_sugerido (ISO 8601, sempre posterior à data de HOJE do input), objecoes (array), risco_abandono (baixo|medio|alto), " +
   "possibilidade_visita (baixa|media|alta), possibilidade_proposta (baixa|media|alta), " +

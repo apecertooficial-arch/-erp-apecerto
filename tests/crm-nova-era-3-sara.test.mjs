@@ -89,8 +89,10 @@ test("aceitar a orientacao vira uma acao do contrato que ja existia", () => {
     prazo_sugerido: "2026-08-01T14:00:00.000Z",
     possibilidade_visita: "alta",
     confianca: 0.91,
+    evidencia_suficiente: true,
+    evidencias: ["quero conhecer o imóvel"],
   };
-  const a = acaoConfirmadaDaSara(sugestao, { id: "42", respondeu: true }, 7);
+  const a = acaoConfirmadaDaSara(sugestao, { id: "42", respondeu: true }, 7, new Date("2026-07-31T12:00:00Z"));
   assert.equal(a.action, "concluirAcao");
   assert.equal(a.payload.negocioId, 42);
   assert.equal(a.payload.versao, 7, "sem a versao o banco nao consegue recusar escrita concorrente");
@@ -101,7 +103,7 @@ test("aceitar a orientacao vira uma acao do contrato que ja existia", () => {
 
 test("cliente que ainda nao respondeu registra TENTATIVA, nao acao comercial", () => {
   // Confundir os dois zeraria a contagem da cadencia e o lead pularia etapa.
-  const a = acaoConfirmadaDaSara({ proxima_acao: "Tentar de novo", confianca: 0.8 }, { id: "9", respondeu: false }, 2);
+  const a = acaoConfirmadaDaSara({ proxima_acao: "Tentar de novo", confianca: 0.8, evidencia_suficiente: true, evidencias: ["sem resposta após a primeira mensagem"] }, { id: "9", respondeu: false }, 2);
   assert.equal(a.action, "registrarTentativa");
   assert.equal(a.payload.resultado, "nao_respondeu");
   assert.equal(a.payload.proximaEm, null, "quem define o proximo contato e a cadencia, nao a Sara");
@@ -120,7 +122,7 @@ test("sem prazo sugerido, cai em duas horas — nunca em lead sem data", () => {
 });
 
 test("a acao e idempotente por lead e versao", () => {
-  const s = { proxima_acao: "Ligar", confianca: 0.7 };
+  const s = { proxima_acao: "Ligar", confianca: 0.7, evidencia_suficiente: true, evidencias: ["pode me ligar amanhã"] };
   const a = acaoConfirmadaDaSara(s, { id: "5", respondeu: true }, 3);
   const b = acaoConfirmadaDaSara(s, { id: "5", respondeu: true }, 3);
   assert.equal(a.payload.idem, b.payload.idem, "clique duplo nao pode virar dois registros");

@@ -52,6 +52,8 @@ export function Sara3({
       <h4>✦ Leitura da Sara</h4>
       <p>Sugestão, não ordem. Nenhuma mensagem é enviada; nada muda até você clicar.</p>
 
+      <p className={`ncrm3-sara-politica nivel-${s.politica.nivel}`}><b>{s.politica.texto}</b></p>
+
       {!s.evidenciaSuficiente && (
         <p>
           <b>Evidência insuficiente</b> — a conversa ainda não sustenta conclusões fortes. Priorize coletar as
@@ -86,6 +88,7 @@ export function Sara3({
       <ul className="ncrm3-sara-campos">
         <li><b>Evidências:</b> {s.evidencias.length ? s.evidencias.join(" · ") : "nenhuma citada"}</li>
         <li><b>Momento sugerido:</b> {s.momentoSugerido ?? "—"}</li>
+        <li><b>Ação padrão:</b> {s.codigoAcao.replace(/_/g, " ")}</li>
         <li><b>Próxima ação:</b> {s.proximaAcao ?? "—"}</li>
         <li><b>Prazo:</b> {s.prazo ? new Date(s.prazo).toLocaleString("pt-BR") : "—"}</li>
         <li><b>Risco de abandono:</b> {s.risco ?? "—"} · <b>Confiança:</b> {s.confiancaPct}%</li>
@@ -126,7 +129,7 @@ export function Sara3({
             type="button"
             className={a.decisao === "aceita" ? "usar" : ""}
             title={a.ajuda}
-            disabled={aplicando}
+            disabled={aplicando || (a.decisao === "aceita" && !s.politica.podeUsar)}
             onClick={() => onDecidir(a.decisao)}
           >
             {a.decisao === "aceita" && aplicando ? "Registrando…" : a.rotulo}

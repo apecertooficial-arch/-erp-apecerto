@@ -219,9 +219,9 @@ export function Ficha3({
         return;
       }
       setAplicandoSara(true);
-      await onExecutar(confirmada.payload);
+      const gravou = await executarEReavaliar(confirmada.payload);
       setAplicandoSara(false);
-      onAviso(`Registrado: ${confirmada.resumo}`);
+      if (gravou) onAviso(`Registrado e reavaliado: ${confirmada.resumo}`);
       return;
     }
 
@@ -235,7 +235,7 @@ export function Ficha3({
     setSara(null);
     onSaraCarregada(lead.id, null);
     onAviso("Orientação descartada — a Sara recebeu o retorno.");
-  }, [accessToken, lead.id, lead.respondeu, onAviso, onExecutar, onSaraCarregada, sara, versao]);
+  }, [accessToken, executarEReavaliar, lead.id, lead.respondeu, onAviso, onSaraCarregada, sara, versao]);
 
   return (
     <aside className="ncrm3-ficha" aria-label={`Ficha de ${lead.nome}`}>
