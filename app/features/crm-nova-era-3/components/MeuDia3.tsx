@@ -18,6 +18,18 @@ import {
   botaoPrincipal, montarSecoes, painelDeAbertura, saudacao, totalParaAtender,
   type ItemFila3,
 } from "../lib/meuDia3";
+import { iniciais } from "./Card3";
+import type { AcaoMenu } from "./Card3";
+
+/** Ícone de relógio dos itens da fila (fase 1 do design). */
+function Relogio() {
+  return (
+    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true" style={{ flex: "none" }}>
+      <circle cx="12" cy="12" r="8.5" />
+      <path d="M12 7.5V12l3 2" />
+    </svg>
+  );
+}
 
 type Json = Record<string, unknown>;
 
@@ -38,6 +50,15 @@ function chipDoMotivo(motivo: string): string {
   if (m.includes("novo")) return "ncrm3-chip-motivo m-roxo";
   if (m.includes("estourado") || m.includes("venceu") || m.includes("atras")) return "ncrm3-chip-motivo m-vermelho";
   return "ncrm3-chip-motivo";
+}
+
+/* Avatar da fila: tint pelo TIPO do chamado (laranja respondeu, roxo lead novo,
+   vermelho estourado) — igual ao print. */
+function avatarDoMotivo(motivo: string): string {
+  const m = (motivo || "").toLowerCase();
+  if (m.includes("novo")) return "av-roxo";
+  if (m.includes("estourado") || m.includes("venceu") || m.includes("atras")) return "av-vermelho";
+  return "av-laranja";
 }
 
 function tomDaSecao(secao: string): string {
@@ -71,6 +92,8 @@ export function MeuDia3({
   onAbrir,
   onIrParaVisitas,
   onIrParaAba,
+  acoes,
+  onAcao,
 }: {
   accessToken: string;
   corretorFiltro?: number | null;
@@ -81,6 +104,9 @@ export function MeuDia3({
   onIrParaVisitas?: () => void;
   /** Cards de resumo clicáveis (protótipo 01): cada número leva à aba correspondente. */
   onIrParaAba?: (aba: string) => void;
+  /** Menu "..." de cada item — as mesmas ações do card do Funil. */
+  acoes?: AcaoMenu[];
+  onAcao?: (negocioId: string, chave: string) => void;
 }) {
   const [filtro, setFiltro] = useState("agora");
   const [filtrosAbertos, setFiltrosAbertos] = useState(false);
@@ -88,6 +114,23 @@ export function MeuDia3({
   const [itens, setItens] = useState<ItemFila3[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
+  const [menuAberto, setMenuAberto] = useState<number | null>(null);
+  /* Visitas de HOJE para o quarto card (o print mostra o número). Leitura da
+     rota enxuta que já existe; se falhar, o card vira só o atalho. */
+  const [visitasHoje, setVisitasHoje] = useState<number | null>(null);
+
+  useEffect(() => {
+    let vivo = true;
+    void fetch(`/api/ncrm/visitas`, { headers: { Authorization: `Bearer ${accessToken}` } })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j: { visitas?: Array<{ data: string | null }> } | null) => {
+        if (!vivo || !j?.visitas) return;
+        const hoje = new Date().toLocaleDateString("sv-SE");
+        setVisitasHoje(j.visitas.filter((v) => v.data === hoje).length);
+      })
+      .catch(() => { /* o número é conveniência; o atalho continua */ });
+    return () => { vivo = false; };
+  }, [accessToken]);
 
   const carregar = useCallback(async () => {
     setCarregando(true);
@@ -152,9 +195,7 @@ export function MeuDia3({
         </div>
       )}
 
-      {/* O tamanho do dia, em numeros que o corretor confere sozinho.
-          Visitas nao entram: a fila de trabalho nao devolve visita, e numero
-          que nao da para conferir vale menos do que numero nenhum. */}
+      {/* O tamanho do dia, em numeros que o corretor confere sozinho. */}
       {!carregando && !erro && filtrados.length > 0 && (
         <section className="ncrm3-abertura" aria-label="Resumo do seu dia">
           <div className="ncrm3-abertura-numeros">
@@ -162,9 +203,18 @@ export function MeuDia3({
             <article role="button" tabIndex={0} style={{ cursor: "pointer" }} onClick={() => onIrParaAba?.("funil")}><b>{painel.leadsNovos}</b><span>{painel.leadsNovos === 1 ? "lead novo" : "leads novos"}</span></article>
             <article role="button" tabIndex={0} style={{ cursor: "pointer" }} onClick={() => onIrParaAba?.("agenda")}><b>{painel.retornosHoje}</b><span>{painel.retornosHoje === 1 ? "retorno para hoje" : "retornos para hoje"}</span></article>
             {onIrParaVisitas && (
-              <article className="link">
-                <button type="button" onClick={onIrParaVisitas}>Ver visitas do dia</button>
-                <span>na aba Visitas</span>
+              <article className="link" role="button" tabIndex={0} style={{ cursor: "pointer" }} onClick={onIrParaVisitas}>
+                {visitasHoje != null ? (
+                  <>
+                    <b>{visitasHoje}</b>
+                    <span>{visitasHoje === 1 ? "visita do dia" : "visitas do dia"} · ver na aba Visitas</span>
+                  </>
+                ) : (
+                  <>
+                    <button type="button" onClick={onIrParaVisitas}>Ver visitas do dia</button>
+                    <span>na aba Visitas</span>
+                  </>
+                )}
               </article>
             )}
           </div>
@@ -174,8 +224,7 @@ export function MeuDia3({
               <div>
                 <span className="ncrm3-abertura-rotulo">Próximo atendimento</span>
                 <strong>{painel.proximo.nome}</strong>
-                <em>{painel.proximo.motivo} · espera {painel.proximo.tempo}</em>
-                <p>{painel.proximo.proximaAcao}</p>
+                <em>{painel.proximo.motivo} · espera {painel.proximo.tempo} · {painel.proximo.proximaAcao.toLowerCase()}</em>
               </div>
               <button type="button" className="ncrm3-principal" onClick={() => onAbrir(String(painel.proximo!.negocioId))}>
                 Atender agora
@@ -207,12 +256,13 @@ export function MeuDia3({
               const botao = botaoPrincipal(c);
               return (
                 <article key={c.negocioId} className={`ncrm3-item ${tomDoMotivo(c.motivo, c.secao)}`}>
+                  <span className={`lead-avatar ncrm3-av ${avatarDoMotivo(c.motivo)}`}>{iniciais(c.nome)}</span>
                   <div className="ncrm3-item-corpo">
                     <div className="ncrm3-item-linha">
                       <strong>{c.nome}</strong>
                       <span className="ncrm3-item-meta">{c.corretor}</span>
                       <span className={chipDoMotivo(c.motivo)}>{c.motivo}</span>
-                      <span className="ncrm3-item-meta">espera {c.tempo}</span>
+                      <span className="ncrm3-item-meta ncrm3-item-tempo"><Relogio /> {c.tempo}</span>
                       {c.outrosAtendimentos > 0 && (
                         <span className="ncrm3-item-meta">
                           +{c.outrosAtendimentos} {c.outrosAtendimentos === 1 ? "atendimento" : "atendimentos"} deste cliente
@@ -228,6 +278,24 @@ export function MeuDia3({
                       {botao.rotulo}
                     </button>
                   </div>
+                  {acoes && onAcao && (
+                    <div className="ncrm3-mais" onClick={(e) => e.stopPropagation()}>
+                      <button type="button" aria-haspopup="menu" aria-expanded={menuAberto === c.negocioId} aria-label="Mais ações"
+                        onClick={() => setMenuAberto((v) => (v === c.negocioId ? null : c.negocioId))}>
+                        ⋯
+                      </button>
+                      {menuAberto === c.negocioId && (
+                        <div className="ncrm3-menu" role="menu">
+                          {acoes.map((a) => (
+                            <button key={a.chave} type="button" role="menuitem"
+                              onClick={() => { setMenuAberto(null); onAcao(String(c.negocioId), a.chave); }}>
+                              {a.rotulo}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </article>
               );
             })}
