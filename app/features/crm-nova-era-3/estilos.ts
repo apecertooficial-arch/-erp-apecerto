@@ -178,7 +178,25 @@ export const CRM3_CSS = `
 .ncrm3-ficha-topo { position:sticky; top:0; z-index:2; display:flex; align-items:flex-start; gap:12px; padding:16px 20px; border-bottom:1px solid var(--line); background:var(--surface); }
 .ncrm3-ficha-topo h2 { margin:0; font-size:18px; font-weight:700; letter-spacing:-.02em; }
 .ncrm3-ficha-topo .ncrm3-situacao { display:block; margin-top:3px; color:var(--muted); font-size:12.5px; }
+.ncrm3-ficha-contexto { display:block; margin-top:5px; color:var(--faint); font-size:11px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .ncrm3-ficha-fechar { margin-left:auto; min-width:38px; min-height:38px; border:1px solid var(--line); border-radius:var(--radius-pill); background:var(--surface); color:var(--muted); font-size:15px; cursor:pointer; }
+.ncrm3-acoes-topo { position:sticky; top:71px; z-index:3; display:grid; grid-template-columns:1fr 1fr; gap:8px; padding:12px 16px; border-bottom:1px solid var(--line); background:rgba(255,255,255,.97); backdrop-filter:blur(12px); }
+.ncrm3-acao-rapida { display:inline-flex; align-items:center; justify-content:center; gap:7px; min-height:43px; padding:0 10px; border:1px solid var(--line-strong); border-radius:12px; background:#fff; color:var(--ink); font:650 12px/1.15 inherit; cursor:pointer; text-decoration:none; text-align:center; }
+.ncrm3-acao-rapida:hover { border-color:#D2BFB1; background:var(--sunken); }
+.ncrm3-acao-rapida.principal { border-color:var(--orange); background:var(--orange); color:#fff; }
+.ncrm3-acao-rapida:disabled { opacity:.45; cursor:not-allowed; }
+.ncrm3-atualizar-menu { position:relative; }
+.ncrm3-atualizar-menu>summary { display:flex; align-items:center; justify-content:center; gap:7px; min-height:41px; border:1px solid var(--ink); border-radius:12px; background:var(--ink); color:#fff; font-size:12px; font-weight:700; cursor:pointer; list-style:none; }
+.ncrm3-atualizar-menu>summary::-webkit-details-marker { display:none; }
+.ncrm3-atualizar-menu>div { position:absolute; left:0; top:47px; z-index:12; display:flex; flex-direction:column; width:250px; padding:6px; border:1px solid var(--line); border-radius:14px; background:#fff; box-shadow:var(--shadow-lg); }
+.ncrm3-atualizar-menu button { min-height:42px; padding:0 11px; border:0; border-radius:9px; background:transparent; color:var(--ink-soft); font:600 12.5px inherit; text-align:left; cursor:pointer; }
+.ncrm3-atualizar-menu button:hover { background:var(--sunken); }
+.ncrm3-atualizar-menu button.perigo { color:#B42318; }
+.ncrm3-contato-detalhes { position:relative; }
+.ncrm3-contato-detalhes>summary { display:flex; align-items:center; justify-content:center; min-height:41px; border:1px solid var(--line); border-radius:12px; color:var(--muted); font-size:11.5px; font-weight:650; cursor:pointer; list-style:none; }
+.ncrm3-contato-detalhes>summary::-webkit-details-marker { display:none; }
+.ncrm3-contato-detalhes>div { position:absolute; right:0; top:47px; z-index:11; display:flex; flex-direction:column; gap:7px; width:245px; padding:12px; border:1px solid var(--line); border-radius:14px; background:#fff; box-shadow:var(--shadow-lg); font-size:12px; }
+.ncrm3-contato-detalhes button,.ncrm3-contato-detalhes a { min-height:34px; display:flex; align-items:center; justify-content:center; border:1px solid var(--line); border-radius:9px; background:#fff; color:var(--ink-soft); font:600 12px inherit; text-decoration:none; cursor:pointer; }
 .ncrm3-bloco { display:flex; flex-direction:column; gap:9px; padding:16px 20px; border-bottom:1px solid var(--line); }
 .ncrm3-bloco>h3 { margin:0; color:var(--muted); font-size:11px; font-weight:700; letter-spacing:.11em; text-transform:uppercase; }
 .ncrm3-linhas { display:flex; flex-direction:column; gap:8px; padding:10px 12px; border-radius:var(--radius-input); background:var(--sunken); }
@@ -222,6 +240,8 @@ export const CRM3_CSS = `
 .ncrm3-ficha-extras { border-bottom:1px solid var(--line); background:#fff; }
 .ncrm3-ficha-extras>summary { padding:16px 20px; cursor:pointer; list-style-position:inside; font-size:13px; font-weight:750; color:var(--ink); }
 .ncrm3-ficha-extras>div>.ncrm3-bloco:last-child { border-bottom:0; }
+.ncrm3-historico-recolhido>summary { color:var(--orange-700); }
+.ncrm3-historico-conteudo { padding:0 20px 16px; }
 .ncrm3-sara-detalhes>ol { margin:9px 0 0 18px; padding:0; color:var(--ink-soft); font-size:12px; }
 
 /* ---------- Gestão ---------- */
