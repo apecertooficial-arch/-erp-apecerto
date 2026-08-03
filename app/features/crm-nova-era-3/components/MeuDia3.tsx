@@ -77,13 +77,6 @@ function tomDoMotivo(motivo: string, secao: string): string {
   return tomDaSecao(secao);
 }
 
-function prazoCurto(iso: string | null): string {
-  if (!iso) return "sem prazo";
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "sem prazo";
-  return d.toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
-}
-
 export function MeuDia3({
   accessToken,
   corretorFiltro,
@@ -222,9 +215,11 @@ export function MeuDia3({
           {painel.proximo && (
             <div className="ncrm3-abertura-proximo">
               <div>
-                <span className="ncrm3-abertura-rotulo">Próximo atendimento</span>
-                <strong>{painel.proximo.nome}</strong>
-                <em>{painel.proximo.motivo} · espera {painel.proximo.tempo} · {painel.proximo.proximaAcao.toLowerCase()}</em>
+                <span className="ncrm3-abertura-rotulo">SUA PRÓXIMA AÇÃO</span>
+                <strong>{painel.proximo.nome} · {painel.proximo.momento}</strong>
+                <b>{painel.proximo.proximaAcao}</b>
+                <em>{painel.proximo.objetivo}</em>
+                <span className={`ncrm3-prazo-direto prazo-${painel.proximo.prazoStatus}`}>{painel.proximo.prazoRotulo}</span>
               </div>
               <button type="button" className="ncrm3-principal" onClick={() => onAbrir(String(painel.proximo!.negocioId))}>
                 Atender agora
@@ -261,8 +256,7 @@ export function MeuDia3({
                     <div className="ncrm3-item-linha">
                       <strong>{c.nome}</strong>
                       <span className="ncrm3-item-meta">{c.corretor}</span>
-                      <span className={chipDoMotivo(c.motivo)}>{c.motivo}</span>
-                      <span className="ncrm3-item-meta ncrm3-item-tempo"><Relogio /> {c.tempo}</span>
+                      <span className={chipDoMotivo(c.motivo)}>MOMENTO {c.momentoOrdem}/7 · {c.momento}</span>
                       {c.outrosAtendimentos > 0 && (
                         <span className="ncrm3-item-meta">
                           +{c.outrosAtendimentos} {c.outrosAtendimentos === 1 ? "atendimento" : "atendimentos"} deste cliente
@@ -270,7 +264,9 @@ export function MeuDia3({
                       )}
                     </div>
                     <div className="ncrm3-item-acao">
-                      {c.proximaAcao} · {prazoCurto(c.proximaAcaoEm)}
+                      <b>FAÇA AGORA · {c.proximaAcao}</b>
+                      <span>{c.objetivo}</span>
+                      <em className={`ncrm3-prazo-direto prazo-${c.prazoStatus}`}><Relogio /> {c.prazoRotulo}</em>
                     </div>
                   </div>
                   <div className="ncrm3-item-botao">

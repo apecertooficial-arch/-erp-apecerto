@@ -139,11 +139,10 @@ export function Card3({
       )}
 
       <div className={`ncrm3-conduta prazo-${conduta.prazoInfo.status}`}>
-        <span className="ncrm3-conduta-label">CONDUTA OFICIAL · {conduta.momento}</span>
-        <small>{conduta.situacao}</small>
-        <b>{conduta.acao}</b>
+        <span className="ncrm3-conduta-label">MOMENTO {conduta.momentoOrdem}/7 · {conduta.momento}</span>
+        <b><small>FAÇA AGORA</small>{conduta.acao}</b>
         <span className="ncrm3-conduta-prazo">{conduta.prazoInfo.rotulo}{conduta.prazo ? ` · ${dataCurta(conduta.prazo)}` : ""}</span>
-        <em>Objetivo: {conduta.objetivo}</em>
+        <em>{conduta.objetivo}</em>
       </div>
 
       <div className="ncrm3-card-rodape">
