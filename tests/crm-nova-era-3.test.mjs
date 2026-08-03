@@ -244,13 +244,23 @@ test("telefone inválido vira correção de cadastro, não cobrança de SLA", ()
 
 /* ============================ FICHA ============================ */
 
-test("a ficha tem onze blocos, nesta ordem", () => {
+test("a ficha prioriza trabalho e esconde detalhes, nesta ordem", () => {
   assert.deepEqual([...ORDEM_FICHA], [
-    "cliente_situacao", "corretor_origem_interesse", "telefone", "chamar_whatsapp",
-    "proxima_acao", "sara", "historico", "dados", "imoveis", "linha_do_tempo", "acoes_avancadas",
+    "cliente_situacao", "acoes_principais", "proxima_acao", "historico",
+    "dados", "imoveis", "linha_do_tempo", "andamento_externo",
   ]);
-  assert.equal(ORDEM_FICHA.length, 11);
+  assert.equal(ORDEM_FICHA.length, 8);
   for (const bloco of ORDEM_FICHA) assert.ok(TITULO_BLOCO[bloco], `bloco ${bloco} sem título`);
+});
+
+test("a ficha expõe os três comandos principais e concentra atualizações no menu", () => {
+  const ficha = ler(base + "components/Ficha3.tsx");
+  assert.match(ficha, /WhatsApp/);
+  assert.match(ficha, /Agendar visita/);
+  assert.match(ficha, /Lançar negociação/);
+  assert.match(ficha, /ncrm3-atualizar-menu/);
+  assert.match(ficha, /Marcar ação como feita/);
+  assert.doesNotMatch(ficha, /AÇÕES AVANÇADAS/);
 });
 
 test("chamar no WhatsApp abre o app, tem alternativa e não preenche texto", () => {

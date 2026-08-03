@@ -18,44 +18,35 @@ import { prepararAberturaWhatsApp } from "../../crm-nova-era/lib/whatsappNativo.
 
 export type BlocoFicha =
   | "cliente_situacao"
-  | "corretor_origem_interesse"
-  | "telefone"
-  | "chamar_whatsapp"
+  | "acoes_principais"
   | "proxima_acao"
-  | "sara"
   | "historico"
   | "dados"
   | "imoveis"
   | "linha_do_tempo"
-  | "acoes_avancadas";
+  | "andamento_externo";
 
 /** Ordem obrigatória, de cima para baixo. */
 export const ORDEM_FICHA: readonly BlocoFicha[] = Object.freeze([
   "cliente_situacao",
-  "corretor_origem_interesse",
-  "telefone",
-  "chamar_whatsapp",
+  "acoes_principais",
   "proxima_acao",
-  "sara",
   "historico",
   "dados",
   "imoveis",
   "linha_do_tempo",
-  "acoes_avancadas",
+  "andamento_externo",
 ]);
 
 export const TITULO_BLOCO: Record<BlocoFicha, string> = {
   cliente_situacao: "Cliente e situação",
-  corretor_origem_interesse: "Corretor, origem e interesse",
-  telefone: "Telefone",
-  chamar_whatsapp: "Chamar no WhatsApp",
-  proxima_acao: "Próxima ação",
-  sara: "Sara",
-  historico: "Histórico",
+  acoes_principais: "Ações do atendimento",
+  proxima_acao: "O que fazer agora",
+  historico: "Conversa e histórico",
   dados: "Dados",
   imoveis: "Imóveis",
   linha_do_tempo: "Linha do tempo",
-  acoes_avancadas: "Ações avançadas",
+  andamento_externo: "Andamento fora do funil",
 };
 
 export type AberturaWhatsApp =
