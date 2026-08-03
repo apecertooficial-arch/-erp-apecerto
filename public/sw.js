@@ -101,16 +101,18 @@ const AVISO_PADRAO = {
 };
 
 /* O que exige acao AGORA: chega com som e vibracao, e cada ocorrencia vira um
-   aviso proprio. Esta lista casa com a lista de Urgency: high do lado que
-   envia (ncrm-web-push) -- chegar rapido e chegar mudo seria meio aviso.
+   aviso proprio. Esta lista casa com TIPOS_URGENTES da entrega (edge function
+   ncrm-web-push) -- chegar rapido e chegar mudo seria meio aviso.
 
-   `acao_vencendo` e `acao_vencida` estao aqui porque prazo e compromisso com
-   gente: o combinado que vence em 30 minutos ainda da para cumprir; o aviso
-   quieto que o corretor ve as 18h nao serve para nada. */
+   `retorno_proximo` e o combinado vencendo em 30 minutos (nome do vocabulario
+   fechado de ncrm_notificacao); `acao_vencida` e o que ja venceu. Os dois
+   fazem barulho porque prazo e compromisso com gente: o combinado que vence
+   ainda da para cumprir, e o aviso quieto que o corretor ve as 18h nao serve
+   para nada. */
 const TAGS_URGENTES = [
   "primeira_abordagem_pendente",
   "cliente_respondeu",
-  "acao_vencendo",
+  "retorno_proximo",
   "acao_vencida",
 ];
 
