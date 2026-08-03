@@ -3,26 +3,23 @@ import type { AnaliseSara } from "./adapter3.ts";
 export type StatusPrazo = "atrasada" | "vence_logo" | "no_prazo" | "sem_prazo";
 
 export const MOMENTOS_PADRAO = Object.freeze([
-  { codigo: "novo_lead", ordem: 1, rotulo: "Novo lead" },
-  { codigo: "sem_resposta", ordem: 2, rotulo: "Em cadência" },
-  { codigo: "qualificando", ordem: 3, rotulo: "Entendendo necessidade" },
-  { codigo: "buscando_opcoes", ordem: 4, rotulo: "Buscando imóveis" },
-  { codigo: "opcoes_enviadas", ordem: 5, rotulo: "Opções enviadas" },
-  { codigo: "visita", ordem: 6, rotulo: "Visita" },
-  { codigo: "acompanhamento", ordem: 7, rotulo: "Acompanhamento" },
+  { codigo: "novo_lead", ordem: 1, rotulo: "Novo" },
+  { codigo: "sem_resposta", ordem: 2, rotulo: "Tentando contato" },
+  { codigo: "em_atendimento", ordem: 3, rotulo: "Em atendimento" },
+  { codigo: "acompanhamento", ordem: 4, rotulo: "Em acompanhamento" },
 ] as const);
 
 export const ACOES_OFICIAIS = Object.freeze([
   { codigo: "PRIMEIRA_ABORDAGEM", rotulo: "Fazer a primeira abordagem", objetivo: "Iniciar a conversa em até 5 minutos." },
   { codigo: "ENVIAR_CADENCIA", rotulo: "Enviar a mensagem da cadência", objetivo: "Conseguir uma resposta sem deixar o lead parar." },
   { codigo: "RESPONDER_CLIENTE", rotulo: "Responder o cliente", objetivo: "Manter a conversa ativa e avançar o atendimento." },
-  { codigo: "QUALIFICAR_NECESSIDADE", rotulo: "Entender o que o cliente procura", objetivo: "Descobrir perfil, região, faixa de valor e prazo de compra." },
-  { codigo: "BUSCAR_IMOVEIS", rotulo: "Buscar imóveis compatíveis", objetivo: "Separar opções aderentes ao pedido do cliente." },
-  { codigo: "ENVIAR_OPCOES", rotulo: "Enviar opções ao cliente", objetivo: "Provocar uma reação com imóveis compatíveis." },
-  { codigo: "COBRAR_RETORNO", rotulo: "Pedir retorno sobre as opções", objetivo: "Descobrir o que agradou e ajustar a busca." },
-  { codigo: "AGENDAR_OU_CONFIRMAR_VISITA", rotulo: "Agendar ou confirmar a visita", objetivo: "Transformar o interesse em visita com data e hora." },
+  { codigo: "ENTENDER_NECESSIDADE", rotulo: "Entender o que o cliente procura", objetivo: "Descobrir e completar perfil, região, faixa de valor e prazo de compra." },
+  { codigo: "BUSCAR_E_ENVIAR_IMOVEIS", rotulo: "Buscar e enviar imóveis", objetivo: "Entregar opções compatíveis e provocar uma resposta." },
+  { codigo: "PEDIR_RETORNO", rotulo: "Pedir retorno sobre as opções", objetivo: "Descobrir o que agradou e ajustar a busca." },
+  { codigo: "REATIVAR_CONVERSA", rotulo: "Reativar a conversa", objetivo: "Produzir nova interação sem deixar o atendimento parar." },
+  { codigo: "AGENDAR_VISITA", rotulo: "Agendar uma visita", objetivo: "Transformar o interesse em visita com data e hora." },
   { codigo: "REGISTRAR_RESULTADO_VISITA", rotulo: "Registrar o resultado da visita", objetivo: "Definir o próximo avanço após a visita." },
-  { codigo: "REATIVAR_OU_ENCERRAR", rotulo: "Reativar ou encerrar o atendimento", objetivo: "Evitar lead parado ou falsamente ativo." },
+  { codigo: "REGISTRAR_PROPOSTA", rotulo: "Registrar proposta", objetivo: "Encaminhar uma proposta real para a Esteira de Vendas." },
 ] as const);
 
 export type CodigoMomento = typeof MOMENTOS_PADRAO[number]["codigo"];
@@ -42,34 +39,32 @@ function classificarAcao(
   respondeu: boolean,
   respostaPendente: boolean,
 ): CodigoAcao {
+  if (/proposta/.test(texto)) return "REGISTRAR_PROPOSTA";
   if (/resultado.*visita|pos[- ]?visita|visita.*realiz/.test(texto)) return "REGISTRAR_RESULTADO_VISITA";
-  if (/visita|agendar|confirmar.*horario/.test(texto)) return "AGENDAR_OU_CONFIRMAR_VISITA";
-  if (/buscar|procurar|separar|outro produto|outra regiao|imoveis compativeis/.test(texto)) return "BUSCAR_IMOVEIS";
-  if (/enviar.*(op|imovel)|apresentar.*(op|imovel)/.test(texto)) return "ENVIAR_OPCOES";
-  if (/retorno.*(op|imovel)|feedback|o que achou|cobrar retorno/.test(texto)) return "COBRAR_RETORNO";
-  if (/qualific|necessidade|perfil|orcamento|faixa de valor|forma de pagamento|prazo de compra/.test(texto)) return "QUALIFICAR_NECESSIDADE";
-  if (/reativ|encerr|nutri/.test(texto)) return "REATIVAR_OU_ENCERRAR";
+  if (/visita|agendar|confirmar.*horario/.test(texto)) return "AGENDAR_VISITA";
+  if (/buscar|procurar|separar|enviar.*(op|imovel)|outro produto|outra regiao|imoveis compativeis/.test(texto)) return "BUSCAR_E_ENVIAR_IMOVEIS";
+  if (/retorno.*(op|imovel)|feedback|o que achou|cobrar retorno/.test(texto)) return "PEDIR_RETORNO";
+  if (/regiao|tipo de imovel|dormitorio|orcamento|faixa de valor|forma de pagamento|prazo de compra|metragem|vaga/.test(texto)) return "ENTENDER_NECESSIDADE";
+  if (/reativ|retomar|parou de responder/.test(texto)) return "REATIVAR_CONVERSA";
+  if (/qualific|necessidade|perfil/.test(texto)) return "ENTENDER_NECESSIDADE";
   if (respostaPendente || (/respond/.test(texto) && respondeu)) return "RESPONDER_CLIENTE";
   if (etapa === "novo") return "PRIMEIRA_ABORDAGEM";
   if (!respondeu || /cadencia|insist|sem resposta|novo contato|retomar/.test(texto)) return "ENVIAR_CADENCIA";
-  return "QUALIFICAR_NECESSIDADE";
+  return "ENTENDER_NECESSIDADE";
 }
 
 function classificarMomento(etapa: string, texto: string, acao: CodigoAcao, respondeu: boolean): CodigoMomento {
-  if (acao === "REGISTRAR_RESULTADO_VISITA" || acao === "AGENDAR_OU_CONFIRMAR_VISITA") return "visita";
-  if (acao === "COBRAR_RETORNO" || /opcoes enviadas|aguardando.*op/.test(texto)) return "opcoes_enviadas";
-  if (acao === "BUSCAR_IMOVEIS" || acao === "ENVIAR_OPCOES") return "buscando_opcoes";
-  if (acao === "REATIVAR_OU_ENCERRAR" || etapa === "em_acompanhamento") return "acompanhamento";
+  if (etapa === "em_acompanhamento" || acao === "REGISTRAR_RESULTADO_VISITA" || acao === "REGISTRAR_PROPOSTA") return "acompanhamento";
   if (etapa === "novo") return "novo_lead";
   if (!respondeu || acao === "ENVIAR_CADENCIA") return "sem_resposta";
-  return "qualificando";
+  return "em_atendimento";
 }
 
 export function momentoHumano(etapa: string | null | undefined): string {
   const mapa: Record<string, CodigoMomento> = {
-    novo: "novo_lead", tentando_contato: "sem_resposta", em_atendimento: "qualificando", em_acompanhamento: "acompanhamento",
+    novo: "novo_lead", tentando_contato: "sem_resposta", em_atendimento: "em_atendimento", em_acompanhamento: "acompanhamento",
   };
-  const codigo = mapa[String(etapa ?? "")] ?? "qualificando";
+  const codigo = mapa[String(etapa ?? "")] ?? "em_atendimento";
   return MOMENTOS_PADRAO.find((item) => item.codigo === codigo)!.rotulo;
 }
 

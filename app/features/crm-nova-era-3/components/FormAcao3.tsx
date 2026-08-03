@@ -59,7 +59,7 @@ export function FormAcao3({
   const [resultado, setResultado] = useState(lead.respondeu ? "respondeu" : "nao_respondeu");
   const [obs, setObs] = useState("");
   const [proximaTipo, setProximaTipo] = useState(inicial?.proximaTipo ?? "entender_necessidade");
-  const [proximaEm, setProximaEm] = useState(inicial?.prazo ?? new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString().slice(0, 16));
+  const [proximaEm, setProximaEm] = useState(() => inicial?.prazo ?? new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString().slice(0, 16));
   const [vData, setVData] = useState("");
   const [vHora, setVHora] = useState("");
   const [valor, setValor] = useState("");
@@ -117,18 +117,7 @@ export function FormAcao3({
             </select>
           </label>
           {respondeuAgora && (
-            <>
-              <label className="ncrm3-linha" style={{ flexDirection: "column", alignItems: "stretch" }}>
-                <span>Próxima ação</span>
-                <select value={proximaTipo} onChange={(e) => setProximaTipo(e.target.value)}>
-                  {PROXIMAS.map((p) => <option key={p.v} value={p.v}>{p.r}</option>)}
-                </select>
-              </label>
-              <label className="ncrm3-linha" style={{ flexDirection: "column", alignItems: "stretch" }}>
-                <span>Para quando</span>
-                <input type="datetime-local" value={proximaEm} onChange={(e) => setProximaEm(e.target.value)} />
-              </label>
-            </>
+            <p className="ncrm3-nota"><b>A Sara define o próximo passo.</b> Depois de salvar, ela relê a conversa, escolhe uma das 10 ações oficiais e determina o prazo.</p>
           )}
           <label className="ncrm3-linha" style={{ flexDirection: "column", alignItems: "stretch" }}>
             <span>Observação</span>
@@ -137,14 +126,14 @@ export function FormAcao3({
           <div className="ncrm3-avancadas">
             <button type="button" className="ncrm3-secundario" onClick={onCancelar}>Cancelar</button>
             <button
-              type="button" className="ncrm3-principal" disabled={busy || (respondeuAgora && !proximaEm)}
+              type="button" className="ncrm3-principal" disabled={busy}
               onClick={() => onEnviar(lead.respondeu
-                ? { action: "concluirAcao", ...base, resultado, obs, proximaTipo, proximaTitulo: proximaTipo.replace(/_/g, " "), proximaEm: proxIso }
+                ? { action: "concluirAcao", ...base, resultado, obs, proximaTipo: "outro", proximaTitulo: "Sara avaliando a conversa", proximaEm: new Date(Date.now() + 15 * 60 * 1000).toISOString() }
                 : {
                     action: "registrarTentativa", ...base, canal, resultado, obs,
-                    proximaTipo: respondeuAgora ? proximaTipo : null,
-                    proximaTitulo: respondeuAgora ? proximaTipo.replace(/_/g, " ") : null,
-                    proximaEm: respondeuAgora ? proxIso : null,
+                    proximaTipo: respondeuAgora ? "outro" : null,
+                    proximaTitulo: respondeuAgora ? "Sara avaliando a conversa" : null,
+                    proximaEm: respondeuAgora ? new Date(Date.now() + 15 * 60 * 1000).toISOString() : null,
                   })}
             >
               Concluir e receber o próximo passo

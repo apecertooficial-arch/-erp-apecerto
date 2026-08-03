@@ -48,7 +48,6 @@ type Json = Record<string, unknown>;
 
 const ACOES_CARD: AcaoMenu[] = [
   { chave: "resultado", rotulo: "Registrar o que aconteceu" },
-  { chave: "proxima", rotulo: "Definir próxima ação" },
   { chave: "visita", rotulo: "Agendar visita" },
   { chave: "proposta", rotulo: "Registrar proposta" },
 ];
