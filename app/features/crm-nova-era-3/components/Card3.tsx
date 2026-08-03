@@ -15,6 +15,7 @@ import { tomDoSla } from "../lib/sla3";
 import type { SaidaSla } from "../../crm-nova-era/lib/slaPrimeiraAbordagem";
 import type { AnaliseSara } from "../lib/adapter3";
 import { condutaOficial } from "../lib/conduta3";
+import { tituloMomento } from "../lib/momentos";
 
 export type AcaoMenu = { chave: string; rotulo: string };
 
@@ -129,8 +130,12 @@ export function Card3({
       )}
 
       <div className={`ncrm3-ordem-card prazo-${conduta.prazoInfo.status}`}>
+        <div className="ncrm3-ordem-etapa">
+          <span>ETAPA</span>
+          <strong>{tituloMomento(lead.coluna)}</strong>
+        </div>
         <div className="ncrm3-ordem-momento">
-          <span>MOMENTO {conduta.momentoOrdem}/10</span>
+          <span>MOMENTO {conduta.momentoOrdem}</span>
           <strong>{conduta.momento}</strong>
         </div>
         <div className="ncrm3-ordem-acao">

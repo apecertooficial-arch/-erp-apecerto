@@ -47,6 +47,20 @@ export function Visitas3({ accessToken, onIrParaAgenda, onAbrirAtendimento }: { 
 
   return (
     <div className="ncrm3-visitas">
+      <section className="ncrm3-visitas-explicacao">
+        <div>
+          <span>PIPE PARALELO DE VISITAS</span>
+          <h2>A visita aparece aqui sem tirar o cliente do atendimento.</h2>
+          <p>Depois do horário, registre o resultado. O CRM devolve o cliente ao acompanhamento ou inicia a Esteira de Vendas quando houver proposta.</p>
+        </div>
+        <div className="ncrm3-visitas-fluxo" aria-label="Fluxo de uma visita">
+          <article><i>1</i><b>Agendada</b><small>confirmar presença</small></article>
+          <span>→</span>
+          <article><i>2</i><b>Realizada</b><small>registrar resultado</small></article>
+          <span>→</span>
+          <article><i>3</i><b>Próximo destino</b><small>acompanhamento ou proposta</small></article>
+        </div>
+      </section>
       <div className="ncrm3-visitas-topo">
         <div className="ncrm3-visitas-selo">
           <span>AGENDA COMERCIAL DOS IMÓVEIS</span>
