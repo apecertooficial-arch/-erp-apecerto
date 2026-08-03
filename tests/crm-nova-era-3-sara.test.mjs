@@ -83,7 +83,7 @@ test("a Sara devolve o checklist junto da sugestao", () => {
 
 /* ==================== ACEITAR EXECUTA ==================== */
 
-test("aceitar a orientacao vira uma acao do contrato que ja existia", () => {
+test("a orientação pode ser traduzida para o contrato operacional", () => {
   const sugestao = {
     proxima_acao: "Responder valor e metragem e perguntar quando pretende comprar",
     prazo_sugerido: "2026-08-01T14:00:00.000Z",
@@ -138,7 +138,14 @@ test("a Sara continua sem enviar mensagem e sem escrever etapa", () => {
 
 test("as tres decisoes continuam existindo", () => {
   assert.deepEqual(ACOES_SARA.map((a) => a.decisao), ["aceita", "ajustada", "rejeitada"]);
-  assert.match(ACOES_SARA[0].ajuda, /[Rr]egistra/, "o botao precisa dizer que executa");
+  assert.match(ACOES_SARA[0].ajuda, /[Rr]egistra/, "a decisão precisa permanecer auditável");
+});
+
+test("confirmar conduta não pode fingir que a ação já foi executada", () => {
+  const ficha = ler("../app/features/crm-nova-era-3/components/Ficha3.tsx");
+  const ramo = ficha.slice(ficha.indexOf('if (decisao === "aceita")'), ficha.indexOf('if (decisao === "ajustada")'));
+  assert.doesNotMatch(ramo, /onExecutar|executarEReavaliar|registrarTentativa|concluirAcao/);
+  assert.match(ramo, /Ação feita/);
 });
 
 test("acao feita fecha o ciclo e pede uma nova leitura da Sara", () => {
