@@ -46,12 +46,12 @@ export function especieDe(a: Aviso): Especie {
 /** "Sistema" e historico, nao aviso operacional: nunca conta como util. */
 export const ehUtil = (a: Aviso) => especieDe(a) !== "sistema";
 
-const minutosAte = (iso: string) => (Date.now() - new Date(iso).getTime()) / 60000;
+const minutosAte = (iso: string, agora: Date) => (agora.getTime() - new Date(iso).getTime()) / 60000;
 
 export type Balde = "agora" | "hoje" | "anteriores";
 
-export function baldeDe(a: Aviso, agoraMin = 60): Balde {
-  const m = minutosAte(a.when);
+export function baldeDe(a: Aviso, agoraMin = 60, agora = new Date()): Balde {
+  const m = minutosAte(a.when, agora);
   if (m < 0) return "agora";           // agendado para daqui a pouco
   if (m <= agoraMin) return "agora";
   /* "Hoje" e o dia de SAO PAULO, nao o do servidor. Em producao e no CI o
@@ -59,7 +59,7 @@ export function baldeDe(a: Aviso, agoraMin = 60): Balde {
      aviso de hoje em "Anteriores" na frente do corretor. Mesmo remedio de
      ehHoje em telaCorretor.logica.ts. */
   const fuso = (x: Date) => x.toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" });
-  return fuso(new Date(a.when)) === fuso(new Date()) ? "hoje" : "anteriores";
+  return fuso(new Date(a.when)) === fuso(agora) ? "hoje" : "anteriores";
 }
 
 /* Agrupa por LEAD + especie, nao por titulo.

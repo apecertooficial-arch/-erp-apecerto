@@ -219,6 +219,16 @@ test("as quatro abas do print, na ordem do print", () => {
   assert.equal(ABA_INICIAL, "dados", "abre onde está o telefone: é a pergunta mais comum na rua");
 });
 
+test("Funil, Leads e Visitas abrem as telas 3.0 reais no celular", () => {
+  const lista = ler(LISTA);
+  const gate = ler("../app/features/crm-nova-era/CrmNovaEraGate.tsx");
+  assert.match(lista, /\/crm\?crm=nova-era&aba=\$\{chave\}/);
+  assert.ok(!lista.includes('/crm?vista=quadro'), "o link antigo voltava para Meu Dia");
+  assert.match(gate, /pedeWorkspace3/);
+  assert.match(gate, /entrouNoWorkspace3 && podeLive/);
+  assert.match(gate, /<Crm3Workspace/);
+});
+
 /* ====================================================================
    A TRAVA: o caminho do toque
    ==================================================================== */

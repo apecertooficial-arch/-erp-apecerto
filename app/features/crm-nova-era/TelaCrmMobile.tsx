@@ -189,12 +189,11 @@ export function TelaCrmMobile({ accessToken, nome, onAbrirLead, onIr }: {
                 aria-selected={aba === chave}
                 className={`cm-aba${aba === chave ? " on" : ""}`}
                 onClick={() => {
-                  /* Funil, Leads e Visitas continuam nas telas completas: a
-                     vista do celular é a fila. Levar para lá é melhor do que
-                     fingir uma versão pobre aqui. */
-                  if (chave === "funil") onIr("/crm?vista=quadro");
-                  else if (chave === "visitas") onIr("/agenda");
-                  else setAba(chave);
+                  /* Meu Dia é a entrada rápida do celular. As outras abas
+                     abrem a visão 3.0 verdadeira, responsiva e com os mesmos
+                     dados do desktop — nunca uma lista genérica fantasiada. */
+                  if (chave === "meu_dia") setAba(chave);
+                  else onIr(`/crm?crm=nova-era&aba=${chave}`);
                 }}
               >
                 {rotulo}
@@ -231,7 +230,7 @@ export function TelaCrmMobile({ accessToken, nome, onAbrirLead, onIr }: {
           <span className="cm-eyebrow">
             {aba === "meu_dia" ? "Agora" : "Todos"} · {visiveis.length}
           </span>
-          <button type="button" className="cm-filtros" onClick={() => onIr("/crm?vista=quadro")}>
+          <button type="button" className="cm-filtros" onClick={() => onIr("/crm?crm=nova-era&aba=funil")}>
             Filtros
           </button>
         </div>
