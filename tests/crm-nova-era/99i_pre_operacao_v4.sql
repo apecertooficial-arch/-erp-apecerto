@@ -37,6 +37,24 @@ ALTER TABLE public.distribuicao_config
   ADD COLUMN IF NOT EXISTS modo_rodizio text DEFAULT 'fila_circular',
   ADD COLUMN IF NOT EXISTS atualizado_em timestamptz NOT NULL DEFAULT now();
 
+-- A função vem da migration histórica de cadência. No harness, marque somente
+-- esta cópia efêmera para que a migration 3.1 aceite o corpo conhecido sem
+-- enfraquecer o checksum exigido em produção.
+DO $fixture$
+DECLARE v_oid regprocedure := 'ncrm_private.sla_redistribuir(integer)'::regprocedure;
+        v_def text; v_ancora text;
+BEGIN
+  SELECT pg_get_functiondef(v_oid::oid) INTO v_def;
+  IF strpos(v_def, 'NCRM_TEST_STUB_ROLL') > 0 THEN RETURN; END IF;
+  v_ancora := 'IF cfg IS NULL OR cfg.ativo IS NOT TRUE THEN RETURN 0; END IF;';
+  IF strpos(v_def, v_ancora) = 0 THEN
+    RAISE EXCEPTION 'fixture_sla_redistribuir_ancora_ausente';
+  END IF;
+  v_def := replace(v_def, v_ancora,
+    v_ancora || E'\n  /* NCRM_TEST_STUB_ROLL */');
+  EXECUTE v_def;
+END $fixture$;
+
 CREATE OR REPLACE FUNCTION public.nome_normalizado(p text) RETURNS text
 LANGUAGE sql IMMUTABLE AS $$ SELECT lower(coalesce(p,'')) $$;
 CREATE OR REPLACE FUNCTION public.instancia_saudavel(p_id bigint) RETURNS boolean
