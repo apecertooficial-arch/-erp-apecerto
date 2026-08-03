@@ -48,57 +48,17 @@ export function Sara3({
   }
 
   return (
-    <div className="ncrm3-sara">
-      <h4>✦ Leitura da Sara</h4>
-      <p>Sugestão, não ordem. Nenhuma mensagem é enviada; nada muda até você clicar.</p>
-
-      <p className={`ncrm3-sara-politica nivel-${s.politica.nivel}`}><b>{s.politica.texto}</b></p>
-
-      {!s.evidenciaSuficiente && (
-        <p>
-          <b>Evidência insuficiente</b> — a conversa ainda não sustenta conclusões fortes. Priorize coletar as
-          respostas que faltam.
-        </p>
-      )}
-
-      {/* Checklist: o que a conversa já respondeu e o que ainda falta. */}
-      <div className="ncrm3-checklist">
-        <div className="ncrm3-checklist-topo">
-          <b>{resumoChecklist(s.checklist)}</b>
-          <span className="ncrm3-checklist-barra" aria-hidden="true">
-            <i style={{ width: `${s.checklist.completudePct}%` }} />
-          </span>
-        </div>
-        <ul>
-          {s.checklist.itens.map((i) => (
-            <li key={i.chave} className={i.valor ? "ok" : "falta"}>
-              <span aria-hidden="true">{i.valor ? "✓" : "○"}</span>
-              <b>{i.rotulo}</b>
-              <em>{i.valor ?? "não perguntado"}</em>
-            </li>
-          ))}
-        </ul>
-        {s.checklist.proximasPerguntas.length > 0 && (
-          <p className="ncrm3-nota">
-            Perguntar em seguida: {s.checklist.proximasPerguntas.join(" · ")}
-          </p>
-        )}
+    <div className="ncrm3-sara ncrm3-sara-simples">
+      <div className="ncrm3-sara-topo">
+        <h4>✦ Sara</h4>
+        <span className={`ncrm3-sara-status nivel-${s.politica.nivel}`}>{s.politica.texto}</span>
       </div>
 
-      <ul className="ncrm3-sara-campos">
-        <li><b>Evidências:</b> {s.evidencias.length ? s.evidencias.join(" · ") : "nenhuma citada"}</li>
-        <li><b>Momento sugerido:</b> {s.momentoSugerido ?? "—"}</li>
-        <li><b>Ação padrão:</b> {s.codigoAcao.replace(/_/g, " ")}</li>
-        <li><b>Próxima ação:</b> {s.proximaAcao ?? "—"}</li>
-        <li><b>Prazo:</b> {s.prazo ? new Date(s.prazo).toLocaleString("pt-BR") : "—"}</li>
-        <li><b>Risco de abandono:</b> {s.risco ?? "—"} · <b>Confiança:</b> {s.confiancaPct}%</li>
-      </ul>
-
-      {s.roteiro.length > 0 && (
-        <ol style={{ margin: "0 0 0 18px", padding: 0, color: "var(--ink-soft)", fontSize: 12.5 }}>
-          {s.roteiro.map((passo, i) => <li key={i}>{passo}</li>)}
-        </ol>
-      )}
+      <div className="ncrm3-sara-agora">
+        <span>FAÇA AGORA</span>
+        <strong>{s.politica.podeUsar ? (s.proximaAcao ?? "Defina o próximo passo") : "Revise a conversa e defina o próximo passo"}</strong>
+        <small>{s.prazo ? `Até ${new Date(s.prazo).toLocaleString("pt-BR")}` : "Defina um prazo para concluir"}</small>
+      </div>
 
       {s.textoParaCopiar && (
         <div className="ncrm3-sara-copiar">
@@ -132,14 +92,41 @@ export function Sara3({
             disabled={aplicando || (a.decisao === "aceita" && !s.politica.podeUsar)}
             onClick={() => onDecidir(a.decisao)}
           >
-            {a.decisao === "aceita" && aplicando ? "Registrando…" : a.rotulo}
+            {a.decisao === "aceita" && aplicando
+              ? "Registrando…"
+              : a.decisao === "aceita"
+                ? "Usar como próxima ação"
+                : a.decisao === "ajustada"
+                  ? "Definir outra ação"
+                  : "Orientação incorreta"}
           </button>
         ))}
       </div>
-      <p className="ncrm3-nota">
-        Ao usar a orientação, a ação fica registrada com o seu nome e o momento do cliente é
-        recalculado. Nenhuma mensagem é enviada.
-      </p>
+
+      <details className="ncrm3-sara-detalhes">
+        <summary>Ver análise completa</summary>
+        <div className="ncrm3-checklist">
+          <div className="ncrm3-checklist-topo">
+            <b>{resumoChecklist(s.checklist)}</b>
+            <span className="ncrm3-checklist-barra" aria-hidden="true"><i style={{ width: `${s.checklist.completudePct}%` }} /></span>
+          </div>
+          <ul>
+            {s.checklist.itens.map((i) => (
+              <li key={i.chave} className={i.valor ? "ok" : "falta"}>
+                <span aria-hidden="true">{i.valor ? "✓" : "○"}</span><b>{i.rotulo}</b><em>{i.valor ?? "não perguntado"}</em>
+              </li>
+            ))}
+          </ul>
+          {s.checklist.proximasPerguntas.length > 0 && <p className="ncrm3-nota"><b>Pergunte em seguida:</b> {s.checklist.proximasPerguntas.join(" · ")}</p>}
+        </div>
+        <ul className="ncrm3-sara-campos">
+          <li><b>Evidências:</b> {s.evidencias.length ? s.evidencias.join(" · ") : "nenhuma citada"}</li>
+          <li><b>Momento sugerido:</b> {s.momentoSugerido ?? "—"}</li>
+          <li><b>Risco:</b> {s.risco ?? "—"} · <b>Confiança:</b> {s.confiancaPct}%</li>
+        </ul>
+        {s.roteiro.length > 0 && <ol>{s.roteiro.map((passo, i) => <li key={i}>{passo}</li>)}</ol>}
+        <p className="ncrm3-nota">A Sara não envia mensagens. A ação só muda depois da confirmação do corretor.</p>
+      </details>
     </div>
   );
 }
