@@ -188,7 +188,7 @@ export function Ficha3({
     const j = (await r.json().catch(() => ({}))) as Record<string, unknown>;
     setSaraCarregando(false);
     if (!r.ok) { onAviso((j.error as string) || "A Sara está indisponível agora."); return; }
-    const sugestao = { ...((j.sugestao ?? j) as SugestaoBruta), conduta_aplicada: j.aplicada === true };
+    const sugestao: SugestaoBruta = { ...((j.sugestao ?? j) as SugestaoBruta), conduta_aplicada: j.aplicada === true };
     setSara(sugestao);
     onSaraCarregada(lead.id, typeof sugestao.proxima_acao === "string" ? sugestao.proxima_acao : null);
   }, [accessToken, lead.id, onAviso, onSaraCarregada]);
