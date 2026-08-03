@@ -18,12 +18,13 @@
  * continua montada atrás, então voltar devolve a rolagem no ponto exato
  * em que estava — e nada é buscado de novo.
  *
- * O caminho antigo saía daqui com `window.location.assign('/crm?lead=N')`:
- * recarga completa do documento, queda no CRM de desktop e download de
- * ~1,8 MB de /api/crm antes de qualquer pixel. Pior: se o negócio não
- * estivesse naquele payload, um `if (!deal) return;` engolia tudo em
- * silêncio e o corretor via o toque não fazer nada. Esse caminho virou
- * "Abrir no CRM completo", no menu da ficha — saída de exceção.
+ * DEEP LINK DO PUSH (?lead=N)
+ * O aviso de lead novo no celular aponta para /crm?lead=N (via /negocio/N).
+ * O parâmetro é lido UMA vez na montagem; quando a fila chega, a ficha do
+ * negócio pedido abre. A query é apagada no consumo — o botão voltar não
+ * pode reabrir a mesma ficha. Lead que não está mais na fila vira um aviso
+ * visível, nunca silêncio: falha muda foi exatamente o defeito que fez
+ * "toquei e não aconteceu nada" existir.
  *
  * REGRAS DE PRODUTO, iguais às da tela de Início:
  *   - a Sara orienta, nunca envia;
@@ -31,7 +32,7 @@
  *   - nada de vocabulário técnico.
  */
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   espera, filtrar, iniciais, type ItemTela,
 } from "../home/telaCorretor.logica";
@@ -39,6 +40,29 @@ import { briefingDaSara, buscar, type Aba } from "./telaCrm.logica";
 import { FichaLeadMobile } from "./FichaLeadMobile";
 
 const ATUALIZA_MS = 60_000;
+
+/* O negócio pedido na URL, lido uma vez. Número inválido é null — nunca NaN. */
+function lerLeadDaUrl(): number | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const bruto = new URLSearchParams(window.location.search).get("lead");
+    if (!bruto) return null;
+    const n = Number(bruto);
+    return Number.isFinite(n) && n > 0 ? n : null;
+  } catch {
+    return null;
+  }
+}
+
+/* Consumir o deep link apaga a query, senão voltar/atualizar reabriria. */
+function limparLeadDaUrl() {
+  if (typeof window === "undefined") return;
+  try {
+    const url = new URL(window.location.href);
+    url.searchParams.delete("lead");
+    window.history.replaceState(null, "", url.toString());
+  } catch { /* a URL suja não quebra nada — só reabre no F5 */ }
+}
 
 export function TelaCrmMobile({ accessToken, nome, onAbrirLead, onIr }: {
   accessToken: string;
@@ -54,6 +78,14 @@ export function TelaCrmMobile({ accessToken, nome, onAbrirLead, onIr }: {
   const [aba, setAba] = useState<Aba>("meu_dia");
   const [termo, setTermo] = useState("");
   const [abertoSnap, setAbertoSnap] = useState<ItemTela | null>(null);
+  const [leadForaDaFila, setLeadForaDaFila] = useState(false);
+
+  /* Lido UMA vez na montagem (inicializador preguiçoso, nunca um setState
+     depois). O ref de "já consumido" só é tocado dentro do .then da fila —
+     as regras dos hooks proíbem, com razão, tanto setState síncrono em
+     efeito quanto ref durante o render. */
+  const [pedidoDoPush] = useState(lerLeadDaUrl);
+  const pedidoConsumido = useRef(false);
 
   const carregar = useCallback(async (sinal: AbortSignal) => {
     const r = await fetch("/api/ncrm/fila-operacional", {
@@ -68,10 +100,24 @@ export function TelaCrmMobile({ accessToken, nome, onAbrirLead, onIr }: {
     const ctrl = new AbortController();
     let vivo = true;
     carregar(ctrl.signal)
-      .then((l) => { if (vivo) { setItens(l); setErro(false); } })
+      .then((l) => {
+        if (!vivo) return;
+        setItens(l);
+        setErro(false);
+        /* O pedido do push é atendido aqui, quando a fila chega — não num
+           efeito próprio. Fora da fila = aviso na tela; o corretor decide
+           se procura na busca ou segue o dia. */
+        if (pedidoDoPush !== null && !pedidoConsumido.current) {
+          pedidoConsumido.current = true;
+          const alvo = l.find((x) => x.negocio_id === pedidoDoPush);
+          if (alvo) setAbertoSnap(alvo);
+          else setLeadForaDaFila(true);
+          limparLeadDaUrl();
+        }
+      })
       .catch((e) => { if (vivo && e?.name !== "AbortError") { setErro(true); setItens([]); } });
     return () => { vivo = false; ctrl.abort(); };
-  }, [carregar, tentativa]);
+  }, [carregar, tentativa, pedidoDoPush]);
 
   useEffect(() => {
     const t = setInterval(() => setTentativa((n) => n + 1), ATUALIZA_MS);
@@ -189,6 +235,18 @@ export function TelaCrmMobile({ accessToken, nome, onAbrirLead, onIr }: {
             Filtros
           </button>
         </div>
+
+        {/* O push prometeu um lead que a fila não tem mais (atendido por
+            outro, saiu da carteira, aviso antigo). Dizer é obrigatório:
+            o silêncio aqui já foi o pior defeito desta tela. */}
+        {leadForaDaFila && (
+          <div className="cm-erro" role="status">
+            <strong>Esse cliente não está mais na sua fila.</strong>
+            <button type="button" onClick={() => setLeadForaDaFila(false)}>
+              Entendi
+            </button>
+          </div>
+        )}
 
         {itens === null && (
           <div className="cm-esqueleto" aria-hidden="true">{[0, 1, 2, 3].map((i) => <span key={i} />)}</div>
