@@ -24,6 +24,11 @@ const RESULT_VISITA = new Set([
 ]);
 const STATUS_PROPOSTA = new Set(["em_negociacao", "aceita", "recusada", "expirada", "cancelada"]);
 const ETAPAS = new Set(["novo", "tentando_contato", "em_atendimento", "em_acompanhamento"]);
+const MOMENTOS_OPERACIONAIS = new Set([
+  "PRIMEIRA_ABORDAGEM", "CADENCIA_SEM_RESPOSTA", "CONVERSANDO_QUALIFICANDO",
+  "BUSCANDO_PRODUTO", "PRODUTO_ENVIADO", "TENTANDO_AGENDAMENTO",
+  "VISITA_AGENDADA", "RETORNO_PROGRAMADO", "FEEDBACK_POS_VISITA", "DECISAO_POS_VISITA",
+]);
 const MAX_SAFE = Number.MAX_SAFE_INTEGER;
 
 export function inteiroPositivo(v: unknown): number | null {
@@ -93,6 +98,12 @@ export function validarAcao(body: Record<string, unknown>): Val<{ action: string
       const em = dataValidaISO(body.proximaEm); if (!em) return { ok: false, erro: "prazo inválido" };
       const titulo = textoLimitado(body.proximaTitulo, 200) ?? tipo.replace(/_/g, " ");
       return { ok: true, value: { action, args: { negocioId, versao, resultado, obs, proximaTipo: tipo, proximaTitulo: titulo, proximaEm: em } } };
+    }
+    case "atualizarMomento": {
+      const e = precisaAlvo(); if (e) return { ok: false, erro: e };
+      const momentoCodigo = String(body.momentoCodigo ?? "");
+      if (!MOMENTOS_OPERACIONAIS.has(momentoCodigo)) return { ok: false, erro: "momento inválido" };
+      return { ok: true, value: { action, args: { negocioId, versao, momentoCodigo, obs } } };
     }
     case "saidaVisita": {
       const e = precisaAlvo(); if (e) return { ok: false, erro: e };

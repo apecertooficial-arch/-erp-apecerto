@@ -20,6 +20,7 @@ export type ItemFila3 = {
   negocio_id: number;
   lead_nome: string | null;
   etapa: string;
+  momento_codigo?: CodigoMomento | null;
   temperatura: string | null;
   corretor_nome: string | null;
   proxima_acao_titulo: string | null;
@@ -108,7 +109,7 @@ export type BlocoDia = {
 
 function paraCartao(item: ItemFila3, secao: Secao3, outros: number): CartaoDia {
   const derivada = condutaOficial({
-    etapa: item.etapa,
+    etapa: item.etapa, momentoCodigo: item.momento_codigo,
     proximaAcao: item.proxima_acao_titulo,
     proximaAcaoEm: item.proxima_acao_em,
     respondeu: item.respondeu,
@@ -240,7 +241,7 @@ export function painelDeAbertura(itens: ItemFila3[], agora: Date = new Date()): 
   let cadenciasHoje = 0;
 
   for (const { item } of unicos) {
-    if (item.respondeu) aguardandoResposta++;
+    if (item.resposta_pendente) aguardandoResposta++;
     if (item.proxima_acao_em && new Date(item.proxima_acao_em).getTime() < agora.getTime()) atrasadas++;
     if (item.etapa === "novo") leadsNovos++;
     if (!item.respondeu && item.etapa === "tentando_contato" && ehHoje(item.proxima_acao_em, agora)) cadenciasHoje++;

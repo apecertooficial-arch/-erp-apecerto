@@ -17,6 +17,7 @@ import type {
 export interface EstadoRow {
   negocio_id: number;
   etapa: string;
+  momento_codigo?: string | null;
   respondeu: boolean;
   resposta_pendente: boolean;
   aguardando_automacao: boolean;
@@ -105,7 +106,10 @@ export function mapEstadoToLead(row: EstadoRow): LeadNova {
     acoesComerciais: [],
     mensagemAutomaticaEnviadaEm: row.msg_automatica_em,
     aguardandoRespostaAutomacao: row.aguardando_automacao,
-    visitaAgendadaEm: row.saida === "pipeline_visitas" ? row.saida_em : null,
+    visitaAgendadaEm:
+      row.momento_codigo === "VISITA_AGENDADA" && row.visita_id
+        ? row.proxima_acao_em ?? row.atualizado_em
+        : row.saida === "pipeline_visitas" ? row.saida_em : null,
     proposta:
       row.saida === "esteira_vendas"
         ? { produto: "—", valor: 0, data: row.saida_em ?? row.atualizado_em }

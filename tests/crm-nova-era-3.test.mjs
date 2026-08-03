@@ -25,7 +25,7 @@ import { slaDoLead, tomDoSla } from "../app/features/crm-nova-era-3/lib/sla3.ts"
 import { ORDEM_FICHA, TITULO_BLOCO, prepararChamada, frasedaSituacao } from "../app/features/crm-nova-era-3/lib/ficha3.ts";
 import {
   ACOES_SARA, normalizarSara, proximaAcaoSugerida,
-  SARA_PODE_ENVIAR, SARA_PODE_MOVER_ETAPA,
+  SARA_PODE_ENVIAR, SARA_PODE_MOVER_ETAPA, SARA_PODE_ORGANIZAR_CRM,
 } from "../app/features/crm-nova-era-3/lib/sara3.ts";
 import { fotoDoLead, interesseDoLead, imoveisDoLead } from "../app/features/crm-nova-era-3/lib/adapter3.ts";
 
@@ -196,9 +196,9 @@ test("o cartão traduz a próxima ação livre para a conduta oficial", () => {
   assert.equal(c.corretor, "Ana");
   assert.equal(c.motivo, "Cliente respondeu");
   assert.equal(c.tempo, "2h 5min");
-  assert.equal(c.proximaAcao, "Responder o cliente");
-  assert.equal(c.momento, "Em atendimento");
-  assert.equal(c.acaoCodigo, "RESPONDER_CLIENTE");
+  assert.equal(c.proximaAcao, "Responder e qualificar");
+  assert.equal(c.momento, "Conversando e qualificando");
+  assert.equal(c.acaoCodigo, "RESPONDER_E_QUALIFICAR");
 });
 
 /* ============================ SLA ============================ */
@@ -297,16 +297,18 @@ test("a situação do cliente é dita sem jargão", () => {
 test("a Sara não envia e não move etapa", () => {
   assert.equal(SARA_PODE_ENVIAR, false);
   assert.equal(SARA_PODE_MOVER_ETAPA, false);
+  assert.equal(SARA_PODE_ORGANIZAR_CRM, true);
 });
 
 test("três decisões humanas: usar, ajustar, não faz sentido", () => {
   assert.deepEqual(ACOES_SARA.map((a) => a.decisao), ["aceita", "ajustada", "rejeitada"]);
-  assert.deepEqual(ACOES_SARA.map((a) => a.rotulo), ["Usar orientação", "Ajustar", "Não faz sentido"]);
+  assert.deepEqual(ACOES_SARA.map((a) => a.rotulo), ["Está correta", "Corrigir momento", "Análise incorreta"]);
 });
 
 test("a Sara mostra os oito campos combinados", () => {
   const s = normalizarSara({
     evidencias: ["quer 3 quartos", "  "],
+    momento_sugerido: "CONVERSANDO_QUALIFICANDO",
     temperatura: "quente",
     proxima_acao: "Ligar hoje à tarde",
     prazo_sugerido: "2026-08-01T14:00:00.000Z",
@@ -317,7 +319,7 @@ test("a Sara mostra os oito campos combinados", () => {
     confianca: 0.82,
   });
   assert.deepEqual(s.evidencias, ["quer 3 quartos"]);
-  assert.equal(s.momentoSugerido, "quente");
+  assert.equal(s.momentoSugerido, "CONVERSANDO_QUALIFICANDO");
   assert.equal(s.proximaAcao, "Ligar hoje à tarde");
   assert.equal(s.prazo, "2026-08-01T14:00:00.000Z");
   assert.deepEqual(s.perguntasFaltantes, ["qual o valor de entrada?"]);

@@ -4,13 +4,9 @@
  *
  * Exibe o checklist de qualificação (o que ja sabemos e o que falta),
  * evidências, momento sugerido, próxima ação, prazo, roteiro, texto para
- * copiar e risco. Três decisões: usar a orientação, ajustar ou dizer que não
- * faz sentido.
- *
- * "Usar orientação" REGISTRA a ação sugerida — um clique, sem reescrever o que
- * a Sara já escreveu. O momento do cliente muda como consequência da ação
- * registrada, calculada pelo banco; a Sara não escreve etapa em lugar nenhum.
- * Envio de mensagem continua fora: isso é do WhatsApp do corretor.
+ * copiar e risco. A conduta é aplicada automaticamente quando a evidência é
+ * suficiente; os botões servem para feedback/correção, não para fazer a
+ * inteligência funcionar. Envio continua no WhatsApp do corretor.
  */
 import { useState } from "react";
 import { ACOES_SARA, normalizarSara, type DecisaoSara, type SugestaoBruta } from "../lib/sara3";
@@ -55,9 +51,10 @@ export function Sara3({
       </div>
 
       <div className="ncrm3-sara-agora">
-        <span>ORDEM DA SARA</span>
+        <span>{s.condutaAplicada ? "CONDUTA ATUALIZADA PELA SARA" : "DIREÇÃO DA SARA"}</span>
         <strong>{s.politica.podeUsar ? (s.proximaAcao ?? "Defina o próximo passo") : "Revise a conversa e defina o próximo passo"}</strong>
         <small>{s.prazo ? `Até ${new Date(s.prazo).toLocaleString("pt-BR")}` : "Defina um prazo para concluir"}</small>
+        {s.condutaAplicada && <em>A Sara definiu momento, ação e prazo. Você só precisa executar a ação.</em>}
       </div>
 
       {s.textoParaCopiar && (
@@ -92,13 +89,7 @@ export function Sara3({
             disabled={aplicando || (a.decisao === "aceita" && !s.politica.podeUsar)}
             onClick={() => onDecidir(a.decisao)}
           >
-            {a.decisao === "aceita" && aplicando
-              ? "Registrando…"
-              : a.decisao === "aceita"
-                ? "Confirmar conduta"
-                : a.decisao === "ajustada"
-                  ? "Reportar exceção"
-                  : "Análise incorreta"}
+            {a.decisao === "aceita" && aplicando ? "Registrando…" : a.rotulo}
           </button>
         ))}
       </div>
@@ -125,7 +116,7 @@ export function Sara3({
           <li><b>Risco:</b> {s.risco ?? "—"} · <b>Confiança:</b> {s.confiancaPct}%</li>
         </ul>
         {s.roteiro.length > 0 && <ol>{s.roteiro.map((passo, i) => <li key={i}>{passo}</li>)}</ol>}
-        <p className="ncrm3-nota">A Sara não envia mensagens. A ação só muda depois da confirmação do corretor.</p>
+        <p className="ncrm3-nota">A Sara organiza o CRM, mas não envia mensagem, não agenda visita e não cria proposta. A obrigação só termina depois da ação real confirmada pelo D-API.</p>
       </details>
     </div>
   );

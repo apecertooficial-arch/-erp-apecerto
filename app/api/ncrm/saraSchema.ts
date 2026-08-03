@@ -6,6 +6,7 @@
 export interface SugestaoSara {
   acao_padrao_codigo: string;
   etapa_sugerida: "novo" | "tentando_contato" | "em_atendimento" | "em_acompanhamento" | null;
+  momento_sugerido: string | null;
   temperatura: "frio" | "morno" | "quente" | "negociando" | null;
   intencao_detectada: string | null;
   proxima_acao: string;
@@ -35,7 +36,19 @@ const CAMPOS_QUALIFICACAO = [
   "forma_pagamento", "prazo_compra", "motivo_compra", "quem_decide", "disponibilidade_visita",
 ] as const;
 
-const ACOES_PADRAO = ["PRIMEIRA_ABORDAGEM","ENVIAR_CADENCIA","RESPONDER_CLIENTE","ENTENDER_NECESSIDADE","BUSCAR_E_ENVIAR_IMOVEIS","PEDIR_RETORNO","REATIVAR_CONVERSA","AGENDAR_VISITA","REGISTRAR_RESULTADO_VISITA","REGISTRAR_PROPOSTA"] as const;
+const ACOES_PADRAO = [
+  "PRIMEIRA_ABORDAGEM", "ENVIAR_CADENCIA", "RESPONDER_E_QUALIFICAR",
+  "BUSCAR_E_ENVIAR_IMOVEIS", "PEDIR_RETORNO_PRODUTO", "AGENDAR_VISITA",
+  "CONFIRMAR_VISITA", "RETOMAR_NO_COMBINADO", "REGISTRAR_RESULTADO_VISITA",
+  "AVANCAR_POS_VISITA",
+] as const;
+
+const MOMENTOS = [
+  "PRIMEIRA_ABORDAGEM", "CADENCIA_SEM_RESPOSTA", "CONVERSANDO_QUALIFICANDO",
+  "BUSCANDO_PRODUTO", "PRODUTO_ENVIADO", "TENTANDO_AGENDAMENTO",
+  "VISITA_AGENDADA", "RETORNO_PROGRAMADO", "FEEDBACK_POS_VISITA",
+  "DECISAO_POS_VISITA",
+] as const;
 
 function checklist(v: unknown): Record<string, string> {
   if (!v || typeof v !== "object" || Array.isArray(v)) return {};
@@ -91,7 +104,8 @@ export function normalizarSugestaoSara(raw: unknown): { ok: true; sugestao: Suge
     ok: true,
     sugestao: {
       etapa_sugerida: enumOuNull(o.etapa_sugerida, ETAPAS),
-      acao_padrao_codigo: enumOuNull(o.acao_padrao_codigo, ACOES_PADRAO) ?? "ENTENDER_NECESSIDADE",
+      momento_sugerido: enumOuNull(o.momento_sugerido, MOMENTOS),
+      acao_padrao_codigo: enumOuNull(o.acao_padrao_codigo, ACOES_PADRAO) ?? "RESPONDER_E_QUALIFICAR",
       temperatura: enumOuNull(o.temperatura, TEMPS),
       intencao_detectada: strOuNull(o.intencao_detectada),
       proxima_acao: proxima,

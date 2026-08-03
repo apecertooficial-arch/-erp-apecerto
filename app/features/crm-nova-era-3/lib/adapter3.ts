@@ -66,6 +66,7 @@ export type LeadExibicao = {
   visitaId: string | null;
   /** Máximo de tentativas da régua DESTE lead (workflow versionado; leads antigos podem ter outro). */
   maxTentativas: number;
+  momentoCodigo: string | null;
 };
 
 export function paraExibicao(row: EstadoRow3): LeadExibicao {
@@ -83,6 +84,7 @@ export function paraExibicao(row: EstadoRow3): LeadExibicao {
     tentativasFeitas: row.tentativas_feitas ?? 0,
     visitaId: row.visita_id ?? null,
     maxTentativas: row.ncrm_workflow_config?.max_tentativas ?? 4,
+    momentoCodigo: row.momento_codigo ?? null,
   };
 }
 
