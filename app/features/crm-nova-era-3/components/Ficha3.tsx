@@ -11,11 +11,10 @@
  * não envia, não encerra o SLA e não muda o momento — quem faz isso é o
  * outbound confirmado pelo D-API.
  */
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { montarTimeline, type LeadNova } from "../../crm-nova-era/lib/rules";
 import { marcarWhatsappAberto, whatsappAbertoEm } from "../../crm-nova-era/lib/whatsappAberto";
 import { frasedaSituacao, prepararChamada, TITULO_BLOCO } from "../lib/ficha3";
-import { rotuloCurtoSla } from "../lib/sla3";
 import type { SaidaSla } from "../../crm-nova-era/lib/slaPrimeiraAbordagem";
 import { normalizarSara, proximaAcaoSugerida, type DecisaoSara, type SugestaoBruta } from "../lib/sara3";
 import { Sara3 } from "./Sara3";
@@ -36,13 +35,6 @@ type Mensagem = {
   criado_em: string | null;
   transcricao: string | null;
 };
-
-const AVANCADAS: ReadonlyArray<{ tipo: TipoForm; rotulo: string }> = Object.freeze([
-  { tipo: "visita", rotulo: "Agendar visita" },
-  { tipo: "proposta", rotulo: "Registrar proposta" },
-  { tipo: "nutricao", rotulo: "Enviar para nutrição" },
-  { tipo: "descarte", rotulo: "Descartar" },
-]);
 
 /** (11) 9 ****-2869 — como no protótipo. O botão Copiar copia o número real. */
 function mascararFone(exibicao: string): string {
@@ -111,7 +103,7 @@ const RESULTADOS_VISITA: ReadonlyArray<{ valor: string; rotulo: string }> = Obje
 ]);
 
 export function Ficha3({
-  lead, versao, leadId, accessToken, busy, sla, origem, interesse, email, fotoUrl, imoveis, visitaId,
+  lead, versao, leadId, accessToken, busy, origem, interesse, email, fotoUrl, imoveis, visitaId,
   analiseInicial, formInicial, onFechar, onExecutar, onCriarVisita, onAviso, onSaraCarregada,
 }: {
   lead: LeadNova;
@@ -158,6 +150,8 @@ export function Ficha3({
      "aguardando sincronização" e vira verde quando a integração oficial
      identifica uma mensagem enviada DEPOIS do clique. */
   const [waAbertoAgora, setWaAbertoAgora] = useState(false);
+  const [menuAtualizarAberto, setMenuAtualizarAberto] = useState(false);
+  const menuAtualizarRef = useRef<HTMLDetailsElement>(null);
   const waAbertoEm = whatsappAbertoEm(lead.id) ?? (waAbertoAgora ? new Date() : null);
   const waConfirmadoEm = (() => {
     if (!waAbertoEm) return null;
@@ -176,6 +170,11 @@ export function Ficha3({
     etapa: lead.coluna, proximaAcao: lead.proximaAcaoTitulo, proximaAcaoEm: lead.proximaAcaoEm,
     respondeu: lead.respondeu, respostaPendente: lead.respostaPendenteCorretor,
   }, analiseInicial ?? null);
+
+  const fecharMenuAtualizar = useCallback(() => {
+    setMenuAtualizarAberto(false);
+    if (menuAtualizarRef.current) menuAtualizarRef.current.open = false;
+  }, []);
 
   const pedirSara = useCallback(async () => {
     setSaraCarregando(true);
@@ -255,51 +254,13 @@ export function Ficha3({
         <div style={{ minWidth: 0 }}>
           <h2>{lead.nome}</h2>
           <span className="ncrm3-situacao">{frasedaSituacao(lead)}</span>
-          <div className="ncrm3-chips" style={{ marginTop: 6 }}>
-            <span className={`ncrm3-chip temp-${lead.momento}`}>{lead.momento}</span>
-            <span className="ncrm3-chip">{rotuloCurtoSla(sla)}</span>
-          </div>
+          <span className="ncrm3-ficha-contexto">{lead.corretorNome} · {interesse || origem || "interesse não informado"}</span>
         </div>
         <button type="button" className="ncrm3-ficha-fechar" onClick={onFechar} aria-label="Fechar ficha">✕</button>
       </div>
 
-      {/* 2. Corretor, origem e interesse */}
-      <section className="ncrm3-bloco">
-        <h3>{TITULO_BLOCO.corretor_origem_interesse}</h3>
-        <div className="ncrm3-linhas">
-          <div className="ncrm3-linha"><span>Corretor</span><b>{lead.corretorNome}</b></div>
-          <div className="ncrm3-linha"><span>Origem</span><b>{origem || "não informada"}</b></div>
-          <div className="ncrm3-linha"><span>Interesse</span><b>{interesse || "não informado"}</b></div>
-        </div>
-      </section>
-
-      {/* 3. Telefone — mascarado como no protótipo; Copiar copia o número real */}
-      <section className="ncrm3-bloco">
-        <h3>{TITULO_BLOCO.telefone}</h3>
-        {chamada.ok ? (
-          <div className="ncrm3-fone">
-            <span>{mascararFone(chamada.exibicao)}</span>
-            <button
-              type="button" className="ncrm3-secundario"
-              onClick={() => {
-                void navigator.clipboard.writeText(chamada.exibicao)
-                  .then(() => { setCopiado(true); setTimeout(() => setCopiado(false), 1600); })
-                  .catch(() => { /* o número continua visível na tela */ });
-              }}
-            >
-              {copiado ? "Copiado" : "Copiar"}
-            </button>
-          </div>
-        ) : (
-          <div className="ncrm3-erro" role="alert">
-            <b>Não dá para chamar este cliente.</b> {chamada.explicacao} {chamada.dica}
-          </div>
-        )}
-      </section>
-
-      {/* 4. Chamar no WhatsApp — intenção, nunca envio (3 estados do protótipo) */}
-      <section className="ncrm3-bloco">
-        <h3>{TITULO_BLOCO.chamar_whatsapp}</h3>
+      {/* Barra de trabalho: as ações que movem a operação ficam sempre no topo. */}
+      <section className="ncrm3-acoes-topo" aria-label="Ações do atendimento">
         {chamada.ok && waConfirmadoEm && (
           <div className="ncrm3-wa-confirmado" role="status">
             ✓ Mensagem identificada no histórico
@@ -313,34 +274,56 @@ export function Ficha3({
           </div>
         )}
         {chamada.ok && !waConfirmadoEm && (
-          <>
-            <a
-              className="ncrm3-whatsapp"
-              href={chamada.app}
-              data-e164={chamada.e164}
-              onClick={() => { marcarWhatsappAberto(lead.id); setWaAbertoAgora(true); }}
-            >
-              <span aria-hidden="true">💬</span>
-              {lead.ultimaInteracaoEm ? "Responder no WhatsApp" : "Chamar no WhatsApp"}
-            </a>
-            <a className="ncrm3-secundario" href={chamada.fallback} target="_blank" rel="noopener noreferrer" onClick={() => { marcarWhatsappAberto(lead.id); setWaAbertoAgora(true); }}>
-              Não abriu? Abrir pelo WhatsApp Web
-            </a>
-            <p className="ncrm3-nota">
-              A mensagem sai do WhatsApp do seu celular, escrita por você. O ERP não envia nada — o contato só
-              conta quando a mensagem enviada é confirmada.
-            </p>
-          </>
+          <a
+            className="ncrm3-acao-rapida principal"
+            href={chamada.app}
+            data-e164={chamada.e164}
+            onClick={() => { marcarWhatsappAberto(lead.id); setWaAbertoAgora(true); }}
+          >
+            <span aria-hidden="true">💬</span> WhatsApp
+          </a>
         )}
+        {!chamada.ok && <button type="button" className="ncrm3-acao-rapida principal" disabled>WhatsApp indisponível</button>}
+        <button type="button" className="ncrm3-acao-rapida" disabled={busy || emSaida}
+          onClick={() => { setInicial({}); setForm("visita"); }}>
+          <span aria-hidden="true">◇</span> Agendar visita
+        </button>
+        <button type="button" className="ncrm3-acao-rapida" disabled={busy || emSaida}
+          onClick={() => { setInicial({}); setForm("proposta"); }}>
+          <span aria-hidden="true">$</span> Lançar negociação
+        </button>
+        <details ref={menuAtualizarRef} className="ncrm3-atualizar-menu" onToggle={(e) => setMenuAtualizarAberto(e.currentTarget.open)}>
+          <summary aria-expanded={menuAtualizarAberto}>Atualizar <span aria-hidden="true">⌄</span></summary>
+          <div>
+            {!emSaida && <button type="button" onClick={() => { fecharMenuAtualizar(); setInicial({}); setForm("resultado"); }}>Marcar ação como feita</button>}
+            <button type="button" disabled={saraCarregando} onClick={() => { fecharMenuAtualizar(); void pedirSara(); }}>Reavaliar conversa com a Sara</button>
+            {!emSaida && <button type="button" onClick={() => { fecharMenuAtualizar(); setInicial({}); setForm("nutricao"); }}>Enviar para nutrição</button>}
+            {!emSaida && <button type="button" className="perigo" onClick={() => { fecharMenuAtualizar(); setInicial({}); setForm("descarte"); }}>Descartar atendimento</button>}
+          </div>
+        </details>
+        <details className="ncrm3-contato-detalhes">
+          <summary>Telefone e alternativas</summary>
+          <div>
+            {chamada.ok ? <>
+              <span>{mascararFone(chamada.exibicao)}</span>
+              <button type="button" onClick={() => {
+                void navigator.clipboard.writeText(chamada.exibicao)
+                  .then(() => { setCopiado(true); setTimeout(() => setCopiado(false), 1600); })
+                  .catch(() => undefined);
+              }}>{copiado ? "Copiado" : "Copiar número"}</button>
+              <a href={chamada.fallback} target="_blank" rel="noopener noreferrer" onClick={() => { marcarWhatsappAberto(lead.id); setWaAbertoAgora(true); }}>Abrir WhatsApp Web</a>
+            </> : <span>{chamada.explicacao} {chamada.dica}</span>}
+          </div>
+        </details>
       </section>
 
       {/* Uma única ordem operacional. A análise extensa não compete com ela. */}
       <section className="ncrm3-bloco ncrm3-conduta-ficha">
-        <h3>CONDUTA OFICIAL</h3>
+        <h3>O QUE FAZER AGORA</h3>
         <div className={`ncrm3-conduta prazo-${conduta.prazoInfo.status}`}>
           <span className="ncrm3-conduta-label">MOMENTO {conduta.momentoOrdem}/4 · {conduta.momento}</span>
           <small>{conduta.situacao}</small>
-          <span className="ncrm3-conduta-label">FAÇA AGORA</span>
+          <span className="ncrm3-conduta-label">PRÓXIMA AÇÃO</span>
           <b>{conduta.acao}</b>
           <span className="ncrm3-conduta-prazo">{conduta.prazoInfo.rotulo}{conduta.prazo ? ` · até ${dataLonga(conduta.prazo)}` : ""}</span>
           <em>Objetivo: {conduta.objetivo}</em>
@@ -360,14 +343,14 @@ export function Ficha3({
         </details>
       </section>
 
-      {/* 7. Histórico — a conversa real, como voltou pelo WhatsApp */}
-      <section className="ncrm3-bloco">
-        <h3>{TITULO_BLOCO.historico} <span style={{ fontWeight: 500, letterSpacing: 0, textTransform: "none", opacity: .8 }}>· somente leitura</span></h3>
-        <Conversa3 accessToken={accessToken} negocioId={Number(lead.id)} />
-      </section>
+      {/* A conversa continua acessível, mas não empurra a ordem operacional para baixo. */}
+      <details className="ncrm3-ficha-extras ncrm3-historico-recolhido">
+        <summary>Ver conversa e histórico</summary>
+        <div className="ncrm3-historico-conteudo"><Conversa3 accessToken={accessToken} negocioId={Number(lead.id)} /></div>
+      </details>
 
       <details className="ncrm3-ficha-extras">
-        <summary>Mais informações do cliente</summary>
+        <summary>Dados e informações do cliente</summary>
         <div>
       {/* 8. Dados */}
       <section className="ncrm3-bloco">
@@ -429,9 +412,9 @@ export function Ficha3({
         </div>
       </details>
 
-      {/* 11. Ações avançadas */}
-      <section className="ncrm3-bloco">
-        <h3>{TITULO_BLOCO.acoes_avancadas}</h3>
+      {/* Apenas o desfecho da visita permanece abaixo: as ações comuns já estão no topo. */}
+      {emSaida && <section className="ncrm3-bloco">
+        <h3>ANDAMENTO FORA DO FUNIL</h3>
         {emSaida ? (
           <>
             <p className="ncrm3-nota">
@@ -458,16 +441,8 @@ export function Ficha3({
               </div>
             )}
           </>
-        ) : (
-          <div className="ncrm3-avancadas">
-            {AVANCADAS.map((a) => (
-              <button key={a.tipo} type="button" className="ncrm3-secundario" onClick={() => { setInicial({}); setForm(a.tipo); }}>
-                {a.rotulo}
-              </button>
-            ))}
-          </div>
-        )}
-      </section>
+        ) : null}
+      </section>}
 
       {form && (
         <FormAcao3
