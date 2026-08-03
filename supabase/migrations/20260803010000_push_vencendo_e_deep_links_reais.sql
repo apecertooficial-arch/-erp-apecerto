@@ -1,26 +1,28 @@
 -- =====================================================================
--- AVISO ANTES DE VENCER + DEEP LINKS QUE EXISTEM + PUSH PARA VENCIDAS
+-- AVISO ANTES DE VENCER + PUSH PARA VENCIDAS + DEEP LINKS DE GESTAO
 -- ---------------------------------------------------------------------
 -- Tres mudancas, um motivo: o push do corretor tem que chegar NA HORA em
 -- que da para agir, e o toque nele tem que abrir uma tela que existe.
 --
--- 1. Tipo novo `acao_vencendo` (prioridade 1, publico corretor): dispara
---    quando o combinado vence nos proximos 30 minutos. Avisar so DEPOIS
---    de vencido (acao_vencida) e avisar tarde -- o corretor ja falhou
---    quando fica sabendo.
+-- 1. `retorno_proximo` (prioridade 1, publico corretor) passa a ser
+--    gerado quando o combinado vence nos proximos 30 minutos. O tipo ja
+--    existia no vocabulario fechado de ncrm_notificacao_tipo_check,
+--    reservado para exatamente isso — so nunca tinha sido gerado.
+--    Avisar so DEPOIS de vencido e avisar tarde.
 --
--- 2. Deep links do corretor viram /crm?lead=N. Os antigos apontavam para
---    /negocio/N, rota que NAO EXISTE no aplicativo: tocar no push caia
---    numa tela de erro. Os de gestao viram /notificacoes pelo mesmo
---    motivo (/gestao/* tambem nao existe).
---
--- 3. push_enfileirar passa a enfileirar tambem `acao_vencida` (prio 2).
+-- 2. push_enfileirar passa a enfileirar tambem `acao_vencida` (prio 2).
 --    "Vai vencer" merece barulho; "venceu" com mais razao ainda. A janela
 --    de 1 hora sobre criada_em impede que o historico de vencidas antigas
 --    vire uma rajada no primeiro aparelho que se inscrever.
 --
--- A lista de tipos urgentes daqui casa com TAGS_URGENTES do sw.js e com
--- TIPOS_URGENTES da edge function ncrm-web-push. Mudou aqui, muda la.
+-- 3. Deep links de GESTAO viram /notificacoes: os /gestao/* nao existem
+--    como rota no aplicativo. Os do corretor continuam /negocio/N — que
+--    e o endereco canonico da allowlist ck_ncrm_notif_deep_link (sem
+--    query string, de proposito) e que o aplicativo agora conhece:
+--    app/(erp)/negocio/[...caminho] redireciona para a ficha.
+--
+-- As listas de tipos urgentes daqui casam com TAGS_URGENTES do sw.js e
+-- com TIPOS_URGENTES da edge function ncrm-web-push. Mudou aqui, muda la.
 -- =====================================================================
 
 CREATE OR REPLACE FUNCTION ncrm_private.notificacoes_sincronizar()
@@ -34,21 +36,21 @@ BEGIN
   WITH candidatas AS (
     SELECT 'resp:'||e.negocio_id AS chave, 'cliente_respondeu' AS tipo, 'corretor' AS publico, 1 AS prioridade,
            'Cliente respondeu' AS titulo, 'Responda agora para nao esfriar' AS detalhe,
-           e.negocio_id, n.corretor_id, '/crm?lead='||e.negocio_id AS deep_link
+           e.negocio_id, n.corretor_id, '/negocio/'||e.negocio_id||'/conversa' AS deep_link
       FROM public.ncrm_estado e JOIN public.negocios n ON n.id = e.negocio_id
      WHERE e.saida IS NULL AND e.resposta_pendente
     UNION ALL
     SELECT 'novo:'||e.negocio_id, 'primeira_abordagem_pendente', 'corretor', 1,
            'Lead novo esperando o primeiro contato', 'Chame o cliente pelo WhatsApp',
-           e.negocio_id, n.corretor_id, '/crm?lead='||e.negocio_id
+           e.negocio_id, n.corretor_id, '/negocio/'||e.negocio_id
       FROM public.ncrm_estado e JOIN public.negocios n ON n.id = e.negocio_id
      WHERE e.saida IS NULL AND e.etapa = 'novo'
     UNION ALL
     -- ANTES de vencer: 30 minutos e tempo de terminar um atendimento e
     -- ainda cumprir o combinado. Prioridade 1 = entra no push.
-    SELECT 'vencendo:'||e.negocio_id, 'acao_vencendo', 'corretor', 1,
+    SELECT 'vencendo:'||e.negocio_id, 'retorno_proximo', 'corretor', 1,
            'Combinado vence em breve', e.proxima_acao_titulo,
-           e.negocio_id, n.corretor_id, '/crm?lead='||e.negocio_id
+           e.negocio_id, n.corretor_id, '/negocio/'||e.negocio_id
       FROM public.ncrm_estado e JOIN public.negocios n ON n.id = e.negocio_id
      WHERE e.saida IS NULL AND e.proxima_acao_em IS NOT NULL
        AND e.proxima_acao_em > now()
@@ -56,7 +58,7 @@ BEGIN
     UNION ALL
     SELECT 'venc:'||e.negocio_id, 'acao_vencida', 'corretor', 2,
            'Combinado vencido', e.proxima_acao_titulo,
-           e.negocio_id, n.corretor_id, '/crm?lead='||e.negocio_id
+           e.negocio_id, n.corretor_id, '/negocio/'||e.negocio_id
       FROM public.ncrm_estado e JOIN public.negocios n ON n.id = e.negocio_id
      WHERE e.saida IS NULL AND e.proxima_acao_em IS NOT NULL AND e.proxima_acao_em < now()
     UNION ALL
@@ -170,7 +172,7 @@ BEGIN
          CASE n.tipo
            WHEN 'cliente_respondeu' THEN 'Um cliente respondeu'
            WHEN 'primeira_abordagem_pendente' THEN 'Um lead novo esta esperando'
-           WHEN 'acao_vencendo' THEN 'Um combinado vence em breve'
+           WHEN 'retorno_proximo' THEN 'Um combinado vence em breve'
            WHEN 'acao_vencida' THEN 'Um combinado venceu'
            ELSE 'Abra o aplicativo para ver'
          END,
