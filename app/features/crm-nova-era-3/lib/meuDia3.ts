@@ -40,13 +40,13 @@ export const ORDEM_SECOES: readonly Secao3[] = Object.freeze([
 export const SECAO_TITULO: Record<Secao3, string> = {
   atender_agora: "Atender agora",
   fazer_hoje: "Fazer hoje",
-  acompanhar_depois: "Acompanhar depois",
+  acompanhar_depois: "Aguardando cliente",
 };
 
 export const SECAO_AJUDA: Record<Secao3, string> = {
   atender_agora: "Cliente novo, cliente que respondeu ou prazo estourado.",
   fazer_hoje: "Retornos, documentos e visitas que você combinou.",
-  acompanhar_depois: "Ações futuras e clientes sem urgência agora.",
+  acompanhar_depois: "O CRM monitora estes clientes e avisa quando chegar a hora de agir.",
 };
 
 /** Ponte com a partição canônica do domínio. */
@@ -99,7 +99,7 @@ function paraCartao(item: ItemFila3, secao: Secao3, outros: number): CartaoDia {
     corretor: item.corretor_nome?.trim() || "Sem corretor",
     motivo: item.motivo,
     tempo: esperaHumana(item.espera_min),
-    proximaAcao: item.proxima_acao_titulo?.trim() || "Definir próxima ação",
+    proximaAcao: item.proxima_acao_titulo?.trim() || "Sara está definindo a conduta",
     proximaAcaoEm: item.proxima_acao_em,
     secao,
     prioridade: item.prioridade,
