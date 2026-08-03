@@ -19,6 +19,7 @@ export function Funil3({
   acoes,
   onTrocarMomento,
   onAbrir,
+  onChat,
   onAcao,
 }: {
   porMomento: Record<Momento, DadosCard[]>;
@@ -27,6 +28,7 @@ export function Funil3({
   acoes: AcaoMenu[];
   onTrocarMomento: (m: Momento) => void;
   onAbrir: (negocioId: string) => void;
+  onChat: (negocioId: string) => void;
   onAcao: (negocioId: string, chave: string) => void;
 }) {
   const total = MOMENTOS.reduce((n, m) => n + porMomento[m.chave].length, 0);
@@ -70,6 +72,7 @@ export function Funil3({
                 rotuloPrincipal={m.chave === "novo" ? "Atender agora" : "Abrir atendimento"}
                 acoes={acoes}
                 onAbrir={() => onAbrir(d.lead.id)}
+                onChat={() => onChat(d.lead.id)}
                 onAcao={(chave) => onAcao(d.lead.id, chave)}
               />
             ))}

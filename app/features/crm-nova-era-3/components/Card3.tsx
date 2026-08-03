@@ -2,28 +2,21 @@
 /**
  * CARD 3.0 — o cartão do funil.
  *
- * Mostra, nesta ordem: avatar, nome, corretor, origem, interesse, temperatura,
- * última interação, tempo, mensagem pendente, próxima ação, SLA, cadência e a
- * orientação curta da Sara (bloco LILÁS, como no protótipo).
+ * Mostra somente a ordem de trabalho que o corretor precisa compreender sem
+ * interpretar a tela: MOMENTO -> AÇÃO -> PRAZO. Contexto e inteligência mais
+ * detalhados ficam na ficha; a conversa real abre direto pelo botão Chat.
  *
- * Ações: UM botão principal e um menu "...". Nada de fileira de botões
- * competindo pela atenção de quem atende.
+ * Ações: Chat, atendimento e menu "...". São dois destinos diferentes e
+ * explícitos: ler a conversa ou trabalhar a ficha.
  */
 import { useState } from "react";
 import type { LeadNova } from "../../crm-nova-era/lib/rules";
-import { rotuloCurtoSla, tomDoSla } from "../lib/sla3";
+import { tomDoSla } from "../lib/sla3";
 import type { SaidaSla } from "../../crm-nova-era/lib/slaPrimeiraAbordagem";
 import type { AnaliseSara } from "../lib/adapter3";
 import { condutaOficial } from "../lib/conduta3";
 
 export type AcaoMenu = { chave: string; rotulo: string };
-
-const TEMPERATURA_ROTULO: Record<string, string> = {
-  frio: "Frio",
-  morno: "Morno",
-  quente: "Quente",
-  negociando: "Negociando",
-};
 
 export function iniciais(nome: string | null | undefined): string {
   return (nome || "Lead")
@@ -75,6 +68,7 @@ export function Card3({
   rotuloPrincipal,
   acoes,
   onAbrir,
+  onChat,
   onAcao,
 }: {
   dados: DadosCard;
@@ -82,12 +76,12 @@ export function Card3({
   rotuloPrincipal: string;
   acoes: AcaoMenu[];
   onAbrir: () => void;
+  onChat: () => void;
   onAcao: (chave: string) => void;
 }) {
   const [menu, setMenu] = useState(false);
   const { lead, sla } = dados;
   const tom = tomDoSla(sla);
-  const temperatura = String(lead.momento ?? "frio");
   const conduta = condutaOficial({
     etapa: lead.coluna, proximaAcao: lead.proximaAcaoTitulo, proximaAcaoEm: lead.proximaAcaoEm,
     respondeu: lead.respondeu, respostaPendente: lead.respostaPendenteCorretor,
@@ -126,44 +120,38 @@ export function Card3({
         </div>
       </div>
 
-      <div className="ncrm3-chips">
-        <span className={`ncrm3-chip temp-${temperatura}`}>{TEMPERATURA_ROTULO[temperatura] ?? "Frio"}</span>
-        {dados.interesse && <span className="ncrm3-chip">{dados.interesse}</span>}
-        <span className={`ncrm3-chip sla-${tom}`} title="Tempo de resposta esperado da primeira abordagem">
-          {rotuloCurtoSla(sla)}
-        </span>
-      </div>
-
       {lead.respostaPendenteCorretor && (
         <span className="ncrm3-pendente">💬 Mensagem do cliente aguardando você</span>
       )}
 
-      <div className={`ncrm3-conduta prazo-${conduta.prazoInfo.status}`}>
-        <span className="ncrm3-conduta-label">MOMENTO {conduta.momentoOrdem}/4 · {conduta.momento}</span>
-        <b><small>FAÇA AGORA</small>{conduta.acao}</b>
-        <span className="ncrm3-conduta-prazo">{conduta.prazoInfo.rotulo}{conduta.prazo ? ` · ${dataCurta(conduta.prazo)}` : ""}</span>
-        <em>{conduta.objetivo}</em>
+      <div className={`ncrm3-ordem-card prazo-${conduta.prazoInfo.status}`}>
+        <div className="ncrm3-ordem-momento">
+          <span>MOMENTO {conduta.momentoOrdem}/4</span>
+          <strong>{conduta.momento}</strong>
+        </div>
+        <div className="ncrm3-ordem-acao">
+          <span>PRÓXIMA AÇÃO</span>
+          <strong>{conduta.acao}</strong>
+        </div>
+        <div className="ncrm3-ordem-prazo">
+          <span>PRAZO</span>
+          <b>{conduta.prazoInfo.rotulo}{conduta.prazo ? ` · ${dataCurta(conduta.prazo)}` : ""}</b>
+        </div>
       </div>
 
       <div className="ncrm3-card-rodape">
-        <span>Última interação: {tempoDesde(lead.ultimaInteracaoEm)}</span>
-        {/* Cadência: só enquanto o cliente NÃO respondeu — depois vira ação
-            comercial e as bolinhas mentiriam. Classes nova-crm-dot vêm do CSS
-            do Gate, que envolve toda a 3.0. Regressão da entrega anterior. */}
+        <span>Último contato: {tempoDesde(lead.ultimaInteracaoEm)}</span>
         {!lead.respondeu && (
-          <span className="nova-crm-dots" title={`Tentativa ${lead.tentativas.length} de ${dados.maxTentativas ?? 4}`}
-            aria-label={`Cadência: ${lead.tentativas.length} de ${dados.maxTentativas ?? 4} tentativas`}>
-            {Array.from({ length: dados.maxTentativas ?? 4 }, (_, i) => {
-              const t = lead.tentativas[i];
-              return <i key={i} className={`nova-crm-dot ${t ? `r-${t.resultado}` : "pend"}`} />;
-            })}
-          </span>
+          <span>Cadência {lead.tentativas.length}/{dados.maxTentativas ?? 4}</span>
         )}
       </div>
 
       <div className="ncrm3-card-acoes" onClick={(e) => e.stopPropagation()}>
+        <button type="button" className="ncrm3-chat-card" onClick={onChat}>
+          💬 Chat
+        </button>
         <button type="button" className="ncrm3-principal" onClick={onAbrir}>
-          {rotuloPrincipal}
+          {rotuloPrincipal === "Abrir atendimento" ? "Ver atendimento" : rotuloPrincipal}
         </button>
         <div className="ncrm3-mais">
           <button type="button" aria-haspopup="menu" aria-expanded={menu} aria-label="Mais ações" onClick={() => setMenu((v) => !v)}>

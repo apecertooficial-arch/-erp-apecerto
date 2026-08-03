@@ -135,6 +135,18 @@ export const CRM3_CSS = `
 .ncrm3-pendente { display:inline-flex; align-items:center; gap:5px; padding:3px 9px; border-radius:var(--radius-pill); background:#eaf0fb; color:#2456b5; font-size:11.5px; font-weight:700; }
 .ncrm3-card-proxima { padding:7px 9px; border-radius:var(--radius-input); background:var(--sunken); color:var(--ink-soft); font-size:12.5px; }
 .ncrm3-card-proxima b { display:block; font-weight:650; }
+.ncrm3-ordem-card { display:flex; flex-direction:column; border:1px solid #E7D7ED; border-left:4px solid #8B00CC; border-radius:12px; background:#FBF5FD; overflow:hidden; }
+.ncrm3-ordem-card.prazo-atrasada { border-left-color:#D92D20; background:#FFF7F5; }
+.ncrm3-ordem-card.prazo-vence_logo { border-left-color:#F79009; background:#FFFAEB; }
+.ncrm3-ordem-momento,.ncrm3-ordem-acao,.ncrm3-ordem-prazo { display:flex; flex-direction:column; gap:2px; padding:8px 10px; }
+.ncrm3-ordem-momento { flex-direction:row; align-items:center; justify-content:space-between; gap:8px; border-bottom:1px solid rgba(122,0,159,.10); }
+.ncrm3-ordem-momento span,.ncrm3-ordem-acao span,.ncrm3-ordem-prazo span { color:#7A009F; font-size:9px; font-weight:800; letter-spacing:.09em; }
+.ncrm3-ordem-momento strong { color:#66009A; font-size:11.5px; }
+.ncrm3-ordem-acao strong { color:var(--ink); font-size:14px; line-height:1.3; }
+.ncrm3-ordem-prazo { padding-top:5px; }
+.ncrm3-ordem-prazo b { color:#7A009F; font-size:11.5px; }
+.ncrm3-ordem-card.prazo-atrasada .ncrm3-ordem-prazo b { color:#B42318; }
+.ncrm3-ordem-card.prazo-vence_logo .ncrm3-ordem-prazo b { color:#B54708; }
 .ncrm3-conduta { display:flex; flex-direction:column; gap:5px; padding:11px; border:1px solid #E7D7ED; border-left:4px solid #8B00CC; border-radius:var(--radius-input); background:#FBF5FD; color:var(--ink); font-size:12px; line-height:1.35; }
 .ncrm3-conduta.prazo-atrasada { border-left-color:#D92D20; background:#FFF4F2; }
 .ncrm3-conduta.prazo-vence_logo { border-left-color:#F79009; background:#FFFAEB; }
@@ -157,7 +169,16 @@ export const CRM3_CSS = `
 .ncrm3-card-sara b { color:#66009A; }
 .ncrm3-card-rodape { display:flex; align-items:center; justify-content:space-between; gap:8px; color:var(--faint); font-size:11.5px; }
 .ncrm3-card-acoes { display:flex; align-items:center; gap:6px; }
-.ncrm3-card-acoes .ncrm3-principal { flex:1; }
+.ncrm3-card-acoes .ncrm3-principal { flex:1; min-width:0; padding-inline:10px; }
+.ncrm3-chat-card { flex:.72; min-width:0; min-height:40px; padding:0 10px; border:1px solid var(--orange); border-radius:var(--radius-pill); background:#fff; color:var(--orange-700); font:700 12.5px inherit; cursor:pointer; }
+.ncrm3-chat-card:hover { background:var(--orange-50); }
+.chat-readonly-note { padding:8px 14px; border-bottom:1px solid #DDE7F5; background:#F2F7FD; color:#315780; font-size:11.5px; font-weight:650; text-align:center; }
+/* O drawer é o mesmo do funil antigo, mas a Nova Era não envia pela API. */
+.lead-chat-drawer:has(.chat-readonly-note) .mini-chat-tools,
+.lead-chat-drawer:has(.chat-readonly-note) > footer,
+.lead-chat-drawer:has(.chat-readonly-note) .chat-suggestion,
+.lead-chat-drawer:has(.chat-readonly-note) .chat-sched-flow { display:none !important; }
+.lead-chat-drawer:has(.chat-readonly-note) .chat-messages { padding-bottom:18px; }
 .ncrm3-principal { display:inline-flex; align-items:center; justify-content:center; gap:6px; min-height:40px; padding:0 16px; border:0; border-radius:var(--radius-pill); background:var(--orange); color:#fff; font-family:inherit; font-size:13px; font-weight:600; cursor:pointer; text-decoration:none; }
 .ncrm3-principal:hover { background:var(--orange-600); }
 .ncrm3-principal:disabled { opacity:.4; cursor:default; }

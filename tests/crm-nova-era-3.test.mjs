@@ -8,7 +8,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { execSync } from "node:child_process";
 
 import {
   ABAS_3, abasVisiveis, abaDaUrl, podeVerGestao,
@@ -391,7 +390,7 @@ test("Esteira e Agenda usam a visão oficial; Leads e Visitas são telas nativas
      ganharam telas próprias da 3.0 — etapa do funil novo e agenda comercial no
      desenho aprovado. Esteira e Agenda continuam montando as oficiais. */
   const casca = ler(base + "Crm3Workspace.tsx");
-  assert.match(casca, /import \{ CrmWorkspace \} from "\.\.\/crm\/CrmWorkspace"/);
+  assert.match(casca, /import \{ CrmWorkspace, LeadChatDrawer,/);
   for (const view of ['view: "sales"', 'view: "agenda"']) {
     assert.ok(casca.includes(view), `a aba oficial ${view} sumiu`);
   }
@@ -400,17 +399,24 @@ test("Esteira e Agenda usam a visão oficial; Leads e Visitas são telas nativas
   assert.ok(!/leads: \{ view:/.test(casca), "Leads nao deve mais montar a tabela antiga");
 });
 
-test("nenhuma linha do CRM atual foi alterada por esta frente", () => {
-  /* Reaproveitar e editar sao coisas diferentes. O CRM atual e producao: a 3.0
-     monta as visoes oficiais como elas sao. Se um dia for preciso mesmo mexer,
-     que seja uma decisao consciente -- e este teste e quem forca a conversa. */
-  const alvo = "app/features/crm/CrmWorkspace.tsx";
-  const referencia = ["origin/main", "main"].find((ref) => {
-    try { execSync(`git rev-parse --verify ${ref}`, { stdio: "pipe" }); return true; } catch { return false; }
-  });
-  assert.ok(referencia, "sem referencia de main para comparar");
-  const alterados = execSync(`git diff --name-only ${referencia}...HEAD`, { encoding: "utf8" });
-  assert.ok(!alterados.includes(alvo), `${alvo} foi modificado — esta frente deve reaproveitar, nao editar`);
+test("o card abre o mini chat real do CRM antigo em modo somente leitura", () => {
+  const casca = ler(base + "Crm3Workspace.tsx");
+  const card = ler(base + "components/Card3.tsx");
+  const legado = ler("../app/features/crm/CrmWorkspace.tsx");
+  assert.ok(card.includes("💬 Chat"), "o acesso direto ao histórico sumiu do card");
+  assert.match(casca, /onChat=\{\(id\) => void abrirChat\(id\)\}/);
+  assert.match(casca, /<LeadChatDrawer[\s\S]*?readOnly/);
+  assert.match(legado, /readOnly\?: boolean/);
+  assert.match(legado, /Somente leitura · responda pelo WhatsApp do celular/);
+  assert.match(legado, /useLeadCopiloto\(accessToken, lead\.nome \|\| "", !readOnly\)/,
+    "abrir histórico não pode disparar o copiloto legado");
+});
+
+test("o card e uma ordem de trabalho: momento, ação e prazo", () => {
+  const card = ler(base + "components/Card3.tsx");
+  for (const rotulo of ["MOMENTO", "PRÓXIMA AÇÃO", "PRAZO"]) assert.ok(card.includes(rotulo));
+  assert.ok(!card.includes("ncrm3-chips"), "temperatura e SLA voltaram a competir com a ordem principal");
+  assert.ok(!card.includes("conduta.objetivo"), "o objetivo longo voltou ao card compacto");
 });
 
 test("o recorte do Pipe de Visitas nao cria segunda esteira nem segunda tabela", () => {

@@ -23,7 +23,7 @@
  * antigos. A navegação 3.0 substitui a barra de visões interna das oficiais.
  */
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
-import { CrmWorkspace } from "../crm/CrmWorkspace";
+import { CrmWorkspace, LeadChatDrawer, type Deal as DealLegado, type Lead as LeadLegado } from "../crm/CrmWorkspace";
 import { CRM3_CSS } from "./estilos";
 import { CRM3_CSS_FASE1 } from "./estilos-fase1";
 import { abaDaUrl, abasVisiveis, definicaoDaAba, podeVerGestao, type Aba3 } from "./lib/navegacao";
@@ -186,6 +186,7 @@ export function Crm3Workspace({ accessToken, profile }: { accessToken: string; p
   const [erro, setErro] = useState<string | null>(null);
   const [selId, setSelId] = useState<string | null>(null);
   const [detalhe, setDetalhe] = useState<LeadExibicao | null>(null);
+  const [chatEstado, setChatEstado] = useState<EstadoRow3 | null>(null);
   const [imoveis, setImoveis] = useState<ImovelDoLead[]>([]);
   const [busy, setBusy] = useState(false);
   const [aviso, setAviso] = useState<string | null>(null);
@@ -296,6 +297,17 @@ export function Crm3Workspace({ accessToken, profile }: { accessToken: string; p
     });
     setImoveis(imoveisDoLead(json.imoveis as ImovelBruto[]));
   }, [accessToken]);
+
+  /* O card abre o MESMO mini chat do funil antigo. Na Nova Era ele é somente
+     leitura: mostra todas as instâncias e o histórico D-API, mas mantém a
+     regra operacional de enviar pelo WhatsApp do celular. */
+  const abrirChat = useCallback(async (negocioId: string) => {
+    const noQuadro = itens.find((item) => String(item.negocio_id) === String(negocioId));
+    if (noQuadro) { setChatEstado(noQuadro); return; }
+    const { ok, json } = await api(`/api/ncrm?negocio=${negocioId}`, accessToken);
+    if (!ok) { setAviso((json.error as string) || "Não foi possível abrir o histórico."); return; }
+    setChatEstado(json.estado as EstadoRow3);
+  }, [itens, accessToken]);
 
   const executar = useCallback(async (payload: Record<string, unknown>): Promise<boolean> => {
     if (busy) return false;
@@ -469,6 +481,7 @@ export function Crm3Workspace({ accessToken, profile }: { accessToken: string; p
                       acoes={ACOES_CARD}
                       onTrocarMomento={setMomento}
                       onAbrir={(id) => { setFormPedido(null); void abrirAtendimento(id); }}
+                      onChat={(id) => void abrirChat(id)}
                       onAcao={(id, chave) => {
                         /* O menu "..." agora cumpre o que o rotulo promete: a
                            ficha abre ja com o formulario escolhido. */
@@ -528,6 +541,25 @@ export function Crm3Workspace({ accessToken, profile }: { accessToken: string; p
           </>
         )}
       </div>
+
+      {chatEstado?.negocios && (
+        <LeadChatDrawer
+          key={`crm3-chat:${chatEstado.negocio_id}`}
+          accessToken={accessToken}
+          readOnly
+          lead={{
+            id: chatEstado.negocios.lead_id,
+            nome: chatEstado.negocios.leads?.nome ?? null,
+            telefone: chatEstado.negocios.leads?.telefone ?? null,
+            corretor_id: chatEstado.negocios.corretor_id ?? null,
+          } as unknown as LeadLegado}
+          deal={{ id: chatEstado.negocio_id, lead_id: chatEstado.negocios.lead_id } as unknown as DealLegado}
+          corretorNome={chatEstado.negocios.corretores?.nome ?? undefined}
+          onClose={() => setChatEstado(null)}
+          onResponse={async () => { await carregarQuadro(); }}
+          onOpenLead={() => { const id = String(chatEstado.negocio_id); setChatEstado(null); void abrirAtendimento(id); }}
+        />
+      )}
     </div>
   );
 }
