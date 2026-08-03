@@ -116,8 +116,9 @@ SELECT public.test_assert((SELECT tentativas_feitas=0 FROM public.ncrm_estado WH
 
 -- ===== D7: imutabilidade — mover passo de config PUBLICADA para RASCUNHO negado =====
 RESET ROLE;
-INSERT INTO public.ncrm_workflow_config (versao, status, max_tentativas) VALUES (3,'rascunho',4);
-SELECT id AS cfg3 FROM public.ncrm_workflow_config WHERE versao=3 \gset
+-- Versão fictícia isolada: a versão 3 passou a ser o workflow operacional real.
+INSERT INTO public.ncrm_workflow_config (versao, status, max_tentativas) VALUES (3003,'rascunho',4);
+SELECT id AS cfg3 FROM public.ncrm_workflow_config WHERE versao=3003 \gset
 SELECT public.test_expect_error('UPDATE public.ncrm_workflow_passo SET config_id='||:cfg3||' WHERE config_id='||:cfg2||' AND ordem=1','passos_imutaveis','D7: mover passo de config publicada->rascunho negado');
 SELECT public.test_assert((SELECT count(*) FROM public.ncrm_workflow_passo WHERE config_id=:cfg2)=4,'D7: passos da config publicada intactos');
 
