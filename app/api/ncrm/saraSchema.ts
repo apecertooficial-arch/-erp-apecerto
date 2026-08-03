@@ -4,6 +4,7 @@
  * esperado, retorna falha controlada — nunca deixa passar string/JSON cru.
  */
 export interface SugestaoSara {
+  acao_padrao_codigo: string;
   etapa_sugerida: "novo" | "tentando_contato" | "em_atendimento" | "em_acompanhamento" | null;
   temperatura: "frio" | "morno" | "quente" | "negociando" | null;
   intencao_detectada: string | null;
@@ -33,6 +34,8 @@ const CAMPOS_QUALIFICACAO = [
   "regiao", "tipo_imovel", "metragem", "dormitorios", "vagas", "faixa_valor",
   "forma_pagamento", "prazo_compra", "motivo_compra", "quem_decide", "disponibilidade_visita",
 ] as const;
+
+const ACOES_PADRAO = ["RESPONDER_CLIENTE","QUALIFICAR_NECESSIDADE","QUALIFICAR_REGIAO","QUALIFICAR_IMOVEL","QUALIFICAR_ORCAMENTO","QUALIFICAR_PRAZO","ENVIAR_OPCOES","VALIDAR_OPCOES","CONTORNAR_OBJECAO","CONVIDAR_VISITA","CONFIRMAR_VISITA","RETOMAR_COMBINADO","LIGAR_CLIENTE","ENCERRAR_SEM_RESPOSTA","REVISAR_MANUALMENTE"] as const;
 
 function checklist(v: unknown): Record<string, string> {
   if (!v || typeof v !== "object" || Array.isArray(v)) return {};
@@ -88,6 +91,7 @@ export function normalizarSugestaoSara(raw: unknown): { ok: true; sugestao: Suge
     ok: true,
     sugestao: {
       etapa_sugerida: enumOuNull(o.etapa_sugerida, ETAPAS),
+      acao_padrao_codigo: enumOuNull(o.acao_padrao_codigo, ACOES_PADRAO) ?? "REVISAR_MANUALMENTE",
       temperatura: enumOuNull(o.temperatura, TEMPS),
       intencao_detectada: strOuNull(o.intencao_detectada),
       proxima_acao: proxima,
