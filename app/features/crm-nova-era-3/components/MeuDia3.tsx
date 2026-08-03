@@ -194,26 +194,13 @@ export function MeuDia3({
       {/* O tamanho do dia, em numeros que o corretor confere sozinho. */}
       {!carregando && !erro && filtrados.length > 0 && (
         <section className="ncrm3-abertura" aria-label="Resumo do seu dia">
-          <div className="ncrm3-abertura-numeros">
-            <article role="button" tabIndex={0} style={{ cursor: "pointer" }} onClick={() => setFiltro("vencidos")}><b>{painel.atrasadas}</b><span>ações atrasadas</span></article>
-            <article role="button" tabIndex={0} style={{ cursor: "pointer" }} onClick={() => onIrParaAba?.("avisos")}><b>{painel.aguardandoResposta}</b><span>clientes aguardando você</span></article>
-            <article role="button" tabIndex={0} style={{ cursor: "pointer" }} onClick={() => onIrParaAba?.("funil")}><b>{painel.leadsNovos}</b><span>{painel.leadsNovos === 1 ? "lead novo" : "leads novos"}</span></article>
-            <article role="button" tabIndex={0} style={{ cursor: "pointer" }} onClick={() => setFiltro("hoje")}><b>{painel.cadenciasHoje}</b><span>cadências para hoje</span></article>
-            {onIrParaVisitas && (
-              <article className="link" role="button" tabIndex={0} style={{ cursor: "pointer" }} onClick={onIrParaVisitas}>
-                {visitasHoje != null ? (
-                  <>
-                    <b>{visitasHoje}</b>
-                    <span>{visitasHoje === 1 ? "visita do dia" : "visitas do dia"} · ver na aba Visitas</span>
-                  </>
-                ) : (
-                  <>
-                    <button type="button" onClick={onIrParaVisitas}>Ver visitas do dia</button>
-                    <span>na aba Visitas</span>
-                  </>
-                )}
-              </article>
-            )}
+          <div className="ncrm3-abertura-cab">
+            <div>
+              <span>SEU PLANO DE TRABALHO</span>
+              <h3>O CRM já colocou o dia na ordem certa.</h3>
+              <p>Comece pela próxima ação. Ao concluir, a Sara relê a conversa e o CRM prepara a seguinte.</p>
+            </div>
+            <div className="ncrm3-abertura-total"><b>{filtrados.length}</b><span>obrigações neste filtro</span></div>
           </div>
 
           {painel.proximo && (
@@ -230,6 +217,25 @@ export function MeuDia3({
               </button>
             </div>
           )}
+
+          <div className="ncrm3-abertura-numeros">
+            <article role="button" tabIndex={0} style={{ cursor: "pointer" }} onClick={() => setFiltro("vencidos")}><b>{painel.atrasadas}</b><span>ações atrasadas</span></article>
+            <article role="button" tabIndex={0} style={{ cursor: "pointer" }} onClick={() => onIrParaAba?.("avisos")}><b>{painel.aguardandoResposta}</b><span>clientes aguardando você</span></article>
+            <article role="button" tabIndex={0} style={{ cursor: "pointer" }} onClick={() => onIrParaAba?.("funil")}><b>{painel.leadsNovos}</b><span>{painel.leadsNovos === 1 ? "lead novo" : "leads novos"}</span></article>
+            <article role="button" tabIndex={0} style={{ cursor: "pointer" }} onClick={() => setFiltro("hoje")}><b>{painel.cadenciasHoje}</b><span>cadências para hoje</span></article>
+            {onIrParaVisitas && (
+              <article className="link" role="button" tabIndex={0} style={{ cursor: "pointer" }} onClick={onIrParaVisitas}>
+                <b>{visitasHoje ?? "—"}</b>
+                <span>{visitasHoje === 1 ? "visita do dia" : "visitas do dia"} · abrir Pipe</span>
+              </article>
+            )}
+          </div>
+
+          <div className="ncrm3-como-funciona" aria-label="Como trabalhar nesta tela">
+            <article><i>1</i><div><b>Siga a ordem</b><span>O primeiro item é o mais urgente.</span></div></article>
+            <article><i>2</i><div><b>Execute a ação</b><span>WhatsApp, visita, produto ou retorno.</span></div></article>
+            <article><i>3</i><div><b>Conclua no CRM</b><span>A Sara confere e prepara o próximo passo.</span></div></article>
+          </div>
           {acoesPorMomento.length > 0 && (
             <div className="ncrm3-dia-momentos" aria-label="Ações organizadas por momento">
               <span>Seu dia por momento</span>
@@ -272,7 +278,7 @@ export function MeuDia3({
                     <div className="ncrm3-item-linha">
                       <strong>{c.nome}</strong>
                       <span className="ncrm3-item-meta">{c.corretor}</span>
-                      <span className={chipDoMotivo(c.motivo)}>MOMENTO {c.momentoOrdem}/10 · {c.momento}</span>
+                      <span className={chipDoMotivo(c.motivo)}>MOMENTO {c.momentoOrdem} · {c.momento}</span>
                       {c.outrosAtendimentos > 0 && (
                         <span className="ncrm3-item-meta">
                           +{c.outrosAtendimentos} {c.outrosAtendimentos === 1 ? "atendimento" : "atendimentos"} deste cliente

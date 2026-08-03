@@ -22,6 +22,7 @@ import { FormAcao3, type TipoForm } from "./FormAcao3";
 import { iniciais, tempoDesde } from "./Card3";
 import type { AnaliseSara } from "../lib/adapter3";
 import { condutaOficial, momentosDaEtapa } from "../lib/conduta3";
+import { tituloMomento } from "../lib/momentos";
 
 export type ImovelDoLead = { id: string; nome: string; bairro: string | null; cidade: string | null };
 
@@ -351,15 +352,34 @@ export function Ficha3({
 
       {/* Uma única ordem operacional. A análise extensa não compete com ela. */}
       <section className="ncrm3-bloco ncrm3-conduta-ficha">
-        <h3>O QUE FAZER AGORA</h3>
+        <div className="ncrm3-conduta-cab">
+          <div>
+            <span>ORDEM DO CRM</span>
+            <h3>Faça isto agora</h3>
+          </div>
+          <span className="ncrm3-conduta-fonte">Sara + conduta oficial</span>
+        </div>
         <div className={`ncrm3-conduta prazo-${conduta.prazoInfo.status}`}>
-          <span className="ncrm3-conduta-label">MOMENTO {conduta.momentoOrdem}/10 · {conduta.momento}</span>
+          <div className="ncrm3-conduta-posicao">
+            <span><small>ETAPA</small>{tituloMomento(lead.coluna)}</span>
+            <span><small>MOMENTO {conduta.momentoOrdem}</small>{conduta.momento}</span>
+          </div>
           <small>{conduta.situacao}</small>
           <span className="ncrm3-conduta-label">PRÓXIMA AÇÃO</span>
           <b>{conduta.acao}</b>
           <span className="ncrm3-conduta-prazo">{conduta.prazoInfo.rotulo}{conduta.prazo ? ` · até ${dataLonga(conduta.prazo)}` : ""}</span>
           <em>Objetivo: {conduta.objetivo}</em>
         </div>
+        {!emSaida && (
+          <div className="ncrm3-conduta-botoes">
+            <button type="button" className="ncrm3-preto" disabled={busy} onClick={() => { setInicial({}); setForm("resultado"); }}>
+              ✓ Ação feita
+            </button>
+            <button type="button" className="ncrm3-secundario" disabled={busy || saraCarregando} onClick={() => void pedirSara()}>
+              Reavaliar conversa
+            </button>
+          </div>
+        )}
         <details className="ncrm3-sara-explicacao">
           <summary>Por que esta conduta foi definida?</summary>
           {conduta.justificativa && <p>{conduta.justificativa}</p>}
