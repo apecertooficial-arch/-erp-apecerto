@@ -100,6 +100,22 @@ const AVISO_PADRAO = {
   tag: "ncrm",
 };
 
+/* O que exige acao AGORA: chega com som e vibracao, e cada ocorrencia vira um
+   aviso proprio. Esta lista casa com TIPOS_URGENTES da entrega (edge function
+   ncrm-web-push) -- chegar rapido e chegar mudo seria meio aviso.
+
+   `retorno_proximo` e o combinado vencendo em 30 minutos (nome do vocabulario
+   fechado de ncrm_notificacao); `acao_vencida` e o que ja venceu. Os dois
+   fazem barulho porque prazo e compromisso com gente: o combinado que vence
+   ainda da para cumprir, e o aviso quieto que o corretor ve as 18h nao serve
+   para nada. */
+const TAGS_URGENTES = [
+  "primeira_abordagem_pendente",
+  "cliente_respondeu",
+  "retorno_proximo",
+  "acao_vencida",
+];
+
 /* Pacote corrompido ou vazio nao pode derrubar o handler. Em push com
    userVisibleOnly o navegador COBRA uma notificacao visivel: se engolirmos o
    erro em silencio, o Chrome mostra "Este site foi atualizado em segundo plano"
@@ -125,8 +141,8 @@ self.addEventListener("push", (evento) => {
 
   /* Dois leads novos seguidos precisam virar DOIS avisos, nao um substituindo o
      outro em silencio -- por isso a tag ganha timestamp no que e urgente. Ja
-     dez "combinado vencido" colapsam num so, de proposito. */
-  const urgente = aviso.tag === "primeira_abordagem_pendente" || aviso.tag === "cliente_respondeu";
+     os avisos de gestao colapsam por tipo, de proposito. */
+  const urgente = TAGS_URGENTES.includes(aviso.tag);
 
   evento.waitUntil(
     self.registration.showNotification(aviso.title, {
@@ -136,8 +152,12 @@ self.addEventListener("push", (evento) => {
       tag: urgente ? `${aviso.tag}-${Date.now()}` : aviso.tag,
       renotify: urgente,
       requireInteraction: false,
-      // Vibra so no que exige acao agora. O resto chega quieto.
+      /* Barulho e parte do aviso urgente: vibracao dupla + o som padrao do
+         aparelho (silent: false garante o som; o navegador nao deixa escolher
+         QUAL som, e esta certo -- o toque do sistema e o que o corretor ja
+         reconhece). O que nao e urgente chega quieto. */
       vibrate: urgente ? [180, 80, 180] : undefined,
+      silent: urgente ? false : undefined,
       data: { url: aviso.url },
     }),
   );
