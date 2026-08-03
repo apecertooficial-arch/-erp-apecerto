@@ -119,6 +119,9 @@ cp "$ROOT/tests/crm-nova-era/99i_tests_operacao_v4.sql" "$STAGE/v4.sql"
 cp "$ROOT/supabase/migrations/20260810130000_ncrm_saida_humana_continuidade.sql" "$STAGE/mig_cont.sql"
 cp "$ROOT/supabase/rollbacks/20260810130000_ncrm_saida_humana_continuidade_rollback.sql" "$STAGE/down_cont.sql"
 cp "$ROOT/tests/crm-nova-era/99j_tests_saida_humana_continuidade.sql" "$STAGE/cont.sql"
+cp "$ROOT/supabase/migrations/20260810140000_ncrm_sla_config_rls.sql" "$STAGE/mig_rls_sla.sql"
+cp "$ROOT/supabase/rollbacks/20260810140000_ncrm_sla_config_rls_rollback.sql" "$STAGE/down_rls_sla.sql"
+cp "$ROOT/tests/crm-nova-era/99k_tests_sla_config_rls.sql" "$STAGE/rls_sla.sql"
 chmod -R a+rX "$STAGE"
 MIG="$STAGE/mig.sql"; DOWN="$STAGE/down.sql"; HARNESS="$STAGE/harness.sql"; CORE="$STAGE/core.sql"; CORE2="$STAGE/core2.sql"; CORE3="$STAGE/core3.sql"; CORE4="$STAGE/core4.sql"; MIG_SARA="$STAGE/mig_sara.sql"
 MIG_INGEST="$STAGE/mig_ingest.sql"; MIG_PROP="$STAGE/mig_prop.sql"; MIG_VISITA="$STAGE/mig_visita.sql"
@@ -154,6 +157,7 @@ P42H="$STAGE/p42h.sql"; D42H="$STAGE/d42h.sql"
 P42I="$STAGE/p42i.sql"; D42I="$STAGE/d42i.sql"
 NOTIF="$STAGE/notif.sql"
 SLA="$STAGE/sla.sql"
+MIG_RLS_SLA="$STAGE/mig_rls_sla.sql"; DOWN_RLS_SLA="$STAGE/down_rls_sla.sql"; RLS_SLA="$STAGE/rls_sla.sql"
 PGBIN=/usr/lib/postgresql/16/bin
 PGDATA=/tmp/ncrm_pgdata
 SOCK=/tmp/ncrm_sock
@@ -499,6 +503,20 @@ PSQL -f "$STAGE/mig_cont.sql"
 PSQL -c "SELECT public.test_assert(position('registrar_saida_humana_continuidade' in
   pg_get_functiondef('public.ncrm_registrar_primeira_humana(bigint,text,timestamptz)'::regprocedure))>0,
   '#cont11 migration reaplica depois do rollback');"
+
+echo "### RLS da configuração de redistribuição por SLA"
+PSQL -f "$MIG_RLS_SLA"
+PSQL -f "$RLS_SLA"
+PSQL -f "$DOWN_RLS_SLA"
+PSQL -c "SELECT public.test_assert(NOT (SELECT relrowsecurity
+  FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
+  WHERE n.nspname='public' AND c.relname='ncrm_sla_redistribuicao_config'),
+  '#rls6 rollback restaura o estado anterior');"
+PSQL -f "$MIG_RLS_SLA"
+PSQL -c "SELECT public.test_assert((SELECT relrowsecurity
+  FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
+  WHERE n.nspname='public' AND c.relname='ncrm_sla_redistribuicao_config'),
+  '#rls7 migration reaplica depois do rollback');"
 
 echo "### teardown"
 sudo -u pg "$PGBIN/pg_ctl" -D "$PGDATA" stop >/dev/null 2>&1 || true
