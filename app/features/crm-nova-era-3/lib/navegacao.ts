@@ -32,7 +32,7 @@ export type DefinicaoAba = {
 /** Ordem obrigatória da navegação 3.0. */
 export const ABAS_3: readonly DefinicaoAba[] = Object.freeze([
   { chave: "meu_dia", titulo: "Meu Dia", simbolo: "◉", subtitulo: "O que precisa da sua atenção agora" },
-  { chave: "funil", titulo: "Funil", simbolo: "▦", subtitulo: "Novo, tentando contato, em atendimento e em acompanhamento" },
+  { chave: "funil", titulo: "Funil", simbolo: "▦", subtitulo: "Novo, tentando contato, em atendimento e pós-visita" },
   { chave: "leads", titulo: "Leads", simbolo: "☷", subtitulo: "Consulte, filtre e atualize os leads da operação" },
   { chave: "visitas", titulo: "Visitas", simbolo: "◇", subtitulo: "Pipe de visitas — entra só com visita agendada" },
   { chave: "esteira", titulo: "Esteira de Vendas", simbolo: "◆", subtitulo: "Entra só com proposta formal registrada" },
