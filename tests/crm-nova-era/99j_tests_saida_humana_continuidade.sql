@@ -1,6 +1,35 @@
 -- Regressão do defeito visto em produção: depois da primeira abordagem, uma
 -- nova mensagem real do corretor precisa atualizar o estado e acordar a Sara.
 
+-- Este teste roda depois do rollback completo do core. Recrie explicitamente
+-- o card já abordado e ligue o ingest no banco efêmero, sem depender do estado
+-- deixado por outra bateria de testes.
+INSERT INTO public.ncrm_estado (negocio_id,workflow_config_id,etapa,momento_codigo,
+  respondeu,resposta_pendente,proxima_acao_tipo,proxima_acao_titulo,proxima_acao_em,
+  origem_ultima,distribuido_em,primeira_saida_humana_em,primeira_saida_message_id,
+  sla_minutos,sla_dentro_5min,sla_prazo_min,sla_evidencia,ultima_interacao_em)
+SELECT 73002,id,'em_atendimento','CONVERSANDO_QUALIFICANDO',true,true,
+  'entender_necessidade','Ação antiga',now()-interval '2 hours','sistema',
+  now()-interval '10 minutes',now()-interval '7 minutes','MSG-AUTO-1',3,true,5,
+  'dapi_webhook_outbound',now()-interval '3 hours'
+FROM public.ncrm_workflow_config
+WHERE status='publicada' ORDER BY versao DESC LIMIT 1
+ON CONFLICT (negocio_id) DO UPDATE SET
+  etapa=excluded.etapa,momento_codigo=excluded.momento_codigo,
+  respondeu=excluded.respondeu,resposta_pendente=excluded.resposta_pendente,
+  proxima_acao_tipo=excluded.proxima_acao_tipo,
+  proxima_acao_titulo=excluded.proxima_acao_titulo,
+  proxima_acao_em=excluded.proxima_acao_em,
+  primeira_saida_humana_em=excluded.primeira_saida_humana_em,
+  primeira_saida_message_id=excluded.primeira_saida_message_id,
+  sla_minutos=excluded.sla_minutos,sla_dentro_5min=excluded.sla_dentro_5min,
+  sla_prazo_min=excluded.sla_prazo_min,sla_evidencia=excluded.sla_evidencia,
+  ultima_interacao_em=excluded.ultima_interacao_em;
+
+UPDATE public.ncrm_ingest_config
+SET ativo=true, ativo_desde=now()-interval '1 day'
+WHERE id=true;
+
 UPDATE public.ncrm_estado SET
   etapa='em_atendimento',momento_codigo='CONVERSANDO_QUALIFICANDO',
   respondeu=true,resposta_pendente=true,
