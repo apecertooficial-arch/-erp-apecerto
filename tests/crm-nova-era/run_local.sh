@@ -109,6 +109,9 @@ cp "$ROOT/tests/crm-nova-era/99_tests_sla_canonico.sql" "$STAGE/sla.sql"
 cp "$ROOT/supabase/migrations/20260810100000_ncrm_operacao_padronizada_v3.sql" "$STAGE/mig_op3.sql"
 cp "$ROOT/supabase/rollbacks/20260810100000_ncrm_operacao_padronizada_v3_rollback.sql" "$STAGE/down_op3.sql"
 cp "$ROOT/tests/crm-nova-era/99g_tests_operacao_padronizada_v3.sql" "$STAGE/op3.sql"
+cp "$ROOT/supabase/migrations/20260810110000_ncrm_motor_operacional_meu_dia.sql" "$STAGE/mig_motor_dia.sql"
+cp "$ROOT/supabase/rollbacks/20260810110000_ncrm_motor_operacional_meu_dia_rollback.sql" "$STAGE/down_motor_dia.sql"
+cp "$ROOT/tests/crm-nova-era/99h_tests_motor_operacional_meu_dia.sql" "$STAGE/motor_dia.sql"
 chmod -R a+rX "$STAGE"
 MIG="$STAGE/mig.sql"; DOWN="$STAGE/down.sql"; HARNESS="$STAGE/harness.sql"; CORE="$STAGE/core.sql"; CORE2="$STAGE/core2.sql"; CORE3="$STAGE/core3.sql"; CORE4="$STAGE/core4.sql"; MIG_SARA="$STAGE/mig_sara.sql"
 MIG_INGEST="$STAGE/mig_ingest.sql"; MIG_PROP="$STAGE/mig_prop.sql"; MIG_VISITA="$STAGE/mig_visita.sql"
@@ -448,6 +451,10 @@ PSQL -c "SELECT public.test_assert(EXISTS (SELECT 1 FROM public.ncrm_workflow_co
 echo "### operação padronizada v3: catálogo, SLAs e cadência D1/D2/D4/D6/D7"
 PSQL -f "$STAGE/mig_op3.sql"
 PSQL -f "$STAGE/op3.sql"
+
+echo "### motor operacional: quatro momentos, dez ações e Meu Dia canônico"
+PSQL -f "$STAGE/mig_motor_dia.sql"
+PSQL -f "$STAGE/motor_dia.sql"
 
 echo "### teardown"
 sudo -u pg "$PGBIN/pg_ctl" -D "$PGDATA" stop >/dev/null 2>&1 || true

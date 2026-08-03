@@ -192,9 +192,10 @@ export function MeuDia3({
       {!carregando && !erro && filtrados.length > 0 && (
         <section className="ncrm3-abertura" aria-label="Resumo do seu dia">
           <div className="ncrm3-abertura-numeros">
-            <article role="button" tabIndex={0} style={{ cursor: "pointer" }} onClick={() => onIrParaAba?.("avisos")}><b>{painel.aguardandoResposta}</b><span>aguardando sua resposta</span></article>
+            <article role="button" tabIndex={0} style={{ cursor: "pointer" }} onClick={() => setFiltro("vencidos")}><b>{painel.atrasadas}</b><span>ações atrasadas</span></article>
+            <article role="button" tabIndex={0} style={{ cursor: "pointer" }} onClick={() => onIrParaAba?.("avisos")}><b>{painel.aguardandoResposta}</b><span>clientes aguardando você</span></article>
             <article role="button" tabIndex={0} style={{ cursor: "pointer" }} onClick={() => onIrParaAba?.("funil")}><b>{painel.leadsNovos}</b><span>{painel.leadsNovos === 1 ? "lead novo" : "leads novos"}</span></article>
-            <article role="button" tabIndex={0} style={{ cursor: "pointer" }} onClick={() => onIrParaAba?.("agenda")}><b>{painel.retornosHoje}</b><span>{painel.retornosHoje === 1 ? "retorno para hoje" : "retornos para hoje"}</span></article>
+            <article role="button" tabIndex={0} style={{ cursor: "pointer" }} onClick={() => setFiltro("hoje")}><b>{painel.cadenciasHoje}</b><span>cadências para hoje</span></article>
             {onIrParaVisitas && (
               <article className="link" role="button" tabIndex={0} style={{ cursor: "pointer" }} onClick={onIrParaVisitas}>
                 {visitasHoje != null ? (
@@ -256,7 +257,7 @@ export function MeuDia3({
                     <div className="ncrm3-item-linha">
                       <strong>{c.nome}</strong>
                       <span className="ncrm3-item-meta">{c.corretor}</span>
-                      <span className={chipDoMotivo(c.motivo)}>MOMENTO {c.momentoOrdem}/7 · {c.momento}</span>
+                      <span className={chipDoMotivo(c.motivo)}>MOMENTO {c.momentoOrdem}/4 · {c.momento}</span>
                       {c.outrosAtendimentos > 0 && (
                         <span className="ncrm3-item-meta">
                           +{c.outrosAtendimentos} {c.outrosAtendimentos === 1 ? "atendimento" : "atendimentos"} deste cliente
