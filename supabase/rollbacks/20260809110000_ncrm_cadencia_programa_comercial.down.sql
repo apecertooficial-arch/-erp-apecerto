@@ -1,7 +1,8 @@
 -- Rollback: despublica o workflow v2 (v1 volta a valer para os novos),
 -- devolve prazos anteriores e remove reativação/redistribuição.
 BEGIN;
--- Config encerrada é imutável: para voltar, criamos uma v3 CÓPIA da v1 e publicamos.
+-- Config encerrada é imutável: para voltar, criamos uma versão técnica CÓPIA da v1.
+-- 2001 evita colisão com versões operacionais futuras (a v3 agora é canônica).
 DO $$
 DECLARE v_v1 public.ncrm_workflow_config%ROWTYPE; v_id bigint;
 BEGIN
@@ -11,7 +12,7 @@ BEGIN
   INSERT INTO public.ncrm_workflow_config
     (status, versao, timezone, janela_inicio, janela_fim, max_tentativas, fds_operacional,
      espera_apos_automacao_min, vigencia_inicio)
-  VALUES ('rascunho', 3, v_v1.timezone, v_v1.janela_inicio, v_v1.janela_fim, v_v1.max_tentativas,
+  VALUES ('rascunho', 2001, v_v1.timezone, v_v1.janela_inicio, v_v1.janela_fim, v_v1.max_tentativas,
           v_v1.fds_operacional, v_v1.espera_apos_automacao_min, now())
   RETURNING id INTO v_id;
   INSERT INTO public.ncrm_workflow_passo (config_id, ordem, rotulo, canal_sugerido, intervalo_min)
