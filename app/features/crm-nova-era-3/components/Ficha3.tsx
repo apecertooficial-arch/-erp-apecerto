@@ -363,6 +363,9 @@ export function Ficha3({
         <Conversa3 accessToken={accessToken} negocioId={Number(lead.id)} />
       </section>
 
+      <details className="ncrm3-ficha-extras">
+        <summary>Mais informações do cliente</summary>
+        <div>
       {/* 8. Dados */}
       <section className="ncrm3-bloco">
         <h3>{TITULO_BLOCO.dados}</h3>
@@ -419,6 +422,9 @@ export function Ficha3({
           </ul>
         )}
       </section>
+
+        </div>
+      </details>
 
       {/* 11. Ações avançadas */}
       <section className="ncrm3-bloco">

@@ -188,6 +188,21 @@ export const CRM3_CSS = `
 .ncrm3-sara-acoes button { min-height:38px; padding:0 14px; border:1px solid var(--line-strong); border-radius:var(--radius-pill); background:var(--surface); color:var(--ink-soft); font-family:inherit; font-size:12.5px; font-weight:600; cursor:pointer; }
 .ncrm3-sara-acoes button.usar { border-color:#8B00CC; background:#8B00CC; color:#fff; }
 .ncrm3-sara-acoes button:disabled { opacity:.5; cursor:default; }
+.ncrm3-sara-simples { gap:12px; }
+.ncrm3-sara-topo { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+.ncrm3-sara-status { padding:5px 8px; border-radius:999px; background:#fff; color:#66009A; font-size:10.5px; font-weight:700; text-align:right; }
+.ncrm3-sara-status.nivel-revisao { background:#FFF1E8; color:#A14100; }
+.ncrm3-sara-agora { display:flex; flex-direction:column; gap:5px; padding:13px; border-radius:12px; background:#fff; border:1px solid #E7D7ED; }
+.ncrm3-sara-agora>span { color:#8B00CC; font-size:10px; font-weight:800; letter-spacing:.1em; }
+.ncrm3-sara-agora>strong { color:var(--ink); font-size:15px; line-height:1.35; }
+.ncrm3-sara-agora>small { color:var(--muted); font-size:11.5px; }
+.ncrm3-sara-detalhes { padding-top:4px; border-top:1px solid #E4CBEF; }
+.ncrm3-sara-detalhes>summary { min-height:36px; display:flex; align-items:center; color:#66009A; font-size:12px; font-weight:700; cursor:pointer; }
+.ncrm3-sara-detalhes[open]>summary { margin-bottom:9px; }
+.ncrm3-ficha-extras { border-bottom:1px solid var(--line); background:#fff; }
+.ncrm3-ficha-extras>summary { padding:16px 20px; cursor:pointer; list-style-position:inside; font-size:13px; font-weight:750; color:var(--ink); }
+.ncrm3-ficha-extras>div>.ncrm3-bloco:last-child { border-bottom:0; }
+.ncrm3-sara-detalhes>ol { margin:9px 0 0 18px; padding:0; color:var(--ink-soft); font-size:12px; }
 
 /* ---------- Gestão ---------- */
 .ncrm3-gestao { display:flex; flex-direction:column; gap:16px; }
