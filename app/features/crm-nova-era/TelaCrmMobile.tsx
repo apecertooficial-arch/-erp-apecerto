@@ -19,12 +19,12 @@
  * em que estava — e nada é buscado de novo.
  *
  * DEEP LINK DO PUSH (?lead=N)
- * O aviso de lead novo no celular aponta para /crm?lead=N. Esta tela lê o
- * parâmetro UMA vez na montagem, espera a fila chegar e abre a ficha do
- * negócio pedido. A query é apagada no consumo — o botão voltar não pode
- * reabrir a mesma ficha. Lead que não está mais na fila vira um aviso
- * visível, nunca silêncio: falha muda foi exatamente o defeito que fez
- * "toquei e não aconteceu nada" existir.
+ * O aviso de lead novo no celular aponta para /crm?lead=N (via /negocio/N).
+ * O parâmetro é lido UMA vez na montagem e guardado num ref; quando a fila
+ * chega, a ficha do negócio pedido abre. A query é apagada no consumo — o
+ * botão voltar não pode reabrir a mesma ficha. Lead que não está mais na
+ * fila vira um aviso visível, nunca silêncio: falha muda foi exatamente o
+ * defeito que fez "toquei e não aconteceu nada" existir.
  *
  * REGRAS DE PRODUTO, iguais às da tela de Início:
  *   - a Sara orienta, nunca envia;
@@ -32,7 +32,7 @@
  *   - nada de vocabulário técnico.
  */
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   espera, filtrar, iniciais, type ItemTela,
 } from "../home/telaCorretor.logica";
@@ -78,8 +78,18 @@ export function TelaCrmMobile({ accessToken, nome, onAbrirLead, onIr }: {
   const [aba, setAba] = useState<Aba>("meu_dia");
   const [termo, setTermo] = useState("");
   const [abertoSnap, setAbertoSnap] = useState<ItemTela | null>(null);
-  const [leadPedido, setLeadPedido] = useState<number | null>(lerLeadDaUrl);
   const [leadForaDaFila, setLeadForaDaFila] = useState(false);
+
+  /* Ref e não estado: o pedido do push é consumido UMA vez, na chegada da
+     fila, dentro do próprio .then — setState síncrono em useEffect é
+     proibido pelo lint dos hooks, e com razão: seria um re-render a mais
+     para dizer uma coisa que o callback já sabia. */
+  const leadPedido = useRef<number | null>(null);
+  if (leadPedido.current === null && typeof window !== "undefined") {
+    /* Preenchido no primeiro render do cliente; consumido e zerado abaixo. */
+    const pedido = lerLeadDaUrl();
+    if (pedido !== null) leadPedido.current = pedido;
+  }
 
   const carregar = useCallback(async (sinal: AbortSignal) => {
     const r = await fetch("/api/ncrm/fila-operacional", {
@@ -94,7 +104,21 @@ export function TelaCrmMobile({ accessToken, nome, onAbrirLead, onIr }: {
     const ctrl = new AbortController();
     let vivo = true;
     carregar(ctrl.signal)
-      .then((l) => { if (vivo) { setItens(l); setErro(false); } })
+      .then((l) => {
+        if (!vivo) return;
+        setItens(l);
+        setErro(false);
+        /* O pedido do push é atendido aqui, quando a fila chega — não num
+           efeito próprio. Fora da fila = aviso na tela; o corretor decide
+           se procura na busca ou segue o dia. */
+        if (leadPedido.current !== null) {
+          const alvo = l.find((x) => x.negocio_id === leadPedido.current);
+          if (alvo) setAbertoSnap(alvo);
+          else setLeadForaDaFila(true);
+          leadPedido.current = null;
+          limparLeadDaUrl();
+        }
+      })
       .catch((e) => { if (vivo && e?.name !== "AbortError") { setErro(true); setItens([]); } });
     return () => { vivo = false; ctrl.abort(); };
   }, [carregar, tentativa]);
@@ -105,18 +129,6 @@ export function TelaCrmMobile({ accessToken, nome, onAbrirLead, onIr }: {
   }, []);
 
   const todos = useMemo(() => itens ?? [], [itens]);
-
-  /* O pedido do push é atendido quando a fila chega. Fora da fila = aviso
-     na tela; o corretor decide se procura na busca ou segue o dia. */
-  useEffect(() => {
-    if (leadPedido === null || itens === null) return;
-    const alvo = itens.find((x) => x.negocio_id === leadPedido);
-    if (alvo) setAbertoSnap(alvo);
-    else setLeadForaDaFila(true);
-    setLeadPedido(null);
-    limparLeadDaUrl();
-  }, [leadPedido, itens]);
-
   const agora = useMemo(() => filtrar(todos, "agora"), [todos]);
   const visiveis = useMemo(() => buscar(aba === "meu_dia" ? agora : todos, termo), [agora, todos, aba, termo]);
   const briefing = useMemo(() => briefingDaSara(agora), [agora]);
