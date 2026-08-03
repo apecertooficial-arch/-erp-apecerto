@@ -54,7 +54,16 @@ test("acao vencida conta pelo horario, nao pelo texto", () => {
 });
 
 test("compromissos de hoje excluem outro dia", () => {
-  const hoje = [item(1, "x", { proxima_acao_em: emMin(120) }), item(2, "x", { proxima_acao_em: emMin(60 * 48) })];
+  // Meio-dia evita que o teste atravesse a meia-noite conforme o horario em
+  // que o CI roda. A regra exercitada continua sendo o dia civil local.
+  const meioDia = new Date();
+  meioDia.setHours(12, 0, 0, 0);
+  const outroDia = new Date(meioDia);
+  outroDia.setDate(outroDia.getDate() + 1);
+  const hoje = [
+    item(1, "x", { proxima_acao_em: meioDia.toISOString() }),
+    item(2, "x", { proxima_acao_em: outroDia.toISOString() }),
+  ];
   assert.equal(montarGrupos([], hoje, [])[3].total, 1);
 });
 
