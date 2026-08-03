@@ -39,6 +39,13 @@ function classificarAcao(
   respondeu: boolean,
   respostaPendente: boolean,
 ): CodigoAcao {
+  // Regras objetivas vencem qualquer texto livre ou análise antiga da Sara.
+  // Sem esta precedência, um resumo como "entender melhor o perfil" poderia
+  // tirar da cadência um cliente que nunca respondeu — exatamente o oposto da
+  // conduta padronizada. Mantém a mesma ordem do helper canônico do banco.
+  if (etapa === "novo") return "PRIMEIRA_ABORDAGEM";
+  if (!respondeu) return "ENVIAR_CADENCIA";
+  if (respostaPendente) return "RESPONDER_CLIENTE";
   if (/proposta/.test(texto)) return "REGISTRAR_PROPOSTA";
   if (/resultado.*visita|pos[- ]?visita|visita.*realiz/.test(texto)) return "REGISTRAR_RESULTADO_VISITA";
   if (/visita|agendar|confirmar.*horario/.test(texto)) return "AGENDAR_VISITA";
@@ -47,9 +54,8 @@ function classificarAcao(
   if (/regiao|tipo de imovel|dormitorio|orcamento|faixa de valor|forma de pagamento|prazo de compra|metragem|vaga/.test(texto)) return "ENTENDER_NECESSIDADE";
   if (/reativ|retomar|parou de responder/.test(texto)) return "REATIVAR_CONVERSA";
   if (/qualific|necessidade|perfil/.test(texto)) return "ENTENDER_NECESSIDADE";
-  if (respostaPendente || (/respond/.test(texto) && respondeu)) return "RESPONDER_CLIENTE";
-  if (etapa === "novo") return "PRIMEIRA_ABORDAGEM";
-  if (!respondeu || /cadencia|insist|sem resposta|novo contato|retomar/.test(texto)) return "ENVIAR_CADENCIA";
+  if (/respond/.test(texto) && respondeu) return "RESPONDER_CLIENTE";
+  if (/cadencia|insist|sem resposta|novo contato|retomar/.test(texto)) return "ENVIAR_CADENCIA";
   return "ENTENDER_NECESSIDADE";
 }
 
