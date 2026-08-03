@@ -116,6 +116,9 @@ cp "$ROOT/tests/crm-nova-era/99i_pre_operacao_v4.sql" "$STAGE/pre_v4.sql"
 cp "$ROOT/supabase/migrations/20260810120000_ncrm_momentos_roleta_operacao.sql" "$STAGE/mig_v4.sql"
 cp "$ROOT/supabase/rollbacks/20260810120000_ncrm_momentos_roleta_operacao_rollback.sql" "$STAGE/down_v4.sql"
 cp "$ROOT/tests/crm-nova-era/99i_tests_operacao_v4.sql" "$STAGE/v4.sql"
+cp "$ROOT/supabase/migrations/20260810130000_ncrm_saida_humana_continuidade.sql" "$STAGE/mig_cont.sql"
+cp "$ROOT/supabase/rollbacks/20260810130000_ncrm_saida_humana_continuidade_rollback.sql" "$STAGE/down_cont.sql"
+cp "$ROOT/tests/crm-nova-era/99j_tests_saida_humana_continuidade.sql" "$STAGE/cont.sql"
 chmod -R a+rX "$STAGE"
 MIG="$STAGE/mig.sql"; DOWN="$STAGE/down.sql"; HARNESS="$STAGE/harness.sql"; CORE="$STAGE/core.sql"; CORE2="$STAGE/core2.sql"; CORE3="$STAGE/core3.sql"; CORE4="$STAGE/core4.sql"; MIG_SARA="$STAGE/mig_sara.sql"
 MIG_INGEST="$STAGE/mig_ingest.sql"; MIG_PROP="$STAGE/mig_prop.sql"; MIG_VISITA="$STAGE/mig_visita.sql"
@@ -471,6 +474,18 @@ PSQL -c "SELECT public.test_assert((SELECT count(*) FROM public.ncrm_momento_pad
 PSQL -f "$STAGE/mig_v4.sql"
 PSQL -c "SELECT public.test_assert((SELECT count(*) FROM public.ncrm_momento_padrao WHERE ativo)=10,
   '#v4-18 migration reaplica depois do rollback');"
+
+echo "### continuidade: toda saida humana real atualiza estado e reacorda a Sara"
+PSQL -f "$STAGE/mig_cont.sql"
+PSQL -f "$STAGE/cont.sql"
+PSQL -f "$STAGE/down_cont.sql"
+PSQL -c "SELECT public.test_assert(position('registrar_saida_humana_continuidade' in
+  pg_get_functiondef('public.ncrm_registrar_primeira_humana(bigint,text,timestamptz)'::regprocedure))=0,
+  '#cont10 rollback restaura a funcao anterior');"
+PSQL -f "$STAGE/mig_cont.sql"
+PSQL -c "SELECT public.test_assert(position('registrar_saida_humana_continuidade' in
+  pg_get_functiondef('public.ncrm_registrar_primeira_humana(bigint,text,timestamptz)'::regprocedure))>0,
+  '#cont11 migration reaplica depois do rollback');"
 
 echo "### teardown"
 sudo -u pg "$PGBIN/pg_ctl" -D "$PGDATA" stop >/dev/null 2>&1 || true
