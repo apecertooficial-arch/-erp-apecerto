@@ -132,6 +132,16 @@ export const CRM3_CSS = `
 .ncrm3-pendente { display:inline-flex; align-items:center; gap:5px; padding:3px 9px; border-radius:var(--radius-pill); background:#eaf0fb; color:#2456b5; font-size:11.5px; font-weight:700; }
 .ncrm3-card-proxima { padding:7px 9px; border-radius:var(--radius-input); background:var(--sunken); color:var(--ink-soft); font-size:12.5px; }
 .ncrm3-card-proxima b { display:block; font-weight:650; }
+.ncrm3-conduta { display:flex; flex-direction:column; gap:5px; padding:11px; border:1px solid #E7D7ED; border-left:4px solid #8B00CC; border-radius:var(--radius-input); background:#FBF5FD; color:var(--ink); font-size:12px; line-height:1.35; }
+.ncrm3-conduta.prazo-atrasada { border-left-color:#D92D20; background:#FFF4F2; }
+.ncrm3-conduta.prazo-vence_logo { border-left-color:#F79009; background:#FFFAEB; }
+.ncrm3-conduta-label { color:#7A009F; font-size:10px; font-weight:800; letter-spacing:.09em; }
+.ncrm3-conduta>b { font-size:14px; line-height:1.3; }
+.ncrm3-conduta>small { color:var(--ink-soft); }
+.ncrm3-conduta>em { color:var(--ink-soft); font-style:normal; }
+.ncrm3-conduta-prazo { width:max-content; max-width:100%; padding:3px 8px; border-radius:999px; background:#fff; color:#7A009F; font-weight:750; }
+.ncrm3-conduta.prazo-atrasada .ncrm3-conduta-prazo { color:#B42318; }
+.ncrm3-conduta-ficha .ncrm3-sara { margin-top:12px; }
 .ncrm3-card-sara { display:flex; flex-direction:column; gap:4px; padding:8px 10px; border:1px solid #EBD1F5; border-radius:var(--radius-input); background:#F7ECFC; color:#66009A; font-size:12px; line-height:1.4; }
 .ncrm3-card-sara > span:first-child { color:#8B00CC; font-size:10.5px; font-weight:700; letter-spacing:.08em; }
 .ncrm3-card-sara b { color:#66009A; }
@@ -256,6 +266,11 @@ export const CRM3_CSS = `
 .ncrm3-visitas-selo span { color:var(--orange-700); font-size:11px; font-weight:700; letter-spacing:.11em; }
 .ncrm3-visitas-selo b { padding:3px 11px; border-radius:var(--radius-pill); background:var(--orange-50); color:var(--orange-700); font-size:11.5px; font-weight:700; }
 .ncrm3-visitas-lista { display:flex; flex-direction:column; border:1px solid var(--line); border-radius:var(--radius-card); background:var(--surface); overflow:hidden; }
+.ncrm3-visitas-pipe { display:grid; grid-template-columns:repeat(3,minmax(260px,1fr)); gap:12px; align-items:start; }
+.ncrm3-visitas-coluna { min-width:0; padding:10px; border-radius:var(--radius-card); background:var(--sunken); }
+.ncrm3-visitas-coluna>h3 { display:flex; align-items:center; justify-content:space-between; margin:0 0 9px; font-size:13px; }
+.ncrm3-visitas-coluna>h3 b { padding:2px 8px; border-radius:999px; background:#fff; }
+@media (max-width:900px){ .ncrm3-visitas-pipe { grid-template-columns:1fr; } }
 .ncrm3-visita { display:flex; align-items:center; gap:14px; padding:12px 16px; border-bottom:1px solid var(--line); }
 .ncrm3-visita:last-child { border-bottom:none; }
 .ncrm3-visita-data { flex:0 0 auto; display:flex; flex-direction:column; align-items:center; justify-content:center; min-width:52px; padding:6px 8px; border-radius:var(--radius-input); background:var(--orange-50); }

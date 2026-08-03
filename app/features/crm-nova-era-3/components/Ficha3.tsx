@@ -17,11 +17,12 @@ import { marcarWhatsappAberto, whatsappAbertoEm } from "../../crm-nova-era/lib/w
 import { frasedaSituacao, prepararChamada, TITULO_BLOCO } from "../lib/ficha3";
 import { rotuloCurtoSla } from "../lib/sla3";
 import type { SaidaSla } from "../../crm-nova-era/lib/slaPrimeiraAbordagem";
-import { acaoConfirmadaDaSara, normalizarSara, proximaAcaoSugerida, type DecisaoSara, type SugestaoBruta } from "../lib/sara3";
+import { normalizarSara, proximaAcaoSugerida, type DecisaoSara, type SugestaoBruta } from "../lib/sara3";
 import { Sara3 } from "./Sara3";
 import { FormAcao3, type TipoForm } from "./FormAcao3";
 import { iniciais, tempoDesde } from "./Card3";
 import type { AnaliseSara } from "../lib/adapter3";
+import { condutaOficial } from "../lib/conduta3";
 
 export type ImovelDoLead = { id: string; nome: string; bairro: string | null; cidade: string | null };
 
@@ -151,7 +152,7 @@ export function Ficha3({
     confianca: analiseInicial.confianca ?? 0,
   } : null);
   const [saraCarregando, setSaraCarregando] = useState(false);
-  const [aplicandoSara, setAplicandoSara] = useState(false);
+  const aplicandoSara = false;
   const [copiado, setCopiado] = useState(false);
   /* WhatsApp honesto (prints 12-14): clicar só ABRE o app. O estado fica âmbar
      "aguardando sincronização" e vira verde quando a integração oficial
@@ -171,6 +172,10 @@ export function Ficha3({
   const checklistSara = normalizarSara(sara)?.checklist ?? null;
   const emSaida = Boolean(lead.visitaAgendadaEm || lead.proposta || lead.descartadoMotivo || lead.nutricao);
   const timeline = montarTimeline(lead);
+  const conduta = condutaOficial({
+    etapa: lead.coluna, proximaAcao: lead.proximaAcaoTitulo, proximaAcaoEm: lead.proximaAcaoEm,
+    respondeu: lead.respondeu, respostaPendente: lead.respostaPendenteCorretor,
+  }, analiseInicial ?? null);
 
   const pedirSara = useCallback(async () => {
     setSaraCarregando(true);
@@ -182,6 +187,17 @@ export function Ficha3({
     setSara(sugestao);
     onSaraCarregada(lead.id, typeof sugestao.proxima_acao === "string" ? sugestao.proxima_acao : null);
   }, [accessToken, lead.id, onAviso, onSaraCarregada]);
+
+  /* Um lead aberto sem leitura não pode ficar sem direção. A consulta é
+     automática e persistida; não depende de o corretor descobrir um botão. */
+  useEffect(() => {
+    if (!sara && !saraCarregando) {
+      const timer = window.setTimeout(() => void pedirSara(), 0);
+      return () => window.clearTimeout(timer);
+    }
+    // A abertura do atendimento é o gatilho; não repetir durante a mesma ficha.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lead.id]);
 
   /** Fecha o ciclo operacional: humano cumpre -> banco recalcula -> Sara relê. */
   const executarEReavaliar = useCallback(async (payload: Record<string, unknown>) => {
@@ -205,23 +221,10 @@ export function Ficha3({
     });
     if (!r.ok) { onAviso("Não foi possível registrar a sua decisão — tente de novo."); return; }
 
-    /* ACEITAR EXECUTA. O corretor não reescreve o que a Sara já escreveu: a
-       ação sugerida vira registro pelo contrato que já existia, e o momento do
-       cliente é recalculado pelo banco. Se por algum motivo a sugestão não
-       virar uma ação válida, caímos no formulário em vez de engolir o clique. */
+    /* Confirmar a orientação NÃO significa concluir a ação. A execução só é
+       registrada em "Ação feita", com evidência do D-API quando aplicável. */
     if (decisao === "aceita") {
-      const confirmada = acaoConfirmadaDaSara(sara, { id: lead.id, respondeu: lead.respondeu }, versao);
-      if (!confirmada) {
-        const prazo = typeof sara.prazo_sugerido === "string" ? sara.prazo_sugerido.slice(0, 16) : undefined;
-        setInicial({ proximaTipo: proximaAcaoSugerida(sara), prazo });
-        setForm("resultado");
-        onAviso("A orientação não trouxe uma ação completa — confirme no formulário.");
-        return;
-      }
-      setAplicandoSara(true);
-      const gravou = await executarEReavaliar(confirmada.payload);
-      setAplicandoSara(false);
-      if (gravou) onAviso(`Registrado e reavaliado: ${confirmada.resumo}`);
+      onAviso("Conduta confirmada. Execute a ação e depois clique em “Ação feita”.");
       return;
     }
 
@@ -235,7 +238,7 @@ export function Ficha3({
     setSara(null);
     onSaraCarregada(lead.id, null);
     onAviso("Orientação descartada — a Sara recebeu o retorno.");
-  }, [accessToken, executarEReavaliar, lead.id, lead.respondeu, onAviso, onSaraCarregada, sara, versao]);
+  }, [accessToken, lead.id, onAviso, onSaraCarregada, sara, versao]);
 
   return (
     <aside className="ncrm3-ficha" aria-label={`Ficha de ${lead.nome}`}>
@@ -331,28 +334,28 @@ export function Ficha3({
         )}
       </section>
 
-      {/* 5. Próxima ação */}
-      <section className="ncrm3-bloco">
-        <h3>{TITULO_BLOCO.proxima_acao}</h3>
-        <div className="ncrm3-linhas">
-          <div className="ncrm3-linha"><span>O que fazer</span><b>{lead.proximaAcaoTitulo ?? "Definir próxima ação"}</b></div>
-          <div className="ncrm3-linha"><span>Para quando</span><b>{dataLonga(lead.proximaAcaoEm)}</b></div>
+      {/* 5+6. Uma única ordem operacional — CRM e Sara não competem. */}
+      <section className="ncrm3-bloco ncrm3-conduta-ficha">
+        <h3>CONDUTA OFICIAL</h3>
+        <div className={`ncrm3-conduta prazo-${conduta.prazoInfo.status}`}>
+          <span className="ncrm3-conduta-label">MOMENTO · {conduta.momento}</span>
+          <small>{conduta.situacao}</small>
+          <span className="ncrm3-conduta-label">FAÇA AGORA</span>
+          <b>{conduta.acao}</b>
+          <span className="ncrm3-conduta-prazo">{conduta.prazoInfo.rotulo}{conduta.prazo ? ` · até ${dataLonga(conduta.prazo)}` : ""}</span>
+          <em>Objetivo: {conduta.objetivo}</em>
+          {conduta.justificativa && <small><b>Por quê:</b> {conduta.justificativa}</small>}
         </div>
         {!emSaida && (
           <div className="ncrm3-avancadas">
             <button type="button" className="ncrm3-preto" onClick={() => { setInicial({}); setForm("resultado"); }}>
-              {lead.proximaAcaoTitulo ? "Ação feita" : "Registrar o que aconteceu"}
+              Ação feita
             </button>
-            <button type="button" className="ncrm3-secundario" onClick={() => { setInicial({}); setForm("proxima"); }}>
-              Definir próxima ação
+            <button type="button" className="ncrm3-secundario" onClick={() => void pedirSara()} disabled={saraCarregando}>
+              {saraCarregando ? "Sara analisando…" : "Reavaliar conversa"}
             </button>
           </div>
         )}
-      </section>
-
-      {/* 6. Sara */}
-      <section className="ncrm3-bloco">
-        <h3>{TITULO_BLOCO.sara}</h3>
         <Sara3 sugestao={sara} carregando={saraCarregando} aplicando={aplicandoSara}
           onPedir={() => void pedirSara()} onDecidir={(d) => void decidirSara(d)} />
       </section>
