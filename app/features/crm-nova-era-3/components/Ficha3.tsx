@@ -328,13 +328,6 @@ export function Ficha3({
           <span className="ncrm3-conduta-prazo">{conduta.prazoInfo.rotulo}{conduta.prazo ? ` · até ${dataLonga(conduta.prazo)}` : ""}</span>
           <em>Objetivo: {conduta.objetivo}</em>
         </div>
-        {!emSaida && (
-          <div className="ncrm3-avancadas">
-            <button type="button" className="ncrm3-preto" onClick={() => { setInicial({}); setForm("resultado"); }}>
-              Ação feita
-            </button>
-          </div>
-        )}
         <details className="ncrm3-sara-explicacao">
           <summary>Por que esta conduta foi definida?</summary>
           {conduta.justificativa && <p>{conduta.justificativa}</p>}
