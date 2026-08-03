@@ -24,11 +24,14 @@ DROP FUNCTION IF EXISTS public.ncrm_primeira_abordagem_prazo(timestamptz);
 DROP FUNCTION IF EXISTS public.ncrm_conduta_oficial_v4(text,text,boolean,boolean,integer,timestamptz);
 DROP FUNCTION IF EXISTS public.ncrm_corretor_elegibilidade(bigint,timestamptz);
 
+-- Remova primeiro a unicidade parcial da versão nova. Caso um momento antigo
+-- e um momento 3.1 compartilhem a mesma ordem, reativar o antigo antes de
+-- excluir o novo produziria colisão durante o próprio rollback.
+DROP INDEX IF EXISTS public.ncrm_momento_padrao_ordem_ativa_idx;
 UPDATE public.ncrm_momento_padrao m SET ativo=coalesce((
   SELECT b.payload ? m.codigo FROM public.ncrm_operacao_v4_backup b WHERE b.chave='momentos_ativos'),false);
 DELETE FROM public.ncrm_momento_padrao m
 WHERE NOT coalesce((SELECT b.payload ? m.codigo FROM public.ncrm_operacao_v4_backup b WHERE b.chave='momentos_ativos'),false);
-DROP INDEX IF EXISTS public.ncrm_momento_padrao_ordem_ativa_idx;
 ALTER TABLE public.ncrm_momento_padrao
   DROP COLUMN IF EXISTS acao_codigo,
   DROP COLUMN IF EXISTS sla_min,
