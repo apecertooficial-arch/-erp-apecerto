@@ -8,6 +8,8 @@ export const CRM3_CSS_FASE1 = `
    sem flex-grow, o CRM encolhia para o tamanho do conteudo e sobrava um vazio
    a direita (ajuste pedido na fase 1). */
 .crm-v2.ncrm3 { flex:1 1 auto; width:100%; min-width:0; }
+.crm-v2.ncrm3 { --page:#FAF8F6; --surface:#FFFFFF; --sunken:#F2EFEC; --line:#E4DFD9; --line-strong:#C9C2BA; color:#1F1C1A; background:#FAF8F6; font-family:'Quicksand','Quicksand Fallback',system-ui,-apple-system,sans-serif; }
+.ncrm3-conteudo { background:#FAF8F6; }
 .ncrm3-dia { max-width:1280px; }
 .ncrm3-avisos { max-width:1280px; }
 .ncrm3 > .crm-command-bar nav button { display:inline-flex; align-items:center; gap:8px; font-size:13.5px; padding:10px 14px; border-radius:10px; border:1.5px solid transparent; }
@@ -41,4 +43,20 @@ export const CRM3_CSS_FASE1 = `
 .ncrm3-dia .ncrm3-av.av-vermelho { background:#FBE5E5; color:#A32C2C; }
 .ncrm3-item-tempo { display:inline-flex; align-items:center; gap:4px; }
 .ncrm3-dia .ncrm3-mais>button { min-width:36px; min-height:36px; border-radius:999px; font-size:15px; }
+.ncrm3-dia-momentos { display:flex; flex-direction:column; gap:9px; padding-top:2px; }
+.ncrm3-dia-momentos>span { color:#6E6760; font-size:11px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; }
+.ncrm3-dia-momentos>div { display:flex; flex-wrap:wrap; gap:7px; }
+.ncrm3-dia-momentos button { min-height:38px; padding:0 12px; border:1px solid #E4DFD9; border-radius:999px; background:#fff; color:#4D4842; font:600 12px inherit; cursor:pointer; }
+.ncrm3-dia-momentos button b { color:#8B00CC; font-size:13px; }
+.ncrm3-card { border-radius:18px; box-shadow:0 2px 6px rgba(31,28,26,.06); }
+.ncrm3-ordem-card { border-color:#E4DFD9; border-left-color:#8B00CC; background:#fff; }
+.ncrm3-ordem-momento { background:#F7ECFC; }
+.ncrm3-ordem-acao { padding-top:10px; padding-bottom:10px; }
+.ncrm3-card-acoes .ncrm3-principal,.ncrm3-chat-card { min-height:44px; }
+.ncrm3-ficha { background:#FAF8F6; }
+.ncrm3-ficha-topo,.ncrm3-acoes-topo,.ncrm3-bloco,.ncrm3-ficha-extras { background:#fff; }
+@media (max-width:460px) {
+  .ncrm3-dia-momentos>div { display:grid; grid-template-columns:1fr 1fr; }
+  .ncrm3-dia-momentos button { text-align:left; }
+}
 `;

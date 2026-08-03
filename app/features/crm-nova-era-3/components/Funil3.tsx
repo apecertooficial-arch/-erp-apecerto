@@ -1,10 +1,11 @@
 "use client";
 /**
- * FUNIL 3.0 — quatro momentos, nem um a mais.
+ * FUNIL 3.0 — quatro ETAPAS, nem uma a mais.
  *
- * Novo · Tentando contato · Em atendimento · Em acompanhamento.
- * Visita e proposta NÃO são colunas: são saídas para o Pipe de Visitas e para
- * a Esteira de Vendas, e por isso o lead some daqui quando chega lá.
+ * Novo · Tentando contato · Em atendimento · Pós-visita.
+ * As dez situações operacionais são MOMENTOS dentro dessas etapas. Uma visita
+ * agendada aparece também em Visitas, mas continua no atendimento; proposta é
+ * a única passagem para a Esteira de Vendas.
  *
  * No celular as abas de momento comandam qual coluna aparece (uma por vez),
  * sem rolagem horizontal.
@@ -35,7 +36,7 @@ export function Funil3({
 
   return (
     <>
-      <nav className="ncrm3-momentos" aria-label="Momentos do funil">
+      <nav className="ncrm3-momentos" aria-label="Etapas do funil">
         {MOMENTOS.map((m) => (
           <button
             key={m.chave}
@@ -52,7 +53,7 @@ export function Funil3({
       {total === 0 && (
         <div className="ncrm3-vazio">
           <strong>Nenhum cliente no funil agora.</strong>
-          Quem tem visita marcada está em Visitas; quem tem proposta está na Esteira de Vendas.
+          Visitas marcadas aparecem também na aba Visitas; propostas seguem para a Esteira de Vendas.
         </div>
       )}
 

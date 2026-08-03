@@ -132,6 +132,8 @@ export function montarContexto(e: EntradaContexto): Contexto {
 /* ---- Mapa da sugestão validada (saraSchema) para os campos da análise automática ---- */
 export interface SugestaoValidada {
   etapa_sugerida: string | null;
+  momento_sugerido?: string | null;
+  acao_padrao_codigo?: string | null;
   proxima_acao: string;
   prazo_sugerido: string | null;
   justificativa: string | null;
@@ -144,6 +146,8 @@ export interface SugestaoValidada {
 
 export interface AnaliseParaRegistro {
   etapaSugerida: string | null;
+  momentoSugerido: string | null;
+  acaoPadraoCodigo: string | null;
   proximaAcaoSugerida: string;
   prazoSugerido: string | null;
   justificativa: string;
@@ -161,6 +165,8 @@ export function mapearSugestaoParaAnalise(s: SugestaoValidada, ctx: Contexto): A
   if (!s.justificativa || !s.justificativa.trim()) return null; // sem justificativa real => inválida (não inventar)
   return {
     etapaSugerida: s.etapa_sugerida,
+    momentoSugerido: s.momento_sugerido ?? null,
+    acaoPadraoCodigo: s.acao_padrao_codigo ?? null,
     proximaAcaoSugerida: s.proxima_acao,
     prazoSugerido: s.prazo_sugerido,
     justificativa: s.justificativa.trim(),

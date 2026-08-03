@@ -35,13 +35,9 @@ type Json = Record<string, unknown>;
 
 const FILTROS: ReadonlyArray<{ chave: string; rotulo: string }> = Object.freeze([
   { chave: "agora", rotulo: "Agora" },
-  { chave: "vencidos", rotulo: "Vencidos" },
+  { chave: "vencidos", rotulo: "Atrasados" },
   { chave: "hoje", rotulo: "Hoje" },
   { chave: "proximos", rotulo: "Próximos" },
-  { chave: "respondeu", rotulo: "Respondeu" },
-  { chave: "sem_resposta", rotulo: "Sem resposta" },
-  { chave: "risco", rotulo: "Risco" },
-  { chave: "quente", rotulo: "Quente" },
 ]);
 
 function chipDoMotivo(motivo: string): string {
@@ -152,6 +148,13 @@ export function MeuDia3({
   const visiveis = useMemo(() => filtrados.slice(0, limite), [filtrados, limite]);
   const restantes = Math.max(0, filtrados.length - visiveis.length);
   const secoes = useMemo(() => montarSecoes(visiveis), [visiveis]);
+  const acoesPorMomento = useMemo(() => {
+    const contagem = new Map<string, number>();
+    for (const bloco of montarSecoes(filtrados)) {
+      for (const cartao of bloco.cartoes) contagem.set(cartao.momento, (contagem.get(cartao.momento) ?? 0) + 1);
+    }
+    return [...contagem.entries()].sort((a, b) => b[1] - a[1]);
+  }, [filtrados]);
   const urgentes = useMemo(() => totalParaAtender(filtrados), [filtrados]);
   const painel = useMemo(() => painelDeAbertura(filtrados), [filtrados]);
   const vazio = !carregando && !erro && filtrados.length === 0;
@@ -227,6 +230,18 @@ export function MeuDia3({
               </button>
             </div>
           )}
+          {acoesPorMomento.length > 0 && (
+            <div className="ncrm3-dia-momentos" aria-label="Ações organizadas por momento">
+              <span>Seu dia por momento</span>
+              <div>
+                {acoesPorMomento.map(([momento, total]) => (
+                  <button key={momento} type="button" onClick={() => onIrParaAba?.("funil")}>
+                    <b>{total}</b> {momento}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </section>
       )}
 
@@ -257,7 +272,7 @@ export function MeuDia3({
                     <div className="ncrm3-item-linha">
                       <strong>{c.nome}</strong>
                       <span className="ncrm3-item-meta">{c.corretor}</span>
-                      <span className={chipDoMotivo(c.motivo)}>MOMENTO {c.momentoOrdem}/4 · {c.momento}</span>
+                      <span className={chipDoMotivo(c.motivo)}>MOMENTO {c.momentoOrdem}/10 · {c.momento}</span>
                       {c.outrosAtendimentos > 0 && (
                         <span className="ncrm3-item-meta">
                           +{c.outrosAtendimentos} {c.outrosAtendimentos === 1 ? "atendimento" : "atendimentos"} deste cliente

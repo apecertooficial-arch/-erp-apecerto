@@ -23,7 +23,7 @@ export async function GET(request: Request) {
   if (!FILTROS.has(filtro)) return Response.json({ error: "Filtro inválido." }, { status: 400 });
 
   const db = supabase as unknown as SupabaseClient;
-  const { data, error } = await db.rpc("ncrm_fila_trabalho", {
+  const { data, error } = await db.rpc("ncrm_fila_trabalho_v4", {
     p_filtro: filtro,
     p_corretor: corretor ? Number(corretor) : null,
     p_limite: 150,
