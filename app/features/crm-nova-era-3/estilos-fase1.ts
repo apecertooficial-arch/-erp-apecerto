@@ -4,6 +4,12 @@
  * pequeno e revisável, sem reescrever o arquivo grande a cada print.
  */
 export const CRM3_CSS_FASE1 = `
+/* A casca ocupa TODA a largura disponivel: o wrapper do gate e um flex row e,
+   sem flex-grow, o CRM encolhia para o tamanho do conteudo e sobrava um vazio
+   a direita (ajuste pedido na fase 1). */
+.crm-v2.ncrm3 { flex:1 1 auto; width:100%; min-width:0; }
+.ncrm3-dia { max-width:1280px; }
+.ncrm3-avisos { max-width:1280px; }
 .ncrm3 > .crm-command-bar nav button { display:inline-flex; align-items:center; gap:8px; font-size:13.5px; padding:10px 14px; border-radius:10px; border:1.5px solid transparent; }
 .ncrm3 > .crm-command-bar nav button.active { border-color:#FF7000; background:#fff; color:#CC5800; }
 .ncrm3-aba-badge { min-width:20px; padding:1px 7px; border-radius:999px; background:var(--sunken); color:var(--ink-soft); font-size:10.5px; font-weight:700; }
