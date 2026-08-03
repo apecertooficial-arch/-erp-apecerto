@@ -50,17 +50,16 @@ export function crmNovaEraFlagAmbiente(): boolean {
  */
 export function crmNovaEraLiberado(
   usuarioId?: string | null,
-  _opts?: { role?: string | null },
+  opts?: { role?: string | null },
 ): boolean {
-  /* Desde 31/07 o CRM Nova Era 3.0 é o CRM OFICIAL da operação: a carteira
-     inteira dos pipes foi migrada e a entrada de leads novos acontece só nele.
-     Todo usuário autenticado usa o 3.0. O desligamento de emergência vive no
-     ambiente (CRM_NOVA_ERA_KILL=true volta todo mundo ao CRM antigo). */
-  void _opts; // assinatura preservada para os chamadores existentes
+  /* Piloto fechado: corretores usam exclusivamente o funil atual até a
+     liberação operacional. Admin e gestor podem validar o 3.0; acesso sem
+     papel conhecido fecha, exceto para o canário explícito. */
   if (!usuarioId) return false;
   const kill =
     (typeof process !== "undefined" &&
       (process.env.NEXT_PUBLIC_CRM_NOVA_ERA_KILL ?? process.env.CRM_NOVA_ERA_KILL)) || "false";
   if (String(kill).trim().toLowerCase() === "true") return CANARY_USUARIOS.has(usuarioId);
-  return true;
+  if (CANARY_USUARIOS.has(usuarioId)) return true;
+  return opts?.role === "admin" || opts?.role === "gestor";
 }

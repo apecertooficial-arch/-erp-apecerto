@@ -16,14 +16,16 @@ async function withEnv(env, fn) {
   }
 }
 
-/* Desde 31/07 o 3.0 e o CRM OFICIAL: liberado para todo usuario autenticado.
-   O que estes testes prendem agora e a regra nova — e o kill-switch. */
+/* Piloto fechado: corretores permanecem exclusivamente no funil atual. */
 
-test("CRM oficial: todo usuario autenticado usa o 3.0", async () => {
+test("CRM 3.0 aparece apenas para gestao e canario", async () => {
   await withEnv({ NEXT_PUBLIC_CRM_NOVA_ERA_KILL: "false" }, (m) => {
     assert.equal(m.crmNovaEraLiberado("u1", { role: "admin" }), true);
-    assert.equal(m.crmNovaEraLiberado("u2", { role: "corretor" }), true);
-    assert.equal(m.crmNovaEraLiberado("qualquer"), true);
+    assert.equal(m.crmNovaEraLiberado("u2", { role: "gestor" }), true);
+    assert.equal(m.crmNovaEraLiberado("u3", { role: "corretor" }), false);
+    assert.equal(m.crmNovaEraLiberado("qualquer"), false, "papel ausente fecha o acesso");
+    assert.equal(m.crmNovaEraLiberado("4dfdffae-0009-41de-8d6f-2365a06dc066", { role: "corretor" }), true,
+      "canario explicito continua podendo validar");
   });
 });
 
@@ -43,9 +45,9 @@ test("kill-switch devolve todos ao CRM antigo, menos o canario", async () => {
   });
 });
 
-test("a flag antiga de ambiente nao manda mais na liberacao", async () => {
+test("a flag antiga nao libera corretor", async () => {
   await withEnv({ NEXT_PUBLIC_CRM_NOVA_ERA_ENABLED: "false", NEXT_PUBLIC_CRM_NOVA_ERA_KILL: "false" }, (m) => {
-    assert.equal(m.crmNovaEraLiberado("u1", { role: "corretor" }), true,
-      "com o 3.0 oficial, ENABLED=false nao esconde mais o CRM de ninguem");
+    assert.equal(m.crmNovaEraLiberado("u1", { role: "corretor" }), false);
+    assert.equal(m.crmNovaEraLiberado("u2", { role: "admin" }), true);
   });
 });
