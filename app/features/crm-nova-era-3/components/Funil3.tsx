@@ -11,7 +11,14 @@
  * sem rolagem horizontal.
  */
 import { MOMENTOS, type Momento } from "../lib/momentos";
+import { ACOES_OFICIAIS, MOMENTOS_PADRAO } from "../lib/conduta3";
 import { Card3, type AcaoMenu, type DadosCard } from "./Card3";
+
+function prazoPadrao(minutos: number): string {
+  if (minutos < 60) return `${minutos} min`;
+  if (minutos < 1440) return `${Math.round(minutos / 60)}h`;
+  return `${Math.round(minutos / 1440)} ${minutos === 1440 ? "dia" : "dias"}`;
+}
 
 export function Funil3({
   porMomento,
@@ -33,10 +40,20 @@ export function Funil3({
   onAcao: (negocioId: string, chave: string) => void;
 }) {
   const total = MOMENTOS.reduce((n, m) => n + porMomento[m.chave].length, 0);
+  const etapaAtiva = MOMENTOS.find((m) => m.chave === momentoAtivo) ?? MOMENTOS[0];
+  const condutasDaEtapa = MOMENTOS_PADRAO.filter((m) => m.etapa === momentoAtivo);
 
   return (
     <>
-      <nav className="ncrm3-momentos" aria-label="Etapas do funil">
+      <section className="ncrm3-mapa" aria-label="Como o CRM organiza os clientes">
+        <header>
+          <div>
+            <span>MAPA DA OPERAÇÃO</span>
+            <h2>Etapa organiza. Momento explica. Ação e prazo movem o dia.</h2>
+          </div>
+          <p>O corretor não precisa interpretar: o CRM mostra o que está acontecendo, o que fazer e até quando.</p>
+        </header>
+        <nav className="ncrm3-momentos" aria-label="Etapas do funil">
         {MOMENTOS.map((m) => (
           <button
             key={m.chave}
@@ -45,10 +62,37 @@ export function Funil3({
             aria-pressed={m.chave === momentoAtivo}
             onClick={() => onTrocarMomento(m.chave)}
           >
-            {m.titulo} <b>{porMomento[m.chave].length}</b>
+            <small>ETAPA {MOMENTOS.indexOf(m) + 1}</small>
+            <span>{m.titulo}</span>
+            <b>{porMomento[m.chave].length}</b>
           </button>
         ))}
-      </nav>
+        </nav>
+
+        <div className="ncrm3-mapa-detalhe">
+          <div className="ncrm3-mapa-intro">
+            <span>VOCÊ ESTÁ VENDO</span>
+            <strong>{etapaAtiva.titulo}</strong>
+            <small>{etapaAtiva.ajuda}</small>
+          </div>
+          <div className="ncrm3-mapa-condutas">
+            {condutasDaEtapa.map((conduta) => {
+              const acao = ACOES_OFICIAIS.find((a) => a.codigo === conduta.acao);
+              return (
+                <article key={conduta.codigo}>
+                  <i>{conduta.ordem}</i>
+                  <div>
+                    <span>MOMENTO</span>
+                    <strong>{conduta.rotulo}</strong>
+                    <small>{acao?.rotulo ?? conduta.objetivo}</small>
+                  </div>
+                  <b>até {prazoPadrao(conduta.slaMin)}</b>
+                </article>
+              );
+            })}
+          </div>
+        </div>
+      </section>
 
       {total === 0 && (
         <div className="ncrm3-vazio">
