@@ -10,6 +10,7 @@
  */
 
 import { montarChecklist, type Checklist } from "./qualificacao.ts";
+import { ACOES_PADRAO, codigoAcaoValido, politicaSara, type CodigoAcaoPadrao } from "./operacaoPadrao.ts";
 
 export type SugestaoBruta = Record<string, unknown>;
 
@@ -26,6 +27,8 @@ export type SaraNaTela = {
   textoParaCopiar: string | null;
   risco: string | null;
   confiancaPct: number;
+  codigoAcao: CodigoAcaoPadrao;
+  politica: ReturnType<typeof politicaSara>;
 };
 
 export type DecisaoSara = "aceita" | "ajustada" | "rejeitada";
@@ -61,8 +64,11 @@ function lista(v: unknown, max = 6): string[] {
 export function normalizarSara(bruta: SugestaoBruta | null | undefined): SaraNaTela | null {
   if (!bruta || typeof bruta !== "object") return null;
   const confianca = Number(bruta.confianca ?? 0);
+  const evidencias = lista(bruta.evidencias, 4);
+  const confiancaPct = Number.isFinite(confianca) ? Math.round(Math.max(0, Math.min(1, confianca)) * 100) : 0;
+  const codigoAcao = codigoAcaoValido(bruta.acao_padrao_codigo) ? bruta.acao_padrao_codigo : "REVISAR_MANUALMENTE";
   return {
-    evidencias: lista(bruta.evidencias, 4),
+    evidencias,
     checklist: montarChecklist(bruta.informacoes_descobertas),
     evidenciaSuficiente: bruta.evidencia_suficiente !== false,
     momentoSugerido: texto(bruta.temperatura) ?? texto(bruta.intencao_detectada),
@@ -72,7 +78,9 @@ export function normalizarSara(bruta: SugestaoBruta | null | undefined): SaraNaT
     roteiro: lista(bruta.roteiro_ligacao, 6),
     textoParaCopiar: texto(bruta.whatsapp_sugerido),
     risco: texto(bruta.risco_abandono),
-    confiancaPct: Number.isFinite(confianca) ? Math.round(Math.max(0, Math.min(1, confianca)) * 100) : 0,
+    confiancaPct,
+    codigoAcao,
+    politica: politicaSara(confiancaPct, bruta.evidencia_suficiente !== false, evidencias),
   };
 }
 
@@ -82,6 +90,7 @@ export function normalizarSara(bruta: SugestaoBruta | null | undefined): SaraNaT
  */
 export function proximaAcaoSugerida(bruta: SugestaoBruta | null | undefined): string {
   if (!bruta) return "entender_necessidade";
+  if (codigoAcaoValido(bruta.acao_padrao_codigo)) return ACOES_PADRAO[bruta.acao_padrao_codigo].tipo;
   if (bruta.possibilidade_proposta === "alta") return "preparar_proposta";
   if (bruta.possibilidade_visita === "alta") return "agendar_visita";
   return "entender_necessidade";
@@ -109,7 +118,7 @@ export type AcaoConfirmada = {
 export function prazoOuPadrao(prazo: string | null | undefined, agora: Date = new Date()): string {
   if (typeof prazo === "string") {
     const t = Date.parse(prazo);
-    if (Number.isFinite(t)) return new Date(t).toISOString();
+    if (Number.isFinite(t) && t > agora.getTime()) return new Date(t).toISOString();
   }
   return new Date(agora.getTime() + 2 * 60 * 60 * 1000).toISOString();
 }
@@ -129,7 +138,7 @@ export function acaoConfirmadaDaSara(
   agora: Date = new Date(),
 ): AcaoConfirmada | null {
   const s = normalizarSara(bruta);
-  if (!s || !s.proximaAcao) return null;
+  if (!s || !s.proximaAcao || !s.politica.podeUsar) return null;
 
   const tipo = proximaAcaoSugerida(bruta);
   const prazo = prazoOuPadrao(s.prazo, agora);

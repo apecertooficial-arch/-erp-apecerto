@@ -21,11 +21,14 @@ export const TITULO_FORM: Record<TipoForm, string> = {
 };
 
 const PROXIMAS = [
-  { v: "entender_necessidade", r: "Entender necessidade" },
-  { v: "enviar_opcoes", r: "Enviar opções" },
-  { v: "ligar_retorno", r: "Ligar para retorno" },
-  { v: "agendar_visita", r: "Agendar visita" },
+  { v: "retornar_contato", r: "Responder o cliente" },
+  { v: "entender_necessidade", r: "Qualificar necessidade" },
+  { v: "enviar_opcoes", r: "Enviar opções de imóveis" },
+  { v: "confirmar_recebimento", r: "Validar opções enviadas" },
+  { v: "ligar_retorno", r: "Ligar para o cliente" },
+  { v: "agendar_visita", r: "Convidar ou confirmar visita" },
   { v: "preparar_proposta", r: "Preparar proposta" },
+  { v: "avaliar_descarte", r: "Avaliar encerramento" },
 ];
 
 const MOTIVOS = [
@@ -56,7 +59,7 @@ export function FormAcao3({
   const [resultado, setResultado] = useState(lead.respondeu ? "respondeu" : "nao_respondeu");
   const [obs, setObs] = useState("");
   const [proximaTipo, setProximaTipo] = useState(inicial?.proximaTipo ?? "entender_necessidade");
-  const [proximaEm, setProximaEm] = useState(inicial?.prazo ?? "");
+  const [proximaEm, setProximaEm] = useState(inicial?.prazo ?? new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString().slice(0, 16));
   const [vData, setVData] = useState("");
   const [vHora, setVHora] = useState("");
   const [valor, setValor] = useState("");
@@ -134,7 +137,7 @@ export function FormAcao3({
           <div className="ncrm3-avancadas">
             <button type="button" className="ncrm3-secundario" onClick={onCancelar}>Cancelar</button>
             <button
-              type="button" className="ncrm3-principal" disabled={busy}
+              type="button" className="ncrm3-principal" disabled={busy || (respondeuAgora && !proximaEm)}
               onClick={() => onEnviar(lead.respondeu
                 ? { action: "concluirAcao", ...base, resultado, obs, proximaTipo, proximaTitulo: proximaTipo.replace(/_/g, " "), proximaEm: proxIso }
                 : {
@@ -169,7 +172,7 @@ export function FormAcao3({
           <div className="ncrm3-avancadas">
             <button type="button" className="ncrm3-secundario" onClick={onCancelar}>Cancelar</button>
             <button
-              type="button" className="ncrm3-principal" disabled={busy}
+              type="button" className="ncrm3-principal" disabled={busy || !proximaEm}
               onClick={() => onEnviar({
                 action: "concluirAcao", ...base, resultado: "acao_concluida", obs,
                 proximaTipo, proximaTitulo: proximaTipo.replace(/_/g, " "), proximaEm: proxIso,
