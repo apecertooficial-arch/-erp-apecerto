@@ -20,11 +20,11 @@
  *
  * DEEP LINK DO PUSH (?lead=N)
  * O aviso de lead novo no celular aponta para /crm?lead=N (via /negocio/N).
- * O parâmetro é lido UMA vez na montagem e guardado num ref; quando a fila
- * chega, a ficha do negócio pedido abre. A query é apagada no consumo — o
- * botão voltar não pode reabrir a mesma ficha. Lead que não está mais na
- * fila vira um aviso visível, nunca silêncio: falha muda foi exatamente o
- * defeito que fez "toquei e não aconteceu nada" existir.
+ * O parâmetro é lido UMA vez na montagem; quando a fila chega, a ficha do
+ * negócio pedido abre. A query é apagada no consumo — o botão voltar não
+ * pode reabrir a mesma ficha. Lead que não está mais na fila vira um aviso
+ * visível, nunca silêncio: falha muda foi exatamente o defeito que fez
+ * "toquei e não aconteceu nada" existir.
  *
  * REGRAS DE PRODUTO, iguais às da tela de Início:
  *   - a Sara orienta, nunca envia;
@@ -80,16 +80,12 @@ export function TelaCrmMobile({ accessToken, nome, onAbrirLead, onIr }: {
   const [abertoSnap, setAbertoSnap] = useState<ItemTela | null>(null);
   const [leadForaDaFila, setLeadForaDaFila] = useState(false);
 
-  /* Ref e não estado: o pedido do push é consumido UMA vez, na chegada da
-     fila, dentro do próprio .then — setState síncrono em useEffect é
-     proibido pelo lint dos hooks, e com razão: seria um re-render a mais
-     para dizer uma coisa que o callback já sabia. */
-  const leadPedido = useRef<number | null>(null);
-  if (leadPedido.current === null && typeof window !== "undefined") {
-    /* Preenchido no primeiro render do cliente; consumido e zerado abaixo. */
-    const pedido = lerLeadDaUrl();
-    if (pedido !== null) leadPedido.current = pedido;
-  }
+  /* Lido UMA vez na montagem (inicializador preguiçoso, nunca um setState
+     depois). O ref de "já consumido" só é tocado dentro do .then da fila —
+     as regras dos hooks proíbem, com razão, tanto setState síncrono em
+     efeito quanto ref durante o render. */
+  const [pedidoDoPush] = useState(lerLeadDaUrl);
+  const pedidoConsumido = useRef(false);
 
   const carregar = useCallback(async (sinal: AbortSignal) => {
     const r = await fetch("/api/ncrm/fila-operacional", {
@@ -111,17 +107,17 @@ export function TelaCrmMobile({ accessToken, nome, onAbrirLead, onIr }: {
         /* O pedido do push é atendido aqui, quando a fila chega — não num
            efeito próprio. Fora da fila = aviso na tela; o corretor decide
            se procura na busca ou segue o dia. */
-        if (leadPedido.current !== null) {
-          const alvo = l.find((x) => x.negocio_id === leadPedido.current);
+        if (pedidoDoPush !== null && !pedidoConsumido.current) {
+          pedidoConsumido.current = true;
+          const alvo = l.find((x) => x.negocio_id === pedidoDoPush);
           if (alvo) setAbertoSnap(alvo);
           else setLeadForaDaFila(true);
-          leadPedido.current = null;
           limparLeadDaUrl();
         }
       })
       .catch((e) => { if (vivo && e?.name !== "AbortError") { setErro(true); setItens([]); } });
     return () => { vivo = false; ctrl.abort(); };
-  }, [carregar, tentativa]);
+  }, [carregar, tentativa, pedidoDoPush]);
 
   useEffect(() => {
     const t = setInterval(() => setTentativa((n) => n + 1), ATUALIZA_MS);
