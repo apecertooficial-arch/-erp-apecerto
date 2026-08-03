@@ -152,7 +152,7 @@ BEGIN
     RAISE EXCEPTION 'checksum inesperado de ncrm_registrar_primeira_humana: %',v_md5;
   END IF;
   v_old:='IF v_etapa <> ''novo'' THEN RETURN jsonb_build_object(''ok'',false,''erro'',''primeira_abordagem_ja_registrada''); END IF;';
-  v_new:='IF v_etapa <> ''novo'' THEN\n    RETURN ncrm_private.registrar_saida_humana_continuidade(\n      p_negocio_id,v_lead,v_corretor,v_cfg,v_antes,v_etapa,v_msg,p_em);\n  END IF;';
+  v_new:=E'IF v_etapa <> ''novo'' THEN\n    RETURN ncrm_private.registrar_saida_humana_continuidade(\n      p_negocio_id,v_lead,v_corretor,v_cfg,v_antes,v_etapa,v_msg,p_em);\n  END IF;';
   IF position(v_old in v_def)=0 THEN RAISE EXCEPTION 'ancora da continuidade ausente'; END IF;
   EXECUTE replace(v_def,v_old,v_new);
 END $do$;
@@ -174,7 +174,7 @@ BEGIN
     RAISE EXCEPTION 'checksum inesperado de reconciliar_mensagens: %',v_md5;
   END IF;
   v_old:='IF (v_res->>''ok'')::boolean THEN v_st := ''processado''; v_motivo := ''primeira_abordagem_humana''; v_final := now();';
-  v_new:='IF (v_res->>''ok'')::boolean THEN v_st := ''processado'';\n          v_motivo := CASE WHEN coalesce((v_res->>''continuacao'')::boolean,false)\n            THEN ''saida_humana_continuidade'' ELSE ''primeira_abordagem_humana'' END;\n          v_final := now();';
+  v_new:=E'IF (v_res->>''ok'')::boolean THEN v_st := ''processado'';\n          v_motivo := CASE WHEN coalesce((v_res->>''continuacao'')::boolean,false)\n            THEN ''saida_humana_continuidade'' ELSE ''primeira_abordagem_humana'' END;\n          v_final := now();';
   IF position(v_old in v_def)=0 THEN RAISE EXCEPTION 'ancora do reconciliador ausente'; END IF;
   EXECUTE replace(v_def,v_old,v_new);
 END $do$;
