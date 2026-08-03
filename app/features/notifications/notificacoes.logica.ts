@@ -46,15 +46,15 @@ export function especieDe(a: Aviso): Especie {
 /** "Sistema" e historico, nao aviso operacional: nunca conta como util. */
 export const ehUtil = (a: Aviso) => especieDe(a) !== "sistema";
 
-const minutosAte = (iso: string) => (Date.now() - new Date(iso).getTime()) / 60000;
+const minutosAte = (iso: string, agora: Date) => (agora.getTime() - new Date(iso).getTime()) / 60000;
 
 export type Balde = "agora" | "hoje" | "anteriores";
 
-export function baldeDe(a: Aviso, agoraMin = 60): Balde {
-  const m = minutosAte(a.when);
+export function baldeDe(a: Aviso, agoraMin = 60, agora = new Date()): Balde {
+  const m = minutosAte(a.when, agora);
   if (m < 0) return "agora";           // agendado para daqui a pouco
   if (m <= agoraMin) return "agora";
-  const d = new Date(a.when), h = new Date();
+  const d = new Date(a.when), h = agora;
   const mesmoDia = d.getFullYear() === h.getFullYear() && d.getMonth() === h.getMonth() && d.getDate() === h.getDate();
   return mesmoDia ? "hoje" : "anteriores";
 }
