@@ -1,6 +1,6 @@
 "use client";
 /**
- * SARA NA FICHA 3.0 — observer/assist. Ela SUGERE; quem decide é o corretor.
+ * SARA NA FICHA 3.0 — determina a conduta dentro do catálogo oficial.
  *
  * Exibe o checklist de qualificação (o que ja sabemos e o que falta),
  * evidências, momento sugerido, próxima ação, prazo, roteiro, texto para
@@ -36,11 +36,11 @@ export function Sara3({
   if (!s) {
     return (
       <div className="ncrm3-sara">
-        <h4>✦ Leitura da Sara</h4>
-        <p>Ela lê a conversa real e sugere — nunca envia mensagem por você.</p>
+        <h4>✦ Sara está definindo a conduta</h4>
+        <p>Ela lê a conversa real e escolhe a próxima ação dentro do padrão da operação.</p>
         <div className="ncrm3-sara-acoes">
           <button type="button" className="usar" onClick={onPedir} disabled={carregando}>
-            {carregando ? "Consultando…" : "Pedir orientação da Sara"}
+            {carregando ? "Analisando conversa…" : "Analisar agora"}
           </button>
         </div>
       </div>
@@ -55,7 +55,7 @@ export function Sara3({
       </div>
 
       <div className="ncrm3-sara-agora">
-        <span>FAÇA AGORA</span>
+        <span>ORDEM DA SARA</span>
         <strong>{s.politica.podeUsar ? (s.proximaAcao ?? "Defina o próximo passo") : "Revise a conversa e defina o próximo passo"}</strong>
         <small>{s.prazo ? `Até ${new Date(s.prazo).toLocaleString("pt-BR")}` : "Defina um prazo para concluir"}</small>
       </div>
@@ -95,10 +95,10 @@ export function Sara3({
             {a.decisao === "aceita" && aplicando
               ? "Registrando…"
               : a.decisao === "aceita"
-                ? "Usar como próxima ação"
+                ? "Confirmar conduta"
                 : a.decisao === "ajustada"
-                  ? "Definir outra ação"
-                  : "Orientação incorreta"}
+                  ? "Reportar exceção"
+                  : "Análise incorreta"}
           </button>
         ))}
       </div>

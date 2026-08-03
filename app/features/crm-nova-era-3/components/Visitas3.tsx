@@ -27,7 +27,7 @@ const STATUS_ROTULO: Record<string, { txt: string; classe: string }> = {
   cancelada: { txt: "cancelada", classe: "feita" },
 };
 
-export function Visitas3({ accessToken, onIrParaAgenda }: { accessToken: string; onIrParaAgenda: () => void }) {
+export function Visitas3({ accessToken, onIrParaAgenda, onAbrirAtendimento }: { accessToken: string; onIrParaAgenda: () => void; onAbrirAtendimento: (negocioId: string) => void }) {
   const [visitas, setVisitas] = useState<Visita[] | null>(null);
   const [total, setTotal] = useState(0);
   const [erro, setErro] = useState<string | null>(null);
@@ -62,8 +62,17 @@ export function Visitas3({ accessToken, onIrParaAgenda }: { accessToken: string;
       )}
 
       {visitas && visitas.length > 0 && (
-        <div className="ncrm3-visitas-lista">
-          {visitas.map((v) => {
+        <div className="ncrm3-visitas-pipe">
+          {([
+            { chave: "agendadas", titulo: "Agendadas e a confirmar", filtro: (v: Visita) => !["realizada", "cancelada", "nao_compareceu"].includes(String(v.status)) },
+            { chave: "resultado", titulo: "Realizadas · registrar resultado", filtro: (v: Visita) => v.status === "realizada" && !v.resultado },
+            { chave: "concluidas", titulo: "Concluídas e canceladas", filtro: (v: Visita) => ["cancelada", "nao_compareceu"].includes(String(v.status)) || Boolean(v.resultado) },
+          ] as const).map((grupo) => {
+            const lista = visitas.filter(grupo.filtro);
+            return <section key={grupo.chave} className="ncrm3-visitas-coluna">
+              <h3>{grupo.titulo} <b>{lista.length}</b></h3>
+              {lista.length === 0 && <p className="ncrm3-nota">Nenhuma visita aqui.</p>}
+              <div className="ncrm3-visitas-lista">{lista.map((v) => {
             const d = v.data ? new Date(`${v.data}T12:00:00`) : null;
             const st = STATUS_ROTULO[String(v.status ?? "agendada")] ?? STATUS_ROTULO.agendada;
             return (
@@ -77,10 +86,14 @@ export function Visitas3({ accessToken, onIrParaAgenda }: { accessToken: string;
                   <small>📍 {v.local || "Local a confirmar"}{v.hora_inicio ? ` · ${String(v.hora_inicio).slice(0, 5)}` : ""}</small>
                 </span>
                 <i className={`ncrm3-visita-status ${st.classe}`}>{st.txt}</i>
-                <button type="button" className="ncrm3-secundario" onClick={onIrParaAgenda}>Editar</button>
+                {v.negocio_id ? (
+                  <button type="button" className={grupo.chave === "resultado" ? "ncrm3-principal" : "ncrm3-secundario"} onClick={() => onAbrirAtendimento(String(v.negocio_id))}>
+                    {grupo.chave === "resultado" ? "Registrar resultado" : "Abrir cliente"}
+                  </button>
+                ) : <button type="button" className="ncrm3-secundario" onClick={onIrParaAgenda}>Editar</button>}
               </article>
             );
-          })}
+          })}</div></section>})}
         </div>
       )}
     </div>

@@ -488,7 +488,7 @@ export function Crm3Workspace({ accessToken, profile }: { accessToken: string; p
                 <Leads3 accessToken={accessToken} busca={busca} onAbrir={(id) => { setFormPedido(null); void abrirAtendimento(id); }} />
               )}
 
-              {aba === "visitas" && <Visitas3 accessToken={accessToken} onIrParaAgenda={() => trocarAba("agenda")} />}
+              {aba === "visitas" && <Visitas3 accessToken={accessToken} onIrParaAgenda={() => trocarAba("agenda")} onAbrirAtendimento={(id) => { setFormPedido(null); void abrirAtendimento(id); }} />}
 
               {aba === "avisos" && <Avisos3 accessToken={accessToken} onAbrir={(id) => { setFormPedido(null); void abrirAtendimento(id); }} />}
 

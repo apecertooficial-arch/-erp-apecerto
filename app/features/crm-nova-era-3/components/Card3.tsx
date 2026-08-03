@@ -14,6 +14,7 @@ import type { LeadNova } from "../../crm-nova-era/lib/rules";
 import { rotuloCurtoSla, tomDoSla } from "../lib/sla3";
 import type { SaidaSla } from "../../crm-nova-era/lib/slaPrimeiraAbordagem";
 import type { AnaliseSara } from "../lib/adapter3";
+import { condutaOficial } from "../lib/conduta3";
 
 export type AcaoMenu = { chave: string; rotulo: string };
 
@@ -87,6 +88,10 @@ export function Card3({
   const { lead, sla } = dados;
   const tom = tomDoSla(sla);
   const temperatura = String(lead.momento ?? "frio");
+  const conduta = condutaOficial({
+    etapa: lead.coluna, proximaAcao: lead.proximaAcaoTitulo, proximaAcaoEm: lead.proximaAcaoEm,
+    respondeu: lead.respondeu, respostaPendente: lead.respostaPendenteCorretor,
+  }, dados.analise);
 
   return (
     <article
@@ -133,24 +138,12 @@ export function Card3({
         <span className="ncrm3-pendente">💬 Mensagem do cliente aguardando você</span>
       )}
 
-      <div className="ncrm3-card-proxima">
-        <b>{lead.proximaAcaoTitulo ?? "Definir próxima ação"}</b>
-        <span>{dataCurta(lead.proximaAcaoEm)}</span>
-      </div>
-
-      <div className="ncrm3-card-sara">
-        <span aria-hidden="true">✦ SARA</span>
-        {dados.analise?.proxima_acao_sugerida ? (
-          <span>
-            {dados.analise.justificativa ? <>{dados.analise.justificativa} </> : null}
-            <b>→ {dados.analise.proxima_acao_sugerida}</b>
-            <em style={{ display: "block", marginTop: 3, fontStyle: "normal", opacity: .75, fontSize: 11 }}>
-              {dados.analise.prazo_sugerido ? `até ${dataCurta(dados.analise.prazo_sugerido)} · ` : ""}Sara analisou {tempoDesde(dados.analise.analisado_em)}
-            </em>
-          </span>
-        ) : (
-          <span>{dados.orientacaoSara ?? "Sara ainda não analisou este cliente — abra a ficha para pedir a orientação."}</span>
-        )}
+      <div className={`ncrm3-conduta prazo-${conduta.prazoInfo.status}`}>
+        <span className="ncrm3-conduta-label">CONDUTA OFICIAL · {conduta.momento}</span>
+        <small>{conduta.situacao}</small>
+        <b>{conduta.acao}</b>
+        <span className="ncrm3-conduta-prazo">{conduta.prazoInfo.rotulo}{conduta.prazo ? ` · ${dataCurta(conduta.prazo)}` : ""}</span>
+        <em>Objetivo: {conduta.objetivo}</em>
       </div>
 
       <div className="ncrm3-card-rodape">

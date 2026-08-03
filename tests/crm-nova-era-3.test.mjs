@@ -130,7 +130,7 @@ test("visita e proposta nunca viram coluna", () => {
 
 test("três seções, na ordem do trabalho", () => {
   assert.deepEqual([...ORDEM_SECOES], ["atender_agora", "fazer_hoje", "acompanhar_depois"]);
-  assert.deepEqual(montarSecoes([]).map((b) => b.titulo), ["Atender agora", "Fazer hoje", "Acompanhar depois"]);
+  assert.deepEqual(montarSecoes([]).map((b) => b.titulo), ["Atender agora", "Fazer hoje", "Aguardando cliente"]);
   assert.equal(SECAO_TITULO.atender_agora, "Atender agora");
 });
 
