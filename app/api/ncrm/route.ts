@@ -22,7 +22,7 @@ function tokenDe(request: Request): string | null {
  * cliente reinterpretado como SupabaseClient (sem tipos): a segurança é do banco (RLS + RPC fail-closed). */
 
 const EMBED =
-  "negocio_id,etapa,respondeu,resposta_pendente,aguardando_automacao,tentativas_feitas," +
+  "negocio_id,etapa,momento_codigo,respondeu,resposta_pendente,aguardando_automacao,tentativas_feitas," +
   "proxima_acao_tipo,proxima_acao_titulo,proxima_acao_em,ultima_interacao_em,temperatura," +
   "saida,saida_em,visita_id,proposta_id,descarte_motivo,descarte_detalhe,versao,atualizado_em," +
   "msg_automatica_em,primeira_resposta_em," +
@@ -144,6 +144,13 @@ const ACOES: Record<string, { rpc: string; args: (c: Ctx) => Record<string, unkn
     args: ({ negocio_id, versao, idem, b }) => ({
       p_negocio_id: negocio_id, p_versao: versao, p_resultado: b.resultado, p_obs: b.obs ?? null,
       p_proxima_tipo: b.proximaTipo, p_proxima_titulo: b.proximaTitulo, p_proxima_em: b.proximaEm, p_idem: idem,
+    }),
+  },
+  atualizarMomento: {
+    rpc: "ncrm_atualizar_momento",
+    args: ({ negocio_id, versao, b }) => ({
+      p_negocio_id: negocio_id, p_versao: versao,
+      p_momento_codigo: b.momentoCodigo, p_observacao: b.obs ?? null,
     }),
   },
   saidaVisita: {

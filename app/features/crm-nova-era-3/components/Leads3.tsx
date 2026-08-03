@@ -17,7 +17,7 @@ const ETAPA_ROTULO: Record<Etapa, string> = {
   novo: "Lead novo",
   tentando_contato: "Tentando atendimento",
   em_atendimento: "Em atendimento",
-  em_acompanhamento: "Em acompanhamento",
+  em_acompanhamento: "Pós-visita",
 };
 
 const PASSO = 20;

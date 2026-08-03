@@ -13,7 +13,7 @@ import {
 } from "../app/features/crm-nova-era-3/lib/qualificacao.ts";
 import {
   normalizarSara, acaoConfirmadaDaSara, prazoOuPadrao,
-  SARA_PODE_ENVIAR, SARA_PODE_MOVER_ETAPA, ACOES_SARA,
+  SARA_PODE_ENVIAR, SARA_PODE_MOVER_ETAPA, SARA_PODE_ORGANIZAR_CRM, ACOES_SARA,
 } from "../app/features/crm-nova-era-3/lib/sara3.ts";
 import { painelDeAbertura, saudacao } from "../app/features/crm-nova-era-3/lib/meuDia3.ts";
 
@@ -131,6 +131,7 @@ test("a acao e idempotente por lead e versao", () => {
 test("a Sara continua sem enviar mensagem e sem escrever etapa", () => {
   assert.equal(SARA_PODE_ENVIAR, false);
   assert.equal(SARA_PODE_MOVER_ETAPA, false);
+  assert.equal(SARA_PODE_ORGANIZAR_CRM, true);
   const fonte = ler("../app/features/crm-nova-era-3/lib/sara3.ts");
   assert.ok(!/etapa|coluna|momento\s*:/.test(fonte.split("acaoConfirmadaDaSara")[1] ?? ""),
     "a acao aceita nao pode escrever etapa: quem recalcula o momento e o banco");
@@ -164,7 +165,7 @@ test("acao feita fecha o ciclo e pede uma nova leitura da Sara", () => {
 test("o painel conta o dia com os numeros que o corretor confere", () => {
   const hoje = new Date();
   const p = painelDeAbertura([
-    item(1),
+    item(1, { resposta_pendente: true }),
     item(2, { lead_nome: "Cliente 1" }),
     item(3, { etapa: "novo", respondeu: false, lead_nome: "Novo A" }),
     item(4, { etapa: "tentando_contato", respondeu: false, lead_nome: "Retorno B", proxima_acao_em: hoje.toISOString() }),

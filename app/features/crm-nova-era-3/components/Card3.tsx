@@ -60,6 +60,8 @@ export type DadosCard = {
   analise?: AnaliseSara | null;
   /** Máximo de tentativas da régua deste lead (workflow versionado). */
   maxTentativas?: number;
+  momentoCodigo?: string | null;
+  tentativasFeitas?: number;
 };
 
 export function Card3({
@@ -83,8 +85,10 @@ export function Card3({
   const { lead, sla } = dados;
   const tom = tomDoSla(sla);
   const conduta = condutaOficial({
-    etapa: lead.coluna, proximaAcao: lead.proximaAcaoTitulo, proximaAcaoEm: lead.proximaAcaoEm,
+    etapa: lead.coluna, momentoCodigo: dados.momentoCodigo,
+    proximaAcao: lead.proximaAcaoTitulo, proximaAcaoEm: lead.proximaAcaoEm,
     respondeu: lead.respondeu, respostaPendente: lead.respostaPendenteCorretor,
+    tentativasFeitas: dados.tentativasFeitas,
   }, dados.analise);
 
   return (
@@ -126,7 +130,7 @@ export function Card3({
 
       <div className={`ncrm3-ordem-card prazo-${conduta.prazoInfo.status}`}>
         <div className="ncrm3-ordem-momento">
-          <span>MOMENTO {conduta.momentoOrdem}/4</span>
+          <span>MOMENTO {conduta.momentoOrdem}/10</span>
           <strong>{conduta.momento}</strong>
         </div>
         <div className="ncrm3-ordem-acao">

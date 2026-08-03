@@ -1,9 +1,9 @@
 /**
  * SARA NA FICHA 3.0 — normalização da sugestão. PURO.
  *
- * A Sara SUGERE; quem executa é o corretor, com um clique. Ela não envia
- * mensagem e não escreve etapa em lugar nenhum — o momento do cliente é
- * recalculado pelo banco a partir da ação registrada.
+ * A Sara ORGANIZA o CRM: determina momento, ação e prazo dentro do catálogo
+ * oficial. O corretor executa a obrigação; ela nunca envia mensagem, agenda
+ * visita ou cria proposta/venda.
  *
  * Este módulo é PURO: monta o payload da ação a partir da sugestão, e nada
  * mais. Quem chama a rede é a ficha.
@@ -29,6 +29,8 @@ export type SaraNaTela = {
   confiancaPct: number;
   codigoAcao: CodigoAcaoPadrao;
   politica: ReturnType<typeof politicaSara>;
+  /** O banco já gravou Momento + Ação + Prazo. Não significa ação executada. */
+  condutaAplicada: boolean;
 };
 
 export type DecisaoSara = "aceita" | "ajustada" | "rejeitada";
@@ -45,9 +47,9 @@ export type DecisaoSara = "aceita" | "ajustada" | "rejeitada";
  */
 
 export const ACOES_SARA: ReadonlyArray<{ decisao: DecisaoSara; rotulo: string; ajuda: string }> = Object.freeze([
-  { decisao: "aceita", rotulo: "Usar orientação", ajuda: "Registra a ação da Sara e atualiza o momento do cliente." },
-  { decisao: "ajustada", rotulo: "Ajustar", ajuda: "Abre o formulário para você escrever o que realmente vale." },
-  { decisao: "rejeitada", rotulo: "Não faz sentido", ajuda: "Descarta a sugestão e registra o retorno para a Sara aprender." },
+  { decisao: "aceita", rotulo: "Está correta", ajuda: "Registra que a classificação automática corresponde à conversa." },
+  { decisao: "ajustada", rotulo: "Corrigir momento", ajuda: "Abre a atualização para registrar a exceção correta." },
+  { decisao: "rejeitada", rotulo: "Análise incorreta", ajuda: "Registra que esta leitura não corresponde à conversa." },
 ]);
 
 function texto(v: unknown): string | null {
@@ -66,12 +68,12 @@ export function normalizarSara(bruta: SugestaoBruta | null | undefined): SaraNaT
   const confianca = Number(bruta.confianca ?? 0);
   const evidencias = lista(bruta.evidencias, 4);
   const confiancaPct = Number.isFinite(confianca) ? Math.round(Math.max(0, Math.min(1, confianca)) * 100) : 0;
-  const codigoAcao = codigoAcaoValido(bruta.acao_padrao_codigo) ? bruta.acao_padrao_codigo : "REVISAR_MANUALMENTE";
+  const codigoAcao = codigoAcaoValido(bruta.acao_padrao_codigo) ? bruta.acao_padrao_codigo : "RESPONDER_E_QUALIFICAR";
   return {
     evidencias,
     checklist: montarChecklist(bruta.informacoes_descobertas),
     evidenciaSuficiente: bruta.evidencia_suficiente !== false,
-    momentoSugerido: texto(bruta.temperatura) ?? texto(bruta.intencao_detectada),
+    momentoSugerido: texto(bruta.momento_sugerido),
     proximaAcao: texto(bruta.proxima_acao),
     prazo: texto(bruta.prazo_sugerido),
     perguntasFaltantes: lista(bruta.perguntas_faltantes, 5),
@@ -81,6 +83,7 @@ export function normalizarSara(bruta: SugestaoBruta | null | undefined): SaraNaT
     confiancaPct,
     codigoAcao,
     politica: politicaSara(confiancaPct, bruta.evidencia_suficiente !== false, evidencias),
+    condutaAplicada: bruta.conduta_aplicada === true || bruta.aplicada === true,
   };
 }
 
@@ -100,11 +103,14 @@ export function proximaAcaoSugerida(bruta: SugestaoBruta | null | undefined): st
 export const SARA_PODE_ENVIAR = false as const;
 
 /**
- * A Sara continua sem mover etapa SOZINHA: quem move é a ação registrada
- * depois do clique do corretor. O momento não é escrito à mão em lugar nenhum
- * — o banco recalcula a partir da próxima ação e de quem respondeu.
+ * Compatibilidade: ela não executa uma movimentação comercial arbitrária.
+ * O organizador server-side pode classificar etapa/momento apenas pelo
+ * catálogo oficial e sem marcar a obrigação como concluída.
  */
 export const SARA_PODE_MOVER_ETAPA = false as const;
+
+/** A Sara pode organizar Momento + Ação + Prazo, sem executar a obrigação. */
+export const SARA_PODE_ORGANIZAR_CRM = true as const;
 
 export type AcaoConfirmada = {
   /** Contrato que já existia; nenhuma ação nova foi inventada. */

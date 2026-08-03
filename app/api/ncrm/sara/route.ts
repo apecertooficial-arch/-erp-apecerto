@@ -1,5 +1,5 @@
 /**
- * Sara para o CRM Nova Era — SUGESTÃO apenas (suggestion-only), no CONTRATO REAL.
+ * Sara para o CRM Nova Era — ORGANIZAÇÃO assistida, no CONTRATO REAL.
  * ---------------------------------------------------------------------------
  * - Usa o MESMO contrato do ia-router já em produção (app/api/agentes/copiloto-lead):
  *   POST {NEXT_PUBLIC_SUPABASE_URL}/functions/v1/ia-router com { agente_slug:"sara", input, override_prompt }.
@@ -7,7 +7,8 @@
  *   áudios transcritos e avaliações), com a chave server-side. NENHUMA chave de IA no frontend.
  * - Resposta validada/normalizada por schema explícito (saraSchema). Se não for JSON válido
  *   no formato esperado => FALHA CONTROLADA (nunca devolve string/JSON cru como sugestão).
- * - A Sara NÃO altera etapa, NÃO envia WhatsApp, NÃO cria visita/proposta.
+ * - A Sara pode organizar Momento + Ação + Prazo pelo catálogo fechado.
+ * - Ela NÃO executa a obrigação, NÃO envia WhatsApp, NÃO cria visita/proposta.
  * - POST (aceitar/rejeitar): persiste o feedback e SÓ responde "registrado" se persistiu.
  *   O evento auditável classificacao_sara (que exige papel `sara`) é persistido pela edge
  *   function service_role `ncrm-ingest` (fora do JWT do corretor) — ver docs.
@@ -38,8 +39,13 @@ const OVERRIDE =
   "'perguntar se a compra é para morar ou investir, porque ele citou aluguel' é. " +
   "COMPONHA com a análise anterior: diga o que MUDOU desde ela e ajuste temperatura e confiança em vez " +
   "de recomeçar do zero — a nota evolui, não reinicia. " +
-  "Responda SOMENTE um JSON válido com as chaves: etapa_sugerida (novo|tentando_contato|em_atendimento|em_acompanhamento), " +
-  "acao_padrao_codigo (PRIMEIRA_ABORDAGEM|ENVIAR_CADENCIA|RESPONDER_CLIENTE|ENTENDER_NECESSIDADE|BUSCAR_E_ENVIAR_IMOVEIS|PEDIR_RETORNO|REATIVAR_CONVERSA|AGENDAR_VISITA|REGISTRAR_RESULTADO_VISITA|REGISTRAR_PROPOSTA), " +
+  "PADRÃO OFICIAL: a etapa organiza o funil e o momento descreve a situação atual. Escolha exatamente uma etapa, " +
+  "um momento e a ação correspondente. Etapas: novo, tentando_contato, em_atendimento, em_acompanhamento (pós-visita). " +
+  "Momentos: PRIMEIRA_ABORDAGEM, CADENCIA_SEM_RESPOSTA, CONVERSANDO_QUALIFICANDO, BUSCANDO_PRODUTO, " +
+  "PRODUTO_ENVIADO, TENTANDO_AGENDAMENTO, VISITA_AGENDADA, RETORNO_PROGRAMADO, FEEDBACK_POS_VISITA, DECISAO_POS_VISITA. " +
+  "Ações, na mesma ordem: PRIMEIRA_ABORDAGEM, ENVIAR_CADENCIA, RESPONDER_E_QUALIFICAR, BUSCAR_E_ENVIAR_IMOVEIS, " +
+  "PEDIR_RETORNO_PRODUTO, AGENDAR_VISITA, CONFIRMAR_VISITA, RETOMAR_NO_COMBINADO, REGISTRAR_RESULTADO_VISITA, AVANCAR_POS_VISITA. " +
+  "Responda SOMENTE um JSON válido com as chaves: etapa_sugerida, momento_sugerido, acao_padrao_codigo, " +
   "temperatura (frio|morno|quente|negociando), intencao_detectada, proxima_acao (1 frase concreta e específica), " +
   "prazo_sugerido (ISO 8601, sempre posterior à data de HOJE do input), objecoes (array), risco_abandono (baixo|medio|alto), " +
   "possibilidade_visita (baixa|media|alta), possibilidade_proposta (baixa|media|alta), " +
@@ -114,11 +120,11 @@ export async function GET(request: Request) {
   const db = supabase as unknown as import("@supabase/supabase-js").SupabaseClient;
   const { data: estado } = await db
     .from("ncrm_estado")
-    .select("negocio_id,etapa,respondeu,resposta_pendente,tentativas_feitas,ultima_interacao_em,proxima_acao_titulo,proxima_acao_em,negocios(lead_id,leads(nome,telefone))")
+    .select("negocio_id,etapa,momento_codigo,respondeu,resposta_pendente,tentativas_feitas,ultima_interacao_em,proxima_acao_titulo,proxima_acao_em,negocios(lead_id,leads(nome,telefone))")
     .eq("negocio_id", nid).maybeSingle();
   if (!estado) return Response.json({ error: "Lead não visível." }, { status: 404 });
   const est = estado as {
-    etapa?: string; respondeu?: boolean; resposta_pendente?: boolean; tentativas_feitas?: number;
+    etapa?: string; momento_codigo?: string | null; respondeu?: boolean; resposta_pendente?: boolean; tentativas_feitas?: number;
     ultima_interacao_em?: string | null; proxima_acao_titulo?: string | null; proxima_acao_em?: string | null;
     negocios?: { lead_id?: number; leads?: { nome?: string; telefone?: string } };
   };
@@ -170,7 +176,7 @@ export async function GET(request: Request) {
 
   const input =
     `HOJE: ${new Date().toISOString()}\n` +
-    `ATENDIMENTO: ${nome} (negócio ${nid}) · etapa atual: ${est.etapa ?? "novo"} · ` +
+    `ATENDIMENTO: ${nome} (negócio ${nid}) · etapa atual: ${est.etapa ?? "novo"} · momento atual: ${est.momento_codigo ?? "não definido"} · ` +
     `cliente respondeu: ${est.respondeu ? "sim" : "não"} · aguardando o corretor: ${est.resposta_pendente ? "sim" : "não"} · ` +
     `tentativas humanas: ${est.tentativas_feitas ?? 0} · última interação: ${est.ultima_interacao_em ?? "nunca"} · ` +
     `próxima ação registrada: ${est.proxima_acao_titulo ?? "nenhuma"} (${est.proxima_acao_em ?? "sem prazo"})\n` +

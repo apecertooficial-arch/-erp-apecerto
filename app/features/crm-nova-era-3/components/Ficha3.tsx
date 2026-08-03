@@ -21,7 +21,7 @@ import { Sara3 } from "./Sara3";
 import { FormAcao3, type TipoForm } from "./FormAcao3";
 import { iniciais, tempoDesde } from "./Card3";
 import type { AnaliseSara } from "../lib/adapter3";
-import { condutaOficial } from "../lib/conduta3";
+import { condutaOficial, momentosDaEtapa } from "../lib/conduta3";
 
 export type ImovelDoLead = { id: string; nome: string; bairro: string | null; cidade: string | null };
 
@@ -104,6 +104,7 @@ const RESULTADOS_VISITA: ReadonlyArray<{ valor: string; rotulo: string }> = Obje
 
 export function Ficha3({
   lead, versao, leadId, accessToken, busy, origem, interesse, email, fotoUrl, imoveis, visitaId,
+  momentoCodigo, tentativasFeitas,
   analiseInicial, formInicial, onFechar, onExecutar, onCriarVisita, onAviso, onSaraCarregada,
 }: {
   lead: LeadNova;
@@ -119,6 +120,8 @@ export function Ficha3({
   imoveis: ImovelDoLead[];
   /** Visita em aberto no Pipe — habilita registrar o desfecho aqui mesmo. */
   visitaId?: string | null;
+  momentoCodigo?: string | null;
+  tentativasFeitas?: number;
   /** Última leitura persistida: a ficha não pode "esquecer" a Sara ao fechar. */
   analiseInicial?: AnaliseSara | null;
   /* Formulario que deve abrir junto com a ficha (menu "..." do card).
@@ -164,11 +167,14 @@ export function Ficha3({
 
   const chamada = prepararChamada(lead.telefone);
   const checklistSara = normalizarSara(sara)?.checklist ?? null;
-  const emSaida = Boolean(lead.visitaAgendadaEm || lead.proposta || lead.descartadoMotivo || lead.nutricao);
+  const emSaida = Boolean(lead.proposta || lead.descartadoMotivo || lead.nutricao);
+  const visitaAgendada = Boolean(lead.visitaAgendadaEm && visitaId);
   const timeline = montarTimeline(lead);
   const conduta = condutaOficial({
-    etapa: lead.coluna, proximaAcao: lead.proximaAcaoTitulo, proximaAcaoEm: lead.proximaAcaoEm,
+    etapa: lead.coluna, momentoCodigo,
+    proximaAcao: lead.proximaAcaoTitulo, proximaAcaoEm: lead.proximaAcaoEm,
     respondeu: lead.respondeu, respostaPendente: lead.respostaPendenteCorretor,
+    tentativasFeitas,
   }, analiseInicial ?? null);
 
   const fecharMenuAtualizar = useCallback(() => {
@@ -182,7 +188,7 @@ export function Ficha3({
     const j = (await r.json().catch(() => ({}))) as Record<string, unknown>;
     setSaraCarregando(false);
     if (!r.ok) { onAviso((j.error as string) || "A Sara está indisponível agora."); return; }
-    const sugestao = (j.sugestao ?? j) as SugestaoBruta;
+    const sugestao: SugestaoBruta = { ...((j.sugestao ?? j) as SugestaoBruta), conduta_aplicada: j.aplicada === true };
     setSara(sugestao);
     onSaraCarregada(lead.id, typeof sugestao.proxima_acao === "string" ? sugestao.proxima_acao : null);
   }, [accessToken, lead.id, onAviso, onSaraCarregada]);
@@ -220,10 +226,10 @@ export function Ficha3({
     });
     if (!r.ok) { onAviso("Não foi possível registrar a sua decisão — tente de novo."); return; }
 
-    /* Confirmar a orientação NÃO significa concluir a ação. A execução só é
+    /* Feedback positivo NÃO significa concluir a ação. A execução só é
        registrada em "Ação feita", com evidência do D-API quando aplicável. */
     if (decisao === "aceita") {
-      onAviso("Conduta confirmada. Execute a ação e depois clique em “Ação feita”.");
+      onAviso("Leitura confirmada. Execute a ação indicada e use “Ação feita”; o CRM só conclui após a evidência real.");
       return;
     }
 
@@ -301,6 +307,32 @@ export function Ficha3({
             {!emSaida && <button type="button" className="perigo" onClick={() => { fecharMenuAtualizar(); setInicial({}); setForm("descarte"); }}>Descartar atendimento</button>}
           </div>
         </details>
+        {!emSaida && (
+          <details className="ncrm3-momento-menu">
+            <summary>Momento: {conduta.momento} <span aria-hidden="true">⌄</span></summary>
+            <div>
+              <p>Em qual situação este cliente está agora?</p>
+              {momentosDaEtapa(lead.coluna).map((momento) => (
+                <button
+                  key={momento.codigo}
+                  type="button"
+                  className={momento.codigo === conduta.momentoCodigo ? "selecionado" : ""}
+                  disabled={busy || momento.codigo === conduta.momentoCodigo}
+                  onClick={() => void onExecutar({
+                    action: "atualizarMomento",
+                    negocioId: Number(lead.id),
+                    versao,
+                    momentoCodigo: momento.codigo,
+                    observacao: "Momento atualizado pelo corretor",
+                  })}
+                >
+                  <strong>{momento.rotulo}</strong>
+                  <span>{momento.objetivo}</span>
+                </button>
+              ))}
+            </div>
+          </details>
+        )}
         <details className="ncrm3-contato-detalhes">
           <summary>Telefone e alternativas</summary>
           <div>
@@ -321,7 +353,7 @@ export function Ficha3({
       <section className="ncrm3-bloco ncrm3-conduta-ficha">
         <h3>O QUE FAZER AGORA</h3>
         <div className={`ncrm3-conduta prazo-${conduta.prazoInfo.status}`}>
-          <span className="ncrm3-conduta-label">MOMENTO {conduta.momentoOrdem}/4 · {conduta.momento}</span>
+          <span className="ncrm3-conduta-label">MOMENTO {conduta.momentoOrdem}/10 · {conduta.momento}</span>
           <small>{conduta.situacao}</small>
           <span className="ncrm3-conduta-label">PRÓXIMA AÇÃO</span>
           <b>{conduta.acao}</b>
@@ -405,9 +437,9 @@ export function Ficha3({
         </div>
       </details>
 
-      {/* Apenas o desfecho da visita permanece abaixo: as ações comuns já estão no topo. */}
-      {emSaida && <section className="ncrm3-bloco">
-        <h3>ANDAMENTO FORA DO FUNIL</h3>
+      {/* Visita é uma visão paralela do mesmo atendimento, não uma saída. */}
+      {(emSaida || visitaAgendada) && <section className="ncrm3-bloco">
+        <h3>{visitaAgendada ? "VISITA AGENDADA" : "ANDAMENTO FORA DO FUNIL"}</h3>
         {emSaida ? (
           <>
             <p className="ncrm3-nota">
@@ -418,23 +450,23 @@ export function Ficha3({
             </p>
             {/* O que aconteceu na visita? Cada desfecho leva o cliente a algum
                 lugar — quem decide o destino é o banco, nunca a tela. */}
-            {lead.visitaAgendadaEm && visitaId && (
-              <div className="ncrm3-avancadas" style={{ marginTop: 8 }}>
-                <p className="ncrm3-nota"><b>Como foi a visita?</b> Registre o desfecho — o cliente volta ao lugar certo do funil.</p>
-                {RESULTADOS_VISITA.map((r) => (
-                  <button key={r.valor} type="button" className="ncrm3-secundario" disabled={busy}
-                    onClick={() => void onExecutar({
-                      action: "registrarResultadoVisita",
-                      negocioId: Number(lead.id), versao, visitaId, resultado: r.valor,
-                      idem: `ui3:resultadoVisita:${visitaId}:${r.valor}`,
-                    })}>
-                    {r.rotulo}
-                  </button>
-                ))}
-              </div>
-            )}
           </>
         ) : null}
+        {visitaAgendada && visitaId && (
+          <div className="ncrm3-avancadas" style={{ marginTop: 8 }}>
+            <p className="ncrm3-nota">O cliente continua em atendimento e também aparece em Visitas. Depois do horário, registre o que aconteceu.</p>
+            {RESULTADOS_VISITA.map((r) => (
+              <button key={r.valor} type="button" className="ncrm3-secundario" disabled={busy}
+                onClick={() => void onExecutar({
+                  action: "registrarResultadoVisita",
+                  negocioId: Number(lead.id), versao, visitaId, resultado: r.valor,
+                  idem: `ui3:resultadoVisita:${visitaId}:${r.valor}`,
+                })}>
+                {r.rotulo}
+              </button>
+            ))}
+          </div>
+        )}
       </section>}
 
       {form && (
