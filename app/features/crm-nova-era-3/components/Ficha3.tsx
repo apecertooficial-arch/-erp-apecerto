@@ -21,6 +21,7 @@ import { acaoConfirmadaDaSara, normalizarSara, proximaAcaoSugerida, type Decisao
 import { Sara3 } from "./Sara3";
 import { FormAcao3, type TipoForm } from "./FormAcao3";
 import { iniciais, tempoDesde } from "./Card3";
+import type { AnaliseSara } from "../lib/adapter3";
 
 export type ImovelDoLead = { id: string; nome: string; bairro: string | null; cidade: string | null };
 
@@ -110,7 +111,7 @@ const RESULTADOS_VISITA: ReadonlyArray<{ valor: string; rotulo: string }> = Obje
 
 export function Ficha3({
   lead, versao, leadId, accessToken, busy, sla, origem, interesse, email, fotoUrl, imoveis, visitaId,
-  formInicial, onFechar, onExecutar, onCriarVisita, onAviso, onSaraCarregada,
+  analiseInicial, formInicial, onFechar, onExecutar, onCriarVisita, onAviso, onSaraCarregada,
 }: {
   lead: LeadNova;
   versao: number;
@@ -125,19 +126,30 @@ export function Ficha3({
   imoveis: ImovelDoLead[];
   /** Visita em aberto no Pipe — habilita registrar o desfecho aqui mesmo. */
   visitaId?: string | null;
+  /** Última leitura persistida: a ficha não pode "esquecer" a Sara ao fechar. */
+  analiseInicial?: AnaliseSara | null;
   /* Formulario que deve abrir junto com a ficha (menu "..." do card).
      Antes, as quatro opcoes do menu faziam a mesma coisa: so abriam a ficha.
      Botao que promete uma acao e entrega outra ensina o corretor a nao clicar. */
   formInicial?: TipoForm | null;
   onFechar: () => void;
-  onExecutar: (payload: Record<string, unknown>) => void | Promise<void>;
+  onExecutar: (payload: Record<string, unknown>) => boolean | Promise<boolean>;
   onCriarVisita: (data: string, hora: string) => void | Promise<void>;
   onAviso: (texto: string) => void;
   onSaraCarregada: (negocioId: string, orientacao: string | null) => void;
 }) {
   const [form, setForm] = useState<TipoForm | null>(formInicial ?? null);
   const [inicial, setInicial] = useState<{ proximaTipo?: string; prazo?: string }>({});
-  const [sara, setSara] = useState<SugestaoBruta | null>(null);
+  const [sara, setSara] = useState<SugestaoBruta | null>(() => analiseInicial ? {
+    evidencias: [],
+    evidencia_suficiente: true,
+    etapa_sugerida: analiseInicial.etapa_sugerida,
+    temperatura: analiseInicial.etapa_sugerida,
+    proxima_acao: analiseInicial.proxima_acao_sugerida,
+    prazo_sugerido: analiseInicial.prazo_sugerido,
+    justificativa: analiseInicial.justificativa,
+    confianca: analiseInicial.confianca ?? 0,
+  } : null);
   const [saraCarregando, setSaraCarregando] = useState(false);
   const [aplicandoSara, setAplicandoSara] = useState(false);
   const [copiado, setCopiado] = useState(false);
@@ -170,6 +182,15 @@ export function Ficha3({
     setSara(sugestao);
     onSaraCarregada(lead.id, typeof sugestao.proxima_acao === "string" ? sugestao.proxima_acao : null);
   }, [accessToken, lead.id, onAviso, onSaraCarregada]);
+
+  /** Fecha o ciclo operacional: humano cumpre -> banco recalcula -> Sara relê. */
+  const executarEReavaliar = useCallback(async (payload: Record<string, unknown>) => {
+    const gravou = await onExecutar(payload);
+    if (!gravou) return false;
+    onAviso("Ação concluída. A Sara está conferindo e preparando o próximo passo…");
+    await pedirSara();
+    return true;
+  }, [onExecutar, onAviso, pedirSara]);
 
   const decidirSara = useCallback(async (decisao: DecisaoSara) => {
     if (!sara) return;
@@ -320,7 +341,7 @@ export function Ficha3({
         {!emSaida && (
           <div className="ncrm3-avancadas">
             <button type="button" className="ncrm3-preto" onClick={() => { setInicial({}); setForm("resultado"); }}>
-              Registrar o que aconteceu
+              {lead.proximaAcaoTitulo ? "Ação feita" : "Registrar o que aconteceu"}
             </button>
             <button type="button" className="ncrm3-secundario" onClick={() => { setInicial({}); setForm("proxima"); }}>
               Definir próxima ação
@@ -444,7 +465,10 @@ export function Ficha3({
           tipo={form} lead={lead} versao={versao} leadId={leadId} busy={busy} accessToken={accessToken} inicial={inicial}
           onCancelar={() => { setForm(null); setInicial({}); }}
           onCriarVisita={async (d, h) => { await onCriarVisita(d, h); setForm(null); }}
-          onEnviar={async (p) => { await onExecutar(p); setForm(null); setInicial({}); }}
+          onEnviar={async (p) => {
+            const gravou = form === "resultado" ? await executarEReavaliar(p) : await onExecutar(p);
+            if (gravou) { setForm(null); setInicial({}); }
+          }}
         />
       )}
     </aside>

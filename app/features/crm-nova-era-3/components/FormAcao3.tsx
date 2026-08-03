@@ -12,7 +12,7 @@ import type { LeadNova } from "../../crm-nova-era/lib/rules";
 export type TipoForm = "resultado" | "proxima" | "visita" | "proposta" | "nutricao" | "descarte";
 
 export const TITULO_FORM: Record<TipoForm, string> = {
-  resultado: "Registrar o que aconteceu",
+  resultado: "Marcar ação como feita",
   proxima: "Definir a próxima ação",
   visita: "Agendar visita",
   proposta: "Registrar proposta na Esteira",
@@ -144,7 +144,7 @@ export function FormAcao3({
                     proximaEm: respondeuAgora ? proxIso : null,
                   })}
             >
-              Registrar
+              Concluir e receber o próximo passo
             </button>
           </div>
         </>

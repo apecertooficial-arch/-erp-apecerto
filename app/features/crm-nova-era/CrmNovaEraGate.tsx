@@ -45,6 +45,18 @@ function pedeFichaOuConversa(): boolean {
   }
 }
 
+/** No celular, aba explícita significa que o usuário pediu a tela 3.0 real. */
+function pedeWorkspace3(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    return ["funil", "leads", "visitas", "esteira", "agenda", "avisos", "gestao"].includes(
+      new URLSearchParams(window.location.search).get("aba") ?? "",
+    );
+  } catch {
+    return false;
+  }
+}
+
 function escolhaSalva(userId: string | null): Variante {
   /* Desde 31/07 o 3.0 é o CRM oficial: padrão para TODOS, em qualquer tela.
      O CRM antigo só abre pelo atalho explícito ?crm=atual (rota de emergência
@@ -93,6 +105,7 @@ export function CrmNovaEraGate({
    * voltar não reabrir o mesmo lead. Se este valor fosse relido, a ficha
    * abriria e a tela inteira se trocaria por baixo dela no mesmo instante. */
   const [entrouPorDeepLink] = useState(pedeFichaOuConversa);
+  const [entrouNoWorkspace3] = useState(pedeWorkspace3);
 
   /* null durante a primeira renderização no servidor: não dá para adivinhar a
      largura antes de o navegador existir, e chutar causaria troca de tela
@@ -107,6 +120,8 @@ export function CrmNovaEraGate({
   // Não liberado: nada de Nova Era, nem seletor — CRM antigo puro.
   if (!liberado) return <>{current}</>;
 
+  const podeLive = !!accessToken && !!profile?.userId;
+
   /* ---------------------- FICHA / CONVERSA PEDIDA ----------------------
      A ficha e a conversa só existem dentro do CrmWorkspace. Este era o furo:
      no celular o gate trocava a tela inteira pela TelaCrmMobile e o
@@ -120,12 +135,25 @@ export function CrmNovaEraGate({
      abrir ficha por id, então no desktop o deep link morria igual. */
   if (entrouPorDeepLink) return <>{current}</>;
 
+  /* Funil/Leads/Visitas solicitados no celular usam o mesmo workspace do
+     desktop, que já é responsivo. Isso elimina a falsa navegação que voltava
+     para Meu Dia e garante uma única fonte de verdade. */
+  if (entrouNoWorkspace3 && podeLive) {
+    return (
+      <div style={{ display: "flex", flexDirection: "column", height: "100%", minHeight: 0 }}>
+        <style>{NOVA_CRM_CSS}</style>
+        <Crm3Workspace
+          accessToken={accessToken as string}
+          profile={{ userId: profile!.userId as string, role: profile?.role ?? "corretor", name: profile?.name ?? "Corretor" }}
+        />
+      </div>
+    );
+  }
+
   function escolher(v: Variante) {
     setVariante(v);
     refletirUrl(v, profile?.userId ?? null);
   }
-
-  const podeLive = !!accessToken && !!profile?.userId;
 
   /* ------------------------------ CELULAR ------------------------------
      Tela própria, no desenho do protótipo. A barra "Funil atual / CRM Nova

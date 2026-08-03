@@ -298,8 +298,8 @@ export function Crm3Workspace({ accessToken, profile }: { accessToken: string; p
     setImoveis(imoveisDoLead(json.imoveis as ImovelBruto[]));
   }, [accessToken]);
 
-  const executar = useCallback(async (payload: Record<string, unknown>) => {
-    if (busy) return;
+  const executar = useCallback(async (payload: Record<string, unknown>): Promise<boolean> => {
+    if (busy) return false;
     setBusy(true);
     setAviso(null);
     const { ok, status, json } = await api(`/api/ncrm`, accessToken, { method: "PATCH", body: JSON.stringify(payload) });
@@ -307,11 +307,12 @@ export function Crm3Workspace({ accessToken, profile }: { accessToken: string; p
     if (!ok) {
       setAviso((json.mensagem as string) || (json.error as string) || "Esta ação não foi permitida.");
       if (status === 409) { await carregarQuadro(); if (selId) await abrirAtendimento(selId); }
-      return;
+      return false;
     }
     setAviso("Registrado.");
     await carregarQuadro();
     if (selId) await abrirAtendimento(selId);
+    return true;
   }, [accessToken, busy, carregarQuadro, selId, abrirAtendimento]);
 
   const criarVisita = useCallback(async (data: string, hora: string) => {
@@ -517,6 +518,7 @@ export function Crm3Workspace({ accessToken, profile }: { accessToken: string; p
                 fotoUrl={detalhe.fotoUrl}
                 imoveis={imoveis}
                 visitaId={detalhe.visitaId}
+                analiseInicial={analises[Number(detalhe.lead.id)] ?? null}
                 onFechar={() => { setSelId(null); setDetalhe(null); setImoveis([]); setFormPedido(null); }}
                 onExecutar={executar}
                 onCriarVisita={criarVisita}
