@@ -122,6 +122,9 @@ cp "$ROOT/tests/crm-nova-era/99j_tests_saida_humana_continuidade.sql" "$STAGE/co
 cp "$ROOT/supabase/migrations/20260810140000_ncrm_sla_config_rls.sql" "$STAGE/mig_rls_sla.sql"
 cp "$ROOT/supabase/rollbacks/20260810140000_ncrm_sla_config_rls_rollback.sql" "$STAGE/down_rls_sla.sql"
 cp "$ROOT/tests/crm-nova-era/99k_tests_sla_config_rls.sql" "$STAGE/rls_sla.sql"
+cp "$ROOT/supabase/migrations/20260810150000_funil_2_isolado.sql" "$STAGE/mig_f2.sql"
+cp "$ROOT/supabase/rollbacks/20260810150000_funil_2_isolado.down.sql" "$STAGE/down_f2.sql"
+cp "$ROOT/tests/crm-nova-era/99l_tests_funil2.sql" "$STAGE/f2.sql"
 chmod -R a+rX "$STAGE"
 MIG="$STAGE/mig.sql"; DOWN="$STAGE/down.sql"; HARNESS="$STAGE/harness.sql"; CORE="$STAGE/core.sql"; CORE2="$STAGE/core2.sql"; CORE3="$STAGE/core3.sql"; CORE4="$STAGE/core4.sql"; MIG_SARA="$STAGE/mig_sara.sql"
 MIG_INGEST="$STAGE/mig_ingest.sql"; MIG_PROP="$STAGE/mig_prop.sql"; MIG_VISITA="$STAGE/mig_visita.sql"
@@ -158,6 +161,7 @@ P42I="$STAGE/p42i.sql"; D42I="$STAGE/d42i.sql"
 NOTIF="$STAGE/notif.sql"
 SLA="$STAGE/sla.sql"
 MIG_RLS_SLA="$STAGE/mig_rls_sla.sql"; DOWN_RLS_SLA="$STAGE/down_rls_sla.sql"; RLS_SLA="$STAGE/rls_sla.sql"
+MIG_F2="$STAGE/mig_f2.sql"; DOWN_F2="$STAGE/down_f2.sql"; F2="$STAGE/f2.sql"
 PGBIN=/usr/lib/postgresql/16/bin
 PGDATA=/tmp/ncrm_pgdata
 SOCK=/tmp/ncrm_sock
@@ -517,6 +521,20 @@ PSQL -c "SELECT public.test_assert((SELECT relrowsecurity
   FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
   WHERE n.nspname='public' AND c.relname='ncrm_sla_redistribuicao_config'),
   '#rls7 migration reaplica depois do rollback');"
+
+echo "### Funil 2.0 isolado: duas cópias, RLS, limite, ações e rollback"
+PSQL -f "$MIG_F2"
+PSQL -f "$F2"
+PSQL -f "$DOWN_F2"
+PSQL -c "SELECT public.test_assert(to_regclass('public.f2_lead') IS NULL
+  AND to_regproc('public.f2_importar_negocio') IS NULL,
+  '#f2-13 rollback remove somente o laboratório');"
+PSQL -c "SELECT public.test_assert(to_regclass('public.ncrm_estado') IS NOT NULL
+  AND to_regclass('public.negocios') IS NOT NULL,
+  '#f2-14 rollback preserva CRM e legado');"
+PSQL -f "$MIG_F2"
+PSQL -c "SELECT public.test_assert((SELECT count(*) FROM public.f2_momento_config)=10,
+  '#f2-15 migration reaplica limpa depois do rollback');"
 
 echo "### teardown"
 sudo -u pg "$PGBIN/pg_ctl" -D "$PGDATA" stop >/dev/null 2>&1 || true
