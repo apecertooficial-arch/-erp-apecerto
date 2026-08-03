@@ -14,7 +14,7 @@
  * CELULAR: monta a TelaCrmMobile, no desenho do protótipo. Antes, celular e
  * desktop caíam os dois no Crm3Workspace, que foi feito para tela grande.
  *
- * DEEP LINK VENCE A VISTA. Ver o comentário de `entrouPorDeepLink` abaixo.
+ * DEEP LINK VENCE A VISTA. Ver o comentário de `deepLink` abaixo.
  */
 import { useEffect, useState, type ReactNode } from "react";
 import { NOVA_CRM_CSS } from "./styles";
@@ -30,18 +30,24 @@ function chave(userId: string | null) {
   return `ncrm:variante:${userId ?? "anon"}`;
 }
 
-/* A URL chegou pedindo uma ficha ou uma conversa?
+/* A URL chegou pedindo uma ficha ou uma conversa? OS DOIS TÊM DONOS
+ * DIFERENTES, e é por isso que a leitura é separada:
  *
- * `?lead=` e `?chat=` são traduzidos pela página de CRM em props do
- * CrmWorkspace. Nenhuma das outras vistas sabe lê-los: a TelaCrmMobile é uma
- * lista (sem ficha, sem chat) e o Crm3Workspace só entende `?aba=`. */
-function pedeFichaOuConversa(): boolean {
-  if (typeof window === "undefined") return false;
+ * `?chat=` (a conversa) só existe dentro do CrmWorkspace — em qualquer
+ * formato de tela, é para lá que ele vai.
+ *
+ * `?lead=` (a ficha) tem duas casas: no desktop é o CrmWorkspace; no celular
+ * é a FichaLeadMobile, que a TelaCrmMobile abre lendo este mesmo parâmetro.
+ * É o link que o PUSH de lead novo carrega — mandar o corretor para o CRM de
+ * desktop no celular era recarga de página + ~1,8 MB de /api/crm + um
+ * `if (!deal) return;` mudo quando o negócio não estava naquele payload. */
+function lerDeepLink(): { chat: boolean; lead: boolean } {
+  if (typeof window === "undefined") return { chat: false, lead: false };
   try {
     const p = new URLSearchParams(window.location.search);
-    return p.has("lead") || p.has("chat");
+    return { chat: p.has("chat"), lead: p.has("lead") };
   } catch {
-    return false;
+    return { chat: false, lead: false };
   }
 }
 
@@ -88,11 +94,12 @@ export function CrmNovaEraGate({
 
   /* DEEP LINK: lido UMA vez, na montagem, e guardado.
    *
-   * Por que guardar em vez de reler a URL a cada render: a página de CRM
-   * apaga a query assim que o deep link é consumido (`limpar`), para o botão
-   * voltar não reabrir o mesmo lead. Se este valor fosse relido, a ficha
-   * abriria e a tela inteira se trocaria por baixo dela no mesmo instante. */
-  const [entrouPorDeepLink] = useState(pedeFichaOuConversa);
+   * Por que guardar em vez de reler a URL a cada render: quem consome o deep
+   * link apaga a query (a página de CRM no desktop, a TelaCrmMobile no
+   * celular), para o botão voltar não reabrir o mesmo lead. Se este valor
+   * fosse relido, a ficha abriria e a tela inteira se trocaria por baixo
+   * dela no mesmo instante. */
+  const [deepLink] = useState(lerDeepLink);
 
   /* null durante a primeira renderização no servidor: não dá para adivinhar a
      largura antes de o navegador existir, e chutar causaria troca de tela
@@ -107,18 +114,23 @@ export function CrmNovaEraGate({
   // Não liberado: nada de Nova Era, nem seletor — CRM antigo puro.
   if (!liberado) return <>{current}</>;
 
-  /* ---------------------- FICHA / CONVERSA PEDIDA ----------------------
-     A ficha e a conversa só existem dentro do CrmWorkspace. Este era o furo:
-     no celular o gate trocava a tela inteira pela TelaCrmMobile e o
-     CrmWorkspace nunca montava, então `?chat=` e `?lead=` morriam na URL --
-     o gestor tocava em "Abrir conversa" na tela de Início e caía na lista,
-     sem erro nenhum na tela nem no console.
+  /* ---------------------- CONVERSA PEDIDA (?chat=) ----------------------
+     A conversa só existe dentro do CrmWorkspace. Monta ele PURO, sem a barra
+     "Funil atual / CRM Nova Era 3.0" — vocabulário de piloto, proibido na
+     tela do corretor. Vale para os dois formatos. */
+  if (deepLink.chat) return <>{current}</>;
 
-     Monta o CrmWorkspace PURO, sem a barra "Funil atual / CRM Nova Era 3.0":
-     ela é vocabulário de piloto e o pacote de design a proíbe na tela do
-     corretor. Vale para os dois formatos -- o Crm3Workspace também não sabe
-     abrir ficha por id, então no desktop o deep link morria igual. */
-  if (entrouPorDeepLink) return <>{current}</>;
+  /* ---------------------- FICHA PEDIDA (?lead=) ----------------------
+     No desktop, a ficha é a do CrmWorkspace — mesmo caminho da conversa.
+     No celular, quem sabe abrir a ficha é a TelaCrmMobile: deixa o fluxo
+     SEGUIR para o ramo do celular logo abaixo, onde ela monta e lê o
+     parâmetro. Enquanto a largura é desconhecida (primeiro quadro), não
+     monta nada: chutar desktop dispararia o download de ~1,8 MB de
+     /api/crm num aparelho que nunca vai usar essa tela. */
+  if (deepLink.lead) {
+    if (ehCelular === null) return null;
+    if (ehCelular === false) return <>{current}</>;
+  }
 
   function escolher(v: Variante) {
     setVariante(v);
@@ -140,12 +152,11 @@ export function CrmNovaEraGate({
           accessToken={accessToken as string}
           nome={profile?.name ?? "Corretor"}
           onAbrirLead={(id) => {
-            /* Mesmo deep link que a página de CRM já sabe traduzir. Sem rota
-               nova e sem estado paralelo: a ficha continua sendo a de sempre.
-               Recarrega de propósito (`assign`, não router): a ficha vive no
-               CrmWorkspace, e é a montagem nova que faz o gate acima ver o
-               `lead=` e montar quem sabe abri-la. */
-            if (typeof window !== "undefined") window.location.assign(`/crm?lead=${id}&crm=nova-era`);
+            /* Saída de EXCEÇÃO ("Abrir no CRM completo", menu da ficha).
+               Recarrega de propósito (`assign`, não router): o destino é o
+               CrmWorkspace, e é a montagem nova que faz o gate ver o pedido.
+               `crm=atual` porque o que se quer aqui é a tela completa. */
+            if (typeof window !== "undefined") window.location.assign(`/crm?lead=${id}&crm=atual`);
           }}
           onIr={(destino) => { if (typeof window !== "undefined") window.location.assign(destino); }}
         />
