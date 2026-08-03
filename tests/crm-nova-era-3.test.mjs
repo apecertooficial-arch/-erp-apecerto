@@ -190,14 +190,16 @@ test("cada item tem um botão principal, e só um", () => {
   assert.equal(botao.rotulo, "Atender agora");
 });
 
-test("o cartão traz nome, corretor, motivo, tempo e próxima ação", () => {
+test("o cartão traduz a próxima ação livre para a conduta oficial", () => {
   const [bloco] = montarSecoes([item(1, 1, { espera_min: 125 })]);
   const c = bloco.cartoes[0];
   assert.equal(c.nome, "Cliente 1");
   assert.equal(c.corretor, "Ana");
   assert.equal(c.motivo, "Cliente respondeu");
   assert.equal(c.tempo, "2h 5min");
-  assert.equal(c.proximaAcao, "Ligar de volta");
+  assert.equal(c.proximaAcao, "Responder o cliente");
+  assert.equal(c.momento, "Entendendo necessidade");
+  assert.equal(c.acaoCodigo, "RESPONDER_CLIENTE");
 });
 
 /* ============================ SLA ============================ */

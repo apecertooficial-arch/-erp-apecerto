@@ -46,7 +46,10 @@ export const CRM3_CSS = `
 .ncrm3-item-linha strong { font-size:15px; font-weight:650; }
 .ncrm3-item-meta { color:var(--muted); font-size:12.5px; }
 .ncrm3-item-motivo { color:var(--orange-700); font-size:12.5px; font-weight:600; }
-.ncrm3-item-acao { color:var(--ink-soft); font-size:12.5px; }
+.ncrm3-item-acao { color:var(--ink-soft); font-size:12.5px; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.ncrm3-item-acao>b { color:var(--ink); font-size:13px; }
+.ncrm3-item-acao>span { flex:1 1 280px; }
+.ncrm3-item-acao>em { font-style:normal; }
 .ncrm3-item-botao { flex:0 0 auto; }
 
 /* ---------- Painel de abertura do Meu Dia ---------- */
@@ -136,12 +139,19 @@ export const CRM3_CSS = `
 .ncrm3-conduta.prazo-atrasada { border-left-color:#D92D20; background:#FFF4F2; }
 .ncrm3-conduta.prazo-vence_logo { border-left-color:#F79009; background:#FFFAEB; }
 .ncrm3-conduta-label { color:#7A009F; font-size:10px; font-weight:800; letter-spacing:.09em; }
-.ncrm3-conduta>b { font-size:14px; line-height:1.3; }
+.ncrm3-conduta>b { display:flex; flex-direction:column; gap:2px; font-size:14px; line-height:1.3; }
+.ncrm3-conduta>b>small { color:#7A009F; font-size:9px; letter-spacing:.08em; }
 .ncrm3-conduta>small { color:var(--ink-soft); }
 .ncrm3-conduta>em { color:var(--ink-soft); font-style:normal; }
 .ncrm3-conduta-prazo { width:max-content; max-width:100%; padding:3px 8px; border-radius:999px; background:#fff; color:#7A009F; font-weight:750; }
 .ncrm3-conduta.prazo-atrasada .ncrm3-conduta-prazo { color:#B42318; }
 .ncrm3-conduta-ficha .ncrm3-sara { margin-top:12px; }
+.ncrm3-prazo-direto { width:max-content; max-width:100%; padding:3px 8px; border-radius:999px; background:#F2F4F7; color:var(--ink-soft); font-size:11px; font-weight:750; }
+.ncrm3-prazo-direto.prazo-atrasada { background:#FEE4E2; color:#B42318; }
+.ncrm3-prazo-direto.prazo-vence_logo { background:#FEF0C7; color:#B54708; }
+.ncrm3-sara-explicacao { margin-top:10px; border-top:1px solid var(--line); padding-top:10px; }
+.ncrm3-sara-explicacao>summary { cursor:pointer; color:var(--ink-soft); font-size:12px; font-weight:650; }
+.ncrm3-sara-explicacao>p { margin:10px 0 0; color:var(--ink-soft); font-size:12px; line-height:1.45; }
 .ncrm3-card-sara { display:flex; flex-direction:column; gap:4px; padding:8px 10px; border:1px solid #EBD1F5; border-radius:var(--radius-input); background:#F7ECFC; color:#66009A; font-size:12px; line-height:1.4; }
 .ncrm3-card-sara > span:first-child { color:#8B00CC; font-size:10.5px; font-weight:700; letter-spacing:.08em; }
 .ncrm3-card-sara b { color:#66009A; }

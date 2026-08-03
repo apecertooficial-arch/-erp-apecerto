@@ -14,6 +14,7 @@
  */
 import { grupoDoItem, grupoVisivel, type GrupoVisivel } from "../../crm-nova-era/lib/linguagem.ts";
 import { esperaHumana } from "../../crm-nova-era/lib/meuDia.ts";
+import { condutaOficial, type CodigoAcao, type CodigoMomento, type StatusPrazo } from "./conduta3.ts";
 
 export type ItemFila3 = {
   negocio_id: number;
@@ -79,6 +80,13 @@ export type CartaoDia = {
   tempo: string;
   proximaAcao: string;
   proximaAcaoEm: string | null;
+  momento: string;
+  momentoCodigo: CodigoMomento;
+  momentoOrdem: number;
+  acaoCodigo: CodigoAcao;
+  objetivo: string;
+  prazoRotulo: string;
+  prazoStatus: StatusPrazo;
   secao: Secao3;
   prioridade: number;
   /** Quantos outros atendimentos do mesmo cliente foram absorvidos aqui. */
@@ -93,14 +101,28 @@ export type BlocoDia = {
 };
 
 function paraCartao(item: ItemFila3, secao: Secao3, outros: number): CartaoDia {
+  const conduta = condutaOficial({
+    etapa: item.etapa,
+    proximaAcao: item.proxima_acao_titulo,
+    proximaAcaoEm: item.proxima_acao_em,
+    respondeu: item.respondeu,
+    respostaPendente: item.respondeu,
+  });
   return {
     negocioId: item.negocio_id,
     nome: item.lead_nome?.trim() || `Atendimento ${item.negocio_id}`,
     corretor: item.corretor_nome?.trim() || "Sem corretor",
     motivo: item.motivo,
     tempo: esperaHumana(item.espera_min),
-    proximaAcao: item.proxima_acao_titulo?.trim() || "Sara está definindo a conduta",
+    proximaAcao: conduta.acao,
     proximaAcaoEm: item.proxima_acao_em,
+    momento: conduta.momento,
+    momentoCodigo: conduta.momentoCodigo,
+    momentoOrdem: conduta.momentoOrdem,
+    acaoCodigo: conduta.acaoCodigo,
+    objetivo: conduta.objetivo,
+    prazoRotulo: conduta.prazoInfo.rotulo,
+    prazoStatus: conduta.prazoInfo.status,
     secao,
     prioridade: item.prioridade,
     outrosAtendimentos: outros,

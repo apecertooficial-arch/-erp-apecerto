@@ -334,30 +334,30 @@ export function Ficha3({
         )}
       </section>
 
-      {/* 5+6. Uma única ordem operacional — CRM e Sara não competem. */}
+      {/* Uma única ordem operacional. A análise extensa não compete com ela. */}
       <section className="ncrm3-bloco ncrm3-conduta-ficha">
         <h3>CONDUTA OFICIAL</h3>
         <div className={`ncrm3-conduta prazo-${conduta.prazoInfo.status}`}>
-          <span className="ncrm3-conduta-label">MOMENTO · {conduta.momento}</span>
+          <span className="ncrm3-conduta-label">MOMENTO {conduta.momentoOrdem}/7 · {conduta.momento}</span>
           <small>{conduta.situacao}</small>
           <span className="ncrm3-conduta-label">FAÇA AGORA</span>
           <b>{conduta.acao}</b>
           <span className="ncrm3-conduta-prazo">{conduta.prazoInfo.rotulo}{conduta.prazo ? ` · até ${dataLonga(conduta.prazo)}` : ""}</span>
           <em>Objetivo: {conduta.objetivo}</em>
-          {conduta.justificativa && <small><b>Por quê:</b> {conduta.justificativa}</small>}
         </div>
         {!emSaida && (
           <div className="ncrm3-avancadas">
             <button type="button" className="ncrm3-preto" onClick={() => { setInicial({}); setForm("resultado"); }}>
               Ação feita
             </button>
-            <button type="button" className="ncrm3-secundario" onClick={() => void pedirSara()} disabled={saraCarregando}>
-              {saraCarregando ? "Sara analisando…" : "Reavaliar conversa"}
-            </button>
           </div>
         )}
-        <Sara3 sugestao={sara} carregando={saraCarregando} aplicando={aplicandoSara}
-          onPedir={() => void pedirSara()} onDecidir={(d) => void decidirSara(d)} />
+        <details className="ncrm3-sara-explicacao">
+          <summary>Por que esta conduta foi definida?</summary>
+          {conduta.justificativa && <p>{conduta.justificativa}</p>}
+          <Sara3 sugestao={sara} carregando={saraCarregando} aplicando={aplicandoSara}
+            onPedir={() => void pedirSara()} onDecidir={(d) => void decidirSara(d)} />
+        </details>
       </section>
 
       {/* 7. Histórico — a conversa real, como voltou pelo WhatsApp */}
