@@ -18,6 +18,7 @@ const SW = ler("../public/sw.js");
 const ROTA = ler("../app/api/ncrm/notificacoes/route.ts");
 const GATE = ler("../app/features/crm-nova-era/CrmNovaEraGate.tsx");
 const LISTA = ler("../app/features/crm-nova-era/TelaCrmMobile.tsx");
+const REDIRECT = ler("../app/(erp)/negocio/[...caminho]/page.tsx");
 const MIGRACAO = ler("../supabase/migrations/20260803010000_push_vencendo_e_deep_links_reais.sql");
 
 /* ---------------- o barulho ---------------- */
@@ -26,7 +27,7 @@ test("lead novo, resposta e combinado vencendo/vencido são urgentes no aparelho
   const inicio = SW.indexOf("TAGS_URGENTES");
   assert.ok(inicio > -1, "a lista de urgentes precisa existir e ter nome");
   const bloco = SW.slice(inicio, SW.indexOf("]", inicio));
-  for (const tag of ["primeira_abordagem_pendente", "cliente_respondeu", "acao_vencendo", "acao_vencida"]) {
+  for (const tag of ["primeira_abordagem_pendente", "cliente_respondeu", "retorno_proximo", "acao_vencida"]) {
     assert.ok(bloco.includes(`"${tag}"`), `"${tag}" precisa estar na lista de urgentes do sw.js`);
   }
 });
@@ -40,15 +41,23 @@ test("a lista do sw.js casa com a da migração que enfileira", () => {
   /* As duas listas vivem em mundos diferentes (navegador × banco). Este
      assert é o único fio que as mantém iguais: se alguém adicionar um tipo
      urgente num lado só, quebra aqui e não no bolso do corretor. */
-  for (const tipo of ["acao_vencendo", "acao_vencida"]) {
+  for (const tipo of ["retorno_proximo", "acao_vencida"]) {
     assert.ok(MIGRACAO.includes(`'${tipo}'`), `a migração precisa conhecer "${tipo}"`);
   }
   assert.match(MIGRACAO, /interval '30 minutes'/, "o vencendo dispara 30 minutos antes do prazo");
+  /* O vocabulário é FECHADO por constraint no banco. Inventar tipo fora
+     dele derruba o cron de sincronização — aconteceu uma vez. */
+  assert.ok(!MIGRACAO.includes("'acao_vencendo'"), "acao_vencendo não existe em ncrm_notificacao_tipo_check");
 });
 
-test("deep link do push aponta para rota que existe", () => {
-  assert.ok(MIGRACAO.includes("'/crm?lead='||e.negocio_id"), "corretor vai para /crm?lead=N");
-  assert.ok(!/'\/negocio\/'/.test(MIGRACAO), "/negocio/N não existe no aplicativo — era 404 no toque");
+test("deep link do corretor é o endereço canônico /negocio/N", () => {
+  assert.ok(MIGRACAO.includes("'/negocio/'||e.negocio_id"), "a allowlist do banco não aceita query string");
+  assert.ok(!MIGRACAO.includes("'/crm?lead='"), "/crm?lead= é rejeitado por ck_ncrm_notif_deep_link");
+});
+
+test("a rota /negocio/N existe e leva para a ficha", () => {
+  assert.match(REDIRECT, /router\.replace\(`\/crm\?lead=\$\{n\}`\)/, "o redirect entrega no gate, que escolhe a ficha certa");
+  assert.match(REDIRECT, /router\.replace\("\/notificacoes"\)/, "id inválido não pode virar tela em branco");
 });
 
 /* ---------------- a rota que faltava ---------------- */
