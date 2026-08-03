@@ -402,6 +402,19 @@ PSQL -c "SELECT public.test_assert(to_regclass('public.ncrm_estado') IS NOT NULL
          AND to_regclass('public.ncrm_sara_config') IS NOT NULL
          AND to_regproc('public.ncrm_sara_registrar_analise') IS NOT NULL, '#30 migration (core + integração + Sara observer) reaplicada com sucesso');"
 
+# Recompõe também o caminho operacional real que existe em produção. Sem este
+# bloco, a segunda metade do harness testava a operação v4 sem entrada humana,
+# reconhecedor D-API e reconciliador atual — um estado que nunca existe no ERP.
+PSQL -f "$MIG_F61"
+PSQL -f "$MIG_EH"
+PSQL -f "$MIG_SA"
+PSQL -f "$P42A"
+PSQL -f "$P42B"
+PSQL -f "$P42C"
+PSQL -f "$P42D"
+PSQL -f "$P42E"
+PSQL -f "$P42F"
+
 echo "### baseline de vendas (nunca deve mudar por proposta) ==> confirmação final"
 PSQL -c "SELECT 'vendas_total='||count(*) FROM public.vendas;"
 
