@@ -14,7 +14,7 @@
  */
 import { grupoDoItem, grupoVisivel, type GrupoVisivel } from "../../crm-nova-era/lib/linguagem.ts";
 import { esperaHumana } from "../../crm-nova-era/lib/meuDia.ts";
-import { condutaOficial, type CodigoAcao, type CodigoMomento, type StatusPrazo } from "./conduta3.ts";
+import { condutaOficial, prazoDaConduta, type CodigoAcao, type CodigoMomento, type StatusPrazo } from "./conduta3.ts";
 
 export type ItemFila3 = {
   negocio_id: number;
@@ -28,6 +28,12 @@ export type ItemFila3 = {
   motivo: string;
   espera_min: number;
   respondeu: boolean;
+  resposta_pendente?: boolean;
+  tentativas_feitas?: number;
+  conduta?: {
+    momento_codigo: CodigoMomento; momento: string; momento_ordem: number;
+    acao_codigo: CodigoAcao; acao: string; objetivo: string; prazo: string | null;
+  } | null;
 };
 
 export type Secao3 = "atender_agora" | "fazer_hoje" | "acompanhar_depois";
@@ -39,15 +45,15 @@ export const ORDEM_SECOES: readonly Secao3[] = Object.freeze([
 ]);
 
 export const SECAO_TITULO: Record<Secao3, string> = {
-  atender_agora: "Atender agora",
+  atender_agora: "Faça agora",
   fazer_hoje: "Fazer hoje",
-  acompanhar_depois: "Aguardando cliente",
+  acompanhar_depois: "Monitorados pela Sara",
 };
 
 export const SECAO_AJUDA: Record<Secao3, string> = {
-  atender_agora: "Cliente novo, cliente que respondeu ou prazo estourado.",
-  fazer_hoje: "Retornos, documentos e visitas que você combinou.",
-  acompanhar_depois: "O CRM monitora estes clientes e avisa quando chegar a hora de agir.",
+  atender_agora: "Atrasados, novos e clientes que responderam. Comece pelo primeiro.",
+  fazer_hoje: "Obrigações que vencem hoje, na ordem definida pela conduta oficial.",
+  acompanhar_depois: "Não exigem ação agora. A Sara acompanha e traz de volta no prazo.",
 };
 
 /** Ponte com a partição canônica do domínio. */
@@ -101,13 +107,25 @@ export type BlocoDia = {
 };
 
 function paraCartao(item: ItemFila3, secao: Secao3, outros: number): CartaoDia {
-  const conduta = condutaOficial({
+  const derivada = condutaOficial({
     etapa: item.etapa,
     proximaAcao: item.proxima_acao_titulo,
     proximaAcaoEm: item.proxima_acao_em,
     respondeu: item.respondeu,
-    respostaPendente: item.respondeu,
+    respostaPendente: item.resposta_pendente ?? item.respondeu,
   });
+  const oficial = item.conduta;
+  const conduta = oficial ? {
+    ...derivada,
+    momento: oficial.momento,
+    momentoCodigo: oficial.momento_codigo,
+    momentoOrdem: oficial.momento_ordem,
+    acao: oficial.acao,
+    acaoCodigo: oficial.acao_codigo,
+    objetivo: oficial.objetivo,
+    prazo: oficial.prazo,
+    prazoInfo: prazoDaConduta(oficial.prazo),
+  } : derivada;
   return {
     negocioId: item.negocio_id,
     nome: item.lead_nome?.trim() || `Atendimento ${item.negocio_id}`,
@@ -197,9 +215,10 @@ export function botaoPrincipal(cartao: CartaoDia): { rotulo: string; acao: "abri
  */
 
 export type PainelAbertura = {
+  atrasadas: number;
   aguardandoResposta: number;
   leadsNovos: number;
-  retornosHoje: number;
+  cadenciasHoje: number;
   /** O cliente que deve ser atendido agora, ja sem repeticao. */
   proximo: CartaoDia | null;
 };
@@ -216,14 +235,15 @@ function ehHoje(iso: string | null, agora: Date): boolean {
 export function painelDeAbertura(itens: ItemFila3[], agora: Date = new Date()): PainelAbertura {
   const unicos = unificarPorCliente(itens);
   let aguardandoResposta = 0;
+  let atrasadas = 0;
   let leadsNovos = 0;
-  let retornosHoje = 0;
+  let cadenciasHoje = 0;
 
   for (const { item } of unicos) {
     if (item.respondeu) aguardandoResposta++;
+    if (item.proxima_acao_em && new Date(item.proxima_acao_em).getTime() < agora.getTime()) atrasadas++;
     if (item.etapa === "novo") leadsNovos++;
-    if (!item.respondeu && item.etapa !== "novo" && ehHoje(item.proxima_acao_em, agora)) retornosHoje++;
-    else if (item.respondeu && ehHoje(item.proxima_acao_em, agora)) retornosHoje++;
+    if (!item.respondeu && item.etapa === "tentando_contato" && ehHoje(item.proxima_acao_em, agora)) cadenciasHoje++;
   }
 
   const primeiroUrgente = unicos.find(({ item }) => secaoDoItem(item) === "atender_agora");
@@ -231,7 +251,7 @@ export function painelDeAbertura(itens: ItemFila3[], agora: Date = new Date()): 
     ? paraCartao(primeiroUrgente.item, "atender_agora", primeiroUrgente.outros)
     : null;
 
-  return { aguardandoResposta, leadsNovos, retornosHoje, proximo };
+  return { atrasadas, aguardandoResposta, leadsNovos, cadenciasHoje, proximo };
 }
 
 /** Saudacao pela hora do dia. Sem exclamacao: e uma ferramenta de trabalho. */
