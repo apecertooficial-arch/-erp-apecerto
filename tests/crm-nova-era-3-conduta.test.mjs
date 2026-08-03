@@ -58,3 +58,18 @@ test("texto livre da Sara vira código oficial e fica apenas como justificativa"
   assert.equal(c.acao, "Entender o que o cliente procura");
   assert.equal(c.justificativa, "Faltam dados");
 });
+
+test("momento inequívoco vence uma orientação antiga ou errada da Sara", () => {
+  const semResposta = condutaOficial(
+    { etapa: "tentando_contato", respondeu: false, proximaAcao: "Aguardar retorno" },
+    { negocio_id: 1, proxima_acao_sugerida: "Entender melhor o perfil", justificativa: "análise antiga", prazo_sugerido: null, confianca: .9, etapa_sugerida: "em_atendimento", analisado_em: "2026-08-03T10:00:00Z" },
+  );
+  assert.equal(semResposta.acaoCodigo, "ENVIAR_CADENCIA");
+  assert.equal(semResposta.momentoCodigo, "sem_resposta");
+
+  const aguardando = condutaOficial(
+    { etapa: "em_atendimento", respondeu: true, respostaPendente: true },
+    { negocio_id: 2, proxima_acao_sugerida: "Buscar novos imóveis", justificativa: "análise antiga", prazo_sugerido: null, confianca: .9, etapa_sugerida: "em_atendimento", analisado_em: "2026-08-03T10:00:00Z" },
+  );
+  assert.equal(aguardando.acaoCodigo, "RESPONDER_CLIENTE");
+});
