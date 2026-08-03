@@ -22,9 +22,10 @@
  * a ser tela NATIVA da 3.0 (protótipo 03): etapa do funil novo, não os estágios
  * antigos. A navegação 3.0 substitui a barra de visões interna das oficiais.
  */
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { CrmWorkspace } from "../crm/CrmWorkspace";
 import { CRM3_CSS } from "./estilos";
+import { CRM3_CSS_FASE1 } from "./estilos-fase1";
 import { abaDaUrl, abasVisiveis, definicaoDaAba, podeVerGestao, type Aba3 } from "./lib/navegacao";
 import type { Momento } from "./lib/momentos";
 import { slaDoLead } from "./lib/sla3";
@@ -71,6 +72,25 @@ async function api(path: string, token: string, init?: RequestInit) {
   });
   const json = (await res.json().catch(() => ({}))) as Json;
   return { ok: res.ok, status: res.status, json };
+}
+
+/** Ícones de linha das abas — os mesmos desenhos do protótipo (fase 1). */
+function IconeAba({ aba }: { aba: string }) {
+  const P: Record<string, ReactNode> = {
+    meu_dia: <><path d="M3 10.5 12 3l9 7.5" /><path d="M5 9.5V21h14V9.5" /></>,
+    funil: <><rect x="3" y="4" width="5" height="16" rx="1.2" /><rect x="10" y="4" width="5" height="10" rx="1.2" /><rect x="17" y="4" width="4" height="13" rx="1.2" /></>,
+    leads: <><path d="M4 6h16" /><path d="M4 12h16" /><path d="M4 18h10" /></>,
+    visitas: <><path d="M12 21s-7-6.1-7-11a7 7 0 0 1 14 0c0 4.9-7 11-7 11Z" /><circle cx="12" cy="10" r="2.6" /></>,
+    esteira: <><rect x="5" y="3" width="14" height="18" rx="2" /><path d="M9 8h6M9 12h6M9 16h4" /></>,
+    agenda: <><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M8 3v4M16 3v4M3 10h18" /></>,
+    avisos: <><path d="M6 9a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6Z" /><path d="M10 19a2 2 0 0 0 4 0" /></>,
+    gestao: <><rect x="4" y="4" width="7" height="7" rx="1.4" /><rect x="13" y="4" width="7" height="7" rx="1.4" /><rect x="4" y="13" width="7" height="7" rx="1.4" /><rect x="13" y="13" width="7" height="7" rx="1.4" /></>,
+  };
+  return (
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      {P[aba] ?? P.meu_dia}
+    </svg>
+  );
 }
 
 /** Topbar do handoff v3: seletor de CRM, nota do piloto, busca global e novo lead. */
@@ -175,6 +195,17 @@ export function Crm3Workspace({ accessToken, profile }: { accessToken: string; p
   const [saraCache, setSaraCache] = useState<Record<string, string>>({});
   const [analises, setAnalises] = useState<Record<number, AnaliseSara>>({});
   const [novoLead, setNovoLead] = useState(false);
+  /* Badge da aba Avisos (fase 1): quantos clientes responderam e esperam. */
+  const [avisosQtd, setAvisosQtd] = useState<number | null>(null);
+
+  useEffect(() => {
+    let vivo = true;
+    void fetch(`/api/ncrm/fila?filtro=respondeu`, { headers: { Authorization: `Bearer ${accessToken}` } })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j: { itens?: unknown[] } | null) => { if (vivo && j?.itens) setAvisosQtd(j.itens.length); })
+      .catch(() => { /* o badge é informativo */ });
+    return () => { vivo = false; };
+  }, [accessToken]);
 
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { setSaraCache(lerCacheSara()); }, []);
@@ -363,7 +394,7 @@ export function Crm3Workspace({ accessToken, profile }: { accessToken: string; p
 
   return (
     <div className="crm-v2 ncrm3">
-      <style>{CRM3_CSS}</style>
+      <style>{CRM3_CSS}{CRM3_CSS_FASE1}</style>
 
       {/* Topbar do protótipo: seletor, nota do piloto, busca global e novo lead. */}
       <TopbarCrm3 busca={busca} onBusca={setBusca} onNovoLead={() => setNovoLead(true)} />
@@ -385,7 +416,8 @@ export function Crm3Workspace({ accessToken, profile }: { accessToken: string; p
         <nav aria-label="Visões do CRM">
           {abas.map((a) => (
             <button key={a.chave} type="button" className={aba === a.chave ? "active" : ""} onClick={() => trocarAba(a.chave)}>
-              <span>{a.simbolo}</span> {a.titulo}
+              <IconeAba aba={a.chave} /> {a.titulo}
+              {a.chave === "avisos" && avisosQtd != null && avisosQtd > 0 && <b className="ncrm3-aba-badge">{avisosQtd}</b>}
             </button>
           ))}
         </nav>
@@ -417,6 +449,11 @@ export function Crm3Workspace({ accessToken, profile }: { accessToken: string; p
                   onAbrir={(id) => { setFormPedido(null); void abrirAtendimento(id); }}
                   onIrParaVisitas={() => trocarAba("visitas")}
                   onIrParaAba={(a) => trocarAba(a as Aba3)}
+                  acoes={ACOES_CARD}
+                  onAcao={(id, chave) => {
+                    setFormPedido(chave as "resultado" | "proxima" | "visita" | "proposta");
+                    void abrirAtendimento(id);
+                  }}
                 />
               )}
 
