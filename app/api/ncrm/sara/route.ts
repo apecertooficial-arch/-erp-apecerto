@@ -39,7 +39,7 @@ const OVERRIDE =
   "COMPONHA com a análise anterior: diga o que MUDOU desde ela e ajuste temperatura e confiança em vez " +
   "de recomeçar do zero — a nota evolui, não reinicia. " +
   "Responda SOMENTE um JSON válido com as chaves: etapa_sugerida (novo|tentando_contato|em_atendimento|em_acompanhamento), " +
-  "acao_padrao_codigo (RESPONDER_CLIENTE|QUALIFICAR_NECESSIDADE|QUALIFICAR_REGIAO|QUALIFICAR_IMOVEL|QUALIFICAR_ORCAMENTO|QUALIFICAR_PRAZO|ENVIAR_OPCOES|VALIDAR_OPCOES|CONTORNAR_OBJECAO|CONVIDAR_VISITA|CONFIRMAR_VISITA|RETOMAR_COMBINADO|LIGAR_CLIENTE|ENCERRAR_SEM_RESPOSTA|REVISAR_MANUALMENTE), " +
+  "acao_padrao_codigo (PRIMEIRA_ABORDAGEM|ENVIAR_CADENCIA|RESPONDER_CLIENTE|ENTENDER_NECESSIDADE|BUSCAR_E_ENVIAR_IMOVEIS|PEDIR_RETORNO|REATIVAR_CONVERSA|AGENDAR_VISITA|REGISTRAR_RESULTADO_VISITA|REGISTRAR_PROPOSTA), " +
   "temperatura (frio|morno|quente|negociando), intencao_detectada, proxima_acao (1 frase concreta e específica), " +
   "prazo_sugerido (ISO 8601, sempre posterior à data de HOJE do input), objecoes (array), risco_abandono (baixo|medio|alto), " +
   "possibilidade_visita (baixa|media|alta), possibilidade_proposta (baixa|media|alta), " +
@@ -205,8 +205,16 @@ export async function GET(request: Request) {
         p_confianca: sug.confianca,
         p_hash: `ui:${hashEstavel(input)}`,
       });
-      const gr = (grava ?? {}) as { ok?: boolean };
-      return Response.json({ ok: true, negocio: nid, sugestao: sug, tentativa: i + 1, persistida: gr.ok === true });
+      const gr = (grava ?? {}) as { ok?: boolean; analise_id?: number };
+      let aplicada = false;
+      if (gr.ok === true && gr.analise_id) {
+        const { data: aplicacao } = await db.rpc("ncrm_sara_aplicar_proxima_acao", {
+          p_negocio_id: nid, p_analise_id: gr.analise_id, p_acao_codigo: sug.acao_padrao_codigo,
+        });
+        aplicada = (aplicacao as { ok?: boolean; aplicado?: boolean } | null)?.ok === true
+          && (aplicacao as { aplicado?: boolean }).aplicado === true;
+      }
+      return Response.json({ ok: true, negocio: nid, sugestao: sug, tentativa: i + 1, persistida: gr.ok === true, aplicada });
     }
     ultimaFalha = norm.erro;
   }

@@ -2,10 +2,10 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { ACOES_OFICIAIS, MOMENTOS_PADRAO, condutaOficial, prazoDaConduta } from "../app/features/crm-nova-era-3/lib/conduta3.ts";
 
-test("o padrão operacional é fechado em 7 momentos e 10 ações", () => {
-  assert.equal(MOMENTOS_PADRAO.length, 7);
+test("o padrão operacional é fechado em 4 momentos e 10 ações", () => {
+  assert.equal(MOMENTOS_PADRAO.length, 4);
   assert.equal(ACOES_OFICIAIS.length, 10);
-  assert.equal(new Set(MOMENTOS_PADRAO.map((m) => m.codigo)).size, 7);
+  assert.equal(new Set(MOMENTOS_PADRAO.map((m) => m.codigo)).size, 4);
   assert.equal(new Set(ACOES_OFICIAIS.map((a) => a.codigo)).size, 10);
 });
 
@@ -27,19 +27,19 @@ test("pedido de outro produto ou região vira busca de imóveis", () => {
     { etapa: "em_atendimento", respondeu: true },
     { negocio_id: 1, proxima_acao_sugerida: "Buscar outro produto em outra região", justificativa: "Cliente mudou a região", prazo_sugerido: null, confianca: .9, etapa_sugerida: "em_atendimento", analisado_em: "2026-08-03T10:00:00Z" },
   );
-  assert.equal(c.momentoCodigo, "buscando_opcoes");
-  assert.equal(c.acaoCodigo, "BUSCAR_IMOVEIS");
+  assert.equal(c.momentoCodigo, "em_atendimento");
+  assert.equal(c.acaoCodigo, "BUSCAR_E_ENVIAR_IMOVEIS");
   assert.equal(c.fonte, "Sara");
 });
 
 test("opções já enviadas exigem retorno", () => {
   const c = condutaOficial({ etapa: "em_atendimento", proximaAcao: "Cobrar retorno sobre as opções enviadas", respondeu: true });
-  assert.equal(c.momentoCodigo, "opcoes_enviadas");
-  assert.equal(c.acaoCodigo, "COBRAR_RETORNO");
+  assert.equal(c.momentoCodigo, "em_atendimento");
+  assert.equal(c.acaoCodigo, "PEDIR_RETORNO");
 });
 
 test("visita tem ações oficiais próprias", () => {
-  assert.equal(condutaOficial({ etapa: "em_atendimento", proximaAcao: "Confirmar visita", respondeu: true }).acaoCodigo, "AGENDAR_OU_CONFIRMAR_VISITA");
+  assert.equal(condutaOficial({ etapa: "em_atendimento", proximaAcao: "Confirmar visita", respondeu: true }).acaoCodigo, "AGENDAR_VISITA");
   assert.equal(condutaOficial({ etapa: "em_atendimento", proximaAcao: "Registrar resultado da visita", respondeu: true }).acaoCodigo, "REGISTRAR_RESULTADO_VISITA");
 });
 
@@ -54,7 +54,7 @@ test("texto livre da Sara vira código oficial e fica apenas como justificativa"
     { etapa: "em_atendimento", respondeu: true },
     { negocio_id: 1, proxima_acao_sugerida: "Pergunte faixa de valor e prazo de compra", justificativa: "Faltam dados", prazo_sugerido: null, confianca: .8, etapa_sugerida: "em_atendimento", analisado_em: "2026-08-03T10:00:00Z" },
   );
-  assert.equal(c.acaoCodigo, "QUALIFICAR_NECESSIDADE");
+  assert.equal(c.acaoCodigo, "ENTENDER_NECESSIDADE");
   assert.equal(c.acao, "Entender o que o cliente procura");
   assert.equal(c.justificativa, "Faltam dados");
 });

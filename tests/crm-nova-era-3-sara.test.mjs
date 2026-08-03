@@ -171,7 +171,8 @@ test("o painel conta o dia com os numeros que o corretor confere", () => {
   ], hoje);
   assert.equal(p.aguardandoResposta, 1, "o cliente repetido conta uma vez so");
   assert.equal(p.leadsNovos, 1);
-  assert.equal(p.retornosHoje, 1);
+  assert.equal(p.cadenciasHoje, 1);
+  assert.ok(p.atrasadas >= 0);
 });
 
 test("o painel aponta um proximo atendimento, nomeado", () => {

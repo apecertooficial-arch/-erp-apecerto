@@ -338,7 +338,7 @@ export function Ficha3({
       <section className="ncrm3-bloco ncrm3-conduta-ficha">
         <h3>CONDUTA OFICIAL</h3>
         <div className={`ncrm3-conduta prazo-${conduta.prazoInfo.status}`}>
-          <span className="ncrm3-conduta-label">MOMENTO {conduta.momentoOrdem}/7 · {conduta.momento}</span>
+          <span className="ncrm3-conduta-label">MOMENTO {conduta.momentoOrdem}/4 · {conduta.momento}</span>
           <small>{conduta.situacao}</small>
           <span className="ncrm3-conduta-label">FAÇA AGORA</span>
           <b>{conduta.acao}</b>

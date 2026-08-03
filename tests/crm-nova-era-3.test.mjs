@@ -130,8 +130,8 @@ test("visita e proposta nunca viram coluna", () => {
 
 test("três seções, na ordem do trabalho", () => {
   assert.deepEqual([...ORDEM_SECOES], ["atender_agora", "fazer_hoje", "acompanhar_depois"]);
-  assert.deepEqual(montarSecoes([]).map((b) => b.titulo), ["Atender agora", "Fazer hoje", "Aguardando cliente"]);
-  assert.equal(SECAO_TITULO.atender_agora, "Atender agora");
+  assert.deepEqual(montarSecoes([]).map((b) => b.titulo), ["Faça agora", "Fazer hoje", "Monitorados pela Sara"]);
+  assert.equal(SECAO_TITULO.atender_agora, "Faça agora");
 });
 
 test("a seção concorda com a partição canônica do domínio", () => {
@@ -198,7 +198,7 @@ test("o cartão traduz a próxima ação livre para a conduta oficial", () => {
   assert.equal(c.motivo, "Cliente respondeu");
   assert.equal(c.tempo, "2h 5min");
   assert.equal(c.proximaAcao, "Responder o cliente");
-  assert.equal(c.momento, "Entendendo necessidade");
+  assert.equal(c.momento, "Em atendimento");
   assert.equal(c.acaoCodigo, "RESPONDER_CLIENTE");
 });
 
