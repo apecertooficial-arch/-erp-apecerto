@@ -4,8 +4,9 @@
 // Autenticação (config.toml: verify_jwt=false): EXIGE `x-cron-secret` (Vault) validado em
 // tempo ~constante ANTES de qualquer leitura (401 se ausente/incorreto). service_role SÓ
 // dentro da Edge (para o banco); nunca Bearer cron→Edge; nunca no frontend.
-// Reusa o NÚCLEO TESTADO (app/features/crm-nova-era/lib/*): só observer, nunca muta,
-// idempotente por (negocio_id, context_hash), lote/timeout/retry, fila justa com backoff,
+// Reusa o NÚCLEO TESTADO: analisa em observer e pode ORGANIZAR Momento + Ação +
+// Prazo pelo catálogo oficial. Nunca executa ação comercial nem envia mensagem.
+// Idempotente por (negocio_id, context_hash), lote/timeout/retry, fila justa com backoff,
 // falha isolada por negócio, contrato real da Sara (saraSchema), FAIL-CLOSED no contexto.
 // Dependência FIXADA (evita import flutuante).
 // @ts-nocheck
@@ -17,7 +18,7 @@ import { normalizarSugestaoSara } from "../../../app/api/ncrm/saraSchema.ts";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const CRON_SECRET = Deno.env.get("CRON_SECRET") ?? "";
-const VERSAO_PROMPT = "sara-observer-v2";
+const VERSAO_PROMPT = "sara-conduta-v4";
 const VERSAO_MODELO = Deno.env.get("SARA_MODELO") ?? "ia-router";
 const OPTS = { lote: Number(Deno.env.get("SARA_LOTE") ?? 3), timeoutMs: 20000, maxRetries: 1 }; // piloto: lote 3 por padrão
 
@@ -31,8 +32,14 @@ const OVERRIDE =
   "'perguntar se a compra é para morar ou investir, porque ele citou aluguel' é. " +
   "COMPONHA com a ANÁLISE ANTERIOR quando o input trouxer uma: diga o que MUDOU desde ela, " +
   "ajuste temperatura e confiança em vez de recomeçar do zero — a nota evolui, não reinicia. " +
-  "Responda SOMENTE um JSON válido com as chaves: etapa_sugerida " +
-  "(novo|tentando_contato|em_atendimento|em_acompanhamento), temperatura (frio|morno|quente|negociando), " +
+  "PADRÃO OFICIAL: escolha exatamente um momento e a ação correspondente: " +
+  "PRIMEIRA_ABORDAGEM→PRIMEIRA_ABORDAGEM; CADENCIA_SEM_RESPOSTA→ENVIAR_CADENCIA; " +
+  "CONVERSANDO_QUALIFICANDO→RESPONDER_E_QUALIFICAR; BUSCANDO_PRODUTO→BUSCAR_E_ENVIAR_IMOVEIS; " +
+  "PRODUTO_ENVIADO→PEDIR_RETORNO_PRODUTO; TENTANDO_AGENDAMENTO→AGENDAR_VISITA; " +
+  "VISITA_AGENDADA→CONFIRMAR_VISITA; RETORNO_PROGRAMADO→RETOMAR_NO_COMBINADO; " +
+  "FEEDBACK_POS_VISITA→REGISTRAR_RESULTADO_VISITA; DECISAO_POS_VISITA→AVANCAR_POS_VISITA. " +
+  "Não crie ações ou momentos fora desta lista. Responda SOMENTE um JSON válido com as chaves: etapa_sugerida " +
+  "(novo|tentando_contato|em_atendimento|em_acompanhamento), momento_sugerido, acao_padrao_codigo, temperatura (frio|morno|quente|negociando), " +
   "intencao_detectada, proxima_acao (1 frase concreta e específica), prazo_sugerido (ISO 8601, sempre " +
   "posterior à data de HOJE do input), objecoes (array), risco_abandono (baixo|medio|alto), " +
   "possibilidade_visita (baixa|media|alta), possibilidade_proposta (baixa|media|alta), justificativa " +
@@ -119,6 +126,18 @@ Deno.serve(async (req: Request) => {
         p_versao_prompt: VERSAO_PROMPT, p_versao_modelo: VERSAO_MODELO,
       });
       if (error) throw new Error("registro_falhou");
+      if (data?.ok !== false && data?.analise_id && analise.momentoSugerido && analise.acaoPadraoCodigo) {
+        const { data: organizada, error: organizarErro } = await db.rpc("ncrm_sara_aplicar_conduta_automatica", {
+          p_negocio_id: negocioId,
+          p_analise_id: data.analise_id,
+          p_momento_codigo: analise.momentoSugerido,
+          p_acao_codigo: analise.acaoPadraoCodigo,
+        });
+        if (organizarErro) throw new Error("organizacao_falhou");
+        if (organizada?.ok === false && !["analise_sem_base", "confianca_insuficiente", "estado_mudou", "acao_humana_mais_recente"].includes(organizada?.erro)) {
+          throw new Error("organizacao_recusada");
+        }
+      }
       return { ok: data?.ok !== false, ja: !!data?.ja_analisado };
     },
     // Marca TODO negócio processado (fila justa / backoff). Best-effort mas NÃO silencioso:

@@ -100,7 +100,7 @@ function TopbarCrm3({ busca, onBusca, onNovoLead }: { busca: string; onBusca: (v
         <button type="button" onClick={() => { window.location.href = "/crm?crm=atual"; }}>Funil atual</button>
         <button type="button" className="on">CRM Nova Era <i>3.0</i></button>
       </div>
-      <span className="ncrm3-topbar-nota">Piloto com dados reais · a Sara só observa, nunca envia</span>
+      <span className="ncrm3-topbar-nota">A Sara organiza momento, ação e prazo · nunca envia por você</span>
       <label className="crm-search-v2 ncrm3-topbar-busca">
         <span aria-hidden="true">⌕</span>
         <input value={busca} onChange={(e) => onBusca(e.target.value)} placeholder="Buscar nome, telefone ou e-mail" />
@@ -345,7 +345,7 @@ export function Crm3Workspace({ accessToken, profile }: { accessToken: string; p
     const termo = busca.trim().toLowerCase();
     return itens
       .map(paraExibicao)
-      .filter((e) => !e.lead.visitaAgendadaEm && !e.lead.proposta && !e.lead.descartadoMotivo && !e.lead.nutricao)
+      .filter((e) => !e.lead.proposta && !e.lead.descartadoMotivo && !e.lead.nutricao)
       .filter((e) => !termo || e.lead.nome.toLowerCase().includes(termo) || (e.origem ?? "").toLowerCase().includes(termo))
       .map((e) => ({
         lead: e.lead,
@@ -355,6 +355,8 @@ export function Crm3Workspace({ accessToken, profile }: { accessToken: string; p
         orientacaoSara: saraCache[e.lead.id] ?? null,
         analise: analises[Number(e.lead.id)] ?? null,
         maxTentativas: e.maxTentativas,
+        momentoCodigo: e.momentoCodigo,
+        tentativasFeitas: e.tentativasFeitas,
         sla: slaDoLead(
           {
             momento: e.lead.coluna,
@@ -530,6 +532,8 @@ export function Crm3Workspace({ accessToken, profile }: { accessToken: string; p
                 fotoUrl={detalhe.fotoUrl}
                 imoveis={imoveis}
                 visitaId={detalhe.visitaId}
+                momentoCodigo={detalhe.momentoCodigo}
+                tentativasFeitas={detalhe.tentativasFeitas}
                 analiseInicial={analises[Number(detalhe.lead.id)] ?? null}
                 onFechar={() => { setSelId(null); setDetalhe(null); setImoveis([]); setFormPedido(null); }}
                 onExecutar={executar}
