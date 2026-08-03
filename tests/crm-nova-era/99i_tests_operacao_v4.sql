@@ -50,8 +50,8 @@ INSERT INTO public.leads(id,nome) VALUES(71991,'Lead Visita V4') ON CONFLICT(id)
 INSERT INTO public.negocios(id,lead_id,corretor_id,status,pipeline_id,stage_id)
 VALUES(71991,71991,71991,'aberto',2,20) ON CONFLICT(id) DO NOTHING;
 INSERT INTO public.ncrm_estado(negocio_id,workflow_config_id,etapa,momento_codigo,respondeu,resposta_pendente,
-  proxima_acao_tipo,proxima_acao_titulo,proxima_acao_em,origem_ultima)
-SELECT 71991,id,'em_atendimento','TENTANDO_AGENDAMENTO',true,false,'agendar_visita','Agendar uma visita',now(),'usuario'
+  primeira_resposta_em,proxima_acao_tipo,proxima_acao_titulo,proxima_acao_em,origem_ultima)
+SELECT 71991,id,'em_atendimento','TENTANDO_AGENDAMENTO',true,false,now(),'agendar_visita','Agendar uma visita',now(),'usuario'
 FROM public.ncrm_workflow_config WHERE status='publicada' ORDER BY versao DESC LIMIT 1
 ON CONFLICT(negocio_id) DO NOTHING;
 SELECT set_config('request.jwt.claims',json_build_object('sub','aaaaaaaa-0000-0000-0000-000000000091','role','authenticated')::text,false);
