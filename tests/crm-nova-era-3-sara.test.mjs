@@ -139,6 +139,17 @@ test("as tres decisoes continuam existindo", () => {
   assert.match(ACOES_SARA[0].ajuda, /[Rr]egistra/, "o botao precisa dizer que executa");
 });
 
+test("acao feita fecha o ciclo e pede uma nova leitura da Sara", () => {
+  const ficha = ler("../app/features/crm-nova-era-3/components/Ficha3.tsx");
+  const form = ler("../app/features/crm-nova-era-3/components/FormAcao3.tsx");
+  const workspace = ler("../app/features/crm-nova-era-3/Crm3Workspace.tsx");
+  assert.match(ficha, /executarEReavaliar/);
+  assert.match(ficha, /await pedirSara\(\)/, "a ação humana precisa provocar uma nova leitura");
+  assert.match(ficha, /analiseInicial/, "a orientação persistida não pode sumir ao reabrir a ficha");
+  assert.match(form, /Concluir e receber o próximo passo/);
+  assert.match(workspace, /analiseInicial=\{analises\[/, "a ficha precisa receber a leitura persistida do board");
+});
+
 /* ==================== PAINEL DE ABERTURA ==================== */
 
 test("o painel conta o dia com os numeros que o corretor confere", () => {

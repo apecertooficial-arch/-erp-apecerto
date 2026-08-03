@@ -71,9 +71,11 @@ test("badge conta so nao lidas uteis", () => {
 });
 
 test("Agora / Hoje / Anteriores", () => {
-  assert.equal(baldeDe(av("a", "leads", 10)), "agora");
-  assert.equal(baldeDe(av("h", "leads", 300)), "hoje");
-  assert.equal(baldeDe(av("v", "leads", 60 * 40)), "anteriores");
+  const relogio = new Date("2026-08-03T18:00:00.000Z");
+  const avisoEm = (id, quando) => av(id, "leads", 0, { when: quando });
+  assert.equal(baldeDe(avisoEm("a", "2026-08-03T17:50:00.000Z"), 60, relogio), "agora");
+  assert.equal(baldeDe(avisoEm("h", "2026-08-03T13:00:00.000Z"), 60, relogio), "hoje");
+  assert.equal(baldeDe(avisoEm("v", "2026-08-01T02:00:00.000Z"), 60, relogio), "anteriores");
 });
 
 test("marcar tudo pede confirmacao quando sao muitos", () => {
