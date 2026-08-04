@@ -68,6 +68,21 @@ SELECT public.test_assert((public.f2_confirmar_acao(
 SELECT public.test_assert((public.f2_confirmar_acao(
   :'_f2_id',:_f2_versao2,'dapi','Webhook confirmado')->>'ok')::boolean,
   '#f2-10 confirmação D-API registra a ação e recalcula o prazo');
+SELECT versao AS _f2_versao3 FROM public.f2_lead WHERE id=:'_f2_id' \gset
+SELECT public.test_assert((public.f2_atualizar_momento(
+  :'_f2_id',:_f2_versao3,'CADENCIA_SEM_RESPOSTA',NULL,'Voltou para a cadência')->>'ok')::boolean,
+  '#f2-10b entrada na cadência começa no dia 1');
+SELECT versao AS _f2_versao4 FROM public.f2_lead WHERE id=:'_f2_id' \gset
+SELECT public.test_assert((public.f2_atualizar_momento(
+  :'_f2_id',:_f2_versao4,'CADENCIA_SEM_RESPOSTA',NULL,'Continua sem resposta')->>'mesmo_momento')::boolean
+  AND (SELECT cadencia_passo FROM public.f2_lead WHERE id=:'_f2_id')=0,
+  '#f2-10c revalidar o mesmo momento não reinicia nem avança a cadência');
+SELECT versao AS _f2_versao5 FROM public.f2_lead WHERE id=:'_f2_id' \gset
+SELECT public.f2_confirmar_acao(
+  :'_f2_id',:_f2_versao5,'dapi','Dia 1 confirmado') AS _f2_confirmacao_dia1 \gset
+SELECT public.test_assert((:'_f2_confirmacao_dia1'::jsonb->>'ok')::boolean
+  AND (SELECT cadencia_passo FROM public.f2_lead WHERE id=:'_f2_id')=1,
+  '#f2-10d depois do dia 1 a próxima obrigação é o dia 2');
 RESET ROLE;
 
 SELECT public.test_assert(
