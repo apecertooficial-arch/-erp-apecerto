@@ -72,8 +72,8 @@ export async function GET(request: Request) {
     .from("wa_mensagens")
     .select("id,direcao,tipo,conteudo,media_url,enviado_em,criado_em,status,transcricao,instancia_id", { count: "exact" })
     .in("conversa_id", conversaIds)
-    .order("criado_em", { ascending: true })
-    .limit(200);
+    .order("criado_em", { ascending: false })
+    .limit(500);
   if (copia.historico_completo !== true) mensagensQuery = mensagensQuery.gte("criado_em", corte);
   const { data: mensagens, error: mensagensError, count } = await mensagensQuery;
   if (mensagensError) return Response.json({ error: mensagensError.message }, { status: 502 });
@@ -99,5 +99,5 @@ export async function GET(request: Request) {
     atual: item.id === instanciaAtualId,
   })).sort((a: { atual: boolean }, b: { atual: boolean }) => Number(b.atual)-Number(a.atual));
 
-  return Response.json({ ok: true, lead: funilLeadId, negocio: origemNegocioId, corte, historicoCompleto: copia.historico_completo === true, total: count ?? mensagens?.length ?? 0, instancias: instanciasSeguras, mensagens: mensagens ?? [] });
+  return Response.json({ ok: true, lead: funilLeadId, negocio: origemNegocioId, corte, historicoCompleto: copia.historico_completo === true, total: count ?? mensagens?.length ?? 0, instancias: instanciasSeguras, mensagens: [...(mensagens ?? [])].reverse() });
 }

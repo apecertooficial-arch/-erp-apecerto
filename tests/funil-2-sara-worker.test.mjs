@@ -8,6 +8,7 @@ const route = readFileSync(new URL("../app/api/funil2/route.ts", import.meta.url
 const historico = readFileSync(new URL("../supabase/migrations/20260811034000_funil_2_historico_completo.sql", import.meta.url), "utf8");
 const visitas = readFileSync(new URL("../supabase/migrations/20260811035000_funil_2_visitas_com_feedback.sql", import.meta.url), "utf8");
 const gate = readFileSync(new URL("../app/features/crm-nova-era/CrmNovaEraGate.tsx", import.meta.url), "utf8");
+const respostaInstanciasApp = readFileSync(new URL("../supabase/migrations/20260811037000_funil_2_resposta_instancias_app.sql", import.meta.url), "utf8");
 
 test("worker exige segredo antes de ler o banco", () => {
   const auth = edge.indexOf("segredoIgual(req.headers.get");
@@ -66,6 +67,8 @@ test("visita movimenta o lead e exige feedback para encerrar a cobrança", () =>
   assert.match(visitas, /feedback obrigatório/);
 });
 
-test("aplicativo administrativo usa o mesmo Funil 2.0", () => {
-  assert.match(gate, /ehCelular === true[\s\S]*if \(podeFunil2\)[\s\S]*<Funil2Workspace/);
+test("aplicativo de qualquer corretor usa o mesmo Funil 2.0 com RLS por carteira", () => {
+  assert.match(gate, /ehCelular === true[\s\S]*<Funil2Workspace/);
+  assert.doesNotMatch(gate, /ehCelular === true[\s\S]*if \(podeFunil2\)/);
+  assert.match(respostaInstanciasApp, /f2_pode_operar_lead/);
 });
