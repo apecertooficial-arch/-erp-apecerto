@@ -320,24 +320,37 @@ function bodyHtml(n){
  }
  /* Funil 2.0 — distribui e passa a bola. Sem abordagem automatica e sem reter o lead.
     Quem manda a mensagem e o corretor, pelo celular; a evidencia e o D-API. */
+ /* Funil 2.0 — distribui e passa a bola. Sem abordagem automatica e sem reter o lead.
+    Quem manda a mensagem e o corretor, pelo celular; a evidencia e o D-API. */
  if(n.type==='distribution-simple'){if(!n.opts)n.opts={};
   const d=n.opts.distribuicao=n.opts.distribuicao||{items:[],onlineOnly:true,tambemNegocio:true};
   const its=d.items=d.items||[];d.tambemNegocio=true;
   (function(){const nomes=its.map(x=>String(x.corretor||'').trim().toLowerCase());
    (ref.corretores||[]).filter(c=>c.ativo!==false&&nomes.indexOf(String(c.nome||'').trim().toLowerCase())<0)
     .forEach(c=>its.push({corretor:c.nome,peso:1,on:false}));})();
-  its.forEach(x=>{x.peso=1;});
+  its.forEach(x=>{if(x.peso==null)x.peso=1;});
   const ligados=its.filter(x=>x.on!==false).length;
-  const linhas=its.map((it,i)=>`<div class="ne-row" data-dsrow="${i}" style="padding:7px 9px"><div style="display:flex;align-items:center;gap:8px">`+
-    `<input type="checkbox" data-dson ${it.on!==false?'checked':''} title="Participa do rodizio" style="width:15px;height:15px;flex:0 0 auto">`+
-    `<span style="flex:1;font-size:12.5px;font-weight:600;color:${it.on!==false?'var(--ink)':'var(--ink-faint)'}">${esc(it.corretor||'—')}</span>`+
-    `</div></div>`).join('');
-  return `<div style="font-size:11px;color:var(--ink-faint);padding:2px 0 6px;line-height:1.45">Distribui o lead pelo <b>rodizio igualitario</b> e segue o fluxo. <b>Nao envia abordagem</b> e <b>nao retem o lead</b> — quem manda a mensagem e o corretor, pelo celular, e o D-API confirma.</div>`+
+  const somaPeso=its.filter(x=>x.on!==false).reduce((s,x)=>s+(+x.peso||0),0);
+  const linhas=its.map((it,i)=>{const ativo=it.on!==false;const pz=+it.peso||0;
+   const pct=(ativo&&somaPeso>0)?Math.round(pz*100/somaPeso):0;
+   return `<div class="ne-row" data-dsrow="${i}" style="padding:7px 9px"><div style="display:flex;align-items:center;gap:8px">`+
+    `<input type="checkbox" data-dson ${ativo?'checked':''} title="Participa do rodizio" style="width:15px;height:15px;flex:0 0 auto">`+
+    `<span style="flex:1;font-size:12.5px;font-weight:600;color:${ativo?'var(--ink)':'var(--ink-faint)'}">${esc(it.corretor||'—')}</span>`+
+    `<input class="ne-inp" type="number" min="0" step="1" data-dspeso value="${esc(pz)}" title="Peso no rodizio (0 = fora)" style="width:56px;text-align:center">`+
+    `<span style="font-size:11px;font-weight:700;color:var(--brand);width:38px;text-align:right">${pct}%</span>`+
+    `</div></div>`;}).join('');
+  const pr=Array.isArray(d.protecao)?d.protecao:['venda','visita_agendada','visita_realizada'];
+  const optsProt=[['venda','Venda em processo'],['visita_agendada','Visita agendada'],['visita_realizada','Visita realizada'],['sempre','Sempre manter o dono (nunca redistribui)']];
+  return `<div style="font-size:11px;color:var(--ink-faint);padding:2px 0 6px;line-height:1.45">Distribui o lead pelo <b>rodizio por peso</b> e segue o fluxo. <b>Nao envia abordagem</b> e <b>nao retem o lead</b> — quem manda a mensagem e o corretor, pelo celular, e o D-API confirma.</div>`+
    (its.length?linhas:'<div style="font-size:11px;color:var(--ink-faint);padding:4px 0">Nenhum corretor. Recarregue a página para listar.</div>')+
-   `<div style="font-size:10.5px;color:var(--ink-faint);margin-top:5px">${ligados} de ${its.length} no rodízio. Sem peso: todos com a mesma chance. <b>Corretor recém-cadastrado entra desmarcado</b> — marque e publique para incluir.</div>`+
+   `<div style="font-size:10.5px;color:var(--ink-faint);margin-top:5px">${ligados} de ${its.length} no rodízio. <b>Peso 0 tira o corretor do sorteio.</b> Todos com o mesmo peso = mesma chance. <b>Corretor recém-cadastrado entra desmarcado</b> — marque e publique para incluir.</div>`+
    `<label style="display:flex;align-items:center;gap:7px;margin-top:8px;font-size:12px;color:var(--ink);cursor:pointer"><input type="checkbox" data-dsonline ${d.onlineOnly!==false?'checked':''} style="width:15px;height:15px"> Só distribuir para quem está <b>apto agora</b></label>`+
+   `<div style="height:1px;background:var(--line-soft);margin:11px 0 6px"></div><div class="ne-lb" style="margin-top:0">Proteção do dono do lead</div>`+
+   `<div style="font-size:11px;color:var(--ink-faint);margin:2px 0 4px">Lead que JÁ tem corretor só fica com ele nas situações marcadas — senão volta pro rodízio:</div>`+
+   optsProt.map(([k,l])=>`<label style="display:flex;align-items:center;gap:7px;font-size:12px;padding:3px 0;cursor:pointer"><input type="checkbox" data-dsprot="${k}" ${pr.indexOf(k)>=0?'checked':''} style="width:15px;height:15px;flex:0 0 auto">${esc(l)}</label>`).join('')+
+   `<button class="ne-add" data-dsreport style="margin-top:9px">\u{1F4CA} Distribuídos por corretor (período)</button>`+
    `<div style="height:1px;background:var(--line-soft);margin:11px 0 7px"></div>`+
-   `<div style="font-size:10.5px;color:var(--ink-faint);line-height:1.5">Fixo neste bloco, por contrato do Funil 2.0:<br>· o corretor é atribuído também no <b>negócio</b> (negócio sem dono não entra no funil);<br>· lead com <b>venda em processo, visita agendada ou visita realizada</b> nunca é redistribuído.</div>`+
+   `<div style="font-size:10.5px;color:var(--ink-faint);line-height:1.5">Fixo neste bloco, por contrato do Funil 2.0:<br>· o corretor é atribuído também no <b>negócio</b> (negócio sem dono não entra no funil).</div>`+
    portRow('out','Próximo passo','ok')+portRow('err','Se ninguém disponível','err');
  }
  if(n.type==='send-approach'){const o=n.opts||{};
@@ -440,6 +453,25 @@ function msgRow(m,i){const nm=m.name||'send-text-message',o=m.options||{};const 
 
 /* ---------- binds inline ---------- */
 function stopMD(el){el.querySelectorAll('input,select,textarea,button').forEach(x=>x.addEventListener('mousedown',e=>e.stopPropagation()));}
+/* Relatorio de distribuicao por corretor — compartilhado pelos blocos 'distribution'
+   (roleta) e 'distribution-simple'. Le o log do motor, nao uma tabela propria. */
+async function relatorioDistribuicao(n){
+   showPanel('Distribuídos por corretor','<div style="font-size:12px;color:var(--ink-faint);padding:8px 0">Carregando…</div>');
+   let rows=[];try{rows=await sbGet('/motor_execucoes?automacao_id=eq.'+cur.id+'&bloco_id=eq.'+encodeURIComponent(n.id)+'&evento=eq.distribuicao&status=eq.ok&select=detalhe,criado_em&order=criado_em.desc&limit=2000');}catch(err){showPanel('Distribuídos por corretor','<div style="color:var(--err);font-size:12px">Erro: '+esc(err.message)+'</div>');return;}
+   const nomeDe=t=>{const m=/Lead (?:distribuido para|ja pertence a) ([^\-(]+)/.exec(t||'');return m?m[1].trim():null;};
+   // POSSE FINAL: quando o failover transfere o lead, a contagem sai do sorteado e vai para quem ficou com ele.
+   const transfDe=t=>{const m=/lead transferido para (\S+)/.exec(t||'');if(!m)return null;const s=/instancias de (\S+?) indisponiveis/.exec(t||'');return{para:m[1].trim(),de:s?s[1].trim():null};};
+   const agora=Date.now(),DIA=86400000;
+   const periodos=[['Hoje',d0=>agora-d0<DIA&&new Date(agora).toDateString()===new Date(d0).toDateString()],['Últimos 7 dias',d0=>agora-d0<7*DIA],['Últimos 30 dias',d0=>agora-d0<30*DIA],['Tudo',()=>true]];
+   const html=periodos.map(([lbl,fn])=>{const c={};let tot=0;rows.forEach(r=>{if(!fn(new Date(r.criado_em).getTime()))return;
+     const tr=transfDe(r.detalhe);if(tr){c[tr.para]=(c[tr.para]||0)+1;if(tr.de)c[tr.de]=(c[tr.de]||0)-1;return;}
+     const nm=nomeDe(r.detalhe);if(!nm)return;c[nm]=(c[nm]||0)+1;tot++;});
+    Object.keys(c).forEach(k=>{if(c[k]<=0)delete c[k];});
+    const ent=Object.entries(c).sort((a,b)=>b[1]-a[1]);const max=Math.max(1,...ent.map(x=>x[1]));
+    return '<div style="margin:14px 0 4px;font-size:12px;font-weight:800;color:var(--ink)">'+lbl+' <span style="color:var(--ink-faint);font-weight:600">('+tot+' leads)</span></div>'+(ent.length?ent.map(([nm,qt])=>'<div style="display:grid;grid-template-columns:110px 1fr 34px;gap:8px;align-items:center;padding:4px 0;font-size:12px"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(nm)+'</span><div style="height:9px;border-radius:6px;background:var(--line-soft);overflow:hidden"><div style="height:100%;width:'+Math.round(qt/max*100)+'%;background:var(--brand);border-radius:6px"></div></div><b style="text-align:right">'+qt+'</b></div>').join(''):'<div style="font-size:11.5px;color:var(--ink-faint)">Nenhum lead no período.</div>');
+   }).join('');
+   showPanel('Distribuídos por corretor — '+esc(cur.nome),html+'<div style="margin-top:14px;font-size:10.5px;color:var(--ink-faint)">Conta a POSSE FINAL do lead: sorteio do rodízio + transferências do failover (quem enviou de fato ficou com o lead). Fonte: log do motor.</div>');
+}
 function bindBody(n,el){
  stopMD(el);
  const q=s=>el.querySelector(s),qa=s=>[...el.querySelectorAll(s)];
@@ -475,27 +507,17 @@ function bindBody(n,el){
   const rvI=q('[data-distrespval]');if(rvI)rvI.onchange=()=>{d.respostaValor=+rvI.value||12;setDirty();};
   const ruI=q('[data-distrespunid]');if(ruI)ruI.onchange=()=>{d.respostaUnidade=ruI.value;setDirty();};
   qa('[data-distprot]').forEach(cb=>cb.onchange=()=>{const k=cb.dataset.distprot;d.protecao=Array.isArray(d.protecao)?d.protecao:['venda','visita_agendada','visita_realizada'];const ix=d.protecao.indexOf(k);if(cb.checked&&ix<0)d.protecao.push(k);else if(!cb.checked&&ix>=0)d.protecao.splice(ix,1);setDirty();});
-  const rpB=q('[data-distreport]');if(rpB)rpB.onclick=async e=>{e.stopPropagation();
-   showPanel('Distribuídos por corretor','<div style="font-size:12px;color:var(--ink-faint);padding:8px 0">Carregando…</div>');
-   let rows=[];try{rows=await sbGet('/motor_execucoes?automacao_id=eq.'+cur.id+'&bloco_id=eq.'+encodeURIComponent(n.id)+'&evento=eq.distribuicao&status=eq.ok&select=detalhe,criado_em&order=criado_em.desc&limit=2000');}catch(err){showPanel('Distribuídos por corretor','<div style="color:var(--err);font-size:12px">Erro: '+esc(err.message)+'</div>');return;}
-   const nomeDe=t=>{const m=/Lead (?:distribuido para|ja pertence a) ([^\-(]+)/.exec(t||'');return m?m[1].trim():null;};
-   // POSSE FINAL: quando o failover transfere o lead, a contagem sai do sorteado e vai para quem ficou com ele.
-   const transfDe=t=>{const m=/lead transferido para (\S+)/.exec(t||'');if(!m)return null;const s=/instancias de (\S+?) indisponiveis/.exec(t||'');return{para:m[1].trim(),de:s?s[1].trim():null};};
-   const agora=Date.now(),DIA=86400000;
-   const periodos=[['Hoje',d0=>agora-d0<DIA&&new Date(agora).toDateString()===new Date(d0).toDateString()],['Últimos 7 dias',d0=>agora-d0<7*DIA],['Últimos 30 dias',d0=>agora-d0<30*DIA],['Tudo',()=>true]];
-   const html=periodos.map(([lbl,fn])=>{const c={};let tot=0;rows.forEach(r=>{if(!fn(new Date(r.criado_em).getTime()))return;
-     const tr=transfDe(r.detalhe);if(tr){c[tr.para]=(c[tr.para]||0)+1;if(tr.de)c[tr.de]=(c[tr.de]||0)-1;return;}
-     const nm=nomeDe(r.detalhe);if(!nm)return;c[nm]=(c[nm]||0)+1;tot++;});
-    Object.keys(c).forEach(k=>{if(c[k]<=0)delete c[k];});
-    const ent=Object.entries(c).sort((a,b)=>b[1]-a[1]);const max=Math.max(1,...ent.map(x=>x[1]));
-    return '<div style="margin:14px 0 4px;font-size:12px;font-weight:800;color:var(--ink)">'+lbl+' <span style="color:var(--ink-faint);font-weight:600">('+tot+' leads)</span></div>'+(ent.length?ent.map(([nm,qt])=>'<div style="display:grid;grid-template-columns:110px 1fr 34px;gap:8px;align-items:center;padding:4px 0;font-size:12px"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(nm)+'</span><div style="height:9px;border-radius:6px;background:var(--line-soft);overflow:hidden"><div style="height:100%;width:'+Math.round(qt/max*100)+'%;background:var(--brand);border-radius:6px"></div></div><b style="text-align:right">'+qt+'</b></div>').join(''):'<div style="font-size:11.5px;color:var(--ink-faint)">Nenhum lead no período.</div>');
-   }).join('');
-   showPanel('Distribuídos por corretor — '+esc(cur.nome),html+'<div style="margin-top:14px;font-size:10.5px;color:var(--ink-faint)">Conta a POSSE FINAL do lead: sorteio do rodízio + transferências do failover (quem enviou de fato ficou com o lead). Fonte: log do motor.</div>');};}
- // distribuição simples (Funil 2.0) — rodízio igualitário, sem abordagem e sem retenção
+  const rpB=q('[data-distreport]');if(rpB)rpB.onclick=e=>{e.stopPropagation();void relatorioDistribuicao(n);};}
+ // distribuição simples (Funil 2.0) — rodízio por peso, sem abordagem e sem retenção
  if(n.type==='distribution-simple'){n.opts.distribuicao=n.opts.distribuicao||{items:[],onlineOnly:true,tambemNegocio:true};const d=n.opts.distribuicao;d.items=d.items||[];d.tambemNegocio=true;
+  if(!Array.isArray(d.protecao))d.protecao=['venda','visita_agendada','visita_realizada'];
   qa('[data-dsrow]').forEach(row=>{const i=+row.dataset.dsrow,it=d.items[i];if(!it)return;
-   const on=row.querySelector('[data-dson]');if(on)on.onchange=()=>{it.on=on.checked;setDirty();reNode(n);};});
-  const onl=q('[data-dsonline]');if(onl)onl.onchange=()=>{d.onlineOnly=onl.checked;setDirty();};}
+   const on=row.querySelector('[data-dson]');if(on)on.onchange=()=>{it.on=on.checked;setDirty();reNode(n);};
+   const pz=row.querySelector('[data-dspeso]');if(pz)pz.onchange=()=>{it.peso=Math.max(0,+pz.value||0);setDirty();reNode(n);};});
+  const onl=q('[data-dsonline]');if(onl)onl.onchange=()=>{d.onlineOnly=onl.checked;setDirty();};
+  qa('[data-dsprot]').forEach(cb=>cb.onchange=()=>{const k=cb.dataset.dsprot,ix=d.protecao.indexOf(k);
+   if(cb.checked){if(ix<0)d.protecao.push(k);}else if(ix>=0)d.protecao.splice(ix,1);setDirty();});
+  const rp2=q('[data-dsreport]');if(rp2)rp2.onclick=e=>{e.stopPropagation();void relatorioDistribuicao(n);};}
  if(n.type==='send-approach'){const o=n.opts=n.opts||{};
   const sp=q('[data-sapprod]');if(sp)sp.onchange=()=>{o.produtoId=+sp.value||0;o.abordagemIds=[];setDirty();reNode(n);};
   qa('[data-sapab]').forEach(cb=>cb.onchange=()=>{const id=+cb.dataset.sapab;o.abordagemIds=o.abordagemIds||[];const ix=o.abordagemIds.indexOf(id);if(cb.checked&&ix<0)o.abordagemIds.push(id);else if(!cb.checked&&ix>=0)o.abordagemIds.splice(ix,1);setDirty();});}
@@ -587,7 +609,7 @@ function routeFor(n){const outs=cur.wires.filter(w=>w.from===n.id),by=p=>(outs.f
  if(n.type==='condition'){o.trueNextBlockId=by('true');o.falseNextBlockId=by('false');o.conditions=(n.opts.conditions||[]).map(c=>({id:c.id,name:c.name,group:c.group||'',options:c.options||{},trueNextBlockId:by(c.id)}));}
  else if(n.type==='randomizer'){o.randomizers=(n.ramos||[]).map(r=>({id:r.id,name:r.name,perc:r.perc,nextBlockId:by(r.id)}));}
  else{o.nextBlockId=by('out');if(['action','chat','field-operation','api','distribution','distribution-simple'].includes(n.type))o.errorNextBlockId=by('err');if(n.type==='chat')o.timeoutNextBlockId=by('timeout');if(n.type==='distribution'){o.respondeuNextBlockId=by('respondeu');o.naoRespondeuNextBlockId=by('naoRespondeu');}
-  if(n.type==='distribution-simple'){const dd=o.distribuicao=o.distribuicao||{};dd.tambemNegocio=true;(dd.items||[]).forEach(x=>{x.peso=1;});delete dd.produtoId;delete dd.abordagemIds;delete dd.respostaValor;delete dd.respostaUnidade;delete o.respondeuNextBlockId;delete o.naoRespondeuNextBlockId;}}
+  if(n.type==='distribution-simple'){const dd=o.distribuicao=o.distribuicao||{};dd.tambemNegocio=true;if(!Array.isArray(dd.protecao))dd.protecao=['venda','visita_agendada','visita_realizada'];(dd.items||[]).forEach(x=>{x.peso=Math.max(0,+x.peso||0);});delete dd.produtoId;delete dd.abordagemIds;delete dd.respostaValor;delete dd.respostaUnidade;delete o.respondeuNextBlockId;delete o.naoRespondeuNextBlockId;}}
  return o;}
 function compile(){const blocks=Object.values(cur.nodes).map(n=>{if(!n.sourceBlockId)n.sourceBlockId=_uuid();return {id:n.id,type:n.type,options:routeFor(n),presentation:{x:Math.round(n.x),y:Math.round(n.y)},sourceBlockId:n.sourceBlockId};});
  const eb={};Object.values(cur.nodes).forEach(n=>{eb[n.id]={id:n.id,fam:TYPES[n.type].fam,sub:n.sub||'',x:Math.round(n.x),y:Math.round(n.y),note:n.note||'',extra:{},parts:[],ramos:n.ramos||[],noteOpen:false};});
