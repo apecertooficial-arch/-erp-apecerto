@@ -100,6 +100,23 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
     return () => { ativo = false; };
   }, [accessToken]);
 
+  /* O push usa o endereço canônico /negocio/N, que chega aqui como ?lead=N.
+     Quando a carteira terminar de carregar, abrimos a cópia F2 ligada ao
+     negócio e consumimos o parâmetro. Sem isto, o toque no aviso abria o CRM,
+     mas obrigava o corretor a procurar manualmente o lead recém-recebido. */
+  useEffect(() => {
+    if (leads.length === 0 || typeof window === "undefined") return;
+    const url = new URL(window.location.href);
+    const negocioId = Number(url.searchParams.get("lead"));
+    if (!Number.isFinite(negocioId) || negocioId <= 0) return;
+    const destino = leads.find((item) => item.origem_negocio_id === negocioId);
+    if (!destino) return;
+    setSelecionado(destino.id);
+    setAba("dia");
+    url.searchParams.delete("lead");
+    window.history.replaceState(null, "", url.toString());
+  }, [leads]);
+
   const lead = leads.find((item) => item.id === selecionado) ?? null;
   const momentoAtual = lead ? momentos.find((m) => m.codigo === lead.momento_codigo) ?? null : null;
   const eventosLead = lead ? eventos.filter((e) => e.funil_lead_id === lead.id) : [];

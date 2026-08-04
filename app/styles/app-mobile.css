@@ -289,6 +289,7 @@
 /* Convite de instalacao. Vive na folha "Mais": quem procura algo do aplicativo
    vai ali, e assim nao interrompe atendimento. */
 .convite-instalar { display: none; }
+.aviso-push-ligado { display: none; }
 
 @media (max-width: 900px) {
   .convite-instalar {
@@ -304,6 +305,17 @@
   }
   .convite-instalar-ok { border: 0; background: var(--orange); color: #fff; }
   .convite-instalar-nao { border: 1px solid var(--line); background: #fff; color: var(--muted); }
+
+  .aviso-push-ligado {
+    display: flex; align-items: center; gap: 10px; margin: 0 0 12px; padding: 11px 13px;
+    border: 1px solid #b8e4cc; border-radius: 12px; background: #eefaf3;
+  }
+  .aviso-push-ligado > span {
+    display: grid; place-items: center; width: 28px; height: 28px; flex: 0 0 28px;
+    border-radius: 50%; background: #168a4d; color: #fff; font-size: 16px; font-weight: 800;
+  }
+  .aviso-push-ligado strong { display: block; color: #126b3d; font-size: 13px; line-height: 1.25; }
+  .aviso-push-ligado p { margin: 2px 0 0; color: #397258; font-size: 12px; line-height: 1.3; }
 }
 
 /* =====================================================================
