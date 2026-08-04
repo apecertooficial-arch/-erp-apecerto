@@ -159,7 +159,7 @@ SELECT public.test_assert((SELECT peso_primeira_abordagem+peso_acoes_prazo+peso_
   FROM public.f2_operacao_config WHERE id),
   '#f2-30 pesos, primeira abordagem e presença persistem no banco');
 SELECT public.test_assert(EXISTS(SELECT 1 FROM public.f2_config_audit
-    WHERE tipo='operacao' AND chave='principal' AND acao='configurar'),
+    WHERE tipo='momento' AND chave='operacao:principal' AND acao='configurar_operacao'),
   '#f2-31 mudança do contrato operacional fica auditada');
 SELECT public.test_assert((public.f2_configurar_operacao(
     '09:30','18:30',15,5,120,120,50,30,20,10,10,24,48,72)->>'erro')='configuracao_invalida',
