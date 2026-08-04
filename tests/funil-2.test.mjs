@@ -174,13 +174,24 @@ test("Todos os Leads usa linhas compactas com leitura e ações rápidas", () =>
 });
 
 test("Performance separa disciplina controlável de resultado comercial", () => {
-  assert.match(ui, /Performance exclusiva do CRM/);
-  assert.match(ui, /DISCIPLINA CONTROLÁVEL/);
-  assert.match(ui, /EVIDÊNCIA, NÃO CLIQUE/);
-  assert.match(ui, /POR CORRETOR/);
+  assert.match(ui, /Performance de Atendimento/);
+  assert.match(ui, /PAINEL DO DONO/);
+  assert.match(ui, /NOTA DE EXECUÇÃO/);
+  assert.match(ui, /SAÚDE DA CARTEIRA/);
+  assert.match(ui, /CONVERSÃO COMERCIAL/);
+  assert.match(ui, /Resultado comercial não altera a nota disciplinar/);
   for (const peso of ["peso_primeira_abordagem", "peso_acoes_prazo", "peso_feedback_visita", "peso_presenca_dapi", "peso_coerencia_sara"]) {
     assert.match(ui, new RegExp(peso));
   }
+});
+
+test("Performance explica a nota, aponta intervenção e compara corretores sem inventar amostra", () => {
+  for (const texto of ["QUEM PRECISA DE INTERVENÇÃO", "PLACAR POR CORRETOR", "Carteira em dia", "SLA inicial", "Evidência D-API", "Feedback de visitas", "Coerência Sara", "Sem amostra"]) {
+    assert.match(ui, new RegExp(texto));
+  }
+  assert.match(ui, /eventos=\{eventos\}/);
+  assert.match(ui, /evento\.tipo === "acao_confirmada"/);
+  assert.match(ui, /Uma métrica sem amostra é retirada do cálculo/);
 });
 
 test("configuração única persiste roleta manual, disciplina e pesos sem ligar disparo automático", () => {
