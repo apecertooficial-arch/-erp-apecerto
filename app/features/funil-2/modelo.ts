@@ -52,6 +52,29 @@ export type EventoFunil2 = {
   criado_em: string;
 };
 
+export const DIAS_CADENCIA = [1, 2, 4, 6, 7] as const;
+
+export function diaCadencia(lead: Pick<LeadFunil2, "momento_codigo" | "cadencia_passo">): number | null {
+  if (lead.momento_codigo !== "CADENCIA_SEM_RESPOSTA") return null;
+  return DIAS_CADENCIA[lead.cadencia_passo] ?? null;
+}
+
+export function acaoVisivel(lead: Pick<LeadFunil2, "momento_codigo" | "cadencia_passo" | "acao_rotulo">) {
+  const dia = diaCadencia(lead);
+  if (dia !== null) return `Enviar mensagem da cadência · Dia ${dia}`;
+  if (lead.momento_codigo === "CADENCIA_SEM_RESPOSTA") return "Cadência concluída · reavaliar o lead";
+  return lead.acao_rotulo;
+}
+
+export function prazoDaAcao(lead: Pick<LeadFunil2, "proxima_acao_em" | "momento_codigo" | "cadencia_passo" | "acao_rotulo">, agora = Date.now()) {
+  const situacao = situacaoPrazo(lead.proxima_acao_em, agora);
+  return { ...situacao, rotulo: `${situacao.rotulo} para ${acaoVisivel(lead).toLowerCase()}` };
+}
+
+export function entraNoMeuDia(lead: Pick<LeadFunil2, "proxima_acao_em">, agora = Date.now()) {
+  return new Date(lead.proxima_acao_em).getTime() <= agora + 2 * 60 * 60 * 1000;
+}
+
 export function situacaoPrazo(data: string, agora = Date.now()) {
   const minutos = Math.round((new Date(data).getTime() - agora) / 60000);
   if (minutos < 0) return { classe: "atrasado", rotulo: `Atrasado há ${duracao(-minutos)}` };
