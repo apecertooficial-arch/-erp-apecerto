@@ -22,6 +22,7 @@ import { crmNovaEraLiberado } from "./featureFlag";
 import { Crm3Workspace } from "../crm-nova-era-3/Crm3Workspace";
 import { useEhCelular } from "../system/useFormato";
 import { Funil2Workspace } from "../funil-2/Funil2Workspace";
+import { Funil2Mobile } from "../funil-2/Funil2Mobile";
 
 type Variante = "atual" | "nova-era";
 type Profile = { userId: string | null; role: string | null; name: string | null };
@@ -146,6 +147,17 @@ export function CrmNovaEraGate({
      repetida no banco; esconder a tela aqui é UX, RLS é a autoridade. */
   if (entrouNoFunil2) {
     if (!podeLive || !podeFunil2) return <>{current}</>;
+    if (ehCelular === null) return null;
+    if (ehCelular === true) {
+      return (
+        <Funil2Mobile
+          accessToken={accessToken as string}
+          nome={profile?.name ?? "Corretor"}
+          modo="crm"
+          onIr={(destino) => { window.location.href = destino; }}
+        />
+      );
+    }
     return (
       <Funil2Workspace
         accessToken={accessToken as string}
@@ -199,9 +211,11 @@ export function CrmNovaEraGate({
      ferramenta de quem está comparando as duas versões. */
   if (ehCelular === true && variante === "nova-era" && podeLive) {
     return (
-      <Funil2Workspace
+      <Funil2Mobile
         accessToken={accessToken as string}
-        profile={{ userId: profile!.userId as string, role: profile?.role ?? "corretor", name: profile?.name ?? "Corretor" }}
+        nome={profile?.name ?? "Corretor"}
+        modo="crm"
+        onIr={(destino) => { window.location.href = destino; }}
       />
     );
   }
