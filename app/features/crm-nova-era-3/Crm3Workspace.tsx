@@ -93,12 +93,13 @@ function IconeAba({ aba }: { aba: string }) {
 }
 
 /** Topbar do handoff v3: seletor de CRM, nota do piloto, busca global e novo lead. */
-function TopbarCrm3({ busca, onBusca, onNovoLead }: { busca: string; onBusca: (v: string) => void; onNovoLead: () => void }) {
+function TopbarCrm3({ busca, onBusca, onNovoLead, funil2Liberado }: { busca: string; onBusca: (v: string) => void; onNovoLead: () => void; funil2Liberado: boolean }) {
   return (
     <div className="ncrm3-topbar">
       <div className="ncrm3-topbar-seletor" role="group" aria-label="Escolher CRM">
         <button type="button" onClick={() => { window.location.href = "/crm?crm=atual"; }}>Funil atual</button>
         <button type="button" className="on">CRM Nova Era <i>3.0</i></button>
+        {funil2Liberado && <button type="button" onClick={() => { window.location.href = "/crm?crm=funil-2"; }}>Funil 2.0 <i>LAB</i></button>}
       </div>
       <span className="ncrm3-topbar-nota">A Sara organiza momento, ação e prazo · nunca envia por você</span>
       <label className="crm-search-v2 ncrm3-topbar-busca">
@@ -411,7 +412,12 @@ export function Crm3Workspace({ accessToken, profile }: { accessToken: string; p
       <style>{CRM3_CSS}{CRM3_CSS_FASE1}</style>
 
       {/* Topbar do protótipo: seletor, nota do piloto, busca global e novo lead. */}
-      <TopbarCrm3 busca={busca} onBusca={setBusca} onNovoLead={() => setNovoLead(true)} />
+      <TopbarCrm3
+        busca={busca}
+        onBusca={setBusca}
+        onNovoLead={() => setNovoLead(true)}
+        funil2Liberado={profile.userId === "4dfdffae-0009-41de-8d6f-2365a06dc066" || ["admin", "executivo"].includes(profile.role.toLowerCase())}
+      />
       {novoLead && <NovoLead3 accessToken={accessToken} onFechar={() => setNovoLead(false)} onCriado={setAviso} />}
 
       {/* Nas visões oficiais o cabeçalho é o do próprio CRM atual — exceto na
