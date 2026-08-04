@@ -124,6 +124,8 @@ cp "$ROOT/supabase/rollbacks/20260810140000_ncrm_sla_config_rls_rollback.sql" "$
 cp "$ROOT/tests/crm-nova-era/99k_tests_sla_config_rls.sql" "$STAGE/rls_sla.sql"
 cp "$ROOT/supabase/migrations/20260810150000_funil_2_isolado.sql" "$STAGE/mig_f2.sql"
 cp "$ROOT/supabase/migrations/20260810160000_funil_2_cadencia_clara.sql" "$STAGE/mig_f2_clareza.sql"
+cp "$ROOT/supabase/migrations/20260810170000_funil_2_operacao_completa.sql" "$STAGE/mig_f2_operacao.sql"
+cp "$ROOT/supabase/rollbacks/20260810170000_funil_2_operacao_completa_rollback.sql" "$STAGE/down_f2_operacao.sql"
 cp "$ROOT/supabase/rollbacks/20260810150000_funil_2_isolado.down.sql" "$STAGE/down_f2.sql"
 cp "$ROOT/tests/crm-nova-era/99l_tests_funil2.sql" "$STAGE/f2.sql"
 chmod -R a+rX "$STAGE"
@@ -162,7 +164,7 @@ P42I="$STAGE/p42i.sql"; D42I="$STAGE/d42i.sql"
 NOTIF="$STAGE/notif.sql"
 SLA="$STAGE/sla.sql"
 MIG_RLS_SLA="$STAGE/mig_rls_sla.sql"; DOWN_RLS_SLA="$STAGE/down_rls_sla.sql"; RLS_SLA="$STAGE/rls_sla.sql"
-MIG_F2="$STAGE/mig_f2.sql"; MIG_F2_CLAREZA="$STAGE/mig_f2_clareza.sql"; DOWN_F2="$STAGE/down_f2.sql"; F2="$STAGE/f2.sql"
+MIG_F2="$STAGE/mig_f2.sql"; MIG_F2_CLAREZA="$STAGE/mig_f2_clareza.sql"; MIG_F2_OPERACAO="$STAGE/mig_f2_operacao.sql"; DOWN_F2_OPERACAO="$STAGE/down_f2_operacao.sql"; DOWN_F2="$STAGE/down_f2.sql"; F2="$STAGE/f2.sql"
 PGBIN=/usr/lib/postgresql/16/bin
 PGDATA=/tmp/ncrm_pgdata
 SOCK=/tmp/ncrm_sock
@@ -526,7 +528,9 @@ PSQL -c "SELECT public.test_assert((SELECT relrowsecurity
 echo "### Funil 2.0 isolado: duas cópias, RLS, limite, ações e rollback"
 PSQL -f "$MIG_F2"
 PSQL -f "$MIG_F2_CLAREZA"
+PSQL -f "$MIG_F2_OPERACAO"
 PSQL -f "$F2"
+PSQL -f "$DOWN_F2_OPERACAO"
 PSQL -f "$DOWN_F2"
 PSQL -c "SELECT public.test_assert(to_regclass('public.f2_lead') IS NULL
   AND to_regproc('public.f2_importar_negocio') IS NULL,
@@ -536,6 +540,7 @@ PSQL -c "SELECT public.test_assert(to_regclass('public.ncrm_estado') IS NOT NULL
   '#f2-14 rollback preserva CRM e legado');"
 PSQL -f "$MIG_F2"
 PSQL -f "$MIG_F2_CLAREZA"
+PSQL -f "$MIG_F2_OPERACAO"
 PSQL -c "SELECT public.test_assert((SELECT count(*) FROM public.f2_momento_config)=10,
   '#f2-15 migration reaplica limpa depois do rollback');"
 
