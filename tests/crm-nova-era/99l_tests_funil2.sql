@@ -110,9 +110,10 @@ SELECT public.test_assert((SELECT count(*) FROM public.f2_lead)=2,
   '#f2-21 configurações, visita e negociação preservam limite de duas cópias');
 RESET ROLE;
 
-SET ROLE anon;
-SELECT public.test_assert((SELECT count(*) FROM public.f2_etapa_config)=0
-  AND (SELECT count(*) FROM public.f2_visita)=0
-  AND (SELECT count(*) FROM public.f2_negociacao)=0,
-  '#f2-22 anon não enxerga configuração, Pipe nem Esteira');
-RESET ROLE;
+SELECT public.test_assert(
+  NOT has_table_privilege('anon','public.f2_etapa_config','SELECT')
+  AND NOT has_table_privilege('anon','public.f2_visita','SELECT')
+  AND NOT has_table_privilege('anon','public.f2_negociacao','SELECT')
+  AND NOT has_function_privilege('anon','public.f2_configurar_etapa(text,text,text,integer,boolean)','EXECUTE')
+  AND NOT has_function_privilege('anon','public.f2_salvar_visita(uuid,uuid,timestamptz,text,text,text)','EXECUTE'),
+  '#f2-22 anon não tem privilégios na configuração, Pipe nem Esteira');
