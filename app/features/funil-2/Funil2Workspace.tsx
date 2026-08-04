@@ -9,7 +9,8 @@ type Payload = {
   leads?: LeadFunil2[]; momentos?: MomentoFunil2[]; eventos?: EventoFunil2[]; etapas?: EtapaConfigFunil2[];
   visitas?: VisitaFunil2[]; negociacoes?: NegociacaoFunil2[]; aquario?: CandidatoAquarioFunil2[]; operacao?: OperacaoConfigFunil2 | null; sara?: SaraStatusFunil2; error?: string;
 };
-type Mensagem = { id: string; direcao: string; tipo: string; conteudo: string | null; transcricao: string | null; criado_em: string; enviado_em: string | null };
+type Mensagem = { id: string; direcao: string; tipo: string; conteudo: string | null; transcricao: string | null; criado_em: string; enviado_em: string | null; instancia_id: string | null };
+type InstanciaChat = { id: string; rotulo: string; telefone: string | null; status: string | null; atual: boolean };
 
 async function api(token: string, init?: RequestInit) {
   const response = await fetch("/api/funil2", {
@@ -507,6 +508,7 @@ function Detalhe({ accessToken, lead, momento, momentos, etapas, eventos, busy, 
   const [obs, setObs] = useState("");
   const [chatAberto, setChatAberto] = useState(true);
   const [mensagens, setMensagens] = useState<Mensagem[]>([]);
+  const [instanciasChat, setInstanciasChat] = useState<InstanciaChat[]>([]);
   const [chatErro, setChatErro] = useState("");
   const [chatLoading, setChatLoading] = useState(false);
   const config = momentos.find((m) => m.codigo === codigo) ?? momento;
@@ -517,10 +519,11 @@ function Detalhe({ accessToken, lead, momento, momentos, etapas, eventos, busy, 
   const carregarChat = useCallback(async () => {
     setChatLoading(true); setChatErro("");
     const response = await fetch(`/api/funil2/conversa?lead=${lead.id}`, { headers: { Authorization: `Bearer ${accessToken}` } });
-    const json = await response.json().catch(() => ({})) as { mensagens?: Mensagem[]; error?: string };
+    const json = await response.json().catch(() => ({})) as { mensagens?: Mensagem[]; instancias?: InstanciaChat[]; error?: string };
     setChatLoading(false);
     if (!response.ok) { setChatErro(json.error ?? "Não foi possível carregar o histórico."); return; }
     setMensagens(json.mensagens ?? []);
+    setInstanciasChat(json.instancias ?? []);
   }, [accessToken, lead.id]);
 
   useEffect(() => {
@@ -557,10 +560,14 @@ function Detalhe({ accessToken, lead, momento, momentos, etapas, eventos, busy, 
 
       {chatAberto && <section className="f2-chat f2-chat-principal">
         <div className="f2-chat-topo"><div><span className="f2-eyebrow">CONVERSA REAL · SOMENTE LEITURA</span><h3>Histórico desde a entrada neste funil</h3><small>Mensagens anteriores à pesca permanecem ocultas. O D-API mantém esta conversa sincronizada.</small></div><div><button type="button" onClick={() => void carregarChat()}>↻</button></div></div>
+        <div className="f2-chat-instancia">
+          <span>INSTÂNCIA D-API DESTA CONVERSA</span>
+          {instanciasChat.length > 0 ? <><b>{instanciasChat[0].rotulo}</b><small>{[instanciasChat[0].telefone,instanciasChat[0].status].filter(Boolean).join(" · ")}{instanciasChat.length > 1 ? ` · mais ${instanciasChat.length-1} instância(s) no histórico` : ""}</small></> : <><b>Instância ainda não identificada</b><small>Nenhuma conversa D-API vinculada a este lead.</small></>}
+        </div>
         {chatLoading && <p>Carregando conversa…</p>}
         {chatErro && <p className="f2-chat-erro">{chatErro}</p>}
         <div className="f2-mensagens">
-          {mensagens.map((msg) => { const cliente = mensagemDoCliente(msg.direcao); return <article key={msg.id} className={cliente ? "recebida" : "enviada"}><small>{cliente ? "Cliente" : "Corretor"} · {dataCurta(msg.enviado_em ?? msg.criado_em)}</small><span>{msg.transcricao || msg.conteudo || `[${msg.tipo}]`}</span></article>; })}
+          {mensagens.map((msg) => { const cliente = mensagemDoCliente(msg.direcao); const instancia = instanciasChat.find((item) => item.id === msg.instancia_id); return <article key={msg.id} className={cliente ? "recebida" : "enviada"}><small>{cliente ? "Cliente" : "Corretor"} · {dataCurta(msg.enviado_em ?? msg.criado_em)}{instanciasChat.length > 1 && instancia ? ` · ${instancia.rotulo}` : ""}</small><span>{msg.transcricao || msg.conteudo || `[${msg.tipo}]`}</span></article>; })}
           {!chatLoading && !chatErro && mensagens.length === 0 && <p>Nenhuma mensagem desde a pesca. A primeira conversa confirmada pelo D-API aparecerá aqui.</p>}
         </div>
       </section>}

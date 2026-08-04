@@ -49,26 +49,47 @@ export async function GET(request: Request) {
     .eq("id", origemNegocioId)
     .maybeSingle();
   if (negocioError) return Response.json({ error: negocioError.message }, { status: 502 });
-  if (!negocio?.lead_id) return Response.json({ ok: true, mensagens: [], total: 0, corte });
+  if (!negocio?.lead_id) return Response.json({ ok: true, mensagens: [], instancias: [], total: 0, corte });
 
   const { data: contatos, error: contatosError } = await db.from("wa_contatos").select("id").eq("lead_id", negocio.lead_id);
   if (contatosError) return Response.json({ error: contatosError.message }, { status: 502 });
   const contatoIds = (contatos ?? []).map((item: { id: string }) => item.id);
-  if (contatoIds.length === 0) return Response.json({ ok: true, mensagens: [], total: 0, corte });
+  if (contatoIds.length === 0) return Response.json({ ok: true, mensagens: [], instancias: [], total: 0, corte });
 
-  const { data: conversas, error: conversasError } = await db.from("wa_conversas").select("id").in("contato_id", contatoIds);
+  const { data: conversas, error: conversasError } = await db.from("wa_conversas").select("id,instancia_id").in("contato_id", contatoIds);
   if (conversasError) return Response.json({ error: conversasError.message }, { status: 502 });
   const conversaIds = (conversas ?? []).map((item: { id: string }) => item.id);
-  if (conversaIds.length === 0) return Response.json({ ok: true, mensagens: [], total: 0, corte });
+  if (conversaIds.length === 0) return Response.json({ ok: true, mensagens: [], instancias: [], total: 0, corte });
 
   const { data: mensagens, error: mensagensError, count } = await db
     .from("wa_mensagens")
-    .select("id,direcao,tipo,conteudo,media_url,enviado_em,criado_em,status,transcricao", { count: "exact" })
+    .select("id,direcao,tipo,conteudo,media_url,enviado_em,criado_em,status,transcricao,instancia_id", { count: "exact" })
     .in("conversa_id", conversaIds)
     .gte("criado_em", corte)
     .order("criado_em", { ascending: true })
     .limit(200);
   if (mensagensError) return Response.json({ error: mensagensError.message }, { status: 502 });
 
-  return Response.json({ ok: true, lead: funilLeadId, negocio: origemNegocioId, corte, total: count ?? mensagens?.length ?? 0, mensagens: mensagens ?? [] });
+  const idsInstancia = [...new Set([
+    ...(conversas ?? []).map((item: { instancia_id: string | null }) => item.instancia_id),
+    ...(mensagens ?? []).map((item: { instancia_id: string | null }) => item.instancia_id),
+  ].filter((id): id is string => Boolean(id)))];
+  const { data: instancias, error: instanciasError } = idsInstancia.length
+    ? await db.from("wa_instancias").select("id,rotulo,telefone,status").in("id", idsInstancia)
+    : { data: [], error: null };
+  if (instanciasError) return Response.json({ error: instanciasError.message }, { status: 502 });
+
+  const ultimaComInstancia = [...(mensagens ?? [])].reverse().find((item: { instancia_id: string | null }) => Boolean(item.instancia_id));
+  const instanciaAtualId = ultimaComInstancia?.instancia_id
+    ?? [...(conversas ?? [])].reverse().find((item: { instancia_id: string | null }) => Boolean(item.instancia_id))?.instancia_id
+    ?? null;
+  const instanciasSeguras = (instancias ?? []).map((item: { id: string; rotulo: string | null; telefone: string | null; status: string | null }) => ({
+    id: item.id,
+    rotulo: item.rotulo?.trim() || "Instância sem nome",
+    telefone: item.telefone ? item.telefone.replace(/\d(?=\d{4})/g, "•") : null,
+    status: item.status,
+    atual: item.id === instanciaAtualId,
+  })).sort((a: { atual: boolean }, b: { atual: boolean }) => Number(b.atual)-Number(a.atual));
+
+  return Response.json({ ok: true, lead: funilLeadId, negocio: origemNegocioId, corte, total: count ?? mensagens?.length ?? 0, instancias: instanciasSeguras, mensagens: mensagens ?? [] });
 }
