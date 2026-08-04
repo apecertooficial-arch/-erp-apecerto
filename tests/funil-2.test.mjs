@@ -13,6 +13,7 @@ const configOperacao = readFileSync(new URL("../supabase/migrations/202608102000
 const aquarioReal = readFileSync(new URL("../supabase/migrations/20260810220000_funil_2_aquario_real.sql", import.meta.url), "utf8");
 const aquarioStage = readFileSync(new URL("../supabase/migrations/20260810230000_funil_2_aquario_stage_canonico.sql", import.meta.url), "utf8");
 const promocao = readFileSync(new URL("../supabase/migrations/20260811010000_funil_2_migrar_pipes_antigos.sql", import.meta.url), "utf8");
+const correcaoPosVisita = readFileSync(new URL("../supabase/migrations/20260811015000_funil_2_corrigir_pos_visita.sql", import.meta.url), "utf8");
 const conversaRoute = readFileSync(new URL("../app/api/funil2/conversa/route.ts", import.meta.url), "utf8");
 const modelo = readFileSync(new URL("../app/features/funil-2/modelo.ts", import.meta.url), "utf8");
 
@@ -86,6 +87,23 @@ test("card e ficha oferecem conversa e atalhos operacionais", () => {
   assert.match(ui, /WhatsApp/);
   assert.match(ui, /Agendar visita/);
   assert.match(ui, /Gerar negociação/);
+});
+
+test("chat identifica a instância D-API atual e diferencia histórico com mais de uma", () => {
+  assert.match(conversaRoute, /wa_instancias/);
+  assert.match(conversaRoute, /instanciaAtualId/);
+  assert.match(conversaRoute, /telefone\.replace/);
+  assert.match(ui, /INSTÂNCIA D-API DESTA CONVERSA/);
+  assert.match(ui, /mais \$\{instanciasChat\.length-1\} instância/);
+});
+
+test("Pós-visita exige evidência real e corrige o estado antigo sem tocar nas origens", () => {
+  assert.match(correcaoPosVisita, /sem_visita_realizada/);
+  assert.match(correcaoPosVisita, /fv\.status='realizada'/);
+  assert.match(correcaoPosVisita, /promover_visita_realizada/);
+  assert.match(correcaoPosVisita, /origens_preservadas/);
+  assert.doesNotMatch(correcaoPosVisita, /UPDATE public\.(?:negocios|leads|visitas|vendas)/);
+  assert.doesNotMatch(correcaoPosVisita, /DELETE FROM public\.(?:negocios|leads|visitas|vendas)/);
 });
 
 test("lead pescado nasce sem expor o histórico anterior no Funil 2.0", () => {
