@@ -87,7 +87,8 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
       if (!ativo) return;
       setCarregando(false);
       if (!resposta.ok) { setErro(resposta.json.error ?? "Não foi possível carregar o Funil 2.0."); return; }
-      setLeads(resposta.json.leads ?? []);
+      const leadsCarregados = resposta.json.leads ?? [];
+      setLeads(leadsCarregados);
       setMomentos(resposta.json.momentos ?? []);
       setEventos(resposta.json.eventos ?? []);
       setEtapas(resposta.json.etapas ?? []);
@@ -96,26 +97,27 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
       setAquario(resposta.json.aquario ?? []);
       setOperacao(resposta.json.operacao ?? null);
       setSara(resposta.json.sara ?? { modo: null, runnerAtivo: false, analisesNoLaboratorio: 0, reavaliacaoAutomaticaFunil2: false });
+
+      /* O push usa o endereço canônico /negocio/N, que chega aqui como
+         ?lead=N. Consumimos o parâmetro no retorno assíncrono da carteira para
+         abrir diretamente a ficha, sem um segundo efeito e sem render em
+         cascata. */
+      if (typeof window !== "undefined") {
+        const url = new URL(window.location.href);
+        const negocioId = Number(url.searchParams.get("lead"));
+        const destino = Number.isFinite(negocioId) && negocioId > 0
+          ? leadsCarregados.find((item) => item.origem_negocio_id === negocioId)
+          : null;
+        if (destino) {
+          setSelecionado(destino.id);
+          setAba("dia");
+          url.searchParams.delete("lead");
+          window.history.replaceState(null, "", url.toString());
+        }
+      }
     });
     return () => { ativo = false; };
   }, [accessToken]);
-
-  /* O push usa o endereço canônico /negocio/N, que chega aqui como ?lead=N.
-     Quando a carteira terminar de carregar, abrimos a cópia F2 ligada ao
-     negócio e consumimos o parâmetro. Sem isto, o toque no aviso abria o CRM,
-     mas obrigava o corretor a procurar manualmente o lead recém-recebido. */
-  useEffect(() => {
-    if (leads.length === 0 || typeof window === "undefined") return;
-    const url = new URL(window.location.href);
-    const negocioId = Number(url.searchParams.get("lead"));
-    if (!Number.isFinite(negocioId) || negocioId <= 0) return;
-    const destino = leads.find((item) => item.origem_negocio_id === negocioId);
-    if (!destino) return;
-    setSelecionado(destino.id);
-    setAba("dia");
-    url.searchParams.delete("lead");
-    window.history.replaceState(null, "", url.toString());
-  }, [leads]);
 
   const lead = leads.find((item) => item.id === selecionado) ?? null;
   const momentoAtual = lead ? momentos.find((m) => m.codigo === lead.momento_codigo) ?? null : null;

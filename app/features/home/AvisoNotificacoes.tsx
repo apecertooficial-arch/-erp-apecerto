@@ -30,7 +30,6 @@ export function AvisoNotificacoes({ accessToken }: { accessToken: string }) {
   const [erro, setErro] = useState<string | null>(null);
 
   /* Diagnostico na montagem: nada de pedir permissao aqui. */
-  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => {
     let vivo = true;
     void (async () => {
