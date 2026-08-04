@@ -36,7 +36,9 @@ BEGIN
     versao=versao+1,atualizado_em=now(),atualizado_por=v_uid
   WHERE id=p_id;
   INSERT INTO public.f2_evento(funil_lead_id,tipo,titulo,detalhe,payload,criado_por)
-  VALUES(p_id,CASE WHEN v_mesmo THEN 'momento_revalidado' ELSE 'momento_alterado' END,
+  -- O vocabulário de f2_evento é fechado. A revalidação usa o tipo oficial
+  -- existente e permanece distinguível por payload.mesmo_momento = true.
+  VALUES(p_id,'momento_alterado',
     CASE WHEN v_mesmo THEN 'Momento revalidado: ' ELSE 'Momento atualizado para ' END||v_m.rotulo,p_observacao,
     jsonb_build_object('etapa_anterior',v_atual.etapa,'momento_anterior',v_atual.momento_codigo,'prazo',v_prazo,'mesmo_momento',v_mesmo),v_uid);
   RETURN jsonb_build_object('ok',true,'versao',v_atual.versao+1,'etapa',v_m.etapa,'momento_codigo',v_m.codigo,'prazo',v_prazo,'mesmo_momento',v_mesmo);
