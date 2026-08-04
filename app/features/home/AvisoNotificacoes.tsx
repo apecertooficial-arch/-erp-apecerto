@@ -30,7 +30,6 @@ export function AvisoNotificacoes({ accessToken }: { accessToken: string }) {
   const [erro, setErro] = useState<string | null>(null);
 
   /* Diagnostico na montagem: nada de pedir permissao aqui. */
-  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => {
     let vivo = true;
     void (async () => {
@@ -105,8 +104,23 @@ export function AvisoNotificacoes({ accessToken }: { accessToken: string }) {
     }
   }, [accessToken]);
 
-  /* Estados silenciosos: nada a fazer, nao ocupamos espaco da fila de trabalho. */
-  if (estado === null || estado === "ligado" || estado === "nao_suportado") return null;
+  if (estado === null || estado === "nao_suportado") return null;
+
+  /* Antes o componente desaparecia depois da inscricao. Para o corretor isso
+     parecia uma falha: nao havia nenhum lugar dizendo que o aparelho estava
+     realmente pronto para receber um lead. O estado ligado fica compacto e
+     verificavel, sem tomar a tela nem pedir permissao novamente. */
+  if (estado === "ligado") {
+    return (
+      <div className="aviso-push-ligado" role="status" aria-label="Avisos de lead novo ligados">
+        <span aria-hidden="true">✓</span>
+        <div>
+          <strong>Avisos de lead novo ligados</strong>
+          <p>Este aparelho vai avisar quando um lead cair para você.</p>
+        </div>
+      </div>
+    );
+  }
 
   if (estado === "ios_sem_instalar") {
     return (
