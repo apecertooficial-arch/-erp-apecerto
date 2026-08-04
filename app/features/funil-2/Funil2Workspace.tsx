@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState, type ReactNode } from "react";
-import { acaoVisivel, dataCurta, diaCadencia, prazoDaAcao, situacaoPrazo, venceHoje, type CandidatoAquarioFunil2, type EtapaConfigFunil2, type EventoFunil2, type LeadFunil2, type MomentoFunil2, type NegociacaoFunil2, type OperacaoConfigFunil2, type SaraStatusFunil2, type VisitaFunil2 } from "./modelo";
+import { acaoVisivel, dataCurta, diaCadencia, duracao, prazoDaAcao, situacaoPrazo, venceHoje, type CandidatoAquarioFunil2, type EtapaConfigFunil2, type EventoFunil2, type LeadFunil2, type MomentoFunil2, type NegociacaoFunil2, type OperacaoConfigFunil2, type SaraStatusFunil2, type VisitaFunil2 } from "./modelo";
 import { FUNIL2_CSS } from "./estilos";
 
 type Perfil = { userId: string; role: string; name: string };
@@ -64,6 +64,7 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
   const [busy, setBusy] = useState(false);
   const [modal, setModal] = useState<"pescar" | "visita" | "negociacao" | null>(null);
   const [avisosAbertos, setAvisosAbertos] = useState(true);
+  const [etapaMapa, setEtapaMapa] = useState("em_atendimento");
 
   const carregar = useCallback(async () => {
     setCarregando(true); setErro(null);
@@ -163,6 +164,13 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
       {carregando && <div className="f2-loading">Carregando o Funil 2.0…</div>}
 
       {!carregando && aba === "quadro" && <main className="f2-main">
+        <MapaOperacao
+          leads={leads}
+          etapas={etapasAtivas}
+          momentos={momentosAtivos}
+          etapaAtiva={etapaMapa}
+          onEtapa={setEtapaMapa}
+        />
         <section className="f2-resumo" aria-label="Resumo do laboratório">
           <article><b>{leads.length}<small>/2</small></b><span>leads-cópia</span></article>
           <article className={atrasados ? "alerta" : ""}><b>{atrasados}</b><span>ações atrasadas</span></article>
@@ -241,6 +249,49 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
       <footer className="f2-rodape">Sessão: {profile.name} · somente administradores · nenhum dado original é alterado</footer>
     </div>
   );
+}
+
+function MapaOperacao({ leads, etapas, momentos, etapaAtiva, onEtapa }: {
+  leads: LeadFunil2[];
+  etapas: EtapaConfigFunil2[];
+  momentos: MomentoFunil2[];
+  etapaAtiva: string;
+  onEtapa: (etapa: string) => void;
+}) {
+  const etapaSelecionada = etapas.find((etapa) => etapa.codigo === etapaAtiva) ?? etapas[0];
+  if (!etapaSelecionada) return null;
+
+  const momentosDaEtapa = momentos
+    .filter((momento) => momento.etapa === etapaSelecionada.codigo)
+    .sort((a, b) => a.ordem - b.ordem);
+
+  return <section className="f2-mapa" aria-label="Mapa da operação do Funil 2.0">
+    <header className="f2-mapa-cabecalho">
+      <div><span className="f2-eyebrow">MAPA DA OPERAÇÃO</span><h2>Etapa organiza. Momento explica. Ação e prazo movem o dia.</h2></div>
+      <p>O corretor não precisa interpretar: o CRM mostra o que está acontecendo, o que fazer e até quando.</p>
+    </header>
+
+    <nav className="f2-mapa-etapas" aria-label="Etapas oficiais do funil">
+      {etapas.map((etapa, indice) => {
+        const ativa = etapa.codigo === etapaSelecionada.codigo;
+        return <button key={etapa.codigo} type="button" className={ativa ? "ativa" : ""} aria-pressed={ativa} onClick={() => onEtapa(etapa.codigo)}>
+          <small>ETAPA {indice + 1}</small><strong>{etapa.rotulo}</strong><b>{leads.filter((lead) => lead.etapa === etapa.codigo).length}</b>
+        </button>;
+      })}
+    </nav>
+
+    <div className="f2-mapa-detalhe">
+      <div className="f2-mapa-intro"><span>VOCÊ ESTÁ VENDO</span><strong>{etapaSelecionada.rotulo}</strong><small>{etapaSelecionada.ajuda}</small></div>
+      <div className="f2-mapa-momentos">
+        {momentosDaEtapa.map((momento) => <article key={momento.codigo}>
+          <i>{momento.ordem}</i>
+          <div><span>MOMENTO</span><strong>{momento.rotulo}</strong><small>{momento.acao_rotulo}</small></div>
+          <b>{momento.prazo_rotulo || (momento.prazo_minutos ? `até ${duracao(momento.prazo_minutos)}` : "data combinada")}</b>
+        </article>)}
+        {momentosDaEtapa.length === 0 && <p>Nenhum momento ativo nesta etapa.</p>}
+      </div>
+    </div>
+  </section>;
 }
 
 function CentralAtencao({ leads, momentos, etapas, onAbrir, onMeuDia }: {

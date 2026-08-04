@@ -27,6 +27,16 @@ test("quadro deixa etapa, momento, ação e prazo explícitos", () => {
   assert.match(ui, /<select value=\{codigo\}/);
 });
 
+test("Funil 2.0 inclui mapa interativo de etapas, momentos, ações e prazos", () => {
+  assert.match(ui, /function MapaOperacao/);
+  assert.match(ui, /MAPA DA OPERAÇÃO/);
+  assert.match(ui, /Etapa organiza\. Momento explica\. Ação e prazo movem o dia\./);
+  assert.match(ui, /aria-label="Etapas oficiais do funil"/);
+  assert.match(ui, /onClick=\{\(\) => onEtapa\(etapa\.codigo\)\}/);
+  assert.match(ui, /momento\.acao_rotulo/);
+  assert.match(ui, /momento\.prazo_rotulo/);
+});
+
 test("sandbox não escreve em tabelas operacionais e tem dez momentos", () => {
   const criacoes = [...migration.matchAll(/CREATE TABLE public\.(\w+)/g)].map((m) => m[1]);
   assert.deepEqual(criacoes, ["f2_momento_config", "f2_lead", "f2_evento"]);
