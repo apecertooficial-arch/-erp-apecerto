@@ -71,6 +71,16 @@ export async function GET(request: Request) {
     const areas = availableUnits
       .map((unit) => unit.area_m2)
       .filter((value): value is number => typeof value === "number");
+    // Tipologias reais do estoque disponível. `empreendimentos.dormitorios` é nulo em
+    // 47 dos 49 produtos, então a tipologia da unidade é a única fonte confiável para
+    // o card dizer o que o produto tem. O dedupe é case-insensitive porque o cadastro
+    // traz "Studio" e "studio" como entradas distintas.
+    const typologies = [...new Map(
+      availableUnits
+        .map((unit) => unit.tipologia?.trim())
+        .filter((value): value is string => Boolean(value))
+        .map((value) => [value.toLocaleLowerCase("pt-BR"), value] as const),
+    ).values()].sort((a, b) => a.localeCompare(b, "pt-BR"));
     const cover = media.find((item) => item.tipo === "foto" && item.is_capa)
       ?? media.find((item) => item.tipo === "foto");
     const bedroomOptions = units.map((unit) => {
@@ -88,7 +98,12 @@ export async function GET(request: Request) {
       origin: item.origem,
       published: item.publicado,
       price: item.preco ?? (prices.length ? Math.min(...prices) : null),
+      // Teto da faixa. O card mostra "de X a Y" — sem o máximo, o corretor só sabe
+      // o piso e não consegue dizer se o produto atende a faixa do lead.
+      priceMax: prices.length ? Math.max(...prices) : null,
       area: areas.length ? Math.min(...areas) : item.area_util,
+      areaMax: areas.length ? Math.max(...areas) : null,
+      typologies,
       bedrooms: item.dormitorios ?? (bedroomOptions.length ? Math.max(...bedroomOptions) : null),
       suites: item.suites,
       parking: item.vagas,
