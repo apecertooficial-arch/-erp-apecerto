@@ -12,14 +12,24 @@ const conversaPosPesca = readFileSync(new URL("../supabase/migrations/2026081019
 const configOperacao = readFileSync(new URL("../supabase/migrations/20260810200000_funil_2_config_operacao.sql", import.meta.url), "utf8");
 const aquarioReal = readFileSync(new URL("../supabase/migrations/20260810220000_funil_2_aquario_real.sql", import.meta.url), "utf8");
 const aquarioStage = readFileSync(new URL("../supabase/migrations/20260810230000_funil_2_aquario_stage_canonico.sql", import.meta.url), "utf8");
+const promocao = readFileSync(new URL("../supabase/migrations/20260811010000_funil_2_migrar_pipes_antigos.sql", import.meta.url), "utf8");
 const conversaRoute = readFileSync(new URL("../app/api/funil2/conversa/route.ts", import.meta.url), "utf8");
 const modelo = readFileSync(new URL("../app/features/funil-2/modelo.ts", import.meta.url), "utf8");
 
-test("Funil 2.0 se apresenta como laboratório isolado de duas cópias", () => {
-  assert.match(ui, /LABORATÓRIO ISOLADO/);
-  assert.match(ui, /Originais intactos/);
-  assert.match(ui, /limite físico de 2 leads/);
-  assert.match(migration, /funil_2_limite_dois_leads/);
+test("Funil 2.0 se apresenta como carteira operacional com origens preservadas", () => {
+  assert.match(ui, /OPERAÇÃO OFICIAL/);
+  assert.match(ui, /Origens preservadas/);
+  assert.match(ui, /Aquário fora da migração/);
+  assert.match(promocao, /DROP TRIGGER IF EXISTS f2_lead_limite_dois/);
+});
+
+test("promoção migra somente pipes antigos e exclui o Aquário", () => {
+  assert.match(promocao, /pipeline_id IN \(2,3,4\)/);
+  assert.match(promocao, /stage_id IS DISTINCT FROM public\.aquario_stage_id\(\)/);
+  assert.match(promocao, /f2_migracao_invalida:aquario_incluido/);
+  assert.match(promocao, /origens_preservadas/);
+  assert.doesNotMatch(promocao, /UPDATE public\.(?:negocios|leads|visitas|vendas)/);
+  assert.doesNotMatch(promocao, /DELETE FROM public\.(?:negocios|leads|visitas|vendas)/);
 });
 
 test("quadro deixa etapa, momento, ação e prazo explícitos", () => {
@@ -161,7 +171,8 @@ test("Todos os Leads filtra pelas etapas do vocabulário oficial", () => {
   assert.match(ui, /const \[busca, setBusca\]/);
   assert.match(ui, /Nome ou telefone/);
   assert.match(ui, /Situação do prazo/);
-  assert.match(ui, /filtrados\.map/);
+  assert.match(ui, /exibidos\.map/);
+  assert.match(ui, /Página \{paginaSegura\} de \{totalPaginas\}/);
 });
 
 test("Todos os Leads usa linhas compactas com leitura e ações rápidas", () => {
