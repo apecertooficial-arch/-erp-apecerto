@@ -1,9 +1,9 @@
 /**
  * Conversa visível da cópia do Funil 2.0.
  *
- * A cópia mantém o vínculo com o negócio original, mas só enxerga mensagens
- * registradas depois de `corte_conversa_em`. Assim um lead pescado nasce como
- * Novo sem carregar para o corretor o histórico anterior da carteira.
+ * A carteira migrada dos pipes antigos preserva a conversa completa. Somente
+ * um lead pescado do Aquário aplica `corte_conversa_em`, para nascer como Novo
+ * sem entregar ao corretor o histórico da carteira anterior.
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createServerSupabaseClient } from "../../../lib/supabase/server";
@@ -35,7 +35,7 @@ export async function GET(request: Request) {
   // concede acesso a uma cópia que o usuário não possa ver.
   const { data: copia, error: copiaError } = await db
     .from("f2_lead")
-    .select("id,origem_negocio_id,corte_conversa_em")
+    .select("id,origem_negocio_id,corte_conversa_em,historico_completo")
     .eq("id", funilLeadId)
     .maybeSingle();
   if (copiaError) return Response.json({ error: copiaError.message }, { status: 502 });
@@ -51,9 +51,16 @@ export async function GET(request: Request) {
   if (negocioError) return Response.json({ error: negocioError.message }, { status: 502 });
   if (!negocio?.lead_id) return Response.json({ ok: true, mensagens: [], instancias: [], total: 0, corte });
 
-  const { data: contatos, error: contatosError } = await db.from("wa_contatos").select("id").eq("lead_id", negocio.lead_id);
+  const [{ data: contatos, error: contatosError }, { data: vinculados, error: vinculosError }] = await Promise.all([
+    db.from("wa_contatos").select("id").eq("lead_id", negocio.lead_id),
+    db.from("f2_historico_vinculo").select("contato_id").eq("funil_lead_id", funilLeadId),
+  ]);
   if (contatosError) return Response.json({ error: contatosError.message }, { status: 502 });
-  const contatoIds = (contatos ?? []).map((item: { id: string }) => item.id);
+  if (vinculosError) return Response.json({ error: vinculosError.message }, { status: 502 });
+  const contatoIds = [...new Set([
+    ...(contatos ?? []).map((item: { id: string }) => item.id),
+    ...(vinculados ?? []).map((item: { contato_id: string }) => item.contato_id),
+  ])];
   if (contatoIds.length === 0) return Response.json({ ok: true, mensagens: [], instancias: [], total: 0, corte });
 
   const { data: conversas, error: conversasError } = await db.from("wa_conversas").select("id,instancia_id").in("contato_id", contatoIds);
@@ -61,13 +68,14 @@ export async function GET(request: Request) {
   const conversaIds = (conversas ?? []).map((item: { id: string }) => item.id);
   if (conversaIds.length === 0) return Response.json({ ok: true, mensagens: [], instancias: [], total: 0, corte });
 
-  const { data: mensagens, error: mensagensError, count } = await db
+  let mensagensQuery = db
     .from("wa_mensagens")
     .select("id,direcao,tipo,conteudo,media_url,enviado_em,criado_em,status,transcricao,instancia_id", { count: "exact" })
     .in("conversa_id", conversaIds)
-    .gte("criado_em", corte)
     .order("criado_em", { ascending: true })
     .limit(200);
+  if (copia.historico_completo !== true) mensagensQuery = mensagensQuery.gte("criado_em", corte);
+  const { data: mensagens, error: mensagensError, count } = await mensagensQuery;
   if (mensagensError) return Response.json({ error: mensagensError.message }, { status: 502 });
 
   const idsInstancia = [...new Set([
@@ -91,5 +99,5 @@ export async function GET(request: Request) {
     atual: item.id === instanciaAtualId,
   })).sort((a: { atual: boolean }, b: { atual: boolean }) => Number(b.atual)-Number(a.atual));
 
-  return Response.json({ ok: true, lead: funilLeadId, negocio: origemNegocioId, corte, total: count ?? mensagens?.length ?? 0, instancias: instanciasSeguras, mensagens: mensagens ?? [] });
+  return Response.json({ ok: true, lead: funilLeadId, negocio: origemNegocioId, corte, historicoCompleto: copia.historico_completo === true, total: count ?? mensagens?.length ?? 0, instancias: instanciasSeguras, mensagens: mensagens ?? [] });
 }

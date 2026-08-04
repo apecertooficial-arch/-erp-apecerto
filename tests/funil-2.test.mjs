@@ -83,7 +83,8 @@ test("cadência mostra o dia oficial como ação executável", () => {
 
 test("card e ficha oferecem conversa e atalhos operacionais", () => {
   assert.match(ui, />💬 Chat</);
-  assert.match(ui, /Histórico desde a entrada neste funil/);
+  assert.match(ui, /Histórico completo do atendimento/);
+  assert.match(ui, /Histórico desde a pesca/);
   assert.match(ui, /WhatsApp/);
   assert.match(ui, /Agendar visita/);
   assert.match(ui, /Gerar negociação/);
@@ -110,9 +111,10 @@ test("lead pescado nasce sem expor o histórico anterior no Funil 2.0", () => {
   assert.match(conversaPosPesca, /corte_conversa_em timestamptz/);
   assert.match(conversaPosPesca, /COALESCE\(corte_conversa_em, criado_em\)/);
   assert.match(conversaRoute, /from\("f2_lead"\)/);
+  assert.match(conversaRoute, /historico_completo/);
   assert.match(conversaRoute, /\.gte\("criado_em", corte\)/);
   assert.match(ui, /histórico anterior fica oculto/);
-  assert.match(ui, /Mensagens anteriores à pesca permanecem ocultas/);
+  assert.match(ui, /Lead pescado: mensagens anteriores permanecem ocultas/);
   assert.doesNotMatch(ui, /O histórico permanece disponível/);
 });
 
