@@ -232,7 +232,7 @@ test("pesca lista somente a base canônica do Aquário e não herda corretor ou 
 
 test("interface declara com honestidade o papel e o estado da Sara no Funil 2.0", () => {
   assert.match(ui, /PAPEL DA SARA/);
-  assert.match(ui, /Ela lê, recomenda e fiscaliza/);
+  assert.match(ui, /Ela lê, classifica e fiscaliza/);
   assert.match(ui, /Reavaliação automática do Funil 2\.0 ainda não conectada/);
   assert.match(ui, /não envia por você/i);
 });
