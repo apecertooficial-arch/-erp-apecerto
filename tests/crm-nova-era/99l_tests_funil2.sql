@@ -22,7 +22,7 @@ INSERT INTO public.ncrm_estado(
   primeira_resposta_em,proxima_acao_tipo,proxima_acao_titulo,proxima_acao_em,origem_ultima
 )
 SELECT 71993,id,'em_atendimento','CONVERSANDO_QUALIFICANDO',true,true,
-  now(),'responder_cliente','Responder cliente',now()+interval '1 day','usuario'
+  now(),'entender_necessidade','Entender necessidade',now()+interval '1 day','usuario'
 FROM public.ncrm_workflow_config WHERE status='publicada' ORDER BY versao DESC LIMIT 1
 ON CONFLICT(negocio_id) DO UPDATE SET
   momento_codigo='CONVERSANDO_QUALIFICANDO',
