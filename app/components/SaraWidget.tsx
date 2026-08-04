@@ -72,7 +72,10 @@ export function SaraWidget() {
     "@keyframes saraT{0%,60%,100%{transform:translateY(0);opacity:.5;}30%{transform:translateY(-4px);opacity:1;}}",
     "#sara-foot{display:flex;gap:9px;padding:12px;border-top:1px solid #eee;background:#fff;align-items:flex-end;}",
     "#sara-in{flex:1;border:1px solid #ddd8ee;border-radius:22px;padding:11px 15px;font-size:13.5px;font-family:inherit;resize:none;max-height:96px;outline:none;}#sara-in:focus{border-color:#7c3aed;}",
-    "#sara-send{border:none;background:linear-gradient(135deg,#9333ea,#7c3aed);color:#fff;border-radius:50%;width:42px;height:42px;flex-shrink:0;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 6px 16px rgba(124,58,237,.35);}#sara-send svg{width:19px;height:19px;}"].join("");
+    "#sara-send{border:none;background:linear-gradient(135deg,#9333ea,#7c3aed);color:#fff;border-radius:50%;width:42px;height:42px;flex-shrink:0;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 6px 16px rgba(124,58,237,.35);}#sara-send svg{width:19px;height:19px;}",
+    /* No aplicativo, a Sara fica acima da barra inferior. Nunca cobre o
+       Calendário nem vira o maior elemento da tela. */
+    "@media(max-width:900px){#sara-fab{right:14px;bottom:calc(70px + env(safe-area-inset-bottom,0px));width:50px;height:50px}#sara-fab svg{width:22px;height:22px}#sara-panel{right:10px;bottom:calc(128px + env(safe-area-inset-bottom,0px));width:calc(100vw - 20px);height:min(570px,72dvh)}}"].join("");
     document.head.appendChild(st);
     const spark = '<svg viewBox="0 0 24 24" fill="#fff"><path d="M12 2l1.9 5.1L19 9l-5.1 1.9L12 16l-1.9-5.1L5 9l5.1-1.9L12 2z"/><path d="M19 14l.9 2.4L22 17l-2.1.6L19 20l-.9-2.4L16 17l2.1-.6L19 14z"/></svg>';
     const fab = document.createElement("button"); fab.id = "sara-fab"; fab.title = "Falar com a Sara"; fab.innerHTML = '<span class="pulse"></span>' + spark;

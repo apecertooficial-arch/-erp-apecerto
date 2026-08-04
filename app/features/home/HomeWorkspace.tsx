@@ -5,7 +5,7 @@ import { RodagemCards } from "./RodagemCards";
 import { FunilCards } from "./FunilCards";
 import { FinanceiroCards } from "./FinanceiroCards";
 import { NaMesaCards } from "./NaMesaCards";
-import { MeuDiaCorretor } from "./MeuDiaCorretor";
+import { InicioApp } from "./InicioApp";
 import { useEhCelular } from "../system/useFormato";
 
 type Lead = { id: number; nome?: string | null };
@@ -86,19 +86,11 @@ export function HomeWorkspace({ accessToken, sessionName = "", onNavigate, onIr 
   if (ehCelular === true) {
     return (
       <div className="home-mobile">
-        {/* A fila vem PRIMEIRO. Meta, VGV, funil e ranking ficam abaixo e
-            recolhidos: o corretor abre o app para atender, nao para se medir. */}
-        <MeuDiaCorretor
+        <InicioApp
           accessToken={accessToken}
           nome={sessionName}
-          onAbrirLead={(id) => irPara(`/crm?lead=${id}`)}
           onIr={irPara}
         />
-
-        <nav className="md-atalhos" aria-label="Atalhos principais">
-          <button type="button" onClick={() => irPara("/crm?crm=funil-2")}>Abrir CRM</button>
-          <button type="button" onClick={() => irPara("/agenda")}>Abrir agenda</button>
-        </nav>
       </div>
     );
   }
