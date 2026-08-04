@@ -19,12 +19,17 @@ FROM public.ncrm_workflow_config WHERE status='publicada' ORDER BY versao DESC L
 ON CONFLICT(negocio_id) DO UPDATE SET momento_codigo=NULL,etapa='tentando_contato';
 INSERT INTO public.ncrm_estado(
   negocio_id,workflow_config_id,etapa,momento_codigo,respondeu,resposta_pendente,
-  proxima_acao_tipo,proxima_acao_titulo,proxima_acao_em,origem_ultima
+  primeira_resposta_em,proxima_acao_tipo,proxima_acao_titulo,proxima_acao_em,origem_ultima
 )
 SELECT 71993,id,'em_atendimento','CONVERSANDO_QUALIFICANDO',true,true,
-  'responder_cliente','Responder cliente',now()+interval '1 day','usuario'
+  now(),'responder_cliente','Responder cliente',now()+interval '1 day','usuario'
 FROM public.ncrm_workflow_config WHERE status='publicada' ORDER BY versao DESC LIMIT 1
-ON CONFLICT(negocio_id) DO UPDATE SET momento_codigo='CONVERSANDO_QUALIFICANDO',etapa='em_atendimento';
+ON CONFLICT(negocio_id) DO UPDATE SET
+  momento_codigo='CONVERSANDO_QUALIFICANDO',
+  etapa='em_atendimento',
+  respondeu=true,
+  resposta_pendente=true,
+  primeira_resposta_em=coalesce(public.ncrm_estado.primeira_resposta_em,now());
 UPDATE public.ncrm_estado SET momento_codigo='DECISAO_POS_VISITA' WHERE negocio_id=71991;
 
 SELECT set_config('request.jwt.claims','{"role":"service_role"}',false);
