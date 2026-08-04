@@ -33,12 +33,12 @@ export const metadata: Metadata = {
   icons: {
     icon: [
       { url: "/favicon.svg", type: "image/svg+xml" },
-      { url: "/icons/icone-192-v5.png", sizes: "192x192", type: "image/png" },
-      { url: "/icons/icone-512-v5.png", sizes: "512x512", type: "image/png" },
+      { url: "/icons/icone-192-v6.png", sizes: "192x192", type: "image/png" },
+      { url: "/icons/icone-512-v6.png", sizes: "512x512", type: "image/png" },
     ],
     /* Nome fisico novo: o iOS conserva o apple-touch-icon da primeira
        instalacao mesmo quando so a query string muda. */
-    apple: [{ url: "/icons/apple-touch-icon-v5.png", sizes: "180x180", type: "image/png" }],
+    apple: [{ url: "/icons/apple-touch-icon-v6.png", sizes: "180x180", type: "image/png" }],
   },
   formatDetection: { telephone: false },
 };
