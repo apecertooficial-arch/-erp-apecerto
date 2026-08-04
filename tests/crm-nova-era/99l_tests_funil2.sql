@@ -142,6 +142,9 @@ SELECT public.test_assert((SELECT etapa='novo'
 SELECT public.test_assert((SELECT proxima_acao_em BETWEEN now()+interval '4 minutes' AND now()+interval '6 minutes'
   FROM public.f2_lead WHERE origem_negocio_id=71993),
   '#f2-26 primeira abordagem vence em cinco minutos');
+SELECT public.test_assert((SELECT corte_conversa_em BETWEEN now()-interval '1 minute' AND now()+interval '1 minute'
+  FROM public.f2_lead WHERE origem_negocio_id=71993),
+  '#f2-26b pesca define o início visível da conversa no instante da entrada');
 SELECT public.test_assert(EXISTS(SELECT 1 FROM public.negocios WHERE id=71993)
   AND EXISTS(SELECT 1 FROM public.leads WHERE id=71993),
   '#f2-27 pesca preserva lead e negócio originais');
