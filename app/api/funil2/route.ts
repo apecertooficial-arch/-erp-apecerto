@@ -17,6 +17,21 @@ async function clienteAutenticado(request: Request) {
   return { db: supabase as unknown as SupabaseClient };
 }
 
+async function listarLeadsSemCorte(db: SupabaseClient) {
+  const pagina = 1000;
+  const todos: Record<string, unknown>[] = [];
+  for (let inicio = 0; ; inicio += pagina) {
+    const { data, error } = await db
+      .from("f2_lead")
+      .select("*")
+      .order("proxima_acao_em", { ascending: true })
+      .range(inicio, inicio + pagina - 1);
+    if (error) return { data: null, error };
+    todos.push(...((data ?? []) as Record<string, unknown>[]));
+    if ((data?.length ?? 0) < pagina) return { data: todos, error: null };
+  }
+}
+
 export async function GET(request: Request) {
   const auth = await clienteAutenticado(request);
   if (auth.erro) return auth.erro;
@@ -27,7 +42,7 @@ export async function GET(request: Request) {
     { data: aquario, error: e7 }, { data: operacao, error: e8 },
     { data: saraModo }, { data: saraRunner },
   ] = await Promise.all([
-    db.from("f2_lead").select("*").order("proxima_acao_em", { ascending: true }),
+    listarLeadsSemCorte(db),
     db.from("f2_momento_config").select("*").order("etapa", { ascending: true }).order("ordem", { ascending: true }),
     db.from("f2_evento").select("id,funil_lead_id,tipo,titulo,detalhe,payload,criado_em").order("criado_em", { ascending: false }).limit(100),
     db.from("f2_etapa_config").select("codigo,ordem,rotulo,ajuda,ativo").order("ordem", { ascending: true }),
@@ -48,12 +63,13 @@ export async function GET(request: Request) {
     sara: {
       modo: typeof saraModo === "object" && saraModo !== null && "modo" in saraModo ? String((saraModo as { modo?: unknown }).modo ?? "") || null : null,
       runnerAtivo: typeof saraRunner === "object" && saraRunner !== null && "enabled" in saraRunner ? (saraRunner as { enabled?: unknown }).enabled === true : false,
-      analisesNoLaboratorio: 0,
+      analisesNoLaboratorio: (leads ?? []).filter((lead) => Boolean(lead.ultima_reavaliacao_sara_em)).length,
       // A Sara do Nova Era observa os negócios originais. Ainda não existe um
-      // worker que reclassifique automaticamente a cópia isolada f2_lead.
+      // worker que reclassifique automaticamente a carteira f2_lead.
       reavaliacaoAutomaticaFunil2: false,
     },
-    limite: 2, laboratorio: true,
+    limite: null, laboratorio: false,
+    migracao: { aquarioIncluido: false, origensPreservadas: true },
   });
 }
 

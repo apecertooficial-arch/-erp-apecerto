@@ -12,19 +12,39 @@ const conversaPosPesca = readFileSync(new URL("../supabase/migrations/2026081019
 const configOperacao = readFileSync(new URL("../supabase/migrations/20260810200000_funil_2_config_operacao.sql", import.meta.url), "utf8");
 const aquarioReal = readFileSync(new URL("../supabase/migrations/20260810220000_funil_2_aquario_real.sql", import.meta.url), "utf8");
 const aquarioStage = readFileSync(new URL("../supabase/migrations/20260810230000_funil_2_aquario_stage_canonico.sql", import.meta.url), "utf8");
+const promocao = readFileSync(new URL("../supabase/migrations/20260811010000_funil_2_migrar_pipes_antigos.sql", import.meta.url), "utf8");
 const conversaRoute = readFileSync(new URL("../app/api/funil2/conversa/route.ts", import.meta.url), "utf8");
 const modelo = readFileSync(new URL("../app/features/funil-2/modelo.ts", import.meta.url), "utf8");
 
-test("Funil 2.0 se apresenta como laboratório isolado de duas cópias", () => {
-  assert.match(ui, /LABORATÓRIO ISOLADO/);
-  assert.match(ui, /Originais intactos/);
-  assert.match(ui, /limite físico de 2 leads/);
-  assert.match(migration, /funil_2_limite_dois_leads/);
+test("Funil 2.0 se apresenta como carteira operacional com origens preservadas", () => {
+  assert.match(ui, /OPERAÇÃO OFICIAL/);
+  assert.match(ui, /Origens preservadas/);
+  assert.match(ui, /Aquário fora da migração/);
+  assert.match(promocao, /DROP TRIGGER IF EXISTS f2_lead_limite_dois/);
+});
+
+test("promoção migra somente pipes antigos e exclui o Aquário", () => {
+  assert.match(promocao, /pipeline_id IN \(2,3,4\)/);
+  assert.match(promocao, /stage_id IS DISTINCT FROM public\.aquario_stage_id\(\)/);
+  assert.match(promocao, /f2_migracao_invalida:aquario_incluido/);
+  assert.match(promocao, /origens_preservadas/);
+  assert.doesNotMatch(promocao, /UPDATE public\.(?:negocios|leads|visitas|vendas)/);
+  assert.doesNotMatch(promocao, /DELETE FROM public\.(?:negocios|leads|visitas|vendas)/);
 });
 
 test("quadro deixa etapa, momento, ação e prazo explícitos", () => {
   for (const texto of ["MOMENTO", "FAÇA AGORA", "O QUE FAZER AGORA", "Próxima ação", "Prazo padrão"]) assert.match(ui, new RegExp(texto));
   assert.match(ui, /<select value=\{codigo\}/);
+});
+
+test("Funil 2.0 inclui mapa interativo de etapas, momentos, ações e prazos", () => {
+  assert.match(ui, /function MapaOperacao/);
+  assert.match(ui, /MAPA DA OPERAÇÃO/);
+  assert.match(ui, /Etapa organiza\. Momento explica\. Ação e prazo movem o dia\./);
+  assert.match(ui, /aria-label="Etapas oficiais do funil"/);
+  assert.match(ui, /onClick=\{\(\) => onEtapa\(etapa\.codigo\)\}/);
+  assert.match(ui, /momento\.acao_rotulo/);
+  assert.match(ui, /momento\.prazo_rotulo/);
 });
 
 test("sandbox não escreve em tabelas operacionais e tem dez momentos", () => {
@@ -78,11 +98,12 @@ test("lead pescado nasce sem expor o histórico anterior no Funil 2.0", () => {
   assert.doesNotMatch(ui, /O histórico permanece disponível/);
 });
 
-test("interface usa blocos separados para etapa, momento e próxima ação", () => {
+test("card e ficha separam etapa, momento e próxima ação", () => {
   assert.match(ui, /f2-card-trio/);
-  assert.match(ui, /f2-quadrado etapa/);
-  assert.match(ui, /f2-quadrado momento/);
-  assert.match(ui, /f2-quadrado acao/);
+  assert.match(ui, /f2-agora-grid/);
+  assert.match(ui, /className="etapa"/);
+  assert.match(ui, /className="momento"/);
+  assert.match(ui, /className="acao"/);
   assert.match(ui, /PRÓXIMA AÇÃO/);
 });
 
@@ -150,17 +171,38 @@ test("Todos os Leads filtra pelas etapas do vocabulário oficial", () => {
   assert.match(ui, /const \[busca, setBusca\]/);
   assert.match(ui, /Nome ou telefone/);
   assert.match(ui, /Situação do prazo/);
-  assert.match(ui, /filtrados\.map/);
+  assert.match(ui, /exibidos\.map/);
+  assert.match(ui, /Página \{paginaSegura\} de \{totalPaginas\}/);
+});
+
+test("Todos os Leads usa linhas compactas com leitura e ações rápidas", () => {
+  assert.match(ui, /f2-tabela-compacta/);
+  assert.match(ui, /f2-lead-linha/);
+  assert.match(ui, /f2-lead-chip etapa/);
+  assert.match(ui, /f2-lead-chip momento/);
+  assert.match(ui, /f2-lead-acao/);
+  assert.match(ui, /f2-lead-acoes/);
 });
 
 test("Performance separa disciplina controlável de resultado comercial", () => {
-  assert.match(ui, /Performance exclusiva do CRM/);
-  assert.match(ui, /DISCIPLINA CONTROLÁVEL/);
-  assert.match(ui, /EVIDÊNCIA, NÃO CLIQUE/);
-  assert.match(ui, /POR CORRETOR/);
+  assert.match(ui, /Performance de Atendimento/);
+  assert.match(ui, /PAINEL DO DONO/);
+  assert.match(ui, /NOTA DE EXECUÇÃO/);
+  assert.match(ui, /SAÚDE DA CARTEIRA/);
+  assert.match(ui, /CONVERSÃO COMERCIAL/);
+  assert.match(ui, /Resultado comercial não altera a nota disciplinar/);
   for (const peso of ["peso_primeira_abordagem", "peso_acoes_prazo", "peso_feedback_visita", "peso_presenca_dapi", "peso_coerencia_sara"]) {
     assert.match(ui, new RegExp(peso));
   }
+});
+
+test("Performance explica a nota, aponta intervenção e compara corretores sem inventar amostra", () => {
+  for (const texto of ["QUEM PRECISA DE INTERVENÇÃO", "PLACAR POR CORRETOR", "Carteira em dia", "SLA inicial", "Evidência D-API", "Feedback de visitas", "Coerência Sara", "Sem amostra"]) {
+    assert.match(ui, new RegExp(texto));
+  }
+  assert.match(ui, /eventos=\{eventos\}/);
+  assert.match(ui, /evento\.tipo === "acao_confirmada"/);
+  assert.match(ui, /Uma métrica sem amostra é retirada do cálculo/);
 });
 
 test("configuração única persiste roleta manual, disciplina e pesos sem ligar disparo automático", () => {
