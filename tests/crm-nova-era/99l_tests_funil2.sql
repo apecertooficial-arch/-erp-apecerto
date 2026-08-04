@@ -10,7 +10,7 @@ INSERT INTO public.ncrm_estado(
   proxima_acao_tipo,proxima_acao_titulo,proxima_acao_em,origem_ultima
 )
 SELECT 71992,id,'tentando_contato',NULL,false,false,
-  'enviar_cadencia','Enviar cadência',now()+interval '1 day','usuario'
+  'tentativa_cadencia','Enviar cadência',now()+interval '1 day','usuario'
 FROM public.ncrm_workflow_config WHERE status='publicada' ORDER BY versao DESC LIMIT 1
 ON CONFLICT(negocio_id) DO UPDATE SET momento_codigo=NULL,etapa='tentando_contato';
 UPDATE public.ncrm_estado SET momento_codigo='DECISAO_POS_VISITA' WHERE negocio_id=71991;
