@@ -21,16 +21,73 @@ export async function GET(request: Request) {
   const auth = await clienteAutenticado(request);
   if (auth.erro) return auth.erro;
   const db = auth.db;
-  const [{ data: leads, error: e1 }, { data: momentos, error: e2 }, { data: eventos, error: e3 }] = await Promise.all([
+  const [
+    { data: leads, error: e1 }, { data: momentos, error: e2 }, { data: eventos, error: e3 },
+    { data: etapas, error: e4 }, { data: visitas, error: e5 }, { data: negociacoes, error: e6 },
+    { data: aquario, error: e7 },
+  ] = await Promise.all([
     db.from("f2_lead").select("*").order("proxima_acao_em", { ascending: true }),
-    db.from("f2_momento_config").select("*").eq("ativo", true).order("ordem", { ascending: true }),
+    db.from("f2_momento_config").select("*").order("etapa", { ascending: true }).order("ordem", { ascending: true }),
     db.from("f2_evento").select("id,funil_lead_id,tipo,titulo,detalhe,payload,criado_em").order("criado_em", { ascending: false }).limit(100),
+    db.from("f2_etapa_config").select("codigo,ordem,rotulo,ajuda,ativo").order("ordem", { ascending: true }),
+    db.from("f2_visita").select("id,funil_lead_id,inicio_em,imovel,status,observacao,atualizado_em").order("inicio_em", { ascending: true }),
+    db.from("f2_negociacao").select("id,funil_lead_id,titulo,etapa,valor,observacao,atualizado_em").order("atualizado_em", { ascending: false }),
+    db.rpc("f2_listar_aquario"),
   ]);
-  if (e1 || e2 || e3) {
-    const message = e1?.message || e2?.message || e3?.message || "Falha ao carregar o Funil 2.0.";
+  if (e1 || e2 || e3 || e4 || e5 || e6 || e7) {
+    const message = e1?.message || e2?.message || e3?.message || e4?.message || e5?.message || e6?.message || e7?.message || "Falha ao carregar o Funil 2.0.";
     return Response.json({ error: message }, { status: message.toLowerCase().includes("permission") ? 403 : 502 });
   }
-  return Response.json({ leads: leads ?? [], momentos: momentos ?? [], eventos: eventos ?? [], limite: 2, laboratorio: true });
+  return Response.json({
+    leads: leads ?? [], momentos: momentos ?? [], eventos: eventos ?? [], etapas: etapas ?? [],
+    visitas: visitas ?? [], negociacoes: negociacoes ?? [], aquario: aquario ?? [], limite: 2, laboratorio: true,
+  });
+}
+
+export async function POST(request: Request) {
+  const auth = await clienteAutenticado(request);
+  if (auth.erro) return auth.erro;
+  let body: Record<string, unknown>;
+  try { body = await request.json() as Record<string, unknown>; }
+  catch { return Response.json({ error: "JSON inválido." }, { status: 400 }); }
+  const action = String(body.action ?? "");
+  let rpc = "";
+  let args: Record<string, unknown> = {};
+
+  if (action === "configurarEtapa") {
+    rpc = "f2_configurar_etapa";
+    args = {
+      p_codigo: String(body.codigo ?? "").slice(0, 40), p_rotulo: String(body.rotulo ?? "").slice(0, 60),
+      p_ajuda: String(body.ajuda ?? "").slice(0, 240), p_ordem: Number(body.ordem), p_ativo: body.ativo !== false,
+    };
+  } else if (action === "configurarMomento") {
+    rpc = "f2_configurar_momento";
+    args = {
+      p_codigo: String(body.codigo ?? "").slice(0, 50), p_etapa: String(body.etapa ?? "").slice(0, 40),
+      p_rotulo: String(body.rotulo ?? "").slice(0, 80), p_descricao: String(body.descricao ?? "").slice(0, 300),
+      p_acao_rotulo: String(body.acaoRotulo ?? "").slice(0, 120), p_prazo_minutos: Number(body.prazoMinutos),
+      p_ordem: Number(body.ordem), p_exige_dapi: body.exigeDapi === true, p_ativo: body.ativo !== false,
+    };
+  } else if (action === "salvarVisita") {
+    const inicio = new Date(String(body.inicioEm ?? ""));
+    if (Number.isNaN(inicio.getTime())) return Response.json({ error: "Data da visita inválida." }, { status: 422 });
+    rpc = "f2_salvar_visita";
+    args = { p_id: body.id || null, p_lead_id: body.leadId, p_inicio_em: inicio.toISOString(), p_imovel: String(body.imovel ?? "").slice(0, 120), p_status: body.status || "agendada", p_observacao: String(body.observacao ?? "").slice(0, 500) || null };
+  } else if (action === "salvarNegociacao") {
+    rpc = "f2_salvar_negociacao";
+    args = { p_id: body.id || null, p_lead_id: body.leadId, p_titulo: String(body.titulo ?? "").slice(0, 120), p_etapa: body.etapa || "qualificacao", p_valor: body.valor === "" || body.valor == null ? null : Number(body.valor), p_observacao: String(body.observacao ?? "").slice(0, 500) || null };
+  } else if (action === "pescar") {
+    rpc = "f2_pescar_negocio";
+    args = { p_negocio_id: Number(body.negocioId), p_substituir_id: body.substituirId || null };
+  } else {
+    return Response.json({ error: "Ação desconhecida." }, { status: 400 });
+  }
+
+  const { data, error } = await auth.db.rpc(rpc, args);
+  if (error) return Response.json({ error: error.message }, { status: 502 });
+  const resultado = (data ?? {}) as { ok?: boolean; erro?: string };
+  if (resultado.ok === false) return Response.json({ error: resultado.erro || "Ação não permitida." }, { status: 409 });
+  return Response.json({ ok: true, resultado });
 }
 
 export async function PATCH(request: Request) {

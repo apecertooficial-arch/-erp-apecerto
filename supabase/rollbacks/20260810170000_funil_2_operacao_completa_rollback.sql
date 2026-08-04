@@ -1,0 +1,17 @@
+BEGIN;
+DROP FUNCTION IF EXISTS public.f2_pescar_negocio(bigint,uuid);
+DROP FUNCTION IF EXISTS public.f2_listar_aquario();
+DROP FUNCTION IF EXISTS public.f2_salvar_negociacao(uuid,uuid,text,text,numeric,text);
+DROP FUNCTION IF EXISTS public.f2_salvar_visita(uuid,uuid,timestamptz,text,text,text);
+DROP FUNCTION IF EXISTS public.f2_configurar_momento(text,text,text,text,text,integer,integer,boolean,boolean);
+DROP FUNCTION IF EXISTS public.f2_configurar_etapa(text,text,text,integer,boolean);
+DROP TABLE IF EXISTS public.f2_config_audit;
+DROP TABLE IF EXISTS public.f2_negociacao;
+DROP TABLE IF EXISTS public.f2_visita;
+ALTER TABLE public.f2_lead DROP CONSTRAINT IF EXISTS f2_lead_etapa_fkey;
+ALTER TABLE public.f2_momento_config DROP CONSTRAINT IF EXISTS f2_momento_config_etapa_fkey;
+DROP INDEX IF EXISTS public.f2_momento_etapa_ordem_uk;
+DROP TABLE IF EXISTS public.f2_etapa_config;
+ALTER TABLE public.f2_momento_config ADD CONSTRAINT f2_momento_config_etapa_check CHECK (etapa IN ('novo','tentando_contato','em_atendimento','pos_visita'));
+ALTER TABLE public.f2_lead ADD CONSTRAINT f2_lead_etapa_check CHECK (etapa IN ('novo','tentando_contato','em_atendimento','pos_visita'));
+COMMIT;
