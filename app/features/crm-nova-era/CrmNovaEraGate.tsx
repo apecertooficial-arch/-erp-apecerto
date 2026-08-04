@@ -22,6 +22,7 @@ import { crmNovaEraLiberado } from "./featureFlag";
 import { Crm3Workspace } from "../crm-nova-era-3/Crm3Workspace";
 import { TelaCrmMobile } from "./TelaCrmMobile";
 import { useEhCelular } from "../system/useFormato";
+import { Funil2Workspace } from "../funil-2/Funil2Workspace";
 
 type Variante = "atual" | "nova-era";
 type Profile = { userId: string | null; role: string | null; name: string | null };
@@ -58,6 +59,15 @@ function pedeWorkspace3(): boolean {
     return ["funil", "leads", "visitas", "esteira", "agenda", "avisos", "gestao"].includes(
       new URLSearchParams(window.location.search).get("aba") ?? "",
     );
+  } catch {
+    return false;
+  }
+}
+
+function pedeFunil2(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    return new URLSearchParams(window.location.search).get("crm") === "funil-2";
   } catch {
     return false;
   }
@@ -113,6 +123,7 @@ export function CrmNovaEraGate({
    * dela no mesmo instante. */
   const [deepLink] = useState(lerDeepLink);
   const [entrouNoWorkspace3] = useState(pedeWorkspace3);
+  const [entrouNoFunil2] = useState(pedeFunil2);
 
   /* null durante a primeira renderização no servidor: não dá para adivinhar a
      largura antes de o navegador existir, e chutar causaria troca de tela
@@ -128,6 +139,20 @@ export function CrmNovaEraGate({
   if (!liberado) return <>{current}</>;
 
   const podeLive = !!accessToken && !!profile?.userId;
+  const podeFunil2 = profile?.userId === "4dfdffae-0009-41de-8d6f-2365a06dc066"
+    || ["admin", "executivo"].includes((profile?.role ?? "").toLowerCase());
+
+  /* Laboratório isolado: entrada explícita e administrativa. A mesma regra é
+     repetida no banco; esconder a tela aqui é UX, RLS é a autoridade. */
+  if (entrouNoFunil2) {
+    if (!podeLive || !podeFunil2) return <>{current}</>;
+    return (
+      <Funil2Workspace
+        accessToken={accessToken as string}
+        profile={{ userId: profile!.userId as string, role: profile?.role ?? "admin", name: profile?.name ?? "Administrador" }}
+      />
+    );
+  }
 
   /* ---------------------- CONVERSA PEDIDA (?chat=) ----------------------
      A conversa só existe dentro do CrmWorkspace. Monta ele PURO, sem a barra

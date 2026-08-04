@@ -1,0 +1,11 @@
+BEGIN;
+DROP FUNCTION IF EXISTS public.f2_confirmar_acao(uuid,integer,text,text);
+DROP FUNCTION IF EXISTS public.f2_atualizar_momento(uuid,integer,text,timestamptz,text);
+DROP FUNCTION IF EXISTS public.f2_importar_negocio(bigint);
+DROP TRIGGER IF EXISTS f2_lead_limite_dois ON public.f2_lead;
+DROP FUNCTION IF EXISTS public.f2_limitar_dois_leads();
+DROP TABLE IF EXISTS public.f2_evento;
+DROP TABLE IF EXISTS public.f2_lead;
+DROP TABLE IF EXISTS public.f2_momento_config;
+DROP FUNCTION IF EXISTS public.f2_admin();
+COMMIT;
