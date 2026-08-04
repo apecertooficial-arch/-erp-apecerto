@@ -231,7 +231,7 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
       {!carregando && aba === "leads" && <TodosLeads leads={leads} momentos={momentosAtivos} etapas={etapasAtivas} onAbrir={(id) => setSelecionado(id)} onPescar={() => setModal("pescar")} />}
       {!carregando && aba === "visitas" && <PipeVisitas visitas={visitas} leads={leads} busy={busy} onNova={() => setModal("visita")} onSalvar={(visita) => void executar("salvarVisita", visita)} />}
       {!carregando && aba === "vendas" && <EsteiraVendas negociacoes={negociacoes} leads={leads} busy={busy} onNova={() => setModal("negociacao")} onSalvar={(negociacao) => void executar("salvarNegociacao", negociacao)} />}
-      {!carregando && aba === "performance" && <PerformanceFunil2 leads={leads} visitas={visitas} negociacoes={negociacoes} operacao={operacao} />}
+      {!carregando && aba === "performance" && <PerformanceFunil2 leads={leads} eventos={eventos} visitas={visitas} negociacoes={negociacoes} operacao={operacao} />}
       {!carregando && aba === "config" && <Configuracoes etapas={etapas} momentos={momentos} operacao={operacao} sara={sara} busy={busy} onEtapa={(dados) => void executar("configurarEtapa", dados)} onMomento={(dados) => void executar("configurarMomento", dados)} onOperacao={(dados) => void executar("configurarOperacao", dados)} />}
 
       {modal === "pescar" && <ModalPescar candidatos={aquario} busy={busy} onFechar={() => setModal(null)} onPescar={(negocioId) => void executar("pescar", { negocioId })} />}
@@ -359,20 +359,86 @@ function EsteiraVendas({ negociacoes, leads, busy, onNova, onSalvar }: { negocia
   </main>;
 }
 
-function PerformanceFunil2({ leads, visitas, negociacoes, operacao }: { leads: LeadFunil2[]; visitas: VisitaFunil2[]; negociacoes: NegociacaoFunil2[]; operacao: OperacaoConfigFunil2 | null }) {
-  const confirmadas = leads.filter((lead) => lead.ultima_acao_confirmada_em).length;
-  const noPrazo = leads.filter((lead) => situacaoPrazo(lead.proxima_acao_em).classe !== "atrasado").length;
-  const atrasadas = leads.length - noPrazo;
-  const confirmadasDapi = leads.filter((lead) => lead.ultima_acao_fonte === "dapi").length;
-  const saraReavaliados = leads.filter((lead) => lead.ultima_reavaliacao_sara_em && lead.ultima_reavaliacao_resumo && !lead.ultima_reavaliacao_resumo.startsWith("Cópia criada")).length;
-  const feedbacksPendentes = visitas.filter((visita) => visita.status === "realizada" && !visita.observacao).length;
-  const propostas = negociacoes.filter((negociacao) => ["proposta", "documentacao", "contrato", "venda"].includes(negociacao.etapa)).length;
-  const percentual = (valor: number) => leads.length ? Math.round(valor / leads.length * 100) : 0;
-  const corretores = [...new Set(leads.map((lead) => lead.corretor_nome ?? "Sem responsável"))].sort();
-  return <main className="f2-pagina"><CabecalhoPagina titulo="Performance exclusiva do CRM" texto="Só entram dados produzidos pela conduta do Funil 2.0: prazo, evidência D-API, atualização de momento, visita e negociação. Nenhuma métrica geral do ERP é misturada aqui." />
-    <section className="f2-performance-kpis"><article><span>Obrigações no prazo</span><b>{percentual(noPrazo)}%</b><small>{noPrazo}/{leads.length} dentro do prazo agora</small></article><article><span>Ações atrasadas</span><b>{atrasadas}</b><small>o que o corretor precisa corrigir</small></article><article><span>Confirmadas pelo D-API</span><b>{confirmadasDapi}</b><small>mensagem real enviada pelo celular</small></article><article><span>Sara reavaliou</span><b>{saraReavaliados}</b><small>leituras reais, sem contar texto de importação</small></article><article><span>Feedback pendente</span><b>{feedbacksPendentes}</b><small>visitas realizadas sem conclusão</small></article><article><span>Visitas</span><b>{visitas.length}</b><small>{visitas.filter((item) => item.status === "realizada").length} realizada(s)</small></article><article><span>Negociações</span><b>{negociacoes.length}</b><small>{propostas} da proposta em diante</small></article><article><span>Vendas</span><b>{negociacoes.filter((item) => item.etapa === "venda").length}</b><small>resultado comercial do laboratório</small></article></section>
-    <section className="f2-performance-grid"><article><span className="f2-eyebrow">DISCIPLINA CONTROLÁVEL</span><h3>Como o índice será formado</h3>{operacao ? <div className="f2-pesos"><p><b>{operacao.peso_primeira_abordagem}%</b> primeira abordagem em {operacao.primeira_abordagem_min} min</p><p><b>{operacao.peso_acoes_prazo}%</b> ações dos momentos no prazo</p><p><b>{operacao.peso_feedback_visita}%</b> feedback de visitas</p><p><b>{operacao.peso_presenca_dapi}%</b> presença e D-API</p><p><b>{operacao.peso_coerencia_sara}%</b> momento coerente com a conversa</p></div> : <p>Configuração indisponível.</p>}</article><article><span className="f2-eyebrow">EVIDÊNCIA, NÃO CLIQUE</span><h3>O que conta como trabalho</h3><div className="f2-pesos"><p><b>{confirmadasDapi}</b> ação confirmada pelo D-API</p><p><b>{Math.max(0, confirmadas - confirmadasDapi)}</b> registro operacional</p><p><b>{visitas.filter((item) => Boolean(item.observacao)).length}</b> visita com feedback</p><p><b>{saraReavaliados}</b> momento reavaliado pela Sara</p></div></article></section>
-    <section className="f2-performance-time"><div><span className="f2-eyebrow">POR CORRETOR</span><h3>Quem está mantendo a carteira viva</h3><p>Esta tabela usa somente os dois leads do laboratório. Ela vira o placar real quando a migração for autorizada.</p></div><div className="f2-performance-cab"><span>Corretor</span><span>Carteira</span><span>Atrasadas</span><span>Com evidência</span><span>Visitas</span><span>Negociações</span><span>Sara</span></div>{corretores.map((corretor) => { const carteira = leads.filter((lead) => (lead.corretor_nome ?? "Sem responsável") === corretor); const ids = new Set(carteira.map((lead) => lead.id)); return <div className="f2-performance-linha" key={corretor}><b>{corretor}</b><span>{carteira.length}</span><span className={carteira.some((lead) => situacaoPrazo(lead.proxima_acao_em).classe === "atrasado") ? "ruim" : "bom"}>{carteira.filter((lead) => situacaoPrazo(lead.proxima_acao_em).classe === "atrasado").length}</span><span>{carteira.filter((lead) => lead.ultima_acao_confirmada_em).length}</span><span>{visitas.filter((item) => ids.has(item.funil_lead_id)).length}</span><span>{negociacoes.filter((item) => ids.has(item.funil_lead_id)).length}</span><span>{carteira.filter((lead) => lead.ultima_reavaliacao_sara_em).length}</span></div>; })}</section>
+function PerformanceFunil2({ leads, eventos, visitas, negociacoes, operacao }: { leads: LeadFunil2[]; eventos: EventoFunil2[]; visitas: VisitaFunil2[]; negociacoes: NegociacaoFunil2[]; operacao: OperacaoConfigFunil2 | null }) {
+  const pct = (parte: number, total: number) => total > 0 ? Math.round(parte / total * 100) : null;
+  const mostrarPct = (valor: number | null) => valor === null ? "Sem amostra" : `${valor}%`;
+  const prazoInicial = operacao?.primeira_abordagem_min ?? 5;
+  const pesos = {
+    primeira: operacao?.peso_primeira_abordagem ?? 30,
+    prazo: operacao?.peso_acoes_prazo ?? 30,
+    feedback: operacao?.peso_feedback_visita ?? 20,
+    dapi: operacao?.peso_presenca_dapi ?? 10,
+    sara: operacao?.peso_coerencia_sara ?? 10,
+  };
+
+  const calcular = (carteira: LeadFunil2[]) => {
+    const ids = new Set(carteira.map((lead) => lead.id));
+    const eventosCarteira = eventos.filter((evento) => ids.has(evento.funil_lead_id));
+    const confirmacoes = eventosCarteira.filter((evento) => evento.tipo === "acao_confirmada");
+    const confirmacoesDapi = confirmacoes.filter((evento) => /D-API/i.test(evento.titulo));
+    const primeiras = carteira.flatMap((lead) => {
+      const corte = new Date(lead.corte_conversa_em).getTime();
+      const primeira = eventosCarteira
+        .filter((evento) => evento.funil_lead_id === lead.id && evento.tipo === "acao_confirmada" && new Date(evento.criado_em).getTime() >= corte)
+        .sort((a, b) => a.criado_em.localeCompare(b.criado_em))[0];
+      return primeira ? [{ minutos: Math.max(0, Math.round((new Date(primeira.criado_em).getTime() - corte) / 60000)) }] : [];
+    });
+    const noPrazo = carteira.filter((lead) => situacaoPrazo(lead.proxima_acao_em).classe !== "atrasado").length;
+    const atrasadas = carteira.length - noPrazo;
+    const visitasCarteira = visitas.filter((visita) => ids.has(visita.funil_lead_id));
+    const visitasEncerradas = visitasCarteira.filter((visita) => ["realizada", "cancelada", "nao_compareceu"].includes(visita.status));
+    const feedbacks = visitasEncerradas.filter((visita) => Boolean(visita.observacao?.trim()));
+    const negociacoesCarteira = negociacoes.filter((negociacao) => ids.has(negociacao.funil_lead_id));
+    const propostas = negociacoesCarteira.filter((negociacao) => ["proposta", "documentacao", "contrato", "venda"].includes(negociacao.etapa));
+    const vendas = negociacoesCarteira.filter((negociacao) => negociacao.etapa === "venda");
+    const saraCobertos = carteira.filter((lead) => lead.ultima_reavaliacao_sara_em && lead.ultima_reavaliacao_resumo && !lead.ultima_reavaliacao_resumo.startsWith("Cópia criada")).length;
+    const metricas = [
+      { valor: pct(primeiras.filter((item) => item.minutos <= prazoInicial).length, primeiras.length), peso: pesos.primeira },
+      { valor: pct(noPrazo, carteira.length), peso: pesos.prazo },
+      { valor: pct(feedbacks.length, visitasEncerradas.length), peso: pesos.feedback },
+      { valor: pct(confirmacoesDapi.length, confirmacoes.length), peso: pesos.dapi },
+      { valor: pct(saraCobertos, carteira.length), peso: pesos.sara },
+    ];
+    const disponiveis = metricas.filter((metrica): metrica is { valor: number; peso: number } => metrica.valor !== null);
+    const pesoDisponivel = disponiveis.reduce((total, metrica) => total + metrica.peso, 0);
+    const nota = pesoDisponivel > 0 ? Math.round(disponiveis.reduce((total, metrica) => total + metrica.valor * metrica.peso, 0) / pesoDisponivel) : null;
+    const motivos = [
+      atrasadas > 0 ? `${atrasadas} ação(ões) atrasada(s)` : null,
+      primeiras.some((item) => item.minutos > prazoInicial) ? "primeira abordagem fora do SLA" : null,
+      visitasEncerradas.length > feedbacks.length ? `${visitasEncerradas.length - feedbacks.length} visita(s) sem feedback` : null,
+      carteira.length > saraCobertos ? `${carteira.length - saraCobertos} lead(s) sem leitura recente da Sara` : null,
+    ].filter((motivo): motivo is string => Boolean(motivo));
+    return {
+      carteira: carteira.length, noPrazo, atrasadas, primeiras, confirmacoes, confirmacoesDapi, visitas: visitasCarteira,
+      visitasEncerradas, feedbacks, negociacoes: negociacoesCarteira, propostas, vendas, saraCobertos, nota, motivos,
+      primeiraPct: pct(primeiras.filter((item) => item.minutos <= prazoInicial).length, primeiras.length),
+      prazoPct: pct(noPrazo, carteira.length), feedbackPct: pct(feedbacks.length, visitasEncerradas.length),
+      dapiPct: pct(confirmacoesDapi.length, confirmacoes.length), saraPct: pct(saraCobertos, carteira.length),
+    };
+  };
+
+  const total = calcular(leads);
+  const porCorretor = [...new Set(leads.map((lead) => lead.corretor_nome ?? "Sem responsável"))]
+    .map((nome) => ({ nome, ...calcular(leads.filter((lead) => (lead.corretor_nome ?? "Sem responsável") === nome)) }))
+    .sort((a, b) => (b.nota ?? -1) - (a.nota ?? -1));
+  const classeNota = (nota: number | null) => nota === null ? "sem-amostra" : nota >= 90 ? "excelente" : nota >= 80 ? "bom" : nota >= 70 ? "atencao" : "critico";
+  const rotuloNota = (nota: number | null) => nota === null ? "Sem amostra" : nota >= 90 ? "Excelente" : nota >= 80 ? "Bom" : nota >= 70 ? "Atenção" : "Crítico";
+  const pipeline = negociacoes.filter((item) => item.etapa !== "perdida").reduce((soma, item) => soma + Number(item.valor ?? 0), 0);
+  const visitasRealizadas = visitas.filter((item) => item.status === "realizada").length;
+  const intervencoes = porCorretor.filter((item) => item.motivos.length > 0).sort((a, b) => b.atrasadas - a.atrasadas || (a.nota ?? 101) - (b.nota ?? 101));
+
+  return <main className="f2-pagina"><CabecalhoPagina titulo="Performance de Atendimento" texto="O painel do dono: mostra disciplina, carteira, qualidade e conversão sem misturar esforço controlável com resultado de venda." />
+    <section className="f2-performance-hero"><div><span className="f2-eyebrow">PAINEL DO DONO</span><h2>A operação está trabalhando os leads?</h2><p>A nota mede apenas aquilo que o corretor controla. Vendas e conversão aparecem separadas para orientar gestão e treinamento.</p></div><div className={`f2-nota ${classeNota(total.nota)}`}><small>NOTA DE EXECUÇÃO</small><strong>{total.nota ?? "—"}</strong><span>{rotuloNota(total.nota)}</span></div></section>
+
+    <section className="f2-performance-kpis f2-performance-kpis-dono"><article><span>Carteira em dia</span><b>{mostrarPct(total.prazoPct)}</b><small>{total.noPrazo}/{total.carteira} obrigações no prazo agora</small></article><article><span>Atenção imediata</span><b>{total.atrasadas}</b><small>leads com ação vencida</small></article><article><span>Primeira abordagem no SLA</span><b>{mostrarPct(total.primeiraPct)}</b><small>{total.primeiras.length} caso(s) com evidência após a entrada</small></article><article><span>Evidência D-API</span><b>{mostrarPct(total.dapiPct)}</b><small>{total.confirmacoesDapi.length}/{total.confirmacoes.length} ações confirmadas pelo celular</small></article><article><span>Feedback de visitas</span><b>{mostrarPct(total.feedbackPct)}</b><small>{total.feedbacks.length}/{total.visitasEncerradas.length} visitas encerradas documentadas</small></article><article><span>Coerência Sara</span><b>{mostrarPct(total.saraPct)}</b><small>{total.saraCobertos}/{total.carteira} leads reavaliados</small></article></section>
+
+    <section className="f2-performance-blocos"><article><span className="f2-eyebrow">SAÚDE DA CARTEIRA</span><h3>Onde o atendimento está travando</h3><div className="f2-saude-lista"><p><b>{total.atrasadas}</b><span>ações vencidas</span></p><p><b>{leads.filter((lead) => situacaoPrazo(lead.proxima_acao_em).classe === "urgente").length}</b><span>vencem em até 2h</span></p><p><b>{total.carteira - total.saraCobertos}</b><span>sem leitura recente da Sara</span></p><p><b>{total.visitasEncerradas.length - total.feedbacks.length}</b><span>visitas sem feedback</span></p></div></article><article><span className="f2-eyebrow">CONVERSÃO COMERCIAL</span><h3>O trabalho está virando oportunidade?</h3><div className="f2-conversao"><p><b>{visitas.length}</b><span>visitas agendadas</span></p><i>→</i><p><b>{visitasRealizadas}</b><span>realizadas</span></p><i>→</i><p><b>{total.propostas.length}</b><span>propostas</span></p><i>→</i><p><b>{total.vendas.length}</b><span>vendas</span></p></div><small>Pipeline aberto: <b>{pipeline.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</b>. Resultado comercial não altera a nota disciplinar.</small></article></section>
+
+    <section className="f2-performance-atencao"><div><span className="f2-eyebrow">QUEM PRECISA DE INTERVENÇÃO</span><h3>Motivo claro, sem adivinhação</h3><p>Prioriza atraso, SLA, falta de feedback e ausência de reavaliação.</p></div>{intervencoes.length ? <div className="f2-intervencoes">{intervencoes.slice(0, 5).map((item) => <article key={item.nome}><div><b>{item.nome}</b><span className={classeNota(item.nota)}>Nota {item.nota ?? "—"} · {rotuloNota(item.nota)}</span></div><p>{item.motivos.join(" · ")}</p></article>)}</div> : <div className="f2-tudo-certo"><b>Nenhuma intervenção imediata.</b><span>A carteira está dentro da conduta disponível.</span></div>}</section>
+
+    <section className="f2-performance-time"><div><span className="f2-eyebrow">PLACAR POR CORRETOR</span><h3>Disciplina e resultado na mesma linha — sem misturar as notas</h3><p>Percentuais sem casos válidos aparecem como “—”. Nesta fase, a amostra considera somente os leads do Funil 2.0.</p></div><div className="f2-performance-cab f2-performance-cab-dono"><span>Corretor</span><span>Nota</span><span>Carteira em dia</span><span>SLA inicial</span><span>D-API</span><span>Feedback</span><span>Sara</span><span>Visitas</span><span>Propostas</span><span>Vendas</span></div>{porCorretor.map((item) => <div className="f2-performance-linha f2-performance-linha-dono" key={item.nome}><b>{item.nome}</b><span><strong className={classeNota(item.nota)}>{item.nota ?? "—"}</strong><small>{rotuloNota(item.nota)}</small></span><span className={(item.prazoPct ?? 100) < 70 ? "ruim" : "bom"}>{mostrarPct(item.prazoPct)}</span><span>{mostrarPct(item.primeiraPct)}</span><span>{mostrarPct(item.dapiPct)}</span><span>{mostrarPct(item.feedbackPct)}</span><span>{mostrarPct(item.saraPct)}</span><span>{item.visitas.length}</span><span>{item.propostas.length}</span><span>{item.vendas.length}</span></div>)}</section>
+
+    <details className="f2-performance-regra"><summary>Como a nota é calculada</summary><div className="f2-pesos"><p><b>{pesos.primeira}%</b> primeira abordagem em até {prazoInicial} min</p><p><b>{pesos.prazo}%</b> carteira com ações no prazo</p><p><b>{pesos.feedback}%</b> feedback das visitas encerradas</p><p><b>{pesos.dapi}%</b> ações comprovadas pelo D-API</p><p><b>{pesos.sara}%</b> leads reavaliados pela Sara</p></div><p>Uma métrica sem amostra é retirada do cálculo e os demais pesos são redistribuídos. Assim, ausência de casos não vira nota zero.</p></details>
   </main>;
 }
 
