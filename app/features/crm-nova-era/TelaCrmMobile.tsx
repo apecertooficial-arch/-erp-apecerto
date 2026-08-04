@@ -38,6 +38,7 @@ import {
 } from "../home/telaCorretor.logica";
 import { briefingDaSara, buscar, type Aba } from "./telaCrm.logica";
 import { FichaLeadMobile } from "./FichaLeadMobile";
+import { AvisoNotificacoes } from "../home/AvisoNotificacoes";
 
 const ATUALIZA_MS = 60_000;
 
@@ -164,6 +165,11 @@ export function TelaCrmMobile({ accessToken, nome, onAbrirLead, onIr }: {
             </button>
           </div>
         </header>
+
+        {/* O CRM é a tela mais usada no app. O corretor não pode depender de
+            visitar a Início para descobrir que este aparelho ainda não recebe
+            lead novo. Depois de inscrito, o componente some sozinho. */}
+        <AvisoNotificacoes accessToken={accessToken} />
 
         <div className="cm-busca">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">

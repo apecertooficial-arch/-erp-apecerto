@@ -74,9 +74,9 @@ export function SaraWidget() {
     }
     function typing() { var line = document.createElement("div"); line.className = "sara-line a"; line.innerHTML = '<div class="mini">S</div><div class="sara-b a sara-typing"><span></span><span></span><span></span></div>'; msgsEl.appendChild(line); msgsEl.scrollTop = msgsEl.scrollHeight; return line; }
     var greeted = false;
-    var sugestoes = ["Como respondo objeção de preço?", "Como conduzo para a visita?", "Como qualifico um lead novo?"];
+    var sugestoes = ["O que preciso fazer hoje?", "Explique os momentos do Funil 2.0", "Avalie a conversa de um lead"];
     function greet() {
-      bubble("assistant", "Oi! Eu sou a Sara. Posso ajudar com dúvidas do sistema, produtos, objeções de cliente ou dar uma direção no atendimento. Como posso te ajudar? 🔑");
+      bubble("assistant", "Oi! Eu sou a Sara, copiloto do Funil 2.0. Posso explicar etapa, momento, próxima ação e prazo, consultar sua carteira e avaliar conversas reais. O que você precisa agora?");
       var chips = document.createElement("div"); chips.className = "sara-chips";
       sugestoes.forEach(function (s) { var c = document.createElement("button"); c.className = "sara-chip"; c.textContent = s; c.onclick = function () { chips.remove(); enviar(s); }; chips.appendChild(c); });
       msgsEl.appendChild(chips); msgsEl.scrollTop = msgsEl.scrollHeight;
@@ -88,7 +88,7 @@ export function SaraWidget() {
     async function enviar(texto) {
       var txt = (texto != null ? texto : inEl.value).trim(); if (!txt) return; inEl.value = "";
       bubble("user", txt); messages.push({ role: "user", content: txt }); var t = typing();
-      try { var r = await fn({ agente_nome: "Sara", messages: messages.slice(-12) }); t.remove();
+      try { var r = await fn({ agente_slug: "sara", messages: messages.slice(-12) }); t.remove();
         if (r && r.ok) { var resp = r.resposta || (typeof r.saida === "string" ? r.saida : JSON.stringify(r.saida)); bubble("assistant", resp); messages.push({ role: "assistant", content: resp }); }
         else { bubble("assistant", (r && r.reason === "sem_chave") ? "Estou sem chave de IA configurada." : "Ops, tive um problema pra responder agora. Tenta de novo?"); }
       } catch (e) { t.remove(); bubble("assistant", "Sem conexão agora. Tenta de novo em instantes."); }
