@@ -2,10 +2,8 @@
 /**
  * CrmNovaEraGate — SELETOR entre o CRM atual e o CRM Nova Era 3.0.
  * ------------------------------------------------------------------
- * - Gate real: só exibe a opção "CRM Nova Era" quando `crmNovaEraLiberado`
- *   (flag do ambiente ligada E (admin OU allowlist)). Corretor sem permissão
- *   vê APENAS o CRM antigo. Acesso direto por ?crm=nova-era é bloqueado quando
- *   não liberado (cai no CRM antigo e limpa a query).
+ * - No celular, o CRM operacional é a experiência oficial de todos os perfis
+ *   autenticados. O gate de piloto permanece apenas no desktop.
  * - A flag controla só a VISIBILIDADE; a autorização de dados é sempre do banco
  *   (RLS + RPC fail-closed). Nenhum segredo/serviço aqui.
  * - Persiste a última escolha por usuário (localStorage), sem afetar os demais.
@@ -130,34 +128,40 @@ export function CrmNovaEraGate({
      largura antes de o navegador existir, e chutar causaria troca de tela
      piscando na frente do corretor. */
   const ehCelular = useEhCelular();
-
-  // Se não liberado, apenas limpa ?crm=nova-era da URL (sync com sistema externo — sem setState).
-  useEffect(() => {
-    if (!liberado) refletirUrl("atual", profile?.userId ?? null);
-  }, [liberado, profile?.userId]);
-
-  // Não liberado: nada de Nova Era, nem seletor — CRM antigo puro.
-  if (!liberado) return <>{current}</>;
-
   const podeLive = !!accessToken && !!profile?.userId;
   const podeFunil2 = ["admin", "executivo", "gestor", "gerente", "diretor", "corretor"].includes((profile?.role ?? "").toLowerCase())
     || profile?.userId === "4dfdffae-0009-41de-8d6f-2365a06dc066";
+
+  // O gate antigo continua valendo no desktop. No celular, o CRM operacional
+  // é o produto oficial e não pode depender de uma allowlist de piloto.
+  useEffect(() => {
+    if (!liberado && ehCelular === false) refletirUrl("atual", profile?.userId ?? null);
+  }, [ehCelular, liberado, profile?.userId]);
+
+  if (ehCelular === true) {
+    if (!podeLive || !podeFunil2) return <>{current}</>;
+    return (
+      <Funil2Mobile
+        accessToken={accessToken as string}
+        nome={profile?.name ?? "Corretor"}
+        modo="crm"
+        onIr={(destino) => { window.location.href = destino; }}
+      />
+    );
+  }
+
+  // Enquanto a largura ainda é desconhecida, não monte o CRM antigo para um
+  // corretor autenticado: além do lampejo visual, ele iniciaria a carga pesada
+  // do desktop antes de ser substituído pelo aplicativo móvel.
+  if (ehCelular === null && !liberado && podeLive && podeFunil2) return null;
+
+  // Desktop não liberado: CRM antigo puro.
+  if (!liberado) return <>{current}</>;
 
   /* Laboratório isolado: entrada explícita e administrativa. A mesma regra é
      repetida no banco; esconder a tela aqui é UX, RLS é a autoridade. */
   if (entrouNoFunil2) {
     if (!podeLive || !podeFunil2) return <>{current}</>;
-    if (ehCelular === null) return null;
-    if (ehCelular === true) {
-      return (
-        <Funil2Mobile
-          accessToken={accessToken as string}
-          nome={profile?.name ?? "Corretor"}
-          modo="crm"
-          onIr={(destino) => { window.location.href = destino; }}
-        />
-      );
-    }
     return (
       <Funil2Workspace
         accessToken={accessToken as string}
@@ -202,22 +206,6 @@ export function CrmNovaEraGate({
   function escolher(v: Variante) {
     setVariante(v);
     refletirUrl(v, profile?.userId ?? null);
-  }
-
-  /* ------------------------------ CELULAR ------------------------------
-     Tela própria, no desenho do protótipo. A barra "Funil atual / CRM Nova
-     Era 3.0" NÃO aparece aqui: é vocabulário de piloto, e o pacote de design
-     proíbe isso na tela do corretor. No desktop ela continua, porque lá é
-     ferramenta de quem está comparando as duas versões. */
-  if (ehCelular === true && variante === "nova-era" && podeLive) {
-    return (
-      <Funil2Mobile
-        accessToken={accessToken as string}
-        nome={profile?.name ?? "Corretor"}
-        modo="crm"
-        onIr={(destino) => { window.location.href = destino; }}
-      />
-    );
   }
 
   return (

@@ -15,6 +15,17 @@ test("Inicio e CRM do celular usam o Funil 2.0, nunca as filas antigas", () => {
   assert.match(GATE, /ehCelular === true[\s\S]*<Funil2Mobile/);
 });
 
+test("todo perfil operacional autenticado entra no CRM mobile antes do gate de piloto", () => {
+  const ramoMobile = GATE.indexOf("if (ehCelular === true)");
+  const gateDesktop = GATE.indexOf("if (!liberado) return");
+  assert.ok(ramoMobile >= 0, "falta a entrada oficial do CRM mobile");
+  assert.ok(gateDesktop > ramoMobile, "o gate de piloto não pode excluir corretores no celular");
+  for (const papel of ["admin", "executivo", "gestor", "gerente", "diretor", "corretor"]) {
+    assert.ok(GATE.includes(`\"${papel}\"`), `papel operacional ausente: ${papel}`);
+  }
+  assert.match(GATE.slice(ramoMobile, gateDesktop), /podeLive[\s\S]*podeFunil2[\s\S]*<Funil2Mobile/);
+});
+
 test("Meu Dia entrega o lead, a ordem da Sara e a chamada no mesmo card", () => {
   assert.match(MOBILE, /SARA · FAÇA AGORA/);
   assert.match(MOBILE, /acaoVisivel\(lead\)/);
