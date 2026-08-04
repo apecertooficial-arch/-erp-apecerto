@@ -56,6 +56,24 @@ export type CandidatoAquarioFunil2 = {
   momento: string | null;
 };
 
+export type OperacaoConfigFunil2 = {
+  id: boolean;
+  horario_inicio: string;
+  horario_fim: string;
+  presenca_ttl_min: number;
+  primeira_abordagem_min: number;
+  feedback_visita_min: number;
+  notificacao_urgente_min: number;
+  peso_primeira_abordagem: number;
+  peso_acoes_prazo: number;
+  peso_feedback_visita: number;
+  peso_presenca_dapi: number;
+  peso_coerencia_sara: number;
+  suspensao_nivel_1_h: number;
+  suspensao_nivel_2_h: number;
+  suspensao_nivel_3_h: number;
+};
+
 export type LeadFunil2 = {
   id: string;
   origem_negocio_id: number;

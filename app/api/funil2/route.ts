@@ -24,7 +24,7 @@ export async function GET(request: Request) {
   const [
     { data: leads, error: e1 }, { data: momentos, error: e2 }, { data: eventos, error: e3 },
     { data: etapas, error: e4 }, { data: visitas, error: e5 }, { data: negociacoes, error: e6 },
-    { data: aquario, error: e7 },
+    { data: aquario, error: e7 }, { data: operacao, error: e8 },
   ] = await Promise.all([
     db.from("f2_lead").select("*").order("proxima_acao_em", { ascending: true }),
     db.from("f2_momento_config").select("*").order("etapa", { ascending: true }).order("ordem", { ascending: true }),
@@ -33,6 +33,7 @@ export async function GET(request: Request) {
     db.from("f2_visita").select("id,funil_lead_id,inicio_em,imovel,status,observacao,atualizado_em").order("inicio_em", { ascending: true }),
     db.from("f2_negociacao").select("id,funil_lead_id,titulo,etapa,valor,observacao,atualizado_em").order("atualizado_em", { ascending: false }),
     db.rpc("f2_listar_aquario"),
+    db.from("f2_operacao_config").select("*").eq("id", true).maybeSingle(),
   ]);
   if (e1 || e2 || e3 || e4 || e5 || e6 || e7) {
     const message = e1?.message || e2?.message || e3?.message || e4?.message || e5?.message || e6?.message || e7?.message || "Falha ao carregar o Funil 2.0.";
@@ -40,7 +41,7 @@ export async function GET(request: Request) {
   }
   return Response.json({
     leads: leads ?? [], momentos: momentos ?? [], eventos: eventos ?? [], etapas: etapas ?? [],
-    visitas: visitas ?? [], negociacoes: negociacoes ?? [], aquario: aquario ?? [], limite: 2, laboratorio: true,
+    visitas: visitas ?? [], negociacoes: negociacoes ?? [], aquario: aquario ?? [], operacao: e8 ? null : operacao ?? null, limite: 2, laboratorio: true,
   });
 }
 
@@ -79,6 +80,17 @@ export async function POST(request: Request) {
   } else if (action === "pescar") {
     rpc = "f2_pescar_negocio";
     args = { p_negocio_id: Number(body.negocioId), p_substituir_id: null };
+  } else if (action === "configurarOperacao") {
+    rpc = "f2_configurar_operacao";
+    args = {
+      p_horario_inicio: body.horarioInicio, p_horario_fim: body.horarioFim,
+      p_presenca_ttl_min: Number(body.presencaTtlMin), p_primeira_abordagem_min: Number(body.primeiraAbordagemMin),
+      p_feedback_visita_min: Number(body.feedbackVisitaMin), p_notificacao_urgente_min: Number(body.notificacaoUrgenteMin),
+      p_peso_primeira_abordagem: Number(body.pesoPrimeiraAbordagem), p_peso_acoes_prazo: Number(body.pesoAcoesPrazo),
+      p_peso_feedback_visita: Number(body.pesoFeedbackVisita), p_peso_presenca_dapi: Number(body.pesoPresencaDapi),
+      p_peso_coerencia_sara: Number(body.pesoCoerenciaSara), p_suspensao_nivel_1_h: Number(body.suspensaoNivel1H),
+      p_suspensao_nivel_2_h: Number(body.suspensaoNivel2H), p_suspensao_nivel_3_h: Number(body.suspensaoNivel3H),
+    };
   } else {
     return Response.json({ error: "Ação desconhecida." }, { status: 400 });
   }

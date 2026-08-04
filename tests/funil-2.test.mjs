@@ -9,6 +9,7 @@ const clareza = readFileSync(new URL("../supabase/migrations/20260810160000_funi
 const operacao = readFileSync(new URL("../supabase/migrations/20260810170000_funil_2_operacao_completa.sql", import.meta.url), "utf8");
 const pesca = readFileSync(new URL("../supabase/migrations/20260810180000_funil_2_pesca_simples.sql", import.meta.url), "utf8");
 const conversaPosPesca = readFileSync(new URL("../supabase/migrations/20260810190000_funil_2_conversa_pos_pesca.sql", import.meta.url), "utf8");
+const configOperacao = readFileSync(new URL("../supabase/migrations/20260810200000_funil_2_config_operacao.sql", import.meta.url), "utf8");
 const conversaRoute = readFileSync(new URL("../app/api/funil2/conversa/route.ts", import.meta.url), "utf8");
 const modelo = readFileSync(new URL("../app/features/funil-2/modelo.ts", import.meta.url), "utf8");
 
@@ -139,4 +140,31 @@ test("etapas e momentos são configuráveis com proteção administrativa", () =
   assert.match(operacao, /f2_configurar_momento/);
   assert.match(operacao, /etapa_em_uso/);
   assert.match(operacao, /momento_em_uso/);
+});
+
+test("Todos os Leads filtra pelas etapas do vocabulário oficial", () => {
+  assert.match(ui, /const \[filtro, setFiltro\] = useState\("todos"\)/);
+  assert.match(ui, /const filtrados = filtro === "todos"/);
+  assert.match(ui, /filtrados\.map/);
+});
+
+test("Performance separa disciplina controlável de resultado comercial", () => {
+  assert.match(ui, /Performance da conduta/);
+  assert.match(ui, /ÍNDICE DE EXECUÇÃO/);
+  assert.match(ui, /RESULTADO COMERCIAL/);
+  for (const peso of ["peso_primeira_abordagem", "peso_acoes_prazo", "peso_feedback_visita", "peso_presenca_dapi", "peso_coerencia_sara"]) {
+    assert.match(ui, new RegExp(peso));
+  }
+});
+
+test("configuração única persiste roleta manual, disciplina e pesos sem ligar disparo automático", () => {
+  assert.match(ui, /CONTRATO ÚNICO/);
+  assert.match(ui, /Distribuição manual/);
+  assert.match(ui, /Ela não liga abordagem automática/);
+  assert.match(configOperacao, /CREATE TABLE IF NOT EXISTS public\.f2_operacao_config/);
+  assert.match(configOperacao, /f2_configurar_operacao/);
+  assert.match(configOperacao, /peso_primeira_abordagem \+ peso_acoes_prazo \+ peso_feedback_visita \+ peso_presenca_dapi \+ peso_coerencia_sara = 100/);
+  assert.match(configOperacao, /SECURITY DEFINER SET search_path TO ''/);
+  assert.match(configOperacao, /sem_permissao/);
+  assert.doesNotMatch(configOperacao, /motor_envia_abordagem|dapi-enviar|enviar-whatsapp/);
 });
