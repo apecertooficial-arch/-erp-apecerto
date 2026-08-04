@@ -176,11 +176,13 @@ test("o Inicio do app nao replica a fila nem a gestao do funil antigo", () => {
   assert.ok(!/hv2-hero|Abrir Financeiro/.test(celular), "meta e Financeiro nao aparecem na tela do corretor");
 });
 
-test("Inicio do app resume Funil 2 e oferece somente CRM, Agenda e Avisos", () => {
+test("Inicio do app delega o Meu Dia ao Funil 2 mobile e mantém Avisos acessível", () => {
   const inicio = ler("../app/features/home/InicioApp.tsx");
-  assert.match(inicio, /fetch\("\/api\/funil2"/);
-  for (const destino of ["/crm?crm=funil-2", "/agenda", "/notificacoes"]) assert.ok(inicio.includes(destino));
-  assert.ok(!inicio.includes("/financeiro"));
+  const funil2Mobile = ler("../app/features/funil-2/Funil2Mobile.tsx");
+  assert.match(inicio, /<Funil2Mobile[\s\S]*modo="inicio"/);
+  assert.match(funil2Mobile, /fetch\("\/api\/funil2"/);
+  assert.ok(funil2Mobile.includes("/notificacoes"));
+  assert.ok(!`${inicio}\n${funil2Mobile}`.includes("/financeiro"));
 });
 
 test("barra do aplicativo fala Meu Dia, CRM e Calendário", () => {
