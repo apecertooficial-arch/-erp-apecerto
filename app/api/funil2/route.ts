@@ -40,7 +40,7 @@ export async function GET(request: Request) {
     { data: leads, error: e1 }, { data: momentos, error: e2 }, { data: eventos, error: e3 },
     { data: etapas, error: e4 }, { data: visitas, error: e5 }, { data: negociacoes, error: e6 },
     { data: aquario, error: e7 }, { data: operacao, error: e8 },
-    { data: saraModo }, { data: saraRunner },
+    { data: saraModo }, { data: saraRunner }, { data: saraF2Config }, saraF2Analises,
   ] = await Promise.all([
     listarLeadsSemCorte(db),
     db.from("f2_momento_config").select("*").order("etapa", { ascending: true }).order("ordem", { ascending: true }),
@@ -52,6 +52,8 @@ export async function GET(request: Request) {
     db.from("f2_operacao_config").select("*").eq("id", true).maybeSingle(),
     db.rpc("ncrm_sara_modo_status"),
     db.rpc("ncrm_sara_runner_status"),
+    db.from("f2_sara_config").select("enabled,lote,modo_execucao,canary_limite").eq("id", true).maybeSingle(),
+    db.from("f2_sara_analise").select("id", { count: "exact", head: true }),
   ]);
   if (e1 || e2 || e3 || e4 || e5 || e6 || e7) {
     const message = e1?.message || e2?.message || e3?.message || e4?.message || e5?.message || e6?.message || e7?.message || "Falha ao carregar o Funil 2.0.";
@@ -63,10 +65,11 @@ export async function GET(request: Request) {
     sara: {
       modo: typeof saraModo === "object" && saraModo !== null && "modo" in saraModo ? String((saraModo as { modo?: unknown }).modo ?? "") || null : null,
       runnerAtivo: typeof saraRunner === "object" && saraRunner !== null && "enabled" in saraRunner ? (saraRunner as { enabled?: unknown }).enabled === true : false,
-      analisesNoLaboratorio: (leads ?? []).filter((lead) => Boolean(lead.ultima_reavaliacao_sara_em)).length,
-      // A Sara do Nova Era observa os negócios originais. Ainda não existe um
-      // worker que reclassifique automaticamente a carteira f2_lead.
-      reavaliacaoAutomaticaFunil2: false,
+      analisesNoLaboratorio: saraF2Analises.count ?? (leads ?? []).filter((lead) => Boolean(lead.ultima_reavaliacao_sara_em)).length,
+      reavaliacaoAutomaticaFunil2: saraF2Config?.enabled === true,
+      loteFunil2: typeof saraF2Config?.lote === "number" ? saraF2Config.lote : null,
+      modoExecucaoFunil2: saraF2Config?.modo_execucao === "completo" ? "completo" : "canary",
+      canaryLimiteFunil2: typeof saraF2Config?.canary_limite === "number" ? saraF2Config.canary_limite : null,
     },
     limite: null, laboratorio: false,
     migracao: { aquarioIncluido: false, origensPreservadas: true },
