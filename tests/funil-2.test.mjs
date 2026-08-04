@@ -16,6 +16,7 @@ const promocao = readFileSync(new URL("../supabase/migrations/20260811010000_fun
 const correcaoPosVisita = readFileSync(new URL("../supabase/migrations/20260811015000_funil_2_corrigir_pos_visita.sql", import.meta.url), "utf8");
 const conversaRoute = readFileSync(new URL("../app/api/funil2/conversa/route.ts", import.meta.url), "utf8");
 const modelo = readFileSync(new URL("../app/features/funil-2/modelo.ts", import.meta.url), "utf8");
+const respostaInstanciasApp = readFileSync(new URL("../supabase/migrations/20260811037000_funil_2_resposta_instancias_app.sql", import.meta.url), "utf8");
 
 test("Funil 2.0 se apresenta como carteira operacional com origens preservadas", () => {
   assert.match(ui, /OPERAÇÃO OFICIAL/);
@@ -95,7 +96,25 @@ test("chat identifica a instância D-API atual e diferencia histórico com mais 
   assert.match(conversaRoute, /instanciaAtualId/);
   assert.match(conversaRoute, /telefone\.replace/);
   assert.match(ui, /INSTÂNCIA D-API DESTA CONVERSA/);
-  assert.match(ui, /mais \$\{instanciasChat\.length-1\} instância/);
+  assert.match(ui, /aria-label="Instância do histórico"/);
+  assert.match(ui, /usada por último/);
+  assert.match(ui, /mensagensVisiveis/);
+});
+
+test("corretor usa o Funil 2.0 no celular sem ganhar acesso ao desktop administrativo", () => {
+  assert.match(gate, /entrouNoFunil2[\s\S]*!podeLive \|\| !podeFunil2/);
+  assert.match(gate, /ehCelular === true[\s\S]*<Funil2Workspace/);
+  assert.match(respostaInstanciasApp, /f2_lead_corretor_select/);
+  assert.match(respostaInstanciasApp, /f2_corretor_atual/);
+  assert.match(respostaInstanciasApp, /REVOKE INSERT,UPDATE,DELETE,TRUNCATE/);
+});
+
+test("tentando contato é impossível depois de uma resposta real do cliente", () => {
+  assert.match(respostaInstanciasApp, /f\.momento_codigo='CADENCIA_SEM_RESPOSTA'/);
+  assert.match(respostaInstanciasApp, /wm\.direcao='recebida'/);
+  assert.match(respostaInstanciasApp, /momento_codigo='CONVERSANDO_QUALIFICANDO'/);
+  assert.match(respostaInstanciasApp, /Resposta do cliente encontrada — cadencia encerrada/);
+  assert.match(respostaInstanciasApp, /v_status:=''revisao_humana''/);
 });
 
 test("Pós-visita exige evidência real e corrige o estado antigo sem tocar nas origens", () => {
