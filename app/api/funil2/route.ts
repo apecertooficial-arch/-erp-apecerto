@@ -25,6 +25,7 @@ export async function GET(request: Request) {
     { data: leads, error: e1 }, { data: momentos, error: e2 }, { data: eventos, error: e3 },
     { data: etapas, error: e4 }, { data: visitas, error: e5 }, { data: negociacoes, error: e6 },
     { data: aquario, error: e7 }, { data: operacao, error: e8 },
+    { data: saraModo }, { data: saraRunner },
   ] = await Promise.all([
     db.from("f2_lead").select("*").order("proxima_acao_em", { ascending: true }),
     db.from("f2_momento_config").select("*").order("etapa", { ascending: true }).order("ordem", { ascending: true }),
@@ -34,6 +35,8 @@ export async function GET(request: Request) {
     db.from("f2_negociacao").select("id,funil_lead_id,titulo,etapa,valor,observacao,atualizado_em").order("atualizado_em", { ascending: false }),
     db.rpc("f2_listar_aquario"),
     db.from("f2_operacao_config").select("*").eq("id", true).maybeSingle(),
+    db.rpc("ncrm_sara_modo_status"),
+    db.rpc("ncrm_sara_runner_status"),
   ]);
   if (e1 || e2 || e3 || e4 || e5 || e6 || e7) {
     const message = e1?.message || e2?.message || e3?.message || e4?.message || e5?.message || e6?.message || e7?.message || "Falha ao carregar o Funil 2.0.";
@@ -41,7 +44,16 @@ export async function GET(request: Request) {
   }
   return Response.json({
     leads: leads ?? [], momentos: momentos ?? [], eventos: eventos ?? [], etapas: etapas ?? [],
-    visitas: visitas ?? [], negociacoes: negociacoes ?? [], aquario: aquario ?? [], operacao: e8 ? null : operacao ?? null, limite: 2, laboratorio: true,
+    visitas: visitas ?? [], negociacoes: negociacoes ?? [], aquario: aquario ?? [], operacao: e8 ? null : operacao ?? null,
+    sara: {
+      modo: typeof saraModo === "object" && saraModo !== null && "modo" in saraModo ? String((saraModo as { modo?: unknown }).modo ?? "") || null : null,
+      runnerAtivo: typeof saraRunner === "object" && saraRunner !== null && "enabled" in saraRunner ? (saraRunner as { enabled?: unknown }).enabled === true : false,
+      analisesNoLaboratorio: 0,
+      // A Sara do Nova Era observa os negócios originais. Ainda não existe um
+      // worker que reclassifique automaticamente a cópia isolada f2_lead.
+      reavaliacaoAutomaticaFunil2: false,
+    },
+    limite: 2, laboratorio: true,
   });
 }
 
