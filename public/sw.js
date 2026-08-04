@@ -4,12 +4,12 @@
 // telefones, leads, sessao e respostas do Supabase passam direto para a rede e
 // nunca sao gravadas. O cache guarda apenas a casca publica do aplicativo.
 
-const VERSAO = "apecerto-v4";
+const VERSAO = "apecerto-v5";
 const CACHE_ESTATICO = `estatico-${VERSAO}`;
 const OFFLINE = "/offline.html";
 
 // Unico conteudo que pode ser guardado: nao tem dado pessoal nenhum.
-const PRECACHE = [OFFLINE, "/manifest.webmanifest", "/icons/icone-192.png", "/icons/icone-512.png"];
+const PRECACHE = [OFFLINE, "/manifest.webmanifest", "/icons/icone-192-v5.png", "/icons/icone-512-v5.png"];
 
 // Qualquer coisa sob estes caminhos e privada e jamais vai para o cache.
 const PRIVADO = [/^\/api\//i, /supabase/i, /\/auth\//i, /\/rest\/v1\//i, /\/functions\/v1\//i, /\/realtime\//i];
@@ -146,8 +146,8 @@ self.addEventListener("push", (evento) => {
   evento.waitUntil(
     self.registration.showNotification(aviso.title, {
       body: aviso.body,
-      icon: "/icons/icone-192.png",
-      badge: "/icons/icone-192.png",
+      icon: "/icons/icone-192-v5.png",
+      badge: "/icons/icone-192-v5.png",
       tag: urgente ? `${aviso.tag}-${Date.now()}` : aviso.tag,
       renotify: urgente,
       requireInteraction: false,

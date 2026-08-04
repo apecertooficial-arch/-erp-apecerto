@@ -20,6 +20,7 @@ const GATE = ler("../app/features/crm-nova-era/CrmNovaEraGate.tsx");
 const LISTA = ler("../app/features/crm-nova-era/TelaCrmMobile.tsx");
 const REDIRECT = ler("../app/(erp)/negocio/[...caminho]/page.tsx");
 const MIGRACAO = ler("../supabase/migrations/20260803010000_push_vencendo_e_deep_links_reais.sql");
+const AVISO_APP = ler("../app/features/home/AvisoNotificacoes.tsx");
 
 /* ---------------- o barulho ---------------- */
 
@@ -30,6 +31,12 @@ test("lead novo, resposta e combinado vencendo/vencido são urgentes no aparelho
   for (const tag of ["primeira_abordagem_pendente", "cliente_respondeu", "retorno_proximo", "acao_vencida"]) {
     assert.ok(bloco.includes(`"${tag}"`), `"${tag}" precisa estar na lista de urgentes do sw.js`);
   }
+});
+
+test("app confirma visualmente que o aparelho esta inscrito para lead novo", () => {
+  assert.match(AVISO_APP, /Avisos de lead novo ligados/);
+  assert.match(AVISO_APP, /Este aparelho vai avisar quando um lead cair para você/);
+  assert.match(AVISO_APP, /Notification\.requestPermission\(\)/);
 });
 
 test("urgente vibra e NUNCA é silencioso", () => {

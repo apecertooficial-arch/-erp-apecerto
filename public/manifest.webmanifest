@@ -13,14 +13,14 @@
   "dir": "ltr",
   "categories": ["business", "productivity"],
   "icons": [
-    { "src": "/icons/icone-192.png?v=4", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "/icons/icone-512.png?v=4", "sizes": "512x512", "type": "image/png", "purpose": "any" },
-    { "src": "/icons/maskable-192.png?v=4", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
-    { "src": "/icons/maskable-512.png?v=4", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    { "src": "/icons/icone-192-v5.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icone-512-v5.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/maskable-192-v5.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "/icons/maskable-512-v5.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ],
   "shortcuts": [
-    { "name": "Início", "short_name": "Início", "url": "/inicio?origem=atalho", "icons": [{ "src": "/icons/icone-192.png?v=4", "sizes": "192x192" }] },
-    { "name": "CRM", "short_name": "CRM", "url": "/crm?crm=funil-2&origem=atalho", "icons": [{ "src": "/icons/icone-192.png?v=4", "sizes": "192x192" }] },
-    { "name": "Agenda", "short_name": "Agenda", "url": "/agenda?origem=atalho", "icons": [{ "src": "/icons/icone-192.png?v=4", "sizes": "192x192" }] }
+    { "name": "Início", "short_name": "Início", "url": "/inicio?origem=atalho", "icons": [{ "src": "/icons/icone-192-v5.png", "sizes": "192x192" }] },
+    { "name": "CRM", "short_name": "CRM", "url": "/crm?crm=funil-2&origem=atalho", "icons": [{ "src": "/icons/icone-192-v5.png", "sizes": "192x192" }] },
+    { "name": "Agenda", "short_name": "Agenda", "url": "/agenda?origem=atalho", "icons": [{ "src": "/icons/icone-192-v5.png", "sizes": "192x192" }] }
   ]
 }
