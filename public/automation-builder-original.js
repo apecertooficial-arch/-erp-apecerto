@@ -51,6 +51,7 @@ const TYPES={
  action:{fam:'acao',label:'Ação',vis:'action',cvar:'--c-action'},
  randomizer:{fam:'randomizador',label:'Randomizador',vis:'random',cvar:'--c-random'},
  distribution:{fam:'distribuicao',label:'Distribuir leads (roleta)',vis:'random',cvar:'--c-ai'},
+ 'distribution-simple':{fam:'distribuicao_simples',label:'Distribuir lead (simples)',vis:'random',cvar:'--c-ai'},
  chat:{fam:'mensagem',label:'Mensagem',vis:'message',cvar:'--c-message'},
  'send-approach':{fam:'mensagem',label:'Enviar abordagem (corretor do lead)',vis:'message',cvar:'--c-ai'},
  time:{fam:'espera',label:'Espera',vis:'wait',cvar:'--c-wait'},
@@ -317,6 +318,28 @@ function bodyHtml(n){
    portRow('naoRespondeu','Caso o lead NÃO responda','err')+
    portRow('out','Próximo passo','ok')+portRow('err','Se ninguém disponível','err');
  }
+ /* Funil 2.0 — distribui e passa a bola. Sem abordagem automatica e sem reter o lead.
+    Quem manda a mensagem e o corretor, pelo celular; a evidencia e o D-API. */
+ if(n.type==='distribution-simple'){if(!n.opts)n.opts={};
+  const d=n.opts.distribuicao=n.opts.distribuicao||{items:[],onlineOnly:true,tambemNegocio:true};
+  const its=d.items=d.items||[];d.tambemNegocio=true;
+  (function(){const nomes=its.map(x=>String(x.corretor||'').trim().toLowerCase());
+   (ref.corretores||[]).filter(c=>c.ativo!==false&&nomes.indexOf(String(c.nome||'').trim().toLowerCase())<0)
+    .forEach(c=>its.push({corretor:c.nome,peso:1,on:false}));})();
+  its.forEach(x=>{x.peso=1;});
+  const ligados=its.filter(x=>x.on!==false).length;
+  const linhas=its.map((it,i)=>`<div class="ne-row" data-dsrow="${i}" style="padding:7px 9px"><div style="display:flex;align-items:center;gap:8px">`+
+    `<input type="checkbox" data-dson ${it.on!==false?'checked':''} title="Participa do rodizio" style="width:15px;height:15px;flex:0 0 auto">`+
+    `<span style="flex:1;font-size:12.5px;font-weight:600;color:${it.on!==false?'var(--ink)':'var(--ink-faint)'}">${esc(it.corretor||'—')}</span>`+
+    `</div></div>`).join('');
+  return `<div style="font-size:11px;color:var(--ink-faint);padding:2px 0 6px;line-height:1.45">Distribui o lead pelo <b>rodizio igualitario</b> e segue o fluxo. <b>Nao envia abordagem</b> e <b>nao retem o lead</b> — quem manda a mensagem e o corretor, pelo celular, e o D-API confirma.</div>`+
+   (its.length?linhas:'<div style="font-size:11px;color:var(--ink-faint);padding:4px 0">Nenhum corretor. Recarregue a página para listar.</div>')+
+   `<div style="font-size:10.5px;color:var(--ink-faint);margin-top:5px">${ligados} de ${its.length} no rodízio. Sem peso: todos com a mesma chance. <b>Corretor recém-cadastrado entra desmarcado</b> — marque e publique para incluir.</div>`+
+   `<label style="display:flex;align-items:center;gap:7px;margin-top:8px;font-size:12px;color:var(--ink);cursor:pointer"><input type="checkbox" data-dsonline ${d.onlineOnly!==false?'checked':''} style="width:15px;height:15px"> Só distribuir para quem está <b>apto agora</b></label>`+
+   `<div style="height:1px;background:var(--line-soft);margin:11px 0 7px"></div>`+
+   `<div style="font-size:10.5px;color:var(--ink-faint);line-height:1.5">Fixo neste bloco, por contrato do Funil 2.0:<br>· o corretor é atribuído também no <b>negócio</b> (negócio sem dono não entra no funil);<br>· lead com <b>venda em processo, visita agendada ou visita realizada</b> nunca é redistribuído.</div>`+
+   portRow('out','Próximo passo','ok')+portRow('err','Se ninguém disponível','err');
+ }
  if(n.type==='send-approach'){const o=n.opts||{};
   return `<div style="font-size:11.5px;color:var(--ink-soft);padding:2px 0 6px;line-height:1.45">Envia a abordagem <b>pela instância do corretor DONO do lead</b> (definido pela Distribuição). Use depois de um bloco Distribuir, ou em follow-ups.</div>`+
    (function(){const dprod=o.produtoId||0;const abList=(ref.abordagens||[]).filter(a=>(a.produto_id||0)===dprod);const selAb=o.abordagemIds||[];
@@ -468,6 +491,11 @@ function bindBody(n,el){
     return '<div style="margin:14px 0 4px;font-size:12px;font-weight:800;color:var(--ink)">'+lbl+' <span style="color:var(--ink-faint);font-weight:600">('+tot+' leads)</span></div>'+(ent.length?ent.map(([nm,qt])=>'<div style="display:grid;grid-template-columns:110px 1fr 34px;gap:8px;align-items:center;padding:4px 0;font-size:12px"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(nm)+'</span><div style="height:9px;border-radius:6px;background:var(--line-soft);overflow:hidden"><div style="height:100%;width:'+Math.round(qt/max*100)+'%;background:var(--brand);border-radius:6px"></div></div><b style="text-align:right">'+qt+'</b></div>').join(''):'<div style="font-size:11.5px;color:var(--ink-faint)">Nenhum lead no período.</div>');
    }).join('');
    showPanel('Distribuídos por corretor — '+esc(cur.nome),html+'<div style="margin-top:14px;font-size:10.5px;color:var(--ink-faint)">Conta a POSSE FINAL do lead: sorteio do rodízio + transferências do failover (quem enviou de fato ficou com o lead). Fonte: log do motor.</div>');};}
+ // distribuição simples (Funil 2.0) — rodízio igualitário, sem abordagem e sem retenção
+ if(n.type==='distribution-simple'){n.opts.distribuicao=n.opts.distribuicao||{items:[],onlineOnly:true,tambemNegocio:true};const d=n.opts.distribuicao;d.items=d.items||[];d.tambemNegocio=true;
+  qa('[data-dsrow]').forEach(row=>{const i=+row.dataset.dsrow,it=d.items[i];if(!it)return;
+   const on=row.querySelector('[data-dson]');if(on)on.onchange=()=>{it.on=on.checked;setDirty();reNode(n);};});
+  const onl=q('[data-dsonline]');if(onl)onl.onchange=()=>{d.onlineOnly=onl.checked;setDirty();};}
  if(n.type==='send-approach'){const o=n.opts=n.opts||{};
   const sp=q('[data-sapprod]');if(sp)sp.onchange=()=>{o.produtoId=+sp.value||0;o.abordagemIds=[];setDirty();reNode(n);};
   qa('[data-sapab]').forEach(cb=>cb.onchange=()=>{const id=+cb.dataset.sapab;o.abordagemIds=o.abordagemIds||[];const ix=o.abordagemIds.indexOf(id);if(cb.checked&&ix<0)o.abordagemIds.push(id);else if(!cb.checked&&ix>=0)o.abordagemIds.splice(ix,1);setDirty();});}
@@ -551,13 +579,15 @@ function addNode(type,x,y){const id='b'+(cur.uid++);const base={id,type,sub:'',x
  if(type==='field-operation')base.opts={fieldOperations:[]};
  if(type==='randomizer')base.ramos=[{id:'r'+(cur.uid++),name:'A',perc:50},{id:'r'+(cur.uid++),name:'B',perc:50}];
  if(type==='distribution')base.opts={distribuicao:{items:(ref.corretores||[]).filter(c=>c.ativo!==false).map(c=>({corretor:c.nome,peso:(c.peso||1),on:true})),onlineOnly:true,tambemNegocio:false}};
+ if(type==='distribution-simple')base.opts={distribuicao:{items:(ref.corretores||[]).filter(c=>c.ativo!==false).map(c=>({corretor:c.nome,peso:1,on:true})),onlineOnly:true,tambemNegocio:true}};
  cur.nodes[id]=base;selectedId=id;setDirty();renderNodes();markSel();return id;}
 
 /* ---------- compile + salvar ---------- */
 function routeFor(n){const outs=cur.wires.filter(w=>w.from===n.id),by=p=>(outs.find(w=>w.port===p)||{}).to||'';const o=JSON.parse(JSON.stringify(n.opts||{}));
  if(n.type==='condition'){o.trueNextBlockId=by('true');o.falseNextBlockId=by('false');o.conditions=(n.opts.conditions||[]).map(c=>({id:c.id,name:c.name,group:c.group||'',options:c.options||{},trueNextBlockId:by(c.id)}));}
  else if(n.type==='randomizer'){o.randomizers=(n.ramos||[]).map(r=>({id:r.id,name:r.name,perc:r.perc,nextBlockId:by(r.id)}));}
- else{o.nextBlockId=by('out');if(['action','chat','field-operation','api','distribution'].includes(n.type))o.errorNextBlockId=by('err');if(n.type==='chat')o.timeoutNextBlockId=by('timeout');if(n.type==='distribution'){o.respondeuNextBlockId=by('respondeu');o.naoRespondeuNextBlockId=by('naoRespondeu');}}
+ else{o.nextBlockId=by('out');if(['action','chat','field-operation','api','distribution','distribution-simple'].includes(n.type))o.errorNextBlockId=by('err');if(n.type==='chat')o.timeoutNextBlockId=by('timeout');if(n.type==='distribution'){o.respondeuNextBlockId=by('respondeu');o.naoRespondeuNextBlockId=by('naoRespondeu');}
+  if(n.type==='distribution-simple'){const dd=o.distribuicao=o.distribuicao||{};dd.tambemNegocio=true;(dd.items||[]).forEach(x=>{x.peso=1;});delete dd.produtoId;delete dd.abordagemIds;delete dd.respostaValor;delete dd.respostaUnidade;delete o.respondeuNextBlockId;delete o.naoRespondeuNextBlockId;}}
  return o;}
 function compile(){const blocks=Object.values(cur.nodes).map(n=>{if(!n.sourceBlockId)n.sourceBlockId=_uuid();return {id:n.id,type:n.type,options:routeFor(n),presentation:{x:Math.round(n.x),y:Math.round(n.y)},sourceBlockId:n.sourceBlockId};});
  const eb={};Object.values(cur.nodes).forEach(n=>{eb[n.id]={id:n.id,fam:TYPES[n.type].fam,sub:n.sub||'',x:Math.round(n.x),y:Math.round(n.y),note:n.note||'',extra:{},parts:[],ramos:n.ramos||[],noteOpen:false};});
