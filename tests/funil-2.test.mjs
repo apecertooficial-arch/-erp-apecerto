@@ -5,6 +5,8 @@ import test from "node:test";
 const ui = readFileSync(new URL("../app/features/funil-2/Funil2Workspace.tsx", import.meta.url), "utf8");
 const gate = readFileSync(new URL("../app/features/crm-nova-era/CrmNovaEraGate.tsx", import.meta.url), "utf8");
 const migration = readFileSync(new URL("../supabase/migrations/20260810150000_funil_2_isolado.sql", import.meta.url), "utf8");
+const clareza = readFileSync(new URL("../supabase/migrations/20260810160000_funil_2_cadencia_clara.sql", import.meta.url), "utf8");
+const modelo = readFileSync(new URL("../app/features/funil-2/modelo.ts", import.meta.url), "utf8");
 
 test("Funil 2.0 se apresenta como laboratório isolado de duas cópias", () => {
   assert.match(ui, /LABORATÓRIO ISOLADO/);
@@ -14,7 +16,7 @@ test("Funil 2.0 se apresenta como laboratório isolado de duas cópias", () => {
 });
 
 test("quadro deixa etapa, momento, ação e prazo explícitos", () => {
-  for (const texto of ["MOMENTO", "FAÇA AGORA", "ORDEM ATUAL", "Próxima ação", "Prazo padrão"]) assert.match(ui, new RegExp(texto));
+  for (const texto of ["MOMENTO", "FAÇA AGORA", "O QUE FAZER AGORA", "Próxima ação", "Prazo padrão"]) assert.match(ui, new RegExp(texto));
   assert.match(ui, /<select value=\{codigo\}/);
 });
 
@@ -39,6 +41,27 @@ test("mensagem precisa de confirmação D-API e toda mudança gera histórico", 
   assert.match(migration, /confirmacao_dapi_obrigatoria/);
   assert.match(migration, /'acao_confirmada'/);
   assert.match(migration, /'sara_reavaliou'/);
-  assert.match(ui, /Simular confirmação do D-API/);
-  assert.match(ui, /Na migração real, mensagens só serão concluídas pelo webhook do D-API/);
+  assert.match(ui, /Simular evidência confirmada/);
+  assert.match(ui, /o webhook do D-API executará esta confirmação/);
+});
+
+test("cadência mostra o dia oficial como ação executável", () => {
+  assert.match(modelo, /DIAS_CADENCIA = \[1, 2, 4, 6, 7\]/);
+  assert.match(ui, /CADÊNCIA OFICIAL · DIA/);
+  assert.match(ui, /Abrir WhatsApp · enviar Dia/);
+  assert.match(ui, /A conclusão vem do D-API/);
+});
+
+test("card e ficha oferecem conversa e atalhos operacionais", () => {
+  assert.match(ui, />💬 Chat</);
+  assert.match(ui, /Histórico do WhatsApp/);
+  assert.match(ui, /Agendar visita/);
+  assert.match(ui, /Gerar negociação/);
+});
+
+test("mesmo momento pode ser revalidado sem reiniciar a cadência", () => {
+  assert.match(ui, /Continua neste momento · atualizar prazo/);
+  assert.match(clareza, /'momento_revalidado'/);
+  assert.match(clareza, /v_atual\.momento_codigo<>'CADENCIA_SEM_RESPOSTA'/);
+  assert.match(clareza, /v_dias_cadencia\[v_passo\+1\]-v_dias_cadencia\[v_passo\]/);
 });
