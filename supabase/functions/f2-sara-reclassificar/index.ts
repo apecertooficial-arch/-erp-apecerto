@@ -16,7 +16,7 @@ type Catalogo = {
 type Candidato = {
   funil_lead_id: string; origem_negocio_id: number; lead_id: number; versao: number;
   etapa: string; momento_codigo: string; acao_codigo: string; cadencia_passo: number;
-  corte_conversa_em: string;
+  corte_conversa_em: string; historico_completo: boolean;
 };
 
 function segredoIgual(recebido: string | null, esperado: string) {
@@ -82,9 +82,16 @@ Responda SOMENTE JSON válido: {"momento_codigo":"CÓDIGO_DO_CATÁLOGO","resumo"
 }
 
 async function carregarMensagens(db: any, c: Candidato) {
-  const { data: contatos, error: e1 } = await db.from("wa_contatos").select("id").eq("lead_id", c.lead_id);
+  const [{ data: contatos, error: e1 }, { data: vinculados, error: eVinculo }] = await Promise.all([
+    db.from("wa_contatos").select("id").eq("lead_id", c.lead_id),
+    db.from("f2_historico_vinculo").select("contato_id").eq("funil_lead_id", c.funil_lead_id),
+  ]);
   if (e1) throw new Error("contatos_indisponiveis");
-  const contatoIds = (contatos ?? []).map((x: any) => x.id);
+  if (eVinculo) throw new Error("vinculos_indisponiveis");
+  const contatoIds = [...new Set([
+    ...(contatos ?? []).map((x: any) => x.id),
+    ...(vinculados ?? []).map((x: any) => x.contato_id),
+  ])];
   if (!contatoIds.length) return [];
   const { data: conversas, error: e2 } = await db.from("wa_conversas").select("id").in("contato_id", contatoIds);
   if (e2) throw new Error("conversas_indisponiveis");
@@ -98,7 +105,7 @@ async function carregarMensagens(db: any, c: Candidato) {
   if (error) throw new Error("mensagens_indisponiveis");
   const corte = Date.parse(c.corte_conversa_em);
   return (data ?? [])
-    .filter((m: any) => Date.parse(m.enviado_em ?? m.criado_em) >= corte)
+    .filter((m: any) => c.historico_completo || Date.parse(m.enviado_em ?? m.criado_em) >= corte)
     .sort((a: any, b: any) => Date.parse(a.enviado_em ?? a.criado_em) - Date.parse(b.enviado_em ?? b.criado_em))
     .slice(-MAX_MENSAGENS);
 }
@@ -122,7 +129,9 @@ async function processar(db: any, c: Candidato, catalogo: Catalogo[]) {
     catalogo: catalogo.map((m) => [m.codigo,m.etapa,m.acao_codigo,m.prazo_minutos]) }));
   if (!mensagens.length) {
     const data = await registrar(db,c,hash,{ origem:"deterministica",status:"sem_historico",
-      resumo:"Sem histórico D-API posterior à entrada no Funil 2.0; classificação anterior preservada.",mensagens:0 });
+      resumo:c.historico_completo
+        ? "Nenhum histórico D-API foi localizado para este lead; classificação anterior preservada."
+        : "Sem histórico D-API posterior à entrada no Funil 2.0; classificação anterior preservada.",mensagens:0 });
     return { id:c.funil_lead_id,status:data.status ?? "sem_historico" };
   }
   const entradas = mensagens.filter((m: any) => direcaoCliente(m.direcao));

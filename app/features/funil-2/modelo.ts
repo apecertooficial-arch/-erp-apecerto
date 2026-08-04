@@ -36,6 +36,8 @@ export type VisitaFunil2 = {
   imovel: string;
   status: "agendada" | "confirmada" | "realizada" | "cancelada" | "nao_compareceu";
   observacao: string | null;
+  feedback_em?: string | null;
+  feedback_por?: string | null;
   atualizado_em: string;
 };
 
@@ -101,6 +103,7 @@ export type LeadFunil2 = {
   ultima_reavaliacao_sara_em: string | null;
   ultima_reavaliacao_resumo: string | null;
   corte_conversa_em: string;
+  historico_completo: boolean;
   versao: number;
   atualizado_em: string;
 };
