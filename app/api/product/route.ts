@@ -1,6 +1,7 @@
 import { createServerSupabaseClient } from "../../lib/supabase/server";
 import type { Database } from "../../lib/supabase/database.types";
 import { resolveEffectiveAccess, denyIfCannot } from "../../lib/supabase/authz";
+import { ehOfertavel } from "../../lib/estoque";
 
 export const dynamic = "force-dynamic";
 
@@ -52,7 +53,9 @@ export async function GET(request: Request) {
   if (error) return Response.json({ error: error.message }, { status: error.code === "PGRST116" ? 404 : 502 });
   const media = (data.midias ?? []).map((item) => ({ ...item, url: publicMediaUrl(item.storage_path) }));
   const units = data.unidades ?? [];
-  const availableUnits = units.filter((item) => item.disponivel);
+  // Mesma regra do catálogo: o resumo do produto (preço/área "a partir de") só
+  // considera unidade disponível E aprovada — ver app/lib/estoque.ts.
+  const availableUnits = units.filter(ehOfertavel);
   const unitPrices = availableUnits.map((item) => item.valor_promo ?? item.valor_tabela).filter((value): value is number => typeof value === "number" && value > 0);
   const unitAreas = availableUnits.map((item) => item.area_m2).filter((value): value is number => typeof value === "number" && value > 0);
   const photoCount = media.filter((item) => item.tipo === "foto").length;
@@ -324,9 +327,14 @@ export async function PATCH(request: Request) {
         disponivel: item.disponivel !== false,
       };
       const unitId = typeof item.id === "string" && existingIds.has(item.id) ? item.id : null;
+      // `unidades.aprovacao` tem default 'aprovado' (unidade de construtora nasce válida).
+      // Uma indicação criada por aqui precisa entrar na fila igual à do wizard — senão
+      // dá pra cadastrar indicação já aprovada só tendo permissão de editar produto,
+      // pulando a alçada de admin/gestor/executivo do decideUnit.
+      const deTerceiros = body.origin === "terceiros";
       const unitResult = unitId
         ? await auth.supabase.from("unidades").update(commonRow as never).eq("id", unitId).eq("empreendimento_id", id)
-        : await auth.supabase.from("unidades").insert({ ...commonRow, empreendimento_id: id, de_terceiros: body.origin === "terceiros" } as never);
+        : await auth.supabase.from("unidades").insert({ ...commonRow, empreendimento_id: id, de_terceiros: deTerceiros, ...(deTerceiros ? { aprovacao: "pendente" } : {}) } as never);
       if (unitResult.error) return Response.json({ error: unitResult.error.message }, { status: 502 });
     }
   }
