@@ -5,6 +5,9 @@ import test from "node:test";
 const edge = readFileSync(new URL("../supabase/functions/f2-sara-reclassificar/index.ts", import.meta.url), "utf8");
 const migration = readFileSync(new URL("../supabase/migrations/20260811020000_funil_2_sara_reclassificacao.sql", import.meta.url), "utf8");
 const route = readFileSync(new URL("../app/api/funil2/route.ts", import.meta.url), "utf8");
+const historico = readFileSync(new URL("../supabase/migrations/20260811034000_funil_2_historico_completo.sql", import.meta.url), "utf8");
+const visitas = readFileSync(new URL("../supabase/migrations/20260811035000_funil_2_visitas_com_feedback.sql", import.meta.url), "utf8");
+const gate = readFileSync(new URL("../app/features/crm-nova-era/CrmNovaEraGate.tsx", import.meta.url), "utf8");
 
 test("worker exige segredo antes de ler o banco", () => {
   const auth = edge.indexOf("segredoIgual(req.headers.get");
@@ -45,4 +48,24 @@ test("API e tela passam a refletir o estado real do worker", () => {
   assert.match(route, /from\("f2_sara_config"\)/);
   assert.match(route, /from\("f2_sara_analise"\)/);
   assert.match(route, /reavaliacaoAutomaticaFunil2: saraF2Config\?\.enabled === true/);
+});
+
+test("carteira migrada lê histórico completo e pesca mantém corte", () => {
+  assert.match(historico, /historico_completo boolean NOT NULL DEFAULT false/);
+  assert.match(historico, /Migrado dos pipes antigos/);
+  assert.match(historico, /f2_historico_vinculo/);
+  assert.match(historico, /HAVING count\(\*\)=1/);
+  assert.match(edge, /c\.historico_completo \|\| Date\.parse/);
+});
+
+test("visita movimenta o lead e exige feedback para encerrar a cobrança", () => {
+  assert.match(visitas, /VISITA_AGENDADA/);
+  assert.match(visitas, /COLETAR_FEEDBACK/);
+  assert.match(visitas, /ACOMPANHAMENTO_POS_VISITA/);
+  assert.match(visitas, /feedback_visita_min/);
+  assert.match(visitas, /feedback obrigatório/);
+});
+
+test("aplicativo administrativo usa o mesmo Funil 2.0", () => {
+  assert.match(gate, /ehCelular === true[\s\S]*if \(podeFunil2\)[\s\S]*<Funil2Workspace/);
 });

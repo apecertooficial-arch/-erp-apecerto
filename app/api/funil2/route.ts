@@ -46,7 +46,7 @@ export async function GET(request: Request) {
     db.from("f2_momento_config").select("*").order("etapa", { ascending: true }).order("ordem", { ascending: true }),
     db.from("f2_evento").select("id,funil_lead_id,tipo,titulo,detalhe,payload,criado_em").order("criado_em", { ascending: false }).limit(100),
     db.from("f2_etapa_config").select("codigo,ordem,rotulo,ajuda,ativo").order("ordem", { ascending: true }),
-    db.from("f2_visita").select("id,funil_lead_id,inicio_em,imovel,status,observacao,atualizado_em").order("inicio_em", { ascending: true }),
+    db.from("f2_visita").select("id,funil_lead_id,inicio_em,imovel,status,observacao,feedback_em,feedback_por,atualizado_em").order("inicio_em", { ascending: true }),
     db.from("f2_negociacao").select("id,funil_lead_id,titulo,etapa,valor,observacao,atualizado_em").order("atualizado_em", { ascending: false }),
     db.rpc("f2_listar_aquario"),
     db.from("f2_operacao_config").select("*").eq("id", true).maybeSingle(),
