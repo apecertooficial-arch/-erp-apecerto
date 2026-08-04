@@ -1,0 +1,30 @@
+:root{
+  /* ---- MARCA (valores oficiais do kit ApeCerto) ---- */
+  --ap-orange:#FF7000;        /* acao, energia, preco */
+  --ap-orange-600:#e65f00;    /* hover do CTA */
+  --ap-orange-soft:#fff3e8;   /* fundo suave laranja */
+  --ap-purple:#8B00CC;        /* dado, destaque, R$/m2 */
+  --ap-purple-600:#7500ad;
+  --ap-purple-soft:#f7ebfd;
+
+  /* ---- SEMANTICAS ---- */
+  --ap-green:#17874e;   --ap-green-soft:#e8f7ef;   /* pronto, sucesso */
+  --ap-amber:#b07500;   --ap-amber-soft:#fff6e0;   /* em obras, atencao */
+  --ap-red:#c9443e;     --ap-red-soft:#fdeceb;     /* esgotado, erro */
+
+  /* ---- SUPERFICIES ---- */
+  --ap-page:#faf9f7;    --ap-surface:#ffffff;
+  --ap-sunken:#f5f2ef;  --ap-line:#ece7e2;
+
+  /* ---- TEXTO ---- */
+  --ap-ink:#241f1b;     --ap-ink-soft:#5b544e;     --ap-muted:#8b827c;
+
+  /* ---- FORMA ---- */
+  --ap-r-card:16px;  --ap-r-btn:12px;  --ap-r-chip:999px;
+
+  /* ---- ELEVACAO ---- */
+  --ap-sh-xs:0 1px 2px rgba(31,24,19,.05);
+  --ap-sh-sm:0 2px 8px rgba(31,24,19,.06);
+  --ap-sh-md:0 14px 32px rgba(31,24,19,.10);
+  --ap-sh-brand:0 6px 16px rgba(255,112,0,.24);
+}
