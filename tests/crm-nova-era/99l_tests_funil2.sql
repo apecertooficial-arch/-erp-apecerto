@@ -103,6 +103,13 @@ SELECT public.test_assert((:'_f2_confirmacao_dia1'::jsonb->>'ok')::boolean
 RESET ROLE;
 
 SELECT public.test_assert(
+  has_table_privilege('authenticated','public.f2_operacao_config','SELECT')
+  AND NOT has_table_privilege('authenticated','public.f2_operacao_config','INSERT')
+  AND NOT has_table_privilege('authenticated','public.f2_operacao_config','UPDATE')
+  AND NOT has_table_privilege('authenticated','public.f2_operacao_config','DELETE'),
+  '#f2-33 configuração operacional só pode ser escrita pela RPC auditada');
+
+SELECT public.test_assert(
   NOT has_function_privilege('anon','public.f2_importar_negocio(bigint)','EXECUTE')
   AND NOT has_function_privilege('authenticated','public.f2_importar_negocio(bigint)','EXECUTE')
   AND has_function_privilege('service_role','public.f2_importar_negocio(bigint)','EXECUTE'),
