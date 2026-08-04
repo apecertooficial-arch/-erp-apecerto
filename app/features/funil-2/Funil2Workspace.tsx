@@ -9,7 +9,8 @@ type Payload = {
   leads?: LeadFunil2[]; momentos?: MomentoFunil2[]; eventos?: EventoFunil2[]; etapas?: EtapaConfigFunil2[];
   visitas?: VisitaFunil2[]; negociacoes?: NegociacaoFunil2[]; aquario?: CandidatoAquarioFunil2[]; operacao?: OperacaoConfigFunil2 | null; sara?: SaraStatusFunil2; error?: string;
 };
-type Mensagem = { id: string; direcao: string; tipo: string; conteudo: string | null; transcricao: string | null; criado_em: string; enviado_em: string | null };
+type Mensagem = { id: string; direcao: string; tipo: string; conteudo: string | null; transcricao: string | null; criado_em: string; enviado_em: string | null; instancia_id: string | null };
+type InstanciaChat = { id: string; rotulo: string; telefone: string | null; status: string | null; atual: boolean };
 
 async function api(token: string, init?: RequestInit) {
   const response = await fetch("/api/funil2", {
@@ -466,7 +467,7 @@ function Configuracoes({ etapas, momentos, operacao, sara, busy, onEtapa, onMome
     suspensaoNivel2H: operacao?.suspensao_nivel_2_h ?? 48, suspensaoNivel3H: operacao?.suspensao_nivel_3_h ?? 72,
   });
   return <main className="f2-pagina"><CabecalhoPagina titulo="Configurações da operação" texto="Edite o vocabulário oficial. Etapas organizam o funil; momentos determinam ação e prazo." />
-    <section className="f2-sara-status"><div><span className="f2-eyebrow">PAPEL DA SARA</span><h3>Ela lê, recomenda e fiscaliza. Ela não envia por você.</h3><p>Depois de uma mensagem confirmada pelo D-API, a Sara deve reler a conversa, escolher somente um momento oficial e criar a próxima obrigação com prazo. A Sara do CRM está em <b>{sara.modo ?? "estado indisponível"}</b> e o runner está <b>{sara.runnerAtivo ? "ligado" : "desligado"}</b>.</p></div><strong className={sara.reavaliacaoAutomaticaFunil2 ? "ativo" : "pendente"}>{sara.reavaliacaoAutomaticaFunil2 ? "Funil 2.0 conectado" : "Reavaliação automática do Funil 2.0 ainda não conectada"}</strong></section>
+    <section className="f2-sara-status"><div><span className="f2-eyebrow">PAPEL DA SARA</span><h3>Ela lê, classifica e fiscaliza. Ela não envia por você.</h3><p>Quando o D-API registra uma mensagem nova, a Sara relê a conversa, escolhe somente um momento oficial e recalcula ação e prazo. Sem histórico suficiente, ela preserva a classificação existente e sinaliza a ausência de evidência. A Sara do CRM está em <b>{sara.modo ?? "estado indisponível"}</b> e o runner principal está <b>{sara.runnerAtivo ? "ligado" : "desligado"}</b>.</p></div><strong className={sara.reavaliacaoAutomaticaFunil2 ? "ativo" : "pendente"}>{sara.reavaliacaoAutomaticaFunil2 ? `Funil 2.0 conectado · lote ${sara.loteFunil2 ?? "—"}` : "Reavaliação automática do Funil 2.0 ainda não conectada"}</strong></section>
     <section className="f2-config-grid"><div className="f2-config-bloco"><div className="f2-config-titulo"><div><span className="f2-eyebrow">ETAPAS</span><h3>Colunas do funil</h3></div><button type="button" onClick={() => setEtapa(etapaVazia)}>+ Criar</button></div>
       <div className="f2-config-lista">{etapas.map((e) => <article key={e.codigo} className={!e.ativo ? "inativo" : ""}><b>{e.ordem}</b><span><strong>{e.rotulo}</strong><small>{e.ajuda}</small></span><button type="button" onClick={() => setEtapa({...e})}>Editar</button><button type="button" disabled={busy || !e.ativo} onClick={() => onEtapa({...e,ativo:false})}>Excluir</button></article>)}</div>
       <form onSubmit={(ev) => { ev.preventDefault(); onEtapa(etapa); }}><h4>{etapa.codigo ? "Editar etapa" : "Nova etapa"}</h4><label>Código<input required disabled={Boolean(etapa.codigo)} value={etapa.codigo} onChange={(e) => setEtapa({...etapa,codigo:e.target.value.toLowerCase().replace(/\W+/g,"_")})}/></label><label>Nome<input required value={etapa.rotulo} onChange={(e) => setEtapa({...etapa,rotulo:e.target.value})}/></label><label>Descrição<input value={etapa.ajuda} onChange={(e) => setEtapa({...etapa,ajuda:e.target.value})}/></label><label>Ordem<input type="number" min="1" max="50" value={etapa.ordem} onChange={(e) => setEtapa({...etapa,ordem:Number(e.target.value)})}/></label><button type="submit" disabled={busy}>Salvar etapa</button></form>
@@ -507,6 +508,7 @@ function Detalhe({ accessToken, lead, momento, momentos, etapas, eventos, busy, 
   const [obs, setObs] = useState("");
   const [chatAberto, setChatAberto] = useState(true);
   const [mensagens, setMensagens] = useState<Mensagem[]>([]);
+  const [instanciasChat, setInstanciasChat] = useState<InstanciaChat[]>([]);
   const [chatErro, setChatErro] = useState("");
   const [chatLoading, setChatLoading] = useState(false);
   const config = momentos.find((m) => m.codigo === codigo) ?? momento;
@@ -517,10 +519,11 @@ function Detalhe({ accessToken, lead, momento, momentos, etapas, eventos, busy, 
   const carregarChat = useCallback(async () => {
     setChatLoading(true); setChatErro("");
     const response = await fetch(`/api/funil2/conversa?lead=${lead.id}`, { headers: { Authorization: `Bearer ${accessToken}` } });
-    const json = await response.json().catch(() => ({})) as { mensagens?: Mensagem[]; error?: string };
+    const json = await response.json().catch(() => ({})) as { mensagens?: Mensagem[]; instancias?: InstanciaChat[]; error?: string };
     setChatLoading(false);
     if (!response.ok) { setChatErro(json.error ?? "Não foi possível carregar o histórico."); return; }
     setMensagens(json.mensagens ?? []);
+    setInstanciasChat(json.instancias ?? []);
   }, [accessToken, lead.id]);
 
   useEffect(() => {
@@ -557,10 +560,14 @@ function Detalhe({ accessToken, lead, momento, momentos, etapas, eventos, busy, 
 
       {chatAberto && <section className="f2-chat f2-chat-principal">
         <div className="f2-chat-topo"><div><span className="f2-eyebrow">CONVERSA REAL · SOMENTE LEITURA</span><h3>Histórico desde a entrada neste funil</h3><small>Mensagens anteriores à pesca permanecem ocultas. O D-API mantém esta conversa sincronizada.</small></div><div><button type="button" onClick={() => void carregarChat()}>↻</button></div></div>
+        <div className="f2-chat-instancia">
+          <span>INSTÂNCIA D-API DESTA CONVERSA</span>
+          {instanciasChat.length > 0 ? <><b>{instanciasChat[0].rotulo}</b><small>{[instanciasChat[0].telefone,instanciasChat[0].status].filter(Boolean).join(" · ")}{instanciasChat.length > 1 ? ` · mais ${instanciasChat.length-1} instância(s) no histórico` : ""}</small></> : <><b>Instância ainda não identificada</b><small>Nenhuma conversa D-API vinculada a este lead.</small></>}
+        </div>
         {chatLoading && <p>Carregando conversa…</p>}
         {chatErro && <p className="f2-chat-erro">{chatErro}</p>}
         <div className="f2-mensagens">
-          {mensagens.map((msg) => { const cliente = mensagemDoCliente(msg.direcao); return <article key={msg.id} className={cliente ? "recebida" : "enviada"}><small>{cliente ? "Cliente" : "Corretor"} · {dataCurta(msg.enviado_em ?? msg.criado_em)}</small><span>{msg.transcricao || msg.conteudo || `[${msg.tipo}]`}</span></article>; })}
+          {mensagens.map((msg) => { const cliente = mensagemDoCliente(msg.direcao); const instancia = instanciasChat.find((item) => item.id === msg.instancia_id); return <article key={msg.id} className={cliente ? "recebida" : "enviada"}><small>{cliente ? "Cliente" : "Corretor"} · {dataCurta(msg.enviado_em ?? msg.criado_em)}{instanciasChat.length > 1 && instancia ? ` · ${instancia.rotulo}` : ""}</small><span>{msg.transcricao || msg.conteudo || `[${msg.tipo}]`}</span></article>; })}
           {!chatLoading && !chatErro && mensagens.length === 0 && <p>Nenhuma mensagem desde a pesca. A primeira conversa confirmada pelo D-API aparecerá aqui.</p>}
         </div>
       </section>}

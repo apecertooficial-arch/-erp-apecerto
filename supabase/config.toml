@@ -421,3 +421,9 @@ enabled = true
 [functions.ncrm-sara-observer]
 enabled = true
 verify_jwt = false
+
+# Funil 2.0 — classificador da carteira. Usa o mesmo segredo forte do runner
+# observer e jamais aceita JWT de usuário como substituto do x-cron-secret.
+[functions.f2-sara-reclassificar]
+enabled = true
+verify_jwt = false
