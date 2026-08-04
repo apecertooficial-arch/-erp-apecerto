@@ -151,12 +151,27 @@ SELECT public.test_assert(EXISTS(SELECT 1 FROM public.negocios WHERE id=71993)
 SELECT public.test_assert(EXISTS(SELECT 1 FROM public.f2_config_audit
     WHERE tipo='pesca' AND chave='71993' AND acao='pescar_lead'),
   '#f2-28 substituição automática fica auditada');
+SELECT public.test_assert((public.f2_configurar_operacao(
+    '09:30','18:30',15,5,120,120,30,30,20,10,10,24,48,72)->>'ok')::boolean,
+  '#f2-29 administrador salva o contrato operacional único');
+SELECT public.test_assert((SELECT peso_primeira_abordagem+peso_acoes_prazo+peso_feedback_visita+peso_presenca_dapi+peso_coerencia_sara=100
+    AND primeira_abordagem_min=5 AND presenca_ttl_min=15
+  FROM public.f2_operacao_config WHERE id),
+  '#f2-30 pesos, primeira abordagem e presença persistem no banco');
+SELECT public.test_assert(EXISTS(SELECT 1 FROM public.f2_config_audit
+    WHERE tipo='operacao' AND chave='principal' AND acao='configurar'),
+  '#f2-31 mudança do contrato operacional fica auditada');
+SELECT public.test_assert((public.f2_configurar_operacao(
+    '09:30','18:30',15,5,120,120,50,30,20,10,10,24,48,72)->>'erro')='configuracao_invalida',
+  '#f2-32 pesos diferentes de cem são recusados sem alteração');
 RESET ROLE;
 
 SELECT public.test_assert(
   NOT has_table_privilege('anon','public.f2_etapa_config','SELECT')
   AND NOT has_table_privilege('anon','public.f2_visita','SELECT')
   AND NOT has_table_privilege('anon','public.f2_negociacao','SELECT')
+  AND NOT has_table_privilege('anon','public.f2_operacao_config','SELECT')
   AND NOT has_function_privilege('anon','public.f2_configurar_etapa(text,text,text,integer,boolean)','EXECUTE')
+  AND NOT has_function_privilege('anon','public.f2_configurar_operacao(time without time zone,time without time zone,integer,integer,integer,integer,integer,integer,integer,integer,integer,integer,integer,integer)','EXECUTE')
   AND NOT has_function_privilege('anon','public.f2_salvar_visita(uuid,uuid,timestamptz,text,text,text)','EXECUTE'),
   '#f2-22 anon não tem privilégios na configuração, Pipe nem Esteira');
