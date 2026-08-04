@@ -1,24 +1,37 @@
 -- Funil 2.0: laboratório fisicamente isolado e limitado a duas cópias.
-UPDATE public.ncrm_estado SET momento_codigo='CONVERSANDO_QUALIFICANDO' WHERE negocio_id=700;
+-- O primeiro fixture simula um estado antigo sem momento explícito. Ele é
+-- autocontido para não depender de negócios removidos por rollbacks anteriores.
+INSERT INTO public.leads(id,nome,telefone)
+VALUES(71992,'Lead legado sem momento','11999997192') ON CONFLICT(id) DO NOTHING;
+INSERT INTO public.negocios(id,lead_id,corretor_id,status,pipeline_id,stage_id)
+VALUES(71992,71992,71991,'aberto',2,20) ON CONFLICT(id) DO NOTHING;
+INSERT INTO public.ncrm_estado(
+  negocio_id,workflow_config_id,etapa,momento_codigo,respondeu,resposta_pendente,
+  proxima_acao_tipo,proxima_acao_titulo,proxima_acao_em,origem_ultima
+)
+SELECT 71992,id,'tentando_contato',NULL,false,false,
+  'enviar_cadencia','Enviar cadência',now()+interval '1 day','usuario'
+FROM public.ncrm_workflow_config WHERE status='publicada' ORDER BY versao DESC LIMIT 1
+ON CONFLICT(negocio_id) DO UPDATE SET momento_codigo=NULL,etapa='tentando_contato';
 UPDATE public.ncrm_estado SET momento_codigo='DECISAO_POS_VISITA' WHERE negocio_id=71991;
 
 SELECT set_config('request.jwt.claims','{"role":"service_role"}',false);
 SET ROLE service_role;
-SELECT public.f2_importar_negocio(700);
+SELECT public.f2_importar_negocio(71992);
 SELECT public.f2_importar_negocio(71991);
 RESET ROLE;
 
 SELECT public.test_assert((SELECT count(*) FROM public.f2_lead)=2,
   '#f2-01 importa exatamente duas cópias');
 SELECT public.test_assert(
-  (SELECT momento_codigo FROM public.f2_lead WHERE origem_negocio_id=700)='CADENCIA_SEM_RESPOSTA',
+  (SELECT momento_codigo FROM public.f2_lead WHERE origem_negocio_id=71992)='CADENCIA_SEM_RESPOSTA',
   '#f2-01b estado antigo sem momento usa o momento oficial da etapa como fallback');
-SELECT public.test_assert((SELECT count(*) FROM public.negocios WHERE id IN(700,71991))=2,
+SELECT public.test_assert((SELECT count(*) FROM public.negocios WHERE id IN(71992,71991))=2,
   '#f2-02 negócios originais continuam existentes');
 SELECT public.test_assert((SELECT count(*) FROM public.f2_momento_config WHERE ativo)=10
   AND (SELECT count(DISTINCT etapa) FROM public.f2_momento_config WHERE ativo)=4,
   '#f2-03 catálogo possui quatro etapas e dez momentos oficiais');
-SELECT id AS _f2_id,versao AS _f2_versao FROM public.f2_lead WHERE origem_negocio_id=700 \gset
+SELECT id AS _f2_id,versao AS _f2_versao FROM public.f2_lead WHERE origem_negocio_id=71992 \gset
 
 DO $t$
 BEGIN
