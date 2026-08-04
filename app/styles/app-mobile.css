@@ -316,6 +316,35 @@
 @media (max-width: 900px) {
   .home-mobile { display: block; padding: 12px 14px calc(16px + env(safe-area-inset-bottom, 0px)); }
 
+  /* Início do aplicativo: uma capa do ERP, não uma cópia do funil antigo. */
+  .inicio-app { display: grid; gap: 14px; max-width: 560px; margin: 0 auto; }
+  .inicio-app-boas-vindas { display: grid; grid-template-columns: 48px 1fr; gap: 12px; align-items: center; padding: 8px 2px 4px; }
+  .inicio-app-boas-vindas h1 { margin: 2px 0 3px; font-size: 25px; letter-spacing: -.035em; color: var(--ink); }
+  .inicio-app-boas-vindas p,.inicio-app-boas-vindas small { margin: 0; font-size: 12px; color: var(--muted); }
+  .inicio-app-marca { position: relative; width: 46px; height: 46px; border-radius: 14px; background: #fff2e8; }
+  .inicio-app-marca::before { content: ""; position: absolute; left: 10px; top: 9px; width: 24px; height: 20px; border: 4px solid #ff7000; border-top: 0; border-radius: 0 0 5px 5px; }
+  .inicio-app-marca i { position: absolute; left: 10px; top: 7px; width: 25px; height: 25px; border-left: 4px solid #ff7000; border-top: 4px solid #ff7000; transform: rotate(45deg); border-radius: 3px; }
+  .inicio-app-marca b { position: absolute; right: 5px; bottom: 4px; display: grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; background: #8b00cc; color: #fff; font-size: 12px; }
+  .inicio-app-resumo { padding: 16px; border: 1px solid var(--line); border-radius: 18px; background: #fff; box-shadow: 0 8px 24px rgba(44,33,24,.05); }
+  .inicio-app-resumo > header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 13px; }
+  .inicio-app-resumo > header span { display: block; color: #d65300; font-size: 10px; font-weight: 800; letter-spacing: .12em; }
+  .inicio-app-resumo h2 { margin: 2px 0 0; font-size: 18px; }
+  .inicio-app-resumo > header button { min-height: 44px; padding: 0 12px; border: 1px solid var(--line); border-radius: 999px; background: #fff; color: var(--ink); font-size: 12px; font-weight: 700; }
+  .inicio-app-numeros { display: grid; grid-template-columns: repeat(2,1fr); gap: 8px; }
+  .inicio-app-numeros article { display: flex; flex-direction: column; min-height: 76px; justify-content: center; padding: 12px; border-radius: 14px; background: #f6f2ee; }
+  .inicio-app-numeros article.urgente { background: #fff0ed; color: #bd3027; }
+  .inicio-app-numeros article.visita { background: #eaf8ef; color: #187046; }
+  .inicio-app-numeros b { font-size: 25px; line-height: 1; }
+  .inicio-app-numeros span { margin-top: 5px; font-size: 11px; color: currentColor; opacity: .82; }
+  .inicio-app-erro { padding: 12px; border-radius: 12px; background: #fff3db; color: #805400; font-size: 12px; }
+  .inicio-app-acoes { display: grid; gap: 9px; }
+  .inicio-app-acoes button { display: flex; align-items: center; justify-content: space-between; min-height: 58px; padding: 0 18px; border: 1px solid var(--line); border-radius: 15px; background: #fff; color: var(--ink); font-size: 15px; font-weight: 750; }
+  .inicio-app-acoes button.principal { border-color: #ff7000; background: #ff7000; color: #fff; }
+  .inicio-app-acoes button span { font-size: 20px; }
+  .inicio-app-explicacao { padding: 15px 16px; border-radius: 16px; background: #2a2521; color: #fff; }
+  .inicio-app-explicacao b { font-size: 13px; }
+  .inicio-app-explicacao ol { display: grid; gap: 6px; margin: 10px 0 0; padding-left: 20px; color: #ddd5cf; font-size: 12px; }
+
   /* --- Atalhos grandes: quatro destinos, alvo confortavel --- */
   .sd-atalhos { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 18px; }
   .sd-atalhos > button {

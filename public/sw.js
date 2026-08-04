@@ -4,7 +4,7 @@
 // telefones, leads, sessao e respostas do Supabase passam direto para a rede e
 // nunca sao gravadas. O cache guarda apenas a casca publica do aplicativo.
 
-const VERSAO = "apecerto-v3";
+const VERSAO = "apecerto-v4";
 const CACHE_ESTATICO = `estatico-${VERSAO}`;
 const OFFLINE = "/offline.html";
 
