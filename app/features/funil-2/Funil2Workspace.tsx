@@ -65,12 +65,13 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
   const [modal, setModal] = useState<"pescar" | "visita" | "negociacao" | null>(null);
   const [avisosAbertos, setAvisosAbertos] = useState(true);
   const [etapaMapa, setEtapaMapa] = useState("em_atendimento");
+  const [limiteDia, setLimiteDia] = useState(50);
 
   const carregar = useCallback(async () => {
     setCarregando(true); setErro(null);
     const resposta = await api(accessToken);
     setCarregando(false);
-    if (!resposta.ok) { setErro(resposta.json.error ?? "Não foi possível carregar o laboratório."); return; }
+    if (!resposta.ok) { setErro(resposta.json.error ?? "Não foi possível carregar o Funil 2.0."); return; }
     setLeads(resposta.json.leads ?? []);
     setMomentos(resposta.json.momentos ?? []);
     setEventos(resposta.json.eventos ?? []);
@@ -87,7 +88,7 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
     void api(accessToken).then((resposta) => {
       if (!ativo) return;
       setCarregando(false);
-      if (!resposta.ok) { setErro(resposta.json.error ?? "Não foi possível carregar o laboratório."); return; }
+      if (!resposta.ok) { setErro(resposta.json.error ?? "Não foi possível carregar o Funil 2.0."); return; }
       setLeads(resposta.json.leads ?? []);
       setMomentos(resposta.json.momentos ?? []);
       setEventos(resposta.json.eventos ?? []);
@@ -134,12 +135,12 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
       <style>{FUNIL2_CSS}</style>
       <header className="f2-topo">
         <div className="f2-marca">
-          <span className="f2-eyebrow">LABORATÓRIO ISOLADO</span>
+          <span className="f2-eyebrow">OPERAÇÃO OFICIAL</span>
           <h1>Funil 2.0</h1>
-          <p>Dois leads de laboratório para validar a operação antes da migração.</p>
+          <p>Carteira dos pipes antigos organizada por etapa, momento, ação e prazo.</p>
         </div>
         <div className="f2-topo-acoes">
-          <span className="f2-isolado"><i /> Originais intactos</span>
+          <span className="f2-isolado"><i /> Origens preservadas</span>
           <div className="f2-sino-wrap">
             <button type="button" className="f2-sino" onClick={() => setAvisosAbertos((v) => !v)} aria-label="Abrir notificações"><Icone nome="sino" /><b>{atrasados + urgentes}</b></button>
             {avisosAbertos && <CentralAtencao leads={leads} momentos={momentosAtivos} etapas={etapasAtivas} onAbrir={(id) => { setSelecionado(id); setAvisosAbertos(false); }} onMeuDia={() => { setAba("dia"); setAvisosAbertos(false); }} />}
@@ -157,7 +158,7 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
         <button type="button" className={aba === "vendas" ? "ativo" : ""} onClick={() => setAba("vendas")}><Icone nome="vendas" /> Esteira</button>
         <button type="button" className={aba === "performance" ? "ativo" : ""} onClick={() => setAba("performance")}><Icone nome="vendas" /> Performance</button>
         <button type="button" className={aba === "config" ? "ativo" : ""} onClick={() => setAba("config")}><Icone nome="config" /> Configurações</button>
-        <span>Estrutura de teste · limite físico de 2 leads</span>
+        <span>Carteira operacional · Aquário fora da migração</span>
       </nav>
 
       {erro && <div className="f2-erro">{erro}</div>}
@@ -171,8 +172,8 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
           etapaAtiva={etapaMapa}
           onEtapa={setEtapaMapa}
         />
-        <section className="f2-resumo" aria-label="Resumo do laboratório">
-          <article><b>{leads.length}<small>/2</small></b><span>leads-cópia</span></article>
+        <section className="f2-resumo" aria-label="Resumo da carteira">
+          <article><b>{leads.length}</b><span>leads na carteira</span></article>
           <article className={atrasados ? "alerta" : ""}><b>{atrasados}</b><span>ações atrasadas</span></article>
           <article><b>{atualizados}</b><span>com ação confirmada</span></article>
           <div><strong>Como ler o quadro</strong><span>Etapa organiza · momento explica · ação e prazo movem o trabalho.</span></div>
@@ -184,7 +185,7 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
             return <div key={etapa.codigo} className={`f2-coluna etapa-${etapa.codigo}`}>
               <div className="f2-coluna-topo"><span>{indice + 1}</span><div><h2>{etapa.rotulo}</h2><p>{etapa.ajuda}</p></div><b>{daEtapa.length}</b></div>
               <div className="f2-lista">
-                {daEtapa.map((item) => {
+                {daEtapa.slice(0, 100).map((item) => {
                   const momento = momentosAtivos.find((m) => m.codigo === item.momento_codigo);
                   const prazo = prazoDaAcao(item);
                   const dia = diaCadencia(item);
@@ -199,6 +200,7 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
                     <div className="f2-card-botoes"><button type="button" onClick={(e) => { e.stopPropagation(); setSelecionado(item.id); }}>💬 Conversa</button>{linkWhatsapp(item.telefone) && <a href={linkWhatsapp(item.telefone)!} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}>WhatsApp</a>}<button type="button" className="principal" onClick={(e) => { e.stopPropagation(); setSelecionado(item.id); }}>{dia ? `Executar Dia ${dia}` : "Abrir ação"}</button></div>
                   </article>;
                 })}
+                {daEtapa.length > 100 && <div className="f2-vazio">Mais {daEtapa.length - 100} lead(s) nesta etapa. Consulte “Todos os Leads”.</div>}
                 {daEtapa.length === 0 && <div className="f2-vazio">Nenhum lead-cópia nesta etapa.</div>}
               </div>
             </div>;
@@ -216,7 +218,7 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
         <div className="f2-dia-cab"><div><span className="f2-eyebrow">OBRIGAÇÕES ORDENADAS</span><h2>Seu dia, sem adivinhação.</h2><p>Atrasadas primeiro; depois as que vencem mais cedo.</p></div><b>{atrasados} atrasadas</b></div>
         <div className="f2-dia-colunas"><span>Cliente</span><span>Etapa e momento</span><span>Ação oficial</span><span>Tempo</span><span></span></div>
         <div className="f2-dia-lista">
-          {aFazer.map((item, index) => {
+          {aFazer.slice(0, limiteDia).map((item, index) => {
             const momento = momentosAtivos.find((m) => m.codigo === item.momento_codigo);
             const prazo = prazoDaAcao(item);
             const dia = diaCadencia(item);
@@ -224,6 +226,7 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
               <span className="f2-dia-ordem">{index + 1}</span><div><strong>{item.nome}</strong><small>{item.corretor_nome ?? "Sem corretor"}</small></div><div><span>{etapasAtivas.find((e) => e.codigo === item.etapa)?.rotulo}</span><b>{momento?.rotulo}</b></div><div><span>{dia ? `CADÊNCIA · DIA ${dia}` : "AÇÃO OFICIAL"}</span><b>{acaoVisivel(item)}</b></div><em className={prazo.classe}>{prazo.rotulo}</em><i>{dia ? `Enviar Dia ${dia}` : "Executar ação"}</i>
             </button>;
           })}
+          {aFazer.length > limiteDia && <button type="button" className="f2-dia-mais" onClick={() => setLimiteDia((atual) => atual + 50)}>Mostrar mais 50 · ainda faltam {aFazer.length - limiteDia}</button>}
           {aFazer.length === 0 && <div className="f2-dia-vazio"><b>Seu Meu Dia está em dia.</b><span>Nenhuma obrigação venceu ou vence nas próximas duas horas.</span></div>}
         </div>
       </main>}
@@ -246,7 +249,7 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
         onAgendarVisita={() => setModal("visita")}
         onGerarNegociacao={() => setModal("negociacao")}
       />}
-      <footer className="f2-rodape">Sessão: {profile.name} · somente administradores · nenhum dado original é alterado</footer>
+      <footer className="f2-rodape">Sessão: {profile.name} · somente administradores · origens dos pipes antigos preservadas</footer>
     </div>
   );
 }
@@ -318,6 +321,8 @@ function TodosLeads({ leads, momentos, etapas, onAbrir, onPescar }: { leads: Lea
   const [filtro, setFiltro] = useState("todos");
   const [situacao, setSituacao] = useState("todas");
   const [busca, setBusca] = useState("");
+  const [pagina, setPagina] = useState(1);
+  const porPagina = 50;
   const atrasados = leads.filter((lead) => situacaoPrazo(lead.proxima_acao_em).classe === "atrasado").length;
   const termo = busca.trim().toLocaleLowerCase("pt-BR");
   const filtrados = leads.filter((lead) => {
@@ -330,11 +335,15 @@ function TodosLeads({ leads, momentos, etapas, onAbrir, onPescar }: { leads: Lea
     return lead.nome.toLocaleLowerCase("pt-BR").includes(termo)
       || (termoNumerico.length >= 3 && telefone.includes(termoNumerico));
   });
+  const totalPaginas = Math.max(1, Math.ceil(filtrados.length / porPagina));
+  const paginaSegura = Math.min(pagina, totalPaginas);
+  const exibidos = filtrados.slice((paginaSegura - 1) * porPagina, paginaSegura * porPagina);
   return <main className="f2-pagina"><CabecalhoPagina titulo="Todos os Leads" texto="A mesma leitura operacional do Funil 2.0: cliente, etapa, momento, ação e prazo — sem informações soltas." acao="Pescar um lead" onAcao={onPescar} />
-    <div className="f2-leads-busca"><label><span>Buscar lead</span><input value={busca} onChange={(event) => setBusca(event.target.value)} placeholder="Nome ou telefone" aria-label="Buscar lead por nome ou telefone" /></label><label><span>Situação do prazo</span><select value={situacao} onChange={(event) => setSituacao(event.target.value)}><option value="todas">Todos os prazos</option><option value="atrasado">Atrasados</option><option value="urgente">Vencem em até 2h</option><option value="no-prazo">No prazo</option></select></label><b>{filtrados.length} encontrado(s)</b></div>
-    <div className="f2-leads-filtros"><button type="button" className={filtro === "todos" ? "ativo" : ""} onClick={() => setFiltro("todos")}>Todos · {leads.length}</button>{etapas.map((etapa) => <button type="button" className={filtro === etapa.codigo ? "ativo" : ""} onClick={() => setFiltro(etapa.codigo)} key={etapa.codigo}>{etapa.rotulo} · {leads.filter((lead) => lead.etapa === etapa.codigo).length}</button>)}<span>{atrasados} atrasado(s)</span></div>
+    <div className="f2-leads-busca"><label><span>Buscar lead</span><input value={busca} onChange={(event) => { setBusca(event.target.value); setPagina(1); }} placeholder="Nome ou telefone" aria-label="Buscar lead por nome ou telefone" /></label><label><span>Situação do prazo</span><select value={situacao} onChange={(event) => { setSituacao(event.target.value); setPagina(1); }}><option value="todas">Todos os prazos</option><option value="atrasado">Atrasados</option><option value="urgente">Vencem em até 2h</option><option value="no-prazo">No prazo</option></select></label><b>{filtrados.length} encontrado(s)</b></div>
+    <div className="f2-leads-filtros"><button type="button" className={filtro === "todos" ? "ativo" : ""} onClick={() => { setFiltro("todos"); setPagina(1); }}>Todos · {leads.length}</button>{etapas.map((etapa) => <button type="button" className={filtro === etapa.codigo ? "ativo" : ""} onClick={() => { setFiltro(etapa.codigo); setPagina(1); }} key={etapa.codigo}>{etapa.rotulo} · {leads.filter((lead) => lead.etapa === etapa.codigo).length}</button>)}<span>{atrasados} atrasado(s)</span></div>
     <div className="f2-tabela-cab"><span>Cliente</span><span>Etapa</span><span>Momento</span><span>Próxima ação</span><span>Prazo</span><span></span></div>
-    <div className="f2-tabela f2-tabela-compacta">{filtrados.map((lead) => { const prazo = prazoDaAcao(lead); const whatsapp = linkWhatsapp(lead.telefone); return <article key={lead.id} className={`f2-lead-linha prazo-${prazo.classe}`}><div className="f2-nome"><i>{iniciais(lead.nome)}</i><span><b>{lead.nome}</b><small>{lead.corretor_nome ?? "Responsável não definido"}</small></span></div><span className="f2-lead-chip etapa"><i />{etapas.find((e) => e.codigo === lead.etapa)?.rotulo}</span><span className="f2-lead-chip momento">{momentos.find((m) => m.codigo === lead.momento_codigo)?.rotulo}</span><strong className="f2-lead-acao">{acaoVisivel(lead)}</strong><em className={prazo.classe}>{prazo.rotulo}</em><div className="f2-lead-acoes"><button type="button" onClick={() => onAbrir(lead.id)}>💬 Chat</button>{whatsapp && <a href={whatsapp} target="_blank" rel="noreferrer">WhatsApp</a>}<button type="button" className="primario" onClick={() => onAbrir(lead.id)}>Abrir</button></div></article>; })}{filtrados.length === 0 && <div className="f2-sem-resultado"><b>Nenhum lead encontrado.</b><span>Revise a busca ou os filtros selecionados.</span></div>}</div>
+    <div className="f2-tabela f2-tabela-compacta">{exibidos.map((lead) => { const prazo = prazoDaAcao(lead); const whatsapp = linkWhatsapp(lead.telefone); return <article key={lead.id} className={`f2-lead-linha prazo-${prazo.classe}`}><div className="f2-nome"><i>{iniciais(lead.nome)}</i><span><b>{lead.nome}</b><small>{lead.corretor_nome ?? "Responsável não definido"}</small></span></div><span className="f2-lead-chip etapa"><i />{etapas.find((e) => e.codigo === lead.etapa)?.rotulo}</span><span className="f2-lead-chip momento">{momentos.find((m) => m.codigo === lead.momento_codigo)?.rotulo}</span><strong className="f2-lead-acao">{acaoVisivel(lead)}</strong><em className={prazo.classe}>{prazo.rotulo}</em><div className="f2-lead-acoes"><button type="button" onClick={() => onAbrir(lead.id)}>💬 Chat</button>{whatsapp && <a href={whatsapp} target="_blank" rel="noreferrer">WhatsApp</a>}<button type="button" className="primario" onClick={() => onAbrir(lead.id)}>Abrir</button></div></article>; })}{filtrados.length === 0 && <div className="f2-sem-resultado"><b>Nenhum lead encontrado.</b><span>Revise a busca ou os filtros selecionados.</span></div>}</div>
+    {filtrados.length > porPagina && <div className="f2-paginacao"><button type="button" disabled={paginaSegura === 1} onClick={() => setPagina((atual) => Math.max(1, atual - 1))}>← Anterior</button><span>Página {paginaSegura} de {totalPaginas}</span><button type="button" disabled={paginaSegura === totalPaginas} onClick={() => setPagina((atual) => Math.min(totalPaginas, atual + 1))}>Próxima →</button></div>}
   </main>;
 }
 
@@ -457,7 +466,7 @@ function Configuracoes({ etapas, momentos, operacao, sara, busy, onEtapa, onMome
     suspensaoNivel2H: operacao?.suspensao_nivel_2_h ?? 48, suspensaoNivel3H: operacao?.suspensao_nivel_3_h ?? 72,
   });
   return <main className="f2-pagina"><CabecalhoPagina titulo="Configurações da operação" texto="Edite o vocabulário oficial. Etapas organizam o funil; momentos determinam ação e prazo." />
-    <section className="f2-sara-status"><div><span className="f2-eyebrow">PAPEL DA SARA</span><h3>Ela lê, recomenda e fiscaliza. Ela não envia por você.</h3><p>Depois de uma mensagem confirmada pelo D-API, a Sara deve reler a conversa, escolher somente um momento oficial e criar a próxima obrigação com prazo. No laboratório, a Sara do CRM original está em <b>{sara.modo ?? "estado indisponível"}</b> e o runner está <b>{sara.runnerAtivo ? "ligado" : "desligado"}</b>.</p></div><strong className={sara.reavaliacaoAutomaticaFunil2 ? "ativo" : "pendente"}>{sara.reavaliacaoAutomaticaFunil2 ? "Funil 2.0 conectado" : "Reavaliação automática do Funil 2.0 ainda não conectada"}</strong></section>
+    <section className="f2-sara-status"><div><span className="f2-eyebrow">PAPEL DA SARA</span><h3>Ela lê, recomenda e fiscaliza. Ela não envia por você.</h3><p>Depois de uma mensagem confirmada pelo D-API, a Sara deve reler a conversa, escolher somente um momento oficial e criar a próxima obrigação com prazo. A Sara do CRM está em <b>{sara.modo ?? "estado indisponível"}</b> e o runner está <b>{sara.runnerAtivo ? "ligado" : "desligado"}</b>.</p></div><strong className={sara.reavaliacaoAutomaticaFunil2 ? "ativo" : "pendente"}>{sara.reavaliacaoAutomaticaFunil2 ? "Funil 2.0 conectado" : "Reavaliação automática do Funil 2.0 ainda não conectada"}</strong></section>
     <section className="f2-config-grid"><div className="f2-config-bloco"><div className="f2-config-titulo"><div><span className="f2-eyebrow">ETAPAS</span><h3>Colunas do funil</h3></div><button type="button" onClick={() => setEtapa(etapaVazia)}>+ Criar</button></div>
       <div className="f2-config-lista">{etapas.map((e) => <article key={e.codigo} className={!e.ativo ? "inativo" : ""}><b>{e.ordem}</b><span><strong>{e.rotulo}</strong><small>{e.ajuda}</small></span><button type="button" onClick={() => setEtapa({...e})}>Editar</button><button type="button" disabled={busy || !e.ativo} onClick={() => onEtapa({...e,ativo:false})}>Excluir</button></article>)}</div>
       <form onSubmit={(ev) => { ev.preventDefault(); onEtapa(etapa); }}><h4>{etapa.codigo ? "Editar etapa" : "Nova etapa"}</h4><label>Código<input required disabled={Boolean(etapa.codigo)} value={etapa.codigo} onChange={(e) => setEtapa({...etapa,codigo:e.target.value.toLowerCase().replace(/\W+/g,"_")})}/></label><label>Nome<input required value={etapa.rotulo} onChange={(e) => setEtapa({...etapa,rotulo:e.target.value})}/></label><label>Descrição<input value={etapa.ajuda} onChange={(e) => setEtapa({...etapa,ajuda:e.target.value})}/></label><label>Ordem<input type="number" min="1" max="50" value={etapa.ordem} onChange={(e) => setEtapa({...etapa,ordem:Number(e.target.value)})}/></label><button type="submit" disabled={busy}>Salvar etapa</button></form>
@@ -485,7 +494,7 @@ function ModalVisita({ leads, busy, onFechar, onSalvar }: { leads: LeadFunil2[];
 
 function ModalNegociacao({ leads, busy, onFechar, onSalvar }: { leads: LeadFunil2[]; busy: boolean; onFechar: () => void; onSalvar: (d: Record<string, unknown>) => void }) { const [leadId,setLeadId]=useState(leads[0]?.id??""); const [titulo,setTitulo]=useState(""); const [valor,setValor]=useState(""); return <Modal titulo="Lançar negociação" texto="A negociação nasce ligada ao lead e avança na Esteira de Vendas." onFechar={onFechar}><label>Lead<select value={leadId} onChange={(e)=>setLeadId(e.target.value)}>{leads.map((l)=><option key={l.id} value={l.id}>{l.nome}</option>)}</select></label><label>Negociação<input value={titulo} onChange={(e)=>setTitulo(e.target.value)} placeholder="Imóvel ou oportunidade"/></label><label>Valor estimado<input type="number" min="0" value={valor} onChange={(e)=>setValor(e.target.value)}/></label><button type="button" className="f2-modal-primary" disabled={busy||!leadId||titulo.length<2} onClick={()=>onSalvar({leadId,titulo,valor,etapa:"qualificacao"})}>Criar negociação</button></Modal>; }
 
-function Modal({ titulo, texto, onFechar, children }: { titulo:string; texto:string; onFechar:()=>void; children:ReactNode }) { return <div className="f2-modal-overlay" onClick={onFechar}><div className="f2-modal" onClick={(e)=>e.stopPropagation()}><header><div><span className="f2-eyebrow">LABORATÓRIO</span><h2>{titulo}</h2><p>{texto}</p></div><button type="button" onClick={onFechar}>×</button></header>{children}</div></div>; }
+function Modal({ titulo, texto, onFechar, children }: { titulo:string; texto:string; onFechar:()=>void; children:ReactNode }) { return <div className="f2-modal-overlay" onClick={onFechar}><div className="f2-modal" onClick={(e)=>e.stopPropagation()}><header><div><span className="f2-eyebrow">FUNIL 2.0</span><h2>{titulo}</h2><p>{texto}</p></div><button type="button" onClick={onFechar}>×</button></header>{children}</div></div>; }
 
 function Detalhe({ accessToken, lead, momento, momentos, etapas, eventos, busy, onFechar, onMomento, onConfirmar, onAgendarVisita, onGerarNegociacao }: {
   accessToken: string;
