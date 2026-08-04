@@ -61,7 +61,8 @@ test("card e ficha oferecem conversa e atalhos operacionais", () => {
 
 test("mesmo momento pode ser revalidado sem reiniciar a cadência", () => {
   assert.match(ui, /Continua neste momento · atualizar prazo/);
-  assert.match(clareza, /'momento_revalidado'/);
+  assert.match(clareza, /'momento_alterado'/);
+  assert.match(clareza, /'mesmo_momento',v_mesmo/);
   assert.match(clareza, /v_atual\.momento_codigo<>'CADENCIA_SEM_RESPOSTA'/);
   assert.match(clareza, /v_dias_cadencia\[v_passo\+1\]-v_dias_cadencia\[v_passo\]/);
 });
