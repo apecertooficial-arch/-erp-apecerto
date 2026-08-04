@@ -59,8 +59,16 @@ export async function GET(request: Request) {
     const message = e1?.message || e2?.message || e3?.message || e4?.message || e5?.message || e6?.message || e7?.message || "Falha ao carregar o Funil 2.0.";
     return Response.json({ error: message }, { status: message.toLowerCase().includes("permission") ? 403 : 502 });
   }
+  const negociosIds = [...new Set((leads ?? []).map((lead) => Number(lead.origem_negocio_id)).filter(Number.isFinite))];
+  const negocioLead = new Map<number, number>();
+  for (let inicio = 0; inicio < negociosIds.length; inicio += 500) {
+    const { data: negocios, error } = await db.from("negocios").select("id,lead_id").in("id", negociosIds.slice(inicio, inicio + 500));
+    if (error) return Response.json({ error: "Não foi possível vincular o histórico real dos leads." }, { status: 502 });
+    for (const negocio of negocios ?? []) negocioLead.set(Number(negocio.id), Number(negocio.lead_id));
+  }
+  const leadsComOrigem = (leads ?? []).map((lead) => ({ ...lead, lead_id: negocioLead.get(Number(lead.origem_negocio_id)) ?? 0 }));
   return Response.json({
-    leads: leads ?? [], momentos: momentos ?? [], eventos: eventos ?? [], etapas: etapas ?? [],
+    leads: leadsComOrigem, momentos: momentos ?? [], eventos: eventos ?? [], etapas: etapas ?? [],
     visitas: visitas ?? [], negociacoes: negociacoes ?? [], aquario: aquario ?? [], operacao: e8 ? null : operacao ?? null,
     sara: {
       modo: typeof saraModo === "object" && saraModo !== null && "modo" in saraModo ? String((saraModo as { modo?: unknown }).modo ?? "") || null : null,

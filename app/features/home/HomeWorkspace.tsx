@@ -35,7 +35,6 @@ export function HomeWorkspace({ accessToken, sessionName = "", onNavigate, onIr 
   const [data, setData] = useState<DashboardData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [metaMesGlobal, setMetaMesGlobal] = useState<number | null>(null);
-  const [gestaoAberta, setGestaoAberta] = useState(false);
   const ehCelular = useEhCelular();
   const ehDesktop = ehCelular === false;
 
@@ -96,28 +95,10 @@ export function HomeWorkspace({ accessToken, sessionName = "", onNavigate, onIr 
           onIr={irPara}
         />
 
-        <nav className="md-atalhos" aria-label="Atalhos">
-          <button type="button" onClick={() => irPara("/agenda")}>Agenda</button>
-          <button type="button" onClick={() => irPara("/tarefas")}>Tarefas</button>
-          <button type="button" onClick={() => irPara("/produtos")}>Produtos</button>
-          <button type="button" onClick={() => irPara("/notificacoes")}>Avisos</button>
+        <nav className="md-atalhos" aria-label="Atalhos principais">
+          <button type="button" onClick={() => irPara("/crm?crm=funil-2")}>Abrir CRM</button>
+          <button type="button" onClick={() => irPara("/agenda")}>Abrir agenda</button>
         </nav>
-
-        <section className="hm-gestao">
-          <button type="button" className="hm-gestao-toggle" aria-expanded={gestaoAberta} onClick={() => setGestaoAberta((v) => !v)}>
-            Resumo da gestão
-            <span aria-hidden="true">{gestaoAberta ? "−" : "+"}</span>
-          </button>
-          {gestaoAberta && (
-            <div className="hm-gestao-corpo">
-              <NaMesaCards accessToken={accessToken} onNavigate={onNavigate} />
-              <FunilCards accessToken={accessToken} onNavigate={onNavigate} />
-              <button type="button" className="hm-gestao-link" onClick={() => irPara("/performance")}>
-                Ver performance completa
-              </button>
-            </div>
-          )}
-        </section>
       </div>
     );
   }

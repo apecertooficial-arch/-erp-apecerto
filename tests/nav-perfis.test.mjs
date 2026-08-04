@@ -16,10 +16,10 @@ const CORRETOR = {
 const GESTOR = { ...CORRETOR, isManager: true };
 const ADMIN = { role: "admin", carregado: true, permissoes: null };
 
-test("barra inferior tem exatamente os quatro modulos essenciais", () => {
+test("app operacional tem exatamente Inicio, CRM e Agenda", () => {
   const { barra } = itensDaNavegacao(CORRETOR);
-  assert.deepEqual(barra, ["Início", "CRM", "Calendário", "Notificações"]);
-  assert.deepEqual(barra.map(pathDoModulo), ["/inicio", "/crm", "/agenda", "/notificacoes"]);
+  assert.deepEqual(barra, ["Início", "CRM", "Calendário"]);
+  assert.deepEqual(barra.map(pathDoModulo), ["/inicio", "/crm", "/agenda"]);
 });
 
 test("o que nao cabe na barra vai para Mais, sem sumir nem repetir", () => {

@@ -24,9 +24,10 @@ test("start_url e atalhos apontam para rotas que existem", () => {
   }
 });
 
-test("atalhos cobrem Inicio, CRM, Agenda e Notificacoes", () => {
+test("atalhos cobrem somente Inicio, CRM Funil 2 e Agenda", () => {
   const urls = manifest.shortcuts.map((a) => a.url.split("?")[0]);
-  assert.deepEqual(urls, ["/inicio", "/crm", "/agenda", "/notificacoes"]);
+  assert.deepEqual(urls, ["/inicio", "/crm", "/agenda"]);
+  assert.match(manifest.shortcuts[1].url, /crm=funil-2/);
 });
 
 test("icones incluem maskable e os dois tamanhos", () => {

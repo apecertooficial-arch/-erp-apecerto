@@ -1511,12 +1511,26 @@ function BulkMoveModal({ pipelineId, stages, deals, initialFromStageId, onClose,
   return <div className="crm-center-modal"><form onSubmit={(event) => { event.preventDefault(); setBusy(true); setError(null); void onMove(Number(fromStageId), Number(toStageId)).catch((reason) => setError(reason instanceof Error ? reason.message : "Não foi possível mover a etapa.")).finally(() => setBusy(false)); }}><header><div><span>AÇÃO EM MASSA</span><h2>Mover uma etapa inteira</h2><p>Todos os negócios da etapa escolhida serão enviados para o novo destino.</p></div><button type="button" onClick={onClose}>×</button></header>{error && <div className="modal-error">{error}</div>}<div className="bulk-move-grid"><label>Etapa de origem<RefinedSelect value={fromStageId} onChange={(value) => { setFromStageId(value); if (value === toStageId) setToStageId(""); }} options={stages.map((stage) => ({ value: String(stage.id), label: stage.rotulo || stage.nome }))} /></label><div className="bulk-arrow">→</div><label>Etapa de destino<RefinedSelect value={toStageId} onChange={setToStageId} disabled={!fromStageId} options={stages.filter((stage) => String(stage.id) !== fromStageId).map((stage) => ({ value: String(stage.id), label: stage.rotulo || stage.nome }))} /></label></div><div className="bulk-warning"><strong>{count} negócio{count === 1 ? "" : "s"}</strong><span>serão movidos dentro do funil #{pipelineId}</span></div><footer><button type="button" onClick={onClose}>Cancelar</button><button className="crm-primary" disabled={busy || !fromStageId || !toStageId || count === 0} type="submit">{busy ? "Movendo..." : `Mover ${count} negócios`}</button></footer></form></div>;
 }
 
-export function LeadChatDrawer({ accessToken, lead, deal, corretorNome, onClose, onResponse, onOpenLead, readOnly = false }: { accessToken: string; lead: Lead; deal: Deal; corretorNome?: string; onClose: () => void; onResponse: () => Promise<void>; onOpenLead?: () => void; readOnly?: boolean }) {
+export function LeadChatDrawer({ accessToken, lead, deal, corretorNome, onClose, onResponse, onOpenLead, readOnly = false, desde }: { accessToken: string; lead: Lead; deal: Deal; corretorNome?: string; onClose: () => void; onResponse: () => Promise<void>; onOpenLead?: () => void; readOnly?: boolean; desde?: string }) {
   const [instances, setInstances] = useState<ChatInstance[]>([]); const [selectedKey, setSelectedKey] = useState(""); const [messages, setMessages] = useState<ChatMessage[]>([]); const [draft, setDraft] = useState(""); const [loading, setLoading] = useState(true); const [sending, setSending] = useState(false); const [error, setError] = useState<string | null>(null); const [recording, setRecording] = useState(false); const [collapsed, setCollapsed] = useState(false); const [suggestOpen, setSuggestOpen] = useState(false); const [emojiOpen, setEmojiOpen] = useState(false); const [scheduled, setScheduled] = useState<Array<{ id: number; texto: string; tipo: string; quando: string }>>([]); const [schedOpen, setSchedOpen] = useState(false);
   const [recSeconds, setRecSeconds] = useState(0); const [recBars, setRecBars] = useState<number[]>([]);
   const [hiddenIds, setHiddenIds] = useState<Set<string>>(new Set());
   const [confirmDel, setConfirmDel] = useState<string | null>(null);
   const [scheduleOpen, setScheduleOpen] = useState(false);
+  useEffect(() => {
+    if (!desde || messages.length === 0) return;
+    const corte = new Date(desde).getTime();
+    setHiddenIds((atuais) => {
+      const proximos = new Set(atuais);
+      let mudou = false;
+      for (const item of messages) {
+        if (item.criado_em && new Date(item.criado_em).getTime() >= corte) continue;
+        const id = String(item.wa_message_id || item.id);
+        if (!proximos.has(id)) { proximos.add(id); mudou = true; }
+      }
+      return mudou ? proximos : atuais;
+    });
+  }, [desde, messages]);
   const copiloto = useLeadCopiloto(accessToken, lead.nome || "", !readOnly);
   const fileInput = useRef<HTMLInputElement>(null); const opusRec = useRef<OpusHandle | null>(null);
   const recTimer = useRef<number | null>(null); const audioCtx = useRef<AudioContext | null>(null); const rafId = useRef<number | null>(null); const streamRef = useRef<MediaStream | null>(null); const canceledRef = useRef(false);
