@@ -519,7 +519,9 @@ const saleStages = [
   { id: "registrada", name: "Venda registrada", color: "#1fa85a", role: "Administrador", days: 0 },
 ];
 
-function SalesProcessView({ accessToken, initialCreate = false, sessionRole = "corretor" }: { accessToken: string; initialCreate?: boolean; sessionRole?: string }) {
+/* Exportada para que o Funil 2.0 monte SO a esteira, sem arrastar junto o
+   cabecalho, a barra de visoes e os filtros do CRM antigo. */
+export function SalesProcessView({ accessToken, initialCreate = false, sessionRole = "corretor" }: { accessToken: string; initialCreate?: boolean; sessionRole?: string }) {
   const [data, setData] = useState<SalesData | null>(null); const [error, setError] = useState<string | null>(null); const [filter, setFilter] = useState("all"); const [creating, setCreating] = useState(initialCreate); const [busy, setBusy] = useState(false); const [chatItem, setChatItem] = useState<{ lead: Lead; deal: Deal; corretorNome?: string } | null>(null); const [detailItem, setDetailItem] = useState<SalesData["processes"][number] | null>(null); const [menuStage, setMenuStage] = useState<string | null>(null); const [bulkFrom, setBulkFrom] = useState<string | null>(null); const [addingStage, setAddingStage] = useState(false); const [newStageName, setNewStageName] = useState("");
   const canManageStages = sessionRole !== "corretor";
   const load = async () => { const response = await authedFetch("/api/crm/sales", { headers: { Authorization: `Bearer ${accessToken}` } }); const result = await response.json() as SalesData & { error?: string }; if (!response.ok) throw new Error(result.error || "Não foi possível carregar as vendas."); setData(result); };
@@ -566,7 +568,7 @@ function SalesProcessView({ accessToken, initialCreate = false, sessionRole = "c
           <button type="button" className="crm-stage-bulk" onClick={() => { setMenuStage(null); setBulkFrom(stage.id); }}>⇄ Mover todas as vendas desta etapa</button>
           <div className="crm-stage-menu-row crm-stage-reorder"><button type="button" disabled={busy} onClick={() => { const nome = window.prompt("Novo nome da etapa:", stage.name); if (nome && nome.trim() && nome.trim() !== stage.name) void mutateStages({ action: "updateStage", stageId: stage.dbId, nome: nome.trim() }); }}>✎ Renomear</button><button type="button" className="crm-stage-danger" disabled={busy || items.length > 0} title={items.length > 0 ? "Mova as vendas antes de excluir" : "Excluir etapa"} onClick={() => { if (window.confirm(`Excluir a etapa "${stage.name}"?`)) void mutateStages({ action: "deleteStage", stageId: stage.dbId }); }}>🗑 Excluir</button></div>
         </div>}
-        <div>{items.map((item) => {
+        <div className="sales-stage-body">{items.map((item) => {
           const sale = saleById.get(item.venda_id);
           const deal = dealBySale.get(item.venda_id);
           const lead = deal ? leadById.get(deal.lead_id) : null;
