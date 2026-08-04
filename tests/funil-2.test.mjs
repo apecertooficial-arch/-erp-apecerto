@@ -11,6 +11,7 @@ const pesca = readFileSync(new URL("../supabase/migrations/20260810180000_funil_
 const conversaPosPesca = readFileSync(new URL("../supabase/migrations/20260810190000_funil_2_conversa_pos_pesca.sql", import.meta.url), "utf8");
 const configOperacao = readFileSync(new URL("../supabase/migrations/20260810200000_funil_2_config_operacao.sql", import.meta.url), "utf8");
 const aquarioReal = readFileSync(new URL("../supabase/migrations/20260810220000_funil_2_aquario_real.sql", import.meta.url), "utf8");
+const aquarioStage = readFileSync(new URL("../supabase/migrations/20260810230000_funil_2_aquario_stage_canonico.sql", import.meta.url), "utf8");
 const conversaRoute = readFileSync(new URL("../app/api/funil2/conversa/route.ts", import.meta.url), "utf8");
 const modelo = readFileSync(new URL("../app/features/funil-2/modelo.ts", import.meta.url), "utf8");
 
@@ -177,6 +178,7 @@ test("configuração única persiste roleta manual, disciplina e pesos sem ligar
 
 test("pesca lista somente a base canônica do Aquário e não herda corretor ou histórico", () => {
   assert.match(aquarioReal, /s\.chave='operacao_aquario'/);
+  assert.match(aquarioStage, /n\.stage_id=public\.aquario_stage_id\(\)/);
   assert.match(aquarioReal, /n\.corretor_id IS NULL/);
   assert.match(aquarioReal, /l\.corretor_id IS NULL/);
   assert.match(aquarioReal, /'novo','PRIMEIRA_ABORDAGEM'/);
