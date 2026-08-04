@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { acaoVisivel, dataCurta, diaCadencia, duracao, prazoDaAcao, situacaoPrazo, venceHoje, type CandidatoAquarioFunil2, type EtapaConfigFunil2, type EventoFunil2, type LeadFunil2, type MomentoFunil2, type NegociacaoFunil2, type OperacaoConfigFunil2, type SaraStatusFunil2, type VisitaFunil2 } from "./modelo";
 import { FUNIL2_CSS } from "./estilos";
+import { CrmWorkspace } from "../crm/CrmWorkspace";
 
 type Perfil = { userId: string; role: string; name: string };
 type Payload = {
@@ -234,7 +235,7 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
 
       {!carregando && aba === "leads" && <TodosLeads leads={leads} momentos={momentosAtivos} etapas={etapasAtivas} onAbrir={(id) => setSelecionado(id)} onPescar={() => setModal("pescar")} />}
       {!carregando && aba === "visitas" && <PipeVisitas visitas={visitas} leads={leads} busy={busy} onNova={() => setModal("visita")} onSalvar={(visita) => void executar("salvarVisita", visita)} />}
-      {!carregando && aba === "vendas" && <EsteiraVendas negociacoes={negociacoes} leads={leads} busy={busy} onNova={() => setModal("negociacao")} onSalvar={(negociacao) => void executar("salvarNegociacao", negociacao)} />}
+      {!carregando && aba === "vendas" && <main className="f2-pagina f2-esteira-oficial"><CabecalhoPagina titulo="Esteira de Vendas 3.0" texto="A mesma estrutura oficial de contratos, documentação, responsáveis, prazos e valores — sem uma segunda esteira desconectada." /><CrmWorkspace accessToken={accessToken} initialView="sales" sessionRole="admin" canReassign canAssign /></main>}
       {!carregando && aba === "performance" && <PerformanceFunil2 leads={leads} eventos={eventos} visitas={visitas} negociacoes={negociacoes} operacao={operacao} />}
       {!carregando && aba === "config" && <Configuracoes etapas={etapas} momentos={momentos} operacao={operacao} sara={sara} busy={busy} onEtapa={(dados) => void executar("configurarEtapa", dados)} onMomento={(dados) => void executar("configurarMomento", dados)} onOperacao={(dados) => void executar("configurarOperacao", dados)} />}
 
@@ -353,9 +354,22 @@ function PipeVisitas({ visitas, leads, busy, onNova, onSalvar }: { visitas: Visi
     { codigo: "agendada", rotulo: "Agendadas" }, { codigo: "confirmada", rotulo: "Confirmadas" },
     { codigo: "realizada", rotulo: "Realizadas" }, { codigo: "encerrada", rotulo: "Canceladas / faltou" },
   ];
-  return <main className="f2-pagina"><CabecalhoPagina titulo="Pipe de Visitas" texto="O compromisso é único: agendar, confirmar, realizar e registrar o resultado." acao="+ Nova visita" onAcao={onNova} />
-    <section className="f2-pipe">{colunas.map((coluna) => { const itens = visitas.filter((v) => coluna.codigo === "encerrada" ? ["cancelada","nao_compareceu"].includes(v.status) : v.status === coluna.codigo); return <div key={coluna.codigo}><header><h3>{coluna.rotulo}</h3><b>{itens.length}</b></header>{itens.map((visita) => { const lead = leads.find((l) => l.id === visita.funil_lead_id); return <article key={visita.id}><span>{dataCurta(visita.inicio_em)}</span><h4>{lead?.nome ?? "Lead removido"}</h4><p>{visita.imovel}</p><select disabled={busy} value={visita.status} onChange={(e) => onSalvar({ id: visita.id, leadId: visita.funil_lead_id, inicioEm: visita.inicio_em, imovel: visita.imovel, status: e.target.value, observacao: visita.observacao })}><option value="agendada">Agendada</option><option value="confirmada">Confirmada</option><option value="realizada">Realizada</option><option value="cancelada">Cancelada</option><option value="nao_compareceu">Não compareceu</option></select></article>; })}{itens.length === 0 && <p className="f2-pipe-vazio">Nenhuma visita.</p>}</div>; })}</section>
+  return <main className="f2-pagina"><CabecalhoPagina titulo="Pipe de Visitas" texto="Agendada fica no atendimento; realizada exige feedback; cancelada ou falta volta para tentativa de agendamento." acao="+ Nova visita" onAcao={onNova} />
+    <section className="f2-visita-regra"><b>Fluxo automático</b><span>Agendada → confirmar 24h antes</span><span>Realizada → feedback em até 2h</span><span>Cancelada/faltou → remarcar em até 12h</span></section>
+    <section className="f2-pipe">{colunas.map((coluna) => { const itens = visitas.filter((v) => coluna.codigo === "encerrada" ? ["cancelada","nao_compareceu"].includes(v.status) : v.status === coluna.codigo); return <div key={coluna.codigo}><header><h3>{coluna.rotulo}</h3><b>{itens.length}</b></header>{itens.map((visita) => <VisitaCard key={visita.id} visita={visita} lead={leads.find((l) => l.id === visita.funil_lead_id)} busy={busy} onSalvar={onSalvar} />)}{itens.length === 0 && <p className="f2-pipe-vazio">Nenhuma visita.</p>}</div>; })}</section>
   </main>;
+}
+
+function VisitaCard({ visita, lead, busy, onSalvar }: { visita: VisitaFunil2; lead?: LeadFunil2; busy: boolean; onSalvar: (v: Record<string, unknown>) => void }) {
+  const [status, setStatus] = useState(visita.status);
+  const [feedback, setFeedback] = useState(visita.observacao ?? "");
+  const precisaFeedback = status === "realizada";
+  return <article><span>{dataCurta(visita.inicio_em)}</span><h4>{lead?.nome ?? "Lead removido"}</h4><p>{visita.imovel}</p>
+    <select disabled={busy} value={status} onChange={(e) => setStatus(e.target.value as VisitaFunil2["status"])}><option value="agendada">Agendada</option><option value="confirmada">Confirmada</option><option value="realizada">Realizada</option><option value="cancelada">Cancelada</option><option value="nao_compareceu">Não compareceu</option></select>
+    {precisaFeedback && <textarea value={feedback} onChange={(e) => setFeedback(e.target.value)} placeholder="Feedback obrigatório: interesse, objeção e próximo passo" maxLength={500} />}
+    <button type="button" disabled={busy || (precisaFeedback && feedback.trim().length < 10)} onClick={() => onSalvar({ id: visita.id, leadId: visita.funil_lead_id, inicioEm: visita.inicio_em, imovel: visita.imovel, status, observacao: feedback || null })}>{busy ? "Salvando…" : precisaFeedback && !visita.feedback_em ? "Registrar resultado" : "Salvar atualização"}</button>
+    {visita.status === "realizada" && <small>{visita.feedback_em ? "Feedback concluído" : "Feedback pendente — novos leads podem ser bloqueados"}</small>}
+  </article>;
 }
 
 function EsteiraVendas({ negociacoes, leads, busy, onNova, onSalvar }: { negociacoes: NegociacaoFunil2[]; leads: LeadFunil2[]; busy: boolean; onNova: () => void; onSalvar: (n: Record<string, unknown>) => void }) {
@@ -519,7 +533,7 @@ function Detalhe({ accessToken, lead, momento, momentos, etapas, eventos, busy, 
   const carregarChat = useCallback(async () => {
     setChatLoading(true); setChatErro("");
     const response = await fetch(`/api/funil2/conversa?lead=${lead.id}`, { headers: { Authorization: `Bearer ${accessToken}` } });
-    const json = await response.json().catch(() => ({})) as { mensagens?: Mensagem[]; instancias?: InstanciaChat[]; error?: string };
+    const json = await response.json().catch(() => ({})) as { mensagens?: Mensagem[]; instancias?: InstanciaChat[]; historicoCompleto?: boolean; error?: string };
     setChatLoading(false);
     if (!response.ok) { setChatErro(json.error ?? "Não foi possível carregar o histórico."); return; }
     setMensagens(json.mensagens ?? []);
@@ -559,7 +573,7 @@ function Detalhe({ accessToken, lead, momento, momentos, etapas, eventos, busy, 
       </section>
 
       {chatAberto && <section className="f2-chat f2-chat-principal">
-        <div className="f2-chat-topo"><div><span className="f2-eyebrow">CONVERSA REAL · SOMENTE LEITURA</span><h3>Histórico desde a entrada neste funil</h3><small>Mensagens anteriores à pesca permanecem ocultas. O D-API mantém esta conversa sincronizada.</small></div><div><button type="button" onClick={() => void carregarChat()}>↻</button></div></div>
+        <div className="f2-chat-topo"><div><span className="f2-eyebrow">CONVERSA REAL · SOMENTE LEITURA</span><h3>{lead.historico_completo ? "Histórico completo do atendimento" : "Histórico desde a pesca"}</h3><small>{lead.historico_completo ? "Carteira migrada: toda a conversa vinculada no D-API está disponível para a Sara e para a gestão." : "Lead pescado: mensagens anteriores permanecem ocultas. O D-API sincroniza a conversa nova."}</small></div><div><button type="button" onClick={() => void carregarChat()}>↻</button></div></div>
         <div className="f2-chat-instancia">
           <span>INSTÂNCIA D-API DESTA CONVERSA</span>
           {instanciasChat.length > 0 ? <><b>{instanciasChat[0].rotulo}</b><small>{[instanciasChat[0].telefone,instanciasChat[0].status].filter(Boolean).join(" · ")}{instanciasChat.length > 1 ? ` · mais ${instanciasChat.length-1} instância(s) no histórico` : ""}</small></> : <><b>Instância ainda não identificada</b><small>Nenhuma conversa D-API vinculada a este lead.</small></>}
@@ -568,7 +582,7 @@ function Detalhe({ accessToken, lead, momento, momentos, etapas, eventos, busy, 
         {chatErro && <p className="f2-chat-erro">{chatErro}</p>}
         <div className="f2-mensagens">
           {mensagens.map((msg) => { const cliente = mensagemDoCliente(msg.direcao); const instancia = instanciasChat.find((item) => item.id === msg.instancia_id); return <article key={msg.id} className={cliente ? "recebida" : "enviada"}><small>{cliente ? "Cliente" : "Corretor"} · {dataCurta(msg.enviado_em ?? msg.criado_em)}{instanciasChat.length > 1 && instancia ? ` · ${instancia.rotulo}` : ""}</small><span>{msg.transcricao || msg.conteudo || `[${msg.tipo}]`}</span></article>; })}
-          {!chatLoading && !chatErro && mensagens.length === 0 && <p>Nenhuma mensagem desde a pesca. A primeira conversa confirmada pelo D-API aparecerá aqui.</p>}
+          {!chatLoading && !chatErro && mensagens.length === 0 && <p>{lead.historico_completo ? "Nenhuma conversa D-API foi vinculada a este lead. A pendência fica visível para correção cadastral." : "Nenhuma mensagem desde a pesca. A primeira conversa confirmada pelo D-API aparecerá aqui."}</p>}
         </div>
       </section>}
 

@@ -198,6 +198,14 @@ export function CrmNovaEraGate({
      proíbe isso na tela do corretor. No desktop ela continua, porque lá é
      ferramenta de quem está comparando as duas versões. */
   if (ehCelular === true && variante === "nova-era" && podeLive) {
+    if (podeFunil2) {
+      return (
+        <Funil2Workspace
+          accessToken={accessToken as string}
+          profile={{ userId: profile!.userId as string, role: profile?.role ?? "admin", name: profile?.name ?? "Administrador" }}
+        />
+      );
+    }
     return (
       <>
         <style>{NOVA_CRM_CSS}</style>
