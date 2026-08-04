@@ -50,15 +50,14 @@ body .f2-pipe > div > article:first-of-type { margin-top: 9px; }
 .sales-stage > small,
 .sales-stage > .crm-stage-menu { flex: 0 0 auto; }
 
-/* O corpo da etapa é o ÚLTIMO filho do <article class="sales-stage"> — a ordem
-   é header, small, [menu opcional], corpo. Selecionado por posição em vez de
-   por classe justamente para não precisar tocar em CrmWorkspace.tsx (266 KB).
-   Se algum dia entrar um elemento depois do corpo, esta regra precisa mudar. */
-.sales-stage > div:last-child { flex: 1 1 auto; min-height: 120px; overflow-y: auto; overscroll-behavior: contain; padding: 2px 4px 4px 0; }
-.sales-stage > div:last-child > * { flex: 0 0 auto; }
-.sales-stage > div:last-child::-webkit-scrollbar { width: 9px; }
-.sales-stage > div:last-child::-webkit-scrollbar-thumb { background: #cfc6be; border-radius: 8px; border: 2px solid #fbfaf9; }
-.sales-stage > div:last-child::-webkit-scrollbar-track { background: transparent; }
+/* O corpo da etapa agora tem classe explícita (.sales-stage-body, definida em
+   CrmWorkspace.tsx). Antes era selecionado por posição (> div:last-child), o que
+   quebrava em silêncio se entrasse qualquer elemento depois do corpo. */
+.sales-stage-body { flex: 1 1 auto; min-height: 120px; overflow-y: auto; overscroll-behavior: contain; padding: 2px 4px 4px 0; }
+.sales-stage-body > * { flex: 0 0 auto; }
+.sales-stage-body::-webkit-scrollbar { width: 9px; }
+.sales-stage-body::-webkit-scrollbar-thumb { background: #cfc6be; border-radius: 8px; border: 2px solid #fbfaf9; }
+.sales-stage-body::-webkit-scrollbar-track { background: transparent; }
 
 /* ---------- Telas baixas: sobra menos altura para a coluna ---------- */
 @media (max-height: 820px) {
@@ -74,5 +73,5 @@ body .f2-pipe > div > article:first-of-type { margin-top: 9px; }
   body .f2-pipe > div { max-height: none; overflow-y: visible; padding-top: 9px; }
   body .f2-pipe > div > header { position: static; margin: 0; padding: 6px; border-bottom: 0; background: transparent; }
   .sales-stage { max-height: none; }
-  .sales-stage > div:last-child { overflow-y: visible; }
+  .sales-stage-body { overflow-y: visible; }
 }
