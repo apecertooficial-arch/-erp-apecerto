@@ -3,15 +3,13 @@
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { acaoVisivel, dataCurta, diaCadencia, duracao, prazoDaAcao, situacaoPrazo, venceHoje, type CandidatoAquarioFunil2, type EtapaConfigFunil2, type EventoFunil2, type LeadFunil2, type MomentoFunil2, type NegociacaoFunil2, type OperacaoConfigFunil2, type SaraStatusFunil2, type VisitaFunil2 } from "./modelo";
 import { FUNIL2_CSS } from "./estilos";
-import { CrmWorkspace } from "../crm/CrmWorkspace";
+import { CrmWorkspace, LeadChatDrawer, type Lead as LeadLegado, type Deal as DealLegado } from "../crm/CrmWorkspace";
 
 type Perfil = { userId: string; role: string; name: string };
 type Payload = {
   leads?: LeadFunil2[]; momentos?: MomentoFunil2[]; eventos?: EventoFunil2[]; etapas?: EtapaConfigFunil2[];
   visitas?: VisitaFunil2[]; negociacoes?: NegociacaoFunil2[]; aquario?: CandidatoAquarioFunil2[]; operacao?: OperacaoConfigFunil2 | null; sara?: SaraStatusFunil2; error?: string;
 };
-type Mensagem = { id: string; direcao: string; tipo: string; conteudo: string | null; transcricao: string | null; criado_em: string; enviado_em: string | null; instancia_id: string | null };
-type InstanciaChat = { id: string; rotulo: string; telefone: string | null; status: string | null; atual: boolean };
 
 async function api(token: string, init?: RequestInit) {
   const response = await fetch("/api/funil2", {
@@ -29,10 +27,6 @@ function linkWhatsapp(telefone: string | null) {
   const digitos = (telefone ?? "").replace(/\D/g, "");
   if (digitos.length < 10) return null;
   return `https://wa.me/${digitos.startsWith("55") ? digitos : `55${digitos}`}`;
-}
-
-function mensagemDoCliente(direcao: string) {
-  return ["recebida", "entrada", "in", "inbound", "received"].includes(direcao.toLowerCase());
 }
 
 function Icone({ nome }: { nome: "quadro" | "dia" | "historico" | "leads" | "visitas" | "vendas" | "config" | "sino" }) {
@@ -520,52 +514,30 @@ function Detalhe({ accessToken, lead, momento, momentos, etapas, eventos, busy, 
   const [codigo, setCodigo] = useState(lead.momento_codigo);
   const [prazo, setPrazo] = useState("");
   const [obs, setObs] = useState("");
-  const [chatAberto, setChatAberto] = useState(true);
-  const [mensagens, setMensagens] = useState<Mensagem[]>([]);
-  const [instanciasChat, setInstanciasChat] = useState<InstanciaChat[]>([]);
-  const [instanciaSelecionada, setInstanciaSelecionada] = useState("todas");
-  const [chatErro, setChatErro] = useState("");
-  const [chatLoading, setChatLoading] = useState(false);
+  const [chatAberto, setChatAberto] = useState(false);
   const config = momentos.find((m) => m.codigo === codigo) ?? momento;
   const situacao = prazoDaAcao(lead);
   const dia = diaCadencia(lead);
   const whatsapp = linkWhatsapp(lead.telefone);
 
-  const carregarChat = useCallback(async () => {
-    setChatLoading(true); setChatErro("");
-    const response = await fetch(`/api/funil2/conversa?lead=${lead.id}`, { headers: { Authorization: `Bearer ${accessToken}` } });
-    const json = await response.json().catch(() => ({})) as { mensagens?: Mensagem[]; instancias?: InstanciaChat[]; historicoCompleto?: boolean; error?: string };
-    setChatLoading(false);
-    if (!response.ok) { setChatErro(json.error ?? "Não foi possível carregar o histórico."); return; }
-    const novasInstancias = json.instancias ?? [];
-    setMensagens(json.mensagens ?? []);
-    setInstanciasChat(novasInstancias);
-    setInstanciaSelecionada((anterior) => {
-      if (anterior !== "todas" && novasInstancias.some((item) => item.id === anterior)) return anterior;
-      return novasInstancias.find((item) => item.atual)?.id ?? novasInstancias[0]?.id ?? "todas";
-    });
-  }, [accessToken, lead.id]);
-
-  useEffect(() => {
-    if (!chatAberto) return;
-    const timer = window.setTimeout(() => void carregarChat(), 0);
-    return () => window.clearTimeout(timer);
-  }, [chatAberto, carregarChat]);
-
-  function abrirChat() {
-    setChatAberto(true);
-    if (mensagens.length === 0 && !chatLoading) void carregarChat();
-  }
-  const instanciaAtiva = instanciasChat.find((item) => item.id === instanciaSelecionada) ?? null;
-  const mensagensVisiveis = instanciaSelecionada === "todas"
-    ? mensagens
-    : mensagens.filter((item) => item.instancia_id === instanciaSelecionada);
+  const leadChat: LeadLegado = {
+    id: lead.lead_id, nome: lead.nome, telefone: lead.telefone, email: null, instagram: null,
+    corretor_id: lead.corretor_id, pipeline_id: null, status: "ativo", origem: "funil_2",
+    tags: null, extras: null, criado_em: lead.corte_conversa_em, atualizado_em: lead.atualizado_em,
+    disparo_optout: false,
+  };
+  const negocioChat: DealLegado = {
+    id: lead.origem_negocio_id, lead_id: lead.lead_id, corretor_id: lead.corretor_id,
+    pipeline_id: 0, stage_id: null, empreendimento_id: null, valor: null, status: "aberto",
+    motivo_perda: null, criado_em: lead.corte_conversa_em, ultima_movimentacao: lead.atualizado_em,
+    estagio_desde: null, tentativa: null, max_tentativas: null,
+  };
   return <div className="f2-overlay" onClick={onFechar}>
     <aside className="f2-detalhe" aria-label={`Detalhe de ${lead.nome}`} onClick={(e) => e.stopPropagation()}>
       <div className="f2-detalhe-topo"><div><span className="f2-eyebrow">LEAD-CÓPIA · #{lead.origem_negocio_id}</span><h2>{lead.nome}</h2><p>{lead.corretor_nome ?? "Sem corretor"} · original protegido</p></div><button type="button" onClick={onFechar} aria-label="Fechar detalhe">×</button></div>
 
       <div className="f2-atalhos" aria-label="Ações rápidas do lead">
-        <button type="button" onClick={abrirChat}>💬 Chat</button>
+        <button type="button" onClick={() => setChatAberto(true)}>💬 Chat</button>
         {whatsapp ? <a href={whatsapp} target="_blank" rel="noreferrer">WhatsApp</a> : <span>WhatsApp indisponível</span>}
         <button type="button" onClick={onAgendarVisita}>▣ Agendar visita</button>
         <button type="button" onClick={onGerarNegociacao}>↗ Gerar negociação</button>
@@ -577,24 +549,10 @@ function Detalhe({ accessToken, lead, momento, momentos, etapas, eventos, busy, 
         {dia && <div className="f2-cadencia-dia"><span>CADÊNCIA OFICIAL</span><b>DIA {dia}</b><small>Este é o passo exato que deve ser executado agora.</small></div>}
         <span>FAÇA AGORA</span><h3>{acaoVisivel(lead)}</h3><p>{momento.descricao}</p>
         {whatsapp ? <a className="f2-principal f2-link" href={whatsapp} target="_blank" rel="noreferrer">{dia ? `Abrir WhatsApp · enviar Dia ${dia}` : "Abrir WhatsApp e executar"}</a> : <button type="button" className="f2-principal" disabled>Telefone inválido · corrija o cadastro</button>}
-        <button type="button" className="f2-chat-sec" onClick={abrirChat}>Ver conversa antes de agir</button>
+        <button type="button" className="f2-chat-sec" onClick={() => setChatAberto(true)}>Ver conversa antes de agir</button>
         {momento.exige_dapi && <div className="f2-dapi"><i /> <span><b>A conclusão vem do D-API</b>O clique não conclui a tarefa. O envio confirmado no celular é a evidência.</span></div>}
         <div className="f2-evidencia"><div><span>Última ação confirmada</span><b>{dataCurta(lead.ultima_acao_confirmada_em)}</b></div><div><span>Sara reavaliou</span><b>{dataCurta(lead.ultima_reavaliacao_sara_em)}</b></div></div>
       </section>
-
-      {chatAberto && <section className="f2-chat f2-chat-principal">
-        <div className="f2-chat-topo"><div><span className="f2-eyebrow">CONVERSA REAL · SOMENTE LEITURA</span><h3>{lead.historico_completo ? "Histórico completo do atendimento" : "Histórico desde a pesca"}</h3><small>{lead.historico_completo ? "Carteira migrada: toda a conversa vinculada no D-API está disponível para a Sara e para a gestão." : "Lead pescado: mensagens anteriores permanecem ocultas. O D-API sincroniza a conversa nova."}</small></div><div><button type="button" onClick={() => void carregarChat()}>↻</button></div></div>
-        <div className="f2-chat-instancia">
-          <span>INSTÂNCIA D-API DESTA CONVERSA</span>
-          {instanciasChat.length > 0 ? <><label><b>Ver histórico da instância</b><select aria-label="Instância do histórico" value={instanciaSelecionada} onChange={(event) => setInstanciaSelecionada(event.target.value)}>{instanciasChat.length > 1 && <option value="todas">Todas as instâncias ({instanciasChat.length})</option>}{instanciasChat.map((item) => <option key={item.id} value={item.id}>{item.rotulo}{item.atual ? " · usada por último" : ""}</option>)}</select></label><small>{instanciaAtiva ? [instanciaAtiva.telefone,instanciaAtiva.status].filter(Boolean).join(" · ") : "Histórico consolidado de todas as instâncias vinculadas."}</small></> : <><b>Instância ainda não identificada</b><small>Nenhuma conversa D-API vinculada a este lead. O CRM não inventa histórico: este cadastro precisa ser vinculado ou sincronizado.</small></>}
-        </div>
-        {chatLoading && <p>Carregando conversa…</p>}
-        {chatErro && <p className="f2-chat-erro">{chatErro}</p>}
-        <div className="f2-mensagens">
-          {mensagensVisiveis.map((msg) => { const cliente = mensagemDoCliente(msg.direcao); const instancia = instanciasChat.find((item) => item.id === msg.instancia_id); return <article key={msg.id} className={cliente ? "recebida" : "enviada"}><small>{cliente ? "Cliente" : "Corretor"} · {dataCurta(msg.enviado_em ?? msg.criado_em)}{instanciasChat.length > 1 && instancia ? ` · ${instancia.rotulo}` : ""}</small><span>{msg.transcricao || msg.conteudo || `[${msg.tipo}]`}</span></article>; })}
-          {!chatLoading && !chatErro && mensagensVisiveis.length === 0 && <p>{lead.historico_completo ? "Nenhuma conversa D-API foi vinculada a este lead nesta instância. Selecione outra instância ou sinalize o cadastro para sincronização." : "Nenhuma mensagem desde a pesca nesta instância. A primeira conversa confirmada pelo D-API aparecerá aqui."}</p>}
-        </div>
-      </section>}
 
       <section className="f2-atualizar">
         <span className="f2-eyebrow">ATUALIZAR O MOMENTO</span>
@@ -621,5 +579,6 @@ function Detalhe({ accessToken, lead, momento, momentos, etapas, eventos, busy, 
 
       <details className="f2-lab-tools"><summary>Ferramentas do laboratório</summary><p>Somente para testar o avanço da cópia. No fluxo definitivo, o webhook do D-API executará esta confirmação.</p><button type="button" disabled={busy} onClick={() => onConfirmar(momento.exige_dapi ? "dapi" : "registro_operacional", obs)}>{busy ? "Atualizando…" : "Simular evidência confirmada"}</button></details>
     </aside>
+    {chatAberto && lead.lead_id > 0 && <div style={{ display: "contents" }} onClick={(event) => event.stopPropagation()}><LeadChatDrawer accessToken={accessToken} lead={leadChat} deal={negocioChat} corretorNome={lead.corretor_nome ?? undefined} onClose={() => setChatAberto(false)} onResponse={async () => {}} readOnly desde={lead.historico_completo ? undefined : lead.corte_conversa_em} /></div>}
   </div>;
 }

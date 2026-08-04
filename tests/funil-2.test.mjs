@@ -17,6 +17,7 @@ const correcaoPosVisita = readFileSync(new URL("../supabase/migrations/202608110
 const conversaRoute = readFileSync(new URL("../app/api/funil2/conversa/route.ts", import.meta.url), "utf8");
 const modelo = readFileSync(new URL("../app/features/funil-2/modelo.ts", import.meta.url), "utf8");
 const respostaInstanciasApp = readFileSync(new URL("../supabase/migrations/20260811037000_funil_2_resposta_instancias_app.sql", import.meta.url), "utf8");
+const reinicioPiloto = readFileSync(new URL("../supabase/migrations/20260812010000_funil_2_zerar_com_arquivo_e_fila_independente.sql", import.meta.url), "utf8");
 
 test("Funil 2.0 se apresenta como carteira operacional com origens preservadas", () => {
   assert.match(ui, /OPERAÇÃO OFICIAL/);
@@ -32,6 +33,23 @@ test("promoção migra somente pipes antigos e exclui o Aquário", () => {
   assert.match(promocao, /origens_preservadas/);
   assert.doesNotMatch(promocao, /UPDATE public\.(?:negocios|leads|visitas|vendas)/);
   assert.doesNotMatch(promocao, /DELETE FROM public\.(?:negocios|leads|visitas|vendas)/);
+});
+
+test("reinício do piloto arquiva as cópias, preserva os originais e mantém os 99 programados", () => {
+  assert.match(reinicioPiloto, /f2_arquivo_batch/);
+  assert.match(reinicioPiloto, /f2_arquivo_item/);
+  assert.match(reinicioPiloto, /f2_restaurar_arquivo/);
+  assert.match(reinicioPiloto, /rename column funil_lead_id to funil_lead_arquivo_id/i);
+  assert.match(reinicioPiloto, /add column if not exists funil_lead_id uuid null/i);
+  assert.match(reinicioPiloto, /insert into public\.f2_lead/);
+  assert.match(reinicioPiloto, /codigo='PRIMEIRA_ABORDAGEM'/);
+  assert.match(reinicioPiloto, /v_fila<>99/);
+  assert.match(reinicioPiloto, /f2_distribuicao_controle/);
+  assert.match(reinicioPiloto, /pausado_pelo_gestor/);
+  assert.match(reinicioPiloto, /cron\.unschedule\('f2-distribuicao-programada-20260805'\)/);
+  assert.match(reinicioPiloto, /f2_cron_nao_foi_desagendado/);
+  assert.doesNotMatch(reinicioPiloto, /delete from public\.(?:leads|negocios|wa_mensagens|visitas|vendas)/i);
+  assert.doesNotMatch(reinicioPiloto, /update public\.(?:visitas|vendas)/i);
 });
 
 test("quadro deixa etapa, momento, ação e prazo explícitos", () => {
@@ -84,21 +102,18 @@ test("cadência mostra o dia oficial como ação executável", () => {
 
 test("card e ficha oferecem conversa e atalhos operacionais", () => {
   assert.match(ui, />💬 Chat</);
-  assert.match(ui, /Histórico completo do atendimento/);
-  assert.match(ui, /Histórico desde a pesca/);
+  assert.match(ui, /LeadChatDrawer/);
+  assert.match(ui, /readOnly/);
   assert.match(ui, /WhatsApp/);
   assert.match(ui, /Agendar visita/);
   assert.match(ui, /Gerar negociação/);
 });
 
 test("chat identifica a instância D-API atual e diferencia histórico com mais de uma", () => {
-  assert.match(conversaRoute, /wa_instancias/);
-  assert.match(conversaRoute, /instanciaAtualId/);
-  assert.match(conversaRoute, /telefone\.replace/);
-  assert.match(ui, /INSTÂNCIA D-API DESTA CONVERSA/);
-  assert.match(ui, /aria-label="Instância do histórico"/);
-  assert.match(ui, /usada por último/);
-  assert.match(ui, /mensagensVisiveis/);
+  assert.match(ui, /LeadChatDrawer/);
+  assert.match(ui, /leadChat/);
+  assert.match(ui, /negocioChat/);
+  assert.match(ui, /corretorNome=\{lead\.corretor_nome/);
 });
 
 test("corretor usa o Funil 2.0 no celular sem ganhar acesso ao desktop administrativo", () => {
@@ -133,7 +148,6 @@ test("lead pescado nasce sem expor o histórico anterior no Funil 2.0", () => {
   assert.match(conversaRoute, /historico_completo/);
   assert.match(conversaRoute, /\.gte\("criado_em", corte\)/);
   assert.match(ui, /histórico anterior fica oculto/);
-  assert.match(ui, /Lead pescado: mensagens anteriores permanecem ocultas/);
   assert.doesNotMatch(ui, /O histórico permanece disponível/);
 });
 
