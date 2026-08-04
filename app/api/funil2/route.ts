@@ -78,7 +78,7 @@ export async function POST(request: Request) {
     args = { p_id: body.id || null, p_lead_id: body.leadId, p_titulo: String(body.titulo ?? "").slice(0, 120), p_etapa: body.etapa || "qualificacao", p_valor: body.valor === "" || body.valor == null ? null : Number(body.valor), p_observacao: String(body.observacao ?? "").slice(0, 500) || null };
   } else if (action === "pescar") {
     rpc = "f2_pescar_negocio";
-    args = { p_negocio_id: Number(body.negocioId), p_substituir_id: body.substituirId || null };
+    args = { p_negocio_id: Number(body.negocioId), p_substituir_id: null };
   } else {
     return Response.json({ error: "Ação desconhecida." }, { status: 400 });
   }
