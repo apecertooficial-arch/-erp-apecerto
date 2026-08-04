@@ -59,7 +59,9 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
   const [erro, setErro] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [modal, setModal] = useState<"pescar" | "visita" | "negociacao" | null>(null);
-  const [avisosAbertos, setAvisosAbertos] = useState(true);
+  // Aviso nunca abre sozinho: no celular um painel automático encobria o CRM.
+  // O corretor abre pelo sino quando quiser e fecha sem perder o contexto.
+  const [avisosAbertos, setAvisosAbertos] = useState(false);
   const [etapaMapa, setEtapaMapa] = useState("em_atendimento");
   const [limiteDia, setLimiteDia] = useState(50);
 

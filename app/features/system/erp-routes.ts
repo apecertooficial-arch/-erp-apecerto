@@ -27,9 +27,9 @@ export type RotaModulo = {
 };
 
 export const rotasModulo: Record<ModuleName, RotaModulo> = {
-  "Início": { path: "/inicio", slugs: ["dashboard"], classe: "A", rotuloCurto: "Início" },
+  "Início": { path: "/inicio", slugs: ["dashboard"], classe: "A", rotuloCurto: "Meu Dia" },
   CRM: { path: "/crm", slugs: ["crm", "leads", "pipeline"], classe: "A", rotuloCurto: "CRM" },
-  "Calendário": { path: "/agenda", slugs: ["calendario"], classe: "A", rotuloCurto: "Agenda" },
+  "Calendário": { path: "/agenda", slugs: ["calendario"], classe: "A", rotuloCurto: "Calendário" },
   "Notificações": { path: "/notificacoes", slugs: ["notificacoes"], classe: "A", rotuloCurto: "Avisos" },
   Produtos: { path: "/produtos", slugs: ["produtos"], classe: "A", rotuloCurto: "Produtos" },
   /* "projetos" NAO existe no catalogo de permissoes do banco -- conferido na

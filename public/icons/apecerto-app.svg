@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="ApêCerto">
+  <rect width="512" height="512" rx="112" fill="#fff7f1"/>
+  <circle cx="256" cy="256" r="186" fill="#ffffff" stroke="#ffdcc5" stroke-width="10"/>
+  <path d="M142 241 256 142l114 99" fill="none" stroke="#ff7000" stroke-width="38" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M176 251v116a18 18 0 0 0 18 18h124a18 18 0 0 0 18-18V251" fill="none" stroke="#ff7000" stroke-width="38" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="m211 306 36 36 69-73" fill="none" stroke="#8b00cc" stroke-width="36" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

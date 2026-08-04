@@ -168,20 +168,38 @@ test("vencida marca cadencia e proxima acao atrasadas", () => {
 
 const TELA = "../app/features/home/TelaCorretor.tsx";
 
-test("a tela do corretor nao mostra gestao antes da fila", () => {
+test("o Inicio do app nao replica a fila nem a gestao do funil antigo", () => {
   const home = ler("../app/features/home/HomeWorkspace.tsx");
   const celular = home.slice(home.indexOf("if (ehCelular === true)"), home.indexOf("if (ehCelular === null)"));
-  const posFila = celular.indexOf("MeuDiaCorretor");
-  const posGestao = celular.indexOf("hm-gestao");
-  assert.ok(posFila > -1, "a fila do dia continua sendo a entrada operacional");
-  assert.equal(posGestao, -1, "o aplicativo simplificado nao mistura gestao com o dia do corretor");
+  assert.match(celular, /InicioApp/, "o Inicio precisa ter identidade propria do aplicativo");
+  assert.ok(!/MeuDiaCorretor|hm-gestao/.test(celular), "Inicio nao pode parecer o funil antigo");
   assert.ok(!/hv2-hero|Abrir Financeiro/.test(celular), "meta e Financeiro nao aparecem na tela do corretor");
 });
 
-test("MeuDiaCorretor continua exportado: HomeWorkspace importa dele", () => {
-  const casca = ler("../app/features/home/MeuDiaCorretor.tsx");
-  assert.match(casca, /export function MeuDiaCorretor/);
-  assert.match(casca, /TelaCorretor/, "a casca tem que delegar para a tela nova");
+test("Inicio do app resume Funil 2 e oferece somente CRM, Agenda e Avisos", () => {
+  const inicio = ler("../app/features/home/InicioApp.tsx");
+  assert.match(inicio, /fetch\("\/api\/funil2"/);
+  for (const destino of ["/crm?crm=funil-2", "/agenda", "/notificacoes"]) assert.ok(inicio.includes(destino));
+  assert.ok(!inicio.includes("/financeiro"));
+});
+
+test("barra do aplicativo fala Meu Dia, CRM e Calendário", () => {
+  const rotas = ler("../app/features/system/erp-routes.ts");
+  assert.match(rotas, /rotuloCurto: "Meu Dia"/);
+  assert.match(rotas, /rotuloCurto: "Calendário"/);
+});
+
+test("Sara fica acima da barra inferior no celular", () => {
+  const sara = ler("../app/components/SaraWidget.tsx");
+  assert.match(sara, /@media\(max-width:900px\).*#sara-fab\{[^}]*bottom:calc\(70px/s);
+});
+
+test("avisos do Funil 2 nunca abrem automaticamente e ficam compactos no celular", () => {
+  const funil = ler("../app/features/funil-2/Funil2Workspace.tsx");
+  const css = ler("../app/features/funil-2/estilos.ts");
+  assert.match(funil, /useState\(false\)/, "o sino começa fechado");
+  assert.match(css, /\.f2-avisos-pop\{position:fixed;left:auto;right:12px[^}]*max-height:58vh/,
+    "o painel não pode tomar a tela inteira");
 });
 
 test("o toque no card nao afirma que houve contato", () => {

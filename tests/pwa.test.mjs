@@ -7,6 +7,7 @@ import { readFileSync } from "node:fs";
 
 const manifest = JSON.parse(readFileSync(new URL("../public/manifest.webmanifest", import.meta.url), "utf8"));
 const sw = readFileSync(new URL("../public/sw.js", import.meta.url), "utf8");
+const iconeFonte = readFileSync(new URL("../public/icons/apecerto-app.svg", import.meta.url), "utf8");
 
 test("manifest aponta para o ERP, nao para o CRM", () => {
   assert.equal(manifest.name, "ApêCerto — ERP");
@@ -34,6 +35,13 @@ test("icones incluem maskable e os dois tamanhos", () => {
   const tem = (p, s) => manifest.icons.some((i) => i.purpose === p && i.sizes === s);
   assert.ok(tem("any", "192x192") && tem("any", "512x512"));
   assert.ok(tem("maskable", "192x192") && tem("maskable", "512x512"));
+});
+
+test("icone instalado usa a identidade colorida da Apecerto", () => {
+  assert.match(iconeFonte, /#ff7000/i);
+  assert.match(iconeFonte, /#8b00cc/i);
+  assert.match(iconeFonte, /aria-label="ApêCerto"/);
+  assert.ok(!/fill="#000000"|fill="#000"/i.test(iconeFonte), "não pode voltar ao ícone preto e branco");
 });
 
 test("display standalone e cor da marca preservada", () => {
