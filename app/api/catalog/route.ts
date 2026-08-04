@@ -81,6 +81,10 @@ export async function GET(request: Request) {
         .filter((value): value is string => Boolean(value))
         .map((value) => [value.toLocaleLowerCase("pt-BR"), value] as const),
     ).values()].sort((a, b) => a.localeCompare(b, "pt-BR"));
+    // Soma do estoque disponível em tabela. Os KPIs de VGV e ticket médio precisam
+    // do total, e ele não dá para derivar de min/max: dentro de um mesmo produto a
+    // faixa é grande demais (o Emiie vai de R$ 524 mil a R$ 4,1 mi).
+    const stockValue = prices.reduce((total, value) => total + value, 0);
     const cover = media.find((item) => item.tipo === "foto" && item.is_capa)
       ?? media.find((item) => item.tipo === "foto");
     const bedroomOptions = units.map((unit) => {
@@ -104,6 +108,7 @@ export async function GET(request: Request) {
       area: areas.length ? Math.min(...areas) : item.area_util,
       areaMax: areas.length ? Math.max(...areas) : null,
       typologies,
+      stockValue,
       bedrooms: item.dormitorios ?? (bedroomOptions.length ? Math.max(...bedroomOptions) : null),
       suites: item.suites,
       parking: item.vagas,
