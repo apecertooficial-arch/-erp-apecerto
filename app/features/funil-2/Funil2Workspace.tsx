@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { acaoVisivel, dataCurta, diaCadencia, duracao, prazoDaAcao, situacaoPrazo, venceHoje, type CandidatoAquarioFunil2, type EtapaConfigFunil2, type EventoFunil2, type LeadFunil2, type MomentoFunil2, type NegociacaoFunil2, type OperacaoConfigFunil2, type SaraStatusFunil2, type VisitaFunil2 } from "./modelo";
 import { FUNIL2_CSS } from "./estilos";
-import { CrmWorkspace, LeadChatDrawer, type Lead as LeadLegado, type Deal as DealLegado } from "../crm/CrmWorkspace";
+import { SalesProcessView, LeadChatDrawer, type Lead as LeadLegado, type Deal as DealLegado } from "../crm/CrmWorkspace";
 
 type Perfil = { userId: string; role: string; name: string };
 type Payload = {
@@ -250,7 +250,9 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
 
       {!carregando && aba === "leads" && <TodosLeads leads={leads} momentos={momentosAtivos} etapas={etapasAtivas} onAbrir={(id) => setSelecionado(id)} onPescar={() => setModal("pescar")} />}
       {!carregando && aba === "visitas" && <PipeVisitas visitas={visitas} leads={leads} busy={busy} onNova={() => setModal("visita")} onSalvar={(visita) => void executar("salvarVisita", visita)} />}
-      {!carregando && aba === "vendas" && <main className="f2-pagina f2-esteira-oficial"><CabecalhoPagina titulo="Esteira de Vendas 3.0" texto="A mesma estrutura oficial de contratos, documentação, responsáveis, prazos e valores — sem uma segunda esteira desconectada." /><CrmWorkspace accessToken={accessToken} initialView="sales" sessionRole="admin" canReassign canAssign /></main>}
+      {/* Só a esteira. O CRM antigo inteiro (cabeçalho, barra de visões, filtros
+          e funil) não entra aqui — o Funil 2.0 já é a navegação da operação. */}
+      {!carregando && aba === "vendas" && <main className="f2-pagina f2-esteira-oficial"><CabecalhoPagina titulo="Esteira de Vendas 3.0" texto="A mesma estrutura oficial de contratos, documentação, responsáveis, prazos e valores — sem uma segunda esteira desconectada." /><SalesProcessView accessToken={accessToken} sessionRole="admin" /></main>}
       {!carregando && aba === "performance" && <PerformanceFunil2 leads={leads} eventos={eventos} visitas={visitas} negociacoes={negociacoes} operacao={operacao} />}
       {!carregando && aba === "config" && <Configuracoes etapas={etapas} momentos={momentos} operacao={operacao} sara={sara} busy={busy} onEtapa={(dados) => void executar("configurarEtapa", dados)} onMomento={(dados) => void executar("configurarMomento", dados)} onOperacao={(dados) => void executar("configurarOperacao", dados)} />}
 
