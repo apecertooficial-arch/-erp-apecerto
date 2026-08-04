@@ -235,18 +235,29 @@ export async function PATCH(request: Request) {
     const canChooseBroker = canCrm(access, "atribuir") || canCrm(access, "transferir");
     if (selectedBrokerId && !canChooseBroker) return Response.json({ error: "Você não tem permissão para atribuir este lead a outro corretor." }, { status: 403 });
     let brokerId = canChooseBroker ? selectedBrokerId : null;
-    if (!brokerId) {
+    // Gestor sem corretor escolhido entrega o lead à roleta. Antes, o admin
+    // também era um corretor cadastrado e acabava atribuindo o lead a si mesmo,
+    // apesar de a tela prometer distribuição automática.
+    if (!brokerId && !canChooseBroker) {
       const { data: ownBroker } = await auth.supabase.from("corretores").select("id").eq("usuario_id", auth.user.id).maybeSingle();
       brokerId = ownBroker?.id ?? null;
     }
     const { data: lead, error: leadError } = await auth.supabase.from("leads").insert({ nome, telefone, email: email || null, origem, pipeline_id: pipelineId, corretor_id: brokerId, status: "novo", atualizado_em: new Date().toISOString(), tags: [] }).select("id").single();
     if (leadError) return Response.json({ error: leadError.message }, { status: 502 });
     const { data: firstStage } = await auth.supabase.from("pipeline_stages").select("id").eq("pipeline_id", pipelineId).order("ordem").limit(1).maybeSingle();
+    let negocioId: number | null = null;
     if (firstStage) {
-      const { error: dealError } = await auth.supabase.from("negocios").insert({ lead_id: lead.id, pipeline_id: pipelineId, stage_id: firstStage.id, corretor_id: brokerId, status: "aberto", estagio_desde: new Date().toISOString(), ultima_movimentacao: new Date().toISOString() });
+      const { data: deal, error: dealError } = await auth.supabase.from("negocios").insert({ lead_id: lead.id, pipeline_id: pipelineId, stage_id: firstStage.id, corretor_id: brokerId, status: "aberto", estagio_desde: new Date().toISOString(), ultima_movimentacao: new Date().toISOString() }).select("id").single();
       if (dealError) return Response.json({ error: `Lead criado, mas o negócio não foi aberto: ${dealError.message}` }, { status: 502 });
+      negocioId = deal.id;
     }
-    return Response.json({ success: true, leadId: lead.id });
+    let distribuicao: unknown = null;
+    if (!brokerId && negocioId) {
+      const { data, error } = await auth.supabase.rpc("ncrm_distribuir_lead_novo", { p_negocio_id: negocioId });
+      if (error) return Response.json({ error: `Lead criado, mas a distribuição falhou: ${error.message}`, leadId: lead.id, negocioId }, { status: 502 });
+      distribuicao = data;
+    }
+    return Response.json({ success: true, leadId: lead.id, negocioId, distribuicao });
   }
 
   if (action === "aquarioPescar") {
