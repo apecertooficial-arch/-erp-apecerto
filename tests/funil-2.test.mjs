@@ -8,6 +8,8 @@ const migration = readFileSync(new URL("../supabase/migrations/20260810150000_fu
 const clareza = readFileSync(new URL("../supabase/migrations/20260810160000_funil_2_cadencia_clara.sql", import.meta.url), "utf8");
 const operacao = readFileSync(new URL("../supabase/migrations/20260810170000_funil_2_operacao_completa.sql", import.meta.url), "utf8");
 const pesca = readFileSync(new URL("../supabase/migrations/20260810180000_funil_2_pesca_simples.sql", import.meta.url), "utf8");
+const conversaPosPesca = readFileSync(new URL("../supabase/migrations/20260810190000_funil_2_conversa_pos_pesca.sql", import.meta.url), "utf8");
+const conversaRoute = readFileSync(new URL("../app/api/funil2/conversa/route.ts", import.meta.url), "utf8");
 const modelo = readFileSync(new URL("../app/features/funil-2/modelo.ts", import.meta.url), "utf8");
 
 test("Funil 2.0 se apresenta como laboratório isolado de duas cópias", () => {
@@ -49,16 +51,49 @@ test("mensagem precisa de confirmação D-API e toda mudança gera histórico", 
 
 test("cadência mostra o dia oficial como ação executável", () => {
   assert.match(modelo, /DIAS_CADENCIA = \[1, 2, 4, 6, 7\]/);
-  assert.match(ui, /CADÊNCIA OFICIAL · DIA/);
+  assert.match(ui, /CADÊNCIA OFICIAL/);
+  assert.match(ui, /DIA \{dia\}/);
   assert.match(ui, /Abrir WhatsApp · enviar Dia/);
   assert.match(ui, /A conclusão vem do D-API/);
 });
 
 test("card e ficha oferecem conversa e atalhos operacionais", () => {
   assert.match(ui, />💬 Chat</);
-  assert.match(ui, /Histórico do WhatsApp/);
+  assert.match(ui, /Conversa desde a entrada no Funil 2\.0/);
   assert.match(ui, /Agendar visita/);
   assert.match(ui, /Gerar negociação/);
+});
+
+test("lead pescado nasce sem expor o histórico anterior no Funil 2.0", () => {
+  assert.match(conversaPosPesca, /corte_conversa_em timestamptz/);
+  assert.match(conversaPosPesca, /COALESCE\(corte_conversa_em, criado_em\)/);
+  assert.match(conversaRoute, /from\("f2_lead"\)/);
+  assert.match(conversaRoute, /\.gte\("criado_em", corte\)/);
+  assert.match(ui, /mensagens anteriores ficam ocultas aqui/);
+  assert.match(ui, /O histórico anterior à pesca não aparece nesta ficha/);
+  assert.doesNotMatch(ui, /O histórico permanece disponível/);
+});
+
+test("interface usa blocos separados para etapa, momento e próxima ação", () => {
+  assert.match(ui, /f2-card-trio/);
+  assert.match(ui, /f2-quadrado etapa/);
+  assert.match(ui, /f2-quadrado momento/);
+  assert.match(ui, /f2-quadrado acao/);
+  assert.match(ui, /PRÓXIMA AÇÃO/);
+});
+
+test("central de atenção lista obrigações acionáveis e não apenas contadores", () => {
+  assert.match(ui, /function CentralAtencao/);
+  assert.match(ui, /f2-avisos-lista/);
+  assert.match(ui, /Abrir Meu Dia completo/);
+  assert.match(ui, /leads novos/);
+});
+
+test("Esteira mantém kanban comercial e adiciona visão gerencial do funil antigo", () => {
+  assert.match(ui, /f2-vendas-kpis/);
+  assert.match(ui, /valor em acompanhamento/);
+  assert.match(ui, /vendas concluídas/);
+  assert.match(ui, /f2-pipe f2-pipe-vendas/);
 });
 
 test("mesmo momento pode ser revalidado sem reiniciar a cadência", () => {

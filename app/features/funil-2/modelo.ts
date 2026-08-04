@@ -74,6 +74,7 @@ export type LeadFunil2 = {
   ultima_acao_fonte: string | null;
   ultima_reavaliacao_sara_em: string | null;
   ultima_reavaliacao_resumo: string | null;
+  corte_conversa_em: string;
   versao: number;
   atualizado_em: string;
 };
