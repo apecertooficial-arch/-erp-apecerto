@@ -5,7 +5,15 @@ export const ETAPAS_FUNIL2 = [
   { codigo: "pos_visita", rotulo: "Pós-visita", ajuda: "Registrar feedback e transformar a visita em próximo avanço." },
 ] as const;
 
-export type EtapaFunil2 = typeof ETAPAS_FUNIL2[number]["codigo"];
+export type EtapaFunil2 = string;
+
+export type EtapaConfigFunil2 = {
+  codigo: string;
+  ordem: number;
+  rotulo: string;
+  ajuda: string;
+  ativo: boolean;
+};
 
 export type MomentoFunil2 = {
   codigo: string;
@@ -18,6 +26,34 @@ export type MomentoFunil2 = {
   prazo_minutos: number | null;
   prazo_rotulo: string;
   exige_dapi: boolean;
+  ativo?: boolean;
+};
+
+export type VisitaFunil2 = {
+  id: string;
+  funil_lead_id: string;
+  inicio_em: string;
+  imovel: string;
+  status: "agendada" | "confirmada" | "realizada" | "cancelada" | "nao_compareceu";
+  observacao: string | null;
+  atualizado_em: string;
+};
+
+export type NegociacaoFunil2 = {
+  id: string;
+  funil_lead_id: string;
+  titulo: string;
+  etapa: "qualificacao" | "simulacao" | "proposta" | "documentacao" | "contrato" | "venda" | "perdida";
+  valor: number | null;
+  observacao: string | null;
+  atualizado_em: string;
+};
+
+export type CandidatoAquarioFunil2 = {
+  negocio_id: number;
+  nome: string;
+  corretor_nome: string | null;
+  momento: string | null;
 };
 
 export type LeadFunil2 = {
@@ -73,6 +109,12 @@ export function prazoDaAcao(lead: Pick<LeadFunil2, "proxima_acao_em" | "momento_
 
 export function entraNoMeuDia(lead: Pick<LeadFunil2, "proxima_acao_em">, agora = Date.now()) {
   return new Date(lead.proxima_acao_em).getTime() <= agora + 2 * 60 * 60 * 1000;
+}
+
+export function venceHoje(lead: Pick<LeadFunil2, "proxima_acao_em">, agora = Date.now()) {
+  const limite = new Date(agora);
+  limite.setHours(23, 59, 59, 999);
+  return new Date(lead.proxima_acao_em).getTime() <= limite.getTime();
 }
 
 export function situacaoPrazo(data: string, agora = Date.now()) {

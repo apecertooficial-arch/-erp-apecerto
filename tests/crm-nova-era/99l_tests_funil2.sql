@@ -93,3 +93,27 @@ SELECT public.test_assert(
 SELECT public.test_assert(
   (SELECT count(*) FROM public.f2_evento WHERE funil_lead_id=:'_f2_id')>=4,
   '#f2-12 importação, mudança, confirmação e releitura ficam auditadas');
+
+SELECT set_config('request.jwt.claims','{"sub":"aaaaaaaa-0000-0000-0000-000000000001","role":"authenticated"}',false);
+SET ROLE authenticated;
+SELECT public.test_assert((public.f2_configurar_etapa('relacionamento','Relacionamento','Etapa criada pelo administrador',5,true)->>'ok')::boolean,
+  '#f2-16 administrador cria etapa configurável');
+SELECT public.test_assert((public.f2_configurar_momento('NUTRICAO','relacionamento','Nutrição','Manter contato útil','Enviar conteúdo relevante',2880,1,true,true)->>'ok')::boolean,
+  '#f2-17 administrador cria momento com ação e prazo próprios');
+SELECT public.test_assert((SELECT prazo_minutos FROM public.f2_momento_config WHERE codigo='NUTRICAO')=2880,
+  '#f2-18 horas configuradas persistem como prazo oficial');
+SELECT public.test_assert((public.f2_salvar_visita(NULL,:'_f2_id',now()+interval '1 day','Apartamento laboratório','agendada',NULL)->>'ok')::boolean,
+  '#f2-19 Pipe de Visitas recebe compromisso ligado à cópia');
+SELECT public.test_assert((public.f2_salvar_negociacao(NULL,:'_f2_id','Oportunidade laboratório','qualificacao',500000,NULL)->>'ok')::boolean,
+  '#f2-20 Esteira recebe negociação ligada à cópia');
+SELECT public.test_assert((SELECT count(*) FROM public.f2_lead)=2,
+  '#f2-21 configurações, visita e negociação preservam limite de duas cópias');
+RESET ROLE;
+
+SELECT public.test_assert(
+  NOT has_table_privilege('anon','public.f2_etapa_config','SELECT')
+  AND NOT has_table_privilege('anon','public.f2_visita','SELECT')
+  AND NOT has_table_privilege('anon','public.f2_negociacao','SELECT')
+  AND NOT has_function_privilege('anon','public.f2_configurar_etapa(text,text,text,integer,boolean)','EXECUTE')
+  AND NOT has_function_privilege('anon','public.f2_salvar_visita(uuid,uuid,timestamptz,text,text,text)','EXECUTE'),
+  '#f2-22 anon não tem privilégios na configuração, Pipe nem Esteira');

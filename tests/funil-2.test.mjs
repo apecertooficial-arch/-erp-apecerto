@@ -6,6 +6,7 @@ const ui = readFileSync(new URL("../app/features/funil-2/Funil2Workspace.tsx", i
 const gate = readFileSync(new URL("../app/features/crm-nova-era/CrmNovaEraGate.tsx", import.meta.url), "utf8");
 const migration = readFileSync(new URL("../supabase/migrations/20260810150000_funil_2_isolado.sql", import.meta.url), "utf8");
 const clareza = readFileSync(new URL("../supabase/migrations/20260810160000_funil_2_cadencia_clara.sql", import.meta.url), "utf8");
+const operacao = readFileSync(new URL("../supabase/migrations/20260810170000_funil_2_operacao_completa.sql", import.meta.url), "utf8");
 const modelo = readFileSync(new URL("../app/features/funil-2/modelo.ts", import.meta.url), "utf8");
 
 test("Funil 2.0 se apresenta como laboratório isolado de duas cópias", () => {
@@ -65,4 +66,27 @@ test("mesmo momento pode ser revalidado sem reiniciar a cadência", () => {
   assert.match(clareza, /'mesmo_momento',v_mesmo/);
   assert.match(clareza, /v_atual\.momento_codigo<>'CADENCIA_SEM_RESPOSTA'/);
   assert.match(clareza, /v_dias_cadencia\[v_passo\+1\]-v_dias_cadencia\[v_passo\]/);
+});
+
+test("Meu Dia mostra cliente, etapa, momento, ação, tempo e central de atenção", () => {
+  for (const texto of ["SEU PLANO DE TRABALHO", "Etapa e momento", "Ação oficial", "Tempo", "CENTRAL DE ATENÇÃO"]) assert.match(ui, new RegExp(texto));
+  assert.match(ui, /ações atrasadas/);
+  assert.match(ui, /vencem em até 2h/);
+});
+
+test("laboratório entrega abas operacionais e pesca sem tocar no legado", () => {
+  for (const texto of ["Todos os Leads", "Pipe de Visitas", "Esteira de Vendas", "Configurações da operação", "Pescar um lead"]) assert.match(ui, new RegExp(texto));
+  for (const objeto of ["f2_etapa_config", "f2_visita", "f2_negociacao", "f2_config_audit"]) assert.match(operacao, new RegExp(`CREATE TABLE public\\.${objeto}`));
+  assert.match(operacao, /f2_pescar_negocio/);
+  assert.doesNotMatch(operacao, /UPDATE public\.(?:ncrm_estado|negocios|leads|visitas|vendas)/);
+  assert.doesNotMatch(operacao, /DELETE FROM public\.(?:ncrm_estado|negocios|leads|visitas|vendas)/);
+});
+
+test("etapas e momentos são configuráveis com proteção administrativa", () => {
+  assert.match(ui, /Horas permitidas/);
+  assert.match(ui, /Salvar momento e prazo/);
+  assert.match(operacao, /f2_configurar_etapa/);
+  assert.match(operacao, /f2_configurar_momento/);
+  assert.match(operacao, /etapa_em_uso/);
+  assert.match(operacao, /momento_em_uso/);
 });
