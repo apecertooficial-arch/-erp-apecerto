@@ -523,6 +523,7 @@ function Detalhe({ accessToken, lead, momento, momentos, etapas, eventos, busy, 
   const [chatAberto, setChatAberto] = useState(true);
   const [mensagens, setMensagens] = useState<Mensagem[]>([]);
   const [instanciasChat, setInstanciasChat] = useState<InstanciaChat[]>([]);
+  const [instanciaSelecionada, setInstanciaSelecionada] = useState("todas");
   const [chatErro, setChatErro] = useState("");
   const [chatLoading, setChatLoading] = useState(false);
   const config = momentos.find((m) => m.codigo === codigo) ?? momento;
@@ -536,8 +537,13 @@ function Detalhe({ accessToken, lead, momento, momentos, etapas, eventos, busy, 
     const json = await response.json().catch(() => ({})) as { mensagens?: Mensagem[]; instancias?: InstanciaChat[]; historicoCompleto?: boolean; error?: string };
     setChatLoading(false);
     if (!response.ok) { setChatErro(json.error ?? "Não foi possível carregar o histórico."); return; }
+    const novasInstancias = json.instancias ?? [];
     setMensagens(json.mensagens ?? []);
-    setInstanciasChat(json.instancias ?? []);
+    setInstanciasChat(novasInstancias);
+    setInstanciaSelecionada((anterior) => {
+      if (anterior !== "todas" && novasInstancias.some((item) => item.id === anterior)) return anterior;
+      return novasInstancias.find((item) => item.atual)?.id ?? novasInstancias[0]?.id ?? "todas";
+    });
   }, [accessToken, lead.id]);
 
   useEffect(() => {
@@ -550,6 +556,10 @@ function Detalhe({ accessToken, lead, momento, momentos, etapas, eventos, busy, 
     setChatAberto(true);
     if (mensagens.length === 0 && !chatLoading) void carregarChat();
   }
+  const instanciaAtiva = instanciasChat.find((item) => item.id === instanciaSelecionada) ?? null;
+  const mensagensVisiveis = instanciaSelecionada === "todas"
+    ? mensagens
+    : mensagens.filter((item) => item.instancia_id === instanciaSelecionada);
   return <div className="f2-overlay" onClick={onFechar}>
     <aside className="f2-detalhe" aria-label={`Detalhe de ${lead.nome}`} onClick={(e) => e.stopPropagation()}>
       <div className="f2-detalhe-topo"><div><span className="f2-eyebrow">LEAD-CÓPIA · #{lead.origem_negocio_id}</span><h2>{lead.nome}</h2><p>{lead.corretor_nome ?? "Sem corretor"} · original protegido</p></div><button type="button" onClick={onFechar} aria-label="Fechar detalhe">×</button></div>
@@ -576,13 +586,13 @@ function Detalhe({ accessToken, lead, momento, momentos, etapas, eventos, busy, 
         <div className="f2-chat-topo"><div><span className="f2-eyebrow">CONVERSA REAL · SOMENTE LEITURA</span><h3>{lead.historico_completo ? "Histórico completo do atendimento" : "Histórico desde a pesca"}</h3><small>{lead.historico_completo ? "Carteira migrada: toda a conversa vinculada no D-API está disponível para a Sara e para a gestão." : "Lead pescado: mensagens anteriores permanecem ocultas. O D-API sincroniza a conversa nova."}</small></div><div><button type="button" onClick={() => void carregarChat()}>↻</button></div></div>
         <div className="f2-chat-instancia">
           <span>INSTÂNCIA D-API DESTA CONVERSA</span>
-          {instanciasChat.length > 0 ? <><b>{instanciasChat[0].rotulo}</b><small>{[instanciasChat[0].telefone,instanciasChat[0].status].filter(Boolean).join(" · ")}{instanciasChat.length > 1 ? ` · mais ${instanciasChat.length-1} instância(s) no histórico` : ""}</small></> : <><b>Instância ainda não identificada</b><small>Nenhuma conversa D-API vinculada a este lead.</small></>}
+          {instanciasChat.length > 0 ? <><label><b>Ver histórico da instância</b><select aria-label="Instância do histórico" value={instanciaSelecionada} onChange={(event) => setInstanciaSelecionada(event.target.value)}>{instanciasChat.length > 1 && <option value="todas">Todas as instâncias ({instanciasChat.length})</option>}{instanciasChat.map((item) => <option key={item.id} value={item.id}>{item.rotulo}{item.atual ? " · usada por último" : ""}</option>)}</select></label><small>{instanciaAtiva ? [instanciaAtiva.telefone,instanciaAtiva.status].filter(Boolean).join(" · ") : "Histórico consolidado de todas as instâncias vinculadas."}</small></> : <><b>Instância ainda não identificada</b><small>Nenhuma conversa D-API vinculada a este lead. O CRM não inventa histórico: este cadastro precisa ser vinculado ou sincronizado.</small></>}
         </div>
         {chatLoading && <p>Carregando conversa…</p>}
         {chatErro && <p className="f2-chat-erro">{chatErro}</p>}
         <div className="f2-mensagens">
-          {mensagens.map((msg) => { const cliente = mensagemDoCliente(msg.direcao); const instancia = instanciasChat.find((item) => item.id === msg.instancia_id); return <article key={msg.id} className={cliente ? "recebida" : "enviada"}><small>{cliente ? "Cliente" : "Corretor"} · {dataCurta(msg.enviado_em ?? msg.criado_em)}{instanciasChat.length > 1 && instancia ? ` · ${instancia.rotulo}` : ""}</small><span>{msg.transcricao || msg.conteudo || `[${msg.tipo}]`}</span></article>; })}
-          {!chatLoading && !chatErro && mensagens.length === 0 && <p>{lead.historico_completo ? "Nenhuma conversa D-API foi vinculada a este lead. A pendência fica visível para correção cadastral." : "Nenhuma mensagem desde a pesca. A primeira conversa confirmada pelo D-API aparecerá aqui."}</p>}
+          {mensagensVisiveis.map((msg) => { const cliente = mensagemDoCliente(msg.direcao); const instancia = instanciasChat.find((item) => item.id === msg.instancia_id); return <article key={msg.id} className={cliente ? "recebida" : "enviada"}><small>{cliente ? "Cliente" : "Corretor"} · {dataCurta(msg.enviado_em ?? msg.criado_em)}{instanciasChat.length > 1 && instancia ? ` · ${instancia.rotulo}` : ""}</small><span>{msg.transcricao || msg.conteudo || `[${msg.tipo}]`}</span></article>; })}
+          {!chatLoading && !chatErro && mensagensVisiveis.length === 0 && <p>{lead.historico_completo ? "Nenhuma conversa D-API foi vinculada a este lead nesta instância. Selecione outra instância ou sinalize o cadastro para sincronização." : "Nenhuma mensagem desde a pesca nesta instância. A primeira conversa confirmada pelo D-API aparecerá aqui."}</p>}
         </div>
       </section>}
 

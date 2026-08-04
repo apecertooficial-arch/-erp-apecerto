@@ -20,7 +20,6 @@ import { useEffect, useState, type ReactNode } from "react";
 import { NOVA_CRM_CSS } from "./styles";
 import { crmNovaEraLiberado } from "./featureFlag";
 import { Crm3Workspace } from "../crm-nova-era-3/Crm3Workspace";
-import { TelaCrmMobile } from "./TelaCrmMobile";
 import { useEhCelular } from "../system/useFormato";
 import { Funil2Workspace } from "../funil-2/Funil2Workspace";
 
@@ -198,30 +197,11 @@ export function CrmNovaEraGate({
      proíbe isso na tela do corretor. No desktop ela continua, porque lá é
      ferramenta de quem está comparando as duas versões. */
   if (ehCelular === true && variante === "nova-era" && podeLive) {
-    if (podeFunil2) {
-      return (
-        <Funil2Workspace
-          accessToken={accessToken as string}
-          profile={{ userId: profile!.userId as string, role: profile?.role ?? "admin", name: profile?.name ?? "Administrador" }}
-        />
-      );
-    }
     return (
-      <>
-        <style>{NOVA_CRM_CSS}</style>
-        <TelaCrmMobile
-          accessToken={accessToken as string}
-          nome={profile?.name ?? "Corretor"}
-          onAbrirLead={(id) => {
-            /* Saída de EXCEÇÃO ("Abrir no CRM completo", menu da ficha).
-               Recarrega de propósito (`assign`, não router): o destino é o
-               CrmWorkspace, e é a montagem nova que faz o gate ver o pedido.
-               `crm=atual` porque o que se quer aqui é a tela completa. */
-            if (typeof window !== "undefined") window.location.assign(`/crm?lead=${id}&crm=atual`);
-          }}
-          onIr={(destino) => { if (typeof window !== "undefined") window.location.assign(destino); }}
-        />
-      </>
+      <Funil2Workspace
+        accessToken={accessToken as string}
+        profile={{ userId: profile!.userId as string, role: profile?.role ?? "corretor", name: profile?.name ?? "Corretor" }}
+      />
     );
   }
 
