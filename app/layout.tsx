@@ -18,6 +18,9 @@ import "./styles/correcoes-celular.css";
 /* A ÚLTIMA: a ação de gestão é a exceção da regra do verde, então precisa
    vir depois de quem pinta de verde. */
 import "./styles/tela-gestao-card.css";
+/* Depois de tela-gestao-card sem quebrar a regra dela: esta folha só trata de
+   layout e rolagem das colunas de kanban — não toca em cor nem em token. */
+import "./styles/esteira-rolagem.css";
 import { RegistroPwa } from "./components/RegistroPwa";
 
 export const metadata: Metadata = {
