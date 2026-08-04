@@ -81,7 +81,9 @@ BEGIN
   WHERE id=true;
   SELECT to_jsonb(c) INTO v_depois FROM public.f2_operacao_config c WHERE id=true;
   INSERT INTO public.f2_config_audit(tipo,chave,acao,antes,depois,criado_por)
-  VALUES('operacao','principal','configurar',v_antes,v_depois,v_uid);
+  -- Reusa o vocabulário fechado da auditoria existente. A chave reservada
+  -- distingue a configuração operacional das configurações de momento.
+  VALUES('momento','operacao:principal','configurar_operacao',v_antes,v_depois,v_uid);
   RETURN jsonb_build_object('ok',true,'config',v_depois);
 END;$fn$;
 
