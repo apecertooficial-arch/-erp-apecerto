@@ -135,11 +135,21 @@ DECLARE v_id uuid; v_m public.f2_momento_config%ROWTYPE;
 BEGIN
   SELECT m.* INTO v_m
   FROM public.ncrm_estado e
-  JOIN public.f2_momento_config m ON m.codigo = CASE e.momento_codigo
-    WHEN 'BUSCANDO_PRODUTO' THEN 'PROCURANDO_PRODUTO'
-    WHEN 'FEEDBACK_POS_VISITA' THEN 'COLETAR_FEEDBACK'
-    WHEN 'DECISAO_POS_VISITA' THEN 'ACOMPANHAMENTO_POS_VISITA'
-    ELSE e.momento_codigo END
+  JOIN public.f2_momento_config m ON m.codigo = COALESCE(
+    CASE e.momento_codigo
+      WHEN 'BUSCANDO_PRODUTO' THEN 'PROCURANDO_PRODUTO'
+      WHEN 'FEEDBACK_POS_VISITA' THEN 'COLETAR_FEEDBACK'
+      WHEN 'DECISAO_POS_VISITA' THEN 'ACOMPANHAMENTO_POS_VISITA'
+      ELSE e.momento_codigo
+    END,
+    CASE e.etapa
+      WHEN 'novo' THEN 'PRIMEIRA_ABORDAGEM'
+      WHEN 'tentando_contato' THEN 'CADENCIA_SEM_RESPOSTA'
+      WHEN 'em_atendimento' THEN 'CONVERSANDO_QUALIFICANDO'
+      WHEN 'em_acompanhamento' THEN 'ACOMPANHAMENTO_POS_VISITA'
+      ELSE NULL
+    END
+  )
   WHERE e.negocio_id=p_negocio_id;
   IF v_m.codigo IS NULL THEN RAISE EXCEPTION 'momento_do_negocio_nao_mapeado'; END IF;
 

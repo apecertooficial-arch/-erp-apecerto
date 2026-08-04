@@ -10,6 +10,9 @@ RESET ROLE;
 
 SELECT public.test_assert((SELECT count(*) FROM public.f2_lead)=2,
   '#f2-01 importa exatamente duas cópias');
+SELECT public.test_assert(
+  (SELECT momento_codigo FROM public.f2_lead WHERE origem_negocio_id=700)='CADENCIA_SEM_RESPOSTA',
+  '#f2-01b estado antigo sem momento usa o momento oficial da etapa como fallback');
 SELECT public.test_assert((SELECT count(*) FROM public.negocios WHERE id IN(700,71991))=2,
   '#f2-02 negócios originais continuam existentes');
 SELECT public.test_assert((SELECT count(*) FROM public.f2_momento_config WHERE ativo)=10
