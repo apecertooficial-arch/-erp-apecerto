@@ -10,6 +10,7 @@ const operacao = readFileSync(new URL("../supabase/migrations/20260810170000_fun
 const pesca = readFileSync(new URL("../supabase/migrations/20260810180000_funil_2_pesca_simples.sql", import.meta.url), "utf8");
 const conversaPosPesca = readFileSync(new URL("../supabase/migrations/20260810190000_funil_2_conversa_pos_pesca.sql", import.meta.url), "utf8");
 const configOperacao = readFileSync(new URL("../supabase/migrations/20260810200000_funil_2_config_operacao.sql", import.meta.url), "utf8");
+const aquarioReal = readFileSync(new URL("../supabase/migrations/20260810220000_funil_2_aquario_real.sql", import.meta.url), "utf8");
 const conversaRoute = readFileSync(new URL("../app/api/funil2/conversa/route.ts", import.meta.url), "utf8");
 const modelo = readFileSync(new URL("../app/features/funil-2/modelo.ts", import.meta.url), "utf8");
 
@@ -60,7 +61,8 @@ test("cadência mostra o dia oficial como ação executável", () => {
 
 test("card e ficha oferecem conversa e atalhos operacionais", () => {
   assert.match(ui, />💬 Chat</);
-  assert.match(ui, /Conversa desde a entrada no Funil 2\.0/);
+  assert.match(ui, /Histórico desde a entrada neste funil/);
+  assert.match(ui, /WhatsApp/);
   assert.match(ui, /Agendar visita/);
   assert.match(ui, /Gerar negociação/);
 });
@@ -70,8 +72,8 @@ test("lead pescado nasce sem expor o histórico anterior no Funil 2.0", () => {
   assert.match(conversaPosPesca, /COALESCE\(corte_conversa_em, criado_em\)/);
   assert.match(conversaRoute, /from\("f2_lead"\)/);
   assert.match(conversaRoute, /\.gte\("criado_em", corte\)/);
-  assert.match(ui, /mensagens anteriores ficam ocultas aqui/);
-  assert.match(ui, /O histórico anterior à pesca não aparece nesta ficha/);
+  assert.match(ui, /histórico anterior fica oculto/);
+  assert.match(ui, /Mensagens anteriores à pesca permanecem ocultas/);
   assert.doesNotMatch(ui, /O histórico permanece disponível/);
 });
 
@@ -144,27 +146,49 @@ test("etapas e momentos são configuráveis com proteção administrativa", () =
 
 test("Todos os Leads filtra pelas etapas do vocabulário oficial", () => {
   assert.match(ui, /const \[filtro, setFiltro\] = useState\("todos"\)/);
-  assert.match(ui, /const filtrados = filtro === "todos"/);
+  assert.match(ui, /const \[busca, setBusca\]/);
+  assert.match(ui, /Nome ou telefone/);
+  assert.match(ui, /Situação do prazo/);
   assert.match(ui, /filtrados\.map/);
 });
 
 test("Performance separa disciplina controlável de resultado comercial", () => {
-  assert.match(ui, /Performance da conduta/);
-  assert.match(ui, /ÍNDICE DE EXECUÇÃO/);
-  assert.match(ui, /RESULTADO COMERCIAL/);
+  assert.match(ui, /Performance exclusiva do CRM/);
+  assert.match(ui, /DISCIPLINA CONTROLÁVEL/);
+  assert.match(ui, /EVIDÊNCIA, NÃO CLIQUE/);
+  assert.match(ui, /POR CORRETOR/);
   for (const peso of ["peso_primeira_abordagem", "peso_acoes_prazo", "peso_feedback_visita", "peso_presenca_dapi", "peso_coerencia_sara"]) {
     assert.match(ui, new RegExp(peso));
   }
 });
 
 test("configuração única persiste roleta manual, disciplina e pesos sem ligar disparo automático", () => {
-  assert.match(ui, /CONTRATO ÚNICO/);
+  assert.match(ui, /REGRAS DA OPERAÇÃO/);
   assert.match(ui, /Distribuição manual/);
-  assert.match(ui, /Ela não liga abordagem automática/);
+  assert.match(ui, /nunca liga abordagem automática/);
+  assert.match(ui, /Abrir distribuição em Automações/);
   assert.match(configOperacao, /CREATE TABLE IF NOT EXISTS public\.f2_operacao_config/);
   assert.match(configOperacao, /f2_configurar_operacao/);
   assert.match(configOperacao, /peso_primeira_abordagem \+ peso_acoes_prazo \+ peso_feedback_visita \+ peso_presenca_dapi \+ peso_coerencia_sara = 100/);
   assert.match(configOperacao, /SECURITY DEFINER SET search_path TO ''/);
   assert.match(configOperacao, /sem_permissao/);
   assert.doesNotMatch(configOperacao, /motor_envia_abordagem|dapi-enviar|enviar-whatsapp/);
+});
+
+test("pesca lista somente a base canônica do Aquário e não herda corretor ou histórico", () => {
+  assert.match(aquarioReal, /s\.chave='operacao_aquario'/);
+  assert.match(aquarioReal, /n\.corretor_id IS NULL/);
+  assert.match(aquarioReal, /l\.corretor_id IS NULL/);
+  assert.match(aquarioReal, /'novo','PRIMEIRA_ABORDAGEM'/);
+  assert.match(aquarioReal, /NULL,NULL/);
+  assert.match(aquarioReal, /corte_conversa_em/);
+  assert.doesNotMatch(aquarioReal, /UPDATE public\.(?:ncrm_estado|negocios|leads|visitas|vendas)/);
+  assert.doesNotMatch(ui, /c\.corretor_nome/);
+});
+
+test("interface declara com honestidade o papel e o estado da Sara no Funil 2.0", () => {
+  assert.match(ui, /PAPEL DA SARA/);
+  assert.match(ui, /Ela lê, recomenda e fiscaliza/);
+  assert.match(ui, /Reavaliação automática do Funil 2\.0 ainda não conectada/);
+  assert.match(ui, /não envia por você/i);
 });

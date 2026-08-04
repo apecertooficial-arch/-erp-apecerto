@@ -52,8 +52,13 @@ export type NegociacaoFunil2 = {
 export type CandidatoAquarioFunil2 = {
   negocio_id: number;
   nome: string;
-  corretor_nome: string | null;
-  momento: string | null;
+};
+
+export type SaraStatusFunil2 = {
+  modo: string | null;
+  runnerAtivo: boolean;
+  analisesNoLaboratorio: number;
+  reavaliacaoAutomaticaFunil2: boolean;
 };
 
 export type OperacaoConfigFunil2 = {
