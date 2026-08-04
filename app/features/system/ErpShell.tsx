@@ -15,7 +15,6 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import { AppShell } from "../../components/AppShell";
 import { ProfilePanel } from "../../components/ProfilePanel";
-import { ConviteInstalar } from "../../components/ConviteInstalar";
 import type { ModuleName } from "./module-map";
 import { moduloDoPath, pathDoModulo, rotasModulo, itensDaNavegacao } from "./erp-routes";
 import { useErpSession } from "./ErpSession";
@@ -32,7 +31,6 @@ function IconeBarra({ modulo }: { modulo: ModuleName | "Mais" }) {
 export function ErpShell({ children }: { children: ReactNode }) {
   const pathname = usePathname() || "/";
   const { profile, permissoes, role, isManager, perfilCarregado, badges, recarregarPerfil } = useErpSession();
-  const [maisAberto, setMaisAberto] = useState(false);
   const [perfilAberto, setPerfilAberto] = useState(false);
 
   const moduloAtual = moduloDoPath(pathname) ?? "Início";
@@ -45,21 +43,13 @@ export function ErpShell({ children }: { children: ReactNode }) {
      daquele modulo; ate la o sino aparece limpo, que e a verdade. */
   const naoLidas = badges["Notificações"] ?? 0;
   const rotuloSino = naoLidas > 0 ? `Notificações: ${naoLidas} não lidas` : "Notificações";
-  const { barra: itensBarra, mais: noMais } = itensDaNavegacao({ role, permissoes, carregado: perfilCarregado, isManager });
+  const { barra: itensBarra } = itensDaNavegacao({ role, permissoes, carregado: perfilCarregado, isManager });
 
   // Trocar de rota volta o scroll pro topo. Sem setState aqui: a folha "Mais"
   // e fechada no proprio clique do link, que e onde a intencao acontece.
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: "auto" });
   }, [pathname]);
-
-  // Voltar do Android/gesto do iOS fecha a folha antes de sair da rota.
-  useEffect(() => {
-    if (!maisAberto) return;
-    const fechar = () => setMaisAberto(false);
-    window.addEventListener("popstate", fechar);
-    return () => window.removeEventListener("popstate", fechar);
-  }, [maisAberto]);
 
   return (
     <AppShell
@@ -115,10 +105,6 @@ export function ErpShell({ children }: { children: ReactNode }) {
             {(badges[m] ?? 0) > 0 && <i className="abn-badge" aria-hidden="true">{(badges[m] ?? 0) > 99 ? "99+" : badges[m]}</i>}
           </Link>
         ))}
-        <button type="button" onClick={() => setMaisAberto((v) => !v)} aria-expanded={maisAberto} className={maisAberto ? "active" : ""}>
-          <IconeBarra modulo="Mais" />
-          <span>Mais</span>
-        </button>
       </nav>
 
       {perfilAberto && (
@@ -129,21 +115,6 @@ export function ErpShell({ children }: { children: ReactNode }) {
         />
       )}
 
-      {maisAberto && (
-        <div className="app-mais-overlay" role="dialog" aria-label="Mais módulos" onClick={() => setMaisAberto(false)}>
-          <div className="app-mais-folha" onClick={(e) => e.stopPropagation()}>
-            <header><strong>Mais</strong><button type="button" onClick={() => setMaisAberto(false)} aria-label="Fechar">×</button></header>
-            <ConviteInstalar />
-            {noMais.length === 0
-              ? <p className="app-mais-vazio">Nenhum outro módulo liberado para o seu acesso.</p>
-              : <div className="app-mais-grid">
-                  {noMais.map((m) => (
-                    <Link key={m} href={pathDoModulo(m)} onClick={() => setMaisAberto(false)}>{rotasModulo[m].rotuloCurto ?? m}</Link>
-                  ))}
-                </div>}
-          </div>
-        </div>
-      )}
     </AppShell>
   );
 }

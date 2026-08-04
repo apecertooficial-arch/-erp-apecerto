@@ -4,7 +4,7 @@
 // telefones, leads, sessao e respostas do Supabase passam direto para a rede e
 // nunca sao gravadas. O cache guarda apenas a casca publica do aplicativo.
 
-const VERSAO = "apecerto-v2";
+const VERSAO = "apecerto-v3";
 const CACHE_ESTATICO = `estatico-${VERSAO}`;
 const OFFLINE = "/offline.html";
 
@@ -33,12 +33,11 @@ function ehPrivado(url) {
 function ehEstaticoVersionado(url) {
   return url.pathname.startsWith("/_next/static/")
     || url.pathname.startsWith("/icons/")
-    || url.pathname === "/manifest.webmanifest"
     || url.pathname === OFFLINE;
 }
 
 self.addEventListener("install", (evento) => {
-  evento.waitUntil(caches.open(CACHE_ESTATICO).then((c) => c.addAll(PRECACHE)));
+  evento.waitUntil(caches.open(CACHE_ESTATICO).then((c) => c.addAll(PRECACHE)).then(() => self.skipWaiting()));
 });
 
 self.addEventListener("activate", (evento) => {
