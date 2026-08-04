@@ -59,6 +59,9 @@ export type SaraStatusFunil2 = {
   runnerAtivo: boolean;
   analisesNoLaboratorio: number;
   reavaliacaoAutomaticaFunil2: boolean;
+  loteFunil2?: number | null;
+  modoExecucaoFunil2?: "canary" | "completo";
+  canaryLimiteFunil2?: number | null;
 };
 
 export type OperacaoConfigFunil2 = {
