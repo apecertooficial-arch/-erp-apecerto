@@ -66,7 +66,8 @@ function pedeWorkspace3(): boolean {
 function pedeFunil2(): boolean {
   if (typeof window === "undefined") return false;
   try {
-    return new URLSearchParams(window.location.search).get("crm") === "funil-2";
+    const parametros = new URLSearchParams(window.location.search);
+    return parametros.get("crm") === "funil-2" || window.matchMedia("(max-width: 900px)").matches;
   } catch {
     return false;
   }
@@ -138,8 +139,8 @@ export function CrmNovaEraGate({
   if (!liberado) return <>{current}</>;
 
   const podeLive = !!accessToken && !!profile?.userId;
-  const podeFunil2 = profile?.userId === "4dfdffae-0009-41de-8d6f-2365a06dc066"
-    || ["admin", "executivo"].includes((profile?.role ?? "").toLowerCase());
+  const podeFunil2 = ["admin", "executivo", "gestor", "gerente", "diretor", "corretor"].includes((profile?.role ?? "").toLowerCase())
+    || profile?.userId === "4dfdffae-0009-41de-8d6f-2365a06dc066";
 
   /* Laboratório isolado: entrada explícita e administrativa. A mesma regra é
      repetida no banco; esconder a tela aqui é UX, RLS é a autoridade. */

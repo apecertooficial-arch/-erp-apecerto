@@ -20,8 +20,7 @@
   ],
   "shortcuts": [
     { "name": "Início", "short_name": "Início", "url": "/inicio?origem=atalho", "icons": [{ "src": "/icons/icone-192.png", "sizes": "192x192" }] },
-    { "name": "CRM", "short_name": "CRM", "url": "/crm?origem=atalho", "icons": [{ "src": "/icons/icone-192.png", "sizes": "192x192" }] },
-    { "name": "Agenda", "short_name": "Agenda", "url": "/agenda?origem=atalho", "icons": [{ "src": "/icons/icone-192.png", "sizes": "192x192" }] },
-    { "name": "Notificações", "short_name": "Avisos", "url": "/notificacoes?origem=atalho", "icons": [{ "src": "/icons/icone-192.png", "sizes": "192x192" }] }
+    { "name": "CRM", "short_name": "CRM", "url": "/crm?crm=funil-2&origem=atalho", "icons": [{ "src": "/icons/icone-192.png", "sizes": "192x192" }] },
+    { "name": "Agenda", "short_name": "Agenda", "url": "/agenda?origem=atalho", "icons": [{ "src": "/icons/icone-192.png", "sizes": "192x192" }] }
   ]
 }

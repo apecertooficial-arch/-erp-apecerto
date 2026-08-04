@@ -63,8 +63,8 @@ export const rotasModulo: Record<ModuleName, RotaModulo> = {
   Ajuda: { path: "/ajuda", slugs: [], classe: "C" },
 };
 
-/** Barra inferior do celular. Quatro itens fixos + o botao "Mais". */
-export const barraInferior: ModuleName[] = ["Início", "CRM", "Calendário", "Notificações"];
+/** Aplicativo operacional: somente as três entradas que o corretor usa todo dia. */
+export const barraInferior: ModuleName[] = ["Início", "CRM", "Calendário"];
 
 const porPath = new Map<string, ModuleName>(
   (Object.entries(rotasModulo) as Array<[ModuleName, RotaModulo]>).map(([nome, rota]) => [rota.path, nome]),

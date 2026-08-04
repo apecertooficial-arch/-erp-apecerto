@@ -173,7 +173,8 @@ test("a tela do corretor nao mostra gestao antes da fila", () => {
   const celular = home.slice(home.indexOf("if (ehCelular === true)"), home.indexOf("if (ehCelular === null)"));
   const posFila = celular.indexOf("MeuDiaCorretor");
   const posGestao = celular.indexOf("hm-gestao");
-  assert.ok(posFila > -1 && posGestao > posFila, "meta e funil nao podem vir antes da fila do dia");
+  assert.ok(posFila > -1, "a fila do dia continua sendo a entrada operacional");
+  assert.equal(posGestao, -1, "o aplicativo simplificado nao mistura gestao com o dia do corretor");
   assert.ok(!/hv2-hero|Abrir Financeiro/.test(celular), "meta e Financeiro nao aparecem na tela do corretor");
 });
 
