@@ -7,6 +7,7 @@ const gate = readFileSync(new URL("../app/features/crm-nova-era/CrmNovaEraGate.t
 const migration = readFileSync(new URL("../supabase/migrations/20260810150000_funil_2_isolado.sql", import.meta.url), "utf8");
 const clareza = readFileSync(new URL("../supabase/migrations/20260810160000_funil_2_cadencia_clara.sql", import.meta.url), "utf8");
 const operacao = readFileSync(new URL("../supabase/migrations/20260810170000_funil_2_operacao_completa.sql", import.meta.url), "utf8");
+const pesca = readFileSync(new URL("../supabase/migrations/20260810180000_funil_2_pesca_simples.sql", import.meta.url), "utf8");
 const modelo = readFileSync(new URL("../app/features/funil-2/modelo.ts", import.meta.url), "utf8");
 
 test("Funil 2.0 se apresenta como laboratório isolado de duas cópias", () => {
@@ -80,6 +81,20 @@ test("laboratório entrega abas operacionais e pesca sem tocar no legado", () =>
   assert.match(operacao, /f2_pescar_negocio/);
   assert.doesNotMatch(operacao, /UPDATE public\.(?:ncrm_estado|negocios|leads|visitas|vendas)/);
   assert.doesNotMatch(operacao, /DELETE FROM public\.(?:ncrm_estado|negocios|leads|visitas|vendas)/);
+});
+
+test("pesca é simples para o usuário e reinicia a cópia em primeira abordagem", () => {
+  assert.match(ui, /Pescar lead/);
+  assert.match(ui, /Novo · Primeira abordagem/);
+  assert.match(ui, /Prazo de 5 minutos/);
+  assert.doesNotMatch(ui, /Cópia a substituir|Substituir cópia e pescar/);
+  assert.match(pesca, /pg_advisory_xact_lock/);
+  assert.match(pesca, /ORDER BY criado_em ASC,id ASC/);
+  assert.match(pesca, /etapa='novo'/);
+  assert.match(pesca, /momento_codigo='PRIMEIRA_ABORDAGEM'/);
+  assert.match(pesca, /proxima_acao_em=now\(\)\+interval '5 minutes'/);
+  assert.doesNotMatch(pesca, /UPDATE public\.(?:ncrm_estado|negocios|leads|visitas|vendas)/);
+  assert.doesNotMatch(pesca, /DELETE FROM public\.(?:ncrm_estado|negocios|leads|visitas|vendas)/);
 });
 
 test("etapas e momentos são configuráveis com proteção administrativa", () => {

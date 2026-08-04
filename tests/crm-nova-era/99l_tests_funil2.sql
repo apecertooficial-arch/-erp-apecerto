@@ -5,6 +5,10 @@ INSERT INTO public.leads(id,nome,telefone)
 VALUES(71992,'Lead legado sem momento','11999997192') ON CONFLICT(id) DO NOTHING;
 INSERT INTO public.negocios(id,lead_id,corretor_id,status,pipeline_id,stage_id)
 VALUES(71992,71992,71991,'aberto',2,20) ON CONFLICT(id) DO NOTHING;
+INSERT INTO public.leads(id,nome,telefone)
+VALUES(71993,'Lead pescado simples','11999997193') ON CONFLICT(id) DO NOTHING;
+INSERT INTO public.negocios(id,lead_id,corretor_id,status,pipeline_id,stage_id)
+VALUES(71993,71993,71991,'aberto',2,20) ON CONFLICT(id) DO NOTHING;
 INSERT INTO public.ncrm_estado(
   negocio_id,workflow_config_id,etapa,momento_codigo,respondeu,resposta_pendente,
   proxima_acao_tipo,proxima_acao_titulo,proxima_acao_em,origem_ultima
@@ -13,6 +17,19 @@ SELECT 71992,id,'tentando_contato',NULL,false,false,
   'tentativa_cadencia','Enviar cadência',now()+interval '1 day','usuario'
 FROM public.ncrm_workflow_config WHERE status='publicada' ORDER BY versao DESC LIMIT 1
 ON CONFLICT(negocio_id) DO UPDATE SET momento_codigo=NULL,etapa='tentando_contato';
+INSERT INTO public.ncrm_estado(
+  negocio_id,workflow_config_id,etapa,momento_codigo,respondeu,resposta_pendente,
+  primeira_resposta_em,proxima_acao_tipo,proxima_acao_titulo,proxima_acao_em,origem_ultima
+)
+SELECT 71993,id,'em_atendimento','CONVERSANDO_QUALIFICANDO',true,true,
+  now(),'entender_necessidade','Entender necessidade',now()+interval '1 day','usuario'
+FROM public.ncrm_workflow_config WHERE status='publicada' ORDER BY versao DESC LIMIT 1
+ON CONFLICT(negocio_id) DO UPDATE SET
+  momento_codigo='CONVERSANDO_QUALIFICANDO',
+  etapa='em_atendimento',
+  respondeu=true,
+  resposta_pendente=true,
+  primeira_resposta_em=coalesce(public.ncrm_estado.primeira_resposta_em,now());
 UPDATE public.ncrm_estado SET momento_codigo='DECISAO_POS_VISITA' WHERE negocio_id=71991;
 
 SELECT set_config('request.jwt.claims','{"role":"service_role"}',false);
@@ -108,6 +125,29 @@ SELECT public.test_assert((public.f2_salvar_negociacao(NULL,:'_f2_id','Oportunid
   '#f2-20 Esteira recebe negociação ligada à cópia');
 SELECT public.test_assert((SELECT count(*) FROM public.f2_lead)=2,
   '#f2-21 configurações, visita e negociação preservam limite de duas cópias');
+SELECT public.f2_pescar_negocio(71993,NULL) AS _f2_pesca_simples \gset
+SELECT public.test_assert((:'_f2_pesca_simples'::jsonb->>'ok')::boolean,
+  '#f2-23 pesca simples não exige escolher cópia para substituir');
+SELECT public.test_assert((SELECT count(*) FROM public.f2_lead)=2
+  AND (SELECT count(*) FROM public.f2_lead WHERE origem_negocio_id=71993)=1
+  AND (SELECT count(*) FROM public.f2_lead WHERE origem_negocio_id IN(71991,71992))=1,
+  '#f2-24 pesca mantém duas cópias e substitui silenciosamente somente a mais antiga');
+SELECT public.test_assert((SELECT etapa='novo'
+    AND momento_codigo='PRIMEIRA_ABORDAGEM'
+    AND acao_codigo='PRIMEIRA_ABORDAGEM'
+    AND cadencia_passo=0
+    AND ultima_acao_confirmada_em IS NULL
+  FROM public.f2_lead WHERE origem_negocio_id=71993),
+  '#f2-25 lead pescado entra em Novo e Primeira abordagem com estado limpo');
+SELECT public.test_assert((SELECT proxima_acao_em BETWEEN now()+interval '4 minutes' AND now()+interval '6 minutes'
+  FROM public.f2_lead WHERE origem_negocio_id=71993),
+  '#f2-26 primeira abordagem vence em cinco minutos');
+SELECT public.test_assert(EXISTS(SELECT 1 FROM public.negocios WHERE id=71993)
+  AND EXISTS(SELECT 1 FROM public.leads WHERE id=71993),
+  '#f2-27 pesca preserva lead e negócio originais');
+SELECT public.test_assert(EXISTS(SELECT 1 FROM public.f2_config_audit
+    WHERE tipo='pesca' AND chave='71993' AND acao='pescar_lead'),
+  '#f2-28 substituição automática fica auditada');
 RESET ROLE;
 
 SELECT public.test_assert(
