@@ -88,11 +88,12 @@ test("lead pescado nasce sem expor o histórico anterior no Funil 2.0", () => {
   assert.doesNotMatch(ui, /O histórico permanece disponível/);
 });
 
-test("interface usa blocos separados para etapa, momento e próxima ação", () => {
+test("card e ficha separam etapa, momento e próxima ação", () => {
   assert.match(ui, /f2-card-trio/);
-  assert.match(ui, /f2-quadrado etapa/);
-  assert.match(ui, /f2-quadrado momento/);
-  assert.match(ui, /f2-quadrado acao/);
+  assert.match(ui, /f2-agora-grid/);
+  assert.match(ui, /className="etapa"/);
+  assert.match(ui, /className="momento"/);
+  assert.match(ui, /className="acao"/);
   assert.match(ui, /PRÓXIMA AÇÃO/);
 });
 
@@ -161,6 +162,15 @@ test("Todos os Leads filtra pelas etapas do vocabulário oficial", () => {
   assert.match(ui, /Nome ou telefone/);
   assert.match(ui, /Situação do prazo/);
   assert.match(ui, /filtrados\.map/);
+});
+
+test("Todos os Leads usa linhas compactas com leitura e ações rápidas", () => {
+  assert.match(ui, /f2-tabela-compacta/);
+  assert.match(ui, /f2-lead-linha/);
+  assert.match(ui, /f2-lead-chip etapa/);
+  assert.match(ui, /f2-lead-chip momento/);
+  assert.match(ui, /f2-lead-acao/);
+  assert.match(ui, /f2-lead-acoes/);
 });
 
 test("Performance separa disciplina controlável de resultado comercial", () => {
