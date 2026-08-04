@@ -1,4 +1,5 @@
 import { createServerSupabaseClient } from "../../lib/supabase/server";
+import { ehOfertavel, estaPendente } from "../../lib/estoque";
 
 export const dynamic = "force-dynamic";
 
@@ -10,6 +11,7 @@ type UnitRow = {
   valor_tabela: number | null;
   valor_promo: number | null;
   disponivel: boolean;
+  aprovacao: string | null;
 };
 
 type MediaRow = {
@@ -47,7 +49,7 @@ export async function GET(request: Request) {
       id, nome, incorporadora, bairro, cidade, status, area_util, rascunho,
       dormitorios, suites, vagas, preco, created_at, publicado, origem,
       aprovacao, reprovacao_motivo, captado_por_usuario, captador_corretor_id,
-      unidades (id, area_m2, tipologia, vagas, valor_tabela, valor_promo, disponivel),
+      unidades (id, area_m2, tipologia, vagas, valor_tabela, valor_promo, disponivel, aprovacao),
       midias (id, tipo, storage_path, categoria, nome, is_capa)
     `)
     .order("created_at", { ascending: false })
@@ -64,7 +66,10 @@ export async function GET(request: Request) {
   const catalog = (data ?? []).map((item) => {
     const units = (item.unidades ?? []) as UnitRow[];
     const media = (item.midias ?? []) as MediaRow[];
-    const availableUnits = units.filter((unit) => unit.disponivel);
+    // Estoque ofertável = disponível E aprovado. Unidade de indicação pendente não
+    // entra na contagem nem no cálculo do "a partir de" — ver app/lib/estoque.ts.
+    const availableUnits = units.filter(ehOfertavel);
+    const pendingUnitCount = units.filter(estaPendente).length;
     const prices = availableUnits
       .map((unit) => unit.valor_promo ?? unit.valor_tabela)
       .filter((value): value is number => typeof value === "number");
@@ -93,6 +98,7 @@ export async function GET(request: Request) {
       suites: item.suites,
       parking: item.vagas,
       available: availableUnits.length,
+      pendingUnits: pendingUnitCount,
       units: units.length,
       media: media.length,
       coverUrl: cover ? publicMediaUrl(cover.storage_path) : null,
