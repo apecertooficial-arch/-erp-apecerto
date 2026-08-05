@@ -74,11 +74,20 @@ function contexto(): AudioContext | null {
   return ctx;
 }
 
-/* O navegador só libera áudio depois de um gesto do usuário. Chamamos isto no
-   primeiro clique da sessão para que o aviso seguinte já saia sem tropeço. */
+/* O navegador só libera áudio depois de um gesto do usuário, e o contexto pode
+   voltar a "suspended" sozinho (troca de aba, sistema em economia). Por isso
+   isto NAO pode rodar uma vez só: tem de ser tentado a cada gesto ate o
+   contexto estar "running". Foi essa a causa de o aviso chegar mudo mesmo com
+   o service worker certo -- AudioContext ficava suspenso e ninguem retomava. */
 export function liberarAudio() {
   const c = contexto();
-  if (c && c.state === "suspended") void c.resume();
+  if (c && c.state !== "running") void c.resume();
+}
+
+/** Diz se o navegador ja liberou o audio. Util para avisar na tela. */
+export function audioLiberado(): boolean {
+  const c = contexto();
+  return !!c && c.state === "running";
 }
 
 type Nota = { f: number; em: number; dur: number; tipo?: OscillatorType; vol?: number };
@@ -114,8 +123,17 @@ const RECEITAS: Record<NomeSom, Nota[]> = {
 export function tocarSom(id: NomeSom = somEscolhido(), volume = volumeEscolhido()): boolean {
   const c = contexto();
   if (!c) return false;
-  if (c.state === "suspended") { void c.resume(); }
+  /* Suspenso: retoma e toca DEPOIS que o contexto voltar. Agendar as notas num
+     contexto suspenso faz elas nascerem e morrerem sem som. */
+  if (c.state !== "running") {
+    void c.resume().then(() => { if (c.state === "running") emitir(c, id, volume); });
+    return false;
+  }
+  emitir(c, id, volume);
+  return true;
+}
 
+function emitir(c: AudioContext, id: NomeSom, volume: number) {
   const mestre = c.createGain();
   mestre.gain.value = Math.max(0, Math.min(1, volume));
   mestre.connect(c.destination);
@@ -135,5 +153,4 @@ export function tocarSom(id: NomeSom = somEscolhido(), volume = volumeEscolhido(
     osc.start(agora + n.em);
     osc.stop(agora + n.em + n.dur + 0.02);
   }
-  return true;
 }

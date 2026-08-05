@@ -14,9 +14,15 @@ import { liberarAudio, tocarSom } from "../lib/somAviso";
  * Prendemos o primeiro clique/tecla da sessao so para destravar o contexto. */
 export function SomDeAviso() {
   useEffect(() => {
+    /* SEM { once: true }: o contexto pode voltar a suspenso a qualquer momento
+       (troca de aba, economia de energia do sistema). Tentar so no primeiro
+       clique deixava o aviso mudo pelo resto da sessao. */
     const destravar = () => liberarAudio();
-    window.addEventListener("pointerdown", destravar, { once: true });
-    window.addEventListener("keydown", destravar, { once: true });
+    window.addEventListener("pointerdown", destravar);
+    window.addEventListener("keydown", destravar);
+    window.addEventListener("focus", destravar);
+    document.addEventListener("visibilitychange", destravar);
+    destravar();
 
     const aoReceber = (evento: MessageEvent) => {
       const dado = evento.data as { tipo?: string } | null;
@@ -27,6 +33,8 @@ export function SomDeAviso() {
     return () => {
       window.removeEventListener("pointerdown", destravar);
       window.removeEventListener("keydown", destravar);
+      window.removeEventListener("focus", destravar);
+      document.removeEventListener("visibilitychange", destravar);
       navigator.serviceWorker?.removeEventListener("message", aoReceber);
     };
   }, []);

@@ -62,13 +62,19 @@ function pedeWorkspace3(): boolean {
   }
 }
 
+/* Desde 05/08/2026 o Funil 2.0 e O funil da operacao -- nao um laboratorio nem
+   uma etapa dentro do CRM antigo. Antes so aparecia com ?crm=funil-2 na URL ou
+   em tela de ate 900px: no computador o corretor caia no CRM 3.0 sem perceber,
+   e passava o dia no funil errado.
+
+   Agora e o padrao em qualquer tela. Quem precisar do CRM antigo continua
+   chegando por ?crm=atual, que a variante salva ja trata. */
 function pedeFunil2(): boolean {
-  if (typeof window === "undefined") return false;
+  if (typeof window === "undefined") return true;
   try {
-    const parametros = new URLSearchParams(window.location.search);
-    return parametros.get("crm") === "funil-2" || window.matchMedia("(max-width: 900px)").matches;
+    return new URLSearchParams(window.location.search).get("crm") !== "atual";
   } catch {
-    return false;
+    return true;
   }
 }
 
