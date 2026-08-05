@@ -29,6 +29,7 @@ export function somEscolhido(): NomeSom {
 }
 export function escolherSom(id: NomeSom) {
   if (typeof window !== "undefined") window.localStorage.setItem(CHAVE, id);
+  avisar();
 }
 export function volumeEscolhido(): number {
   if (typeof window === "undefined") return 0.9;
@@ -37,7 +38,27 @@ export function volumeEscolhido(): number {
 }
 export function escolherVolume(v: number) {
   if (typeof window !== "undefined") window.localStorage.setItem(CHAVE_VOL, String(v));
+  avisar();
 }
+
+/* Store minimo para o React ler a preferencia com useSyncExternalStore, em vez
+   de setState dentro de efeito -- que dispara render em cascata e o lint barra.
+   O snapshot precisa ser estavel: memorizamos e so trocamos quando muda. */
+const ouvintes = new Set<() => void>();
+function avisar() { for (const o of ouvintes) o(); }
+export function assinarPreferencia(cb: () => void) {
+  ouvintes.add(cb);
+  return () => { ouvintes.delete(cb); };
+}
+
+let cache = { som: "sino" as NomeSom, volume: 0.9 };
+export function preferenciaAtual() {
+  if (typeof window === "undefined") return cache;
+  const som = somEscolhido(); const volume = volumeEscolhido();
+  if (som !== cache.som || volume !== cache.volume) cache = { som, volume };
+  return cache;
+}
+export function preferenciaPadrao() { return cache; }
 
 let ctx: AudioContext | null = null;
 function contexto(): AudioContext | null {
