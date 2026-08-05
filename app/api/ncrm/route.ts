@@ -184,6 +184,7 @@ const ACOES: Record<string, { rpc: string; args: (c: Ctx) => Record<string, unkn
     args: ({ negocio_id, versao, idem, b }) => ({
       p_negocio_id: negocio_id, p_versao: versao, p_lead_id: b.leadId, p_data: b.data, p_hora_inicio: b.horaInicio,
       p_empreendimento_id: b.empreendimentoId ?? null, p_produto: b.produto ?? null,
+      p_unidade: b.unidade ?? null,
       p_com_gerente: b.comGerente ?? false, p_gerente_id: b.gerenteId ?? null, p_idem: idem,
     }),
   },
@@ -216,6 +217,7 @@ const ACOES: Record<string, { rpc: string; args: (c: Ctx) => Record<string, unkn
 };
 
 const ERRO_HUMANO: Record<string, string> = {
+  gerente_ocupado: "Este gerente já tem visita nesse horário. Escolha outro horário ou outro gerente.",
   sem_permissao: "Você não tem permissão para operar este lead.",
   versao_conflito: "O lead mudou enquanto você agia. Recarregue e tente de novo.",
   estado_em_saida: "Este lead já saiu do quadro (visita/proposta/descarte).",
