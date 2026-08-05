@@ -59,7 +59,19 @@ export function crmNovaEraLiberado(
   const kill =
     (typeof process !== "undefined" &&
       (process.env.NEXT_PUBLIC_CRM_NOVA_ERA_KILL ?? process.env.CRM_NOVA_ERA_KILL)) || "false";
+  /* Kill-switch continua respeitado: liga o canario e mais ninguem. E a saida
+     de emergencia se o Funil 2.0 apresentar problema com a equipe dentro. */
   if (String(kill).trim().toLowerCase() === "true") return CANARY_USUARIOS.has(usuarioId);
-  if (CANARY_USUARIOS.has(usuarioId)) return true;
-  return opts?.role === "admin" || opts?.role === "gestor";
+
+  /* 05/08/2026: o Funil 2.0 deixou de ser piloto e virou A operacao. Todo
+     usuario autenticado entra nele -- corretor inclusive.
+
+     Antes: canario (1 UUID) + admin/gestor. Consequencia pratica: o corretor
+     caia no CRM antigo, onde o "Funil 2.0" aparecia como MAIS UM pipe na lista
+     lateral, ao lado de PIPE ATENDIMENTO e FECHAMENTO. Duas leituras diferentes
+     da mesma operacao, e o corretor na errada.
+
+     A autorizacao de DADOS continua no banco (RLS + RPC fail-closed); esta
+     funcao so decide qual tela mostrar. */
+  return true;
 }
