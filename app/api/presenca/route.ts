@@ -18,12 +18,16 @@ async function auth(request: Request) {
    checagem morria no navegador e nunca era gravado no banco.
    O IP tem de ser lido AQUI, no servidor: o navegador nao conhece o proprio IP
    publico e qualquer valor vindo do cliente seria falsificavel. */
-async function naRedeDoEscritorio(request: Request, supabase: SupabaseLike): Promise<boolean> {
-  const ipBruto =
+function ipDaRequisicao(request: Request): string {
+  const bruto =
     request.headers.get("cf-connecting-ip") ??
     request.headers.get("x-real-ip") ??
     (request.headers.get("x-forwarded-for") ?? "").split(",")[0];
-  const ip = (ipBruto ?? "").trim();
+  return (bruto ?? "").trim();
+}
+
+async function naRedeDoEscritorio(request: Request, supabase: SupabaseLike): Promise<boolean> {
+  const ip = ipDaRequisicao(request);
   if (!ip) return false;
   const { data: cfg } = await supabase.from("escritorio_config").select("ips").maybeSingle();
   const permitidos = (cfg?.ips ?? []) as string[];
@@ -63,6 +67,10 @@ export async function POST(request: Request) {
       fn: string, args: Record<string, unknown>,
     ) => Promise<{ data: unknown; error: { message: string } | null }>)("presenca_confirmar", {
       p_no_escritorio: await naRedeDoEscritorio(request, a.supabase),
+      /* O IP de origem tambem e gravado: sem ver o valor real nao da para
+         descobrir por que a checagem falha -- se o cadastro esta velho, se a
+         operadora mudou, ou se o corretor esta no 4G. */
+      p_ip: ipDaRequisicao(request),
     });
     if (error) return Response.json({ error: error.message }, { status: 502 });
     return Response.json(data ?? { ok: true });
