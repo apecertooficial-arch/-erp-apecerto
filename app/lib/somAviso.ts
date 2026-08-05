@@ -22,10 +22,15 @@ export const SONS: { id: NomeSom; nome: string; descricao: string }[] = [
 const CHAVE = "apecerto:som-aviso";
 const CHAVE_VOL = "apecerto:som-volume";
 
+/* Padrao: Alerta. Escolhido ouvindo os quatro -- e o que corta o barulho da
+   sala e nao se confunde com WhatsApp nem com aviso do sistema. Quem preferir
+   outro troca em Configuracoes; a escolha fica no aparelho. */
+export const SOM_PADRAO: NomeSom = "alerta";
+
 export function somEscolhido(): NomeSom {
-  if (typeof window === "undefined") return "sino";
+  if (typeof window === "undefined") return SOM_PADRAO;
   const v = window.localStorage.getItem(CHAVE) as NomeSom | null;
-  return v && SONS.some((s) => s.id === v) ? v : "sino";
+  return v && SONS.some((s) => s.id === v) ? v : SOM_PADRAO;
 }
 export function escolherSom(id: NomeSom) {
   if (typeof window !== "undefined") window.localStorage.setItem(CHAVE, id);
@@ -51,7 +56,7 @@ export function assinarPreferencia(cb: () => void) {
   return () => { ouvintes.delete(cb); };
 }
 
-let cache = { som: "sino" as NomeSom, volume: 0.9 };
+let cache = { som: SOM_PADRAO, volume: 0.9 };
 export function preferenciaAtual() {
   if (typeof window === "undefined") return cache;
   const som = somEscolhido(); const volume = volumeEscolhido();
@@ -116,7 +121,7 @@ export function tocarSom(id: NomeSom = somEscolhido(), volume = volumeEscolhido(
   mestre.connect(c.destination);
 
   const agora = c.currentTime + 0.02;
-  for (const n of RECEITAS[id] ?? RECEITAS.sino) {
+  for (const n of RECEITAS[id] ?? RECEITAS[SOM_PADRAO]) {
     const osc = c.createOscillator();
     const g = c.createGain();
     osc.type = n.tipo ?? "sine";
