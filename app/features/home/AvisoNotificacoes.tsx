@@ -11,7 +11,10 @@
  * ele reverte nas configuracoes do aparelho. Por isso: primeiro a faixa
  * explicando o porque, o pedido do navegador so depois do toque.
  *
- * ESTILO: reaproveita `.convite-instalar` de app-mobile.css. Ja e mobile-only e
+ * ESTILO: classe propria (.aviso-push-*), NAO .convite-instalar. Aquela e
+ * mobile-only (display:none acima de 900px em app-mobile.css): no desktop a
+ * faixa existia no DOM e ficava invisivel, entao o navegador nunca chegava a
+ * pedir permissao e ninguem conseguia se inscrever. Legado:
  * ja e a linguagem visual de faixa informativa do aplicativo -- criar uma classe
  * nova seria uma segunda linguagem para a mesma coisa.
  *
@@ -112,7 +115,7 @@ export function AvisoNotificacoes({ accessToken }: { accessToken: string }) {
      verificavel, sem tomar a tela nem pedir permissao novamente. */
   if (estado === "ligado") {
     return (
-      <div className="aviso-push-ligado" role="status" aria-label="Avisos de lead novo ligados">
+      <div className="aviso-push-ok" role="status" aria-label="Avisos de lead novo ligados">
         <span aria-hidden="true">✓</span>
         <div>
           <strong>Avisos de lead novo ligados</strong>
@@ -124,7 +127,7 @@ export function AvisoNotificacoes({ accessToken }: { accessToken: string }) {
 
   if (estado === "ios_sem_instalar") {
     return (
-      <div className="convite-instalar" role="status">
+      <div className="aviso-push-convite" role="status">
         <strong>Instale o app para receber avisos</strong>
         <p>No iPhone, toque em Compartilhar e depois em &ldquo;Adicionar à Tela de Início&rdquo;. Sem isso o iPhone não entrega aviso nenhum.</p>
       </div>
@@ -133,7 +136,7 @@ export function AvisoNotificacoes({ accessToken }: { accessToken: string }) {
 
   if (estado === "negado") {
     return (
-      <div className="convite-instalar" role="status">
+      <div className="aviso-push-convite" role="status">
         <strong>Avisos bloqueados neste aparelho</strong>
         <p>Você vai continuar sem saber de lead novo até abrir o app. Para reativar, entre nas configurações do navegador, procure este site e libere as notificações.</p>
       </div>
@@ -141,7 +144,7 @@ export function AvisoNotificacoes({ accessToken }: { accessToken: string }) {
   }
 
   return (
-    <div className="convite-instalar" role="status">
+    <div className="aviso-push-convite" role="status">
       <strong>Receba aviso de lead novo</strong>
       <p>Chega igual mensagem no celular, na hora que o lead cai para você. Quem responde primeiro vende.</p>
       {erro && <p style={{ color: "#b91c1c" }}>{erro}</p>}

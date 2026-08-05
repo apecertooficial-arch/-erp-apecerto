@@ -297,3 +297,29 @@ a.md-acao:active { background: #1FB855; }
   .md-acao, .convite-instalar-ok { transition: none; }
   .md-acao:active, .convite-instalar-ok:active { transform: none; }
 }
+
+/* ---------- Aviso de push: precisa aparecer em QUALQUER largura ----------
+   Antes reaproveitava .convite-instalar, que e mobile-only. No desktop a faixa
+   era renderizada e escondida por CSS -- o usuario nunca via o botao, o Chrome
+   nunca pedia permissao (Notification.permission ficava em "default") e o
+   iPhone nem aparecia nos Ajustes do iOS. Cartao fixo, fora do fluxo das telas,
+   para nao depender de qual funil ou layout esta ativo. */
+.aviso-push-convite,
+.aviso-push-ok {
+  position: fixed; left: 18px; bottom: 18px; z-index: 9000;
+  max-width: 340px; padding: 14px 16px;
+  border: 1px solid var(--ape-line, #e6e0d9); border-radius: 14px;
+  background: var(--ape-surface, #fff);
+  box-shadow: 0 10px 30px rgba(0,0,0,.14);
+  font-family: inherit;
+}
+.aviso-push-convite strong { display: block; font-size: 14px; margin-bottom: 4px; }
+.aviso-push-convite p { margin: 4px 0 0; font-size: 12.5px; line-height: 1.45; opacity: .85; }
+.aviso-push-convite .convite-instalar-acoes { display: flex; gap: 8px; margin-top: 12px; }
+.aviso-push-ok { display: flex; align-items: center; gap: 10px; font-size: 12.5px; }
+.aviso-push-ok strong { display: block; font-size: 13px; }
+.aviso-push-ok p { margin: 2px 0 0; opacity: .8; }
+
+@media (max-width: 900px) {
+  .aviso-push-convite, .aviso-push-ok { left: 12px; right: 12px; bottom: 12px; max-width: none; }
+}
