@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { BotaoWhatsApp } from "../crm-nova-era/components/BotaoWhatsApp";
+import { getBrowserSupabaseClient } from "../../lib/supabase/browser";
 import {
   acaoVisivel,
   prazoDaAcao,
@@ -129,6 +130,12 @@ function CartaoLeadMobile({
    significava anotar num papel e transcrever depois (ou esquecer).
    Usa a mesma acao salvarVisita da API, entao a visita nasce ja ligada ao
    lead e conta para a protecao do dono e para a elegibilidade. */
+/* AGENDAR VISITA PELO CELULAR — com produto, unidade e gerente.
+   O CRM antigo sempre teve esses campos (de 140 visitas no historico, 55 com
+   gerente e 53 com produto) e o Funil 2.0 tinha nascido so com data e imovel
+   escrito a mao. Visita sem produto nao diz o que vai ser mostrado; sem gerente
+   nao da para checar conflito de agenda -- erro que so aparece no dia, com o
+   cliente na porta. */
 function AgendarVisitaMobile({
   lead,
   accessToken,
@@ -140,12 +147,28 @@ function AgendarVisitaMobile({
 }) {
   const [aberto, setAberto] = useState(false);
   const [quando, setQuando] = useState("");
-  const [imovel, setImovel] = useState("");
+  const [empreendimento, setEmpreendimento] = useState("");
+  const [unidade, setUnidade] = useState("");
+  const [comGerente, setComGerente] = useState(false);
+  const [gerente, setGerente] = useState("");
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState("");
+  const [produtos, setProdutos] = useState<{ id: string; nome: string }[]>([]);
+  const [gerentes, setGerentes] = useState<{ id: number; nome: string }[]>([]);
+
+  useEffect(() => {
+    if (!aberto) return;
+    const sb = getBrowserSupabaseClient();
+    void sb.from("empreendimentos").select("id,nome").order("nome").limit(200)
+      .then(({ data }) => setProdutos((data ?? []) as { id: string; nome: string }[]));
+    void sb.from("corretores").select("id,nome").eq("ativo", true).order("nome")
+      .then(({ data }) => setGerentes((data ?? []) as { id: number; nome: string }[]));
+  }, [aberto]);
 
   async function salvar() {
     if (!quando) { setErro("Escolha a data e a hora."); return; }
+    if (!empreendimento && !unidade.trim()) { setErro("Escolha o produto da visita."); return; }
+    if (comGerente && !gerente) { setErro("Escolha qual gerente vai junto."); return; }
     setSalvando(true); setErro("");
     try {
       const resposta = await fetch("/api/funil2", {
@@ -153,14 +176,27 @@ function AgendarVisitaMobile({
         headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
         body: JSON.stringify({
           action: "salvarVisita",
-          lead_id: lead.id,
-          inicio_em: new Date(quando).toISOString(),
-          imovel: imovel.trim() || null,
+          leadId: lead.id,
+          inicioEm: new Date(quando).toISOString(),
+          imovel: unidade.trim() || "",
+          empreendimentoId: empreendimento || null,
+          unidade: unidade.trim() || null,
+          comGerente,
+          gerenteId: comGerente ? Number(gerente) : null,
           status: "agendada",
         }),
       });
-      if (!resposta.ok) throw new Error("falhou");
-      setAberto(false); setQuando(""); setImovel("");
+      const dados = await resposta.json().catch(() => null) as { ok?: boolean; erro?: string } | null;
+      if (!resposta.ok || dados?.ok === false) {
+        /* Conflito de agenda tem de ser dito com todas as letras: remarcar
+           agora custa um minuto, descobrir no dia custa a visita. */
+        setErro(dados?.erro === "gerente_ocupado"
+          ? "Esse gerente já tem visita nesse horário. Escolha outro horário ou outro gerente."
+          : "Não foi possível agendar. Confira os dados e tente de novo.");
+        return;
+      }
+      setAberto(false); setQuando(""); setEmpreendimento(""); setUnidade("");
+      setComGerente(false); setGerente("");
       onSalvo();
     } catch {
       setErro("Não foi possível agendar. Tente de novo.");
@@ -177,13 +213,35 @@ function AgendarVisitaMobile({
 
   return <section className="f2m-agendar">
     <h3>Agendar visita</h3>
+
+    <label>Produto
+      <select value={empreendimento} onChange={(e) => setEmpreendimento(e.target.value)}>
+        <option value="">— escolha o empreendimento —</option>
+        {produtos.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
+      </select>
+    </label>
+
+    <label>Unidade <small>(opcional)</small>
+      <input type="text" value={unidade} placeholder="Ex.: apto 402"
+             onChange={(e) => setUnidade(e.target.value)} />
+    </label>
+
     <label>Data e hora
       <input type="datetime-local" value={quando} onChange={(e) => setQuando(e.target.value)} />
     </label>
-    <label>Imóvel <small>(opcional)</small>
-      <input type="text" value={imovel} placeholder="Ex.: Edifício Aurora, apto 402"
-             onChange={(e) => setImovel(e.target.value)} />
+
+    <label className="f2m-agendar-check">
+      <input type="checkbox" checked={comGerente} onChange={(e) => setComGerente(e.target.checked)} />
+      Quero o gerente presente
     </label>
+
+    {comGerente && <label>Qual gerente
+      <select value={gerente} onChange={(e) => setGerente(e.target.value)}>
+        <option value="">— escolha —</option>
+        {gerentes.map((g) => <option key={g.id} value={g.id}>{g.nome}</option>)}
+      </select>
+    </label>}
+
     {erro && <p className="f2m-agendar-erro">{erro}</p>}
     <div className="f2m-agendar-acoes">
       <button type="button" className="f2m-agendar-nao" onClick={() => setAberto(false)} disabled={salvando}>Cancelar</button>
