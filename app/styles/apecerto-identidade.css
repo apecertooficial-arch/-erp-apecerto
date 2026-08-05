@@ -368,3 +368,20 @@ a.md-acao:active { background: #1FB855; }
   .aviso-push-btn { transition: none; }
   .aviso-push-btn:active:not(:disabled) { transform: none; }
 }
+
+/* Confirmacao some sozinha: fica 5s e sai. Sem isso o cartao vira mobilia. */
+.aviso-push-some { animation: aviso-push-entra .32s cubic-bezier(.2,.8,.3,1) both, aviso-push-sai .45s ease-in 5s both; }
+@keyframes aviso-push-sai { to { opacity: 0; transform: translateY(8px) scale(.98); } }
+
+.aviso-push-convite { padding-right: 40px; }
+.aviso-push-fechar {
+  position: absolute; top: 10px; right: 10px;
+  width: 26px; height: 26px; padding: 0; border: 0; border-radius: 8px;
+  background: transparent; color: #a8a29e; cursor: pointer;
+  font-size: 19px; line-height: 1; font-family: inherit;
+}
+.aviso-push-fechar:hover { background: rgba(0,0,0,.05); color: #57534e; }
+
+@media (prefers-reduced-motion: reduce) {
+  .aviso-push-some { animation: none; }
+}
