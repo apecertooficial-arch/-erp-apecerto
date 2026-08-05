@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Produtos — ApeCerto (proposta)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --orange:#FF7000; --orange-600:#e65f00; --orange-soft:#fff3e8;
+  --purple:#8B00CC; --purple-soft:#f7ebfd;
+  --green:#17874e; --green-soft:#e8f7ef;
+  --red:#c9443e; --red-soft:#fdeceb;
+  --amber:#b07500; --amber-soft:#fff6e0;
+  --page:#faf9f7; --surface:#fff; --sunken:#f5f2ef; --line:#ece7e2;
+  --ink:#241f1b; --ink-soft:#5b544e; --muted:#8b827c;
+  --r-card:16px; --r-btn:12px; --r-chip:999px;
+  --sh-xs:0 1px 2px rgba(31,24,19,.05);
+  --sh-sm:0 2px 8px rgba(31,24,19,.06);
+  --sh-md:0 14px 32px rgba(31,24,19,.10);
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:Quicksand,system-ui,sans-serif;background:var(--page);color:var(--ink);-webkit-font-smoothing:antialiased}
+.wrap{max-width:1560px;margin:0 auto;padding:0 28px 60px}
+
+/* ---------- topo ---------- */
+.topbar{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;padding:24px 0 18px;flex-wrap:wrap}
+.topbar h1{margin:0;font-size:26px;font-weight:700;letter-spacing:-.02em}
+.topbar .sub{margin:5px 0 0;font-size:13px;color:var(--muted);font-weight:500}
+.acts{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.btn{font-family:inherit;font-size:13px;font-weight:600;border-radius:var(--r-btn);height:42px;padding:0 18px;cursor:pointer;border:1px solid var(--line);background:var(--surface);color:var(--ink);transition:.16s ease}
+.btn:hover{transform:translateY(-1px);box-shadow:var(--sh-sm)}
+.btn.primary{background:var(--orange);border-color:var(--orange);color:#fff;box-shadow:0 6px 16px rgba(255,112,0,.24)}
+.btn.primary:hover{background:var(--orange-600)}
+.btn.purple{background:var(--purple);border-color:var(--purple);color:#fff}
+
+/* ---------- KPIs ---------- */
+.kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:18px}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-card);padding:15px 16px;position:relative;overflow:hidden;box-shadow:var(--sh-xs)}
+.kpi .bolha{position:absolute;right:-22px;top:-22px;width:76px;height:76px;border-radius:50%;opacity:.10}
+.kpi .lab{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);margin:0 0 7px}
+.kpi .val{font-size:25px;font-weight:700;letter-spacing:-.02em;line-height:1;margin:0}
+.kpi .hint{font-size:11.5px;color:var(--ink-soft);margin:6px 0 0;font-weight:500}
+.kpi.act{cursor:pointer}.kpi.act:hover{transform:translateY(-1px);box-shadow:var(--sh-sm)}
+.kpi.warn .val{color:var(--amber)} .kpi.warn .bolha{background:var(--amber)}
+.kpi.o .val{color:var(--orange)} .kpi.o .bolha{background:var(--orange)}
+.kpi.p .val{color:var(--purple)} .kpi.p .bolha{background:var(--purple)}
+.kpi.g .val{color:var(--green)} .kpi.g .bolha{background:var(--green)}
+.kpi.n .bolha{background:var(--ink)}
+
+/* ---------- filtros ---------- */
+.filtros{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-card);padding:14px 16px;margin-bottom:20px;box-shadow:var(--sh-xs)}
+.linha{display:flex;gap:9px;align-items:center;flex-wrap:wrap}
+.linha+.linha{margin-top:11px;padding-top:11px;border-top:1px solid var(--line)}
+.pill{font-family:inherit;font-size:12.5px;font-weight:600;border:1px solid var(--line);background:var(--surface);color:var(--ink-soft);border-radius:var(--r-chip);padding:8px 15px;cursor:pointer;transition:.14s}
+.pill:hover{border-color:#d8d1cb;color:var(--ink)}
+.pill.on{background:var(--ink);border-color:var(--ink);color:#fff}
+.pill.on.o{background:var(--orange);border-color:var(--orange)}
+.pill.on.p{background:var(--purple);border-color:var(--purple)}
+.busca{position:relative;flex:1;min-width:230px;max-width:340px}
+.busca input{width:100%;height:40px;border:1px solid var(--line);border-radius:var(--r-btn);padding:0 14px 0 38px;font-family:inherit;font-size:13.5px;background:var(--surface);color:var(--ink)}
+.busca input:focus{outline:2px solid var(--orange);outline-offset:1px;border-color:transparent}
+.busca span{position:absolute;left:14px;top:11px;color:var(--muted);font-size:15px}
+select{height:40px;border:1px solid var(--line);border-radius:var(--r-btn);padding:0 12px;font-family:inherit;font-size:13px;font-weight:500;background:var(--surface);color:var(--ink-soft);cursor:pointer}
+.cont{margin-left:auto;font-size:12px;font-weight:700;color:var(--orange);background:var(--orange-soft);border-radius:var(--r-chip);padding:8px 14px;white-space:nowrap}
+
+/* ---------- grade ---------- */
+.grade{display:grid;grid-template-columns:repeat(auto-fill,minmax(285px,1fr));gap:16px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-card);overflow:hidden;box-shadow:var(--sh-xs);transition:.18s ease;cursor:pointer;display:flex;flex-direction:column}
+.card:hover{transform:translateY(-3px);box-shadow:var(--sh-md);border-color:#e3dcd5}
+.foto{height:158px;position:relative;background:var(--sunken);overflow:hidden}
+.foto img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .4s ease}
+.card:hover .foto img{transform:scale(1.05)}
+.foto::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.34) 0%,rgba(0,0,0,0) 42%,rgba(0,0,0,.30) 100%)}
+.semfoto{width:100%;height:100%;display:grid;place-items:center;background:linear-gradient(135deg,#efe9e3,#e2dad2)}
+.semfoto b{font-size:12px;font-weight:700;color:#a99e94;letter-spacing:.04em}
+
+.selo{position:absolute;z-index:2;top:11px;left:11px;font-size:10.5px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;padding:5px 11px;border-radius:var(--r-chip);background:rgba(255,255,255,.95);color:var(--ink);backdrop-filter:blur(6px)}
+.selo.lancamento{background:var(--purple);color:#fff}
+.selo.em_obras{background:var(--amber-soft);color:var(--amber)}
+.selo.pronto{background:var(--green-soft);color:var(--green)}
+.estoque{position:absolute;z-index:2;top:11px;right:11px;font-size:11px;font-weight:700;padding:5px 10px;border-radius:var(--r-chip);background:rgba(20,14,9,.62);color:#fff;backdrop-filter:blur(6px)}
+.estoque.zero{background:rgba(201,68,62,.9)}
+.alerta{position:absolute;z-index:2;bottom:11px;left:11px;font-size:10.5px;font-weight:700;padding:5px 10px;border-radius:var(--r-chip);background:var(--red);color:#fff}
+.fotos-n{position:absolute;z-index:2;bottom:11px;right:11px;font-size:11px;font-weight:600;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.5)}
+
+.corpo{padding:14px 15px 0;flex:1}
+.faixa{font-size:17px;font-weight:700;color:var(--orange);letter-spacing:-.02em;line-height:1.15;margin:0 0 2px}
+.faixa small{font-size:12px;font-weight:600;color:var(--ink-soft)}
+.nome{margin:7px 0 3px;font-size:15px;font-weight:700;letter-spacing:-.01em;line-height:1.25}
+.local{margin:0;font-size:12px;color:var(--muted);font-weight:500}
+.local b{color:var(--ink-soft);font-weight:600}
+.tips{display:flex;flex-wrap:wrap;gap:5px;margin:11px 0 0}
+.tips span{font-size:10.5px;font-weight:600;padding:4px 9px;border-radius:var(--r-chip);background:var(--sunken);color:var(--ink-soft)}
+.area{margin:9px 0 0;font-size:11.5px;color:var(--ink-soft);font-weight:600}
+
+.barra-wrap{padding:12px 15px 0}
+.barra{height:6px;border-radius:99px;background:var(--sunken);overflow:hidden}
+.barra i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,var(--orange),#ff9a3d)}
+.barra-lab{display:flex;justify-content:space-between;margin-top:6px;font-size:10.5px;font-weight:600;color:var(--muted)}
+
+.rodape{margin-top:12px;padding:11px 15px;border-top:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;background:#fdfcfb}
+.m2{font-size:12px;font-weight:700;color:var(--purple)}
+.m2 small{font-size:10.5px;color:var(--muted);font-weight:600;display:block;margin-top:1px}
+.mini{font-size:11px;font-weight:600;border:1px solid var(--line);background:var(--surface);border-radius:var(--r-chip);padding:6px 12px;cursor:pointer;color:var(--ink-soft);font-family:inherit}
+.mini:hover{border-color:var(--orange);color:var(--orange)}
+.vazio{grid-column:1/-1;text-align:center;padding:60px 20px;color:var(--muted);font-weight:600;font-size:14px}
+@media(max-width:1200px){.kpis{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:640px){.kpis{grid-template-columns:repeat(2,1fr)}.wrap{padding:0 14px 40px}}
+</style></head><body>
+<div class="wrap">
+  <header class="topbar">
+    <div><h1>Produtos</h1><p class="sub" id="sub">—</p></div>
+    <div class="acts">
+      <button class="btn">▤ Exportar</button>
+      <button class="btn purple">＋ Cadastrar unidade</button>
+      <button class="btn primary">＋ Cadastrar produto</button>
+    </div>
+  </header>
+
+  <section class="kpis" id="kpis"></section>
+
+  <section class="filtros">
+    <div class="linha">
+      <button class="pill on" data-st="Todos">Todos</button>
+      <button class="pill" data-st="lancamento">Lançamento</button>
+      <button class="pill" data-st="em_obras">Em obras</button>
+      <button class="pill" data-st="pronto">Pronto</button>
+      <span style="width:1px;height:24px;background:var(--line);margin:0 4px"></span>
+      <button class="pill" id="fEstoque">▣ Só com estoque</button>
+      <button class="pill" id="fSemBook">▧ Sem book</button>
+      <button class="pill" id="fFav">★ Favoritos</button>
+    </div>
+    <div class="linha">
+      <label class="busca"><span>⌕</span><input id="q" placeholder="Buscar produto, bairro ou incorporadora..."></label>
+      <select id="bairro"></select>
+      <select id="inc"></select>
+      <select id="preco">
+        <option value="">Qualquer preço</option>
+        <option value="0-500000">Até R$ 500 mil</option>
+        <option value="500000-1000000">R$ 500 mil a 1 mi</option>
+        <option value="1000000-3000000">R$ 1 mi a 3 mi</option>
+        <option value="3000000-999999999">Acima de R$ 3 mi</option>
+      </select>
+      <select id="ord">
+        <option value="disp">Ordenar: mais estoque</option>
+        <option value="vgv">Ordenar: maior VGV</option>
+        <option value="pmin">Ordenar: menor preço</option>
+        <option value="nome">Ordenar: A–Z</option>
+      </select>
+      <span class="cont" id="cont">—</span>
+    </div>
+  </section>
+
+  <section class="grade" id="grade"></section>
+</div>
+
+<script>
+const D = [{"n": "Join Vila Mariana", "inc": "Paes & Gregori", "b": "Vila Mariana", "st": "em_obras", "disp": 45, "tot": 45, "pmin": 371111.33, "pmax": 986936.5, "vgv": 23623709.95, "amin": 36.15, "amax": 79.13, "mid": 0, "capa": null, "tip": ["2 Dorm", "3 Dorm", "Garden"], "capaUrl": null}, {"n": "AP Moema", "inc": "Zogbi", "b": "Moema", "st": "pronto", "disp": 26, "tot": 28, "pmin": 401997, "pmax": 945444.0, "vgv": 13562971.0, "amin": 25, "amax": 36.27, "mid": 117, "capa": "ap-moema/1.jpg", "tip": ["1 Dorm", "1 dormitório", "studio"], "capaUrl": "https://diaegvfveqezispcthwk.supabase.co/storage/v1/object/public/empreendimentos/ap-moema/1.jpg"}, {"n": "Claris", "inc": "Sequoia", "b": "Moema", "st": "pronto", "disp": 24, "tot": 26, "pmin": 510809.0, "pmax": 1170000.0, "vgv": 16092167.0, "amin": 31.73, "amax": 117.22, "mid": 48, "capa": "claris/fachada1-1.webp", "tip": ["1 Suíte", "2 Suítes", "Studio"], "capaUrl": "https://diaegvfveqezispcthwk.supabase.co/storage/v1/object/public/empreendimentos/claris/fachada1-1.webp"}, {"n": "Composite", "inc": "Conx", "b": "Moema", "st": "pronto", "disp": 13, "tot": 19, "pmin": 431280.0, "pmax": 860000.0, "vgv": 7734941.0, "amin": 30, "amax": 103.79, "mid": 167, "capa": "composite/1-origi.jpg", "tip": ["1 Dorm", "1 dormitório", "2 dormitórios", "Garden"], "capaUrl": "https://diaegvfveqezispcthwk.supabase.co/storage/v1/object/public/empreendimentos/composite/1-origi.jpg"}, {"n": "Autoral Moema", "inc": "Conx", "b": "Moema", "st": "em_obras", "disp": 9, "tot": 9, "pmin": 362000.0, "pmax": 1459563.0, "vgv": 6368755.0, "amin": 24.13, "amax": 86.47, "mid": 34, "capa": "autoral-moema/fachada-cima.png", "tip": ["3 Dorm", "Studio"], "capaUrl": "https://diaegvfveqezispcthwk.supabase.co/storage/v1/object/public/empreendimentos/autoral-moema/fachada-cima.png"}, {"n": "Jazz Moema", "inc": "Rev3", "b": "Moema", "st": "em_obras", "disp": 7, "tot": 7, "pmin": 361400.0, "pmax": 921000.0, "vgv": 4425200.0, "amin": 21.27, "amax": 48.61, "mid": 23, "capa": "jazz-moema/fachada-moema-jazz.webp", "tip": ["1 Dorm", "2 Dorm", "Studio"], "capaUrl": "https://diaegvfveqezispcthwk.supabase.co/storage/v1/object/public/empreendimentos/jazz-moema/fachada-moema-jazz.webp"}, {"n": "Botanic Cyrela", "inc": "Cyrela", "b": "Campo Belo", "st": "pronto", "disp": 6, "tot": 6, "pmin": 510000.0, "pmax": 670000.0, "vgv": 3564000.0, "amin": 31.0, "amax": 42.0, "mid": 43, "capa": "botanic-cyrela/cyrela-constatino-01-fachada-torre-01-diurna-hr-b-1-1.png", "tip": ["1 Dorm", "2 Dorm"], "capaUrl": "https://diaegvfveqezispcthwk.supabase.co/storage/v1/object/public/empreendimentos/botanic-cyrela/cyrela-constatino-01-fachada-torre-01-diurna-hr-b-1-1.png"}, {"n": "Nex One Jurupis", "inc": "One Innovation", "b": "Moema", "st": "em_obras", "disp": 6, "tot": 6, "pmin": 439928.0, "pmax": 711577.0, "vgv": 3368881.0, "amin": 27.44, "amax": 42.74, "mid": 15, "capa": "nex-one-jurupis/46734-1477192-2280x1800-fachada.jpg", "tip": ["1 Dorm", "2 Dorm", "Studio"], "capaUrl": "https://diaegvfveqezispcthwk.supabase.co/storage/v1/object/public/empreendimentos/nex-one-jurupis/46734-1477192-2280x1800-fachada.jpg"}, {"n": "Atmos Moema", "inc": "One Innovation", "b": "Moema", "st": "em_obras", "disp": 5, "tot": 5, "pmin": 4052326.0, "pmax": 9693578.0, "vgv": 28589542.0, "amin": 160.15, "amax": 345.72, "mid": 19, "capa": "atmos-moema/apartamento-atmos-moema-sao-paulo-sp-fachada-detalhe3-1.jpg", "tip": ["3 Suítes", "4 Suítes", "Cobertura"], "capaUrl": "https://diaegvfveqezispcthwk.supabase.co/storage/v1/object/public/empreendimentos/atmos-moema/apartamento-atmos-moema-sao-paulo-sp-fachada-detalhe3-1.jpg"}, {"n": "Nex One Eucaliptos", "inc": "One Innovation", "b": "Moema", "st": "em_obras", "disp": 5, "tot": 5, "pmin": 330520.0, "pmax": 406232.0, "vgv": 1866467.0, "amin": 22.28, "amax": 26.55, "mid": 20, "capa": "nex-one-eucaliptos/apartamento-nex-one-estacao-eucaliptos-sao-paulo-sp-galeria-fachada-diurna-1-1x.jpg", "tip": ["1 Dorm", "Studio"], "capaUrl": "https://diaegvfveqezispcthwk.supabase.co/storage/v1/object/public/empreendimentos/nex-one-eucaliptos/apartamento-nex-one-estacao-eucaliptos-sao-paulo-sp-galeria-fachada-diurna-1-1x.jpg"}, {"n": "Star Campo Belo", "inc": "Benx", "b": "Campo Belo", "st": "em_obras", "disp": 5, "tot": 5, "pmin": 430000.0, "pmax": 487781.0, "vgv": 2307351.0, "amin": 37.46, "amax": 40.99, "mid": 25, "capa": "star-campo-belo/vivabenx-starcampobelo-1-fachada-rua-constantino.jpg", "tip": ["2 Dorm"], "capaUrl": "https://diaegvfveqezispcthwk.supabase.co/storage/v1/object/public/empreendimentos/star-campo-belo/vivabenx-starcampobelo-1-fachada-rua-constantino.jpg"}, {"n": "Vida Nova Moema", "inc": "Lote 5", "b": "Moema", "st": "em_obras", "disp": 5, "tot": 5, "pmin": 1332571.0, "pmax": 1675748.0, "vgv": 7563686.0, "amin": 66.81, "amax": 82.2, "mid": 8, "capa": "vida-nova-moema/2suites-87m.webp", "tip": ["2 Suítes"], "capaUrl": "https://diaegvfveqezispcthwk.supabase.co/storage/v1/object/public/empreendimentos/vida-nova-moema/2suites-87m.webp"}, {"n": "Chanés Street", "inc": "Eztec", "b": "Moema", "st": "pronto", "disp": 4, "tot": 4, "pmin": 573000.0, "pmax": 861626.0, "vgv": 2821249.0, "amin": 29.77, "amax": 56.11, "mid": 42, "capa": "chanes-street/chan-01-fachada-r02-hr-r00-scaled-1.jpg", "tip": ["1 Dorm", "1 Suíte", "Studio"], "capaUrl": "https://diaegvfveqezispcthwk.supabase.co/storage/v1/object/public/empreendimentos/chanes-street/chan-01-fachada-r02-hr-r00-scaled-1.jpg"}, {"n": "Emiie", "inc": "SKR", "b": "Moema", "st": "em_obras", "disp": 4, "tot": 4, "pmin": 524289.0, "pmax": 4103908.0, "vgv": 5979289.0, "amin": 24.7, "amax": 160.0, "mid": 32, "capa": "emiie/apartamento-skr-emiie-moema-residencial-sao-paulo-sp-galeria-embasamento.jpg", "tip": ["1 Dorm", "3 Dorm"], "capaUrl": "https://diaegvfveqezispcthwk.supabase.co/storage/v1/object/public/empreendimentos/emiie/apartamento-skr-emiie-moema-residencial-sao-paulo-sp-galeria-embasamento.jpg"}, {"n": "Hauser Moema", "inc": "Tavitecta", "b": "Moema", "st": "em_obras", "disp": 4, "tot": 4, "pmin": 439299.0, "pmax": 572718.0, "vgv": 2063194.0, "amin": 25.47, "amax": 37.93, "mid": 19, "capa": "hauser-moema/1diferenciais.webp", "tip": ["2 Dorm", "Studio"], "capaUrl": "https://diaegvfveqezispcthwk.supabase.co/storage/v1/object/public/empreendimentos/hauser-moema/1diferenciais.webp"}, {"n": "Nex One Nhambiquaras", "inc": "One Innovation", "b": "Moema", "st": "pronto", "disp": 4, "tot": 4, "pmin": 340893.0, "pmax": 567000.0, "vgv": 1806988.0, "amin": 27.55, "amax": 32.68, "mid": 24, "capa": "nex-one-nhambiquaras/apartamento-nex-one-nhambiquaras-sao-paulo-sp-galeria-fachada-b.webp", "tip": ["1 Dorm", "Studio Flat"], "capaUrl": "https://diaegvfveqezispcthwk.supabase.co/storage/v1/object/public/empreendimentos/nex-one-nhambiquaras/apartamento-nex-one-nhambiquaras-sao-paulo-sp-galeria-fachada-b.webp"}, {"n": "Oriz Plano&Plano", "inc": "Plano&Plano", "b": "Campo Belo", "st": "em_obras", "disp": 4, "tot": 4, "pmin": 378658.0, "pmax": 649920.0, "vgv": 1864623.0, "amin": 28.0, "amax": 41.0, "mid": 21, "capa": "oriz-plano-plano/galeria-geral-residencial-10.jpg", "tip": ["1 Dorm", "2 Dorm", "Studio"], "capaUrl": "https://diaegvfveqezispcthwk.supabase.co/storage/v1/object/public/empreendimentos/oriz-plano-plano/galeria-geral-residencial-10.jpg"}, {"n": "Today Campo Belo", "inc": "Canopus", "b": "Campo Belo", "st": "em_obras", "disp": 4, "tot": 4, "pmin": 352703.04, "pmax": 492641.28, "vgv": 1628032.32, "amin": 30.33, "amax": 40.18, "mid": 0, "capa": null, "tip": ["1 Dorm", "2 Dorm"], "capaUrl": null}, {"n": "MOA", "inc": "Shpaisman", "b": "Moema", "st": "pronto", "disp": 3, "tot": 3, "pmin": 475200.0, "pmax": 1142400.0, "vgv": 2198400.0, "amin": 26.0, "amax": 60.0, "mid": 37, "capa": "moa/shpaisman-moaci-fachada-lr.webp", "tip": ["2 Dorm", "Studio"], "capaUrl": "https://diaegvfveqezispcthwk.supabase.co/storage/v1/object/public/empreendimentos/moa/shpaisman-moaci-fachada-lr.webp"}, {"n": "My One Campo Belo", "inc": "One Innovation", "b": "Campo Belo", "st": "pronto", "disp": 3, "tot": 3, "pmin": 284211.0, "pmax": 838887.0, "vgv": 1499514.0, "amin": 30.0, "amax": 66.97, "mid": 16, "capa": "my-one-campo-belo/apartamento-my-one-estacao-campo-belo-sao-paulo-sp-galeria-fachada.jpg", "tip": ["1 Dorm", "2 Dorm", "Studio"], "capaUrl": "https://diaegvfveqezispcthwk.supabase.co/storage/v1/object/public/empreendimentos/my-one-campo-belo/apartamento-my-one-estacao-campo-belo-sao-paulo-sp-galeria-fachada.jpg"}, {"n": "SP 360°", "inc": "Eztec", "b": "Moema", "st": "em_obras", "disp": 3, "tot": 3, "pmin": 362348.0, "pmax": 455216.0, "vgv": 1204148.0, "amin": 24.93, "amax": 24.93, "mid": 25, "capa": "sp-360/sp-360-eztec-pamaris-fachada-detalhe-big-1.jpg", "tip": ["Studio"], "capaUrl": "https://diaegvfveqezispcthwk.supabase.co/storage/v1/object/public/empreendimentos/sp-360/sp-360-eztec-pamaris-fachada-detalhe-big-1.jpg"}, {"n": "The Collection Moema", "inc": "Trisul", "b": "Moema", "st": "em_obras", "disp": 3, "tot": 3, "pmin": 422288.0, "pmax": 600800.0, "vgv": 1541162.0, "amin": 26.7, "amax": 37.0, "mid": 28, "capa": "the-collection-moema/pasted-image.png", "tip": ["1 Dorm", "Studio"], "capaUrl": "https://diaegvfveqezispcthwk.supabase.co/storage/v1/object/public/empreendimentos/the-collection-moema/pasted-image.png"}, {"n": "Vogel Moema", "inc": "Benx", "b": "Moema", "st": "em_obras", "disp": 3, "tot": 3, "pmin": 902398.0, "pmax": 2840835.0, "vgv": 5602807.0, "amin": 42.01, "amax": 123.66, "mid": 44, "capa": "vogel-moema/01-voguel-fachada-final-1.jpg", "tip": ["1 Suite", "2 Suítes", "3 Suítes"], "capaUrl": "https://diaegvfveqezispcthwk.supabase.co/storage/v1/object/public/empreendimentos/vogel-moema/01-voguel-fachada-final-1.jpg"}, {"n": "Z Ibirapuera", "inc": "Eztec", "b": "Moema", "st": "pronto", "disp": 3, "tot": 3, "pmin": 516984.0, "pmax": 542376.0, "vgv": 1581662.0, "amin": 24.86, "amax": 29.76, "mid": 29, "capa": "z-ibirapuera/z-ibirapuera-fachada.jpg", "tip": ["Studio"], "capaUrl": "https://diaegvfveqezispcthwk.supabase.co/storage/v1/object/public/empreendimentos/z-ibirapuera/z-ibirapuera-fachada.jpg"}, {"n": "Agami", "inc": "Eztec", "b": "Moema", "st": "em_obras", "disp": 2, "tot": 2, "pmin": 6789700.0, "pmax": 8885792.0, "vgv": 15675492.0, "amin": 215.18, "amax": 278.0, "mid": 41, "capa": "agami/agami-detalhe-fachada-big.jpg", "tip": ["3 Suítes"], "capaUrl": "https://diaegvfveqezispcthwk.supabase.co/storage/v1/object/public/empreendimentos/agami/agami-detalhe-fachada-big.jpg"}, {"n": "Brisea Moema", "inc": "Somattos", "b": "Moema", "st": "lancamento", "disp": 2, "tot": 2, "pmin": 753800.0, "pmax": 2088300.0, "vgv": 2842100.0, "amin": 32.5, "amax": 81.3, "mid": 21, "capa": "brisea-moema/1920x0-1.webp", "tip": ["1 Dorm", "2 Dorm"], "capaUrl": "https://diaegvfveqezispcthwk.supabase.co/storage/v1/object/public/empreendimentos/brisea-moema/1920x0-1.webp"}, {"n": "Haus Mitre Moema", "inc": "Mitre", "b": "Moema", "st": "lancamento", "disp": 2, "tot": 2, "pmin": 495495.0, "pmax": 657195.0, "vgv": 1152690.0, "amin": 23.0, "amax": 31.96, "mid": 27, "capa": "haus-mitre-moema/mrc-01-fachada-1-ef-2-scaled.webp", "tip": ["1 Dorm", "Studio"], "capaUrl": "https://diaegvfveqezispcthwk.supabase.co/storage/v1/object/public/empreendimentos/haus-mitre-moema/mrc-01-fachada-1-ef-2-scaled.webp"}, {"n": "Kronos Moema", "inc": "Kallas", "b": "Moema", "st": "pronto", "disp": 2, "tot": 4, "pmin": 530000, "pmax": 530000, "vgv": 530000, "amin": 30, "amax": 30, "mid": 70, "capa": "kronos-moema/1661320774.png", "tip": ["1 dorm."], "alerta": "1 unidade com valor R$ 650", "capaUrl": "https://diaegvfveqezispcthwk.supabase.co/storage/v1/object/public/empreendimentos/kronos-moema/1661320774.png"}, {"n": "Le Jardin", "inc": "Eztec", "b": "Moema", "st": "pronto", "disp": 2, "tot": 2, "pmin": 861626.0, "pmax": 4175778.0, "vgv": 5037404.0, "amin": 56.11, "amax": 163.68, "mid": 21, "capa": "le-jardin/le-jardin-fachada.jpg", "tip": ["1 Suite", "3 Suítes"], "capaUrl": "https://diaegvfveqezispcthwk.supabase.co/storage/v1/object/public/empreendimentos/le-jardin/le-jardin-fachada.jpg"}, {"n": "MK Moema", "inc": "MK4", "b": "Moema", "st": "lancamento", "disp": 2, "tot": 2, "pmin": 315000.0, "pmax": 351000.0, "vgv": 666000.0, "amin": 30.0, "amax": 30.0, "mid": 0, "capa": null, "tip": ["Studio"], "capaUrl": null}, {"n": "Moema Studium", "inc": "—", "b": "Moema", "st": "pronto", "disp": 2, "tot": 2, "pmin": 410000, "pmax": 430000, "vgv": 840000, "amin": 35, "amax": 37, "mid": 22, "capa": "09352863-baa3-4631-a822-6ab8ba383ff7/636630a8-d1b6-4684-a4e8-4ef3cc8277fe/0a7f0e5b-7ea2-4cf5-984b-14575bfdc9f3-condmiruna1.jpeg", "tip": ["01 Dormitorio", "1 dorm."], "capaUrl": "https://diaegvfveqezispcthwk.supabase.co/storage/v1/object/public/empreendimentos/09352863-baa3-4631-a822-6ab8ba383ff7/636630a8-d1b6-4684-a4e8-4ef3cc8277fe/0a7f0e5b-7ea2-4cf5-984b-14575bfdc9f3-condmiruna1.jpeg"}, {"n": "Moma Moema", "inc": "Kallas", "b": "Moema", "st": "em_obras", "disp": 2, "tot": 2, "pmin": 623104.0, "pmax": 3900000.0, "vgv": 4523104.0, "amin": 24.0, "amax": 147.0, "mid": 35, "capa": "moma-moema/fachada-av-ibirapuera.jpg", "tip": ["3 Suítes", "Studio"], "capaUrl": "https://diaegvfveqezispcthwk.supabase.co/storage/v1/object/public/empreendimentos/moma-moema/fachada-av-ibirapuera.jpg"}, {"n": "Most Moema", "inc": "MPD", "b": "Moema", "st": "em_obras", "disp": 2, "tot": 2, "pmin": 581711.0, "pmax": 1577400.0, "vgv": 2159111.0, "amin": 33.0, "amax": 82.0, "mid": 13, "capa": "most-moema/most-moema-20221015114005000.jpg", "tip": ["2 Dorm", "Studio"], "capaUrl": "https://diaegvfveqezispcthwk.supabase.co/storage/v1/object/public/empreendimentos/most-moema/most-moema-20221015114005000.jpg"}, {"n": "Nex One Estação Moema", "inc": "One Innovation", "b": "Moema", "st": "em_obras", "disp": 2, "tot": 2, "pmin": 399546.0, "pmax": 661488.0, "vgv": 1061034.0, "amin": 19.29, "amax": 27.58, "mid": 11, "capa": "nex-one-estacao-moema/apartamento-nex-one-estacao-moema-sao-paulo-sp-galeria-fachada-diurna.webp", "tip": ["1 Dorm", "Studio"], "capaUrl": "https://diaegvfveqezispcthwk.supabase.co/storage/v1/object/public/empreendimentos/nex-one-estacao-moema/apartamento-nex-one-estacao-moema-sao-paulo-sp-galeria-fachada-diurna.webp"}, {"n": "Park Avenue", "inc": "Eztec", "b": "Moema", "st": "pronto", "disp": 2, "tot": 2, "pmin": 10887174.0, "pmax": 13969611.0, "vgv": 24856785.0, "amin": 240.26, "amax": 298.33, "mid": 29, "capa": "park-avenue/park-avenue-fachada.jpg", "tip": ["3 Suítes", "4 Suítes"], "capaUrl": "https://diaegvfveqezispcthwk.supabase.co/storage/v1/object/public/empreendimentos/park-avenue/park-avenue-fachada.jpg"}, {"n": "Park Lane", "inc": "Eztec", "b": "Moema", "st": "pronto", "disp": 2, "tot": 2, "pmin": 13555520.0, "pmax": 17450550.0, "vgv": 31006070.0, "amin": 375.17, "amax": 375.17, "mid": 27, "capa": "park-lane/galeria-0003-estacionamento-900x500.jpg", "tip": ["4 Suítes"], "capaUrl": "https://diaegvfveqezispcthwk.supabase.co/storage/v1/object/public/empreendimentos/park-lane/galeria-0003-estacionamento-900x500.jpg"}, {"n": "Terrare", "inc": "Trisul", "b": "Moema", "st": "lancamento", "disp": 2, "tot": 7, "pmin": 380956.0, "pmax": 380956.0, "vgv": 761912.0, "amin": 33.0, "amax": 33.0, "mid": 14, "capa": "terrare/terraremoema-0a1c1c3.webp", "tip": ["1 Dorm", "Studio"], "capaUrl": "https://diaegvfveqezispcthwk.supabase.co/storage/v1/object/public/empreendimentos/terrare/terraremoema-0a1c1c3.webp"}, {"n": "Today Ibirapuera", "inc": "Canopus", "b": "Moema", "st": "em_obras", "disp": 2, "tot": 2, "pmin": 468428.0, "pmax": 522248.0, "vgv": 990676.0, "amin": 29.59, "amax": 29.59, "mid": 21, "capa": "today-ibirapuera/1-squad-canopus-jurupis-img-fachada-hr-10b7301260.jpg", "tip": ["1 Dorm"], "capaUrl": "https://diaegvfveqezispcthwk.supabase.co/storage/v1/object/public/empreendimentos/today-ibirapuera/1-squad-canopus-jurupis-img-fachada-hr-10b7301260.jpg"}, {"n": "Bem Moema", "inc": "Tegra", "b": "Moema", "st": "pronto", "disp": 1, "tot": 1, "pmin": 655180.0, "pmax": 655180.0, "vgv": 655180.0, "amin": 27.96, "amax": 27.96, "mid": 32, "capa": "bem-moema/tegra-incorporadora-perspectiva-ilustrada-area-externa-lazer-apartamentos-bem-moema-sao-paulo-sp-20001-1715460274740.webp", "tip": ["Studio"], "capaUrl": "https://diaegvfveqezispcthwk.supabase.co/storage/v1/object/public/empreendimentos/bem-moema/tegra-incorporadora-perspectiva-ilustrada-area-externa-lazer-apartamentos-bem-moema-sao-paulo-sp-20001-1715460274740.webp"}, {"n": "Duo Residence", "inc": "Duo Con", "b": "São Judas", "st": "pronto", "disp": 1, "tot": 1, "pmin": 258000.0, "pmax": 258000.0, "vgv": 258000.0, "amin": 27.0, "amax": 27.0, "mid": 19, "capa": "duo-residence/eresidencie-fachada-vista1-r05-scaled.jpg", "tip": ["1 Suite"], "capaUrl": "https://diaegvfveqezispcthwk.supabase.co/storage/v1/object/public/empreendimentos/duo-residence/eresidencie-fachada-vista1-r05-scaled.jpg"}, {"n": "Gran Oscar", "inc": "Trisul", "b": "Moema", "st": "lancamento", "disp": 1, "tot": 1, "pmin": 14420000.0, "pmax": 14420000.0, "vgv": 14420000.0, "amin": 412.0, "amax": 412.0, "mid": 32, "capa": "gran-oscar/ind-01-fachada-frontal-a-p2-v02.webp", "tip": ["4 Suítes"], "capaUrl": "https://diaegvfveqezispcthwk.supabase.co/storage/v1/object/public/empreendimentos/gran-oscar/ind-01-fachada-frontal-a-p2-v02.webp"}, {"n": "Key Moema", "inc": "Benx", "b": "Moema", "st": "pronto", "disp": 1, "tot": 1, "pmin": 1250000.0, "pmax": 1250000.0, "vgv": 1250000.0, "amin": 64.0, "amax": 64.0, "mid": 17, "capa": "key-moema/213e0164-ccb0-4511-b06f-9dd0491791c6.webp", "tip": ["2 Dorm"], "capaUrl": "https://diaegvfveqezispcthwk.supabase.co/storage/v1/object/public/empreendimentos/key-moema/213e0164-ccb0-4511-b06f-9dd0491791c6.webp"}, {"n": "Monogram Moema", "inc": "AAM", "b": "Moema", "st": "em_obras", "disp": 1, "tot": 1, "pmin": 2706021.0, "pmax": 2706021.0, "vgv": 2706021.0, "amin": 122.0, "amax": 122.0, "mid": 22, "capa": "monogram-moema/monogram-moema-apartamento-sao-paulo-sp-fachada-residencial-noturna.webp", "tip": ["3 Suítes"], "capaUrl": "https://diaegvfveqezispcthwk.supabase.co/storage/v1/object/public/empreendimentos/monogram-moema/monogram-moema-apartamento-sao-paulo-sp-fachada-residencial-noturna.webp"}, {"n": "NDK Moema", "inc": "AAM", "b": "Moema", "st": "em_obras", "disp": 1, "tot": 1, "pmin": 578466.0, "pmax": 578466.0, "vgv": 578466.0, "amin": 26.2, "amax": 26.2, "mid": 13, "capa": "ndk-moema/01-fachada-ndk.webp", "tip": ["Studio"], "capaUrl": "https://diaegvfveqezispcthwk.supabase.co/storage/v1/object/public/empreendimentos/ndk-moema/01-fachada-ndk.webp"}, {"n": "Nex One Ibirapuera", "inc": "One Innovation", "b": "Moema", "st": "pronto", "disp": 1, "tot": 1, "pmin": 550000.0, "pmax": 550000.0, "vgv": 550000.0, "amin": 30.89, "amax": 30.89, "mid": 25, "capa": "nex-one-ibirapuera/apartamento-vc-nex-one-ibirapuera-indianopolis-sao-paulo-condominio-1.jpg", "tip": ["1 Dorm"], "capaUrl": "https://diaegvfveqezispcthwk.supabase.co/storage/v1/object/public/empreendimentos/nex-one-ibirapuera/apartamento-vc-nex-one-ibirapuera-indianopolis-sao-paulo-condominio-1.jpg"}, {"n": "Q.I INTELLIGENCE", "inc": "FLAT", "b": "Moema", "st": "pronto", "disp": 1, "tot": 1, "pmin": 496000, "pmax": 496000, "vgv": 496000, "amin": 38, "amax": 38, "mid": 13, "capa": "48aad87f-0407-4b7c-b0b2-8eb76e88966b/52cea375-6193-4962-a447-520f2402f473/d4eba523-1a99-4142-a39f-7700bb6cbbde-whatsapp-image-2026-07-24-at-15.49.36.jpeg", "tip": ["R2V"], "capaUrl": "https://diaegvfveqezispcthwk.supabase.co/storage/v1/object/public/empreendimentos/48aad87f-0407-4b7c-b0b2-8eb76e88966b/52cea375-6193-4962-a447-520f2402f473/d4eba523-1a99-4142-a39f-7700bb6cbbde-whatsapp-image-2026-07-24-at-15.49.36.jpeg"}, {"n": "Today Moema", "inc": "Canopus", "b": "Moema", "st": "pronto", "disp": 1, "tot": 1, "pmin": 444429.0, "pmax": 444429.0, "vgv": 444429.0, "amin": 27.1, "amax": 27.1, "mid": 21, "capa": "today-moema/pav-01-fachada-rev-05-00-811b908f2b.jpg", "tip": ["Studio"], "capaUrl": "https://diaegvfveqezispcthwk.supabase.co/storage/v1/object/public/empreendimentos/today-moema/pav-01-fachada-rev-05-00-811b908f2b.jpg"}, {"n": "Bios", "inc": "Vibra Residencial (Nortis)", "b": "Santo Amaro", "st": "pronto", "disp": 0, "tot": 1, "pmin": null, "pmax": null, "vgv": null, "amin": null, "amax": null, "mid": 27, "capa": "bios/250826-191605-fachada.jpeg", "tip": null, "capaUrl": "https://diaegvfveqezispcthwk.supabase.co/storage/v1/object/public/empreendimentos/bios/250826-191605-fachada.jpeg"}, {"n": "Clube Line", "inc": "Viewco", "b": "Planalto Paulista", "st": "pronto", "disp": 0, "tot": 0, "pmin": null, "pmax": null, "vgv": null, "amin": null, "amax": null, "mid": 48, "capa": "clube-line/0c1c2ada7580f9aa5661fcd9d700531e.webp", "tip": null, "capaUrl": "https://diaegvfveqezispcthwk.supabase.co/storage/v1/object/public/empreendimentos/clube-line/0c1c2ada7580f9aa5661fcd9d700531e.webp"}];
+const S = {st:"Todos", q:"", bairro:"", inc:"", preco:"", ord:"disp", estoque:false, semBook:false, fav:false};
+const brl = n => n==null ? "—" : n.toLocaleString("pt-BR",{style:"currency",currency:"BRL",maximumFractionDigits:0});
+const kurto = n => n==null ? "—" : n>=1e6 ? "R$ "+(n/1e6).toFixed(1).replace(".",",")+" mi" : "R$ "+Math.round(n/1e3)+" mil";
+const norm = s => (s||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
+
+// selects
+const opts = (el, arr, label) => { el.innerHTML = '<option value="">'+label+'</option>' + arr.map(v=>'<option>'+v+'</option>').join(""); };
+opts(document.getElementById("bairro"), [...new Set(D.map(d=>d.b))].sort(), "Todos os bairros");
+opts(document.getElementById("inc"), [...new Set(D.map(d=>d.inc).filter(x=>x&&x!=="—"))].sort(), "Todas as incorporadoras");
+
+function kpis(){
+  const un = D.reduce((a,d)=>a+d.disp,0);
+  const vgv = D.reduce((a,d)=>a+(d.vgv||0),0);
+  const semBook = D.filter(d=>d.mid===0).length;
+  const semEstoque = D.filter(d=>d.disp===0).length;
+  const conc = D.filter(d=>norm(d.b)==="moema").reduce((a,d)=>a+d.disp,0);
+  document.getElementById("kpis").innerHTML = `
+  <div class="kpi o"><span class="bolha"></span><p class="lab">Unidades disponíveis</p><p class="val">${un}</p><p class="hint">em ${D.filter(d=>d.disp>0).length} de ${D.length} produtos</p></div>
+  <div class="kpi p"><span class="bolha"></span><p class="lab">VGV disponível</p><p class="val">${(vgv/1e6).toFixed(1).replace(".",",")} mi</p><p class="hint">soma do estoque em tabela</p></div>
+  <div class="kpi g"><span class="bolha"></span><p class="lab">Ticket médio</p><p class="val">${kurto(vgv/un)}</p><p class="hint">por unidade disponível</p></div>
+  <div class="kpi warn act" onclick="document.getElementById('fSemBook').click()"><span class="bolha"></span><p class="lab">Sem material</p><p class="val">${semBook}</p><p class="hint">produtos sem nenhuma foto ▸</p></div>
+  <div class="kpi n"><span class="bolha"></span><p class="lab">Concentração Moema</p><p class="val">${Math.round(conc/un*100)}%</p><p class="hint">${semEstoque} produtos com estoque zerado</p></div>`;
+}
+
+function filtra(){
+  let r = D.filter(d=>{
+    if(S.st!=="Todos" && d.st!==S.st) return false;
+    if(S.estoque && d.disp===0) return false;
+    if(S.semBook && d.mid>0) return false;
+    if(S.bairro && d.b!==S.bairro) return false;
+    if(S.inc && d.inc!==S.inc) return false;
+    if(S.preco){ const [a,b]=S.preco.split("-").map(Number); if(d.pmin==null||d.pmin<a||d.pmin>b) return false; }
+    if(S.q){ const q=norm(S.q); if(!norm(d.n).includes(q) && !norm(d.b).includes(q) && !norm(d.inc).includes(q)) return false; }
+    return true;
+  });
+  const o=S.ord;
+  r.sort((a,b)=> o==="nome" ? a.n.localeCompare(b.n) : o==="pmin" ? (a.pmin??9e15)-(b.pmin??9e15) : (b[o]||0)-(a[o]||0));
+  return r;
+}
+
+function card(d){
+  const pct = d.tot ? Math.round(d.disp/d.tot*100) : 0;
+  const m2 = (d.pmin && d.amin) ? Math.round(d.pmin/d.amin) : null;
+  const faixa = d.pmin==null ? '<p class="faixa">Sob consulta</p>'
+    : d.pmin===d.pmax ? `<p class="faixa">${brl(d.pmin)}</p>`
+    : `<p class="faixa">${kurto(d.pmin)} <small>a</small> ${kurto(d.pmax)}</p>`;
+  const area = d.amin==null ? "" : d.amin===d.amax ? `${d.amin} m²` : `${d.amin} – ${d.amax} m²`;
+  return `<article class="card">
+    <div class="foto">
+      ${d.capaUrl ? `<img src="${d.capaUrl}" alt="" loading="lazy" onerror="this.style.display='none';this.insertAdjacentHTML('afterend','<div class=&quot;semfoto&quot;><b>IMAGEM NAO CARREGOU</b></div>')">`
+                  : `<div class="semfoto"><b>SEM MATERIAL</b></div>`}
+      <span class="selo ${d.st}">${{lancamento:"Lançamento",em_obras:"Em obras",pronto:"Pronto"}[d.st]||d.st}</span>
+      <span class="estoque ${d.disp===0?"zero":""}">${d.disp===0?"Esgotado":d.disp+" disp."}</span>
+      ${d.alerta?`<span class="alerta">⚠ ${d.alerta}</span>`:""}
+      ${d.mid>0?`<span class="fotos-n">▣ ${d.mid}</span>`:""}
+    </div>
+    <div class="corpo">
+      ${faixa}
+      <h2 class="nome">${d.n}</h2>
+      <p class="local">⌖ ${d.b} · <b>${d.inc}</b></p>
+      ${d.tip?`<div class="tips">${d.tip.slice(0,4).map(t=>`<span>${t}</span>`).join("")}</div>`:""}
+      ${area?`<p class="area">▭ ${area}</p>`:""}
+    </div>
+    <div class="barra-wrap">
+      <div class="barra"><i style="width:${pct}%"></i></div>
+      <div class="barra-lab"><span>${d.disp} de ${d.tot} unidades</span><span>${pct}%</span></div>
+    </div>
+    <div class="rodape">
+      <div class="m2">${m2?brl(m2)+"/m²":"—"}<small>a partir de</small></div>
+      <button class="mini">Abrir ficha ▸</button>
+    </div>
+  </article>`;
+}
+
+function render(){
+  const r = filtra();
+  document.getElementById("grade").innerHTML = r.length ? r.map(card).join("") : '<p class="vazio">Nenhum produto com esses filtros.</p>';
+  document.getElementById("cont").textContent = r.length + (r.length===1?" produto":" produtos");
+  document.getElementById("sub").textContent = D.length+" empreendimentos · "+D.reduce((a,d)=>a+d.disp,0)+" unidades em estoque";
+}
+
+document.querySelectorAll("[data-st]").forEach(b=>b.onclick=()=>{
+  document.querySelectorAll("[data-st]").forEach(x=>x.classList.remove("on"));
+  b.classList.add("on"); S.st=b.dataset.st; render();
+});
+const tog=(id,k,cls)=>{const el=document.getElementById(id);el.onclick=()=>{S[k]=!S[k];el.classList.toggle("on");el.classList.toggle(cls);render();}};
+tog("fEstoque","estoque","o"); tog("fSemBook","semBook","o"); tog("fFav","fav","p");
+document.getElementById("q").oninput=e=>{S.q=e.target.value;render()};
+["bairro","inc","preco","ord"].forEach(id=>document.getElementById(id).onchange=e=>{S[id]=e.target.value;render()});
+
+kpis(); render();
+</script></body></html>
