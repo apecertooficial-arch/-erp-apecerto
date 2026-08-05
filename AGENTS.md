@@ -175,7 +175,7 @@ Não misture com estilo. Um PR que muda regra de negócio e visual ao mesmo temp
 2. `./node_modules/.bin/tsc --noEmit -p tsconfig.json` — sem erro novo nos
    arquivos tocados
 3. `pnpm test:frontend` passando
-4. Rode `grep -c "!important" app/globals.css` antes e depois. **O número não
+4. Rode `grep -o "!important" app/globals.css | wc -l` antes e depois. **O número não
    pode subir.** Se subiu, você empilhou camada em vez de consolidar.
 5. No corpo do PR, liste as classes alteradas e, para cada uma, quantos blocos
    duplicados você consolidou.

@@ -2,19 +2,43 @@
 @import url('https://fonts.googleapis.com/css2?family=Quicksand:wght@300;400;500;600;700&display=swap');
 
 :root {
-  /* Marca */
+  /* ---- MARCA (valores oficiais do kit ApeCerto) ---- */
+  --ap-orange:#FF7000;        /* acao, energia, preco */
+  --ap-orange-600:#e65f00;    /* hover do CTA */
+  --ap-orange-soft:#fff3e8;   /* fundo suave laranja */
+  --ap-purple:#8B00CC;        /* dado, destaque, R$/m2 */
+  --ap-purple-600:#7500ad;
+  --ap-purple-soft:#f7ebfd;
+
+  /* ---- SEMANTICAS ---- */
+  --ap-green:#17874e;   --ap-green-soft:#e8f7ef;   /* pronto, sucesso */
+  --ap-amber:#b07500;   --ap-amber-soft:#fff6e0;   /* em obras, atencao */
+  --ap-red:#c9443e;     --ap-red-soft:#fdeceb;     /* esgotado, erro */
+
+  /* ---- SUPERFICIES ---- */
+  --ap-page:#faf9f7;    --ap-surface:#ffffff;
+  --ap-sunken:#f5f2ef;  --ap-line:#ece7e2;
+
+  /* ---- TEXTO ---- */
+  --ap-ink:#241f1b;     --ap-ink-soft:#5b544e;     --ap-muted:#8b827c;
+
+  /* ---- FORMA ---- */
+  --ap-r-card:16px;  --ap-r-btn:12px;  --ap-r-chip:999px;
+
+  /* ---- ELEVACAO ---- */
+  --ap-sh-xs:0 1px 2px rgba(31,24,19,.05);
+  --ap-sh-sm:0 2px 8px rgba(31,24,19,.06);
+  --ap-sh-md:0 14px 32px rgba(31,24,19,.10);
+  --ap-sh-brand:0 6px 16px rgba(255,112,0,.24);
+
+  /* Variáveis antigas (mantidas temporariamente) */
   --orange:#ff6500; --orange-600:#e65a00; --orange-700:#c94f00; --orange-soft:#fff2e9; --orange-100:#ffe1cb; --orange-50:#fff7f0;
   --purple:#8d2bd1; --purple-600:#7a1fb8; --purple-700:#661a9c; --purple-soft:#f5ebfb; --purple-100:#ecd6f7;
-  /* Neutros quentes */
   --ink:#1f1c1a; --ink-soft:#4d4842; --muted:#6e6760; --faint:#9a938b;
   --line:#e9e3dc; --line-strong:#d8d0c7; --surface:#ffffff; --page:#faf8f6; --sunken:#f3efeb;
-  /* Semânticos */
   --green:#1fa85a; --green-bg:#e4f6ec; --amber:#f2a82c; --amber-bg:#fdf1d9; --red:#d93e3e; --red-bg:#fbe5e5; --blue:#2f6fed;
-  /* Raios */
   --radius-card:18px; --radius-input:12px; --radius-pill:999px;
-  /* Sombras quentes */
   --shadow-xs:0 1px 2px rgba(31,28,26,.04); --shadow-sm:0 2px 8px rgba(31,28,26,.06); --shadow-md:0 10px 26px rgba(31,28,26,.09); --shadow-lg:0 20px 48px rgba(31,28,26,.12); --shadow-xl:0 28px 64px rgba(31,28,26,.16); --shadow-brand:0 12px 26px rgba(255,101,0,.26);
-  /* Movimento */
   --ease:cubic-bezier(.2,.8,.2,1); --dur:.18s;
 }
 * { box-sizing:border-box; }
