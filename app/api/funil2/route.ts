@@ -112,7 +112,21 @@ export async function POST(request: Request) {
     const inicio = new Date(String(body.inicioEm ?? ""));
     if (Number.isNaN(inicio.getTime())) return Response.json({ error: "Data da visita inválida." }, { status: 422 });
     rpc = "f2_salvar_visita";
-    args = { p_id: body.id || null, p_lead_id: body.leadId, p_inicio_em: inicio.toISOString(), p_imovel: String(body.imovel ?? "").slice(0, 120), p_status: body.status || "agendada", p_observacao: String(body.observacao ?? "").slice(0, 500) || null };
+    args = {
+      p_id: body.id || null, p_lead_id: body.leadId,
+      p_inicio_em: inicio.toISOString(),
+      p_imovel: String(body.imovel ?? "").slice(0, 120),
+      p_status: body.status || "agendada",
+      p_observacao: body.observacao ? String(body.observacao).slice(0, 500) : null,
+      /* Campos que o CRM antigo sempre teve e o Funil 2.0 tinha perdido:
+         produto, unidade e presenca do gerente. Sem eles a visita vira um
+         compromisso solto, sem dizer o que vai ser mostrado nem com quem. */
+      p_empreendimento_id: body.empreendimentoId || null,
+      p_unidade: body.unidade ? String(body.unidade).slice(0, 60) : null,
+      p_com_gerente: body.comGerente === true,
+      p_gerente_id: body.gerenteId ? Number(body.gerenteId) : null,
+      p_fim_em: body.fimEm ? new Date(String(body.fimEm)).toISOString() : null,
+    };
   } else if (action === "salvarNegociacao") {
     rpc = "f2_salvar_negociacao";
     args = { p_id: body.id || null, p_lead_id: body.leadId, p_titulo: String(body.titulo ?? "").slice(0, 120), p_etapa: body.etapa || "qualificacao", p_valor: body.valor === "" || body.valor == null ? null : Number(body.valor), p_observacao: String(body.observacao ?? "").slice(0, 500) || null };
