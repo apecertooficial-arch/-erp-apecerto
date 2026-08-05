@@ -1,24 +1,21 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { SONS, escolherSom, escolherVolume, liberarAudio, somEscolhido,
-         tocarSom, volumeEscolhido, type NomeSom } from "../lib/somAviso";
+import { useSyncExternalStore } from "react";
+import { SONS, assinarPreferencia, escolherSom, escolherVolume, liberarAudio,
+         preferenciaAtual, preferenciaPadrao, tocarSom, type NomeSom } from "../lib/somAviso";
 
 /* ESCOLHA DO SOM DE AVISO.
    Toca na hora ao selecionar: som se escolhe ouvindo, nao lendo o nome.
-   A preferencia fica no proprio aparelho (localStorage) -- o corretor que usa
-   celular e computador pode querer um em cada, e nao ha por que sincronizar. */
+   A preferencia fica no proprio aparelho (localStorage) -- quem usa celular e
+   computador pode querer um em cada, e nao ha por que sincronizar.
+
+   Le com useSyncExternalStore, nao com efeito + setState: o localStorage e uma
+   fonte externa, e setState em efeito dispara render em cascata (o lint barra). */
 export function EscolherSom() {
-  const [atual, setAtual] = useState<NomeSom>("sino");
-  const [vol, setVol] = useState(0.9);
-  const [pronto, setPronto] = useState(false);
+  const pref = useSyncExternalStore(assinarPreferencia, preferenciaAtual, preferenciaPadrao);
+  const { som: atual, volume: vol } = pref;
 
-  useEffect(() => { setAtual(somEscolhido()); setVol(volumeEscolhido()); setPronto(true); }, []);
-  if (!pronto) return null;
-
-  const selecionar = (id: NomeSom) => {
-    liberarAudio(); escolherSom(id); setAtual(id); tocarSom(id, vol);
-  };
+  const selecionar = (id: NomeSom) => { liberarAudio(); escolherSom(id); tocarSom(id, vol); };
 
   return (
     <section className="som-aviso">
@@ -46,7 +43,7 @@ export function EscolherSom() {
       <label className="som-aviso-volume">
         Volume
         <input type="range" min={0.2} max={1} step={0.05} value={vol}
-               onChange={(e) => { const v = Number(e.target.value); setVol(v); escolherVolume(v); }}
+               onChange={(e) => escolherVolume(Number(e.target.value))}
                onMouseUp={() => tocarSom(atual, vol)}
                onTouchEnd={() => tocarSom(atual, vol)} />
         <b>{Math.round(vol * 100)}%</b>
