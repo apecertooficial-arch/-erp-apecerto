@@ -413,3 +413,64 @@ a.md-acao:active { background: #1FB855; }
 }
 .som-aviso-volume input { flex: 1 1 auto; accent-color: var(--ape-orange-600, #f97316); }
 .som-aviso-nota { margin: 14px 0 0; font-size: 11.5px; line-height: 1.5; color: #8a8178; }
+
+/* ---------- Aviso dentro da tela ----------
+   A notificacao do sistema depende de macOS/Windows deixarem passar. Este nao:
+   se o ApeCerto esta aberto, o corretor ve o aviso em qualquer modulo. */
+.aviso-tela-pilha {
+  position: fixed; top: 16px; right: 16px; z-index: 9500;
+  display: flex; flex-direction: column; gap: 8px;
+  width: min(360px, calc(100vw - 32px));
+}
+.aviso-tela {
+  display: flex; align-items: center; gap: 12px; width: 100%;
+  padding: 13px 14px; border: 0; border-radius: 14px;
+  background: #1c1917; color: #fff; text-align: left;
+  font-family: inherit; cursor: pointer;
+  box-shadow: 0 14px 34px rgba(0,0,0,.28);
+  animation: aviso-tela-entra .28s cubic-bezier(.2,.8,.3,1) both;
+}
+@keyframes aviso-tela-entra { from { opacity:0; transform: translateX(16px) } to { opacity:1; transform:none } }
+.aviso-tela-ico { flex: 0 0 auto; font-size: 17px; }
+.aviso-tela-txt { flex: 1 1 auto; min-width: 0; }
+.aviso-tela-txt strong { display: block; font-size: 13.5px; font-weight: 650; line-height: 1.3; }
+.aviso-tela-txt small { display: block; font-size: 12px; opacity: .78; margin-top: 2px; line-height: 1.35; }
+.aviso-tela-x { flex: 0 0 auto; font-size: 18px; opacity: .5; padding: 0 2px; }
+.aviso-tela-x:hover { opacity: 1; }
+
+@media (max-width: 900px) {
+  .aviso-tela-pilha { top: 10px; left: 10px; right: 10px; width: auto; }
+}
+@media (prefers-reduced-motion: reduce) { .aviso-tela { animation: none; } }
+
+/* ---------- Agendar visita pelo celular ---------- */
+.f2m-agendar-abrir {
+  width: 100%; margin-top: 10px; min-height: 46px; padding: 0 16px;
+  border: 1px solid rgba(0,0,0,.12); border-radius: 12px; background: #fff;
+  font-family: inherit; font-size: 14px; font-weight: 600; color: #1c1917; cursor: pointer;
+}
+.f2m-agendar-abrir:active { background: #f7f5f3; }
+.f2m-agendar { margin-top: 10px; padding: 14px; border: 1px solid rgba(0,0,0,.1); border-radius: 14px; background: #fff; }
+.f2m-agendar h3 { margin: 0 0 10px; font-size: 14.5px; font-weight: 700; }
+.f2m-agendar label { display: block; font-size: 12.5px; font-weight: 600; margin-bottom: 10px; color: #57534e; }
+.f2m-agendar label small { font-weight: 400; opacity: .7; }
+.f2m-agendar input {
+  display: block; width: 100%; margin-top: 5px; min-height: 44px; padding: 0 12px;
+  border: 1px solid rgba(0,0,0,.14); border-radius: 10px;
+  font-family: inherit; font-size: 15px; background: #fff; color: #1c1917;
+}
+.f2m-agendar-erro { margin: 0 0 10px; font-size: 12.5px; color: #b91c1c; }
+.f2m-agendar-acoes { display: flex; gap: 8px; }
+.f2m-agendar-acoes button {
+  flex: 1 1 0; min-height: 46px; border-radius: 11px; border: 0;
+  font-family: inherit; font-size: 14px; font-weight: 600; cursor: pointer;
+}
+.f2m-agendar-nao { background: #f0edea; color: #57534e; }
+.f2m-agendar-ok { background: var(--ape-orange-600, #f97316); color: #fff; }
+.f2m-agendar-acoes button:disabled { opacity: .6; }
+
+/* O cartao de aviso nao pode cobrir a barra de navegacao do celular: o corretor
+   ficava sem conseguir trocar de aba enquanto ele estivesse na tela. */
+@media (max-width: 900px) {
+  .aviso-push-convite, .aviso-push-ok { bottom: calc(72px + env(safe-area-inset-bottom, 0px)); }
+}
