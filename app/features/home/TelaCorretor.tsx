@@ -260,9 +260,12 @@ export function TelaCorretor({ accessToken, nome, onAbrirLead, onIr }: {
         </div>
       )}
 
-      {/* Gestão não precisa de aviso de lead novo no aparelho: o lead não cai
-          para ela. A faixa só aparece para quem atende. */}
-      {!ehGestao && <AvisoNotificacoes accessToken={accessToken} />}
+      {/* A gestão TAMBÉM recebe aviso: as notificações do Funil 2.0 saem em duas
+          vias, uma para o corretor dono e outra para admin/diretor/gerente. Antes
+          esta faixa não era montada para gestão, então o navegador dela nunca
+          chegava a se inscrever — permitir no Chrome não bastava, porque o
+          `pushManager.subscribe` vivia aqui dentro e nunca rodava. */}
+      <AvisoNotificacoes accessToken={accessToken} />
 
       <div className="tc-chips" role="tablist" aria-label="Filtro da fila">
         {([["agora", "Agora", agora.length], ["hoje", "Hoje", hoje.length], ["todos", "Todos", todos.length]] as const)
