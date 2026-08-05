@@ -80,9 +80,14 @@ export function PresenceHeartbeat({ accessToken, initialOnline }: { accessToken:
     const poll = async () => {
       try {
         const res = await fetch("/api/presenca", { headers: { Authorization: `Bearer ${accessToken}` } });
-        const data = await res.json() as { prompt?: boolean; prazo_seg?: number };
+        const data = await res.json() as { prompt?: boolean; prazo_seg?: number; no_escritorio_ip?: boolean };
         if (stopped || draining.current) return;
-        if (data.prompt) { setSeconds(Math.max(5, Math.round(data.prazo_seg ?? 60))); setPrompt(true); }
+        /* Celular so pergunta se estiver no WiFi do escritorio: presenca existe
+           para saber quem esta LA, e confirmar do sofa nao prova nada. No
+           computador pergunta sempre. */
+        const ehCelular = window.matchMedia?.("(max-width: 900px)").matches ?? false;
+        const vale = !ehCelular || data.no_escritorio_ip === true;
+        if (data.prompt && vale) { setSeconds(Math.max(5, Math.round(data.prazo_seg ?? 60))); setPrompt(true); }
         else setPrompt(false);
       } catch { /* ignore */ }
     };
