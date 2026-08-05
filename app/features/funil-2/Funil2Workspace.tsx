@@ -547,7 +547,7 @@ function ModalVisita({ leads, busy, onFechar, onSalvar }: { leads: LeadFunil2[];
     const sb = getBrowserSupabaseClient();
     void sb.from("empreendimentos").select("id,nome").order("nome").limit(200)
       .then(({ data }) => setProdutos((data ?? []) as { id: string; nome: string }[]));
-    void sb.from("corretores").select("id,nome").eq("ativo", true).order("nome")
+    void sb.from("gerentes").select("id,nome").eq("ativo", true).order("geral", { ascending: false }).order("nome")
       .then(({ data }) => setEquipe((data ?? []) as { id: number; nome: string }[]));
   }, []);
 
