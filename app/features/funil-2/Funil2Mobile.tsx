@@ -106,7 +106,10 @@ function CartaoLeadMobile({
     </div>
 
     <div className="f2m-direcao">
-      <span>SARA · FAÇA AGORA</span>
+      {/* A sugestao ainda e o texto fixo do momento, nao uma leitura da conversa.
+          Marcar isso na tela e mais honesto do que deixar o corretor achar que a
+          Sara analisou o atendimento dele. Sai quando a analise real entrar. */}
+      <span>SARA · FAÇA AGORA <em className="f2-em-obra">em implementação</em></span>
       <strong>{acaoVisivel(lead)}</strong>
       <small>{momento?.descricao ?? "Execute a ação e mantenha este atendimento atualizado."}</small>
     </div>

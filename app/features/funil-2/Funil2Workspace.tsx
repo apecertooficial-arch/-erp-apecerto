@@ -214,7 +214,7 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
                     <div className="f2-card-trio">
                       <div className="etapa"><span>ETAPA</span><b>{etapa.rotulo}</b></div>
                       <div className="momento"><span>MOMENTO</span><b>{momento?.rotulo ?? item.momento_codigo}</b></div>
-                      <div className="acao"><span>{dia ? `CADÊNCIA · DIA ${dia}` : "PRÓXIMA AÇÃO"}</span><b>{acaoVisivel(item)}</b></div>
+                      <div className="acao"><span>{dia ? `CADÊNCIA · DIA ${dia}` : "PRÓXIMA AÇÃO"} <em className="f2-em-obra">em implementação</em></span><b>{acaoVisivel(item)}</b></div>
                     </div>
                     <div className={`f2-prazo ${prazo.classe}`}>{prazo.rotulo}</div>
                     <div className="f2-card-botoes"><button type="button" onClick={(e) => { e.stopPropagation(); setAbrirNoChat(true); setSelecionado(item.id); }}>💬 Conversa</button>{linkWhatsapp(item.telefone) && <a href={linkWhatsapp(item.telefone)!} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}>WhatsApp</a>}<button type="button" className="principal" onClick={(e) => { e.stopPropagation(); setSelecionado(item.id); }}>{dia ? `Executar Dia ${dia}` : "Abrir ação"}</button></div>
@@ -231,7 +231,7 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
       {!carregando && aba === "dia" && <main className="f2-dia">
         <section className="f2-plano">
           <div className="f2-plano-titulo"><div><span className="f2-eyebrow">SEU PLANO DE TRABALHO</span><h2>O CRM colocou o dia na ordem certa.</h2><p>Veja o cliente, a etapa, o momento, a ação e o tempo restante. Execute de cima para baixo.</p></div><b>{aFazer.length}<small>obrigações</small></b></div>
-          {aFazer[0] && <div className="f2-proxima"><div><span>SUA PRÓXIMA AÇÃO</span><h3>{aFazer[0].nome} · {momentosAtivos.find((m) => m.codigo === aFazer[0].momento_codigo)?.rotulo}</h3><b>{acaoVisivel(aFazer[0])}</b><small>{prazoDaAcao(aFazer[0]).rotulo}</small></div><button type="button" onClick={() => setSelecionado(aFazer[0].id)}>Atender agora</button></div>}
+          {aFazer[0] && <div className="f2-proxima"><div><span>SUA PRÓXIMA AÇÃO <em className="f2-em-obra">em implementação</em></span><h3>{aFazer[0].nome} · {momentosAtivos.find((m) => m.codigo === aFazer[0].momento_codigo)?.rotulo}</h3><b>{acaoVisivel(aFazer[0])}</b><small>{prazoDaAcao(aFazer[0]).rotulo}</small></div><button type="button" onClick={() => setSelecionado(aFazer[0].id)}>Atender agora</button></div>}
           <div className="f2-indicadores"><article className="vermelho"><b>{atrasados}</b><span>ações atrasadas</span></article><article className="amarelo"><b>{urgentes}</b><span>vencem em até 2h</span></article><article className="laranja"><b>{vencemHoje}</b><span>para fazer hoje</span></article><article className="roxo"><b>{leads.filter((l) => l.etapa === "novo").length}</b><span>leads novos</span></article><article className="verde"><b>{visitas.filter((v) => new Date(v.inicio_em).toDateString() === new Date().toDateString()).length}</b><span>visitas do dia</span></article></div>
           <div className="f2-como"><span><i>1</i><b>Siga a ordem</b><small>O primeiro item é o mais urgente.</small></span><span><i>2</i><b>Execute a ação</b><small>WhatsApp, visita, produto ou retorno.</small></span><span><i>3</i><b>Conclua no CRM</b><small>A Sara relê e prepara o próximo passo.</small></span></div>
         </section>
