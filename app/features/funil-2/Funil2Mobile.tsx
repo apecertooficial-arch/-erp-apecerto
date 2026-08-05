@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { BotaoWhatsApp } from "../crm-nova-era/components/BotaoWhatsApp";
+import { AvisoNotificacoes } from "../home/AvisoNotificacoes";
 import {
   acaoVisivel,
   prazoDaAcao,
@@ -217,6 +218,12 @@ export function Funil2Mobile({
       </div>
       <button type="button" className="f2m-sino" onClick={() => onIr("/notificacoes")} aria-label="Abrir avisos">🔔<b>{contagens.agora}</b></button>
     </header>
+
+    {/* A inscricao de push VIVE dentro deste componente (pushManager.subscribe).
+        Enquanto o Funil 2.0 nao o montava, ninguem conseguia se inscrever -- nem
+        o iPhone chegava a pedir permissao, e por isso o app nem aparecia nos
+        Ajustes do iOS. Aviso nenhum chegava porque nao havia a quem entregar. */}
+    <AvisoNotificacoes accessToken={accessToken} />
 
     {modo === "inicio" && <section className="f2m-kpis" aria-label="Resumo do dia">
       <article><b>{contagens.agora}</b><span>agora</span></article>
