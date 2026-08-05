@@ -25,7 +25,25 @@ export async function GET(request: Request) {
   }
   const { data, error } = await a.supabase.rpc("presenca_status");
   if (error) return Response.json({ error: error.message }, { status: 502 });
-  return Response.json(data ?? { ativa: false, prompt: false });
+
+  /* Presenca serve para saber quem esta NO ESCRITORIO. No celular, na rua, ela
+     nao prova nada -- o corretor confirma do sofa e continua na fila. Por isso
+     o aparelho movel so vale quando esta no WiFi do escritorio.
+     O IP tem de ser lido AQUI, no servidor: o navegador nao conhece o proprio
+     IP publico e qualquer valor vindo do cliente seria falsificavel. */
+  const ipBruto =
+    request.headers.get("cf-connecting-ip") ??
+    request.headers.get("x-real-ip") ??
+    (request.headers.get("x-forwarded-for") ?? "").split(",")[0];
+  const ip = (ipBruto ?? "").trim();
+  let noEscritorio = false;
+  if (ip) {
+    const { data: cfg } = await a.supabase.from("escritorio_config").select("ips").maybeSingle();
+    const permitidos = (cfg?.ips ?? []) as string[];
+    noEscritorio = permitidos.some((permitido) => permitido.trim() === ip);
+  }
+
+  return Response.json({ ...(data ?? { ativa: false, prompt: false }), no_escritorio_ip: noEscritorio });
 }
 
 export async function POST(request: Request) {
