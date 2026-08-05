@@ -6,6 +6,7 @@
 import { useEffect, useState } from "react";
 import type { Dispatch, ReactNode, SetStateAction } from "react";
 import { getBrowserSupabaseClient } from "../../lib/supabase/browser";
+import { EscolherSom } from "../../components/EscolherSom";
 import { ConnectionsWorkspace } from "./ConnectionsWorkspace";
 import { PresenceConfig } from "../presence/PresenceConfig";
 import { DistributionConfig } from "../distribution/DistributionConfig";
@@ -324,6 +325,12 @@ function SettingsShell({ section, setSection, error, toast, saving, config, comp
         {section === "momentos" && <MomentosConfig />}
 
         {section === "esteira" && <EsteiraConfig accessToken={accessToken} />}
+
+        {section === "crm" && <section className="settings-card">
+          {/* O som fica aqui e nao no CRM: e preferencia do aparelho, mexe-se
+              uma vez e esquece. Cada corretor escolhe o seu, em cada aparelho. */}
+          <EscolherSom />
+        </section>}
 
         {section === "usuarios" && <section className="settings-card">
           <h2>Usuários & Permissões</h2><p>Papéis, acesso por módulo, instâncias e documentos ficam no módulo Usuários.</p>
