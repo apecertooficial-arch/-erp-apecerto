@@ -143,6 +143,16 @@ self.addEventListener("push", (evento) => {
      os avisos de gestao colapsam por tipo, de proposito. */
   const urgente = TAGS_URGENTES.includes(aviso.tag);
 
+  /* Som proprio do ApeCerto: a notificacao do sistema nao deixa escolher o som,
+     entao avisamos as abas abertas para tocarem o nosso. Funciona com a aba em
+     segundo plano; se nao houver aba, fica so o som padrao do aparelho. */
+  evento.waitUntil((async () => {
+    try {
+      const abas = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+      for (const aba of abas) aba.postMessage({ tipo: "aviso-apecerto", tag: aviso.tag, urgente });
+    } catch (_e) { /* nunca deixar o som derrubar a notificacao */ }
+  })());
+
   evento.waitUntil(
     self.registration.showNotification(aviso.title, {
       body: aviso.body,

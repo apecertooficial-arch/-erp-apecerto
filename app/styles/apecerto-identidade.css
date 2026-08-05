@@ -385,3 +385,31 @@ a.md-acao:active { background: #1FB855; }
 @media (prefers-reduced-motion: reduce) {
   .aviso-push-some { animation: none; }
 }
+
+/* ---------- Escolha do som de aviso ---------- */
+.som-aviso { max-width: 560px; }
+.som-aviso h3 { margin: 0 0 4px; font-size: 15px; font-weight: 700; }
+.som-aviso-ajuda { margin: 0 0 14px; font-size: 12.5px; line-height: 1.5; color: #6b6259; }
+.som-aviso-lista { display: grid; gap: 8px; }
+.som-aviso-item {
+  display: flex; align-items: center; gap: 12px; width: 100%;
+  padding: 12px 14px; border: 1px solid rgba(0,0,0,.09); border-radius: 12px;
+  background: #fff; cursor: pointer; text-align: left; font-family: inherit;
+  transition: border-color .15s ease, background .15s ease;
+}
+.som-aviso-item:hover { border-color: rgba(0,0,0,.2); background: #fcfbfa; }
+.som-aviso-item-ativo { border-color: var(--ape-orange-600, #f97316); background: #fff7ed; }
+.som-aviso-play {
+  flex: 0 0 auto; width: 30px; height: 30px; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--ape-orange-600, #f97316); color: #fff; font-size: 11px;
+}
+.som-aviso-txt { flex: 1 1 auto; min-width: 0; }
+.som-aviso-txt strong { display: block; font-size: 13.5px; }
+.som-aviso-txt small { display: block; font-size: 12px; color: #6b6259; margin-top: 2px; }
+.som-aviso-check { flex: 0 0 auto; color: var(--ape-orange-600, #f97316); font-weight: 700; }
+.som-aviso-volume {
+  display: flex; align-items: center; gap: 10px; margin-top: 14px; font-size: 12.5px;
+}
+.som-aviso-volume input { flex: 1 1 auto; accent-color: var(--ape-orange-600, #f97316); }
+.som-aviso-nota { margin: 14px 0 0; font-size: 11.5px; line-height: 1.5; color: #8a8178; }
