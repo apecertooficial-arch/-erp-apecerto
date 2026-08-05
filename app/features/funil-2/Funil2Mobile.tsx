@@ -120,16 +120,91 @@ function CartaoLeadMobile({
   </article>;
 }
 
+/* AGENDAR VISITA PELO CELULAR.
+   O corretor precisa marcar visita de onde estiver -- na rua, no imovel, no
+   carro. Ate aqui so dava para agendar pelo computador, o que na pratica
+   significava anotar num papel e transcrever depois (ou esquecer).
+   Usa a mesma acao salvarVisita da API, entao a visita nasce ja ligada ao
+   lead e conta para a protecao do dono e para a elegibilidade. */
+function AgendarVisitaMobile({
+  lead,
+  accessToken,
+  onSalvo,
+}: {
+  lead: LeadFunil2;
+  accessToken: string;
+  onSalvo: () => void;
+}) {
+  const [aberto, setAberto] = useState(false);
+  const [quando, setQuando] = useState("");
+  const [imovel, setImovel] = useState("");
+  const [salvando, setSalvando] = useState(false);
+  const [erro, setErro] = useState("");
+
+  async function salvar() {
+    if (!quando) { setErro("Escolha a data e a hora."); return; }
+    setSalvando(true); setErro("");
+    try {
+      const resposta = await fetch("/api/funil2", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "salvarVisita",
+          lead_id: lead.id,
+          inicio_em: new Date(quando).toISOString(),
+          imovel: imovel.trim() || null,
+          status: "agendada",
+        }),
+      });
+      if (!resposta.ok) throw new Error("falhou");
+      setAberto(false); setQuando(""); setImovel("");
+      onSalvo();
+    } catch {
+      setErro("Não foi possível agendar. Tente de novo.");
+    } finally {
+      setSalvando(false);
+    }
+  }
+
+  if (!aberto) {
+    return <button type="button" className="f2m-agendar-abrir" onClick={() => setAberto(true)}>
+      📅 Agendar visita
+    </button>;
+  }
+
+  return <section className="f2m-agendar">
+    <h3>Agendar visita</h3>
+    <label>Data e hora
+      <input type="datetime-local" value={quando} onChange={(e) => setQuando(e.target.value)} />
+    </label>
+    <label>Imóvel <small>(opcional)</small>
+      <input type="text" value={imovel} placeholder="Ex.: Edifício Aurora, apto 402"
+             onChange={(e) => setImovel(e.target.value)} />
+    </label>
+    {erro && <p className="f2m-agendar-erro">{erro}</p>}
+    <div className="f2m-agendar-acoes">
+      <button type="button" className="f2m-agendar-nao" onClick={() => setAberto(false)} disabled={salvando}>Cancelar</button>
+      <button type="button" className="f2m-agendar-ok" onClick={() => void salvar()} disabled={salvando}>
+        {salvando ? "Agendando…" : "Confirmar visita"}
+      </button>
+    </div>
+  </section>;
+}
+
 function DetalheMobile({
   lead,
   momento,
   eventos,
   onFechar,
+  accessToken,
+  onSalvo,
 }: {
   lead: LeadFunil2;
   momento: MomentoFunil2 | null;
   eventos: EventoFunil2[];
   onFechar: () => void;
+  accessToken: string;
+  onSalvo: () => void;
 }) {
   const prazo = prazoDaAcao(lead);
   return <div className="f2m-overlay" role="dialog" aria-modal="true" aria-label={`Atendimento de ${lead.nome}`}>
@@ -150,6 +225,8 @@ function DetalheMobile({
       <div className="f2m-whatsapp f2m-whatsapp-grande">
         <BotaoWhatsApp telefone={lead.telefone} negocioId={lead.origem_negocio_id} />
       </div>
+
+      <AgendarVisitaMobile lead={lead} accessToken={accessToken} onSalvo={onSalvo} />
 
       <section className="f2m-historico">
         <h3>Últimas atualizações</h3>
@@ -242,6 +319,6 @@ export function Funil2Mobile({
       {visiveis.slice(0, modo === "inicio" ? 30 : 60).map((lead) => <CartaoLeadMobile key={lead.id} lead={lead} momento={momentos.find((momento) => momento.codigo === lead.momento_codigo) ?? null} onAbrir={() => setSelecionado(lead.id)} />)}
     </section>
 
-    {leadAberto && <DetalheMobile lead={leadAberto} momento={momentos.find((momento) => momento.codigo === leadAberto.momento_codigo) ?? null} eventos={eventos.filter((evento) => evento.funil_lead_id === leadAberto.id).sort((a, b) => +new Date(b.criado_em) - +new Date(a.criado_em))} onFechar={() => { setSelecionado("__fechado__"); limparLeadDaUrl(); }} />}
+    {leadAberto && <DetalheMobile lead={leadAberto} momento={momentos.find((momento) => momento.codigo === leadAberto.momento_codigo) ?? null} eventos={eventos.filter((evento) => evento.funil_lead_id === leadAberto.id).sort((a, b) => +new Date(b.criado_em) - +new Date(a.criado_em))} onFechar={() => { setSelecionado("__fechado__"); limparLeadDaUrl(); }} accessToken={accessToken} onSalvo={() => { void recarregar(); setSelecionado(null); }} />}
   </main>;
 }

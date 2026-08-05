@@ -442,3 +442,35 @@ a.md-acao:active { background: #1FB855; }
   .aviso-tela-pilha { top: 10px; left: 10px; right: 10px; width: auto; }
 }
 @media (prefers-reduced-motion: reduce) { .aviso-tela { animation: none; } }
+
+/* ---------- Agendar visita pelo celular ---------- */
+.f2m-agendar-abrir {
+  width: 100%; margin-top: 10px; min-height: 46px; padding: 0 16px;
+  border: 1px solid rgba(0,0,0,.12); border-radius: 12px; background: #fff;
+  font-family: inherit; font-size: 14px; font-weight: 600; color: #1c1917; cursor: pointer;
+}
+.f2m-agendar-abrir:active { background: #f7f5f3; }
+.f2m-agendar { margin-top: 10px; padding: 14px; border: 1px solid rgba(0,0,0,.1); border-radius: 14px; background: #fff; }
+.f2m-agendar h3 { margin: 0 0 10px; font-size: 14.5px; font-weight: 700; }
+.f2m-agendar label { display: block; font-size: 12.5px; font-weight: 600; margin-bottom: 10px; color: #57534e; }
+.f2m-agendar label small { font-weight: 400; opacity: .7; }
+.f2m-agendar input {
+  display: block; width: 100%; margin-top: 5px; min-height: 44px; padding: 0 12px;
+  border: 1px solid rgba(0,0,0,.14); border-radius: 10px;
+  font-family: inherit; font-size: 15px; background: #fff; color: #1c1917;
+}
+.f2m-agendar-erro { margin: 0 0 10px; font-size: 12.5px; color: #b91c1c; }
+.f2m-agendar-acoes { display: flex; gap: 8px; }
+.f2m-agendar-acoes button {
+  flex: 1 1 0; min-height: 46px; border-radius: 11px; border: 0;
+  font-family: inherit; font-size: 14px; font-weight: 600; cursor: pointer;
+}
+.f2m-agendar-nao { background: #f0edea; color: #57534e; }
+.f2m-agendar-ok { background: var(--ape-orange-600, #f97316); color: #fff; }
+.f2m-agendar-acoes button:disabled { opacity: .6; }
+
+/* O cartao de aviso nao pode cobrir a barra de navegacao do celular: o corretor
+   ficava sem conseguir trocar de aba enquanto ele estivesse na tela. */
+@media (max-width: 900px) {
+  .aviso-push-convite, .aviso-push-ok { bottom: calc(72px + env(safe-area-inset-bottom, 0px)); }
+}
