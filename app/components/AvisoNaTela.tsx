@@ -7,7 +7,7 @@ import { liberarAudio, tocarSom } from "../lib/somAviso";
 type Aviso = { id: number; titulo: string; corpo: string; url: string };
 type Item = {
   id: number; tipo: string; titulo: string; detalhe: string | null;
-  prioridade: number; deep_link: string | null; vista: boolean;
+  prioridade: number; deep_link: string | null; vista: boolean; desde?: string | null;
 };
 
 /* AVISO DE LEAD NA TELA — POR CONSULTA, NAO POR PUSH.
@@ -62,7 +62,10 @@ export function AvisoNaTela() {
         /* Primeira volta so fotografa o que ja existia: quem abre o app com
            dez avisos velhos nao pode levar dez alarmes na cara. */
         if (vistos.current === null) {
+          const corte = Date.now() - 10 * 60 * 1000;
+          const recentes = itens.filter((i) => i.desde != null && Date.parse(i.desde) >= corte);
           vistos.current = new Set(itens.map((i) => i.id));
+          for (const item of recentes.slice(0, 3)) mostrar(item);
           return;
         }
         for (const item of itens) {
