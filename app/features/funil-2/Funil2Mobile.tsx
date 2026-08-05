@@ -312,7 +312,13 @@ export function Funil2Mobile({
      continuava sendo APLICADO, travado em "agora", que so mostra lead com prazo
      ja vencido. Resultado: o corretor abria o CRM e a carteira inteira sumia.
      CRM e a carteira completa; "agora" so faz sentido no Meu Dia. */
-  const [filtroDia, setFiltroDia] = useState<FiltroDia>(modo === "crm" ? "todos" : "agora");
+  /* O Meu Dia abre em "Lead novo" quando ha lead novo esperando -- e onde o
+     corretor precisa olhar primeiro. Sem lead novo, abrir numa aba vazia seria
+     pior, entao cai no "Agora". No CRM a aba e sempre "todos" (carteira). */
+  const [filtroDia, setFiltroDia] = useState<FiltroDia>(() => {
+    if (modo === "crm") return "todos";
+    return (dados?.leads ?? []).some((lead) => lead.etapa === "novo") ? "novos" : "agora";
+  });
   const [etapa, setEtapa] = useState("todos");
   const [busca, setBusca] = useState("");
   const [selecionado, setSelecionado] = useState<string | null>(null);
@@ -371,7 +377,7 @@ export function Funil2Mobile({
     </label>}
 
     <nav className="f2m-filtros" aria-label="Filtrar atendimentos">
-      {modo === "inicio" ? (["agora", "novos", "hoje", "todos"] as const).map((chave) => <button key={chave} type="button" className={`${filtroDia === chave ? "ativo" : ""}${chave === "novos" ? " f2m-chip-novo" : ""}`} onClick={() => setFiltroDia(chave)}>{chave === "agora" ? `Agora · ${contagens.agora}` : chave === "novos" ? `Lead novo · ${contagens.novos}` : chave === "hoje" ? `Hoje · ${contagens.hoje}` : `Todos · ${leads.length}`}</button>) : ETAPAS.map(([chave, rotulo]) => <button key={chave} type="button" className={etapa === chave ? "ativo" : ""} onClick={() => setEtapa(chave)}>{rotulo}</button>)}
+      {modo === "inicio" ? (["novos", "agora", "hoje", "todos"] as const).map((chave) => <button key={chave} type="button" className={`${filtroDia === chave ? "ativo" : ""}${chave === "novos" ? " f2m-chip-novo" : ""}`} onClick={() => setFiltroDia(chave)}>{chave === "agora" ? `Agora · ${contagens.agora}` : chave === "novos" ? `Lead novo · ${contagens.novos}` : chave === "hoje" ? `Hoje · ${contagens.hoje}` : `Todos · ${leads.length}`}</button>) : ETAPAS.map(([chave, rotulo]) => <button key={chave} type="button" className={etapa === chave ? "ativo" : ""} onClick={() => setEtapa(chave)}>{rotulo}</button>)}
     </nav>
 
     {erro && <div className="f2m-erro"><strong>{erro}</strong><button type="button" onClick={recarregar}>Tentar novamente</button></div>}
