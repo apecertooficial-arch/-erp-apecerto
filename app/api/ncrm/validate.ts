@@ -164,9 +164,11 @@ export function validarAcao(body: Record<string, unknown>): Val<{ action: string
       const empreendimentoId = body.empreendimentoId == null ? null : uuidValido(body.empreendimentoId);
       if (body.empreendimentoId != null && empreendimentoId === null) return { ok: false, erro: "empreendimento inválido" };
       const produto = body.produto == null ? null : textoLimitado(body.produto, 180);
+      const unidade = body.unidade == null ? null : textoLimitado(body.unidade, 60);
       const comGerente = body.comGerente === true;
       const gerenteId = body.gerenteId == null ? null : inteiroPositivo(body.gerenteId);
-      return { ok: true, value: { action, args: { negocioId, versao, leadId, data: body.data, horaInicio: body.horaInicio, empreendimentoId, produto, comGerente, gerenteId } } };
+      if (comGerente && gerenteId === null) return { ok: false, erro: "escolha qual gerente vai junto" };
+      return { ok: true, value: { action, args: { negocioId, versao, leadId, data: body.data, horaInicio: body.horaInicio, empreendimentoId, produto, unidade, comGerente, gerenteId } } };
     }
     case "propostaTransicao": {
       const propostaId = uuidValido(body.propostaId); if (!propostaId) return { ok: false, erro: "proposta inválida" };
