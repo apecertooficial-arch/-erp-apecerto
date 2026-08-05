@@ -106,7 +106,10 @@ function CartaoLeadMobile({
     </div>
 
     <div className="f2m-direcao">
-      <span>SARA · FAÇA AGORA</span>
+      {/* A sugestao ainda e o texto fixo do momento, nao uma leitura da conversa.
+          Marcar isso na tela e mais honesto do que deixar o corretor achar que a
+          Sara analisou o atendimento dele. Sai quando a analise real entrar. */}
+      <span>SARA · FAÇA AGORA <em className="f2-em-obra">em implementação</em></span>
       <strong>{acaoVisivel(lead)}</strong>
       <small>{momento?.descricao ?? "Execute a ação e mantenha este atendimento atualizado."}</small>
     </div>
@@ -251,7 +254,11 @@ export function Funil2Mobile({
   onIr: (destino: string) => void;
 }) {
   const { dados, erro, recarregar } = useFunil2Mobile(accessToken);
-  const [filtroDia, setFiltroDia] = useState<FiltroDia>("agora");
+  /* No modo CRM os botoes Agora/Hoje/Todos nao sao renderizados -- mas o filtro
+     continuava sendo APLICADO, travado em "agora", que so mostra lead com prazo
+     ja vencido. Resultado: o corretor abria o CRM e a carteira inteira sumia.
+     CRM e a carteira completa; "agora" so faz sentido no Meu Dia. */
+  const [filtroDia, setFiltroDia] = useState<FiltroDia>(modo === "crm" ? "todos" : "agora");
   const [etapa, setEtapa] = useState("todos");
   const [busca, setBusca] = useState("");
   const [selecionado, setSelecionado] = useState<string | null>(null);

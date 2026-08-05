@@ -474,3 +474,13 @@ a.md-acao:active { background: #1FB855; }
 @media (max-width: 900px) {
   .aviso-push-convite, .aviso-push-ok { bottom: calc(72px + env(safe-area-inset-bottom, 0px)); }
 }
+
+/* Etiqueta "em implementação": a sugestão de próxima ação ainda é o texto fixo
+   do momento, nao uma leitura da conversa pela Sara. Enquanto for assim, a tela
+   avisa -- deixar o corretor achar que houve analise seria pior que nao ter. */
+.f2-em-obra {
+  display: inline-block; margin-left: 6px; padding: 1px 7px;
+  border-radius: 999px; background: #fef3c7; color: #92400e;
+  font-size: 9.5px; font-weight: 700; font-style: normal;
+  letter-spacing: .02em; text-transform: none; vertical-align: middle;
+}
