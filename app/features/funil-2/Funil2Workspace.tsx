@@ -55,6 +55,9 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
   const [sara, setSara] = useState<SaraStatusFunil2>({ modo: null, runnerAtivo: false, analisesNoLaboratorio: 0, reavaliacaoAutomaticaFunil2: false });
   const [aba, setAba] = useState<"quadro" | "dia" | "leads" | "visitas" | "vendas" | "performance" | "config">("dia");
   const [selecionado, setSelecionado] = useState<string | null>(null);
+  /* Quem clica em "Conversa" quer a conversa, nao a ficha com um botao de chat
+     dentro. Guardamos a intencao para a ficha ja abrir no mini chat. */
+  const [abrirNoChat, setAbrirNoChat] = useState(false);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -211,10 +214,10 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
                     <div className="f2-card-trio">
                       <div className="etapa"><span>ETAPA</span><b>{etapa.rotulo}</b></div>
                       <div className="momento"><span>MOMENTO</span><b>{momento?.rotulo ?? item.momento_codigo}</b></div>
-                      <div className="acao"><span>{dia ? `CADÊNCIA · DIA ${dia}` : "PRÓXIMA AÇÃO"}</span><b>{acaoVisivel(item)}</b></div>
+                      <div className="acao"><span>{dia ? `CADÊNCIA · DIA ${dia}` : "PRÓXIMA AÇÃO"} <em className="f2-em-obra">em implementação</em></span><b>{acaoVisivel(item)}</b></div>
                     </div>
                     <div className={`f2-prazo ${prazo.classe}`}>{prazo.rotulo}</div>
-                    <div className="f2-card-botoes"><button type="button" onClick={(e) => { e.stopPropagation(); setSelecionado(item.id); }}>💬 Conversa</button>{linkWhatsapp(item.telefone) && <a href={linkWhatsapp(item.telefone)!} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}>WhatsApp</a>}<button type="button" className="principal" onClick={(e) => { e.stopPropagation(); setSelecionado(item.id); }}>{dia ? `Executar Dia ${dia}` : "Abrir ação"}</button></div>
+                    <div className="f2-card-botoes"><button type="button" onClick={(e) => { e.stopPropagation(); setAbrirNoChat(true); setSelecionado(item.id); }}>💬 Conversa</button>{linkWhatsapp(item.telefone) && <a href={linkWhatsapp(item.telefone)!} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}>WhatsApp</a>}<button type="button" className="principal" onClick={(e) => { e.stopPropagation(); setSelecionado(item.id); }}>{dia ? `Executar Dia ${dia}` : "Abrir ação"}</button></div>
                   </article>;
                 })}
                 {daEtapa.length > 100 && <div className="f2-vazio">Mais {daEtapa.length - 100} lead(s) nesta etapa. Consulte “Todos os Leads”.</div>}
@@ -228,7 +231,7 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
       {!carregando && aba === "dia" && <main className="f2-dia">
         <section className="f2-plano">
           <div className="f2-plano-titulo"><div><span className="f2-eyebrow">SEU PLANO DE TRABALHO</span><h2>O CRM colocou o dia na ordem certa.</h2><p>Veja o cliente, a etapa, o momento, a ação e o tempo restante. Execute de cima para baixo.</p></div><b>{aFazer.length}<small>obrigações</small></b></div>
-          {aFazer[0] && <div className="f2-proxima"><div><span>SUA PRÓXIMA AÇÃO</span><h3>{aFazer[0].nome} · {momentosAtivos.find((m) => m.codigo === aFazer[0].momento_codigo)?.rotulo}</h3><b>{acaoVisivel(aFazer[0])}</b><small>{prazoDaAcao(aFazer[0]).rotulo}</small></div><button type="button" onClick={() => setSelecionado(aFazer[0].id)}>Atender agora</button></div>}
+          {aFazer[0] && <div className="f2-proxima"><div><span>SUA PRÓXIMA AÇÃO <em className="f2-em-obra">em implementação</em></span><h3>{aFazer[0].nome} · {momentosAtivos.find((m) => m.codigo === aFazer[0].momento_codigo)?.rotulo}</h3><b>{acaoVisivel(aFazer[0])}</b><small>{prazoDaAcao(aFazer[0]).rotulo}</small></div><button type="button" onClick={() => setSelecionado(aFazer[0].id)}>Atender agora</button></div>}
           <div className="f2-indicadores"><article className="vermelho"><b>{atrasados}</b><span>ações atrasadas</span></article><article className="amarelo"><b>{urgentes}</b><span>vencem em até 2h</span></article><article className="laranja"><b>{vencemHoje}</b><span>para fazer hoje</span></article><article className="roxo"><b>{leads.filter((l) => l.etapa === "novo").length}</b><span>leads novos</span></article><article className="verde"><b>{visitas.filter((v) => new Date(v.inicio_em).toDateString() === new Date().toDateString()).length}</b><span>visitas do dia</span></article></div>
           <div className="f2-como"><span><i>1</i><b>Siga a ordem</b><small>O primeiro item é o mais urgente.</small></span><span><i>2</i><b>Execute a ação</b><small>WhatsApp, visita, produto ou retorno.</small></span><span><i>3</i><b>Conclua no CRM</b><small>A Sara relê e prepara o próximo passo.</small></span></div>
         </section>
@@ -262,7 +265,8 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
 
       {lead && momentoAtual && <Detalhe key={`${lead.id}:${lead.versao}`}
         accessToken={accessToken} lead={lead} momento={momentoAtual} momentos={momentosAtivos} etapas={etapasAtivas} eventos={eventosLead} busy={busy}
-        onFechar={() => setSelecionado(null)}
+        abrirNoChat={abrirNoChat}
+        onFechar={() => { setSelecionado(null); setAbrirNoChat(false); }}
         onMomento={(codigo, prazo, obs) => void atualizar("atualizarMomento", { momentoCodigo: codigo, prazoCombinado: prazo || null, observacao: obs })}
         onConfirmar={(fonte, obs) => void atualizar("confirmarAcao", { fonte, observacao: obs })}
         onAgendarVisita={() => setModal("visita")}
@@ -528,16 +532,18 @@ function ModalNegociacao({ leads, busy, onFechar, onSalvar }: { leads: LeadFunil
 
 function Modal({ titulo, texto, onFechar, children }: { titulo:string; texto:string; onFechar:()=>void; children:ReactNode }) { return <div className="f2-modal-overlay" onClick={onFechar}><div className="f2-modal" onClick={(e)=>e.stopPropagation()}><header><div><span className="f2-eyebrow">FUNIL 2.0</span><h2>{titulo}</h2><p>{texto}</p></div><button type="button" onClick={onFechar}>×</button></header>{children}</div></div>; }
 
-function Detalhe({ accessToken, lead, momento, momentos, etapas, eventos, busy, onFechar, onMomento, onConfirmar, onAgendarVisita, onGerarNegociacao }: {
+function Detalhe({
+  abrirNoChat, accessToken, lead, momento, momentos, etapas, eventos, busy, onFechar, onMomento, onConfirmar, onAgendarVisita, onGerarNegociacao }: {
   accessToken: string;
   lead: LeadFunil2; momento: MomentoFunil2; momentos: MomentoFunil2[]; etapas: EtapaConfigFunil2[]; eventos: EventoFunil2[]; busy: boolean;
   onFechar: () => void; onMomento: (codigo: string, prazo: string, obs: string) => void; onConfirmar: (fonte: "dapi" | "registro_operacional", obs: string) => void;
   onAgendarVisita: () => void; onGerarNegociacao: () => void;
+  abrirNoChat?: boolean;
 }) {
   const [codigo, setCodigo] = useState(lead.momento_codigo);
   const [prazo, setPrazo] = useState("");
   const [obs, setObs] = useState("");
-  const [chatAberto, setChatAberto] = useState(false);
+  const [chatAberto, setChatAberto] = useState(abrirNoChat === true);
   const config = momentos.find((m) => m.codigo === codigo) ?? momento;
   const situacao = prazoDaAcao(lead);
   const dia = diaCadencia(lead);
