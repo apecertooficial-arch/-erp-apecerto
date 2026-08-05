@@ -30,6 +30,18 @@ import {
 export function AvisoNotificacoes({ accessToken }: { accessToken: string }) {
   const [estado, setEstado] = useState<EstadoPush | null>(null);
   const [ocupado, setOcupado] = useState(false);
+  /* O cartao nao pode morar na tela. A confirmacao some sozinha depois de alguns
+     segundos, e o convite pode ser dispensado -- quem nao quer agora nao deve
+     ficar tropecando nele o dia inteiro. */
+  const [dispensado, setDispensado] = useState(false);
+
+  /* Some sozinho 6s depois de confirmar. Temporizador, nao onAnimationEnd: com
+     prefers-reduced-motion a animacao nao roda e o cartao ficaria para sempre. */
+  useEffect(() => {
+    if (estado !== "ligado") return;
+    const t = window.setTimeout(() => setDispensado(true), 6000);
+    return () => window.clearTimeout(t);
+  }, [estado]);
   const [erro, setErro] = useState<string | null>(null);
 
   /* Diagnostico na montagem: nada de pedir permissao aqui. */
@@ -107,7 +119,7 @@ export function AvisoNotificacoes({ accessToken }: { accessToken: string }) {
     }
   }, [accessToken]);
 
-  if (estado === null || estado === "nao_suportado") return null;
+  if (estado === null || estado === "nao_suportado" || dispensado) return null;
 
   /* Antes o componente desaparecia depois da inscricao. Para o corretor isso
      parecia uma falha: nao havia nenhum lugar dizendo que o aparelho estava
@@ -115,7 +127,7 @@ export function AvisoNotificacoes({ accessToken }: { accessToken: string }) {
      verificavel, sem tomar a tela nem pedir permissao novamente. */
   if (estado === "ligado") {
     return (
-      <div className="aviso-push-ok" role="status" aria-label="Avisos de lead novo ligados">
+      <div className="aviso-push-ok aviso-push-some" role="status" aria-label="Avisos de lead novo ligados">
         <span aria-hidden="true">✓</span>
         <div>
           <strong>Avisos de lead novo ligados</strong>
@@ -145,6 +157,8 @@ export function AvisoNotificacoes({ accessToken }: { accessToken: string }) {
 
   return (
     <div className="aviso-push-convite" role="status">
+      <button type="button" className="aviso-push-fechar" aria-label="Dispensar"
+              onClick={() => setDispensado(true)}>×</button>
       <strong><span aria-hidden="true">🔔</span> Receba aviso de lead novo</strong>
       <p>Chega igual mensagem no celular, na hora que o lead cai para você. Quem responde primeiro vende.</p>
       {erro && <p style={{ color: "#b91c1c" }}>{erro}</p>}
