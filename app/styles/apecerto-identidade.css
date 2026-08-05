@@ -484,3 +484,15 @@ a.md-acao:active { background: #1FB855; }
   font-size: 9.5px; font-weight: 700; font-style: normal;
   letter-spacing: .02em; text-transform: none; vertical-align: middle;
 }
+
+/* Campos novos do agendamento de visita no celular */
+.f2m-agendar select {
+  display: block; width: 100%; margin-top: 5px; min-height: 44px; padding: 0 10px;
+  border: 1px solid rgba(0,0,0,.14); border-radius: 10px;
+  font-family: inherit; font-size: 15px; background: #fff; color: #1c1917;
+}
+.f2m-agendar-check {
+  display: flex; align-items: center; gap: 9px; margin-bottom: 10px;
+  font-size: 13.5px; font-weight: 600; color: #1c1917;
+}
+.f2m-agendar-check input { width: 18px; height: 18px; margin: 0; accent-color: var(--ape-orange-600, #f97316); }
