@@ -5,14 +5,15 @@ import { useCallback, useEffect, useState } from "react";
 type Config = {
   janela_inicio: string; janela_fim: string; receber_ate: string;
   modo_fora_janela: "quem_veio_no_dia" | "todos_do_bloco" | "nao_distribuir";
-  modo_rodizio: "fila_circular" | "placar_justo";
+  modo_rodizio: "fila_circular" | "placar_justo" | "sequencial_por_peso";
   fds_exige_presencas: number;
   failover_envio: boolean; failover_transfere_lead: boolean; resgate_orfaos: boolean;
 };
 
 const RODIZIOS: Array<{ v: Config["modo_rodizio"]; t: string; d: string }> = [
-  { v: "fila_circular", t: "Fila circular — sempre o próximo da fila", d: "Cada corretor recebe na sua vez e vai para o fim da fila. Sem compensação: quem ficou para trás (offline, instância caída) não acumula prioridade." },
-  { v: "placar_justo", t: "Placar justo — prioriza quem recebeu menos", d: "O sistema compensa: quem tem menos leads no placar do dia recebe primeiro, até equilibrar a carteira de todos." },
+  { v: "sequencial_por_peso", t: "Fila em sequência, por peso — recomendado", d: "Um lead para cada, na ordem, dando a volta: Ana → Bruno → Carla → Ana. Quem tem peso 2 aparece duas vezes por volta, intercalado — nunca dois seguidos. Quem não está apto é pulado e volta no mesmo lugar: não perde nem ganha vez. Sem compensação." },
+  { v: "fila_circular", t: "Fila circular — quem está há mais tempo sem receber", d: "Ordena por quem recebeu há mais tempo, ignorando o peso. Quem acabou de receber um lote vai para o fim, e o próximo pode levar vários seguidos." },
+  { v: "placar_justo", t: "Placar justo — compensa quem recebeu menos", d: "Quem tem menos leads no placar do dia recebe primeiro, até equilibrar. Compensa o atraso: quem ficou de fora pode receber vários seguidos ao voltar." },
 ];
 type Ocorrencia = { quando: string; evento: string; status: string; lead_nome: string | null; motivo: string };
 type UltimoLead = { nome: string; quando: string; corretor: string; como: string; abordagem_ok: boolean };
@@ -166,8 +167,8 @@ export function DistributionConfig({ accessToken }: { accessToken: string }) {
       <div className="presence-cfg-grid">
         <label>Janela começa<input type="time" value={cfg.janela_inicio} onChange={(e) => setCfg({ ...cfg, janela_inicio: e.target.value })} /></label>
         <label>Janela termina<input type="time" value={cfg.janela_fim} onChange={(e) => setCfg({ ...cfg, janela_fim: e.target.value })} /></label>
-        <label>Recebe leads até<input type="time" value={cfg.receber_ate} onChange={(e) => setCfg({ ...cfg, receber_ate: e.target.value })} /></label>
-        <label>Fim de semana exige (dias de presença na semana)<input type="number" min={0} max={5} value={cfg.fds_exige_presencas} onChange={(e) => setCfg({ ...cfg, fds_exige_presencas: Number(e.target.value) })} /></label>
+        <label>Recebe leads até <small className="sem-efeito">sem efeito hoje</small><input type="time" value={cfg.receber_ate} onChange={(e) => setCfg({ ...cfg, receber_ate: e.target.value })} /></label>
+        <label>Fim de semana exige (dias de presença na semana) <small className="sem-efeito">sem efeito hoje</small><input type="number" min={0} max={5} value={cfg.fds_exige_presencas} onChange={(e) => setCfg({ ...cfg, fds_exige_presencas: Number(e.target.value) })} /></label>
       </div>
 
       <div className="dist-modo">
