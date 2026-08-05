@@ -26,7 +26,6 @@ import {
   type Filtro, type ItemTela,
 } from "./telaCorretor.logica";
 import { marcarWhatsappAberto, whatsappAbertoEm, limparWhatsappAberto } from "../crm-nova-era/lib/whatsappAberto";
-import { AvisoNotificacoes } from "./AvisoNotificacoes";
 import { useErpSession } from "../system/ErpSession";
 
 const ATUALIZA_MS = 60_000;
@@ -260,12 +259,6 @@ export function TelaCorretor({ accessToken, nome, onAbrirLead, onIr }: {
         </div>
       )}
 
-      {/* A gestão TAMBÉM recebe aviso: as notificações do Funil 2.0 saem em duas
-          vias, uma para o corretor dono e outra para admin/diretor/gerente. Antes
-          esta faixa não era montada para gestão, então o navegador dela nunca
-          chegava a se inscrever — permitir no Chrome não bastava, porque o
-          `pushManager.subscribe` vivia aqui dentro e nunca rodava. */}
-      <AvisoNotificacoes accessToken={accessToken} />
 
       <div className="tc-chips" role="tablist" aria-label="Filtro da fila">
         {([["agora", "Agora", agora.length], ["hoje", "Hoje", hoje.length], ["todos", "Todos", todos.length]] as const)
