@@ -20,7 +20,7 @@ type PayloadMobile = {
   error?: string;
 };
 
-type FiltroDia = "agora" | "hoje" | "todos";
+type FiltroDia = "agora" | "novos" | "hoje" | "todos";
 
 const ETAPAS = [
   ["todos", "Todos"],
@@ -106,14 +106,10 @@ function CartaoLeadMobile({
       <span className="momento">{momento?.rotulo ?? lead.momento_codigo}</span>
     </div>
 
-    <div className="f2m-direcao">
-      {/* A sugestao ainda e o texto fixo do momento, nao uma leitura da conversa.
-          Marcar isso na tela e mais honesto do que deixar o corretor achar que a
-          Sara analisou o atendimento dele. Sai quando a analise real entrar. */}
-      <span>SARA · FAÇA AGORA <em className="f2-em-obra">em implementação</em></span>
-      <strong>{acaoVisivel(lead)}</strong>
-      <small>{momento?.descricao ?? "Execute a ação e mantenha este atendimento atualizado."}</small>
-    </div>
+    {/* A ACAO OFICIAL saiu da tela. Ela era o texto fixo do momento, nao uma
+        leitura da conversa -- e enquanto a Sara nao analisa de verdade, mostrar
+        isso faz o corretor obedecer uma ordem que ninguem pensou. Ficam a etapa
+        e o momento, que sao fato. Volta quando a analise real entrar. */}
 
     <div className="f2m-acoes">
       <div className="f2m-whatsapp">
@@ -338,7 +334,9 @@ export function Funil2Mobile({
     const termo = busca.trim().toLocaleLowerCase("pt-BR");
     return leads.filter((lead) => {
       const prazo = +new Date(lead.proxima_acao_em);
-      const cabeNoDia = filtroDia === "todos" || (filtroDia === "agora" ? prazo <= agora : prazo <= fimHoje);
+      const cabeNoDia = filtroDia === "todos"
+        || (filtroDia === "novos" ? lead.etapa === "novo"
+          : filtroDia === "agora" ? prazo <= agora : prazo <= fimHoje);
       const cabeNaEtapa = etapa === "todos" || lead.etapa === etapa;
       const cabeNaBusca = !termo || `${lead.nome} ${lead.telefone ?? ""}`.toLocaleLowerCase("pt-BR").includes(termo);
       return cabeNoDia && cabeNaEtapa && cabeNaBusca;
@@ -373,7 +371,7 @@ export function Funil2Mobile({
     </label>}
 
     <nav className="f2m-filtros" aria-label="Filtrar atendimentos">
-      {modo === "inicio" ? (["agora", "hoje", "todos"] as const).map((chave) => <button key={chave} type="button" className={filtroDia === chave ? "ativo" : ""} onClick={() => setFiltroDia(chave)}>{chave === "agora" ? `Agora · ${contagens.agora}` : chave === "hoje" ? `Hoje · ${contagens.hoje}` : `Todos · ${leads.length}`}</button>) : ETAPAS.map(([chave, rotulo]) => <button key={chave} type="button" className={etapa === chave ? "ativo" : ""} onClick={() => setEtapa(chave)}>{rotulo}</button>)}
+      {modo === "inicio" ? (["agora", "novos", "hoje", "todos"] as const).map((chave) => <button key={chave} type="button" className={`${filtroDia === chave ? "ativo" : ""}${chave === "novos" ? " f2m-chip-novo" : ""}`} onClick={() => setFiltroDia(chave)}>{chave === "agora" ? `Agora · ${contagens.agora}` : chave === "novos" ? `Lead novo · ${contagens.novos}` : chave === "hoje" ? `Hoje · ${contagens.hoje}` : `Todos · ${leads.length}`}</button>) : ETAPAS.map(([chave, rotulo]) => <button key={chave} type="button" className={etapa === chave ? "ativo" : ""} onClick={() => setEtapa(chave)}>{rotulo}</button>)}
     </nav>
 
     {erro && <div className="f2m-erro"><strong>{erro}</strong><button type="button" onClick={recarregar}>Tentar novamente</button></div>}
