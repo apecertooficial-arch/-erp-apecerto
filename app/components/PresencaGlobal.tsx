@@ -5,15 +5,20 @@ import { PresenceHeartbeat } from "../features/presence/PresenceHeartbeat";
 
 /* JANELA "VOCÊ AINDA ESTÁ CONECTADO?".
  *
- * O componente ja existia e funcionava, mas NAO era montado por nenhuma tela --
- * mesmo problema do aviso de push. Resultado: a pergunta de presenca nunca
- * aparecia para ninguem, e quem saia da fila nao era avisado.
+ * O componente ja existia e funcionava, mas NAO era montado por tela nenhuma --
+ * por isso ninguem confirmava presenca desde 30/07 e a fila decidia com
+ * informacao velha.
  *
- * Vai no layout do (erp) para existir em qualquer rota. So para quem atende:
- * gestao nao entra na fila de distribuicao, entao a pergunta nao faz sentido. */
+ * QUEM VE: nao filtramos por `role`. Estar na fila e ter linha em `corretores`,
+ * o que nao e a mesma coisa que ter papel "corretor" -- hoje ha um gerente e um
+ * diretor que ATENDEM. Filtrar por papel os deixaria de fora, e eles cairiam da
+ * fila em silencio, que e exatamente o defeito que estamos consertando.
+ *
+ * Quem decide e o servidor: `presenca_status` procura o usuario em `corretores`
+ * e devolve prompt=false para quem nao esta la. Para gestao pura o componente
+ * so faz um GET leve a cada 20s e nunca mostra nada. */
 export function PresencaGlobal() {
-  const { accessToken, role, perfilCarregado } = useErpSession();
+  const { accessToken, perfilCarregado } = useErpSession();
   if (!accessToken || !perfilCarregado) return null;
-  if (role !== "corretor") return null;
   return <PresenceHeartbeat accessToken={accessToken} initialOnline />;
 }
