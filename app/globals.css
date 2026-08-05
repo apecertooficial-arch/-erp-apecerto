@@ -79,8 +79,7 @@ button { cursor:pointer; }
 .product-photo img { width:100%; height:100%; object-fit:cover; display:block; transition:transform .4s ease; }
 .product-card:hover .product-photo img { transform:scale(1.05); }
 .product-photo.has-image::after { content:""; position:absolute; inset:0; background:linear-gradient(180deg,rgba(0,0,0,.34) 0%,rgba(0,0,0,0) 42%,rgba(0,0,0,.30) 100%); pointer-events:none; }
-.product-photo>span { position:absolute; z-index:1; top:12px; left:12px; padding:5px 12px; background:#ecf8ef; color:#169a55; border-radius:999px; font-size:11px; font-weight:700; text-transform:capitalize; }
-.product-photo>button { position:absolute; z-index:1; right:10px; top:8px; border:0; background:rgba(20,13,8,.38); color:#fff; width:32px; height:28px; border-radius:8px; }
+.product-photo>button { position:absolute; z-index:3; right:10px; top:8px; border:0; background:rgba(20,13,8,.38); color:#fff; width:32px; height:28px; border-radius:8px; }
 .building-icon { font-size:48px; opacity:.9; }
 
 .semfoto { width:100%; height:100%; display:grid; place-items:center; background:linear-gradient(135deg,#efe9e3,#e2dad2); }
@@ -90,7 +89,7 @@ button { cursor:pointer; }
 .selo.lancamento { background:var(--purple); color:#fff; }
 .selo.em_obras { background:#fff6e0; color:#b07500; }
 .selo.pronto { background:#e8f7ef; color:#17874e; }
-.estoque { position:absolute; z-index:2; top:11px; right:11px; font-size:11px; font-weight:700; padding:5px 10px; border-radius:999px; background:rgba(20,14,9,.62); color:#fff; backdrop-filter:blur(6px); }
+.estoque { position:absolute; z-index:2; top:11px; right:50px; font-size:11px; font-weight:700; padding:5px 10px; border-radius:999px; background:rgba(20,14,9,.62); color:#fff; backdrop-filter:blur(6px); }
 .estoque.zero { background:rgba(201,68,62,.9); }
 .alerta { position:absolute; z-index:2; bottom:11px; left:11px; font-size:10.5px; font-weight:700; padding:5px 10px; border-radius:999px; background:#c9443e; color:#fff; }
 .fotos-n { position:absolute; z-index:2; bottom:11px; right:11px; font-size:11px; font-weight:600; color:#fff; text-shadow:0 1px 3px rgba(0,0,0,.5); }
