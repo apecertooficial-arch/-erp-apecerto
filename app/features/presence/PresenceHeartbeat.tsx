@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getBrowserSupabaseClient } from "../../lib/supabase/browser";
+import { liberarAudio, tocarSom } from "../../lib/somAviso";
 
 /* Batimento de presença do corretor.
    A cada ~20s consulta /api/presenca. Quando o servidor pede confirmação
@@ -89,6 +90,16 @@ export function PresenceHeartbeat({ accessToken, initialOnline }: { accessToken:
     const id = window.setInterval(poll, 20000);
     return () => { stopped = true; window.clearInterval(id); };
   }, [accessToken, foraDaFila]);
+
+  /* Som ao ABRIR a pergunta. Sem isso o corretor de costas para a tela perde os
+     60 segundos e cai da fila sem nunca ter visto o aviso -- que e o pior
+     desfecho possivel: ele esta no escritorio e para de receber lead.
+     Dispara so na transicao fechado -> aberto, nao a cada segundo. */
+  useEffect(() => {
+    if (!prompt) return;
+    liberarAudio();
+    tocarSom();
+  }, [prompt]);
 
   // contagem regressiva enquanto o pop-up está aberto
   useEffect(() => {
