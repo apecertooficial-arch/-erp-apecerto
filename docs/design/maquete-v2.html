@@ -1,0 +1,850 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ERP ApeCerto — Maquete V2 (Reorganização)</title>
+<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --ap-orange: #FF7000;
+  --ap-orange-600: #e66400;
+  --ap-orange-soft: #fff2e8;
+  --ap-purple: #8B00CC;
+  --ap-purple-soft: #f6eafe;
+  --ap-green: #17874e;
+  --ap-green-soft: #e7f7ef;
+  --ap-amber: #b07500;
+  --ap-amber-soft: #fff6e0;
+  --ap-red: #c9443e;
+  --ap-red-soft: #fdeceb;
+  --ap-page: #f8f6f3;
+  --ap-surface: #ffffff;
+  --ap-sunken: #f1ece6;
+  --ap-line: #e6dfd7;
+  --ap-ink: #211c18;
+  --ap-ink-soft: #554e48;
+  --ap-muted: #887f79;
+  --ap-r-card: 16px;
+  --ap-r-btn: 10px;
+  --ap-r-chip: 999px;
+  --ap-sh-sm: 0 3px 10px rgba(25,18,13,.05);
+  --ap-sh-md: 0 12px 32px rgba(25,18,13,.09);
+  --ap-sh-brand: 0 6px 18px rgba(255,112,0,.25);
+}
+
+* { box-sizing: border-box; }
+html, body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--ap-page);
+  color: var(--ap-ink);
+  font-family: 'Quicksand', -apple-system, sans-serif;
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+}
+
+button { font-family: inherit; cursor: pointer; border: 0; background: transparent; }
+
+/* Layout */
+.app-shell {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 240px 1fr;
+}
+
+.sidebar {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  background: var(--ap-surface);
+  border-right: 1px solid var(--ap-line);
+  padding: 24px 16px;
+  display: flex;
+  flex-direction: column;
+}
+
+.brand {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--ap-orange);
+  margin-bottom: 28px;
+  padding: 0 8px;
+}
+.brand span { color: var(--ap-purple); }
+
+.nav-label {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--ap-muted);
+  margin: 0 8px 10px;
+}
+
+.nav-item {
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: var(--ap-r-btn);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--ap-ink-soft);
+  font-weight: 700;
+  font-size: 13px;
+  margin-bottom: 4px;
+  transition: all .18s ease;
+  text-align: left;
+}
+.nav-item:hover { background: var(--ap-sunken); color: var(--ap-ink); }
+.nav-item:focus-visible { outline: 2px solid var(--ap-orange); outline-offset: 2px; }
+.nav-item.ativo {
+  background: var(--ap-orange);
+  color: #fff;
+  box-shadow: var(--ap-sh-brand);
+}
+.nav-item.ativo small { background: rgba(255,255,255,.25); color: #fff; }
+
+.nav-item small {
+  margin-left: auto;
+  background: var(--ap-orange-soft);
+  color: var(--ap-orange);
+  padding: 2px 8px;
+  border-radius: var(--ap-r-chip);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.workspace { min-width: 0; }
+
+.topbar {
+  padding: 24px 36px;
+  background: var(--ap-surface);
+  border-bottom: 1px solid var(--ap-line);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.topbar h1 { margin: 0; font-size: 24px; font-weight: 800; }
+.topbar p.sub { margin: 4px 0 0; color: var(--ap-muted); font-size: 12px; font-weight: 600; }
+
+.primary-action {
+  min-height: 44px;
+  padding: 0 22px;
+  border-radius: var(--ap-r-btn);
+  background: var(--ap-orange);
+  color: #fff;
+  font-weight: 800;
+  font-size: 13px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: var(--ap-sh-brand);
+  transition: all .18s ease;
+}
+.primary-action:hover { background: var(--ap-orange-600); transform: translateY(-1px); }
+
+.secondary-action {
+  min-height: 44px;
+  padding: 0 18px;
+  border-radius: var(--ap-r-btn);
+  background: var(--ap-surface);
+  color: var(--ap-ink-soft);
+  border: 1px solid var(--ap-line);
+  font-weight: 700;
+  font-size: 13px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.secondary-action:hover { background: var(--ap-sunken); transform: translateY(-1px); }
+
+/* Screens */
+.tela { padding: 32px 36px; }
+.tela.oculta { display: none !important; }
+
+/* Reorganized Dashboard Components */
+.alert-banner {
+  background: #fff0ee;
+  border: 1.5px solid #f8b4ae;
+  border-radius: var(--ap-r-card);
+  padding: 18px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 28px;
+  box-shadow: var(--ap-sh-sm);
+}
+
+.alert-banner-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.alert-pulse-badge {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--ap-red);
+  color: #fff;
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+  font-size: 18px;
+  box-shadow: 0 0 0 6px rgba(201,68,62,.18);
+}
+.alert-banner-info h3 { margin: 0; font-size: 16px; font-weight: 800; color: var(--ap-red); }
+.alert-banner-info p { margin: 3px 0 0; color: var(--ap-ink-soft); font-size: 12px; font-weight: 600; }
+
+.alert-action-btn {
+  min-height: 40px;
+  padding: 0 20px;
+  border-radius: var(--ap-r-btn);
+  background: var(--ap-red);
+  color: #fff;
+  font-weight: 800;
+  font-size: 13px;
+  transition: all .18s ease;
+}
+.alert-action-btn:hover { background: #b03530; transform: translateY(-1px); }
+
+/* Structured KPI Grid */
+.kpis-reorganized {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 18px;
+  margin-bottom: 32px;
+}
+
+.kpi-card {
+  background: var(--ap-surface);
+  border: 1px solid var(--ap-line);
+  border-radius: var(--ap-r-card);
+  padding: 22px;
+  box-shadow: var(--ap-sh-sm);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  transition: all .18s ease;
+}
+.kpi-card:hover { transform: translateY(-2px); box-shadow: var(--ap-sh-md); }
+
+.kpi-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.kpi-title { font-size: 11px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; color: var(--ap-muted); }
+.kpi-val { font-size: 32px; font-weight: 800; letter-spacing: -.03em; line-height: 1; margin: 0; }
+.kpi-sub { margin-top: 10px; font-size: 12px; font-weight: 600; color: var(--ap-ink-soft); }
+
+.kpi-card.orange .kpi-val { color: var(--ap-orange); }
+.kpi-card.purple .kpi-val { color: var(--ap-purple); }
+.kpi-card.green .kpi-val { color: var(--ap-green); }
+.kpi-card.red .kpi-val { color: var(--ap-red); }
+
+/* Feed section */
+.action-feed {
+  background: var(--ap-surface);
+  border: 1px solid var(--ap-line);
+  border-radius: var(--ap-r-card);
+  padding: 24px;
+  box-shadow: var(--ap-sh-sm);
+}
+
+.action-feed-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--ap-line);
+}
+.action-feed-header h2 { margin: 0; font-size: 18px; font-weight: 800; }
+
+.feed-item {
+  display: grid;
+  grid-template-columns: 44px 1.5fr 1fr 120px 140px;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+  border: 1px solid var(--ap-line);
+  border-radius: 12px;
+  background: #fff;
+  margin-bottom: 10px;
+  transition: all .18s ease;
+}
+.feed-item:hover { border-color: #ffd2b3; transform: translateY(-1px); box-shadow: var(--ap-sh-sm); }
+
+.feed-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--ap-orange-soft);
+  color: var(--ap-orange);
+  font-weight: 800;
+  font-size: 16px;
+  display: grid;
+  place-items: center;
+}
+
+.feed-info strong { display: block; font-size: 15px; font-weight: 800; }
+.feed-info span { color: var(--ap-muted); font-size: 12px; font-weight: 500; }
+
+.feed-broker {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: var(--ap-r-chip);
+  background: var(--ap-purple-soft);
+  color: var(--ap-purple);
+  font-weight: 700;
+  font-size: 12px;
+  width: max-content;
+}
+
+.feed-timer {
+  padding: 6px 12px;
+  border-radius: var(--ap-r-chip);
+  background: var(--ap-red-soft);
+  color: var(--ap-red);
+  font-weight: 800;
+  font-size: 12px;
+  text-align: center;
+}
+
+.feed-cta {
+  min-height: 38px;
+  padding: 0 16px;
+  border-radius: var(--ap-r-btn);
+  background: var(--ap-orange);
+  color: #fff;
+  font-weight: 800;
+  font-size: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all .18s ease;
+}
+.feed-cta:hover { background: var(--ap-orange-600); }
+
+/* Reorganized Kanban */
+.crm-kanban-v2 {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 16px;
+}
+
+.kanban-col {
+  background: var(--ap-sunken);
+  border: 1px solid var(--ap-line);
+  border-radius: var(--ap-r-card);
+  padding: 16px;
+}
+
+.kanban-col-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 12px;
+  margin-bottom: 14px;
+  border-bottom: 2px solid var(--col-color, var(--ap-orange));
+}
+.kanban-col-head strong { font-size: 14px; font-weight: 800; }
+.kanban-col-head span {
+  background: var(--ap-surface);
+  padding: 3px 10px;
+  border-radius: var(--ap-r-chip);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.kanban-item-card {
+  background: var(--ap-surface);
+  border: 1px solid var(--ap-line);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 12px;
+  box-shadow: var(--ap-sh-sm);
+  transition: all .18s ease;
+}
+.kanban-item-card:hover { transform: translateY(-2px); box-shadow: var(--ap-sh-md); }
+.kanban-item-card strong { font-size: 15px; font-weight: 800; display: block; }
+.kanban-item-card small { color: var(--ap-muted); font-size: 12px; display: block; margin: 4px 0 12px; }
+
+.kanban-item-tags {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* Reorganized Approval Cards */
+.approval-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 18px;
+}
+
+.ap-card-v2 {
+  background: var(--ap-surface);
+  border: 1.5px solid var(--ap-line);
+  border-radius: var(--ap-r-card);
+  padding: 22px;
+  box-shadow: var(--ap-sh-sm);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.ap-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+.ap-card-title h3 { margin: 0; font-size: 18px; font-weight: 800; }
+.ap-card-title p { margin: 4px 0 0; color: var(--ap-muted); font-size: 12px; font-weight: 600; }
+
+.ap-badge-diff {
+  padding: 6px 14px;
+  border-radius: var(--ap-r-chip);
+  font-weight: 800;
+  font-size: 13px;
+}
+.ap-badge-diff.acima { background: var(--ap-red-soft); color: var(--ap-red); }
+.ap-badge-diff.ok { background: var(--ap-green-soft); color: var(--ap-green); }
+
+.ap-card-metrics {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border-radius: 12px;
+  background: var(--ap-sunken);
+  margin: 16px 0;
+}
+.ap-metric-box span { display: block; font-size: 11px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; color: var(--ap-muted); }
+.ap-metric-box strong { display: block; font-size: 18px; font-weight: 800; color: var(--ap-orange); margin-top: 2px; }
+.ap-metric-box small { display: block; font-size: 12px; font-weight: 700; color: var(--ap-purple); }
+
+.ap-card-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.btn-approve-v2 {
+  min-height: 44px;
+  border-radius: var(--ap-r-btn);
+  background: var(--ap-green);
+  color: #fff;
+  font-weight: 800;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all .18s ease;
+}
+.btn-approve-v2:hover { background: #126e3f; transform: translateY(-1px); }
+
+.btn-reject-v2 {
+  min-height: 44px;
+  border-radius: var(--ap-r-btn);
+  background: var(--ap-red-soft);
+  color: var(--ap-red);
+  border: 1px solid var(--ap-red-soft);
+  font-weight: 800;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all .18s ease;
+}
+.btn-reject-v2:hover { background: var(--ap-red); color: #fff; transform: translateY(-1px); }
+
+/* Reorganized Performance Cards */
+.perf-grid-v2 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 18px;
+}
+
+.perf-card-v2 {
+  background: var(--ap-surface);
+  border: 1px solid var(--ap-line);
+  border-radius: var(--ap-r-card);
+  padding: 24px;
+  box-shadow: var(--ap-sh-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  position: relative;
+}
+
+.perf-rank-tag {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--ap-orange-soft);
+  color: var(--ap-orange);
+  font-weight: 800;
+  display: grid;
+  place-items: center;
+}
+
+.perf-broker-name { font-size: 18px; font-weight: 800; margin: 0; }
+.perf-stat-row { display: flex; justify-content: space-between; font-size: 13px; }
+.perf-stat-row strong { font-weight: 800; color: var(--ap-purple); }
+
+/* Mobile Bottom Nav */
+.mobile-nav { display: none; }
+
+@media (max-width: 900px) {
+  .app-shell { grid-template-columns: 1fr; }
+  .sidebar { display: none; }
+  .mobile-nav {
+    display: flex;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 64px;
+    background: var(--ap-surface);
+    border-top: 1px solid var(--ap-line);
+    z-index: 100;
+    justify-content: space-around;
+    align-items: center;
+  }
+  .mobile-nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    color: var(--ap-muted);
+    font-size: 11px;
+    font-weight: 700;
+  }
+  .mobile-nav-item.ativo { color: var(--ap-orange); }
+
+  .tela { padding: 16px; }
+  .topbar { padding: 16px; flex-direction: column; align-items: flex-start; gap: 12px; }
+  .kpis-reorganized { grid-template-columns: 1fr 1fr; }
+  .crm-kanban-v2 { grid-template-columns: 1fr; }
+  .approval-grid { grid-template-columns: 1fr; }
+  .perf-grid-v2 { grid-template-columns: 1fr; }
+  .feed-item { grid-template-columns: 1fr; gap: 10px; }
+}
+</style>
+</head>
+<body>
+
+<div class="app-shell">
+  <!-- Desktop Sidebar -->
+  <aside class="sidebar">
+    <div class="brand">apê<span>certo</span></div>
+    <span class="nav-label">Visão Geral</span>
+    <button class="nav-item ativo" data-tela="Início">⌂ Radar Ação</button>
+    <button class="nav-item" data-tela="CRM">◈ Carteira CRM <small>20</small></button>
+    <button class="nav-item" data-tela="Produtos">▤ Validação <small>14</small></button>
+    <button class="nav-item" data-tela="Performance">↗ Metas & Rank</button>
+  </aside>
+
+  <!-- Mobile Bottom Nav -->
+  <div class="mobile-nav">
+    <button class="mobile-nav-item ativo" data-tela="Início">⌂<span>Radar</span></button>
+    <button class="mobile-nav-item" data-tela="CRM">◈<span>CRM</span></button>
+    <button class="mobile-nav-item" data-tela="Produtos">▤<span>Aprovar</span></button>
+    <button class="mobile-nav-item" data-tela="Performance">↗<span>Metas</span></button>
+  </div>
+
+  <main class="workspace">
+    <!-- Tela 1: Radar de Ação -->
+    <section class="tela" id="tela-Inicio">
+      <header class="topbar">
+        <div>
+          <h1>Radar de Ação Comercial</h1>
+          <p class="sub">Prioridade máxima · Quarta-feira, 5 de Agosto</p>
+        </div>
+        <button class="primary-action">＋ Cadastrar Novo Lead</button>
+      </header>
+
+      <div style="padding-top: 24px;">
+        <!-- Emergency SLA Banner -->
+        <div class="alert-banner">
+          <div class="alert-banner-left">
+            <div class="alert-pulse-badge">!</div>
+            <div class="alert-banner-info">
+              <h3>8 Leads Com Prazo Estourado (11h+)</h3>
+              <p>Abordagem inicial atrasada. Risco imediato de desengajamento.</p>
+            </div>
+          </div>
+          <button class="alert-action-btn">Atender Fila Crítica ▸</button>
+        </div>
+
+        <!-- Reorganized KPI Matrix -->
+        <section class="kpis-reorganized">
+          <div class="kpi-card orange">
+            <div class="kpi-header"><span class="kpi-title">Leads na Carteira</span></div>
+            <p class="kpi-val">133</p>
+            <p class="kpi-sub">Total no Funil 2.0</p>
+          </div>
+          <div class="kpi-card red">
+            <div class="kpi-header"><span class="kpi-title">Fila Crítica</span></div>
+            <p class="kpi-val">8</p>
+            <p class="kpi-sub">Prazo estourado</p>
+          </div>
+          <div class="kpi-card green">
+            <div class="kpi-header"><span class="kpi-title">Visitas Realizadas</span></div>
+            <p class="kpi-val">146</p>
+            <p class="kpi-sub">Total acumulado</p>
+          </div>
+          <div class="kpi-card purple">
+            <div class="kpi-header"><span class="kpi-title">Indicações Pendentes</span></div>
+            <p class="kpi-val">14</p>
+            <p class="kpi-sub">Aguardando validação</p>
+          </div>
+        </section>
+
+        <!-- Priority Action Feed -->
+        <div class="action-feed">
+          <div class="action-feed-header">
+            <h2>Fila de Abordagem Imediata</h2>
+            <button class="secondary-action" style="min-height:36px; padding:0 14px;">Filtrar Por Corretor</button>
+          </div>
+
+          <div class="feed-item">
+            <div class="feed-avatar">N</div>
+            <div class="feed-info"><strong>Nanci</strong><span>Combinar data e horário da visita</span></div>
+            <div class="feed-broker">Claudia</div>
+            <div class="feed-timer">▲ 11h atrasado</div>
+            <button class="feed-cta">💬 WhatsApp</button>
+          </div>
+
+          <div class="feed-item">
+            <div class="feed-avatar">R</div>
+            <div class="feed-info"><strong>Rafael Sforzin</strong><span>Combinar data e horário da visita</span></div>
+            <div class="feed-broker">Fabiano</div>
+            <div class="feed-timer">▲ 11h atrasado</div>
+            <button class="feed-cta">💬 WhatsApp</button>
+          </div>
+
+          <div class="feed-item">
+            <div class="feed-avatar">P</div>
+            <div class="feed-info"><strong>Paulinha Santos Pereira</strong><span>Combinar data e horário da visita</span></div>
+            <div class="feed-broker">Fabiano</div>
+            <div class="feed-timer">▲ 11h atrasado</div>
+            <button class="feed-cta">💬 WhatsApp</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Tela 2: CRM Reorganizado -->
+    <section class="tela oculta" id="tela-CRM">
+      <header class="topbar">
+        <div>
+          <h1>Funil de Operação Comercial</h1>
+          <p class="sub">133 leads ativos · 38 na etapa inicial</p>
+        </div>
+        <button class="primary-action">＋ Novo Lead</button>
+      </header>
+
+      <div style="padding-top: 24px;">
+        <div class="crm-kanban-v2">
+          <div class="kanban-col">
+            <div class="kanban-col-head" style="--col-color: var(--ap-orange)"><strong>1. Novo Lead</strong><span>38</span></div>
+            <div class="kanban-item-card">
+              <strong>Nanci</strong><small>5511 9•••• ••••</small>
+              <div class="kanban-item-tags"><span class="feed-broker">Claudia</span><span class="feed-timer">11h</span></div>
+            </div>
+            <div class="kanban-item-card">
+              <strong>Rafael Sforzin</strong><small>5511 9•••• ••••</small>
+              <div class="kanban-item-tags"><span class="feed-broker">Fabiano</span><span class="feed-timer">11h</span></div>
+            </div>
+          </div>
+
+          <div class="kanban-col">
+            <div class="kanban-col-head" style="--col-color: var(--ap-purple)"><strong>2. Atendimento</strong><span>12</span></div>
+            <div class="kanban-item-card">
+              <strong>Nanci</strong><small>5511 9•••• ••••</small>
+              <div class="kanban-item-tags"><span class="feed-broker">Claudia</span></div>
+            </div>
+          </div>
+
+          <div class="kanban-col">
+            <div class="kanban-col-head" style="--col-color: #2f6fed"><strong>3. Visita Agendada</strong><span>4</span></div>
+            <div class="kanban-item-card">
+              <strong>Rafael Sforzin</strong><small>5511 9•••• ••••</small>
+              <div class="kanban-item-tags"><span class="feed-broker">Fabiano</span></div>
+            </div>
+          </div>
+
+          <div class="kanban-col">
+            <div class="kanban-col-head" style="--col-color: var(--ap-amber)"><strong>4. Proposta</strong><span>2</span></div>
+            <div class="kanban-item-card">
+              <strong>Nanci</strong><small>5511 9•••• ••••</small>
+              <div class="kanban-item-tags"><span class="feed-broker">Claudia</span></div>
+            </div>
+          </div>
+
+          <div class="kanban-col">
+            <div class="kanban-col-head" style="--col-color: var(--ap-green)"><strong>5. Ganho / Fechado</strong><span>27</span></div>
+            <div class="kanban-item-card">
+              <strong>Rafael Sforzin</strong><small>5511 9•••• ••••</small>
+              <div class="kanban-item-tags"><span class="feed-broker">Fabiano</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Tela 3: Aprovações Matrix -->
+    <section class="tela oculta" id="tela-Aprovacoes">
+      <header class="topbar">
+        <div>
+          <h1>Matriz de Aprovação de Indicações</h1>
+          <p class="sub">14 imóveis submetidos aguardando análise de precificação</p>
+        </div>
+      </header>
+
+      <div style="padding-top: 24px;">
+        <div class="approval-grid">
+          <div class="ap-card-v2">
+            <div class="ap-card-header">
+              <div class="ap-card-title">
+                <h3>Unidade 616 · Composite</h3>
+                <p>37 m² · Indicado por Elizângela · Prop. Alessandra</p>
+              </div>
+              <span class="ap-badge-diff acima">+24% vs Prédio</span>
+            </div>
+            <div class="ap-card-metrics">
+              <div class="ap-metric-box"><span>Valor de Venda</span><strong>R$ 660.000</strong></div>
+              <div class="ap-metric-box"><span>Valor / m²</span><small>R$ 17.838 / m²</small></div>
+              <div class="ap-metric-box"><span>Média Prédio</span><small>R$ 14.376 / m²</small></div>
+            </div>
+            <div class="ap-card-actions">
+              <button class="btn-approve-v2">✓ Aprovar Unidade</button>
+              <button class="btn-reject-v2">✕ Reprovar</button>
+            </div>
+          </div>
+
+          <div class="ap-card-v2">
+            <div class="ap-card-header">
+              <div class="ap-card-title">
+                <h3>Unidade 720 · Composite</h3>
+                <p>30 m² · Indicado por Elizângela · Prop. Gisele</p>
+              </div>
+              <span class="ap-badge-diff acima">+28% vs Prédio</span>
+            </div>
+            <div class="ap-card-metrics">
+              <div class="ap-metric-box"><span>Valor de Venda</span><strong>R$ 549.993</strong></div>
+              <div class="ap-metric-box"><span>Valor / m²</span><small>R$ 18.333 / m²</small></div>
+              <div class="ap-metric-box"><span>Média Prédio</span><small>R$ 14.376 / m²</small></div>
+            </div>
+            <div class="ap-card-actions">
+              <button class="btn-approve-v2">✓ Aprovar Unidade</button>
+              <button class="btn-reject-v2">✕ Reprovar</button>
+            </div>
+          </div>
+
+          <div class="ap-card-v2">
+            <div class="ap-card-header">
+              <div class="ap-card-title">
+                <h3>Unidade 1102 · Composite</h3>
+                <p>30 m² · Indicado por Elizângela · Prop. Wesley Morales</p>
+              </div>
+              <span class="ap-badge-diff acima">+16% vs Prédio</span>
+            </div>
+            <div class="ap-card-metrics">
+              <div class="ap-metric-box"><span>Valor de Venda</span><strong>R$ 500.000</strong></div>
+              <div class="ap-metric-box"><span>Valor / m²</span><small>R$ 16.667 / m²</small></div>
+              <div class="ap-metric-box"><span>Média Prédio</span><small>R$ 14.376 / m²</small></div>
+            </div>
+            <div class="ap-card-actions">
+              <button class="btn-approve-v2">✓ Aprovar Unidade</button>
+              <button class="btn-reject-v2">✕ Reprovar</button>
+            </div>
+          </div>
+
+          <div class="ap-card-v2">
+            <div class="ap-card-header">
+              <div class="ap-card-title">
+                <h3>Unidade 412 · AP Moema</h3>
+                <p>25 m² · Indicado por Elizângela · Prop. Chris zogbi</p>
+              </div>
+              <span class="ap-badge-diff ok">+9% vs Prédio</span>
+            </div>
+            <div class="ap-card-metrics">
+              <div class="ap-metric-box"><span>Valor de Venda</span><strong>R$ 439.000</strong></div>
+              <div class="ap-metric-box"><span>Valor / m²</span><small>R$ 17.560 / m²</small></div>
+              <div class="ap-metric-box"><span>Média Prédio</span><small>R$ 16.080 / m²</small></div>
+            </div>
+            <div class="ap-card-actions">
+              <button class="btn-approve-v2">✓ Aprovar Unidade</button>
+              <button class="btn-reject-v2">✕ Reprovar</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Tela 4: Performance -->
+    <section class="tela oculta" id="tela-Performance">
+      <header class="topbar">
+        <div>
+          <h1>Painel de Desempenho de Vendas</h1>
+          <p class="sub">Agosto 2026 · VGV Acumulado: R$ 33,2 mi</p>
+        </div>
+      </header>
+
+      <div style="padding-top: 24px;">
+        <div class="perf-grid-v2">
+          <div class="perf-card-v2">
+            <div class="perf-rank-tag">1</div>
+            <h3 class="perf-broker-name">Claudia</h3>
+            <div class="perf-stat-row"><span>Leads Atendidos:</span><strong>42</strong></div>
+            <div class="perf-stat-row"><span>Visitas Realizadas:</span><strong>3</strong></div>
+            <div class="perf-stat-row"><span>Vendas Fechadas:</span><strong>9</strong></div>
+            <div class="barra"><i style="width: 99%"></i></div>
+          </div>
+
+          <div class="perf-card-v2">
+            <div class="perf-rank-tag">2</div>
+            <h3 class="perf-broker-name">Fabiano</h3>
+            <div class="perf-stat-row"><span>Leads Atendidos:</span><strong>38</strong></div>
+            <div class="perf-stat-row"><span>Visitas Realizadas:</span><strong>2</strong></div>
+            <div class="perf-stat-row"><span>Vendas Fechadas:</span><strong>7</strong></div>
+            <div class="barra"><i style="width: 77%"></i></div>
+          </div>
+
+          <div class="perf-card-v2">
+            <div class="perf-rank-tag">3</div>
+            <h3 class="perf-broker-name">Elizângela</h3>
+            <div class="perf-stat-row"><span>Leads Atendidos:</span><strong>51</strong></div>
+            <div class="perf-stat-row"><span>Visitas Realizadas:</span><strong>4</strong></div>
+            <div class="perf-stat-row"><span>Vendas Fechadas:</span><strong>6</strong></div>
+            <div class="barra"><i style="width: 66%"></i></div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>
+const mapa = { "Início":"Inicio", "CRM":"CRM", "Performance":"Performance", "Produtos":"Aprovacoes" };
+document.querySelectorAll('.nav-item, .mobile-nav-item').forEach(b => b.onclick = () => {
+  const alvo = mapa[b.dataset.tela];
+  if (!alvo) return;
+  document.querySelectorAll('.nav-item, .mobile-nav-item').forEach(x => x.classList.remove('ativo'));
+  document.querySelectorAll(`[data-tela="${b.dataset.tela}"]`).forEach(x => x.classList.add('ativo'));
+  document.querySelectorAll('.tela').forEach(t => t.classList.add('oculta'));
+  document.getElementById('tela-' + alvo)?.classList.remove('oculta');
+});
+</script>
+</body>
+</html>

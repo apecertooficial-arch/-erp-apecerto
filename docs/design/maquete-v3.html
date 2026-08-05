@@ -1,0 +1,526 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>ERP ApeCerto — Maquete V3 (Ruptura Mobile-First)</title>
+<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --ap-orange: #FF7000;
+  --ap-orange-dark: #d65c00;
+  --ap-orange-glow: rgba(255,112,0,.35);
+  --ap-purple: #8B00CC;
+  --ap-purple-glow: rgba(139,0,204,.25);
+  --ap-green: #17874e;
+  --ap-green-glow: rgba(23,135,78,.25);
+  --ap-red: #e0362c;
+  --ap-red-soft: #ffebe9;
+  --ap-bg: #121518;
+  --ap-card-bg: #1b2026;
+  --ap-card-border: #2c343f;
+  --ap-text-main: #f3f5f8;
+  --ap-text-muted: #9aa5b5;
+  --ap-r-card: 16px;
+  --ap-r-btn: 12px;
+  --ap-r-chip: 999px;
+}
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--ap-bg);
+  color: var(--ap-text-main);
+  font-family: 'Quicksand', -apple-system, sans-serif;
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+}
+
+button { font-family: inherit; cursor: pointer; border: 0; background: transparent; }
+
+/* Sticky Urgent Alert Header */
+.urgent-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 200;
+  background: linear-gradient(90deg, #e0362c 0%, #ff5248 100%);
+  color: #fff;
+  padding: 10px 16px;
+  font-weight: 800;
+  font-size: 12px;
+  letter-spacing: .02em;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 4px 16px rgba(224,54,44,.4);
+}
+.urgent-topbar span { display: flex; align-items: center; gap: 8px; }
+.urgent-topbar button {
+  background: #fff;
+  color: var(--ap-red);
+  padding: 4px 12px;
+  border-radius: var(--ap-r-chip);
+  font-weight: 800;
+  font-size: 11px;
+}
+
+/* App Layout */
+.app-shell {
+  min-height: calc(100vh - 40px);
+  display: grid;
+  grid-template-columns: 260px 1fr;
+}
+
+/* Sidebar Desktop */
+.sidebar {
+  position: sticky;
+  top: 40px;
+  height: calc(100vh - 40px);
+  background: #171b21;
+  border-right: 1px solid var(--ap-card-border);
+  padding: 20px 16px;
+  display: flex;
+  flex-direction: column;
+}
+
+.brand {
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--ap-orange);
+  margin-bottom: 24px;
+}
+.brand span { color: var(--ap-purple); }
+
+.nav-item {
+  width: 100%;
+  padding: 14px 16px;
+  border-radius: var(--ap-r-btn);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--ap-text-muted);
+  font-weight: 700;
+  font-size: 14px;
+  margin-bottom: 6px;
+  text-align: left;
+  transition: all .18s ease;
+}
+.nav-item:hover { background: #232932; color: #fff; }
+.nav-item.ativo {
+  background: var(--ap-orange);
+  color: #fff;
+  box-shadow: 0 4px 20px var(--ap-orange-glow);
+}
+.nav-item small {
+  margin-left: auto;
+  background: rgba(255,255,255,.2);
+  color: #fff;
+  padding: 2px 8px;
+  border-radius: var(--ap-r-chip);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+/* Workspace */
+.workspace { min-width: 0; padding-bottom: 80px; }
+
+.tela { padding: 24px; }
+.tela.oculta { display: none !important; }
+
+/* Ruptura Mobile Feed Cards */
+.feed-header-v3 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+.feed-header-v3 h1 { margin: 0; font-size: 22px; font-weight: 800; }
+.feed-header-v3 p { margin: 4px 0 0; color: var(--ap-text-muted); font-size: 12px; }
+
+/* Fila de Fogo Card */
+.fogo-card {
+  background: var(--ap-card-bg);
+  border: 1.5px solid var(--ap-card-border);
+  border-radius: var(--ap-r-card);
+  padding: 18px;
+  margin-bottom: 14px;
+  box-shadow: 0 4px 20px rgba(0,0,0,.3);
+  position: relative;
+  overflow: hidden;
+}
+.fogo-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; bottom: 0;
+  width: 5px;
+  background: var(--ap-orange);
+}
+.fogo-card.urgent::before { background: var(--ap-red); }
+
+.fogo-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.fogo-lead-name { font-size: 18px; font-weight: 800; color: #fff; margin: 0; }
+.fogo-timer {
+  background: rgba(224,54,44,.2);
+  color: #ff6e67;
+  border: 1px solid rgba(224,54,44,.4);
+  padding: 4px 10px;
+  border-radius: var(--ap-r-chip);
+  font-weight: 800;
+  font-size: 11px;
+}
+
+.fogo-info-sub {
+  color: var(--ap-text-muted);
+  font-size: 13px;
+  margin-bottom: 16px;
+  font-weight: 500;
+}
+
+.fogo-cta-whatsapp {
+  width: 100%;
+  min-height: 48px;
+  border-radius: var(--ap-r-btn);
+  background: #25d366;
+  color: #000;
+  font-weight: 800;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 10px;
+  box-shadow: 0 4px 16px rgba(37,211,102,.3);
+  transition: transform .15s ease;
+}
+.fogo-cta-whatsapp:active { transform: scale(.98); }
+
+.fogo-actions-quick {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+.fogo-btn-quick {
+  min-height: 36px;
+  border-radius: 8px;
+  background: #272f38;
+  color: var(--ap-text-main);
+  font-weight: 700;
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.fogo-btn-quick:hover { background: #333d49; }
+
+/* Stepper Stage Selector for CRM */
+.stage-stepper {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 14px;
+  margin-bottom: 20px;
+}
+.stage-pill {
+  padding: 10px 18px;
+  border-radius: var(--ap-r-chip);
+  background: #1f252e;
+  border: 1px solid var(--ap-card-border);
+  color: var(--ap-text-muted);
+  font-weight: 800;
+  font-size: 13px;
+  white-space: nowrap;
+}
+.stage-pill.active {
+  background: var(--ap-purple);
+  color: #fff;
+  border-color: var(--ap-purple);
+  box-shadow: 0 4px 16px var(--ap-purple-glow);
+}
+
+/* Approval Swipe Card */
+.ap-swipe-card {
+  background: var(--ap-card-bg);
+  border: 1.5px solid var(--ap-card-border);
+  border-radius: 20px;
+  padding: 24px;
+  box-shadow: 0 10px 30px rgba(0,0,0,.5);
+  margin-bottom: 20px;
+}
+.ap-swipe-unit { font-size: 22px; font-weight: 800; color: #fff; margin: 0 0 4px; }
+.ap-swipe-details { color: var(--ap-text-muted); font-size: 13px; margin-bottom: 20px; }
+
+.ap-swipe-values {
+  background: #14171c;
+  border-radius: var(--ap-r-card);
+  padding: 18px;
+  margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.ap-val-big { font-size: 24px; font-weight: 800; color: var(--ap-orange); }
+.ap-m2-val { font-size: 13px; font-weight: 700; color: var(--ap-purple); }
+
+.ap-swipe-btns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.ap-swipe-btn-yes {
+  min-height: 52px;
+  border-radius: var(--ap-r-btn);
+  background: var(--ap-green);
+  color: #fff;
+  font-weight: 800;
+  font-size: 14px;
+  box-shadow: 0 4px 16px var(--ap-green-glow);
+}
+.ap-swipe-btn-no {
+  min-height: 52px;
+  border-radius: var(--ap-r-btn);
+  background: rgba(224,54,44,.15);
+  color: #ff6e67;
+  border: 1px solid rgba(224,54,44,.3);
+  font-weight: 800;
+  font-size: 14px;
+}
+
+/* Podium View for Performance */
+.podium-container {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 24px;
+  align-items: flex-end;
+}
+.podium-card {
+  background: var(--ap-card-bg);
+  border: 1px solid var(--ap-card-border);
+  border-radius: var(--ap-r-card);
+  padding: 16px;
+  text-align: center;
+}
+.podium-card.first { border-color: var(--ap-orange); box-shadow: 0 0 20px var(--ap-orange-glow); }
+.podium-rank { font-size: 28px; font-weight: 800; margin-bottom: 8px; }
+.podium-card.first .podium-rank { color: var(--ap-orange); }
+.podium-name { font-size: 16px; font-weight: 800; color: #fff; }
+.podium-sales { font-size: 20px; font-weight: 800; color: var(--ap-purple); margin-top: 6px; }
+
+/* Fixed Mobile Navigation */
+.mobile-nav-v3 {
+  display: none;
+}
+
+@media (max-width: 900px) {
+  .app-shell { grid-template-columns: 1fr; }
+  .sidebar { display: none; }
+  
+  .mobile-nav-v3 {
+    display: flex;
+    position: fixed;
+    bottom: 0;
+    left: 0; right: 0;
+    height: 68px;
+    background: #171b21;
+    border-top: 1px solid var(--ap-card-border);
+    z-index: 300;
+    justify-content: space-around;
+    align-items: center;
+    box-shadow: 0 -6px 20px rgba(0,0,0,.4);
+  }
+  .mobile-tab-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    color: var(--ap-text-muted);
+    font-size: 11px;
+    font-weight: 800;
+  }
+  .mobile-tab-btn.ativo { color: var(--ap-orange); }
+}
+</style>
+</head>
+<body>
+
+<!-- Global Flaming Top Alert -->
+<div class="urgent-topbar">
+  <span>🔥 8 LEADS ATRASADOS HÁ 11H — AÇÃO IMEDIATA REQUERIDA</span>
+  <button onclick="document.querySelector('[data-tela=\'Início\']').click()">Atender Fila</button>
+</div>
+
+<div class="app-shell">
+  <!-- Desktop Sidebar -->
+  <aside class="sidebar">
+    <div class="brand">apê<span>certo</span></div>
+    <button class="nav-item ativo" data-tela="Início">⚡ Fila de Fogo</button>
+    <button class="nav-item" data-tela="CRM">◈ Funil Rápido <small>20</small></button>
+    <button class="nav-item" data-tela="Produtos">✓ Decisão Unidade <small>14</small></button>
+    <button class="nav-item" data-tela="Performance">↗ Ranking Pódio</button>
+  </aside>
+
+  <!-- Mobile Bottom Nav -->
+  <div class="mobile-nav-v3">
+    <button class="mobile-tab-btn ativo" data-tela="Início">⚡<span>Fogo</span></button>
+    <button class="mobile-tab-btn" data-tela="CRM">◈<span>Funil</span></button>
+    <button class="mobile-tab-btn" data-tela="Produtos">✓<span>Aprovar</span></button>
+    <button class="mobile-tab-btn" data-tela="Performance">↗<span>Pódio</span></button>
+  </div>
+
+  <main class="workspace">
+    <!-- Tela 1: Fila de Fogo -->
+    <section class="tela" id="tela-Inicio">
+      <div class="feed-header-v3">
+        <div>
+          <h1>Fila de Fogo Comercial</h1>
+          <p>8 prioridades para abordagem em 1 toque</p>
+        </div>
+      </div>
+
+      <div class="fogo-card urgent">
+        <div class="fogo-top">
+          <h2 class="fogo-lead-name">Nanci</h2>
+          <span class="fogo-timer">▲ 11h ATRASADO</span>
+        </div>
+        <div class="fogo-info-sub">Corretor: <strong>Claudia</strong> · Combinar data e horário da visita</div>
+        <button class="fogo-cta-whatsapp">💬 INICIAR WHATSAPP AGORA</button>
+        <div class="fogo-actions-quick">
+          <button class="fogo-btn-quick">📅 Visita</button>
+          <button class="fogo-btn-quick">⏳ Aguardar</button>
+          <button class="fogo-btn-quick">✕ Descartar</button>
+        </div>
+      </div>
+
+      <div class="fogo-card urgent">
+        <div class="fogo-top">
+          <h2 class="fogo-lead-name">Rafael Sforzin</h2>
+          <span class="fogo-timer">▲ 11h ATRASADO</span>
+        </div>
+        <div class="fogo-info-sub">Corretor: <strong>Fabiano</strong> · Combinar data e horário da visita</div>
+        <button class="fogo-cta-whatsapp">💬 INICIAR WHATSAPP AGORA</button>
+        <div class="fogo-actions-quick">
+          <button class="fogo-btn-quick">📅 Visita</button>
+          <button class="fogo-btn-quick">⏳ Aguardar</button>
+          <button class="fogo-btn-quick">✕ Descartar</button>
+        </div>
+      </div>
+
+      <div class="fogo-card urgent">
+        <div class="fogo-top">
+          <h2 class="fogo-lead-name">Paulinha Santos Pereira</h2>
+          <span class="fogo-timer">▲ 11h ATRASADO</span>
+        </div>
+        <div class="fogo-info-sub">Corretor: <strong>Fabiano</strong> · Combinar data e horário da visita</div>
+        <button class="fogo-cta-whatsapp">💬 INICIAR WHATSAPP AGORA</button>
+        <div class="fogo-actions-quick">
+          <button class="fogo-btn-quick">📅 Visita</button>
+          <button class="fogo-btn-quick">⏳ Aguardar</button>
+          <button class="fogo-btn-quick">✕ Descartar</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Tela 2: CRM Funil Rápido -->
+    <section class="tela oculta" id="tela-CRM">
+      <div class="feed-header-v3">
+        <div>
+          <h1>Funil de Vendas Mobile</h1>
+          <p>Navegação por etapas com 1 toque</p>
+        </div>
+      </div>
+
+      <div class="stage-stepper">
+        <button class="stage-pill active">💥 Novo (38)</button>
+        <button class="stage-pill">💬 Atendimento (12)</button>
+        <button class="stage-pill">📅 Visita (4)</button>
+        <button class="stage-pill">📄 Proposta (2)</button>
+        <button class="stage-pill">🎉 Ganho (27)</button>
+      </div>
+
+      <div class="fogo-card">
+        <div class="fogo-top">
+          <h2 class="fogo-lead-name">Nanci</h2>
+          <span class="fogo-timer">11h</span>
+        </div>
+        <div class="fogo-info-sub">Tel: 5511 9•••• •••• · Responsável: Claudia</div>
+        <button class="fogo-cta-whatsapp">💬 Abrir Conversa</button>
+      </div>
+    </section>
+
+    <!-- Tela 3: Aprovação de Indicação Swipe Card -->
+    <section class="tela oculta" id="tela-Aprovacoes">
+      <div class="feed-header-v3">
+        <div>
+          <h1>Validação de Indicações</h1>
+          <p>Decisão rápida de precificação</p>
+        </div>
+      </div>
+
+      <div class="ap-swipe-card">
+        <h2 class="ap-swipe-unit">Unidade 616 · Composite</h2>
+        <div class="ap-swipe-details">37 m² · Indicado por Elizângela · Prop. Alessandra</div>
+
+        <div class="ap-swipe-values">
+          <div>
+            <div class="ap-val-big">R$ 660.000</div>
+            <div class="ap-m2-val">R$ 17.838 / m²</div>
+          </div>
+          <span class="fogo-timer" style="background:rgba(224,54,44,.2); color:#ff6e67;">+24% vs Prédio</span>
+        </div>
+
+        <div class="ap-swipe-btns">
+          <button class="ap-swipe-btn-yes">✓ APROVAR</button>
+          <button class="ap-swipe-btn-no">✕ REPROVAR</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Tela 4: Pódio de Performance -->
+    <section class="tela oculta" id="tela-Performance">
+      <div class="feed-header-v3">
+        <div>
+          <h1>Pódio & Ranking Comercial</h1>
+          <p>Agosto 2026 · VGV R$ 33,2 mi</p>
+        </div>
+      </div>
+
+      <div class="podium-container">
+        <div class="podium-card">
+          <div class="podium-rank">2º</div>
+          <div class="podium-name">Fabiano</div>
+          <div class="podium-sales">7 Vendas</div>
+        </div>
+        <div class="podium-card first">
+          <div class="podium-rank">1º</div>
+          <div class="podium-name">Claudia</div>
+          <div class="podium-sales">9 Vendas</div>
+        </div>
+        <div class="podium-card">
+          <div class="podium-rank">3º</div>
+          <div class="podium-name">Elizângela</div>
+          <div class="podium-sales">6 Vendas</div>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>
+const mapa = { "Início":"Inicio", "CRM":"CRM", "Performance":"Performance", "Produtos":"Aprovacoes" };
+document.querySelectorAll('.nav-item, .mobile-tab-btn').forEach(b => b.onclick = () => {
+  const alvo = mapa[b.dataset.tela];
+  if (!alvo) return;
+  document.querySelectorAll('.nav-item, .mobile-tab-btn').forEach(x => x.classList.remove('ativo'));
+  document.querySelectorAll(`[data-tela="${b.dataset.tela}"]`).forEach(x => x.classList.add('ativo'));
+  document.querySelectorAll('.tela').forEach(t => t.classList.add('oculta'));
+  document.getElementById('tela-' + alvo)?.classList.remove('oculta');
+});
+</script>
+</body>
+</html>

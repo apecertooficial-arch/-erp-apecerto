@@ -1,0 +1,961 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ERP ApeCerto — Maquete V1 (Evolução)</title>
+<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --ap-orange: #FF7000;
+  --ap-orange-600: #e66400;
+  --ap-orange-soft: #fff4eb;
+  --ap-purple: #8B00CC;
+  --ap-purple-600: #7500ad;
+  --ap-purple-soft: #f7ebfd;
+  --ap-green: #17874e;
+  --ap-green-soft: #e8f7ef;
+  --ap-amber: #b07500;
+  --ap-amber-soft: #fff6e0;
+  --ap-red: #c9443e;
+  --ap-red-soft: #fdeceb;
+  --ap-page: #faf9f7;
+  --ap-surface: #ffffff;
+  --ap-sunken: #f4f0ec;
+  --ap-line: #ece6e0;
+  --ap-ink: #241f1b;
+  --ap-ink-soft: #5b544e;
+  --ap-muted: #8b827c;
+  --ap-r-card: 16px;
+  --ap-r-btn: 12px;
+  --ap-r-chip: 999px;
+  --ap-sh-sm: 0 2px 8px rgba(31,24,19,.06);
+  --ap-sh-md: 0 10px 28px rgba(31,24,19,.08);
+  --ap-sh-brand: 0 6px 16px rgba(255,112,0,.22);
+}
+
+* { box-sizing: border-box; }
+html, body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--ap-page);
+  color: var(--ap-ink);
+  font-family: 'Quicksand', -apple-system, sans-serif;
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+  border: 0;
+  background: transparent;
+}
+
+/* App Layout */
+.app-shell {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 240px 1fr;
+}
+
+/* Sidebar */
+.sidebar {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  background: var(--ap-surface);
+  border-right: 1px solid var(--ap-line);
+  padding: 20px 14px;
+  display: flex;
+  flex-direction: column;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px 24px;
+  color: var(--ap-orange);
+  font-size: 20px;
+  font-weight: 800;
+}
+.brand span { color: var(--ap-purple); }
+
+.nav-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--ap-muted);
+  margin: 14px 10px 8px;
+}
+
+.nav-item {
+  width: 100%;
+  padding: 11px 14px;
+  border-radius: var(--ap-r-btn);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--ap-ink-soft);
+  font-weight: 600;
+  font-size: 13px;
+  transition: all .18s cubic-bezier(.2,.8,.2,1);
+  margin-bottom: 3px;
+  text-align: left;
+}
+
+.nav-item:hover {
+  background: var(--ap-sunken);
+  color: var(--ap-ink);
+  transform: translateY(-1px);
+}
+
+.nav-item:focus-visible {
+  outline: 2px solid var(--ap-orange);
+  outline-offset: 2px;
+}
+
+.nav-item.ativo {
+  background: var(--ap-orange-soft);
+  color: var(--ap-orange);
+  font-weight: 700;
+  box-shadow: inset 4px 0 0 var(--ap-orange);
+}
+
+.nav-item small {
+  margin-left: auto;
+  background: #ffdfca;
+  color: var(--ap-orange-600);
+  padding: 3px 8px;
+  border-radius: var(--ap-r-chip);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.profile {
+  margin-top: auto;
+  padding-top: 14px;
+  border-top: 1px solid var(--ap-line);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.profile-avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: var(--ap-purple-soft);
+  color: var(--ap-purple);
+  font-weight: 800;
+  display: grid;
+  place-items: center;
+}
+.profile div { display: flex; flex-direction: column; }
+.profile strong { font-size: 13px; }
+.profile small { color: var(--ap-muted); font-size: 11px; }
+
+/* Main Workspace */
+.workspace {
+  min-width: 0;
+  padding: 0 0 40px;
+}
+
+.topbar {
+  padding: 20px 32px;
+  background: var(--ap-surface);
+  border-bottom: 1px solid var(--ap-line);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.topbar h1 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: -.02em;
+}
+
+.topbar p.sub {
+  margin: 4px 0 0;
+  color: var(--ap-muted);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.top-actions {
+  display: flex;
+  gap: 12px;
+}
+
+/* Button Primitives */
+.primary-action {
+  min-height: 44px;
+  padding: 0 20px;
+  border-radius: var(--ap-r-btn);
+  background: var(--ap-orange);
+  color: #fff;
+  font-weight: 700;
+  font-size: 13px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-shadow: var(--ap-sh-brand);
+  transition: all .18s cubic-bezier(.2,.8,.2,1);
+}
+.primary-action:hover {
+  background: var(--ap-orange-600);
+  transform: translateY(-1px);
+}
+.primary-action:focus-visible { outline: 2px solid var(--ap-orange); outline-offset: 2px; }
+.primary-action:active { transform: translateY(0); }
+
+.secondary-action {
+  min-height: 44px;
+  padding: 0 18px;
+  border-radius: var(--ap-r-btn);
+  background: var(--ap-surface);
+  color: var(--ap-ink-soft);
+  border: 1px solid var(--ap-line);
+  font-weight: 700;
+  font-size: 13px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all .18s cubic-bezier(.2,.8,.2,1);
+}
+.secondary-action:hover {
+  background: var(--ap-sunken);
+  color: var(--ap-ink);
+  transform: translateY(-1px);
+}
+.secondary-action:focus-visible { outline: 2px solid var(--ap-orange); outline-offset: 2px; }
+
+/* Screens */
+.tela { padding: 28px 32px; }
+.tela.oculta { display: none !important; }
+
+/* Hero Banner */
+.hv2-hero {
+  background: linear-gradient(135deg, #FF7000 0%, #E65F00 100%);
+  border-radius: var(--ap-r-card);
+  padding: 24px 28px;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 24px;
+  box-shadow: var(--ap-sh-brand);
+}
+
+.hv2-hero-eyebrow {
+  margin: 0 0 6px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  opacity: .9;
+}
+.hv2-hero-val {
+  margin: 0;
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: -.02em;
+}
+.hv2-hero-sub {
+  margin: 4px 0 0;
+  font-size: 13px;
+  opacity: .95;
+  font-weight: 500;
+}
+
+.hv2-hero-btn {
+  min-height: 44px;
+  padding: 0 20px;
+  border-radius: var(--ap-r-btn);
+  background: #fff;
+  color: var(--ap-orange-600);
+  font-weight: 800;
+  font-size: 13px;
+  box-shadow: 0 4px 14px rgba(0,0,0,.15);
+  transition: all .18s ease;
+}
+.hv2-hero-btn:hover {
+  background: var(--ap-orange-soft);
+  transform: translateY(-1px);
+}
+.hv2-hero-btn:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+
+/* KPI Grid */
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 16px;
+  margin-bottom: 28px;
+}
+
+.kpi {
+  background: var(--ap-surface);
+  border: 1px solid var(--ap-line);
+  border-radius: var(--ap-r-card);
+  padding: 20px;
+  box-shadow: var(--ap-sh-sm);
+  position: relative;
+  overflow: hidden;
+  transition: all .18s ease;
+}
+.kpi:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--ap-sh-md);
+}
+
+.kpi .lab {
+  margin: 0 0 8px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--ap-muted);
+}
+.kpi .val {
+  margin: 0;
+  font-size: 30px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -.02em;
+}
+.kpi .hint {
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: var(--ap-ink-soft);
+  font-weight: 500;
+}
+
+.kpi.o .val { color: var(--ap-orange); }
+.kpi.p .val { color: var(--ap-purple); }
+.kpi.g .val { color: var(--ap-green); }
+.kpi.warn .val { color: var(--ap-amber); }
+.kpi.n .val { color: var(--ap-ink); }
+
+/* Panel / Cards Container */
+.hv2-panel {
+  background: var(--ap-surface);
+  border: 1px solid var(--ap-line);
+  border-radius: var(--ap-r-card);
+  padding: 24px;
+  box-shadow: var(--ap-sh-sm);
+}
+
+.hv2-panel-h {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+.hv2-panel-h h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.hv2-link-btn {
+  color: var(--ap-orange);
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.hv2-prow {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 16px;
+  border: 1px solid var(--ap-line);
+  border-radius: 12px;
+  background: var(--ap-surface);
+  margin-bottom: 10px;
+  transition: all .18s ease;
+}
+.hv2-prow:hover {
+  background: #fdfbf9;
+  border-color: #ffd8bd;
+  transform: translateY(-1px);
+}
+
+.hv2-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--ap-orange-soft);
+  color: var(--ap-orange);
+  font-weight: 800;
+  display: grid;
+  place-items: center;
+  font-size: 15px;
+}
+
+.hv2-prod { flex: 1; min-width: 0; }
+.hv2-prod strong { display: block; font-size: 14px; font-weight: 700; }
+.hv2-prod small { color: var(--ap-muted); font-size: 12px; }
+
+.hv2-chip {
+  padding: 5px 12px;
+  border-radius: var(--ap-r-chip);
+  background: var(--ap-purple-soft);
+  color: var(--ap-purple);
+  font-weight: 700;
+  font-size: 12px;
+}
+
+.hv2-badge {
+  padding: 5px 12px;
+  border-radius: var(--ap-r-chip);
+  background: var(--ap-sunken);
+  color: var(--ap-ink-soft);
+  font-weight: 700;
+  font-size: 12px;
+}
+.hv2-badge.atrasado {
+  background: var(--ap-red-soft);
+  color: var(--ap-red);
+}
+
+/* CRM Board */
+.catalog-controls {
+  padding-bottom: 20px;
+}
+.filter-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+}
+.filter-symbol { color: var(--ap-muted); font-weight: 700; }
+.filter-row button {
+  padding: 9px 18px;
+  border-radius: var(--ap-r-chip);
+  border: 1px solid var(--ap-line);
+  background: var(--ap-surface);
+  color: var(--ap-ink-soft);
+  font-weight: 700;
+  font-size: 13px;
+  transition: all .18s ease;
+}
+.filter-row button:hover {
+  background: var(--ap-sunken);
+}
+.filter-row button.active {
+  background: var(--ap-purple);
+  color: #fff;
+  border-color: var(--ap-purple);
+}
+
+.crm-board {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.crm-stage {
+  background: #f5f2ee;
+  border: 1px solid var(--ap-line);
+  border-radius: var(--ap-r-card);
+  padding: 16px;
+  min-height: 520px;
+}
+
+.crm-stage-h {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 12px;
+  margin-bottom: 14px;
+  border-bottom: 2px solid var(--ap-line);
+}
+.crm-stage-h strong { font-size: 14px; font-weight: 800; }
+.crm-stage-n {
+  background: var(--ap-surface);
+  color: var(--ap-ink-soft);
+  padding: 3px 10px;
+  border-radius: var(--ap-r-chip);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.crm-card {
+  background: var(--ap-surface);
+  border: 1px solid var(--ap-line);
+  border-radius: 12px;
+  padding: 14px;
+  margin-bottom: 10px;
+  box-shadow: var(--ap-sh-sm);
+  transition: all .18s ease;
+}
+.crm-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--ap-sh-md);
+  border-color: #ffd8bd;
+}
+.crm-card strong { display: block; font-size: 14px; font-weight: 700; }
+.crm-card small { display: block; color: var(--ap-muted); font-size: 12px; margin: 4px 0 10px; }
+.crm-card-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+/* Aprovações Row */
+.ap-row {
+  display: grid;
+  grid-template-columns: 48px 1.5fr 1fr 1fr auto;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+  border: 1px solid var(--ap-line);
+  border-radius: 12px;
+  background: var(--ap-surface);
+  margin-bottom: 12px;
+}
+.ap-thumb {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: var(--ap-purple-soft);
+  color: var(--ap-purple);
+  display: grid;
+  place-items: center;
+  font-size: 20px;
+  font-weight: 800;
+}
+.ap-main strong { font-size: 15px; font-weight: 700; display: block; }
+.ap-main small { color: var(--ap-muted); font-size: 12px; display: block; margin-top: 3px; }
+.ap-valor strong { color: var(--ap-orange); font-size: 16px; font-weight: 800; display: block; }
+.ap-valor small { color: var(--ap-purple); font-size: 12px; font-weight: 700; display: block; margin-top: 2px; }
+.ap-curva strong { font-size: 15px; font-weight: 800; display: block; }
+.ap-curva.acima strong { color: var(--ap-red); }
+.ap-curva.ok strong { color: var(--ap-green); }
+.ap-curva small { color: var(--ap-muted); font-size: 11px; display: block; margin-top: 2px; }
+
+.approval-actions {
+  display: flex;
+  gap: 10px;
+}
+.ap-approve {
+  min-height: 40px;
+  padding: 0 16px;
+  border-radius: var(--ap-r-btn);
+  background: var(--ap-green-soft);
+  color: var(--ap-green);
+  border: 1px solid var(--ap-green-soft);
+  font-weight: 700;
+  font-size: 13px;
+  transition: all .18s ease;
+}
+.ap-approve:hover {
+  background: var(--ap-green);
+  color: #fff;
+  transform: translateY(-1px);
+}
+.ap-reject {
+  min-height: 40px;
+  padding: 0 16px;
+  border-radius: var(--ap-r-btn);
+  background: var(--ap-red-soft);
+  color: var(--ap-red);
+  border: 1px solid var(--ap-red-soft);
+  font-weight: 700;
+  font-size: 13px;
+  transition: all .18s ease;
+}
+.ap-reject:hover {
+  background: var(--ap-red);
+  color: #fff;
+  transform: translateY(-1px);
+}
+
+/* Performance Table */
+.perf-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+.perf-table th {
+  text-align: left;
+  padding: 12px 16px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--ap-muted);
+  border-bottom: 1px solid var(--ap-line);
+}
+.perf-table td {
+  padding: 16px;
+  border-bottom: 1px solid var(--ap-line);
+  font-size: 14px;
+}
+.product-rank {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+  font-size: 12px;
+  color: #fff;
+}
+.product-rank.tone-1 { background: var(--ap-orange); }
+.product-rank.tone-2 { background: var(--ap-purple); }
+.product-rank.tone-3 { background: var(--ap-green); }
+.product-rank.tone-4 { background: var(--ap-amber); }
+.product-rank.tone-5 { background: var(--ap-muted); }
+
+.barra {
+  height: 8px;
+  border-radius: var(--ap-r-chip);
+  background: var(--ap-sunken);
+  overflow: hidden;
+}
+.barra i {
+  display: block;
+  height: 100%;
+  border-radius: var(--ap-r-chip);
+  background: linear-gradient(90deg, var(--ap-orange), #ff9e42);
+}
+
+/* Mobile Bar */
+.mobile-nav {
+  display: none;
+}
+
+/* Mobile 390px Media Queries */
+@media (max-width: 900px) {
+  .app-shell { grid-template-columns: 1fr; }
+  .sidebar { display: none; }
+  
+  .mobile-nav {
+    display: flex;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 64px;
+    background: var(--ap-surface);
+    border-top: 1px solid var(--ap-line);
+    z-index: 100;
+    justify-content: space-around;
+    align-items: center;
+    box-shadow: 0 -4px 16px rgba(0,0,0,.08);
+  }
+  .mobile-nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    color: var(--ap-muted);
+    font-size: 11px;
+    font-weight: 700;
+    padding: 6px 12px;
+  }
+  .mobile-nav-item.ativo {
+    color: var(--ap-orange);
+  }
+
+  .tela { padding: 16px; }
+  .topbar { padding: 16px; flex-direction: column; align-items: flex-start; gap: 12px; }
+  .top-actions { width: 100%; }
+  .top-actions button { flex: 1; }
+  
+  .kpis { grid-template-columns: 1fr 1fr; }
+  .crm-board { grid-template-columns: 1fr; }
+  .ap-row { grid-template-columns: 1fr; gap: 12px; }
+  .approval-actions { width: 100%; margin-top: 8px; }
+  .approval-actions button { flex: 1; }
+}
+</style>
+</head>
+<body>
+
+<div class="app-shell">
+  <!-- Sidebar Desktop -->
+  <aside class="sidebar">
+    <div class="brand">apê<span>certo</span></div>
+    <span class="nav-label">Módulos</span>
+    <button class="nav-item ativo" data-tela="Início">⌂ Início</button>
+    <button class="nav-item" data-tela="CRM">◈ CRM <small>20</small></button>
+    <button class="nav-item" data-tela="Produtos">▤ Aprovações <small>14</small></button>
+    <button class="nav-item" data-tela="Performance">↗ Performance</button>
+    
+    <div class="profile">
+      <div class="profile-avatar">R</div>
+      <div>
+        <strong>Rômulo</strong>
+        <small>Gestor Comercial</small>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Mobile Bottom Nav -->
+  <div class="mobile-nav">
+    <button class="mobile-nav-item ativo" data-tela="Início">⌂<span>Início</span></button>
+    <button class="mobile-nav-item" data-tela="CRM">◈<span>CRM</span></button>
+    <button class="mobile-nav-item" data-tela="Produtos">▤<span>Aprovações</span></button>
+    <button class="mobile-nav-item" data-tela="Performance">↗<span>Performance</span></button>
+  </div>
+
+  <main class="workspace">
+    <!-- Tela 1: Início -->
+    <section class="tela" id="tela-Inicio">
+      <header class="topbar">
+        <div>
+          <h1>Início</h1>
+          <p class="sub">Quarta, 5 de agosto · bom dia, Rômulo</p>
+        </div>
+        <div class="top-actions">
+          <button class="secondary-action">▤ Relatório do dia</button>
+          <button class="primary-action">＋ Novo lead</button>
+        </div>
+      </header>
+
+      <div style="padding-top: 24px;">
+        <div class="hv2-hero">
+          <div>
+            <p class="hv2-hero-eyebrow">PRÓXIMA AÇÃO</p>
+            <p class="hv2-hero-val">8 leads esperando contato</p>
+            <p class="hv2-hero-sub">O mais antigo está parado há 11 horas</p>
+          </div>
+          <button class="hv2-hero-btn">Começar pela fila ▸</button>
+        </div>
+
+        <section class="kpis">
+          <div class="kpi o"><p class="lab">Carteira</p><p class="val">133</p><p class="hint">leads no Funil 2.0</p></div>
+          <div class="kpi p"><p class="lab">Aguardando Ação</p><p class="val">8</p><p class="hint">com prazo estourado</p></div>
+          <div class="kpi g"><p class="lab">Visitas</p><p class="val">146</p><p class="hint">realizadas no total</p></div>
+          <div class="kpi warn"><p class="lab">Aprovações</p><p class="val">14</p><p class="hint">unidades aguardando ▸</p></div>
+          <div class="kpi n"><p class="lab">Vendas</p><p class="val">27</p><p class="hint">fechadas no total</p></div>
+        </section>
+
+        <div class="hv2-panel">
+          <div class="hv2-panel-h">
+            <h2>Fila de atendimento urgente</h2>
+            <button class="hv2-link-btn">Ver todos ▸</button>
+          </div>
+
+          <div class="hv2-prow">
+            <span class="hv2-avatar">N</span>
+            <div class="hv2-prod"><strong>Nanci</strong><small>Combinar data e horário da visita</small></div>
+            <span class="hv2-chip">Claudia</span>
+            <span class="hv2-badge atrasado">▲ 11h atrasado</span>
+            <button class="primary-action" style="min-height:36px; padding:0 14px; font-size:12px;">Abrir WhatsApp</button>
+          </div>
+          <div class="hv2-prow">
+            <span class="hv2-avatar">R</span>
+            <div class="hv2-prod"><strong>Rafael Sforzin</strong><small>Combinar data e horário da visita</small></div>
+            <span class="hv2-chip">Fabiano</span>
+            <span class="hv2-badge atrasado">▲ 11h atrasado</span>
+            <button class="primary-action" style="min-height:36px; padding:0 14px; font-size:12px;">Abrir WhatsApp</button>
+          </div>
+          <div class="hv2-prow">
+            <span class="hv2-avatar">P</span>
+            <div class="hv2-prod"><strong>Paulinha Santos Pereira</strong><small>Combinar data e horário da visita</small></div>
+            <span class="hv2-chip">Fabiano</span>
+            <span class="hv2-badge atrasado">▲ 11h atrasado</span>
+            <button class="primary-action" style="min-height:36px; padding:0 14px; font-size:12px;">Abrir WhatsApp</button>
+          </div>
+          <div class="hv2-prow">
+            <span class="hv2-avatar">J</span>
+            <div class="hv2-prod"><strong>Jose Carlos Cardoso</strong><small>Combinar data e horário da visita</small></div>
+            <span class="hv2-chip">Fabiano</span>
+            <span class="hv2-badge atrasado">▲ 11h atrasado</span>
+            <button class="primary-action" style="min-height:36px; padding:0 14px; font-size:12px;">Abrir WhatsApp</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Tela 2: CRM -->
+    <section class="tela oculta" id="tela-CRM">
+      <header class="topbar">
+        <div>
+          <h1>CRM · Funil 2.0</h1>
+          <p class="sub">133 leads na carteira · 38 novos</p>
+        </div>
+        <div class="top-actions">
+          <button class="secondary-action">▤ Exportar</button>
+          <button class="primary-action">＋ Novo lead</button>
+        </div>
+      </header>
+
+      <div style="padding-top: 24px;">
+        <div class="catalog-controls">
+          <div class="filter-row">
+            <span class="filter-symbol">▽</span>
+            <button class="active">Todos</button>
+            <button>Meus</button>
+            <button>Sem atendimento</button>
+            <button>Prazo estourado</button>
+          </div>
+        </div>
+
+        <div class="crm-board">
+          <div class="crm-stage">
+            <div class="crm-stage-h" style="border-top-color:#FF7000"><strong>Novo</strong><span class="crm-stage-n">38</span></div>
+            <article class="crm-card">
+              <strong>Nanci</strong><small>5511 9•••• ••••</small>
+              <div class="crm-card-foot"><span class="hv2-chip">Claudia</span><span class="hv2-badge atrasado">11h</span></div>
+            </article>
+            <article class="crm-card">
+              <strong>Rafael Sforzin</strong><small>5511 9•••• ••••</small>
+              <div class="crm-card-foot"><span class="hv2-chip">Fabiano</span><span class="hv2-badge atrasado">11h</span></div>
+            </article>
+            <article class="crm-card">
+              <strong>Paulinha Santos</strong><small>5511 9•••• ••••</small>
+              <div class="crm-card-foot"><span class="hv2-chip">Fabiano</span><span class="hv2-badge atrasado">11h</span></div>
+            </article>
+          </div>
+
+          <div class="crm-stage">
+            <div class="crm-stage-h" style="border-top-color:#8B00CC"><strong>Em atendimento</strong><span class="crm-stage-n">12</span></div>
+            <article class="crm-card">
+              <strong>Nanci</strong><small>5511 9•••• ••••</small>
+              <div class="crm-card-foot"><span class="hv2-chip">Claudia</span><span class="hv2-badge">11h</span></div>
+            </article>
+            <article class="crm-card">
+              <strong>Rafael Sforzin</strong><small>5511 9•••• ••••</small>
+              <div class="crm-card-foot"><span class="hv2-chip">Fabiano</span><span class="hv2-badge">11h</span></div>
+            </article>
+          </div>
+
+          <div class="crm-stage">
+            <div class="crm-stage-h" style="border-top-color:#2f6fed"><strong>Visita agendada</strong><span class="crm-stage-n">4</span></div>
+            <article class="crm-card">
+              <strong>Nanci</strong><small>5511 9•••• ••••</small>
+              <div class="crm-card-foot"><span class="hv2-chip">Claudia</span><span class="hv2-badge">11h</span></div>
+            </article>
+          </div>
+
+          <div class="crm-stage">
+            <div class="crm-stage-h" style="border-top-color:#b07500"><strong>Proposta</strong><span class="crm-stage-n">2</span></div>
+            <article class="crm-card">
+              <strong>Rafael Sforzin</strong><small>5511 9•••• ••••</small>
+              <div class="crm-card-foot"><span class="hv2-chip">Fabiano</span><span class="hv2-badge">11h</span></div>
+            </article>
+          </div>
+
+          <div class="crm-stage">
+            <div class="crm-stage-h" style="border-top-color:#17874e"><strong>Ganho</strong><span class="crm-stage-n">27</span></div>
+            <article class="crm-card">
+              <strong>Nanci</strong><small>5511 9•••• ••••</small>
+              <div class="crm-card-foot"><span class="hv2-chip">Claudia</span><span class="hv2-badge">11h</span></div>
+            </article>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Tela 3: Aprovações -->
+    <section class="tela oculta" id="tela-Aprovacoes">
+      <header class="topbar">
+        <div>
+          <h1>Aprovações</h1>
+          <p class="sub">14 unidades de indicação aguardando validação</p>
+        </div>
+      </header>
+
+      <div style="padding-top: 24px;">
+        <div class="hv2-panel">
+          <div class="hv2-panel-h">
+            <h2>Fila de aprovação de indicações</h2>
+            <span class="hv2-badge" style="background:var(--ap-orange-soft); color:var(--ap-orange);">14 pendentes</span>
+          </div>
+
+          <div class="ap-row">
+            <div class="ap-thumb">▥</div>
+            <div class="ap-main"><strong>Unidade 616 <span class="hv2-chip">Indicação</span></strong><small>Composite · 37 m² · indicado por Elizângela · prop. Alessandra</small></div>
+            <div class="ap-valor"><strong>R$ 660.000</strong><small>R$ 17.838/m²</small></div>
+            <div class="ap-curva acima"><strong>+24%</strong><small>vs. R$ 14.376/m² do prédio</small></div>
+            <div class="approval-actions"><button class="ap-approve">✓ Aprovar</button><button class="ap-reject">✕ Reprovar</button></div>
+          </div>
+          <div class="ap-row">
+            <div class="ap-thumb">▥</div>
+            <div class="ap-main"><strong>Unidade 720 <span class="hv2-chip">Indicação</span></strong><small>Composite · 30 m² · indicado por Elizângela · prop. Gisele</small></div>
+            <div class="ap-valor"><strong>R$ 549.993</strong><small>R$ 18.333/m²</small></div>
+            <div class="ap-curva acima"><strong>+28%</strong><small>vs. R$ 14.376/m² do prédio</small></div>
+            <div class="approval-actions"><button class="ap-approve">✓ Aprovar</button><button class="ap-reject">✕ Reprovar</button></div>
+          </div>
+          <div class="ap-row">
+            <div class="ap-thumb">▥</div>
+            <div class="ap-main"><strong>Unidade 1102 <span class="hv2-chip">Indicação</span></strong><small>Composite · 30 m² · indicado por Elizângela · prop. Wesley Morales</small></div>
+            <div class="ap-valor"><strong>R$ 500.000</strong><small>R$ 16.667/m²</small></div>
+            <div class="ap-curva acima"><strong>+16%</strong><small>vs. R$ 14.376/m² do prédio</small></div>
+            <div class="approval-actions"><button class="ap-approve">✓ Aprovar</button><button class="ap-reject">✕ Reprovar</button></div>
+          </div>
+          <div class="ap-row">
+            <div class="ap-thumb">▥</div>
+            <div class="ap-main"><strong>Unidade 412 <span class="hv2-chip">Indicação</span></strong><small>AP Moema · 25 m² · indicado por Elizângela · prop. Chris zogbi</small></div>
+            <div class="ap-valor"><strong>R$ 439.000</strong><small>R$ 17.560/m²</small></div>
+            <div class="ap-curva ok"><strong>+9%</strong><small>vs. R$ 16.080/m² do prédio</small></div>
+            <div class="approval-actions"><button class="ap-approve">✓ Aprovar</button><button class="ap-reject">✕ Reprovar</button></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Tela 4: Performance -->
+    <section class="tela oculta" id="tela-Performance">
+      <header class="topbar">
+        <div>
+          <h1>Performance</h1>
+          <p class="sub">Agosto de 2026 · equipe completa</p>
+        </div>
+      </header>
+
+      <div style="padding-top: 24px;">
+        <section class="kpis">
+          <div class="kpi o"><p class="lab">Vendas no mês</p><p class="val">30</p><p class="hint">meta: 40</p></div>
+          <div class="kpi p"><p class="lab">VGV</p><p class="val">33,2 mi</p><p class="hint">ticket R$ 1,1 mi</p></div>
+          <div class="kpi g"><p class="lab">Conversão</p><p class="val">2,1%</p><p class="hint">lead → venda</p></div>
+          <div class="kpi warn"><p class="lab">Sem atendimento</p><p class="val">8</p><p class="hint">prazo estourado ▸</p></div>
+        </section>
+
+        <div class="hv2-panel">
+          <div class="hv2-panel-h"><h2>Ranking Comercial</h2></div>
+          <table class="perf-table">
+            <thead>
+              <tr><th>#</th><th>Corretor</th><th>Leads</th><th>Visitas</th><th>Vendas</th><th>Progresso da Meta</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><span class="product-rank tone-1">1</span></td><td><strong>Claudia</strong></td><td>42</td><td>3</td><td><strong>9</strong></td><td><div class="barra"><i style="width:99%"></i></div></td></tr>
+              <tr><td><span class="product-rank tone-2">2</span></td><td><strong>Fabiano</strong></td><td>38</td><td>2</td><td><strong>7</strong></td><td><div class="barra"><i style="width:77%"></i></div></td></tr>
+              <tr><td><span class="product-rank tone-3">3</span></td><td><strong>Elizângela</strong></td><td>51</td><td>4</td><td><strong>6</strong></td><td><div class="barra"><i style="width:66%"></i></div></td></tr>
+              <tr><td><span class="product-rank tone-4">4</span></td><td><strong>Tica</strong></td><td>22</td><td>1</td><td><strong>4</strong></td><td><div class="barra"><i style="width:44%"></i></div></td></tr>
+              <tr><td><span class="product-rank tone-5">5</span></td><td><strong>Edrisia</strong></td><td>18</td><td>1</td><td><strong>3</strong></td><td><div class="barra"><i style="width:33%"></i></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>
+const mapa = { "Início":"Inicio", "CRM":"CRM", "Performance":"Performance", "Produtos":"Aprovacoes" };
+document.querySelectorAll('.nav-item, .mobile-nav-item').forEach(b => b.onclick = () => {
+  const alvo = mapa[b.dataset.tela];
+  if (!alvo) return;
+  document.querySelectorAll('.nav-item, .mobile-nav-item').forEach(x => x.classList.remove('ativo'));
+  document.querySelectorAll(`[data-tela="${b.dataset.tela}"]`).forEach(x => x.classList.add('ativo'));
+  document.querySelectorAll('.tela').forEach(t => t.classList.add('oculta'));
+  document.getElementById('tela-' + alvo)?.classList.remove('oculta');
+});
+</script>
+</body>
+</html>
