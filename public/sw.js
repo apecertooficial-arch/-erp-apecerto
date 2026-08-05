@@ -149,7 +149,8 @@ self.addEventListener("push", (evento) => {
   evento.waitUntil((async () => {
     try {
       const abas = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
-      for (const aba of abas) aba.postMessage({ tipo: "aviso-apecerto", tag: aviso.tag, urgente });
+      for (const aba of abas) aba.postMessage({ tipo: "aviso-apecerto", tag: aviso.tag,
+        urgente, titulo: aviso.title, corpo: aviso.body, url: aviso.url });
     } catch (_e) { /* nunca deixar o som derrubar a notificacao */ }
   })());
 
