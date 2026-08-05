@@ -18,7 +18,7 @@ import { frasedaSituacao, prepararChamada, TITULO_BLOCO } from "../lib/ficha3";
 import type { SaidaSla } from "../../crm-nova-era/lib/slaPrimeiraAbordagem";
 import { normalizarSara, proximaAcaoSugerida, type DecisaoSara, type SugestaoBruta } from "../lib/sara3";
 import { Sara3 } from "./Sara3";
-import { FormAcao3, type TipoForm } from "./FormAcao3";
+import { FormAcao3, type DadosVisita, type TipoForm } from "./FormAcao3";
 import { iniciais, tempoDesde } from "./Card3";
 import type { AnaliseSara } from "../lib/adapter3";
 import { condutaOficial, momentosDaEtapa } from "../lib/conduta3";
@@ -131,7 +131,7 @@ export function Ficha3({
   formInicial?: TipoForm | null;
   onFechar: () => void;
   onExecutar: (payload: Record<string, unknown>) => boolean | Promise<boolean>;
-  onCriarVisita: (data: string, hora: string) => void | Promise<void>;
+  onCriarVisita: (dados: DadosVisita) => void | Promise<void>;
   onAviso: (texto: string) => void;
   onSaraCarregada: (negocioId: string, orientacao: string | null) => void;
 }) {
@@ -493,7 +493,7 @@ export function Ficha3({
         <FormAcao3
           tipo={form} lead={lead} versao={versao} leadId={leadId} busy={busy} accessToken={accessToken} inicial={inicial}
           onCancelar={() => { setForm(null); setInicial({}); }}
-          onCriarVisita={async (d, h) => { await onCriarVisita(d, h); setForm(null); }}
+          onCriarVisita={async (dados) => { await onCriarVisita(dados); setForm(null); }}
           onEnviar={async (p) => {
             const gravou = form === "resultado" ? await executarEReavaliar(p) : await onExecutar(p);
             if (gravou) { setForm(null); setInicial({}); }
