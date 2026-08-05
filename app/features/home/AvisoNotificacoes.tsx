@@ -145,11 +145,11 @@ export function AvisoNotificacoes({ accessToken }: { accessToken: string }) {
 
   return (
     <div className="aviso-push-convite" role="status">
-      <strong>Receba aviso de lead novo</strong>
+      <strong><span aria-hidden="true">🔔</span> Receba aviso de lead novo</strong>
       <p>Chega igual mensagem no celular, na hora que o lead cai para você. Quem responde primeiro vende.</p>
       {erro && <p style={{ color: "#b91c1c" }}>{erro}</p>}
-      <div className="convite-instalar-acoes">
-        <button type="button" className="convite-instalar-ok" disabled={ocupado} onClick={() => void ligar()}>
+      <div className="aviso-push-acoes">
+        <button type="button" className="aviso-push-btn" disabled={ocupado} onClick={() => void ligar()}>
           {ocupado ? "Ligando…" : "Ligar avisos"}
         </button>
       </div>
