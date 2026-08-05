@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { acaoVisivel, dataCurta, diaCadencia, duracao, prazoDaAcao, situacaoPrazo, venceHoje, type CandidatoAquarioFunil2, type EtapaConfigFunil2, type EventoFunil2, type LeadFunil2, type MomentoFunil2, type NegociacaoFunil2, type OperacaoConfigFunil2, type SaraStatusFunil2, type VisitaFunil2 } from "./modelo";
 import { FUNIL2_CSS } from "./estilos";
 import { SalesProcessView, LeadChatDrawer, type Lead as LeadLegado, type Deal as DealLegado } from "../crm/CrmWorkspace";
+import { getBrowserSupabaseClient } from "../../lib/supabase/browser";
 
 type Perfil = { userId: string; role: string; name: string };
 type Payload = {
@@ -526,7 +527,71 @@ function ModalPescar({ candidatos, busy, onFechar, onPescar }: { candidatos: Can
   return <Modal titulo="Pescar um lead do Aquário" texto="A lista abaixo vem somente da base real do Aquário: negócios abertos, sem corretor e disponíveis para pesca." onFechar={onFechar}>{candidatos.length > 0 ? <label>Lead disponível<select value={negocio} onChange={(e) => setNegocio(e.target.value)}>{candidatos.map((c) => <option key={c.negocio_id} value={c.negocio_id}>{c.nome} · #{c.negocio_id}</option>)}</select></label> : <div className="f2-sem-resultado"><b>Nenhum lead disponível no Aquário.</b><span>Novas importações aparecerão aqui sem nome de corretor.</span></div>}<div className="f2-pesca-destino"><span>DESTINO</span><b>Novo · Primeira abordagem</b><small>Prazo de 5 minutos. O histórico anterior fica oculto; o chat desta ficha começa exatamente no instante da pesca.</small></div><button type="button" className="f2-modal-primary" disabled={busy || !negocio} onClick={() => onPescar(Number(negocio))}>{busy ? "Pescando…" : "Pescar lead"}</button></Modal>;
 }
 
-function ModalVisita({ leads, busy, onFechar, onSalvar }: { leads: LeadFunil2[]; busy: boolean; onFechar: () => void; onSalvar: (d: Record<string, unknown>) => void }) { const [leadId,setLeadId]=useState(leads[0]?.id??""); const [inicio,setInicio]=useState(""); const [imovel,setImovel]=useState(""); return <Modal titulo="Agendar visita" texto="A visita aparecerá no Pipe sem duplicar o lead." onFechar={onFechar}><label>Lead<select value={leadId} onChange={(e)=>setLeadId(e.target.value)}>{leads.map((l)=><option key={l.id} value={l.id}>{l.nome}</option>)}</select></label><label>Data e hora<input type="datetime-local" value={inicio} onChange={(e)=>setInicio(e.target.value)}/></label><label>Imóvel<input value={imovel} onChange={(e)=>setImovel(e.target.value)} placeholder="Empreendimento ou endereço"/></label><button type="button" className="f2-modal-primary" disabled={busy||!leadId||!inicio||imovel.length<2} onClick={()=>onSalvar({leadId,inicioEm:inicio,imovel,status:"agendada"})}>Criar visita</button></Modal>; }
+/* AGENDAR VISITA — versao completa, igual a do CRM antigo.
+   Antes: lead, data e um campo de texto livre para o imovel. Isso jogava fora o
+   produto (que diz o que vai ser mostrado), a unidade e a presenca do gerente --
+   campos que o historico prova que eram usados: de 140 visitas, 55 com gerente
+   e 53 com produto. Sem gerente escolhido nao ha como checar conflito de
+   agenda, e o choque so aparece no dia, com o cliente na porta. */
+function ModalVisita({ leads, busy, onFechar, onSalvar }: { leads: LeadFunil2[]; busy: boolean; onFechar: () => void; onSalvar: (d: Record<string, unknown>) => void }) {
+  const [leadId, setLeadId] = useState(leads[0]?.id ?? "");
+  const [inicio, setInicio] = useState("");
+  const [empreendimento, setEmpreendimento] = useState("");
+  const [unidade, setUnidade] = useState("");
+  const [comGerente, setComGerente] = useState(false);
+  const [gerente, setGerente] = useState("");
+  const [produtos, setProdutos] = useState<{ id: string; nome: string }[]>([]);
+  const [equipe, setEquipe] = useState<{ id: number; nome: string }[]>([]);
+
+  useEffect(() => {
+    const sb = getBrowserSupabaseClient();
+    void sb.from("empreendimentos").select("id,nome").order("nome").limit(200)
+      .then(({ data }) => setProdutos((data ?? []) as { id: string; nome: string }[]));
+    void sb.from("corretores").select("id,nome").eq("ativo", true).order("nome")
+      .then(({ data }) => setEquipe((data ?? []) as { id: number; nome: string }[]));
+  }, []);
+
+  const podeSalvar = !busy && leadId && inicio && (empreendimento || unidade.trim().length >= 2) && (!comGerente || gerente);
+
+  return <Modal titulo="Agendar visita" texto="A visita aparecerá no Pipe sem duplicar o lead." onFechar={onFechar}>
+    <label>Lead
+      <select value={leadId} onChange={(e) => setLeadId(e.target.value)}>
+        {leads.map((l) => <option key={l.id} value={l.id}>{l.nome}</option>)}
+      </select>
+    </label>
+    <label>Produto
+      <select value={empreendimento} onChange={(e) => setEmpreendimento(e.target.value)}>
+        <option value="">— escolha o empreendimento —</option>
+        {produtos.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
+      </select>
+    </label>
+    <label>Unidade <small>(opcional)</small>
+      <input value={unidade} onChange={(e) => setUnidade(e.target.value)} placeholder="Ex.: apto 402" />
+    </label>
+    <label>Data e hora
+      <input type="datetime-local" value={inicio} onChange={(e) => setInicio(e.target.value)} />
+    </label>
+    <label className="f2-modal-check">
+      <input type="checkbox" checked={comGerente} onChange={(e) => setComGerente(e.target.checked)} />
+      Quero o gerente presente
+    </label>
+    {comGerente && <label>Qual gerente
+      <select value={gerente} onChange={(e) => setGerente(e.target.value)}>
+        <option value="">— escolha —</option>
+        {equipe.map((g) => <option key={g.id} value={g.id}>{g.nome}</option>)}
+      </select>
+    </label>}
+    <button type="button" className="f2-modal-primary" disabled={!podeSalvar}
+      onClick={() => onSalvar({
+        leadId, inicioEm: inicio,
+        imovel: unidade.trim() || "",
+        empreendimentoId: empreendimento || null,
+        unidade: unidade.trim() || null,
+        comGerente, gerenteId: comGerente ? Number(gerente) : null,
+        status: "agendada",
+      })}>Criar visita</button>
+  </Modal>;
+}
 
 function ModalNegociacao({ leads, busy, onFechar, onSalvar }: { leads: LeadFunil2[]; busy: boolean; onFechar: () => void; onSalvar: (d: Record<string, unknown>) => void }) { const [leadId,setLeadId]=useState(leads[0]?.id??""); const [titulo,setTitulo]=useState(""); const [valor,setValor]=useState(""); return <Modal titulo="Lançar negociação" texto="A negociação nasce ligada ao lead e avança na Esteira de Vendas." onFechar={onFechar}><label>Lead<select value={leadId} onChange={(e)=>setLeadId(e.target.value)}>{leads.map((l)=><option key={l.id} value={l.id}>{l.nome}</option>)}</select></label><label>Negociação<input value={titulo} onChange={(e)=>setTitulo(e.target.value)} placeholder="Imóvel ou oportunidade"/></label><label>Valor estimado<input type="number" min="0" value={valor} onChange={(e)=>setValor(e.target.value)}/></label><button type="button" className="f2-modal-primary" disabled={busy||!leadId||titulo.length<2} onClick={()=>onSalvar({leadId,titulo,valor,etapa:"qualificacao"})}>Criar negociação</button></Modal>; }
 

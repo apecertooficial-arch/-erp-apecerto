@@ -496,3 +496,10 @@ a.md-acao:active { background: #1FB855; }
   font-size: 13.5px; font-weight: 600; color: #1c1917;
 }
 .f2m-agendar-check input { width: 18px; height: 18px; margin: 0; accent-color: var(--ape-orange-600, #f97316); }
+
+/* Checkbox do gerente no modal de visita (computador) */
+.f2-modal-check {
+  display: flex !important; align-items: center; gap: 9px;
+  font-size: 13.5px; font-weight: 600; color: #1c1917;
+}
+.f2-modal-check input { width: 18px; height: 18px; margin: 0; accent-color: var(--ape-orange-600, #f97316); }
