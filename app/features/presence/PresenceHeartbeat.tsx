@@ -89,12 +89,15 @@ export function PresenceHeartbeat({ accessToken, initialOnline }: { accessToken:
     return () => { stopped = true; window.clearInterval(id); };
   }, [accessToken]);
 
-  /* Som ao ABRIR a pergunta. Sem isso o corretor de costas para a tela perde os
-     60 segundos e cai da fila sem nunca ter visto o aviso. */
+  /* Som ao abrir E A CADA 30 SEGUNDOS enquanto nao confirmar. Ordem do
+     operador: o corretor de costas para a tela precisa ser incomodado ate
+     responder -- ficar fora da fila em silencio custou lead de verdade. */
   useEffect(() => {
     if (!prompt) return;
     liberarAudio();
     tocarSom();
+    const id = window.setInterval(() => { liberarAudio(); tocarSom(); }, 30000);
+    return () => window.clearInterval(id);
   }, [prompt]);
 
   /* Contagem que atravessa o zero. Ao cruzar, tira da fila uma única vez e
