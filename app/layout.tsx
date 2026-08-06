@@ -21,6 +21,9 @@ import "./styles/tela-gestao-card.css";
 /* Depois de tela-gestao-card sem quebrar a regra dela: esta folha só trata de
    layout e rolagem das colunas de kanban — não toca em cor nem em token. */
 import "./styles/esteira-rolagem.css";
+/* Menu de ações por lançamento no fluxo de caixa. Isolado pelo mesmo motivo:
+   globals.css tem 665 KB e um diff pequeno é reversível. */
+import "./styles/fluxo-caixa-acoes.css";
 import { RegistroPwa } from "./components/RegistroPwa";
 
 export const metadata: Metadata = {
