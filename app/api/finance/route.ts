@@ -220,6 +220,69 @@ export async function PATCH(request: Request) {
     return Response.json({ success: true });
   }
 
+  /* Editar e excluir lançamento do fluxo de caixa (ago/2026).
+     Antes só existia createCash: um lançamento errado ficava no caixa para sempre.
+
+     REGRA DE ESCOPO, deliberada: a edição altera apenas data, tipo, categoria, valor e
+     descrição. Os VÍNCULOS (venda, parcela de recebimento, comissão, beneficiário,
+     papel, natureza) são imutáveis aqui — mexer neles pela lateral dessincronizaria a
+     venda, a comissão e o "A receber" sem que ninguém percebesse. Para trocar vínculo:
+     exclua e lance de novo, que é um caminho auditável. */
+  if (action === "updateCash" || action === "deleteCash") {
+    const cashId = clean(body.cashId, 60);
+    if (!cashId) return Response.json({ error: "Lançamento inválido." }, { status: 422 });
+
+    const denied = action === "updateCash"
+      ? guard([["fluxo_caixa", "editar"], ["financeiro", "editar"]], "Você não tem permissão para editar lançamentos do fluxo de caixa.")
+      : guard([["fluxo_caixa", "cancelar"], ["financeiro", "editar"]], "Você não tem permissão para excluir lançamentos do fluxo de caixa.");
+    if (denied) return denied;
+
+    const { data: antes, error: readError } = await auth.supabase.from("lancamentos_caixa")
+      .select("id,venda_id,recebimento_id,data,tipo,categoria,descricao,valor,origem,papel,beneficiario_id,comissao_id,natureza,created_at")
+      .eq("id", cashId).maybeSingle();
+    if (readError) return Response.json({ error: readError.message }, { status: 502 });
+    if (!antes) return Response.json({ error: "Lançamento não encontrado. Ele pode já ter sido excluído." }, { status: 404 });
+
+    /* Nome de quem fez, para a auditoria significar alguma coisa na leitura. */
+    const { data: autor } = await auth.supabase.from("usuarios").select("nome").eq("id", auth.user.id).maybeSingle();
+    const autorNome = autor?.nome || auth.user.email || "desconhecido";
+    const registrar = async (acao: string, depois: Record<string, unknown> | null) => {
+      await auth.supabase.from("erp_auditoria").insert({
+        modulo: "Financeiro", acao, entidade: "lancamentos_caixa", entidade_id: cashId,
+        usuario_id: auth.user.id, usuario_nome: autorNome,
+        detalhe: `${antes.tipo === "entrada" ? "Entrada" : "Saída"} de ${antes.valor} em ${antes.data} · ${antes.categoria}`,
+        antes: antes as never, depois: depois as never,
+      } as never);
+    };
+
+    if (action === "updateCash") {
+      const type = clean(body.type, 10);
+      const category = clean(body.category, 100);
+      const date = clean(body.date, 10);
+      const value = Number(body.value);
+      if (!['entrada', 'saida'].includes(type) || !category || !date || !Number.isFinite(value) || value <= 0) return Response.json({ error: "Preencha tipo, categoria, data e valor." }, { status: 422 });
+      const patch = { tipo: type as "entrada" | "saida", categoria: category, data: date, valor: value, descricao: clean(body.description, 500) || null };
+      const { error } = await auth.supabase.from("lancamentos_caixa").update(patch as never).eq("id", cashId);
+      if (error) return Response.json({ error: error.message }, { status: 502 });
+      await registrar("Editar lançamento", patch);
+      return Response.json({ success: true });
+    }
+
+    /* Excluir. O lançamento é a prova de que a parcela entrou em caixa — sem ele, a
+       parcela tem que voltar a aparecer em "A receber", senão o financeiro passa a
+       contar duas histórias diferentes sobre o mesmo dinheiro. */
+    const { error } = await auth.supabase.from("lancamentos_caixa").delete().eq("id", cashId);
+    if (error) return Response.json({ error: error.message }, { status: 502 });
+    await registrar("Excluir lançamento", null);
+    if (antes.recebimento_id) {
+      const { error: reopenError } = await auth.supabase.from("recebimentos")
+        .update({ status: "pendente", data_recebimento: null }).eq("id", antes.recebimento_id);
+      if (reopenError) return Response.json({ error: `Lançamento excluído, mas a parcela vinculada não voltou para pendente: ${reopenError.message}` }, { status: 502 });
+      return Response.json({ success: true, reopened: true });
+    }
+    return Response.json({ success: true });
+  }
+
   if (action === "createReceipt") {
     const saleId = clean(body.saleId, 50); const value = Number(body.value); const due = clean(body.due, 10); const installment = Number(body.installment);
     if (!saleId || !Number.isFinite(value) || value <= 0 || !due || !Number.isSafeInteger(installment) || installment < 1) return Response.json({ error: "Informe venda, parcela, vencimento e valor." }, { status: 422 });

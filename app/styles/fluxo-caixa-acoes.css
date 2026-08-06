@@ -1,0 +1,68 @@
+/* ==========================================================================
+   FLUXO DE CAIXA — menu de ações por lançamento (ago/2026)
+
+   Antes a coluna "Ações" só mostrava um ••• quando o lançamento tinha venda
+   vinculada, e ele apenas abria a venda. Um lançamento errado ficava no caixa
+   para sempre. Agora o ••• aparece em toda linha e abre Editar / Abrir venda /
+   Excluir.
+
+   POR QUE ESTE ARQUIVO EXISTE: app/globals.css tem 665 KB. Regras isoladas
+   deixam o diff pequeno e a reversão trivial.
+
+   O menu é position:fixed, com top/left calculados em JS a partir do botão.
+   Não é capricho: a célula de Ações tem `overflow:hidden`
+   (.finance-cash-row>span) e a tabela vive dentro de .finance-data-scroll —
+   um dropdown absoluto seria cortado pelos dois. Por isso aqui não há
+   `position:absolute` em lugar nenhum.
+   ========================================================================== */
+
+.cash-row-menu { display: flex; justify-content: flex-end; }
+
+.cash-row-menu-trigger {
+  display: grid; place-items: center;
+  width: 30px; height: 26px; padding: 0;
+  border: 1px solid transparent; border-radius: 8px;
+  background: transparent; color: var(--muted);
+  font-size: 13px; line-height: 1; letter-spacing: 1px;
+  cursor: pointer;
+}
+.cash-row-menu-trigger:hover,
+.cash-row-menu-trigger[aria-expanded="true"] { border-color: var(--line); background: #fff; color: var(--ink); }
+.cash-row-menu-trigger:focus-visible { outline: 2px solid var(--orange); outline-offset: 1px; }
+
+/* Fundo que fecha ao clicar fora. É um <button> real para funcionar no teclado
+   e no leitor de tela; transparente, mas presente. */
+.cash-row-menu-backdrop {
+  position: fixed; inset: 0; z-index: 60;
+  border: 0; padding: 0;
+  background: transparent; cursor: default;
+}
+
+.cash-row-menu-pop {
+  position: fixed; z-index: 61;
+  display: flex; flex-direction: column; gap: 2px;
+  /* border-box explícito: o JS ancora o menu em `r.right - 236`, então a largura
+     final TEM que ser 236 mesmo com padding e borda. Sem isto o menu vaza uns
+     14px para fora da direita da tela na última coluna. */
+  box-sizing: border-box; width: 236px; padding: 6px;
+  border: 1px solid #ece7e3; border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 14px 34px rgba(20, 14, 10, .16);
+}
+.cash-row-menu-pop > button {
+  display: block; width: 100%;
+  padding: 9px 10px;
+  border: 0; border-radius: 8px;
+  background: transparent; color: var(--ink);
+  font-size: 12px; font-weight: 700; text-align: left;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  cursor: pointer;
+}
+.cash-row-menu-pop > button:hover { background: #f6f2ef; }
+.cash-row-menu-pop > button:focus-visible { outline: 2px solid var(--orange); outline-offset: -2px; }
+.cash-row-menu-pop > .cash-row-menu-danger { color: #c9443d; }
+.cash-row-menu-pop > .cash-row-menu-danger:hover { background: #ffe9e8; }
+
+/* Campos travados no modo edição do modal: precisam parecer travados, senão a
+   pessoa tenta trocar a venda e não entende por que não vai. */
+.finance-form-grid select:disabled { background: #f6f2ef; color: var(--muted); cursor: not-allowed; }
