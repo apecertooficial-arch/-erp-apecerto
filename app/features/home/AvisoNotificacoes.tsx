@@ -27,6 +27,41 @@ import {
   chaveParaBytes, extrairInscricao, lerEstado, type EstadoPush,
 } from "../crm-nova-era/lib/pushCliente";
 
+/* DISPENSA QUE GRUDA (ago/2026).
+ *
+ * O cartao de "negado" nao tinha botao de fechar: quem bloqueou a notificacao
+ * ficava com ele preso na tela, em cima do conteudo, em toda navegacao. E o
+ * corretor nao consegue resolver isso de dentro do aplicativo -- depende das
+ * configuracoes do navegador. Insistir a cada carregamento e so ruido, e ruido
+ * em cima da tela de trabalho.
+ *
+ * O fechar de antes tambem nao segurava: era estado de componente, entao voltava
+ * no proximo recarregamento. Agora a dispensa fica gravada no aparelho com
+ * prazo. Prazos diferentes de proposito: quando o conserto esta fora do
+ * aplicativo (navegador bloqueou, iPhone sem instalar) nao adianta insistir
+ * cedo; quando basta um toque para ligar, vale voltar a oferecer antes.
+ *
+ * localStorage e nao cookie: e preferencia de aparelho, nao de conta -- o mesmo
+ * corretor pode ter o aviso ligado no celular e bloqueado no computador. */
+const DIAS_DISPENSA: Record<string, number> = { negado: 30, ios_sem_instalar: 30, pode_pedir: 7 };
+const chaveDispensa = (estado: string) => `apecerto:aviso-push-dispensado:${estado}`;
+
+function dispensaValida(estado: string): boolean {
+  const dias = DIAS_DISPENSA[estado];
+  if (!dias) return false;
+  try {
+    const bruto = window.localStorage.getItem(chaveDispensa(estado));
+    if (!bruto) return false;
+    const quando = Number(bruto);
+    if (!Number.isFinite(quando)) return false;
+    return Date.now() - quando < dias * 86400000;
+  } catch { return false; } /* modo privativo / storage bloqueado: mostra o aviso */
+}
+
+function gravarDispensa(estado: string) {
+  try { window.localStorage.setItem(chaveDispensa(estado), String(Date.now())); } catch { /* sem storage: vale so nesta sessao */ }
+}
+
 export function AvisoNotificacoes({ accessToken }: { accessToken: string }) {
   const [estado, setEstado] = useState<EstadoPush | null>(null);
   const [ocupado, setOcupado] = useState(false);
@@ -34,6 +69,9 @@ export function AvisoNotificacoes({ accessToken }: { accessToken: string }) {
      segundos, e o convite pode ser dispensado -- quem nao quer agora nao deve
      ficar tropecando nele o dia inteiro. */
   const [dispensado, setDispensado] = useState(false);
+  /* Fechar grava no aparelho: sem isto o cartao voltaria no proximo carregamento
+     e o botao seria decorativo. */
+  const dispensar = useCallback((qual: string) => { gravarDispensa(qual); setDispensado(true); }, []);
 
   /* Some sozinho 6s depois de confirmar. Temporizador, nao onAnimationEnd: com
      prefers-reduced-motion a animacao nao roda e o cartao ficaria para sempre. */
@@ -71,7 +109,10 @@ export function AvisoNotificacoes({ accessToken }: { accessToken: string }) {
         ua: typeof navigator !== "undefined" ? navigator.userAgent : "",
         standalone: Boolean(standalone),
       });
-      if (vivo) setEstado(e);
+      if (!vivo) return;
+      /* Ja dispensado neste aparelho e ainda dentro do prazo: nem chega a montar. */
+      if (dispensaValida(e)) setDispensado(true);
+      setEstado(e);
     })();
     return () => { vivo = false; };
   }, []);
@@ -140,6 +181,8 @@ export function AvisoNotificacoes({ accessToken }: { accessToken: string }) {
   if (estado === "ios_sem_instalar") {
     return (
       <div className="aviso-push-convite" role="status">
+        <button type="button" className="aviso-push-fechar" aria-label="Dispensar"
+                onClick={() => dispensar("ios_sem_instalar")}>×</button>
         <strong>Instale o app para receber avisos</strong>
         <p>No iPhone, toque em Compartilhar e depois em &ldquo;Adicionar à Tela de Início&rdquo;. Sem isso o iPhone não entrega aviso nenhum.</p>
       </div>
@@ -149,6 +192,8 @@ export function AvisoNotificacoes({ accessToken }: { accessToken: string }) {
   if (estado === "negado") {
     return (
       <div className="aviso-push-convite" role="status">
+        <button type="button" className="aviso-push-fechar" aria-label="Dispensar"
+                onClick={() => dispensar("negado")}>×</button>
         <strong>Avisos bloqueados neste aparelho</strong>
         <p>Você vai continuar sem saber de lead novo até abrir o app. Para reativar, entre nas configurações do navegador, procure este site e libere as notificações.</p>
       </div>
@@ -158,7 +203,7 @@ export function AvisoNotificacoes({ accessToken }: { accessToken: string }) {
   return (
     <div className="aviso-push-convite" role="status">
       <button type="button" className="aviso-push-fechar" aria-label="Dispensar"
-              onClick={() => setDispensado(true)}>×</button>
+              onClick={() => dispensar("pode_pedir")}>×</button>
       <strong><span aria-hidden="true">🔔</span> Receba aviso de lead novo</strong>
       <p>Chega igual mensagem no celular, na hora que o lead cai para você. Quem responde primeiro vende.</p>
       {erro && <p style={{ color: "#b91c1c" }}>{erro}</p>}
