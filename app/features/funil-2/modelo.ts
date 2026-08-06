@@ -1,8 +1,9 @@
 export const ETAPAS_FUNIL2 = [
-  { codigo: "novo", rotulo: "Novo", ajuda: "Chegou agora; primeira abordagem em até 5 minutos." },
-  { codigo: "tentando_contato", rotulo: "Tentando contato", ajuda: "Nunca respondeu; seguir os dias 1, 2, 4, 6 e 7." },
-  { codigo: "em_atendimento", rotulo: "Em atendimento", ajuda: "Respondeu; entender, avançar produto e produzir visita." },
-  { codigo: "pos_visita", rotulo: "Pós-visita", ajuda: "Registrar feedback e transformar a visita em próximo avanço." },
+  { codigo: "novo", rotulo: "Lead novo", ajuda: "Chegou agora; primeira abordagem em até 5 minutos." },
+  { codigo: "tentando_contato", rotulo: "Tentando contato", ajuda: "Nunca respondeu; seis tentativas em dias úteis, a última é a despedida." },
+  { codigo: "em_atendimento", rotulo: "Em atendimento", ajuda: "Respondeu; qualificar e provocar a visita." },
+  { codigo: "visita", rotulo: "Visita", ajuda: "Agendada, realizada ou cancelada." },
+  { codigo: "atualizar_manual", rotulo: "Atualizar manualmente", ajuda: "Sem conversa para a Sara ler; o corretor classifica com o que sabe." },
 ] as const;
 
 export type EtapaFunil2 = string;
@@ -84,6 +85,24 @@ export type OperacaoConfigFunil2 = {
   suspensao_nivel_3_h: number;
 };
 
+/** Nota do atendimento, escrita pelo corretor no card. */
+export type NotaFunil2 = {
+  id: number;
+  funil_lead_id: string;
+  texto: string;
+  origem: "corretor" | "gestao" | "sara";
+  autor_nome: string | null;
+  criado_em: string;
+};
+
+/** Por qual numero o contato esta sendo feito. Corretor com mais de uma
+    instancia precisa disso para nao se perder. */
+export type InstanciaDoLead = {
+  rotulo: string | null;
+  telefone: string | null;
+  status: string | null;
+};
+
 export type LeadFunil2 = {
   id: string;
   origem_negocio_id: number;
@@ -93,6 +112,9 @@ export type LeadFunil2 = {
   telefone: string | null;
   corretor_id: number | null;
   corretor_nome: string | null;
+  instancia_rotulo?: string | null;
+  instancia_telefone?: string | null;
+  instancia_status?: string | null;
   etapa: EtapaFunil2;
   momento_codigo: string;
   acao_codigo: string;
@@ -106,6 +128,9 @@ export type LeadFunil2 = {
   ultima_reavaliacao_resumo: string | null;
   corte_conversa_em: string;
   historico_completo: boolean;
+  descartado_em?: string | null;
+  descarte_motivo?: string | null;
+  descarte_detalhe?: string | null;
   versao: number;
   atualizado_em: string;
 };
@@ -120,17 +145,48 @@ export type EventoFunil2 = {
   criado_em: string;
 };
 
-export const DIAS_CADENCIA = [1, 2, 4, 6, 7] as const;
+/* A cadencia nao conta data, conta TENTATIVA. Sao 6, e o que escorrega no fim
+   de semana e o dia -- nunca a tentativa. Os numeros abaixo sao os dias uteis
+   de folga entre uma tentativa e a anterior; a tentativa 5 tem 2 dias porque e
+   o respiro que o Romulo chamava de "o dia 5 nao existe".
+   O calculo real da data mora no banco (f2_soma_dias_uteis); aqui e so rotulo. */
+export const TOTAL_TENTATIVAS_CADENCIA = 6;
+export const FOLGA_ENTRE_TENTATIVAS = [0, 1, 1, 1, 2, 1] as const;
 
-export function diaCadencia(lead: Pick<LeadFunil2, "momento_codigo" | "cadencia_passo">): number | null {
-  if (lead.momento_codigo !== "CADENCIA_SEM_RESPOSTA") return null;
-  return DIAS_CADENCIA[lead.cadencia_passo] ?? null;
+export const MOMENTOS_COM_CADENCIA: Record<string, number> = {
+  CADENCIA_CONTATO: 6,
+  CADENCIA_SEM_RESPOSTA: 3,
+};
+
+/** Em que tentativa o lead esta, ou null se o momento nao tem cadencia. */
+export function tentativaAtual(lead: Pick<LeadFunil2, "momento_codigo" | "cadencia_passo">): number | null {
+  const total = MOMENTOS_COM_CADENCIA[lead.momento_codigo];
+  if (!total) return null;
+  const passo = Number(lead.cadencia_passo) || 0;
+  return passo >= 1 && passo <= total ? passo : null;
+}
+
+/** True quando a cadencia acabou e falta o corretor decidir: insistir ou descartar. */
+export function aguardandoDecisao(lead: Pick<LeadFunil2, "momento_codigo" | "cadencia_passo">): boolean {
+  const total = MOMENTOS_COM_CADENCIA[lead.momento_codigo];
+  if (!total) return false;
+  return (Number(lead.cadencia_passo) || 0) > total;
+}
+
+export function rotuloCadencia(lead: Pick<LeadFunil2, "momento_codigo" | "cadencia_passo">): string | null {
+  const total = MOMENTOS_COM_CADENCIA[lead.momento_codigo];
+  if (!total) return null;
+  if (aguardandoDecisao(lead)) return "Decidir: insistir ou descartar";
+  const tentativa = tentativaAtual(lead);
+  if (tentativa === null) return null;
+  const despedida = lead.momento_codigo === "CADENCIA_CONTATO" && tentativa === total;
+  return `Tentativa ${tentativa} de ${total}${despedida ? " · despedida" : ""}`;
 }
 
 export function acaoVisivel(lead: Pick<LeadFunil2, "momento_codigo" | "cadencia_passo" | "acao_rotulo">) {
-  const dia = diaCadencia(lead);
-  if (dia !== null) return `Enviar mensagem da cadência · Dia ${dia}`;
-  if (lead.momento_codigo === "CADENCIA_SEM_RESPOSTA") return "Cadência concluída · reavaliar o lead";
+  if (aguardandoDecisao(lead)) return "Decidir: insistir mais ou descartar";
+  const cadencia = rotuloCadencia(lead);
+  if (cadencia) return `${lead.acao_rotulo} · ${cadencia}`;
   return lead.acao_rotulo;
 }
 
