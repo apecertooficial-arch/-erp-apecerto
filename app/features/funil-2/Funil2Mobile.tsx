@@ -404,6 +404,7 @@ function DetalheMobile({
   onFechar,
   accessToken,
   onSalvo,
+  onRecarregar,
 }: {
   lead: LeadFunil2;
   momento: MomentoFunil2 | null;
@@ -412,6 +413,7 @@ function DetalheMobile({
   onFechar: () => void;
   accessToken: string;
   onSalvo: () => void;
+  onRecarregar: () => void;
 }) {
   const prazo = prazoDaAcao(lead);
   return <div className="f2m-overlay" role="dialog" aria-modal="true" aria-label={`Atendimento de ${lead.nome}`}>
@@ -437,7 +439,12 @@ function DetalheMobile({
 
       <DescartarMobile lead={lead} accessToken={accessToken} onDescartado={() => { onSalvo(); onFechar(); }} />
 
-      <NotasMobile lead={lead} notas={notas} accessToken={accessToken} onSalvo={onSalvo} />
+      {/* Visita e descarte encerram a ficha, entao fechar depois de salvar e o
+          certo. Nota nao encerra nada: o corretor escreve o que ficou combinado
+          e precisa VER a nota entrar na lista. Fechar aqui jogava ele de volta
+          na fila sem confirmacao nenhuma -- e ele reescrevia a mesma nota
+          achando que nao tinha salvado. Por isso a nota so recarrega. */}
+      <NotasMobile lead={lead} notas={notas} accessToken={accessToken} onSalvo={onRecarregar} />
 
       <section className="f2m-historico">
         <h3>Últimas atualizações</h3>
@@ -543,6 +550,6 @@ export function Funil2Mobile({
       {visiveis.slice(0, modo === "inicio" ? 30 : 60).map((lead) => <CartaoLeadMobile key={lead.id} lead={lead} momento={momentos.find((momento) => momento.codigo === lead.momento_codigo) ?? null} onAbrir={() => setSelecionado(lead.id)} />)}
     </section>
 
-    {leadAberto && <DetalheMobile lead={leadAberto} momento={momentos.find((momento) => momento.codigo === leadAberto.momento_codigo) ?? null} eventos={eventos.filter((evento) => evento.funil_lead_id === leadAberto.id).sort((a, b) => +new Date(b.criado_em) - +new Date(a.criado_em))} notas={notas.filter((nota) => nota.funil_lead_id === leadAberto.id)} onFechar={() => { setSelecionado("__fechado__"); limparLeadDaUrl(); }} accessToken={accessToken} onSalvo={() => { void recarregar(); setSelecionado(null); }} />}
+    {leadAberto && <DetalheMobile lead={leadAberto} momento={momentos.find((momento) => momento.codigo === leadAberto.momento_codigo) ?? null} eventos={eventos.filter((evento) => evento.funil_lead_id === leadAberto.id).sort((a, b) => +new Date(b.criado_em) - +new Date(a.criado_em))} notas={notas.filter((nota) => nota.funil_lead_id === leadAberto.id)} onFechar={() => { setSelecionado("__fechado__"); limparLeadDaUrl(); }} accessToken={accessToken} onSalvo={() => { void recarregar(); setSelecionado(null); }} onRecarregar={() => { void recarregar(); }} />}
   </main>;
 }
