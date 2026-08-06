@@ -1,0 +1,589 @@
+/* ============================================
+   ApêCerto ERP — Redesign da Tela Início (Onda 2)
+   Fila Operacional de Atendimento & SLA de 5 Minutos
+   ============================================ */
+
+.inicio-workspace {
+  min-height: 100vh;
+  padding: var(--space-6) var(--space-8);
+  background: var(--bg-page);
+  color: var(--fg-1);
+  font-family: var(--font-body);
+}
+
+/* ---------- Header da Tela ---------- */
+.inicio-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: var(--space-6);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.inicio-header-info {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.inicio-eyebrow {
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--ape-orange);
+}
+
+.inicio-title {
+  font-family: var(--font-display);
+  font-size: var(--text-xl);
+  font-weight: var(--weight-bold);
+  color: var(--neutral-800);
+  margin: 0;
+  line-height: var(--leading-tight);
+}
+
+.inicio-subtitle {
+  font-size: var(--text-sm);
+  color: var(--fg-2);
+  margin: var(--space-1) 0 0 0;
+}
+
+.inicio-header-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.inicio-user-badge {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-pill);
+  font-size: var(--text-xs);
+  color: var(--fg-2);
+}
+
+.inicio-avatar-pill {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--ape-orange);
+  color: var(--neutral-0);
+  display: grid;
+  place-items: center;
+  font-weight: var(--weight-bold);
+  font-size: 11px;
+}
+
+/* ---------- Indicador Global de SLA (Barra de Status) ---------- */
+.inicio-sla-summary-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-4) var(--space-6);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xs);
+  margin-bottom: var(--space-6);
+}
+
+.inicio-sla-summary-group {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+}
+
+.inicio-sla-pill {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+}
+
+.inicio-sla-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.inicio-sla-dot.estourado {
+  background: var(--danger);
+  box-shadow: 0 0 0 3px var(--danger-bg);
+  animation: pulse-danger 1.8s infinite;
+}
+
+.inicio-sla-dot.apertado {
+  background: var(--warning);
+  box-shadow: 0 0 0 3px var(--warning-bg);
+}
+
+.inicio-sla-dot.no-prazo {
+  background: var(--success);
+  box-shadow: 0 0 0 3px var(--success-bg);
+}
+
+@keyframes pulse-danger {
+  0% { transform: scale(0.95); opacity: 0.9; }
+  50% { transform: scale(1.15); opacity: 1; }
+  100% { transform: scale(0.95); opacity: 0.9; }
+}
+
+.inicio-refresh-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  background: transparent;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-pill);
+  padding: var(--space-1) var(--space-3);
+  font-size: var(--text-xs);
+  color: var(--fg-2);
+  cursor: pointer;
+  transition: all var(--dur-fast) var(--ease-out);
+}
+
+.inicio-refresh-btn:hover {
+  background: var(--neutral-100);
+  color: var(--neutral-800);
+}
+
+/* ---------- Container Principal da Fila ---------- */
+.inicio-queue-section {
+  margin-bottom: var(--space-8);
+}
+
+.inicio-queue-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-4);
+}
+
+.inicio-queue-title-group {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.inicio-queue-title {
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  font-weight: var(--weight-bold);
+  color: var(--neutral-800);
+  margin: 0;
+}
+
+.inicio-queue-count {
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-pill);
+  background: var(--ape-orange-100);
+  color: var(--ape-orange-700);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+}
+
+/* ---------- Lista da Fila (Cards de Atendimento) ---------- */
+.inicio-queue-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.inicio-lead-card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-5);
+  border-radius: var(--radius-lg);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-soft);
+  box-shadow: var(--shadow-xs);
+  transition: all var(--dur-fast) var(--ease-out);
+}
+
+.inicio-lead-card:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+}
+
+/* Estado 1: Estourado (Perigo) */
+.inicio-lead-card.estourado {
+  background: var(--danger-bg);
+  border-color: var(--danger);
+}
+
+/* Estado 2: Apertado (Alerta < 1 min) */
+.inicio-lead-card.apertado {
+  background: var(--warning-bg);
+  border-color: var(--warning);
+}
+
+/* Estado 3: No Prazo (Neutro) */
+.inicio-lead-card.no-prazo {
+  background: var(--bg-surface);
+  border-color: var(--border-soft);
+}
+
+/* Coluna 1: Relógio de SLA & Lead Avatar */
+.inicio-card-left {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  min-width: 260px;
+}
+
+.inicio-sla-clock-badge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 90px;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  font-family: var(--font-mono);
+  text-align: center;
+}
+
+.inicio-lead-card.estourado .inicio-sla-clock-badge {
+  background: var(--danger);
+  color: var(--neutral-0);
+}
+
+.inicio-lead-card.apertado .inicio-sla-clock-badge {
+  background: var(--warning);
+  color: var(--neutral-900);
+}
+
+.inicio-lead-card.no-prazo .inicio-sla-clock-badge {
+  background: var(--neutral-100);
+  color: var(--neutral-700);
+  border: 1px solid var(--border-soft);
+}
+
+.inicio-sla-clock-time {
+  font-size: var(--text-base);
+  font-weight: var(--weight-bold);
+  line-height: var(--leading-tight);
+}
+
+.inicio-sla-clock-label {
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: var(--weight-medium);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-top: 2px;
+}
+
+.inicio-lead-identity {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.inicio-lead-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--ape-purple-100);
+  color: var(--ape-purple-700);
+  display: grid;
+  place-items: center;
+  font-weight: var(--weight-bold);
+  font-size: var(--text-sm);
+  flex-shrink: 0;
+}
+
+.inicio-lead-card.estourado .inicio-lead-avatar {
+  background: var(--neutral-0);
+  color: var(--danger);
+}
+
+.inicio-lead-name {
+  font-size: var(--text-base);
+  font-weight: var(--weight-bold);
+  color: var(--neutral-800);
+  line-height: var(--leading-snug);
+}
+
+.inicio-lead-origin {
+  font-size: var(--text-xs);
+  color: var(--fg-3);
+}
+
+/* Coluna 2: Contexto & Dica da Sara */
+.inicio-card-center {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: 0 var(--space-3);
+}
+
+.inicio-card-tags {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.inicio-tag {
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  font-size: 11px;
+  font-weight: var(--weight-medium);
+  background: var(--neutral-100);
+  color: var(--neutral-700);
+}
+
+.inicio-tag.motivo {
+  background: var(--ape-orange-100);
+  color: var(--ape-orange-700);
+  font-weight: var(--weight-semibold);
+}
+
+.inicio-sara-hint {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background: var(--ape-purple-50);
+  border-left: 3px solid var(--ape-purple);
+  border-radius: var(--radius-xs);
+  font-size: var(--text-xs);
+  color: var(--neutral-700);
+}
+
+.inicio-sara-hint b {
+  color: var(--ape-purple-700);
+  font-weight: var(--weight-semibold);
+  white-space: nowrap;
+}
+
+/* Coluna 3: Ações Primárias */
+.inicio-card-right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-shrink: 0;
+}
+
+.inicio-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-5);
+  border-radius: var(--radius-pill);
+  background: var(--success);
+  color: var(--neutral-0);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  text-decoration: none;
+  border: none;
+  cursor: pointer;
+  transition: all var(--dur-fast) var(--ease-out);
+  box-shadow: var(--shadow-sm);
+}
+
+.inicio-btn-primary:hover {
+  background: #178e4c;
+  transform: translateY(-1px);
+}
+
+.inicio-btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-pill);
+  background: var(--bg-surface);
+  color: var(--neutral-700);
+  border: 1px solid var(--border-soft);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  cursor: pointer;
+  transition: all var(--dur-fast) var(--ease-out);
+}
+
+.inicio-btn-secondary:hover {
+  background: var(--neutral-100);
+  color: var(--neutral-800);
+}
+
+/* ---------- Estado de Fila Vazia (Conquista) ---------- */
+.inicio-empty-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: var(--space-12) var(--space-6);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-sm);
+}
+
+.inicio-empty-grafismo {
+  width: 140px;
+  height: auto;
+  margin-bottom: var(--space-4);
+  opacity: 0.85;
+}
+
+.inicio-empty-title {
+  font-family: var(--font-display);
+  font-size: var(--text-2xl);
+  font-weight: var(--weight-bold);
+  color: var(--neutral-800);
+  margin: var(--space-2) 0 var(--space-1) 0;
+}
+
+.inicio-empty-subtitle {
+  font-size: var(--text-base);
+  color: var(--fg-2);
+  max-width: 480px;
+  margin: 0 0 var(--space-6) 0;
+}
+
+/* ---------- Drawer Lateral de Contexto do Lead ---------- */
+.inicio-drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(16, 14, 13, 0.45);
+  backdrop-filter: blur(3px);
+  z-index: 100;
+  display: flex;
+  justify-content: flex-end;
+  animation: fadeIn var(--dur-base) var(--ease-out);
+}
+
+.inicio-drawer {
+  width: 100%;
+  max-width: 480px;
+  height: 100%;
+  background: var(--bg-surface);
+  box-shadow: var(--shadow-xl);
+  display: flex;
+  flex-direction: column;
+  z-index: 101;
+  animation: slideLeft var(--dur-base) var(--ease-out);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideLeft {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+.inicio-drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-5) var(--space-6);
+  border-bottom: 1px solid var(--border-soft);
+  background: var(--neutral-50);
+}
+
+.inicio-drawer-header-title {
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  font-weight: var(--weight-bold);
+  color: var(--neutral-800);
+  margin: 0;
+}
+
+.inicio-drawer-close {
+  background: transparent;
+  border: none;
+  font-size: 24px;
+  line-height: 1;
+  color: var(--fg-3);
+  cursor: pointer;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+}
+
+.inicio-drawer-close:hover {
+  background: var(--neutral-200);
+  color: var(--neutral-800);
+}
+
+.inicio-drawer-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.inicio-drawer-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.inicio-drawer-label {
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-caps);
+  color: var(--fg-3);
+}
+
+.inicio-drawer-value {
+  font-size: var(--text-base);
+  color: var(--neutral-800);
+  font-weight: var(--weight-medium);
+}
+
+/* ---------- Seção Recolhível de Métricas (Abaixo da Dobra) ---------- */
+.inicio-metrics-accordion {
+  margin-top: var(--space-8);
+  border-top: 1px solid var(--border-soft);
+  padding-top: var(--space-6);
+}
+
+.inicio-accordion-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: transparent;
+  border: none;
+  padding: var(--space-3) 0;
+  cursor: pointer;
+  color: var(--fg-2);
+  font-family: var(--font-display);
+  font-size: var(--text-base);
+  font-weight: var(--weight-semibold);
+  transition: color var(--dur-fast) var(--ease-out);
+}
+
+.inicio-accordion-toggle:hover {
+  color: var(--ape-orange);
+}
+
+.inicio-metrics-content {
+  margin-top: var(--space-4);
+}
