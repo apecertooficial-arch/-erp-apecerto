@@ -88,8 +88,8 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
   const [limiteDia, setLimiteDia] = useState(50);
   /* Filtro do Meu Dia. Começa em "atrasadas": é o que o corretor tem que
      resolver agora. Os outros recortes existem, mas por escolha dele. */
-  const [filtroDia, setFiltroDia] = useState<"atrasadas" | "urgentes" | "hoje" | "novos">("atrasadas");
-  const trocarFiltroDia = useCallback((qual: "atrasadas" | "urgentes" | "hoje" | "novos") => {
+  const [filtroDia, setFiltroDia] = useState<"atrasadas" | "urgentes" | "hoje" | "novos" | "visitas">("atrasadas");
+  const trocarFiltroDia = useCallback((qual: "atrasadas" | "urgentes" | "hoje" | "novos" | "visitas") => {
     setFiltroDia(qual); setLimiteDia(50); /* volta ao topo: a lista é outra */
   }, []);
 
@@ -158,7 +158,10 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
   const urgentes = leads.filter((l) => situacaoPrazo(l.proxima_acao_em).classe === "urgente").length;
   const vencemHoje = leads.filter((l) => venceHoje(l)).length;
   const leadsNovos = leads.filter((l) => l.etapa === "novo").length;
-  const visitasHoje = visitas.filter((v) => new Date(v.inicio_em).toDateString() === new Date().toDateString()).length;
+  const visitasDoDia = visitas
+    .filter((v) => new Date(v.inicio_em).toDateString() === new Date().toDateString())
+    .sort((a, b) => +new Date(a.inicio_em) - +new Date(b.inicio_em));
+  const visitasHoje = visitasDoDia.length;
 
   /* MEU DIA MOSTRA SÓ O QUE ESTÁ ATRASADO (ago/2026).
      Antes a lista era `leads` inteiro ordenado por prazo: 178 linhas para 35
@@ -175,9 +178,15 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
     urgentes: { rotulo: "que vencem em até 2h", teste: (l: LeadFunil2) => situacaoPrazo(l.proxima_acao_em).classe === "urgente", vazio: "Nada vencendo nas próximas duas horas." },
     hoje: { rotulo: "para fazer hoje", teste: (l: LeadFunil2) => venceHoje(l), vazio: "Nada com prazo para hoje." },
     novos: { rotulo: "leads novos", teste: (l: LeadFunil2) => l.etapa === "novo", vazio: "Nenhum lead novo esperando você." },
+    /* Visita não é lead: não tem etapa, momento nem próxima ação. O quadro
+       abre a lista das visitas de hoje em vez de filtrar `leads` — por isso o
+       teste aqui nunca casa e a lista de visitas é montada em separado. */
+    visitas: { rotulo: "visitas de hoje", teste: () => false, vazio: "Nenhuma visita marcada para hoje." },
   } as const;
   const filtroAtivo = FILTROS_DIA[filtroDia];
-  const aFazer = leads.filter(filtroAtivo.teste).sort((a, b) => +new Date(a.proxima_acao_em) - +new Date(b.proxima_acao_em));
+  const mostrandoVisitas = filtroDia === "visitas";
+  const aFazer = mostrandoVisitas ? [] : leads.filter(filtroAtivo.teste).sort((a, b) => +new Date(a.proxima_acao_em) - +new Date(b.proxima_acao_em));
+  const totalDoFiltro = mostrandoVisitas ? visitasHoje : aFazer.length;
   const etapasAtivas = etapas.filter((e) => e.ativo);
   const momentosAtivos = momentos.filter((m) => m.ativo !== false);
 
@@ -279,22 +288,33 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
 
       {!carregando && aba === "dia" && <main className="f2-dia">
         <section className="f2-plano">
-          <div className="f2-plano-titulo"><div><span className="f2-eyebrow">SEU PLANO DE TRABALHO</span><h2>O CRM colocou o dia na ordem certa.</h2><p>Aqui embaixo só o que está atrasado. Para ver outro recorte, toque num dos quadros.</p></div><b>{aFazer.length}<small>{filtroAtivo.rotulo}</small></b></div>
+          <div className="f2-plano-titulo"><div><span className="f2-eyebrow">SEU PLANO DE TRABALHO</span><h2>O CRM colocou o dia na ordem certa.</h2><p>Aqui embaixo só o que está atrasado. Para ver outro recorte, toque num dos quadros.</p></div><b>{totalDoFiltro}<small>{filtroAtivo.rotulo}</small></b></div>
           {aFazer[0] && <div className="f2-proxima"><div><span>PRIMEIRO DA FILA</span><h3>{aFazer[0].nome}</h3><b>{etapasAtivas.find((e) => e.codigo === aFazer[0].etapa)?.rotulo} · {momentosAtivos.find((m) => m.codigo === aFazer[0].momento_codigo)?.rotulo}</b><small>{prazoDaAcao(aFazer[0]).rotulo}</small></div><button type="button" onClick={() => setSelecionado(aFazer[0].id)}>Atender agora</button></div>}
-          {/* Os quadros são o filtro da lista, não um placar. O de visitas leva
-              para a aba Visitas: visita não é lead e não cabe nesta lista. */}
+          {/* Os quadros são o filtro da lista, não um placar: cada um abre
+              embaixo a lista do que ele conta, para o corretor escolher. */}
           <div className="f2-indicadores">
             <button type="button" className={`vermelho${filtroDia === "atrasadas" ? " f2-ind-ativo" : ""}`} aria-pressed={filtroDia === "atrasadas"} onClick={() => trocarFiltroDia("atrasadas")}><b>{atrasados}</b><span>ações atrasadas</span></button>
             <button type="button" className={`amarelo${filtroDia === "urgentes" ? " f2-ind-ativo" : ""}`} aria-pressed={filtroDia === "urgentes"} onClick={() => trocarFiltroDia("urgentes")}><b>{urgentes}</b><span>vencem em até 2h</span></button>
             <button type="button" className={`laranja${filtroDia === "hoje" ? " f2-ind-ativo" : ""}`} aria-pressed={filtroDia === "hoje"} onClick={() => trocarFiltroDia("hoje")}><b>{vencemHoje}</b><span>para fazer hoje</span></button>
             <button type="button" className={`roxo${filtroDia === "novos" ? " f2-ind-ativo" : ""}`} aria-pressed={filtroDia === "novos"} onClick={() => trocarFiltroDia("novos")}><b>{leadsNovos}</b><span>leads novos</span></button>
-            <button type="button" className="verde" onClick={() => setAba("visitas")}><b>{visitasHoje}</b><span>visitas do dia</span></button>
+            <button type="button" className={`verde${filtroDia === "visitas" ? " f2-ind-ativo" : ""}`} aria-pressed={filtroDia === "visitas"} onClick={() => trocarFiltroDia("visitas")}><b>{visitasHoje}</b><span>visitas do dia</span></button>
           </div>
           <div className="f2-como"><span><i>1</i><b>Siga a ordem</b><small>O primeiro item é o mais urgente.</small></span><span><i>2</i><b>Execute a ação</b><small>WhatsApp, visita, produto ou retorno.</small></span><span><i>3</i><b>Conclua no CRM</b><small>A Sara relê e prepara o próximo passo.</small></span></div>
         </section>
-        <div className="f2-dia-cab"><div><span className="f2-eyebrow">OBRIGAÇÕES ORDENADAS</span><h2>Seu dia, sem adivinhação.</h2><p>{filtroDia === "atrasadas" ? "Só o que já passou do prazo, do mais antigo para o mais recente." : `Mostrando ${filtroAtivo.rotulo}. Toque em “ações atrasadas” para voltar.`}</p></div><b>{aFazer.length} {filtroAtivo.rotulo}</b></div>
-        <div className="f2-dia-colunas"><span>Cliente</span><span>Etapa</span><span>Momento</span><span>Tempo</span><span></span></div>
+        <div className="f2-dia-cab"><div><span className="f2-eyebrow">{mostrandoVisitas ? "AGENDA DO DIA" : "OBRIGAÇÕES ORDENADAS"}</span><h2>Seu dia, sem adivinhação.</h2><p>{filtroDia === "atrasadas" ? "Só o que já passou do prazo, do mais antigo para o mais recente." : `Mostrando ${filtroAtivo.rotulo}. Toque em “ações atrasadas” para voltar.`}</p></div><b>{totalDoFiltro} {filtroAtivo.rotulo}</b></div>
+        <div className="f2-dia-colunas">{mostrandoVisitas ? <><span>Cliente</span><span>Imóvel</span><span>Situação</span><span>Horário</span><span></span></> : <><span>Cliente</span><span>Etapa</span><span>Momento</span><span>Tempo</span><span></span></>}</div>
         <div className="f2-dia-lista">
+          {/* Visita entra na mesma lista, com as colunas trocadas: o corretor
+              continua vendo uma fila só e clicando para abrir o cliente. */}
+          {mostrandoVisitas && visitasDoDia.slice(0, limiteDia).map((visita, index) => {
+            const leadDaVisita = leads.find((l) => l.id === visita.funil_lead_id);
+            const hora = new Intl.DateTimeFormat("pt-BR", { hour: "2-digit", minute: "2-digit" }).format(new Date(visita.inicio_em));
+            const situacao: Record<string, string> = { agendada: "Agendada", confirmada: "Confirmada", realizada: "Realizada", cancelada: "Cancelada", nao_compareceu: "Não compareceu" };
+            return <button key={visita.id} type="button" className="f2-dia-item" disabled={!leadDaVisita} onClick={() => leadDaVisita && setSelecionado(leadDaVisita.id)}>
+              <span className="f2-dia-ordem">{index + 1}</span><div><strong>{leadDaVisita?.nome ?? "Lead removido"}</strong><small>{leadDaVisita?.corretor_nome ?? "Sem corretor"}</small></div><div><span>IMÓVEL</span><b>{visita.imovel || "—"}</b></div><div><span>SITUAÇÃO</span><b>{situacao[visita.status] ?? visita.status}</b></div><em className={visita.status === "cancelada" || visita.status === "nao_compareceu" ? "atrasado" : "no-prazo"}>{hora}</em><i>{leadDaVisita ? "Abrir cliente" : "Sem ficha"}</i>
+            </button>;
+          })}
+          {mostrandoVisitas && visitasHoje > limiteDia && <button type="button" className="f2-dia-mais" onClick={() => setLimiteDia((atual) => atual + 50)}>Mostrar mais 50 · ainda faltam {visitasHoje - limiteDia}</button>}
           {aFazer.slice(0, limiteDia).map((item, index) => {
             const momento = momentosAtivos.find((m) => m.codigo === item.momento_codigo);
             const prazo = prazoDaAcao(item);
@@ -305,7 +325,7 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
             </button>;
           })}
           {aFazer.length > limiteDia && <button type="button" className="f2-dia-mais" onClick={() => setLimiteDia((atual) => atual + 50)}>Mostrar mais 50 · ainda faltam {aFazer.length - limiteDia}</button>}
-          {aFazer.length === 0 && <div className="f2-dia-vazio"><b>{filtroDia === "atrasadas" ? "Seu Meu Dia está em dia." : "Nada neste recorte."}</b><span>{filtroAtivo.vazio}</span></div>}
+          {totalDoFiltro === 0 && <div className="f2-dia-vazio"><b>{filtroDia === "atrasadas" ? "Seu Meu Dia está em dia." : "Nada neste recorte."}</b><span>{filtroAtivo.vazio}</span></div>}
         </div>
       </main>}
 
