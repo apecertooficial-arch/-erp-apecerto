@@ -35,8 +35,36 @@ async function listarLeadsSemCorte(db: SupabaseClient) {
   }
 }
 
-/* Por qual numero o contato esta saindo. Corretor com mais de uma instancia
-   nao tinha como saber, e acabava respondendo pelo numero errado. */
+/* A instancia REAL de cada lead: a da ultima mensagem da conversa dele, em
+   qualquer direcao. E a conversa viva -- se o cliente escreveu para o numero A,
+   e por A que ele tem que ser respondido, nao importa qual numero o corretor
+   usou por ultimo em outro atendimento.
+
+   O calculo vive numa funcao SQL (f2_instancia_por_lead) porque exige a ultima
+   mensagem de cada conversa: sao 130 mil linhas em wa_mensagens, e um
+   `distinct on` com indice resolve em ~20ms o que em JavaScript exigiria
+   trazer a tabela inteira. A funcao e SECURITY INVOKER, entao le sob as mesmas
+   policies de RLS que esta rota ja obedece. */
+async function instanciasPorLead(db: SupabaseClient) {
+  const mapa = new Map<string, { rotulo: string | null; telefone: string | null; status: string | null }>();
+  const { data, error } = await db.rpc("f2_instancia_por_lead");
+  /* Falhar aqui nao pode derrubar o Funil: sem o mapa, cada lead cai no numero
+     padrao do corretor -- exatamente o comportamento anterior. */
+  if (error || !Array.isArray(data)) return mapa;
+  for (const linha of data as Array<{ funil_lead_id: string; rotulo: string | null; telefone: string | null; status: string | null }>) {
+    if (!linha?.funil_lead_id) continue;
+    mapa.set(String(linha.funil_lead_id), {
+      rotulo: linha.rotulo ? String(linha.rotulo).trim() : null,
+      telefone: linha.telefone ? String(linha.telefone) : null,
+      status: linha.status ? String(linha.status) : null,
+    });
+  }
+  return mapa;
+}
+
+/* Numero padrao do corretor -- usado SO quando o lead ainda nao tem conversa
+   nenhuma. Enquanto isto era a unica fonte, corretor com dois numeros via o
+   mesmo selo em todos os leads e nao sabia por onde falar com cada cliente. */
 async function instanciasPorCorretor(db: SupabaseClient, corretorIds: number[]) {
   const mapa = new Map<number, { rotulo: string | null; telefone: string | null; status: string | null }>();
   if (!corretorIds.length) return mapa;
@@ -93,15 +121,23 @@ export async function GET(request: Request) {
     for (const negocio of negocios ?? []) negocioLead.set(Number(negocio.id), Number(negocio.lead_id));
   }
   const corretorIds = [...new Set((leads ?? []).map((lead) => Number(lead.corretor_id)).filter(Number.isFinite))];
-  const instancias = await instanciasPorCorretor(db, corretorIds);
+  const [instancias, instanciaDoLead] = await Promise.all([
+    instanciasPorCorretor(db, corretorIds),
+    instanciasPorLead(db),
+  ]);
   const leadsComOrigem = (leads ?? []).map((lead) => {
-    const instancia = instancias.get(Number(lead.corretor_id));
+    /* A conversa manda. O numero padrao do corretor so entra quando o lead
+       ainda nao trocou nenhuma mensagem -- ai qualquer numero dele serve, e o
+       selo vira uma previsao ("vai sair por aqui") em vez de um fato. */
+    const daConversa = instanciaDoLead.get(String(lead.id));
+    const instancia = daConversa ?? instancias.get(Number(lead.corretor_id));
     return {
       ...lead,
       lead_id: negocioLead.get(Number(lead.origem_negocio_id)) ?? 0,
       instancia_rotulo: instancia?.rotulo ?? null,
       instancia_telefone: instancia?.telefone ?? null,
       instancia_status: instancia?.status ?? null,
+      instancia_origem: daConversa ? "conversa" : "padrao",
     };
   });
   return Response.json({
