@@ -24,6 +24,9 @@ import "./styles/esteira-rolagem.css";
 /* Menu de ações por lançamento no fluxo de caixa. Isolado pelo mesmo motivo:
    globals.css tem 665 KB e um diff pequeno é reversível. */
 import "./styles/fluxo-caixa-acoes.css";
+/* Alvo de toque do × que dispensa o aviso de notificação. Fora da folha de
+   identidade porque lá a regra é: nada que dependa de layout. */
+import "./styles/aviso-push-dispensar.css";
 import { RegistroPwa } from "./components/RegistroPwa";
 
 export const metadata: Metadata = {

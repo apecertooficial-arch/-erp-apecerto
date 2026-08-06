@@ -1,0 +1,21 @@
+/* ==========================================================================
+   AVISO DE NOTIFICAÇÃO — alvo de toque do botão de fechar (ago/2026)
+
+   O cartão de "Avisos bloqueados neste aparelho" ganhou um × para poder ser
+   dispensado. O × herda o estilo de .aviso-push-fechar, que tem 26px — alvo
+   pequeno demais para o dedo no celular. E se o corretor não acerta o fechar,
+   o aviso não sai: o botão vira decoração e o problema continua exatamente
+   igual ao que motivou esta mudança.
+
+   A área clicável cresce por fora, via ::after. O desenho na tela não muda —
+   continuam os mesmos 26px visíveis — mas o alvo passa de 26px para 44px, que
+   é o mínimo recomendado para toque.
+
+   POR QUE ESTE ARQUIVO EXISTE: a regra caberia em apecerto-identidade.css,
+   ao lado do resto do .aviso-push-*. Mas aquele arquivo é a folha de
+   identidade da marca e tem regra explícita de que nada ali depende de
+   layout. Aqui é layout de alvo de toque, não identidade — e como arquivo
+   separado, reverter é apagar um import.
+   ========================================================================== */
+
+.aviso-push-fechar::after { content: ""; position: absolute; inset: -9px; }
