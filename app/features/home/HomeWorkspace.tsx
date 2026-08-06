@@ -10,16 +10,20 @@ import { InicioApp } from "./InicioApp";
 import { useEhCelular } from "../system/useFormato";
 import { marcarWhatsappAberto } from "../crm-nova-era/lib/whatsappAberto";
 
+import { slaDoLead, tomDoSla, rotuloCurtoSla } from "../crm-nova-era-3/lib/sla3";
+
 type ItemFila = {
   lead_id: number | null;
   negocio_id: number;
   nome: string | null;
+  telefone?: string | null;
   telefone_normalizado: string | null;
   interesse_resumo: string | null;
   motivo_prioridade: string;
   prioridade?: number;
   etapa: string;
   tempo_espera: number;
+  distribuido_em?: string | null;
   sara_orientacao_curta: string | null;
   proxima_acao_tipo?: string | null;
   proxima_acao_prazo?: string | null;
@@ -48,32 +52,6 @@ function sameMonth(value: string) {
   const now = new Date();
   const date = new Date(`${value}T12:00:00`);
   return date.getFullYear() === now.getFullYear() && date.getMonth() === now.getMonth();
-}
-
-function calcRestanteSegundos(item: ItemFila, agoraMs: number, loadedAtMs: number): number {
-  if (item.proxima_acao_prazo) {
-    const prazoMs = new Date(item.proxima_acao_prazo).getTime();
-    if (!isNaN(prazoMs)) {
-      return Math.floor((prazoMs - agoraMs) / 1000);
-    }
-  }
-  // SLA padrão de 5 minutos (300s)
-  const decMin = Number(item.tempo_espera) || 0;
-  const decSeg = decMin * 60 + Math.floor((agoraMs - loadedAtMs) / 1000);
-  return 300 - decSeg;
-}
-
-function fmtClock(restanteSegundos: number): { text: string; sub: string } {
-  if (restanteSegundos >= 0) {
-    const mm = String(Math.floor(restanteSegundos / 60)).padStart(2, "0");
-    const ss = String(restanteSegundos % 60).padStart(2, "0");
-    return { text: `${mm}:${ss}`, sub: "restantes" };
-  } else {
-    const absSec = Math.abs(restanteSegundos);
-    const mm = String(Math.floor(absSec / 60)).padStart(2, "0");
-    const ss = String(absSec % 60).padStart(2, "0");
-    return { text: `−${mm}:${ss}`, sub: "estourado" };
-  }
 }
 
 export function HomeWorkspace({ accessToken, sessionName = "", onNavigate, onIr }: { accessToken: string; sessionName?: string; onNavigate?: (module: string) => void; onIr?: (destino: string) => void }) {
@@ -154,17 +132,66 @@ export function HomeWorkspace({ accessToken, sessionName = "", onNavigate, onIr 
     }).catch(() => {});
   }, [accessToken, ehDesktop]);
 
-  // Processamento e Ordenação da Fila por SLA Restante
+  // Processamento e Ordenação da Fila usando SLA Canônico (slaDoLead)
   const filaProcessada = useMemo(() => {
     if (!fila) return [];
+    const agoraDate = new Date(agoraMs);
     return fila.map((item) => {
-      const restante = calcRestanteSegundos(item, agoraMs, loadedAtMs);
+      const sla = slaDoLead(
+        {
+          momento: item.etapa,
+          criadoEm: item.distribuido_em ?? null,
+          ultimaInteracaoEm: null,
+          tentativasFeitas: item.outbound_real_confirmado ? 1 : 0,
+          telefone: item.telefone ?? item.telefone_normalizado,
+        },
+        item.aguardando_sincronizacao ? agoraDate : null,
+        agoraDate
+      );
+
+      const tom = tomDoSla(sla);
       let estado: "estourado" | "apertado" | "no-prazo";
-      if (restante < 0) estado = "estourado";
-      else if (restante <= 60) estado = "apertado";
+      if (tom === "vermelho") estado = "estourado";
+      else if (tom === "amarelo") estado = "apertado";
       else estado = "no-prazo";
-      return { item, restante, estado, clock: fmtClock(restante) };
-    }).sort((a, b) => a.restante - b.restante);
+
+      // O relógio de 5 min só é exibido se o item for elegível a 1ª abordagem
+      const ehElegivelSla5Min = item.etapa === "novo" && !item.outbound_real_confirmado;
+      let clock: { text: string; sub: string };
+
+      if (ehElegivelSla5Min) {
+        let decSeg = 0;
+        if (item.distribuido_em) {
+          const distMs = new Date(item.distribuido_em).getTime();
+          if (!isNaN(distMs)) {
+            decSeg = Math.floor((agoraMs - distMs) / 1000);
+          }
+        } else {
+          const decMin = Number(item.tempo_espera) || 0;
+          decSeg = Math.floor(decMin * 60 + (agoraMs - loadedAtMs) / 1000);
+        }
+        const restanteSegundos = 300 - decSeg;
+
+        if (restanteSegundos >= 0) {
+          const mm = String(Math.floor(restanteSegundos / 60)).padStart(2, "0");
+          const ss = String(restanteSegundos % 60).padStart(2, "0");
+          clock = { text: `${mm}:${ss}`, sub: "restantes" };
+        } else {
+          const absSec = Math.abs(restanteSegundos);
+          const mm = String(Math.floor(absSec / 60)).padStart(2, "0");
+          const ss = String(absSec % 60).padStart(2, "0");
+          clock = { text: `−${mm}:${ss}`, sub: "estourado" };
+        }
+      } else {
+        clock = {
+          text: rotuloCurtoSla(sla),
+          sub: item.proxima_acao_prazo ? "Agendado" : "Em andamento",
+        };
+      }
+
+      const pesoPrioridade = sla.urgencia * 100 + (item.prioridade ?? 0);
+      return { item, sla, estado, clock, pesoPrioridade };
+    }).sort((a, b) => b.pesoPrioridade - a.pesoPrioridade);
   }, [fila, agoraMs, loadedAtMs]);
 
   const contadoresSLA = useMemo(() => {
@@ -206,11 +233,11 @@ export function HomeWorkspace({ accessToken, sessionName = "", onNavigate, onIr 
 
   return (
     <div className="inicio-workspace">
-      {/* Header do Início */}
+      {/* Header do Início — Sentence case */}
       <header className="inicio-header">
         <div className="inicio-header-info">
-          <span className="inicio-eyebrow">Atendimento & SLA · apêcerto erp</span>
-          <h1 className="inicio-title">Fila Operacional de Atendimento</h1>
+          <span className="inicio-eyebrow">Atendimento e SLA · apêcerto erp</span>
+          <h1 className="inicio-title">Fila de atendimento</h1>
           <p className="inicio-subtitle">
             {contadoresSLA.estourados > 0
               ? `${contadoresSLA.estourados} lead(s) com SLA estourado aguardando atendimento urgente.`
@@ -248,11 +275,11 @@ export function HomeWorkspace({ accessToken, sessionName = "", onNavigate, onIr 
         </button>
       </div>
 
-      {/* Seção Principal: Fila de Atendimento */}
+      {/* Seção Principal: Fila de Atendimento — Sentence case */}
       <section className="inicio-queue-section">
         <div className="inicio-queue-header">
           <div className="inicio-queue-title-group">
-            <h2 className="inicio-queue-title">Próximas Ações Urgentíssimas</h2>
+            <h2 className="inicio-queue-title">Quem atender agora</h2>
             <span className="inicio-queue-count">{contadoresSLA.total} lead(s)</span>
           </div>
         </div>
@@ -272,15 +299,14 @@ export function HomeWorkspace({ accessToken, sessionName = "", onNavigate, onIr 
         {!carregandoFila && !erroFila && filaProcessada.length === 0 && (
           <div className="inicio-empty-card">
             <img
-              src="/docs/design/ds-oficial/assets/grafismo-laranja.png"
+              src="/marca/grafismo-laranja.png"
               alt="ApêCerto"
               className="inicio-empty-grafismo"
-              onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
             />
-            <span className="inicio-eyebrow">Conquista de Atendimento</span>
+            <span className="inicio-eyebrow">Conquista de atendimento</span>
             <h3 className="inicio-empty-title">Tudo atendido!</h3>
             <p className="inicio-empty-subtitle">
-              Sua fila de SLA está 100% em dia. Todo lead recebido foi abordado dentro da janela de 5 minutos.
+              Fila limpa — nenhum lead aguardando atendimento no momento.
             </p>
             <button type="button" className="inicio-btn-secondary" onClick={() => irPara("/crm")}>
               Ver Carteira no CRM →
@@ -326,17 +352,28 @@ export function HomeWorkspace({ accessToken, sessionName = "", onNavigate, onIr 
                     )}
                   </div>
 
-                  {/* Coluna 3: Ações Primárias */}
+                  {/* Coluna 3: Ações Primárias (WhatsApp Nativo + Alternativa wa.me) */}
                   <div className="inicio-card-right">
                     {tel ? (
-                      <a
-                        className="inicio-btn-primary"
-                        href={`whatsapp://send?phone=${tel}`}
-                        onClick={() => marcarWhatsappAberto(item.negocio_id)}
-                      >
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
-                        Chamar no WhatsApp
-                      </a>
+                      <div style={{ display: "flex", flexDirection: "column", gap: "4px", alignItems: "flex-end" }}>
+                        <a
+                          className="inicio-btn-primary"
+                          href={`whatsapp://send?phone=${tel}`}
+                          onClick={() => marcarWhatsappAberto(item.negocio_id)}
+                        >
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                          Chamar no WhatsApp
+                        </a>
+                        <a
+                          href={`https://wa.me/${tel}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{ fontSize: "11px", color: "var(--ape-orange-700)", textDecoration: "underline" }}
+                          onClick={() => marcarWhatsappAberto(item.negocio_id)}
+                        >
+                          Abrir via wa.me (Web)
+                        </a>
+                      </div>
                     ) : null}
 
                     <button
@@ -425,14 +462,14 @@ export function HomeWorkspace({ accessToken, sessionName = "", onNavigate, onIr 
         </div>
       )}
 
-      {/* Seção Recolhível de Indicadores & Métricas (Abaixo da Dobra) */}
+      {/* Seção Recolhível de Indicadores & Métricas */}
       <section className="inicio-metrics-accordion">
         <button
           type="button"
           className="inicio-accordion-toggle"
           onClick={() => setMetricasExpandidas((prev) => !prev)}
         >
-          <span>Métricas de Vendas & Esteira (Abaixo da Dobra)</span>
+          <span>Números do mês</span>
           <span>{metricasExpandidas ? "▲ Recolher" : "▼ Expandir"}</span>
         </button>
 

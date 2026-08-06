@@ -60,7 +60,7 @@ export async function GET(request: Request) {
      ao banco por abertura de tela. */
   const [negRes, estRes, saraRes, intRes] = await Promise.all([
     db.from("negocios").select("id,lead_id,empreendimento_id").in("id", ids),
-    db.from("ncrm_estado").select("negocio_id,proxima_acao_tipo,primeira_saida_humana_em,primeira_saida_message_id").in("negocio_id", ids),
+    db.from("ncrm_estado").select("negocio_id,proxima_acao_tipo,primeira_saida_humana_em,primeira_saida_message_id,distribuido_em").in("negocio_id", ids),
     db.from("ncrm_sara_analise").select("negocio_id,proxima_acao_sugerida,justificativa,analisado_em").in("negocio_id", ids).order("analisado_em", { ascending: false }),
     db.from("ncrm_whatsapp_intencao").select("negocio_id,aberto_em,confirmada_em,expirada_em").in("negocio_id", ids).order("aberto_em", { ascending: false }),
   ]);
@@ -112,6 +112,7 @@ export async function GET(request: Request) {
       lead_id: neg ? Number(neg.lead_id) : null,
       negocio_id: i.negocio_id,
       nome: lead?.nome ?? i.lead_nome ?? null,
+      telefone: lead?.telefone ?? null,
       telefone_normalizado: normalizarTelefone(lead?.telefone),
       interesse_resumo: neg?.empreendimento_id ? (emps.get(String(neg.empreendimento_id))?.nome ?? null) : null,
       motivo_prioridade: i.motivo,
@@ -121,6 +122,7 @@ export async function GET(request: Request) {
       respondeu: !!i.respondeu,
       etapa: i.etapa,
       tempo_espera: Math.round(Number(i.espera_min) || 0),
+      distribuido_em: est?.distribuido_em ?? null,
       sara_orientacao_curta: orientacaoCurta(s?.proxima_acao_sugerida ?? s?.justificativa),
       proxima_acao_tipo: est?.proxima_acao_tipo ?? null,
       proxima_acao_prazo: i.proxima_acao_em,
