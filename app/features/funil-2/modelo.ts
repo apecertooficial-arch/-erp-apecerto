@@ -30,13 +30,20 @@ export type MomentoFunil2 = {
   ativo?: boolean;
 };
 
+/* Produto, unidade, gerente e fim precisam viajar junto: f2_salvar_visita e um
+   upsert que sobrescreve tudo, entao editar so a data apagaria o resto. */
 export type VisitaFunil2 = {
   id: string;
   funil_lead_id: string;
   inicio_em: string;
+  fim_em?: string | null;
   imovel: string;
   status: "agendada" | "confirmada" | "realizada" | "cancelada" | "nao_compareceu";
   observacao: string | null;
+  empreendimento_id?: string | null;
+  unidade?: string | null;
+  com_gerente?: boolean | null;
+  gerente_id?: number | null;
   feedback_em?: string | null;
   feedback_por?: string | null;
   atualizado_em: string;
@@ -158,19 +165,21 @@ export const MOMENTOS_COM_CADENCIA: Record<string, number> = {
   CADENCIA_SEM_RESPOSTA: 3,
 };
 
-/** Em que tentativa o lead esta, ou null se o momento nao tem cadencia. */
+/* cadencia_passo conta quantas tentativas JA SAIRAM. A que interessa na tela e
+   a proxima -- a que o corretor tem que fazer hoje. Lead recem-entrado tem
+   passo 0 e precisa mostrar "Tentativa 1 de 6", nao um card mudo. */
 export function tentativaAtual(lead: Pick<LeadFunil2, "momento_codigo" | "cadencia_passo">): number | null {
   const total = MOMENTOS_COM_CADENCIA[lead.momento_codigo];
   if (!total) return null;
-  const passo = Number(lead.cadencia_passo) || 0;
-  return passo >= 1 && passo <= total ? passo : null;
+  const proxima = (Number(lead.cadencia_passo) || 0) + 1;
+  return proxima <= total ? proxima : null;
 }
 
 /** True quando a cadencia acabou e falta o corretor decidir: insistir ou descartar. */
 export function aguardandoDecisao(lead: Pick<LeadFunil2, "momento_codigo" | "cadencia_passo">): boolean {
   const total = MOMENTOS_COM_CADENCIA[lead.momento_codigo];
   if (!total) return false;
-  return (Number(lead.cadencia_passo) || 0) > total;
+  return (Number(lead.cadencia_passo) || 0) >= total;
 }
 
 export function rotuloCadencia(lead: Pick<LeadFunil2, "momento_codigo" | "cadencia_passo">): string | null {
