@@ -1,0 +1,44 @@
+<!doctype html>
+<!-- @dsCard group="Brand" name="Logo lockups" subtitle="Full lockup + symbol across 6 surface variants" viewport="700x410" -->
+<html><head><meta charset="utf-8"><link rel="stylesheet" href="_card.css">
+<style>
+  html, body { background: var(--neutral-100); }
+  .card { padding: 18px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .tile {
+    border-radius: 14px;
+    height: 130px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    position: relative;
+  }
+  .tile img { max-width: 80%; max-height: 70%; object-fit: contain; }
+  .tile .lbl {
+    position: absolute;
+    bottom: 8px; left: 10px;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--fg-3);
+    background: rgba(255,255,255,0.9);
+    padding: 2px 8px;
+    border-radius: 999px;
+  }
+  .on-orange { background: var(--ape-orange); }
+  .on-purple { background: var(--ape-purple); }
+  .on-white { background: #fff; }
+  .on-black { background: var(--neutral-900); }
+  .tile.on-orange .lbl, .tile.on-purple .lbl, .tile.on-black .lbl {
+    background: rgba(255,255,255,0.95);
+  }
+</style></head>
+<body><div class="card">
+  <div class="tile on-white"><img src="../assets/logo-cores.png" alt=""><span class="lbl">cores</span></div>
+  <div class="tile on-orange"><img src="../assets/logo-fundo-laranja.png" alt=""><span class="lbl">on orange</span></div>
+  <div class="tile on-purple"><img src="../assets/logo-fundo-roxo.png" alt=""><span class="lbl">on purple</span></div>
+  <div class="tile on-black"><img src="../assets/logo-branco.png" alt=""><span class="lbl">branco</span></div>
+  <div class="tile on-white"><img src="../assets/logo-preto.png" alt="" style="max-height:60%;"><span class="lbl">preto</span></div>
+  <div class="tile on-white"><img src="../assets/simbolo-cores.png" alt="" style="max-height:80%;max-width:55%;"><span class="lbl">símbolo</span></div>
+</div></body></html>

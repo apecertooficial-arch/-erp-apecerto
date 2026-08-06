@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>apêcerto — apês prontos pra morar em Moema</title>
+  <link rel="stylesheet" href="../../colors_and_type.css">
+  <link rel="stylesheet" href="site.css">
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel" src="icons.jsx"></script>
+  <script type="text/babel" src="Header.jsx"></script>
+  <script type="text/babel" src="SearchBar.jsx"></script>
+  <script type="text/babel" src="Hero.jsx"></script>
+  <script type="text/babel" src="SiteListingCard.jsx"></script>
+  <script type="text/babel" src="ListingGrid.jsx"></script>
+  <script type="text/babel" src="HowItWorks.jsx"></script>
+  <script type="text/babel" src="NeighborhoodCard.jsx"></script>
+  <script type="text/babel" src="Testimonial.jsx"></script>
+  <script type="text/babel" src="Footer.jsx"></script>
+  <script type="text/babel" src="ListingDetailSheet.jsx"></script>
+
+  <script type="text/babel">
+    const { useState } = React;
+
+    const LISTINGS = [
+      {
+        id: 1, title: 'Apê na Pavão',
+        address: 'Moema · 5 min metrô Eucaliptos',
+        price: 4200, condo: 980,
+        beds: 2, baths: 2, sqm: 67, parking: 1,
+        statusBadge: { label: 'Pronto pra morar', tone: 'orange' },
+        photoVariant: 1, photoCount: 14,
+        tags: ['Mobiliado', 'Decorado', 'Pet friendly'],
+      },
+      {
+        id: 2, title: 'Apê na Aldebaran',
+        address: 'Moema · ao lado do Ibirapuera',
+        price: 3450, condo: 720,
+        beds: 1, baths: 1, sqm: 48,
+        statusBadge: { label: 'Novidade', tone: 'purple' },
+        photoVariant: 2, photoCount: 18,
+        tags: ['Mobiliado', 'Vista do parque'],
+      },
+      {
+        id: 3, title: 'Apê na Indianópolis',
+        address: 'Indianópolis · 7 min metrô Moema',
+        price: 5800, condo: 1100,
+        beds: 3, baths: 2, sqm: 92, parking: 2,
+        statusBadge: { label: 'Pronto pra morar', tone: 'orange' },
+        photoVariant: 3, photoCount: 22,
+        tags: ['Mobiliado', 'Sacada gourmet'],
+      },
+      {
+        id: 4, title: 'Apê na Macaúbas',
+        address: 'Moema · em frente à pracinha',
+        price: 3900, condo: 850,
+        beds: 2, baths: 1, sqm: 58, parking: 1,
+        photoVariant: 4, photoCount: 16,
+        tags: ['Mobiliado', 'Pet friendly'],
+      },
+      {
+        id: 5, title: 'Apê na Tuim',
+        address: 'Moema · 4 min do parque',
+        price: 4600, condo: 940,
+        beds: 2, baths: 2, sqm: 71, parking: 1,
+        statusBadge: { label: 'Recém-decorado', tone: 'purple' },
+        photoVariant: 5, photoCount: 20,
+        tags: ['Mobiliado', 'Decorado'],
+      },
+      {
+        id: 6, title: 'Apê na Canário',
+        address: 'Moema · vista pro Ibirapuera',
+        price: 6400, condo: 1200,
+        beds: 3, baths: 2, sqm: 105, parking: 2,
+        photoVariant: 6, photoCount: 24,
+        tags: ['Mobiliado', 'Andar alto'],
+      },
+    ];
+
+    function App() {
+      const [openListing, setOpenListing] = useState(null);
+
+      return (
+        <>
+          <Header />
+          <main>
+            <Hero onSearch={() => {
+              const el = document.querySelector('#listings');
+              if (el) window.scrollTo({ top: el.offsetTop - 60, behavior: 'smooth' });
+            }} />
+            <ListingGrid listings={LISTINGS} onOpen={setOpenListing} />
+            <HowItWorks />
+            <NeighborhoodCard />
+            <Testimonial />
+          </main>
+          <Footer />
+          <ListingDetailSheet listing={openListing} onClose={() => setOpenListing(null)} />
+        </>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

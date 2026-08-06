@@ -1,0 +1,36 @@
+<!-- @dsCard group="Components" viewport="360x420" name="ListingCard" subtitle="Apartment listing card with save toggle" -->
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <link rel="stylesheet" href="../styles.css">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg-page); font-family: var(--font-body); padding: 20px; }
+    #root { max-width: 320px; }
+  </style>
+  <script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js" crossorigin="anonymous"></script>
+  <script src="../_ds_bundle.js"></script>
+</head>
+<body>
+  <div id="root"></div>
+  <script>
+    const { ListingCard } = window.ApCertoDesignSystem_019dda;
+    const e = React.createElement;
+    ReactDOM.createRoot(document.getElementById('root')).render(
+      e(ListingCard, {
+        listing: {
+          title: 'Apê na Pavão',
+          address: 'Moema · 5 min metrô Eucaliptos',
+          price: 4200, beds: 2, baths: 2, sqm: 67, parking: 1,
+          statusBadge: { label: 'Pronto pra morar', tone: 'orange' },
+          photoVariant: 1,
+          tags: ['Mobiliado', 'Decorado'],
+        },
+        onOpen: () => {},
+      })
+    );
+  </script>
+</body>
+</html>

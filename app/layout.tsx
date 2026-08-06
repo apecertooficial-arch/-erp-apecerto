@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from "next";
+import "./styles/ape-tokens.css";
 import "./globals.css";
+
 import "./styles/app-mobile.css";
 /* POR ÚLTIMO, sempre. Esta folha remapeia --orange, --ink, --line e --muted
    para os tokens da marca; carregada antes, o CSS antigo a sobrescreveria. */

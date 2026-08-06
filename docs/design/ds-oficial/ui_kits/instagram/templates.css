@@ -1,0 +1,173 @@
+/* Instagram templates — shared styles.
+   All canvases are designed at native Instagram pixel sizes,
+   then scaled with transform: scale(...) for review. */
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: #1a1816;
+  color: #fff;
+  font-family: var(--font-body);
+  min-height: 100vh;
+}
+
+.ig-page {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 48px 32px 80px;
+}
+
+.ig-page__head {
+  margin-bottom: 40px;
+}
+.ig-page__h1 {
+  font-family: var(--font-display);
+  font-size: 36px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: #fff;
+  margin-bottom: 8px;
+}
+.ig-page__sub {
+  color: rgba(255,255,255,0.65);
+  font-size: 16px;
+  max-width: 560px;
+}
+
+.ig-section {
+  margin-top: 56px;
+}
+.ig-section__h {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  margin-bottom: 24px;
+}
+.ig-section__h h2 {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 600;
+  color: #fff;
+}
+.ig-section__h span {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: rgba(255,255,255,0.5);
+  letter-spacing: 0.04em;
+}
+
+.ig-grid {
+  display: grid;
+  gap: 32px;
+}
+.ig-grid--feed { grid-template-columns: repeat(3, 1fr); }
+.ig-grid--carousel { grid-template-columns: repeat(3, 1fr); }
+.ig-grid--story { grid-template-columns: repeat(4, 1fr); }
+
+.ig-thumb {
+  position: relative;
+  overflow: hidden;
+  border-radius: 18px;
+  box-shadow: var(--shadow-lg);
+  background: var(--neutral-100);
+}
+.ig-thumb__label {
+  position: absolute;
+  bottom: 12px; left: 12px;
+  z-index: 10;
+  background: rgba(0,0,0,0.7);
+  backdrop-filter: blur(8px);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 5px 10px;
+  border-radius: 999px;
+  font-family: var(--font-mono);
+}
+
+/* === Canvas sizes (native) === */
+.canvas-1080-1350 { width: 1080px; height: 1350px; }
+.canvas-1080-1080 { width: 1080px; height: 1080px; }
+.canvas-1080-1920 { width: 1080px; height: 1920px; }
+
+/* === Common slide styles === */
+.slide {
+  position: relative;
+  overflow: hidden;
+  font-family: var(--font-display);
+  color: #fff;
+}
+.slide__grafismo {
+  position: absolute;
+  inset: 0;
+  background-image: url('../../assets/grafismo-laranja.png');
+  background-size: cover;
+  background-position: center;
+  opacity: 0.5;
+  pointer-events: none;
+}
+.slide__grafismo--purple { background-image: url('../../assets/grafismo-roxo.png'); }
+.slide__grafismo--faded {
+  background-image: url('../../assets/grafismo-desbotado.png');
+  opacity: 0.25;
+}
+
+.slide__logo {
+  width: 220px;
+  height: auto;
+}
+.slide__logo--small { width: 140px; }
+
+.slide__eyebrow {
+  font-family: var(--font-body);
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ape-orange);
+}
+.slide__eyebrow--white { color: #fff; opacity: 0.85; }
+.slide__eyebrow--purple { color: var(--ape-purple); }
+
+.slide__h1 {
+  font-family: var(--font-display);
+  font-size: 110px;
+  font-weight: 700;
+  line-height: 0.95;
+  letter-spacing: -0.035em;
+  color: var(--neutral-900);
+}
+.slide__h1--white { color: #fff; }
+.slide__h1--orange { color: var(--ape-orange); }
+.slide__h1--purple { color: var(--ape-purple); }
+
+.slide__h2 {
+  font-family: var(--font-display);
+  font-size: 64px;
+  font-weight: 600;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+}
+
+.slide__body {
+  font-family: var(--font-body);
+  font-size: 32px;
+  line-height: 1.4;
+  font-weight: 500;
+}
+
+.slide__cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 16px;
+  background: var(--ape-orange);
+  color: #fff;
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 36px;
+  padding: 28px 56px;
+  border-radius: 999px;
+  letter-spacing: -0.01em;
+}
+.slide__cta--purple { background: var(--ape-purple); }
+.slide__cta--white { background: #fff; color: var(--ape-orange); }

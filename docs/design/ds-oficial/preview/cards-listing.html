@@ -1,0 +1,168 @@
+<!doctype html>
+<!-- @dsCard group="Components" name="Listing cards" subtitle="Apartment listing card — clean monoline icons, no emoji" viewport="700x290" -->
+<html><head><meta charset="utf-8"><link rel="stylesheet" href="_card.css">
+<template id="__bundler_thumbnail" data-bg-color="#FAF8F6">
+  <svg viewBox="0 0 1200 800" xmlns="http://www.w3.org/2000/svg">
+    <rect width="1200" height="800" fill="#FAF8F6"/>
+    <!-- left card -->
+    <rect x="80" y="120" width="480" height="560" rx="36" fill="#ffffff"/>
+    <rect x="80" y="120" width="480" height="280" rx="36" fill="#c9a878"/>
+    <rect x="110" y="150" width="180" height="44" rx="22" fill="#FF7000"/>
+    <text x="200" y="180" text-anchor="middle" fill="#fff" font-family="sans-serif" font-weight="700" font-size="20">PRONTO</text>
+    <circle cx="510" cy="172" r="22" fill="#ffffff"/>
+    <text x="510" y="180" text-anchor="middle" font-size="22" fill="#6E6760">♡</text>
+    <text x="110" y="490" fill="#1F1C1A" font-family="sans-serif" font-weight="700" font-size="40">R$ 4.200</text>
+    <text x="110" y="540" fill="#332F2B" font-family="sans-serif" font-weight="600" font-size="26">Apê na Pavão</text>
+    <text x="110" y="580" fill="#9A938B" font-family="sans-serif" font-size="20">Moema · 5min metrô</text>
+    <rect x="110" y="610" width="120" height="36" rx="18" fill="#FFE4D1"/>
+    <text x="170" y="634" text-anchor="middle" fill="#CC5800" font-family="sans-serif" font-weight="600" font-size="18">Mobiliado</text>
+    <rect x="240" y="610" width="120" height="36" rx="18" fill="#EBD1F5"/>
+    <text x="300" y="634" text-anchor="middle" fill="#66009A" font-family="sans-serif" font-weight="600" font-size="18">Decorado</text>
+    <!-- right card -->
+    <rect x="640" y="120" width="480" height="560" rx="36" fill="#ffffff"/>
+    <rect x="640" y="120" width="480" height="280" rx="36" fill="#a890c4"/>
+    <rect x="670" y="150" width="190" height="44" rx="22" fill="#8B00CC"/>
+    <text x="765" y="180" text-anchor="middle" fill="#fff" font-family="sans-serif" font-weight="700" font-size="20">NOVIDADE</text>
+    <circle cx="1070" cy="172" r="22" fill="#ffffff"/>
+    <text x="1070" y="182" text-anchor="middle" font-size="24" fill="#FF7000">♥</text>
+    <text x="670" y="490" fill="#1F1C1A" font-family="sans-serif" font-weight="700" font-size="40">R$ 3.450</text>
+    <text x="670" y="540" fill="#332F2B" font-family="sans-serif" font-weight="600" font-size="26">Apê na Aldebaran</text>
+    <text x="670" y="580" fill="#9A938B" font-family="sans-serif" font-size="20">Moema · Ibirapuera</text>
+  </svg>
+</template>
+<style>
+  html, body { background: var(--bg-page); }
+  .card { padding: 20px 24px; display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .listing {
+    background: #fff;
+    border-radius: 18px;
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
+    position: relative;
+  }
+  .listing .photo {
+    height: 150px;
+    background: linear-gradient(135deg, #d8c9b8 0%, #b89a7a 100%);
+    position: relative;
+  }
+  .listing .photo.alt {
+    background: linear-gradient(135deg, #c4b5d4 0%, #8b7aa3 100%);
+  }
+  .listing .photo::after {
+    content: ""; position: absolute; inset: 0;
+    background: linear-gradient(180deg, transparent 60%, rgba(31, 28, 26, 0.45) 100%);
+  }
+  .badge-row {
+    position: absolute; top: 12px; left: 12px; right: 12px;
+    display: flex; justify-content: space-between; align-items: flex-start;
+    z-index: 2;
+  }
+  .badge {
+    padding: 5px 10px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+    background: var(--ape-orange);
+    color: #fff;
+  }
+  .heart {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.95);
+    display: inline-flex; align-items: center; justify-content: center;
+    color: var(--neutral-600);
+  }
+  .heart.on { color: var(--ape-orange); }
+  .body { padding: 14px 16px 16px; }
+  .price { font-weight: 700; font-size: 18px; color: var(--fg-1); }
+  .price small { font-size: 12px; font-weight: 500; color: var(--fg-3); }
+  .title { font-size: 14px; font-weight: 600; margin-top: 4px; color: var(--fg-1); }
+  .addr { font-size: 12px; color: var(--fg-3); margin-top: 4px; display: inline-flex; align-items: center; gap: 5px; }
+  .specs { display: flex; gap: 14px; margin-top: 10px; font-size: 12px; color: var(--fg-2); font-weight: 500; padding-top: 10px; border-top: 1px solid var(--border-soft); }
+  .specs span { display: inline-flex; align-items: center; gap: 5px; }
+  .tags { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
+  .tag { padding: 3px 9px; border-radius: 999px; font-size: 10px; font-weight: 600; }
+  .tag-orange { background: var(--ape-orange-100); color: var(--ape-orange-700); }
+  .tag-purple { background: var(--ape-purple-100); color: var(--ape-purple-700); }
+
+  /* Icon system — Lucide-style monoline */
+  .icn {
+    width: 14px;
+    height: 14px;
+    stroke: currentColor;
+    stroke-width: 2;
+    fill: none;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    flex-shrink: 0;
+  }
+  .icn-lg { width: 16px; height: 16px; }
+</style></head>
+<body><div class="card">
+  <div class="listing">
+    <div class="photo">
+      <div class="badge-row">
+        <span class="badge">Pronto pra morar</span>
+        <span class="heart">
+          <svg class="icn icn-lg" viewBox="0 0 24 24"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.29 1.51 4.04 3 5.5l7 7Z"/></svg>
+        </span>
+      </div>
+    </div>
+    <div class="body">
+      <div class="price">R$ 4.200<small> /mês</small></div>
+      <div class="title">Apê na Pavão</div>
+      <div class="addr">
+        <svg class="icn" viewBox="0 0 24 24"><path d="M20 10c0 7-8 13-8 13s-8-6-8-13a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+        Moema · 5min metrô Eucaliptos
+      </div>
+      <div class="specs">
+        <span>
+          <svg class="icn" viewBox="0 0 24 24"><path d="M2 4v16"/><path d="M2 8h18a2 2 0 0 1 2 2v10"/><path d="M2 17h20"/><path d="M6 8v9"/></svg>
+          2 dorms
+        </span>
+        <span>
+          <svg class="icn" viewBox="0 0 24 24"><path d="M9 6 6.5 3.5a1.5 1.5 0 0 0-1-.5C4.683 3 4 3.683 4 4.5V17a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-5h2"/><line x1="10" x2="8" y1="5" y2="7"/><line x1="2" x2="22" y1="12" y2="12"/><line x1="7" x2="7" y1="19" y2="21"/><line x1="17" x2="17" y1="19" y2="21"/></svg>
+          2 banhos
+        </span>
+        <span>
+          <svg class="icn" viewBox="0 0 24 24"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" x2="14" y1="3" y2="10"/><line x1="3" x2="10" y1="21" y2="14"/></svg>
+          67 m²
+        </span>
+      </div>
+      <div class="tags"><span class="tag tag-orange">Mobiliado</span><span class="tag tag-purple">Decorado</span></div>
+    </div>
+  </div>
+  <div class="listing">
+    <div class="photo alt">
+      <div class="badge-row">
+        <span class="badge" style="background:var(--ape-purple);">Novidade</span>
+        <span class="heart on">
+          <svg class="icn icn-lg" viewBox="0 0 24 24" style="fill:currentColor;stroke:currentColor;"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.29 1.51 4.04 3 5.5l7 7Z"/></svg>
+        </span>
+      </div>
+    </div>
+    <div class="body">
+      <div class="price">R$ 3.450<small> /mês</small></div>
+      <div class="title">Apê na Aldebaran</div>
+      <div class="addr">
+        <svg class="icn" viewBox="0 0 24 24"><path d="M20 10c0 7-8 13-8 13s-8-6-8-13a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+        Moema · ao lado do Ibirapuera
+      </div>
+      <div class="specs">
+        <span>
+          <svg class="icn" viewBox="0 0 24 24"><path d="M2 4v16"/><path d="M2 8h18a2 2 0 0 1 2 2v10"/><path d="M2 17h20"/><path d="M6 8v9"/></svg>
+          1 dorm
+        </span>
+        <span>
+          <svg class="icn" viewBox="0 0 24 24"><path d="M9 6 6.5 3.5a1.5 1.5 0 0 0-1-.5C4.683 3 4 3.683 4 4.5V17a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-5h2"/><line x1="10" x2="8" y1="5" y2="7"/><line x1="2" x2="22" y1="12" y2="12"/><line x1="7" x2="7" y1="19" y2="21"/><line x1="17" x2="17" y1="19" y2="21"/></svg>
+          1 banho
+        </span>
+        <span>
+          <svg class="icn" viewBox="0 0 24 24"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" x2="14" y1="3" y2="10"/><line x1="3" x2="10" y1="21" y2="14"/></svg>
+          48 m²
+        </span>
+      </div>
+      <div class="tags"><span class="tag tag-orange">Mobiliado</span><span class="tag tag-purple">Pet friendly</span></div>
+    </div>
+  </div>
+</div></body></html>

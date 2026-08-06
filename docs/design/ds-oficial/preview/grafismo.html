@@ -1,0 +1,46 @@
+<!doctype html>
+<!-- @dsCard group="Brand" name="Grafismo pattern" subtitle="Geometric line motif — faded, orange, purple" viewport="700x200" -->
+<html><head><meta charset="utf-8"><link rel="stylesheet" href="_card.css">
+<style>
+  html, body { background: var(--bg-page); }
+  .card { padding: 0; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0; }
+  .tile { height: 200px; position: relative; overflow: hidden; }
+  .tile .g {
+    position: absolute; inset: 0;
+    background-size: cover;
+    background-position: center;
+  }
+  .tile .lbl {
+    position: absolute;
+    bottom: 12px; left: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.92);
+    color: var(--fg-1);
+    z-index: 2;
+  }
+  .t1 { background: var(--bg-page); }
+  .t1 .g {
+    background-image: url('../assets/grafismo-desbotado.png');
+    opacity: 0.4;
+  }
+  .t2 { background: var(--ape-orange-50); }
+  .t2 .g {
+    background-image: url('../assets/grafismo-laranja.png');
+  }
+  .t3 { background: var(--ape-purple); }
+  .t3 .g {
+    background-image: url('../assets/grafismo-roxo.png');
+    filter: brightness(2.2);
+    opacity: 0.55;
+  }
+</style></head>
+<body><div class="card">
+  <div class="tile t1"><div class="g"></div><span class="lbl">desbotado · subtle</span></div>
+  <div class="tile t2"><div class="g"></div><span class="lbl">laranja · accent</span></div>
+  <div class="tile t3"><div class="g"></div><span class="lbl" style="background:rgba(255,255,255,0.95);">roxo · on dark</span></div>
+</div></body></html>

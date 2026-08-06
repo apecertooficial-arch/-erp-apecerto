@@ -16,6 +16,35 @@
   --shadow-xs:0 1px 2px rgba(31,28,26,.04); --shadow-sm:0 2px 8px rgba(31,28,26,.06); --shadow-md:0 10px 26px rgba(31,28,26,.09); --shadow-lg:0 20px 48px rgba(31,28,26,.12); --shadow-xl:0 28px 64px rgba(31,28,26,.16); --shadow-brand:0 12px 26px rgba(255,101,0,.26);
   /* Movimento */
   --ease:cubic-bezier(.2,.8,.2,1); --dur:.18s;
+
+  /* DEPRECADO — use os tokens --ape-* / --neutral-* / --radius-* / --space-*.
+     Mantido temporariamente para não quebrar o que já referencia.
+     Remover na Onda 5. */
+  --ap-orange:       var(--ape-orange);
+  --ap-orange-600:   var(--ape-orange-600);
+  --ap-purple:       var(--ape-purple);
+  --ap-purple-600:   var(--ape-purple-600);
+  --ap-ink:          var(--neutral-800);
+  --ap-ink-soft:     var(--neutral-600);
+  --ap-muted:        var(--neutral-500);
+  --ap-line:         var(--neutral-200);
+  --ap-line-strong:  var(--neutral-300);
+  --ap-page:         var(--neutral-50);
+  --ap-surface:      var(--neutral-0);
+  --ap-sunken:       var(--neutral-100);
+  --ap-green:        var(--success);
+  --ap-green-soft:   var(--success-bg);
+  --ap-amber:        var(--warning);
+  --ap-amber-soft:   var(--warning-bg);
+  --ap-red:          var(--danger);
+  --ap-red-soft:     var(--danger-bg);
+  --ap-r-card:       var(--radius-lg);
+  --ap-r-btn:        var(--radius-md);
+  --ap-r-chip:       var(--radius-pill);
+  --ap-sh-xs:        var(--shadow-xs);
+  --ap-sh-sm:        var(--shadow-sm);
+  --ap-sh-md:        var(--shadow-md);
+  --ap-sh-brand:     var(--shadow-brand);
 }
 * { box-sizing:border-box; }
 html, body { margin:0; min-height:100%; background:var(--page); color:var(--ink); font-family:'Quicksand', ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility; }
@@ -264,7 +293,7 @@ button { cursor:pointer; }
   --ape-orange-700:#c94f00;
   --ape-orange-50:#fff3ea;
   --ape-purple:#8d2bd1;
-  --font-body:Inter,ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  --font-body:"Quicksand", system-ui, -apple-system, "Segoe UI", sans-serif;
   width:100%;
   height:100vh;
   min-width:0;

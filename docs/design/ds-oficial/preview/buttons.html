@@ -1,0 +1,85 @@
+<!doctype html>
+<!-- @dsCard group="Components" name="Buttons" subtitle="Primary, accent, secondary, ghost, icon, small" viewport="700x230" -->
+<html><head><meta charset="utf-8"><link rel="stylesheet" href="_card.css">
+<style>
+  .card { padding: 26px 28px; display: flex; flex-direction: column; gap: 14px; }
+  .row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  .label { width: 110px; font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--fg-3); }
+  button {
+    font-family: var(--font-body);
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    transition: all var(--dur-fast) var(--ease-out);
+  }
+  .btn-primary {
+    background: var(--ape-orange);
+    color: #fff;
+    padding: 12px 22px;
+    border-radius: 999px;
+    font-size: 15px;
+    box-shadow: var(--shadow-brand);
+  }
+  .btn-accent {
+    background: var(--ape-purple);
+    color: #fff;
+    padding: 12px 22px;
+    border-radius: 999px;
+    font-size: 15px;
+    box-shadow: var(--shadow-accent);
+  }
+  .btn-secondary {
+    background: #fff;
+    color: var(--fg-1);
+    padding: 12px 22px;
+    border-radius: 999px;
+    font-size: 15px;
+    border: 1.5px solid var(--border-default);
+  }
+  .btn-ghost {
+    background: transparent;
+    color: var(--ape-orange);
+    padding: 12px 18px;
+    border-radius: 12px;
+    font-size: 15px;
+  }
+  .btn-small {
+    padding: 8px 14px;
+    border-radius: 999px;
+    font-size: 13px;
+    background: var(--ape-orange);
+    color: #fff;
+    box-shadow: none;
+  }
+  .btn-icon {
+    width: 40px; height: 40px;
+    border-radius: 999px;
+    background: #fff;
+    border: 1.5px solid var(--border-soft);
+    color: var(--fg-1);
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 18px;
+  }
+  .btn-disabled { opacity: 0.4; cursor: not-allowed; }
+</style></head>
+<body><div class="card">
+  <div class="row">
+    <div class="label">primary</div>
+    <button class="btn-primary">Agendar visita →</button>
+    <button class="btn-primary" style="background:var(--ape-orange-600)">Hover state</button>
+    <button class="btn-primary btn-disabled">Disabled</button>
+  </div>
+  <div class="row">
+    <div class="label">accent</div>
+    <button class="btn-accent">Ver apê</button>
+    <button class="btn-secondary">Salvar para depois</button>
+    <button class="btn-ghost">Filtros</button>
+  </div>
+  <div class="row">
+    <div class="label">sizes</div>
+    <button class="btn-primary" style="padding:14px 28px; font-size:17px;">Mude esse mês</button>
+    <button class="btn-small">Pronto</button>
+    <button class="btn-icon">♡</button>
+    <button class="btn-icon">↗</button>
+  </div>
+</div></body></html>

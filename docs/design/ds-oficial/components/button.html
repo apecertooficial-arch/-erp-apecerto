@@ -1,0 +1,32 @@
+<!-- @dsCard group="Components" viewport="700x150" name="Button" subtitle="Pill buttons — primary, accent, secondary, ghost" -->
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <link rel="stylesheet" href="../styles.css">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg-page); font-family: var(--font-body); padding: 28px; }
+    #root { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; }
+  </style>
+  <script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js" crossorigin="anonymous"></script>
+  <script src="../_ds_bundle.js"></script>
+</head>
+<body>
+  <div id="root"></div>
+  <script>
+    const { Button } = window.ApCertoDesignSystem_019dda;
+    const e = React.createElement;
+    ReactDOM.createRoot(document.getElementById('root')).render(
+      e(React.Fragment, null,
+        e(Button, { variant: 'primary' }, 'Agendar visita →'),
+        e(Button, { variant: 'accent' }, 'Ver apê'),
+        e(Button, { variant: 'secondary' }, 'Salvar'),
+        e(Button, { variant: 'ghost' }, 'Filtros'),
+        e(Button, { variant: 'primary', size: 'sm' }, 'Pronto'),
+      )
+    );
+  </script>
+</body>
+</html>

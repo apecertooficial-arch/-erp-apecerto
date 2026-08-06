@@ -1,0 +1,59 @@
+<!doctype html>
+<!-- @dsCard group="Colors" name="Brand colors — primary" subtitle="Orange (apê) + Purple (certo) with 6-step ramps" viewport="700x290" -->
+<html><head><meta charset="utf-8"><link rel="stylesheet" href="_card.css">
+<style>
+  .card { padding: 28px 28px 28px; }
+  .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .big {
+    height: 180px;
+    border-radius: 18px;
+    padding: 18px 20px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    color: #fff;
+  }
+  .big .meaning { font-size: 13px; opacity: 0.85; font-weight: 500; }
+  .big .name { font-size: 28px; font-weight: 700; letter-spacing: -0.02em; }
+  .big .hex  { font-family: var(--font-mono); font-size: 12px; opacity: 0.9; }
+  .ramp { display: flex; gap: 6px; margin-top: 10px; }
+  .ramp .step { flex: 1; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 600; font-family: var(--font-mono); }
+</style></head>
+<body><div class="card">
+  <div class="pair">
+    <div>
+      <div class="big" style="background: var(--ape-orange);">
+        <span class="meaning">apê — warmth, energy, action</span>
+        <div>
+          <div class="name">Orange</div>
+          <div class="hex">#FF7000</div>
+        </div>
+      </div>
+      <div class="ramp">
+        <div class="step" style="background:var(--ape-orange-50);color:var(--ape-orange-700);">50</div>
+        <div class="step" style="background:var(--ape-orange-100);color:var(--ape-orange-700);">100</div>
+        <div class="step" style="background:var(--ape-orange-300);color:#fff;">300</div>
+        <div class="step" style="background:var(--ape-orange);color:#fff;">500</div>
+        <div class="step" style="background:var(--ape-orange-600);color:#fff;">600</div>
+        <div class="step" style="background:var(--ape-orange-700);color:#fff;">700</div>
+      </div>
+    </div>
+    <div>
+      <div class="big" style="background: var(--ape-purple);">
+        <span class="meaning">certo — confirmation, trust, accent</span>
+        <div>
+          <div class="name">Purple</div>
+          <div class="hex">#8B00CC</div>
+        </div>
+      </div>
+      <div class="ramp">
+        <div class="step" style="background:var(--ape-purple-50);color:var(--ape-purple-700);">50</div>
+        <div class="step" style="background:var(--ape-purple-100);color:var(--ape-purple-700);">100</div>
+        <div class="step" style="background:var(--ape-purple-300);color:#fff;">300</div>
+        <div class="step" style="background:var(--ape-purple);color:#fff;">500</div>
+        <div class="step" style="background:var(--ape-purple-600);color:#fff;">600</div>
+        <div class="step" style="background:var(--ape-purple-700);color:#fff;">700</div>
+      </div>
+    </div>
+  </div>
+</div></body></html>

@@ -1,0 +1,41 @@
+<!-- @dsCard group="Components" viewport="700x150" name="Badge" subtitle="Status badges and feature tags — solid & soft" -->
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <link rel="stylesheet" href="../styles.css">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg-page); font-family: var(--font-body); padding: 28px; }
+    #root { display: flex; flex-direction: column; gap: 14px; }
+    .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  </style>
+  <script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js" crossorigin="anonymous"></script>
+  <script src="../_ds_bundle.js"></script>
+</head>
+<body>
+  <div id="root"></div>
+  <script>
+    const { Badge } = window.ApCertoDesignSystem_019dda;
+    const e = React.createElement;
+    ReactDOM.createRoot(document.getElementById('root')).render(
+      e(React.Fragment, null,
+        e('div', { className: 'row' },
+          e(Badge, { tone: 'success', dot: true }, 'Disponível'),
+          e(Badge, { tone: 'warning', dot: true }, 'Reservado'),
+          e(Badge, { tone: 'danger', dot: true }, 'Alugado'),
+          e(Badge, { tone: 'orange' }, 'Novo'),
+          e(Badge, { tone: 'purple' }, 'Selecionado'),
+        ),
+        e('div', { className: 'row' },
+          e(Badge, { tone: 'orange', variant: 'soft' }, 'Mobiliado'),
+          e(Badge, { tone: 'purple', variant: 'soft' }, 'Decorado'),
+          e(Badge, { tone: 'neutral', variant: 'soft' }, 'Pet friendly'),
+          e(Badge, { tone: 'neutral', variant: 'soft' }, 'Próx. metrô'),
+        ),
+      )
+    );
+  </script>
+</body>
+</html>

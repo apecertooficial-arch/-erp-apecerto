@@ -1,0 +1,68 @@
+<!doctype html>
+<!-- @dsCard group="Components" name="Badges & chips" subtitle="Status badges, feature tags, filter chips" viewport="700x270" -->
+<html><head><meta charset="utf-8"><link rel="stylesheet" href="_card.css">
+<style>
+  .card { padding: 24px 28px; display: flex; flex-direction: column; gap: 16px; }
+  .label { font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--fg-3); }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 5px 12px; border-radius: 999px;
+    font-size: 12px; font-weight: 600;
+    font-family: var(--font-body);
+  }
+  .b-orange { background: var(--ape-orange-100); color: var(--ape-orange-700); }
+  .b-purple { background: var(--ape-purple-100); color: var(--ape-purple-700); }
+  .b-success { background: var(--success-bg); color: var(--success); }
+  .b-warning { background: var(--warning-bg); color: #9c6a14; }
+  .b-danger { background: var(--danger-bg); color: var(--danger); }
+  .b-neutral { background: var(--neutral-100); color: var(--neutral-700); }
+  .b-solid-orange { background: var(--ape-orange); color: #fff; }
+  .b-solid-purple { background: var(--ape-purple); color: #fff; }
+  .chip {
+    padding: 8px 14px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 500;
+    border: 1.5px solid var(--border-default);
+    background: #fff;
+    color: var(--fg-1);
+    cursor: pointer;
+  }
+  .chip.active { background: var(--neutral-800); color: #fff; border-color: var(--neutral-800); }
+  .dot { width: 6px; height: 6px; border-radius: 50%; }
+</style></head>
+<body><div class="card">
+  <div>
+    <div class="label" style="margin-bottom:8px;">Status badges</div>
+    <div class="row">
+      <span class="badge b-success"><span class="dot" style="background:var(--success)"></span>Disponível</span>
+      <span class="badge b-warning"><span class="dot" style="background:var(--warning)"></span>Reservado</span>
+      <span class="badge b-danger"><span class="dot" style="background:var(--danger)"></span>Alugado</span>
+      <span class="badge b-solid-orange">Novo</span>
+      <span class="badge b-solid-purple">Selecionado</span>
+    </div>
+  </div>
+  <div>
+    <div class="label" style="margin-bottom:8px;">Feature tags</div>
+    <div class="row">
+      <span class="badge b-orange">Mobiliado</span>
+      <span class="badge b-purple">Decorado</span>
+      <span class="badge b-neutral">Pet friendly</span>
+      <span class="badge b-neutral">Próx. metrô</span>
+      <span class="badge b-neutral">Vaga coberta</span>
+      <span class="badge b-neutral">Pronto p/ morar</span>
+    </div>
+  </div>
+  <div>
+    <div class="label" style="margin-bottom:8px;">Filter chips</div>
+    <div class="row">
+      <span class="chip active">Todos</span>
+      <span class="chip">1 dorm</span>
+      <span class="chip">2 dorms</span>
+      <span class="chip">3+ dorms</span>
+      <span class="chip">Até R$ 4k</span>
+      <span class="chip">Mobiliado</span>
+    </div>
+  </div>
+</div></body></html>
