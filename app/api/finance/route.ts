@@ -131,6 +131,23 @@ export async function PATCH(request: Request) {
       proprietario_nome: clean(body.proprietarioNome, 200) || null,
       corretor_id: Number.isSafeInteger(corretorPrincipal) && corretorPrincipal > 0 ? corretorPrincipal : null,
       documentos,
+      /* CARIMBO DA CONCLUSÃO (ago/2026).
+
+         VGV, comissões calculadas e "meus ganhos" contam apenas venda com
+         `data_conclusao` preenchida. Quem preenche normalmente é o gatilho
+         `trg_sync_venda_conclusao`, que dispara quando o processo chega na
+         etapa "Venda registrada" da Esteira.
+
+         Venda lançada aqui não cria processo nenhum — então nunca havia quem
+         carimbasse. O usuário escolhia "concluído" ou "pago" no formulário, a
+         venda entrava no banco, e o VGV não se mexia. Silencioso: nenhum erro,
+         só um número que não sobe.
+
+         A data é a da VENDA, não a de hoje. Venda de julho lançada em agosto
+         tem que contar no VGV de julho, senão o fechamento do mês fica errado.
+         É também o que o histórico já faz: em todas as vendas importadas,
+         data_conclusao == data_venda. */
+      data_conclusao: status === "concluido" || status === "pago" ? dataVenda : null,
     };
     const { data: created, error: saleError } = await auth.supabase.from("vendas").insert(saleInsert as never).select("id").single();
     if (saleError || !created) return Response.json({ error: saleError?.message || "Não foi possível criar a venda." }, { status: 502 });
@@ -306,7 +323,25 @@ export async function PATCH(request: Request) {
     if (!saleId || !['pendente', 'concluido', 'pago', 'distrato'].includes(status) || !Number.isFinite(percent) || percent < 0 || percent > 100) return Response.json({ error: "Dados da venda inválidos." }, { status: 422 });
     const denied = guard([["vendas", "editar"], ["financeiro", "editar"]], "Você não tem permissão para editar vendas.");
     if (denied) return denied;
-    const { error } = await auth.supabase.from("vendas").update({ status: status as "pendente" | "concluido" | "pago" | "distrato", percentual_comissao: percent / 100, forma_pgto: clean(body.payment, 100) || null, obs: clean(body.notes, 1000) || null }).eq("id", saleId);
+    /* Mesmo buraco do createSale: mudar o status para concluído/pago não
+       carimbava a conclusão, então a venda continuava fora do VGV. Aqui o
+       carimbo usa a data da venda, pelo mesmo motivo — o resultado pertence ao
+       mês em que a venda aconteceu.
+
+       Só carimba se ainda estiver vazio: venda que passou pela Esteira já tem
+       a data oficial do gatilho, e sobrescrever mudaria o mês de um resultado
+       já fechado. */
+    const patchVenda: Record<string, unknown> = {
+      status: status as "pendente" | "concluido" | "pago" | "distrato",
+      percentual_comissao: percent / 100,
+      forma_pgto: clean(body.payment, 100) || null,
+      obs: clean(body.notes, 1000) || null,
+    };
+    if (status === "concluido" || status === "pago") {
+      const { data: atual } = await auth.supabase.from("vendas").select("data_venda,data_conclusao").eq("id", saleId).maybeSingle();
+      if (atual && !atual.data_conclusao) patchVenda.data_conclusao = atual.data_venda;
+    }
+    const { error } = await auth.supabase.from("vendas").update(patchVenda as never).eq("id", saleId);
     if (error) return Response.json({ error: error.message }, { status: 502 });
     if (status === "pago") {
       const { error: receiptError } = await auth.supabase.from("recebimentos").update({ status: "recebido", data_recebimento: new Date().toISOString().slice(0, 10) }).eq("venda_id", saleId).neq("status", "recebido");
