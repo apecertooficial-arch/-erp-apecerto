@@ -518,6 +518,66 @@
   }
   .app-bottom-nav > a { position: relative; }
   .abn-badge { top: 6px; right: calc(50% - 22px); }
+
+  /* =====================================================================
+     FUNIL 2.0 MOBILE — INSTANCIA, VISITA, NOTA E DESCARTE
+     Estas classes nasceram no Funil2Mobile.tsx sem folha de estilo: o
+     corretor via campo cru do navegador no meio de uma tela desenhada.
+     Ficam no fim do bloco de proposito: como .f2m-notas e .f2m-descartar
+     entram por cima de .f2m-historico e .f2m-agendar, a ordem e o que
+     garante o ajuste sem inflar seletor.
+     ===================================================================== */
+
+  /* Por qual numero o contato sai. Cada instancia e um WhatsApp diferente, e
+     responder pelo numero errado quebra a conversa do cliente. Fica na linha
+     do responsavel, discreta: e conferencia antes de falar, nao manchete. */
+  .f2m-instancia { font-style: normal; font-weight: 750; color: #8a817a; }
+
+  /* Agendar visita: enquanto fechado, o botao tem peso de item de menu — a
+     acao esperada da tela continua sendo o WhatsApp verde. */
+  .f2m-agendar-abrir { display: block; width: calc(100% - 30px); min-height: 50px; margin: 14px 15px 0; border: 1px solid var(--line); border-radius: 14px; background: #fff; color: var(--ink); font-size: 15px; font-weight: 750; }
+  .f2m-agendar-abrir:active { background: #faf7f4; }
+  .f2m-agendar { display: flex; flex-direction: column; gap: 10px; margin: 14px 15px 0; padding: 16px; border: 1px solid var(--line); border-radius: 17px; background: #fbfaf9; }
+  .f2m-agendar h3 { margin: 0; font-size: 16px; }
+  .f2m-agendar > p { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.4; }
+  .f2m-agendar label { display: flex; flex-direction: column; gap: 5px; color: var(--muted); font-size: 11px; font-weight: 800; letter-spacing: .02em; }
+  .f2m-agendar label small { font-size: 10px; font-weight: 600; }
+  /* 16px no campo evita o zoom automatico do iOS ao focar. */
+  .f2m-agendar select,.f2m-agendar input,.f2m-agendar textarea { width: 100%; min-height: 48px; padding: 11px 12px; border: 1px solid var(--line); border-radius: 12px; background: #fff; color: var(--ink); font-family: inherit; font-size: 16px; font-weight: 500; }
+  .f2m-agendar textarea { min-height: 86px; line-height: 1.4; resize: vertical; }
+  .f2m-agendar .f2m-agendar-check { flex-direction: row; align-items: center; gap: 10px; min-height: 44px; color: var(--ink); font-size: 14px; font-weight: 700; letter-spacing: normal; }
+  .f2m-agendar .f2m-agendar-check input { flex: 0 0 22px; width: 22px; height: 22px; min-height: 0; padding: 0; accent-color: var(--orange); }
+  /* O mesmo aviso de erro aparece dentro de .f2m-historico nas notas: sobe um
+     nivel de seletor para nao ser apagado pelo cinza do historico. */
+  .f2m-root .f2m-agendar-erro { margin: 0; padding: 9px 11px; border: 1px solid #f2b9b5; border-radius: 11px; background: #fff2f0; color: #a92a24; font-size: 12px; line-height: 1.35; }
+  .f2m-agendar-acoes { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .f2m-agendar-nao { min-height: 48px; border: 1px solid var(--line); border-radius: 13px; background: #fff; color: var(--muted); font-size: 14px; font-weight: 750; }
+  .f2m-agendar-ok { width: 100%; min-height: 48px; border: 0; border-radius: 13px; background: var(--f2m-green); color: #fff; font-size: 14px; font-weight: 850; box-shadow: 0 7px 17px rgba(22, 138, 77, .18); }
+  .f2m-agendar-ok:disabled,.f2m-agendar-nao:disabled { opacity: .5; box-shadow: none; }
+
+  /* Notas do atendimento. A nota E o conteudo, nao legenda: sai dos 10px do
+     historico, quebra em varias linhas e preserva os paragrafos que o corretor
+     digitou. Ponto laranja (gente escreveu) separa do roxo do sistema. */
+  .f2m-notas { display: flex; flex-direction: column; }
+  .f2m-notas article > i { background: #d65300; }
+  .f2m-notas article span { color: #3f3934; font-size: 12px; line-height: 1.4; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .f2m-nota-texto { width: 100%; min-height: 92px; margin-top: 12px; padding: 11px 12px; border: 1px solid var(--line); border-radius: 13px; background: #fff; color: var(--ink); font-family: inherit; font-size: 16px; line-height: 1.4; resize: vertical; }
+  .f2m-nota-texto::placeholder { color: #9c948d; }
+  .f2m-nota-texto:focus { border-color: #ffb887; outline: 2px solid #ffe0c9; outline-offset: -1px; }
+  .f2m-notas .f2m-agendar-ok { margin-top: 10px; }
+
+  /* Descarte. O lead sai da carteira, nao do banco — por isso o botao avisa a
+     cor do risco sem gritar, e a confirmacao troca o verde por vermelho: quem
+     chega ate ali precisa ver que aquele toque nao e "salvar". */
+  .f2m-descartar-abrir { display: block; width: calc(100% - 30px); min-height: 48px; margin: 10px 15px 0; border: 1px solid #f2c9c6; border-radius: 14px; background: #fff6f5; color: #a92a24; font-size: 14px; font-weight: 750; }
+  .f2m-descartar-abrir:active { background: #ffece9; }
+  .f2m-descartar { border-color: #f2c9c6; background: #fff8f7; }
+  .f2m-descartar h3 { color: #a92a24; }
+  .f2m-descartar .f2m-agendar-ok { background: #c32824; box-shadow: 0 7px 17px rgba(195, 40, 36, .2); }
+
+  /* Lead novo e a unica aba que vale interromper o dia: cor de aviso enquanto
+     nao esta selecionada; selecionada, segue o preto das demais. */
+  .f2m-filtros button.f2m-chip-novo:not(.ativo) { border-color: #ffd6bd; background: #fff1e7; color: #b84300; }
 }
 
 /* =====================================================================
