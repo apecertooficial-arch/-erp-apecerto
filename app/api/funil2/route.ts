@@ -247,6 +247,7 @@ const RECUSAS: Record<string, string> = {
   motivo_invalido: "Motivo de descarte desconhecido.",
   texto_vazio: "Escreva a nota antes de salvar.",
   texto_muito_longo: "A nota passou de 2000 caracteres.",
+  versao_conflito: "O lead acabou de mudar. Tente salvar novamente.",
 };
 
 export async function PATCH(request: Request) {
@@ -289,12 +290,33 @@ export async function PATCH(request: Request) {
     return Response.json({ error: "Ação desconhecida." }, { status: 400 });
   }
 
-  const { data, error } = await db.rpc(rpc, args);
+  let { data, error } = await db.rpc(rpc, args);
   if (error) return Response.json({ error: error.message }, { status: 502 });
-  const resultado = (data ?? {}) as { ok?: boolean; erro?: string };
+  let resultado = (data ?? {}) as { ok?: boolean; erro?: string };
+
+  /* A Sara reavalia o lead em segundo plano e sobe a versão. Quando isso
+     acontece entre o corretor abrir a ficha e salvar, a versão que a tela
+     mandou fica para trás e a RPC recusa com "versao_conflito", obrigando o
+     corretor a recarregar a página. Em vez disso, relemos a versão atual do
+     lead (o corretor já pode vê-lo por RLS) e reexecutamos a ação UMA vez com
+     a versão correta — a observação/momento é gravada sem refresh manual.
+     Retry único: se conflitar de novo, é disputa real e a recusa segue. */
+  if (resultado.ok === false && resultado.erro === "versao_conflito") {
+    const { data: atual } = await db.from("f2_lead").select("versao").eq("id", id).maybeSingle();
+    const versaoAtual = (atual as { versao?: number } | null)?.versao;
+    if (typeof versaoAtual === "number" && versaoAtual !== versao) {
+      args = { ...args, p_versao: versaoAtual };
+      ({ data, error } = await db.rpc(rpc, args));
+      if (error) return Response.json({ error: error.message }, { status: 502 });
+      resultado = (data ?? {}) as { ok?: boolean; erro?: string };
+    }
+  }
+
   if (resultado.ok === false) {
     const chave = String(resultado.erro ?? "");
-    return Response.json({ error: RECUSAS[chave] || resultado.erro || "Ação não permitida." }, { status: 409 });
+    // Devolve também o código cru (erro) para a tela poder reagir a conflitos
+    // de versão sem depender do texto traduzido.
+    return Response.json({ error: RECUSAS[chave] || resultado.erro || "Ação não permitida.", erro: chave }, { status: 409 });
   }
   return Response.json({ ok: true, resultado });
 }
