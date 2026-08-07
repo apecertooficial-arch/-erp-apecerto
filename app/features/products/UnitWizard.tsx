@@ -19,6 +19,12 @@ function safeFileName(name: string) {
   return name.replace(/[^\w.\-]+/g, "_");
 }
 
+/* Fotos e vídeos vão para a mesma galeria da unidade; o tipo sai do arquivo
+   para o registro em `midias` bater com o player certo depois. */
+function tipoDaMidia(file: File): "foto" | "video" {
+  return (file.type || "").startsWith("video/") ? "video" : "foto";
+}
+
 export function UnitWizard({ accessToken, onClose, onSaved }: UnitWizardProps) {
   const [buildings, setBuildings] = useState<Building[]>([]);
   const [empreendimentoId, setEmpreendimentoId] = useState("");
@@ -110,7 +116,7 @@ export function UnitWizard({ accessToken, onClose, onSaved }: UnitWizardProps) {
         const { error: uploadError } = await supabase.storage.from("empreendimentos").upload(storagePath, file, { contentType: file.type, upsert: false });
         if (uploadError) throw new Error(`Falha ao enviar ${file.name}: ${uploadError.message}`);
         const { error: mediaError } = await supabase.from("midias").insert({
-          empreendimento_id: empreendimentoId, unidade_id: created.unidadeId, tipo: "foto",
+          empreendimento_id: empreendimentoId, unidade_id: created.unidadeId, tipo: tipoDaMidia(file),
           storage_path: storagePath, nome: file.name, categoria: "unidade", is_capa: false,
         } as never);
         if (mediaError) {
@@ -175,15 +181,15 @@ export function UnitWizard({ accessToken, onClose, onSaved }: UnitWizardProps) {
           </div>
 
           <div className="form-section">
-            <h3>Fotos da unidade</h3>
+            <h3>Fotos e vídeos da unidade</h3>
             <div className="uw-photos">
-              <label className="upload-button">＋ Adicionar fotos<input type="file" accept="image/*" multiple onChange={(event) => { addPhotos(event.target.files); event.currentTarget.value = ""; }} /></label>
-              <strong className={photos.length ? "ok" : ""}>{photos.length} foto{photos.length === 1 ? "" : "s"} selecionada{photos.length === 1 ? "" : "s"}</strong>
+              <label className="upload-button">＋ Adicionar fotos ou vídeos<input type="file" accept="image/*,video/*" multiple onChange={(event) => { addPhotos(event.target.files); event.currentTarget.value = ""; }} /></label>
+              <strong className={photos.length ? "ok" : ""}>{photos.length} mídia{photos.length === 1 ? "" : "s"} selecionada{photos.length === 1 ? "" : "s"}</strong>
             </div>
             {photos.length > 0 && <div className="uw-photo-list">{photos.map((file, index) => <div className="uw-photo-row" key={`${file.name}-${index}`}><span className="uw-photo-name" title={file.name}>{file.name}</span><small>{(file.size / 1024 / 1024).toFixed(1)} MB</small><button type="button" aria-label={`Remover ${file.name}`} onClick={() => removePhoto(index)}>×</button></div>)}</div>}
           </div>
 
-          {saving && photos.length > 0 && <div className="upload-progress"><span style={{ width: `${uploadProgress}%` }} /><strong>Enviando fotos · {uploadProgress}%</strong></div>}
+          {saving && photos.length > 0 && <div className="upload-progress"><span style={{ width: `${uploadProgress}%` }} /><strong>Enviando mídias · {uploadProgress}%</strong></div>}
           {message && <div className={message.includes("aprovação") ? "form-message success" : "form-message"} role="alert">{message}</div>}
         </div>
 
