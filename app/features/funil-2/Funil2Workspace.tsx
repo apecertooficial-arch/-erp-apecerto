@@ -329,7 +329,7 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
         </div>
       </main>}
 
-      {!carregando && aba === "leads" && <TodosLeads leads={leads} momentos={momentosAtivos} etapas={etapasAtivas} onAbrir={(id) => setSelecionado(id)} onPescar={() => setModal("pescar")} />}
+      {!carregando && aba === "leads" && <TodosLeads leads={leads} momentos={momentosAtivos} etapas={etapasAtivas} accessToken={accessToken} busy={busy} onAbrir={(id) => setSelecionado(id)} onPescar={() => setModal("pescar")} onTrazer={(leadId, etapa, momento) => executar("trazerLeadAntigo", { leadId, etapa, momento })} />}
       {!carregando && aba === "visitas" && <PipeVisitas visitas={visitas} leads={leads} busy={busy} onNova={() => setModal("visita")} onSalvar={(visita) => void executar("salvarVisita", visita)} />}
       {/* Só a esteira. O CRM antigo inteiro (cabeçalho, barra de visões, filtros
           e funil) não entra aqui — o Funil 2.0 já é a navegação da operação. */}
@@ -421,12 +421,28 @@ function CentralAtencao({ leads, momentos, etapas, onAbrir, onMeuDia }: {
   </div>;
 }
 
-function TodosLeads({ leads, momentos, etapas, onAbrir, onPescar }: { leads: LeadFunil2[]; momentos: MomentoFunil2[]; etapas: EtapaConfigFunil2[]; onAbrir: (id: string) => void; onPescar: () => void }) {
+/* Um lead da carteira antiga: já foi trabalhado (tem dono) mas nunca virou
+   card no Funil 2.0. Vem do endpoint /api/funil2/carteira, não do payload
+   principal — são 1.515 e ninguém quer carregá-los a cada abertura de tela. */
+type LeadCarteiraAntiga = {
+  lead_id: number; negocio_id: number | null; nome: string | null; telefone: string | null;
+  corretor_id: number | null; corretor_nome: string | null;
+  criado_em: string; ultima_mensagem_em: string | null; mensagens: number;
+};
+
+function TodosLeads({ leads, momentos, etapas, accessToken, busy, onAbrir, onPescar, onTrazer }: { leads: LeadFunil2[]; momentos: MomentoFunil2[]; etapas: EtapaConfigFunil2[]; accessToken: string; busy: boolean; onAbrir: (id: string) => void; onPescar: () => void; onTrazer: (leadId: number, etapa: string, momento: string) => Promise<boolean> }) {
   const [filtro, setFiltro] = useState("todos");
   const [situacao, setSituacao] = useState("todas");
   const [busca, setBusca] = useState("");
   const [pagina, setPagina] = useState(1);
   const porPagina = 50;
+  /* A carteira antiga entra no MESMO campo de busca, numa seção própria abaixo
+     dos cards. O corretor não deveria precisar saber em qual base o cliente
+     mora para conseguir achá-lo — mas precisa ver que aquele resultado ainda
+     não está no funil, senão vai procurar a ação dele e não encontrar. */
+  const [carteira, setCarteira] = useState<LeadCarteiraAntiga[]>([]);
+  const [buscandoCarteira, setBuscandoCarteira] = useState(false);
+  const [alvo, setAlvo] = useState<LeadCarteiraAntiga | null>(null);
   const atrasados = leads.filter((lead) => situacaoPrazo(lead.proxima_acao_em).classe === "atrasado").length;
   const termo = busca.trim().toLocaleLowerCase("pt-BR");
   const filtrados = leads.filter((lead) => {
@@ -442,13 +458,86 @@ function TodosLeads({ leads, momentos, etapas, onAbrir, onPescar }: { leads: Lea
   const totalPaginas = Math.max(1, Math.ceil(filtrados.length / porPagina));
   const paginaSegura = Math.min(pagina, totalPaginas);
   const exibidos = filtrados.slice((paginaSegura - 1) * porPagina, paginaSegura * porPagina);
+
+  /* Espera 350ms depois da última tecla antes de ir ao banco: sem isso cada
+     letra digitada vira uma consulta, e "Maria" custaria cinco.
+
+     Todo setState acontece dentro do timer, nenhum no corpo do efeito: assim
+     não há render em cascata a cada tecla. A limpeza cancela o timer e marca
+     `vivo=false`, então resposta de busca antiga não sobrescreve a nova. */
+  useEffect(() => {
+    let vivo = true;
+    const termoBusca = busca.trim();
+    const t = window.setTimeout(() => {
+      if (!vivo) return;
+      if (termoBusca.length < 3) { setCarteira([]); setBuscandoCarteira(false); return; }
+      setBuscandoCarteira(true);
+      void fetch(`/api/funil2/carteira?q=${encodeURIComponent(termoBusca)}`, { headers: { Authorization: `Bearer ${accessToken}` } })
+        .then((r) => r.json() as Promise<{ leads?: LeadCarteiraAntiga[] }>)
+        .then((json) => { if (vivo) setCarteira(json.leads ?? []); })
+        /* Falha aqui não pode derrubar a tela: a lista do 2.0 continua
+           funcionando, só a seção da carteira antiga fica vazia. */
+        .catch(() => { if (vivo) setCarteira([]); })
+        .finally(() => { if (vivo) setBuscandoCarteira(false); });
+    }, 350);
+    return () => { vivo = false; window.clearTimeout(t); };
+  }, [busca, accessToken]);
   return <main className="f2-pagina"><CabecalhoPagina titulo="Todos os Leads" texto="A mesma leitura operacional do Funil 2.0: cliente, etapa, momento, ação e prazo — sem informações soltas." acao="Pescar um lead" onAcao={onPescar} />
     <div className="f2-leads-busca"><label><span>Buscar lead</span><input value={busca} onChange={(event) => { setBusca(event.target.value); setPagina(1); }} placeholder="Nome ou telefone" aria-label="Buscar lead por nome ou telefone" /></label><label><span>Situação do prazo</span><select value={situacao} onChange={(event) => { setSituacao(event.target.value); setPagina(1); }}><option value="todas">Todos os prazos</option><option value="atrasado">Atrasados</option><option value="urgente">Vencem em até 2h</option><option value="no-prazo">No prazo</option></select></label><b>{filtrados.length} encontrado(s)</b></div>
     <div className="f2-leads-filtros"><button type="button" className={filtro === "todos" ? "ativo" : ""} onClick={() => { setFiltro("todos"); setPagina(1); }}>Todos · {leads.length}</button>{etapas.map((etapa) => <button type="button" className={filtro === etapa.codigo ? "ativo" : ""} onClick={() => { setFiltro(etapa.codigo); setPagina(1); }} key={etapa.codigo}>{etapa.rotulo} · {leads.filter((lead) => lead.etapa === etapa.codigo).length}</button>)}<span>{atrasados} atrasado(s)</span></div>
     <div className="f2-tabela-cab"><span>Cliente</span><span>Etapa</span><span>Momento</span><span>Próxima ação</span><span>Prazo</span><span></span></div>
     <div className="f2-tabela f2-tabela-compacta">{exibidos.map((lead) => { const prazo = prazoDaAcao(lead); const whatsapp = linkWhatsapp(lead.telefone); return <article key={lead.id} className={`f2-lead-linha prazo-${prazo.classe}`}><div className="f2-nome"><i>{iniciais(lead.nome)}</i><span><b>{lead.nome}</b><small>{lead.corretor_nome ?? "Responsável não definido"}{lead.instancia_rotulo ? <em className="f2-instancia" title={`Contato saindo por ${lead.instancia_rotulo}`}> · {lead.instancia_rotulo}</em> : null}</small></span></div><span className="f2-lead-chip etapa"><i />{etapas.find((e) => e.codigo === lead.etapa)?.rotulo}</span><span className="f2-lead-chip momento">{momentos.find((m) => m.codigo === lead.momento_codigo)?.rotulo}</span><strong className="f2-lead-acao">{acaoVisivel(lead)}</strong><em className={prazo.classe}>{prazo.rotulo}</em><div className="f2-lead-acoes"><button type="button" onClick={() => onAbrir(lead.id)}>💬 Chat</button>{whatsapp && <a href={whatsapp} target="_blank" rel="noreferrer">WhatsApp</a>}<button type="button" className="primario" onClick={() => onAbrir(lead.id)}>Abrir</button></div></article>; })}{filtrados.length === 0 && <div className="f2-sem-resultado"><b>Nenhum lead encontrado.</b><span>Revise a busca ou os filtros selecionados.</span></div>}</div>
     {filtrados.length > porPagina && <div className="f2-paginacao"><button type="button" disabled={paginaSegura === 1} onClick={() => setPagina((atual) => Math.max(1, atual - 1))}>← Anterior</button><span>Página {paginaSegura} de {totalPaginas}</span><button type="button" disabled={paginaSegura === totalPaginas} onClick={() => setPagina((atual) => Math.min(totalPaginas, atual + 1))}>Próxima →</button></div>}
+
+    {/* Carteira antiga: mesma busca, seção separada. Só aparece quando há algo
+        a mostrar — seção vazia permanente vira ruído que ninguém mais lê. */}
+    {busca.trim().length >= 3 && (buscandoCarteira || carteira.length > 0) && <section className="f2-carteira-antiga">
+      <header>
+        <div><span className="f2-eyebrow">DA SUA CARTEIRA ANTIGA</span><h3>Fora do Funil 2.0</h3><p>Clientes que você já trabalhou e que nunca viraram card aqui. Traga para o funil quando voltar a atender.</p></div>
+        <b>{buscandoCarteira ? "buscando…" : `${carteira.length} encontrado(s)`}</b>
+      </header>
+      {carteira.map((item) => <article key={item.lead_id} className="f2-carteira-linha">
+        <div className="f2-nome"><i>{iniciais(item.nome ?? "?")}</i><span><b>{item.nome ?? "Sem nome"}</b><small>{item.corretor_nome ?? "Sem responsável"}{item.telefone ? ` · ${item.telefone}` : ""}</small></span></div>
+        <span className="f2-carteira-hist">{item.mensagens > 0 ? `${item.mensagens} mensagem(ns) · último contato ${dataCurta(item.ultima_mensagem_em ?? item.criado_em)}` : "Sem conversa registrada"}</span>
+        <div className="f2-lead-acoes">
+          {linkWhatsapp(item.telefone) && <a href={linkWhatsapp(item.telefone)!} target="_blank" rel="noreferrer">WhatsApp</a>}
+          <button type="button" className="primario" onClick={() => setAlvo(item)}>Trazer para o funil</button>
+        </div>
+      </article>)}
+      {!buscandoCarteira && carteira.length === 0 && <div className="f2-sem-resultado"><b>Nada na carteira antiga.</b><span>Nenhum cliente seu fora do Funil 2.0 bate com essa busca.</span></div>}
+    </section>}
+
+    {alvo && <ModalTrazerLeadAntigo alvo={alvo} etapas={etapas} momentos={momentos} busy={busy} onFechar={() => setAlvo(null)} onConfirmar={async (etapa, momento) => { const ok = await onTrazer(alvo.lead_id, etapa, momento); if (ok) setAlvo(null); }} />}
   </main>;
+}
+
+/* Escolher etapa e momento na hora de trazer, e não cair sempre num padrão.
+   Cliente que volta pode estar em qualquer ponto da conversa — quem sabe onde
+   ele parou é o corretor que atendeu, não o sistema.
+
+   A etapa "Lead novo" fica fora de propósito: seu único momento é a primeira
+   abordagem, e cliente que já conversou não está em primeira abordagem. Deixar
+   entrar assim faria o Meu Dia cobrar um contato que já aconteceu. A trava
+   também existe no banco — aqui ela só evita oferecer o que vai ser recusado. */
+function ModalTrazerLeadAntigo({ alvo, etapas, momentos, busy, onFechar, onConfirmar }: { alvo: LeadCarteiraAntiga; etapas: EtapaConfigFunil2[]; momentos: MomentoFunil2[]; busy: boolean; onFechar: () => void; onConfirmar: (etapa: string, momento: string) => void }) {
+  const etapasPermitidas = etapas.filter((e) => e.codigo !== "novo");
+  const [etapa, setEtapa] = useState(etapasPermitidas[0]?.codigo ?? "");
+  const momentosDaEtapa = momentos.filter((m) => m.etapa === etapa && m.codigo !== "PRIMEIRA_ABORDAGEM");
+  const [momento, setMomento] = useState(momentosDaEtapa[0]?.codigo ?? "");
+  /* Trocar de etapa invalida o momento escolhido: cada etapa tem os seus. */
+  const trocarEtapa = (codigo: string) => {
+    setEtapa(codigo);
+    const primeiro = momentos.find((m) => m.etapa === codigo && m.codigo !== "PRIMEIRA_ABORDAGEM");
+    setMomento(primeiro?.codigo ?? "");
+  };
+  return <Modal titulo="Trazer para o Funil 2.0" texto={`${alvo.nome ?? "Este cliente"} volta a aparecer no seu funil na etapa que você escolher. O histórico completo da conversa fica visível na ficha.`} onFechar={onFechar}>
+    <div className="f2-form-grid">
+      <label>Etapa<select value={etapa} onChange={(event) => trocarEtapa(event.target.value)}>{etapasPermitidas.map((e) => <option value={e.codigo} key={e.codigo}>{e.rotulo}</option>)}</select></label>
+      <label>Momento<select value={momento} onChange={(event) => setMomento(event.target.value)}>{momentosDaEtapa.map((m) => <option value={m.codigo} key={m.codigo}>{m.rotulo}</option>)}</select></label>
+    </div>
+    <p className="f2-nota-modal">“Lead novo” não aparece aqui: quem já conversou com você não está em primeira abordagem.</p>
+    <button type="button" className="f2-modal-confirmar" disabled={busy || !etapa || !momento} onClick={() => onConfirmar(etapa, momento)}>{busy ? "Trazendo…" : "Trazer para o funil"}</button>
+  </Modal>;
 }
 
 function PipeVisitas({ visitas, leads, busy, onNova, onSalvar }: { visitas: VisitaFunil2[]; leads: LeadFunil2[]; busy: boolean; onNova: () => void; onSalvar: (v: Record<string, unknown>) => void }) {

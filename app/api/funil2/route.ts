@@ -214,6 +214,17 @@ export async function POST(request: Request) {
   } else if (action === "pescar") {
     rpc = "f2_pescar_negocio";
     args = { p_negocio_id: Number(body.negocioId), p_substituir_id: null };
+  } else if (action === "trazerLeadAntigo") {
+    /* Traz UM lead da carteira antiga para o funil, na etapa e no momento que
+       o corretor escolheu. A trava de "Lead novo / Primeira abordagem" mora na
+       função SQL, não aqui: regra de negócio perto do dado é regra que uma
+       segunda porta não consegue burlar. */
+    rpc = "f2_trazer_lead_antigo";
+    args = {
+      p_lead_id: Number(body.leadId),
+      p_etapa: String(body.etapa ?? "").slice(0, 40),
+      p_momento: String(body.momento ?? "").slice(0, 50),
+    };
   } else if (action === "configurarOperacao") {
     rpc = "f2_configurar_operacao";
     args = {
