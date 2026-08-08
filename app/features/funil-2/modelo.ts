@@ -4,7 +4,7 @@
    deixar mentir. */
 export const ETAPAS_FUNIL2 = [
   { codigo: "novo", rotulo: "Lead novo", ajuda: "Chegou agora; primeira abordagem em até 5 minutos." },
-  { codigo: "pescado", rotulo: "Pescado", ajuda: "Puxado do Aquário; uma tentativa de contato e o corretor decide." },
+  { codigo: "pescado", rotulo: "Pescado", ajuda: "Puxado do Aquário; sem prazo e fora do Meu Dia. Uma chamada: se responder, sai sozinho; se não, o corretor atualiza." },
   { codigo: "tentando_contato", rotulo: "Tentando contato", ajuda: "Nunca respondeu; seis tentativas em dias úteis, a última é a despedida." },
   { codigo: "em_atendimento", rotulo: "Em atendimento", ajuda: "Respondeu; qualificar e provocar a visita." },
   { codigo: "visita", rotulo: "Visita", ajuda: "Agendada, realizada ou cancelada." },
@@ -33,6 +33,10 @@ export type MomentoFunil2 = {
   prazo_rotulo: string;
   exige_dapi: boolean;
   ativo?: boolean;
+  /* false = momento sem cobranca: nao entra no Meu Dia, nao conta como atrasado.
+     Quem decide isso e o banco (f2_momento_config.cobra_no_meu_dia); a tela le
+     o efeito pelo prazo sentinela, nunca pela lista de codigos. */
+  cobra_no_meu_dia?: boolean;
 };
 
 /* Produto, unidade, gerente e fim precisam viajar junto: f2_salvar_visita e um
@@ -168,16 +172,15 @@ export const FOLGA_ENTRE_TENTATIVAS = [0, 1, 1, 1, 2, 1] as const;
 export const MOMENTOS_COM_CADENCIA: Record<string, number> = {
   CADENCIA_CONTATO: 6,
   CADENCIA_SEM_RESPOSTA: 3,
-  /* Pescado tem UMA tentativa, nao seis. O lead distribuido acabou de levantar
-     a mao; o do Aquario nunca falou com a imobiliaria. Insistir seis vezes num
-     contato frio queima o numero e ocupa o Meu Dia com o que menos responde.
+  /* Pescado tem UMA tentativa, nao seis -- e nenhuma delas cobra prazo. O lead
+     distribuido acabou de levantar a mao; o do Aquario nunca falou com a
+     imobiliaria. Insistir seis vezes num contato frio queima o numero, e cobrar
+     prazo por ele enche o Meu Dia com o que menos responde.
 
-     Com o total em 1, a mecanica de sempre faz o resto: assim que a tentativa
-     sai, cadencia_passo chega a 1, aguardandoDecisao() vira true e o card passa
-     a mostrar "Decidir: insistir ou descartar" em vez de cobrar prazo. Se o
-     cliente responder antes disso, a Sara move o card para "Em atendimento /
-     Conversando e qualificando" sozinha -- ela reavalia qualquer card com
-     mensagem nova, independente da etapa. */
+     O ciclo: pescou, o card espera em Pescado sem prazo; o corretor chama; se o
+     cliente responder, f2_pescado_promover_respondidos leva o card para "Em
+     atendimento / Conversando e qualificando" sozinho; se nao responder, fica
+     em Pescado ate o corretor atualizar. Nenhuma etapa disso passa pelo Meu Dia. */
   CADENCIA_PESCADO: 1,
 };
 
@@ -201,6 +204,11 @@ export function aguardandoDecisao(lead: Pick<LeadFunil2, "momento_codigo" | "cad
 export function rotuloCadencia(lead: Pick<LeadFunil2, "momento_codigo" | "cadencia_passo">): string | null {
   const total = MOMENTOS_COM_CADENCIA[lead.momento_codigo];
   if (!total) return null;
+  /* No Pescado "Tentativa 1 de 1" nao informa nada, e "Decidir: insistir ou
+     descartar" cobra decisao de quem so esta esperando o cliente responder. */
+  if (lead.momento_codigo === "CADENCIA_PESCADO") {
+    return aguardandoDecisao(lead) ? "Aguardando resposta · atualize quando decidir" : null;
+  }
   if (aguardandoDecisao(lead)) return "Decidir: insistir ou descartar";
   const tentativa = tentativaAtual(lead);
   if (tentativa === null) return null;
@@ -209,6 +217,7 @@ export function rotuloCadencia(lead: Pick<LeadFunil2, "momento_codigo" | "cadenc
 }
 
 export function acaoVisivel(lead: Pick<LeadFunil2, "momento_codigo" | "cadencia_passo" | "acao_rotulo">) {
+  if (lead.momento_codigo === "CADENCIA_PESCADO") return rotuloCadencia(lead) ?? lead.acao_rotulo;
   if (aguardandoDecisao(lead)) return "Decidir: insistir mais ou descartar";
   const cadencia = rotuloCadencia(lead);
   if (cadencia) return `${lead.acao_rotulo} · ${cadencia}`;
@@ -220,17 +229,35 @@ export function prazoDaAcao(lead: Pick<LeadFunil2, "proxima_acao_em" | "momento_
   return { ...situacao, rotulo: `${situacao.rotulo} para ${acaoVisivel(lead).toLowerCase()}` };
 }
 
+/* SEM PRAZO.
+
+   f2_lead.proxima_acao_em e NOT NULL e dezenas de funcoes do banco leem dela,
+   entao "sem prazo" nao virou NULL: virou uma data sentinela que o banco grava
+   por f2_sem_prazo(). Nenhuma comparacao de data trata esse valor como vencido,
+   e checar por ele aqui, num lugar so, mantem TODA a tela coerente -- contador,
+   filtro, badge e Meu Dia -- sem espalhar `momento_codigo === 'X'` pelo codigo.
+
+   Hoje quem usa isso e o Pescado: lead do Aquario e aposta, nao obrigacao. */
+const SEM_PRAZO_A_PARTIR_DE = Date.UTC(2900, 0, 1);
+
+export function semPrazo(data: string) {
+  return new Date(data).getTime() >= SEM_PRAZO_A_PARTIR_DE;
+}
+
 export function entraNoMeuDia(lead: Pick<LeadFunil2, "proxima_acao_em">, agora = Date.now()) {
+  if (semPrazo(lead.proxima_acao_em)) return false;
   return new Date(lead.proxima_acao_em).getTime() <= agora + 2 * 60 * 60 * 1000;
 }
 
 export function venceHoje(lead: Pick<LeadFunil2, "proxima_acao_em">, agora = Date.now()) {
+  if (semPrazo(lead.proxima_acao_em)) return false;
   const limite = new Date(agora);
   limite.setHours(23, 59, 59, 999);
   return new Date(lead.proxima_acao_em).getTime() <= limite.getTime();
 }
 
 export function situacaoPrazo(data: string, agora = Date.now()) {
+  if (semPrazo(data)) return { classe: "sem-prazo", rotulo: "Sem prazo" };
   const minutos = Math.round((new Date(data).getTime() - agora) / 60000);
   if (minutos < 0) return { classe: "atrasado", rotulo: `Atrasado há ${duracao(-minutos)}` };
   if (minutos <= 120) return { classe: "urgente", rotulo: `Vence em ${duracao(minutos)}` };
