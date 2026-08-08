@@ -1,0 +1,32 @@
+/* PESCADO: O CARD QUE NÃO COBRA (ago/2026)
+
+   O lead pescado do Aquário não tem prazo — ele não entra no Meu Dia, não conta
+   como atrasado e não vira urgência. Na tela isso aparece como a classe
+   `sem-prazo`, devolvida por situacaoPrazo() quando a próxima ação está na data
+   sentinela que o banco grava (f2_sem_prazo).
+
+   Sem estas regras a classe existiria sem estilo e o badge herdaria o visual de
+   "no prazo" — verde, como se houvesse um relógio correndo. Cinza é a leitura
+   correta: não há nada vencendo aqui.
+
+   FUNIL2_CSS é injetado como <style> dentro do corpo da página, então regras
+   `.f2-*` em folha externa precisam do prefixo `body` para vencer. */
+
+body .f2-lead-linha em.sem-prazo,
+body .f2-dia-item em.sem-prazo,
+body em.sem-prazo,
+.f2m-tempo.sem-prazo {
+  color: #64748b;
+  background: #f1f5f9;
+  border-color: #e2e8f0;
+}
+
+body .f2-lead-linha.prazo-sem-prazo {
+  border-left-color: #cbd5e1;
+}
+
+/* A coluna Pescado é espera, não fila de trabalho: sem o traço de urgência que
+   as outras colunas usam para chamar atenção. */
+body .f2-coluna[data-etapa="pescado"] .f2-coluna-cab {
+  border-bottom-color: #e2e8f0;
+}
