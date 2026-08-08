@@ -1,5 +1,10 @@
+/* Espelho em código das etapas que vivem em f2_etapa_config. Hoje nada lê esta
+   constante — a tela usa sempre a configuração do banco. Fica aqui como
+   documentação do funil; se um dia deixar de refletir o banco, apague em vez de
+   deixar mentir. */
 export const ETAPAS_FUNIL2 = [
   { codigo: "novo", rotulo: "Lead novo", ajuda: "Chegou agora; primeira abordagem em até 5 minutos." },
+  { codigo: "pescado", rotulo: "Pescado", ajuda: "Puxado do Aquário; uma tentativa de contato e o corretor decide." },
   { codigo: "tentando_contato", rotulo: "Tentando contato", ajuda: "Nunca respondeu; seis tentativas em dias úteis, a última é a despedida." },
   { codigo: "em_atendimento", rotulo: "Em atendimento", ajuda: "Respondeu; qualificar e provocar a visita." },
   { codigo: "visita", rotulo: "Visita", ajuda: "Agendada, realizada ou cancelada." },
@@ -163,6 +168,17 @@ export const FOLGA_ENTRE_TENTATIVAS = [0, 1, 1, 1, 2, 1] as const;
 export const MOMENTOS_COM_CADENCIA: Record<string, number> = {
   CADENCIA_CONTATO: 6,
   CADENCIA_SEM_RESPOSTA: 3,
+  /* Pescado tem UMA tentativa, nao seis. O lead distribuido acabou de levantar
+     a mao; o do Aquario nunca falou com a imobiliaria. Insistir seis vezes num
+     contato frio queima o numero e ocupa o Meu Dia com o que menos responde.
+
+     Com o total em 1, a mecanica de sempre faz o resto: assim que a tentativa
+     sai, cadencia_passo chega a 1, aguardandoDecisao() vira true e o card passa
+     a mostrar "Decidir: insistir ou descartar" em vez de cobrar prazo. Se o
+     cliente responder antes disso, a Sara move o card para "Em atendimento /
+     Conversando e qualificando" sozinha -- ela reavalia qualquer card com
+     mensagem nova, independente da etapa. */
+  CADENCIA_PESCADO: 1,
 };
 
 /* cadencia_passo conta quantas tentativas JA SAIRAM. A que interessa na tela e
