@@ -5,6 +5,7 @@ import { BotaoWhatsApp } from "../crm-nova-era/components/BotaoWhatsApp";
 import { getBrowserSupabaseClient } from "../../lib/supabase/browser";
 import {
   acaoVisivel,
+  esperandoPrimeiraChamada,
   prazoDaAcao,
   situacaoPrazo,
   venceHoje,
@@ -478,7 +479,7 @@ export function Funil2Mobile({
      pior, entao cai no "Agora". No CRM a aba e sempre "todos" (carteira). */
   const [filtroDia, setFiltroDia] = useState<FiltroDia>(() => {
     if (modo === "crm") return "todos";
-    return (dados?.leads ?? []).some((lead) => lead.etapa === "novo") ? "novos" : "agora";
+    return (dados?.leads ?? []).some((lead) => esperandoPrimeiraChamada(lead)) ? "novos" : "agora";
   });
   const [etapa, setEtapa] = useState("todos");
   const [busca, setBusca] = useState("");
@@ -495,7 +496,7 @@ export function Funil2Mobile({
   const contagens = useMemo(() => ({
     agora: leads.filter((lead) => +new Date(lead.proxima_acao_em) <= agora).length,
     hoje: leads.filter((lead) => venceHoje(lead, agora)).length,
-    novos: leads.filter((lead) => lead.etapa === "novo").length,
+    novos: leads.filter((lead) => esperandoPrimeiraChamada(lead)).length,
   }), [agora, leads]);
 
   const visiveis = useMemo(() => {
@@ -503,7 +504,7 @@ export function Funil2Mobile({
     return leads.filter((lead) => {
       const prazo = +new Date(lead.proxima_acao_em);
       const cabeNoDia = filtroDia === "todos"
-        || (filtroDia === "novos" ? lead.etapa === "novo"
+        || (filtroDia === "novos" ? esperandoPrimeiraChamada(lead)
           : filtroDia === "agora" ? prazo <= agora : prazo <= fimHoje);
       const cabeNaEtapa = etapa === "todos" || lead.etapa === etapa;
       const cabeNaBusca = !termo || `${lead.nome} ${lead.telefone ?? ""}`.toLocaleLowerCase("pt-BR").includes(termo);
@@ -539,7 +540,7 @@ export function Funil2Mobile({
     </label>}
 
     <nav className="f2m-filtros" aria-label="Filtrar atendimentos">
-      {modo === "inicio" ? (["novos", "agora", "hoje", "todos"] as const).map((chave) => <button key={chave} type="button" className={`${filtroDia === chave ? "ativo" : ""}${chave === "novos" ? " f2m-chip-novo" : ""}`} onClick={() => setFiltroDia(chave)}>{chave === "agora" ? `Agora · ${contagens.agora}` : chave === "novos" ? `Lead novo · ${contagens.novos}` : chave === "hoje" ? `Hoje · ${contagens.hoje}` : `Todos · ${leads.length}`}</button>) : ETAPAS.map(([chave, rotulo]) => <button key={chave} type="button" className={etapa === chave ? "ativo" : ""} onClick={() => setEtapa(chave)}>{rotulo}</button>)}
+      {modo === "inicio" ? (["novos", "agora", "hoje", "todos"] as const).map((chave) => <button key={chave} type="button" className={`${filtroDia === chave ? "ativo" : ""}${chave === "novos" ? " f2m-chip-novo" : ""}`} onClick={() => setFiltroDia(chave)}>{chave === "agora" ? `Agora · ${contagens.agora}` : chave === "novos" ? `Chamar · ${contagens.novos}` : chave === "hoje" ? `Hoje · ${contagens.hoje}` : `Todos · ${leads.length}`}</button>) : ETAPAS.map(([chave, rotulo]) => <button key={chave} type="button" className={etapa === chave ? "ativo" : ""} onClick={() => setEtapa(chave)}>{rotulo}</button>)}
     </nav>
 
     {erro && <div className="f2m-erro"><strong>{erro}</strong><button type="button" onClick={recarregar}>Tentar novamente</button></div>}
