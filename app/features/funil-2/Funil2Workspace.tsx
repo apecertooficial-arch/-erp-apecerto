@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState, type ReactNode } from "react";
-import { acaoVisivel, dataCurta, duracao, prazoDaAcao, rotuloCadencia, situacaoPrazo, tentativaAtual, venceHoje, type CandidatoAquarioFunil2, type EtapaConfigFunil2, type EventoFunil2, type LeadFunil2, type MomentoFunil2, type NegociacaoFunil2, type NotaFunil2, type OperacaoConfigFunil2, type SaraStatusFunil2, type VisitaFunil2 } from "./modelo";
+import { acaoVisivel, dataCurta, duracao, esperandoPrimeiraChamada, prazoDaAcao, rotuloCadencia, situacaoPrazo, tentativaAtual, venceHoje, type CandidatoAquarioFunil2, type EtapaConfigFunil2, type EventoFunil2, type LeadFunil2, type MomentoFunil2, type NegociacaoFunil2, type NotaFunil2, type OperacaoConfigFunil2, type SaraStatusFunil2, type VisitaFunil2 } from "./modelo";
 import { FUNIL2_CSS } from "./estilos";
 import { SalesProcessView, LeadChatDrawer, type Lead as LeadLegado, type Deal as DealLegado } from "../crm/CrmWorkspace";
 import { getBrowserSupabaseClient } from "../../lib/supabase/browser";
@@ -157,7 +157,7 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
   const atualizados = leads.filter((l) => l.ultima_acao_confirmada_em).length;
   const urgentes = leads.filter((l) => situacaoPrazo(l.proxima_acao_em).classe === "urgente").length;
   const vencemHoje = leads.filter((l) => venceHoje(l)).length;
-  const leadsNovos = leads.filter((l) => l.etapa === "novo").length;
+  const leadsNovos = leads.filter((l) => esperandoPrimeiraChamada(l)).length;
   const visitasDoDia = visitas
     .filter((v) => new Date(v.inicio_em).toDateString() === new Date().toDateString())
     .sort((a, b) => +new Date(a.inicio_em) - +new Date(b.inicio_em));
@@ -177,7 +177,9 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
     atrasadas: { rotulo: "atrasadas", teste: (l: LeadFunil2) => situacaoPrazo(l.proxima_acao_em).classe === "atrasado", vazio: "Nenhuma ação atrasada. É esse o objetivo." },
     urgentes: { rotulo: "que vencem em até 2h", teste: (l: LeadFunil2) => situacaoPrazo(l.proxima_acao_em).classe === "urgente", vazio: "Nada vencendo nas próximas duas horas." },
     hoje: { rotulo: "para fazer hoje", teste: (l: LeadFunil2) => venceHoje(l), vazio: "Nada com prazo para hoje." },
-    novos: { rotulo: "leads novos", teste: (l: LeadFunil2) => l.etapa === "novo", vazio: "Nenhum lead novo esperando você." },
+    /* Inclui o pescado que ainda não foi chamado: a coluna dele continua sendo
+       Pescado, mas o atalho para chamar mora aqui. Ver esperandoPrimeiraChamada. */
+    novos: { rotulo: "leads para chamar", teste: (l: LeadFunil2) => esperandoPrimeiraChamada(l), vazio: "Nenhum lead esperando a primeira chamada." },
     /* Visita não é lead: não tem etapa, momento nem próxima ação. O quadro
        abre a lista das visitas de hoje em vez de filtrar `leads` — por isso o
        teste aqui nunca casa e a lista de visitas é montada em separado. */
@@ -296,7 +298,7 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
             <button type="button" className={`vermelho${filtroDia === "atrasadas" ? " f2-ind-ativo" : ""}`} aria-pressed={filtroDia === "atrasadas"} onClick={() => trocarFiltroDia("atrasadas")}><b>{atrasados}</b><span>ações atrasadas</span></button>
             <button type="button" className={`amarelo${filtroDia === "urgentes" ? " f2-ind-ativo" : ""}`} aria-pressed={filtroDia === "urgentes"} onClick={() => trocarFiltroDia("urgentes")}><b>{urgentes}</b><span>vencem em até 2h</span></button>
             <button type="button" className={`laranja${filtroDia === "hoje" ? " f2-ind-ativo" : ""}`} aria-pressed={filtroDia === "hoje"} onClick={() => trocarFiltroDia("hoje")}><b>{vencemHoje}</b><span>para fazer hoje</span></button>
-            <button type="button" className={`roxo${filtroDia === "novos" ? " f2-ind-ativo" : ""}`} aria-pressed={filtroDia === "novos"} onClick={() => trocarFiltroDia("novos")}><b>{leadsNovos}</b><span>leads novos</span></button>
+            <button type="button" className={`roxo${filtroDia === "novos" ? " f2-ind-ativo" : ""}`} aria-pressed={filtroDia === "novos"} onClick={() => trocarFiltroDia("novos")}><b>{leadsNovos}</b><span>leads para chamar</span></button>
             <button type="button" className={`verde${filtroDia === "visitas" ? " f2-ind-ativo" : ""}`} aria-pressed={filtroDia === "visitas"} onClick={() => trocarFiltroDia("visitas")}><b>{visitasHoje}</b><span>visitas do dia</span></button>
           </div>
           <div className="f2-como"><span><i>1</i><b>Siga a ordem</b><small>O primeiro item é o mais urgente.</small></span><span><i>2</i><b>Execute a ação</b><small>WhatsApp, visita, produto ou retorno.</small></span><span><i>3</i><b>Conclua no CRM</b><small>A Sara relê e prepara o próximo passo.</small></span></div>
@@ -409,10 +411,10 @@ function CentralAtencao({ leads, momentos, etapas, onAbrir, onMeuDia }: {
   const atrasados = ordenados.filter((lead) => situacaoPrazo(lead.proxima_acao_em).classe === "atrasado");
   const urgentes = ordenados.filter((lead) => situacaoPrazo(lead.proxima_acao_em).classe === "urgente");
   const hoje = ordenados.filter((lead) => venceHoje(lead));
-  const novos = ordenados.filter((lead) => lead.etapa === "novo");
+  const novos = ordenados.filter((lead) => esperandoPrimeiraChamada(lead));
   return <div className="f2-avisos-pop">
     <span className="f2-eyebrow">CENTRAL DE ATENÇÃO</span><h3>O que pede ação agora</h3>
-    <div className="f2-avisos-resumo"><article className="vermelho"><b>{atrasados.length}</b><span>atrasadas</span></article><article className="amarelo"><b>{urgentes.length}</b><span>até 2h</span></article><article className="roxo"><b>{novos.length}</b><span>leads novos</span></article><article className="verde"><b>{hoje.length}</b><span>para hoje</span></article></div>
+    <div className="f2-avisos-resumo"><article className="vermelho"><b>{atrasados.length}</b><span>atrasadas</span></article><article className="amarelo"><b>{urgentes.length}</b><span>até 2h</span></article><article className="roxo"><b>{novos.length}</b><span>para chamar</span></article><article className="verde"><b>{hoje.length}</b><span>para hoje</span></article></div>
     <div className="f2-avisos-lista">{ordenados.slice(0, 5).map((lead) => {
       const prazo = prazoDaAcao(lead);
       return <button type="button" key={lead.id} onClick={() => onAbrir(lead.id)}><span><b>{lead.nome}</b><small>{etapas.find((etapa) => etapa.codigo === lead.etapa)?.rotulo} · {momentos.find((momento) => momento.codigo === lead.momento_codigo)?.rotulo}</small></span><em className={prazo.classe}>{acaoVisivel(lead)} · {prazo.rotulo}</em></button>;
