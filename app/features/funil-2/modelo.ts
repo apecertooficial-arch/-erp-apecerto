@@ -249,6 +249,24 @@ export function entraNoMeuDia(lead: Pick<LeadFunil2, "proxima_acao_em">, agora =
   return new Date(lead.proxima_acao_em).getTime() <= agora + 2 * 60 * 60 * 1000;
 }
 
+/* A LISTA "LEAD NOVO" É A DE QUEM AINDA NÃO FOI CHAMADO.
+
+   No pipe o pescado fica na coluna Pescado -- é lá que ele pertence, e é isso
+   que mantém a cadência dele separada. Mas mandar o corretor abrir a coluna
+   para achar quem chamar é atrito à toa: o lugar onde ele já olha primeiro é a
+   lista de "leads novos" do Meu Dia. Então o pescado aparece nela ATÉ a
+   primeira chamada, e some depois -- chamado, não há mais o que fazer até o
+   cliente responder, e aí quem move o card é f2_pescado_promover_respondidos.
+
+   Isto NÃO reabre a cobrança: o pescado continua sem prazo, fora de
+   "atrasadas", "até 2h" e "para hoje". Ele ganha um atalho, não um relógio. */
+export function esperandoPrimeiraChamada(
+  lead: Pick<LeadFunil2, "etapa" | "momento_codigo" | "cadencia_passo">,
+) {
+  if (lead.etapa === "novo") return true;
+  return lead.momento_codigo === "CADENCIA_PESCADO" && (Number(lead.cadencia_passo) || 0) === 0;
+}
+
 export function venceHoje(lead: Pick<LeadFunil2, "proxima_acao_em">, agora = Date.now()) {
   if (semPrazo(lead.proxima_acao_em)) return false;
   const limite = new Date(agora);
