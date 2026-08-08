@@ -164,7 +164,11 @@ test("central de atenção lista obrigações acionáveis e não apenas contador
   assert.match(ui, /function CentralAtencao/);
   assert.match(ui, /f2-avisos-lista/);
   assert.match(ui, /Abrir Meu Dia completo/);
-  assert.match(ui, /leads novos/);
+  /* Era "leads novos". A lista passou a incluir o pescado que ainda não foi
+     chamado — a coluna dele continua sendo Pescado, mas o atalho para chamar
+     mora aqui —, então o rótulo virou "para chamar", que é o que a lista é. */
+  assert.match(ui, /para chamar/);
+  assert.match(ui, /esperandoPrimeiraChamada/);
 });
 
 test("Esteira mantém kanban comercial e adiciona visão gerencial do funil antigo", () => {
