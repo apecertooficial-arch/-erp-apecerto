@@ -30,6 +30,9 @@ import "./styles/aviso-push-dispensar.css";
 /* Os indicadores do Meu Dia viraram botão de filtro; isto zera a aparência de
    botão. Cor e grade continuam em FUNIL2_CSS. */
 import "./styles/meu-dia-filtros.css";
+/* O card do Pescado não tem prazo: o badge precisa ser cinza, não o verde de
+   "no prazo". A regra mora no banco; aqui é só a leitura visual dela. */
+import "./styles/pescado-sem-prazo.css";
 import { RegistroPwa } from "./components/RegistroPwa";
 
 export const metadata: Metadata = {
