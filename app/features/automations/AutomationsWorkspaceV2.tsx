@@ -1,8 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-
-import { FunnelRulesPanel } from "./FunnelRulesPanel";
+import { useEffect, useRef } from "react";
 
 type OriginalAutomationBuilder = {
   mount: (host: HTMLDivElement, context: { authToken: string }) => void;
@@ -45,11 +43,8 @@ function loadOriginalBuilder() {
   });
 }
 
-type Aba = "construtor" | "funil";
-
 export function AutomationsWorkspace({ accessToken }: { accessToken: string }) {
   const hostRef = useRef<HTMLDivElement>(null);
-  const [aba, setAba] = useState<Aba>("construtor");
 
   useEffect(() => {
     let active = true;
@@ -69,34 +64,5 @@ export function AutomationsWorkspace({ accessToken }: { accessToken: string }) {
     };
   }, [accessToken]);
 
-  /* .tabs já existe no globals.css (pill laranja quando ativa) — reaproveitar
-     em vez de criar estilo próprio é o que mantém a cara do ERP igual em
-     todo lugar.
-
-     O construtor legado é JavaScript puro montado num nó que ele mesmo
-     governa. Trocar de aba não pode desmontá-lo: o usuário perderia o fluxo
-     aberto no meio da edição. Por isso ele fica sempre no DOM e só some com
-     `hidden`. */
-  return (
-    <div className="automations-shell">
-      <nav className="tabs" role="tablist" aria-label="Seções de Automações">
-        <button type="button" role="tab" aria-selected={aba === "construtor"}
-          className={aba === "construtor" ? "active" : ""}
-          onClick={() => setAba("construtor")}>
-          Construtor de automações
-        </button>
-        <button type="button" role="tab" aria-selected={aba === "funil"}
-          className={aba === "funil" ? "active" : ""}
-          onClick={() => setAba("funil")}>
-          Regras do funil
-        </button>
-      </nav>
-
-      <div hidden={aba !== "construtor"}>
-        <div className="original-automation-host" ref={hostRef} />
-      </div>
-
-      {aba === "funil" ? <FunnelRulesPanel accessToken={accessToken} /> : null}
-    </div>
-  );
+  return <div className="original-automation-host" ref={hostRef} />;
 }
