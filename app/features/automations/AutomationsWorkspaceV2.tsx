@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+
+import { FunnelRulesPanel } from "./FunnelRulesPanel";
 
 type OriginalAutomationBuilder = {
   mount: (host: HTMLDivElement, context: { authToken: string }) => void;
@@ -43,8 +45,11 @@ function loadOriginalBuilder() {
   });
 }
 
+type Aba = "construtor" | "funil";
+
 export function AutomationsWorkspace({ accessToken }: { accessToken: string }) {
   const hostRef = useRef<HTMLDivElement>(null);
+  const [aba, setAba] = useState<Aba>("construtor");
 
   useEffect(() => {
     let active = true;
@@ -64,5 +69,37 @@ export function AutomationsWorkspace({ accessToken }: { accessToken: string }) {
     };
   }, [accessToken]);
 
-  return <div className="original-automation-host" ref={hostRef} />;
+  /* O construtor legado é JavaScript puro montado num nó que ele mesmo governa.
+     Trocar de aba não pode desmontá-lo: o usuário perderia o fluxo aberto no
+     meio da edição. Por isso ele fica sempre no DOM e só some com `hidden`. */
+  return (
+    <div className="automations-shell">
+      <style>{CSS_ABAS}</style>
+      <nav className="automations-abas" role="tablist" aria-label="Seções de Automações">
+        <button type="button" role="tab" aria-selected={aba === "construtor"}
+          className={`automations-aba ${aba === "construtor" ? "automations-aba-ativa" : ""}`}
+          onClick={() => setAba("construtor")}>
+          Construtor de automações
+        </button>
+        <button type="button" role="tab" aria-selected={aba === "funil"}
+          className={`automations-aba ${aba === "funil" ? "automations-aba-ativa" : ""}`}
+          onClick={() => setAba("funil")}>
+          Regras do funil
+        </button>
+      </nav>
+
+      <div hidden={aba !== "construtor"}>
+        <div className="original-automation-host" ref={hostRef} />
+      </div>
+
+      {aba === "funil" ? <FunnelRulesPanel accessToken={accessToken} /> : null}
+    </div>
+  );
 }
+
+const CSS_ABAS = `
+.automations-abas{display:flex;gap:4px;border-bottom:1px solid #e3e6ec;margin-bottom:12px;flex-wrap:wrap}
+.automations-aba{padding:10px 16px;border:0;background:none;font-size:14px;font-weight:600;color:#6b7280;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px}
+.automations-aba:hover{color:#1f2430}
+.automations-aba-ativa{color:#1f2430;border-bottom-color:#1f2430}
+`;
