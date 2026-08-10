@@ -7,8 +7,14 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
    O motor (funil_tick) já lia tudo da tabela funil_regra, mas mudar uma regra
    exigia SQL. Isso deixava a operação refém de quem tem acesso ao banco e
-   tornava impossível auditar o que estava ligado. Esta tela é a única porta de
-   configuração: cada regra é UM fato do banco -> UMA ação, aplicada na ordem.
+   tornava impossível auditar o que estava ligado.
+
+   A leitura da regra é sempre a mesma em toda a tela — ONDE olha, QUANDO age,
+   ENTÃO faz — e o editor usa exatamente essa ordem, em três passos. Foi a
+   forma de a tela explicar sozinha o que a regra faz, sem manual.
+
+   Todo o visual vive em app/styles/tela-regras-funil.css, sobre os tokens da
+   marca. Aqui não entra cor nem tamanho.
 
    Nada aqui decide permissão: as RPCs recusam sozinhas quem não administra. */
 
@@ -52,7 +58,7 @@ type Previa = { ok: boolean; ativo: boolean; total: number; cards: CardPrevia[] 
 type LinhaSimulacao = { regra?: string; acao?: string; cards?: number; lead?: string; corretor?: string; de?: string; para?: string };
 type Simulacao = { ok: boolean; simulacao: boolean; total: number; por_regra: LinhaSimulacao[]; detalhe?: LinhaSimulacao[]; falhas?: LinhaSimulacao[] };
 
-/* isodow: 1 = segunda ... 7 = domingo. Mesmo padrão usado em funil_regra_candidatos. */
+/* isodow: 1 = segunda ... 7 = domingo. Mesmo padrão de funil_regra_candidatos. */
 const DIAS = [
   { v: 1, t: "Seg" }, { v: 2, t: "Ter" }, { v: 3, t: "Qua" }, { v: 4, t: "Qui" },
   { v: 5, t: "Sex" }, { v: 6, t: "Sáb" }, { v: 7, t: "Dom" },
@@ -72,6 +78,18 @@ function hhmm(valor: string | null | undefined): string {
   return valor ? String(valor).slice(0, 5) : "";
 }
 
+function textoJanela(r: Regra): string {
+  const dias = r.dias_semana ?? [];
+  let quando: string;
+  if (dias.length === 0 || dias.length === 7) quando = "Todos os dias";
+  else if (dias.length === 5 && [1, 2, 3, 4, 5].every((d) => dias.includes(d))) quando = "De segunda a sexta";
+  else quando = DIAS.filter((d) => dias.includes(d.v)).map((d) => d.t).join(", ");
+  const inicio = hhmm(r.janela_inicio);
+  const fim = hhmm(r.janela_fim);
+  if (inicio || fim) return `${quando}, das ${inicio || "00:00"} às ${fim || "23:59"}`;
+  return `${quando}, a qualquer hora`;
+}
+
 export function FunnelRulesPanel({ accessToken }: { accessToken: string }) {
   const [dados, setDados] = useState<Dados | null>(null);
   const [carregando, setCarregando] = useState(true);
@@ -82,9 +100,8 @@ export function FunnelRulesPanel({ accessToken }: { accessToken: string }) {
   const [previa, setPrevia] = useState<{ id: number; dados: Previa } | null>(null);
   const [simulacao, setSimulacao] = useState<Simulacao | null>(null);
 
-  /* Nenhum setState antes do primeiro await: chamar setState de forma síncrona
-     dentro de um efeito dispara render em cascata. O estado "carregando" já
-     nasce true, então a tela não pisca. */
+  /* Nenhum setState antes do primeiro await: setState síncrono dentro de um
+     efeito dispara render em cascata. "carregando" já nasce true. */
   const carregar = useCallback(async () => {
     try {
       const resposta = await fetch("/api/funil-regras", {
@@ -120,26 +137,22 @@ export function FunnelRulesPanel({ accessToken }: { accessToken: string }) {
     return dados?.momentos.find((m) => m.codigo === codigo)?.rotulo ?? codigo;
   }, [dados]);
 
-  /* A frase que o gestor lê antes de decidir. Sem ela, a lista vira um monte de
-     código em caixa alta e ninguém sabe o que está ligado. */
-  const resumo = useCallback((r: Regra) => {
-    const de = r.de_momento?.length
-      ? r.de_momento.map(rotuloMomento).join(", ")
-      : "qualquer momento";
-    const cond = dados?.condicoes.find((c) => c.v === r.condicao)?.t ?? r.condicao;
-    const condTexto = r.condicao === "tentativas_sem_resposta"
-      ? `${r.condicao_valor ?? 3} tentativas sem retorno`
-      : cond.toLowerCase();
-    let acao = dados?.acoes.find((a) => a.v === r.acao)?.t ?? r.acao;
-    if (r.acao === "mover") acao = `mover para ${rotuloMomento(r.para_momento)}`;
+  const textoOnde = useCallback((r: Regra) => (
+    r.de_momento?.length ? r.de_momento.map(rotuloMomento).join(", ") : "Qualquer momento do funil"
+  ), [rotuloMomento]);
+
+  const textoQuando = useCallback((r: Regra) => {
+    if (r.condicao === "tentativas_sem_resposta") return `${r.condicao_valor ?? 3} tentativas sem retorno`;
+    return dados?.condicoes.find((c) => c.v === r.condicao)?.t ?? r.condicao;
+  }, [dados]);
+
+  const textoEntao = useCallback((r: Regra) => {
+    if (r.acao === "mover") return `Mover para ${rotuloMomento(r.para_momento)}`;
     if (r.acao === "enviar_abordagem") {
       const n = r.abordagem_ids?.length ?? 0;
-      acao = `enviar abordagem${n > 1 ? ` (${n} opções em rodízio)` : ""}`;
+      return `Enviar abordagem${n > 1 ? ` (${n} em rodízio)` : ""}`;
     }
-    const janela = r.janela_inicio || r.janela_fim
-      ? ` das ${hhmm(r.janela_inicio) || "00:00"} às ${hhmm(r.janela_fim) || "23:59"}`
-      : "";
-    return `Em ${de}, quando ${condTexto}${janela} → ${acao}.`;
+    return dados?.acoes.find((a) => a.v === r.acao)?.t ?? r.acao;
   }, [dados, rotuloMomento]);
 
   const abordagensDoProduto = useMemo(() => {
@@ -216,7 +229,7 @@ export function FunnelRulesPanel({ accessToken }: { accessToken: string }) {
   }
 
   async function simular(rodarDeVerdade: boolean) {
-    if (rodarDeVerdade && !window.confirm("Rodar o motor agora move cards de verdade. Confirmar?")) return;
+    if (rodarDeVerdade && !window.confirm("Rodar agora move cards de verdade. Confirmar?")) return;
     await comAviso(async () => {
       const resultado = await enviar({ action: rodarDeVerdade ? "rodar" : "simular", lote: 200 });
       setSimulacao(resultado as unknown as Simulacao);
@@ -252,55 +265,66 @@ export function FunnelRulesPanel({ accessToken }: { accessToken: string }) {
     return atual.includes(item) ? atual.filter((x) => x !== item) : [...atual, item];
   }
 
-  if (carregando) return <div className="fr-wrap"><style>{CSS}</style><p className="fr-vazio">Carregando as regras…</p></div>;
+  if (carregando) return <div className="fr-wrap"><p className="fr-vazio">Carregando as regras…</p></div>;
 
   if (erro && !dados) {
     return (
       <div className="fr-wrap">
-        <style>{CSS}</style>
         <div className="fr-erro">{erro}</div>
-        <button type="button" className="fr-btn" onClick={() => { setCarregando(true); void carregar(); }}>Tentar de novo</button>
+        <div><button type="button" className="fr-btn" onClick={() => { setCarregando(true); void carregar(); }}>Tentar de novo</button></div>
       </div>
     );
   }
 
   if (!dados) return null;
 
+  const motorLigado = dados.motor?.ativo === true;
   const condicaoAtual = dados.condicoes.find((c) => c.v === rascunho?.condicao);
   const acaoAtual = dados.acoes.find((a) => a.v === rascunho?.acao);
+  const ligadas = dados.regras.filter((r) => r.ativo).length;
 
   return (
     <div className="fr-wrap">
-      <style>{CSS}</style>
-
-      <header className="fr-cabecalho">
+      <header className="fr-topo">
         <div>
-          <h2 className="fr-titulo">Regras do funil</h2>
-          <p className="fr-legenda">
-            Cada regra é um fato que o banco já sabe → uma ação. O motor percorre as regras ligadas
-            na ordem e aplica. Nenhuma regra usa IA para decidir: a Sara só entra quando a ação for
-            pedir a leitura dela.
+          <h2>Regras do funil</h2>
+          <p>
+            Cada regra é uma frase pronta: <b>onde</b> ela olha, <b>quando</b> ela age e{" "}
+            <b>o que</b> ela faz. O sistema confere de tempos em tempos e aplica as regras
+            ligadas, de cima para baixo. Nenhuma delas adivinha nada — só usa fato que o
+            banco já tem.
           </p>
-        </div>
-        <div className="fr-motor">
-          <span className={`fr-selo ${dados.motor?.ativo ? "fr-selo-on" : "fr-selo-off"}`}>
-            Motor {dados.motor?.ativo ? "ligado" : "desligado"}
-          </span>
-          <button type="button" className="fr-btn" onClick={() => void ligarMotor(!dados.motor?.ativo)}>
-            {dados.motor?.ativo ? "Desligar motor" : "Ligar motor"}
-          </button>
-          <button type="button" className="fr-btn" onClick={() => void simular(false)}>Simular sem mover</button>
-          <button type="button" className="fr-btn fr-btn-perigo" onClick={() => void simular(true)}>Rodar agora</button>
         </div>
       </header>
 
-      {erro ? <div className="fr-erro">{erro}</div> : null}
-      {aviso ? <div className="fr-aviso">{aviso}</div> : null}
+      <section className="fr-motor">
+        <div className="fr-motor-estado">
+          <span className={`fr-farol ${motorLigado ? "fr-farol-on" : "fr-farol-off"}`} />
+          <div>
+            <strong>{motorLigado ? "Motor ligado" : "Motor desligado"}</strong>
+            <small>
+              {motorLigado
+                ? "As regras ligadas estão agindo sozinhas agora."
+                : "Nada acontece sozinho, mesmo com regras ligadas. É o interruptor geral."}
+            </small>
+          </div>
+        </div>
+        <div className="fr-motor-botoes">
+          <button type="button" className="fr-btn" onClick={() => void simular(false)}>Simular sem mover</button>
+          <button type="button" className="fr-btn fr-btn-perigo" onClick={() => void simular(true)}>Rodar agora</button>
+          <button type="button" className={`fr-btn ${motorLigado ? "" : "fr-btn-primario"}`} onClick={() => void ligarMotor(!motorLigado)}>
+            {motorLigado ? "Desligar motor" : "Ligar motor"}
+          </button>
+        </div>
+      </section>
 
-      {!dados.motor?.ativo ? (
+      {erro ? <div className="fr-erro">{erro}</div> : null}
+      {aviso ? <div className="fr-ok">{aviso}</div> : null}
+
+      {!motorLigado ? (
         <div className="fr-nota">
-          Com o motor desligado nenhuma regra age sozinha, mesmo as que estão ligadas.
-          Use “Simular sem mover” para conferir o efeito antes de ligar.
+          Antes de ligar o motor, use <b>Simular sem mover</b>: ele percorre todas as regras
+          ligadas e mostra o que faria, sem tocar em card nenhum.
         </div>
       ) : null}
 
@@ -311,14 +335,14 @@ export function FunnelRulesPanel({ accessToken }: { accessToken: string }) {
             <button type="button" className="fr-link" onClick={() => setSimulacao(null)}>fechar</button>
           </div>
           {simulacao.por_regra?.length ? (
-            <ul className="fr-lista-simples">
+            <ul>
               {simulacao.por_regra.map((linha, i) => (
-                <li key={i}><strong>{linha.regra}</strong> — {linha.acao} — {linha.cards} card(s)</li>
+                <li key={i}><b>{linha.regra}</b> — {linha.cards} card(s)</li>
               ))}
             </ul>
           ) : <p className="fr-vazio">Nenhuma regra ligada pegaria algum card agora.</p>}
           {simulacao.falhas?.length ? (
-            <details className="fr-detalhes">
+            <details>
               <summary>{simulacao.falhas.length} falha(s)</summary>
               <pre className="fr-json">{JSON.stringify(simulacao.falhas, null, 2)}</pre>
             </details>
@@ -326,19 +350,22 @@ export function FunnelRulesPanel({ accessToken }: { accessToken: string }) {
         </section>
       ) : null}
 
-      <div className="fr-acoes-topo">
-        <button type="button" className="fr-btn fr-btn-principal" onClick={() => { setPrevia(null); setRascunho(regraVazia()); }}>
+      <div className="fr-barra">
+        <span className="fr-contagem">{dados.regras.length} regras · {ligadas} ligada(s)</span>
+        <button type="button" className="fr-btn fr-btn-primario" onClick={() => { setPrevia(null); setRascunho(regraVazia()); }}>
           Nova regra
         </button>
-        <span className="fr-contagem">{dados.regras.length} regra(s) — {dados.regras.filter((r) => r.ativo).length} ligada(s)</span>
       </div>
 
       {rascunho ? (
         <section className="fr-editor">
-          <h3 className="fr-editor-titulo">{rascunho.id ? "Editar regra" : "Nova regra"}</h3>
+          <div className="fr-editor-topo">
+            <h3>{rascunho.id ? "Editar regra" : "Nova regra"}</h3>
+            <button type="button" className="fr-link" onClick={() => setRascunho(null)}>cancelar</button>
+          </div>
 
           <div className="fr-linha">
-            <label className="fr-campo fr-campo-largo">
+            <label className="fr-campo">
               <span>Nome da regra</span>
               <input type="text" value={rascunho.nome} maxLength={120}
                 placeholder="Ex.: Cliente respondeu, vai para atendimento"
@@ -355,100 +382,109 @@ export function FunnelRulesPanel({ accessToken }: { accessToken: string }) {
                 onChange={(e) => mexer("lote", Number(e.target.value))} />
             </label>
           </div>
-          <p className="fr-ajuda">A ordem decide quem age primeiro quando duas regras pegam o mesmo card. Menor número = mais cedo.</p>
 
-          <fieldset className="fr-grupo">
-            <legend>Onde a regra olha</legend>
-            <p className="fr-ajuda">Sem nenhum momento marcado, a regra vale para o funil inteiro.</p>
-            <div className="fr-chips">
-              {dados.momentos.map((m) => (
-                <label key={m.codigo} className={`fr-chip ${rascunho.de_momento?.includes(m.codigo) ? "fr-chip-on" : ""}`}>
-                  <input type="checkbox" checked={rascunho.de_momento?.includes(m.codigo) ?? false}
-                    onChange={() => mexer("de_momento", alternarLista(rascunho.de_momento, m.codigo))} />
-                  {m.rotulo}
-                </label>
-              ))}
-            </div>
-          </fieldset>
-
-          <fieldset className="fr-grupo">
-            <legend>Quando ela age</legend>
-            <div className="fr-linha">
-              <label className="fr-campo fr-campo-largo">
-                <span>Condição</span>
-                <select value={rascunho.condicao} onChange={(e) => mexer("condicao", e.target.value)}>
-                  {dados.condicoes.map((c) => <option key={c.v} value={c.v}>{c.t}</option>)}
-                </select>
-              </label>
-              {rascunho.condicao === "tentativas_sem_resposta" ? (
-                <label className="fr-campo fr-campo-curto">
-                  <span>Quantas tentativas</span>
-                  <input type="number" min={1} max={20} value={String(rascunho.condicao_valor ?? "")}
-                    onChange={(e) => mexer("condicao_valor", e.target.value)} />
-                </label>
-              ) : null}
-            </div>
-            {condicaoAtual ? <p className="fr-ajuda">{condicaoAtual.d}</p> : null}
-
-            <div className="fr-linha">
-              <label className="fr-campo fr-campo-curto">
-                <span>A partir de</span>
-                <input type="time" value={hhmm(rascunho.janela_inicio)}
-                  onChange={(e) => mexer("janela_inicio", e.target.value || null)} />
-              </label>
-              <label className="fr-campo fr-campo-curto">
-                <span>Até</span>
-                <input type="time" value={hhmm(rascunho.janela_fim)}
-                  onChange={(e) => mexer("janela_fim", e.target.value || null)} />
-              </label>
-              <div className="fr-campo fr-campo-largo">
-                <span>Dias da semana</span>
-                <div className="fr-chips">
-                  {DIAS.map((d) => (
-                    <label key={d.v} className={`fr-chip ${rascunho.dias_semana?.includes(d.v) ? "fr-chip-on" : ""}`}>
-                      <input type="checkbox" checked={rascunho.dias_semana?.includes(d.v) ?? false}
-                        onChange={() => mexer("dias_semana", alternarLista(rascunho.dias_semana, d.v))} />
-                      {d.t}
-                    </label>
-                  ))}
-                </div>
+          <div className="fr-passo">
+            <span className="fr-passo-num">1</span>
+            <div className="fr-passo-corpo">
+              <h4>Onde a regra olha</h4>
+              <p className="fr-ajuda">Os momentos do funil que ela vigia. Sem nenhum marcado, ela vale para o funil inteiro.</p>
+              <div className="fr-chips">
+                {dados.momentos.map((m) => (
+                  <label key={m.codigo} className={`fr-chip ${rascunho.de_momento?.includes(m.codigo) ? "fr-chip-on" : ""}`}>
+                    <input type="checkbox" checked={rascunho.de_momento?.includes(m.codigo) ?? false}
+                      onChange={() => mexer("de_momento", alternarLista(rascunho.de_momento, m.codigo))} />
+                    {m.rotulo}
+                  </label>
+                ))}
               </div>
             </div>
-            <p className="fr-ajuda">Horário de Brasília. Sem horário preenchido, a regra vale o dia inteiro nos dias marcados.</p>
-          </fieldset>
+          </div>
 
-          <fieldset className="fr-grupo">
-            <legend>O que ela faz</legend>
-            <label className="fr-campo fr-campo-largo">
-              <span>Ação</span>
-              <select value={rascunho.acao} onChange={(e) => mexer("acao", e.target.value)}>
-                {dados.acoes.map((a) => <option key={a.v} value={a.v}>{a.t}</option>)}
-              </select>
-            </label>
-            {acaoAtual ? <p className="fr-ajuda">{acaoAtual.d}</p> : null}
-
-            {rascunho.acao === "mover" || rascunho.acao === "passar_roleta" || rascunho.acao === "enviar_abordagem" ? (
-              <label className="fr-campo fr-campo-largo">
-                <span>{rascunho.acao === "mover" ? "Move para" : "Depois da ação, move para (opcional)"}</span>
-                <select value={rascunho.para_momento ?? ""} onChange={(e) => mexer("para_momento", e.target.value || null)}>
-                  <option value="">— manter no mesmo momento —</option>
-                  {dados.momentos.map((m) => <option key={m.codigo} value={m.codigo}>{m.rotulo}</option>)}
-                </select>
-              </label>
-            ) : null}
-
-            {rascunho.acao === "enviar_abordagem" ? (
-              <>
-                <label className="fr-campo fr-campo-largo">
-                  <span>Produto (filtra as abordagens)</span>
-                  <select value={rascunho.produto_id ?? ""}
-                    onChange={(e) => { mexer("produto_id", e.target.value ? Number(e.target.value) : null); mexer("abordagem_ids", []); }}>
-                    <option value="">— todos —</option>
-                    {dados.produtos.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
+          <div className="fr-passo">
+            <span className="fr-passo-num">2</span>
+            <div className="fr-passo-corpo">
+              <h4>Quando ela age</h4>
+              <div className="fr-linha">
+                <label className="fr-campo">
+                  <span>Condição</span>
+                  <select value={rascunho.condicao} onChange={(e) => mexer("condicao", e.target.value)}>
+                    {dados.condicoes.map((c) => <option key={c.v} value={c.v}>{c.t}</option>)}
                   </select>
                 </label>
-                <div className="fr-campo fr-campo-largo">
-                  <span>Abordagens</span>
+                {rascunho.condicao === "tentativas_sem_resposta" ? (
+                  <label className="fr-campo fr-campo-curto">
+                    <span>Quantas tentativas</span>
+                    <input type="number" min={1} max={20} value={String(rascunho.condicao_valor ?? "")}
+                      onChange={(e) => mexer("condicao_valor", e.target.value)} />
+                  </label>
+                ) : null}
+              </div>
+              {condicaoAtual ? <p className="fr-ajuda">{condicaoAtual.d}</p> : null}
+
+              <div className="fr-linha">
+                <label className="fr-campo fr-campo-curto">
+                  <span>A partir de</span>
+                  <input type="time" value={hhmm(rascunho.janela_inicio)}
+                    onChange={(e) => mexer("janela_inicio", e.target.value || null)} />
+                </label>
+                <label className="fr-campo fr-campo-curto">
+                  <span>Até</span>
+                  <input type="time" value={hhmm(rascunho.janela_fim)}
+                    onChange={(e) => mexer("janela_fim", e.target.value || null)} />
+                </label>
+                <div className="fr-campo">
+                  <span>Dias da semana</span>
+                  <div className="fr-chips">
+                    {DIAS.map((d) => (
+                      <label key={d.v} className={`fr-chip ${rascunho.dias_semana?.includes(d.v) ? "fr-chip-on" : ""}`}>
+                        <input type="checkbox" checked={rascunho.dias_semana?.includes(d.v) ?? false}
+                          onChange={() => mexer("dias_semana", alternarLista(rascunho.dias_semana, d.v))} />
+                        {d.t}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              <p className="fr-ajuda">Horário de Brasília. Sem horário preenchido, vale o dia inteiro nos dias marcados.</p>
+            </div>
+          </div>
+
+          <div className="fr-passo">
+            <span className="fr-passo-num">3</span>
+            <div className="fr-passo-corpo">
+              <h4>O que ela faz</h4>
+              <div className="fr-linha">
+                <label className="fr-campo">
+                  <span>Ação</span>
+                  <select value={rascunho.acao} onChange={(e) => mexer("acao", e.target.value)}>
+                    {dados.acoes.map((a) => <option key={a.v} value={a.v}>{a.t}</option>)}
+                  </select>
+                </label>
+                {rascunho.acao === "mover" || rascunho.acao === "passar_roleta" || rascunho.acao === "enviar_abordagem" ? (
+                  <label className="fr-campo">
+                    <span>{rascunho.acao === "mover" ? "Move para" : "Depois da ação, move para"}</span>
+                    <select value={rascunho.para_momento ?? ""} onChange={(e) => mexer("para_momento", e.target.value || null)}>
+                      <option value="">— manter no mesmo momento —</option>
+                      {dados.momentos.map((m) => <option key={m.codigo} value={m.codigo}>{m.rotulo}</option>)}
+                    </select>
+                  </label>
+                ) : null}
+              </div>
+              {acaoAtual ? <p className="fr-ajuda">{acaoAtual.d}</p> : null}
+
+              {rascunho.acao === "enviar_abordagem" ? (
+                <>
+                  <div className="fr-linha">
+                    <label className="fr-campo">
+                      <span>Produto (filtra as abordagens)</span>
+                      <select value={rascunho.produto_id ?? ""}
+                        onChange={(e) => { mexer("produto_id", e.target.value ? Number(e.target.value) : null); mexer("abordagem_ids", []); }}>
+                        <option value="">— todos —</option>
+                        {dados.produtos.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
+                      </select>
+                    </label>
+                  </div>
+                  <p className="fr-ajuda">Marcando mais de uma abordagem, o motor alterna entre elas. O envio sai pela instância do corretor dono do lead.</p>
                   <div className="fr-chips">
                     {abordagensDoProduto.length ? abordagensDoProduto.map((a) => (
                       <label key={a.id} className={`fr-chip ${rascunho.abordagem_ids?.includes(a.id) ? "fr-chip-on" : ""}`}>
@@ -458,13 +494,12 @@ export function FunnelRulesPanel({ accessToken }: { accessToken: string }) {
                       </label>
                     )) : <span className="fr-vazio">Nenhuma abordagem cadastrada para este produto.</span>}
                   </div>
-                  <p className="fr-ajuda">Marcando mais de uma, o motor alterna entre elas. O envio sai pela instância do corretor dono do lead.</p>
-                </div>
-              </>
-            ) : null}
-          </fieldset>
+                </>
+              ) : null}
+            </div>
+          </div>
 
-          <div className="fr-linha fr-linha-fim">
+          <div className="fr-editor-rodape">
             <label className="fr-marca">
               <input type="checkbox" checked={rascunho.uma_vez_por_card}
                 onChange={(e) => mexer("uma_vez_por_card", e.target.checked)} />
@@ -475,11 +510,7 @@ export function FunnelRulesPanel({ accessToken }: { accessToken: string }) {
                 onChange={(e) => mexer("ativo", e.target.checked)} />
               Regra ligada
             </label>
-          </div>
-          <p className="fr-ajuda">“Só uma vez por card” evita que a mesma abordagem seja disparada de novo para quem já recebeu.</p>
-
-          <div className="fr-editor-acoes">
-            <button type="button" className="fr-btn fr-btn-principal" disabled={salvando} onClick={() => void salvar()}>
+            <button type="button" className="fr-btn fr-btn-primario" disabled={salvando} onClick={() => void salvar()}>
               {salvando ? "Salvando…" : "Salvar regra"}
             </button>
             <button type="button" className="fr-btn" onClick={() => setRascunho(null)}>Cancelar</button>
@@ -489,32 +520,51 @@ export function FunnelRulesPanel({ accessToken }: { accessToken: string }) {
 
       <ul className="fr-lista">
         {dados.regras.map((r) => (
-          <li key={r.id ?? r.nome} className={`fr-item ${r.ativo ? "" : "fr-item-off"}`}>
-            <div className="fr-item-topo">
-              <div>
-                <span className="fr-ordem">#{r.ordem}</span>
-                <strong className="fr-item-nome">{r.nome}</strong>
-                <span className={`fr-selo ${r.ativo ? "fr-selo-on" : "fr-selo-off"}`}>{r.ativo ? "ligada" : "desligada"}</span>
-                {r.uma_vez_por_card ? <span className="fr-selo fr-selo-neutro">uma vez por card</span> : null}
+          <li key={r.id ?? r.nome} className={`fr-regra ${r.ativo ? "" : "fr-regra-off"}`}>
+            <div className="fr-regra-topo">
+              <span className="fr-ordem">{r.ordem}</span>
+              <div className="fr-regra-id">
+                <strong>{r.nome}</strong>
+                <div className="fr-tags">
+                  <span className={`fr-pill ${r.ativo ? "fr-pill-on" : "fr-pill-off"}`}>{r.ativo ? "ligada" : "desligada"}</span>
+                  {r.uma_vez_por_card ? <span className="fr-pill fr-pill-info">uma vez por card</span> : null}
+                </div>
               </div>
-              <div className="fr-item-acoes">
-                <button type="button" className="fr-link" onClick={() => void verPrevia(r)}>Prévia</button>
-                <button type="button" className="fr-link" onClick={() => editar(r)}>Editar</button>
-                <button type="button" className="fr-link" onClick={() => void alternar(r)}>{r.ativo ? "Desligar" : "Ligar"}</button>
-                <button type="button" className="fr-link fr-link-perigo" onClick={() => void excluir(r)}>Excluir</button>
+              <div className="fr-regra-acoes">
+                <button type="button" className="fr-btn" onClick={() => void verPrevia(r)}>Prévia</button>
+                <button type="button" className="fr-btn" onClick={() => editar(r)}>Editar</button>
+                <button type="button" className="fr-btn" onClick={() => void alternar(r)}>{r.ativo ? "Desligar" : "Ligar"}</button>
+                <button type="button" className="fr-btn fr-btn-perigo" onClick={() => void excluir(r)}>Excluir</button>
               </div>
             </div>
-            <p className="fr-item-resumo">{resumo(r)}</p>
+
+            <div className="fr-frase">
+              <div className="fr-bloco">
+                <span className="fr-rotulo">Onde</span>
+                <p>{textoOnde(r)}</p>
+              </div>
+              <span className="fr-seta" aria-hidden="true">→</span>
+              <div className="fr-bloco">
+                <span className="fr-rotulo">Quando</span>
+                <p>{textoQuando(r)}</p>
+              </div>
+              <span className="fr-seta" aria-hidden="true">→</span>
+              <div className="fr-bloco fr-bloco-acao">
+                <span className="fr-rotulo">Então</span>
+                <p>{textoEntao(r)}</p>
+              </div>
+            </div>
+            <p className="fr-janela">{textoJanela(r)}</p>
 
             {previa && previa.id === r.id ? (
               <div className="fr-previa">
                 {!previa.dados.ativo ? (
-                  <p className="fr-ajuda">Esta regra está desligada — a prévia só lista candidatos de regras ligadas.</p>
+                  <p className="fr-vazio">Esta regra está desligada — a prévia só lista candidatos de regra ligada.</p>
                 ) : previa.dados.total === 0 ? (
-                  <p className="fr-ajuda">Nenhum card se encaixa nesta regra agora.</p>
+                  <p className="fr-vazio">Nenhum card se encaixa nesta regra agora.</p>
                 ) : (
                   <>
-                    <p className="fr-ajuda">{previa.dados.total} card(s) seriam afetados agora (mostrando até 25):</p>
+                    <p className="fr-vazio">{previa.dados.total} card(s) seriam afetados agora (mostrando até 25):</p>
                     <table className="fr-tabela">
                       <thead><tr><th>Lead</th><th>Corretor</th><th>Momento</th><th>Tentativas</th></tr></thead>
                       <tbody>
@@ -541,66 +591,3 @@ export function FunnelRulesPanel({ accessToken }: { accessToken: string }) {
     </div>
   );
 }
-
-const CSS = `
-.fr-wrap{display:flex;flex-direction:column;gap:16px;padding:8px 0 40px;color:#1f2430;font-size:14px;line-height:1.5}
-.fr-cabecalho{display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start;justify-content:space-between;padding:16px;border:1px solid #e3e6ec;border-radius:12px;background:#fff}
-.fr-titulo{margin:0 0 4px;font-size:18px;font-weight:650}
-.fr-legenda{margin:0;max-width:62ch;color:#5b6376}
-.fr-motor{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
-.fr-selo{display:inline-block;margin-left:8px;padding:2px 10px;border-radius:999px;font-size:12px;font-weight:600}
-.fr-selo-on{background:#e6f4ea;color:#1a7f37}
-.fr-selo-off{background:#f1f2f5;color:#6b7280}
-.fr-selo-neutro{background:#eef2ff;color:#4338ca}
-.fr-btn{padding:8px 14px;border:1px solid #d3d8e0;border-radius:8px;background:#fff;font-size:13px;font-weight:600;color:#1f2430;cursor:pointer}
-.fr-btn:hover{background:#f6f7f9}
-.fr-btn-principal{background:#1f2430;border-color:#1f2430;color:#fff}
-.fr-btn-principal:hover{background:#333a4a}
-.fr-btn-perigo{border-color:#f0b4b4;color:#b42318}
-.fr-btn:disabled{opacity:.6;cursor:not-allowed}
-.fr-acoes-topo{display:flex;gap:12px;align-items:center}
-.fr-contagem{color:#6b7280;font-size:13px}
-.fr-erro{padding:10px 14px;border:1px solid #f0b4b4;background:#fdf2f2;color:#b42318;border-radius:8px}
-.fr-aviso{padding:10px 14px;border:1px solid #b7e0c4;background:#f0f9f3;color:#1a7f37;border-radius:8px}
-.fr-nota{padding:10px 14px;border:1px dashed #d3d8e0;background:#fafbfc;color:#5b6376;border-radius:8px}
-.fr-lista{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
-.fr-item{padding:14px 16px;border:1px solid #e3e6ec;border-radius:12px;background:#fff}
-.fr-item-off{background:#fafbfc}
-.fr-item-topo{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between}
-.fr-ordem{margin-right:8px;color:#9aa1ae;font-variant-numeric:tabular-nums;font-size:12px}
-.fr-item-nome{font-weight:650}
-.fr-item-resumo{margin:8px 0 0;color:#5b6376}
-.fr-item-acoes{display:flex;gap:14px}
-.fr-link{border:0;background:none;padding:0;color:#2563eb;font-size:13px;font-weight:600;cursor:pointer}
-.fr-link:hover{text-decoration:underline}
-.fr-link-perigo{color:#b42318}
-.fr-editor{padding:18px;border:1px solid #c9d2e3;border-radius:12px;background:#fbfcfe;display:flex;flex-direction:column;gap:12px}
-.fr-editor-titulo{margin:0;font-size:16px;font-weight:650}
-.fr-editor-acoes{display:flex;gap:10px;padding-top:4px}
-.fr-grupo{border:1px solid #e3e6ec;border-radius:10px;padding:12px 14px;margin:0;background:#fff}
-.fr-grupo legend{padding:0 6px;font-size:13px;font-weight:650;color:#5b6376}
-.fr-linha{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end}
-.fr-linha-fim{align-items:center}
-.fr-campo{display:flex;flex-direction:column;gap:4px}
-.fr-campo>span{font-size:12px;font-weight:600;color:#5b6376}
-.fr-campo-largo{flex:1 1 280px}
-.fr-campo-curto{flex:0 0 140px}
-.fr-campo input[type=text],.fr-campo input[type=number],.fr-campo input[type=time],.fr-campo select{padding:8px 10px;border:1px solid #d3d8e0;border-radius:8px;font-size:14px;background:#fff;color:#1f2430;width:100%}
-.fr-ajuda{margin:4px 0 0;font-size:12px;color:#6b7280;max-width:78ch}
-.fr-chips{display:flex;flex-wrap:wrap;gap:6px}
-.fr-chip{display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border:1px solid #d3d8e0;border-radius:999px;font-size:12.5px;cursor:pointer;background:#fff}
-.fr-chip input{margin:0}
-.fr-chip-on{border-color:#1f2430;background:#1f2430;color:#fff}
-.fr-marca{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:#1f2430;cursor:pointer}
-.fr-previa{margin-top:10px;padding-top:10px;border-top:1px dashed #e3e6ec}
-.fr-tabela{width:100%;border-collapse:collapse;margin:6px 0;font-size:13px}
-.fr-tabela th,.fr-tabela td{text-align:left;padding:6px 8px;border-bottom:1px solid #eef0f4}
-.fr-tabela th{color:#6b7280;font-weight:600;font-size:12px}
-.fr-painel{padding:14px 16px;border:1px solid #c9d2e3;border-radius:12px;background:#fbfcfe}
-.fr-painel-topo{display:flex;justify-content:space-between;align-items:center;gap:12px}
-.fr-lista-simples{margin:8px 0 0;padding-left:18px;color:#5b6376}
-.fr-detalhes{margin-top:8px}
-.fr-json{max-height:220px;overflow:auto;background:#1f2430;color:#e6e9ef;padding:10px;border-radius:8px;font-size:12px}
-.fr-vazio{color:#6b7280}
-@media (max-width:640px){.fr-campo-curto{flex:1 1 120px}.fr-item-acoes{width:100%}}
-`;
