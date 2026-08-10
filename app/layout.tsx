@@ -33,6 +33,9 @@ import "./styles/meu-dia-filtros.css";
 /* O card do Pescado não tem prazo: o badge precisa ser cinza, não o verde de
    "no prazo". A regra mora no banco; aqui é só a leitura visual dela. */
 import "./styles/pescado-sem-prazo.css";
+/* Aba Regras do funil, dentro de Automações. Folha própria pelo mesmo motivo
+   das outras: só usa tokens do :root, então segue a marca sem duplicar cor. */
+import "./styles/tela-regras-funil.css";
 import { RegistroPwa } from "./components/RegistroPwa";
 
 export const metadata: Metadata = {
