@@ -69,20 +69,24 @@ export function AutomationsWorkspace({ accessToken }: { accessToken: string }) {
     };
   }, [accessToken]);
 
-  /* O construtor legado é JavaScript puro montado num nó que ele mesmo governa.
-     Trocar de aba não pode desmontá-lo: o usuário perderia o fluxo aberto no
-     meio da edição. Por isso ele fica sempre no DOM e só some com `hidden`. */
+  /* .tabs já existe no globals.css (pill laranja quando ativa) — reaproveitar
+     em vez de criar estilo próprio é o que mantém a cara do ERP igual em
+     todo lugar.
+
+     O construtor legado é JavaScript puro montado num nó que ele mesmo
+     governa. Trocar de aba não pode desmontá-lo: o usuário perderia o fluxo
+     aberto no meio da edição. Por isso ele fica sempre no DOM e só some com
+     `hidden`. */
   return (
     <div className="automations-shell">
-      <style>{CSS_ABAS}</style>
-      <nav className="automations-abas" role="tablist" aria-label="Seções de Automações">
+      <nav className="tabs" role="tablist" aria-label="Seções de Automações">
         <button type="button" role="tab" aria-selected={aba === "construtor"}
-          className={`automations-aba ${aba === "construtor" ? "automations-aba-ativa" : ""}`}
+          className={aba === "construtor" ? "active" : ""}
           onClick={() => setAba("construtor")}>
           Construtor de automações
         </button>
         <button type="button" role="tab" aria-selected={aba === "funil"}
-          className={`automations-aba ${aba === "funil" ? "automations-aba-ativa" : ""}`}
+          className={aba === "funil" ? "active" : ""}
           onClick={() => setAba("funil")}>
           Regras do funil
         </button>
@@ -96,10 +100,3 @@ export function AutomationsWorkspace({ accessToken }: { accessToken: string }) {
     </div>
   );
 }
-
-const CSS_ABAS = `
-.automations-abas{display:flex;gap:4px;border-bottom:1px solid #e3e6ec;margin-bottom:12px;flex-wrap:wrap}
-.automations-aba{padding:10px 16px;border:0;background:none;font-size:14px;font-weight:600;color:#6b7280;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px}
-.automations-aba:hover{color:#1f2430}
-.automations-aba-ativa{color:#1f2430;border-bottom-color:#1f2430}
-`;
