@@ -1,5 +1,6 @@
 "use client";
 
+/* eslint-disable react-hooks/set-state-in-effect -- carga inicial assíncrona, mesmo padrão do AquarioConfig/MomentosConfig */
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 /* Painel de Regras do Funil.
@@ -81,9 +82,10 @@ export function FunnelRulesPanel({ accessToken }: { accessToken: string }) {
   const [previa, setPrevia] = useState<{ id: number; dados: Previa } | null>(null);
   const [simulacao, setSimulacao] = useState<Simulacao | null>(null);
 
+  /* Nenhum setState antes do primeiro await: chamar setState de forma síncrona
+     dentro de um efeito dispara render em cascata. O estado "carregando" já
+     nasce true, então a tela não pisca. */
   const carregar = useCallback(async () => {
-    setCarregando(true);
-    setErro(null);
     try {
       const resposta = await fetch("/api/funil-regras", {
         headers: { Authorization: `Bearer ${accessToken}` },
@@ -92,6 +94,7 @@ export function FunnelRulesPanel({ accessToken }: { accessToken: string }) {
       const corpo = await resposta.json().catch(() => ({}));
       if (!resposta.ok) throw new Error(corpo?.error || "Não foi possível carregar as regras.");
       setDados(corpo as Dados);
+      setErro(null);
     } catch (e) {
       setErro(e instanceof Error ? e.message : "Não foi possível carregar as regras.");
     } finally {
@@ -256,7 +259,7 @@ export function FunnelRulesPanel({ accessToken }: { accessToken: string }) {
       <div className="fr-wrap">
         <style>{CSS}</style>
         <div className="fr-erro">{erro}</div>
-        <button type="button" className="fr-btn" onClick={() => void carregar()}>Tentar de novo</button>
+        <button type="button" className="fr-btn" onClick={() => { setCarregando(true); void carregar(); }}>Tentar de novo</button>
       </div>
     );
   }
@@ -352,7 +355,7 @@ export function FunnelRulesPanel({ accessToken }: { accessToken: string }) {
                 onChange={(e) => mexer("lote", Number(e.target.value))} />
             </label>
           </div>
-          <p className="fr-ajuda">A ordem decide quem age primeiro quando duas regras pegam o mesmo card. Menor number = mais cedo.</p>
+          <p className="fr-ajuda">A ordem decide quem age primeiro quando duas regras pegam o mesmo card. Menor número = mais cedo.</p>
 
           <fieldset className="fr-grupo">
             <legend>Onde a regra olha</legend>
