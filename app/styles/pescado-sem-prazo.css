@@ -31,6 +31,16 @@ body .f2-coluna[data-etapa="pescado"] .f2-coluna-cab {
   border-bottom-color: #e2e8f0;
 }
 
+/* Contagem do modal de pesca: informação de apoio, não título. Sem isto o
+   <small> herda o tamanho do corpo do modal e compete com o nome do lead. */
+body .f2-pesca-contagem {
+  display: block;
+  margin: -4px 0 12px;
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
 /* Título de grupo na escolha de som. Agora são duas listas — lead novo e demais
    avisos — e sem um rótulo entre elas o usuário lê como uma lista só e acha que
    está trocando a mesma coisa duas vezes. */
@@ -43,3 +53,30 @@ body .som-aviso-grupo {
   color: #64748b;
 }
 body .som-aviso-grupo:first-of-type { margin-top: 12px; }
+
+/* SEGUNDA FORMA DO NÚMERO NO BOTÃO DE CHAMAR.
+   Precisa ser visível sem ser tão forte quanto o botão principal: é a saída de
+   emergência de quem acabou de ouvir "este número não existe" do WhatsApp. Se
+   parecer botão primário, o corretor clica antes de tentar o número certo; se
+   parecer link escondido, ele descarta o lead sem ver — que foi o que
+   aconteceu em 11/08. Alvo de toque de 44px porque isso é usado no celular,
+   em pé, no meio da rua. */
+body .ncrm-wa-alt {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 44px;
+  margin-top: 8px;
+  padding: 10px 14px;
+  border: 1px solid #fed7aa;
+  border-radius: 10px;
+  background: #fff7ed;
+  color: #9a3412;
+  font-size: 13.5px;
+  font-weight: 600;
+  line-height: 1.3;
+  text-align: center;
+  text-decoration: none;
+}
+body .ncrm-wa-alt:active { background: #ffedd5; }
