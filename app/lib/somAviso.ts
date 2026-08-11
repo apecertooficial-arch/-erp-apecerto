@@ -38,10 +38,12 @@ const CHAVE_VOL = "apecerto:som-volume";
 
 /* Padrao dos avisos em geral: Alerta -- corta o barulho da sala e nao se
    confunde com WhatsApp nem com aviso do sistema.
-   Padrao de LEAD NOVO: Som Padrao Ape, por decisao do Romulo. Quem preferir troca em
-   Configuracoes; a escolha fica no aparelho, nao na conta. */
+
+   LEAD NOVO VOLTOU A SER ALERTA (11/08), a pedido do Romulo. O "Som Padrao Ape"
+   continua na lista para quem quiser escolher em Configuracoes -- so deixou de
+   ser o padrao. Tirar da lista apagaria a escolha de quem ja o selecionou. */
 export const SOM_PADRAO: NomeSom = "alerta";
-export const SOM_PADRAO_LEAD: NomeSom = "fahh";
+export const SOM_PADRAO_LEAD: NomeSom = "alerta";
 
 /* Tipos de notificacao que contam como "lead novo". Vem do banco em
    ncrm_notificacao.tipo; se aparecer tipo novo, ele cai no som geral -- que e o
@@ -55,8 +57,30 @@ function valido(v: string | null, padrao: NomeSom): NomeSom {
   return v && SONS.some((s) => s.id === v) ? (v as NomeSom) : padrao;
 }
 
+/* VOLTAR ATRAS DE VERDADE, E NAO SO NO CODIGO.
+   A escolha de som mora no localStorage do aparelho. Trocar SOM_PADRAO_LEAD
+   sozinho nao devolveria o som antigo para quem ja tem "fahh" gravado -- e
+   quem tem gravado e justamente quem mexeu na tela de Configuracoes. Entao uma
+   vez, por aparelho, a preferencia gravada em "fahh" e apagada e volta ao
+   padrao. A marca no localStorage garante que isso aconteca UMA vez: quem
+   escolher Som Padrao Ape de novo depois disto mantem a escolha. */
+const CHAVE_REVERSAO = "apecerto:som-lead-revertido-2026-08";
+let revisado = false;
+function reverterEscolhaAntiga() {
+  if (typeof window === "undefined" || revisado) return;
+  revisado = true;
+  try {
+    const ls = window.localStorage;
+    if (ls.getItem(CHAVE_REVERSAO)) return;
+    ls.setItem(CHAVE_REVERSAO, "1");
+    if (ls.getItem(CHAVE_LEAD) === "fahh") ls.removeItem(CHAVE_LEAD);
+    if (ls.getItem(CHAVE) === "fahh") ls.removeItem(CHAVE);
+  } catch { /* navegador sem localStorage: segue no padrao, que ja e o antigo */ }
+}
+
 export function somEscolhido(): NomeSom {
   if (typeof window === "undefined") return SOM_PADRAO;
+  reverterEscolhaAntiga();
   return valido(window.localStorage.getItem(CHAVE), SOM_PADRAO);
 }
 export function escolherSom(id: NomeSom) {
@@ -65,6 +89,7 @@ export function escolherSom(id: NomeSom) {
 }
 export function somLeadEscolhido(): NomeSom {
   if (typeof window === "undefined") return SOM_PADRAO_LEAD;
+  reverterEscolhaAntiga();
   return valido(window.localStorage.getItem(CHAVE_LEAD), SOM_PADRAO_LEAD);
 }
 export function escolherSomLead(id: NomeSom) {
