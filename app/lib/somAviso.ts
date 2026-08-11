@@ -1,7 +1,7 @@
 /* SONS DO APÊCERTO — identidade sonora do aviso.
  *
  * Quatro são sintetizados na hora com Web Audio (nada para hospedar, toca
- * instantâneo) e um é ARQUIVO: o "Fahh" que o Rômulo trouxe. Arquivo custa um
+ * instantâneo) e um é ARQUIVO: o "Som Padrão Apê" que o Rômulo trouxe. Ele custa um
  * download de 18 KB e um cache a mais; em troca, é um som que sintetizador
  * nenhum imita. Por isso a lista aceita os dois tipos em vez de escolher um.
  *
@@ -22,7 +22,7 @@ export type NomeSom = "fahh" | "sino" | "chamada" | "alerta" | "pulso";
 
 /* `arquivo` presente = toca o áudio; ausente = sintetiza pela receita. */
 export const SONS: { id: NomeSom; nome: string; descricao: string; arquivo?: string }[] = [
-  { id: "fahh",    nome: "Fahh",          descricao: "Queda curta e inconfundível. Não se parece com nada do celular.",
+  { id: "fahh",    nome: "Som Padrão Apê", descricao: "Queda curta e inconfundível. Não se parece com nada do celular.",
                                           arquivo: "/sons/lead-novo.mp3" },
   { id: "sino",    nome: "Sino ApêCerto", descricao: "Duas notas claras, subindo. Assinatura da casa." },
   { id: "chamada", nome: "Chamada",       descricao: "Três toques seguidos. Difícil de ignorar." },
@@ -38,7 +38,7 @@ const CHAVE_VOL = "apecerto:som-volume";
 
 /* Padrao dos avisos em geral: Alerta -- corta o barulho da sala e nao se
    confunde com WhatsApp nem com aviso do sistema.
-   Padrao de LEAD NOVO: Fahh, por decisao do Romulo. Quem preferir troca em
+   Padrao de LEAD NOVO: Som Padrao Ape, por decisao do Romulo. Quem preferir troca em
    Configuracoes; a escolha fica no aparelho, nao na conta. */
 export const SOM_PADRAO: NomeSom = "alerta";
 export const SOM_PADRAO_LEAD: NomeSom = "fahh";
@@ -117,6 +117,19 @@ function contexto(): AudioContext | null {
   return ctx;
 }
 
+/* Conta os pedidos REAIS de reprodução. O destravamento mudo é assíncrono: ele
+   dá play, e só quando a promessa resolve é que pausa. Se um play de verdade
+   entrar nesse meio-tempo, o pause do destravamento mata o som que o usuário
+   acabou de pedir -- e o sintoma é exatamente "cliquei e não saiu nada".
+   Guardando o número do pedido antes e comparando depois, o destravamento
+   desiste de pausar quando percebe que perdeu a vez. */
+let pedidoReal = 0;
+
+/* Uma tentativa de destravamento por som, não uma a cada gesto: depois que o
+   elemento tocou uma vez ele fica destravado, e insistir só cria mais corrida
+   com o play de verdade. */
+const destravados = new Set<NomeSom>();
+
 /* O navegador só libera áudio depois de um gesto do usuário, e o contexto pode
    voltar a "suspended" sozinho (troca de aba, sistema em economia). Por isso
    isto NAO pode rodar uma vez só: tem de ser tentado a cada gesto ate o
@@ -125,15 +138,24 @@ function contexto(): AudioContext | null {
 export function liberarAudio() {
   const c = contexto();
   if (c && c.state !== "running") void c.resume();
+
   /* Arquivo tem bloqueio próprio, separado do AudioContext: um play mudo num
      gesto do usuário destrava o elemento para os avisos seguintes. Sem isto o
      primeiro lead do dia chegaria calado em quem usa o som de arquivo. */
   for (const id of ARQUIVOS.keys()) {
+    if (destravados.has(id)) continue;
     const a = tocador(id);
     if (!a || !a.paused) continue;
-    const vol = a.volume; a.volume = 0;
-    void a.play().then(() => { a.pause(); a.currentTime = 0; a.volume = vol; })
-                 .catch(() => { a.volume = vol; });
+    destravados.add(id);
+    const marca = pedidoReal;
+    const vol = a.volume;
+    a.volume = 0;
+    void a.play()
+      .then(() => {
+        if (pedidoReal !== marca) return;  // entrou um play de verdade: sai de fininho
+        a.pause(); a.currentTime = 0; a.volume = vol;
+      })
+      .catch(() => { destravados.delete(id); a.volume = vol; });
   }
 }
 
@@ -191,6 +213,8 @@ function tocador(id: NomeSom): HTMLAudioElement | null {
 export function tocarSom(id: NomeSom = somEscolhido(), volume = volumeEscolhido()): boolean {
   const a = tocador(id);
   if (a) {
+    pedidoReal += 1;
+    a.muted = false;
     a.volume = Math.max(0, Math.min(1, volume));
     a.currentTime = 0;
     /* O bloqueio de autoplay rejeita a promessa antes de qualquer gesto. Não é
