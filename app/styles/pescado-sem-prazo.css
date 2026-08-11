@@ -30,3 +30,16 @@ body .f2-lead-linha.prazo-sem-prazo {
 body .f2-coluna[data-etapa="pescado"] .f2-coluna-cab {
   border-bottom-color: #e2e8f0;
 }
+
+/* Título de grupo na escolha de som. Agora são duas listas — lead novo e demais
+   avisos — e sem um rótulo entre elas o usuário lê como uma lista só e acha que
+   está trocando a mesma coisa duas vezes. */
+body .som-aviso-grupo {
+  margin: 20px 0 8px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+body .som-aviso-grupo:first-of-type { margin-top: 12px; }
