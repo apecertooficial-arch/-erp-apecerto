@@ -31,16 +31,6 @@ body .f2-coluna[data-etapa="pescado"] .f2-coluna-cab {
   border-bottom-color: #e2e8f0;
 }
 
-/* Contagem do modal de pesca: informação de apoio, não título. Sem isto o
-   <small> herda o tamanho do corpo do modal e compete com o nome do lead. */
-body .f2-pesca-contagem {
-  display: block;
-  margin: -4px 0 12px;
-  color: #64748b;
-  font-size: 12px;
-  line-height: 1.4;
-}
-
 /* Título de grupo na escolha de som. Agora são duas listas — lead novo e demais
    avisos — e sem um rótulo entre elas o usuário lê como uma lista só e acha que
    está trocando a mesma coisa duas vezes. */
