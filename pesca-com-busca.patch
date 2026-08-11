@@ -1,0 +1,291 @@
+diff --git a/app/api/funil2/aquario/route.ts b/app/api/funil2/aquario/route.ts
+new file mode 100644
+index 0000000..aa46c02
+--- /dev/null
++++ b/app/api/funil2/aquario/route.ts
+@@ -0,0 +1,42 @@
++/* BUSCA NO AQUÁRIO PARA PESCAR — endpoint separado, pelo mesmo motivo da
++ * carteira antiga.
++ *
++ * O payload de /api/funil2 traz `aquario` com os 20 mais antigos, e era só isso
++ * que o modal de pesca tinha para oferecer. Só que o Aquário tem 11.669
++ * negócios disponíveis: na prática o corretor nunca conseguia pescar QUEM ele
++ * queria — só os mesmos 20 nomes que ele já tinha decidido não pescar.
++ *
++ * POR QUE NÃO CRESCER O PAYLOAD: mandar 11 mil nomes em toda carga da tela
++ * seriam megabytes por request, para um recurso que só é usado quando alguém
++ * abre o modal e digita. Aqui a consulta só acontece na busca.
++ *
++ * A visibilidade e o critério de disponibilidade são resolvidos dentro da
++ * função SQL — o mesmo critério de f2_pescar_negocio. Regra de acesso perto do
++ * dado é regra que a próxima porta não esquece de aplicar.
++ */
++import type { SupabaseClient } from "@supabase/supabase-js";
++import { createServerSupabaseClient } from "../../../lib/supabase/server";
++
++export const dynamic = "force-dynamic";
++
++export async function GET(request: Request) {
++  const header = request.headers.get("authorization");
++  const token = header?.startsWith("Bearer ") ? header.slice(7) : null;
++  if (!token) return Response.json({ error: "Sessão necessária." }, { status: 401 });
++  const db = createServerSupabaseClient(token);
++  const { data: user, error: authError } = await db.auth.getUser(token);
++  if (authError || !user.user) return Response.json({ error: "Sessão inválida ou expirada." }, { status: 401 });
++
++  const busca = (new URL(request.url).searchParams.get("q") ?? "").trim().slice(0, 80);
++  /* Diferente da carteira antiga, busca vazia aqui é legítima: é a lista
++     inicial do modal — os mais antigos, a água mais parada. O que não vale é
++     buscar por uma ou duas letras, que devolve meio Aquário sem ajudar. */
++  if (busca.length > 0 && busca.length < 3) return Response.json({ leads: [], curta: true });
++
++  /* Mesmo desvio de tipagem que /api/funil2 usa: database.types.ts é gerado e
++     ainda não conhece esta função. */
++  const rpc = db as unknown as SupabaseClient;
++  const { data, error } = await rpc.rpc("f2_aquario_buscar", { p_busca: busca || null, p_limite: 30 });
++  if (error) return Response.json({ error: error.message }, { status: 502 });
++  return Response.json({ leads: data ?? [], curta: false });
++}
+diff --git a/app/features/funil-2/Funil2Workspace.tsx b/app/features/funil-2/Funil2Workspace.tsx
+index f558815..b868f27 100644
+--- a/app/features/funil-2/Funil2Workspace.tsx
++++ b/app/features/funil-2/Funil2Workspace.tsx
+@@ -339,7 +339,7 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
+       {!carregando && aba === "performance" && <PerformanceFunil2 leads={leads} eventos={eventos} visitas={visitas} negociacoes={negociacoes} operacao={operacao} />}
+       {!carregando && aba === "config" && <Configuracoes etapas={etapas} momentos={momentos} operacao={operacao} sara={sara} busy={busy} onEtapa={(dados) => void executar("configurarEtapa", dados)} onMomento={(dados) => void executar("configurarMomento", dados)} onOperacao={(dados) => void executar("configurarOperacao", dados)} />}
+ 
+-      {modal === "pescar" && <ModalPescar candidatos={aquario} busy={busy} onFechar={() => setModal(null)} onPescar={(negocioId) => void executar("pescar", { negocioId })} />}
++      {modal === "pescar" && <ModalPescar candidatos={aquario} accessToken={accessToken} busy={busy} onFechar={() => setModal(null)} onPescar={(negocioId) => void executar("pescar", { negocioId })} />}
+       {modal === "visita" && <ModalVisita leads={leads} busy={busy} onFechar={() => setModal(null)} onSalvar={(dados) => void executar("salvarVisita", dados)} />}
+       {modal === "negociacao" && <ModalNegociacao leads={leads} busy={busy} onFechar={() => setModal(null)} onSalvar={(dados) => void executar("salvarNegociacao", dados)} />}
+       {modal === "descartar" && lead && <ModalDescartar nome={lead.nome} busy={busy} onFechar={() => setModal(null)} onDescartar={(motivo, detalhe) => { void atualizar("descartar", { motivo, detalhe }).then((ok) => { if (ok) { setModal(null); setSelecionado(null); } }); }} />}
+@@ -702,9 +702,52 @@ function Configuracoes({ etapas, momentos, operacao, sara, busy, onEtapa, onMome
+ 
+ function CabecalhoPagina({ titulo, texto, acao, onAcao }: { titulo: string; texto: string; acao?: string; onAcao?: () => void }) { return <header className="f2-pagina-cab"><div><span className="f2-eyebrow">FUNIL 2.0</span><h2>{titulo}</h2><p>{texto}</p></div>{acao && <button type="button" onClick={onAcao}>{acao}</button>}</header>; }
+ 
+-function ModalPescar({ candidatos, busy, onFechar, onPescar }: { candidatos: CandidatoAquarioFunil2[]; busy: boolean; onFechar: () => void; onPescar: (negocioId: number) => void }) {
++function ModalPescar({ candidatos, accessToken, busy, onFechar, onPescar }: { candidatos: CandidatoAquarioFunil2[]; accessToken: string; busy: boolean; onFechar: () => void; onPescar: (negocioId: number) => void }) {
++  /* O modal mostrava só o que vinha no payload da tela: os 20 mais antigos do
++     Aquário, sempre os mesmos, num select sem busca. Só que são 11.669
++     disponíveis — na prática o corretor nunca pescava QUEM ele queria, só os
++     mesmos 20 nomes que ele já tinha decidido não pescar. */
++  const [busca, setBusca] = useState("");
++  const [lista, setLista] = useState<CandidatoAquarioFunil2[]>(candidatos);
++  const [buscando, setBuscando] = useState(false);
+   const [negocio, setNegocio] = useState(String(candidatos[0]?.negocio_id ?? ""));
+-  return <Modal titulo="Pescar um lead do Aquário" texto="A lista abaixo vem somente da base real do Aquário: negócios abertos, sem corretor e disponíveis para pesca." onFechar={onFechar}>{candidatos.length > 0 ? <label>Lead disponível<select value={negocio} onChange={(e) => setNegocio(e.target.value)}>{candidatos.map((c) => <option key={c.negocio_id} value={c.negocio_id}>{c.nome} · #{c.negocio_id}</option>)}</select></label> : <div className="f2-sem-resultado"><b>Nenhum lead disponível no Aquário.</b><span>Novas importações aparecerão aqui sem nome de corretor.</span></div>}<div className="f2-pesca-destino"><span>DESTINO</span><b>Novo · Primeira abordagem</b><small>Prazo de 5 minutos. O histórico anterior fica oculto; o chat desta ficha começa exatamente no instante da pesca.</small></div><button type="button" className="f2-modal-primary" disabled={busy || !negocio} onClick={() => onPescar(Number(negocio))}>{busy ? "Pescando…" : "Pescar lead"}</button></Modal>;
++
++  /* Mesmo padrão da busca da carteira antiga: 350ms depois da última tecla, e
++     todo setState dentro do timer — nenhum no corpo do efeito, senão cada
++     tecla vira render em cascata. `vivo` impede resposta antiga de
++     sobrescrever a nova. */
++  useEffect(() => {
++    let vivo = true;
++    const termo = busca.trim();
++    const t = window.setTimeout(() => {
++      if (!vivo || (termo.length > 0 && termo.length < 3)) return;
++      setBuscando(true);
++      void fetch(`/api/funil2/aquario?q=${encodeURIComponent(termo)}`, { headers: { Authorization: `Bearer ${accessToken}` } })
++        .then((r) => r.json() as Promise<{ leads?: CandidatoAquarioFunil2[] }>)
++        .then((json) => {
++          if (!vivo) return;
++          const achados = json.leads ?? [];
++          setLista(achados);
++          setNegocio(String(achados[0]?.negocio_id ?? ""));
++        })
++        /* Falhar aqui não pode travar o modal: fica sem lista, com o aviso. */
++        .catch(() => { if (vivo) { setLista([]); setNegocio(""); } })
++        .finally(() => { if (vivo) setBuscando(false); });
++    }, 350);
++    return () => { vivo = false; window.clearTimeout(t); };
++  }, [busca, accessToken]);
++
++  const disponiveis = lista[0]?.disponiveis ?? null;
++  const curta = busca.trim().length > 0 && busca.trim().length < 3;
++  return <Modal titulo="Pescar um lead do Aquário" texto="Busque por nome ou telefone. A lista vem da base real do Aquário: negócios abertos, sem corretor e disponíveis para pesca." onFechar={onFechar}>
++    <label>Buscar no Aquário<input value={busca} onChange={(event) => setBusca(event.target.value)} placeholder="Nome ou telefone" aria-label="Buscar lead no Aquário por nome ou telefone" /></label>
++    {curta ? <div className="f2-sem-resultado"><b>Digite pelo menos 3 letras.</b><span>Busca de uma letra devolveria meio Aquário sem ajudar a achar ninguém.</span></div>
++      : lista.length > 0 ? <label>Lead disponível<select value={negocio} onChange={(e) => setNegocio(e.target.value)}>{lista.map((c) => <option key={c.negocio_id} value={c.negocio_id}>{c.nome}{c.telefone ? ` · ${c.telefone}` : ""}</option>)}</select></label>
++      : <div className="f2-sem-resultado"><b>{buscando ? "Procurando…" : "Nenhum lead encontrado no Aquário."}</b><span>{buscando ? "Um instante." : "Tente outro nome ou telefone. Lead que já tem corretor ou já virou card não aparece aqui."}</span></div>}
++    <small className="f2-pesca-contagem">{buscando ? "Procurando no Aquário…" : disponiveis !== null && disponiveis > lista.length ? `Mostrando ${lista.length} de ${disponiveis.toLocaleString("pt-BR")} disponíveis — refine a busca para achar alguém específico.` : `${lista.length} disponível(is) nesta lista.`}</small>
++    <div className="f2-pesca-destino"><span>DESTINO</span><b>Pescado · sem prazo</b><small>Ele entra na coluna Pescado e aparece em “leads para chamar” até você chamar. Não cobra prazo e não conta como atrasado. Se o cliente responder, o card vai sozinho para Em atendimento; se não, fica em Pescado até você atualizar. O histórico anterior fica oculto: o chat desta ficha começa no instante da pesca.</small></div>
++    <button type="button" className="f2-modal-primary" disabled={busy || !negocio} onClick={() => onPescar(Number(negocio))}>{busy ? "Pescando…" : "Pescar lead"}</button>
++  </Modal>;
+ }
+ 
+ /* DESCARTAR É UMA SAÍDA OFICIAL, NÃO UM SUMIÇO.
+diff --git a/app/features/funil-2/modelo.ts b/app/features/funil-2/modelo.ts
+index 5744c69..cdeceeb 100644
+--- a/app/features/funil-2/modelo.ts
++++ b/app/features/funil-2/modelo.ts
+@@ -68,9 +68,17 @@ export type NegociacaoFunil2 = {
+   atualizado_em: string;
+ };
+ 
++/* Candidato à pesca. `telefone` e `criado_em` ajudam o corretor a decidir sem
++   abrir a ficha; `disponiveis` é o total do conjunto filtrado antes do limite,
++   para a tela poder dizer quantos existem além dos que ela mostra. Os três são
++   opcionais porque a carga inicial da tela (f2_listar_aquario) não os traz —
++   só a busca (f2_aquario_buscar). */
+ export type CandidatoAquarioFunil2 = {
+   negocio_id: number;
+   nome: string;
++  telefone?: string | null;
++  criado_em?: string | null;
++  disponiveis?: number | null;
+ };
+ 
+ export type SaraStatusFunil2 = {
+diff --git a/app/styles/pescado-sem-prazo.css b/app/styles/pescado-sem-prazo.css
+index 710f176..47c4d78 100644
+--- a/app/styles/pescado-sem-prazo.css
++++ b/app/styles/pescado-sem-prazo.css
+@@ -30,3 +30,13 @@ body .f2-lead-linha.prazo-sem-prazo {
+ body .f2-coluna[data-etapa="pescado"] .f2-coluna-cab {
+   border-bottom-color: #e2e8f0;
+ }
++
++/* Contagem do modal de pesca: informação de apoio, não título. Sem isto o
++   <small> herda o tamanho do corpo do modal e compete com o nome do lead. */
++body .f2-pesca-contagem {
++  display: block;
++  margin: -4px 0 12px;
++  color: #64748b;
++  font-size: 12px;
++  line-height: 1.4;
++}
+diff --git a/supabase/migrations/20260813160300_funil_2_busca_no_aquario_para_pescar.sql b/supabase/migrations/20260813160300_funil_2_busca_no_aquario_para_pescar.sql
+new file mode 100644
+index 0000000..a812194
+--- /dev/null
++++ b/supabase/migrations/20260813160300_funil_2_busca_no_aquario_para_pescar.sql
+@@ -0,0 +1,70 @@
++-- BUSCA NO AQUARIO PARA PESCAR (ago/2026)
++--
++-- O modal de pesca mostrava f2_listar_aquario(): os 20 mais antigos, sempre os
++-- mesmos, num <select> sem busca. So que o Aquario tem 11.669 negocios
++-- disponiveis. Na pratica o corretor nunca conseguia pescar QUEM ele queria --
++-- so os mesmos 20 nomes que ele ja tinha decidido nao pescar.
++--
++-- Esta funcao repete exatamente o criterio de f2_pescar_negocio (negocio aberto
++-- no estagio Aquario, sem corretor no negocio E no lead, sem card no funil) e
++-- acrescenta busca por nome ou telefone. Manter o criterio identico e o que
++-- impede a lista de oferecer lead que a pesca depois recusa.
++--
++-- 'disponiveis' volta em toda linha (count sobre o conjunto filtrado, antes do
++-- limite) para a tela poder dizer quantos existem alem dos que ela mostra.
++
++create or replace function public.f2_aquario_buscar(p_busca text default null, p_limite int default 30)
++returns table (
++  negocio_id bigint,
++  lead_id bigint,
++  nome text,
++  telefone text,
++  criado_em timestamptz,
++  disponiveis bigint
++)
++language sql
++stable
++security definer
++set search_path to ''
++as $$
++  with termo as (
++    -- nome OU telefone; no telefone so os digitos importam, porque o corretor
++    -- digita com mascara e o banco guarda cru (ou o contrario)
++    select nullif(btrim(coalesce(p_busca, '')), '') as texto,
++           nullif(regexp_replace(coalesce(p_busca, ''), '\D', '', 'g'), '') as digitos
++  ),
++  base as (
++    select n.id as negocio_id, l.id as lead_id, l.nome, l.telefone, n.criado_em,
++           t.texto as termo_texto
++      from public.negocios n
++      join public.leads l on l.id = n.lead_id
++      cross join termo t
++     where (select auth.uid()) is not null
++       and (public.f2_admin() or public.f2_corretor_atual() is not null)
++       and n.stage_id = public.aquario_stage_id()
++       and n.status = 'aberto'
++       and n.corretor_id is null
++       and l.corretor_id is null
++       and not exists (select 1 from public.f2_lead f where f.origem_negocio_id = n.id)
++       and (
++         t.texto is null
++         or l.nome ilike '%' || t.texto || '%'
++         or (t.digitos is not null
++             and regexp_replace(coalesce(l.telefone,''), '\D', '', 'g') like '%' || t.digitos || '%')
++       )
++  )
++  select b.negocio_id, b.lead_id, b.nome, b.telefone, b.criado_em,
++         count(*) over () as disponiveis
++    from base b
++   -- sem busca, os mais antigos primeiro (agua parada ha mais tempo);
++   -- com busca, ordem alfabetica, que e como se procura um nome
++   order by case when b.termo_texto is null then 0 else 1 end,
++            case when b.termo_texto is null then b.criado_em end asc,
++            case when b.termo_texto is not null then b.nome end asc
++   limit greatest(1, least(coalesce(p_limite, 30), 100));
++$$;
++
++comment on function public.f2_aquario_buscar(text, int) is
++  'Leads disponiveis no Aquario para pesca, com busca por nome ou telefone. Criterio identico ao de f2_pescar_negocio, para a lista nunca oferecer o que a pesca recusa.';
++
++grant execute on function public.f2_aquario_buscar(text, int) to authenticated;
+diff --git a/tests/funil-2.test.mjs b/tests/funil-2.test.mjs
+index 2e94192..4b25ddb 100644
+--- a/tests/funil-2.test.mjs
++++ b/tests/funil-2.test.mjs
+@@ -8,6 +8,11 @@ const migration = readFileSync(new URL("../supabase/migrations/20260810150000_fu
+ const clareza = readFileSync(new URL("../supabase/migrations/20260810160000_funil_2_cadencia_clara.sql", import.meta.url), "utf8");
+ const operacao = readFileSync(new URL("../supabase/migrations/20260810170000_funil_2_operacao_completa.sql", import.meta.url), "utf8");
+ const pesca = readFileSync(new URL("../supabase/migrations/20260810180000_funil_2_pesca_simples.sql", import.meta.url), "utf8");
++/* A pesca ATUAL. A migração de 20260810180000 acima é o começo da história e
++   ainda vale para o que não mudou (a trava de concorrência); o destino do lead
++   pescado hoje é definido aqui. */
++const pescadoSemPrazo = readFileSync(new URL("../supabase/migrations/20260813160100_funil_2_pescado_ciclo_completo.sql", import.meta.url), "utf8");
++const buscaAquario = readFileSync(new URL("../supabase/migrations/20260813160300_funil_2_busca_no_aquario_para_pescar.sql", import.meta.url), "utf8");
+ const conversaPosPesca = readFileSync(new URL("../supabase/migrations/20260810190000_funil_2_conversa_pos_pesca.sql", import.meta.url), "utf8");
+ const configOperacao = readFileSync(new URL("../supabase/migrations/20260810200000_funil_2_config_operacao.sql", import.meta.url), "utf8");
+ const aquarioReal = readFileSync(new URL("../supabase/migrations/20260810220000_funil_2_aquario_real.sql", import.meta.url), "utf8");
+@@ -200,18 +205,33 @@ test("laboratório entrega abas operacionais e pesca sem tocar no legado", () =>
+   assert.doesNotMatch(operacao, /DELETE FROM public\.(?:ncrm_estado|negocios|leads|visitas|vendas)/);
+ });
+ 
+-test("pesca é simples para o usuário e reinicia a cópia em primeira abordagem", () => {
++/* O destino da pesca mudou duas vezes desde 20260810180000: primeiro ganhou a
++   etapa Pescado, depois perdeu o prazo. Este teste checava o texto do modal
++   antigo ("Novo · Primeira abordagem", "Prazo de 5 minutos") e as linhas da
++   migração daquele dia — ou seja, protegia um comportamento que o sistema já
++   não tem. Agora ele checa a migração ATUAL da pesca e o destino que o modal
++   promete hoje. A trava contra substituição de cópia continua: era a única
++   parte ainda verdadeira. */
++test("pesca é simples para o usuário e entrega o lead na etapa Pescado, sem prazo", () => {
+   assert.match(ui, /Pescar lead/);
+-  assert.match(ui, /Novo · Primeira abordagem/);
+-  assert.match(ui, /Prazo de 5 minutos/);
++  assert.match(ui, /Pescado · sem prazo/);
+   assert.doesNotMatch(ui, /Cópia a substituir|Substituir cópia e pescar/);
+   assert.match(pesca, /pg_advisory_xact_lock/);
+-  assert.match(pesca, /ORDER BY criado_em ASC,id ASC/);
+-  assert.match(pesca, /etapa='novo'/);
+-  assert.match(pesca, /momento_codigo='PRIMEIRA_ABORDAGEM'/);
+-  assert.match(pesca, /proxima_acao_em=now\(\)\+interval '5 minutes'/);
+-  assert.doesNotMatch(pesca, /UPDATE public\.(?:ncrm_estado|negocios|leads|visitas|vendas)/);
+-  assert.doesNotMatch(pesca, /DELETE FROM public\.(?:ncrm_estado|negocios|leads|visitas|vendas)/);
++  assert.match(pescadoSemPrazo, /pg_advisory_xact_lock/);
++  assert.match(pescadoSemPrazo, /'CADENCIA_PESCADO'/);
++  assert.match(pescadoSemPrazo, /public\.f2_sem_prazo\(\)/);
++  assert.doesNotMatch(pescadoSemPrazo, /DELETE FROM public\.(?:ncrm_estado|negocios|leads|visitas|vendas)/);
++});
++
++test("o Aquário é procurável na pesca, e a lista usa o mesmo critério da pesca", () => {
++  assert.match(ui, /api\/funil2\/aquario/);
++  assert.match(buscaAquario, /create or replace function public\.f2_aquario_buscar/);
++  /* O critério da lista tem que ser idêntico ao de f2_pescar_negocio, senão a
++     tela oferece lead que a pesca depois recusa. */
++  for (const regra of [/n\.stage_id = public\.aquario_stage_id\(\)/, /n\.status = 'aberto'/, /n\.corretor_id is null/, /l\.corretor_id is null/]) {
++    assert.match(buscaAquario, regra);
++  }
++  assert.match(buscaAquario, /not exists \(select 1 from public\.f2_lead f where f\.origem_negocio_id = n\.id\)/);
+ });
+ 
+ test("etapas e momentos são configuráveis com proteção administrativa", () => {

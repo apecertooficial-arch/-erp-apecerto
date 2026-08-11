@@ -1,7 +1,15 @@
 /* SONS DO APÊCERTO — identidade sonora do aviso.
  *
- * Sintetizados na hora com Web Audio, sem arquivo de áudio: nada para hospedar,
- * nada para baixar, toca instantâneo e nunca perde a assinatura por cache.
+ * Quatro são sintetizados na hora com Web Audio (nada para hospedar, toca
+ * instantâneo) e um é ARQUIVO: o "Fahh" que o Rômulo trouxe. Arquivo custa um
+ * download de 18 KB e um cache a mais; em troca, é um som que sintetizador
+ * nenhum imita. Por isso a lista aceita os dois tipos em vez de escolher um.
+ *
+ * DOIS PAPÉIS, NÃO UM. Lead novo é 70% do volume de avisos (718 em 7 dias); o
+ * resto é ação vencida, retorno e cliente que respondeu. Um som só para tudo
+ * não diz NADA sobre o que chegou. Então há duas preferências: o som de lead
+ * novo e o som dos demais avisos. O corretor aprende a diferença de ouvido e
+ * decide se vale largar o que está fazendo antes mesmo de olhar a tela.
  *
  * POR QUE ISSO EXISTE
  * Notificação de push NAO permite escolher o som — a API do navegador só tem
@@ -10,31 +18,63 @@
  * quisermos. É assim que painel de call center faz barulho próprio.
  */
 
-export type NomeSom = "sino" | "chamada" | "alerta" | "pulso";
+export type NomeSom = "fahh" | "sino" | "chamada" | "alerta" | "pulso";
 
-export const SONS: { id: NomeSom; nome: string; descricao: string }[] = [
+/* `arquivo` presente = toca o áudio; ausente = sintetiza pela receita. */
+export const SONS: { id: NomeSom; nome: string; descricao: string; arquivo?: string }[] = [
+  { id: "fahh",    nome: "Fahh",          descricao: "Queda curta e inconfundível. Não se parece com nada do celular.",
+                                          arquivo: "/sons/lead-novo.mp3" },
   { id: "sino",    nome: "Sino ApêCerto", descricao: "Duas notas claras, subindo. Assinatura da casa." },
   { id: "chamada", nome: "Chamada",       descricao: "Três toques seguidos. Difícil de ignorar." },
   { id: "alerta",  nome: "Alerta",        descricao: "Sirene curta e grave. Para o que não pode esperar." },
   { id: "pulso",   nome: "Pulso",         descricao: "Batida dupla e seca. Discreto, mas presente." },
 ];
 
-const CHAVE = "apecerto:som-aviso";
+const ARQUIVOS = new Map(SONS.filter((s) => s.arquivo).map((s) => [s.id, s.arquivo as string]));
+
+const CHAVE = "apecerto:som-aviso";          // som dos avisos em geral
+const CHAVE_LEAD = "apecerto:som-lead-novo";  // som exclusivo de lead novo
 const CHAVE_VOL = "apecerto:som-volume";
 
-/* Padrao: Alerta. Escolhido ouvindo os quatro -- e o que corta o barulho da
-   sala e nao se confunde com WhatsApp nem com aviso do sistema. Quem preferir
-   outro troca em Configuracoes; a escolha fica no aparelho. */
+/* Padrao dos avisos em geral: Alerta -- corta o barulho da sala e nao se
+   confunde com WhatsApp nem com aviso do sistema.
+   Padrao de LEAD NOVO: Fahh, por decisao do Romulo. Quem preferir troca em
+   Configuracoes; a escolha fica no aparelho, nao na conta. */
 export const SOM_PADRAO: NomeSom = "alerta";
+export const SOM_PADRAO_LEAD: NomeSom = "fahh";
+
+/* Tipos de notificacao que contam como "lead novo". Vem do banco em
+   ncrm_notificacao.tipo; se aparecer tipo novo, ele cai no som geral -- que e o
+   comportamento seguro: um aviso desconhecido nao deve soar como lead. */
+const TIPOS_LEAD_NOVO = ["primeira_abordagem_pendente", "lead_novo", "lead_distribuido"];
+export function ehLeadNovo(tipo?: string | null): boolean {
+  return !!tipo && TIPOS_LEAD_NOVO.includes(tipo);
+}
+
+function valido(v: string | null, padrao: NomeSom): NomeSom {
+  return v && SONS.some((s) => s.id === v) ? (v as NomeSom) : padrao;
+}
 
 export function somEscolhido(): NomeSom {
   if (typeof window === "undefined") return SOM_PADRAO;
-  const v = window.localStorage.getItem(CHAVE) as NomeSom | null;
-  return v && SONS.some((s) => s.id === v) ? v : SOM_PADRAO;
+  return valido(window.localStorage.getItem(CHAVE), SOM_PADRAO);
 }
 export function escolherSom(id: NomeSom) {
   if (typeof window !== "undefined") window.localStorage.setItem(CHAVE, id);
   avisar();
+}
+export function somLeadEscolhido(): NomeSom {
+  if (typeof window === "undefined") return SOM_PADRAO_LEAD;
+  return valido(window.localStorage.getItem(CHAVE_LEAD), SOM_PADRAO_LEAD);
+}
+export function escolherSomLead(id: NomeSom) {
+  if (typeof window !== "undefined") window.localStorage.setItem(CHAVE_LEAD, id);
+  avisar();
+}
+
+/** O som certo para um aviso, pelo tipo dele. */
+export function somDoAviso(tipo?: string | null): NomeSom {
+  return ehLeadNovo(tipo) ? somLeadEscolhido() : somEscolhido();
 }
 export function volumeEscolhido(): number {
   if (typeof window === "undefined") return 0.9;
@@ -56,11 +96,14 @@ export function assinarPreferencia(cb: () => void) {
   return () => { ouvintes.delete(cb); };
 }
 
-let cache = { som: SOM_PADRAO, volume: 0.9 };
+type Preferencia = { som: NomeSom; somLead: NomeSom; volume: number };
+let cache: Preferencia = { som: SOM_PADRAO, somLead: SOM_PADRAO_LEAD, volume: 0.9 };
 export function preferenciaAtual() {
   if (typeof window === "undefined") return cache;
-  const som = somEscolhido(); const volume = volumeEscolhido();
-  if (som !== cache.som || volume !== cache.volume) cache = { som, volume };
+  const som = somEscolhido(); const somLead = somLeadEscolhido(); const volume = volumeEscolhido();
+  if (som !== cache.som || somLead !== cache.somLead || volume !== cache.volume) {
+    cache = { som, somLead, volume };
+  }
   return cache;
 }
 export function preferenciaPadrao() { return cache; }
@@ -82,6 +125,16 @@ function contexto(): AudioContext | null {
 export function liberarAudio() {
   const c = contexto();
   if (c && c.state !== "running") void c.resume();
+  /* Arquivo tem bloqueio próprio, separado do AudioContext: um play mudo num
+     gesto do usuário destrava o elemento para os avisos seguintes. Sem isto o
+     primeiro lead do dia chegaria calado em quem usa o som de arquivo. */
+  for (const id of ARQUIVOS.keys()) {
+    const a = tocador(id);
+    if (!a || !a.paused) continue;
+    const vol = a.volume; a.volume = 0;
+    void a.play().then(() => { a.pause(); a.currentTime = 0; a.volume = vol; })
+                 .catch(() => { a.volume = vol; });
+  }
 }
 
 /** Diz se o navegador ja liberou o audio. Util para avisar na tela. */
@@ -92,7 +145,8 @@ export function audioLiberado(): boolean {
 
 type Nota = { f: number; em: number; dur: number; tipo?: OscillatorType; vol?: number };
 
-const RECEITAS: Record<NomeSom, Nota[]> = {
+/* Parcial de proposito: quem tem `arquivo` nao tem receita. */
+const RECEITAS: Partial<Record<NomeSom, Nota[]>> = {
   // Quinta ascendente com brilho: soa "positivo", vira marca depois de dois dias.
   sino: [
     { f: 880,  em: 0,    dur: 0.42, vol: 1 },
@@ -119,8 +173,32 @@ const RECEITAS: Record<NomeSom, Nota[]> = {
   ],
 };
 
+/* ÁUDIO DE ARQUIVO.
+   Um HTMLAudioElement por som, criado na primeira vez e reaproveitado: criar um
+   novo a cada aviso vaza memória e ainda perde o pré-carregamento. `currentTime
+   = 0` antes do play garante que dois avisos seguidos toquem duas vezes, em vez
+   de o segundo ser engolido pelo primeiro ainda em execução. */
+const tocadores = new Map<NomeSom, HTMLAudioElement>();
+function tocador(id: NomeSom): HTMLAudioElement | null {
+  const src = ARQUIVOS.get(id);
+  if (!src || typeof window === "undefined") return null;
+  let a = tocadores.get(id);
+  if (!a) { a = new Audio(src); a.preload = "auto"; tocadores.set(id, a); }
+  return a;
+}
+
 /** Toca o som escolhido. Devolve false quando o navegador ainda não liberou áudio. */
 export function tocarSom(id: NomeSom = somEscolhido(), volume = volumeEscolhido()): boolean {
+  const a = tocador(id);
+  if (a) {
+    a.volume = Math.max(0, Math.min(1, volume));
+    a.currentTime = 0;
+    /* O bloqueio de autoplay rejeita a promessa antes de qualquer gesto. Não é
+       erro para o usuário: liberarAudio() roda a cada clique/tecla e a próxima
+       chamada passa. Engolir aqui evita "Unhandled promise rejection". */
+    void a.play().catch(() => { /* ainda sem gesto do usuário */ });
+    return true;
+  }
   const c = contexto();
   if (!c) return false;
   /* Suspenso: retoma e toca DEPOIS que o contexto voltar. Agendar as notas num
@@ -139,7 +217,7 @@ function emitir(c: AudioContext, id: NomeSom, volume: number) {
   mestre.connect(c.destination);
 
   const agora = c.currentTime + 0.02;
-  for (const n of RECEITAS[id] ?? RECEITAS[SOM_PADRAO]) {
+  for (const n of RECEITAS[id] ?? RECEITAS[SOM_PADRAO] ?? []) {
     const osc = c.createOscillator();
     const g = c.createGain();
     osc.type = n.tipo ?? "sine";

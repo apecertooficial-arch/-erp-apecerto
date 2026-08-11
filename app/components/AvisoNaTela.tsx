@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getBrowserSupabaseClient } from "../lib/supabase/browser";
-import { liberarAudio, tocarSom } from "../lib/somAviso";
+import { liberarAudio, somDoAviso, tocarSom } from "../lib/somAviso";
 
 type Aviso = { id: number; titulo: string; corpo: string; url: string };
 type Item = {
@@ -38,7 +38,9 @@ export function AvisoNaTela() {
       corpo: item.detalhe || "",
       url: item.deep_link && item.deep_link.startsWith("/") ? item.deep_link : "/notificacoes",
     };
-    tocarSom();
+    /* Lead novo tem som próprio: o corretor decide se larga o que está fazendo
+       antes de olhar a tela. Qualquer outro aviso usa o som geral. */
+    tocarSom(somDoAviso(item.tipo));
     /* No maximo 3 na tela: dez de uma vez viram parede e o corretor perde
        justamente o mais recente. */
     setAvisos((atuais) => [aviso, ...atuais.filter((a) => a.id !== aviso.id)].slice(0, 3));
