@@ -36,6 +36,7 @@ function ico(n,s=16,c='currentColor',sw=1.8){const p={
  random:'<rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.4" fill="currentColor"/><circle cx="15.5" cy="15.5" r="1.4" fill="currentColor"/><circle cx="15.5" cy="8.5" r="1.4" fill="currentColor"/>',
  message:'<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',wait:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
  api:'<path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/>',
+ ai:'<path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/><path d="M18 15l.8 2.2L21 18l-2.2.8L18 21l-.8-2.2L15 18l2.2-.8z"/>',
  flow:'<circle cx="6" cy="6" r="3"/><circle cx="18" cy="18" r="3"/><path d="M9 6h6a3 3 0 0 1 3 3v6"/>',play:'<path d="M5 3l16 9-16 9z"/>',monitor:'<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/>',
  plus:'<path d="M12 5v14M5 12h14"/>',x:'<path d="m18 6-12 12M6 6l12 12"/>',trash:'<path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>',copy:'<rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/>',
  brief:'<rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>',user:'<circle cx="12" cy="8" r="4"/><path d="M4 20a8 8 0 0 1 16 0"/>',insta:'<rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor"/>',
@@ -55,9 +56,15 @@ const TYPES={
  chat:{fam:'mensagem',label:'Mensagem',vis:'message',cvar:'--c-message'},
  'send-approach':{fam:'mensagem',label:'Enviar abordagem (corretor do lead)',vis:'message',cvar:'--c-ai'},
  time:{fam:'espera',label:'Espera',vis:'wait',cvar:'--c-wait'},
- api:{fam:'api',label:'API',vis:'api',cvar:'--c-api'}
+ api:{fam:'api',label:'API',vis:'api',cvar:'--c-api'},
+ 'ai-agent':{fam:'agente',label:'Agente de IA',vis:'ai',cvar:'--c-ai'}
 };
 const FAM2TYPE={}; Object.entries(TYPES).forEach(([t,m])=>FAM2TYPE[m.fam]=t);
+/* Funções que um agente de IA pode executar dentro de uma automação.
+   Para habilitar uma função nova, acrescente UMA linha aqui.
+   Atenção: o valor da esquerda precisa existir no motor (motor_agente).
+   Se não existir, o pedido vira alerta no log em vez de ser executado. */
+const AI_FUNCOES=[['atualizar_momento','Ler a conversa e atualizar o momento']];
 const ACTIONS=[['create-lead-action','Criar lead','lead'],['create-business-action','Criar negócio','business'],['move-business-action','Mover negócio','business'],['add-attendant-on-business-action','Atribuir corretor','business'],['clean-attendant-on-business-action','Remover corretor','business'],['add-tag-action','Adicionar tag','lead'],['set-lead-momento-action','Definir momento do lead','lead'],['start-another-automation-action','Iniciar outra automação','system']];
 const CONDITIONS=[['lead-exists-condition','Lead existe','lead'],['lead-has-business-on-pipeline-condition','Lead tem negócio no funil','business'],['lead-has-business-on-stage-condition','Lead tem negócio na etapa','business'],['business-has-attendants-condition','Negócio tem corretor','business']];
 const BETA_TAG='<span style="font-size:8px;font-weight:800;color:#92700a;background:#fef9c3;border-radius:4px;padding:1px 5px;margin-left:5px">INTEGRAÇÃO</span>';
@@ -110,7 +117,7 @@ const grpOf=(a,n)=>(a.find(x=>x[0]===n)||[,,'system'])[2];
 const labelOf=(a,n)=>(a.find(x=>x[0]===n)||[,n])[1];
 
 /* ---------- estado ---------- */
-const ref={pipelines:[],stages:[],corretores:[],instancias:[],automacoes:[],tags:[],produtos:[],abordagens:[]};
+const ref={pipelines:[],stages:[],corretores:[],instancias:[],automacoes:[],tags:[],produtos:[],abordagens:[],agentes:[]};
 let cur=null, selectedId=null, dirty=false;
 const view={x:120,y:120,scale:0.8};
 const worldEl=document.getElementById('world'), edgesEl=document.getElementById('edges'), canvasEl=document.getElementById('canvas'), emptyTip=document.getElementById('emptyTip');
@@ -150,6 +157,7 @@ async function boot(){
   ref.pipelines=pi;ref.stages=stg;ref.corretores=co;ref.instancias=ins;ref.automacoes=au;if(_ctx&&_ctx.onAutomationsLoaded){try{_ctx.onAutomationsLoaded(au);}catch(_e){}}
   try{ref.tags=await sbRpc('automacao_tags')||[];}catch(_t){ref.tags=[];}   try{ref.momentos=await sbGet('/lead_momento_catalogo?select=slug,rotulo,grupo,ordem&ativo=eq.true&order=ordem')||[];}catch(_m){ref.momentos=[];}
   try{const [pr,ab]=await Promise.all([sbGet('/produtos?select=id,nome,ativo&order=nome'),sbGet('/abordagens?select=id,produto_id,nome,ordem,ativo,mensagens&order=ordem')]);ref.produtos=pr||[];ref.abordagens=ab||[];}catch(_p){ref.produtos=[];ref.abordagens=[];}
+  try{ref.agentes=await sbGet('/agentes_ia?select=id,slug,nome,categoria,ativo&ativo=is.true&order=categoria,nome')||[];}catch(_ag){ref.agentes=[];}
   setStatus('Conectado — '+au.length+' automações','#10b981');renderSidebar();
  }catch(e){console.error(e);setStatus('Falha de conexão','#dc2626');toast('Erro ao conectar: '+e.message,'err');}
 }
@@ -363,6 +371,15 @@ function bodyHtml(n){
    })()+
    portRow('out','Próximo passo','ok');
  }
+ if(n.type==='ai-agent'){const o=n.opts||{};const ags=ref.agentes||[];const selAg=+o.agenteId||0;const selFn=o.funcao||AI_FUNCOES[0][0];
+  return `<div style="font-size:11.5px;color:var(--ink-soft);padding:2px 0 6px;line-height:1.45">Pede a um <b>agente de IA</b> que leia a conversa do lead e execute uma função. O pedido é registrado e o fluxo segue pelo próximo passo.</div>`+
+   `<div class="ne-lb" style="margin-top:0">Agente</div>`+
+   `<select class="ne-sel" data-aiag><option value="0" ${selAg===0?'selected':''}>— escolha o agente —</option>${ags.map(a=>`<option value="${a.id}" ${a.id===selAg?'selected':''}>${esc(a.nome)}${a.categoria?' · '+esc(a.categoria):''}</option>`).join('')}</select>`+
+   (ags.length?'':`<div style="font-size:11px;color:var(--ink-faint);margin-top:5px">Nenhum agente ativo encontrado. Ative um em <b>Agentes de IA</b>.</div>`)+
+   `<div class="ne-lb">Função</div>`+
+   `<select class="ne-sel" data-aifn>${AI_FUNCOES.map(([v,t])=>`<option value="${v}" ${v===selFn?'selected':''}>${esc(t)}</option>`).join('')}</select>`+
+   portRow('out','Próximo passo','ok');
+ }
  if(n.type==='chat'){const ms=n.opts.messages||[];const conx=n.opts.instancia||'';
   return `<div style="font-size:11px;color:var(--ink-faint);padding:2px 0">Envie e receba mensagens. Clique para adicionar uma mensagem:</div><div style="font-size:11px;color:var(--ink-soft);margin:3px 0 5px"><b>Conexão:</b> ${conx?esc(conx):'<span style="color:var(--ink-faint)">herda dos anteriores</span>'}</div>${ms.length?ms.map(m=>`<div style="font-size:11px;color:var(--ink-soft);padding:3px 0;border-top:1px solid var(--line-soft)">• ${esc(msgPartLabel(m))}</div>`).join(''):'<div style="font-size:11px;color:var(--ink-faint);padding:2px 0">Nenhuma mensagem ainda</div>'}<button class="ne-add" data-editmsg>${ico('message',14)} adicionar / editar mensagem</button>${portRow('out','Próximo passo','ok')}${portRow('err','Caso ocorrer erro no envio','err')}`;
  }
@@ -522,6 +539,9 @@ function bindBody(n,el){
  if(n.type==='send-approach'){const o=n.opts=n.opts||{};
   const sp=q('[data-sapprod]');if(sp)sp.onchange=()=>{o.produtoId=+sp.value||0;o.abordagemIds=[];setDirty();reNode(n);};
   qa('[data-sapab]').forEach(cb=>cb.onchange=()=>{const id=+cb.dataset.sapab;o.abordagemIds=o.abordagemIds||[];const ix=o.abordagemIds.indexOf(id);if(cb.checked&&ix<0)o.abordagemIds.push(id);else if(!cb.checked&&ix>=0)o.abordagemIds.splice(ix,1);setDirty();});}
+ if(n.type==='ai-agent'){const o=n.opts=n.opts||{};
+  const ag=q('[data-aiag]');if(ag)ag.onchange=()=>{o.agenteId=+ag.value||0;setDirty();};
+  const fn=q('[data-aifn]');if(fn)fn.onchange=()=>{o.funcao=fn.value||'';setDirty();};}
  // randomizer
  if(q('[data-addramo]')){n.ramos=n.ramos||[];q('[data-addramo]').onclick=e=>{e.stopPropagation();n.ramos.push({id:'r'+(cur.uid++),name:'Novo',perc:0});setDirty();reNode(n);};
   qa('[data-rrow]').forEach(row=>{const i=+row.dataset.rrow,r=n.ramos[i];
@@ -603,6 +623,7 @@ function addNode(type,x,y){const id='b'+(cur.uid++);const base={id,type,sub:'',x
  if(type==='randomizer')base.ramos=[{id:'r'+(cur.uid++),name:'A',perc:50},{id:'r'+(cur.uid++),name:'B',perc:50}];
  if(type==='distribution')base.opts={distribuicao:{items:(ref.corretores||[]).filter(c=>c.ativo!==false).map(c=>({corretor:c.nome,peso:(c.peso||1),on:true})),onlineOnly:true,tambemNegocio:false}};
  if(type==='distribution-simple')base.opts={distribuicao:{items:(ref.corretores||[]).filter(c=>c.ativo!==false).map(c=>({corretor:c.nome,peso:1,on:true})),onlineOnly:true,tambemNegocio:true}};
+ if(type==='ai-agent')base.opts={agenteId:0,funcao:AI_FUNCOES[0][0]};
  cur.nodes[id]=base;selectedId=id;setDirty();renderNodes();markSel();return id;}
 
 /* ---------- compile + salvar ---------- */
