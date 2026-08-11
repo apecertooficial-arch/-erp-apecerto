@@ -2,6 +2,8 @@
 
 import { useEffect, useRef } from "react";
 
+import { ExplicadorAutomacoes } from "./ExplicadorAutomacoes";
+
 type OriginalAutomationBuilder = {
   mount: (host: HTMLDivElement, context: { authToken: string }) => void;
   unmount: () => void;
@@ -64,5 +66,13 @@ export function AutomationsWorkspace({ accessToken }: { accessToken: string }) {
     };
   }, [accessToken]);
 
-  return <div className="original-automation-host" ref={hostRef} />;
+  /* O explicador fica ao lado do construtor, nunca dentro dele: o construtor é
+     um arquivo fechado de 202 KB e qualquer coisa que precise entrar lá vira
+     risco. Aqui ele é um botão flutuante, independente. */
+  return (
+    <>
+      <div className="original-automation-host" ref={hostRef} />
+      <ExplicadorAutomacoes accessToken={accessToken} />
+    </>
+  );
 }
