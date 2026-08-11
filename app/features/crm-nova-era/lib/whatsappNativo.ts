@@ -87,6 +87,30 @@ export function normalizarTelefone(bruto: string | null | undefined): ResultadoT
   return { ok: true, e164: `55${ddd}${numero}`, exibicao: formatarExibicao(ddd, numero) };
 }
 
+/* A OUTRA FORMA DO MESMO NUMERO.
+ *
+ * O nono digito virou obrigatorio em celular brasileiro em 2012, mas quem se
+ * cadastrou no WhatsApp antes disso pode continuar registrado na forma antiga
+ * -- e o contrario tambem acontece: base velha que ganhou o 9 na importacao,
+ * quando a conta real nunca teve. Nos dois casos o numero EXISTE, so nao na
+ * forma que esta gravada.
+ *
+ * O enviador do ERP (dapi-enviar) sempre soube disso: ele tenta as duas formas
+ * antes de desistir. O botao que o corretor usa nao tentava -- abria uma forma
+ * so, o WhatsApp dizia "numero nao existe", e o lead era descartado como
+ * contato invalido sem nunca ter sido testado por inteiro. Foi assim que a
+ * operacao perdeu leads bons em 11/08.
+ *
+ * Devolve null quando nao ha outra forma plausivel (fixo, por exemplo). */
+export function outraFormaDoNumero(e164: string): string | null {
+  const m = /^55(\d{2})(\d+)$/.exec(e164 || "");
+  if (!m) return null;
+  const [, ddd, numero] = m;
+  if (numero.length === 9 && numero.startsWith("9")) return `55${ddd}${numero.slice(1)}`;
+  if (numero.length === 8 && /^[6-9]/.test(numero)) return `55${ddd}9${numero}`;
+  return null;
+}
+
 /** Esquema que abre o aplicativo instalado. Preferido no celular. */
 export function urlWhatsAppApp(e164: string): string {
   return `whatsapp://send?phone=${e164}`;
@@ -102,9 +126,22 @@ export function urlWhatsAppWeb(e164: string): string {
  * proprio WhatsApp, e nada sai do ERP.
  */
 export function prepararAberturaWhatsApp(bruto: string | null | undefined):
-  | { ok: true; e164: string; exibicao: string; app: string; web: string }
+  | { ok: true; e164: string; exibicao: string; app: string; web: string;
+      alt: { e164: string; exibicao: string; app: string; web: string; rotulo: string } | null }
   | TelefoneErro {
   const r = normalizarTelefone(bruto);
   if (!r.ok) return r;
-  return { ok: true, e164: r.e164, exibicao: r.exibicao, app: urlWhatsAppApp(r.e164), web: urlWhatsAppWeb(r.e164) };
+  const outro = outraFormaDoNumero(r.e164);
+  const alt = outro
+    ? {
+        e164: outro,
+        exibicao: formatarExibicao(outro.slice(2, 4), outro.slice(4)),
+        app: urlWhatsAppApp(outro),
+        web: urlWhatsAppWeb(outro),
+        /* O rotulo diz o que muda, nao "tentar de novo": o corretor precisa
+           entender que e outro numero de verdade, senao repete o mesmo clique. */
+        rotulo: outro.length < r.e164.length ? "sem o 9º dígito" : "com o 9º dígito",
+      }
+    : null;
+  return { ok: true, e164: r.e164, exibicao: r.exibicao, app: urlWhatsAppApp(r.e164), web: urlWhatsAppWeb(r.e164), alt };
 }
