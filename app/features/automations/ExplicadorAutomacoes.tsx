@@ -1,7 +1,6 @@
 "use client";
 
-/* eslint-disable react-hooks/set-state-in-effect -- carga assíncrona, mesmo padrão do AquarioConfig/MomentosConfig */
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 
 /* Explicador de automações.
 
@@ -11,7 +10,11 @@ import { useCallback, useEffect, useState } from "react";
 
    A tradução NAO mora aqui: mora na função automacao_explicar, no banco. Aqui
    é só a encenação — revelar um passo por vez para o olho acompanhar. Bloco
-   novo aprende a se explicar num lugar só, e esta tela nem fica sabendo. */
+   novo aprende a se explicar num lugar só, e esta tela nem fica sabendo.
+
+   Sem useEffect de propósito: não há nada para carregar antes de o usuário
+   abrir o painel, então a busca acontece no clique. Menos código e sem render
+   em cascata. */
 
 type Automacao = { id: number; nome: string; ativa: boolean; status: string | null; grupo: string | null };
 type Passo = { ordem: number; bloco: string; ramo: string; icone: string; titulo: string; detalhe: string | null };
@@ -46,10 +49,13 @@ export function ExplicadorAutomacoes({ accessToken }: { accessToken: string }) {
     }
   }, [accessToken]);
 
-  useEffect(() => {
-    if (!aberto || lista !== null) return;
-    void buscar();
-  }, [aberto, lista, buscar]);
+  function abrir() {
+    setAberto(true);
+    if (lista === null) {
+      setCarregando(true);
+      void buscar();
+    }
+  }
 
   function abrirHistoria(id: number) {
     setCarregando(true);
@@ -66,7 +72,7 @@ export function ExplicadorAutomacoes({ accessToken }: { accessToken: string }) {
 
   if (!aberto) {
     return (
-      <button type="button" className="exp-botao" onClick={() => setAberto(true)}>
+      <button type="button" className="exp-botao" onClick={abrir}>
         <span aria-hidden="true">💡</span> Como funciona?
       </button>
     );
@@ -115,9 +121,7 @@ export function ExplicadorAutomacoes({ accessToken }: { accessToken: string }) {
             </>
           ) : carregando ? (
             <p className="exp-vazio">Lendo o desenho…</p>
-          ) : lista === null ? (
-            <p className="exp-vazio">Carregando…</p>
-          ) : lista.length === 0 ? (
+          ) : lista === null || lista.length === 0 ? (
             <p className="exp-vazio">Nenhuma automação criada ainda.</p>
           ) : (
             <ul className="exp-lista">
