@@ -41,7 +41,7 @@ async function lerPlanilha(file: File): Promise<{ celulas: Celulas[]; erro?: str
     const pasta = XLSX.read(buffer, { type: "array", raw: false, cellDates: false });
     const aba = pasta.Sheets[pasta.SheetNames[0]];
     if (!aba) return { celulas: [], erro: "A planilha não tem nenhuma aba legível." };
-    const matriz = XLSX.utils.sheet_to_json<string[]>(aba, { header: 1, raw: false, defval: "" });
+    const matriz = XLSX.utils.sheet_to_json(aba, { header: 1, raw: false, defval: "" }) as unknown as string[][];
     const letra = (indice: number) => { let nome = "", n = indice; do { nome = String.fromCharCode(65 + (n % 26)) + nome; n = Math.floor(n / 26) - 1; } while (n >= 0); return nome; };
     return { celulas: matriz.map((linha) => {
       const celula: Celulas = {};
@@ -99,8 +99,7 @@ function interpretar(celulas: Celulas[]) {
 
 const rotuloSugestao: Record<string, string> = { vincular: "Já existe no caixa", transferencia: "Transferência sua", novo: "Lançamento novo" };
 
-export function ExtratoImport({ accessToken, importacoes, linhas, categorias, onMutate }: {
-  accessToken: string;
+export function ExtratoImport({ importacoes, linhas, categorias, onMutate }: {
   importacoes: ExtratoImportacao[];
   linhas: ExtratoLinha[];
   categorias: Array<{ id: string; nome: string; tipo: string }>;

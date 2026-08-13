@@ -1,3 +1,4 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { createServerSupabaseClient } from "../../lib/supabase/server";
 import { resolveEffectiveAccess, denyIfCannot } from "../../lib/supabase/authz";
 
@@ -27,6 +28,19 @@ async function authClient(request: Request) {
    razao de existir: apague o tipo e volte a listar as colunas no select. */
 type RepasseColunasNovas = { ordem: number; data_prevista: string | null; lancamento_id: string | null };
 
+/* PONTE TEMPORARIA DE TIPO — APAGUE AO REGERAR OS TIPOS.
+
+   As tabelas extrato_importacao, extrato_linha e extrato_layout nasceram na
+   migracao extrato_bancario_importacao e ainda nao existem em
+   app/lib/supabase/database.types.ts, que e gerado por `supabase gen types`.
+   Como o cliente do Supabase e tipado pelo esquema, from("extrato_linha")
+   nao compila enquanto o arquivo nao for regerado.
+
+   semTipos() devolve o mesmo cliente sem o esquema amarrado — mesma conexao,
+   mesma sessao, mesma RLS. Ao regerar os tipos, apague isto e volte a chamar
+   auth.supabase direto. */
+const semTipos = (cliente: unknown) => cliente as SupabaseClient;
+
 const clean = (value: unknown, max = 500) => typeof value === "string" ? value.trim().slice(0, max) : "";
 
 export async function GET(request: Request) {
@@ -48,8 +62,8 @@ export async function GET(request: Request) {
     auth.supabase.from("vw_ranking_vgv").select("corretor_id,corretor,vendas,vgv").order("vgv", { ascending: false }),
     // Agenda de repasse de comissao (fonte unica: pagamentos_comissao).
     auth.supabase.from("pagamentos_comissao").select("*").order("created_at", { ascending: true }),
-    auth.supabase.from("extrato_importacao").select("*").order("criado_em", { ascending: false }).limit(12),
-    auth.supabase.from("extrato_linha").select("*").order("data", { ascending: false }).limit(600),
+    semTipos(auth.supabase).from("extrato_importacao").select("*").order("criado_em", { ascending: false }).limit(12),
+    semTipos(auth.supabase).from("extrato_linha").select("*").order("data", { ascending: false }).limit(600),
   ]);
   const firstError = [sales, details, commissions, receipts, cash, users, brokers, goals, leads, deals, empreendimentos, categorias].find((result) => result.error)?.error;
   if (firstError) return Response.json({ error: firstError.message }, { status: 502 });
@@ -574,7 +588,7 @@ export async function PATCH(request: Request) {
     const titular = clean(body.titular, 200);
     const conta = clean(body.conta, 40);
 
-    const { data: importacao, error: impError } = await auth.supabase.from("extrato_importacao").insert({
+    const { data: importacao, error: impError } = await semTipos(auth.supabase).from("extrato_importacao").insert({
       banco: clean(body.banco, 20) || null,
       agencia: clean(body.agencia, 20) || null,
       conta: conta || null,
@@ -644,7 +658,7 @@ export async function PATCH(request: Request) {
     }).filter((linha) => linha.data && Number.isFinite(linha.valor));
 
     // upsert por impressao: reimportar o mesmo periodo nao duplica nada.
-    const { error: linhaError } = await auth.supabase.from("extrato_linha").upsert(linhas as never, { onConflict: "impressao", ignoreDuplicates: true });
+    const { error: linhaError } = await semTipos(auth.supabase).from("extrato_linha").upsert(linhas as never, { onConflict: "impressao", ignoreDuplicates: true });
     if (linhaError) return Response.json({ error: `Importacao registrada, mas as linhas falharam: ${linhaError.message}` }, { status: 502 });
     return Response.json({ success: true, importacaoId, linhas: linhas.length });
   }
@@ -657,13 +671,13 @@ export async function PATCH(request: Request) {
     let alvos: Array<Record<string, unknown>> = [];
     if (emLote) {
       const importacaoId = clean(body.importacaoId, 50);
-      const consulta = auth.supabase.from("extrato_linha").select("*").eq("situacao", "pendente");
+      const consulta = semTipos(auth.supabase).from("extrato_linha").select("*").eq("situacao", "pendente");
       const { data } = importacaoId ? await consulta.eq("importacao_id", importacaoId) : await consulta;
       alvos = (data ?? []) as Array<Record<string, unknown>>;
     } else {
       const linhaId = clean(body.linhaId, 50);
       if (!linhaId) return Response.json({ error: "Linha invalida." }, { status: 422 });
-      const { data } = await auth.supabase.from("extrato_linha").select("*").eq("id", linhaId).maybeSingle();
+      const { data } = await semTipos(auth.supabase).from("extrato_linha").select("*").eq("id", linhaId).maybeSingle();
       if (!data) return Response.json({ error: "Linha nao encontrada." }, { status: 404 });
       alvos = [data as Record<string, unknown>];
     }
@@ -676,12 +690,12 @@ export async function PATCH(request: Request) {
         : (["lancar", "vincular", "ignorar"].includes(decisaoPedida) ? decisaoPedida : "lancar");
 
       if (decisao === "ignorar") {
-        await auth.supabase.from("extrato_linha").update({ situacao: "ignorado", resolvido_por: auth.user.id, resolvido_em: new Date().toISOString() } as never).eq("id", linha.id as string);
+        await semTipos(auth.supabase).from("extrato_linha").update({ situacao: "ignorado", resolvido_por: auth.user.id, resolvido_em: new Date().toISOString() } as never).eq("id", linha.id as string);
         ignoradas++;
         continue;
       }
       if (decisao === "vincular" && linha.sugestao_lancamento_id) {
-        await auth.supabase.from("extrato_linha").update({ situacao: "vinculado", lancamento_id: linha.sugestao_lancamento_id, resolvido_por: auth.user.id, resolvido_em: new Date().toISOString() } as never).eq("id", linha.id as string);
+        await semTipos(auth.supabase).from("extrato_linha").update({ situacao: "vinculado", lancamento_id: linha.sugestao_lancamento_id, resolvido_por: auth.user.id, resolvido_em: new Date().toISOString() } as never).eq("id", linha.id as string);
         vinculadas++;
         continue;
       }
@@ -698,7 +712,7 @@ export async function PATCH(request: Request) {
         origem: "extrato",
       } as never).select("id").single();
       if (caixaError || !criado) return Response.json({ error: `Nao foi possivel lancar no caixa: ${caixaError?.message ?? ""}` }, { status: 502 });
-      await auth.supabase.from("extrato_linha").update({ situacao: "lancado", lancamento_id: criado.id, resolvido_por: auth.user.id, resolvido_em: new Date().toISOString() } as never).eq("id", linha.id as string);
+      await semTipos(auth.supabase).from("extrato_linha").update({ situacao: "lancado", lancamento_id: criado.id, resolvido_por: auth.user.id, resolvido_em: new Date().toISOString() } as never).eq("id", linha.id as string);
       lancadas++;
     }
     return Response.json({ success: true, lancadas, vinculadas, ignoradas });
