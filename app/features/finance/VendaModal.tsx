@@ -72,7 +72,7 @@ export function VendaModal({ data, saleId, sessionRole = "corretor", onClose, on
     ? data.receipts.filter((r) => r.venda_id === saleId).map((r) => ({ id: r.id, numeroParcela: String(r.numero_parcela), valor: String(r.valor_total ?? 0), dataPrevista: r.data_prevista ?? "", recebido: r.status === "recebido" }))
     : []);
   const [payouts, setPayouts] = useState<PayoutRow[]>(() => saleId
-    ? (data.payouts ?? []).filter((p) => p.venda_id === saleId).map((p) => ({ id: p.id, comissaoId: p.comissao_id, beneficiarioId: p.beneficiario_id ?? "", papel: p.papel, valor: String(p.valor ?? 0), ordem: p.ordem ?? 1, dataPrevista: p.data_prevista ?? "", status: p.status === "pago" ? "pago" : "previsto", dataPagamento: p.data_pagamento ?? "" }))
+    ? (data.payouts ?? []).filter((p) => p.venda_id === saleId).sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0)).map((p) => ({ id: p.id, comissaoId: p.comissao_id, beneficiarioId: p.beneficiario_id ?? "", papel: p.papel, valor: String(p.valor ?? 0), ordem: p.ordem ?? 1, dataPrevista: p.data_prevista ?? "", status: p.status === "pago" ? "pago" : "previsto", dataPagamento: p.data_pagamento ?? "" }))
     : []);
   const [docs, setDocs] = useState<DocRow[]>([]);
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
@@ -90,7 +90,7 @@ export function VendaModal({ data, saleId, sessionRole = "corretor", onClose, on
     if (!saleId) return;
     setCommissions(data.commissions.filter((c) => c.venda_id === saleId).map((c) => ({ id: c.id, papel: c.papel, beneficiarioId: c.beneficiario_id ?? "", valor: String(c.valor_final ?? 0) })));
     setReceipts(data.receipts.filter((r) => r.venda_id === saleId).map((r) => ({ id: r.id, numeroParcela: String(r.numero_parcela), valor: String(r.valor_total ?? 0), dataPrevista: r.data_prevista ?? "", recebido: r.status === "recebido" })));
-    setPayouts((data.payouts ?? []).filter((p) => p.venda_id === saleId).map((p) => ({ id: p.id, comissaoId: p.comissao_id, beneficiarioId: p.beneficiario_id ?? "", papel: p.papel, valor: String(p.valor ?? 0), ordem: p.ordem ?? 1, dataPrevista: p.data_prevista ?? "", status: p.status === "pago" ? "pago" : "previsto", dataPagamento: p.data_pagamento ?? "" })));
+    setPayouts((data.payouts ?? []).filter((p) => p.venda_id === saleId).sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0)).map((p) => ({ id: p.id, comissaoId: p.comissao_id, beneficiarioId: p.beneficiario_id ?? "", papel: p.papel, valor: String(p.valor ?? 0), ordem: p.ordem ?? 1, dataPrevista: p.data_prevista ?? "", status: p.status === "pago" ? "pago" : "previsto", dataPagamento: p.data_pagamento ?? "" })));
   }, [data.commissions, data.receipts, data.payouts, saleId]);
 
   const vgvNumero = Number(form.vgv) || 0;

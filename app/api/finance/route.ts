@@ -12,6 +12,21 @@ async function authClient(request: Request) {
   return error || !data.user ? null : { supabase, user: data.user };
 }
 
+/* PONTE TEMPORARIA DE TIPO — APAGUE AO REGERAR OS TIPOS.
+
+   A migracao repasse_comissao_fonte_unica criou tres colunas em
+   pagamentos_comissao: ordem, data_prevista e lancamento_id. O arquivo
+   app/lib/supabase/database.types.ts e gerado por `supabase gen types` e ainda
+   nao as conhece. Como o cliente do Supabase e tipado, citar essas colunas num
+   select vira erro de compilacao.
+
+   Enquanto os tipos nao forem regerados, o select usa "*" (o Postgres devolve
+   as colunas de qualquer jeito) e a leitura das tres e tipada aqui.
+
+   Na proxima vez que alguem rodar `supabase gen types`, este bloco perde a
+   razao de existir: apague o tipo e volte a listar as colunas no select. */
+type RepasseColunasNovas = { ordem: number; data_prevista: string | null; lancamento_id: string | null };
+
 const clean = (value: unknown, max = 500) => typeof value === "string" ? value.trim().slice(0, max) : "";
 
 export async function GET(request: Request) {
@@ -32,7 +47,7 @@ export async function GET(request: Request) {
     auth.supabase.from("categorias_caixa").select("id,nome,tipo,natureza,cor,ordem").eq("ativo", true).order("tipo", { ascending: true }).order("ordem", { ascending: true }),
     auth.supabase.from("vw_ranking_vgv").select("corretor_id,corretor,vendas,vgv").order("vgv", { ascending: false }),
     // Agenda de repasse de comissao (fonte unica: pagamentos_comissao).
-    auth.supabase.from("pagamentos_comissao").select("id,venda_id,comissao_id,beneficiario_id,papel,valor,ordem,data_prevista,data_pagamento,status,observacao,lancamento_id,created_at").order("ordem", { ascending: true }),
+    auth.supabase.from("pagamentos_comissao").select("*").order("created_at", { ascending: true }),
   ]);
   const firstError = [sales, details, commissions, receipts, cash, users, brokers, goals, leads, deals, empreendimentos, categorias].find((result) => result.error)?.error;
   if (firstError) return Response.json({ error: firstError.message }, { status: 502 });
@@ -449,8 +464,9 @@ export async function PATCH(request: Request) {
     const pago = body.pago === true;
     const dataPagamento = clean(body.dataPagamento, 10) || new Date().toISOString().slice(0, 10);
     if (!payoutId) return Response.json({ error: "Repasse invalido." }, { status: 422 });
-    const { data: atual, error: readError } = await auth.supabase.from("pagamentos_comissao").select("id,venda_id,comissao_id,beneficiario_id,papel,valor,status,lancamento_id").eq("id", payoutId).maybeSingle();
-    if (readError || !atual) return Response.json({ error: readError?.message || "Repasse nao encontrado." }, { status: 404 });
+    const { data: lido, error: readError } = await auth.supabase.from("pagamentos_comissao").select("*").eq("id", payoutId).maybeSingle();
+    if (readError || !lido) return Response.json({ error: readError?.message || "Repasse nao encontrado." }, { status: 404 });
+    const atual = lido as typeof lido & RepasseColunasNovas;
 
     if (!pago) {
       // Desfazer a baixa: some o lancamento derivado, some a data.
@@ -495,7 +511,8 @@ export async function PATCH(request: Request) {
     if (denied) return denied;
     const payoutId = clean(body.payoutId, 50);
     if (!payoutId) return Response.json({ error: "Repasse invalido." }, { status: 422 });
-    const { data: atual } = await auth.supabase.from("pagamentos_comissao").select("lancamento_id").eq("id", payoutId).maybeSingle();
+    const { data: lido } = await auth.supabase.from("pagamentos_comissao").select("*").eq("id", payoutId).maybeSingle();
+    const atual = lido ? lido as typeof lido & RepasseColunasNovas : null;
     if (atual?.lancamento_id) await auth.supabase.from("lancamentos_caixa").delete().eq("id", atual.lancamento_id);
     const { error } = await auth.supabase.from("pagamentos_comissao").delete().eq("id", payoutId);
     return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
