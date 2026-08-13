@@ -93,3 +93,13 @@
   .extrato-resumo { grid-template-columns: repeat(2, 1fr); }
   .extrato-linha-botoes button { flex: 1 1 100%; text-align: center; }
 }
+
+/* ---------- vínculo de comissão e linhas não lidas ---------- */
+.extrato-linha-form label.extrato-largo { flex: 1 1 100%; }
+.extrato-aviso-inline { flex: 1 1 100%; margin: 0; padding: 9px 13px; border-radius: 12px; background: #fff6ef; border: 1px solid #f2d7bd; color: #8a5320; font-size: 11px; line-height: 1.5; }
+
+.extrato-nao-lidas { margin: 0 0 14px; padding: 13px 16px; border-radius: 18px; background: #fff0ee; border: 1px solid #f0d6d2; color: #8f2f26; }
+.extrato-nao-lidas strong { display: block; font-size: 12px; font-weight: 700; }
+.extrato-nao-lidas ul { margin: 8px 0 6px; padding-left: 18px; }
+.extrato-nao-lidas li { font-size: 11px; line-height: 1.6; }
+.extrato-nao-lidas span { display: block; font-size: 11px; opacity: .9; }
