@@ -227,6 +227,17 @@ export function VendaModal({ data, saleId, sessionRole = "corretor", onClose, on
           <label>Observações<textarea disabled={somenteLeitura} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} /></label>
           {comissaoBruta > 0 && <p className="nova-venda-hint">Comissão bruta calculada: <b>{brl.format(comissaoBruta)}</b></p>}
           {editando && !somenteLeitura && <button className="save-sale" disabled={busy} type="button" onClick={salvarDados}>{busy ? "Salvando…" : "Salvar dados da venda"}</button>}
+          {editando && !isCorretor && <div className="venda-zona-perigo">
+            {!confirmDelete
+              ? <button className="delete-sale" disabled={busy} type="button" onClick={() => setConfirmDelete(true)}>Apagar esta venda</button>
+              : <div className="venda-delete-inline">
+                  <b>Apagar? Comissões, recebimentos e repasses desta venda somem junto.</b>
+                  <div>
+                    <button type="button" disabled={busy} onClick={() => setConfirmDelete(false)}>Cancelar</button>
+                    <button className="danger" type="button" disabled={busy} onClick={() => { setBusy(true); void onDelete(saleId!).finally(() => setBusy(false)); }}>{busy ? "Apagando…" : "Sim, apagar"}</button>
+                  </div>
+                </div>}
+          </div>}
         </section>}
 
         {step === 2 && <section className="nova-venda-section">
@@ -333,13 +344,6 @@ export function VendaModal({ data, saleId, sessionRole = "corretor", onClose, on
           {step < 4 && <button type="button" onClick={() => setStep((v) => (v + 1) as 1 | 2 | 3 | 4)}>Próximo ›</button>}
         </div>
         <div>
-          {editando && !isCorretor && (!confirmDelete
-            ? <button className="delete-sale" disabled={busy} type="button" onClick={() => setConfirmDelete(true)}>Apagar venda</button>
-            : <span className="delete-sale-confirm venda-delete-inline">
-                <b>Apagar? Comissões, recebimentos e repasses somem.</b>
-                <button type="button" disabled={busy} onClick={() => setConfirmDelete(false)}>Cancelar</button>
-                <button className="danger" type="button" disabled={busy} onClick={() => { setBusy(true); void onDelete(saleId!).finally(() => setBusy(false)); }}>{busy ? "Apagando…" : "Confirmar"}</button>
-              </span>)}
           <button type="button" onClick={onClose}>Fechar</button>
           {!editando && <button className="crm-primary" disabled={busy} type="button" onClick={criarVenda}>{busy ? "Lançando…" : "Lançar venda"}</button>}
         </div>
