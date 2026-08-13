@@ -682,7 +682,7 @@ export async function PATCH(request: Request) {
       alvos = [data as Record<string, unknown>];
     }
 
-    let lancadas = 0, vinculadas = 0, ignoradas = 0;
+    let lancadas = 0, vinculadas = 0, ignoradas = 0, pulou = 0;
     for (const linha of alvos) {
       const decisaoPedida = clean(body.decisao, 20);
       const decisao = emLote
@@ -703,6 +703,32 @@ export async function PATCH(request: Request) {
       const valor = Number(linha.valor);
       const categoria = (emLote ? "" : clean(body.categoria, 80)) || String(linha.categoria_sugerida || "") || "Outros";
       const descricao = (emLote ? "" : clean(body.descricao, 400)) || String(linha.descricao || "");
+
+      /* Categoria de comissao carrega vinculo, igual ao lancamento manual: sem
+         venda (e sem a parte, quando e comissao paga) o dinheiro entra no caixa
+         solto e nao aparece no repasse da venda. No lote, linha assim fica
+         PENDENTE em vez de virar lancamento incompleto. */
+      const { data: catInfo } = await auth.supabase.from("categorias_caixa").select("natureza").eq("nome", categoria).maybeSingle();
+      const natureza = String(catInfo?.natureza || "normal");
+      const ehComissao = natureza === "comissao_paga" || natureza === "comissao_recebida";
+      const vendaId = emLote ? "" : clean(body.saleId, 60);
+      const comissaoId = emLote ? "" : clean(body.commissionId, 60);
+      if (ehComissao && !vendaId) {
+        if (emLote) { pulou++; continue; }
+        return Response.json({ error: "Categoria de comissao exige a venda relacionada." }, { status: 422 });
+      }
+      let beneficiarioId: string | null = null;
+      let papel: string | null = null;
+      if (comissaoId) {
+        const { data: comissao } = await auth.supabase.from("comissoes").select("beneficiario_id,papel").eq("id", comissaoId).maybeSingle();
+        beneficiarioId = (comissao?.beneficiario_id as string) ?? null;
+        papel = (comissao?.papel as string) ?? null;
+      }
+      if (natureza === "comissao_paga" && vendaId && !comissaoId) {
+        const { count } = await auth.supabase.from("comissoes").select("id", { count: "exact", head: true }).eq("venda_id", vendaId);
+        if ((count ?? 0) > 0) return Response.json({ error: "Escolha qual comissao / corretor esta sendo pago." }, { status: 422 });
+      }
+
       const { data: criado, error: caixaError } = await auth.supabase.from("lancamentos_caixa").insert({
         tipo: valor < 0 ? "saida" : "entrada",
         categoria,
@@ -710,12 +736,17 @@ export async function PATCH(request: Request) {
         valor: Math.abs(valor),
         descricao,
         origem: "extrato",
+        natureza,
+        venda_id: vendaId || null,
+        comissao_id: comissaoId || null,
+        beneficiario_id: beneficiarioId,
+        papel,
       } as never).select("id").single();
       if (caixaError || !criado) return Response.json({ error: `Nao foi possivel lancar no caixa: ${caixaError?.message ?? ""}` }, { status: 502 });
       await semTipos(auth.supabase).from("extrato_linha").update({ situacao: "lancado", lancamento_id: criado.id, resolvido_por: auth.user.id, resolvido_em: new Date().toISOString() } as never).eq("id", linha.id as string);
       lancadas++;
     }
-    return Response.json({ success: true, lancadas, vinculadas, ignoradas });
+    return Response.json({ success: true, lancadas, vinculadas, ignoradas, pulou });
   }
 
   if (action === "deleteSale") {
