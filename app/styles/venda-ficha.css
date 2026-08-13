@@ -1,0 +1,123 @@
+/* FICHA DA VENDA — formulário único (ago/2026).
+
+   Folha isolada porque o globals.css já passa de 5.600 linhas e qualquer
+   inclusão lá vira busca no escuro. Aqui só existe o que é novo desta tela:
+   a casca do modal em abas e a agenda de repasse.
+
+   Reaproveita, sem redeclarar, as famílias que já existiam: .nova-venda-*,
+   .comm-*, .finance-empty, .save-sale, .delete-sale, .crm-center-modal.
+   Identidade Apecerto: laranja #ff6500, roxo #8d2bd1, Quicksand, pill,
+   card 18px, nada abaixo de 11px. */
+
+.venda-modal {
+  width: min(980px, 96vw);
+  max-height: 92vh;
+  display: flex;
+  flex-direction: column;
+  border-radius: 18px;
+  overflow: hidden;
+}
+
+.venda-modal-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 22px 14px;
+  background: linear-gradient(120deg, #ff6500 0%, #8d2bd1 100%);
+  color: #fff;
+}
+.venda-modal-head span { font-size: 11px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; opacity: .88; }
+.venda-modal-head h2 { margin: 4px 0 2px; font-size: 21px; font-weight: 700; }
+.venda-modal-head p { margin: 0; font-size: 12px; opacity: .9; }
+.venda-modal-head > button {
+  border: 0; background: rgba(255, 255, 255, .18); color: #fff;
+  width: 30px; height: 30px; border-radius: 999px; font-size: 17px; cursor: pointer; flex: none;
+}
+.venda-modal-head > button:hover { background: rgba(255, 255, 255, .3); }
+
+.venda-modal-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; padding: 14px 22px 0; }
+.venda-modal-kpis article { background: #faf8f6; border: 1px solid #efe9e3; border-radius: 18px; padding: 10px 13px; }
+.venda-modal-kpis span { display: block; font-size: 11px; color: #918b86; font-weight: 600; }
+.venda-modal-kpis strong { display: block; margin-top: 3px; font-size: 16px; font-weight: 700; color: #2f2a26; }
+.venda-modal-kpis strong.positive { color: #1a8f4c; }
+.venda-modal-kpis strong.negative { color: #c0392b; }
+
+.venda-modal-steps { padding: 14px 22px 0; }
+.venda-modal-steps button { cursor: pointer; }
+
+.venda-modal-body { flex: 1; overflow-y: auto; padding: 4px 22px 18px; }
+
+.venda-modal-ok {
+  margin: 12px 22px 0; padding: 8px 14px; border: 0; border-radius: 999px;
+  background: #e8f6ed; color: #1a8f4c; font-size: 12px; font-weight: 600; cursor: pointer; text-align: left;
+}
+
+.venda-modal-foot {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  padding: 13px 22px; border-top: 1px solid #efe9e3; background: #fdfcfb;
+}
+.venda-modal-foot > div { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.venda-modal-foot button {
+  border: 1px solid #e4ddd6; background: #fff; color: #4a423c;
+  border-radius: 999px; padding: 8px 15px; font-size: 12px; font-weight: 600; cursor: pointer;
+}
+.venda-modal-foot button:hover { border-color: #ff6500; color: #ff6500; }
+.venda-modal-foot button.crm-primary { background: #ff6500; border-color: #ff6500; color: #fff; }
+.venda-modal-foot button.crm-primary:hover { background: #e65b00; color: #fff; }
+.venda-modal-foot button.delete-sale { border-color: #f0d6d2; color: #c0392b; }
+.venda-modal-foot button:disabled { opacity: .55; cursor: not-allowed; }
+
+.venda-delete-inline { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.venda-delete-inline b { font-size: 11px; font-weight: 600; color: #c0392b; }
+
+/* Linhas de comissão, recebimento e repasse */
+.venda-comm-row, .venda-receipt-row, .venda-payout-row {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  padding: 9px 11px; border: 1px solid #efe9e3; border-radius: 18px; background: #fff; margin-bottom: 7px;
+}
+.venda-payout-row.pago { background: #f6fbf8; border-color: #d8ece1; }
+.venda-comm-row select, .venda-comm-row input,
+.venda-receipt-row input, .venda-payout-row select, .venda-payout-row input {
+  border: 1px solid #e4ddd6; border-radius: 999px; padding: 6px 12px; font-size: 12px; font-family: inherit; min-width: 0;
+}
+.venda-comm-row select, .venda-payout-row select { flex: 1 1 130px; }
+.venda-comm-row input, .venda-receipt-row input, .venda-payout-row input { flex: 0 1 130px; }
+.venda-comm-saldo, .venda-data-pgto { font-size: 11px; color: #918b86; font-style: normal; flex: 1 1 120px; }
+.venda-parcela { font-size: 12px; font-weight: 600; color: #4a423c; flex: 0 0 88px; }
+
+.venda-tag {
+  font-size: 11px; font-weight: 700; font-style: normal; border-radius: 999px;
+  padding: 4px 11px; background: #f3efec; color: #6d655f;
+}
+.venda-tag.ok { background: #e8f6ed; color: #1a8f4c; }
+.venda-tag.aguardando { background: #fdf0e6; color: #c25c00; }
+
+.venda-repasse-head { margin-top: 22px; padding-top: 16px; border-top: 1px dashed #e4ddd6; }
+.venda-payout-acoes { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
+
+.comm-add-btn {
+  border: 1px dashed #cbb6dd; background: #faf6fd; color: #8d2bd1;
+  border-radius: 999px; padding: 8px 15px; font-size: 12px; font-weight: 600; cursor: pointer;
+}
+.comm-add-btn:hover { background: #f3e9fb; border-color: #8d2bd1; }
+
+.venda-baixar {
+  border: 1px solid #ff6500; background: #ff6500; color: #fff;
+  border-radius: 999px; padding: 6px 13px; font-size: 11px; font-weight: 700; cursor: pointer;
+}
+.venda-baixar:hover { background: #e65b00; }
+
+.nova-venda-upload-label {
+  display: inline-block; border: 1px dashed #cbb6dd; background: #faf6fd; color: #8d2bd1;
+  border-radius: 18px; padding: 11px 15px; font-size: 12px; font-weight: 600; cursor: pointer;
+}
+.nova-venda-upload-label input { display: none; }
+
+@media (max-width: 720px) {
+  .venda-modal { width: 100vw; max-height: 100vh; border-radius: 0; }
+  .venda-modal-body { padding: 4px 14px 16px; }
+  .venda-modal-head, .venda-modal-foot, .venda-modal-kpis, .venda-modal-steps { padding-left: 14px; padding-right: 14px; }
+  .venda-comm-row select, .venda-payout-row select,
+  .venda-comm-row input, .venda-receipt-row input, .venda-payout-row input { flex: 1 1 100%; }
+}

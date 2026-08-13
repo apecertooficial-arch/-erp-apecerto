@@ -12,13 +12,28 @@ async function authClient(request: Request) {
   return error || !data.user ? null : { supabase, user: data.user };
 }
 
+/* PONTE TEMPORARIA DE TIPO — APAGUE AO REGERAR OS TIPOS.
+
+   A migracao repasse_comissao_fonte_unica criou tres colunas em
+   pagamentos_comissao: ordem, data_prevista e lancamento_id. O arquivo
+   app/lib/supabase/database.types.ts e gerado por `supabase gen types` e ainda
+   nao as conhece. Como o cliente do Supabase e tipado, citar essas colunas num
+   select vira erro de compilacao.
+
+   Enquanto os tipos nao forem regerados, o select usa "*" (o Postgres devolve
+   as colunas de qualquer jeito) e a leitura das tres e tipada aqui.
+
+   Na proxima vez que alguem rodar `supabase gen types`, este bloco perde a
+   razao de existir: apague o tipo e volte a listar as colunas no select. */
+type RepasseColunasNovas = { ordem: number; data_prevista: string | null; lancamento_id: string | null };
+
 const clean = (value: unknown, max = 500) => typeof value === "string" ? value.trim().slice(0, max) : "";
 
 export async function GET(request: Request) {
   const auth = await authClient(request);
   if (!auth) return Response.json({ error: "Sessão inválida ou expirada." }, { status: 401 });
-  const [sales, details, commissions, receipts, cash, users, brokers, goals, leads, deals, empreendimentos, categorias, rankingVgv] = await Promise.all([
-    auth.supabase.from("vendas").select("id,created_at,data_venda,data_conclusao,empreendimento_id,empreendimento_nome,unidade_id,vgv,custos,forma_pgto,percentual_comissao,status,obs").order("data_venda", { ascending: false }),
+  const [sales, details, commissions, receipts, cash, users, brokers, goals, leads, deals, empreendimentos, categorias, rankingVgv, payouts] = await Promise.all([
+    auth.supabase.from("vendas").select("id,created_at,data_venda,data_conclusao,empreendimento_id,empreendimento_nome,unidade_id,unidade_rotulo,cliente_nome,proprietario_nome,vgv,custos,forma_pgto,percentual_comissao,status,obs").order("data_venda", { ascending: false }),
     auth.supabase.from("v_vendas_detalhe").select("id,data_venda,empreendimento,unidade,bairro,incorporadora,vgv,percentual_comissao,comissao_bruta,comissao_corretores,comissao_executivo,comissao_apecerto,indicacao,corretores,forma_pgto,status,obs"),
     auth.supabase.from("comissoes").select("id,venda_id,beneficiario_id,papel,valor_calculado,valor_final,override_motivo,created_at"),
     auth.supabase.from("recebimentos").select("id,venda_id,numero_parcela,valor_total,data_prevista,data_recebimento,status,created_at").order("data_prevista", { ascending: true }),
@@ -31,6 +46,8 @@ export async function GET(request: Request) {
     auth.supabase.from("empreendimentos").select("id,nome,bairro,cidade").order("nome", { ascending: true }),
     auth.supabase.from("categorias_caixa").select("id,nome,tipo,natureza,cor,ordem").eq("ativo", true).order("tipo", { ascending: true }).order("ordem", { ascending: true }),
     auth.supabase.from("vw_ranking_vgv").select("corretor_id,corretor,vendas,vgv").order("vgv", { ascending: false }),
+    // Agenda de repasse de comissao (fonte unica: pagamentos_comissao).
+    auth.supabase.from("pagamentos_comissao").select("*").order("created_at", { ascending: true }),
   ]);
   const firstError = [sales, details, commissions, receipts, cash, users, brokers, goals, leads, deals, empreendimentos, categorias].find((result) => result.error)?.error;
   if (firstError) return Response.json({ error: firstError.message }, { status: 502 });
@@ -54,7 +71,7 @@ export async function GET(request: Request) {
       data_recebimento: receipt.data_recebimento || sale.data_venda,
     };
   });
-  return Response.json({ sales: safeSales, details: safeDetails, commissions: commissions.data ?? [], receipts: reconciledReceipts, cash: cash.data ?? [], users: users.data ?? [], brokers: brokers.data ?? [], goals: goals.data ?? [], leads: leads.data ?? [], deals: deals.data ?? [], empreendimentos: empreendimentos.data ?? [], categorias: categorias.data ?? [], rankingVgv: rankingVgv.data ?? [] });
+  return Response.json({ sales: safeSales, details: safeDetails, commissions: commissions.data ?? [], receipts: reconciledReceipts, cash: cash.data ?? [], users: users.data ?? [], brokers: brokers.data ?? [], goals: goals.data ?? [], leads: leads.data ?? [], deals: deals.data ?? [], empreendimentos: empreendimentos.data ?? [], categorias: categorias.data ?? [], rankingVgv: rankingVgv.data ?? [], payouts: payouts.data ?? [] });
 }
 
 export async function PATCH(request: Request) {
@@ -208,6 +225,30 @@ export async function PATCH(request: Request) {
       if (error) return Response.json({ error: `Venda criada, mas falha ao gerar parcelas: ${error.message}`, saleId }, { status: 502 });
     }
 
+    const payoutRows = Array.isArray(body.payouts)
+      ? (body.payouts as unknown[]).filter((r) => r && typeof r === "object").map((r, index) => {
+          const row = r as Record<string, unknown>;
+          const valor = Number(row.valor);
+          const ordem = Number(row.ordem);
+          const status = clean(row.status, 20) === "pago" ? "pago" : "previsto";
+          const dataPagamento = clean(row.dataPagamento, 10) || null;
+          return {
+            venda_id: saleId,
+            beneficiario_id: clean(row.beneficiarioId, 60) || null,
+            papel: clean(row.papel, 40) || "corretor",
+            valor: Number.isFinite(valor) ? valor : 0,
+            ordem: Number.isSafeInteger(ordem) && ordem > 0 ? ordem : index + 1,
+            data_prevista: clean(row.dataPrevista, 10) || null,
+            status: status === "pago" && dataPagamento ? "pago" : "previsto",
+            data_pagamento: status === "pago" ? dataPagamento : null,
+          };
+        }).filter((row) => row.valor > 0 && row.beneficiario_id)
+      : [];
+    if (payoutRows.length) {
+      const { error } = await auth.supabase.from("pagamentos_comissao").insert(payoutRows as never);
+      if (error) return Response.json({ error: `Venda criada, mas falha ao agendar os repasses: ${error.message}`, saleId }, { status: 502 });
+    }
+
     return Response.json({ success: true, saleId });
   }
 
@@ -337,6 +378,23 @@ export async function PATCH(request: Request) {
       forma_pgto: clean(body.payment, 100) || null,
       obs: clean(body.notes, 1000) || null,
     };
+    /* A ficha da venda virou o mesmo formulario do lancamento (ago/2026), entao
+       o updateSale precisa aceitar os mesmos campos. Cada um so entra no patch
+       se veio no corpo — assim quem chama so o status continua funcionando. */
+    if (typeof body.dataVenda === "string" && clean(body.dataVenda, 10)) patchVenda.data_venda = clean(body.dataVenda, 10);
+    if (body.vgv !== undefined) { const vgv = Number(body.vgv); if (!Number.isFinite(vgv) || vgv <= 0) return Response.json({ error: "VGV inválido." }, { status: 422 }); patchVenda.vgv = vgv; }
+    if (body.custos !== undefined) { const custos = Number(body.custos); patchVenda.custos = Number.isFinite(custos) && custos >= 0 ? custos : 0; }
+    if (body.empreendimentoId !== undefined) patchVenda.empreendimento_id = clean(body.empreendimentoId, 60) || null;
+    if (body.empreendimentoNome !== undefined) patchVenda.empreendimento_nome = clean(body.empreendimentoNome, 200) || null;
+    if (body.unidade !== undefined) patchVenda.unidade_rotulo = clean(body.unidade, 120) || null;
+    if (body.clienteNome !== undefined) patchVenda.cliente_nome = clean(body.clienteNome, 200) || null;
+    if (body.proprietarioNome !== undefined) patchVenda.proprietario_nome = clean(body.proprietarioNome, 200) || null;
+    if (Array.isArray(body.documentos)) {
+      patchVenda.documentos = (body.documentos as unknown[]).filter((doc) => doc && typeof doc === "object").map((doc) => {
+        const d = doc as Record<string, unknown>;
+        return { nome: clean(d.nome, 200), path: clean(d.path, 1000), bucket: clean(d.bucket, 60) || "esteira-docs" };
+      }).filter((doc) => doc.path).slice(0, 30);
+    }
     if (status === "concluido" || status === "pago") {
       const { data: atual } = await auth.supabase.from("vendas").select("data_venda,data_conclusao").eq("id", saleId).maybeSingle();
       if (atual && !atual.data_conclusao) patchVenda.data_conclusao = atual.data_venda;
@@ -349,6 +407,150 @@ export async function PATCH(request: Request) {
     }
     return Response.json({ success: true });
   }
+  /* REPASSE DE COMISSAO - FONTE UNICA (ago/2026).
+
+     Antes deste bloco, "paguei o corretor" so existia como lancamento de caixa
+     com natureza='comissao_paga', criado a mao pela aba Fluxo de Caixa. Era um
+     caminho escondido: quem estava na ficha da venda nao tinha como registrar,
+     e a comissao nunca sabia se tinha sido paga.
+
+     Agora a agenda vive em pagamentos_comissao: uma linha por parcela de
+     repasse, com previsao (status='previsto', data_prevista) e baixa
+     (status='pago', data_pagamento). O lancamento de caixa passa a ser
+     DERIVADO - gerado por settlePayout e apagado quando a baixa e desfeita.
+     Nao lance comissao paga a mao no caixa: vira dinheiro contado duas vezes. */
+
+  if (action === "savePayout") {
+    const denied = guard([["vendas", "editar"], ["financeiro", "editar"]], "Voce nao tem permissao para lancar repasses de comissao.");
+    if (denied) return denied;
+    const payoutId = clean(body.payoutId, 50);
+    const saleId = clean(body.saleId, 50);
+    const valor = Number(body.valor);
+    const ordemRaw = Number(body.ordem);
+    const status = clean(body.status, 20) === "pago" ? "pago" : "previsto";
+    const dataPagamento = clean(body.dataPagamento, 10) || null;
+    const dataPrevista = clean(body.dataPrevista, 10) || null;
+    const beneficiarioId = clean(body.beneficiarioId, 60);
+    const papel = clean(body.papel, 40);
+    const papeisValidos = ["corretor", "executivo", "indicacao", "apecerto", "gerente"];
+    if (!saleId || !Number.isFinite(valor) || valor <= 0) return Response.json({ error: "Informe a venda e um valor de repasse maior que zero." }, { status: 422 });
+    if (!beneficiarioId) return Response.json({ error: "Escolha quem vai receber o repasse." }, { status: 422 });
+    if (!papeisValidos.includes(papel)) return Response.json({ error: "Papel invalido para o repasse." }, { status: 422 });
+    if (status === "pago" && !dataPagamento) return Response.json({ error: "Repasse marcado como pago precisa da data do pagamento." }, { status: 422 });
+    const linha: Record<string, unknown> = {
+      venda_id: saleId,
+      comissao_id: clean(body.comissaoId, 60) || null,
+      beneficiario_id: beneficiarioId,
+      papel,
+      valor,
+      ordem: Number.isSafeInteger(ordemRaw) && ordemRaw > 0 ? ordemRaw : 1,
+      data_prevista: dataPrevista,
+      status,
+      data_pagamento: status === "pago" ? dataPagamento : null,
+      observacao: clean(body.observacao, 500) || null,
+    };
+    if (payoutId) {
+      const { error } = await auth.supabase.from("pagamentos_comissao").update(linha as never).eq("id", payoutId);
+      return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
+    }
+    const { data: criado, error } = await auth.supabase.from("pagamentos_comissao").insert(linha as never).select("id").single();
+    return error || !criado ? Response.json({ error: error?.message || "Nao foi possivel lancar o repasse." }, { status: 502 }) : Response.json({ success: true, payoutId: criado.id });
+  }
+
+  if (action === "settlePayout") {
+    const denied = guard([["fluxo_caixa", "conciliar"], ["financeiro", "editar"]], "Voce nao tem permissao para dar baixa em repasses.");
+    if (denied) return denied;
+    const payoutId = clean(body.payoutId, 50);
+    const pago = body.pago === true;
+    const dataPagamento = clean(body.dataPagamento, 10) || new Date().toISOString().slice(0, 10);
+    if (!payoutId) return Response.json({ error: "Repasse invalido." }, { status: 422 });
+    const { data: lido, error: readError } = await auth.supabase.from("pagamentos_comissao").select("*").eq("id", payoutId).maybeSingle();
+    if (readError || !lido) return Response.json({ error: readError?.message || "Repasse nao encontrado." }, { status: 404 });
+    const atual = lido as typeof lido & RepasseColunasNovas;
+
+    if (!pago) {
+      // Desfazer a baixa: some o lancamento derivado, some a data.
+      if (atual.lancamento_id) {
+        const { error: delError } = await auth.supabase.from("lancamentos_caixa").delete().eq("id", atual.lancamento_id);
+        if (delError) return Response.json({ error: `Nao foi possivel remover o lancamento de caixa: ${delError.message}` }, { status: 502 });
+      }
+      const { error } = await auth.supabase.from("pagamentos_comissao").update({ status: "previsto", data_pagamento: null, lancamento_id: null } as never).eq("id", payoutId);
+      return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
+    }
+
+    // Dar baixa: gera o lancamento de caixa e amarra os dois.
+    const { data: categoria } = await auth.supabase.from("categorias_caixa").select("nome").eq("natureza", "comissao_paga").eq("ativo", true).order("ordem", { ascending: true }).limit(1).maybeSingle();
+    if (!categoria?.nome) return Response.json({ error: "Nao existe categoria de caixa com natureza 'comissao paga'. Crie a categoria antes de dar baixa." }, { status: 422 });
+    let lancamentoId = atual.lancamento_id as string | null;
+    if (!lancamentoId) {
+      const { data: lancamento, error: cashError } = await auth.supabase.from("lancamentos_caixa").insert({
+        tipo: "saida",
+        categoria: categoria.nome,
+        data: dataPagamento,
+        valor: atual.valor,
+        descricao: "Repasse de comissao lancado pela ficha da venda.",
+        origem: "erp",
+        venda_id: atual.venda_id,
+        comissao_id: atual.comissao_id,
+        beneficiario_id: atual.beneficiario_id,
+        papel: atual.papel,
+        natureza: "comissao_paga",
+      } as never).select("id").single();
+      if (cashError || !lancamento) return Response.json({ error: `Nao foi possivel gerar o lancamento de caixa: ${cashError?.message ?? ""}` }, { status: 502 });
+      lancamentoId = lancamento.id as string;
+    } else {
+      await auth.supabase.from("lancamentos_caixa").update({ data: dataPagamento, valor: atual.valor } as never).eq("id", lancamentoId);
+    }
+    const { error } = await auth.supabase.from("pagamentos_comissao").update({ status: "pago", data_pagamento: dataPagamento, lancamento_id: lancamentoId } as never).eq("id", payoutId);
+    if (error) return Response.json({ error: error.message }, { status: 502 });
+    return Response.json({ success: true });
+  }
+
+  if (action === "deletePayout") {
+    const denied = guard([["vendas", "editar"], ["financeiro", "editar"]], "Voce nao tem permissao para remover repasses.");
+    if (denied) return denied;
+    const payoutId = clean(body.payoutId, 50);
+    if (!payoutId) return Response.json({ error: "Repasse invalido." }, { status: 422 });
+    const { data: lido } = await auth.supabase.from("pagamentos_comissao").select("*").eq("id", payoutId).maybeSingle();
+    const atual = lido ? lido as typeof lido & RepasseColunasNovas : null;
+    if (atual?.lancamento_id) await auth.supabase.from("lancamentos_caixa").delete().eq("id", atual.lancamento_id);
+    const { error } = await auth.supabase.from("pagamentos_comissao").delete().eq("id", payoutId);
+    return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
+  }
+
+  if (action === "saveReceipt") {
+    const denied = guard([["vendas", "editar"], ["financeiro", "editar"]], "Voce nao tem permissao para editar recebimentos.");
+    if (denied) return denied;
+    const receiptId = clean(body.receiptId, 50);
+    const saleId = clean(body.saleId, 50);
+    const valor = Number(body.valor);
+    const parcela = Number(body.numeroParcela);
+    if (!Number.isFinite(valor) || valor <= 0) return Response.json({ error: "Informe um valor maior que zero." }, { status: 422 });
+    const linha: Record<string, unknown> = {
+      numero_parcela: Number.isSafeInteger(parcela) && parcela > 0 ? parcela : 1,
+      valor_total: valor,
+      data_prevista: clean(body.dataPrevista, 10) || null,
+    };
+    if (receiptId) {
+      const { error } = await auth.supabase.from("recebimentos").update(linha as never).eq("id", receiptId);
+      return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
+    }
+    if (!saleId) return Response.json({ error: "Venda invalida." }, { status: 422 });
+    linha.venda_id = saleId;
+    linha.status = "pendente";
+    const { error } = await auth.supabase.from("recebimentos").insert(linha as never);
+    return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
+  }
+
+  if (action === "deleteReceipt") {
+    const denied = guard([["vendas", "editar"], ["financeiro", "editar"]], "Voce nao tem permissao para remover recebimentos.");
+    if (denied) return denied;
+    const receiptId = clean(body.receiptId, 50);
+    if (!receiptId) return Response.json({ error: "Recebimento invalido." }, { status: 422 });
+    const { error } = await auth.supabase.from("recebimentos").delete().eq("id", receiptId);
+    return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
+  }
+
   if (action === "deleteSale") {
     const saleId = clean(body.saleId, 50);
     if (!saleId) return Response.json({ error: "Venda inválida." }, { status: 422 });
