@@ -19,6 +19,10 @@ type GanhoRow = { comissao_id: string; venda_id: string; data_venda: string | nu
 type FinanceRankingRow = { id: string | number; name: string; sales: number; vgv: number; generated: number; received: number; ticket: number };
 const brl = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
 const compact = new Intl.NumberFormat("pt-BR", { notation: "compact", style: "currency", currency: "BRL", maximumFractionDigits: 1 });
+/* Faixa das marcas de acento combinantes (U+0300 a U+036F). Montada por
+   codigo de proposito: a linha fica so com ASCII e nao se corrompe ao
+   passar por ferramenta que reinterpreta sequencia de escape. */
+const MARCAS_DE_ACENTO = new RegExp("[" + String.fromCharCode(0x300) + "-" + String.fromCharCode(0x36f) + "]", "g");
 const date = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short", year: "numeric" });
 
 export function FinanceWorkspace({ accessToken, sessionRole = "corretor", perfil = null, sessionUserId = null, onNavigateToNewSale }: { accessToken: string; sessionRole?: "admin" | "gestor" | "corretor"; perfil?: string | null; sessionUserId?: string | null; onNavigateToNewSale?: () => void }) {
@@ -47,7 +51,7 @@ export function FinanceWorkspace({ accessToken, sessionRole = "corretor", perfil
   const vgvEmNegociacao = emNegociacao.reduce((sum, item) => sum + item.vgv, 0);
   const totalVgv = concluidas.reduce((sum, item) => sum + item.vgv, 0); const entries = cash.filter((item) => item.tipo === "entrada").reduce((sum, item) => sum + item.valor, 0); const exits = cash.filter((item) => item.tipo === "saida").reduce((sum, item) => sum + item.valor, 0); const pending = receipts.filter((item) => item.status !== "recebido").reduce((sum, item) => sum + item.valor_total, 0); const projectedCommission = concluidas.reduce((sum, item) => sum + item.vgv * Number(item.percentual_comissao || 0), 0); const paidCommission = (data?.commissions ?? []).filter((item) => concluidas.some((sale) => sale.id === item.venda_id)).reduce((sum, item) => sum + item.valor_final, 0);
   const saleById = new Map(concluidas.map((sale) => [sale.id, sale]));
-  const normalizeName = (value: string | null | undefined) => (value || "").normalize("NFD").replace(/[̀-ͯ]/g, "").trim().toLowerCase();
+  const normalizeName = (value: string | null | undefined) => (value || "").normalize("NFD").replace(MARCAS_DE_ACENTO, "").trim().toLowerCase();
   const brokerRanking = (data?.brokers ?? []).map((broker) => {
     const dealSaleIds = (data?.deals ?? []).filter((deal) => deal.venda_id && saleById.has(deal.venda_id) && deal.corretor_id === broker.id).map((deal) => deal.venda_id as string);
     const brokerName = normalizeName(broker.nome);
@@ -166,6 +170,100 @@ function SalesCommissions({ data, sales, onSale, onNewSale, sessionRole = "corre
       <footer className="finance-sales-footer"><span>{filtered.length ? `${(safePage - 1) * pageSize + 1}-${Math.min(safePage * pageSize, filtered.length)} de ${filtered.length} vendas` : "0 vendas"}</span><nav><button disabled={safePage === 1} type="button" onClick={() => setPage((value) => Math.max(1, value - 1))}>‹</button>{Array.from({ length: totalPages }, (_, index) => index + 1).slice(Math.max(0, safePage - 3), Math.max(3, safePage)).map((item) => <button className={item === safePage ? "active" : ""} type="button" onClick={() => setPage(item)} key={item}>{item}</button>)}<button disabled={safePage === totalPages} type="button" onClick={() => setPage((value) => Math.min(totalPages, value + 1))}>›</button></nav></footer>
     </article>
   </section>;
+}
+
+function CashFlow({ cash, receipts, sales, onSale, onNewCash, onNewReceipt, onSettle, onEditCash, onDeleteCash }: { cash: Cash[]; receipts: Receipt[]; sales: Sale[]; onSale: (id: string) => void; onNewCash: () => void; onNewReceipt: () => void; onSettle: (receipt: Receipt, received: boolean) => Promise<void>; onEditCash: (item: Cash) => void; onDeleteCash: (item: Cash) => void }) {
+  const [sub, setSub] = useState<"movements" | "receive" | "pay">("movements");
+  const [query, setQuery] = useState("");
+  const [movementType, setMovementType] = useState("all");
+  const [page, setPage] = useState(1);
+  const pageSize = 15;
+  const saleById = new Map(sales.map((item) => [item.id, item]));
+  const normalizedQuery = query.trim().toLocaleLowerCase("pt-BR");
+  const movementRows = cash.filter((item) => (sub !== "pay" || item.tipo === "saida") && (movementType === "all" || item.tipo === movementType)).filter((item) => `${item.descricao || ""} ${item.categoria} ${item.origem || ""} ${item.venda_id ? saleById.get(item.venda_id)?.empreendimento_nome || "" : ""}`.toLocaleLowerCase("pt-BR").includes(normalizedQuery));
+  const receiptRows = receipts.filter((item) => `${saleById.get(item.venda_id)?.empreendimento_nome || "Venda"} ${item.numero_parcela} ${item.status}`.toLocaleLowerCase("pt-BR").includes(normalizedQuery));
+  const activeLength = sub === "receive" ? receiptRows.length : movementRows.length;
+  const totalPages = Math.max(1, Math.ceil(activeLength / pageSize));
+  const safePage = Math.min(page, totalPages);
+  const visibleMovementRows = movementRows.slice((safePage - 1) * pageSize, safePage * pageSize);
+  const visibleReceiptRows = receiptRows.slice((safePage - 1) * pageSize, safePage * pageSize);
+  const movementGroups = visibleMovementRows.reduce((map, item) => { const key = item.data.slice(0, 7); const current = map.get(key) || []; current.push(item); map.set(key, current); return map; }, new Map<string, Cash[]>());
+  const receiptGroups = visibleReceiptRows.reduce((map, item) => { const key = (item.data_prevista || item.data_recebimento || item.created_at).slice(0, 7); const current = map.get(key) || []; current.push(item); map.set(key, current); return map; }, new Map<string, Receipt[]>());
+  const monthTitle = (key: string) => new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(`${key}-15T12:00:00Z`)).toLocaleUpperCase("pt-BR");
+  const changeSub = (next: "movements" | "receive" | "pay") => { setSub(next); setPage(1); };
+  return <section className="cash-flow finance-data-designer">
+    <article className="finance-sales-panel">
+      <header className="finance-sales-toolbar finance-cash-toolbar"><div><h2>Fluxo de caixa</h2><nav className="finance-data-tabs"><button className={sub === "movements" ? "active" : ""} type="button" onClick={() => changeSub("movements")}>Movimentações</button><button className={sub === "receive" ? "active" : ""} type="button" onClick={() => changeSub("receive")}>A receber</button><button className={sub === "pay" ? "active" : ""} type="button" onClick={() => changeSub("pay")}>A pagar</button></nav></div><div className="finance-cash-actions"><button type="button" onClick={onNewCash}>＋ Novo lançamento</button><button className="primary" type="button" onClick={onNewReceipt}>＋ Programar recebimento</button></div></header>
+      <div className="finance-data-filterbar"><label><span>⌕</span><input aria-label="Buscar no fluxo de caixa" value={query} onChange={(event) => { setQuery(event.target.value); setPage(1); }} placeholder={sub === "receive" ? "Buscar venda, parcela ou status..." : "Buscar descrição, categoria ou venda..."} /></label>{sub !== "receive" && <select aria-label="Filtrar tipo de movimentação" value={movementType} onChange={(event) => { setMovementType(event.target.value); setPage(1); }}><option value="all">Entradas e saídas</option><option value="entrada">Somente entradas</option><option value="saida">Somente saídas</option></select>}<strong>{sub === "receive" ? `${receiptRows.length} recebimentos · ${brl.format(receiptRows.reduce((sum, item) => sum + item.valor_total, 0))}` : `${movementRows.length} lançamentos · ${brl.format(movementRows.reduce((sum, item) => sum + (item.tipo === "entrada" ? item.valor : -item.valor), 0))}`}</strong></div>
+      {sub === "receive" ? <div className="finance-data-scroll"><div className="finance-receipt-head"><span>Venda / parcela</span><span>Vencimento</span><span>Valor</span><span>Status</span><span>Ação</span></div>{[...receiptGroups.entries()].map(([month, items]) => <section className="finance-data-month" key={month}><header><strong>{monthTitle(month)}</strong><span>{items.length} {items.length === 1 ? "recebimento" : "recebimentos"} · {brl.format(items.reduce((sum, item) => sum + item.valor_total, 0))}</span></header>{items.map((item) => <article className={`finance-receipt-row ${item.status}`} key={item.id}><span><b>{saleById.get(item.venda_id)?.empreendimento_nome || "Venda"}</b><small>Parcela {item.numero_parcela}</small></span><span>{item.data_prevista ? new Intl.DateTimeFormat("pt-BR").format(new Date(`${item.data_prevista}T12:00:00`)) : "—"}</span><span><b>{brl.format(item.valor_total)}</b></span><span><em className={item.status}>{item.status === "recebido" ? "Recebido" : "Pendente"}</em></span><span><button type="button" onClick={() => void onSettle(item, item.status !== "recebido")}>{item.status === "recebido" ? "Desfazer" : "Dar baixa"}</button></span></article>)}</section>)}{receiptRows.length === 0 && <p className="finance-data-empty">Nenhum recebimento encontrado.</p>}</div> : <div className="finance-data-scroll"><div className="finance-cash-head"><span>Data</span><span>Descrição</span><span>Categoria</span><span>Origem</span><span>Venda relacionada</span><span>Valor</span><span>Tipo</span><span>Ações</span></div>{[...movementGroups.entries()].map(([month, items]) => <section className="finance-data-month" key={month}><header><strong>{monthTitle(month)}</strong><span>{items.length} {items.length === 1 ? "lançamento" : "lançamentos"} · saldo {brl.format(items.reduce((sum, item) => sum + (item.tipo === "entrada" ? item.valor : -item.valor), 0))}</span></header>{items.map((item) => <article className={`finance-cash-row ${item.tipo}`} key={item.id}><span>{new Intl.DateTimeFormat("pt-BR").format(new Date(`${item.data}T12:00:00`))}</span><span title={item.descricao || item.categoria}><b>{item.descricao || item.categoria}</b></span><span>{item.categoria}</span><span>{item.origem || "Manual"}</span><span title={item.venda_id ? saleById.get(item.venda_id)?.empreendimento_nome || "Venda vinculada" : "Sem vínculo"}>{item.venda_id ? saleById.get(item.venda_id)?.empreendimento_nome || "Venda vinculada" : "Sem vínculo"}</span><span><b>{item.tipo === "entrada" ? "+ " : "− "}{brl.format(item.valor)}</b></span><span><em className={item.tipo}>{item.tipo === "entrada" ? "Entrada" : "Saída"}</em></span><span><CashRowMenu item={item} saleName={item.venda_id ? saleById.get(item.venda_id)?.empreendimento_nome || null : null} onSale={onSale} onEdit={onEditCash} onDelete={onDeleteCash} /></span></article>)}</section>)}{movementRows.length === 0 && <p className="finance-data-empty">Nenhuma movimentação encontrada.</p>}</div>}
+      <footer className="finance-sales-footer"><span>{activeLength ? `${(safePage - 1) * pageSize + 1}-${Math.min(safePage * pageSize, activeLength)} de ${activeLength} ${sub === "receive" ? "recebimentos" : "lançamentos"}` : `0 ${sub === "receive" ? "recebimentos" : "lançamentos"}`}</span><nav><button aria-label="Página anterior" disabled={safePage === 1} type="button" onClick={() => setPage(Math.max(1, safePage - 1))}>‹</button>{Array.from({ length: totalPages }, (_, index) => index + 1).slice(Math.max(0, safePage - 3), Math.max(3, safePage)).map((item) => <button className={item === safePage ? "active" : ""} type="button" onClick={() => setPage(item)} key={item}>{item}</button>)}<button aria-label="Próxima página" disabled={safePage === totalPages} type="button" onClick={() => setPage(Math.min(totalPages, safePage + 1))}>›</button></nav></footer>
+    </article>
+  </section>;
+}
+
+function MarketingFinance({ data, cash, sales }: { data: FinanceData; cash: Cash[]; sales: Sale[] }) {
+  const investment = cash.filter((item) => item.tipo === "saida" && /marketing|meta|google|tr[aá]fego|an[uú]ncio/i.test(`${item.categoria} ${item.descricao || ""}`)).reduce((sum, item) => sum + item.valor, 0);
+  const origins = [...new Set(data.leads.map((item) => item.origem || "Sem origem"))].map((origin) => ({ origin, leads: data.leads.filter((item) => (item.origem || "Sem origem") === origin).length, sales: data.deals.filter((deal) => deal.venda_id && data.leads.find((lead) => lead.id === deal.lead_id)?.origem === (origin === "Sem origem" ? null : origin)).length })).sort((a, b) => b.leads - a.leads);
+  const revenue = sales.reduce((sum, item) => sum + item.vgv * Number(item.percentual_comissao || 0), 0);
+  const totalLeads = origins.reduce((sum, item) => sum + item.leads, 0);
+  const totalSales = origins.reduce((sum, item) => sum + item.sales, 0);
+  const visibleOrigins = origins.slice(0, 12);
+  const tones = ["orange", "purple", "green", "blue", "red"];
+  return <section className="finance-data-designer finance-marketing-designer">
+    <article className="finance-sales-panel">
+      <header className="finance-sales-toolbar"><div><h2>Marketing</h2><p>Investimento, origem dos leads e conversão em vendas.</p></div><strong className="finance-data-total">{totalLeads} leads · {totalSales} vendas</strong></header>
+      <div className="finance-module-kpis">
+        <article className="tone-orange"><span>Investimento identificado</span><strong>{brl.format(investment)}</strong><small>Saídas de mídia e tráfego</small></article>
+        <article className="tone-green"><span>Receita de comissão</span><strong>{brl.format(revenue)}</strong><small>Projetada pelas vendas</small></article>
+        <article className="tone-purple"><span>Retorno sobre mídia</span><strong>{investment ? `${(revenue / investment).toFixed(1)}x` : "—"}</strong><small>Receita ÷ investimento</small></article>
+      </div>
+      <div className="finance-data-scroll"><div className="finance-marketing-head"><span>#</span><span>Canal de origem</span><span>Leads</span><span>Vendas</span><span>Conversão</span><span>Participação</span></div>{visibleOrigins.map((item, index) => <article className={`finance-marketing-row tone-${tones[index % tones.length]}`} key={item.origin}><span><b>{index + 1}</b></span><span><strong>{item.origin}</strong></span><span>{item.leads}</span><span>{item.sales}</span><span><em>{item.leads ? Math.round(item.sales / item.leads * 100) : 0}%</em></span><span><i><u style={{ width: `${totalLeads ? item.leads / totalLeads * 100 : 0}%` }} /></i><small>{totalLeads ? Math.round(item.leads / totalLeads * 100) : 0}%</small></span></article>)}{visibleOrigins.length === 0 && <p className="finance-data-empty">Nenhuma origem encontrada para o período selecionado.</p>}</div>
+      <footer className="finance-sales-footer"><span>{visibleOrigins.length} de {origins.length} canais de origem</span></footer>
+    </article>
+  </section>;
+}
+
+const CASH_CATEGORIES: Record<"entrada" | "saida", string[]> = {
+  entrada: ["Recebimento de venda", "Sinal / entrada de venda", "Distrato / estorno", "Aporte / capital", "Outros recebimentos"],
+  saida: ["Pagamento de comissão", "Repasse ao proprietário", "Marketing e tráfego", "Taxas e impostos", "Despesa operacional", "Folha / salários", "Outras saídas"],
+};
+
+/* Menu de ações de cada linha do fluxo de caixa (ago/2026).
+   Antes o ••• só existia quando o lançamento tinha venda vinculada, e só servia para
+   abrir a venda — lançamento errado ficava no caixa para sempre. Agora o ••• aparece
+   em toda linha e concentra as três ações. Uma affordance só: quem opera não precisa
+   decorar dois botões parecidos lado a lado.
+
+   O fundo invisível fecha o menu ao clicar fora. É um <button>, não uma <div> com
+   onClick, para o teclado e o leitor de tela também conseguirem sair daqui. */
+function CashRowMenu({ item, saleName, onSale, onEdit, onDelete }: { item: Cash; saleName: string | null; onSale: (id: string) => void; onEdit: (item: Cash) => void; onDelete: (item: Cash) => void }) {
+  const trigger = useRef<HTMLButtonElement>(null);
+  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
+  const fechar = () => setPos(null);
+  /* O menu é `position:fixed` ancorado no botão, e NÃO um dropdown absoluto dentro da
+     linha. A célula de Ações tem overflow:hidden e a tabela vive dentro de um contêiner
+     com rolagem — um dropdown normal seria cortado nos dois. Fixed escapa de ambos.
+     Se não couber para baixo, abre para cima: nas últimas linhas da página o menu
+     ficaria fora da tela. */
+  const abrir = () => {
+    if (pos) { fechar(); return; }
+    const r = trigger.current?.getBoundingClientRect();
+    if (!r) return;
+    const altura = item.venda_id ? 150 : 108;
+    const paraCima = r.bottom + altura + 12 > window.innerHeight;
+    setPos({ top: paraCima ? r.top - altura - 6 : r.bottom + 6, left: Math.max(10, Math.min(r.right - 236, window.innerWidth - 246)) });
+  };
+  return <div className="cash-row-menu">
+    <button aria-expanded={Boolean(pos)} aria-haspopup="menu" aria-label="Ações do lançamento" className="cash-row-menu-trigger" ref={trigger} type="button" onClick={abrir}>•••</button>
+    {pos && <>
+      <button aria-label="Fechar menu" className="cash-row-menu-backdrop" type="button" onClick={fechar} />
+      <div className="cash-row-menu-pop" role="menu" style={{ top: pos.top, left: pos.left }}>
+        <button role="menuitem" type="button" onClick={() => { fechar(); onEdit(item); }}>✎ Editar lançamento</button>
+        {item.venda_id && <button role="menuitem" type="button" onClick={() => { fechar(); onSale(item.venda_id!); }}>↗ Abrir {saleName || "venda relacionada"}</button>}
+        <button className="cash-row-menu-danger" role="menuitem" type="button" onClick={() => { fechar(); onDelete(item); }}>🗑 Excluir lançamento</button>
+      </div>
+    </>}
+  </div>;
 }
 
 function CashModal({ data, initial, onClose, onSave, onManage }: { data: FinanceData; initial?: Cash | null; onClose: () => void; onSave: (payload: Record<string, unknown>) => Promise<void>; onManage: (payload: Record<string, unknown>) => Promise<void> }) {
