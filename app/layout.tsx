@@ -6,6 +6,9 @@ import "./styles/app-mobile.css";
 import "./styles/apecerto-identidade.css";
 /* Depois da identidade: usam os tokens dela. Tudo dentro de max-width — o
    desktop não é tocado por nenhuma delas. */
+/* Ficha da venda: modal em abas + agenda de repasse. Depois da identidade
+   porque usa os tokens da marca. */
+import "./styles/venda-ficha.css";
 import "./styles/tela-corretor.css";
 import "./styles/tela-crm.css";
 import "./styles/tela-avisos.css";
