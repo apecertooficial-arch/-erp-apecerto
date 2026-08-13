@@ -1,3 +1,4 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { createServerSupabaseClient } from "../../lib/supabase/server";
 import { resolveEffectiveAccess, denyIfCannot } from "../../lib/supabase/authz";
 
@@ -27,12 +28,25 @@ async function authClient(request: Request) {
    razao de existir: apague o tipo e volte a listar as colunas no select. */
 type RepasseColunasNovas = { ordem: number; data_prevista: string | null; lancamento_id: string | null };
 
+/* PONTE TEMPORARIA DE TIPO — APAGUE AO REGERAR OS TIPOS.
+
+   As tabelas extrato_importacao, extrato_linha e extrato_layout nasceram na
+   migracao extrato_bancario_importacao e ainda nao existem em
+   app/lib/supabase/database.types.ts, que e gerado por `supabase gen types`.
+   Como o cliente do Supabase e tipado pelo esquema, from("extrato_linha")
+   nao compila enquanto o arquivo nao for regerado.
+
+   semTipos() devolve o mesmo cliente sem o esquema amarrado — mesma conexao,
+   mesma sessao, mesma RLS. Ao regerar os tipos, apague isto e volte a chamar
+   auth.supabase direto. */
+const semTipos = (cliente: unknown) => cliente as SupabaseClient;
+
 const clean = (value: unknown, max = 500) => typeof value === "string" ? value.trim().slice(0, max) : "";
 
 export async function GET(request: Request) {
   const auth = await authClient(request);
   if (!auth) return Response.json({ error: "Sessão inválida ou expirada." }, { status: 401 });
-  const [sales, details, commissions, receipts, cash, users, brokers, goals, leads, deals, empreendimentos, categorias, rankingVgv, payouts] = await Promise.all([
+  const [sales, details, commissions, receipts, cash, users, brokers, goals, leads, deals, empreendimentos, categorias, rankingVgv, payouts, extratos, extratoLinhas] = await Promise.all([
     auth.supabase.from("vendas").select("id,created_at,data_venda,data_conclusao,empreendimento_id,empreendimento_nome,unidade_id,unidade_rotulo,cliente_nome,proprietario_nome,vgv,custos,forma_pgto,percentual_comissao,status,obs").order("data_venda", { ascending: false }),
     auth.supabase.from("v_vendas_detalhe").select("id,data_venda,empreendimento,unidade,bairro,incorporadora,vgv,percentual_comissao,comissao_bruta,comissao_corretores,comissao_executivo,comissao_apecerto,indicacao,corretores,forma_pgto,status,obs"),
     auth.supabase.from("comissoes").select("id,venda_id,beneficiario_id,papel,valor_calculado,valor_final,override_motivo,created_at"),
@@ -48,6 +62,8 @@ export async function GET(request: Request) {
     auth.supabase.from("vw_ranking_vgv").select("corretor_id,corretor,vendas,vgv").order("vgv", { ascending: false }),
     // Agenda de repasse de comissao (fonte unica: pagamentos_comissao).
     auth.supabase.from("pagamentos_comissao").select("*").order("created_at", { ascending: true }),
+    semTipos(auth.supabase).from("extrato_importacao").select("*").order("criado_em", { ascending: false }).limit(12),
+    semTipos(auth.supabase).from("extrato_linha").select("*").order("data", { ascending: false }).limit(600),
   ]);
   const firstError = [sales, details, commissions, receipts, cash, users, brokers, goals, leads, deals, empreendimentos, categorias].find((result) => result.error)?.error;
   if (firstError) return Response.json({ error: firstError.message }, { status: 502 });
@@ -71,7 +87,7 @@ export async function GET(request: Request) {
       data_recebimento: receipt.data_recebimento || sale.data_venda,
     };
   });
-  return Response.json({ sales: safeSales, details: safeDetails, commissions: commissions.data ?? [], receipts: reconciledReceipts, cash: cash.data ?? [], users: users.data ?? [], brokers: brokers.data ?? [], goals: goals.data ?? [], leads: leads.data ?? [], deals: deals.data ?? [], empreendimentos: empreendimentos.data ?? [], categorias: categorias.data ?? [], rankingVgv: rankingVgv.data ?? [], payouts: payouts.data ?? [] });
+  return Response.json({ sales: safeSales, details: safeDetails, commissions: commissions.data ?? [], receipts: reconciledReceipts, cash: cash.data ?? [], users: users.data ?? [], brokers: brokers.data ?? [], goals: goals.data ?? [], leads: leads.data ?? [], deals: deals.data ?? [], empreendimentos: empreendimentos.data ?? [], categorias: categorias.data ?? [], rankingVgv: rankingVgv.data ?? [], payouts: payouts.data ?? [], extratos: extratos.data ?? [], extratoLinhas: extratoLinhas.data ?? [] });
 }
 
 export async function PATCH(request: Request) {
@@ -549,6 +565,157 @@ export async function PATCH(request: Request) {
     if (!receiptId) return Response.json({ error: "Recebimento invalido." }, { status: 422 });
     const { error } = await auth.supabase.from("recebimentos").delete().eq("id", receiptId);
     return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
+  }
+
+  /* IMPORTACAO DE EXTRATO BANCARIO (ago/2026).
+
+     Vale daqui pra frente: sem backfill, sem conciliacao de historico. Cada
+     linha do arquivo entra como pendente e espera a decisao do usuario.
+
+     A ORDEM DA SUGESTAO NAO E ARBITRARIA. Foi tirada de um extrato real:
+       1. casa com lancamento que ja existe (mesmo valor, data proxima)
+       2. senao, e Pix para o proprio titular -> transferencia entre contas
+       3. senao, lancamento novo, categoria vinda de caixa_keywords
+     Naquele extrato havia um Pix de R$ 9.980 para o proprio titular que era,
+     na verdade, uma comissao ja lancada. Se a regra 2 viesse antes da 1, esse
+     dinheiro sumiria da conciliacao. */
+
+  if (action === "importarExtrato") {
+    const denied = guard([["fluxo_caixa", "conciliar"], ["financeiro", "criar"]], "Voce nao tem permissao para importar extrato.");
+    if (denied) return denied;
+    const brutas = Array.isArray(body.linhas) ? body.linhas as Array<Record<string, unknown>> : [];
+    if (brutas.length === 0) return Response.json({ error: "Nenhum lancamento encontrado no arquivo." }, { status: 422 });
+    const titular = clean(body.titular, 200);
+    const conta = clean(body.conta, 40);
+
+    const { data: importacao, error: impError } = await semTipos(auth.supabase).from("extrato_importacao").insert({
+      banco: clean(body.banco, 20) || null,
+      agencia: clean(body.agencia, 20) || null,
+      conta: conta || null,
+      titular: titular || null,
+      periodo_inicio: clean(body.periodoInicio, 10) || null,
+      periodo_fim: clean(body.periodoFim, 10) || null,
+      saldo_abertura: Number.isFinite(Number(body.saldoAbertura)) ? Number(body.saldoAbertura) : null,
+      saldo_fechamento: Number.isFinite(Number(body.saldoFechamento)) ? Number(body.saldoFechamento) : null,
+      arquivo_nome: clean(body.arquivoNome, 200) || null,
+      linhas_total: brutas.length,
+    } as never).select("id").single();
+    if (impError || !importacao) return Response.json({ error: impError?.message || "Nao foi possivel registrar a importacao." }, { status: 502 });
+    const importacaoId = importacao.id as string;
+
+    // Contexto para as sugestoes: caixa recente, categorias e palavras-chave.
+    const datas = brutas.map((l) => clean(l.data, 10)).filter(Boolean).sort();
+    const de = datas[0] || null;
+    const ate = datas[datas.length - 1] || null;
+    const [{ data: caixaProximo }, { data: chaves }] = await Promise.all([
+      auth.supabase.from("lancamentos_caixa").select("id,data,valor,tipo,categoria,descricao")
+        .gte("data", de ? new Date(new Date(`${de}T12:00:00`).getTime() - 5 * 864e5).toISOString().slice(0, 10) : "1900-01-01")
+        .lte("data", ate ? new Date(new Date(`${ate}T12:00:00`).getTime() + 5 * 864e5).toISOString().slice(0, 10) : "2999-12-31"),
+      auth.supabase.from("caixa_keywords").select("categoria,keyword,prioridade").order("prioridade", { ascending: true }),
+    ]);
+
+    const semAcento = (texto: string) => texto.normalize("NFD").replace(new RegExp("[" + String.fromCharCode(0x300) + "-" + String.fromCharCode(0x36f) + "]", "g"), "").toLowerCase();
+    const titularNormalizado = semAcento(titular).replace(/\b(ltda|me|epp|eireli|s\.?a\.?)\b/g, "").replace(/[^a-z0-9]+/g, " ").trim();
+    const usados = new Set<string>();
+
+    const linhas = brutas.map((bruta) => {
+      const data = clean(bruta.data, 10);
+      const valor = Number(bruta.valor);
+      const descricao = clean(bruta.descricao, 400);
+      const saldo = Number.isFinite(Number(bruta.saldo)) ? Number(bruta.saldo) : null;
+      const descricaoLimpa = semAcento(descricao);
+
+      // 1. Ja existe no caixa? Mesmo valor absoluto, data a ate 3 dias.
+      let sugestao = "novo";
+      let sugestaoLancamento: string | null = null;
+      const candidato = (caixaProximo ?? []).find((mov) => {
+        if (usados.has(mov.id as string)) return false;
+        if (Math.abs(Math.abs(Number(mov.valor)) - Math.abs(valor)) > 0.02) return false;
+        const dias = Math.abs(new Date(`${mov.data}T12:00:00`).getTime() - new Date(`${data}T12:00:00`).getTime()) / 864e5;
+        return dias <= 3;
+      });
+      if (candidato) { sugestao = "vincular"; sugestaoLancamento = candidato.id as string; usados.add(candidato.id as string); }
+      // 2. Transferencia para o proprio titular.
+      else if (titularNormalizado.length > 6 && titularNormalizado.split(" ").filter((p) => p.length > 3).every((parte) => descricaoLimpa.includes(parte))) {
+        sugestao = "transferencia";
+      }
+
+      // 3. Categoria sugerida pelas palavras-chave ja cadastradas.
+      const chave = (chaves ?? []).find((k) => descricaoLimpa.includes(semAcento(String(k.keyword || ""))));
+
+      return {
+        importacao_id: importacaoId,
+        data,
+        descricao,
+        valor,
+        saldo,
+        impressao: `${conta}|${data}|${valor}|${saldo ?? ""}|${descricao}`.slice(0, 500),
+        situacao: "pendente",
+        sugestao,
+        sugestao_lancamento_id: sugestaoLancamento,
+        categoria_sugerida: chave ? String(chave.categoria) : null,
+      };
+    }).filter((linha) => linha.data && Number.isFinite(linha.valor));
+
+    // upsert por impressao: reimportar o mesmo periodo nao duplica nada.
+    const { error: linhaError } = await semTipos(auth.supabase).from("extrato_linha").upsert(linhas as never, { onConflict: "impressao", ignoreDuplicates: true });
+    if (linhaError) return Response.json({ error: `Importacao registrada, mas as linhas falharam: ${linhaError.message}` }, { status: 502 });
+    return Response.json({ success: true, importacaoId, linhas: linhas.length });
+  }
+
+  if (action === "resolverLinhaExtrato" || action === "resolverLoteExtrato") {
+    const denied = guard([["fluxo_caixa", "conciliar"], ["financeiro", "criar"]], "Voce nao tem permissao para conciliar o extrato.");
+    if (denied) return denied;
+
+    const emLote = action === "resolverLoteExtrato";
+    let alvos: Array<Record<string, unknown>> = [];
+    if (emLote) {
+      const importacaoId = clean(body.importacaoId, 50);
+      const consulta = semTipos(auth.supabase).from("extrato_linha").select("*").eq("situacao", "pendente");
+      const { data } = importacaoId ? await consulta.eq("importacao_id", importacaoId) : await consulta;
+      alvos = (data ?? []) as Array<Record<string, unknown>>;
+    } else {
+      const linhaId = clean(body.linhaId, 50);
+      if (!linhaId) return Response.json({ error: "Linha invalida." }, { status: 422 });
+      const { data } = await semTipos(auth.supabase).from("extrato_linha").select("*").eq("id", linhaId).maybeSingle();
+      if (!data) return Response.json({ error: "Linha nao encontrada." }, { status: 404 });
+      alvos = [data as Record<string, unknown>];
+    }
+
+    let lancadas = 0, vinculadas = 0, ignoradas = 0;
+    for (const linha of alvos) {
+      const decisaoPedida = clean(body.decisao, 20);
+      const decisao = emLote
+        ? (linha.sugestao === "vincular" ? "vincular" : linha.sugestao === "transferencia" ? "ignorar" : "lancar")
+        : (["lancar", "vincular", "ignorar"].includes(decisaoPedida) ? decisaoPedida : "lancar");
+
+      if (decisao === "ignorar") {
+        await semTipos(auth.supabase).from("extrato_linha").update({ situacao: "ignorado", resolvido_por: auth.user.id, resolvido_em: new Date().toISOString() } as never).eq("id", linha.id as string);
+        ignoradas++;
+        continue;
+      }
+      if (decisao === "vincular" && linha.sugestao_lancamento_id) {
+        await semTipos(auth.supabase).from("extrato_linha").update({ situacao: "vinculado", lancamento_id: linha.sugestao_lancamento_id, resolvido_por: auth.user.id, resolvido_em: new Date().toISOString() } as never).eq("id", linha.id as string);
+        vinculadas++;
+        continue;
+      }
+
+      const valor = Number(linha.valor);
+      const categoria = (emLote ? "" : clean(body.categoria, 80)) || String(linha.categoria_sugerida || "") || "Outros";
+      const descricao = (emLote ? "" : clean(body.descricao, 400)) || String(linha.descricao || "");
+      const { data: criado, error: caixaError } = await auth.supabase.from("lancamentos_caixa").insert({
+        tipo: valor < 0 ? "saida" : "entrada",
+        categoria,
+        data: linha.data,
+        valor: Math.abs(valor),
+        descricao,
+        origem: "extrato",
+      } as never).select("id").single();
+      if (caixaError || !criado) return Response.json({ error: `Nao foi possivel lancar no caixa: ${caixaError?.message ?? ""}` }, { status: 502 });
+      await semTipos(auth.supabase).from("extrato_linha").update({ situacao: "lancado", lancamento_id: criado.id, resolvido_por: auth.user.id, resolvido_em: new Date().toISOString() } as never).eq("id", linha.id as string);
+      lancadas++;
+    }
+    return Response.json({ success: true, lancadas, vinculadas, ignoradas });
   }
 
   if (action === "deleteSale") {
