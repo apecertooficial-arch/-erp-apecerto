@@ -177,8 +177,8 @@ export function VendaModal({ data, saleId, sessionRole = "corretor", onClose, on
 
   const abas: Array<[1 | 2 | 3 | 4, string]> = [[1, "Dados da venda"], [2, "Corretores & comissões"], [3, "Pagamentos"], [4, "Cliente & documentos"]];
 
-  return <div className="drawer-layer">
-    <article className="crm-center-modal venda-modal">
+  return <div className="crm-center-modal venda-modal-layer">
+    <article className="venda-modal">
       <header className="venda-modal-head">
         <div>
           <span>{editando ? "FICHA DA VENDA" : "LANÇAMENTO DE VENDA"}</span>
