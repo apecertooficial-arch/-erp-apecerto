@@ -9,6 +9,9 @@ import "./styles/apecerto-identidade.css";
 /* Ficha da venda: modal em abas + agenda de repasse. Depois da identidade
    porque usa os tokens da marca. */
 import "./styles/venda-ficha.css";
+/* Importar extrato: seção dentro do Fluxo de caixa. Autocontida sob
+   .extrato-painel, pelos mesmos motivos da folha acima. */
+import "./styles/extrato-import.css";
 import "./styles/tela-corretor.css";
 import "./styles/tela-crm.css";
 import "./styles/tela-avisos.css";

@@ -1,0 +1,95 @@
+/* IMPORTAR EXTRATO — Fluxo de caixa (ago/2026).
+
+   Folha isolada e autocontida, pelo mesmo motivo da ficha da venda: o
+   globals.css passa de 5.600 linhas e reaproveitar classe de outra tela
+   já custou um layout quebrado. Tudo aqui vive sob .extrato-painel.
+
+   Nenhuma classe existente foi renomeada ou alterada.
+   Identidade: laranja #ff6500, roxo #8d2bd1, pill, card 18px, mínimo 11px. */
+
+.extrato-painel { padding: 16px 2px 6px; }
+
+.extrato-topo { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 15px; }
+.extrato-topo h3 { margin: 0 0 4px; font-size: 15px; font-weight: 700; color: #2f2a26; }
+.extrato-topo p { margin: 0; max-width: 560px; font-size: 12px; color: #6d655f; line-height: 1.5; }
+
+.extrato-upload {
+  display: inline-flex; align-items: center; flex: none;
+  border: 0; border-radius: 999px; padding: 11px 20px;
+  background: #ff6500; color: #fff; font-size: 13px; font-weight: 700; cursor: pointer;
+}
+.extrato-upload:hover { background: #e65b00; }
+.extrato-upload.ocupado { background: #c9c2bc; cursor: wait; }
+.extrato-upload input { display: none; }
+
+.extrato-erro { margin: 0 0 12px; padding: 11px 14px; border-radius: 14px; background: #fff0ee; color: #ae3d32; font-size: 12px; }
+.extrato-aviso { margin: 0 0 12px; padding: 10px 14px; border: 0; border-radius: 999px; background: #e8f6ed; color: #1a8f4c; font-size: 12px; font-weight: 600; cursor: pointer; }
+
+/* ---------- resumo do arquivo ---------- */
+.extrato-resumo { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 9px; margin-bottom: 13px; }
+.extrato-resumo article { background: #faf8f6; border: 1px solid #efe9e3; border-radius: 14px; padding: 9px 13px; }
+.extrato-resumo article.alerta { background: #fff6ef; border-color: #f2d7bd; }
+.extrato-resumo span { display: block; font-size: 11px; font-weight: 600; color: #918b86; }
+.extrato-resumo strong { display: block; margin-top: 2px; font-size: 14px; font-weight: 700; color: #2f2a26; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.extrato-alerta { margin: 0 0 14px; padding: 11px 14px; border-radius: 14px; background: #fff6ef; border: 1px solid #f2d7bd; color: #8a5320; font-size: 12px; line-height: 1.5; }
+
+/* ---------- ação em lote ---------- */
+.extrato-acoes-lote {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  padding: 11px 15px; margin-bottom: 13px;
+  border: 1px dashed #cbb6dd; border-radius: 18px; background: #faf6fd;
+}
+.extrato-acoes-lote span { font-size: 12px; color: #4a423c; }
+.extrato-acoes-lote b { color: #8d2bd1; }
+.extrato-acoes-lote button {
+  border: 1px solid #8d2bd1; background: #8d2bd1; color: #fff; flex: none;
+  border-radius: 999px; padding: 8px 17px; font-size: 12px; font-weight: 700; cursor: pointer;
+}
+.extrato-acoes-lote button:hover { background: #7a23b3; }
+.extrato-acoes-lote button:disabled { opacity: .55; cursor: not-allowed; }
+
+/* ---------- linha do extrato ---------- */
+.extrato-linha { border: 1px solid #efe9e3; border-left: 4px solid #d9d2cc; border-radius: 18px; padding: 12px 15px; margin-bottom: 9px; background: #fff; }
+.extrato-linha.vincular { border-left-color: #1a8f4c; background: #f8fcfa; }
+.extrato-linha.transferencia { border-left-color: #8d2bd1; background: #fdfaff; }
+.extrato-linha.novo { border-left-color: #ff6500; }
+
+.extrato-linha-fato { display: flex; align-items: center; gap: 11px; flex-wrap: wrap; }
+.extrato-data { font-size: 12px; font-weight: 600; color: #6d655f; }
+.extrato-linha-fato strong { font-size: 16px; font-weight: 700; }
+.extrato-linha-fato strong.negative { color: #c0392b; }
+.extrato-linha-fato strong.positive { color: #1a8f4c; }
+.extrato-tag { font-size: 11px; font-weight: 700; font-style: normal; border-radius: 999px; padding: 4px 11px; background: #f3efec; color: #6d655f; }
+.extrato-tag.vincular { background: #e8f6ed; color: #1a8f4c; }
+.extrato-tag.transferencia { background: #f3e9fb; color: #8d2bd1; }
+.extrato-tag.novo { background: #fff3ea; color: #c25100; }
+
+.extrato-descricao { margin: 7px 0 0; font-size: 12px; color: #6d655f; line-height: 1.45; word-break: break-word; }
+
+.extrato-linha-form { display: flex; gap: 11px; flex-wrap: wrap; margin-top: 11px; }
+.extrato-linha-form label { display: flex; flex-direction: column; gap: 5px; flex: 1 1 220px; font-size: 11px; font-weight: 600; color: #6d655f; }
+.extrato-linha-form input, .extrato-linha-form select {
+  border: 1px solid #e4ddd6; border-radius: 12px; padding: 8px 12px;
+  font-size: 12px; font-family: inherit; color: #2f2a26; background: #fff; width: 100%;
+}
+.extrato-linha-form input:focus, .extrato-linha-form select:focus { outline: 2px solid #ff650033; border-color: #ff6500; }
+
+.extrato-linha-botoes { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+.extrato-linha-botoes button {
+  border: 1px solid #e4ddd6; background: #fff; color: #4a423c;
+  border-radius: 999px; padding: 8px 16px; font-size: 12px; font-weight: 600; cursor: pointer;
+}
+.extrato-linha-botoes button:hover { border-color: #ff6500; color: #ff6500; }
+.extrato-linha-botoes button.extrato-primario { border-color: #ff6500; background: #ff6500; color: #fff; }
+.extrato-linha-botoes button.extrato-primario:hover { background: #e65b00; color: #fff; }
+.extrato-linha-botoes button:disabled { opacity: .55; cursor: not-allowed; }
+
+.extrato-vazio { margin: 20px 0; padding: 22px; text-align: center; border: 1px dashed #e4ddd6; border-radius: 18px; color: #918b86; font-size: 12px; }
+
+@media (max-width: 720px) {
+  .extrato-painel { padding: 14px 0 6px; }
+  .extrato-upload { width: 100%; justify-content: center; }
+  .extrato-resumo { grid-template-columns: repeat(2, 1fr); }
+  .extrato-linha-botoes button { flex: 1 1 100%; text-align: center; }
+}
