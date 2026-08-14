@@ -7338,7 +7338,6 @@ export type Database = {
         Returns: Json
       }
       aprovar_solicitacao: { Args: { p_id: string }; Returns: Json }
-      aquario_importar: { Args: { p_rows: Json }; Returns: Json }
       aquario_stage_id: { Args: never; Returns: number }
       aquario_status: { Args: never; Returns: Json }
       atualizar_meu_perfil: {
