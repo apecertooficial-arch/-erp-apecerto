@@ -51,7 +51,7 @@ body .f2-pipe > div > article:first-of-type { margin-top: 9px; }
 .sales-stage > .crm-stage-menu { flex: 0 0 auto; }
 
 /* O corpo da etapa agora tem classe explícita (.sales-stage-body, definida em
-   CrmWorkspace.tsx). Antes era selecionado por posição (> div:last-child), o que
+   SalesProcessWorkspace.tsx). Antes era selecionado por posição (> div:last-child), o que
    quebrava em silêncio se entrasse qualquer elemento depois do corpo. */
 .sales-stage-body { flex: 1 1 auto; min-height: 120px; overflow-y: auto; overscroll-behavior: contain; padding: 2px 4px 4px 0; }
 .sales-stage-body > * { flex: 0 0 auto; }

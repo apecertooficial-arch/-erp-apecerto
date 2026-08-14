@@ -1,6 +1,6 @@
 /**
  * Regras da esteira de vendas — compartilhadas entre o servidor (/api/crm/sales)
- * e a interface (CrmWorkspace), para que a trava mostrada na tela seja
+ * e a interface (SalesProcessWorkspace), para que a trava mostrada na tela seja
  * exatamente a mesma que o servidor aplica.
  *
  * Cascata: cada etapa declara em `esteira_etapas.libera` quais blocos ela abre
