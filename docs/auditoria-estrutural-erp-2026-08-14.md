@@ -316,3 +316,18 @@ Evidências desta etapa:
 - build de produção aprovado;
 - teste de contrato ampliado para impedir que o chat volte a escrever visitas pela API geral do CRM;
 - teste de regressão impede o retorno de `createLead`/`ncrm_distribuir_lead_novo` à API geral.
+
+## Execução — isolamento do último código compartilhado com NCRM (14/08/2026)
+
+Os dois recursos ainda utilizados que moravam sob `features/crm-nova-era` foram retirados desse namespace:
+
+- o botão e a normalização do WhatsApp nativo agora pertencem ao Funil 2.0 e a `app/lib`;
+- o cliente de Web Push agora pertence ao módulo de Notificações.
+
+Isso evita que funcionalidades oficiais pareçam depender do CRM aposentado. Os imports do aplicativo não apontam mais para `crm-nova-era`.
+
+A inspeção direta das Edge Functions confirmou que `ncrm-sara-observer` ainda está implantada no Supabase, mas não há job `pg_cron` chamando essa função e ela não apareceu no recorte recente de logs. O classificador oficial `f2-sara-reclassificar` está implantado separadamente. A configuração local do observador antigo foi removida para impedir novo deploy acidental.
+
+O lote de arquivos históricos NCRM — incluindo testes SQL antigos, runtime público de teste, código do observer e controle de ingest — foi identificado, porém a exclusão em massa foi bloqueada pela proteção de segurança por conter também evidências históricas do Funil 2/Sara. Ele permanece preservado até autorização específica do lote, sem participação no build operacional.
+
+A suíte oficial também continha expectativas da Home antiga. Os contratos foram atualizados para a Home atual e para o carregamento seguro sem sessão. Resultado: 163/163 testes frontend, 11/11 testes renderizados, TypeScript sem erros e build aprovado.

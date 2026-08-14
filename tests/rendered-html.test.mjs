@@ -20,9 +20,9 @@ test("renderiza o shell protegido do ERP como aplicação principal", async () =
   assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
 
   const html = await response.text();
-  assert.match(html, /Carregando seu ERP/);
-  assert.match(html, />CRM</);
-  assert.match(html, />Produtos</);
+  assert.match(html, /Abrindo o ERP…/);
+  // Sem sessão, a resposta inicial não antecipa menus nem dados protegidos.
+  assert.doesNotMatch(html, /Dados reais · sessão protegida/);
   assert.doesNotMatch(html, /Cadastrar produto/);
   assert.doesNotMatch(html, /Botanic Cyrela/);
   assert.doesNotMatch(html, /Captação rápida/);
@@ -92,20 +92,21 @@ test("mostra VGV no destaque e ranking nominal do time", async () => {
   assert.doesNotMatch(runtime, /vendas:me\?.*confidencial/);
 });
 
-test("mantém o Início enxuto, priorizado e com cards mais vivos", async () => {
+test("mantém o Início gerencial enxuto e ligado aos painéis canônicos", async () => {
   const home = await readFile(new URL("../app/features/home/HomeWorkspace.tsx", import.meta.url), "utf8");
   const css = await readFile(new URL("../app/globals.css", import.meta.url), "utf8");
 
-  assert.match(home, /slice\(0, 10\)/);
-  assert.match(home, /Top 10 por volume/);
-  assert.match(home, /Pendências prioritárias/);
-  assert.match(home, /product-rank tone-/);
+  assert.match(home, /<NaMesaCards/);
+  assert.match(home, /<RodagemCards/);
+  assert.match(home, /<FunilCards/);
+  assert.match(home, /<FinanceiroCards/);
+  assert.match(home, /hv2-hero/);
+  assert.match(home, /Produtos mais vendidos/);
   assert.doesNotMatch(home, /VGV por mês/);
   assert.doesNotMatch(home, /Leads por origem/);
   assert.doesNotMatch(home, /Atalhos operacionais/);
-  assert.match(css, /Paleta viva compartilhada/);
-  assert.match(css, /background:#ffe0c7/);
-  assert.match(css, /background:#ead2fa/);
+  assert.match(css, /\.hv2-hero/);
+  assert.match(css, /--ape-orange/);
 });
 
 test("aplica a composição aprovada do Claude Designer na visão geral financeira", async () => {

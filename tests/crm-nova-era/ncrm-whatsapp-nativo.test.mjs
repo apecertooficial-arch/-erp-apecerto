@@ -3,7 +3,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   normalizarTelefone, urlWhatsAppApp, urlWhatsAppWeb, prepararAberturaWhatsApp,
-} from "../../app/features/crm-nova-era/lib/whatsappNativo.ts";
+} from "../../app/lib/whatsappNativo.ts";
 
 test("normaliza celular com e sem codigo do pais", () => {
   for (const bruto of ["11987654321", "5511987654321", "+55 (11) 98765-4321", "55 11 98765 4321"]) {
@@ -62,7 +62,7 @@ test("preparar devolve app e web juntos, ou o erro", () => {
 });
 
 // --- DDD contra a lista canonica (correcao pos-review) ---
-import { DDDS_VALIDOS, dddExiste } from "../../app/features/crm-nova-era/lib/whatsappNativo.ts";
+import { DDDS_VALIDOS, dddExiste } from "../../app/lib/whatsappNativo.ts";
 
 test("a lista canonica tem os 67 DDDs em uso no Brasil", () => {
   assert.equal(DDDS_VALIDOS.length, 67);

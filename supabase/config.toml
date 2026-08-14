@@ -413,15 +413,6 @@ enabled = true
 # JSON string passed through to pg-delta SQL formatting.
 # format_options = "{\"keywordCase\":\"upper\",\"indent\":2,\"maxWidth\":80,\"commaStyle\":\"trailing\"}"
 
-# CRM Nova Era — runner observador da Sara (Fase 3). PREPARADO, NÃO IMPLANTADO.
-# verify_jwt = false: a Edge NÃO valida JWT de usuário; ela EXIGE o segredo forte
-# `x-cron-secret` (Vault) ANTES de qualquer leitura (retorna 401 se ausente/incorreto).
-# service_role fica SOMENTE dentro da Edge (para o banco) — nunca trafega como Bearer
-# entre cron e Edge, nunca vai ao frontend.
-[functions.ncrm-sara-observer]
-enabled = true
-verify_jwt = false
-
 # Funil 2.0 — classificador da carteira. Usa o mesmo segredo forte do runner
 # observer e jamais aceita JWT de usuário como substituto do x-cron-secret.
 [functions.f2-sara-reclassificar]
