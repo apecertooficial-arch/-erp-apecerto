@@ -217,3 +217,23 @@ Uma aba só poderá ser declarada limpa quando:
 - objetos aposentados estiverem arquivados fora do schema público;
 - testes comprovarem que recall não entra em lead ativo;
 - permissões e RLS estiverem fechadas por usuário/serviço.
+
+## Execução — corte de APIs órfãs (14/08/2026)
+
+Foram removidas oito implementações sem consumidor no frontend, no runtime legado ou nas automações versionadas:
+
+- `/api/agenda-link`: duplicava operações que o runtime legado executa diretamente pelas RPCs oficiais;
+- `/api/agentes/copiloto-lead`: copiloto antigo, substituído pelo contrato atual de Agentes/Sara;
+- `/api/ai-center`: centro de IA genérico sem tela consumidora;
+- `/api/distribuicao`: configuração paralela sem uso pelo Funil 2.0;
+- `/api/financiamento`: wrapper não utilizado; a ficha pública permanece em `/api/ficha-publica` e o módulo legado usa o contrato próprio;
+- `/api/module-summary`: inspetor genérico sem chamada;
+- `/api/versao`: devolvia uma versão estática antiga e enganosa;
+- `whatsappAberto.ts`: utilitário sem qualquer importador.
+
+Evidências desta tranche:
+
+- busca global sem referências residuais aos caminhos ou ao utilitário;
+- `git diff --check` sem erro;
+- 159 de 159 testes frontend aprovados;
+- build de produção aprovado, sem as sete rotas removidas no manifesto final.

@@ -56,9 +56,7 @@ tests
 worker
 
 ===== TODOS OS ARQUIVOS DE CÓDIGO =====
-app/api/agentes/copiloto-lead/route.ts
 app/api/agentes/route.ts
-app/api/ai-center/route.ts
 app/api/approaches/route.ts
 app/api/campaigns/route.ts
 app/api/capture/route.ts
@@ -69,7 +67,6 @@ app/api/crm/sales/route.ts
 app/api/finance/route.ts
 app/api/live-chat/route.ts
 app/api/metas/route.ts
-app/api/module-summary/route.ts
 app/api/permissions/route.ts
 app/api/product/route.ts
 app/api/session/route.ts
