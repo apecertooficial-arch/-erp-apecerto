@@ -41,7 +41,6 @@ export function Funil2ConversationDrawer({ accessToken, leadId, nome, onClose }:
 
   useEffect(() => {
     const controle = new AbortController();
-    setCarregando(true);
     fetch(`/api/funil2/conversa?lead=${encodeURIComponent(leadId)}`, {
       headers: { Authorization: `Bearer ${accessToken}` },
       signal: controle.signal,

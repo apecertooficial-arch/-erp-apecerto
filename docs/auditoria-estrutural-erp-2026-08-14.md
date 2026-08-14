@@ -283,3 +283,15 @@ Evidências:
 Foram excluídos quatro scripts de screenshot órfãos, presos a caminhos de uma máquina antiga (`/home/claude`, `/opt/pw-browsers` e previews em `/tmp`), além de dois bundles React minificados sem consumidor. Os bundles Opus foram preservados porque `opusMic.ts` os utiliza; por serem dependência vendorizada, `public/_vendor/**` foi corretamente retirado do lint do código-fonte.
 
 Com essa classificação, o ruído caiu de 743 ocorrências para 115: 69 erros e 46 avisos. Os problemas restantes agora pertencem a arquivos reais e podem ser corrigidos por módulo, sem esconder a dívida atrás de bibliotecas minificadas.
+
+Na primeira correção de código real:
+
+- o chat deixou de chamar uma função antes da declaração;
+- o portal de modais passou a usar o contrato de hidratação do React sem efeito/setState;
+- o drawer de conversa F2 deixou de reiniciar estado sincronicamente no efeito;
+- a recuperação de senha passou a derivar o token no estado inicial e usar `Link`;
+- textos JSX inválidos foram corrigidos;
+- um callback morto do Financeiro que ainda apontava para uma rota CRM antiga foi excluído;
+- `AgentTrainingWorkspace` perdeu `@ts-nocheck` e `eslint-disable`, ganhou tipos baseados no contrato de `/api/agentes` e ficou sem erros próprios de TypeScript ou lint.
+
+O lint global caiu para 60 erros e 44 avisos. Os 163 testes e o build continuaram aprovados.

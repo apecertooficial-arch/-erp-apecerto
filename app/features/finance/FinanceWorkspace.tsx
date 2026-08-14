@@ -26,7 +26,7 @@ const compact = new Intl.NumberFormat("pt-BR", { notation: "compact", style: "cu
 const MARCAS_DE_ACENTO = new RegExp("[" + String.fromCharCode(0x300) + "-" + String.fromCharCode(0x36f) + "]", "g");
 const date = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short", year: "numeric" });
 
-export function FinanceWorkspace({ accessToken, sessionRole = "corretor", perfil = null, sessionUserId = null, onNavigateToNewSale }: { accessToken: string; sessionRole?: "admin" | "gestor" | "corretor"; perfil?: string | null; sessionUserId?: string | null; onNavigateToNewSale?: () => void }) {
+export function FinanceWorkspace({ accessToken, sessionRole = "corretor", perfil = null, sessionUserId = null }: { accessToken: string; sessionRole?: "admin" | "gestor" | "corretor"; perfil?: string | null; sessionUserId?: string | null }) {
   const [data, setData] = useState<FinanceData | null>(null); const [tab, setTab] = useState<Tab>("overview"); const [period, setPeriod] = useState("all"); const [message, setMessage] = useState<string | null>(null); const [cashOpen, setCashOpen] = useState(false); const [receiptOpen, setReceiptOpen] = useState(false); const [selectedSaleId, setSelectedSaleId] = useState<string | null>(null); const [newSaleOpen, setNewSaleOpen] = useState(false); const [cashEdit, setCashEdit] = useState<Cash | null>(null);
   const load = async () => { const response = await fetch("/api/finance", { headers: { Authorization: `Bearer ${accessToken}` } }); const result = await response.json() as FinanceData & { error?: string }; if (!response.ok) throw new Error(result.error || "Não foi possível carregar o financeiro."); setData(result); };
   useEffect(() => { void load().catch((reason) => setMessage(reason instanceof Error ? reason.message : "Erro ao carregar o financeiro.")); }, [accessToken]);
@@ -470,7 +470,7 @@ function TaxasGerente({ data, sales, onSale, sessionUserId, isAdmin }: { data: F
     <div className="finance-data-scroll">
       <div className="finance-indication-head"><span>{isAdmin ? "Gerente" : "Beneficiário"}</span><span>Empreendimento</span><span>Un.</span><span>Data</span><span>Valor</span><span>Status</span><span>Ações</span></div>
       {rows.map((row) => <article className={`finance-indication-row ${row.statusKey}`} key={row.item.id}><span title={row.gerente}><b>{row.gerente}</b></span><span title={row.product}>{row.product}</span><span>{row.unit}</span><span>{new Intl.DateTimeFormat("pt-BR").format(new Date(`${row.date}T12:00:00`))}</span><span><b>{brl.format(row.item.valor_final)}</b></span><span><em className={row.statusKey}>{row.statusKey === "paga" ? "Paga" : "Prevista"}</em></span><span><button aria-label="Abrir venda da taxa" type="button" onClick={() => onSale(row.item.venda_id)}>•••</button></span></article>)}
-      {rows.length === 0 && <p className="finance-data-empty">Nenhuma taxa de gerente lançada no período. As taxas aparecem aqui quando uma venda tem comissão com papel "Taxa de gerente" para você.</p>}
+      {rows.length === 0 && <p className="finance-data-empty">Nenhuma taxa de gerente lançada no período. As taxas aparecem aqui quando uma venda tem comissão com papel &quot;Taxa de gerente&quot; para você.</p>}
     </div>
   </article></section>;
 }
