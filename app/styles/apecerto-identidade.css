@@ -170,7 +170,7 @@ body {
 /* Títulos na fonte de display, com o peso da marca. Sem mexer em tamanho:
    o tamanho já foi resolvido tela a tela e mudar aqui quebraria layout. */
 h1, h2, h3, h4, h5,
-.home-header h1, .sd-titulo, .md-chamada {
+.home-header h1 {
   font-family: var(--font-display);
   font-weight: var(--weight-bold);
   letter-spacing: var(--tracking-snug);
@@ -181,7 +181,6 @@ h1, h2, h3, h4, h5,
    SUPERFÍCIES E CANTOS — o "friendly, rounded" do design system.
    Só o que já é card no app; nada de regra genérica em div.
    ===================================================================== */
-.md-card,
 .pc-card,
 .home-panel,
 .home-goal,
@@ -194,16 +193,12 @@ h1, h2, h3, h4, h5,
   border-color: var(--border-soft);
 }
 
-.md-card,
 .home-panel,
 .nova-crm-card {
   box-shadow: var(--shadow-xs);
 }
 
 /* Chips, segmentos e contadores: pílula, como no protótipo. */
-.md-etapa,
-.md-contador,
-.sd-contador,
 .nova-crm-etapas > button,
 .ncrm-seg-mais,
 .ncrm-ficha-abas > button {
@@ -214,12 +209,8 @@ h1, h2, h3, h4, h5,
    AÇÕES
    ===================================================================== */
 
-/* Ação principal: laranja da marca, canto arredondado, sombra quente.
-   `a.md-acao` (WhatsApp) é a exceção logo abaixo. */
-.md-acao,
-.convite-instalar-ok,
-.sd-erro button,
-.md-erro button {
+/* Ação principal: laranja da marca, canto arredondado, sombra quente. */
+.convite-instalar-ok {
   background: var(--ape-orange);
   color: var(--fg-inverse);
   border-radius: var(--radius-md);
@@ -228,35 +219,15 @@ h1, h2, h3, h4, h5,
   transition: background var(--dur-fast) var(--ease-out),
               transform var(--dur-fast) var(--ease-out);
 }
-.md-acao:active,
 .convite-instalar-ok:active { background: var(--ape-orange-700); transform: scale(.985); }
 
 /* WhatsApp continua verde. Decisão de produto, não de estética: é o botão
    mais tocado do app e a cor é o que o corretor reconhece sem ler. */
-a.md-acao,
 .ncrm-ficha-acao > a,
 .nova-crm-panel .ncrm-wa-principal {
   background: var(--whatsapp);
   color: #fff;
 }
-a.md-acao:active { background: #1FB855; }
-
-/* Roxo é o "certo" da marca: fica com a Sara, que é a parte que confere e
-   organiza. Assim a cor carrega significado em vez de enfeitar. */
-.md-sara {
-  color: var(--ape-purple);
-  background: var(--ape-purple-50);
-  border-radius: var(--radius-sm);
-  padding: 4px 8px;
-}
-
-/* Estados de alerta na paleta oficial. */
-.md-card.vencida { border-left-color: var(--danger); }
-.md-aguardando   { color: #8A5A17; background: var(--warning-bg); border-radius: var(--radius-sm); }
-.md-motivo       { color: var(--ape-orange-700); }
-.md-contador,
-.sd-contador     { background: var(--ape-orange-100); color: var(--ape-orange-700); }
-.md-etapa        { background: var(--bg-sunken); color: var(--fg-2); }
 
 /* =====================================================================
    CASCA DO APLICATIVO
@@ -294,8 +265,8 @@ a.md-acao:active { background: #1FB855; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .md-acao, .convite-instalar-ok { transition: none; }
-  .md-acao:active, .convite-instalar-ok:active { transform: none; }
+  .convite-instalar-ok { transition: none; }
+  .convite-instalar-ok:active { transform: none; }
 }
 
 /* ---------- Aviso de push ----------
