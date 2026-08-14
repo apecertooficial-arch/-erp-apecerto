@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { acaoVisivel, dataCurta, duracao, esperandoPrimeiraChamada, prazoDaAcao, rotuloCadencia, situacaoPrazo, tentativaAtual, venceHoje, type CandidatoAquarioFunil2, type EtapaConfigFunil2, type EventoFunil2, type LeadFunil2, type MomentoFunil2, type NegociacaoFunil2, type NotaFunil2, type OperacaoConfigFunil2, type SaraStatusFunil2, type VisitaFunil2 } from "./modelo";
-import { SalesProcessView, LeadChatDrawer, type Lead as LeadLegado, type Deal as DealLegado } from "../crm/CrmWorkspace";
+import { SalesProcessView } from "../crm/CrmWorkspace";
+import { Funil2ConversationDrawer } from "./Funil2ConversationDrawer";
 import { getBrowserSupabaseClient } from "../../lib/supabase/browser";
 
 type Perfil = { userId: string; role: string; name: string };
@@ -815,18 +816,6 @@ function Detalhe({
   const tentativa = tentativaAtual(lead);
   const whatsapp = linkWhatsapp(lead.telefone);
 
-  const leadChat: LeadLegado = {
-    id: lead.lead_id, nome: lead.nome, telefone: lead.telefone, email: null, instagram: null,
-    corretor_id: lead.corretor_id, pipeline_id: null, status: "ativo", origem: "funil_2",
-    tags: null, extras: null, criado_em: lead.corte_conversa_em, atualizado_em: lead.atualizado_em,
-    disparo_optout: false,
-  };
-  const negocioChat: DealLegado = {
-    id: lead.origem_negocio_id, lead_id: lead.lead_id, corretor_id: lead.corretor_id,
-    pipeline_id: 0, stage_id: null, empreendimento_id: null, valor: null, status: "aberto",
-    motivo_perda: null, criado_em: lead.corte_conversa_em, ultima_movimentacao: lead.atualizado_em,
-    estagio_desde: null, tentativa: null, max_tentativas: null,
-  };
   return <div className="f2-overlay" onClick={onFechar}>
     <aside className="f2-detalhe" aria-label={`Detalhe de ${lead.nome}`} onClick={(e) => e.stopPropagation()}>
       <div className="f2-detalhe-topo"><div><span className="f2-eyebrow">LEAD-CÓPIA · #{lead.origem_negocio_id}</span><h2>{lead.nome}</h2><p>{lead.corretor_nome ?? "Sem corretor"}{lead.instancia_rotulo ? <em className="f2-instancia" title={`Contato saindo por ${lead.instancia_rotulo}`}> · {lead.instancia_rotulo}</em> : null} · original protegido</p></div><button type="button" onClick={onFechar} aria-label="Fechar detalhe">×</button></div>
@@ -890,6 +879,6 @@ function Detalhe({
 
       <details className="f2-lab-tools"><summary>Ferramentas do laboratório</summary><p>Somente para testar o avanço da cópia. No fluxo definitivo, o webhook do D-API executará esta confirmação.</p><button type="button" disabled={busy} onClick={() => onConfirmar(momento.exige_dapi ? "dapi" : "registro_operacional", obs)}>{busy ? "Atualizando…" : "Simular evidência confirmada"}</button></details>
     </aside>
-    {chatAberto && lead.lead_id > 0 && <div style={{ display: "contents" }} onClick={(event) => event.stopPropagation()}><LeadChatDrawer accessToken={accessToken} lead={leadChat} deal={negocioChat} corretorNome={lead.corretor_nome ?? undefined} onClose={() => setChatAberto(false)} onResponse={async () => {}} readOnly desde={lead.historico_completo ? undefined : lead.corte_conversa_em} /></div>}
+    {chatAberto && lead.lead_id > 0 && <Funil2ConversationDrawer accessToken={accessToken} leadId={lead.id} nome={lead.nome} onClose={() => setChatAberto(false)} />}
   </div>;
 }

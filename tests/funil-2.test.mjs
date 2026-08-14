@@ -103,18 +103,24 @@ test("cadência mostra com honestidade o passo oficial em implementação", () =
 
 test("card e ficha oferecem conversa e atalhos operacionais", () => {
   assert.match(ui, />💬 Chat</);
-  assert.match(ui, /LeadChatDrawer/);
-  assert.match(ui, /readOnly/);
+  assert.match(ui, /Funil2ConversationDrawer/);
   assert.match(ui, /WhatsApp/);
   assert.match(ui, /Agendar visita/);
   assert.match(ui, /Gerar negociação/);
 });
 
 test("chat identifica a instância D-API atual e diferencia histórico com mais de uma", () => {
-  assert.match(ui, /LeadChatDrawer/);
-  assert.match(ui, /leadChat/);
-  assert.match(ui, /negocioChat/);
-  assert.match(ui, /corretorNome=\{lead\.corretor_nome/);
+  const conversa = readFileSync(new URL("../app/features/funil-2/Funil2ConversationDrawer.tsx", import.meta.url), "utf8");
+  assert.match(conversa, /instancias\.map/);
+  assert.match(conversa, /instancia\.atual/);
+  assert.match(conversa, /instancia\.rotulo/);
+});
+
+test("conversa do Funil 2 usa somente a API canônica e respeita o corte do pescado", () => {
+  const conversa = readFileSync(new URL("../app/features/funil-2/Funil2ConversationDrawer.tsx", import.meta.url), "utf8");
+  assert.match(conversa, /\/api\/funil2\/conversa\?lead=/);
+  assert.doesNotMatch(conversa, /\/api\/crm\/chat|LeadChatDrawer/);
+  assert.match(conversa, /histórico anterior à pesca continua protegido/i);
 });
 
 test("corretor usa o Funil 2.0 no celular sem ganhar acesso ao desktop administrativo", () => {
