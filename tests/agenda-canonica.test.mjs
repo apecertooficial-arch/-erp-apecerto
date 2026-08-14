@@ -30,6 +30,14 @@ test("nova visita só aceita negócio presente na carteira ativa do Funil 2", ()
   assert.match(agendaApi, /O negócio não está ativo no Funil 2\.0\./);
 });
 
+test("Agenda e CRM 2.0 gravam a mesma visita canônica", () => {
+  const calls = agendaApi.match(/rpc\("f2_salvar_visita"/g) ?? [];
+  assert.equal(calls.length, 3, "criar, editar e alterar status devem passar pela mesma regra do Funil 2.0");
+  assert.doesNotMatch(agendaApi, /from\("visitas"\)\.insert/);
+  assert.match(agendaApi, /p_lead_id: card\.id/);
+  assert.match(agendaApi, /p_id: visitId/);
+});
+
 test("o workspace não oferece a base histórica de recall como lead ativo", () => {
   const cardLookup = agendaApi.indexOf('from("f2_lead")');
   const dealLookup = agendaApi.indexOf('from("negocios")');
