@@ -1,7 +1,6 @@
 /* Validacao da inscricao de push, sem dependencia de Supabase.
  *
- * Separada da rota para poder ser testada no node, no mesmo padrao de
- * fila-operacional/logica.ts.
+ * Separada da rota para poder ser testada diretamente no Node.
  */
 
 export type Inscricao = { endpoint: string; p256dh: string; auth: string; userAgent: string | null };

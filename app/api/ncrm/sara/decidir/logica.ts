@@ -1,6 +1,6 @@
 /* Regras puras da decisão da Sara, sem dependência de Supabase.
  *
- * Separadas da rota pelo mesmo motivo de fila-operacional/logica.ts: a rota
+ * Separadas da rota para que a lógica pura possa ser testada diretamente: a rota
  * importa o cliente do banco, que não resolve fora do bundler, e sem isso não
  * dá para testar a validação do lote direto no node.
  */
