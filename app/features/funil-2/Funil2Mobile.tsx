@@ -545,6 +545,7 @@ export function Funil2Mobile({
 
     {erro && <div className="f2m-erro"><strong>{erro}</strong><button type="button" onClick={recarregar}>Tentar novamente</button></div>}
     {!dados && !erro && <div className="f2m-loading">Organizando seu dia…</div>}
+    {dados && pedidoUrl !== null && !leadPedido && <div className="f2m-erro"><strong>Este cliente não está mais na sua carteira.</strong><button type="button" onClick={() => { limparLeadDaUrl(); onIr("/crm"); }}>Voltar ao CRM</button></div>}
     {dados && !erro && visiveis.length === 0 && <div className="f2m-vazio"><strong>Nada pendente aqui.</strong><span>Troque o filtro para consultar o restante da carteira.</span></div>}
 
     <section className="f2m-lista" aria-label="Atendimentos">

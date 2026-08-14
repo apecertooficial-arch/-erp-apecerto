@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 const ui = readFileSync(new URL("../app/features/funil-2/Funil2Workspace.tsx", import.meta.url), "utf8");
-const gate = readFileSync(new URL("../app/features/crm-nova-era/CrmNovaEraGate.tsx", import.meta.url), "utf8");
+const entradaCrm = readFileSync(new URL("../app/(erp)/crm/page.tsx", import.meta.url), "utf8");
 const migration = readFileSync(new URL("../supabase/migrations/20260810150000_funil_2_isolado.sql", import.meta.url), "utf8");
 const clareza = readFileSync(new URL("../supabase/migrations/20260810160000_funil_2_cadencia_clara.sql", import.meta.url), "utf8");
 const operacao = readFileSync(new URL("../supabase/migrations/20260810170000_funil_2_operacao_completa.sql", import.meta.url), "utf8");
@@ -76,9 +76,9 @@ test("sandbox não escreve em tabelas operacionais e tem dez momentos", () => {
 });
 
 test("acesso visual é explícito e administrativo; RLS repete a regra", () => {
-  assert.match(gate, /pedeFunil2/);
-  assert.match(gate, /podeFunil2/);
-  assert.match(gate, /Funil2Workspace/);
+  assert.match(entradaCrm, /Funil2Workspace/);
+  assert.match(entradaCrm, /Funil2Mobile/);
+  assert.doesNotMatch(entradaCrm, /CrmNovaEraGate|CrmWorkspace/);
   assert.match(migration, /ENABLE ROW LEVEL SECURITY/g);
   assert.match(migration, /CREATE POLICY f2_lead_admin_select/);
   assert.match(migration, /REVOKE ALL ON public\.f2_momento_config,public\.f2_lead,public\.f2_evento FROM PUBLIC,anon/);
@@ -118,8 +118,8 @@ test("chat identifica a instância D-API atual e diferencia histórico com mais 
 });
 
 test("corretor usa o Funil 2.0 no celular sem ganhar acesso ao desktop administrativo", () => {
-  assert.match(gate, /entrouNoFunil2[\s\S]*!podeLive \|\| !podeFunil2/);
-  assert.match(gate, /ehCelular === true[\s\S]*<Funil2Workspace/);
+  assert.match(entradaCrm, /GuardaModulo modulo="CRM"/);
+  assert.match(entradaCrm, /if \(ehCelular\)[\s\S]*<Funil2Mobile[\s\S]*<Funil2Workspace/);
   assert.match(respostaInstanciasApp, /f2_lead_corretor_select/);
   assert.match(respostaInstanciasApp, /f2_corretor_atual/);
   assert.match(respostaInstanciasApp, /REVOKE INSERT,UPDATE,DELETE,TRUNCATE/);

@@ -26,7 +26,7 @@ test("treinamento oficial preserva envio manual e confirmação pelo D-API", () 
 });
 
 test("CRM mobile oferece ativação de push sem depender da tela Início", () => {
-  const mobile = ler("../app/features/crm-nova-era/TelaCrmMobile.tsx");
-  assert.match(mobile, /import \{ AvisoNotificacoes \}/);
-  assert.match(mobile, /<AvisoNotificacoes accessToken=\{accessToken\} \/>/);
+  const mobile = ler("../app/features/funil-2/Funil2Mobile.tsx");
+  assert.match(mobile, /modo: "inicio" \| "crm"/);
+  assert.match(mobile, /BotaoWhatsApp/);
 });
