@@ -395,3 +395,9 @@ Ajuda, Base de Conhecimento e Financiamento deixaram de montar `LegacyModuleWork
 Financiamento ganhou API e workspace nativos. A API valida o JWT real e consulta `financiamento_fichas` com o cliente do usuário, preservando a política RLS que limita cada corretor às próprias fichas e libera a administração. A interface exibe somente campos persistidos, status derivado de datas/dados reais e o link público seguro quando ele existe. As simulações decorativas do HTML antigo não foram copiadas, pois não possuíam tabela nem integração bancária persistida.
 
 O banco possuía três fichas no corte: duas com dados preenchidos e uma com link público. Nenhuma ficha ou dado pessoal foi removido. O runtime original permanece isolado apenas na rota explícita `/original`; a retirada física de seus arquivos, do adaptador `legacy-crm-actions.js` e de `/api/crm` passa a ser um lote destrutivo separado, depois da validação desta substituição em produção.
+
+## Execução — remoção dos estilos móveis do CRM aposentado (14/08/2026)
+
+Uma segunda varredura encontrou 177 linhas de CRM Nova Era, ficha NCRM e notificações NCRM ainda dentro da folha móvel ativa `app-mobile.css`. A busca por cada classe confirmou ausência de elementos correspondentes no código TSX atual; as notificações oficiais usam o namespace `av-*` e o CRM oficial usa o Funil 2.0.
+
+Os blocos órfãos foram removidos, reduzindo a folha de 617 para 440 linhas. O único contrato compartilhado, `.ncrm-wa-principal`, foi preservado porque `BotaoWhatsApp` do Funil 2.0 ainda o utiliza para abrir o aplicativo nativo. Um teste impede o retorno dos seletores Nova CRM e comprova a permanência do botão oficial.
