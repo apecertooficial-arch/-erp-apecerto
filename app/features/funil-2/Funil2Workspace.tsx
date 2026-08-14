@@ -227,7 +227,6 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
             {avisosAbertos && <CentralAtencao leads={leads} momentos={momentosAtivos} etapas={etapasAtivas} onAbrir={(id) => { setSelecionado(id); setAvisosAbertos(false); }} onMeuDia={() => { setAba("dia"); setAvisosAbertos(false); }} />}
           </div>
           <button type="button" className="f2-pescar" onClick={() => setModal("pescar")}>⌁ Pescar um lead</button>
-          <button type="button" onClick={() => { window.location.href = "/crm?crm=nova-era&aba=funil"; }}>Voltar ao CRM 3.0</button>
         </div>
       </header>
 
