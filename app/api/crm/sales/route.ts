@@ -1,6 +1,6 @@
 import { createServerSupabaseClient } from "../../../lib/supabase/server";
 import type { TablesUpdate } from "../../../lib/supabase/database.types";
-import { blocoAberto, completudeBloco, docExigido, etapaDoBloco, pendenciasParaAvancar, podeEditarEtapa, type BlocoEsteira, type DadosCompletude, type EtapaRegra } from "../../../lib/esteira";
+import { blocoAberto, etapaDoBloco, pendenciasParaAvancar, podeEditarEtapa, type BlocoEsteira, type DadosCompletude, type EtapaRegra } from "../../../lib/esteira";
 
 export const dynamic = "force-dynamic";
 

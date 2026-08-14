@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type DragEvent, type MouseEvent as ReactMouseEvent } from "react";
+import { useCallback, useEffect, useState, type CSSProperties } from "react";
 import { blocoAberto, BLOCO_LABEL, completudeBloco, docExigido as regraDocExigido, docVisivel as regraDocVisivel, etapaDoBloco, podeEditarEtapa, type BlocoEsteira, type DadosCompletude, type EtapaRegra } from "../../lib/esteira";
 import { MoneyInput, PercentInput } from "../../components/MoneyInput";
 import { getBrowserSupabaseClient } from "../../lib/supabase/browser";
@@ -112,13 +112,13 @@ export function SalesProcessView({ accessToken, initialCreate = false, sessionRo
   const [data, setData] = useState<SalesData | null>(null); const [error, setError] = useState<string | null>(null); const [filter, setFilter] = useState("all"); const [creating, setCreating] = useState(initialCreate); const [busy, setBusy] = useState(false); const [detailItem, setDetailItem] = useState<SalesData["processes"][number] | null>(null); const [menuStage, setMenuStage] = useState<string | null>(null); const [bulkFrom, setBulkFrom] = useState<string | null>(null); const [addingStage, setAddingStage] = useState(false); const [newStageName, setNewStageName] = useState("");
   const canManageStages = sessionRole !== "corretor";
   const [renderedAt] = useState(() => Date.now());
-  const load = async () => { const response = await authedFetch("/api/crm/sales", { headers: { Authorization: `Bearer ${accessToken}` } }); const result = await response.json() as SalesData & { error?: string }; if (!response.ok) throw new Error(result.error || "Não foi possível carregar as vendas."); setData(result); };
+  const load = useCallback(async () => { const response = await authedFetch("/api/crm/sales", { headers: { Authorization: `Bearer ${accessToken}` } }); const result = await response.json() as SalesData & { error?: string }; if (!response.ok) throw new Error(result.error || "Não foi possível carregar as vendas."); setData(result); }, [accessToken]);
   const decideSolic = async (id: string, aprovar: boolean, motivo?: string) => { setBusy(true); setError(null); try { const response = await authedFetch("/api/crm/sales", { method: "PATCH", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify(aprovar ? { action: "aprovarSolicitacao", id } : { action: "recusarSolicitacao", id, motivo: motivo || "" }) }); const result = await response.json() as { error?: string }; if (!response.ok) throw new Error(result.error || "Não foi possível decidir a solicitação."); await load(); } catch (reason) { setError(reason instanceof Error ? reason.message : "Erro ao decidir a solicitação."); } finally { setBusy(false); } };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+
   useEffect(() => {
     const timer = window.setTimeout(() => { void load().catch((reason) => setError(reason instanceof Error ? reason.message : "Erro ao carregar vendas.")); }, 0);
     return () => window.clearTimeout(timer);
-  }, [accessToken]);
+  }, [load]);
   const stageList = (data?.stages && data.stages.length) ? data.stages.slice().sort((a, b) => a.ordem - b.ordem).map((s) => ({ id: s.slug, dbId: s.id, name: s.nome, color: s.cor, role: s.papel, days: s.sla_dias, resale: s.resale, ordem: s.ordem, libera: s.libera ?? [], restritoA: s.restrito_a ?? null })) : saleStages.map((s, i) => ({ ...s, dbId: null as string | null, resale: (s as { resale?: boolean }).resale ?? false, ordem: i + 1, libera: [] as string[], restritoA: null as string[] | null }));
   const saleById = new Map((data?.sales ?? []).map((sale) => [sale.id, sale])); const dealBySale = new Map((data?.deals ?? []).filter((deal) => deal.venda_id).map((deal) => [deal.venda_id!, deal])); const leadById = new Map((data?.leads ?? []).map((lead) => [lead.id, lead])); const brokerById = new Map((data?.brokers ?? []).map((broker) => [broker.id, broker]));
   const finalSlugs = new Set(stageList.filter((s) => s.days === 0).map((s) => s.id));
@@ -146,7 +146,7 @@ export function SalesProcessView({ accessToken, initialCreate = false, sessionRo
     {addingStage && <div className="sales-add-stage"><input autoFocus value={newStageName} onChange={(event) => setNewStageName(event.target.value)} placeholder="Nome da nova etapa (ex.: Vistoria)" onKeyDown={(event) => { if (event.key === "Enter" && newStageName.trim()) { void mutateStages({ action: "createStage", nome: newStageName.trim() }); setAddingStage(false); } }} /><button type="button" className="crm-primary small" disabled={busy || !newStageName.trim()} onClick={() => { void mutateStages({ action: "createStage", nome: newStageName.trim() }); setAddingStage(false); }}>Criar etapa</button><button type="button" onClick={() => setAddingStage(false)}>Cancelar</button></div>}
     <div className="sales-kpis"><article><strong>{visible.length}</strong><span>em processo</span></article><article className="danger"><strong>{overdue.length}</strong><span>vendas atrasadas</span></article><article><strong>{visible.filter((item) => item.etapa === "minuta_env").length}</strong><span>aguardando assinatura</span></article><article><strong>{visible.filter((item) => ["doc_comp", "doc_vend"].includes(item.etapa)).length}</strong><span>documentos pendentes</span></article><article><strong>{visible.filter((item) => item.etapa === "pagamento").length}</strong><span>aguardando pagamento</span></article></div>
     <div className="sales-filter"><b>Tipo de venda</b>{[["all", "Todas"], ["revenda", "Revenda"], ["construtora", "Construtora"]].map(([id, label]) => <button className={filter === id ? "active" : ""} type="button" onClick={() => setFilter(id)} key={id}>{label}</button>)}<span>Corretor · Gerente · Jurídico · Financeiro</span></div>
-    <div className="sales-kanban">{stageList.map((stage, stageIndex) => {
+    <div className="sales-kanban">{stageList.map((stage) => {
       const items = visible.filter((item) => item.etapa === stage.id && (!stage.resale || item.tipo_venda === "revenda"));
       const configurable = canManageStages && Boolean(stage.dbId);
       const orderableIndex = stageList.filter((s) => s.dbId).findIndex((s) => s.dbId === stage.dbId);
@@ -790,30 +790,6 @@ function DocAddRow({ busy, value, onChange, onUpload }: { busy?: boolean; value?
 function CreateSaleModal({ data, accessToken, initialDealId = "", onClose, onDone }: { data: SalesData; accessToken: string; initialDealId?: string | number; onClose: () => void; onDone: () => Promise<void> }) {
   const [dealId, setDealId] = useState(String(initialDealId)); const [productId, setProductId] = useState(""); const [busy, setBusy] = useState(false); const [error, setError] = useState<string | null>(null); const leadById = new Map(data.leads.map((lead) => [lead.id, lead]));
   return <div className="crm-center-modal"><form onSubmit={(event) => { event.preventDefault(); setBusy(true); void authedFetch("/api/crm/sales", { method: "PATCH", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify({ action: "create", dealId: Number(dealId), productId }) }).then(async (response) => { const result = await response.json() as { error?: string }; if (!response.ok) throw new Error(result.error); await onDone(); }).catch((reason) => setError(reason instanceof Error ? reason.message : "Não foi possível criar a venda.")).finally(() => setBusy(false)); }}><header><div><span>NOVA VENDA</span><h2>Conectar venda ao CRM</h2><p>O valor é definido nas Condições comerciais, na etapa de Proposta. Até a venda concluir, ele conta como negociação em aberto.</p></div><button type="button" onClick={onClose}>×</button></header>{error && <div className="modal-error">{error}</div>}<label>Negócio / cliente<select required value={dealId} onChange={(event) => setDealId(event.target.value)}><option value="">Selecione</option>{data.deals.filter((deal) => !deal.venda_id).map((deal) => <option value={deal.id} key={deal.id}>{leadById.get(deal.lead_id)?.nome || `Negócio #${deal.id}`}</option>)}</select></label><label>Produto<select required value={productId} onChange={(event) => setProductId(event.target.value)}><option value="">Selecione</option>{data.products.map((product) => <option value={product.id} key={product.id}>{product.nome}</option>)}</select></label><footer><button type="button" onClick={onClose}>Cancelar</button><button className="crm-primary" disabled={busy} type="submit">{busy ? "Salvando…" : "Criar venda"}</button></footer></form></div>;
-}
-
-function RefinedSelect({ value, onChange, options, placeholder = "Selecione", disabled = false }: { value: string; onChange: (value: string) => void; options: Array<{ value: string; label: string }>; placeholder?: string; disabled?: boolean }) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-  const selected = options.find((option) => option.value === value) ?? null;
-  useEffect(() => {
-    if (!open) return;
-    const onDoc = (event: globalThis.MouseEvent) => { if (ref.current && !ref.current.contains(event.target as Node)) setOpen(false); };
-    const onKey = (event: KeyboardEvent) => { if (event.key === "Escape") setOpen(false); };
-    document.addEventListener("mousedown", onDoc);
-    document.addEventListener("keydown", onKey);
-    return () => { document.removeEventListener("mousedown", onDoc); document.removeEventListener("keydown", onKey); };
-  }, [open]);
-  return <div className={`rselect ${open ? "open" : ""} ${disabled ? "disabled" : ""}`} ref={ref}>
-    <button type="button" className={`rselect-btn ${selected ? "" : "is-placeholder"}`} disabled={disabled} onClick={() => setOpen((prev) => !prev)} aria-haspopup="listbox" aria-expanded={open}>
-      <span className="rselect-label">{selected ? selected.label : placeholder}</span>
-      <svg className="rselect-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9l6 6 6-6" /></svg>
-    </button>
-    {open && <ul className="rselect-panel" role="listbox">
-      {options.length === 0 && <li className="rselect-empty">Nenhuma etapa disponível</li>}
-      {options.map((option) => <li key={option.value}><button type="button" role="option" aria-selected={option.value === value} className={`rselect-opt ${option.value === value ? "active" : ""}`} onClick={() => { onChange(option.value); setOpen(false); }}><span className="rselect-dot" /><span className="rselect-opt-text">{option.label}</span>{option.value === value && <svg className="rselect-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>}</button></li>)}
-    </ul>}
-  </div>;
 }
 
 // Seletor rico da instância do histórico (substitui o <select> nativo).

@@ -138,5 +138,6 @@ export const RESULTADOS_VISIVEIS: readonly ResultadoVisivel[] = Object.freeze([
    processo comercial em andamento, nao uma venda fechada. O app nunca cria
    venda: quem fecha e o modulo de vendas, com aceite. */
 export function resultadoCriaVenda(_chave: string): false {
+  void _chave;
   return false;
 }

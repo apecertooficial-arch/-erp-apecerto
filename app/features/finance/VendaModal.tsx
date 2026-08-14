@@ -1,5 +1,5 @@
 "use client";
-/* eslint-disable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
+
 
 /* FICHA DA VENDA - UM FORMULARIO SO (ago/2026).
 
@@ -26,7 +26,6 @@ const brl = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL",
 const hoje = () => new Date().toISOString().slice(0, 10);
 
 const PAPEIS: Array<[string, string]> = [["corretor", "Corretor"], ["executivo", "Executivo"], ["gerente", "Taxa de gerente"], ["apecerto", "Apecerto"], ["indicacao", "Indicação"]];
-const rotuloPapel = (valor: string) => PAPEIS.find(([id]) => id === valor)?.[1] ?? valor;
 
 type DocRow = { nome: string; path: string; bucket: string; uploading?: boolean; error?: string };
 type CommRow = { id?: string; papel: string; beneficiarioId: string; valor: string };
@@ -48,7 +47,6 @@ export function VendaModal({ data, saleId, sessionRole = "corretor", onClose, on
   const detalhe = saleId ? data.details.find((item) => item.id === saleId) : undefined;
   const empreendimentos = data.empreendimentos ?? [];
   const usuarios = data.users ?? [];
-  const nomeUsuario = (id: string | null | undefined) => (id ? usuarios.find((u) => u.id === id)?.nome ?? "—" : "—");
 
   const [form, setForm] = useState(() => ({
     dataVenda: venda?.data_venda ?? hoje(),

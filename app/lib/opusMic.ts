@@ -20,7 +20,11 @@ function loadRecorder(): Promise<unknown> {
     const script = document.createElement("script");
     script.src = "/_vendor/opus/recorder.min.js";
     script.async = true;
-    script.onload = () => { const g = (window as unknown as { Recorder?: unknown }).Recorder; g ? resolve(g) : reject(new Error("Gravador de áudio indisponível.")); };
+    script.onload = () => {
+      const recorder = (window as unknown as { Recorder?: unknown }).Recorder;
+      if (recorder) resolve(recorder);
+      else reject(new Error("Gravador de áudio indisponível."));
+    };
     script.onerror = () => { loadPromise = null; reject(new Error("Falha ao carregar o gravador de áudio.")); };
     document.head.appendChild(script);
   });

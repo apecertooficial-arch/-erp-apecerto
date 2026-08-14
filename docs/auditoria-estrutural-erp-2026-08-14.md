@@ -341,3 +341,11 @@ A Home também deixou de baixar os payloads completos de `/api/crm` e `/api/cata
 O Chat ao Vivo não possui mais tratamento especial para comandos em `/api/crm`: visitas seguem pela Agenda canônica e conversas pelo serviço próprio de chat. Após esse corte, nenhum componente operacional do aplicativo consome a API geral `/api/crm`; a referência restante está restrita ao adaptador do runtime legado que ainda sustenta Base de Conhecimento, Financiamento e Ajuda. Sua remoção física exige primeiro substituir essas três telas ou autorização destrutiva explícita para desligá-las.
 
 Foi acrescentado um teste de regressão para garantir que desktop e celular não voltem a divergir nem reintroduzam fontes paralelas na tela de avisos.
+
+## Execução — gates de qualidade por runtime e remoção de código morto (14/08/2026)
+
+O lint do aplicativo Next/React foi separado da validação das Edge Functions Deno. Antes, imports remotos, globals e padrões próprios do Deno eram avaliados pelas regras do Next, produzindo 48 erros que não pertenciam ao runtime do aplicativo. O comando `pnpm lint:edge` agora declara o gate correto com `deno lint` e `deno check`; o diretório de funções não é mais avaliado pelo ESLint do Next.
+
+No aplicativo, os avisos objetivos foram reduzidos de 42 para 11, ficando somente imagens deliberadamente externas/dinâmicas e três avisos em testes históricos NCRM. Foram removidos imports, ícones, helpers e componentes sem consumidor, inclusive uma segunda Esteira de Vendas embutida e inalcançável no Funil 2.0. Dependências instáveis de hooks em Agenda, Permissões e Esteira foram corrigidas.
+
+O runtime Deno não está instalado nesta estação; portanto, o gate das Edge Functions está configurado, mas sua execução local ainda depende da instalação controlada do Deno ou de CI específica. Essa pendência permanece explícita e não é tratada como aprovação automática das funções.

@@ -45,7 +45,6 @@ const IcCar = () => <Svg><path d="M5 13l1.4-4A2 2 0 0 1 8.3 8h7.4a2 2 0 0 1 1.9 
 const IcSeal = () => <Svg><circle cx="12" cy="12" r="9" /><path d="M8.5 12l2.5 2.4 4.5-5" /></Svg>;
 const IcPhone = () => <Svg size={16}><path d="M6 3h3l1.4 5-2 1.4a11 11 0 0 0 5 5l1.4-2 5 1.4V22 21a2 2 0 0 1-2 2A16 16 0 0 1 4 5a2 2 0 0 1 2-2z" /></Svg>;
 const IcMail = () => <Svg size={16}><rect x="3" y="5" width="18" height="14" rx="2" /><path d="M3 7l9 6 9-6" /></Svg>;
-const IcKey = () => <Svg size={18}><circle cx="8" cy="8" r="4" /><path d="M11 11l8 8M16 16l2-2M18 18l2-2" /></Svg>;
 const IcStar = () => <Svg size={18}><path d="M12 3l2.6 5.5 6 .9-4.3 4.2 1 6L12 17l-5.3 2.6 1-6L3.4 9.4l6-.9z" /></Svg>;
 const IcShare = () => <Svg size={18}><circle cx="6" cy="12" r="2.4" /><circle cx="17" cy="6" r="2.4" /><circle cx="17" cy="18" r="2.4" /><path d="M8.1 10.9l6.8-3.7M8.1 13.1l6.8 3.7" /></Svg>;
 const IcEdit = () => <Svg size={18}><path d="M4 20h4l10-10-4-4L4 16z" /><path d="M13.5 6.5l4 4" /></Svg>;
@@ -58,7 +57,6 @@ const IcRotate = () => <Svg size={17}><path d="M4 12a8 8 0 1 0 2.6-5.9M4 4v4h4" 
 const IcClock = () => <Svg size={17}><circle cx="12" cy="12" r="8.5" /><path d="M12 7.5V12l3 2" /></Svg>;
 const IcSend = () => <Svg size={17}><path d="M21 3L10.5 13.5M21 3l-6.5 18-4-8-8-4z" /></Svg>;
 const IcCheck = () => <Svg size={17}><path d="M4 12.5l5 5 11-11" /></Svg>;
-const IcDownload = () => <Svg size={17}><path d="M12 4v11M7 11l5 5 5-5M5 20h14" /></Svg>;
 
 function acessoLabel(tipo?: string | null): string {
   if (!tipo) return "—";
@@ -95,7 +93,6 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
   const [tab, setTab] = useState<"resumo" | "localizacao" | "proprietario" | "unidades" | "galeria">("resumo");
   const [unitDetail, setUnitDetail] = useState<Unit | null>(null);
   const [unitLightbox, setUnitLightbox] = useState<{ items: { url: string; label: string }[]; index: number } | null>(null);
-  const [mapCoord, setMapCoord] = useState<{ lat: number; lon: number } | null>(null);
 
   const load = useCallback(async () => {
     setMessage("");
@@ -354,8 +351,7 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
                 <p className="fv2-loc-sub">{[product.bairro, product.cidade].filter(Boolean).join(" · ")}{product.uf ? ` — ${product.uf}` : ""}{product.cep ? ` · CEP ${product.cep}` : ""}</p>
                 {product.condominios && <div className="fv2-condo"><span className="fv2-condo-ic"><IcBuilding /></span><div><strong>{product.condominios.nome}</strong><small>Condomínio associado</small></div></div>}
                 <div className="fv2-map">
-                  {mapCoord ? <iframe title="Mapa do imóvel" loading="lazy" src={`https://www.openstreetmap.org/export/embed.html?bbox=${mapCoord.lon - 0.006}%2C${mapCoord.lat - 0.005}%2C${mapCoord.lon + 0.006}%2C${mapCoord.lat + 0.005}&layer=mapnik&marker=${mapCoord.lat}%2C${mapCoord.lon}`} />
-                    : mapQuery ? <iframe title="Mapa do imóvel" loading="lazy" referrerPolicy="no-referrer-when-downgrade" src={`https://www.google.com/maps?q=${mapQuery}&output=embed`} />
+                  {mapQuery ? <iframe title="Mapa do imóvel" loading="lazy" referrerPolicy="no-referrer-when-downgrade" src={`https://www.google.com/maps?q=${mapQuery}&output=embed`} />
                     : <div className="fv2-map-placeholder">Endereço não cadastrado.</div>}
                 </div>
               </>}

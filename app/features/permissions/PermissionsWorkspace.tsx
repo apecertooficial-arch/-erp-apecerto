@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   MODULE_CAPABILITIES, MODULE_ORDER, MODULE_LABELS, ACTION_LABELS,
   ACCESS_LEVELS, actionsForLevel, levelForActions,
@@ -35,17 +35,17 @@ export function PermissionsWorkspace({ accessToken }: { accessToken: string }) {
   const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
-  const load = async () => {
+  const load = useCallback(async () => {
     const res = await fetch("/api/permissions", { headers: { Authorization: `Bearer ${accessToken}` } });
     const json = (await res.json()) as { perfis?: Perfil[]; usuarios?: Usuario[]; error?: string };
     if (!res.ok) throw new Error(json.error || "Não foi possível carregar as permissões.");
     setPerfis(json.perfis ?? []);
     setUsuarios(json.usuarios ?? []);
-  };
+  }, [accessToken]);
   useEffect(() => {
     const timer = window.setTimeout(() => { void load().catch((e) => setError(e instanceof Error ? e.message : "Erro ao carregar.")); }, 0);
     return () => window.clearTimeout(timer);
-  }, [accessToken]);
+  }, [load]);
 
   const perfilById = useMemo(() => new Map(perfis.map((p) => [p.id, p])), [perfis]);
   const userById = useMemo(() => new Map(usuarios.map((u) => [u.id, u])), [usuarios]);
