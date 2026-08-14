@@ -138,3 +138,14 @@ test("Financiamento lê fichas reais com o JWT e respeita RLS", () => {
   assert.match(api, /from\("financiamento_fichas"\)/);
   assert.doesNotMatch(api, /service.?role/i);
 });
+
+test("Configurações possui uma única camada: Conexões", () => {
+  const settings = readFileSync(join(raizApp, "features/settings/SettingsWorkspace.tsx"), "utf8");
+  const globals = readFileSync(join(raizApp, "globals.css"), "utf8");
+
+  assert.match(settings, /return <ConnectionsWorkspace accessToken=\{accessToken\} \/>/);
+  assert.doesNotMatch(globals, /\.settings-/,
+    "CSS da antiga central de Configurações não pode voltar a sobrepor Conexões");
+  assert.match(globals, /\.connections-workspace/,
+    "a camada visual vigente de Conexões precisa permanecer disponível");
+});

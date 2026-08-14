@@ -1611,10 +1611,6 @@ body:has(.profile-drawer-scrim,.modal-layer,.photo-lightbox,.document-preview-mo
 .audit-trail strong { display:block; font-size:11px; color:#453e39; }
 .audit-trail small { color:#988e88; font-size:11px; }
 
-/* Configurações: somente conexão das instâncias de WhatsApp. */
-.settings-workspace{min-height:100%;background:#faf9f7}
-.settings-connections-only .settings-embed{padding:0 20px 30px}
-
 /* Doc §18 — Auditoria: viewer com filtros */
 .audit-workspace { min-height:100%; background:#faf9f7; padding-bottom:40px; }
 .audit-filters { display:flex; align-items:center; gap:7px; flex-wrap:wrap; padding:14px 26px; background:#fff; border-bottom:1px solid #ece7e3; }
@@ -2873,22 +2869,6 @@ body { overflow:hidden; background:#eee8e2; }
 .sale-repasse-grid strong{font-size:14px}
 .sale-repasse-grid strong.warning{color:#b45309}
 
-/* Configurações: editor de categorias do caixa */
-.settings-cats{margin-top:18px;padding-top:16px;border-top:1px solid #ece7e3}
-.settings-cats h3{margin:0 0 4px;font-size:14px}
-.settings-cat-add{display:flex;gap:8px;align-items:center;margin:10px 0 12px;flex-wrap:wrap}
-.settings-cat-add input[type=color],.settings-cat-row input[type=color]{width:38px;height:38px;padding:2px;border:1px solid #ded7d2;border-radius:8px;background:#fff;cursor:pointer}
-.settings-cat-add>input:not([type=color]){flex:1;min-width:160px;min-height:38px;border:1px solid #ded7d2;border-radius:9px;padding:8px 10px;font-family:inherit;font-size:12px}
-.settings-cat-add select{min-height:38px;border:1px solid #ded7d2;border-radius:9px;padding:8px 10px;background:#fff;font-family:inherit;font-size:12px}
-.settings-cat-add button{border:1px solid #ffb57f;border-radius:9px;padding:0 14px;min-height:38px;background:#fff7f1;color:#d85600;font-weight:700;font-size:12px;cursor:pointer}
-.settings-cat-list{display:flex;flex-direction:column;gap:6px}
-.settings-cat-row{display:flex;gap:8px;align-items:center;padding:6px 8px;border:1px solid #ece7e3;border-radius:9px;background:#fff}
-.settings-cat-row>i{width:16px;height:16px;border-radius:5px;flex:none}
-.settings-cat-row>input:not([type=color]){flex:1;min-width:120px;min-height:34px;border:1px solid #e3dcd7;border-radius:8px;padding:6px 9px;font-family:inherit;font-size:12px}
-.settings-cat-row select{min-height:34px;border:1px solid #e3dcd7;border-radius:8px;padding:6px 8px;background:#fff;font-family:inherit;font-size:11px}
-.settings-cat-del{width:32px;height:32px;flex:none;border:1px solid #f0d4cd;border-radius:7px;background:#fff6f4;color:#c9443d;font-size:15px;cursor:pointer}
-.settings-cat-row input:disabled,.settings-cat-row select:disabled,.settings-cat-del:disabled{opacity:.55}
-@media(max-width:720px){.settings-cat-row{flex-wrap:wrap}.settings-cat-row>input:not([type=color]){flex:1 1 100%}}
 /* ==================================================================
    CRM — composição final baseada nas telas aprovadas do Claude Designer
    ================================================================== */
@@ -3148,7 +3128,6 @@ body { overflow:hidden; background:#eee8e2; }
 .notif-workspace > *:not(header):not(.workspace-top),
 .team-workspace > *:not(header):not(.workspace-top),
 .audit-workspace > *:not(header):not(.workspace-top),
-.settings-workspace > *:not(header):not(.workspace-top),
 .catalog-controls,
 .product-grid {
   max-width: 1360px; margin-left: auto; margin-right: auto;
@@ -3280,9 +3259,7 @@ article.tone-red{border-left-color:#d3443e}article.tone-red strong{color:#d3443e
 .chat-sara-toggle.ready:not(.active)::after { content:""; position:absolute; top:-1px; right:-1px; width:12px; height:12px; border-radius:50%; background:#22c55e; border:2px solid #fff; }
 @keyframes saraToggleP { 0%{ box-shadow:0 0 0 0 rgba(224,30,99,.5); } 70%{ box-shadow:0 0 0 10px rgba(224,30,99,0); } 100%{ box-shadow:0 0 0 0 rgba(224,30,99,0); } }
 
-/* Proporção — Configurações e Perfis preenchem melhor telas grandes
-   (antes ficavam como ilha estreita: Perfis 1180px, Config 1360px). */
-.settings-body { max-width:1600px; margin-left:auto; margin-right:auto; }
+/* Proporção — Perfis preenchem melhor telas grandes. */
 .perms-workspace { max-width:1600px; }
 /* Agentes de IA (Laboratório da Sara): mesma largura dos demais (era 1200px, virava ilha) */
 .agents-lab { max-width:1600px; }
@@ -3379,46 +3356,6 @@ article.tone-red{border-left-color:#d3443e}article.tone-red strong{color:#d3443e
 @media(max-width:1100px){ .home-kpis{ grid-template-columns:repeat(2,minmax(0,1fr)); } }
 @media(max-width:640px){ .home-kpis{ grid-template-columns:1fr; } }
 
-/* ============================================================
-   CONFIGURAÇÕES v2 — nav em cards com ícone+subtítulo, header com
-   kicker + selo admin, aba Empresa em cards (Identidade/Contato/
-   Localização) com logo, e Conexões com stats + cards de status.
-   ============================================================ */
-.settings-top { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; }
-.settings-kicker { display:block; color:#ff6a00; font-size:11px; font-weight:800; letter-spacing:.12em; }
-.settings-admin-pill { flex:0 0 auto; padding:7px 13px; border-radius:999px; background:#f3e9fc; color:#7c3aed; font-size:11px; font-weight:700; }
-/* nav lateral em cards */
-.settings-nav { gap:9px !important; padding:0 !important; border:0 !important; background:transparent !important; }
-.settings-nav button { align-items:center !important; gap:12px !important; padding:12px 14px !important; border:1px solid #ece7e3 !important; border-radius:14px !important; background:#fff !important; }
-.settings-nav button.active { border-color:#ffcfa6 !important; background:#fff6ef !important; box-shadow:0 6px 16px rgba(255,101,0,.08); }
-.settings-nav button .settings-nav-ico { width:38px !important; height:38px !important; flex:0 0 auto; display:grid; place-items:center; border-radius:11px; background:#f2efec; color:#8a807a; font-size:16px; text-align:center; }
-.settings-nav button.active .settings-nav-ico { background:#ff6500; color:#fff; }
-.settings-nav button .settings-nav-text { flex:1; min-width:0; display:flex; flex-direction:column; gap:1px; width:auto; text-align:left; color:inherit; }
-.settings-nav button .settings-nav-text strong { font-size:13px; color:#2f2a26; }
-.settings-nav button.active .settings-nav-text strong { color:#d85600; }
-.settings-nav button .settings-nav-text small { color:#9a908a; font-size:11px; font-weight:500; }
-.settings-nav button .settings-nav-chev { flex:0 0 auto; width:auto !important; color:#c4bbb4; font-size:16px; }
-.settings-nav button.active .settings-nav-chev { color:#ff6500; }
-/* aba Empresa */
-.settings-empresa { display:flex; flex-direction:column; gap:16px; max-width:900px; }
-.settings-empresa .settings-card { max-width:none; }
-.settings-identity { display:flex; gap:20px; }
-.settings-logo { flex:0 0 auto; width:96px; height:96px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; border:2px dashed #ffcfa6; border-radius:16px; background:#fff8f2; color:#d85f00; cursor:pointer; font-size:11px; font-weight:700; }
-.settings-logo span { font-size:26px; }
-.settings-identity-body { flex:1; min-width:0; }
-.settings-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
-.settings-grid label.wide, .settings-card label.wide { grid-column:1/-1; }
-.settings-card label { display:flex; flex-direction:column; gap:6px; color:#6d6560; font-size:11px; font-weight:700; }
-.settings-card label input, .settings-card label textarea { border:1px solid #e0d9d4; border-radius:10px; padding:11px 12px; font-family:inherit; font-size:12px; outline:0; }
-.settings-card label input:focus { border-color:#ff9c5e; box-shadow:0 0 0 3px rgba(255,101,0,.10); }
-.settings-card h2 .sc-ico { display:inline-grid; place-items:center; width:28px; height:28px; border-radius:9px; margin-right:9px; vertical-align:middle; font-size:14px; }
-.settings-card h2 .sc-ico.phone { background:#e5f7ec; color:#16834c; }
-.settings-card h2 .sc-ico.pin { background:#f3e9fc; color:#7c3aed; }
-.settings-form-footer { display:flex; align-items:center; justify-content:space-between; gap:16px; padding:15px 20px; border:1px solid #ece7e3; border-radius:14px; background:#fff; max-width:900px; }
-.settings-form-footer > span { color:#9a908a; font-size:12px; }
-.settings-form-footer > div { display:flex; gap:10px; }
-.settings-cancel { border:1px solid #ded7d2; border-radius:10px; padding:10px 16px; background:#fff; color:#5f5752; font-weight:600; cursor:pointer; }
-.settings-form-footer .settings-save { border:0; border-radius:10px; padding:10px 18px; background:#ff6500; color:#fff; font-weight:700; cursor:pointer; }
 /* Conexões: stats + cards de status */
 .conn-stats { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; padding:18px 28px 4px; }
 .conn-stat { padding:16px 18px; border:1px solid #e7e1dd; border-radius:14px; background:#fff; display:flex; flex-direction:column; gap:6px; }
@@ -3496,10 +3433,6 @@ article.tone-red{border-left-color:#d3443e}article.tone-red strong{color:#d3443e
 .presence-cfg-modal > footer { display:flex; justify-content:flex-end; gap:10px; }
 .presence-cfg-modal > footer button { border:1px solid #e0d9d4; border-radius:10px; padding:10px 16px; background:#fff; color:#5f5752; font-weight:600; cursor:pointer; }
 .presence-cfg-save { border:0 !important; background:#ff6500 !important; color:#fff !important; font-weight:700; }
-/* ícone da seção Regra de presença + painel inline */
-.settings-card h2 .sc-ico.shield { background:#f3e9fc; color:#7c3aed; }
-.settings-presence .presence-cfg-grid { margin-top:14px; }
-.settings-presence .presence-scope { margin-top:4px; }
 /* seletor de dias da semana (Regra de presença) */
 .presence-cfg-grid label:first-child { grid-column:auto; }
 .presence-dias { margin:14px 0; }
@@ -5327,11 +5260,3 @@ button.momentox-selo:hover{filter:brightness(.96);border-color:currentColor}
 .connections-legacy h2{font-size:14px;margin:0 0 4px}
 .connections-legacy p{font-size:12px;margin:0 0 8px;opacity:.8}
 .connections-legacy ul{margin:0;padding-left:18px;font-size:12px}
-
-/* ============================================================================
-   Configurações — correções de honestidade (auditoria)
-   Status "não verificado aqui" neutro (cinza) em vez de verde falso, e o botão
-   de logo desabilitado até existir upload de verdade.
-   ========================================================================== */
-.settings-integrations em.na{background:#eef0f2 !important;color:#7c8590 !important;font-weight:600}
-.settings-logo:disabled{opacity:.6;cursor:not-allowed}
