@@ -8,6 +8,8 @@ Escopo: rotas, telas, componentes, APIs, estilos e banco Supabase de produção.
 - `/crm` consolidado no Funil 2.0 para todos os perfis autorizados.
 - Interfaces CRM Nova Era e CRM 3, gates de piloto, CSS e testes órfãos excluídos.
 - 21 endpoints administrativos/de tela do NCRM sem consumidores excluídos.
+- `CrmWorkspace` monolítico excluído; Esteira de vendas isolada em módulo próprio e conversa F2 ligada somente a `/api/funil2/conversa`.
+- `/api/crm/chat` excluída após ficar sem consumidores; envio operacional continua centralizado no Chat ao Vivo/WhatsApp.
 - Endpoints ainda ligados a ingestão, fila, notificações, agenda, push e Sara operacional preservados até o desacoplamento.
 - Base histórica de recall preservada como fonte de “Pescar um lead”, fora da carteira ativa até a pesca.
 
