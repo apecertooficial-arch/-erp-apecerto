@@ -218,8 +218,7 @@ button { cursor:pointer; }
 .crm-lead-card-v3 { position:relative; overflow:hidden; border:1px solid #e4ddd8; border-radius:11px; background:#fff; box-shadow:0 2px 5px rgba(38,28,22,.03); transition:.16s ease; }.crm-lead-card-v3:hover { transform:translateY(-1px); box-shadow:0 8px 19px rgba(38,28,22,.08); }.crm-lead-card-v3.dragging { opacity:.35; }.sla-top-band { height:5px; width:100%; }.sla-top-band.verde { background:#1fa85a; }.sla-top-band.amarelo { background:#e8a20c; }.sla-top-band.vermelho { background:#d93e3e; }.sla-top-band.preto { background:#1f1c1a; }.crm-lead-card-v3.sla-amarelo { background:#fffaf0; border-color:#edc869; }.crm-lead-card-v3.sla-vermelho { background:#fff4f2; border-color:#e98f87; }.crm-lead-card-v3.sla-preto { color:#fff; background:#24201e; border-color:#181513; }.crm-lead-card-v3.sla-preto .card-open-v3,.crm-lead-card-v3.sla-preto .card-person strong,.crm-lead-card-v3.sla-preto footer strong { color:#fff; }.crm-lead-card-v3.sla-preto .card-person small,.crm-lead-card-v3.sla-preto .sla-clock-v3 span,.crm-lead-card-v3.sla-preto footer time { color:#c9c1bc; }.crm-lead-card-v3.sla-preto .card-controls-v3 { border-color:#4d4743; background:#302b28; }.crm-lead-card-v3.sla-preto .card-context { border-color:#4d4743; }.card-open-v3 { width:100%; display:block; padding:10px 10px 7px; border:0; color:inherit; background:transparent; text-align:left; }.sla-clock-v3 { display:flex; align-items:baseline; gap:6px; margin-top:9px; padding:7px 8px; border-radius:8px; background:rgba(255,255,255,.62); }.sla-preto .sla-clock-v3 { background:rgba(255,255,255,.08); }.sla-clock-v3 b { font-size:12px; font-variant-numeric:tabular-nums; }.sla-clock-v3 span { color:#81766f; font-size:11px; }.card-controls-v3 { display:grid; grid-template-columns:1fr 1fr auto; align-items:end; gap:5px; padding:8px; border-top:1px solid #eee8e4; background:rgba(250,248,247,.82); }.card-controls-v3 label { min-width:0; display:flex; flex-direction:column; gap:3px; }.card-controls-v3 label>span { color:#978c85; font-size:11px; text-transform:uppercase; letter-spacing:.4px; }.card-controls-v3 select { width:100%; min-width:0; height:27px; border:1px solid #ddd5cf; border-radius:6px; padding:0 4px; background:#fff; color:#5f5650; font-size:11px; }.card-controls-v3>button { height:27px; border:1px solid #bce2ca; border-radius:6px; padding:0 7px; color:#14834b; background:#f4fbf6; font-size:11px; font-weight:700; }.crm-lead-card-v3>footer { display:flex; align-items:center; gap:5px; padding:0 10px 9px; }.crm-lead-card-v3>footer strong { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#817872; font-size:11px; }.crm-lead-card-v3>footer time { margin-left:auto; color:#9e948e; font-size:11px; }
 .crm-leads-table-v3 td select { max-width:150px; border:1px solid #ded6d1; border-radius:7px; padding:7px; color:#5d554f; background:#fff; font-size:11px; }.crm-leads-table-v3 tr { border-left:5px solid #1fa85a; }.crm-leads-table-v3 tr.sla-row-amarelo { border-left-color:#e8a20c; background:#fffdf7; }.crm-leads-table-v3 tr.sla-row-vermelho { border-left-color:#d93e3e; background:#fff8f7; }.crm-leads-table-v3 tr.sla-row-preto { border-left-color:#1f1c1a; background:#f1efee; }.table-actions-v3 { display:flex; gap:5px; }.table-actions-v3 button { width:auto!important; height:28px!important; padding:0 8px; }.table-actions-v3 button:first-child { color:#14834b!important; border-color:#bce2ca!important; }
 .bulk-move-grid { display:grid; grid-template-columns:1fr 38px 1fr; align-items:end; gap:8px; margin-top:20px; }.bulk-move-grid label { display:flex; flex-direction:column; gap:6px; color:#675f5a; font-size:11px; font-weight:700; }.bulk-move-grid select { min-height:40px; border:1px solid #ddd6d1; border-radius:9px; padding:0 10px; background:#fff; }.bulk-arrow { display:grid; place-items:center; height:40px; color:#ff6500; font-size:19px; }.bulk-warning { margin-top:15px; padding:12px; border-radius:10px; background:#fff5ed; display:flex; align-items:center; gap:7px; }.bulk-warning strong { color:#b94a0b; }.bulk-warning span { color:#887c74; font-size:11px; }
-.chat-layer { z-index:85; }.lead-chat-drawer { position:absolute; top:0; right:0; width:min(650px,97vw); height:100%; display:flex; flex-direction:column; background:#f5f1ee; box-shadow:-24px 0 70px rgba(18,12,8,.25); }.lead-chat-drawer>header { min-height:83px; display:flex; align-items:center; justify-content:space-between; padding:14px 18px; color:#fff; background:linear-gradient(135deg,#7427a2,#9e3ec8); }.lead-chat-drawer>header>div { display:flex; align-items:center; gap:11px; }.lead-chat-drawer>header>div>span { width:42px; height:42px; display:grid; place-items:center; border-radius:12px; background:rgba(255,255,255,.16); font-weight:800; }.lead-chat-drawer header small { color:#e8ccef; font-size:11px; letter-spacing:.7px; }.lead-chat-drawer h2 { margin:2px 0; font-size:17px; }.lead-chat-drawer header p { margin:0; color:#eadcf0; font-size:11px; }.lead-chat-drawer header>button { border:0; color:#fff; background:transparent; font-size:28px; }.chat-instance-bar { min-height:61px; display:flex; align-items:center; gap:12px; padding:10px 16px; border-bottom:1px solid #e2dad5; background:#fff; }.chat-instance-bar label { flex:1; display:flex; flex-direction:column; gap:4px; color:#837973; font-size:11px; text-transform:uppercase; }.chat-instance-bar select { height:34px; border:1px solid #ddd5cf; border-radius:8px; padding:0 9px; background:#fff; color:#4f4844; font-size:11px; }.chat-instance-bar>span { color:#a09994; font-size:11px; }.chat-instance-bar>span.connected { color:#16864d; font-weight:700; }.chat-error { margin:8px 15px 0; padding:9px 11px; border-radius:8px; color:#ae3e33; background:#fff0ee; font-size:11px; }.chat-messages { flex:1; overflow:auto; display:flex; flex-direction:column; gap:6px; padding:18px 20px; background-color:#f3efec; background-image:radial-gradient(#d8d0cb 0.55px,transparent .55px); background-size:14px 14px; }.chat-messages article { align-self:flex-start; max-width:77%; padding:8px 10px; border-radius:3px 11px 11px 11px; background:#fff; box-shadow:0 1px 4px rgba(45,34,28,.09); }.chat-messages article.sent { align-self:flex-end; border-radius:11px 3px 11px 11px; background:#dff7e7; }.chat-messages article small { color:#9a8f88; font-size:11px; text-transform:uppercase; }.chat-messages article p { margin:3px 0; color:#302b28; white-space:pre-wrap; font-size:11px; line-height:1.45; }.chat-messages article time { display:block; color:#958b85; text-align:right; font-size:11px; }.chat-messages article a { display:block; margin-top:4px; color:#7627a4; font-size:11px; }.chat-loading { margin:auto; color:#8e837c; font-size:11px; }.lead-chat-drawer>footer { display:grid; grid-template-columns:1fr 43px; gap:8px; padding:10px 13px; border-top:1px solid #ded6d1; background:#fff; }.lead-chat-drawer>footer textarea { min-height:42px; max-height:100px; resize:vertical; border:1px solid #ddd5cf; border-radius:12px; padding:11px; outline:0; font-family:inherit; font-size:11px; }.lead-chat-drawer>footer button { width:43px; height:43px; align-self:end; border:0; border-radius:50%; color:#fff; background:#ff6500; font-size:17px; }.lead-chat-drawer>footer button:disabled { opacity:.4; }.chat-deal-status { padding:7px 14px; color:#8f857f; background:#fff; text-align:center; font-size:11px; }
-@media(max-width:700px){.crm-alarm-bar{padding-inline:10px}.alarm-silence{padding-inline:7px}.card-controls-v3{grid-template-columns:1fr 1fr}.card-controls-v3>button{grid-column:1/-1}.bulk-move-grid{grid-template-columns:1fr}.bulk-arrow{height:20px;transform:rotate(90deg)}.lead-chat-drawer{width:100vw}.crm-leads-table-v3{min-width:980px}}
+@media(max-width:700px){.crm-alarm-bar{padding-inline:10px}.alarm-silence{padding-inline:7px}.card-controls-v3{grid-template-columns:1fr 1fr}.card-controls-v3>button{grid-column:1/-1}.bulk-move-grid{grid-template-columns:1fr}.bulk-arrow{height:20px;transform:rotate(90deg)}.crm-leads-table-v3{min-width:980px}}
 .sales-process,.crm-analytics{padding:22px 26px 32px;background:#fbfaf9;min-height:560px}.sales-process>header,.crm-analytics>header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:18px}.sales-process>header span,.crm-analytics>header span{font-size:11px;letter-spacing:.12em;color:#ff7000;font-weight:800}.sales-process h2,.crm-analytics h2{margin:4px 0;font-size:20px}.sales-process p,.crm-analytics p{margin:0;color:#8a8581;font-size:13px}.sales-kpis,.analytics-kpis{display:grid;grid-template-columns:repeat(5,minmax(150px,1fr));gap:12px;margin-bottom:14px}.sales-kpis article,.analytics-kpis article{background:#fff;border:1px solid #eee9e5;border-radius:14px;padding:16px;display:flex;flex-direction:column}.sales-kpis strong,.analytics-kpis b{font-size:24px}.sales-kpis span,.analytics-kpis span{font-size:12px;color:#7a7470}.sales-kpis .danger{background:#fff1f0;color:#bd332b}.sales-filter{display:flex;align-items:center;gap:8px;background:#fff;border:1px solid #eee9e5;border-radius:12px;padding:10px 12px;margin-bottom:14px}.sales-filter>b{font-size:11px;text-transform:uppercase;color:#8b8580;margin-right:4px}.sales-filter button{border:0;background:#f4f1ee;border-radius:8px;padding:7px 12px}.sales-filter button.active{background:#fff0e5;color:#e45f00;font-weight:800}.sales-filter>span{margin-left:auto;font-size:11px;color:#8a8581}.sales-kanban{display:flex;gap:12px;overflow-x:auto;padding-bottom:14px}.sales-stage{width:250px;min-width:250px}.sales-stage>header{display:flex;gap:8px;align-items:center;background:#fff;border:1px solid #ebe7e3;border-left:4px solid var(--sale-stage);border-radius:11px;padding:10px}.sales-stage>header i{width:8px;height:8px;border-radius:50%;background:var(--sale-stage)}.sales-stage>header strong{font-size:12px;flex:1}.sales-stage>header span{font-size:11px;color:#888}.sales-stage>small{display:block;padding:6px 8px;color:#948e89}.sales-stage>div{display:flex;flex-direction:column;gap:8px}.sale-card{background:#fff;border:1px solid #ece8e5;border-radius:12px;padding:12px;box-shadow:0 4px 14px #251b1308;display:flex;flex-direction:column;gap:4px}.sale-card.late{border-color:#ed7068}.sale-card>b{font-size:13px}.sale-card>span,.sale-card>small{font-size:11px;color:#827c78}.sale-card>strong{color:#ff7000}.sale-card select{margin-top:6px;border:1px solid #e5dfda;border-radius:8px;padding:7px;background:#fff;font-size:11px}.sales-drop{border:1px dashed #dcd4cd;border-radius:12px;padding:18px;text-align:center;color:#aaa;font-size:11px}
 .sales-approval{background:#fff8f1;border:1px solid #ffd8b5;border-radius:14px;padding:14px 16px;margin-bottom:16px}
 .sales-approval-head{display:flex;align-items:center;gap:11px;margin-bottom:10px}
@@ -456,7 +455,7 @@ button { cursor:pointer; }
 @media(max-width:650px){.campaign-main{padding:16px}.campaign-fields{grid-template-columns:1fr}.cadence-card{display:flex}.message-card>header{align-items:flex-start;flex-direction:column}}
 
 /* Chat real, mídias e fluxo de disparos */
-.chat-thread,.message-stream{min-height:0}.history-instance{display:flex;align-items:center;gap:7px;margin-top:5px;color:#8c837e;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em}.history-instance select{max-width:270px;padding:4px 7px!important;font-size:11px!important;text-transform:none}.chat-connection{padding:5px 8px;border-radius:999px;background:#f1eeec;color:#9a928d;font-size:11px}.chat-connection.connected{background:#e2f5ea;color:#17834d;font-weight:800}.chat-composer{grid-template-columns:auto minmax(0,1fr) 46px!important;align-items:end}.chat-composer textarea{min-height:44px;max-height:100px;resize:vertical;border:1px solid #ded7d2;border-radius:18px;padding:12px 15px;font-family:inherit;font-size:11px;outline:0}.composer-tools{display:flex;gap:4px}.composer-tools button{width:34px!important;height:34px!important;border:1px solid #e3dcd7!important;border-radius:10px!important;background:#fff!important;color:#665e59!important;font-size:13px!important}.composer-tools button.recording,.mini-chat-tools button.recording{border-color:#e34545!important;background:#fff0f0!important;color:#c42f2f!important;animation:chat-recording 1s infinite alternate}.message-stream article>span:empty{display:none}.chat-audio{width:min(280px,60vw);height:35px}.chat-video{display:block;width:min(320px,60vw);max-height:300px;border-radius:9px;background:#111}.chat-image-link{display:block}.chat-image-link img{display:block;max-width:min(330px,60vw);max-height:320px;object-fit:cover;border-radius:9px}.chat-document{display:flex;align-items:center;gap:7px;margin-bottom:4px;padding:9px 11px;border-radius:8px;background:#f1edeb;color:#70299b;font-size:11px;font-weight:800;text-decoration:none}.chat-messages .chat-audio{width:min(300px,60vw)}.chat-messages .chat-video,.chat-messages .chat-image-link img{max-width:min(360px,65vw);max-height:300px}.mini-chat-tools{display:flex;flex-wrap:wrap;gap:6px;padding:8px 13px;border-top:1px solid #e2dad5;background:#fff}.mini-chat-tools button{padding:7px 9px;border:1px solid #ddd5cf;border-radius:8px;background:#fff;color:#5c534e;font-size:11px;cursor:pointer}.mini-chat-tools button:hover{border-color:#ff6500;color:#d85600}.campaign-flow-note{display:grid;grid-template-columns:auto 22px auto;justify-content:start;align-items:center;gap:5px;margin-top:12px;padding:10px 12px;border:1px solid #d8c0e3;border-radius:10px;background:#fcf7ff;color:#6f278f;font-size:11px}.campaign-flow-note>span{text-align:center;font-size:14px}.campaign-flow-note>small{grid-column:1/-1;color:#877a8b;font-size:11px;font-weight:500}.approach-send-summary{display:flex;justify-content:space-between;gap:20px;padding:11px;border-radius:10px;background:#f8f3fb;color:#762a98;font-size:11px}.crm-center-modal form>label textarea{resize:vertical}@keyframes chat-recording{to{box-shadow:0 0 0 4px rgba(227,69,69,.12)}}
+.chat-thread,.message-stream{min-height:0}.history-instance{display:flex;align-items:center;gap:7px;margin-top:5px;color:#8c837e;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em}.history-instance select{max-width:270px;padding:4px 7px!important;font-size:11px!important;text-transform:none}.chat-connection{padding:5px 8px;border-radius:999px;background:#f1eeec;color:#9a928d;font-size:11px}.chat-connection.connected{background:#e2f5ea;color:#17834d;font-weight:800}.chat-composer{grid-template-columns:auto minmax(0,1fr) 46px!important;align-items:end}.chat-composer textarea{min-height:44px;max-height:100px;resize:vertical;border:1px solid #ded7d2;border-radius:18px;padding:12px 15px;font-family:inherit;font-size:11px;outline:0}.composer-tools{display:flex;gap:4px}.composer-tools button{width:34px!important;height:34px!important;border:1px solid #e3dcd7!important;border-radius:10px!important;background:#fff!important;color:#665e59!important;font-size:13px!important}.composer-tools button.recording{border-color:#e34545!important;background:#fff0f0!important;color:#c42f2f!important;animation:chat-recording 1s infinite alternate}.message-stream article>span:empty{display:none}.chat-audio{width:min(280px,60vw);height:35px}.chat-video{display:block;width:min(320px,60vw);max-height:300px;border-radius:9px;background:#111}.chat-image-link{display:block}.chat-image-link img{display:block;max-width:min(330px,60vw);max-height:320px;object-fit:cover;border-radius:9px}.chat-document{display:flex;align-items:center;gap:7px;margin-bottom:4px;padding:9px 11px;border-radius:8px;background:#f1edeb;color:#70299b;font-size:11px;font-weight:800;text-decoration:none}.campaign-flow-note{display:grid;grid-template-columns:auto 22px auto;justify-content:start;align-items:center;gap:5px;margin-top:12px;padding:10px 12px;border:1px solid #d8c0e3;border-radius:10px;background:#fcf7ff;color:#6f278f;font-size:11px}.campaign-flow-note>span{text-align:center;font-size:14px}.campaign-flow-note>small{grid-column:1/-1;color:#877a8b;font-size:11px;font-weight:500}.approach-send-summary{display:flex;justify-content:space-between;gap:20px;padding:11px;border-radius:10px;background:#f8f3fb;color:#762a98;font-size:11px}.crm-center-modal form>label textarea{resize:vertical}@keyframes chat-recording{to{box-shadow:0 0 0 4px rgba(227,69,69,.12)}}
 .quick-action-modal>form{width:min(620px,100%);max-height:90vh;overflow:auto}.quick-action-form{display:grid;grid-template-columns:1fr 1fr;gap:11px;margin-top:18px}.quick-action-form label{display:flex;flex-direction:column;gap:5px;color:#6d6560;font-size:11px;font-weight:700}.quick-action-form label.wide,.quick-action-hint{grid-column:1/-1}.quick-action-form input,.quick-action-form select,.quick-action-form textarea{width:100%;min-width:0;border:1px solid #ddd6d1;border-radius:9px;padding:10px 11px;background:#fff;color:#302b28;font:inherit;outline:0}.quick-action-form textarea{resize:vertical}.quick-action-form input:focus,.quick-action-form select:focus,.quick-action-form textarea:focus{border-color:#ff9c5e;box-shadow:0 0 0 3px rgba(255,101,0,.08)}.quick-action-form .check-line{flex-direction:row;align-items:center;padding:10px;border-radius:9px;background:#faf8f7}.quick-action-form .check-line input{width:15px;height:15px}.quick-action-hint{margin:0;padding:10px 11px;border-radius:9px;background:#f8f3fb;color:#762a98;font-size:11px}.crm-center-modal button:disabled{cursor:not-allowed;opacity:.48}@media(max-width:580px){.quick-action-form{grid-template-columns:1fr}.quick-action-form label.wide,.quick-action-hint{grid-column:auto}}
 @media(max-width:900px){.chat-composer{grid-template-columns:1fr 46px!important}.composer-tools{grid-column:1/-1}.history-instance{align-items:flex-start;flex-direction:column}}
 
@@ -1001,28 +1000,9 @@ button { cursor:pointer; }
 .chat-notes p { margin:0; color:var(--ink-soft); } .chat-notes small { color:var(--faint); font-size:11px; }
 
 /* ---------- Módulo de conversa dentro do lead ---------- */
-.chat-layer { z-index:85; }
-.lead-chat-drawer { background:var(--page); box-shadow:var(--shadow-xl); }
-.lead-chat-drawer>header { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; padding:20px 22px; background:var(--surface); border-bottom:1px solid var(--line); }
-.lead-chat-drawer>header>div { display:flex; align-items:center; gap:12px; }
 .chat-head-lead.clickable { cursor:pointer; border-radius:10px; padding:4px 8px; margin:-4px -8px; transition:background .12s; }
 .chat-head-lead.clickable:hover { background:rgba(255,255,255,.16); }
 .chat-head-lead.clickable h2 { text-decoration:underline; text-decoration-color:rgba(255,255,255,.4); text-underline-offset:3px; }
-.lead-chat-drawer>header>div>span { width:46px; height:46px; border-radius:14px; background:var(--purple-100); color:var(--purple-700); display:grid; place-items:center; font-weight:700; font-size:15px; flex:none; }
-.lead-chat-drawer>header small { color:var(--orange); font-size:11px; font-weight:700; letter-spacing:.1em; }
-.lead-chat-drawer>header h2 { margin:3px 0 2px; font-size:18px; font-weight:700; letter-spacing:-.02em; }
-.lead-chat-drawer>header p { margin:0; color:var(--muted); font-size:13px; }
-.lead-chat-drawer>header>button { width:34px; height:34px; border:1px solid var(--line); border-radius:50%; background:var(--surface); color:var(--muted); font-size:17px; cursor:pointer; flex:none; }
-.chat-instance-bar { display:flex; align-items:flex-end; justify-content:space-between; gap:12px; padding:14px 22px; background:var(--surface); border-bottom:1px solid var(--line); }
-.chat-instance-bar label { display:flex; flex-direction:column; gap:5px; flex:1; color:var(--muted); font-size:12px; font-weight:600; }
-.chat-instance-bar select { min-height:40px; border:1px solid var(--line); border-radius:10px; padding:0 12px; background:var(--surface); font-family:inherit; font-size:13px; }
-.chat-instance-bar>span { color:var(--muted); font-size:12px; font-weight:600; white-space:nowrap; }
-.chat-instance-bar>span.connected { color:var(--green); }
-.chat-error { margin:0; padding:11px 22px; background:var(--red-bg); color:var(--red); font-size:13px; font-weight:600; }
-.chat-messages { display:flex; flex-direction:column; gap:8px; padding:20px 22px; overflow:auto; flex:1; background:#efeae2 !important; background-image:none !important; }
-.chat-messages article { max-width:74%; padding:8px 12px; border-radius:15px; font-size:12.5px; line-height:1.42; box-shadow:0 1px 1px rgba(11,20,26,.08); }
-.chat-messages article.received { align-self:flex-start; background:#ffffff; border:0; border-bottom-left-radius:5px; }
-.chat-messages article.sent { align-self:flex-end; background:#d9fdd3; border-bottom-right-radius:5px; }
 /* Áudio estilo WhatsApp */
 .wa-audio{display:flex;align-items:center;gap:9px;min-width:210px;padding:2px 2px 2px 0}
 .wa-audio-play{flex:none;width:36px;height:36px;border:0;border-radius:50%;background:#00a884;color:#fff;display:grid;place-items:center;cursor:pointer}
@@ -1036,9 +1016,6 @@ button { cursor:pointer; }
 .wa-audio-rate{flex:none;min-width:34px;height:24px;padding:0 8px;border:0;border-radius:999px;background:#e6e9eb;color:#3b4a54;font-size:12px;font-weight:700;line-height:24px;cursor:pointer;transition:background .12s,color .12s}
 .wa-audio-rate:hover{background:#d7dbde}
 .wa-audio-rate.active{background:#00a884;color:#fff}
-.chat-messages article.sent .wa-audio-play{background:#128c7e}
-.chat-messages article.sent .wa-audio-wave i.on{background:#128c7e}
-.chat-messages article.sent .wa-audio-rate.active{background:#128c7e}
 /* Vídeo estilo WhatsApp */
 .wa-video{border-radius:10px;overflow:hidden;max-width:300px;background:#000;line-height:0}
 .wa-video video{display:block;width:100%;max-height:360px;border-radius:10px}
@@ -1049,14 +1026,6 @@ button { cursor:pointer; }
 .chat-emoji-panel{position:absolute;bottom:70px;left:14px;z-index:5;width:min(320px,90%);max-height:190px;overflow:auto;display:grid;grid-template-columns:repeat(8,1fr);gap:2px;padding:10px;background:#fff;border:1px solid #e6ddd7;border-radius:14px;box-shadow:0 12px 34px rgba(20,14,10,.18)}
 .chat-emoji-panel button{border:0;background:transparent;font-size:21px;line-height:1;padding:5px;border-radius:8px;cursor:pointer}
 .chat-emoji-panel button:hover{background:#f2ede9}
-.lead-chat-drawer>footer{position:relative;display:flex!important;align-items:flex-end;gap:8px}
-.lead-chat-drawer>footer>textarea{flex:1 1 auto;min-width:0;grid-column:auto!important}
-.lead-chat-drawer>footer>button{flex:0 0 auto}
-.lead-chat-drawer>footer>.chat-sara-toggle,.lead-chat-drawer>footer>.chat-emoji-btn{width:40px!important;height:40px!important;border-radius:11px!important;background:#f2ede8!important;color:#8a7f79!important}
-.lead-chat-drawer>footer>.chat-sara-toggle svg,.lead-chat-drawer>footer>.chat-emoji-btn svg{width:20px;height:20px}
-.lead-chat-drawer>footer>.chat-sara-toggle.ready{color:#7c3aed!important;background:#f3ecfb!important}
-.lead-chat-drawer>footer>.chat-emoji-btn.active{color:#ff6500!important;background:#fff2e8!important}
-.chat-suggestion-actions .cs-outra{background:#fff!important;border:1px solid #e0d8d2!important;color:#6d635c!important}
 .sched-mode{display:flex;gap:6px;margin-bottom:10px}
 .sched-mode button{flex:1;border:1px solid #e3dcd7;background:#fff;border-radius:9px;padding:9px;font-weight:700;font-size:13px;color:#6d635c;cursor:pointer}
 .sched-mode button.active{border-color:#ff8a3d;background:#fff2e8;color:#d85600}
@@ -1068,19 +1037,7 @@ button { cursor:pointer; }
 .chat-sched-msg p{margin:0;font-size:13.5px;line-height:1.4;color:#3a3128;white-space:pre-wrap;word-break:break-word}
 .chat-sched-msg .chat-sched-kind{font-size:11px;color:#8a7f78;font-style:normal}
 .chat-sched-msg .chat-sched-cancelbtn{margin-top:5px;border:0;background:transparent;color:#c0392b;font-size:11px;font-weight:700;cursor:pointer;padding:0}
-.chat-messages article small { color:var(--faint); font-size:11px; text-transform:uppercase; letter-spacing:.05em; }
-.chat-messages article p { margin:3px 0 2px; }
-.chat-messages article time { display:block; color:var(--faint); font-size:11px; text-align:right; }
-.chat-loading { padding:24px; text-align:center; color:var(--muted); font-size:13px; }
-.mini-chat-tools { display:flex; align-items:center; flex-wrap:wrap; gap:8px; padding:14px 22px; background:var(--surface); border-top:1px solid var(--line); }
-.mini-chat-tools button { display:inline-flex; align-items:center; gap:7px; min-height:40px; border:1px solid var(--line); border-radius:var(--radius-pill); padding:0 15px; background:var(--surface); color:var(--ink-soft); font-family:inherit; font-size:13px; font-weight:600; white-space:nowrap; cursor:pointer; transition:background var(--dur) var(--ease), border-color var(--dur) var(--ease), transform var(--dur) var(--ease); }
-.mini-chat-tools button:hover { background:var(--sunken); border-color:var(--line-strong); transform:translateY(-1px); }
-.mini-chat-tools button:active { transform:scale(.97); }
-.mini-chat-tools button.recording { background:var(--red-bg); color:var(--red); border-color:var(--red); }
 /* última ação (Responder) = primária, empurrada para a direita */
-.mini-chat-tools button:last-child { margin-left:auto; border:0; background:var(--orange); color:#fff; box-shadow:var(--shadow-brand); }
-.mini-chat-tools button:last-child:hover { background:var(--orange-600); box-shadow:var(--shadow-md); }
-.mini-chat-tools svg { width:16px; height:16px; }
 
 /* ---------- Modais centrais (padrão único) ---------- */
 .crm-center-modal, .drawer-action-modal { background:rgba(31,24,20,.5); backdrop-filter:blur(3px); }
@@ -1459,39 +1416,9 @@ button { cursor:pointer; }
    sem precisar editar as regras minificadas acima. Remover este bloco = reverter. */
 
 /* 1) Chat do lead vira janelinha flutuante no canto (sem escurecer a tela) */
-.crm-drawer-layer.chat-layer{
-  position:fixed; inset:0;
-  background:none; backdrop-filter:none;
-  pointer-events:none;            /* clique passa direto p/ o kanban ao lado */
-}
-.chat-layer .lead-chat-drawer{
-  pointer-events:auto;            /* a janelinha continua interativa */
-  position:fixed; top:auto; left:auto; right:20px; bottom:20px;
-  width:380px; max-width:calc(100vw - 32px);
-  height:68vh; max-height:560px;
-  border-radius:14px; overflow:hidden;
-  box-shadow:0 18px 48px rgba(18,12,8,.28);
-}
 /* header enxuto */
-.chat-layer .lead-chat-drawer>header{ min-height:auto; padding:10px 12px; }
-.chat-layer .lead-chat-drawer>header>div>span{ width:34px; height:34px; border-radius:10px; font-size:13px; }
-.chat-layer .lead-chat-drawer h2{ font-size:var(--chat-nome); }
-.chat-layer .lead-chat-drawer header p{ font-size:var(--chat-meta); }
-.chat-head-actions{ display:flex; align-items:center; gap:4px; }
-.chat-head-actions button{ width:30px; height:30px; display:grid; place-items:center; border:0; border-radius:8px; color:#fff; background:rgba(255,255,255,.16); font-size:18px; line-height:1; cursor:pointer; }
-.chat-head-actions button:hover{ background:rgba(255,255,255,.28); }
-/* barra de instância, ferramentas e footer mais baixos p/ caber na janelinha */
-.chat-layer .chat-instance-bar{ min-height:auto; padding:8px 12px; }
-.chat-layer .mini-chat-tools{ padding:8px 12px; gap:6px; }
-.chat-layer .mini-chat-tools button{ min-height:32px; padding:0 10px; font-size:11px; gap:5px; }
-.chat-layer .lead-chat-drawer>footer{ padding:8px 12px; }
-.chat-layer .chat-deal-status{ display:none; }   /* rodapé informativo ocupa espaço na versão compacta */
+/* barra de instância, ferramentas e footer mais baixos p/ caber na janelinha */   /* rodapé informativo ocupa espaço na versão compacta */
 /* estado minimizado: mostra só o header */
-.chat-layer .lead-chat-drawer.is-collapsed{ height:auto; }
-.chat-layer .lead-chat-drawer.is-collapsed > :not(header){ display:none; }
-@media (max-width:480px){
-  .chat-layer .lead-chat-drawer{ right:0; bottom:0; width:100vw; height:78vh; border-radius:14px 14px 0 0; }
-}
 
 /* 2) Card do kanban compacto: controles em linha slim, sem dropdowns largos */
 .crm-lead-card-v3 .card-controls-v3{ display:flex; align-items:center; gap:6px; padding:7px 9px; }
@@ -1522,68 +1449,22 @@ button { cursor:pointer; }
    O .crm-v2 está em zoom 0.85 e isso estava encolhendo o chat junto.
    Aqui o chat é devolvido ao tamanho normal (0.85 × 1.18 ≈ 1.0) e ampliado.
    OBS: se você mudar o zoom do .crm-v2, recalcule este número: chat = 1 / (zoom do CRM). */
-.chat-layer .lead-chat-drawer{
-  zoom: 1.18;
-  width: 440px; max-width: calc(100vw - 32px);
-  height: 80vh; max-height: 720px;
-}
 /* mensagens legíveis */
-.chat-layer .chat-messages{ padding: 14px 16px; }
-.chat-layer .chat-messages article{ font-size: var(--chat-msg-mini); }
-.chat-layer .chat-messages article p{ font-size: var(--chat-msg-mini); line-height: 1.45; }
 /* seletor de instância compacto, sem dominar a janela */
-.chat-layer .chat-instance-bar{ padding: 8px 12px; gap: 8px; }
-.chat-layer .chat-instance-bar label{ font-size:11px; gap: 3px; }
-.chat-layer .chat-instance-bar select{ height: 34px; font-size: 12px; }
-.chat-layer .chat-instance-bar > span{ font-size: 11px; white-space: nowrap; }
-@media (max-width: 520px){
-  .chat-layer .lead-chat-drawer{ width: 100vw; height: 82vh; }
-}
 /* ===== fim chat ===== */
 
 /* ===== Ajustes finos do chat (jul/2026): legibilidade + botão de IA + densidade ===== */
 /* 1) Sobe a janela pra NÃO ficar embaixo do botão de IA (FAB roxo no canto) */
-.chat-layer .lead-chat-drawer{ bottom: 96px; max-height: 700px; }
 /* 2) Cabeçalho: nome e telefone eram brancos no branco → cor escura, fonte maior, menos vazio */
-.chat-layer .lead-chat-drawer > header{ padding: 8px 14px; }
-.chat-layer .lead-chat-drawer > header small{ font-size: 11px; }
-.chat-layer .lead-chat-drawer > header h2{ color: #282421; font-size: 17px; margin: 1px 0; }
-.chat-layer .lead-chat-drawer > header p{ color: #6b6b6b; font-size: 13px; margin: 0; }
 /* 3) Seletor de instância menor e mais enxuto (ocupava espaço demais) */
-.chat-layer .chat-instance-bar{ min-height: auto; padding: 6px 14px; gap: 8px; }
-.chat-layer .chat-instance-bar label{ font-size:11px; gap: 2px; }
-.chat-layer .chat-instance-bar select{ height: 30px; font-size: 12px; padding: 0 8px; }
-.chat-layer .chat-instance-bar > span{ font-size: 11px; }
 /* 4) Botões Áudio / Documento / Agendar / Abordagem MAIORES */
-.chat-layer .mini-chat-tools{ padding: 8px 12px; gap: 6px; }
-.chat-layer .mini-chat-tools button{ min-height: 38px; padding: 0 12px; font-size: 12px; gap: 6px; }
-.chat-layer .mini-chat-tools svg{ width: 16px; height: 16px; }
 /* ===== fim ajustes finos do chat ===== */
 /* botões de ação em grade 2x2 (mais limpo que a fila que quebrava linha) */
-.chat-layer .mini-chat-tools{ display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 10px 12px; }
-.chat-layer .mini-chat-tools button{ min-height: 40px; margin: 0; justify-content: center; }
 
 /* ===== Chat: espaço aproveitado (ref.) + Sara pro lado quando o chat abre — jul/2026 ===== */
 /* altura cheia de novo (a Sara sai do caminho, então não precisa mais "subir" a janela) */
-.chat-layer .lead-chat-drawer{ bottom: 20px; height: 88vh; max-height: 820px; }
 /* Instância do histórico numa LINHA só, compacta (menos espaço em branco) */
-.chat-layer .chat-instance-bar{ flex-direction: row; align-items: center; padding: 6px 12px; gap: 8px; min-height: auto; }
-.chat-layer .chat-instance-bar label{ flex-direction: row; align-items: center; gap: 6px; flex: 1; min-width: 0; font-size:11px; white-space: nowrap; }
-.chat-layer .chat-instance-bar select{ height: 30px; font-size: 12px; flex: 1; min-width: 0; }
 /* Sara (botão de IA) desliza pra ESQUERDA da janela do chat enquanto ele está aberto */
-body.lead-chat-open .ai-button, body.lead-chat-open #sara-fab{ display: none !important; }
-/* ===== fim ===== */
-
-/* ===== Correções chat v2 (jul/2026): fechar visível + não bater no sino + Sara via :has ===== */
-/* Chat começa ABAIXO do topo (não cobre o sino de notificação) e vai até embaixo */
-.chat-layer .lead-chat-drawer{ top: 78px; bottom: 20px; height: auto; max-height: none; }
-/* Botões Fechar (×) e Minimizar (—) VISÍVEIS no header branco (estavam brancos no branco) */
-.chat-head-actions button{ color: #4a4a4a; background: #f0eeec; border: 1px solid #e3ddd8; }
-.chat-head-actions button:hover{ background: #e6e2de; }
-/* Sara (IA) sai sozinha pro lado quando o chat abre — CSS puro, sem depender de JS/TSX */
-body:has(.chat-layer) .ai-button, body:has(.chat-layer) #sara-fab{ display: none !important; }
-/* ===== fim v2 ===== */
-
 /* ===== Sidebar colapsável (só ícones) — jul/2026 ===== */
 .app-shell.nav-collapsed{ grid-template-columns: 74px 1fr; }
 .nav-collapsed .sidebar{ padding-inline: 10px; }
@@ -1601,12 +1482,6 @@ body:has(.chat-layer) .ai-button, body:has(.chat-layer) #sara-fab{ display: none
 .nav-collapsed .nav-collapse-btn{ margin: 0; }
 
 /* ===== Chat minimizado = abinha horizontal no canto ===== */
-.chat-layer .lead-chat-drawer.is-collapsed{ top: auto; bottom: 20px; height: auto; max-height: none; width: 300px; border-radius: 14px; overflow: hidden; }
-.chat-layer .lead-chat-drawer.is-collapsed > header{ padding: 8px 10px; border-bottom: 0; }
-.chat-layer .lead-chat-drawer.is-collapsed > header small,
-.chat-layer .lead-chat-drawer.is-collapsed > header p{ display: none; }
-.chat-layer .lead-chat-drawer.is-collapsed h2{ font-size: 14px; margin: 0; }
-.chat-layer .lead-chat-drawer.is-collapsed > header > div > span{ width: 30px; height: 30px; font-size: 12px; }
 /* minimizado: Sara continua pro lado (não fica atrás da abinha) */
 /* ===== fim ===== */
 
@@ -1623,29 +1498,10 @@ body:has(.chat-layer) .ai-button, body:has(.chat-layer) #sara-fab{ display: none
 /* nota: o calc(100vh / 0.85) compensa o zoom 0.85 do .crm-v2; se mudar o zoom, ajuste o 0.85 aqui */
 /* ===== fim kanban ===== */
 
-/* ===== Ações do chat como barra VERTICAL ao lado (esquerda) do chat — jul/2026 ===== */
-.chat-layer .lead-chat-drawer{ overflow: visible; }               /* deixa a barra aparecer do lado */
-.chat-layer .mini-chat-tools{
-  position: absolute; right: 100%; top: 50%; transform: translateY(-50%); margin-right: 12px;
-  display: flex; flex-direction: column; gap: 10px; width: auto; padding: 8px;
-  background: #fff; border: 1px solid var(--line,#e7e1dd); border-radius: 16px;
-  box-shadow: 0 10px 30px rgba(20,15,12,.16); flex-wrap: nowrap;
-}
-.chat-layer .mini-chat-tools button{
-  width: 46px; height: 46px; min-height: 0; padding: 0; margin: 0;
-  display: grid; place-items: center; border-radius: 12px; gap: 0;
-}
-.chat-layer .mini-chat-tools button:last-child{ margin: 0; }        /* remove o empurra-direita herdado */
-.chat-layer .mini-chat-tools .mct-ico{ font-size: 19px; line-height: 1; }
-.chat-layer .mini-chat-tools .mct-lbl{ display: none; }            /* só ícone (tooltip no title) */
+/* ===== Ações do chat como barra VERTICAL ao lado (esquerda) do chat — jul/2026 ===== */               /* deixa a barra aparecer do lado */        /* remove o empurra-direita herdado */            /* só ícone (tooltip no title) */
 /* ===== fim barra vertical ===== */
 
 /* ===== Mídia do chat otimizada (thumbnail) + scroll lateral fino — jul/2026 ===== */
-.chat-messages .chat-image-link{ display: block; margin-top: 6px; }
-.chat-messages .chat-image-link img{ display: block; width: auto; max-width: 240px; max-height: 260px; object-fit: cover; border-radius: 12px; }
-.chat-messages .chat-video{ display: block; width: 100%; max-width: 260px; max-height: 300px; border-radius: 12px; margin-top: 6px; background: #000; }
-.chat-messages .chat-audio{ width: 240px; max-width: 100%; margin-top: 6px; }
-.chat-messages .chat-document{ display: inline-block; margin-top: 6px; font-size: 12px; }
 /* scroll lateral do kanban: fino e discreto (estilo Datacrazy) */
 .crm-kanban-v2{ scrollbar-width: thin; scrollbar-color: #cfc6c0 transparent; }
 .crm-kanban-v2::-webkit-scrollbar{ height: 8px; }
@@ -1667,13 +1523,6 @@ body:has(.chat-layer) .ai-button, body:has(.chat-layer) #sara-fab{ display: none
 /* ===== fim ===== */
 
 /* ===== Chat: só scroll vertical (sem arrastar pro lado) + barra limpa — jul/2026 ===== */
-.chat-layer .chat-messages{ overflow-x: hidden; overflow-y: auto; scrollbar-width: thin; scrollbar-color: #d8d0cb transparent; }
-.chat-layer .chat-messages::-webkit-scrollbar{ width: 8px; height: 0; }
-.chat-layer .chat-messages::-webkit-scrollbar-button{ display: none; height: 0; width: 0; }
-.chat-layer .chat-messages::-webkit-scrollbar-thumb{ background: #d8d0cb; border-radius: 8px; }
-.chat-layer .chat-messages::-webkit-scrollbar-track{ background: transparent; }
-.chat-layer .chat-messages article{ max-width: 100%; box-sizing: border-box; }
-.chat-layer .chat-messages article p{ overflow-wrap: anywhere; }
 /* ===== fim ===== */
 /* Doc §3 — login como página exclusiva (sem ERP ao fundo) */
 .login-page { position:fixed; inset:0; z-index:100; background:linear-gradient(135deg,#ffffff 0%,#fff4ec 55%,#ffe4cf 100%); }
@@ -1695,7 +1544,7 @@ body:has(.chat-layer) .ai-button, body:has(.chat-layer) #sara-fab{ display: none
    para nunca cobrir fechar/salvar/continuar. Voltam ao fechar.
    ============================================================ */
 .attention-trigger,.attention-popover,.disconnect-alert { transition:opacity .18s ease,visibility .18s ease; }
-body:has(.profile-drawer-scrim,.modal-layer,.photo-lightbox,.document-preview-modal,.delete-confirm,.drawer-backdrop,.center-modal-backdrop,.crm-drawer-layer,.crm-center-modal,.chat-layer,.operational-drawer-scrim,.qr-modal-scrim,.team-drawer-scrim,.calendar-modal-layer,.auth-layer,.login-page,.login-split) :is(.attention-trigger,.attention-popover,.disconnect-alert,#sara-fab,#sara-panel) { opacity:0 !important; visibility:hidden !important; pointer-events:none !important; }
+body:has(.profile-drawer-scrim,.modal-layer,.photo-lightbox,.document-preview-modal,.delete-confirm,.drawer-backdrop,.center-modal-backdrop,.crm-drawer-layer,.crm-center-modal,.operational-drawer-scrim,.qr-modal-scrim,.team-drawer-scrim,.calendar-modal-layer,.auth-layer,.login-page,.login-split) :is(.attention-trigger,.attention-popover,.disconnect-alert,#sara-fab,#sara-panel) { opacity:0 !important; visibility:hidden !important; pointer-events:none !important; }
 
 /* ============================================================
    Doc §15 — Perfil completo do corretor pelo rodapé da sidebar
@@ -2041,7 +1890,7 @@ body:has(.profile-drawer-scrim,.modal-layer,.photo-lightbox,.document-preview-mo
 .finance-table>button:hover { background:#fff7f0; }
 .finance-bars i { border-radius:8px 8px 3px 3px; box-shadow:0 3px 8px rgba(255,101,0,.18); }
 .finance-workspace>header button { border-radius:11px; box-shadow:0 6px 16px rgba(255,101,0,.22); }
-.sale-drawer>header, .lead-chat-drawer>header { border-radius:0; }
+.sale-drawer>header { border-radius:0; }
 .finance-table em { border-radius:999px; padding:4px 9px; }
 /* ===== Laboratório de Agentes de IA (E3) ===== */
 .agents-lab{padding:22px 26px;max-width:1200px;margin:0 auto;color:var(--ink);font-family:var(--font-body,inherit)}
@@ -2213,16 +2062,6 @@ body:has(.profile-drawer-scrim,.modal-layer,.photo-lightbox,.document-preview-mo
 .perms-primary{background:#ea6a1e !important;border-color:#ea6a1e !important;color:#fff !important;}
 /* Copiloto Sara embutido no CRM */
 .lead-next-action .lead-nota{margin-left:auto;font-style:normal;font-weight:800;font-size:11px;padding:3px 9px;border-radius:999px;background:#eef7f0;color:#17834d}
-.chat-suggestion{display:flex;align-items:center;gap:10px;margin:0 13px 8px;padding:10px 12px;border:1px solid #e2d6f3;background:linear-gradient(180deg,#faf6ff,#f4ecfb);border-radius:12px}
-.chat-suggestion>div{flex:1;min-width:0}
-.chat-suggestion b{display:block;font-size:11px;font-weight:800;letter-spacing:.03em;color:#7c3aed;margin-bottom:3px}
-.chat-suggestion p{font-size:11.5px;color:#4a4550;line-height:1.4;margin:0}
-.chat-suggestion button{flex-shrink:0;border:0;border-radius:9px;padding:8px 14px;font-weight:700;font-size:11.5px;color:#fff;background:linear-gradient(135deg,#FF7000,#7c3aed);cursor:pointer}
-.chat-suggestion-actions{display:flex;flex-direction:column;gap:6px;flex-shrink:0}
-.chat-suggestion-actions button{border:0;border-radius:9px;padding:7px 13px;font-weight:700;font-size:11px;cursor:pointer}
-.chat-suggestion-actions .cs-use{background:#fff;border:1px solid #d8c6ef;color:#7c3aed}
-.chat-suggestion-actions .cs-send{color:#fff;background:linear-gradient(135deg,#FF7000,#7c3aed)}
-.chat-suggestion-actions .cs-send:disabled{opacity:.5;cursor:default}
 .lead-nota-card{margin-top:10px;padding:12px 14px;border-radius:14px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.22)}
 .lead-nota-card header{display:flex;align-items:center;gap:8px;margin-bottom:5px}
 .lead-nota-card header b{font-size:11px;font-weight:800;letter-spacing:.05em;opacity:.9}
@@ -2687,7 +2526,6 @@ body { overflow:hidden; background:#eee8e2; }
 .crm-metrics article:has(.metric-icon.blue) { background:#d9e5ff; border-color:#85a8f5; }
 
 /* ===== Status de entrega no chat (estilo WhatsApp) ===== */
-.chat-messages article time { display:inline-flex; align-items:center; gap:5px; }
 .msg-ack { font-style:normal; display:inline-flex; align-items:center; line-height:1; }
 .msg-ack .msg-ack-ico { display:block; }
 .msg-ack.enviado, .msg-ack.entregue { color:#93a0ad; }   /* cinza: 1 tique enviado / 2 tiques entregue */
@@ -2697,7 +2535,7 @@ body { overflow:hidden; background:#eee8e2; }
 /* mesmos pausinhos no chat ao vivo (rodapé <small> da bolha) */
 .message-stream article small { display:inline-flex; align-items:center; gap:5px; }
 .msg-erro-motivo { display:block; margin-top:5px; padding:5px 8px; border-radius:8px; background:#fdecea; color:#b3261e; font-size:11px; font-weight:600; }
-.chat-messages article.msg-failed, .message-stream article.msg-failed { border:1px solid #f3b4ae; }
+.message-stream article.msg-failed { border:1px solid #f3b4ae; }
 
 /* Financeiro — composição fiel ao painel aprovado no Claude Designer. */
 .finance-period-bar { padding:12px 14px; gap:9px; box-shadow:var(--shadow-xs); }
@@ -3061,7 +2899,6 @@ body { overflow:hidden; background:#eee8e2; }
   font-size:13px;
 }
 .crm-v2:has(.crm-kanban-v2){height:100vh;min-height:0;overflow:hidden}
-.chat-layer .lead-chat-drawer{zoom:1}
 .crm-v2-header{
   min-height:70px;
   padding:12px 22px;
@@ -3427,50 +3264,15 @@ article.tone-red{border-left-color:#d3443e}article.tone-red strong{color:#d3443e
    Bloco final = maior precedência (vence as camadas anteriores).
    ============================================================ */
 /* Cabeçalho branco */
-.chat-layer .lead-chat-drawer > header { background:#fff !important; color:#2c2723 !important; border-bottom:1px solid #efe7e0; padding:15px 16px !important; }
-.chat-layer .lead-chat-drawer > header > div > span { width:44px !important; height:44px !important; border-radius:50% !important; background:#efe0fb !important; color:#8a2bc0 !important; font-weight:800 !important; font-size:15px !important; }
-.chat-layer .lead-chat-drawer > header small { color:#ff6a00 !important; font-weight:800 !important; letter-spacing:.09em !important; }
-.chat-layer .lead-chat-drawer > header h2 { color:#2c2723 !important; font-size:var(--chat-nome) !important; }
-.chat-layer .lead-chat-drawer > header p { color:#8b817b !important; }
-.chat-layer .chat-head-actions button { width:34px !important; height:34px !important; border:1px solid #e7ded7 !important; border-radius:50% !important; background:#faf7f4 !important; color:#7a716b !important; font-size:17px !important; }
-.chat-layer .chat-head-actions button:hover { background:#f1ebe6 !important; }
 /* Barra de instância */
-.chat-layer .chat-instance-bar { background:#fff !important; border-bottom:1px solid #f0e9e2 !important; padding:10px 16px !important; }
-.chat-layer .chat-instance-bar label { color:#a79d96 !important; font-size:10.5px !important; text-transform:uppercase; letter-spacing:.06em; font-weight:800; }
-.chat-layer .chat-instance-bar select { border:1px solid #e5ddd6 !important; border-radius:9px !important; }
-.chat-layer .chat-instance-bar > span.connected { color:#16a34a !important; font-weight:800 !important; }
 /* Área de mensagens: espaço à esquerda p/ a pílula de ferramentas */
-.chat-layer .chat-messages { padding-left:74px !important; }
-.chat-layer .chat-messages article.received { background:#ffffff !important; border:1px solid #ece5df !important; }
-.chat-layer .chat-messages article small { color:#a99f98 !important; font-weight:700; letter-spacing:.05em; }
 /* Pílula de ferramentas flutuante à esquerda (só ícones, redondos) */
-.chat-layer .mini-chat-tools { position:absolute !important; left:14px; top:46%; transform:translateY(-42%); z-index:6; display:flex !important; flex-direction:column !important; flex-wrap:nowrap !important; align-items:center; gap:10px !important; padding:0 !important; border:0 !important; background:transparent !important; }
-.chat-layer .mini-chat-tools button, .chat-layer .mini-chat-tools button:last-child { width:46px !important; height:46px !important; min-height:46px !important; margin:0 !important; padding:0 !important; display:grid !important; place-items:center !important; border:1px solid #ece2d9 !important; border-radius:50% !important; background:#fff !important; color:#6a615b !important; box-shadow:0 6px 16px rgba(40,28,20,.13) !important; }
-.chat-layer .mini-chat-tools button:hover { border-color:#ffb279 !important; color:#d85f00 !important; transform:translateY(-1px); }
-.chat-layer .mini-chat-tools button.recording { border-color:#e34545 !important; background:#fff0f0 !important; color:#c42f2f !important; }
-.chat-layer .mini-chat-tools .mct-lbl { display:none !important; }
-.chat-layer .mini-chat-tools .mct-ico { display:grid; place-items:center; }
-.chat-layer .mini-chat-tools .mct-ico svg { width:20px; height:20px; }
 /* Caixa de Sugestão da Sara: compacta — ocupa menos altura no painel do corretor */
-.chat-layer .chat-suggestion { flex-direction:column !important; align-items:stretch !important; gap:7px !important; margin:0 14px 8px !important; padding:8px 12px !important; border:1px solid #e6d8f7 !important; background:linear-gradient(180deg,#f9f3ff,#f3e9fc) !important; border-radius:12px !important; }
-.chat-layer .chat-suggestion > div { min-width:0; flex:none !important; }
-.chat-layer .chat-suggestion b { color:#7c3aed !important; font-size:10.5px !important; margin-bottom:2px !important; }
 /* Texto limitado a 3 linhas para sugestões longas não estourarem a altura; texto completo vai para o campo ao clicar em "Usar" */
-.chat-layer .chat-suggestion p { color:#4a4550 !important; font-size:12px !important; line-height:1.35 !important; display:-webkit-box !important; -webkit-line-clamp:3 !important; -webkit-box-orient:vertical !important; overflow:hidden !important; }
-.chat-layer .chat-suggestion-actions { flex-direction:row !important; gap:8px !important; }
-.chat-layer .chat-suggestion-actions button { flex:1 !important; min-height:32px !important; padding:6px 12px !important; border-radius:9px !important; font-size:12px !important; font-weight:700 !important; }
-.chat-layer .chat-suggestion-actions .cs-use { background:#fff !important; border:1px solid #d8c6ef !important; color:#7c3aed !important; }
-.chat-layer .chat-suggestion-actions .cs-send { border:0 !important; color:#fff !important; background:linear-gradient(120deg,#ff6d1f,#e21d74) !important; }
-.chat-layer .chat-suggestion-actions .cs-send:disabled { opacity:.5; }
 /* Composer em pílula */
-.chat-layer .lead-chat-drawer > footer { padding:12px 14px !important; gap:10px !important; }
-.chat-layer .lead-chat-drawer > footer textarea { border:1px solid #e5ddd6 !important; border-radius:22px !important; padding:12px 16px !important; min-height:46px !important; }
-.chat-layer .lead-chat-drawer > footer button { width:46px !important; height:46px !important; border-radius:50% !important; background:#ff6500 !important; }
 /* Botão da Sara no rodapé: abre/fecha o card de sugestão sob demanda */
-.lead-chat-drawer > footer { grid-template-columns:auto 1fr auto; }
 .chat-sara-toggle { position:relative; display:grid; place-items:center; color:#fff; }
 .chat-sara-toggle svg { width:22px; height:22px; }
-.chat-layer .lead-chat-drawer > footer button.chat-sara-toggle { background:linear-gradient(140deg,#ff8a2b,#e01e63) !important; }
 .chat-sara-toggle:disabled { opacity:.4 !important; }
 .chat-sara-toggle.active { box-shadow:0 0 0 3px rgba(224,30,99,.28) !important; }
 /* Pontinho verde + pulso quando a Sara tem sugestão pronta e o card está fechado */
@@ -3540,17 +3342,8 @@ article.tone-red{border-left-color:#d3443e}article.tone-red strong{color:#d3443e
    MINI CHAT v2 — ancorado no CANTO INFERIOR DIREITO, ferramentas
    flutuando FORA do card (lateral esquerda dele).
    ============================================================ */
-.chat-layer .lead-chat-drawer{ left:auto !important; right:20px !important; top:auto !important; bottom:20px !important; transform:none !important; overflow:visible !important; height:min(80vh,700px) !important; border-radius:18px !important; }
-.chat-layer .lead-chat-drawer>header{ border-radius:18px 18px 0 0; }
-.chat-layer .lead-chat-drawer>footer{ border-radius:0 0 18px 18px; }
-.chat-layer .lead-chat-drawer.is-collapsed{ transform:none !important; }
 /* ferramentas para FORA do card, à esquerda */
-.chat-layer .mini-chat-tools{ left:-62px !important; top:50% !important; transform:translateY(-50%) !important; }
-.chat-layer .chat-messages{ padding-left:20px !important; }
 /* botão fechar sugestão da Sara */
-.chat-suggestion { position:relative; }
-.chat-suggestion .cs-close { position:absolute; top:6px; right:8px; width:22px; height:22px; display:grid; place-items:center; border:0; border-radius:50%; background:rgba(124,58,237,.10); color:#7c3aed; font-size:15px; line-height:1; cursor:pointer; padding:0; }
-.chat-suggestion .cs-close:hover { background:rgba(124,58,237,.2); }
 
 /* ============================================================
    INÍCIO v2 — saudação com avatar, hero da META em laranja com
@@ -4193,17 +3986,9 @@ article.tone-red{border-left-color:#d3443e}article.tone-red strong{color:#d3443e
 .chat-rec-bar .rec-dot { flex:0 0 9px; width:9px; height:9px; border-radius:50%; background:#e23b3b; animation:rec-pulse 1s infinite; }
 .chat-rec-bar .rec-time { flex:0 0 auto; min-width:38px; color:#5c534e; font-size:13px; font-variant-numeric:tabular-nums; font-weight:700; }
 @keyframes rec-pulse { 0%,100%{opacity:1} 50%{opacity:.25} }
-.chat-messages .audio-state { display:inline-flex; align-items:center; gap:7px; padding:7px 11px; border-radius:9px; background:rgba(255,255,255,.5); color:#6b625c; font-size:12px; font-weight:600; }
-.chat-messages .audio-state.erro { color:#b0473d; }
-.chat-messages .audio-state .audio-spin { width:14px; height:14px; border:2px solid #e4d9d2; border-top-color:#ff6500; border-radius:50%; animation:audio-spin .7s linear infinite; }
 @keyframes audio-spin { to { transform:rotate(360deg) } }
 
 /* Excluir mensagem do chat — aparece ao passar o mouse na bolha (jul/2026) */
-.chat-messages article { position: relative; }
-.chat-messages article .msg-del { position: absolute; top: 3px; right: 3px; width: 24px; height: 24px; display: grid; place-items: center; border: 0; border-radius: 7px; background: rgba(255,255,255,.9); color: #b0473d; box-shadow: 0 1px 4px rgba(0,0,0,.12); opacity: 0; cursor: pointer; transition: opacity .12s ease; z-index: 3; }
-.chat-messages article:hover .msg-del, .chat-messages article:focus-within .msg-del { opacity: 1; }
-.chat-messages article .msg-del svg { width: 14px; height: 14px; }
-.chat-messages article .msg-del:hover { background: #fff0ee; }
 
 /* ============================================================
    Aprovação de empreendimento (jul/2026): selo no card, ações
@@ -4228,12 +4013,6 @@ article.tone-red{border-left-color:#d3443e}article.tone-red strong{color:#d3443e
 .approval-filter b { display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; background: #e0851f; color: #fff; font-size: 10px; }
 
 /* Confirmação antes de apagar mensagem (jul/2026) */
-.chat-messages article .msg-del-confirm { position: absolute; top: 3px; right: 3px; z-index: 4; display: flex; align-items: center; gap: 5px; padding: 3px 4px 3px 9px; border-radius: 10px; background: #fff; box-shadow: 0 3px 14px rgba(0,0,0,.2); white-space: nowrap; }
-.chat-messages article .msg-del-confirm > span { color: #6b625c; font-size: 11px; font-weight: 700; }
-.chat-messages article .msg-del-confirm .mdc-yes { border: 0; border-radius: 6px; padding: 4px 9px; background: #e23b3b; color: #fff; font-size: 11px; font-weight: 800; cursor: pointer; }
-.chat-messages article .msg-del-confirm .mdc-yes:hover { background: #cf3232; }
-.chat-messages article .msg-del-confirm .mdc-no { border: 0; border-radius: 6px; padding: 4px 9px; background: #f1ece9; color: #6b625c; font-size: 11px; font-weight: 700; cursor: pointer; }
-.chat-messages article .msg-del-confirm .mdc-no:hover { background: #e7e0db; }
 
 /* ============================================================
    Captação — dropzone de mídia estilo Pixlr (jul/2026):
@@ -5373,22 +5152,9 @@ article.tone-red{border-left-color:#d3443e}article.tone-red strong{color:#d3443e
    • textarea "Escreva uma mensagem" com fonte legível e melhor encaixe.
    ========================================================================== */
 /* Botão de IA (Sara) — claro, roxo suave no lugar do gradiente escuro */
-.chat-layer .lead-chat-drawer > footer button.chat-sara-toggle{background:#f4ecfb !important;color:#7c3aed !important;box-shadow:none !important}
-.chat-layer .lead-chat-drawer > footer button.chat-sara-toggle:hover:not(:disabled){background:#ebddfa !important}
-.chat-layer .lead-chat-drawer > footer button.chat-sara-toggle.active{box-shadow:0 0 0 3px rgba(124,58,237,.20) !important}
-.chat-layer .lead-chat-drawer > footer button.chat-sara-toggle:disabled{background:#f2eee9 !important;color:#bcb2aa !important}
 /* Botão de emoji — claro, laranja só quando ativo */
-.lead-chat-drawer>footer>.chat-emoji-btn{background:#f4efe9 !important;color:#8a7f79 !important}
-.lead-chat-drawer>footer>.chat-emoji-btn:hover{background:#ece5dd !important;color:#6b625c !important}
-.lead-chat-drawer>footer>.chat-emoji-btn.active{background:#fff2e8 !important;color:#ff6500 !important}
 /* Textarea — fonte legível e encaixe */
-.lead-chat-drawer>footer>textarea{font-size:var(--chat-msg-mini) !important;line-height:1.4 !important;padding:12px 16px !important;min-height:46px !important}
-.lead-chat-drawer>footer>textarea::placeholder{color:#a89e97}
 /* Status de conexão — chip que não corta */
-.chat-instance-bar{align-items:center !important;flex-wrap:wrap;row-gap:8px}
-.chat-instance-bar>label{min-width:180px}
-.chat-instance-bar>span{flex:none;margin-left:auto;white-space:nowrap;padding:4px 11px;border-radius:999px;background:#eef0f2;color:#7c8590;font-weight:700;font-size:11px}
-.chat-instance-bar>span.connected{background:#e4f6ec;color:#17864d}
 .hist-check{width:16px;height:16px;color:#ff6500;flex:none}
 
 /* =====================================================================
@@ -5417,26 +5183,6 @@ article.tone-red{border-left-color:#d3443e}article.tone-red strong{color:#d3443e
 .history-instance{font-size:var(--chat-meta)}
 .history-instance select{font-size:11.5px!important}
 
-/* --- Mini chat (drawer do lead no CRM) ---
-   Especificidade casada com as regras .chat-layer que existem acima, senão
-   elas venceriam e o ajuste da variável não teria efeito. */
-.chat-messages article,.chat-layer .chat-messages article{font-size:var(--chat-msg-mini);line-height:1.45}
-.chat-messages article p,.chat-layer .chat-messages article p{font-size:var(--chat-msg-mini);line-height:1.45}
-.chat-messages article small,.chat-layer .chat-messages article small,
-.chat-messages article time,.chat-layer .chat-messages article time,
-.chat-messages article a,.chat-layer .chat-messages article a{font-size:var(--chat-meta)}
-.chat-layer .chat-messages .chat-document{font-size:10.5px}
-.chat-layer .chat-messages .audio-state{font-size:10.5px}
-.chat-layer .chat-suggestion p{font-size:11px!important}
-.chat-layer .chat-instance-bar label{font-size:9.5px!important}
-.lead-chat-drawer>header h2{font-size:16px}
-.lead-chat-drawer>header p{font-size:12px}
-.lead-chat-drawer>header small{font-size:10px}
-.lead-chat-drawer>footer textarea{font-size:var(--chat-msg-mini)}
-.chat-instance-bar label,.chat-instance-bar select,.chat-instance-bar>span{font-size:var(--chat-meta)}
-.chat-deal-status{font-size:var(--chat-meta)}
-.mini-chat-tools button{font-size:11px}
-
 /* --- Bolha usada na pré-visualização de mensagem --- */
 .app-wa-bubble p{font-size:12px;line-height:1.45}
 .app-wa-bubble .app-wa-time{font-size:9.5px}
@@ -5447,41 +5193,6 @@ article.tone-red{border-left-color:#d3443e}article.tone-red strong{color:#d3443e
 .ai-summary p{font-size:12px}
 .chat-notes article{font-size:12px}
 .chat-document{font-size:11px}
-
-/* ============================================================================
-   Rodapé do chat — correção de especificidade (v2)
-   O emoji ficava laranja porque ".chat-layer .lead-chat-drawer > footer button"
-   (regra global) tem MAIS especificidade que meu seletor anterior. Aqui igualo
-   o prefixo pra vencer. Também garanto o textarea legível e o status na própria
-   linha (não corta no canto do drawer).
-   ========================================================================== */
-/* Emoji claro (vence a regra laranja global) */
-.chat-layer .lead-chat-drawer > footer button.chat-emoji-btn{background:#f4efe9 !important;color:#8a7f79 !important;box-shadow:none !important}
-.chat-layer .lead-chat-drawer > footer button.chat-emoji-btn:hover{background:#ece5dd !important;color:#6b625c !important}
-.chat-layer .lead-chat-drawer > footer button.chat-emoji-btn.active{background:#fff2e8 !important;color:#ff6500 !important}
-/* Textarea legível (o codemod trocou meu 14px por uma var de 12px) */
-.chat-layer .lead-chat-drawer > footer > textarea{font-size:14px !important;line-height:1.4 !important;padding:12px 16px !important;min-height:46px !important}
-/* Status de conexão sempre na própria linha, à direita — nunca corta */
-.chat-instance-bar > label{flex:1 1 100% !important;min-width:0 !important}
-.chat-instance-bar > span{margin-left:auto !important}
-
-/* ============================================================================
-   Chat do lead — cabeçalho mais compacto + fonte das mensagens maior
-   O header ocupava muito espaço (padding grande + avatar 46px) e um codemod
-   baixou a fonte das mensagens para 11px. Aqui compacto o header e devolvo
-   legibilidade ao texto do chat. (.chat-layer p/ vencer a especificidade.)
-   ========================================================================== */
-/* Cabeçalho compacto */
-.chat-layer .lead-chat-drawer > header{padding:10px 18px !important}
-.chat-layer .lead-chat-drawer > header > div{gap:10px !important}
-.chat-layer .lead-chat-drawer > header > div > span{width:38px !important;height:38px !important;border-radius:11px !important;font-size:13px !important}
-.chat-layer .lead-chat-drawer > header small{font-size:9.5px !important;letter-spacing:.08em !important}
-.chat-layer .lead-chat-drawer h2{font-size:15px !important;margin:1px 0 !important;line-height:1.2 !important}
-.chat-layer .lead-chat-drawer > header p{font-size:11px !important;margin:0 !important}
-.chat-layer .lead-chat-drawer > header button{font-size:22px !important}
-/* Fonte das mensagens maior e legível */
-.chat-layer .lead-chat-drawer .chat-messages article{font-size:13.5px !important;line-height:1.45 !important}
-.chat-layer .lead-chat-drawer .chat-messages article p{font-size:13.5px !important;line-height:1.45 !important}
 
 /* ===== Funil Inteligente · momento do lead ===== */
 .momentox-aviso{margin:0 0 12px;padding:10px 14px;border:1px solid var(--purple-100);border-radius:10px;background:var(--purple-soft);color:var(--purple-700);font-size:12.5px;font-weight:600}
