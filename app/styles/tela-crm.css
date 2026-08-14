@@ -179,7 +179,7 @@
 
    Sobrepõe a casca (z-index acima da barra inferior, que fica em 85) em
    vez de conviver com ela: cabeçalho do app + cabeçalho da ficha é o
-   "cabeçalho em dobro" que correcoes-celular.css já teve de consertar
+   "cabeçalho em dobro" que mobile-overrides.css já teve de consertar
    uma vez.
    ===================================================================== */
 
@@ -390,7 +390,7 @@
   }
   /* Verde, não laranja: é o botão mais tocado do aplicativo e o corretor
      reconhece o WhatsApp pela cor antes de ler a palavra. Mesma decisão
-     já tomada em correcoes-celular.css para o CTA da fila. */
+     já tomada em mobile-overrides.css para o CTA da fila. */
   .fl-cta {
     min-height: 54px; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
     border: 0; border-radius: var(--radius-pill);

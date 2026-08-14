@@ -64,5 +64,11 @@ export function AutomationsWorkspace({ accessToken }: { accessToken: string }) {
     };
   }, [accessToken]);
 
-  return <div className="original-automation-host" ref={hostRef} />;
+  return <div className="automations-v2-shell">
+    <header className="automations-v2-context">
+      <div><span>CENTRAL DE AUTOMAÇÕES</span><h1>Motor independente</h1></div>
+      <p>Cada fluxo conecta somente o que você escolher nos blocos: evento, agente, funil, etapa e ação. Criar um novo funil não exige reconstruir o motor.</p>
+    </header>
+    <div className="original-automation-host" ref={hostRef} />
+  </div>;
 }
