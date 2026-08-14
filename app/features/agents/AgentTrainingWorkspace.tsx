@@ -94,11 +94,11 @@ export function AgentTrainingWorkspace({ accessToken }: { accessToken: string })
   const loadList = useCallback(async () => {
     const p = await api<AgentListResponse>("GET", "/api/agentes");
     setAgentes(p.agentes || []);
-    if (!slug && p.agentes?.length) {
-      const first = p.agentes.find((a) => a.slug === "sara") || p.agentes.find((a) => a.ativo) || p.agentes[0];
-      setSlug(first.slug);
-    }
-  }, [api, slug]);
+    setSlug((atual) => {
+      if (atual || !p.agentes?.length) return atual;
+      return (p.agentes.find((a) => a.slug === "sara") || p.agentes.find((a) => a.ativo) || p.agentes[0]).slug;
+    });
+  }, [api]);
 
   const loadDetail = useCallback(async (s: string) => {
     const p = await api<AgentDetail>("GET", `/api/agentes?slug=${encodeURIComponent(s)}`);
@@ -114,36 +114,18 @@ export function AgentTrainingWorkspace({ accessToken }: { accessToken: string })
   }, [api]);
 
   useEffect(() => {
-    let active = true;
-    void api<AgentListResponse>("GET", "/api/agentes").then((p) => {
-      if (!active) return;
-      setAgentes(p.agentes || []);
-      if (!slug && p.agentes?.length) {
-        const first = p.agentes.find((a) => a.slug === "sara") || p.agentes.find((a) => a.ativo) || p.agentes[0];
-        setSlug(first.slug);
-      }
-    }).catch((e) => { if (active) setNotice(mensagemErro(e)); });
-    return () => { active = false; };
-  }, [api, slug]);
+    const timer = window.setTimeout(() => {
+      void loadList().catch((e) => setNotice(mensagemErro(e)));
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [loadList]);
   useEffect(() => {
     if (!slug) return;
-    let active = true;
-    void api<AgentDetail>("GET", `/api/agentes?slug=${encodeURIComponent(slug)}`).then((p) => {
-      if (!active) return;
-      setDetail(p);
-      setForm({
-        nome: p.agente.nome || "",
-        missao: p.agente.missao || "",
-        system_prompt: p.agente.system_prompt || "",
-        modelo: p.agente.modelo || "gpt-4o-mini",
-        status: p.agente.status || "rascunho",
-      });
-      setBatResults([]);
-      setProgress({ done: 0, total: 0 });
-      setTestResult(null);
-    }).catch((e) => { if (active) setNotice(mensagemErro(e)); });
-    return () => { active = false; };
-  }, [api, slug]);
+    const timer = window.setTimeout(() => {
+      void loadDetail(slug).catch((e) => setNotice(mensagemErro(e)));
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [loadDetail, slug]);
 
   const salvar = async () => {
     if (!slug) return;

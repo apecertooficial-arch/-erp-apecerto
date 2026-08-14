@@ -1,6 +1,6 @@
 "use client";
 
-import { AutomationsWorkspace } from "../../features/automations/AutomationsWorkspaceV2";
+import { AutomationsWorkspace } from "../../features/automations/AutomationsWorkspace";
 import { GuardaModulo } from "../../features/system/GuardaModulo";
 
 export default function Pagina() {

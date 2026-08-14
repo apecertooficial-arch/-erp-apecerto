@@ -363,3 +363,11 @@ Após aplicação e conferência direta no projeto, os erros do Advisor caíram 
 O layout global importa 17 folhas CSS. As duas camadas móveis somam 1.083 linhas: `app-mobile.css` contém a estrutura e os contratos responsivos, enquanto `mobile-overrides.css` aplica acabamento posterior. Foram encontrados 27 seletores repetidos entre elas, incluindo barra inferior, cabeçalho, cards, Agenda e Home. A repetição é hoje intencional, mas confirma o custo de manutenção por cascata: uma mudança no arquivo-base pode ser silenciosamente sobrescrita depois.
 
 Como corte imediato e seguro, foram removidas de `globals.css` as 21 regras do seletor rico `rselect`, cujo único componente havia sido eliminado por não possuir consumidor. Os estilos residuais da Esteira F2 antiga foram identificados em `funil-2.css`; por esse arquivo estar minificado em linhas compostas e também conter o Pipe de Visitas ativo, a remoção deve ocorrer junto de sua formatação/consolidação, sem apagar regras compartilhadas por busca textual ampla.
+
+## Execução — Configurações, Agentes e Central de Automações (14/08/2026)
+
+Configurações está reduzida a uma única responsabilidade: renderizar `ConnectionsWorkspace` para conectar, reconectar e inventariar instâncias de WhatsApp. Regras de funil, IA e operação não são mais configuradas nessa aba.
+
+Agentes concentra missão, prompt, fontes aprovadas, ferramentas, testes e bateria de avaliação. O carregamento inicial possuía duas implementações idênticas e consultava novamente a lista quando selecionava a Sara; agora montagem e atualização usam as mesmas funções canônicas, sem segunda consulta causada pela seleção inicial.
+
+A Central continua montando o construtor operacional oficial e aponta explicitamente o treinamento para `/agentes-ia`. O arquivo React perdeu o sufixo `V2`, pois não existe uma segunda versão ativa. Os assets de 228 KB deixaram de usar `Date.now()` no endereço — que anulava o cache a cada abertura — e passaram a uma versão estável. Também foi removido um extrator órfão, sem script consumidor, que ainda escrevia na antiga estrutura `frontend/public` fora deste aplicativo.
