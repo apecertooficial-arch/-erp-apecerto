@@ -414,88 +414,7 @@
   .f2m-historico strong { font-size: 12px; }
   .f2m-historico span,.f2m-historico small { margin-top: 2px; color: var(--muted); font-size: 10px; line-height: 1.35; }
 
-  /* Início do aplicativo: uma capa do ERP, não uma cópia do funil antigo. */
-  .inicio-app { display: grid; gap: 14px; max-width: 560px; margin: 0 auto; }
-  .inicio-app-boas-vindas { display: grid; grid-template-columns: 48px 1fr; gap: 12px; align-items: center; padding: 8px 2px 4px; }
-  .inicio-app-boas-vindas h1 { margin: 2px 0 3px; font-size: 25px; letter-spacing: -.035em; color: var(--ink); }
-  .inicio-app-boas-vindas p,.inicio-app-boas-vindas small { margin: 0; font-size: 12px; color: var(--muted); }
-  .inicio-app-marca { position: relative; width: 46px; height: 46px; border-radius: 14px; background: #fff2e8; }
-  .inicio-app-marca::before { content: ""; position: absolute; left: 10px; top: 9px; width: 24px; height: 20px; border: 4px solid #ff7000; border-top: 0; border-radius: 0 0 5px 5px; }
-  .inicio-app-marca i { position: absolute; left: 10px; top: 7px; width: 25px; height: 25px; border-left: 4px solid #ff7000; border-top: 4px solid #ff7000; transform: rotate(45deg); border-radius: 3px; }
-  .inicio-app-marca b { position: absolute; right: 5px; bottom: 4px; display: grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; background: #8b00cc; color: #fff; font-size: 12px; }
-  .inicio-app-resumo { padding: 16px; border: 1px solid var(--line); border-radius: 18px; background: #fff; box-shadow: 0 8px 24px rgba(44,33,24,.05); }
-  .inicio-app-resumo > header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 13px; }
-  .inicio-app-resumo > header span { display: block; color: #d65300; font-size: 10px; font-weight: 800; letter-spacing: .12em; }
-  .inicio-app-resumo h2 { margin: 2px 0 0; font-size: 18px; }
-  .inicio-app-resumo > header button { min-height: 44px; padding: 0 12px; border: 1px solid var(--line); border-radius: 999px; background: #fff; color: var(--ink); font-size: 12px; font-weight: 700; }
-  .inicio-app-numeros { display: grid; grid-template-columns: repeat(2,1fr); gap: 8px; }
-  .inicio-app-numeros article { display: flex; flex-direction: column; min-height: 76px; justify-content: center; padding: 12px; border-radius: 14px; background: #f6f2ee; }
-  .inicio-app-numeros article.urgente { background: #fff0ed; color: #bd3027; }
-  .inicio-app-numeros article.visita { background: #eaf8ef; color: #187046; }
-  .inicio-app-numeros b { font-size: 25px; line-height: 1; }
-  .inicio-app-numeros span { margin-top: 5px; font-size: 11px; color: currentColor; opacity: .82; }
-  .inicio-app-erro { padding: 12px; border-radius: 12px; background: #fff3db; color: #805400; font-size: 12px; }
-  .inicio-app-acoes { display: grid; gap: 9px; }
-  .inicio-app-acoes button { display: flex; align-items: center; justify-content: space-between; min-height: 58px; padding: 0 18px; border: 1px solid var(--line); border-radius: 15px; background: #fff; color: var(--ink); font-size: 15px; font-weight: 750; }
-  .inicio-app-acoes button.principal { border-color: #ff7000; background: #ff7000; color: #fff; }
-  .inicio-app-acoes button span { font-size: 20px; }
-  .inicio-app-explicacao { padding: 15px 16px; border-radius: 16px; background: #2a2521; color: #fff; }
-  .inicio-app-explicacao b { font-size: 13px; }
-  .inicio-app-explicacao ol { display: grid; gap: 6px; margin: 10px 0 0; padding-left: 20px; color: #ddd5cf; font-size: 12px; }
-
-  /* --- Atalhos grandes: quatro destinos, alvo confortavel --- */
-  .sd-atalhos { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 18px; }
-  .sd-atalhos > button {
-    min-height: 56px; border: 1px solid var(--line); border-radius: 14px; background: #fff;
-    color: var(--ink); font-size: 15px; font-weight: 600; cursor: pointer;
-  }
-  .sd-atalhos > button:active { background: var(--orange-soft); }
-
-  .sd-titulo { margin: 0 0 10px; font-size: 18px; letter-spacing: -.01em; }
-
-  /* --- Grupos: no maximo tres itens, contador e "Ver todos" --- */
-  .sd-grupo { margin-bottom: 18px; }
-  .sd-grupo > header { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
-  .sd-grupo h3 { margin: 0; font-size: 14px; font-weight: 700; color: var(--ink); }
-  .sd-contador {
-    min-width: 22px; padding: 1px 7px; border-radius: 999px;
-    background: var(--orange-soft); color: #b94300; font-size: 12px; font-weight: 700; text-align: center;
-  }
-  .sd-grupo ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
-  .sd-grupo li > button {
-    width: 100%; min-height: 56px; display: grid; gap: 2px; text-align: left;
-    padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; background: #fff; cursor: pointer;
-    grid-template-areas: "nome tempo" "motivo tempo"; grid-template-columns: 1fr auto;
-  }
-  .sd-nome { grid-area: nome; font-size: 15px; font-weight: 600; color: var(--ink); }
-  /* Texto longo encurta com reticencia em vez de empurrar a tela. */
-  .sd-nome, .sd-motivo { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
-  .sd-motivo { grid-area: motivo; font-size: 13px; color: var(--muted); }
-  .sd-tempo { grid-area: tempo; align-self: center; font-size: 12px; color: var(--muted); white-space: nowrap; }
-  .sd-ver-todos {
-    margin-top: 8px; min-height: 44px; width: 100%; border: 0; border-radius: 10px;
-    background: transparent; color: #b94300; font-size: 14px; font-weight: 600; cursor: pointer;
-  }
-
-  /* --- Estados: esqueleto, vazio util, erro com acao --- */
-  .sd-esqueleto { display: grid; gap: 14px; }
-  .sd-esq-bloco { display: grid; gap: 6px; }
-  .sd-esq-bloco > span { height: 56px; border-radius: 12px; background: linear-gradient(90deg,#f3f0ee,#e9e5e2,#f3f0ee); background-size: 200% 100%; animation: sd-brilho 1.2s ease-in-out infinite; }
-  @keyframes sd-brilho { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
-  @media (prefers-reduced-motion: reduce) { .sd-esq-bloco > span { animation: none; } }
-  .sd-vazio { padding: 24px 4px; color: var(--muted); font-size: 14px; }
-  .sd-erro { padding: 14px; border: 1px solid #f0c8a8; border-radius: 12px; background: #fff6ef; }
-  .sd-erro strong { display: block; font-size: 14px; color: #7a4412; }
-  .sd-erro button { margin-top: 10px; min-height: 44px; padding: 0 16px; border: 0; border-radius: 10px; background: var(--orange); color: #fff; font-weight: 600; cursor: pointer; }
-
-  /* --- Gestao recolhida --- */
-  .hm-gestao { margin-top: 8px; border-top: 1px solid var(--line); padding-top: 12px; }
-  .hm-gestao-toggle {
-    width: 100%; min-height: 48px; display: flex; align-items: center; justify-content: space-between;
-    border: 0; background: transparent; color: var(--muted); font-size: 14px; font-weight: 600; cursor: pointer;
-  }
-  .hm-gestao-corpo { padding-top: 8px; }
-  .hm-gestao-link { margin-top: 12px; min-height: 44px; width: 100%; border: 1px solid var(--line); border-radius: 10px; background: #fff; font-size: 14px; font-weight: 600; cursor: pointer; }
+  @keyframes app-brilho { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
 
   /* --- Cabecalho do app: saudacao, sino com badge, perfil --- */
   .app-mobile-top { justify-content: space-between; }
@@ -659,80 +578,9 @@
   .notif-lida { display: inline-flex; align-items: center; min-height: 44px; padding: 0 10px; font-size: 12px; color: var(--muted); }
   .notif-esqueleto { display: grid; gap: 10px; padding: 8px 0; }
   .notif-esq-item { display: grid; gap: 6px; }
-  .notif-esq-item > span { height: 22px; border-radius: 8px; background: linear-gradient(90deg,#f3f0ee,#e9e5e2,#f3f0ee); background-size: 200% 100%; animation: sd-brilho 1.2s ease-in-out infinite; }
+  .notif-esq-item > span { height: 22px; border-radius: 8px; background: linear-gradient(90deg,#f3f0ee,#e9e5e2,#f3f0ee); background-size: 200% 100%; animation: app-brilho 1.2s ease-in-out infinite; }
   .notif-esq-item > span:last-child { width: 60%; }
   @media (prefers-reduced-motion: reduce) { .notif-esq-item > span { animation: none; } }
-}
-
-/* =====================================================================
-   MEU DIA DO CORRETOR — a tela do app, nao o ERP encolhido
-   ===================================================================== */
-.md-wrap { display: none; }
-
-@media (max-width: 900px) {
-  .md-wrap { display: block; }
-
-  .md-topo { padding: 4px 0 14px; }
-  .md-ola { margin: 0; font-size: 13px; color: var(--muted); }
-  .md-chamada { margin: 2px 0 0; font-size: 20px; font-weight: 700; letter-spacing: -.01em; color: var(--ink); }
-  .md-atualizado { margin: 8px 0 0; font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 10px; }
-  .md-atualizado > button { min-height: 44px; padding: 0 12px; border: 0; background: transparent; color: #b94300; font-size: 13px; font-weight: 600; cursor: pointer; }
-
-  .md-bloco { margin-bottom: 20px; }
-  .md-bloco > header { display: flex; align-items: center; gap: 8px; }
-  .md-bloco h2 { margin: 0; font-size: 15px; font-weight: 700; }
-  .md-contador { min-width: 22px; padding: 1px 7px; border-radius: 999px; background: var(--orange-soft); color: #b94300; font-size: 12px; font-weight: 700; text-align: center; }
-  .md-ajuda { margin: 2px 0 10px; font-size: 12px; color: var(--muted); }
-  .md-bloco ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
-
-  /* Uma coluna, card compacto, UMA acao. */
-  .md-card > button {
-    width: 100%; display: grid; gap: 4px; text-align: left; cursor: pointer;
-    padding: 14px; border: 1px solid var(--line); border-radius: 14px; background: #fff;
-  }
-  .md-card.vencida > button { border-left: 4px solid #dc2626; }
-  .md-linha1 { display: flex; align-items: baseline; gap: 8px; }
-  .md-nome { flex: 1; min-width: 0; font-size: 16px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .md-espera { flex: 0 0 auto; font-size: 12px; color: var(--muted); }
-  .md-motivo { font-size: 13px; color: #b94300; font-weight: 600; overflow-wrap: anywhere; }
-  .md-meta { display: flex; flex-wrap: wrap; gap: 6px; font-size: 12px; color: var(--muted); }
-  .md-etapa { padding: 1px 8px; border-radius: 999px; background: #f1ece8; }
-  .md-proxima { overflow-wrap: anywhere; }
-  .md-aguardando { margin-top: 4px; font-size: 12px; color: #7a4412; background: #fff6ef; border-radius: 8px; padding: 6px 8px; }
-  /* Alvo principal grande, alcancavel com o polegar. */
-  .md-acao {
-    margin-top: 8px; min-height: 48px; display: flex; align-items: center; justify-content: center;
-    border-radius: 12px; background: var(--orange); color: #fff; font-size: 15px; font-weight: 700;
-  }
-  .md-ver-todos { margin-top: 10px; width: 100%; min-height: 44px; border: 0; background: transparent; color: #b94300; font-size: 14px; font-weight: 600; cursor: pointer; }
-
-  .md-atalhos { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 4px 0 18px; }
-  .md-atalhos > button { min-height: 52px; border: 1px solid var(--line); border-radius: 12px; background: #fff; font-size: 13px; font-weight: 600; cursor: pointer; }
-
-  .md-esqueleto { display: grid; gap: 10px; }
-  .md-esqueleto > span { height: 104px; border-radius: 14px; background: linear-gradient(90deg,#f3f0ee,#e9e5e2,#f3f0ee); background-size: 200% 100%; animation: sd-brilho 1.2s ease-in-out infinite; }
-  @media (prefers-reduced-motion: reduce) { .md-esqueleto > span { animation: none; } }
-  .md-vazio { padding: 24px 4px; font-size: 14px; color: var(--muted); }
-  .md-erro { padding: 14px; border: 1px solid #f0c8a8; border-radius: 12px; background: #fff6ef; }
-  .md-erro strong { display: block; font-size: 14px; color: #7a4412; }
-  .md-erro button { margin-top: 10px; min-height: 44px; padding: 0 16px; border: 0; border-radius: 10px; background: var(--orange); color: #fff; font-weight: 600; cursor: pointer; }
-}
-
-/* Entrega 2 — WhatsApp direto no card do Meu Dia. */
-@media (max-width: 900px) {
-  .md-card { border: 1px solid var(--line); border-radius: 14px; background: #fff; padding: 0 0 12px; }
-  .md-card.vencida { border-left: 4px solid #dc2626; }
-  .md-card-corpo {
-    width: 100%; display: grid; gap: 4px; text-align: left; cursor: pointer;
-    padding: 14px 14px 6px; border: 0; background: transparent;
-  }
-  .md-interesse { font-size: 12px; color: var(--ink); }
-  .md-sara { font-size: 12px; color: #6d28d9; overflow-wrap: anywhere; }
-  /* Acao verde do WhatsApp, no padrao do restante do sistema. */
-  a.md-acao { background: #25d366; text-decoration: none; }
-  .md-acao { margin: 8px 14px 0; min-height: 48px; display: flex; align-items: center; justify-content: center; border: 0; border-radius: 12px; background: var(--orange); color: #fff; font-size: 15px; font-weight: 700; cursor: pointer; }
-  .md-wa-fallback { display: block; margin: 6px 14px 0; min-height: 44px; display: flex; align-items: center; justify-content: center; font-size: 13px; color: var(--muted); text-decoration: underline; }
-  .md-aguardando { display: block; margin: 8px 14px 0; font-size: 12px; color: #7a4412; background: #fff6ef; border-radius: 8px; padding: 6px 8px; }
 }
 
 /* =====================================================================
