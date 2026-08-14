@@ -17,6 +17,8 @@
    Nada acima de 900px e alterado: tablet e desktop seguem como estavam.
    ===================================================================== */
 
+html, body { touch-action: manipulation; }
+
 /* Elementos exclusivos do celular: invisiveis por padrao. */
 .app-mobile-top,
 .app-bottom-nav,
@@ -65,13 +67,14 @@
   .app-bottom-nav {
     position: fixed; bottom: 0; left: 0; right: 0; z-index: 45;
     display: grid; grid-auto-flow: column; grid-auto-columns: 1fr;
-    background: #fff; border-top: 1px solid var(--line);
+    background: var(--bg-surface, #fff); border-top: 1px solid var(--border-soft, var(--line));
+    box-shadow: 0 -2px 14px rgba(31, 28, 26, .05);
     padding-bottom: env(safe-area-inset-bottom, 0px);
   }
   .app-bottom-nav > a,
   .app-bottom-nav > button {
     /* 44px e o minimo de alvo de toque. Aqui sao 56px. */
-    min-height: 56px; min-width: 44px;
+    position: relative; min-height: 56px; min-width: 44px;
     display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
     border: 0; background: transparent; cursor: pointer;
     color: #6f6862; font-size: 10px; font-weight: 600;
@@ -83,6 +86,15 @@
   }
   .app-bottom-nav > a.active,
   .app-bottom-nav > button.active { color: var(--orange); }
+  .app-bottom-nav > a.active::before,
+  .app-bottom-nav > button.active::before {
+    content: ""; position: absolute; top: 2px; left: 50%; z-index: 0;
+    width: 46px; height: 34px; transform: translateX(-50%);
+    border: 1.5px solid var(--ape-orange, var(--orange));
+    border-radius: var(--radius-md, 12px); background: transparent;
+  }
+  .app-bottom-nav > a.active > svg,
+  .app-bottom-nav > button.active > svg { position: relative; z-index: 1; }
   .app-bottom-nav > a.active svg { stroke-width: 2.2; }
   .app-bottom-nav > a:focus-visible,
   .app-bottom-nav > button:focus-visible { outline: 2px solid var(--orange); outline-offset: -3px; }
@@ -350,12 +362,12 @@
     display: inline-flex; align-items: center; justify-content: center;
     border: 0; background: transparent; color: var(--ink); cursor: pointer; text-decoration: none;
   }
-  .amt-perfil { font-size: 13px; font-weight: 700; }
-  .amt-perfil::before { content: ""; position: absolute; inset: 6px; border-radius: 50%; background: var(--orange-soft); z-index: -1; }
+  .amt-perfil { color: var(--ape-purple-700, var(--ink)); font-size: 13px; font-weight: 700; }
+  .amt-perfil::before { content: ""; position: absolute; inset: 6px; border-radius: 50%; background: var(--ape-purple-100, var(--orange-soft)); z-index: -1; }
   .amt-sino > b, .abn-badge {
     position: absolute; top: 4px; right: 2px; min-width: 17px; height: 17px; padding: 0 4px;
     display: inline-flex; align-items: center; justify-content: center;
-    border-radius: 999px; background: #dc2626; color: #fff;
+    border-radius: 999px; background: var(--ape-orange, var(--orange)); color: #fff;
     font-size: 10px; font-weight: 700; font-style: normal; line-height: 1;
   }
   .app-bottom-nav > a { position: relative; }

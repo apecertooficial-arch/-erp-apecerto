@@ -14,7 +14,6 @@ const eslintConfig = defineConfig([
     // Edge Functions usam Deno (imports remotos e globals próprios). Elas têm
     // gate dedicado em `pnpm lint:edge`; regras Next/React geravam falsos erros.
     "supabase/functions/**",
-    "public/legacy-assets/**",
     // Dependencias de terceiros auto-hospedadas; lintamos o adaptador
     // app/lib/opusMic.ts, não o bundle minificado do fornecedor.
     "public/_vendor/**",

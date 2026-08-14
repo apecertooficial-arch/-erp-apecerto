@@ -155,7 +155,7 @@ test("recache de /offline.html nao abre porta para dado autenticado", async () =
   const i = evento(); sw.ouvintes.install(i); await Promise.all(i.esperas);
 
   const privados = [
-    "/api/session", "/api/performance?periodo=mes", "/api/crm",
+    "/api/session", "/api/performance?periodo=mes", "/api/funil2",
     "/auth/v1/token", "/rest/v1/leads", "/functions/v1/enviar-whatsapp", "/realtime/v1/websocket",
   ];
   for (const p of privados) await pedir(sw, p);

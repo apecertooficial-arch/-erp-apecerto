@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
+import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 const agendaApi = await readFile(new URL("../app/api/agenda/route.ts", import.meta.url), "utf8");
-const crmApi = await readFile(new URL("../app/api/crm/route.ts", import.meta.url), "utf8");
 const desktop = await readFile(new URL("../app/features/calendar/CalendarWorkspace.tsx", import.meta.url), "utf8");
 const mobile = await readFile(new URL("../app/features/calendar/TelaAgendaMobile.tsx", import.meta.url), "utf8");
 const chat = await readFile(new URL("../app/features/chat/LiveChatWorkspace.tsx", import.meta.url), "utf8");
@@ -17,11 +17,11 @@ test("desktop e mobile consomem somente a API canônica da Agenda", () => {
   assert.doesNotMatch(chat, /createVisit[\s\S]{0,500}\/api\/crm/);
 });
 
-test("escritas de visita existem na Agenda e não na API geral do CRM", () => {
+test("escritas de visita existem somente na Agenda; API geral do CRM não existe", () => {
   for (const action of ["createVisit", "updateVisit", "updateVisitStatus", "gerenteDisponibilidade"]) {
     assert.match(agendaApi, new RegExp(`action === "${action}"`));
-    assert.doesNotMatch(crmApi, new RegExp(`action === "${action}"`));
   }
+  assert.equal(existsSync(new URL("../app/api/crm/route.ts", import.meta.url)), false);
 });
 
 test("nova visita só aceita negócio presente na carteira ativa do Funil 2", () => {

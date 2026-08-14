@@ -2,7 +2,7 @@
 // Verifica CODIGO e CSS. Nao mede layout renderizado.
 import test from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync, readdirSync, statSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 
 const raizApp = new URL("../app/", import.meta.url).pathname;
@@ -148,4 +148,21 @@ test("Configurações possui uma única camada: Conexões", () => {
     "CSS da antiga central de Configurações não pode voltar a sobrepor Conexões");
   assert.match(globals, /\.connections-workspace/,
     "a camada visual vigente de Conexões precisa permanecer disponível");
+});
+
+test("runtime legado e API geral do CRM foram removidos fisicamente", () => {
+  const removidos = [
+    "api/crm/route.ts",
+    "components/OriginalErpHost.tsx",
+    "features/system/LegacyModuleWorkspace.tsx",
+    "original/page.tsx",
+    "../public/legacy-runtime.html",
+    "../public/legacy-crm-actions.js",
+    "styles/mobile-overrides.css",
+  ];
+  for (const caminho of removidos) {
+    assert.equal(existsSync(join(raizApp, caminho)), false, `${caminho} não pode voltar`);
+  }
+  assert.equal(existsSync(join(raizApp, "api/crm/sales/route.ts")), true,
+    "a Esteira de Vendas ativa precisa continuar disponível");
 });

@@ -15,18 +15,15 @@ Escopo: rotas, telas, componentes, APIs, estilos e banco Supabase de produção.
 
 ## Conclusão executiva
 
-O ERP ainda não possui uma única camada por responsabilidade. A limpeza de Configurações foi concluída, mas o restante do sistema conserva gerações paralelas, sobretudo no CRM. A principal sobreposição é:
+O frontend operacional foi consolidado: `/crm` monta somente o Funil 2.0; a API geral `/api/crm`, as interfaces CRM anteriores, a rota `/original`, os iframes e os runtimes HTML foram retirados. `/api/crm/sales` permanece porque atende exclusivamente a Esteira de Vendas ativa.
 
-1. CRM original (`CrmWorkspace`, `/api/crm`, `leads`, `negocios`, `pipeline_stages`);
-2. CRM Nova Era/NCRM (`crm-nova-era`, `/api/ncrm/*`, `ncrm_*`);
-3. CRM Nova Era 3 (`crm-nova-era-3`, também consumindo `/api/ncrm/*` e `/api/crm`);
-4. Funil 2.0 (`funil-2`, `/api/funil2*`, `f2_*`).
+Configurações monta somente Conexões; Agentes concentra treinamento e avaliação; a Central de Automações permanece independente de funil e escolhe o destino nos próprios blocos. A segunda folha móvel `mobile-overrides.css` também foi eliminada, com regras atuais absorvidas pelas folhas canônicas de shell, Agenda e Avisos.
 
-Essas quatro superfícies compartilham lead, conversa, visita, fila, etapa, momento, Sara e experiência mobile. Portanto, hoje ainda é possível alterar uma regra em uma camada e outra tela continuar usando uma implementação diferente.
+O banco mantém tabelas históricas e componentes internos NCRM que ainda alimentam ingestão, distribuição, notificações, push, Sara ou a transição para o F2. Isso não cria uma segunda tela de CRM. Esses objetos só podem ser eliminados individualmente quando não houver consumidor e respeitando as retenções registradas no próprio banco.
 
 O banco é a principal fonte de dados, mas nem tudo exibido vem dele. Há rótulos, listas, cadências, cores, horários e regras auxiliares definidos em TypeScript/TSX. Existem 485 ocorrências de estilo inline, 19 folhas adicionais e um `globals.css` de 661.553 bytes.
 
-## Dimensão encontrada
+## Dimensão encontrada no início da auditoria
 
 | Camada | Quantidade |
 |---|---:|
@@ -45,9 +42,9 @@ O banco é a principal fonte de dados, mas nem tudo exibido vem dele. Há rótul
 
 | Aba | Componente atual | Fonte principal | Diagnóstico | Decisão proposta |
 |---|---|---|---|---|
-| Início | `HomeWorkspace` e variações por perfil/mobile | `/api/crm`, `/api/finance`, `/api/catalog`, `/api/dashboard`, `/api/ncrm/*`, `/api/funil2` | Sobreposição alta: painéis antigos, NCRM e F2 convivem | Fazer o Início consumir um único resumo operacional do F2 e APIs específicas para financeiro/estoque |
-| CRM | `CrmNovaEraGate` envolvendo `CrmWorkspace`, `Crm3Workspace`, `Funil2Mobile` e `Funil2Workspace` | `/api/crm`, `/api/ncrm/*`, `/api/funil2*` | Sobreposição crítica; quatro experiências no mesmo ponto de entrada | Escolher F2 como operação oficial e separar vendas/esteira do CRM de atendimento |
-| Calendário | `CalendarWorkspace` no desktop e `TelaAgendaMobile` no celular | Desktop usa `/api/crm`; mobile usa `/api/ncrm/agenda` | Duas fontes e dois contratos para a mesma agenda | Criar uma API canônica de agenda e manter apenas componentes responsivos sobre o mesmo contrato |
+| Início | `HomeWorkspace` e projeções por perfil/mobile | APIs específicas e Funil 2.0 | Sem montagem dos CRMs anteriores | Preservar projeções por perfil sobre fontes canônicas |
+| CRM | `Funil2Workspace` e `Funil2Mobile` | `/api/funil2*` | Uma experiência operacional | Preservar; Esteira de Vendas continua separada |
+| Calendário | `CalendarWorkspace` e `TelaAgendaMobile` | `/api/agenda` | Contrato canônico único | Preservar |
 | Notificações | `NotificationsWorkspace` e `TelaAvisosMobile`, além de avisos globais | Desktop combina `/api/crm`, `/api/live-chat` e `erp_auditoria`; mobile usa `/api/ncrm/notificacoes`; globals usam RPC | Três fontes para “avisos” | Centralizar em uma API/RPC de notificações com projeções desktop/mobile |
 | Produtos | `ProductsModule`, `ProductDetail`, `CaptureWizard`, `UnitWizard` | `/api/catalog`, `/api/product`, `/api/capture`, tabelas e Storage | Estrutura funcional, mas cliente escreve diretamente em tabelas/Storage e também usa APIs | Escolher API como fronteira de escrita; manter Storage assinado |
 | Projetos e Tarefas | `ProjectsWorkspace` | `/api/projects` e Storage | Baixa sobreposição; módulo relativamente coeso | Preservar e retirar estilos inline gradualmente |
@@ -60,12 +57,12 @@ O banco é a principal fonte de dados, mas nem tudo exibido vem dele. Há rótul
 | Perfis e Permissões | `PermissionsWorkspace` | `/api/permissions`, `perfis` e usuários | Autoridade adequada, mas compartilha domínio com Usuários | Preservar como única fonte de autorização |
 | Financeiro | `FinanceWorkspace` | `/api/finance`, `/api/metas`, views e tabelas financeiras | Funcional, porém grande e com submódulos sobrepostos | Separar caixa, comissões, metas e vendas em serviços internos, mantendo uma aba |
 | Auditoria | `AuditWorkspace` | leitura direta de `erp_auditoria` | Coeso, mas acesso direto do cliente | Preferir API/RPC paginada e autorizada |
-| Chat ao Vivo | `LiveChatWorkspace` | `/api/live-chat`, `/api/crm`, `/api/approaches` | Sobrepõe o chat embutido no CRM e as conversas NCRM/F2 | Escolher um componente e serviço canônicos de conversa |
+| Chat ao Vivo | `LiveChatWorkspace` | `/api/live-chat`, `/api/agenda`, `/api/approaches` | Serviço próprio; conversa contextual do F2 usa `/api/funil2/conversa` | Preservar fronteiras explícitas |
 | Disparos | `CampaignWorkspace` | `/api/campaigns`, `/api/approaches` | Mantém lógica de origem/destino e criação de abordagens dentro da própria tela | Tornar funil/etapa parâmetros do bloco, sem dependência estrutural |
-| Financiamento | `LegacyModuleWorkspace` | host legado | Tela ainda depende da aplicação antiga | Migrar ou remover do menu; não manter ponte indefinidamente |
-| Base de conhecimento | `LegacyModuleWorkspace` | host legado | Legado explícito | Migrar conteúdo para Agentes/Base canônica ou remover |
+| Financiamento | `FinancingWorkspace` | `/api/financiamento`, `financiamento_fichas` | Nativo, com JWT e RLS | Preservar |
+| Base de conhecimento | redireciona para Agentes | catálogo/treinamento de agentes | Autoridade única | Preservar redirecionamento |
 | Configurações | `SettingsWorkspace` → `ConnectionsWorkspace` | RPC `wa_v7_painel`, Edge Function `dapi-qr` | Limpeza concluída; uma responsabilidade | Preservar somente conexões |
-| Ajuda | `LegacyModuleWorkspace` | host legado | Legado explícito | Recriar ajuda mínima baseada nos módulos oficiais e retirar host legado |
+| Ajuda | workspace nativo | rotas e módulos oficiais | Sem runtime legado | Preservar |
 | Cadastro público | página própria | convite/Edge Function | Fluxo isolado | Preservar após auditoria de autorização |
 | Fichas/agenda públicas | páginas por token | APIs públicas específicas | Fluxos isolados, dados sensíveis | Preservar com revisão de expiração, escopo e logs |
 
@@ -111,7 +108,7 @@ O banco é a principal fonte de dados, mas nem tudo exibido vem dele. Há rótul
 - A fonte Quicksand é importada em dois lugares.
 - Folhas como `meu-dia-filtros.css`, `pescado-sem-prazo.css` e `esteira-rolagem.css` ainda documentam uma antiga injeção `FUNIL2_CSS`, embora o CSS já tenha sido convertido para arquivo estático.
 - Classes genéricas como `.active`, `.on`, `.ok`, `.danger`, `.green`, `.orange`, `.wide` aparecem muitas vezes e têm risco alto de colisão global.
-- Desktop e mobile usam folhas separadas mais uma camada `mobile-overrides.css`; isso ainda é uma cascata, mesmo após remover três folhas históricas.
+- Desktop e mobile usam folhas separadas por responsabilidade; a camada posterior `mobile-overrides.css` foi eliminada.
 
 ## Banco: itens claramente legados ou vazios
 
@@ -396,7 +393,13 @@ Ajuda, Base de Conhecimento e Financiamento deixaram de montar `LegacyModuleWork
 
 Financiamento ganhou API e workspace nativos. A API valida o JWT real e consulta `financiamento_fichas` com o cliente do usuário, preservando a política RLS que limita cada corretor às próprias fichas e libera a administração. A interface exibe somente campos persistidos, status derivado de datas/dados reais e o link público seguro quando ele existe. As simulações decorativas do HTML antigo não foram copiadas, pois não possuíam tabela nem integração bancária persistida.
 
-O banco possuía três fichas no corte: duas com dados preenchidos e uma com link público. Nenhuma ficha ou dado pessoal foi removido. O runtime original permanece isolado apenas na rota explícita `/original`; a retirada física de seus arquivos, do adaptador `legacy-crm-actions.js` e de `/api/crm` passa a ser um lote destrutivo separado, depois da validação desta substituição em produção.
+O banco possuía três fichas no corte: duas com dados preenchidos e uma com link público. Nenhuma ficha ou dado pessoal foi removido. Após a validação das telas nativas em produção, a rota `/original`, o host, os runtimes HTML, os assets exclusivos, o adaptador `legacy-crm-actions.js`, seus geradores e a API geral `/api/crm` foram removidos fisicamente. `/api/crm/sales` foi preservada como contrato da Esteira de Vendas.
+
+## Execução — retirada física do legado e consolidação móvel (14/08/2026)
+
+Foram eliminadas mais de 26 mil linhas ligadas ao runtime original, além de aproximadamente 700 KB de fontes, bundles e imagem exclusivos. O projeto não possui mais rota `/original`, iframe legado, gerador do HTML antigo nem endpoint geral `/api/crm`.
+
+`mobile-overrides.css` também foi removido. As regras realmente usadas foram incorporadas diretamente às autoridades correspondentes: shell em `app-mobile.css`, Agenda em `tela-agenda.css` e Avisos em `tela-avisos.css`. Seletores dos CRMs aposentados e hacks visuais sem componente foram descartados, evitando nova cascata posterior.
 
 ## Execução — remoção dos estilos móveis do CRM aposentado (14/08/2026)
 
