@@ -9,7 +9,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
 const ler = (p) => readFileSync(new URL(p, import.meta.url), "utf8");
-const css = ler("../app/features/crm-nova-era-3/estilos.ts");
+const css = ler("../app/styles/crm-nova-era.css");
 const globais = ler("../app/globals.css");
 
 test("a visao oficial aninhada nao herda o zoom da casca duas vezes", () => {

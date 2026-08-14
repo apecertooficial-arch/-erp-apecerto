@@ -11,13 +11,11 @@
  * - Persiste a última escolha por usuário (localStorage), sem afetar os demais.
  * - Default: "Funil atual" (CRM de produção inalterado).
  *
- * CELULAR: monta a TelaCrmMobile, no desenho do protótipo. Antes, celular e
- * desktop caíam os dois no Crm3Workspace, que foi feito para tela grande.
+ * CELULAR: monta o Funil2Mobile; desktop monta o workspace oficial do CRM 3.0.
  *
  * DEEP LINK VENCE A VISTA. Ver o comentário de `deepLink` abaixo.
  */
 import { useEffect, useState, type ReactNode } from "react";
-import { NOVA_CRM_CSS } from "./styles";
 import { crmNovaEraLiberado } from "./featureFlag";
 import { Crm3Workspace } from "../crm-nova-era-3/Crm3Workspace";
 import { useEhCelular } from "../system/useFormato";
@@ -37,8 +35,8 @@ function chave(userId: string | null) {
  * `?chat=` (a conversa) só existe dentro do CrmWorkspace — em qualquer
  * formato de tela, é para lá que ele vai.
  *
- * `?lead=` (a ficha) tem duas casas: no desktop é o CrmWorkspace; no celular
- * é a FichaLeadMobile, que a TelaCrmMobile abre lendo este mesmo parâmetro.
+ * `?lead=` (a ficha) abre no CrmWorkspace no desktop e segue para o fluxo
+ * responsivo oficial no celular.
  * É o link que o PUSH de lead novo carrega — mandar o corretor para o CRM de
  * desktop no celular era recarga de página + ~1,8 MB de /api/crm + um
  * `if (!deal) return;` mudo quando o negócio não estava naquele payload. */
@@ -118,8 +116,8 @@ export function CrmNovaEraGate({
   /* DEEP LINK: lido UMA vez, na montagem, e guardado.
    *
    * Por que guardar em vez de reler a URL a cada render: quem consome o deep
-   * link apaga a query (a página de CRM no desktop, a TelaCrmMobile no
-   * celular), para o botão voltar não reabrir o mesmo lead. Se este valor
+   * link apaga a query depois de consumi-la, para o botão voltar não reabrir
+   * o mesmo lead. Se este valor
    * fosse relido, a ficha abriria e a tela inteira se trocaria por baixo
    * dela no mesmo instante. */
   const [deepLink] = useState(lerDeepLink);
@@ -174,9 +172,8 @@ export function CrmNovaEraGate({
 
   /* ---------------------- FICHA PEDIDA (?lead=) ----------------------
      No desktop, a ficha é a do CrmWorkspace — mesmo caminho da conversa.
-     No celular, quem sabe abrir a ficha é a TelaCrmMobile: deixa o fluxo
-     SEGUIR para o ramo do celular logo abaixo, onde ela monta e lê o
-     parâmetro. Enquanto a largura é desconhecida (primeiro quadro), não
+     No celular, o fluxo segue para a experiência responsiva oficial. Enquanto
+     a largura é desconhecida (primeiro quadro), não
      monta nada: chutar desktop dispararia o download de ~1,8 MB de
      /api/crm num aparelho que nunca vai usar essa tela. */
   if (deepLink.lead) {
@@ -190,7 +187,6 @@ export function CrmNovaEraGate({
   if (entrouNoWorkspace3 && podeLive) {
     return (
       <div style={{ display: "flex", flexDirection: "column", height: "100%", minHeight: 0 }}>
-        <style>{NOVA_CRM_CSS}</style>
         <Crm3Workspace
           accessToken={accessToken as string}
           profile={{ userId: profile!.userId as string, role: profile?.role ?? "corretor", name: profile?.name ?? "Corretor" }}
@@ -205,7 +201,7 @@ export function CrmNovaEraGate({
   }
 
   /* ------------------------------ CELULAR ------------------------------
-     Tela própria, no desenho do protótipo. A barra "Funil atual / CRM Nova
+     Experiência responsiva oficial. A barra "Funil atual / CRM Nova
      Era 3.0" NÃO aparece aqui: é vocabulário de piloto, e o pacote de design
      proíbe isso na tela do corretor. No desktop ela continua, porque lá é
      ferramenta de quem está comparando as duas versões. */
@@ -222,7 +218,6 @@ export function CrmNovaEraGate({
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", minHeight: 0 }}>
-      <style>{NOVA_CRM_CSS}</style>
 
       {/* A barra de comparação aposentou-se com o CRM antigo: o 3.0 é o CRM.
           O antigo ainda abre por ?crm=atual (emergência da gestão) e, só

@@ -11,13 +11,12 @@ import "./styles/tela-crm.css";
 import "./styles/tela-avisos.css";
 import "./styles/tela-agenda.css";
 import "./styles/tela-agenda-mes.css";
-import "./styles/telas-prototipo.css";
-/* Correções vindas de uso real: cabeçalho em dobro, WhatsApp verde, ícone do
-   CRM e tamanho de fonte. Depois de todas para vencer sem seletor extra. */
-import "./styles/correcoes-celular.css";
-/* A ÚLTIMA: a ação de gestão é a exceção da regra do verde, então precisa
-   vir depois de quem pinta de verde. */
-import "./styles/tela-gestao-card.css";
+/* Única camada de ajustes móveis, carregada depois das folhas de tela. */
+import "./styles/mobile-overrides.css";
+/* Módulos ativos antes injetados via <style>; ficam por último para manter a cascata. */
+import "./styles/crm-nova-era.css";
+import "./styles/funil-2.css";
+import "./styles/performance.css";
 import { RegistroPwa } from "./components/RegistroPwa";
 
 export const metadata: Metadata = {

@@ -24,8 +24,6 @@
  */
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { CrmWorkspace, LeadChatDrawer, type Deal as DealLegado, type Lead as LeadLegado } from "../crm/CrmWorkspace";
-import { CRM3_CSS } from "./estilos";
-import { CRM3_CSS_FASE1 } from "./estilos-fase1";
 import { abaDaUrl, abasVisiveis, definicaoDaAba, podeVerGestao, type Aba3 } from "./lib/navegacao";
 import type { Momento } from "./lib/momentos";
 import { slaDoLead } from "./lib/sla3";
@@ -409,8 +407,6 @@ export function Crm3Workspace({ accessToken, profile }: { accessToken: string; p
 
   return (
     <div className="crm-v2 ncrm3">
-      <style>{CRM3_CSS}{CRM3_CSS_FASE1}</style>
-
       {/* Topbar do protótipo: seletor, nota do piloto, busca global e novo lead. */}
       <TopbarCrm3
         busca={busca}
