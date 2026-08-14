@@ -151,8 +151,9 @@ export function AgentTrainingWorkspace({ accessToken }: { accessToken: string })
         <div>
           <span className="lab-kicker">TREINAMENTO DE AGENTES DE IA</span>
           <h1>Laboratório da Sara &amp; agentes</h1>
-          <p>Instrução, conhecimento, ferramentas, testes e monitoramento — cada agente tratado como um profissional treinado.</p>
+          <p>Treine instrução, conhecimento e ferramentas aqui. Na Central de Automações, escolha quando cada agente participa de um fluxo.</p>
         </div>
+        <a className="lab-automation-link" href="/automacoes">Usar na Central de Automações →</a>
       </header>
 
       {notice && <button className="lab-notice" type="button" onClick={() => setNotice(null)}>{notice} ×</button>}

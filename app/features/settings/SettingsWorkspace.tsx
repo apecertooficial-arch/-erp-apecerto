@@ -10,18 +10,5 @@ import { ConnectionsWorkspace } from "./ConnectionsWorkspace";
 export function SettingsWorkspace({ accessToken }: {
   accessToken: string;
 }) {
-  return (
-    <div className="settings-workspace settings-connections-only">
-      <header className="workspace-top settings-top">
-        <div>
-          <span className="settings-kicker">CONEXÕES</span>
-          <h1>WhatsApp</h1>
-          <p>Conecte e acompanhe as instâncias usadas pelos corretores.</p>
-        </div>
-      </header>
-      <section className="settings-embed">
-        <ConnectionsWorkspace accessToken={accessToken} />
-      </section>
-    </div>
-  );
+  return <ConnectionsWorkspace accessToken={accessToken} />;
 }
