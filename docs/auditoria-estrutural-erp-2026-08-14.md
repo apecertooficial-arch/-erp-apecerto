@@ -349,3 +349,11 @@ O lint do aplicativo Next/React foi separado da validação das Edge Functions D
 No aplicativo, os avisos objetivos foram reduzidos de 42 para 11, ficando somente imagens deliberadamente externas/dinâmicas e três avisos em testes históricos NCRM. Foram removidos imports, ícones, helpers e componentes sem consumidor, inclusive uma segunda Esteira de Vendas embutida e inalcançável no Funil 2.0. Dependências instáveis de hooks em Agenda, Permissões e Esteira foram corrigidas.
 
 O runtime Deno não está instalado nesta estação; portanto, o gate das Edge Functions está configurado, mas sua execução local ainda depende da instalação controlada do Deno ou de CI específica. Essa pendência permanece explícita e não é tratada como aprovação automática das funções.
+
+## Execução — primeira correção crítica do Supabase (14/08/2026)
+
+O inventário ao vivo encontrou 37 Edge Functions ativas, 37 jobs `pg_cron`, 106 funções públicas com prefixo `ncrm_` e 68 com prefixo `f2_`. Essa diferença confirma que a retirada visual do CRM antigo não equivale à retirada física de toda a infraestrutura; cada objeto precisa ser classificado por consumidor antes da exclusão.
+
+O Security Advisor apontou 15 erros. Sete eram tabelas internas sem RLS e com grants padrão amplos para `anon` e `authenticated`: filas Sara/F2, tabelas de soltura, diagnóstico de presença, tipos de notificação e o backup da migração Pipe 2 → Funil 2.0. A migration `20260814200000_proteger_tabelas_internas_sem_rls.sql` ativou RLS sem política pública nas sete tabelas. Nenhuma linha foi removida; `postgres`, `service_role` e funções privilegiadas continuam operando.
+
+Após aplicação e conferência direta no projeto, os erros do Advisor caíram de 15 para 8. Os oito restantes são views `SECURITY DEFINER`. Elas não serão convertidas em bloco: `vw_ranking_vgv` e `vw_sla_leads` têm consumidores reais, e `site_produtos` atende catálogo público. A troca para `security_invoker` precisa ser feita view por view com teste de RLS e contrato do consumidor.
