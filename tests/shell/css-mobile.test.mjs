@@ -6,6 +6,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
 const css = readFileSync(new URL("../../app/styles/app-mobile.css", import.meta.url), "utf8");
+const layout = readFileSync(new URL("../../app/layout.tsx", import.meta.url), "utf8");
 const bloco = css.slice(css.indexOf("CASCA DO APLICATIVO"));
 
 test("elementos mobile ficam ocultos por padrao (desktop intacto)", () => {
@@ -70,4 +71,8 @@ test("folha móvel não carrega seletores do CRM Nova Era aposentado", () => {
   assert.doesNotMatch(css, /\.nova-crm-(?:board|card|col|etapas|panel)/);
   assert.doesNotMatch(css, /\.ncrm-dia-(?:acao|ajuda|busca|card|mais)/);
   assert.match(css, /\.ncrm-wa-principal/, "o botão WhatsApp compartilhado com o F2 deve permanecer");
+});
+
+test("layout não carrega a folha órfã do protótipo CRM móvel", () => {
+  assert.doesNotMatch(layout, /tela-crm\.css/);
 });

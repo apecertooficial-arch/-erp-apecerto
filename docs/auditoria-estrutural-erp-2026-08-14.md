@@ -401,3 +401,5 @@ O banco possuía três fichas no corte: duas com dados preenchidos e uma com lin
 Uma segunda varredura encontrou 177 linhas de CRM Nova Era, ficha NCRM e notificações NCRM ainda dentro da folha móvel ativa `app-mobile.css`. A busca por cada classe confirmou ausência de elementos correspondentes no código TSX atual; as notificações oficiais usam o namespace `av-*` e o CRM oficial usa o Funil 2.0.
 
 Os blocos órfãos foram removidos, reduzindo a folha de 617 para 440 linhas. O único contrato compartilhado, `.ncrm-wa-principal`, foi preservado porque `BotaoWhatsApp` do Funil 2.0 ainda o utiliza para abrir o aplicativo nativo. Um teste impede o retorno dos seletores Nova CRM e comprova a permanência do botão oficial.
+
+A folha global `tela-crm.css`, com outras 420 linhas, também foi eliminada integralmente. Todos os seus namespaces exclusivos (`cm-*` e `fl-*`) pertenciam a um protótipo móvel que não possui componente TSX no aplicativo atual. O único seletor externo presente nela apenas escondia a navegação enquanto aquela ficha inexistente estivesse aberta. `tela-agenda.css` e `tela-avisos.css` foram preservadas por possuírem consumidores canônicos reais.

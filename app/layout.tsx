@@ -12,7 +12,6 @@ import "./styles/venda-ficha.css";
 /* Importar extrato: seção dentro do Fluxo de caixa. Autocontida sob
    .extrato-painel, pelos mesmos motivos da folha acima. */
 import "./styles/extrato-import.css";
-import "./styles/tela-crm.css";
 import "./styles/tela-avisos.css";
 import "./styles/tela-agenda.css";
 import "./styles/tela-agenda-mes.css";
