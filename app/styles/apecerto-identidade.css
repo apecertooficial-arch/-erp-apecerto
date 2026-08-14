@@ -169,8 +169,7 @@ body {
 
 /* Títulos na fonte de display, com o peso da marca. Sem mexer em tamanho:
    o tamanho já foi resolvido tela a tela e mudar aqui quebraria layout. */
-h1, h2, h3, h4, h5,
-.home-header h1 {
+h1, h2, h3, h4, h5 {
   font-family: var(--font-display);
   font-weight: var(--weight-bold);
   letter-spacing: var(--tracking-snug);
@@ -181,28 +180,10 @@ h1, h2, h3, h4, h5,
    SUPERFÍCIES E CANTOS — o "friendly, rounded" do design system.
    Só o que já é card no app; nada de regra genérica em div.
    ===================================================================== */
-.pc-card,
-.home-panel,
-.home-goal,
-.nova-crm-card,
-.ncrm-dia-card,
 .convite-instalar,
-.legacy-aviso,
 .modulo-sem-acesso {
   border-radius: var(--radius-lg);
   border-color: var(--border-soft);
-}
-
-.home-panel,
-.nova-crm-card {
-  box-shadow: var(--shadow-xs);
-}
-
-/* Chips, segmentos e contadores: pílula, como no protótipo. */
-.nova-crm-etapas > button,
-.ncrm-seg-mais,
-.ncrm-ficha-abas > button {
-  border-radius: var(--radius-pill);
 }
 
 /* =====================================================================
@@ -220,14 +201,6 @@ h1, h2, h3, h4, h5,
               transform var(--dur-fast) var(--ease-out);
 }
 .convite-instalar-ok:active { background: var(--ape-orange-700); transform: scale(.985); }
-
-/* WhatsApp continua verde. Decisão de produto, não de estética: é o botão
-   mais tocado do app e a cor é o que o corretor reconhece sem ler. */
-.ncrm-ficha-acao > a,
-.nova-crm-panel .ncrm-wa-principal {
-  background: var(--whatsapp);
-  color: #fff;
-}
 
 /* =====================================================================
    CASCA DO APLICATIVO
@@ -249,8 +222,7 @@ h1, h2, h3, h4, h5,
   .abn-badge, .amt-sino > b { background: var(--danger); }
 
   /* Folhas que sobem de baixo: canto grande, do design system. */
-  .app-mais-folha,
-  .ncrm-mais-folha > div { border-radius: var(--radius-xl) var(--radius-xl) 0 0; }
+  .app-mais-folha { border-radius: var(--radius-xl) var(--radius-xl) 0 0; }
 }
 
 /* =====================================================================

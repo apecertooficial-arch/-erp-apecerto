@@ -403,3 +403,5 @@ Uma segunda varredura encontrou 177 linhas de CRM Nova Era, ficha NCRM e notific
 Os blocos órfãos foram removidos, reduzindo a folha de 617 para 440 linhas. O único contrato compartilhado, `.ncrm-wa-principal`, foi preservado porque `BotaoWhatsApp` do Funil 2.0 ainda o utiliza para abrir o aplicativo nativo. Um teste impede o retorno dos seletores Nova CRM e comprova a permanência do botão oficial.
 
 A folha global `tela-crm.css`, com outras 420 linhas, também foi eliminada integralmente. Todos os seus namespaces exclusivos (`cm-*` e `fl-*`) pertenciam a um protótipo móvel que não possui componente TSX no aplicativo atual. O único seletor externo presente nela apenas escondia a navegação enquanto aquela ficha inexistente estivesse aberta. `tela-agenda.css` e `tela-avisos.css` foram preservadas por possuírem consumidores canônicos reais.
+
+Os mesmos namespaces aposentados foram retirados da folha de identidade, sem alterar tokens, tipografia global, foco, casca do aplicativo ou componentes atuais. O aviso/iframe de `LegacyModuleWorkspace`, agora sem qualquer página consumidora, também deixou de ocupar a folha móvel ativa.
