@@ -1,8 +1,48 @@
-// @ts-nocheck
-/* eslint-disable */
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+
+type AgentSummary = {
+  id: number; slug: string; nome: string; tipo: string; categoria: string | null;
+  modelo: string; status: string; versao_atual: number | null; ativo: boolean; missao: string | null;
+};
+type Agent = AgentSummary & { system_prompt: string | null };
+type Fonte = {
+  id: number; titulo: string; tipo: string | null; conteudo: string | null;
+  versao: string | null; situacao: string; responsavel: string | null; validade: string | null;
+};
+type FonteEdit = {
+  id: number | null; titulo: string; tipo: string; conteudo: string;
+  responsavel: string; versao: string; validade: string; situacao: string;
+};
+type Ferramenta = { id: number; slug: string; nome: string; tipo: string; requer_confirmacao: boolean; ativo: boolean };
+type Permissao = { ferramenta_id: number; habilitado: boolean; perfis_autorizados?: string[] | null };
+type Cenario = { id: number; pergunta: string; categoria: string | null; peso: number | null };
+type Avaliacao = { cenario_id: number; nota_auto: number | null; aprovado: boolean; regras_descumpridas: string[] | null };
+type FerramentaAcionada = { ferramenta: string; encontrados?: number };
+type Execucao = {
+  id: number; status: string; criado_em: string; ferramentas_acionadas: FerramentaAcionada[] | null;
+  fontes_consultadas: string[] | null; tokens_entrada: number | null; tokens_saida: number | null;
+  custo_usd: number | null; latencia_ms: number | null;
+};
+type AgentDetail = {
+  agente: Agent; fontes: Fonte[]; fonteLinks: number[]; ferramentas: Ferramenta[];
+  permissoes: Permissao[]; cenarios: Cenario[]; avaliacoes: Avaliacao[]; execucoes: Execucao[];
+};
+type TestResult = {
+  ferramentas?: FerramentaAcionada[]; fontes?: string[]; custo_usd?: number | null;
+  ms?: number | null; resposta?: string; reason?: string;
+};
+type BatteryResult = {
+  cenario_id: number; pergunta: string; categoria?: string | null; nota?: number | null;
+  aprovado?: boolean; regras?: string[];
+};
+type BatteryResponse = {
+  resultados?: BatteryResult[]; total_cenarios?: number; fim?: boolean; next_offset: number;
+};
+type AgentListResponse = { agentes: AgentSummary[] };
+
+const mensagemErro = (error: unknown) => error instanceof Error ? error.message : "Falha na operação.";
 
 const MODELOS = ["gpt-4o-mini", "gpt-4o"];
 const STATUS = [
@@ -13,35 +53,34 @@ const STATUS = [
   { v: "publicado", label: "Publicado" },
   { v: "arquivado", label: "Arquivado" },
 ];
-const brl = (n) => n == null ? "—" : n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-const usd6 = (n) => n == null ? "—" : "US$ " + Number(n).toFixed(6);
+const usd6 = (n: number | null | undefined) => n == null ? "—" : "US$ " + Number(n).toFixed(6);
 
 export function AgentTrainingWorkspace({ accessToken }: { accessToken: string }) {
-  const [agentes, setAgentes] = useState([]);
-  const [slug, setSlug] = useState(null);
-  const [detail, setDetail] = useState(null);
+  const [agentes, setAgentes] = useState<AgentSummary[]>([]);
+  const [slug, setSlug] = useState<string | null>(null);
+  const [detail, setDetail] = useState<AgentDetail | null>(null);
   const [tab, setTab] = useState("instrucao");
   const [busy, setBusy] = useState(false);
-  const [notice, setNotice] = useState(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   // editable fields
   const [form, setForm] = useState({ nome: "", missao: "", system_prompt: "", modelo: "gpt-4o-mini", status: "rascunho" });
 
   // playground
   const [testInput, setTestInput] = useState("");
-  const [testResult, setTestResult] = useState(null);
+  const [testResult, setTestResult] = useState<TestResult | null>(null);
   const [testing, setTesting] = useState(false);
 
   // bateria
   const [running, setRunning] = useState(false);
   const [progress, setProgress] = useState({ done: 0, total: 0 });
-  const [batResults, setBatResults] = useState([]);
+  const [batResults, setBatResults] = useState<BatteryResult[]>([]);
   const [showArq, setShowArq] = useState(false);
 
   // editor de fontes
-  const [fonteEdit, setFonteEdit] = useState(null);
+  const [fonteEdit, setFonteEdit] = useState<FonteEdit | null>(null);
 
-  const api = useCallback(async (method, path, body) => {
+  const api = useCallback(async <T,>(method: string, path: string, body?: Record<string, unknown>): Promise<T> => {
     const res = await fetch(path, {
       method,
       headers: { Authorization: `Bearer ${accessToken}`, ...(body ? { "Content-Type": "application/json" } : {}) },
@@ -49,11 +88,11 @@ export function AgentTrainingWorkspace({ accessToken }: { accessToken: string })
     });
     const payload = await res.json();
     if (!res.ok) throw new Error(payload.error || payload.detalhe || "Falha na operação.");
-    return payload;
+    return payload as T;
   }, [accessToken]);
 
   const loadList = useCallback(async () => {
-    const p = await api("GET", "/api/agentes");
+    const p = await api<AgentListResponse>("GET", "/api/agentes");
     setAgentes(p.agentes || []);
     if (!slug && p.agentes?.length) {
       const first = p.agentes.find((a) => a.slug === "sara") || p.agentes.find((a) => a.ativo) || p.agentes[0];
@@ -61,8 +100,8 @@ export function AgentTrainingWorkspace({ accessToken }: { accessToken: string })
     }
   }, [api, slug]);
 
-  const loadDetail = useCallback(async (s) => {
-    const p = await api("GET", `/api/agentes?slug=${encodeURIComponent(s)}`);
+  const loadDetail = useCallback(async (s: string) => {
+    const p = await api<AgentDetail>("GET", `/api/agentes?slug=${encodeURIComponent(s)}`);
     setDetail(p);
     setForm({
       nome: p.agente.nome || "",
@@ -74,24 +113,54 @@ export function AgentTrainingWorkspace({ accessToken }: { accessToken: string })
     setBatResults([]); setProgress({ done: 0, total: 0 }); setTestResult(null);
   }, [api]);
 
-  useEffect(() => { void loadList().catch((e) => setNotice(e.message)); }, []);
-  useEffect(() => { if (slug) void loadDetail(slug).catch((e) => setNotice(e.message)); }, [slug]);
+  useEffect(() => {
+    let active = true;
+    void api<AgentListResponse>("GET", "/api/agentes").then((p) => {
+      if (!active) return;
+      setAgentes(p.agentes || []);
+      if (!slug && p.agentes?.length) {
+        const first = p.agentes.find((a) => a.slug === "sara") || p.agentes.find((a) => a.ativo) || p.agentes[0];
+        setSlug(first.slug);
+      }
+    }).catch((e) => { if (active) setNotice(mensagemErro(e)); });
+    return () => { active = false; };
+  }, [api, slug]);
+  useEffect(() => {
+    if (!slug) return;
+    let active = true;
+    void api<AgentDetail>("GET", `/api/agentes?slug=${encodeURIComponent(slug)}`).then((p) => {
+      if (!active) return;
+      setDetail(p);
+      setForm({
+        nome: p.agente.nome || "",
+        missao: p.agente.missao || "",
+        system_prompt: p.agente.system_prompt || "",
+        modelo: p.agente.modelo || "gpt-4o-mini",
+        status: p.agente.status || "rascunho",
+      });
+      setBatResults([]);
+      setProgress({ done: 0, total: 0 });
+      setTestResult(null);
+    }).catch((e) => { if (active) setNotice(mensagemErro(e)); });
+    return () => { active = false; };
+  }, [api, slug]);
 
   const salvar = async () => {
+    if (!slug) return;
     setBusy(true); setNotice(null);
     try { await api("POST", "/api/agentes", { action: "salvar", slug, ...form }); await loadDetail(slug); await loadList(); setNotice("Alterações salvas."); }
-    catch (e) { setNotice(e.message); } finally { setBusy(false); }
+    catch (e) { setNotice(mensagemErro(e)); } finally { setBusy(false); }
   };
 
-  const toggleTool = async (ferramenta_id, habilitado) => {
-    if (!detail) return;
+  const toggleTool = async (ferramenta_id: number, habilitado: boolean) => {
+    if (!detail || !slug) return;
     setBusy(true); setNotice(null);
     try { await api("POST", "/api/agentes", { action: "toggleFerramenta", agente_id: detail.agente.id, ferramenta_id, habilitado }); await loadDetail(slug); }
-    catch (e) { setNotice(e.message); } finally { setBusy(false); }
+    catch (e) { setNotice(mensagemErro(e)); } finally { setBusy(false); }
   };
 
   const salvarFonte = async () => {
-    if (!fonteEdit?.titulo?.trim()) { setNotice("Informe o título da fonte."); return; }
+    if (!fonteEdit?.titulo.trim() || !detail || !slug) { setNotice("Informe o título da fonte."); return; }
     setBusy(true); setNotice(null);
     try {
       await api("POST", "/api/agentes", {
@@ -100,30 +169,33 @@ export function AgentTrainingWorkspace({ accessToken }: { accessToken: string })
         responsavel: fonteEdit.responsavel, versao: fonteEdit.versao, validade: fonteEdit.validade || null, situacao: fonteEdit.situacao,
       });
       setFonteEdit(null); await loadDetail(slug); setNotice("Fonte salva.");
-    } catch (e) { setNotice(e.message); } finally { setBusy(false); }
+    } catch (e) { setNotice(mensagemErro(e)); } finally { setBusy(false); }
   };
 
-  const vincularFonte = async (fonteId, vincular) => {
+  const vincularFonte = async (fonteId: number, vincular: boolean) => {
+    if (!detail || !slug) return;
     setBusy(true); setNotice(null);
     try { await api("POST", "/api/agentes", { action: "vincularFonte", agente_id: detail.agente.id, fonte_id: fonteId, vincular }); await loadDetail(slug); }
-    catch (e) { setNotice(e.message); } finally { setBusy(false); }
+    catch (e) { setNotice(mensagemErro(e)); } finally { setBusy(false); }
   };
 
   const testar = async () => {
-    if (!testInput.trim()) return;
+    if (!testInput.trim() || !slug) return;
     setTesting(true); setTestResult(null); setNotice(null);
-    try { const r = await api("POST", "/api/agentes", { action: "testar", slug, input: testInput.trim() }); setTestResult(r); }
-    catch (e) { setNotice(e.message); } finally { setTesting(false); }
+    try { const r = await api<TestResult>("POST", "/api/agentes", { action: "testar", slug, input: testInput.trim() }); setTestResult(r); }
+    catch (e) { setNotice(mensagemErro(e)); } finally { setTesting(false); }
   };
 
   const rodarBateria = async () => {
+    if (!slug) return;
     setRunning(true); setNotice(null); setBatResults([]);
     const total = detail?.cenarios?.length || 0;
     setProgress({ done: 0, total });
     try {
-      let offset = 0, acc = [];
+      let offset = 0;
+      let acc: BatteryResult[] = [];
       for (let guard = 0; guard < 40; guard++) {
-        const r = await api("POST", "/api/agentes", { action: "bateria", slug, offset, limit: 5 });
+        const r = await api<BatteryResponse>("POST", "/api/agentes", { action: "bateria", slug, offset, limit: 5 });
         acc = acc.concat(r.resultados || []);
         setBatResults([...acc]);
         setProgress({ done: acc.length, total: r.total_cenarios || total });
@@ -132,7 +204,7 @@ export function AgentTrainingWorkspace({ accessToken }: { accessToken: string })
       }
       await loadDetail(slug);
       setNotice("Bateria concluída.");
-    } catch (e) { setNotice(e.message); } finally { setRunning(false); }
+    } catch (e) { setNotice(mensagemErro(e)); } finally { setRunning(false); }
   };
 
   const resumo = useMemo(() => {
@@ -143,7 +215,7 @@ export function AgentTrainingWorkspace({ accessToken }: { accessToken: string })
     return { total: a.length, aprov, media, pct: Math.round((100 * aprov) / a.length) };
   }, [detail]);
 
-  const permOf = (fid) => (detail?.permissoes || []).find((p) => p.ferramenta_id === fid);
+  const permOf = (fid: number) => (detail?.permissoes || []).find((p) => p.ferramenta_id === fid);
 
   return (
     <div className="agents-lab">
@@ -163,7 +235,7 @@ export function AgentTrainingWorkspace({ accessToken }: { accessToken: string })
           {(() => {
             const ativos = agentes.filter((a) => a.ativo);
             const arquivados = agentes.filter((a) => !a.ativo);
-            const item = (a) => (
+            const item = (a: AgentSummary) => (
               <button key={a.slug} className={a.slug === slug ? "active" : ""} type="button" onClick={() => setSlug(a.slug)}>
                 <b>{a.nome}</b>
                 <em>
@@ -238,7 +310,10 @@ export function AgentTrainingWorkspace({ accessToken }: { accessToken: string })
                         </div>
                         <div className="lab-source-actions">
                           <span className={`badge ${f.situacao === "aprovada" ? "ok" : f.situacao === "arquivada" || f.situacao === "vencida" ? "bad" : "warn"}`}>{f.situacao}</span>
-                          <button type="button" className="mini" disabled={busy} onClick={() => setFonteEdit({ ...f, validade: f.validade || "" })}>Editar</button>
+                          <button type="button" className="mini" disabled={busy} onClick={() => setFonteEdit({
+                            id: f.id, titulo: f.titulo, tipo: f.tipo || "Documento", conteudo: f.conteudo || "",
+                            responsavel: f.responsavel || "", versao: f.versao || "", validade: f.validade || "", situacao: f.situacao,
+                          })}>Editar</button>
                           <button type="button" className={`toggle ${vinc ? "on" : ""}`} disabled={busy} onClick={() => vincularFonte(f.id, !vinc)}>{vinc ? "Vinculada" : "Vincular"}</button>
                         </div>
                       </article>

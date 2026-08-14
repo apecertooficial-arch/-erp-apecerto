@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { getBrowserSupabaseClient } from "../lib/supabase/browser";
 
 type Estado = "carregando" | "valido" | "invalido" | "usado" | "expirado" | "erro" | "pronto";
@@ -15,7 +16,7 @@ const MOTIVO_TEXTO: Record<string, string> = {
 export default function DefinirSenhaPage() {
   const [estado, setEstado] = useState<Estado>("carregando");
   const [nome, setNome] = useState<string | null>(null);
-  const [token, setToken] = useState("");
+  const [token] = useState(() => typeof window === "undefined" ? "" : new URLSearchParams(window.location.search).get("t") || "");
   const [senha, setSenha] = useState("");
   const [confirma, setConfirma] = useState("");
   const [mostrar, setMostrar] = useState(false);
@@ -29,18 +30,18 @@ export default function DefinirSenhaPage() {
   }
 
   useEffect(() => {
-    const t = new URLSearchParams(window.location.search).get("t") || "";
-    if (!t) { setEstado("invalido"); return; }
-    setToken(t);
+    if (!token) return;
     void (async () => {
       try {
-        const r = await invoke("validar", { token: t });
+        const r = await invoke("validar", { token });
         if (r.ok) { setNome(r.nome ?? null); setEstado("valido"); }
         else setEstado((r.motivo as Estado) || "invalido");
       } catch { setEstado("erro"); }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [token]);
+
+  const estadoVisivel: Estado = token ? estado : "invalido";
 
   async function salvar() {
     setAviso("");
@@ -60,12 +61,12 @@ export default function DefinirSenhaPage() {
       <section className="auth-card auth-card-v2" aria-labelledby="ds-title">
         <div className="auth-brand"><span><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M4 14 16 5l12 9v13H7V15" /><path d="m11 15 4 4 7-8" /></svg></span><strong>apê<span>certo</span></strong></div>
 
-        {estado === "carregando" && <div className="auth-welcome"><span>PORTAL DO CORRETOR</span><h2 id="ds-title">Abrindo seu acesso…</h2><p>Um instante enquanto validamos o seu link.</p></div>}
+        {estadoVisivel === "carregando" && <div className="auth-welcome"><span>PORTAL DO CORRETOR</span><h2 id="ds-title">Abrindo seu acesso…</h2><p>Um instante enquanto validamos o seu link.</p></div>}
 
-        {(estado === "invalido" || estado === "usado" || estado === "expirado" || estado === "erro") && (
+        {(estadoVisivel === "invalido" || estadoVisivel === "usado" || estadoVisivel === "expirado" || estadoVisivel === "erro") && (
           <>
-            <div className="auth-welcome"><span>PORTAL DO CORRETOR</span><h2 id="ds-title">Link indisponível</h2><p>{MOTIVO_TEXTO[estado]}</p></div>
-            <a className="primary-action" href="/" style={{ textAlign: "center", textDecoration: "none" }}>Ir para o login</a>
+            <div className="auth-welcome"><span>PORTAL DO CORRETOR</span><h2 id="ds-title">Link indisponível</h2><p>{MOTIVO_TEXTO[estadoVisivel]}</p></div>
+            <Link className="primary-action" href="/" style={{ textAlign: "center", textDecoration: "none" }}>Ir para o login</Link>
           </>
         )}
 
@@ -85,7 +86,7 @@ export default function DefinirSenhaPage() {
         {estado === "pronto" && (
           <>
             <div className="auth-welcome"><span>PORTAL DO CORRETOR</span><h2 id="ds-title">Senha criada! ✅</h2><p>{nome ? `Pronto, ${nome}. ` : ""}Agora é só entrar no ERP com o seu e-mail e a senha que você acabou de criar.</p></div>
-            <a className="primary-action" href="/" style={{ textAlign: "center", textDecoration: "none" }}>Ir para o login</a>
+            <Link className="primary-action" href="/" style={{ textAlign: "center", textDecoration: "none" }}>Ir para o login</Link>
           </>
         )}
       </section>

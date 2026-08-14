@@ -118,7 +118,6 @@ export function LiveChatWorkspace({ accessToken, initialLeadId = null, onInitial
   }, [data, contact?.telefone, selectedId, contactById]);
 
   useEffect(() => { setInstanceId(dapi?.id ?? null); }, [dapi?.id]);
-  useEffect(() => { void loadScheduled(lead?.id ?? null); }, [lead?.id]);
   const isUnanswered = (item: Conversation) => isOutgoing(data?.latest[item.id]?.direcao || "");
   const isCritical = (item: Conversation) => {
     const latest = data?.latest[item.id];
@@ -166,6 +165,7 @@ export function LiveChatWorkspace({ accessToken, initialLeadId = null, onInitial
       setScheduled(result.agendadas ?? []);
     } catch { setScheduled([]); }
   };
+  useEffect(() => { void loadScheduled(lead?.id ?? null); }, [lead?.id]);
   const cancelScheduled = async (id: number) => {
     try {
       await fetch("/api/live-chat", { method: "POST", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify({ action: "cancelScheduled", scheduledId: id }) });
@@ -337,7 +337,6 @@ export function QuickActionModal({ action, lead, deal, brokers, products, gerent
         setDisp({ loading: false, conflitos: result.conflitos ?? [], gerenteNome: gname });
       }).catch(() => { if (alive) setDisp(null); });
     return () => { alive = false; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [action, accessToken, date, startTime, endTime, corretorId]);
   const config: Record<QuickAction, { eyebrow: string; title: string; description: string; submit: string }> = {
     callReminder: { eyebrow: "AGENDA COMERCIAL", title: "Lembrete de ligação", description: "Cria um lembrete no CRM para este lead.", submit: "Salvar lembrete" },
