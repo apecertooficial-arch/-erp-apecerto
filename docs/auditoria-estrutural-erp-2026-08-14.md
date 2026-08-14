@@ -387,3 +387,11 @@ As 37 Edge Functions e os 37 jobs `pg_cron` foram confrontados com código impla
 `datacrazy-sync` já era um stub implantado que somente respondia como desativado. Mesmo assim, quatro crons continuavam chamando-o por HTTP e armazenavam um token antigo dentro do texto do comando. A migration `20260814220000_neutralizar_crons_datacrazy_desativados.sql` neutralizou somente esses quatro jobs pela API oficial `cron.alter_job`, preservando nomes e agendas para auditoria, mas substituindo o comando por operação inerte e definindo `active=false`.
 
 Verificação ao vivo: os quatro jobs estão inativos, sem token e sem URL da Edge; o total ativo caiu de 37 para 33. Nenhum cron do Funil 2.0, distribuição, guardião, recall ou pesca foi alterado. `distribuir-lead` e `ncrm-sara-observer` permanecem candidatos a aposentadoria, mas não foram excluídos: ainda é necessário fechar a prova de ausência de chamadores externos e obter autorização destrutiva exata para os objetos implantados.
+
+## Execução — substituição das três telas operacionais legadas (14/08/2026)
+
+Ajuda, Base de Conhecimento e Financiamento deixaram de montar `LegacyModuleWorkspace` e o iframe de `legacy-runtime.html`. Base de Conhecimento agora converge para Agentes de IA, que é a autoridade definida para treinamento, fontes, ferramentas e avaliação. Ajuda ganhou uma tela nativa curta, ligada somente aos módulos oficiais atuais.
+
+Financiamento ganhou API e workspace nativos. A API valida o JWT real e consulta `financiamento_fichas` com o cliente do usuário, preservando a política RLS que limita cada corretor às próprias fichas e libera a administração. A interface exibe somente campos persistidos, status derivado de datas/dados reais e o link público seguro quando ele existe. As simulações decorativas do HTML antigo não foram copiadas, pois não possuíam tabela nem integração bancária persistida.
+
+O banco possuía três fichas no corte: duas com dados preenchidos e uma com link público. Nenhuma ficha ou dado pessoal foi removido. O runtime original permanece isolado apenas na rota explícita `/original`; a retirada física de seus arquivos, do adaptador `legacy-crm-actions.js` e de `/api/crm` passa a ser um lote destrutivo separado, depois da validação desta substituição em produção.

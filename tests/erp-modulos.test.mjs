@@ -119,12 +119,22 @@ test("DESKTOP INTACTO: o bloco inteiro esta sob max-width", () => {
   assert.ok(!/@media \(min-width/.test(modulos), "o bloco nao pode alterar telas grandes");
 });
 
-/* -------------------- Modulo legado -------------------- */
+/* -------------------- Corte do runtime legado -------------------- */
 
-test("modulo legado avisa e oferece a versao completa, sem se esconder", () => {
-  const legado = readFileSync(join(raizApp, "features/system/LegacyModuleWorkspace.tsx"), "utf8");
-  assert.ok(/Abrir versão completa/.test(legado), "precisa oferecer a versao completa");
-  assert.ok(/href="\/original"/.test(legado), "o link precisa apontar para uma rota que existe");
-  assert.ok(/<iframe/.test(legado), "o modulo continua acessivel, nao escondido");
-  assert.ok(css.includes(".legacy-aviso { display: none; }"), "o aviso nao aparece no desktop");
+test("Ajuda, Conhecimento e Financiamento não montam o runtime legado", () => {
+  const paginas = ["ajuda", "conhecimento", "financiamento"].map((rota) =>
+    readFileSync(join(raizApp, `(erp)/${rota}/page.tsx`), "utf8"),
+  );
+  for (const pagina of paginas) assert.doesNotMatch(pagina, /LegacyModuleWorkspace|legacy-runtime/);
+
+  assert.match(paginas[1], /redirect\("\/agentes-ia"\)/);
+  assert.match(paginas[2], /FinancingWorkspace/);
+});
+
+test("Financiamento lê fichas reais com o JWT e respeita RLS", () => {
+  const api = readFileSync(join(raizApp, "api/financiamento/route.ts"), "utf8");
+  assert.match(api, /createServerSupabaseClient\(token\)/);
+  assert.match(api, /auth\.getUser\(token\)/);
+  assert.match(api, /from\("financiamento_fichas"\)/);
+  assert.doesNotMatch(api, /service.?role/i);
 });
