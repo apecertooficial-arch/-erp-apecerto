@@ -297,3 +297,209 @@ a.md-acao:active { background: #1FB855; }
   .md-acao, .convite-instalar-ok { transition: none; }
   .md-acao:active, .convite-instalar-ok:active { transform: none; }
 }
+
+/* ---------- Aviso de push ----------
+   Aparece em QUALQUER largura: antes reaproveitava .convite-instalar, que e
+   mobile-only (display:none acima de 900px em app-mobile.css) -- no desktop o
+   cartao existia no DOM e ficava invisivel, entao ninguem clicava, o navegador
+   nunca pedia permissao e nao havia inscricao.
+
+   Ancorado a DIREITA e acima do widget da Sara: a esquerda ele cobria o menu
+   lateral. Some sozinho quando a inscricao esta feita (vira .aviso-push-ok). */
+.aviso-push-convite,
+.aviso-push-ok {
+  position: fixed; right: 20px; bottom: 96px; z-index: 9000;
+  width: min(330px, calc(100vw - 40px));
+  padding: 16px 18px;
+  border: 1px solid rgba(0,0,0,.07); border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 12px 32px rgba(23,16,10,.16), 0 2px 6px rgba(23,16,10,.06);
+  font-family: inherit; color: #1c1917;
+  animation: aviso-push-entra .32s cubic-bezier(.2,.8,.3,1) both;
+}
+@keyframes aviso-push-entra {
+  from { opacity: 0; transform: translateY(10px) scale(.98); }
+  to   { opacity: 1; transform: none; }
+}
+
+.aviso-push-convite strong {
+  display: flex; align-items: center; gap: 7px;
+  font-size: 14.5px; font-weight: 700; line-height: 1.25; margin: 0 0 6px;
+}
+.aviso-push-convite p {
+  margin: 0; font-size: 12.5px; line-height: 1.5; color: #6b6259;
+}
+
+.aviso-push-acoes { display: flex; gap: 8px; margin-top: 14px; }
+.aviso-push-btn {
+  flex: 1 1 auto;
+  display: inline-flex; align-items: center; justify-content: center;
+  min-height: 38px; padding: 0 16px;
+  border: 0; border-radius: 10px;
+  background: var(--ape-orange-600, #f97316); color: #fff;
+  font-family: inherit; font-size: 13.5px; font-weight: 600; line-height: 1;
+  white-space: nowrap; cursor: pointer;
+  transition: filter .15s ease, transform .12s ease;
+}
+.aviso-push-btn:hover:not(:disabled) { filter: brightness(1.06); }
+.aviso-push-btn:active:not(:disabled) { transform: scale(.985); }
+.aviso-push-btn:disabled { opacity: .6; cursor: default; }
+
+/* Estado ligado: confirmacao discreta, some da frente do trabalho. */
+.aviso-push-ok {
+  display: flex; align-items: center; gap: 11px;
+  padding: 13px 16px; font-size: 12.5px;
+}
+.aviso-push-ok > span[aria-hidden] {
+  flex: 0 0 auto; width: 24px; height: 24px; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: #dcfce7; color: #15803d; font-size: 13px; font-weight: 700;
+}
+.aviso-push-ok strong { display: block; font-size: 13px; font-weight: 650; }
+.aviso-push-ok p { margin: 2px 0 0; color: #6b6259; font-size: 12px; line-height: 1.4; }
+
+@media (max-width: 900px) {
+  .aviso-push-convite, .aviso-push-ok {
+    left: 12px; right: 12px; bottom: 84px; width: auto;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .aviso-push-convite, .aviso-push-ok { animation: none; }
+  .aviso-push-btn { transition: none; }
+  .aviso-push-btn:active:not(:disabled) { transform: none; }
+}
+
+/* Confirmacao some sozinha: fica 5s e sai. Sem isso o cartao vira mobilia. */
+.aviso-push-some { animation: aviso-push-entra .32s cubic-bezier(.2,.8,.3,1) both, aviso-push-sai .45s ease-in 5s both; }
+@keyframes aviso-push-sai { to { opacity: 0; transform: translateY(8px) scale(.98); } }
+
+.aviso-push-convite { padding-right: 40px; }
+.aviso-push-fechar {
+  position: absolute; top: 10px; right: 10px;
+  width: 26px; height: 26px; padding: 0; border: 0; border-radius: 8px;
+  background: transparent; color: #a8a29e; cursor: pointer;
+  font-size: 19px; line-height: 1; font-family: inherit;
+}
+.aviso-push-fechar:hover { background: rgba(0,0,0,.05); color: #57534e; }
+
+@media (prefers-reduced-motion: reduce) {
+  .aviso-push-some { animation: none; }
+}
+
+/* ---------- Escolha do som de aviso ---------- */
+.som-aviso { max-width: 560px; }
+.som-aviso h3 { margin: 0 0 4px; font-size: 15px; font-weight: 700; }
+.som-aviso-ajuda { margin: 0 0 14px; font-size: 12.5px; line-height: 1.5; color: #6b6259; }
+.som-aviso-lista { display: grid; gap: 8px; }
+.som-aviso-item {
+  display: flex; align-items: center; gap: 12px; width: 100%;
+  padding: 12px 14px; border: 1px solid rgba(0,0,0,.09); border-radius: 12px;
+  background: #fff; cursor: pointer; text-align: left; font-family: inherit;
+  transition: border-color .15s ease, background .15s ease;
+}
+.som-aviso-item:hover { border-color: rgba(0,0,0,.2); background: #fcfbfa; }
+.som-aviso-item-ativo { border-color: var(--ape-orange-600, #f97316); background: #fff7ed; }
+.som-aviso-play {
+  flex: 0 0 auto; width: 30px; height: 30px; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--ape-orange-600, #f97316); color: #fff; font-size: 11px;
+}
+.som-aviso-txt { flex: 1 1 auto; min-width: 0; }
+.som-aviso-txt strong { display: block; font-size: 13.5px; }
+.som-aviso-txt small { display: block; font-size: 12px; color: #6b6259; margin-top: 2px; }
+.som-aviso-check { flex: 0 0 auto; color: var(--ape-orange-600, #f97316); font-weight: 700; }
+.som-aviso-volume {
+  display: flex; align-items: center; gap: 10px; margin-top: 14px; font-size: 12.5px;
+}
+.som-aviso-volume input { flex: 1 1 auto; accent-color: var(--ape-orange-600, #f97316); }
+.som-aviso-nota { margin: 14px 0 0; font-size: 11.5px; line-height: 1.5; color: #8a8178; }
+
+/* ---------- Aviso dentro da tela ----------
+   A notificacao do sistema depende de macOS/Windows deixarem passar. Este nao:
+   se o ApeCerto esta aberto, o corretor ve o aviso em qualquer modulo. */
+.aviso-tela-pilha {
+  position: fixed; top: 16px; right: 16px; z-index: 9500;
+  display: flex; flex-direction: column; gap: 8px;
+  width: min(360px, calc(100vw - 32px));
+}
+.aviso-tela {
+  display: flex; align-items: center; gap: 12px; width: 100%;
+  padding: 13px 14px; border: 0; border-radius: 14px;
+  background: #1c1917; color: #fff; text-align: left;
+  font-family: inherit; cursor: pointer;
+  box-shadow: 0 14px 34px rgba(0,0,0,.28);
+  animation: aviso-tela-entra .28s cubic-bezier(.2,.8,.3,1) both;
+}
+@keyframes aviso-tela-entra { from { opacity:0; transform: translateX(16px) } to { opacity:1; transform:none } }
+.aviso-tela-ico { flex: 0 0 auto; font-size: 17px; }
+.aviso-tela-txt { flex: 1 1 auto; min-width: 0; }
+.aviso-tela-txt strong { display: block; font-size: 13.5px; font-weight: 650; line-height: 1.3; }
+.aviso-tela-txt small { display: block; font-size: 12px; opacity: .78; margin-top: 2px; line-height: 1.35; }
+.aviso-tela-x { flex: 0 0 auto; font-size: 18px; opacity: .5; padding: 0 2px; }
+.aviso-tela-x:hover { opacity: 1; }
+
+@media (max-width: 900px) {
+  .aviso-tela-pilha { top: 10px; left: 10px; right: 10px; width: auto; }
+}
+@media (prefers-reduced-motion: reduce) { .aviso-tela { animation: none; } }
+
+/* ---------- Agendar visita pelo celular ---------- */
+.f2m-agendar-abrir {
+  width: 100%; margin-top: 10px; min-height: 46px; padding: 0 16px;
+  border: 1px solid rgba(0,0,0,.12); border-radius: 12px; background: #fff;
+  font-family: inherit; font-size: 14px; font-weight: 600; color: #1c1917; cursor: pointer;
+}
+.f2m-agendar-abrir:active { background: #f7f5f3; }
+.f2m-agendar { margin-top: 10px; padding: 14px; border: 1px solid rgba(0,0,0,.1); border-radius: 14px; background: #fff; }
+.f2m-agendar h3 { margin: 0 0 10px; font-size: 14.5px; font-weight: 700; }
+.f2m-agendar label { display: block; font-size: 12.5px; font-weight: 600; margin-bottom: 10px; color: #57534e; }
+.f2m-agendar label small { font-weight: 400; opacity: .7; }
+.f2m-agendar input {
+  display: block; width: 100%; margin-top: 5px; min-height: 44px; padding: 0 12px;
+  border: 1px solid rgba(0,0,0,.14); border-radius: 10px;
+  font-family: inherit; font-size: 15px; background: #fff; color: #1c1917;
+}
+.f2m-agendar-erro { margin: 0 0 10px; font-size: 12.5px; color: #b91c1c; }
+.f2m-agendar-acoes { display: flex; gap: 8px; }
+.f2m-agendar-acoes button {
+  flex: 1 1 0; min-height: 46px; border-radius: 11px; border: 0;
+  font-family: inherit; font-size: 14px; font-weight: 600; cursor: pointer;
+}
+.f2m-agendar-nao { background: #f0edea; color: #57534e; }
+.f2m-agendar-ok { background: var(--ape-orange-600, #f97316); color: #fff; }
+.f2m-agendar-acoes button:disabled { opacity: .6; }
+
+/* O cartao de aviso nao pode cobrir a barra de navegacao do celular: o corretor
+   ficava sem conseguir trocar de aba enquanto ele estivesse na tela. */
+@media (max-width: 900px) {
+  .aviso-push-convite, .aviso-push-ok { bottom: calc(72px + env(safe-area-inset-bottom, 0px)); }
+}
+
+/* Etiqueta "em implementação": a sugestão de próxima ação ainda é o texto fixo
+   do momento, nao uma leitura da conversa pela Sara. Enquanto for assim, a tela
+   avisa -- deixar o corretor achar que houve analise seria pior que nao ter. */
+.f2-em-obra {
+  display: inline-block; margin-left: 6px; padding: 1px 7px;
+  border-radius: 999px; background: #fef3c7; color: #92400e;
+  font-size: 9.5px; font-weight: 700; font-style: normal;
+  letter-spacing: .02em; text-transform: none; vertical-align: middle;
+}
+
+/* Campos novos do agendamento de visita no celular */
+.f2m-agendar select {
+  display: block; width: 100%; margin-top: 5px; min-height: 44px; padding: 0 10px;
+  border: 1px solid rgba(0,0,0,.14); border-radius: 10px;
+  font-family: inherit; font-size: 15px; background: #fff; color: #1c1917;
+}
+.f2m-agendar-check {
+  display: flex; align-items: center; gap: 9px; margin-bottom: 10px;
+  font-size: 13.5px; font-weight: 600; color: #1c1917;
+}
+.f2m-agendar-check input { width: 18px; height: 18px; margin: 0; accent-color: var(--ape-orange-600, #f97316); }
+
+/* Checkbox do gerente no modal de visita (computador) */
+.f2-modal-check {
+  display: flex !important; align-items: center; gap: 9px;
+  font-size: 13.5px; font-weight: 600; color: #1c1917;
+}
+.f2-modal-check input { width: 18px; height: 18px; margin: 0; accent-color: var(--ape-orange-600, #f97316); }

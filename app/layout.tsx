@@ -6,14 +6,38 @@ import "./styles/app-mobile.css";
 import "./styles/apecerto-identidade.css";
 /* Depois da identidade: usam os tokens dela. Tudo dentro de max-width — o
    desktop não é tocado por nenhuma delas. */
+/* Ficha da venda: modal em abas + agenda de repasse. Depois da identidade
+   porque usa os tokens da marca. */
+import "./styles/venda-ficha.css";
+/* Importar extrato: seção dentro do Fluxo de caixa. Autocontida sob
+   .extrato-painel, pelos mesmos motivos da folha acima. */
+import "./styles/extrato-import.css";
 import "./styles/tela-corretor.css";
 import "./styles/tela-crm.css";
 import "./styles/tela-avisos.css";
 import "./styles/tela-agenda.css";
 import "./styles/tela-agenda-mes.css";
-/* Única camada de ajustes móveis, carregada depois das folhas de tela. */
+/* Uma única camada móvel substitui as três folhas históricas sobrepostas. */
 import "./styles/mobile-overrides.css";
-/* Módulos ativos antes injetados via <style>; ficam por último para manter a cascata. */
+/* Depois de tela-gestao-card sem quebrar a regra dela: esta folha só trata de
+   layout e rolagem das colunas de kanban — não toca em cor nem em token. */
+import "./styles/esteira-rolagem.css";
+/* Menu de ações por lançamento no fluxo de caixa. Isolado pelo mesmo motivo:
+   globals.css tem 665 KB e um diff pequeno é reversível. */
+import "./styles/fluxo-caixa-acoes.css";
+/* Alvo de toque do × que dispensa o aviso de notificação. Fora da folha de
+   identidade porque lá a regra é: nada que dependa de layout. */
+import "./styles/aviso-push-dispensar.css";
+/* Os indicadores do Meu Dia viraram botão de filtro; isto zera a aparência de
+   botão. Cor e grade continuam em FUNIL2_CSS. */
+import "./styles/meu-dia-filtros.css";
+/* O card do Pescado não tem prazo: o badge precisa ser cinza, não o verde de
+   "no prazo". A regra mora no banco; aqui é só a leitura visual dela. */
+import "./styles/pescado-sem-prazo.css";
+/* Explicador de automações: o painel que conta o fluxo passo a passo. Só usa
+   tokens do :root, então segue a marca sem duplicar cor. */
+import "./styles/tela-explicador.css";
+/* Módulos ativos antes injetados por JavaScript; estáticos e únicos. */
 import "./styles/crm-nova-era.css";
 import "./styles/funil-2.css";
 import "./styles/performance.css";
@@ -32,12 +56,12 @@ export const metadata: Metadata = {
   icons: {
     icon: [
       { url: "/favicon.svg", type: "image/svg+xml" },
-      { url: "/icons/icone-192-v5.png", sizes: "192x192", type: "image/png" },
-      { url: "/icons/icone-512-v5.png", sizes: "512x512", type: "image/png" },
+      { url: "/icons/icone-192-v6.png", sizes: "192x192", type: "image/png" },
+      { url: "/icons/icone-512-v6.png", sizes: "512x512", type: "image/png" },
     ],
     /* Nome fisico novo: o iOS conserva o apple-touch-icon da primeira
        instalacao mesmo quando so a query string muda. */
-    apple: [{ url: "/icons/apple-touch-icon-v5.png", sizes: "180x180", type: "image/png" }],
+    apple: [{ url: "/icons/apple-touch-icon-v6.png", sizes: "180x180", type: "image/png" }],
   },
   formatDetection: { telephone: false },
 };

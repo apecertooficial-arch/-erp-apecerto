@@ -4,12 +4,12 @@
 // telefones, leads, sessao e respostas do Supabase passam direto para a rede e
 // nunca sao gravadas. O cache guarda apenas a casca publica do aplicativo.
 
-const VERSAO = "apecerto-v5";
+const VERSAO = "apecerto-v6";
 const CACHE_ESTATICO = `estatico-${VERSAO}`;
 const OFFLINE = "/offline.html";
 
 // Unico conteudo que pode ser guardado: nao tem dado pessoal nenhum.
-const PRECACHE = [OFFLINE, "/manifest.webmanifest", "/icons/icone-192-v5.png", "/icons/icone-512-v5.png"];
+const PRECACHE = [OFFLINE, "/manifest.webmanifest", "/icons/icone-192-v6.png", "/icons/icone-512-v6.png"];
 
 // Qualquer coisa sob estes caminhos e privada e jamais vai para o cache.
 const PRIVADO = [/^\/api\//i, /supabase/i, /\/auth\//i, /\/rest\/v1\//i, /\/functions\/v1\//i, /\/realtime\//i];
@@ -143,11 +143,22 @@ self.addEventListener("push", (evento) => {
      os avisos de gestao colapsam por tipo, de proposito. */
   const urgente = TAGS_URGENTES.includes(aviso.tag);
 
+  /* Som proprio do ApeCerto: a notificacao do sistema nao deixa escolher o som,
+     entao avisamos as abas abertas para tocarem o nosso. Funciona com a aba em
+     segundo plano; se nao houver aba, fica so o som padrao do aparelho. */
+  evento.waitUntil((async () => {
+    try {
+      const abas = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+      for (const aba of abas) aba.postMessage({ tipo: "aviso-apecerto", tag: aviso.tag,
+        urgente, titulo: aviso.title, corpo: aviso.body, url: aviso.url });
+    } catch (_e) { /* nunca deixar o som derrubar a notificacao */ }
+  })());
+
   evento.waitUntil(
     self.registration.showNotification(aviso.title, {
       body: aviso.body,
-      icon: "/icons/icone-192-v5.png",
-      badge: "/icons/icone-192-v5.png",
+      icon: "/icons/icone-192-v6.png",
+      badge: "/icons/icone-192-v6.png",
       tag: urgente ? `${aviso.tag}-${Date.now()}` : aviso.tag,
       renotify: urgente,
       requireInteraction: false,

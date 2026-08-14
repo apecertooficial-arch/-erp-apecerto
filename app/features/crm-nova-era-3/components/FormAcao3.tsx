@@ -11,6 +11,14 @@ import type { LeadNova } from "../../crm-nova-era/lib/rules";
 
 export type TipoForm = "resultado" | "proxima" | "visita" | "proposta" | "nutricao" | "descarte";
 
+/* A visita nao e so data e hora. O CRM antigo sempre gravou produto, unidade e
+   gerente -- e sem gerente escolhido nao da para checar conflito de agenda. */
+export type DadosVisita = {
+  data: string; hora: string;
+  empreendimentoId: string | null; produto: string | null; unidade: string | null;
+  comGerente: boolean; gerenteId: number | null;
+};
+
 export const TITULO_FORM: Record<TipoForm, string> = {
   resultado: "Marcar ação como feita",
   proxima: "Definir a próxima ação",
@@ -53,7 +61,7 @@ export function FormAcao3({
   inicial?: { proximaTipo?: string; prazo?: string };
   onCancelar: () => void;
   onEnviar: (payload: Record<string, unknown>) => void | Promise<void>;
-  onCriarVisita: (data: string, hora: string) => void | Promise<void>;
+  onCriarVisita: (dados: DadosVisita) => void | Promise<void>;
 }) {
   const [canal, setCanal] = useState("whatsapp");
   const [resultado, setResultado] = useState(lead.respondeu ? "respondeu" : "nao_respondeu");
@@ -62,6 +70,11 @@ export function FormAcao3({
   const [proximaEm, setProximaEm] = useState(() => inicial?.prazo ?? new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString().slice(0, 16));
   const [vData, setVData] = useState("");
   const [vHora, setVHora] = useState("");
+  const [vEmpreendimento, setVEmpreendimento] = useState("");
+  const [vUnidade, setVUnidade] = useState("");
+  const [vComGerente, setVComGerente] = useState(false);
+  const [vGerente, setVGerente] = useState("");
+  const [gerentes, setGerentes] = useState<Array<{ id: number; nome: string; geral: boolean }>>([]);
   const [valor, setValor] = useState("");
   const [forma, setForma] = useState("");
   const [produtoId, setProdutoId] = useState("");
@@ -76,7 +89,7 @@ export function FormAcao3({
   const proxIso = proximaEm ? new Date(proximaEm).toISOString() : null;
 
   useEffect(() => {
-    if (tipo !== "proposta") return;
+    if (tipo !== "proposta" && tipo !== "visita") return;
     const ctrl = new AbortController();
     const q = produtoBusca.trim();
     const t = setTimeout(() => {
@@ -89,6 +102,16 @@ export function FormAcao3({
     }, 250);
     return () => { ctrl.abort(); clearTimeout(t); };
   }, [tipo, produtoBusca, accessToken]);
+
+  useEffect(() => {
+    if (tipo !== "visita") return;
+    const ctrl = new AbortController();
+    void fetch("/api/ncrm/gerentes", { headers: { Authorization: `Bearer ${accessToken}` }, signal: ctrl.signal })
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error("falha"))))
+      .then((j: { gerentes?: Array<{ id: number; nome: string; geral: boolean }> }) => setGerentes(j.gerentes ?? []))
+      .catch(() => { /* sem gerente na lista o corretor ainda agenda a visita */ });
+    return () => ctrl.abort();
+  }, [tipo, accessToken]);
 
   return (
     <div className="ncrm3-bloco" style={{ borderTop: "1px solid var(--line)", background: "var(--sunken)" }}>
@@ -180,14 +203,66 @@ export function FormAcao3({
             Visitas — intenção de visitar não conta.
           </p>
           <label className="ncrm3-linha" style={{ flexDirection: "column", alignItems: "stretch" }}>
+            <span>Produto que vai ser mostrado</span>
+            <input
+              value={produtoBusca}
+              onChange={(e) => { setProdutoBusca(e.target.value); setVEmpreendimento(""); }}
+              placeholder="Digite para procurar o empreendimento"
+            />
+            <select value={vEmpreendimento} onChange={(e) => setVEmpreendimento(e.target.value)}>
+              <option value="">— escolha o empreendimento —</option>
+              {produtos.map((p) => <option key={p.id} value={p.id}>{p.rotulo}</option>)}
+            </select>
+            {produtosErro && <small className="ncrm3-erro">{produtosErro}</small>}
+          </label>
+          <label className="ncrm3-linha" style={{ flexDirection: "column", alignItems: "stretch" }}>
+            <span>Unidade <small>(opcional)</small></span>
+            <input value={vUnidade} onChange={(e) => setVUnidade(e.target.value)} placeholder="Ex.: apto 402" />
+          </label>
+          <label className="ncrm3-linha" style={{ flexDirection: "column", alignItems: "stretch" }}>
             <span>Data</span><input type="date" value={vData} onChange={(e) => setVData(e.target.value)} />
           </label>
           <label className="ncrm3-linha" style={{ flexDirection: "column", alignItems: "stretch" }}>
             <span>Hora de início</span><input type="time" value={vHora} onChange={(e) => setVHora(e.target.value)} />
           </label>
+          <label className="ncrm3-linha">
+            <input
+              type="checkbox"
+              checked={vComGerente}
+              onChange={(e) => {
+                const marcou = e.target.checked;
+                setVComGerente(marcou);
+                if (marcou && !vGerente) setVGerente(String(gerentes.find((g) => g.geral)?.id ?? gerentes[0]?.id ?? ""));
+              }}
+            />
+            <span>Quero o gerente presente</span>
+          </label>
+          {vComGerente && (
+            <label className="ncrm3-linha" style={{ flexDirection: "column", alignItems: "stretch" }}>
+              <span>Qual gerente</span>
+              <select value={vGerente} onChange={(e) => setVGerente(e.target.value)}>
+                <option value="">— escolha —</option>
+                {gerentes.map((g) => <option key={g.id} value={String(g.id)}>{g.nome}{g.geral ? " (geral)" : ""}</option>)}
+              </select>
+              <small className="ncrm3-nota">Se o gerente já tiver visita nesse horário, o sistema recusa e diz com quem é o choque.</small>
+            </label>
+          )}
           <div className="ncrm3-avancadas">
             <button type="button" className="ncrm3-secundario" onClick={onCancelar}>Cancelar</button>
-            <button type="button" className="ncrm3-principal" disabled={busy || !vData || !vHora || !leadId} onClick={() => onCriarVisita(vData, vHora)}>
+            <button
+              type="button"
+              className="ncrm3-principal"
+              disabled={busy || !vData || !vHora || !leadId || (!vEmpreendimento && vUnidade.trim().length < 2) || (vComGerente && !vGerente)}
+              onClick={() => onCriarVisita({
+                data: vData,
+                hora: vHora,
+                empreendimentoId: vEmpreendimento || null,
+                produto: produtos.find((p) => p.id === vEmpreendimento)?.rotulo ?? (vUnidade.trim() || null),
+                unidade: vUnidade.trim() || null,
+                comGerente: vComGerente,
+                gerenteId: vComGerente && vGerente ? Number(vGerente) : null,
+              })}
+            >
               Criar visita
             </button>
           </div>

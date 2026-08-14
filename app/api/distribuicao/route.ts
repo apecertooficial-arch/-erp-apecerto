@@ -43,7 +43,7 @@ export async function POST(request: Request) {
 
   const time = (v: unknown) => typeof v === "string" && /^\d{2}:\d{2}/.test(v) ? v.slice(0, 5) : null;
   const modo = typeof body.modoForaJanela === "string" && ["quem_veio_no_dia", "todos_do_bloco", "nao_distribuir"].includes(body.modoForaJanela) ? body.modoForaJanela : null;
-  const modoRodizio = typeof body.modoRodizio === "string" && ["fila_circular", "placar_justo"].includes(body.modoRodizio) ? body.modoRodizio : null;
+  const modoRodizio = typeof body.modoRodizio === "string" && ["fila_circular", "placar_justo", "sequencial_por_peso"].includes(body.modoRodizio) ? body.modoRodizio : null;
   const { error } = await auth.supabase.rpc("distribuicao_config_salvar", {
     p_janela_inicio: time(body.janelaInicio),
     p_janela_fim: time(body.janelaFim),

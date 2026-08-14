@@ -34,6 +34,7 @@ import { enriquecerComEventos } from "../crm-nova-era/live/adapter";
 import { MeuDia3 } from "./components/MeuDia3";
 import { Funil3 } from "./components/Funil3";
 import { Ficha3, type ImovelDoLead } from "./components/Ficha3";
+import type { DadosVisita } from "./components/FormAcao3";
 import { Avisos3 } from "./components/Avisos3";
 import { Perdidos3 } from "./components/Perdidos3";
 import { Gestao3 } from "./components/Gestao3";
@@ -325,16 +326,21 @@ export function Crm3Workspace({ accessToken, profile }: { accessToken: string; p
     return true;
   }, [accessToken, busy, carregarQuadro, selId, abrirAtendimento]);
 
-  const criarVisita = useCallback(async (data: string, hora: string) => {
+  const criarVisita = useCallback(async (dados: DadosVisita) => {
     if (!detalhe?.leadId) { setAviso("Este atendimento não tem cliente vinculado para agendar visita."); return; }
     await executar({
       action: "agendarVisita",
       negocioId: Number(detalhe.lead.id),
       versao: detalhe.versao,
       leadId: detalhe.leadId,
-      data,
-      horaInicio: hora,
-      idem: `ui3:agendarVisita:${detalhe.lead.id}:${data}:${hora}`,
+      data: dados.data,
+      horaInicio: dados.hora,
+      empreendimentoId: dados.empreendimentoId,
+      produto: dados.produto,
+      unidade: dados.unidade,
+      comGerente: dados.comGerente,
+      gerenteId: dados.gerenteId,
+      idem: `ui3:agendarVisita:${detalhe.lead.id}:${dados.data}:${dados.hora}`,
     });
   }, [detalhe, executar]);
 

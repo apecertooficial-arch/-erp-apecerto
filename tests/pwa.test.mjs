@@ -37,10 +37,10 @@ test("icones incluem maskable e os dois tamanhos", () => {
   assert.ok(tem("maskable", "192x192") && tem("maskable", "512x512"));
 });
 
-test("icones usam nome fisico v5 para vencer o cache da instalacao no iPhone", () => {
-  for (const icone of manifest.icons) assert.match(icone.src, /-v5\.png$/);
-  assert.match(sw, /apecerto-v5/);
-  assert.match(sw, /icone-192-v5\.png/);
+test("icones usam nome fisico v6 para vencer o cache da instalacao no iPhone", () => {
+  for (const icone of manifest.icons) assert.match(icone.src, /-v6\.png$/);
+  assert.match(sw, /apecerto-v6/);
+  assert.match(sw, /icone-192-v6\.png/);
 });
 
 test("icone instalado usa a identidade colorida da Apecerto", () => {

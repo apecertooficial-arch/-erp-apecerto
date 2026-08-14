@@ -1,0 +1,49 @@
+/* ==========================================================================
+   MEU DIA — os indicadores viraram filtro (ago/2026)
+
+   Os cinco quadros ("35 ações atrasadas", "11 vencem em até 2h", ...) eram
+   <article>: número na tela, sem função. O corretor lia "35 atrasadas" e
+   embaixo recebia uma lista de 178 linhas com atrasado, a vencer e no prazo
+   misturados — tinha que garimpar qual era qual. Agora cada quadro é um
+   botão que troca o recorte da lista, e a lista abre em "atrasadas".
+
+   Aqui só o que a mudança de <article> para <button> exige: os estilos de
+   cor, tamanho e grade continuam em FUNIL2_CSS (estilos.ts) e valem para os
+   dois. Isto zera a aparência de botão e marca qual está ativo.
+
+   ESPECIFICIDADE: FUNIL2_CSS é injetado como <style> dentro do corpo da
+   página, então vence folha externa de mesma especificidade. Por isso o
+   prefixo `body`. As regras de cor (.f2-indicadores .vermelho etc.) têm
+   especificidade maior que estas e continuam mandando na cor — de propósito:
+   aqui não se define cor nenhuma.
+
+   POR QUE ARQUIVO SEPARADO: estilos.ts tem 51 KB numa única template string.
+   Regra isolada mantém o diff pequeno e a reversão trivial.
+   ========================================================================== */
+
+body .f2-indicadores button {
+  display: flex; flex-direction: column; align-items: flex-start;
+  width: 100%; padding: 13px;
+  border: 0; border-radius: 13px;
+  font: inherit; text-align: left;
+  cursor: pointer;
+  transition: transform .12s ease, box-shadow .12s ease;
+}
+body .f2-indicadores button:hover { transform: translateY(-1px); }
+body .f2-indicadores button:active { transform: none; }
+
+/* O anel usa currentColor: cada quadro se marca na própria cor, sem precisar
+   de cinco regras de destaque. */
+body .f2-indicadores button.f2-ind-ativo { box-shadow: inset 0 0 0 2px currentColor; }
+body .f2-indicadores button:focus-visible { outline: 2px solid var(--f2-orange, #ff7000); outline-offset: 2px; }
+
+@media (prefers-reduced-motion: reduce) {
+  body .f2-indicadores button { transition: none; }
+  body .f2-indicadores button:hover { transform: none; }
+}
+
+/* No celular o quadro é alvo de dedo: garante altura confortável mesmo com o
+   número curto. */
+@media (max-width: 700px) {
+  body .f2-indicadores button { min-height: 64px; justify-content: center; }
+}
