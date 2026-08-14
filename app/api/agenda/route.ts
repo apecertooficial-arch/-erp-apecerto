@@ -35,6 +35,12 @@ function inteiroPositivo(value: unknown) {
   return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null;
 }
 
+function instanteSaoPaulo(data: string, hora: string | null) {
+  if (!data || !hora) return null;
+  const instante = new Date(`${data}T${hora.slice(0, 8)}-03:00`);
+  return Number.isNaN(instante.getTime()) ? null : instante.toISOString();
+}
+
 function lerData(bruto: string | null): string | null {
   if (!bruto || !/^\d{4}-\d{2}-\d{2}$/.test(bruto)) return null;
   return Number.isNaN(Date.parse(bruto)) ? null : bruto;
@@ -138,17 +144,19 @@ export async function PATCH(request: Request) {
         gerenteId = geral?.id ?? null;
       }
     }
-    const { data: visit, error } = await auth.supabase.from("visitas").insert({
-      created_by: auth.user.id, lead_id: leadId, negocio_id: dealId, corretor_id: deal.corretor_id,
-      cliente_nome: lead.nome, empreendimento_id: product?.id ?? null,
-      produto: product?.nome ?? (texto(body.productName, 180) || null),
-      data: date, hora_inicio: startTime, hora_fim: texto(body.endTime, 8) || null,
-      local, observacoes: texto(body.observations, 1200) || null,
-      participantes: texto(body.participants, 500) || null, lembrete: body.reminder !== false,
-      com_gerente: comGerente, gerente_id: gerenteId, status: "agendada",
-    }).select("id").maybeSingle();
-    if (error) return Response.json({ error: error.message }, { status: 502 });
-    return Response.json({ success: true, visitaId: visit?.id ?? null });
+    const inicioEm = instanteSaoPaulo(date, startTime);
+    if (!inicioEm) return Response.json({ error: "Data ou horário inválido." }, { status: 422 });
+    const fimEm = instanteSaoPaulo(date, texto(body.endTime, 8) || null);
+    const { data: result, error } = await auth.supabase.rpc("f2_salvar_visita", {
+      p_id: null, p_lead_id: card.id, p_inicio_em: inicioEm,
+      p_imovel: product?.nome ?? (texto(body.productName, 180) || local || "Visita"),
+      p_status: "agendada", p_observacao: texto(body.observations, 500) || null,
+      p_empreendimento_id: product?.id ?? null, p_unidade: null,
+      p_com_gerente: comGerente, p_gerente_id: gerenteId, p_fim_em: fimEm,
+    } as never);
+    const outcome = result as { ok?: boolean; id?: string; erro?: string } | null;
+    if (error || !outcome?.ok) return Response.json({ error: error?.message ?? `Não foi possível agendar a visita (${outcome?.erro ?? "erro desconhecido"}).` }, { status: 502 });
+    return Response.json({ success: true, visitaId: outcome.id ?? null });
   }
 
   if (action === "updateVisit") {
@@ -156,7 +164,7 @@ export async function PATCH(request: Request) {
     if (!visitId) return Response.json({ error: "Visita inválida." }, { status: 400 });
     const denied = guard("editar", "Você não tem permissão para editar visitas.");
     if (denied) return denied;
-    const { data: current } = await auth.supabase.from("visitas").select("com_gerente,gerente_id").eq("id", visitId).maybeSingle();
+    const { data: current } = await auth.supabase.from("visitas").select("id,negocio_id,data,hora_inicio,hora_fim,produto,empreendimento_id,unidade,observacoes,status,com_gerente,gerente_id").eq("id", visitId).maybeSingle();
     if (!current) return Response.json({ error: "Visita não encontrada." }, { status: 404 });
 
     const isManager = access.role === "admin" || access.role === "gestor";
@@ -188,8 +196,23 @@ export async function PATCH(request: Request) {
         patch.gerente_id = geral?.id ?? null;
       }
     } else patch.gerente_id = null;
-    const { error } = await auth.supabase.from("visitas").update(patch).eq("id", visitId);
-    return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
+    if (!current.negocio_id) return Response.json({ error: "A visita não está ligada a um negócio." }, { status: 409 });
+    const { data: card } = await auth.supabase.from("f2_lead").select("id").eq("origem_negocio_id", current.negocio_id).is("descartado_em", null).maybeSingle();
+    if (!card) return Response.json({ error: "A visita não está ligada a um negócio ativo no Funil 2.0." }, { status: 409 });
+    const merged = { ...current, ...patch };
+    const { data: result, error } = await auth.supabase.rpc("f2_salvar_visita", {
+      p_id: visitId, p_lead_id: card.id,
+      p_inicio_em: instanteSaoPaulo(String(merged.data), merged.hora_inicio ? String(merged.hora_inicio) : null),
+      p_fim_em: instanteSaoPaulo(String(merged.data), merged.hora_fim ? String(merged.hora_fim) : null),
+      p_imovel: merged.produto || "Visita", p_status: merged.status || "agendada",
+      p_observacao: merged.observacoes, p_empreendimento_id: merged.empreendimento_id,
+      p_unidade: merged.unidade, p_com_gerente: merged.com_gerente === true,
+      p_gerente_id: merged.gerente_id,
+    } as never);
+    const outcome = result as { ok?: boolean; erro?: string } | null;
+    return error || !outcome?.ok
+      ? Response.json({ error: error?.message ?? `Não foi possível atualizar a visita (${outcome?.erro ?? "erro desconhecido"}).` }, { status: 502 })
+      : Response.json({ success: true });
   }
 
   if (action === "gerenteDisponibilidade") {
@@ -216,11 +239,24 @@ export async function PATCH(request: Request) {
     if (!visitId || !["agendada", "realizada", "cancelada"].includes(status)) return Response.json({ error: "Visita ou status inválido." }, { status: 400 });
     const denied = guard("editar", "Você não tem permissão para alterar o status de visitas.");
     if (denied) return denied;
-    const { error } = await auth.supabase.from("visitas").update({
-      status, motivo_cancelamento: status === "cancelada" ? texto(body.reason, 500) || null : null,
-      atualizado_em: new Date().toISOString(),
-    }).eq("id", visitId);
-    return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
+    const { data: visit } = await auth.supabase.from("visitas").select("negocio_id,data,hora_inicio,hora_fim,produto,empreendimento_id,unidade,observacoes,com_gerente,gerente_id").eq("id", visitId).maybeSingle();
+    if (!visit) return Response.json({ error: "Visita não encontrada." }, { status: 404 });
+    if (!visit.negocio_id) return Response.json({ error: "A visita não está ligada a um negócio." }, { status: 409 });
+    const { data: card } = await auth.supabase.from("f2_lead").select("id").eq("origem_negocio_id", visit.negocio_id).is("descartado_em", null).maybeSingle();
+    if (!card) return Response.json({ error: "A visita não está ligada a um negócio ativo no Funil 2.0." }, { status: 409 });
+    const observation = status === "cancelada" ? (texto(body.reason, 500) || visit.observacoes) : visit.observacoes;
+    const { data: result, error } = await auth.supabase.rpc("f2_salvar_visita", {
+      p_id: visitId, p_lead_id: card.id,
+      p_inicio_em: instanteSaoPaulo(String(visit.data), visit.hora_inicio ? String(visit.hora_inicio) : null),
+      p_fim_em: instanteSaoPaulo(String(visit.data), visit.hora_fim ? String(visit.hora_fim) : null),
+      p_imovel: visit.produto || "Visita", p_status: status, p_observacao: observation,
+      p_empreendimento_id: visit.empreendimento_id, p_unidade: visit.unidade,
+      p_com_gerente: visit.com_gerente === true, p_gerente_id: visit.gerente_id,
+    } as never);
+    const outcome = result as { ok?: boolean; erro?: string } | null;
+    return error || !outcome?.ok
+      ? Response.json({ error: error?.message ?? `Não foi possível alterar a visita (${outcome?.erro ?? "erro desconhecido"}).` }, { status: 502 })
+      : Response.json({ success: true });
   }
 
   return Response.json({ error: "Ação de agenda inválida." }, { status: 400 });

@@ -43,6 +43,13 @@ test("a consulta de performance nao foi alterada", () => {
   assert.ok(/\/api\/performance\?periodo=\$\{periodo\}/.test(perf), "a URL do endpoint mudou");
 });
 
+test("a RPC de performance não volta ao anti-join correlacionado por lead", () => {
+  const migration = ler("../supabase/migrations/20260814234000_otimizar_performance_corretores.sql");
+  assert.match(migration, /left join fones f on f\.corretor_id=l\.corretor_id and f\.f8=l\.f8/);
+  assert.match(migration, /left join dupf d on d\.f8=l\.f8/);
+  assert.match(migration, /raise exception 'bloco ld esperado não encontrado'/);
+});
+
 /* ---------------- 2. OFFLINE ---------------- */
 
 test("service worker nunca cacheia dado de cliente", () => {
