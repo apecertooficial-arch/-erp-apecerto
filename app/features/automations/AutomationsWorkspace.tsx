@@ -18,13 +18,14 @@ declare global {
 
 const scriptId = "apecerto-original-automation-builder";
 const styleId = "apecerto-original-automation-styles";
+const assetVersion = "20260814-1";
 
 function ensureStyle() {
   if (document.getElementById(styleId)) return;
   const link = document.createElement("link");
   link.id = styleId;
   link.rel = "stylesheet";
-  link.href = `/automation-builder-original.css?v=${Date.now()}`; // cache-buster: sempre a versão publicada
+  link.href = `/automation-builder-original.css?v=${assetVersion}`;
   document.head.appendChild(link);
 }
 
@@ -35,7 +36,7 @@ function loadOriginalBuilder() {
     const existing = document.getElementById(scriptId) as HTMLScriptElement | null;
     const script = existing ?? document.createElement("script");
     script.id = scriptId;
-    script.src = `/automation-builder-original.js?v=${Date.now()}`; // cache-buster: sempre a versão publicada
+    script.src = `/automation-builder-original.js?v=${assetVersion}`;
     script.async = true;
     script.onload = () => window.ApeCertoAutomationBuilder
       ? resolve(window.ApeCertoAutomationBuilder)
