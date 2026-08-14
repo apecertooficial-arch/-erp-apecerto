@@ -357,3 +357,9 @@ O inventário ao vivo encontrou 37 Edge Functions ativas, 37 jobs `pg_cron`, 106
 O Security Advisor apontou 15 erros. Sete eram tabelas internas sem RLS e com grants padrão amplos para `anon` e `authenticated`: filas Sara/F2, tabelas de soltura, diagnóstico de presença, tipos de notificação e o backup da migração Pipe 2 → Funil 2.0. A migration `20260814200000_proteger_tabelas_internas_sem_rls.sql` ativou RLS sem política pública nas sete tabelas. Nenhuma linha foi removida; `postgres`, `service_role` e funções privilegiadas continuam operando.
 
 Após aplicação e conferência direta no projeto, os erros do Advisor caíram de 15 para 8. Os oito restantes são views `SECURITY DEFINER`. Elas não serão convertidas em bloco: `vw_ranking_vgv` e `vw_sla_leads` têm consumidores reais, e `site_produtos` atende catálogo público. A troca para `security_invoker` precisa ser feita view por view com teste de RLS e contrato do consumidor.
+
+## Levantamento — cascata móvel e CSS órfão (14/08/2026)
+
+O layout global importa 17 folhas CSS. As duas camadas móveis somam 1.083 linhas: `app-mobile.css` contém a estrutura e os contratos responsivos, enquanto `mobile-overrides.css` aplica acabamento posterior. Foram encontrados 27 seletores repetidos entre elas, incluindo barra inferior, cabeçalho, cards, Agenda e Home. A repetição é hoje intencional, mas confirma o custo de manutenção por cascata: uma mudança no arquivo-base pode ser silenciosamente sobrescrita depois.
+
+Como corte imediato e seguro, foram removidas de `globals.css` as 21 regras do seletor rico `rselect`, cujo único componente havia sido eliminado por não possuir consumidor. Os estilos residuais da Esteira F2 antiga foram identificados em `funil-2.css`; por esse arquivo estar minificado em linhas compostas e também conter o Pipe de Visitas ativo, a remoção deve ocorrer junto de sua formatação/consolidação, sem apagar regras compartilhadas por busca textual ampla.
