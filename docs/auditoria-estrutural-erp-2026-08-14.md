@@ -379,3 +379,11 @@ As oito views restantes foram convertidas para `security_invoker`, após criar p
 O catálogo público ganhou políticas anônimas explícitas em `empreendimentos`, `midias` e `unidades`, limitadas a imóvel publicado, fora de rascunho e aprovado. A view `site_produtos` deixou de depender de `SECURITY DEFINER` sem perder os 49 produtos públicos existentes.
 
 Todas as permissões genéricas de mutação foram revogadas das oito views. `anon` possui somente `SELECT` em `site_produtos`; `authenticated` possui somente `SELECT` nas views operacionais. O Security Advisor passou de 15 erros para zero. As contagens vistas por `postgres` permaneceram idênticas antes e depois, comprovando ausência de exclusão ou alteração de dados.
+
+## Execução — classificação das Edge Functions e crons (14/08/2026)
+
+As 37 Edge Functions e os 37 jobs `pg_cron` foram confrontados com código implantado, referências do repositório, chamadas recentes e mecanismos internos de autenticação. Funções com consumidor real ou responsabilidade operacional — como webhook e envio DAPI, agenda e varredura WhatsApp, entrada/presença, push, testes e interpretação da Sara, backfill do histórico F2 e consulta pública de corretores — foram preservadas. Prefixo antigo, isoladamente, não foi tratado como prova de inutilidade: `ncrm_guardiao_entrada`, por exemplo, ainda resgata e audita leads presos antes da entrada canônica no F2.
+
+`datacrazy-sync` já era um stub implantado que somente respondia como desativado. Mesmo assim, quatro crons continuavam chamando-o por HTTP e armazenavam um token antigo dentro do texto do comando. A migration `20260814220000_neutralizar_crons_datacrazy_desativados.sql` neutralizou somente esses quatro jobs pela API oficial `cron.alter_job`, preservando nomes e agendas para auditoria, mas substituindo o comando por operação inerte e definindo `active=false`.
+
+Verificação ao vivo: os quatro jobs estão inativos, sem token e sem URL da Edge; o total ativo caiu de 37 para 33. Nenhum cron do Funil 2.0, distribuição, guardião, recall ou pesca foi alterado. `distribuir-lead` e `ncrm-sara-observer` permanecem candidatos a aposentadoria, mas não foram excluídos: ainda é necessário fechar a prova de ausência de chamadores externos e obter autorização destrutiva exata para os objetos implantados.

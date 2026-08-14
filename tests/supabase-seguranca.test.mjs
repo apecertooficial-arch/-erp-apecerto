@@ -3,6 +3,10 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 const migration = readFileSync(new URL("../supabase/migrations/20260814210000_views_respeitam_rls.sql", import.meta.url), "utf8");
+const datacrazyCronMigration = readFileSync(
+  new URL("../supabase/migrations/20260814220000_neutralizar_crons_datacrazy_desativados.sql", import.meta.url),
+  "utf8",
+);
 
 const views = [
   "vw_sla_leads",
@@ -30,4 +34,18 @@ test("catálogo anônimo continua limitado a produto publicado e aprovado", () =
 test("migration de segurança não remove tabelas nem dados", () => {
   const sql = migration.replace(/^\s*--.*$/gm, "");
   assert.doesNotMatch(sql, /\b(?:drop|delete|truncate)\b/i);
+});
+
+test("crons DataCrazy aposentados são neutralizados pela API do pg_cron", () => {
+  const jobs = [
+    "datacrazy_sync_atividades",
+    "datacrazy_sync_leads",
+    "datacrazy_sync_negocios",
+    "datacrazy_sync_stages",
+  ];
+
+  for (const job of jobs) assert.match(datacrazyCronMigration, new RegExp(`'${job}'`));
+  assert.match(datacrazyCronMigration, /cron\.alter_job\([\s\S]*active := false/);
+  assert.doesNotMatch(datacrazyCronMigration, /update\s+cron\.job/i);
+  assert.doesNotMatch(datacrazyCronMigration, /x-sync-token|authorization['"]?\s*[:,]/i);
 });
