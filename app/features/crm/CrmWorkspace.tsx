@@ -2106,12 +2106,12 @@ function StageConfigModal({ pipelines, stages, deals, leads, products, initialPi
     <div className="stage-config-list">
       {currentStages.map((stage, index) => <StageConfigRow key={stage.id} stage={stage} count={dealCount(stage.id)} busy={busy}
         onRename={(name, color) => void run(() => rpc.rpc("crm_etapa_salvar", { p_id: stage.id, p_nome: name, p_cor: color }), "Etapa atualizada.")}
-        onMove={(direction) => { const ids = currentStages.map((item) => item.id); const target = index + direction; if (target < 0 || target >= ids.length) return; [ids[index], ids[target]] = [ids[target], ids[index]]; void run(() => rpc.rpc("crm_etapa_reordenar", { p_pipeline_id: kanbanPipeId as number, p_ids: ids }), "Ordem atualizada."); }}
+        onMove={(direction) => { const ids = currentStages.map((item) => item.id); const target = index + direction; if (target < 0 || target >= ids.length || !pipelineId) return; [ids[index], ids[target]] = [ids[target], ids[index]]; void run(() => rpc.rpc("crm_etapa_reordenar", { p_pipeline_id: pipelineId, p_ids: ids }), "Ordem atualizada."); }}
         onDelete={() => { if (!window.confirm(`Excluir a etapa "${stage.rotulo || stage.nome}"?`)) return; void run(() => rpc.rpc("crm_etapa_excluir", { p_id: stage.id }), "Etapa excluída."); }} />)}
     </div>
     <div className="stage-config-new">
       <input value={newStage} onChange={(event) => setNewStage(event.target.value)} placeholder="Nome da nova etapa" />
-      <button type="button" disabled={busy || !newStage.trim() || !pipelineId} onClick={() => void run(() => rpc.rpc("crm_etapa_salvar", { p_pipeline_id: kanbanPipeId as number, p_nome: newStage }), "Etapa criada.").then(() => setNewStage(""))}>＋ Adicionar etapa</button>
+      <button type="button" disabled={busy || !newStage.trim() || !pipelineId} onClick={() => { if (!pipelineId) return; void run(() => rpc.rpc("crm_etapa_salvar", { p_pipeline_id: pipelineId, p_nome: newStage }), "Etapa criada.").then(() => setNewStage("")); }}>＋ Adicionar etapa</button>
     </div>
     <div className="stage-config-newpipe">
       {creatingPipeline ? <>

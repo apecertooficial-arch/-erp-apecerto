@@ -92,12 +92,13 @@ test("mensagem precisa de confirmação D-API e toda mudança gera histórico", 
   assert.match(ui, /o webhook do D-API executará esta confirmação/);
 });
 
-test("cadência mostra o dia oficial como ação executável", () => {
-  assert.match(modelo, /DIAS_CADENCIA = \[1, 2, 4, 6, 7\]/);
+test("cadência mostra com honestidade o passo oficial em implementação", () => {
+  assert.match(modelo, /TOTAL_TENTATIVAS_CADENCIA = 6/);
+  assert.match(modelo, /FOLGA_ENTRE_TENTATIVAS = \[0, 1, 1, 1, 2, 1\]/);
   assert.match(ui, /CADÊNCIA OFICIAL/);
-  assert.match(ui, /DIA \{dia\}/);
-  assert.match(ui, /Abrir WhatsApp · enviar Dia/);
-  assert.match(ui, /A conclusão vem do D-API/);
+  assert.match(ui, /Enviar tentativa/);
+  assert.match(ui, /f2-em-obra/);
+  assert.match(ui, /passo exato que deve ser executado agora/);
 });
 
 test("card e ficha oferecem conversa e atalhos operacionais", () => {
@@ -186,8 +187,8 @@ test("mesmo momento pode ser revalidado sem reiniciar a cadência", () => {
   assert.match(clareza, /v_dias_cadencia\[v_passo\+1\]-v_dias_cadencia\[v_passo\]/);
 });
 
-test("Meu Dia mostra cliente, etapa, momento, ação, tempo e central de atenção", () => {
-  for (const texto of ["SEU PLANO DE TRABALHO", "Etapa e momento", "Ação oficial", "Tempo", "CENTRAL DE ATENÇÃO"]) assert.match(ui, new RegExp(texto));
+test("Meu Dia mostra cliente, etapa, momento, tempo e central de atenção", () => {
+  for (const texto of ["SEU PLANO DE TRABALHO", "Cliente", "Etapa", "Momento", "Tempo", "CENTRAL DE ATENÇÃO"]) assert.match(ui, new RegExp(texto));
   assert.match(ui, /ações atrasadas/);
   assert.match(ui, /vencem em até 2h/);
 });
