@@ -8,7 +8,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 
 import { validarInscricao, endpointPermitido } from "../../app/api/ncrm/push/registrar/logica.ts";
-import { chaveParaBytes, ehIosSemInstalar, lerEstado } from "../../app/features/crm-nova-era/lib/pushCliente.ts";
+import { chaveParaBytes, ehIosSemInstalar, lerEstado } from "../../app/features/notifications/pushCliente.ts";
 
 const P256DH = "B".repeat(87);
 const AUTH = "A".repeat(22);

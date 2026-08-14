@@ -1,4 +1,4 @@
-// Abertura do WhatsApp OFICIAL do celular do corretor.
+// Abertura do WhatsApp oficial do celular do corretor.
 //
 // O ERP nao envia mensagem. Este modulo so prepara o telefone e a URL que abre
 // o aplicativo. Clicar aqui e INTENCAO, nunca prova de envio: a atuacao so e

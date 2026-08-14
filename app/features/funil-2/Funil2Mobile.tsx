@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { BotaoWhatsApp } from "../crm-nova-era/components/BotaoWhatsApp";
+import { BotaoWhatsApp } from "./BotaoWhatsApp";
 import { getBrowserSupabaseClient } from "../../lib/supabase/browser";
 import {
   acaoVisivel,

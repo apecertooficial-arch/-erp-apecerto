@@ -1,4 +1,4 @@
-/* Inscricao do aparelho no Web Push.
+/* Inscrição do aparelho no Web Push.
  *
  * Separado do componente para poder ser testado no node: a UI depende de React
  * e de window, estas regras nao.

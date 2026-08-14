@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { prepararAberturaWhatsApp } from "../lib/whatsappNativo";
+import { prepararAberturaWhatsApp } from "../../lib/whatsappNativo";
 
 type Props = {
   telefone: string | null | undefined;

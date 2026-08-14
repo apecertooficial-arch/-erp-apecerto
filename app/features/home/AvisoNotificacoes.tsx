@@ -25,7 +25,7 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   chaveParaBytes, extrairInscricao, lerEstado, type EstadoPush,
-} from "../crm-nova-era/lib/pushCliente";
+} from "../notifications/pushCliente";
 
 /* DISPENSA QUE GRUDA (ago/2026).
  *
