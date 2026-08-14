@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 const ui = readFileSync(new URL("../app/features/funil-2/Funil2Workspace.tsx", import.meta.url), "utf8");
+const esteira = readFileSync(new URL("../app/features/sales/SalesProcessWorkspace.tsx", import.meta.url), "utf8");
 const entradaCrm = readFileSync(new URL("../app/(erp)/crm/page.tsx", import.meta.url), "utf8");
 const migration = readFileSync(new URL("../supabase/migrations/20260810150000_funil_2_isolado.sql", import.meta.url), "utf8");
 const clareza = readFileSync(new URL("../supabase/migrations/20260810160000_funil_2_cadencia_clara.sql", import.meta.url), "utf8");
@@ -178,11 +179,12 @@ test("central de atenção lista obrigações acionáveis e não apenas contador
   assert.match(ui, /esperandoPrimeiraChamada/);
 });
 
-test("Esteira mantém kanban comercial e adiciona visão gerencial do funil antigo", () => {
-  assert.match(ui, /f2-vendas-kpis/);
-  assert.match(ui, /valor em acompanhamento/);
-  assert.match(ui, /vendas concluídas/);
-  assert.match(ui, /f2-pipe f2-pipe-vendas/);
+test("Esteira usa somente a implementação oficial de pós-fechamento", () => {
+  assert.match(ui, /<SalesProcessView/);
+  assert.match(ui, /f2-esteira-oficial/);
+  assert.doesNotMatch(ui, /function EsteiraVendas|f2-vendas-kpis|f2-pipe-vendas/);
+  assert.match(esteira, /export function SalesProcessView/);
+  assert.match(esteira, /sales-kanban/);
 });
 
 test("mesmo momento pode ser revalidado sem reiniciar a cadência", () => {

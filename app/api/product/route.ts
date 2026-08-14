@@ -6,7 +6,6 @@ export const dynamic = "force-dynamic";
 
 type ProductUpdate = Database["public"]["Tables"]["empreendimentos"]["Update"];
 type OwnerUpdate = Database["public"]["Tables"]["proprietarios"]["Update"];
-type UnitInsert = Database["public"]["Tables"]["unidades"]["Insert"];
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const productFields = [

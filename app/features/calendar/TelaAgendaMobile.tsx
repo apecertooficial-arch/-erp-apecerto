@@ -53,7 +53,7 @@ export function TelaAgendaMobile({ accessToken, onAbrirLead }: {
     return () => { vivo = false; ctrl.abort(); };
   }, [carregar, tentativa]);
 
-  const lista = itens ?? [];
+  const lista = useMemo(() => itens ?? [], [itens]);
   const prox = useMemo(() => proximo(lista), [lista]);
   const grade = useMemo(() => (periodo === "mes" ? gradeDoMes(dia, lista) : []), [periodo, dia, lista]);
 

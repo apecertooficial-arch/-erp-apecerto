@@ -102,7 +102,7 @@ export function ProjectsWorkspace({ accessToken }: { accessToken: string }) {
         : <ProjectGrid data={data} tab={homeTab} query={query} respFilter={respFilter} prioFilter={prioFilter} lateOnly={lateOnly} partByProject={partByProject} userById={userById} onOpen={setOpenProject} />}
       {creating && <ProjectForm data={data} busy={busy} onClose={() => setCreating(false)} onSave={async (payload) => { const r = await mutate({ action: "createProject", ...payload }); setCreating(false); if (r.projectId) setOpenProject(r.projectId); }} />}
     </>}
-    {project && <ProjectBoard data={data} project={project} busy={busy} isManager={isManager} userById={userById}
+    {project && <ProjectBoard data={data} project={project} busy={busy} userById={userById}
       onBack={() => { setOpenProject(null); setTaskId(null); }} onOpenTask={setTaskId} onEditProject={() => setEditingProject(project)} mutate={mutate} />}
     {editingProject && <ProjectForm data={data} busy={busy} initial={editingProject} participantes={partByProject.get(editingProject.id) ?? []}
       onClose={() => setEditingProject(null)}
@@ -178,7 +178,7 @@ function ProjectForm({ data, initial, participantes = [], busy, onClose, onSave,
   </div>;
 }
 
-function ProjectBoard({ data, project, busy, isManager, userById, onBack, onOpenTask, onEditProject, mutate }: { data: ApiData; project: Projeto; busy: boolean; isManager: boolean; userById: Map<string, Usuario>; onBack: () => void; onOpenTask: (id: string) => void; onEditProject: () => void; mutate: (body: Record<string, unknown>) => Promise<{ error?: string }> }) {
+function ProjectBoard({ data, project, busy, userById, onBack, onOpenTask, onEditProject, mutate }: { data: ApiData; project: Projeto; busy: boolean; userById: Map<string, Usuario>; onBack: () => void; onOpenTask: (id: string) => void; onEditProject: () => void; mutate: (body: Record<string, unknown>) => Promise<{ error?: string }> }) {
   const [tab, setTab] = useState<"kanban" | "lista" | "calendario" | "dashboard">("kanban");
   const [addingCol, setAddingCol] = useState(false);
   const [iaOpen, setIaOpen] = useState(false);

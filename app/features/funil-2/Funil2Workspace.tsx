@@ -576,17 +576,6 @@ function VisitaCard({ visita, lead, busy, onSalvar }: { visita: VisitaFunil2; le
   </article>;
 }
 
-function EsteiraVendas({ negociacoes, leads, busy, onNova, onSalvar }: { negociacoes: NegociacaoFunil2[]; leads: LeadFunil2[]; busy: boolean; onNova: () => void; onSalvar: (n: Record<string, unknown>) => void }) {
-  const colunas = ["qualificacao","simulacao","proposta","documentacao","contrato","venda"] as const;
-  const rotulos: Record<string,string> = { qualificacao:"Qualificação",simulacao:"Simulação",proposta:"Proposta",documentacao:"Documentação",contrato:"Contrato",venda:"Venda" };
-  const valor = negociacoes.filter((item) => item.etapa !== "perdida").reduce((total, item) => total + Number(item.valor ?? 0), 0);
-  const concluidas = negociacoes.filter((item) => item.etapa === "venda").length;
-  return <main className="f2-pagina"><CabecalhoPagina titulo="Esteira de Vendas" texto="Estrutura visual do funil antigo, agora ligada ao lead, ao responsável, ao valor e à etapa comercial." acao="+ Nova negociação" onAcao={onNova} />
-    <section className="f2-vendas-kpis"><article><b>{negociacoes.length}</b><span>negociações</span></article><article><b>{negociacoes.filter((item) => item.etapa === "proposta").length}</b><span>propostas</span></article><article><b>{concluidas}</b><span>vendas concluídas</span></article><article><b>{valor.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</b><span>valor em acompanhamento</span></article></section>
-    <section className="f2-pipe f2-pipe-vendas">{colunas.map((coluna) => { const itens = negociacoes.filter((n) => n.etapa === coluna); return <div key={coluna}><header><h3>{rotulos[coluna]}</h3><b>{itens.length}</b></header>{itens.map((negocio) => { const lead = leads.find((l) => l.id === negocio.funil_lead_id); return <article key={negocio.id}><span>{lead?.nome}</span><h4>{negocio.titulo}</h4><p>{negocio.valor == null ? "Valor a definir" : Number(negocio.valor).toLocaleString("pt-BR",{style:"currency",currency:"BRL"})}</p><select disabled={busy} value={negocio.etapa} onChange={(e) => onSalvar({ id: negocio.id, leadId: negocio.funil_lead_id, titulo: negocio.titulo, etapa: e.target.value, valor: negocio.valor, observacao: negocio.observacao })}>{colunas.map((c) => <option key={c} value={c}>{rotulos[c]}</option>)}<option value="perdida">Perdida</option></select></article>; })}{itens.length === 0 && <p className="f2-pipe-vazio">Nenhuma negociação.</p>}</div>; })}</section>
-  </main>;
-}
-
 function PerformanceFunil2({ leads, eventos, visitas, negociacoes, operacao }: { leads: LeadFunil2[]; eventos: EventoFunil2[]; visitas: VisitaFunil2[]; negociacoes: NegociacaoFunil2[]; operacao: OperacaoConfigFunil2 | null }) {
   const pct = (parte: number, total: number) => total > 0 ? Math.round(parte / total * 100) : null;
   const mostrarPct = (valor: number | null) => valor === null ? "Sem amostra" : `${valor}%`;
