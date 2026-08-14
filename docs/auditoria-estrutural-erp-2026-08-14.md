@@ -247,3 +247,16 @@ A autoridade única passa a ser `f2_pescar_negocio(bigint, uuid)`. Ela mantém o
 No momento da verificação, o banco tinha aproximadamente 13.553 leads históricos, 13.859 negócios e 677 cards no Funil 2.0. Nenhum registro histórico foi excluído nesta consolidação.
 
 Também foram removidos quatro índices redundantes comprovadamente idênticos, mantendo as chaves e índices canônicos: `corretor_presencas_uk`, `idx_esteira_anexos_ref`, `uidx_instancias_credenciais_instancia` e `pagamentos_comissao_venda_idx`.
+
+## Execução — entrada única no Funil 2.0 (14/08/2026)
+
+Foram encontrados três processadores concorrentes para o mesmo evento de distribuição. O NCRM antigo ainda estava ativo e criava registros em `ncrm_estado` ao mesmo tempo que `f2_entrada_por_distribuicao` criava a carteira oficial.
+
+Os jobs `ncrm_reconciliar`, `ncrm_reativar_por_resposta` e `ncrm_entrada_distribuicao` foram removidos do agendador. `ncrm_ingest_config.ativo` foi definido como falso e `ncrm_entrada_config.escopo` como `nenhum`. A chamada duplicada do F2 também foi retirada de `guardiao-entrada`.
+
+Continuam separados e ativos:
+
+- a roleta/distribuição escolhe o corretor sem depender de funil;
+- `f2_entrada_distribuicao` transforma a distribuição em carteira operacional;
+- `guardiao-entrada` detecta leads presos e gera alerta;
+- Sara, notificações e push do F2 permanecem em seus jobs próprios.
