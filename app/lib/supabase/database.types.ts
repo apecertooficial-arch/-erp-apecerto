@@ -7339,7 +7339,6 @@ export type Database = {
       }
       aprovar_solicitacao: { Args: { p_id: string }; Returns: Json }
       aquario_importar: { Args: { p_rows: Json }; Returns: Json }
-      aquario_pescar: { Args: never; Returns: Json }
       aquario_stage_id: { Args: never; Returns: number }
       aquario_status: { Args: never; Returns: Json }
       atualizar_meu_perfil: {
@@ -7948,7 +7947,6 @@ export type Database = {
         Args: { p_fim?: string; p_inicio?: string }
         Returns: Json
       }
-      pescar_lead_aquario: { Args: { p_negocio_id: number }; Returns: Json }
       pipelines_com_etapas: { Args: never; Returns: Json }
       pj_alerta_atrasadas: { Args: never; Returns: number }
       pj_listar_usuarios: {

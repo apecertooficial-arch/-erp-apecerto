@@ -260,13 +260,6 @@ export async function PATCH(request: Request) {
     return Response.json({ success: true, leadId: lead.id, negocioId, distribuicao });
   }
 
-  if (action === "aquarioPescar") {
-    const { data, error } = await auth.supabase.rpc("aquario_pescar");
-    const result = data && typeof data === "object" ? data as Record<string, unknown> : {};
-    if (error || result.ok === false) return Response.json({ error: error?.message || cleanText(result.error, 300) || "Não foi possível pescar um lead." }, { status: 409 });
-    return Response.json({ success: true, lead: { id: result.lead_id, nome: result.nome, telefone: result.telefone } });
-  }
-
   if (action === "aquarioImportar") {
     const denied = guard([["leads", "importar"]], "Você não tem permissão para importar leads.");
     if (denied) return denied;
