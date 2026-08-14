@@ -198,7 +198,7 @@ test("Sara fica acima da barra inferior no celular", () => {
 
 test("avisos do Funil 2 nunca abrem automaticamente e ficam compactos no celular", () => {
   const funil = ler("../app/features/funil-2/Funil2Workspace.tsx");
-  const css = ler("../app/features/funil-2/estilos.ts");
+  const css = ler("../app/styles/funil-2.css");
   assert.match(funil, /useState\(false\)/, "o sino começa fechado");
   assert.match(css, /\.f2-avisos-pop\{position:fixed;left:auto;right:12px[^}]*max-height:58vh/,
     "o painel não pode tomar a tela inteira");

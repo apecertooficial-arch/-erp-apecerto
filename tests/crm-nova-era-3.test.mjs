@@ -31,6 +31,7 @@ import { fotoDoLead, interesseDoLead, imoveisDoLead } from "../app/features/crm-
 
 const ler = (p) => readFileSync(new URL(p, import.meta.url), "utf8");
 const base = "../app/features/crm-nova-era-3/";
+const cssCrm3 = "../../styles/crm-nova-era.css";
 
 const ARQUIVOS_DO_CORRETOR = [
   "Crm3Workspace.tsx",
@@ -396,7 +397,7 @@ test("o CRM 3.0 não tem caminho para enviar mensagem", () => {
 
 test("esta frente não encosta em app, PWA, manifest, service worker nem Web Push", () => {
   const proibidos = [/serviceworker/i, /manifest\.json/i, /webpush/i, /pushmanager/i, /beforeinstallprompt/i];
-  for (const arquivo of [...ARQUIVOS_DO_CORRETOR, "estilos.ts", "lib/adapter3.ts", "components/Gestao3.tsx"]) {
+  for (const arquivo of [...ARQUIVOS_DO_CORRETOR, cssCrm3, "lib/adapter3.ts", "components/Gestao3.tsx"]) {
     const fonte = ler(base + arquivo);
     for (const re of proibidos) assert.ok(!re.test(fonte), `${arquivo} encostou em ${re}`);
   }
@@ -444,7 +445,7 @@ test("o card e uma ordem de trabalho: momento, ação e prazo", () => {
 });
 
 test("o recorte do Pipe de Visitas nao cria segunda esteira nem segunda tabela", () => {
-  const css = ler(base + "estilos.ts");
+  const css = ler(base + cssCrm3);
   assert.match(css, /\.ncrm3-so-visitas \.crm-agenda-grid > \.agenda-panel:not\(\.visits\) \{ display:none; \}/);
   assert.match(css, /\.ncrm3-oficial \.crm-command-bar \{ display:none; \}/);
 });
@@ -452,7 +453,7 @@ test("o recorte do Pipe de Visitas nao cria segunda esteira nem segunda tabela",
 /* ============================ RESPONSIVIDADE ============================ */
 
 test("o CSS cobre tablet, 430 px e 390 px, e a ficha vira tela cheia", () => {
-  const css = ler(base + "estilos.ts");
+  const css = ler(base + cssCrm3);
   assert.match(css, /@media \(max-width:1180px\)/, "faltou o corte de tablet");
   assert.match(css, /@media \(max-width:900px\)/, "faltou o corte de celular grande (430px)");
   assert.match(css, /@media \(max-width:460px\)/, "faltou o corte de celular pequeno (390px)");
@@ -462,13 +463,13 @@ test("o CSS cobre tablet, 430 px e 390 px, e a ficha vira tela cheia", () => {
 });
 
 test("nada no 3.0 força largura maior que a tela", () => {
-  const css = ler(base + "estilos.ts");
+  const css = ler(base + cssCrm3);
   assert.match(css, /\.ncrm3, \.ncrm3-conteudo, \.ncrm3-quadro, \.ncrm3-coluna, \.ncrm3-card, \.ncrm3-item \{ max-width:100%; \}/);
   assert.ok(!/min-width:\s*[5-9]\d\dpx/.test(css), "existe min-width que estoura o celular");
 });
 
 test("o 3.0 herda a identidade do CRM atual, não uma paleta nova", () => {
-  const css = ler(base + "estilos.ts");
+  const css = ler(base + cssCrm3);
   for (const variavel of ["var(--orange)", "var(--line)", "var(--surface)", "var(--muted)", "var(--sunken)", "var(--radius-pill)"]) {
     assert.ok(css.includes(variavel), `o 3.0 deixou de usar ${variavel} do design system`);
   }

@@ -48,8 +48,8 @@ export const moduleMap = {
     tables: ["crm_tarefas", "visitas"],
   },
   "Agentes de IA": {
-    description: "Execuções e sinais registrados pelo motor de automação.",
-    tables: ["motor_execucoes", "motor_flags"],
+    description: "Treinamento, conhecimento, ferramentas, versões, testes e execuções dos agentes.",
+    tables: ["agentes_ia", "agente_versoes", "agente_fontes", "agente_ferramentas", "agente_execucoes"],
   },
   Usuários: {
     description: "Usuários, corretores, presença e associação de instâncias.",
@@ -73,8 +73,8 @@ export const moduleMap = {
     tables: ["perfis", "usuarios"],
   },
   Configurações: {
-    description: "Preferências, regras comerciais e parâmetros da operação.",
-    tables: ["escritorio_config", "sla_regras", "config_financeiro"],
+    description: "Conexão e acompanhamento das instâncias de WhatsApp dos corretores.",
+    tables: ["wa_instancias", "corretor_instancias"],
   },
   "Minha Equipe": {
     description: "Performance e VGV da equipe (leitura), para gerentes e diretores.",

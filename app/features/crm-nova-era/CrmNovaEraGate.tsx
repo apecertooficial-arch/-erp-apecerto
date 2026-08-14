@@ -2,20 +2,20 @@
 /**
  * CrmNovaEraGate — SELETOR entre o CRM atual e o CRM Nova Era 3.0.
  * ------------------------------------------------------------------
- * - No celular, o CRM operacional é a experiência oficial de todos os perfis
- *   autenticados. O gate de piloto permanece apenas no desktop.
+ * - Gate real: só exibe a opção "CRM Nova Era" quando `crmNovaEraLiberado`
+ *   (flag do ambiente ligada E (admin OU allowlist)). Corretor sem permissão
+ *   vê APENAS o CRM antigo. Acesso direto por ?crm=nova-era é bloqueado quando
+ *   não liberado (cai no CRM antigo e limpa a query).
  * - A flag controla só a VISIBILIDADE; a autorização de dados é sempre do banco
  *   (RLS + RPC fail-closed). Nenhum segredo/serviço aqui.
  * - Persiste a última escolha por usuário (localStorage), sem afetar os demais.
  * - Default: "Funil atual" (CRM de produção inalterado).
  *
- * CELULAR: monta a TelaCrmMobile, no desenho do protótipo. Antes, celular e
- * desktop caíam os dois no Crm3Workspace, que foi feito para tela grande.
+ * CELULAR: monta o Funil2Mobile; desktop monta o workspace oficial do CRM 3.0.
  *
  * DEEP LINK VENCE A VISTA. Ver o comentário de `deepLink` abaixo.
  */
 import { useEffect, useState, type ReactNode } from "react";
-import { NOVA_CRM_CSS } from "./styles";
 import { crmNovaEraLiberado } from "./featureFlag";
 import { Crm3Workspace } from "../crm-nova-era-3/Crm3Workspace";
 import { useEhCelular } from "../system/useFormato";
@@ -35,8 +35,8 @@ function chave(userId: string | null) {
  * `?chat=` (a conversa) só existe dentro do CrmWorkspace — em qualquer
  * formato de tela, é para lá que ele vai.
  *
- * `?lead=` (a ficha) tem duas casas: no desktop é o CrmWorkspace; no celular
- * é a FichaLeadMobile, que a TelaCrmMobile abre lendo este mesmo parâmetro.
+ * `?lead=` (a ficha) abre no CrmWorkspace no desktop e segue para o fluxo
+ * responsivo oficial no celular.
  * É o link que o PUSH de lead novo carrega — mandar o corretor para o CRM de
  * desktop no celular era recarga de página + ~1,8 MB de /api/crm + um
  * `if (!deal) return;` mudo quando o negócio não estava naquele payload. */
@@ -62,19 +62,13 @@ function pedeWorkspace3(): boolean {
   }
 }
 
-/* Desde 05/08/2026 o Funil 2.0 e O funil da operacao -- nao um laboratorio nem
-   uma etapa dentro do CRM antigo. Antes so aparecia com ?crm=funil-2 na URL ou
-   em tela de ate 900px: no computador o corretor caia no CRM 3.0 sem perceber,
-   e passava o dia no funil errado.
-
-   Agora e o padrao em qualquer tela. Quem precisar do CRM antigo continua
-   chegando por ?crm=atual, que a variante salva ja trata. */
 function pedeFunil2(): boolean {
-  if (typeof window === "undefined") return true;
+  if (typeof window === "undefined") return false;
   try {
-    return new URLSearchParams(window.location.search).get("crm") !== "atual";
+    const parametros = new URLSearchParams(window.location.search);
+    return parametros.get("crm") === "funil-2" || window.matchMedia("(max-width: 900px)").matches;
   } catch {
-    return true;
+    return false;
   }
 }
 
@@ -122,8 +116,8 @@ export function CrmNovaEraGate({
   /* DEEP LINK: lido UMA vez, na montagem, e guardado.
    *
    * Por que guardar em vez de reler a URL a cada render: quem consome o deep
-   * link apaga a query (a página de CRM no desktop, a TelaCrmMobile no
-   * celular), para o botão voltar não reabrir o mesmo lead. Se este valor
+   * link apaga a query depois de consumi-la, para o botão voltar não reabrir
+   * o mesmo lead. Se este valor
    * fosse relido, a ficha abriria e a tela inteira se trocaria por baixo
    * dela no mesmo instante. */
   const [deepLink] = useState(lerDeepLink);
@@ -134,40 +128,34 @@ export function CrmNovaEraGate({
      largura antes de o navegador existir, e chutar causaria troca de tela
      piscando na frente do corretor. */
   const ehCelular = useEhCelular();
+
+  // Se não liberado, apenas limpa ?crm=nova-era da URL (sync com sistema externo — sem setState).
+  useEffect(() => {
+    if (!liberado) refletirUrl("atual", profile?.userId ?? null);
+  }, [liberado, profile?.userId]);
+
+  // Não liberado: nada de Nova Era, nem seletor — CRM antigo puro.
+  if (!liberado) return <>{current}</>;
+
   const podeLive = !!accessToken && !!profile?.userId;
   const podeFunil2 = ["admin", "executivo", "gestor", "gerente", "diretor", "corretor"].includes((profile?.role ?? "").toLowerCase())
     || profile?.userId === "4dfdffae-0009-41de-8d6f-2365a06dc066";
-
-  // O gate antigo continua valendo no desktop. No celular, o CRM operacional
-  // é o produto oficial e não pode depender de uma allowlist de piloto.
-  useEffect(() => {
-    if (!liberado && ehCelular === false) refletirUrl("atual", profile?.userId ?? null);
-  }, [ehCelular, liberado, profile?.userId]);
-
-  if (ehCelular === true) {
-    if (!podeLive || !podeFunil2) return <>{current}</>;
-    return (
-      <Funil2Mobile
-        accessToken={accessToken as string}
-        nome={profile?.name ?? "Corretor"}
-        modo="crm"
-        onIr={(destino) => { window.location.href = destino; }}
-      />
-    );
-  }
-
-  // Enquanto a largura ainda é desconhecida, não monte o CRM antigo para um
-  // corretor autenticado: além do lampejo visual, ele iniciaria a carga pesada
-  // do desktop antes de ser substituído pelo aplicativo móvel.
-  if (ehCelular === null && !liberado && podeLive && podeFunil2) return null;
-
-  // Desktop não liberado: CRM antigo puro.
-  if (!liberado) return <>{current}</>;
 
   /* Laboratório isolado: entrada explícita e administrativa. A mesma regra é
      repetida no banco; esconder a tela aqui é UX, RLS é a autoridade. */
   if (entrouNoFunil2) {
     if (!podeLive || !podeFunil2) return <>{current}</>;
+    if (ehCelular === null) return null;
+    if (ehCelular === true) {
+      return (
+        <Funil2Mobile
+          accessToken={accessToken as string}
+          nome={profile?.name ?? "Corretor"}
+          modo="crm"
+          onIr={(destino) => { window.location.href = destino; }}
+        />
+      );
+    }
     return (
       <Funil2Workspace
         accessToken={accessToken as string}
@@ -184,9 +172,8 @@ export function CrmNovaEraGate({
 
   /* ---------------------- FICHA PEDIDA (?lead=) ----------------------
      No desktop, a ficha é a do CrmWorkspace — mesmo caminho da conversa.
-     No celular, quem sabe abrir a ficha é a TelaCrmMobile: deixa o fluxo
-     SEGUIR para o ramo do celular logo abaixo, onde ela monta e lê o
-     parâmetro. Enquanto a largura é desconhecida (primeiro quadro), não
+     No celular, o fluxo segue para a experiência responsiva oficial. Enquanto
+     a largura é desconhecida (primeiro quadro), não
      monta nada: chutar desktop dispararia o download de ~1,8 MB de
      /api/crm num aparelho que nunca vai usar essa tela. */
   if (deepLink.lead) {
@@ -200,7 +187,6 @@ export function CrmNovaEraGate({
   if (entrouNoWorkspace3 && podeLive) {
     return (
       <div style={{ display: "flex", flexDirection: "column", height: "100%", minHeight: 0 }}>
-        <style>{NOVA_CRM_CSS}</style>
         <Crm3Workspace
           accessToken={accessToken as string}
           profile={{ userId: profile!.userId as string, role: profile?.role ?? "corretor", name: profile?.name ?? "Corretor" }}
@@ -214,9 +200,24 @@ export function CrmNovaEraGate({
     refletirUrl(v, profile?.userId ?? null);
   }
 
+  /* ------------------------------ CELULAR ------------------------------
+     Experiência responsiva oficial. A barra "Funil atual / CRM Nova
+     Era 3.0" NÃO aparece aqui: é vocabulário de piloto, e o pacote de design
+     proíbe isso na tela do corretor. No desktop ela continua, porque lá é
+     ferramenta de quem está comparando as duas versões. */
+  if (ehCelular === true && variante === "nova-era" && podeLive) {
+    return (
+      <Funil2Mobile
+        accessToken={accessToken as string}
+        nome={profile?.name ?? "Corretor"}
+        modo="crm"
+        onIr={(destino) => { window.location.href = destino; }}
+      />
+    );
+  }
+
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", minHeight: 0 }}>
-      <style>{NOVA_CRM_CSS}</style>
 
       {/* A barra de comparação aposentou-se com o CRM antigo: o 3.0 é o CRM.
           O antigo ainda abre por ?crm=atual (emergência da gestão) e, só

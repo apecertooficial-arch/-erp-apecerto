@@ -7861,6 +7861,10 @@ export type Database = {
         Args: { p_motivo?: string; p_negocio_id: number; p_stage_id: number }
         Returns: Json
       }
+      ncrm_distribuir_lead_novo: {
+        Args: { p_negocio_id: number }
+        Returns: Json
+      }
       nome_normalizado: { Args: { t: string }; Returns: string }
       perf_amostrar_online: { Args: never; Returns: undefined }
       perf_derivar_eventos: { Args: { p_desde?: string }; Returns: Json }
