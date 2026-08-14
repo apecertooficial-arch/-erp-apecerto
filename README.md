@@ -1,7 +1,7 @@
 # Frontend do ERP ApêCerto
 
-Aplicação local que hospeda o ERP integrado, mantém o HTML original preservado
-e acrescenta as telas e conexões atuais.
+Aplicação operacional do ERP ApêCerto. CRM, Agenda, Financeiro, Automações,
+Agentes de IA e demais módulos são implementados diretamente no aplicativo.
 
 ## Comandos
 
@@ -12,15 +12,15 @@ pnpm test
 pnpm build
 ```
 
-`pnpm dev` executa primeiro a sincronização do HTML. A aplicação abre em
-`http://localhost:3001/`.
+`pnpm dev` abre a aplicação local em `http://localhost:3001/`.
 
 ## Estrutura principal
 
 - `app/`: aplicação, componentes, funcionalidades e rotas de API;
-- `public/legacy-runtime.html`: ERP integrado exibido na prévia;
-- `public/legacy-assets/`: recursos necessários ao HTML;
-- `scripts/`: preservação e geração do HTML integrado;
+- `app/features/funil-2/`: CRM operacional canônico;
+- `app/features/automations/`: Central de Automações independente de funil;
+- `app/features/agents/`: treinamento e avaliação dos agentes de IA;
+- `supabase/`: migrations e Edge Functions do ambiente operacional;
 - `tests/`: verificações executadas antes da entrega;
 - `.env.example`: modelo das variáveis públicas do Supabase.
 

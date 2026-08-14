@@ -5,7 +5,7 @@
 **Arquitetura atual (como o dado chega na tela):**
 
 ```
-Tela Performance (legacy-runtime.html, seção linha ~9339)
+Tela Performance (`app/features/team/PerformanceWorkspace.tsx`)
    └── RPC performance_corretores(p_inicio, p_fim)   ← já existe e está correto
          ├── perf_eventos      (eventos por corretor — 14.806 registros hoje)
          ├── vendas + venda_corretores (VGV, comissão, nº vendas)

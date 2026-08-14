@@ -1,10 +1,9 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import test from "node:test";
 
 const shell = readFileSync(new URL("../app/features/system/ErpShell.tsx", import.meta.url), "utf8");
 const heartbeat = readFileSync(new URL("../app/features/presence/PresenceHeartbeat.tsx", import.meta.url), "utf8");
-const crmRoute = readFileSync(new URL("../app/api/crm/route.ts", import.meta.url), "utf8");
 const migration = readFileSync(new URL("../supabase/migrations/20260812030000_ncrm_roleta_igualitaria_e_presenca.sql", import.meta.url), "utf8");
 
 test("confirmação de presença é global, exclusiva do corretor e usa 15 minutos", () => {
@@ -16,9 +15,8 @@ test("confirmação de presença é global, exclusiva do corretor e usa 15 minut
   assert.match(migration, /ativa=true[\s\S]*intervalo_min=15/);
 });
 
-test("API geral do CRM não mantém criação paralela fora do Funil 2", () => {
-  assert.doesNotMatch(crmRoute, /action === "createLead"/);
-  assert.doesNotMatch(crmRoute, /ncrm_distribuir_lead_novo/);
+test("API geral do CRM foi aposentada; criação ocorre somente no Funil 2", () => {
+  assert.equal(existsSync(new URL("../app/api/crm/route.ts", import.meta.url)), false);
 });
 
 test("roleta é igualitária e mantém as travas operacionais", () => {
