@@ -67,6 +67,22 @@ export function BotaoWhatsApp({ telefone, negocioId, rotulo = "Chamar no WhatsAp
         <span aria-hidden="true">💬</span> {rotulo}
       </a>
 
+      {/* A SEGUNDA FORMA DO NUMERO — visivel SEMPRE, inclusive no modo compacto.
+          O corretor so descobre que o numero nao existe depois de abrir o
+          WhatsApp; se a alternativa estiver escondida atras de um menu, ele
+          descarta o lead antes de achar. Em 11/08 quatro leads bons foram
+          descartados assim. */}
+      {preparo.alt && (
+        <a
+          className="ncrm-wa-alt"
+          href={preparo.alt.app}
+          onClick={registrarIntencao}
+          data-e164={preparo.alt.e164}
+        >
+          Não existe? Tentar {preparo.alt.rotulo} · {preparo.alt.exibicao}
+        </a>
+      )}
+
       {!compacto && (
         <div className="ncrm-wa-secundarias">
           {/* Fallback oficial, sempre visivel. Serve no desktop (sem app
@@ -95,6 +111,7 @@ export function BotaoWhatsApp({ telefone, negocioId, rotulo = "Chamar no WhatsAp
       {!compacto && (
         <p className="ncrm-wa-nota">
           A mensagem sai do WhatsApp do seu celular. O ERP nao envia nada por voce.
+          {preparo.alt ? " Se o WhatsApp disser que o número não existe, tente a segunda forma acima antes de descartar o lead." : ""}
         </p>
       )}
     </div>

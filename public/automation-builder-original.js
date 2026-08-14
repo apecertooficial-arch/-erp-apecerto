@@ -36,6 +36,7 @@ function ico(n,s=16,c='currentColor',sw=1.8){const p={
  random:'<rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.4" fill="currentColor"/><circle cx="15.5" cy="15.5" r="1.4" fill="currentColor"/><circle cx="15.5" cy="8.5" r="1.4" fill="currentColor"/>',
  message:'<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',wait:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
  api:'<path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/>',
+ ai:'<path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/><path d="M18 15l.8 2.2L21 18l-2.2.8L18 21l-.8-2.2L15 18l2.2-.8z"/>',
  flow:'<circle cx="6" cy="6" r="3"/><circle cx="18" cy="18" r="3"/><path d="M9 6h6a3 3 0 0 1 3 3v6"/>',play:'<path d="M5 3l16 9-16 9z"/>',monitor:'<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/>',
  plus:'<path d="M12 5v14M5 12h14"/>',x:'<path d="m18 6-12 12M6 6l12 12"/>',trash:'<path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>',copy:'<rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/>',
  brief:'<rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>',user:'<circle cx="12" cy="8" r="4"/><path d="M4 20a8 8 0 0 1 16 0"/>',insta:'<rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor"/>',
@@ -51,12 +52,19 @@ const TYPES={
  action:{fam:'acao',label:'Ação',vis:'action',cvar:'--c-action'},
  randomizer:{fam:'randomizador',label:'Randomizador',vis:'random',cvar:'--c-random'},
  distribution:{fam:'distribuicao',label:'Distribuir leads (roleta)',vis:'random',cvar:'--c-ai'},
+ 'distribution-simple':{fam:'distribuicao_simples',label:'Distribuir lead (simples)',vis:'random',cvar:'--c-ai'},
  chat:{fam:'mensagem',label:'Mensagem',vis:'message',cvar:'--c-message'},
  'send-approach':{fam:'mensagem',label:'Enviar abordagem (corretor do lead)',vis:'message',cvar:'--c-ai'},
  time:{fam:'espera',label:'Espera',vis:'wait',cvar:'--c-wait'},
- api:{fam:'api',label:'API',vis:'api',cvar:'--c-api'}
+ api:{fam:'api',label:'API',vis:'api',cvar:'--c-api'},
+ 'ai-agent':{fam:'agente',label:'Agente de IA',vis:'ai',cvar:'--c-ai'}
 };
 const FAM2TYPE={}; Object.entries(TYPES).forEach(([t,m])=>FAM2TYPE[m.fam]=t);
+/* Funções que um agente de IA pode executar dentro de uma automação.
+   Para habilitar uma função nova, acrescente UMA linha aqui.
+   Atenção: o valor da esquerda precisa existir no motor (motor_agente).
+   Se não existir, o pedido vira alerta no log em vez de ser executado. */
+const AI_FUNCOES=[['atualizar_momento','Ler a conversa e atualizar o momento']];
 const ACTIONS=[['create-lead-action','Criar lead','lead'],['create-business-action','Criar negócio','business'],['move-business-action','Mover negócio','business'],['add-attendant-on-business-action','Atribuir corretor','business'],['clean-attendant-on-business-action','Remover corretor','business'],['add-tag-action','Adicionar tag','lead'],['set-lead-momento-action','Definir momento do lead','lead'],['start-another-automation-action','Iniciar outra automação','system']];
 const CONDITIONS=[['lead-exists-condition','Lead existe','lead'],['lead-has-business-on-pipeline-condition','Lead tem negócio no funil','business'],['lead-has-business-on-stage-condition','Lead tem negócio na etapa','business'],['business-has-attendants-condition','Negócio tem corretor','business']];
 const BETA_TAG='<span style="font-size:8px;font-weight:800;color:#92700a;background:#fef9c3;border-radius:4px;padding:1px 5px;margin-left:5px">INTEGRAÇÃO</span>';
@@ -87,7 +95,7 @@ function esperaMeta(name){for(const c in ESPERAS){const f=ESPERAS[c].find(x=>x[0
 const CAT_ESPERA_ICON={'Tempo':'wait','Mensagens':'message'};
 const ESPERA_SUB={'Tempo':'Adicione espera com base em intervalos de horas','Mensagens':'Adicione espera com base em mensagens'};
 function applyEspera(n,name){const m=esperaMeta(name),cfg=m[3];n.opts.wait_type=name;const durMap={'wait-seconds':'segundos','wait-minutes':'minutos','wait-hours':'horas','wait-days':'dias'};if(cfg.indexOf('dur:')===0){n.opts.unidade=durMap[name]||cfg.slice(4);n.opts.valor=n.opts.valor||5;}}
-const TRIGGERS=[['json-http-request-trigger','Webhook (HTTP)','system'],['initiated-by-another-automation-trigger','Iniciada por outra automação','system'],['manually-lead-trigger','Manual','system'],['tag-added-trigger','Tag adicionada','lead'],['lead-entered-stage-trigger','Entrou na etapa','business'],['lead-moved-stage-trigger','Mudou de etapa','business']];
+const TRIGGERS=[['json-http-request-trigger','Webhook (HTTP)','system'],['initiated-by-another-automation-trigger','Iniciada por outra automação','system'],['manually-lead-trigger','Manual','system'],['tag-added-trigger','Tag adicionada','lead'],['lead-entered-stage-trigger','Entrou na etapa','business'],['lead-moved-stage-trigger','Mudou de etapa','business'],['lead-distribuido-trigger','Lead distribuido (entrou no funil)','lead'],['lead-mensagem-recebida-trigger','Chegou mensagem do lead','lead'],['momento-prazo-vencido-trigger','Venceu o prazo do momento','business'],['retomar-na-data-trigger','Chegou a data de retomar','business'],['lead-entrou-momento-trigger','Entrou no momento','business']];
 const CAMPOS=['{nome}','{primeiro_nome}','{telefone}','{email}','{origem}','{corretor}','{corretor_primeiro_nome}','{produto}'];
 // rastreia a posição do cursor no textarea para inserir a variável exatamente onde o usuário parou
 function _trackCaret(ta){if(!ta)return;const upd=()=>{ta._caret=ta.selectionStart;};ta.addEventListener('keyup',upd);ta.addEventListener('click',upd);ta.addEventListener('input',upd);ta.addEventListener('blur',upd);}
@@ -109,7 +117,7 @@ const grpOf=(a,n)=>(a.find(x=>x[0]===n)||[,,'system'])[2];
 const labelOf=(a,n)=>(a.find(x=>x[0]===n)||[,n])[1];
 
 /* ---------- estado ---------- */
-const ref={pipelines:[],stages:[],corretores:[],instancias:[],automacoes:[],tags:[],produtos:[],abordagens:[]};
+const ref={pipelines:[],stages:[],corretores:[],instancias:[],automacoes:[],tags:[],produtos:[],abordagens:[],agentes:[]};
 let cur=null, selectedId=null, dirty=false;
 const view={x:120,y:120,scale:0.8};
 const worldEl=document.getElementById('world'), edgesEl=document.getElementById('edges'), canvasEl=document.getElementById('canvas'), emptyTip=document.getElementById('emptyTip');
@@ -149,6 +157,7 @@ async function boot(){
   ref.pipelines=pi;ref.stages=stg;ref.corretores=co;ref.instancias=ins;ref.automacoes=au;if(_ctx&&_ctx.onAutomationsLoaded){try{_ctx.onAutomationsLoaded(au);}catch(_e){}}
   try{ref.tags=await sbRpc('automacao_tags')||[];}catch(_t){ref.tags=[];}   try{ref.momentos=await sbGet('/lead_momento_catalogo?select=slug,rotulo,grupo,ordem&ativo=eq.true&order=ordem')||[];}catch(_m){ref.momentos=[];}
   try{const [pr,ab]=await Promise.all([sbGet('/produtos?select=id,nome,ativo&order=nome'),sbGet('/abordagens?select=id,produto_id,nome,ordem,ativo,mensagens&order=ordem')]);ref.produtos=pr||[];ref.abordagens=ab||[];}catch(_p){ref.produtos=[];ref.abordagens=[];}
+  try{ref.agentes=await sbGet('/agentes_ia?select=id,slug,nome,categoria,ativo&ativo=is.true&order=categoria,nome')||[];}catch(_ag){ref.agentes=[];}
   setStatus('Conectado — '+au.length+' automações','#10b981');renderSidebar();
  }catch(e){console.error(e);setStatus('Falha de conexão','#dc2626');toast('Erro ao conectar: '+e.message,'err');}
 }
@@ -317,6 +326,41 @@ function bodyHtml(n){
    portRow('naoRespondeu','Caso o lead NÃO responda','err')+
    portRow('out','Próximo passo','ok')+portRow('err','Se ninguém disponível','err');
  }
+ /* Funil 2.0 — distribui e passa a bola. Sem abordagem automatica e sem reter o lead.
+    Quem manda a mensagem e o corretor, pelo celular; a evidencia e o D-API. */
+ /* Funil 2.0 — distribui e passa a bola. Sem abordagem automatica e sem reter o lead.
+    Quem manda a mensagem e o corretor, pelo celular; a evidencia e o D-API. */
+ if(n.type==='distribution-simple'){if(!n.opts)n.opts={};
+  const d=n.opts.distribuicao=n.opts.distribuicao||{items:[],onlineOnly:true,tambemNegocio:true};
+  const its=d.items=d.items||[];d.tambemNegocio=true;
+  (function(){const nomes=its.map(x=>String(x.corretor||'').trim().toLowerCase());
+   (ref.corretores||[]).filter(c=>c.ativo!==false&&nomes.indexOf(String(c.nome||'').trim().toLowerCase())<0)
+    .forEach(c=>its.push({corretor:c.nome,peso:1,on:false}));})();
+  its.forEach(x=>{if(x.peso==null)x.peso=1;});
+  const ligados=its.filter(x=>x.on!==false).length;
+  const somaPeso=its.filter(x=>x.on!==false).reduce((s,x)=>s+(+x.peso||0),0);
+  const linhas=its.map((it,i)=>{const ativo=it.on!==false;const pz=+it.peso||0;
+   const pct=(ativo&&somaPeso>0)?Math.round(pz*100/somaPeso):0;
+   return `<div class="ne-row" data-dsrow="${i}" style="padding:7px 9px"><div style="display:flex;align-items:center;gap:8px">`+
+    `<input type="checkbox" data-dson ${ativo?'checked':''} title="Participa do rodizio" style="width:15px;height:15px;flex:0 0 auto">`+
+    `<span style="flex:1;font-size:12.5px;font-weight:600;color:${ativo?'var(--ink)':'var(--ink-faint)'}">${esc(it.corretor||'—')}</span>`+
+    `<input class="ne-inp" type="number" min="0" step="1" data-dspeso value="${esc(pz)}" title="Peso no rodizio (0 = fora)" style="width:56px;text-align:center">`+
+    `<span style="font-size:11px;font-weight:700;color:var(--brand);width:38px;text-align:right">${pct}%</span>`+
+    `</div></div>`;}).join('');
+  const pr=Array.isArray(d.protecao)?d.protecao:['venda','visita_agendada','visita_realizada'];
+  const optsProt=[['venda','Venda em processo'],['visita_agendada','Visita agendada'],['visita_realizada','Visita realizada'],['sempre','Sempre manter o dono (nunca redistribui)']];
+  return `<div style="font-size:11px;color:var(--ink-faint);padding:2px 0 6px;line-height:1.45">Distribui o lead pelo <b>rodizio por peso</b> e segue o fluxo. <b>Nao envia abordagem</b> e <b>nao retem o lead</b> — quem manda a mensagem e o corretor, pelo celular, e o D-API confirma.</div>`+
+   (its.length?linhas:'<div style="font-size:11px;color:var(--ink-faint);padding:4px 0">Nenhum corretor. Recarregue a página para listar.</div>')+
+   `<div style="font-size:10.5px;color:var(--ink-faint);margin-top:5px">${ligados} de ${its.length} no rodízio. <b>Peso 0 tira o corretor do sorteio.</b> Todos com o mesmo peso = mesma chance. <b>Corretor recém-cadastrado entra desmarcado</b> — marque e publique para incluir.</div>`+
+   `<label style="display:flex;align-items:center;gap:7px;margin-top:8px;font-size:12px;color:var(--ink);cursor:pointer"><input type="checkbox" data-dsonline ${d.onlineOnly!==false?'checked':''} style="width:15px;height:15px"> Só distribuir para quem está <b>apto agora</b></label>`+
+   `<div style="height:1px;background:var(--line-soft);margin:11px 0 6px"></div><div class="ne-lb" style="margin-top:0">Proteção do dono do lead</div>`+
+   `<div style="font-size:11px;color:var(--ink-faint);margin:2px 0 4px">Lead que JÁ tem corretor só fica com ele nas situações marcadas — senão volta pro rodízio:</div>`+
+   optsProt.map(([k,l])=>`<label style="display:flex;align-items:center;gap:7px;font-size:12px;padding:3px 0;cursor:pointer"><input type="checkbox" data-dsprot="${k}" ${pr.indexOf(k)>=0?'checked':''} style="width:15px;height:15px;flex:0 0 auto">${esc(l)}</label>`).join('')+
+   `<button class="ne-add" data-dsreport style="margin-top:9px">\u{1F4CA} Distribuídos por corretor (período)</button>`+
+   `<div style="height:1px;background:var(--line-soft);margin:11px 0 7px"></div>`+
+   `<div style="font-size:10.5px;color:var(--ink-faint);line-height:1.5">Fixo neste bloco, por contrato do Funil 2.0:<br>· o corretor é atribuído também no <b>negócio</b> (negócio sem dono não entra no funil).</div>`+
+   portRow('out','Próximo passo','ok')+portRow('err','Se ninguém disponível','err');
+ }
  if(n.type==='send-approach'){const o=n.opts||{};
   return `<div style="font-size:11.5px;color:var(--ink-soft);padding:2px 0 6px;line-height:1.45">Envia a abordagem <b>pela instância do corretor DONO do lead</b> (definido pela Distribuição). Use depois de um bloco Distribuir, ou em follow-ups.</div>`+
    (function(){const dprod=o.produtoId||0;const abList=(ref.abordagens||[]).filter(a=>(a.produto_id||0)===dprod);const selAb=o.abordagemIds||[];
@@ -325,6 +369,15 @@ function bodyHtml(n){
      `<div style="font-size:11px;color:var(--ink-faint);margin:6px 0 3px">Marque as abordagens (o sistema alterna entre elas):</div>`+
      (abList.length?abList.map(a=>`<label style="display:flex;align-items:center;gap:7px;font-size:12px;padding:3px 0;cursor:pointer"><input type="checkbox" data-sapab="${a.id}" ${selAb.indexOf(a.id)>=0?'checked':''} style="width:15px;height:15px;flex:0 0 auto">${esc(a.nome)} <span style="color:var(--ink-faint);font-size:10.5px">(${(a.mensagens||[]).length})</span></label>`).join(''):`<div style="font-size:11px;color:var(--ink-faint)">Sem abordagens aqui. Crie em <b>Abordagens (produtos)</b>.</div>`);
    })()+
+   portRow('out','Próximo passo','ok');
+ }
+ if(n.type==='ai-agent'){const o=n.opts||{};const ags=ref.agentes||[];const selAg=+o.agenteId||0;const selFn=o.funcao||AI_FUNCOES[0][0];
+  return `<div style="font-size:11.5px;color:var(--ink-soft);padding:2px 0 6px;line-height:1.45">Pede a um <b>agente de IA</b> que leia a conversa do lead e execute uma função. O pedido é registrado e o fluxo segue pelo próximo passo.</div>`+
+   `<div class="ne-lb" style="margin-top:0">Agente</div>`+
+   `<select class="ne-sel" data-aiag><option value="0" ${selAg===0?'selected':''}>— escolha o agente —</option>${ags.map(a=>`<option value="${a.id}" ${a.id===selAg?'selected':''}>${esc(a.nome)}${a.categoria?' · '+esc(a.categoria):''}</option>`).join('')}</select>`+
+   (ags.length?'':`<div style="font-size:11px;color:var(--ink-faint);margin-top:5px">Nenhum agente ativo encontrado. Ative um em <b>Agentes de IA</b>.</div>`)+
+   `<div class="ne-lb">Função</div>`+
+   `<select class="ne-sel" data-aifn>${AI_FUNCOES.map(([v,t])=>`<option value="${v}" ${v===selFn?'selected':''}>${esc(t)}</option>`).join('')}</select>`+
    portRow('out','Próximo passo','ok');
  }
  if(n.type==='chat'){const ms=n.opts.messages||[];const conx=n.opts.instancia||'';
@@ -398,6 +451,7 @@ function condRow(c,i){const m=condMeta(c.name),cfg=m[3],o=c.options||{};let f=''
  return `<div class="ne-row" data-crow="${i}"><div class="ne-rowh"><div style="flex:1;font-size:11.5px;font-weight:600;color:var(--ink)">${esc(m[1])}${m[4]?BETA_TAG:''}</div><button class="ne-del" data-cdel>${ico('trash',13)}</button></div>${f?'<div style="display:flex;flex-direction:column;gap:6px">'+f+'</div>':''}<div class="ne-port" style="margin-top:5px"><span class="lbl" style="font-size:10px">Se esta condição for verdadeira</span><span class="port-dot dot branch" data-port="${esc(c.id||'')}"></span></div></div>`;}
 function actRow(a,i){const m=acaoMeta(a.name),cfg=m[3],o=a.options||{};let f='';
  if(cfg==='pipeline_stage')f=`<select class="ne-sel" data-af="pipeline">${pipeOpts(o.pipeline_id)}</select><select class="ne-sel" data-af="etapa">${stageOpts(o.etapa_id,o.pipeline_id)}</select>`;
+
  else if(cfg==='corretor')f=`<select class="ne-sel" data-af="corretor">${corOpts(o.corretor)}</select>`;
  else if(cfg==='tag')f=`<input class="ne-inp" data-af="tag" value="${esc(o.tag||'')}" placeholder="Escolha uma tag ou digite uma nova" list="apeTagsDL"><datalist id="apeTagsDL">${(ref.tags||[]).map(t=>`<option value="${esc(t)}"></option>`).join('')}</datalist>`;
   else if(cfg==='momento')f=`<select class="ne-sel" data-af="momento"><option value="">Selecione o momento…</option>${(ref.momentos||[]).map(m=>`<option value="${esc(m.slug)}"${o.momento===m.slug?' selected':''}>${esc(m.rotulo)}</option>`).join('')}</select><input class="ne-inp" data-af="observacao" value="${esc(o.observacao||'')}" placeholder="Observação (opcional)">`;
@@ -417,6 +471,25 @@ function msgRow(m,i){const nm=m.name||'send-text-message',o=m.options||{};const 
 
 /* ---------- binds inline ---------- */
 function stopMD(el){el.querySelectorAll('input,select,textarea,button').forEach(x=>x.addEventListener('mousedown',e=>e.stopPropagation()));}
+/* Relatorio de distribuicao por corretor — compartilhado pelos blocos 'distribution'
+   (roleta) e 'distribution-simple'. Le o log do motor, nao uma tabela propria. */
+async function relatorioDistribuicao(n){
+   showPanel('Distribuídos por corretor','<div style="font-size:12px;color:var(--ink-faint);padding:8px 0">Carregando…</div>');
+   let rows=[];try{rows=await sbGet('/motor_execucoes?automacao_id=eq.'+cur.id+'&bloco_id=eq.'+encodeURIComponent(n.id)+'&evento=eq.distribuicao&status=eq.ok&select=detalhe,criado_em&order=criado_em.desc&limit=2000');}catch(err){showPanel('Distribuídos por corretor','<div style="color:var(--err);font-size:12px">Erro: '+esc(err.message)+'</div>');return;}
+   const nomeDe=t=>{const m=/Lead (?:distribuido para|ja pertence a) ([^\-(]+)/.exec(t||'');return m?m[1].trim():null;};
+   // POSSE FINAL: quando o failover transfere o lead, a contagem sai do sorteado e vai para quem ficou com ele.
+   const transfDe=t=>{const m=/lead transferido para (\S+)/.exec(t||'');if(!m)return null;const s=/instancias de (\S+?) indisponiveis/.exec(t||'');return{para:m[1].trim(),de:s?s[1].trim():null};};
+   const agora=Date.now(),DIA=86400000;
+   const periodos=[['Hoje',d0=>agora-d0<DIA&&new Date(agora).toDateString()===new Date(d0).toDateString()],['Últimos 7 dias',d0=>agora-d0<7*DIA],['Últimos 30 dias',d0=>agora-d0<30*DIA],['Tudo',()=>true]];
+   const html=periodos.map(([lbl,fn])=>{const c={};let tot=0;rows.forEach(r=>{if(!fn(new Date(r.criado_em).getTime()))return;
+     const tr=transfDe(r.detalhe);if(tr){c[tr.para]=(c[tr.para]||0)+1;if(tr.de)c[tr.de]=(c[tr.de]||0)-1;return;}
+     const nm=nomeDe(r.detalhe);if(!nm)return;c[nm]=(c[nm]||0)+1;tot++;});
+    Object.keys(c).forEach(k=>{if(c[k]<=0)delete c[k];});
+    const ent=Object.entries(c).sort((a,b)=>b[1]-a[1]);const max=Math.max(1,...ent.map(x=>x[1]));
+    return '<div style="margin:14px 0 4px;font-size:12px;font-weight:800;color:var(--ink)">'+lbl+' <span style="color:var(--ink-faint);font-weight:600">('+tot+' leads)</span></div>'+(ent.length?ent.map(([nm,qt])=>'<div style="display:grid;grid-template-columns:110px 1fr 34px;gap:8px;align-items:center;padding:4px 0;font-size:12px"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(nm)+'</span><div style="height:9px;border-radius:6px;background:var(--line-soft);overflow:hidden"><div style="height:100%;width:'+Math.round(qt/max*100)+'%;background:var(--brand);border-radius:6px"></div></div><b style="text-align:right">'+qt+'</b></div>').join(''):'<div style="font-size:11.5px;color:var(--ink-faint)">Nenhum lead no período.</div>');
+   }).join('');
+   showPanel('Distribuídos por corretor — '+esc(cur.nome),html+'<div style="margin-top:14px;font-size:10.5px;color:var(--ink-faint)">Conta a POSSE FINAL do lead: sorteio do rodízio + transferências do failover (quem enviou de fato ficou com o lead). Fonte: log do motor.</div>');
+}
 function bindBody(n,el){
  stopMD(el);
  const q=s=>el.querySelector(s),qa=s=>[...el.querySelectorAll(s)];
@@ -452,25 +525,23 @@ function bindBody(n,el){
   const rvI=q('[data-distrespval]');if(rvI)rvI.onchange=()=>{d.respostaValor=+rvI.value||12;setDirty();};
   const ruI=q('[data-distrespunid]');if(ruI)ruI.onchange=()=>{d.respostaUnidade=ruI.value;setDirty();};
   qa('[data-distprot]').forEach(cb=>cb.onchange=()=>{const k=cb.dataset.distprot;d.protecao=Array.isArray(d.protecao)?d.protecao:['venda','visita_agendada','visita_realizada'];const ix=d.protecao.indexOf(k);if(cb.checked&&ix<0)d.protecao.push(k);else if(!cb.checked&&ix>=0)d.protecao.splice(ix,1);setDirty();});
-  const rpB=q('[data-distreport]');if(rpB)rpB.onclick=async e=>{e.stopPropagation();
-   showPanel('Distribuídos por corretor','<div style="font-size:12px;color:var(--ink-faint);padding:8px 0">Carregando…</div>');
-   let rows=[];try{rows=await sbGet('/motor_execucoes?automacao_id=eq.'+cur.id+'&bloco_id=eq.'+encodeURIComponent(n.id)+'&evento=eq.distribuicao&status=eq.ok&select=detalhe,criado_em&order=criado_em.desc&limit=2000');}catch(err){showPanel('Distribuídos por corretor','<div style="color:var(--err);font-size:12px">Erro: '+esc(err.message)+'</div>');return;}
-   const nomeDe=t=>{const m=/Lead (?:distribuido para|ja pertence a) ([^\-(]+)/.exec(t||'');return m?m[1].trim():null;};
-   // POSSE FINAL: quando o failover transfere o lead, a contagem sai do sorteado e vai para quem ficou com ele.
-   const transfDe=t=>{const m=/lead transferido para (\S+)/.exec(t||'');if(!m)return null;const s=/instancias de (\S+?) indisponiveis/.exec(t||'');return{para:m[1].trim(),de:s?s[1].trim():null};};
-   const agora=Date.now(),DIA=86400000;
-   const periodos=[['Hoje',d0=>agora-d0<DIA&&new Date(agora).toDateString()===new Date(d0).toDateString()],['Últimos 7 dias',d0=>agora-d0<7*DIA],['Últimos 30 dias',d0=>agora-d0<30*DIA],['Tudo',()=>true]];
-   const html=periodos.map(([lbl,fn])=>{const c={};let tot=0;rows.forEach(r=>{if(!fn(new Date(r.criado_em).getTime()))return;
-     const tr=transfDe(r.detalhe);if(tr){c[tr.para]=(c[tr.para]||0)+1;if(tr.de)c[tr.de]=(c[tr.de]||0)-1;return;}
-     const nm=nomeDe(r.detalhe);if(!nm)return;c[nm]=(c[nm]||0)+1;tot++;});
-    Object.keys(c).forEach(k=>{if(c[k]<=0)delete c[k];});
-    const ent=Object.entries(c).sort((a,b)=>b[1]-a[1]);const max=Math.max(1,...ent.map(x=>x[1]));
-    return '<div style="margin:14px 0 4px;font-size:12px;font-weight:800;color:var(--ink)">'+lbl+' <span style="color:var(--ink-faint);font-weight:600">('+tot+' leads)</span></div>'+(ent.length?ent.map(([nm,qt])=>'<div style="display:grid;grid-template-columns:110px 1fr 34px;gap:8px;align-items:center;padding:4px 0;font-size:12px"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(nm)+'</span><div style="height:9px;border-radius:6px;background:var(--line-soft);overflow:hidden"><div style="height:100%;width:'+Math.round(qt/max*100)+'%;background:var(--brand);border-radius:6px"></div></div><b style="text-align:right">'+qt+'</b></div>').join(''):'<div style="font-size:11.5px;color:var(--ink-faint)">Nenhum lead no período.</div>');
-   }).join('');
-   showPanel('Distribuídos por corretor — '+esc(cur.nome),html+'<div style="margin-top:14px;font-size:10.5px;color:var(--ink-faint)">Conta a POSSE FINAL do lead: sorteio do rodízio + transferências do failover (quem enviou de fato ficou com o lead). Fonte: log do motor.</div>');};}
+  const rpB=q('[data-distreport]');if(rpB)rpB.onclick=e=>{e.stopPropagation();void relatorioDistribuicao(n);};}
+ // distribuição simples (Funil 2.0) — rodízio por peso, sem abordagem e sem retenção
+ if(n.type==='distribution-simple'){n.opts.distribuicao=n.opts.distribuicao||{items:[],onlineOnly:true,tambemNegocio:true};const d=n.opts.distribuicao;d.items=d.items||[];d.tambemNegocio=true;
+  if(!Array.isArray(d.protecao))d.protecao=['venda','visita_agendada','visita_realizada'];
+  qa('[data-dsrow]').forEach(row=>{const i=+row.dataset.dsrow,it=d.items[i];if(!it)return;
+   const on=row.querySelector('[data-dson]');if(on)on.onchange=()=>{it.on=on.checked;setDirty();reNode(n);};
+   const pz=row.querySelector('[data-dspeso]');if(pz)pz.onchange=()=>{it.peso=Math.max(0,+pz.value||0);setDirty();reNode(n);};});
+  const onl=q('[data-dsonline]');if(onl)onl.onchange=()=>{d.onlineOnly=onl.checked;setDirty();};
+  qa('[data-dsprot]').forEach(cb=>cb.onchange=()=>{const k=cb.dataset.dsprot,ix=d.protecao.indexOf(k);
+   if(cb.checked){if(ix<0)d.protecao.push(k);}else if(ix>=0)d.protecao.splice(ix,1);setDirty();});
+  const rp2=q('[data-dsreport]');if(rp2)rp2.onclick=e=>{e.stopPropagation();void relatorioDistribuicao(n);};}
  if(n.type==='send-approach'){const o=n.opts=n.opts||{};
   const sp=q('[data-sapprod]');if(sp)sp.onchange=()=>{o.produtoId=+sp.value||0;o.abordagemIds=[];setDirty();reNode(n);};
   qa('[data-sapab]').forEach(cb=>cb.onchange=()=>{const id=+cb.dataset.sapab;o.abordagemIds=o.abordagemIds||[];const ix=o.abordagemIds.indexOf(id);if(cb.checked&&ix<0)o.abordagemIds.push(id);else if(!cb.checked&&ix>=0)o.abordagemIds.splice(ix,1);setDirty();});}
+ if(n.type==='ai-agent'){const o=n.opts=n.opts||{};
+  const ag=q('[data-aiag]');if(ag)ag.onchange=()=>{o.agenteId=+ag.value||0;setDirty();};
+  const fn=q('[data-aifn]');if(fn)fn.onchange=()=>{o.funcao=fn.value||'';setDirty();};}
  // randomizer
  if(q('[data-addramo]')){n.ramos=n.ramos||[];q('[data-addramo]').onclick=e=>{e.stopPropagation();n.ramos.push({id:'r'+(cur.uid++),name:'Novo',perc:0});setDirty();reNode(n);};
   qa('[data-rrow]').forEach(row=>{const i=+row.dataset.rrow,r=n.ramos[i];
@@ -551,13 +622,16 @@ function addNode(type,x,y){const id='b'+(cur.uid++);const base={id,type,sub:'',x
  if(type==='field-operation')base.opts={fieldOperations:[]};
  if(type==='randomizer')base.ramos=[{id:'r'+(cur.uid++),name:'A',perc:50},{id:'r'+(cur.uid++),name:'B',perc:50}];
  if(type==='distribution')base.opts={distribuicao:{items:(ref.corretores||[]).filter(c=>c.ativo!==false).map(c=>({corretor:c.nome,peso:(c.peso||1),on:true})),onlineOnly:true,tambemNegocio:false}};
+ if(type==='distribution-simple')base.opts={distribuicao:{items:(ref.corretores||[]).filter(c=>c.ativo!==false).map(c=>({corretor:c.nome,peso:1,on:true})),onlineOnly:true,tambemNegocio:true}};
+ if(type==='ai-agent')base.opts={agenteId:0,funcao:AI_FUNCOES[0][0]};
  cur.nodes[id]=base;selectedId=id;setDirty();renderNodes();markSel();return id;}
 
 /* ---------- compile + salvar ---------- */
 function routeFor(n){const outs=cur.wires.filter(w=>w.from===n.id),by=p=>(outs.find(w=>w.port===p)||{}).to||'';const o=JSON.parse(JSON.stringify(n.opts||{}));
  if(n.type==='condition'){o.trueNextBlockId=by('true');o.falseNextBlockId=by('false');o.conditions=(n.opts.conditions||[]).map(c=>({id:c.id,name:c.name,group:c.group||'',options:c.options||{},trueNextBlockId:by(c.id)}));}
  else if(n.type==='randomizer'){o.randomizers=(n.ramos||[]).map(r=>({id:r.id,name:r.name,perc:r.perc,nextBlockId:by(r.id)}));}
- else{o.nextBlockId=by('out');if(['action','chat','field-operation','api','distribution'].includes(n.type))o.errorNextBlockId=by('err');if(n.type==='chat')o.timeoutNextBlockId=by('timeout');if(n.type==='distribution'){o.respondeuNextBlockId=by('respondeu');o.naoRespondeuNextBlockId=by('naoRespondeu');}}
+ else{o.nextBlockId=by('out');if(['action','chat','field-operation','api','distribution','distribution-simple'].includes(n.type))o.errorNextBlockId=by('err');if(n.type==='chat')o.timeoutNextBlockId=by('timeout');if(n.type==='distribution'){o.respondeuNextBlockId=by('respondeu');o.naoRespondeuNextBlockId=by('naoRespondeu');}
+  if(n.type==='distribution-simple'){const dd=o.distribuicao=o.distribuicao||{};dd.tambemNegocio=true;if(!Array.isArray(dd.protecao))dd.protecao=['venda','visita_agendada','visita_realizada'];(dd.items||[]).forEach(x=>{x.peso=Math.max(0,+x.peso||0);});delete dd.produtoId;delete dd.abordagemIds;delete dd.respostaValor;delete dd.respostaUnidade;delete o.respondeuNextBlockId;delete o.naoRespondeuNextBlockId;}}
  return o;}
 function compile(){const blocks=Object.values(cur.nodes).map(n=>{if(!n.sourceBlockId)n.sourceBlockId=_uuid();return {id:n.id,type:n.type,options:routeFor(n),presentation:{x:Math.round(n.x),y:Math.round(n.y)},sourceBlockId:n.sourceBlockId};});
  const eb={};Object.values(cur.nodes).forEach(n=>{eb[n.id]={id:n.id,fam:TYPES[n.type].fam,sub:n.sub||'',x:Math.round(n.x),y:Math.round(n.y),note:n.note||'',extra:{},parts:[],ramos:n.ramos||[],noteOpen:false};});

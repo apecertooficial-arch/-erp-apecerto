@@ -1,5 +1,7 @@
 import { createServerSupabaseClient } from "../../lib/supabase/server";
 
+type SupabaseLike = ReturnType<typeof createServerSupabaseClient>;
+
 export const dynamic = "force-dynamic";
 
 async function auth(request: Request) {
@@ -9,6 +11,27 @@ async function auth(request: Request) {
   const supabase = createServerSupabaseClient(token);
   const { data, error } = await supabase.auth.getUser(token);
   return error || !data.user ? null : { supabase, user: data.user };
+}
+
+/* Presenca serve para saber quem esta NO ESCRITORIO. Confirmada do sofa, ela
+   nao prova nada -- e ate hoje provava mesmo nada, porque o resultado desta
+   checagem morria no navegador e nunca era gravado no banco.
+   O IP tem de ser lido AQUI, no servidor: o navegador nao conhece o proprio IP
+   publico e qualquer valor vindo do cliente seria falsificavel. */
+function ipDaRequisicao(request: Request): string {
+  const bruto =
+    request.headers.get("cf-connecting-ip") ??
+    request.headers.get("x-real-ip") ??
+    (request.headers.get("x-forwarded-for") ?? "").split(",")[0];
+  return (bruto ?? "").trim();
+}
+
+async function naRedeDoEscritorio(request: Request, supabase: SupabaseLike): Promise<boolean> {
+  const ip = ipDaRequisicao(request);
+  if (!ip) return false;
+  const { data: cfg } = await supabase.from("escritorio_config").select("ips").maybeSingle();
+  const permitidos = (cfg?.ips ?? []) as string[];
+  return permitidos.some((permitido) => permitido.trim() === ip);
 }
 
 export async function GET(request: Request) {
@@ -25,7 +48,9 @@ export async function GET(request: Request) {
   }
   const { data, error } = await a.supabase.rpc("presenca_status");
   if (error) return Response.json({ error: error.message }, { status: 502 });
-  return Response.json(data ?? { ativa: false, prompt: false });
+
+  const noEscritorio = await naRedeDoEscritorio(request, a.supabase);
+  return Response.json({ ...(data ?? { ativa: false, prompt: false }), no_escritorio_ip: noEscritorio });
 }
 
 export async function POST(request: Request) {
@@ -35,7 +60,18 @@ export async function POST(request: Request) {
   const action = String(body.action ?? "");
 
   if (action === "confirm") {
-    const { data, error } = await a.supabase.rpc("presenca_confirmar");
+    /* O que decide a fila e ESTE valor, apurado no servidor. */
+    /* O cast existe porque database.types.ts ainda nao foi regerado com o novo
+       parametro. O resto deste arquivo ja convive com o mesmo descompasso. */
+    const { data, error } = await (a.supabase.rpc as unknown as (
+      fn: string, args: Record<string, unknown>,
+    ) => Promise<{ data: unknown; error: { message: string } | null }>)("presenca_confirmar", {
+      p_no_escritorio: await naRedeDoEscritorio(request, a.supabase),
+      /* O IP de origem tambem e gravado: sem ver o valor real nao da para
+         descobrir por que a checagem falha -- se o cadastro esta velho, se a
+         operadora mudou, ou se o corretor esta no 4G. */
+      p_ip: ipDaRequisicao(request),
+    });
     if (error) return Response.json({ error: error.message }, { status: 502 });
     return Response.json(data ?? { ok: true });
   }

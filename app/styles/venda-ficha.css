@@ -1,0 +1,221 @@
+/* FICHA DA VENDA — formulário único (ago/2026).
+
+   Folha isolada e AUTOCONTIDA. A primeira versão reaproveitava as famílias
+   .nova-venda-* e .comm-* do globals.css e quebrou o layout por dois motivos:
+   parte daquelas regras só vale dentro do escopo .nova-venda-modal, que este
+   markup não tem, e .crm-center-modal é a CAMADA DE FUNDO (position:fixed,
+   inset:0), não o cartão. Aqui .crm-center-modal volta a ser só o fundo e
+   tudo que é estrutura vive sob .venda-modal, sem depender de outra tela.
+
+   Nenhuma classe existente foi renomeada ou alterada.
+   Identidade: laranja #ff6500, roxo #8d2bd1, pill, card 18px, mínimo 11px. */
+
+.venda-modal-layer { z-index: 90; }
+
+.venda-modal {
+  width: min(880px, 95vw);
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow: 0 30px 80px rgba(34, 23, 15, .3);
+  font-family: inherit;
+  color: #2f2a26;
+}
+
+/* Neutraliza o que vem das famílias reaproveitadas: aqui quem manda no
+   scroll e no espaçamento é .venda-modal-body. */
+.venda-modal .nova-venda-section { overflow: visible; flex: none; padding: 0; margin: 0; }
+
+/* ---------- cabeçalho ---------- */
+.venda-modal-head {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 16px;
+  padding: 15px 20px 14px;
+  background: linear-gradient(120deg, #ff6500 0%, #8d2bd1 100%);
+  color: #fff; flex: none;
+}
+.venda-modal-head > div { min-width: 0; }
+.venda-modal-head span { display: block; color: #fff; font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; opacity: .82; }
+.venda-modal-head h2 { margin: 3px 0 2px; font-size: 19px; font-weight: 700; color: #fff; }
+.venda-modal-head p { margin: 0; color: #fff; font-size: 12px; opacity: .88; }
+.venda-modal-head > button {
+  border: 0; background: rgba(255, 255, 255, .2); color: #fff; flex: none;
+  width: 30px; height: 30px; border-radius: 999px; font-size: 17px; line-height: 1; cursor: pointer;
+}
+.venda-modal-head > button:hover { background: rgba(255, 255, 255, .34); }
+
+/* ---------- números do topo ---------- */
+.venda-modal-kpis {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px;
+  padding: 13px 20px 0; flex: none;
+}
+.venda-modal-kpis article { background: #faf8f6; border: 1px solid #efe9e3; border-radius: 14px; padding: 8px 12px; }
+.venda-modal-kpis span { display: block; font-size: 11px; color: #918b86; font-weight: 600; }
+.venda-modal-kpis strong { display: block; margin-top: 2px; font-size: 15px; font-weight: 700; }
+.venda-modal-kpis strong.positive { color: #1a8f4c; }
+.venda-modal-kpis strong.negative { color: #c0392b; }
+
+/* ---------- abas ---------- */
+.venda-modal-steps { display: flex; gap: 6px; flex-wrap: wrap; padding: 13px 20px 0; margin: 0; flex: none; }
+.venda-modal-steps button {
+  display: flex; align-items: center; gap: 7px;
+  border: 1px solid #e4ddd6; border-radius: 999px; padding: 8px 14px;
+  background: #fff; color: #6f6863; font-size: 12px; font-weight: 700; cursor: pointer;
+}
+.venda-modal-steps button b {
+  display: grid; place-items: center; width: 19px; height: 19px; border-radius: 999px;
+  background: #f0ece9; color: #6f6863; font-size: 11px;
+}
+.venda-modal-steps button:hover { border-color: #ff6500; color: #ff6500; }
+.venda-modal-steps button.active { border-color: #ff6500; background: #fff3ea; color: #c25100; }
+.venda-modal-steps button.active b { background: #ff6500; color: #fff; }
+
+/* ---------- corpo ---------- */
+/* flex: 0 1 auto — o cartao acompanha o conteudo em vez de esticar ate 90vh
+   e deixar um vao morto antes do rodape. Continua rolando quando passa. */
+.venda-modal-body { flex: 0 1 auto; overflow-y: auto; padding: 15px 20px 18px; min-height: 0; }
+.venda-modal-body h3 { margin: 0; font-size: 13px; font-weight: 700; }
+
+.venda-modal-body label { display: flex; flex-direction: column; gap: 5px; font-size: 11px; font-weight: 600; color: #6d655f; margin-bottom: 11px; }
+.venda-modal-body input, .venda-modal-body select, .venda-modal-body textarea {
+  border: 1px solid #e4ddd6; border-radius: 12px; padding: 9px 12px;
+  font-size: 13px; font-family: inherit; color: #2f2a26; background: #fff; width: 100%;
+}
+.venda-modal-body textarea { min-height: 70px; resize: vertical; }
+.venda-modal-body input:focus, .venda-modal-body select:focus, .venda-modal-body textarea:focus { outline: 2px solid #ff650033; border-color: #ff6500; }
+.venda-modal-body input:disabled, .venda-modal-body select:disabled, .venda-modal-body textarea:disabled { background: #f7f4f2; color: #918b86; }
+.venda-modal-body .nova-venda-row { display: flex; gap: 11px; align-items: flex-start; margin: 0; }
+.venda-modal-body .nova-venda-row > label { flex: 1 1 0; min-width: 0; }
+.venda-modal-body .nova-venda-hint { margin: 2px 0 12px; font-size: 12px; color: #6d655f; }
+.venda-modal-body .finance-empty { margin: 8px 0 12px; font-size: 12px; color: #918b86; }
+.venda-modal-body .modal-error { margin: 0 0 12px; padding: 10px 13px; border-radius: 12px; background: #fff0ee; color: #ae3d32; font-size: 12px; }
+
+.venda-modal .comm-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin: 0 0 11px; }
+.venda-modal .comm-ok, .venda-modal .comm-warn { font-size: 11px; font-weight: 700; border-radius: 999px; padding: 4px 11px; }
+.venda-modal .comm-ok { background: #e8f6ed; color: #1a8f4c; }
+.venda-modal .comm-warn { background: #fdf0e6; color: #c25c00; }
+
+/* ---------- linhas de comissão, recebimento e repasse ---------- */
+.venda-modal .venda-comm-row,
+.venda-modal .venda-receipt-row,
+.venda-modal .venda-payout-row {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  padding: 8px 11px; border: 1px solid #efe9e3; border-radius: 14px;
+  background: #fff; margin-bottom: 7px;
+}
+.venda-modal .venda-payout-row.pago { background: #f7fbf9; border-color: #d8ece1; }
+.venda-modal .venda-comm-row select,
+.venda-modal .venda-payout-row select { flex: 1 1 120px; width: auto; border-radius: 999px; padding: 7px 12px; font-size: 12px; margin: 0; }
+.venda-modal .venda-comm-row input,
+.venda-modal .venda-receipt-row input,
+.venda-modal .venda-payout-row input { flex: 0 0 112px; width: auto; border-radius: 999px; padding: 7px 12px; font-size: 12px; margin: 0; }
+.venda-modal .venda-comm-row button,
+.venda-modal .venda-receipt-row button,
+.venda-modal .venda-payout-row button {
+  border: 1px solid #e4ddd6; background: #fff; color: #4a423c; flex: none;
+  border-radius: 999px; padding: 5px 11px; font-size: 12px; font-weight: 600; cursor: pointer;
+}
+.venda-modal .venda-comm-row button:hover,
+.venda-modal .venda-receipt-row button:hover,
+.venda-modal .venda-payout-row button:hover { border-color: #ff6500; color: #ff6500; }
+.venda-modal .comm-del { border-color: #f0d6d2 !important; color: #c0392b !important; }
+.venda-modal .comm-del:hover { background: #fdf1ef; }
+.venda-modal button:disabled { opacity: .55; cursor: not-allowed; }
+
+.venda-comm-saldo, .venda-data-pgto { flex: 1 1 auto; text-align: right; font-size: 11px; font-style: normal; color: #918b86; }
+.venda-parcela { flex: 0 0 92px; font-size: 12px; font-weight: 600; color: #4a423c; }
+.venda-tag { flex: none; font-size: 11px; font-weight: 700; font-style: normal; border-radius: 999px; padding: 4px 11px; background: #f3efec; color: #6d655f; }
+.venda-tag.ok { background: #e8f6ed; color: #1a8f4c; }
+.venda-tag.aguardando { background: #fdf0e6; color: #c25c00; }
+
+.venda-repasse-head { margin-top: 24px !important; padding-top: 18px; border-top: 1px dashed #e4ddd6; }
+.venda-payout-acoes { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
+.venda-modal .comm-add-btn {
+  border: 1px dashed #cbb6dd; background: #faf6fd; color: #8d2bd1;
+  border-radius: 999px; padding: 9px 16px; font-size: 12px; font-weight: 600; cursor: pointer;
+}
+.venda-modal .comm-add-btn:hover { background: #f3e9fb; border-color: #8d2bd1; }
+.venda-modal .venda-baixar { border-color: #ff6500 !important; background: #ff6500 !important; color: #fff !important; font-weight: 700; }
+.venda-modal .venda-baixar:hover { background: #e65b00 !important; }
+
+/* ---------- documentos ---------- */
+.venda-modal .nova-venda-doc { display: flex; flex-direction: column; gap: 7px; margin-top: 6px; }
+.venda-modal .nova-venda-upload {
+  display: flex; align-items: center; gap: 9px;
+  border: 1px solid #efe9e3; border-radius: 18px; padding: 9px 13px; font-size: 12px;
+}
+.venda-modal .nova-venda-upload span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.venda-modal .nova-venda-upload em { font-style: normal; font-size: 11px; color: #918b86; }
+.venda-modal .nova-venda-upload em.positive { color: #1a8f4c; }
+.venda-modal .nova-venda-upload em.negative { color: #c0392b; }
+.venda-modal .nova-venda-del { border: 0; background: none; color: #c0392b; font-size: 15px; cursor: pointer; }
+.venda-modal .nova-venda-upload-label {
+  display: inline-flex; align-self: flex-start; margin-top: 4px;
+  border: 1px dashed #cbb6dd; background: #faf6fd; color: #8d2bd1;
+  border-radius: 18px; padding: 11px 16px; font-size: 12px; font-weight: 600; cursor: pointer;
+}
+.venda-modal .nova-venda-upload-label input { display: none; }
+
+/* ---------- aviso e rodapé ---------- */
+.venda-modal-ok {
+  margin: 11px 20px 0; padding: 9px 14px; border: 0; border-radius: 999px;
+  background: #e8f6ed; color: #1a8f4c; font-size: 12px; font-weight: 600; cursor: pointer; text-align: left; flex: none;
+}
+.venda-modal .save-sale {
+  margin-top: 6px; border: 1px solid #ff6500; background: #ff6500; color: #fff;
+  border-radius: 999px; padding: 10px 20px; font-size: 13px; font-weight: 700; cursor: pointer;
+}
+.venda-modal .save-sale:hover { background: #e65b00; }
+
+.venda-modal-foot {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 11px 20px; border-top: 1px solid #efe9e3; background: #fdfcfb; flex: none;
+}
+.venda-modal-foot > div { display: flex; align-items: center; gap: 8px; flex-wrap: nowrap; }
+.venda-modal-foot button {
+  border: 1px solid #e4ddd6; background: #fff; color: #4a423c;
+  border-radius: 999px; padding: 9px 17px; font-size: 12px; font-weight: 600; cursor: pointer;
+}
+.venda-modal-foot button:hover { border-color: #ff6500; color: #ff6500; }
+.venda-modal-foot button.crm-primary { background: #ff6500; border-color: #ff6500; color: #fff; }
+.venda-modal-foot button.crm-primary:hover { background: #e65b00; color: #fff; }
+.venda-modal-foot button.delete-sale { border-color: #f0d6d2; color: #c0392b; }
+.venda-modal-foot button.delete-sale:hover { background: #fdf1ef; border-color: #c0392b; color: #c0392b; }
+.venda-delete-inline { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.venda-delete-inline b { font-size: 11px; font-weight: 600; color: #c0392b; }
+.venda-delete-inline button.danger { border-color: #c0392b; background: #c0392b; color: #fff; }
+
+/* ---------- celular ---------- */
+@media (max-width: 720px) {
+  .venda-modal-layer { padding: 0; }
+  .venda-modal { width: 100vw; max-width: 100vw; height: 100dvh; max-height: 100dvh; border-radius: 0; }
+  .venda-modal-head, .venda-modal-foot, .venda-modal-kpis, .venda-modal-steps { padding-left: 15px; padding-right: 15px; }
+  .venda-modal-body { padding: 14px 15px 18px; }
+  .venda-modal-ok { margin-left: 15px; margin-right: 15px; }
+  .venda-modal-kpis { grid-template-columns: repeat(2, 1fr); }
+  .venda-modal-body .nova-venda-row { flex-direction: column; gap: 0; }
+  .venda-modal .venda-comm-row select, .venda-modal .venda-payout-row select,
+  .venda-modal .venda-comm-row input, .venda-modal .venda-receipt-row input,
+  .venda-modal .venda-payout-row input { flex: 1 1 100%; }
+  .venda-modal-foot { position: sticky; bottom: 0; }
+}
+
+/* ---------- apagar venda ---------- */
+/* Fica no fim da aba "Dados da venda", nao no rodape: acao destrutiva nao
+   divide espaco com o "Fechar", que e o botao que a pessoa mais aperta. */
+.venda-zona-perigo { margin-top: 22px; padding-top: 15px; border-top: 1px dashed #f0d6d2; }
+.venda-modal .venda-zona-perigo .delete-sale {
+  border: 1px solid #f0d6d2; background: #fff; color: #c0392b;
+  border-radius: 999px; padding: 8px 16px; font-size: 12px; font-weight: 600; cursor: pointer;
+}
+.venda-modal .venda-zona-perigo .delete-sale:hover { background: #fdf1ef; border-color: #c0392b; }
+.venda-delete-inline { display: flex; flex-direction: column; gap: 9px; align-items: flex-start; }
+.venda-delete-inline b { font-size: 12px; font-weight: 600; color: #c0392b; }
+.venda-delete-inline > div { display: flex; gap: 8px; }
+.venda-modal .venda-delete-inline button {
+  border: 1px solid #e4ddd6; background: #fff; color: #4a423c;
+  border-radius: 999px; padding: 7px 15px; font-size: 12px; font-weight: 600; cursor: pointer;
+}
+.venda-modal .venda-delete-inline button.danger { border-color: #c0392b; background: #c0392b; color: #fff; }

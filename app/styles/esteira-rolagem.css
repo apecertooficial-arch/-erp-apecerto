@@ -1,0 +1,77 @@
+/* ==========================================================================
+   ROLAGEM VERTICAL INDEPENDENTE POR COLUNA/ETAPA (ago/2026)
+
+   Problema: a coluna crescia sem limite e quem rolava era a página inteira.
+   Com muitos cards o cabeçalho da etapa saía da tela e o corretor perdia a
+   referência de onde estava — e rolar uma etapa mexia em todas as outras.
+
+   Solução: cada etapa vira um contêiner de altura limitada. O cabeçalho fica
+   parado e só a lista de cards rola por dentro. A rolagem horizontal do
+   quadro continua onde estava, sem mudança.
+
+   Vale para as três superfícies de coluna do produto:
+     - quadro do Funil 2.0   -> .f2-coluna / .f2-lista
+     - pipe de Visitas       -> .f2-pipe > div
+     - Esteira de Vendas     -> .sales-stage
+
+   POR QUE ESTE ARQUIVO EXISTE (e o CSS não foi para globals.css / estilos.ts):
+   os dois arquivos alvo têm 665 KB e 49 KB. Mantendo estas regras isoladas,
+   qualquer ajuste ou reversão futura é um diff pequeno e legível, e a
+   publicação não depende de reescrever arquivo grande.
+
+   ARMADILHA — não repetir: a lista de cards é flex-column. Ao travar a altura
+   da coluna, os cards ENCOLHEM para caber em vez de gerar rolagem — ficam
+   achatados e ilegíveis. Por isso os filhos diretos levam `flex:0 0 auto`.
+   Vale para QUALQUER coluna de kanban que ganhe rolagem interna neste projeto.
+
+   ESPECIFICIDADE: o CSS do Funil 2.0 é injetado como <style> dentro do corpo
+   da página (FUNIL2_CSS), portanto vence uma folha externa de mesma
+   especificidade. Por isso as regras .f2-* levam o prefixo `body`.
+   ========================================================================== */
+
+/* ---------- Funil 2.0 — quadro de etapas ---------- */
+body .f2-coluna { display: flex; flex-direction: column; min-height: 0; max-height: calc(100vh - 210px); }
+body .f2-coluna-topo { flex: 0 0 auto; border-bottom: 1px solid var(--f2-line); }
+body .f2-lista { flex: 1 1 auto; min-height: 110px; overflow-y: auto; overscroll-behavior: contain; padding-top: 9px; }
+body .f2-lista > * { flex: 0 0 auto; }
+body .f2-lista::-webkit-scrollbar { width: 9px; }
+body .f2-lista::-webkit-scrollbar-thumb { background: #d3c9c1; border-radius: 8px; border: 2px solid #f8f3ef; }
+body .f2-lista::-webkit-scrollbar-track { background: transparent; }
+
+/* ---------- Funil 2.0 — pipe de Visitas ---------- */
+body .f2-pipe > div { max-height: calc(100vh - 230px); overflow-y: auto; overscroll-behavior: contain; padding-top: 0; }
+body .f2-pipe > div > header { position: sticky; top: 0; z-index: 2; margin: 0 -9px; padding: 12px 15px; background: #eae6e2; border-bottom: 1px solid #ded6cf; }
+body .f2-pipe > div > article:first-of-type { margin-top: 9px; }
+
+/* ---------- Esteira de Vendas ---------- */
+.sales-kanban { align-items: stretch; }
+.sales-stage { display: flex; flex-direction: column; min-height: 0; max-height: calc(100vh - 240px); }
+.sales-stage > header,
+.sales-stage > small,
+.sales-stage > .crm-stage-menu { flex: 0 0 auto; }
+
+/* O corpo da etapa agora tem classe explícita (.sales-stage-body, definida em
+   CrmWorkspace.tsx). Antes era selecionado por posição (> div:last-child), o que
+   quebrava em silêncio se entrasse qualquer elemento depois do corpo. */
+.sales-stage-body { flex: 1 1 auto; min-height: 120px; overflow-y: auto; overscroll-behavior: contain; padding: 2px 4px 4px 0; }
+.sales-stage-body > * { flex: 0 0 auto; }
+.sales-stage-body::-webkit-scrollbar { width: 9px; }
+.sales-stage-body::-webkit-scrollbar-thumb { background: #cfc6be; border-radius: 8px; border: 2px solid #fbfaf9; }
+.sales-stage-body::-webkit-scrollbar-track { background: transparent; }
+
+/* ---------- Telas baixas: sobra menos altura para a coluna ---------- */
+@media (max-height: 820px) {
+  body .f2-coluna { max-height: calc(100vh - 160px); }
+  body .f2-pipe > div { max-height: calc(100vh - 180px); }
+  .sales-stage { max-height: calc(100vh - 190px); }
+}
+
+/* ---------- Celular: a coluna volta a crescer, quem rola é a página ---------- */
+@media (max-width: 700px) {
+  body .f2-coluna { max-height: none; }
+  body .f2-lista { overflow-y: visible; }
+  body .f2-pipe > div { max-height: none; overflow-y: visible; padding-top: 9px; }
+  body .f2-pipe > div > header { position: static; margin: 0; padding: 6px; border-bottom: 0; background: transparent; }
+  .sales-stage { max-height: none; }
+  .sales-stage-body { overflow-y: visible; }
+}

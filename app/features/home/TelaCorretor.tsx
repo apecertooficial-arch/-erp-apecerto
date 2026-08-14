@@ -26,7 +26,6 @@ import {
   type Filtro, type ItemTela,
 } from "./telaCorretor.logica";
 import { marcarWhatsappAberto, whatsappAbertoEm, limparWhatsappAberto } from "../crm-nova-era/lib/whatsappAberto";
-import { AvisoNotificacoes } from "./AvisoNotificacoes";
 import { useErpSession } from "../system/ErpSession";
 
 const ATUALIZA_MS = 60_000;
@@ -260,9 +259,6 @@ export function TelaCorretor({ accessToken, nome, onAbrirLead, onIr }: {
         </div>
       )}
 
-      {/* Gestão não precisa de aviso de lead novo no aparelho: o lead não cai
-          para ela. A faixa só aparece para quem atende. */}
-      {!ehGestao && <AvisoNotificacoes accessToken={accessToken} />}
 
       <div className="tc-chips" role="tablist" aria-label="Filtro da fila">
         {([["agora", "Agora", agora.length], ["hoje", "Hoje", hoje.length], ["todos", "Todos", todos.length]] as const)
