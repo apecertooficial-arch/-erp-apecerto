@@ -16,8 +16,8 @@ import { readFileSync } from "node:fs";
 const ler = (p) => readFileSync(new URL(p, import.meta.url), "utf8");
 const SW = ler("../public/sw.js");
 const ROTA = ler("../app/api/ncrm/notificacoes/route.ts");
-const GATE = ler("../app/features/crm-nova-era/CrmNovaEraGate.tsx");
-const LISTA = ler("../app/features/crm-nova-era/TelaCrmMobile.tsx");
+const ENTRADA = ler("../app/(erp)/crm/page.tsx");
+const LISTA = ler("../app/features/funil-2/Funil2Mobile.tsx");
 const REDIRECT = ler("../app/(erp)/negocio/[...caminho]/page.tsx");
 const MIGRACAO = ler("../supabase/migrations/20260803010000_push_vencendo_e_deep_links_reais.sql");
 const AVISO_APP = ler("../app/features/home/AvisoNotificacoes.tsx");
@@ -63,7 +63,7 @@ test("deep link do corretor é o endereço canônico /negocio/N", () => {
 });
 
 test("a rota /negocio/N existe e leva para a ficha", () => {
-  assert.match(REDIRECT, /router\.replace\(`\/crm\?lead=\$\{n\}`\)/, "o redirect entrega no gate, que escolhe a ficha certa");
+  assert.match(REDIRECT, /router\.replace\(`\/crm\?lead=\$\{n\}`\)/, "o redirect entrega na entrada única do F2");
   assert.match(REDIRECT, /router\.replace\("\/notificacoes"\)/, "id inválido não pode virar tela em branco");
 });
 
@@ -87,18 +87,17 @@ test("falha na RPC vira 502, nunca lista vazia", () => {
 
 /* ---------------- o toque no push ---------------- */
 
-test("no celular, ?lead= abre a ficha do celular — não o CRM de desktop", () => {
-  const semComentarios = GATE.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
-  assert.match(semComentarios, /deepLink\.chat/, "a conversa continua indo para o CrmWorkspace");
-  assert.match(semComentarios, /deepLink\.lead/, "a ficha tem tratamento próprio");
-  assert.match(semComentarios, /ehCelular === null\) return null/, "largura desconhecida não pode chutar desktop e baixar 1,8 MB à toa");
+test("no celular, ?lead= abre a ficha no Funil 2.0", () => {
+  assert.match(ENTRADA, /if \(ehCelular === null\) return null/);
+  assert.match(ENTRADA, /if \(ehCelular\)[\s\S]*<Funil2Mobile/);
+  assert.doesNotMatch(ENTRADA, /CrmWorkspace|CrmNovaEraGate/);
 });
 
-test("a TelaCrmMobile consome o ?lead= e apaga a query", () => {
+test("o Funil2Mobile consome o ?lead= e apaga a query", () => {
   const semComentarios = LISTA.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
   assert.match(semComentarios, /lerLeadDaUrl/);
   assert.match(semComentarios, /limparLeadDaUrl/, "voltar não pode reabrir a mesma ficha");
-  assert.match(semComentarios, /não está mais na sua fila/, "lead fora da fila é aviso visível, nunca silêncio");
+  assert.match(semComentarios, /não está mais na sua carteira/, "lead fora da carteira é aviso visível, nunca silêncio");
 });
 
 test("o sw.js continua levando o toque para dentro do app", () => {

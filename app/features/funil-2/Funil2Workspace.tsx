@@ -133,14 +133,18 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
          cascata. */
       if (typeof window !== "undefined") {
         const url = new URL(window.location.href);
-        const negocioId = Number(url.searchParams.get("lead"));
+        const abrirConversa = Number(url.searchParams.get("chat"));
+        const negocioId = Number(url.searchParams.get("lead")) || abrirConversa;
         const destino = Number.isFinite(negocioId) && negocioId > 0
           ? leadsCarregados.find((item) => item.origem_negocio_id === negocioId)
           : null;
         if (destino) {
           setSelecionado(destino.id);
+          setAbrirNoChat(abrirConversa > 0);
           setAba("dia");
           url.searchParams.delete("lead");
+          url.searchParams.delete("chat");
+          url.searchParams.delete("ler");
           window.history.replaceState(null, "", url.toString());
         }
       }

@@ -38,7 +38,6 @@ import "./styles/pescado-sem-prazo.css";
    tokens do :root, então segue a marca sem duplicar cor. */
 import "./styles/tela-explicador.css";
 /* Módulos ativos antes injetados por JavaScript; estáticos e únicos. */
-import "./styles/crm-nova-era.css";
 import "./styles/funil-2.css";
 import "./styles/performance.css";
 import { RegistroPwa } from "./components/RegistroPwa";

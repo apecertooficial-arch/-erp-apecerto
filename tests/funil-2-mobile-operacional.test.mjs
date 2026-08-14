@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 
 const ler = (caminho) => readFileSync(new URL(caminho, import.meta.url), "utf8");
 const MOBILE = ler("../app/features/funil-2/Funil2Mobile.tsx");
-const GATE = ler("../app/features/crm-nova-era/CrmNovaEraGate.tsx");
+const ENTRADA = ler("../app/(erp)/crm/page.tsx");
 const INICIO = ler("../app/features/home/InicioApp.tsx");
 const CSS = ler("../app/styles/app-mobile.css");
 
@@ -12,16 +12,14 @@ test("Inicio e CRM do celular usam o Funil 2.0, nunca as filas antigas", () => {
   assert.match(MOBILE, /fetch\("\/api\/funil2"/);
   assert.doesNotMatch(MOBILE, /\/api\/ncrm\/fila/);
   assert.match(INICIO, /modo="inicio"/);
-  assert.match(GATE, /ehCelular === true[\s\S]*<Funil2Mobile/);
+  assert.match(ENTRADA, /if \(ehCelular\)[\s\S]*<Funil2Mobile/);
 });
 
-test("todo perfil operacional autenticado está autorizado no CRM mobile", () => {
-  const ramoMobile = GATE.indexOf('if (ehCelular === true && variante === "nova-era" && podeLive)');
-  assert.ok(ramoMobile >= 0, "falta a entrada oficial do CRM mobile");
-  for (const papel of ["admin", "executivo", "gestor", "gerente", "diretor", "corretor"]) {
-    assert.ok(GATE.includes(`\"${papel}\"`), `papel operacional ausente: ${papel}`);
-  }
-  assert.match(GATE.slice(ramoMobile), /podeLive[\s\S]*<Funil2Mobile/);
+test("todo perfil autorizado entra no F2 sem gate de piloto", () => {
+  assert.match(ENTRADA, /GuardaModulo modulo="CRM"/);
+  assert.match(ENTRADA, /<Funil2Mobile/);
+  assert.match(ENTRADA, /<Funil2Workspace/);
+  assert.doesNotMatch(ENTRADA, /CrmNovaEraGate|podeFunil2|liberado|piloto/i);
 });
 
 test("Meu Dia entrega o lead e a chamada; a orientação completa fica na ficha", () => {

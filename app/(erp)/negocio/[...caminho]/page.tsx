@@ -9,8 +9,8 @@
  *
  * Em vez de alargar o validador de segurança (que existe para impedir
  * nome de cliente e link externo dentro de pacote de push), o aplicativo
- * aprende o endereço: redireciona para /crm?lead=N, que o gate resolve —
- * ficha do celular no celular, CrmWorkspace no desktop.
+ * aprende o endereço: redireciona para /crm?lead=N, que o Funil 2.0 resolve
+ * diretamente em qualquer formato.
  *
  * `replace`, não `push`: esta página é um pedágio, e o botão voltar não
  * pode devolver o corretor para ela.
