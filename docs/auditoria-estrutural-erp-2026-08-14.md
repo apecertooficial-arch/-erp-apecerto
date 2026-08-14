@@ -364,6 +364,8 @@ O layout global importa 17 folhas CSS. As duas camadas móveis somam 1.083 linha
 
 Como corte imediato e seguro, foram removidas de `globals.css` as 21 regras do seletor rico `rselect`, cujo único componente havia sido eliminado por não possuir consumidor. Os estilos residuais da Esteira F2 antiga foram identificados em `funil-2.css`; por esse arquivo estar minificado em linhas compostas e também conter o Pipe de Visitas ativo, a remoção deve ocorrer junto de sua formatação/consolidação, sem apagar regras compartilhadas por busca textual ampla.
 
+Na continuação da limpeza, toda a antiga camada visual `settings-*` foi retirada de `globals.css`: navegação paralela, cartões de empresa, identidade/logo, editor de categorias, rodapé de formulário e ajustes residuais de presença. Eram 76 linhas sem consumidor no código atual. Os estilos vigentes `connections-*`, `conn-*` e `presence-*` foram preservados. Um teste estrutural agora exige que `SettingsWorkspace` monte diretamente `ConnectionsWorkspace` e impede a reintrodução de seletores `.settings-*`; a suíte passou com 172 testes.
+
 ## Execução — Configurações, Agentes e Central de Automações (14/08/2026)
 
 Configurações está reduzida a uma única responsabilidade: renderizar `ConnectionsWorkspace` para conectar, reconectar e inventariar instâncias de WhatsApp. Regras de funil, IA e operação não são mais configuradas nessa aba.
