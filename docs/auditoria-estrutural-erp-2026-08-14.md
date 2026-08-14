@@ -262,3 +262,18 @@ Continuam separados e ativos:
 - Sara, notificações e push do F2 permanecem em seus jobs próprios.
 
 A ação `aquarioImportar` e a RPC `aquario_importar(jsonb)` também foram removidas por não possuírem interface ou consumidor. A RPC somente de leitura `aquario_status()` foi preservada porque o endpoint geral ainda a usa para impedir que a base de recall seja carregada como lead ativo.
+
+## Execução — Agenda canônica (14/08/2026)
+
+Desktop e celular agora usam exclusivamente `/api/agenda`. Os comandos `createVisit`, `updateVisit`, `updateVisitStatus` e `gerenteDisponibilidade` foram retirados de `/api/crm` e movidos para a API da Agenda.
+
+O modo workspace acrescenta os catálogos necessários ao calendário desktop, mas a lista para criar uma visita é derivada de `f2_lead` e depois resolvida em `negocios`/`leads`. Assim, os milhares de registros de recall não são carregados nem oferecidos como carteira ativa. A criação também valida novamente no servidor que o negócio possui um card F2 não descartado.
+
+O antigo efeito colateral que tentava mover o negócio para um pipeline legado chamado “Visita ApeCerto” foi eliminado. A visita continua registrada em `visitas` e a movimentação operacional fica sob as regras oficiais do Funil 2.0.
+
+Evidências:
+
+- 163 de 163 testes frontend aprovados, incluindo quatro contratos novos da Agenda;
+- build de produção aprovado;
+- lint isolado das APIs e do teste alterados sem erro;
+- lint global ainda não é um gate: o inventário atual contém 86 erros e 657 avisos históricos, incluindo código legado e bibliotecas minificadas. Essa dívida permanece como frente explícita da limpeza.
