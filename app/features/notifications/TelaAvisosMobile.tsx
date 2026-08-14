@@ -36,7 +36,7 @@ export function TelaAvisosMobile({ accessToken, onOpenLead }: {
   const [mostrar, setMostrar] = useState(POR_PAGINA);
 
   const carregar = useCallback(async (sinal: AbortSignal) => {
-    const r = await fetch("/api/ncrm/notificacoes", {
+    const r = await fetch("/api/notificacoes", {
       headers: { Authorization: `Bearer ${accessToken}` }, signal: sinal,
     });
     if (!r.ok) throw new Error(String(r.status));
