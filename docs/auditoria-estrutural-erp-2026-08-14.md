@@ -260,3 +260,5 @@ Continuam separados e ativos:
 - `f2_entrada_distribuicao` transforma a distribuição em carteira operacional;
 - `guardiao-entrada` detecta leads presos e gera alerta;
 - Sara, notificações e push do F2 permanecem em seus jobs próprios.
+
+A ação `aquarioImportar` e a RPC `aquario_importar(jsonb)` também foram removidas por não possuírem interface ou consumidor. A RPC somente de leitura `aquario_status()` foi preservada porque o endpoint geral ainda a usa para impedir que a base de recall seja carregada como lead ativo.

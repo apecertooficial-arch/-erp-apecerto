@@ -260,21 +260,6 @@ export async function PATCH(request: Request) {
     return Response.json({ success: true, leadId: lead.id, negocioId, distribuicao });
   }
 
-  if (action === "aquarioImportar") {
-    const denied = guard([["leads", "importar"]], "Você não tem permissão para importar leads.");
-    if (denied) return denied;
-    const rowsInput = Array.isArray(body.rows) ? body.rows : [];
-    const rows = rowsInput.slice(0, 2000).map((row) => {
-      const r = row && typeof row === "object" ? row as Record<string, unknown> : {};
-      return { nome: cleanText(r.nome, 160), telefone: cleanText(r.telefone, 40), email: cleanText(r.email, 180).toLowerCase() };
-    }).filter((r) => r.nome || r.telefone);
-    if (!rows.length) return Response.json({ error: "Nenhum lead válido para importar." }, { status: 422 });
-    const { data, error } = await auth.supabase.rpc("aquario_importar", { p_rows: rows });
-    const result = data && typeof data === "object" ? data as Record<string, unknown> : {};
-    if (error || result.ok === false) return Response.json({ error: error?.message || cleanText(result.error, 300) || "Não foi possível importar." }, { status: 502 });
-    return Response.json({ success: true, importados: result.importados, duplicados: result.duplicados, invalidos: result.invalidos });
-  }
-
   if (action === "addNote") {
     const leadId = positiveInteger(body.leadId);
     const dealId = body.dealId === null || body.dealId === "" ? null : positiveInteger(body.dealId);
