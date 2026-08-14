@@ -3,6 +3,14 @@
 Data: 14/08/2026  
 Escopo: rotas, telas, componentes, APIs, estilos e banco Supabase de produção.
 
+## Progresso executado em 14/08/2026
+
+- `/crm` consolidado no Funil 2.0 para todos os perfis autorizados.
+- Interfaces CRM Nova Era e CRM 3, gates de piloto, CSS e testes órfãos excluídos.
+- 21 endpoints administrativos/de tela do NCRM sem consumidores excluídos.
+- Endpoints ainda ligados a ingestão, fila, notificações, agenda, push e Sara operacional preservados até o desacoplamento.
+- Base histórica de recall preservada como fonte de “Pescar um lead”, fora da carteira ativa até a pesca.
+
 ## Conclusão executiva
 
 O ERP ainda não possui uma única camada por responsabilidade. A limpeza de Configurações foi concluída, mas o restante do sistema conserva gerações paralelas, sobretudo no CRM. A principal sobreposição é:
