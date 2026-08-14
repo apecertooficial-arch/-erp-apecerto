@@ -371,3 +371,11 @@ Configurações está reduzida a uma única responsabilidade: renderizar `Connec
 Agentes concentra missão, prompt, fontes aprovadas, ferramentas, testes e bateria de avaliação. O carregamento inicial possuía duas implementações idênticas e consultava novamente a lista quando selecionava a Sara; agora montagem e atualização usam as mesmas funções canônicas, sem segunda consulta causada pela seleção inicial.
 
 A Central continua montando o construtor operacional oficial e aponta explicitamente o treinamento para `/agentes-ia`. O arquivo React perdeu o sufixo `V2`, pois não existe uma segunda versão ativa. Os assets de 228 KB deixaram de usar `Date.now()` no endereço — que anulava o cache a cada abertura — e passaram a uma versão estável. Também foi removido um extrator órfão, sem script consumidor, que ainda escrevia na antiga estrutura `frontend/public` fora deste aplicativo.
+
+## Execução — eliminação dos erros críticos do Security Advisor (14/08/2026)
+
+As oito views restantes foram convertidas para `security_invoker`, após criar políticas mínimas nas tabelas-base que antes dependiam do bypass do proprietário `postgres`. `vw_sla_leads` agora respeita a carteira do usuário; o diagnóstico de backfill do F2 exige administração; ranking, duplicidades, carga e pontos cegos obedecem às RLS já existentes.
+
+O catálogo público ganhou políticas anônimas explícitas em `empreendimentos`, `midias` e `unidades`, limitadas a imóvel publicado, fora de rascunho e aprovado. A view `site_produtos` deixou de depender de `SECURITY DEFINER` sem perder os 49 produtos públicos existentes.
+
+Todas as permissões genéricas de mutação foram revogadas das oito views. `anon` possui somente `SELECT` em `site_produtos`; `authenticated` possui somente `SELECT` nas views operacionais. O Security Advisor passou de 15 erros para zero. As contagens vistas por `postgres` permaneceram idênticas antes e depois, comprovando ausência de exclusão ou alteração de dados.
