@@ -276,4 +276,10 @@ Evidências:
 - 163 de 163 testes frontend aprovados, incluindo quatro contratos novos da Agenda;
 - build de produção aprovado;
 - lint isolado das APIs e do teste alterados sem erro;
-- lint global ainda não é um gate: o inventário atual contém 86 erros e 657 avisos históricos, incluindo código legado e bibliotecas minificadas. Essa dívida permanece como frente explícita da limpeza.
+- lint global ainda não é um gate: o primeiro inventário encontrou 86 erros e 657 avisos históricos, incluindo código legado e bibliotecas minificadas. Essa dívida permanece como frente explícita da limpeza.
+
+## Execução — saneamento inicial do lint (14/08/2026)
+
+Foram excluídos quatro scripts de screenshot órfãos, presos a caminhos de uma máquina antiga (`/home/claude`, `/opt/pw-browsers` e previews em `/tmp`), além de dois bundles React minificados sem consumidor. Os bundles Opus foram preservados porque `opusMic.ts` os utiliza; por serem dependência vendorizada, `public/_vendor/**` foi corretamente retirado do lint do código-fonte.
+
+Com essa classificação, o ruído caiu de 743 ocorrências para 115: 69 erros e 46 avisos. Os problemas restantes agora pertencem a arquivos reais e podem ser corrigidos por módulo, sem esconder a dívida atrás de bibliotecas minificadas.
