@@ -65,3 +65,9 @@ test("folha Mais cobre a tela e rola sem vazar", () => {
 test("foco visivel no teclado (acessibilidade basica)", () => {
   assert.ok(bloco.includes(":focus-visible"), "navegacao precisa de foco visivel");
 });
+
+test("folha móvel não carrega seletores do CRM Nova Era aposentado", () => {
+  assert.doesNotMatch(css, /\.nova-crm-(?:board|card|col|etapas|panel)/);
+  assert.doesNotMatch(css, /\.ncrm-dia-(?:acao|ajuda|busca|card|mais)/);
+  assert.match(css, /\.ncrm-wa-principal/, "o botão WhatsApp compartilhado com o F2 deve permanecer");
+});
