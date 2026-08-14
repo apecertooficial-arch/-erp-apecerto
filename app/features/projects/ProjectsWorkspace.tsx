@@ -58,7 +58,10 @@ export function ProjectsWorkspace({ accessToken }: { accessToken: string }) {
     if (!response.ok) throw new Error(result.error || "Não foi possível carregar os projetos.");
     setData(result);
   };
-  useEffect(() => { void load().catch((r) => setError(r instanceof Error ? r.message : "Erro ao carregar.")); }, [accessToken]);
+  useEffect(() => {
+    const timer = window.setTimeout(() => { void load().catch((r) => setError(r instanceof Error ? r.message : "Erro ao carregar.")); }, 0);
+    return () => window.clearTimeout(timer);
+  }, [accessToken]);
 
   const mutate = async (body: Record<string, unknown>) => {
     setBusy(true); setError(null);

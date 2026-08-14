@@ -1,4 +1,5 @@
 import { createServerSupabaseClient } from "../../lib/supabase/server";
+import type { TablesInsert } from "../../lib/supabase/database.types";
 
 export const dynamic = "force-dynamic";
 
@@ -146,7 +147,7 @@ export async function POST(request: Request) {
   const gapMs = Math.ceil(3_600_000 / rate);
   const instanceCount = instanceIds.length;
   const campaignId = crypto.randomUUID();
-  const rows: Array<Record<string, unknown>> = [];
+  const rows: Array<TablesInsert<"mensagens_agendadas">> = [];
   valid.forEach((lead, index) => {
     const instanciaId = instanceIds[index % instanceCount];
     const corr = nameByInstance.get(instanciaId) ?? corretorNome;

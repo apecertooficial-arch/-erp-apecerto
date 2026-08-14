@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createServerSupabaseClient } from "../../lib/supabase/server";
 import { resolveEffectiveAccess, denyIfCannot } from "../../lib/supabase/authz";
+import type { Enums } from "../../lib/supabase/database.types";
 
 export const dynamic = "force-dynamic";
 
@@ -767,9 +768,11 @@ export async function PATCH(request: Request) {
     if (!me || !["admin", "gestor", "executivo"].includes(me.role)) return Response.json({ error: "Apenas administradores podem editar comissões." }, { status: 403 });
 
     if (action === "addCommission") {
-      const vendaId = clean(body.saleId, 50); const papel = clean(body.papel, 40) || "outro"; const valor = Number(body.valor);
+      const vendaId = clean(body.saleId, 50); const papelBruto = clean(body.papel, 40); const valor = Number(body.valor);
+      const papeis: Enums<"papel_comissao">[] = ["corretor", "executivo", "indicacao", "apecerto", "gerente"];
+      const papel = papeis.find((item) => item === papelBruto);
       const beneficiarioId = clean(body.beneficiarioId, 60) || null;
-      if (!vendaId || !Number.isFinite(valor)) return Response.json({ error: "Informe a venda e o valor." }, { status: 422 });
+      if (!vendaId || !papel || !Number.isFinite(valor)) return Response.json({ error: "Informe a venda, o papel e o valor." }, { status: 422 });
       const { error } = await auth.supabase.from("comissoes").insert({ venda_id: vendaId, papel, valor_final: valor, valor_calculado: valor, beneficiario_id: beneficiarioId });
       return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
     }

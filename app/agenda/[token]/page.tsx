@@ -49,9 +49,9 @@ export default function AgendaPublica({ params }: { params: Promise<{ token: str
   }, []);
 
   useEffect(() => {
-    void load();
+    const initial = window.setTimeout(() => { void load(); }, 0);
     const timer = window.setInterval(() => { void load(); }, 60_000);
-    return () => window.clearInterval(timer);
+    return () => { window.clearTimeout(initial); window.clearInterval(timer); };
   }, [load]);
 
   const porDia = useMemo(() => {

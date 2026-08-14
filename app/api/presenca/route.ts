@@ -50,7 +50,8 @@ export async function GET(request: Request) {
   if (error) return Response.json({ error: error.message }, { status: 502 });
 
   const noEscritorio = await naRedeDoEscritorio(request, a.supabase);
-  return Response.json({ ...(data ?? { ativa: false, prompt: false }), no_escritorio_ip: noEscritorio });
+  const status = data && typeof data === "object" && !Array.isArray(data) ? data : { ativa: false, prompt: false };
+  return Response.json({ ...status, no_escritorio_ip: noEscritorio });
 }
 
 export async function POST(request: Request) {
@@ -61,11 +62,7 @@ export async function POST(request: Request) {
 
   if (action === "confirm") {
     /* O que decide a fila e ESTE valor, apurado no servidor. */
-    /* O cast existe porque database.types.ts ainda nao foi regerado com o novo
-       parametro. O resto deste arquivo ja convive com o mesmo descompasso. */
-    const { data, error } = await (a.supabase.rpc as unknown as (
-      fn: string, args: Record<string, unknown>,
-    ) => Promise<{ data: unknown; error: { message: string } | null }>)("presenca_confirmar", {
+    const { data, error } = await a.supabase.rpc("presenca_confirmar", {
       p_no_escritorio: await naRedeDoEscritorio(request, a.supabase),
       /* O IP de origem tambem e gravado: sem ver o valor real nao da para
          descobrir por que a checagem falha -- se o cadastro esta velho, se a
@@ -81,14 +78,19 @@ export async function POST(request: Request) {
     return Response.json(data ?? { ok: true });
   }
   if (action === "saveConfig") {
+    const ativa = typeof body.ativa === "boolean" ? body.ativa : null;
+    const diasSemana = Array.isArray(body.diasSemana) ? (body.diasSemana as unknown[]).map(Number).filter((n) => Number.isInteger(n) && n >= 1 && n <= 7) : null;
+    const horaInicio = typeof body.horaInicio === "string" ? body.horaInicio : null;
+    const horaFim = typeof body.horaFim === "string" ? body.horaFim : null;
+    const intervalo = Number(body.intervaloMin);
+    const prazo = Number(body.prazoSeg);
+    const corretores = Array.isArray(body.corretores) ? (body.corretores as unknown[]).map(Number).filter((n) => Number.isSafeInteger(n) && n > 0) : null;
+    if (ativa == null || diasSemana == null || !horaInicio || !horaFim || !Number.isFinite(intervalo) || !Number.isFinite(prazo) || corretores == null) {
+      return Response.json({ error: "Configuração de presença incompleta." }, { status: 422 });
+    }
     const { data, error } = await a.supabase.rpc("presenca_config_salvar", {
-      p_ativa: typeof body.ativa === "boolean" ? body.ativa : null,
-      p_dias_semana: Array.isArray(body.diasSemana) ? (body.diasSemana as unknown[]).map(Number).filter((n) => Number.isInteger(n) && n >= 1 && n <= 7) : null,
-      p_inicio: typeof body.horaInicio === "string" ? body.horaInicio : null,
-      p_fim: typeof body.horaFim === "string" ? body.horaFim : null,
-      p_intervalo: Number.isFinite(Number(body.intervaloMin)) ? Number(body.intervaloMin) : null,
-      p_prazo: Number.isFinite(Number(body.prazoSeg)) ? Number(body.prazoSeg) : null,
-      p_corretores: Array.isArray(body.corretores) ? (body.corretores as unknown[]).map(Number).filter((n) => Number.isSafeInteger(n) && n > 0) : null,
+      p_ativa: ativa, p_dias_semana: diasSemana, p_inicio: horaInicio, p_fim: horaFim,
+      p_intervalo: intervalo, p_prazo: prazo, p_corretores: corretores,
     });
     if (error) return Response.json({ error: error.message }, { status: 403 });
     return Response.json({ config: data });

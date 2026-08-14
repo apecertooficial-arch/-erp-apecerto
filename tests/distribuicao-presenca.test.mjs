@@ -16,10 +16,9 @@ test("confirmação de presença é global, exclusiva do corretor e usa 15 minut
   assert.match(migration, /ativa=true[\s\S]*intervalo_min=15/);
 });
 
-test("gestor sem escolha explícita envia o lead novo para a roleta", () => {
-  assert.match(crmRoute, /if \(!brokerId && !canChooseBroker\)/);
-  assert.match(crmRoute, /\.rpc\("ncrm_distribuir_lead_novo"/);
-  assert.match(crmRoute, /\.select\("id"\)\.single\(\)/);
+test("API geral do CRM não mantém criação paralela fora do Funil 2", () => {
+  assert.doesNotMatch(crmRoute, /action === "createLead"/);
+  assert.doesNotMatch(crmRoute, /ncrm_distribuir_lead_novo/);
 });
 
 test("roleta é igualitária e mantém as travas operacionais", () => {

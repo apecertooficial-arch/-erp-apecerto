@@ -1,4 +1,5 @@
 import { createServerSupabaseClient } from "../../lib/supabase/server";
+import type { TablesInsert } from "../../lib/supabase/database.types";
 import { textoRepetidoRecente } from "../../lib/anti-repeticao";
 
 export const dynamic = "force-dynamic";
@@ -224,7 +225,7 @@ export async function POST(request: Request) {
     if (approachError || !approach || !Array.isArray(approach.mensagens)) return Response.json({ error: approachError?.message || "Abordagem não encontrada." }, { status: 404 });
     let cursor = Date.now() + 5_000;
     const firstName = text(body.leadName, 120).split(/\s+/)[0] || "cliente";
-    const rows: Array<Record<string, unknown>> = [];
+    const rows: Array<TablesInsert<"mensagens_agendadas">> = [];
     for (const rawPart of approach.mensagens) {
       if (!rawPart || typeof rawPart !== "object") continue;
       const part = rawPart as Record<string, unknown>; const name = text(part.name, 60); const options = part.options && typeof part.options === "object" ? part.options as Record<string, unknown> : {};
@@ -252,7 +253,7 @@ export async function POST(request: Request) {
     if (approachError || !approach || !Array.isArray(approach.mensagens)) return Response.json({ error: approachError?.message || "Abordagem não encontrada." }, { status: 404 });
     let cursor = when.getTime();
     const firstName = text(body.leadName, 120).split(/\s+/)[0] || "cliente";
-    const rows: Array<Record<string, unknown>> = [];
+    const rows: Array<TablesInsert<"mensagens_agendadas">> = [];
     for (const rawPart of approach.mensagens) {
       if (!rawPart || typeof rawPart !== "object") continue;
       const part = rawPart as Record<string, unknown>; const name = text(part.name, 60); const options = part.options && typeof part.options === "object" ? part.options as Record<string, unknown> : {};

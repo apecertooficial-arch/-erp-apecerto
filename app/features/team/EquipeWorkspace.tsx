@@ -27,8 +27,7 @@ export function EquipeWorkspace({ accessToken }: { accessToken: string }) {
 
   useEffect(() => {
     let alive = true;
-    setLoading(true); setError("");
-    fetch("/api/equipe", { headers: { Authorization: `Bearer ${accessToken}` } })
+    const timer = window.setTimeout(() => fetch("/api/equipe", { headers: { Authorization: `Bearer ${accessToken}` } })
       .then((r) => r.json())
       .then((json: { team?: Membro[]; error?: string }) => {
         if (!alive) return;
@@ -36,8 +35,8 @@ export function EquipeWorkspace({ accessToken }: { accessToken: string }) {
         setTeam(json.team ?? []);
       })
       .catch((e) => { if (alive) setError(e instanceof Error ? e.message : "Erro ao carregar."); })
-      .finally(() => { if (alive) setLoading(false); });
-    return () => { alive = false; };
+      .finally(() => { if (alive) setLoading(false); }), 0);
+    return () => { alive = false; window.clearTimeout(timer); };
   }, [accessToken]);
 
   const visiveis = useMemo(() => (filtro === "total" ? team : team.filter((m) => m.corretor_id === filtro)), [team, filtro]);

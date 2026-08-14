@@ -1,4 +1,5 @@
 import { createServerSupabaseClient } from "../../lib/supabase/server";
+import type { TablesInsert, TablesUpdate } from "../../lib/supabase/database.types";
 
 export const dynamic = "force-dynamic";
 
@@ -56,7 +57,16 @@ export async function GET(request: Request) {
 
   // latest evaluation per cenario
   const latest = new Map<number, { cenario_id: number; agente_versao: number; nota_auto: number; aprovado: boolean; regras_descumpridas: string[] }>();
-  for (const a of (avals.data ?? [])) if (!latest.has(a.cenario_id)) latest.set(a.cenario_id, a);
+  for (const a of (avals.data ?? [])) {
+    if (a.cenario_id == null || latest.has(a.cenario_id)) continue;
+    latest.set(a.cenario_id, {
+      cenario_id: a.cenario_id,
+      agente_versao: a.agente_versao ?? 0,
+      nota_auto: a.nota_auto ?? 0,
+      aprovado: a.aprovado === true,
+      regras_descumpridas: a.regras_descumpridas ?? [],
+    });
+  }
 
   return Response.json({
     agente,
@@ -79,7 +89,7 @@ export async function POST(request: Request) {
 
   if (action === "salvar") {
     if (!slug) return Response.json({ error: "Agente não informado." }, { status: 422 });
-    const update: Record<string, unknown> = {};
+    const update: TablesUpdate<"agentes_ia"> = {};
     if (typeof body.nome === "string") update.nome = str(body.nome, 120);
     if (typeof body.missao === "string") update.missao = str(body.missao, 2000);
     if (typeof body.system_prompt === "string") update.system_prompt = str(body.system_prompt, 20000);
@@ -103,15 +113,16 @@ export async function POST(request: Request) {
   if (action === "salvarFonte") {
     const SIT = ["rascunho", "aprovada", "vencida", "arquivada"];
     const titulo = str(body.titulo, 200).trim();
+    const situacao = str(body.situacao, 30);
     if (!titulo) return Response.json({ error: "Informe o título da fonte." }, { status: 422 });
-    const row: Record<string, unknown> = {
+    const row: TablesInsert<"agente_fontes"> = {
       titulo,
       tipo: str(body.tipo, 60) || "documento",
       conteudo: str(body.conteudo, 40000),
       responsavel: str(body.responsavel, 120) || null,
       versao: str(body.versao, 20) || null,
       validade: (typeof body.validade === "string" && /^\d{4}-\d{2}-\d{2}$/.test(body.validade)) ? body.validade : null,
-      situacao: SIT.includes(body.situacao as string) ? body.situacao : "rascunho",
+      situacao: SIT.includes(situacao) ? situacao : "rascunho",
       atualizado_em: new Date().toISOString(),
     };
     const fonteId = Number(body.fonte_id);

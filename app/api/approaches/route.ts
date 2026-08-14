@@ -1,4 +1,5 @@
 import { createServerSupabaseClient } from "../../lib/supabase/server";
+import type { TablesUpdate } from "../../lib/supabase/database.types";
 
 export const dynamic = "force-dynamic";
 
@@ -55,7 +56,7 @@ export async function PATCH(request: Request) {
     const id = Number(body.id); const name = text(body.name, 120);
     const messages = Array.isArray(body.messages) ? body.messages.slice(0, 60) : [];
     if (!Number.isSafeInteger(id) || !name) return Response.json({ error: "Abordagem inválida." }, { status: 422 });
-    const update: Record<string, unknown> = { nome: name, mensagens: messages };
+    const update: TablesUpdate<"abordagens"> = { nome: name, mensagens: messages };
     if (body.grupo !== undefined) update.grupo = text(body.grupo, 80) || null;
     const { error } = await auth.supabase.from("abordagens").update(update).eq("id", id);
     return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
