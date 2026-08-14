@@ -237,3 +237,13 @@ Evidências desta tranche:
 - `git diff --check` sem erro;
 - 159 de 159 testes frontend aprovados;
 - build de produção aprovado, sem as sete rotas removidas no manifesto final.
+
+## Execução — consolidação da pesca no Funil 2.0 (14/08/2026)
+
+A auditoria das funções do banco encontrou três implementações concorrentes de pesca. Foram aposentadas `aquario_pescar()` e `pescar_lead_aquario(bigint)`, que movimentavam diretamente o CRM antigo. A ação interna sem consumidor que ainda expunha `aquario_pescar` em `/api/crm` também foi removida.
+
+A autoridade única passa a ser `f2_pescar_negocio(bigint, uuid)`. Ela mantém o cadastro histórico em `leads`/`negocios`, cria o card em `f2_lead` somente no ato voluntário da pesca, grava `corte_conversa_em` e define `historico_completo=false`. Assim, a base de recall não é promovida em massa nem contada como carteira ativa.
+
+No momento da verificação, o banco tinha aproximadamente 13.553 leads históricos, 13.859 negócios e 677 cards no Funil 2.0. Nenhum registro histórico foi excluído nesta consolidação.
+
+Também foram removidos quatro índices redundantes comprovadamente idênticos, mantendo as chaves e índices canônicos: `corretor_presencas_uk`, `idx_esteira_anexos_ref`, `uidx_instancias_credenciais_instancia` e `pagamentos_comissao_venda_idx`.
