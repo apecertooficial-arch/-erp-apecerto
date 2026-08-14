@@ -141,9 +141,6 @@
    Tudo sob max-width: nada acima de 900px e afetado.
    ===================================================================== */
 
-/* Aviso de modulo legado: so no celular, onde a tela original nao cabe. */
-.legacy-aviso { display: none; }
-
 @media (max-width: 900px) {
   /* ---------------- INICIO ----------------
      .home-kpis era repeat(7, minmax(135px,1fr)) = 945px de largura minima.
@@ -204,20 +201,6 @@
   .crm-leads-table-v3, .finance-table, .team-table {
     display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; max-width: 100%;
   }
-
-  /* ---------------- MODULO LEGADO ---------------- */
-  .legacy-aviso {
-    display: block; margin: 0 0 12px; padding: 14px;
-    border: 1px solid #f0d9a8; border-radius: 12px; background: #fff9ec;
-  }
-  .legacy-aviso strong { display: block; font-size: 14px; color: #6b4c12; }
-  .legacy-aviso p { margin: 6px 0 10px; font-size: 13px; color: #7a6642; }
-  .legacy-aviso-link {
-    display: inline-flex; align-items: center; min-height: 44px; padding: 0 16px;
-    border-radius: 10px; background: var(--orange); color: #fff;
-    text-decoration: none; font-weight: 600; font-size: 14px;
-  }
-  .legacy-module-workspace iframe { width: 100%; min-height: 60vh; border: 0; }
 
   /* ---------------- OFFLINE ---------------- */
   .erp-offline {
