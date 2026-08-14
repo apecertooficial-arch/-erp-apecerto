@@ -331,3 +331,13 @@ A inspeção direta das Edge Functions confirmou que `ncrm-sara-observer` ainda 
 O lote de arquivos históricos NCRM — incluindo testes SQL antigos, runtime público de teste, código do observer e controle de ingest — foi identificado, porém a exclusão em massa foi bloqueada pela proteção de segurança por conter também evidências históricas do Funil 2/Sara. Ele permanece preservado até autorização específica do lote, sem participação no build operacional.
 
 A suíte oficial também continha expectativas da Home antiga. Os contratos foram atualizados para a Home atual e para o carregamento seguro sem sessão. Resultado: 163/163 testes frontend, 11/11 testes renderizados, TypeScript sem erros e build aprovado.
+
+## Execução — unificação de Notificações e redução da Home (14/08/2026)
+
+Notificações deixou de possuir implementações diferentes para desktop e celular. A página agora monta um único componente responsivo, alimentado exclusivamente por `/api/notificacoes` e pela RPC canônica `ncrm_notificacoes`. Foram removidas da tela as consultas paralelas a `/api/crm`, `/api/live-chat` e `erp_auditoria`.
+
+A Home também deixou de baixar os payloads completos de `/api/crm` e `/api/catalog` sem utilizá-los. O resumo inicial mantém somente a consulta financeira necessária à interface atual. Isso reduz tráfego, tempo de carregamento e acoplamento com o CRM aposentado.
+
+O Chat ao Vivo não possui mais tratamento especial para comandos em `/api/crm`: visitas seguem pela Agenda canônica e conversas pelo serviço próprio de chat. Após esse corte, nenhum componente operacional do aplicativo consome a API geral `/api/crm`; a referência restante está restrita ao adaptador do runtime legado que ainda sustenta Base de Conhecimento, Financiamento e Ajuda. Sua remoção física exige primeiro substituir essas três telas ou autorização destrutiva explícita para desligá-las.
+
+Foi acrescentado um teste de regressão para garantir que desktop e celular não voltem a divergir nem reintroduzam fontes paralelas na tela de avisos.

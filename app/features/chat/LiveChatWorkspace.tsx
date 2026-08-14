@@ -146,7 +146,7 @@ export function LiveChatWorkspace({ accessToken, initialLeadId = null, onInitial
   const call = async (body: Record<string, unknown>, endpoint = "/api/live-chat") => {
     setBusy(true); setNotice(null);
     try {
-      const response = await fetch(endpoint, { method: endpoint === "/api/crm" ? "PATCH" : "POST", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      const response = await fetch(endpoint, { method: "POST", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify(body) });
       const result = await response.json() as { error?: string; scheduled?: number };
       if (!response.ok) throw new Error(result.error || "Não foi possível concluir.");
       setNotice(result.scheduled ? `${result.scheduled} mensagem(ns) programada(s).` : "Ação concluída e salva no Supabase.");

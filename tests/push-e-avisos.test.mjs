@@ -21,6 +21,8 @@ const LISTA = ler("../app/features/funil-2/Funil2Mobile.tsx");
 const REDIRECT = ler("../app/(erp)/negocio/[...caminho]/page.tsx");
 const MIGRACAO = ler("../supabase/migrations/20260803010000_push_vencendo_e_deep_links_reais.sql");
 const AVISO_APP = ler("../app/features/home/AvisoNotificacoes.tsx");
+const PAGINA_AVISOS = ler("../app/(erp)/notificacoes/page.tsx");
+const TELA_AVISOS = ler("../app/features/notifications/NotificationsWorkspace.tsx");
 
 /* ---------------- o barulho ---------------- */
 
@@ -83,6 +85,13 @@ test("a rota traduz o shape da RPC para o contrato da tela", () => {
 
 test("falha na RPC vira 502, nunca lista vazia", () => {
   assert.match(ROTA, /status: 502/, "Avisos zerados por erro fariam o corretor achar que está tudo em dia");
+});
+
+test("desktop e celular compartilham uma única tela e uma única fonte de avisos", () => {
+  assert.match(PAGINA_AVISOS, /<NotificationsWorkspace/);
+  assert.doesNotMatch(PAGINA_AVISOS, /useEhCelular|TelaAvisosMobile/);
+  assert.match(TELA_AVISOS, /fetch\("\/api\/notificacoes"/);
+  assert.doesNotMatch(TELA_AVISOS, /\/api\/crm|\/api\/live-chat|erp_auditoria/);
 });
 
 /* ---------------- o toque no push ---------------- */

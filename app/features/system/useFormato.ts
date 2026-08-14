@@ -2,10 +2,9 @@
 
 /* Descobre se estamos no formato de celular.
  *
- * Por que NAO e CSS: o Inicio do desktop busca /api/crm, que hoje devolve
- * 1,8 MB (1.523 leads + 1.524 negocios). Esconder isso com media query faria o
- * celular BAIXAR os 1,8 MB e depois jogar fora -- justamente no aparelho e na
- * rede onde isso mais doi. Aqui a decisao acontece antes do fetch.
+ * Por que NAO e CSS: o Inicio do desktop busca indicadores gerenciais que o
+ * celular não usa. Esconder isso com media query faria o aparelho baixar dados
+ * e depois jogá-los fora. Aqui a decisão acontece antes do fetch.
  *
  * Por que useSyncExternalStore e nao useState+useEffect: matchMedia e um
  * sistema externo com assinatura. Ler o valor inicial dentro de um efeito

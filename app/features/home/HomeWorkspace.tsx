@@ -8,20 +8,11 @@ import { NaMesaCards } from "./NaMesaCards";
 import { InicioApp } from "./InicioApp";
 import { useEhCelular } from "../system/useFormato";
 
-type Lead = { id: number; nome?: string | null };
-type Deal = { id: number; lead_id: number; corretor_id?: number | null; stage_id?: number | null; status?: string | null; venda_id?: string | null };
-type Stage = { id: number; nome: string; cor?: string | null; ordem?: number | null };
-type Broker = { id: number; nome: string };
-type Task = { id: number; concluida?: boolean | null };
-type ProductLink = { lead_id: number; empreendimento_id: string; empreendimentos?: { nome?: string | null } | null };
-type CrmData = { leads: Lead[]; deals: Deal[]; stages: Stage[]; brokers: Broker[]; tasks: Task[]; alerts: unknown[]; productLinks: ProductLink[] };
 type Sale = { id: string; empreendimento_id?: string | null; empreendimento_nome?: string | null; vgv: number; percentual_comissao?: number | null; data_venda: string; data_conclusao?: string | null; status?: string | null };
 type Cash = { tipo: string; valor: number };
 type Goal = { nome?: string | null; meta_vgv?: number | null };
 type FinanceData = { sales: Sale[]; cash: Cash[]; goals: Goal[]; receipts: Array<{ status?: string | null }> };
-type CatalogItem = { id: string; name: string; available: number; neighborhood: string };
-type CatalogData = { catalog: CatalogItem[] };
-type DashboardData = { crm: CrmData; finance: FinanceData; catalog: CatalogData };
+type DashboardData = { finance: FinanceData };
 
 const brl = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
 
@@ -54,16 +45,11 @@ export function HomeWorkspace({ accessToken, sessionName = "", onNavigate, onIr 
        aparelho baixar dados que não mostra. */
     if (!ehDesktop) return;
     const headers = { Authorization: `Bearer ${accessToken}` };
-    void Promise.all([
-      fetch("/api/crm", { headers }),
-      fetch("/api/finance", { headers }),
-      fetch("/api/catalog", { headers }),
-    ]).then(async (responses) => {
-      const failed = responses.find((response) => !response.ok);
-      if (failed) throw new Error("Não foi possível carregar todos os indicadores.");
-      const [crm, finance, catalog] = await Promise.all(responses.map((response) => response.json()));
+    void fetch("/api/finance", { headers }).then(async (response) => {
+      if (!response.ok) throw new Error("Não foi possível carregar os indicadores financeiros.");
+      const finance = await response.json();
       setError(null);
-      setData({ crm, finance, catalog } as DashboardData);
+      setData({ finance } as DashboardData);
     }).catch((reason) => setError(reason instanceof Error ? reason.message : "Erro ao carregar o início."));
   }, [accessToken, ehDesktop]);
 

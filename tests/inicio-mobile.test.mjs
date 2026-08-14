@@ -16,9 +16,9 @@ test("o celular não baixa o painel gerencial completo", () => {
   const home = ler("../app/features/home/HomeWorkspace.tsx");
   const posGuarda = home.indexOf("if (!ehDesktop) return;");
   assert.ok(posGuarda >= 0, "a carga gerencial precisa de guarda desktop");
-  assert.ok(home.indexOf('fetch("/api/crm"') > posGuarda);
   assert.ok(home.indexOf('fetch("/api/finance"') > posGuarda);
-  assert.ok(home.indexOf('fetch("/api/catalog"') > posGuarda);
+  assert.doesNotMatch(home, /fetch\("\/api\/crm"/);
+  assert.doesNotMatch(home, /fetch\("\/api\/catalog"/);
 });
 
 test("o cabeçalho não repete o título do Início", () => {
