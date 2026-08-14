@@ -329,7 +329,7 @@ export function QuickActionModal({ action, lead, deal, brokers, products, gerent
     if (action !== "visit" || !accessToken || !date || !startTime || !corretorId) { setDisp(null); return; }
     let alive = true;
     setDisp({ loading: true, conflitos: [], gerenteNome: null });
-    void fetch("/api/crm", { method: "PATCH", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify({ action: "gerenteDisponibilidade", corretorId, date, startTime, endTime }) })
+    void fetch("/api/agenda", { method: "POST", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify({ action: "gerenteDisponibilidade", corretorId, date, startTime, endTime }) })
       .then((response) => response.json())
       .then((result: { gerente_id?: number | null; conflitos?: Array<{ cliente_nome: string | null; hora_inicio: string | null; hora_fim: string | null }> }) => {
         if (!alive) return;
@@ -352,7 +352,7 @@ export function QuickActionModal({ action, lead, deal, brokers, products, gerent
     setBusy(true); setError("");
     try {
       if (action === "callReminder" || action === "task") await onSave({ action, leadId: lead.id, dealId: deal?.id, name: lead.nome, title, description, due, priority });
-      if (action === "visit") await onSave({ action: "createVisit", leadId: lead.id, dealId: deal?.id, productId: productId || null, productName: selectedProduct?.nome, date, startTime, endTime, local, observations: description, reminder: true, withManager }, "/api/crm");
+      if (action === "visit") await onSave({ action: "createVisit", leadId: lead.id, dealId: deal?.id, productId: productId || null, productName: selectedProduct?.nome, date, startTime, endTime, local, observations: description, reminder: true, withManager }, "/api/agenda");
       if (action === "proposal") await onSave({ action, leadId: lead.id, dealId: deal?.id, productId: productId || null, productName: selectedProduct?.nome, value, conditions: description });
       if (action === "financing") await onSave({ action, leadId: lead.id, dealId: deal?.id, productId: productId || null, productName: selectedProduct?.nome, name: lead.nome, phone: lead.telefone, email: lead.email, value, downPayment: String(Math.max(0, Number(value) - Number(financing))), financing: Number(financing), consent });
       if (action === "transfer") await onSave({ action, leadId: lead.id, dealId: deal?.id, brokerId: Number(brokerId) });

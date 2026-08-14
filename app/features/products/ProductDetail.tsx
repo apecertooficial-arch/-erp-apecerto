@@ -133,13 +133,12 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
     if (tab !== "localizacao" || !product) return;
     // Se já tem coordenada salva, usa o OpenStreetMap direto.
     if (product.latitude != null && product.longitude != null) {
-      if (!mapCoord) setMapCoord({ lat: Number(product.latitude), lon: Number(product.longitude) });
       return;
     }
     // Sem coordenada: mostra o embed do Google na hora (render abaixo) e dispara o
     // geocoding NO SERVIDOR só pra CACHEAR — na próxima abertura já vem OSM.
     void fetch(`/api/geocode?id=${product.id}`, { headers: { Authorization: `Bearer ${accessToken}` } }).catch(() => {});
-  }, [tab, product, accessToken, mapCoord]);
+  }, [tab, product, accessToken]);
 
   async function save() {
     setBusy(true); setMessage("");
@@ -219,7 +218,11 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
   useEffect(() => {
     if (!initialOpened.current && initialUnitId && product) {
       const u = product.unidades.find((x) => x.id === initialUnitId);
-      if (u) { setTab("unidades"); setUnitDetail(u); initialOpened.current = true; }
+      if (u) {
+        initialOpened.current = true;
+        const timer = window.setTimeout(() => { setTab("unidades"); setUnitDetail(u); }, 0);
+        return () => window.clearTimeout(timer);
+      }
     }
   }, [product, initialUnitId]);
 

@@ -17,7 +17,10 @@ const cleanOrNull = (value: unknown, max = 400) => { const v = clean(value, max)
 
 async function log(auth: Auth, acao: string, detalhe: string, projetoId: string | null, tarefaId: string | null) {
   try {
-    await auth.supabase.rpc("pj_log", { p_acao: acao, p_detalhe: detalhe, p_projeto: projetoId, p_tarefa: tarefaId });
+    // A função aceita NULL para indicar que o evento pertence apenas ao projeto
+    // ou apenas à tarefa; o gerador de tipos do PostgREST não expressa nulidade
+    // de argumentos RPC, por isso a compatibilidade fica localizada aqui.
+    await auth.supabase.rpc("pj_log", { p_acao: acao, p_detalhe: detalhe, p_projeto: projetoId as string, p_tarefa: tarefaId as string });
   } catch { /* auditoria nunca derruba a ação */ }
 }
 

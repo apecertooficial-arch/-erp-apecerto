@@ -31,7 +31,7 @@ const ago = (date: string) => { const minutes = minutesSince(date); if (minutes 
 export function NotificationsWorkspace({ accessToken, onOpenLead }: { accessToken: string; onOpenLead: (dealId: number) => void }) {
   const [crm, setCrm] = useState<CrmData | null>(null);
   const [chat, setChat] = useState<ChatData | null>(null);
-  const [system, setSystem] = useState<Array<{ id: number; detalhe: string | null; acao: string; modulo: string; usuario_nome: string; criado_em: string }>>([]);
+  const [system, setSystem] = useState<Array<{ id: number; detalhe: string | null; acao: string; modulo: string; usuario_nome: string | null; criado_em: string }>>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [category, setCategory] = useState<Category | "todas">("todas");

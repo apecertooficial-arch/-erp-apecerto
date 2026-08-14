@@ -6,12 +6,15 @@ const agendaApi = await readFile(new URL("../app/api/agenda/route.ts", import.me
 const crmApi = await readFile(new URL("../app/api/crm/route.ts", import.meta.url), "utf8");
 const desktop = await readFile(new URL("../app/features/calendar/CalendarWorkspace.tsx", import.meta.url), "utf8");
 const mobile = await readFile(new URL("../app/features/calendar/TelaAgendaMobile.tsx", import.meta.url), "utf8");
+const chat = await readFile(new URL("../app/features/chat/LiveChatWorkspace.tsx", import.meta.url), "utf8");
 
 test("desktop e mobile consomem somente a API canônica da Agenda", () => {
   assert.match(desktop, /\/api\/agenda\?workspace=1/);
   assert.doesNotMatch(desktop, /\/api\/crm/);
   assert.match(mobile, /\/api\/agenda\?/);
   assert.doesNotMatch(mobile, /\/api\/crm/);
+  assert.match(chat, /\/api\/agenda/);
+  assert.doesNotMatch(chat, /createVisit[\s\S]{0,500}\/api\/crm/);
 });
 
 test("escritas de visita existem na Agenda e não na API geral do CRM", () => {

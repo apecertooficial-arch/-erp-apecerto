@@ -7,6 +7,7 @@
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createServerSupabaseClient } from "../../lib/supabase/server";
+import type { TablesUpdate } from "../../lib/supabase/database.types";
 import { denyIfCannot, resolveEffectiveAccess } from "../../lib/supabase/authz";
 
 export const dynamic = "force-dynamic";
@@ -64,7 +65,7 @@ export async function GET(request: Request) {
   const [cards, brokers, products, visits, tasks, gerentes, profile] = await Promise.all([
     auth.supabase.from("f2_lead").select("origem_negocio_id").is("descartado_em", null).not("origem_negocio_id", "is", null),
     auth.supabase.rpc("listar_corretores_transferencia"),
-    auth.supabase.from("empreendimentos").select("id,nome").eq("status", "ativo").order("nome").limit(500),
+    auth.supabase.from("empreendimentos").select("id,nome").eq("rascunho", false).order("nome").limit(500),
     auth.supabase.from("visitas").select("id,lead_id,negocio_id,corretor_id,cliente_nome,produto,empreendimento_id,data,hora_inicio,hora_fim,local,observacoes,com_gerente,gerente_id,status").order("data").order("hora_inicio"),
     auth.supabase.from("crm_tarefas").select("id,lead_id,corretor_id,titulo,vencimento,concluida,prioridade").order("vencimento"),
     auth.supabase.from("gerentes").select("id,nome,geral,corretor_id").eq("ativo", true).order("geral", { ascending: false }),
@@ -159,7 +160,7 @@ export async function PATCH(request: Request) {
     if (!current) return Response.json({ error: "Visita não encontrada." }, { status: 404 });
 
     const isManager = access.role === "admin" || access.role === "gestor";
-    const patch: Record<string, unknown> = { atualizado_em: new Date().toISOString() };
+    const patch: TablesUpdate<"visitas"> = { atualizado_em: new Date().toISOString() };
     if (typeof body.date === "string" && body.date) patch.data = texto(body.date, 10);
     if (body.startTime !== undefined) patch.hora_inicio = texto(body.startTime, 8) || null;
     if (body.endTime !== undefined) patch.hora_fim = texto(body.endTime, 8) || null;
@@ -204,7 +205,7 @@ export async function PATCH(request: Request) {
     if (!gerenteId) return Response.json({ ok: true, gerente_id: null, conflitos: [] });
     const { data: conflitos } = await auth.supabase.rpc("gerente_conflitos", {
       p_gerente: gerenteId, p_data: date, p_inicio: startTime,
-      p_fim: texto(body.endTime, 8) || null, p_exclude: texto(body.visitId, 40) || null,
+      p_fim: texto(body.endTime, 8) || startTime, p_exclude: texto(body.visitId, 40) || undefined,
     });
     return Response.json({ ok: true, gerente_id: gerenteId, conflitos: conflitos ?? [] });
   }

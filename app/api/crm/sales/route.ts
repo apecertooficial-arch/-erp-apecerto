@@ -1,4 +1,5 @@
 import { createServerSupabaseClient } from "../../../lib/supabase/server";
+import type { TablesUpdate } from "../../../lib/supabase/database.types";
 import { blocoAberto, completudeBloco, docExigido, etapaDoBloco, pendenciasParaAvancar, podeEditarEtapa, type BlocoEsteira, type DadosCompletude, type EtapaRegra } from "../../../lib/esteira";
 
 export const dynamic = "force-dynamic";
@@ -407,7 +408,7 @@ export async function PATCH(request: Request) {
       }
     }
     const now = new Date().toISOString();
-    const upd: Record<string, unknown> = { status: "aberto", venda_id: null, ultima_movimentacao: now };
+    const upd: TablesUpdate<"negocios"> = { status: "aberto", venda_id: null, ultima_movimentacao: now };
     if (pipelineId) upd.pipeline_id = pipelineId;
     if (stageId) { upd.stage_id = stageId; upd.estagio_desde = now; }
     const { error: e1 } = await auth.supabase.from("negocios").update(upd).eq("id", proc.negocio_id);
@@ -461,7 +462,7 @@ export async function PATCH(request: Request) {
     const productId = String(body.productId || "");
     const vgv = Number.isFinite(Number(body.vgv)) && Number(body.vgv) > 0 ? Number(body.vgv) : 0;
     if (!Number.isSafeInteger(dealId) || !productId) return Response.json({ error: "Selecione o negócio e o produto." }, { status: 422 });
-    const { data, error } = await auth.supabase.rpc("solicitar_venda", { p_negocio: dealId, p_produto: productId, p_vgv: vgv, p_forma: String(body.payment || "") || null, p_obs: String(body.notes || "") || null });
+    const { data, error } = await auth.supabase.rpc("solicitar_venda", { p_negocio: dealId, p_produto: productId, p_vgv: vgv, p_forma: String(body.payment || "") || undefined, p_obs: String(body.notes || "") || undefined });
     if (error) return Response.json({ error: error.message }, { status: 502 });
     const r = (data ?? {}) as { ok?: boolean; erro?: string };
     if (!r.ok) return Response.json({ error: r.erro === "ja_solicitado" ? "Já existe uma solicitação pendente para este negócio." : r.erro === "ja_tem_venda" ? "Este negócio já virou venda." : r.erro === "sem_permissao_neste_negocio" ? "Você só pode enviar negócios sob sua responsabilidade." : (r.erro || "Não foi possível solicitar.") }, { status: 422 });

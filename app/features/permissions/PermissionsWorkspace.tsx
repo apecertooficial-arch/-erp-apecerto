@@ -42,19 +42,27 @@ export function PermissionsWorkspace({ accessToken }: { accessToken: string }) {
     setPerfis(json.perfis ?? []);
     setUsuarios(json.usuarios ?? []);
   };
-  useEffect(() => { void load().catch((e) => setError(e instanceof Error ? e.message : "Erro ao carregar.")); }, [accessToken]);
+  useEffect(() => {
+    const timer = window.setTimeout(() => { void load().catch((e) => setError(e instanceof Error ? e.message : "Erro ao carregar.")); }, 0);
+    return () => window.clearTimeout(timer);
+  }, [accessToken]);
 
   const perfilById = useMemo(() => new Map(perfis.map((p) => [p.id, p])), [perfis]);
   const userById = useMemo(() => new Map(usuarios.map((u) => [u.id, u])), [usuarios]);
 
   // Quando muda seleção, recarrega o rascunho
-  useEffect(() => { if (tab === "perfis") setDraft(structuredClone(perfilById.get(selPerfil)?.permissoes ?? {})); }, [tab, selPerfil, perfilById]);
+  useEffect(() => {
+    if (tab !== "perfis") return;
+    const timer = window.setTimeout(() => setDraft(structuredClone(perfilById.get(selPerfil)?.permissoes ?? {})), 0);
+    return () => window.clearTimeout(timer);
+  }, [tab, selPerfil, perfilById]);
   useEffect(() => {
     if (tab !== "usuarios") return;
     const u = userById.get(selUser);
-    if (!u) { setDraft({}); return; }
+    if (!u) { const timer = window.setTimeout(() => setDraft({}), 0); return () => window.clearTimeout(timer); }
     const base = (u.permissoes && Object.keys(u.permissoes).length) ? u.permissoes : perfilById.get(u.role)?.permissoes ?? {};
-    setDraft(structuredClone(base));
+    const timer = window.setTimeout(() => setDraft(structuredClone(base)), 0);
+    return () => window.clearTimeout(timer);
   }, [tab, selUser, userById, perfilById]);
 
   const toggle = (mod: string, act: string) => {

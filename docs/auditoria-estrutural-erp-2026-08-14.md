@@ -295,3 +295,24 @@ Na primeira correção de código real:
 - `AgentTrainingWorkspace` perdeu `@ts-nocheck` e `eslint-disable`, ganhou tipos baseados no contrato de `/api/agentes` e ficou sem erros próprios de TypeScript ou lint.
 
 O lint global caiu para 60 erros e 44 avisos. Os 163 testes e o build continuaram aprovados.
+
+## Execução — contratos reais do Supabase e corte final da criação NCRM (14/08/2026)
+
+O arquivo `database.types.ts` foi regenerado diretamente do projeto Supabase `diaegvfveqezispcthwk`. A versão anterior estava defasada: não conhecia sequer `f2_lead`, aceitava funções já removidas e escondia divergências de nulidade, enums e payloads de escrita.
+
+Após sincronizar o contrato, foram corrigidos todos os erros TypeScript encontrados em Agenda, Agentes, Abordagens, Campanhas, Vendas, Financeiro, Presença, Projetos, notificações e Web Push. A checagem `tsc --noEmit` passou com zero erros.
+
+A auditoria também revelou duas rotas paralelas ainda alcançáveis:
+
+- o chat agendava visita em `/api/crm`, embora os comandos já tivessem sido consolidados em `/api/agenda`; agora ele usa somente a Agenda canônica;
+- `/api/crm` ainda aceitava `createLead` e chamava `ncrm_distribuir_lead_novo`, função já aposentada no banco. Esse caminho foi removido, impedindo criação operacional fora do Funil 2.0.
+
+Os erros React reais do aplicativo foram eliminados sem desligar regras: efeitos com renderização em cascata foram assíncronizados, previews de mídia deixaram de mutar refs durante render e cálculos de prazo passaram a usar um instante estável. O lint do código Next.js ficou sem erros; as Edge Functions Deno permanecem como uma verificação separada, pois não devem ser avaliadas como código React/Next.
+
+Evidências desta etapa:
+
+- TypeScript: zero erros;
+- frontend: 163 de 163 testes aprovados;
+- build de produção aprovado;
+- teste de contrato ampliado para impedir que o chat volte a escrever visitas pela API geral do CRM;
+- teste de regressão impede o retorno de `createLead`/`ncrm_distribuir_lead_novo` à API geral.

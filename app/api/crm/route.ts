@@ -217,49 +217,6 @@ export async function PATCH(request: Request) {
     return Response.json({ success: true, result: data });
   }
 
-  if (action === "createLead") {
-    const nome = cleanText(body.nome, 160);
-    // Normaliza telefone BR: só dígitos e prefixa 55 quando vier sem DDI (10/11 dígitos).
-    // Evita salvar número sem código do país (o WhatsApp não entrega e o lead não responde).
-    const telDigits = cleanText(body.telefone, 40).replace(/\D/g, "");
-    const telefone = (telDigits.length === 10 || telDigits.length === 11) ? `55${telDigits}` : telDigits;
-    const email = cleanText(body.email, 180).toLowerCase();
-    const origem = cleanText(body.origem, 100) || "manual";
-    const pipelineId = positiveInteger(body.pipelineId);
-    const selectedBrokerId = body.corretorId === null || body.corretorId === "" ? null : positiveInteger(body.corretorId);
-    if (!nome || !telefone || !pipelineId) return Response.json({ error: "Informe nome, telefone e funil." }, { status: 422 });
-    const denied = guard([["leads", "criar"], ["crm", "criar"]], "Você não tem permissão para criar leads.");
-    if (denied) return denied;
-    const { data: pipeline } = await auth.supabase.from("pipelines").select("id").eq("id", pipelineId).maybeSingle();
-    if (!pipeline) return Response.json({ error: "Funil inválido." }, { status: 422 });
-    const canChooseBroker = canCrm(access, "atribuir") || canCrm(access, "transferir");
-    if (selectedBrokerId && !canChooseBroker) return Response.json({ error: "Você não tem permissão para atribuir este lead a outro corretor." }, { status: 403 });
-    let brokerId = canChooseBroker ? selectedBrokerId : null;
-    // Gestor sem corretor escolhido entrega o lead à roleta. Antes, o admin
-    // também era um corretor cadastrado e acabava atribuindo o lead a si mesmo,
-    // apesar de a tela prometer distribuição automática.
-    if (!brokerId && !canChooseBroker) {
-      const { data: ownBroker } = await auth.supabase.from("corretores").select("id").eq("usuario_id", auth.user.id).maybeSingle();
-      brokerId = ownBroker?.id ?? null;
-    }
-    const { data: lead, error: leadError } = await auth.supabase.from("leads").insert({ nome, telefone, email: email || null, origem, pipeline_id: pipelineId, corretor_id: brokerId, status: "novo", atualizado_em: new Date().toISOString(), tags: [] }).select("id").single();
-    if (leadError) return Response.json({ error: leadError.message }, { status: 502 });
-    const { data: firstStage } = await auth.supabase.from("pipeline_stages").select("id").eq("pipeline_id", pipelineId).order("ordem").limit(1).maybeSingle();
-    let negocioId: number | null = null;
-    if (firstStage) {
-      const { data: deal, error: dealError } = await auth.supabase.from("negocios").insert({ lead_id: lead.id, pipeline_id: pipelineId, stage_id: firstStage.id, corretor_id: brokerId, status: "aberto", estagio_desde: new Date().toISOString(), ultima_movimentacao: new Date().toISOString() }).select("id").single();
-      if (dealError) return Response.json({ error: `Lead criado, mas o negócio não foi aberto: ${dealError.message}` }, { status: 502 });
-      negocioId = deal.id;
-    }
-    let distribuicao: unknown = null;
-    if (!brokerId && negocioId) {
-      const { data, error } = await auth.supabase.rpc("ncrm_distribuir_lead_novo", { p_negocio_id: negocioId });
-      if (error) return Response.json({ error: `Lead criado, mas a distribuição falhou: ${error.message}`, leadId: lead.id, negocioId }, { status: 502 });
-      distribuicao = data;
-    }
-    return Response.json({ success: true, leadId: lead.id, negocioId, distribuicao });
-  }
-
   if (action === "addNote") {
     const leadId = positiveInteger(body.leadId);
     const dealId = body.dealId === null || body.dealId === "" ? null : positiveInteger(body.dealId);

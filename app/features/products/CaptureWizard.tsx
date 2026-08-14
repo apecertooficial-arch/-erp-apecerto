@@ -11,7 +11,7 @@ type CaptureWizardProps = { onClose: () => void; onSaved: () => void };
 type Condominium = { id: string; nome: string; cep: string | null; endereco: string; numero: string | null; complemento: string | null; bairro: string | null; cidade: string; uf: string };
 type Owner = { id: string; nome: string; email: string; telefone: string };
 type Unit = { id: string; number: string; type: string; area: string; parking: string; price: string; promotionalPrice: string };
-type MediaItem = { id: string; file: File; kind: "foto" | "video"; category: string; cover: boolean };
+type MediaItem = { id: string; file: File; kind: "foto" | "video"; category: string; cover: boolean; preview: string };
 
 const emptyCondominium = { name: "", zipCode: "", address: "", number: "", complement: "", neighborhood: "", city: "São Paulo", state: "SP" };
 const emptyOwner = { name: "", email: "", phone: "" };
@@ -112,7 +112,7 @@ export function CaptureWizard({ onClose, onSaved }: CaptureWizardProps) {
     setMedia((current) => {
       const hasCover = current.some((item) => item.cover);
       const additions = list.map((file, index) => ({
-        id: crypto.randomUUID(), file, kind, category: kind === "video" ? "Tour" : "Sala", cover: kind === "foto" && !hasCover && index === 0,
+        id: crypto.randomUUID(), file, kind, category: kind === "video" ? "Tour" : "Sala", cover: kind === "foto" && !hasCover && index === 0, preview: URL.createObjectURL(file),
       }));
       return [...current, ...additions];
     });
@@ -286,13 +286,6 @@ export function CaptureWizard({ onClose, onSaved }: CaptureWizardProps) {
 }
 
 function ReviewMedia({ media, setMedia }: { media: MediaItem[]; setMedia: (value: MediaItem[] | ((cur: MediaItem[]) => MediaItem[])) => void }) {
-  const cache = useRef(new Map<string, string>());
-  const previewFor = (item: MediaItem) => {
-    const c = cache.current;
-    if (!c.has(item.id)) c.set(item.id, URL.createObjectURL(item.file));
-    return c.get(item.id)!;
-  };
-  useEffect(() => () => { cache.current.forEach((url) => URL.revokeObjectURL(url)); cache.current.clear(); }, []);
   const [dragId, setDragId] = useState<string | null>(null);
   const reorder = (fromId: string, toId: string) => setMedia((cur) => {
     if (fromId === toId) return cur;
@@ -322,7 +315,7 @@ function ReviewMedia({ media, setMedia }: { media: MediaItem[]; setMedia: (value
           draggable onDragStart={() => setDragId(item.id)} onDragEnd={() => setDragId(null)}
           onDragOver={(event) => event.preventDefault()} onDrop={(event) => { event.preventDefault(); if (dragId) reorder(dragId, item.id); setDragId(null); }}>
           <div className="rm-thumb">
-            {item.kind === "foto" ? <img src={previewFor(item)} alt={item.file.name} /> : <video src={previewFor(item)} muted playsInline preload="metadata" />}
+            {item.kind === "foto" ? <img src={item.preview} alt={item.file.name} /> : <video src={item.preview} muted playsInline preload="metadata" />}
             <span className="rm-pos">{index + 1}</span>
             {isCover && <span className="rm-cover-badge">★ Capa</span>}
             {item.kind === "video" && <span className="rm-video-badge">▶ Vídeo</span>}

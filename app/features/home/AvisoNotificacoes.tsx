@@ -139,7 +139,7 @@ export function AvisoNotificacoes({ accessToken }: { accessToken: string }) {
       const sub = (await reg.pushManager.getSubscription())
         ?? (await reg.pushManager.subscribe({
           userVisibleOnly: true,
-          applicationServerKey: chaveParaBytes(cj.chave),
+          applicationServerKey: Uint8Array.from(chaveParaBytes(cj.chave)).buffer,
         }));
 
       const dados = extrairInscricao(sub, navigator.userAgent);

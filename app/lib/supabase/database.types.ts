@@ -14,6 +14,30 @@ export type Database = {
   }
   public: {
     Tables: {
+      _mig_pipe2_to_funil20_bkp: {
+        Row: {
+          movido_em: string | null
+          negocio_id: number | null
+          old_estagio_desde: string | null
+          old_pipeline_id: number | null
+          old_stage_id: number | null
+        }
+        Insert: {
+          movido_em?: string | null
+          negocio_id?: number | null
+          old_estagio_desde?: string | null
+          old_pipeline_id?: number | null
+          old_stage_id?: number | null
+        }
+        Update: {
+          movido_em?: string | null
+          negocio_id?: number | null
+          old_estagio_desde?: string | null
+          old_pipeline_id?: number | null
+          old_stage_id?: number | null
+        }
+        Relationships: []
+      }
       _perf_baseline: {
         Row: {
           calls: number | null
@@ -105,6 +129,13 @@ export type Database = {
             foreignKeyName: "abordagens_empreendimento_id_fkey"
             columns: ["empreendimento_id"]
             isOneToOne: false
+            referencedRelation: "site_produtos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "abordagens_empreendimento_id_fkey"
+            columns: ["empreendimento_id"]
+            isOneToOne: false
             referencedRelation: "v_catalogo_empreendimentos"
             referencedColumns: ["id"]
           },
@@ -113,6 +144,13 @@ export type Database = {
             columns: ["empreendimento_id"]
             isOneToOne: false
             referencedRelation: "vw_empreendimento_resumo"
+            referencedColumns: ["empreendimento_id"]
+          },
+          {
+            foreignKeyName: "abordagens_empreendimento_id_fkey"
+            columns: ["empreendimento_id"]
+            isOneToOne: false
+            referencedRelation: "vw_produtos_catalogo"
             referencedColumns: ["empreendimento_id"]
           },
           {
@@ -128,6 +166,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "produtos"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "abordagens_produto_id_fkey"
+            columns: ["produto_id"]
+            isOneToOne: false
+            referencedRelation: "vw_produtos_catalogo"
+            referencedColumns: ["produto_id"]
           },
         ]
       }
@@ -722,6 +767,100 @@ export type Database = {
         }
         Relationships: []
       }
+      aquisicao_construtoras: {
+        Row: {
+          atualizado_em: string
+          canal: string | null
+          construtora: string
+          criado_em: string
+          data_envio: string | null
+          data_resposta: string | null
+          email: string | null
+          id: number
+          lembrete_enviado: boolean
+          mes_referencia_tabela: string | null
+          observacoes: string | null
+          onda: number | null
+          pessoa_contato: string | null
+          produto: string | null
+          regiao: string
+          responsavel_interno_id: number | null
+          status_envio: string
+          tabela_recebida: boolean
+          telefone: string | null
+          tipo_abordagem: string | null
+          whatsapp: string | null
+        }
+        Insert: {
+          atualizado_em?: string
+          canal?: string | null
+          construtora: string
+          criado_em?: string
+          data_envio?: string | null
+          data_resposta?: string | null
+          email?: string | null
+          id?: number
+          lembrete_enviado?: boolean
+          mes_referencia_tabela?: string | null
+          observacoes?: string | null
+          onda?: number | null
+          pessoa_contato?: string | null
+          produto?: string | null
+          regiao: string
+          responsavel_interno_id?: number | null
+          status_envio?: string
+          tabela_recebida?: boolean
+          telefone?: string | null
+          tipo_abordagem?: string | null
+          whatsapp?: string | null
+        }
+        Update: {
+          atualizado_em?: string
+          canal?: string | null
+          construtora?: string
+          criado_em?: string
+          data_envio?: string | null
+          data_resposta?: string | null
+          email?: string | null
+          id?: number
+          lembrete_enviado?: boolean
+          mes_referencia_tabela?: string | null
+          observacoes?: string | null
+          onda?: number | null
+          pessoa_contato?: string | null
+          produto?: string | null
+          regiao?: string
+          responsavel_interno_id?: number | null
+          status_envio?: string
+          tabela_recebida?: boolean
+          telefone?: string | null
+          tipo_abordagem?: string | null
+          whatsapp?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "aquisicao_construtoras_responsavel_interno_id_fkey"
+            columns: ["responsavel_interno_id"]
+            isOneToOne: false
+            referencedRelation: "corretores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "aquisicao_construtoras_responsavel_interno_id_fkey"
+            columns: ["responsavel_interno_id"]
+            isOneToOne: false
+            referencedRelation: "vw_metricas_corretor"
+            referencedColumns: ["corretor_id"]
+          },
+          {
+            foreignKeyName: "aquisicao_construtoras_responsavel_interno_id_fkey"
+            columns: ["responsavel_interno_id"]
+            isOneToOne: false
+            referencedRelation: "vw_negocios_kanban"
+            referencedColumns: ["corretor_id"]
+          },
+        ]
+      }
       atendimento_acoes: {
         Row: {
           canal: string | null
@@ -1006,6 +1145,142 @@ export type Database = {
           prioridade?: number
         }
         Relationships: []
+      }
+      captacoes_portal: {
+        Row: {
+          acesso_instrucoes: string | null
+          area_util: number | null
+          atualizado_em: string
+          bairro: string | null
+          banheiros: number | null
+          cep: string | null
+          cidade: string | null
+          complemento: string | null
+          condominio_valor: number | null
+          contato_email: string | null
+          contato_nome: string | null
+          contato_telefone: string | null
+          criado_em: string
+          descricao: string | null
+          dormitorios: number | null
+          empreendimento_id: string | null
+          finalidade: string | null
+          fotos: Json
+          id: string
+          iptu: number | null
+          logradouro: string | null
+          numero: string | null
+          preco: number | null
+          proprietario_uid: string
+          status: string
+          termo_aceite: boolean
+          uf: string | null
+          vagas: number | null
+        }
+        Insert: {
+          acesso_instrucoes?: string | null
+          area_util?: number | null
+          atualizado_em?: string
+          bairro?: string | null
+          banheiros?: number | null
+          cep?: string | null
+          cidade?: string | null
+          complemento?: string | null
+          condominio_valor?: number | null
+          contato_email?: string | null
+          contato_nome?: string | null
+          contato_telefone?: string | null
+          criado_em?: string
+          descricao?: string | null
+          dormitorios?: number | null
+          empreendimento_id?: string | null
+          finalidade?: string | null
+          fotos?: Json
+          id?: string
+          iptu?: number | null
+          logradouro?: string | null
+          numero?: string | null
+          preco?: number | null
+          proprietario_uid?: string
+          status?: string
+          termo_aceite?: boolean
+          uf?: string | null
+          vagas?: number | null
+        }
+        Update: {
+          acesso_instrucoes?: string | null
+          area_util?: number | null
+          atualizado_em?: string
+          bairro?: string | null
+          banheiros?: number | null
+          cep?: string | null
+          cidade?: string | null
+          complemento?: string | null
+          condominio_valor?: number | null
+          contato_email?: string | null
+          contato_nome?: string | null
+          contato_telefone?: string | null
+          criado_em?: string
+          descricao?: string | null
+          dormitorios?: number | null
+          empreendimento_id?: string | null
+          finalidade?: string | null
+          fotos?: Json
+          id?: string
+          iptu?: number | null
+          logradouro?: string | null
+          numero?: string | null
+          preco?: number | null
+          proprietario_uid?: string
+          status?: string
+          termo_aceite?: boolean
+          uf?: string | null
+          vagas?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "captacoes_portal_empreendimento_id_fkey"
+            columns: ["empreendimento_id"]
+            isOneToOne: false
+            referencedRelation: "empreendimentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "captacoes_portal_empreendimento_id_fkey"
+            columns: ["empreendimento_id"]
+            isOneToOne: false
+            referencedRelation: "site_produtos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "captacoes_portal_empreendimento_id_fkey"
+            columns: ["empreendimento_id"]
+            isOneToOne: false
+            referencedRelation: "v_catalogo_empreendimentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "captacoes_portal_empreendimento_id_fkey"
+            columns: ["empreendimento_id"]
+            isOneToOne: false
+            referencedRelation: "vw_empreendimento_resumo"
+            referencedColumns: ["empreendimento_id"]
+          },
+          {
+            foreignKeyName: "captacoes_portal_empreendimento_id_fkey"
+            columns: ["empreendimento_id"]
+            isOneToOne: false
+            referencedRelation: "vw_produtos_catalogo"
+            referencedColumns: ["empreendimento_id"]
+          },
+          {
+            foreignKeyName: "captacoes_portal_empreendimento_id_fkey"
+            columns: ["empreendimento_id"]
+            isOneToOne: false
+            referencedRelation: "vw_produtos_publicos"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       categorias_caixa: {
         Row: {
@@ -2269,18 +2544,45 @@ export type Database = {
       escritorio_config: {
         Row: {
           atualizado_em: string
+          exigir_ip: boolean
           id: number
           ips: string[]
         }
         Insert: {
           atualizado_em?: string
+          exigir_ip?: boolean
           id?: number
           ips?: string[]
         }
         Update: {
           atualizado_em?: string
+          exigir_ip?: boolean
           id?: number
           ips?: string[]
+        }
+        Relationships: []
+      }
+      escritorio_ip_auditoria: {
+        Row: {
+          adicionado_em: string
+          corretores: Json | null
+          id: number
+          ip: string
+          origem: string
+        }
+        Insert: {
+          adicionado_em?: string
+          corretores?: Json | null
+          id?: number
+          ip: string
+          origem?: string
+        }
+        Update: {
+          adicionado_em?: string
+          corretores?: Json | null
+          id?: number
+          ip?: string
+          origem?: string
         }
         Relationships: []
       }
@@ -2570,6 +2872,1432 @@ export type Database = {
         }
         Relationships: []
       }
+      extrato_importacao: {
+        Row: {
+          agencia: string | null
+          arquivo_nome: string | null
+          banco: string | null
+          conta: string | null
+          criado_em: string
+          criado_por: string | null
+          id: string
+          linhas_total: number
+          periodo_fim: string | null
+          periodo_inicio: string | null
+          saldo_abertura: number | null
+          saldo_fechamento: number | null
+          titular: string | null
+        }
+        Insert: {
+          agencia?: string | null
+          arquivo_nome?: string | null
+          banco?: string | null
+          conta?: string | null
+          criado_em?: string
+          criado_por?: string | null
+          id?: string
+          linhas_total?: number
+          periodo_fim?: string | null
+          periodo_inicio?: string | null
+          saldo_abertura?: number | null
+          saldo_fechamento?: number | null
+          titular?: string | null
+        }
+        Update: {
+          agencia?: string | null
+          arquivo_nome?: string | null
+          banco?: string | null
+          conta?: string | null
+          criado_em?: string
+          criado_por?: string | null
+          id?: string
+          linhas_total?: number
+          periodo_fim?: string | null
+          periodo_inicio?: string | null
+          saldo_abertura?: number | null
+          saldo_fechamento?: number | null
+          titular?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "extrato_importacao_criado_por_fkey"
+            columns: ["criado_por"]
+            isOneToOne: false
+            referencedRelation: "usuarios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "extrato_importacao_criado_por_fkey"
+            columns: ["criado_por"]
+            isOneToOne: false
+            referencedRelation: "v_painel_corretor"
+            referencedColumns: ["corretor_id"]
+          },
+          {
+            foreignKeyName: "extrato_importacao_criado_por_fkey"
+            columns: ["criado_por"]
+            isOneToOne: false
+            referencedRelation: "v_painel_socio"
+            referencedColumns: ["socio_id"]
+          },
+          {
+            foreignKeyName: "extrato_importacao_criado_por_fkey"
+            columns: ["criado_por"]
+            isOneToOne: false
+            referencedRelation: "vw_ranking_vgv"
+            referencedColumns: ["corretor_id"]
+          },
+        ]
+      }
+      extrato_layout: {
+        Row: {
+          atualizado_em: string
+          atualizado_por: string | null
+          banco: string
+          mapa: Json
+          rotulo: string | null
+        }
+        Insert: {
+          atualizado_em?: string
+          atualizado_por?: string | null
+          banco: string
+          mapa: Json
+          rotulo?: string | null
+        }
+        Update: {
+          atualizado_em?: string
+          atualizado_por?: string | null
+          banco?: string
+          mapa?: Json
+          rotulo?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "extrato_layout_atualizado_por_fkey"
+            columns: ["atualizado_por"]
+            isOneToOne: false
+            referencedRelation: "usuarios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "extrato_layout_atualizado_por_fkey"
+            columns: ["atualizado_por"]
+            isOneToOne: false
+            referencedRelation: "v_painel_corretor"
+            referencedColumns: ["corretor_id"]
+          },
+          {
+            foreignKeyName: "extrato_layout_atualizado_por_fkey"
+            columns: ["atualizado_por"]
+            isOneToOne: false
+            referencedRelation: "v_painel_socio"
+            referencedColumns: ["socio_id"]
+          },
+          {
+            foreignKeyName: "extrato_layout_atualizado_por_fkey"
+            columns: ["atualizado_por"]
+            isOneToOne: false
+            referencedRelation: "vw_ranking_vgv"
+            referencedColumns: ["corretor_id"]
+          },
+        ]
+      }
+      extrato_linha: {
+        Row: {
+          categoria_sugerida: string | null
+          criado_em: string
+          data: string
+          descricao: string
+          id: string
+          importacao_id: string
+          impressao: string
+          lancamento_id: string | null
+          resolvido_em: string | null
+          resolvido_por: string | null
+          saldo: number | null
+          situacao: string
+          sugestao: string
+          sugestao_lancamento_id: string | null
+          valor: number
+        }
+        Insert: {
+          categoria_sugerida?: string | null
+          criado_em?: string
+          data: string
+          descricao: string
+          id?: string
+          importacao_id: string
+          impressao: string
+          lancamento_id?: string | null
+          resolvido_em?: string | null
+          resolvido_por?: string | null
+          saldo?: number | null
+          situacao?: string
+          sugestao?: string
+          sugestao_lancamento_id?: string | null
+          valor: number
+        }
+        Update: {
+          categoria_sugerida?: string | null
+          criado_em?: string
+          data?: string
+          descricao?: string
+          id?: string
+          importacao_id?: string
+          impressao?: string
+          lancamento_id?: string | null
+          resolvido_em?: string | null
+          resolvido_por?: string | null
+          saldo?: number | null
+          situacao?: string
+          sugestao?: string
+          sugestao_lancamento_id?: string | null
+          valor?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "extrato_linha_importacao_id_fkey"
+            columns: ["importacao_id"]
+            isOneToOne: false
+            referencedRelation: "extrato_importacao"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "extrato_linha_lancamento_id_fkey"
+            columns: ["lancamento_id"]
+            isOneToOne: false
+            referencedRelation: "lancamentos_caixa"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "extrato_linha_resolvido_por_fkey"
+            columns: ["resolvido_por"]
+            isOneToOne: false
+            referencedRelation: "usuarios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "extrato_linha_resolvido_por_fkey"
+            columns: ["resolvido_por"]
+            isOneToOne: false
+            referencedRelation: "v_painel_corretor"
+            referencedColumns: ["corretor_id"]
+          },
+          {
+            foreignKeyName: "extrato_linha_resolvido_por_fkey"
+            columns: ["resolvido_por"]
+            isOneToOne: false
+            referencedRelation: "v_painel_socio"
+            referencedColumns: ["socio_id"]
+          },
+          {
+            foreignKeyName: "extrato_linha_resolvido_por_fkey"
+            columns: ["resolvido_por"]
+            isOneToOne: false
+            referencedRelation: "vw_ranking_vgv"
+            referencedColumns: ["corretor_id"]
+          },
+          {
+            foreignKeyName: "extrato_linha_sugestao_lancamento_id_fkey"
+            columns: ["sugestao_lancamento_id"]
+            isOneToOne: false
+            referencedRelation: "lancamentos_caixa"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      f2_cadencia_config: {
+        Row: {
+          atualizado_em: string
+          id: number
+          janela_bloco_min: number
+        }
+        Insert: {
+          atualizado_em?: string
+          id?: number
+          janela_bloco_min?: number
+        }
+        Update: {
+          atualizado_em?: string
+          id?: number
+          janela_bloco_min?: number
+        }
+        Relationships: []
+      }
+      f2_cadencia_regua: {
+        Row: {
+          despedida: boolean
+          dias_uteis: number
+          rotulo: string
+          tentativa: number
+        }
+        Insert: {
+          despedida?: boolean
+          dias_uteis: number
+          rotulo: string
+          tentativa: number
+        }
+        Update: {
+          despedida?: boolean
+          dias_uteis?: number
+          rotulo?: string
+          tentativa?: number
+        }
+        Relationships: []
+      }
+      f2_carga_lead: {
+        Row: {
+          corretor_id: number | null
+          corretor_nome: string | null
+          criado_em: string
+          distribuido_em: string | null
+          email: string | null
+          extras: Json
+          id: number
+          lead_id: number | null
+          linha: number | null
+          lote: string
+          motivo: string | null
+          negocio_id: number | null
+          nome: string
+          origem: string | null
+          quando: string | null
+          situacao: string
+          telefone: string
+          telefone_dig: string | null
+        }
+        Insert: {
+          corretor_id?: number | null
+          corretor_nome?: string | null
+          criado_em?: string
+          distribuido_em?: string | null
+          email?: string | null
+          extras?: Json
+          id?: number
+          lead_id?: number | null
+          linha?: number | null
+          lote: string
+          motivo?: string | null
+          negocio_id?: number | null
+          nome: string
+          origem?: string | null
+          quando?: string | null
+          situacao?: string
+          telefone: string
+          telefone_dig?: string | null
+        }
+        Update: {
+          corretor_id?: number | null
+          corretor_nome?: string | null
+          criado_em?: string
+          distribuido_em?: string | null
+          email?: string | null
+          extras?: Json
+          id?: number
+          lead_id?: number | null
+          linha?: number | null
+          lote?: string
+          motivo?: string | null
+          negocio_id?: number | null
+          nome?: string
+          origem?: string | null
+          quando?: string | null
+          situacao?: string
+          telefone?: string
+          telefone_dig?: string | null
+        }
+        Relationships: []
+      }
+      f2_config_audit: {
+        Row: {
+          acao: string
+          antes: Json | null
+          chave: string
+          criado_em: string
+          criado_por: string | null
+          depois: Json | null
+          id: number
+          tipo: string
+        }
+        Insert: {
+          acao: string
+          antes?: Json | null
+          chave: string
+          criado_em?: string
+          criado_por?: string | null
+          depois?: Json | null
+          id?: number
+          tipo: string
+        }
+        Update: {
+          acao?: string
+          antes?: Json | null
+          chave?: string
+          criado_em?: string
+          criado_por?: string | null
+          depois?: Json | null
+          id?: number
+          tipo?: string
+        }
+        Relationships: []
+      }
+      f2_entrada_config: {
+        Row: {
+          ativo: boolean
+          atualizado_em: string
+          atualizado_por: string | null
+          id: boolean
+          lote: number
+          prazo_primeira_abordagem_min: number
+          vigente_desde: string
+        }
+        Insert: {
+          ativo?: boolean
+          atualizado_em?: string
+          atualizado_por?: string | null
+          id?: boolean
+          lote?: number
+          prazo_primeira_abordagem_min?: number
+          vigente_desde?: string
+        }
+        Update: {
+          ativo?: boolean
+          atualizado_em?: string
+          atualizado_por?: string | null
+          id?: boolean
+          lote?: number
+          prazo_primeira_abordagem_min?: number
+          vigente_desde?: string
+        }
+        Relationships: []
+      }
+      f2_etapa_config: {
+        Row: {
+          ajuda: string
+          ativo: boolean
+          atualizado_em: string
+          codigo: string
+          criado_em: string
+          ordem: number
+          rotulo: string
+        }
+        Insert: {
+          ajuda?: string
+          ativo?: boolean
+          atualizado_em?: string
+          codigo: string
+          criado_em?: string
+          ordem: number
+          rotulo: string
+        }
+        Update: {
+          ajuda?: string
+          ativo?: boolean
+          atualizado_em?: string
+          codigo?: string
+          criado_em?: string
+          ordem?: number
+          rotulo?: string
+        }
+        Relationships: []
+      }
+      f2_evento: {
+        Row: {
+          criado_em: string
+          criado_por: string | null
+          detalhe: string | null
+          funil_lead_id: string
+          id: number
+          payload: Json
+          tipo: string
+          titulo: string
+        }
+        Insert: {
+          criado_em?: string
+          criado_por?: string | null
+          detalhe?: string | null
+          funil_lead_id: string
+          id?: number
+          payload?: Json
+          tipo: string
+          titulo: string
+        }
+        Update: {
+          criado_em?: string
+          criado_por?: string | null
+          detalhe?: string | null
+          funil_lead_id?: string
+          id?: number
+          payload?: Json
+          tipo?: string
+          titulo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "f2_evento_funil_lead_id_fkey"
+            columns: ["funil_lead_id"]
+            isOneToOne: false
+            referencedRelation: "f2_lead"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "f2_evento_funil_lead_id_fkey"
+            columns: ["funil_lead_id"]
+            isOneToOne: false
+            referencedRelation: "f2_sara_pontos_cegos"
+            referencedColumns: ["card_id"]
+          },
+        ]
+      }
+      f2_fila_decisao: {
+        Row: {
+          decidido_em: string
+          elegiveis: Json | null
+          escolhido: string | null
+          escolhido_id: number | null
+          id: number
+          inelegiveis: Json | null
+          modo: string | null
+          negocio_id: number | null
+        }
+        Insert: {
+          decidido_em?: string
+          elegiveis?: Json | null
+          escolhido?: string | null
+          escolhido_id?: number | null
+          id?: number
+          inelegiveis?: Json | null
+          modo?: string | null
+          negocio_id?: number | null
+        }
+        Update: {
+          decidido_em?: string
+          elegiveis?: Json | null
+          escolhido?: string | null
+          escolhido_id?: number | null
+          id?: number
+          inelegiveis?: Json | null
+          modo?: string | null
+          negocio_id?: number | null
+        }
+        Relationships: []
+      }
+      f2_historico_vinculo: {
+        Row: {
+          contato_id: string
+          criado_em: string
+          funil_lead_id: string
+          metodo: string
+        }
+        Insert: {
+          contato_id: string
+          criado_em?: string
+          funil_lead_id: string
+          metodo?: string
+        }
+        Update: {
+          contato_id?: string
+          criado_em?: string
+          funil_lead_id?: string
+          metodo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "f2_historico_vinculo_contato_id_fkey"
+            columns: ["contato_id"]
+            isOneToOne: true
+            referencedRelation: "wa_contatos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "f2_historico_vinculo_funil_lead_id_fkey"
+            columns: ["funil_lead_id"]
+            isOneToOne: false
+            referencedRelation: "f2_lead"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "f2_historico_vinculo_funil_lead_id_fkey"
+            columns: ["funil_lead_id"]
+            isOneToOne: false
+            referencedRelation: "f2_sara_pontos_cegos"
+            referencedColumns: ["card_id"]
+          },
+        ]
+      }
+      f2_lead: {
+        Row: {
+          abordagem_passadas: number
+          acao_codigo: string
+          acao_rotulo: string
+          atualizado_em: string
+          atualizado_por: string | null
+          cadencia_passo: number
+          corretor_id: number | null
+          corretor_nome: string | null
+          corte_conversa_em: string
+          criado_em: string
+          descartado_em: string | null
+          descartado_por: string | null
+          descarte_detalhe: string | null
+          descarte_motivo: string | null
+          etapa: string
+          historico_completo: boolean
+          id: string
+          momento_codigo: string
+          nome: string
+          origem_negocio_id: number
+          proxima_acao_em: string
+          telefone: string | null
+          ultima_acao_confirmada_em: string | null
+          ultima_acao_fonte: string | null
+          ultima_interacao_em: string | null
+          ultima_reavaliacao_resumo: string | null
+          ultima_reavaliacao_sara_em: string | null
+          versao: number
+        }
+        Insert: {
+          abordagem_passadas?: number
+          acao_codigo: string
+          acao_rotulo: string
+          atualizado_em?: string
+          atualizado_por?: string | null
+          cadencia_passo?: number
+          corretor_id?: number | null
+          corretor_nome?: string | null
+          corte_conversa_em?: string
+          criado_em?: string
+          descartado_em?: string | null
+          descartado_por?: string | null
+          descarte_detalhe?: string | null
+          descarte_motivo?: string | null
+          etapa: string
+          historico_completo?: boolean
+          id?: string
+          momento_codigo: string
+          nome: string
+          origem_negocio_id: number
+          proxima_acao_em: string
+          telefone?: string | null
+          ultima_acao_confirmada_em?: string | null
+          ultima_acao_fonte?: string | null
+          ultima_interacao_em?: string | null
+          ultima_reavaliacao_resumo?: string | null
+          ultima_reavaliacao_sara_em?: string | null
+          versao?: number
+        }
+        Update: {
+          abordagem_passadas?: number
+          acao_codigo?: string
+          acao_rotulo?: string
+          atualizado_em?: string
+          atualizado_por?: string | null
+          cadencia_passo?: number
+          corretor_id?: number | null
+          corretor_nome?: string | null
+          corte_conversa_em?: string
+          criado_em?: string
+          descartado_em?: string | null
+          descartado_por?: string | null
+          descarte_detalhe?: string | null
+          descarte_motivo?: string | null
+          etapa?: string
+          historico_completo?: boolean
+          id?: string
+          momento_codigo?: string
+          nome?: string
+          origem_negocio_id?: number
+          proxima_acao_em?: string
+          telefone?: string | null
+          ultima_acao_confirmada_em?: string | null
+          ultima_acao_fonte?: string | null
+          ultima_interacao_em?: string | null
+          ultima_reavaliacao_resumo?: string | null
+          ultima_reavaliacao_sara_em?: string | null
+          versao?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "f2_lead_etapa_fkey"
+            columns: ["etapa"]
+            isOneToOne: false
+            referencedRelation: "f2_etapa_config"
+            referencedColumns: ["codigo"]
+          },
+          {
+            foreignKeyName: "f2_lead_momento_codigo_fkey"
+            columns: ["momento_codigo"]
+            isOneToOne: false
+            referencedRelation: "f2_momento_config"
+            referencedColumns: ["codigo"]
+          },
+        ]
+      }
+      f2_momento_config: {
+        Row: {
+          acao_codigo: string
+          acao_rotulo: string
+          ativo: boolean
+          atualizado_em: string
+          cobra_no_meu_dia: boolean
+          codigo: string
+          criado_em: string
+          descricao: string
+          etapa: string
+          exige_dapi: boolean
+          ordem: number
+          prazo_minutos: number | null
+          prazo_rotulo: string
+          rotulo: string
+        }
+        Insert: {
+          acao_codigo: string
+          acao_rotulo: string
+          ativo?: boolean
+          atualizado_em?: string
+          cobra_no_meu_dia?: boolean
+          codigo: string
+          criado_em?: string
+          descricao: string
+          etapa: string
+          exige_dapi?: boolean
+          ordem: number
+          prazo_minutos?: number | null
+          prazo_rotulo: string
+          rotulo: string
+        }
+        Update: {
+          acao_codigo?: string
+          acao_rotulo?: string
+          ativo?: boolean
+          atualizado_em?: string
+          cobra_no_meu_dia?: boolean
+          codigo?: string
+          criado_em?: string
+          descricao?: string
+          etapa?: string
+          exige_dapi?: boolean
+          ordem?: number
+          prazo_minutos?: number | null
+          prazo_rotulo?: string
+          rotulo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "f2_momento_config_etapa_fkey"
+            columns: ["etapa"]
+            isOneToOne: false
+            referencedRelation: "f2_etapa_config"
+            referencedColumns: ["codigo"]
+          },
+        ]
+      }
+      f2_momento_de_para: {
+        Row: {
+          atualizado_em: string
+          momento_funil: string
+          observacao: string | null
+          slug_antigo: string
+        }
+        Insert: {
+          atualizado_em?: string
+          momento_funil: string
+          observacao?: string | null
+          slug_antigo: string
+        }
+        Update: {
+          atualizado_em?: string
+          momento_funil?: string
+          observacao?: string | null
+          slug_antigo?: string
+        }
+        Relationships: []
+      }
+      f2_monitor_config: {
+        Row: {
+          atualizado_em: string
+          momento_codigo: string
+          observacao: string | null
+          prioridade: number
+          tempo_real: boolean
+        }
+        Insert: {
+          atualizado_em?: string
+          momento_codigo: string
+          observacao?: string | null
+          prioridade?: number
+          tempo_real?: boolean
+        }
+        Update: {
+          atualizado_em?: string
+          momento_codigo?: string
+          observacao?: string | null
+          prioridade?: number
+          tempo_real?: boolean
+        }
+        Relationships: []
+      }
+      f2_negociacao: {
+        Row: {
+          atualizado_em: string
+          atualizado_por: string | null
+          criado_em: string
+          etapa: string
+          funil_lead_id: string
+          id: string
+          observacao: string | null
+          origem_negocio_id: number | null
+          titulo: string
+          valor: number | null
+        }
+        Insert: {
+          atualizado_em?: string
+          atualizado_por?: string | null
+          criado_em?: string
+          etapa?: string
+          funil_lead_id: string
+          id?: string
+          observacao?: string | null
+          origem_negocio_id?: number | null
+          titulo: string
+          valor?: number | null
+        }
+        Update: {
+          atualizado_em?: string
+          atualizado_por?: string | null
+          criado_em?: string
+          etapa?: string
+          funil_lead_id?: string
+          id?: string
+          observacao?: string | null
+          origem_negocio_id?: number | null
+          titulo?: string
+          valor?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "f2_negociacao_funil_lead_id_fkey"
+            columns: ["funil_lead_id"]
+            isOneToOne: false
+            referencedRelation: "f2_lead"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "f2_negociacao_funil_lead_id_fkey"
+            columns: ["funil_lead_id"]
+            isOneToOne: false
+            referencedRelation: "f2_sara_pontos_cegos"
+            referencedColumns: ["card_id"]
+          },
+        ]
+      }
+      f2_nota: {
+        Row: {
+          autor_nome: string | null
+          criado_em: string
+          criado_por: string | null
+          funil_lead_id: string
+          id: number
+          origem: string
+          texto: string
+        }
+        Insert: {
+          autor_nome?: string | null
+          criado_em?: string
+          criado_por?: string | null
+          funil_lead_id: string
+          id?: never
+          origem?: string
+          texto: string
+        }
+        Update: {
+          autor_nome?: string | null
+          criado_em?: string
+          criado_por?: string | null
+          funil_lead_id?: string
+          id?: never
+          origem?: string
+          texto?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "f2_nota_funil_lead_id_fkey"
+            columns: ["funil_lead_id"]
+            isOneToOne: false
+            referencedRelation: "f2_lead"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "f2_nota_funil_lead_id_fkey"
+            columns: ["funil_lead_id"]
+            isOneToOne: false
+            referencedRelation: "f2_sara_pontos_cegos"
+            referencedColumns: ["card_id"]
+          },
+        ]
+      }
+      f2_operacao_config: {
+        Row: {
+          atualizado_em: string
+          atualizado_por: string | null
+          feedback_visita_min: number
+          horario_fim: string
+          horario_inicio: string
+          id: boolean
+          notificacao_urgente_min: number
+          peso_acoes_prazo: number
+          peso_coerencia_sara: number
+          peso_feedback_visita: number
+          peso_presenca_dapi: number
+          peso_primeira_abordagem: number
+          presenca_ttl_min: number
+          primeira_abordagem_min: number
+          suspensao_nivel_1_h: number
+          suspensao_nivel_2_h: number
+          suspensao_nivel_3_h: number
+        }
+        Insert: {
+          atualizado_em?: string
+          atualizado_por?: string | null
+          feedback_visita_min?: number
+          horario_fim?: string
+          horario_inicio?: string
+          id?: boolean
+          notificacao_urgente_min?: number
+          peso_acoes_prazo?: number
+          peso_coerencia_sara?: number
+          peso_feedback_visita?: number
+          peso_presenca_dapi?: number
+          peso_primeira_abordagem?: number
+          presenca_ttl_min?: number
+          primeira_abordagem_min?: number
+          suspensao_nivel_1_h?: number
+          suspensao_nivel_2_h?: number
+          suspensao_nivel_3_h?: number
+        }
+        Update: {
+          atualizado_em?: string
+          atualizado_por?: string | null
+          feedback_visita_min?: number
+          horario_fim?: string
+          horario_inicio?: string
+          id?: boolean
+          notificacao_urgente_min?: number
+          peso_acoes_prazo?: number
+          peso_coerencia_sara?: number
+          peso_feedback_visita?: number
+          peso_presenca_dapi?: number
+          peso_primeira_abordagem?: number
+          presenca_ttl_min?: number
+          primeira_abordagem_min?: number
+          suspensao_nivel_1_h?: number
+          suspensao_nivel_2_h?: number
+          suspensao_nivel_3_h?: number
+        }
+        Relationships: []
+      }
+      f2_sara_analise: {
+        Row: {
+          acao_sugerida: string | null
+          analisado_em: string
+          confianca: number | null
+          context_hash: string
+          evidencias: Json
+          funil_lead_id: string
+          id: number
+          mensagens_consideradas: number
+          momento_anterior: string
+          momento_sugerido: string | null
+          origem: string
+          origem_negocio_id: number
+          resumo: string
+          status: string
+          versao_base: number
+        }
+        Insert: {
+          acao_sugerida?: string | null
+          analisado_em?: string
+          confianca?: number | null
+          context_hash: string
+          evidencias?: Json
+          funil_lead_id: string
+          id?: number
+          mensagens_consideradas?: number
+          momento_anterior: string
+          momento_sugerido?: string | null
+          origem: string
+          origem_negocio_id: number
+          resumo: string
+          status: string
+          versao_base: number
+        }
+        Update: {
+          acao_sugerida?: string | null
+          analisado_em?: string
+          confianca?: number | null
+          context_hash?: string
+          evidencias?: Json
+          funil_lead_id?: string
+          id?: number
+          mensagens_consideradas?: number
+          momento_anterior?: string
+          momento_sugerido?: string | null
+          origem?: string
+          origem_negocio_id?: number
+          resumo?: string
+          status?: string
+          versao_base?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "f2_sara_analise_funil_lead_id_fkey"
+            columns: ["funil_lead_id"]
+            isOneToOne: false
+            referencedRelation: "f2_lead"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "f2_sara_analise_funil_lead_id_fkey"
+            columns: ["funil_lead_id"]
+            isOneToOne: false
+            referencedRelation: "f2_sara_pontos_cegos"
+            referencedColumns: ["card_id"]
+          },
+        ]
+      }
+      f2_sara_config: {
+        Row: {
+          atualizado_em: string
+          atualizado_por: string | null
+          canary_limite: number
+          confianca_minima: number
+          edge_url: string | null
+          enabled: boolean
+          id: boolean
+          lote: number
+          modo_execucao: string
+        }
+        Insert: {
+          atualizado_em?: string
+          atualizado_por?: string | null
+          canary_limite?: number
+          confianca_minima?: number
+          edge_url?: string | null
+          enabled?: boolean
+          id?: boolean
+          lote?: number
+          modo_execucao?: string
+        }
+        Update: {
+          atualizado_em?: string
+          atualizado_por?: string | null
+          canary_limite?: number
+          confianca_minima?: number
+          edge_url?: string | null
+          enabled?: boolean
+          id?: boolean
+          lote?: number
+          modo_execucao?: string
+        }
+        Relationships: []
+      }
+      f2_sara_fila: {
+        Row: {
+          funil_lead_id: string
+          motivo: string
+          pedido_em: string
+          ultima_msg_em: string
+        }
+        Insert: {
+          funil_lead_id: string
+          motivo?: string
+          pedido_em?: string
+          ultima_msg_em?: string
+        }
+        Update: {
+          funil_lead_id?: string
+          motivo?: string
+          pedido_em?: string
+          ultima_msg_em?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "f2_sara_fila_funil_lead_id_fkey"
+            columns: ["funil_lead_id"]
+            isOneToOne: true
+            referencedRelation: "f2_lead"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "f2_sara_fila_funil_lead_id_fkey"
+            columns: ["funil_lead_id"]
+            isOneToOne: true
+            referencedRelation: "f2_sara_pontos_cegos"
+            referencedColumns: ["card_id"]
+          },
+        ]
+      }
+      f2_sara_leitura: {
+        Row: {
+          aplicada: boolean
+          confianca: number | null
+          criado_em: string
+          funil_lead_id: string
+          id: number
+          modelo: string | null
+          momento_antes: string | null
+          momento_depois: string | null
+          motivo_recusa: string | null
+          retorno_em: string | null
+          sinais: Json
+          trecho: string | null
+        }
+        Insert: {
+          aplicada?: boolean
+          confianca?: number | null
+          criado_em?: string
+          funil_lead_id: string
+          id?: never
+          modelo?: string | null
+          momento_antes?: string | null
+          momento_depois?: string | null
+          motivo_recusa?: string | null
+          retorno_em?: string | null
+          sinais?: Json
+          trecho?: string | null
+        }
+        Update: {
+          aplicada?: boolean
+          confianca?: number | null
+          criado_em?: string
+          funil_lead_id?: string
+          id?: never
+          modelo?: string | null
+          momento_antes?: string | null
+          momento_depois?: string | null
+          motivo_recusa?: string | null
+          retorno_em?: string | null
+          sinais?: Json
+          trecho?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "f2_sara_leitura_funil_lead_id_fkey"
+            columns: ["funil_lead_id"]
+            isOneToOne: false
+            referencedRelation: "f2_lead"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "f2_sara_leitura_funil_lead_id_fkey"
+            columns: ["funil_lead_id"]
+            isOneToOne: false
+            referencedRelation: "f2_sara_pontos_cegos"
+            referencedColumns: ["card_id"]
+          },
+        ]
+      }
+      f2_sara_pedido: {
+        Row: {
+          analise_id: number | null
+          atendido_em: string | null
+          card: string
+          motivo: string | null
+          pedido_em: string
+          regra_id: number | null
+        }
+        Insert: {
+          analise_id?: number | null
+          atendido_em?: string | null
+          card: string
+          motivo?: string | null
+          pedido_em?: string
+          regra_id?: number | null
+        }
+        Update: {
+          analise_id?: number | null
+          atendido_em?: string | null
+          card?: string
+          motivo?: string | null
+          pedido_em?: string
+          regra_id?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "f2_sara_pedido_card_fkey"
+            columns: ["card"]
+            isOneToOne: true
+            referencedRelation: "f2_lead"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "f2_sara_pedido_card_fkey"
+            columns: ["card"]
+            isOneToOne: true
+            referencedRelation: "f2_sara_pontos_cegos"
+            referencedColumns: ["card_id"]
+          },
+          {
+            foreignKeyName: "f2_sara_pedido_regra_id_fkey"
+            columns: ["regra_id"]
+            isOneToOne: false
+            referencedRelation: "funil_regra"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      f2_sla_abordagem_config: {
+        Row: {
+          ativo: boolean
+          atualizado_em: string
+          confirmar_dapi: boolean
+          espera_confirmacao_seg: number
+          id: number
+          margem_seguranca_min: number
+          max_passadas: number
+          minutos_na_abertura: number
+          minutos_no_expediente: number
+        }
+        Insert: {
+          ativo?: boolean
+          atualizado_em?: string
+          confirmar_dapi?: boolean
+          espera_confirmacao_seg?: number
+          id?: number
+          margem_seguranca_min?: number
+          max_passadas?: number
+          minutos_na_abertura?: number
+          minutos_no_expediente?: number
+        }
+        Update: {
+          ativo?: boolean
+          atualizado_em?: string
+          confirmar_dapi?: boolean
+          espera_confirmacao_seg?: number
+          id?: number
+          margem_seguranca_min?: number
+          max_passadas?: number
+          minutos_na_abertura?: number
+          minutos_no_expediente?: number
+        }
+        Relationships: []
+      }
+      f2_soltura_agenda: {
+        Row: {
+          corretor: string | null
+          criado_em: string
+          id: number
+          negocio_id: number | null
+          quando: string
+          soltado_em: string | null
+        }
+        Insert: {
+          corretor?: string | null
+          criado_em?: string
+          id?: number
+          negocio_id?: number | null
+          quando: string
+          soltado_em?: string | null
+        }
+        Update: {
+          corretor?: string | null
+          criado_em?: string
+          id?: number
+          negocio_id?: number | null
+          quando?: string
+          soltado_em?: string | null
+        }
+        Relationships: []
+      }
+      f2_soltura_represados: {
+        Row: {
+          alvo: number
+          ativa: boolean
+          id: boolean
+          iniciada_em: string | null
+          observacao: string | null
+          soltos: number
+        }
+        Insert: {
+          alvo?: number
+          ativa?: boolean
+          id?: boolean
+          iniciada_em?: string | null
+          observacao?: string | null
+          soltos?: number
+        }
+        Update: {
+          alvo?: number
+          ativa?: boolean
+          id?: boolean
+          iniciada_em?: string | null
+          observacao?: string | null
+          soltos?: number
+        }
+        Relationships: []
+      }
+      f2_visita: {
+        Row: {
+          atualizado_em: string
+          atualizado_por: string | null
+          com_gerente: boolean
+          criado_em: string
+          empreendimento_id: string | null
+          feedback_em: string | null
+          feedback_por: string | null
+          fim_em: string | null
+          funil_lead_id: string
+          gerente_id: number | null
+          id: string
+          imovel: string
+          inicio_em: string
+          observacao: string | null
+          origem_visita_id: string | null
+          status: string
+          unidade: string | null
+        }
+        Insert: {
+          atualizado_em?: string
+          atualizado_por?: string | null
+          com_gerente?: boolean
+          criado_em?: string
+          empreendimento_id?: string | null
+          feedback_em?: string | null
+          feedback_por?: string | null
+          fim_em?: string | null
+          funil_lead_id: string
+          gerente_id?: number | null
+          id?: string
+          imovel: string
+          inicio_em: string
+          observacao?: string | null
+          origem_visita_id?: string | null
+          status?: string
+          unidade?: string | null
+        }
+        Update: {
+          atualizado_em?: string
+          atualizado_por?: string | null
+          com_gerente?: boolean
+          criado_em?: string
+          empreendimento_id?: string | null
+          feedback_em?: string | null
+          feedback_por?: string | null
+          fim_em?: string | null
+          funil_lead_id?: string
+          gerente_id?: number | null
+          id?: string
+          imovel?: string
+          inicio_em?: string
+          observacao?: string | null
+          origem_visita_id?: string | null
+          status?: string
+          unidade?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "f2_visita_empreendimento_id_fkey"
+            columns: ["empreendimento_id"]
+            isOneToOne: false
+            referencedRelation: "empreendimentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "f2_visita_empreendimento_id_fkey"
+            columns: ["empreendimento_id"]
+            isOneToOne: false
+            referencedRelation: "site_produtos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "f2_visita_empreendimento_id_fkey"
+            columns: ["empreendimento_id"]
+            isOneToOne: false
+            referencedRelation: "v_catalogo_empreendimentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "f2_visita_empreendimento_id_fkey"
+            columns: ["empreendimento_id"]
+            isOneToOne: false
+            referencedRelation: "vw_empreendimento_resumo"
+            referencedColumns: ["empreendimento_id"]
+          },
+          {
+            foreignKeyName: "f2_visita_empreendimento_id_fkey"
+            columns: ["empreendimento_id"]
+            isOneToOne: false
+            referencedRelation: "vw_produtos_catalogo"
+            referencedColumns: ["empreendimento_id"]
+          },
+          {
+            foreignKeyName: "f2_visita_empreendimento_id_fkey"
+            columns: ["empreendimento_id"]
+            isOneToOne: false
+            referencedRelation: "vw_produtos_publicos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "f2_visita_funil_lead_id_fkey"
+            columns: ["funil_lead_id"]
+            isOneToOne: false
+            referencedRelation: "f2_lead"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "f2_visita_funil_lead_id_fkey"
+            columns: ["funil_lead_id"]
+            isOneToOne: false
+            referencedRelation: "f2_sara_pontos_cegos"
+            referencedColumns: ["card_id"]
+          },
+          {
+            foreignKeyName: "f2_visita_gerente_id_fkey"
+            columns: ["gerente_id"]
+            isOneToOne: false
+            referencedRelation: "corretores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "f2_visita_gerente_id_fkey"
+            columns: ["gerente_id"]
+            isOneToOne: false
+            referencedRelation: "vw_metricas_corretor"
+            referencedColumns: ["corretor_id"]
+          },
+          {
+            foreignKeyName: "f2_visita_gerente_id_fkey"
+            columns: ["gerente_id"]
+            isOneToOne: false
+            referencedRelation: "vw_negocios_kanban"
+            referencedColumns: ["corretor_id"]
+          },
+        ]
+      }
+      f2_voz_nova_bloqueio: {
+        Row: {
+          corretor_id: number
+          criado_em: string
+          detalhe: string | null
+          origem: string
+          telefone: string
+        }
+        Insert: {
+          corretor_id: number
+          criado_em?: string
+          detalhe?: string | null
+          origem?: string
+          telefone: string
+        }
+        Update: {
+          corretor_id?: number
+          criado_em?: string
+          detalhe?: string | null
+          origem?: string
+          telefone?: string
+        }
+        Relationships: []
+      }
       financiamento_fichas: {
         Row: {
           aberta_em: string | null
@@ -2727,6 +4455,196 @@ export type Database = {
           },
         ]
       }
+      funil_cascata_pendente: {
+        Row: {
+          card: string
+          confirmar_em: string
+          corretor_id: number | null
+          resolvido_em: string | null
+          resultado: string | null
+          solicitado_em: string
+          sync_status: string | null
+        }
+        Insert: {
+          card: string
+          confirmar_em: string
+          corretor_id?: number | null
+          resolvido_em?: string | null
+          resultado?: string | null
+          solicitado_em?: string
+          sync_status?: string | null
+        }
+        Update: {
+          card?: string
+          confirmar_em?: string
+          corretor_id?: number | null
+          resolvido_em?: string | null
+          resultado?: string | null
+          solicitado_em?: string
+          sync_status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "funil_cascata_pendente_card_fkey"
+            columns: ["card"]
+            isOneToOne: true
+            referencedRelation: "f2_lead"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "funil_cascata_pendente_card_fkey"
+            columns: ["card"]
+            isOneToOne: true
+            referencedRelation: "f2_sara_pontos_cegos"
+            referencedColumns: ["card_id"]
+          },
+        ]
+      }
+      funil_motor_config: {
+        Row: {
+          ativo: boolean
+          atualizado_em: string
+          id: boolean
+          lote: number
+          parou_horas: number
+          r_abordou: boolean
+          r_parou: boolean
+          r_respondeu: boolean
+          r_visita: boolean
+          tentativas_para_cadencia: number
+        }
+        Insert: {
+          ativo?: boolean
+          atualizado_em?: string
+          id?: boolean
+          lote?: number
+          parou_horas?: number
+          r_abordou?: boolean
+          r_parou?: boolean
+          r_respondeu?: boolean
+          r_visita?: boolean
+          tentativas_para_cadencia?: number
+        }
+        Update: {
+          ativo?: boolean
+          atualizado_em?: string
+          id?: boolean
+          lote?: number
+          parou_horas?: number
+          r_abordou?: boolean
+          r_parou?: boolean
+          r_respondeu?: boolean
+          r_visita?: boolean
+          tentativas_para_cadencia?: number
+        }
+        Relationships: []
+      }
+      funil_regra: {
+        Row: {
+          abordagem_ids: number[] | null
+          acao: string
+          ativo: boolean
+          atualizado_em: string
+          condicao: string
+          condicao_valor: number | null
+          criado_em: string
+          de_momento: string[] | null
+          dias_semana: number[] | null
+          id: number
+          janela_fim: string | null
+          janela_inicio: string | null
+          lote: number
+          nome: string
+          ordem: number
+          para_momento: string | null
+          produto_id: number | null
+          uma_vez_por_card: boolean
+        }
+        Insert: {
+          abordagem_ids?: number[] | null
+          acao: string
+          ativo?: boolean
+          atualizado_em?: string
+          condicao: string
+          condicao_valor?: number | null
+          criado_em?: string
+          de_momento?: string[] | null
+          dias_semana?: number[] | null
+          id?: number
+          janela_fim?: string | null
+          janela_inicio?: string | null
+          lote?: number
+          nome: string
+          ordem?: number
+          para_momento?: string | null
+          produto_id?: number | null
+          uma_vez_por_card?: boolean
+        }
+        Update: {
+          abordagem_ids?: number[] | null
+          acao?: string
+          ativo?: boolean
+          atualizado_em?: string
+          condicao?: string
+          condicao_valor?: number | null
+          criado_em?: string
+          de_momento?: string[] | null
+          dias_semana?: number[] | null
+          id?: number
+          janela_fim?: string | null
+          janela_inicio?: string | null
+          lote?: number
+          nome?: string
+          ordem?: number
+          para_momento?: string | null
+          produto_id?: number | null
+          uma_vez_por_card?: boolean
+        }
+        Relationships: []
+      }
+      funil_regra_execucao: {
+        Row: {
+          card: string
+          executado_em: string
+          regra_id: number
+          resultado: string | null
+        }
+        Insert: {
+          card: string
+          executado_em?: string
+          regra_id: number
+          resultado?: string | null
+        }
+        Update: {
+          card?: string
+          executado_em?: string
+          regra_id?: number
+          resultado?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "funil_regra_execucao_card_fkey"
+            columns: ["card"]
+            isOneToOne: false
+            referencedRelation: "f2_lead"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "funil_regra_execucao_card_fkey"
+            columns: ["card"]
+            isOneToOne: false
+            referencedRelation: "f2_sara_pontos_cegos"
+            referencedColumns: ["card_id"]
+          },
+          {
+            foreignKeyName: "funil_regra_execucao_regra_id_fkey"
+            columns: ["regra_id"]
+            isOneToOne: false
+            referencedRelation: "funil_regra"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       gerentes: {
         Row: {
           ativo: boolean
@@ -2860,6 +4778,27 @@ export type Database = {
             referencedColumns: ["corretor_id"]
           },
         ]
+      }
+      ia_transcricao_config: {
+        Row: {
+          ativo: boolean
+          atualizado_em: string
+          id: number
+          teto_diario: number
+        }
+        Insert: {
+          ativo?: boolean
+          atualizado_em?: string
+          id?: number
+          teto_diario?: number
+        }
+        Update: {
+          ativo?: boolean
+          atualizado_em?: string
+          id?: number
+          teto_diario?: number
+        }
+        Relationships: []
       }
       instancias: {
         Row: {
@@ -3054,6 +4993,33 @@ export type Database = {
           lead_id?: number | null
           negocio_id?: number | null
           nota?: number | null
+        }
+        Relationships: []
+      }
+      lead_dono_auditoria: {
+        Row: {
+          de: number | null
+          id: number
+          lead_id: number
+          origem: string | null
+          para: number | null
+          quando: string
+        }
+        Insert: {
+          de?: number | null
+          id?: never
+          lead_id: number
+          origem?: string | null
+          para?: number | null
+          quando?: string
+        }
+        Update: {
+          de?: number | null
+          id?: never
+          lead_id?: number
+          origem?: string | null
+          para?: number | null
+          quando?: string
         }
         Relationships: []
       }
@@ -3282,6 +5248,13 @@ export type Database = {
             foreignKeyName: "lead_produtos_empreendimento_id_fkey"
             columns: ["empreendimento_id"]
             isOneToOne: false
+            referencedRelation: "site_produtos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_produtos_empreendimento_id_fkey"
+            columns: ["empreendimento_id"]
+            isOneToOne: false
             referencedRelation: "v_catalogo_empreendimentos"
             referencedColumns: ["id"]
           },
@@ -3290,6 +5263,13 @@ export type Database = {
             columns: ["empreendimento_id"]
             isOneToOne: false
             referencedRelation: "vw_empreendimento_resumo"
+            referencedColumns: ["empreendimento_id"]
+          },
+          {
+            foreignKeyName: "lead_produtos_empreendimento_id_fkey"
+            columns: ["empreendimento_id"]
+            isOneToOne: false
+            referencedRelation: "vw_produtos_catalogo"
             referencedColumns: ["empreendimento_id"]
           },
           {
@@ -3683,6 +5663,13 @@ export type Database = {
             foreignKeyName: "midias_empreendimento_id_fkey"
             columns: ["empreendimento_id"]
             isOneToOne: false
+            referencedRelation: "site_produtos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "midias_empreendimento_id_fkey"
+            columns: ["empreendimento_id"]
+            isOneToOne: false
             referencedRelation: "v_catalogo_empreendimentos"
             referencedColumns: ["id"]
           },
@@ -3691,6 +5678,13 @@ export type Database = {
             columns: ["empreendimento_id"]
             isOneToOne: false
             referencedRelation: "vw_empreendimento_resumo"
+            referencedColumns: ["empreendimento_id"]
+          },
+          {
+            foreignKeyName: "midias_empreendimento_id_fkey"
+            columns: ["empreendimento_id"]
+            isOneToOne: false
+            referencedRelation: "vw_produtos_catalogo"
             referencedColumns: ["empreendimento_id"]
           },
           {
@@ -3754,6 +5748,27 @@ export type Database = {
         Update: {
           motivo?: string
           ordem?: number | null
+        }
+        Relationships: []
+      }
+      motor_evento_visto: {
+        Row: {
+          atualizado_em: string
+          evento: string
+          funil_lead_id: string
+          marca: string
+        }
+        Insert: {
+          atualizado_em?: string
+          evento: string
+          funil_lead_id: string
+          marca: string
+        }
+        Update: {
+          atualizado_em?: string
+          evento?: string
+          funil_lead_id?: string
+          marca?: string
         }
         Relationships: []
       }
@@ -3853,6 +5868,7 @@ export type Database = {
           automacao_id: number
           bloco_id: string
           corretor_id: number
+          credito: number
           peso: number
           recebidos: number
         }
@@ -3861,6 +5877,7 @@ export type Database = {
           automacao_id: number
           bloco_id: string
           corretor_id: number
+          credito?: number
           peso?: number
           recebidos?: number
         }
@@ -3869,10 +5886,2811 @@ export type Database = {
           automacao_id?: number
           bloco_id?: string
           corretor_id?: number
+          credito?: number
           peso?: number
           recebidos?: number
         }
         Relationships: []
+      }
+      ncrm_abordagem_humana: {
+        Row: {
+          ativo: boolean
+          corretor_id: number
+          liberado_em: string
+          liberado_por: string
+          removido_em: string | null
+          removido_por: string | null
+        }
+        Insert: {
+          ativo?: boolean
+          corretor_id: number
+          liberado_em?: string
+          liberado_por: string
+          removido_em?: string | null
+          removido_por?: string | null
+        }
+        Update: {
+          ativo?: boolean
+          corretor_id?: number
+          liberado_em?: string
+          liberado_por?: string
+          removido_em?: string | null
+          removido_por?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ncrm_abordagem_humana_corretor_id_fkey"
+            columns: ["corretor_id"]
+            isOneToOne: true
+            referencedRelation: "corretores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ncrm_abordagem_humana_corretor_id_fkey"
+            columns: ["corretor_id"]
+            isOneToOne: true
+            referencedRelation: "vw_metricas_corretor"
+            referencedColumns: ["corretor_id"]
+          },
+          {
+            foreignKeyName: "ncrm_abordagem_humana_corretor_id_fkey"
+            columns: ["corretor_id"]
+            isOneToOne: true
+            referencedRelation: "vw_negocios_kanban"
+            referencedColumns: ["corretor_id"]
+          },
+          {
+            foreignKeyName: "ncrm_abordagem_humana_liberado_por_fkey"
+            columns: ["liberado_por"]
+            isOneToOne: false
+            referencedRelation: "usuarios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ncrm_abordagem_humana_liberado_por_fkey"
+            columns: ["liberado_por"]
+            isOneToOne: false
+            referencedRelation: "v_painel_corretor"
+            referencedColumns: ["corretor_id"]
+          },
+          {
+            foreignKeyName: "ncrm_abordagem_humana_liberado_por_fkey"
+            columns: ["liberado_por"]
+            isOneToOne: false
+            referencedRelation: "v_painel_socio"
+            referencedColumns: ["socio_id"]
+          },
+          {
+            foreignKeyName: "ncrm_abordagem_humana_liberado_por_fkey"
+            columns: ["liberado_por"]
+            isOneToOne: false
+            referencedRelation: "vw_ranking_vgv"
+            referencedColumns: ["corretor_id"]
+          },
+          {
+            foreignKeyName: "ncrm_abordagem_humana_removido_por_fkey"
+            columns: ["removido_por"]
+            isOneToOne: false
+            referencedRelation: "usuarios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ncrm_abordagem_humana_removido_por_fkey"
+            columns: ["removido_por"]
+            isOneToOne: false
+            referencedRelation: "v_painel_corretor"
+            referencedColumns: ["corretor_id"]
+          },
+          {
+            foreignKeyName: "ncrm_abordagem_humana_removido_por_fkey"
+            columns: ["removido_por"]
+            isOneToOne: false
+            referencedRelation: "v_painel_socio"
+            referencedColumns: ["socio_id"]
+          },
+          {
+            foreignKeyName: "ncrm_abordagem_humana_removido_por_fkey"
+            columns: ["removido_por"]
+            isOneToOne: false
+            referencedRelation: "vw_ranking_vgv"
+            referencedColumns: ["corretor_id"]
+          },
+        ]
+      }
+      ncrm_abordagem_humana_audit: {
+        Row: {
+          alterado_por: string
+          corretor_id: number
+          corretor_nome: string | null
+          criado_em: string
+          estado_antes: string
+          estado_depois: string
+          id: number
+        }
+        Insert: {
+          alterado_por: string
+          corretor_id: number
+          corretor_nome?: string | null
+          criado_em?: string
+          estado_antes: string
+          estado_depois: string
+          id?: number
+        }
+        Update: {
+          alterado_por?: string
+          corretor_id?: number
+          corretor_nome?: string | null
+          criado_em?: string
+          estado_antes?: string
+          estado_depois?: string
+          id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ncrm_abordagem_humana_audit_alterado_por_fkey"
+            columns: ["alterado_por"]
+            isOneToOne: false
+            referencedRelation: "usuarios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ncrm_abordagem_humana_audit_alterado_por_fkey"
+            columns: ["alterado_por"]
+            isOneToOne: false
+            referencedRelation: "v_painel_corretor"
+            referencedColumns: ["corretor_id"]
+          },
+          {
+            foreignKeyName: "ncrm_abordagem_humana_audit_alterado_por_fkey"
+            columns: ["alterado_por"]
+            isOneToOne: false
+            referencedRelation: "v_painel_socio"
+            referencedColumns: ["socio_id"]
+          },
+          {
+            foreignKeyName: "ncrm_abordagem_humana_audit_alterado_por_fkey"
+            columns: ["alterado_por"]
+            isOneToOne: false
+            referencedRelation: "vw_ranking_vgv"
+            referencedColumns: ["corretor_id"]
+          },
+        ]
+      }
+      ncrm_acao_padrao: {
+        Row: {
+          ativa: boolean
+          codigo: string
+          criado_em: string
+          objetivo: string | null
+          ordem: number
+          proxima_acao_tipo: string
+          rotulo: string
+          sla_min: number
+        }
+        Insert: {
+          ativa?: boolean
+          codigo: string
+          criado_em?: string
+          objetivo?: string | null
+          ordem: number
+          proxima_acao_tipo: string
+          rotulo: string
+          sla_min: number
+        }
+        Update: {
+          ativa?: boolean
+          codigo?: string
+          criado_em?: string
+          objetivo?: string | null
+          ordem?: number
+          proxima_acao_tipo?: string
+          rotulo?: string
+          sla_min?: number
+        }
+        Relationships: []
+      }
+      ncrm_acesso: {
+        Row: {
+          aberturas: number
+          dia: string
+          primeiro_em: string
+          ultimo_em: string
+          usuario_id: string
+        }
+        Insert: {
+          aberturas?: number
+          dia: string
+          primeiro_em?: string
+          ultimo_em?: string
+          usuario_id: string
+        }
+        Update: {
+          aberturas?: number
+          dia?: string
+          primeiro_em?: string
+          ultimo_em?: string
+          usuario_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ncrm_acesso_usuario_id_fkey"
+            columns: ["usuario_id"]
+            isOneToOne: false
+            referencedRelation: "usuarios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ncrm_acesso_usuario_id_fkey"
+            columns: ["usuario_id"]
+            isOneToOne: false
+            referencedRelation: "v_painel_corretor"
+            referencedColumns: ["corretor_id"]
+          },
+          {
+            foreignKeyName: "ncrm_acesso_usuario_id_fkey"
+            columns: ["usuario_id"]
+            isOneToOne: false
+            referencedRelation: "v_painel_socio"
+            referencedColumns: ["socio_id"]
+          },
+          {
+            foreignKeyName: "ncrm_acesso_usuario_id_fkey"
+            columns: ["usuario_id"]
+            isOneToOne: false
+            referencedRelation: "vw_ranking_vgv"
+            referencedColumns: ["corretor_id"]
+          },
+        ]
+      }
+      ncrm_cadencia_config: {
+        Row: {
+          atualizado_em: string
+          atualizado_por: string | null
+          dias_uteis: number[]
+          escalonar_apos_horas: number
+          hora_fim: number
+          hora_inicio: number
+          id: boolean
+          intervalos_min: Json
+          max_tentativas: number
+          tolerancia_min: number
+        }
+        Insert: {
+          atualizado_em?: string
+          atualizado_por?: string | null
+          dias_uteis?: number[]
+          escalonar_apos_horas?: number
+          hora_fim?: number
+          hora_inicio?: number
+          id?: boolean
+          intervalos_min?: Json
+          max_tentativas?: number
+          tolerancia_min?: number
+        }
+        Update: {
+          atualizado_em?: string
+          atualizado_por?: string | null
+          dias_uteis?: number[]
+          escalonar_apos_horas?: number
+          hora_fim?: number
+          hora_inicio?: number
+          id?: boolean
+          intervalos_min?: Json
+          max_tentativas?: number
+          tolerancia_min?: number
+        }
+        Relationships: []
+      }
+      ncrm_cadencia_config_audit: {
+        Row: {
+          alteracao: Json
+          criado_em: string
+          criado_por: string
+          id: number
+        }
+        Insert: {
+          alteracao: Json
+          criado_em?: string
+          criado_por: string
+          id?: never
+        }
+        Update: {
+          alteracao?: Json
+          criado_em?: string
+          criado_por?: string
+          id?: never
+        }
+        Relationships: []
+      }
+      ncrm_corretor_suspensao: {
+        Row: {
+          corretor_id: number
+          criado_em: string
+          criado_por: string | null
+          fim_em: string
+          id: number
+          inicio_em: string
+          motivo: string
+          nivel: number
+          origem: string
+          revogacao_motivo: string | null
+          revogada_em: string | null
+          revogada_por: string | null
+        }
+        Insert: {
+          corretor_id: number
+          criado_em?: string
+          criado_por?: string | null
+          fim_em: string
+          id?: number
+          inicio_em: string
+          motivo: string
+          nivel: number
+          origem?: string
+          revogacao_motivo?: string | null
+          revogada_em?: string | null
+          revogada_por?: string | null
+        }
+        Update: {
+          corretor_id?: number
+          criado_em?: string
+          criado_por?: string | null
+          fim_em?: string
+          id?: number
+          inicio_em?: string
+          motivo?: string
+          nivel?: number
+          origem?: string
+          revogacao_motivo?: string | null
+          revogada_em?: string | null
+          revogada_por?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ncrm_corretor_suspensao_corretor_id_fkey"
+            columns: ["corretor_id"]
+            isOneToOne: false
+            referencedRelation: "corretores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ncrm_corretor_suspensao_corretor_id_fkey"
+            columns: ["corretor_id"]
+            isOneToOne: false
+            referencedRelation: "vw_metricas_corretor"
+            referencedColumns: ["corretor_id"]
+          },
+          {
+            foreignKeyName: "ncrm_corretor_suspensao_corretor_id_fkey"
+            columns: ["corretor_id"]
+            isOneToOne: false
+            referencedRelation: "vw_negocios_kanban"
+            referencedColumns: ["corretor_id"]
+          },
+        ]
+      }
+      ncrm_entrada_config: {
+        Row: {
+          atualizado_em: string
+          atualizado_por: string | null
+          escopo: string
+          id: boolean
+          modo_primeira_abordagem: string
+          prazo_primeira_abordagem_min: number
+          vigente_desde: string | null
+        }
+        Insert: {
+          atualizado_em?: string
+          atualizado_por?: string | null
+          escopo?: string
+          id?: boolean
+          modo_primeira_abordagem?: string
+          prazo_primeira_abordagem_min?: number
+          vigente_desde?: string | null
+        }
+        Update: {
+          atualizado_em?: string
+          atualizado_por?: string | null
+          escopo?: string
+          id?: boolean
+          modo_primeira_abordagem?: string
+          prazo_primeira_abordagem_min?: number
+          vigente_desde?: string | null
+        }
+        Relationships: []
+      }
+      ncrm_entrada_config_audit: {
+        Row: {
+          alterado_por: string
+          criado_em: string
+          escopo_antes: string | null
+          escopo_depois: string
+          id: number
+          modo_antes: string | null
+          modo_depois: string
+          motivo: string | null
+          prazo_depois: number
+          vigente_desde: string | null
+        }
+        Insert: {
+          alterado_por: string
+          criado_em?: string
+          escopo_antes?: string | null
+          escopo_depois: string
+          id?: number
+          modo_antes?: string | null
+          modo_depois: string
+          motivo?: string | null
+          prazo_depois: number
+          vigente_desde?: string | null
+        }
+        Update: {
+          alterado_por?: string
+          criado_em?: string
+          escopo_antes?: string | null
+          escopo_depois?: string
+          id?: number
+          modo_antes?: string | null
+          modo_depois?: string
+          motivo?: string | null
+          prazo_depois?: number
+          vigente_desde?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ncrm_entrada_config_audit_alterado_por_fkey"
+            columns: ["alterado_por"]
+            isOneToOne: false
+            referencedRelation: "usuarios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ncrm_entrada_config_audit_alterado_por_fkey"
+            columns: ["alterado_por"]
+            isOneToOne: false
+            referencedRelation: "v_painel_corretor"
+            referencedColumns: ["corretor_id"]
+          },
+          {
+            foreignKeyName: "ncrm_entrada_config_audit_alterado_por_fkey"
+            columns: ["alterado_por"]
+            isOneToOne: false
+            referencedRelation: "v_painel_socio"
+            referencedColumns: ["socio_id"]
+          },
+          {
+            foreignKeyName: "ncrm_entrada_config_audit_alterado_por_fkey"
+            columns: ["alterado_por"]
+            isOneToOne: false
+            referencedRelation: "vw_ranking_vgv"
+            referencedColumns: ["corretor_id"]
+          },
+        ]
+      }
+      ncrm_envio_autorizacao_log: {
+        Row: {
+          corretor_id: number | null
+          criado_em: string
+          decisao: string
+          id: number
+          instancia_pedida: number | null
+          instancia_resolvida: number | null
+          motivo: string
+          user_id: string | null
+        }
+        Insert: {
+          corretor_id?: number | null
+          criado_em?: string
+          decisao: string
+          id?: number
+          instancia_pedida?: number | null
+          instancia_resolvida?: number | null
+          motivo: string
+          user_id?: string | null
+        }
+        Update: {
+          corretor_id?: number | null
+          criado_em?: string
+          decisao?: string
+          id?: number
+          instancia_pedida?: number | null
+          instancia_resolvida?: number | null
+          motivo?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      ncrm_estado: {
+        Row: {
+          aguardando_automacao: boolean
+          atualizado_em: string
+          atualizado_por: string | null
+          descarte_detalhe: string | null
+          descarte_motivo: string | null
+          distribuido_em: string | null
+          etapa: string
+          momento_codigo: string | null
+          msg_automatica_em: string | null
+          negocio_id: number
+          origem_ultima: string
+          primeira_resposta_em: string | null
+          primeira_saida_humana_em: string | null
+          primeira_saida_message_id: string | null
+          proposta_id: string | null
+          proxima_acao_em: string | null
+          proxima_acao_motivo: string | null
+          proxima_acao_origem: string | null
+          proxima_acao_tipo: string | null
+          proxima_acao_titulo: string | null
+          respondeu: boolean
+          resposta_pendente: boolean
+          saida: string | null
+          saida_em: string | null
+          sla_dentro_5min: boolean | null
+          sla_evidencia: string | null
+          sla_minutos: number | null
+          sla_prazo_min: number | null
+          temperatura: string | null
+          tentativas_feitas: number
+          ultima_decisao_humana_em: string | null
+          ultima_interacao_em: string | null
+          versao: number
+          visita_id: string | null
+          whatsapp_aberto_em: string | null
+          workflow_config_id: number
+        }
+        Insert: {
+          aguardando_automacao?: boolean
+          atualizado_em?: string
+          atualizado_por?: string | null
+          descarte_detalhe?: string | null
+          descarte_motivo?: string | null
+          distribuido_em?: string | null
+          etapa?: string
+          momento_codigo?: string | null
+          msg_automatica_em?: string | null
+          negocio_id: number
+          origem_ultima?: string
+          primeira_resposta_em?: string | null
+          primeira_saida_humana_em?: string | null
+          primeira_saida_message_id?: string | null
+          proposta_id?: string | null
+          proxima_acao_em?: string | null
+          proxima_acao_motivo?: string | null
+          proxima_acao_origem?: string | null
+          proxima_acao_tipo?: string | null
+          proxima_acao_titulo?: string | null
+          respondeu?: boolean
+          resposta_pendente?: boolean
+          saida?: string | null
+          saida_em?: string | null
+          sla_dentro_5min?: boolean | null
+          sla_evidencia?: string | null
+          sla_minutos?: number | null
+          sla_prazo_min?: number | null
+          temperatura?: string | null
+          tentativas_feitas?: number
+          ultima_decisao_humana_em?: string | null
+          ultima_interacao_em?: string | null
+          versao?: number
+          visita_id?: string | null
+          whatsapp_aberto_em?: string | null
+          workflow_config_id: number
+        }
+        Update: {
+          aguardando_automacao?: boolean
+          atualizado_em?: string
+          atualizado_por?: string | null
+          descarte_detalhe?: string | null
+          descarte_motivo?: string | null
+          distribuido_em?: string | null
+          etapa?: string
+          momento_codigo?: string | null
+          msg_automatica_em?: string | null
+          negocio_id?: number
+          origem_ultima?: string
+          primeira_resposta_em?: string | null
+          primeira_saida_humana_em?: string | null
+          primeira_saida_message_id?: string | null
+          proposta_id?: string | null
+          proxima_acao_em?: string | null
+          proxima_acao_motivo?: string | null
+          proxima_acao_origem?: string | null
+          proxima_acao_tipo?: string | null
+          proxima_acao_titulo?: string | null
+          respondeu?: boolean
+          resposta_pendente?: boolean
+          saida?: string | null
+          saida_em?: string | null
+          sla_dentro_5min?: boolean | null
+          sla_evidencia?: string | null
+          sla_minutos?: number | null
+          sla_prazo_min?: number | null
+          temperatura?: string | null
+          tentativas_feitas?: number
+          ultima_decisao_humana_em?: string | null
+          ultima_interacao_em?: string | null
+          versao?: number
+          visita_id?: string | null
+          whatsapp_aberto_em?: string | null
+          workflow_config_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ncrm_estado_atualizado_por_fkey"
+            columns: ["atualizado_por"]
+            isOneToOne: false
+            referencedRelation: "usuarios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ncrm_estado_atualizado_por_fkey"
+            columns: ["atualizado_por"]
+            isOneToOne: false
+            referencedRelation: "v_painel_corretor"
+            referencedColumns: ["corretor_id"]
+          },
+          {
+            foreignKeyName: "ncrm_estado_atualizado_por_fkey"
+            columns: ["atualizado_por"]
+            isOneToOne: false
+            referencedRelation: "v_painel_socio"
+            referencedColumns: ["socio_id"]
+          },
+          {
+            foreignKeyName: "ncrm_estado_atualizado_por_fkey"
+            columns: ["atualizado_por"]
+            isOneToOne: false
+            referencedRelation: "vw_ranking_vgv"
+            referencedColumns: ["corretor_id"]
+          },
+          {
+            foreignKeyName: "ncrm_estado_negocio_id_fkey"
+            columns: ["negocio_id"]
+            isOneToOne: true
+            referencedRelation: "negocios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ncrm_estado_negocio_id_fkey"
+            columns: ["negocio_id"]
+            isOneToOne: true
+            referencedRelation: "vw_erp_cards"
+            referencedColumns: ["negocio_id"]
+          },
+          {
+            foreignKeyName: "ncrm_estado_negocio_id_fkey"
+            columns: ["negocio_id"]
+            isOneToOne: true
+            referencedRelation: "vw_erros_envio"
+            referencedColumns: ["negocio_id"]
+          },
+          {
+            foreignKeyName: "ncrm_estado_negocio_id_fkey"
+            columns: ["negocio_id"]
+            isOneToOne: true
+            referencedRelation: "vw_escalonamento"
+            referencedColumns: ["negocio_id"]
+          },
+          {
+            foreignKeyName: "ncrm_estado_negocio_id_fkey"
+            columns: ["negocio_id"]
+            isOneToOne: true
+            referencedRelation: "vw_negocios_kanban"
+            referencedColumns: ["negocio_id"]
+          },
+          {
+            foreignKeyName: "ncrm_estado_negocio_id_fkey"
+            columns: ["negocio_id"]
+            isOneToOne: true
+            referencedRelation: "vw_sla_leads"
+            referencedColumns: ["negocio_id"]
+          },
+          {
+            foreignKeyName: "ncrm_estado_proposta_id_fkey"
+            columns: ["proposta_id"]
+            isOneToOne: false
+            referencedRelation: "ncrm_proposta"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ncrm_estado_visita_id_fkey"
+            columns: ["visita_id"]
+            isOneToOne: false
+            referencedRelation: "visitas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ncrm_estado_workflow_config_id_fkey"
+            columns: ["workflow_config_id"]
+            isOneToOne: false
+            referencedRelation: "ncrm_workflow_config"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ncrm_evento: {
+        Row: {
+          canal: string | null
+          corretor_id_no_evento: number | null
+          criado_em: string
+          estado_versao_antes: number | null
+          estado_versao_apos: number | null
+          executado_por: string | null
+          id: number
+          idempotency_key: string | null
+          lead_id: number
+          negocio_id: number
+          numero_tentativa: number | null
+          origem: string
+          payload: Json
+          resultado: string | null
+          tipo: string
+          workflow_config_id: number
+        }
+        Insert: {
+          canal?: string | null
+          corretor_id_no_evento?: number | null
+          criado_em?: string
+          estado_versao_antes?: number | null
+          estado_versao_apos?: number | null
+          executado_por?: string | null
+          id?: never
+          idempotency_key?: string | null
+          lead_id: number
+          negocio_id: number
+          numero_tentativa?: number | null
+          origem: string
+          payload?: Json
+          resultado?: string | null
+          tipo: string
+          workflow_config_id: number
+        }
+        Update: {
+          canal?: string | null
+          corretor_id_no_evento?: number | null
+          criado_em?: string
+          estado_versao_antes?: number | null
+          estado_versao_apos?: number | null
+          executado_por?: string | null
+          id?: never
+          idempotency_key?: string | null
+          lead_id?: number
+          negocio_id?: number
+          numero_tentativa?: number | null
+          origem?: string
+          payload?: Json
+          resultado?: string | null
+          tipo?: string
+          workflow_config_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ncrm_evento_corretor_id_no_evento_fkey"
+            columns: ["corretor_id_no_evento"]
+            isOneToOne: false
+            referencedRelation: "corretores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ncrm_evento_corretor_id_no_evento_fkey"
+            columns: ["corretor_id_no_evento"]
+            isOneToOne: false
+            referencedRelation: "vw_metricas_corretor"
+            referencedColumns: ["corretor_id"]
+          },
+          {
+            foreignKeyName: "ncrm_evento_corretor_id_no_evento_fkey"
+            columns: ["corretor_id_no_evento"]
+            isOneToOne: false
+            referencedRelation: "vw_negocios_kanban"
+            referencedColumns: ["corretor_id"]
+          },
+          {
+            foreignKeyName: "ncrm_evento_executado_por_fkey"
+            columns: ["executado_por"]
+            isOneToOne: false
+            referencedRelation: "usuarios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ncrm_evento_executado_por_fkey"
+            columns: ["executado_por"]
+            isOneToOne: false
+            referencedRelation: "v_painel_corretor"
+            referencedColumns: ["corretor_id"]
+          },
+          {
+            foreignKeyName: "ncrm_evento_executado_por_fkey"
+            columns: ["executado_por"]
+            isOneToOne: false
+            referencedRelation: "v_painel_socio"
+            referencedColumns: ["socio_id"]
+          },
+          {
+            foreignKeyName: "ncrm_evento_executado_por_fkey"
+            columns: ["executado_por"]
+            isOneToOne: false
+            referencedRelation: "vw_ranking_vgv"
+            referencedColumns: ["corretor_id"]
+          },
+          {
+            foreignKeyName: "ncrm_evento_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ncrm_evento_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "vw_erros_envio"
+            referencedColumns: ["lead_id"]
+          },
+          {
+            foreignKeyName: "ncrm_evento_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "vw_negocios_kanban"
+            referencedColumns: ["lead_id"]
+          },
+          {
+            foreignKeyName: "ncrm_evento_negocio_id_fkey"
+            columns: ["negocio_id"]
+            isOneToOne: false
+            referencedRelation: "negocios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ncrm_evento_negocio_id_fkey"
+            columns: ["negocio_id"]
+            isOneToOne: false
+            referencedRelation: "vw_erp_cards"
+            referencedColumns: ["negocio_id"]
+          },
+          {
+            foreignKeyName: "ncrm_evento_negocio_id_fkey"
+            columns: ["negocio_id"]
+            isOneToOne: false
+            referencedRelation: "vw_erros_envio"
+            referencedColumns: ["negocio_id"]
+          },
+          {
+            foreignKeyName: "ncrm_evento_negocio_id_fkey"
+            columns: ["negocio_id"]
+            isOneToOne: false
+            referencedRelation: "vw_escalonamento"
+            referencedColumns: ["negocio_id"]
+          },
+          {
+            foreignKeyName: "ncrm_evento_negocio_id_fkey"
+            columns: ["negocio_id"]
+            isOneToOne: false
+            referencedRelation: "vw_negocios_kanban"
+            referencedColumns: ["negocio_id"]
+          },
+          {
+            foreignKeyName: "ncrm_evento_negocio_id_fkey"
+            columns: ["negocio_id"]
+            isOneToOne: false
+            referencedRelation: "vw_sla_leads"
+            referencedColumns: ["negocio_id"]
+          },
+          {
+            foreignKeyName: "ncrm_evento_workflow_config_id_fkey"
+            columns: ["workflow_config_id"]
+            isOneToOne: false
+            referencedRelation: "ncrm_workflow_config"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ncrm_funcao_legada_backup: {
+        Row: {
+          assinatura: string
+          checksum: string
+          criado_em: string
+          definicao: string
+          funcao: string
+          grants_antes: string | null
+          id: number
+          owner_antes: string
+        }
+        Insert: {
+          assinatura: string
+          checksum: string
+          criado_em?: string
+          definicao: string
+          funcao: string
+          grants_antes?: string | null
+          id?: number
+          owner_antes: string
+        }
+        Update: {
+          assinatura?: string
+          checksum?: string
+          criado_em?: string
+          definicao?: string
+          funcao?: string
+          grants_antes?: string | null
+          id?: number
+          owner_antes?: string
+        }
+        Relationships: []
+      }
+      ncrm_funcao_legada_esperada: {
+        Row: {
+          checksum: string
+          funcao: string
+          origem: string
+        }
+        Insert: {
+          checksum: string
+          funcao: string
+          origem: string
+        }
+        Update: {
+          checksum?: string
+          funcao?: string
+          origem?: string
+        }
+        Relationships: []
+      }
+      ncrm_ingest_audit: {
+        Row: {
+          acao: string
+          ativo_desde: string | null
+          atualizado_por: string | null
+          criado_em: string
+          id: number
+        }
+        Insert: {
+          acao: string
+          ativo_desde?: string | null
+          atualizado_por?: string | null
+          criado_em?: string
+          id?: never
+        }
+        Update: {
+          acao?: string
+          ativo_desde?: string | null
+          atualizado_por?: string | null
+          criado_em?: string
+          id?: never
+        }
+        Relationships: []
+      }
+      ncrm_ingest_checkpoint: {
+        Row: {
+          atualizado_em: string
+          criado_em: string
+          finalizado_em: string | null
+          id: number
+          mensagem_id: string
+          motivo_final: string | null
+          negocio_id: number | null
+          processado_em: string | null
+          proxima_tentativa_em: string | null
+          status: string
+          tentativas: number
+          tipo: string
+          ultimo_erro: string | null
+          wa_message_id: string | null
+        }
+        Insert: {
+          atualizado_em?: string
+          criado_em?: string
+          finalizado_em?: string | null
+          id?: never
+          mensagem_id: string
+          motivo_final?: string | null
+          negocio_id?: number | null
+          processado_em?: string | null
+          proxima_tentativa_em?: string | null
+          status?: string
+          tentativas?: number
+          tipo: string
+          ultimo_erro?: string | null
+          wa_message_id?: string | null
+        }
+        Update: {
+          atualizado_em?: string
+          criado_em?: string
+          finalizado_em?: string | null
+          id?: never
+          mensagem_id?: string
+          motivo_final?: string | null
+          negocio_id?: number | null
+          processado_em?: string | null
+          proxima_tentativa_em?: string | null
+          status?: string
+          tentativas?: number
+          tipo?: string
+          ultimo_erro?: string | null
+          wa_message_id?: string | null
+        }
+        Relationships: []
+      }
+      ncrm_ingest_config: {
+        Row: {
+          ativo: boolean
+          ativo_desde: string | null
+          atualizado_em: string
+          atualizado_por: string | null
+          id: boolean
+        }
+        Insert: {
+          ativo?: boolean
+          ativo_desde?: string | null
+          atualizado_em?: string
+          atualizado_por?: string | null
+          id?: boolean
+        }
+        Update: {
+          ativo?: boolean
+          ativo_desde?: string | null
+          atualizado_em?: string
+          atualizado_por?: string | null
+          id?: boolean
+        }
+        Relationships: []
+      }
+      ncrm_ingest_lifecycle_config: {
+        Row: {
+          atualizado_em: string
+          atualizado_por: string | null
+          backoff_base_seg: number
+          backoff_max_seg: number
+          id: boolean
+          janela_fora_escopo_min: number
+          janela_sem_negocio_min: number
+          max_tentativas: number
+        }
+        Insert: {
+          atualizado_em?: string
+          atualizado_por?: string | null
+          backoff_base_seg?: number
+          backoff_max_seg?: number
+          id?: boolean
+          janela_fora_escopo_min?: number
+          janela_sem_negocio_min?: number
+          max_tentativas?: number
+        }
+        Update: {
+          atualizado_em?: string
+          atualizado_por?: string | null
+          backoff_base_seg?: number
+          backoff_max_seg?: number
+          id?: boolean
+          janela_fora_escopo_min?: number
+          janela_sem_negocio_min?: number
+          max_tentativas?: number
+        }
+        Relationships: []
+      }
+      ncrm_justificativa: {
+        Row: {
+          contexto: Json
+          criado_em: string
+          criado_por: string
+          id: number
+          justificativa: string
+          negocio_id: number
+          tipo: string
+        }
+        Insert: {
+          contexto?: Json
+          criado_em?: string
+          criado_por: string
+          id?: never
+          justificativa: string
+          negocio_id: number
+          tipo?: string
+        }
+        Update: {
+          contexto?: Json
+          criado_em?: string
+          criado_por?: string
+          id?: never
+          justificativa?: string
+          negocio_id?: number
+          tipo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ncrm_justificativa_negocio_id_fkey"
+            columns: ["negocio_id"]
+            isOneToOne: false
+            referencedRelation: "negocios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ncrm_justificativa_negocio_id_fkey"
+            columns: ["negocio_id"]
+            isOneToOne: false
+            referencedRelation: "vw_erp_cards"
+            referencedColumns: ["negocio_id"]
+          },
+          {
+            foreignKeyName: "ncrm_justificativa_negocio_id_fkey"
+            columns: ["negocio_id"]
+            isOneToOne: false
+            referencedRelation: "vw_erros_envio"
+            referencedColumns: ["negocio_id"]
+          },
+          {
+            foreignKeyName: "ncrm_justificativa_negocio_id_fkey"
+            columns: ["negocio_id"]
+            isOneToOne: false
+            referencedRelation: "vw_escalonamento"
+            referencedColumns: ["negocio_id"]
+          },
+          {
+            foreignKeyName: "ncrm_justificativa_negocio_id_fkey"
+            columns: ["negocio_id"]
+            isOneToOne: false
+            referencedRelation: "vw_negocios_kanban"
+            referencedColumns: ["negocio_id"]
+          },
+          {
+            foreignKeyName: "ncrm_justificativa_negocio_id_fkey"
+            columns: ["negocio_id"]
+            isOneToOne: false
+            referencedRelation: "vw_sla_leads"
+            referencedColumns: ["negocio_id"]
+          },
+        ]
+      }
+      ncrm_leads_guardados: {
+        Row: {
+          corretor_no_momento: number | null
+          guardado_em: string
+          guardado_por: string
+          lead_id: number
+          motivo: string
+          negocio_id: number | null
+        }
+        Insert: {
+          corretor_no_momento?: number | null
+          guardado_em?: string
+          guardado_por?: string
+          lead_id: number
+          motivo?: string
+          negocio_id?: number | null
+        }
+        Update: {
+          corretor_no_momento?: number | null
+          guardado_em?: string
+          guardado_por?: string
+          lead_id?: number
+          motivo?: string
+          negocio_id?: number | null
+        }
+        Relationships: []
+      }
+      ncrm_manual_operacional: {
+        Row: {
+          atualizado_em: string
+          atualizado_por: string | null
+          conteudo: string
+          id: boolean
+        }
+        Insert: {
+          atualizado_em?: string
+          atualizado_por?: string | null
+          conteudo?: string
+          id?: boolean
+        }
+        Update: {
+          atualizado_em?: string
+          atualizado_por?: string | null
+          conteudo?: string
+          id?: boolean
+        }
+        Relationships: []
+      }
+      ncrm_migracao_analise: {
+        Row: {
+          analisado_em: string
+          confianca: number | null
+          context_hash: string
+          contexto_qualidade: string
+          criado_por: string | null
+          etapa_sugerida: string | null
+          evidencia_insuficiente: boolean
+          evidencias: Json
+          justificativa: string | null
+          negocio_id: number
+          prazo_sugerido: string | null
+          proxima_acao_sugerida: string | null
+          resumo: string | null
+          risco: string | null
+          temperatura_sugerida: string | null
+          versao_modelo: string | null
+          versao_prompt: string | null
+        }
+        Insert: {
+          analisado_em?: string
+          confianca?: number | null
+          context_hash: string
+          contexto_qualidade?: string
+          criado_por?: string | null
+          etapa_sugerida?: string | null
+          evidencia_insuficiente?: boolean
+          evidencias?: Json
+          justificativa?: string | null
+          negocio_id: number
+          prazo_sugerido?: string | null
+          proxima_acao_sugerida?: string | null
+          resumo?: string | null
+          risco?: string | null
+          temperatura_sugerida?: string | null
+          versao_modelo?: string | null
+          versao_prompt?: string | null
+        }
+        Update: {
+          analisado_em?: string
+          confianca?: number | null
+          context_hash?: string
+          contexto_qualidade?: string
+          criado_por?: string | null
+          etapa_sugerida?: string | null
+          evidencia_insuficiente?: boolean
+          evidencias?: Json
+          justificativa?: string | null
+          negocio_id?: number
+          prazo_sugerido?: string | null
+          proxima_acao_sugerida?: string | null
+          resumo?: string | null
+          risco?: string | null
+          temperatura_sugerida?: string | null
+          versao_modelo?: string | null
+          versao_prompt?: string | null
+        }
+        Relationships: []
+      }
+      ncrm_migracao_item: {
+        Row: {
+          analise: Json
+          aprovado_em: string
+          aprovado_por: string
+          ativo: boolean
+          desativado_em: string | null
+          desativado_por: string | null
+          etapa_aprovada: string
+          etapa_sugerida: string | null
+          negocio_id: number
+          origem: string
+          prazo_aprovado: string
+          proxima_acao_aprovada: string
+          proxima_acao_sugerida: string | null
+          responsavel_id: number | null
+          versao_analise: string | null
+          workflow_config_id: number
+        }
+        Insert: {
+          analise?: Json
+          aprovado_em?: string
+          aprovado_por: string
+          ativo?: boolean
+          desativado_em?: string | null
+          desativado_por?: string | null
+          etapa_aprovada: string
+          etapa_sugerida?: string | null
+          negocio_id: number
+          origem?: string
+          prazo_aprovado: string
+          proxima_acao_aprovada: string
+          proxima_acao_sugerida?: string | null
+          responsavel_id?: number | null
+          versao_analise?: string | null
+          workflow_config_id: number
+        }
+        Update: {
+          analise?: Json
+          aprovado_em?: string
+          aprovado_por?: string
+          ativo?: boolean
+          desativado_em?: string | null
+          desativado_por?: string | null
+          etapa_aprovada?: string
+          etapa_sugerida?: string | null
+          negocio_id?: number
+          origem?: string
+          prazo_aprovado?: string
+          proxima_acao_aprovada?: string
+          proxima_acao_sugerida?: string | null
+          responsavel_id?: number | null
+          versao_analise?: string | null
+          workflow_config_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ncrm_migracao_item_negocio_id_fkey"
+            columns: ["negocio_id"]
+            isOneToOne: true
+            referencedRelation: "negocios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ncrm_migracao_item_negocio_id_fkey"
+            columns: ["negocio_id"]
+            isOneToOne: true
+            referencedRelation: "vw_erp_cards"
+            referencedColumns: ["negocio_id"]
+          },
+          {
+            foreignKeyName: "ncrm_migracao_item_negocio_id_fkey"
+            columns: ["negocio_id"]
+            isOneToOne: true
+            referencedRelation: "vw_erros_envio"
+            referencedColumns: ["negocio_id"]
+          },
+          {
+            foreignKeyName: "ncrm_migracao_item_negocio_id_fkey"
+            columns: ["negocio_id"]
+            isOneToOne: true
+            referencedRelation: "vw_escalonamento"
+            referencedColumns: ["negocio_id"]
+          },
+          {
+            foreignKeyName: "ncrm_migracao_item_negocio_id_fkey"
+            columns: ["negocio_id"]
+            isOneToOne: true
+            referencedRelation: "vw_negocios_kanban"
+            referencedColumns: ["negocio_id"]
+          },
+          {
+            foreignKeyName: "ncrm_migracao_item_negocio_id_fkey"
+            columns: ["negocio_id"]
+            isOneToOne: true
+            referencedRelation: "vw_sla_leads"
+            referencedColumns: ["negocio_id"]
+          },
+        ]
+      }
+      ncrm_momento_padrao: {
+        Row: {
+          acao_codigo: string | null
+          ajuda: string | null
+          ativo: boolean
+          codigo: string
+          etapa: string
+          objetivo: string
+          ordem: number
+          rotulo: string
+          sla_min: number | null
+        }
+        Insert: {
+          acao_codigo?: string | null
+          ajuda?: string | null
+          ativo?: boolean
+          codigo: string
+          etapa: string
+          objetivo: string
+          ordem: number
+          rotulo: string
+          sla_min?: number | null
+        }
+        Update: {
+          acao_codigo?: string | null
+          ajuda?: string | null
+          ativo?: boolean
+          codigo?: string
+          etapa?: string
+          objetivo?: string
+          ordem?: number
+          rotulo?: string
+          sla_min?: number | null
+        }
+        Relationships: []
+      }
+      ncrm_notificacao: {
+        Row: {
+          chave: string
+          corretor_id: number | null
+          criada_em: string
+          deep_link: string | null
+          detalhe: string | null
+          id: number
+          negocio_id: number | null
+          prioridade: number
+          publico: string
+          repeticoes: number
+          resolvida_em: string | null
+          resolvida_por: string | null
+          silenciar_ate: string | null
+          tipo: string
+          titulo: string
+          vista_em: string | null
+        }
+        Insert: {
+          chave: string
+          corretor_id?: number | null
+          criada_em?: string
+          deep_link?: string | null
+          detalhe?: string | null
+          id?: number
+          negocio_id?: number | null
+          prioridade?: number
+          publico: string
+          repeticoes?: number
+          resolvida_em?: string | null
+          resolvida_por?: string | null
+          silenciar_ate?: string | null
+          tipo: string
+          titulo: string
+          vista_em?: string | null
+        }
+        Update: {
+          chave?: string
+          corretor_id?: number | null
+          criada_em?: string
+          deep_link?: string | null
+          detalhe?: string | null
+          id?: number
+          negocio_id?: number | null
+          prioridade?: number
+          publico?: string
+          repeticoes?: number
+          resolvida_em?: string | null
+          resolvida_por?: string | null
+          silenciar_ate?: string | null
+          tipo?: string
+          titulo?: string
+          vista_em?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ncrm_notificacao_corretor_id_fkey"
+            columns: ["corretor_id"]
+            isOneToOne: false
+            referencedRelation: "corretores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ncrm_notificacao_corretor_id_fkey"
+            columns: ["corretor_id"]
+            isOneToOne: false
+            referencedRelation: "vw_metricas_corretor"
+            referencedColumns: ["corretor_id"]
+          },
+          {
+            foreignKeyName: "ncrm_notificacao_corretor_id_fkey"
+            columns: ["corretor_id"]
+            isOneToOne: false
+            referencedRelation: "vw_negocios_kanban"
+            referencedColumns: ["corretor_id"]
+          },
+          {
+            foreignKeyName: "ncrm_notificacao_negocio_id_fkey"
+            columns: ["negocio_id"]
+            isOneToOne: false
+            referencedRelation: "negocios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ncrm_notificacao_negocio_id_fkey"
+            columns: ["negocio_id"]
+            isOneToOne: false
+            referencedRelation: "vw_erp_cards"
+            referencedColumns: ["negocio_id"]
+          },
+          {
+            foreignKeyName: "ncrm_notificacao_negocio_id_fkey"
+            columns: ["negocio_id"]
+            isOneToOne: false
+            referencedRelation: "vw_erros_envio"
+            referencedColumns: ["negocio_id"]
+          },
+          {
+            foreignKeyName: "ncrm_notificacao_negocio_id_fkey"
+            columns: ["negocio_id"]
+            isOneToOne: false
+            referencedRelation: "vw_escalonamento"
+            referencedColumns: ["negocio_id"]
+          },
+          {
+            foreignKeyName: "ncrm_notificacao_negocio_id_fkey"
+            columns: ["negocio_id"]
+            isOneToOne: false
+            referencedRelation: "vw_negocios_kanban"
+            referencedColumns: ["negocio_id"]
+          },
+          {
+            foreignKeyName: "ncrm_notificacao_negocio_id_fkey"
+            columns: ["negocio_id"]
+            isOneToOne: false
+            referencedRelation: "vw_sla_leads"
+            referencedColumns: ["negocio_id"]
+          },
+        ]
+      }
+      ncrm_notificacao_silencio: {
+        Row: {
+          atualizado_em: string
+          chave: string
+          repeticoes: number
+          silenciar_ate: string
+        }
+        Insert: {
+          atualizado_em?: string
+          chave: string
+          repeticoes?: number
+          silenciar_ate: string
+        }
+        Update: {
+          atualizado_em?: string
+          chave?: string
+          repeticoes?: number
+          silenciar_ate?: string
+        }
+        Relationships: []
+      }
+      ncrm_notificacao_tipos_ativos: {
+        Row: {
+          criado_em: string
+          motivo: string
+          tipo: string
+        }
+        Insert: {
+          criado_em?: string
+          motivo: string
+          tipo: string
+        }
+        Update: {
+          criado_em?: string
+          motivo?: string
+          tipo?: string
+        }
+        Relationships: []
+      }
+      ncrm_operacao_config: {
+        Row: {
+          atualizado_em: string
+          atualizado_por: string | null
+          corte_feedback_visita: string
+          exigir_feedback_visita: boolean
+          feedback_visita_min: number
+          horario_oficial_fim: string
+          horario_oficial_inicio: string
+          id: boolean
+          presenca_ttl_min: number
+          primeira_abordagem_min: number
+          sara_organiza_ativa: boolean
+          suspensao_automatica_ativa: boolean
+          timezone: string
+        }
+        Insert: {
+          atualizado_em?: string
+          atualizado_por?: string | null
+          corte_feedback_visita?: string
+          exigir_feedback_visita?: boolean
+          feedback_visita_min?: number
+          horario_oficial_fim?: string
+          horario_oficial_inicio?: string
+          id?: boolean
+          presenca_ttl_min?: number
+          primeira_abordagem_min?: number
+          sara_organiza_ativa?: boolean
+          suspensao_automatica_ativa?: boolean
+          timezone?: string
+        }
+        Update: {
+          atualizado_em?: string
+          atualizado_por?: string | null
+          corte_feedback_visita?: string
+          exigir_feedback_visita?: boolean
+          feedback_visita_min?: number
+          horario_oficial_fim?: string
+          horario_oficial_inicio?: string
+          id?: boolean
+          presenca_ttl_min?: number
+          primeira_abordagem_min?: number
+          sara_organiza_ativa?: boolean
+          suspensao_automatica_ativa?: boolean
+          timezone?: string
+        }
+        Relationships: []
+      }
+      ncrm_operacao_v4_backup: {
+        Row: {
+          chave: string
+          criado_em: string
+          payload: Json
+        }
+        Insert: {
+          chave: string
+          criado_em?: string
+          payload: Json
+        }
+        Update: {
+          chave?: string
+          criado_em?: string
+          payload?: Json
+        }
+        Relationships: []
+      }
+      ncrm_piloto: {
+        Row: {
+          ativo: boolean
+          liberado_em: string
+          liberado_por: string
+          removido_em: string | null
+          removido_por: string | null
+          usuario_id: string
+        }
+        Insert: {
+          ativo?: boolean
+          liberado_em?: string
+          liberado_por: string
+          removido_em?: string | null
+          removido_por?: string | null
+          usuario_id: string
+        }
+        Update: {
+          ativo?: boolean
+          liberado_em?: string
+          liberado_por?: string
+          removido_em?: string | null
+          removido_por?: string | null
+          usuario_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ncrm_piloto_usuario_id_fkey"
+            columns: ["usuario_id"]
+            isOneToOne: true
+            referencedRelation: "usuarios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ncrm_piloto_usuario_id_fkey"
+            columns: ["usuario_id"]
+            isOneToOne: true
+            referencedRelation: "v_painel_corretor"
+            referencedColumns: ["corretor_id"]
+          },
+          {
+            foreignKeyName: "ncrm_piloto_usuario_id_fkey"
+            columns: ["usuario_id"]
+            isOneToOne: true
+            referencedRelation: "v_painel_socio"
+            referencedColumns: ["socio_id"]
+          },
+          {
+            foreignKeyName: "ncrm_piloto_usuario_id_fkey"
+            columns: ["usuario_id"]
+            isOneToOne: true
+            referencedRelation: "vw_ranking_vgv"
+            referencedColumns: ["corretor_id"]
+          },
+        ]
+      }
+      ncrm_piloto_audit: {
+        Row: {
+          acao: string
+          criado_em: string
+          criado_por: string
+          detalhe: Json
+          id: number
+          usuario_id: string
+        }
+        Insert: {
+          acao: string
+          criado_em?: string
+          criado_por: string
+          detalhe?: Json
+          id?: never
+          usuario_id: string
+        }
+        Update: {
+          acao?: string
+          criado_em?: string
+          criado_por?: string
+          detalhe?: Json
+          id?: never
+          usuario_id?: string
+        }
+        Relationships: []
+      }
+      ncrm_piloto_config: {
+        Row: {
+          atualizado_em: string
+          atualizado_por: string | null
+          id: boolean
+          limite_pilotos: number
+        }
+        Insert: {
+          atualizado_em?: string
+          atualizado_por?: string | null
+          id?: boolean
+          limite_pilotos?: number
+        }
+        Update: {
+          atualizado_em?: string
+          atualizado_por?: string | null
+          id?: boolean
+          limite_pilotos?: number
+        }
+        Relationships: []
+      }
+      ncrm_proposta: {
+        Row: {
+          aceita_em: string | null
+          atualizada_em: string
+          convertida_em: string | null
+          corretor_id: number | null
+          criada_em: string
+          criada_por: string
+          data_proposta: string
+          empreendimento_id: string | null
+          encerrada_em: string | null
+          id: string
+          idempotency_key: string
+          lead_id: number
+          motivo_encerramento: string | null
+          negocio_id: number
+          observacao: string | null
+          status: string
+          unidade_id: string | null
+          valor: number
+          venda_id: string | null
+          venda_solicitacao_id: string | null
+          versao: number
+        }
+        Insert: {
+          aceita_em?: string | null
+          atualizada_em?: string
+          convertida_em?: string | null
+          corretor_id?: number | null
+          criada_em?: string
+          criada_por: string
+          data_proposta: string
+          empreendimento_id?: string | null
+          encerrada_em?: string | null
+          id?: string
+          idempotency_key: string
+          lead_id: number
+          motivo_encerramento?: string | null
+          negocio_id: number
+          observacao?: string | null
+          status?: string
+          unidade_id?: string | null
+          valor: number
+          venda_id?: string | null
+          venda_solicitacao_id?: string | null
+          versao?: number
+        }
+        Update: {
+          aceita_em?: string | null
+          atualizada_em?: string
+          convertida_em?: string | null
+          corretor_id?: number | null
+          criada_em?: string
+          criada_por?: string
+          data_proposta?: string
+          empreendimento_id?: string | null
+          encerrada_em?: string | null
+          id?: string
+          idempotency_key?: string
+          lead_id?: number
+          motivo_encerramento?: string | null
+          negocio_id?: number
+          observacao?: string | null
+          status?: string
+          unidade_id?: string | null
+          valor?: number
+          venda_id?: string | null
+          venda_solicitacao_id?: string | null
+          versao?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ncrm_proposta_corretor_id_fkey"
+            columns: ["corretor_id"]
+            isOneToOne: false
+            referencedRelation: "corretores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ncrm_proposta_corretor_id_fkey"
+            columns: ["corretor_id"]
+            isOneToOne: false
+            referencedRelation: "vw_metricas_corretor"
+            referencedColumns: ["corretor_id"]
+          },
+          {
+            foreignKeyName: "ncrm_proposta_corretor_id_fkey"
+            columns: ["corretor_id"]
+            isOneToOne: false
+            referencedRelation: "vw_negocios_kanban"
+            referencedColumns: ["corretor_id"]
+          },
+          {
+            foreignKeyName: "ncrm_proposta_criada_por_fkey"
+            columns: ["criada_por"]
+            isOneToOne: false
+            referencedRelation: "usuarios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ncrm_proposta_criada_por_fkey"
+            columns: ["criada_por"]
+            isOneToOne: false
+            referencedRelation: "v_painel_corretor"
+            referencedColumns: ["corretor_id"]
+          },
+          {
+            foreignKeyName: "ncrm_proposta_criada_por_fkey"
+            columns: ["criada_por"]
+            isOneToOne: false
+            referencedRelation: "v_painel_socio"
+            referencedColumns: ["socio_id"]
+          },
+          {
+            foreignKeyName: "ncrm_proposta_criada_por_fkey"
+            columns: ["criada_por"]
+            isOneToOne: false
+            referencedRelation: "vw_ranking_vgv"
+            referencedColumns: ["corretor_id"]
+          },
+          {
+            foreignKeyName: "ncrm_proposta_empreendimento_id_fkey"
+            columns: ["empreendimento_id"]
+            isOneToOne: false
+            referencedRelation: "empreendimentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ncrm_proposta_empreendimento_id_fkey"
+            columns: ["empreendimento_id"]
+            isOneToOne: false
+            referencedRelation: "site_produtos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ncrm_proposta_empreendimento_id_fkey"
+            columns: ["empreendimento_id"]
+            isOneToOne: false
+            referencedRelation: "v_catalogo_empreendimentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ncrm_proposta_empreendimento_id_fkey"
+            columns: ["empreendimento_id"]
+            isOneToOne: false
+            referencedRelation: "vw_empreendimento_resumo"
+            referencedColumns: ["empreendimento_id"]
+          },
+          {
+            foreignKeyName: "ncrm_proposta_empreendimento_id_fkey"
+            columns: ["empreendimento_id"]
+            isOneToOne: false
+            referencedRelation: "vw_produtos_catalogo"
+            referencedColumns: ["empreendimento_id"]
+          },
+          {
+            foreignKeyName: "ncrm_proposta_empreendimento_id_fkey"
+            columns: ["empreendimento_id"]
+            isOneToOne: false
+            referencedRelation: "vw_produtos_publicos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ncrm_proposta_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ncrm_proposta_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "vw_erros_envio"
+            referencedColumns: ["lead_id"]
+          },
+          {
+            foreignKeyName: "ncrm_proposta_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "vw_negocios_kanban"
+            referencedColumns: ["lead_id"]
+          },
+          {
+            foreignKeyName: "ncrm_proposta_negocio_id_fkey"
+            columns: ["negocio_id"]
+            isOneToOne: false
+            referencedRelation: "negocios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ncrm_proposta_negocio_id_fkey"
+            columns: ["negocio_id"]
+            isOneToOne: false
+            referencedRelation: "vw_erp_cards"
+            referencedColumns: ["negocio_id"]
+          },
+          {
+            foreignKeyName: "ncrm_proposta_negocio_id_fkey"
+            columns: ["negocio_id"]
+            isOneToOne: false
+            referencedRelation: "vw_erros_envio"
+            referencedColumns: ["negocio_id"]
+          },
+          {
+            foreignKeyName: "ncrm_proposta_negocio_id_fkey"
+            columns: ["negocio_id"]
+            isOneToOne: false
+            referencedRelation: "vw_escalonamento"
+            referencedColumns: ["negocio_id"]
+          },
+          {
+            foreignKeyName: "ncrm_proposta_negocio_id_fkey"
+            columns: ["negocio_id"]
+            isOneToOne: false
+            referencedRelation: "vw_negocios_kanban"
+            referencedColumns: ["negocio_id"]
+          },
+          {
+            foreignKeyName: "ncrm_proposta_negocio_id_fkey"
+            columns: ["negocio_id"]
+            isOneToOne: false
+            referencedRelation: "vw_sla_leads"
+            referencedColumns: ["negocio_id"]
+          },
+          {
+            foreignKeyName: "ncrm_proposta_unidade_id_fkey"
+            columns: ["unidade_id"]
+            isOneToOne: false
+            referencedRelation: "unidades"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ncrm_proposta_venda_solicitacao_id_fkey"
+            columns: ["venda_solicitacao_id"]
+            isOneToOne: false
+            referencedRelation: "venda_solicitacoes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ncrm_push_config: {
+        Row: {
+          ativo: boolean
+          atualizado_em: string
+          id: boolean
+          vapid_public: string
+          vapid_subject: string
+        }
+        Insert: {
+          ativo?: boolean
+          atualizado_em?: string
+          id?: boolean
+          vapid_public: string
+          vapid_subject: string
+        }
+        Update: {
+          ativo?: boolean
+          atualizado_em?: string
+          id?: boolean
+          vapid_public?: string
+          vapid_subject?: string
+        }
+        Relationships: []
+      }
+      ncrm_push_fila: {
+        Row: {
+          corpo: string | null
+          criado_em: string
+          deep_link: string | null
+          entregue_em: string | null
+          id: number
+          idempotency_key: string
+          lease_ate: string | null
+          notificacao_id: number | null
+          processando_em: string | null
+          proxima_em: string | null
+          status: string
+          subscription_id: number
+          tentativa_id: string | null
+          tentativas: number
+          tipo: string | null
+          titulo: string
+          ultimo_erro: string | null
+          worker_id: string | null
+        }
+        Insert: {
+          corpo?: string | null
+          criado_em?: string
+          deep_link?: string | null
+          entregue_em?: string | null
+          id?: number
+          idempotency_key: string
+          lease_ate?: string | null
+          notificacao_id?: number | null
+          processando_em?: string | null
+          proxima_em?: string | null
+          status?: string
+          subscription_id: number
+          tentativa_id?: string | null
+          tentativas?: number
+          tipo?: string | null
+          titulo: string
+          ultimo_erro?: string | null
+          worker_id?: string | null
+        }
+        Update: {
+          corpo?: string | null
+          criado_em?: string
+          deep_link?: string | null
+          entregue_em?: string | null
+          id?: number
+          idempotency_key?: string
+          lease_ate?: string | null
+          notificacao_id?: number | null
+          processando_em?: string | null
+          proxima_em?: string | null
+          status?: string
+          subscription_id?: number
+          tentativa_id?: string | null
+          tentativas?: number
+          tipo?: string | null
+          titulo?: string
+          ultimo_erro?: string | null
+          worker_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ncrm_push_fila_subscription_id_fkey"
+            columns: ["subscription_id"]
+            isOneToOne: false
+            referencedRelation: "ncrm_push_subscription"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ncrm_push_subscription: {
+        Row: {
+          atualizado_em: string
+          auth: string
+          criado_em: string
+          endpoint: string
+          falhas_seguidas: number
+          id: number
+          p256dh: string
+          revogada_em: string | null
+          revogada_motivo: string | null
+          ultimo_sucesso_em: string | null
+          user_agent: string | null
+          usuario_id: string
+        }
+        Insert: {
+          atualizado_em?: string
+          auth: string
+          criado_em?: string
+          endpoint: string
+          falhas_seguidas?: number
+          id?: number
+          p256dh: string
+          revogada_em?: string | null
+          revogada_motivo?: string | null
+          ultimo_sucesso_em?: string | null
+          user_agent?: string | null
+          usuario_id: string
+        }
+        Update: {
+          atualizado_em?: string
+          auth?: string
+          criado_em?: string
+          endpoint?: string
+          falhas_seguidas?: number
+          id?: number
+          p256dh?: string
+          revogada_em?: string | null
+          revogada_motivo?: string | null
+          ultimo_sucesso_em?: string | null
+          user_agent?: string | null
+          usuario_id?: string
+        }
+        Relationships: []
+      }
+      ncrm_saida_humana_continuidade_backup: {
+        Row: {
+          assinatura: string
+          criado_em: string
+          definicao: string
+          md5: string
+        }
+        Insert: {
+          assinatura: string
+          criado_em?: string
+          definicao: string
+          md5: string
+        }
+        Update: {
+          assinatura?: string
+          criado_em?: string
+          definicao?: string
+          md5?: string
+        }
+        Relationships: []
+      }
+      ncrm_sara_acao: {
+        Row: {
+          analise_id: number | null
+          aplicado: boolean
+          confianca: number
+          context_hash: string
+          criado_em: string
+          etapa_antes: string
+          etapa_depois: string
+          evidencias: Json
+          id: number
+          motivo_humano: string
+          negocio_id: number
+          prazo_depois: string | null
+          proxima_antes: string | null
+          proxima_depois: string | null
+          revertido_em: string | null
+          revertido_por: string | null
+          versao_antes: number
+          versao_depois: number
+          versao_modelo: string | null
+        }
+        Insert: {
+          analise_id?: number | null
+          aplicado?: boolean
+          confianca: number
+          context_hash: string
+          criado_em?: string
+          etapa_antes: string
+          etapa_depois: string
+          evidencias?: Json
+          id?: number
+          motivo_humano: string
+          negocio_id: number
+          prazo_depois?: string | null
+          proxima_antes?: string | null
+          proxima_depois?: string | null
+          revertido_em?: string | null
+          revertido_por?: string | null
+          versao_antes: number
+          versao_depois: number
+          versao_modelo?: string | null
+        }
+        Update: {
+          analise_id?: number | null
+          aplicado?: boolean
+          confianca?: number
+          context_hash?: string
+          criado_em?: string
+          etapa_antes?: string
+          etapa_depois?: string
+          evidencias?: Json
+          id?: number
+          motivo_humano?: string
+          negocio_id?: number
+          prazo_depois?: string | null
+          proxima_antes?: string | null
+          proxima_depois?: string | null
+          revertido_em?: string | null
+          revertido_por?: string | null
+          versao_antes?: number
+          versao_depois?: number
+          versao_modelo?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ncrm_sara_acao_analise_id_fkey"
+            columns: ["analise_id"]
+            isOneToOne: false
+            referencedRelation: "ncrm_sara_analise"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ncrm_sara_acao_negocio_id_fkey"
+            columns: ["negocio_id"]
+            isOneToOne: false
+            referencedRelation: "negocios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ncrm_sara_acao_negocio_id_fkey"
+            columns: ["negocio_id"]
+            isOneToOne: false
+            referencedRelation: "vw_erp_cards"
+            referencedColumns: ["negocio_id"]
+          },
+          {
+            foreignKeyName: "ncrm_sara_acao_negocio_id_fkey"
+            columns: ["negocio_id"]
+            isOneToOne: false
+            referencedRelation: "vw_erros_envio"
+            referencedColumns: ["negocio_id"]
+          },
+          {
+            foreignKeyName: "ncrm_sara_acao_negocio_id_fkey"
+            columns: ["negocio_id"]
+            isOneToOne: false
+            referencedRelation: "vw_escalonamento"
+            referencedColumns: ["negocio_id"]
+          },
+          {
+            foreignKeyName: "ncrm_sara_acao_negocio_id_fkey"
+            columns: ["negocio_id"]
+            isOneToOne: false
+            referencedRelation: "vw_negocios_kanban"
+            referencedColumns: ["negocio_id"]
+          },
+          {
+            foreignKeyName: "ncrm_sara_acao_negocio_id_fkey"
+            columns: ["negocio_id"]
+            isOneToOne: false
+            referencedRelation: "vw_sla_leads"
+            referencedColumns: ["negocio_id"]
+          },
+        ]
+      }
+      ncrm_sara_analise: {
+        Row: {
+          analisado_em: string
+          ator: string
+          cliente_aguardando: boolean
+          confianca: number
+          context_hash: string
+          criado_em: string
+          decidido_em: string | null
+          decidido_por: string | null
+          decisao: string
+          etapa_atual: string | null
+          etapa_sugerida: string | null
+          evidencias: Json
+          id: number
+          justificativa: string
+          justificativa_decisao: string | null
+          modo: string
+          negocio_id: number
+          origem: string
+          prazo_sugerido: string | null
+          promessa_retorno: boolean
+          proposta_mencionada: boolean
+          proxima_acao_sugerida: string | null
+          run_id: string
+          versao_modelo: string | null
+          versao_prompt: string
+          visita_mencionada: boolean
+        }
+        Insert: {
+          analisado_em?: string
+          ator?: string
+          cliente_aguardando?: boolean
+          confianca: number
+          context_hash: string
+          criado_em?: string
+          decidido_em?: string | null
+          decidido_por?: string | null
+          decisao?: string
+          etapa_atual?: string | null
+          etapa_sugerida?: string | null
+          evidencias?: Json
+          id?: never
+          justificativa: string
+          justificativa_decisao?: string | null
+          modo: string
+          negocio_id: number
+          origem?: string
+          prazo_sugerido?: string | null
+          promessa_retorno?: boolean
+          proposta_mencionada?: boolean
+          proxima_acao_sugerida?: string | null
+          run_id: string
+          versao_modelo?: string | null
+          versao_prompt: string
+          visita_mencionada?: boolean
+        }
+        Update: {
+          analisado_em?: string
+          ator?: string
+          cliente_aguardando?: boolean
+          confianca?: number
+          context_hash?: string
+          criado_em?: string
+          decidido_em?: string | null
+          decidido_por?: string | null
+          decisao?: string
+          etapa_atual?: string | null
+          etapa_sugerida?: string | null
+          evidencias?: Json
+          id?: never
+          justificativa?: string
+          justificativa_decisao?: string | null
+          modo?: string
+          negocio_id?: number
+          origem?: string
+          prazo_sugerido?: string | null
+          promessa_retorno?: boolean
+          proposta_mencionada?: boolean
+          proxima_acao_sugerida?: string | null
+          run_id?: string
+          versao_modelo?: string | null
+          versao_prompt?: string
+          visita_mencionada?: boolean
+        }
+        Relationships: []
+      }
+      ncrm_sara_assist_config: {
+        Row: {
+          atualizado_em: string
+          atualizado_por: string | null
+          confianca_minima: number
+          id: boolean
+          idade_maxima_min: number
+          operacao: string
+        }
+        Insert: {
+          atualizado_em?: string
+          atualizado_por?: string | null
+          confianca_minima?: number
+          id?: boolean
+          idade_maxima_min?: number
+          operacao?: string
+        }
+        Update: {
+          atualizado_em?: string
+          atualizado_por?: string | null
+          confianca_minima?: number
+          id?: boolean
+          idade_maxima_min?: number
+          operacao?: string
+        }
+        Relationships: []
+      }
+      ncrm_sara_config: {
+        Row: {
+          atualizado_em: string
+          atualizado_por: string | null
+          id: boolean
+          modo: string
+        }
+        Insert: {
+          atualizado_em?: string
+          atualizado_por?: string | null
+          id?: boolean
+          modo?: string
+        }
+        Update: {
+          atualizado_em?: string
+          atualizado_por?: string | null
+          id?: boolean
+          modo?: string
+        }
+        Relationships: []
+      }
+      ncrm_sara_runner_config: {
+        Row: {
+          atualizado_em: string
+          atualizado_por: string | null
+          edge_url: string | null
+          enabled: boolean
+          id: boolean
+        }
+        Insert: {
+          atualizado_em?: string
+          atualizado_por?: string | null
+          edge_url?: string | null
+          enabled?: boolean
+          id?: boolean
+        }
+        Update: {
+          atualizado_em?: string
+          atualizado_por?: string | null
+          edge_url?: string | null
+          enabled?: boolean
+          id?: boolean
+        }
+        Relationships: []
+      }
+      ncrm_sara_runner_estado: {
+        Row: {
+          id: boolean
+          processados: number
+          ultima_execucao: string | null
+          ultimo_negocio_id: number | null
+          ultimo_run_id: string | null
+        }
+        Insert: {
+          id?: boolean
+          processados?: number
+          ultima_execucao?: string | null
+          ultimo_negocio_id?: number | null
+          ultimo_run_id?: string | null
+        }
+        Update: {
+          id?: boolean
+          processados?: number
+          ultima_execucao?: string | null
+          ultimo_negocio_id?: number | null
+          ultimo_run_id?: string | null
+        }
+        Relationships: []
+      }
+      ncrm_sara_runner_item: {
+        Row: {
+          negocio_id: number
+          proxima_tentativa_em: string | null
+          tentativas_consecutivas: number
+          ultima_tentativa_em: string | null
+          ultimo_erro: string | null
+          ultimo_run_id: string | null
+          ultimo_status: string | null
+        }
+        Insert: {
+          negocio_id: number
+          proxima_tentativa_em?: string | null
+          tentativas_consecutivas?: number
+          ultima_tentativa_em?: string | null
+          ultimo_erro?: string | null
+          ultimo_run_id?: string | null
+          ultimo_status?: string | null
+        }
+        Update: {
+          negocio_id?: number
+          proxima_tentativa_em?: string | null
+          tentativas_consecutivas?: number
+          ultima_tentativa_em?: string | null
+          ultimo_erro?: string | null
+          ultimo_run_id?: string | null
+          ultimo_status?: string | null
+        }
+        Relationships: []
+      }
+      ncrm_sara_treinamento_backup: {
+        Row: {
+          chave: string
+          criado_em: string
+          payload: Json
+        }
+        Insert: {
+          chave: string
+          criado_em?: string
+          payload: Json
+        }
+        Update: {
+          chave?: string
+          criado_em?: string
+          payload?: Json
+        }
+        Relationships: []
+      }
+      ncrm_saude_acao_audit: {
+        Row: {
+          acao: string
+          alvo: string | null
+          criado_em: string
+          detalhe: string | null
+          executado_por: string
+          id: number
+          resultado: string
+        }
+        Insert: {
+          acao: string
+          alvo?: string | null
+          criado_em?: string
+          detalhe?: string | null
+          executado_por: string
+          id?: number
+          resultado: string
+        }
+        Update: {
+          acao?: string
+          alvo?: string | null
+          criado_em?: string
+          detalhe?: string | null
+          executado_por?: string
+          id?: number
+          resultado?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ncrm_saude_acao_audit_executado_por_fkey"
+            columns: ["executado_por"]
+            isOneToOne: false
+            referencedRelation: "usuarios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ncrm_saude_acao_audit_executado_por_fkey"
+            columns: ["executado_por"]
+            isOneToOne: false
+            referencedRelation: "v_painel_corretor"
+            referencedColumns: ["corretor_id"]
+          },
+          {
+            foreignKeyName: "ncrm_saude_acao_audit_executado_por_fkey"
+            columns: ["executado_por"]
+            isOneToOne: false
+            referencedRelation: "v_painel_socio"
+            referencedColumns: ["socio_id"]
+          },
+          {
+            foreignKeyName: "ncrm_saude_acao_audit_executado_por_fkey"
+            columns: ["executado_por"]
+            isOneToOne: false
+            referencedRelation: "vw_ranking_vgv"
+            referencedColumns: ["corretor_id"]
+          },
+        ]
+      }
+      ncrm_sla_redistribuicao_config: {
+        Row: {
+          ativo: boolean
+          atualizado_em: string
+          atualizado_por: string | null
+          id: boolean
+          tolerancia_min: number
+        }
+        Insert: {
+          ativo?: boolean
+          atualizado_em?: string
+          atualizado_por?: string | null
+          id?: boolean
+          tolerancia_min?: number
+        }
+        Update: {
+          ativo?: boolean
+          atualizado_em?: string
+          atualizado_por?: string | null
+          id?: boolean
+          tolerancia_min?: number
+        }
+        Relationships: []
+      }
+      ncrm_treinamento: {
+        Row: {
+          concluido_em: string
+          item: string
+          usuario_id: string
+        }
+        Insert: {
+          concluido_em?: string
+          item: string
+          usuario_id: string
+        }
+        Update: {
+          concluido_em?: string
+          item?: string
+          usuario_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ncrm_treinamento_usuario_id_fkey"
+            columns: ["usuario_id"]
+            isOneToOne: false
+            referencedRelation: "usuarios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ncrm_treinamento_usuario_id_fkey"
+            columns: ["usuario_id"]
+            isOneToOne: false
+            referencedRelation: "v_painel_corretor"
+            referencedColumns: ["corretor_id"]
+          },
+          {
+            foreignKeyName: "ncrm_treinamento_usuario_id_fkey"
+            columns: ["usuario_id"]
+            isOneToOne: false
+            referencedRelation: "v_painel_socio"
+            referencedColumns: ["socio_id"]
+          },
+          {
+            foreignKeyName: "ncrm_treinamento_usuario_id_fkey"
+            columns: ["usuario_id"]
+            isOneToOne: false
+            referencedRelation: "vw_ranking_vgv"
+            referencedColumns: ["corretor_id"]
+          },
+        ]
+      }
+      ncrm_whatsapp_intencao: {
+        Row: {
+          aberto_em: string
+          confirmada_em: string | null
+          corretor_id: number | null
+          criado_em: string
+          expirada_em: string | null
+          id: number
+          negocio_id: number
+          origem: string
+          usuario_id: string | null
+        }
+        Insert: {
+          aberto_em?: string
+          confirmada_em?: string | null
+          corretor_id?: number | null
+          criado_em?: string
+          expirada_em?: string | null
+          id?: number
+          negocio_id: number
+          origem?: string
+          usuario_id?: string | null
+        }
+        Update: {
+          aberto_em?: string
+          confirmada_em?: string | null
+          corretor_id?: number | null
+          criado_em?: string
+          expirada_em?: string | null
+          id?: number
+          negocio_id?: number
+          origem?: string
+          usuario_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ncrm_whatsapp_intencao_negocio_id_fkey"
+            columns: ["negocio_id"]
+            isOneToOne: false
+            referencedRelation: "negocios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ncrm_whatsapp_intencao_negocio_id_fkey"
+            columns: ["negocio_id"]
+            isOneToOne: false
+            referencedRelation: "vw_erp_cards"
+            referencedColumns: ["negocio_id"]
+          },
+          {
+            foreignKeyName: "ncrm_whatsapp_intencao_negocio_id_fkey"
+            columns: ["negocio_id"]
+            isOneToOne: false
+            referencedRelation: "vw_erros_envio"
+            referencedColumns: ["negocio_id"]
+          },
+          {
+            foreignKeyName: "ncrm_whatsapp_intencao_negocio_id_fkey"
+            columns: ["negocio_id"]
+            isOneToOne: false
+            referencedRelation: "vw_escalonamento"
+            referencedColumns: ["negocio_id"]
+          },
+          {
+            foreignKeyName: "ncrm_whatsapp_intencao_negocio_id_fkey"
+            columns: ["negocio_id"]
+            isOneToOne: false
+            referencedRelation: "vw_negocios_kanban"
+            referencedColumns: ["negocio_id"]
+          },
+          {
+            foreignKeyName: "ncrm_whatsapp_intencao_negocio_id_fkey"
+            columns: ["negocio_id"]
+            isOneToOne: false
+            referencedRelation: "vw_sla_leads"
+            referencedColumns: ["negocio_id"]
+          },
+        ]
+      }
+      ncrm_workflow_config: {
+        Row: {
+          criado_em: string
+          criado_por: string | null
+          espera_apos_automacao_min: number
+          fds_operacional: boolean
+          id: number
+          janela_fim: string
+          janela_inicio: string
+          max_tentativas: number
+          publicado_em: string | null
+          status: string
+          timezone: string
+          versao: number
+          vigencia_fim: string | null
+          vigencia_inicio: string | null
+        }
+        Insert: {
+          criado_em?: string
+          criado_por?: string | null
+          espera_apos_automacao_min?: number
+          fds_operacional?: boolean
+          id?: never
+          janela_fim?: string
+          janela_inicio?: string
+          max_tentativas?: number
+          publicado_em?: string | null
+          status?: string
+          timezone?: string
+          versao: number
+          vigencia_fim?: string | null
+          vigencia_inicio?: string | null
+        }
+        Update: {
+          criado_em?: string
+          criado_por?: string | null
+          espera_apos_automacao_min?: number
+          fds_operacional?: boolean
+          id?: never
+          janela_fim?: string
+          janela_inicio?: string
+          max_tentativas?: number
+          publicado_em?: string | null
+          status?: string
+          timezone?: string
+          versao?: number
+          vigencia_fim?: string | null
+          vigencia_inicio?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ncrm_workflow_config_criado_por_fkey"
+            columns: ["criado_por"]
+            isOneToOne: false
+            referencedRelation: "usuarios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ncrm_workflow_config_criado_por_fkey"
+            columns: ["criado_por"]
+            isOneToOne: false
+            referencedRelation: "v_painel_corretor"
+            referencedColumns: ["corretor_id"]
+          },
+          {
+            foreignKeyName: "ncrm_workflow_config_criado_por_fkey"
+            columns: ["criado_por"]
+            isOneToOne: false
+            referencedRelation: "v_painel_socio"
+            referencedColumns: ["socio_id"]
+          },
+          {
+            foreignKeyName: "ncrm_workflow_config_criado_por_fkey"
+            columns: ["criado_por"]
+            isOneToOne: false
+            referencedRelation: "vw_ranking_vgv"
+            referencedColumns: ["corretor_id"]
+          },
+        ]
+      }
+      ncrm_workflow_passo: {
+        Row: {
+          canal_sugerido: string
+          config_id: number
+          id: number
+          intervalo_min: number
+          ordem: number
+          rotulo: string
+          texto_orientacao: string | null
+        }
+        Insert: {
+          canal_sugerido: string
+          config_id: number
+          id?: never
+          intervalo_min: number
+          ordem: number
+          rotulo: string
+          texto_orientacao?: string | null
+        }
+        Update: {
+          canal_sugerido?: string
+          config_id?: number
+          id?: never
+          intervalo_min?: number
+          ordem?: number
+          rotulo?: string
+          texto_orientacao?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ncrm_workflow_passo_config_id_fkey"
+            columns: ["config_id"]
+            isOneToOne: false
+            referencedRelation: "ncrm_workflow_config"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       negocio_estagio_historico: {
         Row: {
@@ -4016,6 +8834,13 @@ export type Database = {
             foreignKeyName: "negocios_empreendimento_id_fkey"
             columns: ["empreendimento_id"]
             isOneToOne: false
+            referencedRelation: "site_produtos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "negocios_empreendimento_id_fkey"
+            columns: ["empreendimento_id"]
+            isOneToOne: false
             referencedRelation: "v_catalogo_empreendimentos"
             referencedColumns: ["id"]
           },
@@ -4024,6 +8849,13 @@ export type Database = {
             columns: ["empreendimento_id"]
             isOneToOne: false
             referencedRelation: "vw_empreendimento_resumo"
+            referencedColumns: ["empreendimento_id"]
+          },
+          {
+            foreignKeyName: "negocios_empreendimento_id_fkey"
+            columns: ["empreendimento_id"]
+            isOneToOne: false
+            referencedRelation: "vw_produtos_catalogo"
             referencedColumns: ["empreendimento_id"]
           },
           {
@@ -4189,8 +9021,11 @@ export type Database = {
           created_at: string
           criado_por: string | null
           data_pagamento: string | null
+          data_prevista: string | null
           id: string
+          lancamento_id: string | null
           observacao: string | null
+          ordem: number
           papel: string
           status: string
           updated_at: string
@@ -4203,8 +9038,11 @@ export type Database = {
           created_at?: string
           criado_por?: string | null
           data_pagamento?: string | null
+          data_prevista?: string | null
           id?: string
+          lancamento_id?: string | null
           observacao?: string | null
+          ordem?: number
           papel: string
           status?: string
           updated_at?: string
@@ -4217,8 +9055,11 @@ export type Database = {
           created_at?: string
           criado_por?: string | null
           data_pagamento?: string | null
+          data_prevista?: string | null
           id?: string
+          lancamento_id?: string | null
           observacao?: string | null
+          ordem?: number
           papel?: string
           status?: string
           updated_at?: string
@@ -4297,6 +9138,13 @@ export type Database = {
             referencedColumns: ["corretor_id"]
           },
           {
+            foreignKeyName: "pagamentos_comissao_lancamento_id_fkey"
+            columns: ["lancamento_id"]
+            isOneToOne: false
+            referencedRelation: "lancamentos_caixa"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "pagamentos_comissao_venda_id_fkey"
             columns: ["venda_id"]
             isOneToOne: false
@@ -4311,6 +9159,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      parametros_operacao: {
+        Row: {
+          agenda: string
+          atualizado_em: string
+          chave: string
+          cron_job: string | null
+          descricao: string | null
+          grupo: string
+          rotulo: string
+        }
+        Insert: {
+          agenda: string
+          atualizado_em?: string
+          chave: string
+          cron_job?: string | null
+          descricao?: string | null
+          grupo: string
+          rotulo: string
+        }
+        Update: {
+          agenda?: string
+          atualizado_em?: string
+          chave?: string
+          cron_job?: string | null
+          descricao?: string | null
+          grupo?: string
+          rotulo?: string
+        }
+        Relationships: []
       }
       perf_eventos: {
         Row: {
@@ -4597,6 +9475,13 @@ export type Database = {
             foreignKeyName: "pipelines_empreendimento_id_fkey"
             columns: ["empreendimento_id"]
             isOneToOne: false
+            referencedRelation: "site_produtos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pipelines_empreendimento_id_fkey"
+            columns: ["empreendimento_id"]
+            isOneToOne: false
             referencedRelation: "v_catalogo_empreendimentos"
             referencedColumns: ["id"]
           },
@@ -4611,7 +9496,52 @@ export type Database = {
             foreignKeyName: "pipelines_empreendimento_id_fkey"
             columns: ["empreendimento_id"]
             isOneToOne: false
+            referencedRelation: "vw_produtos_catalogo"
+            referencedColumns: ["empreendimento_id"]
+          },
+          {
+            foreignKeyName: "pipelines_empreendimento_id_fkey"
+            columns: ["empreendimento_id"]
+            isOneToOne: false
             referencedRelation: "vw_produtos_publicos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      portal_emails: {
+        Row: {
+          assunto: string
+          captacao_id: string | null
+          corpo: string
+          criado_em: string
+          destinatario: string
+          enviado: boolean
+          id: number
+        }
+        Insert: {
+          assunto: string
+          captacao_id?: string | null
+          corpo: string
+          criado_em?: string
+          destinatario: string
+          enviado?: boolean
+          id?: never
+        }
+        Update: {
+          assunto?: string
+          captacao_id?: string | null
+          corpo?: string
+          criado_em?: string
+          destinatario?: string
+          enviado?: boolean
+          id?: never
+        }
+        Relationships: [
+          {
+            foreignKeyName: "portal_emails_captacao_id_fkey"
+            columns: ["captacao_id"]
+            isOneToOne: false
+            referencedRelation: "captacoes_portal"
             referencedColumns: ["id"]
           },
         ]
@@ -4655,23 +9585,50 @@ export type Database = {
         }
         Relationships: []
       }
+      presenca_diagnostico: {
+        Row: {
+          corretor_id: number | null
+          criado_em: string
+          id: number
+          ip: string | null
+          parametro_recebido: string | null
+        }
+        Insert: {
+          corretor_id?: number | null
+          criado_em?: string
+          id?: number
+          ip?: string | null
+          parametro_recebido?: string | null
+        }
+        Update: {
+          corretor_id?: number | null
+          criado_em?: string
+          id?: number
+          ip?: string | null
+          parametro_recebido?: string | null
+        }
+        Relationships: []
+      }
       presenca_estado: {
         Row: {
           aguardando_desde: string | null
           corretor_id: number
           prazo_em: string | null
+          proxima_tentativa_em: string | null
           ultima_confirmacao: string | null
         }
         Insert: {
           aguardando_desde?: string | null
           corretor_id: number
           prazo_em?: string | null
+          proxima_tentativa_em?: string | null
           ultima_confirmacao?: string | null
         }
         Update: {
           aguardando_desde?: string | null
           corretor_id?: number
           prazo_em?: string | null
+          proxima_tentativa_em?: string | null
           ultima_confirmacao?: string | null
         }
         Relationships: [
@@ -4726,6 +9683,13 @@ export type Database = {
             foreignKeyName: "produto_favoritos_empreendimento_id_fkey"
             columns: ["empreendimento_id"]
             isOneToOne: false
+            referencedRelation: "site_produtos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "produto_favoritos_empreendimento_id_fkey"
+            columns: ["empreendimento_id"]
+            isOneToOne: false
             referencedRelation: "v_catalogo_empreendimentos"
             referencedColumns: ["id"]
           },
@@ -4740,6 +9704,13 @@ export type Database = {
             foreignKeyName: "produto_favoritos_empreendimento_id_fkey"
             columns: ["empreendimento_id"]
             isOneToOne: false
+            referencedRelation: "vw_produtos_catalogo"
+            referencedColumns: ["empreendimento_id"]
+          },
+          {
+            foreignKeyName: "produto_favoritos_empreendimento_id_fkey"
+            columns: ["empreendimento_id"]
+            isOneToOne: false
             referencedRelation: "vw_produtos_publicos"
             referencedColumns: ["id"]
           },
@@ -4748,23 +9719,72 @@ export type Database = {
       produtos: {
         Row: {
           ativo: boolean
+          atualizado_em: string
           criado_em: string
+          empreendimento_id: string | null
           id: number
           nome: string
         }
         Insert: {
           ativo?: boolean
+          atualizado_em?: string
           criado_em?: string
+          empreendimento_id?: string | null
           id?: never
           nome: string
         }
         Update: {
           ativo?: boolean
+          atualizado_em?: string
           criado_em?: string
+          empreendimento_id?: string | null
           id?: never
           nome?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "produtos_empreendimento_id_fkey"
+            columns: ["empreendimento_id"]
+            isOneToOne: false
+            referencedRelation: "empreendimentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "produtos_empreendimento_id_fkey"
+            columns: ["empreendimento_id"]
+            isOneToOne: false
+            referencedRelation: "site_produtos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "produtos_empreendimento_id_fkey"
+            columns: ["empreendimento_id"]
+            isOneToOne: false
+            referencedRelation: "v_catalogo_empreendimentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "produtos_empreendimento_id_fkey"
+            columns: ["empreendimento_id"]
+            isOneToOne: false
+            referencedRelation: "vw_empreendimento_resumo"
+            referencedColumns: ["empreendimento_id"]
+          },
+          {
+            foreignKeyName: "produtos_empreendimento_id_fkey"
+            columns: ["empreendimento_id"]
+            isOneToOne: false
+            referencedRelation: "vw_produtos_catalogo"
+            referencedColumns: ["empreendimento_id"]
+          },
+          {
+            foreignKeyName: "produtos_empreendimento_id_fkey"
+            columns: ["empreendimento_id"]
+            isOneToOne: false
+            referencedRelation: "vw_produtos_publicos"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       projeto_anexos: {
         Row: {
@@ -5143,6 +10163,85 @@ export type Database = {
           },
         ]
       }
+      site_leads: {
+        Row: {
+          atendido: boolean
+          criado_em: string
+          empreendimento_id: string | null
+          empreendimento_nome: string | null
+          id: string
+          nome: string
+          origem: string
+          preferencia_horario: string | null
+          telefone: string
+        }
+        Insert: {
+          atendido?: boolean
+          criado_em?: string
+          empreendimento_id?: string | null
+          empreendimento_nome?: string | null
+          id?: string
+          nome: string
+          origem?: string
+          preferencia_horario?: string | null
+          telefone: string
+        }
+        Update: {
+          atendido?: boolean
+          criado_em?: string
+          empreendimento_id?: string | null
+          empreendimento_nome?: string | null
+          id?: string
+          nome?: string
+          origem?: string
+          preferencia_horario?: string | null
+          telefone?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "site_leads_empreendimento_id_fkey"
+            columns: ["empreendimento_id"]
+            isOneToOne: false
+            referencedRelation: "empreendimentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "site_leads_empreendimento_id_fkey"
+            columns: ["empreendimento_id"]
+            isOneToOne: false
+            referencedRelation: "site_produtos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "site_leads_empreendimento_id_fkey"
+            columns: ["empreendimento_id"]
+            isOneToOne: false
+            referencedRelation: "v_catalogo_empreendimentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "site_leads_empreendimento_id_fkey"
+            columns: ["empreendimento_id"]
+            isOneToOne: false
+            referencedRelation: "vw_empreendimento_resumo"
+            referencedColumns: ["empreendimento_id"]
+          },
+          {
+            foreignKeyName: "site_leads_empreendimento_id_fkey"
+            columns: ["empreendimento_id"]
+            isOneToOne: false
+            referencedRelation: "vw_produtos_catalogo"
+            referencedColumns: ["empreendimento_id"]
+          },
+          {
+            foreignKeyName: "site_leads_empreendimento_id_fkey"
+            columns: ["empreendimento_id"]
+            isOneToOne: false
+            referencedRelation: "vw_produtos_publicos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sla_msg_cache: {
         Row: {
           atualizado_em: string | null
@@ -5300,6 +10399,13 @@ export type Database = {
             foreignKeyName: "unidades_empreendimento_id_fkey"
             columns: ["empreendimento_id"]
             isOneToOne: false
+            referencedRelation: "site_produtos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "unidades_empreendimento_id_fkey"
+            columns: ["empreendimento_id"]
+            isOneToOne: false
             referencedRelation: "v_catalogo_empreendimentos"
             referencedColumns: ["id"]
           },
@@ -5308,6 +10414,13 @@ export type Database = {
             columns: ["empreendimento_id"]
             isOneToOne: false
             referencedRelation: "vw_empreendimento_resumo"
+            referencedColumns: ["empreendimento_id"]
+          },
+          {
+            foreignKeyName: "unidades_empreendimento_id_fkey"
+            columns: ["empreendimento_id"]
+            isOneToOne: false
+            referencedRelation: "vw_produtos_catalogo"
             referencedColumns: ["empreendimento_id"]
           },
           {
@@ -6194,6 +11307,13 @@ export type Database = {
             foreignKeyName: "vendas_empreendimento_id_fkey"
             columns: ["empreendimento_id"]
             isOneToOne: false
+            referencedRelation: "site_produtos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendas_empreendimento_id_fkey"
+            columns: ["empreendimento_id"]
+            isOneToOne: false
             referencedRelation: "v_catalogo_empreendimentos"
             referencedColumns: ["id"]
           },
@@ -6202,6 +11322,13 @@ export type Database = {
             columns: ["empreendimento_id"]
             isOneToOne: false
             referencedRelation: "vw_empreendimento_resumo"
+            referencedColumns: ["empreendimento_id"]
+          },
+          {
+            foreignKeyName: "vendas_empreendimento_id_fkey"
+            columns: ["empreendimento_id"]
+            isOneToOne: false
+            referencedRelation: "vw_produtos_catalogo"
             referencedColumns: ["empreendimento_id"]
           },
           {
@@ -6244,6 +11371,9 @@ export type Database = {
           observacoes: string | null
           participantes: string | null
           produto: string | null
+          resultado: string | null
+          resultado_em: string | null
+          resultado_por: string | null
           status: string
           unidade: string | null
         }
@@ -6270,6 +11400,9 @@ export type Database = {
           observacoes?: string | null
           participantes?: string | null
           produto?: string | null
+          resultado?: string | null
+          resultado_em?: string | null
+          resultado_por?: string | null
           status?: string
           unidade?: string | null
         }
@@ -6296,6 +11429,9 @@ export type Database = {
           observacoes?: string | null
           participantes?: string | null
           produto?: string | null
+          resultado?: string | null
+          resultado_em?: string | null
+          resultado_por?: string | null
           status?: string
           unidade?: string | null
         }
@@ -6332,6 +11468,13 @@ export type Database = {
             foreignKeyName: "visitas_empreendimento_id_fkey"
             columns: ["empreendimento_id"]
             isOneToOne: false
+            referencedRelation: "site_produtos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "visitas_empreendimento_id_fkey"
+            columns: ["empreendimento_id"]
+            isOneToOne: false
             referencedRelation: "v_catalogo_empreendimentos"
             referencedColumns: ["id"]
           },
@@ -6340,6 +11483,13 @@ export type Database = {
             columns: ["empreendimento_id"]
             isOneToOne: false
             referencedRelation: "vw_empreendimento_resumo"
+            referencedColumns: ["empreendimento_id"]
+          },
+          {
+            foreignKeyName: "visitas_empreendimento_id_fkey"
+            columns: ["empreendimento_id"]
+            isOneToOne: false
+            referencedRelation: "vw_produtos_catalogo"
             referencedColumns: ["empreendimento_id"]
           },
           {
@@ -6504,6 +11654,33 @@ export type Database = {
           lead_id?: number
           salvas?: number | null
           tentado_em?: string
+        }
+        Relationships: []
+      }
+      wa_conhecido: {
+        Row: {
+          corretor_id: number
+          fonte: string
+          nome_no_wpp: string | null
+          telefone: string
+          ultima_troca: string | null
+          visto_em: string
+        }
+        Insert: {
+          corretor_id: number
+          fonte: string
+          nome_no_wpp?: string | null
+          telefone: string
+          ultima_troca?: string | null
+          visto_em?: string
+        }
+        Update: {
+          corretor_id?: number
+          fonte?: string
+          nome_no_wpp?: string | null
+          telefone?: string
+          ultima_troca?: string | null
+          visto_em?: string
         }
         Relationships: []
       }
@@ -6716,6 +11893,9 @@ export type Database = {
           status_em: string | null
           tipo: string
           transcricao: string | null
+          transcricao_erro: string | null
+          transcricao_tentada_em: string | null
+          transcricao_tentativas: number
           transcrito_em: string | null
           wa_message_id: string
         }
@@ -6736,6 +11916,9 @@ export type Database = {
           status_em?: string | null
           tipo: string
           transcricao?: string | null
+          transcricao_erro?: string | null
+          transcricao_tentada_em?: string | null
+          transcricao_tentativas?: number
           transcrito_em?: string | null
           wa_message_id: string
         }
@@ -6756,6 +11939,9 @@ export type Database = {
           status_em?: string | null
           tipo?: string
           transcricao?: string | null
+          transcricao_erro?: string | null
+          transcricao_tentada_em?: string | null
+          transcricao_tentativas?: number
           transcrito_em?: string | null
           wa_message_id?: string
         }
@@ -6797,8 +11983,232 @@ export type Database = {
         }
         Relationships: []
       }
+      wa_numero_veredito: {
+        Row: {
+          fonte: string
+          telefone: string
+          tem_whatsapp: boolean
+          verificado_em: string
+        }
+        Insert: {
+          fonte?: string
+          telefone: string
+          tem_whatsapp: boolean
+          verificado_em?: string
+        }
+        Update: {
+          fonte?: string
+          telefone?: string
+          tem_whatsapp?: boolean
+          verificado_em?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
+      f2_cards_sem_historico: {
+        Row: {
+          cliente: string | null
+          corretor: string | null
+          ja_tentou: boolean | null
+          lead_id: number | null
+          momento_codigo: string | null
+          msgs_no_banco: number | null
+          telefone: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "f2_lead_momento_codigo_fkey"
+            columns: ["momento_codigo"]
+            isOneToOne: false
+            referencedRelation: "f2_momento_config"
+            referencedColumns: ["codigo"]
+          },
+          {
+            foreignKeyName: "negocios_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "negocios_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "vw_erros_envio"
+            referencedColumns: ["lead_id"]
+          },
+          {
+            foreignKeyName: "negocios_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "vw_negocios_kanban"
+            referencedColumns: ["lead_id"]
+          },
+        ]
+      }
+      f2_carga_resumo: {
+        Row: {
+          leads: number | null
+          lote: string | null
+          primeiro_agendado: string | null
+          primeiro_feito: string | null
+          situacao: string | null
+          ultimo_agendado: string | null
+          ultimo_feito: string | null
+        }
+        Relationships: []
+      }
+      f2_sara_pontos_cegos: {
+        Row: {
+          alertas: string | null
+          card_id: string | null
+          cliente: string | null
+          corretor: string | null
+          criado_em: string | null
+          mensagens: number | null
+          momento_codigo: string | null
+        }
+        Insert: {
+          alertas?: never
+          card_id?: string | null
+          cliente?: string | null
+          corretor?: string | null
+          criado_em?: string | null
+          mensagens?: never
+          momento_codigo?: string | null
+        }
+        Update: {
+          alertas?: never
+          card_id?: string | null
+          cliente?: string | null
+          corretor?: string | null
+          criado_em?: string | null
+          mensagens?: never
+          momento_codigo?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "f2_lead_momento_codigo_fkey"
+            columns: ["momento_codigo"]
+            isOneToOne: false
+            referencedRelation: "f2_momento_config"
+            referencedColumns: ["codigo"]
+          },
+        ]
+      }
+      leads_duplicados: {
+        Row: {
+          corretores: number[] | null
+          donos_diferentes: boolean | null
+          lead_ids: number[] | null
+          primeiro: string | null
+          qtd: number | null
+          telefone_normalizado: string | null
+          ultimo: string | null
+        }
+        Relationships: []
+      }
+      site_produtos: {
+        Row: {
+          area_util: number | null
+          bairro: string | null
+          banheiros: number | null
+          capa_path: string | null
+          condominio_valor: number | null
+          descricao: string | null
+          destaque: boolean | null
+          diferenciais: string[] | null
+          dormitorios: number | null
+          endereco: string | null
+          entrega: string | null
+          finalidade: string | null
+          fotos: Json | null
+          id: string | null
+          iptu: number | null
+          latitude: number | null
+          lazer: string[] | null
+          longitude: number | null
+          nome: string | null
+          ordem: number | null
+          preco: number | null
+          preco_min: number | null
+          slogan: string | null
+          slug: string | null
+          status: Database["public"]["Enums"]["status_empreend"] | null
+          suites: number | null
+          unidades_disponiveis: number | null
+          vagas: number | null
+        }
+        Insert: {
+          area_util?: number | null
+          bairro?: string | null
+          banheiros?: number | null
+          capa_path?: never
+          condominio_valor?: number | null
+          descricao?: string | null
+          destaque?: boolean | null
+          diferenciais?: string[] | null
+          dormitorios?: number | null
+          endereco?: string | null
+          entrega?: string | null
+          finalidade?: string | null
+          fotos?: never
+          id?: string | null
+          iptu?: number | null
+          latitude?: number | null
+          lazer?: string[] | null
+          longitude?: number | null
+          nome?: string | null
+          ordem?: number | null
+          preco?: number | null
+          preco_min?: never
+          slogan?: string | null
+          slug?: string | null
+          status?: Database["public"]["Enums"]["status_empreend"] | null
+          suites?: number | null
+          unidades_disponiveis?: never
+          vagas?: number | null
+        }
+        Update: {
+          area_util?: number | null
+          bairro?: string | null
+          banheiros?: number | null
+          capa_path?: never
+          condominio_valor?: number | null
+          descricao?: string | null
+          destaque?: boolean | null
+          diferenciais?: string[] | null
+          dormitorios?: number | null
+          endereco?: string | null
+          entrega?: string | null
+          finalidade?: string | null
+          fotos?: never
+          id?: string | null
+          iptu?: number | null
+          latitude?: number | null
+          lazer?: string[] | null
+          longitude?: number | null
+          nome?: string | null
+          ordem?: number | null
+          preco?: number | null
+          preco_min?: never
+          slogan?: string | null
+          slug?: string | null
+          status?: Database["public"]["Enums"]["status_empreend"] | null
+          suites?: number | null
+          unidades_disponiveis?: never
+          vagas?: number | null
+        }
+        Relationships: []
+      }
+      telefones_sem_whatsapp: {
+        Row: {
+          primeira_prova: string | null
+          ult8: string | null
+        }
+        Relationships: []
+      }
       v_balanco_caixa: {
         Row: {
           aporte_socios: number | null
@@ -7172,6 +12582,27 @@ export type Database = {
         }
         Relationships: []
       }
+      vw_produtos_catalogo: {
+        Row: {
+          bairro_normalizado: string | null
+          bairro_original: string | null
+          cidade: string | null
+          construtora: string | null
+          empreendimento_id: string | null
+          empreendimento_nome: string | null
+          entrega: string | null
+          preco: number | null
+          produto_ativo: boolean | null
+          produto_id: number | null
+          produto_nome: string | null
+          publicado: boolean | null
+          qtd_abordagens: number | null
+          qtd_unidades: number | null
+          status: string | null
+          vinculo: string | null
+        }
+        Relationships: []
+      }
       vw_produtos_publicos: {
         Row: {
           area_max: number | null
@@ -7332,6 +12763,10 @@ export type Database = {
         }
         Returns: Json
       }
+      agente_pedir: {
+        Args: { p_agente?: string; p_telefone: string }
+        Returns: Json
+      }
       aprovar_descarte: { Args: { p_negocio: number }; Returns: Json }
       aprovar_empreendimento: {
         Args: { p_aprovar: boolean; p_id: string; p_motivo?: string }
@@ -7386,6 +12821,7 @@ export type Database = {
         }
         Returns: Json
       }
+      automacao_explicar: { Args: { p_id: number }; Returns: Json }
       automacao_tags: { Args: never; Returns: string[] }
       calc_comissao: {
         Args: {
@@ -7471,6 +12907,10 @@ export type Database = {
           status: number
         }[]
       }
+      dapi_sync_corretor: {
+        Args: { p_corretor_id: number; p_minutos?: number }
+        Returns: Json
+      }
       dapi_sync_instancias: {
         Args: never
         Returns: {
@@ -7511,6 +12951,17 @@ export type Database = {
         }
         Returns: undefined
       }
+      distribuicao_exige_apto: {
+        Args: { p_auto: number; p_bloco: string }
+        Returns: boolean
+      }
+      distribuicao_marcados: {
+        Args: { p_auto: number; p_bloco: string }
+        Returns: {
+          corretor_id: number
+          peso: number
+        }[]
+      }
       distribuicao_saude: { Args: never; Returns: Json }
       distribuir_leads_orfaos: { Args: never; Returns: number }
       enviar_abordagem_lead: { Args: { p_lead: number }; Returns: Json }
@@ -7536,6 +12987,7 @@ export type Database = {
         Args: { p_pausada: boolean }
         Returns: undefined
       }
+      escritorio_ip_autoaprender: { Args: never; Returns: Json }
       excluir_instancia: { Args: { p_id: number }; Returns: Json }
       excluir_venda_esteira: {
         Args: {
@@ -7546,12 +12998,451 @@ export type Database = {
         }
         Returns: Json
       }
+      f2_abordagens_vencidas: {
+        Args: never
+        Returns: {
+          card: string
+          corretor_id: number
+          corretor_nome: string
+          nome: string
+          passadas: number
+          venceu_em: string
+        }[]
+      }
+      f2_admin: { Args: never; Returns: boolean }
+      f2_alertar_lead_rodado: { Args: never; Returns: Json }
+      f2_aquario_buscar: {
+        Args: { p_busca?: string; p_limite?: number }
+        Returns: {
+          criado_em: string
+          disponiveis: number
+          lead_id: number
+          negocio_id: number
+          nome: string
+          telefone: string
+        }[]
+      }
+      f2_atualizar_momento: {
+        Args: {
+          p_id: string
+          p_momento_codigo: string
+          p_observacao?: string
+          p_prazo_combinado?: string
+          p_versao: number
+        }
+        Returns: Json
+      }
+      f2_cadencia_proximo_prazo: {
+        Args: { p_de: string; p_tentativa: number }
+        Returns: string
+      }
+      f2_carga_agendar:
+        | {
+            Args: { p_ate?: string; p_de?: string; p_lote: string }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_ate?: string
+              p_de?: string
+              p_intervalo_min?: number
+              p_lote: string
+            }
+            Returns: Json
+          }
+      f2_carga_gravar_veredito: {
+        Args: { p_lote: string; p_vereditos: Json }
+        Returns: Json
+      }
+      f2_carga_numeros_para_checar: {
+        Args: { p_limite?: number; p_lote: string }
+        Returns: {
+          telefone: string
+        }[]
+      }
+      f2_carga_tick: { Args: { p_teto?: number }; Returns: Json }
+      f2_carteira_antiga: {
+        Args: { p_busca?: string; p_limite?: number }
+        Returns: {
+          corretor_id: number
+          corretor_nome: string
+          criado_em: string
+          lead_id: number
+          mensagens: number
+          negocio_id: number
+          nome: string
+          telefone: string
+          ultima_mensagem_em: string
+        }[]
+      }
+      f2_cliente_ja_respondeu: {
+        Args: { p_conversa_id: string }
+        Returns: boolean
+      }
+      f2_confiabilidade_do_historico: {
+        Args: { p_card: string }
+        Returns: Json
+      }
+      f2_configurar_etapa: {
+        Args: {
+          p_ajuda: string
+          p_ativo?: boolean
+          p_codigo: string
+          p_ordem: number
+          p_rotulo: string
+        }
+        Returns: Json
+      }
+      f2_configurar_momento: {
+        Args: {
+          p_acao_rotulo: string
+          p_ativo?: boolean
+          p_codigo: string
+          p_descricao: string
+          p_etapa: string
+          p_exige_dapi?: boolean
+          p_ordem: number
+          p_prazo_minutos: number
+          p_rotulo: string
+        }
+        Returns: Json
+      }
+      f2_configurar_operacao: {
+        Args: {
+          p_feedback_visita_min: number
+          p_horario_fim: string
+          p_horario_inicio: string
+          p_notificacao_urgente_min: number
+          p_peso_acoes_prazo: number
+          p_peso_coerencia_sara: number
+          p_peso_feedback_visita: number
+          p_peso_presenca_dapi: number
+          p_peso_primeira_abordagem: number
+          p_presenca_ttl_min: number
+          p_primeira_abordagem_min: number
+          p_suspensao_nivel_1_h: number
+          p_suspensao_nivel_2_h: number
+          p_suspensao_nivel_3_h: number
+        }
+        Returns: Json
+      }
+      f2_confirmar_acao: {
+        Args: {
+          p_fonte: string
+          p_id: string
+          p_observacao?: string
+          p_versao: number
+        }
+        Returns: Json
+      }
+      f2_conversa_do_card: { Args: { p_card: string }; Returns: string }
+      f2_corretor_atual: { Args: never; Returns: number }
+      f2_corretores_com_historico: {
+        Args: { p_telefone: string }
+        Returns: number[]
+      }
+      f2_descartar_lead: {
+        Args: {
+          p_detalhe?: string
+          p_id: string
+          p_motivo: string
+          p_versao: number
+        }
+        Returns: Json
+      }
+      f2_entrada_direta: {
+        Args: { p_etapa?: string; p_negocio_id: number }
+        Returns: string
+      }
+      f2_entrada_garantida: {
+        Args: {
+          p_auto: number
+          p_bloco: string
+          p_corretor_id: number
+          p_etapa: string
+          p_lead: Json
+          p_lead_id: number
+          p_negocio_id: number
+          p_nome: string
+          p_pipeline_id: number
+          p_stage_id: number
+        }
+        Returns: Json
+      }
+      f2_entrada_por_distribuicao: {
+        Args: { p_limite?: number }
+        Returns: Json
+      }
+      f2_espelhar_visita_na_agenda: {
+        Args: { p_visita_id: string }
+        Returns: undefined
+      }
+      f2_gerente_ocupado: {
+        Args: {
+          p_fim?: string
+          p_gerente_id: number
+          p_ignorar_visita?: string
+          p_inicio: string
+        }
+        Returns: boolean
+      }
+      f2_importar_negocio: { Args: { p_negocio_id: number }; Returns: string }
+      f2_instancia_por_lead: {
+        Args: never
+        Returns: {
+          funil_lead_id: string
+          instancia_id: string
+          rotulo: string
+          status: string
+          telefone: string
+          ultima_mensagem_em: string
+        }[]
+      }
+      f2_ja_falei_com_esse: {
+        Args: { p_detalhe?: string; p_negocio_id: number }
+        Returns: Json
+      }
+      f2_listar_aquario: {
+        Args: never
+        Returns: {
+          corretor_nome: string
+          momento: string
+          negocio_id: number
+          nome: string
+        }[]
+      }
+      f2_migrar_lote: {
+        Args: { p_dry_run?: boolean; p_grupo: string; p_limite?: number }
+        Returns: Json
+      }
+      f2_notificacoes_sincronizar: { Args: never; Returns: Json }
+      f2_passar_lead_nao_abordado: {
+        Args: { p_simular?: boolean }
+        Returns: Json
+      }
+      f2_pescado_promover_respondidos: { Args: never; Returns: Json }
+      f2_pescar_negocio: {
+        Args: { p_negocio_id: number; p_substituir_id?: string }
+        Returns: Json
+      }
+      f2_pipeline_id: { Args: never; Returns: number }
+      f2_pode_operar_lead: {
+        Args: { p_funil_lead_id: string }
+        Returns: boolean
+      }
+      f2_prazo_de_abordagem: { Args: { p_desde: string }; Returns: string }
+      f2_primeiro_bloco_corretor: {
+        Args: { p_conversa_id: string }
+        Returns: {
+          conteudo: string
+          enviado_em: string
+          ordem: number
+          tipo: string
+        }[]
+      }
+      f2_proximo_corretor_da_fila: { Args: never; Returns: number }
+      f2_salvar_negociacao: {
+        Args: {
+          p_etapa?: string
+          p_id: string
+          p_lead_id: string
+          p_observacao?: string
+          p_titulo: string
+          p_valor?: number
+        }
+        Returns: Json
+      }
+      f2_salvar_nota: {
+        Args: { p_lead_id: string; p_texto: string }
+        Returns: Json
+      }
+      f2_salvar_visita: {
+        Args: {
+          p_com_gerente?: boolean
+          p_empreendimento_id?: string
+          p_fim_em?: string
+          p_gerente_id?: number
+          p_id: string
+          p_imovel: string
+          p_inicio_em: string
+          p_lead_id: string
+          p_observacao?: string
+          p_status?: string
+          p_unidade?: string
+        }
+        Returns: Json
+      }
+      f2_sara_aplicar_leitura: {
+        Args: {
+          p_card: string
+          p_confianca: number
+          p_modelo: string
+          p_momento: string
+          p_retorno: string
+          p_sinais: Json
+          p_trecho: string
+        }
+        Returns: Json
+      }
+      f2_sara_candidatos_interpretacao: {
+        Args: { p_card?: string; p_limite?: number }
+        Returns: {
+          corretor_nome: string
+          id: string
+          momento_codigo: string
+          nome: string
+        }[]
+      }
+      f2_sara_conversa_do_card: {
+        Args: { p_card: string; p_limite?: number }
+        Returns: {
+          quando: string
+          quem: string
+          texto: string
+        }[]
+      }
+      f2_sara_elegiveis: {
+        Args: { p_lote?: number }
+        Returns: {
+          acao_codigo: string
+          cadencia_passo: number
+          corte_conversa_em: string
+          etapa: string
+          funil_lead_id: string
+          historico_completo: boolean
+          lead_id: number
+          momento_codigo: string
+          origem_negocio_id: number
+          ultima_mensagem_em: string
+          ultima_reavaliacao_sara_em: string
+          versao: number
+        }[]
+      }
+      f2_sara_ler_conversa: { Args: { p_card: string }; Returns: Json }
+      f2_sara_marcar_lido: {
+        Args: { p_card: string; p_resumo?: string }
+        Returns: undefined
+      }
+      f2_sara_processar_fila: { Args: { p_limite?: number }; Returns: Json }
+      f2_sara_registrar_analise: {
+        Args: {
+          p_acao: string
+          p_card: string
+          p_confianca: number
+          p_de: string
+          p_hash: string
+          p_msgs: number
+          p_negocio: number
+          p_para: string
+          p_prova: Json
+          p_resumo: string
+          p_versao: number
+        }
+        Returns: undefined
+      }
+      f2_sara_registrar_classificacao: {
+        Args: {
+          p_confianca?: number
+          p_context_hash: string
+          p_evidencias?: Json
+          p_funil_lead_id: string
+          p_mensagens?: number
+          p_momento_codigo?: string
+          p_origem: string
+          p_prazo_sugerido?: string
+          p_resumo?: string
+          p_status: string
+          p_versao: number
+        }
+        Returns: Json
+      }
+      f2_sara_resgatar_atrasados: { Args: never; Returns: Json }
+      f2_sara_resgatar_primeira_abordagem: { Args: never; Returns: Json }
+      f2_sara_sugerir: {
+        Args: {
+          p_confianca: number
+          p_context_hash: string
+          p_data_retomada?: string
+          p_evidencia?: Json
+          p_funil_lead_id: string
+          p_mensagens?: number
+          p_momento: string
+          p_resumo: string
+          p_versao: number
+        }
+        Returns: Json
+      }
+      f2_sara_tick: { Args: never; Returns: undefined }
+      f2_sara_varredura: { Args: { p_limite?: number }; Returns: Json }
+      f2_sem_prazo: { Args: never; Returns: string }
+      f2_soltar_agendados: { Args: never; Returns: Json }
+      f2_soltar_represado: { Args: never; Returns: Json }
+      f2_soma_dias_uteis: {
+        Args: { p_de: string; p_dias: number }
+        Returns: string
+      }
+      f2_tentativas_de_contato: {
+        Args: { p_telefone: string }
+        Returns: {
+          tentativas: number
+          ultima_em: string
+        }[]
+      }
+      f2_tentativas_desde_ultima_resposta: {
+        Args: { p_conversa_id: string }
+        Returns: number
+      }
+      f2_trazer_lead_antigo: {
+        Args: { p_etapa: string; p_lead_id: number; p_momento: string }
+        Returns: Json
+      }
       ficha_publica_enviar: {
         Args: { p_dados: Json; p_token: string }
         Returns: Json
       }
       ficha_publica_obter: { Args: { p_token: string }; Returns: Json }
       fmt_brl_compact: { Args: { v: number }; Returns: string }
+      funil_abordou: { Args: { p_card: string }; Returns: boolean }
+      funil_aplicar_sara: {
+        Args: { p_lote?: number; p_simular?: boolean }
+        Returns: Json
+      }
+      funil_cascata_tick: { Args: { p_simular?: boolean }; Returns: Json }
+      funil_motor_ligar: { Args: { p_ativo: boolean }; Returns: Json }
+      funil_mover: {
+        Args: {
+          p_ajusta_contador?: boolean
+          p_card: string
+          p_corretor?: number
+          p_evidencia?: Json
+          p_momento?: string
+          p_motivo?: string
+          p_origem?: string
+          p_versao?: number
+        }
+        Returns: Json
+      }
+      funil_regra_candidatos: {
+        Args: { p_regra: number }
+        Returns: {
+          card: string
+          corretor_id: number
+          corretor_nome: string
+          lead_id: number
+          momento_codigo: string
+          nome: string
+          telefone: string
+          tentativas: number
+        }[]
+      }
+      funil_regra_excluir: { Args: { p_id: number }; Returns: Json }
+      funil_regra_ler: { Args: never; Returns: Json }
+      funil_regra_previa: { Args: { p_id: number }; Returns: Json }
+      funil_regra_salvar: { Args: { p_regra: Json }; Returns: Json }
+      funil_tick: {
+        Args: { p_lote?: number; p_simular?: boolean }
+        Returns: Json
+      }
       gerar_comissoes: { Args: { p_venda: string }; Returns: Json }
       gerente_conflitos: {
         Args: {
@@ -7693,6 +13584,7 @@ export type Database = {
       instancias_vincular_corretores: { Args: never; Returns: number }
       is_admin: { Args: never; Returns: boolean }
       is_admin_exec: { Args: never; Returns: boolean }
+      is_equipe: { Args: never; Returns: boolean }
       lead_trajetoria: { Args: { p_lead: number }; Returns: Json }
       lead_vincular_wa: { Args: { p_lead_id: number }; Returns: string }
       listar_aquario_leads: { Args: never; Returns: Json }
@@ -7723,6 +13615,18 @@ export type Database = {
           p_lead: Json
           p_lead_id: number
           p_neg_id: number
+          p_nome: string
+        }
+        Returns: Json
+      }
+      motor_agente: {
+        Args: {
+          p_agente_id: number
+          p_auto: number
+          p_bloco: string
+          p_funcao: string
+          p_lead: Json
+          p_lead_id: number
           p_nome: string
         }
         Returns: Json
@@ -7776,6 +13680,13 @@ export type Database = {
         }
         Returns: undefined
       }
+      motor_evento_disparar: {
+        Args: { p_lead: Json; p_momento?: string; p_trigger: string }
+        Returns: number
+      }
+      motor_evento_mensagem: { Args: { p_limite?: number }; Returns: Json }
+      motor_evento_prazo: { Args: { p_limite?: number }; Returns: Json }
+      motor_evento_retomar: { Args: { p_limite?: number }; Returns: Json }
       motor_execucoes_recentes: { Args: never; Returns: Json }
       motor_fone_br: { Args: { p: string }; Returns: string }
       motor_logs: {
@@ -7813,6 +13724,24 @@ export type Database = {
         Returns: undefined
       }
       motor_processar_fila: { Args: never; Returns: number }
+      motor_proximo_sequencial: {
+        Args: { p_auto: number; p_bloco: string }
+        Returns: number
+      }
+      motor_proximo_sequencial_exceto:
+        | {
+            Args: { p_auto: number; p_bloco: string; p_excluir: number[] }
+            Returns: number
+          }
+        | {
+            Args: {
+              p_auto: number
+              p_bloco: string
+              p_excluir: number[]
+              p_exclusao_obrigatoria?: boolean
+            }
+            Returns: number
+          }
       motor_resolve_valor: {
         Args: { p_lead: Json; p_raw: string }
         Returns: string
@@ -7859,11 +13788,499 @@ export type Database = {
         Args: { p_motivo?: string; p_negocio_id: number; p_stage_id: number }
         Returns: Json
       }
-      ncrm_distribuir_lead_novo: {
-        Args: { p_negocio_id: number }
+      ncrm_abordagem_humana_definir: {
+        Args: { p_ativo: boolean; p_confirmacao: string; p_corretor_id: number }
         Returns: Json
       }
+      ncrm_abordagem_humana_listar: { Args: never; Returns: Json }
+      ncrm_admin_status: { Args: never; Returns: Json }
+      ncrm_adocao_painel: { Args: { p_dias?: number }; Returns: Json }
+      ncrm_agenda_corretor: {
+        Args: { p_data?: string; p_periodo?: string }
+        Returns: Json
+      }
+      ncrm_agendar_visita_e_encaminhar: {
+        Args: {
+          p_com_gerente: boolean
+          p_data: string
+          p_empreendimento_id: string
+          p_gerente_id: number
+          p_hora_inicio: string
+          p_idem: string
+          p_lead_id: number
+          p_negocio_id: number
+          p_produto: string
+          p_unidade?: string
+          p_versao: number
+        }
+        Returns: Json
+      }
+      ncrm_ativar_ingest: {
+        Args: { p_ativo_desde?: string; p_confirmar?: boolean }
+        Returns: Json
+      }
+      ncrm_atualizar_momento: {
+        Args: {
+          p_momento_codigo: string
+          p_negocio_id: number
+          p_observacao?: string
+          p_versao: number
+        }
+        Returns: Json
+      }
+      ncrm_bloqueia_abordagem_automatica: {
+        Args: { p_lead_id: number }
+        Returns: boolean
+      }
+      ncrm_cadencia_config_get: { Args: never; Returns: Json }
+      ncrm_cadencia_config_set: { Args: { p: Json }; Returns: Json }
+      ncrm_concluir_acao: {
+        Args: {
+          p_idem: string
+          p_negocio_id: number
+          p_obs: string
+          p_proxima_em: string
+          p_proxima_tipo: string
+          p_proxima_titulo: string
+          p_resultado: string
+          p_versao: number
+        }
+        Returns: Json
+      }
+      ncrm_conduta_oficial: {
+        Args: {
+          p_etapa: string
+          p_proxima_em: string
+          p_proxima_tipo: string
+          p_proxima_titulo: string
+          p_respondeu: boolean
+          p_resposta_pendente: boolean
+          p_tentativas: number
+        }
+        Returns: Json
+      }
+      ncrm_conduta_oficial_v4: {
+        Args: {
+          p_etapa: string
+          p_momento_codigo: string
+          p_proxima_em: string
+          p_respondeu: boolean
+          p_resposta_pendente: boolean
+          p_tentativas: number
+        }
+        Returns: Json
+      }
+      ncrm_corretor_elegibilidade: {
+        Args: { p_agora?: string; p_corretor_id: number }
+        Returns: Json
+      }
+      ncrm_desativar_ingest: { Args: { p_confirmar?: boolean }; Returns: Json }
+      ncrm_dia_operacional: { Args: { p_agora?: string }; Returns: string }
+      ncrm_distribuir_lead: { Args: { p_lead_id: number }; Returns: Json }
+      ncrm_entrada_config_get: { Args: never; Returns: Json }
+      ncrm_entrada_config_set: {
+        Args: { p: Json; p_confirmacao: string }
+        Returns: Json
+      }
+      ncrm_envio_token_valido: { Args: { p_token: string }; Returns: boolean }
+      ncrm_equipe_online: {
+        Args: never
+        Returns: {
+          corretor_id: number
+          nome: string
+          online: boolean
+        }[]
+      }
+      ncrm_fila_trabalho: {
+        Args: { p_corretor?: number; p_filtro?: string; p_limite?: number }
+        Returns: Json
+      }
+      ncrm_fila_trabalho_v4: {
+        Args: { p_corretor?: number; p_filtro?: string; p_limite?: number }
+        Returns: Json
+      }
+      ncrm_gestao_painel: { Args: never; Returns: Json }
+      ncrm_guardiao_entrada: { Args: never; Returns: Json }
+      ncrm_ingest_classificar_backlog: {
+        Args: { p_confirmacao?: string; p_limite?: number }
+        Returns: Json
+      }
+      ncrm_ingest_fila_resumo: { Args: never; Returns: Json }
+      ncrm_ingest_lifecycle_get: { Args: never; Returns: Json }
+      ncrm_ingest_lifecycle_set: { Args: { p: Json }; Returns: Json }
+      ncrm_justificar_atraso: {
+        Args: { p_negocio_id: number; p_texto: string; p_tipo: string }
+        Returns: Json
+      }
+      ncrm_manual_salvar: { Args: { p_conteudo: string }; Returns: Json }
+      ncrm_migracao_aprovar: {
+        Args: {
+          p_confirmacao: string
+          p_etapa: string
+          p_negocio_id: number
+          p_prazo: string
+          p_proxima_acao_tipo: string
+          p_proxima_acao_titulo: string
+        }
+        Returns: Json
+      }
+      ncrm_migracao_contexto: { Args: { p_ids: number[] }; Returns: Json }
+      ncrm_migracao_preview: { Args: { p_filtros?: Json }; Returns: Json }
+      ncrm_migracao_registrar_analise: {
+        Args: { p_analise: Json }
+        Returns: Json
+      }
+      ncrm_migracao_rollback: { Args: { p_negocio_id: number }; Returns: Json }
+      ncrm_notificacao_vista: { Args: { p_id: number }; Returns: Json }
+      ncrm_notificacoes: { Args: never; Returns: Json }
+      ncrm_notificacoes_marcar_todas: { Args: never; Returns: Json }
+      ncrm_painel_corretor: { Args: never; Returns: Json }
+      ncrm_piloto_liberar: { Args: { p_usuario_id: string }; Returns: Json }
+      ncrm_piloto_limite: { Args: { p_limite: number }; Returns: Json }
+      ncrm_piloto_remover: { Args: { p_usuario_id: string }; Returns: Json }
+      ncrm_pilotos_listar: { Args: never; Returns: Json }
+      ncrm_pode_enviar_pelo_erp: {
+        Args: {
+          p_corretor_id?: number
+          p_lead_id?: number
+          p_modo?: string
+          p_negocio_id?: number
+          p_telefone?: string
+        }
+        Returns: Json
+      }
+      ncrm_primeira_abordagem_prazo: {
+        Args: { p_agora?: string }
+        Returns: string
+      }
+      ncrm_proposta_transicao: {
+        Args: {
+          p_idem: string
+          p_motivo: string
+          p_novo_status: string
+          p_proposta_id: string
+          p_versao_prop: number
+        }
+        Returns: Json
+      }
+      ncrm_push_chave_publica: { Args: never; Returns: Json }
+      ncrm_push_credenciais: { Args: never; Returns: Json }
+      ncrm_push_meus_dispositivos: { Args: never; Returns: Json }
+      ncrm_push_registrar: {
+        Args: {
+          p_auth: string
+          p_endpoint: string
+          p_p256dh: string
+          p_user_agent?: string
+        }
+        Returns: Json
+      }
+      ncrm_push_remover_dispositivo: { Args: { p_id: number }; Returns: Json }
+      ncrm_push_reservar: {
+        Args: { p_lease_seg?: number; p_limite?: number; p_worker_id: string }
+        Returns: Json
+      }
+      ncrm_push_resultado: {
+        Args: {
+          p_erro?: string
+          p_fila_id: number
+          p_http_status?: number
+          p_ok: boolean
+          p_tentativa_id?: string
+        }
+        Returns: Json
+      }
+      ncrm_push_sair_de_todos: { Args: never; Returns: Json }
+      ncrm_push_sair_deste_dispositivo: {
+        Args: { p_endpoint: string }
+        Returns: Json
+      }
+      ncrm_reativar: {
+        Args: {
+          p_etapa: string
+          p_idem: string
+          p_motivo: string
+          p_negocio_id: number
+          p_proxima_em: string
+          p_proxima_tipo: string
+          p_proxima_titulo: string
+          p_versao: number
+        }
+        Returns: Json
+      }
+      ncrm_reativar_apos_proposta: {
+        Args: {
+          p_etapa: string
+          p_idem: string
+          p_motivo: string
+          p_negocio_id: number
+          p_proxima_em: string
+          p_proxima_tipo: string
+          p_proxima_titulo: string
+          p_versao: number
+        }
+        Returns: Json
+      }
+      ncrm_registrar_acesso: { Args: never; Returns: Json }
+      ncrm_registrar_decisao_sara: {
+        Args: {
+          p_base_versao: number
+          p_confianca: number
+          p_decisao: string
+          p_idem: string
+          p_justificativa: string
+          p_negocio_id: number
+          p_sugestao: Json
+        }
+        Returns: Json
+      }
+      ncrm_registrar_msg_automatica: {
+        Args: {
+          p_enviado_em: string
+          p_message_id: string
+          p_negocio_id: number
+        }
+        Returns: Json
+      }
+      ncrm_registrar_primeira_humana: {
+        Args: { p_em: string; p_message_id: string; p_negocio_id: number }
+        Returns: Json
+      }
+      ncrm_registrar_proposta_esteira: {
+        Args: {
+          p_forma: string
+          p_idem: string
+          p_negocio_id: number
+          p_obs: string
+          p_produto_id: string
+          p_valor: number
+          p_versao: number
+        }
+        Returns: Json
+      }
+      ncrm_registrar_resposta_cliente: {
+        Args: { p_em: string; p_message_id: string; p_negocio_id: number }
+        Returns: Json
+      }
+      ncrm_registrar_resultado_visita: {
+        Args: {
+          p_idem: string
+          p_negocio_id: number
+          p_obs: string
+          p_resultado: string
+          p_versao: number
+          p_visita_id: string
+        }
+        Returns: Json
+      }
+      ncrm_registrar_tentativa: {
+        Args: {
+          p_canal: string
+          p_idem: string
+          p_negocio_id: number
+          p_obs: string
+          p_proxima_em: string
+          p_proxima_tipo: string
+          p_proxima_titulo: string
+          p_resultado: string
+          p_versao: number
+        }
+        Returns: Json
+      }
+      ncrm_registrar_whatsapp_aberto: {
+        Args: { p_negocio_id: number; p_origem?: string }
+        Returns: Json
+      }
+      ncrm_reprocessar_ingest: { Args: { p_limite?: number }; Returns: Json }
+      ncrm_resolver_envio_autorizado: {
+        Args: { p_instancia_id?: number; p_telefone: string; p_user_id: string }
+        Returns: Json
+      }
+      ncrm_rollout_checklist: { Args: never; Returns: Json }
+      ncrm_saida_descarte: {
+        Args: {
+          p_detalhe: string
+          p_idem: string
+          p_motivo: string
+          p_negocio_id: number
+          p_versao: number
+        }
+        Returns: Json
+      }
+      ncrm_saida_nutricao: {
+        Args: {
+          p_idem: string
+          p_motivo: string
+          p_negocio_id: number
+          p_versao: number
+        }
+        Returns: Json
+      }
+      ncrm_saida_proposta: {
+        Args: {
+          p_data: string
+          p_empreendimento_id: string
+          p_idem: string
+          p_negocio_id: number
+          p_obs: string
+          p_unidade_id: string
+          p_valor: number
+          p_versao: number
+        }
+        Returns: Json
+      }
+      ncrm_saida_visita: {
+        Args: {
+          p_idem: string
+          p_negocio_id: number
+          p_versao: number
+          p_visita_id: string
+        }
+        Returns: Json
+      }
+      ncrm_sara_analise_usuario: {
+        Args: {
+          p_confianca: number
+          p_etapa_atual: string
+          p_etapa_sugerida: string
+          p_evidencias: Json
+          p_hash: string
+          p_justificativa: string
+          p_negocio_id: number
+          p_prazo: string
+          p_proxima_acao: string
+        }
+        Returns: Json
+      }
+      ncrm_sara_analises_recentes: {
+        Args: { p_limite?: number }
+        Returns: Json
+      }
+      ncrm_sara_aplicar_conduta_automatica: {
+        Args: {
+          p_acao_codigo: string
+          p_analise_id: number
+          p_momento_codigo: string
+          p_negocio_id: number
+        }
+        Returns: Json
+      }
+      ncrm_sara_aplicar_proxima_acao: {
+        Args: {
+          p_acao_codigo: string
+          p_analise_id: number
+          p_negocio_id: number
+        }
+        Returns: Json
+      }
+      ncrm_sara_assist_config_set: {
+        Args: { p_confianca: number; p_confirmacao: string; p_operacao: string }
+        Returns: Json
+      }
+      ncrm_sara_assist_relatorio: { Args: { p_dias?: number }; Returns: Json }
+      ncrm_sara_classificar: {
+        Args: {
+          p_base_versao: number
+          p_idem: string
+          p_negocio_id: number
+          p_sugestao: Json
+        }
+        Returns: Json
+      }
+      ncrm_sara_decidir_analise: {
+        Args: {
+          p_analise_id: number
+          p_decisao: string
+          p_justificativa: string
+        }
+        Returns: Json
+      }
+      ncrm_sara_decidir_lote: {
+        Args: { p_decisao: string; p_ids: number[]; p_justificativa?: string }
+        Returns: Json
+      }
+      ncrm_sara_definir_modo: {
+        Args: { p_confirmar?: boolean; p_modo: string }
+        Returns: Json
+      }
+      ncrm_sara_elegiveis: { Args: { p_lote?: number }; Returns: Json }
+      ncrm_sara_modo_status: { Args: never; Returns: Json }
+      ncrm_sara_organizar: {
+        Args: { p_analise_id: number; p_negocio_id: number }
+        Returns: Json
+      }
+      ncrm_sara_placar: {
+        Args: { p_amostra_minima?: number; p_taxa_minima?: number }
+        Returns: Json
+      }
+      ncrm_sara_registrar_analise: {
+        Args: {
+          p_cliente_aguardando: boolean
+          p_confianca: number
+          p_context_hash: string
+          p_etapa_atual: string
+          p_etapa_sugerida: string
+          p_evidencias: Json
+          p_justificativa: string
+          p_negocio_id: number
+          p_prazo_sugerido: string
+          p_promessa_retorno: boolean
+          p_proposta_mencionada: boolean
+          p_proxima_acao_sugerida: string
+          p_run_id: string
+          p_versao_modelo: string
+          p_versao_prompt: string
+          p_visita_mencionada: boolean
+        }
+        Returns: Json
+      }
+      ncrm_sara_reverter: { Args: { p_acao_id: number }; Returns: Json }
+      ncrm_sara_revisao_fila: { Args: { p_limite?: number }; Returns: Json }
+      ncrm_sara_runner_marcar_execucao: {
+        Args: {
+          p_processados: number
+          p_run_id: string
+          p_ultimo_negocio_id: number
+        }
+        Returns: Json
+      }
+      ncrm_sara_runner_marcar_item: {
+        Args: {
+          p_erro?: string
+          p_negocio_id: number
+          p_run_id: string
+          p_status: string
+        }
+        Returns: Json
+      }
+      ncrm_sara_runner_status: { Args: never; Returns: Json }
+      ncrm_saude: { Args: never; Returns: Json }
+      ncrm_saude_acao: {
+        Args: { p_acao: string; p_alvo?: string; p_confirmacao?: string }
+        Returns: Json
+      }
+      ncrm_status_ingest: { Args: never; Returns: Json }
+      ncrm_tem_acesso: { Args: never; Returns: boolean }
+      ncrm_treinamento_equipe: { Args: never; Returns: Json }
+      ncrm_treinamento_marcar: {
+        Args: { p_concluido: boolean; p_item: string }
+        Returns: Json
+      }
+      ncrm_treinamento_meu: { Args: never; Returns: Json }
+      ncrm_visitas_sem_resultado: {
+        Args: { p_limite?: number }
+        Returns: {
+          cliente_nome: string
+          cobrar_desde: string
+          data: string
+          hora_inicio: string
+          negocio_id: number
+          visita_id: string
+        }[]
+      }
       nome_normalizado: { Args: { t: string }; Returns: string }
+      normalizar_telefone: { Args: { p_tel: string }; Returns: string }
+      papel_atual: { Args: never; Returns: Json }
       perf_amostrar_online: { Args: never; Returns: undefined }
       perf_derivar_eventos: { Args: { p_desde?: string }; Returns: Json }
       perf_log: {
@@ -7971,6 +14388,7 @@ export type Database = {
         Args: { p_corretor: string; p_venda: string }
         Returns: number
       }
+      presenca_avisar_pendentes: { Args: never; Returns: Json }
       presenca_config_ler: { Args: never; Returns: Json }
       presenca_config_salvar: {
         Args: {
@@ -7984,7 +14402,10 @@ export type Database = {
         }
         Returns: Json
       }
-      presenca_confirmar: { Args: never; Returns: Json }
+      presenca_confirmar:
+        | { Args: never; Returns: Json }
+        | { Args: { p_no_escritorio?: boolean }; Returns: Json }
+        | { Args: { p_ip?: string; p_no_escritorio?: boolean }; Returns: Json }
       presenca_derrubar: { Args: never; Returns: Json }
       presenca_derrubar_expirados: { Args: never; Returns: number }
       presenca_registrar_dia: { Args: never; Returns: undefined }
@@ -8045,10 +14466,12 @@ export type Database = {
         Args: { p_no_esc: boolean; p_sub: string }
         Returns: undefined
       }
+      regra_presenca_validade_min: { Args: never; Returns: number }
       rotate_automation_webhook_token: {
         Args: { p_automacao_id: number }
         Returns: string
       }
+      sara_checagem_diaria: { Args: { p_limite?: number }; Returns: Json }
       set_empreendimento_coords: {
         Args: { p_id: string; p_lat: number; p_lon: number }
         Returns: undefined
@@ -8070,6 +14493,7 @@ export type Database = {
         }
         Returns: Json
       }
+      telefone_br_normalizado: { Args: { p_tel: string }; Returns: string }
       transferir_com_aceite: {
         Args: { p_corretor: number; p_negocio: number }
         Returns: Json
@@ -8088,6 +14512,14 @@ export type Database = {
         Returns: Json
       }
       unaccent: { Args: { "": string }; Returns: string }
+      wa_backfill_funil2: {
+        Args: { p_limit?: number }
+        Returns: {
+          r_corretor_id: number
+          r_lead_id: number
+          r_telefone: string
+        }[]
+      }
       wa_backfill_progresso: { Args: never; Returns: Json }
       wa_backfill_proximos: {
         Args: { p_limit?: number }
@@ -8097,6 +14529,10 @@ export type Database = {
           r_telefone: string
         }[]
       }
+      wa_conhecido_gravar: {
+        Args: { p_corretor_id: number; p_itens: Json }
+        Returns: Json
+      }
       wa_espelhar_historico: {
         Args: { p_msgs: Json; p_session: string; p_telefone: string }
         Returns: Json
@@ -8104,9 +14540,8 @@ export type Database = {
       wa_ingerir: { Args: { p_payload: Json }; Returns: Json }
       wa_match_lead: { Args: { p_tel: string }; Returns: number }
       wa_move_respondeu: { Args: { p_lead: number }; Returns: undefined }
+      wa_pode_disparar_abordagem: { Args: { p_lead: number }; Returns: boolean }
       wa_proxima_instancia: { Args: { p_corretor: number }; Returns: string }
-      wa_v7_painel: { Args: Record<string, never>; Returns: Json }
-      wa_v7_minha_presenca: { Args: Record<string, never>; Returns: Json }
       wa_registrar_saida: {
         Args: {
           p_conteudo: string
@@ -8118,6 +14553,18 @@ export type Database = {
           p_tipo: string
         }
         Returns: undefined
+      }
+      wa_v7_bridge_coletar_snapshot: {
+        Args: { p_account?: number }
+        Returns: number
+      }
+      wa_v7_meu_corretor: { Args: never; Returns: number }
+      wa_v7_minha_presenca: { Args: never; Returns: Json }
+      wa_v7_painel: { Args: never; Returns: Json }
+      wa_v7_pode_ver_tudo: { Args: never; Returns: boolean }
+      wa_v7_validar_midia: {
+        Args: { p_tipo?: string; p_url: string }
+        Returns: Json
       }
     }
     Enums: {
