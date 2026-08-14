@@ -17,13 +17,8 @@ import "./styles/tela-crm.css";
 import "./styles/tela-avisos.css";
 import "./styles/tela-agenda.css";
 import "./styles/tela-agenda-mes.css";
-import "./styles/telas-prototipo.css";
-/* Correções vindas de uso real: cabeçalho em dobro, WhatsApp verde, ícone do
-   CRM e tamanho de fonte. Depois de todas para vencer sem seletor extra. */
-import "./styles/correcoes-celular.css";
-/* A ÚLTIMA: a ação de gestão é a exceção da regra do verde, então precisa
-   vir depois de quem pinta de verde. */
-import "./styles/tela-gestao-card.css";
+/* Uma única camada móvel substitui as três folhas históricas sobrepostas. */
+import "./styles/mobile-overrides.css";
 /* Depois de tela-gestao-card sem quebrar a regra dela: esta folha só trata de
    layout e rolagem das colunas de kanban — não toca em cor nem em token. */
 import "./styles/esteira-rolagem.css";
@@ -42,6 +37,10 @@ import "./styles/pescado-sem-prazo.css";
 /* Explicador de automações: o painel que conta o fluxo passo a passo. Só usa
    tokens do :root, então segue a marca sem duplicar cor. */
 import "./styles/tela-explicador.css";
+/* Módulos ativos antes injetados por JavaScript; estáticos e únicos. */
+import "./styles/crm-nova-era.css";
+import "./styles/funil-2.css";
+import "./styles/performance.css";
 import { RegistroPwa } from "./components/RegistroPwa";
 
 export const metadata: Metadata = {

@@ -70,9 +70,13 @@ export function AutomationsWorkspace({ accessToken }: { accessToken: string }) {
      um arquivo fechado de 202 KB e qualquer coisa que precise entrar lá vira
      risco. Aqui ele é um botão flutuante, independente. */
   return (
-    <>
+    <div className="automations-v2-shell">
+      <header className="automations-v2-context">
+        <div><span>CENTRAL DE AUTOMAÇÕES</span><h1>Motor independente</h1></div>
+        <p>Cada fluxo conecta somente o que você escolher nos blocos: evento, agente, funil, etapa e ação. Criar um novo funil não exige reconstruir o motor.</p>
+      </header>
       <div className="original-automation-host" ref={hostRef} />
       <ExplicadorAutomacoes accessToken={accessToken} />
-    </>
+    </div>
   );
 }

@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { acaoVisivel, dataCurta, duracao, esperandoPrimeiraChamada, prazoDaAcao, rotuloCadencia, situacaoPrazo, tentativaAtual, venceHoje, type CandidatoAquarioFunil2, type EtapaConfigFunil2, type EventoFunil2, type LeadFunil2, type MomentoFunil2, type NegociacaoFunil2, type NotaFunil2, type OperacaoConfigFunil2, type SaraStatusFunil2, type VisitaFunil2 } from "./modelo";
-import { FUNIL2_CSS } from "./estilos";
 import { SalesProcessView, LeadChatDrawer, type Lead as LeadLegado, type Deal as DealLegado } from "../crm/CrmWorkspace";
 import { getBrowserSupabaseClient } from "../../lib/supabase/browser";
 
@@ -211,7 +210,6 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
 
   return (
     <div className="f2-root">
-      <style>{FUNIL2_CSS}</style>
       <header className="f2-topo">
         <div className="f2-marca">
           <span className="f2-eyebrow">OPERAÇÃO OFICIAL</span>
