@@ -56,8 +56,7 @@ export function baldeDe(a: Aviso, agoraMin = 60, agora = new Date()): Balde {
   if (m <= agoraMin) return "agora";
   /* "Hoje" e o dia de SAO PAULO, nao o do servidor. Em producao e no CI o
      relogio e UTC: das 21h a meia-noite de SP, comparar getDate() jogava
-     aviso de hoje em "Anteriores" na frente do corretor. Mesmo remedio de
-     ehHoje em telaCorretor.logica.ts. */
+     aviso de hoje em "Anteriores" na frente do corretor. */
   const fuso = (x: Date) => x.toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" });
   return fuso(new Date(a.when)) === fuso(agora) ? "hoje" : "anteriores";
 }

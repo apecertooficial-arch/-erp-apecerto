@@ -49,9 +49,9 @@ export function HomeWorkspace({ accessToken, sessionName = "", onNavigate, onIr 
   }, [accessToken]);
 
   useEffect(() => {
-    /* 1,8 MB (1.523 leads + 1.524 negocios). No celular isso nunca e buscado:
-       a tela de la e a SeuDia, que custa 8 KB. Esconder por CSS faria o
-       aparelho baixar tudo e jogar fora. */
+    /* O payload gerencial completo não é buscado no celular. A entrada móvel
+       usa diretamente o Funil 2.0; esconder o painel por CSS ainda faria o
+       aparelho baixar dados que não mostra. */
     if (!ehDesktop) return;
     const headers = { Authorization: `Bearer ${accessToken}` };
     void Promise.all([
