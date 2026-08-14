@@ -1,13 +1,9 @@
 /**
- * Avisos do aplicativo (tela /notificacoes no celular).
+ * Avisos da operação (tela /notificacoes).
  *
  * GET  -> ncrm_notificacoes(): pendentes do usuário, escopo decidido DENTRO
  *         do banco (gestor vê gestão; corretor vê a própria carteira).
  * POST -> { id } marca UMA como vista · { todas: true } marca todas.
- *
- * POR QUE ESTA ROTA EXISTE: a TelaAvisosMobile chama /api/ncrm/notificacoes
- * desde que nasceu, mas a rota nunca tinha sido escrita — no celular a tela
- * de Avisos caía SEMPRE no estado de erro. A RPC já existia; faltava a ponte.
  *
  * TRADUÇÃO DE SHAPE, de propósito e documentada: a RPC devolve `desde` e
  * `vista` (boolean); a tela espera `criada_em` e `vista_em` (ISO ou null).
@@ -19,7 +15,7 @@
  * o ponto laranja. Nenhuma ação aqui toca no atendimento.
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { createServerSupabaseClient } from "../../../lib/supabase/server";
+import { createServerSupabaseClient } from "../../lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 

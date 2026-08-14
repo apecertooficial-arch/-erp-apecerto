@@ -15,7 +15,7 @@ import { readFileSync } from "node:fs";
 
 const ler = (p) => readFileSync(new URL(p, import.meta.url), "utf8");
 const SW = ler("../public/sw.js");
-const ROTA = ler("../app/api/ncrm/notificacoes/route.ts");
+const ROTA = ler("../app/api/notificacoes/route.ts");
 const ENTRADA = ler("../app/(erp)/crm/page.tsx");
 const LISTA = ler("../app/features/funil-2/Funil2Mobile.tsx");
 const REDIRECT = ler("../app/(erp)/negocio/[...caminho]/page.tsx");

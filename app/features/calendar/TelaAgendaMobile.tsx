@@ -1,7 +1,7 @@
 "use client";
 /* AGENDA NO CELULAR — desenho do print 05.
  *
- * Fonte: /api/ncrm/agenda (RPC ncrm_agenda_corretor).
+ * Fonte: /api/agenda (RPC ncrm_agenda_corretor).
  *
  * ESCOPO: a agenda da IMOBILIÁRIA INTEIRA, com o nome de quem atende. Sem
  * isso, dois corretores saem para o mesmo empreendimento no mesmo horário sem
@@ -33,7 +33,7 @@ export function TelaAgendaMobile({ accessToken, onAbrirLead }: {
   const [tentativa, setTentativa] = useState(0);
 
   const carregar = useCallback(async (sinal: AbortSignal) => {
-    const r = await fetch(`/api/ncrm/agenda?data=${dia}&periodo=${periodo}`, {
+    const r = await fetch(`/api/agenda?data=${dia}&periodo=${periodo}`, {
       headers: { Authorization: `Bearer ${accessToken}` }, signal: sinal,
     });
     if (!r.ok) throw new Error(String(r.status));
