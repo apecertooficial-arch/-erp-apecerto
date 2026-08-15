@@ -178,10 +178,6 @@ html, body { touch-action: manipulation; }
   .cal-toolbar, .calendar-toolbar { flex-wrap: wrap; gap: 8px; }
 
   /* ---------------- NOTIFICACOES ---------------- */
-  .notification-tabs { overflow-x: auto; scrollbar-width: none; }
-  .notification-tabs::-webkit-scrollbar { display: none; }
-  .notification-tabs button { min-height: 44px; white-space: nowrap; }
-  .notification-list article p { white-space: normal; max-width: 100%; }
 
   /* ---------------- TABELAS LARGAS ----------------
      Tabelas com min-width alto continuam largas por natureza. Em vez de
