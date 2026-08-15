@@ -296,6 +296,7 @@ test("CSS global não mantém as camadas visuais do CRM V2 e dos módulos operac
   assert.doesNotMatch(globals, /\.aq-[a-z0-9_-]+/i);
   assert.doesNotMatch(globals, /\.(?:perf-|performance-workspace|notif-|notification-)/);
   assert.doesNotMatch(globals, /\.(?:analytics-|stage-config-|connection-card|module-topbar|marketing-hero)/);
+  assert.doesNotMatch(globals, /\.(?:esteira-docs|hist-|momentox|presence-cfg|dist-config|momcfg-|cse-|minerva-)/);
   assert.match(readFileSync(join(raizApp, "styles/funil-2.css"), "utf8"), /\.f2-esteira-oficial>\.sales-process/);
 });
 
