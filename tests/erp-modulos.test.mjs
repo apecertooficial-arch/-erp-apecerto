@@ -170,6 +170,19 @@ test("Automações usa um único histórico de execução", () => {
   assert.match(migration, /drop table public\.automacao_execucoes/);
 });
 
+test("construtor de Automações pertence à feature e não é injetado como global", () => {
+  const workspace = readFileSync(join(raizApp, "features/automations/AutomationsWorkspace.tsx"), "utf8");
+  const runtime = readFileSync(join(raizApp, "features/automations/automationBuilderRuntime.js"), "utf8");
+
+  assert.match(workspace, /import\("\.\/automationBuilderRuntime\.js"\)/);
+  assert.match(workspace, /import "\.\.\/\.\.\/styles\/automation-builder\.css"/);
+  assert.doesNotMatch(workspace, /createElement\("script"\)|document\.head\.appendChild|window\.ApeCertoAutomationBuilder/);
+  assert.doesNotMatch(runtime, /window\.ApeCertoAutomationBuilder\s*=/);
+  assert.match(runtime, /export default ApeCertoAutomationBuilder/);
+  assert.equal(existsSync(new URL("../public/automation-builder-original.js", import.meta.url)), false);
+  assert.equal(existsSync(new URL("../public/automation-builder-original.css", import.meta.url)), false);
+});
+
 test("runtime legado e API geral do CRM foram removidos fisicamente", () => {
   const removidos = [
     "api/crm/route.ts",
