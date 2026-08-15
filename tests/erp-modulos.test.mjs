@@ -208,7 +208,8 @@ test("construtor de Automações pertence à feature e não é injetado como glo
 
 test("Central de Automações não carrega gestores duplicados de CRM, funis e captação", () => {
   const runtime = readFileSync(join(raizApp, "features/automations/automationBuilderRuntime.js"), "utf8");
-  assert.doesNotMatch(runtime, /open(?:Captacao|Pipelines|Crm)Manager|CRM real|PIPELINE — gestão real/);
+  assert.doesNotMatch(runtime, /open(?:Abordagens|Captacao|Pipelines|Crm)Manager|CRM real|PIPELINE — gestão real/);
+  assert.match(runtime, /window\.location\.href='\/abordagens'/);
 });
 
 test("Produtos e Usuários não exibem controles de busca ou comparação sem ação", () => {
