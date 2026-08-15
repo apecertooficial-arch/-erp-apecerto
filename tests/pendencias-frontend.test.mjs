@@ -43,6 +43,12 @@ test("a consulta de performance nao foi alterada", () => {
   assert.ok(/\/api\/performance\?periodo=\$\{periodo\}/.test(perf), "a URL do endpoint mudou");
 });
 
+test("Performance autorizada carrega dados para qualquer perfil e respeita o escopo do banco", () => {
+  assert.ok(!/sessionRole === ["']admin["']/.test(perf), "a tela voltou a bloquear gestores e corretores no frontend");
+  assert.ok(!/Estamos em atualização/.test(perf), "a tela voltou a esconder dados reais atrás de uma manutenção fictícia");
+  assert.match(perf, /Authorization: `Bearer \$\{accessToken\}`/, "a consulta precisa continuar autenticada");
+});
+
 test("a RPC de performance não volta ao anti-join correlacionado por lead", () => {
   const migration = ler("../supabase/migrations/20260814234000_otimizar_performance_corretores.sql");
   assert.match(migration, /left join fones f on f\.corretor_id=l\.corretor_id and f\.f8=l\.f8/);

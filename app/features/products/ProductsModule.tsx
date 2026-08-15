@@ -139,7 +139,7 @@ export function ProductsModule({ accessToken }: { accessToken: string }) {
         <div className="top-actions"><label className="global-search"><span>⌕</span><input placeholder="Buscar lead, telefone, bairro..." /></label><button className="secondary-action" onClick={() => setUnitWizardOpen(true)} type="button">＋ Cadastrar unidade</button><button className="primary-action" onClick={() => setCaptureOpen(true)} type="button">＋ Cadastrar produto</button></div>
       </header>
       <section className="catalog-controls">
-        <div className="catalog-heading"><div className="tabs"><button className="active" type="button">Catálogo</button><button type="button">Inteligência comercial</button></div><span className={`data-status ${dataState}`}>{dataState === "live" ? "● Dados reais · sessão protegida" : dataState === "loading" ? "○ Conectando ao Supabase..." : dataState === "auth" ? "○ Login necessário" : "○ Erro de conexão"}</span></div>
+        <div className="catalog-heading"><strong className="catalog-title">Catálogo</strong><span className={`data-status ${dataState}`}>{dataState === "live" ? "● Dados reais · sessão protegida" : dataState === "loading" ? "○ Conectando ao Supabase..." : dataState === "auth" ? "○ Login necessário" : "○ Erro de conexão"}</span></div>
         <div className="filter-row">
           <span className="filter-symbol">▽</span>
           {["Todos", "Lançamento", "Em obras", "Pronto"].map((item) => <button className={status === item ? "active" : ""} onClick={() => setStatus(item)} type="button" key={item}>{item}</button>)}
