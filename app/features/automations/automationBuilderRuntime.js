@@ -681,7 +681,7 @@ async function createAutomation(grupoFixo){
  try{const rows=await sbPost('/automacoes',{nome:nm.trim(),grupo,ativa:false,mapa});const nv=rows[0];ref.automacoes.push({id:nv.id,nome:nv.nome,grupo:nv.grupo,ativa:nv.ativa});renderSidebar(document.getElementById('sbSearch').value);openAutomacao(nv.id);toast('Automação criada','ok');}catch(e){toast('Erro ao criar: '+e.message,'err');}
 }
 document.getElementById('btnAddAutomation').onclick=()=>createAutomation();
-document.getElementById('btnAbordagens').onclick=()=>openAbordagensManager();
+document.getElementById('btnAbordagens').onclick=()=>{window.location.href='/abordagens';};
 document.getElementById('btnEscritorio').onclick=()=>openEscritorioConfig();
 
 /* =====================================================================
@@ -955,66 +955,6 @@ function _wireMsgParts(container,arr,onSave){let _df=null;
   row.addEventListener('dragleave',()=>{row.style.boxShadow='';});
   row.addEventListener('drop',e=>{e.preventDefault();row.style.boxShadow='';const to=i,from=_df;if(from==null||from===to)return;const it=arr.splice(from,1)[0];arr.splice(to,0,it);_df=null;onSave(true);});});
 }
-function openAbordagensManager(){
- let selProd=ref.produtos[0]?ref.produtos[0].id:0; let editing=null; // editing = abordagem id
- const sc=document.createElement('div');sc.className='cond-scrim';sc.id='abordScrim';sc.style.cssText='position:fixed;inset:0;z-index:1000;display:flex;align-items:center;justify-content:center;background:rgba(20,16,12,0.34);padding:20px;';sc.addEventListener('click',function(e){if(e.target===sc)sc.remove();});ROOT.appendChild(sc);
- const close=()=>sc.remove();
- const prodsList=()=>[{id:0,nome:'Modelos gerais (sem produto)'}].concat(ref.produtos||[]);
- const abordDo=(pid)=>(ref.abordagens||[]).filter(a=>(a.produto_id||0)===pid).sort((x,y)=>(x.ordem||0)-(y.ordem||0));
- async function persist(a){try{await sbPatch('/abordagens?id=eq.'+a.id,{mensagens:a.mensagens,nome:a.nome});}catch(e){toast('Erro ao salvar: '+e.message,'err');}}
- function render(){
-  const prods=prodsList();
-  const rightList=()=>{const its=abordDo(selProd);return `<div style="flex:1;overflow:auto;padding:0 16px 12px">${its.length?its.map(a=>`<div style="display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:8px"><span style="flex:1;min-width:0"><b style="font-size:13px">${esc(a.nome)}</b><span style="font-size:11px;color:var(--ink-faint);margin-left:8px">${(a.mensagens||[]).length} parte(s)</span></span><button class="hookbtn" data-abedit="${a.id}">editar mensagens</button><button data-abdup="${a.id}" title="Duplicar abordagem" style="border:0;background:none;cursor:pointer;color:var(--ink-faint)">${ico('copy',14,'var(--ink-faint)')}</button><button data-abren="${a.id}" title="Renomear" style="border:0;background:none;cursor:pointer;color:var(--ink-faint);font-size:14px">✎</button><button data-abdel="${a.id}" title="Excluir" style="border:0;background:none;cursor:pointer;color:var(--err);font-size:14px">🗑</button></div>`).join(''):'<div style="padding:12px;color:var(--ink-faint);font-size:12px">Nenhuma abordagem aqui. Crie a primeira.</div>'}</div><button data-abadd class="sb-add" style="margin:0 16px 14px">${ico('plus',14)} nova abordagem</button>`;};
-  let rightPane;
-  if(editing){const a=(ref.abordagens||[]).find(x=>x.id===editing);a.mensagens=a.mensagens||[];
-   rightPane=`<div style="display:flex;align-items:center;gap:8px;padding:14px 16px 8px"><button data-back style="border:0;background:none;cursor:pointer;color:var(--brand);font-weight:600;font-size:13px">← voltar</button><b style="flex:1;font-size:14px">${esc(a.nome)}</b><button data-x style="border:0;background:none;font-size:20px;cursor:pointer;color:var(--ink-faint)">×</button></div><div style="flex:1;overflow:auto;padding:0 16px 14px"><div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px">${ABORD_PARTS.map(p=>`<button class="dw-opt" data-add="${p[0]}" style="width:auto;flex:0 0 auto;padding:8px 11px"><span class="oic">${ico(p[2],16,'var(--brand)')}</span>${p[1]}</button>`).join('')}</div><div id="abmparts" style="display:flex;flex-direction:column;gap:8px">${a.mensagens.map((m,i)=>msgPartEditor(m,i)).join('')||'<div style="font-size:12px;color:var(--ink-faint);padding:6px">Adicione a primeira mensagem acima.</div>'}</div></div>`;
-  }else{
-   rightPane=`<div style="display:flex;align-items:center;padding:15px 16px 8px"><b style="flex:1;font-size:15px">Abordagens · ${esc((prods.find(p=>p.id===selProd)||{}).nome||'')}</b><button data-x style="border:0;background:none;font-size:20px;cursor:pointer;color:var(--ink-faint)">×</button></div>${rightList()}`;
-  }
-  sc.innerHTML=`<div style="background:#fff;border-radius:16px;width:860px;max-width:96vw;height:580px;max-height:92vh;display:flex;overflow:hidden;box-shadow:0 24px 60px rgba(0,0,0,.32)">
-   <div style="width:250px;border-right:1px solid var(--line);display:flex;flex-direction:column;background:var(--surface)">
-    <div style="padding:15px 16px 8px;font-weight:700;font-size:15px">Produtos</div>
-    <div style="flex:1;overflow:auto;padding:0 10px">${prods.map(p=>`<div data-prod="${p.id}" style="display:flex;align-items:center;gap:4px;padding:9px 10px;border-radius:9px;cursor:pointer;background:${p.id===selProd?'var(--brand-soft)':'transparent'};color:${p.id===selProd?'var(--brand)':'var(--ink)'};font-weight:600;font-size:12.5px;margin-bottom:2px"><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p.nome)}</span>${p.id!==0?`<button data-proddup="${p.id}" title="Duplicar produto e abordagens" style="border:0;background:none;cursor:pointer;color:var(--ink-faint)">${ico('copy',13,'var(--ink-faint)')}</button><button data-prodren="${p.id}" title="Renomear" style="border:0;background:none;cursor:pointer;color:var(--ink-faint);font-size:13px">✎</button><button data-proddel="${p.id}" title="Excluir" style="border:0;background:none;cursor:pointer;color:var(--err);font-size:13px">🗑</button>`:''}</div>`).join('')}</div>
-    <button data-prodadd class="sb-add" style="margin:10px">${ico('plus',14)} novo produto</button>
-   </div>
-   <div style="flex:1;display:flex;flex-direction:column;min-width:0">${rightPane}</div>
-  </div>`;
-  sc.onclick=e=>{if(e.target===sc)close();};
-  const xb=sc.querySelector('[data-x]');if(xb)xb.onclick=close;
-  if(editing){
-   const a=(ref.abordagens||[]).find(x=>x.id===editing);
-   sc.querySelector('[data-back]').onclick=()=>{editing=null;render();};
-   sc.querySelectorAll('[data-add]').forEach(b=>b.onclick=()=>{const nm=b.dataset.add;const opt=nm==='send-text-message'?{text:''}:(nm==='delay'?{valor:5,unidade:'segundos'}:{url:''});a.mensagens.push({name:nm,options:opt});persist(a);render();});
-   _wireMsgParts(sc.querySelector('#abmparts'),a.mensagens,(rerender)=>{persist(a);if(rerender)render();});
-   return;
-  }
-  sc.querySelectorAll('[data-prod]').forEach(el=>el.onclick=e=>{if(e.target.closest('[data-prodren],[data-proddel]'))return;selProd=+el.dataset.prod;render();});
-  sc.querySelector('[data-prodadd]').onclick=async()=>{const nm=prompt('Nome do produto:');if(!nm||!nm.trim())return;try{const r=await sbPost('/produtos',{nome:nm.trim()});ref.produtos.push(r[0]);selProd=r[0].id;render();}catch(e){toast('Erro: '+e.message,'err');}};
-  sc.querySelectorAll('[data-prodren]').forEach(b=>b.onclick=async e=>{e.stopPropagation();const id=+b.dataset.prodren;const p=ref.produtos.find(x=>x.id===id);const nm=prompt('Novo nome do produto:',p.nome);if(nm===null||!nm.trim())return;try{await sbPatch('/produtos?id=eq.'+id,{nome:nm.trim()});p.nome=nm.trim();render();}catch(e){toast('Erro: '+e.message,'err');}});
-  sc.querySelectorAll('[data-proddel]').forEach(b=>b.onclick=async e=>{e.stopPropagation();const id=+b.dataset.proddel;if(!confirm('Excluir o produto e suas abordagens?'))return;try{await sbDelete('/produtos?id=eq.'+id);ref.produtos=ref.produtos.filter(x=>x.id!==id);ref.abordagens=ref.abordagens.filter(a=>a.produto_id!==id);if(selProd===id)selProd=0;render();}catch(e){toast('Erro: '+e.message,'err');}});
-  const ab=sc.querySelector('[data-abadd]');if(ab)ab.onclick=async()=>{const nm=prompt('Nome da abordagem:');if(!nm||!nm.trim())return;try{const ord=abordDo(selProd).length;const r=await sbPost('/abordagens',{produto_id:selProd||null,nome:nm.trim(),ordem:ord,mensagens:[]});ref.abordagens.push(r[0]);editing=r[0].id;render();}catch(e){toast('Erro: '+e.message,'err');}};
-  sc.querySelectorAll('[data-abedit]').forEach(b=>b.onclick=()=>{editing=+b.dataset.abedit;render();});
-  sc.querySelectorAll('[data-abdup]').forEach(b=>b.onclick=async()=>{const id=+b.dataset.abdup;const a=ref.abordagens.find(x=>x.id===id);try{const ord=abordDo(a.produto_id||0).length;const r=await sbPost('/abordagens',{produto_id:a.produto_id,nome:a.nome+' (cópia)',ordem:ord,mensagens:JSON.parse(JSON.stringify(a.mensagens||[]))});ref.abordagens.push(r[0]);render();toast('Abordagem duplicada','ok');}catch(e){toast('Erro: '+e.message,'err');}});
-  sc.querySelectorAll('[data-proddup]').forEach(b=>b.onclick=async e=>{e.stopPropagation();const id=+b.dataset.proddup;const p=ref.produtos.find(x=>x.id===id);try{const np=(await sbPost('/produtos',{nome:p.nome+' (cópia)'}))[0];ref.produtos.push(np);const abs=abordDo(id);for(const a of abs){const r=await sbPost('/abordagens',{produto_id:np.id,nome:a.nome,ordem:a.ordem,mensagens:JSON.parse(JSON.stringify(a.mensagens||[]))});ref.abordagens.push(r[0]);}selProd=np.id;render();toast('Produto duplicado com '+abs.length+' abordagem(ns)','ok');}catch(e){toast('Erro: '+e.message,'err');}});
-  sc.querySelectorAll('[data-abren]').forEach(b=>b.onclick=async()=>{const id=+b.dataset.abren;const a=ref.abordagens.find(x=>x.id===id);const nm=prompt('Novo nome:',a.nome);if(nm===null||!nm.trim())return;try{await sbPatch('/abordagens?id=eq.'+id,{nome:nm.trim()});a.nome=nm.trim();render();}catch(e){toast('Erro: '+e.message,'err');}});
-  sc.querySelectorAll('[data-abdel]').forEach(b=>b.onclick=async()=>{const id=+b.dataset.abdel;if(!confirm('Excluir esta abordagem?'))return;try{await sbDelete('/abordagens?id=eq.'+id);ref.abordagens=ref.abordagens.filter(x=>x.id!==id);render();}catch(e){toast('Erro: '+e.message,'err');}});
- }
- render();
-}
-/* ==================================================================
-   CAPTAÇÃO / PRODUTOS — gerenciador ligado ao catálogo real
-   (empreendimentos + unidades + midias). Captador obrigatório,
-   origem prédio/terceiros, regra de mídia (fotos/vídeo/áreas comuns).
-   ================================================================== */
-const CAP_MIN_FOTOS=6;
-function capMidiaStatus(mids){
- const fotos=mids.filter(m=>m.tipo==='foto').length;
- const video=mids.some(m=>m.tipo==='video');
- const comum=mids.some(m=>m.categoria==='area_comum')||mids.some(m=>m.tipo==='pdf');
- const ok=fotos>=CAP_MIN_FOTOS&&video&&comum;
- return {fotos,video,comum,ok};
-}
-
 /* ---------- IP do escritório (auto-detecta e atualiza) ---------- */
 function openEscritorioConfig(){
  const sc=document.createElement('div');sc.className='cond-scrim';sc.id='escScrim';ROOT.appendChild(sc);
