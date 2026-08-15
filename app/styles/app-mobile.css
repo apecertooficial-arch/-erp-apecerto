@@ -187,7 +187,7 @@ html, body { touch-action: manipulation; }
      Tabelas com min-width alto continuam largas por natureza. Em vez de
      espremer (ilegivel), damos rolagem HORIZONTAL ao container — o scroll
      fica dentro da tabela, nunca na pagina. */
-  .crm-leads-table-v3, .finance-table, .team-table {
+  .finance-table, .team-table {
     display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; max-width: 100%;
   }
 

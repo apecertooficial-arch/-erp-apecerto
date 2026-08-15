@@ -112,7 +112,7 @@ test("Tarefas: quadro horizontal vira lista vertical", () => {
 });
 
 test("tabelas largas rolam DENTRO do container, nao na pagina", () => {
-  assert.match(modulos, /\.crm-leads-table-v3, \.finance-table, \.team-table \{[\s\S]*?overflow-x: auto/);
+  assert.match(modulos, /\.finance-table, \.team-table \{[\s\S]*?overflow-x: auto/);
 });
 
 test("nenhuma regra do bloco usa largura fixa que estoure 360px", () => {
@@ -293,5 +293,10 @@ test("CSS global não mantém as camadas visuais do CRM V2 e dos módulos operac
   assert.doesNotMatch(globals, /\.crm-v2(?:\s|\{|:)/);
   assert.doesNotMatch(globals, /\.crm-drawer-v2(?:\s|\{|:)/);
   assert.doesNotMatch(globals, /\.operational-module(?:\s|\{|:)/);
+  assert.doesNotMatch(globals, /\.aq-[a-z0-9_-]+/i);
   assert.match(readFileSync(join(raizApp, "styles/funil-2.css"), "utf8"), /\.f2-esteira-oficial>\.sales-process/);
+});
+
+test("autenticação do ERP não mantém o scaffold órfão do ChatGPT", () => {
+  assert.equal(existsSync(join(raizApp, "chatgpt-auth.ts")), false);
 });
