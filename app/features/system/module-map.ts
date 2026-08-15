@@ -77,8 +77,8 @@ export const moduleMap = {
     tables: ["wa_instancias", "corretor_instancias"],
   },
   "Minha Equipe": {
-    description: "Performance e VGV da equipe (leitura), para gerentes e diretores.",
-    tables: ["perf_snapshots", "vendas", "metas_corretor"],
+    description: "Execução, atendimento, funil e resultado da equipe, para gestores autorizados.",
+    tables: ["performance_atividade_app", "perf_eventos", "f2_lead", "visitas", "ia_notas_atendimento", "vendas", "metas"],
   },
   Ajuda: {
     description: "Tutoriais e orientações de uso preservados do ERP original.",

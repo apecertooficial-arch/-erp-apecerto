@@ -8659,73 +8659,45 @@ export type Database = {
           },
         ]
       }
-      perf_snapshots: {
+      performance_atividade_app: {
         Row: {
           corretor_id: number
-          criado_em: string
-          crm_score: number
-          dia: string
-          fup_score: number
-          id: number
-          resp_score: number
-          score: number
-          tarefa_score: number
-          venda_score: number
-          vendas_mes: number
-          vgv_mes: number
-          visita_score: number
+          usuario_id: string
+          bloco_em: string
+          primeiro_em: string
+          ultimo_em: string
+          sinais: number
         }
         Insert: {
           corretor_id: number
-          criado_em?: string
-          crm_score?: number
-          dia?: string
-          fup_score?: number
-          id?: never
-          resp_score?: number
-          score?: number
-          tarefa_score?: number
-          venda_score?: number
-          vendas_mes?: number
-          vgv_mes?: number
-          visita_score?: number
+          usuario_id: string
+          bloco_em: string
+          primeiro_em?: string
+          ultimo_em?: string
+          sinais?: number
         }
         Update: {
           corretor_id?: number
-          criado_em?: string
-          crm_score?: number
-          dia?: string
-          fup_score?: number
-          id?: never
-          resp_score?: number
-          score?: number
-          tarefa_score?: number
-          venda_score?: number
-          vendas_mes?: number
-          vgv_mes?: number
-          visita_score?: number
+          usuario_id?: string
+          bloco_em?: string
+          primeiro_em?: string
+          ultimo_em?: string
+          sinais?: number
         }
         Relationships: [
           {
-            foreignKeyName: "perf_snapshots_corretor_id_fkey"
+            foreignKeyName: "performance_atividade_app_corretor_id_fkey"
             columns: ["corretor_id"]
             isOneToOne: false
             referencedRelation: "corretores"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "perf_snapshots_corretor_id_fkey"
-            columns: ["corretor_id"]
+            foreignKeyName: "performance_atividade_app_usuario_id_fkey"
+            columns: ["usuario_id"]
             isOneToOne: false
-            referencedRelation: "vw_metricas_corretor"
-            referencedColumns: ["corretor_id"]
-          },
-          {
-            foreignKeyName: "perf_snapshots_corretor_id_fkey"
-            columns: ["corretor_id"]
-            isOneToOne: false
-            referencedRelation: "vw_negocios_kanban"
-            referencedColumns: ["corretor_id"]
+            referencedRelation: "usuarios"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -13620,7 +13592,6 @@ export type Database = {
       nome_normalizado: { Args: { t: string }; Returns: string }
       normalizar_telefone: { Args: { p_tel: string }; Returns: string }
       papel_atual: { Args: never; Returns: Json }
-      perf_amostrar_online: { Args: never; Returns: undefined }
       perf_derivar_eventos: { Args: { p_desde?: string }; Returns: Json }
       perf_log: {
         Args: {
@@ -13637,71 +13608,11 @@ export type Database = {
         Returns: string
       }
       perf_log_sessao: { Args: { p_tipo: string }; Returns: string }
-      perf_metricas_base: {
+      performance_painel: {
         Args: { p_fim: string; p_inicio: string }
-        Returns: {
-          corretor_id: number
-          crm_score: number
-          fup_score: number
-          resp_score: number
-          score: number
-          tarefa_score: number
-          venda_score: number
-          vendas: number
-          vgv: number
-          visita_score: number
-        }[]
-      }
-      perf_scores_corretores: {
-        Args: { p_fim?: string; p_inicio?: string }
-        Returns: {
-          corretor_id: number
-          crm_score: number
-          fup_score: number
-          resp_score: number
-          score: number
-          tarefa_score: number
-          venda_score: number
-          visita_score: number
-        }[]
-      }
-      perf_snapshot_diario: { Args: never; Returns: undefined }
-      performance_corretores: {
-        Args: { p_fim?: string; p_inicio?: string }
         Returns: Json
       }
-      performance_corretores_base: {
-        Args: { p_fim?: string; p_inicio?: string }
-        Returns: Json
-      }
-      performance_extra: {
-        Args: { p_fim?: string; p_inicio?: string }
-        Returns: {
-          cliques_momento: number
-          comissao: number
-          comissao_media: number
-          conv_agend_real_pct: number
-          conv_lead_venda_pct: number
-          conv_real_venda_pct: number
-          corretor_id: number
-          desatualizados: number
-          desatualizados_pct: number
-          dias_ativos: number
-          instancia_quedas: number
-          leads_atualizados: number
-          leads_recebidos: number
-          pescados: number
-          sara_perguntas: number
-          tempo_ate_atualizar_min: number
-          visitas_agendadas: number
-          visitas_canceladas: number
-          visitas_realizadas: number
-        }[]
-      }
-      performance_operacional: {
-        Args: { p_fim?: string; p_inicio?: string }
-        Returns: Json
-      }
+      performance_registrar_atividade: { Args: never; Returns: Json }
       pipelines_com_etapas: { Args: never; Returns: Json }
       pj_alerta_atrasadas: { Args: never; Returns: number }
       pj_listar_usuarios: {
