@@ -211,6 +211,15 @@ test("Central de Automações não carrega gestores duplicados de CRM, funis e c
   assert.doesNotMatch(runtime, /open(?:Captacao|Pipelines|Crm)Manager|CRM real|PIPELINE — gestão real/);
 });
 
+test("Produtos e Usuários não exibem controles de busca ou comparação sem ação", () => {
+  const produtos = readFileSync(join(raizApp, "features/products/ProductsModule.tsx"), "utf8");
+  const usuarios = readFileSync(join(raizApp, "features/team/TeamWorkspace.tsx"), "utf8");
+  assert.doesNotMatch(produtos, /Buscar lead, telefone, bairro|▦ Comparar/);
+  assert.match(produtos, /value=\{query\} onChange=/);
+  assert.match(usuarios, /value=\{query\} onChange=\{\(event\) => \{ setQuery\(event\.target\.value\); setView\("lista"\); \}\}/);
+  assert.match(usuarios, /matchesQuery &&/);
+});
+
 test("runtime legado e API geral do CRM foram removidos fisicamente", () => {
   const removidos = [
     "api/crm/route.ts",
