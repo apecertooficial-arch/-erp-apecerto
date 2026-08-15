@@ -26,8 +26,6 @@
    compartilhado entre sites e não engorda o repositório em 1 MB de binário.
    O service worker ignora origem externa, então isto não entra no cache do
    app nem atrapalha o modo offline. */
-@import url("https://fonts.googleapis.com/css2?family=Quicksand:wght@300;400;500;600;700&display=swap");
-
 :root {
   /* ============================
      MARCA — apê (laranja) e certo (roxo)
