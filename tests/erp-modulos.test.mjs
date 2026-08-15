@@ -178,6 +178,8 @@ test("construtor de Automações pertence à feature e não é injetado como glo
   assert.match(workspace, /import "\.\.\/\.\.\/styles\/automation-builder\.css"/);
   assert.doesNotMatch(workspace, /createElement\("script"\)|document\.head\.appendChild|window\.ApeCertoAutomationBuilder/);
   assert.doesNotMatch(runtime, /window\.ApeCertoAutomationBuilder\s*=/);
+  assert.doesNotMatch(runtime, /window\.__ape/,
+    "a feature não deve publicar atalhos globais para funções que já são internas");
   assert.match(runtime, /export default ApeCertoAutomationBuilder/);
   assert.equal(existsSync(new URL("../public/automation-builder-original.js", import.meta.url)), false);
   assert.equal(existsSync(new URL("../public/automation-builder-original.css", import.meta.url)), false);
