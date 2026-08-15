@@ -150,7 +150,7 @@ button { cursor:pointer; }
   .detail-toolbar { align-items:flex-start; }.detail-actions { flex-direction:column!important; align-items:stretch; }.media-tabs { overflow:auto; }.lead-link-form { flex-direction:column; }.photo-lightbox { grid-template-columns:45px minmax(0,1fr) 45px; padding:48px 8px 22px; }.lightbox-nav { width:38px; }
 }
 
-.sales-process,.crm-analytics{padding:22px 26px 32px;background:#fbfaf9;min-height:560px}.sales-process>header,.crm-analytics>header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:18px}.sales-process>header span,.crm-analytics>header span{font-size:11px;letter-spacing:.12em;color:#ff7000;font-weight:800}.sales-process h2,.crm-analytics h2{margin:4px 0;font-size:20px}.sales-process p,.crm-analytics p{margin:0;color:#8a8581;font-size:13px}.sales-kpis,.analytics-kpis{display:grid;grid-template-columns:repeat(5,minmax(150px,1fr));gap:12px;margin-bottom:14px}.sales-kpis article,.analytics-kpis article{background:#fff;border:1px solid #eee9e5;border-radius:14px;padding:16px;display:flex;flex-direction:column}.sales-kpis strong,.analytics-kpis b{font-size:24px}.sales-kpis span,.analytics-kpis span{font-size:12px;color:#7a7470}.sales-kpis .danger{background:#fff1f0;color:#bd332b}.sales-filter{display:flex;align-items:center;gap:8px;background:#fff;border:1px solid #eee9e5;border-radius:12px;padding:10px 12px;margin-bottom:14px}.sales-filter>b{font-size:11px;text-transform:uppercase;color:#8b8580;margin-right:4px}.sales-filter button{border:0;background:#f4f1ee;border-radius:8px;padding:7px 12px}.sales-filter button.active{background:#fff0e5;color:#e45f00;font-weight:800}.sales-filter>span{margin-left:auto;font-size:11px;color:#8a8581}.sales-kanban{display:flex;gap:12px;overflow-x:auto;padding-bottom:14px}.sales-stage{width:250px;min-width:250px}.sales-stage>header{display:flex;gap:8px;align-items:center;background:#fff;border:1px solid #ebe7e3;border-left:4px solid var(--sale-stage);border-radius:11px;padding:10px}.sales-stage>header i{width:8px;height:8px;border-radius:50%;background:var(--sale-stage)}.sales-stage>header strong{font-size:12px;flex:1}.sales-stage>header span{font-size:11px;color:#888}.sales-stage>small{display:block;padding:6px 8px;color:#948e89}.sales-stage>div{display:flex;flex-direction:column;gap:8px}.sale-card{background:#fff;border:1px solid #ece8e5;border-radius:12px;padding:12px;box-shadow:0 4px 14px #251b1308;display:flex;flex-direction:column;gap:4px}.sale-card.late{border-color:#ed7068}.sale-card>b{font-size:13px}.sale-card>span,.sale-card>small{font-size:11px;color:#827c78}.sale-card>strong{color:#ff7000}.sale-card select{margin-top:6px;border:1px solid #e5dfda;border-radius:8px;padding:7px;background:#fff;font-size:11px}.sales-drop{border:1px dashed #dcd4cd;border-radius:12px;padding:18px;text-align:center;color:#aaa;font-size:11px}
+.sales-process{padding:22px 26px 32px;background:#fbfaf9;min-height:560px}.sales-process>header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:18px}.sales-process>header span{font-size:11px;letter-spacing:.12em;color:#ff7000;font-weight:800}.sales-process h2{margin:4px 0;font-size:20px}.sales-process p{margin:0;color:#8a8581;font-size:13px}.sales-kpis,.analytics-kpis{display:grid;grid-template-columns:repeat(5,minmax(150px,1fr));gap:12px;margin-bottom:14px}.sales-kpis article,.analytics-kpis article{background:#fff;border:1px solid #eee9e5;border-radius:14px;padding:16px;display:flex;flex-direction:column}.sales-kpis strong,.analytics-kpis b{font-size:24px}.sales-kpis span,.analytics-kpis span{font-size:12px;color:#7a7470}.sales-kpis .danger{background:#fff1f0;color:#bd332b}.sales-filter{display:flex;align-items:center;gap:8px;background:#fff;border:1px solid #eee9e5;border-radius:12px;padding:10px 12px;margin-bottom:14px}.sales-filter>b{font-size:11px;text-transform:uppercase;color:#8b8580;margin-right:4px}.sales-filter button{border:0;background:#f4f1ee;border-radius:8px;padding:7px 12px}.sales-filter button.active{background:#fff0e5;color:#e45f00;font-weight:800}.sales-filter>span{margin-left:auto;font-size:11px;color:#8a8581}.sales-kanban{display:flex;gap:12px;overflow-x:auto;padding-bottom:14px}.sales-stage{width:250px;min-width:250px}.sales-stage>header{display:flex;gap:8px;align-items:center;background:#fff;border:1px solid #ebe7e3;border-left:4px solid var(--sale-stage);border-radius:11px;padding:10px}.sales-stage>header i{width:8px;height:8px;border-radius:50%;background:var(--sale-stage)}.sales-stage>header strong{font-size:12px;flex:1}.sales-stage>header span{font-size:11px;color:#888}.sales-stage>small{display:block;padding:6px 8px;color:#948e89}.sales-stage>div{display:flex;flex-direction:column;gap:8px}.sale-card{background:#fff;border:1px solid #ece8e5;border-radius:12px;padding:12px;box-shadow:0 4px 14px #251b1308;display:flex;flex-direction:column;gap:4px}.sale-card.late{border-color:#ed7068}.sale-card>b{font-size:13px}.sale-card>span,.sale-card>small{font-size:11px;color:#827c78}.sale-card>strong{color:#ff7000}.sale-card select{margin-top:6px;border:1px solid #e5dfda;border-radius:8px;padding:7px;background:#fff;font-size:11px}.sales-drop{border:1px dashed #dcd4cd;border-radius:12px;padding:18px;text-align:center;color:#aaa;font-size:11px}
 .sales-approval{background:#fff8f1;border:1px solid #ffd8b5;border-radius:14px;padding:14px 16px;margin-bottom:16px}
 .sales-approval-head{display:flex;align-items:center;gap:11px;margin-bottom:10px}
 .sales-approval-badge{flex:none;min-width:26px;height:26px;padding:0 7px;border-radius:13px;background:#ff6500;color:#fff;font-weight:800;font-size:13px;display:grid;place-items:center}
@@ -461,7 +461,7 @@ button { cursor:pointer; }
 .attention-trigger>b { background:var(--red); }
 .attention-popover { border-radius:18px; border:1px solid var(--line); box-shadow:var(--shadow-lg); }
 .attention-popover>main article { border-radius:14px; border:1px solid var(--line); }
-.crm-toast, .team-toast { border-radius:14px; box-shadow:var(--shadow-lg); }
+.team-toast { border-radius:14px; box-shadow:var(--shadow-lg); }
 
 /* Campo de busca / inputs — foco de marca ----------------------- */
 .filter-row .toggle input[type=checkbox], .filter-row label input[type=checkbox] {
@@ -718,16 +718,10 @@ button { cursor:pointer; }
 /* #6 — ícone de notificação: restaura fundo/visibilidade (design zera com var(--surface)) */
 .attention-trigger { border:1px solid rgba(255,255,255,.7); background:linear-gradient(145deg,#ff7108,#f24b15); color:#fff; }
 /* #11 — scroll horizontal do CRM mais visível e fluido */
-.crm-table-wrap, .stage-groups, .crm-command-bar { scroll-behavior:smooth; -webkit-overflow-scrolling:touch; overscroll-behavior-x:contain; }
+.stage-groups { scroll-behavior:smooth; -webkit-overflow-scrolling:touch; overscroll-behavior-x:contain; }
 /* O board do CRM foi removido do "scroll-behavior:smooth" de propósito: o arrasto
    e a roda do mouse definem scrollLeft manualmente, e o smooth animava cada
    micro-passo, causando efeito de borracha/travamento ao deslizar de lado. */
-.crm-kanban-v2 { -webkit-overflow-scrolling:touch; overscroll-behavior-x:contain; }
-.crm-kanban-v2 { scrollbar-width:auto; scrollbar-color:#ff8a3d #f0eeec; }
-.crm-kanban-v2::-webkit-scrollbar, .crm-table-wrap::-webkit-scrollbar { height:11px; }
-.crm-kanban-v2::-webkit-scrollbar-track, .crm-table-wrap::-webkit-scrollbar-track { background:#f0eeec; border-radius:999px; }
-.crm-kanban-v2::-webkit-scrollbar-thumb, .crm-table-wrap::-webkit-scrollbar-thumb { background:#ff8a3d; border-radius:999px; border:2px solid #f0eeec; }
-.crm-kanban-v2::-webkit-scrollbar-thumb:hover, .crm-table-wrap::-webkit-scrollbar-thumb:hover { background:#f24b15; }
 /* #18 — Disparos: fontes/proporções maiores */
 .campaign-card h2,.recent-campaigns>h2 { font-size:11px; }
 .campaign-card label { font-size:11px; }
@@ -747,10 +741,6 @@ button { cursor:pointer; }
 .campaign-flow-note { font-size:11px; }.campaign-flow-note>small { font-size:11px; }
 .history-instance,.history-instance select { font-size:11px !important; }
 /* #19 — botão Leads Atrasados */
-.crm-overdue-trigger { height:36px; border:1px solid #dfd8d3; border-radius:9px; padding:0 11px; background:#fff; color:#645d58; font-size:11px; font-weight:650; cursor:pointer; }
-.crm-overdue-trigger:hover { border-color:#e88a82; color:#bd4034; background:#fff5f4; }
-.crm-overdue-trigger.active { border-color:#d8323d; color:#bd4034; background:#fff0ee; font-weight:800; }
-.crm-overdue-trigger b { margin-left:4px; padding:2px 6px; border-radius:999px; background:#d8323d; color:#fff; font-size:11px; }
 /* #8 — filtros do Chat ao Vivo (corretor/etapa/instância/SLA) */
 .chat-filter-row { display:flex; flex-wrap:wrap; gap:5px; padding:0 10px 10px; }
 .chat-filter-row select { flex:1 1 46%; min-width:0; border:1px solid #e6dfda; border-radius:8px; padding:5px 6px; background:#fff; color:#5a534e; font-size:11px; }
@@ -871,21 +861,7 @@ button { cursor:pointer; }
 /* barra de instância, ferramentas e footer mais baixos p/ caber na janelinha */   /* rodapé informativo ocupa espaço na versão compacta */
 /* estado minimizado: mostra só o header */
 
-/* 2) Card do kanban compacto: controles em linha slim, sem dropdowns largos */
-.crm-lead-card-v3 .card-controls-v3{ display:flex; align-items:center; gap:6px; padding:7px 9px; }
-.crm-lead-card-v3 .card-controls-v3 label{ flex:1 1 0; min-width:0; margin:0; }
-.crm-lead-card-v3 .card-controls-v3 label>span{ display:none; }   /* esconde rótulos "Etapa"/"Corretor" (selects mantêm aria-label) */
-.crm-lead-card-v3 .card-controls-v3 select{
-  width:100%; min-width:0; height:28px; min-height:0; flex:none;
-  border:1px solid #ddd5cf; border-radius:7px; padding:0 6px;
-  background:#fff; color:#5f5650; font-size:11px; text-overflow:ellipsis;
-}
-.crm-lead-card-v3 .card-controls-v3 > button{
-  flex:0 0 auto; width:30px; height:28px; min-height:0;
-  display:grid; place-items:center; padding:0;
-  border:1px solid #bce2ca; border-radius:7px;
-  color:#14834b; background:#f4fbf6; font-size:14px;
-}
+/* 2) Card do kanban compacto: controles em linha slim, sem dropdowns largos */   /* esconde rótulos "Etapa"/"Corretor" (selects mantêm aria-label) */
 /* ===== fim do ajuste jul/2026 ===== */
 
 
@@ -924,15 +900,7 @@ button { cursor:pointer; }
 
 /* ===== Kanban estilo Datacrazy: cada etapa rola por dentro; a página não desce — jul/2026 ===== */
 /* Escopo: só quando a view de Funil (kanban) está aberta — NÃO afeta Leads/Analítico/Agenda */
-
-.crm-kanban-v2{ flex: 1; min-height: 0; align-items: stretch; overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; }
-.crm-stage{ height: 100%; max-height: 100%; overflow: hidden; display: flex; flex-direction: column; }
-.crm-stage > header{ flex: 0 0 auto; }
-/* Etapa: SÓ rola na vertical; o gesto lateral do trackpad passa direto pro pipe */
-.crm-stage-body{ flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden; }
-.crm-stage-body > *{ max-width: 100%; }
-.crm-stage-body > *{ flex-shrink: 0; }   /* cards não encolhem — rolam por dentro */
-/* nota: o calc(100vh / 0.85) compensa o zoom 0.85 do .crm-v2; se mudar o zoom, ajuste o 0.85 aqui */
+/* Etapa: SÓ rola na vertical; o gesto lateral do trackpad passa direto pro pipe */   /* cards não encolhem — rolam por dentro */
 /* ===== fim kanban ===== */
 
 /* ===== Ações do chat como barra VERTICAL ao lado (esquerda) do chat — jul/2026 ===== */               /* deixa a barra aparecer do lado */        /* remove o empurra-direita herdado */            /* só ícone (tooltip no title) */
@@ -940,10 +908,6 @@ button { cursor:pointer; }
 
 /* ===== Mídia do chat otimizada (thumbnail) + scroll lateral fino — jul/2026 ===== */
 /* scroll lateral do kanban: fino e discreto (estilo Datacrazy) */
-.crm-kanban-v2{ scrollbar-width: thin; scrollbar-color: #cfc6c0 transparent; }
-.crm-kanban-v2::-webkit-scrollbar{ height: 8px; }
-.crm-kanban-v2::-webkit-scrollbar-thumb{ background: #cfc6c0; border-radius: 8px; }
-.crm-kanban-v2::-webkit-scrollbar-track{ background: transparent; }
 /* ===== fim ===== */
 
 /* ===== Central de atenção mais enxuta — jul/2026 ===== */
@@ -1112,9 +1076,6 @@ body:has(.profile-drawer-scrim,.modal-layer,.photo-lightbox,.document-preview-mo
 .stage-config-hint { color:#958b85; font-size:12px; }
 .stage-config-modal footer { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-top:16px; }
 /* rolagem independente por etapa (kanban) */
-.crm-kanban-v2 { align-items:stretch; max-height:calc(100vh - 285px); }
-.crm-stage { display:flex; flex-direction:column; max-height:100%; }
-.crm-stage-body { flex:1; overflow-y:auto; overscroll-behavior:contain; scrollbar-width:thin; scrollbar-color:#cfc6c0 transparent; }
 @media (max-width:700px){ .stage-config-pipeline { grid-template-columns:1fr 1fr; } }
 
 /* Doc §7 — Analítico do CRM: filtros e drill-down */
@@ -1555,9 +1516,6 @@ input:focus, select:focus, textarea:focus {
 :is(.finance-kpis,.analytics-kpis,.sales-kpis,.operational-kpis) article:nth-child(6n+6) { background:#fff4d9; border-color:#efd492; }
 
 /* CRM: card da referência, corretor clicável e botões Chat/Mover. */
-.crm-stage { border-color:color-mix(in srgb,var(--stage) 32%,var(--line)); background:color-mix(in srgb,var(--stage) 5%,var(--sunken)); }
-.crm-stage>header { border-top:3px solid var(--stage); background:color-mix(in srgb,var(--stage) 5%,white); }
-.crm-lead-card-v3 { overflow:hidden; }
 .card-broker-row-v3 { display:flex; align-items:center; gap:7px; padding:0 13px 9px; }
 .card-broker-row-v3>strong { color:var(--purple-700); font-size:12px; font-weight:650; }
 .broker-trigger-v3,.table-broker-trigger { display:inline-flex; align-items:center; gap:6px; border:0; padding:2px 0; background:transparent; color:var(--purple-700); font-size:12px; font-weight:700; text-decoration:underline; text-decoration-color:var(--purple-100); text-underline-offset:3px; }
@@ -1567,8 +1525,6 @@ input:focus, select:focus, textarea:focus {
 .card-controls-v3>button,.card-controls-v3>label { min-width:0; margin:0; }
 .card-controls-v3>button { min-height:38px; border:0; border-right:1px solid var(--line); border-radius:0; background:#fff; color:var(--ink-soft); }
 .card-controls-v3 label select { width:100%; min-height:38px; border:0; border-radius:0; text-align:center; text-align-last:center; background:#fff; color:var(--ink-soft); font-weight:650; }
-.crm-lead-card-v3>footer { min-height:28px; justify-content:flex-end; padding:4px 12px; background:#fbfaf9; }
-.crm-lead-card-v3>footer time { margin-left:auto; }
 .table-broker-trigger { max-width:170px; }
 
 /* Produtos: quatro cartões, gradientes alternados e ficha lateral estreita
@@ -1723,17 +1679,6 @@ body { overflow:hidden; background:#eee8e2; }
 .analytics-kpis article:nth-child(5) { background:#e6f7f5; border-color:#b7e5df; }
 
 /* O resumo de cinco métricas não existe nas telas aprovadas do CRM. */
-.crm-metrics { display:none; }
-
-.crm-v2-header { padding:14px 22px; }
-.crm-command-bar,.crm-toolbar-v2 { padding-inline:22px; }
-.crm-command-bar nav button { padding:12px 13px; font-size:12px; }
-.crm-toolbar-v2 { padding-block:9px; }
-.crm-kanban-v2 { gap:10px; padding:12px 18px 26px; }
-.crm-stage { flex:0 0 220px; border-radius:12px; }
-.crm-stage>header { padding:9px 10px; }
-.crm-stage-body { gap:8px; padding:0 8px 10px; }
-.crm-lead-card-v3 { border-radius:11px; }
 .card-open-v3 { padding:9px 10px 7px; }
 .card-person>span { width:32px; height:32px; }
 .card-person strong { font-size:12px; }
@@ -1778,23 +1723,6 @@ body { overflow:hidden; background:#eee8e2; }
 .finance-kpis article > *{position:relative;z-index:1}
 
 /* --- CRM: cards de indicadores do topo coloridos (padroniza com Início/Financeiro) --- */
-.crm-metrics article{position:relative;overflow:hidden}
-.crm-metrics article:has(.metric-icon.purple){background:#f9f0fd;border-color:#ecd6f7}
-.crm-metrics article:has(.metric-icon.orange){background:#fff6ee;border-color:#ffe1cb}
-.crm-metrics article:has(.metric-icon.green){background:#eff9f2;border-color:#c9edd6}
-.crm-metrics article:has(.metric-icon.red){background:#fdefef;border-color:#f6cdcd}
-.crm-metrics article:has(.metric-icon.blue){background:#eef3fd;border-color:#cfe0fb}
-.crm-metrics .metric-icon.purple{background:var(--purple);color:#fff}
-.crm-metrics .metric-icon.orange{background:var(--orange);color:#fff}
-.crm-metrics .metric-icon.green{background:var(--green);color:#fff}
-.crm-metrics .metric-icon.red{background:var(--red);color:#fff}
-.crm-metrics .metric-icon.blue{background:var(--blue);color:#fff}
-.crm-metrics article::after{content:'';position:absolute;right:-18px;top:-18px;width:66px;height:66px;border-radius:50%;background:var(--orange-100);opacity:.5;z-index:0}
-.crm-metrics article:has(.metric-icon.purple)::after{background:#ecd6f7}
-.crm-metrics article:has(.metric-icon.green)::after{background:#c9edd6}
-.crm-metrics article:has(.metric-icon.red)::after{background:#f6cdcd}
-.crm-metrics article:has(.metric-icon.blue)::after{background:#cfe0fb}
-.crm-metrics article > *{position:relative;z-index:1}
 
 /* --- CRM Analítico: cards de indicadores coloridos (padroniza com o resto) --- */
 .analytics-kpis article{position:relative;overflow:hidden}
@@ -1846,12 +1774,6 @@ body { overflow:hidden; background:#eee8e2; }
 .analytics-kpis article:nth-child(4) { background:#f8d6d5; border-color:#e88b87; }
 .analytics-kpis article:nth-child(5) { background:#d1efec; border-color:#68c9c1; }
 .analytics-kpis article:nth-child(6) { background:#ffeab8; border-color:#edc55e; }
-
-.crm-metrics article:has(.metric-icon.orange) { background:#ffe0c7; border-color:#ff9b57; }
-.crm-metrics article:has(.metric-icon.purple) { background:#ead2fa; border-color:#bd79e8; }
-.crm-metrics article:has(.metric-icon.green) { background:#d5f1e0; border-color:#76cf9c; }
-.crm-metrics article:has(.metric-icon.red) { background:#f8d6d5; border-color:#e88b87; }
-.crm-metrics article:has(.metric-icon.blue) { background:#d9e5ff; border-color:#85a8f5; }
 
 /* ===== Status de entrega no chat (estilo WhatsApp) ===== */
 .msg-ack { font-style:normal; display:inline-flex; align-items:center; line-height:1; }
@@ -2204,45 +2126,13 @@ body { overflow:hidden; background:#eee8e2; }
 /* ==================================================================
    CRM — composição final baseada nas telas aprovadas do Claude Designer
    ================================================================== */
-
-
-.crm-v2-header{
-  min-height:70px;
-  padding:12px 22px;
-  border-bottom:1px solid #e8e1dc;
-  background:#fff;
-}
-.crm-eyebrow{display:none}
-.crm-v2-header h1{margin:0;font-size:19px;line-height:1.15;letter-spacing:-.35px}
-.crm-v2-header p{margin-top:3px;font-size:11px}
-.crm-header-actions{gap:12px}
 .crm-search-v2{width:270px;height:36px;border-radius:999px;background:#fff}
 .crm-search-v2 input{font-size:12px}
 .crm-primary{min-height:38px;border-radius:999px;padding-inline:19px;font-size:12px;box-shadow:0 9px 20px rgba(255,101,0,.18)}
-
-.crm-command-bar{min-height:44px;padding:0 22px;background:#fff}
-.crm-command-bar nav{gap:1px;overflow-x:auto}
-.crm-command-bar nav button{min-width:0;padding:0 18px;font-size:12px;white-space:nowrap}
-.crm-command-bar nav button.active{color:#dc5605}
-.crm-command-bar nav button.active::after{left:12px;right:12px;height:3px;background:#ff6500}
-.crm-live{padding:5px 10px;font-size:11px;white-space:nowrap}
-
-.crm-toolbar-v2{min-height:51px;padding:7px 22px;gap:8px;background:#fff}
-.crm-toolbar-v2>select{height:36px;border-radius:9px;font-size:12px}
 .stage-groups{gap:6px;overflow-x:auto}
 .stage-groups button{height:34px;border-radius:999px;padding-inline:12px;font-size:11px;white-space:nowrap}
 .stage-groups button.active{border-color:#ff6500;background:#fff6f0;color:#d85600}
-.crm-filter-trigger,.crm-overdue-trigger,.crm-bulk-trigger,.stage-config-trigger{height:34px;border-radius:9px;font-size:11px;white-space:nowrap}
-.crm-result-count{margin-left:auto;font-size:11px;white-space:nowrap}
-
-.crm-kanban-v2{gap:10px;padding:12px 18px 24px;background:#fbfaf9}
-.crm-stage{flex-basis:248px;border-radius:13px;background:color-mix(in srgb,var(--stage) 5%,#f7f5f3);box-shadow:none}
-.crm-stage>header{min-height:40px;padding:8px 10px;border-top-width:3px;background:color-mix(in srgb,var(--stage) 6%,#fff)}
-.crm-stage>header strong{font-size:12px;color:color-mix(in srgb,var(--stage) 78%,#26211e)}
-.crm-stage>header>span{padding:2px 7px;background:var(--stage);color:#fff;font-size:11px}
-.crm-stage-body{gap:8px;padding:0 8px 10px}
-.crm-lead-card-v3{border-color:#e6dfda;border-radius:11px;background:#fff;box-shadow:0 3px 9px rgba(44,31,23,.055)}
-.crm-lead-card-v3:hover{transform:translateY(-3px);box-shadow:0 11px 24px rgba(44,31,23,.11)}
+.stage-config-trigger{height:34px;border-radius:9px;font-size:11px;white-space:nowrap}
 .sla-top-band{height:3px}
 .card-open-v3{padding:10px 10px 8px}
 .card-person{gap:8px}
@@ -2259,31 +2149,18 @@ body { overflow:hidden; background:#eee8e2; }
 .card-context span,.card-context b,.card-context small{font-size:11px}
 .card-tags{margin-top:6px}
 .card-tags span{padding:2px 7px;font-size:10px}
-.crm-lead-card-v3 .card-controls-v3{display:grid;grid-template-columns:1fr 1fr;gap:5px;padding:7px 9px;border-top:1px solid #eee8e4;background:#fff}
-.crm-lead-card-v3 .card-controls-v3>button,.crm-lead-card-v3 .card-controls-v3 select{width:100%;height:30px;min-height:30px;border:1px solid #ddd5cf;border-radius:7px;background:#fff;color:#544d48;font-size:11px}
-.crm-lead-card-v3 .card-controls-v3>button{display:block}
-.crm-lead-card-v3>footer{display:none}
-.crm-empty-stage{margin-top:2px;background:rgba(255,255,255,.38);border-color:color-mix(in srgb,var(--stage) 28%,#d4cbc5)}
-
-.crm-table-wrap{margin:14px 20px 34px;border-radius:14px;box-shadow:0 3px 12px rgba(44,31,23,.055)}
-.crm-leads-table{min-width:1040px}
-.crm-leads-table th{height:45px;padding:11px 13px;background:#f4f0ed;font-size:10px;letter-spacing:.08em}
-.crm-leads-table td{height:62px;padding:10px 13px;font-size:12px}
-.crm-leads-table tbody tr:nth-child(even){background:#fffcfa}
-.crm-leads-table tbody tr:hover{background:#fff6f0}
 .table-person span{width:32px;height:32px;font-size:11px}
 .table-person strong{font-size:12px}
-.crm-leads-table td select{min-height:34px;font-size:11px}
 .table-broker-trigger{font-size:11px}
 .table-actions-v3{gap:6px}
 .table-actions-v3 button{min-height:31px;padding-inline:11px;font-size:11px;background:#fff}
 .table-actions-v3 button:first-child{border-color:#b7e5c8;background:#f5fcf7;color:#16834b}
 .table-actions-v3 button:last-child{border-color:#eadfd8;background:#fff;color:#bd4a08}
 
-.sales-process,.crm-analytics{padding:18px 20px 36px;background:#fbfaf9}
-.sales-process>header,.crm-analytics>header{display:flex;align-items:flex-end;justify-content:space-between;gap:18px}
-.sales-process>header h2,.crm-analytics>header h2{margin:5px 0 2px;font-size:18px}
-.sales-process>header p,.crm-analytics>header p{font-size:11px}
+.sales-process{padding:18px 20px 36px;background:#fbfaf9}
+.sales-process>header{display:flex;align-items:flex-end;justify-content:space-between;gap:18px}
+.sales-process>header h2{margin:5px 0 2px;font-size:18px}
+.sales-process>header p{font-size:11px}
 .sales-kpis,.analytics-kpis{grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;margin:14px 0}
 .sales-kpis article,.analytics-kpis article{min-height:112px;padding:14px;border-radius:14px}
 .sales-kpis article:nth-child(1),.analytics-kpis article:nth-child(3){background:#ffe0c7;border-color:#ff9b57}
@@ -2309,38 +2186,23 @@ body { overflow:hidden; background:#eee8e2; }
 .sales-kanban{gap:10px}
 .sales-stage{flex-basis:250px;padding:9px;border-radius:13px;background:#f4f0ed}
 .sale-card{border-radius:11px;background:#fff;box-shadow:0 3px 9px rgba(44,31,23,.055)}
-
-.crm-agenda-grid{gap:13px;padding:16px 20px 38px;background:#fbfaf9}
 .agenda-panel{border-radius:14px}
 .agenda-panel>header{padding:13px 15px}
 .agenda-panel h2{font-size:15px}
 .agenda-panel header p{font-size:11px}
 .agenda-item,.visit-item{padding:12px 15px}
-.crm-activity-view{margin:16px 20px 38px;border-radius:14px}
-.crm-activity-view>header{padding:14px 16px}
 .activity-feed button:nth-child(even){background:#f7f3f0}
 .activity-feed button:hover{background:#fff6f0}
 
 @media(max-width:1100px){
-  .crm-command-bar nav button{padding-inline:12px}
-  .crm-live{display:none}
   .sales-kpis,.analytics-kpis{grid-template-columns:repeat(3,minmax(0,1fr))}
 }
-@media(max-width:760px){
-  .crm-v2-header{align-items:flex-start;flex-direction:column}
-  .crm-header-actions{width:100%}.crm-search-v2{width:100%}
-  .crm-command-bar{overflow-x:auto}
-  .crm-toolbar-v2{overflow-x:auto}
-  .crm-agenda-grid,.analytics-grid{grid-template-columns:1fr}
+@media(max-width:760px){.crm-search-v2{width:100%}
+  .analytics-grid{grid-template-columns:1fr}
   .sales-kpis,.analytics-kpis{grid-template-columns:1fr 1fr}
 }
 
 /* A ordem visual do funil não depende das cores antigas gravadas no banco. */
-.crm-stage:nth-child(5n+1){--stage:#9638d8!important}
-.crm-stage:nth-child(5n+2){--stage:#ff6500!important}
-.crm-stage:nth-child(5n+3){--stage:#386fe7!important}
-.crm-stage:nth-child(5n+4){--stage:#20aa64!important}
-.crm-stage:nth-child(5n+5){--stage:#f2a82c!important}
 
 /* As duas formas usam a mesma família cromática do próprio card. */
 .analytics-kpis article:nth-child(1)::before,.analytics-kpis article:nth-child(1)::after{background:#78cfa0!important}
@@ -2361,19 +2223,8 @@ body { overflow:hidden; background:#eee8e2; }
 /* Leads: avatar real quando houver foto, cores alternadas e duas tags visíveis. */
 .lead-avatar{overflow:hidden}
 .lead-avatar img{display:block;width:100%;height:100%;object-fit:cover;border-radius:inherit}
-.crm-leads-table-v3 tbody tr.lead-tone-1{border-left-color:#ff6500!important}
-.crm-leads-table-v3 tbody tr.lead-tone-2{border-left-color:#9638d8!important}
-.crm-leads-table-v3 tbody tr.lead-tone-3{border-left-color:#20aa64!important}
-.crm-leads-table-v3 tbody tr.lead-tone-4{border-left-color:#386fe7!important}
-.crm-leads-table-v3 tbody tr.lead-tone-5{border-left-color:#e44a47!important}
-.crm-leads-table-v3 .lead-tone-1 .lead-avatar{background:#ffe2cc;color:#d85600}
-.crm-leads-table-v3 .lead-tone-2 .lead-avatar{background:#eedbfa;color:#7f2cab}
-.crm-leads-table-v3 .lead-tone-3 .lead-avatar{background:#d8f2e3;color:#14834b}
-.crm-leads-table-v3 .lead-tone-4 .lead-avatar{background:#dce7ff;color:#285dc6}
-.crm-leads-table-v3 .lead-tone-5 .lead-avatar{background:#f9dddd;color:#c73d3a}
 .lead-table-tags{display:flex!important;flex-direction:row!important;flex-wrap:wrap;gap:3px;margin-top:3px}
 .lead-table-tags span{max-width:88px;overflow:hidden;text-overflow:ellipsis;padding:2px 6px;border-radius:999px;background:#f3e5fb;color:#7f2cab;font-size:9px;line-height:1.2;white-space:nowrap}
-.crm-leads-limit{padding:11px 15px;border-top:1px solid #eee8e4;background:#faf8f6;color:#827972;font-size:11px;font-weight:650;text-align:right}
 
 /* Vendas em processo: o mesmo desenho dos cards de lead do funil. */
 .sale-card{position:relative;overflow:hidden;padding:0!important;gap:0!important;border-radius:11px!important}
@@ -2576,12 +2427,6 @@ article.tone-red{border-left-color:#d3443e}article.tone-red strong{color:#d3443e
 .agents-lab { max-width:1600px; }
 
 /* Editor de etapa do funil (CRM) — fiel à referência "EDITAR ETAPA" */
-.crm-stage-editor{margin:8px 10px 6px;padding:13px;border:1px solid #ece7e3;border-radius:13px;background:#fff;box-shadow:0 14px 34px rgba(20,14,10,.16);display:flex;flex-direction:column;gap:12px;position:relative;z-index:6}
-.crm-stage-editor .cse-kicker{font-size:10px;font-weight:800;letter-spacing:.09em;color:#a79e97;text-transform:uppercase}
-.crm-stage-editor .cse-field{display:flex;flex-direction:column;gap:6px}
-.crm-stage-editor .cse-field>span{font-size:11px;color:#6f6863;font-weight:600}
-.crm-stage-editor .cse-field input{border:1px solid #ded7d2;border-radius:9px;padding:9px 11px;font-size:12px;outline:0;color:#332e2a;font-family:inherit}
-.crm-stage-editor .cse-field input:focus{border-color:#ff8a3d;box-shadow:0 0 0 3px rgba(255,101,0,.12)}
 .cse-swatches{display:grid;grid-template-columns:repeat(6,1fr);gap:8px}
 .cse-swatch{width:100%;aspect-ratio:1/1;border:0;border-radius:50%;cursor:pointer;display:grid;place-items:center;color:#fff;font-size:13px;font-weight:900;box-shadow:0 1px 3px rgba(0,0,0,.18)}
 .cse-swatch.sel{box-shadow:0 0 0 3px #fff,0 0 0 5px rgba(20,14,10,.22)}
@@ -2734,27 +2579,12 @@ article.tone-red{border-left-color:#d3443e}article.tone-red strong{color:#d3443e
    BORDA colorida por dias sem interação (não tinge o card todo,
    não deixa preto). verde=neutro · amarelo · vermelho · preto.
    ============================================================ */
-.crm-lead-card-v3.sla-verde { background:#f2faf5 !important; color:#282421 !important; border:1px solid #cfe9d9 !important; }
-.crm-lead-card-v3.sla-amarelo { background:#fdf8ec !important; color:#282421 !important; border:1px solid #efdcab !important; }
-.crm-lead-card-v3.sla-vermelho { background:#fdf3f1 !important; color:#282421 !important; border:1px solid #f2c9c2 !important; }
-.crm-lead-card-v3.sla-preto { background:#eceae8 !important; color:#282421 !important; border:1px solid #cdc7c2 !important; }
-.crm-lead-card-v3.sla-preto .card-open-v3,
-.crm-lead-card-v3.sla-preto .card-person strong,
-.crm-lead-card-v3.sla-preto > footer strong { color:#282421 !important; }
-.crm-lead-card-v3.sla-preto .card-person small,
-.crm-lead-card-v3.sla-preto .sla-clock-v3 span,
-.crm-lead-card-v3.sla-preto > footer time { color:#6f665f !important; }
-.crm-lead-card-v3.sla-preto .card-controls-v3 { border-color:#dcd6d1 !important; background:rgba(255,255,255,.55) !important; }
 
 /* ============================================================
    Etapas do FUNIL no estilo de Vendas em processo: cabeçalho é uma
    CAIXA branca arredondada com bolinha colorida + borda esquerda 4px,
    SEM a barra grossa no topo e SEM colorir a coluna inteira.
    ============================================================ */
-
-
-
-.crm-kanban-v2 { flex: 1 1 auto; min-height: 0; max-height: none; align-items: stretch; overflow-y: hidden; }
 
 
 
@@ -2916,10 +2746,7 @@ article.tone-red{border-left-color:#d3443e}article.tone-red strong{color:#d3443e
    pra puxar as colunas de lado, sem precisar descer até a barra.
    Combina com o handler de roda do mouse em CrmWorkspace.tsx.
    ============================================================ */
-.crm-kanban-v2 { cursor: grab; }
-.crm-kanban-v2.panning { cursor: grabbing; user-select: none; }
-.crm-kanban-v2.panning .crm-stage-body { pointer-events: none; }
-.crm-lead-card-v3, .card-controls-v3, .crm-stage-editor { cursor: default; }
+.card-controls-v3 { cursor: default; }
 
 /* ============================================================
    #2 — mover lead entre funis (pipes) no drawer (jul/2026)
@@ -2940,20 +2767,12 @@ article.tone-red{border-left-color:#d3443e}article.tone-red strong{color:#d3443e
    Botão Chat e select de etapa com mesma altura, cantos suaves,
    seta custom consistente e cores que separam ação de navegação.
    ============================================================ */
-.crm-lead-card-v3 .card-controls-v3 { padding: 8px 9px; gap: 6px; }
-.crm-lead-card-v3 .card-controls-v3 > button,
-.crm-lead-card-v3 .card-controls-v3 label select { height: 32px; min-height: 32px; border-radius: 8px; font-size: 11px; font-weight: 700; }
-.crm-lead-card-v3 .card-controls-v3 > button { border: 1px solid #cfe8da; color: #14804a; background: #f3fbf6; }
-.crm-lead-card-v3 .card-controls-v3 > button:hover { background: #e7f7ee; border-color: #a9dcc1; }
-.crm-lead-card-v3 .card-controls-v3 label select { border: 1px solid #e0d8d2; color: #4b433e; background-color: #fff; padding: 0 22px 0 10px; appearance: none; -webkit-appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%238a7f78' stroke-width='3' stroke-linecap='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 8px center; cursor: pointer; }
-.crm-lead-card-v3 .card-controls-v3 label select:hover { border-color: #c9bfb8; }
 
 /* ============================================================
    Detalhe da venda em processo — clicar no card abre o andamento
    (jul/2026). Overlay reaproveita .crm-drawer-layer.
    ============================================================ */
 .sale-card-content { cursor: pointer; }
-.crm-drawer-v2.sale-detail { width: min(520px, 96vw); display: flex; flex-direction: column; background: #fff; }
 .sale-detail-hero { position: relative; padding: 22px 24px 18px; border-bottom: 1px solid #eee7e2; background: linear-gradient(180deg, #faf7ff, #fff); }
 .sale-detail-hero .drawer-close-v2 { position: absolute; top: 14px; right: 16px; width: 32px; height: 32px; border: 0; border-radius: 50%; background: #f1ece8; color: #5f5851; font-size: 19px; cursor: pointer; }
 .sale-detail-kicker { color: #8a3fd0; font-size: 11px; font-weight: 800; letter-spacing: .12em; }
@@ -3140,12 +2959,6 @@ article.tone-red{border-left-color:#d3443e}article.tone-red strong{color:#d3443e
    funil (rola por dentro) e a barra fica no rodapé visível.
    ============================================================ */
 
-.crm-kanban-v2 { overflow-x: auto; overflow-y: hidden; scrollbar-width: auto; scrollbar-color: #c2b7ae #efeae6; }
-.crm-kanban-v2::-webkit-scrollbar { height: 13px; }
-.crm-kanban-v2::-webkit-scrollbar-thumb { background: #c2b7ae; border-radius: 8px; border: 3px solid #efeae6; }
-.crm-kanban-v2::-webkit-scrollbar-thumb:hover { background: #a89c92; }
-.crm-kanban-v2::-webkit-scrollbar-track { background: #efeae6; border-radius: 8px; }
-
 /* ============================================================
    Seletor de etapa do card/tabela: botão limpo + modal de escolha
    (jul/2026). Troca o <select> nativo (lista feia do navegador)
@@ -3233,8 +3046,6 @@ article.tone-red{border-left-color:#d3443e}article.tone-red strong{color:#d3443e
    #8 — cliente respondeu: sino amarelo no card + pop-up no canto
    inferior direito (jul/2026). O som é gerado via Web Audio.
    ============================================================ */
-.crm-lead-card-v3 .card-resp-bell { position: absolute; top: 8px; right: 8px; z-index: 4; width: 26px; height: 26px; display: grid; place-items: center; border-radius: 50%; background: #ffd84d; color: #6b4e00; box-shadow: 0 2px 8px rgba(224,168,12,.5); animation: resp-bell-pulse 1.4s ease-in-out infinite; }
-.crm-lead-card-v3 .card-resp-bell svg { width: 15px; height: 15px; }
 @keyframes resp-bell-pulse { 0%,100% { transform: scale(1); box-shadow: 0 2px 8px rgba(224,168,12,.5); } 50% { transform: scale(1.12); box-shadow: 0 2px 14px rgba(224,168,12,.75); } }
 
 .resp-toast { position: fixed !important; right: 22px !important; bottom: 22px !important; left: auto !important; z-index: 2147483000; display: flex; align-items: center; gap: 12px; width: 380px !important; max-width: calc(100vw - 44px) !important; margin: 0 !important; padding: 13px 14px; border-radius: 14px; background: #fff; border: 1px solid #f0e4b8; box-shadow: 0 16px 44px rgba(31,23,12,.24); animation: resp-toast-in .25s ease; }
@@ -3249,41 +3060,14 @@ article.tone-red{border-left-color:#d3443e}article.tone-red strong{color:#d3443e
 .resp-toast .resp-toast-x { flex: 0 0 auto; width: 24px; height: 24px; border: 0; border-radius: 50%; background: #f1ece8; color: #756d67; font-size: 15px; cursor: pointer; }
 
 /* Sino do card: vermelho = não lida (urgente), amarelo = lida sem resposta (jul/2026) */
-.crm-lead-card-v3 .card-resp-bell.urgente { background: #e23b3b; color: #fff; box-shadow: 0 2px 10px rgba(226,59,59,.55); animation: resp-bell-pulse-red 1.05s ease-in-out infinite; }
 @keyframes resp-bell-pulse-red { 0%,100% { transform: scale(1); box-shadow: 0 2px 10px rgba(226,59,59,.55); } 50% { transform: scale(1.15); box-shadow: 0 2px 16px rgba(226,59,59,.82); } }
 
 /* ============================================================
    Funil: lista lateral de funis (pipes) + kanban à direita
    estilo DataCrazy (jul/2026).
    ============================================================ */
-.crm-pipe-layout { flex: 1 1 auto; min-height: 0; display: flex; overflow: hidden; }
-.crm-pipe-rail { flex: 0 0 208px; overflow-y: auto; padding: 12px 10px; border-right: 1px solid #e7e1dd; background: #faf8f6; display: flex; flex-direction: column; gap: 4px; }
-.crm-pipe-rail-title { padding: 4px 8px 6px; color: #a19892; font-size: 10px; font-weight: 800; letter-spacing: .12em; }
-.crm-pipe-item { display: flex; align-items: center; gap: 9px; padding: 10px; border: 1px solid transparent; border-radius: 10px; background: transparent; color: #4b433e; text-align: left; cursor: pointer; }
-.crm-pipe-item:hover { background: #f1ece8; }
-.crm-pipe-item.active { background: #fff; box-shadow: 0 1px 5px rgba(38,28,22,.08); border-color: #eadff7; }
-.crm-pipe-item .crm-pipe-dot { flex: 0 0 8px; width: 8px; height: 8px; border-radius: 50%; background: #cfc6c0; }
-.crm-pipe-item.active .crm-pipe-dot { background: #ff6500; }
-.crm-pipe-item strong { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12.5px; font-weight: 650; }
-.crm-pipe-item.active strong { color: #2b2622; font-weight: 800; }
-.crm-pipe-item em { flex: 0 0 auto; padding: 2px 8px; border-radius: 999px; background: #f1ece8; color: #7c726b; font-size: 11px; font-weight: 700; font-style: normal; }
-.crm-pipe-item.active em { background: #fff0e6; color: #d85600; }
-.crm-pipe-layout .crm-kanban-v2 { flex: 1 1 auto; min-width: 0; }
-@media (max-width: 700px) { .crm-pipe-rail { flex-basis: 140px; } }
 
 /* Pipe rail recolhível — DataCrazy-style collapse toggle */
-.crm-pipe-rail-head { display: flex; align-items: center; justify-content: space-between; gap: 6px; padding: 2px 2px 4px; }
-.crm-pipe-rail-toggle { flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border: 1px solid #e7e1dd; border-radius: 7px; background: #fff; color: #8a807a; cursor: pointer; padding: 0; }
-.crm-pipe-rail-toggle:hover { background: #f1ece8; color: #ff6500; border-color: #eadfd7; }
-.crm-pipe-rail-toggle svg { width: 14px; height: 14px; }
-.crm-pipe-layout { transition: none; }
-.crm-pipe-layout.rail-collapsed .crm-pipe-rail { flex-basis: 48px; padding: 12px 6px; align-items: center; }
-.crm-pipe-layout.rail-collapsed .crm-pipe-rail-head { flex-direction: column; gap: 8px; padding-bottom: 6px; }
-.crm-pipe-layout.rail-collapsed .crm-pipe-rail-title { display: none; }
-.crm-pipe-layout.rail-collapsed .crm-pipe-item { justify-content: center; padding: 9px 6px; gap: 0; }
-.crm-pipe-layout.rail-collapsed .crm-pipe-item .crm-pipe-dot { width: 10px; height: 10px; flex-basis: 10px; }
-.crm-pipe-layout.rail-collapsed .crm-pipe-item strong,
-.crm-pipe-layout.rail-collapsed .crm-pipe-item em { display: none; }
 
 /* RefinedSelect — dropdown custom (substitui o <select> nativo cru) */
 
@@ -3868,73 +3652,16 @@ article.tone-red{border-left-color:#d3443e}article.tone-red strong{color:#d3443e
   .ficha-v2 .fv2-specs { grid-template-columns:repeat(2,1fr); }
 }
 /* ─── Aquário: pesque um lead ─── */
-.aq-box { margin:8px 8px 2px; border:1.5px dashed #7dd3fc; background:linear-gradient(180deg,#f0f9ff,#e0f2fe); border-radius:14px; padding:12px; display:flex; flex-direction:column; gap:8px; }
-.aq-count { display:flex; align-items:center; gap:10px; }
-.aq-fish-ico { font-size:24px; }
-.aq-count strong { font-size:20px; color:#075985; letter-spacing:-.02em; display:block; line-height:1; }
-.aq-count small { font-size:10.5px; color:#0369a1; font-weight:650; }
-.aq-pescar { border:none; border-radius:10px; padding:9px 12px; font-weight:800; font-size:12.5px; cursor:pointer; color:#fff; background:linear-gradient(135deg,#0284c7,#0ea5e9); box-shadow:0 4px 12px rgba(2,132,199,.28); transition:transform .12s; }
-.aq-pescar:hover:not(:disabled) { transform:translateY(-1px); }
-.aq-pescar:disabled { opacity:.55; cursor:default; }
-.aq-import { border:1px solid #bae6fd; background:#fff; color:#0369a1; border-radius:10px; padding:7px 10px; font-weight:700; font-size:11.5px; cursor:pointer; }
-.aq-import:hover { background:#f0f9ff; }
 /* modal de importação */
-.aq-modal-layer { display:flex; align-items:center; justify-content:center; }
-.aq-modal { background:#fff; border-radius:18px; width:min(560px,94vw); max-height:88vh; overflow:auto; padding:20px 22px; box-shadow:0 24px 60px rgba(32,20,14,.3); }
-.aq-modal header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px; }
-.aq-modal header span { font-size:10px; font-weight:800; letter-spacing:.12em; color:#0284c7; }
-.aq-modal header h2 { margin:2px 0 4px; font-size:19px; color:#20140e; }
-.aq-modal header p { margin:0; font-size:12.5px; color:#8a807a; }
-.aq-modal header > button { border:none; background:#f5f1ee; border-radius:50%; width:30px; height:30px; font-size:16px; cursor:pointer; color:#6b625c; }
-.aq-tabs { display:flex; gap:6px; margin-bottom:12px; }
-.aq-tabs button { flex:1; border:1px solid #ece7e3; background:#faf8f6; border-radius:10px; padding:9px; font-weight:700; font-size:12.5px; color:#6b625c; cursor:pointer; }
-.aq-tabs button.active { background:#e0f2fe; border-color:#7dd3fc; color:#075985; }
-.aq-pane p { font-size:12.5px; color:#57504b; margin:0 0 10px; }
-.aq-molde { border:1px solid #bae6fd; background:#f0f9ff; color:#0369a1; border-radius:10px; padding:9px 12px; font-weight:700; font-size:12.5px; cursor:pointer; margin-bottom:10px; display:block; }
-.aq-file { display:block; border:1.5px dashed #d6cec8; border-radius:12px; padding:16px; text-align:center; font-weight:700; font-size:13px; color:#57504b; cursor:pointer; background:#faf8f6; }
-.aq-file input { display:block; margin:8px auto 0; font-size:12px; }
-.aq-pane textarea { width:100%; border:1px solid #ece7e3; border-radius:12px; padding:10px 12px; font-size:13px; font-family:inherit; resize:vertical; box-sizing:border-box; }
-.aq-preview { margin-top:12px; border:1px solid #ece7e3; border-radius:12px; padding:10px 12px; background:#faf8f6; }
-.aq-preview strong { font-size:13px; color:#17834b; display:block; }
-.aq-preview em { display:block; font-size:11.5px; color:#b45309; font-style:normal; margin-top:4px; }
-.aq-preview-rows { display:flex; flex-direction:column; gap:2px; margin-top:8px; }
-.aq-preview-rows span { font-size:11.5px; color:#57504b; }
-.aq-modal footer { display:flex; justify-content:flex-end; gap:8px; margin-top:16px; }
-.aq-modal footer button { border:1px solid #ece7e3; background:#fff; border-radius:10px; padding:9px 16px; font-weight:700; font-size:13px; cursor:pointer; color:#57504b; }
-.aq-modal footer button.crm-primary { border:none; color:#fff; background:linear-gradient(135deg,#ff7000,#ff9040); }
-.aq-modal footer button.crm-primary:disabled { opacity:.55; }
-.aq-result { display:flex; gap:10px; flex-wrap:wrap; align-items:stretch; }
-.aq-result-num { flex:1; min-width:120px; border:1px solid #ece7e3; border-radius:12px; padding:14px; text-align:center; background:#faf8f6; }
-.aq-result-num.ok { background:#ecfdf3; border-color:#bbe7cd; }
-.aq-result-num strong { display:block; font-size:24px; color:#20140e; }
-.aq-result-num.ok strong { color:#17834b; }
-.aq-result-num span { font-size:11px; color:#8a807a; font-weight:650; }
-.aq-result footer { width:100%; display:flex; justify-content:flex-end; margin-top:6px; }
 
 /* Aquário na tela de Configurações */
-.aq-config .aq-tabs { max-width:520px; }
-.aq-config .aq-pane textarea { max-width:520px; }
-.aq-config .aq-preview { max-width:520px; }
-.aq-config .aq-result { max-width:520px; margin-top:12px; }
-.aq-config-status { display:flex; align-items:center; gap:12px; border:1.5px dashed #7dd3fc; background:linear-gradient(180deg,#f0f9ff,#e0f2fe); border-radius:14px; padding:12px 14px; margin:12px 0 14px; max-width:520px; }
-.aq-config-status strong { font-size:22px; color:#075985; display:block; line-height:1; }
-.aq-config-status small { font-size:11px; color:#0369a1; font-weight:650; }
-.aq-config-status button { margin-left:auto; border:1px solid #bae6fd; background:#fff; color:#0369a1; border-radius:9px; padding:6px 10px; font-weight:700; font-size:11.5px; cursor:pointer; }
 /* ============================================================================
    CRM — DESLIZE HORIZONTAL DO BOARD (fonte de verdade — não duplicar acima)
    Consolida o comportamento de rolagem lateral entre as colunas do funil.
-   Adicionado ao final de propósito: como .crm-kanban-v2 estava redeclarado
+   Adicionado ao final de propósito para manter a rolagem horizontal estável.
    dezenas de vezes ao longo do arquivo, este bloco vence a cascata e define o
    comportamento final. Ajustes futuros do deslize devem ser feitos AQUI.
    ========================================================================== */
-.crm-kanban-v2 {
-  scroll-behavior: auto;          /* nada de smooth: arrasto/roda controlam scrollLeft */
-  overflow-x: auto;
-  overflow-y: hidden;
-  overscroll-behavior-x: contain; /* não "vaza" o scroll pra página/histórico */
-  cursor: grab;
-}
-.crm-kanban-v2.panning { cursor: grabbing; user-select: none; }
 
 /* Cadastrar unidade (UnitWizard) */
 .uw-photos { display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
@@ -4453,7 +4180,6 @@ article.tone-red{border-left-color:#d3443e}article.tone-red strong{color:#d3443e
 /* Selo do momento é clicável: atualizar direto do card e da lista */
 button.momentox-selo{border:1px solid transparent;cursor:pointer;font-family:inherit;transition:filter var(--dur) var(--ease),border-color var(--dur) var(--ease)}
 button.momentox-selo:hover{filter:brightness(.96);border-color:currentColor}
-.crm-lead-card-v3 .momentox-selo{align-self:flex-start;max-width:100%}
 .table-person .momentox-selo{margin-top:3px}
 
 /* ===== Configurações · Momentos do lead ===== */
