@@ -8,78 +8,92 @@ const funil = ler("../app/features/funil-2/Funil2Workspace.tsx");
 const shell = ler("../app/features/system/ErpShell.tsx");
 const atividade = ler("../app/features/performance/PerformanceActivityHeartbeat.tsx");
 const api = ler("../app/api/performance/route.ts");
-const migration = ler("../supabase/migrations/20260815180316_performance_canonica_corretor.sql");
-const historico = ler("../supabase/migrations/20260815200000_ampliar_performance_historica.sql");
-const resumo = ler("../supabase/migrations/20260815201000_resumo_empresa_performance.sql");
-const bolsao = ler("../supabase/migrations/20260815202000_excluir_bolsao_da_performance.sql");
+const base = ler("../supabase/migrations/20260815180316_performance_canonica_corretor.sql");
+const sala = ler("../supabase/migrations/20260815203057_performance_sala_comando_ceo.sql");
 const remocao = ler("../supabase/migrations/20260815182228_remover_performance_legada.sql");
+const estudo = ler("../docs/estudo-performance-imobiliaria-2026.md");
 
-test("existe uma unica Central de Performance e o Funil 2 fica operacional", () => {
-  assert.match(tela, /Central de Gestão de Corretores/);
-  assert.match(tela, /Trabalho e disciplina/);
-  assert.match(tela, /Cobertura dos dados/);
+test("performance vira Sala de Comando e não duplica painel no Funil 2", () => {
+  assert.match(tela, /Sala de Comando/);
+  assert.match(tela, /Receita e funil/);
+  assert.match(tela, /Confiança dos dados/);
   assert.doesNotMatch(funil, /Performance de Atendimento|PerformanceFunil2|id: "performance"/);
 });
 
-test("painel usa somente a RPC canônica", () => {
-  assert.match(api, /rpc\("performance_painel"/);
-  assert.doesNotMatch(api, /performance_corretores|performance_operacional|performance_extra/);
+test("API usa um contrato executivo único e autenticado", () => {
+  assert.match(api, /rpc\("performance_sala_comando"/);
+  assert.match(api, /supabase\.auth\.getUser/);
+  assert.doesNotMatch(api, /performance_painel|performance_resumo_empresa|performance_bolsao_ajustes/);
 });
 
-test("todo o histórico usa fontes brutas e o financeiro oficial", () => {
-  assert.match(tela, /useState<Periodo>\("todo"\)/);
+test("mês é a decisão padrão e todo o histórico continua acessível", () => {
+  assert.match(tela, /useState<Periodo>\("mes"\)/);
   assert.match(tela, /Todo histórico/);
-  assert.match(historico, /public\.wa_mensagens/);
-  assert.match(historico, /public\.ncrm_evento/);
-  assert.match(historico, /public\.f2_evento/);
-  assert.match(historico, /public\.comissoes/);
-  assert.match(resumo, /'semAtribuicao'/);
-  assert.match(resumo, /'leadsCadastrados'/);
+  assert.match(api, /periodo === "todo"/);
+  assert.match(sala, /public\.wa_mensagens/);
+  assert.match(sala, /public\.ncrm_evento|public\.perf_eventos/);
+  assert.match(sala, /public\.vendas/);
 });
 
-test("mensagem do D-API não é duplicada pelos eventos derivados", () => {
-  assert.doesNotMatch(historico, /where pe\.tipo = 'mensagem_enviada'/);
-  assert.match(historico, /pe\.tipo in \('followup','reativacao'/);
-  assert.match(tela, /Mensagem bruta do D-API é a fonte de volume/);
+test("resultado, risco e confiança ficam separados sem nota geral enganosa", () => {
+  assert.match(tela, /LEITURA DO CEO/);
+  assert.match(tela, /Margem de contribuição/);
+  assert.match(tela, /DECISÕES DE HOJE/);
+  assert.doesNotMatch(tela, /Nota de execução|notaExecucao|score geral/i);
 });
 
-test("Aquário e Pescado ficam fora da performance até existir trabalho real", () => {
-  assert.match(api, /rpc\("performance_bolsao_ajustes"/);
-  assert.match(bolsao, /public\.aquario_stage_id\(\)/);
-  assert.match(bolsao, /f\.etapa<>'pescado'/);
-  assert.match(bolsao, /'leadsBolsao'/);
-  assert.match(tela, /Bolsão fora da performance/);
-  assert.match(tela, /a etapa Pescado também não melhora a nota/);
+test("Aquário e Pescado não viram mérito individual", () => {
+  assert.match(sala, /public\.aquario_stage_id\(\)/);
+  assert.match(sala, /f\.etapa<>'pescado'/);
+  assert.match(tela, /Aquário\/Bolsão e Pescado não contam como performance/);
 });
 
-test("atividade mede uso real, visível e sem duplicar abas", () => {
+test("ausência de ligação bloqueia forecast, ROI e conversão de coorte", () => {
+  assert.match(tela, /O PAINEL NÃO VAI INVENTAR/);
+  assert.match(tela, /Forecast de receita/);
+  assert.match(tela, /ROI e CAC por canal/);
+  assert.match(tela, /Conversão por coorte/);
+  assert.match(sala, /vendas_vinculadas/);
+  assert.match(sala, /negocios_com_valor/);
+});
+
+test("corretores são geridos por decisão e amostra, não por volume isolado", () => {
+  assert.match(tela, /Sobrecarga/);
+  assert.match(tela, /Carteira travada/);
+  assert.match(tela, /Resposta em risco/);
+  assert.match(tela, /Não classificar sem casos medidos/);
+});
+
+test("RPC restringe empresa ao gestor e o corretor ao próprio id", () => {
+  assert.match(sala, /public\.can_manage_all\(\)/);
+  assert.match(sala, /c\.id=p\.corretor_id/);
+  assert.match(sala, /'empresa',case when p\.admin/);
+  assert.match(sala, /revoke all on function public\.performance_sala_comando\(date,date\) from public,anon/);
+  assert.match(sala, /grant execute on function public\.performance_sala_comando\(date,date\) to authenticated,service_role/);
+});
+
+test("atividade real continua sem usar presença ou botão online como produtividade", () => {
   assert.match(shell, /PerformanceActivityHeartbeat/);
   assert.match(atividade, /document\.visibilityState !== "visible"/);
   assert.match(atividade, /OCIOSO_APOS_MS/);
-  assert.match(migration, /primary key \(corretor_id, bloco_em\)/);
-  assert.match(migration, /date_bin\(interval '5 minutes'/);
-  assert.doesNotMatch(tela, /onlineH|tempo online/i);
+  assert.match(base, /primary key \(corretor_id, bloco_em\)/);
+  assert.match(sala, /'minutosErp'/);
+  assert.match(tela, /Uso ativo do ERP/);
+  assert.match(tela, /não representa horas trabalhadas fora do sistema/);
+  assert.doesNotMatch(tela, /tempo online|onlineH/i);
 });
 
-test("fonte sensível é fechada e as RPCs conferem identidade", () => {
-  assert.match(migration, /enable row level security/);
-  assert.match(migration, /revoke all on table public\.performance_atividade_app from public, anon, authenticated/);
-  assert.match(migration, /v_uid uuid := auth\.uid\(\)/);
-  assert.match(migration, /public\.can_manage_all\(\) or c\.id = public\.current_broker_id\(\)/);
+test("estudo registra benchmarks, natureza da operação e contrato de métricas", () => {
+  assert.match(estudo, /Tese executiva/);
+  assert.match(estudo, /Natureza comprovada da operação/);
+  assert.match(estudo, /Contrato das métricas/);
+  assert.match(estudo, /Zillow/);
+  assert.match(estudo, /NAR/);
+  assert.match(estudo, /RD Station/);
 });
 
-test("nota não transforma ausência de fonte em zero", () => {
-  assert.match(tela, /Sem amostra/);
-  assert.match(tela, /Sem captura/);
-  assert.match(tela, /Não cadastrada/);
-  assert.match(migration, /cobertura_peso/);
-  assert.match(migration, /case when b\.ia_avaliacoes >= 5/);
-});
-
-test("estrutura antiga é removida sem cascade e derivação útil permanece", () => {
-  assert.match(remocao, /cron\.unschedule/);
+test("estrutura antiga permanece removida sem cascade", () => {
   assert.match(remocao, /drop table if exists public\.perf_snapshots/);
   assert.match(remocao, /drop function if exists public\.performance_corretores/);
   assert.doesNotMatch(remocao, /cascade/i);
-  assert.doesNotMatch(remocao, /perf_derivar_eventos/);
 });
