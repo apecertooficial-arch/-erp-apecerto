@@ -14,75 +14,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      _mig_pipe2_to_funil20_bkp: {
-        Row: {
-          movido_em: string | null
-          negocio_id: number | null
-          old_estagio_desde: string | null
-          old_pipeline_id: number | null
-          old_stage_id: number | null
-        }
-        Insert: {
-          movido_em?: string | null
-          negocio_id?: number | null
-          old_estagio_desde?: string | null
-          old_pipeline_id?: number | null
-          old_stage_id?: number | null
-        }
-        Update: {
-          movido_em?: string | null
-          negocio_id?: number | null
-          old_estagio_desde?: string | null
-          old_pipeline_id?: number | null
-          old_stage_id?: number | null
-        }
-        Relationships: []
-      }
-      _perf_baseline: {
-        Row: {
-          calls: number | null
-          consulta: string | null
-          ms_media: number | null
-          ms_total: number | null
-          rotulo: string | null
-          snap_em: string | null
-        }
-        Insert: {
-          calls?: number | null
-          consulta?: string | null
-          ms_media?: number | null
-          ms_total?: number | null
-          rotulo?: string | null
-          snap_em?: string | null
-        }
-        Update: {
-          calls?: number | null
-          consulta?: string | null
-          ms_media?: number | null
-          ms_total?: number | null
-          rotulo?: string | null
-          snap_em?: string | null
-        }
-        Relationships: []
-      }
-      _view_backup: {
-        Row: {
-          def: string | null
-          nome: string | null
-          salvo_em: string | null
-        }
-        Insert: {
-          def?: string | null
-          nome?: string | null
-          salvo_em?: string | null
-        }
-        Update: {
-          def?: string | null
-          nome?: string | null
-          salvo_em?: string | null
-        }
-        Relationships: []
-      }
       abordagens: {
         Row: {
           ativo: boolean
@@ -748,6 +679,140 @@ export type Database = {
           versao_atual?: number
         }
         Relationships: []
+      }
+      anuncios_site: {
+        Row: {
+          area_util: number | null
+          atualizado_em: string
+          bairro: string | null
+          banheiros: number | null
+          condominio_valor: number | null
+          corretor_uid: string
+          criado_em: string
+          descricao: string | null
+          destaque: boolean
+          dormitorios: number | null
+          empreendimento_id: string | null
+          endereco: string | null
+          estagio: string
+          fotos: Json
+          id: string
+          iptu: number | null
+          latitude: number | null
+          longitude: number | null
+          origem: string
+          preco: number | null
+          preco_promo: number | null
+          status: string
+          titulo: string
+          unidade_id: string | null
+          vagas: number | null
+        }
+        Insert: {
+          area_util?: number | null
+          atualizado_em?: string
+          bairro?: string | null
+          banheiros?: number | null
+          condominio_valor?: number | null
+          corretor_uid?: string
+          criado_em?: string
+          descricao?: string | null
+          destaque?: boolean
+          dormitorios?: number | null
+          empreendimento_id?: string | null
+          endereco?: string | null
+          estagio?: string
+          fotos?: Json
+          id?: string
+          iptu?: number | null
+          latitude?: number | null
+          longitude?: number | null
+          origem?: string
+          preco?: number | null
+          preco_promo?: number | null
+          status?: string
+          titulo: string
+          unidade_id?: string | null
+          vagas?: number | null
+        }
+        Update: {
+          area_util?: number | null
+          atualizado_em?: string
+          bairro?: string | null
+          banheiros?: number | null
+          condominio_valor?: number | null
+          corretor_uid?: string
+          criado_em?: string
+          descricao?: string | null
+          destaque?: boolean
+          dormitorios?: number | null
+          empreendimento_id?: string | null
+          endereco?: string | null
+          estagio?: string
+          fotos?: Json
+          id?: string
+          iptu?: number | null
+          latitude?: number | null
+          longitude?: number | null
+          origem?: string
+          preco?: number | null
+          preco_promo?: number | null
+          status?: string
+          titulo?: string
+          unidade_id?: string | null
+          vagas?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "anuncios_site_empreendimento_id_fkey"
+            columns: ["empreendimento_id"]
+            isOneToOne: false
+            referencedRelation: "empreendimentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "anuncios_site_empreendimento_id_fkey"
+            columns: ["empreendimento_id"]
+            isOneToOne: false
+            referencedRelation: "site_produtos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "anuncios_site_empreendimento_id_fkey"
+            columns: ["empreendimento_id"]
+            isOneToOne: false
+            referencedRelation: "v_catalogo_empreendimentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "anuncios_site_empreendimento_id_fkey"
+            columns: ["empreendimento_id"]
+            isOneToOne: false
+            referencedRelation: "vw_empreendimento_resumo"
+            referencedColumns: ["empreendimento_id"]
+          },
+          {
+            foreignKeyName: "anuncios_site_empreendimento_id_fkey"
+            columns: ["empreendimento_id"]
+            isOneToOne: false
+            referencedRelation: "vw_produtos_catalogo"
+            referencedColumns: ["empreendimento_id"]
+          },
+          {
+            foreignKeyName: "anuncios_site_empreendimento_id_fkey"
+            columns: ["empreendimento_id"]
+            isOneToOne: false
+            referencedRelation: "vw_produtos_publicos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "anuncios_site_unidade_id_fkey"
+            columns: ["unidade_id"]
+            isOneToOne: false
+            referencedRelation: "unidades"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       app_secrets: {
         Row: {
@@ -2399,78 +2464,6 @@ export type Database = {
         }
         Relationships: []
       }
-      erp_pipeline_config: {
-        Row: {
-          config: Json | null
-          cor: string | null
-          id: string
-          nome: string | null
-          updated_at: string | null
-        }
-        Insert: {
-          config?: Json | null
-          cor?: string | null
-          id: string
-          nome?: string | null
-          updated_at?: string | null
-        }
-        Update: {
-          config?: Json | null
-          cor?: string | null
-          id?: string
-          nome?: string | null
-          updated_at?: string | null
-        }
-        Relationships: []
-      }
-      erp_settings: {
-        Row: {
-          atualizado_em: string
-          chave: string
-          valor: Json
-        }
-        Insert: {
-          atualizado_em?: string
-          chave: string
-          valor?: Json
-        }
-        Update: {
-          atualizado_em?: string
-          chave?: string
-          valor?: Json
-        }
-        Relationships: []
-      }
-      erp_user_config: {
-        Row: {
-          acessos: Json | null
-          ativo: boolean | null
-          email: string
-          instancias: Json | null
-          nome: string | null
-          perfil: string | null
-          updated_at: string | null
-        }
-        Insert: {
-          acessos?: Json | null
-          ativo?: boolean | null
-          email: string
-          instancias?: Json | null
-          nome?: string | null
-          perfil?: string | null
-          updated_at?: string | null
-        }
-        Update: {
-          acessos?: Json | null
-          ativo?: boolean | null
-          email?: string
-          instancias?: Json | null
-          nome?: string | null
-          perfil?: string | null
-          updated_at?: string | null
-        }
-        Relationships: []
-      }
       escritorio_config: {
         Row: {
           atualizado_em: string
@@ -3051,27 +3044,6 @@ export type Database = {
           atualizado_em?: string
           id?: number
           janela_bloco_min?: number
-        }
-        Relationships: []
-      }
-      f2_cadencia_regua: {
-        Row: {
-          despedida: boolean
-          dias_uteis: number
-          rotulo: string
-          tentativa: number
-        }
-        Insert: {
-          despedida?: boolean
-          dias_uteis: number
-          rotulo: string
-          tentativa: number
-        }
-        Update: {
-          despedida?: boolean
-          dias_uteis?: number
-          rotulo?: string
-          tentativa?: number
         }
         Relationships: []
       }
@@ -3934,7 +3906,6 @@ export type Database = {
           card: string
           motivo: string | null
           pedido_em: string
-          regra_id: number | null
         }
         Insert: {
           analise_id?: number | null
@@ -3942,7 +3913,6 @@ export type Database = {
           card: string
           motivo?: string | null
           pedido_em?: string
-          regra_id?: number | null
         }
         Update: {
           analise_id?: number | null
@@ -3950,7 +3920,6 @@ export type Database = {
           card?: string
           motivo?: string | null
           pedido_em?: string
-          regra_id?: number | null
         }
         Relationships: [
           {
@@ -3966,13 +3935,6 @@ export type Database = {
             isOneToOne: true
             referencedRelation: "f2_sara_pontos_cegos"
             referencedColumns: ["card_id"]
-          },
-          {
-            foreignKeyName: "f2_sara_pedido_regra_id_fkey"
-            columns: ["regra_id"]
-            isOneToOne: false
-            referencedRelation: "funil_regra"
-            referencedColumns: ["id"]
           },
         ]
       }
@@ -4468,112 +4430,6 @@ export type Database = {
           tentativas_para_cadencia?: number
         }
         Relationships: []
-      }
-      funil_regra: {
-        Row: {
-          abordagem_ids: number[] | null
-          acao: string
-          ativo: boolean
-          atualizado_em: string
-          condicao: string
-          condicao_valor: number | null
-          criado_em: string
-          de_momento: string[] | null
-          dias_semana: number[] | null
-          id: number
-          janela_fim: string | null
-          janela_inicio: string | null
-          lote: number
-          nome: string
-          ordem: number
-          para_momento: string | null
-          produto_id: number | null
-          uma_vez_por_card: boolean
-        }
-        Insert: {
-          abordagem_ids?: number[] | null
-          acao: string
-          ativo?: boolean
-          atualizado_em?: string
-          condicao: string
-          condicao_valor?: number | null
-          criado_em?: string
-          de_momento?: string[] | null
-          dias_semana?: number[] | null
-          id?: number
-          janela_fim?: string | null
-          janela_inicio?: string | null
-          lote?: number
-          nome: string
-          ordem?: number
-          para_momento?: string | null
-          produto_id?: number | null
-          uma_vez_por_card?: boolean
-        }
-        Update: {
-          abordagem_ids?: number[] | null
-          acao?: string
-          ativo?: boolean
-          atualizado_em?: string
-          condicao?: string
-          condicao_valor?: number | null
-          criado_em?: string
-          de_momento?: string[] | null
-          dias_semana?: number[] | null
-          id?: number
-          janela_fim?: string | null
-          janela_inicio?: string | null
-          lote?: number
-          nome?: string
-          ordem?: number
-          para_momento?: string | null
-          produto_id?: number | null
-          uma_vez_por_card?: boolean
-        }
-        Relationships: []
-      }
-      funil_regra_execucao: {
-        Row: {
-          card: string
-          executado_em: string
-          regra_id: number
-          resultado: string | null
-        }
-        Insert: {
-          card: string
-          executado_em?: string
-          regra_id: number
-          resultado?: string | null
-        }
-        Update: {
-          card?: string
-          executado_em?: string
-          regra_id?: number
-          resultado?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "funil_regra_execucao_card_fkey"
-            columns: ["card"]
-            isOneToOne: false
-            referencedRelation: "f2_lead"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "funil_regra_execucao_card_fkey"
-            columns: ["card"]
-            isOneToOne: false
-            referencedRelation: "f2_sara_pontos_cegos"
-            referencedColumns: ["card_id"]
-          },
-          {
-            foreignKeyName: "funil_regra_execucao_regra_id_fkey"
-            columns: ["regra_id"]
-            isOneToOne: false
-            referencedRelation: "funil_regra"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       gerentes: {
         Row: {
@@ -5633,39 +5489,6 @@ export type Database = {
           },
         ]
       }
-      mig_corretor_map: {
-        Row: {
-          corretor_id: number | null
-          dc_attendant_id: string
-          dc_name: string | null
-        }
-        Insert: {
-          corretor_id?: number | null
-          dc_attendant_id: string
-          dc_name?: string | null
-        }
-        Update: {
-          corretor_id?: number | null
-          dc_attendant_id?: string
-          dc_name?: string | null
-        }
-        Relationships: []
-      }
-      mig_pipe_map: {
-        Row: {
-          dc_pipeline_id: string
-          erp_pipeline_id: number | null
-        }
-        Insert: {
-          dc_pipeline_id: string
-          erp_pipeline_id?: number | null
-        }
-        Update: {
-          dc_pipeline_id?: string
-          erp_pipeline_id?: number | null
-        }
-        Relationships: []
-      }
       motivos_descarte: {
         Row: {
           motivo: string
@@ -6716,57 +6539,6 @@ export type Database = {
           },
         ]
       }
-      ncrm_funcao_legada_backup: {
-        Row: {
-          assinatura: string
-          checksum: string
-          criado_em: string
-          definicao: string
-          funcao: string
-          grants_antes: string | null
-          id: number
-          owner_antes: string
-        }
-        Insert: {
-          assinatura: string
-          checksum: string
-          criado_em?: string
-          definicao: string
-          funcao: string
-          grants_antes?: string | null
-          id?: number
-          owner_antes: string
-        }
-        Update: {
-          assinatura?: string
-          checksum?: string
-          criado_em?: string
-          definicao?: string
-          funcao?: string
-          grants_antes?: string | null
-          id?: number
-          owner_antes?: string
-        }
-        Relationships: []
-      }
-      ncrm_funcao_legada_esperada: {
-        Row: {
-          checksum: string
-          funcao: string
-          origem: string
-        }
-        Insert: {
-          checksum: string
-          funcao: string
-          origem: string
-        }
-        Update: {
-          checksum?: string
-          funcao?: string
-          origem?: string
-        }
-        Relationships: []
-      }
       ncrm_ingest_audit: {
         Row: {
           acao: string
@@ -7264,24 +7036,6 @@ export type Database = {
         }
         Relationships: []
       }
-      ncrm_operacao_v4_backup: {
-        Row: {
-          chave: string
-          criado_em: string
-          payload: Json
-        }
-        Insert: {
-          chave: string
-          criado_em?: string
-          payload: Json
-        }
-        Update: {
-          chave?: string
-          criado_em?: string
-          payload?: Json
-        }
-        Relationships: []
-      }
       ncrm_piloto: {
         Row: {
           ativo: boolean
@@ -7767,27 +7521,6 @@ export type Database = {
         }
         Relationships: []
       }
-      ncrm_saida_humana_continuidade_backup: {
-        Row: {
-          assinatura: string
-          criado_em: string
-          definicao: string
-          md5: string
-        }
-        Insert: {
-          assinatura: string
-          criado_em?: string
-          definicao: string
-          md5: string
-        }
-        Update: {
-          assinatura?: string
-          criado_em?: string
-          definicao?: string
-          md5?: string
-        }
-        Relationships: []
-      }
       ncrm_sara_acao: {
         Row: {
           analise_id: number | null
@@ -8114,24 +7847,6 @@ export type Database = {
           ultimo_erro?: string | null
           ultimo_run_id?: string | null
           ultimo_status?: string | null
-        }
-        Relationships: []
-      }
-      ncrm_sara_treinamento_backup: {
-        Row: {
-          chave: string
-          criado_em: string
-          payload: Json
-        }
-        Insert: {
-          chave: string
-          criado_em?: string
-          payload: Json
-        }
-        Update: {
-          chave?: string
-          criado_em?: string
-          payload?: Json
         }
         Relationships: []
       }
@@ -8699,90 +8414,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      negocios_dup_backup_20260721: {
-        Row: {
-          backup_em: string | null
-          corretor_id: number | null
-          criado_em: string | null
-          datacrazy_negocio_id: string | null
-          descarte_motivo: string | null
-          descarte_status: string | null
-          empreendimento_id: string | null
-          estagio_desde: string | null
-          id: number | null
-          keep_id: number | null
-          lead_id: number | null
-          max_tentativas: number | null
-          motivo_perda: string | null
-          pipeline_id: number | null
-          raw: Json | null
-          rn: number | null
-          stage_id: number | null
-          status: string | null
-          tentativa: number | null
-          transferencia_para: number | null
-          transferencia_status: string | null
-          ultima_movimentacao: string | null
-          unidade_id: string | null
-          valor: number | null
-          venda_id: string | null
-        }
-        Insert: {
-          backup_em?: string | null
-          corretor_id?: number | null
-          criado_em?: string | null
-          datacrazy_negocio_id?: string | null
-          descarte_motivo?: string | null
-          descarte_status?: string | null
-          empreendimento_id?: string | null
-          estagio_desde?: string | null
-          id?: number | null
-          keep_id?: number | null
-          lead_id?: number | null
-          max_tentativas?: number | null
-          motivo_perda?: string | null
-          pipeline_id?: number | null
-          raw?: Json | null
-          rn?: number | null
-          stage_id?: number | null
-          status?: string | null
-          tentativa?: number | null
-          transferencia_para?: number | null
-          transferencia_status?: string | null
-          ultima_movimentacao?: string | null
-          unidade_id?: string | null
-          valor?: number | null
-          venda_id?: string | null
-        }
-        Update: {
-          backup_em?: string | null
-          corretor_id?: number | null
-          criado_em?: string | null
-          datacrazy_negocio_id?: string | null
-          descarte_motivo?: string | null
-          descarte_status?: string | null
-          empreendimento_id?: string | null
-          estagio_desde?: string | null
-          id?: number | null
-          keep_id?: number | null
-          lead_id?: number | null
-          max_tentativas?: number | null
-          motivo_perda?: string | null
-          pipeline_id?: number | null
-          raw?: Json | null
-          rn?: number | null
-          stage_id?: number | null
-          status?: string | null
-          tentativa?: number | null
-          transferencia_para?: number | null
-          transferencia_status?: string | null
-          ultima_movimentacao?: string | null
-          unidade_id?: string | null
-          valor?: number | null
-          venda_id?: string | null
-        }
-        Relationships: []
       }
       pagamentos_comissao: {
         Row: {
@@ -11341,24 +10972,6 @@ export type Database = {
           },
         ]
       }
-      visitas_gerente_backup_20260721: {
-        Row: {
-          backup_em: string | null
-          gerente_id: number | null
-          id: string | null
-        }
-        Insert: {
-          backup_em?: string | null
-          gerente_id?: number | null
-          id?: string | null
-        }
-        Update: {
-          backup_em?: string | null
-          gerente_id?: number | null
-          id?: string | null
-        }
-        Relationships: []
-      }
       wa_automacao_fila: {
         Row: {
           conversa_id: string | null
@@ -12747,12 +12360,7 @@ export type Database = {
           vgv_mes: number
         }[]
       }
-      erp_config_atual: { Args: never; Returns: Json }
       erp_salvar_ips: { Args: { p_ips: string[] }; Returns: undefined }
-      erp_settings_salvar: {
-        Args: { p_chave: string; p_valor: Json }
-        Returns: undefined
-      }
       erp_toggle_distribuicao: {
         Args: { p_pausada: boolean }
         Returns: undefined
@@ -12801,10 +12409,6 @@ export type Database = {
           p_versao: number
         }
         Returns: Json
-      }
-      f2_cadencia_proximo_prazo: {
-        Args: { p_de: string; p_tentativa: number }
-        Returns: string
       }
       f2_carga_agendar:
         | {
@@ -13011,6 +12615,10 @@ export type Database = {
         }[]
       }
       f2_proximo_corretor_da_fila: { Args: never; Returns: number }
+      f2_proximo_prazo_contato: {
+        Args: { p_de: string; p_tentativa: number }
+        Returns: string
+      }
       f2_salvar_negociacao: {
         Args: {
           p_etapa?: string
@@ -13190,27 +12798,6 @@ export type Database = {
           p_origem?: string
           p_versao?: number
         }
-        Returns: Json
-      }
-      funil_regra_candidatos: {
-        Args: { p_regra: number }
-        Returns: {
-          card: string
-          corretor_id: number
-          corretor_nome: string
-          lead_id: number
-          momento_codigo: string
-          nome: string
-          telefone: string
-          tentativas: number
-        }[]
-      }
-      funil_regra_excluir: { Args: { p_id: number }; Returns: Json }
-      funil_regra_ler: { Args: never; Returns: Json }
-      funil_regra_previa: { Args: { p_id: number }; Returns: Json }
-      funil_regra_salvar: { Args: { p_regra: Json }; Returns: Json }
-      funil_tick: {
-        Args: { p_lote?: number; p_simular?: boolean }
         Returns: Json
       }
       gerar_comissoes: { Args: { p_venda: string }; Returns: Json }
