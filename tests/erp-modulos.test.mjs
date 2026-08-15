@@ -6,6 +6,7 @@ import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 
 const raizApp = new URL("../app/", import.meta.url).pathname;
+const raizRepo = new URL("../", import.meta.url).pathname;
 const css = readFileSync(join(raizApp, "styles/app-mobile.css"), "utf8");
 const modulos = css.slice(css.indexOf("MODULOS DO ERP — CELULAR"));
 const sw = readFileSync(new URL("../public/sw.js", import.meta.url), "utf8");
@@ -257,4 +258,16 @@ test("runtime legado e API geral do CRM foram removidos fisicamente", () => {
   assert.equal(existsSync(new URL("../supabase/functions/ncrm-ingest/index.ts", import.meta.url)), false,
     "a Edge Function de ingestão antiga não implantada não pode voltar como segunda entrada");
   assert.doesNotMatch(readFileSync(join(raizApp, "globals.css"), "utf8"), /\.original-erp-host/);
+});
+
+test("CI valida o ERP atual e não mantém o harness do CRM Nova Era", () => {
+  const semArquivos = (path) => !existsSync(path) || readdirSync(path, { recursive: true }).every((entry) => !statSync(join(path, entry)).isFile());
+  assert.equal(semArquivos(join(raizRepo, "tests/crm-nova-era")), true);
+  assert.equal(semArquivos(join(raizApp, "features/crm-nova-era")), true);
+  assert.equal(existsSync(join(raizRepo, ".github/workflows/crm-nova-era.yml")), false);
+  const workflow = readFileSync(join(raizRepo, ".github/workflows/erp-validacao.yml"), "utf8");
+  assert.match(workflow, /pnpm run test:frontend/);
+  assert.match(workflow, /tsc --noEmit --incremental false/);
+  assert.match(workflow, /pnpm run lint/);
+  assert.match(workflow, /pnpm run build/);
 });

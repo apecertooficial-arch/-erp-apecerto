@@ -1,0 +1,40 @@
+name: ERP Apecerto — validação
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: erp-validacao-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  aplicacao:
+    name: Testes, tipos, lint e build
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22.13.0"
+          cache: pnpm
+      - name: Instalar dependências
+        run: pnpm install --frozen-lockfile
+      - name: Testar módulos atuais
+        run: pnpm run test:frontend
+      - name: Verificar TypeScript
+        run: pnpm exec tsc --noEmit --incremental false
+      - name: Verificar lint
+        run: pnpm run lint
+      - name: Gerar build de produção
+        run: pnpm run build
