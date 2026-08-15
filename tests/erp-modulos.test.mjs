@@ -351,3 +351,16 @@ test("corte futuro das regras aposentadas possui preflight fail-closed", () => {
   assert.match(preflight, /where regra_id is not null/);
   assert.doesNotMatch(preflight, /drop\s+(?:table|function)/i);
 });
+
+test("rollback futuro possui snapshot do DDL além dos dados", () => {
+  const migration = readFileSync(join(
+    raizRepo,
+    "supabase/migrations/20260815154000_arquivar_ddl_regras_aposentadas.sql",
+  ), "utf8");
+  assert.match(migration, /information_schema\.columns/);
+  assert.match(migration, /pg_get_constraintdef/);
+  assert.match(migration, /pg_get_indexdef/);
+  assert.match(migration, /pg_policy/);
+  assert.match(migration, /ncrm_private\.arquivo_regras_ddl_20260815/);
+  assert.match(migration, /revoke all[\s\S]*from public, anon, authenticated/);
+});
