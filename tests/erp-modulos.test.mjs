@@ -92,9 +92,12 @@ test("offline mostra pagina sem dado nenhum", () => {
 
 test("Inicio mobile monta somente a tela operacional vigente", () => {
   const home = readFileSync(join(raizApp, "features/home/HomeWorkspace.tsx"), "utf8");
+  const globals = readFileSync(join(raizApp, "globals.css"), "utf8");
   assert.match(home, /ehCelular === true[\s\S]*?<div className="home-mobile">[\s\S]*?<InicioApp/);
   assert.match(modulos, /\.home-mobile \{ display: block/);
   assert.doesNotMatch(modulos, /\.home-(?:workspace|header|kpis|goal|two-columns|three-columns|panel|atalhos)/);
+  assert.doesNotMatch(globals, /\.home-(?:workspace|header|kpis|goal|two-columns|three-columns|panel|funnel-row|ranking-row|list-row|alert|charts?|chart-head|bars|legend|atalhos|avatar|status)\b/,
+    "as camadas Home anteriores não podem voltar a competir com home-v2 e home-mobile");
 });
 
 test("Produtos: grid de uma coluna e filtros que cabem", () => {
