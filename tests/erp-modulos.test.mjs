@@ -273,3 +273,17 @@ test("CI valida o ERP atual e não mantém o harness do CRM Nova Era", () => {
   assert.match(workflow, /pnpm run lint/);
   assert.match(workflow, /(?:pnpm run build|vinext build)/);
 });
+
+test("documentação e fontes isoladas do CRM Nova Era não voltam como segunda arquitetura", () => {
+  const semArquivos = (path) => !existsSync(path) || readdirSync(path, { recursive: true }).every((entry) => !statSync(join(path, entry)).isFile());
+  assert.equal(semArquivos(join(raizRepo, "docs/crm-nova-era")), true);
+  assert.equal(existsSync(join(raizRepo, "supabase/ROLLOUT_ncrm_integracao.md")), false);
+  assert.equal(existsSync(join(raizRepo, "supabase/functions/ncrm-ingest/logic.ts")), false);
+  assert.equal(existsSync(join(raizApp, "api/ncrm/saraSchema.ts")), true);
+
+  // Push e observer continuam sendo infraestrutura vigente do Funil 2, não um CRM paralelo.
+  assert.equal(existsSync(join(raizApp, "api/ncrm/push/chave/route.ts")), true);
+  assert.equal(existsSync(join(raizApp, "api/ncrm/push/registrar/route.ts")), true);
+  assert.equal(existsSync(join(raizRepo, "supabase/functions/ncrm-web-push/index.ts")), true);
+  assert.equal(existsSync(join(raizRepo, "supabase/functions/ncrm-sara-observer/index.ts")), true);
+});
