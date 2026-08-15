@@ -150,6 +150,17 @@ test("Configurações possui uma única camada: Conexões", () => {
     "a camada visual vigente de Conexões precisa permanecer disponível");
 });
 
+test("Automações usa um único histórico de execução", () => {
+  const mapa = readFileSync(join(raizApp, "features/system/module-map.ts"), "utf8");
+  const tipos = readFileSync(join(raizApp, "lib/supabase/database.types.ts"), "utf8");
+  const migration = readFileSync(new URL("../supabase/migrations/20260815141000_remover_execucoes_automacao_legada.sql", import.meta.url), "utf8");
+
+  assert.match(mapa, /"motor_execucoes"/);
+  assert.doesNotMatch(mapa, /"automacao_execucoes"/);
+  assert.doesNotMatch(tipos, /automacao_execucoes:/);
+  assert.match(migration, /drop table public\.automacao_execucoes/);
+});
+
 test("runtime legado e API geral do CRM foram removidos fisicamente", () => {
   const removidos = [
     "api/crm/route.ts",

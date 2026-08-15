@@ -25,7 +25,7 @@ export const moduleMap = {
   },
   Automações: {
     description: "Fluxos, versões e histórico de execuções automáticas.",
-    tables: ["automacoes", "automacao_versoes", "automacao_execucoes", "motor_execucoes"],
+    tables: ["automacoes", "automacao_versoes", "motor_execucoes"],
   },
   Financiamento: {
     description: "Fichas de financiamento vinculadas aos atendimentos.",
