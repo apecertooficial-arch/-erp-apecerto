@@ -188,10 +188,6 @@ html, body { touch-action: manipulation; }
   }
 
   /* ---------------- OFFLINE ---------------- */
-  .erp-offline {
-    margin: 12px 0; padding: 14px; border: 1px solid var(--line);
-    border-radius: 12px; background: #fbfaf9;
-  }
 }
 
 /* Convite de instalacao. Vive na folha "Mais": quem procura algo do aplicativo
