@@ -1087,7 +1087,6 @@ async function openCaptacaoManager(){
  }
  render();loadList();
 }
-try{ window.__apeCaptacao = function(){ try{ openCaptacaoManager(); }catch(e){ if(window.console)console.warn(e); } }; }catch(_e){}
 
 /* ==================================================================
    PIPELINE — gestão real (grupos, reordenar arrastando, migrar etapa)
@@ -1158,7 +1157,6 @@ async function openPipelinesManager(){
  }
  render();load();
 }
-try{ window.__apePipelines = function(){ try{ openPipelinesManager(); }catch(e){ if(window.console)console.warn(e); } }; }catch(_e){}
 
 /* ==================================================================
    CRM real — quadro Kanban ligado a leads / negocios / crm_atividades.
@@ -1234,7 +1232,6 @@ async function openCrmManager(){
  }
  render();await loadPipes();await loadBoard();
 }
-try{ window.__apeCrm = function(){ try{ openCrmManager(); }catch(e){ if(window.console)console.warn(e); } }; }catch(_e){}
 
 /* ---------- IP do escritório (auto-detecta e atualiza) ---------- */
 function openEscritorioConfig(){
@@ -1266,7 +1263,6 @@ function openEscritorioConfig(){
  sbGet('/escritorio_config?id=eq.1&select=ips').then(r=>{ips=(r[0]&&r[0].ips)||[];carregando=false;render();}).catch(()=>{carregando=false;render();});
  fetch(SUPA_URL+'/functions/v1/presenca',{method:'POST',headers:{apikey:SUPA_KEY,Authorization:'Bearer '+authBearer(),'Content-Type':'application/json'},body:'{}'}).then(r=>r.json()).then(j=>{meuIp=(j&&j.ip)||'';render();}).catch(()=>{});
 }
-try{ window.__apeEscritorio = function(){ try{ openEscritorioConfig(); }catch(e){} }; }catch(_e){}
 let _espPk={cat:'Tempo',q:''};
 function openEsperaPicker(cb){closeCondModal();_espPk={cat:'Tempo',q:''};
  const scrim=document.createElement('div');scrim.className='cond-scrim';scrim.id='condScrim';
@@ -1292,10 +1288,6 @@ function openInstancePicker(x,y,cb){closeCampoPicker();
 
 /* INIT */
 renderPalette();boot();
-// expõe o gerenciador de abordagens para o menu do ERP (Ferramentas → Abordagens)
-try{ window.__apeAbordagens = function(){ try{ openAbordagensManager(); }catch(e){ if(window.console)console.warn(e); } }; }catch(_e){}
-
-
 }
 
 function mount(host, context){
