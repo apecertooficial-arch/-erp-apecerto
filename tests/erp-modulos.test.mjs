@@ -170,6 +170,18 @@ test("Automações usa um único histórico de execução", () => {
   assert.match(migration, /drop table public\.automacao_execucoes/);
 });
 
+test("migração assistida do CRM antigo foi removida como um conjunto fechado", () => {
+  const tipos = readFileSync(join(raizApp, "lib/supabase/database.types.ts"), "utf8");
+  const migration = readFileSync(new URL("../supabase/migrations/20260815150000_remover_migracao_ncrm_concluida.sql", import.meta.url), "utf8");
+
+  assert.doesNotMatch(tipos, /ncrm_migracao_(?:analise|item|aprovar|contexto|preview|registrar_analise|rollback)/);
+  for (const objeto of ["ncrm_migracao_analise", "ncrm_migracao_item"]) {
+    assert.match(migration, new RegExp(`DROP TABLE public\\.${objeto}`));
+  }
+  assert.match(migration, /v_new text := '''duplicidades_impedidas'', 0'/,
+    "o painel de saúde deve sobreviver sem depender da migração aposentada");
+});
+
 test("construtor de Automações pertence à feature e não é injetado como global", () => {
   const workspace = readFileSync(join(raizApp, "features/automations/AutomationsWorkspace.tsx"), "utf8");
   const runtime = readFileSync(join(raizApp, "features/automations/automationBuilderRuntime.js"), "utf8");
