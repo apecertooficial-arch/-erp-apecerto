@@ -5,6 +5,7 @@ import { SaraWidget } from "../components/SaraWidget";
 import { AvisoNotificacoesGlobal } from "../components/AvisoNotificacoesGlobal";
 import { AvisoNaTela } from "../components/AvisoNaTela";
 import { PresencaGlobal } from "../components/PresencaGlobal";
+import { ConviteInstalar } from "../components/ConviteInstalar";
 
 /* Layout do grupo (erp). Persiste entre rotas irmas -- por isso a sessao
    carrega uma vez, e nao a cada troca de modulo. O "(erp)" nao aparece na URL. */
@@ -16,6 +17,7 @@ export default function ErpLayout({ children }: { children: ReactNode }) {
       <AvisoNaTela />
       <PresencaGlobal />
       <SaraWidget />
+      <ConviteInstalar />
     </ErpSessionProvider>
   );
 }

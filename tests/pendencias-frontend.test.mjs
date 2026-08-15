@@ -9,6 +9,7 @@ import { podeVer, itensDaNavegacao, rotasModulo } from "../app/features/system/e
 const ler = (p) => readFileSync(new URL(p, import.meta.url), "utf8");
 const perf = ler("../app/features/team/PerformanceWorkspace.tsx");
 const convite = ler("../app/components/ConviteInstalar.tsx");
+const layoutErp = ler("../app/(erp)/layout.tsx");
 const sw = ler("../public/sw.js");
 const offline = ler("../public/offline.html");
 
@@ -84,6 +85,11 @@ test("sem rede, mutacao nao pode aparecer como concluida", () => {
 });
 
 /* ---------------- 3. INSTALACAO ---------------- */
+
+test("convite de instalação pertence ao layout autenticado e não fica órfão", () => {
+  assert.match(layoutErp, /import \{ ConviteInstalar \} from "\.\.\/components\/ConviteInstalar"/);
+  assert.match(layoutErp, /<ConviteInstalar \/>/);
+});
 
 test("Android: botao so aparece com beforeinstallprompt real", () => {
   assert.ok(/addEventListener\("beforeinstallprompt"/.test(convite));
