@@ -142,7 +142,17 @@ export async function PATCH(request: Request) {
     const validStatus = ["pendente", "concluido", "pago", "distrato"];
     const status = validStatus.includes(clean(body.status, 20)) ? clean(body.status, 20) : "pendente";
     const empreendimentoId = clean(body.empreendimentoId, 60) || null;
-    const corretorPrincipal = Number(body.corretorId);
+    const corretorPrincipalInformado = Number(body.corretorId);
+    const negocioId = Number(body.negocioId);
+    const negocioEscolhido = Number.isSafeInteger(negocioId) && negocioId > 0
+      ? await auth.supabase.from("negocios").select("id,venda_id,corretor_id").eq("id", negocioId).maybeSingle()
+      : null;
+    if (negocioEscolhido?.error) return Response.json({ error: "Não foi possível validar o negócio do CRM." }, { status: 502 });
+    if (negocioEscolhido && !negocioEscolhido.data) return Response.json({ error: "O negócio selecionado não existe ou não está acessível." }, { status: 404 });
+    if (negocioEscolhido?.data?.venda_id) return Response.json({ error: "Este negócio já está ligado a outra venda." }, { status: 409 });
+    const corretorPrincipal = Number.isSafeInteger(corretorPrincipalInformado) && corretorPrincipalInformado > 0
+      ? corretorPrincipalInformado
+      : Number(negocioEscolhido?.data?.corretor_id);
     const documentos = Array.isArray(body.documentos)
       ? (body.documentos as unknown[]).filter((doc) => doc && typeof doc === "object").map((doc) => {
           const d = doc as Record<string, unknown>;
@@ -264,6 +274,11 @@ export async function PATCH(request: Request) {
     if (payoutRows.length) {
       const { error } = await auth.supabase.from("pagamentos_comissao").insert(payoutRows as never);
       if (error) return Response.json({ error: `Venda criada, mas falha ao agendar os repasses: ${error.message}`, saleId }, { status: 502 });
+    }
+
+    if (negocioEscolhido?.data) {
+      const { data: linked, error } = await auth.supabase.from("negocios").update({ venda_id: saleId }).eq("id", negocioEscolhido.data.id).is("venda_id", null).select("id").maybeSingle();
+      if (error || !linked) return Response.json({ error: `Venda criada, mas não foi possível vinculá-la ao CRM${error ? `: ${error.message}` : ". O negócio foi alterado por outra operação."}`, saleId }, { status: 502 });
     }
 
     return Response.json({ success: true, saleId });

@@ -47,6 +47,10 @@ export function VendaModal({ data, saleId, sessionRole = "corretor", onClose, on
   const detalhe = saleId ? data.details.find((item) => item.id === saleId) : undefined;
   const empreendimentos = data.empreendimentos ?? [];
   const usuarios = data.users ?? [];
+  const leadById = new Map(data.leads.map((lead) => [lead.id, lead]));
+  const negociosDisponiveis = data.deals.filter((deal) => !deal.venda_id && deal.status !== "perdido");
+  const negocioAtual = saleId ? data.deals.find((deal) => deal.venda_id === saleId) : undefined;
+  const [negocioId, setNegocioId] = useState(negocioAtual ? String(negocioAtual.id) : "");
 
   const [form, setForm] = useState(() => ({
     dataVenda: venda?.data_venda ?? hoje(),
@@ -124,6 +128,7 @@ export function VendaModal({ data, saleId, sessionRole = "corretor", onClose, on
   };
 
   const camposDaVenda = () => ({
+    negocioId: negocioId ? Number(negocioId) : null,
     dataVenda: form.dataVenda,
     empreendimentoId: form.empreendimentoId || null,
     empreendimentoNome: form.empreendimentoId ? (empreendimentos.find((e) => e.id === form.empreendimentoId)?.nome || form.empreendimentoNome) : form.empreendimentoNome,
@@ -203,6 +208,20 @@ export function VendaModal({ data, saleId, sessionRole = "corretor", onClose, on
 
       <div className="venda-modal-body">
         {step === 1 && <section className="nova-venda-section">
+          {!editando && <label>Negócio de origem no CRM<select disabled={somenteLeitura} value={negocioId} onChange={(event) => {
+            const id = event.target.value;
+            setNegocioId(id);
+            const negocio = data.deals.find((item) => String(item.id) === id);
+            const lead = negocio ? leadById.get(negocio.lead_id) : undefined;
+            if (negocio || lead) setForm((current) => ({
+              ...current,
+              clienteNome: lead?.nome || current.clienteNome,
+              vgv: negocio?.valor ? String(negocio.valor) : current.vgv,
+            }));
+          }}><option value="">Venda avulsa, sem negócio no CRM</option>{negociosDisponiveis.map((negocio) => {
+            const lead = leadById.get(negocio.lead_id);
+            return <option value={negocio.id} key={negocio.id}>{lead?.nome || `Lead #${negocio.lead_id}`}{negocio.valor ? ` · ${brl.format(negocio.valor)}` : ""}</option>;
+          })}</select><small>Ao selecionar, a venda passa a aparecer no negócio, no ranking e nos indicadores comerciais.</small></label>}
           <div className="nova-venda-row">
             <label>Data da venda<input disabled={somenteLeitura} type="date" value={form.dataVenda} onChange={(e) => setForm({ ...form, dataVenda: e.target.value })} /></label>
             <label>Status da venda<select disabled={somenteLeitura} value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}>

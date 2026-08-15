@@ -220,6 +220,23 @@ test("Produtos e Usuários não exibem controles de busca ou comparação sem a�
   assert.match(usuarios, /matchesQuery &&/);
 });
 
+test("Disparos não exibe busca falsa nem chama modelos locais de IA", () => {
+  const disparos = readFileSync(join(raizApp, "features/campaigns/CampaignWorkspace.tsx"), "utf8");
+  assert.doesNotMatch(disparos, /Buscar lead, telefone, bairro|Gerar com IA|ABORDAGENS COM IA|A IA cria variações/);
+  assert.match(disparos, /Gerar variações/);
+  assert.match(disparos, /if \(!response\.ok\)/);
+});
+
+test("venda manual pode nascer ligada ao negócio real do CRM", () => {
+  const modal = readFileSync(join(raizApp, "features/finance/VendaModal.tsx"), "utf8");
+  const api = readFileSync(join(raizApp, "api/finance/route.ts"), "utf8");
+  assert.match(modal, /Negócio de origem no CRM/);
+  assert.match(modal, /negocioId: negocioId \? Number\(negocioId\) : null/);
+  assert.match(api, /Este negócio já está ligado a outra venda/);
+  assert.match(api, /from\("negocios"\)\.update\(\{ venda_id: saleId \}\)/);
+  assert.match(api, /\.is\("venda_id", null\)\.select\("id"\)\.maybeSingle\(\)/);
+});
+
 test("runtime legado e API geral do CRM foram removidos fisicamente", () => {
   const removidos = [
     "api/crm/route.ts",
