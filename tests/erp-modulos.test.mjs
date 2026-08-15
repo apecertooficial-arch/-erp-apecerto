@@ -376,3 +376,20 @@ test("Sara vigente não depende mais da tabela de cadência aposentada", () => {
   assert.match(migration, /execute replace\(r\.ddl, 'f2_cadencia_proximo_prazo', 'f2_proximo_prazo_contato'\)/);
   assert.doesNotMatch(migration, /drop\s+(?:table|function|column)/i);
 });
+
+test("schema tipado e migração final não reintroduzem regras aposentadas", () => {
+  const migration = readFileSync(join(
+    raizRepo,
+    "supabase/migrations/20260815170000_excluir_regras_aposentadas.sql",
+  ), "utf8");
+  const types = readFileSync(join(raizApp, "lib/supabase/database.types.ts"), "utf8");
+
+  assert.match(migration, /drop column if exists regra_id/);
+  assert.match(migration, /drop table if exists public\.funil_regra_execucao/);
+  assert.match(migration, /drop table if exists public\.funil_regra/);
+  assert.match(migration, /drop table if exists public\.f2_cadencia_regua/);
+  assert.doesNotMatch(types, /\bf2_cadencia_regua:/);
+  assert.doesNotMatch(types, /\bfunil_regra(?:_execucao)?:/);
+  assert.doesNotMatch(types, /\bf2_cadencia_proximo_prazo:/);
+  assert.match(types, /\bf2_proximo_prazo_contato:/);
+});
