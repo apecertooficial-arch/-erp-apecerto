@@ -250,25 +250,10 @@ test("Todos os Leads usa linhas compactas com leitura e ações rápidas", () =>
   assert.match(ui, /f2-lead-acoes/);
 });
 
-test("Performance separa disciplina controlável de resultado comercial", () => {
-  assert.match(ui, /Performance de Atendimento/);
-  assert.match(ui, /PAINEL DO DONO/);
-  assert.match(ui, /NOTA DE EXECUÇÃO/);
-  assert.match(ui, /SAÚDE DA CARTEIRA/);
-  assert.match(ui, /CONVERSÃO COMERCIAL/);
-  assert.match(ui, /Resultado comercial não altera a nota disciplinar/);
-  for (const peso of ["peso_primeira_abordagem", "peso_acoes_prazo", "peso_feedback_visita", "peso_presenca_dapi", "peso_coerencia_sara"]) {
-    assert.match(ui, new RegExp(peso));
-  }
-});
-
-test("Performance explica a nota, aponta intervenção e compara corretores sem inventar amostra", () => {
-  for (const texto of ["QUEM PRECISA DE INTERVENÇÃO", "PLACAR POR CORRETOR", "Carteira em dia", "SLA inicial", "Evidência D-API", "Feedback de visitas", "Coerência Sara", "Sem amostra"]) {
-    assert.match(ui, new RegExp(texto));
-  }
-  assert.match(ui, /eventos=\{eventos\}/);
-  assert.match(ui, /evento\.tipo === "acao_confirmada"/);
-  assert.match(ui, /Uma métrica sem amostra é retirada do cálculo/);
+test("Funil 2.0 é operacional e não duplica a Central de Performance", () => {
+  assert.doesNotMatch(ui, /Performance de Atendimento|PAINEL DO DONO|NOTA DE EXECUÇÃO/);
+  assert.doesNotMatch(ui, /setAba\("performance"\)|aba === "performance"/);
+  assert.doesNotMatch(ui, /Pesos de Performance/);
 });
 
 test("configuração única persiste roleta manual, disciplina e pesos sem ligar disparo automático", () => {
