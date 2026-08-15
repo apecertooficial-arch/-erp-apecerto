@@ -219,4 +219,5 @@ test("runtime legado e API geral do CRM foram removidos fisicamente", () => {
     "a Esteira de Vendas ativa precisa continuar disponível");
   assert.equal(existsSync(new URL("../supabase/functions/ncrm-ingest/index.ts", import.meta.url)), false,
     "a Edge Function de ingestão antiga não implantada não pode voltar como segunda entrada");
+  assert.doesNotMatch(readFileSync(join(raizApp, "globals.css"), "utf8"), /\.original-erp-host/);
 });

@@ -3,7 +3,7 @@
 // real de install prompt, que exige aparelho/navegador.
 import test from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 
 const manifest = JSON.parse(readFileSync(new URL("../public/manifest.webmanifest", import.meta.url), "utf8"));
 const sw = readFileSync(new URL("../public/sw.js", import.meta.url), "utf8");
@@ -41,6 +41,17 @@ test("icones usam nome fisico v6 para vencer o cache da instalacao no iPhone", (
   for (const icone of manifest.icons) assert.match(icone.src, /-v6\.png$/);
   assert.match(sw, /apecerto-v6/);
   assert.match(sw, /icone-192-v6\.png/);
+});
+
+test("somente a geração v6 dos ícones publicados permanece no diretório público", () => {
+  const antigos = [
+    "apple-touch-icon-v5.png", "apple-touch-icon.png",
+    "icone-192-v5.png", "icone-192.png", "icone-512-v5.png", "icone-512.png",
+    "maskable-192-v5.png", "maskable-192.png", "maskable-512-v5.png", "maskable-512.png",
+  ];
+  for (const nome of antigos) {
+    assert.equal(existsSync(new URL(`../public/icons/${nome}`, import.meta.url)), false, `${nome} não pode voltar`);
+  }
 });
 
 test("icone instalado usa a identidade colorida da Apecerto", () => {
