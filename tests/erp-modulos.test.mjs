@@ -277,6 +277,7 @@ test("CI valida o ERP atual e não mantém o harness do CRM Nova Era", () => {
 test("documentação e fontes isoladas do CRM Nova Era não voltam como segunda arquitetura", () => {
   const semArquivos = (path) => !existsSync(path) || readdirSync(path, { recursive: true }).every((entry) => !statSync(join(path, entry)).isFile());
   assert.equal(semArquivos(join(raizRepo, "docs/crm-nova-era")), true);
+  assert.equal(semArquivos(join(raizRepo, "staging")), true);
   assert.equal(existsSync(join(raizRepo, "supabase/ROLLOUT_ncrm_integracao.md")), false);
   assert.equal(existsSync(join(raizRepo, "supabase/functions/ncrm-ingest/logic.ts")), false);
   assert.equal(existsSync(join(raizApp, "api/ncrm/saraSchema.ts")), true);
@@ -316,4 +317,10 @@ test("ERP Supabase não mantém scaffold vazio de banco D1/Drizzle", () => {
   assert.equal(pkg.dependencies?.["drizzle-orm"], undefined);
   assert.equal(pkg.devDependencies?.["drizzle-kit"], undefined);
   assert.equal(pkg.scripts?.["db:generate"], undefined);
+  assert.equal(existsSync(join(raizRepo, "drizzle/meta/_journal.json")), false);
+});
+
+test("CI atual não mantém scripts diferenciais aposentados", () => {
+  assert.equal(existsSync(join(raizRepo, "scripts/ci-lint-delta.mjs")), false);
+  assert.equal(existsSync(join(raizRepo, "scripts/ci-typecheck-delta.mjs")), false);
 });
