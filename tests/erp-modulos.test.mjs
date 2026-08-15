@@ -90,9 +90,11 @@ test("offline mostra pagina sem dado nenhum", () => {
 
 /* -------------------- Estrutura mobile dos modulos -------------------- */
 
-test("Inicio: KPIs deixam de exigir 945px de largura", () => {
-  assert.match(modulos, /\.home-kpis \{ grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
-  assert.match(modulos, /\.home-two-columns, \.home-three-columns \{ grid-template-columns: 1fr/);
+test("Inicio mobile monta somente a tela operacional vigente", () => {
+  const home = readFileSync(join(raizApp, "features/home/HomeWorkspace.tsx"), "utf8");
+  assert.match(home, /ehCelular === true[\s\S]*?<div className="home-mobile">[\s\S]*?<InicioApp/);
+  assert.match(modulos, /\.home-mobile \{ display: block/);
+  assert.doesNotMatch(modulos, /\.home-(?:workspace|header|kpis|goal|two-columns|three-columns|panel|atalhos)/);
 });
 
 test("Produtos: grid de uma coluna e filtros que cabem", () => {
