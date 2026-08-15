@@ -68,11 +68,10 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
   const [notas, setNotas] = useState<NotaFunil2[]>([]);
   const [etapas, setEtapas] = useState<EtapaConfigFunil2[]>([]);
   const [visitas, setVisitas] = useState<VisitaFunil2[]>([]);
-  const [negociacoes, setNegociacoes] = useState<NegociacaoFunil2[]>([]);
   const [aquario, setAquario] = useState<CandidatoAquarioFunil2[]>([]);
   const [operacao, setOperacao] = useState<OperacaoConfigFunil2 | null>(null);
   const [sara, setSara] = useState<SaraStatusFunil2>({ modo: null, runnerAtivo: false, analisesNoLaboratorio: 0, reavaliacaoAutomaticaFunil2: false });
-  const [aba, setAba] = useState<"quadro" | "dia" | "leads" | "visitas" | "vendas" | "performance" | "config">("dia");
+  const [aba, setAba] = useState<"quadro" | "dia" | "leads" | "visitas" | "vendas" | "config">("dia");
   const [selecionado, setSelecionado] = useState<string | null>(null);
   /* Quem clica em "Conversa" quer a conversa, nao a ficha com um botao de chat
      dentro. Guardamos a intencao para a ficha ja abrir no mini chat. */
@@ -104,7 +103,6 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
     setNotas(resposta.json.notas ?? []);
     setEtapas(resposta.json.etapas ?? []);
     setVisitas(resposta.json.visitas ?? []);
-    setNegociacoes(resposta.json.negociacoes ?? []);
     setAquario(resposta.json.aquario ?? []);
     setOperacao(resposta.json.operacao ?? null);
     setSara(resposta.json.sara ?? { modo: null, runnerAtivo: false, analisesNoLaboratorio: 0, reavaliacaoAutomaticaFunil2: false });
@@ -123,7 +121,6 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
       setNotas(resposta.json.notas ?? []);
       setEtapas(resposta.json.etapas ?? []);
       setVisitas(resposta.json.visitas ?? []);
-      setNegociacoes(resposta.json.negociacoes ?? []);
       setAquario(resposta.json.aquario ?? []);
       setOperacao(resposta.json.operacao ?? null);
       setSara(resposta.json.sara ?? { modo: null, runnerAtivo: false, analisesNoLaboratorio: 0, reavaliacaoAutomaticaFunil2: false });
@@ -237,7 +234,6 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
         <button type="button" className={aba === "leads" ? "ativo" : ""} onClick={() => setAba("leads")}><Icone nome="leads" /> Todos os Leads</button>
         <button type="button" className={aba === "visitas" ? "ativo" : ""} onClick={() => setAba("visitas")}><Icone nome="visitas" /> Visitas</button>
         <button type="button" className={aba === "vendas" ? "ativo" : ""} onClick={() => setAba("vendas")}><Icone nome="vendas" /> Esteira</button>
-        <button type="button" className={aba === "performance" ? "ativo" : ""} onClick={() => setAba("performance")}><Icone nome="vendas" /> Performance</button>
         <button type="button" className={aba === "config" ? "ativo" : ""} onClick={() => setAba("config")}><Icone nome="config" /> Configurações</button>
         <span>Carteira operacional · Aquário fora da migração</span>
       </nav>
@@ -338,7 +334,6 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
       {/* Só a esteira. O CRM antigo inteiro (cabeçalho, barra de visões, filtros
           e funil) não entra aqui — o Funil 2.0 já é a navegação da operação. */}
       {!carregando && aba === "vendas" && <main className="f2-pagina f2-esteira-oficial"><CabecalhoPagina titulo="Esteira de Vendas 3.0" texto="A mesma estrutura oficial de contratos, documentação, responsáveis, prazos e valores — sem uma segunda esteira desconectada." /><SalesProcessView accessToken={accessToken} sessionRole="admin" /></main>}
-      {!carregando && aba === "performance" && <PerformanceFunil2 leads={leads} eventos={eventos} visitas={visitas} negociacoes={negociacoes} operacao={operacao} />}
       {!carregando && aba === "config" && <Configuracoes etapas={etapas} momentos={momentos} operacao={operacao} sara={sara} busy={busy} onEtapa={(dados) => void executar("configurarEtapa", dados)} onMomento={(dados) => void executar("configurarMomento", dados)} onOperacao={(dados) => void executar("configurarOperacao", dados)} />}
 
       {modal === "pescar" && <ModalPescar candidatos={aquario} busy={busy} onFechar={() => setModal(null)} onPescar={(negocioId) => void executar("pescar", { negocioId })} />}
@@ -576,89 +571,6 @@ function VisitaCard({ visita, lead, busy, onSalvar }: { visita: VisitaFunil2; le
   </article>;
 }
 
-function PerformanceFunil2({ leads, eventos, visitas, negociacoes, operacao }: { leads: LeadFunil2[]; eventos: EventoFunil2[]; visitas: VisitaFunil2[]; negociacoes: NegociacaoFunil2[]; operacao: OperacaoConfigFunil2 | null }) {
-  const pct = (parte: number, total: number) => total > 0 ? Math.round(parte / total * 100) : null;
-  const mostrarPct = (valor: number | null) => valor === null ? "Sem amostra" : `${valor}%`;
-  const prazoInicial = operacao?.primeira_abordagem_min ?? 5;
-  const pesos = {
-    primeira: operacao?.peso_primeira_abordagem ?? 30,
-    prazo: operacao?.peso_acoes_prazo ?? 30,
-    feedback: operacao?.peso_feedback_visita ?? 20,
-    dapi: operacao?.peso_presenca_dapi ?? 10,
-    sara: operacao?.peso_coerencia_sara ?? 10,
-  };
-
-  const calcular = (carteira: LeadFunil2[]) => {
-    const ids = new Set(carteira.map((lead) => lead.id));
-    const eventosCarteira = eventos.filter((evento) => ids.has(evento.funil_lead_id));
-    const confirmacoes = eventosCarteira.filter((evento) => evento.tipo === "acao_confirmada");
-    const confirmacoesDapi = confirmacoes.filter((evento) => /D-API/i.test(evento.titulo));
-    const primeiras = carteira.flatMap((lead) => {
-      const corte = new Date(lead.corte_conversa_em).getTime();
-      const primeira = eventosCarteira
-        .filter((evento) => evento.funil_lead_id === lead.id && evento.tipo === "acao_confirmada" && new Date(evento.criado_em).getTime() >= corte)
-        .sort((a, b) => a.criado_em.localeCompare(b.criado_em))[0];
-      return primeira ? [{ minutos: Math.max(0, Math.round((new Date(primeira.criado_em).getTime() - corte) / 60000)) }] : [];
-    });
-    const noPrazo = carteira.filter((lead) => situacaoPrazo(lead.proxima_acao_em).classe !== "atrasado").length;
-    const atrasadas = carteira.length - noPrazo;
-    const visitasCarteira = visitas.filter((visita) => ids.has(visita.funil_lead_id));
-    const visitasEncerradas = visitasCarteira.filter((visita) => ["realizada", "cancelada", "nao_compareceu"].includes(visita.status));
-    const feedbacks = visitasEncerradas.filter((visita) => Boolean(visita.observacao?.trim()));
-    const negociacoesCarteira = negociacoes.filter((negociacao) => ids.has(negociacao.funil_lead_id));
-    const propostas = negociacoesCarteira.filter((negociacao) => ["proposta", "documentacao", "contrato", "venda"].includes(negociacao.etapa));
-    const vendas = negociacoesCarteira.filter((negociacao) => negociacao.etapa === "venda");
-    const saraCobertos = carteira.filter((lead) => lead.ultima_reavaliacao_sara_em && lead.ultima_reavaliacao_resumo && !lead.ultima_reavaliacao_resumo.startsWith("Cópia criada")).length;
-    const metricas = [
-      { valor: pct(primeiras.filter((item) => item.minutos <= prazoInicial).length, primeiras.length), peso: pesos.primeira },
-      { valor: pct(noPrazo, carteira.length), peso: pesos.prazo },
-      { valor: pct(feedbacks.length, visitasEncerradas.length), peso: pesos.feedback },
-      { valor: pct(confirmacoesDapi.length, confirmacoes.length), peso: pesos.dapi },
-      { valor: pct(saraCobertos, carteira.length), peso: pesos.sara },
-    ];
-    const disponiveis = metricas.filter((metrica): metrica is { valor: number; peso: number } => metrica.valor !== null);
-    const pesoDisponivel = disponiveis.reduce((total, metrica) => total + metrica.peso, 0);
-    const nota = pesoDisponivel > 0 ? Math.round(disponiveis.reduce((total, metrica) => total + metrica.valor * metrica.peso, 0) / pesoDisponivel) : null;
-    const motivos = [
-      atrasadas > 0 ? `${atrasadas} ação(ões) atrasada(s)` : null,
-      primeiras.some((item) => item.minutos > prazoInicial) ? "primeira abordagem fora do SLA" : null,
-      visitasEncerradas.length > feedbacks.length ? `${visitasEncerradas.length - feedbacks.length} visita(s) sem feedback` : null,
-      carteira.length > saraCobertos ? `${carteira.length - saraCobertos} lead(s) sem leitura recente da Sara` : null,
-    ].filter((motivo): motivo is string => Boolean(motivo));
-    return {
-      carteira: carteira.length, noPrazo, atrasadas, primeiras, confirmacoes, confirmacoesDapi, visitas: visitasCarteira,
-      visitasEncerradas, feedbacks, negociacoes: negociacoesCarteira, propostas, vendas, saraCobertos, nota, motivos,
-      primeiraPct: pct(primeiras.filter((item) => item.minutos <= prazoInicial).length, primeiras.length),
-      prazoPct: pct(noPrazo, carteira.length), feedbackPct: pct(feedbacks.length, visitasEncerradas.length),
-      dapiPct: pct(confirmacoesDapi.length, confirmacoes.length), saraPct: pct(saraCobertos, carteira.length),
-    };
-  };
-
-  const total = calcular(leads);
-  const porCorretor = [...new Set(leads.map((lead) => lead.corretor_nome ?? "Sem responsável"))]
-    .map((nome) => ({ nome, ...calcular(leads.filter((lead) => (lead.corretor_nome ?? "Sem responsável") === nome)) }))
-    .sort((a, b) => (b.nota ?? -1) - (a.nota ?? -1));
-  const classeNota = (nota: number | null) => nota === null ? "sem-amostra" : nota >= 90 ? "excelente" : nota >= 80 ? "bom" : nota >= 70 ? "atencao" : "critico";
-  const rotuloNota = (nota: number | null) => nota === null ? "Sem amostra" : nota >= 90 ? "Excelente" : nota >= 80 ? "Bom" : nota >= 70 ? "Atenção" : "Crítico";
-  const pipeline = negociacoes.filter((item) => item.etapa !== "perdida").reduce((soma, item) => soma + Number(item.valor ?? 0), 0);
-  const visitasRealizadas = visitas.filter((item) => item.status === "realizada").length;
-  const intervencoes = porCorretor.filter((item) => item.motivos.length > 0).sort((a, b) => b.atrasadas - a.atrasadas || (a.nota ?? 101) - (b.nota ?? 101));
-
-  return <main className="f2-pagina"><CabecalhoPagina titulo="Performance de Atendimento" texto="O painel do dono: mostra disciplina, carteira, qualidade e conversão sem misturar esforço controlável com resultado de venda." />
-    <section className="f2-performance-hero"><div><span className="f2-eyebrow">PAINEL DO DONO</span><h2>A operação está trabalhando os leads?</h2><p>A nota mede apenas aquilo que o corretor controla. Vendas e conversão aparecem separadas para orientar gestão e treinamento.</p></div><div className={`f2-nota ${classeNota(total.nota)}`}><small>NOTA DE EXECUÇÃO</small><strong>{total.nota ?? "—"}</strong><span>{rotuloNota(total.nota)}</span></div></section>
-
-    <section className="f2-performance-kpis f2-performance-kpis-dono"><article><span>Carteira em dia</span><b>{mostrarPct(total.prazoPct)}</b><small>{total.noPrazo}/{total.carteira} obrigações no prazo agora</small></article><article><span>Atenção imediata</span><b>{total.atrasadas}</b><small>leads com ação vencida</small></article><article><span>Primeira abordagem no SLA</span><b>{mostrarPct(total.primeiraPct)}</b><small>{total.primeiras.length} caso(s) com evidência após a entrada</small></article><article><span>Evidência D-API</span><b>{mostrarPct(total.dapiPct)}</b><small>{total.confirmacoesDapi.length}/{total.confirmacoes.length} ações confirmadas pelo celular</small></article><article><span>Feedback de visitas</span><b>{mostrarPct(total.feedbackPct)}</b><small>{total.feedbacks.length}/{total.visitasEncerradas.length} visitas encerradas documentadas</small></article><article><span>Coerência Sara</span><b>{mostrarPct(total.saraPct)}</b><small>{total.saraCobertos}/{total.carteira} leads reavaliados</small></article></section>
-
-    <section className="f2-performance-blocos"><article><span className="f2-eyebrow">SAÚDE DA CARTEIRA</span><h3>Onde o atendimento está travando</h3><div className="f2-saude-lista"><p><b>{total.atrasadas}</b><span>ações vencidas</span></p><p><b>{leads.filter((lead) => situacaoPrazo(lead.proxima_acao_em).classe === "urgente").length}</b><span>vencem em até 2h</span></p><p><b>{total.carteira - total.saraCobertos}</b><span>sem leitura recente da Sara</span></p><p><b>{total.visitasEncerradas.length - total.feedbacks.length}</b><span>visitas sem feedback</span></p></div></article><article><span className="f2-eyebrow">CONVERSÃO COMERCIAL</span><h3>O trabalho está virando oportunidade?</h3><div className="f2-conversao"><p><b>{visitas.length}</b><span>visitas agendadas</span></p><i>→</i><p><b>{visitasRealizadas}</b><span>realizadas</span></p><i>→</i><p><b>{total.propostas.length}</b><span>propostas</span></p><i>→</i><p><b>{total.vendas.length}</b><span>vendas</span></p></div><small>Pipeline aberto: <b>{pipeline.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</b>. Resultado comercial não altera a nota disciplinar.</small></article></section>
-
-    <section className="f2-performance-atencao"><div><span className="f2-eyebrow">QUEM PRECISA DE INTERVENÇÃO</span><h3>Motivo claro, sem adivinhação</h3><p>Prioriza atraso, SLA, falta de feedback e ausência de reavaliação.</p></div>{intervencoes.length ? <div className="f2-intervencoes">{intervencoes.slice(0, 5).map((item) => <article key={item.nome}><div><b>{item.nome}</b><span className={classeNota(item.nota)}>Nota {item.nota ?? "—"} · {rotuloNota(item.nota)}</span></div><p>{item.motivos.join(" · ")}</p></article>)}</div> : <div className="f2-tudo-certo"><b>Nenhuma intervenção imediata.</b><span>A carteira está dentro da conduta disponível.</span></div>}</section>
-
-    <section className="f2-performance-time"><div><span className="f2-eyebrow">PLACAR POR CORRETOR</span><h3>Disciplina e resultado na mesma linha — sem misturar as notas</h3><p>Percentuais sem casos válidos aparecem como “—”. Nesta fase, a amostra considera somente os leads do Funil 2.0.</p></div><div className="f2-performance-cab f2-performance-cab-dono"><span>Corretor</span><span>Nota</span><span>Carteira em dia</span><span>SLA inicial</span><span>D-API</span><span>Feedback</span><span>Sara</span><span>Visitas</span><span>Propostas</span><span>Vendas</span></div>{porCorretor.map((item) => <div className="f2-performance-linha f2-performance-linha-dono" key={item.nome}><b>{item.nome}</b><span><strong className={classeNota(item.nota)}>{item.nota ?? "—"}</strong><small>{rotuloNota(item.nota)}</small></span><span className={(item.prazoPct ?? 100) < 70 ? "ruim" : "bom"}>{mostrarPct(item.prazoPct)}</span><span>{mostrarPct(item.primeiraPct)}</span><span>{mostrarPct(item.dapiPct)}</span><span>{mostrarPct(item.feedbackPct)}</span><span>{mostrarPct(item.saraPct)}</span><span>{item.visitas.length}</span><span>{item.propostas.length}</span><span>{item.vendas.length}</span></div>)}</section>
-
-    <details className="f2-performance-regra"><summary>Como a nota é calculada</summary><div className="f2-pesos"><p><b>{pesos.primeira}%</b> primeira abordagem em até {prazoInicial} min</p><p><b>{pesos.prazo}%</b> carteira com ações no prazo</p><p><b>{pesos.feedback}%</b> feedback das visitas encerradas</p><p><b>{pesos.dapi}%</b> ações comprovadas pelo D-API</p><p><b>{pesos.sara}%</b> leads reavaliados pela Sara</p></div><p>Uma métrica sem amostra é retirada do cálculo e os demais pesos são redistribuídos. Assim, ausência de casos não vira nota zero.</p></details>
-  </main>;
-}
-
 function Configuracoes({ etapas, momentos, operacao, sara, busy, onEtapa, onMomento, onOperacao }: { etapas: EtapaConfigFunil2[]; momentos: MomentoFunil2[]; operacao: OperacaoConfigFunil2 | null; sara: SaraStatusFunil2; busy: boolean; onEtapa: (e: Record<string, unknown>) => void; onMomento: (m: Record<string, unknown>) => void; onOperacao: (o: Record<string, unknown>) => void }) {
   const etapaVazia = { codigo:"",rotulo:"",ajuda:"",ordem:etapas.length+1,ativo:true };
   const momentoVazio = { codigo:"",etapa:etapas.find((e) => e.ativo)?.codigo ?? "",rotulo:"",descricao:"",acaoRotulo:"",prazoHoras:24,ordem:momentos.length+1,exigeDapi:true,ativo:true };
@@ -685,7 +597,6 @@ function Configuracoes({ etapas, momentos, operacao, sara, busy, onEtapa, onMome
     <section className="f2-config-operacao"><div className="f2-config-operacao-intro"><div><span className="f2-eyebrow">REGRAS DA OPERAÇÃO</span><h3>Uma regra para Automação, CRM e aplicativo</h3><p><b>Automações executa a distribuição.</b> Esta tela define quem está apto, os horários, os prazos e os pesos que a distribuição deve respeitar. Ela nunca liga abordagem automática.</p></div><a href="/automacoes">Abrir distribuição em Automações →</a></div><form onSubmit={(event) => { event.preventDefault(); onOperacao(regra); }}>
       <fieldset><legend>Distribuição manual</legend><label>Início oficial<input type="time" value={regra.horarioInicio} onChange={(e)=>setRegra({...regra,horarioInicio:e.target.value})}/></label><label>Fim oficial<input type="time" value={regra.horarioFim} onChange={(e)=>setRegra({...regra,horarioFim:e.target.value})}/></label><label>Presença válida (min)<input type="number" min="5" max="120" value={regra.presencaTtlMin} onChange={(e)=>setRegra({...regra,presencaTtlMin:Number(e.target.value)})}/></label><label>Primeira abordagem (min)<input type="number" min="1" max="30" value={regra.primeiraAbordagemMin} onChange={(e)=>setRegra({...regra,primeiraAbordagemMin:Number(e.target.value)})}/></label></fieldset>
       <fieldset><legend>Visitas e avisos</legend><label>Feedback da visita (min)<input type="number" min="30" max="1440" value={regra.feedbackVisitaMin} onChange={(e)=>setRegra({...regra,feedbackVisitaMin:Number(e.target.value)})}/></label><label>Aviso urgente (min)<input type="number" min="15" max="1440" value={regra.notificacaoUrgenteMin} onChange={(e)=>setRegra({...regra,notificacaoUrgenteMin:Number(e.target.value)})}/></label><label>Suspensão 1 (h)<input type="number" value={regra.suspensaoNivel1H} onChange={(e)=>setRegra({...regra,suspensaoNivel1H:Number(e.target.value)})}/></label><label>Suspensão 2 (h)<input type="number" value={regra.suspensaoNivel2H} onChange={(e)=>setRegra({...regra,suspensaoNivel2H:Number(e.target.value)})}/></label><label>Suspensão 3 (h)<input type="number" value={regra.suspensaoNivel3H} onChange={(e)=>setRegra({...regra,suspensaoNivel3H:Number(e.target.value)})}/></label></fieldset>
-      <fieldset><legend>Pesos de Performance (total 100%)</legend><label>Primeira abordagem<input type="number" min="0" max="100" value={regra.pesoPrimeiraAbordagem} onChange={(e)=>setRegra({...regra,pesoPrimeiraAbordagem:Number(e.target.value)})}/></label><label>Ações no prazo<input type="number" min="0" max="100" value={regra.pesoAcoesPrazo} onChange={(e)=>setRegra({...regra,pesoAcoesPrazo:Number(e.target.value)})}/></label><label>Feedback de visitas<input type="number" min="0" max="100" value={regra.pesoFeedbackVisita} onChange={(e)=>setRegra({...regra,pesoFeedbackVisita:Number(e.target.value)})}/></label><label>Presença + D-API<input type="number" min="0" max="100" value={regra.pesoPresencaDapi} onChange={(e)=>setRegra({...regra,pesoPresencaDapi:Number(e.target.value)})}/></label><label>Coerência Sara<input type="number" min="0" max="100" value={regra.pesoCoerenciaSara} onChange={(e)=>setRegra({...regra,pesoCoerenciaSara:Number(e.target.value)})}/></label></fieldset>
       <button type="submit" disabled={busy}>Salvar regras da operação</button>
     </form></section>
   </main>;

@@ -16,6 +16,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { AppShell } from "../../components/AppShell";
 import { ProfilePanel } from "../../components/ProfilePanel";
 import { PresenceHeartbeat } from "../presence/PresenceHeartbeat";
+import { PerformanceActivityHeartbeat } from "../performance/PerformanceActivityHeartbeat";
 import type { ModuleName } from "./module-map";
 import { moduloDoPath, pathDoModulo, rotasModulo, itensDaNavegacao } from "./erp-routes";
 import { useErpSession } from "./ErpSession";
@@ -121,6 +122,10 @@ export function ErpShell({ children }: { children: ReactNode }) {
           aparece em qualquer módulo e apenas para corretores vinculados. */}
       {role === "corretor" && accessToken && profile?.brokerId != null && (
         <PresenceHeartbeat accessToken={accessToken} initialOnline={profile.online} />
+      )}
+
+      {accessToken && profile?.brokerId != null && (
+        <PerformanceActivityHeartbeat accessToken={accessToken} />
       )}
 
     </AppShell>
