@@ -13,13 +13,11 @@ function __run(){
    Contrato: automacoes.mapa = { editor, automation } (motor lê automation.blocks)
    ===================================================================== */
 
-const SUPA_URL = 'https://diaegvfveqezispcthwk.supabase.co';
-const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRpYWVndmZ2ZXFlemlzcGN0aHdrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5OTU4MjIsImV4cCI6MjA5ODU3MTgyMn0.312n8BuI-loQrQ20x9j1hNjKZs2UO71ey9gvIo0eY0I';
+const SUPA_URL = _ctx.supabaseUrl;
+const SUPA_KEY = _ctx.publishableKey;
 const REST = SUPA_URL + '/rest/v1';
-/* Segurança: usa o token do usuário logado (repassado pela casca do ERP via _ctx.authToken).
-   Sem login (ex.: teste isolado) cai para a chave anon. Assim o banco pode exigir
-   sessão autenticada (RLS) sem quebrar quando a chave pública deixa de ter acesso. */
-function authBearer(){ try{ return (typeof _ctx!=='undefined' && _ctx && _ctx.authToken) ? _ctx.authToken : SUPA_KEY; }catch(_e){ return SUPA_KEY; } }
+/* Toda leitura e escrita usa a sessão que a casca autenticada entregou. */
+function authBearer(){ if(!_ctx.authToken) throw new Error('Sessão autenticada não encontrada.'); return _ctx.authToken; }
 const H = { apikey: SUPA_KEY, get Authorization(){ return 'Bearer ' + authBearer(); }, 'Content-Type': 'application/json' };
 async function sbGet(p){ const r=await fetch(REST+p,{headers:H}); if(!r.ok) throw new Error('GET '+p+' → '+r.status+' '+(await r.text()).slice(0,160)); return r.json(); }
 async function sbPatch(p,b){ const r=await fetch(REST+p,{method:'PATCH',headers:{...H,Prefer:'return=representation'},body:JSON.stringify(b)}); if(!r.ok) throw new Error('PATCH '+p+' → '+r.status+' '+(await r.text()).slice(0,160)); return r.json(); }
@@ -1061,7 +1059,7 @@ async function openCaptacaoManager(){
      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><b style="font-size:13px;flex:1">Mídia obrigatória</b>${sel.id?`<span style="font-size:11px;font-weight:700;color:${st.ok?'var(--ok)':'var(--err)'}">${st.ok?'completo ✓':'incompleto'}</span>`:'<span style="font-size:11px;color:var(--ink-faint)">salve para anexar</span>'}</div>
      <div style="display:flex;gap:8px;font-size:11.5px;margin-bottom:10px"><span style="color:${st.fotos>=CAP_MIN_FOTOS?'var(--ok)':'var(--ink-faint)'}">📷 ${st.fotos}/${CAP_MIN_FOTOS} fotos</span><span style="color:${st.video?'var(--ok)':'var(--ink-faint)'}">🎬 vídeo ${st.video?'✓':'—'}</span><span style="color:${st.comum?'var(--ok)':'var(--ink-faint)'}">🏊 áreas comuns/PDF ${st.comum?'✓':'—'}</span></div>
      ${sel.id?`<div style="display:flex;flex-wrap:wrap;gap:6px"><label class="dw-opt" style="width:auto;cursor:pointer">📷 Fotos<input type="file" accept="image/*" multiple data-up="foto" style="display:none"></label><label class="dw-opt" style="width:auto;cursor:pointer">🎬 Vídeo<input type="file" accept="video/*" data-up="video" style="display:none"></label><label class="dw-opt" style="width:auto;cursor:pointer">🏊 Áreas comuns<input type="file" accept="image/*" multiple data-up="area_comum" style="display:none"></label><label class="dw-opt" style="width:auto;cursor:pointer">📄 PDF<input type="file" accept="application/pdf" data-up="pdf" style="display:none"></label></div>
-      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:10px">${mids.map(function(m){var sp=(m.storage_path||'');var url=(/^https?:/.test(sp))?sp:('https://diaegvfveqezispcthwk.supabase.co/storage/v1/object/public/empreendimentos/'+sp);var thumb=(m.tipo==='foto')?('<img src="'+url+'" loading="lazy" style="width:28px;height:28px;object-fit:cover;border-radius:5px;flex-shrink:0">'):(m.tipo==='video'?'🎬':'📄');return '<div style="position:relative;border:1px solid var(--line);border-radius:8px;padding:4px 8px;font-size:11px;display:flex;align-items:center;gap:6px">'+thumb+' '+esc((m.nome||'').slice(0,18))+'<button data-delm="'+m.id+'" style="border:0;background:none;cursor:pointer;color:var(--err)">×</button></div>';}).join('')}</div>`:''}
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:10px">${mids.map(function(m){var sp=(m.storage_path||'');var url=(/^https?:/.test(sp))?sp:(SUPA_URL+'/storage/v1/object/public/empreendimentos/'+sp);var thumb=(m.tipo==='foto')?('<img src="'+url+'" loading="lazy" style="width:28px;height:28px;object-fit:cover;border-radius:5px;flex-shrink:0">'):(m.tipo==='video'?'🎬':'📄');return '<div style="position:relative;border:1px solid var(--line);border-radius:8px;padding:4px 8px;font-size:11px;display:flex;align-items:center;gap:6px">'+thumb+' '+esc((m.nome||'').slice(0,18))+'<button data-delm="'+m.id+'" style="border:0;background:none;cursor:pointer;color:var(--err)">×</button></div>';}).join('')}</div>`:''}
     </div>
    </div>
    <div style="border-top:1px solid var(--line);padding:12px 16px;display:flex;gap:8px;justify-content:flex-end"><button data-cancel style="border:1px solid var(--line);background:#fff;border-radius:9px;padding:9px 14px;font-size:13px;cursor:pointer">Fechar</button><button data-save class="sb-add" style="width:auto;margin:0;padding:9px 18px">${saving?'Salvando…':(sel.id?'Salvar alterações':'Captar produto')}</button></div>`;
