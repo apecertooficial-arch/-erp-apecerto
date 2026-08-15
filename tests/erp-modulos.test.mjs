@@ -324,3 +324,17 @@ test("CI atual não mantém scripts diferenciais aposentados", () => {
   assert.equal(existsSync(join(raizRepo, "scripts/ci-lint-delta.mjs")), false);
   assert.equal(existsSync(join(raizRepo, "scripts/ci-typecheck-delta.mjs")), false);
 });
+
+test("regras aposentadas possuem backup privado antes da exclusão datada", () => {
+  const migration = readFileSync(join(
+    raizRepo,
+    "supabase/migrations/20260815153000_arquivar_regras_aposentadas_antes_exclusao.sql",
+  ), "utf8");
+  assert.match(migration, /ncrm_private\.arquivo_f2_cadencia_regua_20260815/);
+  assert.match(migration, /ncrm_private\.arquivo_funil_regra_20260815/);
+  assert.match(migration, /ncrm_private\.arquivo_funil_regra_execucao_20260815/);
+  assert.match(migration, /pg_get_functiondef/);
+  assert.match(migration, /proibida antes de 19\/08\/2026/);
+  assert.match(migration, /revoke all on table[\s\S]*from public, anon, authenticated/);
+  assert.doesNotMatch(migration, /drop\s+(?:table|function)/i);
+});
