@@ -206,6 +206,11 @@ test("construtor de Automações pertence à feature e não é injetado como glo
   assert.equal(existsSync(new URL("../public/automation-builder-original.css", import.meta.url)), false);
 });
 
+test("Central de Automações não carrega gestores duplicados de CRM, funis e captação", () => {
+  const runtime = readFileSync(join(raizApp, "features/automations/automationBuilderRuntime.js"), "utf8");
+  assert.doesNotMatch(runtime, /open(?:Captacao|Pipelines|Crm)Manager|CRM real|PIPELINE — gestão real/);
+});
+
 test("runtime legado e API geral do CRM foram removidos fisicamente", () => {
   const removidos = [
     "api/crm/route.ts",
