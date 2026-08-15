@@ -96,4 +96,8 @@ test("estrutura antiga permanece removida sem cascade", () => {
   assert.match(remocao, /drop table if exists public\.perf_snapshots/);
   assert.match(remocao, /drop function if exists public\.performance_corretores/);
   assert.doesNotMatch(remocao, /cascade/i);
+  assert.match(sala, /drop function if exists public\.performance_painel\(date,date\)/);
+  assert.match(sala, /drop function if exists public\.performance_resumo_empresa\(date,date\)/);
+  assert.match(sala, /drop function if exists public\.performance_bolsao_ajustes\(date,date\)/);
+  assert.doesNotMatch(sala, /cascade/i);
 });

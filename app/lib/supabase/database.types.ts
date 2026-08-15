@@ -13608,7 +13608,7 @@ export type Database = {
         Returns: string
       }
       perf_log_sessao: { Args: { p_tipo: string }; Returns: string }
-      performance_painel: {
+      performance_sala_comando: {
         Args: { p_fim: string; p_inicio: string }
         Returns: Json
       }
