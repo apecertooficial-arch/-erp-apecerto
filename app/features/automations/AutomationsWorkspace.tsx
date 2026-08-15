@@ -6,22 +6,29 @@ import { ExplicadorAutomacoes } from "./ExplicadorAutomacoes";
 import "../../styles/automation-builder.css";
 
 type OriginalAutomationBuilder = {
-  mount: (host: HTMLDivElement, context: { authToken: string }) => void;
+  mount: (host: HTMLDivElement, context: { authToken: string; supabaseUrl: string; publishableKey: string }) => void;
   unmount: () => void;
   isMounted: () => boolean;
 };
 
 export function AutomationsWorkspace({ accessToken }: { accessToken: string }) {
   const hostRef = useRef<HTMLDivElement>(null);
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 
   useEffect(() => {
     let active = true;
     let mountedBuilder: OriginalAutomationBuilder | null = null;
 
+    if (!supabaseUrl || !publishableKey) {
+      if (hostRef.current) hostRef.current.innerHTML = '<div class="original-automation-error">Configuração pública do Supabase não encontrada.</div>';
+      return;
+    }
+
     void import("./automationBuilderRuntime.js").then(({ default: builder }) => {
       if (!active || !hostRef.current) return;
       mountedBuilder = builder as OriginalAutomationBuilder;
-      mountedBuilder.mount(hostRef.current, { authToken: accessToken });
+      mountedBuilder.mount(hostRef.current, { authToken: accessToken, supabaseUrl, publishableKey });
     }).catch((error: unknown) => {
       if (!active || !hostRef.current) return;
       hostRef.current.innerHTML = `<div class="original-automation-error">${error instanceof Error ? error.message : "Erro ao carregar Automações."}</div>`;
@@ -31,7 +38,7 @@ export function AutomationsWorkspace({ accessToken }: { accessToken: string }) {
       active = false;
       mountedBuilder?.unmount();
     };
-  }, [accessToken]);
+  }, [accessToken, publishableKey, supabaseUrl]);
 
   /* O explicador fica ao lado do construtor, nunca dentro dele: o construtor é
      um arquivo fechado de 202 KB e qualquer coisa que precise entrar lá vira

@@ -180,6 +180,10 @@ test("construtor de Automações pertence à feature e não é injetado como glo
   assert.doesNotMatch(runtime, /window\.ApeCertoAutomationBuilder\s*=/);
   assert.doesNotMatch(runtime, /window\.__ape/,
     "a feature não deve publicar atalhos globais para funções que já são internas");
+  assert.doesNotMatch(runtime, /diaegvfveqezispcthwk|eyJhbGciOi/,
+    "a feature deve consumir a configuração Supabase oficial, sem cópia embutida");
+  assert.match(workspace, /NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY/);
+  assert.match(runtime, /_ctx\.authToken/);
   assert.match(runtime, /export default ApeCertoAutomationBuilder/);
   assert.equal(existsSync(new URL("../public/automation-builder-original.js", import.meta.url)), false);
   assert.equal(existsSync(new URL("../public/automation-builder-original.css", import.meta.url)), false);

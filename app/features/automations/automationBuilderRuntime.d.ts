@@ -1,5 +1,5 @@
 type AutomationBuilderRuntime = {
-  mount(host: HTMLDivElement, context: { authToken: string }): void;
+  mount(host: HTMLDivElement, context: { authToken: string; supabaseUrl: string; publishableKey: string }): void;
   unmount(): void;
   isMounted(): boolean;
 };
