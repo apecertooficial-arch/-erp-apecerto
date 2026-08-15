@@ -9,6 +9,9 @@ const shell = ler("../app/features/system/ErpShell.tsx");
 const atividade = ler("../app/features/performance/PerformanceActivityHeartbeat.tsx");
 const api = ler("../app/api/performance/route.ts");
 const migration = ler("../supabase/migrations/20260815180316_performance_canonica_corretor.sql");
+const historico = ler("../supabase/migrations/20260815200000_ampliar_performance_historica.sql");
+const resumo = ler("../supabase/migrations/20260815201000_resumo_empresa_performance.sql");
+const bolsao = ler("../supabase/migrations/20260815202000_excluir_bolsao_da_performance.sql");
 const remocao = ler("../supabase/migrations/20260815182228_remover_performance_legada.sql");
 
 test("existe uma unica Central de Performance e o Funil 2 fica operacional", () => {
@@ -21,6 +24,32 @@ test("existe uma unica Central de Performance e o Funil 2 fica operacional", () 
 test("painel usa somente a RPC canônica", () => {
   assert.match(api, /rpc\("performance_painel"/);
   assert.doesNotMatch(api, /performance_corretores|performance_operacional|performance_extra/);
+});
+
+test("todo o histórico usa fontes brutas e o financeiro oficial", () => {
+  assert.match(tela, /useState<Periodo>\("todo"\)/);
+  assert.match(tela, /Todo histórico/);
+  assert.match(historico, /public\.wa_mensagens/);
+  assert.match(historico, /public\.ncrm_evento/);
+  assert.match(historico, /public\.f2_evento/);
+  assert.match(historico, /public\.comissoes/);
+  assert.match(resumo, /'semAtribuicao'/);
+  assert.match(resumo, /'leadsCadastrados'/);
+});
+
+test("mensagem do D-API não é duplicada pelos eventos derivados", () => {
+  assert.doesNotMatch(historico, /where pe\.tipo = 'mensagem_enviada'/);
+  assert.match(historico, /pe\.tipo in \('followup','reativacao'/);
+  assert.match(tela, /Mensagem bruta do D-API é a fonte de volume/);
+});
+
+test("Aquário e Pescado ficam fora da performance até existir trabalho real", () => {
+  assert.match(api, /rpc\("performance_bolsao_ajustes"/);
+  assert.match(bolsao, /public\.aquario_stage_id\(\)/);
+  assert.match(bolsao, /f\.etapa<>'pescado'/);
+  assert.match(bolsao, /'leadsBolsao'/);
+  assert.match(tela, /Bolsão fora da performance/);
+  assert.match(tela, /a etapa Pescado também não melhora a nota/);
 });
 
 test("atividade mede uso real, visível e sem duplicar abas", () => {
