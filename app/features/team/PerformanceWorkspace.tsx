@@ -168,8 +168,7 @@ function Comparativo({ corretores, periodo, onAbrir }: { corretores: Perf[]; per
   );
 }
 
-export function PerformanceWorkspace({ accessToken, sessionRole = "corretor" }: { accessToken: string; sessionRole?: string }) {
-  const soAdmin = sessionRole === "admin";
+export function PerformanceWorkspace({ accessToken }: { accessToken: string; sessionRole?: string }) {
   const [periodo, setPeriodo] = useState<Periodo>("mes");
   const [corretores, setCorretores] = useState<Perf[]>([]);
   const [semResp, setSemResp] = useState(0);
@@ -184,8 +183,6 @@ export function PerformanceWorkspace({ accessToken, sessionRole = "corretor" }: 
   const [resultado, setResultado] = useState<{ chave: string; ok: boolean } | null>(null);
 
   useEffect(() => {
-    // Nao-admin nem chega na tela de dados: ha um return antecipado abaixo.
-    if (!soAdmin) return;
     let alive = true;
     const ctrl = new AbortController();
     const chave = `${periodo}:${tentativa}`;
@@ -219,7 +216,7 @@ export function PerformanceWorkspace({ accessToken, sessionRole = "corretor" }: 
       });
 
     return () => { alive = false; ctrl.abort(); };
-  }, [accessToken, periodo, soAdmin, tentativa]);
+  }, [accessToken, periodo, tentativa]);
 
   const tentarDeNovo = () => setTentativa((n) => n + 1);
   const loading = resultado?.chave !== chaveAtual;
@@ -241,24 +238,6 @@ export function PerformanceWorkspace({ accessToken, sessionRole = "corretor" }: 
   const rankScore = useMemo(() => [...corretores].sort((a, b) => num(b.score) - num(a.score)), [corretores]);
 
   const atual = sel === "equipe" ? null : corretores.find((c) => Number(c.corretor_id) === sel) ?? null;
-
-  if (!soAdmin) {
-    return (
-      <div className="pn-wrap pn-maint-wrap">
-        <div className="pn-maint">
-          <div className="pn-maint-ico" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 2v3M12 19v3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M2 12h3M19 12h3M4.9 19.1 7 17M17 7l2.1-2.1" />
-              <circle cx="12" cy="12" r="3.2" />
-            </svg>
-          </div>
-          <h1>Estamos em atualização</h1>
-          <p>A Central de Performance está passando por melhorias para ficar mais precisa e completa. Em breve ela estará disponível para você.</p>
-          <span className="pn-maint-tag">ApêCerto · Performance</span>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="pn-wrap">
