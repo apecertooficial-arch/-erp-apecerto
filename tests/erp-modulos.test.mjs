@@ -287,3 +287,11 @@ test("documentação e fontes isoladas do CRM Nova Era não voltam como segunda 
   assert.equal(existsSync(join(raizRepo, "supabase/functions/ncrm-web-push/index.ts")), true);
   assert.equal(existsSync(join(raizRepo, "supabase/functions/ncrm-sara-observer/index.ts")), true);
 });
+
+test("CSS global não mantém as camadas visuais do CRM V2 e dos módulos operacionais aposentados", () => {
+  const globals = readFileSync(join(raizApp, "globals.css"), "utf8");
+  assert.doesNotMatch(globals, /\.crm-v2(?:\s|\{|:)/);
+  assert.doesNotMatch(globals, /\.crm-drawer-v2(?:\s|\{|:)/);
+  assert.doesNotMatch(globals, /\.operational-module(?:\s|\{|:)/);
+  assert.match(readFileSync(join(raizApp, "styles/funil-2.css"), "utf8"), /\.f2-esteira-oficial>\.sales-process/);
+});
