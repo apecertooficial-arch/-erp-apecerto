@@ -12,12 +12,10 @@
     "test": "pnpm run build && node --test tests/rendered-html.test.mjs",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
     "lint:edge": "deno lint supabase/functions && deno check supabase/functions/*/*.ts",
-    "db:generate": "drizzle-kit generate",
     "test:frontend": "node --test tests/agenda-canonica.test.mjs tests/funil-2-mobile-operacional.test.mjs tests/funil-2.test.mjs tests/funil-2-sara-worker.test.mjs tests/push-e-avisos.test.mjs tests/inicio-mobile.test.mjs tests/sw-offline-recache.test.mjs tests/pendencias-frontend.test.mjs tests/homologacao-regressoes.test.mjs tests/erp-routes.test.mjs tests/nav-perfis.test.mjs tests/pwa.test.mjs tests/erp-modulos.test.mjs tests/supabase-seguranca.test.mjs tests/shell/css-mobile.test.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "2.110.2",
-    "drizzle-orm": "0.45.2",
     "next": "16.2.6",
     "react": "19.2.6",
     "react-dom": "19.2.6",
@@ -31,7 +29,6 @@
     "@types/react-dom": "19.2.3",
     "@vitejs/plugin-react": "6.0.2",
     "@vitejs/plugin-rsc": "0.5.26",
-    "drizzle-kit": "0.31.10",
     "eslint": "9.39.4",
     "eslint-config-next": "16.2.6",
     "react-server-dom-webpack": "19.2.6",

@@ -5,7 +5,7 @@ Este pacote contém **100% do código-fonte e de todas as funções** do ERP:
 - 17 rotas de API em `app/api/…`
 - Todo o design (2.087 linhas de CSS) em `app/globals.css`
 - Menu/layout em `app/components/`
-- Configs, worker, banco (drizzle) e scripts
+- Configs, worker, integração Supabase e scripts
 
 ## O que NÃO vem no zip (de propósito)
 - `node_modules/` (805 MB) — é a pasta de dependências. **Não é código do ERP**; é gerada automaticamente com um comando.
