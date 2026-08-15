@@ -210,10 +210,13 @@ test("runtime legado e API geral do CRM foram removidos fisicamente", () => {
     "../public/legacy-runtime.html",
     "../public/legacy-crm-actions.js",
     "styles/mobile-overrides.css",
+    "api/ncrm/ingest/route.ts",
   ];
   for (const caminho of removidos) {
     assert.equal(existsSync(join(raizApp, caminho)), false, `${caminho} não pode voltar`);
   }
   assert.equal(existsSync(join(raizApp, "api/crm/sales/route.ts")), true,
     "a Esteira de Vendas ativa precisa continuar disponível");
+  assert.equal(existsSync(new URL("../supabase/functions/ncrm-ingest/index.ts", import.meta.url)), false,
+    "a Edge Function de ingestão antiga não implantada não pode voltar como segunda entrada");
 });
