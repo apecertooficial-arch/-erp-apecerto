@@ -1,9 +1,9 @@
 # ERP Apecerto — Projeto completo (para edição)
 
 Este pacote contém **100% do código-fonte e de todas as funções** do ERP:
-- 35 telas/componentes React em `app/features/…`
-- 17 rotas de API em `app/api/…`
-- Todo o design (2.087 linhas de CSS) em `app/globals.css`
+- Telas e componentes React em `app/features/…`
+- Rotas de API em `app/api/…`
+- Design do ERP em `app/globals.css` e `app/styles/…`
 - Menu/layout em `app/components/`
 - Configs, worker, integração Supabase e scripts
 
