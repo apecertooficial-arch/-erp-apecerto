@@ -3,8 +3,36 @@
 import { useEffect, useMemo, useState } from "react";
 
 type Periodo = "todo" | "7d" | "mes" | "trimestre" | "ano";
-type Aba = "comando" | "receita" | "pessoas" | "dados";
+type Aba = "comando" | "trabalho" | "atendimento" | "receita" | "pessoas" | "dados";
 type Numero = number | string | null;
+
+type Trabalho = {
+  diasComSinalDisponibilidade: Numero; logins: Numero; minutosAtivosErp: Numero; diasAtivosErp: Numero; ultimoAcesso: string | null;
+  minutosProdutivosEstimados: Numero; blocosProdutivos: Numero; diasComExecucao: Numero; amplitudeMediaDiaMin: Numero;
+  mensagensEnviadas: Numero; mensagensRecebidas: Numero; mensagensPorDia: Numero; textosEnviados: Numero; audiosEnviados: Numero;
+  imagensEnviadas: Numero; videosEnviados: Numero; documentosEnviados: Numero; primeiraMensagem: string | null; ultimaMensagem: string | null;
+  contatosTrabalhados: Numero; contatosBilaterais: Numero; taxaRespostaPct: Numero; entreguesConfirmadas: Numero; lidasConfirmadas: Numero;
+  acoesComerciais: Numero; tentativas: Numero; respostasCliente: Numero; mudancasEtapa: Numero; transferencias: Numero; negociosTrabalhados: Numero;
+};
+
+type Atendimento = {
+  amostraTurnos: Numero; respostaP50Min: Numero; respostaP75Min: Numero; respostaP90Min: Numero;
+  sla2Pct: Numero; sla5Pct: Numero; sla15Pct: Numero; sla60Pct: Numero;
+  amostraRespostaCliente: Numero; respostaClienteP50Min: Numero; iaAmostra: Numero; iaMensagensAvaliadas: Numero; notaGeral: Numero;
+  clareza: Numero; cordialidade: Numero; personalizacao: Numero; qualificacao: Numero; conducao: Numero; objecoes: Numero; escrita: Numero;
+};
+
+type MeuDia = {
+  tarefasCriadas: Numero; tarefasConcluidasCoorte: Numero; tarefasDevidas: Numero; taxaConclusaoCoortePct: Numero;
+  backlogVencido: Numero; backlogFuturo: Numero; acoesConfirmadas: Numero; momentosAlterados: Numero; notasAdicionadas: Numero;
+  descartes: Numero; leadsMovimentados: Numero; carteiraAtiva: Numero; carteiraEmDia: Numero; acoesVencidas: Numero;
+  semProximaAcao: Numero; carteiraMovimentadaPeriodo: Numero; coberturaCarteiraPct: Numero;
+};
+
+type Producao = {
+  leadsRecebidos: Numero; contatosTrabalhados: Numero; conversasBilaterais: Numero; visitasMarcadas: Numero;
+  visitasRealizadas: Numero; visitasCanceladas: Numero; visitasComFeedback: Numero; vendas: Numero; vgv: Numero;
+};
 
 type Corretor = {
   corretorId: number; nome: string; limiteCarteira: Numero;
@@ -14,6 +42,7 @@ type Corretor = {
   visitasMarcadas: Numero; visitasRealizadas: Numero; visitasCanceladas: Numero; visitasComFeedback: Numero;
   slaAmostra: Numero; medianaRespostaMin: Numero; sla15Pct: Numero;
   iaAmostra: Numero; notaAtendimento: Numero; vendas: Numero; vgv: Numero;
+  trabalho: Trabalho; atendimento: Atendimento; meuDia: MeuDia; producao: Producao;
 };
 
 type Empresa = {
@@ -40,6 +69,8 @@ type Painel = {
 
 const ABAS: Array<{ id: Aba; nome: string }> = [
   { id: "comando", nome: "Sala de comando" },
+  { id: "trabalho", nome: "Trabalho real" },
+  { id: "atendimento", nome: "Atendimento" },
   { id: "receita", nome: "Receita e funil" },
   { id: "pessoas", nome: "Corretores" },
   { id: "dados", nome: "Confiança dos dados" },
@@ -54,6 +85,7 @@ const duracao = (v: unknown) => num(v) >= 60 ? `${decimal(num(v) / 60)} h` : `${
 const pct = (v: unknown) => tem(v) ? `${decimal(v)}%` : "Sem amostra";
 const cobertura = (parte: unknown, total: unknown) => num(total) > 0 ? (100 * num(parte)) / num(total) : 0;
 const dataCurta = (v: string | null | undefined) => v ? new Date(v).toLocaleDateString("pt-BR") : "Sem registro";
+const soma = (corretores: Corretor[], ler: (c: Corretor) => unknown) => corretores.reduce((total, c) => total + num(ler(c)), 0);
 
 function variacao(atual: unknown, anterior: unknown) {
   const a = num(atual), b = num(anterior);
@@ -161,16 +193,90 @@ function Receita({ empresa, origens }: { empresa: Empresa; origens: Origem[] }) 
   </>;
 }
 
+function TrabalhoReal({ corretores, onAbrir }: { corretores: Corretor[]; onAbrir: (id: number) => void }) {
+  const minutos = soma(corretores, (c) => c.trabalho.minutosProdutivosEstimados);
+  const dias = soma(corretores, (c) => c.trabalho.diasComExecucao);
+  const enviadas = soma(corretores, (c) => c.trabalho.mensagensEnviadas);
+  const contatos = soma(corretores, (c) => c.trabalho.contatosTrabalhados);
+  const bilaterais = soma(corretores, (c) => c.trabalho.contatosBilaterais);
+  const resposta = contatos ? (100 * bilaterais) / contatos : null;
+  return <>
+    <section className="ceo-bloco"><header><div><span>TRABALHO COMPROVADO</span><h2>O que cada corretor realmente executou</h2></div><small>Histórico do D-API, CRM, Meu Dia e eventos operacionais</small></header>
+      <div className="ceo-kpis">
+        <Kpi titulo="Tempo produtivo estimado" valor={duracao(minutos)} detalhe={`${inteiro(dias)} corretor-dia com execução`} />
+        <Kpi titulo="Mensagens enviadas" valor={inteiro(enviadas)} detalhe={`${dias ? decimal(enviadas / dias) : "0"} por corretor-dia ativo`} />
+        <Kpi titulo="Contatos trabalhados" valor={inteiro(contatos)} detalhe={`${inteiro(bilaterais)} tiveram conversa bilateral`} />
+        <Kpi titulo="Resposta dos contatos" valor={pct(resposta)} detalhe="contatos que responderam no WhatsApp" tom={tem(resposta) && num(resposta) >= 50 ? "forte" : "atencao"} />
+      </div>
+    </section>
+    <section className="ceo-recusas"><div><span>COMO LER O TEMPO</span><h2>Três medições, sem transformar presença em produtividade</h2></div><ul><li><b>Tempo ativo no ERP:</b> heartbeat confiável enquanto a tela está visível; a captura começou recentemente.</li><li><b>Tempo produtivo estimado:</b> blocos distintos de 5 minutos com mensagem enviada ou ação operacional.</li><li><b>Amplitude diária observada:</b> intervalo entre a primeira e a última evidência do dia; inclui pausas e não é jornada trabalhista.</li></ul></section>
+    <section className="ceo-bloco"><header><div><span>EXECUÇÃO POR CORRETOR</span><h2>Tempo, comunicação e movimentação comercial</h2></div></header>
+      <div className="ceo-tabela-wrap"><table className="ceo-tabela pessoas"><thead><tr><th>Corretor</th><th>Evidência de trabalho</th><th>D-API</th><th>Relacionamento</th><th>Movimentação CRM</th><th>Último sinal</th></tr></thead><tbody>
+        {corretores.map((c) => <tr key={c.corretorId} onClick={() => onAbrir(c.corretorId)}>
+          <td><b>{c.nome}</b><small>{inteiro(c.trabalho.diasComExecucao)} dia(s) com execução</small></td>
+          <td><b>{duracao(c.trabalho.minutosProdutivosEstimados)} estimadas</b><small>{num(c.trabalho.minutosAtivosErp) ? `${duracao(c.trabalho.minutosAtivosErp)} ativos no ERP` : "ERP ativo ainda sem histórico"}</small></td>
+          <td><b>{inteiro(c.trabalho.mensagensEnviadas)} enviadas</b><small>{inteiro(c.trabalho.mensagensRecebidas)} recebidas · {decimal(c.trabalho.mensagensPorDia)} envios/dia</small></td>
+          <td><b>{inteiro(c.trabalho.contatosTrabalhados)} contatos</b><small>{inteiro(c.trabalho.contatosBilaterais)} bilaterais · {pct(c.trabalho.taxaRespostaPct)}</small></td>
+          <td><b>{inteiro(c.trabalho.acoesComerciais)} ações</b><small>{inteiro(c.trabalho.mudancasEtapa)} mudanças · {inteiro(c.trabalho.negociosTrabalhados)} negócios</small></td>
+          <td><b>{dataCurta(c.trabalho.ultimaMensagem)}</b><small>amplitude média {duracao(c.trabalho.amplitudeMediaDiaMin)}</small></td>
+        </tr>)}
+      </tbody></table></div>
+    </section>
+    <section className="ceo-bloco"><header><div><span>MEU DIA E CARTEIRA</span><h2>Disciplina de tarefas, prazos e próximas ações</h2></div></header>
+      <div className="ceo-tabela-wrap"><table className="ceo-tabela"><thead><tr><th>Corretor</th><th>Tarefas do período</th><th>Backlog atual</th><th>Ações confirmadas</th><th>Carteira</th><th>Cobertura no prazo</th></tr></thead><tbody>
+        {corretores.map((c) => <tr key={c.corretorId}>
+          <td><b>{c.nome}</b></td>
+          <td><b>{inteiro(c.meuDia.tarefasConcluidasCoorte)} / {inteiro(c.meuDia.tarefasCriadas)}</b><small>{pct(c.meuDia.taxaConclusaoCoortePct)} concluídas da coorte</small></td>
+          <td><b>{inteiro(c.meuDia.backlogVencido)} vencidas</b><small>{inteiro(c.meuDia.backlogFuturo)} futuras</small></td>
+          <td><b>{inteiro(c.meuDia.acoesConfirmadas)}</b><small>{inteiro(c.meuDia.momentosAlterados)} momentos · {inteiro(c.meuDia.notasAdicionadas)} notas</small></td>
+          <td><b>{inteiro(c.meuDia.carteiraAtiva)} ativos</b><small>{inteiro(c.meuDia.semProximaAcao)} sem próxima ação</small></td>
+          <td><b>{pct(c.meuDia.coberturaCarteiraPct)}</b><small>{inteiro(c.meuDia.acoesVencidas)} ações vencidas</small></td>
+        </tr>)}
+      </tbody></table></div>
+    </section>
+  </>;
+}
+
+function AtendimentoEquipe({ corretores, onAbrir }: { corretores: Corretor[]; onAbrir: (id: number) => void }) {
+  const turnos = soma(corretores, (c) => c.atendimento.amostraTurnos);
+  const amostrasIa = soma(corretores, (c) => c.atendimento.iaAmostra);
+  const mensagensIa = soma(corretores, (c) => c.atendimento.iaMensagensAvaliadas);
+  const emRisco = corretores.filter((c) => num(c.atendimento.amostraTurnos) >= 10 && num(c.atendimento.sla15Pct) < 70).length;
+  return <>
+    <section className="ceo-bloco"><header><div><span>VELOCIDADE E QUALIDADE</span><h2>Como o cliente está sendo atendido</h2></div><small>SLA calculado entre mensagens consecutivas da mesma conversa</small></header><div className="ceo-kpis">
+      <Kpi titulo="Turnos de resposta medidos" valor={inteiro(turnos)} detalhe="respostas do corretor após mensagem do cliente" />
+      <Kpi titulo="Corretores em risco" valor={inteiro(emRisco)} detalhe="SLA de 15 min abaixo de 70%, com ao menos 10 casos" tom={emRisco ? "critico" : "forte"} />
+      <Kpi titulo="Avaliações de IA" valor={inteiro(amostrasIa)} detalhe={`${inteiro(mensagensIa)} mensagens analisadas`} />
+      <Kpi titulo="Cobertura da IA" valor={inteiro(corretores.filter((c) => num(c.atendimento.iaAmostra) > 0).length)} detalhe={`de ${inteiro(corretores.length)} corretores com amostra`} />
+    </div></section>
+    <section className="ceo-bloco"><header><div><span>SLA MULTIFAIXA</span><h2>Mediana não esconde a cauda lenta</h2></div></header><div className="ceo-tabela-wrap"><table className="ceo-tabela pessoas"><thead><tr><th>Corretor</th><th>Tempo de resposta</th><th>Até 2 min</th><th>Até 5 min</th><th>Até 15 min</th><th>Até 60 min</th><th>Resposta do contato</th></tr></thead><tbody>
+      {corretores.map((c) => <tr key={c.corretorId} onClick={() => onAbrir(c.corretorId)}>
+        <td><b>{c.nome}</b><small>{inteiro(c.atendimento.amostraTurnos)} turnos medidos</small></td>
+        <td><b>P50 {tem(c.atendimento.respostaP50Min) ? duracao(c.atendimento.respostaP50Min) : "—"}</b><small>P75 {tem(c.atendimento.respostaP75Min) ? duracao(c.atendimento.respostaP75Min) : "—"} · P90 {tem(c.atendimento.respostaP90Min) ? duracao(c.atendimento.respostaP90Min) : "—"}</small></td>
+        <td>{pct(c.atendimento.sla2Pct)}</td><td>{pct(c.atendimento.sla5Pct)}</td><td><b>{pct(c.atendimento.sla15Pct)}</b></td><td>{pct(c.atendimento.sla60Pct)}</td>
+        <td><b>{pct(c.trabalho.taxaRespostaPct)}</b><small>P50 do cliente {tem(c.atendimento.respostaClienteP50Min) ? duracao(c.atendimento.respostaClienteP50Min) : "—"}</small></td>
+      </tr>)}
+    </tbody></table></div></section>
+    <section className="ceo-bloco"><header><div><span>QUALIDADE DA CONVERSA</span><h2>Nota geral e dimensões avaliadas pela IA</h2></div><small>A nota orienta coaching; não substitui auditoria humana</small></header><div className="ceo-tabela-wrap"><table className="ceo-tabela"><thead><tr><th>Corretor</th><th>Nota geral</th><th>Clareza</th><th>Cordialidade</th><th>Personalização</th><th>Qualificação</th><th>Condução</th><th>Objeções</th><th>Escrita</th></tr></thead><tbody>
+      {corretores.map((c) => <tr key={c.corretorId}><td><b>{c.nome}</b><small>{inteiro(c.atendimento.iaAmostra)} amostras</small></td><td><b>{tem(c.atendimento.notaGeral) ? decimal(c.atendimento.notaGeral) : "—"}</b></td><td>{tem(c.atendimento.clareza) ? decimal(c.atendimento.clareza) : "—"}</td><td>{tem(c.atendimento.cordialidade) ? decimal(c.atendimento.cordialidade) : "—"}</td><td>{tem(c.atendimento.personalizacao) ? decimal(c.atendimento.personalizacao) : "—"}</td><td>{tem(c.atendimento.qualificacao) ? decimal(c.atendimento.qualificacao) : "—"}</td><td>{tem(c.atendimento.conducao) ? decimal(c.atendimento.conducao) : "—"}</td><td>{tem(c.atendimento.objecoes) ? decimal(c.atendimento.objecoes) : "—"}</td><td>{tem(c.atendimento.escrita) ? decimal(c.atendimento.escrita) : "—"}</td></tr>)}
+    </tbody></table></div></section>
+  </>;
+}
+
 function DetalheCorretor({ c }: { c: Corretor }) {
   const s = situacao(c);
   return <section className="ceo-detalhe"><header><div><mark className={s.tom}>{s.rotulo}</mark><h2>{c.nome}</h2><p>{s.acao}</p></div><strong>{inteiro(c.vendas)} venda(s)<small>{dinheiro(c.vgv)} em VGV</small></strong></header>
     <div className="ceo-kpis">
       <Kpi titulo="Carteira" valor={`${inteiro(c.carteiraAtiva)} / ${inteiro(c.limiteCarteira)}`} detalhe={`${inteiro(c.acoesVencidas)} ações vencidas`} tom={num(c.capacidadePct) > 100 ? "critico" : "neutro"} />
-      <Kpi titulo="Relacionamento" valor={`${inteiro(c.conversas)} conversas`} detalhe={`${inteiro(c.mensagens)} mensagens em ${inteiro(c.diasComunicando)} dias`} />
-      <Kpi titulo="Uso ativo do ERP" valor={num(c.minutosErp) ? duracao(c.minutosErp) : "Sem medição"} detalhe={num(c.diasComAcesso) ? `${inteiro(c.diasComAcesso)} dia(s) · último acesso ${dataCurta(c.ultimoAcesso)}` : "Medição recente; não representa horas trabalhadas fora do sistema"} />
+      <Kpi titulo="Tempo produtivo estimado" valor={duracao(c.trabalho.minutosProdutivosEstimados)} detalhe={`${inteiro(c.trabalho.diasComExecucao)} dia(s) · amplitude média ${duracao(c.trabalho.amplitudeMediaDiaMin)}`} />
+      <Kpi titulo="Uso ativo do ERP" valor={num(c.trabalho.minutosAtivosErp) ? duracao(c.trabalho.minutosAtivosErp) : "Sem histórico"} detalhe={num(c.trabalho.diasAtivosErp) ? `${inteiro(c.trabalho.diasAtivosErp)} dia(s) · último acesso ${dataCurta(c.trabalho.ultimoAcesso)}` : "Captura confiável iniciada recentemente"} />
+      <Kpi titulo="Comunicação" valor={`${inteiro(c.trabalho.mensagensEnviadas)} enviadas`} detalhe={`${inteiro(c.trabalho.mensagensRecebidas)} recebidas · ${inteiro(c.trabalho.contatosTrabalhados)} contatos`} />
+      <Kpi titulo="Conversas bilaterais" valor={inteiro(c.trabalho.contatosBilaterais)} detalhe={`${pct(c.trabalho.taxaRespostaPct)} dos contatos responderam`} />
       <Kpi titulo="Visitas" valor={`${inteiro(c.visitasRealizadas)} realizadas`} detalhe={`${inteiro(c.visitasMarcadas)} marcadas · ${inteiro(c.visitasCanceladas)} canceladas`} />
-      <Kpi titulo="Primeira resposta" valor={num(c.slaAmostra) ? `${decimal(c.medianaRespostaMin)} min` : "Sem amostra"} detalhe={num(c.slaAmostra) ? `${pct(c.sla15Pct)} em até 15 min · ${inteiro(c.slaAmostra)} casos` : "Não classificar sem casos medidos"} />
+      <Kpi titulo="Resposta P50 / P90" valor={num(c.atendimento.amostraTurnos) ? `${duracao(c.atendimento.respostaP50Min)} / ${duracao(c.atendimento.respostaP90Min)}` : "Sem amostra"} detalhe={num(c.atendimento.amostraTurnos) ? `${pct(c.atendimento.sla15Pct)} em até 15 min · ${inteiro(c.atendimento.amostraTurnos)} turnos` : "Não classificar sem casos medidos"} />
       <Kpi titulo="Atendimento" valor={num(c.iaAmostra) ? decimal(c.notaAtendimento) : "Sem amostra"} detalhe={`${inteiro(c.iaAmostra)} avaliações de IA`} />
+      <Kpi titulo="Meu Dia" valor={`${inteiro(c.meuDia.acoesConfirmadas)} ações`} detalhe={`${inteiro(c.meuDia.backlogVencido)} tarefas vencidas · ${inteiro(c.meuDia.semProximaAcao)} sem próxima ação`} />
+      <Kpi titulo="Produção" valor={`${inteiro(c.producao.leadsRecebidos)} leads → ${inteiro(c.producao.visitasRealizadas)} visitas`} detalhe={`${inteiro(c.producao.contatosTrabalhados)} contatos · ${inteiro(c.producao.vendas)} vendas`} />
       <Kpi titulo="Última comunicação" valor={dataCurta(c.ultimaMensagem)} detalhe="Evidência do D-API" />
     </div>
   </section>;
@@ -182,9 +288,9 @@ function Pessoas({ corretores, selecionado, onSelecionar }: { corretores: Corret
     {pessoa && <DetalheCorretor c={pessoa} />}
     <div className="ceo-tabela-wrap"><table className="ceo-tabela pessoas"><thead><tr><th>Corretor</th><th>Situação</th><th>Resultado</th><th>Jornada</th><th>Cliente</th><th>Carteira</th><th>Decisão gerencial</th></tr></thead><tbody>
       {corretores.map((c) => { const s = situacao(c); return <tr key={c.corretorId} onClick={() => onSelecionar(c.corretorId)}>
-        <td><b>{c.nome}</b><small>{inteiro(c.diasComunicando)} dias comunicando · {num(c.minutosErp) ? `${duracao(c.minutosErp)} no ERP` : "ERP sem medição"}</small></td><td><mark className={s.tom}>{s.rotulo}</mark></td>
-        <td><b>{inteiro(c.vendas)} venda(s)</b><small>{dinheiro(c.vgv)}</small></td><td><b>{inteiro(c.conversas)} conversas</b><small>{inteiro(c.visitasRealizadas)}/{inteiro(c.visitasMarcadas)} visitas</small></td>
-        <td><b>{num(c.slaAmostra) ? `${pct(c.sla15Pct)} SLA` : "Sem SLA"}</b><small>{num(c.iaAmostra) ? `IA ${decimal(c.notaAtendimento)} · ${inteiro(c.iaAmostra)} casos` : "Sem avaliação"}</small></td>
+        <td><b>{c.nome}</b><small>{inteiro(c.trabalho.diasComExecucao)} dias executando · {duracao(c.trabalho.minutosProdutivosEstimados)} estimadas</small></td><td><mark className={s.tom}>{s.rotulo}</mark></td>
+        <td><b>{inteiro(c.vendas)} venda(s)</b><small>{dinheiro(c.vgv)}</small></td><td><b>{inteiro(c.trabalho.contatosBilaterais)} conversas bilaterais</b><small>{inteiro(c.visitasRealizadas)}/{inteiro(c.visitasMarcadas)} visitas</small></td>
+        <td><b>{num(c.atendimento.amostraTurnos) ? `${pct(c.atendimento.sla15Pct)} SLA 15 min` : "Sem SLA"}</b><small>{num(c.iaAmostra) ? `IA ${decimal(c.notaAtendimento)} · ${inteiro(c.iaAmostra)} casos` : "Sem avaliação"}</small></td>
         <td><b>{inteiro(c.carteiraAtiva)}/{inteiro(c.limiteCarteira)}</b><small>{inteiro(c.acoesVencidas)} vencidas</small></td><td><span>{s.acao}</span></td>
       </tr>; })}
     </tbody></table></div>
@@ -203,7 +309,7 @@ function Dados({ q }: { q: QualidadeDado }) {
     <section className="ceo-bloco"><header><div><span>CONFIANÇA DO DADO</span><h2>O que já sustenta decisão — e o que ainda não sustenta</h2></div></header><div className="ceo-qualidade">
       {itens.map((x) => { const p = cobertura(x.parte, x.total); return <article key={x.nome}><div><span>{x.nome}</span><strong>{decimal(p)}%</strong></div><Barra valor={p} /><small>{inteiro(x.parte)} de {inteiro(x.total)}</small><p>{x.impacto}</p></article>; })}
     </div></section>
-    <section className="ceo-recusas"><div><span>O PAINEL NÃO VAI INVENTAR</span><h2>Indicadores bloqueados até a captura ficar correta</h2></div><ul><li><b>Forecast de receita:</b> exige valor em cada oportunidade.</li><li><b>ROI e CAC por canal:</b> exigem custo de aquisição e venda ligada ao negócio/origem.</li><li><b>Conversão por coorte:</b> exige preservar a ligação do lead desde a entrada até a venda.</li><li><b>Qualidade da visita:</b> exige feedback e motivo de cancelamento obrigatórios.</li></ul></section>
+    <section className="ceo-recusas"><div><span>O PAINEL NÃO VAI INVENTAR</span><h2>Indicadores bloqueados até a captura ficar correta</h2></div><ul><li><b>Forecast de receita:</b> exige valor em cada oportunidade.</li><li><b>ROI e CAC por canal:</b> exigem custo de aquisição e venda ligada ao negócio/origem.</li><li><b>Conversão por coorte:</b> exige preservar a ligação do lead desde a entrada até a venda.</li><li><b>Qualidade da visita:</b> exige feedback e motivo de cancelamento obrigatórios.</li><li><b>Mídia e site:</b> investimento, cliques, sessões e UTMs ainda precisam de integração.</li><li><b>Telefonia, propostas, contratos, CSAT e NPS:</b> ainda não possuem fonte canônica no ERP.</li></ul></section>
     <section className="ceo-principios"><h2>Contrato de gestão</h2><div><p><b>Resultado</b> mede venda, VGV, comissão e margem.</p><p><b>Jornada</b> mede resposta, compromisso e avanço real.</p><p><b>Capacidade</b> mede carteira, prazo e sobrecarga.</p><p><b>Experiência</b> mede atendimento e feedback do cliente.</p><p><b>Confiança</b> acompanha a cobertura antes de liberar conclusões.</p></div></section>
   </>;
 }
@@ -248,6 +354,8 @@ export function PerformanceWorkspace({ accessToken }: { accessToken: string; ses
   const empresa = painel?.empresa ?? null;
   const conteudo = falhou && !temDadoAnterior ? null : <>
     {empresa && aba === "comando" && <Comando empresa={empresa} corretores={corretores} qualidade={painel?.qualidadeDado} onAbrir={abrirPessoa} />}
+    {aba === "trabalho" && <TrabalhoReal corretores={corretores} onAbrir={abrirPessoa} />}
+    {aba === "atendimento" && <AtendimentoEquipe corretores={corretores} onAbrir={abrirPessoa} />}
     {empresa && aba === "receita" && <Receita empresa={empresa} origens={painel?.origens ?? []} />}
     {aba === "pessoas" && <Pessoas corretores={corretores} selecionado={selecionado} onSelecionar={setSelecionado} />}
     {painel?.qualidadeDado && aba === "dados" && <Dados q={painel.qualidadeDado} />}
