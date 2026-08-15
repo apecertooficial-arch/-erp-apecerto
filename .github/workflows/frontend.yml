@@ -1,8 +1,8 @@
 name: Frontend — validação
 
-# Workflow SEPARADO. Não altera crm-nova-era.yml (harness SQL), que continua
-# rodando como sempre.
 on:
+  push:
+    branches: [main]
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -44,16 +44,11 @@ jobs:
       - name: Testes do frontend
         run: pnpm run test:frontend
 
-      # O repositório já tinha erros de tipo antes desta validação existir.
-      # Reprovar tudo travaria todo PR; então comparamos com a base do PR e
-      # falhamos apenas se a branch INTRODUZIR erro novo.
-      - name: Typecheck — apenas regressões novas
-        run: node scripts/ci-typecheck-delta.mjs
+      - name: Typecheck
+        run: pnpm exec tsc --noEmit --incremental false
 
-      - name: Lint — apenas arquivos alterados no PR
-        run: node scripts/ci-lint-delta.mjs
-        env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+      - name: Lint
+        run: pnpm run lint
 
       - name: Build
         run: ./node_modules/.bin/vinext build

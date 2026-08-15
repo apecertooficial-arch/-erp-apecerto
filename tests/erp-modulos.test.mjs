@@ -265,9 +265,11 @@ test("CI valida o ERP atual e não mantém o harness do CRM Nova Era", () => {
   assert.equal(semArquivos(join(raizRepo, "tests/crm-nova-era")), true);
   assert.equal(semArquivos(join(raizApp, "features/crm-nova-era")), true);
   assert.equal(existsSync(join(raizRepo, ".github/workflows/crm-nova-era.yml")), false);
-  const workflow = readFileSync(join(raizRepo, ".github/workflows/erp-validacao.yml"), "utf8");
+  assert.equal(existsSync(join(raizRepo, ".github/workflows/erp-validacao.yml")), false);
+  const workflow = readFileSync(join(raizRepo, ".github/workflows/frontend.yml"), "utf8");
+  assert.match(workflow, /push:\s*\n\s*branches: \[main\]/);
   assert.match(workflow, /pnpm run test:frontend/);
   assert.match(workflow, /tsc --noEmit --incremental false/);
   assert.match(workflow, /pnpm run lint/);
-  assert.match(workflow, /pnpm run build/);
+  assert.match(workflow, /(?:pnpm run build|vinext build)/);
 });
