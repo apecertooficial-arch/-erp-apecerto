@@ -338,3 +338,16 @@ test("regras aposentadas possuem backup privado antes da exclusão datada", () =
   assert.match(migration, /revoke all on table[\s\S]*from public, anon, authenticated/);
   assert.doesNotMatch(migration, /drop\s+(?:table|function)/i);
 });
+
+test("corte futuro das regras aposentadas possui preflight fail-closed", () => {
+  const preflight = readFileSync(join(
+    raizRepo,
+    "supabase/verificacao/20260819_preflight_exclusao_regras_aposentadas.sql",
+  ), "utf8");
+  assert.match(preflight, /current_date < date '2026-08-19'/);
+  assert.match(preflight, /mudou depois do backup/);
+  assert.match(preflight, /dependencias de funcao mudaram/);
+  assert.match(preflight, /existem % crons dependentes/);
+  assert.match(preflight, /where regra_id is not null/);
+  assert.doesNotMatch(preflight, /drop\s+(?:table|function)/i);
+});
