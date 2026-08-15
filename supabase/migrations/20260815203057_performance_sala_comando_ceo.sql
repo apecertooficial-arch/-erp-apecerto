@@ -219,3 +219,9 @@ $function$;
 
 revoke all on function public.performance_sala_comando(date,date) from public,anon;
 grant execute on function public.performance_sala_comando(date,date) to authenticated,service_role;
+
+-- A Sala de Comando substitui integralmente as três RPCs intermediárias.
+-- Se surgir um consumidor não mapeado, a migração falha fechada.
+drop function if exists public.performance_painel(date,date);
+drop function if exists public.performance_resumo_empresa(date,date);
+drop function if exists public.performance_bolsao_ajustes(date,date);
