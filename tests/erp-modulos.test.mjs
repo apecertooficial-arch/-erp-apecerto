@@ -150,6 +150,15 @@ test("Configurações possui uma única camada: Conexões", () => {
     "a camada visual vigente de Conexões precisa permanecer disponível");
 });
 
+test("identidade visual não sobrescreve componentes operacionais do celular", () => {
+  const identidade = readFileSync(join(raizApp, "styles/apecerto-identidade.css"), "utf8");
+  for (const seletor of [".app-bottom-nav", ".f2m-agendar", ".f2m-agendar-ok", ".convite-instalar-ok"]) {
+    assert.equal(identidade.includes(seletor), false, `${seletor} deve ter uma única dona em app-mobile.css`);
+  }
+  assert.match(css, /\.f2m-agendar-ok\s*\{[^}]*background:\s*var\(--f2m-green\)/,
+    "a ação principal de agendar deve continuar verde no CSS que realmente vence");
+});
+
 test("Automações usa um único histórico de execução", () => {
   const mapa = readFileSync(join(raizApp, "features/system/module-map.ts"), "utf8");
   const tipos = readFileSync(join(raizApp, "lib/supabase/database.types.ts"), "utf8");
