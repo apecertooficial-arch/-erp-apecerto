@@ -154,29 +154,6 @@ html, body { touch-action: manipulation; }
    ===================================================================== */
 
 @media (max-width: 900px) {
-  /* ---------------- INICIO ----------------
-     .home-kpis era repeat(7, minmax(135px,1fr)) = 945px de largura minima.
-     Em 360px isso empurrava a tela inteira para o lado. */
-  .home-workspace { padding: 14px 14px 28px; }
-  .home-header { flex-direction: column; align-items: flex-start; gap: 8px; }
-  .home-header h1 { font-size: 19px; }
-  .home-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-  .home-kpis article { min-height: 0; padding: 14px; }
-  .home-kpis article:nth-child(8) { grid-column: auto; }
-  .home-kpis strong { font-size: 21px; }
-  .home-two-columns, .home-three-columns { grid-template-columns: 1fr; gap: 12px; }
-  .home-panel { min-height: 0; padding: 16px; }
-  .home-goal { padding: 16px; }
-  .home-goal header, .home-goal footer { flex-wrap: wrap; gap: 4px; }
-
-  /* Atalhos rapidos do corretor. Renderizados pelo shell, nao pelo modulo. */
-  .home-atalhos { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 12px 0 4px; }
-  .home-atalhos > a {
-    min-height: 52px; display: flex; align-items: center; justify-content: center;
-    border: 1px solid var(--line); border-radius: 12px; background: #fff;
-    color: var(--ink); text-decoration: none; font-size: 13px; font-weight: 600;
-  }
-
   /* ---------------- PRODUTOS ---------------- */
   .product-grid { grid-template-columns: 1fr !important; gap: 12px; }
   .catalog-controls { padding-inline: 0; }
