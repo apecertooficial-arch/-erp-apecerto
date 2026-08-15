@@ -305,3 +305,15 @@ test("CSS global não mantém as camadas visuais do CRM V2 e dos módulos operac
 test("autenticação do ERP não mantém o scaffold órfão do ChatGPT", () => {
   assert.equal(existsSync(join(raizApp, "chatgpt-auth.ts")), false);
 });
+
+test("ERP Supabase não mantém scaffold vazio de banco D1/Drizzle", () => {
+  const pkg = JSON.parse(readFileSync(join(raizRepo, "package.json"), "utf8"));
+  assert.equal(existsSync(join(raizRepo, "drizzle.config.ts")), false);
+  assert.equal(existsSync(join(raizRepo, "db/index.ts")), false);
+  assert.equal(existsSync(join(raizRepo, "db/schema.ts")), false);
+  assert.equal(existsSync(join(raizRepo, "examples/d1/app/api/notes/route.ts")), false);
+  assert.equal(existsSync(join(raizRepo, "examples/d1/db/schema.ts")), false);
+  assert.equal(pkg.dependencies?.["drizzle-orm"], undefined);
+  assert.equal(pkg.devDependencies?.["drizzle-kit"], undefined);
+  assert.equal(pkg.scripts?.["db:generate"], undefined);
+});
