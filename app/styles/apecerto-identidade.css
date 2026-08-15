@@ -177,55 +177,6 @@ h1, h2, h3, h4, h5 {
 }
 
 /* =====================================================================
-   SUPERFÍCIES E CANTOS — o "friendly, rounded" do design system.
-   Só o que já é card no app; nada de regra genérica em div.
-   ===================================================================== */
-.convite-instalar,
-.modulo-sem-acesso {
-  border-radius: var(--radius-lg);
-  border-color: var(--border-soft);
-}
-
-/* =====================================================================
-   AÇÕES
-   ===================================================================== */
-
-/* Ação principal: laranja da marca, canto arredondado, sombra quente. */
-.convite-instalar-ok {
-  background: var(--ape-orange);
-  color: var(--fg-inverse);
-  border-radius: var(--radius-md);
-  font-family: var(--font-body);
-  font-weight: var(--weight-semibold);
-  transition: background var(--dur-fast) var(--ease-out),
-              transform var(--dur-fast) var(--ease-out);
-}
-.convite-instalar-ok:active { background: var(--ape-orange-700); transform: scale(.985); }
-
-/* =====================================================================
-   CASCA DO APLICATIVO
-   ===================================================================== */
-@media (max-width: 900px) {
-  .app-mobile-top {
-    background: var(--bg-surface);
-    border-bottom-color: var(--border-soft);
-  }
-  .app-bottom-nav {
-    background: var(--bg-surface);
-    border-top-color: var(--border-soft);
-    box-shadow: 0 -2px 12px rgba(31, 28, 26, .05);
-  }
-  .app-bottom-nav > a,
-  .app-bottom-nav > button { color: var(--fg-3); font-family: var(--font-body); }
-  .app-bottom-nav > a.active,
-  .app-bottom-nav > button.active { color: var(--ape-orange); }
-  .abn-badge, .amt-sino > b { background: var(--danger); }
-
-  /* Folhas que sobem de baixo: canto grande, do design system. */
-  .app-mais-folha { border-radius: var(--radius-xl) var(--radius-xl) 0 0; }
-}
-
-/* =====================================================================
    ACESSIBILIDADE
    Foco visível na cor da marca. Alvo de toque continua definido no
    app-mobile.css — isto aqui é só a cor.
@@ -234,11 +185,6 @@ h1, h2, h3, h4, h5 {
   outline: 2px solid var(--ape-orange);
   outline-offset: 2px;
   border-radius: var(--radius-xs);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .convite-instalar-ok { transition: none; }
-  .convite-instalar-ok:active { transform: none; }
 }
 
 /* ---------- Aviso de push ----------
@@ -360,32 +306,6 @@ h1, h2, h3, h4, h5 {
 }
 @media (prefers-reduced-motion: reduce) { .aviso-tela { animation: none; } }
 
-/* ---------- Agendar visita pelo celular ---------- */
-.f2m-agendar-abrir {
-  width: 100%; margin-top: 10px; min-height: 46px; padding: 0 16px;
-  border: 1px solid rgba(0,0,0,.12); border-radius: 12px; background: #fff;
-  font-family: inherit; font-size: 14px; font-weight: 600; color: #1c1917; cursor: pointer;
-}
-.f2m-agendar-abrir:active { background: #f7f5f3; }
-.f2m-agendar { margin-top: 10px; padding: 14px; border: 1px solid rgba(0,0,0,.1); border-radius: 14px; background: #fff; }
-.f2m-agendar h3 { margin: 0 0 10px; font-size: 14.5px; font-weight: 700; }
-.f2m-agendar label { display: block; font-size: 12.5px; font-weight: 600; margin-bottom: 10px; color: #57534e; }
-.f2m-agendar label small { font-weight: 400; opacity: .7; }
-.f2m-agendar input {
-  display: block; width: 100%; margin-top: 5px; min-height: 44px; padding: 0 12px;
-  border: 1px solid rgba(0,0,0,.14); border-radius: 10px;
-  font-family: inherit; font-size: 15px; background: #fff; color: #1c1917;
-}
-.f2m-agendar-erro { margin: 0 0 10px; font-size: 12.5px; color: #b91c1c; }
-.f2m-agendar-acoes { display: flex; gap: 8px; }
-.f2m-agendar-acoes button {
-  flex: 1 1 0; min-height: 46px; border-radius: 11px; border: 0;
-  font-family: inherit; font-size: 14px; font-weight: 600; cursor: pointer;
-}
-.f2m-agendar-nao { background: #f0edea; color: #57534e; }
-.f2m-agendar-ok { background: var(--ape-orange-600, #f97316); color: #fff; }
-.f2m-agendar-acoes button:disabled { opacity: .6; }
-
 /* O cartao de aviso nao pode cobrir a barra de navegacao do celular: o corretor
    ficava sem conseguir trocar de aba enquanto ele estivesse na tela. */
 @media (max-width: 900px) {
@@ -401,18 +321,6 @@ h1, h2, h3, h4, h5 {
   font-size: 9.5px; font-weight: 700; font-style: normal;
   letter-spacing: .02em; text-transform: none; vertical-align: middle;
 }
-
-/* Campos novos do agendamento de visita no celular */
-.f2m-agendar select {
-  display: block; width: 100%; margin-top: 5px; min-height: 44px; padding: 0 10px;
-  border: 1px solid rgba(0,0,0,.14); border-radius: 10px;
-  font-family: inherit; font-size: 15px; background: #fff; color: #1c1917;
-}
-.f2m-agendar-check {
-  display: flex; align-items: center; gap: 9px; margin-bottom: 10px;
-  font-size: 13.5px; font-weight: 600; color: #1c1917;
-}
-.f2m-agendar-check input { width: 18px; height: 18px; margin: 0; accent-color: var(--ape-orange-600, #f97316); }
 
 /* Checkbox do gerente no modal de visita (computador) */
 .f2-modal-check {
