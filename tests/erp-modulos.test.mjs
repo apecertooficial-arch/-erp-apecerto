@@ -364,3 +364,15 @@ test("rollback futuro possui snapshot do DDL além dos dados", () => {
   assert.match(migration, /ncrm_private\.arquivo_regras_ddl_20260815/);
   assert.match(migration, /revoke all[\s\S]*from public, anon, authenticated/);
 });
+
+test("Sara vigente não depende mais da tabela de cadência aposentada", () => {
+  const migration = readFileSync(join(
+    raizRepo,
+    "supabase/migrations/20260815160000_desacoplar_sara_da_regua_aposentada.sql",
+  ), "utf8");
+  assert.match(migration, /create or replace function public\.f2_proximo_prazo_contato/);
+  assert.match(migration, /f2_sara_ler_conversa/);
+  assert.match(migration, /f2_sara_marcar_lido/);
+  assert.match(migration, /execute replace\(r\.ddl, 'f2_cadencia_proximo_prazo', 'f2_proximo_prazo_contato'\)/);
+  assert.doesNotMatch(migration, /drop\s+(?:table|function|column)/i);
+});
