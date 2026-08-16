@@ -402,7 +402,6 @@
     color: var(--fg-inverse); font-weight: var(--weight-semibold); cursor: pointer;
   }
 }
-
 /* Tarefas da Sara: ações reais do Funil 2.0 e decisões auditáveis. */
 @media (max-width: 900px) {
   .ape-tarefas {
@@ -442,4 +441,38 @@
   .ape-tarefa-whatsapp .ncrm-wa-secundarias { display: none; }
   .ape-tarefa-card.concluida { opacity: .88; }
   .ape-tarefas-nota { margin: 16px 12px 0; color: #9A918A; font-size: 11px; font-weight: 500; line-height: 1.5; text-align: center; }
+}
+
+/* Catálogo mobile: os mesmos produtos reais de /api/catalog, sem fallback. */
+@media (max-width: 900px) {
+  .ape-produtos {
+    width: 100%; max-width: 620px; margin: 0 auto;
+    padding: 4px 20px calc(24px + env(safe-area-inset-bottom, 0px));
+    background: #FAF8F6; color: #1F1C1A; font-family: 'Quicksand', system-ui, sans-serif;
+  }
+  .ape-produto-busca { display: flex; align-items: center; gap: 9px; height: 46px; padding: 0 13px; border: 1px solid #E4DFD9; border-radius: 12px; background: #fff; }
+  .ape-produto-busca svg { flex: none; color: #9A918A; }
+  .ape-produto-busca input { width: 100%; min-width: 0; border: 0; outline: 0; background: transparent; color: #1F1C1A; font-family: inherit; font-size: 16px; font-weight: 500; }
+  .ape-produto-busca input::placeholder { color: #B8B0A8; }
+  .ape-produto-filtros { margin-top: 12px; margin-bottom: 14px; }
+  .ape-produto-filtros button { min-height: 44px; }
+  .ape-produto-lista { display: flex; flex-direction: column; gap: 14px; }
+  .ape-produto-card { overflow: hidden; border-radius: 18px; background: #fff; box-shadow: 0 2px 6px rgba(31, 28, 26, .06); }
+  .ape-produto-foto { position: relative; display: grid; place-items: center; width: 100%; height: 190px; overflow: hidden; border: 0; background: #F1EDE9; color: #9A918A; font-family: inherit; font-size: 44px; }
+  .ape-produto-foto img { width: 100%; height: 100%; object-fit: cover; }
+  .ape-produto-foto em { position: absolute; top: 12px; left: 12px; padding: 6px 10px; border-radius: 999px; background: rgba(255, 255, 255, .94); color: #6B635C; font-size: 11px; font-style: normal; font-weight: 700; text-transform: none; }
+  .ape-produto-info { padding: 13px 14px 10px; }
+  .ape-produto-preco { display: block; color: #1F1C1A; font-size: 18px; font-weight: 700; }
+  .ape-produto-info h2 { margin: 3px 0 0; color: #1F1C1A; font-size: 16px; font-weight: 700; letter-spacing: -.01em; }
+  .ape-produto-info > p { margin: 4px 0 0; color: #6B635C; font-size: 12.5px; font-weight: 500; }
+  .ape-produto-dados { display: flex; flex-wrap: wrap; gap: 7px 13px; margin-top: 10px; color: #3B342F; font-size: 12px; font-weight: 600; }
+  .ape-produto-info > small { display: block; margin-top: 8px; color: #136B3D; font-size: 11px; font-weight: 600; }
+  .ape-produto-acoes { display: grid; grid-template-columns: 1fr 44px; gap: 7px; padding: 0 14px 14px; }
+  .ape-produto-acoes a, .ape-produto-acoes button { display: flex; align-items: center; justify-content: center; min-height: 44px; border: 0; border-radius: 999px; background: #FAF8F6; color: #1F1C1A; font-family: inherit; font-size: 13px; font-weight: 600; text-decoration: none; }
+  .ape-produto-acoes button { width: 44px; color: #6B635C; }
+  .ape-produto-esqueleto { display: flex; flex-direction: column; gap: 14px; }
+  .ape-produto-esqueleto > div { overflow: hidden; height: 310px; padding: 0 14px 14px; border-radius: 18px; background: #fff; box-shadow: 0 2px 6px rgba(31, 28, 26, .06); }
+  .ape-produto-esqueleto span { display: block; height: 190px; margin: 0 -14px 14px; background: linear-gradient(90deg, #EFEAE5 25%, #F7F4F1 50%, #EFEAE5 75%); background-size: 240px 100%; animation: ape-brilho 1.2s linear infinite; }
+  .ape-produto-esqueleto i { display: block; width: 70%; height: 13px; margin-top: 9px; border-radius: 999px; background: #EFEAE5; }
+  .ape-produto-esqueleto i:last-child { width: 45%; }
 }
