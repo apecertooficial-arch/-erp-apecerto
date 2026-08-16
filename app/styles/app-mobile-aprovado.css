@@ -1,0 +1,159 @@
+/* INTERFACE DO APLICATIVO NO CELULAR - versao aprovada.
+ *
+ * Esta folha E a interface das telas Meu Dia e CRM no celular. Ela nao corrige
+ * nem sobrescreve a folha antiga: o markup passou a usar classes proprias
+ * (.ape-*), entao as regras .f2m-* de app-mobile.css simplesmente nao casam
+ * mais com nada nessas telas. Sem camada sobre camada.
+ *
+ * REGRA: tudo sob @media (max-width: 900px). O ERP no computador nao e tocado.
+ * Os dados sao os reais, servidos por /api/funil2.
+ */
+
+.ape-app { display: none; }
+
+@media (max-width: 900px) {
+  .workspace { background: #FAF8F6; }
+
+  .ape-app {
+    display: block; width: 100%; max-width: 620px; margin: 0 auto;
+    padding: 4px 20px calc(24px + env(safe-area-inset-bottom, 0px));
+    color: #1F1C1A; font-family: 'Quicksand', system-ui, sans-serif;
+  }
+  .ape-app * { box-sizing: border-box; }
+
+  /* ---------- Abertura da fila ---------- */
+  .ape-abertura { display: flex; flex-direction: column; gap: 6px; padding: 8px 0 14px; }
+  .ape-sobrancelha { color: #FF7000; font-size: 11px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; }
+  .ape-manchete { margin: 0; font-size: 26px; font-weight: 700; line-height: 1.12; letter-spacing: -.02em; text-wrap: pretty; }
+  .ape-atualizado { display: flex; align-items: center; gap: 10px; color: #9A918A; font-size: 12px; font-weight: 500; }
+  .ape-atualizar { display: flex; align-items: center; gap: 5px; min-height: 32px; padding: 0; border: 0; background: transparent; color: #FF7000; font-family: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
+
+  /* ---------- Três números do dia ---------- */
+  .ape-numeros { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 14px; }
+  .ape-numeros article { min-width: 0; padding: 10px 12px; border-radius: 14px; background: #fff; box-shadow: 0 1px 2px rgba(31, 28, 26, .04); }
+  .ape-numeros b { display: block; font-size: 19px; font-weight: 700; line-height: 1; }
+  .ape-numeros span { display: block; overflow: hidden; margin-top: 3px; color: #9A918A; font-size: 11px; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
+
+  /* ---------- Busca (CRM) ---------- */
+  .ape-busca { display: flex; align-items: center; gap: 9px; min-height: 46px; margin-bottom: 12px; padding: 0 13px; border: 1px solid #E4DFD9; border-radius: 12px; background: #fff; }
+  .ape-busca svg { flex: none; color: #9A918A; }
+  .ape-busca input { width: 100%; min-width: 0; border: 0; outline: 0; background: transparent; color: #1F1C1A; font-family: inherit; font-size: 16px; font-weight: 500; }
+  .ape-busca input::placeholder { color: #B8B0A8; }
+
+  /* ---------- Filtros ---------- */
+  .ape-filtros { display: flex; gap: 7px; overflow-x: auto; margin: 0 -20px 14px; padding: 0 20px 3px; scrollbar-width: none; }
+  .ape-filtros::-webkit-scrollbar { display: none; }
+  .ape-filtros button {
+    flex: 0 0 auto; min-height: 36px; padding: 0 14px; border: 1px solid #E4DFD9; border-radius: 999px;
+    background: #fff; color: #6B635C; font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer;
+    transition: background 200ms cubic-bezier(.2, .8, .2, 1);
+  }
+  .ape-filtros button.ativo { border-color: transparent; background: #1F1C1A; color: #fff; font-weight: 700; }
+  .ape-filtros button.ape-chip-novo:not(.ativo) { border-color: #FFD6BD; background: #FFF3EA; color: #B84300; }
+
+  /* ---------- Card do cliente ---------- */
+  .ape-lista { display: flex; flex-direction: column; gap: 12px; }
+  .ape-card { padding: 14px; border-radius: 18px; background: #fff; box-shadow: 0 2px 6px rgba(31, 28, 26, .06); }
+  .ape-card-topo { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; align-items: flex-start; gap: 11px; }
+  .ape-avatar { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 999px; background: #FFE4D1; color: #CC5800; font-size: 14px; font-weight: 700; }
+  .ape-quem { display: flex; flex-direction: column; gap: 2px; min-width: 0; padding: 0; border: 0; background: transparent; font-family: inherit; text-align: left; cursor: pointer; }
+  .ape-quem strong { overflow: hidden; color: #1F1C1A; font-size: 16px; font-weight: 700; letter-spacing: -.01em; text-overflow: ellipsis; white-space: nowrap; }
+  .ape-quem span { overflow: hidden; color: #9A918A; font-size: 12px; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
+  .ape-prazo { display: inline-flex; align-items: center; gap: 4px; padding: 5px 9px; border-radius: 999px; background: #F4F0EC; color: #6B635C; font-size: 11px; font-weight: 600; white-space: nowrap; }
+  .ape-prazo.atrasado { background: #FBE5E5; color: #A32C2C; }
+  .ape-prazo.urgente { background: #FFF3D6; color: #8A6100; }
+  .ape-prazo.no-prazo { background: #E6F5EC; color: #136B3D; }
+
+  .ape-etiquetas { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 11px; }
+  .ape-etiquetas span { padding: 5px 10px; border-radius: 999px; font-size: 11px; font-weight: 600; }
+  .ape-etapa { background: #FFE4D1; color: #CC5800; }
+  .ape-momento { background: #F4F0EC; color: #6B635C; }
+
+  /* Bloco roxo: lugar fixo do contexto do atendimento, no card e na ficha. */
+  .ape-contexto { display: flex; flex-direction: column; gap: 5px; margin-top: 10px; padding: 11px 12px; border-radius: 12px; background: #F7ECFC; }
+  .ape-contexto-titulo { display: flex; align-items: center; gap: 6px; color: #8B00CC; font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+  .ape-contexto-selo { display: grid; place-items: center; width: 16px; height: 16px; border-radius: 999px; background: #8B00CC; color: #fff; }
+  .ape-contexto p { margin: 0; color: #3B342F; font-size: 13px; font-weight: 500; line-height: 1.45; text-wrap: pretty; }
+
+  /* ---------- Ação principal ---------- */
+  .ape-acoes { display: grid; grid-template-columns: 1fr 48px; align-items: start; gap: 8px; margin-top: 11px; }
+  .ape-acoes .ncrm-wa { width: 100%; }
+  .ape-acoes .ncrm-wa-principal {
+    display: flex; align-items: center; justify-content: center; gap: 9px; width: 100%; min-height: 48px;
+    border: 0; border-radius: 999px; background: #1E9E5A; color: #fff;
+    font-family: inherit; font-size: 15px; font-weight: 600; text-decoration: none;
+    box-shadow: 0 12px 28px rgba(30, 158, 90, .26);
+  }
+  .ape-acoes .ncrm-wa-erro { min-height: 48px; padding: 9px 11px; border-radius: 12px; font-size: 12px; }
+  .ape-acoes .ncrm-wa-erro-dica { display: none; }
+  /* Alternativa do 9º dígito: plano B, uma linha discreta. */
+  .ape-acoes .ncrm-wa-secundarias { display: flex; flex-direction: column; gap: 0; margin-top: 6px; }
+  .ape-acoes .ncrm-wa-secundarias > a,
+  .ape-acoes .ncrm-wa-secundarias > button {
+    min-height: 36px; padding: 0 4px; border: 0; background: transparent;
+    color: #9A918A; font-family: inherit; font-size: 11px; font-weight: 600; line-height: 1.35; text-align: center;
+  }
+  .ape-mais { display: grid; place-items: center; width: 48px; height: 48px; border: 1.5px solid #E4DFD9; border-radius: 14px; background: #fff; color: #6B635C; cursor: pointer; }
+
+  /* ---------- Estados ---------- */
+  .ape-estado { display: flex; flex-direction: column; align-items: center; gap: 10px; margin-top: 8px; padding: 44px 28px; border-radius: 18px; background: #fff; box-shadow: 0 2px 6px rgba(31, 28, 26, .06); text-align: center; }
+  .ape-estado-icone { display: grid; place-items: center; width: 64px; height: 64px; border-radius: 999px; background: #E6F5EC; color: #1E9E5A; }
+  .ape-estado strong { font-size: 20px; font-weight: 700; letter-spacing: -.01em; }
+  .ape-estado p { max-width: 260px; margin: 0; color: #6B635C; font-size: 14px; font-weight: 500; line-height: 1.5; }
+  .ape-estado button { min-height: 48px; margin-top: 4px; padding: 0 24px; border: 0; border-radius: 999px; background: #FF7000; color: #fff; font-family: inherit; font-size: 15px; font-weight: 600; cursor: pointer; box-shadow: 0 12px 28px rgba(255, 112, 0, .26); }
+  .ape-estado.ruim { background: #FBE5E5; box-shadow: none; }
+  .ape-estado.ruim .ape-estado-icone { background: #fff; color: #D93E3E; }
+  .ape-estado.ruim strong { color: #8F2626; }
+  .ape-estado.ruim p { color: #A34A4A; }
+
+  /* Carregando: a forma do card antes do conteúdo chegar. */
+  @keyframes ape-brilho { 0% { background-position: -240px 0; } 100% { background-position: 240px 0; } }
+  .ape-esqueleto { display: flex; flex-direction: column; gap: 12px; }
+  .ape-esqueleto > div { padding: 14px; border-radius: 18px; background: #fff; box-shadow: 0 2px 6px rgba(31, 28, 26, .06); }
+  .ape-barra { height: 13px; border-radius: 999px; background: linear-gradient(90deg, #EFEAE5 25%, #F7F4F1 50%, #EFEAE5 75%); background-size: 240px 100%; animation: ape-brilho 1.2s linear infinite; }
+  .ape-barra.curta { width: 45%; }
+  .ape-barra.media { width: 70%; margin-top: 9px; }
+  .ape-barra.alta { height: 48px; margin-top: 12px; border-radius: 999px; }
+
+  /* ---------- Ficha do cliente ---------- */
+  .ape-folha { position: fixed; inset: 0; z-index: 90; display: flex; align-items: flex-end; background: rgba(31, 28, 26, .42); }
+  @keyframes ape-sobe { from { transform: translateY(100%); } to { transform: none; } }
+  .ape-ficha { width: 100%; max-height: 94dvh; overflow-y: auto; border-radius: 24px 24px 0 0; background: #FAF8F6; padding-bottom: calc(28px + env(safe-area-inset-bottom, 0px)); animation: ape-sobe 240ms cubic-bezier(.2, .8, .2, 1); font-family: 'Quicksand', system-ui, sans-serif; }
+  .ape-ficha-topo { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: 4px; padding: 8px 12px 10px; background: rgba(250, 248, 246, .94); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); }
+  .ape-voltar { display: flex; align-items: center; gap: 3px; min-height: 44px; padding: 0 8px; border: 0; background: transparent; color: #FF7000; font-family: inherit; font-size: 15px; font-weight: 600; cursor: pointer; }
+  .ape-ficha-nome { padding: 0 20px 14px; }
+  .ape-ficha-nome h2 { margin: 0; font-size: 24px; font-weight: 700; line-height: 1.15; letter-spacing: -.02em; }
+  .ape-ficha-nome p { margin: 6px 0 0; color: #6B635C; font-size: 14px; font-weight: 500; }
+  .ape-ficha-etiquetas { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 10px; }
+  .ape-ficha-etiquetas span { padding: 5px 10px; border-radius: 999px; font-size: 11px; font-weight: 600; }
+
+  .ape-ordem { display: flex; flex-direction: column; gap: 8px; margin: 0 20px; padding: 15px; border-radius: 18px; background: #F7ECFC; }
+  .ape-ordem h3 { margin: 0; font-size: 17px; font-weight: 700; line-height: 1.3; letter-spacing: -.01em; text-wrap: pretty; }
+  .ape-ordem p { margin: 0; color: #4A423C; font-size: 13px; font-weight: 500; line-height: 1.5; }
+  .ape-ordem-prazo { align-self: flex-start; padding: 5px 10px; border-radius: 999px; font-size: 11px; font-weight: 600; }
+  .ape-ordem-prazo.atrasado { background: #fff; color: #A32C2C; }
+  .ape-ordem-prazo.urgente { background: #fff; color: #8A6100; }
+  .ape-ordem-prazo.no-prazo { background: #fff; color: #136B3D; }
+
+  .ape-ficha-acao { margin: 14px 20px 0; }
+  .ape-ficha-acao .ncrm-wa-principal {
+    display: flex; align-items: center; justify-content: center; gap: 9px; width: 100%; min-height: 52px;
+    border: 0; border-radius: 999px; background: #1E9E5A; color: #fff;
+    font-family: inherit; font-size: 15px; font-weight: 600; text-decoration: none;
+    box-shadow: 0 12px 28px rgba(30, 158, 90, .26);
+  }
+  .ape-ficha-acao .ncrm-wa-secundarias { display: flex; flex-direction: column; margin-top: 6px; }
+  .ape-ficha-acao .ncrm-wa-secundarias > a,
+  .ape-ficha-acao .ncrm-wa-secundarias > button { min-height: 40px; border: 0; background: transparent; color: #9A918A; font-family: inherit; font-size: 12px; font-weight: 600; text-align: center; }
+  .ape-ficha-nota { margin: 10px 20px 0; color: #9A918A; font-size: 11px; font-weight: 500; line-height: 1.45; text-align: center; }
+
+  /* Formulários herdados (agendar, notas, descartar) continuam com o markup e o
+     comportamento originais; aqui só recebem a largura da nova ficha. */
+  .ape-ficha .f2m-agendar-abrir,
+  .ape-ficha .f2m-descartar-abrir { width: calc(100% - 40px); margin-left: 20px; margin-right: 20px; border-radius: 999px; font-family: inherit; font-weight: 600; }
+  .ape-ficha .f2m-agendar { margin-left: 20px; margin-right: 20px; border: 0; border-radius: 18px; background: #fff; box-shadow: 0 2px 6px rgba(31, 28, 26, .06); }
+  .ape-ficha .f2m-agendar-ok,
+  .ape-ficha .f2m-agendar-nao { border-radius: 999px; font-family: inherit; font-weight: 600; }
+  .ape-ficha .f2m-historico { margin: 18px 20px 0; padding: 16px 0 0; border-top: 1px solid #EFEAE5; }
+  .ape-ficha .f2m-historico h3 { margin: 0 0 10px; font-size: 15px; font-weight: 700; }
+}
