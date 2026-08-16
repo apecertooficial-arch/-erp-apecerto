@@ -16,10 +16,10 @@ const CORRETOR = {
 const GESTOR = { ...CORRETOR, isManager: true };
 const ADMIN = { role: "admin", carregado: true, permissoes: null };
 
-test("app operacional tem exatamente Inicio, CRM e Agenda", () => {
+test("app do corretor tem Inicio, CRM, Agenda e Avisos", () => {
   const { barra } = itensDaNavegacao(CORRETOR);
-  assert.deepEqual(barra, ["Início", "CRM", "Calendário"]);
-  assert.deepEqual(barra.map(pathDoModulo), ["/inicio", "/crm", "/agenda"]);
+  assert.deepEqual(barra, ["Início", "CRM", "Calendário", "Notificações"]);
+  assert.deepEqual(barra.map(pathDoModulo), ["/inicio", "/crm", "/agenda", "/notificacoes"]);
 });
 
 test("o que nao cabe na barra vai para Mais, sem sumir nem repetir", () => {
@@ -46,9 +46,9 @@ test("ADMIN alcanca os modulos administrativos", () => {
   }
 });
 
-test("Minha Equipe aparece para gestor e nao para corretor comum", () => {
+test("gestor tem Painel, Equipe, Produtos e Gestão na barra", () => {
   assert.ok(!itensDaNavegacao(CORRETOR).mais.includes("Minha Equipe"));
-  assert.ok(itensDaNavegacao(GESTOR).mais.includes("Minha Equipe"));
+  assert.deepEqual(itensDaNavegacao(GESTOR).barra, ["Performance", "Minha Equipe", "Produtos", "Configurações"]);
 });
 
 test("FAIL-CLOSED: perfil ainda carregando nao expoe modulo controlado", () => {

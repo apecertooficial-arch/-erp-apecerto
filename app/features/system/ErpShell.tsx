@@ -27,6 +27,10 @@ function IconeBarra({ modulo }: { modulo: ModuleName | "Mais" }) {
   if (modulo === "CRM") return <svg {...c}><path d="M3 4h18l-7 8v7l-4 2v-9Z" /></svg>;
   if (modulo === "Calendário") return <svg {...c}><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M7 3v4M17 3v4M3 10h18" /></svg>;
   if (modulo === "Notificações") return <svg {...c}><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10 21h4" /></svg>;
+  if (modulo === "Performance") return <svg {...c}><path d="m3 17 6-6 4 4 8-9" /><path d="M15 6h6v6" /></svg>;
+  if (modulo === "Minha Equipe") return <svg {...c}><circle cx="9" cy="8" r="3" /><circle cx="17" cy="9" r="2.5" /><path d="M3 21v-2a5 5 0 0 1 10 0v2M14 21v-1.5a4 4 0 0 1 7-2.6" /></svg>;
+  if (modulo === "Produtos") return <svg {...c}><path d="M6 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16M3 21h18M10 7h.01M14 7h.01M10 11h.01M14 11h.01M10 15h.01M14 15h.01" /></svg>;
+  if (modulo === "Configurações") return <svg {...c}><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" /></svg>;
   return <svg {...c}><path d="M4 12h16M4 6h16M4 18h16" /></svg>;
 }
 
@@ -34,6 +38,7 @@ export function ErpShell({ children }: { children: ReactNode }) {
   const pathname = usePathname() || "/";
   const { accessToken, profile, permissoes, role, isManager, perfilCarregado, badges, recarregarPerfil } = useErpSession();
   const [perfilAberto, setPerfilAberto] = useState(false);
+  const [maisAberto, setMaisAberto] = useState(false);
 
   const moduloAtual = moduloDoPath(pathname) ?? "Início";
   const primeiroNome = (profile?.name ?? "").trim().split(/\s+/)[0] || "corretor";
@@ -45,7 +50,7 @@ export function ErpShell({ children }: { children: ReactNode }) {
      daquele modulo; ate la o sino aparece limpo, que e a verdade. */
   const naoLidas = badges["Notificações"] ?? 0;
   const rotuloSino = naoLidas > 0 ? `Notificações: ${naoLidas} não lidas` : "Notificações";
-  const { barra: itensBarra } = itensDaNavegacao({ role, permissoes, carregado: perfilCarregado, isManager });
+  const { barra: itensBarra, mais: itensMais } = itensDaNavegacao({ role, permissoes, carregado: perfilCarregado, isManager });
 
   // Trocar de rota volta o scroll pro topo. Sem setState aqui: a folha "Mais"
   // e fechada no proprio clique do link, que e onde a intencao acontece.
@@ -107,7 +112,18 @@ export function ErpShell({ children }: { children: ReactNode }) {
             {(badges[m] ?? 0) > 0 && <i className="abn-badge" aria-hidden="true">{(badges[m] ?? 0) > 99 ? "99+" : badges[m]}</i>}
           </Link>
         ))}
+        <button type="button" className={maisAberto ? "active" : ""} onClick={() => setMaisAberto(true)} aria-haspopup="dialog" aria-expanded={maisAberto}>
+          <IconeBarra modulo="Mais" />
+          <span>Mais</span>
+        </button>
       </nav>
+
+      {maisAberto && <div className="app-mais-overlay" role="presentation" onClick={() => setMaisAberto(false)}>
+        <section className="app-mais-folha" role="dialog" aria-modal="true" aria-label="Mais opções" onClick={(evento) => evento.stopPropagation()}>
+          <header><strong>Mais</strong><button type="button" onClick={() => setMaisAberto(false)} aria-label="Fechar">×</button></header>
+          {itensMais.length > 0 ? <div className="app-mais-grid">{itensMais.map((m) => <Link key={m} href={pathDoModulo(m)} onClick={() => setMaisAberto(false)}><IconeBarra modulo={m} /><span>{m}</span><b aria-hidden="true">›</b></Link>)}</div> : <p className="app-mais-vazio">Nenhuma outra opção disponível.</p>}
+        </section>
+      </div>}
 
       {perfilAberto && (
         <ProfilePanel
