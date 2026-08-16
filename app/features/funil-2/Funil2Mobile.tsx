@@ -516,8 +516,9 @@ export function Funil2Mobile({
   const leadAberto = selecionado === "__fechado__"
     ? null
     : leads.find((lead) => lead.id === selecionado) ?? leadPedido;
+  const primeiroNome = nome.trim().split(/\s+/)[0] || "corretor";
 
-  return <main className={`f2m-root modo-${modo}`} aria-label={modo === "inicio" ? "Meu Dia" : "CRM mobile"}>
+  return <main className={`f2m-root modo-${modo}`} aria-label={modo === "inicio" ? `Meu Dia de ${primeiroNome}` : "CRM mobile"}>
     {/* A saudacao e o sino JA existem no cabecalho fixo do aplicativo (ErpShell).
        Repetir os dois aqui dava "Ola, Fabiano" duas vezes na mesma dobra, e um
        segundo sino cujo numero era o tamanho da fila -- nao aviso nao lido.
