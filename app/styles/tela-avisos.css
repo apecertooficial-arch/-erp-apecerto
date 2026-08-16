@@ -3,6 +3,7 @@
    Carrega depois de apecerto-identidade.css e usa os tokens.
    ===================================================================== */
 
+@media (min-width: 901px) {
 .av-wrap {
   display: block;
   width: min(900px, 100%);
@@ -124,3 +125,4 @@
     border-radius: var(--radius-pill); background: var(--ape-orange);
     color: var(--fg-inverse); font-weight: var(--weight-semibold); cursor: pointer;
   }
+}
