@@ -21,8 +21,10 @@ test("tarefas usam somente dados reais do Funil 2", () => {
 
 test("sugestão aceita ou recusada é auditável e não envia mensagem", () => {
   assert.match(tela, /decidirSugestao/);
-  assert.match(api, /f2_sara_decisao/);
+  assert.match(api, /rpc\("f2_decidir_sugestao"/);
   assert.match(migration, /decisao in \('aceita','recusada'\)/);
+  assert.match(migration, /A decisão e a eventual mudança de momento são uma única transação/);
+  assert.match(migration, /security invoker/i);
   assert.doesNotMatch(api, /send-text-message|enviarMensagem/);
 });
 
