@@ -1,8 +1,14 @@
 # Protótipo aprovado — app mobile apêcerto
 
-`app-apecerto-mobile.html` é o protótipo navegável aprovado do redesign mobile (identidade apêcerto), em um único arquivo HTML auto-contido — abre direto no navegador, sem build.
+Versão de visualização e funcionamento do redesign mobile, na identidade apêcerto.
 
-Com o deploy, fica disponível em `/prototipo/app-apecerto-mobile.html`.
+Com o deploy, abre em **`/prototipo/`** (arquivo `index.html`). Também funciona servindo esta pasta com qualquer servidor estático.
+
+## Arquivos
+- `index.html` — o protótipo navegável (telas, perfis e estados).
+- `support.js` — runtime que renderiza a página (React via CDN).
+- `_ds/…` — tokens e componentes do design system apêcerto (Quicksand via Google Fonts).
+- Logo e ícones vêm de `/brand` e `/icons`, já existentes no repositório.
 
 ## Como navegar
 - Rail da esquerda: pula entre as 8 telas, troca o perfil (corretor / gestor) e liga os 6 estados de sistema (normal, carregando, vazio, erro, offline, sessão expirada).
@@ -15,4 +21,4 @@ Com o deploy, fica disponível em `/prototipo/app-apecerto-mobile.html`.
 - Sem vocabulário técnico na tela do corretor.
 - Alvos de toque ≥ 44 px, safe-area superior e inferior.
 
-Este arquivo é referência de visualização e funcionamento — não é código de produção.
+Este material é referência de design — não é código de produção.
