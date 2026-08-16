@@ -161,7 +161,7 @@ test("identidade visual não sobrescreve componentes operacionais do celular", (
   for (const seletor of [".app-bottom-nav", ".f2m-agendar", ".f2m-agendar-ok", ".convite-instalar-ok"]) {
     assert.equal(identidade.includes(seletor), false, `${seletor} deve ter uma única dona em app-mobile.css`);
   }
-  assert.match(css, /\.f2m-agendar-ok\s*\{[^}]*background:\s*var\(--f2m-green\)/,
+  assert.match(css, /\.f2m-agendar-ok\s*\{[^}]*background:\s*#1E9E5A/,
     "a ação principal de agendar deve continuar verde no CSS que realmente vence");
 });
 

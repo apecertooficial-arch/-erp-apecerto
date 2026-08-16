@@ -7,6 +7,7 @@ const MOBILE = ler("../app/features/funil-2/Funil2Mobile.tsx");
 const ENTRADA = ler("../app/(erp)/crm/page.tsx");
 const INICIO = ler("../app/features/home/InicioApp.tsx");
 const CSS = ler("../app/styles/app-mobile.css");
+const CSS_APROVADO = ler("../app/styles/app-mobile-aprovado.css");
 
 test("Inicio e CRM do celular usam o Funil 2.0, nunca as filas antigas", () => {
   assert.match(MOBILE, /fetch\("\/api\/funil2"/);
@@ -31,11 +32,16 @@ test("Meu Dia entrega o lead e a chamada; a orientação completa fica na ficha"
 });
 
 test("a ação principal do aplicativo é verde e tem alvo de toque", () => {
-  assert.match(CSS, /--f2m-green: #168a4d/);
-  const inicio = CSS.indexOf(".f2m-whatsapp .ncrm-wa-principal");
-  const bloco = CSS.slice(inicio, CSS.indexOf("}", inicio));
+  const inicio = CSS_APROVADO.indexOf(".ape-acoes .ncrm-wa-principal");
+  const bloco = CSS_APROVADO.slice(inicio, CSS_APROVADO.indexOf("}", inicio));
   assert.match(bloco, /min-height: 48px/);
-  assert.match(bloco, /background: var\(--f2m-green\)/);
+  assert.match(bloco, /background: #1E9E5A/);
+});
+
+test("a folha mobile antiga não mantém estruturas mortas do aplicativo", () => {
+  for (const seletor of [".f2m-root", ".f2m-topo", ".f2m-card", ".f2m-filtros", ".f2m-whatsapp"]) {
+    assert.ok(!CSS.includes(seletor), `seletor legado ainda presente: ${seletor}`);
+  }
 });
 
 test("CRM mobile troca o quadro de desktop por busca, filtros e cartões", () => {
