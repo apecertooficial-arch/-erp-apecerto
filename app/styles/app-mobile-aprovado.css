@@ -182,3 +182,72 @@
     box-shadow: 0 12px 30px rgba(139, 0, 204, .34) !important;
   }
 }
+
+/* Telas operacionais restantes. Cada seletor novo casa com markup .ape-*;
+   as classes antigas permanecem apenas para o desenho do desktop. */
+.ape-offline { display: none; }
+.ape-sessao-expirada { min-height: 60vh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 28px; text-align: center; }
+.ape-sessao-expirada p { margin: 0; }
+
+@media (max-width: 900px) {
+  .ape-avisos {
+    width: 100%; max-width: 620px; margin: 0 auto;
+    padding: 4px 20px calc(24px + env(safe-area-inset-bottom, 0px));
+    background: #FAF8F6; color: #1F1C1A; font-family: 'Quicksand', system-ui, sans-serif;
+  }
+  .ape-tela-sub { margin: 4px 0 12px; color: #6B635C; font-size: 13px; font-weight: 500; }
+  .ape-avisos .ape-filtros { margin-bottom: 10px; }
+  .ape-avisos .ape-chip { min-height: 44px; }
+
+  .ape-aviso-filtros { display: flex; margin-bottom: 14px; }
+  .ape-aviso-filtro {
+    display: inline-flex; align-items: center; gap: 7px; min-height: 44px; padding: 0 14px;
+    border: 1px solid #E4DFD9; border-radius: 999px; background: #fff; color: #6B635C;
+    font-family: inherit; font-size: 12px; font-weight: 600;
+  }
+  .ape-aviso-filtro::before { content: ''; width: 8px; height: 8px; border-radius: 999px; background: #C9C1B9; }
+  .ape-aviso-filtro.ativo { border-color: #FFD6BD; background: #FFF3EA; color: #B84300; }
+  .ape-aviso-filtro.ativo::before { background: #FF7000; }
+
+  .ape-aviso-lista { display: flex; flex-direction: column; gap: 10px; margin: 0; padding: 0; list-style: none; }
+  .ape-aviso-card {
+    display: flex; align-items: flex-start; gap: 12px; padding: 14px;
+    border: 0; border-radius: 18px; background: #fff; box-shadow: 0 2px 6px rgba(31, 28, 26, .06);
+  }
+  .ape-aviso-icone { display: grid; place-items: center; flex: 0 0 38px; width: 38px; height: 38px; border-radius: 12px; font-size: 16px; }
+  .ape-aviso-icone.laranja { background: #FFE4D1; color: #CC5800; }
+  .ape-aviso-icone.roxo { background: #EBD1F5; color: #66009A; }
+  .ape-aviso-icone.vermelho { background: #FBE5E5; color: #A32C2C; }
+  .ape-aviso-icone.verde { background: #E6F5EC; color: #136B3D; }
+  .ape-aviso-icone.cinza { background: #F4F0EC; color: #6B635C; }
+  .ape-aviso-corpo { flex: 1; min-width: 0; }
+  .ape-aviso-linha1 { display: flex; align-items: flex-start; gap: 8px; }
+  .ape-aviso-titulo { flex: 1; color: #1F1C1A; font-size: 15px; font-weight: 700; line-height: 1.3; text-wrap: pretty; }
+  .ape-aviso-ponto { flex: 0 0 8px; width: 8px; height: 8px; margin-top: 5px; border-radius: 999px; background: #FF7000; }
+  .ape-aviso-detalhe { margin: 4px 0 0; color: #6B635C; font-size: 12.5px; font-weight: 500; line-height: 1.45; overflow-wrap: anywhere; }
+  .ape-aviso-rodape { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 7px; }
+  .ape-aviso-acao { min-height: 44px; padding: 0; border: 0; background: transparent; color: #FF7000; font-family: inherit; font-size: 14px; font-weight: 700; }
+  .ape-aviso-acao:disabled { color: #B8B0A8; }
+  .ape-aviso-tempo { flex: none; color: #9A918A; font-size: 11px; font-weight: 500; white-space: nowrap; }
+  .ape-aviso-mais { width: 100%; min-height: 48px; margin-top: 14px; border: 1px solid #E4DFD9; border-radius: 999px; background: #fff; color: #6B635C; font-family: inherit; font-size: 14px; font-weight: 600; }
+
+  .ape-aviso-esqueleto { display: flex; flex-direction: column; gap: 10px; }
+  .ape-aviso-esqueleto > span {
+    height: 104px; border-radius: 18px;
+    background: linear-gradient(90deg, #EFEAE5 25%, #F7F4F1 50%, #EFEAE5 75%);
+    background-size: 240px 100%; animation: ape-brilho 1.2s linear infinite;
+  }
+
+  .ape-offline {
+    display: block; position: sticky; top: 0; z-index: 8; margin: -4px -20px 12px; padding: 9px 20px;
+    background: #1F1C1A; color: #fff; font-size: 11px; font-weight: 600; text-align: center;
+  }
+  .ape-sessao-expirada {
+    position: fixed; inset: 0; z-index: 200; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 10px; padding: 28px; background: #FAF8F6; color: #1F1C1A; font-family: 'Quicksand', system-ui, sans-serif; text-align: center;
+  }
+  .ape-sessao-expirada .ape-estado-icone { display: grid; place-items: center; width: 64px; height: 64px; border-radius: 999px; background: #FBE5E5; color: #D93E3E; font-size: 26px; font-weight: 700; }
+  .ape-sessao-expirada strong { font-size: 22px; font-weight: 700; }
+  .ape-sessao-expirada p { max-width: 280px; margin: 0; color: #6B635C; font-size: 14px; font-weight: 500; line-height: 1.5; }
+  .ape-sessao-expirada a { display: inline-flex; align-items: center; justify-content: center; min-height: 48px; margin-top: 6px; padding: 0 24px; border-radius: 999px; background: #FF7000; color: #fff; font-size: 15px; font-weight: 600; text-decoration: none; }
+}
