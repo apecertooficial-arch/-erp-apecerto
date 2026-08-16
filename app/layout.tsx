@@ -13,8 +13,6 @@ import "./styles/venda-ficha.css";
    .extrato-painel, pelos mesmos motivos da folha acima. */
 import "./styles/extrato-import.css";
 import "./styles/tela-avisos.css";
-import "./styles/tela-agenda.css";
-import "./styles/tela-agenda-mes.css";
 /* Depois de tela-gestao-card sem quebrar a regra dela: esta folha só trata de
    layout e rolagem das colunas de kanban — não toca em cor nem em token. */
 import "./styles/esteira-rolagem.css";

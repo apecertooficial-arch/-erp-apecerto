@@ -182,7 +182,6 @@
     box-shadow: 0 12px 30px rgba(139, 0, 204, .34) !important;
   }
 }
-
 /* Telas operacionais restantes. Cada seletor novo casa com markup .ape-*;
    as classes antigas permanecem apenas para o desenho do desktop. */
 .ape-offline { display: none; }
@@ -250,4 +249,157 @@
   .ape-sessao-expirada strong { font-size: 22px; font-weight: 700; }
   .ape-sessao-expirada p { max-width: 280px; margin: 0; color: #6B635C; font-size: 14px; font-weight: 500; line-height: 1.5; }
   .ape-sessao-expirada a { display: inline-flex; align-items: center; justify-content: center; min-height: 48px; margin-top: 6px; padding: 0 24px; border-radius: 999px; background: #FF7000; color: #fff; font-size: 15px; font-weight: 600; text-decoration: none; }
+}
+
+/* =====================================================================
+   AGENDA NO CELULAR — desenho do print 05
+   Só celular. Carrega depois de apecerto-identidade.css e usa os tokens.
+   ===================================================================== */
+
+.ape-agenda { display: none; }
+
+@media (max-width: 900px) {
+  .ape-agenda {
+    display: block;
+    width: 100%; max-width: 620px; margin: 0 auto; padding: 4px 20px calc(24px + env(safe-area-inset-bottom, 0px));
+    background: var(--bg-page);
+  }
+
+  /* ---------------- Próximo compromisso ----------------
+     Fundo laranja claro: é a única coisa da tela que o corretor precisa
+     ver de relance, andando. */
+  .ape-agenda-proximo {
+    border: 1px solid var(--ape-orange-100);
+    border-radius: var(--radius-lg);
+    background: var(--bg-tint-orange);
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+  .ape-agenda-eyebrow {
+    margin: 0 0 8px; font-size: 10px; font-weight: var(--weight-bold);
+    letter-spacing: var(--tracking-caps); text-transform: uppercase;
+    color: var(--ape-orange);
+  }
+  .ape-agenda-quando { margin-left: 8px; color: var(--ape-orange-700); }
+  .ape-agenda-prox-hora {
+    margin: 0; font-family: var(--font-display);
+    font-size: var(--text-xl); font-weight: var(--weight-bold);
+    color: var(--fg-1); line-height: var(--leading-tight);
+  }
+  .ape-agenda-prox-cliente { margin: 4px 0 0; font-size: 16px; color: var(--fg-2); }
+  .ape-agenda-prox-local { margin: 6px 0 0; font-size: 13px; color: var(--fg-3); overflow-wrap: anywhere; }
+
+  .ape-agenda-prox-acoes { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; align-items: center; }
+  .ape-agenda-btn-cheio,
+  .ape-agenda-btn-vazado {
+    min-height: 46px; padding: 0 20px; border-radius: var(--radius-pill);
+    display: inline-flex; align-items: center; justify-content: center;
+    font-family: var(--font-body); font-size: 16px;
+    font-weight: var(--weight-bold); text-decoration: none; cursor: pointer;
+  }
+  .ape-agenda-btn-cheio {
+    flex: 1; border: 0; background: var(--ape-orange);
+    color: var(--fg-inverse); box-shadow: var(--shadow-brand);
+  }
+  .ape-agenda-btn-vazado {
+    border: 1px solid var(--border-soft); background: var(--bg-surface); color: var(--fg-2);
+  }
+  .ape-agenda-btn-vazado:disabled { color: var(--fg-muted); cursor: default; }
+  .ape-agenda-sem-local { flex: 1; font-size: var(--text-xs); color: var(--fg-muted); }
+
+  /* ---------------- Barra do dia ---------------- */
+  .ape-agenda-barra { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+  .ape-agenda-chips { display: flex; gap: 8px; }
+  .ape-agenda-chip {
+    min-height: 36px; padding: 0 16px;
+    border: 1px solid var(--border-soft); border-radius: var(--radius-pill);
+    background: var(--bg-surface); color: var(--fg-2);
+    font-family: var(--font-body); font-size: 13px;
+    font-weight: var(--weight-semibold); cursor: pointer;
+  }
+  .ape-agenda-chip.on { background: var(--neutral-800); border-color: var(--neutral-800); color: var(--fg-inverse); }
+
+  .ape-agenda-navega { display: flex; gap: 6px; }
+  .ape-agenda-navega > button {
+    min-width: 40px; min-height: 36px;
+    border: 1px solid var(--border-soft); border-radius: var(--radius-pill);
+    background: var(--bg-surface); color: var(--fg-2);
+    font-size: var(--text-md); line-height: 1; cursor: pointer;
+  }
+
+  .ape-agenda-dia {
+    margin: 0 0 12px; font-size: 10px; font-weight: var(--weight-bold);
+    letter-spacing: var(--tracking-caps); text-transform: uppercase; color: var(--fg-3);
+  }
+
+  /* ---------------- Linha do tempo ----------------
+     A linha vertical e o ponto vivem FORA do cartão, na coluna do
+     horário. É isso que transforma a lista em linha do tempo em vez de
+     pilha de cartões — e é o que faltava no app. */
+  .ape-agenda-linha { list-style: none; margin: 0; padding: 0; }
+  .ape-agenda-item {
+    display: grid;
+    grid-template-columns: 46px 16px 1fr;
+    align-items: start;
+    gap: 0;
+    position: relative;
+    padding-bottom: 14px;
+  }
+  .ape-agenda-hora {
+    padding-top: 12px; font-size: 13px;
+    font-weight: var(--weight-semibold); color: var(--fg-2); white-space: nowrap;
+  }
+  /* A linha contínua: desenhada no meio da coluna do ponto. */
+  .ape-agenda-item::before {
+    content: "";
+    position: absolute; top: 20px; bottom: -2px; left: 52px;
+    width: 2px; background: var(--border-soft);
+  }
+  .ape-agenda-item:last-child::before { display: none; }
+  .ape-agenda-ponto {
+    position: relative; z-index: 1;
+    width: 10px; height: 10px; margin-top: 16px; margin-left: 1px;
+    border-radius: var(--radius-pill);
+    background: var(--ape-orange);
+    box-shadow: 0 0 0 3px var(--bg-page);
+  }
+  /* Compromisso que já passou: ponto apagado, texto mais leve. */
+  .ape-agenda-item.passou .ape-agenda-ponto { background: var(--neutral-300); }
+  .ape-agenda-item.passou .ape-agenda-cliente { color: var(--fg-3); }
+  .ape-agenda-item.passou .ape-agenda-tipo { color: var(--fg-muted); }
+
+  .ape-agenda-cartao {
+    width: 100%; text-align: left; margin-left: 10px;
+    display: grid; gap: 2px; padding: 12px 14px;
+    border: 1px solid var(--border-soft); border-radius: var(--radius-md);
+    background: var(--bg-surface); box-shadow: var(--shadow-xs); cursor: pointer;
+  }
+  .ape-agenda-tipo {
+    font-size: 10px; font-weight: var(--weight-bold);
+    letter-spacing: var(--tracking-caps); text-transform: uppercase; color: var(--ape-orange);
+  }
+  .ape-agenda-cliente { font-size: 15px; font-weight: var(--weight-bold); color: var(--fg-1); }
+  .ape-agenda-local { font-size: 12px; color: var(--fg-3); overflow-wrap: anywhere; }
+
+  /* ---------------- Estados ---------------- */
+  .ape-agenda-esqueleto { display: grid; gap: 12px; }
+  .ape-agenda-esqueleto > span {
+    height: 74px; border-radius: var(--radius-md);
+    background: linear-gradient(90deg, var(--neutral-100), var(--neutral-200), var(--neutral-100));
+    background-size: 200% 100%; animation: ape-agenda-brilho 1.2s ease-in-out infinite;
+  }
+  @keyframes ape-agenda-brilho { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+  @media (prefers-reduced-motion: reduce) { .ape-agenda-esqueleto > span { animation: none; } }
+
+  .ape-agenda-vazio { padding: 32px 8px; text-align: center; color: var(--fg-3); font-size: var(--text-sm); }\n  .ape-agenda-vazio a { display: block; min-height: 44px; margin-top: 8px; color: #FF7000; font-weight: 700; line-height: 44px; }
+  .ape-agenda-erro {
+    padding: 16px; border: 1px solid var(--border-soft);
+    border-radius: var(--radius-lg); background: var(--danger-bg);
+  }
+  .ape-agenda-erro strong { display: block; font-size: var(--text-sm); color: var(--danger); }
+  .ape-agenda-erro button {
+    margin-top: 12px; min-height: 44px; padding: 0 18px; border: 0;
+    border-radius: var(--radius-pill); background: var(--ape-orange);
+    color: var(--fg-inverse); font-weight: var(--weight-semibold); cursor: pointer;
+  }
 }
