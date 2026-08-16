@@ -28,14 +28,14 @@ type FiltroDia = "agora" | "novos" | "hoje" | "todos";
 /* Lista fechada, igual a da tabela motivos_descarte. Motivo escrito a mao nao
    vira relatorio: ninguem consegue contar quantos "sem grana" existem. */
 const MOTIVOS_DESCARTE = [
-  "Contato inválido",
+  "Contato inv\u00e1lido",
   "Sem interesse",
   "Sem capacidade financeira",
-  "Fora da região",
-  "Já comprou",
+  "Fora da regi\u00e3o",
+  "J\u00e1 comprou",
   "Duplicado",
-  "Pediu para não receber contato",
-  "Produto incompatível",
+  "Pediu para n\u00e3o receber contato",
+  "Produto incompat\u00edvel",
 ] as const;
 
 const ETAPAS = [
@@ -43,7 +43,7 @@ const ETAPAS = [
   ["novo", "Novos"],
   ["tentando_contato", "Tentando contato"],
   ["em_atendimento", "Em atendimento"],
-  ["pos_visita", "Pós-visita"],
+  ["pos_visita", "P\u00f3s-visita"],
 ] as const;
 
 function nomeEtapa(codigo: string) {
@@ -82,11 +82,11 @@ function useFunil2Mobile(accessToken: string) {
       signal: controle.signal,
     }).then(async (resposta) => {
       const json = await resposta.json().catch(() => ({})) as PayloadMobile;
-      if (!resposta.ok) throw new Error(json.error || "Não foi possível abrir o CRM.");
+      if (!resposta.ok) throw new Error(json.error || "N\u00e3o foi poss\u00edvel abrir o CRM.");
       if (vivo) { setDados(json); setErro(null); }
     }).catch((falha: unknown) => {
       if (vivo && !(falha instanceof DOMException && falha.name === "AbortError")) {
-        setErro(falha instanceof Error ? falha.message : "Não foi possível abrir o CRM.");
+        setErro(falha instanceof Error ? falha.message : "N\u00e3o foi poss\u00edvel abrir o CRM.");
       }
     });
     return () => { vivo = false; controle.abort(); };
@@ -113,7 +113,7 @@ function CartaoLeadMobile({
   return <article className="f2m-card">
     <header>
       <span className="f2m-avatar" aria-hidden="true">{iniciais(lead.nome)}</span>
-      <div><h3>{lead.nome}</h3><p>{lead.corretor_nome ?? "Aguardando responsável"}{lead.instancia_rotulo ? <em className="f2m-instancia" title={`Contato saindo por ${lead.instancia_rotulo}`}> · {lead.instancia_rotulo}</em> : null}</p></div>
+      <div><h3>{lead.nome}</h3><p>{lead.corretor_nome ?? "Aguardando respons\u00e1vel"}{lead.instancia_rotulo ? <em className="f2m-instancia" title={`Contato saindo por ${lead.instancia_rotulo}`}> \u00b7 {lead.instancia_rotulo}</em> : null}</p></div>
       <span className={`f2m-tempo ${prazo.classe}`}>{situacaoPrazo(lead.proxima_acao_em).rotulo}</span>
     </header>
 
@@ -131,7 +131,7 @@ function CartaoLeadMobile({
       <div className="f2m-whatsapp">
         <BotaoWhatsApp telefone={lead.telefone} negocioId={lead.origem_negocio_id} compacto />
       </div>
-      <button type="button" className="f2m-abrir" onClick={onAbrir} aria-label={`Abrir ficha de ${lead.nome}`}>•••</button>
+      <button type="button" className="f2m-abrir" onClick={onAbrir} aria-label={`Abrir ficha de ${lead.nome}`}>\u2022\u2022\u2022</button>
     </div>
   </article>;
 }
@@ -203,15 +203,15 @@ function AgendarVisitaMobile({
         /* Conflito de agenda tem de ser dito com todas as letras: remarcar
            agora custa um minuto, descobrir no dia custa a visita. */
         setErro(dados?.erro === "gerente_ocupado"
-          ? "Esse gerente já tem visita nesse horário. Escolha outro horário ou outro gerente."
-          : "Não foi possível agendar. Confira os dados e tente de novo.");
+          ? "Esse gerente j\u00e1 tem visita nesse hor\u00e1rio. Escolha outro hor\u00e1rio ou outro gerente."
+          : "N\u00e3o foi poss\u00edvel agendar. Confira os dados e tente de novo.");
         return;
       }
       setAberto(false); setQuando(""); setEmpreendimento(""); setUnidade("");
       setComGerente(false); setGerente("");
       onSalvo();
     } catch {
-      setErro("Não foi possível agendar. Tente de novo.");
+      setErro("N\u00e3o foi poss\u00edvel agendar. Tente de novo.");
     } finally {
       setSalvando(false);
     }
@@ -219,7 +219,7 @@ function AgendarVisitaMobile({
 
   if (!aberto) {
     return <button type="button" className="f2m-agendar-abrir" onClick={() => setAberto(true)}>
-      📅 Agendar visita
+      \ud83d\udcc5 Agendar visita
     </button>;
   }
 
@@ -228,7 +228,7 @@ function AgendarVisitaMobile({
 
     <label>Produto
       <select value={empreendimento} onChange={(e) => setEmpreendimento(e.target.value)}>
-        <option value="">— escolha o empreendimento —</option>
+        <option value="">\u2014 escolha o empreendimento \u2014</option>
         {produtos.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
       </select>
     </label>
@@ -249,7 +249,7 @@ function AgendarVisitaMobile({
 
     {comGerente && <label>Qual gerente
       <select value={gerente} onChange={(e) => setGerente(e.target.value)}>
-        <option value="">— escolha —</option>
+        <option value="">\u2014 escolha \u2014</option>
         {gerentes.map((g) => <option key={g.id} value={g.id}>{g.nome}</option>)}
       </select>
     </label>}
@@ -258,7 +258,7 @@ function AgendarVisitaMobile({
     <div className="f2m-agendar-acoes">
       <button type="button" className="f2m-agendar-nao" onClick={() => setAberto(false)} disabled={salvando}>Cancelar</button>
       <button type="button" className="f2m-agendar-ok" onClick={() => void salvar()} disabled={salvando}>
-        {salvando ? "Agendando…" : "Confirmar visita"}
+        {salvando ? "Agendando\u2026" : "Confirmar visita"}
       </button>
     </div>
   </section>;
@@ -296,13 +296,13 @@ function NotasMobile({
       });
       const dados = await resposta.json().catch(() => null) as { ok?: boolean; error?: string } | null;
       if (!resposta.ok || dados?.ok === false) {
-        setErro(dados?.error || "Não foi possível salvar a nota.");
+        setErro(dados?.error || "N\u00e3o foi poss\u00edvel salvar a nota.");
         return;
       }
       setTexto("");
       onSalvo();
     } catch {
-      setErro("Não foi possível salvar a nota. Tente de novo.");
+      setErro("N\u00e3o foi poss\u00edvel salvar a nota. Tente de novo.");
     } finally {
       setSalvando(false);
     }
@@ -318,7 +318,7 @@ function NotasMobile({
               placeholder="O que ficou combinado? Escreva para quem abrir este lead depois." maxLength={2000} rows={3} />
     {erro && <p className="f2m-agendar-erro">{erro}</p>}
     <button type="button" className="f2m-agendar-ok" onClick={() => void salvar()} disabled={salvando || !texto.trim()}>
-      {salvando ? "Salvando…" : "Salvar nota"}
+      {salvando ? "Salvando\u2026" : "Salvar nota"}
     </button>
   </section>;
 }
@@ -354,12 +354,12 @@ function DescartarMobile({
       });
       const dados = await resposta.json().catch(() => null) as { ok?: boolean; error?: string } | null;
       if (!resposta.ok || dados?.ok === false) {
-        setErro(dados?.error || "Não foi possível descartar este lead.");
+        setErro(dados?.error || "N\u00e3o foi poss\u00edvel descartar este lead.");
         return;
       }
       onDescartado();
     } catch {
-      setErro("Não foi possível descartar. Tente de novo.");
+      setErro("N\u00e3o foi poss\u00edvel descartar. Tente de novo.");
     } finally {
       setSalvando(false);
     }
@@ -367,17 +367,17 @@ function DescartarMobile({
 
   if (!aberto) {
     return <button type="button" className="f2m-descartar-abrir" onClick={() => setAberto(true)}>
-      ✖ Descartar lead
+      \u2716 Descartar lead
     </button>;
   }
 
   return <section className="f2m-agendar f2m-descartar">
     <h3>Descartar lead</h3>
-    <p>{lead.nome} sai da sua carteira. Nada é apagado: fica registrado quem descartou, quando e por quê.</p>
+    <p>{lead.nome} sai da sua carteira. Nada \u00e9 apagado: fica registrado quem descartou, quando e por qu\u00ea.</p>
 
     <label>Motivo
       <select value={motivo} onChange={(e) => setMotivo(e.target.value)}>
-        <option value="">— escolha o motivo —</option>
+        <option value="">\u2014 escolha o motivo \u2014</option>
         {MOTIVOS_DESCARTE.map((item) => <option key={item} value={item}>{item}</option>)}
       </select>
     </label>
@@ -391,7 +391,7 @@ function DescartarMobile({
     <div className="f2m-agendar-acoes">
       <button type="button" className="f2m-agendar-nao" onClick={() => setAberto(false)} disabled={salvando}>Cancelar</button>
       <button type="button" className="f2m-agendar-ok" onClick={() => void descartar()} disabled={salvando || !motivo}>
-        {salvando ? "Descartando…" : "Confirmar descarte"}
+        {salvando ? "Descartando\u2026" : "Confirmar descarte"}
       </button>
     </div>
   </section>;
@@ -420,15 +420,15 @@ function DetalheMobile({
   return <div className="f2m-overlay" role="dialog" aria-modal="true" aria-label={`Atendimento de ${lead.nome}`}>
     <section className="f2m-detalhe">
       <header>
-        <button type="button" onClick={onFechar} aria-label="Voltar">‹</button>
-        <div><small>ATENDIMENTO</small><h2>{lead.nome}</h2><p>{lead.corretor_nome ?? "Sem responsável"}{lead.instancia_rotulo ? <em className="f2m-instancia" title={`Contato saindo por ${lead.instancia_rotulo}`}> · {lead.instancia_rotulo}</em> : null}</p></div>
+        <button type="button" onClick={onFechar} aria-label="Voltar">\u2039</button>
+        <div><small>ATENDIMENTO</small><h2>{lead.nome}</h2><p>{lead.corretor_nome ?? "Sem respons\u00e1vel"}{lead.instancia_rotulo ? <em className="f2m-instancia" title={`Contato saindo por ${lead.instancia_rotulo}`}> \u00b7 {lead.instancia_rotulo}</em> : null}</p></div>
       </header>
 
       <div className="f2m-ordem">
         <span>O QUE FAZER AGORA</span>
         <div className="f2m-ordem-contexto"><b>{nomeEtapa(lead.etapa)}</b><b>{momento?.rotulo ?? lead.momento_codigo}</b></div>
         <h3>{acaoVisivel(lead)}</h3>
-        <p>{momento?.descricao ?? "Execute a ação e atualize o atendimento."}</p>
+        <p>{momento?.descricao ?? "Execute a a\u00e7\u00e3o e atualize o atendimento."}</p>
         <em className={prazo.classe}>{prazo.rotulo}</em>
       </div>
 
@@ -448,8 +448,8 @@ function DetalheMobile({
       <NotasMobile lead={lead} notas={notas} accessToken={accessToken} onSalvo={onRecarregar} />
 
       <section className="f2m-historico">
-        <h3>Últimas atualizações</h3>
-        {eventos.length === 0 ? <p>Ainda não há atualização registrada neste atendimento.</p> : eventos.slice(0, 8).map((evento) => <article key={evento.id}>
+        <h3>\u00daltimas atualiza\u00e7\u00f5es</h3>
+        {eventos.length === 0 ? <p>Ainda n\u00e3o h\u00e1 atualiza\u00e7\u00e3o registrada neste atendimento.</p> : eventos.slice(0, 8).map((evento) => <article key={evento.id}>
           <i />
           <div><strong>{evento.titulo}</strong>{evento.detalhe && <span>{evento.detalhe}</span>}<small>{new Date(evento.criado_em).toLocaleString("pt-BR")}</small></div>
         </article>)}
@@ -516,15 +516,19 @@ export function Funil2Mobile({
   const leadAberto = selecionado === "__fechado__"
     ? null
     : leads.find((lead) => lead.id === selecionado) ?? leadPedido;
-  const primeiroNome = nome.trim().split(/\s+/)[0] || "corretor";
 
   return <main className={`f2m-root modo-${modo}`} aria-label={modo === "inicio" ? "Meu Dia" : "CRM mobile"}>
+    {/* A saudacao e o sino JA existem no cabecalho fixo do aplicativo
+        (ErpShell). Repetir os dois aqui dava "Ola, Fabiano" duas vezes na mesma
+        dobra, e um segundo sino cujo numero era a fila -- nao aviso nao lido.
+        Aqui fica a sobrancelha que diz o que a lista e, e a manchete. */}
     <header className="f2m-topo">
       <div>
-        {modo === "inicio" ? <><small>Olá, {primeiroNome}</small><h1>{contagens.agora} {contagens.agora === 1 ? "pessoa espera" : "pessoas esperam"}<br />você agora</h1></> : <><small>CARTEIRA FUNIL 2.0</small><h1>Seus clientes</h1></>}
-        <button type="button" onClick={recarregar}>↻ Atualizar</button>
+        {modo === "inicio"
+          ? <><small>SUA FILA DE HOJE</small><h1>{contagens.agora} {contagens.agora === 1 ? "pessoa espera" : "pessoas esperam"}<br />voc\u00ea agora</h1></>
+          : <><small>CARTEIRA FUNIL 2.0</small><h1>Seus clientes</h1></>}
+        <button type="button" onClick={recarregar}>\u21bb Atualizar</button>
       </div>
-      <button type="button" className="f2m-sino" onClick={() => onIr("/notificacoes")} aria-label="Abrir avisos">🔔<b>{contagens.agora}</b></button>
     </header>
 
 
@@ -535,17 +539,17 @@ export function Funil2Mobile({
     </section>}
 
     {modo === "crm" && <label className="f2m-busca">
-      <span aria-hidden="true">⌕</span>
+      <span aria-hidden="true">\u2315</span>
       <input type="search" value={busca} onChange={(evento) => setBusca(evento.target.value)} placeholder="Buscar cliente ou telefone" />
     </label>}
 
     <nav className="f2m-filtros" aria-label="Filtrar atendimentos">
-      {modo === "inicio" ? (["novos", "agora", "hoje", "todos"] as const).map((chave) => <button key={chave} type="button" className={`${filtroDia === chave ? "ativo" : ""}${chave === "novos" ? " f2m-chip-novo" : ""}`} onClick={() => setFiltroDia(chave)}>{chave === "agora" ? `Agora · ${contagens.agora}` : chave === "novos" ? `Chamar · ${contagens.novos}` : chave === "hoje" ? `Hoje · ${contagens.hoje}` : `Todos · ${leads.length}`}</button>) : ETAPAS.map(([chave, rotulo]) => <button key={chave} type="button" className={etapa === chave ? "ativo" : ""} onClick={() => setEtapa(chave)}>{rotulo}</button>)}
+      {modo === "inicio" ? (["novos", "agora", "hoje", "todos"] as const).map((chave) => <button key={chave} type="button" className={`${filtroDia === chave ? "ativo" : ""}${chave === "novos" ? " f2m-chip-novo" : ""}`} onClick={() => setFiltroDia(chave)}>{chave === "agora" ? `Agora \u00b7 ${contagens.agora}` : chave === "novos" ? `Chamar \u00b7 ${contagens.novos}` : chave === "hoje" ? `Hoje \u00b7 ${contagens.hoje}` : `Todos \u00b7 ${leads.length}`}</button>) : ETAPAS.map(([chave, rotulo]) => <button key={chave} type="button" className={etapa === chave ? "ativo" : ""} onClick={() => setEtapa(chave)}>{rotulo}</button>)}
     </nav>
 
     {erro && <div className="f2m-erro"><strong>{erro}</strong><button type="button" onClick={recarregar}>Tentar novamente</button></div>}
-    {!dados && !erro && <div className="f2m-loading">Organizando seu dia…</div>}
-    {dados && pedidoUrl !== null && !leadPedido && <div className="f2m-erro"><strong>Este cliente não está mais na sua carteira.</strong><button type="button" onClick={() => { limparLeadDaUrl(); onIr("/crm"); }}>Voltar ao CRM</button></div>}
+    {!dados && !erro && <div className="f2m-loading">Organizando seu dia\u2026</div>}
+    {dados && pedidoUrl !== null && !leadPedido && <div className="f2m-erro"><strong>Este cliente n\u00e3o est\u00e1 mais na sua carteira.</strong><button type="button" onClick={() => { limparLeadDaUrl(); onIr("/crm"); }}>Voltar ao CRM</button></div>}
     {dados && !erro && visiveis.length === 0 && <div className="f2m-vazio"><strong>Nada pendente aqui.</strong><span>Troque o filtro para consultar o restante da carteira.</span></div>}
 
     <section className="f2m-lista" aria-label="Atendimentos">
