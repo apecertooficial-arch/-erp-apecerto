@@ -250,7 +250,6 @@
   .ape-sessao-expirada p { max-width: 280px; margin: 0; color: #6B635C; font-size: 14px; font-weight: 500; line-height: 1.5; }
   .ape-sessao-expirada a { display: inline-flex; align-items: center; justify-content: center; min-height: 48px; margin-top: 6px; padding: 0 24px; border-radius: 999px; background: #FF7000; color: #fff; font-size: 15px; font-weight: 600; text-decoration: none; }
 }
-
 /* =====================================================================
    AGENDA NO CELULAR — desenho do print 05
    Só celular. Carrega depois de apecerto-identidade.css e usa os tokens.
@@ -402,4 +401,45 @@
     border-radius: var(--radius-pill); background: var(--ape-orange);
     color: var(--fg-inverse); font-weight: var(--weight-semibold); cursor: pointer;
   }
+}
+
+/* Tarefas da Sara: ações reais do Funil 2.0 e decisões auditáveis. */
+@media (max-width: 900px) {
+  .ape-tarefas {
+    width: 100%; max-width: 620px; margin: 0 auto;
+    padding: 4px 20px calc(24px + env(safe-area-inset-bottom, 0px));
+    background: #FAF8F6; color: #1F1C1A; font-family: 'Quicksand', system-ui, sans-serif;
+  }
+  .ape-tarefas-filtros { margin-bottom: 14px; }
+  .ape-tarefas-filtros button { min-height: 44px; }
+  .ape-tarefas-lista { display: flex; flex-direction: column; gap: 12px; }
+  .ape-tarefa-card { display: flex; flex-direction: column; gap: 10px; padding: 14px; border-radius: 18px; background: #fff; box-shadow: 0 2px 6px rgba(31, 28, 26, .06); }
+  .ape-tarefa-card > header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .ape-tarefa-tag { display: inline-flex; align-items: center; min-height: 24px; padding: 0 10px; border-radius: 999px; font-size: 11px; font-weight: 700; }
+  .ape-tarefa-tag.atrasadas { background: #FBE5E5; color: #A32C2C; }
+  .ape-tarefa-tag.agora { background: #FFE4D1; color: #CC5800; }
+  .ape-tarefa-tag.hoje { background: #FFF3D6; color: #8A6100; }
+  .ape-tarefa-tag.futuras { background: #E6F5EC; color: #136B3D; }
+  .ape-tarefa-tag.sara { background: #EBD1F5; color: #66009A; }
+  .ape-tarefa-tag.concluida { background: #E6F5EC; color: #136B3D; }
+  .ape-tarefa-prazo { color: #6B635C; font-size: 11px; font-weight: 600; text-align: right; }
+  .ape-tarefa-prazo.atrasado { color: #A32C2C; }
+  .ape-tarefa-prazo.urgente { color: #8A6100; }
+  .ape-tarefa-prazo.no-prazo { color: #136B3D; }
+  .ape-tarefa-card h2 { margin: 0; color: #1F1C1A; font-size: 16px; font-weight: 700; line-height: 1.3; letter-spacing: -.01em; text-wrap: pretty; }
+  .ape-tarefa-lead { display: flex; align-items: center; gap: 8px; }
+  .ape-tarefa-lead > span { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 999px; background: #F4F0EC; color: #6B635C; font-size: 10px; font-weight: 700; }
+  .ape-tarefa-lead strong { color: #3B342F; font-size: 13px; font-weight: 600; }
+  .ape-tarefa-sara { margin: 0; padding: 10px 12px; border-radius: 12px; background: #F7ECFC; color: #4A423C; font-size: 12.5px; font-weight: 500; line-height: 1.45; }
+  .ape-tarefa-sara b { color: #8B00CC; }
+  .ape-tarefa-decidir { display: grid; grid-template-columns: 1fr auto; gap: 8px; }
+  .ape-tarefa-decidir button { min-height: 48px; border-radius: 999px; font-family: inherit; font-size: 14px; font-weight: 600; }
+  .ape-tarefa-decidir button:first-child { padding: 0 18px; border: 0; background: #8B00CC; color: #fff; }
+  .ape-tarefa-decidir button:last-child { padding: 0 18px; border: 1.5px solid #E4DFD9; background: #fff; color: #6B635C; }
+  .ape-tarefa-decidir button:disabled { opacity: .55; }
+  .ape-tarefa-whatsapp .ncrm-wa { width: 100%; }
+  .ape-tarefa-whatsapp .ncrm-wa-principal { display: flex; align-items: center; justify-content: center; width: 100%; min-height: 48px; border: 0; border-radius: 999px; background: #1E9E5A; color: #fff; font-family: inherit; font-size: 15px; font-weight: 600; text-decoration: none; box-shadow: 0 12px 28px rgba(30, 158, 90, .26); }
+  .ape-tarefa-whatsapp .ncrm-wa-secundarias { display: none; }
+  .ape-tarefa-card.concluida { opacity: .88; }
+  .ape-tarefas-nota { margin: 16px 12px 0; color: #9A918A; font-size: 11px; font-weight: 500; line-height: 1.5; text-align: center; }
 }
