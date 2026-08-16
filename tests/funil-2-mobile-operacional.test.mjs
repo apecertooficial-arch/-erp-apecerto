@@ -24,8 +24,7 @@ test("todo perfil autorizado entra no F2 sem gate de piloto", () => {
 });
 
 test("Meu Dia entrega o lead e a chamada; a orientação completa fica na ficha", () => {
-  assert.match(MOBILE, /O QUE FAZER AGORA/);
-  assert.match(MOBILE, /acaoVisivel\(lead\)/);
+  assert.match(MOBILE, /<div className="ape-ordem">[\s\S]*<h3>\{acaoVisivel\(lead\)\}<\/h3>/);
   assert.match(MOBILE, /BotaoWhatsApp/);
   assert.match(MOBILE, /Agora · \$\{contagens\.agora\}/);
   assert.match(MOBILE, /Hoje · \$\{contagens\.hoje\}/);
