@@ -41,11 +41,10 @@
   .app-bottom-nav > button.active { color: #FF7000; }
 
   /* --- Abertura da fila: sobrancelha laranja + manchete curta --- */
+  .f2m-topo { padding-top: 4px; }
   .f2m-topo small { color: #FF7000; font-size: 11px; font-weight: 600; letter-spacing: .12em; }
   .f2m-topo h1 { font-size: 26px; line-height: 1.12; letter-spacing: -.02em; font-weight: 700; }
   .f2m-topo > div > button { color: #FF7000; font-size: 12px; font-weight: 600; }
-  .f2m-sino { border: 0; border-radius: 999px; background: transparent; }
-  .f2m-sino b { background: #FF7000; font-weight: 700; }
 
   /* --- KPIs: três cartões claros, sem borda. O peso vem do número. --- */
   .f2m-kpis article,
@@ -78,7 +77,13 @@
   }
   .f2m-card h3 { font-size: 16px; font-weight: 700; letter-spacing: -.01em; }
   .f2m-card header p { color: #9A918A; font-size: 12px; font-weight: 500; }
-  .f2m-tempo { border-radius: 999px; padding: 5px 9px; font-size: 11px; font-weight: 600; }
+
+  /* O prazo é etiqueta, não parágrafo: cabe numa linha só. Em duas linhas ele
+     empurrava o nome do cliente e virava o elemento mais alto do card. */
+  .f2m-tempo {
+    max-width: none; border-radius: 999px; padding: 5px 10px;
+    font-size: 11px; font-weight: 600; white-space: nowrap;
+  }
   .f2m-tempo.no-prazo { background: #F4F0EC; color: #6B635C; }
   .f2m-chips span { padding: 5px 10px; font-size: 11px; font-weight: 600; }
   .f2m-chips .etapa { background: #FFE4D1; color: #CC5800; }
@@ -92,12 +97,22 @@
 
   /* --- Ação principal: pill de 48px. O verde continua sendo a cor do
      WhatsApp — convenção do app, mantida de propósito. --- */
-  .f2m-acoes { grid-template-columns: 1fr 48px; gap: 8px; }
+  .f2m-acoes { grid-template-columns: 1fr 48px; gap: 8px; align-items: start; }
   .f2m-whatsapp .ncrm-wa-principal {
     border-radius: 999px; font-size: 15px; font-weight: 600;
     box-shadow: 0 12px 28px rgba(30, 158, 90, .26);
   }
-  .f2m-abrir { border-color: #E4DFD9; border-radius: 14px; color: #6B635C; }
+  .f2m-abrir { height: 48px; border-color: #E4DFD9; border-radius: 14px; color: #6B635C; }
+
+  /* Alternativa de telefone (tentar sem o 9º dígito): é plano B, não manchete.
+     Em caixa grande dentro do card ela virava o elemento mais pesado da tela e
+     esticava o botão "•••" junto. Aqui vira uma linha discreta sob o botão. */
+  .f2m-card .ncrm-wa-secundarias { gap: 0; margin-top: 6px; }
+  .f2m-card .ncrm-wa-secundarias > a,
+  .f2m-card .ncrm-wa-secundarias > button {
+    min-height: 36px; padding: 0 4px; border: 0; background: transparent;
+    color: #9A918A; font-size: 11px; font-weight: 600; line-height: 1.35; text-align: center;
+  }
 
   /* --- Estados: mesma linguagem dos cards --- */
   .f2m-loading, .f2m-vazio, .f2m-erro { border: 0; border-radius: 18px; box-shadow: 0 2px 6px rgba(31, 28, 26, .06); color: #6B635C; }
