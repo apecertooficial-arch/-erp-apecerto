@@ -35,6 +35,19 @@ async function listarLeadsSemCorte(db: SupabaseClient) {
   }
 }
 
+async function listarAnalisesSemCorte(db: SupabaseClient) {
+  const pagina = 1000;
+  const todos: Record<string, unknown>[] = [];
+  for (let inicio = 0; ; inicio += pagina) {
+    const { data, error } = await db.from("f2_sara_analise")
+      .select("id,funil_lead_id,status,momento_sugerido,acao_sugerida,resumo,confianca,analisado_em")
+      .order("analisado_em", { ascending: false }).range(inicio, inicio + pagina - 1);
+    if (error) return { data: null, error };
+    todos.push(...((data ?? []) as Record<string, unknown>[]));
+    if ((data?.length ?? 0) < pagina) return { data: todos, error: null };
+  }
+}
+
 /* A instancia REAL de cada lead: a da ultima mensagem da conversa dele, em
    qualquer direcao. E a conversa viva -- se o cliente escreveu para o numero A,
    e por A que ele tem que ser respondido, nao importa qual numero o corretor
@@ -94,6 +107,7 @@ export async function GET(request: Request) {
     { data: etapas, error: e4 }, { data: visitas, error: e5 }, { data: negociacoes, error: e6 },
     { data: aquario, error: e7 }, { data: operacao, error: e8 }, { data: notas },
     { data: saraModo }, { data: saraRunner }, { data: saraF2Config }, saraF2Analises,
+    analisesSara, { data: decisoesSara },
   ] = await Promise.all([
     listarLeadsSemCorte(db),
     db.from("f2_momento_config").select("*").order("etapa", { ascending: true }).order("ordem", { ascending: true }),
@@ -108,9 +122,11 @@ export async function GET(request: Request) {
     db.rpc("ncrm_sara_runner_status"),
     db.from("f2_sara_config").select("enabled,lote,modo_execucao,canary_limite").eq("id", true).maybeSingle(),
     db.from("f2_sara_analise").select("id", { count: "exact", head: true }),
+    listarAnalisesSemCorte(db),
+    db.from("f2_sara_decisao").select("id,analise_id,funil_lead_id,decisao,motivo,decidido_em").order("decidido_em", { ascending: false }),
   ]);
-  if (e1 || e2 || e3 || e4 || e5 || e6 || e7) {
-    const message = e1?.message || e2?.message || e3?.message || e4?.message || e5?.message || e6?.message || e7?.message || "Falha ao carregar o Funil 2.0.";
+  if (e1 || e2 || e3 || e4 || e5 || e6 || e7 || analisesSara.error) {
+    const message = e1?.message || e2?.message || e3?.message || e4?.message || e5?.message || e6?.message || e7?.message || analisesSara.error?.message || "Falha ao carregar o Funil 2.0.";
     return Response.json({ error: message }, { status: message.toLowerCase().includes("permission") ? 403 : 502 });
   }
   const negociosIds = [...new Set((leads ?? []).map((lead) => Number(lead.origem_negocio_id)).filter(Number.isFinite))];
@@ -143,7 +159,7 @@ export async function GET(request: Request) {
   return Response.json({
     leads: leadsComOrigem, momentos: momentos ?? [], eventos: eventos ?? [], etapas: etapas ?? [],
     visitas: visitas ?? [], negociacoes: negociacoes ?? [], aquario: aquario ?? [], operacao: e8 ? null : operacao ?? null,
-    notas: notas ?? [],
+    notas: notas ?? [], analisesSara: analisesSara.data ?? [], decisoesSara: decisoesSara ?? [],
     sara: {
       modo: typeof saraModo === "object" && saraModo !== null && "modo" in saraModo ? String((saraModo as { modo?: unknown }).modo ?? "") || null : null,
       runnerAtivo: typeof saraRunner === "object" && saraRunner !== null && "enabled" in saraRunner ? (saraRunner as { enabled?: unknown }).enabled === true : false,
@@ -165,6 +181,32 @@ export async function POST(request: Request) {
   try { body = await request.json() as Record<string, unknown>; }
   catch { return Response.json({ error: "JSON inválido." }, { status: 400 }); }
   const action = String(body.action ?? "");
+  if (action === "decidirSugestao") {
+    const analiseId = Number(body.analiseId);
+    const decisao = body.decisao === "aceita" ? "aceita" : body.decisao === "recusada" ? "recusada" : "";
+    if (!Number.isInteger(analiseId) || analiseId < 1 || !decisao) return Response.json({ error: "Decisão inválida." }, { status: 422 });
+    const { data: analise, error: analiseErro } = await auth.db.from("f2_sara_analise")
+      .select("id,funil_lead_id,momento_sugerido,acao_sugerida").eq("id", analiseId).maybeSingle();
+    if (analiseErro || !analise) return Response.json({ error: "Sugestão não encontrada." }, { status: 404 });
+    const { data: lead } = await auth.db.from("f2_lead").select("id,versao,momento_codigo").eq("id", analise.funil_lead_id).maybeSingle();
+    if (!lead) return Response.json({ error: "Atendimento não encontrado." }, { status: 404 });
+
+    if (decisao === "aceita" && analise.momento_sugerido && analise.momento_sugerido !== lead.momento_codigo) {
+      const { data: atualizada, error: atualizarErro } = await auth.db.rpc("f2_atualizar_momento", {
+        p_id: lead.id, p_versao: lead.versao, p_momento_codigo: analise.momento_sugerido,
+        p_prazo_combinado: null, p_observacao: "Sugestão da Sara aceita pelo corretor.",
+      });
+      const resultado = (atualizada ?? {}) as { ok?: boolean; erro?: string };
+      if (atualizarErro || resultado.ok === false) return Response.json({ error: "A sugestão mudou desde que foi exibida. Atualize e tente de novo." }, { status: 409 });
+    }
+
+    const { error: decisaoErro } = await auth.db.from("f2_sara_decisao").upsert({
+      analise_id: analise.id, funil_lead_id: analise.funil_lead_id, decisao,
+      motivo: String(body.motivo ?? "").trim().slice(0, 500) || null, decidido_em: new Date().toISOString(),
+    }, { onConflict: "analise_id" });
+    if (decisaoErro) return Response.json({ error: "Não foi possível registrar sua decisão." }, { status: 502 });
+    return Response.json({ ok: true, decisao });
+  }
   let rpc = "";
   let args: Record<string, unknown> = {};
 
