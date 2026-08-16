@@ -28,6 +28,11 @@ import "./styles/tela-suporte-financiamento.css";
 /* Módulos ativos antes injetados por JavaScript; estáticos e únicos. */
 import "./styles/funil-2.css";
 import "./styles/performance.css";
+/* ÚLTIMA DE TODAS — pele aprovada do aplicativo no celular. Só acabamento
+   (raio, sombra, cor, tipo) sobre as classes que já existem; nenhuma regra
+   fora de max-width: 900px, então o desktop segue intacto. Vem depois de
+   funil-2.css de propósito: é ela que dá a palavra final no visual do card. */
+import "./styles/app-visual-aprovado.css";
 import { RegistroPwa } from "./components/RegistroPwa";
 
 export const metadata: Metadata = {
