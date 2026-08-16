@@ -1,5 +1,16 @@
 "use client";
 
+/* MEU DIA / CRM no celular - interface aprovada.
+ *
+ * O markup desta tela foi substituido pelo layout aprovado (classes .ape-*).
+ * As classes .f2m-* da folha antiga nao sao mais usadas aqui: nao ha camada
+ * sobre camada, ha uma interface no lugar da outra.
+ *
+ * Os dados sao reais: /api/funil2 devolve os leads, momentos, eventos e notas
+ * do Supabase, com o token da sessao. Nada nesta tela e inventado -- quando um
+ * campo nao existe no banco, o bloco correspondente simplesmente nao aparece.
+ */
+
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { BotaoWhatsApp } from "./BotaoWhatsApp";
 import { getBrowserSupabaseClient } from "../../lib/supabase/browser";
@@ -25,8 +36,6 @@ type PayloadMobile = {
 
 type FiltroDia = "agora" | "novos" | "hoje" | "todos";
 
-/* Lista fechada, igual a da tabela motivos_descarte. Motivo escrito a mao nao
-   vira relatorio: ninguem consegue contar quantos "sem grana" existem. */
 const MOTIVOS_DESCARTE = [
   "Contato inválido",
   "Sem interesse",
@@ -46,12 +55,26 @@ const ETAPAS = [
   ["pos_visita", "Pós-visita"],
 ] as const;
 
+/* Icones em traço de 2px e ponta arredondada, como manda a identidade. */
+const tracos = { fill: "none", stroke: "currentColor", strokeWidth: 2, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
+function IconeRelogio() { return <svg width="12" height="12" viewBox="0 0 24 24" {...tracos} aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 7v5.2l3.4 2" /></svg>; }
+function IconeAtualizar() { return <svg width="14" height="14" viewBox="0 0 24 24" {...tracos} aria-hidden="true"><path d="M20.5 12a8.5 8.5 0 1 1-2.6-6.1" /><path d="M20.5 3.5v5h-5" /></svg>; }
+function IconeBusca() { return <svg width="18" height="18" viewBox="0 0 24 24" {...tracos} aria-hidden="true"><circle cx="11" cy="11" r="7.5" /><path d="m21 21-4.3-4.3" /></svg>; }
+function IconeCheck({ tamanho = 30 }: { tamanho?: number }) { return <svg width={tamanho} height={tamanho} viewBox="0 0 24 24" {...tracos} strokeWidth={2.4} aria-hidden="true"><path d="M20 6 9 17l-5-5" /></svg>; }
+function IconeAlerta() { return <svg width="28" height="28" viewBox="0 0 24 24" {...tracos} aria-hidden="true"><path d="M10.3 4 2 18a2 2 0 0 0 1.7 3h16.6a2 2 0 0 0 1.7-3L13.7 4a2 2 0 0 0-3.4 0z" /><path d="M12 9.5v4M12 17.2h.01" /></svg>; }
+function IconeMais() { return <svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="6" cy="12" r="1.7" /><circle cx="12" cy="12" r="1.7" /><circle cx="18" cy="12" r="1.7" /></svg>; }
+function IconeVoltar() { return <svg width="19" height="19" viewBox="0 0 24 24" {...tracos} aria-hidden="true"><path d="m15 18-6-6 6-6" /></svg>; }
+
 function nomeEtapa(codigo: string) {
   return ETAPAS.find(([chave]) => chave === codigo)?.[1] ?? codigo.replaceAll("_", " ");
 }
 
 function iniciais(nome: string) {
   return nome.split(/\s+/).filter(Boolean).slice(0, 2).map((parte) => parte[0]?.toUpperCase()).join("") || "?";
+}
+
+function horaAgora() {
+  return new Intl.DateTimeFormat("pt-BR", { hour: "2-digit", minute: "2-digit" }).format(new Date());
 }
 
 function lerLeadDaUrl() {
@@ -100,7 +123,10 @@ function useFunil2Mobile(accessToken: string) {
   return { dados, erro, recarregar };
 }
 
-function CartaoLeadMobile({
+/* Card do cliente: quem, por que agora, em que ponto está, e a única ação que
+   importa. O bloco roxo só aparece quando o momento tem descrição no banco --
+   espaço vazio é melhor do que conselho inventado. */
+function CartaoLead({
   lead,
   momento,
   onAbrir,
@@ -110,44 +136,36 @@ function CartaoLeadMobile({
   onAbrir: () => void;
 }) {
   const prazo = prazoDaAcao(lead);
-  return <article className="f2m-card">
-    <header>
-      <span className="f2m-avatar" aria-hidden="true">{iniciais(lead.nome)}</span>
-      <div><h3>{lead.nome}</h3><p>{lead.corretor_nome ?? "Aguardando responsável"}{lead.instancia_rotulo ? <em className="f2m-instancia" title={`Contato saindo por ${lead.instancia_rotulo}`}> · {lead.instancia_rotulo}</em> : null}</p></div>
-      <span className={`f2m-tempo ${prazo.classe}`}>{situacaoPrazo(lead.proxima_acao_em).rotulo}</span>
-    </header>
-
-    <div className="f2m-chips">
-      <span className={`etapa etapa-${lead.etapa}`}>{nomeEtapa(lead.etapa)}</span>
-      <span className="momento">{momento?.rotulo ?? lead.momento_codigo}</span>
+  return <article className="ape-card">
+    <div className="ape-card-topo">
+      <span className="ape-avatar" aria-hidden="true">{iniciais(lead.nome)}</span>
+      <button type="button" className="ape-quem" onClick={onAbrir}>
+        <strong>{lead.nome}</strong>
+        <span>{lead.corretor_nome ?? "Aguardando responsável"}{lead.instancia_rotulo ? ` · ${lead.instancia_rotulo}` : ""}</span>
+      </button>
+      <span className={`ape-prazo ${prazo.classe}`}><IconeRelogio />{situacaoPrazo(lead.proxima_acao_em).rotulo}</span>
     </div>
 
-    {/* A ACAO OFICIAL saiu da tela. Ela era o texto fixo do momento, nao uma
-        leitura da conversa -- e enquanto a Sara nao analisa de verdade, mostrar
-        isso faz o corretor obedecer uma ordem que ninguem pensou. Ficam a etapa
-        e o momento, que sao fato. Volta quando a analise real entrar. */}
+    <div className="ape-etiquetas">
+      <span className="ape-etapa">{nomeEtapa(lead.etapa)}</span>
+      <span className="ape-momento">{momento?.rotulo ?? lead.momento_codigo}</span>
+    </div>
 
-    <div className="f2m-acoes">
-      <div className="f2m-whatsapp">
-        <BotaoWhatsApp telefone={lead.telefone} negocioId={lead.origem_negocio_id} compacto />
-      </div>
-      <button type="button" className="f2m-abrir" onClick={onAbrir} aria-label={`Abrir ficha de ${lead.nome}`}>•••</button>
+    {momento?.descricao ? <div className="ape-contexto">
+      <span className="ape-contexto-titulo">
+        <span className="ape-contexto-selo"><IconeCheck tamanho={10} /></span>
+        O momento deste cliente
+      </span>
+      <p>{momento.descricao}</p>
+    </div> : null}
+
+    <div className="ape-acoes">
+      <BotaoWhatsApp telefone={lead.telefone} negocioId={lead.origem_negocio_id} compacto />
+      <button type="button" className="ape-mais" onClick={onAbrir} aria-label={`Abrir ficha de ${lead.nome}`}><IconeMais /></button>
     </div>
   </article>;
 }
 
-/* AGENDAR VISITA PELO CELULAR.
-   O corretor precisa marcar visita de onde estiver -- na rua, no imovel, no
-   carro. Ate aqui so dava para agendar pelo computador, o que na pratica
-   significava anotar num papel e transcrever depois (ou esquecer).
-   Usa a mesma acao salvarVisita da API, entao a visita nasce ja ligada ao
-   lead e conta para a protecao do dono e para a elegibilidade. */
-/* AGENDAR VISITA PELO CELULAR - com produto, unidade e gerente.
-   O CRM antigo sempre teve esses campos (de 140 visitas no historico, 55 com
-   gerente e 53 com produto) e o Funil 2.0 tinha nascido so com data e imovel
-   escrito a mao. Visita sem produto nao diz o que vai ser mostrado; sem gerente
-   nao da para checar conflito de agenda -- erro que so aparece no dia, com o
-   cliente na porta. */
 function AgendarVisitaMobile({
   lead,
   accessToken,
@@ -200,8 +218,6 @@ function AgendarVisitaMobile({
       });
       const dados = await resposta.json().catch(() => null) as { ok?: boolean; erro?: string } | null;
       if (!resposta.ok || dados?.ok === false) {
-        /* Conflito de agenda tem de ser dito com todas as letras: remarcar
-           agora custa um minuto, descobrir no dia custa a visita. */
         setErro(dados?.erro === "gerente_ocupado"
           ? "Esse gerente já tem visita nesse horário. Escolha outro horário ou outro gerente."
           : "Não foi possível agendar. Confira os dados e tente de novo.");
@@ -218,9 +234,7 @@ function AgendarVisitaMobile({
   }
 
   if (!aberto) {
-    return <button type="button" className="f2m-agendar-abrir" onClick={() => setAberto(true)}>
-      Agendar visita
-    </button>;
+    return <button type="button" className="f2m-agendar-abrir" onClick={() => setAberto(true)}>Agendar visita</button>;
   }
 
   return <section className="f2m-agendar">
@@ -234,8 +248,7 @@ function AgendarVisitaMobile({
     </label>
 
     <label>Unidade <small>(opcional)</small>
-      <input type="text" value={unidade} placeholder="Ex.: apto 402"
-             onChange={(e) => setUnidade(e.target.value)} />
+      <input type="text" value={unidade} placeholder="Ex.: apto 402" onChange={(e) => setUnidade(e.target.value)} />
     </label>
 
     <label>Data e hora
@@ -264,11 +277,6 @@ function AgendarVisitaMobile({
   </section>;
 }
 
-/* NOTA DO ATENDIMENTO NO CELULAR.
-   O que o cliente falou na rua morria no WhatsApp do corretor: quem abrisse o
-   card depois -- gestor, outro corretor, o proprio dono -- nao tinha como saber
-   o que ja foi combinado. A nota fica no lead, com autor e hora, e e o unico
-   lugar onde cabe o contexto que a conversa nao explica sozinha. */
 function NotasMobile({
   lead,
   notas,
@@ -295,10 +303,7 @@ function NotasMobile({
         body: JSON.stringify({ action: "salvarNota", leadId: lead.id, texto: limpo }),
       });
       const dados = await resposta.json().catch(() => null) as { ok?: boolean; error?: string } | null;
-      if (!resposta.ok || dados?.ok === false) {
-        setErro(dados?.error || "Não foi possível salvar a nota.");
-        return;
-      }
+      if (!resposta.ok || dados?.ok === false) { setErro(dados?.error || "Não foi possível salvar a nota."); return; }
       setTexto("");
       onSalvo();
     } catch {
@@ -323,11 +328,6 @@ function NotasMobile({
   </section>;
 }
 
-/* DESCARTAR COM MOTIVO, PELO CELULAR.
-   Nenhum lead sai do funil sozinho, por silencio ou por tempo. Sempre tem
-   alguem clicando e escolhendo o motivo -- e o motivo vem de lista fechada
-   porque descarte sem motivo contavel vira desculpa no fim do mes. O lead nao
-   e apagado: sai da carteira e continua no banco com data, autor e motivo. */
 function DescartarMobile({
   lead,
   accessToken,
@@ -353,10 +353,7 @@ function DescartarMobile({
         body: JSON.stringify({ action: "descartar", id: lead.id, versao: lead.versao, motivo, detalhe: detalhe.trim() || null }),
       });
       const dados = await resposta.json().catch(() => null) as { ok?: boolean; error?: string } | null;
-      if (!resposta.ok || dados?.ok === false) {
-        setErro(dados?.error || "Não foi possível descartar este lead.");
-        return;
-      }
+      if (!resposta.ok || dados?.ok === false) { setErro(dados?.error || "Não foi possível descartar este lead."); return; }
       onDescartado();
     } catch {
       setErro("Não foi possível descartar. Tente de novo.");
@@ -366,9 +363,7 @@ function DescartarMobile({
   }
 
   if (!aberto) {
-    return <button type="button" className="f2m-descartar-abrir" onClick={() => setAberto(true)}>
-      Descartar lead
-    </button>;
+    return <button type="button" className="f2m-descartar-abrir" onClick={() => setAberto(true)}>Descartar lead</button>;
   }
 
   return <section className="f2m-agendar f2m-descartar">
@@ -397,7 +392,9 @@ function DescartarMobile({
   </section>;
 }
 
-function DetalheMobile({
+/* Ficha: tela de execução. O que fazer agora em cima, a ação fixa logo abaixo,
+   e o histórico por último. */
+function FichaLead({
   lead,
   momento,
   eventos,
@@ -417,34 +414,40 @@ function DetalheMobile({
   onRecarregar: () => void;
 }) {
   const prazo = prazoDaAcao(lead);
-  return <div className="f2m-overlay" role="dialog" aria-modal="true" aria-label={`Atendimento de ${lead.nome}`}>
-    <section className="f2m-detalhe">
-      <header>
-        <button type="button" onClick={onFechar} aria-label="Voltar">‹</button>
-        <div><small>ATENDIMENTO</small><h2>{lead.nome}</h2><p>{lead.corretor_nome ?? "Sem responsável"}{lead.instancia_rotulo ? <em className="f2m-instancia" title={`Contato saindo por ${lead.instancia_rotulo}`}> · {lead.instancia_rotulo}</em> : null}</p></div>
-      </header>
-
-      <div className="f2m-ordem">
-        <span>O QUE FAZER AGORA</span>
-        <div className="f2m-ordem-contexto"><b>{nomeEtapa(lead.etapa)}</b><b>{momento?.rotulo ?? lead.momento_codigo}</b></div>
-        <h3>{acaoVisivel(lead)}</h3>
-        <p>{momento?.descricao ?? "Execute a ação e atualize o atendimento."}</p>
-        <em className={prazo.classe}>{prazo.rotulo}</em>
+  return <div className="ape-folha" role="dialog" aria-modal="true" aria-label={`Atendimento de ${lead.nome}`}>
+    <section className="ape-ficha">
+      <div className="ape-ficha-topo">
+        <button type="button" className="ape-voltar" onClick={onFechar}><IconeVoltar />Fila</button>
       </div>
 
-      <div className="f2m-whatsapp f2m-whatsapp-grande">
+      <div className="ape-ficha-nome">
+        <h2>{lead.nome}</h2>
+        <p>{lead.corretor_nome ?? "Sem responsável"}{lead.instancia_rotulo ? ` · ${lead.instancia_rotulo}` : ""}</p>
+        <div className="ape-ficha-etiquetas">
+          <span className="ape-etapa">{nomeEtapa(lead.etapa)}</span>
+          <span className="ape-momento">{momento?.rotulo ?? lead.momento_codigo}</span>
+        </div>
+      </div>
+
+      <div className="ape-ordem">
+        <span className="ape-contexto-titulo">
+          <span className="ape-contexto-selo"><IconeCheck tamanho={10} /></span>
+          O que fazer agora
+        </span>
+        <h3>{acaoVisivel(lead)}</h3>
+        {momento?.descricao ? <p>{momento.descricao}</p> : null}
+        <em className={`ape-ordem-prazo ${prazo.classe}`}>{prazo.rotulo}</em>
+      </div>
+
+      <div className="ape-ficha-acao">
         <BotaoWhatsApp telefone={lead.telefone} negocioId={lead.origem_negocio_id} />
       </div>
+      <p className="ape-ficha-nota">A mensagem sai do seu WhatsApp. O app não envia nada por você.</p>
 
       <AgendarVisitaMobile lead={lead} accessToken={accessToken} onSalvo={onSalvo} />
 
       <DescartarMobile lead={lead} accessToken={accessToken} onDescartado={() => { onSalvo(); onFechar(); }} />
 
-      {/* Visita e descarte encerram a ficha, entao fechar depois de salvar e o
-          certo. Nota nao encerra nada: o corretor escreve o que ficou combinado
-          e precisa VER a nota entrar na lista. Fechar aqui jogava ele de volta
-          na fila sem confirmacao nenhuma -- e ele reescrevia a mesma nota
-          achando que nao tinha salvado. Por isso a nota so recarrega. */}
       <NotasMobile lead={lead} notas={notas} accessToken={accessToken} onSalvo={onRecarregar} />
 
       <section className="f2m-historico">
@@ -470,13 +473,6 @@ export function Funil2Mobile({
   onIr: (destino: string) => void;
 }) {
   const { dados, erro, recarregar } = useFunil2Mobile(accessToken);
-  /* No modo CRM os botoes Agora/Hoje/Todos nao sao renderizados -- mas o filtro
-     continuava sendo APLICADO, travado em "agora", que so mostra lead com prazo
-     ja vencido. Resultado: o corretor abria o CRM e a carteira inteira sumia.
-     CRM e a carteira completa; "agora" so faz sentido no Meu Dia. */
-  /* O Meu Dia abre em "Lead novo" quando ha lead novo esperando -- e onde o
-     corretor precisa olhar primeiro. Sem lead novo, abrir numa aba vazia seria
-     pior, entao cai no "Agora". No CRM a aba e sempre "todos" (carteira). */
   const [filtroDia, setFiltroDia] = useState<FiltroDia>(() => {
     if (modo === "crm") return "todos";
     return (dados?.leads ?? []).some((lead) => esperandoPrimeiraChamada(lead)) ? "novos" : "agora";
@@ -513,50 +509,92 @@ export function Funil2Mobile({
   }, [agora, busca, etapa, filtroDia, fimHoje, leads]);
 
   const leadPedido = pedidoUrl === null ? null : leads.find((lead) => lead.origem_negocio_id === pedidoUrl) ?? null;
-  const leadAberto = selecionado === "__fechado__"
-    ? null
-    : leads.find((lead) => lead.id === selecionado) ?? leadPedido;
+  const leadAberto = selecionado === "__fechado__" ? null : leads.find((lead) => lead.id === selecionado) ?? leadPedido;
   const primeiroNome = nome.trim().split(/\s+/)[0] || "corretor";
+  const naFila = contagens.agora;
 
-  return <main className={`f2m-root modo-${modo}`} aria-label={modo === "inicio" ? `Meu Dia de ${primeiroNome}` : "CRM mobile"}>
-    {/* A saudacao e o sino JA existem no cabecalho fixo do aplicativo (ErpShell).
-       Repetir os dois aqui dava "Ola, Fabiano" duas vezes na mesma dobra, e um
-       segundo sino cujo numero era o tamanho da fila -- nao aviso nao lido.
-       Aqui fica so a sobrancelha, que diz o que a lista e, e a manchete. */}
-    <header className="f2m-topo">
-      <div>
-        {modo === "inicio"
-          ? <><small>SUA FILA DE HOJE</small><h1>{contagens.agora} {contagens.agora === 1 ? "pessoa espera" : "pessoas esperam"}<br />você agora</h1></>
-          : <><small>CARTEIRA FUNIL 2.0</small><h1>Seus clientes</h1></>}
-        <button type="button" onClick={recarregar}>Atualizar</button>
+  return <main className={`ape-app modo-${modo}`} aria-label={modo === "inicio" ? `Meu Dia de ${primeiroNome}` : "CRM"}>
+    <header className="ape-abertura">
+      {modo === "inicio" ? <>
+        <span className="ape-sobrancelha">Sua fila de hoje</span>
+        <h1 className="ape-manchete">{naFila === 1 ? "1 pessoa espera você agora" : `${naFila} pessoas esperam você agora`}</h1>
+      </> : <>
+        <span className="ape-sobrancelha">Carteira</span>
+        <h1 className="ape-manchete">Seus clientes</h1>
+      </>}
+      <div className="ape-atualizado">
+        <span>Atualizado {horaAgora()}</span>
+        <button type="button" className="ape-atualizar" onClick={recarregar}><IconeAtualizar />Atualizar</button>
       </div>
     </header>
 
-
-    {modo === "inicio" && <section className="f2m-kpis" aria-label="Resumo do dia">
-      <article><b>{contagens.agora}</b><span>agora</span></article>
+    {modo === "inicio" && <section className="ape-numeros" aria-label="Resumo do dia">
+      <article><b>{contagens.agora}</b><span>aguardando</span></article>
       <article><b>{contagens.novos}</b><span>leads novos</span></article>
       <article><b>{contagens.hoje}</b><span>para hoje</span></article>
     </section>}
 
-    {modo === "crm" && <label className="f2m-busca">
-      <span aria-hidden="true">⌕</span>
+    {modo === "crm" && <label className="ape-busca">
+      <IconeBusca />
       <input type="search" value={busca} onChange={(evento) => setBusca(evento.target.value)} placeholder="Buscar cliente ou telefone" />
     </label>}
 
-    <nav className="f2m-filtros" aria-label="Filtrar atendimentos">
-      {modo === "inicio" ? (["novos", "agora", "hoje", "todos"] as const).map((chave) => <button key={chave} type="button" className={`${filtroDia === chave ? "ativo" : ""}${chave === "novos" ? " f2m-chip-novo" : ""}`} onClick={() => setFiltroDia(chave)}>{chave === "agora" ? `Agora · ${contagens.agora}` : chave === "novos" ? `Chamar · ${contagens.novos}` : chave === "hoje" ? `Hoje · ${contagens.hoje}` : `Todos · ${leads.length}`}</button>) : ETAPAS.map(([chave, rotulo]) => <button key={chave} type="button" className={etapa === chave ? "ativo" : ""} onClick={() => setEtapa(chave)}>{rotulo}</button>)}
+    <nav className="ape-filtros" aria-label="Filtrar atendimentos">
+      {modo === "inicio"
+        ? (["novos", "agora", "hoje", "todos"] as const).map((chave) => <button
+            key={chave}
+            type="button"
+            className={`${filtroDia === chave ? "ativo" : ""}${chave === "novos" ? " ape-chip-novo" : ""}`}
+            onClick={() => setFiltroDia(chave)}
+          >{chave === "agora" ? `Agora · ${contagens.agora}` : chave === "novos" ? `Chamar · ${contagens.novos}` : chave === "hoje" ? `Hoje · ${contagens.hoje}` : `Todos · ${leads.length}`}</button>)
+        : ETAPAS.map(([chave, rotulo]) => <button key={chave} type="button" className={etapa === chave ? "ativo" : ""} onClick={() => setEtapa(chave)}>{rotulo}</button>)}
     </nav>
 
-    {erro && <div className="f2m-erro"><strong>{erro}</strong><button type="button" onClick={recarregar}>Tentar novamente</button></div>}
-    {!dados && !erro && <div className="f2m-loading">Organizando seu dia…</div>}
-    {dados && pedidoUrl !== null && !leadPedido && <div className="f2m-erro"><strong>Este cliente não está mais na sua carteira.</strong><button type="button" onClick={() => { limparLeadDaUrl(); onIr("/crm"); }}>Voltar ao CRM</button></div>}
-    {dados && !erro && visiveis.length === 0 && <div className="f2m-vazio"><strong>Nada pendente aqui.</strong><span>Troque o filtro para consultar o restante da carteira.</span></div>}
+    {erro && <div className="ape-estado ruim">
+      <span className="ape-estado-icone"><IconeAlerta /></span>
+      <strong>Não deu pra carregar sua fila</strong>
+      <p>{erro}</p>
+      <button type="button" onClick={recarregar}>Tentar novamente</button>
+    </div>}
 
-    <section className="f2m-lista" aria-label="Atendimentos">
-      {visiveis.slice(0, modo === "inicio" ? 30 : 60).map((lead) => <CartaoLeadMobile key={lead.id} lead={lead} momento={momentos.find((momento) => momento.codigo === lead.momento_codigo) ?? null} onAbrir={() => setSelecionado(lead.id)} />)}
+    {!dados && !erro && <div className="ape-esqueleto" aria-label="Carregando">
+      {[0, 1, 2].map((i) => <div key={i}>
+        <div className="ape-barra curta" />
+        <div className="ape-barra media" />
+        <div className="ape-barra alta" />
+      </div>)}
+    </div>}
+
+    {dados && pedidoUrl !== null && !leadPedido && <div className="ape-estado ruim">
+      <span className="ape-estado-icone"><IconeAlerta /></span>
+      <strong>Este cliente não está mais na sua carteira</strong>
+      <button type="button" onClick={() => { limparLeadDaUrl(); onIr("/crm"); }}>Voltar ao CRM</button>
+    </div>}
+
+    {dados && !erro && visiveis.length === 0 && <div className="ape-estado">
+      <span className="ape-estado-icone"><IconeCheck /></span>
+      <strong>Fila zerada por agora</strong>
+      <p>Você respondeu todo mundo que estava esperando. Troque o filtro para ver o restante da carteira.</p>
+    </div>}
+
+    <section className="ape-lista" aria-label="Atendimentos">
+      {visiveis.slice(0, modo === "inicio" ? 30 : 60).map((lead) => <CartaoLead
+        key={lead.id}
+        lead={lead}
+        momento={momentos.find((momento) => momento.codigo === lead.momento_codigo) ?? null}
+        onAbrir={() => setSelecionado(lead.id)}
+      />)}
     </section>
 
-    {leadAberto && <DetalheMobile lead={leadAberto} momento={momentos.find((momento) => momento.codigo === leadAberto.momento_codigo) ?? null} eventos={eventos.filter((evento) => evento.funil_lead_id === leadAberto.id).sort((a, b) => +new Date(b.criado_em) - +new Date(a.criado_em))} notas={notas.filter((nota) => nota.funil_lead_id === leadAberto.id)} onFechar={() => { setSelecionado("__fechado__"); limparLeadDaUrl(); }} accessToken={accessToken} onSalvo={() => { void recarregar(); setSelecionado(null); }} onRecarregar={() => { void recarregar(); }} />}
+    {leadAberto && <FichaLead
+      lead={leadAberto}
+      momento={momentos.find((momento) => momento.codigo === leadAberto.momento_codigo) ?? null}
+      eventos={eventos.filter((evento) => evento.funil_lead_id === leadAberto.id).sort((a, b) => +new Date(b.criado_em) - +new Date(a.criado_em))}
+      notas={notas.filter((nota) => nota.funil_lead_id === leadAberto.id)}
+      onFechar={() => { setSelecionado("__fechado__"); limparLeadDaUrl(); }}
+      accessToken={accessToken}
+      onSalvo={() => { void recarregar(); setSelecionado(null); }}
+      onRecarregar={() => { void recarregar(); }}
+    />}
   </main>;
 }
