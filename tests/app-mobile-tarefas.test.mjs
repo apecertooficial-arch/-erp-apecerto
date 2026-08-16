@@ -6,7 +6,7 @@ const ler = (p) => readFileSync(new URL(p, import.meta.url), "utf8");
 const tela = ler("../app/features/tasks/SaraTasksMobile.tsx");
 const pagina = ler("../app/(erp)/tarefas/page.tsx");
 const api = ler("../app/api/funil2/route.ts");
-const migration = ler("../supabase/migrations/20260816010000_tarefas_sara_decisoes.sql");
+const migration = ler("../supabase/migrations/20260816221702_tarefas_sara_decisoes.sql");
 
 test("celular usa Tarefas da Sara e desktop preserva Projetos", () => {
   assert.match(pagina, /ehCelular \? <SaraTasksMobile/);
