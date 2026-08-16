@@ -185,26 +185,21 @@ export async function POST(request: Request) {
     const analiseId = Number(body.analiseId);
     const decisao = body.decisao === "aceita" ? "aceita" : body.decisao === "recusada" ? "recusada" : "";
     if (!Number.isInteger(analiseId) || analiseId < 1 || !decisao) return Response.json({ error: "Decisão inválida." }, { status: 422 });
-    const { data: analise, error: analiseErro } = await auth.db.from("f2_sara_analise")
-      .select("id,funil_lead_id,momento_sugerido,acao_sugerida").eq("id", analiseId).maybeSingle();
-    if (analiseErro || !analise) return Response.json({ error: "Sugestão não encontrada." }, { status: 404 });
-    const { data: lead } = await auth.db.from("f2_lead").select("id,versao,momento_codigo").eq("id", analise.funil_lead_id).maybeSingle();
-    if (!lead) return Response.json({ error: "Atendimento não encontrado." }, { status: 404 });
-
-    if (decisao === "aceita" && analise.momento_sugerido && analise.momento_sugerido !== lead.momento_codigo) {
-      const { data: atualizada, error: atualizarErro } = await auth.db.rpc("f2_atualizar_momento", {
-        p_id: lead.id, p_versao: lead.versao, p_momento_codigo: analise.momento_sugerido,
-        p_prazo_combinado: null, p_observacao: "Sugestão da Sara aceita pelo corretor.",
-      });
-      const resultado = (atualizada ?? {}) as { ok?: boolean; erro?: string };
-      if (atualizarErro || resultado.ok === false) return Response.json({ error: "A sugestão mudou desde que foi exibida. Atualize e tente de novo." }, { status: 409 });
+    const { data, error } = await auth.db.rpc("f2_decidir_sugestao", {
+      p_analise_id: analiseId,
+      p_decisao: decisao,
+      p_motivo: String(body.motivo ?? "").trim().slice(0, 500) || null,
+    });
+    if (error) return Response.json({ error: "Não foi possível registrar sua decisão." }, { status: 502 });
+    const resultado = (data ?? {}) as { ok?: boolean; erro?: string };
+    if (resultado.ok !== true) {
+      const conflito = ["versao_conflito", "decisao_ja_registrada"].includes(resultado.erro ?? "");
+      const proibido = resultado.erro === "sem_permissao";
+      return Response.json({ error: conflito
+        ? "A sugestão mudou desde que foi exibida. Atualize e tente de novo."
+        : proibido ? "Você não pode decidir por este atendimento." : "Sugestão não encontrada." },
+      { status: conflito ? 409 : proibido ? 403 : 404 });
     }
-
-    const { error: decisaoErro } = await auth.db.from("f2_sara_decisao").upsert({
-      analise_id: analise.id, funil_lead_id: analise.funil_lead_id, decisao,
-      motivo: String(body.motivo ?? "").trim().slice(0, 500) || null, decidido_em: new Date().toISOString(),
-    }, { onConflict: "analise_id" });
-    if (decisaoErro) return Response.json({ error: "Não foi possível registrar sua decisão." }, { status: 502 });
     return Response.json({ ok: true, decisao });
   }
   let rpc = "";

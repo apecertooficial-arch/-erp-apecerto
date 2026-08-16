@@ -15,7 +15,7 @@ create table if not exists public.f2_sara_decisao (
 create index if not exists f2_sara_decisao_lead_idx on public.f2_sara_decisao(funil_lead_id, decidido_em desc);
 alter table public.f2_sara_decisao enable row level security;
 revoke all on public.f2_sara_decisao from public, anon, authenticated;
-grant select, insert, update on public.f2_sara_decisao to authenticated;
+grant select, insert on public.f2_sara_decisao to authenticated;
 grant usage, select on sequence public.f2_sara_decisao_id_seq to authenticated;
 
 drop policy if exists f2_sara_decisao_select on public.f2_sara_decisao;
@@ -42,9 +42,80 @@ create policy f2_sara_decisao_insert on public.f2_sara_decisao for insert to aut
     )
   );
 
-drop policy if exists f2_sara_decisao_update on public.f2_sara_decisao;
-create policy f2_sara_decisao_update on public.f2_sara_decisao for update to authenticated
-  using (usuario_id = (select auth.uid()) or public.f2_admin())
-  with check (usuario_id = (select auth.uid()) or public.f2_admin());
+-- A decisão e a eventual mudança de momento são uma única transação. Uma
+-- decisão já tomada é imutável: revisão posterior vira uma nova análise da Sara.
+create or replace function public.f2_decidir_sugestao(
+  p_analise_id bigint,
+  p_decisao text,
+  p_motivo text default null
+) returns jsonb
+language plpgsql
+security invoker
+set search_path = ''
+as $fn$
+declare
+  v_analise public.f2_sara_analise%rowtype;
+  v_lead public.f2_lead%rowtype;
+  v_movimento jsonb;
+begin
+  if (select auth.uid()) is null then
+    return jsonb_build_object('ok', false, 'erro', 'sem_sessao');
+  end if;
+  if p_decisao not in ('aceita', 'recusada') then
+    return jsonb_build_object('ok', false, 'erro', 'decisao_invalida');
+  end if;
+
+  select * into v_analise
+  from public.f2_sara_analise
+  where id = p_analise_id
+    and status = 'revisao_humana'
+    and nullif(btrim(acao_sugerida), '') is not null;
+  if not found then
+    return jsonb_build_object('ok', false, 'erro', 'sugestao_invalida');
+  end if;
+
+  select * into v_lead
+  from public.f2_lead
+  where id = v_analise.funil_lead_id
+  for update;
+  if not found then
+    return jsonb_build_object('ok', false, 'erro', 'lead_inexistente');
+  end if;
+  if public.f2_pode_operar_lead(v_lead.id) is not true then
+    return jsonb_build_object('ok', false, 'erro', 'sem_permissao');
+  end if;
+  if exists (select 1 from public.f2_sara_decisao where analise_id = v_analise.id) then
+    return jsonb_build_object('ok', false, 'erro', 'decisao_ja_registrada');
+  end if;
+
+  if p_decisao = 'aceita'
+    and v_analise.momento_sugerido is not null
+    and v_analise.momento_sugerido <> v_lead.momento_codigo then
+    v_movimento := public.f2_atualizar_momento(
+      v_lead.id,
+      v_lead.versao,
+      v_analise.momento_sugerido,
+      null,
+      'Sugestão da Sara aceita pelo corretor.'
+    );
+    if coalesce((v_movimento ->> 'ok')::boolean, false) is not true then
+      return v_movimento;
+    end if;
+  end if;
+
+  insert into public.f2_sara_decisao(analise_id, funil_lead_id, decisao, motivo)
+  values (
+    v_analise.id,
+    v_analise.funil_lead_id,
+    p_decisao,
+    nullif(left(btrim(coalesce(p_motivo, '')), 500), '')
+  );
+
+  return jsonb_build_object('ok', true, 'decisao', p_decisao);
+end;
+$fn$;
+
+revoke all on function public.f2_decidir_sugestao(bigint,text,text) from public, anon;
+grant execute on function public.f2_decidir_sugestao(bigint,text,text) to authenticated;
 
 commit;
