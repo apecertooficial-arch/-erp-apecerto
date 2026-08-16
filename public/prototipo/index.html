@@ -1,0 +1,1208 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>apêcerto · protótipo do app</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="_ds/ap-certo-design-system-019dda47-9a46-7787-a12e-ab06e9fd514d/colors_and_type.css">
+<link rel="stylesheet" href="_ds/ap-certo-design-system-019dda47-9a46-7787-a12e-ab06e9fd514d/styles.css">
+<script src="_ds/ap-certo-design-system-019dda47-9a46-7787-a12e-ab06e9fd514d/_ds_bundle.js"></script>
+<style>
+  body { margin: 0; background: #F1EDE9; font-family: 'Quicksand', system-ui, sans-serif; }
+  a { color: #FF7000; text-decoration: none; }
+  a:hover { color: #E66200; }
+  @keyframes shimmer { 0% { background-position: -240px 0; } 100% { background-position: 240px 0; } }
+  @keyframes pulseDot { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: .45; transform: scale(.86); } }
+  @keyframes riseIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+  @keyframes sheetUp { from { transform: translateY(100%); } to { transform: none; } }
+  .apeScroll::-webkit-scrollbar { width: 0; }
+</style>
+</helmet>
+
+<template id="__bundler_thumbnail"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120"><rect width="120" height="120" fill="#FF7000"></rect><g fill="none" stroke="#FFFFFF" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"><path d="M36 62 60 42l24 20v26H36z"></path><path d="m50 66 8 8 14-16" stroke="#8B00CC" stroke-width="7"></path></g></svg></template>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+<symbol id="i-home" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9.5 12 3l9 6.5V20a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"></path><path d="M9 21v-6h6v6"></path></symbol>
+<symbol id="i-grid" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.6"></rect><rect x="14" y="3" width="7" height="7" rx="1.6"></rect><rect x="3" y="14" width="7" height="7" rx="1.6"></rect><rect x="14" y="14" width="7" height="7" rx="1.6"></rect></symbol>
+<symbol id="i-calendar" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4.5" width="18" height="17" rx="2.5"></rect><path d="M8 2.5v4M16 2.5v4M3 10h18"></path></symbol>
+<symbol id="i-bell" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8.5a6 6 0 0 0-12 0c0 6.5-3 8.5-3 8.5h18s-3-2-3-8.5"></path><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"></path></symbol>
+<symbol id="i-menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 7h16M4 12h16M4 17h16"></path></symbol>
+<symbol id="i-chat" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.5 8.5 0 0 1-12.3 7.6L3 21l1.9-5.7A8.5 8.5 0 1 1 21 11.5z"></path></symbol>
+<symbol id="i-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6"></path></symbol>
+<symbol id="i-left" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"></path></symbol>
+<symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5"></path></symbol>
+<symbol id="i-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5.2l3.4 2"></path></symbol>
+<symbol id="i-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="7.5"></circle><path d="m21 21-4.3-4.3"></path></symbol>
+<symbol id="i-filter" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 21v-6M4 11V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1.5 14h5M9.5 8h5M17.5 16h5"></path></symbol>
+<symbol id="i-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="12" height="12" rx="2.4"></rect><path d="M5.5 15H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v.5"></path></symbol>
+<symbol id="i-share" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 12.5V19a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-6.5"></path><path d="M16 6.5 12 2.5l-4 4"></path><path d="M12 2.5V15"></path></symbol>
+<symbol id="i-star" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m12 3.5 2.7 5.5 6 .9-4.3 4.2 1 6-5.4-2.9-5.4 2.9 1-6L3.3 9.9l6-.9z"></path></symbol>
+<symbol id="i-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5.5v13M5.5 12h13"></path></symbol>
+<symbol id="i-offline" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 2.5 21.5 22"></path><path d="M8.6 16.4a4.8 4.8 0 0 1 6.8 0"></path><path d="M2.5 9a15 15 0 0 1 4.3-2.6"></path><path d="M20.8 12.8A11 11 0 0 0 12.5 9.2"></path></symbol>
+<symbol id="i-alert" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.3 4 2 18a2 2 0 0 0 1.7 3h16.6a2 2 0 0 0 1.7-3L13.7 4a2 2 0 0 0-3.4 0z"></path><path d="M12 9.5v4M12 17.2h.01"></path></symbol>
+<symbol id="i-refresh" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.5 12a8.5 8.5 0 1 1-2.6-6.1"></path><path d="M20.5 3.5v5h-5"></path></symbol>
+<symbol id="i-pin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 10.2c0 5.8-8 11.8-8 11.8s-8-6-8-11.8a8 8 0 0 1 16 0z"></path><circle cx="12" cy="10" r="2.8"></circle></symbol>
+<symbol id="i-lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3.5" y="10.5" width="17" height="11" rx="2.6"></rect><path d="M7.5 10.5V7a4.5 4.5 0 0 1 9 0v3.5"></path></symbol>
+<symbol id="i-tasks" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9.5 6.5h11M9.5 12h11M9.5 17.5h11"></path><path d="m3 6.5 1.6 1.6L7.5 5"></path><path d="m3 12 1.6 1.6L7.5 10.5"></path><path d="m3 17.5 1.6 1.6L7.5 16"></path></symbol>
+<symbol id="i-building" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="4.5" y="2.5" width="15" height="19" rx="2.4"></rect><path d="M9 7h2M13 7h2M9 11h2M13 11h2M9.5 21.5v-4.5h5v4.5"></path></symbol>
+<symbol id="i-trend" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21.5 7 13 15.5l-4-4L2.5 18"></path><path d="M16 7h5.5v5.5"></path></symbol>
+<symbol id="i-users" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-1.8a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4V21"></path><circle cx="9" cy="7" r="3.6"></circle><path d="M22 21v-1.8a4 4 0 0 0-3-3.8"></path><path d="M16.5 3.4a3.6 3.6 0 0 1 0 7"></path></symbol>
+<symbol id="i-dots" viewBox="0 0 24 24" fill="currentColor"><circle cx="6" cy="12" r="1.7"></circle><circle cx="12" cy="12" r="1.7"></circle><circle cx="18" cy="12" r="1.7"></circle></symbol>
+<symbol id="i-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18M6 6l12 12"></path></symbol>
+</defs></svg>
+
+<div style="display:flex; gap:28px; padding:36px 40px 60px; align-items:flex-start; background:#F1EDE9; min-height:100vh; font-family:'Quicksand', system-ui, sans-serif; color:#1F1C1A;">
+
+  <!-- ============ RAIL ============ -->
+  <div style="width:264px; flex:none; display:flex; flex-direction:column; gap:20px; position:sticky; top:36px;">
+    <div style="display:flex; flex-direction:column; gap:10px;">
+      <img src="/brand/logo-cores.png" alt="apêcerto" style="width:118px; height:auto; display:block;">
+      <div style="font-size:11px; font-weight:600; letter-spacing:0.12em; text-transform:uppercase; color:#FF7000;">Redesign mobile · app do corretor</div>
+      <div style="font-size:13px; line-height:1.5; color:#6B635C;">Protótipo navegável em 390 × 844. Toque nos botões: o fluxo do WhatsApp roda de verdade.</div>
+    </div>
+
+    <div style="background:#fff; border-radius:18px; padding:14px; box-shadow:0 2px 6px rgba(31,28,26,.06); display:flex; flex-direction:column; gap:12px;">
+      <div style="font-size:11px; font-weight:600; letter-spacing:0.1em; text-transform:uppercase; color:#9A918A;">Perfil</div>
+      <div style="display:flex; gap:6px; background:#F4F0EC; padding:4px; border-radius:999px;">
+        <sc-for list="{{ roles }}" as="r" hint-placeholder-count="2">
+          <button type="button" onClick="{{ r.onClick }}" style="{{ r.style }}">{{ r.label }}</button>
+        </sc-for>
+      </div>
+      <div style="font-size:11px; font-weight:600; letter-spacing:0.1em; text-transform:uppercase; color:#9A918A;">Telas</div>
+      <div style="display:flex; flex-direction:column; gap:4px;">
+        <sc-for list="{{ railScreens }}" as="s" hint-placeholder-count="7">
+          <button type="button" onClick="{{ s.onClick }}" style="{{ s.style }}">
+            <span style="display:flex; align-items:center; gap:9px;"><svg width="16" height="16"><use href="#{{ s.icon }}"></use></svg>{{ s.label }}</span>
+            <span style="font-size:11px; color:#B8B0A8; font-weight:500;">{{ s.n }}</span>
+          </button>
+        </sc-for>
+      </div>
+      <div style="font-size:11px; font-weight:600; letter-spacing:0.1em; text-transform:uppercase; color:#9A918A;">Estados do sistema</div>
+      <div style="display:flex; flex-wrap:wrap; gap:6px;">
+        <sc-for list="{{ sysChips }}" as="c" hint-placeholder-count="6">
+          <button type="button" onClick="{{ c.onClick }}" style="{{ c.style }}">{{ c.label }}</button>
+        </sc-for>
+      </div>
+    </div>
+
+    <div style="background:#fff; border-radius:18px; padding:14px; box-shadow:0 2px 6px rgba(31,28,26,.06);">
+      <div style="font-size:11px; font-weight:600; letter-spacing:0.1em; text-transform:uppercase; color:#9A918A; margin-bottom:12px;">Ícone do PWA</div>
+      <div style="display:flex; align-items:flex-end; gap:12px;">
+        <div style="display:flex; flex-direction:column; gap:6px; align-items:center;">
+          <div style="width:56px; height:56px; border-radius:14px; background:#FF7000; display:flex; align-items:center; justify-content:center; box-shadow:0 6px 16px rgba(255,112,0,.32);"><img src="/icons/apecerto-app.svg" alt="" style="width:34px; height:34px; object-fit:contain;"></div>
+          <div style="font-size:10px; color:#9A918A; font-weight:500;">512</div>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:6px; align-items:center;">
+          <div style="width:40px; height:40px; border-radius:10px; background:#FF7000; display:flex; align-items:center; justify-content:center;"><img src="/icons/apecerto-app.svg" alt="" style="width:24px; height:24px; object-fit:contain;"></div>
+          <div style="font-size:10px; color:#9A918A; font-weight:500;">192</div>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:6px; align-items:center;">
+          <div style="width:40px; height:40px; border-radius:999px; background:#FF7000; display:flex; align-items:center; justify-content:center;"><img src="/icons/apecerto-app.svg" alt="" style="width:20px; height:20px; object-fit:contain;"></div>
+          <div style="font-size:10px; color:#9A918A; font-weight:500;">maskable</div>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:6px; align-items:center;">
+          <div style="width:40px; height:40px; border-radius:9px; background:#fff; border:1px solid #E4DFD9; display:flex; align-items:center; justify-content:center;"><img src="/brand/simbolo-cores.png" alt="" style="width:24px; height:24px; object-fit:contain;"></div>
+          <div style="font-size:10px; color:#9A918A; font-weight:500;">apple</div>
+        </div>
+      </div>
+      <div style="font-size:11px; line-height:1.5; color:#9A918A; margin-top:12px;">Símbolo em branco sobre laranja, com 20% de folga para a máscara circular do Android.</div>
+    </div>
+  </div>
+
+  <!-- ============ PHONE ============ -->
+  <div style="flex:none; display:flex; flex-direction:column; gap:14px; align-items:center;">
+    <div style="border-radius:54px; background:#1F1C1A; padding:11px; box-shadow:0 34px 70px rgba(31,28,26,.30);">
+      <div style="position:relative; width:390px; height:844px; border-radius:43px; overflow:hidden; background:#FAF8F6;">
+
+        <!-- status bar / safe-area top -->
+        <div style="position:absolute; top:0; left:0; right:0; height:46px; display:flex; align-items:center; justify-content:space-between; padding:0 26px; font-size:13px; font-weight:600; z-index:5; color:#1F1C1A;">
+          <span>11:04</span>
+          <span style="display:flex; gap:5px; align-items:center;">
+            <span style="width:17px; height:9px; border:1.4px solid #1F1C1A; border-radius:3px; display:inline-block; position:relative;"><span style="position:absolute; inset:1.4px; background:#1F1C1A; border-radius:1.5px; right:5px;"></span></span>
+          </span>
+        </div>
+
+        <!-- scrollable app body -->
+        <div class="apeScroll" style="position:absolute; top:46px; left:0; right:0; bottom:0; overflow-y:auto; overflow-x:hidden;">
+
+          <sc-if value="{{ offline }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex; align-items:center; gap:8px; padding:9px 20px; background:#1F1C1A; color:#FAF8F6; font-size:12px; font-weight:500;">
+              <svg width="15" height="15"><use href="#i-offline"></use></svg>Você está offline — mostrando a fila de 10:59.
+            </div>
+          </sc-if>
+
+          <!-- ---------- header ---------- -->
+          <sc-if value="{{ showHeader }}" hint-placeholder-val="{{ true }}">
+            <div style="position:sticky; top:0; z-index:4; display:flex; align-items:center; justify-content:space-between; padding:8px 20px 12px; background:rgba(250,248,246,0.86); backdrop-filter:blur(18px);">
+              <div style="display:flex; flex-direction:column; gap:1px;">
+                <div style="font-size:17px; font-weight:700; letter-spacing:-0.01em;">{{ headerTitle }}</div>
+                <div style="font-size:12px; color:#9A918A; font-weight:500;">{{ headerSub }}</div>
+              </div>
+              <div style="display:flex; align-items:center; gap:8px;">
+                <button type="button" onClick="{{ goAvisos }}" style="width:44px; height:44px; border-radius:999px; border:none; background:transparent; display:flex; align-items:center; justify-content:center; color:#1F1C1A; cursor:pointer;">
+                  <span style="position:relative; display:flex; align-items:center; justify-content:center;">
+                    <svg width="22" height="22"><use href="#i-bell"></use></svg>
+                    <span style="position:absolute; top:-5px; right:-7px; min-width:15px; height:15px; padding:0 3px; border-radius:999px; background:#FF7000; color:#fff; font-size:9.5px; font-weight:700; display:flex; align-items:center; justify-content:center; border:2px solid #FAF8F6;">4</span>
+                  </span>
+                </button>
+                <button type="button" onClick="{{ openPerfil }}" style="width:44px; height:44px; border-radius:999px; border:none; background:transparent; display:flex; align-items:center; justify-content:center; cursor:pointer; padding:0;">
+                  <span style="width:34px; height:34px; border-radius:999px; background:#EBD1F5; color:#66009A; font-size:14px; font-weight:700; display:flex; align-items:center; justify-content:center;">S</span>
+                </button>
+              </div>
+            </div>
+          </sc-if>
+
+          <!-- ---------- estados de sistema ---------- -->
+          <sc-if value="{{ isLoading }}" hint-placeholder-val="{{ false }}">
+            <div style="padding:4px 20px 120px; display:flex; flex-direction:column; gap:14px;">
+              <div style="height:14px; width:60%; border-radius:999px; background:linear-gradient(90deg,#EFEAE5 25%,#F7F4F1 50%,#EFEAE5 75%); background-size:240px 100%; animation:shimmer 1.2s linear infinite;"></div>
+              <div style="height:26px; width:88%; border-radius:999px; background:linear-gradient(90deg,#EFEAE5 25%,#F7F4F1 50%,#EFEAE5 75%); background-size:240px 100%; animation:shimmer 1.2s linear infinite;"></div>
+              <sc-for list="{{ three }}" as="k" hint-placeholder-count="3">
+                <div style="background:#fff; border-radius:18px; padding:16px; box-shadow:0 2px 6px rgba(31,28,26,.06); display:flex; flex-direction:column; gap:12px;">
+                  <div style="display:flex; gap:12px; align-items:center;">
+                    <div style="width:40px; height:40px; border-radius:999px; background:linear-gradient(90deg,#EFEAE5 25%,#F7F4F1 50%,#EFEAE5 75%); background-size:240px 100%; animation:shimmer 1.2s linear infinite;"></div>
+                    <div style="flex:1; display:flex; flex-direction:column; gap:7px;">
+                      <div style="height:13px; width:55%; border-radius:999px; background:linear-gradient(90deg,#EFEAE5 25%,#F7F4F1 50%,#EFEAE5 75%); background-size:240px 100%; animation:shimmer 1.2s linear infinite;"></div>
+                      <div style="height:10px; width:38%; border-radius:999px; background:#EFEAE5;"></div>
+                    </div>
+                  </div>
+                  <div style="height:56px; border-radius:12px; background:#F7F4F1;"></div>
+                  <div style="height:48px; border-radius:999px; background:linear-gradient(90deg,#EFEAE5 25%,#F7F4F1 50%,#EFEAE5 75%); background-size:240px 100%; animation:shimmer 1.2s linear infinite;"></div>
+                </div>
+              </sc-for>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ isEmpty }}" hint-placeholder-val="{{ false }}">
+            <div style="padding:60px 32px 120px; display:flex; flex-direction:column; align-items:center; text-align:center; gap:12px; position:relative;">
+              <img src="data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%20420%20420'%20fill%3D'none'%20stroke%3D'%23E4DFD9'%20stroke-width%3D'11'%20stroke-linecap%3D'round'%20stroke-linejoin%3D'round'%3E%3Cpath%20d%3D'M50%20200%20165%20105l115%2095v135H50z'%2F%3E%3Cpath%20d%3D'm112%20225%2048%2048%2088-98'%2F%3E%3Cpath%20d%3D'M195%20118%20305%2028l115%2095v115'%2F%3E%3Cpath%20d%3D'm255%20140%2048%2048%2088-98'%2F%3E%3C%2Fsvg%3E" alt="" style="position:absolute; top:0; right:-120px; width:340px; opacity:.5; pointer-events:none;">
+              <div style="width:64px; height:64px; border-radius:999px; background:#E6F5EC; color:#1E9E5A; display:flex; align-items:center; justify-content:center;"><svg width="30" height="30"><use href="#i-check"></use></svg></div>
+              <div style="font-size:20px; font-weight:700; letter-spacing:-0.01em;">Fila zerada por agora</div>
+              <div style="font-size:14px; line-height:1.5; color:#6B635C; max-width:250px;">Você respondeu todo mundo que estava esperando. A Sara avisa quando alguém voltar.</div>
+              <button type="button" onClick="{{ goTarefas }}" style="margin-top:8px; height:46px; padding:0 22px; border-radius:999px; border:1.5px solid #E4DFD9; background:#fff; font-family:inherit; font-size:14px; font-weight:600; color:#1F1C1A; cursor:pointer;">Ver tarefas de hoje</button>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ isError }}" hint-placeholder-val="{{ false }}">
+            <div style="padding:56px 32px 120px; display:flex; flex-direction:column; align-items:center; text-align:center; gap:12px;">
+              <div style="width:64px; height:64px; border-radius:999px; background:#FBE5E5; color:#D93E3E; display:flex; align-items:center; justify-content:center;"><svg width="28" height="28"><use href="#i-alert"></use></svg></div>
+              <div style="font-size:20px; font-weight:700; letter-spacing:-0.01em;">Não deu pra carregar sua fila</div>
+              <div style="font-size:14px; line-height:1.5; color:#6B635C; max-width:260px;">A conexão caiu no meio do caminho. Seus dados estão salvos — é só tentar de novo.</div>
+              <button type="button" onClick="{{ retry }}" style="{{ stateBtnStyle }}"><svg width="18" height="18"><use href="#i-refresh"></use></svg>Tentar novamente</button>
+            </div>
+          </sc-if>
+
+          <!-- ---------- TELA 1 · INÍCIO ---------- -->
+          <sc-if value="{{ sInicio }}" hint-placeholder-val="{{ true }}">
+            <div style="padding:0 20px 120px; display:flex; flex-direction:column; gap:14px;">
+              <div style="display:flex; flex-direction:column; gap:6px;">
+                <div style="font-size:11px; font-weight:600; letter-spacing:0.12em; text-transform:uppercase; color:#FF7000;">Sua fila de hoje</div>
+                <div style="font-size:26px; font-weight:700; line-height:1.12; letter-spacing:-0.02em; text-wrap:pretty;">4 pessoas esperam você agora</div>
+                <div style="display:flex; align-items:center; gap:10px; font-size:12px; color:#9A918A; font-weight:500;">
+                  <span>Atualizado 10:59</span>
+                  <button type="button" onClick="{{ refresh }}" style="display:flex; align-items:center; gap:5px; border:none; background:transparent; padding:0; font-family:inherit; font-size:12px; font-weight:600; color:#FF7000; cursor:pointer;"><svg width="14" height="14"><use href="#i-refresh"></use></svg>Atualizar</button>
+                </div>
+              </div>
+
+              <div style="display:flex; gap:8px;">
+                <div style="flex:1; background:#fff; border-radius:14px; padding:10px 12px; box-shadow:0 1px 2px rgba(31,28,26,.04);">
+                  <div style="font-size:19px; font-weight:700; line-height:1;">20</div>
+                  <div style="font-size:11px; color:#9A918A; font-weight:500; margin-top:3px;">aguardando</div>
+                </div>
+                <div style="flex:1; background:#fff; border-radius:14px; padding:10px 12px; box-shadow:0 1px 2px rgba(31,28,26,.04);">
+                  <div style="font-size:19px; font-weight:700; line-height:1;">2</div>
+                  <div style="font-size:11px; color:#9A918A; font-weight:500; margin-top:3px;">leads novos</div>
+                </div>
+                <div style="flex:1; background:#fff; border-radius:14px; padding:10px 12px; box-shadow:0 1px 2px rgba(31,28,26,.04);">
+                  <div style="font-size:19px; font-weight:700; line-height:1;">3</div>
+                  <div style="font-size:11px; color:#9A918A; font-weight:500; margin-top:3px;">retornos</div>
+                </div>
+              </div>
+
+              <div style="display:flex; gap:7px;">
+                <sc-for list="{{ filaTabs }}" as="c" hint-placeholder-count="3">
+                  <button type="button" onClick="{{ c.onClick }}" style="{{ c.style }}">{{ c.label }}</button>
+                </sc-for>
+              </div>
+
+              <div style="display:flex; flex-direction:column; gap:12px;">
+                <sc-for list="{{ leads }}" as="lead" hint-placeholder-count="3">
+                  <div style="background:#fff; border-radius:18px; box-shadow:0 2px 6px rgba(31,28,26,.06); padding:14px; display:flex; flex-direction:column; gap:11px; animation:riseIn 200ms cubic-bezier(.2,.8,.2,1);">
+                    <div style="display:flex; align-items:flex-start; gap:11px;">
+                      <div style="width:40px; height:40px; flex:none; border-radius:999px; background:#FFE4D1; color:#CC5800; font-size:14px; font-weight:700; display:flex; align-items:center; justify-content:center;">{{ lead.initials }}</div>
+                      <button type="button" onClick="{{ lead.onOpen }}" style="flex:1; text-align:left; border:none; background:transparent; padding:0; font-family:inherit; cursor:pointer; display:flex; flex-direction:column; gap:2px;">
+                        <div style="font-size:16px; font-weight:700; letter-spacing:-0.01em; color:#1F1C1A;">{{ lead.name }}</div>
+                        <div style="font-size:12px; color:#9A918A; font-weight:500;">{{ lead.sub }}</div>
+                      </button>
+                      <div style="display:flex; align-items:center; gap:4px; font-size:11px; font-weight:600; color:#6B635C; background:#F4F0EC; border-radius:999px; padding:5px 9px; white-space:nowrap;"><svg width="12" height="12"><use href="#i-clock"></use></svg>{{ lead.wait }}</div>
+                    </div>
+
+                    <div style="display:flex; align-items:center; gap:7px; flex-wrap:wrap;">
+                      <x-import component-from-global-scope="ApCertoDesignSystem_019dda.Badge" variant="soft" tone="{{ lead.tone }}" hint-size="130px,24px">{{ lead.reason }}</x-import>
+                      <x-import component-from-global-scope="ApCertoDesignSystem_019dda.Badge" variant="soft" tone="neutral" hint-size="100px,24px">{{ lead.stage }}</x-import>
+                    </div>
+
+                    <sc-if value="{{ showSara }}" hint-placeholder-val="{{ true }}">
+                      <div style="background:#F7ECFC; border-radius:12px; padding:11px 12px; display:flex; flex-direction:column; gap:5px;">
+                        <div style="display:flex; align-items:center; gap:6px;">
+                          <span style="width:16px; height:16px; border-radius:999px; background:#8B00CC; color:#fff; display:flex; align-items:center; justify-content:center;"><svg width="10" height="10"><use href="#i-check"></use></svg></span>
+                          <span style="font-size:10px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:#8B00CC;">Sara · o que fazer</span>
+                        </div>
+                        <div style="font-size:13px; line-height:1.45; color:#3B342F; font-weight:500; text-wrap:pretty;">{{ lead.sara }}</div>
+                      </div>
+                    </sc-if>
+
+                    <sc-if value="{{ lead.isReady }}" hint-placeholder-val="{{ true }}">
+                      <div style="display:flex; gap:8px;">
+                        <button type="button" onClick="{{ lead.onCall }}" style="{{ ctaStyle }}"><svg width="19" height="19"><use href="#i-chat"></use></svg>Chamar no WhatsApp</button>
+                        <button type="button" onClick="{{ lead.onOpen }}" style="width:48px; height:48px; flex:none; border-radius:14px; border:1.5px solid #E4DFD9; background:#fff; color:#6B635C; display:flex; align-items:center; justify-content:center; cursor:pointer;"><svg width="19" height="19"><use href="#i-dots"></use></svg></button>
+                      </div>
+                    </sc-if>
+
+                    <sc-if value="{{ lead.isOpen }}" hint-placeholder-val="{{ false }}">
+                      <div style="display:flex; flex-direction:column; gap:10px;">
+                        <div style="background:#FFF8E8; border-radius:12px; padding:11px 12px; display:flex; flex-direction:column; gap:9px;">
+                          <div style="display:flex; align-items:center; gap:7px; font-size:13px; font-weight:600; color:#8A6100;">
+                            <span style="width:9px; height:9px; border-radius:999px; background:#E8A317; animation:pulseDot 1.1s ease-in-out infinite;"></span>
+                            WhatsApp aberto — aguardando sincronização
+                          </div>
+                          <div style="display:flex; align-items:center; gap:6px;">
+                            <span style="height:4px; flex:1; border-radius:999px; background:#1E9E5A;"></span>
+                            <span style="height:4px; flex:1; border-radius:999px; background:#E8A317;"></span>
+                            <span style="height:4px; flex:1; border-radius:999px; background:#E4DFD9;"></span>
+                          </div>
+                          <div style="display:flex; justify-content:space-between; font-size:10px; font-weight:600; letter-spacing:0.04em; text-transform:uppercase; color:#9A918A;">
+                            <span style="color:#1E9E5A;">Aberto</span><span style="color:#8A6100;">Sincronizando</span><span>Confirmado</span>
+                          </div>
+                          <div style="font-size:11px; line-height:1.45; color:#8C7F72;">O envio é seu, pelo WhatsApp. O ERP não manda nada — o contato só conta quando a mensagem aparece no histórico.</div>
+                        </div>
+                        <button type="button" onClick="{{ lead.onOpen }}" style="height:46px; border-radius:999px; border:1.5px solid #E4DFD9; background:#fff; font-family:inherit; font-size:14px; font-weight:600; color:#1F1C1A; cursor:pointer;">Registrar o que aconteceu</button>
+                      </div>
+                    </sc-if>
+
+                    <sc-if value="{{ lead.isDone }}" hint-placeholder-val="{{ false }}">
+                      <div style="display:flex; flex-direction:column; gap:10px;">
+                        <div style="background:#E6F5EC; border-radius:12px; padding:11px 12px; display:flex; align-items:flex-start; gap:8px;">
+                          <span style="width:18px; height:18px; flex:none; border-radius:999px; background:#1E9E5A; color:#fff; display:flex; align-items:center; justify-content:center; margin-top:1px;"><svg width="11" height="11"><use href="#i-check"></use></svg></span>
+                          <div style="display:flex; flex-direction:column; gap:2px;">
+                            <div style="font-size:13px; font-weight:600; color:#136B3D;">Mensagem identificada no histórico</div>
+                            <div style="font-size:11px; color:#3F7A57; font-weight:500;">11:06 · confirmado pela integração oficial</div>
+                          </div>
+                        </div>
+                        <div style="display:flex; gap:8px;">
+                          <button type="button" onClick="{{ lead.onOpen }}" style="flex:1; height:46px; border-radius:999px; border:none; background:#8B00CC; color:#fff; font-family:inherit; font-size:14px; font-weight:600; cursor:pointer;">Ver próxima ação da Sara</button>
+                        </div>
+                      </div>
+                    </sc-if>
+                  </div>
+                </sc-for>
+              </div>
+
+              <button type="button" onClick="{{ goCrm }}" style="display:flex; align-items:center; justify-content:center; gap:6px; height:46px; border-radius:999px; border:1.5px dashed #DED7CF; background:transparent; font-family:inherit; font-size:13px; font-weight:600; color:#6B635C; cursor:pointer;">Ver os 12 de hoje<svg width="15" height="15"><use href="#i-right"></use></svg></button>
+            </div>
+          </sc-if>
+
+          <!-- ---------- TELA 2 · CRM MEU DIA ---------- -->
+          <sc-if value="{{ sCrm }}" hint-placeholder-val="{{ false }}">
+            <div style="padding:0 20px 120px; display:flex; flex-direction:column; gap:14px;">
+              <div style="display:flex; align-items:center; gap:9px; background:#fff; border:1px solid #E4DFD9; border-radius:12px; padding:0 13px; height:46px;">
+                <svg width="18" height="18" style="color:#9A918A;"><use href="#i-search"></use></svg>
+                <span style="font-size:14px; color:#B8B0A8; font-weight:500;">Buscar cliente ou telefone</span>
+              </div>
+
+              <div style="display:flex; gap:7px; overflow-x:auto; padding-bottom:2px;">
+                <sc-for list="{{ crmTabs }}" as="c" hint-placeholder-count="4">
+                  <button type="button" onClick="{{ c.onClick }}" style="{{ c.style }}">{{ c.label }}</button>
+                </sc-for>
+              </div>
+
+              <sc-if value="{{ crmDia }}" hint-placeholder-val="{{ true }}">
+                <div style="display:flex; flex-direction:column; gap:14px;">
+                  <div style="background:#8B00CC; border-radius:18px; padding:16px; color:#fff; position:relative; overflow:hidden;">
+                    <img src="data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%20420%20420'%20fill%3D'none'%20stroke%3D'%23E4DFD9'%20stroke-width%3D'11'%20stroke-linecap%3D'round'%20stroke-linejoin%3D'round'%3E%3Cpath%20d%3D'M50%20200%20165%20105l115%2095v135H50z'%2F%3E%3Cpath%20d%3D'm112%20225%2048%2048%2088-98'%2F%3E%3Cpath%20d%3D'M195%20118%20305%2028l115%2095v115'%2F%3E%3Cpath%20d%3D'm255%20140%2048%2048%2088-98'%2F%3E%3C%2Fsvg%3E" alt="" style="position:absolute; right:-70px; top:-30px; width:200px; opacity:.16;">
+                    <div style="font-size:10px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase; opacity:.8;">Sara · briefing do dia</div>
+                    <div style="font-size:16px; font-weight:600; line-height:1.4; margin-top:8px; text-wrap:pretty;">Comece pela Camila: 24h esperando e é a mais quente da fila. Depois, o Rodrigo — lead novo de 12 min.</div>
+                    <div style="display:flex; gap:8px; margin-top:14px;">
+                      <button type="button" onClick="{{ openCamila }}" style="height:42px; padding:0 18px; border-radius:999px; border:none; background:#fff; color:#66009A; font-family:inherit; font-size:13px; font-weight:700; cursor:pointer;">Atender agora</button>
+                      <button type="button" onClick="{{ goTarefas }}" style="height:42px; padding:0 18px; border-radius:999px; border:1.5px solid rgba(255,255,255,.4); background:transparent; color:#fff; font-family:inherit; font-size:13px; font-weight:600; cursor:pointer;">Ver as 5 tarefas</button>
+                    </div>
+                  </div>
+
+                  <div style="display:flex; align-items:center; justify-content:space-between;">
+                    <div style="font-size:11px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:#FF7000;">Agora · 4</div>
+                    <button type="button" onClick="{{ openFiltros }}" style="display:flex; align-items:center; gap:6px; height:36px; padding:0 13px; border-radius:999px; border:1px solid #E4DFD9; background:#fff; font-family:inherit; font-size:12px; font-weight:600; color:#6B635C; cursor:pointer;"><svg width="14" height="14"><use href="#i-filter"></use></svg>Filtros</button>
+                  </div>
+
+                  <div style="display:flex; flex-direction:column; gap:9px;">
+                    <sc-for list="{{ leads }}" as="lead" hint-placeholder-count="4">
+                      <button type="button" onClick="{{ lead.onOpen }}" style="display:flex; align-items:center; gap:11px; background:#fff; border:none; border-radius:16px; padding:13px 14px; box-shadow:0 1px 2px rgba(31,28,26,.04); font-family:inherit; text-align:left; cursor:pointer;">
+                        <span style="width:36px; height:36px; flex:none; border-radius:999px; background:#F7ECFC; color:#66009A; font-size:13px; font-weight:700; display:flex; align-items:center; justify-content:center;">{{ lead.initials }}</span>
+                        <span style="flex:1; display:flex; flex-direction:column; gap:3px; min-width:0;">
+                          <span style="font-size:15px; font-weight:700; color:#1F1C1A; letter-spacing:-0.01em;">{{ lead.name }}</span>
+                          <span style="font-size:12px; font-weight:600; color:{{ lead.reasonColor }};">{{ lead.reason }}</span>
+                        </span>
+                        <span style="display:flex; flex-direction:column; align-items:flex-end; gap:4px;">
+                          <span style="font-size:11px; color:#9A918A; font-weight:600;">{{ lead.wait }}</span>
+                          <svg width="16" height="16" style="color:#C9C1B9;"><use href="#i-right"></use></svg>
+                        </span>
+                      </button>
+                    </sc-for>
+                  </div>
+
+                  <div style="font-size:11px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:#9A918A; margin-top:4px;">Hoje · 12</div>
+                  <div style="background:#fff; border-radius:16px; padding:4px 14px; box-shadow:0 1px 2px rgba(31,28,26,.04);">
+                    <sc-for list="{{ hojeRows }}" as="row" hint-placeholder-count="3">
+                      <div style="display:flex; align-items:center; gap:10px; padding:12px 0; border-bottom:1px solid #F1EDE9;">
+                        <span style="width:8px; height:8px; border-radius:999px; background:#DED7CF; flex:none;"></span>
+                        <span style="flex:1; font-size:14px; font-weight:600;">{{ row.name }}</span>
+                        <span style="font-size:12px; color:#9A918A; font-weight:500;">{{ row.when }}</span>
+                        <svg width="15" height="15" style="color:#C9C1B9;"><use href="#i-right"></use></svg>
+                      </div>
+                    </sc-for>
+                  </div>
+                </div>
+              </sc-if>
+
+              <sc-if value="{{ crmFunil }}" hint-placeholder-val="{{ false }}">
+                <div style="display:flex; flex-direction:column; gap:14px;">
+                  <div style="display:flex; align-items:center; justify-content:space-between; background:#fff; border-radius:16px; padding:12px 14px; box-shadow:0 1px 2px rgba(31,28,26,.04);">
+                    <button type="button" onClick="{{ prevStage }}" style="width:38px; height:38px; border-radius:999px; border:1px solid #E4DFD9; background:#fff; color:#6B635C; display:flex; align-items:center; justify-content:center; cursor:pointer;"><svg width="16" height="16"><use href="#i-left"></use></svg></button>
+                    <div style="text-align:center;">
+                      <div style="font-size:10px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:#9A918A;">Etapa {{ stageIndex }} de 4</div>
+                      <div style="font-size:17px; font-weight:700; letter-spacing:-0.01em;">{{ stageName }}</div>
+                    </div>
+                    <button type="button" onClick="{{ nextStage }}" style="width:38px; height:38px; border-radius:999px; border:1px solid #E4DFD9; background:#fff; color:#6B635C; display:flex; align-items:center; justify-content:center; cursor:pointer;"><svg width="16" height="16"><use href="#i-right"></use></svg></button>
+                  </div>
+                  <div style="display:flex; gap:5px;">
+                    <sc-for list="{{ stageBars }}" as="b" hint-placeholder-count="4">
+                      <span style="{{ b.style }}"></span>
+                    </sc-for>
+                  </div>
+                  <div style="display:flex; flex-direction:column; gap:9px;">
+                    <sc-for list="{{ stageLeads }}" as="row" hint-placeholder-count="3">
+                      <div style="background:#fff; border-radius:16px; padding:13px 14px; box-shadow:0 1px 2px rgba(31,28,26,.04); display:flex; flex-direction:column; gap:5px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                          <span style="font-size:15px; font-weight:700; letter-spacing:-0.01em;">{{ row.name }}</span>
+                          <span style="font-size:11px; font-weight:600; color:#9A918A;">{{ row.when }}</span>
+                        </div>
+                        <span style="font-size:12px; color:#6B635C; font-weight:500;">{{ row.note }}</span>
+                      </div>
+                    </sc-for>
+                  </div>
+                </div>
+              </sc-if>
+            </div>
+          </sc-if>
+
+          <!-- ---------- TELA 3 · FICHA ---------- -->
+          <sc-if value="{{ sFicha }}" hint-placeholder-val="{{ false }}">
+            <div style="padding:0 0 190px;">
+              <div style="position:sticky; top:0; z-index:4; display:flex; align-items:center; gap:4px; padding:6px 12px 10px; background:rgba(250,248,246,0.9); backdrop-filter:blur(18px);">
+                <button type="button" onClick="{{ back }}" style="display:flex; align-items:center; gap:3px; height:44px; padding:0 8px; border:none; background:transparent; font-family:inherit; font-size:15px; font-weight:600; color:#FF7000; cursor:pointer;"><svg width="19" height="19"><use href="#i-left"></use></svg>Fila</button>
+                <span style="flex:1;"></span>
+                <button type="button" onClick="{{ openPerfil }}" style="width:44px; height:44px; border:none; background:transparent; color:#6B635C; display:flex; align-items:center; justify-content:center; cursor:pointer;"><svg width="20" height="20"><use href="#i-dots"></use></svg></button>
+              </div>
+
+              <div style="padding:0 20px; display:flex; flex-direction:column; gap:14px;">
+                <div style="display:flex; flex-direction:column; gap:8px;">
+                  <div style="font-size:24px; font-weight:700; letter-spacing:-0.02em; line-height:1.15;">{{ lead.name }}</div>
+                  <div style="font-size:14px; color:#6B635C; font-weight:500;">{{ lead.sub }}</div>
+                  <div style="display:flex; gap:7px; flex-wrap:wrap;">
+                    <span style="font-size:11px; font-weight:600; color:#6B635C; background:#F4F0EC; border-radius:999px; padding:5px 10px;">{{ lead.stage }}</span>
+                    <span style="display:flex; align-items:center; gap:4px; font-size:11px; font-weight:600; color:#CC5800; background:#FFE4D1; border-radius:999px; padding:5px 10px;"><svg width="12" height="12"><use href="#i-clock"></use></svg>{{ lead.wait }} esperando</span>
+                  </div>
+                </div>
+
+                <div style="background:#F7ECFC; border-radius:18px; padding:15px; display:flex; flex-direction:column; gap:10px;">
+                  <div style="display:flex; align-items:center; gap:7px;">
+                    <span style="width:18px; height:18px; border-radius:999px; background:#8B00CC; color:#fff; display:flex; align-items:center; justify-content:center;"><svg width="11" height="11"><use href="#i-check"></use></svg></span>
+                    <span style="font-size:10px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase; color:#8B00CC;">O que fazer agora</span>
+                  </div>
+                  <div style="font-size:17px; font-weight:700; line-height:1.3; letter-spacing:-0.01em; color:#1F1C1A; text-wrap:pretty;">{{ lead.acao }}</div>
+                  <div style="font-size:13px; line-height:1.5; color:#4A423C; font-weight:500;">{{ lead.sara }}</div>
+                  <div style="display:flex; gap:16px; padding-top:10px; border-top:1px solid rgba(139,0,204,.14);">
+                    <div style="display:flex; flex-direction:column; gap:2px;">
+                      <span style="font-size:10px; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; color:#9A6BB5;">Para quando</span>
+                      <span style="font-size:13px; font-weight:700; color:#1F1C1A;">{{ lead.prazo }}</span>
+                    </div>
+                    <div style="display:flex; flex-direction:column; gap:2px;">
+                      <span style="font-size:10px; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; color:#9A6BB5;">Evidência</span>
+                      <span style="font-size:13px; font-weight:700; color:#1F1C1A;">{{ lead.evidencia }}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div style="display:flex; gap:6px; background:#F4F0EC; padding:4px; border-radius:999px;">
+                  <sc-for list="{{ fichaTabs }}" as="c" hint-placeholder-count="4">
+                    <button type="button" onClick="{{ c.onClick }}" style="{{ c.style }}">{{ c.label }}</button>
+                  </sc-for>
+                </div>
+
+                <sc-if value="{{ fichaDados }}" hint-placeholder-val="{{ true }}">
+                  <div style="background:#fff; border-radius:18px; box-shadow:0 2px 6px rgba(31,28,26,.06); padding:4px 15px;">
+                    <div style="display:flex; align-items:center; justify-content:space-between; padding:14px 0; border-bottom:1px solid #F1EDE9;">
+                      <div style="display:flex; flex-direction:column; gap:2px;">
+                        <span style="font-size:11px; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; color:#9A918A;">Telefone</span>
+                        <span style="font-size:16px; font-weight:700;">(11) 9 ****-2869</span>
+                      </div>
+                      <button type="button" onClick="{{ noop }}" style="display:flex; align-items:center; gap:6px; height:40px; padding:0 14px; border-radius:999px; border:1px solid #E4DFD9; background:#fff; font-family:inherit; font-size:13px; font-weight:600; color:#6B635C; cursor:pointer;"><svg width="15" height="15"><use href="#i-copy"></use></svg>Copiar</button>
+                    </div>
+                    <sc-for list="{{ dadosRows }}" as="row" hint-placeholder-count="3">
+                      <div style="display:flex; align-items:center; justify-content:space-between; padding:13px 0; border-bottom:1px solid #F1EDE9;">
+                        <span style="font-size:13px; color:#9A918A; font-weight:500;">{{ row.k }}</span>
+                        <span style="font-size:14px; font-weight:600;">{{ row.v }}</span>
+                      </div>
+                    </sc-for>
+                  </div>
+                </sc-if>
+
+                <sc-if value="{{ fichaHist }}" hint-placeholder-val="{{ false }}">
+                  <div style="display:flex; flex-direction:column; gap:10px;">
+                    <div style="font-size:11px; color:#9A918A; font-weight:500; line-height:1.45;">Somente leitura. Toda mensagem sai do seu WhatsApp — o app não envia nada por você.</div>
+                    <sc-for list="{{ histRows }}" as="h" hint-placeholder-count="3">
+                      <div style="background:#fff; border-radius:16px; padding:13px 14px; box-shadow:0 1px 2px rgba(31,28,26,.04); display:flex; flex-direction:column; gap:4px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                          <span style="font-size:12px; font-weight:700; color:{{ h.color }};">{{ h.who }}</span>
+                          <span style="font-size:11px; color:#9A918A; font-weight:500;">{{ h.when }}</span>
+                        </div>
+                        <span style="font-size:13px; line-height:1.45; color:#3B342F; font-weight:500;">{{ h.text }}</span>
+                      </div>
+                    </sc-for>
+                  </div>
+                </sc-if>
+              </div>
+            </div>
+
+            <div style="position:absolute; bottom:0; left:0; right:0; z-index:6; padding:14px 20px 26px; background:rgba(255,255,255,0.94); backdrop-filter:blur(20px); box-shadow:0 -8px 20px rgba(31,28,26,.08); display:flex; flex-direction:column; gap:9px;">
+              <sc-if value="{{ lead.isReady }}" hint-placeholder-val="{{ true }}">
+                <div style="display:flex; flex-direction:column; gap:9px;">
+                  <button type="button" onClick="{{ lead.onCall }}" style="{{ ctaStyleTall }}"><svg width="20" height="20"><use href="#i-chat"></use></svg>Responder no WhatsApp</button>
+                  <div style="display:flex; align-items:center; justify-content:center; gap:14px;">
+                    <button type="button" onClick="{{ noop }}" style="border:none; background:transparent; padding:0; font-family:inherit; font-size:12px; font-weight:600; color:#9A918A; cursor:pointer; text-decoration:underline;">Não abriu? WhatsApp Web</button>
+                  </div>
+                </div>
+              </sc-if>
+              <sc-if value="{{ lead.isOpen }}" hint-placeholder-val="{{ false }}">
+                <div style="display:flex; flex-direction:column; gap:10px;">
+                  <div style="display:flex; align-items:center; gap:8px; font-size:13px; font-weight:600; color:#8A6100;">
+                    <span style="width:9px; height:9px; border-radius:999px; background:#E8A317; animation:pulseDot 1.1s ease-in-out infinite;"></span>
+                    WhatsApp aberto — aguardando sincronização
+                  </div>
+                  <button type="button" onClick="{{ noop }}" style="height:52px; border-radius:999px; border:1.5px solid #E4DFD9; background:#fff; font-family:inherit; font-size:15px; font-weight:600; color:#1F1C1A; cursor:pointer;">Registrar o que aconteceu</button>
+                </div>
+              </sc-if>
+              <sc-if value="{{ lead.isDone }}" hint-placeholder-val="{{ false }}">
+                <div style="display:flex; flex-direction:column; gap:10px;">
+                  <div style="display:flex; align-items:center; gap:8px; font-size:13px; font-weight:600; color:#136B3D;">
+                    <span style="width:18px; height:18px; border-radius:999px; background:#1E9E5A; color:#fff; display:flex; align-items:center; justify-content:center;"><svg width="11" height="11"><use href="#i-check"></use></svg></span>
+                    Mensagem confirmada no histórico · 11:06
+                  </div>
+                  <button type="button" onClick="{{ goTarefas }}" style="height:52px; border-radius:999px; border:none; background:#8B00CC; color:#fff; font-family:inherit; font-size:15px; font-weight:600; cursor:pointer;">Próxima ação da Sara</button>
+                </div>
+              </sc-if>
+            </div>
+          </sc-if>
+
+          <!-- ---------- TELA 4 · AVISOS ---------- -->
+          <sc-if value="{{ sAvisos }}" hint-placeholder-val="{{ false }}">
+            <div style="padding:0 20px 120px; display:flex; flex-direction:column; gap:13px;">
+              <div style="display:flex; gap:7px;">
+                <sc-for list="{{ notifTabs }}" as="c" hint-placeholder-count="3">
+                  <button type="button" onClick="{{ c.onClick }}" style="{{ c.style }}">{{ c.label }}</button>
+                </sc-for>
+              </div>
+              <div style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
+                <button type="button" onClick="{{ toggleUnread }}" style="{{ unreadStyle }}"><span style="{{ unreadDot }}"></span>Só não lidas</button>
+                <button type="button" onClick="{{ openFiltros }}" style="display:flex; align-items:center; gap:6px; height:36px; padding:0 13px; border-radius:999px; border:1px solid #E4DFD9; background:#fff; font-family:inherit; font-size:12px; font-weight:600; color:#6B635C; cursor:pointer;"><svg width="14" height="14"><use href="#i-filter"></use></svg>Prioridade</button>
+              </div>
+
+              <sc-for list="{{ notifs }}" as="n" hint-placeholder-count="4">
+                <div style="background:#fff; border-radius:18px; padding:14px; box-shadow:0 2px 6px rgba(31,28,26,.06); display:flex; gap:12px;">
+                  <span style="{{ n.iconStyle }}"><svg width="18" height="18"><use href="#{{ n.icon }}"></use></svg></span>
+                  <div style="flex:1; display:flex; flex-direction:column; gap:5px; min-width:0;">
+                    <div style="display:flex; align-items:flex-start; gap:8px;">
+                      <span style="flex:1; font-size:15px; font-weight:700; letter-spacing:-0.01em; line-height:1.3; text-wrap:pretty;">{{ n.title }}</span>
+                      <sc-if value="{{ n.unread }}" hint-placeholder-val="{{ true }}">
+                        <span style="width:8px; height:8px; border-radius:999px; background:#FF7000; flex:none; margin-top:6px;"></span>
+                      </sc-if>
+                    </div>
+                    <span style="font-size:12.5px; color:#6B635C; font-weight:500; line-height:1.4;">{{ n.desc }}</span>
+                    <div style="display:flex; align-items:center; justify-content:space-between; margin-top:3px;">
+                      <button type="button" onClick="{{ n.onAction }}" style="display:flex; align-items:center; gap:5px; border:none; background:transparent; padding:0; font-family:inherit; font-size:13px; font-weight:700; color:#FF7000; cursor:pointer;">{{ n.action }}<svg width="14" height="14"><use href="#i-right"></use></svg></button>
+                      <span style="font-size:11px; color:#9A918A; font-weight:500;">{{ n.when }}</span>
+                    </div>
+                  </div>
+                </div>
+              </sc-for>
+
+              <button type="button" onClick="{{ noop }}" style="height:44px; border-radius:999px; border:1.5px solid #E4DFD9; background:#fff; font-family:inherit; font-size:13px; font-weight:600; color:#6B635C; cursor:pointer;">Carregar mais 20</button>
+            </div>
+          </sc-if>
+
+          <!-- ---------- TELA 5 · AGENDA ---------- -->
+          <sc-if value="{{ sAgenda }}" hint-placeholder-val="{{ false }}">
+            <div style="padding:0 20px 120px; display:flex; flex-direction:column; gap:14px;">
+              <div style="background:#FFF3EA; border-radius:18px; padding:16px; position:relative; overflow:hidden;">
+                <img src="data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%20420%20420'%20fill%3D'none'%20stroke%3D'%23FF7000'%20stroke-width%3D'11'%20stroke-linecap%3D'round'%20stroke-linejoin%3D'round'%3E%3Cpath%20d%3D'M50%20200%20165%20105l115%2095v135H50z'%2F%3E%3Cpath%20d%3D'm112%20225%2048%2048%2088-98'%2F%3E%3Cpath%20d%3D'M195%20118%20305%2028l115%2095v115'%2F%3E%3Cpath%20d%3D'm255%20140%2048%2048%2088-98'%2F%3E%3C%2Fsvg%3E" alt="" style="position:absolute; right:-60px; bottom:-50px; width:170px; opacity:.10;">
+                <div style="font-size:10px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase; color:#CC5800;">Próximo compromisso · em 26 min</div>
+                <div style="font-size:22px; font-weight:700; letter-spacing:-0.02em; margin-top:7px;">11:30 · visita</div>
+                <div style="font-size:15px; font-weight:600; margin-top:3px;">Camila Aragão</div>
+                <div style="display:flex; align-items:center; gap:5px; font-size:13px; color:#6B635C; font-weight:500; margin-top:5px;"><svg width="14" height="14"><use href="#i-pin"></use></svg>Rua Pavão, 512 · Moema Pássaros</div>
+                <div style="display:flex; gap:8px; margin-top:14px;">
+                  <button type="button" onClick="{{ noop }}" style="flex:1; height:46px; border-radius:999px; border:none; background:#FF7000; color:#fff; font-family:inherit; font-size:14px; font-weight:600; cursor:pointer; box-shadow:0 12px 28px rgba(255,112,0,.24);">Abrir no mapa</button>
+                  <button type="button" onClick="{{ openCamila }}" style="height:46px; padding:0 18px; border-radius:999px; border:1.5px solid #E4DFD9; background:#fff; font-family:inherit; font-size:14px; font-weight:600; color:#1F1C1A; cursor:pointer;">Ver ficha</button>
+                </div>
+              </div>
+
+              <div style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
+                <div style="display:flex; gap:6px; background:#F4F0EC; padding:4px; border-radius:999px;">
+                  <sc-for list="{{ agendaTabs }}" as="c" hint-placeholder-count="2">
+                    <button type="button" onClick="{{ c.onClick }}" style="{{ c.style }}">{{ c.label }}</button>
+                  </sc-for>
+                </div>
+                <div style="display:flex; gap:7px;">
+                  <button type="button" onClick="{{ openFiltros }}" style="width:40px; height:40px; border-radius:999px; border:1px solid #E4DFD9; background:#fff; color:#6B635C; display:flex; align-items:center; justify-content:center; cursor:pointer;"><svg width="16" height="16"><use href="#i-filter"></use></svg></button>
+                  <button type="button" onClick="{{ noop }}" style="display:flex; align-items:center; gap:5px; height:40px; padding:0 14px; border-radius:999px; border:none; background:#1F1C1A; color:#fff; font-family:inherit; font-size:13px; font-weight:600; cursor:pointer;"><svg width="15" height="15"><use href="#i-plus"></use></svg>Visita</button>
+                </div>
+              </div>
+
+              <div style="font-size:11px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:#9A918A;">Sexta, 31 de julho · 4 compromissos</div>
+
+              <div style="display:flex; flex-direction:column;">
+                <sc-for list="{{ agendaItems }}" as="a" hint-placeholder-count="4">
+                  <div style="display:flex; gap:12px;">
+                    <div style="width:46px; flex:none; display:flex; flex-direction:column; align-items:flex-end; padding-top:14px;">
+                      <span style="font-size:13px; font-weight:700; color:#1F1C1A;">{{ a.time }}</span>
+                    </div>
+                    <div style="width:2px; background:#EFEAE5; flex:none; position:relative;">
+                      <span style="{{ a.dotStyle }}"></span>
+                    </div>
+                    <div style="flex:1; padding:8px 0 12px;">
+                      <div style="background:#fff; border-radius:16px; padding:13px 14px; box-shadow:0 1px 2px rgba(31,28,26,.04); display:flex; flex-direction:column; gap:4px;">
+                        <div style="display:flex; align-items:center; gap:7px;">
+                          <span style="font-size:10px; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; color:{{ a.tagColor }};">{{ a.tag }}</span>
+                        </div>
+                        <span style="font-size:15px; font-weight:700; letter-spacing:-0.01em;">{{ a.title }}</span>
+                        <span style="font-size:12.5px; color:#6B635C; font-weight:500;">{{ a.sub }}</span>
+                      </div>
+                    </div>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </sc-if>
+
+          <!-- ---------- TELA 6 · TAREFAS ---------- -->
+          <sc-if value="{{ sTarefas }}" hint-placeholder-val="{{ false }}">
+            <div style="padding:0 20px 120px; display:flex; flex-direction:column; gap:13px;">
+              <div style="display:flex; gap:7px; overflow-x:auto; padding-bottom:2px;">
+                <sc-for list="{{ taskTabs }}" as="c" hint-placeholder-count="5">
+                  <button type="button" onClick="{{ c.onClick }}" style="{{ c.style }}">{{ c.label }}</button>
+                </sc-for>
+              </div>
+
+              <sc-for list="{{ tasks }}" as="t" hint-placeholder-count="3">
+                <div style="background:#fff; border-radius:18px; padding:14px; box-shadow:0 2px 6px rgba(31,28,26,.06); display:flex; flex-direction:column; gap:10px;">
+                  <div style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
+                    <x-import component-from-global-scope="ApCertoDesignSystem_019dda.Badge" variant="soft" tone="{{ t.tone }}" hint-size="120px,24px">{{ t.tag }}</x-import>
+                    <span style="font-size:11px; font-weight:600; color:{{ t.prazoColor }};">{{ t.prazo }}</span>
+                  </div>
+                  <div style="font-size:16px; font-weight:700; letter-spacing:-0.01em; line-height:1.3; text-wrap:pretty;">{{ t.acao }}</div>
+                  <div style="display:flex; align-items:center; gap:8px;">
+                    <span style="width:26px; height:26px; border-radius:999px; background:#F4F0EC; color:#6B635C; font-size:10px; font-weight:700; display:flex; align-items:center; justify-content:center;">{{ t.initials }}</span>
+                    <span style="font-size:13px; font-weight:600; color:#3B342F;">{{ t.lead }}</span>
+                  </div>
+                  <div style="background:#F7ECFC; border-radius:12px; padding:10px 12px; font-size:12.5px; line-height:1.45; color:#4A423C; font-weight:500;">{{ t.motivo }}</div>
+                  <sc-if value="{{ t.isSuggestion }}" hint-placeholder-val="{{ false }}">
+                    <div style="display:flex; gap:8px;">
+                      <button type="button" onClick="{{ noop }}" style="flex:1; height:46px; border-radius:999px; border:none; background:#8B00CC; color:#fff; font-family:inherit; font-size:14px; font-weight:600; cursor:pointer;">Aceitar sugestão</button>
+                      <button type="button" onClick="{{ noop }}" style="height:46px; padding:0 18px; border-radius:999px; border:1.5px solid #E4DFD9; background:#fff; font-family:inherit; font-size:14px; font-weight:600; color:#6B635C; cursor:pointer;">Recusar</button>
+                    </div>
+                  </sc-if>
+                  <sc-if value="{{ t.isAction }}" hint-placeholder-val="{{ true }}">
+                    <button type="button" onClick="{{ t.onAction }}" style="{{ ctaStyleBlock }}"><svg width="19" height="19"><use href="#i-chat"></use></svg>{{ t.actionLabel }}</button>
+                  </sc-if>
+                </div>
+              </sc-for>
+
+              <div style="font-size:11px; line-height:1.5; color:#9A918A; font-weight:500; text-align:center; padding:0 16px;">Concluir uma tarefa não significa que o contato aconteceu — isso só a sincronização confirma.</div>
+            </div>
+          </sc-if>
+
+          <!-- ---------- TELA 7 · PRODUTOS ---------- -->
+          <sc-if value="{{ sProdutos }}" hint-placeholder-val="{{ false }}">
+            <div style="padding:0 20px 120px; display:flex; flex-direction:column; gap:13px;">
+              <div style="display:flex; align-items:center; gap:9px; background:#fff; border:1px solid #E4DFD9; border-radius:12px; padding:0 13px; height:46px;">
+                <svg width="18" height="18" style="color:#9A918A;"><use href="#i-search"></use></svg>
+                <span style="font-size:14px; color:#B8B0A8; font-weight:500;">Buscar empreendimento ou rua</span>
+              </div>
+              <div style="display:flex; gap:7px; overflow-x:auto; padding-bottom:2px;">
+                <sc-for list="{{ prodChips }}" as="c" hint-placeholder-count="5">
+                  <button type="button" onClick="{{ c.onClick }}" style="{{ c.style }}">{{ c.label }}</button>
+                </sc-for>
+              </div>
+
+              <sc-for list="{{ produtos }}" as="p" hint-placeholder-count="3">
+                <div style="display:flex; flex-direction:column; gap:8px;">
+                  <x-import component-from-global-scope="ApCertoDesignSystem_019dda.ListingCard" listing="{{ p.listing }}" hint-size="100%,360px"></x-import>
+                  <div style="display:flex; gap:7px;">
+                    <button type="button" onClick="{{ noop }}" style="flex:1; display:flex; align-items:center; justify-content:center; gap:6px; height:42px; border-radius:999px; border:none; background:#fff; box-shadow:0 1px 2px rgba(31,28,26,.04); font-family:inherit; font-size:13px; font-weight:600; color:#1F1C1A; cursor:pointer;"><svg width="15" height="15"><use href="#i-share"></use></svg>Compartilhar no WhatsApp</button>
+                    <button type="button" onClick="{{ noop }}" style="width:42px; height:42px; border-radius:999px; border:none; background:#fff; box-shadow:0 1px 2px rgba(31,28,26,.04); color:#6B635C; display:flex; align-items:center; justify-content:center; cursor:pointer;"><svg width="16" height="16"><use href="#i-dots"></use></svg></button>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+          </sc-if>
+
+          <!-- ---------- GESTOR · PAINEL ---------- -->
+          <sc-if value="{{ sPainel }}" hint-placeholder-val="{{ false }}">
+            <div style="padding:0 20px 120px; display:flex; flex-direction:column; gap:14px;">
+              <div style="display:flex; flex-direction:column; gap:5px;">
+                <div style="font-size:11px; font-weight:600; letter-spacing:0.12em; text-transform:uppercase; color:#8B00CC;">Visão de gestão</div>
+                <div style="font-size:26px; font-weight:700; letter-spacing:-0.02em; line-height:1.12;">A equipe hoje</div>
+              </div>
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                <sc-for list="{{ kpis }}" as="k" hint-placeholder-count="4">
+                  <div style="background:#fff; border-radius:16px; padding:14px; box-shadow:0 1px 2px rgba(31,28,26,.04); display:flex; flex-direction:column; gap:3px;">
+                    <span style="font-size:24px; font-weight:700; letter-spacing:-0.02em; color:{{ k.color }};">{{ k.value }}</span>
+                    <span style="font-size:12px; color:#6B635C; font-weight:500; line-height:1.35;">{{ k.label }}</span>
+                  </div>
+                </sc-for>
+              </div>
+              <div style="background:#FBE5E5; border-radius:16px; padding:14px; display:flex; gap:11px; align-items:flex-start;">
+                <span style="width:20px; height:20px; flex:none; color:#D93E3E; margin-top:1px;"><svg width="20" height="20"><use href="#i-alert"></use></svg></span>
+                <div style="display:flex; flex-direction:column; gap:3px;">
+                  <span style="font-size:14px; font-weight:700; color:#8F2626;">3 leads sem primeiro contato há mais de 1h</span>
+                  <span style="font-size:12.5px; color:#A34A4A; font-weight:500; line-height:1.4;">Dois na fila do Samuel, um na da Renata. Redistribuir?</span>
+                </div>
+              </div>
+              <div style="font-size:11px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:#9A918A;">Corretores</div>
+              <div style="background:#fff; border-radius:18px; padding:4px 15px; box-shadow:0 2px 6px rgba(31,28,26,.06);">
+                <sc-for list="{{ team }}" as="m" hint-placeholder-count="3">
+                  <div style="padding:14px 0; border-bottom:1px solid #F1EDE9; display:flex; flex-direction:column; gap:7px;">
+                    <div style="display:flex; align-items:center; gap:10px;">
+                      <span style="width:32px; height:32px; border-radius:999px; background:#FFE4D1; color:#CC5800; font-size:12px; font-weight:700; display:flex; align-items:center; justify-content:center;">{{ m.initials }}</span>
+                      <span style="flex:1; font-size:14px; font-weight:700;">{{ m.name }}</span>
+                      <span style="font-size:12px; font-weight:600; color:#6B635C;">{{ m.sla }}</span>
+                    </div>
+                    <div style="height:6px; border-radius:999px; background:#F1EDE9; overflow:hidden;">
+                      <span style="{{ m.barStyle }}"></span>
+                    </div>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </sc-if>
+
+          <!-- ---------- GESTOR · GESTÃO ---------- -->
+          <sc-if value="{{ sGestao }}" hint-placeholder-val="{{ false }}">
+            <div style="padding:0 20px 120px; display:flex; flex-direction:column; gap:12px;">
+              <div style="font-size:13px; color:#6B635C; font-weight:500; line-height:1.5;">Área restrita a gestor e admin. Nada disso aparece na rotina do corretor.</div>
+              <sc-for list="{{ gestaoRows }}" as="g" hint-placeholder-count="5">
+                <button type="button" onClick="{{ noop }}" style="display:flex; align-items:center; gap:12px; background:#fff; border:none; border-radius:16px; padding:15px 14px; box-shadow:0 1px 2px rgba(31,28,26,.04); font-family:inherit; text-align:left; cursor:pointer;">
+                  <span style="width:38px; height:38px; flex:none; border-radius:12px; background:#F7ECFC; color:#8B00CC; display:flex; align-items:center; justify-content:center;"><svg width="19" height="19"><use href="#{{ g.icon }}"></use></svg></span>
+                  <span style="flex:1; display:flex; flex-direction:column; gap:2px;">
+                    <span style="font-size:15px; font-weight:700; color:#1F1C1A;">{{ g.label }}</span>
+                    <span style="font-size:12px; color:#9A918A; font-weight:500;">{{ g.sub }}</span>
+                  </span>
+                  <svg width="17" height="17" style="color:#C9C1B9;"><use href="#i-right"></use></svg>
+                </button>
+              </sc-for>
+            </div>
+          </sc-if>
+        </div>
+
+        <!-- ---------- bottom nav ---------- -->
+        <sc-if value="{{ showNav }}" hint-placeholder-val="{{ true }}">
+          <div style="position:absolute; bottom:0; left:0; right:0; height:82px; z-index:7; background:rgba(255,255,255,0.95); backdrop-filter:blur(20px); border-top:1px solid #EFEAE5; display:flex; align-items:flex-start; padding:8px 6px 0;">
+            <sc-for list="{{ navItems }}" as="n" hint-placeholder-count="5">
+              <button type="button" onClick="{{ n.onClick }}" style="{{ n.style }}">
+                <span style="position:relative; display:flex; align-items:center; justify-content:center;">
+                  <svg width="23" height="23"><use href="#{{ n.icon }}"></use></svg>
+                  <sc-if value="{{ n.badge }}" hint-placeholder-val="{{ false }}">
+                    <span style="position:absolute; top:-4px; right:-8px; min-width:16px; height:16px; padding:0 4px; border-radius:999px; background:#FF7000; color:#fff; font-size:10px; font-weight:700; display:flex; align-items:center; justify-content:center; border:2px solid #fff;">{{ n.badge }}</span>
+                  </sc-if>
+                </span>
+                <span style="font-size:10.5px; font-weight:600; letter-spacing:0.01em;">{{ n.label }}</span>
+              </button>
+            </sc-for>
+          </div>
+        </sc-if>
+
+        <!-- ---------- folha "Mais" ---------- -->
+        <sc-if value="{{ sheetMais }}" hint-placeholder-val="{{ false }}">
+          <div style="position:absolute; inset:0; z-index:9; background:rgba(31,28,26,.42); display:flex; align-items:flex-end;">
+            <div style="width:100%; background:#fff; border-radius:24px 24px 0 0; padding:10px 20px 30px; animation:sheetUp 240ms cubic-bezier(.2,.8,.2,1); max-height:660px; overflow-y:auto;">
+              <div style="display:flex; justify-content:center; padding:6px 0 12px;"><span style="width:44px; height:4px; border-radius:999px; background:#E4DFD9;"></span></div>
+              <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;">
+                <span style="font-size:19px; font-weight:700; letter-spacing:-0.01em;">Mais</span>
+                <button type="button" onClick="{{ closeSheet }}" style="width:36px; height:36px; border-radius:999px; border:none; background:#F4F0EC; color:#6B635C; display:flex; align-items:center; justify-content:center; cursor:pointer;"><svg width="17" height="17"><use href="#i-x"></use></svg></button>
+              </div>
+              <sc-for list="{{ maisGroups }}" as="grp" hint-placeholder-count="3">
+                <div style="margin-bottom:18px;">
+                  <div style="font-size:11px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:#9A918A; margin-bottom:8px;">{{ grp.title }}</div>
+                  <div style="display:flex; flex-direction:column; gap:6px;">
+                    <sc-for list="{{ grp.items }}" as="it" hint-placeholder-count="3">
+                      <button type="button" onClick="{{ it.onClick }}" style="display:flex; align-items:center; gap:12px; background:#FAF8F6; border:none; border-radius:14px; padding:13px 14px; font-family:inherit; text-align:left; cursor:pointer;">
+                        <span style="width:34px; height:34px; flex:none; border-radius:11px; background:#fff; color:#FF7000; display:flex; align-items:center; justify-content:center;"><svg width="18" height="18"><use href="#{{ it.icon }}"></use></svg></span>
+                        <span style="flex:1; font-size:15px; font-weight:600; color:#1F1C1A;">{{ it.label }}</span>
+                        <svg width="16" height="16" style="color:#C9C1B9;"><use href="#i-right"></use></svg>
+                      </button>
+                    </sc-for>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </sc-if>
+
+        <!-- ---------- folha de filtros ---------- -->
+        <sc-if value="{{ sheetFiltros }}" hint-placeholder-val="{{ false }}">
+          <div style="position:absolute; inset:0; z-index:9; background:rgba(31,28,26,.42); display:flex; align-items:flex-end;">
+            <div style="width:100%; background:#fff; border-radius:24px 24px 0 0; padding:10px 20px 30px; animation:sheetUp 240ms cubic-bezier(.2,.8,.2,1);">
+              <div style="display:flex; justify-content:center; padding:6px 0 12px;"><span style="width:44px; height:4px; border-radius:999px; background:#E4DFD9;"></span></div>
+              <div style="font-size:19px; font-weight:700; letter-spacing:-0.01em; margin-bottom:16px;">Filtros</div>
+              <sc-for list="{{ filtroGroups }}" as="f" hint-placeholder-count="3">
+                <div style="margin-bottom:16px;">
+                  <div style="font-size:11px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:#9A918A; margin-bottom:8px;">{{ f.title }}</div>
+                  <div style="display:flex; gap:7px; flex-wrap:wrap;">
+                    <sc-for list="{{ f.opts }}" as="o" hint-placeholder-count="3">
+                      <span style="{{ o.style }}">{{ o.label }}</span>
+                    </sc-for>
+                  </div>
+                </div>
+              </sc-for>
+              <div style="display:flex; gap:9px; margin-top:6px;">
+                <button type="button" onClick="{{ closeSheet }}" style="height:50px; padding:0 20px; border-radius:999px; border:1.5px solid #E4DFD9; background:#fff; font-family:inherit; font-size:15px; font-weight:600; color:#6B635C; cursor:pointer;">Limpar</button>
+                <button type="button" onClick="{{ closeSheet }}" style="flex:1; height:50px; border-radius:999px; border:none; background:#FF7000; color:#fff; font-family:inherit; font-size:15px; font-weight:600; cursor:pointer; box-shadow:0 12px 28px rgba(255,112,0,.24);">Aplicar</button>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+
+        <!-- ---------- sessão expirada ---------- -->
+        <sc-if value="{{ isExpired }}" hint-placeholder-val="{{ false }}">
+          <div style="position:absolute; inset:0; z-index:12; background:#FAF8F6; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:40px 32px; gap:14px;">
+            <img src="data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%20420%20420'%20fill%3D'none'%20stroke%3D'%23E4DFD9'%20stroke-width%3D'11'%20stroke-linecap%3D'round'%20stroke-linejoin%3D'round'%3E%3Cpath%20d%3D'M50%20200%20165%20105l115%2095v135H50z'%2F%3E%3Cpath%20d%3D'm112%20225%2048%2048%2088-98'%2F%3E%3Cpath%20d%3D'M195%20118%20305%2028l115%2095v115'%2F%3E%3Cpath%20d%3D'm255%20140%2048%2048%2088-98'%2F%3E%3C%2Fsvg%3E" alt="" style="position:absolute; bottom:-60px; left:-90px; width:340px; opacity:.5;">
+            <div style="width:62px; height:62px; border-radius:999px; background:#F7ECFC; color:#8B00CC; display:flex; align-items:center; justify-content:center;"><svg width="28" height="28"><use href="#i-lock"></use></svg></div>
+            <div style="font-size:21px; font-weight:700; letter-spacing:-0.01em;">Sua sessão expirou</div>
+            <div style="font-size:14px; line-height:1.5; color:#6B635C; max-width:250px;">Por segurança, a gente desconectou você. Nenhuma tarefa foi perdida.</div>
+            <button type="button" onClick="{{ retry }}" style="{{ stateBtnStyle }}">Entrar novamente</button>
+          </div>
+        </sc-if>
+
+      </div>
+    </div>
+    <div style="font-size:12px; color:#9A918A; font-weight:500;">{{ caption }}</div>
+  </div>
+
+  <!-- ============ NOTAS ============ -->
+  <div style="width:250px; flex:none; display:flex; flex-direction:column; gap:12px; position:sticky; top:36px;">
+    <div style="font-size:11px; font-weight:600; letter-spacing:0.12em; text-transform:uppercase; color:#8B00CC;">Decisões de design</div>
+    <div style="background:#fff; border-radius:18px; padding:15px; box-shadow:0 2px 6px rgba(31,28,26,.06); display:flex; flex-direction:column; gap:14px;">
+      <div style="display:flex; flex-direction:column; gap:4px;">
+        <div style="font-size:13px; font-weight:700;">Uma ação por card</div>
+        <div style="font-size:12px; line-height:1.5; color:#6B635C;">O card diz quem, por quê, o que a Sara orienta e o único botão que importa. Altura caiu de ~250 px para ~180 px: 3 clientes na primeira dobra.</div>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:4px;">
+        <div style="font-size:13px; font-weight:700;">Sara tem lugar fixo</div>
+        <div style="font-size:12px; line-height:1.5; color:#6B635C;">Bloco roxo, sempre no mesmo ponto do card e da ficha. Ela orienta — nunca envia.</div>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:4px;">
+        <div style="font-size:13px; font-weight:700;">Estado honesto do WhatsApp</div>
+        <div style="font-size:12px; line-height:1.5; color:#6B635C;">Toque abre → “aguardando sincronização” em âmbar → verde só quando a integração confirma a mensagem real.</div>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:4px;">
+        <div style="font-size:13px; font-weight:700;">Sem vocabulário técnico</div>
+        <div style="font-size:12px; line-height:1.5; color:#6B635C;">Piloto, RPC, ingest e runner saíram da tela. Gestão vive no perfil de gestor.</div>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:4px;">
+        <div style="font-size:13px; font-weight:700;">Alvos de 44 px</div>
+        <div style="font-size:12px; line-height:1.5; color:#6B635C;">Sino, avatar e ícones ocupam 44 px; CTA tem 48–52 px e respeita a safe-area inferior.</div>
+      </div>
+    </div>
+    <div style="background:#1F1C1A; border-radius:18px; padding:15px; color:#FAF8F6;">
+      <div style="font-size:11px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:#FF9A4D; margin-bottom:10px;">Tokens em uso</div>
+      <div style="display:flex; flex-direction:column; gap:7px; font-size:12px; font-weight:500; color:#D8D2CC;">
+        <div style="display:flex; justify-content:space-between;"><span>Card</span><span style="color:#fff;">18 px · sombra sm</span></div>
+        <div style="display:flex; justify-content:space-between;"><span>CTA</span><span style="color:#fff;">pill · 48 px</span></div>
+        <div style="display:flex; justify-content:space-between;"><span>Página</span><span style="color:#fff;">#FAF8F6</span></div>
+        <div style="display:flex; justify-content:space-between;"><span>Ação</span><span style="color:#FF9A4D;">#FF7000</span></div>
+        <div style="display:flex; justify-content:space-between;"><span>Sara</span><span style="color:#B24DDD;">#8B00CC</span></div>
+        <div style="display:flex; justify-content:space-between;"><span>Tipo</span><span style="color:#fff;">Quicksand 400–700</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1000,&quot;height&quot;:960},&quot;ctaColor&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;laranja&quot;,&quot;verde&quot;,&quot;roxo&quot;],&quot;default&quot;:&quot;laranja&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Ação principal&quot;},&quot;showSara&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Conteúdo&quot;},&quot;density&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;confortavel&quot;,&quot;compacto&quot;],&quot;default&quot;:&quot;confortavel&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Conteúdo&quot;}}">
+const LEADS = [
+  { id: 'l1', initials: 'CA', name: 'Camila Aragão', sub: '2 dorms · Moema Pássaros', reason: 'Cliente respondeu', kind: 'resp', wait: '24h', stage: 'Em atendimento',
+    sara: 'Ela perguntou se o condomínio está incluso. Responda e ofereça a visita de sábado às 10h.',
+    acao: 'Confirmar o valor com condomínio e propor visita', prazo: 'Hoje, até 12h', evidencia: 'Respondeu 10:12' },
+  { id: 'l2', initials: 'RS', name: 'Rodrigo Sampaio', sub: 'Cobertura · Moema Índios', reason: 'Lead novo', kind: 'novo', wait: '12 min', stage: 'Novo',
+    sara: 'Primeiro contato em até 20 min. Ele veio do anúncio do apê na Jamaris.',
+    acao: 'Fazer o primeiro contato', prazo: 'Hoje, até 11:24', evidencia: 'Entrou 10:52' },
+  { id: 'l3', initials: 'HP', name: 'Helena Prado', sub: '67 m² mobiliado · Pavão', reason: 'Retorno prometido', kind: 'retorno', wait: 'vence 14h', stage: 'Proposta',
+    sara: 'Você prometeu a proposta revisada hoje às 14h, com o desconto de 3 meses.',
+    acao: 'Enviar a proposta revisada', prazo: 'Hoje, 14h', evidencia: 'Combinado ontem 17:40' },
+  { id: 'l4', initials: 'TM', name: 'Tiago Menezes', sub: '82 m² · Moema Índios', reason: 'Tarefa vencida', kind: 'vencida', wait: 'venceu 2h', stage: 'Visita',
+    sara: 'Enviar a planta do 82 m² e confirmar se a visita de sábado está de pé.',
+    acao: 'Enviar planta e confirmar visita', prazo: 'Venceu às 9h', evidencia: 'Tarefa criada ontem' }
+];
+
+const REASON = {
+  resp:    { fg: '#CC5800', bg: '#FFE4D1', tone: 'orange' },
+  novo:    { fg: '#66009A', bg: '#EBD1F5', tone: 'purple' },
+  retorno: { fg: '#8A6100', bg: '#FFF3D6', tone: 'warning' },
+  vencida: { fg: '#A32C2C', bg: '#FBE5E5', tone: 'danger' }
+};
+
+const SCREEN_TITLES = {
+  inicio:   ['Olá, Samuel', 'sexta, 31 de julho'],
+  crm:      ['CRM', 'seu dia, em ordem'],
+  avisos:   ['Avisos', '4 pedem ação'],
+  agenda:   ['Agenda', 'sexta, 31 de julho'],
+  tarefas:  ['Tarefas', '5 para hoje'],
+  produtos: ['Produtos', '18 empreendimentos'],
+  painel:   ['Gestão', 'equipe Moema'],
+  gestao:   ['Gestão', 'painéis e ajustes']
+};
+
+const STAGES = [
+  { name: 'Novo contato', leads: [
+    { name: 'Rodrigo Sampaio', when: '12 min', note: 'Veio do anúncio da Jamaris' },
+    { name: 'Marina Coelho', when: '38 min', note: 'Pediu opções de 2 dorms' } ] },
+  { name: 'Em atendimento', leads: [
+    { name: 'Camila Aragão', when: '24h', note: 'Aguardando resposta sobre condomínio' },
+    { name: 'Tiago Menezes', when: '2 dias', note: 'Falta enviar a planta do 82 m²' },
+    { name: 'Bianca Ferraz', when: '5h', note: 'Visita marcada para amanhã, 10h' } ] },
+  { name: 'Visita', leads: [
+    { name: 'Bianca Ferraz', when: 'amanhã 10h', note: 'Alameda dos Anapurus, 890' } ] },
+  { name: 'Proposta', leads: [
+    { name: 'Helena Prado', when: 'hoje 14h', note: 'Proposta revisada prometida' } ] }
+];
+
+class Component extends DCLogic {
+  state = {
+    role: 'corretor', screen: 'inicio', sys: 'normal', leadId: 'l1', wa: {},
+    fila: 'agora', crmView: 'dia', stage: 1, fichaTab: 'dados',
+    notif: 'agora', unread: true, agenda: 'dia', task: 'agora', prod: 'todos', sheet: null
+  };
+
+  componentWillUnmount() { Object.values(this.timers || {}).forEach(clearTimeout); }
+
+  go(screen) { this.setState({ screen, sheet: null, sys: 'normal' }); }
+  openLead(id) { this.setState({ leadId: id, screen: 'ficha', sheet: null, sys: 'normal' }); }
+  back() { this.setState({ screen: 'inicio' }); }
+  call(id) {
+    this.timers = this.timers || {};
+    this.setState(s => ({ wa: { ...s.wa, [id]: 'open' } }));
+    clearTimeout(this.timers[id]);
+    this.timers[id] = setTimeout(() => this.setState(s => ({ wa: { ...s.wa, [id]: 'done' } })), 3200);
+  }
+  setRole(role) {
+    this.setState({ role, screen: role === 'gestor' ? 'painel' : 'inicio', sheet: null, sys: 'normal' });
+  }
+
+  pill(active, opts) {
+    const o = opts || {};
+    return {
+      padding: o.pad || '0 14px', height: o.h || '36px', display: 'inline-flex', alignItems: 'center',
+      justifyContent: 'center', gap: '6px', borderRadius: '999px', whiteSpace: 'nowrap', cursor: 'pointer',
+      fontFamily: 'inherit', fontSize: o.fs || '13px', fontWeight: active ? 700 : 600,
+      background: active ? (o.onBg || '#1F1C1A') : (o.offBg || '#fff'),
+      color: active ? (o.onFg || '#fff') : (o.offFg || '#6B635C'),
+      border: active ? '1px solid transparent' : (o.border || '1px solid #E4DFD9'),
+      transition: 'background 200ms cubic-bezier(.2,.8,.2,1)', flex: o.flex || 'none'
+    };
+  }
+
+  chips(items, cur, key, opts) {
+    return items.map(it => ({
+      label: it.label,
+      style: this.pill(it.id === cur, opts),
+      onClick: () => this.setState({ [key]: it.id })
+    }));
+  }
+
+  renderVals() {
+    const st = this.state;
+    const dense = (this.props.density ?? 'confortavel') === 'compacto';
+    const cta = this.props.ctaColor ?? 'laranja';
+    const ctaBg = cta === 'verde' ? 'var(--success)' : cta === 'roxo' ? 'var(--ape-purple)' : 'var(--ape-orange)';
+    const ctaShadow = cta === 'verde' ? '0 12px 28px rgba(30,158,90,.26)' : cta === 'roxo' ? 'var(--shadow-accent)' : 'var(--shadow-brand)';
+    const ctaVariant = cta === 'roxo' ? 'accent' : 'primary';
+    const ctaBase = {
+      width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '9px',
+      borderRadius: 'var(--radius-pill)', border: 'none', background: ctaBg, color: '#fff',
+      fontFamily: 'var(--font-body)', fontSize: '15px', fontWeight: 600, cursor: 'pointer',
+      whiteSpace: 'nowrap', padding: '0 18px', lineHeight: 1,
+      boxShadow: ctaShadow, transition: 'background var(--dur-fast) var(--ease-out)'
+    };
+    const h = dense ? '46px' : '48px';
+    const ctaStyle = { ...ctaBase, width: 'auto', flex: 1, height: h };
+    const ctaStyleBlock = { ...ctaBase, height: h };
+    const ctaStyleTall = { ...ctaBase, height: '52px' };
+
+    const waOf = id => st.wa[id] || 'ready';
+    const leads = LEADS.map(l => {
+      const w = waOf(l.id);
+      const r = REASON[l.kind];
+      return {
+        ...l,
+        reasonColor: r.fg, tone: r.tone,
+        isReady: w === 'ready', isOpen: w === 'open', isDone: w === 'done',
+        onCall: () => this.call(l.id),
+        onOpen: () => this.openLead(l.id)
+      };
+    });
+    const lead = leads.find(l => l.id === st.leadId) || leads[0];
+
+    const nav = st.role === 'gestor'
+      ? [ { id: 'painel', label: 'Painel', icon: 'i-trend' },
+          { id: 'crm', label: 'Equipe', icon: 'i-users' },
+          { id: 'produtos', label: 'Produtos', icon: 'i-building' },
+          { id: 'gestao', label: 'Gestão', icon: 'i-grid' },
+          { id: 'mais', label: 'Mais', icon: 'i-menu' } ]
+      : [ { id: 'inicio', label: 'Início', icon: 'i-home' },
+          { id: 'crm', label: 'CRM', icon: 'i-grid' },
+          { id: 'agenda', label: 'Agenda', icon: 'i-calendar' },
+          { id: 'avisos', label: 'Avisos', icon: 'i-bell', badge: '4' },
+          { id: 'mais', label: 'Mais', icon: 'i-menu' } ];
+
+    const navItems = nav.map(n => {
+      const active = n.id === st.screen || (n.id === 'mais' && st.sheet === 'mais');
+      return {
+        label: n.label, icon: n.icon, badge: n.badge || false,
+        onClick: () => n.id === 'mais' ? this.setState({ sheet: 'mais' }) : this.go(n.id),
+        style: {
+          flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px',
+          padding: '6px 0', border: 'none', background: 'transparent', cursor: 'pointer',
+          fontFamily: 'inherit', minHeight: '52px',
+          color: active ? '#FF7000' : '#9A918A'
+        }
+      };
+    });
+
+    const titles = SCREEN_TITLES[st.screen] || SCREEN_TITLES.inicio;
+    const railScreens = [
+      { id: 'inicio', label: 'Início · fila do dia', icon: 'i-home', n: '01' },
+      { id: 'crm', label: 'CRM · Meu Dia', icon: 'i-grid', n: '02' },
+      { id: 'ficha', label: 'Ficha do lead', icon: 'i-chat', n: '03' },
+      { id: 'avisos', label: 'Avisos', icon: 'i-bell', n: '04' },
+      { id: 'agenda', label: 'Agenda', icon: 'i-calendar', n: '05' },
+      { id: 'tarefas', label: 'Tarefas da Sara', icon: 'i-tasks', n: '06' },
+      { id: 'produtos', label: 'Produtos', icon: 'i-building', n: '07' },
+      { id: 'painel', label: 'Gestão · painel', icon: 'i-trend', n: '08' }
+    ].map(s => ({
+      ...s,
+      onClick: () => this.setState({ screen: s.id, sys: 'normal', sheet: null, role: (s.id === 'painel' || s.id === 'gestao') ? 'gestor' : 'corretor' }),
+      style: {
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px',
+        width: '100%', padding: '9px 10px', borderRadius: '11px', border: 'none', cursor: 'pointer',
+        fontFamily: 'inherit', fontSize: '13px', textAlign: 'left',
+        fontWeight: s.id === st.screen ? 700 : 500,
+        background: s.id === st.screen ? '#FFF3EA' : 'transparent',
+        color: s.id === st.screen ? '#CC5800' : '#4A423C'
+      }
+    }));
+
+    const sysChips = [
+      { id: 'normal', label: 'Normal' }, { id: 'loading', label: 'Carregando' },
+      { id: 'empty', label: 'Vazio' }, { id: 'error', label: 'Erro' },
+      { id: 'offline', label: 'Offline' }, { id: 'expired', label: 'Sessão expirada' }
+    ].map(c => ({
+      label: c.label,
+      onClick: () => this.setState({ sys: c.id }),
+      style: {
+        padding: '7px 11px', borderRadius: '999px', border: 'none', cursor: 'pointer', fontFamily: 'inherit',
+        fontSize: '11.5px', fontWeight: c.id === st.sys ? 700 : 600,
+        background: c.id === st.sys ? '#1F1C1A' : '#F4F0EC',
+        color: c.id === st.sys ? '#fff' : '#6B635C'
+      }
+    }));
+
+    const stage = STAGES[st.stage] || STAGES[0];
+    const captions = {
+      normal: 'Estado normal · toque em “Chamar no WhatsApp” para ver a sincronização',
+      loading: 'Carregando · skeleton com a forma real do card',
+      empty: 'Vazio · fila zerada, sem beco sem saída',
+      error: 'Erro · linguagem humana e uma saída',
+      offline: 'Offline · faixa honesta com a hora dos dados',
+      expired: 'Sessão expirada · nada se perde'
+    };
+
+    return {
+      three: [1, 2, 3], noop: () => {}, caption: captions[st.sys],
+      ctaStyle, ctaStyleTall, ctaVariant, showSara: (this.props.showSara ?? true),
+      ctaStyleBlock,
+      stateBtnStyle: {
+        marginTop: '8px', height: '52px', padding: '0 26px', display: 'inline-flex', alignItems: 'center',
+        justifyContent: 'center', gap: '8px', whiteSpace: 'nowrap', borderRadius: 'var(--radius-pill)',
+        border: 'none', background: 'var(--ape-orange)', color: '#fff', fontFamily: 'var(--font-body)',
+        fontSize: '15px', fontWeight: 600, lineHeight: 1, cursor: 'pointer', boxShadow: 'var(--shadow-brand)'
+      },
+
+      roles: [ { id: 'corretor', label: 'Corretor' }, { id: 'gestor', label: 'Gestor' } ].map(r => ({
+        label: r.label,
+        onClick: () => this.setRole(r.id),
+        style: {
+          flex: 1, height: '34px', borderRadius: '999px', border: 'none', cursor: 'pointer', fontFamily: 'inherit',
+          fontSize: '12.5px', fontWeight: r.id === st.role ? 700 : 600,
+          background: r.id === st.role ? '#fff' : 'transparent',
+          color: r.id === st.role ? '#1F1C1A' : '#9A918A',
+          boxShadow: r.id === st.role ? '0 1px 2px rgba(31,28,26,.08)' : 'none'
+        }
+      })),
+      railScreens, sysChips, navItems,
+
+      headerTitle: titles[0], headerSub: titles[1],
+      showHeader: st.screen !== 'ficha' && st.sys !== 'expired',
+      showNav: st.screen !== 'ficha' && st.sys !== 'expired',
+      isLoading: st.sys === 'loading', isEmpty: st.sys === 'empty', isError: st.sys === 'error',
+      isExpired: st.sys === 'expired', offline: st.sys === 'offline',
+
+      sInicio: st.screen === 'inicio' && ['normal', 'offline'].includes(st.sys),
+      sCrm: st.screen === 'crm' && ['normal', 'offline'].includes(st.sys),
+      sFicha: st.screen === 'ficha' && ['normal', 'offline'].includes(st.sys),
+      sAvisos: st.screen === 'avisos' && ['normal', 'offline'].includes(st.sys),
+      sAgenda: st.screen === 'agenda' && ['normal', 'offline'].includes(st.sys),
+      sTarefas: st.screen === 'tarefas' && ['normal', 'offline'].includes(st.sys),
+      sProdutos: st.screen === 'produtos' && ['normal', 'offline'].includes(st.sys),
+      sPainel: st.screen === 'painel' && ['normal', 'offline'].includes(st.sys),
+      sGestao: st.screen === 'gestao' && ['normal', 'offline'].includes(st.sys),
+
+      leads, lead,
+      goAvisos: () => this.go('avisos'), goCrm: () => this.go('crm'), goTarefas: () => this.go('tarefas'),
+      openPerfil: () => this.setState({ sheet: 'mais' }), openFiltros: () => this.setState({ sheet: 'filtros' }),
+      closeSheet: () => this.setState({ sheet: null }), back: () => this.back(),
+      refresh: () => this.setState({ sys: 'loading' }, () => setTimeout(() => this.setState({ sys: 'normal' }), 1400)),
+      retry: () => this.setState({ sys: 'normal' }),
+      openCamila: () => this.openLead('l1'),
+      sheetMais: st.sheet === 'mais', sheetFiltros: st.sheet === 'filtros',
+
+      filaTabs: this.chips([ { id: 'agora', label: 'Agora · 4' }, { id: 'hoje', label: 'Hoje · 12' }, { id: 'todos', label: 'Todos · 22' } ], st.fila, 'fila'),
+      crmTabs: this.chips([ { id: 'dia', label: 'Meu Dia' }, { id: 'funil', label: 'Funil' }, { id: 'leads', label: 'Leads' }, { id: 'visitas', label: 'Visitas' } ], st.crmView, 'crmView'),
+      crmDia: st.crmView === 'dia' || st.crmView === 'leads',
+      crmFunil: st.crmView === 'funil' || st.crmView === 'visitas',
+      stageName: stage.name, stageIndex: String(st.stage + 1), stageLeads: stage.leads,
+      stageBars: STAGES.map((s, i) => ({ style: { height: '4px', flex: 1, borderRadius: '999px', background: i === st.stage ? '#FF7000' : '#E4DFD9' } })),
+      prevStage: () => this.setState(s => ({ stage: (s.stage + 3) % 4 })),
+      nextStage: () => this.setState(s => ({ stage: (s.stage + 1) % 4 })),
+      hojeRows: [ { name: 'Marina Coelho', when: 'há 38 min' }, { name: 'Bianca Ferraz', when: 'visita amanhã' }, { name: 'Paulo Ventura', when: 'há 3h' } ],
+
+      fichaTabs: this.chips([ { id: 'conversa', label: 'Conversa' }, { id: 'sara', label: 'Sara' }, { id: 'dados', label: 'Dados' }, { id: 'hist', label: 'Histórico' } ], st.fichaTab, 'fichaTab',
+        { flex: 1, h: '36px', pad: '0 8px', fs: '12.5px', onBg: '#fff', onFg: '#1F1C1A', offBg: 'transparent', offFg: '#9A918A', border: '1px solid transparent' }),
+      fichaDados: st.fichaTab === 'dados' || st.fichaTab === 'sara',
+      fichaHist: st.fichaTab === 'hist' || st.fichaTab === 'conversa',
+      dadosRows: [ { k: 'Corretor', v: 'Samuel' }, { k: 'Origem', v: 'Anúncio Jamaris' }, { k: 'Interesse', v: '2 dorms, até R$ 5.000' }, { k: 'Primeiro contato', v: '30/07, 17:12' } ],
+      histRows: [
+        { who: 'Camila', when: 'hoje 10:12', color: '#8B00CC', text: 'O valor de R$ 4.200 já inclui condomínio?' },
+        { who: 'Você', when: 'ontem 17:40', color: '#CC5800', text: 'Mandei o vídeo do apê da Pavão, dá uma olhada.' },
+        { who: 'Sistema', when: 'ontem 17:12', color: '#9A918A', text: 'Lead atribuído a Samuel pela distribuição automática.' }
+      ],
+
+      notifTabs: this.chips([ { id: 'agora', label: 'Agora · 4' }, { id: 'hoje', label: 'Hoje · 9' }, { id: 'hist', label: 'Histórico' } ], st.notif, 'notif'),
+      toggleUnread: () => this.setState(s => ({ unread: !s.unread })),
+      unreadStyle: {
+        display: 'flex', alignItems: 'center', gap: '8px', height: '36px', padding: '0 13px', borderRadius: '999px',
+        border: st.unread ? '1px solid transparent' : '1px solid #E4DFD9', cursor: 'pointer', fontFamily: 'inherit',
+        fontSize: '12px', fontWeight: 600, background: st.unread ? '#FFE4D1' : '#fff', color: st.unread ? '#CC5800' : '#6B635C'
+      },
+      unreadDot: { width: '8px', height: '8px', borderRadius: '999px', background: st.unread ? '#FF7000' : '#DED7CF' },
+      notifs: [
+        { icon: 'i-chat', tint: ['#FFE4D1', '#CC5800'], title: 'Camila Aragão respondeu', desc: 'Perguntou se o condomínio está incluso.', action: 'Abrir ficha', when: 'há 6 min', unread: true, go: () => this.openLead('l1') },
+        { icon: 'i-users', tint: ['#EBD1F5', '#66009A'], title: 'Lead novo: Rodrigo Sampaio', desc: 'Cobertura em Moema Índios · anúncio da Jamaris.', action: 'Atender agora', when: 'há 12 min', unread: true, go: () => this.openLead('l2') },
+        { icon: 'i-alert', tint: ['#FBE5E5', '#A32C2C'], title: 'Tarefa vencida: enviar planta', desc: 'Tiago Menezes espera a planta do 82 m².', action: 'Ver tarefa', when: 'venceu 2h', unread: true, go: () => this.go('tarefas') },
+        { icon: 'i-calendar', tint: ['#E6F5EC', '#136B3D'], title: 'Visita amanhã, 10h', desc: 'Bianca Ferraz · Alameda dos Anapurus, 890.', action: 'Ver visita', when: 'há 1h', unread: false, go: () => this.go('agenda') }
+      ].map(n => ({
+        ...n, onAction: n.go,
+        iconStyle: { width: '38px', height: '38px', flex: 'none', borderRadius: '12px', background: n.tint[0], color: n.tint[1], display: 'flex', alignItems: 'center', justifyContent: 'center' }
+      })),
+
+      agendaTabs: this.chips([ { id: 'dia', label: 'Dia' }, { id: 'semana', label: 'Semana' } ], st.agenda, 'agenda',
+        { pad: '0 18px', h: '32px', fs: '12.5px', onBg: '#fff', onFg: '#1F1C1A', offBg: 'transparent', offFg: '#9A918A', border: '1px solid transparent' }),
+      agendaItems: [
+        { time: '11:30', tag: 'Visita', tagColor: '#CC5800', title: 'Camila Aragão', sub: 'Rua Pavão, 512 · Moema Pássaros', now: true },
+        { time: '14:00', tag: 'Retorno prometido', tagColor: '#8A6100', title: 'Helena Prado', sub: 'Enviar proposta revisada', now: false },
+        { time: '16:30', tag: 'Visita', tagColor: '#CC5800', title: 'Bianca Ferraz', sub: 'Alameda dos Anapurus, 890', now: false },
+        { time: '18:00', tag: 'Interno', tagColor: '#66009A', title: 'Fechamento do dia', sub: 'Revisar a fila com a Sara', now: false }
+      ].map(a => ({
+        ...a,
+        dotStyle: { position: 'absolute', left: '-4px', top: '18px', width: '10px', height: '10px', borderRadius: '999px', background: a.now ? '#FF7000' : '#DED7CF', border: a.now ? '2px solid #FAF8F6' : 'none' }
+      })),
+
+      taskTabs: this.chips([ { id: 'atrasadas', label: 'Atrasadas · 2' }, { id: 'agora', label: 'Agora · 3' }, { id: 'hoje', label: 'Hoje · 5' }, { id: 'futuras', label: 'Futuras' }, { id: 'ok', label: 'Concluídas' } ], st.task, 'task'),
+      tasks: [
+        { tag: 'Atrasada', tone: 'danger', prazo: 'venceu 2h', prazoColor: '#A32C2C', acao: 'Enviar a planta do 82 m² e confirmar a visita', initials: 'TM', lead: 'Tiago Menezes', motivo: 'Sara: ele pediu a planta ontem e a visita de sábado ainda não está confirmada.', isAction: true, actionLabel: 'Chamar no WhatsApp', go: () => this.openLead('l4') },
+        { tag: 'Agora', tone: 'orange', prazo: 'vence em 40 min', prazoColor: '#8A6100', acao: 'Responder a dúvida sobre condomínio', initials: 'CA', lead: 'Camila Aragão', motivo: 'Sara: ela respondeu há 24h e é a mais quente da fila hoje.', isAction: true, actionLabel: 'Chamar no WhatsApp', go: () => this.openLead('l1') },
+        { tag: 'Sugestão da Sara', tone: 'purple', prazo: 'hoje', prazoColor: '#6B635C', acao: 'Oferecer o Jardim Pavão para a Bianca', initials: 'BF', lead: 'Bianca Ferraz', motivo: 'Sara: o perfil dela combina com o 67 m² mobiliado que abriu ontem.', isSuggestion: true, go: () => {} }
+      ].map(t => ({ ...t, onAction: t.go })),
+
+      prodChips: this.chips([ { id: 'todos', label: 'Todos' }, { id: 'pronto', label: 'Pronto pra morar' }, { id: 'obras', label: 'Obras' }, { id: 'lanc', label: 'Lançamento' }, { id: 'fav', label: 'Favoritos' } ], st.prod, 'prod'),
+      produtos: [
+        { title: 'Jardim Pavão', address: 'Moema Pássaros · 5 min metrô Eucaliptos', price: 4200, beds: 2, baths: 2, sqm: 67, parking: 1, statusBadge: { label: 'Pronto pra morar', tone: 'orange' }, photoVariant: 1, tags: ['Mobiliado', 'Decorado'] },
+        { title: 'Anapurus 890', address: 'Moema Índios · obras até dez/26', price: 6900, beds: 3, baths: 2, sqm: 104, parking: 2, statusBadge: { label: 'Obras', tone: 'purple' }, photoVariant: 3, tags: ['Entrega dez/26'] },
+        { title: 'Jamaris Living', address: 'Moema Pássaros · cobertura', price: 8400, beds: 3, baths: 3, sqm: 148, parking: 2, statusBadge: { label: 'Lançamento', tone: 'purple' }, photoVariant: 2, tags: ['Cobertura', 'Terraço'] }
+      ].map(p => ({ listing: p })),
+
+      kpis: [
+        { value: '3', label: 'leads sem primeiro contato', color: '#D93E3E' },
+        { value: '18 min', label: 'tempo médio de resposta', color: '#1F1C1A' },
+        { value: '7', label: 'visitas hoje', color: '#1F1C1A' },
+        { value: '4', label: 'propostas em aberto', color: '#8B00CC' }
+      ],
+      team: [
+        { initials: 'SM', name: 'Samuel', sla: '92% no prazo', pct: 92 },
+        { initials: 'RN', name: 'Renata', sla: '78% no prazo', pct: 78 },
+        { initials: 'KP', name: 'Kapri', sla: '64% no prazo', pct: 64 }
+      ].map(m => ({
+        ...m,
+        barStyle: { display: 'block', height: '100%', width: m.pct + '%', borderRadius: '999px', background: m.pct > 85 ? '#1E9E5A' : m.pct > 70 ? '#E8A317' : '#D93E3E' }
+      })),
+      gestaoRows: [
+        { icon: 'i-users', label: 'Distribuição de leads', sub: 'Regras por corretor e plantão' },
+        { icon: 'i-trend', label: 'Esteira de vendas', sub: 'Propostas, contratos e comissões' },
+        { icon: 'i-tasks', label: 'Regras da Sara', sub: 'Prazos, prioridades e limites' },
+        { icon: 'i-building', label: 'Cadastro de produtos', sub: 'Empreendimentos e unidades' },
+        { icon: 'i-grid', label: 'Relatórios', sub: 'Funil, SLA e conversão' }
+      ],
+      maisGroups: [
+        { title: 'Rotina', items: [
+          { icon: 'i-tasks', label: 'Tarefas da Sara', go: () => this.go('tarefas') },
+          { icon: 'i-building', label: 'Produtos', go: () => this.go('produtos') },
+          { icon: 'i-calendar', label: 'Visitas', go: () => this.go('agenda') } ] },
+        { title: 'Gestão', items: [
+          { icon: 'i-trend', label: 'Esteira de vendas', go: () => this.setRole('gestor') },
+          { icon: 'i-grid', label: 'Painel da equipe', go: () => this.setRole('gestor') } ] },
+        { title: 'Conta', items: [
+          { icon: 'i-users', label: 'Meu perfil', go: () => this.setState({ sheet: null }) },
+          { icon: 'i-lock', label: 'Sair', go: () => this.setState({ sys: 'expired', sheet: null }) } ] }
+      ].map(g => ({ title: g.title, items: g.items.map(i => ({ ...i, onClick: i.go })) })),
+      filtroGroups: [
+        { title: 'Momento', opts: ['Agora', 'Hoje', 'Semana'], active: 0 },
+        { title: 'Motivo', opts: ['Respondeu', 'Lead novo', 'Retorno', 'Vencida'], active: 0 },
+        { title: 'Etapa', opts: ['Todas', 'Atendimento', 'Visita', 'Proposta'], active: 0 }
+      ].map(f => ({
+        title: f.title,
+        opts: f.opts.map((o, i) => ({
+          label: o,
+          style: {
+            fontSize: '12.5px', fontWeight: i === f.active ? 700 : 600, padding: '9px 14px', borderRadius: '999px',
+            background: i === f.active ? '#1F1C1A' : '#F4F0EC', color: i === f.active ? '#fff' : '#6B635C'
+          }
+        }))
+      }))
+    };
+  }
+}
+
+</script>
+</body>
+</html>
