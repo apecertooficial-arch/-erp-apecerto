@@ -41,6 +41,9 @@ export function ManagerPanelMobile({ accessToken }: { accessToken: string }) {
 
   useEffect(() => {
     const controle = new AbortController();
+    // A chamada só altera estado depois da resposta externa; não há atualização
+    // síncrona no corpo do efeito apesar do falso positivo da regra do React.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void carregar(controle.signal).catch((falha) => {
       if (falha?.name === "AbortError") return;
       if (falha instanceof Error && falha.message === "sessao_expirada") setSessaoExpirada(true);
@@ -51,7 +54,7 @@ export function ManagerPanelMobile({ accessToken }: { accessToken: string }) {
   }, [carregar, tentativa]);
 
   const empresa = dados?.empresa ?? null;
-  const corretores = dados?.corretores ?? [];
+  const corretores = useMemo(() => dados?.corretores ?? [], [dados?.corretores]);
   const respostaMediana = useMemo(() => {
     const comAmostra = corretores.filter((c) => n(c.slaAmostra) > 0 && c.medianaRespostaMin !== null);
     const amostra = comAmostra.reduce((total, c) => total + n(c.slaAmostra), 0);

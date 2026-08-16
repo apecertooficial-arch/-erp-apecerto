@@ -61,6 +61,9 @@ export function SaraTasksMobile({ accessToken }: { accessToken: string }) {
 
   useEffect(() => {
     const controle = new AbortController();
+    // A chamada só altera estado depois da resposta externa; não há atualização
+    // síncrona no corpo do efeito apesar do falso positivo da regra do React.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void carregar(controle.signal).catch((falha) => {
       if (falha?.name === "AbortError") return;
       if (falha instanceof Error && falha.message === "sessao_expirada") setSessaoExpirada(true);
