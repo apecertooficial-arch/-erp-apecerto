@@ -86,7 +86,22 @@
   }
   .ape-acoes .ncrm-wa-erro { min-height: 48px; padding: 9px 11px; border-radius: 12px; font-size: 12px; }
   .ape-acoes .ncrm-wa-erro-dica { display: none; }
-  /* Alternativa do 9º dígito: plano B, uma linha discreta. */
+
+  /* SEGUNDA FORMA DO NÚMERO (tentar sem o 9º dígito).
+     Precisa continuar visível -- lead bom já foi descartado por não achar esta
+     saída. Mas é plano B: vira uma linha sublinhada sob o botão, não uma caixa
+     laranja que pesa mais que a ação principal. Vence a regra `body
+     .ncrm-wa-alt` de funil-2.css por especificidade, sem !important. */
+  .ape-acoes .ncrm-wa-alt,
+  .ape-ficha-acao .ncrm-wa-alt {
+    display: block; min-height: 36px; margin-top: 8px; padding: 8px 4px 0;
+    border: 0; border-radius: 0; background: transparent;
+    color: #9A918A; font-family: inherit; font-size: 11.5px; font-weight: 600; line-height: 1.35;
+    text-align: center; text-decoration: underline; text-underline-offset: 3px;
+  }
+  .ape-acoes .ncrm-wa-alt:active,
+  .ape-ficha-acao .ncrm-wa-alt:active { background: transparent; color: #CC5800; }
+
   .ape-acoes .ncrm-wa-secundarias { display: flex; flex-direction: column; gap: 0; margin-top: 6px; }
   .ape-acoes .ncrm-wa-secundarias > a,
   .ape-acoes .ncrm-wa-secundarias > button {
@@ -106,7 +121,6 @@
   .ape-estado.ruim strong { color: #8F2626; }
   .ape-estado.ruim p { color: #A34A4A; }
 
-  /* Carregando: a forma do card antes do conteúdo chegar. */
   @keyframes ape-brilho { 0% { background-position: -240px 0; } 100% { background-position: 240px 0; } }
   .ape-esqueleto { display: flex; flex-direction: column; gap: 12px; }
   .ape-esqueleto > div { padding: 14px; border-radius: 18px; background: #fff; box-shadow: 0 2px 6px rgba(31, 28, 26, .06); }
@@ -130,7 +144,7 @@
   .ape-ordem { display: flex; flex-direction: column; gap: 8px; margin: 0 20px; padding: 15px; border-radius: 18px; background: #F7ECFC; }
   .ape-ordem h3 { margin: 0; font-size: 17px; font-weight: 700; line-height: 1.3; letter-spacing: -.01em; text-wrap: pretty; }
   .ape-ordem p { margin: 0; color: #4A423C; font-size: 13px; font-weight: 500; line-height: 1.5; }
-  .ape-ordem-prazo { align-self: flex-start; padding: 5px 10px; border-radius: 999px; font-size: 11px; font-weight: 600; }
+  .ape-ordem-prazo { align-self: flex-start; padding: 5px 10px; border-radius: 999px; font-size: 11px; font-weight: 600; font-style: normal; }
   .ape-ordem-prazo.atrasado { background: #fff; color: #A32C2C; }
   .ape-ordem-prazo.urgente { background: #fff; color: #8A6100; }
   .ape-ordem-prazo.no-prazo { background: #fff; color: #136B3D; }
@@ -145,6 +159,7 @@
   .ape-ficha-acao .ncrm-wa-secundarias { display: flex; flex-direction: column; margin-top: 6px; }
   .ape-ficha-acao .ncrm-wa-secundarias > a,
   .ape-ficha-acao .ncrm-wa-secundarias > button { min-height: 40px; border: 0; background: transparent; color: #9A918A; font-family: inherit; font-size: 12px; font-weight: 600; text-align: center; }
+  .ape-ficha-acao .ncrm-wa-nota { display: none; }
   .ape-ficha-nota { margin: 10px 20px 0; color: #9A918A; font-size: 11px; font-weight: 500; line-height: 1.45; text-align: center; }
 
   /* Formulários herdados (agendar, notas, descartar) continuam com o markup e o
@@ -156,4 +171,14 @@
   .ape-ficha .f2m-agendar-nao { border-radius: 999px; font-family: inherit; font-weight: 600; }
   .ape-ficha .f2m-historico { margin: 18px 20px 0; padding: 16px 0 0; border-top: 1px solid #EFEAE5; }
   .ape-ficha .f2m-historico h3 { margin: 0 0 10px; font-size: 15px; font-weight: 700; }
+
+  /* BOTÃO FLUTUANTE DA SARA.
+     O widget injeta o proprio <style> em tempo de execucao, com seletor de id e
+     um degrade vermelho/rosa que nao existe na marca. Como aquela folha entra
+     depois desta, a unica forma de corrigir a cor sem reescrever o widget e o
+     !important -- excecao consciente, registrada aqui. */
+  #sara-fab {
+    background: linear-gradient(140deg, #FF7000, #8B00CC) !important;
+    box-shadow: 0 12px 30px rgba(139, 0, 204, .34) !important;
+  }
 }
