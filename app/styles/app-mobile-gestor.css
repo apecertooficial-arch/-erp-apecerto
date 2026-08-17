@@ -1,10 +1,10 @@
 /* TELAS NOVAS DO APP NO CELULAR - folha propria, sem camada sobre camada.
  *
  * Cobre o que a folha aprovada do corretor nao desenhava: as telas do gestor
- * (.ape-mais-*, .ape-equipe-*, .ape-resumo-*, .ape-cal-*) e os grupos do Meu Dia
- * (.ape-grupo-*). Cada seletor casa com markup que usa estas classes; as regras
- * antigas (.app-mais-grid, .equipe-*) continuam desenhando o desktop e nao casam
- * mais com o celular.
+ * (.ape-mais-*, .ape-equipe-*, .ape-resumo-*, .ape-cal-*), os grupos do Meu Dia
+ * (.ape-grupo-*) e a escrita da agenda (.ape-agenda-editar, status da visita).
+ * Cada seletor casa com markup que usa estas classes; as regras antigas
+ * (.app-mais-grid, .equipe-*) continuam desenhando o desktop.
  *
  * Valores literais, os mesmos do prototipo aprovado. Nada de var() aqui: se um
  * token faltar, a tela quebra em silencio.
@@ -77,14 +77,63 @@
     color: #6B635C; font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer;
   }
 
+  /* ---------- Escrita da agenda ----------
+     Marcar visita nova, marcar realizada, remarcar e cancelar. Tudo com alvo de
+     44px ou mais: o corretor faz isso em pe, na porta do predio. */
+  .ape-agenda-acoes-dia { display: flex; justify-content: flex-end; margin-bottom: 12px; }
+  .ape-agenda-nova {
+    display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 18px;
+    border: 0; border-radius: 999px; background: #1F1C1A; color: #fff;
+    font-family: inherit; font-size: 14px; font-weight: 600; cursor: pointer;
+  }
+  .ape-agenda-aviso {
+    display: flex; align-items: center; gap: 8px; margin: 0 0 12px; padding: 11px 12px;
+    border-radius: 12px; background: #E6F5EC; color: #136B3D; font-size: 13px; font-weight: 600;
+  }
+  /* O cartao dividiu a coluna com o botao de editar: os dois empilhados dentro
+     do mesmo bloco, com a linha do tempo intacta a esquerda. */
+  .ape-agenda-bloco { display: flex; flex-direction: column; margin-left: 10px; min-width: 0; }
+  .ape-agenda-bloco .ape-agenda-cartao { margin-left: 0; }
+  .ape-agenda-editar {
+    align-self: flex-start; min-height: 44px; padding: 0 2px; border: 0; background: transparent;
+    color: #FF7000; font-family: inherit; font-size: 13px; font-weight: 700; cursor: pointer;
+  }
+  .ape-agenda-status {
+    justify-self: start; margin-top: 6px; padding: 4px 9px; border-radius: 999px;
+    font-size: 10px; font-weight: 700;
+  }
+  .ape-agenda-status.realizada { background: #E6F5EC; color: #136B3D; }
+  .ape-agenda-status.cancelada { background: #FBE5E5; color: #A32C2C; }
+  /* Cancelada nao desaparece: fica riscada. Sumir sem rastro e como se a visita
+     nunca tivesse existido. */
+  .ape-agenda-item.cancelada .ape-agenda-cliente { color: #9A918A; text-decoration: line-through; }
+  .ape-agenda-item.cancelada .ape-agenda-ponto { background: #DED7CF; }
+  .ape-agenda-item.realizada .ape-agenda-ponto { background: #1E9E5A; }
+
+  .ape-agenda-editar-acoes { display: flex; flex-direction: column; gap: 12px; margin: 0 20px; }
+  .ape-agenda-realizada {
+    display: flex; align-items: center; justify-content: center; min-height: 52px;
+    border: 0; border-radius: 999px; background: #1E9E5A; color: #fff;
+    font-family: inherit; font-size: 15px; font-weight: 600; cursor: pointer;
+  }
+  .ape-agenda-realizada:disabled { opacity: .6; }
+  .ape-agenda-cancelar {
+    display: flex; align-items: center; justify-content: center; min-height: 48px;
+    border: 1.5px solid #F3C9C9; border-radius: 999px; background: #fff;
+    color: #A32C2C; font-family: inherit; font-size: 14px; font-weight: 600; cursor: pointer;
+  }
+  .ape-agenda-erro-escrita {
+    margin: 0 20px 12px; padding: 11px 12px; border-radius: 12px;
+    background: #FBE5E5; color: #A32C2C; font-size: 13px; font-weight: 600; line-height: 1.45;
+  }
+
   /* Sobrancelha da visao de gestao e ROXA -- roxo e a cor de tudo que e
      leitura e confirmacao. O laranja da abertura do corretor significa acao
      dele, e o painel do gestor nao pede acao. */
   .ape-painel .ape-sobrancelha { color: #8B00CC; }
 
   /* Filtro de periodo do Inicio do gestor. Herda a fileira rolavel de
-     .ape-filtros e sobe o alvo para 44px: e a primeira coisa que o dedo
-     encontra na tela. */
+     .ape-filtros e sobe o alvo para 44px. */
   .ape-painel-filtros { margin-bottom: 8px; }
   .ape-painel-filtros button { min-height: 44px; }
   .ape-painel-janela { margin: 0 0 14px; color: #9A918A; font-size: 12px; font-weight: 600; }
@@ -108,7 +157,7 @@
   .ape-resumo-card dd.alerta { color: #D93E3E; }
   .ape-resumo .ape-painel-skeleton { height: 118px; }
 
-  /* ---------- Grade do mes (aba Mes da agenda) ----------
+  /* ---------- Grade do mes ----------
      42 celulas sempre: mes curto nao muda a altura e a lista de baixo nao sobe
      na cara de quem esta tocando. */
   .ape-cal {
