@@ -51,6 +51,7 @@ export function ErpShell({ children }: { children: ReactNode }) {
   const naoLidas = badges["Notificações"] ?? 0;
   const rotuloSino = naoLidas > 0 ? `Notificações: ${naoLidas} não lidas` : "Notificações";
   const { barra: itensBarra, mais: itensMais } = itensDaNavegacao({ role, permissoes, carregado: perfilCarregado, isManager });
+  const rotuloMobile = rotasModulo[moduloAtual].rotuloCurto ?? moduloAtual;
 
   // Trocar de rota volta o scroll pro topo. Sem setState aqui: a folha "Mais"
   // e fechada no proprio clique do link, que e onde a intencao acontece.
@@ -81,7 +82,7 @@ export function ErpShell({ children }: { children: ReactNode }) {
               <small>{dataDeHoje}</small>
             </>
           ) : (
-            <strong>{moduloAtual}</strong>
+            <strong>{rotuloMobile}</strong>
           )}
         </div>
         <div className="amt-dir">
