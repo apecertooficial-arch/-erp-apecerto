@@ -120,7 +120,7 @@ function Vendas({ corretores, empresa, qualidade, selecionado, onSelecionar }: {
   const canceladas = soma(corretores, (c) => c.producao.visitasCanceladas);
   const funil = [
     { nome: "Leads recebidos", valor: leads, detalhe: "fora do Bolsão" },
-    { nome: "Contatos trabalhados", valor: contatos, detalhe: pct(taxa(contatos, leads)) + " da entrada" },
+    { nome: "Contatos trabalhados", valor: contatos, detalhe: "evidências no D-API" },
     { nome: "Conversas bilaterais", valor: bilaterais, detalhe: pct(taxa(bilaterais, contatos)) + " dos contatos" },
     { nome: "Visitas marcadas", valor: marcadas, detalhe: pct(taxa(marcadas, bilaterais)) + " das conversas" },
     { nome: "Visitas realizadas", valor: realizadas, detalhe: pct(taxa(realizadas, marcadas)) + " das marcadas" },
@@ -147,10 +147,10 @@ function Vendas({ corretores, empresa, qualidade, selecionado, onSelecionar }: {
 
     <section className="performance-section">
       <CabecalhoSecao rotulo="COMPARAÇÃO INDIVIDUAL" titulo="Produção de cada corretor" apoio="Clique em uma pessoa para investigar os três eixos" />
-      <div className="performance-table-wrap"><table className="performance-table vendas"><thead><tr><th>Corretor</th><th>Resultado</th><th>Entrada → contato</th><th>Conversa</th><th>Visitas</th><th>Cancelamento</th><th>Visita → venda</th></tr></thead><tbody>
+      <div className="performance-table-wrap"><table className="performance-table vendas"><thead><tr><th>Corretor</th><th>Resultado</th><th>Leads e contatos</th><th>Conversa</th><th>Visitas</th><th>Cancelamento</th><th>Visita → venda</th></tr></thead><tbody>
         {corretores.map((c) => <LinhaCorretor key={c.corretorId} corretor={c} selecionado={c.corretorId === selecionado} onSelecionar={() => onSelecionar(c.corretorId)}>
           <td><b>{inteiro(c.producao.vendas)} venda(s)</b><small>{dinheiro(c.producao.vgv)} em VGV</small></td>
-          <td><b>{inteiro(c.producao.leadsRecebidos)} → {inteiro(c.producao.contatosTrabalhados)}</b><small>{pct(taxa(c.producao.contatosTrabalhados, c.producao.leadsRecebidos))} trabalhados</small></td>
+          <td><b>{inteiro(c.producao.leadsRecebidos)} leads · {inteiro(c.producao.contatosTrabalhados)} contatos</b><small>volumes do período; bases diferentes</small></td>
           <td><b>{inteiro(c.producao.conversasBilaterais)} bilaterais</b><small>{pct(taxa(c.producao.conversasBilaterais, c.producao.contatosTrabalhados))} dos contatos</small></td>
           <td><b>{inteiro(c.producao.visitasRealizadas)} de {inteiro(c.producao.visitasMarcadas)}</b><small>{inteiro(c.producao.visitasComFeedback)} com feedback</small></td>
           <td><b>{pct(taxa(c.producao.visitasCanceladas, c.producao.visitasMarcadas))}</b><small>{inteiro(c.producao.visitasCanceladas)} cancelada(s)</small></td>

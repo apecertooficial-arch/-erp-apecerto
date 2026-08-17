@@ -60,6 +60,8 @@ test("ausência de ligação bloqueia forecast, ROI e conversão de coorte", () 
   assert.match(tela, /Limite desta leitura/);
   assert.match(tela, /não conversão de coorte/);
   assert.match(tela, /Volumes do período; não é uma coorte/);
+  assert.match(tela, /volumes do período; bases diferentes/);
+  assert.doesNotMatch(tela, /taxa\(c\.producao\.contatosTrabalhados, c\.producao\.leadsRecebidos\)/);
   assert.match(sala, /vendas_vinculadas/);
   assert.match(sala, /negocios_com_valor/);
 });
