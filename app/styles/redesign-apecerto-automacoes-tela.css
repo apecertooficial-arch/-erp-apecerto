@@ -103,3 +103,53 @@
 .original-automation-host .apecerto-automation-builder .node .foot .st span { color: #9A938B; font-weight: 600; }
 .original-automation-host .apecerto-automation-builder .node .ne-row { border: 0; border-radius: 12px; background: #FAF8F6; }
 .original-automation-host .apecerto-automation-builder .node .ne-lb { color: #6E6760; font-size: 11px; font-weight: 700; letter-spacing: 0.04em; }
+
+/* ===== o que só !important alcança =====
+   O runtime monta o corpo do bloco (bodyHtml) com style="..." INLINE: cor, corpo
+   de fonte, borda e fundo escritos direto no elemento. Estilo inline vence
+   qualquer folha externa por ORIGEM na cascata — não é ordem nem especificidade.
+   Então estes poucos alvos levam !important, o mínimo para o miolo do bloco
+   deixar de ser cinza-azulado.
+
+   Escopo triplo (.original-automation-host .apecerto-automation-builder .node)
+   mantém tudo dentro do canvas: nada disso vaza para o resto do ERP. */
+.original-automation-host .apecerto-automation-builder .node select,
+.original-automation-host .apecerto-automation-builder .node input:not([type="checkbox"]),
+.original-automation-host .apecerto-automation-builder .node textarea {
+  border: 1.5px solid #E4DFD9 !important; border-radius: 11px !important; background: #fff !important;
+  color: #1F1C1A !important; font-family: inherit !important; font-size: 12.5px !important; font-weight: 600 !important;
+}
+.original-automation-host .apecerto-automation-builder .node select { height: 40px !important; padding: 0 11px !important; cursor: pointer; }
+.original-automation-host .apecerto-automation-builder .node select:focus,
+.original-automation-host .apecerto-automation-builder .node input:focus,
+.original-automation-host .apecerto-automation-builder .node textarea:focus {
+  border-color: #FF7000 !important; box-shadow: 0 0 0 3px rgba(255,112,0,0.12) !important; outline: 0 !important;
+}
+.original-automation-host .apecerto-automation-builder .node input[type="checkbox"] { accent-color: #FF7000; }
+.original-automation-host .apecerto-automation-builder .node .ne-row,
+.original-automation-host .apecerto-automation-builder .node [data-distrow],
+.original-automation-host .apecerto-automation-builder .node [data-dsrow],
+.original-automation-host .apecerto-automation-builder .node [data-crow],
+.original-automation-host .apecerto-automation-builder .node [data-arow],
+.original-automation-host .apecerto-automation-builder .node [data-foprow],
+.original-automation-host .apecerto-automation-builder .node [data-rrow] {
+  border: 0 !important; border-radius: 12px !important; background: #FAF8F6 !important; margin-bottom: 7px !important;
+}
+/* Divisórias de 1px que o runtime pinta inline como linha cinza. */
+.original-automation-host .apecerto-automation-builder .node div[style*="height:1px"] { background: #F2EFEC !important; }
+.original-automation-host .apecerto-automation-builder .node .ne-lb { color: #6E6760 !important; }
+.original-automation-host .apecerto-automation-builder .node .ne-add {
+  border: 1.5px dashed #E4DFD9 !important; border-radius: 999px !important; background: #fff !important;
+  color: #CC5800 !important; font-family: inherit !important; font-weight: 700 !important;
+}
+.original-automation-host .apecerto-automation-builder .node .ne-add:hover { border-color: #FF7000 !important; background: #FFF3EA !important; }
+.original-automation-host .apecerto-automation-builder .node .ne-del { color: #D93E3E !important; }
+/* Os chips de resumo ("Nome do lead recebe nome") vêm com fundo inline. */
+.original-automation-host .apecerto-automation-builder .node span[style*="border-radius:6px"],
+.original-automation-host .apecerto-automation-builder .node span[style*="border-radius: 6px"] {
+  border-radius: 999px !important; padding: 3px 9px !important; font-weight: 700 !important;
+}
+/* Painel "Blocos básicos": o runtime o solta sobre o canvas com fundo próprio. */
+.original-automation-host .apecerto-automation-builder .palette { border: 0 !important; border-radius: 20px !important; background: #fff !important; box-shadow: 0 18px 44px rgba(31,28,26,0.16) !important; }
+.original-automation-host .apecerto-automation-builder .pal-item { border: 1.5px solid #E4DFD9 !important; border-radius: 14px !important; background: #fff !important; color: #4D4842 !important; font-family: inherit !important; font-weight: 600 !important; }
+.original-automation-host .apecerto-automation-builder .pal-item:hover { border-color: #FF7000 !important; background: #FFF3EA !important; }
