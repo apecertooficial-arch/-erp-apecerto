@@ -1,0 +1,127 @@
+/* =============================================================================
+   REDESENHO APÊCERTO — Esteira de Vendas 3.0 (5 de 5 da mesma camada)
+
+   Classes REAIS lidas em app/features/sales/SalesProcessWorkspace.tsx:
+   sales-process, sales-head-actions, sales-approvals, sales-add-stage,
+   sales-kpis, sales-filter, sales-kanban, sales-stage (+ --sale-stage),
+   sales-stage-body, sales-drop, sale-card (+ late), sla-top-band,
+   sale-card-content, card-person, lead-avatar, sale-card-broker, presence,
+   sla-clock-v3, card-context, card-tags, sale-kind, sale-card-controls,
+   crm-primary, crm-secondary, crm-stage-cog, crm-stage-menu, crm-loading.
+
+   A réplica havia desenhado esta tela com nomes próprios (.est-*), que não
+   existem no produto — por isso a Esteira continuava com a cara antiga. Aqui o
+   mesmo desenho aprovado, ancorado nas classes que a tela realmente usa.
+   ============================================================================= */
+
+/* Cabeçalho e ações */
+.sales-process { background:#FAF8F6; padding:0 4px 28px; }
+.sales-process>header span { font-size:11px; font-weight:700; letter-spacing:.12em; color:#FF7000; }
+.sales-process>header h2 { margin:6px 0 3px; font-size:20px; font-weight:700; letter-spacing:-.02em; color:#1F1C1A; }
+.sales-process>header p { font-size:12.5px; font-weight:600; color:#6E6760; }
+.sales-head-actions { display:flex; gap:10px; flex-wrap:wrap; }
+.sales-head-actions .crm-secondary, .sales-add-stage button:not(.crm-primary) { min-height:42px; border:1px solid #E4DFD9; border-radius:999px; padding:0 20px; background:#fff; color:#1F1C1A; font-size:13px; font-weight:700; cursor:pointer; }
+.sales-head-actions .crm-secondary:hover { border-color:#FF7000; color:#C25200; }
+.sales-head-actions .crm-primary, .sales-add-stage .crm-primary { min-height:42px; border:0; border-radius:999px; padding:0 22px; background:#FF7000; color:#fff; font-size:13px; font-weight:700; cursor:pointer; box-shadow:0 8px 20px rgba(255,112,0,.26); }
+.sales-head-actions .crm-primary:hover { background:#E85D00; }
+.sales-add-stage { display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:14px; padding:14px 16px; border-radius:18px; background:#fff; box-shadow:0 2px 6px rgba(31,28,26,.06); }
+.sales-add-stage input { flex:1 1 260px; min-height:42px; border:1px solid #E4DFD9; border-radius:999px; padding:0 16px; font-size:13px; font-weight:600; color:#1F1C1A; background:#FAF8F6; }
+.sales-add-stage input:focus { outline:0; border-color:#FF7000; background:#fff; box-shadow:0 0 0 3px rgba(255,112,0,.16); }
+
+/* Solicitações aguardando aprovação: cartão roxo da Sara */
+.sales-approvals { border:0; border-radius:20px; background:#F7ECFC; padding:16px 18px; margin-bottom:14px; }
+.sales-approvals-head strong { font-size:14.5px; font-weight:700; color:#1F1C1A; }
+.sales-approvals-head span { border-radius:999px; padding:3px 10px; background:#8B00CC; color:#fff; font-size:11.5px; font-weight:700; }
+.sales-approval-row { border:0; border-radius:16px; background:#fff; padding:12px 14px; margin-top:9px; box-shadow:0 1px 3px rgba(31,28,26,.05); }
+.sales-approval-info strong { font-size:13.5px; font-weight:700; color:#1F1C1A; }
+.sales-approval-info small { font-size:12px; font-weight:600; color:#6E6760; }
+.sales-approval-actions button { min-height:36px; border:1px solid #E4DFD9; border-radius:999px; padding:0 15px; background:#fff; font-size:12.5px; font-weight:700; color:#1F1C1A; }
+.sales-approval-actions .crm-primary { border:0; background:#FF7000; color:#fff; box-shadow:0 6px 16px rgba(255,112,0,.22); }
+
+/* KPIs: bloco tonal, número 28/700 na cor, rótulo 12/600 — sem bolhas brancas */
+.sales-kpis { gap:12px; margin:14px 0; }
+.sales-kpis article { min-height:auto; border:0; border-radius:18px; padding:18px 20px; display:flex; flex-direction:column; gap:4px; overflow:hidden; box-shadow:none; }
+.sales-kpis article::before, .sales-kpis article::after { display:none !important; }
+.sales-kpis article strong { font-size:28px; font-weight:700; line-height:1; letter-spacing:-.02em; }
+.sales-kpis article span { font-size:12px; font-weight:600; color:#6E6760; }
+.sales-kpis article:nth-child(1) { background:#FFF3EA; border-color:transparent; }
+.sales-kpis article:nth-child(1) strong { color:#C25200; }
+.sales-kpis article:nth-child(2) { background:#F7ECFC; border-color:transparent; }
+.sales-kpis article:nth-child(2) strong { color:#66009A; }
+.sales-kpis article:nth-child(3) { background:#E4F6EC; border-color:transparent; }
+.sales-kpis article:nth-child(3) strong { color:#0F7A3D; }
+.sales-kpis article:nth-child(4) { background:#E6F7F5; border-color:transparent; }
+.sales-kpis article:nth-child(4) strong { color:#12756E; }
+.sales-kpis article:nth-child(5) { background:#FBE5E5; border-color:transparent; }
+.sales-kpis article:nth-child(5) strong { color:#B33131; }
+.sales-kpis article.danger { background:#FBE5E5; border-color:transparent; }
+.sales-kpis article.danger strong { color:#B33131; }
+
+/* Filtro: barra branca em pill */
+.sales-filter { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:14px; padding:10px 14px; border:0; border-radius:999px; background:#fff; box-shadow:0 2px 6px rgba(31,28,26,.06); }
+.sales-filter b { font-size:10px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:#9A938B; margin-right:4px; }
+.sales-filter button { border:1px solid #E4DFD9; border-radius:999px; padding:7px 15px; background:#fff; color:#6E6760; font-size:12.5px; font-weight:600; cursor:pointer; }
+.sales-filter button:hover { border-color:#FF7000; color:#C25200; }
+.sales-filter button.active { background:#FFF3EA; border-color:#FF7000; color:#C25200; font-weight:700; }
+.sales-filter>span { margin-left:auto; font-size:11.5px; font-weight:600; color:#9A938B; }
+
+/* Kanban: coluna areia com cabeçalho branco e dot na cor da etapa */
+.sales-kanban { display:flex; gap:12px; overflow-x:auto; padding-bottom:10px; scrollbar-width:thin; }
+.sales-stage { flex:0 0 272px; min-width:272px; border:0; border-radius:18px; background:#FAF8F6; padding:14px; }
+.sales-stage>header { display:flex; align-items:center; gap:8px; padding:11px 12px; border-radius:14px; background:#fff; box-shadow:0 2px 6px rgba(31,28,26,.06); }
+.sales-stage>header i { width:9px; height:9px; flex:none; border-radius:50%; background:var(--sale-stage,#FF7000); }
+.sales-stage>header strong { font-size:13px; font-weight:700; line-height:1.25; color:#1F1C1A; }
+.crm-stage-head-right { display:flex; align-items:center; gap:6px; flex:none; }
+.crm-stage-head-right>span { font-size:12px; font-weight:700; color:#6E6760; }
+.crm-stage-cog { width:26px; height:22px; display:grid; place-items:center; border:0; border-radius:999px; background:#F2EFEC; color:#6E6760; font-size:13px; line-height:0; cursor:pointer; }
+.crm-stage-cog:hover { background:#FFE4D1; color:#C25200; }
+.sales-stage>small { display:block; margin:10px 2px; font-size:11.5px; font-weight:600; color:#9A938B; }
+.crm-stage-menu { border:0; border-radius:16px; background:#fff; box-shadow:0 12px 30px rgba(31,28,26,.14); padding:12px; }
+.crm-stage-menu button { min-height:34px; border:1px solid #E4DFD9; border-radius:999px; padding:0 13px; background:#fff; font-size:12px; font-weight:700; color:#1F1C1A; cursor:pointer; }
+.crm-stage-menu button:hover { border-color:#FF7000; color:#C25200; }
+.crm-stage-danger { border-color:#F2D6D2 !important; color:#B33131 !important; }
+.crm-stage-bulk { width:100%; margin:8px 0; }
+.sales-stage-body { gap:10px; }
+.sales-drop { display:grid; place-items:center; padding:16px; border:1px dashed #E4DFD9; border-radius:14px; background:transparent; font-size:12px; font-weight:600; color:#9A938B; }
+
+/* Cartão de venda: branco radius 16, igual às linhas do Meu Dia */
+.sale-card { border:0; border-radius:16px; background:#fff; box-shadow:0 2px 6px rgba(31,28,26,.06); overflow:hidden; margin-bottom:10px; cursor:pointer; transition:box-shadow .15s ease, transform .15s ease; }
+.sale-card:hover { box-shadow:0 8px 20px rgba(31,28,26,.1); transform:translateY(-1px); }
+.sla-top-band { height:3px; }
+.sla-top-band.verde { background:#1FA85A; }
+.sla-top-band.vermelho { background:#D93E3E; }
+.sale-card-content { display:flex; flex-direction:column; gap:9px; padding:14px; }
+.card-person { display:flex; align-items:flex-start; gap:10px; }
+.card-person .lead-avatar { width:34px; height:34px; flex:none; border-radius:10px; display:grid; place-items:center; overflow:hidden; background:#F7ECFC; color:#66009A; font-size:12px; font-weight:700; }
+.card-person .lead-avatar img { width:100%; height:100%; object-fit:cover; }
+.card-person strong { display:block; font-size:13.5px; font-weight:700; line-height:1.25; color:#1F1C1A; }
+.card-person small { display:block; margin-top:1px; font-size:12px; font-weight:600; color:#9A938B; }
+.sale-card-broker { display:flex; align-items:center; gap:7px; font-size:12px; }
+.sale-card-broker strong { font-weight:700; color:#4C4845; }
+.sale-card-broker .presence { width:8px; height:8px; flex:none; border-radius:50%; background:#C9C2BB; }
+.sale-card-broker .presence.online { background:#1FA85A; }
+.sla-clock-v3 { display:flex; align-items:baseline; gap:6px; }
+.sla-clock-v3 b { font-size:13px; font-weight:700; color:#1F1C1A; }
+.sla-clock-v3 span { font-size:11.5px; font-weight:600; color:#9A938B; }
+.sale-card.late .sla-clock-v3 b { color:#B33131; }
+.card-context { display:flex; flex-wrap:wrap; align-items:baseline; justify-content:space-between; gap:6px; padding-top:9px; border-top:1px solid #F2EFEC; }
+.card-context span { font-size:12px; font-weight:600; color:#6E6760; }
+.card-context b { font-size:14px; font-weight:700; color:#1F1C1A; }
+.card-tags { display:flex; flex-wrap:wrap; gap:6px; }
+.card-tags span { border-radius:999px; padding:4px 10px; background:#FFF3EA; color:#C25200; font-size:11px; font-weight:700; }
+.sale-kind { align-self:flex-start; border-radius:999px; padding:4px 10px; background:#F7ECFC; color:#66009A; font-size:11px; font-weight:700; }
+.sale-card-controls { padding:0 14px 14px; }
+.sale-card-controls select { width:100%; min-height:38px; border:1px solid #E4DFD9; border-radius:12px; padding:0 10px; background:#fff; font-size:12.5px; font-weight:600; color:#1F1C1A; }
+.sale-card-controls select:focus { outline:0; border-color:#FF7000; box-shadow:0 0 0 3px rgba(255,112,0,.16); }
+
+/* Estados */
+.crm-loading { display:grid; place-items:center; gap:10px; min-height:280px; font-size:13px; font-weight:600; color:#6E6760; }
+.crm-error { border:0; border-radius:16px; background:#FBE5E5; color:#B33131; padding:12px 16px; font-size:12.5px; font-weight:700; margin-bottom:12px; }
+@media (max-width:1100px) {
+  .sales-kpis { grid-template-columns:repeat(2,minmax(0,1fr)); }
+}
+@media (max-width:700px) {
+  .sales-stage { flex:0 0 82vw; min-width:82vw; }
+  .sales-kpis { grid-template-columns:1fr; }
+  .sales-filter { border-radius:18px; }
+}
