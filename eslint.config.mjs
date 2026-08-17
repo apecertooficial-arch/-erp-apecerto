@@ -17,6 +17,9 @@ const eslintConfig = defineConfig([
     // Dependencias de terceiros auto-hospedadas; lintamos o adaptador
     // app/lib/opusMic.ts, não o bundle minificado do fornecedor.
     "public/_vendor/**",
+    // Export estático do protótipo visual aprovado; o código do aplicativo
+    // vigente mora em app/ e continua coberto pelo lint.
+    "public/prototipo/**",
     "next-env.d.ts",
     // Bundle gerado pelo harness de teste do shell — nao e codigo-fonte.
     "tests/shell/.build/**",
