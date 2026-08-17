@@ -31,12 +31,12 @@ export function CaptureWizard({ onClose, onSaved }: CaptureWizardProps) {
   // Este wizard cadastra SEMPRE um empreendimento/prédio. Imóvel de terceiro (indicação)
   // agora entra pelo fluxo "Cadastrar unidade" (UnitWizard), evitando prédios duplicados.
   const [propertyType] = useState<"terceiro" | "construtora">("construtora");
-  // "Cadastrar produto" cria SEMPRE um prédio novo. Prédio existente = "Cadastrar unidade".
-  const [condominiumMode] = useState<"existing" | "new">("new");
+  // O nome do condomínio é busca com seleção: bateu com um existente, a captação entra nele.
+  const [condominiumId, setCondominiumId] = useState("");
+  const condominiumMode: "existing" | "new" = condominiumId ? "existing" : "new";
   const [ownerMode, setOwnerMode] = useState<"existing" | "new">("new");
   const [condominiums, setCondominiums] = useState<Condominium[]>([]);
   const [owners, setOwners] = useState<Owner[]>([]);
-  const [condominiumId] = useState("");
   const [ownerId, setOwnerId] = useState("");
   const [condominium, setCondominium] = useState(emptyCondominium);
   const [owner, setOwner] = useState(emptyOwner);
@@ -76,7 +76,7 @@ export function CaptureWizard({ onClose, onSaved }: CaptureWizardProps) {
 
   function validateCurrentStep() {
     if (step === 1 && condominiumMode === "existing" && !condominiumId) return "Selecione um condomínio ou cadastre um novo.";
-    if (step === 1 && condominiumMode === "new" && (!condominium.name.trim() || !condominium.address.trim() || !condominium.number.trim() || !condominium.neighborhood.trim() || !condominium.city.trim())) return "Preencha o nome e o endereço completo do condomínio.";
+    if (step === 1 && condominiumMode === "new" && !condominium.name.trim()) return "Dê o nome do condomínio.";
     if (step === 2 && propertyType === "terceiro" && ownerMode === "existing" && !ownerId) return "Selecione um proprietário ou cadastre um novo.";
     if (step === 2 && propertyType === "terceiro" && ownerMode === "new" && (!owner.name.trim() || !owner.phone.trim() || !owner.email.trim())) return "Nome, telefone e e-mail do proprietário são obrigatórios.";
     if (step === 3 && (!property.name.trim() || !property.price || !property.area)) return "Informe pelo menos nome, preço e área do imóvel.";
@@ -171,7 +171,7 @@ export function CaptureWizard({ onClose, onSaved }: CaptureWizardProps) {
   }, [step]);
 
   function safeFileName(name: string) {
-    return name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9._-]/g, "-").toLowerCase();
+    return name.normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-zA-Z0-9._-]/g, "-").toLowerCase();
   }
 
   async function save() {
@@ -249,11 +249,11 @@ export function CaptureWizard({ onClose, onSaved }: CaptureWizardProps) {
   }
 
   return (
-    <div className="modal-layer" role="dialog" aria-modal="true" aria-label="Cadastrar produto">
+    <div className="modal-layer" role="dialog" aria-modal="true" aria-label="Cadastrar condomínio">
       <button className="modal-scrim" onClick={onClose} aria-label="Fechar cadastro" type="button" />
       <section className="capture-panel">
         <header className="capture-header">
-          <div><span className="eyebrow">CAPTAÇÃO COMPLETA</span><h2>Novo produto</h2><p>Uma única jornada, conectada ao Supabase.</p></div>
+          <div><span className="eyebrow">CAPTAÇÃO COMPLETA</span><h2>Novo condomínio</h2><p>Uma única jornada, conectada ao Supabase.</p></div>
           <button className="icon-button" onClick={onClose} type="button" aria-label="Fechar">×</button>
         </header>
         <div className="progress-track"><span style={{ width: progress }} /></div>
@@ -262,9 +262,9 @@ export function CaptureWizard({ onClose, onSaved }: CaptureWizardProps) {
         </div>
 
         <div className="capture-body">
-          {step === 0 && <div className="form-section"><h3>Cadastrar empreendimento (prédio)</h3><p>Este cadastro cria um <strong>empreendimento/prédio</strong> no catálogo — com condomínio, unidades, plantas e preços individuais.</p><div className="notice"><strong>Só quer cadastrar uma unidade de indicação?</strong><span>Feche aqui e use o botão <strong>“＋ Cadastrar unidade”</strong> no catálogo. Ele vincula o apê a um prédio já existente, sem criar um empreendimento duplicado.</span></div></div>}
+          {step === 0 && <div className="form-section"><h3>Cadastrar condomínio (prédio)</h3><p>Este cadastro cria um <strong>condomínio/prédio</strong> no catálogo — com unidades, plantas e preços individuais.</p><div className="notice"><strong>Só quer cadastrar uma unidade?</strong><span>Feche aqui e use o botão <strong>“＋ Cadastrar unidade”</strong> no catálogo. Ele vincula o apê a um prédio já existente, sem criar um condomínio duplicado.</span></div></div>}
 
-          {step === 1 && <div className="form-section"><h3>Localização do empreendimento</h3><p>Cadastre o endereço do <strong>prédio novo</strong>. Se o prédio já existe no sistema, feche aqui e use “＋ Cadastrar unidade”.</p><label>Nome do condomínio<input value={condominium.name} onChange={(event) => setCondominium({ ...condominium, name: event.target.value })} placeholder="Nome do condomínio" /></label><div className="field-grid"><label>CEP<input value={condominium.zipCode} onChange={(event) => setCondominium({ ...condominium, zipCode: event.target.value })} placeholder="00000-000" /></label><label>Endereço<input value={condominium.address} onChange={(event) => setCondominium({ ...condominium, address: event.target.value })} placeholder="Rua, avenida..." /></label><label>Número<input value={condominium.number} onChange={(event) => setCondominium({ ...condominium, number: event.target.value })} /></label><label>Complemento<input value={condominium.complement} onChange={(event) => setCondominium({ ...condominium, complement: event.target.value })} /></label><label>Bairro<input value={condominium.neighborhood} onChange={(event) => setCondominium({ ...condominium, neighborhood: event.target.value })} /></label><label>Cidade<input value={condominium.city} onChange={(event) => setCondominium({ ...condominium, city: event.target.value })} /></label><label>UF<input value={condominium.state} maxLength={2} onChange={(event) => setCondominium({ ...condominium, state: event.target.value.toUpperCase() })} /></label></div></div>}
+          {step === 1 && <div className="form-section"><h3>Localização do empreendimento</h3><p>Digite o nome do condomínio: se ele <strong>já existir</strong>, selecione na lista e a captação entra nele; se for novo, siga com o nome — o endereço completo é opcional agora.</p><label>Nome do condomínio<input list="cw-condominios" value={condominium.name} onChange={(event) => { const nome = event.target.value; setCondominium({ ...condominium, name: nome }); const achado = condominiums.find((c) => c.nome.trim().toLowerCase() === nome.trim().toLowerCase()); setCondominiumId(achado?.id ?? ""); }} placeholder="Digite para buscar ou criar" /><datalist id="cw-condominios">{condominiums.map((c) => <option key={c.id} value={c.nome}>{[c.bairro, c.cidade].filter(Boolean).join(" · ")}</option>)}</datalist></label>{condominiumId ? <p className="notice" style={{marginTop:6}}><strong>Condomínio já cadastrado</strong><span> — a unidade entra nele; endereço e fotos do prédio já existem.</span></p> : <p className="hint-inline">Não achou na lista? Siga só com o nome — endereço e fotos do prédio podem ser completados depois.</p>}<div className="field-grid"><label>CEP<input value={condominium.zipCode} onChange={(event) => setCondominium({ ...condominium, zipCode: event.target.value })} placeholder="00000-000" /></label><label>Endereço<input value={condominium.address} onChange={(event) => setCondominium({ ...condominium, address: event.target.value })} placeholder="Rua, avenida..." /></label><label>Número<input value={condominium.number} onChange={(event) => setCondominium({ ...condominium, number: event.target.value })} /></label><label>Complemento<input value={condominium.complement} onChange={(event) => setCondominium({ ...condominium, complement: event.target.value })} /></label><label>Bairro<input value={condominium.neighborhood} onChange={(event) => setCondominium({ ...condominium, neighborhood: event.target.value })} /></label><label>Cidade<input value={condominium.city} onChange={(event) => setCondominium({ ...condominium, city: event.target.value })} /></label><label>UF<input value={condominium.state} maxLength={2} onChange={(event) => setCondominium({ ...condominium, state: event.target.value.toUpperCase() })} /></label></div></div>}
 
           {step === 2 && <div className="form-section"><h3>{propertyType === "terceiro" ? "Proprietário responsável" : "Responsável pelo produto"}</h3>{propertyType === "construtora" ? <div className="notice"><strong>Empreendimento de construtora</strong><span>O responsável comercial será identificado pela incorporadora na próxima etapa; proprietário não é obrigatório.</span></div> : <><p>Todo imóvel de terceiro fica associado a um proprietário cadastrado.</p><div className="mode-switch"><button className={ownerMode === "existing" ? "active" : ""} onClick={() => setOwnerMode("existing")} type="button">Selecionar existente</button><button className={ownerMode === "new" ? "active" : ""} onClick={() => setOwnerMode("new")} type="button">＋ Novo proprietário</button></div>{ownerMode === "existing" ? <label>Proprietário<select value={ownerId} onChange={(event) => setOwnerId(event.target.value)}><option value="">Selecione...</option>{owners.map((item) => <option value={item.id} key={item.id}>{item.nome} · {item.telefone}</option>)}</select></label> : <><label>Nome completo<input value={owner.name} onChange={(event) => setOwner({ ...owner, name: event.target.value })} /></label><div className="field-grid"><label>Telefone<input value={owner.phone} onChange={(event) => setOwner({ ...owner, phone: event.target.value })} placeholder="(11) 99999-9999" /></label><label>E-mail<input type="email" value={owner.email} onChange={(event) => setOwner({ ...owner, email: event.target.value })} placeholder="nome@email.com" /></label></div></>}</>}</div>}
 
@@ -279,7 +279,7 @@ export function CaptureWizard({ onClose, onSaved }: CaptureWizardProps) {
           {message && <div className={message.includes("sucesso") ? "form-message success" : "form-message"} role="alert">{message}</div>}
         </div>
 
-        <footer className="capture-footer"><button className="ghost-action" onClick={back} disabled={step === 0 || saving} type="button">Voltar</button><span>Etapa {step + 1} de {steps.length}</span>{step < steps.length - 1 ? <button className="primary-action" onClick={next} type="button">Continuar</button> : <button className="primary-action" disabled={saving} onClick={() => void save()} type="button">{saving ? "Salvando..." : "Cadastrar produto"}</button>}</footer>
+        <footer className="capture-footer"><button className="ghost-action" onClick={back} disabled={step === 0 || saving} type="button">Voltar</button><span>Etapa {step + 1} de {steps.length}</span>{step < steps.length - 1 ? <button className="primary-action" onClick={next} type="button">Continuar</button> : <button className="primary-action" disabled={saving} onClick={() => void save()} type="button">{saving ? "Salvando..." : "Cadastrar condomínio"}</button>}</footer>
       </section>
     </div>
   );

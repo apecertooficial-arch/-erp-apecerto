@@ -191,7 +191,7 @@ export function ProductsModule({ accessToken }: { accessToken: string }) {
 <>
       <header className="topbar">
         <div><h1>Produtos</h1><p>{products.length} empreendimentos no portfólio</p></div>
-        <div className="top-actions"><button className="secondary-action" onClick={() => setUnitWizardOpen(true)} type="button">＋ Cadastrar unidade</button><button className="primary-action" onClick={() => setCaptureOpen(true)} type="button">＋ Cadastrar produto</button></div>
+        <div className="top-actions"><button className="secondary-action" onClick={() => setUnitWizardOpen(true)} type="button">＋ Cadastrar unidade</button><button className="primary-action" onClick={() => setCaptureOpen(true)} type="button">＋ Cadastrar condomínio</button></div>
       </header>
       <section className="catalog-controls">
         <div className="catalog-heading"><strong className="catalog-title">Catálogo</strong><span className={`data-status ${dataState}`}>{dataState === "live" ? "● Dados reais · sessão protegida" : dataState === "loading" ? "○ Conectando ao Supabase..." : dataState === "auth" ? "○ Login necessário" : "○ Erro de conexão"}</span></div>
