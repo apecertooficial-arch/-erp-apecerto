@@ -1,0 +1,71 @@
+/* =============================================================================
+   REDESENHO APÊCERTO — card do catálogo de Produtos (6 de 6 da mesma camada)
+
+   Fecha a diferença que faltava entre o desenho aprovado e a tela publicada:
+   foto encaixada dentro da moldura branca, selo de status sólido na cor do tom,
+   chips de área/dorm./vaga com ícone e cor, barra de estoque proporcional e
+   rodapé em faixa tonal com o R$/m² e o convite "Ver ficha".
+
+   O tom vem da classe que o ProductsModule agora aplica no card conforme o
+   status real do produto: t-pronto (verde), t-obras (âmbar), t-lanc (roxo).
+   ============================================================================= */
+
+.product-card { --tom:#1FA85A; --tom-bg:#E4F6EC; --tom-ink:#0F7A3D; }
+.product-card.t-obras { --tom:#F2A82C; --tom-bg:#FDF1D9; --tom-ink:#B87800; }
+.product-card.t-lanc { --tom:#8B00CC; --tom-bg:#F7ECFC; --tom-ink:#66009A; }
+
+/* Moldura branca com a foto encaixada dentro */
+.product-card { border:0; border-radius:26px; padding:10px; background:#fff; box-shadow:0 3px 10px rgba(31,28,26,.07); overflow:hidden; }
+.product-card:hover, .product-card:focus-visible { box-shadow:0 14px 34px rgba(31,28,26,.13), 0 0 0 2px var(--tom); transform:translateY(-3px); }
+.product-photo { height:182px; border-radius:19px; overflow:hidden; background:var(--tom-bg); }
+.product-photo img { width:100%; height:100%; object-fit:cover; }
+.product-photo>span { border-radius:999px; padding:6px 13px; background:var(--tom); color:#fff; font-size:11.5px; font-weight:700; letter-spacing:.03em; box-shadow:0 3px 10px rgba(31,28,26,.18); }
+.product-photo .approval-badge { background:#fff; color:#B33131; }
+.product-photo .approval-badge.pendente { background:#fff; color:#B87800; }
+.product-photo>button { width:32px; height:32px; border:0; border-radius:999px; background:rgba(255,255,255,.94); color:#4C4845; box-shadow:0 2px 6px rgba(31,28,26,.1); }
+.product-photo .building-icon { color:var(--tom-ink); opacity:.35; }
+
+/* Identificação */
+.product-info { padding:16px 10px 8px; }
+.product-info .price { color:#FF7000; font-size:25px; font-weight:700; letter-spacing:-.02em; line-height:1.1; }
+.product-info h2 { font-size:17.5px; font-weight:700; letter-spacing:-.01em; color:#1F1C1A; }
+.product-info .location { display:flex; align-items:center; gap:5px; margin:2px 0 4px; font-size:13px; font-weight:600; color:#6E6760; }
+.product-info .developer { font-size:12px; font-weight:600; color:#9A938B; margin:0 0 8px; }
+
+/* Chips com ícone: área laranja, dormitório roxo, vaga teal */
+.product-info .specs { display:flex; flex-wrap:wrap; gap:7px; border-top:0; padding-top:0; margin:10px 0 0; }
+.product-info .specs span { display:inline-flex; align-items:center; gap:6px; border:0; border-radius:999px; padding:7px 13px; font-size:12.5px; font-weight:700; }
+.product-info .specs svg { width:14px; height:14px; flex:none; }
+.product-info .specs .s-area { background:#FFE4D1; color:#C25200; }
+.product-info .specs .s-area svg { color:#FF7000; }
+.product-info .specs .s-dorm { background:#F7ECFC; color:#66009A; }
+.product-info .specs .s-vaga { background:#E1F2F1; color:#12756E; }
+
+/* Estoque: número em texto + barra proporcional na cor do tom */
+.estoque { display:grid; gap:8px; margin-top:16px; }
+.estoque-top { display:flex; align-items:baseline; justify-content:space-between; gap:8px; }
+.estoque-top strong { font-size:13.5px; font-weight:700; color:var(--tom-ink); }
+.estoque-top span { font-size:12px; font-weight:600; color:#9A938B; }
+.estoque-bar { height:9px; border-radius:999px; background:#F1EBE5; overflow:hidden; }
+.estoque-bar i { display:block; height:100%; border-radius:999px; background:var(--tom); }
+
+/* Aprovação dentro do card */
+.approval-captador { font-size:12px; font-weight:600; color:#6E6760; margin:12px 0 8px; }
+.approval-reason { border-radius:12px; padding:9px 12px; background:#FBE5E5; color:#B33131; font-size:12px; font-weight:600; margin-top:12px; }
+.approval-actions { display:flex; gap:8px; margin-top:4px; }
+.approval-actions button { flex:1; min-height:38px; border:0; border-radius:999px; font-size:12.5px; font-weight:700; cursor:pointer; }
+.approval-actions .ap-approve { background:#E4F6EC; color:#0F7A3D; }
+.approval-actions .ap-approve:hover { background:#1FA85A; color:#fff; }
+.approval-actions .ap-reject { background:#FBE5E5; color:#B33131; }
+.approval-actions .ap-reject:hover { background:#D93E3E; color:#fff; }
+
+/* Rodapé: faixa tonal com R$/m² e o convite para abrir a ficha */
+.product-info footer { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-top:16px; padding:13px 15px; border-top:0; border-radius:17px; background:var(--tom-bg); }
+.product-info footer strong { color:var(--tom-ink); font-size:13.5px; font-weight:700; }
+.product-info footer::after { content:"Ver ficha →"; font-size:12.5px; font-weight:700; color:var(--tom-ink); white-space:nowrap; transition:transform .15s ease; }
+.product-card:hover .product-info footer::after { transform:translateX(2px); }
+
+/* Grade: cards grandes de verdade */
+.product-grid { gap:20px; grid-template-columns:repeat(auto-fill, minmax(288px,1fr)); }
+@media (max-width:1180px) { .product-grid { grid-template-columns:repeat(auto-fill, minmax(270px,1fr)); } }
+@media (max-width:580px) { .product-grid { grid-template-columns:1fr; } }
