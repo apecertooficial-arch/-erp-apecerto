@@ -1,0 +1,52 @@
+/* =============================================================================
+   REDESENHO APÊCERTO — CRM: menu de visões, cartão do lead e ações rápidas
+   (7 de 7 da mesma camada)
+
+   Conferido em Funil2Workspace.tsx: o menu é .f2-nav com a classe "ativo" no
+   botão da visão atual; as ações do lead são .f2-atalhos (Chat, WhatsApp,
+   Agendar visita, Gerar negociação e .f2-descartar); as do cartão são
+   .f2-card-botoes (Conversa, WhatsApp, Descartar e .f2-principal).
+
+   O CSS antigo dessas três barras vinha de funil-2.css com valores próprios de
+   raio e sombra que venciam a folha 1 em alguns estados — daqui em diante o
+   valor vigente é este.
+   ============================================================================= */
+
+/* Menu de visões: pill único, ativo em tint laranja, sem anel duplo */
+.f2-nav { gap:8px; }
+.f2-nav button { display:inline-flex; align-items:center; gap:8px; min-height:42px; border:1px solid #E4DFD9 !important; border-radius:999px !important; padding:0 18px !important; background:#fff !important; color:#4C4845 !important; font-size:13.5px !important; font-weight:600 !important; box-shadow:none !important; outline:0 !important; }
+.f2-nav button svg { width:17px; height:17px; flex:none; }
+.f2-nav button:hover { border-color:#FF7000 !important; color:#C25200 !important; }
+.f2-nav button.ativo { background:#FFF3EA !important; border-color:#FF7000 !important; color:#C25200 !important; font-weight:700 !important; box-shadow:none !important; outline:0 !important; }
+.f2-nav button.ativo svg { color:#FF7000; }
+
+/* Ações rápidas do lead: tudo pill; Chat em laranja, WhatsApp em verde */
+.f2-atalhos { display:flex !important; flex-wrap:wrap; gap:10px; }
+.f2-atalhos button, .f2-atalhos a, .f2-atalhos span { display:inline-flex !important; align-items:center; justify-content:center; gap:8px; min-height:44px; border:1px solid #E4DFD9 !important; border-radius:999px !important; padding:0 20px !important; background:#fff !important; color:#1F1C1A !important; font-size:13px !important; font-weight:700 !important; text-decoration:none; box-shadow:none !important; }
+.f2-atalhos button:hover, .f2-atalhos a:hover { border-color:#FF7000 !important; color:#C25200 !important; }
+.f2-atalhos>button:first-child { border-color:#FF7000 !important; background:#FFF3EA !important; color:#C25200 !important; }
+.f2-atalhos>button:first-child:hover { background:#FF7000 !important; color:#fff !important; }
+.f2-atalhos>a { border-color:#BFE6CE !important; background:#E4F6EC !important; color:#0F7A3D !important; }
+.f2-atalhos>a:hover { background:#1FA85A !important; border-color:#1FA85A !important; color:#fff !important; }
+.f2-atalhos>span { color:#9A938B !important; font-weight:600 !important; background:#FAF8F6 !important; }
+.f2-atalhos .f2-descartar { border-color:#F2D6D2 !important; color:#B33131 !important; background:#fff !important; }
+.f2-atalhos .f2-descartar:hover { background:#FBE5E5 !important; border-color:#E8ADA8 !important; color:#B33131 !important; }
+
+/* Botões do cartão do lead: mesma gramática, em escala menor */
+.f2-card-botoes { display:flex !important; flex-wrap:wrap; gap:7px; }
+.f2-card-botoes button, .f2-card-botoes a { display:inline-flex !important; align-items:center; justify-content:center; gap:6px; min-height:34px; border:1px solid #E4DFD9 !important; border-radius:999px !important; padding:0 14px !important; background:#fff !important; color:#4C4845 !important; font-size:12px !important; font-weight:700 !important; text-decoration:none; box-shadow:none !important; }
+.f2-card-botoes button:hover, .f2-card-botoes a:hover { border-color:#FF7000 !important; color:#C25200 !important; }
+.f2-card-botoes>a { border-color:#BFE6CE !important; background:#E4F6EC !important; color:#0F7A3D !important; }
+.f2-card-botoes .f2-descartar { border-color:#EDE7E1 !important; color:#9A938B !important; }
+.f2-card-botoes .f2-descartar:hover { border-color:#F2D6D2 !important; color:#B33131 !important; }
+.f2-card-botoes .f2-principal, .f2-card-botoes button.principal { flex:1 1 100%; min-height:38px; border:0 !important; background:#FF7000 !important; color:#fff !important; font-size:12.5px !important; box-shadow:0 6px 16px rgba(255,112,0,.22) !important; }
+.f2-card-botoes .f2-principal:hover, .f2-card-botoes button.principal:hover { background:#E85D00 !important; color:#fff !important; }
+
+/* Resumo do lead: os três blocos e o alerta de prazo no padrão */
+.f2-agora-grid .etapa, .f2-agora-grid .momento, .f2-agora-grid .acao { border:0 !important; border-radius:16px !important; padding:14px 16px !important; }
+.f2-agora-grid .etapa { background:#FFF3EA !important; }
+.f2-agora-grid .momento { background:#F7ECFC !important; }
+.f2-agora-grid .acao { background:#E4F6EC !important; }
+.f2-agora-grid span { display:block; margin-bottom:5px; font-size:10px !important; font-weight:700 !important; letter-spacing:.12em; text-transform:uppercase; color:#9A938B !important; }
+.f2-agora-grid b { font-size:14.5px !important; font-weight:700 !important; line-height:1.3; color:#1F1C1A !important; }
+.f2-agora-cab em { border-radius:999px; padding:5px 12px; font-size:11px; font-weight:700; font-style:normal; }
