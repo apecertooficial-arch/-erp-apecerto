@@ -41,7 +41,10 @@ export type RotaModulo = {
 };
 
 export const rotasModulo: Record<ModuleName, RotaModulo> = {
-  "Início": { path: "/inicio", slugs: ["dashboard"], classe: "A", rotuloCurto: "Início", mobile: true },
+  /* "Meu Dia", nao "Inicio": no celular esta aba abre a FILA do dia -- o que
+     chegou, o que chamar agora, o que fica para mais tarde. O rotulo diz o que
+     o corretor vai encontrar, nao onde ele esta. */
+  "Início": { path: "/inicio", slugs: ["dashboard"], classe: "A", rotuloCurto: "Meu Dia", mobile: true },
   CRM: { path: "/crm", slugs: ["crm", "leads", "pipeline"], classe: "A", rotuloCurto: "CRM", mobile: true },
   "Calendário": { path: "/agenda", slugs: ["calendario"], classe: "A", rotuloCurto: "Agenda", mobile: true },
   "Notificações": { path: "/notificacoes", slugs: ["notificacoes"], classe: "A", rotuloCurto: "Avisos", mobile: true },
