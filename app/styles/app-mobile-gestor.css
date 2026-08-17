@@ -59,6 +59,13 @@
      dele, e o painel do gestor nao pede acao. */
   .ape-painel .ape-sobrancelha { color: #8B00CC; }
 
+  /* Filtro de periodo do Inicio do gestor. Herda a fileira rolavel de
+     .ape-filtros e sobe o alvo para 44px: e a primeira coisa que o dedo
+     encontra na tela. */
+  .ape-painel-filtros { margin-bottom: 8px; }
+  .ape-painel-filtros button { min-height: 44px; }
+  .ape-painel-janela { margin: 0 0 14px; color: #9A918A; font-size: 12px; font-weight: 600; }
+
   /* ---------- Inicio do gestor: resumo da operacao ----------
      Tres cartoes, um por pergunta. Rotulo a esquerda, numero a direita: a
      coluna de numeros alinhada e o que permite comparar de relance. */
