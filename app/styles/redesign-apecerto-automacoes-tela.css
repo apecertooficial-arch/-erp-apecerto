@@ -1,9 +1,10 @@
-/* AUTOMAÇÕES — biblioteca da tela do módulo (/automacoes).
+/* AUTOMAÇÕES — biblioteca da tela do módulo (/automacoes) + acabamento do miolo
+   do construtor.
 
-   Classes próprias (apn-*) porque este markup não existe em lugar nenhum do ERP:
-   nada aqui disputa seletor com globals.css nem com automation-builder.css, e por
-   isso a folha não precisa de prefixo defensivo. O construtor, quando aberto, quem
-   pinta é redesign-apecerto-automacoes.css (folha 14).
+   Classes próprias (apn-*) na primeira metade: markup novo, nada aqui disputa
+   seletor com globals.css nem com automation-builder.css. A segunda metade
+   continua prefixada por .original-automation-host .apecerto-automation-builder,
+   como a folha 14, porque o alvo é markup do runtime.
 
    Só cor, tipografia, borda, raio, sombra e respiro, no padrão apêcerto: areia
    #FAF8F6, branco nos cartões, linha #E4DFD9, tinta #1F1C1A, laranja #FF7000 com
@@ -26,6 +27,10 @@
 .apn-topo-txt h1 { margin: 1px 0 0; font-size: 18px; font-weight: 700; letter-spacing: -0.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .apn-voltar { height: 38px; padding: 0 15px; border: 1.5px solid #E4DFD9; border-radius: 999px; background: #fff; color: #4D4842; font-family: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
 .apn-voltar:hover { background: #FAF8F6; }
+.apn-arranjo { height: 38px; padding: 0 16px; border: 1.5px solid #FF7000; border-radius: 999px; background: #FFF3EA; color: #CC5800; font-family: inherit; font-size: 12px; font-weight: 700; cursor: pointer; white-space: nowrap; }
+.apn-arranjo:hover { background: #FFE4D1; }
+.apn-arranjo:disabled { border-color: #E4DFD9; background: #fff; color: #9A938B; cursor: not-allowed; }
+.apn-aviso-arranjo { margin: 10px 28px 0; border-radius: 12px; background: #FFF3EA; color: #CC5800; padding: 10px 14px; font-size: 12.5px; font-weight: 600; }
 
 .apn-erro { margin: 20px 32px 0; border-radius: 14px; background: #FBE5E5; color: #D93E3E; padding: 12px 15px; font-size: 12.5px; font-weight: 600; }
 .apn-erro button { margin-left: 8px; border: 1.5px solid #F6DADA; border-radius: 999px; background: #fff; color: #D93E3E; padding: 4px 11px; font-family: inherit; font-size: 11.5px; font-weight: 700; cursor: pointer; }
@@ -73,3 +78,28 @@
 .apn-card-pe { display: flex; align-items: center; gap: 8px; }
 .apn-abrir { margin-left: auto; height: 38px; padding: 0 16px; border: 1.5px solid #E4DFD9; border-radius: 999px; background: #fff; color: #CC5800; font-family: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
 .apn-abrir:hover { border-color: #FF7000; background: #FFF3EA; }
+
+/* ===== miolo do bloco no construtor — o que a folha 14 ainda deixava cinza =====
+   Mesmo prefixo da folha 14 (três níveis), porque automation-builder.css escreve
+   estes alvos com dois. Estrutura, arraste e ligação continuam do runtime. */
+.original-automation-host .apecerto-automation-builder .node .ports { padding: 2px 14px 8px; gap: 6px; }
+.original-automation-host .apecerto-automation-builder .node .ne-port,
+.original-automation-host .apecerto-automation-builder .node .port { gap: 8px; font-size: 11.5px; }
+.original-automation-host .apecerto-automation-builder .node .ne-port .lbl,
+.original-automation-host .apecerto-automation-builder .node .port .lbl { color: #6E6760; font-weight: 600; }
+.original-automation-host .apecerto-automation-builder .node .ne-port.err .lbl,
+.original-automation-host .apecerto-automation-builder .node .port.err .lbl { color: #D93E3E; }
+.original-automation-host .apecerto-automation-builder .in-dot { left: -8px; width: 15px; height: 15px; border: 2.5px solid #FF7000; background: #fff; box-shadow: 0 1px 3px rgba(31,28,26,0.16); }
+.original-automation-host .apecerto-automation-builder .node .slot { margin: 0 14px 9px; border: 0; border-radius: 12px; background: #FAF8F6; padding: 10px 12px; color: #4D4842; }
+.original-automation-host .apecerto-automation-builder .node .slot .tag { border-radius: 999px; padding: 3px 9px; background: #F7ECFC; color: #66009A; font-size: 10px; font-weight: 700; }
+.original-automation-host .apecerto-automation-builder .node .rand-row { margin: 0 14px 8px; border: 0; border-radius: 12px; background: #FAF8F6; padding: 9px 12px; font-size: 12px; }
+.original-automation-host .apecerto-automation-builder .node .rand-row b { color: #CC5800; font-weight: 700; }
+.original-automation-host .apecerto-automation-builder .node .desc { color: #6E6760; padding: 0 14px 10px; }
+.original-automation-host .apecerto-automation-builder .node .hd { padding: 12px 14px 7px; gap: 10px; }
+.original-automation-host .apecerto-automation-builder .node .hd .nic { width: 30px; height: 30px; border-radius: 10px; }
+.original-automation-host .apecerto-automation-builder .node .hd .badge-off { border: 0; border-radius: 999px; padding: 3px 9px; background: #FDF1D9; color: #8A6100; }
+.original-automation-host .apecerto-automation-builder .node .foot .st { padding: 9px 4px; }
+.original-automation-host .apecerto-automation-builder .node .foot .st b { font-size: 15px; }
+.original-automation-host .apecerto-automation-builder .node .foot .st span { color: #9A938B; font-weight: 600; }
+.original-automation-host .apecerto-automation-builder .node .ne-row { border: 0; border-radius: 12px; background: #FAF8F6; }
+.original-automation-host .apecerto-automation-builder .node .ne-lb { color: #6E6760; font-size: 11px; font-weight: 700; letter-spacing: 0.04em; }
