@@ -49,28 +49,29 @@ import "./styles/performance.css";
     14. ...-automacoes.css ................... Automações: construtor e explicador
     15. ...-automacoes-tela.css .............. Automações: biblioteca da tela do módulo (apn-*)
     16. ...-automacoes-cartao.css ............ Automações: rodapé de ações do cartão + passos
+    17. ...-construtor-paridade.css .......... Construtor: cartão de bloco em paridade com o desenho
 
    Elas substituem por cascata os valores visuais que globals.css, funil-2.css,
    performance.css e automation-builder.css definiam para os MESMOS seletores —
-   não são tema opcional nem segunda pele: são o visual do produto. Do CSS antigo
-   resta a base estrutural (layout, grid, posição).
+   não são tema opcional nem segunda pele: são o visual do produto.
 
-   Escritas sobre as classes REAIS dos componentes, conferidas arquivo por
-   arquivo. Só cor, tipografia, peso, borda, raio, sombra e respiro.
+   DUAS ARMADILHAS JÁ PAGAS, anotadas para não repetir:
 
-   ORDEM NÃO BASTA quando a folha antiga escreve o mesmo alvo com mais classes
-   (ex.: .approach-list .approach-card > footer .approach-edit-btn). Por isso cada
-   folha nova nasce prefixada pela classe raiz da tela — .approaches-workspace,
-   .campaign-workspace, .calendar-workspace, .original-automation-host — em vez de
-   confiar em quem carrega por último. As folhas 15 e 16 são a exceção que confirma
-   a regra: markup novo, classes próprias (apn-*), nenhuma disputa. E dentro do
-   canvas do construtor há um caso à parte: o runtime escreve style="..." INLINE,
-   que vence folha externa por ORIGEM na cascata — só ali usamos !important, preso
-   ao escopo .original-automation-host .apecerto-automation-builder .node.
+   (a) ORDEM NÃO BASTA quando a folha antiga escreve o mesmo alvo com mais classes
+       (ex.: .approach-list .approach-card > footer .approach-edit-btn). Por isso
+       cada folha nasce prefixada pela classe raiz da tela.
+
+   (b) DENTRO DO CONSTRUTOR o seletor é COMPOSTO, não descendente: o runtime faz
+       ROOT.classList.add('apecerto-automation-builder') no MESMO nó que já tem
+       original-automation-host. ".original-automation-host .apecerto-..." (com
+       espaço) não casa com nada — foi o que deixou regras mortas nas folhas 15 e
+       16 e rendeu três rodadas de "não mudou nada". A folha 17 é a que vale para o
+       cartão de bloco. E onde o runtime escreve style="..." inline, só !important
+       alcança (origem na cascata).
 
    Ficam ANTES das folhas do aplicativo no celular, logo abaixo: o app do
-   corretor continua exatamente como está. O runtime do construtor de Automações
-   (159 KB, fechado) não é tocado — a folha 14 só repinta o que ele desenha. */
+   corretor continua exatamente como está. O runtime do construtor (159 KB,
+   fechado) não é tocado — as folhas 14 e 17 só repintam o que ele desenha. */
 import "./styles/redesign-apecerto.css";
 import "./styles/redesign-apecerto-produtos-financeiro.css";
 import "./styles/redesign-apecerto-financeiro-abas.css";
@@ -87,6 +88,7 @@ import "./styles/redesign-apecerto-calendario.css";
 import "./styles/redesign-apecerto-automacoes.css";
 import "./styles/redesign-apecerto-automacoes-tela.css";
 import "./styles/redesign-apecerto-automacoes-cartao.css";
+import "./styles/redesign-apecerto-construtor-paridade.css";
 /* INTERFACE DO APLICATIVO NO CELULAR — versão aprovada.
    Não é correção da folha antiga: o markup do Meu Dia e do CRM usa classes
    próprias (.ape-*), então esta folha é a única que os desenha. As regras

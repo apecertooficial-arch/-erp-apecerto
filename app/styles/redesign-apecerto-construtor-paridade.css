@@ -1,0 +1,118 @@
+/* PARIDADE DO CARTÃO DE BLOCO — protótipo do canvas x construtor publicado.
+
+   ARMADILHA QUE CUSTOU TRÊS RODADAS DE "NÃO MUDOU NADA":
+   dentro do construtor o seletor é COMPOSTO, não descendente. O runtime faz
+   ROOT.classList.add('apecerto-automation-builder') no MESMO nó que já tem
+   original-automation-host, então
+
+     .original-automation-host .apecerto-automation-builder   (com espaço)  → nada
+     .original-automation-host.apecerto-automation-builder    (sem espaço)  → casa
+
+   As folhas 15 e 16 escreveram o cabeçalho e o miolo do bloco com espaço: regras
+   mortas, nunca aplicadas. Esta folha refaz aquilo do jeito certo e passa a ser a
+   única que vale para o cartão de bloco.
+
+   E onde o runtime escreve style="..." INLINE (todo o corpo do bloco vem de
+   bodyHtml), só !important alcança — estilo inline vence folha externa por ORIGEM
+   na cascata, não por ordem nem especificidade.
+
+   Valores conferidos um a um contra o protótipo. O runtime segue sem uma linha
+   alterada: nada aqui muda estrutura, arraste, ligação ou execução. */
+
+/* ===== o cartão ===== */
+.original-automation-host.apecerto-automation-builder .node.editable { width: 300px; }
+.original-automation-host.apecerto-automation-builder .node { border-radius: 16px; box-shadow: 0 2px 8px rgba(31,28,26,0.08); }
+.original-automation-host.apecerto-automation-builder .node .bar { height: 5px; border-radius: 16px 16px 0 0; }
+
+/* ===== cabeçalho: chip 34px, eyebrow cinza, título 15px, número sem pill ===== */
+.original-automation-host.apecerto-automation-builder .node .hd { padding: 14px 16px 0; gap: 11px; align-items: flex-start; }
+.original-automation-host.apecerto-automation-builder .node .hd .nic { width: 34px; height: 34px; border-radius: 10px; }
+.original-automation-host.apecerto-automation-builder .node .hd .nic svg { width: 17px; height: 17px; }
+.original-automation-host.apecerto-automation-builder .node .hd .ttl { font-size: 15px !important; font-weight: 700 !important; letter-spacing: -0.01em; line-height: 1.25; color: #1F1C1A !important; }
+.original-automation-host.apecerto-automation-builder .node .hd .apn-node-tipo {
+  color: #9A938B !important; font-size: 11px !important; font-weight: 600 !important;
+  letter-spacing: 0.12em; text-transform: uppercase; line-height: 1.2;
+}
+.original-automation-host.apecerto-automation-builder .node .hd .apn-num {
+  margin-left: auto; order: 9; padding: 0; background: transparent;
+  color: #9A938B; font-size: 11px; font-weight: 700; font-variant-numeric: tabular-nums;
+}
+.original-automation-host.apecerto-automation-builder .node .hd .apn-node-rename {
+  order: 10; width: 24px; height: 24px; display: grid; place-items: center; border: 0;
+  border-radius: 999px; background: transparent; color: #C3BBB2; cursor: pointer;
+}
+.original-automation-host.apecerto-automation-builder .node .hd .apn-node-rename:hover { background: #FFF3EA; color: #CC5800; }
+.original-automation-host.apecerto-automation-builder .node .hd .ne-del { color: #C3BBB2 !important; }
+.original-automation-host.apecerto-automation-builder .node .hd .ne-del:hover { color: #D93E3E !important; }
+
+/* ===== corpo ===== */
+.original-automation-host.apecerto-automation-builder .node .ne { padding: 11px 16px 14px; display: flex; flex-direction: column; gap: 11px; }
+.original-automation-host.apecerto-automation-builder .node .ne-lb {
+  color: #9A938B !important; font-size: 10px !important; font-weight: 700 !important;
+  letter-spacing: 0.1em; text-transform: uppercase;
+}
+.original-automation-host.apecerto-automation-builder .node select,
+.original-automation-host.apecerto-automation-builder .node input:not([type="checkbox"]),
+.original-automation-host.apecerto-automation-builder .node .ne-inp,
+.original-automation-host.apecerto-automation-builder .node .ne-sel,
+.original-automation-host.apecerto-automation-builder .node .ne-ta {
+  border: 1.5px solid #E4DFD9 !important; border-radius: 10px !important; background: #fff !important;
+  color: #1F1C1A !important; font-family: inherit !important; font-size: 12px !important; font-weight: 600 !important;
+}
+.original-automation-host.apecerto-automation-builder .node select,
+.original-automation-host.apecerto-automation-builder .node .ne-sel { height: 34px !important; padding: 0 11px !important; cursor: pointer; }
+.original-automation-host.apecerto-automation-builder .node input:not([type="checkbox"]),
+.original-automation-host.apecerto-automation-builder .node .ne-inp { height: 34px !important; padding: 0 11px !important; }
+.original-automation-host.apecerto-automation-builder .node select:focus,
+.original-automation-host.apecerto-automation-builder .node input:focus,
+.original-automation-host.apecerto-automation-builder .node textarea:focus {
+  border-color: #FF7000 !important; box-shadow: 0 0 0 3px rgba(255,112,0,0.12) !important; outline: 0 !important;
+}
+.original-automation-host.apecerto-automation-builder .node input[type="checkbox"] { accent-color: #FF7000; width: 16px; height: 16px; }
+
+/* Texto de apoio do bloco: o runtime escreve cor e corpo inline em cada <div>. */
+.original-automation-host.apecerto-automation-builder .node .ne > div[style*="font-size:11px"],
+.original-automation-host.apecerto-automation-builder .node .ne div[style*="ink-faint"] {
+  color: #6E6760 !important; font-size: 11.5px !important; line-height: 1.45 !important;
+}
+
+/* Linhas internas (condição, ação, corretor, campo…): bloco areia sem borda dura. */
+.original-automation-host.apecerto-automation-builder .node .ne-row,
+.original-automation-host.apecerto-automation-builder .node [data-distrow],
+.original-automation-host.apecerto-automation-builder .node [data-dsrow],
+.original-automation-host.apecerto-automation-builder .node [data-crow],
+.original-automation-host.apecerto-automation-builder .node [data-arow],
+.original-automation-host.apecerto-automation-builder .node [data-foprow],
+.original-automation-host.apecerto-automation-builder .node [data-rrow] {
+  border: 0 !important; border-radius: 10px !important; background: #FAF8F6 !important; margin-bottom: 0 !important;
+}
+.original-automation-host.apecerto-automation-builder .node div[style*="height:1px"] { background: #F2EFEC !important; }
+
+/* "+ adicionar …": pill tracejado de 32px. */
+.original-automation-host.apecerto-automation-builder .node .ne-add {
+  height: 32px !important; border: 1.5px dashed #E4DFD9 !important; border-radius: 999px !important;
+  background: #fff !important; color: #CC5800 !important; font-family: inherit !important;
+  font-size: 11.5px !important; font-weight: 700 !important;
+}
+.original-automation-host.apecerto-automation-builder .node .ne-add:hover { border-color: #FF7000 !important; background: #FFF3EA !important; }
+
+/* Caixa do webhook e chips de resumo. */
+.original-automation-host.apecerto-automation-builder .node .hookbox,
+.original-automation-host.apecerto-automation-builder .node .codebox { border: 0 !important; border-radius: 10px !important; background: #FAF8F6 !important; color: #4D4842 !important; font-size: 10.5px !important; }
+.original-automation-host.apecerto-automation-builder .node .hookbtn { height: 26px !important; border: 1.5px solid #E4DFD9 !important; border-radius: 999px !important; background: #fff !important; color: #4D4842 !important; font-size: 10.5px !important; font-weight: 700 !important; }
+.original-automation-host.apecerto-automation-builder .node span[style*="border-radius:6px"] { border-radius: 999px !important; padding: 3px 9px !important; font-weight: 700 !important; }
+
+/* Portas e pé de contadores — já batiam; ficam aqui para o cartão inteiro morar
+   num só arquivo. */
+.original-automation-host.apecerto-automation-builder .node .ne-port { gap: 8px; font-size: 11px; margin-top: 4px; }
+.original-automation-host.apecerto-automation-builder .node .ne-port .lbl { color: #9A938B; font-weight: 600; }
+.original-automation-host.apecerto-automation-builder .node .ne-port.err .lbl { color: #D93E3E; }
+.original-automation-host.apecerto-automation-builder .in-dot { left: -8px; width: 15px; height: 15px; border: 2.5px solid #FF7000; background: #fff; }
+.original-automation-host.apecerto-automation-builder .node .foot .st b { font-size: 15px; font-weight: 700; }
+.original-automation-host.apecerto-automation-builder .node .foot .st span { color: #9A938B; font-size: 10.5px; font-weight: 600; }
+
+/* Painel "Blocos básicos" — mesmo motivo do espaço: as regras da folha 15 estavam
+   mortas. */
+.original-automation-host.apecerto-automation-builder .palette { border: 0 !important; border-radius: 20px !important; background: #fff !important; box-shadow: 0 18px 44px rgba(31,28,26,0.16) !important; }
+.original-automation-host.apecerto-automation-builder .pal-item { border: 1.5px solid #E4DFD9 !important; border-radius: 14px !important; background: #fff !important; color: #4D4842 !important; font-family: inherit !important; font-weight: 600 !important; }
+.original-automation-host.apecerto-automation-builder .pal-item:hover { border-color: #FF7000 !important; background: #FFF3EA !important; }
