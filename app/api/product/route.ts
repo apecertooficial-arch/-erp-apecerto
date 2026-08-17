@@ -12,7 +12,7 @@ const productFields = [
   "nome", "incorporadora", "descricao", "status", "preco", "condominio_valor", "iptu",
   "outros_custos", "area_util", "dormitorios", "suites", "vagas", "banheiros", "endereco",
   "numero", "complemento", "bairro", "cidade", "uf", "cep", "acesso_tipo", "acesso_codigo",
-  "acesso_instrucoes",
+  "acesso_instrucoes", "tour_url",
 ] as const;
 
 function publicMediaUrl(path: string) {
