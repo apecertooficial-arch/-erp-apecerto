@@ -1,0 +1,39 @@
+/* Rodape do cartao: os botoes perdiam a disputa.
+
+   globals.css escreve estes tres com TRES classes
+   (.approach-list .approach-card > footer .approach-edit-btn), enquanto a folha
+   principal usava duas (.approaches-workspace .approach-edit-btn). Especificidade
+   maior ganha independente da ordem de carga -- por isso o "Editar mensagens"
+   continuava esticado em tint laranja no publicado e os icones ficavam com a
+   borda antiga.
+
+   Aqui as regras repetem a MESMA forma do globals e acrescentam a classe raiz,
+   ficando um degrau acima. Mesmos valores da folha principal, nada novo. */
+
+.approaches-workspace .approach-list .approach-card > footer { display: flex; align-items: center; gap: 6px; }
+.approaches-workspace .approach-list .approach-card > footer .approach-edit-btn { flex: 0 0 auto; min-height: 38px; border: 1.5px solid #E4DFD9; border-radius: 999px; padding: 0 15px; background: #fff; color: #CC5800; font-size: 12px; font-weight: 700; cursor: pointer; }
+.approaches-workspace .approach-list .approach-card > footer .approach-edit-btn:hover { border-color: #FF7000; background: #FFF3EA; }
+.approaches-workspace .approach-list .approach-card > footer .approach-ico-btn { width: 34px; height: 34px; border: 1.5px solid #E4DFD9; border-radius: 999px; background: #fff; color: #6E6760; font-size: 14px; }
+.approaches-workspace .approach-list .approach-card > footer .approach-ico-btn:first-of-type { margin-left: auto; }
+.approaches-workspace .approach-list .approach-card > footer .approach-ico-btn:hover { border-color: #E4DFD9; background: #FAF8F6; }
+.approaches-workspace .approach-list .approach-card > footer .approach-ico-btn.danger { border-color: #F6DADA; color: #D93E3E; background: #fff; }
+.approaches-workspace .approach-list .approach-card > footer .approach-ico-btn.danger:hover { border-color: #D93E3E; background: #FBE5E5; }
+
+/* Mesma disputa, mesmo remedio: o cartao e o grid tambem existem no globals
+   prefixados por .approach-list. */
+.approaches-workspace .approach-list .approach-cards { grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; margin-bottom: 0; }
+.approaches-workspace .approach-list .approach-card { border: 0; border-radius: 18px; padding: 18px; gap: 12px; box-shadow: 0 2px 6px rgba(31,28,26,0.06); }
+.approaches-workspace .approach-list .approach-card.inactive { opacity: 0.72; }
+.approaches-workspace .approach-list .approach-card > header { gap: 10px; }
+.approaches-workspace .approach-list .approach-card > header strong { font-size: 15px; font-weight: 700; letter-spacing: -0.01em; }
+.approaches-workspace .approach-list .approach-card .approach-card-ico { width: 34px; height: 34px; border-radius: 10px; background: #F7ECFC; color: #66009A; font-size: 16px; }
+.approaches-workspace .approach-list .approach-card .approach-msg-box { border: 0; border-radius: 14px; background: #FAF8F6; padding: 12px 14px; }
+.approaches-workspace .approach-list .approach-card .approach-msg-box p { color: #4D4842; font-size: 13px; line-height: 1.5; }
+.approaches-workspace .approach-list .approach-card .approach-var-tag { align-self: flex-start; margin-bottom: 6px; background: #F7ECFC; color: #66009A; }
+
+/* Cabecalho de grupo: os dois icones do fim sao alcancados no globals por
+   seletor de atributo ([title="Renomear grupo"], [title^="Dissolver"]). */
+.approaches-workspace .approach-group-head button[title="Renomear grupo"],
+.approaches-workspace .approach-group-head button[title^="Dissolver"] { width: 34px; height: 34px; padding: 0; margin-left: 0; border: 1.5px solid #E4DFD9; border-radius: 999px; background: #fff; color: #6E6760; font-size: 12px; }
+.approaches-workspace .approach-group-head button[title="Renomear grupo"]:hover,
+.approaches-workspace .approach-group-head button[title^="Dissolver"]:hover { background: #FAF8F6; }
