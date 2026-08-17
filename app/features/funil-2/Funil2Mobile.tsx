@@ -9,6 +9,11 @@
  * Os dados sao reais: /api/funil2 devolve os leads, momentos, eventos e notas
  * do Supabase, com o token da sessao. Nada nesta tela e inventado -- quando um
  * campo nao existe no banco, o bloco correspondente simplesmente nao aparece.
+ *
+ * MEU DIA EM TRES GRUPOS: o que acabou de chegar, o que chamar agora e o que
+ * fica para mais tarde. Antes era uma lista corrida com chips de filtro em
+ * cima, e o corretor tinha que ler card por card para descobrir o que era
+ * urgente -- o grupo responde isso antes da leitura.
  */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -473,10 +478,9 @@ export function Funil2Mobile({
   onIr: (destino: string) => void;
 }) {
   const { dados, erro, recarregar } = useFunil2Mobile(accessToken);
-  const [filtroDia, setFiltroDia] = useState<FiltroDia>(() => {
-    if (modo === "crm") return "todos";
-    return (dados?.leads ?? []).some((lead) => esperandoPrimeiraChamada(lead)) ? "novos" : "agora";
-  });
+  /* No Meu Dia a lista NAO e filtrada por chip: os tres grupos abaixo dao conta
+     do recorte. "todos" aqui significa "deixe o agrupamento decidir". */
+  const [filtroDia, setFiltroDia] = useState<FiltroDia>("todos");
   const [etapa, setEtapa] = useState("todos");
   const [busca, setBusca] = useState("");
   const [selecionado, setSelecionado] = useState<string | null>(null);
@@ -508,16 +512,46 @@ export function Funil2Mobile({
     });
   }, [agora, busca, etapa, filtroDia, fimHoje, leads]);
 
+  /* OS TRES GRUPOS DO MEU DIA, na ordem em que o corretor age.
+     "Acabou de chegar" vem primeiro mesmo com prazo mais folgado: lead novo tem
+     minutos, nao horas. Depois o que ja venceu ou vence agora, e por fim o
+     resto de hoje. Quem tem prazo depois de hoje nao aparece aqui -- isso e a
+     carteira, e mora no CRM. */
+  const gruposDoDia = useMemo(() => {
+    const chegou = visiveis.filter((lead) => esperandoPrimeiraChamada(lead));
+    const idsChegou = new Set(chegou.map((lead) => lead.id));
+    const resto = visiveis.filter((lead) => !idsChegou.has(lead.id) && +new Date(lead.proxima_acao_em) <= fimHoje);
+    return [
+      { chave: "chegou", titulo: "Acabou de chegar", leads: chegou },
+      { chave: "agora", titulo: "Chamar agora", leads: resto.filter((lead) => +new Date(lead.proxima_acao_em) <= agora) },
+      { chave: "depois", titulo: "Daqui a pouco", leads: resto.filter((lead) => +new Date(lead.proxima_acao_em) > agora) },
+    ].filter((grupo) => grupo.leads.length > 0);
+  }, [agora, fimHoje, visiveis]);
+
+  /* A manchete conta quem esta esperando AGORA (chegou + vencido), nao a lista
+     inteira: "esperam voce agora" tem que casar com o que os dois primeiros
+     grupos mostram. */
+  const esperandoAgora = gruposDoDia
+    .filter((grupo) => grupo.chave !== "depois")
+    .reduce((total, grupo) => total + grupo.leads.length, 0);
+  const totalNoDia = gruposDoDia.reduce((total, grupo) => total + grupo.leads.length, 0);
+
   const leadPedido = pedidoUrl === null ? null : leads.find((lead) => lead.origem_negocio_id === pedidoUrl) ?? null;
   const leadAberto = selecionado === "__fechado__" ? null : leads.find((lead) => lead.id === selecionado) ?? leadPedido;
   const primeiroNome = nome.trim().split(/\s+/)[0] || "corretor";
-  const naFila = contagens.agora;
+
+  const cartao = (lead: LeadFunil2) => <CartaoLead
+    key={lead.id}
+    lead={lead}
+    momento={momentos.find((momento) => momento.codigo === lead.momento_codigo) ?? null}
+    onAbrir={() => setSelecionado(lead.id)}
+  />;
 
   return <main className={`ape-app modo-${modo}`} aria-label={modo === "inicio" ? `Meu Dia de ${primeiroNome}` : "CRM"}>
     <header className="ape-abertura">
       {modo === "inicio" ? <>
-        <span className="ape-sobrancelha">Sua fila de hoje</span>
-        <h1 className="ape-manchete">{naFila === 1 ? "1 pessoa espera você agora" : `${naFila} pessoas esperam você agora`}</h1>
+        <span className="ape-sobrancelha">Meu Dia</span>
+        <h1 className="ape-manchete">{esperandoAgora === 1 ? "1 pessoa espera você agora" : `${esperandoAgora} pessoas esperam você agora`}</h1>
       </> : <>
         <span className="ape-sobrancelha">Carteira</span>
         <h1 className="ape-manchete">Seus clientes</h1>
@@ -539,16 +573,9 @@ export function Funil2Mobile({
       <input type="search" value={busca} onChange={(evento) => setBusca(evento.target.value)} placeholder="Buscar cliente ou telefone" />
     </label>}
 
-    <nav className="ape-filtros" aria-label="Filtrar atendimentos">
-      {modo === "inicio"
-        ? (["novos", "agora", "hoje", "todos"] as const).map((chave) => <button
-            key={chave}
-            type="button"
-            className={`${filtroDia === chave ? "ativo" : ""}${chave === "novos" ? " ape-chip-novo" : ""}`}
-            onClick={() => setFiltroDia(chave)}
-          >{chave === "agora" ? `Agora · ${contagens.agora}` : chave === "novos" ? `Chamar · ${contagens.novos}` : chave === "hoje" ? `Hoje · ${contagens.hoje}` : `Todos · ${leads.length}`}</button>)
-        : ETAPAS.map(([chave, rotulo]) => <button key={chave} type="button" className={etapa === chave ? "ativo" : ""} onClick={() => setEtapa(chave)}>{rotulo}</button>)}
-    </nav>
+    {modo === "crm" && <nav className="ape-filtros" aria-label="Filtrar atendimentos">
+      {ETAPAS.map(([chave, rotulo]) => <button key={chave} type="button" className={etapa === chave ? "ativo" : ""} onClick={() => setEtapa(chave)}>{rotulo}</button>)}
+    </nav>}
 
     {erro && <div className="ape-estado ruim">
       <span className="ape-estado-icone"><IconeAlerta /></span>
@@ -571,20 +598,32 @@ export function Funil2Mobile({
       <button type="button" onClick={() => { limparLeadDaUrl(); onIr("/crm"); }}>Voltar ao CRM</button>
     </div>}
 
-    {dados && !erro && visiveis.length === 0 && <div className="ape-estado">
+    {dados && !erro && modo === "inicio" && totalNoDia === 0 && <div className="ape-estado">
       <span className="ape-estado-icone"><IconeCheck /></span>
       <strong>Fila zerada por agora</strong>
-      <p>Você respondeu todo mundo que estava esperando. Troque o filtro para ver o restante da carteira.</p>
+      <p>Você respondeu todo mundo que estava esperando hoje. O restante da carteira está no CRM.</p>
+      <button type="button" onClick={() => onIr("/crm")}>Ver minha carteira</button>
     </div>}
 
-    <section className="ape-lista" aria-label="Atendimentos">
-      {visiveis.slice(0, modo === "inicio" ? 30 : 60).map((lead) => <CartaoLead
-        key={lead.id}
-        lead={lead}
-        momento={momentos.find((momento) => momento.codigo === lead.momento_codigo) ?? null}
-        onAbrir={() => setSelecionado(lead.id)}
-      />)}
-    </section>
+    {dados && !erro && modo === "crm" && visiveis.length === 0 && <div className="ape-estado">
+      <span className="ape-estado-icone"><IconeCheck /></span>
+      <strong>Nenhum cliente neste filtro</strong>
+      <p>Troque a etapa ou limpe a busca para ver o restante da carteira.</p>
+    </div>}
+
+    {modo === "inicio"
+      ? gruposDoDia.map((grupo) => <section className="ape-grupo" key={grupo.chave} aria-label={grupo.titulo}>
+          <div className="ape-grupo-topo">
+            <span className={`ape-grupo-titulo ${grupo.chave}`}>{grupo.titulo}</span>
+            <span className="ape-grupo-total">{grupo.leads.length}</span>
+          </div>
+          <div className="ape-lista">{grupo.leads.map(cartao)}</div>
+        </section>)
+      : <section className="ape-lista" aria-label="Atendimentos">{visiveis.slice(0, 60).map(cartao)}</section>}
+
+    {modo === "inicio" && totalNoDia > 0 && <button type="button" className="ape-ver-carteira" onClick={() => onIr("/crm")}>
+      Ver minha carteira ({leads.length})
+    </button>}
 
     {leadAberto && <FichaLead
       lead={leadAberto}
