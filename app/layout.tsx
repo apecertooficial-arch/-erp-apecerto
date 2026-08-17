@@ -48,6 +48,7 @@ import "./styles/performance.css";
     13. ...-calendario.css ................... Calendário: Dia/Semana/Mês/Lista, resumo, modais
     14. ...-automacoes.css ................... Automações: construtor e explicador
     15. ...-automacoes-tela.css .............. Automações: biblioteca da tela do módulo (apn-*)
+    16. ...-automacoes-cartao.css ............ Automações: rodapé de ações do cartão + passos
 
    Elas substituem por cascata os valores visuais que globals.css, funil-2.css,
    performance.css e automation-builder.css definiam para os MESMOS seletores —
@@ -61,8 +62,11 @@ import "./styles/performance.css";
    (ex.: .approach-list .approach-card > footer .approach-edit-btn). Por isso cada
    folha nova nasce prefixada pela classe raiz da tela — .approaches-workspace,
    .campaign-workspace, .calendar-workspace, .original-automation-host — em vez de
-   confiar em quem carrega por último. A folha 15 é a exceção que confirma a regra:
-   markup novo, classes próprias (apn-*), nenhuma disputa.
+   confiar em quem carrega por último. As folhas 15 e 16 são a exceção que confirma
+   a regra: markup novo, classes próprias (apn-*), nenhuma disputa. E dentro do
+   canvas do construtor há um caso à parte: o runtime escreve style="..." INLINE,
+   que vence folha externa por ORIGEM na cascata — só ali usamos !important, preso
+   ao escopo .original-automation-host .apecerto-automation-builder .node.
 
    Ficam ANTES das folhas do aplicativo no celular, logo abaixo: o app do
    corretor continua exatamente como está. O runtime do construtor de Automações
@@ -82,6 +86,7 @@ import "./styles/redesign-apecerto-disparos.css";
 import "./styles/redesign-apecerto-calendario.css";
 import "./styles/redesign-apecerto-automacoes.css";
 import "./styles/redesign-apecerto-automacoes-tela.css";
+import "./styles/redesign-apecerto-automacoes-cartao.css";
 /* INTERFACE DO APLICATIVO NO CELULAR — versão aprovada.
    Não é correção da folha antiga: o markup do Meu Dia e do CRM usa classes
    próprias (.ape-*), então esta folha é a única que os desenha. As regras
