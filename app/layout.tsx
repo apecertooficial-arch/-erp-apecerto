@@ -22,6 +22,8 @@ import "./styles/fluxo-caixa-acoes.css";
 /* Explicador de automações: o painel que conta o fluxo passo a passo. Só usa
    tokens do :root, então segue a marca sem duplicar cor. */
 import "./styles/tela-explicador.css";
+/* Botao de tour virtual na galeria de Produtos. */
+import "./styles/tela-produtos-tour.css";
 import "./styles/tela-suporte-financiamento.css";
 /* Módulos ativos antes injetados por JavaScript; estáticos e únicos. */
 import "./styles/funil-2.css";
