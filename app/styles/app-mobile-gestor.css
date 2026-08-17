@@ -1,8 +1,10 @@
-/* TELAS DO GESTOR NO CELULAR - folha propria, sem camada sobre camada.
+/* TELAS NOVAS DO APP NO CELULAR - folha propria, sem camada sobre camada.
  *
- * Cada seletor aqui casa com markup que passou a usar estas classes (.ape-mais-*,
- * .ape-equipe-*, .ape-resumo-*, .ape-cal-*). As regras antigas (.app-mais-grid,
- * .equipe-*) continuam desenhando o desktop e nao casam mais com o celular.
+ * Cobre o que a folha aprovada do corretor nao desenhava: as telas do gestor
+ * (.ape-mais-*, .ape-equipe-*, .ape-resumo-*, .ape-cal-*) e os grupos do Meu Dia
+ * (.ape-grupo-*). Cada seletor casa com markup que usa estas classes; as regras
+ * antigas (.app-mais-grid, .equipe-*) continuam desenhando o desktop e nao casam
+ * mais com o celular.
  *
  * Valores literais, os mesmos do prototipo aprovado. Nada de var() aqui: se um
  * token faltar, a tela quebra em silencio.
@@ -54,6 +56,27 @@
 .ape-mais-vazio { margin: 0; padding: 24px 4px; color: #6B635C; font-size: 13px; text-align: center; }
 
 @media (max-width: 900px) {
+  /* ---------- Grupos do Meu Dia ----------
+     Tres blocos na ordem em que o corretor age. A cor da sobrancelha e o codigo
+     de cor do sistema: roxo = lead novo, laranja = acao sua vencida, ambar =
+     ainda dentro do prazo de hoje. */
+  .ape-grupo { display: flex; flex-direction: column; gap: 12px; margin-bottom: 20px; }
+  .ape-grupo:last-of-type { margin-bottom: 0; }
+  .ape-grupo-topo { display: flex; align-items: center; gap: 7px; }
+  .ape-grupo-titulo { font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+  .ape-grupo-titulo.chegou { color: #66009A; }
+  .ape-grupo-titulo.agora { color: #CC5800; }
+  .ape-grupo-titulo.depois { color: #8A6100; }
+  .ape-grupo-total {
+    display: grid; place-items: center; min-width: 18px; height: 18px; padding: 0 6px;
+    border-radius: 999px; background: #F1EDE9; color: #6B635C; font-size: 10px; font-weight: 700;
+  }
+  .ape-ver-carteira {
+    display: flex; align-items: center; justify-content: center; width: 100%; min-height: 48px;
+    margin-top: 18px; border: 1.5px dashed #DED7CF; border-radius: 999px; background: transparent;
+    color: #6B635C; font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer;
+  }
+
   /* Sobrancelha da visao de gestao e ROXA -- roxo e a cor de tudo que e
      leitura e confirmacao. O laranja da abertura do corretor significa acao
      dele, e o painel do gestor nao pede acao. */
