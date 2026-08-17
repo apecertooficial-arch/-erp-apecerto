@@ -6,21 +6,29 @@
    botão da visão atual; as ações do lead são .f2-atalhos (Chat, WhatsApp,
    Agendar visita, Gerar negociação e .f2-descartar); as do cartão são
    .f2-card-botoes (Conversa, WhatsApp, Descartar e .f2-principal).
-
-   O CSS antigo dessas três barras vinha de funil-2.css com valores próprios de
-   raio e sombra que venciam a folha 1 em alguns estados — daqui em diante o
-   valor vigente é este.
    ============================================================================= */
 
 /* Menu de visões: pill único, ativo em tint laranja, sem anel duplo */
 .f2-nav { gap:8px; }
 .f2-nav button { display:inline-flex; align-items:center; gap:8px; min-height:42px; border:1px solid #E4DFD9 !important; border-radius:999px !important; padding:0 18px !important; background:#fff !important; color:#4C4845 !important; font-size:13.5px !important; font-weight:600 !important; box-shadow:none !important; outline:0 !important; }
-.f2-nav button svg { width:17px; height:17px; flex:none; }
 .f2-nav button:hover { border-color:#FF7000 !important; color:#C25200 !important; }
 .f2-nav button.ativo { background:#FFF3EA !important; border-color:#FF7000 !important; color:#C25200 !important; font-weight:700 !important; box-shadow:none !important; outline:0 !important; }
-.f2-nav button.ativo svg { color:#FF7000; }
 
-/* Ações rápidas do lead: tudo pill; Chat em laranja, WhatsApp em verde */
+/* Ícones do menu: o desenho aprovado usa o traço do Lucide — calendário com
+   confirmação, colunas, pessoa com mais, casa, barras e engrenagem. O SVG que o
+   componente entrega é outro, então ele fica oculto e o ícone certo entra como
+   máscara, herdando a cor do botão (por isso acompanha o estado ativo). Nenhuma
+   mudança de marcação, nenhum arquivo de imagem novo. */
+.f2-nav button>svg { display:none !important; }
+.f2-nav button::before { content:""; width:17px; height:17px; flex:none; background:currentColor; -webkit-mask-repeat:no-repeat; mask-repeat:no-repeat; -webkit-mask-position:center; mask-position:center; -webkit-mask-size:contain; mask-size:contain; }
+.f2-nav button:nth-of-type(1)::before { -webkit-mask-image:url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='4' width='18' height='18' rx='2'/%3E%3Cpath d='M16 2v4M8 2v4M3 10h18'/%3E%3Cpath d='m9 16 2 2 4-4'/%3E%3C/svg%3E"); mask-image:url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='4' width='18' height='18' rx='2'/%3E%3Cpath d='M16 2v4M8 2v4M3 10h18'/%3E%3Cpath d='m9 16 2 2 4-4'/%3E%3C/svg%3E"); }
+.f2-nav button:nth-of-type(2)::before { -webkit-mask-image:url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='3' width='18' height='18' rx='2'/%3E%3Cpath d='M9 3v18M15 3v18'/%3E%3C/svg%3E"); mask-image:url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='3' width='18' height='18' rx='2'/%3E%3Cpath d='M9 3v18M15 3v18'/%3E%3C/svg%3E"); }
+.f2-nav button:nth-of-type(3)::before { -webkit-mask-image:url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2'/%3E%3Ccircle cx='9' cy='7' r='4'/%3E%3Cpath d='M19 8v6M22 11h-6'/%3E%3C/svg%3E"); mask-image:url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2'/%3E%3Ccircle cx='9' cy='7' r='4'/%3E%3Cpath d='M19 8v6M22 11h-6'/%3E%3C/svg%3E"); }
+.f2-nav button:nth-of-type(4)::before { -webkit-mask-image:url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m3 10 9-7 9 7v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z'/%3E%3Cpath d='M9 22V12h6v10'/%3E%3C/svg%3E"); mask-image:url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m3 10 9-7 9 7v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z'/%3E%3Cpath d='M9 22V12h6v10'/%3E%3C/svg%3E"); }
+.f2-nav button:nth-of-type(5)::before { -webkit-mask-image:url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 3v18h18'/%3E%3Crect x='7' y='12' width='3' height='6' rx='1'/%3E%3Crect x='12' y='8' width='3' height='10' rx='1'/%3E%3Crect x='17' y='5' width='3' height='13' rx='1'/%3E%3C/svg%3E"); mask-image:url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 3v18h18'/%3E%3Crect x='7' y='12' width='3' height='6' rx='1'/%3E%3Crect x='12' y='8' width='3' height='10' rx='1'/%3E%3Crect x='17' y='5' width='3' height='13' rx='1'/%3E%3C/svg%3E"); }
+.f2-nav button:nth-of-type(6)::before { -webkit-mask-image:url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='3'/%3E%3Cpath d='M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9 7 7M17 17l2.1 2.1M19.1 4.9 17 7M7 17l-2.1 2.1'/%3E%3C/svg%3E"); mask-image:url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='3'/%3E%3Cpath d='M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9 7 7M17 17l2.1 2.1M19.1 4.9 17 7M7 17l-2.1 2.1'/%3E%3C/svg%3E"); }
+
+/* Ações rápidas do lead: tudo pill; primeira (conversa) em laranja, WhatsApp em verde */
 .f2-atalhos { display:flex !important; flex-wrap:wrap; gap:10px; }
 .f2-atalhos button, .f2-atalhos a, .f2-atalhos span { display:inline-flex !important; align-items:center; justify-content:center; gap:8px; min-height:44px; border:1px solid #E4DFD9 !important; border-radius:999px !important; padding:0 20px !important; background:#fff !important; color:#1F1C1A !important; font-size:13px !important; font-weight:700 !important; text-decoration:none; box-shadow:none !important; }
 .f2-atalhos button:hover, .f2-atalhos a:hover { border-color:#FF7000 !important; color:#C25200 !important; }
