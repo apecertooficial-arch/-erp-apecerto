@@ -28,11 +28,17 @@ import "./styles/funil-2.css";
 import "./styles/performance.css";
 /* DESENHO VIGENTE DO ERP (desktop) — padrão apêcerto.
 
-   Estas duas folhas são a camada de desenho ATUAL do ERP no navegador: elas
-   substituem por cascata os valores visuais que globals.css, funil-2.css e
-   performance.css definiam para os mesmos seletores. Não são um tema opcional
-   nem uma segunda pele — são o visual do produto. O CSS antigo daquelas folhas
-   permanece apenas como base estrutural (layout, grid, posição).
+   UMA camada de desenho, dividida por domínio do mesmo jeito que o resto deste
+   arquivo já divide (venda-ficha, extrato-import, fluxo-caixa-acoes…):
+
+     1. redesign-apecerto.css ................. shell, Início, CRM, Performance
+     2. ...-produtos-financeiro.css ........... Produtos, ficha da venda, Financeiro
+     3. ...-financeiro-abas.css ............... Marketing, Indicações, Taxas, Metas, Meus ganhos
+
+   Elas substituem por cascata os valores visuais que globals.css, funil-2.css e
+   performance.css definiam para os MESMOS seletores — não são tema opcional nem
+   segunda pele: são o visual do produto. Do CSS antigo resta a base estrutural
+   (layout, grid, posição).
 
    Escritas sobre as classes REAIS dos componentes, conferidas arquivo por
    arquivo. Só cor, tipografia, peso, borda, raio, sombra e respiro.
@@ -43,6 +49,7 @@ import "./styles/performance.css";
    permanece idêntica à publicada, por decisão do produto. */
 import "./styles/redesign-apecerto.css";
 import "./styles/redesign-apecerto-produtos-financeiro.css";
+import "./styles/redesign-apecerto-financeiro-abas.css";
 /* INTERFACE DO APLICATIVO NO CELULAR — versão aprovada.
    Não é correção da folha antiga: o markup do Meu Dia e do CRM usa classes
    próprias (.ape-*), então esta folha é a única que os desenha. As regras

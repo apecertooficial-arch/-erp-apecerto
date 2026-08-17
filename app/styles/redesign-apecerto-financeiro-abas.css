@@ -1,0 +1,69 @@
+/* =============================================================================
+   REDESENHO APÊCERTO — Financeiro: abas Marketing, Indicações, Taxas de gerente,
+   Metas e Meus ganhos (3 de 3 da mesma camada de desenho)
+
+   Estas abas JÁ EXISTEM no produto (FinanceWorkspace.tsx, type Tab = overview |
+   sales | cash | marketing | indications | taxas | metas | ganhos). Não é tela
+   nova: o que faltava era desenho. As classes abaixo são as que os componentes
+   MarketingFinance, Indicacoes, TaxasGerente, Metas e Meus ganhos renderizam de
+   verdade — conferidas linha por linha no arquivo.
+
+   Mesma regra das outras duas folhas: só cor, tipografia, peso, borda, raio,
+   sombra e respiro. Nenhuma estrutura, nenhum dado, nenhuma função.
+   ============================================================================= */
+
+/* Casca comum das abas de dados */
+.finance-data-designer, .finance-marketing-designer, .finance-indications-designer { padding:0 28px 28px; }
+.finance-data-total { padding:8px 15px; border-radius:999px; background:#FFE4D1; color:#C25200; font-size:12px; font-weight:700; white-space:nowrap; }
+.finance-data-total small { font-weight:600; color:#C25200; opacity:.8; }
+.finance-sales-toolbar p { font-size:12.5px; font-weight:600; color:#6E6760; margin:3px 0 0; }
+.finance-data-scroll { overflow-x:auto; }
+.finance-data-empty { padding:26px 20px; font-size:12.5px; font-weight:600; line-height:1.6; color:#9A938B; text-align:center; }
+.finance-data-month>header { padding:10px 20px; background:#FFF7F0; border:0; }
+.finance-data-month>header strong { font-size:11px; font-weight:700; letter-spacing:.1em; color:#C25200; }
+.finance-data-month>header span { font-size:12px; font-weight:600; color:#6E6760; }
+
+/* Cabeçalhos de tabela: caps 10px, fundo areia, sem borda dura */
+.finance-marketing-head, .finance-indication-head { border:0; padding:11px 20px; background:#FAF8F6; font-size:10px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:#9A938B; }
+.finance-marketing-head>span, .finance-indication-head>span { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+/* Linhas: 1px de separação, hover quente, números em 700 */
+.finance-marketing-row, .finance-indication-row { padding:14px 20px; border-top:1px solid #F2EFEC; font-size:12.5px; color:#6E6760; position:relative; }
+.finance-marketing-row:hover, .finance-indication-row:hover { background:#FFFBF7; }
+.finance-marketing-row strong, .finance-indication-row strong { font-size:13px; font-weight:700; color:#1F1C1A; }
+.finance-marketing-row b, .finance-indication-row b { font-weight:700; color:#1F1C1A; }
+.finance-marketing-row em, .finance-indication-row em { font-style:normal; font-weight:700; }
+
+/* Marketing: posição em tile tonal e conversão em destaque */
+.finance-marketing-row>span:first-child b { width:26px; height:26px; display:grid; place-items:center; border-radius:999px; background:#FFE4D1; color:#C25200; font-size:12px; font-weight:700; }
+.finance-marketing-row.tone-2>span:first-child b { background:#F7ECFC; color:#66009A; }
+.finance-marketing-row.tone-3>span:first-child b { background:#E4F6EC; color:#0F7A3D; }
+.finance-marketing-row.tone-4>span:first-child b { background:#E6F7F5; color:#12756E; }
+.finance-marketing-row.tone-5>span:first-child b { background:#FDF1D9; color:#B87800; }
+.finance-marketing-row em { padding:4px 11px; border-radius:999px; background:#F2EFEC; color:#4C4845; font-size:11.5px; }
+
+/* Indicações e Taxas: filete de status na linha + pill de status */
+.finance-indication-row::before { content:""; position:absolute; left:0; top:0; bottom:0; width:3px; background:#E4DFD9; }
+.finance-indication-row.paga::before { background:#1FA85A; }
+.finance-indication-row.prevista::before { background:#F2A82C; }
+.finance-indication-row em { padding:5px 12px; border-radius:999px; font-size:11px; }
+.finance-indication-row em.paga { background:#E4F6EC; color:#0F7A3D; }
+.finance-indication-row em.prevista { background:#FDF1D9; color:#B87800; }
+.finance-indication-row>span:last-child button, .finance-marketing-row>span:last-child button { width:30px; height:30px; border:1px solid #E4DFD9; border-radius:999px; background:#fff; color:#6E6760; cursor:pointer; }
+.finance-indication-row>span:last-child button:hover, .finance-marketing-row>span:last-child button:hover { border-color:#FF7000; color:#CC5800; }
+
+/* Busca e filtro dentro da barra das abas */
+.finance-sales-toolbar label span { color:#9A938B; font-size:13px; }
+.finance-sales-toolbar input { border:0; outline:0; background:transparent; font:inherit; font-size:12.5px; font-weight:600; color:#1F1C1A; min-width:0; }
+.finance-sales-toolbar input::placeholder { color:#A39C95; font-weight:600; }
+
+/* Metas: painel e formulário no padrão dos cartões */
+.finance-goal-panel { border:0; border-radius:20px; background:#fff; box-shadow:0 2px 6px rgba(31,28,26,.06); margin-bottom:16px; }
+.finance-goal-panel .finance-sales-toolbar { border-bottom:1px solid #F2EFEC; }
+.metas-form { padding:18px 20px; gap:12px; }
+.metas-form label { display:flex; flex-direction:column; gap:6px; font-size:11px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:#9A938B; }
+.metas-form input, .metas-form select { min-height:42px; border:1px solid #E4DFD9; border-radius:12px; padding:0 13px; background:#fff; font-size:13px; font-weight:600; color:#1F1C1A; }
+.metas-form input:focus, .metas-form select:focus { outline:0; border-color:#FF7000; box-shadow:0 0 0 3px rgba(255,112,0,.16); }
+.metas-form>button { min-height:44px; border:0; border-radius:999px; padding:0 22px; background:#FF7000; color:#fff; font-size:13px; font-weight:700; box-shadow:0 8px 20px rgba(255,112,0,.26); }
+.metas-form>button:hover { background:#E85D00; }
+.metas-msg { margin:0 20px 14px; padding:10px 14px; border-radius:12px; background:#E4F6EC; color:#0F7A3D; font-size:12.5px; font-weight:700; }
