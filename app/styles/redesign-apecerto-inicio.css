@@ -1,0 +1,59 @@
+/* =============================================================================
+   REDESENHO APÊCERTO — Início: complemento (4 de 4 da mesma camada)
+
+   A folha 1 já desenha o hero, os cartões e o painel de produtos do Início. Este
+   arquivo fecha as classes que sobraram, conferidas em HomeWorkspace.tsx,
+   RodagemCards.tsx, FunilCards.tsx, NaMesaCards.tsx e FinanceiroCards.tsx:
+   hv2-inner, hv2-top, hv2-eyebrow, hv2-date, hv2-card-h, hv2-cta, hv2-panel-h,
+   hv2-link-btn, hv2-ghost-btn, hv2-empty, hv2-sec-bar (e a variante roxa),
+   hv2-grid, o líder e as linhas do ranking (tp/nm/qt, pn/pb/pv) e home-state.
+
+   Só cor, tipografia, peso, borda, raio, sombra e respiro.
+   ============================================================================= */
+
+/* Topo: saudação e selo de sessão */
+.hv2-inner { max-width:1240px; }
+.hv2-eyebrow { font-size:11px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:#FF7000; }
+.hv2-date { font-size:12.5px; font-weight:600; color:#6E6760; }
+.hv2-badge { border-radius:999px; padding:6px 13px; background:#E4F6EC; color:#0F7A3D; font-size:12px; font-weight:700; }
+.hv2-badge i { background:#1FA85A; }
+
+/* Cabeçalho de seção: filete + título amigável */
+.hv2-sec { gap:10px; margin:26px 0 12px; }
+.hv2-sec-bar { width:4px; height:20px; border-radius:2px; background:#FF7000; flex:none; }
+.hv2-sec-bar.purple { background:#8B00CC; }
+.hv2-sec h2 { font-size:20px; font-weight:700; letter-spacing:-.02em; color:#1F1C1A; }
+.hv2-sec small { font-size:12.5px; font-weight:600; color:#9A938B; }
+
+/* Cartões de indicador */
+.hv2-grid { gap:14px; }
+.hv2-card-h { gap:10px; align-items:center; }
+.hv2-card { padding:18px; border-radius:18px; }
+.hv2-cta { display:block; margin-top:12px; font-size:12px; font-weight:700; font-style:normal; color:#C25200; }
+.hv2-card:hover .hv2-cta { color:#FF7000; }
+
+/* Painel de produtos: líder, ranking e ações */
+.hv2-panel { padding:20px; border-radius:20px; }
+.hv2-panel-h { align-items:baseline; gap:10px; margin-bottom:14px; }
+.hv2-panel-h h3 { font-size:17px; font-weight:700; letter-spacing:-.01em; color:#1F1C1A; }
+.hv2-panel-h small { font-size:12px; font-weight:600; color:#9A938B; }
+.hv2-leader { padding:14px 16px; background:#FFF3EA; }
+.hv2-leader .tp { width:34px; height:34px; border-radius:10px; display:grid; place-items:center; background:#fff; color:#C25200; font-size:15px; }
+.hv2-leader .nm strong { font-size:14.5px; font-weight:700; color:#1F1C1A; }
+.hv2-leader .nm small { font-size:12px; font-weight:600; color:#6E6760; }
+.hv2-leader .qt { font-size:13px; font-weight:700; color:#C25200; white-space:nowrap; }
+.hv2-prow { padding:9px 0; font-size:13px; }
+.hv2-rank { width:24px; height:24px; border-radius:999px; background:#F2EFEC; color:#6E6760; font-size:11.5px; font-weight:700; display:grid; place-items:center; }
+.hv2-prow .pn { font-size:13px; font-weight:600; color:#1F1C1A; }
+.hv2-prow .pb { height:7px; border-radius:999px; background:#EFE9E3; overflow:hidden; }
+.hv2-prow .pb u { border-radius:999px; background:#8B00CC; }
+.hv2-prow .pv { font-size:12.5px; font-weight:700; color:#6E6760; }
+.hv2-link-btn { margin-top:14px; border:0; background:none; padding:0; color:#C25200; font-size:12.5px; font-weight:700; cursor:pointer; }
+.hv2-link-btn:hover { color:#FF7000; }
+.hv2-ghost-btn { min-height:42px; border:1px solid #E4DFD9; border-radius:999px; padding:0 20px; background:#fff; color:#1F1C1A; font-size:13px; font-weight:700; cursor:pointer; }
+.hv2-ghost-btn:hover { border-color:#FF7000; color:#C25200; }
+.hv2-empty { display:flex; flex-direction:column; justify-content:center; gap:8px; background:#FAF8F6; box-shadow:none; }
+
+/* Estados da tela */
+.home-state { min-height:320px; display:grid; place-items:center; padding:40px; font-size:13px; font-weight:600; color:#6E6760; }
+.home-state.error { color:#B33131; }

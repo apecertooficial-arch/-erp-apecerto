@@ -34,6 +34,7 @@ import "./styles/performance.css";
      1. redesign-apecerto.css ................. shell, Início, CRM, Performance
      2. ...-produtos-financeiro.css ........... Produtos, ficha da venda, Financeiro
      3. ...-financeiro-abas.css ............... Marketing, Indicações, Taxas, Metas, Meus ganhos
+     4. ...-inicio.css ........................ Início: topo, seções, ranking, estados
 
    Elas substituem por cascata os valores visuais que globals.css, funil-2.css e
    performance.css definiam para os MESMOS seletores — não são tema opcional nem
@@ -50,6 +51,7 @@ import "./styles/performance.css";
 import "./styles/redesign-apecerto.css";
 import "./styles/redesign-apecerto-produtos-financeiro.css";
 import "./styles/redesign-apecerto-financeiro-abas.css";
+import "./styles/redesign-apecerto-inicio.css";
 /* INTERFACE DO APLICATIVO NO CELULAR — versão aprovada.
    Não é correção da folha antiga: o markup do Meu Dia e do CRM usa classes
    próprias (.ape-*), então esta folha é a única que os desenha. As regras
