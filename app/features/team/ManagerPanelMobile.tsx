@@ -2,18 +2,25 @@
 
 /* INÍCIO DO GESTOR no celular — resumo da operação.
  *
- * Fonte: /api/performance?periodo=mes. Três cartões, um por pergunta que o
- * gestor faz ao pegar o telefone: quanto entrou (Finanças), quantos leads e o
- * que está largado (Leads), e como a equipe está trabalhando (Trabalho).
+ * Fonte: /api/performance. Três cartões, um por pergunta que o gestor faz ao
+ * pegar o telefone: quanto entrou (Finanças), quantos leads e o que está
+ * largado (Leads), e como a equipe está trabalhando (Trabalho).
+ *
+ * PERÍODO: os cinco períodos são os que a API já sabe calcular — 7 dias, mês,
+ * trimestre, ano e tudo. Nenhuma opção inventada: chip que o servidor não
+ * entende volta silenciosamente como "mês" e o gestor leria um número errado
+ * achando que é outro recorte. A janela real vem na resposta e aparece embaixo
+ * dos chips, para o número nunca ficar sem data.
  *
  * REGRA DE DADO REAL: linha cujo número não existe no banco NÃO aparece — nem
  * zerada, nem com traço. "Comissão prevista" e "corretores online" estavam no
- * desenho aprovado e ficaram de fora por isso; voltam no dia em que a API
- * devolver os campos.
+ * desenho aprovado e ficaram de fora por isso.
  */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AppMobileOffline, AppMobileSessaoExpirada } from "../system/AppMobileSystem";
+
+type Periodo = "7d" | "mes" | "trimestre" | "ano" | "todo";
 
 type Corretor = {
   corretorId: number; nome: string; mensagens: number | null; minutosErp: number | null;
@@ -26,8 +33,19 @@ type Empresa = {
   fluxo: { leads: number | null; visitasMarcadas: number | null; visitasRealizadas: number | null };
   riscos: { carteira_ativa: number | null; acoes_vencidas: number | null; corretores_sobrecarregados: number | null; visitas_sem_feedback: number | null };
 };
-type Painel = { empresa?: Empresa | null; corretores?: Corretor[]; error?: string };
+type Painel = {
+  periodo?: { inicio: string; fim: string } | null;
+  empresa?: Empresa | null; corretores?: Corretor[]; error?: string;
+};
 type Linha = { k: string; v: string; alerta?: boolean };
+
+const PERIODOS: Array<{ id: Periodo; rotulo: string }> = [
+  { id: "7d", rotulo: "7 dias" },
+  { id: "mes", rotulo: "Mês" },
+  { id: "trimestre", rotulo: "Trimestre" },
+  { id: "ano", rotulo: "Ano" },
+  { id: "todo", rotulo: "Tudo" },
+];
 
 const n = (valor: unknown) => Number(valor) || 0;
 const tem = (valor: unknown) => valor !== null && valor !== undefined;
@@ -38,20 +56,34 @@ function iniciais(nome: string) {
   return nome.split(/\s+/).filter(Boolean).slice(0, 2).map((parte) => parte[0]?.toUpperCase()).join("") || "?";
 }
 
+const dataCurta = (iso: string) =>
+  new Date(`${iso}T12:00:00`).toLocaleDateString("pt-BR", { day: "numeric", month: "short" }).replace(".", "");
+
+/** "1 de ago a 17 de ago". O `fim` da API é exclusivo (hoje + 1), então exibimos
+ *  um dia antes — dizer que o período termina amanhã confunde quem lê hoje. */
+function janelaPorExtenso(periodo: { inicio: string; fim: string } | null | undefined): string {
+  if (!periodo?.inicio || !periodo?.fim) return "";
+  const fim = new Date(`${periodo.fim}T12:00:00`);
+  if (Number.isNaN(fim.getTime())) return "";
+  fim.setUTCDate(fim.getUTCDate() - 1);
+  return `${dataCurta(periodo.inicio)} a ${dataCurta(fim.toISOString().slice(0, 10))}`;
+}
+
 export function ManagerPanelMobile({ accessToken }: { accessToken: string }) {
   const [dados, setDados] = useState<Painel | null>(null);
+  const [periodo, setPeriodo] = useState<Periodo>("mes");
   const [erro, setErro] = useState("");
   const [sessaoExpirada, setSessaoExpirada] = useState(false);
   const [atualizadoEm, setAtualizadoEm] = useState<Date | null>(null);
   const [tentativa, setTentativa] = useState(0);
 
   const carregar = useCallback(async (sinal?: AbortSignal) => {
-    const resposta = await fetch("/api/performance?periodo=mes", { headers: { Authorization: `Bearer ${accessToken}` }, signal: sinal });
+    const resposta = await fetch(`/api/performance?periodo=${periodo}`, { headers: { Authorization: `Bearer ${accessToken}` }, signal: sinal });
     if (resposta.status === 401) throw new Error("sessao_expirada");
     const json = await resposta.json().catch(() => ({})) as Painel;
     if (!resposta.ok || json.error) throw new Error(json.error || "Não foi possível carregar o painel.");
     setDados(json); setErro(""); setSessaoExpirada(false); setAtualizadoEm(new Date());
-  }, [accessToken]);
+  }, [accessToken, periodo]);
 
   useEffect(() => {
     const controle = new AbortController();
@@ -79,11 +111,11 @@ export function ManagerPanelMobile({ accessToken }: { accessToken: string }) {
   const blocos = useMemo(() => {
     if (!empresa) return [];
     const financas: Linha[] = [];
-    if (tem(empresa.vgv)) financas.push({ k: "VGV assinado no mês", v: dinheiro(empresa.vgv) });
+    if (tem(empresa.vgv)) financas.push({ k: "VGV assinado", v: dinheiro(empresa.vgv) });
     if (tem(empresa.vendas)) financas.push({ k: "Vendas assinadas", v: inteiro(empresa.vendas) });
 
     const leads: Linha[] = [];
-    if (tem(empresa.fluxo?.leads)) leads.push({ k: "Leads no mês", v: inteiro(empresa.fluxo.leads) });
+    if (tem(empresa.fluxo?.leads)) leads.push({ k: "Leads no período", v: inteiro(empresa.fluxo.leads) });
     if (tem(empresa.riscos?.acoes_vencidas)) leads.push({ k: "Ações vencidas", v: inteiro(empresa.riscos.acoes_vencidas), alerta: n(empresa.riscos.acoes_vencidas) > 0 });
     if (tem(empresa.riscos?.carteira_ativa)) leads.push({ k: "Na carteira da equipe", v: inteiro(empresa.riscos.carteira_ativa) });
 
@@ -105,13 +137,25 @@ export function ManagerPanelMobile({ accessToken }: { accessToken: string }) {
     ].filter((bloco) => bloco.linhas.length > 0);
   }, [empresa, respostaMediana]);
 
+  const janela = janelaPorExtenso(dados?.periodo);
+
   if (sessaoExpirada) return <AppMobileSessaoExpirada />;
   return <main className="ape-painel">
     <AppMobileOffline atualizadoEm={atualizadoEm} />
     <header className="ape-painel-abertura"><span className="ape-sobrancelha">Visão de gestão</span><h1>A operação hoje</h1></header>
+
+    <nav className="ape-filtros ape-painel-filtros" role="tablist" aria-label="Período">
+      {PERIODOS.map((item) => <button
+        type="button" key={item.id} role="tab" aria-selected={periodo === item.id}
+        className={periodo === item.id ? "ativo" : ""}
+        onClick={() => { setPeriodo(item.id); setErro(""); }}
+      >{item.rotulo}</button>)}
+    </nav>
+    {janela && <p className="ape-painel-janela">{janela}</p>}
+
     {dados === null && <div className="ape-resumo" aria-hidden="true">{[0, 1, 2].map((i) => <div className="ape-painel-skeleton" key={i} />)}</div>}
     {erro && <div className="ape-estado ruim" role="alert"><strong>Não foi possível carregar o painel.</strong><p>{erro}</p><button type="button" onClick={() => { setDados(null); setTentativa((nAtual) => nAtual + 1); }}>Tentar novamente</button></div>}
-    {dados !== null && !erro && !empresa && <div className="ape-estado"><div className="ape-estado-icone" aria-hidden="true">✓</div><strong>Sem dados neste período</strong><p>Assim que a equipe trabalhar, os indicadores aparecerão aqui.</p></div>}
+    {dados !== null && !erro && !empresa && <div className="ape-estado"><div className="ape-estado-icone" aria-hidden="true">✓</div><strong>Sem dados neste período</strong><p>Escolha um período maior ou espere a equipe trabalhar.</p></div>}
     {empresa && <>
       <section className="ape-resumo">
         {blocos.map((bloco) => (

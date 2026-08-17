@@ -54,6 +54,12 @@ export async function GET(request: Request) {
     args: Record<string, unknown>,
   ) => Promise<{ data: unknown; error: { message: string } | null }>;
   const { data, error } = await rpc("performance_sala_comando", { p_inicio: inicio, p_fim: fim });
-  if (error) return Response.json({ error: error.message }, { status: 502 });
+  if (error) {
+    /* A mensagem do Postgres NÃO vai para a tela: o painel do gestor no celular
+       mostra o texto do campo `error` direto, e nome de relação que falhou não é
+       assunto de quem está vendendo apartamento. O técnico fica no log. */
+    console.error("performance_sala_comando falhou:", error.message);
+    return Response.json({ error: "Não foi possível carregar os números agora." }, { status: 502 });
+  }
   return Response.json(data ?? { periodo: { inicio, fim }, empresa: null, corretores: [], origens: [] });
 }
