@@ -3,14 +3,13 @@
 /* AUTOMAÇÕES — a tela do módulo. Uma só.
  *
  * Traz a BIBLIOTECA na frente (cada automação lida como sequência, com selos, abas,
- * busca e contadores) e o construtor por dentro. Não existe rota paralela: tentei
- * isso em /automacoes-novo e estava errado — virou camada em vez de substituição.
+ * busca, contadores e as ações por cartão) e o construtor por dentro. Não existe
+ * rota paralela: tentei isso em /automacoes-novo e estava errado — virou camada em
+ * vez de substituição.
  *
  * O CONSTRUTOR NÃO FOI REIMPLEMENTADO. O automationBuilderRuntime.js (159 KB)
  * continua sendo montado exatamente como antes — mesmo import dinâmico, mesmo
  * mount(host, {authToken, supabaseUrl, publishableKey}), mesmo unmount na saída.
- * Nós, portas, arraste, zoom, gaveta, paleta, publicar, versões e monitor são os
- * dele. Fluxos, blocos e versões continuam no Supabase.
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -25,8 +24,8 @@ type OriginalAutomationBuilder = {
 };
 
 /* Os 12 tipos do runtime (TYPES) traduzidos para rótulo e cor da marca. As chaves
-   são os `type` gravados em mapa.automation.blocks — não inventar nome novo aqui:
-   quem manda é o compile() do construtor. */
+   são os `type` gravados em mapa.automation.blocks — quem manda é o compile() do
+   construtor, não um nome inventado aqui. */
 const TIPOS: Record<string, { rotulo: string; tint: string; tinta: string }> = {
   trigger: { rotulo: "Início", tint: "#FFE4D1", tinta: "#CC5800" },
   "field-operation": { rotulo: "Operações de campos", tint: "#F2EFEC", tinta: "#6E6760" },
@@ -58,10 +57,6 @@ type Filtro = "todas" | "rodando" | "desligadas" | "rascunhos" | "arquivadas";
 type MapaEditor = { blocks?: Record<string, { x?: number; y?: number; fam?: string }>; wires?: Array<{ from: string; port: string; to: string }> };
 type Mapa = { editor?: MapaEditor; automation?: { blocks?: Array<{ id?: string; type?: string; options?: Record<string, unknown>; presentation?: { x?: number; y?: number } }> } };
 
-/* Ordem de leitura do fluxo: o editor guarda x/y de cada bloco, então a sequência
-   visual é a mesma que o gestor vê no canvas. Automação antiga que tem
-   editor.blocks e não tem automation.blocks também é lida: o tipo sai da família
-   gravada no editor. */
 function lerPassos(mapa: unknown): { passos: Passo[]; blocos: number } {
   const m = (mapa ?? {}) as Mapa;
   const editor = m.editor?.blocks ?? {};
@@ -75,7 +70,7 @@ function lerPassos(mapa: unknown): { passos: Passo[]; blocos: number } {
 }
 
 /* Ligações do fluxo. editor.wires é a fonte; automação antiga só tem os ponteiros
-   dentro de options (nextBlockId, trueNextBlockId…), e o próprio runtime deriva
+   dentro de options (nextBlockId, trueNextBlockId…) e o próprio runtime deriva
    deles no hydrate — fazemos igual, varrendo qualquer chave *BlockId. */
 function lerLigacoes(m: Mapa): Array<{ from: string; to: string }> {
   const w = m.editor?.wires ?? [];
@@ -83,12 +78,20 @@ function lerLigacoes(m: Mapa): Array<{ from: string; to: string }> {
   const saida: Array<{ from: string; to: string }> = [];
   (m.automation?.blocks ?? []).forEach((b) => {
     const o = (b.options ?? {}) as Record<string, unknown>;
-    Object.keys(o).forEach((k) => {
-      if (/BlockId$/.test(k) && o[k]) saida.push({ from: String(b.id), to: String(o[k]) });
-    });
+    Object.keys(o).forEach((k) => { if (/BlockId$/.test(k) && o[k]) saida.push({ from: String(b.id), to: String(o[k]) }); });
   });
   return saida;
 }
+
+const Ico = ({ d, tam = 15 }: { d: string; tam?: number }) => (
+  <svg width={tam} height={tam} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d={d} />
+  </svg>
+);
+const D_AJUDA = "M12 17h.01M9.1 9a3 3 0 0 1 5.8 1c0 2-3 2.6-3 4";
+const D_COPIA = "M8 8V5a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-3M5 8h9a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-9a2 2 0 0 1 2-2z";
+const D_LIGA = "M12 3v9M18.4 6.6a9 9 0 1 1-12.8 0";
+const D_LIXO = "M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6";
 
 export function AutomationsWorkspace({ accessToken }: { accessToken: string }) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -103,6 +106,8 @@ export function AutomationsWorkspace({ accessToken }: { accessToken: string }) {
   const [remontar, setRemontar] = useState(0);
   const [arranjando, setArranjando] = useState(false);
   const [aviso, setAviso] = useState<string | null>(null);
+  const [passosAbertos, setPassosAbertos] = useState<number | null>(null);
+  const [ocupado, setOcupado] = useState<number | null>(null);
   const hostRef = useRef<HTMLDivElement>(null);
 
   const cab = useMemo(
@@ -134,7 +139,7 @@ export function AutomationsWorkspace({ accessToken }: { accessToken: string }) {
   /* Construtor original. Quando o gestor chegou aqui clicando numa automação, o
      único gancho possível é o próprio item da coluna do runtime (.sb-item[data-id]):
      ele não expõe openAutomacao. Tentamos por alguns segundos e desistimos em
-     silêncio — sem o clique ele fica na tela inicial dele, que é estado legítimo. */
+     silêncio — sem o clique ele fica na tela inicial dele, estado legítimo. */
   useEffect(() => {
     if (tela !== "construtor") return;
     let ativo = true;
@@ -164,21 +169,12 @@ export function AutomationsWorkspace({ accessToken }: { accessToken: string }) {
   }, [tela, abrirId, remontar, accessToken, publishableKey, supabaseUrl]);
 
   /* ORGANIZAR NA HORIZONTAL.
-
-     O canvas do runtime sempre foi horizontal por dentro — a porta de entrada fica
-     na ESQUERDA do cartão (.in-dot), as saídas à direita, e o fio sai na horizontal.
-     O que ficava vertical eram as POSIÇÕES salvas: automação antiga nasceu com x
-     fixo e y crescente, virando uma coluna.
-
-     Reposicionamos onde as posições realmente moram: mapa.editor.blocks[i].x/y.
-     Cada salto de fio é uma coluna à direita; blocos do mesmo nível (os dois lados
-     de uma condição, os ramos do randomizador) empilham na mesma coluna. A altura
-     vem MEDIDA do cartão renderizado, porque ele cresce com os campos — estimar
-     por tipo já nos custou sobreposição antes.
-
-     Nada além de x/y é tocado: o resto do mapa vai de volta como veio, e o
-     construtor é remontado para reidratar. Salve o que estiver aberto antes — o
-     runtime tem o mapa dele em memória e sobrescreveria isto ao salvar depois. */
+     O canvas do runtime sempre foi horizontal por dentro — entrada na ESQUERDA do
+     cartão (.in-dot), saídas à direita, fio saindo na horizontal. O que ficava
+     vertical eram as POSIÇÕES salvas: automação antiga nasceu com x fixo e y
+     crescente. Reposicionamos onde as posições moram (mapa.editor.blocks[i].x/y) e
+     remontamos para reidratar. Altura vem MEDIDA do cartão renderizado: estimar
+     por tipo já nos custou sobreposição. Nada além de x/y é tocado. */
   const organizarH = useCallback(async () => {
     if (!supabaseUrl || !publishableKey || abrirId == null) { setAviso("Abra uma automação para organizar."); return; }
     setArranjando(true); setAviso(null);
@@ -188,7 +184,6 @@ export function AutomationsWorkspace({ accessToken }: { accessToken: string }) {
       const mapa = ((await r.json())[0]?.mapa ?? {}) as Mapa;
       const blocos = mapa.editor?.blocks;
       if (!blocos || !Object.keys(blocos).length) { setAviso("Esta automação não tem blocos para organizar."); return; }
-
       const ids = Object.keys(blocos);
       const ligacoes = lerLigacoes(mapa).filter((l) => blocos[l.from] && blocos[l.to]);
       const saidas: Record<string, string[]> = {};
@@ -196,11 +191,10 @@ export function AutomationsWorkspace({ accessToken }: { accessToken: string }) {
       ligacoes.forEach((l) => saidas[l.from].push(l.to));
       const ehAlvo: Record<string, boolean> = {};
       ligacoes.forEach((l) => { ehAlvo[l.to] = true; });
-
       const col: Record<string, number> = {};
-      const fila = ids.filter((i) => !ehAlvo[i]);
-      (fila.length ? fila : [ids[0]]).forEach((i) => { col[i] = 0; });
-      const pilha = [...(fila.length ? fila : [ids[0]])];
+      const raizes = ids.filter((i) => !ehAlvo[i]);
+      const pilha = [...(raizes.length ? raizes : [ids[0]])];
+      pilha.forEach((i) => { col[i] = 0; });
       let guarda = 0;
       while (pilha.length && guarda++ < 6000) {
         const i = pilha.shift() as string;
@@ -210,17 +204,14 @@ export function AutomationsWorkspace({ accessToken }: { accessToken: string }) {
         });
       }
       ids.forEach((i) => { if (col[i] == null) col[i] = 0; });
-
       const alturas: Record<string, number> = {};
       ids.forEach((i) => {
         const el = hostRef.current?.querySelector<HTMLElement>(`.node[data-id="${i}"]`);
         alturas[i] = el?.offsetHeight || 260;
       });
-
       const LARG = 340, GX = 140, GY = 44, PADX = 80, PADY = 80;
       const porColuna: Record<number, string[]> = {};
-      ids.slice()
-        .sort((a, b) => (col[a] - col[b]) || ((blocos[a].y ?? 0) - (blocos[b].y ?? 0)))
+      ids.slice().sort((a, b) => (col[a] - col[b]) || ((blocos[a].y ?? 0) - (blocos[b].y ?? 0)))
         .forEach((i) => { (porColuna[col[i]] = porColuna[col[i]] || []).push(i); });
       Object.keys(porColuna).forEach((c) => {
         let y = PADY;
@@ -230,7 +221,6 @@ export function AutomationsWorkspace({ accessToken }: { accessToken: string }) {
           y += alturas[i] + GY;
         });
       });
-
       const p = await fetch(`${supabaseUrl}/rest/v1/automacoes?id=eq.${abrirId}`, {
         method: "PATCH",
         headers: { ...cab, "Content-Type": "application/json", Prefer: "return=minimal" },
@@ -243,6 +233,60 @@ export function AutomationsWorkspace({ accessToken }: { accessToken: string }) {
       setAviso(e instanceof Error ? e.message : "Não foi possível organizar o fluxo.");
     } finally { setArranjando(false); }
   }, [abrirId, cab, publishableKey, supabaseUrl]);
+
+  /* AÇÕES POR CARTÃO — os quatro botões do rodapé.
+     Escrevem na tabela automacoes, os mesmos campos que o construtor escreve:
+     ativa (liga/desliga), o registro inteiro (duplicar, nascendo como rascunho
+     desligado para não começar a rodar sozinho) e a exclusão. Excluir e duplicar
+     pedem confirmação — são irreversíveis e a lista é operação de verdade. */
+  const alternarAtiva = useCallback(async (a: Automacao) => {
+    if (!supabaseUrl) return;
+    setOcupado(a.id); setAviso(null);
+    try {
+      const r = await fetch(`${supabaseUrl}/rest/v1/automacoes?id=eq.${a.id}`, {
+        method: "PATCH",
+        headers: { ...cab, "Content-Type": "application/json", Prefer: "return=minimal" },
+        body: JSON.stringify({ ativa: !a.ativa }),
+      });
+      if (!r.ok) throw new Error(`Supabase respondeu ${r.status}`);
+      await carregar();
+      setAviso(`"${a.nome}" ${a.ativa ? "desligada" : "ligada"}.`);
+    } catch (e) { setAviso(e instanceof Error ? e.message : "Não foi possível mudar o estado."); }
+    finally { setOcupado(null); }
+  }, [cab, carregar, supabaseUrl]);
+
+  const duplicar = useCallback(async (a: Automacao) => {
+    if (!supabaseUrl) return;
+    if (!confirm(`Duplicar "${a.nome}"? A cópia nasce como rascunho desligado.`)) return;
+    setOcupado(a.id); setAviso(null);
+    try {
+      const r = await fetch(`${supabaseUrl}/rest/v1/automacoes?id=eq.${a.id}&select=nome,grupo,mapa`, { headers: cab });
+      if (!r.ok) throw new Error(`Supabase respondeu ${r.status}`);
+      const base = (await r.json())[0] as { nome?: string; grupo?: string | null; mapa?: unknown };
+      const p = await fetch(`${supabaseUrl}/rest/v1/automacoes`, {
+        method: "POST",
+        headers: { ...cab, "Content-Type": "application/json", Prefer: "return=minimal" },
+        body: JSON.stringify({ nome: `${base.nome ?? a.nome} (cópia)`, grupo: base.grupo ?? null, mapa: base.mapa ?? {}, ativa: false, status: "rascunho", arquivada: false }),
+      });
+      if (!p.ok) throw new Error(`Supabase respondeu ${p.status} ao duplicar`);
+      await carregar();
+      setAviso("Cópia criada como rascunho desligado.");
+    } catch (e) { setAviso(e instanceof Error ? e.message : "Não foi possível duplicar."); }
+    finally { setOcupado(null); }
+  }, [cab, carregar, supabaseUrl]);
+
+  const excluir = useCallback(async (a: Automacao) => {
+    if (!supabaseUrl) return;
+    if (!confirm(`Excluir "${a.nome}"? Isto não volta atrás.`)) return;
+    setOcupado(a.id); setAviso(null);
+    try {
+      const r = await fetch(`${supabaseUrl}/rest/v1/automacoes?id=eq.${a.id}`, { method: "DELETE", headers: { ...cab, Prefer: "return=minimal" } });
+      if (!r.ok) throw new Error(`Supabase respondeu ${r.status}`);
+      await carregar();
+      setAviso(`"${a.nome}" excluída.`);
+    } catch (e) { setAviso(e instanceof Error ? e.message : "Não foi possível excluir."); }
+    finally { setOcupado(null); }
+  }, [cab, carregar, supabaseUrl]);
 
   const visiveis = useMemo(() => {
     const q = busca.trim().toLowerCase();
@@ -303,6 +347,7 @@ export function AutomationsWorkspace({ accessToken }: { accessToken: string }) {
       </header>
 
       {erro && <div className="apn-erro">{erro} <button type="button" onClick={() => void carregar()}>tentar de novo</button></div>}
+      {aviso && <div className="apn-aviso-arranjo">{aviso}</div>}
 
       <section className="apn-secao">
         <span className="apn-eyebrow">O QUE ESTÁ CADASTRADO</span>
@@ -366,8 +411,21 @@ export function AutomationsWorkspace({ accessToken }: { accessToken: string }) {
                 </div>
               </div>
 
+              {passosAbertos === a.id && (
+                <ol className="apn-detalhe">
+                  {a.passos.length === 0 && <li>Esta automação não tem blocos no mapa.</li>}
+                  {a.passos.map((p, i) => (
+                    <li key={i}><b style={{ color: p.tinta }}>{i + 1}.</b> {p.rotulo}</li>
+                  ))}
+                </ol>
+              )}
+
               <footer className="apn-card-pe">
                 <button type="button" className="apn-abrir" onClick={() => { setAbrirId(a.id); setTela("construtor"); }}>Abrir construtor</button>
+                <button type="button" className="apn-ico" title="Ver os passos, um por linha" aria-label="Ver os passos" onClick={() => setPassosAbertos(passosAbertos === a.id ? null : a.id)}><Ico d={D_AJUDA} /></button>
+                <button type="button" className="apn-ico" title="Duplicar esta automação" aria-label="Duplicar" disabled={ocupado === a.id} onClick={() => void duplicar(a)}><Ico d={D_COPIA} /></button>
+                <button type="button" className={`apn-ico ${a.ativa ? "on" : ""}`} title={a.ativa ? "Desligar (para de rodar)" : "Ligar (passa a rodar)"} aria-label={a.ativa ? "Desligar" : "Ligar"} disabled={ocupado === a.id} onClick={() => void alternarAtiva(a)}><Ico d={D_LIGA} /></button>
+                <button type="button" className="apn-ico danger" title="Excluir esta automação" aria-label="Excluir" disabled={ocupado === a.id} onClick={() => void excluir(a)}><Ico d={D_LIXO} /></button>
               </footer>
             </article>
           ))}
