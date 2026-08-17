@@ -1,0 +1,75 @@
+/* AUTOMAÇÕES — biblioteca da tela do módulo (/automacoes).
+
+   Classes próprias (apn-*) porque este markup não existe em lugar nenhum do ERP:
+   nada aqui disputa seletor com globals.css nem com automation-builder.css, e por
+   isso a folha não precisa de prefixo defensivo. O construtor, quando aberto, quem
+   pinta é redesign-apecerto-automacoes.css (folha 14).
+
+   Só cor, tipografia, borda, raio, sombra e respiro, no padrão apêcerto: areia
+   #FAF8F6, branco nos cartões, linha #E4DFD9, tinta #1F1C1A, laranja #FF7000 com
+   queimado #CC5800, roxo #66009A, verde #127A44, âmbar #8A6100. */
+
+.apn-shell { min-height: 100%; background: #FAF8F6; color: #1F1C1A; padding: 0 0 48px; }
+
+.apn-eyebrow { display: block; color: #FF7000; font-size: 11px; font-weight: 600; letter-spacing: 0.12em; }
+.apn-eyebrow-roxo { color: #8B00CC; }
+
+.apn-topo { display: flex; align-items: flex-end; gap: 16px; flex-wrap: wrap; padding: 22px 32px; background: #fff; border-bottom: 1px solid #F2EFEC; }
+.apn-topo h1 { margin: 2px 0 0; font-size: 26px; font-weight: 700; letter-spacing: -0.02em; }
+.apn-topo p { margin: 4px 0 0; color: #6E6760; font-size: 13px; }
+.apn-cta { margin-left: auto; height: 44px; padding: 0 22px; border: 0; border-radius: 999px; background: #FF7000; color: #fff; font-family: inherit; font-size: 14px; font-weight: 700; cursor: pointer; box-shadow: 0 12px 28px rgba(255,112,0,0.28); }
+.apn-cta:hover { background: #E66200; }
+
+.apn-topo-construtor { display: flex; align-items: center; gap: 14px; padding: 16px 28px; background: #fff; border-bottom: 1px solid #F2EFEC; }
+.apn-topo-txt { flex: 1; min-width: 0; }
+.apn-topo-txt span { color: #FF7000; font-size: 11px; font-weight: 600; letter-spacing: 0.12em; }
+.apn-topo-txt h1 { margin: 1px 0 0; font-size: 18px; font-weight: 700; letter-spacing: -0.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.apn-voltar { height: 38px; padding: 0 15px; border: 1.5px solid #E4DFD9; border-radius: 999px; background: #fff; color: #4D4842; font-family: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
+.apn-voltar:hover { background: #FAF8F6; }
+
+.apn-erro { margin: 20px 32px 0; border-radius: 14px; background: #FBE5E5; color: #D93E3E; padding: 12px 15px; font-size: 12.5px; font-weight: 600; }
+.apn-erro button { margin-left: 8px; border: 1.5px solid #F6DADA; border-radius: 999px; background: #fff; color: #D93E3E; padding: 4px 11px; font-family: inherit; font-size: 11.5px; font-weight: 700; cursor: pointer; }
+
+.apn-secao { padding: 24px 32px 0; max-width: 1180px; }
+.apn-secao h2 { margin: 2px 0 14px; font-size: 20px; font-weight: 700; letter-spacing: -0.01em; }
+
+.apn-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(232px, 1fr)); gap: 12px; }
+.apn-kpi { background: #fff; border-radius: 18px; padding: 18px; box-shadow: 0 2px 6px rgba(31,28,26,0.06); display: flex; flex-direction: column; gap: 9px; }
+.apn-kpi strong { font-size: 27px; font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.apn-kpi-rot { font-size: 12px; font-weight: 600; color: #6E6760; }
+.apn-kpi small { font-size: 12px; color: #9A938B; }
+.apn-tile { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; font-size: 16px; flex: none; }
+
+.apn-filtros { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+.apn-aba { height: 38px; padding: 0 16px; border: 1.5px solid #E4DFD9; border-radius: 999px; background: #fff; color: #4D4842; font-family: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
+.apn-aba:hover { background: #FAF8F6; }
+.apn-aba.ativa { border-color: #FF7000; background: #FFF3EA; color: #CC5800; }
+.apn-busca { display: flex; align-items: center; height: 38px; padding: 0 14px; border: 1.5px solid #E4DFD9; border-radius: 999px; background: #fff; }
+.apn-busca input { width: 190px; border: 0; outline: none; background: transparent; font-family: inherit; font-size: 12.5px; font-weight: 600; color: #1F1C1A; }
+.apn-contador { margin-left: auto; font-size: 12px; color: #9A938B; }
+
+.apn-lista { display: flex; flex-direction: column; gap: 12px; }
+.apn-vazio { background: #fff; border-radius: 18px; padding: 26px; box-shadow: 0 2px 6px rgba(31,28,26,0.06); color: #6E6760; font-size: 13px; text-align: center; }
+
+.apn-card { background: #fff; border-radius: 18px; padding: 20px; box-shadow: 0 2px 6px rgba(31,28,26,0.06); display: flex; flex-direction: column; gap: 14px; }
+.apn-card.off { opacity: 0.72; }
+.apn-card-topo { display: flex; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+.apn-card-nome { flex: 1; min-width: 0; }
+.apn-card-nome strong { font-size: 16px; font-weight: 700; letter-spacing: -0.01em; }
+.apn-card-nome p { margin: 3px 0 0; color: #6E6760; font-size: 12.5px; }
+.apn-selos { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+
+.apn-chip { border-radius: 999px; padding: 4px 11px; font-size: 10px; font-weight: 800; letter-spacing: 0.03em; white-space: nowrap; }
+.apn-chip-ok { background: #E4F6EC; color: #127A44; }
+.apn-chip-alerta { background: #FDF1D9; color: #8A6100; }
+.apn-chip-laranja { background: #FFF3EA; color: #CC5800; }
+.apn-chip-neutro { background: #F2EFEC; color: #6E6760; }
+
+.apn-fluxo { background: #FAF8F6; border-radius: 14px; padding: 14px 16px; display: flex; flex-direction: column; gap: 9px; }
+.apn-passos { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+.apn-passo { display: inline-flex; align-items: center; height: 30px; padding: 0 13px; border-radius: 999px; font-size: 12px; font-weight: 700; white-space: nowrap; }
+.apn-sem-passo { font-size: 12px; color: #9A938B; }
+
+.apn-card-pe { display: flex; align-items: center; gap: 8px; }
+.apn-abrir { margin-left: auto; height: 38px; padding: 0 16px; border: 1.5px solid #E4DFD9; border-radius: 999px; background: #fff; color: #CC5800; font-family: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
+.apn-abrir:hover { border-color: #FF7000; background: #FFF3EA; }

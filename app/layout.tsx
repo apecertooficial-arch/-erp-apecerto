@@ -46,8 +46,8 @@ import "./styles/performance.css";
     11. ...-menu.css ......................... Menu lateral: ordem aprovada (order) + ícones Lucide
     12. ...-disparos.css ..................... Disparos: público, mensagem, cadência, revisão, recentes
     13. ...-calendario.css ................... Calendário: Dia/Semana/Mês/Lista, resumo, modais
-    14. ...-automacoes.css ................... Automações: casca, construtor e explicador
-    15. ...-automacoes-novo.css .............. Automações: biblioteca da rota /automacoes-novo (apn-*)
+    14. ...-automacoes.css ................... Automações: construtor e explicador
+    15. ...-automacoes-tela.css .............. Automações: biblioteca da tela do módulo (apn-*)
 
    Elas substituem por cascata os valores visuais que globals.css, funil-2.css,
    performance.css e automation-builder.css definiam para os MESMOS seletores —
@@ -81,7 +81,7 @@ import "./styles/redesign-apecerto-menu.css";
 import "./styles/redesign-apecerto-disparos.css";
 import "./styles/redesign-apecerto-calendario.css";
 import "./styles/redesign-apecerto-automacoes.css";
-import "./styles/redesign-apecerto-automacoes-novo.css";
+import "./styles/redesign-apecerto-automacoes-tela.css";
 /* INTERFACE DO APLICATIVO NO CELULAR — versão aprovada.
    Não é correção da folha antiga: o markup do Meu Dia e do CRM usa classes
    próprias (.ape-*), então esta folha é a única que os desenha. As regras
