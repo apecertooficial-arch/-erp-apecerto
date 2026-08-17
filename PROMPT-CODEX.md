@@ -1,136 +1,93 @@
-# Briefing para o Codex — subir o app mobile apêcerto no sistema
+# Briefing para o Codex — o que falta ligar no app do celular
 
-Este arquivo é a instrução completa. Leia inteiro antes de escrever código.
+Estado do repo em 17/08/2026. O desenho está fechado e aprovado; o que falta é **ligar dado** e **construir 4 telas** que hoje só existem no protótipo.
 
----
-
-## 1. Onde é
-
-- **Repo:** `apecertooficial-arch/-erp-apecerto`
-- **Branch:** `main`
-- **Protótipo de referência publicado no repo:** `public/prototipo/index.html`
-  (abre direto no navegador; carrega `public/prototipo/support.js` e `public/prototipo/_ds/**` por caminho relativo)
-
-O protótipo é a **fonte de verdade visual**. Em caso de divergência entre o que está escrito aqui e o protótipo, vale o protótipo.
+**Protótipo de referência (fonte de verdade visual):** `public/prototipo/index.html` — abre direto no navegador.
 
 ---
 
-## 2. O que já está feito (não refazer)
+## 1. Regras que não se negociam
 
-- As telas **Meu Dia** e **CRM no celular** já foram migradas para o layout aprovado:
-  - markup: `app/features/funil-2/Funil2Mobile.tsx` (classes próprias `.ape-*`)
-  - estilo: `app/styles/app-mobile-aprovado.css`
-- Dados reais via `/api/funil2` (Supabase). Nada mocado.
-- A camada antiga `app/styles/app-visual-aprovado.css` foi esvaziada e desligada.
-- Cabeçalho e barra inferior: `app/features/system/ErpShell.tsx` + `app/styles/app-mobile.css`.
-
----
-
-## 3. O que você precisa fazer
-
-### 3.1 Migrar as telas que faltam
-Trazer para o mesmo padrão `.ape-*` de `app-mobile-aprovado.css`, usando o protótipo como referência tela a tela:
-
-1. **Avisos** — abas `Agora · 4` / `Hoje · 9` / `Histórico`. Um card por aviso, **uma única ação por card**. Badge de não lido na barra inferior.
-2. **Agenda** — abas `Dia` / `Semana`. Bloco do próximo compromisso em destaque no topo + lista cronológica do dia abaixo.
-3. **Tarefas da Sara** — abas `Atrasadas · 2` / `Agora · 3` / `Hoje · 5` / `Futuras` / `Concluídas`. Cada tarefa mostra: etiqueta de prazo (atrasada/urgente/no prazo), a ação em uma frase, o lead (avatar + nome) e o motivo dado pela Sara. Sugestões da Sara podem ser **aceitas ou recusadas**.
-4. **Produtos** — chips `Todos` / `Pronto pra morar` / `Obras` / `Lançamento` / `Favoritos`. Card de empreendimento com foto, título, endereço, preço, dorms/banheiros/m²/vagas e badge de status.
-5. **Gestão / Painel (perfil gestor)** — painel da equipe + área restrita. Não aparece na rotina do corretor.
-
-### 3.2 Limpeza pendente
-- Remover o bloco de regras `.f2m-*` de `app/styles/app-mobile.css` que virou código morto após a migração (só as regras que não casam mais com nenhum markup — conferir antes de apagar).
-- Apagar `app/styles/app-visual-aprovado.css` (já está vazio e desligado).
-
-### 3.3 Barra inferior por perfil
-- **Corretor:** Início / CRM / Agenda / Avisos (com badge) / Mais
-- **Gestor:** Painel / Equipe / Produtos / Gestão / Mais
-
-Perfis têm navegação separada. Nada de gestão na rotina do corretor.
+1. **Dado real ou nada.** Se o campo não existe no banco, a linha **não aparece** — nem zerada, nem com traço. Nunca inventar número.
+2. **Nenhum vocabulário técnico na tela.** Já aconteceu em produção: `relation "perf_snapshots" does not exist` apareceu no meio da tela do gestor. Mensagem de banco vai para `console.error`, e a tela mostra frase humana + "Tentar novamente".
+3. **O app não é o ERP inteiro.** `RotaModulo.mobile` em `app/features/system/erp-routes.ts` decide o que o celular oferece. Módulo sem tela de celular fica `mobile: false` e desaparece da barra, do "Mais" e da Gestão.
+4. **A Sara orienta, nunca envia.** Bloco roxo. "Enviar mensagem para o cliente" é trava de produto, não ajuste de gestor.
+5. **WhatsApp honesto.** O CTA abre o WhatsApp; o contato fica âmbar em "aguardando sincronização" até a integração confirmar. Só então verde.
+6. **Concluir tarefa ≠ contato realizado.** Histórico é somente leitura.
+7. Tudo sob `@media (max-width: 900px)`. **O ERP no computador não é tocado.**
 
 ---
 
-## 4. Regras de estilo (não inventar nada fora disto)
+## 2. O que já está pronto e ligado
 
-Tudo sob `@media (max-width: 900px)`. **O ERP no computador não é tocado.**
+| Tela | Arquivo | Dado |
+|---|---|---|
+| Meu Dia / CRM | `app/features/funil-2/Funil2Mobile.tsx` | `/api/funil2` |
+| Avisos | `app/features/notifications/NotificationsWorkspace.tsx` | `/api/notificacoes` |
+| Agenda (Dia / Semana / **Mês**) | `app/features/calendar/TelaAgendaMobile.tsx` | `/api/agenda` |
+| Tarefas da Sara | `app/features/tasks/SaraTasksMobile.tsx` | `/api/funil2` (aceitar/recusar gravam) |
+| Produtos | `.ape-produto-*` | `/api/catalog` |
+| Início do gestor (resumo da operação) | `app/features/team/ManagerPanelMobile.tsx` | `/api/performance?periodo=mes` |
+| Gestão | `app/features/system/ManagementMobile.tsx` | navegação |
 
-**Cores**
-
-| Uso | Valor |
-|---|---|
-| Fundo da página | `#FAF8F6` |
-| Card | `#fff`, raio `18px`, sombra `0 2px 6px rgba(31,28,26,.06)` |
-| Texto | `#1F1C1A` · secundário `#6B635C` · terciário `#9A918A` |
-| Ação primária (marca) | laranja `#FF7000` |
-| Sara / contexto | roxo `#8B00CC`, bloco tint `#F7ECFC` |
-| WhatsApp | verde `#1E9E5A` |
-| Semânticas | sucesso `#1E9E5A` · atenção `#E8A317` · perigo `#D93E3E` |
-| Borda | `#E4DFD9` |
-
-**Código de cor por significado (igual ao CRM desktop):**
-laranja = cliente respondeu / ação sua · roxo = lead novo e tudo da Sara · âmbar = aguardando ou retorno prometido · vermelho = vencido · verde = confirmado.
-
-**Nunca** encostar laranja em roxo direto — sempre um neutro no meio.
-
-**Tipografia** — Quicksand apenas (400–700).
-Manchete 26px/700 · título de ficha 24px/700 · nome no card 16px/700 · corpo 13–14px/500 · meta 11–12px.
-Sobrancelha: 11px, 600, `+0.12em`, UPPERCASE, laranja — **único uso de caixa alta**.
-
-**Formas** — cards 18px · ficha/folha 24px topo · input 12px · botão principal pill (`999px`) · chips pill.
-
-**Toque** — alvos ≥ 44px; CTA principal 48–52px; respeitar `env(safe-area-inset-*)` em cima e embaixo.
-
-**Movimento** — 200ms, `cubic-bezier(.2,.8,.2,1)`. Fade + 4px de Y. Sem bounce em botão.
-
-**Classes, não inline.** Prefixo `.ape-`, seguindo o que já existe em `app-mobile-aprovado.css` (`.ape-card`, `.ape-contexto`, `.ape-prazo`, `.ape-filtros`, `.ape-estado`, `.ape-esqueleto`, `.ape-ficha`…). Reutilize essas classes antes de criar novas.
+Estilo: `app/styles/app-mobile-aprovado.css` (corretor) e `app/styles/app-mobile-gestor.css` (gestor). Prefixo `.ape-*`, classes — nunca inline.
 
 ---
 
-## 5. Regras de produto (não violar)
+## 3. Falta no banco (bloqueia tela)
 
-1. **WhatsApp honesto.** O CTA só abre o WhatsApp. O contato **não** é dado como feito: fica âmbar em "aguardando sincronização" até a integração oficial confirmar a mensagem no histórico — só aí vira verde.
-2. **A Sara orienta, nunca envia.** Bloco roxo com lugar fixo no card e na ficha.
-3. **Concluir tarefa ≠ contato realizado.** Só a sincronização confirma.
-4. **Histórico é somente leitura.**
-5. **Sem vocabulário técnico na tela do corretor** — nada de piloto, RPC, ingest, runner, cron, webhook.
-6. **Dados reais sempre**, via as APIs existentes. Se um campo não existe no banco, o bloco fica sem esse texto — não invente placeholder. (Exemplo já acordado: o conselho por cliente da Sara não existe no banco; o bloco fica sem ele até a análise real entrar.)
-7. Nomes e telefones em qualquer print/demo são fictícios; telefone mascarado no formato `(11) 9 ****-2869`.
+1. **`perf_snapshots` não existe.** A RPC `equipe_visao` falha por isso, e a tela "Minha Equipe" só tinha erro para mostrar — por isso está com `mobile: false` em `erp-routes.ts`. Criar a relação e voltar a flag para `true`.
+2. **Comissão prevista** e **corretores online** não existem em `/api/performance`. Estavam no desenho do Início do gestor e ficaram de fora pela regra 1. Se entrarem na API, acrescentar duas linhas em `ManagerPanelMobile` (bloco Finanças e bloco Trabalho).
 
 ---
 
-## 6. Estados de sistema (todos precisam existir)
+## 4. As 4 telas a construir
 
-- **Carregando** — skeleton com a forma real do card (`.ape-esqueleto`), não spinner.
-- **Vazio** — "fila zerada", com saída para Tarefas.
-- **Erro** — linguagem humana + botão "Tentar novamente". Nunca stack trace.
+Estão desenhadas no protótipo (telas 11 a 15) e **não existem no app**. Todas são do gestor, todas entram pela tela de Gestão, todas com o botão "‹ Gestão" no topo.
+
+**Regra desta rodada: sobe como LEITURA.** Onde não houver endpoint de escrita, o controle aparece **desabilitado** e o toque mostra um aviso curto ("ainda não é possível mudar isso pelo celular"). Não simular gravação.
+
+### 4.1 Distribuição de leads
+- Topo: a regra em uso, em uma frase, em bloco roxo.
+- Lista de corretores: iniciais, nome, leads de hoje, tamanho da carteira, barra de capacidade (verde até 75%, âmbar até 90%, vermelho acima) e um interruptor de plantão.
+- Fonte candidata: `/api/team` + `/api/presenca`. O interruptor precisa de endpoint de escrita — sem ele, desabilitado.
+
+### 4.2 Esteira de vendas
+- Quatro cartões de etapa (Proposta, Contrato, Assinado, Comissão) com quantidade e valor.
+- Lista de negócios em aberto: etapa (pílula), valor, cliente, produto, corretor e etiqueta vermelha quando parado há dias.
+- Fonte candidata: `app/api/crm/sales`.
+
+### 4.3 Regras da Sara
+- Quatro prazos (primeiro contato, retorno prometido, limite de carteira, reavaliação da fila), cada um com − e + de 36px. Sem campo de texto no celular.
+- Três permissões em interruptor; "Enviar mensagem para o cliente" **desligado e travado** por regra de produto.
+- Não há endpoint hoje: sobe tudo desabilitado, com a nota explicando a trava.
+
+### 4.4 Cadastro de produtos
+- Lista de empreendimentos com status Publicado / Incompleto / Rascunho e, quando incompleto, faixa âmbar dizendo o que falta.
+- Ação por item: "Abrir ficha do produto".
+- Fonte: `/api/catalog` e `/api/product`. Cadastrar novo continua no computador.
+
+### 4.5 Relatórios (já desenhada, também falta)
+- Quatro cartões — Trabalho, Atendimento, Funil, Receita — cada um com o número grande e a variação contra o mês anterior (verde melhor, vermelho pior, cinza estável).
+- Fonte: `/api/performance`. A variação exige o mês anterior; se a API não devolver, o cartão sai sem a variação.
+
+---
+
+## 5. Estados de sistema (todas as telas)
+
+- **Carregando** — esqueleto com a forma real do card, não spinner.
+- **Vazio** — frase humana e uma saída.
+- **Erro** — frase humana + "Tentar novamente".
 - **Offline** — faixa escura com a hora dos dados exibidos.
-- **Sessão expirada** — tela cheia, com a frase "nenhuma tarefa foi perdida".
+- **Sessão expirada** — tela cheia, com "nenhuma tarefa foi perdida".
 
 ---
 
-## 7. Como entregar
+## 6. Antes do PR
 
-- Um commit por tela migrada, mensagem em pt-BR descrevendo a tela.
-- Não mexer no ERP desktop (`min-width: 901px`).
-- Não adicionar dependência nova sem necessidade real.
-- Não criar camada de CSS sobre CSS: se uma regra antiga atrapalha, troque o markup para as classes novas em vez de sobrescrever.
-- Rodar o build e conferir as 5 telas em 390×844 antes de subir.
-
-**Checklist antes do PR**
-
-- [ ] As 5 telas migradas batem com o protótipo em `public/prototipo/index.html`
-- [ ] Nenhum alvo de toque abaixo de 44px
-- [ ] Safe-area respeitada em cima e embaixo
-- [ ] Barra inferior correta nos dois perfis
-- [ ] Os 5 estados de sistema desenhados em cada tela com lista
-- [ ] Nenhum dado mocado
-- [ ] Nenhum termo técnico visível ao corretor
-- [ ] `app-visual-aprovado.css` apagado e `.f2m-*` morto removido
-- [ ] Desktop inalterado
-
----
-
-## 8. Se faltar informação
-
-Pergunte antes de inventar. Especificamente em aberto:
-- Fotos reais dos empreendimentos (os cards ainda usam placeholder).
-- Confirmar se o CTA do WhatsApp fica verde (padrão do app) ou laranja (padrão da marca) — hoje está verde.
+- [ ] As 4 telas novas batem com o protótipo em 390×844
+- [ ] Nenhum alvo de toque abaixo de 44px; safe-area respeitada em cima e embaixo
+- [ ] Nenhum dado inventado; nenhuma linha zerada de campo inexistente
+- [ ] Controle sem endpoint aparece desabilitado, com aviso ao toque
+- [ ] Nenhum termo técnico visível; nenhuma mensagem de banco na tela
+- [ ] Desktop (`min-width: 901px`) inalterado
