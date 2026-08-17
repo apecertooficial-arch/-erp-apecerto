@@ -1,10 +1,10 @@
 /* TELAS NOVAS DO APP NO CELULAR - folha propria, sem camada sobre camada.
  *
  * Cobre o que a folha aprovada do corretor nao desenhava: as telas do gestor
- * (.ape-mais-*, .ape-equipe-*, .ape-resumo-*, .ape-cal-*), os grupos do Meu Dia
- * (.ape-grupo-*) e a escrita da agenda (.ape-agenda-editar, status da visita).
- * Cada seletor casa com markup que usa estas classes; as regras antigas
- * (.app-mais-grid, .equipe-*) continuam desenhando o desktop.
+ * (.ape-mais-*, .ape-equipe-*, .ape-resumo-*, .ape-relatorio-*, .ape-cal-*), os
+ * grupos do Meu Dia (.ape-grupo-*) e a escrita da agenda. Cada seletor casa com
+ * markup que usa estas classes; as regras antigas (.app-mais-grid, .equipe-*)
+ * continuam desenhando o desktop.
  *
  * Valores literais, os mesmos do prototipo aprovado. Nada de var() aqui: se um
  * token faltar, a tela quebra em silencio.
@@ -132,15 +132,12 @@
      dele, e o painel do gestor nao pede acao. */
   .ape-painel .ape-sobrancelha { color: #8B00CC; }
 
-  /* Filtro de periodo do Inicio do gestor. Herda a fileira rolavel de
-     .ape-filtros e sobe o alvo para 44px. */
+  /* Filtro de periodo do Inicio do gestor e dos Relatorios. */
   .ape-painel-filtros { margin-bottom: 8px; }
   .ape-painel-filtros button { min-height: 44px; }
   .ape-painel-janela { margin: 0 0 14px; color: #9A918A; font-size: 12px; font-weight: 600; }
 
-  /* ---------- Inicio do gestor: resumo da operacao ----------
-     Tres cartoes, um por pergunta. Rotulo a esquerda, numero a direita: a
-     coluna de numeros alinhada e o que permite comparar de relance. */
+  /* ---------- Inicio do gestor: resumo da operacao ---------- */
   .ape-resumo { display: flex; flex-direction: column; gap: 12px; }
   .ape-resumo-card {
     display: flex; flex-direction: column; gap: 11px; padding: 15px;
@@ -156,6 +153,30 @@
   .ape-resumo-card dd { margin: 0; color: #1F1C1A; font-size: 17px; font-weight: 700; letter-spacing: -.02em; text-align: right; overflow-wrap: anywhere; }
   .ape-resumo-card dd.alerta { color: #D93E3E; }
   .ape-resumo .ape-painel-skeleton { height: 118px; }
+
+  /* ---------- Relatorios ----------
+     Um cartao por assunto: numero grande, o que ele mede embaixo, e as linhas
+     que sustentam o numero. Sem variacao contra o periodo anterior enquanto a
+     API devolver uma janela por vez. */
+  .ape-relatorios { display: flex; flex-direction: column; gap: 12px; }
+  .ape-relatorio-card {
+    display: flex; flex-direction: column; padding: 16px;
+    border-radius: 18px; background: #fff; box-shadow: 0 2px 6px rgba(31, 28, 26, .06);
+  }
+  .ape-relatorio-titulo { font-size: 10px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: #CC5800; }
+  .ape-relatorio-card.atendimento .ape-relatorio-titulo { color: #8A6100; }
+  .ape-relatorio-card.funil .ape-relatorio-titulo { color: #6B635C; }
+  .ape-relatorio-card.receita .ape-relatorio-titulo { color: #8B00CC; }
+  .ape-relatorio-card > strong {
+    margin-top: 6px; color: #1F1C1A; font-size: 26px; font-weight: 700;
+    line-height: 1.1; letter-spacing: -.02em; overflow-wrap: anywhere;
+  }
+  .ape-relatorio-legenda { margin-top: 3px; color: #6B635C; font-size: 12.5px; font-weight: 500; line-height: 1.4; }
+  .ape-relatorio-card ul {
+    display: flex; flex-direction: column; gap: 6px;
+    margin: 12px 0 0; padding: 12px 0 0; border-top: 1px solid #F1EDE9; list-style: none;
+  }
+  .ape-relatorio-card li { color: #6B635C; font-size: 12.5px; font-weight: 500; line-height: 1.4; }
 
   /* ---------- Grade do mes ----------
      42 celulas sempre: mes curto nao muda a altura e a lista de baixo nao sobe
