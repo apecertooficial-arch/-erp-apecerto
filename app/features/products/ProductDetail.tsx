@@ -14,7 +14,7 @@ type ProductDetailData = {
   preco: number | null; condominio_valor: number | null; iptu: number | null; outros_custos: number | null;
   area_util: number | null; dormitorios: number | null; suites: number | null; vagas: number | null; banheiros: number | null;
   endereco: string | null; numero: string | null; complemento: string | null; bairro: string | null; cidade: string | null; uf: string | null; cep: string | null;
-  acesso_tipo: string | null; acesso_codigo: string | null; acesso_instrucoes: string | null; rascunho: boolean;
+  acesso_tipo: string | null; acesso_codigo: string | null; acesso_instrucoes: string | null; tour_url: string | null; rascunho: boolean;
   condominios: Condo | null; proprietarios: Owner | null; unidades: Unit[]; midias: Media[];
   summary_price: number | null; summary_area: number | null;
   completion: { checks: Record<string, boolean>; completed: number; total: number };
@@ -25,7 +25,7 @@ type ProductDetailData = {
 
 const money = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
 const mediaCategories = ["Fachada", "Sala", "Cozinha", "Dormitório", "Banheiro", "Varanda", "Piscina", "Lazer", "Planta", "Tabela", "Apresentação", "Outros"];
-const editableFields = ["nome", "incorporadora", "descricao", "preco", "condominio_valor", "iptu", "outros_custos", "area_util", "dormitorios", "suites", "vagas", "banheiros", "endereco", "numero", "complemento", "bairro", "cidade", "uf", "cep", "acesso_tipo", "acesso_codigo", "acesso_instrucoes"] as const;
+const editableFields = ["nome", "incorporadora", "descricao", "preco", "condominio_valor", "iptu", "outros_custos", "area_util", "dormitorios", "suites", "vagas", "banheiros", "endereco", "numero", "complemento", "bairro", "cidade", "uf", "cep", "acesso_tipo", "acesso_codigo", "acesso_instrucoes", "tour_url"] as const;
 
 function mediaType(file: File): Media["tipo"] {
   if (file.type.startsWith("image/")) return "foto";
@@ -259,7 +259,7 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
         : null)));
 
   const mediaLibrary = product && <section className="detail-section media-library fv2-media">
-    <div className="section-row"><div><h3>Galeria e materiais</h3><small>{photos.length} fotos · {videos.length} vídeos · {presentations.length} apresentações</small></div><button className={editImages ? "edit-images-btn active" : "edit-images-btn"} type="button" onClick={() => setEditImages(!editImages)}>{editImages ? "✓ Concluir edição" : "✎ Editar imagens"}</button></div>
+    <div className="section-row"><div><h3>Galeria e materiais{product?.tour_url ? <a className="fv2-tour-link" href={product.tour_url} target="_blank" rel="noreferrer">Tour virtual</a> : null}</h3><small>{photos.length} fotos · {videos.length} vídeos · {presentations.length} apresentações</small></div><button className={editImages ? "edit-images-btn active" : "edit-images-btn"} type="button" onClick={() => setEditImages(!editImages)}>{editImages ? "✓ Concluir edição" : "✎ Editar imagens"}</button></div>
     <div className="media-tabs"><button className={mediaTab === "fotos" ? "active" : ""} type="button" onClick={() => setMediaTab("fotos")}>Fotos ({photos.length})</button><button className={mediaTab === "videos" ? "active" : ""} type="button" onClick={() => setMediaTab("videos")}>Vídeos ({videos.length})</button><button className={mediaTab === "apresentacoes" ? "active" : ""} type="button" onClick={() => setMediaTab("apresentacoes")}>Apresentações ({presentations.length})</button></div>
     {editImages && <div className="material-upload">{mediaTab === "fotos" && <select value={category} onChange={(event) => setCategory(event.target.value)}>{mediaCategories.map((item) => <option key={item}>{item}</option>)}</select>}<label className="primary-action">＋ {mediaTab === "fotos" ? "Adicionar fotos" : mediaTab === "videos" ? "Adicionar vídeos" : "Adicionar apresentação PDF"}<input disabled={busy} multiple type="file" accept={mediaTab === "fotos" ? "image/*" : mediaTab === "videos" ? "video/*" : ".pdf,application/pdf,.ppt,.pptx"} onChange={(event) => void upload(event.target.files, mediaTab === "videos" ? "Tour" : mediaTab === "apresentacoes" ? "Apresentação" : undefined)} /></label></div>}
     {visibleMedia.length ? <div className="detail-gallery">{visibleMedia.map((item) => <article key={item.id}>
@@ -276,8 +276,8 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
         <div className="fv2-edit">
           <div className="fv2-edit-head"><h2>Editar produto</h2><button className="fv2-btn fv2-btn-ghost" type="button" onClick={() => setEditing(false)}>Cancelar edição</button></div>
           {message && <div className={`detail-message ${message.includes("salv") || message.includes("atualiz") || message.includes("adicionado") ? "success" : ""}`}>{message}</div>}
-          <div className="detail-form">
-            <h3>Dados do imóvel</h3>
+          {mediaLibrary}<div className="detail-form">
+            <h3>Dados do imóvel</h3><label>Tour virtual (link Matterport ou 360º)<input type="url" placeholder="https://..." value={draft.tour_url ?? ""} onChange={(event) => setDraft({ ...draft, tour_url: event.target.value })} /></label>
             <div className="field-grid">
               {(["nome", "incorporadora", "preco", "area_util", "dormitorios", "suites", "vagas", "banheiros"] as const).map((field) => <label key={field}>{field.replaceAll("_", " ")}<input type={["preco","area_util","dormitorios","suites","vagas","banheiros"].includes(field) ? "number" : "text"} value={draft[field] ?? ""} onChange={(event) => setDraft({ ...draft, [field]: event.target.value })} /></label>)}
             </div>
