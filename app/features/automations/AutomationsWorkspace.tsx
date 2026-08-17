@@ -2,19 +2,20 @@
 
 /* AUTOMAÇÕES — a tela do módulo. Uma só.
  *
- * Traz a BIBLIOTECA na frente (cada automação lida como sequência, com selos, abas,
- * busca, contadores e as ações por cartão) e o construtor por dentro. Não existe
- * rota paralela: tentei isso em /automacoes-novo e estava errado — virou camada em
- * vez de substituição.
+ * Biblioteca na frente (cada automação lida como sequência, com selos, abas,
+ * busca, contadores e ações por cartão) e o construtor por dentro.
  *
  * O CONSTRUTOR NÃO FOI REIMPLEMENTADO. O automationBuilderRuntime.js (159 KB)
  * continua sendo montado exatamente como antes — mesmo import dinâmico, mesmo
  * mount(host, {authToken, supabaseUrl, publishableKey}), mesmo unmount na saída.
+ * O título por bloco entra por decoração de DOM (decorarBlocos.ts), sem tocar no
+ * motor: bloco sem título mostra o tipo, como hoje.
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { ExplicadorAutomacoes } from "./ExplicadorAutomacoes";
+import { decorarBlocos, type MapaTitulos } from "./decorarBlocos";
 import "../../styles/automation-builder.css";
 
 type OriginalAutomationBuilder = {
@@ -109,6 +110,7 @@ export function AutomationsWorkspace({ accessToken }: { accessToken: string }) {
   const [passosAbertos, setPassosAbertos] = useState<number | null>(null);
   const [ocupado, setOcupado] = useState<number | null>(null);
   const hostRef = useRef<HTMLDivElement>(null);
+  const titulosRef = useRef<MapaTitulos>({});
 
   const cab = useMemo(
     () => ({ apikey: publishableKey ?? "", Authorization: `Bearer ${accessToken}` }),
@@ -136,22 +138,65 @@ export function AutomationsWorkspace({ accessToken }: { accessToken: string }) {
 
   useEffect(() => { void carregar(); }, [carregar]);
 
-  /* Construtor original. Quando o gestor chegou aqui clicando numa automação, o
-     único gancho possível é o próprio item da coluna do runtime (.sb-item[data-id]):
-     ele não expõe openAutomacao. Tentamos por alguns segundos e desistimos em
-     silêncio — sem o clique ele fica na tela inicial dele, estado legítimo. */
+  /* TÍTULO POR BLOCO — coluna automacoes.titulos (jsonb), fora de mapa.
+     Salvar volta atrás se o banco recusar: a tela não pode mostrar um nome que
+     não foi gravado. */
+  const salvarTitulo = useCallback(async (blocoId: string, valor: string) => {
+    if (!supabaseUrl || abrirId == null) return;
+    const antes = { ...titulosRef.current };
+    const depois = { ...antes };
+    if (valor) depois[blocoId] = valor; else delete depois[blocoId];
+    titulosRef.current = depois;
+    try {
+      const r = await fetch(`${supabaseUrl}/rest/v1/automacoes?id=eq.${abrirId}`, {
+        method: "PATCH",
+        headers: { ...cab, "Content-Type": "application/json", Prefer: "return=minimal" },
+        body: JSON.stringify({ titulos: depois }),
+      });
+      if (!r.ok) throw new Error(`Supabase respondeu ${r.status}`);
+      setAviso(valor ? `Bloco nomeado: "${valor}".` : "Nome do bloco removido.");
+    } catch (e) {
+      titulosRef.current = antes;
+      setAviso(e instanceof Error ? e.message : "Não foi possível salvar o nome do bloco.");
+    }
+    setRemontar((v) => v + 1);
+  }, [abrirId, cab, supabaseUrl]);
+
+  /* Construtor original. Os títulos são buscados ANTES de montar, para o primeiro
+     desenho já sair nomeado. Quando o gestor chegou aqui clicando numa automação,
+     o único gancho possível é o próprio item da coluna do runtime
+     (.sb-item[data-id]): ele não expõe openAutomacao. Tentamos por alguns segundos
+     e desistimos em silêncio — sem o clique ele fica na tela inicial dele. */
   useEffect(() => {
     if (tela !== "construtor") return;
     let ativo = true;
     let builder: OriginalAutomationBuilder | null = null;
+    let pararDecoracao: (() => void) | null = null;
     if (!supabaseUrl || !publishableKey) {
       if (hostRef.current) hostRef.current.innerHTML = '<div class="original-automation-error">Configuração pública do Supabase não encontrada.</div>';
       return;
     }
-    void import("./automationBuilderRuntime.js").then(({ default: mod }) => {
+    void (async () => {
+      if (abrirId != null) {
+        try {
+          const r = await fetch(`${supabaseUrl}/rest/v1/automacoes?id=eq.${abrirId}&select=titulos`, { headers: cab });
+          if (r.ok) titulosRef.current = ((await r.json())[0]?.titulos ?? {}) as MapaTitulos;
+        } catch { titulosRef.current = {}; }
+      } else { titulosRef.current = {}; }
+      if (!ativo) return;
+      const { default: mod } = await import("./automationBuilderRuntime.js");
       if (!ativo || !hostRef.current) return;
       builder = mod as OriginalAutomationBuilder;
       builder.mount(hostRef.current, { authToken: accessToken, supabaseUrl, publishableKey });
+      pararDecoracao = decorarBlocos(
+        hostRef.current,
+        () => titulosRef.current,
+        (blocoId, atual) => {
+          const novo = window.prompt("Nome deste bloco (deixe vazio para voltar ao tipo):", atual);
+          if (novo === null) return;
+          void salvarTitulo(blocoId, novo.trim());
+        },
+      );
       if (abrirId == null) return;
       let tentativas = 0;
       const tentar = () => {
@@ -161,12 +206,12 @@ export function AutomationsWorkspace({ accessToken }: { accessToken: string }) {
         if (tentativas++ < 40) setTimeout(tentar, 150);
       };
       setTimeout(tentar, 200);
-    }).catch((e: unknown) => {
+    })().catch((e: unknown) => {
       if (!ativo || !hostRef.current) return;
       hostRef.current.innerHTML = `<div class="original-automation-error">${e instanceof Error ? e.message : "Erro ao carregar Automações."}</div>`;
     });
-    return () => { ativo = false; builder?.unmount(); };
-  }, [tela, abrirId, remontar, accessToken, publishableKey, supabaseUrl]);
+    return () => { ativo = false; pararDecoracao?.(); builder?.unmount(); };
+  }, [tela, abrirId, remontar, accessToken, cab, publishableKey, salvarTitulo, supabaseUrl]);
 
   /* ORGANIZAR NA HORIZONTAL.
      O canvas do runtime sempre foi horizontal por dentro — entrada na ESQUERDA do
@@ -234,11 +279,9 @@ export function AutomationsWorkspace({ accessToken }: { accessToken: string }) {
     } finally { setArranjando(false); }
   }, [abrirId, cab, publishableKey, supabaseUrl]);
 
-  /* AÇÕES POR CARTÃO — os quatro botões do rodapé.
-     Escrevem na tabela automacoes, os mesmos campos que o construtor escreve:
-     ativa (liga/desliga), o registro inteiro (duplicar, nascendo como rascunho
-     desligado para não começar a rodar sozinho) e a exclusão. Excluir e duplicar
-     pedem confirmação — são irreversíveis e a lista é operação de verdade. */
+  /* AÇÕES POR CARTÃO — os quatro botões do rodapé. Escrevem na tabela automacoes,
+     os mesmos campos que o construtor escreve. Duplicar e excluir pedem
+     confirmação: são irreversíveis e esta lista é operação de verdade. */
   const alternarAtiva = useCallback(async (a: Automacao) => {
     if (!supabaseUrl) return;
     setOcupado(a.id); setAviso(null);
@@ -260,13 +303,13 @@ export function AutomationsWorkspace({ accessToken }: { accessToken: string }) {
     if (!confirm(`Duplicar "${a.nome}"? A cópia nasce como rascunho desligado.`)) return;
     setOcupado(a.id); setAviso(null);
     try {
-      const r = await fetch(`${supabaseUrl}/rest/v1/automacoes?id=eq.${a.id}&select=nome,grupo,mapa`, { headers: cab });
+      const r = await fetch(`${supabaseUrl}/rest/v1/automacoes?id=eq.${a.id}&select=nome,grupo,mapa,titulos`, { headers: cab });
       if (!r.ok) throw new Error(`Supabase respondeu ${r.status}`);
-      const base = (await r.json())[0] as { nome?: string; grupo?: string | null; mapa?: unknown };
+      const base = (await r.json())[0] as { nome?: string; grupo?: string | null; mapa?: unknown; titulos?: unknown };
       const p = await fetch(`${supabaseUrl}/rest/v1/automacoes`, {
         method: "POST",
         headers: { ...cab, "Content-Type": "application/json", Prefer: "return=minimal" },
-        body: JSON.stringify({ nome: `${base.nome ?? a.nome} (cópia)`, grupo: base.grupo ?? null, mapa: base.mapa ?? {}, ativa: false, status: "rascunho", arquivada: false }),
+        body: JSON.stringify({ nome: `${base.nome ?? a.nome} (cópia)`, grupo: base.grupo ?? null, mapa: base.mapa ?? {}, titulos: base.titulos ?? {}, ativa: false, status: "rascunho", arquivada: false }),
       });
       if (!p.ok) throw new Error(`Supabase respondeu ${p.status} ao duplicar`);
       await carregar();
