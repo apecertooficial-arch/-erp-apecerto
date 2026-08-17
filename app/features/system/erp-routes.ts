@@ -53,8 +53,15 @@ export const rotasModulo: Record<ModuleName, RotaModulo> = {
      o slug "projetos", basta devolve-lo aqui. */
   "Projetos e Tarefas": { path: "/tarefas", slugs: [], classe: "A", rotuloCurto: "Tarefas", mobile: true },
 
-  "Minha Equipe": { path: "/equipe", slugs: [], classe: "B", rotuloCurto: "Equipe", mobile: true },
-  Performance: { path: "/performance", slugs: ["performance"], classe: "B", rotuloCurto: "Painel", mobile: true },
+  /* MINHA EQUIPE fica fora do celular por enquanto: a RPC equipe_visao depende
+     da relacao `perf_snapshots`, que nao existe no banco -- a tela abria e so
+     tinha erro para mostrar. O que o gestor precisa dali (quem esta
+     trabalhando, resposta no prazo) esta no Inicio dele. Volta a true no dia em
+     que a relacao existir. */
+  "Minha Equipe": { path: "/equipe", slugs: [], classe: "B", rotuloCurto: "Equipe", mobile: false },
+  /* Rotulo "Inicio": no celular do gestor esta e a primeira tela, o resumo da
+     operacao. "Painel" dizia onde ele estava, nao o que ia encontrar. */
+  Performance: { path: "/performance", slugs: ["performance"], classe: "B", rotuloCurto: "Início", mobile: true },
   Abordagens: { path: "/abordagens", slugs: ["abordagens"], classe: "B", mobile: false },
   "Automações": { path: "/automacoes", slugs: ["automacoes"], classe: "B", mobile: false },
   "Agentes de IA": { path: "/agentes-ia", slugs: ["agentes_ia"], classe: "B", rotuloCurto: "Agentes", mobile: false },
@@ -78,7 +85,9 @@ export const rotasModulo: Record<ModuleName, RotaModulo> = {
 };
 
 const barraCorretor: ModuleName[] = ["Início", "CRM", "Calendário", "Notificações"];
-const barraGestor: ModuleName[] = ["Performance", "Minha Equipe", "Produtos", "Configurações"];
+/* Barra do gestor: Inicio (resumo da operacao), Produtos, Calendario, Gestao.
+   Equipe saiu -- ver a nota em "Minha Equipe". */
+const barraGestor: ModuleName[] = ["Performance", "Produtos", "Calendário", "Configurações"];
 
 const porPath = new Map<string, ModuleName>(
   (Object.entries(rotasModulo) as Array<[ModuleName, RotaModulo]>).map(([nome, rota]) => [rota.path, nome]),
@@ -161,8 +170,8 @@ export function destinoEntradaLegada(search: string, hash: string): string {
  * as duas nunca divirjam.
  *
  * O APP NAO E O ERP INTEIRO. Modulo com mobile:false nao aparece em nenhuma das
- * duas: no celular o corretor tem a rotina dele, e o gestor tem agenda, quem
- * esta trabalhando, avisos e produtos. O resto vive no computador.
+ * duas: no celular o corretor tem a rotina dele, e o gestor tem o resumo da
+ * operacao, produtos, calendario e gestao. O resto vive no computador.
  */
 export type ItensNavegacao = { barra: ModuleName[]; mais: ModuleName[] };
 

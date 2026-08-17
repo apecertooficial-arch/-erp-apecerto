@@ -1,8 +1,8 @@
 /* TELAS DO GESTOR NO CELULAR - folha propria, sem camada sobre camada.
  *
  * Cada seletor aqui casa com markup que passou a usar estas classes (.ape-mais-*,
- * .ape-equipe-*). As regras antigas (.app-mais-grid, .equipe-*) continuam
- * desenhando o desktop e simplesmente nao casam mais com o celular.
+ * .ape-equipe-*, .ape-resumo-*, .ape-cal-*). As regras antigas (.app-mais-grid,
+ * .equipe-*) continuam desenhando o desktop e nao casam mais com o celular.
  *
  * Valores literais, os mesmos do prototipo aprovado. Nada de var() aqui: se um
  * token faltar, a tela quebra em silencio.
@@ -58,6 +58,53 @@
      leitura e confirmacao. O laranja da abertura do corretor significa acao
      dele, e o painel do gestor nao pede acao. */
   .ape-painel .ape-sobrancelha { color: #8B00CC; }
+
+  /* ---------- Inicio do gestor: resumo da operacao ----------
+     Tres cartoes, um por pergunta. Rotulo a esquerda, numero a direita: a
+     coluna de numeros alinhada e o que permite comparar de relance. */
+  .ape-resumo { display: flex; flex-direction: column; gap: 12px; }
+  .ape-resumo-card {
+    display: flex; flex-direction: column; gap: 11px; padding: 15px;
+    border-radius: 18px; background: #fff; box-shadow: 0 2px 6px rgba(31, 28, 26, .06);
+  }
+  .ape-resumo-titulo { font-size: 10px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+  .ape-resumo-card.financas .ape-resumo-titulo { color: #8B00CC; }
+  .ape-resumo-card.leads .ape-resumo-titulo { color: #CC5800; }
+  .ape-resumo-card.trabalho .ape-resumo-titulo { color: #6B635C; }
+  .ape-resumo-card dl { display: flex; flex-direction: column; gap: 9px; margin: 0; }
+  .ape-resumo-card dl > div { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+  .ape-resumo-card dt { color: #6B635C; font-size: 13px; font-weight: 500; }
+  .ape-resumo-card dd { margin: 0; color: #1F1C1A; font-size: 17px; font-weight: 700; letter-spacing: -.02em; text-align: right; overflow-wrap: anywhere; }
+  .ape-resumo-card dd.alerta { color: #D93E3E; }
+  .ape-resumo .ape-painel-skeleton { height: 118px; }
+
+  /* ---------- Grade do mes (aba Mes da agenda) ----------
+     42 celulas sempre: mes curto nao muda a altura e a lista de baixo nao sobe
+     na cara de quem esta tocando. */
+  .ape-cal {
+    display: flex; flex-direction: column; gap: 11px; margin-bottom: 14px;
+    padding: 15px 14px; border-radius: 18px; background: #fff;
+    box-shadow: 0 2px 6px rgba(31, 28, 26, .06);
+  }
+  .ape-cal-mes { margin: 0; font-size: 16px; font-weight: 700; letter-spacing: -.01em; }
+  .ape-cal-semana, .ape-cal-grade { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+  .ape-cal-semana span { color: #9A918A; font-size: 10px; font-weight: 700; letter-spacing: .06em; text-align: center; }
+  .ape-cal-semana span.fds { color: #C9C1B9; }
+  .ape-cal-dia {
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+    min-height: 44px; border: 0; border-radius: 13px; background: transparent;
+    color: #1F1C1A; font-family: inherit; font-size: 14px; font-weight: 600; cursor: pointer;
+  }
+  .ape-cal-dia.fora { color: #D6CFC8; }
+  .ape-cal-dia.on { background: #1F1C1A; color: #fff; font-weight: 700; }
+  .ape-cal-dia i { width: 5px; height: 5px; border-radius: 999px; background: #FF7000; }
+  .ape-cal-dia i.cheio { background: #8B00CC; }
+  .ape-cal-legenda { display: flex; gap: 14px; margin: 0; padding-top: 9px; border-top: 1px solid #F1EDE9; }
+  .ape-cal-legenda span { display: flex; align-items: center; gap: 6px; color: #9A918A; font-size: 11px; font-weight: 600; }
+  .ape-cal-legenda i { width: 5px; height: 5px; border-radius: 999px; background: #FF7000; }
+  .ape-cal-legenda i.cheio { background: #8B00CC; }
+
+  .ape-gestao-nota { margin: 16px 12px 0; color: #9A918A; font-size: 11px; font-weight: 500; line-height: 1.5; text-align: center; }
 
   /* ---------- Minha Equipe ---------- */
   .ape-equipe {
