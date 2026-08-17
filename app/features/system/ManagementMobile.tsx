@@ -35,8 +35,11 @@ const itens = [
   { modulo: "Calendário", icone: "agenda", titulo: "Agenda da equipe", texto: "Visitas e compromissos do dia" },
   { modulo: "Notificações", icone: "avisos", titulo: "Avisos", texto: "O que está pedindo ação agora" },
   { modulo: "CRM", icone: "esteira", titulo: "Esteira de vendas", texto: "Atendimentos e oportunidades" },
-  { modulo: "Performance", icone: "relatorios", titulo: "Relatórios", texto: "Trabalho, atendimento, funil e receita" },
-] satisfies Array<{ modulo: ModuleName; icone: string; titulo: string; texto: string }>;
+  /* Relatorios e a OUTRA leitura de /performance (?vista=relatorios): trabalho,
+     atendimento, funil e receita do periodo. O Inicio do gestor ja e a primeira
+     leitura, e sem o parametro as duas linhas abririam a mesma tela. */
+  { modulo: "Performance", icone: "relatorios", titulo: "Relatórios", texto: "Trabalho, atendimento, funil e receita", vista: "relatorios" },
+] satisfies Array<{ modulo: ModuleName; icone: string; titulo: string; texto: string; vista?: string }>;
 
 export function ManagementMobile() {
   const { role, permissoes, perfilCarregado, isManager } = useErpSession();
@@ -44,7 +47,10 @@ export function ManagementMobile() {
     existeNoApp(item.modulo) && podeVer(item.modulo, { role, permissoes, carregado: perfilCarregado, isManager }));
   return <main className="ape-gestao">
     <p>Área restrita a gestor e administrador. Nada disso aparece na rotina do corretor.</p>
-    <section>{visiveis.map((item) => <Link href={pathDoModulo(item.modulo)} key={item.modulo}><span aria-hidden="true"><IconeGestao nome={item.icone} /></span><span><strong>{item.titulo}</strong><small>{item.texto}</small></span><b aria-hidden="true">›</b></Link>)}</section>
+    <section>{visiveis.map((item) => {
+      const href = item.vista ? `${pathDoModulo(item.modulo)}?vista=${item.vista}` : pathDoModulo(item.modulo);
+      return <Link href={href} key={item.titulo}><span aria-hidden="true"><IconeGestao nome={item.icone} /></span><span><strong>{item.titulo}</strong><small>{item.texto}</small></span><b aria-hidden="true">›</b></Link>;
+    })}</section>
     <p className="ape-gestao-nota">Financeiro, Usuários, Permissões, Automações e Auditoria ficam no ERP do computador.</p>
   </main>;
 }
