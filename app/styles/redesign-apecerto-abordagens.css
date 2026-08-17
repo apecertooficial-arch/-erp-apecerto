@@ -7,6 +7,11 @@
    .approach-new-card, .approach-empty, .approach-drawer-scrim, .approach-parts,
    .approach-delay e a prévia .app-wa-*.
 
+   Todo seletor nasce sob .approaches-workspace: a gaveta do editor e a prévia são
+   filhos do mesmo nó, e essa classe a mais garante a vitória sobre o globals.css
+   sem depender da ordem de carga (era o que deixava filtro, "Editar mensagens" e
+   cabeçalho de grupo nos valores antigos).
+
    Só visual: cor, tipografia, peso, borda, raio, sombra e respiro. Nenhuma
    regra cria, esconde ou reposiciona função — o grid e o fluxo continuam sendo
    os de globals.css. Nada aqui alcança Automações. */
@@ -16,7 +21,7 @@
 .approaches-workspace > header { padding: 20px 32px; border-bottom: 1px solid #F2EFEC; }
 .approaches-workspace > header span,
 .approaches-workspace main header span,
-.approach-drawer-scrim aside > header span { color: #FF7000; font-size: 11px; font-weight: 600; letter-spacing: 0.12em; }
+.approaches-workspace .approach-drawer-scrim aside > header span { color: #FF7000; font-size: 11px; font-weight: 600; letter-spacing: 0.12em; }
 .approaches-workspace > header h1 { font-size: 26px; font-weight: 700; letter-spacing: -0.02em; margin: 2px 0 0; }
 .approaches-workspace > header p { margin: 4px 0 0; color: #6E6760; font-size: 13px; }
 .approaches-workspace > header label { width: 300px; height: 44px; border: 1.5px solid #E4DFD9; border-radius: 999px; padding: 0 18px; gap: 8px; color: #9A938B; background: #fff; box-shadow: 0 1px 2px rgba(31,28,26,0.04); }
@@ -24,140 +29,140 @@
 .approaches-workspace > header input::placeholder { color: #9A938B; font-weight: 500; }
 
 /* aviso de salvamento: pill verde, não caixa escura */
-.workspace-notice { top: 22px; border-radius: 999px; background: #E4F6EC; color: #127A44; font-size: 12px; font-weight: 700; padding: 11px 18px; white-space: nowrap; box-shadow: 0 10px 28px rgba(31,28,26,0.12); }
+.approaches-workspace .workspace-notice { top: 22px; border-radius: 999px; background: #E4F6EC; color: #127A44; font-size: 12px; font-weight: 700; padding: 11px 18px; white-space: nowrap; box-shadow: 0 10px 28px rgba(31,28,26,0.12); }
 
 .approaches-workspace > main { grid-template-columns: 268px minmax(0,1fr); }
 
 /* ===== coluna de produtos ===== */
-.approach-products { background: #fff; border-right: 1px solid #F2EFEC; padding: 18px 14px; gap: 6px; }
-.approach-products > div { padding: 0 8px 12px; align-items: baseline; }
-.approach-products > div strong { font-size: 11px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: #FF7000; }
-.approach-products > div small { font-size: 12px; color: #9A938B; }
-.approach-products > button { grid-template-columns: 34px 1fr auto; gap: 10px; padding: 5px 10px 5px 6px; border: 1.5px solid transparent; border-radius: 14px; color: #4D4842; }
-.approach-products > button:hover { background: #FAF8F6; }
-.approach-products > button > span:first-child { width: 34px; height: 34px; border-radius: 10px; background: #FAF8F6; color: #9A938B; display: grid; place-items: center; font-size: 15px; }
-.approach-products > button b { font-size: 13px; font-weight: 600; white-space: nowrap; }
-.approach-products > button em { font-size: 11px; font-weight: 700; color: #6E6760; background: #FAF8F6; border-radius: 999px; padding: 3px 9px; }
-.approach-products > button.active { background: #FFF3EA; border-color: #FF7000; color: #CC5800; font-weight: 700; }
-.approach-products > button.active b { font-weight: 700; }
-.approach-products > button.active > span:first-child { background: #FFE4D1; color: #CC5800; }
-.approach-products > button.active em { background: #FFE4D1; color: #CC5800; }
-.approach-products .approach-add-group,
-.approach-products .approach-add-product { border: 1.5px solid #E4DFD9; border-radius: 999px; padding: 11px 14px; background: #fff; color: #4D4842; font-size: 13px; font-weight: 600; }
-.approach-products .approach-add-group:hover,
-.approach-products .approach-add-product:hover { border-color: #E4DFD9; background: #FAF8F6; color: #CC5800; }
+.approaches-workspace .approach-products { background: #fff; border-right: 1px solid #F2EFEC; padding: 18px 14px; gap: 6px; }
+.approaches-workspace .approach-products > div { padding: 0 8px 12px; align-items: baseline; }
+.approaches-workspace .approach-products > div strong { font-size: 11px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: #FF7000; }
+.approaches-workspace .approach-products > div small { font-size: 12px; color: #9A938B; }
+.approaches-workspace .approach-products > button { grid-template-columns: 34px 1fr auto; gap: 10px; padding: 5px 10px 5px 6px; border: 1.5px solid transparent; border-radius: 14px; color: #4D4842; }
+.approaches-workspace .approach-products > button:hover { background: #FAF8F6; }
+.approaches-workspace .approach-products > button > span:first-child { width: 34px; height: 34px; border-radius: 10px; background: #FAF8F6; color: #9A938B; display: grid; place-items: center; font-size: 15px; }
+.approaches-workspace .approach-products > button b { font-size: 13px; font-weight: 600; white-space: nowrap; }
+.approaches-workspace .approach-products > button em { font-size: 11px; font-weight: 700; color: #6E6760; background: #FAF8F6; border-radius: 999px; padding: 3px 9px; }
+.approaches-workspace .approach-products > button.active { background: #FFF3EA; border-color: #FF7000; color: #CC5800; font-weight: 700; }
+.approaches-workspace .approach-products > button.active b { font-weight: 700; }
+.approaches-workspace .approach-products > button.active > span:first-child { background: #FFE4D1; color: #CC5800; }
+.approaches-workspace .approach-products > button.active em { background: #FFE4D1; color: #CC5800; }
+.approaches-workspace .approach-products .approach-add-group,
+.approaches-workspace .approach-products .approach-add-product { border: 1.5px solid #E4DFD9; border-radius: 999px; padding: 11px 14px; background: #fff; color: #4D4842; font-size: 13px; font-weight: 600; }
+.approaches-workspace .approach-products .approach-add-group:hover,
+.approaches-workspace .approach-products .approach-add-product:hover { border-color: #E4DFD9; background: #FAF8F6; color: #CC5800; }
 
 /* ===== lista ===== */
-.approach-list { padding: 26px 28px 40px; }
-.approach-list > header { margin-bottom: 16px; align-items: flex-end; }
-.approach-list > header span { color: #8B00CC !important; }
-.approach-list > header h2 { margin: 2px 0 0; font-size: 20px; font-weight: 700; letter-spacing: -0.01em; }
-.approach-list > header button { height: 44px; padding: 0 22px; border-radius: 999px; background: #FF7000; color: #fff; font-size: 14px; font-weight: 700; box-shadow: 0 12px 28px rgba(255,112,0,0.28); cursor: pointer; }
-.approach-list > header button:hover { background: #E66200; }
+.approaches-workspace .approach-list { padding: 26px 28px 40px; }
+.approaches-workspace .approach-list > header { margin-bottom: 16px; align-items: flex-end; }
+.approaches-workspace .approach-list > header span { color: #8B00CC !important; }
+.approaches-workspace .approach-list > header h2 { margin: 2px 0 0; font-size: 20px; font-weight: 700; letter-spacing: -0.01em; }
+.approaches-workspace .approach-list > header button { height: 44px; padding: 0 22px; border-radius: 999px; background: #FF7000; color: #fff; font-size: 14px; font-weight: 700; box-shadow: 0 12px 28px rgba(255,112,0,0.28); cursor: pointer; }
+.approaches-workspace .approach-list > header button:hover { background: #E66200; }
 
-.approach-filters { gap: 8px; padding: 0 0 16px; flex-wrap: wrap; }
-.approach-filters button { height: 38px; padding: 0 16px; border: 1.5px solid #E4DFD9; border-radius: 999px; background: #fff; color: #4D4842; font-size: 12px; font-weight: 700; }
-.approach-filters button:hover { background: #FAF8F6; }
-.approach-filters button.active { border-color: #FF7000; background: #FFF3EA; color: #CC5800; }
-.approach-filters select { height: 38px; border: 1.5px solid #E4DFD9; border-radius: 999px; padding: 0 14px; color: #4D4842; font-size: 12px; font-weight: 600; cursor: pointer; }
+.approaches-workspace .approach-filters { gap: 8px; padding: 0 0 16px; flex-wrap: wrap; }
+.approaches-workspace .approach-filters button { height: 38px; padding: 0 16px; border: 1.5px solid #E4DFD9; border-radius: 999px; background: #fff; color: #4D4842; font-size: 12px; font-weight: 700; }
+.approaches-workspace .approach-filters button:hover { background: #FAF8F6; }
+.approaches-workspace .approach-filters button.active { border-color: #FF7000; background: #FFF3EA; color: #CC5800; }
+.approaches-workspace .approach-filters select { height: 38px; border: 1.5px solid #E4DFD9; border-radius: 999px; padding: 0 14px; color: #4D4842; font-size: 12px; font-weight: 600; cursor: pointer; }
 
 /* ===== grupo ===== */
-.approach-group { margin-bottom: 22px; }
-.approach-group-head { gap: 10px; padding: 0 2px 10px; border-bottom: 0; margin-bottom: 0; flex-wrap: wrap; }
-.approach-group-head strong { font-size: 14px; font-weight: 700; color: #1F1C1A; }
-.approach-group-head span { font-size: 11px; font-weight: 700; color: #66009A; background: #F7ECFC; border-radius: 999px; padding: 3px 9px; }
-.approach-group-head button { margin-left: 0; height: 34px; border: 1.5px solid #E4DFD9; border-style: solid; border-radius: 999px; padding: 0 13px; background: #fff; color: #4D4842; font-size: 12px; font-weight: 600; }
-.approach-group-head button:hover { background: #FAF8F6; }
-.approach-group-head button:first-of-type { margin-left: auto; }
-.approach-group-head button:not(:first-of-type) { width: 34px; padding: 0; color: #6E6760; }
+.approaches-workspace .approach-group { margin-bottom: 22px; }
+.approaches-workspace .approach-group-head { gap: 10px; padding: 0 2px 10px; border-bottom: 0; margin-bottom: 0; flex-wrap: wrap; }
+.approaches-workspace .approach-group-head strong { font-size: 14px; font-weight: 700; color: #1F1C1A; }
+.approaches-workspace .approach-group-head span { font-size: 11px; font-weight: 700; color: #66009A; background: #F7ECFC; border-radius: 999px; padding: 3px 9px; }
+.approaches-workspace .approach-group-head button { margin-left: 0; height: 34px; border: 1.5px solid #E4DFD9; border-style: solid; border-radius: 999px; padding: 0 13px; background: #fff; color: #4D4842; font-size: 12px; font-weight: 600; }
+.approaches-workspace .approach-group-head button:hover { background: #FAF8F6; }
+.approaches-workspace .approach-group-head button:first-of-type { margin-left: auto; }
+.approaches-workspace .approach-group-head button:not(:first-of-type) { width: 34px; padding: 0; color: #6E6760; }
 
 /* ===== cartão da abordagem ===== */
-.approach-cards { grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; margin-bottom: 0; }
-.approach-card { border: 0; border-radius: 18px; padding: 18px; gap: 12px; box-shadow: 0 2px 6px rgba(31,28,26,0.06); }
-.approach-card.inactive { opacity: 0.72; }
-.approach-card > header { gap: 10px; }
-.approach-card-ico { width: 34px; height: 34px; border-radius: 10px; background: #F7ECFC; color: #66009A; font-size: 16px; }
-.approach-card > header strong { font-size: 15px; font-weight: 700; letter-spacing: -0.01em; }
-.approach-card-tags { gap: 6px; margin-top: 6px; flex-wrap: wrap; }
-.approach-card-tags em { font-size: 11px; font-weight: 700; letter-spacing: 0; border-radius: 999px; padding: 3px 9px; }
-.approach-card-tags em.on { background: #E4F6EC; color: #127A44; }
-.approach-card-tags em.on::before { background: #1FA85A; }
-.approach-card-tags em.off { background: #F2EFEC; color: #6E6760; }
-.approach-card-tags em.off::before { background: #C9C2BA; }
-.approach-card-tags small { font-size: 11px; font-weight: 700; color: #6E6760; background: #FAF8F6; border-radius: 999px; padding: 3px 9px; margin-top: 0; }
-.approach-card-msgs { gap: 8px; }
-.approach-msg-box { border: 0; border-radius: 14px; background: #FAF8F6; padding: 12px 14px; }
-.approach-msg-box p { color: #4D4842; font-size: 13px; line-height: 1.5; }
-.approach-msg-box.empty { background: #FAF8F6; border: 1px dashed #E4DFD9; }
-.approach-msg-box.empty p { color: #9A938B; font-style: normal; }
-.approach-var-tag { align-self: flex-start; margin-bottom: 6px; border-radius: 999px; padding: 2px 8px; background: #F7ECFC; color: #66009A; font-size: 11px; font-weight: 700; }
-.approach-card > footer { display: flex; align-items: center; gap: 6px; }
-.approach-edit-btn { flex: 0 0 auto; min-height: 38px; border: 1.5px solid #E4DFD9; border-radius: 999px; padding: 0 15px; background: #fff; color: #CC5800; font-size: 12px; font-weight: 700; }
-.approach-edit-btn:hover { border-color: #FF7000; background: #FFF3EA; }
-.approach-ico-btn { width: 34px; height: 34px; border: 1.5px solid #E4DFD9; border-radius: 999px; background: #fff; color: #6E6760; font-size: 14px; }
-.approach-ico-btn:first-of-type { margin-left: auto; }
-.approach-ico-btn:hover { border-color: #E4DFD9; background: #FAF8F6; }
-.approach-ico-btn.danger { border-color: #F6DADA; color: #D93E3E; background: #fff; }
-.approach-ico-btn.danger:hover { border-color: #D93E3E; background: #FBE5E5; }
+.approaches-workspace .approach-cards { grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; margin-bottom: 0; }
+.approaches-workspace .approach-card { border: 0; border-radius: 18px; padding: 18px; gap: 12px; box-shadow: 0 2px 6px rgba(31,28,26,0.06); }
+.approaches-workspace .approach-card.inactive { opacity: 0.72; }
+.approaches-workspace .approach-card > header { gap: 10px; }
+.approaches-workspace .approach-card-ico { width: 34px; height: 34px; border-radius: 10px; background: #F7ECFC; color: #66009A; font-size: 16px; }
+.approaches-workspace .approach-card > header strong { font-size: 15px; font-weight: 700; letter-spacing: -0.01em; }
+.approaches-workspace .approach-card-tags { gap: 6px; margin-top: 6px; flex-wrap: wrap; }
+.approaches-workspace .approach-card-tags em { font-size: 11px; font-weight: 700; letter-spacing: 0; border-radius: 999px; padding: 3px 9px; }
+.approaches-workspace .approach-card-tags em.on { background: #E4F6EC; color: #127A44; }
+.approaches-workspace .approach-card-tags em.on::before { background: #1FA85A; }
+.approaches-workspace .approach-card-tags em.off { background: #F2EFEC; color: #6E6760; }
+.approaches-workspace .approach-card-tags em.off::before { background: #C9C2BA; }
+.approaches-workspace .approach-card-tags small { font-size: 11px; font-weight: 700; color: #6E6760; background: #FAF8F6; border-radius: 999px; padding: 3px 9px; margin-top: 0; }
+.approaches-workspace .approach-card-msgs { gap: 8px; }
+.approaches-workspace .approach-msg-box { border: 0; border-radius: 14px; background: #FAF8F6; padding: 12px 14px; }
+.approaches-workspace .approach-msg-box p { color: #4D4842; font-size: 13px; line-height: 1.5; }
+.approaches-workspace .approach-msg-box.empty { background: #FAF8F6; border: 1px dashed #E4DFD9; }
+.approaches-workspace .approach-msg-box.empty p { color: #9A938B; font-style: normal; }
+.approaches-workspace .approach-var-tag { align-self: flex-start; margin-bottom: 6px; border-radius: 999px; padding: 2px 8px; background: #F7ECFC; color: #66009A; font-size: 11px; font-weight: 700; }
+.approaches-workspace .approach-card > footer { display: flex; align-items: center; gap: 6px; }
+.approaches-workspace .approach-edit-btn { flex: 0 0 auto; min-height: 38px; border: 1.5px solid #E4DFD9; border-radius: 999px; padding: 0 15px; background: #fff; color: #CC5800; font-size: 12px; font-weight: 700; }
+.approaches-workspace .approach-edit-btn:hover { border-color: #FF7000; background: #FFF3EA; }
+.approaches-workspace .approach-ico-btn { width: 34px; height: 34px; border: 1.5px solid #E4DFD9; border-radius: 999px; background: #fff; color: #6E6760; font-size: 14px; }
+.approaches-workspace .approach-ico-btn:first-of-type { margin-left: auto; }
+.approaches-workspace .approach-ico-btn:hover { border-color: #E4DFD9; background: #FAF8F6; }
+.approaches-workspace .approach-ico-btn.danger { border-color: #F6DADA; color: #D93E3E; background: #fff; }
+.approaches-workspace .approach-ico-btn.danger:hover { border-color: #D93E3E; background: #FBE5E5; }
 
-.approach-new-card { min-height: 150px; border: 1.5px dashed #E4DFD9; border-radius: 18px; color: #6E6760; gap: 6px; }
-.approach-new-card:hover { border-color: #FF7000; background: #fff; color: #6E6760; }
-.approach-new-card > span { width: 34px; height: 34px; border-radius: 10px; background: #FFE4D1; color: #CC5800; font-size: 17px; }
-.approach-new-card:hover > span { background: #FFE4D1; color: #CC5800; }
-.approach-new-card > strong { font-size: 14px; font-weight: 700; color: #1F1C1A; }
-.approach-new-card:hover > strong { color: #1F1C1A; }
-.approach-new-card > small { font-size: 12px; color: #9A938B; }
+.approaches-workspace .approach-new-card { min-height: 150px; border: 1.5px dashed #E4DFD9; border-radius: 18px; color: #6E6760; gap: 6px; }
+.approaches-workspace .approach-new-card:hover { border-color: #FF7000; background: #fff; color: #6E6760; }
+.approaches-workspace .approach-new-card > span { width: 34px; height: 34px; border-radius: 10px; background: #FFE4D1; color: #CC5800; font-size: 17px; }
+.approaches-workspace .approach-new-card:hover > span { background: #FFE4D1; color: #CC5800; }
+.approaches-workspace .approach-new-card > strong { font-size: 14px; font-weight: 700; color: #1F1C1A; }
+.approaches-workspace .approach-new-card:hover > strong { color: #1F1C1A; }
+.approaches-workspace .approach-new-card > small { font-size: 12px; color: #9A938B; }
 
-.approach-empty { background: #fff; border-radius: 18px; box-shadow: 0 2px 6px rgba(31,28,26,0.06); padding: 34px 26px; min-height: 0; gap: 8px; color: #6E6760; }
-.approach-empty > span { width: 46px; height: 46px; border-radius: 14px; background: #F7ECFC; color: #66009A; display: grid; place-items: center; font-size: 22px; }
-.approach-empty strong { font-size: 16px; font-weight: 700; color: #1F1C1A; }
-.approach-empty p { margin: 0; max-width: 430px; font-size: 13px; line-height: 1.5; color: #6E6760; }
+.approaches-workspace .approach-empty { background: #fff; border-radius: 18px; box-shadow: 0 2px 6px rgba(31,28,26,0.06); padding: 34px 26px; min-height: 0; gap: 8px; color: #6E6760; }
+.approaches-workspace .approach-empty > span { width: 46px; height: 46px; border-radius: 14px; background: #F7ECFC; color: #66009A; display: grid; place-items: center; font-size: 22px; }
+.approaches-workspace .approach-empty strong { font-size: 16px; font-weight: 700; color: #1F1C1A; }
+.approaches-workspace .approach-empty p { margin: 0; max-width: 430px; font-size: 13px; line-height: 1.5; color: #6E6760; }
 
 /* ===== editor (gaveta) ===== */
-.approach-drawer-scrim { background: rgba(31,28,26,0.32); }
-.approach-drawer-scrim > aside { background: #fff; border-radius: 24px 0 0 24px; box-shadow: -18px 0 48px rgba(31,28,26,0.18); }
-.approach-drawer-scrim aside > header { padding: 22px 24px; border-bottom: 1px solid #F2EFEC; gap: 12px; }
-.approach-drawer-scrim aside > header > div { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
-.approach-drawer-scrim aside > header input { width: 100%; height: 46px; border: 1.5px solid #E4DFD9; border-radius: 12px; padding: 0 14px; margin-top: 0; font-size: 18px; font-weight: 700; color: #1F1C1A; }
-.approach-drawer-scrim aside > header .approach-grupo-input { height: 40px; font-size: 13px !important; font-weight: 600; color: #4D4842; opacity: 1; }
-.approach-drawer-scrim aside > header button { width: 38px; height: 38px; border: 1.5px solid #E4DFD9; border-radius: 999px; background: #fff; color: #6E6760; font-size: 18px; cursor: pointer; }
-.approach-drawer-scrim aside > header button:hover { background: #FAF8F6; }
-.approach-drawer-scrim aside > nav { padding: 14px 24px; border-bottom: 1px solid #F2EFEC; gap: 7px; }
-.approach-drawer-scrim aside > nav button { height: 38px; border: 1.5px solid #E4DFD9; border-radius: 999px; padding: 0 14px; color: #4D4842; font-size: 12px; font-weight: 700; cursor: pointer; }
-.approach-drawer-scrim aside > nav button:hover { background: #FAF8F6; }
-.approach-parts { padding: 18px 24px; background: #fff; }
-.approach-parts > article { border: 0; border-radius: 16px; background: #FAF8F6; padding: 14px; margin-bottom: 10px; }
-.approach-parts article header { gap: 9px; margin-bottom: 10px; }
-.approach-parts article header span { width: 26px; height: 26px; border-radius: 9px; background: #fff; color: #66009A; font-size: 12px; font-weight: 700; }
-.approach-parts article header strong { font-size: 13px; font-weight: 700; }
-.approach-parts article header button { height: 30px; padding: 0 12px; border: 1.5px solid #F6DADA; border-radius: 999px; background: #fff; color: #D93E3E; font-size: 11px; font-weight: 700; cursor: pointer; }
-.approach-parts article header button:hover { background: #FBE5E5; }
-.approach-parts textarea,
-.approach-parts input,
-.approach-parts select { border: 1.5px solid #E4DFD9; border-radius: 12px; padding: 11px 13px; background: #fff; font-size: 13px; color: #1F1C1A; }
-.approach-parts textarea { min-height: 84px; line-height: 1.5; }
-.approach-parts select { height: 40px; padding: 0 12px; font-weight: 600; color: #4D4842; cursor: pointer; }
-.approach-delay { grid-template-columns: 104px 1fr; gap: 8px; }
-.approach-delay input { font-weight: 700; }
-.approach-drawer-scrim aside > footer { padding: 16px 24px; border-top: 1px solid #F2EFEC; gap: 8px; }
-.approach-drawer-scrim aside > footer button { height: 44px; border: 1.5px solid #E4DFD9; border-radius: 999px; padding: 0 20px; background: #fff; color: #4D4842; font-size: 13px; font-weight: 600; cursor: pointer; }
-.approach-drawer-scrim aside > footer button:hover { background: #FAF8F6; }
-.approach-drawer-scrim aside > footer button.approach-preview-btn { border: 1.5px solid #E4DFD9 !important; background: #fff !important; color: #4D4842 !important; font-weight: 600 !important; }
-.approach-drawer-scrim aside > footer button.approach-preview-btn:hover { background: #FAF8F6 !important; }
-.approach-drawer-scrim aside > footer button.primary { border: 0; background: #FF7000; color: #fff; font-size: 14px; font-weight: 700; padding: 0 24px; box-shadow: 0 12px 28px rgba(255,112,0,0.28); }
-.approach-drawer-scrim aside > footer button.primary:hover { background: #E66200; }
-.approach-drawer-scrim aside > footer button:disabled { opacity: 0.4; box-shadow: none; }
+.approaches-workspace .approach-drawer-scrim { background: rgba(31,28,26,0.32); }
+.approaches-workspace .approach-drawer-scrim > aside { background: #fff; border-radius: 24px 0 0 24px; box-shadow: -18px 0 48px rgba(31,28,26,0.18); }
+.approaches-workspace .approach-drawer-scrim aside > header { padding: 22px 24px; border-bottom: 1px solid #F2EFEC; gap: 12px; }
+.approaches-workspace .approach-drawer-scrim aside > header > div { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+.approaches-workspace .approach-drawer-scrim aside > header input { width: 100%; height: 46px; border: 1.5px solid #E4DFD9; border-radius: 12px; padding: 0 14px; margin-top: 0; font-size: 18px; font-weight: 700; color: #1F1C1A; }
+.approaches-workspace .approach-drawer-scrim aside > header .approach-grupo-input { height: 40px; font-size: 13px !important; font-weight: 600; color: #4D4842; opacity: 1; }
+.approaches-workspace .approach-drawer-scrim aside > header button { width: 38px; height: 38px; border: 1.5px solid #E4DFD9; border-radius: 999px; background: #fff; color: #6E6760; font-size: 18px; cursor: pointer; }
+.approaches-workspace .approach-drawer-scrim aside > header button:hover { background: #FAF8F6; }
+.approaches-workspace .approach-drawer-scrim aside > nav { padding: 14px 24px; border-bottom: 1px solid #F2EFEC; gap: 7px; }
+.approaches-workspace .approach-drawer-scrim aside > nav button { height: 38px; border: 1.5px solid #E4DFD9; border-radius: 999px; padding: 0 14px; color: #4D4842; font-size: 12px; font-weight: 700; cursor: pointer; }
+.approaches-workspace .approach-drawer-scrim aside > nav button:hover { background: #FAF8F6; }
+.approaches-workspace .approach-parts { padding: 18px 24px; background: #fff; }
+.approaches-workspace .approach-parts > article { border: 0; border-radius: 16px; background: #FAF8F6; padding: 14px; margin-bottom: 10px; }
+.approaches-workspace .approach-parts article header { gap: 9px; margin-bottom: 10px; }
+.approaches-workspace .approach-parts article header span { width: 26px; height: 26px; border-radius: 9px; background: #fff; color: #66009A; font-size: 12px; font-weight: 700; }
+.approaches-workspace .approach-parts article header strong { font-size: 13px; font-weight: 700; }
+.approaches-workspace .approach-parts article header button { height: 30px; padding: 0 12px; border: 1.5px solid #F6DADA; border-radius: 999px; background: #fff; color: #D93E3E; font-size: 11px; font-weight: 700; cursor: pointer; }
+.approaches-workspace .approach-parts article header button:hover { background: #FBE5E5; }
+.approaches-workspace .approach-parts textarea,
+.approaches-workspace .approach-parts input,
+.approaches-workspace .approach-parts select { border: 1.5px solid #E4DFD9; border-radius: 12px; padding: 11px 13px; background: #fff; font-size: 13px; color: #1F1C1A; }
+.approaches-workspace .approach-parts textarea { min-height: 84px; line-height: 1.5; }
+.approaches-workspace .approach-parts select { height: 40px; padding: 0 12px; font-weight: 600; color: #4D4842; cursor: pointer; }
+.approaches-workspace .approach-delay { grid-template-columns: 104px 1fr; gap: 8px; }
+.approaches-workspace .approach-delay input { font-weight: 700; }
+.approaches-workspace .approach-drawer-scrim aside > footer { padding: 16px 24px; border-top: 1px solid #F2EFEC; gap: 8px; }
+.approaches-workspace .approach-drawer-scrim aside > footer button { height: 44px; border: 1.5px solid #E4DFD9; border-radius: 999px; padding: 0 20px; background: #fff; color: #4D4842; font-size: 13px; font-weight: 600; cursor: pointer; }
+.approaches-workspace .approach-drawer-scrim aside > footer button:hover { background: #FAF8F6; }
+.approaches-workspace .approach-drawer-scrim aside > footer button.approach-preview-btn { border: 1.5px solid #E4DFD9 !important; background: #fff !important; color: #4D4842 !important; font-weight: 600 !important; }
+.approaches-workspace .approach-drawer-scrim aside > footer button.approach-preview-btn:hover { background: #FAF8F6 !important; }
+.approaches-workspace .approach-drawer-scrim aside > footer button.primary { border: 0; background: #FF7000; color: #fff; font-size: 14px; font-weight: 700; padding: 0 24px; box-shadow: 0 12px 28px rgba(255,112,0,0.28); }
+.approaches-workspace .approach-drawer-scrim aside > footer button.primary:hover { background: #E66200; }
+.approaches-workspace .approach-drawer-scrim aside > footer button:disabled { opacity: 0.4; box-shadow: none; }
 
 /* ===== prévia (como o cliente recebe) =====
    As cores do WhatsApp ficam: a tela simula o aplicativo do cliente. O que muda
    é a moldura, que passa a seguir o raio e a sombra da marca. */
-.approach-preview-scrim { background: rgba(31,28,26,0.42); }
-.approach-preview-phone { border: 0; border-radius: 24px; box-shadow: 0 24px 60px rgba(31,28,26,0.28); }
-.app-wa-preview-tag { font-size: 10px; font-weight: 700; letter-spacing: 0.06em; border-radius: 999px; padding: 4px 9px; max-width: 150px; }
-.app-wa-daysep span { background: rgba(255,255,255,0.85); color: #5F574F; font-size: 11px; font-weight: 600; border-radius: 999px; padding: 4px 12px; box-shadow: none; }
-.app-wa-delay { background: rgba(255,255,255,0.7); color: #5F574F; font-size: 11px; font-weight: 600; border-radius: 999px; padding: 4px 12px; }
-.app-wa-bubble { border-radius: 12px 12px 4px 12px; padding: 8px 10px 6px; box-shadow: 0 1px 1px rgba(31,28,26,0.10); }
-.app-wa-bubble p { font-size: 13px; line-height: 1.45; }
-.app-wa-empty { border-radius: 14px; color: #6E6760; font-size: 12px; }
-.app-wa-inputbar { background: #fff; }
-.app-wa-inputbar span { background: #FAF8F6; border-radius: 999px; color: #9A938B; }
+.approaches-workspace .approach-preview-scrim { background: rgba(31,28,26,0.42); }
+.approaches-workspace .approach-preview-phone { border: 0; border-radius: 24px; box-shadow: 0 24px 60px rgba(31,28,26,0.28); }
+.approaches-workspace .app-wa-preview-tag { font-size: 10px; font-weight: 700; letter-spacing: 0.06em; border-radius: 999px; padding: 4px 9px; max-width: 150px; }
+.approaches-workspace .app-wa-daysep span { background: rgba(255,255,255,0.85); color: #5F574F; font-size: 11px; font-weight: 600; border-radius: 999px; padding: 4px 12px; box-shadow: none; }
+.approaches-workspace .app-wa-delay { background: rgba(255,255,255,0.7); color: #5F574F; font-size: 11px; font-weight: 600; border-radius: 999px; padding: 4px 12px; }
+.approaches-workspace .app-wa-bubble { border-radius: 12px 12px 4px 12px; padding: 8px 10px 6px; box-shadow: 0 1px 1px rgba(31,28,26,0.10); }
+.approaches-workspace .app-wa-bubble p { font-size: 13px; line-height: 1.45; }
+.approaches-workspace .app-wa-empty { border-radius: 14px; color: #6E6760; font-size: 12px; }
+.approaches-workspace .app-wa-inputbar { background: #fff; }
+.approaches-workspace .app-wa-inputbar span { background: #FAF8F6; border-radius: 999px; color: #9A938B; }
