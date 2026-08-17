@@ -27,9 +27,9 @@ export type RotaModulo = {
 };
 
 export const rotasModulo: Record<ModuleName, RotaModulo> = {
-  "Início": { path: "/inicio", slugs: ["dashboard"], classe: "A", rotuloCurto: "Meu Dia" },
+  "Início": { path: "/inicio", slugs: ["dashboard"], classe: "A", rotuloCurto: "Início" },
   CRM: { path: "/crm", slugs: ["crm", "leads", "pipeline"], classe: "A", rotuloCurto: "CRM" },
-  "Calendário": { path: "/agenda", slugs: ["calendario"], classe: "A", rotuloCurto: "Calendário" },
+  "Calendário": { path: "/agenda", slugs: ["calendario"], classe: "A", rotuloCurto: "Agenda" },
   "Notificações": { path: "/notificacoes", slugs: ["notificacoes"], classe: "A", rotuloCurto: "Avisos" },
   Produtos: { path: "/produtos", slugs: ["produtos"], classe: "A", rotuloCurto: "Produtos" },
   /* "projetos" NAO existe no catalogo de permissoes do banco -- conferido na
@@ -40,7 +40,7 @@ export const rotasModulo: Record<ModuleName, RotaModulo> = {
   "Projetos e Tarefas": { path: "/tarefas", slugs: [], classe: "A", rotuloCurto: "Tarefas" },
 
   "Minha Equipe": { path: "/equipe", slugs: [], classe: "B", rotuloCurto: "Equipe" },
-  Performance: { path: "/performance", slugs: ["performance"], classe: "B", rotuloCurto: "Performance" },
+  Performance: { path: "/performance", slugs: ["performance"], classe: "B", rotuloCurto: "Painel" },
   Abordagens: { path: "/abordagens", slugs: ["abordagens"], classe: "B" },
   "Automações": { path: "/automacoes", slugs: ["automacoes"], classe: "B" },
   "Agentes de IA": { path: "/agentes-ia", slugs: ["agentes_ia"], classe: "B", rotuloCurto: "Agentes" },
@@ -59,12 +59,12 @@ export const rotasModulo: Record<ModuleName, RotaModulo> = {
   Disparos: { path: "/disparos", slugs: ["disparos"], classe: "C" },
   Financiamento: { path: "/financiamento", slugs: [], classe: "C" },
   "Base de conhecimento": { path: "/conhecimento", slugs: [], classe: "C", rotuloCurto: "Base" },
-  "Configurações": { path: "/configuracoes", slugs: ["configuracoes"], classe: "C", rotuloCurto: "Ajustes" },
+  "Configurações": { path: "/configuracoes", slugs: ["configuracoes"], classe: "C", rotuloCurto: "Gestão" },
   Ajuda: { path: "/ajuda", slugs: [], classe: "C" },
 };
 
-/** Aplicativo operacional: somente as três entradas que o corretor usa todo dia. */
-export const barraInferior: ModuleName[] = ["Início", "CRM", "Calendário"];
+const barraCorretor: ModuleName[] = ["Início", "CRM", "Calendário", "Notificações"];
+const barraGestor: ModuleName[] = ["Performance", "Minha Equipe", "Produtos", "Configurações"];
 
 const porPath = new Map<string, ModuleName>(
   (Object.entries(rotasModulo) as Array<[ModuleName, RotaModulo]>).map(([nome, rota]) => [rota.path, nome]),
@@ -104,8 +104,11 @@ export function podeVer(
   const { role, permissoes, carregado, isManager = false } = opcoes;
 
   if (role === "admin") return true;
-  // "Minha Equipe" nao tem slug: quem libera e o papel real de gestao.
-  if (nome === "Minha Equipe") return isManager;
+  // Painel, Equipe e Gestão são a rotina do gestor e nunca a do corretor.
+  if (nome === "Minha Equipe" || nome === "Performance" || nome === "Configurações") {
+    if (isManager || role === "gestor") return true;
+    if (nome === "Minha Equipe") return false;
+  }
 
   const { slugs } = rotasModulo[nome];
   if (slugs.length === 0) return true;
@@ -142,7 +145,8 @@ export type ItensNavegacao = { barra: ModuleName[]; mais: ModuleName[] };
 
 export function itensDaNavegacao(opcoes: Parameters<typeof podeVer>[1]): ItensNavegacao {
   const visiveis = modulosVisiveis(opcoes);
-  const barra = barraInferior.filter((m) => visiveis.includes(m));
+  const gestao = opcoes.role === "admin" || opcoes.role === "gestor" || opcoes.isManager === true;
+  const barra = (gestao ? barraGestor : barraCorretor).filter((m) => visiveis.includes(m));
   const mais = visiveis.filter((m) => !barra.includes(m));
   return { barra, mais };
 }

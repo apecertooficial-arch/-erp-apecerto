@@ -16,9 +16,11 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { CaptureWizard } from "./CaptureWizard";
 import { UnitWizard } from "./UnitWizard";
 import { ProductDetail } from "./ProductDetail";
-import { products as fallbackProducts, type Product } from "./products";
+import type { Product } from "./products";
 import { getBrowserSupabaseClient } from "../../lib/supabase/browser";
 import { useErpSession } from "../system/ErpSession";
+import { AppMobileOffline, AppMobileSessaoExpirada } from "../system/AppMobileSystem";
+import { useEhCelular } from "../system/useFormato";
 
 type CatalogResponse = {
   mode: string;
@@ -39,6 +41,7 @@ const currency = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "
 
 export function ProductsModule({ accessToken }: { accessToken: string }) {
   const { publicarBadge, role } = useErpSession();
+  const ehCelular = useEhCelular();
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("Todos");
   const [neighborhood, setNeighborhood] = useState("Todos");
@@ -51,7 +54,7 @@ export function ProductsModule({ accessToken }: { accessToken: string }) {
   const [captureOpen, setCaptureOpen] = useState(false);
   const [unitWizardOpen, setUnitWizardOpen] = useState(false);
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
-  const [products, setProducts] = useState<Product[]>(fallbackProducts);
+  const [products, setProducts] = useState<Product[]>([]);
   const [canApprove, setCanApprove] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
   const [pendingUnits, setPendingUnits] = useState<NonNullable<CatalogResponse["pendingUnits"]>>([]);
@@ -59,6 +62,7 @@ export function ProductsModule({ accessToken }: { accessToken: string }) {
   const [approvalFilter, setApprovalFilter] = useState(false);
   const [decidingId, setDecidingId] = useState<string | null>(null);
   const [dataState, setDataState] = useState<"loading" | "live" | "auth" | "error">("loading");
+  const [atualizadoEm, setAtualizadoEm] = useState<Date | null>(null);
 
   const loadCatalog = useCallback(async function requestCatalog(token: string, allowRefresh = true) {
     setDataState("loading");
@@ -90,6 +94,7 @@ export function ProductsModule({ accessToken }: { accessToken: string }) {
       setPendingCount(result.pendingCount ?? 0);
       setPendingUnits(result.pendingUnits ?? []);
       setDataState("live");
+      setAtualizadoEm(new Date());
     } catch {
       setDataState("error");
     }
@@ -132,6 +137,56 @@ export function ProductsModule({ accessToken }: { accessToken: string }) {
   const neighborhoods = useMemo(() => [...new Set(products.map((item) => item.neighborhood).filter(Boolean))].sort(), [products]);
   const developers = useMemo(() => [...new Set(products.map((item) => item.developer).filter((item): item is string => Boolean(item)))].sort(), [products]);
 
+  const produtosVisiveis = filtered.filter((product) => !approvalFilter || (product.approval === "pendente" && !product.draft));
+
+  if (ehCelular === null) return null;
+  if (ehCelular && dataState === "auth") return <AppMobileSessaoExpirada />;
+  if (ehCelular) return <main className="ape-produtos">
+    <AppMobileOffline atualizadoEm={atualizadoEm} />
+    <label className="ape-produto-busca">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m20 20-4-4" /></svg>
+      <input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar empreendimento ou rua" />
+    </label>
+    <nav className="ape-filtros ape-produto-filtros" aria-label="Filtrar produtos">
+      {([
+        ["Todos", "Todos"], ["Pronto", "Pronto pra morar"], ["Em obras", "Obras"], ["Lançamento", "Lançamento"],
+      ] as const).map(([valor, rotulo]) => <button type="button" key={valor} className={!favoritesOnly && status === valor ? "ativo" : ""} onClick={() => { setFavoritesOnly(false); setStatus(valor); }}>{rotulo}</button>)}
+      <button type="button" className={favoritesOnly ? "ativo" : ""} onClick={() => { setStatus("Todos"); setFavoritesOnly(true); }}>Favoritos</button>
+    </nav>
+
+    {dataState === "loading" && <div className="ape-produto-esqueleto" aria-hidden="true">{[0, 1, 2].map((i) => <div key={i}><span /><i /><i /></div>)}</div>}
+    {dataState === "error" && <div className="ape-estado ruim" role="alert"><strong>Não foi possível carregar os produtos.</strong><p>Confira sua conexão e tente novamente.</p><button type="button" onClick={() => void loadCatalog(accessToken)}>Tentar novamente</button></div>}
+    {dataState === "live" && produtosVisiveis.length === 0 && <div className="ape-estado"><div className="ape-estado-icone" aria-hidden="true">⌕</div><strong>Nenhum produto encontrado</strong><p>Ajuste a busca ou escolha outro filtro.</p></div>}
+
+    {dataState === "live" && produtosVisiveis.length > 0 && <section className="ape-produto-lista">
+      {produtosVisiveis.map((product) => {
+        const compartilhar = encodeURIComponent(`${product.name} — ${product.neighborhood}, ${product.city} — ${product.price}`);
+        return <article className="ape-produto-card" key={product.id ?? product.name}>
+          <button type="button" className={`ape-produto-foto${product.coverUrl ? " com-foto" : ""}`} onClick={() => product.id && setSelectedProductId(product.id)} aria-label={`Abrir ${product.name}`}>
+            {product.coverUrl ? <img src={product.coverUrl} alt={`Foto de ${product.name}`} /> : <span aria-hidden="true">▥</span>}
+            <em>{product.draft ? "Rascunho" : product.status?.replaceAll("_", " ") || "Produto"}</em>
+          </button>
+          <div className="ape-produto-info">
+            <strong className="ape-produto-preco">{product.price}</strong>
+            <h2>{product.name}</h2>
+            {(product.neighborhood || product.city) && <p>{[product.neighborhood, product.city].filter(Boolean).join(" · ")}</p>}
+            <div className="ape-produto-dados">
+              {product.bedrooms > 0 && <span>{product.bedrooms} dorm.</span>}
+              {product.area > 0 && <span>{product.area} m²</span>}
+              {product.parking > 0 && <span>{product.parking} {product.parking === 1 ? "vaga" : "vagas"}</span>}
+            </div>
+            {product.available > 0 && <small>{product.available} disponíveis</small>}
+          </div>
+          <div className="ape-produto-acoes">
+            <a href={`https://wa.me/?text=${compartilhar}`} target="_blank" rel="noopener noreferrer">Compartilhar no WhatsApp</a>
+            <button type="button" onClick={() => product.id && setSelectedProductId(product.id)} aria-label={`Ver detalhes de ${product.name}`}>•••</button>
+          </div>
+        </article>;
+      })}
+    </section>}
+    {selectedProductId && <ProductDetail productId={selectedProductId} accessToken={accessToken} sessionRole={role} initialUnitId={initialUnitId} onClose={() => { setSelectedProductId(null); setInitialUnitId(null); }} onChanged={() => void loadCatalog(accessToken)} />}
+  </main>;
+
   return (
 <>
       <header className="topbar">
@@ -158,7 +213,7 @@ export function ProductsModule({ accessToken }: { accessToken: string }) {
         </div>)}
       </section>}
       <section className="product-grid">
-        {filtered.filter((product) => !approvalFilter || (product.approval === "pendente" && !product.draft)).map((product) => <article className="product-card" role="button" tabIndex={0} onClick={() => product.id && setSelectedProductId(product.id)} onKeyDown={(event) => { if ((event.key === "Enter" || event.key === " ") && product.id) setSelectedProductId(product.id); }} key={product.id ?? product.name}><div className={`product-photo ${product.coverUrl ? "has-image" : ""}`}>{product.coverUrl && <img src={product.coverUrl} alt={`Foto de capa de ${product.name}`} />}<span>{product.draft ? "Rascunho" : product.status?.replace("_", " ") ?? "Pronto"}</span>{!product.draft && product.approval && product.approval !== "aprovado" && <span className={`approval-badge ${product.approval}`}>{product.approval === "pendente" ? "⏳ Pendente" : "✕ Reprovado"}</span>}{!product.coverUrl && <div className="building-icon">▥</div>}<button type="button" onClick={(event) => { event.stopPropagation(); if (product.id) setSelectedProductId(product.id); }} aria-label={`Abrir ficha de ${product.name}`}>•••</button></div><div className="product-info"><strong className="price">{product.price}</strong><h2>{product.name}</h2><p className="location">⌖ {product.neighborhood} · {product.city}</p>{product.developer && <p className="developer">{product.developer}</p>}<div className="specs"><span>{product.area} m²</span><span>{product.bedrooms} dorm.</span><span>{product.parking} vaga</span></div><div className="availability"><span><i /> {product.available} disp.</span><span>· {product.units ?? 0} unidades</span><span>· {product.media ?? 0} mídias</span></div>{product.approval === "reprovado" && product.rejectionReason && <p className="approval-reason">Motivo: {product.rejectionReason}</p>}{canApprove && product.approval === "pendente" && !product.draft && <p className="approval-captador">👤 Captado por: {product.capturedBy ?? "Não informado"}</p>}{canApprove && product.approval === "pendente" && !product.draft && product.id && <div className="approval-actions" onClick={(event) => event.stopPropagation()}><button type="button" className="ap-approve" disabled={decidingId === product.id} onClick={() => void decide(product.id!, true)}>{decidingId === product.id ? "…" : "✓ Aprovar"}</button><button type="button" className="ap-reject" disabled={decidingId === product.id} onClick={() => void decide(product.id!, false)}>✕ Reprovar</button></div>}<footer><strong>{product.priceM2}</strong></footer></div></article>)}
+        {produtosVisiveis.map((product) => <article className="product-card" role="button" tabIndex={0} onClick={() => product.id && setSelectedProductId(product.id)} onKeyDown={(event) => { if ((event.key === "Enter" || event.key === " ") && product.id) setSelectedProductId(product.id); }} key={product.id ?? product.name}><div className={`product-photo ${product.coverUrl ? "has-image" : ""}`}>{product.coverUrl && <img src={product.coverUrl} alt={`Foto de capa de ${product.name}`} />}<span>{product.draft ? "Rascunho" : product.status?.replace("_", " ") ?? "Pronto"}</span>{!product.draft && product.approval && product.approval !== "aprovado" && <span className={`approval-badge ${product.approval}`}>{product.approval === "pendente" ? "⏳ Pendente" : "✕ Reprovado"}</span>}{!product.coverUrl && <div className="building-icon">▥</div>}<button type="button" onClick={(event) => { event.stopPropagation(); if (product.id) setSelectedProductId(product.id); }} aria-label={`Abrir ficha de ${product.name}`}>•••</button></div><div className="product-info"><strong className="price">{product.price}</strong><h2>{product.name}</h2><p className="location">⌖ {product.neighborhood} · {product.city}</p>{product.developer && <p className="developer">{product.developer}</p>}<div className="specs"><span>{product.area} m²</span><span>{product.bedrooms} dorm.</span><span>{product.parking} vaga</span></div><div className="availability"><span><i /> {product.available} disp.</span><span>· {product.units ?? 0} unidades</span><span>· {product.media ?? 0} mídias</span></div>{product.approval === "reprovado" && product.rejectionReason && <p className="approval-reason">Motivo: {product.rejectionReason}</p>}{canApprove && product.approval === "pendente" && !product.draft && <p className="approval-captador">👤 Captado por: {product.capturedBy ?? "Não informado"}</p>}{canApprove && product.approval === "pendente" && !product.draft && product.id && <div className="approval-actions" onClick={(event) => event.stopPropagation()}><button type="button" className="ap-approve" disabled={decidingId === product.id} onClick={() => void decide(product.id!, true)}>{decidingId === product.id ? "…" : "✓ Aprovar"}</button><button type="button" className="ap-reject" disabled={decidingId === product.id} onClick={() => void decide(product.id!, false)}>✕ Reprovar</button></div>}<footer><strong>{product.priceM2}</strong></footer></div></article>)}
       </section>
       {captureOpen && <CaptureWizard onClose={() => setCaptureOpen(false)} onSaved={() => {
         setCaptureOpen(false);

@@ -182,3 +182,345 @@
     box-shadow: 0 12px 30px rgba(139, 0, 204, .34) !important;
   }
 }
+/* Telas operacionais restantes. Cada seletor novo casa com markup .ape-*;
+   as classes antigas permanecem apenas para o desenho do desktop. */
+.ape-offline { display: none; }
+.ape-sessao-expirada { min-height: 60vh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 28px; text-align: center; }
+.ape-sessao-expirada p { margin: 0; }
+
+@media (max-width: 900px) {
+  .ape-avisos {
+    width: 100%; max-width: 620px; margin: 0 auto;
+    padding: 4px 20px calc(24px + env(safe-area-inset-bottom, 0px));
+    background: #FAF8F6; color: #1F1C1A; font-family: 'Quicksand', system-ui, sans-serif;
+  }
+  .ape-tela-sub { margin: 4px 0 12px; color: #6B635C; font-size: 13px; font-weight: 500; }
+  .ape-avisos .ape-filtros { margin-bottom: 10px; }
+  .ape-avisos .ape-chip { min-height: 44px; }
+
+  .ape-aviso-filtros { display: flex; margin-bottom: 14px; }
+  .ape-aviso-filtro {
+    display: inline-flex; align-items: center; gap: 7px; min-height: 44px; padding: 0 14px;
+    border: 1px solid #E4DFD9; border-radius: 999px; background: #fff; color: #6B635C;
+    font-family: inherit; font-size: 12px; font-weight: 600;
+  }
+  .ape-aviso-filtro::before { content: ''; width: 8px; height: 8px; border-radius: 999px; background: #C9C1B9; }
+  .ape-aviso-filtro.ativo { border-color: #FFD6BD; background: #FFF3EA; color: #B84300; }
+  .ape-aviso-filtro.ativo::before { background: #FF7000; }
+
+  .ape-aviso-lista { display: flex; flex-direction: column; gap: 10px; margin: 0; padding: 0; list-style: none; }
+  .ape-aviso-card {
+    display: flex; align-items: flex-start; gap: 12px; padding: 14px;
+    border: 0; border-radius: 18px; background: #fff; box-shadow: 0 2px 6px rgba(31, 28, 26, .06);
+  }
+  .ape-aviso-icone { display: grid; place-items: center; flex: 0 0 38px; width: 38px; height: 38px; border-radius: 12px; font-size: 16px; }
+  .ape-aviso-icone.laranja { background: #FFE4D1; color: #CC5800; }
+  .ape-aviso-icone.roxo { background: #EBD1F5; color: #66009A; }
+  .ape-aviso-icone.vermelho { background: #FBE5E5; color: #A32C2C; }
+  .ape-aviso-icone.verde { background: #E6F5EC; color: #136B3D; }
+  .ape-aviso-icone.cinza { background: #F4F0EC; color: #6B635C; }
+  .ape-aviso-corpo { flex: 1; min-width: 0; }
+  .ape-aviso-linha1 { display: flex; align-items: flex-start; gap: 8px; }
+  .ape-aviso-titulo { flex: 1; color: #1F1C1A; font-size: 15px; font-weight: 700; line-height: 1.3; text-wrap: pretty; }
+  .ape-aviso-ponto { flex: 0 0 8px; width: 8px; height: 8px; margin-top: 5px; border-radius: 999px; background: #FF7000; }
+  .ape-aviso-detalhe { margin: 4px 0 0; color: #6B635C; font-size: 12.5px; font-weight: 500; line-height: 1.45; overflow-wrap: anywhere; }
+  .ape-aviso-rodape { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 7px; }
+  .ape-aviso-acao { min-height: 44px; padding: 0; border: 0; background: transparent; color: #FF7000; font-family: inherit; font-size: 14px; font-weight: 700; }
+  .ape-aviso-acao:disabled { color: #B8B0A8; }
+  .ape-aviso-tempo { flex: none; color: #9A918A; font-size: 11px; font-weight: 500; white-space: nowrap; }
+  .ape-aviso-mais { width: 100%; min-height: 48px; margin-top: 14px; border: 1px solid #E4DFD9; border-radius: 999px; background: #fff; color: #6B635C; font-family: inherit; font-size: 14px; font-weight: 600; }
+
+  .ape-aviso-esqueleto { display: flex; flex-direction: column; gap: 10px; }
+  .ape-aviso-esqueleto > span {
+    height: 104px; border-radius: 18px;
+    background: linear-gradient(90deg, #EFEAE5 25%, #F7F4F1 50%, #EFEAE5 75%);
+    background-size: 240px 100%; animation: ape-brilho 1.2s linear infinite;
+  }
+
+  .ape-offline {
+    display: block; position: sticky; top: 0; z-index: 8; margin: -4px -20px 12px; padding: 9px 20px;
+    background: #1F1C1A; color: #fff; font-size: 11px; font-weight: 600; text-align: center;
+  }
+  .ape-sessao-expirada {
+    position: fixed; inset: 0; z-index: 200; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 10px; padding: 28px; background: #FAF8F6; color: #1F1C1A; font-family: 'Quicksand', system-ui, sans-serif; text-align: center;
+  }
+  .ape-sessao-expirada .ape-estado-icone { display: grid; place-items: center; width: 64px; height: 64px; border-radius: 999px; background: #FBE5E5; color: #D93E3E; font-size: 26px; font-weight: 700; }
+  .ape-sessao-expirada strong { font-size: 22px; font-weight: 700; }
+  .ape-sessao-expirada p { max-width: 280px; margin: 0; color: #6B635C; font-size: 14px; font-weight: 500; line-height: 1.5; }
+  .ape-sessao-expirada a { display: inline-flex; align-items: center; justify-content: center; min-height: 48px; margin-top: 6px; padding: 0 24px; border-radius: 999px; background: #FF7000; color: #fff; font-size: 15px; font-weight: 600; text-decoration: none; }
+}
+/* =====================================================================
+   AGENDA NO CELULAR — desenho do print 05
+   Só celular. Carrega depois de apecerto-identidade.css e usa os tokens.
+   ===================================================================== */
+
+.ape-agenda { display: none; }
+
+@media (max-width: 900px) {
+  .ape-agenda {
+    display: block;
+    width: 100%; max-width: 620px; margin: 0 auto; padding: 4px 20px calc(24px + env(safe-area-inset-bottom, 0px));
+    background: var(--bg-page);
+  }
+
+  /* ---------------- Próximo compromisso ----------------
+     Fundo laranja claro: é a única coisa da tela que o corretor precisa
+     ver de relance, andando. */
+  .ape-agenda-proximo {
+    border: 1px solid var(--ape-orange-100);
+    border-radius: var(--radius-lg);
+    background: var(--bg-tint-orange);
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+  .ape-agenda-eyebrow {
+    margin: 0 0 8px; font-size: 10px; font-weight: var(--weight-bold);
+    letter-spacing: var(--tracking-caps); text-transform: uppercase;
+    color: var(--ape-orange);
+  }
+  .ape-agenda-quando { margin-left: 8px; color: var(--ape-orange-700); }
+  .ape-agenda-prox-hora {
+    margin: 0; font-family: var(--font-display);
+    font-size: var(--text-xl); font-weight: var(--weight-bold);
+    color: var(--fg-1); line-height: var(--leading-tight);
+  }
+  .ape-agenda-prox-cliente { margin: 4px 0 0; font-size: 16px; color: var(--fg-2); }
+  .ape-agenda-prox-local { margin: 6px 0 0; font-size: 13px; color: var(--fg-3); overflow-wrap: anywhere; }
+
+  .ape-agenda-prox-acoes { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; align-items: center; }
+  .ape-agenda-btn-cheio,
+  .ape-agenda-btn-vazado {
+    min-height: 46px; padding: 0 20px; border-radius: var(--radius-pill);
+    display: inline-flex; align-items: center; justify-content: center;
+    font-family: var(--font-body); font-size: 16px;
+    font-weight: var(--weight-bold); text-decoration: none; cursor: pointer;
+  }
+  .ape-agenda-btn-cheio {
+    flex: 1; border: 0; background: var(--ape-orange);
+    color: var(--fg-inverse); box-shadow: var(--shadow-brand);
+  }
+  .ape-agenda-btn-vazado {
+    border: 1px solid var(--border-soft); background: var(--bg-surface); color: var(--fg-2);
+  }
+  .ape-agenda-btn-vazado:disabled { color: var(--fg-muted); cursor: default; }
+  .ape-agenda-sem-local { flex: 1; font-size: var(--text-xs); color: var(--fg-muted); }
+
+  /* ---------------- Barra do dia ---------------- */
+  .ape-agenda-barra { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+  .ape-agenda-chips { display: flex; gap: 8px; }
+  .ape-agenda-chip {
+    min-height: 36px; padding: 0 16px;
+    border: 1px solid var(--border-soft); border-radius: var(--radius-pill);
+    background: var(--bg-surface); color: var(--fg-2);
+    font-family: var(--font-body); font-size: 13px;
+    font-weight: var(--weight-semibold); cursor: pointer;
+  }
+  .ape-agenda-chip.on { background: var(--neutral-800); border-color: var(--neutral-800); color: var(--fg-inverse); }
+
+  .ape-agenda-navega { display: flex; gap: 6px; }
+  .ape-agenda-navega > button {
+    min-width: 40px; min-height: 36px;
+    border: 1px solid var(--border-soft); border-radius: var(--radius-pill);
+    background: var(--bg-surface); color: var(--fg-2);
+    font-size: var(--text-md); line-height: 1; cursor: pointer;
+  }
+
+  .ape-agenda-dia {
+    margin: 0 0 12px; font-size: 10px; font-weight: var(--weight-bold);
+    letter-spacing: var(--tracking-caps); text-transform: uppercase; color: var(--fg-3);
+  }
+
+  /* ---------------- Linha do tempo ----------------
+     A linha vertical e o ponto vivem FORA do cartão, na coluna do
+     horário. É isso que transforma a lista em linha do tempo em vez de
+     pilha de cartões — e é o que faltava no app. */
+  .ape-agenda-linha { list-style: none; margin: 0; padding: 0; }
+  .ape-agenda-item {
+    display: grid;
+    grid-template-columns: 46px 16px 1fr;
+    align-items: start;
+    gap: 0;
+    position: relative;
+    padding-bottom: 14px;
+  }
+  .ape-agenda-hora {
+    padding-top: 12px; font-size: 13px;
+    font-weight: var(--weight-semibold); color: var(--fg-2); white-space: nowrap;
+  }
+  /* A linha contínua: desenhada no meio da coluna do ponto. */
+  .ape-agenda-item::before {
+    content: "";
+    position: absolute; top: 20px; bottom: -2px; left: 52px;
+    width: 2px; background: var(--border-soft);
+  }
+  .ape-agenda-item:last-child::before { display: none; }
+  .ape-agenda-ponto {
+    position: relative; z-index: 1;
+    width: 10px; height: 10px; margin-top: 16px; margin-left: 1px;
+    border-radius: var(--radius-pill);
+    background: var(--ape-orange);
+    box-shadow: 0 0 0 3px var(--bg-page);
+  }
+  /* Compromisso que já passou: ponto apagado, texto mais leve. */
+  .ape-agenda-item.passou .ape-agenda-ponto { background: var(--neutral-300); }
+  .ape-agenda-item.passou .ape-agenda-cliente { color: var(--fg-3); }
+  .ape-agenda-item.passou .ape-agenda-tipo { color: var(--fg-muted); }
+
+  .ape-agenda-cartao {
+    width: 100%; text-align: left; margin-left: 10px;
+    display: grid; gap: 2px; padding: 12px 14px;
+    border: 1px solid var(--border-soft); border-radius: var(--radius-md);
+    background: var(--bg-surface); box-shadow: var(--shadow-xs); cursor: pointer;
+  }
+  .ape-agenda-tipo {
+    font-size: 10px; font-weight: var(--weight-bold);
+    letter-spacing: var(--tracking-caps); text-transform: uppercase; color: var(--ape-orange);
+  }
+  .ape-agenda-cliente { font-size: 15px; font-weight: var(--weight-bold); color: var(--fg-1); }
+  .ape-agenda-local { font-size: 12px; color: var(--fg-3); overflow-wrap: anywhere; }
+
+  /* ---------------- Estados ---------------- */
+  .ape-agenda-esqueleto { display: grid; gap: 12px; }
+  .ape-agenda-esqueleto > span {
+    height: 74px; border-radius: var(--radius-md);
+    background: linear-gradient(90deg, var(--neutral-100), var(--neutral-200), var(--neutral-100));
+    background-size: 200% 100%; animation: ape-agenda-brilho 1.2s ease-in-out infinite;
+  }
+  @keyframes ape-agenda-brilho { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+  @media (prefers-reduced-motion: reduce) { .ape-agenda-esqueleto > span { animation: none; } }
+
+  .ape-agenda-vazio { padding: 32px 8px; text-align: center; color: var(--fg-3); font-size: var(--text-sm); }\n  .ape-agenda-vazio a { display: block; min-height: 44px; margin-top: 8px; color: #FF7000; font-weight: 700; line-height: 44px; }
+  .ape-agenda-erro {
+    padding: 16px; border: 1px solid var(--border-soft);
+    border-radius: var(--radius-lg); background: var(--danger-bg);
+  }
+  .ape-agenda-erro strong { display: block; font-size: var(--text-sm); color: var(--danger); }
+  .ape-agenda-erro button {
+    margin-top: 12px; min-height: 44px; padding: 0 18px; border: 0;
+    border-radius: var(--radius-pill); background: var(--ape-orange);
+    color: var(--fg-inverse); font-weight: var(--weight-semibold); cursor: pointer;
+  }
+}
+/* Tarefas da Sara: ações reais do Funil 2.0 e decisões auditáveis. */
+@media (max-width: 900px) {
+  .ape-tarefas {
+    width: 100%; max-width: 620px; margin: 0 auto;
+    padding: 4px 20px calc(24px + env(safe-area-inset-bottom, 0px));
+    background: #FAF8F6; color: #1F1C1A; font-family: 'Quicksand', system-ui, sans-serif;
+  }
+  .ape-tarefas-filtros { margin-bottom: 14px; }
+  .ape-tarefas-filtros button { min-height: 44px; }
+  .ape-tarefas-lista { display: flex; flex-direction: column; gap: 12px; }
+  .ape-tarefa-card { display: flex; flex-direction: column; gap: 10px; padding: 14px; border-radius: 18px; background: #fff; box-shadow: 0 2px 6px rgba(31, 28, 26, .06); }
+  .ape-tarefa-card > header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .ape-tarefa-tag { display: inline-flex; align-items: center; min-height: 24px; padding: 0 10px; border-radius: 999px; font-size: 11px; font-weight: 700; }
+  .ape-tarefa-tag.atrasadas { background: #FBE5E5; color: #A32C2C; }
+  .ape-tarefa-tag.agora { background: #FFE4D1; color: #CC5800; }
+  .ape-tarefa-tag.hoje { background: #FFF3D6; color: #8A6100; }
+  .ape-tarefa-tag.futuras { background: #E6F5EC; color: #136B3D; }
+  .ape-tarefa-tag.sara { background: #EBD1F5; color: #66009A; }
+  .ape-tarefa-tag.concluida { background: #E6F5EC; color: #136B3D; }
+  .ape-tarefa-prazo { color: #6B635C; font-size: 11px; font-weight: 600; text-align: right; }
+  .ape-tarefa-prazo.atrasado { color: #A32C2C; }
+  .ape-tarefa-prazo.urgente { color: #8A6100; }
+  .ape-tarefa-prazo.no-prazo { color: #136B3D; }
+  .ape-tarefa-card h2 { margin: 0; color: #1F1C1A; font-size: 16px; font-weight: 700; line-height: 1.3; letter-spacing: -.01em; text-wrap: pretty; }
+  .ape-tarefa-lead { display: flex; align-items: center; gap: 8px; }
+  .ape-tarefa-lead > span { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 999px; background: #F4F0EC; color: #6B635C; font-size: 10px; font-weight: 700; }
+  .ape-tarefa-lead strong { color: #3B342F; font-size: 13px; font-weight: 600; }
+  .ape-tarefa-sara { margin: 0; padding: 10px 12px; border-radius: 12px; background: #F7ECFC; color: #4A423C; font-size: 12.5px; font-weight: 500; line-height: 1.45; }
+  .ape-tarefa-sara b { color: #8B00CC; }
+  .ape-tarefa-decidir { display: grid; grid-template-columns: 1fr auto; gap: 8px; }
+  .ape-tarefa-decidir button { min-height: 48px; border-radius: 999px; font-family: inherit; font-size: 14px; font-weight: 600; }
+  .ape-tarefa-decidir button:first-child { padding: 0 18px; border: 0; background: #8B00CC; color: #fff; }
+  .ape-tarefa-decidir button:last-child { padding: 0 18px; border: 1.5px solid #E4DFD9; background: #fff; color: #6B635C; }
+  .ape-tarefa-decidir button:disabled { opacity: .55; }
+  .ape-tarefa-whatsapp .ncrm-wa { width: 100%; }
+  .ape-tarefa-whatsapp .ncrm-wa-principal { display: flex; align-items: center; justify-content: center; width: 100%; min-height: 48px; border: 0; border-radius: 999px; background: #1E9E5A; color: #fff; font-family: inherit; font-size: 15px; font-weight: 600; text-decoration: none; box-shadow: 0 12px 28px rgba(30, 158, 90, .26); }
+  .ape-tarefa-whatsapp .ncrm-wa-secundarias { display: none; }
+  .ape-tarefa-card.concluida { opacity: .88; }
+  .ape-tarefas-nota { margin: 16px 12px 0; color: #9A918A; font-size: 11px; font-weight: 500; line-height: 1.5; text-align: center; }
+}
+/* Catálogo mobile: os mesmos produtos reais de /api/catalog, sem fallback. */
+@media (max-width: 900px) {
+  .ape-produtos {
+    width: 100%; max-width: 620px; margin: 0 auto;
+    padding: 4px 20px calc(24px + env(safe-area-inset-bottom, 0px));
+    background: #FAF8F6; color: #1F1C1A; font-family: 'Quicksand', system-ui, sans-serif;
+  }
+  .ape-produto-busca { display: flex; align-items: center; gap: 9px; height: 46px; padding: 0 13px; border: 1px solid #E4DFD9; border-radius: 12px; background: #fff; }
+  .ape-produto-busca svg { flex: none; color: #9A918A; }
+  .ape-produto-busca input { width: 100%; min-width: 0; border: 0; outline: 0; background: transparent; color: #1F1C1A; font-family: inherit; font-size: 16px; font-weight: 500; }
+  .ape-produto-busca input::placeholder { color: #B8B0A8; }
+  .ape-produto-filtros { margin-top: 12px; margin-bottom: 14px; }
+  .ape-produto-filtros button { min-height: 44px; }
+  .ape-produto-lista { display: flex; flex-direction: column; gap: 14px; }
+  .ape-produto-card { overflow: hidden; border-radius: 18px; background: #fff; box-shadow: 0 2px 6px rgba(31, 28, 26, .06); }
+  .ape-produto-foto { position: relative; display: grid; place-items: center; width: 100%; height: 190px; overflow: hidden; border: 0; background: #F1EDE9; color: #9A918A; font-family: inherit; font-size: 44px; }
+  .ape-produto-foto img { width: 100%; height: 100%; object-fit: cover; }
+  .ape-produto-foto em { position: absolute; top: 12px; left: 12px; padding: 6px 10px; border-radius: 999px; background: rgba(255, 255, 255, .94); color: #6B635C; font-size: 11px; font-style: normal; font-weight: 700; text-transform: none; }
+  .ape-produto-info { padding: 13px 14px 10px; }
+  .ape-produto-preco { display: block; color: #1F1C1A; font-size: 18px; font-weight: 700; }
+  .ape-produto-info h2 { margin: 3px 0 0; color: #1F1C1A; font-size: 16px; font-weight: 700; letter-spacing: -.01em; }
+  .ape-produto-info > p { margin: 4px 0 0; color: #6B635C; font-size: 12.5px; font-weight: 500; }
+  .ape-produto-dados { display: flex; flex-wrap: wrap; gap: 7px 13px; margin-top: 10px; color: #3B342F; font-size: 12px; font-weight: 600; }
+  .ape-produto-info > small { display: block; margin-top: 8px; color: #136B3D; font-size: 11px; font-weight: 600; }
+  .ape-produto-acoes { display: grid; grid-template-columns: 1fr 44px; gap: 7px; padding: 0 14px 14px; }
+  .ape-produto-acoes a, .ape-produto-acoes button { display: flex; align-items: center; justify-content: center; min-height: 44px; border: 0; border-radius: 999px; background: #FAF8F6; color: #1F1C1A; font-family: inherit; font-size: 13px; font-weight: 600; text-decoration: none; }
+  .ape-produto-acoes button { width: 44px; color: #6B635C; }
+  .ape-produto-esqueleto { display: flex; flex-direction: column; gap: 14px; }
+  .ape-produto-esqueleto > div { overflow: hidden; height: 310px; padding: 0 14px 14px; border-radius: 18px; background: #fff; box-shadow: 0 2px 6px rgba(31, 28, 26, .06); }
+  .ape-produto-esqueleto span { display: block; height: 190px; margin: 0 -14px 14px; background: linear-gradient(90deg, #EFEAE5 25%, #F7F4F1 50%, #EFEAE5 75%); background-size: 240px 100%; animation: ape-brilho 1.2s linear infinite; }
+  .ape-produto-esqueleto i { display: block; width: 70%; height: 13px; margin-top: 9px; border-radius: 999px; background: #EFEAE5; }
+  .ape-produto-esqueleto i:last-child { width: 45%; }
+}
+
+/* Painel e área de gestão: visíveis somente na navegação de gestor/admin. */
+@media (max-width: 900px) {
+  .ape-painel, .ape-gestao {
+    width: 100%; max-width: 620px; margin: 0 auto;
+    padding: 4px 20px calc(24px + env(safe-area-inset-bottom, 0px));
+    background: #FAF8F6; color: #1F1C1A; font-family: 'Quicksand', system-ui, sans-serif;
+  }
+  .ape-painel-abertura { display: flex; flex-direction: column; gap: 5px; padding: 4px 0 14px; }
+  .ape-painel-abertura h1 { margin: 0; font-size: 26px; font-weight: 700; line-height: 1.12; letter-spacing: -.02em; }
+  .ape-painel-kpis { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .ape-painel-kpis article { display: flex; flex-direction: column; gap: 3px; padding: 14px; border-radius: 16px; background: #fff; box-shadow: 0 1px 2px rgba(31, 28, 26, .04); }
+  .ape-painel-kpis strong { color: #1F1C1A; font-size: 23px; font-weight: 700; letter-spacing: -.02em; overflow-wrap: anywhere; }
+  .ape-painel-kpis strong.perigo { color: #D93E3E; }
+  .ape-painel-kpis strong.roxo { color: #8B00CC; font-size: 18px; }
+  .ape-painel-kpis span { color: #6B635C; font-size: 12px; font-weight: 500; line-height: 1.35; }
+  .ape-painel-skeleton { height: 82px; border-radius: 16px; background: linear-gradient(90deg, #EFEAE5 25%, #F7F4F1 50%, #EFEAE5 75%); background-size: 240px 100%; animation: ape-brilho 1.2s linear infinite; }
+  .ape-painel-alerta { display: flex; align-items: flex-start; gap: 11px; margin-top: 14px; padding: 14px; border-radius: 16px; background: #FBE5E5; }
+  .ape-painel-alerta > span { display: grid; place-items: center; flex: 0 0 22px; width: 22px; height: 22px; border-radius: 999px; background: #D93E3E; color: #fff; font-weight: 700; }
+  .ape-painel-alerta strong { color: #8F2626; font-size: 14px; font-weight: 700; }
+  .ape-painel-alerta p { margin: 3px 0 0; color: #A34A4A; font-size: 12.5px; font-weight: 500; line-height: 1.4; }
+  .ape-painel-secao { margin: 18px 0 8px; color: #9A918A; font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+  .ape-painel-time { padding: 4px 15px; border-radius: 18px; background: #fff; box-shadow: 0 2px 6px rgba(31, 28, 26, .06); }
+  .ape-painel-time article { display: flex; flex-direction: column; gap: 7px; padding: 14px 0; border-bottom: 1px solid #F1EDE9; }
+  .ape-painel-time article:last-child { border-bottom: 0; }
+  .ape-painel-time article > div { display: flex; align-items: center; gap: 10px; }
+  .ape-painel-avatar { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 999px; background: #FFE4D1; color: #CC5800; font-size: 11px; font-weight: 700; }
+  .ape-painel-time article strong { flex: 1; min-width: 0; font-size: 14px; font-weight: 700; }
+  .ape-painel-time article em { color: #6B635C; font-size: 11px; font-style: normal; font-weight: 600; white-space: nowrap; }
+  .ape-painel-time article > i { display: block; height: 6px; overflow: hidden; border-radius: 999px; background: #F1EDE9; }
+  .ape-painel-time article > i span { display: block; height: 100%; border-radius: 999px; }
+  .ape-painel-time article > i span.ok { background: #1E9E5A; }
+  .ape-painel-time article > i span.atencao { background: #E8A317; }
+  .ape-painel-time article > i span.perigo { background: #D93E3E; }
+  .ape-painel-time article small { color: #9A918A; font-size: 11px; font-weight: 500; }
+  .ape-painel-time > p { color: #6B635C; font-size: 13px; text-align: center; }
+
+  .ape-gestao > p { margin: 4px 0 14px; color: #6B635C; font-size: 13px; font-weight: 500; line-height: 1.5; }
+  .ape-gestao > section { display: flex; flex-direction: column; gap: 12px; }
+  .ape-gestao a { display: flex; align-items: center; gap: 12px; min-height: 68px; padding: 12px 14px; border-radius: 16px; background: #fff; color: #1F1C1A; box-shadow: 0 1px 2px rgba(31, 28, 26, .04); text-decoration: none; }
+  .ape-gestao a > span:first-child { display: grid; place-items: center; flex: 0 0 40px; width: 40px; height: 40px; border-radius: 12px; background: #F7ECFC; color: #8B00CC; font-size: 18px; }
+  .ape-gestao a > span:nth-child(2) { display: flex; flex: 1; min-width: 0; flex-direction: column; gap: 2px; }
+  .ape-gestao a strong { font-size: 15px; font-weight: 700; }
+  .ape-gestao a small { color: #9A918A; font-size: 12px; font-weight: 500; }
+  .ape-gestao a b { color: #C9C1B9; font-size: 22px; font-weight: 500; }
+  .app-mais-grid > a { gap: 10px; }
+  .app-mais-grid > a > span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .app-mais-grid > a > b { color: #C9C1B9; font-size: 19px; font-weight: 500; }
+}

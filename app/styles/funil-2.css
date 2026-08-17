@@ -52,7 +52,7 @@ body .f2-indicadores button:focus-visible{outline:2px solid var(--f2-orange,#ff7
 @media(max-width:700px){body .f2-indicadores button{min-height:64px;justify-content:center}}
 
 /* Pescado é uma reserva sem prazo, não uma fila ativa de trabalho. */
-body .f2-lead-linha em.sem-prazo,body .f2-dia-item em.sem-prazo,body em.sem-prazo,.f2m-tempo.sem-prazo{color:#64748b;background:#f1f5f9;border-color:#e2e8f0}
+body .f2-lead-linha em.sem-prazo,body .f2-dia-item em.sem-prazo,body em.sem-prazo{color:#64748b;background:#f1f5f9;border-color:#e2e8f0}
 body .f2-lead-linha.prazo-sem-prazo{border-left-color:#cbd5e1}
 body .f2-coluna[data-etapa="pescado"] .f2-coluna-cab{border-bottom-color:#e2e8f0}
 body .ncrm-wa-alt{display:flex;align-items:center;justify-content:center;gap:6px;min-height:44px;margin-top:8px;padding:10px 14px;border:1px solid #fed7aa;border-radius:10px;background:#fff7ed;color:#9a3412;font-size:13.5px;font-weight:600;line-height:1.3;text-align:center;text-decoration:none}
