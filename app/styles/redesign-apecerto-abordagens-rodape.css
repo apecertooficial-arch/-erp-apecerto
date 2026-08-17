@@ -37,3 +37,21 @@
 .approaches-workspace .approach-group-head button[title^="Dissolver"] { width: 34px; height: 34px; padding: 0; margin-left: 0; border: 1.5px solid #E4DFD9; border-radius: 999px; background: #fff; color: #6E6760; font-size: 12px; }
 .approaches-workspace .approach-group-head button[title="Renomear grupo"]:hover,
 .approaches-workspace .approach-group-head button[title^="Dissolver"]:hover { background: #FAF8F6; }
+
+/* GLIFOS COLADOS AO TEXTO -- os dois casos que nao tem elemento proprio.
+
+   O componente escreve "▤ {nome do grupo}" dentro de um unico <strong> e
+   "✎ Editar mensagens" dentro de um unico <button>: nao ha no separado para
+   alcancar so o simbolo. Tornando o no um conteiner de BLOCO, ::first-letter
+   passa a valer e atinge exatamente o primeiro caractere -- ele e zerado e o
+   icone Lucide entra no ::before, com a cor do contexto.
+
+   Alternativa seria editar o .tsx; nao vale o risco de mexer na marcacao para
+   trocar dois simbolos, e assim continua reversivel apagando este bloco. */
+.approaches-workspace .approach-group-head strong { display: block; }
+.approaches-workspace .approach-group-head strong::first-letter { font-size: 0; }
+.approaches-workspace .approach-group-head strong::before { content: ""; display: inline-block; vertical-align: -3px; width: 16px; height: 16px; margin-right: 3px; background: #8B00CC; -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83z'/%3E%3Cpath d='m6.08 9.5-3.5 1.6a1 1 0 0 0 0 1.81l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9a1 1 0 0 0 0-1.83l-3.5-1.59'/%3E%3Cpath d='m6.08 14.5-3.5 1.6a1 1 0 0 0 0 1.81l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9a1 1 0 0 0 0-1.83l-3.5-1.59'/%3E%3C/svg%3E") center / contain no-repeat; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83z'/%3E%3Cpath d='m6.08 9.5-3.5 1.6a1 1 0 0 0 0 1.81l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9a1 1 0 0 0 0-1.83l-3.5-1.59'/%3E%3Cpath d='m6.08 14.5-3.5 1.6a1 1 0 0 0 0 1.81l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9a1 1 0 0 0 0-1.83l-3.5-1.59'/%3E%3C/svg%3E") center / contain no-repeat; }
+
+.approaches-workspace .approach-list .approach-card > footer .approach-edit-btn { display: block; text-align: center; line-height: 35px; }
+.approaches-workspace .approach-list .approach-card > footer .approach-edit-btn::first-letter { font-size: 0; }
+.approaches-workspace .approach-list .approach-card > footer .approach-edit-btn::before { content: ""; display: inline-block; vertical-align: -2px; width: 14px; height: 14px; margin-right: 1px; background: currentColor; -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21.2 6.8a1 1 0 0 0-4-4L3.8 16.2a2 2 0 0 0-.5.8l-1.3 4.4a.5.5 0 0 0 .6.6l4.4-1.3a2 2 0 0 0 .8-.5z'/%3E%3Cpath d='m15 5 4 4'/%3E%3C/svg%3E") center / contain no-repeat; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21.2 6.8a1 1 0 0 0-4-4L3.8 16.2a2 2 0 0 0-.5.8l-1.3 4.4a.5.5 0 0 0 .6.6l4.4-1.3a2 2 0 0 0 .8-.5z'/%3E%3Cpath d='m15 5 4 4'/%3E%3C/svg%3E") center / contain no-repeat; }
