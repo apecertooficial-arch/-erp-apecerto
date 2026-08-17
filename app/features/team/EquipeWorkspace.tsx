@@ -3,6 +3,10 @@
 // "Minha Equipe" — leitura de performance + VGV da equipe (gerente/diretor).
 // Só leitura: nenhum dado é alterado aqui. O escopo (quem aparece) é decidido
 // no banco pela função equipe_visao, a partir do usuário logado.
+//
+// No celular a tela usa .ape-equipe (app-mobile-gestor.css) e o mesmo estado de
+// erro humano das outras telas do app: título em uma frase, explicação curta e
+// "Tentar novamente". Nunca a mensagem crua do banco.
 
 import { useEffect, useMemo, useState } from "react";
 
@@ -23,6 +27,7 @@ export function EquipeWorkspace({ accessToken }: { accessToken: string }) {
   const [team, setTeam] = useState<Membro[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [tentativa, setTentativa] = useState(0);
   const [filtro, setFiltro] = useState<"total" | number>("total"); // "total" = equipe toda; número = um corretor
 
   useEffect(() => {
@@ -37,7 +42,7 @@ export function EquipeWorkspace({ accessToken }: { accessToken: string }) {
       .catch((e) => { if (alive) setError(e instanceof Error ? e.message : "Erro ao carregar."); })
       .finally(() => { if (alive) setLoading(false); }), 0);
     return () => { alive = false; window.clearTimeout(timer); };
-  }, [accessToken]);
+  }, [accessToken, tentativa]);
 
   const visiveis = useMemo(() => (filtro === "total" ? team : team.filter((m) => m.corretor_id === filtro)), [team, filtro]);
   const totais = useMemo(() => visiveis.reduce(
@@ -46,7 +51,7 @@ export function EquipeWorkspace({ accessToken }: { accessToken: string }) {
   ), [visiveis]);
 
   return (
-    <div className="equipe-workspace">
+    <div className="equipe-workspace ape-equipe">
       <header className="workspace-top">
         <div>
           <h1>Minha Equipe</h1>
@@ -55,9 +60,18 @@ export function EquipeWorkspace({ accessToken }: { accessToken: string }) {
       </header>
 
       {loading ? (
-        <div className="workspace-loading">Carregando equipe…</div>
+        <div className="workspace-loading ape-esqueleto" aria-hidden="true">
+          {[0, 1, 2].map((i) => <div key={i}><div className="ape-barra curta" /><div className="ape-barra media" /></div>)}
+        </div>
       ) : error ? (
-        <div className="workspace-error">{error}</div>
+        <div className="workspace-error ape-estado ruim" role="alert">
+          <div className="ape-estado-icone" aria-hidden="true">!</div>
+          <strong>Não foi possível carregar sua equipe.</strong>
+          <p>Os números não chegaram agora. Tente de novo em instantes.</p>
+          <button type="button" onClick={() => { setError(""); setLoading(true); setTentativa((n) => n + 1); }}>
+            Tentar novamente
+          </button>
+        </div>
       ) : team.length === 0 ? (
         <div className="audit-empty">Nenhum corretor na sua equipe ainda. Vincule corretores a você em Usuários (campo &quot;Responde a&quot;).</div>
       ) : (

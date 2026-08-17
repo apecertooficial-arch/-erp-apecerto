@@ -31,6 +31,9 @@ import "./styles/performance.css";
    próprias (.ape-*), então esta folha é a única que os desenha. As regras
    .f2m-* de app-mobile.css deixaram de casar com essas telas. */
 import "./styles/app-mobile-aprovado.css";
+/* Telas do gestor no celular (folha "Mais" e Minha Equipe). Depois da folha
+   aprovada porque reusa os mesmos valores e completa o que faltava dela. */
+import "./styles/app-mobile-gestor.css";
 import { RegistroPwa } from "./components/RegistroPwa";
 
 export const metadata: Metadata = {
