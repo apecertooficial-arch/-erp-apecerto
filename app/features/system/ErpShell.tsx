@@ -21,6 +21,10 @@ import type { ModuleName } from "./module-map";
 import { moduloDoPath, pathDoModulo, rotasModulo, itensDaNavegacao } from "./erp-routes";
 import { useErpSession } from "./ErpSession";
 
+/* UM icone por modulo. O fallback de tres tracos existia para todos os modulos
+ * fora da barra inferior, e o resultado na folha "Mais" era uma coluna de
+ * hamburgueres identicos: onze itens com o mesmo desenho nao ajudam ninguem a
+ * achar nada. Tracado de 1.8 e cantos redondos, como o resto da marca. */
 function IconeBarra({ modulo }: { modulo: ModuleName | "Mais" }) {
   const c = { width: 22, height: 22, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.8, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
   if (modulo === "Início") return <svg {...c}><path d="M3 10 12 3l9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1Z" /></svg>;
@@ -31,8 +35,29 @@ function IconeBarra({ modulo }: { modulo: ModuleName | "Mais" }) {
   if (modulo === "Minha Equipe") return <svg {...c}><circle cx="9" cy="8" r="3" /><circle cx="17" cy="9" r="2.5" /><path d="M3 21v-2a5 5 0 0 1 10 0v2M14 21v-1.5a4 4 0 0 1 7-2.6" /></svg>;
   if (modulo === "Produtos") return <svg {...c}><path d="M6 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16M3 21h18M10 7h.01M14 7h.01M10 11h.01M14 11h.01M10 15h.01M14 15h.01" /></svg>;
   if (modulo === "Configurações") return <svg {...c}><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" /></svg>;
+  if (modulo === "Projetos e Tarefas") return <svg {...c}><path d="M9 6h11M9 12h11M9 18h11" /><path d="m3 6 2 2 2-3M3 12l2 2 2-3M3 18l2 2 2-3" /></svg>;
+  if (modulo === "Abordagens") return <svg {...c}><path d="M21 12a8 8 0 0 1-11.4 7.2L3 21l1.8-6.6A8 8 0 1 1 21 12Z" /></svg>;
+  if (modulo === "Automações") return <svg {...c}><path d="M13 2 4.5 13H11l-1 9 8.5-11H12l1-9Z" /></svg>;
+  if (modulo === "Agentes de IA") return <svg {...c}><rect x="4" y="8" width="16" height="12" rx="3" /><path d="M12 4v4M9 14h.01M15 14h.01M9.5 17h5" /></svg>;
+  if (modulo === "Usuários") return <svg {...c}><circle cx="12" cy="8" r="3.4" /><path d="M5 21v-1.6A6.4 6.4 0 0 1 11.4 13h1.2A6.4 6.4 0 0 1 19 19.4V21" /></svg>;
+  if (modulo === "Perfis e Permissões") return <svg {...c}><path d="M12 3l7 3v5.5c0 4.3-2.9 7.8-7 9.5-4.1-1.7-7-5.2-7-9.5V6l7-3Z" /><path d="m9 12 2 2 4-4" /></svg>;
+  if (modulo === "Financeiro") return <svg {...c}><rect x="3" y="6" width="18" height="12" rx="2" /><circle cx="12" cy="12" r="2.4" /><path d="M7 12h.01M17 12h.01" /></svg>;
+  if (modulo === "Auditoria") return <svg {...c}><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8l-5-5Z" /><path d="M14 3v5h5M9 13h5M9 17h3" /></svg>;
+  if (modulo === "Chat ao Vivo") return <svg {...c}><path d="M20 15a2 2 0 0 1-2 2H8l-4 4V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2Z" /><path d="M8 10h8M8 13h5" /></svg>;
+  if (modulo === "Disparos") return <svg {...c}><path d="m3 11 18-8-8 18-2-7-8-3Z" /></svg>;
+  if (modulo === "Financiamento") return <svg {...c}><path d="M3 10 12 4l9 6" /><path d="M5 10v9h14v-9M9 19v-5h6v5" /></svg>;
+  if (modulo === "Base de conhecimento") return <svg {...c}><path d="M4 5a2 2 0 0 1 2-2h5v18H6a2 2 0 0 1-2-2Z" /><path d="M20 5a2 2 0 0 0-2-2h-5v18h5a2 2 0 0 0 2-2Z" /></svg>;
+  if (modulo === "Ajuda") return <svg {...c}><circle cx="12" cy="12" r="9" /><path d="M9.5 9.5a2.6 2.6 0 1 1 3.6 2.4c-.7.3-1.1.9-1.1 1.6v.4M12 17h.01" /></svg>;
   return <svg {...c}><path d="M4 12h16M4 6h16M4 18h16" /></svg>;
 }
+
+/* Os grupos da folha "Mais" saem da classe A/B/C que erp-routes.ts ja atribui a
+ * cada modulo -- nenhuma lista nova para manter em paralelo. */
+const GRUPOS_MAIS = [
+  { titulo: "Rotina", classe: "A" },
+  { titulo: "Gestão", classe: "B" },
+  { titulo: "De vez em quando", classe: "C" },
+] as const;
 
 export function ErpShell({ children }: { children: ReactNode }) {
   const pathname = usePathname() || "/";
@@ -52,6 +77,9 @@ export function ErpShell({ children }: { children: ReactNode }) {
   const rotuloSino = naoLidas > 0 ? `Notificações: ${naoLidas} não lidas` : "Notificações";
   const { barra: itensBarra, mais: itensMais } = itensDaNavegacao({ role, permissoes, carregado: perfilCarregado, isManager });
   const rotuloMobile = rotasModulo[moduloAtual].rotuloCurto ?? moduloAtual;
+  const gruposMais = GRUPOS_MAIS
+    .map((grupo) => ({ titulo: grupo.titulo, itens: itensMais.filter((m) => rotasModulo[m].classe === grupo.classe) }))
+    .filter((grupo) => grupo.itens.length > 0);
 
   // Trocar de rota volta o scroll pro topo. Sem setState aqui: a folha "Mais"
   // e fechada no proprio clique do link, que e onde a intencao acontece.
@@ -119,10 +147,30 @@ export function ErpShell({ children }: { children: ReactNode }) {
         </button>
       </nav>
 
-      {maisAberto && <div className="app-mais-overlay" role="presentation" onClick={() => setMaisAberto(false)}>
-        <section className="app-mais-folha" role="dialog" aria-modal="true" aria-label="Mais opções" onClick={(evento) => evento.stopPropagation()}>
-          <header><strong>Mais</strong><button type="button" onClick={() => setMaisAberto(false)} aria-label="Fechar">×</button></header>
-          {itensMais.length > 0 ? <div className="app-mais-grid">{itensMais.map((m) => <Link key={m} href={pathDoModulo(m)} onClick={() => setMaisAberto(false)}><IconeBarra modulo={m} /><span>{m}</span><b aria-hidden="true">›</b></Link>)}</div> : <p className="app-mais-vazio">Nenhuma outra opção disponível.</p>}
+      {/* FOLHA "MAIS" -- desenho aprovado: uma coluna, agrupada, com o icone do
+          modulo num quadrado branco. A grade de duas colunas anterior obrigava
+          a ler em zigue-zague onze itens sem hierarquia. */}
+      {maisAberto && <div className="ape-mais-fundo" role="presentation" onClick={() => setMaisAberto(false)}>
+        <section className="ape-mais-folha" role="dialog" aria-modal="true" aria-label="Mais opções" onClick={(evento) => evento.stopPropagation()}>
+          <span className="ape-mais-alca" aria-hidden="true" />
+          <header className="ape-mais-topo">
+            <strong>Mais</strong>
+            <button type="button" onClick={() => setMaisAberto(false)} aria-label="Fechar">×</button>
+          </header>
+          {gruposMais.length > 0 ? gruposMais.map((grupo) => (
+            <div className="ape-mais-grupo" key={grupo.titulo}>
+              <p className="ape-mais-titulo">{grupo.titulo}</p>
+              <div className="ape-mais-itens">
+                {grupo.itens.map((m) => (
+                  <Link key={m} href={pathDoModulo(m)} onClick={() => setMaisAberto(false)}>
+                    <span className="ape-mais-icone" aria-hidden="true"><IconeBarra modulo={m} /></span>
+                    <span className="ape-mais-rotulo">{m}</span>
+                    <b aria-hidden="true">›</b>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )) : <p className="ape-mais-vazio">Nenhuma outra opção disponível.</p>}
         </section>
       </div>}
 

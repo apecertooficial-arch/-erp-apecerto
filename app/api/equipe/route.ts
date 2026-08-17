@@ -19,6 +19,13 @@ export async function GET(request: Request) {
   const auth = await authClient(request);
   if (!auth) return Response.json({ error: "Sessão inválida ou expirada." }, { status: 401 });
   const { data, error } = await auth.supabase.rpc("equipe_visao");
-  if (error) return Response.json({ error: error.message }, { status: 502 });
+  if (error) {
+    /* A mensagem do Postgres NÃO vai para a tela. O gestor recebeu
+       `relation "perf_snapshots" does not exist` no meio da tela de Equipe:
+       nome de tabela não é assunto de quem está vendendo apartamento. O texto
+       técnico fica no log do servidor, onde serve para alguém consertar. */
+    console.error("equipe_visao falhou:", error.message);
+    return Response.json({ error: "Não foi possível carregar sua equipe agora." }, { status: 502 });
+  }
   return Response.json({ team: data ?? [] });
 }
