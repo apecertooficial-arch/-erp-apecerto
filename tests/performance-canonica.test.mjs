@@ -15,12 +15,11 @@ const remocao = ler("../supabase/migrations/20260815182228_remover_performance_l
 const estudo = ler("../docs/estudo-performance-imobiliaria-2026.md");
 const catalogo = ler("../docs/catalogo-metricas-performance.md");
 
-test("performance vira Sala de Comando e não duplica painel no Funil 2", () => {
-  assert.match(tela, /Sala de Comando/);
-  assert.match(tela, /Receita e funil/);
-  assert.match(tela, /Confiança dos dados/);
-  assert.match(tela, /Trabalho real/);
-  assert.match(tela, /Atendimento/);
+test("performance é dividida em vendas, trabalho e atendimento sem duplicar o Funil 2", () => {
+  assert.match(tela, /nome: "Vendas"/);
+  assert.match(tela, /nome: "Trabalho"/);
+  assert.match(tela, /nome: "Atendimento e conduta"/);
+  assert.doesNotMatch(tela, /nome: "Sala de comando"|nome: "Receita e funil"|nome: "Corretores"|nome: "Confiança dos dados"/);
   assert.doesNotMatch(funil, /Performance de Atendimento|PerformanceFunil2|id: "performance"/);
 });
 
@@ -30,8 +29,8 @@ test("API usa um contrato executivo único e autenticado", () => {
   assert.doesNotMatch(api, /performance_painel|performance_resumo_empresa|performance_bolsao_ajustes/);
 });
 
-test("mês é a decisão padrão e todo o histórico continua acessível", () => {
-  assert.match(tela, /useState<Periodo>\("mes"\)/);
+test("todo o histórico é a leitura padrão e períodos menores continuam acessíveis", () => {
+  assert.match(tela, /useState<Periodo>\("todo"\)/);
   assert.match(tela, /Todo histórico/);
   assert.match(api, /periodo === "todo"/);
   assert.match(sala, /public\.wa_mensagens/);
@@ -43,32 +42,33 @@ test("mês é a decisão padrão e todo o histórico continua acessível", () =>
 });
 
 test("resultado, risco e confiança ficam separados sem nota geral enganosa", () => {
-  assert.match(tela, /LEITURA DO CEO/);
+  assert.match(tela, /RESULTADO COMERCIAL/);
   assert.match(tela, /Margem de contribuição/);
-  assert.match(tela, /DECISÕES DE HOJE/);
+  assert.match(tela, /TRABALHO COMPROVADO/);
+  assert.match(tela, /ATENDIMENTO E CONDUTA/);
   assert.doesNotMatch(tela, /Nota de execução|notaExecucao|score geral/i);
 });
 
 test("Aquário e Pescado não viram mérito individual", () => {
   assert.match(sala, /public\.aquario_stage_id\(\)/);
   assert.match(sala, /f\.etapa<>'pescado'/);
-  assert.match(tela, /Aquário\/Bolsão e Pescado não contam como performance/);
+  assert.match(tela, /Bolsão, Aquário e a ação de pescar estão fora da performance individual/);
+  assert.match(tela, /Esse estoque histórico não gera trabalho, produção ou mérito/);
 });
 
 test("ausência de ligação bloqueia forecast, ROI e conversão de coorte", () => {
-  assert.match(tela, /O PAINEL NÃO VAI INVENTAR/);
-  assert.match(tela, /Forecast de receita/);
-  assert.match(tela, /ROI e CAC por canal/);
-  assert.match(tela, /Conversão por coorte/);
+  assert.match(tela, /Limite desta leitura/);
+  assert.match(tela, /não conversão de coorte/);
+  assert.match(tela, /Volumes do período; não é uma coorte/);
   assert.match(sala, /vendas_vinculadas/);
   assert.match(sala, /negocios_com_valor/);
 });
 
-test("corretores são geridos por decisão e amostra, não por volume isolado", () => {
-  assert.match(tela, /Sobrecarga/);
-  assert.match(tela, /Carteira travada/);
-  assert.match(tela, /Resposta em risco/);
-  assert.match(tela, /Não classificar sem casos medidos/);
+test("o mesmo corretor pode ser analisado nos três eixos e amostra ausente não vira zero", () => {
+  assert.match(tela, /Quem analisar/);
+  assert.match(tela, /Clique em uma pessoa para investigar os três eixos/);
+  assert.match(tela, /não classificar/);
+  assert.match(tela, /ausência de amostra nunca vira nota zero/);
 });
 
 test("RPC restringe empresa ao gestor e o corretor ao próprio id", () => {
@@ -91,7 +91,7 @@ test("atividade real continua sem usar presença ou botão online como produtivi
   assert.match(ampliacao, /date_bin\(interval '5 minutes'/);
   assert.match(ampliacao, /pe\.tipo not in \('online','login'/);
   assert.match(tela, /Uso ativo do ERP/);
-  assert.match(tela, /não é jornada trabalhista/);
+  assert.match(tela, /não representa horas trabalhistas/);
   assert.doesNotMatch(tela, /tempo online|onlineH/i);
 });
 
@@ -104,7 +104,8 @@ test("trabalho real mede comunicação, CRM, Meu Dia e produção separadamente"
   assert.match(ampliacao, /'acoesComerciais'/);
   assert.match(ampliacao, /'tarefasConcluidasCoorte'/);
   assert.match(tela, /TRABALHO COMPROVADO/);
-  assert.match(tela, /MEU DIA E CARTEIRA/);
+  assert.match(tela, /DISCIPLINA OPERACIONAL/);
+  assert.match(tela, /Ações registradas/);
 });
 
 test("atendimento expõe cauda de resposta e dimensões da IA com amostra", () => {
@@ -116,7 +117,7 @@ test("atendimento expõe cauda de resposta e dimensões da IA com amostra", () =
   assert.match(ampliacao, /'sla5Pct'/);
   assert.match(ampliacao, /'sla15Pct'/);
   assert.match(ampliacao, /'sla60Pct'/);
-  assert.match(tela, /SLA MULTIFAIXA/);
+  assert.match(tela, /VELOCIDADE E RECIPROCIDADE/);
   assert.match(tela, /QUALIDADE DA CONVERSA/);
 });
 
