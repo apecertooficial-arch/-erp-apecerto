@@ -37,6 +37,7 @@ import "./styles/performance.css";
      4. ...-inicio.css ........................ Início: topo, seções, ranking, estados
      5. ...-esteira.css ....................... Esteira de Vendas 3.0 (pós-fechamento)
      6. ...-catalogo.css ...................... card do catálogo de Produtos
+     7. ...-crm.css ........................... CRM: menu, cartão do lead, ações rápidas
 
    Elas substituem por cascata os valores visuais que globals.css, funil-2.css e
    performance.css definiam para os MESMOS seletores — não são tema opcional nem
@@ -56,6 +57,7 @@ import "./styles/redesign-apecerto-financeiro-abas.css";
 import "./styles/redesign-apecerto-inicio.css";
 import "./styles/redesign-apecerto-esteira.css";
 import "./styles/redesign-apecerto-catalogo.css";
+import "./styles/redesign-apecerto-crm.css";
 /* INTERFACE DO APLICATIVO NO CELULAR — versão aprovada.
    Não é correção da folha antiga: o markup do Meu Dia e do CRM usa classes
    próprias (.ape-*), então esta folha é a única que os desenha. As regras
