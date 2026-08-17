@@ -1,0 +1,176 @@
+/* AUTOMACOES — desenho apêcerto sobre o construtor existente.
+
+   ESCOPO, dito na cara: o construtor e um runtime fechado de 159 KB
+   (automationBuilderRuntime.js) montado dentro de .original-automation-host. Esta
+   folha NAO mexe nele, nem no layout que ele calcula — posicao dos nos, largura
+   de 250px, portas, arraste, zoom e conexoes continuam byte a byte os mesmos. O
+   que muda e cor, tipografia, peso, borda, raio, sombra e respiro.
+
+   Escrita sobre as classes REAIS de app/styles/automation-builder.css (que usa
+   nomes genericos -- .sidebar, .canvas, .node, .drawer, .toolbar, .palette) e por
+   isso TODO seletor nasce sob .original-automation-host .apecerto-automation-builder:
+   tres niveis contra os dois da folha do construtor, o que ganha por
+   especificidade, e nada aqui escapa para a sidebar do ERP nem para outra tela.
+
+   O que sai do cinza-azulado (#f1f5f9, #f8fafc, #cbd5e1, #bfdbfe) e entra na
+   paleta da marca: areia #FAF8F6, linha #E4DFD9, tinta #1F1C1A, laranja #FF7000
+   com queimado #CC5800, roxo #66009A, verde #127A44, ambar #8A6100.
+
+   Inclui a casca (.automations-v2-*) e o explicador (.exp-*), que sao React de
+   verdade e vivem no mesmo no. */
+
+/* ===== casca da tela ===== */
+.automations-v2-shell { background: #FAF8F6; }
+.automations-v2-shell .automations-v2-context { padding: 20px 32px; background: #fff; border-bottom: 1px solid #F2EFEC; gap: 20px; }
+.automations-v2-shell .automations-v2-context span { color: #FF7000; font-size: 11px; font-weight: 600; letter-spacing: 0.12em; }
+.automations-v2-shell .automations-v2-context h1 { margin: 2px 0 0; font-size: 26px; font-weight: 700; letter-spacing: -0.02em; color: #1F1C1A; }
+.automations-v2-shell .automations-v2-context p { margin: 0; max-width: 62ch; color: #6E6760; font-size: 13px; line-height: 1.5; }
+.automations-v2-shell .automations-v2-context-copy a { height: 38px; display: inline-flex; align-items: center; padding: 0 16px; border: 1.5px solid #E4DFD9; border-radius: 999px; background: #fff; color: #CC5800; font-size: 12px; font-weight: 700; text-decoration: none; }
+.automations-v2-shell .automations-v2-context-copy a:hover { border-color: #FF7000; background: #FFF3EA; }
+.automations-v2-shell .original-automation-host { background: #FAF8F6; }
+.automations-v2-shell .original-automation-error { margin: 26px 28px; border-radius: 18px; background: #fff; box-shadow: 0 2px 6px rgba(31,28,26,0.06); padding: 26px; color: #D93E3E; font-size: 13px; font-weight: 600; }
+
+/* ===== construtor: fundo e coluna de fluxos ===== */
+.original-automation-host .apecerto-automation-builder { background: #FAF8F6; color: #1F1C1A; }
+.original-automation-host .apecerto-automation-builder .sidebar { background: #fff; border-right: 1px solid #F2EFEC; }
+.original-automation-host .apecerto-automation-builder .sb-head h1 { font-size: 15px; font-weight: 700; color: #1F1C1A; }
+.original-automation-host .apecerto-automation-builder .sb-collapse-btn,
+.original-automation-host .apecerto-automation-builder .sb-open-btn { width: 34px; height: 34px; border: 1.5px solid #E4DFD9; border-radius: 999px; background: #fff; color: #6E6760; }
+.original-automation-host .apecerto-automation-builder .sb-collapse-btn:hover,
+.original-automation-host .apecerto-automation-builder .sb-open-btn:hover { background: #FAF8F6; border-color: #E4DFD9; color: #CC5800; }
+.original-automation-host .apecerto-automation-builder .sb-search { border: 1.5px solid #E4DFD9; border-radius: 999px; background: #FAF8F6; padding: 8px 14px; }
+.original-automation-host .apecerto-automation-builder .sb-search input { font-size: 12.5px; font-weight: 500; color: #1F1C1A; }
+.original-automation-host .apecerto-automation-builder .sb-add { height: 42px; border-radius: 999px; background: #FF7000; color: #fff; font-size: 13px; font-weight: 700; box-shadow: 0 10px 24px rgba(255,112,0,0.26); }
+.original-automation-host .apecerto-automation-builder .sb-add:hover { opacity: 1; background: #E66200; }
+.original-automation-host .apecerto-automation-builder .sb-group-h { color: #FF7000; font-size: 11px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; }
+.original-automation-host .apecerto-automation-builder .sb-item { border-radius: 12px; padding: 9px 10px; font-size: 13px; font-weight: 500; color: #4D4842; }
+.original-automation-host .apecerto-automation-builder .sb-item:hover { background: #FAF8F6; }
+.original-automation-host .apecerto-automation-builder .sb-item.active { background: #FFF3EA; color: #CC5800; font-weight: 700; box-shadow: inset 0 0 0 1.5px #FF7000; }
+.original-automation-host .apecerto-automation-builder .sb-item .flow-ico { color: #9A938B; }
+.original-automation-host .apecerto-automation-builder .sb-item.active .flow-ico { color: #CC5800; }
+
+/* ===== barra de ferramentas e zoom ===== */
+.original-automation-host .apecerto-automation-builder .toolbar { border: 1.5px solid #E4DFD9; border-radius: 999px; background: #fff; box-shadow: 0 8px 24px rgba(31,28,26,0.10); padding: 4px 6px; }
+.original-automation-host .apecerto-automation-builder .tb-btn { border-radius: 999px; color: #6E6760; }
+.original-automation-host .apecerto-automation-builder .tb-btn:hover { background: #FAF8F6; color: #1F1C1A; }
+.original-automation-host .apecerto-automation-builder .tb-btn.danger:hover { background: #FBE5E5; color: #D93E3E; }
+.original-automation-host .apecerto-automation-builder .tb-btn[title]:hover::after { background: #1F1C1A; border-radius: 8px; font-size: 11px; font-weight: 600; }
+.original-automation-host .apecerto-automation-builder .tb-btn[title]:hover::before { border-bottom-color: #1F1C1A; }
+.original-automation-host .apecerto-automation-builder .tb-sep { background: #E4DFD9; }
+.original-automation-host .apecerto-automation-builder .canvas { background-color: #FAF8F6; background-image: radial-gradient(circle, #E4DFD9 1px, transparent 1px); }
+.original-automation-host .apecerto-automation-builder .zoombar { border: 1.5px solid #E4DFD9; border-radius: 14px; background: #fff; box-shadow: 0 8px 24px rgba(31,28,26,0.10); }
+.original-automation-host .apecerto-automation-builder .zoombar button { border-radius: 999px; color: #6E6760; }
+.original-automation-host .apecerto-automation-builder .zoombar button:hover { background: #FAF8F6; color: #1F1C1A; }
+
+/* ===== bloco (no) ===== */
+.original-automation-host .apecerto-automation-builder .node { border: 0; border-radius: 16px; background: #fff; box-shadow: 0 2px 8px rgba(31,28,26,0.08); }
+.original-automation-host .apecerto-automation-builder .node.selected { border-color: transparent; box-shadow: 0 0 0 2px #FF7000, 0 10px 24px rgba(31,28,26,0.14); }
+.original-automation-host .apecerto-automation-builder .node .bar { height: 5px; border-radius: 16px 16px 0 0; }
+.original-automation-host .apecerto-automation-builder .node .hd .nic { border-radius: 10px; }
+.original-automation-host .apecerto-automation-builder .node .hd .ttl { font-size: 13.5px; font-weight: 700; color: #1F1C1A; letter-spacing: -0.01em; }
+.original-automation-host .apecerto-automation-builder .node .hd .badge-off { border: 0; border-radius: 999px; padding: 3px 9px; background: #FDF1D9; color: #8A6100; font-size: 10px; font-weight: 700; letter-spacing: 0.04em; }
+.original-automation-host .apecerto-automation-builder .node .desc { color: #6E6760; font-size: 12px; line-height: 1.45; }
+.original-automation-host .apecerto-automation-builder .node-note { border: 0; border-radius: 10px; background: #FDF1D9; color: #8A6100; font-size: 11.5px; }
+.original-automation-host .apecerto-automation-builder .node .slot { border: 0; border-radius: 10px; background: #FAF8F6; font-size: 12px; color: #4D4842; }
+.original-automation-host .apecerto-automation-builder .node .slot .tag { border-radius: 999px; padding: 3px 8px; font-size: 10px; font-weight: 700; }
+.original-automation-host .apecerto-automation-builder .node .addbtn { border: 1.5px dashed #E4DFD9; border-radius: 999px; background: #fff; color: #CC5800; font-size: 12px; font-weight: 700; }
+.original-automation-host .apecerto-automation-builder .node .addbtn:hover { border-color: #FF7000; background: #FFF3EA; }
+.original-automation-host .apecerto-automation-builder .node .port .lbl { color: #9A938B; font-size: 11px; font-weight: 600; }
+.original-automation-host .apecerto-automation-builder .node .port.err .lbl { color: #D93E3E; }
+.original-automation-host .apecerto-automation-builder .node .port-dot:hover { box-shadow: 0 0 0 4px rgba(255,112,0,0.16); }
+.original-automation-host .apecerto-automation-builder .node .foot { border-top: 1px solid #F2EFEC; }
+.original-automation-host .apecerto-automation-builder .node .foot .st + .st { border-left: 1px solid #F2EFEC; }
+.original-automation-host .apecerto-automation-builder .node .foot .st b { font-size: 15px; font-weight: 700; color: #1F1C1A; font-variant-numeric: tabular-nums; }
+.original-automation-host .apecerto-automation-builder .node .foot .st span { color: #9A938B; font-size: 10.5px; font-weight: 600; }
+
+/* ===== gaveta de configuracao do bloco ===== */
+.original-automation-host .apecerto-automation-builder .drawer { background: #fff; border-right: 0; border-radius: 0 24px 24px 0; box-shadow: 12px 0 34px rgba(31,28,26,0.14); }
+.original-automation-host .apecerto-automation-builder .dw-head h4 { font-size: 16px; font-weight: 700; letter-spacing: -0.01em; }
+.original-automation-host .apecerto-automation-builder .dw-head button { border-radius: 999px; color: #6E6760; }
+.original-automation-host .apecerto-automation-builder .dw-head button:hover { background: #FAF8F6; }
+.original-automation-host .apecerto-automation-builder .dw-sub { color: #6E6760; font-size: 12.5px; line-height: 1.5; }
+.original-automation-host .apecerto-automation-builder .dw-label { color: #FF7000; font-size: 11px; font-weight: 600; letter-spacing: 0.12em; }
+.original-automation-host .apecerto-automation-builder .dw-select,
+.original-automation-host .apecerto-automation-builder .dw-input { border: 1.5px solid #E4DFD9; border-radius: 12px; padding: 11px 13px; font-size: 13px; color: #1F1C1A; }
+.original-automation-host .apecerto-automation-builder .dw-select:focus,
+.original-automation-host .apecerto-automation-builder .dw-input:focus { border-color: #FF7000; box-shadow: 0 0 0 3px rgba(255,112,0,0.12); }
+.original-automation-host .apecerto-automation-builder .dw-opt { border: 1.5px solid #E4DFD9; border-radius: 14px; background: #fff; color: #4D4842; }
+.original-automation-host .apecerto-automation-builder .dw-opt:hover { border-color: #FF7000; background: #FFF3EA; }
+.original-automation-host .apecerto-automation-builder .dw-opt .otx b { font-size: 13px; font-weight: 700; color: #1F1C1A; }
+.original-automation-host .apecerto-automation-builder .dw-opt .otx span { color: #6E6760; font-size: 11.5px; }
+.original-automation-host .apecerto-automation-builder .dw-help { color: #9A938B; font-size: 11.5px; }
+.original-automation-host .apecerto-automation-builder .dw-warn { border: 0; border-radius: 12px; background: #FDF1D9; color: #8A6100; font-size: 11.5px; font-weight: 600; }
+.original-automation-host .apecerto-automation-builder .dw-back-op { color: #CC5800; font-size: 12px; font-weight: 700; }
+.original-automation-host .apecerto-automation-builder .dw-cta { height: 46px; border: 0; border-radius: 999px; background: #FF7000; color: #fff; font-size: 14px; font-weight: 700; box-shadow: 0 12px 28px rgba(255,112,0,0.28); }
+.original-automation-host .apecerto-automation-builder .dw-cta:hover { background: #E66200; }
+
+/* ===== paleta de blocos ===== */
+.original-automation-host .apecerto-automation-builder .palette-toggle { width: 34px; height: 34px; border: 1.5px solid #E4DFD9; border-radius: 999px; background: #fff; color: #6E6760; }
+.original-automation-host .apecerto-automation-builder .palette-toggle:hover { background: #FAF8F6; color: #CC5800; }
+.original-automation-host .apecerto-automation-builder .palette { border: 0; border-radius: 20px; background: #fff; box-shadow: 0 16px 40px rgba(31,28,26,0.14); }
+.original-automation-host .apecerto-automation-builder .palette-h h3 { font-size: 15px; font-weight: 700; letter-spacing: -0.01em; }
+.original-automation-host .apecerto-automation-builder .palette-h button { border-radius: 999px; color: #6E6760; }
+.original-automation-host .apecerto-automation-builder .palette-h button:hover { background: #FAF8F6; }
+.original-automation-host .apecerto-automation-builder .pal-item { border: 1.5px solid #E4DFD9; border-radius: 14px; background: #fff; color: #4D4842; font-weight: 600; }
+.original-automation-host .apecerto-automation-builder .pal-item:hover { border-color: #FF7000; background: #FFF3EA; transform: none; }
+
+/* ===== modais internos (condicao, campos, catalogo) ===== */
+.original-automation-host .apecerto-automation-builder .scrim,
+.original-automation-host .apecerto-automation-builder .cond-scrim { background: rgba(31,28,26,0.32); }
+.original-automation-host .apecerto-automation-builder .modal,
+.original-automation-host .apecerto-automation-builder .cond-modal,
+.original-automation-host .apecerto-automation-builder .cm-main,
+.original-automation-host .apecerto-automation-builder .cm-card { border: 0; border-radius: 20px; background: #fff; box-shadow: 0 24px 60px rgba(31,28,26,0.24); }
+.original-automation-host .apecerto-automation-builder .cm-head h3,
+.original-automation-host .apecerto-automation-builder .c-head h3 { font-size: 18px; font-weight: 700; letter-spacing: -0.01em; }
+.original-automation-host .apecerto-automation-builder .cm-search,
+.original-automation-host .apecerto-automation-builder .cp-search { border: 1.5px solid #E4DFD9; border-radius: 999px; background: #FAF8F6; }
+.original-automation-host .apecerto-automation-builder .cm-badge,
+.original-automation-host .apecerto-automation-builder .tag { border-radius: 999px; font-weight: 700; }
+.original-automation-host .apecerto-automation-builder .cm-cico { border-radius: 10px; }
+.original-automation-host .apecerto-automation-builder .cm-x,
+.original-automation-host .apecerto-automation-builder .ico-btn { border-radius: 999px; color: #6E6760; }
+.original-automation-host .apecerto-automation-builder .cm-x:hover,
+.original-automation-host .apecerto-automation-builder .ico-btn:hover { background: #FAF8F6; }
+.original-automation-host .apecerto-automation-builder .r-item,
+.original-automation-host .apecerto-automation-builder .cp-fields label,
+.original-automation-host .apecerto-automation-builder .campo-pick { border: 1.5px solid #E4DFD9; border-radius: 12px; background: #fff; }
+.original-automation-host .apecerto-automation-builder .cp-create { border: 0; border-radius: 999px; background: #FF7000; color: #fff; font-weight: 700; box-shadow: 0 10px 24px rgba(255,112,0,0.26); }
+.original-automation-host .apecerto-automation-builder .cp-empty,
+.original-automation-host .apecerto-automation-builder .empty-tip,
+.original-automation-host .apecerto-automation-builder .hint { color: #9A938B; font-size: 12px; }
+.original-automation-host .apecerto-automation-builder .codebox,
+.original-automation-host .apecerto-automation-builder .hookbox { border: 0; border-radius: 12px; background: #FAF8F6; color: #4D4842; }
+.original-automation-host .apecerto-automation-builder .hookbtn { border: 1.5px solid #E4DFD9; border-radius: 999px; background: #fff; color: #4D4842; font-weight: 700; }
+.original-automation-host .apecerto-automation-builder .ne-inp,
+.original-automation-host .apecerto-automation-builder .ne-ta,
+.original-automation-host .apecerto-automation-builder .ne-sel { border: 1.5px solid #E4DFD9; border-radius: 12px; font-size: 13px; }
+.original-automation-host .apecerto-automation-builder .ne-lb { color: #6E6760; font-size: 12px; font-weight: 600; }
+.original-automation-host .apecerto-automation-builder .ne-add { border: 1.5px dashed #E4DFD9; border-radius: 999px; background: #fff; color: #CC5800; font-weight: 700; }
+.original-automation-host .apecerto-automation-builder .ne-del { color: #D93E3E; }
+
+/* ===== explicador ("Como funciona?") ===== */
+.automations-v2-shell .exp-botao { border: 0; border-radius: 999px; background: #F7ECFC; color: #66009A; font-size: 13px; font-weight: 700; padding: 12px 18px; box-shadow: 0 10px 26px rgba(31,28,26,0.14); }
+.automations-v2-shell .exp-botao:hover { background: #EBD1F5; }
+.automations-v2-shell .exp-fundo { background: rgba(31,28,26,0.32); }
+.automations-v2-shell .exp-painel { background: #fff; border: 0; border-radius: 24px 0 0 24px; box-shadow: -18px 0 48px rgba(31,28,26,0.18); }
+.automations-v2-shell .exp-topo { border-bottom: 1px solid #F2EFEC; }
+.automations-v2-shell .exp-topo h2 { font-size: 20px; font-weight: 700; letter-spacing: -0.01em; color: #1F1C1A; }
+.automations-v2-shell .exp-topo p { color: #6E6760; font-size: 13px; line-height: 1.5; }
+.automations-v2-shell .exp-fechar { width: 38px; height: 38px; border: 1.5px solid #E4DFD9; border-radius: 999px; background: #fff; color: #6E6760; font-size: 18px; }
+.automations-v2-shell .exp-fechar:hover { background: #FAF8F6; }
+.automations-v2-shell .exp-voltar { height: 36px; border: 1.5px solid #E4DFD9; border-radius: 999px; background: #fff; color: #4D4842; font-size: 12px; font-weight: 700; padding: 0 14px; }
+.automations-v2-shell .exp-voltar:hover { background: #FAF8F6; }
+.automations-v2-shell .exp-item { border: 0; border-radius: 14px; background: #fff; box-shadow: 0 2px 6px rgba(31,28,26,0.06); padding: 14px 16px; color: #1F1C1A; }
+.automations-v2-shell .exp-item:hover { box-shadow: 0 4px 12px rgba(31,28,26,0.09); }
+.automations-v2-shell .exp-item strong { font-size: 14px; font-weight: 700; }
+.automations-v2-shell .exp-selo { border: 0; border-radius: 999px; padding: 4px 11px; font-size: 11px; font-weight: 700; }
+.automations-v2-shell .exp-selo-on { background: #E4F6EC; color: #127A44; }
+.automations-v2-shell .exp-selo-off { background: #F2EFEC; color: #6E6760; }
+.automations-v2-shell .exp-passo { border: 0; border-radius: 16px; background: #FAF8F6; padding: 14px 16px; }
+.automations-v2-shell .exp-bolha { width: 34px; height: 34px; border: 0; border-radius: 10px; background: #F7ECFC; color: #66009A; font-size: 16px; }
+.automations-v2-shell .exp-ramo { border-radius: 999px; padding: 2px 8px; background: #FFE4D1; color: #CC5800; font-size: 10px; font-weight: 700; }
+.automations-v2-shell .exp-texto strong { font-size: 14px; font-weight: 700; color: #1F1C1A; }
+.automations-v2-shell .exp-texto p { color: #6E6760; font-size: 12.5px; line-height: 1.5; }
+.automations-v2-shell .exp-aviso { border: 0; border-radius: 12px; background: #FBE5E5; color: #D93E3E; font-size: 12px; font-weight: 600; padding: 11px 14px; }
+.automations-v2-shell .exp-vazio { color: #9A938B; font-size: 13px; }

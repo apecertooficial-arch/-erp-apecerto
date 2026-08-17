@@ -44,25 +44,25 @@ import "./styles/performance.css";
     11. ...-menu.css ......................... Menu lateral: ordem aprovada (order) + ícones Lucide
     12. ...-disparos.css ..................... Disparos: público, mensagem, cadência, revisão, recentes
     13. ...-calendario.css ................... Calendário: Dia/Semana/Mês/Lista, resumo, modais
+    14. ...-automacoes.css ................... Automações: casca, construtor e explicador
 
-   Elas substituem por cascata os valores visuais que globals.css, funil-2.css e
-   performance.css definiam para os MESMOS seletores — não são tema opcional nem
-   segunda pele: são o visual do produto. Do CSS antigo resta a base estrutural
-   (layout, grid, posição).
+   Elas substituem por cascata os valores visuais que globals.css, funil-2.css,
+   performance.css e automation-builder.css definiam para os MESMOS seletores —
+   não são tema opcional nem segunda pele: são o visual do produto. Do CSS antigo
+   resta a base estrutural (layout, grid, posição).
 
    Escritas sobre as classes REAIS dos componentes, conferidas arquivo por
    arquivo. Só cor, tipografia, peso, borda, raio, sombra e respiro.
 
-   ORDEM NÃO BASTA quando o globals escreve o mesmo alvo com mais classes
+   ORDEM NÃO BASTA quando a folha antiga escreve o mesmo alvo com mais classes
    (ex.: .approach-list .approach-card > footer .approach-edit-btn). Por isso cada
    folha nova nasce prefixada pela classe raiz da tela — .approaches-workspace,
-   .campaign-workspace, .calendar-workspace — em vez de confiar em quem carrega
-   por último.
+   .campaign-workspace, .calendar-workspace, .original-automation-host — em vez de
+   confiar em quem carrega por último.
 
    Ficam ANTES das folhas do aplicativo no celular, logo abaixo: o app do
-   corretor continua exatamente como está. E nenhum seletor alcança
-   .automations-v2-shell, .original-automation-host ou o construtor — Automações
-   permanece idêntica à publicada, por decisão do produto. */
+   corretor continua exatamente como está. O runtime do construtor de Automações
+   (159 KB, fechado) não é tocado — a folha 14 só repinta o que ele desenha. */
 import "./styles/redesign-apecerto.css";
 import "./styles/redesign-apecerto-produtos-financeiro.css";
 import "./styles/redesign-apecerto-financeiro-abas.css";
@@ -76,6 +76,7 @@ import "./styles/redesign-apecerto-abordagens-icones.css";
 import "./styles/redesign-apecerto-menu.css";
 import "./styles/redesign-apecerto-disparos.css";
 import "./styles/redesign-apecerto-calendario.css";
+import "./styles/redesign-apecerto-automacoes.css";
 /* INTERFACE DO APLICATIVO NO CELULAR — versão aprovada.
    Não é correção da folha antiga: o markup do Meu Dia e do CRM usa classes
    próprias (.ape-*), então esta folha é a única que os desenha. As regras
