@@ -11,9 +11,9 @@
    ficando um degrau acima. Mesmos valores da folha principal, nada novo. */
 
 .approaches-workspace .approach-list .approach-card > footer { display: flex; align-items: center; gap: 6px; }
-.approaches-workspace .approach-list .approach-card > footer .approach-edit-btn { flex: 0 0 auto; min-height: 38px; border: 1.5px solid #E4DFD9; border-radius: 999px; padding: 0 15px; background: #fff; color: #CC5800; font-size: 12px; font-weight: 700; cursor: pointer; }
+.approaches-workspace .approach-list .approach-card > footer .approach-edit-btn { flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 34px; min-height: 0; line-height: 1; box-sizing: border-box; border: 1.5px solid #E4DFD9; border-radius: 999px; padding: 0 15px; background: #fff; color: #CC5800; font-size: 12px; font-weight: 700; cursor: pointer; }
 .approaches-workspace .approach-list .approach-card > footer .approach-edit-btn:hover { border-color: #FF7000; background: #FFF3EA; }
-.approaches-workspace .approach-list .approach-card > footer .approach-ico-btn { width: 34px; height: 34px; border: 1.5px solid #E4DFD9; border-radius: 999px; background: #fff; color: #6E6760; font-size: 14px; }
+.approaches-workspace .approach-list .approach-card > footer .approach-ico-btn { flex: 0 0 auto; box-sizing: border-box; width: 34px; height: 34px; min-height: 0; padding: 0; display: grid; place-items: center; border: 1.5px solid #E4DFD9; border-radius: 999px; background: #fff; color: #6E6760; font-size: 14px; line-height: 1; }
 .approaches-workspace .approach-list .approach-card > footer .approach-ico-btn:first-of-type { margin-left: auto; }
 .approaches-workspace .approach-list .approach-card > footer .approach-ico-btn:hover { border-color: #E4DFD9; background: #FAF8F6; }
 .approaches-workspace .approach-list .approach-card > footer .approach-ico-btn.danger { border-color: #F6DADA; color: #D93E3E; background: #fff; }
@@ -33,25 +33,16 @@
 
 /* Cabecalho de grupo: os dois icones do fim sao alcancados no globals por
    seletor de atributo ([title="Renomear grupo"], [title^="Dissolver"]). */
+.approaches-workspace .approach-group-head strong { display: flex; align-items: center; gap: 7px; }
 .approaches-workspace .approach-group-head button[title="Renomear grupo"],
-.approaches-workspace .approach-group-head button[title^="Dissolver"] { width: 34px; height: 34px; padding: 0; margin-left: 0; border: 1.5px solid #E4DFD9; border-radius: 999px; background: #fff; color: #6E6760; font-size: 12px; }
+.approaches-workspace .approach-group-head button[title^="Dissolver"] { box-sizing: border-box; width: 34px; height: 34px; padding: 0; margin-left: 0; border: 1.5px solid #E4DFD9; border-radius: 999px; background: #fff; color: #6E6760; font-size: 12px; line-height: 1; }
 .approaches-workspace .approach-group-head button[title="Renomear grupo"]:hover,
 .approaches-workspace .approach-group-head button[title^="Dissolver"]:hover { background: #FAF8F6; }
 
-/* GLIFOS COLADOS AO TEXTO -- os dois casos que nao tem elemento proprio.
+/* O ▤ do grupo e o ✎ do botao ficam como o componente os escreve.
 
-   O componente escreve "▤ {nome do grupo}" dentro de um unico <strong> e
-   "✎ Editar mensagens" dentro de um unico <button>: nao ha no separado para
-   alcancar so o simbolo. Tornando o no um conteiner de BLOCO, ::first-letter
-   passa a valer e atinge exatamente o primeiro caractere -- ele e zerado e o
-   icone Lucide entra no ::before, com a cor do contexto.
-
-   Alternativa seria editar o .tsx; nao vale o risco de mexer na marcacao para
-   trocar dois simbolos, e assim continua reversivel apagando este bloco. */
-.approaches-workspace .approach-group-head strong { display: block; }
-.approaches-workspace .approach-group-head strong::first-letter { font-size: 0; }
-.approaches-workspace .approach-group-head strong::before { content: ""; display: inline-block; vertical-align: -3px; width: 16px; height: 16px; margin-right: 3px; background: #8B00CC; -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83z'/%3E%3Cpath d='m6.08 9.5-3.5 1.6a1 1 0 0 0 0 1.81l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9a1 1 0 0 0 0-1.83l-3.5-1.59'/%3E%3Cpath d='m6.08 14.5-3.5 1.6a1 1 0 0 0 0 1.81l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9a1 1 0 0 0 0-1.83l-3.5-1.59'/%3E%3C/svg%3E") center / contain no-repeat; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83z'/%3E%3Cpath d='m6.08 9.5-3.5 1.6a1 1 0 0 0 0 1.81l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9a1 1 0 0 0 0-1.83l-3.5-1.59'/%3E%3Cpath d='m6.08 14.5-3.5 1.6a1 1 0 0 0 0 1.81l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9a1 1 0 0 0 0-1.83l-3.5-1.59'/%3E%3C/svg%3E") center / contain no-repeat; }
-
-.approaches-workspace .approach-list .approach-card > footer .approach-edit-btn { display: block; text-align: center; line-height: 35px; }
-.approaches-workspace .approach-list .approach-card > footer .approach-edit-btn::first-letter { font-size: 0; }
-.approaches-workspace .approach-list .approach-card > footer .approach-edit-btn::before { content: ""; display: inline-block; vertical-align: -2px; width: 14px; height: 14px; margin-right: 1px; background: currentColor; -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21.2 6.8a1 1 0 0 0-4-4L3.8 16.2a2 2 0 0 0-.5.8l-1.3 4.4a.5.5 0 0 0 .6.6l4.4-1.3a2 2 0 0 0 .8-.5z'/%3E%3Cpath d='m15 5 4 4'/%3E%3C/svg%3E") center / contain no-repeat; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21.2 6.8a1 1 0 0 0-4-4L3.8 16.2a2 2 0 0 0-.5.8l-1.3 4.4a.5.5 0 0 0 .6.6l4.4-1.3a2 2 0 0 0 .8-.5z'/%3E%3Cpath d='m15 5 4 4'/%3E%3C/svg%3E") center / contain no-repeat; }
+   Tentei zerar cada um com ::first-letter para por Lucide no lugar; no Chrome o
+   ::before da regra entra antes e o pseudo nao alcanca o glifo, entao apareciam
+   OS DOIS ("✎ Editar mensagens" com lapis dobrado). Um simbolo repetido e pior
+   que um simbolo velho: preferi o glifo sozinho, e a troca de verdade fica para
+   quando alguem puder por um <i> proprio na marcacao. */
