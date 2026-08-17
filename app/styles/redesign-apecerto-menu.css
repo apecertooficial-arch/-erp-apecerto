@@ -1,13 +1,15 @@
-/* MENU LATERAL — ordem aprovada e icones do desenho, sem tocar na marcacao.
+/* MENU LATERAL — ordem aprovada e icones do desenho.
 
    1. ORDEM. Cada .nav-group vira coluna flex e cada item e alcancado pelo
       proprio href (/chat, /abordagens...) com `order`. Nenhuma rota, rotulo,
-      permissao ou badge muda -- o React monta os mesmos itens na mesma ordem do
-      codigo; so a pintura troca de lugar.
+      permissao ou badge muda -- o React monta os mesmos itens; so a pintura
+      troca de lugar.
 
-      LIMITE HONESTO: `order` reordena DENTRO do grupo. Notificacoes, Base de
-      conhecimento e Ajuda nascem em SISTEMA na marcacao, entao ficam em SISTEMA
-      -- depois dos quatro aprovados. Mover de grupo exige editar o AppShell.
+      A QUAL grupo cada item pertence e decidido em app/components/AppShell.tsx
+      (arrays adminMainItems / adminToolItems / adminSystemItems). Esta folha
+      decide a POSICAO dentro do grupo. Mexer em um sem olhar o outro faz item
+      saltar de lugar -- Notificacoes e Base de conhecimento mudaram de grupo no
+      AppShell e por isso ganharam aqui as posicoes 10 e 11 de FERRAMENTAS.
 
       Nenhum item foi escondido. Minha Equipe continua no topo de FERRAMENTAS,
       onde o componente a insere para gestor e admin.
@@ -47,14 +49,14 @@
 .sidebar .nav-item[href="/financiamento"] { order: 7; }
 .sidebar .nav-item[href="/tarefas"] { order: 8; }
 .sidebar .nav-item[href="/agentes-ia"] { order: 9; }
+.sidebar .nav-item[href="/notificacoes"] { order: 10; }
+.sidebar .nav-item[href="/conhecimento"] { order: 11; }
 
 .sidebar .nav-item[href="/usuarios"] { order: 1; }
 .sidebar .nav-item[href="/permissoes"] { order: 2; }
 .sidebar .nav-item[href="/auditoria"] { order: 3; }
 .sidebar .nav-item[href="/configuracoes"] { order: 4; }
-.sidebar .nav-item[href="/notificacoes"] { order: 5; }
-.sidebar .nav-item[href="/conhecimento"] { order: 6; }
-.sidebar .nav-item[href="/ajuda"] { order: 7; }
+.sidebar .nav-item[href="/ajuda"] { order: 5; }
 
 /* ===== 2. icones: um traco so, para os 21 ===== */
 .sidebar .nav-item .nav-icon svg { display: none; }
@@ -77,12 +79,12 @@
 .sidebar .nav-item[href="/financiamento"] .nav-icon::before { mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z'/%3E%3Cpath d='M14 2v5h6'/%3E%3Cpath d='M8 13h8M8 17h8M8 9h2'/%3E%3C/svg%3E"); }
 .sidebar .nav-item[href="/tarefas"] .nav-icon::before { mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect width='18' height='18' x='3' y='3' rx='2'/%3E%3Cpath d='M8 7v7M12 7v4M16 7v9'/%3E%3C/svg%3E"); }
 .sidebar .nav-item[href="/agentes-ia"] .nav-icon::before { mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M11.02 2.81a1 1 0 0 1 1.96 0l1.05 5.56a2 2 0 0 0 1.6 1.6l5.55 1.05a1 1 0 0 1 0 1.96l-5.55 1.05a2 2 0 0 0-1.6 1.6l-1.05 5.55a1 1 0 0 1-1.96 0l-1.05-5.55a2 2 0 0 0-1.6-1.6L2.82 12.98a1 1 0 0 1 0-1.96l5.55-1.05a2 2 0 0 0 1.6-1.6z'/%3E%3Cpath d='M20 2v4'/%3E%3Cpath d='M22 4h-4'/%3E%3Ccircle cx='4' cy='20' r='2'/%3E%3C/svg%3E"); }
+.sidebar .nav-item[href="/notificacoes"] .nav-icon::before { mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M10.27 21a2 2 0 0 0 3.46 0'/%3E%3Cpath d='M3.26 15.33A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.67C19.41 13.96 18 12.5 18 8A6 6 0 0 0 6 8c0 4.5-1.41 5.96-2.74 7.33'/%3E%3C/svg%3E"); }
+.sidebar .nav-item[href="/conhecimento"] .nav-icon::before { mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 7v14'/%3E%3Cpath d='M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z'/%3E%3C/svg%3E"); }
 
 /* SISTEMA */
 .sidebar .nav-item[href="/usuarios"] .nav-icon::before { mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2'/%3E%3Ccircle cx='9' cy='7' r='4'/%3E%3Cpath d='M22 21v-2a4 4 0 0 0-3-3.87'/%3E%3Cpath d='M16 3.13a4 4 0 0 1 0 7.75'/%3E%3C/svg%3E"); }
 .sidebar .nav-item[href="/permissoes"] .nav-icon::before { mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z'/%3E%3Cpath d='m9 12 2 2 4-4'/%3E%3C/svg%3E"); }
 .sidebar .nav-item[href="/auditoria"] .nav-icon::before { mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect width='18' height='11' x='3' y='11' rx='2'/%3E%3Cpath d='M7 11V7a5 5 0 0 1 10 0v4'/%3E%3C/svg%3E"); }
 .sidebar .nav-item[href="/configuracoes"] .nav-icon::before { mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z'/%3E%3Ccircle cx='12' cy='12' r='3'/%3E%3C/svg%3E"); }
-.sidebar .nav-item[href="/notificacoes"] .nav-icon::before { mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M10.27 21a2 2 0 0 0 3.46 0'/%3E%3Cpath d='M3.26 15.33A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.67C19.41 13.96 18 12.5 18 8A6 6 0 0 0 6 8c0 4.5-1.41 5.96-2.74 7.33'/%3E%3C/svg%3E"); }
-.sidebar .nav-item[href="/conhecimento"] .nav-icon::before { mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 7v14'/%3E%3Cpath d='M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z'/%3E%3C/svg%3E"); }
 .sidebar .nav-item[href="/ajuda"] .nav-icon::before { mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cpath d='M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3'/%3E%3Cpath d='M12 17h.01'/%3E%3C/svg%3E"); }
