@@ -1,5 +1,17 @@
 "use client";
 
+/* INÍCIO DO GESTOR no celular — resumo da operação.
+ *
+ * Fonte: /api/performance?periodo=mes. Três cartões, um por pergunta que o
+ * gestor faz ao pegar o telefone: quanto entrou (Finanças), quantos leads e o
+ * que está largado (Leads), e como a equipe está trabalhando (Trabalho).
+ *
+ * REGRA DE DADO REAL: linha cujo número não existe no banco NÃO aparece — nem
+ * zerada, nem com traço. "Comissão prevista" e "corretores online" estavam no
+ * desenho aprovado e ficaram de fora por isso; voltam no dia em que a API
+ * devolver os campos.
+ */
+
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AppMobileOffline, AppMobileSessaoExpirada } from "../system/AppMobileSystem";
 
@@ -15,8 +27,10 @@ type Empresa = {
   riscos: { carteira_ativa: number | null; acoes_vencidas: number | null; corretores_sobrecarregados: number | null; visitas_sem_feedback: number | null };
 };
 type Painel = { empresa?: Empresa | null; corretores?: Corretor[]; error?: string };
+type Linha = { k: string; v: string; alerta?: boolean };
 
 const n = (valor: unknown) => Number(valor) || 0;
+const tem = (valor: unknown) => valor !== null && valor !== undefined;
 const inteiro = (valor: unknown) => n(valor).toLocaleString("pt-BR");
 const dinheiro = (valor: unknown) => n(valor).toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
 
@@ -61,22 +75,61 @@ export function ManagerPanelMobile({ accessToken }: { accessToken: string }) {
     return amostra ? comAmostra.reduce((total, c) => total + n(c.medianaRespostaMin) * n(c.slaAmostra), 0) / amostra : null;
   }, [corretores]);
 
+  /* Os três cartões. Cada linha entra na lista só se o campo existir. */
+  const blocos = useMemo(() => {
+    if (!empresa) return [];
+    const financas: Linha[] = [];
+    if (tem(empresa.vgv)) financas.push({ k: "VGV assinado no mês", v: dinheiro(empresa.vgv) });
+    if (tem(empresa.vendas)) financas.push({ k: "Vendas assinadas", v: inteiro(empresa.vendas) });
+
+    const leads: Linha[] = [];
+    if (tem(empresa.fluxo?.leads)) leads.push({ k: "Leads no mês", v: inteiro(empresa.fluxo.leads) });
+    if (tem(empresa.riscos?.acoes_vencidas)) leads.push({ k: "Ações vencidas", v: inteiro(empresa.riscos.acoes_vencidas), alerta: n(empresa.riscos.acoes_vencidas) > 0 });
+    if (tem(empresa.riscos?.carteira_ativa)) leads.push({ k: "Na carteira da equipe", v: inteiro(empresa.riscos.carteira_ativa) });
+
+    const trabalho: Linha[] = [];
+    trabalho.push({ k: "Resposta mediana", v: respostaMediana === null ? "Sem amostra" : `${Math.round(respostaMediana)} min` });
+    if (tem(empresa.fluxo?.visitasRealizadas) && tem(empresa.fluxo?.visitasMarcadas)) {
+      trabalho.push({ k: "Visitas realizadas", v: `${inteiro(empresa.fluxo.visitasRealizadas)} de ${inteiro(empresa.fluxo.visitasMarcadas)}` });
+    } else if (tem(empresa.fluxo?.visitasRealizadas)) {
+      trabalho.push({ k: "Visitas realizadas", v: inteiro(empresa.fluxo.visitasRealizadas) });
+    }
+    if (tem(empresa.riscos?.corretores_sobrecarregados)) {
+      trabalho.push({ k: "Corretores sobrecarregados", v: inteiro(empresa.riscos.corretores_sobrecarregados), alerta: n(empresa.riscos.corretores_sobrecarregados) > 0 });
+    }
+
+    return [
+      { chave: "financas", titulo: "Finanças", linhas: financas },
+      { chave: "leads", titulo: "Leads", linhas: leads },
+      { chave: "trabalho", titulo: "Trabalho", linhas: trabalho },
+    ].filter((bloco) => bloco.linhas.length > 0);
+  }, [empresa, respostaMediana]);
+
   if (sessaoExpirada) return <AppMobileSessaoExpirada />;
   return <main className="ape-painel">
     <AppMobileOffline atualizadoEm={atualizadoEm} />
-    <header className="ape-painel-abertura"><span className="ape-sobrancelha">Visão de gestão</span><h1>A equipe neste mês</h1></header>
-    {dados === null && <div className="ape-painel-kpis" aria-hidden="true">{[0, 1, 2, 3].map((i) => <div className="ape-painel-skeleton" key={i} />)}</div>}
+    <header className="ape-painel-abertura"><span className="ape-sobrancelha">Visão de gestão</span><h1>A operação hoje</h1></header>
+    {dados === null && <div className="ape-resumo" aria-hidden="true">{[0, 1, 2].map((i) => <div className="ape-painel-skeleton" key={i} />)}</div>}
     {erro && <div className="ape-estado ruim" role="alert"><strong>Não foi possível carregar o painel.</strong><p>{erro}</p><button type="button" onClick={() => { setDados(null); setTentativa((nAtual) => nAtual + 1); }}>Tentar novamente</button></div>}
     {dados !== null && !erro && !empresa && <div className="ape-estado"><div className="ape-estado-icone" aria-hidden="true">✓</div><strong>Sem dados neste período</strong><p>Assim que a equipe trabalhar, os indicadores aparecerão aqui.</p></div>}
     {empresa && <>
-      <section className="ape-painel-kpis">
-        <article><strong className={n(empresa.riscos.acoes_vencidas) ? "perigo" : ""}>{inteiro(empresa.riscos.acoes_vencidas)}</strong><span>ações vencidas</span></article>
-        <article><strong>{respostaMediana === null ? "Sem amostra" : `${Math.round(respostaMediana)} min`}</strong><span>resposta mediana</span></article>
-        <article><strong>{inteiro(empresa.fluxo.visitasRealizadas)}</strong><span>visitas realizadas</span></article>
-        <article><strong className="roxo">{dinheiro(empresa.vgv)}</strong><span>VGV fechado</span></article>
+      <section className="ape-resumo">
+        {blocos.map((bloco) => (
+          <article className={`ape-resumo-card ${bloco.chave}`} key={bloco.chave}>
+            <span className="ape-resumo-titulo">{bloco.titulo}</span>
+            <dl>
+              {bloco.linhas.map((linha) => (
+                <div key={linha.k}>
+                  <dt>{linha.k}</dt>
+                  <dd className={linha.alerta ? "alerta" : ""}>{linha.v}</dd>
+                </div>
+              ))}
+            </dl>
+          </article>
+        ))}
       </section>
       {n(empresa.riscos.acoes_vencidas) > 0 && <section className="ape-painel-alerta"><span aria-hidden="true">!</span><div><strong>{inteiro(empresa.riscos.acoes_vencidas)} ações estão vencidas</strong><p>Revise capacidade e carteira antes de distribuir novos leads.</p></div></section>}
-      <h2 className="ape-painel-secao">Corretores</h2>
+      <h2 className="ape-painel-secao">Quem está trabalhando</h2>
       <section className="ape-painel-time">
         {corretores.map((corretor) => {
           const sla = Math.max(0, Math.min(100, n(corretor.sla15Pct)));

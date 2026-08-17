@@ -7,20 +7,40 @@
  * isso, dois corretores saem para o mesmo empreendimento no mesmo horário sem
  * saber. O que é meu aparece normal; o dos colegas mostra o nome.
  *
- * O TOPO É ÂNCORA. O cartão do próximo compromisso fica igual em Dia, Semana
- * e Semana. Só o miolo muda — que é o que a aba promete mudar. Sumir com o topo
- * ao trocar de aba faz a tela pular e o corretor perde a referência.
+ * O TOPO É ÂNCORA. O cartão do próximo compromisso fica igual em Dia, Semana e
+ * Mês. Só o miolo muda — que é o que a aba promete mudar. Sumir com o topo ao
+ * trocar de aba faz a tela pular e o corretor perde a referência.
+ *
+ * MÊS: a aba que o gestor pediu. Grade de 42 células com ponto no dia que tem
+ * compromisso (laranja até 2, roxo com 3 ou mais) e, abaixo, a lista do dia
+ * tocado — e só dele. A contagem do ponto e a lista saem do mesmo dado, então
+ * não existe dia com ponto de 2 mostrando 4 compromissos.
  */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  diaPorExtenso, hojeISO, jaPassou, proximo, quandoComeca,
+  diaPorExtenso, gradeDoMes, hojeISO, jaPassou, proximo, quandoComeca,
   resumoDoDia, somarDias,
   type Compromisso,
 } from "./telaAgenda.logica";
 import { AppMobileOffline, AppMobileSessaoExpirada } from "../system/AppMobileSystem";
 
-type PeriodoAgenda = "dia" | "semana";
+type PeriodoAgenda = "dia" | "semana" | "mes";
+
+/** "agosto de 2026" — minúscula, como o resto do app. */
+function mesPorExtenso(iso: string): string {
+  const d = new Date(`${iso}T12:00:00`);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toLocaleDateString("pt-BR", { month: "long", year: "numeric" }).toLowerCase();
+}
+
+/** Soma mês sem passar por fuso, e sem estourar para o mês seguinte: o dia 1
+ *  é o âncora do período, não o dia visitado. */
+function somarMeses(iso: string, meses: number): string {
+  const [a, m] = iso.split("-").map(Number);
+  const base = new Date(Date.UTC(a, m - 1 + meses, 1));
+  return base.toISOString().slice(0, 10);
+}
 
 export function TelaAgendaMobile({ accessToken, onAbrirLead }: {
   accessToken: string;
@@ -63,7 +83,13 @@ export function TelaAgendaMobile({ accessToken, onAbrirLead }: {
 
   const lista = useMemo(() => itens ?? [], [itens]);
   const prox = useMemo(() => proximo(lista), [lista]);
-  const paraListar = lista;
+
+  /* No mês a lista de baixo é SOMENTE do dia tocado. Em dia e semana, tudo o
+     que o período devolveu. */
+  const paraListar = useMemo(
+    () => (periodo === "mes" ? lista.filter((c) => c.data === dia) : lista),
+    [lista, periodo, dia],
+  );
 
   const porDia = useMemo(() => {
     const mapa = new Map<string, Compromisso[]>();
@@ -75,14 +101,17 @@ export function TelaAgendaMobile({ accessToken, onAbrirLead }: {
     return [...mapa.entries()];
   }, [paraListar]);
 
-  const passo = periodo === "dia" ? 1 : 7;
+  const celulas = useMemo(() => (periodo === "mes" ? gradeDoMes(dia, lista) : []), [periodo, dia, lista]);
+
+  const anterior = () => setDia((d) => (periodo === "mes" ? somarMeses(d, -1) : somarDias(d, periodo === "semana" ? -7 : -1)));
+  const seguinte = () => setDia((d) => (periodo === "mes" ? somarMeses(d, 1) : somarDias(d, periodo === "semana" ? 7 : 1)));
 
   if (sessaoExpirada) return <AppMobileSessaoExpirada />;
 
   return (
     <div className="ape-agenda">
       <AppMobileOffline atualizadoEm={atualizadoEm} />
-      {/* TOPO FIXO — igual em Dia e Semana.
+      {/* TOPO FIXO — igual em Dia, Semana e Mês.
           Quando não há nada à frente, o espaço não some: vira uma linha
           discreta. Sumir o bloco inteiro faria a tela pular do mesmo jeito. */}
       {prox ? (
@@ -130,7 +159,7 @@ export function TelaAgendaMobile({ accessToken, onAbrirLead }: {
 
       <div className="ape-agenda-barra">
         <div className="ape-agenda-chips" role="tablist" aria-label="Período">
-          {([["dia", "Dia"], ["semana", "Semana"]] as const).map(([p, r]) => (
+          {([["dia", "Dia"], ["semana", "Semana"], ["mes", "Mês"]] as const).map(([p, r]) => (
             <button
               key={p}
               type="button"
@@ -144,11 +173,40 @@ export function TelaAgendaMobile({ accessToken, onAbrirLead }: {
           ))}
         </div>
         <div className="ape-agenda-navega">
-          <button type="button" aria-label="Anterior" onClick={() => setDia((d) => somarDias(d, -passo))}>‹</button>
+          <button type="button" aria-label="Anterior" onClick={anterior}>‹</button>
           <button type="button" className="ape-agenda-hoje" onClick={() => setDia(hojeISO())}>Hoje</button>
-          <button type="button" aria-label="Próximo" onClick={() => setDia((d) => somarDias(d, passo))}>›</button>
+          <button type="button" aria-label="Próximo" onClick={seguinte}>›</button>
         </div>
       </div>
+
+      {/* GRADE DO MÊS. Sempre 42 células: mês curto não muda a altura e a lista
+          de baixo não sobe na cara de quem está tocando. */}
+      {periodo === "mes" && (
+        <section className="ape-cal" aria-label={`Calendário de ${mesPorExtenso(dia)}`}>
+          <p className="ape-cal-mes">{mesPorExtenso(dia)}</p>
+          <div className="ape-cal-semana" aria-hidden="true">
+            {["S", "T", "Q", "Q", "S", "S", "D"].map((d, i) => <span key={`${d}${i}`} className={i > 4 ? "fds" : ""}>{d}</span>)}
+          </div>
+          <div className="ape-cal-grade">
+            {celulas.map((c) => (
+              <button
+                key={c.iso}
+                type="button"
+                className={`ape-cal-dia${c.iso === dia ? " on" : ""}${c.foraDoMes ? " fora" : ""}`}
+                onClick={() => setDia(c.iso)}
+                aria-current={c.iso === dia ? "date" : undefined}
+              >
+                {c.numero}
+                {c.total > 0 && c.iso !== dia && <i className={c.total > 2 ? "cheio" : ""} aria-hidden="true" />}
+              </button>
+            ))}
+          </div>
+          <p className="ape-cal-legenda">
+            <span><i aria-hidden="true" />até 2 compromissos</span>
+            <span><i className="cheio" aria-hidden="true" />3 ou mais</span>
+          </p>
+        </section>
+      )}
 
       <p className="ape-agenda-dia">
         {periodo === "semana" ? `semana de ${diaPorExtenso(dia)}` : diaPorExtenso(dia)}
@@ -171,7 +229,8 @@ export function TelaAgendaMobile({ accessToken, onAbrirLead }: {
 
       {itens !== null && !erro && paraListar.length === 0 && (
         <p className="ape-agenda-vazio">
-          Nada marcado neste período. <a href="/tarefas">Ver Tarefas da Sara</a>
+          {periodo === "mes" ? "Nada marcado neste dia. Toque num dia com ponto." : "Nada marcado neste período."}{" "}
+          <a href="/tarefas">Ver Tarefas da Sara</a>
         </p>
       )}
 
