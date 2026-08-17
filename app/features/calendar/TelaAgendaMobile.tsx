@@ -7,14 +7,13 @@
  * isso, dois corretores saem para o mesmo empreendimento no mesmo horário sem
  * saber. O que é meu aparece normal; o dos colegas mostra o nome.
  *
- * O TOPO É ÂNCORA. O cartão do próximo compromisso fica igual em Dia, Semana e
- * Mês. Só o miolo muda — que é o que a aba promete mudar. Sumir com o topo ao
- * trocar de aba faz a tela pular e o corretor perde a referência.
+ * ABRE NO MÊS. Marcar e conferir visita é trabalho de mês, não de dia: o
+ * corretor precisa ver onde há espaço antes de combinar horário. Dia e Semana
+ * continuam a um toque.
  *
- * MÊS: a aba que o gestor pediu. Grade de 42 células com ponto no dia que tem
- * compromisso (laranja até 2, roxo com 3 ou mais) e, abaixo, a lista do dia
- * tocado — e só dele. A contagem do ponto e a lista saem do mesmo dado, então
- * não existe dia com ponto de 2 mostrando 4 compromissos.
+ * O TOPO É ÂNCORA. O cartão do próximo compromisso fica igual em Mês, Semana e
+ * Dia. Só o miolo muda — que é o que a aba promete mudar. Sumir com o topo ao
+ * trocar de aba faz a tela pular e o corretor perde a referência.
  */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -47,7 +46,7 @@ export function TelaAgendaMobile({ accessToken, onAbrirLead }: {
   onAbrirLead: (negocioId: number) => void;
 }) {
   const [dia, setDia] = useState<string>(() => hojeISO());
-  const [periodo, setPeriodo] = useState<PeriodoAgenda>("dia");
+  const [periodo, setPeriodo] = useState<PeriodoAgenda>("mes");
   const [itens, setItens] = useState<Compromisso[] | null>(null);
   const [erro, setErro] = useState(false);
   const [sessaoExpirada, setSessaoExpirada] = useState(false);
@@ -111,7 +110,7 @@ export function TelaAgendaMobile({ accessToken, onAbrirLead }: {
   return (
     <div className="ape-agenda">
       <AppMobileOffline atualizadoEm={atualizadoEm} />
-      {/* TOPO FIXO — igual em Dia, Semana e Mês.
+      {/* TOPO FIXO — igual em Mês, Semana e Dia.
           Quando não há nada à frente, o espaço não some: vira uma linha
           discreta. Sumir o bloco inteiro faria a tela pular do mesmo jeito. */}
       {prox ? (
@@ -159,7 +158,7 @@ export function TelaAgendaMobile({ accessToken, onAbrirLead }: {
 
       <div className="ape-agenda-barra">
         <div className="ape-agenda-chips" role="tablist" aria-label="Período">
-          {([["dia", "Dia"], ["semana", "Semana"], ["mes", "Mês"]] as const).map(([p, r]) => (
+          {([["mes", "Mês"], ["semana", "Semana"], ["dia", "Dia"]] as const).map(([p, r]) => (
             <button
               key={p}
               type="button"
