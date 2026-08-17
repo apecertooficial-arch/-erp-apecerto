@@ -6,85 +6,38 @@ import "./styles/app-mobile.css";
 import "./styles/apecerto-identidade.css";
 /* Depois da identidade: usam os tokens dela. Tudo dentro de max-width — o
    desktop não é tocado por nenhuma delas. */
-/* Ficha da venda: modal em abas + agenda de repasse. Depois da identidade
-   porque usa os tokens da marca. */
-import "./styles/venda-ficha.css";
-/* Importar extrato: seção dentro do Fluxo de caixa. Autocontida sob
-   .extrato-painel, pelos mesmos motivos da folha acima. */
-import "./styles/extrato-import.css";
+import "./styles/tela-corretor.css";
+import "./styles/tela-crm.css";
 import "./styles/tela-avisos.css";
+import "./styles/tela-agenda.css";
+import "./styles/tela-agenda-mes.css";
+import "./styles/telas-prototipo.css";
+/* Correções vindas de uso real: cabeçalho em dobro, WhatsApp verde, ícone do
+   CRM e tamanho de fonte. Depois de todas para vencer sem seletor extra. */
+import "./styles/correcoes-celular.css";
+/* A ÚLTIMA: a ação de gestão é a exceção da regra do verde, então precisa
+   vir depois de quem pinta de verde. */
+import "./styles/tela-gestao-card.css";
 /* Depois de tela-gestao-card sem quebrar a regra dela: esta folha só trata de
    layout e rolagem das colunas de kanban — não toca em cor nem em token. */
 import "./styles/esteira-rolagem.css";
 /* Menu de ações por lançamento no fluxo de caixa. Isolado pelo mesmo motivo:
    globals.css tem 665 KB e um diff pequeno é reversível. */
 import "./styles/fluxo-caixa-acoes.css";
+/* Alvo de toque do × que dispensa o aviso de notificação. Fora da folha de
+   identidade porque lá a regra é: nada que dependa de layout. */
+import "./styles/aviso-push-dispensar.css";
+/* Os indicadores do Meu Dia viraram botão de filtro; isto zera a aparência de
+   botão. Cor e grade continuam em FUNIL2_CSS. */
+import "./styles/meu-dia-filtros.css";
+/* O card do Pescado não tem prazo: o badge precisa ser cinza, não o verde de
+   "no prazo". A regra mora no banco; aqui é só a leitura visual dela. */
+import "./styles/pescado-sem-prazo.css";
 /* Explicador de automações: o painel que conta o fluxo passo a passo. Só usa
    tokens do :root, então segue a marca sem duplicar cor. */
 import "./styles/tela-explicador.css";
-import "./styles/tela-suporte-financiamento.css";
-/* Módulos ativos antes injetados por JavaScript; estáticos e únicos. */
-import "./styles/funil-2.css";
-import "./styles/performance.css";
-/* DESENHO VIGENTE DO ERP (desktop) — padrão apêcerto.
-
-   UMA camada de desenho, dividida por domínio do mesmo jeito que o resto deste
-   arquivo já divide (venda-ficha, extrato-import, fluxo-caixa-acoes…):
-
-     1. redesign-apecerto.css ................. shell, Início, CRM, Performance
-     2. ...-produtos-financeiro.css ........... Produtos, ficha da venda, Financeiro
-     3. ...-financeiro-abas.css ............... Marketing, Indicações, Taxas, Metas, Meus ganhos
-     4. ...-inicio.css ........................ Início: topo, seções, ranking, estados
-     5. ...-esteira.css ....................... Esteira de Vendas 3.0 (pós-fechamento)
-     6. ...-catalogo.css ...................... card do catálogo de Produtos
-     7. ...-crm.css ........................... CRM: menu, cartão do lead, ações rápidas
-     8. ...-abordagens.css .................... Abordagens: biblioteca, cartões, editor, prévia
-     9. ...-abordagens-rodape.css ............. Abordagens: as regras de 3 classes do globals
-    10. ...-abordagens-icones.css ............. Abordagens: glifos e emoji viram Lucide por máscara
-    11. ...-menu.css ......................... Menu lateral: ordem aprovada (order) + ícones Lucide
-    12. ...-disparos.css ..................... Disparos: público, mensagem, cadência, revisão, recentes
-    13. ...-calendario.css ................... Calendário: Dia/Semana/Mês/Lista, resumo, modais
-    14. ...-automacoes.css ................... Automações: casca, construtor e explicador
-
-   Elas substituem por cascata os valores visuais que globals.css, funil-2.css,
-   performance.css e automation-builder.css definiam para os MESMOS seletores —
-   não são tema opcional nem segunda pele: são o visual do produto. Do CSS antigo
-   resta a base estrutural (layout, grid, posição).
-
-   Escritas sobre as classes REAIS dos componentes, conferidas arquivo por
-   arquivo. Só cor, tipografia, peso, borda, raio, sombra e respiro.
-
-   ORDEM NÃO BASTA quando a folha antiga escreve o mesmo alvo com mais classes
-   (ex.: .approach-list .approach-card > footer .approach-edit-btn). Por isso cada
-   folha nova nasce prefixada pela classe raiz da tela — .approaches-workspace,
-   .campaign-workspace, .calendar-workspace, .original-automation-host — em vez de
-   confiar em quem carrega por último.
-
-   Ficam ANTES das folhas do aplicativo no celular, logo abaixo: o app do
-   corretor continua exatamente como está. O runtime do construtor de Automações
-   (159 KB, fechado) não é tocado — a folha 14 só repinta o que ele desenha. */
-import "./styles/redesign-apecerto.css";
-import "./styles/redesign-apecerto-produtos-financeiro.css";
-import "./styles/redesign-apecerto-financeiro-abas.css";
-import "./styles/redesign-apecerto-inicio.css";
-import "./styles/redesign-apecerto-esteira.css";
-import "./styles/redesign-apecerto-catalogo.css";
-import "./styles/redesign-apecerto-crm.css";
-import "./styles/redesign-apecerto-abordagens.css";
-import "./styles/redesign-apecerto-abordagens-rodape.css";
-import "./styles/redesign-apecerto-abordagens-icones.css";
-import "./styles/redesign-apecerto-menu.css";
-import "./styles/redesign-apecerto-disparos.css";
-import "./styles/redesign-apecerto-calendario.css";
-import "./styles/redesign-apecerto-automacoes.css";
-/* INTERFACE DO APLICATIVO NO CELULAR — versão aprovada.
-   Não é correção da folha antiga: o markup do Meu Dia e do CRM usa classes
-   próprias (.ape-*), então esta folha é a única que os desenha. As regras
-   .f2m-* de app-mobile.css deixaram de casar com essas telas. */
-import "./styles/app-mobile-aprovado.css";
-/* Telas do gestor no celular (folha "Mais" e Minha Equipe). Depois da folha
-   aprovada porque reusa os mesmos valores e completa o que faltava dela. */
-import "./styles/app-mobile-gestor.css";
+/* Botão de tour virtual na galeria de Produtos. */
+import "./styles/tela-produtos-tour.css";
 import { RegistroPwa } from "./components/RegistroPwa";
 
 export const metadata: Metadata = {
