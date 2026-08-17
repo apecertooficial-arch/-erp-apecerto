@@ -26,23 +26,21 @@ import "./styles/tela-suporte-financiamento.css";
 /* Módulos ativos antes injetados por JavaScript; estáticos e únicos. */
 import "./styles/funil-2.css";
 import "./styles/performance.css";
-/* REDESENHO DO ERP (desktop) — a camada de desenho aprovada com o Rômulo.
+/* REDESENHO DO ERP — DESLIGADO DE PROPÓSITO (17/08/2026).
 
-   Entra AQUI, e não dentro de globals.css/funil-2.css/performance.css, por três
-   razões: (a) substitui o visual daquelas folhas por cascata, sem um diff de
-   350 KB que ninguém consegue revisar; (b) some inteira ao comentar duas
-   linhas, se algo aparecer em produção; (c) fica ANTES das duas folhas do
-   aplicativo no celular, logo abaixo, então o app do corretor continua
-   exatamente como está — o redesenho é só do ERP no navegador.
+   As duas folhas existem em app/styles/ e estão validadas, mas metade do
+   redesenho aprovado depende de MARCAÇÃO que ainda não subiu (card do produto
+   com chips e barra de estoque, ficha .fv2-*, captação .capt-*, as quatro abas
+   novas do Financeiro, painel do Importar extrato, ícones lucide).
 
-   Só cor, tipografia, peso, borda, raio, sombra e respiro sobre classes que já
-   existem. Nenhuma estrutura, nenhum dado, nenhuma função.
+   Ligar só o CSS deixa o ERP pela metade: parte das regras não encontra
+   elemento nenhum e parte cai sobre um DOM diferente do que foi desenhado.
+   Religar estes dois imports é o ÚLTIMO passo, depois que os componentes
+   estiverem no padrão — nunca antes.
 
-   FORA DO ESCOPO, por decisão do produto: Automações. Nenhum seletor das duas
-   folhas alcança .automations-v2-shell, .original-automation-host ou as classes
-   internas do construtor — aquela tela fica idêntica à publicada. */
-import "./styles/redesign-apecerto.css";
-import "./styles/redesign-apecerto-produtos-financeiro.css";
+   import "./styles/redesign-apecerto.css";
+   import "./styles/redesign-apecerto-produtos-financeiro.css";
+*/
 /* INTERFACE DO APLICATIVO NO CELULAR — versão aprovada.
    Não é correção da folha antiga: o markup do Meu Dia e do CRM usa classes
    próprias (.ape-*), então esta folha é a única que os desenha. As regras
