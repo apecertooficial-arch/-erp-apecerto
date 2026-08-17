@@ -39,6 +39,7 @@ import "./styles/performance.css";
      6. ...-catalogo.css ...................... card do catálogo de Produtos
      7. ...-crm.css ........................... CRM: menu, cartão do lead, ações rápidas
      8. ...-abordagens.css .................... Abordagens: biblioteca, cartões, editor, prévia
+     9. ...-abordagens-rodape.css ............. Abordagens: as regras de 3 classes do globals
 
    Elas substituem por cascata os valores visuais que globals.css, funil-2.css e
    performance.css definiam para os MESMOS seletores — não são tema opcional nem
@@ -47,6 +48,11 @@ import "./styles/performance.css";
 
    Escritas sobre as classes REAIS dos componentes, conferidas arquivo por
    arquivo. Só cor, tipografia, peso, borda, raio, sombra e respiro.
+
+   ORDEM NÃO BASTA quando o globals escreve o mesmo alvo com mais classes
+   (ex.: .approach-list .approach-card > footer .approach-edit-btn). Nesses casos
+   a folha repete a forma do seletor e acrescenta a classe raiz da tela — é o que
+   a folha 9 faz.
 
    Ficam ANTES das folhas do aplicativo no celular, logo abaixo: o app do
    corretor continua exatamente como está. E nenhum seletor alcança
@@ -60,6 +66,7 @@ import "./styles/redesign-apecerto-esteira.css";
 import "./styles/redesign-apecerto-catalogo.css";
 import "./styles/redesign-apecerto-crm.css";
 import "./styles/redesign-apecerto-abordagens.css";
+import "./styles/redesign-apecerto-abordagens-rodape.css";
 /* INTERFACE DO APLICATIVO NO CELULAR — versão aprovada.
    Não é correção da folha antiga: o markup do Meu Dia e do CRM usa classes
    próprias (.ape-*), então esta folha é a única que os desenha. As regras
