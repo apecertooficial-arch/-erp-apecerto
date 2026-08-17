@@ -41,6 +41,7 @@ import "./styles/performance.css";
      8. ...-abordagens.css .................... Abordagens: biblioteca, cartões, editor, prévia
      9. ...-abordagens-rodape.css ............. Abordagens: as regras de 3 classes do globals
     10. ...-abordagens-icones.css ............. Abordagens: glifos e emoji viram Lucide por máscara
+    11. ...-menu.css ......................... Menu lateral: ordem aprovada (order) + ícones Lucide
 
    Elas substituem por cascata os valores visuais que globals.css, funil-2.css e
    performance.css definiam para os MESMOS seletores — não são tema opcional nem
@@ -69,6 +70,7 @@ import "./styles/redesign-apecerto-crm.css";
 import "./styles/redesign-apecerto-abordagens.css";
 import "./styles/redesign-apecerto-abordagens-rodape.css";
 import "./styles/redesign-apecerto-abordagens-icones.css";
+import "./styles/redesign-apecerto-menu.css";
 /* INTERFACE DO APLICATIVO NO CELULAR — versão aprovada.
    Não é correção da folha antiga: o markup do Meu Dia e do CRM usa classes
    próprias (.ape-*), então esta folha é a única que os desenha. As regras
