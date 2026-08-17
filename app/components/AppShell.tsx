@@ -5,12 +5,26 @@ import { useState, type ReactNode } from "react";
 import type { ModuleName } from "../features/system/module-map";
 import { pathDoModulo, podeVer } from "../features/system/erp-routes";
 
+/* GRUPOS DO MENU — ordem aprovada no desenho.
+
+   Notificações e Base de conhecimento saíram de SISTEMA e entraram no fim de
+   FERRAMENTAS: as duas são rotina de trabalho, não administração do sistema.
+   Ajuda ficou em SISTEMA, como último item. A ordem VISUAL de cada grupo vem de
+   redesign-apecerto-menu.css (`order` por href) — estes arrays definem quem
+   pertence a qual grupo; a folha define em que posição aparece. Mexer em um sem
+   olhar o outro faz item saltar de lugar.
+
+   Nenhum item foi removido em relação ao publicado. */
 const adminMainItems: ModuleName[] = ["Início", "CRM", "Performance", "Produtos", "Financeiro"];
-const adminToolItems: ModuleName[] = ["Abordagens", "Automações", "Financiamento", "Chat ao Vivo", "Disparos", "Calendário", "Projetos e Tarefas", "Agentes de IA"];
-const adminSystemItems: ModuleName[] = ["Usuários", "Perfis e Permissões", "Notificações", "Base de conhecimento", "Auditoria", "Configurações", "Ajuda"];
+const adminToolItems: ModuleName[] = ["Abordagens", "Automações", "Financiamento", "Chat ao Vivo", "Disparos", "Calendário", "Projetos e Tarefas", "Agentes de IA", "Notificações", "Base de conhecimento"];
+const adminSystemItems: ModuleName[] = ["Usuários", "Perfis e Permissões", "Auditoria", "Configurações", "Ajuda"];
 const brokerMainItems: ModuleName[] = ["Início", "CRM", "Performance", "Produtos", "Financeiro"];
-const brokerToolItems: ModuleName[] = ["Chat ao Vivo", "Financiamento", "Disparos", "Calendário"];
-const brokerSystemItems: ModuleName[] = ["Notificações", "Configurações", "Ajuda"];
+const brokerToolItems: ModuleName[] = ["Chat ao Vivo", "Financiamento", "Disparos", "Calendário", "Notificações"];
+const brokerSystemItems: ModuleName[] = ["Configurações", "Ajuda"];
+
+/* Rótulo mostrado no menu. A chave (ModuleName) continua sendo "CRM" — rota,
+   permissão e module-map dependem dela; só o texto muda, como no desenho. */
+const rotulosMenu: Partial<Record<ModuleName, string>> = { CRM: "CRM · Meu Dia" };
 
 function NavIcon({ item }: { item: ModuleName }) {
   const common = { width: 19, height: 19, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.8, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
@@ -44,7 +58,7 @@ function NavGroup({ label, items, activeItem, onNavigate, badges }: { label: str
         return (
           <Link className={`nav-item ${item === activeItem ? "active" : ""}`} key={item} href={pathDoModulo(item)} onClick={() => onNavigate(item)} aria-current={item === activeItem ? "page" : undefined}>
             <span className="nav-icon" aria-hidden="true"><NavIcon item={item} /></span>
-            <span>{item}</span>
+            <span>{rotulosMenu[item] ?? item}</span>
             {item === "CRM" && <small>20</small>}
             {item === "Automações" && <small>2</small>}
             {item === "Produtos" && badge > 0 && <small className="nav-badge-pending" title={`${badge} produto(s) aguardando aprovação`}>{badge}</small>}
