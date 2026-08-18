@@ -2,19 +2,15 @@
 
 /* PEÇAS DAS TELAS DA INTELIGÊNCIA — biblioteca do artboard 30b.
  *
- * Auditoria de fidelidade desta rodada trouxe quatro correções, todas aqui:
- *   1. tile de ícone 34px agora desenha ícone (linha de 2px, terminal redondo,
- *      construção do Lucide) em vez de ficar vazio;
- *   2. cabeçalho de tabela virou ordenação real, com seta e aria-sort;
- *   3. célula carrega o rótulo da coluna (data-rotulo) para a tabela virar lista
- *      de cartões no celular, como nos artboards 29a/22a;
- *   4. gaveta lateral de 420px (6a, 5a, 18a, 17a) que faltava na área.
+ * Contrato de dado ausente (dado.tsx) em todas: o bloco existe sempre; sem
+ * número, aparece “—” com o motivo. Nenhuma peça se esconde sozinha.
  *
- * Toda peça respeita o contrato de dado ausente (dado.tsx): o bloco existe
- * sempre; sem número, aparece “—” com o motivo. Nenhuma peça se esconde sozinha.
+ * Esta rodada da auditoria fechou a acessibilidade da gaveta de 420px: Esc no
+ * documento, foco inicial no botão de fechar, devolução do foco a quem abriu,
+ * ci clo de tabulação preso dentro dela e rolagem do fundo travada.
  */
 
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import "../../styles/inteligencia-pecas.css";
 import { BlocoSemDado, existe, TRACO, Valor, type MotivoPendencia, type Talvez } from "./dado";
 
@@ -22,8 +18,8 @@ export type Tom = "bom" | "ruim" | "aviso" | "roxo" | "neutro";
 export type Tile = "laranja" | "roxo" | "verde" | "vermelho" | "ambar";
 export type NomeIcone = "tendencia" | "alerta" | "relogio" | "check" | "faisca" | "casa" | "pessoas" | "dinheiro";
 
-/* Ícones da área. Traço de 2px com terminal redondo — a mesma construção do
-   Lucide usada no desenho, sem acrescentar dependência ao projeto. */
+/* Ícones da área: traço de 2px, terminal redondo — a construção do Lucide usada
+   no desenho, sem acrescentar dependência ao projeto. */
 export function IconeInt({ nome, tamanho = 17 }: { nome: NomeIcone; tamanho?: number }) {
   const c = { width: tamanho, height: tamanho, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 2, strokeLinecap: "round" as const, strokeLinejoin: "round" as const, "aria-hidden": true };
   if (nome === "tendencia") return <svg {...c}><path d="m3 17 6-6 4 4 8-8" /><path d="M21 7h-5v5" /></svg>;
@@ -128,8 +124,6 @@ export function Funil({ etapas, foot }: { etapas: Etapa[]; foot?: string }) {
 export type Celula = { texto: string; forte?: boolean; sub?: string; num?: boolean; chip?: string; chipTom?: Tom; cor?: string };
 export type LinhaTabela = { chave: string; celulas: Celula[]; destaque?: boolean; abrir?: () => void };
 
-/* Número dentro do texto da célula, para ordenar sem exigir que a tela mande o
-   valor cru duas vezes. “—” e vazio vão sempre para o fim. */
 function chaveDeOrdem(c: Celula | undefined): number | string {
   const t = (c?.texto ?? "").trim();
   if (!t || t === TRACO) return Number.NEGATIVE_INFINITY;
@@ -330,8 +324,13 @@ export function ChipsEventos({ titulo, itens, foot }: { titulo: string; itens: s
 export type Detalhe = { titulo: string; sub: string; linhas: [string, string][]; aviso: string };
 
 /* GAVETA LATERAL de 420px — artboards 6a (imóvel), 5a (jornada do lead),
-   18a (perfil do corretor) e 17a (página do gerente). Abre por cima, escurece o
-   fundo, fecha no Esc e no clique fora. */
+ * 18a (perfil do corretor) e 17a (página do gerente).
+ *
+ * Acessibilidade fechada nesta rodada: role=dialog + aria-modal, foco inicial no
+ * botão de fechar, Esc no documento, foco devolvido ao elemento que abriu,
+ * tabulação presa dentro da gaveta e rolagem do fundo travada enquanto aberta.
+ * No celular ocupa a tela inteira, sem rolagem horizontal (folha de peças).
+ */
 export function GavetaLateral({
   aberta,
   titulo,
@@ -349,18 +348,57 @@ export function GavetaLateral({
   children: ReactNode;
   rodape?: ReactNode;
 }) {
+  const caixa = useRef<HTMLElement | null>(null);
+  const botaoFechar = useRef<HTMLButtonElement | null>(null);
+  const anterior = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    if (!aberta) return;
+    anterior.current = document.activeElement as HTMLElement | null;
+    botaoFechar.current?.focus();
+    const rolagem = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    const naTecla = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.stopPropagation();
+        fechar();
+        return;
+      }
+      if (e.key !== "Tab" || !caixa.current) return;
+      const focaveis = caixa.current.querySelectorAll<HTMLElement>('button, a[href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+      if (focaveis.length === 0) return;
+      const primeiro = focaveis[0];
+      const ultimo = focaveis[focaveis.length - 1];
+      if (e.shiftKey && document.activeElement === primeiro) {
+        e.preventDefault();
+        ultimo.focus();
+      } else if (!e.shiftKey && document.activeElement === ultimo) {
+        e.preventDefault();
+        primeiro.focus();
+      }
+    };
+
+    document.addEventListener("keydown", naTecla, true);
+    return () => {
+      document.removeEventListener("keydown", naTecla, true);
+      document.body.style.overflow = rolagem;
+      anterior.current?.focus?.();
+    };
+  }, [aberta, fechar]);
+
   if (!aberta) return null;
   return (
     <>
-      <button type="button" className="intp-gaveta-fundo" aria-label="Fechar" onClick={fechar} />
-      <aside className="intp-gaveta" role="dialog" aria-modal="true" aria-label={titulo} onKeyDown={(e) => { if (e.key === "Escape") fechar(); }}>
+      <button type="button" className="intp-gaveta-fundo" aria-label="Fechar" onClick={fechar} tabIndex={-1} />
+      <aside className="intp-gaveta" role="dialog" aria-modal="true" aria-label={titulo} ref={caixa}>
         <div className="intp-gaveta-topo">
           <div style={{ flex: 1, minWidth: 0 }}>
             <b>{titulo}</b>
             {sub ? <small>{sub}</small> : null}
           </div>
           {selo ? <span className="intp-cartao-chip tom-bom">{selo}</span> : null}
-          <button type="button" className="intp-detalhe-fechar" onClick={fechar} aria-label="Fechar gaveta">✕</button>
+          <button type="button" className="intp-detalhe-fechar" onClick={fechar} aria-label="Fechar gaveta" ref={botaoFechar}>✕</button>
         </div>
         <div className="intp-gaveta-corpo">{children}</div>
         {rodape ? <div className="intp-gaveta-rodape">{rodape}</div> : null}
@@ -440,6 +478,24 @@ export function ListaComDetalhe({
         )}
         {rodape}
       </div>
+    </div>
+  );
+}
+
+/* Linha do tempo da jornada — usada na gaveta do lead (5a). Sem IP bruto, sem
+   user agent: só o que serve para atender a pessoa. */
+export function LinhaDoTempo({ eventos }: { eventos: { titulo: string; quando: string; cor: string }[] }) {
+  return (
+    <div className="intp-tempo">
+      {eventos.map((e) => (
+        <div className="intp-tempo-item" key={`${e.titulo}-${e.quando}`}>
+          <span className="intp-tempo-ponto" style={{ background: e.cor }} />
+          <div>
+            <b>{e.titulo}</b>
+            <small>{e.quando}</small>
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
