@@ -81,6 +81,14 @@ cada célula recebe o rótulo da coluna em `data-label`, não há tabela espremi
 horizontal. Em 560 px, a lista fecha em uma coluna. O contador geral segue conservador porque esta é
 uma peça transversal; nenhum artboard de negócio foi declarado completo só por ganhar o componente.
 
+## Commit 4 — KPIs e comparações
+
+Todo KPI agora carrega definição acessível, valor, nota, comparação e confiança como campos separados.
+Quando o endpoint não devolve período anterior, o chip diz “sem base comparável” — não calcula delta
+contra zero nem esconde o espaço. O componente aceita delta absoluto/percentual com direção e fonte
+específica; telas sem essa fonte permanecem honestamente neutras. Valor confirmado recebe confiança
+alta por padrão; valor ausente vira pendente, sem transformar ausência em zero.
+
 **Controles selecionáveis hoje** (vocabulário fechado pelo próprio 11a): comparação, dispositivo,
 finalidade, tipo de lead, consentimento. **Lista aberta** (origem, página/tipo, bairro): selecionável
 quando a tela passar `fontes` — o endpoint já devolve os agregados. **Sem fonte no ERP** (mídia,
@@ -92,7 +100,7 @@ opção inventada.
 | Peça | Situação | Evidência | Ação |
 |---|---|---|---|
 | 01 Cabeçalho de seção | fiel | `.ape-int-secao` eyebrow 11/600 roxo + h2 20/700 | — |
-| 02 KPI | parcial | cartão e estado vazio corretos; falta chip de comparação e tooltip de definição | Commit 4 |
+| 02 KPI | **fiel (Commit 4)** | definição acessível, chip de comparação/ausência, confiança e procedência tipadas | — |
 | 03 Tile de ícone 34px | **fiel (Commit 1)** | `.ape-int-tile` + `.ape-int-ic` por máscara | — |
 | 04 Abas e grupos pill | fiel | `<a href>` reais, ativo #FFF3EA/#FF7000/#CC5800 | — |
 | 05 Barra de filtros | **fiel (Commit 1)** | `.ape-int-barra` com os 13 controles do 11a | período personalizado e Exportar |
