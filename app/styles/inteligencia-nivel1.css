@@ -1,0 +1,22 @@
+/* Complemento da casca — segmentado de primeiro nível e badge da pílula.
+ *
+ * O primeiro nível do protótipo é UMA cápsula com duas metades (Site e marketing
+ * / Performance), não quatro pílulas soltas. Prefixado por .int-area.
+ */
+
+.int-area .int-nivel1 { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.int-area .int-segmentado { display: inline-flex; border: 1px solid #e4dfd9; border-radius: 999px; overflow: hidden; background: #fff; }
+.int-area .int-segmentado button { height: 38px; padding: 0 20px; border: 0; background: #fff; color: #6e6760; font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+.int-area .int-segmentado button:hover { background: #faf8f6; }
+.int-area .int-segmentado button.ativo { background: #fff3ea; color: #cc5800; font-weight: 700; box-shadow: inset 0 0 0 1.5px #ff7000; border-radius: 999px; }
+.int-area .int-familia-nota { font-size: 12px; color: #9a938b; }
+.int-area .int-pagina { display: inline-flex; align-items: center; gap: 7px; }
+.int-area .int-pagina-badge { font-size: 10.5px; font-weight: 700; background: #fbe5e5; color: #b02b2b; border-radius: 999px; padding: 2px 7px; }
+.int-area .int-pagina.ativo .int-pagina-badge { background: #ffe4d1; color: #cc5800; }
+
+@media (max-width: 720px) {
+  .int-area .int-segmentado { width: 100%; }
+  .int-area .int-segmentado button { flex: 1; min-height: 44px; }
+  .int-area .int-familia-nota { display: none; }
+  .int-area .int-pagina { min-height: 44px; }
+}
