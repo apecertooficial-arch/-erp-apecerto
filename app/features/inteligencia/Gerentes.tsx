@@ -19,11 +19,15 @@ import { CascaInteligencia, Estados, Kpi, Tabela, Vazio } from "./CascaInteligen
 import {
   SOBRECARGA_PCT, decimal, inteiro, lerEmpresa, num, pct, somar, useInteligencia, type Corretor,
 } from "./dados";
+import { Drawer, DrawerNumeros, DrawerPar, partes, useDrawer } from "./Drawer";
 import "../../styles/inteligencia.css";
 
 export function Gerentes({ accessToken }: { accessToken: string }) {
   const { dados, estado, periodo, trocarPeriodo, tentarNovamente } = useInteligencia(accessToken);
+  const drawer = useDrawer();
   const corretores = useMemo<Corretor[]>(() => dados?.corretores ?? [], [dados]);
+  const alvo = partes(drawer.alvo);
+  const pessoa = alvo[0] === "gerencia" ? corretores.find((c) => c.corretorId === Number(alvo[1])) ?? null : null;
   const empresa = useMemo(() => lerEmpresa(dados?.empresa), [dados]);
 
   const carteira = somar(corretores, (c) => c.meuDia?.carteiraAtiva);
@@ -50,7 +54,7 @@ export function Gerentes({ accessToken }: { accessToken: string }) {
   const confirmados = kpis.filter((k) => k.valor !== null).length;
 
   return (
-    <CascaInteligencia
+    <CascaInteligencia accessToken={accessToken}
       slug="gerentes" grupo="operacao" titulo="Gerentes"
       apoio="Carga, limite de carteira e intervenções. O corte por equipe depende do cadastro de hierarquia — e está declarado como pendência."
       periodo={periodo} onPeriodo={trocarPeriodo}
@@ -64,7 +68,7 @@ export function Gerentes({ accessToken }: { accessToken: string }) {
             <span>A CASA INTEIRA</span>
             <h2>Como a carga está distribuída</h2>
             <div className="ape-int-kpis">
-              {kpis.map((k) => <Kpi key={k.rotulo} rotulo={k.rotulo} valor={k.valor} nota={k.nota} tom={k.tom} />)}
+              {kpis.map((k) => <Kpi key={k.rotulo} rotulo={k.rotulo} valor={k.valor} nota={k.nota} tom={k.tom} origem="performance_sala_comando" />)}
             </div>
           </section>
 
@@ -88,7 +92,16 @@ export function Gerentes({ accessToken }: { accessToken: string }) {
                       const ocupacao = num(c.capacidadePct);
                       const acima = ocupacao > SOBRECARGA_PCT;
                       return (
-                        <tr key={c.corretorId}>
+                        <tr
+                          key={c.corretorId} className="ape-int-linha-clicavel" tabIndex={0}
+                          onClick={() => drawer.abrir(`gerencia:${c.corretorId}`)}
+                          onKeyDown={(evento) => {
+                            if (evento.key === "Enter" || evento.key === " ") {
+                              evento.preventDefault();
+                              drawer.abrir(`gerencia:${c.corretorId}`);
+                            }
+                          }}
+                        >
                           <td><span className="ape-int-pessoa"><i>{(c.nome || "?").slice(0, 1).toUpperCase()}</i><b>{c.nome}</b></span></td>
                           <td>{inteiro(c.meuDia?.carteiraAtiva)}</td>
                           <td>{num(c.limiteCarteira) > 0 ? inteiro(c.limiteCarteira) : <small>não cadastrado</small>}</td>
@@ -135,6 +148,36 @@ export function Gerentes({ accessToken }: { accessToken: string }) {
             <b>Como ler.</b> Ocupação é carteira ativa sobre o limite cadastrado do próprio corretor; sem limite cadastrado não existe percentual, e a linha diz isso em vez de assumir um teto.
             {num(empresa?.riscos?.corretores_sobrecarregados) > 0 && ` A fonte canônica também marca ${inteiro(empresa?.riscos?.corretores_sobrecarregados)} pessoa(s) sobrecarregada(s).`}
           </div>
+
+          {pessoa && (
+            <Drawer
+              titulo={pessoa.nome} codigo={`GESTÃO · ${pessoa.corretorId}`}
+              apoio="Decisão de capacidade baseada na carteira cadastrada" icone="pessoa" cor="roxo"
+              selo={num(pessoa.capacidadePct) > SOBRECARGA_PCT ? "intervenção" : "acompanhar"}
+              tomSelo={num(pessoa.capacidadePct) > SOBRECARGA_PCT ? "ruim" : "bom"}
+              onFechar={drawer.fechar}
+            >
+              <DrawerNumeros itens={[
+                { rotulo: "carteira", valor: inteiro(pessoa.meuDia?.carteiraAtiva) },
+                { rotulo: "limite", valor: num(pessoa.limiteCarteira) > 0 ? inteiro(pessoa.limiteCarteira) : "—" },
+                { rotulo: "ocupação", valor: num(pessoa.limiteCarteira) > 0 ? `${decimal(pessoa.capacidadePct)}%` : "—" },
+              ]} />
+              <DrawerPar rotulo="Carteira em dia" valor={pct(pessoa.meuDia?.carteiraEmDia, pessoa.meuDia?.carteiraAtiva)} />
+              <DrawerPar rotulo="Ações vencidas" valor={inteiro(pessoa.meuDia?.acoesVencidas)} />
+              <DrawerPar rotulo="Sem próxima ação" valor={inteiro(pessoa.meuDia?.semProximaAcao)} />
+              <article className="ape-int-cartao ape-int-cartao-interno">
+                <b>Decisão sugerida</b>
+                <small>
+                  {num(pessoa.capacidadePct) > SOBRECARGA_PCT
+                    ? `Reduzir a carteira em ${inteiro(Math.max(0, num(pessoa.meuDia?.carteiraAtiva) - num(pessoa.limiteCarteira)))} lead(s) para voltar ao limite cadastrado.`
+                    : num(pessoa.limiteCarteira) > 0 && num(pessoa.capacidadePct) < 70
+                      ? `Pode receber até ${inteiro(Math.max(0, num(pessoa.limiteCarteira) - num(pessoa.meuDia?.carteiraAtiva)))} lead(s), sujeito à decisão do gerente.`
+                      : "Carga equilibrada; priorize as ações vencidas antes de redistribuir."}
+                </small>
+              </article>
+              <a className="ape-int-acao" href="/crm">Abrir carteira no CRM</a>
+            </Drawer>
+          )}
         </>
       )}
     </CascaInteligencia>

@@ -30,10 +30,10 @@ export function Financeiro({ accessToken }: { accessToken: string }) {
   const temReceita = tem(empresa?.receitaBruta);
 
   const kpis = [
-    { rotulo: "VGV assinado", valor: tem(empresa?.vgv) ? dinheiro(vgv) : null, nota: "valor dos imóveis — não é receita" },
-    { rotulo: "Receita bruta", valor: temReceita ? dinheiro(receita) : null, nota: vgv > 0 && temReceita ? `${decimal((100 * receita) / vgv)}% do VGV` : "comissão da imobiliária" },
-    { rotulo: "Custos registrados", valor: tem(empresa?.custos) ? dinheiro(custos) : null, nota: "custos diretos lançados no período" },
-    { rotulo: "Contribuição estimada", valor: tem(empresa?.margemContribuicao) ? dinheiro(contribuicao) : null, nota: "não é lucro líquido" },
+    { rotulo: "VGV assinado", valor: tem(empresa?.vgv) ? dinheiro(vgv) : null, nota: "valor dos imóveis — não é receita", origem: "vendas concluídas" },
+    { rotulo: "Receita bruta", valor: temReceita ? dinheiro(receita) : null, nota: vgv > 0 && temReceita ? `${decimal((100 * receita) / vgv)}% do VGV` : "comissão da imobiliária", origem: "repasses reconhecidos" },
+    { rotulo: "Custos registrados", valor: tem(empresa?.custos) ? dinheiro(custos) : null, nota: "custos diretos lançados no período", origem: "lançamentos financeiros" },
+    { rotulo: "Contribuição estimada", valor: tem(empresa?.margemContribuicao) ? dinheiro(contribuicao) : null, nota: "não é lucro líquido", origem: "receita − custos diretos" },
   ];
   const confirmados = falhou ? 0 : kpis.filter((k) => k.valor !== null).length;
 
@@ -45,7 +45,7 @@ export function Financeiro({ accessToken }: { accessToken: string }) {
   ];
 
   return (
-    <CascaInteligencia
+    <CascaInteligencia accessToken={accessToken}
       slug="financeiro" grupo="empresa" titulo="Financeiro e comissões"
       apoio="Do VGV à contribuição estimada. A cascata para onde o dado para — e o último degrau não é lucro líquido."
       periodo={periodo} onPeriodo={trocarPeriodo}
@@ -60,7 +60,7 @@ export function Financeiro({ accessToken }: { accessToken: string }) {
             <span>OS QUATRO NÚMEROS</span>
             <h2>Quanto entrou e quanto sobrou</h2>
             <div className="ape-int-kpis">
-              {kpis.map((k) => <Kpi key={k.rotulo} rotulo={k.rotulo} valor={k.valor} nota={k.nota} />)}
+              {kpis.map((k) => <Kpi key={k.rotulo} {...k} />)}
             </div>
           </section>
 

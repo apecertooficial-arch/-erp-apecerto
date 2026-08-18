@@ -9,16 +9,23 @@
  * O que a tela não tem: visualização, favorito e lead POR IMÓVEL — depende de
  * telemetria por item, que ainda não chega ao ERP. Esses cartões continuam na tela
  * com traço e "aguardando conexão".
+ *
+ * DRILL-DOWN (6a + 11b): a linha da tabela abre o drawer do corte. O endpoint
+ * agrega no servidor — não existe linha por imóvel hoje — então o drawer mostra o
+ * que é real do corte e declara os blocos por item como pendentes. Inventar um
+ * imóvel para preencher a gaveta seria pior do que a gaveta honesta.
  */
 
 import { useMemo } from "react";
 
 import { CascaInteligencia, Estados, Kpi, Linha, Tabela } from "./CascaInteligencia";
+import { Drawer, DrawerNumeros, DrawerPar, DrawerPendente, partes, useDrawer } from "./Drawer";
 import { dinheiro, inteiro, num, pct, tem, useInteligencia } from "./dados";
 import "../../styles/inteligencia.css";
 
 export function Imoveis({ accessToken }: { accessToken: string }) {
   const { dados, estado, periodo, trocarPeriodo, tentarNovamente } = useInteligencia(accessToken);
+  const gaveta = useDrawer();
   const estoque = useMemo(() => dados?.estoque ?? null, [dados]);
   const proprietarios = dados?.proprietarios ?? null;
 
@@ -42,14 +49,26 @@ export function Imoveis({ accessToken }: { accessToken: string }) {
   ];
   const confirmados = kpis.filter((k) => k.valor !== null).length;
 
+  /* Linhas do corte, na mesma forma que a tabela desenha: Estágio e Status. */
+  const cortes = [
+    ...(estoque?.porFinalidade ?? []).map((f) => ({ corte: "Estágio", valor: f.chave, total: f.total })),
+    ...(estoque?.porStatus ?? []).map((s) => ({ corte: "Status", valor: s.chave, total: s.total })),
+  ];
+
+  const [tipo, corteAberto, valorAberto] = partes(gaveta.alvo);
+  const aberto = tipo === "corte"
+    ? cortes.find((c) => c.corte === corteAberto && c.valor === valorAberto) ?? null
+    : null;
+
   return (
-    <CascaInteligencia
+    <CascaInteligencia accessToken={accessToken}
       slug="imoveis" grupo="digital" titulo="Imóveis e procura"
       apoio="O que temos anunciado, o que o mercado está oferecendo e onde a procura não encontra imóvel."
       periodo={periodo} onPeriodo={trocarPeriodo}
       confirmados={confirmados} atualizadoEm={dados?.atualizadoEm}
+      fontes={dados ?? undefined}
     >
-      <Estados estado={estado} temDado={!!dados} onTentar={tentarNovamente} />
+      <Estados estado={estado} temDado={!!dados} onTentar={tentarNovamente} forma="kpis" />
 
       {dados && (
         <>
@@ -108,20 +127,28 @@ export function Imoveis({ accessToken }: { accessToken: string }) {
             <span>SITUAÇÃO DO ANÚNCIO</span>
             <h2>Estágio e status do estóque</h2>
             <Tabela colunas={["Corte", "Valor", "Anúncios", "Participação"]}>
-              {(estoque?.porFinalidade ?? []).map((f) => (
-                <tr key={`est-${f.chave}`}>
-                  <td>Estágio</td><td><b>{f.chave}</b></td><td>{inteiro(f.total)}</td><td>{pct(f.total, publicados) ?? "—"}</td>
-                </tr>
-              ))}
-              {(estoque?.porStatus ?? []).map((s) => (
-                <tr key={`sta-${s.chave}`}>
-                  <td>Status</td><td><b>{s.chave}</b></td><td>{inteiro(s.total)}</td><td>{pct(s.total, publicados) ?? "—"}</td>
-                </tr>
-              ))}
-              {!estoque && (
+              {cortes.length ? cortes.map((c) => {
+                const id = `corte:${c.corte}:${c.valor}`;
+                const estaAberto = gaveta.alvo === id;
+                return (
+                  <tr
+                    key={id}
+                    className={estaAberto ? "abre aberta" : "abre"}
+                    tabIndex={0}
+                    aria-label={`Abrir detalhe de ${c.corte} ${c.valor}`}
+                    onClick={() => gaveta.abrir(id)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); gaveta.abrir(id); }
+                    }}
+                  >
+                    <td>{c.corte}</td><td><b>{c.valor}</b></td><td>{inteiro(c.total)}</td><td>{pct(c.total, publicados) ?? "—"}</td>
+                  </tr>
+                );
+              }) : (
                 <tr><td>Estágio e status</td><td>—</td><td>—</td><td>aguardando conexão</td></tr>
               )}
             </Tabela>
+            <small className="ape-int-rodape">A linha abre o detalhe do corte. Detalhe por imóvel depende de telemetria por item — o drawer diz o que falta em vez de preencher.</small>
           </section>
 
           <div className="ape-int-aviso">
@@ -134,6 +161,45 @@ export function Imoveis({ accessToken }: { accessToken: string }) {
             <small className="ape-int-rodape">
               Procura entre {dados.periodo.inicio} e {dados.periodo.fim} · estóque na leitura de {dados.periodo.fim} · fonte: anuncios_site + captacoes_portal.
             </small>
+          )}
+
+          {aberto && (
+            <Drawer
+              titulo={aberto.valor}
+              codigo={aberto.corte}
+              apoio={`${inteiro(aberto.total)} anúncio(s) · ${pct(aberto.total, publicados) ?? "—"} do estóque no ar`}
+              icone="imovel" cor="laranja"
+              selo={aberto.corte === "Status" ? "status" : "estágio"}
+              onFechar={gaveta.fechar}
+            >
+              <DrawerNumeros itens={[
+                { rotulo: "anúncios", valor: inteiro(aberto.total) },
+                { rotulo: "participação", valor: pct(aberto.total, publicados) },
+                { rotulo: "visualizações", valor: null },
+              ]} />
+
+              <div className="ape-int-cartao">
+                <b>O que o estóque diz deste corte</b>
+                <DrawerPar rotulo="Anúncios no ar" valor={inteiro(aberto.total)} />
+                <DrawerPar rotulo="Participação no estóque" valor={pct(aberto.total, publicados)} />
+                <DrawerPar rotulo="Preço mediano do estóque" valor={estoque?.precoMediano ? dinheiro(estoque.precoMediano) : null} />
+                <DrawerPar rotulo="Anúncios com preço" valor={estoque ? inteiro(estoque.comPreco) : null} />
+                <small>Do corte inteiro, não de um imóvel: o agregador devolve contagem por corte, e é isso que está confirmado.</small>
+              </div>
+
+              <DrawerPendente
+                titulo="Desempenho por imóvel"
+                texto="Visualização, abertura de galeria, favorito e lead por anúncio dependem dos eventos view_item, favorite_toggle e property_search chegarem ao ERP. Enquanto não chegam, nenhum número por imóvel é estimado aqui."
+              />
+              <DrawerPendente
+                titulo="Evolução do interesse"
+                texto="A linha de evolução do 6a exige série diária por anúncio. O agregador atual devolve a foto de hoje, sem histórico por item."
+              />
+
+              <div className="ape-int-aviso">
+                <b>Atalhos.</b> A ficha do imóvel vive em Produtos e os leads no Funil 2.0, cada um com a sua permissão — esta gaveta não duplica cadastro nem lista pessoa.
+              </div>
+            </Drawer>
           )}
         </>
       )}

@@ -12,15 +12,17 @@
 
 import { useMemo } from "react";
 
-import { CascaInteligencia, Estados, Kpi, Linha, Tabela } from "./CascaInteligencia";
+import { CascaInteligencia, Estados, Kpi, Tabela } from "./CascaInteligencia";
 import {
   AMOSTRA_MINIMA, SLA_META_MIN, duracao, inteiro, lerEmpresa, mediaPonderada,
-  num, pct, somar, tem, useInteligencia, type Corretor,
+  num, pct, somar, tem, useInteligencia, type Corretor, type Numero,
 } from "./dados";
+import { Drawer, DrawerBloqueado, DrawerNumeros, DrawerPar, DrawerPendente, partes, useDrawer } from "./Drawer";
 import "../../styles/inteligencia.css";
 
 export function ConversaoCrm({ accessToken }: { accessToken: string }) {
   const { dados, estado, periodo, trocarPeriodo, tentarNovamente } = useInteligencia(accessToken);
+  const drawer = useDrawer();
   const empresa = useMemo(() => lerEmpresa(dados?.empresa), [dados]);
   const corretores = useMemo<Corretor[]>(() => dados?.corretores ?? [], [dados]);
   const q = dados?.qualidadeDado ?? null;
@@ -40,7 +42,11 @@ export function ConversaoCrm({ accessToken }: { accessToken: string }) {
   const confirmados = kpis.filter((k) => k.valor !== null).length;
 
   const topo = Math.max(num(fluxo.leads), num(fluxo.negocios), 1);
-  const etapas: Array<{ nome: string; valor: number | null; base: unknown; aguardando?: string }> = [
+  /* `base` e a etapa ANTERIOR do funil, e vai direto para pct(parte, base) — que
+     recebe Numero (number | string | null | undefined) justamente para distinguir
+     "veio zero" de "nao veio". Tipar como unknown obrigava o TypeScript a recusar
+     a passagem; todos os valores atribuidos aqui ja sao Numero. */
+  const etapas: Array<{ nome: string; valor: number | null; base: Numero; aguardando?: string }> = [
     { nome: "Lead recebido", valor: tem(fluxo.leads) ? num(fluxo.leads) : null, base: fluxo.leads },
     { nome: "Negócio criado", valor: tem(fluxo.negocios) ? num(fluxo.negocios) : null, base: fluxo.leads },
     { nome: "Distribuído para corretor", valor: null, base: null, aguardando: "data de distribuição não vem na fonte" },
@@ -51,9 +57,11 @@ export function ConversaoCrm({ accessToken }: { accessToken: string }) {
     { nome: "Venda ou locação", valor: tem(empresa?.vendas) ? num(empresa?.vendas) : null, base: fluxo.visitasRealizadas },
     { nome: "Perdido", valor: tem(q?.perdas) ? perdas : null, base: fluxo.negocios },
   ];
+  const alvo = partes(drawer.alvo);
+  const etapaAberta = alvo[0] === "lead" && alvo[1] === "etapa" ? etapas[Number(alvo[2])] ?? null : null;
 
   return (
-    <CascaInteligencia
+    <CascaInteligencia accessToken={accessToken}
       slug="conversao" grupo="operacao" titulo="Conversão e CRM"
       apoio="O que acontece depois que o lead entra. Etapa sem dado aparece com traço — nenhuma sai da tela."
       periodo={periodo} onPeriodo={trocarPeriodo}
@@ -75,15 +83,21 @@ export function ConversaoCrm({ accessToken }: { accessToken: string }) {
             <span>FUNIL COMERCIAL</span>
             <h2>As nove etapas</h2>
             <div className="ape-int-linhas">
-              {etapas.map((e) => (
-                <Linha
-                  key={e.nome}
-                  nome={e.nome}
-                  valor={e.valor === null ? null : inteiro(e.valor)}
-                  extra={e.aguardando ? "aguardando conexão" : pct(e.valor, e.base)}
-                  largura={e.valor === null ? 0 : (100 * e.valor) / topo}
-                />
-              ))}
+              {etapas.map((e, indice) => {
+                const anterior = indice > 0 ? etapas[indice - 1]?.valor ?? null : null;
+                const perda = anterior !== null && e.valor !== null ? Math.max(0, anterior - e.valor) : null;
+                return (
+                <button
+                  type="button" className="ape-int-linha ape-int-linha-acao" key={e.nome}
+                  onClick={() => drawer.abrir(`lead:etapa:${indice}`)}
+                >
+                  <span>{e.nome}</span>
+                  <span className="ape-int-barra"><i style={{ width: `${e.valor === null ? 0 : (100 * e.valor) / topo}%` }} /></span>
+                  <b>{e.valor === null ? "—" : inteiro(e.valor)}</b>
+                  <em>{e.aguardando ? "aguardando conexão" : perda !== null && indice > 0 ? `−${inteiro(perda)} · ${pct(e.valor, e.base) ?? "—"}` : pct(e.valor, e.base) ?? "—"}</em>
+                </button>
+                );
+              })}
               <small>Taxa sempre sobre a etapa anterior. Distribuição e proposta seguem sem campo na fonte de dados — aparecem com traço, jamais como zero.</small>
             </div>
           </section>
@@ -142,6 +156,24 @@ export function ConversaoCrm({ accessToken }: { accessToken: string }) {
             <small className="ape-int-rodape">
               Período: {dados.periodo.inicio} até {dados.periodo.fim} (fim exclusivo) · {confirmados} de {kpis.length} indicadores confirmados.
             </small>
+          )}
+
+          {etapaAberta && (
+            <Drawer
+              titulo={etapaAberta.nome} codigo="JORNADA DO LEAD"
+              apoio="Leitura agregada da etapa no período" icone="pessoa" cor="roxo"
+              selo={etapaAberta.aguardando ? "pendente" : "agregado"}
+              tomSelo={etapaAberta.aguardando ? "atencao" : "roxo"} onFechar={drawer.fechar}
+            >
+              <DrawerNumeros itens={[
+                { rotulo: "nesta etapa", valor: etapaAberta.valor === null ? null : inteiro(etapaAberta.valor) },
+                { rotulo: "conversão", valor: etapaAberta.aguardando ? null : pct(etapaAberta.valor, etapaAberta.base) },
+                { rotulo: "leads identificados", valor: null },
+              ]} />
+              <DrawerPar rotulo="Período" valor={dados.periodo ? `${dados.periodo.inicio} a ${dados.periodo.fim}` : null} />
+              {etapaAberta.aguardando && <DrawerPendente titulo="Campo ainda não conectado" texto={etapaAberta.aguardando} />}
+              <DrawerBloqueado texto="A lista nominal e a linha do tempo individual vivem no Funil 2.0, após a verificação da permissão para dados pessoais." />
+            </Drawer>
           )}
         </>
       )}

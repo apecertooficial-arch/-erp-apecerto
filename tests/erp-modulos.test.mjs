@@ -73,12 +73,48 @@ test("so metodo GET e interceptado (mutacao nunca vem do cache)", () => {
   assert.ok(/req\.method !== "GET"/.test(sw), "POST/PATCH/DELETE nao podem ser servidos do cache");
 });
 
-test("atualizacao e controlada pela pagina, nao automatica", () => {
-  assert.ok(/ATUALIZAR_AGORA/.test(sw) && /skipWaiting/.test(sw));
-  assert.ok(!/self\.skipWaiting\(\);\s*\}\)?\s*;?\s*self\.addEventListener\("install"/.test(sw),
-    "skipWaiting nao pode rodar no install");
-  assert.ok(/aguardando\.postMessage\("ATUALIZAR_AGORA"\)/.test(registro),
-    "a troca precisa partir de um toque do usuario");
+/* Este teste JA COBRIU o fluxo oposto: durante um tempo a troca de versao
+   dependia de alguem tocar em "Atualizar", e o sw.js era byte a byte identico a
+   cada deploy -- o navegador nem percebia que havia versao nova e o F5 comum
+   continuava servindo o app velho. A correcao de agosto/2026 inverteu a decisao
+   de proposito: o worker novo ASSUME sozinho (skipWaiting no install +
+   clients.claim no activate, com o cache versionado pelo ?v=<build>), e o que
+   passou a ser protegido nao e mais a troca do worker, e a ABA DE QUEM ESTA
+   TRABALHANDO -- recarregar por cima de um atendimento sendo digitado perde
+   texto. Dai a regra atual: recarga automatica so com a aba escondida; aba na
+   frente recebe aviso e recarrega no toque. O teste agora guarda ESSE contrato. */
+test("worker novo assume sem atropelar a aba ativa", () => {
+  // 1. o worker novo assume automaticamente, sem depender de mensagem da pagina
+  assert.match(sw, /addEventListener\("install"[\s\S]*?self\.skipWaiting\(\)/,
+    "o install precisa chamar skipWaiting: e o que faz a versao nova assumir sozinha");
+  assert.match(sw, /addEventListener\("activate"[\s\S]*?self\.clients\.claim\(\)/,
+    "sem clients.claim a aba aberta continuaria controlada pelo worker antigo");
+  assert.match(sw, /new URL\(self\.location\.href\)\.searchParams\.get\("v"\)/,
+    "o cache precisa ser versionado pelo build; nome fixo nunca expira");
+
+  // 6. o registro carrega /sw.js?v=<build> -- sem a query o arquivo nao muda entre deploys
+  assert.match(registro, /navigator\.serviceWorker\.register\(`\/sw\.js\?v=\$\{encodeURIComponent\(BUILD\)\}`/,
+    "registrar /sw.js sem ?v=<build> devolve o bug: navegador nao ve versao nova");
+
+  // 2. a pagina escuta controllerchange -- e assim que ela sabe que o worker trocou
+  assert.match(registro, /navigator\.serviceWorker\.addEventListener\("controllerchange", aoTrocar\)/,
+    "sem ouvir controllerchange a pagina nao sabe que a versao nova assumiu");
+
+  // 3. aba escondida pode recarregar sozinha
+  assert.match(registro, /document\.visibilityState === "hidden"[\s\S]*?window\.location\.reload\(\)/,
+    "com a aba em segundo plano a recarga automatica e segura e desejada");
+
+  // 4. aba visivel NUNCA recarrega sozinha: apenas avisa
+  assert.match(registro, /\} else \{\s*setPrecisaRecarregar\(true\);/,
+    "aba na frente so pode ser avisada; recarregar por cima de um atendimento perde texto");
+
+  // 5. o aviso traz botao real, e o toque e que recarrega
+  assert.match(registro, /onClick=\{\(\) => window\.location\.reload\(\)\}/,
+    "o aviso precisa de botao que recarregue de fato");
+
+  // Compatibilidade preservada: aba antiga ainda pode mandar ATUALIZAR_AGORA.
+  assert.match(sw, /evento\.data === "ATUALIZAR_AGORA"/,
+    "uma aba de versao anterior ainda manda esta mensagem; o worker nao pode ignorar");
 });
 
 test("offline mostra pagina sem dado nenhum", () => {

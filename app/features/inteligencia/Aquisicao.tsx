@@ -40,7 +40,7 @@ export function Aquisicao({ accessToken }: { accessToken: string }) {
   const maiorCanal = origens.reduce((maior, o) => Math.max(maior, num(o.sessoes)), 0);
 
   return (
-    <CascaInteligencia
+    <CascaInteligencia accessToken={accessToken}
       slug="aquisicao" grupo="digital" titulo="Aquisição e campanhas"
       apoio="De onde vem quem acessa o site. Custo e ROAS entram quando as mídias forem conectadas — nada aqui é estimado."
       periodo={periodo} onPeriodo={trocarPeriodo}

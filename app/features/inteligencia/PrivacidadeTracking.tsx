@@ -42,7 +42,7 @@ export function PrivacidadeTracking({ accessToken }: { accessToken: string }) {
   const confirmados = kpis.filter((k) => k.valor !== null).length;
 
   return (
-    <CascaInteligencia
+    <CascaInteligencia accessToken={accessToken}
       slug="privacidade" grupo="governanca" titulo="Privacidade e qualidade do tracking"
       apoio="Os dados são confiáveis? Cada furo de cobertura aqui explica um “aguardando dado” nas outras telas."
       periodo={periodo} onPeriodo={trocarPeriodo}

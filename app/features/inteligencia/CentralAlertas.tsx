@@ -111,7 +111,7 @@ export function CentralAlertas({ accessToken }: { accessToken: string }) {
   );
 
   return (
-    <CascaInteligencia
+    <CascaInteligencia accessToken={accessToken}
       slug="alertas" grupo="governanca" titulo="Central de alertas"
       apoio="Cada alerta vem da regra, com evidência e dono. O que não disparou também aparece — silêncio por normalidade tem que ser distinguível de silêncio por falha."
       periodo={periodo} onPeriodo={trocarPeriodo}
