@@ -20,7 +20,7 @@
  */
 
 import type { PropsTela } from "../CascaInteligencia";
-import { fmt, RodapeFontes, Valor } from "../dado";
+import { fmt, RodapeFontes } from "../dado";
 import { Cabecalho, ChipsEventos } from "../pecas";
 
 type Estado = "bom" | "aviso";
