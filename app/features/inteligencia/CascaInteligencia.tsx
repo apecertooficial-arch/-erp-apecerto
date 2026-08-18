@@ -6,17 +6,18 @@
  * segundo, e UMA barra de filtros comum às 17 telas. Trocar de grupo não limpa
  * filtro: o recorte é da área, não da página.
  *
- * A casca não decide conteúdo. Cada tela é registrada em `telasPublicadas` e
- * recebe o recorte atual. Enquanto uma tela não estiver publicada, a casca
- * mostra o cabeçalho real dela e um bloco honesto de pendência — nunca uma tela
- * em branco, nunca um item de menu que não abre nada (regra do contrato de dado
- * ausente, em dado.tsx).
+ * A casca não decide conteúdo. Cada tela é registrada em registro.tsx e recebe o
+ * recorte atual. Enquanto uma tela não estiver publicada, a casca mostra o
+ * cabeçalho real dela e um bloco honesto de pendência — nunca uma tela em
+ * branco, nunca um item de menu que não abre nada (contrato de dado ausente, em
+ * dado.tsx).
  */
 
 import { useMemo, useState, type ReactNode } from "react";
 import "../../styles/inteligencia.css";
 import { grupos, periodos, primeiraDoGrupo, telaPorChave, telas, telasDoGrupo, type GrupoChave } from "./telas";
 import { BlocoSemDado, RodapeFontes } from "./dado";
+import { telasPublicadas } from "./registro";
 
 export type Recorte = {
   periodo: string;
@@ -29,10 +30,6 @@ export type Recorte = {
 };
 
 export type PropsTela = { accessToken: string; recorte: Recorte };
-
-/* Registro das telas publicadas. Cada lote de publicação acrescenta entradas
-   aqui; nada mais na casca muda. */
-const telasPublicadas: Record<string, (props: PropsTela) => ReactNode> = {};
 
 function Icone({ grupo }: { grupo: GrupoChave }) {
   const c = { width: 15, height: 15, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.8, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
