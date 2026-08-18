@@ -139,6 +139,14 @@ identifica a origem de cada degrau e continua parando em contribuição estimada
 `captacoes_portal` em cada indicador. Nenhuma previsão usa média e nenhum VGV é chamado de receita ou
 lucro. As fontes ausentes permanecem visíveis como pendência.
 
+## Commit 6 — Operação comercial
+
+Atendimento transforma os quatro riscos agregados em filas clicáveis: o drawer mantém volume e
+contexto, e a ação nominal segue para o Funil 2.0 atrás da permissão de dado pessoal. Conversão passa
+a mostrar perda absoluta junto da taxa entre etapas. Qualidade abre a ficha de critérios por pessoa
+com amostra, sem criar ranking e sem classificar quem não atingiu o mínimo. Os números continuam vindo
+do mesmo endpoint autenticado; nenhum nome novo é exposto por agregação.
+
 ## Diferença de sistema — as 14 peças do artboard 30b
 
 | Peça | Situação | Evidência | Ação |
@@ -150,7 +158,7 @@ lucro. As fontes ausentes permanecem visíveis como pendência.
 | 05 Barra de filtros | **fiel (Commit 1)** | `.ape-int-barra` com os 13 controles do 11a | período personalizado e Exportar |
 | 06 Chip de filtro ativo | **fiel (Commit 1)** | `.ape-int-chip-ativo` roxo com ✕ | — |
 | 07 Selo de procedência | fiel | "DADO REAL · hh:mm" / "aguardando dado"; DEMONSTRAÇÃO omitido de propósito | — |
-| 08 Linha de funil | parcial | barra, taxa e clique para o drawer agregador; falta perda absoluta | Commit 6 |
+| 08 Linha de funil | **fiel (Commit 6)** | barra, volume, perda absoluta, taxa e clique para o drawer agregador | — |
 | 09 Tabela | **fiel (Commit 3)** | ordenação só em coluna comparável, `aria-sort`, linha clicável por mouse/Enter/Espaço, foco visível | paginação e ordem na URL, quando o volume pedir |
 | 10 Drawer 420px | **fiel (Commit 2)** | um componente para imóvel, jornada e corretor; URL, foco, Esc, scrim e folha móvel | gerente entra no Commit 7 |
 | 11 Bloco de pendência | fiel | `.ape-int-pendencia` alimentado por `pendencias[]` | — |

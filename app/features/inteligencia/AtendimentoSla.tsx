@@ -22,12 +22,14 @@ import {
   AMOSTRA_MINIMA, SLA_ATENCAO_MIN, SLA_META_MIN, dataCurta, decimal, duracao, inteiro,
   lerEmpresa, mediaPonderada, num, pct, somar, tem, useInteligencia, type Corretor,
 } from "./dados";
+import { Drawer, DrawerBloqueado, DrawerNumeros, DrawerPar, partes, useDrawer } from "./Drawer";
 import "../../styles/inteligencia.css";
 
 const faixa = (min: number) => (min <= SLA_META_MIN ? "bom" : min <= SLA_ATENCAO_MIN ? "atencao" : "ruim");
 
 export function AtendimentoSla({ accessToken }: { accessToken: string }) {
   const { dados, estado, periodo, trocarPeriodo, tentarNovamente } = useInteligencia(accessToken);
+  const drawer = useDrawer();
   const corretores = useMemo<Corretor[]>(() => dados?.corretores ?? [], [dados]);
   const empresa = useMemo(() => lerEmpresa(dados?.empresa), [dados]);
 
@@ -55,6 +57,8 @@ export function AtendimentoSla({ accessToken }: { accessToken: string }) {
     { nome: "Visitas sem feedback", volume: semFeedback, apoio: "realizadas e não documentadas", grave: semFeedback > 0 },
     { nome: "Corretores sobrecarregados", volume: num(empresa?.riscos?.corretores_sobrecarregados), apoio: "acima do limite da carteira", grave: num(empresa?.riscos?.corretores_sobrecarregados) > 0 },
   ];
+  const alvo = partes(drawer.alvo);
+  const filaAberta = alvo[0] === "fila-sla" ? filas[Number(alvo[1])] ?? null : null;
 
   return (
     <CascaInteligencia
@@ -71,7 +75,7 @@ export function AtendimentoSla({ accessToken }: { accessToken: string }) {
             <span>VELOCIDADE DA CASA</span>
             <h2>O cliente está sendo respondido a tempo?</h2>
             <div className="ape-int-kpis">
-              {kpis.map((k) => <Kpi key={k.rotulo} rotulo={k.rotulo} valor={k.valor} nota={k.nota} tom={k.tom} />)}
+              {kpis.map((k) => <Kpi key={k.rotulo} {...k} origem="performance_sala_comando" />)}
             </div>
           </section>
 
@@ -80,13 +84,13 @@ export function AtendimentoSla({ accessToken }: { accessToken: string }) {
             <h2>O que precisa de alguém agora</h2>
             {corretores.length ? (
               <div className="ape-int-linhas">
-                {filas.map((f) => (
-                  <div className="ape-int-par" key={f.nome}>
+                {filas.map((f, indice) => (
+                  <button type="button" className="ape-int-par ape-int-fila" key={f.nome} onClick={() => drawer.abrir(`fila-sla:${indice}`)}>
                     <span>{f.nome}</span>
-                    <small style={{ color: "#9A938B", fontSize: 11 }}>{f.apoio}</small>
+                    <small>{f.apoio}</small>
                     <b>{inteiro(f.volume)}</b>
                     <span className={f.grave ? "ape-int-chip ruim" : "ape-int-chip bom"}>{f.grave ? "exige ação" : "em ordem"}</span>
-                  </div>
+                  </button>
                 ))}
                 <small>A lista de pessoas por trás de cada fila abre no Funil 2.0, onde a ação acontece, e respeita a permissão de dados pessoais.</small>
               </div>
@@ -132,6 +136,24 @@ export function AtendimentoSla({ accessToken }: { accessToken: string }) {
             <small className="ape-int-rodape">
               Período: {dados.periodo.inicio} até {dados.periodo.fim} (fim exclusivo) · fuso America/Sao_Paulo · {tem(amostra) ? `${inteiro(amostra)} respostas na base` : "sem amostra no período"}.
             </small>
+          )}
+
+          {filaAberta && (
+            <Drawer
+              titulo={filaAberta.nome} codigo="FILA OPERACIONAL" apoio={filaAberta.apoio}
+              icone={filaAberta.grave ? "alerta" : "ok"} cor={filaAberta.grave ? "vermelho" : "verde"}
+              selo={filaAberta.grave ? "exige ação" : "em ordem"} tomSelo={filaAberta.grave ? "ruim" : "bom"}
+              onFechar={drawer.fechar}
+            >
+              <DrawerNumeros itens={[
+                { rotulo: "itens na fila", valor: inteiro(filaAberta.volume) },
+                { rotulo: "carteira ativa", valor: inteiro(carteira) },
+                { rotulo: "pessoas identificadas", valor: null },
+              ]} />
+              <DrawerPar rotulo="Período" valor={dados.periodo ? `${dados.periodo.inicio} a ${dados.periodo.fim}` : null} />
+              <DrawerBloqueado texto="A lista nominal e a ação sobre cada lead abrem no Funil 2.0, que aplica a permissão de dados pessoais. Este painel mantém apenas o volume agregado." />
+              <a className="ape-int-acao" href="/crm">Abrir Funil 2.0</a>
+            </Drawer>
           )}
         </>
       )}

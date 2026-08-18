@@ -83,7 +83,10 @@ export function ConversaoCrm({ accessToken }: { accessToken: string }) {
             <span>FUNIL COMERCIAL</span>
             <h2>As nove etapas</h2>
             <div className="ape-int-linhas">
-              {etapas.map((e, indice) => (
+              {etapas.map((e, indice) => {
+                const anterior = indice > 0 ? etapas[indice - 1]?.valor ?? null : null;
+                const perda = anterior !== null && e.valor !== null ? Math.max(0, anterior - e.valor) : null;
+                return (
                 <button
                   type="button" className="ape-int-linha ape-int-linha-acao" key={e.nome}
                   onClick={() => drawer.abrir(`lead:etapa:${indice}`)}
@@ -91,9 +94,10 @@ export function ConversaoCrm({ accessToken }: { accessToken: string }) {
                   <span>{e.nome}</span>
                   <span className="ape-int-barra"><i style={{ width: `${e.valor === null ? 0 : (100 * e.valor) / topo}%` }} /></span>
                   <b>{e.valor === null ? "—" : inteiro(e.valor)}</b>
-                  <em>{e.aguardando ? "aguardando conexão" : pct(e.valor, e.base) ?? "—"}</em>
+                  <em>{e.aguardando ? "aguardando conexão" : perda !== null && indice > 0 ? `−${inteiro(perda)} · ${pct(e.valor, e.base) ?? "—"}` : pct(e.valor, e.base) ?? "—"}</em>
                 </button>
-              ))}
+                );
+              })}
               <small>Taxa sempre sobre a etapa anterior. Distribuição e proposta seguem sem campo na fonte de dados — aparecem com traço, jamais como zero.</small>
             </div>
           </section>

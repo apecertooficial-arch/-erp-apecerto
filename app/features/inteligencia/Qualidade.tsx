@@ -19,6 +19,7 @@ import { CascaInteligencia, Estados, Kpi, Tabela, Vazio } from "./CascaInteligen
 import {
   AMOSTRA_MINIMA, decimal, inteiro, mediaPonderada, num, somar, useInteligencia, type Corretor,
 } from "./dados";
+import { Drawer, DrawerNumeros, DrawerPar, partes, useDrawer } from "./Drawer";
 import "../../styles/inteligencia.css";
 
 const CRITERIOS: Array<{ chave: string; nome: string }> = [
@@ -34,6 +35,7 @@ const CRITERIOS: Array<{ chave: string; nome: string }> = [
 
 export function Qualidade({ accessToken }: { accessToken: string }) {
   const { dados, estado, periodo, trocarPeriodo, tentarNovamente } = useInteligencia(accessToken);
+  const drawer = useDrawer();
   const corretores = useMemo<Corretor[]>(() => dados?.corretores ?? [], [dados]);
 
   const comNota = corretores.filter((c) => num(c.atendimento?.iaAmostra) >= AMOSTRA_MINIMA);
@@ -58,6 +60,9 @@ export function Qualidade({ accessToken }: { accessToken: string }) {
   ];
   const confirmados = kpis.filter((k) => k.valor !== null).length;
   const escala = (v: number | null) => (v === null ? 0 : Math.max(0, Math.min(100, v * 20)));
+  const alvo = partes(drawer.alvo);
+  const pessoa = alvo[0] === "qualidade" ? corretores.find((c) => c.corretorId === Number(alvo[1])) ?? null : null;
+  const pessoaClassificavel = pessoa ? num(pessoa.atendimento?.iaAmostra) >= AMOSTRA_MINIMA : false;
 
   return (
     <CascaInteligencia
@@ -74,7 +79,7 @@ export function Qualidade({ accessToken }: { accessToken: string }) {
             <span>A CONVERSA COM O CLIENTE</span>
             <h2>Como a casa está atendendo</h2>
             <div className="ape-int-kpis">
-              {kpis.map((k) => <Kpi key={k.rotulo} rotulo={k.rotulo} valor={k.valor} nota={k.nota} />)}
+              {kpis.map((k) => <Kpi key={k.rotulo} {...k} origem="avaliação IA do atendimento" confianca={comNota.length ? "alta" : "pendente"} />)}
             </div>
           </section>
 
@@ -141,7 +146,16 @@ export function Qualidade({ accessToken }: { accessToken: string }) {
                   const n = num(c.atendimento?.iaAmostra);
                   const classificavel = n >= AMOSTRA_MINIMA;
                   return (
-                    <tr key={c.corretorId}>
+                    <tr
+                      key={c.corretorId} className="abre" tabIndex={0}
+                      onClick={() => drawer.abrir(`qualidade:${c.corretorId}`)}
+                      onKeyDown={(evento) => {
+                        if (evento.key === "Enter" || evento.key === " ") {
+                          evento.preventDefault();
+                          drawer.abrir(`qualidade:${c.corretorId}`);
+                        }
+                      }}
+                    >
                       <td><span className="ape-int-pessoa"><i>{(c.nome || "?").slice(0, 1).toUpperCase()}</i><b>{c.nome}</b></span></td>
                       <td>{classificavel ? `n=${inteiro(n)}` : <span className="ape-int-chip">n={inteiro(n)} · não classificar</span>}</td>
                       <td>{classificavel ? <b>{decimal(c.atendimento?.notaGeral)}</b> : "—"}</td>
@@ -166,6 +180,29 @@ export function Qualidade({ accessToken }: { accessToken: string }) {
             <small className="ape-int-rodape">
               Período: {dados.periodo.inicio} até {dados.periodo.fim} (fim exclusivo) · {inteiro(amostra)} atendimento(s) avaliado(s) · {comNota.length} pessoa(s) classificável(is).
             </small>
+          )}
+
+          {pessoa && (
+            <Drawer
+              titulo={pessoa.nome} codigo="QUALIDADE DO ATENDIMENTO"
+              apoio={`Base: ${inteiro(pessoa.atendimento?.iaAmostra)} atendimento(s) avaliados`}
+              icone="pessoa" cor="roxo"
+              selo={pessoaClassificavel ? "amostra suficiente" : "não classificar"}
+              tomSelo={pessoaClassificavel ? "bom" : "atencao"} onFechar={drawer.fechar}
+            >
+              <DrawerNumeros itens={[
+                { rotulo: "nota geral", valor: pessoaClassificavel ? decimal(pessoa.atendimento?.notaGeral) : null },
+                { rotulo: "amostra", valor: inteiro(pessoa.atendimento?.iaAmostra) },
+                { rotulo: "mensagens", valor: inteiro(pessoa.atendimento?.iaMensagensAvaliadas) },
+              ]} />
+              {CRITERIOS.filter((criterio) => criterio.chave !== "notaGeral").map((criterio) => (
+                <DrawerPar
+                  key={criterio.chave} rotulo={criterio.nome}
+                  valor={pessoaClassificavel ? decimal(pessoa.atendimento?.[criterio.chave]) : null}
+                />
+              ))}
+              <div className="ape-int-aviso"><b>Leitura para coaching.</b> A avaliação orienta desenvolvimento, é revisável e não substitui auditoria humana. Sem a amostra mínima, o painel não classifica.</div>
+            </Drawer>
           )}
         </>
       )}
