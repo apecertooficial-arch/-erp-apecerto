@@ -1,14 +1,21 @@
 "use client";
 
-/* ATENDIMENTO E SLA — artboard 15a.
- * Quem está esperando resposta agora, e há quanto tempo. Esta é a tela de fila:
- * o valor dela é a ação dos próximos minutos, não o relatório do mês.
+/* 10 · ATENDIMENTO E SLA — artboard 15a, na íntegra.
+ *
+ * Ordem dos blocos igual à do desenho:
+ *   1. tempo de resposta em quatro números
+ *   2. filas de ação (lista + detalhe com aviso de privacidade)
+ *   3. distribuição por faixa de tempo
+ *   4. por dia da semana · por equipe — os dois cortes do artboard
+ *   5. rodapé de fontes
+ *
+ * Esta é a tela de fila: o valor dela é a ação dos próximos minutos.
  */
 
 import { useState } from "react";
 import type { PropsTela } from "../CascaInteligencia";
 import { fmt, RodapeFontes } from "../dado";
-import { Cabecalho, GradeKpis, ListaComDetalhe, Tabela, type Detalhe, type Kpi } from "../pecas";
+import { Cabecalho, CartoesLista, GradeKpis, ListaComDetalhe, Tabela, type Detalhe, type Kpi } from "../pecas";
 
 type Fila = { chave: string; nome: string; meio: string; volume: number | null; cor: string; det: Detalhe };
 type Dados = {
@@ -19,6 +26,8 @@ type Dados = {
   semResposta: number | null;
   filas: Fila[];
   faixas: { faixa: string; leads: number | null; locacao: number | null; venda: number | null; maisAntigo: string }[];
+  dias: { l: string; r: string; sub?: string; corR?: string }[];
+  equipes: { l: string; r: string; sub?: string; corR?: string }[];
   atualizado: string;
 };
 
@@ -30,7 +39,7 @@ export function AtendimentoSla({ recorte }: PropsTela) {
     { rotulo: "1º contato · mediana", bruto: d.mediana, texto: fmt.duracaoMin(d.mediana), tom: "ruim", tile: "vermelho", foot: "meta 5 min" },
     { rotulo: "1º contato · P90", bruto: d.p90, texto: fmt.duracaoMin(d.p90), tile: "ambar", foot: "9 de cada 10 respondidos até aqui" },
     { rotulo: "% dentro do SLA", bruto: d.percentualSla, texto: fmt.porcento(d.percentualSla, 0), tom: "ruim", tile: "vermelho", chip: fmt.pontos(d.variacaoSla), chipTom: "ruim", foot: "vs. período anterior" },
-    { rotulo: "Sem resposta agora", bruto: d.semResposta, texto: fmt.inteiro(d.semResposta), tom: "ruim", tile: "laranja", foot: "fila de ação · atualiza em tempo real" },
+    { rotulo: "Sem resposta agora", bruto: d.semResposta, texto: fmt.inteiro(d.semResposta), tom: "ruim", tile: "laranja", foot: "fila de ação · tempo real" },
   ];
 
   return (
@@ -42,7 +51,7 @@ export function AtendimentoSla({ recorte }: PropsTela) {
         eyebrow="FILAS DE AÇÃO"
         titulo="O que precisa de alguém agora"
         nota="cada linha abre a lista de pessoas conforme a permissão · fila vazia aparece como zero, não desaparece"
-        linhas={d.filas.map((f) => ({ chave: f.chave, nome: f.nome, meio: f.meio, fim: fmt.inteiro(f.volume), cor: f.cor, abrir: () => setDetalhe(f.det) }))}
+        linhas={d.filas.map((f) => ({ chave: f.chave, nome: f.nome, meio: f.meio, fim: fmt.inteiro(f.volume), cor: f.cor, ativa: detalhe?.titulo === f.det.titulo, abrir: () => setDetalhe(f.det) }))}
         detalhe={detalhe}
         fechar={() => setDetalhe(null)}
       />
@@ -64,6 +73,15 @@ export function AtendimentoSla({ recorte }: PropsTela) {
           ],
         }))}
         foot="soma das faixas = leads do período · lead sem registro de primeira resposta entra na última faixa, nunca é descartado"
+      />
+
+      <Cabecalho eyebrow="QUANDO E QUEM" titulo="Os dois cortes que explicam o atraso" />
+      <CartoesLista
+        colunas={2}
+        cartoes={[
+          { titulo: "Por dia da semana", linhas: d.dias.map((x) => ({ ...x, abrir: () => recorte.filtrar(`Dia: ${x.l}`) })), foot: "sábado é o furo: sem plantão definido", link: { rotulo: "Abrir Gerentes →", go: () => recorte.irPara("gerentes") } },
+          { titulo: "Por equipe", linhas: d.equipes.map((x) => ({ ...x, abrir: () => recorte.filtrar(`Equipe: ${x.l}`) })), foot: "mesma régua para as duas equipes", link: { rotulo: "Abrir Equipe →", go: () => recorte.irPara("equipe") } },
+        ]}
       />
 
       <RodapeFontes
@@ -97,6 +115,16 @@ const demo: Dados = {
     { faixa: "5 a 15 min", leads: 94, locacao: 33, venda: 61, maisAntigo: "—" },
     { faixa: "15 a 60 min", leads: 138, locacao: 96, venda: 42, maisAntigo: "48 min" },
     { faixa: "Acima de 60 min", leads: 147, locacao: 118, venda: 29, maisAntigo: "1h52" },
+  ],
+  dias: [
+    { l: "Sábado", r: "18% no SLA", sub: "62 leads · 11 no prazo", corR: "#D93E3E" },
+    { l: "Segunda", r: "19% no SLA", sub: "pico de volume", corR: "#D93E3E" },
+    { l: "Terça a quinta", r: "27% no SLA" },
+    { l: "Sexta", r: "24% no SLA" },
+  ],
+  equipes: [
+    { l: "Locação · 6 pessoas", r: "14% no SLA", sub: "225 leads · 7 dos 9 sem resposta", corR: "#D93E3E" },
+    { l: "Venda · 4 pessoas", r: "31% no SLA", sub: "261 leads" },
   ],
   atualizado: "14:32",
 };
