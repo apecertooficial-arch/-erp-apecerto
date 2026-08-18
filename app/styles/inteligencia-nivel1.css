@@ -1,7 +1,8 @@
-/* Complemento da casca — segmentado de primeiro nível e badge da pílula.
+/* Complemento da casca — segmentado de primeiro nível, badge da pílula e o selo de
+ * atualização do cabeçalho.
  *
- * O primeiro nível do protótipo é UMA cápsula com duas metades (Site e marketing
- * / Performance), não quatro pílulas soltas. Prefixado por .int-area.
+ * O primeiro nível do protótipo é UMA cápsula com duas metades (Site e marketing /
+ * Performance), não quatro pílulas soltas. Prefixado por .int-area.
  */
 
 .int-area .int-nivel1 { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
@@ -13,6 +14,10 @@
 .int-area .int-pagina { display: inline-flex; align-items: center; gap: 7px; }
 .int-area .int-pagina-badge { font-size: 10.5px; font-weight: 700; background: #fbe5e5; color: #b02b2b; border-radius: 999px; padding: 2px 7px; }
 .int-area .int-pagina.ativo .int-pagina-badge { background: #ffe4d1; color: #cc5800; }
+
+/* Selo de atualização — pílula verde do artboard, com o ponto à esquerda. */
+.int-area .int-selo-vivo { display: inline-flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 600; color: #1e7a46; background: #e4f6ec; border-radius: 999px; padding: 7px 14px; white-space: nowrap; }
+.int-area .int-selo-vivo i { width: 7px; height: 7px; border-radius: 999px; background: #1fa85a; flex: none; }
 
 @media (max-width: 720px) {
   .int-area .int-segmentado { width: 100%; }

@@ -1,13 +1,16 @@
 "use client";
 
-/* CASCA DA INTELIGÊNCIA — navegação idêntica ao protótipo aprovado.
+/* CASCA DA INTELIGÊNCIA — navegação e cabeçalho idênticos ao protótipo.
  *
- * Primeiro nível: o SEGMENTADO “Site e marketing / Performance”, do mesmo jeito
- * que nos artboards — duas metades dentro de uma única cápsula, não quatro
- * pílulas soltas. Segundo nível: a fileira de pílulas da família ativa (8 no site
- * e marketing, 9 na performance). Uma barra de filtros comum às 17.
+ * Primeiro nível: o SEGMENTADO “Site e marketing / Performance”. Segundo nível: a
+ * fileira de pílulas da família ativa (8 no site e marketing, 9 na performance).
+ * Uma barra de filtros comum às 17, cujo recorte é da área — trocar de família ou
+ * de página não limpa filtro.
  *
- * Trocar de família ou de página não limpa filtro: o recorte é da área.
+ * Cabeçalho conferido contra os artboards nesta rodada: o selo do topo é
+ * “DEMONSTRAÇÃO — números ilustrativos” mais a pílula verde de atualização (“Ao
+ * vivo” nas telas de fila, “Atualizado” nas demais), e cada página tem o subtítulo
+ * do desenho — os dois vinham diferentes.
  *
  * O Copiloto (32a) fica entre a barra de filtros e o conteúdo, nas 17 páginas.
  * O briefing (32f) aparece na Visão CEO.
@@ -30,6 +33,10 @@ export type Recorte = {
 };
 
 export type PropsTela = { accessToken: string; recorte: Recorte };
+
+/* Telas de fila mostram “Ao vivo”; as de análise, “Atualizado”. Mesmo texto do
+   protótipo — a diferença existe porque fila crítica atualiza em tempo real. */
+const aoVivo = new Set(["atendimento", "alertas"]);
 
 export function CascaInteligencia({ accessToken }: { accessToken: string }) {
   const [grupo, setGrupo] = useState<GrupoChave>("performance");
@@ -67,17 +74,20 @@ export function CascaInteligencia({ accessToken }: { accessToken: string }) {
     <div className="int-area">
       <header className="int-topo">
         <div>
-          <span className="int-eyebrow">INTELIGÊNCIA DIGITAL{grupo === "performance" ? " · PERFORMANCE" : ""}</span>
+          <span className="int-eyebrow">INTELIGÊNCIA DIGITAL · {familia?.rotulo.toUpperCase()}</span>
           <h1>{tela.titulo}</h1>
           <p>{tela.sub}</p>
         </div>
         <div className="int-topo-acoes">
-          <span className="int-selo-pend">DEMONSTRAÇÃO — valores ausentes aparecem como “—”</span>
+          <span className="int-selo-pend">DEMONSTRAÇÃO — números ilustrativos</span>
+          <span className="int-selo-vivo">
+            <i />
+            {aoVivo.has(tela.chave) ? "Ao vivo · atualizado 14:32" : "Atualizado 14:32"}
+          </span>
           <button type="button" className="int-btn">Exportar · CSV / PDF</button>
         </div>
       </header>
 
-      {/* PRIMEIRO NÍVEL — segmentado de duas metades, como no protótipo. */}
       <div className="int-nivel1">
         <span className="int-segmentado" role="tablist" aria-label="Famílias da Inteligência">
           {grupos.map((g) => (
@@ -101,7 +111,6 @@ export function CascaInteligencia({ accessToken }: { accessToken: string }) {
         <span className="int-familia-nota">{familia?.publico}</span>
       </div>
 
-      {/* SEGUNDO NÍVEL — as páginas da família ativa. */}
       <div className="int-paginas" role="tablist" aria-label="Páginas da família">
         {daFamilia.map((t) => (
           <button
