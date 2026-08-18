@@ -68,6 +68,13 @@ export type Proprietarios = {
   porFinalidade?: Array<{ chave: string; total: number }>;
 };
 
+export type Estoque = {
+  publicados?: Numero; comPreco?: Numero; destaque?: Numero; precoMediano?: number | null;
+  porBairro?: Array<{ chave: string; total: number }>;
+  porFinalidade?: Array<{ chave: string; total: number }>;
+  porStatus?: Array<{ chave: string; total: number }>;
+};
+
 /* Leitura do GA4. Cada pedaço pode vir vazio de forma independente: a tela mostra
    o que existe e declara o que faltou. */
 export type Analytics = {
@@ -85,6 +92,7 @@ export type Resposta = {
   qualidadeDado?: QualidadeDado | null;
   digital?: { leadsDoSite?: Numero; primeiroEm?: string | null; ultimoEm?: string | null } | null;
   proprietarios?: Proprietarios | null;
+  estoque?: Estoque | null;
   analytics?: Analytics | null;
   pendencias?: Array<{ chave: string; texto: string }>;
   error?: string;
@@ -164,9 +172,7 @@ export function useInteligencia(accessToken: string, inicial: Periodo = "30d"): 
   }, [accessToken, periodo, tentativa]);
 
   return {
-    dados,
-    estado,
-    periodo,
+    dados, estado, periodo,
     trocarPeriodo: (p: Periodo) => { setEstado("carregando"); setPeriodo(p); },
     tentarNovamente: () => { setEstado("carregando"); setTentativa((v) => v + 1); },
   };

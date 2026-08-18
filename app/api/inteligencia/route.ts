@@ -3,14 +3,14 @@ import { ga4Configurado, lerGa4, type Ga4Leitura } from "../../lib/ga4";
 
 /* INTELIGÊNCIA — endpoint agregador da área.
  *
- * Um endpoint só, autenticado, para as leituras da área Inteligência. Ele NÃO
- * cria relação nem função no banco: consome o que já existe hoje. Cada bloco é
- * lido de forma independente e, quando a fonte não responde, o bloco volta como
- * null com uma pendência declarada — nunca zero, nunca número estimado.
+ * Um endpoint só, autenticado, para as leituras da área. Ele NÃO cria relação nem
+ * função no banco: consome o que já existe. Cada bloco é lido de forma
+ * independente e, quando a fonte não responde, volta null com pendência declarada
+ * — nunca zero, nunca número estimado.
  *
- * Escopo e permissão: a RPC performance_sala_comando já resolve o escopo por
- * perfil. Este endpoint só confirma a sessão e repassa o token — nenhuma chave de
- * serviço chega ao navegador.
+ * Escopo e permissão: a RPC performance_sala_comando resolve o escopo por perfil.
+ * Este endpoint só confirma a sessão e repassa o token — nenhuma chave de serviço
+ * chega ao navegador.
  */
 
 export const dynamic = "force-dynamic";
@@ -31,14 +31,9 @@ async function authClient(request: Request) {
 
 const isoData = (data: Date) => data.toISOString().slice(0, 10);
 
-/* Janela em America/Sao_Paulo — a mesma regra de /api/performance, para os dois
-   endpoints nunca discordarem sobre onde o dia começa. */
 function janela(periodo: Periodo) {
   const hojeSp = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/Sao_Paulo",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
+    timeZone: "America/Sao_Paulo", year: "numeric", month: "2-digit", day: "2-digit",
   }).format(new Date());
   const [ano, mes, dia] = hojeSp.split("-").map(Number);
   const hoje = new Date(Date.UTC(ano, mes - 1, dia));
@@ -62,8 +57,8 @@ function lerPeriodo(valor: string | null): Periodo {
   return aceitos.includes(valor as Periodo) ? (valor as Periodo) : "30d";
 }
 
-/* Contagem por chave, mantendo "não informado" visível em vez de descartar a linha:
-   volume sem classificação é informação, não sujeira. */
+/* Contagem por chave, mantendo "não informado" visível: volume sem classificação é
+   informação, não sujeira. */
 function contarPor(linhas: Array<Record<string, unknown>>, campo: string) {
   const mapa = new Map<string, number>();
   linhas.forEach((linha) => {
@@ -83,8 +78,7 @@ export async function GET(request: Request) {
   const pendencias: Pendencia[] = [];
 
   const rpc = supabase.rpc.bind(supabase) as unknown as (
-    fn: string,
-    args: Record<string, unknown>,
+    fn: string, args: Record<string, unknown>,
   ) => Promise<{ data: unknown; error: { message: string } | null }>;
 
   /* BLOCO 1 — empresa, corretores e qualidade do dado. */
@@ -101,24 +95,19 @@ export async function GET(request: Request) {
       const envelope = (data ?? {}) as { corretores?: unknown[]; qualidadeDado?: unknown };
       corretores = Array.isArray(envelope.corretores) ? envelope.corretores : [];
       qualidadeDado = envelope.qualidadeDado ?? null;
-      if (!corretores.length) {
-        pendencias.push({ chave: "equipe", texto: "Nenhum corretor com atividade confirmada neste período." });
-      }
+      if (!corretores.length) pendencias.push({ chave: "equipe", texto: "Nenhum corretor com atividade confirmada neste período." });
     }
   }
 
-  /* BLOCO 2 — digital: leads confirmados vindos do site. */
+  /* BLOCO 2 — leads confirmados vindos do site. */
   let digital: { leadsDoSite: number; primeiroEm: string | null; ultimoEm: string | null } | null = null;
   {
     const consulta = supabase
       .from("site_leads")
       .select("criado_em", { count: "exact" })
-      .gte("criado_em", inicio)
-      .lt("criado_em", fim)
+      .gte("criado_em", inicio).lt("criado_em", fim)
       .order("criado_em", { ascending: true }) as unknown as Promise<{
-        data: Array<{ criado_em: string }> | null;
-        count: number | null;
-        error: { message: string } | null;
+        data: Array<{ criado_em: string }> | null; count: number | null; error: { message: string } | null;
       }>;
     const { data, count, error } = await consulta;
     if (error) {
@@ -146,13 +135,9 @@ export async function GET(request: Request) {
     const consulta = supabase
       .from("captacoes_portal")
       .select("criado_em,status,bairro,finalidade,preco", { count: "exact" })
-      .gte("criado_em", inicio)
-      .lt("criado_em", fim)
-      .order("criado_em", { ascending: false })
-      .limit(2000) as unknown as Promise<{
-        data: Array<Record<string, unknown>> | null;
-        count: number | null;
-        error: { message: string } | null;
+      .gte("criado_em", inicio).lt("criado_em", fim)
+      .order("criado_em", { ascending: false }).limit(2000) as unknown as Promise<{
+        data: Array<Record<string, unknown>> | null; count: number | null; error: { message: string } | null;
       }>;
     const { data, count, error } = await consulta;
     if (error) {
@@ -171,9 +156,48 @@ export async function GET(request: Request) {
     }
   }
 
-  /* BLOCO 4 — GA4. Leitura server-to-server com a conta de serviço (Leitor na
-     propriedade). Sem as variáveis de ambiente, ou com falha na Data API, o bloco
-     volta null e a pendência aparece — as telas nunca escrevem 0 sessões. */
+  /* BLOCO 4 — estóque anunciado. `anuncios_site` é o que está publicado hoje:
+     serve para responder "o que temos para oferecer" e cruzar com a procura do
+     proprietário. Visão por imóvel (quantas pessoas viram cada anuncio) depende de
+     telemetria por item, que ainda não chega ao ERP. */
+  let estoque: {
+    publicados: number; comPreco: number; destaque: number;
+    porBairro: Array<{ chave: string; total: number }>;
+    porFinalidade: Array<{ chave: string; total: number }>;
+    porStatus: Array<{ chave: string; total: number }>;
+    precoMediano: number | null;
+  } | null = null;
+  {
+    const consulta = supabase
+      .from("anuncios_site")
+      .select("bairro,status,estagio,preco,destaque,dormitorios", { count: "exact" })
+      .limit(2000) as unknown as Promise<{
+        data: Array<Record<string, unknown>> | null; count: number | null; error: { message: string } | null;
+      }>;
+    const { data, count, error } = await consulta;
+    if (error) {
+      console.error("[inteligencia] anuncios_site indisponível:", error.message);
+      pendencias.push({ chave: "estóque", texto: "Anúncios do site ainda não disponíveis para esta leitura." });
+    } else {
+      const linhas = data ?? [];
+      const precos = linhas
+        .map((l) => Number(l.preco))
+        .filter((v) => Number.isFinite(v) && v > 0)
+        .sort((a, b) => a - b);
+      estoque = {
+        publicados: count ?? linhas.length,
+        comPreco: precos.length,
+        destaque: linhas.filter((l) => l.destaque === true).length,
+        porBairro: contarPor(linhas, "bairro").slice(0, 10),
+        porFinalidade: contarPor(linhas, "estagio"),
+        porStatus: contarPor(linhas, "status"),
+        precoMediano: precos.length ? precos[Math.floor(precos.length / 2)] : null,
+      };
+    }
+  }
+
+  /* BLOCO 5 — GA4. Sem as variáveis, ou com falha na Data API, volta null e a
+     pendência aparece — as telas nunca escrevem 0 sessões. */
   let analytics: Ga4Leitura | null = null;
   if (ga4Configurado()) {
     try {
@@ -182,9 +206,7 @@ export async function GET(request: Request) {
       console.error("[inteligencia] GA4 falhou:", erro instanceof Error ? erro.message : erro);
       analytics = null;
     }
-    if (!analytics) {
-      pendencias.push({ chave: "analytics", texto: "GA4 configurado, mas a leitura não respondeu agora. Nenhum número de tráfego foi estimado." });
-    }
+    if (!analytics) pendencias.push({ chave: "analytics", texto: "GA4 configurado, mas a leitura não respondeu agora. Nenhum número de tráfego foi estimado." });
   } else {
     pendencias.push({ chave: "analytics", texto: "GA4 ainda não conectado: sessões, páginas e origem de tráfego aparecem depois da liberação." });
   }
@@ -196,12 +218,6 @@ export async function GET(request: Request) {
     periodo: { chave: periodo, inicio, fim, rotulo, fuso: "America/Sao_Paulo" },
     atualizadoEm: new Date().toISOString(),
     origem: "dado real",
-    empresa,
-    corretores,
-    qualidadeDado,
-    digital,
-    proprietarios,
-    analytics,
-    pendencias,
+    empresa, corretores, qualidadeDado, digital, proprietarios, estoque, analytics, pendencias,
   });
 }
