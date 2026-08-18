@@ -1,6 +1,6 @@
 import { createServerSupabaseClient } from "../../lib/supabase/server";
 
-/* INTELIGÊNCIA — endpoint agregador da área (Fase 1, commit 1).
+/* INTELIGÊNCIA — endpoint agregador da área.
  *
  * Um endpoint só, autenticado, para as leituras da área Inteligência. Ele NÃO
  * cria relação nem função no banco: consome o que já existe hoje. Cada bloco é
@@ -13,9 +13,9 @@ import { createServerSupabaseClient } from "../../lib/supabase/server";
  * endpoint só confirma a sessão e repassa o token — nenhuma chave de serviço
  * chega ao navegador, e nada é consultado sem usuário autenticado.
  *
- * Fora deste commit, de propósito: GA4 (acesso de Leitor em andamento), Google e
- * Meta Ads (custos), Clarity. Enquanto não existirem, os campos correspondentes
- * não são inventados — entram em `pendencias`.
+ * Fora deste endpoint, de propósito: GA4, Google e Meta Ads (custos), Clarity.
+ * Enquanto não existirem, os campos correspondentes não são inventados — entram
+ * em `pendencias`.
  */
 
 export const dynamic = "force-dynamic";
@@ -80,9 +80,14 @@ export async function GET(request: Request) {
     args: Record<string, unknown>,
   ) => Promise<{ data: unknown; error: { message: string } | null }>;
 
-  /* BLOCO 1 — empresa: vendas, trabalho e atendimento. Fonte canônica já em
-     produção, com escopo por perfil resolvido dentro da própria função. */
+  /* BLOCO 1 — empresa, corretores e qualidade do dado. Fonte canónica já em
+     produção, com escopo por perfil resolvido dentro da própria função. O bloco
+     `empresa` continua sendo a resposta inteira da RPC, como no commit 1 (a tela
+     aceita as duas formas); `corretores` e `qualidadeDado` são extraídos ao lado
+     para as telas de operacão não precisarem cavar o envelope. */
   let empresa: unknown = null;
+  let corretores: unknown[] = [];
+  let qualidadeDado: unknown = null;
   {
     const { data, error } = await rpc("performance_sala_comando", { p_inicio: inicio, p_fim: fim });
     if (error) {
@@ -90,6 +95,12 @@ export async function GET(request: Request) {
       pendencias.push({ chave: "empresa", texto: "Os números da operação não puderam ser confirmados agora." });
     } else {
       empresa = data ?? null;
+      const envelope = (data ?? {}) as { corretores?: unknown[]; qualidadeDado?: unknown };
+      corretores = Array.isArray(envelope.corretores) ? envelope.corretores : [];
+      qualidadeDado = envelope.qualidadeDado ?? null;
+      if (!corretores.length) {
+        pendencias.push({ chave: "equipe", texto: "Nenhum corretor com atividade confirmada neste período." });
+      }
     }
   }
 
@@ -134,6 +145,8 @@ export async function GET(request: Request) {
     atualizadoEm: new Date().toISOString(),
     origem: "dado real",
     empresa,
+    corretores,
+    qualidadeDado,
     digital,
     pendencias,
   });

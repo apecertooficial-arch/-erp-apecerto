@@ -1,7 +1,8 @@
-/* INTELIGÊNCIA — Visão da empresa (Fase 1, commit 2).
-   Classes com prefixo ape-, consumindo os mesmos valores do redesenho aprovado:
-   fundo #FAF8F6, cartão branco radius 18 com sombra suave, eyebrow 11px caps
-   laranja, KPI 26px/700 tabular, chips pill. Nenhum valor novo foi inventado. */
+/* INTELIGÊNCIA — folha da área.
+   Classes com prefixo ape-int-, consumindo os mesmos valores do redesenho
+   aprovado: fundo #FAF8F6, cartão branco radius 18 com sombra suave, eyebrow
+   11px caps laranja, KPI 26px/700 tabular, chips pill, laranja para navegação e
+   roxo para dado. Nenhum valor novo foi inventado. */
 
 .ape-int-wrap {
   padding: 28px 32px 44px;
@@ -22,7 +23,7 @@
 .ape-int-topo h1 {
   margin: 2px 0 0; font-size: 26px; font-weight: 700; letter-spacing: -0.02em;
 }
-.ape-int-topo p { margin: 2px 0 0; font-size: 13px; color: #6E6760; }
+.ape-int-topo p { margin: 2px 0 0; font-size: 13px; color: #6E6760; max-width: 70ch; }
 .ape-int-selos { margin-left: auto; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 
 .ape-int-selo {
@@ -30,9 +31,7 @@
   font-size: 12px; font-weight: 600; border-radius: 999px; padding: 7px 14px;
   background: #E4F6EC; color: #1E7A46;
 }
-.ape-int-selo i {
-  width: 7px; height: 7px; border-radius: 999px; background: #1FA85A; display: block;
-}
+.ape-int-selo i { width: 7px; height: 7px; border-radius: 999px; background: #1FA85A; display: block; }
 .ape-int-selo.aguardando { background: #FDF1D9; color: #8A6A15; }
 .ape-int-selo.aguardando i { background: #B5700A; }
 
@@ -46,6 +45,20 @@
   border-radius: 999px; box-shadow: inset 0 0 0 1.5px #FF7000;
 }
 
+.ape-int-grupos, .ape-int-abas { display: flex; gap: 8px; flex-wrap: wrap; }
+.ape-int-grupos a {
+  height: 40px; padding: 0 18px; display: inline-flex; align-items: center;
+  border: 1.5px solid #E4DFD9; border-radius: 999px; background: #fff;
+  color: #4D4842; font-size: 13.5px; font-weight: 600; text-decoration: none;
+}
+.ape-int-grupos a.ativo { border-color: #FF7000; background: #FFF3EA; color: #CC5800; font-weight: 700; }
+.ape-int-abas a {
+  height: 34px; padding: 0 14px; display: inline-flex; align-items: center;
+  border: 1px solid #E4DFD9; border-radius: 999px; background: #fff;
+  color: #4D4842; font-size: 12.5px; font-weight: 600; text-decoration: none;
+}
+.ape-int-abas a.ativo { border-color: #FF7000; background: #FFF3EA; color: #CC5800; font-weight: 700; }
+
 .ape-int-secao > span {
   font-size: 11px; font-weight: 600; letter-spacing: 0.12em; color: #8B00CC;
 }
@@ -53,19 +66,17 @@
   margin: 2px 0 10px; font-size: 20px; font-weight: 700; letter-spacing: -0.01em;
 }
 
-.ape-int-kpis {
-  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px;
-}
+.ape-int-kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
 .ape-int-kpi {
   background: #fff; border-radius: 18px; padding: 18px;
   box-shadow: 0 2px 6px rgba(31, 28, 26, 0.06);
   display: flex; flex-direction: column; gap: 6px;
 }
 .ape-int-kpi > span { font-size: 12px; font-weight: 600; color: #6E6760; }
-.ape-int-kpi > strong {
-  font-size: 26px; font-weight: 700; font-variant-numeric: tabular-nums;
-}
+.ape-int-kpi > strong { font-size: 26px; font-weight: 700; font-variant-numeric: tabular-nums; }
 .ape-int-kpi > small { font-size: 12px; color: #9A938B; }
+.ape-int-kpi.alerta > strong { color: #D93E3E; }
+.ape-int-kpi.bom > strong { color: #1E7A46; }
 .ape-int-kpi.vazio > strong { font-size: 15px; font-weight: 700; color: #8A6A15; }
 
 .ape-int-linhas {
@@ -74,26 +85,68 @@
   display: flex; flex-direction: column; gap: 9px;
 }
 .ape-int-linha {
-  display: grid; grid-template-columns: 190px 1fr 70px 60px; gap: 10px;
+  display: grid; grid-template-columns: 200px 1fr 74px 62px; gap: 10px;
   align-items: center; font-size: 12.5px;
 }
 .ape-int-linha > span:first-child { font-weight: 600; color: #4D4842; }
 .ape-int-linha b { text-align: right; font-variant-numeric: tabular-nums; }
 .ape-int-linha em { text-align: right; font-style: normal; color: #6E6760; }
 .ape-int-barra { height: 14px; border-radius: 999px; background: #F2EFEC; overflow: hidden; }
-.ape-int-barra i {
-  display: block; height: 100%; border-radius: 999px;
-  background: linear-gradient(90deg, #FF9A4D, #FF7000);
-}
+.ape-int-barra i { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, #FF9A4D, #FF7000); }
+.ape-int-barra.roxa i { background: #B24DDD; }
 .ape-int-linhas small { font-size: 11px; color: #9A938B; }
 
-.ape-int-pendencias { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
-.ape-int-pendencia {
-  background: #FDF1D9; border-radius: 18px; padding: 16px;
-  display: flex; flex-direction: column; gap: 6px;
+.ape-int-tabela-wrap {
+  background: #fff; border-radius: 18px; padding: 8px 14px 14px;
+  box-shadow: 0 2px 6px rgba(31, 28, 26, 0.06); overflow-x: auto;
 }
+.ape-int-tabela { width: 100%; border-collapse: collapse; font-size: 12.5px; font-variant-numeric: tabular-nums; }
+.ape-int-tabela th {
+  text-align: right; font-size: 11px; font-weight: 700; color: #9A938B;
+  padding: 10px 8px; border-bottom: 1px solid #F2EFEC; white-space: nowrap;
+}
+.ape-int-tabela th:first-child, .ape-int-tabela td:first-child { text-align: left; }
+.ape-int-tabela td { text-align: right; padding: 11px 8px; border-bottom: 1px solid #F7F5F2; }
+.ape-int-tabela tbody tr:last-child td { border-bottom: 0; }
+.ape-int-tabela b { font-weight: 700; }
+.ape-int-tabela small { display: block; font-size: 11px; color: #9A938B; font-weight: 500; }
+.ape-int-pessoa { display: inline-flex; align-items: center; gap: 9px; }
+.ape-int-pessoa i {
+  width: 26px; height: 26px; border-radius: 999px; background: #F7ECFC; color: #66009A;
+  display: grid; place-items: center; font-size: 11px; font-weight: 700; font-style: normal; flex: none;
+}
+
+.ape-int-chip {
+  display: inline-flex; align-items: center; font-size: 11px; font-weight: 700;
+  border-radius: 999px; padding: 3px 9px; background: #F2EFEC; color: #6E6760;
+}
+.ape-int-chip.bom { background: #E4F6EC; color: #1E7A46; }
+.ape-int-chip.atencao { background: #FDF1D9; color: #8A6A15; }
+.ape-int-chip.ruim { background: #FBE5E5; color: #B02B2B; }
+.ape-int-chip.roxo { background: #F7ECFC; color: #66009A; }
+
+.ape-int-cartoes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; align-items: start; }
+.ape-int-cartao {
+  background: #fff; border-radius: 18px; padding: 18px;
+  box-shadow: 0 2px 6px rgba(31, 28, 26, 0.06);
+  display: flex; flex-direction: column; gap: 10px;
+}
+.ape-int-cartao > b { font-size: 13px; }
+.ape-int-cartao > small { font-size: 11px; color: #9A938B; }
+.ape-int-par { display: flex; align-items: center; gap: 10px; font-size: 12.5px; }
+.ape-int-par > span:first-child { flex: 1; color: #4D4842; font-weight: 600; }
+.ape-int-par b { font-variant-numeric: tabular-nums; }
+
+.ape-int-pendencias { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.ape-int-pendencia { background: #FDF1D9; border-radius: 18px; padding: 16px; display: flex; flex-direction: column; gap: 6px; }
 .ape-int-pendencia b { font-size: 12.5px; color: #7A5E12; }
 .ape-int-pendencia span { font-size: 12px; color: #8A6A15; line-height: 1.5; }
+
+.ape-int-aviso {
+  background: #F7ECFC; border-radius: 18px; padding: 14px 18px;
+  font-size: 12px; color: #6B3E86; line-height: 1.6;
+}
+.ape-int-aviso b { color: #66009A; }
 
 .ape-int-skeleton {
   background: #fff; border-radius: 18px; padding: 18px;
@@ -120,12 +173,15 @@
 .ape-int-vazio b { font-size: 13.5px; }
 .ape-int-vazio span { font-size: 12px; color: #9A938B; }
 
+.ape-int-rodape { font-size: 11px; color: #9A938B; }
+
 @media (max-width: 900px) {
   .ape-int-wrap { padding: 16px; gap: 14px; }
-  .ape-int-kpis, .ape-int-pendencias { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ape-int-kpis, .ape-int-pendencias, .ape-int-cartoes { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .ape-int-linha { grid-template-columns: 1fr 64px 56px; }
   .ape-int-linha .ape-int-barra { display: none; }
+  .ape-int-grupos a, .ape-int-abas a { min-height: 44px; }
 }
 @media (max-width: 560px) {
-  .ape-int-kpis, .ape-int-pendencias { grid-template-columns: 1fr; }
+  .ape-int-kpis, .ape-int-pendencias, .ape-int-cartoes { grid-template-columns: 1fr; }
 }
