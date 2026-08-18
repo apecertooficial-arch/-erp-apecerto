@@ -15,7 +15,7 @@ import { useMemo } from "react";
 import { CascaInteligencia, Estados, Kpi, Linha, Tabela } from "./CascaInteligencia";
 import {
   AMOSTRA_MINIMA, SLA_META_MIN, duracao, inteiro, lerEmpresa, mediaPonderada,
-  num, pct, somar, tem, useInteligencia, type Corretor,
+  num, pct, somar, tem, useInteligencia, type Corretor, type Numero,
 } from "./dados";
 import "../../styles/inteligencia.css";
 
@@ -40,7 +40,11 @@ export function ConversaoCrm({ accessToken }: { accessToken: string }) {
   const confirmados = kpis.filter((k) => k.valor !== null).length;
 
   const topo = Math.max(num(fluxo.leads), num(fluxo.negocios), 1);
-  const etapas: Array<{ nome: string; valor: number | null; base: unknown; aguardando?: string }> = [
+  /* `base` e a etapa ANTERIOR do funil, e vai direto para pct(parte, base) — que
+     recebe Numero (number | string | null | undefined) justamente para distinguir
+     "veio zero" de "nao veio". Tipar como unknown obrigava o TypeScript a recusar
+     a passagem; todos os valores atribuidos aqui ja sao Numero. */
+  const etapas: Array<{ nome: string; valor: number | null; base: Numero; aguardando?: string }> = [
     { nome: "Lead recebido", valor: tem(fluxo.leads) ? num(fluxo.leads) : null, base: fluxo.leads },
     { nome: "Negócio criado", valor: tem(fluxo.negocios) ? num(fluxo.negocios) : null, base: fluxo.leads },
     { nome: "Distribuído para corretor", valor: null, base: null, aguardando: "data de distribuição não vem na fonte" },
