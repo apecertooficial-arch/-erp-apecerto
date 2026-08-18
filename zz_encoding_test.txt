@@ -1,0 +1,4 @@
+A[﻿]B
+C[\\uFEFF]D
+E[̀]F
+G[\n]H
