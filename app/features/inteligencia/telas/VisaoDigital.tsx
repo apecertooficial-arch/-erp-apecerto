@@ -1,24 +1,19 @@
 "use client";
 
-/* 1 · VISÃO DO DIGITAL — artboard 2a, na íntegra.
+/* 1 · VISÃO DO DIGITAL — artboard 2a, na profundidade do protótipo.
  *
- * Ordem dos blocos igual à do desenho:
- *   1. faixa de diagnóstico (3 cartões com ícone, chip e link)
- *   2. indicadores principais (12 KPIs em duas fileiras de 6)
- *   3. evolução do período (séries clicáveis que viram chip de filtro)
- *   4. funil principal, do acesso à chave na mão (7 etapas)
- *   5. leituras rápidas (origens, captação, Sara em cartão roxo)
- *   6. rodapé de fontes com as pendências declaradas
- *
- * CONTRATO DE DADO: 0 é dado real e aparece como 0; ausência aparece como “—” com
- * o motivo (dado.tsx). Nenhum bloco desaparece por falta de dado.
+ * Ordem do desenho:
+ *   1. FAIXA DE DIAGNÓSTICO — três leituras com tile, chip e link
+ *   2. INDICADORES — 12 KPIs com comparação
+ *   3. EVOLUÇÃO — séries clicáveis que viram chip de recorte
+ *   4. FUNIL PRINCIPAL — 7 etapas, do acesso à chave na mão
+ *   5. LEITURAS RÁPIDAS — origens, captação e Sara em cartão roxo
+ *   6. rodapé de fontes
  */
 
 import type { PropsTela } from "../CascaInteligencia";
 import { fmt, RodapeFontes } from "../dado";
 import { Cabecalho, CartoesLista, Funil, GradeKpis, IconeInt, type Etapa, type Kpi } from "../pecas";
-
-type Serie = { rotulo: string; cor: string; chip: string };
 
 type Dados = {
   visualizacoes: number | null;
@@ -34,7 +29,7 @@ type Dados = {
   pipelineAtribuido: number | null;
   sessoesGa4: string | null;
   etapas: { nome: string; volume: number | null; largura: number | null; taxa?: string; perda?: string }[];
-  series: Serie[];
+  series: { rotulo: string; cor: string; chip: string }[];
   atualizado: string;
 };
 
@@ -68,10 +63,9 @@ export function VisaoDigital({ recorte }: PropsTela) {
 
   return (
     <div className="int-secao">
-      {/* 1 · FAIXA DE DIAGNÓSTICO */}
       <Cabecalho eyebrow="FAIXA DE DIAGNÓSTICO" titulo="Três leituras do período, direto do dado" nota={recorte.periodo} />
       <div className="intp-grade" style={{ gridTemplateColumns: "repeat(3, minmax(0, 1fr))" }}>
-        <div className="intp-cartao">
+        <div className="intp-cartao" style={{ borderTop: "3px solid #1FA85A" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <span className="intp-tile tile-verde"><IconeInt nome="tendencia" /></span>
             <span className="intp-cartao-chip tom-bom">maior crescimento</span>
@@ -79,9 +73,9 @@ export function VisaoDigital({ recorte }: PropsTela) {
           <p style={{ margin: 0, fontSize: 13, lineHeight: 1.5 }}>
             <b>Instagram orgânico</b> gerou <b>52 negócios</b>, 41% acima dos 30 dias anteriores.
           </p>
-          <button type="button" className="int-link" style={{ fontWeight: 700 }} onClick={() => recorte.irPara("aquisicao")}>Ver análise em Aquisição →</button>
+          <button type="button" className="int-link" style={{ fontWeight: 700, marginTop: "auto", alignSelf: "flex-start" }} onClick={() => recorte.irPara("aquisicao")}>Ver análise em Aquisição →</button>
         </div>
-        <div className="intp-cartao">
+        <div className="intp-cartao" style={{ borderTop: "3px solid #D93E3E" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <span className="intp-tile tile-vermelho"><IconeInt nome="alerta" /></span>
             <span className="intp-cartao-chip tom-ruim">maior perda do funil</span>
@@ -89,9 +83,9 @@ export function VisaoDigital({ recorte }: PropsTela) {
           <p style={{ margin: 0, fontSize: 13, lineHeight: 1.5 }}>
             <b>Intenção → lead</b> perdeu <b>1.998 pessoas</b> (86,5%); a mediana histórica é 78%.
           </p>
-          <button type="button" className="int-link" style={{ fontWeight: 700 }} onClick={() => recorte.irPara("comportamento")}>Ver análise em Comportamento →</button>
+          <button type="button" className="int-link" style={{ fontWeight: 700, marginTop: "auto", alignSelf: "flex-start" }} onClick={() => recorte.irPara("comportamento")}>Ver análise em Comportamento →</button>
         </div>
-        <div className="intp-cartao">
+        <div className="intp-cartao" style={{ borderTop: "3px solid #8B00CC" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <span className="intp-tile tile-roxo"><IconeInt nome="faisca" /></span>
             <span className="intp-cartao-chip tom-roxo">merece atenção</span>
@@ -99,16 +93,14 @@ export function VisaoDigital({ recorte }: PropsTela) {
           <p style={{ margin: 0, fontSize: 13, lineHeight: 1.5 }}>
             <b>Apê Gaivota 402</b> (MO-118): 1.240 visualizações e 2 leads em 21 dias anunciado.
           </p>
-          <button type="button" className="int-link" style={{ fontWeight: 700 }} onClick={() => recorte.irPara("imoveis")}>Ver análise em Imóveis →</button>
+          <button type="button" className="int-link" style={{ fontWeight: 700, marginTop: "auto", alignSelf: "flex-start" }} onClick={() => recorte.irPara("imoveis")}>Ver análise em Imóveis →</button>
         </div>
       </div>
 
-      {/* 2 · INDICADORES PRINCIPAIS — 12 KPIs, duas fileiras de 6 */}
-      <Cabecalho eyebrow="INDICADORES PRINCIPAIS" titulo="Os números do período, com comparação" nota={recorte.compararAnterior ? "vs. período anterior" : "sem comparação"} />
+      <Cabecalho eyebrow="INDICADORES PRINCIPAIS" titulo="Os números do período, com comparação" cor="#8B00CC" nota={recorte.compararAnterior ? "vs. período anterior" : "sem comparação"} />
       <GradeKpis itens={kpis} colunas={6} />
 
-      {/* 3 · EVOLUÇÃO */}
-      <Cabecalho eyebrow="EVOLUÇÃO" titulo="Como o período se moveu" cor="#8B00CC" nota="pontilhado = período anterior" />
+      <Cabecalho eyebrow="EVOLUÇÃO" titulo="Como o período se moveu" nota="pontilhado = período anterior" />
       <div className="intp-cartao">
         <svg width="100%" height="190" viewBox="0 0 560 190" preserveAspectRatio="none" role="img" aria-label="Evolução do período">
           <line x1="0" y1="47" x2="560" y2="47" stroke="#F2EFEC" strokeWidth="1" />
@@ -130,11 +122,9 @@ export function VisaoDigital({ recorte }: PropsTela) {
         <small className="intp-kpi-foot">cada série na própria escala · clicar numa série aplica o filtro à página inteira</small>
       </div>
 
-      {/* 4 · FUNIL PRINCIPAL */}
       <Cabecalho eyebrow="FUNIL PRINCIPAL" titulo="Do acesso à chave na mão" cor="#8B00CC" nota="taxa sobre a etapa anterior" />
       <Funil etapas={etapas} foot="“detalhes” abre pessoas, campanhas, páginas e imóveis, conforme a sua permissão · etapa sem dado mostra “—” e continua na lista" />
 
-      {/* 5 · LEITURAS RÁPIDAS */}
       <Cabecalho eyebrow="LEITURAS RÁPIDAS" titulo="O que está puxando o resultado" />
       <CartoesLista
         colunas={3}
@@ -172,7 +162,6 @@ export function VisaoDigital({ recorte }: PropsTela) {
         ]}
       />
 
-      {/* 6 · RODAPÉ DE FONTES */}
       <RodapeFontes
         fontes={["coleta própria", "Google Tag", "GA4 (consentimento 31%)", "CRM Funil 2.0"]}
         pendencias={["pipeline atribuído (campo de valor ausente no CRM)", "custo de mídia não conectado", "Clarity sem evento há 3 h"]}
@@ -182,8 +171,6 @@ export function VisaoDigital({ recorte }: PropsTela) {
   );
 }
 
-/* Ponto único de troca para a conexão com o banco. Campo que vier nulo cai no
-   contrato de dado ausente sem mexer em uma linha de layout. */
 function usarDados(): Dados {
   return demo;
 }
@@ -198,7 +185,7 @@ const demo: Dados = {
   fechamentos: 14,
   conversaoPagina: 1.27,
   conversaoLead: 59.9,
-  tempoAtendimento: 18,
+  tempoAtendimento: 14,
   pipelineAtribuido: null,
   sessoesGa4: "8.412 · 5.930",
   series: [
