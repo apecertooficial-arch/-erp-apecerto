@@ -1,5 +1,5 @@
 import { createServerSupabaseClient } from "../../lib/supabase/server";
-import { assessProductQuality, PRODUCT_PRICE_MAX, PRODUCT_PRICE_MIN } from "../../features/products/quality";
+import { assessProductQuality, isPlausibleProductPrice } from "../../features/products/quality";
 
 export const dynamic = "force-dynamic";
 
@@ -46,7 +46,7 @@ export async function GET(request: Request) {
   const { data, error } = await supabase
     .from("empreendimentos")
     .select(`
-      id, nome, titulo, slogan, descricao, finalidade, incorporadora, endereco, numero,
+      id, nome, titulo, slug, slogan, descricao, finalidade, incorporadora, endereco, numero,
       bairro, cidade, uf, cep, status, area_util, rascunho, dormitorios, suites, banheiros,
       vagas, preco, condominio_valor, iptu, outros_custos, created_at, published_at,
       publicado, origem, lazer, diferenciais, tour_url,
@@ -118,7 +118,7 @@ export async function GET(request: Request) {
       tourUrl: item.tour_url,
       units: units.length,
       availableUnits: availableUnits.length,
-      unitsWithValidPrice: prices.filter((value) => value >= PRODUCT_PRICE_MIN && value <= PRODUCT_PRICE_MAX).length,
+      unitsWithValidPrice: prices.filter((value) => isPlausibleProductPrice(value, item.finalidade)).length,
       amenities: item.lazer,
       differentiators: item.diferenciais,
     });
@@ -130,12 +130,16 @@ export async function GET(request: Request) {
     return {
       id: item.id,
       name: item.nome,
+      title: item.titulo,
+      slug: item.slug,
+      purpose: item.finalidade,
+      address: item.endereco,
       developer: item.incorporadora,
       neighborhood: item.bairro ?? "Bairro não informado",
       city: item.cidade ?? "São Paulo",
       status: item.status,
       origin: item.origem,
-      published: item.publicado,
+      published: Boolean(item.publicado && !item.rascunho && item.aprovacao === "aprovado"),
       price,
       area,
       bedrooms: item.dormitorios ?? (bedroomOptions.length ? Math.max(...bedroomOptions) : null),
@@ -168,7 +172,7 @@ export async function GET(request: Request) {
     good: visible.filter((p) => p.quality.level === "bom").length,
     attention: visible.filter((p) => p.quality.level === "atencao").length,
     critical: visible.filter((p) => p.quality.level === "critico").length,
-    readyForSite: visible.filter((p) => p.quality.readyForSite).length,
+    readyForSite: visible.filter((p) => p.quality.readyForSite && !p.published).length,
     average: visible.length ? Math.round(visible.reduce((sum, p) => sum + p.quality.score, 0) / visible.length) : 0,
   };
 

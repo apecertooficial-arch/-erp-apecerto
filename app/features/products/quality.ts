@@ -1,5 +1,7 @@
 export const PRODUCT_PRICE_MIN = 100_000;
 export const PRODUCT_PRICE_MAX = 100_000_000;
+export const RENT_PRICE_MIN = 500;
+export const RENT_PRICE_MAX = 500_000;
 
 export type QualityLevel = "excelente" | "bom" | "atencao" | "critico";
 
@@ -59,8 +61,20 @@ const hasText = (value: unknown) => typeof value === "string" && value.trim().le
 const textLength = (value: unknown) => (typeof value === "string" ? value.trim().length : 0);
 const isKnownNumber = (value: number | null | undefined) => value !== null && value !== undefined && Number.isFinite(value);
 const isPositive = (value: number | null | undefined) => isKnownNumber(value) && Number(value) > 0;
-const isPlausiblePrice = (value: number | null | undefined) =>
-  isKnownNumber(value) && Number(value) >= PRODUCT_PRICE_MIN && Number(value) <= PRODUCT_PRICE_MAX;
+function isRentalPurpose(purpose: unknown) {
+  return normalizedKey(purpose) === "aluguel";
+}
+
+export function productPriceBounds(purpose?: unknown) {
+  return isRentalPurpose(purpose)
+    ? { min: RENT_PRICE_MIN, max: RENT_PRICE_MAX, rental: true }
+    : { min: PRODUCT_PRICE_MIN, max: PRODUCT_PRICE_MAX, rental: false };
+}
+
+export function isPlausibleProductPrice(value: number | null | undefined, purpose?: unknown) {
+  const bounds = productPriceBounds(purpose);
+  return isKnownNumber(value) && Number(value) >= bounds.min && Number(value) <= bounds.max;
+}
 
 export function assessProductQuality(input: ProductQualityInput): ProductQuality {
   const blocking: string[] = [];
@@ -74,15 +88,16 @@ export function assessProductQuality(input: ProductQualityInput): ProductQuality
   const categories = new Set((input.mediaCategories || []).filter(Boolean).map((item) => item.toLowerCase()));
   const hasAmenities = Boolean(input.amenities?.length);
   const hasDifferentiators = Boolean(input.differentiators?.length);
-  const plausiblePrice = isPlausiblePrice(input.price);
+  const priceBounds = productPriceBounds(input.purpose);
+  const plausiblePrice = isPlausibleProductPrice(input.price, input.purpose);
   const priceM2 = plausiblePrice && isPositive(input.area) ? Number(input.price) / Number(input.area) : null;
 
   let cadastro = 0;
-  if (hasText(input.name)) cadastro += 4;
+  if (hasText(input.name)) cadastro += 5;
   if (descriptionLength >= 120) cadastro += 8;
   else if (descriptionLength >= 80) cadastro += 5;
   else if (descriptionLength > 0) cadastro += 2;
-  if (hasText(input.address)) cadastro += 2;
+  if (hasText(input.address)) cadastro += 3;
   if (hasText(input.neighborhood)) cadastro += 2;
   if (hasText(input.city)) cadastro += 2;
   if (hasText(input.state)) cadastro += 1;
@@ -91,7 +106,7 @@ export function assessProductQuality(input: ProductQualityInput): ProductQuality
   if (isKnownNumber(input.bedrooms)) cadastro += 1;
   if (isKnownNumber(input.bathrooms)) cadastro += 2;
   if (isKnownNumber(input.parking)) cadastro += 1;
-  if (hasText(input.purpose)) cadastro += 3;
+  if (hasText(input.purpose)) cadastro += 4;
   cadastro = Math.min(35, cadastro);
 
   let apresentacao = photos >= 10 ? 12 : photos >= 6 ? 8 : photos > 0 ? 3 : 0;
@@ -104,7 +119,7 @@ export function assessProductQuality(input: ProductQualityInput): ProductQuality
 
   let comercial = 0;
   if (plausiblePrice) comercial += 8;
-  if (priceM2 !== null && priceM2 >= 3_000 && priceM2 <= 100_000) comercial += 4;
+  if (priceM2 !== null && (priceBounds.rental ? priceM2 >= 10 && priceM2 <= 2_000 : priceM2 >= 3_000 && priceM2 <= 100_000)) comercial += 4;
   if (isKnownNumber(input.condominiumFee)) comercial += 2;
   if (isKnownNumber(input.propertyTax)) comercial += 1;
   if (isKnownNumber(input.otherCosts)) comercial += 1;
@@ -120,7 +135,9 @@ export function assessProductQuality(input: ProductQualityInput): ProductQuality
   if (hasDifferentiators) site += 2;
   site = Math.min(15, site);
 
-  if (!plausiblePrice) blocking.push("Corrigir o preço (use o valor total em reais)");
+  if (!plausiblePrice) blocking.push(priceBounds.rental
+    ? "Corrigir o aluguel mensal (use o valor total em reais)"
+    : "Corrigir o preço (use o valor total em reais)");
   if (!isPositive(input.area)) blocking.push("Informar a área útil");
   if (!hasText(input.address) || !hasText(input.neighborhood) || !hasText(input.city)) blocking.push("Completar a localização");
   if (descriptionLength < 80) blocking.push("Escrever uma descrição com pelo menos 80 caracteres");
@@ -164,18 +181,27 @@ export function parseLocalizedNumber(value: unknown): number | null {
   if (typeof value !== "string") return null;
   const raw = value.trim().replace(/\s/g, "").replace(/^R\$/i, "");
   if (!raw) return null;
-  const normalized = raw.includes(",") ? raw.replace(/\./g, "").replace(",", ".") : raw;
+  const normalized = raw.includes(",")
+    ? raw.replace(/\./g, "").replace(",", ".")
+    : /^\d{1,3}(?:\.\d{3})+$/.test(raw)
+      ? raw.replace(/\./g, "")
+      : raw;
   const parsed = Number(normalized);
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-export function validateProductPrice(value: unknown, field = "Preço") {
+export function validateProductPrice(value: unknown, field = "Preço", purpose?: unknown) {
   const price = parseLocalizedNumber(value);
   if (price === null) return { value: null, error: `${field} inválido.` };
-  if (price < PRODUCT_PRICE_MIN) {
-    return { value: price, error: `${field} muito baixo. Se digitou em milhares, 710 deve representar R$ 710.000.` };
+  const bounds = productPriceBounds(purpose);
+  if (price < bounds.min) {
+    return { value: price, error: bounds.rental
+      ? `${field} muito baixo para um aluguel mensal.`
+      : `${field} muito baixo. Se digitou em milhares, 710 deve representar R$ 710.000.` };
   }
-  if (price > PRODUCT_PRICE_MAX) return { value: price, error: `${field} acima do limite de R$ 100 milhões.` };
+  if (price > bounds.max) return { value: price, error: bounds.rental
+    ? `${field} acima do limite de R$ 500 mil por mês.`
+    : `${field} acima do limite de R$ 100 milhões.` };
   return { value: price, error: null };
 }
 

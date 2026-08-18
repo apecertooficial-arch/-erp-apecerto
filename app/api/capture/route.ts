@@ -1,5 +1,5 @@
 import { createServerSupabaseClient } from "../../lib/supabase/server";
-import { assessProductQuality, normalizedKey, PRODUCT_PRICE_MAX, PRODUCT_PRICE_MIN, validateProductPrice } from "../../features/products/quality";
+import { assessProductQuality, isPlausibleProductPrice, normalizedKey, validateProductPrice } from "../../features/products/quality";
 
 export const dynamic = "force-dynamic";
 
@@ -42,7 +42,7 @@ export async function PATCH(request: Request) {
       hasCover: media.some((item) => item.tipo === "foto" && item.is_capa),
       mediaCategories: media.filter((item) => item.tipo === "foto").map((item) => item.categoria ?? ""), tourUrl: product.tour_url,
       units: units.length, availableUnits: available.length,
-      unitsWithValidPrice: prices.filter((value) => value >= PRODUCT_PRICE_MIN && value <= PRODUCT_PRICE_MAX).length,
+      unitsWithValidPrice: prices.filter((value) => isPlausibleProductPrice(value, product.finalidade)).length,
       amenities: product.lazer, differentiators: product.diferenciais,
     });
     if (!quality.readyForSite) {
@@ -165,16 +165,16 @@ export async function POST(request: Request) {
   }
   const numericValues = [property.price, property.condominiumFee, property.propertyTax, property.otherCosts, property.area, property.bedrooms, property.suites, property.bathrooms, property.parking];
   if (!numericValues.every(isNonNegative)) return Response.json({ error: "Revise os valores numéricos do imóvel." }, { status: 422 });
-  const propertyPriceCheck = validateProductPrice(property.price, "Preço do imóvel");
+  const propertyPriceCheck = validateProductPrice(property.price, "Preço do imóvel", property.purpose);
   if (propertyPriceCheck.error) return Response.json({ error: propertyPriceCheck.error }, { status: 422 });
   if (payload.propertyType === "construtora" && (!units.length || units.some((unit) => !unit.number.trim() || !unit.type.trim() || !isNonNegative(unit.area) || !isNonNegative(unit.price)))) {
     return Response.json({ error: "Adicione ao menos uma unidade completa ao empreendimento." }, { status: 422 });
   }
   for (const unit of units) {
-    const tablePriceCheck = validateProductPrice(unit.price, `Preço da unidade ${unit.number || "sem número"}`);
+    const tablePriceCheck = validateProductPrice(unit.price, `Preço da unidade ${unit.number || "sem número"}`, property.purpose);
     if (tablePriceCheck.error) return Response.json({ error: tablePriceCheck.error }, { status: 422 });
     if (unit.promotionalPrice != null) {
-      const promoPriceCheck = validateProductPrice(unit.promotionalPrice, `Preço promocional da unidade ${unit.number || "sem número"}`);
+      const promoPriceCheck = validateProductPrice(unit.promotionalPrice, `Preço promocional da unidade ${unit.number || "sem número"}`, property.purpose);
       if (promoPriceCheck.error) return Response.json({ error: promoPriceCheck.error }, { status: 422 });
     }
   }
@@ -190,7 +190,7 @@ export async function POST(request: Request) {
     const sameAddress = normalizedKey(item.endereco) === normalizedKey(condominium.address)
       && normalizedKey(item.numero) === normalizedKey(condominium.number);
     const sameNeighborhood = normalizedKey(item.bairro) === normalizedKey(condominium.neighborhood);
-    return sameName || (sameAddress && sameNeighborhood);
+    return (sameName && sameNeighborhood) || sameAddress;
   });
   if (duplicate) {
     return Response.json({

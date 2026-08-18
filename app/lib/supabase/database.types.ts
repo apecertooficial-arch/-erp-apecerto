@@ -11431,6 +11431,7 @@ export type Database = {
           bairro: string | null
           banheiros: number | null
           capa_path: string | null
+          cidade: string | null
           condominio_valor: number | null
           descricao: string | null
           destaque: boolean | null
@@ -11453,6 +11454,9 @@ export type Database = {
           slug: string | null
           status: Database["public"]["Enums"]["status_empreend"] | null
           suites: number | null
+          titulo: string | null
+          tour_url: string | null
+          uf: string | null
           unidades_disponiveis: number | null
           vagas: number | null
         }
@@ -11461,6 +11465,7 @@ export type Database = {
           bairro?: string | null
           banheiros?: number | null
           capa_path?: never
+          cidade?: string | null
           condominio_valor?: number | null
           descricao?: string | null
           destaque?: boolean | null
@@ -11483,6 +11488,9 @@ export type Database = {
           slug?: string | null
           status?: Database["public"]["Enums"]["status_empreend"] | null
           suites?: number | null
+          titulo?: string | null
+          tour_url?: string | null
+          uf?: string | null
           unidades_disponiveis?: never
           vagas?: number | null
         }
@@ -11491,6 +11499,7 @@ export type Database = {
           bairro?: string | null
           banheiros?: number | null
           capa_path?: never
+          cidade?: string | null
           condominio_valor?: number | null
           descricao?: string | null
           destaque?: boolean | null
@@ -11513,6 +11522,9 @@ export type Database = {
           slug?: string | null
           status?: Database["public"]["Enums"]["status_empreend"] | null
           suites?: number | null
+          titulo?: string | null
+          tour_url?: string | null
+          uf?: string | null
           unidades_disponiveis?: never
           vagas?: number | null
         }

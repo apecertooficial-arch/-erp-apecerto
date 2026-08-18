@@ -6,7 +6,7 @@ import { MoneyInput } from "./MoneyInput";
 import { applyOfficialWatermark } from "./watermark";
 
 type UnitWizardProps = { accessToken: string; onClose: () => void; onSaved: () => void };
-type Building = { id: string; nome: string; bairro: string | null; cidade: string | null };
+type Building = { id: string; nome: string; bairro: string | null; cidade: string | null; finalidade: string | null };
 
 const accessOptions: Array<[string, string]> = [
   ["chave_digital", "Chave digital"],
@@ -48,10 +48,13 @@ export function UnitWizard({ accessToken, onClose, onSaved }: UnitWizardProps) {
 
   useEffect(() => {
     const supabase = getBrowserSupabaseClient();
-    void supabase.from("empreendimentos").select("id,nome,bairro,cidade").order("nome").then(({ data }) => {
+    void supabase.from("empreendimentos").select("id,nome,bairro,cidade,finalidade").order("nome").then(({ data }) => {
       if (data) setBuildings(data as Building[]);
     });
   }, []);
+
+  const selectedPurpose = buildings.find((item) => item.id === empreendimentoId)?.finalidade ?? "venda";
+  const moneyMode = selectedPurpose === "aluguel" ? "reais" : "milhares";
 
   function addPhotos(files: FileList | null) {
     if (!files) return;
@@ -162,7 +165,7 @@ export function UnitWizard({ accessToken, onClose, onSaved }: UnitWizardProps) {
               <label>Área (m²)<input type="number" min="0" step="0.01" value={area} onChange={(event) => setArea(event.target.value)} /></label>
               <label>Vagas<input type="number" min="0" value={vagas} onChange={(event) => setVagas(event.target.value)} /></label>
             </div>
-            <div className="unit-money-grid"><MoneyInput label="Valor de tabela" value={valorTabela} onChange={(value) => setValorTabela(value === null ? "" : String(value))} /><MoneyInput label="Valor promocional" value={valorPromo} onChange={(value) => setValorPromo(value === null ? "" : String(value))} /></div>
+            <div className="unit-money-grid"><MoneyInput key={`tabela-${moneyMode}`} defaultMode={moneyMode} label={selectedPurpose === "aluguel" ? "Aluguel mensal" : "Valor de tabela"} value={valorTabela} onChange={(value) => setValorTabela(value === null ? "" : String(value))} /><MoneyInput key={`promo-${moneyMode}`} defaultMode={moneyMode} label="Valor promocional" value={valorPromo} onChange={(value) => setValorPromo(value === null ? "" : String(value))} /></div>
           </div>
 
           <div className="form-section">

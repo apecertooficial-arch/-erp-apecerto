@@ -1,7 +1,7 @@
 import { createServerSupabaseClient } from "../../lib/supabase/server";
 import type { Database } from "../../lib/supabase/database.types";
 import { resolveEffectiveAccess, denyIfCannot } from "../../lib/supabase/authz";
-import { assessProductQuality, PRODUCT_PRICE_MAX, PRODUCT_PRICE_MIN, validateProductPrice } from "../../features/products/quality";
+import { assessProductQuality, isPlausibleProductPrice, validateProductPrice } from "../../features/products/quality";
 
 export const dynamic = "force-dynamic";
 
@@ -67,7 +67,7 @@ export async function GET(request: Request) {
     photos: photoCount, videos: videoCount, hasCover: media.some((item) => item.tipo === "foto" && item.is_capa),
     mediaCategories: media.filter((item) => item.tipo === "foto").map((item) => item.categoria ?? ""), tourUrl: data.tour_url,
     units: units.length, availableUnits: availableUnits.length,
-    unitsWithValidPrice: unitPrices.filter((value) => value >= PRODUCT_PRICE_MIN && value <= PRODUCT_PRICE_MAX).length,
+    unitsWithValidPrice: unitPrices.filter((value) => isPlausibleProductPrice(value, data.finalidade)).length,
     amenities: data.lazer, differentiators: data.diferenciais,
   });
   const { data: broker } = await auth.supabase.from("corretores").select("id").eq("usuario_id", auth.user.id).maybeSingle();
@@ -96,7 +96,7 @@ export async function GET(request: Request) {
     checks.owner = Boolean(data.proprietario_id || (data.proprietario_nome && data.proprietario_tel && data.proprietario_email));
     checks.access = Boolean(data.acesso_tipo && data.acesso_instrucoes && (data.acesso_tipo !== "chave_digital" || data.acesso_codigo));
   }
-  return Response.json({ product: { ...data, midias: media, unidades: unidadesEnriched, captado_por_nome: capturedByName, mine, summary_price: summaryPrice, summary_area: summaryArea, is_favorite: Boolean(favorite), leads: (leadOptions ?? []).map((lead) => ({ ...lead, linked: linkedIds.has(lead.id) })), quality, completion: { checks, completed: Object.values(checks).filter(Boolean).length, total: Object.keys(checks).length } } });
+  return Response.json({ product: { ...data, site_published: Boolean(data.publicado && !data.rascunho && data.aprovacao === "aprovado"), midias: media, unidades: unidadesEnriched, captado_por_nome: capturedByName, mine, summary_price: summaryPrice, summary_area: summaryArea, is_favorite: Boolean(favorite), leads: (leadOptions ?? []).map((lead) => ({ ...lead, linked: linkedIds.has(lead.id) })), quality, completion: { checks, completed: Object.values(checks).filter(Boolean).length, total: Object.keys(checks).length } } });
 }
 
 export async function PATCH(request: Request) {
@@ -105,6 +105,8 @@ export async function PATCH(request: Request) {
   const body = await request.json() as Record<string, unknown>;
   const id = typeof body.id === "string" ? body.id : "";
   if (!UUID.test(id)) return Response.json({ error: "Produto inválido." }, { status: 400 });
+  const { data: productContext } = await auth.supabase.from("empreendimentos").select("finalidade").eq("id", id).maybeSingle();
+  const currentPurpose = productContext?.finalidade ?? "venda";
 
   // Acesso efetivo resolvido uma vez; admin passa e, sem mapa, libera (RLS é a trava dura).
   // Aprovação/publicação continuam por role logo abaixo (decideUnit/publish).
@@ -125,11 +127,11 @@ export async function PATCH(request: Request) {
     if (!numero) return Response.json({ error: "Informe o número da unidade." }, { status: 400 });
     const valorTabela = asNumber(input.valor_tabela);
     if (valorTabela == null) return Response.json({ error: "Informe o valor de tabela da unidade." }, { status: 400 });
-    const tablePriceCheck = validateProductPrice(valorTabela, "Valor de tabela");
+    const tablePriceCheck = validateProductPrice(valorTabela, "Valor de tabela", currentPurpose);
     if (tablePriceCheck.error) return Response.json({ error: tablePriceCheck.error }, { status: 422 });
     const promoPrice = asNumber(input.valor_promo);
     if (promoPrice != null) {
-      const promoPriceCheck = validateProductPrice(promoPrice, "Valor promocional");
+      const promoPriceCheck = validateProductPrice(promoPrice, "Valor promocional", currentPurpose);
       if (promoPriceCheck.error) return Response.json({ error: promoPriceCheck.error }, { status: 422 });
     }
 
@@ -212,8 +214,8 @@ export async function PATCH(request: Request) {
     // Publicar / voltar a rascunho: só aprovadores (admin, gestor, executivo).
     if (!isApprover) return Response.json({ error: "Apenas administradores, gestores ou executivos podem publicar produtos." }, { status: 403 });
     if (body.action === "unpublish") {
-      const { error } = await auth.supabase.from("empreendimentos").update({ rascunho: true }).eq("id", id);
-      return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true, rascunho: true });
+      const { error } = await auth.supabase.from("empreendimentos").update({ rascunho: true, publicado: false }).eq("id", id);
+      return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true, rascunho: true, publicado: false });
     }
     // Publicar somente após a checagem profissional. A regra fica no servidor para não ser
     // contornada por chamadas diretas à API.
@@ -242,7 +244,7 @@ export async function PATCH(request: Request) {
       hasCover: publishMedia.some((item) => item.tipo === "foto" && item.is_capa),
       mediaCategories: publishMedia.filter((item) => item.tipo === "foto").map((item) => item.categoria ?? ""),
       tourUrl: productToPublish.tour_url, units: publishUnits.length, availableUnits: publishAvailable.length,
-      unitsWithValidPrice: publishPrices.filter((value) => value >= PRODUCT_PRICE_MIN && value <= PRODUCT_PRICE_MAX).length,
+      unitsWithValidPrice: publishPrices.filter((value) => isPlausibleProductPrice(value, productToPublish.finalidade)).length,
       amenities: productToPublish.lazer, differentiators: productToPublish.diferenciais,
     });
     if (!quality.readyForSite) {
@@ -305,7 +307,7 @@ export async function PATCH(request: Request) {
   }
   if (!update.nome || typeof update.nome !== "string") return Response.json({ error: "Informe o nome do produto." }, { status: 400 });
   if (update.preco !== null && update.preco !== undefined) {
-    const priceCheck = validateProductPrice(update.preco, "Preço do imóvel");
+    const priceCheck = validateProductPrice(update.preco, "Preço do imóvel", update.finalidade ?? currentPurpose);
     if (priceCheck.error) return Response.json({ error: priceCheck.error }, { status: 422 });
     update.preco = priceCheck.value;
   }
@@ -385,11 +387,11 @@ export async function PATCH(request: Request) {
         disponivel: item.disponivel !== false,
       };
       if (commonRow.valor_tabela != null) {
-        const priceCheck = validateProductPrice(commonRow.valor_tabela, "Valor de tabela");
+        const priceCheck = validateProductPrice(commonRow.valor_tabela, "Valor de tabela", update.finalidade ?? currentPurpose);
         if (priceCheck.error) return Response.json({ error: priceCheck.error }, { status: 422 });
       }
       if (commonRow.valor_promo != null) {
-        const priceCheck = validateProductPrice(commonRow.valor_promo, "Valor promocional");
+        const priceCheck = validateProductPrice(commonRow.valor_promo, "Valor promocional", update.finalidade ?? currentPurpose);
         if (priceCheck.error) return Response.json({ error: priceCheck.error }, { status: 422 });
       }
       const unitId = typeof item.id === "string" && existingIds.has(item.id) ? item.id : null;

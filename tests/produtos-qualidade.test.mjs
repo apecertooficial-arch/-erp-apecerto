@@ -20,7 +20,30 @@ test("preço em milhares tem confirmação visual e validação também no servi
   assert.match(moneyInput, /Em milhares/);
   assert.match(moneyInput, /O imóvel será salvo por/);
   assert.match(quality, /PRODUCT_PRICE_MIN = 100_000/);
+  assert.match(quality, /RENT_PRICE_MIN = 500/);
+  assert.match(quality, /productPriceBounds/);
+  assert.match(quality, /raw\.replace\(\/\\\.\/g, ""\)/);
   assert.match(capture, /validateProductPrice/);
+});
+
+test("nota pode chegar a 100 e publicação reflete a view pública", () => {
+  const quality = read("app/features/products/quality.ts");
+  const catalog = read("app/api/catalog/route.ts");
+  const detail = read("app/features/products/ProductDetail.tsx");
+  assert.match(quality, /cadastro \+= 5/);
+  assert.match(quality, /cadastro \+= 3/);
+  assert.match(quality, /cadastro \+= 4/);
+  assert.match(catalog, /item\.publicado && !item\.rascunho/);
+  assert.match(detail, /site_published/);
+});
+
+test("ERP e site compartilham título, tour e link direto do imóvel", () => {
+  const detail = read("app/features/products/ProductDetail.tsx");
+  const migration = read("supabase/migrations/20260818130000_produtos_site_conectados.sql");
+  assert.match(detail, /\?imovel=/);
+  assert.match(migration, /e\.titulo/);
+  assert.match(migration, /e\.tour_url/);
+  assert.match(migration, /security_invoker = true/);
 });
 
 test("cadastro profissional alimenta os campos comerciais já usados pelo site", () => {

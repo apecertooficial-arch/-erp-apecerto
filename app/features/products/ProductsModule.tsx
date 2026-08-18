@@ -28,7 +28,7 @@ type CatalogResponse = {
   mode: string;
   count: number;
   catalog: Array<{
-    id: string; name: string; developer: string | null; neighborhood: string; city: string;
+    id: string; name: string; title?: string | null; slug?: string | null; purpose?: string | null; address?: string | null; developer: string | null; neighborhood: string; city: string;
     status: string; price: number | null; area: number | null; bedrooms: number | null;
     parking: number | null; available: number; units: number; media: number;
     coverUrl: string | null; draft: boolean; origin: string; favorite: boolean;
@@ -86,7 +86,8 @@ export function ProductsModule({ accessToken }: { accessToken: string }) {
       if (!response.ok) throw new Error("Não foi possível consultar o catálogo.");
       const result = await response.json() as CatalogResponse;
       setProducts(result.catalog.map((item) => ({
-        id: item.id, name: item.name, developer: item.developer,
+        id: item.id, name: item.name, title: item.title ?? null, slug: item.slug ?? null,
+        purpose: item.purpose ?? null, address: item.address ?? null, developer: item.developer,
         price: item.price === null ? "Preço sob consulta" : currency.format(item.price),
         neighborhood: item.neighborhood, city: item.city, status: item.status,
         area: item.area ?? 0, bedrooms: item.bedrooms ?? 0, parking: item.parking ?? 0,
@@ -116,7 +117,9 @@ export function ProductsModule({ accessToken }: { accessToken: string }) {
   }, [canApprove, pendingCount, pendingUnits, publicarBadge]);
 
   const filtered = useMemo(() => products.filter((product) => {
-    const matchesQuery = product.name.toLowerCase().includes(query.toLowerCase()) || product.neighborhood.toLowerCase().includes(query.toLowerCase());
+    const queryKey = normalizedKey(query);
+    const matchesQuery = !queryKey || [product.name, product.title, product.address, product.neighborhood, product.city, product.developer]
+      .some((value) => normalizedKey(value).includes(queryKey));
     const normalize = (value: string) => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace("_", " ").toLowerCase();
     const matchesStatus = status === "Todos" || normalize(product.status ?? "") === normalize(status);
     const matchesNeighborhood = neighborhood === "Todos" || normalizedKey(product.neighborhood) === normalizedKey(neighborhood);
@@ -146,7 +149,7 @@ export function ProductsModule({ accessToken }: { accessToken: string }) {
     good: products.filter((item) => item.quality?.level === "bom").length,
     attention: products.filter((item) => item.quality?.level === "atencao").length,
     critical: products.filter((item) => item.quality?.level === "critico").length,
-    readyForSite: products.filter((item) => item.quality?.readyForSite).length,
+    readyForSite: products.filter((item) => item.quality?.readyForSite && !item.published).length,
     average: products.length ? Math.round(products.reduce((sum, item) => sum + (item.quality?.score ?? 0), 0) / products.length) : 0,
   }), [products]);
 
@@ -160,7 +163,17 @@ export function ProductsModule({ accessToken }: { accessToken: string }) {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url; link.download = `catalogo-apecerto-${new Date().toISOString().slice(0, 10)}.csv`; link.click();
-    URL.revokeObjectURL(url);
+    window.setTimeout(() => URL.revokeObjectURL(url), 1_000);
+  }
+
+  const hasActiveFilters = Boolean(query || status !== "Todos" || neighborhood !== "Todos" || developer !== "Todas"
+    || priceBand !== "Todas" || bedrooms !== "Qualquer" || stockOnly || favoritesOnly || noMediaOnly
+    || approvalFilter || qualityFilter !== "Todas" || publicationFilter !== "Todos" || sortBy !== "quality-asc");
+
+  function clearFilters() {
+    setQuery(""); setStatus("Todos"); setNeighborhood("Todos"); setDeveloper("Todas"); setPriceBand("Todas");
+    setBedrooms("Qualquer"); setStockOnly(false); setFavoritesOnly(false); setNoMediaOnly(false); setApprovalFilter(false);
+    setQualityFilter("Todas"); setPublicationFilter("Todos"); setSortBy("quality-asc");
   }
 
   if (ehCelular === null) return null;
@@ -222,7 +235,7 @@ export function ProductsModule({ accessToken }: { accessToken: string }) {
       <section className="product-quality-overview" aria-label="Saúde do portfólio">
         <button type="button" className={qualityFilter === "Todas" ? "active" : ""} onClick={() => setQualityFilter("Todas")}><span>Nota média</span><strong>{qualitySummary.average}</strong><small>de 100</small></button>
         <button type="button" className={qualityFilter === "excelente" ? "active" : ""} onClick={() => setQualityFilter("excelente")}><span>Excelentes</span><strong>{qualitySummary.excellent}</strong><small>90 a 100</small></button>
-        <button type="button" className={qualityFilter === "bom" ? "active" : ""} onClick={() => setQualityFilter("bom")}><span>Prontos para evoluir</span><strong>{qualitySummary.good}</strong><small>75 a 89</small></button>
+        <button type="button" className={qualityFilter === "bom" ? "active" : ""} onClick={() => setQualityFilter("bom")}><span>Bons</span><strong>{qualitySummary.good}</strong><small>75 a 89</small></button>
         <button type="button" className={qualityFilter === "atencao" ? "active" : ""} onClick={() => setQualityFilter("atencao")}><span>Com atenção</span><strong>{qualitySummary.attention}</strong><small>60 a 74</small></button>
         <button type="button" className={qualityFilter === "critico" ? "active" : ""} onClick={() => setQualityFilter("critico")}><span>Críticos</span><strong>{qualitySummary.critical}</strong><small>prioridade</small></button>
         <button type="button" className={publicationFilter === "ready" ? "active" : ""} onClick={() => { setQualityFilter("Todas"); setPublicationFilter(publicationFilter === "ready" ? "Todos" : "ready"); }}><span>Prontos para o site</span><strong>{qualitySummary.readyForSite}</strong><small>sem bloqueios</small></button>
@@ -235,7 +248,7 @@ export function ProductsModule({ accessToken }: { accessToken: string }) {
           <button className={favoritesOnly ? "favorite-filter active" : "favorite-filter"} onClick={() => setFavoritesOnly(!favoritesOnly)} type="button">★ Meus favoritos</button>
           {canApprove && <button className={approvalFilter ? "approval-filter active" : "approval-filter"} onClick={() => setApprovalFilter((v) => !v)} type="button">⏳ Pendentes de aprovação{(pendingCount + pendingUnits.length) > 0 && <b>{pendingCount + pendingUnits.length}</b>}</button>}
         </div>
-        <div className="filter-row selects"><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar produto..." /><select aria-label="Bairro" value={neighborhood} onChange={(event) => setNeighborhood(event.target.value)}><option value="Todos">Todos os bairros</option>{neighborhoods.map((item) => <option key={item}>{item}</option>)}</select><select aria-label="Incorporadora" value={developer} onChange={(event) => setDeveloper(event.target.value)}><option value="Todas">Todas as incorporadoras</option>{developers.map((item) => <option key={item}>{item}</option>)}</select><select aria-label="Faixa de preço" value={priceBand} onChange={(event) => setPriceBand(event.target.value)}><option>Todas</option><option>Até 500 mil</option><option>500 mil a 1 mi</option><option>Acima de 1 mi</option></select><select aria-label="Dormitórios" value={bedrooms} onChange={(event) => setBedrooms(event.target.value)}><option value="Qualquer">Qualquer dorm.</option><option value="0">Studio</option><option value="1">1 dorm.</option><option value="2">2 dorm.</option><option value="3">3 dorm.</option><option value="4">4+ dorm.</option></select><select aria-label="Publicação" value={publicationFilter} onChange={(event) => setPublicationFilter(event.target.value)}><option value="Todos">Todos no site</option><option value="site">Publicados</option><option value="ready">Prontos para publicar</option><option value="blocked">Bloqueados</option></select><select aria-label="Ordenação" value={sortBy} onChange={(event) => setSortBy(event.target.value)}><option value="quality-asc">Menor nota primeiro</option><option value="quality-desc">Maior nota primeiro</option><option value="updated">Atualizados recentemente</option><option value="price-asc">Menor preço</option><option value="price-desc">Maior preço</option></select><label className="toggle"><input type="checkbox" checked={stockOnly} onChange={(event) => setStockOnly(event.target.checked)} /> Com estoque disponível</label><label className="toggle"><input type="checkbox" checked={noMediaOnly} onChange={(event) => setNoMediaOnly(event.target.checked)} /> Sem material (book)</label><span className="product-count">{filtered.length} produtos exibidos</span></div>
+        <div className="filter-row selects"><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar nome, título, rua ou incorporadora..." /><select aria-label="Bairro" value={neighborhood} onChange={(event) => setNeighborhood(event.target.value)}><option value="Todos">Todos os bairros</option>{neighborhoods.map((item) => <option key={item}>{item}</option>)}</select><select aria-label="Incorporadora" value={developer} onChange={(event) => setDeveloper(event.target.value)}><option value="Todas">Todas as incorporadoras</option>{developers.map((item) => <option key={item}>{item}</option>)}</select><select aria-label="Faixa de preço" value={priceBand} onChange={(event) => setPriceBand(event.target.value)}><option>Todas</option><option>Até 500 mil</option><option>500 mil a 1 mi</option><option>Acima de 1 mi</option></select><select aria-label="Dormitórios" value={bedrooms} onChange={(event) => setBedrooms(event.target.value)}><option value="Qualquer">Qualquer dorm.</option><option value="0">Studio</option><option value="1">1 dorm.</option><option value="2">2 dorm.</option><option value="3">3 dorm.</option><option value="4">4+ dorm.</option></select><select aria-label="Publicação" value={publicationFilter} onChange={(event) => setPublicationFilter(event.target.value)}><option value="Todos">Todos os produtos</option><option value="site">Publicados no site</option><option value="ready">Prontos para publicar</option><option value="blocked">Bloqueados para publicação</option></select><select aria-label="Ordenação" value={sortBy} onChange={(event) => setSortBy(event.target.value)}><option value="quality-asc">Menor nota primeiro</option><option value="quality-desc">Maior nota primeiro</option><option value="updated">Atualizados recentemente</option><option value="price-asc">Menor preço</option><option value="price-desc">Maior preço</option></select><label className="toggle"><input type="checkbox" checked={stockOnly} onChange={(event) => setStockOnly(event.target.checked)} /> Com estoque disponível</label><label className="toggle"><input type="checkbox" checked={noMediaOnly} onChange={(event) => setNoMediaOnly(event.target.checked)} /> Sem nenhuma mídia</label>{hasActiveFilters && <button className="secondary-action clear-product-filters" type="button" onClick={clearFilters}>Limpar filtros</button>}<span className="product-count">{filtered.length} produtos exibidos</span></div>
       </section>
       {canApprove && approvalFilter && pendingUnits.length > 0 && <section className="pending-units">
         <h3>Unidades pendentes de aprovação <span>{pendingUnits.length}</span></h3>
@@ -252,7 +265,7 @@ export function ProductsModule({ accessToken }: { accessToken: string }) {
           <div className="product-info"><strong className="price">{product.price}</strong><h2>{product.name}</h2><p className="location">⌖ {product.neighborhood} · {product.city}</p>{product.developer && <p className="developer">{product.developer}</p>}
             <div className="specs"><span className="s-area"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 3h18v18H3z"/><path d="M9 3v4"/><path d="M15 17v4"/><path d="M3 9h4"/><path d="M17 15h4"/></svg>{product.area} m²</span><span className="s-dorm"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M2 18v-6a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v6"/><path d="M4 18v3"/><path d="M20 18v3"/><path d="M6 10V7a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v3"/></svg>{product.bedrooms} dorm.</span><span className="s-vaga"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 17h14"/><path d="M6 17v2"/><path d="M18 17v2"/><path d="M4 17l1.5-5.5A2 2 0 0 1 7.4 10h9.2a2 2 0 0 1 1.9 1.5L20 17z"/></svg>{product.parking} vaga</span></div>
             <div className="estoque"><div className="estoque-top"><strong>{product.available} de {product.units ?? 0} disponíveis</strong><span>{product.media ?? 0} mídias</span></div><div className="estoque-bar"><i style={{ width: `${product.units ? Math.min(100, Math.round((product.available / product.units) * 100)) : 0}%` }} /></div></div>
-            {product.topIssue && <p className="product-top-issue">⚠ {product.topIssue}</p>}{product.approval === "reprovado" && product.rejectionReason && <p className="approval-reason">Motivo: {product.rejectionReason}</p>}{canApprove && product.approval === "pendente" && !product.draft && <p className="approval-captador">👤 Captado por: {product.capturedBy ?? "Não informado"}</p>}{canApprove && product.approval === "pendente" && !product.draft && product.id && <div className="approval-actions" onClick={(event) => event.stopPropagation()}><button type="button" className="ap-review" onClick={() => setSelectedProductId(product.id!)}>Revisar ficha para aprovar</button></div>}<footer><strong>{product.priceM2}</strong><span>{product.leads > 0 ? `${product.leads} lead(s) · ` : ""}{product.published ? "● No site" : product.quality?.readyForSite ? "Pronto para o site" : "Cadastro incompleto"}</span></footer></div></article>)}
+            {product.topIssue && <p className="product-top-issue">⚠ {product.topIssue}</p>}{product.approval === "reprovado" && product.rejectionReason && <p className="approval-reason">Motivo: {product.rejectionReason}</p>}{canApprove && product.approval === "pendente" && !product.draft && <p className="approval-captador">👤 Captado por: {product.capturedBy ?? "Não informado"}</p>}{canApprove && product.approval === "pendente" && !product.draft && product.id && <div className="approval-actions" onClick={(event) => event.stopPropagation()}><button type="button" className="ap-review" onClick={() => setSelectedProductId(product.id!)}>Revisar ficha para aprovar</button></div>}<footer><strong>{product.priceM2}</strong><span>{product.leads > 0 ? `${product.leads} lead(s) vinculado(s) · ` : ""}{product.published ? "● Publicado no site" : product.quality?.readyForSite ? "Pronto para publicar" : "Cadastro incompleto"}</span></footer></div></article>)}
       </section>
       {captureOpen && <CaptureWizard onClose={() => setCaptureOpen(false)} onSaved={() => {
         setCaptureOpen(false);

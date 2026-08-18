@@ -3,6 +3,10 @@ import type { ProductQuality } from "./quality";
 export type Product = {
   id?: string;
   name: string;
+  title?: string | null;
+  slug?: string | null;
+  purpose?: string | null;
+  address?: string | null;
   price: string;
   neighborhood: string;
   city: string;
