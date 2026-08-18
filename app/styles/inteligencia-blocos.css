@@ -1,0 +1,56 @@
+/* BLOCOS RICOS DO PROTÓTIPO — distribuição em baldes, fila com ações, barras de
+ * critério e cobertura por horário.
+ *
+ * O protótipo não usa só KPI + lista: cada tela de operação tem um bloco próprio
+ * com forma própria. Estas são as quatro formas que faltavam, todas prefixadas
+ * por .int-area.
+ */
+
+/* BALDES DE TEMPO (Atendimento e SLA) — cinco caixas com barra embaixo. */
+.int-area .intp-baldes { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; }
+.int-area .intp-balde { background: #fff; border-radius: 16px; padding: 13px 15px; box-shadow: 0 2px 6px rgba(31, 28, 26, 0.06); display: flex; flex-direction: column; gap: 7px; }
+.int-area .intp-balde-rot { font-size: 11.5px; font-weight: 600; color: #6e6760; }
+.int-area .intp-balde-rot b { font-weight: 700; }
+.int-area .intp-balde-num { font-size: 24px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+.int-area .intp-balde-trilha { display: block; height: 6px; border-radius: 999px; background: #f2efec; overflow: hidden; }
+.int-area .intp-balde-barra { display: block; height: 6px; border-radius: 999px; }
+
+/* FILA COM AÇÕES — lista clicável com contagem e seta (Atendimento, Alertas). */
+.int-area .intp-fila { background: #fff; border-radius: 18px; padding: 8px 10px; box-shadow: 0 2px 6px rgba(31, 28, 26, 0.06); display: flex; flex-direction: column; gap: 2px; }
+.int-area button.intp-fila-item { display: grid; grid-template-columns: 10px 1fr auto 16px; gap: 10px; align-items: center; min-height: 46px; padding: 8px 10px; border: 1.5px solid transparent; border-radius: 14px; background: none; font-family: inherit; text-align: left; cursor: pointer; }
+.int-area button.intp-fila-item:hover { background: #faf8f6; }
+.int-area button.intp-fila-item.ativa { border-color: #ff7000; background: #fff3ea; }
+.int-area .intp-fila-dot { width: 9px; height: 9px; border-radius: 999px; }
+.int-area .intp-fila-nome { font-size: 12.5px; font-weight: 600; color: #1f1c1a; }
+.int-area .intp-fila-num { font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.int-area .intp-fila-seta { font-size: 13px; color: #c9c2ba; }
+
+/* BARRAS DE CRITÉRIO (Qualidade) — roxo, uma linha por critério. */
+.int-area .intp-crit { display: grid; grid-template-columns: 168px 1fr 44px; gap: 10px; align-items: center; padding: 6px 0; }
+.int-area .intp-crit-rot { font-size: 12px; font-weight: 600; color: #4d4842; }
+.int-area .intp-crit-trilha { display: block; height: 9px; border-radius: 999px; background: #f2efec; overflow: hidden; }
+.int-area .intp-crit-barra { display: block; height: 9px; border-radius: 999px; background: #8b00cc; }
+.int-area .intp-crit-nota { text-align: right; font-size: 12.5px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.int-area button.intp-crit-linha { display: contents; border: 0; background: none; font-family: inherit; cursor: pointer; }
+
+/* COBERTURA POR HORÁRIO (Gerentes) — faixa por período do dia. */
+.int-area .intp-cob { display: grid; grid-template-columns: 96px 1fr 44px; gap: 10px; align-items: center; padding: 5px 0; }
+.int-area .intp-cob-rot { font-size: 12px; color: #4d4842; font-weight: 600; }
+.int-area .intp-cob-trilha { display: block; height: 10px; border-radius: 999px; background: #f2efec; overflow: hidden; }
+.int-area .intp-cob-barra { display: block; height: 10px; border-radius: 999px; }
+.int-area .intp-cob-num { text-align: right; font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; }
+
+/* Duas colunas desiguais, como nos artboards de operação. */
+.int-area .intp-op-duas { display: grid; grid-template-columns: 1fr 1.15fr; gap: 12px; align-items: start; }
+.int-area .intp-op-tres { display: grid; grid-template-columns: 1fr 1fr 1.1fr; gap: 12px; align-items: start; }
+
+@media (max-width: 1100px) {
+  .int-area .intp-baldes { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .int-area .intp-op-duas, .int-area .intp-op-tres { grid-template-columns: 1fr; }
+  .int-area .intp-crit { grid-template-columns: 130px 1fr 40px; }
+}
+
+@media (max-width: 720px) {
+  .int-area .intp-baldes { grid-template-columns: 1fr; }
+  .int-area button.intp-fila-item { min-height: 52px; }
+}
