@@ -15,16 +15,16 @@ import { pathDoModulo, podeVer } from "../features/system/erp-routes";
    olhar o outro faz item saltar de lugar.
 
    Nenhum item foi removido em relação ao publicado. */
-const adminMainItems: ModuleName[] = ["Início", "CRM", "Performance", "Produtos", "Financeiro"];
+const adminMainItems: ModuleName[] = ["Início", "CRM", "Produtos", "Financeiro"];
 const adminToolItems: ModuleName[] = ["Abordagens", "Automações", "Financiamento", "Chat ao Vivo", "Disparos", "Calendário", "Projetos e Tarefas", "Agentes de IA", "Notificações", "Base de conhecimento"];
 const adminSystemItems: ModuleName[] = ["Usuários", "Perfis e Permissões", "Auditoria", "Configurações", "Ajuda"];
-const brokerMainItems: ModuleName[] = ["Início", "CRM", "Performance", "Produtos", "Financeiro"];
+const brokerMainItems: ModuleName[] = ["Início", "CRM", "Produtos", "Financeiro"];
 const brokerToolItems: ModuleName[] = ["Chat ao Vivo", "Financiamento", "Disparos", "Calendário", "Notificações"];
 const brokerSystemItems: ModuleName[] = ["Configurações", "Ajuda"];
 
 /* Rótulo mostrado no menu. Inteligência/Performance foi retirada desta casca
    durante a reconstrução visual e só volta quando a nova rota for aprovada. */
-const rotulosMenu: Partial<Record<ModuleName, string>> = { CRM: "CRM · Meu Dia", Performance: "Inteligência Digital" };
+const rotulosMenu: Partial<Record<ModuleName, string>> = { CRM: "CRM · Meu Dia" };
 
 function NavIcon({ item }: { item: ModuleName }) {
   const common = { width: 19, height: 19, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.8, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };

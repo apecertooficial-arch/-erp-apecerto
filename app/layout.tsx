@@ -27,7 +27,6 @@ import "./styles/tela-produtos-tour.css";
 import "./styles/tela-suporte-financiamento.css";
 /* Módulos ativos antes injetados por JavaScript; estáticos e únicos. */
 import "./styles/funil-2.css";
-import "./styles/inteligencia-visual.css";
 /* DESENHO VIGENTE DO ERP (desktop) — padrão apêcerto.
 
    UMA camada de desenho, dividida por domínio do mesmo jeito que o resto deste

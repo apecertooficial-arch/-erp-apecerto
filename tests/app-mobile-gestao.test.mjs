@@ -23,8 +23,8 @@ test("barra separa rotina de corretor e gestor", () => {
   assert.deepEqual(corretor.barra, ["Início", "CRM", "Calendário", "Notificações"]);
   // "Minha Equipe" e mobile:false enquanto perf_snapshots nao existir no banco.
   // Sem o slug "calendario", Calendario cai no fail-closed do podeVer.
-  assert.deepEqual(gestor.barra, ["Performance", "Produtos", "Configurações"]);
-  assert.deepEqual(gestorComAgenda.barra, ["Performance", "Produtos", "Calendário", "Configurações"]);
+  assert.deepEqual(gestor.barra, ["Produtos", "Configurações"]);
+  assert.deepEqual(gestorComAgenda.barra, ["Produtos", "Calendário", "Configurações"]);
 });
 
 test("Mais é uma folha real e Gestão respeita permissões", () => {

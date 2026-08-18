@@ -64,7 +64,8 @@ export const rotasModulo: Record<ModuleName, RotaModulo> = {
   "Minha Equipe": { path: "/equipe", slugs: [], classe: "B", rotuloCurto: "Equipe", mobile: false },
   /* Rotulo "Inicio": no celular do gestor esta e a primeira tela, o resumo da
      operacao. "Painel" dizia onde ele estava, nao o que ia encontrar. */
-  Performance: { path: "/inteligencia", slugs: ["performance"], classe: "B", rotuloCurto: "Inteligência", mobile: true },
+  /* Módulo temporariamente fora da navegação durante a reconstrução visual. */
+  Performance: { path: "/performance", slugs: ["performance"], classe: "B", rotuloCurto: "Performance", mobile: false },
   Abordagens: { path: "/abordagens", slugs: ["abordagens"], classe: "B", mobile: false },
   "Automações": { path: "/automacoes", slugs: ["automacoes"], classe: "B", mobile: false },
   "Agentes de IA": { path: "/agentes-ia", slugs: ["agentes_ia"], classe: "B", rotuloCurto: "Agentes", mobile: false },
@@ -90,7 +91,7 @@ export const rotasModulo: Record<ModuleName, RotaModulo> = {
 const barraCorretor: ModuleName[] = ["Início", "CRM", "Calendário", "Notificações"];
 /* Barra do gestor: Inicio (resumo da operacao), Produtos, Calendario, Gestao.
    Equipe saiu -- ver a nota em "Minha Equipe". */
-const barraGestor: ModuleName[] = ["Performance", "Produtos", "Calendário", "Configurações"];
+const barraGestor: ModuleName[] = ["Início", "Produtos", "Calendário", "Configurações"];
 
 const porPath = new Map<string, ModuleName>(
   (Object.entries(rotasModulo) as Array<[ModuleName, RotaModulo]>).map(([nome, rota]) => [rota.path, nome]),

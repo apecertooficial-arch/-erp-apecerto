@@ -52,8 +52,7 @@ test("ADMIN pode ver todo modulo administrativo, e o app so oferece os que tem t
   }
   const { barra, mais } = itensDaNavegacao(ADMIN);
   const alcancaveis = new Set([...barra, ...mais]);
-  assert.ok(alcancaveis.has("Performance"), "Inteligência tem tela de celular e precisa aparecer no app");
-  for (const m of ["Usuários", "Perfis e Permissões", "Auditoria", "Financeiro", "Minha Equipe"]) {
+  for (const m of ["Usuários", "Perfis e Permissões", "Auditoria", "Financeiro", "Performance", "Minha Equipe"]) {
     assert.ok(!alcancaveis.has(m), `${m} e mobile:false: o app nao pode oferecer o caminho`);
   }
 });
@@ -64,7 +63,7 @@ test("gestor tem Inicio, Produtos, Agenda e Gestao na barra", () => {
   // nao existir no banco (a tela abria so com erro). O lugar dela e a barra
   // completa do computador; no celular o gestor tem Inicio, Produtos, Agenda e
   // Gestao. Ver a nota em rotasModulo["Minha Equipe"].
-  assert.deepEqual(itensDaNavegacao(GESTOR).barra, ["Performance", "Produtos", "Calendário", "Configurações"]);
+  assert.deepEqual(itensDaNavegacao(GESTOR).barra, ["Início", "Produtos", "Calendário", "Configurações"]);
   assert.ok(!itensDaNavegacao(GESTOR).mais.includes("Minha Equipe"), "modulo sem tela de celular nao pode cair na folha Mais");
 });
 
