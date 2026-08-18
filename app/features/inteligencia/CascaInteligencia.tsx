@@ -1,19 +1,17 @@
 "use client";
 
-/* CASCA DA INTELIGÊNCIA — navegação e cabeçalho idênticos ao protótipo.
+/* CASCA DA INTELIGÊNCIA — cabeçalho, navegação e filtros como no protótipo.
  *
- * Primeiro nível: o SEGMENTADO “Site e marketing / Performance”. Segundo nível: a
- * fileira de pílulas da família ativa (8 no site e marketing, 9 na performance).
- * Uma barra de filtros comum às 17, cujo recorte é da área — trocar de família ou
- * de página não limpa filtro.
+ * Primeiro nível: segmentado “Site e marketing / Performance”. Segundo nível: as
+ * páginas da família ativa. Uma barra de filtros comum às 17, cujo recorte é da
+ * área — trocar de família ou de página não limpa filtro.
  *
- * Cabeçalho conferido contra os artboards nesta rodada: o selo do topo é
- * “DEMONSTRAÇÃO — números ilustrativos” mais a pílula verde de atualização (“Ao
- * vivo” nas telas de fila, “Atualizado” nas demais), e cada página tem o subtítulo
- * do desenho — os dois vinham diferentes.
- *
- * O Copiloto (32a) fica entre a barra de filtros e o conteúdo, nas 17 páginas.
- * O briefing (32f) aparece na Visão CEO.
+ * Correções desta rodada, vindas da comparação lado a lado com os artboards:
+ *   · cada dimensão de filtro é um DROPDOWN (chevron), não uma pílula chapada;
+ *   · filtro ativo virou chip roxo com ✕ e rótulo completo;
+ *   · a barra ficou em uma faixa só, com a contagem e a nota de interação à direita;
+ *   · o selo do topo declara a carga: “Atualizado 14:32 · dados até 14:15”, e “Ao
+ *     vivo” nas telas de fila, que atualizam em tempo real.
  */
 
 import { useMemo, useState } from "react";
@@ -34,8 +32,7 @@ export type Recorte = {
 
 export type PropsTela = { accessToken: string; recorte: Recorte };
 
-/* Telas de fila mostram “Ao vivo”; as de análise, “Atualizado”. Mesmo texto do
-   protótipo — a diferença existe porque fila crítica atualiza em tempo real. */
+/* Telas de fila mostram “Ao vivo”; as de análise, a carga fechada. */
 const aoVivo = new Set(["atendimento", "alertas"]);
 
 export function CascaInteligencia({ accessToken }: { accessToken: string }) {
@@ -69,6 +66,8 @@ export function CascaInteligencia({ accessToken }: { accessToken: string }) {
 
   const Publicada = telasPublicadas[tela.chave];
   const familia = grupos.find((g) => g.chave === grupo);
+  /* Dimensão com chip ativo aparece marcada no próprio dropdown. */
+  const dimensaoAtiva = (f: string) => chips.some((c) => c.startsWith(`${f}:`));
 
   return (
     <div className="int-area">
@@ -82,7 +81,7 @@ export function CascaInteligencia({ accessToken }: { accessToken: string }) {
           <span className="int-selo-pend">DEMONSTRAÇÃO — números ilustrativos</span>
           <span className="int-selo-vivo">
             <i />
-            {aoVivo.has(tela.chave) ? "Ao vivo · atualizado 14:32" : "Atualizado 14:32"}
+            {aoVivo.has(tela.chave) ? "Ao vivo · atualizado 14:32" : "Atualizado 14:32 · dados até 14:15"}
           </span>
           <button type="button" className="int-btn">Exportar · CSV / PDF</button>
         </div>
@@ -107,7 +106,6 @@ export function CascaInteligencia({ accessToken }: { accessToken: string }) {
             </button>
           ))}
         </span>
-        <span className="int-divisor" />
         <span className="int-familia-nota">{familia?.publico}</span>
       </div>
 
@@ -136,28 +134,36 @@ export function CascaInteligencia({ accessToken }: { accessToken: string }) {
               </button>
             ))}
           </span>
-          <button type="button" className={`int-chip-filtro${comparar ? " ligado" : ""}`} onClick={() => setComparar((v) => !v)}>
+          <button type="button" className={`int-drop${comparar ? " ligado" : ""}`} onClick={() => setComparar((v) => !v)}>
             vs. período anterior
           </button>
-          <span className="int-divisor" />
           {tela.filtros.map((f) => (
-            <button key={f} type="button" className="int-chip-filtro" onClick={() => recorte.filtrar(`${f}: todos`)}>
+            <button
+              key={f}
+              type="button"
+              className={`int-drop${dimensaoAtiva(f) ? " ligado" : ""}`}
+              onClick={() => recorte.filtrar(`${f}: todos`)}
+            >
               {f}
             </button>
           ))}
           {chips.map((c) => (
-            <button key={c} type="button" className="int-chip-ativo" onClick={() => setChips((atuais) => atuais.filter((x) => x !== c))}>
-              {c} ✕
+            <button key={c} type="button" className="int-chip-ativo" onClick={() => setChips((atuais) => atuais.filter((x) => x !== c))} title={`Remover ${c}`}>
+              {c}
+              <span aria-hidden="true">✕</span>
             </button>
           ))}
+          <span className="int-filtros-nota">clicar em uma série, barra ou linha da tabela filtra o resto da página</span>
         </div>
         <div className="int-filtros-rodape">
           <span className={chips.length ? "int-contagem-ativa" : ""}>
-            {chips.length ? `${chips.length} ${chips.length === 1 ? "filtro ativo" : "filtros ativos"} ·` : "nenhum filtro ativo ·"}
+            {chips.length ? `${chips.length} ${chips.length === 1 ? "filtro ativo" : "filtros ativos"}` : "nenhum filtro ativo"}
           </span>
-          <button type="button" className="int-link" onClick={() => setChips([])}>
-            Limpar filtros
-          </button>
+          {chips.length ? (
+            <button type="button" className="int-link" onClick={() => setChips([])}>
+              Limpar filtros
+            </button>
+          ) : null}
           <span className="int-filtros-nota">o recorte é da área: trocar de família ou de página não limpa filtro</span>
         </div>
       </div>

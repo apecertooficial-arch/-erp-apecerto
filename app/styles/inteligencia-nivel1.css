@@ -1,27 +1,57 @@
-/* Complemento da casca — segmentado de primeiro nível, badge da pílula e o selo de
- * atualização do cabeçalho.
+/* Complemento da casca — segmentado, badge, selo de atualização e a barra de
+ * filtros no formato do protótipo.
  *
- * O primeiro nível do protótipo é UMA cápsula com duas metades (Site e marketing /
- * Performance), não quatro pílulas soltas. Prefixado por .int-area.
+ * Diferenças corrigidas nesta rodada, todas visíveis na comparação lado a lado:
+ *
+ *  1. FILTRO É DROPDOWN, não pílula chapada: cada dimensão abre opções, então
+ *     carrega o chevron — sem ele o botão mente sobre o que faz.
+ *  2. FILTRO ATIVO é chip roxo com ✕ e o rótulo completo (“Dispositivo: celular”),
+ *     não um chip laranja genérico.
+ *  3. A barra tem uma linha só: período · comparação · dimensões, com a contagem e
+ *     a nota de interação na mesma faixa — no publicado eram duas linhas altas.
+ *  4. LAYOUT EM DUAS COLUNAS (.int-duas / .int-duas-inv): o protótipo põe funil e
+ *     jornada lado a lado; a publicação empilhava tudo em coluna única.
  */
 
 .int-area .int-nivel1 { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .int-area .int-segmentado { display: inline-flex; border: 1px solid #e4dfd9; border-radius: 999px; overflow: hidden; background: #fff; }
-.int-area .int-segmentado button { height: 38px; padding: 0 20px; border: 0; background: #fff; color: #6e6760; font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+.int-area .int-segmentado button { height: 36px; padding: 0 18px; border: 0; background: #fff; color: #6e6760; font-family: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer; }
 .int-area .int-segmentado button:hover { background: #faf8f6; }
 .int-area .int-segmentado button.ativo { background: #fff3ea; color: #cc5800; font-weight: 700; box-shadow: inset 0 0 0 1.5px #ff7000; border-radius: 999px; }
-.int-area .int-familia-nota { font-size: 12px; color: #9a938b; }
+.int-area .int-familia-nota { font-size: 11.5px; color: #9a938b; }
 .int-area .int-pagina { display: inline-flex; align-items: center; gap: 7px; }
 .int-area .int-pagina-badge { font-size: 10.5px; font-weight: 700; background: #fbe5e5; color: #b02b2b; border-radius: 999px; padding: 2px 7px; }
 .int-area .int-pagina.ativo .int-pagina-badge { background: #ffe4d1; color: #cc5800; }
 
 /* Selo de atualização — pílula verde do artboard, com o ponto à esquerda. */
-.int-area .int-selo-vivo { display: inline-flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 600; color: #1e7a46; background: #e4f6ec; border-radius: 999px; padding: 7px 14px; white-space: nowrap; }
+.int-area .int-selo-vivo { display: inline-flex; align-items: center; gap: 7px; font-size: 11.5px; font-weight: 600; color: #1e7a46; background: #e4f6ec; border-radius: 999px; padding: 6px 13px; white-space: nowrap; }
 .int-area .int-selo-vivo i { width: 7px; height: 7px; border-radius: 999px; background: #1fa85a; flex: none; }
+
+/* Filtro como dropdown: chevron desenhado em CSS, sem depender de ícone. */
+.int-area .int-drop { display: inline-flex; align-items: center; gap: 7px; height: 30px; padding: 0 12px; border: 1px solid #e4dfd9; border-radius: 999px; background: #fff; color: #4d4842; font-family: inherit; font-size: 11.5px; font-weight: 600; cursor: pointer; }
+.int-area .int-drop:hover { background: #faf8f6; border-color: #d8d3cc; }
+.int-area .int-drop::after { content: ""; width: 6px; height: 6px; border-right: 1.5px solid #9a938b; border-bottom: 1.5px solid #9a938b; transform: rotate(45deg) translateY(-1px); }
+.int-area .int-drop.ligado { border-color: #ff7000; background: #fff3ea; color: #cc5800; font-weight: 700; }
+.int-area .int-drop.ligado::after { border-color: #cc5800; }
+
+/* Filtro ativo: chip roxo com o rótulo completo e o ✕. */
+.int-area .int-chip-ativo { display: inline-flex; align-items: center; gap: 8px; height: 30px; padding: 0 12px; border: 1.5px solid #8b00cc; border-radius: 999px; background: #f7ecfc; color: #66009a; font-family: inherit; font-size: 11.5px; font-weight: 700; cursor: pointer; }
+.int-area .int-chip-ativo span { font-size: 13px; line-height: 1; opacity: 0.75; }
+.int-area .int-chip-ativo:hover span { opacity: 1; }
+
+/* LAYOUT EM DUAS COLUNAS — o par do protótipo. */
+.int-area .int-duas { display: grid; grid-template-columns: 1.35fr 1fr; gap: 12px; align-items: start; }
+.int-area .int-duas-inv { display: grid; grid-template-columns: 1fr 1.35fr; gap: 12px; align-items: start; }
+.int-area .int-col { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+
+@media (max-width: 1100px) {
+  .int-area .int-duas, .int-area .int-duas-inv { grid-template-columns: 1fr; }
+}
 
 @media (max-width: 720px) {
   .int-area .int-segmentado { width: 100%; }
   .int-area .int-segmentado button { flex: 1; min-height: 44px; }
   .int-area .int-familia-nota { display: none; }
   .int-area .int-pagina { min-height: 44px; }
+  .int-area .int-drop, .int-area .int-chip-ativo { min-height: 44px; }
 }
