@@ -1,0 +1,33 @@
+/* ESQUELETO NA FORMA DO CONTEÚDO — folha do estado de carregamento.
+ *
+ * Pulso discreto (1,4 s) e amplitude baixa: o objetivo é dizer “está chegando”,
+ * não competir com o conteúdo que já está na tela. Prefixada por .int-area, como
+ * as outras folhas da área.
+ */
+
+.int-area .intp-sk-barra { display: block; border-radius: 6px; background: linear-gradient(90deg, #f2efec 0%, #f9f7f5 50%, #f2efec 100%); background-size: 200% 100%; animation: intp-sk-pulso 1.4s ease-in-out infinite; }
+.int-area .intp-sk-tile { background: #f2efec; animation: intp-sk-pulso 1.4s ease-in-out infinite; }
+.int-area .intp-sk-etapa { height: 14px; border-radius: 999px; }
+
+.int-area .intp-sk { position: relative; }
+.int-area .intp-sk .intp-kpi-topo { gap: 10px; }
+.int-area .intp-sk-linha { display: grid; gap: 8px; align-items: center; padding: 11px 7px; border-bottom: 1px solid #f7f5f2; }
+.int-area .intp-sk-cabecalho { border-bottom: 1px solid #f2efec; padding-top: 14px; }
+.int-area .intp-sk-par { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+
+.int-area .intp-sk-aviso { margin: 0; font-size: 11px; color: #9a938b; }
+
+@keyframes intp-sk-pulso {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 200% 50%; }
+}
+
+/* Respeita quem pediu menos movimento no sistema: o esqueleto continua visível,
+   só para de pulsar. */
+@media (prefers-reduced-motion: reduce) {
+  .int-area .intp-sk-barra, .int-area .intp-sk-tile { animation: none; }
+}
+
+@media (max-width: 720px) {
+  .int-area .intp-sk-linha { grid-template-columns: 1fr 1fr !important; row-gap: 6px; }
+}
