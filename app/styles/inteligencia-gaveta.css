@@ -1,0 +1,19 @@
+/* Complemento da auditoria de fidelidade — cartão de prova dentro da gaveta.
+ *
+ * Folha separada por um motivo prático: inteligencia-pecas.css é grande e este
+ * bloco pertence à gaveta, que nasceu na auditoria. Mesmo prefixo .int-area.
+ */
+
+.int-area .intp-prova-gaveta { background: #faf8f6; border-radius: 12px; padding: 10px 12px; display: flex; flex-direction: column; gap: 2px; }
+.int-area .intp-prova-gaveta small { font-size: 11px; color: #9a938b; }
+.int-area .intp-prova-gaveta b { font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; }
+
+/* A gaveta reaproveita os botões de ação do Copiloto (.cop-acao). Quando a
+ * gaveta abre numa tela sem Copiloto montado, a regra abaixo garante o mesmo
+ * desenho sem depender da ordem de carga das folhas. */
+.int-area .intp-gaveta-rodape .cop-acao { height: 36px; padding: 0 14px; border: 1px solid #e4dfd9; border-radius: 999px; background: #fff; color: #4d4842; font-family: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
+.int-area .intp-gaveta-rodape .cop-acao:hover { background: #faf8f6; }
+
+@media (max-width: 720px) {
+  .int-area .intp-gaveta-rodape .cop-acao { min-height: 44px; }
+}

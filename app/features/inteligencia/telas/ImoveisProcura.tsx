@@ -3,12 +3,15 @@
 /* IMÓVEIS E PROCURA — artboard 6a.
  * Quais imóveis geram demanda e quais precisam de ajuste. Busca sem resultado
  * vira alvo de captação: a procura sem estoque é dado, não desperdício.
+ *
+ * Auditoria de fidelidade: o detalhe do imóvel virou a GAVETA LATERAL de 420px do
+ * artboard, no lugar dos dois cartões que apareciam abaixo da tabela.
  */
 
 import { useState } from "react";
 import type { PropsTela } from "../CascaInteligencia";
 import { fmt, RodapeFontes } from "../dado";
-import { Cabecalho, CartoesLista, GradeKpis, Tabela, type Kpi } from "../pecas";
+import { Cabecalho, CartoesLista, GavetaLateral, GradeKpis, Tabela, type Kpi } from "../pecas";
 
 type Imovel = {
   nome: string;
@@ -34,7 +37,7 @@ export function ImoveisProcura({ recorte }: PropsTela) {
   const d = usarDados();
 
   const kpis: Kpi[] = [
-    { rotulo: "Imóveis anunciados", bruto: d.anunciados, texto: fmt.inteiro(d.anunciados), tile: "laranja", foot: "no site, no período" },
+    { rotulo: "Imóveis anunciados", bruto: d.anunciados, texto: fmt.inteiro(d.anunciados), tile: "laranja", icone: "casa", foot: "no site, no período" },
     { rotulo: "Melhor imóvel → lead", bruto: d.melhorConversao, texto: fmt.porcento(d.melhorConversao, 2), tom: "bom", tile: "verde", foot: "Apê Pavão 88" },
     { rotulo: "Buscas sem resultado", bruto: d.buscasSemResultado, texto: fmt.inteiro(d.buscasSemResultado), tom: "atencao", tile: "ambar", foot: "viram alvo de captação" },
     { rotulo: "Imóveis sem código", bruto: d.semCodigo, texto: fmt.inteiro(d.semCodigo), tom: "ruim", tile: "vermelho", foot: "eventos caem em “não identificado”" },
@@ -45,7 +48,7 @@ export function ImoveisProcura({ recorte }: PropsTela) {
       <Cabecalho eyebrow="A PROCURA" titulo="O que a demanda está dizendo" nota={recorte.periodo} />
       <GradeKpis itens={kpis} colunas={4} />
 
-      <Cabecalho eyebrow="TABELA PRINCIPAL" titulo="Cada imóvel, do acesso à visita" cor="#8B00CC" nota="clique na linha para abrir o detalhe" />
+      <Cabecalho eyebrow="TABELA PRINCIPAL" titulo="Cada imóvel, do acesso à visita" cor="#8B00CC" nota="clique na linha para abrir a gaveta do imóvel · clique no cabeçalho para ordenar" />
       <Tabela
         colunas={[{ titulo: "Imóvel" }, { titulo: "Bairro" }, { titulo: "Finalidade" }, { titulo: "Preço", num: true }, { titulo: "Vis.", num: true }, { titulo: "Galeria", num: true }, { titulo: "Intenção", num: true }, { titulo: "Leads", num: true }, { titulo: "Negócios", num: true }, { titulo: "Imóvel→lead", num: true }, { titulo: "Dias", num: true }, { titulo: "Status" }]}
         ordenadaEm="Leads"
@@ -74,36 +77,41 @@ export function ImoveisProcura({ recorte }: PropsTela) {
         foot="imóvel sem código cadastrado entra como “não identificado” e fica fora do ranking — o evento não é descartado nem redistribuído"
       />
 
-      {imovel ? (
-        <CartoesLista
-          colunas={2}
-          cartoes={[
-            {
-              titulo: `${imovel.nome} · ${imovel.codigo}`,
-              chip: imovel.status === "ativo" ? "ativo" : "pausado",
-              chipTom: imovel.status === "ativo" ? "bom" : "neutro",
-              linhas: [
-                { l: "Bairro e finalidade", r: `${imovel.bairro} · ${imovel.finalidade}` },
-                { l: "Visualizações · galeria", r: `${fmt.inteiro(imovel.visualizacoes)} · ${fmt.inteiro(imovel.galeria)}` },
-                { l: "Intenção · leads · negócios", r: `${fmt.inteiro(imovel.intencao)} · ${fmt.inteiro(imovel.leads)} · ${fmt.inteiro(imovel.negocios)}` },
-                { l: "Dias anunciado", r: fmt.inteiro(imovel.dias) },
-              ],
-              foot: "sem IP bruto e sem user agent — só o que serve para vender o imóvel",
-              link: { rotulo: "Fechar detalhe", go: () => setImovel(null) },
-            },
-            {
-              titulo: "Leitura deste anúncio",
-              linhas: [
-                { l: "Imóvel → lead", r: fmt.porcento(conversao(imovel), 2) },
-                { l: "Galeria por visualização", r: imovel.visualizacoes && imovel.galeria !== null ? fmt.porcento((imovel.galeria / imovel.visualizacoes) * 100, 0) : "—" },
-                { l: "Leads sem 1º contato", r: "—", sub: "depende da fila do CRM neste recorte" },
-              ],
-              foot: "galeria pouco aberta com acesso alto costuma ser problema de foto, não de preço",
-              link: { rotulo: "Filtrar a página por este imóvel →", go: () => recorte.filtrar(`Imóvel: ${imovel.nome}`) },
-            },
-          ]}
-        />
-      ) : null}
+      <GavetaLateral
+        aberta={!!imovel}
+        titulo={imovel ? `${imovel.nome} · ${imovel.codigo}` : ""}
+        sub={imovel ? `${imovel.bairro} · ${imovel.finalidade} · ${fmt.dinheiro(imovel.preco)} · ${fmt.inteiro(imovel.dias)} dias anunciado` : ""}
+        selo={imovel?.status === "ativo" ? "ativo" : undefined}
+        fechar={() => setImovel(null)}
+        rodape={
+          imovel ? (
+            <>
+              <button type="button" className="cop-acao" onClick={() => recorte.filtrar(`Imóvel: ${imovel.nome}`)}>Filtrar a página por este imóvel</button>
+              <button type="button" className="cop-acao" onClick={() => recorte.irPara("conversao")}>Leads no CRM →</button>
+            </>
+          ) : null
+        }
+      >
+        {imovel ? (
+          <>
+            <div className="intp-grade" style={{ gridTemplateColumns: "repeat(3, minmax(0, 1fr))" }}>
+              <div className="intp-prova-gaveta"><small>visualizações</small><b>{fmt.inteiro(imovel.visualizacoes)}</b></div>
+              <div className="intp-prova-gaveta"><small>leads</small><b>{fmt.inteiro(imovel.leads)}</b></div>
+              <div className="intp-prova-gaveta"><small>negócios</small><b>{fmt.inteiro(imovel.negocios)}</b></div>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+              <div className="intp-detalhe-linha"><span>Imóvel → lead</span><b>{fmt.porcento(conversao(imovel), 2)}</b></div>
+              <div className="intp-detalhe-linha"><span>Galeria aberta por visualização</span><b>{imovel.visualizacoes && imovel.galeria !== null ? fmt.porcento((imovel.galeria / imovel.visualizacoes) * 100, 0) : "—"}</b></div>
+              <div className="intp-detalhe-linha"><span>Ações de intenção</span><b>{fmt.inteiro(imovel.intencao)}</b></div>
+              <div className="intp-detalhe-linha"><span>Leads sem primeiro contato</span><b>—</b></div>
+              <div className="intp-detalhe-linha"><span>Origens que trouxeram acesso</span><b>—</b></div>
+            </div>
+            <div className="intp-detalhe-aviso">
+              Sem IP bruto, sem user agent, sem identificador técnico — só o que serve para vender o imóvel. As duas últimas linhas dependem da fila do CRM e da atribuição neste recorte, e ficam com “—” enquanto não vierem.
+            </div>
+          </>
+        ) : null}
+      </GavetaLateral>
 
       <Cabecalho eyebrow="LEITURAS COMPLEMENTARES" titulo="Demanda, estoque e o que precisa de ação" />
       <CartoesLista
@@ -117,7 +125,7 @@ export function ImoveisProcura({ recorte }: PropsTela) {
 
       <RodapeFontes
         fontes={["coleta própria", "cadastro de imóveis", "buscas agregadas", "CRM Funil 2.0"]}
-        pendencias={["12 imóveis sem código (418 eventos em “não identificado”)"]}
+        pendencias={["12 imóveis sem código (418 eventos em “não identificado”)", "origem do acesso por imóvel depende da atribuição"]}
         atualizado={d.atualizado}
       />
     </div>
