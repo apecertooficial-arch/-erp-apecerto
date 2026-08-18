@@ -11,8 +11,9 @@
  *     a nota de interação na mesma faixa — no publicado eram duas linhas altas.
  *  4. LAYOUT EM COLUNAS: .int-duas / .int-duas-inv (par), .int-duas.par-115
  *     (Aquisição 3a: gráfico · atribuição), .int-duas.par-120 (Comportamento 4a:
- *     jornada · Clarity) e .int-tres (Comportamento 4a: rolagem · interações ·
- *     dispositivos). A publicação empilhava tudo em coluna única.
+ *     jornada · Clarity), .int-duas.par-150 (Imóveis 6a: leituras · drawer) e
+ *     .int-tres (Comportamento 4a: rolagem · interações · dispositivos).
+ *     A publicação empilhava tudo em coluna única.
  *  5. .int-tabela-roxa deixa a linha destacada em roxo (#FBF6FE) — o “não
  *     atribuído” da Aquisição e a linha do filtro ativo em Dispositivos.
  */
@@ -48,6 +49,7 @@
 .int-area .int-duas-inv { display: grid; grid-template-columns: 1fr 1.35fr; gap: 12px; align-items: start; }
 .int-area .int-duas.par-115 { grid-template-columns: 1.15fr 1fr; align-items: stretch; }
 .int-area .int-duas.par-120 { grid-template-columns: 1.2fr 1fr; align-items: stretch; }
+.int-area .int-duas.par-150 { grid-template-columns: 1.5fr 1fr; align-items: start; }
 .int-area .int-tres { display: grid; grid-template-columns: 1fr 1.2fr 1fr; gap: 12px; align-items: stretch; }
 .int-area .int-col { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
 
@@ -56,6 +58,12 @@
 
 /* Comportamento 4a: os cinco passos da jornada, com divisor tracejado. */
 .int-area .int-jornada { display: flex; align-items: stretch; gap: 0; }
+
+/* Tabela pequena dentro de cartão (Imóveis 6a: venda vs. locação). */
+.int-area .intp-cartao > table.intp-tabela th { padding: 0 0 0 0; }
+.int-area .intp-cartao > table.intp-tabela th.num { text-align: right; }
+.int-area .intp-cartao > table.intp-tabela th { font-size: 11px; font-weight: 700; color: #9a938b; padding: 7px 6px; }
+.int-area .intp-cartao > table.intp-tabela td { padding: 8px 6px; }
 
 /* A linha destacada em roxo (#FBF6FE) do artboard, no lugar do laranja. */
 .int-area .int-tabela-roxa table.intp-tabela tbody tr.destaque { background: #fbf6fe; }
@@ -66,7 +74,7 @@
 }
 
 @media (max-width: 1100px) {
-  .int-area .int-duas, .int-area .int-duas-inv, .int-area .int-duas.par-115, .int-area .int-duas.par-120, .int-area .int-tres { grid-template-columns: 1fr; }
+  .int-area .int-duas, .int-area .int-duas-inv, .int-area .int-duas.par-115, .int-area .int-duas.par-120, .int-area .int-duas.par-150, .int-area .int-tres { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 720px) {
