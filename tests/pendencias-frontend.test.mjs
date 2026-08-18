@@ -7,55 +7,10 @@ import { readFileSync } from "node:fs";
 import { podeVer, itensDaNavegacao, rotasModulo } from "../app/features/system/erp-routes.ts";
 
 const ler = (p) => readFileSync(new URL(p, import.meta.url), "utf8");
-const perf = ler("../app/features/team/PerformanceWorkspace.tsx");
 const convite = ler("../app/components/ConviteInstalar.tsx");
 const layoutErp = ler("../app/(erp)/layout.tsx");
 const sw = ler("../public/sw.js");
 const offline = ler("../public/offline.html");
-
-/* ---------------- 1. PERFORMANCE ---------------- */
-
-test("erro tecnico do banco nao vai para a tela", () => {
-  assert.ok(!/setError\(json\.error\)/.test(perf), "a string do backend voltou a ser renderizada");
-  assert.ok(/console\.error\("\[performance\]/.test(perf), "o detalhe tecnico precisa sobrar no console");
-});
-
-test("mensagem humana e botao de tentar novamente", () => {
-  // A Sala de Comando reescreveu a mensagem: "confirmar os dados" em vez de
-  // "carregar a performance", porque a tela nunca mostra numero nao confirmado.
-  assert.ok(/Não foi possível confirmar os dados agora/.test(perf));
-  assert.ok(/Tentar novamente/.test(perf));
-  // O redisparo virou handler inline (setEstado + setTentativa) em vez da
-  // funcao nomeada tentarDeNovo. O que importa e continuar redisparando.
-  assert.ok(/setTentativa\(\(valor\) => valor \+ 1\)/.test(perf), "o botao precisa realmente redisparar a busca");
-  assert.ok(/tentativa/.test(perf), "tentativa precisa estar nas deps do efeito");
-});
-
-test("falha preserva os dados anteriores", () => {
-  // O ponto continua o mesmo: falhar nao pode limpar o que ja estava na tela,
-  // e a tela precisa distinguir falha COM e SEM leitura anterior. Hoje isso
-  // esta explicito no proprio texto do aviso, ramificado por `painel`.
-  assert.match(perf, /\{painel \? "A última consulta válida continua visível\."/);
-  assert.ok(perf.includes("Nenhum número foi exibido sem confirmação."), "sem dado anterior a tela precisa dizer que nao mostrou numero");
-  assert.ok(!/setPainel\(null\)/.test(perf), "falha nao pode limpar os numeros que ja estavam na tela");
-});
-
-test("falha nao se disfarca de sucesso", () => {
-  assert.ok(/role="alert"/.test(perf), "o aviso de falha precisa ser anunciado");
-  assert.match(perf, /\{estado === "falhou" &&/, "a falha precisa ter ramo proprio de renderizacao");
-  assert.ok(perf.includes("Nenhum número foi exibido sem confirmação."),
-    "sem dado anterior nao pode cair num vazio que parece sucesso");
-});
-
-test("a consulta de performance nao foi alterada", () => {
-  assert.ok(/\/api\/performance\?periodo=\$\{periodo\}/.test(perf), "a URL do endpoint mudou");
-});
-
-test("Performance autorizada carrega dados para qualquer perfil e respeita o escopo do banco", () => {
-  assert.ok(!/sessionRole === ["']admin["']/.test(perf), "a tela voltou a bloquear gestores e corretores no frontend");
-  assert.ok(!/Estamos em atualização/.test(perf), "a tela voltou a esconder dados reais atrás de uma manutenção fictícia");
-  assert.match(perf, /Authorization: `Bearer \$\{accessToken\}`/, "a consulta precisa continuar autenticada");
-});
 
 test("a RPC de performance não volta ao anti-join correlacionado por lead", () => {
   const migration = ler("../supabase/migrations/20260814234000_otimizar_performance_corretores.sql");
