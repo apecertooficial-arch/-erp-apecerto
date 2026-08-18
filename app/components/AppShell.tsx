@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useState, type ReactNode } from "react";
 import type { ModuleName } from "../features/system/module-map";
 import { pathDoModulo, podeVer } from "../features/system/erp-routes";
@@ -46,7 +47,21 @@ function NavIcon({ item }: { item: ModuleName }) {
   return <svg {...common}><circle cx="12" cy="12" r="10" /><path d="M9 9a3 3 0 1 1 4.5 2.6C12.6 12.1 12 12.7 12 14M12 18h.01" /></svg>;
 }
 
-function NavGroup({ label, items, activeItem, onNavigate, badges }: { label: string; items: ModuleName[]; activeItem: ModuleName; onNavigate: (item: ModuleName) => void; badges?: Partial<Record<ModuleName, number>> }) {
+/* Ícone do radar — a área Inteligência. Fora do NavIcon porque "Inteligência"
+   ainda não é chave de ModuleName: a área tem rota própria (/inteligencia) e
+   guarda própria, e entra no menu como link fixo. */
+function IconeRadar() {
+  return (
+    <svg width={19} height={19} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M19.07 4.93A10 10 0 1 1 6.99 3.34" />
+      <path d="M13.41 10.59a2 2 0 1 1-2.83 2.83" />
+      <path d="M15.54 8.46A5 5 0 1 0 8.46 15.54" />
+      <path d="M12 12 22 2" />
+    </svg>
+  );
+}
+
+function NavGroup({ label, items, activeItem, onNavigate, badges, children }: { label: string; items: ModuleName[]; activeItem: ModuleName; onNavigate: (item: ModuleName) => void; badges?: Partial<Record<ModuleName, number>>; children?: ReactNode }) {
   return (
     <section className="nav-group">
       <span className="nav-label">{label}</span>
@@ -62,6 +77,7 @@ function NavGroup({ label, items, activeItem, onNavigate, badges }: { label: str
           </Link>
         );
       })}
+      {children}
     </section>
   );
 }
@@ -69,6 +85,7 @@ function NavGroup({ label, items, activeItem, onNavigate, badges }: { label: str
 export function AppShell({ children, activeItem, onNavigate, onOpenProfile, sessionRole = "corretor", sessionName = "Corretor", modulePermissions = null, isManager = false, badges, perfilCarregado = false }: { children: ReactNode; activeItem: ModuleName; onNavigate: (item: ModuleName) => void; onOpenProfile?: () => void; sessionRole?: "admin" | "gestor" | "corretor"; sessionName?: string; modulePermissions?: Record<string, string[]> | null; isManager?: boolean; badges?: Partial<Record<ModuleName, number>>; perfilCarregado?: boolean }) {
   const isBroker = sessionRole === "corretor";
   const [navCollapsed, setNavCollapsed] = useState(false);
+  const pathname = usePathname();
   /* Doc §14 — sem "ver" no módulo, ele some do menu.
      A tabela de slugs saiu daqui e virou fonte única em features/system/erp-routes.ts,
      porque o menu do celular precisa da MESMA regra. Duas cópias divergiriam.
@@ -84,6 +101,11 @@ export function AppShell({ children, activeItem, onNavigate, onOpenProfile, sess
   // "Minha Equipe" é liberada por papel real (isManager), não por slug — regra vive em podeVer().
   if (canSee("Minha Equipe") && !toolItems.includes("Minha Equipe")) toolItems.unshift("Minha Equipe");
   const systemItems = (isBroker ? brokerSystemItems : adminSystemItems).filter(canSee);
+  /* INTELIGÊNCIA — área nova, rota própria e guarda própria (GuardaInteligencia).
+     Mesma regra de exposição do resto do menu: gestão vê; corretor não, porque a
+     área mostra número de equipe, financeiro e comissão. Nada foi removido para
+     ela entrar: é o último item de PRINCIPAL. */
+  const verInteligencia = sessionRole === "admin" || sessionRole === "gestor" || isManager === true;
   const initial = sessionName.trim().slice(0, 1).toUpperCase() || "C";
   const roleLabel = sessionRole === "admin" ? "Admin" : sessionRole === "gestor" ? "Gestor" : "Corretor";
   return (
@@ -91,7 +113,15 @@ export function AppShell({ children, activeItem, onNavigate, onOpenProfile, sess
       <aside className="sidebar">
         <div className="brand"><span className="brand-mark"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M4 14 16 5l12 9v13H7V15" /><path d="m11 15 4 4 7-8" /></svg></span><strong>apê<span>certo</span></strong><button className="nav-collapse-btn" type="button" onClick={() => setNavCollapsed((v) => !v)} title={navCollapsed ? "Expandir menu" : "Minimizar menu"} aria-label="Minimizar menu">{navCollapsed ? "»" : "«"}</button></div>
         <nav>
-          <NavGroup label="PRINCIPAL" items={mainItems} activeItem={activeItem} onNavigate={onNavigate} badges={badges} />
+          <NavGroup label="PRINCIPAL" items={mainItems} activeItem={activeItem} onNavigate={onNavigate} badges={badges}>
+            {verInteligencia ? (
+              <Link className={`nav-item ${pathname?.startsWith("/inteligencia") ? "active" : ""}`} href="/inteligencia" aria-current={pathname?.startsWith("/inteligencia") ? "page" : undefined}>
+                <span className="nav-icon" aria-hidden="true"><IconeRadar /></span>
+                <span>Inteligência</span>
+                <small className="nav-badge-pending" title="Área nova">novo</small>
+              </Link>
+            ) : null}
+          </NavGroup>
           <NavGroup label="FERRAMENTAS" items={toolItems} activeItem={activeItem} onNavigate={onNavigate} badges={badges} />
           <NavGroup label="SISTEMA" items={systemItems} activeItem={activeItem} onNavigate={onNavigate} badges={badges} />
         </nav>
