@@ -1,0 +1,107 @@
+/* Peças das 17 telas da Inteligência — a biblioteca do artboard 30b.
+ *
+ * Prefixo .intp- e nada fora de .int-area: a lição de Abordagens (ordem de carga
+ * não vence seletor antigo com mais classes) vale aqui também.
+ *
+ * Valores da marca, idênticos ao desenho aprovado: cartão branco raio 18,
+ * sombra 0 2px 6px rgba(31,28,26,.06), tile de ícone 34px raio 10, KPI 26px/700,
+ * rótulo 12px/600 #6E6760, pé 11px #9A938B, chips pill 11px/700, funil com barra
+ * de 14px e gradiente laranja→laranja (roxo só no funil da Sara).
+ */
+
+.int-area .intp-cab { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.int-area .intp-cab-eyebrow { font-size: 11px; font-weight: 600; letter-spacing: 0.12em; }
+.int-area .intp-cab h2 { margin: 2px 0 0; font-size: 20px; font-weight: 700; letter-spacing: -0.01em; }
+.int-area .intp-cab-nota { margin-left: auto; font-size: 12px; color: #9a938b; }
+
+.int-area .intp-grade { display: grid; gap: 12px; }
+.int-area .intp-kpi { background: #fff; border-radius: 18px; padding: 16px 18px; box-shadow: 0 2px 6px rgba(31, 28, 26, 0.06); display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.int-area .intp-kpi-topo { display: flex; align-items: center; gap: 10px; }
+.int-area .intp-tile { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; flex: none; font-size: 15px; font-weight: 700; }
+.int-area .intp-kpi-rotulo { font-size: 12px; font-weight: 600; color: #6e6760; }
+.int-area .intp-kpi-chip { align-self: flex-start; font-size: 11px; font-weight: 700; border-radius: 999px; padding: 3px 9px; }
+.int-area .intp-kpi-foot { font-size: 11px; color: #9a938b; line-height: 1.5; }
+
+.int-area .intp-cartao { background: #fff; border-radius: 18px; padding: 18px; box-shadow: 0 2px 6px rgba(31, 28, 26, 0.06); display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.int-area .intp-cartao-titulo { font-size: 13px; font-weight: 700; }
+.int-area .intp-cartao-chip { font-size: 10.5px; font-weight: 700; border-radius: 999px; padding: 2px 8px; }
+.int-area .intp-cartao-foot { font-size: 11px; color: #9a938b; margin-top: auto; }
+.int-area .intp-linha-kv { display: flex; gap: 8px; font-size: 12px; font-variant-numeric: tabular-nums; }
+.int-area .intp-linha-kv span { flex: 1; font-weight: 600; color: #4d4842; }
+.int-area .intp-linha-kv b { color: #1f1c1a; }
+.int-area .intp-linha-sub { font-size: 11px; color: #9a938b; }
+.int-area button.intp-linha-btn { border: 0; background: none; padding: 0; font-family: inherit; text-align: left; cursor: pointer; width: 100%; }
+.int-area button.intp-linha-btn:hover .intp-linha-kv b { color: #cc5800; }
+
+.int-area .intp-funil { background: #fff; border-radius: 18px; padding: 18px; box-shadow: 0 2px 6px rgba(31, 28, 26, 0.06); display: flex; flex-direction: column; gap: 9px; }
+.int-area .intp-etapa { display: grid; grid-template-columns: 212px 1fr 70px 58px 74px 62px; gap: 8px; align-items: center; font-size: 12px; }
+.int-area .intp-etapa-nome { font-weight: 600; color: #4d4842; }
+.int-area .intp-etapa-barra { display: block; height: 14px; border-radius: 999px; background: linear-gradient(90deg, #ff9a4d, #ff7000); }
+.int-area .intp-etapa-barra.roxo { background: linear-gradient(90deg, #b24ddd, #8b00cc); }
+.int-area .intp-etapa-barra.perda { background: #f4dad8; }
+.int-area .intp-etapa-vol { text-align: right; font-variant-numeric: tabular-nums; font-weight: 700; }
+.int-area .intp-etapa-taxa { text-align: right; color: #6e6760; }
+.int-area .intp-etapa-perda { text-align: right; color: #d93e3e; font-size: 11px; }
+.int-area .intp-etapa button { border: 0; background: none; padding: 0; font-family: inherit; font-size: 11px; font-weight: 600; color: #cc5800; cursor: pointer; }
+.int-area .intp-etapa-final { border-top: 1px dashed #f2efec; padding-top: 9px; }
+.int-area .intp-etapa-final .intp-etapa-nome { color: #b02b2b; font-weight: 700; }
+
+.int-area .intp-tabela-caixa { background: #fff; border-radius: 18px; padding: 6px 18px 14px; box-shadow: 0 2px 6px rgba(31, 28, 26, 0.06); overflow-x: auto; }
+.int-area table.intp-tabela { width: 100%; border-collapse: collapse; font-size: 12px; font-variant-numeric: tabular-nums; }
+.int-area table.intp-tabela th { text-align: left; font-size: 11px; font-weight: 700; color: #9a938b; padding: 10px 7px; border-bottom: 1px solid #f2efec; white-space: nowrap; }
+.int-area table.intp-tabela th.num, .int-area table.intp-tabela td.num { text-align: right; }
+.int-area table.intp-tabela th.ordenada { color: #1f1c1a; }
+.int-area table.intp-tabela td { padding: 9px 7px; border-bottom: 1px solid #f7f5f2; color: #6e6760; white-space: nowrap; }
+.int-area table.intp-tabela td.forte { color: #1f1c1a; font-weight: 700; }
+.int-area table.intp-tabela td small { color: #9a938b; font-weight: 400; }
+.int-area table.intp-tabela tbody tr { cursor: pointer; }
+.int-area table.intp-tabela tbody tr:hover { background: #fff9f4; }
+.int-area table.intp-tabela tbody tr.destaque { background: #fff9f4; }
+.int-area .intp-tabela-foot { display: flex; align-items: center; gap: 10px; padding-top: 10px; font-size: 11px; color: #9a938b; }
+
+.int-area .intp-banner { border-radius: 18px; padding: 16px 20px; display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+.int-area .intp-banner-texto { flex: 1; min-width: 240px; font-size: 13px; line-height: 1.5; }
+.int-area .intp-banner-stat { text-align: center; flex: none; padding: 0 6px; }
+.int-area .intp-banner-stat strong { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; display: block; }
+.int-area .intp-banner-stat small { font-size: 11px; }
+.int-area .intp-banner button { height: 36px; padding: 0 18px; border: 0; border-radius: 999px; background: #fff; font-family: inherit; font-size: 12px; font-weight: 700; cursor: pointer; flex: none; }
+.int-area .intp-banner.aviso { background: #fdf1d9; color: #7a5e12; }
+.int-area .intp-banner.roxo { background: #8b00cc; color: #fff; box-shadow: 0 12px 28px rgba(139, 0, 204, 0.24); }
+.int-area .intp-banner.tint-roxo { background: #f7ecfc; color: #66009a; }
+
+.int-area .intp-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.int-area .intp-chip-mono { font-size: 10.5px; font-weight: 600; background: #f7ecfc; color: #66009a; border-radius: 999px; padding: 4px 10px; font-family: ui-monospace, Menlo, monospace; }
+
+.int-area .intp-duas { display: grid; grid-template-columns: 1.35fr 1fr; gap: 12px; align-items: start; }
+.int-area .intp-detalhe { background: #fff; border-radius: 18px; padding: 18px; box-shadow: 0 8px 24px rgba(31, 28, 26, 0.1); display: flex; flex-direction: column; gap: 11px; }
+.int-area .intp-detalhe-topo { display: flex; align-items: flex-start; gap: 9px; }
+.int-area .intp-detalhe-topo span.rot { font-size: 10.5px; font-weight: 700; letter-spacing: 0.1em; color: #9a938b; }
+.int-area .intp-detalhe-topo b { display: block; font-size: 15px; }
+.int-area .intp-detalhe-topo small { font-size: 11.5px; color: #9a938b; }
+.int-area .intp-detalhe-fechar { width: 30px; height: 30px; border: 0; border-radius: 999px; background: #faf8f6; color: #6e6760; cursor: pointer; display: grid; place-items: center; flex: none; font-size: 14px; }
+.int-area .intp-detalhe-linha { display: flex; gap: 9px; border-bottom: 1px solid #f7f5f2; padding-bottom: 6px; font-size: 12.5px; }
+.int-area .intp-detalhe-linha span { flex: 1; color: #6e6760; }
+.int-area .intp-detalhe-linha b { font-variant-numeric: tabular-nums; }
+.int-area .intp-detalhe-aviso { background: #faf8f6; border-radius: 12px; padding: 10px 12px; font-size: 11px; color: #6e6760; line-height: 1.5; }
+.int-area .intp-vazio-detalhe { border: 1px dashed #e4dfd9; border-radius: 18px; padding: 24px 18px; text-align: center; display: flex; flex-direction: column; gap: 6px; }
+.int-area .intp-vazio-detalhe b { font-size: 13px; color: #6e6760; }
+.int-area .intp-vazio-detalhe small { font-size: 11.5px; color: #9a938b; line-height: 1.5; }
+
+/* Tons de chip — os mesmos cinco do desenho. */
+.int-area .tom-bom { background: #e4f6ec; color: #1e7a46; }
+.int-area .tom-ruim { background: #fbe5e5; color: #b02b2b; }
+.int-area .tom-aviso { background: #fdf1d9; color: #8a6a15; }
+.int-area .tom-roxo { background: #f7ecfc; color: #66009a; }
+.int-area .tom-neutro { background: #f1eeea; color: #6e6760; }
+.int-area .tile-laranja { background: #ffe4d1; color: #cc5800; }
+.int-area .tile-roxo { background: #f7ecfc; color: #66009a; }
+.int-area .tile-verde { background: #e4f6ec; color: #1fa85a; }
+.int-area .tile-vermelho { background: #fbe5e5; color: #d93e3e; }
+.int-area .tile-ambar { background: #fdf1d9; color: #b5700a; }
+
+@media (max-width: 1100px) {
+  .int-area .intp-duas { grid-template-columns: 1fr; }
+  .int-area .intp-grade { grid-template-columns: repeat(2, 1fr) !important; }
+  .int-area .intp-etapa { grid-template-columns: 150px 1fr 60px 52px; }
+  .int-area .intp-etapa-perda, .int-area .intp-etapa button { display: none; }
+}
