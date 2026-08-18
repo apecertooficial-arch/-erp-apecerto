@@ -7,6 +7,11 @@
  * · Mercado e digital · Governança. Cada item é um <a href> real — rota de
  * verdade, sem estado escondido, para o navegador voltar e recarregar como
  * qualquer tela.
+ *
+ * LAYOUT SEMPRE COMPLETO (regra do Romulo): nenhuma seção e nenhum cartão some
+ * por falta de dado. Métrica sem dado mostra o rótulo normal e um traço "—" no
+ * lugar do número, com "aguardando conexão" pequeno embaixo quando o furo é de
+ * integração. Esconder cartão faz a tela mentir por omissão.
  */
 
 import { PERIODOS, horaSp, type Periodo } from "./dados";
@@ -29,9 +34,12 @@ export const TELAS: Array<{ slug: string; nome: string; grupo: Grupo }> = [
   { slug: "equipe", nome: "Performance da equipe", grupo: "operacao" },
   { slug: "gerentes", nome: "Gerentes", grupo: "operacao" },
   { slug: "corretores", nome: "Corretores", grupo: "operacao" },
+  { slug: "conversao", nome: "Conversão e CRM", grupo: "operacao" },
   { slug: "qualidade", nome: "Qualidade e desenvolvimento", grupo: "operacao" },
   { slug: "aquisicao", nome: "Aquisição e campanhas", grupo: "digital" },
   { slug: "comportamento", nome: "Comportamento e conteúdo", grupo: "digital" },
+  { slug: "imoveis", nome: "Imóveis e procura", grupo: "digital" },
+  { slug: "sara", nome: "Sara", grupo: "digital" },
   { slug: "alertas", nome: "Central de alertas", grupo: "governanca" },
   { slug: "privacidade", nome: "Privacidade e tracking", grupo: "governanca" },
 ];
@@ -86,13 +94,17 @@ export function CascaInteligencia({
   );
 }
 
-export function Kpi({ rotulo, valor, nota, tom }: { rotulo: string; valor: string | null; nota: string; tom?: "bom" | "alerta" }) {
-  const classe = valor === null ? "ape-int-kpi vazio" : `ape-int-kpi${tom ? ` ${tom}` : ""}`;
+/* Cartão de indicador. `valor === null` NÃO esconde nada: mostra o rótulo e um
+   traço. `aguardando` troca a nota de baixo pelo aviso de integração pendente. */
+export function Kpi({
+  rotulo, valor, nota, tom, aguardando,
+}: { rotulo: string; valor: string | null; nota: string; tom?: "bom" | "alerta"; aguardando?: boolean }) {
+  const vazio = valor === null;
   return (
-    <article className={classe}>
+    <article className={vazio ? "ape-int-kpi vazio" : `ape-int-kpi${tom ? ` ${tom}` : ""}`}>
       <span>{rotulo}</span>
-      <strong>{valor === null ? "aguardando dado" : valor}</strong>
-      <small>{nota}</small>
+      <strong>{vazio ? "—" : valor}</strong>
+      <small>{vazio && aguardando ? "aguardando conexão" : nota}</small>
     </article>
   );
 }
@@ -138,6 +150,20 @@ export function Pendencias({ lista }: { lista: Array<{ chave: string; texto: str
 
 export function Vazio({ titulo, apoio }: { titulo: string; apoio: string }) {
   return <div className="ape-int-vazio"><b>{titulo}</b><span>{apoio}</span></div>;
+}
+
+/* Linha de lista com traço quando o número não existe — a linha continua na tela. */
+export function Linha({
+  nome, valor, extra, roxa, largura,
+}: { nome: string; valor: string | null; extra?: string | null; roxa?: boolean; largura?: number }) {
+  return (
+    <div className="ape-int-linha">
+      <span>{nome}</span>
+      <span className={roxa ? "ape-int-barra roxa" : "ape-int-barra"}><i style={{ width: `${Math.max(0, Math.min(100, largura ?? 0))}%` }} /></span>
+      <b>{valor ?? "—"}</b>
+      <em>{extra ?? "—"}</em>
+    </div>
+  );
 }
 
 export function Tabela({ colunas, children }: { colunas: string[]; children: React.ReactNode }) {
