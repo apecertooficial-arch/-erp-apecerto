@@ -93,8 +93,12 @@ test("worker novo assume sem atropelar a aba ativa", () => {
     "o cache precisa ser versionado pelo build; nome fixo nunca expira");
 
   // 6. o registro carrega /sw.js?v=<build> -- sem a query o arquivo nao muda entre deploys
-  assert.match(registro, /navigator\.serviceWorker\.register\(`\/sw\.js\?v=\$\{encodeURIComponent\(BUILD\)\}`/,
+  assert.match(registro, /navigator\.serviceWorker\.register\(`\/sw\.js\?v=\$\{encodeURIComponent\(build\)\}`/,
     "registrar /sw.js sem ?v=<build> devolve o bug: navegador nao ve versao nova");
+  assert.match(registro, /fetch\("\/api\/build", \{ cache: "no-store" \}\)/,
+    "o identificador precisa vir do deploy e permanecer estavel entre recargas");
+  assert.doesNotMatch(registro, /\|\|\s*String\(Date\.now\(\)\)/,
+    "Date.now cria worker novo a cada F5 e prende a pagina num aviso infinito");
 
   // 2. a pagina escuta controllerchange -- e assim que ela sabe que o worker trocou
   assert.match(registro, /navigator\.serviceWorker\.addEventListener\("controllerchange", aoTrocar\)/,
