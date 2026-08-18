@@ -9,11 +9,12 @@
  *     não um chip laranja genérico.
  *  3. A barra tem uma linha só: período · comparação · dimensões, com a contagem e
  *     a nota de interação na mesma faixa — no publicado eram duas linhas altas.
- *  4. LAYOUT EM DUAS COLUNAS (.int-duas / .int-duas-inv): o protótipo põe funil e
- *     jornada lado a lado; a publicação empilhava tudo em coluna única.
- *  5. .par-115 é o par 1,15fr / 1fr da Aquisição 3a (gráfico à esquerda,
- *     atribuição à direita); .int-tabela-roxa deixa a linha do “Não atribuído”
- *     em roxo (#FBF6FE), como no artboard, e não no laranja de destaque.
+ *  4. LAYOUT EM COLUNAS: .int-duas / .int-duas-inv (par), .int-duas.par-115
+ *     (Aquisição 3a: gráfico · atribuição), .int-duas.par-120 (Comportamento 4a:
+ *     jornada · Clarity) e .int-tres (Comportamento 4a: rolagem · interações ·
+ *     dispositivos). A publicação empilhava tudo em coluna única.
+ *  5. .int-tabela-roxa deixa a linha destacada em roxo (#FBF6FE) — o “não
+ *     atribuído” da Aquisição e a linha do filtro ativo em Dispositivos.
  */
 
 .int-area .int-nivel1 { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
@@ -42,18 +43,30 @@
 .int-area .int-chip-ativo span { font-size: 13px; line-height: 1; opacity: 0.75; }
 .int-area .int-chip-ativo:hover span { opacity: 1; }
 
-/* LAYOUT EM DUAS COLUNAS — o par do protótipo. */
+/* LAYOUT EM COLUNAS — os pares e o trio do protótipo. */
 .int-area .int-duas { display: grid; grid-template-columns: 1.35fr 1fr; gap: 12px; align-items: start; }
 .int-area .int-duas-inv { display: grid; grid-template-columns: 1fr 1.35fr; gap: 12px; align-items: start; }
 .int-area .int-duas.par-115 { grid-template-columns: 1.15fr 1fr; align-items: stretch; }
+.int-area .int-duas.par-120 { grid-template-columns: 1.2fr 1fr; align-items: stretch; }
+.int-area .int-tres { display: grid; grid-template-columns: 1fr 1.2fr 1fr; gap: 12px; align-items: stretch; }
 .int-area .int-col { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
 
-/* Aquisição 3a: no artboard a linha do “Não atribuído” é roxa, não laranja. */
+/* Comportamento 4a: os dez eventos em duas colunas dentro do cartão. */
+.int-area .intp-cartao.int-eventos { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 18px; align-content: start; }
+
+/* Comportamento 4a: os cinco passos da jornada, com divisor tracejado. */
+.int-area .int-jornada { display: flex; align-items: stretch; gap: 0; }
+
+/* A linha destacada em roxo (#FBF6FE) do artboard, no lugar do laranja. */
 .int-area .int-tabela-roxa table.intp-tabela tbody tr.destaque { background: #fbf6fe; }
 .int-area .int-tabela-roxa table.intp-tabela tbody tr.destaque:hover { background: #f7ecfc; }
 
+@media (max-width: 1280px) {
+  .int-area .int-tres { grid-template-columns: 1fr 1fr; }
+}
+
 @media (max-width: 1100px) {
-  .int-area .int-duas, .int-area .int-duas-inv, .int-area .int-duas.par-115 { grid-template-columns: 1fr; }
+  .int-area .int-duas, .int-area .int-duas-inv, .int-area .int-duas.par-115, .int-area .int-duas.par-120, .int-area .int-tres { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 720px) {
@@ -62,5 +75,9 @@
   .int-area .int-familia-nota { display: none; }
   .int-area .int-pagina { min-height: 44px; }
   .int-area .int-drop, .int-area .int-chip-ativo { min-height: 44px; }
+  .int-area .intp-cartao.int-eventos { grid-template-columns: 1fr; }
+  .int-area .int-jornada { flex-direction: column; gap: 12px; }
+  .int-area .int-jornada > div { border-right: 0 !important; border-bottom: 1px dashed #e4dfd9; padding: 0 0 12px !important; }
+  .int-area .int-jornada > div:last-child { border-bottom: 0; padding-bottom: 0 !important; }
   .int-area .int-tabela-roxa table.intp-tabela tbody tr.destaque { border-color: #ebd1f5; }
 }
