@@ -1,121 +1,168 @@
 "use client";
 
-/* 15 · VENDAS E PREVISÃO — artboard 19b, na íntegra.
+/* 15 · VENDAS E PREVISÃO — artboard 19b, idêntico ao protótipo.
  *
- * Ordem dos blocos igual à do desenho:
- *   1. cobertura da meta em quatro números
- *   2. de onde vem o que falta (lista + detalhe)
- *   3. tabela de propostas em aberto, com o ponderado por linha
- *   4. por equipe · por empreendimento — os dois cortes do artboard
- *   5. rodapé de fontes
+ * Ordem do desenho:
+ *   1. quatro números: realizado vs. meta, previsão ponderada, vendas concluídas
+ *      e ritmo necessário
+ *   2. COBERTURA DA META em barras (fechado · + previsão ponderada · meta) ao lado
+ *      de METAS POR EQUIPE
+ *   3. PIPELINE PONDERADO — probabilidade por etapa, com total, ao lado da tabela
+ *      de vendas do período
+ *   4. aviso das vendas fora da lista por falta de % válido
  *
  * Negócio sem valor cadastrado fica fora do ponderado e aparece com “—”: previsão
  * nunca é estimada por média.
  */
 
-import { useState } from "react";
+import "../../../styles/inteligencia-blocos.css";
 import type { PropsTela } from "../CascaInteligencia";
 import { fmt, RodapeFontes } from "../dado";
-import { Cabecalho, CartoesLista, GradeKpis, ListaComDetalhe, Tabela, type Detalhe, type Kpi } from "../pecas";
+import { Banner, Cabecalho, GradeKpis, Tabela, type Kpi } from "../pecas";
+
+type Etapa = { etapa: string; negocios: number | null; vgv: number | null; probabilidade: number | null; ponderado: number | null };
+type Venda = { nome: string; corretor: string; vgv: number | null; ciclo: number | null; canal: string };
 
 type Dados = {
-  assinado: number | null;
-  vendas: number | null;
-  previsao: number | null;
-  faltaMeta: number | null;
+  realizadoPercentual: number | null;
+  realizado: number | null;
   meta: number | null;
-  ticket: number | null;
-  propostas: { nome: string; etapa: string; valor: number | null; probabilidade: number | null; fechamento: string }[];
-  semValor: number | null;
-  porEquipe: { l: string; r: string; sub?: string }[];
-  porEmpreendimento: { l: string; r: string; sub?: string }[];
+  previsao: number | null;
+  coberturaPrevisao: number | null;
+  falta: number | null;
+  concluidas: number | null;
+  cicloMedio: number | null;
+  ritmo: number | null;
+  diasUteis: number | null;
+  cobertura: { rotulo: string; valor: number | null; largura: number; tipo: "entra" | "sobra" | "meta" }[];
+  equipes: { nome: string; valor: string; percentual: number | null }[];
+  etapas: Etapa[];
+  totalEtapas: { negocios: number | null; vgv: number | null; ponderado: number | null };
+  vendas: Venda[];
+  totalVendas: number | null;
+  foraDaLista: number | null;
   atualizado: string;
 };
 
 export function VendasPrevisao({ recorte }: PropsTela) {
-  const [detalhe, setDetalhe] = useState<Detalhe | null>(null);
   const d = usarDados();
 
   const kpis: Kpi[] = [
-    { rotulo: "VGV assinado", bruto: d.assinado, texto: fmt.dinheiro(d.assinado), tile: "laranja", icone: "dinheiro", foot: `${fmt.inteiro(d.vendas)} vendas e locações` },
-    { rotulo: "Previsão ponderada", bruto: d.previsao, texto: fmt.dinheiro(d.previsao), tile: "roxo", foot: "pipeline ponderado pela etapa" },
-    { rotulo: "Falta para a meta", bruto: d.faltaMeta, texto: fmt.dinheiro(d.faltaMeta), tom: "ruim", tile: "vermelho", foot: `meta de ${fmt.dinheiro(d.meta)} · cobertura 77%` },
-    { rotulo: "Ticket médio", bruto: d.ticket, texto: fmt.dinheiro(d.ticket), tile: "verde", foot: "estável — crescimento veio de volume" },
-  ];
-
-  const linhas = [
-    {
-      chave: "assinado",
-      nome: "Assinado",
-      meio: "certo",
-      fim: fmt.dinheiro(d.assinado),
-      cor: "#1FA85A",
-      det: { titulo: "Vendas assinadas", sub: `${fmt.inteiro(d.vendas)} no período`, linhas: [["Venda", "13"], ["Locação", "8"], ["Atribuídas ao site", "9"], ["Sem etapa registrada", "3"]] as [string, string][], aviso: "3 vendas entraram já fechadas e ficam fora da taxa de conversão." },
-    },
-    {
-      chave: "proposta",
-      nome: "Proposta em aberto",
-      meio: "ponderado",
-      fim: "R$ 6,2 mi",
-      cor: "#FF7000",
-      det: { titulo: "Propostas em aberto", sub: "6 negócios", linhas: [["Em negociação", "4"], ["Aguardando documentação", "2"], ["Probabilidade média", "48%"], ["Fechamento estimado", "8,5 dias"]] as [string, string][], aviso: "A previsão sempre carrega a data do pipeline que a gerou." },
-    },
-    {
-      chave: "semvalor",
-      nome: "Sem valor no negócio",
-      meio: "bloqueia previsão",
-      fim: fmt.inteiro(d.semValor),
-      cor: "#B5700A",
-      det: { titulo: "Negócios sem valor", sub: "campo ausente no CRM", linhas: [["Negócios", fmt.inteiro(d.semValor)], ["Efeito", "fora da previsão"], ["Ação", "preencher no Funil 2.0"], ["Responsável", "Financeiro"]] as [string, string][], aviso: "Comissão e previsão nunca são estimadas por média." },
-    },
+    { rotulo: "Realizado vs. meta", bruto: d.realizadoPercentual, texto: fmt.porcento(d.realizadoPercentual, 0), tile: "laranja", icone: "dinheiro", foot: `${fmt.dinheiro(d.realizado)} de ${fmt.dinheiro(d.meta)}` },
+    { rotulo: "Previsão ponderada", bruto: d.previsao, texto: fmt.dinheiro(d.previsao), tom: "bom", tile: "verde", foot: `cobre ${fmt.porcento(d.coberturaPrevisao, 0)} do que falta (${fmt.dinheiro(d.falta)})` },
+    { rotulo: "Vendas concluídas", bruto: d.concluidas, texto: fmt.inteiro(d.concluidas), tile: "roxo", foot: `ciclo médio ${fmt.inteiro(d.cicloMedio)} dias` },
+    { rotulo: "Ritmo necessário", bruto: d.ritmo, texto: `${fmt.dinheiro(d.ritmo)}/dia`, tom: "atencao", tile: "ambar", foot: `${fmt.inteiro(d.diasUteis)} dias úteis até o fim do mês` },
   ];
 
   return (
     <div className="int-secao">
-      <Cabecalho eyebrow="COBERTURA DA META" titulo="O que está assinado e o que ainda depende de proposta" nota={`${recorte.periodo}${recorte.compararAnterior ? " · vs. anterior" : ""}`} />
+      <Cabecalho eyebrow="COBERTURA DA META" titulo="O mês fecha? O pipeline responde — com probabilidade por etapa, não com torcida" nota={`${recorte.periodo}${recorte.compararAnterior ? " · vs. anterior" : ""}`} />
       <GradeKpis itens={kpis} colunas={4} />
 
-      <ListaComDetalhe
-        eyebrow="DE ONDE VEM O QUE FALTA"
-        titulo="Assinado, proposta e o que está travado"
-        nota="propostas ponderadas pela etapa do funil"
-        linhas={linhas.map((l) => ({ chave: l.chave, nome: l.nome, meio: l.meio, fim: l.fim, cor: l.cor, ativa: detalhe?.titulo === l.det.titulo, abrir: () => setDetalhe(l.det) }))}
-        detalhe={detalhe}
-        fechar={() => setDetalhe(null)}
-      />
+      {/* COBERTURA EM BARRAS + METAS POR EQUIPE */}
+      <div className="intp-op-duas">
+        <div className="intp-cartao">
+          <span className="intp-cartao-titulo">Cobertura da meta</span>
+          {d.cobertura.map((c) => (
+            <div className="intp-casc-linha" key={c.rotulo} style={{ gridTemplateColumns: "152px 1fr 96px" }}>
+              <span className={`intp-casc-rot${c.tipo === "sobra" ? " sobra" : ""}`}>{c.rotulo}</span>
+              <span className="intp-casc-trilha">
+                <span className={`intp-casc-barra ${c.tipo === "meta" ? "sai" : c.tipo}`} style={{ width: `${c.largura}%`, background: c.tipo === "meta" ? "#EFECE7" : undefined }} />
+              </span>
+              <b className={`intp-casc-valor${c.tipo === "sobra" ? " sobra" : ""}`}>{fmt.dinheiro(c.valor)}</b>
+            </div>
+          ))}
+          <small className="intp-kpi-foot">o gap vira diagnóstico na Visão CEO: “faltam 9 visitas viradas em proposta”</small>
+        </div>
 
-      <Cabecalho eyebrow="PROPOSTAS EM ABERTO" titulo="Uma linha por negócio, com a probabilidade da etapa" cor="#8B00CC" nota="clique no cabeçalho para ordenar" />
-      <Tabela
-        colunas={[{ titulo: "Negócio" }, { titulo: "Etapa" }, { titulo: "Valor", num: true }, { titulo: "Probabilidade", num: true }, { titulo: "Ponderado", num: true }, { titulo: "Fechamento" }]}
-        ordenadaEm="Valor"
-        linhas={d.propostas.map((p) => ({
-          chave: p.nome,
-          destaque: p.valor === null,
-          abrir: () => recorte.filtrar(`Negócio: ${p.nome}`),
-          celulas: [
-            { texto: p.nome, forte: true },
-            { texto: p.etapa },
-            { texto: fmt.dinheiro(p.valor), num: true },
-            { texto: fmt.porcento(p.probabilidade, 0), num: true },
-            { texto: p.valor !== null && p.probabilidade !== null ? fmt.dinheiro((p.valor * p.probabilidade) / 100) : "—", num: true, forte: true },
-            { texto: p.fechamento },
-          ],
-        }))}
-        foot="negócio sem valor cadastrado aparece com “—” e não entra no ponderado — previsão nunca é estimada por média"
-      />
+        <div className="intp-cartao">
+          <span className="intp-cartao-titulo">Metas por equipe</span>
+          {d.equipes.map((e) => (
+            <div key={e.nome} style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+              <div style={{ display: "flex", gap: 8, fontSize: 12 }}>
+                <span style={{ flex: 1, fontWeight: 600, color: "#4D4842" }}>{e.nome}</span>
+                <b style={{ fontVariantNumeric: "tabular-nums", color: (e.percentual ?? 0) >= 80 ? "#1E7A46" : "#B5700A" }}>
+                  {e.valor} · {fmt.porcento(e.percentual, 0)}
+                </b>
+              </div>
+              <span className="intp-casc-trilha">
+                <span className="intp-casc-barra entra" style={{ width: `${e.percentual ?? 0}%` }} />
+              </span>
+            </div>
+          ))}
+          <small className="intp-kpi-foot">clicar abre a página do gerente · metas cadastradas por você (Fase 8)</small>
+        </div>
+      </div>
 
-      <Cabecalho eyebrow="OS DOIS CORTES" titulo="Por equipe e por empreendimento" />
-      <CartoesLista
-        colunas={2}
-        cartoes={[
-          { titulo: "Por equipe", linhas: d.porEquipe.map((x) => ({ ...x, abrir: () => recorte.filtrar(`Equipe: ${x.l}`) })), foot: "meta por equipe ainda não cadastrada — só o total da casa tem meta", link: { rotulo: "Abrir Equipe →", go: () => recorte.irPara("equipe") } },
-          { titulo: "Por empreendimento", linhas: d.porEmpreendimento.map((x) => ({ ...x, abrir: () => recorte.filtrar(`Empreendimento: ${x.l}`) })), foot: "clicar filtra a página pelo empreendimento" },
-        ]}
+      {/* PIPELINE PONDERADO + VENDAS DO PERÍODO */}
+      <div className="intp-op-duas">
+        <div className="intp-cartao">
+          <span className="intp-cartao-titulo">Pipeline ponderado · probabilidade por etapa</span>
+          <div style={{ overflowX: "auto" }}>
+            <table className="intp-tabela">
+              <thead>
+                <tr>
+                  <th><span className="intp-th-btn" style={{ cursor: "default" }}>Etapa</span></th>
+                  <th className="num"><span className="intp-th-btn" style={{ cursor: "default" }}>Negócios</span></th>
+                  <th className="num"><span className="intp-th-btn" style={{ cursor: "default" }}>VGV em aberto</span></th>
+                  <th className="num"><span className="intp-th-btn" style={{ cursor: "default" }}>Prob.</span></th>
+                  <th className="num"><span className="intp-th-btn" style={{ cursor: "default" }}>Ponderado</span></th>
+                </tr>
+              </thead>
+              <tbody>
+                {d.etapas.map((e) => (
+                  <tr key={e.etapa} onClick={() => recorte.filtrar(`Etapa: ${e.etapa}`)}>
+                    <td data-rotulo="Etapa" className="forte">{e.etapa}</td>
+                    <td data-rotulo="Negócios" className="num">{fmt.inteiro(e.negocios)}</td>
+                    <td data-rotulo="VGV em aberto" className="num">{fmt.dinheiro(e.vgv)}</td>
+                    <td data-rotulo="Prob." className="num">{fmt.porcento(e.probabilidade, 0)}</td>
+                    <td data-rotulo="Ponderado" className="num forte">{fmt.dinheiro(e.ponderado)}</td>
+                  </tr>
+                ))}
+                <tr>
+                  <td data-rotulo="Etapa" className="forte">Total</td>
+                  <td data-rotulo="Negócios" className="num forte">{fmt.inteiro(d.totalEtapas.negocios)}</td>
+                  <td data-rotulo="VGV em aberto" className="num forte">{fmt.dinheiro(d.totalEtapas.vgv)}</td>
+                  <td data-rotulo="Prob." className="num">—</td>
+                  <td data-rotulo="Ponderado" className="num forte" style={{ color: "#1E7A46" }}>{fmt.dinheiro(d.totalEtapas.ponderado)}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <small className="intp-kpi-foot">
+            probabilidades = taxa histórica de fechamento por etapa · a linha abre os negócios · 60% do ponderado está nas 31 propostas — as 6 “sem acompanhamento” de Atendimento valem R$ 0,8 mi
+          </small>
+        </div>
+
+        <Tabela
+          colunas={[{ titulo: "Venda" }, { titulo: "Corretor" }, { titulo: "VGV", num: true }, { titulo: "Ciclo", num: true }, { titulo: "Canal" }]}
+          ordenadaEm="VGV"
+          linhas={d.vendas.map((v) => ({
+            chave: v.nome,
+            abrir: () => recorte.filtrar(`Venda: ${v.nome}`),
+            celulas: [
+              { texto: v.nome, forte: true },
+              { texto: v.corretor },
+              { texto: fmt.dinheiro(v.vgv), num: true },
+              { texto: `${fmt.inteiro(v.ciclo)} d`, num: true },
+              { texto: v.canal },
+            ],
+          }))}
+          foot={`mostrando ${d.vendas.length} de ${fmt.inteiro(d.totalVendas)} · a linha abre a ficha da venda`}
+          acaoFinal={<button type="button" className="int-link" style={{ fontWeight: 700 }}>Ver todas →</button>}
+        />
+      </div>
+
+      <Banner
+        tom="aviso"
+        forte={`${fmt.inteiro(d.foraDaLista)} vendas fora desta lista`}
+        texto="— sem % de comissão válido, não entram no financeiro. O VGV delas aparece aqui, mas receita e contribuição ficam com “—” até o cadastro ser corrigido."
+        botao={{ rotulo: "Resolver em Financeiro →", go: () => recorte.irPara("financeiro") }}
       />
 
       <RodapeFontes
         fontes={["negócios", "propostas", "metas cadastradas", "vendas"]}
-        pendencias={["metas por equipe (cadastro pendente)", "2 negócios sem valor no CRM"]}
+        pendencias={["3 vendas sem % válido de comissão", "metas por equipe cadastradas manualmente (Fase 8)"]}
         atualizado={d.atualizado}
       />
     </div>
@@ -127,31 +174,38 @@ function usarDados(): Dados {
 }
 
 const demo: Dados = {
-  assinado: 18_400_000,
-  vendas: 21,
-  previsao: 22_100_000,
-  faltaMeta: 5_600_000,
+  realizadoPercentual: 77,
+  realizado: 18_400_000,
   meta: 24_000_000,
-  ticket: 876_000,
-  semValor: 2,
-  propostas: [
-    { nome: "Claris · unidade 82", etapa: "Em negociação", valor: 1_180_000, probabilidade: 60, fechamento: "22 ago" },
-    { nome: "AP Moema · unidade 42", etapa: "Em negociação", valor: 890_000, probabilidade: 55, fechamento: "25 ago" },
-    { nome: "Key Moema · studio 11", etapa: "Aguardando documentação", valor: 640_000, probabilidade: 70, fechamento: "20 ago" },
-    { nome: "Composite · unidade 7", etapa: "Em negociação", valor: 1_020_000, probabilidade: 35, fechamento: "29 ago" },
-    { nome: "Apê Pavão 88 · locação", etapa: "Aguardando documentação", valor: 62_400, probabilidade: 80, fechamento: "19 ago" },
-    { nome: "Apê Sabiá 12", etapa: "Em negociação", valor: null, probabilidade: 40, fechamento: "—" },
+  previsao: 6_100_000,
+  coberturaPrevisao: 102,
+  falta: 5_600_000,
+  concluidas: 21,
+  cicloMedio: 38,
+  ritmo: 400_000,
+  diasUteis: 14,
+  cobertura: [
+    { rotulo: "Fechado", valor: 18_400_000, largura: 77, tipo: "entra" },
+    { rotulo: "+ previsão ponderada", valor: 24_500_000, largura: 102, tipo: "sobra" },
+    { rotulo: "Meta de agosto", valor: 24_000_000, largura: 100, tipo: "meta" },
   ],
-  porEquipe: [
-    { l: "Venda · Juliana Prado", r: "R$ 11,2 mi", sub: "13 vendas · 4 propostas em aberto" },
-    { l: "Locação · Marcos Vilela", r: "R$ 7,2 mi", sub: "8 locações · 2 propostas em aberto" },
-    { l: "Meta por equipe", r: "—", sub: "cadastro pendente" },
+  equipes: [
+    { nome: "Equipe Juliana Prado", valor: "R$ 11,2 de 13 mi", percentual: 86 },
+    { nome: "Equipe Marcos Vilela", valor: "R$ 7,2 de 11 mi", percentual: 65 },
   ],
-  porEmpreendimento: [
-    { l: "Claris", r: "R$ 4,8 mi", sub: "4 vendas" },
-    { l: "AP Moema", r: "R$ 3,9 mi", sub: "3 vendas" },
-    { l: "Key Moema", r: "R$ 2,6 mi", sub: "4 vendas" },
-    { l: "Avulsos e locação", r: "R$ 7,1 mi", sub: "10 contratos" },
+  etapas: [
+    { etapa: "Qualificado", negocios: 128, vgv: 12_600_000, probabilidade: 10, ponderado: 1_260_000 },
+    { etapa: "Visita", negocios: 96, vgv: 9_200_000, probabilidade: 25, ponderado: 2_300_000 },
+    { etapa: "Proposta", negocios: 31, vgv: 4_200_000, probabilidade: 60, ponderado: 2_520_000 },
   ],
-  atualizado: "14:28",
+  totalEtapas: { negocios: 255, vgv: 26_000_000, ponderado: 6_100_000 },
+  vendas: [
+    { nome: "Apê Canário 71 · MO-104", corretor: "Ana Beatriz", vgv: 890_000, ciclo: 26, canal: "site" },
+    { nome: "Apê Tico-tico 33 · MO-089", corretor: "Carlos Mendes", vgv: 1_240_000, ciclo: 41, canal: "indicação" },
+    { nome: "Apê Bem-te-vi 12 · MO-102", corretor: "Fernanda Lima", vgv: 980_000, ciclo: 33, canal: "site" },
+    { nome: "Apê Sabiá 12 · MO-121", corretor: "Ana Beatriz", vgv: 1_150_000, ciclo: 52, canal: "portal" },
+  ],
+  totalVendas: 21,
+  foraDaLista: 3,
+  atualizado: "14:32",
 };
