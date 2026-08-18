@@ -38,10 +38,10 @@ export function Proprietarios({ accessToken }: { accessToken: string }) {
   const emAndamento = porStatus.filter((s) => classificar(s.chave) === "atencao").reduce((t, s) => t + num(s.total), 0);
 
   const kpis = [
-    { rotulo: "Captações recebidas", valor: bloco ? inteiro(recebidas) : null, nota: bloco?.ultimaEm ? `última em ${dataCurta(bloco.ultimaEm)}` : "enviadas pelo site" },
-    { rotulo: "Publicadas", valor: bloco ? inteiro(publicadas) : null, nota: pct(publicadas, recebidas) ? `${pct(publicadas, recebidas)} das recebidas` : "sem captação no período" },
-    { rotulo: "Em andamento", valor: bloco ? inteiro(emAndamento) : null, nota: "aguardando contato ou avaliação", tom: (emAndamento > 0 ? "alerta" : "bom") as "alerta" | "bom" },
-    { rotulo: "Com preço informado", valor: bloco ? inteiro(bloco.comPreco) : null, nota: pct(bloco?.comPreco, recebidas) ? `${pct(bloco?.comPreco, recebidas)} trouxeram valor` : "nenhum valor informado" },
+    { rotulo: "Captações recebidas", valor: bloco ? inteiro(recebidas) : null, nota: bloco?.ultimaEm ? `última em ${dataCurta(bloco.ultimaEm)}` : "enviadas pelo site", origem: "captacoes_portal" },
+    { rotulo: "Publicadas", valor: bloco ? inteiro(publicadas) : null, nota: pct(publicadas, recebidas) ? `${pct(publicadas, recebidas)} das recebidas` : "sem captação no período", origem: "captacoes_portal.status" },
+    { rotulo: "Em andamento", valor: bloco ? inteiro(emAndamento) : null, nota: "aguardando contato ou avaliação", tom: (emAndamento > 0 ? "alerta" : "bom") as "alerta" | "bom", origem: "captacoes_portal.status" },
+    { rotulo: "Com preço informado", valor: bloco ? inteiro(bloco.comPreco) : null, nota: pct(bloco?.comPreco, recebidas) ? `${pct(bloco?.comPreco, recebidas)} trouxeram valor` : "nenhum valor informado", origem: "captacoes_portal" },
   ];
   const confirmados = kpis.filter((k) => k.valor !== null).length;
 
@@ -60,7 +60,7 @@ export function Proprietarios({ accessToken }: { accessToken: string }) {
             <span>O QUE CHEGOU PELO SITE</span>
             <h2>Captações do período</h2>
             <div className="ape-int-kpis">
-              {kpis.map((k) => <Kpi key={k.rotulo} rotulo={k.rotulo} valor={k.valor} nota={k.nota} tom={k.tom} />)}
+              {kpis.map((k) => <Kpi key={k.rotulo} {...k} />)}
             </div>
           </section>
 

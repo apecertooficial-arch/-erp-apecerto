@@ -123,6 +123,22 @@ drawer sem saber que existe ordenação. Nada de novo em endpoint, permissão, d
 linhas hoje; entra quando passar), ordenação persistida na URL, e navegação por setas dentro da grade
 — hoje a tabela usa Tab e Enter/Espaço, que é o padrão de lista clicável, não de planilha.
 
+## Commit 4 — KPIs e comparações
+
+Todo KPI carrega definição acessível, valor, nota, comparação e confiança como campos separados.
+Quando o endpoint não devolve período anterior, o chip diz “sem base comparável” — não calcula delta
+contra zero nem esconde o espaço. O componente aceita delta absoluto/percentual com direção e fonte
+específica; telas sem essa fonte permanecem honestamente neutras. Valor confirmado recebe confiança
+alta por padrão; valor ausente vira pendente, sem transformar ausência em zero.
+
+## Commit 5 — Empresa
+
+As quatro telas executivas formam uma leitura contínua: Visão da empresa separa resultado, risco e
+próximo movimento; Vendas usa o bloco `anterior` para comparação real de quantidade e VGV; Financeiro
+identifica a origem de cada degrau e continua parando em contribuição estimada; Captação nomeia
+`captacoes_portal` em cada indicador. Nenhuma previsão usa média e nenhum VGV é chamado de receita ou
+lucro. As fontes ausentes permanecem visíveis como pendência.
+
 ## Diferença de sistema — as 14 peças do artboard 30b
 
 | Peça | Situação | Evidência | Ação |

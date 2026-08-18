@@ -27,15 +27,15 @@ export function VisaoEmpresa({ accessToken }: { accessToken: string }) {
   const leadsDoSite = dados?.digital?.leadsDoSite;
 
   const temMeta = tem(empresa?.metaVgv) && num(empresa?.metaVgv) > 0;
-  const kpis: Array<{ rotulo: string; valor: string | null; nota: string }> = [
-    { rotulo: "Leads recebidos", valor: tem(fluxo.leads) ? inteiro(fluxo.leads) : null, nota: "fora do Bolsão" },
-    { rotulo: "Leads do site", valor: tem(leadsDoSite) ? inteiro(leadsDoSite) : null, nota: "confirmados em site_leads" },
-    { rotulo: "Negócios criados", valor: tem(fluxo.negocios) ? inteiro(fluxo.negocios) : null, nota: "vinculados no Funil 2.0" },
-    { rotulo: "Visitas marcadas", valor: tem(fluxo.visitasMarcadas) ? inteiro(fluxo.visitasMarcadas) : null, nota: tem(fluxo.visitasRealizadas) ? `${inteiro(fluxo.visitasRealizadas)} realizadas` : "realizadas aguardando dado" },
-    { rotulo: "Vendas e locações", valor: tem(empresa?.vendas) ? inteiro(empresa?.vendas) : null, nota: "somente concluídas" },
-    { rotulo: "VGV assinado", valor: tem(empresa?.vgv) ? dinheiro(empresa?.vgv) : null, nota: "não é receita" },
-    { rotulo: "Lead → negócio", valor: pct(fluxo.negocios, fluxo.leads), nota: "negócios ÷ leads do período" },
-    { rotulo: "Cobertura da meta", valor: temMeta ? `${inteiro(empresa?.atingimentoVgvPct)}%` : null, nota: temMeta ? `meta de ${dinheiro(empresa?.metaVgv)}` : "meta não cadastrada no ERP" },
+  const kpis = [
+    { rotulo: "Leads recebidos", valor: tem(fluxo.leads) ? inteiro(fluxo.leads) : null, nota: "fora do Bolsão", definicao: "Leads operacionais recebidos no período, excluindo a base de Bolsão.", origem: "Funil 2.0" },
+    { rotulo: "Leads do site", valor: tem(leadsDoSite) ? inteiro(leadsDoSite) : null, nota: "confirmados em site_leads", definicao: "Cadastros confirmados que chegaram pelos formulários do site.", origem: "site_leads" },
+    { rotulo: "Negócios criados", valor: tem(fluxo.negocios) ? inteiro(fluxo.negocios) : null, nota: "vinculados no Funil 2.0", definicao: "Oportunidades que viraram negócio operacional no CRM.", origem: "Funil 2.0" },
+    { rotulo: "Visitas marcadas", valor: tem(fluxo.visitasMarcadas) ? inteiro(fluxo.visitasMarcadas) : null, nota: tem(fluxo.visitasRealizadas) ? `${inteiro(fluxo.visitasRealizadas)} realizadas` : "realizadas aguardando dado", definicao: "Visitas agendadas no período; a nota mostra quantas foram realizadas.", origem: "Agenda" },
+    { rotulo: "Vendas e locações", valor: tem(empresa?.vendas) ? inteiro(empresa?.vendas) : null, nota: "somente concluídas", definicao: "Negócios concluídos como venda ou locação no período.", origem: "Financeiro" },
+    { rotulo: "VGV assinado", valor: tem(empresa?.vgv) ? dinheiro(empresa?.vgv) : null, nota: "não é receita", definicao: "Valor dos imóveis nos negócios assinados; não representa comissão recebida.", origem: "Financeiro" },
+    { rotulo: "Lead → negócio", valor: pct(fluxo.negocios, fluxo.leads), nota: "negócios ÷ leads do período", definicao: "Razão entre negócios criados e leads recebidos no mesmo período; não é análise de coorte.", origem: "Funil 2.0" },
+    { rotulo: "Cobertura da meta", valor: temMeta ? `${inteiro(empresa?.atingimentoVgvPct)}%` : null, nota: temMeta ? `meta de ${dinheiro(empresa?.metaVgv)}` : "meta não cadastrada no ERP", definicao: "VGV assinado dividido pela meta de VGV cadastrada.", origem: "Metas + Financeiro" },
   ];
   const confirmados = kpis.filter((k) => k.valor !== null).length;
 
@@ -64,7 +64,17 @@ export function VisaoEmpresa({ accessToken }: { accessToken: string }) {
             <span>OS NÚMEROS DO PERÍODO</span>
             <h2>Como a imobiliária está girando</h2>
             <div className="ape-int-kpis">
-              {kpis.map((k) => <Kpi key={k.rotulo} rotulo={k.rotulo} valor={k.valor} nota={k.nota} />)}
+              {kpis.map((k) => <Kpi key={k.rotulo} {...k} />)}
+            </div>
+          </section>
+
+          <section className="ape-int-secao">
+            <span>LEITURA PARA DECIDIR</span>
+            <h2>Resultado, risco e próximo movimento</h2>
+            <div className="ape-int-decisoes">
+              <article><span className="ape-int-tile verde"><i className="ape-int-ic ic-ok" /></span><div><b>Resultado confirmado</b><strong>{tem(empresa?.vendas) ? `${inteiro(empresa?.vendas)} fechamento(s)` : "—"}</strong><small>{tem(empresa?.vgv) ? `${dinheiro(empresa?.vgv)} de VGV assinado` : "VGV aguardando dado"}</small></div></article>
+              <article><span className="ape-int-tile ambar"><i className="ape-int-ic ic-alerta" /></span><div><b>Risco financeiro</b><strong>{tem(empresa?.vendasPendentes) ? `${inteiro(empresa?.vendasPendentes)} pendência(s)` : "—"}</strong><small>{tem(empresa?.vgvPendente) ? `${dinheiro(empresa?.vgvPendente)} ainda não concluído` : "valor pendente aguardando dado"}</small></div></article>
+              <article><span className="ape-int-tile roxo"><i className="ape-int-ic ic-radar" /></span><div><b>Próximo movimento</b><strong>{temMeta ? `${inteiro(empresa?.atingimentoVgvPct)}% da meta` : "Cadastrar meta"}</strong><small>{temMeta ? `${dinheiro(Math.max(0, num(empresa?.metaVgv) - num(empresa?.vgv)))} ainda descoberto` : "sem meta, não existe cobertura confiável"}</small></div></article>
             </div>
           </section>
 

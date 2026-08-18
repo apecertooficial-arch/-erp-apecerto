@@ -34,14 +34,17 @@ export function VendasPrevisao({ accessToken }: { accessToken: string }) {
   const semValor = Math.max(0, oportunidades - comValor);
   const faltaMeta = temMeta ? Math.max(0, meta - vgv) : null;
 
-  const variacao = (atual: number, base: number) =>
-    base > 0 ? `${atual >= base ? "▲" : "▼"} ${decimal((100 * Math.abs(atual - base)) / base)}% vs. período anterior` : "sem base anterior para comparar";
+  const comparacao = (atual: number, base: number) => base > 0 ? ({
+    valor: `${decimal((100 * Math.abs(atual - base)) / base)}%`,
+    rotulo: "vs. período anterior",
+    direcao: atual > base ? "subiu" as const : atual < base ? "caiu" as const : "neutra" as const,
+  }) : null;
 
   const kpis = [
-    { rotulo: "Vendas e locações", valor: tem(empresa?.vendas) ? inteiro(empresa?.vendas) : null, nota: tem(anterior.vendas) ? variacao(num(empresa?.vendas), num(anterior.vendas)) : "somente concluídas" },
-    { rotulo: "VGV assinado", valor: tem(empresa?.vgv) ? dinheiro(vgv) : null, nota: tem(anterior.vgv) ? variacao(vgv, num(anterior.vgv)) : "não é receita" },
-    { rotulo: "Falta para a meta", valor: temMeta ? dinheiro(faltaMeta) : null, nota: temMeta ? `meta de ${dinheiro(meta)} · ${decimal(empresa?.atingimentoVgvPct)}% coberto` : "meta não cadastrada no ERP", tom: (temMeta && (faltaMeta ?? 0) > 0 ? "alerta" : "bom") as "alerta" | "bom" },
-    { rotulo: "VGV pendente", valor: tem(empresa?.vgvPendente) ? dinheiro(empresa?.vgvPendente) : null, nota: `${inteiro(empresa?.vendasPendentes)} venda(s) aguardando conclusão` },
+    { rotulo: "Vendas e locações", valor: tem(empresa?.vendas) ? inteiro(empresa?.vendas) : null, nota: "somente concluídas", comparacao: tem(anterior.vendas) ? comparacao(num(empresa?.vendas), num(anterior.vendas)) : null, origem: "Financeiro" },
+    { rotulo: "VGV assinado", valor: tem(empresa?.vgv) ? dinheiro(vgv) : null, nota: "não é receita", comparacao: tem(anterior.vgv) ? comparacao(vgv, num(anterior.vgv)) : null, origem: "Financeiro" },
+    { rotulo: "Falta para a meta", valor: temMeta ? dinheiro(faltaMeta) : null, nota: temMeta ? `meta de ${dinheiro(meta)} · ${decimal(empresa?.atingimentoVgvPct)}% coberto` : "meta não cadastrada no ERP", tom: (temMeta && (faltaMeta ?? 0) > 0 ? "alerta" : "bom") as "alerta" | "bom", comparacao: null, origem: "Metas + Financeiro" },
+    { rotulo: "VGV pendente", valor: tem(empresa?.vgvPendente) ? dinheiro(empresa?.vgvPendente) : null, nota: `${inteiro(empresa?.vendasPendentes)} venda(s) aguardando conclusão`, comparacao: null, origem: "Financeiro" },
   ];
   const confirmados = kpis.filter((k) => k.valor !== null).length;
 
@@ -67,7 +70,7 @@ export function VendasPrevisao({ accessToken }: { accessToken: string }) {
             <span>O REALIZADO</span>
             <h2>O que foi assinado no período</h2>
             <div className="ape-int-kpis">
-              {kpis.map((k) => <Kpi key={k.rotulo} rotulo={k.rotulo} valor={k.valor} nota={k.nota} tom={k.tom} />)}
+              {kpis.map((k) => <Kpi key={k.rotulo} {...k} />)}
             </div>
           </section>
 
