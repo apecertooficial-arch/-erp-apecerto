@@ -22,6 +22,10 @@ estado de indisponibilidade **são** implementados — o que não existe é o n�
 **Parcial e Pendente:** enumerados na tabela por tela, com o commit que fecha cada um. Nenhum artboard
 foi descartado: os 78 estão nesta página.
 
+O contador segue igual ao do Commit 2 e isso é deliberado: o Commit 3 fecha duas **peças** da
+biblioteca (09 e 14) dentro do artboard `30b`, e `30b` só sai de "parcial" quando as 14 peças
+estiverem fiéis — faltam 02 e 08. Mover o contador antes disso seria inflar cobertura.
+
 ## Fontes de referência
 
 | Arquivo do Design | Turnos | Artboards | Cobre |
@@ -50,7 +54,7 @@ escopo — o diff somado é o do Commit 1).
 
 **O que este commit deliberadamente NÃO faz:** aplicar filtro em número nenhum. A seleção é guardada e
 exposta; nenhuma tela consome `filtros` além do período, que o endpoint já recebe. A barra declara isso
-no aviso roxo — sele\u00e7ão guardada não passa por filtro aplicado. `CONSUMIDOS_PELAS_TELAS` encolhe a cada
+no aviso roxo — seleção guardada não passa por filtro aplicado. `CONSUMIDOS_PELAS_TELAS` encolhe a cada
 commit de grupo de telas, e o aviso desaparece sozinho quando a lista fecha.
 
 ## Commit 2 — Drawer e drill-down
@@ -69,50 +73,74 @@ O contador geral permanece conservador nesta etapa: `6a` continua bloqueado por 
 enquanto a jornada individual não existir. A peça compartilhada 10 está fechada; a peça 09 continua
 parcial até ordenação e cartão móvel no Commit 3.
 
-## Commit 3 — Tabelas e mobile
-
-As oito tabelas reais da área agora usam o mesmo contrato: apenas colunas com valor comparável recebem
-botão de ordenação, `aria-sort` declara direção, e a sequência é calculada sobre o conteúdo exibido —
-texto, número, percentual, moeda e duração. O clique de linha e os drawers do Commit 2 permanecem no
-mesmo elemento, com Enter/Espaço e foco visível.
-
-Abaixo de 900 px, o `<thead>` continua disponível para tecnologia assistiva e cada `<tr>` vira cartão:
-cada célula recebe o rótulo da coluna em `data-label`, não há tabela espremida nem dependência de scroll
-horizontal. Em 560 px, a lista fecha em uma coluna. O contador geral segue conservador porque esta é
-uma peça transversal; nenhum artboard de negócio foi declarado completo só por ganhar o componente.
-
-## Commit 4 — KPIs e comparações
-
-Todo KPI agora carrega definição acessível, valor, nota, comparação e confiança como campos separados.
-Quando o endpoint não devolve período anterior, o chip diz “sem base comparável” — não calcula delta
-contra zero nem esconde o espaço. O componente aceita delta absoluto/percentual com direção e fonte
-específica; telas sem essa fonte permanecem honestamente neutras. Valor confirmado recebe confiança
-alta por padrão; valor ausente vira pendente, sem transformar ausência em zero.
-
 **Controles selecionáveis hoje** (vocabulário fechado pelo próprio 11a): comparação, dispositivo,
 finalidade, tipo de lead, consentimento. **Lista aberta** (origem, página/tipo, bairro): selecionável
 quando a tela passar `fontes` — o endpoint já devolve os agregados. **Sem fonte no ERP** (mídia,
 campanha, imóvel): abrem e explicam o que falta conectar, nunca ficam selecionáveis e nunca recebem
 opção inventada.
 
+## Commit 3 — Tabelas e mobile
+
+Um único commit, três arquivos: `CascaInteligencia.tsx`, `app/styles/inteligencia.css` e esta matriz.
+As oito tabelas da área ganharam ordenação e cartão móvel **sem uma linha de alteração nas telas** —
+tudo entrou no componente compartilhado `Tabela`, que as oito já usavam.
+
+Inventário das instâncias reais na ponta `dc1f1cc`, todas cobertas:
+
+| Tela | Tabela | Colunas | Linha clicável |
+|---|---|---|---|
+| Atendimento e SLA | corretores por SLA | 8 | — |
+| Corretores | pessoa por pilar | 9 | sim → drawer 18a |
+| Gerentes | ocupação de carteira | 7 | — |
+| Qualidade | notas de IA | 7 | — |
+| Conversão e CRM | conversão por corretor | 6 | — |
+| Comportamento | páginas do site | 4 | — |
+| Imóveis e procura | estágio e status | 4 | sim → drawer 6a |
+| Aquisição | dispositivos | 3 | — |
+
+**Peça 09 · ordenação só onde a comparação existe.** O cabeçalho vira botão (`aria-sort`,
+crescente/decrescente, chevron roxo na coluna ativa) apenas nas colunas que o componente consegue
+comparar de verdade, lendo o conteúdo já formatado em pt-BR (`1.234`, `12,5%`, `R$ 4.200`). A coluna é
+**recusada** quando: tem menos de dois valores comparáveis (só traços), mistura número e texto, ou
+mistura unidade — o caso real de `45 min` ao lado de `1,2 h` na mediana de resposta, em que ordenar
+pelo número cru mentiria. Cabeçalho que não ordena continua texto puro: sem botão morto, sem
+`aria-sort`. Linha sem valor comparável vai para o fim nas duas direções — ela não é "a menor", é
+desconhecida.
+
+**Peça 14 · cartão abaixo de 900px.** Nenhuma tabela espreme nove colunas nem rola de lado num
+aparelho de 390: cada linha vira cartão branco raio 16 com sombra do sistema, primeira célula como
+título (rótulo pequeno em cima, valor 14px/700, separador) e cada valor seguinte ao lado do **rótulo da
+sua coluna**. Os rótulos chegam ao CSS em `--c1..--c9`, publicados pelo componente — nenhuma tela
+precisou repetir texto no markup. Status e chips continuam onde estavam; a linha clicável segue
+clicável como cartão, com chevron, alvo de 44px e o mesmo `aberta` em tint roxo. O esqueleto de tabela
+também virou cartão: o vazio promete o formato que vai chegar.
+
+**Drawers intactos.** Ordenar reordena os próprios elementos `<tr>` recebidos como children, com
+`onClick`, `tabIndex`, `className` e `key` preservados — Imóveis e Corretores continuam abrindo o
+drawer sem saber que existe ordenação. Nada de novo em endpoint, permissão, dado ou service worker.
+
+**O que ficou de fora, declarado:** paginação (nenhuma tabela da área passa de algumas dezenas de
+linhas hoje; entra quando passar), ordenação persistida na URL, e navegação por setas dentro da grade
+— hoje a tabela usa Tab e Enter/Espaço, que é o padrão de lista clicável, não de planilha.
+
 ## Diferença de sistema — as 14 peças do artboard 30b
 
 | Peça | Situação | Evidência | Ação |
 |---|---|---|---|
 | 01 Cabeçalho de seção | fiel | `.ape-int-secao` eyebrow 11/600 roxo + h2 20/700 | — |
-| 02 KPI | **fiel (Commit 4)** | definição acessível, chip de comparação/ausência, confiança e procedência tipadas | — |
+| 02 KPI | parcial | cartão e estado vazio corretos; falta chip de comparação e tooltip de definição | Commit 4 |
 | 03 Tile de ícone 34px | **fiel (Commit 1)** | `.ape-int-tile` + `.ape-int-ic` por máscara | — |
 | 04 Abas e grupos pill | fiel | `<a href>` reais, ativo #FFF3EA/#FF7000/#CC5800 | — |
 | 05 Barra de filtros | **fiel (Commit 1)** | `.ape-int-barra` com os 13 controles do 11a | período personalizado e Exportar |
 | 06 Chip de filtro ativo | **fiel (Commit 1)** | `.ape-int-chip-ativo` roxo com ✕ | — |
 | 07 Selo de procedência | fiel | "DADO REAL · hh:mm" / "aguardando dado"; DEMONSTRAÇÃO omitido de propósito | — |
-| 08 Linha de funil | parcial | barra, taxa e clique para o drawer agregador; falta perda absoluta | Commit 3 |
-| 09 Tabela | **fiel (Commit 3)** | oito tabelas com ordenação real, `aria-sort`, foco e linha clicável preservada | — |
+| 08 Linha de funil | parcial | barra, taxa e clique para o drawer agregador; falta perda absoluta | Commit 6 |
+| 09 Tabela | **fiel (Commit 3)** | ordenação só em coluna comparável, `aria-sort`, linha clicável por mouse/Enter/Espaço, foco visível | paginação e ordem na URL, quando o volume pedir |
 | 10 Drawer 420px | **fiel (Commit 2)** | um componente para imóvel, jornada e corretor; URL, foco, Esc, scrim e folha móvel | gerente entra no Commit 7 |
 | 11 Bloco de pendência | fiel | `.ape-int-pendencia` alimentado por `pendencias[]` | — |
 | 12 Vazio e erro | fiel | tracejado neutro / #FBE5E5 com "Tentar novamente" | — |
-| 13 Esqueleto | **fiel (Commit 1)** | três formas por bloco | — |
-| 14 Cartão de celular | **fiel (Commit 3)** | abaixo de 900px cada linha vira cartão com rótulo/valor/status/ação; uma coluna em 560px | — |
+| 13 Esqueleto | **fiel (Commit 1)** | três formas por bloco; o de tabela vira cartão no celular (Commit 3) | — |
+| 14 Cartão de celular | **fiel (Commit 3)** | as 8 tabelas viram lista de cartões abaixo de 900px, com rótulo de coluna, status e drill-down | — |
 
 Os **tokens não divergem**: a folha usa #FAF8F6, cartão branco raio 18 sombra 0 2px 6px
 rgba(31,28,26,.06), eyebrow 11/600 +0.12em, KPI 26/700 tabular, chips pill em tint, ativo laranja e
@@ -123,23 +151,23 @@ avatar roxo #F7ECFC/#66009A. O desvio é de peças que faltam, não de estilo er
 | Tela | Artboards | Rota | Componente | Fonte de dados | Diferença | Fecha em |
 |---|---|---|---|---|---|---|
 | Visão da empresa | 2a 14b 2b 25d 1c 12b 10a 22a | `/inteligencia` | `VisaoEmpresa.tsx` | RPC `performance_sala_comando` + `site_leads` | sem briefing do Copiloto, sem delta, sem drill-down de etapa | 4 · 5 · 11 |
-| Vendas e previsão | 19b 27b 29a 12g | `/inteligencia/vendas` | `VendasPrevisao.tsx` | empresa: vendas, vgv, pendentes, metas, pipelineQuente | sem ordenação, sem drawer | 2 · 3 · 5 |
-| Financeiro e comissões | 20a 27c 29a 12h | `/inteligencia/financeiro` | `Financeiro.tsx` + GuardaModulo | receitaBruta, custos, margemContribuicao | cascata VGV→lucro sem componente | 5 |
-| Captação de proprietários | 7a 25a 28a 1h | `/inteligencia/proprietarios` | `Proprietarios.tsx` | `captacoes_portal` | sem drawer, sem tile por status | 2 · 5 |
-| Atendimento e SLA | 15a 26a 22a 12c | `/inteligencia/atendimento` | `AtendimentoSla.tsx` | corretores: slaAmostra, mediana, sla15Pct; limiares 5/15 min | tabela ordenável e cartão móvel prontos; falta fila acionável | 6 |
+| Vendas e previsão | 19b 27b 29a 12g | `/inteligencia/vendas` | `VendasPrevisao.tsx` | empresa: vendas, vgv, pendentes, metas, pipelineQuente | sem drawer da venda | 5 |
+| Financeiro e comissões | 20a 27c 29a 12h | `/inteligencia/financeiro` | `Financeiro.tsx` + GuardaModulo | receitaBruta, custos, margemContribuição | cascata VGV→lucro sem componente | 5 |
+| Captação de proprietários | 7a 25a 28a 1h | `/inteligencia/proprietarios` | `Proprietarios.tsx` | `captacoes_portal` | sem drawer da captação, sem tile por status | 5 |
+| Atendimento e SLA | 15a 26a 22a 12c | `/inteligencia/atendimento` | `AtendimentoSla.tsx` | corretores: slaAmostra, mediana, sla15Pct; limiares 5/15 min | tabela já ordena e vira cartão (Commit 3); falta drill-down da fila | 6 |
 | Performance da equipe | 16a 26b 29a 12d | `/inteligencia/equipe` | `PerformanceEquipe.tsx` | corretores agregado nos 4 pilares | sem tile por pilar, sem clique para lista filtrada | 7 |
-| Gerentes | 17a 26c 29a 12e | `/inteligencia/gerentes` | `Gerentes.tsx` | corretores por ocupação e vencidas | página do gerente não existe como destino | 2 · 7 |
-| Corretores | 18a 26d 29a 12f | `/inteligencia/corretores` | `Corretores.tsx` | corretores completo | drawer e tabela móvel prontos; falta visão própria com escopo por perfil | 7 |
-| Conversão e CRM | 5a 24d 10a 1g | `/inteligencia/conversao` | `ConversaoCrm.tsx` | empresa.fluxo + qualidadeDado | jornada individual do lead inexistente | 2 · 6 |
-| Qualidade | 19a 27a 29a 12g | `/inteligencia/qualidade` | `Qualidade.tsx` | qualidadeDado + notas de IA (amostra mínima 8) | ordenação e cartão móvel prontos; falta drawer | 6 |
+| Gerentes | 17a 26c 29a 12e | `/inteligencia/gerentes` | `Gerentes.tsx` | corretores por ocupação e vencidas | página do gerente não existe como destino | 7 |
+| Corretores | 18a 26d 29a 12f | `/inteligencia/corretores` | `Corretores.tsx` | corretores completo | perfil em drawer e tabela ordenada; falta escopo por perfil (visão própria sem ranking) | 7 |
+| Conversão e CRM | 5a 24d 10a 1g | `/inteligencia/conversao` | `ConversaoCrm.tsx` | empresa.fluxo + qualidadeDado | jornada individual do lead segue no Funil 2.0 por permissão | 6 |
+| Qualidade | 19a 27a 29a 12g | `/inteligencia/qualidade` | `Qualidade.tsx` | qualidadeDado + notas de IA (amostra mínima 8) | sem drawer da avaliação | 6 |
 | Aquisição e campanhas | 3a 24a 28a 1d | `/inteligencia/aquisicao` | `Aquisicao.tsx` | GA4 (`app/lib/ga4.ts`) + `site_leads`; custo de mídia = pendência | sem delta, sem tile por canal | 4 · 8 |
-| Comportamento e conteúdo | 4a 24b 28a 1e | `/inteligencia/comportamento` | `Comportamento.tsx` | GA4 páginas/entradas/dispositivos | sem rolagem/mapa de calor (Clarity), sem ordenação | 3 · 8 |
-| Imóveis e procura | 6a 24c 10a 1f | `/inteligencia/imoveis` | `Imoveis.tsx` | `anuncios_site` × `captacoes_portal` | tabela ordenável e drawer do imóvel ausentes | 2 · 3 · 8 |
+| Comportamento e conteúdo | 4a 24b 28a 1e | `/inteligencia/comportamento` | `Comportamento.tsx` | GA4 páginas/entradas/dispositivos | sem rolagem/mapa de calor (Clarity) | 8 |
+| Imóveis e procura | 6a 24c 10a 1f | `/inteligencia/imoveis` | `Imoveis.tsx` | `anuncios_site` × `captacoes_portal` | tabela ordenada e drawer do corte prontos; telemetria por imóvel bloqueada | 8 |
 | Sara | 8a 25b 28a 1i | `/inteligencia/sara` | `Sara.tsx` | sem fonte: tela em ausência de integração | layout completo com traços | 9 |
-| Central de alertas | 21a 27d 22a 12i | `/inteligencia/alertas` | `CentralAlertas.tsx` | empresa.riscos + corretores | sem tile de gravidade, sem drawer da evidência | 2 · 10 |
+| Central de alertas | 21a 27d 22a 12i | `/inteligencia/alertas` | `CentralAlertas.tsx` | empresa.riscos + corretores | sem tile de gravidade, sem drawer da evidência | 10 |
 | Privacidade e tracking | 9a 25c 28a 1j | `/inteligencia/privacidade` | `PrivacidadeTracking.tsx` | qualidadeDado; consentimento/Clarity pendentes | sem semáforo em tile | 10 |
 | **Copiloto ApêCerto** | 31a–31h | nenhuma | **não existe** | backend de IA inexistente | 8 artboards sem nada no ar | 11 |
-| Casca e navegação | 23a 23b 11a 11b 12j 30a 30b 1b | `/performance` → Visão | `CascaInteligencia.tsx` + `BarraFiltros.tsx` + `filtros.ts` | — | filtros na URL e chips prontos (Commit 1); drill-downs (11b) e escopo por perfil (12j) pendentes | 2 · 7 |
+| Casca e navegação | 23a 23b 11a 11b 12j 30a 30b 1b | `/performance` → Visão | `CascaInteligencia.tsx` + `BarraFiltros.tsx` + `filtros.ts` + `Drawer.tsx` | — | filtros na URL, chips, drawer e tabela prontos; escopo por perfil (12j) pendente | 7 |
 
 Os 10 estados obrigatórios estão cobertos por construção nas 16 rotas pela regra "layout sempre
 completo" (`ac62f9f`): KPI sem dado mostra "—" + "aguardando conexão", nenhum cartão desaparece.
@@ -159,9 +187,9 @@ completo" (`ac62f9f`): KPI sem dado mostra "—" + "aguardando conexão", nenhum
 ## Ordem de implementação nesta branch
 
 1. ✅ Casca: peças 05, 06, 03, 13 + persistência do 11a.
-2. Drawer + drill-down: 09 (linha clicável) e 10.
-3. Tabelas e mobile: ordenação, teclado, cartões abaixo de 900px.
-4. KPIs e comparações: 02 + esqueleto por bloco nas telas.
+2. ✅ Drawer + drill-down: peça 10, com imóvel, jornada e corretor.
+3. ✅ Tabelas e mobile: peças 09 e 14 nas 8 tabelas da área.
+4. KPIs e comparações: peça 02 + esqueleto por bloco nas telas.
 5. Empresa · 6. Operação comercial · 7. Performance · 8. Mercado e digital · 9. Sara · 10. Governança.
 11. Interface do Copiloto, sem simular IA.
 12. Responsividade e acabamento (1440×900 e 390×844).
