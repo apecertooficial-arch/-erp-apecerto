@@ -45,7 +45,7 @@ export function Financeiro({ accessToken }: { accessToken: string }) {
   ];
 
   return (
-    <CascaInteligencia
+    <CascaInteligencia accessToken={accessToken}
       slug="financeiro" grupo="empresa" titulo="Financeiro e comissões"
       apoio="Do VGV à contribuição estimada. A cascata para onde o dado para — e o último degrau não é lucro líquido."
       periodo={periodo} onPeriodo={trocarPeriodo}

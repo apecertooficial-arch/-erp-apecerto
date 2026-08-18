@@ -81,7 +81,7 @@ export function PerformanceEquipe({ accessToken }: { accessToken: string }) {
   ];
 
   return (
-    <CascaInteligencia
+    <CascaInteligencia accessToken={accessToken}
       slug="equipe" grupo="operacao" titulo="Performance da equipe"
       apoio="Quatro pilares, nunca um score único. Cada pilar mostra a base que usou."
       periodo={periodo} onPeriodo={trocarPeriodo}

@@ -18,6 +18,7 @@
 import { Children, isValidElement, useMemo, useState, type CSSProperties, type ReactElement, type ReactNode } from "react";
 
 import { BarraFiltros } from "./BarraFiltros";
+import { CopilotoInteligencia } from "./CopilotoInteligencia";
 import { PERIODOS, horaSp, type Periodo } from "./dados";
 import { queryAtual, useFiltros, type FonteOpcoes } from "./filtros";
 
@@ -52,11 +53,12 @@ export const TELAS: Array<{ slug: string; nome: string; grupo: Grupo }> = [
 const caminho = (slug: string) => (slug ? `/inteligencia/${slug}` : "/inteligencia");
 
 export function CascaInteligencia({
-  slug, titulo, apoio, grupo, periodo, onPeriodo, confirmados, atualizadoEm, fontes, children,
+  slug, titulo, apoio, grupo, periodo, onPeriodo, confirmados, atualizadoEm, fontes, accessToken, children,
 }: {
   slug: string; titulo: string; apoio: string; grupo: Grupo;
   periodo: Periodo; onPeriodo: (p: Periodo) => void;
   confirmados: number; atualizadoEm?: string;
+  accessToken: string;
   fontes?: FonteOpcoes;
   children: React.ReactNode;
 }) {
@@ -107,6 +109,7 @@ export function CascaInteligencia({
       />
 
       {children}
+      <CopilotoInteligencia accessToken={accessToken} titulo={titulo} atualizadoEm={atualizadoEm} />
     </main>
   );
 }

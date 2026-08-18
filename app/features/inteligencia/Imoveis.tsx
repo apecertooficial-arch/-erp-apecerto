@@ -61,7 +61,7 @@ export function Imoveis({ accessToken }: { accessToken: string }) {
     : null;
 
   return (
-    <CascaInteligencia
+    <CascaInteligencia accessToken={accessToken}
       slug="imoveis" grupo="digital" titulo="Imóveis e procura"
       apoio="O que temos anunciado, o que o mercado está oferecendo e onde a procura não encontra imóvel."
       periodo={periodo} onPeriodo={trocarPeriodo}

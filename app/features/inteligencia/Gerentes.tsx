@@ -54,7 +54,7 @@ export function Gerentes({ accessToken }: { accessToken: string }) {
   const confirmados = kpis.filter((k) => k.valor !== null).length;
 
   return (
-    <CascaInteligencia
+    <CascaInteligencia accessToken={accessToken}
       slug="gerentes" grupo="operacao" titulo="Gerentes"
       apoio="Carga, limite de carteira e intervenções. O corte por equipe depende do cadastro de hierarquia — e está declarado como pendência."
       periodo={periodo} onPeriodo={trocarPeriodo}

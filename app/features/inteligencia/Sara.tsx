@@ -33,7 +33,7 @@ export function Sara({ accessToken }: { accessToken: string }) {
   const { dados, estado, periodo, trocarPeriodo, tentarNovamente } = useInteligencia(accessToken);
 
   return (
-    <CascaInteligencia
+    <CascaInteligencia accessToken={accessToken}
       slug="sara" grupo="digital" titulo="Sara"
       apoio="A Sara facilita a descoberta de imóvel e gera oportunidade? A tela está pronta; os eventos da Sara ainda não chegam ao ERP."
       periodo={periodo} onPeriodo={trocarPeriodo}

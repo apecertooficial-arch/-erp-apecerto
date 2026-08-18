@@ -65,7 +65,7 @@ export function Qualidade({ accessToken }: { accessToken: string }) {
   const pessoaClassificavel = pessoa ? num(pessoa.atendimento?.iaAmostra) >= AMOSTRA_MINIMA : false;
 
   return (
-    <CascaInteligencia
+    <CascaInteligencia accessToken={accessToken}
       slug="qualidade" grupo="operacao" titulo="Qualidade e desenvolvimento"
       apoio="Oito critérios, amostra declarada e plano derivado do critério mais fraco. Nunca um score único."
       periodo={periodo} onPeriodo={trocarPeriodo}

@@ -57,7 +57,7 @@ export function Corretores({ accessToken }: { accessToken: string }) {
   const analise = pessoa ? leitura(pessoa) : null;
 
   return (
-    <CascaInteligencia
+    <CascaInteligencia accessToken={accessToken}
       slug="corretores" grupo="operacao" titulo="Corretores"
       apoio="Lista gerencial e perfil individual. Sem ranking público e sem classificar quem não tem amostra."
       periodo={periodo} onPeriodo={trocarPeriodo}

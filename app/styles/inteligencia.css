@@ -336,6 +336,40 @@
 .ape-int-acao:hover { background: #CC5800; }
 .ape-int-acao:focus-visible { outline: 2px solid #66009A; outline-offset: 2px; }
 
+.ape-int-copiloto-botao {
+  position: fixed; z-index: 80; right: 24px; bottom: 24px; min-height: 50px; padding: 0 18px;
+  border: 0; border-radius: 999px; background: #66009A; color: #fff; box-shadow: 0 14px 36px rgba(78, 0, 120, .28);
+  display: flex; align-items: center; gap: 9px; font: 700 13px inherit; cursor: pointer;
+}
+.ape-int-copiloto-botao i { font-style: normal; font-size: 18px; }
+.ape-int-copiloto-botao:hover { background: #4D0074; transform: translateY(-1px); }
+.ape-int-copiloto-botao:focus-visible { outline: 3px solid #FFB36F; outline-offset: 3px; }
+.ape-int-copiloto-scrim { position: fixed; z-index: 120; inset: 0; background: rgba(31,28,26,.38); display: flex; justify-content: flex-end; }
+.ape-int-copiloto { width: min(460px, 100%); height: 100%; overflow: auto; padding: 22px; background: #FCFAF8; box-shadow: -16px 0 50px rgba(31,28,26,.15); display: flex; flex-direction: column; gap: 16px; }
+.ape-int-copiloto > header { display: flex; align-items: flex-start; gap: 12px; }
+.ape-int-copiloto > header > span { flex: 1; display: grid; grid-template-columns: 32px 1fr; column-gap: 10px; }
+.ape-int-copiloto > header i { grid-row: 1 / 3; width: 32px; height: 32px; border-radius: 10px; background: #F1DFFA; color: #66009A; display: grid; place-items: center; font-style: normal; }
+.ape-int-copiloto > header small { color: #8A45B3; font-size: 10px; letter-spacing: .09em; }
+.ape-int-copiloto > header b { font-size: 18px; }
+.ape-int-copiloto > header > button { width: 40px; height: 40px; border: 0; background: transparent; border-radius: 50%; font-size: 24px; cursor: pointer; }
+.ape-int-copiloto-resumo, .ape-int-copiloto-pendencias, .ape-int-copiloto-fala, .ape-int-copiloto-erro { padding: 16px; border-radius: 18px; background: #fff; box-shadow: 0 2px 7px rgba(31,28,26,.06); display: flex; flex-direction: column; gap: 8px; }
+.ape-int-copiloto-resumo > small, .ape-int-copiloto-fala > small { color: #8A45B3; font-size: 10px; letter-spacing: .08em; }
+.ape-int-copiloto-resumo > strong { font-size: 15px; line-height: 1.45; }
+.ape-int-copiloto-resumo ul { margin: 2px 0 0; padding-left: 18px; color: #5C5550; font-size: 12px; line-height: 1.6; }
+.ape-int-copiloto-pendencias { background: #FDF1D9; box-shadow: none; }
+.ape-int-copiloto-pendencias small { color: #7A5E12; line-height: 1.4; }
+.ape-int-copiloto-fala p { margin: 0; white-space: pre-wrap; color: #3C3733; font-size: 13px; line-height: 1.6; }
+.ape-int-copiloto-erro { background: #FBE5E5; color: #8F2B2B; box-shadow: none; }
+.ape-int-copiloto-erro span { font-size: 12px; line-height: 1.45; }
+.ape-int-copiloto-atalhos { display: flex; flex-wrap: wrap; gap: 7px; }
+.ape-int-copiloto-atalhos button { min-height: 38px; padding: 0 12px; border: 1px solid #E7DCEB; border-radius: 999px; background: #fff; color: #66009A; font: 600 11px inherit; cursor: pointer; }
+.ape-int-copiloto form { display: flex; flex-direction: column; gap: 8px; }
+.ape-int-copiloto form label { font-size: 12px; font-weight: 700; }
+.ape-int-copiloto textarea { resize: vertical; min-height: 78px; padding: 12px; border: 1px solid #DED8D2; border-radius: 14px; background: #fff; font: 13px/1.45 inherit; }
+.ape-int-copiloto form button { min-height: 44px; border: 0; border-radius: 999px; background: #66009A; color: #fff; font-weight: 700; cursor: pointer; }
+.ape-int-copiloto form button:disabled, .ape-int-copiloto-atalhos button:disabled { opacity: .5; cursor: wait; }
+.ape-int-copiloto > footer { margin-top: auto; color: #9A938B; font-size: 10.5px; line-height: 1.45; }
+
 .ape-int-pendencias { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
 .ape-int-pendencia { background: #FDF1D9; border-radius: 18px; padding: 16px; display: flex; flex-direction: column; gap: 6px; }
 .ape-int-pendencia b { font-size: 12.5px; color: #7A5E12; }
@@ -531,4 +565,7 @@
   .ape-int-controles { width: 100%; }
   .ape-int-menu { left: auto; right: 0; }
   .ape-int-drawer-numeros { grid-template-columns: 1fr; }
+  .ape-int-copiloto-botao { right: 14px; bottom: 14px; width: 50px; padding: 0; justify-content: center; }
+  .ape-int-copiloto-botao span { display: none; }
+  .ape-int-copiloto { padding: 16px; }
 }

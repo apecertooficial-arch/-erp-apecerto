@@ -40,7 +40,7 @@ export function Comportamento({ accessToken }: { accessToken: string }) {
   const maiorVisualizacao = paginas.reduce((maior, p) => Math.max(maior, num(p.visualizacoes)), 0);
 
   return (
-    <CascaInteligencia
+    <CascaInteligencia accessToken={accessToken}
       slug="comportamento" grupo="digital" titulo="Comportamento e conteúdo"
       apoio="O que as pessoas abrem e por onde entram. Rolagem, cliques de intenção e gravações dependem de evento e consentimento."
       periodo={periodo} onPeriodo={trocarPeriodo}

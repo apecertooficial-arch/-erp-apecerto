@@ -56,7 +56,7 @@ export function VendasPrevisao({ accessToken }: { accessToken: string }) {
   ];
 
   return (
-    <CascaInteligencia
+    <CascaInteligencia accessToken={accessToken}
       slug="vendas" grupo="empresa" titulo="Vendas e previsão"
       apoio="Realizado primeiro, estimativa depois. Previsão só existe com valor informado no pipeline."
       periodo={periodo} onPeriodo={trocarPeriodo}

@@ -46,7 +46,7 @@ export function Proprietarios({ accessToken }: { accessToken: string }) {
   const confirmados = kpis.filter((k) => k.valor !== null).length;
 
   return (
-    <CascaInteligencia
+    <CascaInteligencia accessToken={accessToken}
       slug="proprietarios" grupo="empresa" titulo="Captação de proprietários"
       apoio="O site está ajudando a captar imóvel? O funil começa onde o dado começa: na captação enviada."
       periodo={periodo} onPeriodo={trocarPeriodo}

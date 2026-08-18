@@ -61,7 +61,7 @@ export function ConversaoCrm({ accessToken }: { accessToken: string }) {
   const etapaAberta = alvo[0] === "lead" && alvo[1] === "etapa" ? etapas[Number(alvo[2])] ?? null : null;
 
   return (
-    <CascaInteligencia
+    <CascaInteligencia accessToken={accessToken}
       slug="conversao" grupo="operacao" titulo="Conversão e CRM"
       apoio="O que acontece depois que o lead entra. Etapa sem dado aparece com traço — nenhuma sai da tela."
       periodo={periodo} onPeriodo={trocarPeriodo}

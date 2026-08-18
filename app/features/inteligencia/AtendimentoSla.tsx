@@ -61,7 +61,7 @@ export function AtendimentoSla({ accessToken }: { accessToken: string }) {
   const filaAberta = alvo[0] === "fila-sla" ? filas[Number(alvo[1])] ?? null : null;
 
   return (
-    <CascaInteligencia
+    <CascaInteligencia accessToken={accessToken}
       slug="atendimento" grupo="operacao" titulo="Atendimento e SLA"
       apoio="Quem está esperando resposta agora, e há quanto tempo. Velocidade sempre com a amostra do lado."
       periodo={periodo} onPeriodo={trocarPeriodo}

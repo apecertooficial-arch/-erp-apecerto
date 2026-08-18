@@ -50,7 +50,7 @@ export function VisaoEmpresa({ accessToken }: { accessToken: string }) {
   const funilTemDado = etapas.some((e) => tem(e.valor));
 
   return (
-    <CascaInteligencia
+    <CascaInteligencia accessToken={accessToken}
       slug="" grupo="empresa" titulo="Visão da empresa"
       apoio="A operação inteira num lugar. Cada número vem do ERP — o que não veio aparece como pendência, não como zero."
       periodo={periodo} onPeriodo={trocarPeriodo}

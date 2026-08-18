@@ -155,6 +155,30 @@ Gerentes, cada linha abre o drawer compartilhado com capacidade, pendências e u
 sobre o limite cadastrado. A hierarquia corretor → gerente continua visível como dependência, portanto
 nenhuma equipe fictícia foi criada para preencher a referência visual.
 
+## Commit 8 — Mercado e digital
+
+Aquisição e Comportamento usam GA4 real quando configurado e distinguem sessões de pessoas; custos de
+Google/Meta e mapas do Clarity permanecem pendências explícitas. Imóveis cruza o estoque publicado com
+procura agregada e abre o detalhe do segmento no drawer, sem inventar visualização por anúncio. Sara
+mantém as sete etapas, os indicadores de procura e saúde em estado conectável; texto digitado nunca é
+exposto e atribuição ao negócio só será exibida quando a origem chegar ao lead.
+
+## Commit 9 — Governança
+
+A Central avalia limiares fixos sobre o dado confirmado, separa crítico, atenção, normalidade e regra
+inativa, e nunca converte falha de consulta em zero. Privacidade mostra por nível o que a coleta pode
+fazer, a saúde de cada conexão e as lacunas de qualidade. Ausência de Ads, Clarity ou consentimento não
+é escondida por decoração visual.
+
+## Commit 10 — Copiloto de Inteligência
+
+Todas as 16 rotas recebem o mesmo Copiloto. Ao abrir, ele resume imediatamente os KPIs e pendências
+que já estão renderizados, sem nova transmissão. Perguntas usam o agente `inteligencia-ceo` pela rota
+autenticada existente e enviam somente agregados da tela; nome, telefone e texto de conversa ficam de
+fora. Carregamento, resposta, indisponibilidade do agente e ausência de dado têm estados próprios. Se
+o agente ainda não estiver publicado, o resumo local continua funcional e a interface informa a ação
+necessária sem simular uma resposta de IA.
+
 ## Diferença de sistema — as 14 peças do artboard 30b
 
 | Peça | Situação | Evidência | Ação |
