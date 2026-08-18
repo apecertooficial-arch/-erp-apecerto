@@ -114,14 +114,39 @@ export function CascaInteligencia({
 /* Cartão de indicador. `valor === null` NÃO esconde nada: mostra o rótulo e um
    traço. `aguardando` troca a nota de baixo pelo aviso de integração pendente. */
 export function Kpi({
-  rotulo, valor, nota, tom, aguardando,
-}: { rotulo: string; valor: string | null; nota: string; tom?: "bom" | "alerta"; aguardando?: boolean }) {
+  rotulo, valor, nota, tom, aguardando, definicao, comparacao, confianca, origem,
+}: {
+  rotulo: string; valor: string | null; nota: string; tom?: "bom" | "alerta"; aguardando?: boolean;
+  definicao?: string;
+  comparacao?: { valor: string; rotulo: string; direcao?: "subiu" | "caiu" | "neutra" } | null;
+  confianca?: "alta" | "parcial" | "pendente";
+  origem?: string;
+}) {
   const vazio = valor === null;
+  const nivel = confianca ?? (vazio ? "pendente" : "alta");
   return (
     <article className={vazio ? "ape-int-kpi vazio" : `ape-int-kpi${tom ? ` ${tom}` : ""}`}>
-      <span>{rotulo}</span>
+      <header className="ape-int-kpi-topo">
+        <span>{rotulo}</span>
+        <button
+          type="button" className="ape-int-kpi-ajuda"
+          aria-label={`Definição de ${rotulo}: ${definicao ?? nota}`}
+          data-tooltip={definicao ?? nota}
+        >?</button>
+      </header>
       <strong>{vazio ? "—" : valor}</strong>
       <small>{vazio && aguardando ? "aguardando conexão" : nota}</small>
+      <div className="ape-int-kpi-meta">
+        {comparacao ? (
+          <span className={`ape-int-comparacao ${comparacao.direcao ?? "neutra"}`}>
+            <i aria-hidden="true" />{comparacao.valor}<small>{comparacao.rotulo}</small>
+          </span>
+        ) : <span className="ape-int-comparacao indisponivel">sem base comparável</span>}
+        <span className={`ape-int-confianca ${nivel}`}>
+          <i aria-hidden="true" />{nivel === "alta" ? "confirmado" : nivel === "parcial" ? "cobertura parcial" : "pendente"}
+        </span>
+      </div>
+      {origem && <small className="ape-int-kpi-origem">Fonte: {origem}</small>}
     </article>
   );
 }

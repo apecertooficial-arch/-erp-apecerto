@@ -126,7 +126,7 @@ export function Imoveis({ accessToken }: { accessToken: string }) {
           <section className="ape-int-secao">
             <span>SITUAÇÃO DO ANÚNCIO</span>
             <h2>Estágio e status do estóque</h2>
-            <Tabela colunas={["Corte", "Valor", "Anúncios", "Participação"]} ordenaveis={[0, 1, 2, 3]}>
+            <Tabela colunas={["Corte", "Valor", "Anúncios", "Participação"]}>
               {cortes.length ? cortes.map((c) => {
                 const id = `corte:${c.corte}:${c.valor}`;
                 const estaAberto = gaveta.alvo === id;

@@ -144,7 +144,7 @@ lucro. As fontes ausentes permanecem visíveis como pendência.
 | Peça | Situação | Evidência | Ação |
 |---|---|---|---|
 | 01 Cabeçalho de seção | fiel | `.ape-int-secao` eyebrow 11/600 roxo + h2 20/700 | — |
-| 02 KPI | parcial | cartão e estado vazio corretos; falta chip de comparação e tooltip de definição | Commit 4 |
+| 02 KPI | **fiel (Commit 4)** | definição acessível, chip de comparação/ausência, confiança e procedência tipadas | — |
 | 03 Tile de ícone 34px | **fiel (Commit 1)** | `.ape-int-tile` + `.ape-int-ic` por máscara | — |
 | 04 Abas e grupos pill | fiel | `<a href>` reais, ativo #FFF3EA/#FF7000/#CC5800 | — |
 | 05 Barra de filtros | **fiel (Commit 1)** | `.ape-int-barra` com os 13 controles do 11a | período personalizado e Exportar |
@@ -205,7 +205,7 @@ completo" (`ac62f9f`): KPI sem dado mostra "—" + "aguardando conexão", nenhum
 1. ✅ Casca: peças 05, 06, 03, 13 + persistência do 11a.
 2. ✅ Drawer + drill-down: peça 10, com imóvel, jornada e corretor.
 3. ✅ Tabelas e mobile: peças 09 e 14 nas 8 tabelas da área.
-4. KPIs e comparações: peça 02 + esqueleto por bloco nas telas.
+4. ✅ KPIs e comparações: peça 02, confiança, procedência e ausência de base explícita.
 5. Empresa · 6. Operação comercial · 7. Performance · 8. Mercado e digital · 9. Sara · 10. Governança.
 11. Interface do Copiloto, sem simular IA.
 12. Responsividade e acabamento (1440×900 e 390×844).

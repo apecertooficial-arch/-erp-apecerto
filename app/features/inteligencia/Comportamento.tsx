@@ -75,7 +75,7 @@ export function Comportamento({ accessToken }: { accessToken: string }) {
                   <small>Volume = visualizações; percentual = participação desta página nas entradas do recorte. As 12 páginas mais vistas do período.</small>
                 </div>
 
-                <Tabela colunas={["Página", "Visualizações", "Entradas", "Entrada/visualização"]} ordenaveis={[0, 1, 2, 3]}>
+                <Tabela colunas={["Página", "Visualizações", "Entradas", "Entrada/visualização"]}>
                   {paginas.map((p) => (
                     <tr key={p.pagina}>
                       <td><b>{p.pagina}</b></td>

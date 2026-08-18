@@ -80,7 +80,7 @@ export function Gerentes({ accessToken }: { accessToken: string }) {
               <section className="ape-int-secao">
                 <span>CARGA POR PESSOA</span>
                 <h2>Quem passou do limite e quem tem folga</h2>
-                <Tabela colunas={["Corretor", "Carteira", "Limite", "Ocupação", "Em dia", "Vencidas", "Situação"]} ordenaveis={[0, 1, 2, 3, 4, 5, 6]}>
+                <Tabela colunas={["Corretor", "Carteira", "Limite", "Ocupação", "Em dia", "Vencidas", "Situação"]}>
                   {corretores
                     .slice()
                     .sort((a, b) => num(b.capacidadePct) - num(a.capacidadePct))

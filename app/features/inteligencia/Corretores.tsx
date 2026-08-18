@@ -70,7 +70,7 @@ export function Corretores({ accessToken }: { accessToken: string }) {
           <section className="ape-int-secao">
             <span>LISTA GERENCIAL</span>
             <h2>{corretores.length} pessoa(s) na mesma régua</h2>
-            <Tabela colunas={["Corretor", "Carteira", "1º contato", "Visitas", "Vendas", "VGV", "Qualidade", "Vencidas", "Atividade"]} ordenaveis={[0, 1, 2, 3, 4, 5, 6, 7, 8]}>
+            <Tabela colunas={["Corretor", "Carteira", "1º contato", "Visitas", "Vendas", "VGV", "Qualidade", "Vencidas", "Atividade"]}>
               {corretores.map((c) => {
                 const nSla = num(c.atendimento?.amostraTurnos);
                 const nIa = num(c.atendimento?.iaAmostra);
