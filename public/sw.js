@@ -3,8 +3,28 @@
 // REGRA DE OURO: nada que identifique cliente entra em cache. Conversas,
 // telefones, leads, sessao e respostas do Supabase passam direto para a rede e
 // nunca sao gravadas. O cache guarda apenas a casca publica do aplicativo.
+//
+// ATUALIZACAO DEPOIS DO DEPLOY (bug corrigido em agosto/2026).
+// Sintoma: depois de publicar, o F5 comum continuava mostrando a versao velha e
+// parecia que nada havia sido publicado. Tres causas somadas:
+//
+//   1. VERSAO era uma string fixa ("apecerto-v6"). O nome do cache nunca mudava,
+//      entao o `activate` nunca apagava nada e o codigo antigo ficava no
+//      aparelho ate alguem limpar na mao.
+//   2. /sw.js era byte a byte identico a cada deploy. Sem diferenca no arquivo,
+//      o navegador nem considera que existe worker novo -- skipWaiting nunca
+//      chegava a rodar.
+//   3. /_next/static/ era cache-first. Basta um arquivo sem hash no meio para o
+//      app ficar preso numa versao.
+//
+// Correcao: a pagina registra /sw.js?v=<build>, e a VERSAO do cache sai DESSA
+// query -- muda a cada build, o arquivo muda, o worker instala e o activate
+// limpa o cache antigo. Alem disso o JS/CSS do app passa a ser NETWORK-FIRST:
+// com rede, o que vale e sempre o servidor; o cache virou apenas rede de
+// seguranca para quem esta sem sinal.
 
-const VERSAO = "apecerto-v6";
+const BUILD = new URL(self.location.href).searchParams.get("v") || "sem-build";
+const VERSAO = `apecerto-${BUILD}`;
 const CACHE_ESTATICO = `estatico-${VERSAO}`;
 const OFFLINE = "/offline.html";
 
@@ -18,22 +38,25 @@ function ehPrivado(url) {
   return PRIVADO.some((re) => re.test(url.pathname) || re.test(url.hostname));
 }
 
-/* Casca publica cacheavel. Tudo aqui e conteudo fixo do aplicativo: nao ha
-   como um dado de cliente cair nesta lista.
-   Os tres primeiros sao versionados de fato (nome muda a cada build).
+/* Cache-first sobrou apenas para o que NAO muda entre deploys: os icones do
+   manifest e a tela offline. Nenhum dos dois tem dado pessoal, e nenhum dos dois
+   contem codigo do app -- entao nao ha como prender o ERP numa versao velha.
 
    OFFLINE e a excecao consciente: nao e versionado, mas precisa estar aqui.
    Ele so entrava no cache pelo addAll(PRECACHE) do evento install, que NAO roda
-   de novo para um service worker ja instalado. Depois do logout -- que apaga os
-   caches do ApeCerto de proposito -- a tela offline sumia e nao voltava, entao
-   quem ficasse sem sinal via a tela de erro do navegador em vez dela. Estando
-   aqui, a primeira visita a /offline.html recoloca o arquivo no cache.
-
-   Comparacao exata de caminho, nunca prefixo: "/offline.html" e so ele mesmo. */
-function ehEstaticoVersionado(url) {
-  return url.pathname.startsWith("/_next/static/")
-    || url.pathname.startsWith("/icons/")
+   de novo para um worker ja instalado. Depois do logout -- que apaga os caches
+   do ApeCerto de proposito -- a tela offline sumia e nao voltava. Estando aqui,
+   a primeira visita a /offline.html recoloca o arquivo no cache. */
+function ehFixoDoApp(url) {
+  return url.pathname.startsWith("/icons/")
+    || url.pathname === "/manifest.webmanifest"
     || url.pathname === OFFLINE;
+}
+
+/* Codigo e estilo do app: network-first. Com rede, o servidor sempre ganha.
+   Guardamos copia so para quem abrir sem sinal. */
+function ehCodigoDoApp(url) {
+  return url.pathname.startsWith("/_next/");
 }
 
 self.addEventListener("install", (evento) => {
@@ -58,8 +81,8 @@ self.addEventListener("fetch", (evento) => {
   // Dado privado: rede sempre, sem cache, sem fallback com conteudo antigo.
   if (ehPrivado(url)) return;
 
-  // Estatico versionado: cache primeiro, porque o nome do arquivo muda a cada build.
-  if (ehEstaticoVersionado(url)) {
+  // Icone, manifest e tela offline: cache primeiro (nao carregam codigo do app).
+  if (ehFixoDoApp(url)) {
     evento.respondWith(
       caches.match(req).then((hit) => hit || fetch(req).then((res) => {
         if (res.ok) { const copia = res.clone(); caches.open(CACHE_ESTATICO).then((c) => c.put(req, copia)); }
@@ -69,9 +92,29 @@ self.addEventListener("fetch", (evento) => {
     return;
   }
 
-  // Navegacao: rede primeiro. Sem rede, mostra a tela offline (sem dado nenhum).
+  /* JS e CSS do app: NETWORK-FIRST. E o coracao da correcao -- com rede, o F5
+     comum sempre traz o build novo. O cache responde apenas quando a rede falha,
+     para o app abrir sem sinal. */
+  if (ehCodigoDoApp(url)) {
+    evento.respondWith(
+      fetch(req)
+        .then((res) => {
+          if (res.ok) { const copia = res.clone(); caches.open(CACHE_ESTATICO).then((c) => c.put(req, copia)); }
+          return res;
+        })
+        .catch(() => caches.match(req)),
+    );
+    return;
+  }
+
+  /* Navegacao: rede primeiro, ignorando o cache HTTP do navegador de proposito
+     (no-store) -- HTML velho referencia chunk velho, e era mais um caminho para
+     a tela antiga voltar. Sem rede, mostra a tela offline (sem dado nenhum). */
   if (req.mode === "navigate") {
-    evento.respondWith(fetch(req).catch(() => caches.match(OFFLINE)));
+    evento.respondWith(
+      fetch(req, { cache: "no-store" })
+        .catch(() => fetch(req).catch(() => caches.match(OFFLINE))),
+    );
   }
 });
 
@@ -253,8 +296,9 @@ async function limparERecriar() {
   }
 }
 
-// Atualizacao controlada: so troca de versao quando a pagina manda.
 self.addEventListener("message", (evento) => {
+  /* Mantido por compatibilidade: uma aba antiga ainda pode mandar isto. O
+     install ja chama skipWaiting sozinho desde a correcao do deploy. */
   if (evento.data === "ATUALIZAR_AGORA") self.skipWaiting();
 
   if (evento.data === "LIMPAR_TUDO") {
