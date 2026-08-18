@@ -17,7 +17,7 @@
  * dado.tsx).
  */
 
-import { useMemo, useState, type ReactNode } from "react";
+import { useMemo, useState } from "react";
 import "../../styles/inteligencia.css";
 import { grupos, periodos, primeiraDoGrupo, telaPorChave, telas, telasDoGrupo, type GrupoChave } from "./telas";
 import { BlocoSemDado, RodapeFontes } from "./dado";
