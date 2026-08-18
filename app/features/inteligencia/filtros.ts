@@ -1,6 +1,6 @@
 "use client";
 
-/* INTELIGÊNCIA — estado dos filtros globais (artboard 11a).
+/* INTELIGÊNCIA — estado dos filtros globais (artboard 11a) e do drawer (11b).
  *
  * A URL É A FONTE DA VERDADE. Um link colado reproduz exatamente a mesma visão,
  * e trocar de página mantém os filtros porque cada aba da casca é um <a href>
@@ -111,10 +111,20 @@ export function opcoesAbertas(chave: ChaveFiltro, fontes?: FonteOpcoes): string[
 export const PERIODOS_ACEITOS = ["hoje", "7d", "30d", "90d"] as const;
 
 const CHAVES: ChaveFiltro[] = CONTROLES.map((c) => c.chave);
+const CHAVE_DRAWER = "drawer";
 
 function params(): URLSearchParams {
   if (typeof window === "undefined") return new URLSearchParams();
   return new URLSearchParams(window.location.search);
+}
+
+function trocarUrl(p: URLSearchParams) {
+  if (typeof window === "undefined") return;
+  const busca = p.toString();
+  const url = `${window.location.pathname}${busca ? `?${busca}` : ""}`;
+  /* replaceState, não pushState: mexer em filtro ou abrir gaveta não é navegar. O
+     botão voltar continua servindo para voltar de página. */
+  window.history.replaceState(window.history.state, "", url);
 }
 
 export function lerPeriodoDaUrl(): string | null {
@@ -132,16 +142,22 @@ export function lerFiltrosDaUrl(): Filtros {
   return saida;
 }
 
+export function lerDrawerDaUrl(): string | null {
+  return params().get(CHAVE_DRAWER) || null;
+}
+
 /* Query atual em forma de string, para a casca pendurar em cada <a href> das abas:
-   é o que faz o filtro sobreviver à troca de página sem estado escondido. */
+   é o que faz o filtro sobreviver à troca de página sem estado escondido. O drawer
+   fica FORA dessa query: gaveta aberta é contexto da tela, não da navegação. */
 export function queryAtual(): string {
-  const busca = params().toString();
+  const p = params();
+  p.delete(CHAVE_DRAWER);
+  const busca = p.toString();
   return busca ? `?${busca}` : "";
 }
 
-/* Único escritor do sistema externo (URL + espelho). Chamado de um efeito de
-   sincronização, nunca de dentro de um setState: quem manda é o estado, e a URL
-   apenas o reflete. */
+/* Dois escritores, chaves disjuntas, e cada um PRESERVA o que é do outro: filtros
+   nunca somem ao abrir a gaveta, e a gaveta não some ao mexer no filtro. */
 function sincronizar(periodo: string | null, filtros: Filtros) {
   if (typeof window === "undefined") return;
   const p = new URLSearchParams();
@@ -150,12 +166,17 @@ function sincronizar(periodo: string | null, filtros: Filtros) {
     const valor = filtros[chave];
     if (valor) p.set(chave, valor);
   }
-  const busca = p.toString();
-  const url = `${window.location.pathname}${busca ? `?${busca}` : ""}`;
-  /* replaceState, não pushState: mexer em filtro não é navegar. O botão voltar
-     continua servindo para voltar de página, que é o que a pessoa espera. */
-  window.history.replaceState(window.history.state, "", url);
+  const gaveta = lerDrawerDaUrl();
+  if (gaveta) p.set(CHAVE_DRAWER, gaveta);
+  trocarUrl(p);
   espelhar(periodo, filtros);
+}
+
+export function gravarDrawerNaUrl(valor: string | null) {
+  if (typeof window === "undefined") return;
+  const p = params();
+  if (valor) p.set(CHAVE_DRAWER, valor); else p.delete(CHAVE_DRAWER);
+  trocarUrl(p);
 }
 
 /* ---------------- espelho local (24 h) ---------------- */
@@ -196,7 +217,7 @@ export type EstadoFiltros = {
    válido como reserva. Semear em efeito obrigaria um setState no primeiro render
    — renderização em cascata, e a regra do lint está certa em barrar.
 
-   O Único efeito daqui é de SINCRONIZAÇÃO: leva o estado atual para a URL e para
+   O único efeito daqui é de SINCRONIZAÇÃO: leva o estado atual para a URL e para
    o espelho. Ele não chama setState, e por isso `definir` e `limpar` só mexem no
    estado — sem escrever na URL por fora, sem dois donos da mesma verdade. */
 export function useFiltros(periodo: string): EstadoFiltros {
