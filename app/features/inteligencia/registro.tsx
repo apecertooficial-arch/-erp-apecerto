@@ -21,6 +21,9 @@ import { ConversaoCrm } from "./telas/ConversaoCrm";
 import { VisaoDigital } from "./telas/VisaoDigital";
 import { AquisicaoCampanhas } from "./telas/AquisicaoCampanhas";
 import { ComportamentoConteudo } from "./telas/ComportamentoConteudo";
+import { ImoveisProcura } from "./telas/ImoveisProcura";
+import { CaptacaoProprietarios } from "./telas/CaptacaoProprietarios";
+import { Sara } from "./telas/Sara";
 
 export const telasPublicadas: Record<string, (props: PropsTela) => ReactNode> = {
   empresa: (p) => <VisaoEmpresa {...p} />,
@@ -35,4 +38,7 @@ export const telasPublicadas: Record<string, (props: PropsTela) => ReactNode> = 
   digital: (p) => <VisaoDigital {...p} />,
   aquisicao: (p) => <AquisicaoCampanhas {...p} />,
   comportamento: (p) => <ComportamentoConteudo {...p} />,
+  imoveis: (p) => <ImoveisProcura {...p} />,
+  proprietarios: (p) => <CaptacaoProprietarios {...p} />,
+  sara: (p) => <Sara {...p} />,
 };
