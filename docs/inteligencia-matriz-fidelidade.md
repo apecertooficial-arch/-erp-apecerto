@@ -53,6 +53,22 @@ exposta; nenhuma tela consome `filtros` além do período, que o endpoint já re
 no aviso roxo — sele\u00e7ão guardada não passa por filtro aplicado. `CONSUMIDOS_PELAS_TELAS` encolhe a cada
 commit de grupo de telas, e o aviso desaparece sozinho quando a lista fecha.
 
+## Commit 2 — Drawer e drill-down
+
+Commits `fb6396a` + `a23a9b22` + fechamento subsequente deste escopo: um drawer compartilhado de 420 px no desktop e folha inferior abaixo de
+900 px, com scrim, fechamento por botão/Escape/clique externo, foco devolvido ao disparador e estado
+`drawer` preservado na URL sem apagar os filtros globais.
+
+| Corte | Agora | Limite declarado |
+|---|---|---|
+| `6a` · imóvel | linhas de finalidade e status abrem o corte do estoque com total e participação | visualização, galeria, favorito e lead por imóvel seguem bloqueados até a telemetria identificar o item |
+| `5a` · jornada do lead | cada etapa do funil abre a leitura agregada e mantém as nove etapas visíveis | lista nominal e linha do tempo individual continuam no Funil 2.0, atrás da permissão de dado pessoal |
+| `18a` · perfil do corretor | a linha acessível por mouse/Enter/Espaço abre o perfil no drawer; o bloco expandido paralelo foi removido | sem amostra, a tela não classifica a pessoa |
+
+O contador geral permanece conservador nesta etapa: `6a` continua bloqueado por dado e `5a` parcial
+enquanto a jornada individual não existir. A peça compartilhada 10 está fechada; a peça 09 continua
+parcial até ordenação e cartão móvel no Commit 3.
+
 **Controles selecionáveis hoje** (vocabulário fechado pelo próprio 11a): comparação, dispositivo,
 finalidade, tipo de lead, consentimento. **Lista aberta** (origem, página/tipo, bairro): selecionável
 quando a tela passar `fontes` — o endpoint já devolve os agregados. **Sem fonte no ERP** (mídia,
@@ -70,9 +86,9 @@ opção inventada.
 | 05 Barra de filtros | **fiel (Commit 1)** | `.ape-int-barra` com os 13 controles do 11a | período personalizado e Exportar |
 | 06 Chip de filtro ativo | **fiel (Commit 1)** | `.ape-int-chip-ativo` roxo com ✕ | — |
 | 07 Selo de procedência | fiel | "DADO REAL · hh:mm" / "aguardando dado"; DEMONSTRAÇÃO omitido de propósito | — |
-| 08 Linha de funil | parcial | barra e taxa corretas; falta perda absoluta e clique | Commit 2 |
+| 08 Linha de funil | parcial | barra, taxa e clique para o drawer agregador; falta perda absoluta | Commit 3 |
 | 09 Tabela | parcial | tipografia fiel; nenhuma coluna ordenável | Commit 3 |
-| 10 Drawer 420px | ausente | sem drawer/scrim na folha | Commit 2 |
+| 10 Drawer 420px | **fiel (Commit 2)** | um componente para imóvel, jornada e corretor; URL, foco, Esc, scrim e folha móvel | gerente entra no Commit 7 |
 | 11 Bloco de pendência | fiel | `.ape-int-pendencia` alimentado por `pendencias[]` | — |
 | 12 Vazio e erro | fiel | tracejado neutro / #FBE5E5 com "Tentar novamente" | — |
 | 13 Esqueleto | **fiel (Commit 1)** | três formas por bloco | — |
