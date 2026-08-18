@@ -57,7 +57,7 @@
 .quality-badge.bom { background:#E1F2F1; color:#12756E; }
 .quality-badge.atencao { background:#FDF1D9; color:#9A6500; }
 .quality-badge.critico { background:#FBE7E5; color:#A93A32; }
-.product-photo .quality-on-photo { position:absolute; z-index:4; right:12px; top:12px; box-shadow:0 2px 8px rgba(31,28,26,.13); }
+.product-photo .quality-on-photo { position:absolute; z-index:4; left:auto; top:auto; right:12px; bottom:12px; box-shadow:0 2px 8px rgba(31,28,26,.13); }
 .product-info .product-top-issue,.product-top-issue { display:block; margin:9px 0 0; padding:8px 10px; border-radius:10px; background:#FFF8ED; color:#8A5B13; font-size:11px; line-height:1.35; }
 .approval-actions .ap-review { width:100%; min-height:38px; border:1px solid #D7B8EC; border-radius:999px; background:#FDFAFF; color:#66009A; font-size:12px; font-weight:700; }
 .product-info footer { display:flex; align-items:center; justify-content:space-between; gap:8px; }
