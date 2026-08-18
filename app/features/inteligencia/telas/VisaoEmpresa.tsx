@@ -1,11 +1,12 @@
 "use client";
 
-/* 9 · VISÃO CEO — artboard 14b, na íntegra.
+/* 9 · VISÃO CEO — artboard 14b, idêntico ao protótipo.
  *
- * Ordem dos blocos igual à do desenho:
- *   1. o período inteiro em cinco números
- *   2. diagnóstico: onde está o dinheiro e onde está o problema (lista + detalhe)
- *   3. as quatro áreas em uma linha cada (atendimento, comercial, financeiro, digital)
+ * Ordem do desenho:
+ *   1. DIAGNÓSTICOS — quatro leituras, cada uma com impacto e ação (principal
+ *      oportunidade, maior gargalo, risco financeiro, problema de atendimento)
+ *   2. os números da empresa em cinco cartões
+ *   3. as quatro áreas, uma linha por frente, com o caminho para a página
  *   4. funil da empresa
  *   5. rodapé de fontes
  *
@@ -13,11 +14,25 @@
  */
 
 import { useState } from "react";
+import "../../../styles/inteligencia-blocos.css";
 import type { PropsTela } from "../CascaInteligencia";
 import { fmt, RodapeFontes } from "../dado";
-import { Cabecalho, CartoesLista, Funil, GradeKpis, ListaComDetalhe, type Detalhe, type Etapa, type Kpi } from "../pecas";
+import { Cabecalho, CartoesLista, Funil, GradeKpis, IconeInt, type Etapa, type Kpi, type NomeIcone } from "../pecas";
+
+type Diagnostico = {
+  chave: string;
+  chip: string;
+  tomChip: "bom" | "ruim" | "aviso" | "roxo";
+  icone: NomeIcone;
+  tile: "laranja" | "roxo" | "verde" | "vermelho" | "ambar";
+  texto: string;
+  destaque: string;
+  alvo: string;
+  rotulo: string;
+};
 
 type Dados = {
+  diagnosticos: Diagnostico[];
   leads: number | null;
   leadsDoSite: number | null;
   slaPercentual: number | null;
@@ -34,8 +49,8 @@ type Dados = {
 };
 
 export function VisaoEmpresa({ recorte }: PropsTela) {
-  const [detalhe, setDetalhe] = useState<Detalhe | null>(null);
   const d = usarDados();
+  const [aberto, setAberto] = useState<string | null>(null);
 
   const kpis: Kpi[] = [
     { rotulo: "Leads recebidos", bruto: d.leads, texto: fmt.inteiro(d.leads), tile: "laranja", foot: `${fmt.inteiro(d.leadsDoSite)} vieram do site` },
@@ -43,49 +58,6 @@ export function VisaoEmpresa({ recorte }: PropsTela) {
     { rotulo: "Vendas e locações", bruto: d.vendas, texto: fmt.inteiro(d.vendas), tile: "verde", foot: `${fmt.dinheiro(d.vgv)} de VGV` },
     { rotulo: "Cobertura da meta", bruto: d.metaCobertura, texto: fmt.porcento(d.metaCobertura, 0), tile: "roxo", foot: `previsão ponderada ${fmt.porcento(d.previsaoPonderada, 0)}` },
     { rotulo: "Valor de pipeline", bruto: d.pipelineValor, texto: fmt.dinheiro(d.pipelineValor), tile: "ambar", icone: "dinheiro", chip: "aguardando dado do CRM", chipTom: "aviso", motivo: "integracao", detalhe: "campo de valor ausente no Funil 2.0", foot: "nunca estimado por média" },
-  ];
-
-  const linhas = [
-    {
-      chave: "sla",
-      nome: "Só 22% dentro do SLA",
-      meio: "atendimento",
-      fim: "379 leads",
-      cor: "#D93E3E",
-      det: { titulo: "SLA de primeiro contato", sub: "486 leads · meta 5 min", linhas: [["Dentro de 5 min", "107"], ["5 a 15 min", "94"], ["15 a 60 min", "138"], ["Acima de 60 min", "147"]] as [string, string][], aviso: "A lista de pessoas por trás deste número exige permissão de dados pessoais." },
-    },
-    {
-      chave: "funil",
-      nome: "Qualificado → visita cai 52%",
-      meio: "funil",
-      fim: "−32",
-      cor: "#B5700A",
-      det: { titulo: "Etapa qualificado → visita", sub: "128 → 96", linhas: [["Perda absoluta", "32"], ["Equipe Venda", "−11"], ["Equipe Locação", "−21"], ["Motivo mais comum", "sem resposta"]] as [string, string][], aviso: "Sem IP bruto, sem user agent: só o que serve para atender a pessoa." },
-    },
-    {
-      chave: "aquisicao",
-      nome: "Meta Ads converte 72% em negócio",
-      meio: "aquisição",
-      fim: "23 negócios",
-      cor: "#1FA85A",
-      det: { titulo: "Meta Ads", sub: "melhor conversão do período", linhas: [["Leads", "32"], ["Negócios", "23"], ["Lead → negócio", "72%"], ["Custo por lead", "— não conectado"]] as [string, string][], aviso: "Custos de mídia não conectados: CPL e ROAS aparecem depois da integração." },
-    },
-    {
-      chave: "comissao",
-      nome: "R$ 127,0 mil de comissão pendente",
-      meio: "financeiro",
-      fim: "8 pessoas",
-      cor: "#B5700A",
-      det: { titulo: "Comissões pendentes", sub: "fechamento do mês", linhas: [["Calculadas", "R$ 488,0 mil"], ["Pagas", "R$ 361,0 mil"], ["Pendentes", "R$ 127,0 mil"], ["Bloqueadas por % ausente", "2 vendas"]] as [string, string][], aviso: "Valores financeiros só para CEO, diretoria e Financeiro." },
-    },
-    {
-      chave: "meta",
-      nome: "Meta do mês em 77%",
-      meio: "comercial",
-      fim: "R$ 5,6 mi",
-      cor: "#B5700A",
-      det: { titulo: "Cobertura da meta", sub: "meta de R$ 24 mi", linhas: [["Assinado", "R$ 18,4 mi"], ["Proposta ponderada", "R$ 6,2 mi"], ["Falta", "R$ 5,6 mi"], ["Previsão ponderada", "92%"]] as [string, string][], aviso: "Previsão carrega sempre a data do pipeline que a gerou." },
-    },
   ];
 
   const etapas: Etapa[] = d.funil.map((e) => ({
@@ -101,19 +73,33 @@ export function VisaoEmpresa({ recorte }: PropsTela) {
 
   return (
     <div className="int-secao">
-      <Cabecalho eyebrow="INDICADORES DA EMPRESA" titulo="O período inteiro em cinco números" nota={`${recorte.periodo}${recorte.compararAnterior ? " · vs. período anterior" : ""}`} />
+      {/* 1 · DIAGNÓSTICOS */}
+      <Cabecalho eyebrow="DIAGNÓSTICOS" titulo="Quatro leituras, cada uma com impacto e ação" nota={`${recorte.periodo}${recorte.compararAnterior ? " · vs. anterior" : ""}`} />
+      <div className="intp-grade" style={{ gridTemplateColumns: "repeat(4, minmax(0, 1fr))" }}>
+        {d.diagnosticos.map((g) => (
+          <div className="intp-cartao" key={g.chave} style={{ borderTop: `3px solid ${g.tomChip === "bom" ? "#1FA85A" : g.tomChip === "ruim" ? "#D93E3E" : g.tomChip === "aviso" ? "#B5700A" : "#8B00CC"}` }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
+              <span className={`intp-tile tile-${g.tile}`}>
+                <IconeInt nome={g.icone} tamanho={15} />
+              </span>
+              <span className={`intp-cartao-chip tom-${g.tomChip}`}>{g.chip}</span>
+            </div>
+            <p style={{ margin: 0, fontSize: 12.5, lineHeight: 1.5, color: "#4D4842" }}>
+              <b style={{ color: "#1F1C1A" }}>{g.destaque}</b> {g.texto}
+            </p>
+            <button type="button" className="int-link" style={{ fontWeight: 700, marginTop: "auto" }} onClick={() => recorte.irPara(g.alvo)}>
+              {g.rotulo}
+            </button>
+          </div>
+        ))}
+      </div>
+
+      {/* 2 · OS NÚMEROS */}
+      <Cabecalho eyebrow="INDICADORES DA EMPRESA" titulo="O período inteiro em cinco números" cor="#8B00CC" />
       <GradeKpis itens={kpis} colunas={5} />
 
-      <ListaComDetalhe
-        eyebrow="DIAGNÓSTICO DO PERÍODO"
-        titulo="Onde está o dinheiro e onde está o problema"
-        nota="clique numa linha para abrir a evidência"
-        linhas={linhas.map((l) => ({ chave: l.chave, nome: l.nome, meio: l.meio, fim: l.fim, cor: l.cor, ativa: detalhe?.titulo === l.det.titulo, abrir: () => setDetalhe(l.det) }))}
-        detalhe={detalhe}
-        fechar={() => setDetalhe(null)}
-      />
-
-      <Cabecalho eyebrow="AS QUATRO ÁREAS" titulo="Uma linha por frente, com o caminho para a página" cor="#8B00CC" />
+      {/* 3 · AS QUATRO ÁREAS */}
+      <Cabecalho eyebrow="AS QUATRO ÁREAS" titulo="Uma linha por frente, com o caminho para a página" />
       <CartoesLista
         colunas={4}
         cartoes={d.areas.map((a) => ({
@@ -123,6 +109,7 @@ export function VisaoEmpresa({ recorte }: PropsTela) {
         }))}
       />
 
+      {/* 4 · FUNIL */}
       <Cabecalho eyebrow="FUNIL DA EMPRESA" titulo="Do lead recebido à chave na mão" cor="#8B00CC" nota="todos os leads, não só os do site" />
       <Funil etapas={etapas} foot="“detalhes” aplica o recorte da etapa · etapa sem dado aparece com “—”, nunca some" />
 
@@ -140,20 +127,66 @@ function usarDados(): Dados {
 }
 
 const demo: Dados = {
+  diagnosticos: [
+    {
+      chave: "oportunidade",
+      chip: "principal oportunidade",
+      tomChip: "bom",
+      icone: "tendencia",
+      tile: "verde",
+      destaque: "O pipeline ponderado cobre 102% da meta",
+      texto: "— faltam 9 visitas viradas em proposta para garantir o mês.",
+      alvo: "vendas",
+      rotulo: "Investigar em Vendas e previsão →",
+    },
+    {
+      chave: "gargalo",
+      chip: "maior gargalo",
+      tomChip: "ruim",
+      icone: "alerta",
+      tile: "vermelho",
+      destaque: "Qualificado → visita caiu de 61% para 52%",
+      texto: ", concentrado na equipe do Carlos — custa ~6 visitas por mês.",
+      alvo: "gerentes",
+      rotulo: "Investigar em Gerentes →",
+    },
+    {
+      chave: "financeiro",
+      chip: "risco financeiro",
+      tomChip: "aviso",
+      icone: "dinheiro",
+      tile: "ambar",
+      destaque: "3 vendas sem % de comissão válido",
+      texto: "— R$ 2,9 mi de VGV sem cálculo de comissão nem contribuição.",
+      alvo: "financeiro",
+      rotulo: "Investigar em Financeiro →",
+    },
+    {
+      chave: "atendimento",
+      chip: "problema de atendimento",
+      tomChip: "roxo",
+      icone: "relogio",
+      tile: "roxo",
+      destaque: "O P90 da 1ª resposta subiu para 1 h 52",
+      texto: "; 28 leads esperaram mais de 60 min — quase todos no fim de semana.",
+      alvo: "atendimento",
+      rotulo: "Investigar em Atendimento e SLA →",
+    },
+  ],
   leads: 486,
   leadsDoSite: 312,
   slaPercentual: 22,
-  slaMediana: 21,
-  slaP90: 130,
+  slaMediana: 14,
+  slaP90: 112,
   vendas: 21,
   vgv: 18_400_000,
   metaCobertura: 77,
-  previsaoPonderada: 92,
+  previsaoPonderada: 102,
   pipelineValor: null,
   areas: [
-    { titulo: "Atendimento", linhas: [{ l: "1º contato · mediana", r: "21 min", corR: "#D93E3E" }, { l: "Sem resposta agora", r: "9", corR: "#D93E3E" }, { l: "Follow-ups vencidos", r: "57" }], alvo: "atendimento", rotulo: "Abrir Atendimento e SLA →" },
-    { titulo: "Comercial", linhas: [{ l: "Assinado", r: "R$ 18,4 mi" }, { l: "Proposta ponderada", r: "R$ 6,2 mi" }, { l: "Falta para a meta", r: "R$ 5,6 mi", corR: "#B5700A" }], alvo: "vendas", rotulo: "Abrir Vendas e previsão →" },
-    { titulo: "Financeiro", linhas: [{ l: "Receita reconhecida", r: "R$ 812,0 mil" }, { l: "Comissões", r: "R$ 488,0 mil" }, { l: "Pendente", r: "R$ 127,0 mil", corR: "#B5700A" }], alvo: "financeiro", rotulo: "Abrir Financeiro →" },
+    { titulo: "Atendimento", linhas: [{ l: "1º contato · mediana", r: "14 min", corR: "#D93E3E" }, { l: "Sem resposta agora", r: "9", corR: "#D93E3E" }, { l: "Follow-ups vencidos", r: "57" }], alvo: "atendimento", rotulo: "Abrir Atendimento e SLA →" },
+    { titulo: "Comercial", linhas: [{ l: "Assinado", r: "R$ 18,4 mi" }, { l: "Previsão ponderada", r: "R$ 6,1 mi" }, { l: "Falta para a meta", r: "R$ 5,6 mi", corR: "#B5700A" }], alvo: "vendas", rotulo: "Abrir Vendas e previsão →" },
+    { titulo: "Financeiro", linhas: [{ l: "Receita bruta de comissão", r: "R$ 920 mil" }, { l: "Comissões calculadas", r: "R$ 488 mil" }, { l: "Contribuição estimada", r: "R$ 358 mil" }], alvo: "financeiro", rotulo: "Abrir Financeiro →" },
     { titulo: "Digital", linhas: [{ l: "Leads do site", r: "312" }, { l: "Negócios", r: "187" }, { l: "Melhor canal", r: "Meta Ads · 72%" }], alvo: "digital", rotulo: "Abrir Visão do digital →" },
   ],
   funil: [
@@ -166,5 +199,5 @@ const demo: Dados = {
     { nome: "Venda ou locação", volume: 21, largura: 7, taxa: "45,7%", perda: "−25" },
     { nome: "Perdido", volume: 112, largura: 23, taxa: "38,5%", perdaFinal: true },
   ],
-  atualizado: "14:28",
+  atualizado: "14:32",
 };
