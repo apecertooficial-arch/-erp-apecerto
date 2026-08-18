@@ -9,13 +9,13 @@
  *     não um chip laranja genérico.
  *  3. A barra tem uma linha só: período · comparação · dimensões, com a contagem e
  *     a nota de interação na mesma faixa — no publicado eram duas linhas altas.
- *  4. LAYOUT EM COLUNAS: .int-duas / .int-duas-inv (par), .int-duas.par-115
- *     (Aquisição 3a: gráfico · atribuição), .int-duas.par-120 (Comportamento 4a:
- *     jornada · Clarity), .int-duas.par-150 (Imóveis 6a: leituras · drawer) e
- *     .int-tres (Comportamento 4a: rolagem · interações · dispositivos).
- *     A publicação empilhava tudo em coluna única.
- *  5. .int-tabela-roxa deixa a linha destacada em roxo (#FBF6FE) — o “não
- *     atribuído” da Aquisição e a linha do filtro ativo em Dispositivos.
+ *  4. LAYOUT EM COLUNAS, um par por artboard: .int-duas (1,35fr) · .int-duas-inv ·
+ *     .par-115 (Aquisição 3a e Proprietários 7a) · .par-120 (Comportamento 4a) ·
+ *     .par-125 (Conversão e CRM 5a) · .par-150 (Imóveis 6a) · .int-tres
+ *     (Comportamento 4a). A publicação empilhava tudo em coluna única.
+ *  5. Linha destacada por cor: .int-tabela-roxa (#FBF6FE — não atribuído da
+ *     Aquisição e filtro ativo em Dispositivos) e .int-tabela-vermelha (#FDF4F3 —
+ *     captação sem contato há 26 h).
  */
 
 .int-area .int-nivel1 { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
@@ -49,6 +49,7 @@
 .int-area .int-duas-inv { display: grid; grid-template-columns: 1fr 1.35fr; gap: 12px; align-items: start; }
 .int-area .int-duas.par-115 { grid-template-columns: 1.15fr 1fr; align-items: stretch; }
 .int-area .int-duas.par-120 { grid-template-columns: 1.2fr 1fr; align-items: stretch; }
+.int-area .int-duas.par-125 { grid-template-columns: 1.25fr 1fr; align-items: start; }
 .int-area .int-duas.par-150 { grid-template-columns: 1.5fr 1fr; align-items: start; }
 .int-area .int-tres { display: grid; grid-template-columns: 1fr 1.2fr 1fr; gap: 12px; align-items: stretch; }
 .int-area .int-col { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
@@ -59,22 +60,23 @@
 /* Comportamento 4a: os cinco passos da jornada, com divisor tracejado. */
 .int-area .int-jornada { display: flex; align-items: stretch; gap: 0; }
 
-/* Tabela pequena dentro de cartão (Imóveis 6a: venda vs. locação). */
-.int-area .intp-cartao > table.intp-tabela th { padding: 0 0 0 0; }
-.int-area .intp-cartao > table.intp-tabela th.num { text-align: right; }
+/* Tabela pequena dentro de cartão (Imóveis 6a, Conversão 5a, Proprietários 7a). */
 .int-area .intp-cartao > table.intp-tabela th { font-size: 11px; font-weight: 700; color: #9a938b; padding: 7px 6px; }
+.int-area .intp-cartao > table.intp-tabela th.num { text-align: right; }
 .int-area .intp-cartao > table.intp-tabela td { padding: 8px 6px; }
 
-/* A linha destacada em roxo (#FBF6FE) do artboard, no lugar do laranja. */
+/* Linha destacada por cor — os tons dos artboards. */
 .int-area .int-tabela-roxa table.intp-tabela tbody tr.destaque { background: #fbf6fe; }
 .int-area .int-tabela-roxa table.intp-tabela tbody tr.destaque:hover { background: #f7ecfc; }
+.int-area .int-tabela-vermelha table.intp-tabela tbody tr.destaque { background: #fdf4f3; }
+.int-area .int-tabela-vermelha table.intp-tabela tbody tr.destaque:hover { background: #fbe5e5; }
 
 @media (max-width: 1280px) {
   .int-area .int-tres { grid-template-columns: 1fr 1fr; }
 }
 
 @media (max-width: 1100px) {
-  .int-area .int-duas, .int-area .int-duas-inv, .int-area .int-duas.par-115, .int-area .int-duas.par-120, .int-area .int-duas.par-150, .int-area .int-tres { grid-template-columns: 1fr; }
+  .int-area .int-duas, .int-area .int-duas-inv, .int-area .int-duas.par-115, .int-area .int-duas.par-120, .int-area .int-duas.par-125, .int-area .int-duas.par-150, .int-area .int-tres { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 720px) {
@@ -88,4 +90,5 @@
   .int-area .int-jornada > div { border-right: 0 !important; border-bottom: 1px dashed #e4dfd9; padding: 0 0 12px !important; }
   .int-area .int-jornada > div:last-child { border-bottom: 0; padding-bottom: 0 !important; }
   .int-area .int-tabela-roxa table.intp-tabela tbody tr.destaque { border-color: #ebd1f5; }
+  .int-area .int-tabela-vermelha table.intp-tabela tbody tr.destaque { border-color: #f4dad8; }
 }
