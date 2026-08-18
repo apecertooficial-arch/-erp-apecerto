@@ -10,6 +10,7 @@
  */
 
 import type { ReactNode } from "react";
+import "../../styles/inteligencia-nivel1.css";
 import "../../styles/inteligencia-gaveta.css";
 import type { PropsTela } from "./CascaInteligencia";
 import { VisaoEmpresa } from "./telas/VisaoEmpresa";
