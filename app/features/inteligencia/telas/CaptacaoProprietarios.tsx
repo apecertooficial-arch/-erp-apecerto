@@ -1,8 +1,13 @@
 "use client";
 
-/* CAPTAÇÃO DE PROPRIETÁRIOS — artboard 7a.
- * Etapas 1–4 vêm do site; 5–8 vêm do CRM. O cruzamento com a demanda sem estoque
- * é o que transforma a tela em alvo de captação, não em relatório.
+/* 6 · CAPTAÇÃO DE PROPRIETÁRIOS — artboard 7a, na íntegra.
+ *
+ * Ordem dos blocos igual à do desenho:
+ *   1. funil do proprietário, 8 etapas (1–4 do site, 5–8 do CRM)
+ *   2. indicadores da captação (4 KPIs)
+ *   3. cortes: origem e campanha · bairros e tipos ofertados · motivos de perda
+ *   4. cruzamento com a demanda sem estoque
+ *   5. rodapé de fontes
  */
 
 import type { PropsTela } from "../CascaInteligencia";
@@ -25,10 +30,10 @@ export function CaptacaoProprietarios({ recorte }: PropsTela) {
   const d = usarDados();
 
   const kpis: Kpi[] = [
-    { rotulo: "Captações recebidas", bruto: d.recebidas, texto: fmt.inteiro(d.recebidas), chip: "▲ +5 vs. anterior", chipTom: "bom", tile: "laranja" },
-    { rotulo: "Tempo até contato", bruto: d.tempoContato, texto: fmt.duracaoMin(d.tempoContato), tile: "verde", foot: "mediana · meta 24 h" },
+    { rotulo: "Captações recebidas", bruto: d.recebidas, texto: fmt.inteiro(d.recebidas), chip: "▲ +5 vs. anterior", chipTom: "bom", tile: "laranja", icone: "casa" },
+    { rotulo: "Tempo até contato", bruto: d.tempoContato, texto: fmt.duracaoMin(d.tempoContato), tom: "bom", tile: "verde", foot: "mediana · meta 24 h" },
     { rotulo: "Imóveis publicados", bruto: d.publicados, texto: fmt.inteiro(d.publicados), tile: "roxo", foot: "26% do total captado" },
-    { rotulo: "Custo por captação", bruto: d.custoPorCaptacao, texto: fmt.dinheiro(d.custoPorCaptacao), tile: "ambar", motivo: "integracao", detalhe: "mídias não conectadas", foot: "aparece quando Google Ads e Meta Ads estiverem conectados" },
+    { rotulo: "Custo por captação", bruto: d.custoPorCaptacao, texto: fmt.dinheiro(d.custoPorCaptacao), tile: "ambar", chip: "mídias não conectadas", chipTom: "aviso", motivo: "integracao", detalhe: "Google Ads e Meta Ads não conectados", foot: "aparece quando as contas de mídia estiverem conectadas" },
   ];
 
   const etapas: Etapa[] = d.etapas.map((e) => ({
@@ -43,31 +48,31 @@ export function CaptacaoProprietarios({ recorte }: PropsTela) {
 
   return (
     <div className="int-secao">
-      <Cabecalho eyebrow="O PERÍODO" titulo="Do clique ao anúncio publicado" nota={recorte.periodo} />
+      <Cabecalho eyebrow="FUNIL DO PROPRIETÁRIO" titulo="Do clique no site ao anúncio publicado" cor="#8B00CC" nota="etapas 1–4 vêm do site · 5–8 vêm do CRM" />
+      <Funil etapas={etapas} foot="etapa do CRM sem registro aparece com “—” — não herdamos o número da etapa anterior" />
+
+      <Cabecalho eyebrow="O PERÍODO" titulo="Quanto entrou e quanto virou anúncio" nota={recorte.periodo} />
       <GradeKpis itens={kpis} colunas={4} />
 
-      <Cabecalho eyebrow="FUNIL DO PROPRIETÁRIO" titulo="Oito etapas, duas fontes" cor="#8B00CC" nota="1 a 4 do site · 5 a 8 do CRM" />
-      <Funil etapas={etapas} foot="etapa do CRM sem registro aparece com “—” — não herdamos o número da etapa anterior" />
+      <Cabecalho eyebrow="CORTES" titulo="De onde vêm e o que oferecem" cor="#8B00CC" />
+      <CartoesLista
+        colunas={3}
+        cartoes={[
+          { titulo: "Origem e campanha", linhas: d.origens.map((o) => ({ ...o, abrir: () => recorte.filtrar(`Origem: ${o.l}`) })), foot: "não atribuído aparece, nunca é diluido nos outros" },
+          { titulo: "Bairros e tipos ofertados", linhas: d.ofertados.map((o) => ({ ...o, abrir: () => recorte.filtrar(`Oferta: ${o.l}`) })), foot: "declarado pelo proprietário no formulário" },
+          { titulo: "Motivos de perda · 7", linhas: d.perdas, foot: "captação sem motivo registrado entra como “sem motivo”, não desaparece" },
+        ]}
+      />
 
       <Banner
         tom="tint-roxo"
         forte="Cruzamento com a demanda sem estoque:"
-        texto="74 buscas por 2 dorms mobiliado até R$ 6.500/mês em Moema Índios, e nenhuma das 23 captações do mês atende. É o alvo número 1 da captação ativa."
+        texto="74 buscas por 2 dorms mobiliado até R$ 6.500/mês em Moema Índios — nenhuma das 23 captações do mês atende. É o alvo número 1 da captação ativa."
         botao={{ rotulo: "Ver em Imóveis", go: () => recorte.irPara("imoveis") }}
       />
 
-      <Cabecalho eyebrow="CORTES" titulo="De onde vêm e o que oferecem" />
-      <CartoesLista
-        colunas={3}
-        cartoes={[
-          { titulo: "Origem e campanha", linhas: d.origens, foot: "não atribuído aparece, nunca é diluido" },
-          { titulo: "Bairros e tipos ofertados", linhas: d.ofertados, foot: "declarado pelo proprietário no formulário" },
-          { titulo: `Motivos de perda · ${fmt.inteiro(7)}`, linhas: d.perdas, foot: "captação sem motivo registrado entra como “sem motivo”, não desaparece" },
-        ]}
-      />
-
       <RodapeFontes
-        fontes={["coleta própria", "captações do portal", "CRM Funil 2.0"]}
+        fontes={["coleta própria", "captações do portal", "CRM Funil 2.0", "buscas agregadas"]}
         pendencias={["custo por captação (mídias não conectadas)"]}
         atualizado={d.atualizado}
       />

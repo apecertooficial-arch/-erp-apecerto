@@ -1,11 +1,13 @@
 "use client";
 
-/* CONVERSÃO E CRM — artboard 5a.
- * O que acontece depois que o lead entra: do primeiro contato à chave na mão.
- * O funil aqui é o comercial (9 etapas, com “perdido” fechando a lista).
+/* 5 · CONVERSÃO E CRM — artboard 5a, na íntegra.
  *
- * Auditoria de fidelidade: a JORNADA DO LEAD do artboard virou a gaveta lateral
- * de 420px, com a linha do tempo do atendimento — sem IP bruto e sem user agent.
+ * Ordem dos blocos igual à do desenho:
+ *   1. funil comercial de 9 etapas, com “perdido” fechando a lista
+ *   2. indicadores do atendimento (5 KPIs)
+ *   3. tempos entre etapas · motivos de perda · conversão por corretor
+ *   4. jornada individual (gaveta de 420px) e pipeline em valor
+ *   5. rodapé de fontes
  */
 
 import { useState } from "react";
@@ -41,7 +43,7 @@ export function ConversaoCrm({ recorte }: PropsTela) {
     { rotulo: "Leads sem atendimento", bruto: d.semAtendimento, texto: fmt.inteiro(d.semAtendimento), tom: "ruim", tile: "vermelho", foot: "fila aberta agora" },
     { rotulo: "Negócios parados", bruto: d.parados, texto: fmt.inteiro(d.parados), tom: "atencao", tile: "laranja", foot: "sem movimento há 7+ dias" },
     { rotulo: "Taxa de perda", bruto: d.taxaPerda, texto: fmt.porcento(d.taxaPerda), tom: "ruim", tile: "vermelho", chip: fmt.pontos(d.variacaoPerda), chipTom: "ruim", foot: "dos negócios criados" },
-    { rotulo: "Valor de pipeline", bruto: d.pipelineValor, texto: fmt.dinheiro(d.pipelineValor), tile: "roxo", icone: "dinheiro", motivo: "integracao", detalhe: "campo de valor ausente no Funil 2.0", foot: "aparece quando o campo existir — nunca zero fictício" },
+    { rotulo: "Valor de pipeline", bruto: d.pipelineValor, texto: fmt.dinheiro(d.pipelineValor), tile: "roxo", icone: "dinheiro", chip: "aguardando dado do CRM", chipTom: "aviso", motivo: "integracao", detalhe: "campo de valor ausente no Funil 2.0", foot: "aparece quando o campo existir — nunca zero fictício" },
   ];
 
   const etapas: Etapa[] = d.etapas.map((e) => ({
@@ -57,13 +59,13 @@ export function ConversaoCrm({ recorte }: PropsTela) {
 
   return (
     <div className="int-secao">
-      <Cabecalho eyebrow="DEPOIS QUE O LEAD ENTRA" titulo="Do primeiro contato à chave na mão" nota={`${recorte.periodo}${recorte.compararAnterior ? " · vs. anterior" : ""}`} />
-      <GradeKpis itens={kpis} colunas={5} />
-
-      <Cabecalho eyebrow="FUNIL COMERCIAL" titulo="Onde os negócios param" cor="#8B00CC" nota="taxa sobre a etapa anterior · perdido = % dos negócios criados" />
+      <Cabecalho eyebrow="FUNIL COMERCIAL" titulo="Do lead recebido à chave na mão" cor="#8B00CC" nota="taxa sobre a etapa anterior · perdido = % dos negócios criados" />
       <Funil etapas={etapas} foot="“detalhes” filtra a página pela etapa · etapa sem dado mostra “—” e continua na lista" />
 
-      <Cabecalho eyebrow="ONDE O TEMPO E OS NEGÓCIOS SE PERDEM" titulo="Tempos, motivos e conversão por corretor" />
+      <Cabecalho eyebrow="DEPOIS QUE O LEAD ENTRA" titulo="O que precisa de ação agora" nota={`${recorte.periodo}${recorte.compararAnterior ? " · vs. anterior" : ""}`} />
+      <GradeKpis itens={kpis} colunas={5} />
+
+      <Cabecalho eyebrow="ONDE O TEMPO E OS NEGÓCIOS SE PERDEM" titulo="Tempos, motivos e conversão por corretor" cor="#8B00CC" />
       <CartoesLista
         colunas={3}
         cartoes={[
@@ -85,7 +87,7 @@ export function ConversaoCrm({ recorte }: PropsTela) {
             chip: "gaveta",
             chipTom: "roxo",
             linhas: [{ l: `${d.lead.nome} · ${d.lead.papel}`, r: "abrir a linha do tempo →", abrir: () => setJornada(true) }],
-            foot: "a jornada abre sem IP bruto e sem user agent — só o que serve para atender a pessoa",
+            foot: "abre sem IP bruto e sem user agent — só o que serve para atender a pessoa",
           },
           {
             titulo: "Pipeline e valor fechado",
@@ -93,7 +95,7 @@ export function ConversaoCrm({ recorte }: PropsTela) {
               { l: "Valor de pipeline", r: fmt.dinheiro(d.pipelineValor), corR: "#8A6A15" },
               { l: "Valor fechado", r: fmt.dinheiro(d.valorFechado), corR: "#8A6A15" },
             ],
-            foot: "os dois aparecem quando o campo de valor existir no Funil 2.0 — nunca zero fictício",
+            foot: "aparecem quando o campo de valor existir no Funil 2.0 — nunca zero fictício",
           },
         ]}
       />
@@ -144,15 +146,15 @@ const demo: Dados = {
   pipelineValor: null,
   valorFechado: null,
   etapas: [
-    { nome: "Lead recebido", volume: 486, largura: 100, taxa: "100%" },
-    { nome: "Negócio criado", volume: 291, largura: 60, taxa: "59,9%", perda: "−195" },
-    { nome: "Distribuído para corretor", volume: 285, largura: 59, taxa: "97,9%", perda: "−6" },
-    { nome: "Primeiro contato", volume: 255, largura: 53, taxa: "89,5%", perda: "−30" },
-    { nome: "Qualificado", volume: 128, largura: 41, taxa: "50,2%", perda: "−127" },
+    { nome: "Lead recebido", volume: 312, largura: 100, taxa: "100%" },
+    { nome: "Negócio criado", volume: 187, largura: 60, taxa: "59,9%", perda: "−125" },
+    { nome: "Distribuído para corretor", volume: 183, largura: 59, taxa: "97,9%", perda: "−4" },
+    { nome: "Primeiro contato", volume: 164, largura: 53, taxa: "89,6%", perda: "−19" },
+    { nome: "Qualificado", volume: 128, largura: 41, taxa: "78,0%", perda: "−36" },
     { nome: "Visita agendada", volume: 96, largura: 31, taxa: "75,0%", perda: "−32" },
-    { nome: "Proposta", volume: 46, largura: 15, taxa: "47,9%", perda: "−50" },
-    { nome: "Venda ou locação", volume: 21, largura: 7, taxa: "45,7%", perda: "−25" },
-    { nome: "Perdido", volume: 112, largura: 23, taxa: "38,5%", perdaFinal: true },
+    { nome: "Proposta", volume: 31, largura: 10, taxa: "32,3%", perda: "−65" },
+    { nome: "Venda ou locação", volume: 14, largura: 5, taxa: "45,2%", perda: "−17" },
+    { nome: "Perdido", volume: 74, largura: 24, taxa: "39,6%", perdaFinal: true },
   ],
   tempos: [
     { l: "Distribuição → 1º contato", r: "18 min" },
@@ -161,11 +163,11 @@ const demo: Dados = {
     { l: "Proposta → fechamento", r: "8,5 d" },
   ],
   motivos: [
-    { l: "Sem resposta", r: "38" },
-    { l: "Preço acima do orçamento", r: "27" },
-    { l: "Fechou com outra imobiliária", r: "19" },
-    { l: "Adiou a mudança", r: "16" },
-    { l: "Sem motivo registrado", r: "12" },
+    { l: "Sem resposta", r: "26" },
+    { l: "Preço acima do orçamento", r: "18" },
+    { l: "Fechou com outra imobiliária", r: "12" },
+    { l: "Adiou a mudança", r: "10" },
+    { l: "Sem motivo registrado", r: "8" },
   ],
   porCorretor: [
     { l: "Ana Beatriz", r: "52 neg · 9 min · 9,6%", sub: "1º contato âmbar: acima da meta de 5 min" },
@@ -181,9 +183,9 @@ const demo: Dados = {
     jornada: [
       { titulo: "Chegou pelo Instagram (bio)", quando: "12 ago 13:52 · entrou pela home", cor: "#FF9A4D" },
       { titulo: "Buscou imóveis", quando: "13:55 · Moema · 2 dorms · até R$ 5.500/mês", cor: "#FF9A4D" },
-      { titulo: "Abriu o Apê Canário 71 · MO-104", quando: "13:58 · viu 12 fotos · leu até o fim", cor: "#FF9A4D" },
+      { titulo: "Abriu o Apê Canário 71 · MO-104", quando: "13:58 · viu 12 fotos · leu até o fim da página", cor: "#FF9A4D" },
       { titulo: "Chamou no WhatsApp", quando: "14:05 · na página do imóvel", cor: "#FF7000" },
-      { titulo: "Virou lead e entrou no Funil 2.0", quando: "14:07 · negócio criado automaticamente", cor: "#8B00CC" },
+      { titulo: "Virou lead e entrou no Funil 2.0", quando: "14:07 · negócio #4812 criado automaticamente", cor: "#8B00CC" },
       { titulo: "Distribuída para Ana Beatriz", quando: "14:11 · regra de rodízio da equipe", cor: "#8B00CC" },
       { titulo: "Primeiro contato em 9 minutos", quando: "14:16 · 4 min acima da meta de 5 min", cor: "#B5700A" },
       { titulo: "Visita agendada", quando: "15 ago · sábado, 10h · em atendimento", cor: "#1FA85A" },
