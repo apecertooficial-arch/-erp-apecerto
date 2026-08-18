@@ -1,0 +1,41 @@
+/* ÍCONE DA INTELIGÊNCIA NO MENU — conserto de especificidade.
+ *
+ * A folha do menu (redesign-apecerto-menu.css) pinta o ícone de cada item com
+ * `background` + `mask-image` no PSEUDO-ELEMENTO de .nav-icon. Estilo inline no
+ * span não alcança pseudo-elemento, então a primeira tentativa deixou o quadrado
+ * laranja no lugar do radar.
+ *
+ * Aqui o pseudo-elemento é desligado e o SVG volta a aparecer. Escopo travado no
+ * href /inteligencia: nenhum outro item do menu é afetado.
+ *
+ * Carregada pelo AppShell, depois da folha do menu — e com especificidade maior
+ * (atributo + classe + pseudo), para não depender de ordem de carga.
+ */
+
+.sidebar .nav-item[href="/inteligencia"] .nav-icon::before,
+.sidebar .nav-item[href="/inteligencia"] .nav-icon::after {
+  content: none !important;
+  display: none !important;
+  background: none !important;
+  -webkit-mask-image: none !important;
+  mask-image: none !important;
+}
+
+.sidebar .nav-item[href="/inteligencia"] .nav-icon {
+  background: none !important;
+  -webkit-mask-image: none !important;
+  mask-image: none !important;
+  display: grid !important;
+  place-items: center !important;
+  width: 19px;
+  height: 19px;
+  flex: none;
+}
+
+.sidebar .nav-item[href="/inteligencia"] .nav-icon svg {
+  display: block !important;
+  width: 19px;
+  height: 19px;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
