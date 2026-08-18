@@ -3,12 +3,17 @@
 /* CONVERSÃO E CRM — artboard 5a.
  * O que acontece depois que o lead entra: do primeiro contato à chave na mão.
  * O funil aqui é o comercial (9 etapas, com “perdido” fechando a lista).
+ *
+ * Auditoria de fidelidade: a JORNADA DO LEAD do artboard virou a gaveta lateral
+ * de 420px, com a linha do tempo do atendimento — sem IP bruto e sem user agent.
  */
 
 import { useState } from "react";
 import type { PropsTela } from "../CascaInteligencia";
 import { fmt, RodapeFontes } from "../dado";
-import { Cabecalho, CartoesLista, Funil, GradeKpis, type Etapa, type Kpi } from "../pecas";
+import { Cabecalho, CartoesLista, Funil, GavetaLateral, GradeKpis, LinhaDoTempo, type Etapa, type Kpi } from "../pecas";
+
+type Jornada = { titulo: string; quando: string; cor: string };
 
 type Dados = {
   primeiroAtendimento: number | null;
@@ -22,11 +27,13 @@ type Dados = {
   tempos: { l: string; r: string }[];
   motivos: { l: string; r: string }[];
   porCorretor: { l: string; r: string; sub?: string; corR?: string }[];
+  lead: { nome: string; papel: string; entrada: string; corretora: string; jornada: Jornada[] };
   atualizado: string;
 };
 
 export function ConversaoCrm({ recorte }: PropsTela) {
   const [motivoAberto, setMotivoAberto] = useState<string | null>(null);
+  const [jornadaAberta, setJornada] = useState(false);
   const d = usarDados();
 
   const kpis: Kpi[] = [
@@ -34,7 +41,7 @@ export function ConversaoCrm({ recorte }: PropsTela) {
     { rotulo: "Leads sem atendimento", bruto: d.semAtendimento, texto: fmt.inteiro(d.semAtendimento), tom: "ruim", tile: "vermelho", foot: "fila aberta agora" },
     { rotulo: "Negócios parados", bruto: d.parados, texto: fmt.inteiro(d.parados), tom: "atencao", tile: "laranja", foot: "sem movimento há 7+ dias" },
     { rotulo: "Taxa de perda", bruto: d.taxaPerda, texto: fmt.porcento(d.taxaPerda), tom: "ruim", tile: "vermelho", chip: fmt.pontos(d.variacaoPerda), chipTom: "ruim", foot: "dos negócios criados" },
-    { rotulo: "Valor de pipeline", bruto: d.pipelineValor, texto: fmt.dinheiro(d.pipelineValor), tile: "roxo", motivo: "integracao", detalhe: "campo de valor ausente no Funil 2.0", foot: "aparece quando o campo existir — nunca zero fictício" },
+    { rotulo: "Valor de pipeline", bruto: d.pipelineValor, texto: fmt.dinheiro(d.pipelineValor), tile: "roxo", icone: "dinheiro", motivo: "integracao", detalhe: "campo de valor ausente no Funil 2.0", foot: "aparece quando o campo existir — nunca zero fictício" },
   ];
 
   const etapas: Etapa[] = d.etapas.map((e) => ({
@@ -62,7 +69,7 @@ export function ConversaoCrm({ recorte }: PropsTela) {
         cartoes={[
           { titulo: "Tempo mediano entre etapas", linhas: d.tempos, foot: "etapa sem registro de data aparece com “—”" },
           {
-            titulo: `Motivos de perda · ${fmt.inteiro(112)}`,
+            titulo: "Motivos de perda · 112",
             linhas: d.motivos.map((m) => ({ ...m, sub: motivoAberto === m.l ? "recorte aplicado à página" : undefined, abrir: () => { setMotivoAberto(m.l); recorte.filtrar(`Motivo: ${m.l}`); } })),
             foot: "clicar num motivo filtra a página inteira",
           },
@@ -75,7 +82,9 @@ export function ConversaoCrm({ recorte }: PropsTela) {
         cartoes={[
           {
             titulo: "Jornada individual",
-            linhas: [{ l: "Mariana C. · compradora", r: "abrir a linha do tempo →", abrir: () => recorte.filtrar("Lead: Mariana C.") }],
+            chip: "gaveta",
+            chipTom: "roxo",
+            linhas: [{ l: `${d.lead.nome} · ${d.lead.papel}`, r: "abrir a linha do tempo →", abrir: () => setJornada(true) }],
             foot: "a jornada abre sem IP bruto e sem user agent — só o que serve para atender a pessoa",
           },
           {
@@ -89,9 +98,33 @@ export function ConversaoCrm({ recorte }: PropsTela) {
         ]}
       />
 
+      <GavetaLateral
+        aberta={jornadaAberta}
+        titulo={`${d.lead.nome} — jornada do lead`}
+        sub={`${d.lead.papel} · entrou ${d.lead.entrada} · ${d.lead.corretora}`}
+        fechar={() => setJornada(false)}
+        rodape={
+          <>
+            <button type="button" className="cop-acao" onClick={() => recorte.filtrar(`Lead: ${d.lead.nome}`)}>Filtrar a página por este lead</button>
+            <button type="button" className="cop-acao" onClick={() => recorte.irPara("atendimento")}>Abrir a fila de atendimento →</button>
+          </>
+        }
+      >
+        <LinhaDoTempo eventos={d.lead.jornada} />
+        <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+          <div className="intp-detalhe-linha"><span>Tempo até o primeiro contato</span><b>9 min</b></div>
+          <div className="intp-detalhe-linha"><span>Etapa atual</span><b>Visita agendada</b></div>
+          <div className="intp-detalhe-linha"><span>Valor do negócio</span><b>—</b></div>
+          <div className="intp-detalhe-linha"><span>Telefone e e-mail</span><b>—</b></div>
+        </div>
+        <div className="intp-detalhe-aviso">
+          Sem IP bruto, sem user agent, sem identificador técnico. Telefone e e-mail dependem de permissão de dados pessoais e ficam com “—” aqui; o valor do negócio aparece quando o campo existir no Funil 2.0.
+        </div>
+      </GavetaLateral>
+
       <RodapeFontes
         fontes={["leads", "negócios", "wa_mensagens", "motivos de perda", "visitas"]}
-        pendencias={["valor de pipeline e valor fechado (campo ausente no CRM)"]}
+        pendencias={["valor de pipeline e valor fechado (campo ausente no CRM)", "dados pessoais do lead dependem de permissão"]}
         atualizado={d.atualizado}
       />
     </div>
@@ -140,5 +173,21 @@ const demo: Dados = {
     { l: "Fernanda Lima", r: "45 · 22 min · 6,7%" },
     { l: "Rafael Souza", r: "38 · 41 min · 5,3%", corR: "#D93E3E" },
   ],
+  lead: {
+    nome: "Mariana C.",
+    papel: "compradora",
+    entrada: "12 ago, 14:07",
+    corretora: "corretora Ana Beatriz",
+    jornada: [
+      { titulo: "Chegou pelo Instagram (bio)", quando: "12 ago 13:52 · entrou pela home", cor: "#FF9A4D" },
+      { titulo: "Buscou imóveis", quando: "13:55 · Moema · 2 dorms · até R$ 5.500/mês", cor: "#FF9A4D" },
+      { titulo: "Abriu o Apê Canário 71 · MO-104", quando: "13:58 · viu 12 fotos · leu até o fim", cor: "#FF9A4D" },
+      { titulo: "Chamou no WhatsApp", quando: "14:05 · na página do imóvel", cor: "#FF7000" },
+      { titulo: "Virou lead e entrou no Funil 2.0", quando: "14:07 · negócio criado automaticamente", cor: "#8B00CC" },
+      { titulo: "Distribuída para Ana Beatriz", quando: "14:11 · regra de rodízio da equipe", cor: "#8B00CC" },
+      { titulo: "Primeiro contato em 9 minutos", quando: "14:16 · 4 min acima da meta de 5 min", cor: "#B5700A" },
+      { titulo: "Visita agendada", quando: "15 ago · sábado, 10h · em atendimento", cor: "#1FA85A" },
+    ],
+  },
   atualizado: "14:28",
 };
