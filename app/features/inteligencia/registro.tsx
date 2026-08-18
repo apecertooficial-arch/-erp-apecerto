@@ -18,6 +18,9 @@ import { Gerentes } from "./telas/Gerentes";
 import { Corretores } from "./telas/Corretores";
 import { QualidadeDesenvolvimento } from "./telas/QualidadeDesenvolvimento";
 import { ConversaoCrm } from "./telas/ConversaoCrm";
+import { VisaoDigital } from "./telas/VisaoDigital";
+import { AquisicaoCampanhas } from "./telas/AquisicaoCampanhas";
+import { ComportamentoConteudo } from "./telas/ComportamentoConteudo";
 
 export const telasPublicadas: Record<string, (props: PropsTela) => ReactNode> = {
   empresa: (p) => <VisaoEmpresa {...p} />,
@@ -29,4 +32,7 @@ export const telasPublicadas: Record<string, (props: PropsTela) => ReactNode> = 
   corretores: (p) => <Corretores {...p} />,
   qualidade: (p) => <QualidadeDesenvolvimento {...p} />,
   conversao: (p) => <ConversaoCrm {...p} />,
+  digital: (p) => <VisaoDigital {...p} />,
+  aquisicao: (p) => <AquisicaoCampanhas {...p} />,
+  comportamento: (p) => <ComportamentoConteudo {...p} />,
 };
