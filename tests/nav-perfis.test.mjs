@@ -4,10 +4,17 @@
 // para uma funcao pura (itensDaNavegacao), justamente para poder ser provada
 // sem navegador. Testes de fim aqui garantem que ErpShell e AppShell continuam
 // consumindo essa funcao, em vez de reimplementar a decisao.
+//
+// CONTRATO ATUAL: o app nao e o ERP inteiro. Modulo com mobile:false nao
+// aparece na barra nem na folha "Mais" (a rota continua existindo no
+// computador). Por isso o universo comparavel aqui e "os modulos com tela de
+// celular", nao "todos os modulos do ERP".
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { itensDaNavegacao, rotasModulo, pathDoModulo } from "../app/features/system/erp-routes.ts";
+import { itensDaNavegacao, podeVer, rotasModulo, pathDoModulo } from "../app/features/system/erp-routes.ts";
+
+const modulosDoApp = Object.entries(rotasModulo).filter(([, rota]) => rota.mobile).map(([nome]) => nome);
 
 const CORRETOR = {
   role: "corretor", carregado: true, isManager: false,
@@ -24,9 +31,8 @@ test("app do corretor tem Inicio, CRM, Agenda e Avisos", () => {
 
 test("o que nao cabe na barra vai para Mais, sem sumir nem repetir", () => {
   const { barra, mais } = itensDaNavegacao(ADMIN);
-  const todos = Object.keys(rotasModulo);
-  assert.equal(barra.length + mais.length, todos.length, "admin precisa alcancar todos os modulos");
-  assert.equal(new Set([...barra, ...mais]).size, todos.length, "nenhum modulo pode aparecer duas vezes");
+  assert.equal(barra.length + mais.length, modulosDoApp.length, "admin precisa alcancar todo modulo com tela de celular");
+  assert.equal(new Set([...barra, ...mais]).size, modulosDoApp.length, "nenhum modulo pode aparecer duas vezes");
   for (const m of barra) assert.ok(!mais.includes(m), `${m} nao pode estar na barra e em Mais`);
 });
 
@@ -38,17 +44,28 @@ test("CORRETOR nao alcanca modulo administrativo por nenhum caminho", () => {
   }
 });
 
-test("ADMIN alcanca os modulos administrativos", () => {
+test("ADMIN pode ver todo modulo administrativo, e o app so oferece os que tem tela de celular", () => {
+  // Permissao e oferta no app sao duas coisas: o admin PODE ver Financeiro,
+  // mas o app nao abre uma tela de escritorio comprimida em 390px.
+  for (const m of ["Usuários", "Perfis e Permissões", "Auditoria", "Financeiro", "Performance", "Minha Equipe"]) {
+    assert.equal(podeVer(m, ADMIN), true, `admin deveria poder ver ${m}`);
+  }
   const { barra, mais } = itensDaNavegacao(ADMIN);
   const alcancaveis = new Set([...barra, ...mais]);
-  for (const m of ["Usuários", "Perfis e Permissões", "Auditoria", "Financeiro", "Performance", "Minha Equipe"]) {
-    assert.ok(alcancaveis.has(m), `admin deveria alcancar ${m}`);
+  assert.ok(alcancaveis.has("Performance"), "Performance tem tela de celular e precisa aparecer no app");
+  for (const m of ["Usuários", "Perfis e Permissões", "Auditoria", "Financeiro", "Minha Equipe"]) {
+    assert.ok(!alcancaveis.has(m), `${m} e mobile:false: o app nao pode oferecer o caminho`);
   }
 });
 
-test("gestor tem Painel, Equipe, Produtos e Gestão na barra", () => {
+test("gestor tem Inicio, Produtos, Agenda e Gestao na barra", () => {
   assert.ok(!itensDaNavegacao(CORRETOR).mais.includes("Minha Equipe"));
-  assert.deepEqual(itensDaNavegacao(GESTOR).barra, ["Performance", "Minha Equipe", "Produtos", "Configurações"]);
+  // "Minha Equipe" saiu da barra do gestor enquanto a relacao perf_snapshots
+  // nao existir no banco (a tela abria so com erro). O lugar dela e a barra
+  // completa do computador; no celular o gestor tem Inicio, Produtos, Agenda e
+  // Gestao. Ver a nota em rotasModulo["Minha Equipe"].
+  assert.deepEqual(itensDaNavegacao(GESTOR).barra, ["Performance", "Produtos", "Calendário", "Configurações"]);
+  assert.ok(!itensDaNavegacao(GESTOR).mais.includes("Minha Equipe"), "modulo sem tela de celular nao pode cair na folha Mais");
 });
 
 test("FAIL-CLOSED: perfil ainda carregando nao expoe modulo controlado", () => {
