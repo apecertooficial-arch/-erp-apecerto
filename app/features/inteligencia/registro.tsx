@@ -12,9 +12,13 @@ import type { PropsTela } from "./CascaInteligencia";
 import { VisaoEmpresa } from "./telas/VisaoEmpresa";
 import { VendasPrevisao } from "./telas/VendasPrevisao";
 import { FinanceiroComissoes } from "./telas/FinanceiroComissoes";
+import { AtendimentoSla } from "./telas/AtendimentoSla";
+import { PerformanceEquipe } from "./telas/PerformanceEquipe";
 
 export const telasPublicadas: Record<string, (props: PropsTela) => ReactNode> = {
   empresa: (p) => <VisaoEmpresa {...p} />,
   vendas: (p) => <VendasPrevisao {...p} />,
   financeiro: (p) => <FinanceiroComissoes {...p} />,
+  atendimento: (p) => <AtendimentoSla {...p} />,
+  equipe: (p) => <PerformanceEquipe {...p} />,
 };
