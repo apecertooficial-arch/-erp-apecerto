@@ -8659,48 +8659,6 @@ export type Database = {
           },
         ]
       }
-      performance_atividade_app: {
-        Row: {
-          corretor_id: number
-          usuario_id: string
-          bloco_em: string
-          primeiro_em: string
-          ultimo_em: string
-          sinais: number
-        }
-        Insert: {
-          corretor_id: number
-          usuario_id: string
-          bloco_em: string
-          primeiro_em?: string
-          ultimo_em?: string
-          sinais?: number
-        }
-        Update: {
-          corretor_id?: number
-          usuario_id?: string
-          bloco_em?: string
-          primeiro_em?: string
-          ultimo_em?: string
-          sinais?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "performance_atividade_app_corretor_id_fkey"
-            columns: ["corretor_id"]
-            isOneToOne: false
-            referencedRelation: "corretores"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "performance_atividade_app_usuario_id_fkey"
-            columns: ["usuario_id"]
-            isOneToOne: false
-            referencedRelation: "usuarios"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       perf_tipos: {
         Row: {
           ativo: boolean
@@ -13608,11 +13566,6 @@ export type Database = {
         Returns: string
       }
       perf_log_sessao: { Args: { p_tipo: string }; Returns: string }
-      performance_sala_comando: {
-        Args: { p_fim: string; p_inicio: string }
-        Returns: Json
-      }
-      performance_registrar_atividade: { Args: never; Returns: Json }
       pipelines_com_etapas: { Args: never; Returns: Json }
       pj_alerta_atrasadas: { Args: never; Returns: number }
       pj_listar_usuarios: {

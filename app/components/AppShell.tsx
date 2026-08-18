@@ -22,16 +22,12 @@ const brokerMainItems: ModuleName[] = ["Início", "CRM", "Produtos", "Financeiro
 const brokerToolItems: ModuleName[] = ["Chat ao Vivo", "Financiamento", "Disparos", "Calendário", "Notificações"];
 const brokerSystemItems: ModuleName[] = ["Configurações", "Ajuda"];
 
-/* Rótulo mostrado no menu. Inteligência/Performance foi retirada desta casca
-   durante a reconstrução visual e só volta quando a nova rota for aprovada. */
 const rotulosMenu: Partial<Record<ModuleName, string>> = { CRM: "CRM · Meu Dia" };
 
 function NavIcon({ item }: { item: ModuleName }) {
   const common = { width: 19, height: 19, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.8, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
   if (item === "Início") return <svg {...common}><path d="M3 10 12 3l9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1Z" /></svg>;
   if (item === "CRM") return <svg {...common}><path d="M3 4h18l-7 8v7l-4 2v-9Z" /></svg>;
-  /* Radar: a área não é só "gráfico subindo", é leitura do que está acontecendo. */
-  if (item === "Performance") return <svg {...common}><circle cx="12" cy="12" r="9" /><circle cx="12" cy="12" r="4.5" /><path d="M12 12l6-4" /></svg>;
   if (item === "Produtos") return <svg {...common}><path d="M6 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16M3 21h18M10 7h.01M14 7h.01M10 11h.01M14 11h.01M10 15h.01M14 15h.01" /></svg>;
   if (item === "Financeiro") return <svg {...common}><rect x="3" y="6" width="18" height="13" rx="2" /><path d="M3 10h18M16 14h.01" /></svg>;
   if (item === "Abordagens" || item === "Disparos") return <svg {...common}><path d="m22 2-7 20-4-9-9-4Z" /><path d="m22 2-11 11" /></svg>;

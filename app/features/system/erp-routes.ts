@@ -64,8 +64,6 @@ export const rotasModulo: Record<ModuleName, RotaModulo> = {
   "Minha Equipe": { path: "/equipe", slugs: [], classe: "B", rotuloCurto: "Equipe", mobile: false },
   /* Rotulo "Inicio": no celular do gestor esta e a primeira tela, o resumo da
      operacao. "Painel" dizia onde ele estava, nao o que ia encontrar. */
-  /* Módulo temporariamente fora da navegação durante a reconstrução visual. */
-  Performance: { path: "/performance", slugs: ["performance"], classe: "B", rotuloCurto: "Performance", mobile: false },
   Abordagens: { path: "/abordagens", slugs: ["abordagens"], classe: "B", mobile: false },
   "Automações": { path: "/automacoes", slugs: ["automacoes"], classe: "B", mobile: false },
   "Agentes de IA": { path: "/agentes-ia", slugs: ["agentes_ia"], classe: "B", rotuloCurto: "Agentes", mobile: false },
@@ -137,7 +135,7 @@ export function podeVer(
 
   if (role === "admin") return true;
   // Painel, Equipe e Gestão são a rotina do gestor e nunca a do corretor.
-  if (nome === "Minha Equipe" || nome === "Performance" || nome === "Configurações") {
+  if (nome === "Minha Equipe" || nome === "Configurações") {
     if (isManager || role === "gestor") return true;
     if (nome === "Minha Equipe") return false;
   }

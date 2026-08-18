@@ -32,7 +32,7 @@ import "./styles/funil-2.css";
    UMA camada de desenho, dividida por domínio do mesmo jeito que o resto deste
    arquivo já divide (venda-ficha, extrato-import, fluxo-caixa-acoes…):
 
-     1. redesign-apecerto.css ................. shell, Início, CRM, Performance
+     1. redesign-apecerto.css ................. shell, Início e CRM
      2. ...-produtos-financeiro.css ........... Produtos, ficha da venda, Financeiro
      3. ...-financeiro-abas.css ............... Marketing, Indicações, Taxas, Metas, Meus ganhos
      4. ...-inicio.css ........................ Início: topo, seções, ranking, estados
@@ -51,7 +51,7 @@ import "./styles/funil-2.css";
     17. ...-construtor-paridade.css .......... Construtor: cartão de bloco em paridade com o desenho
 
    Elas substituem por cascata os valores visuais que globals.css, funil-2.css,
-   performance.css e automation-builder.css definiam para os MESMOS seletores —
+   automation-builder.css definia para os MESMOS seletores —
    não são tema opcional nem segunda pele: são o visual do produto.
 
    DUAS ARMADILHAS JÁ PAGAS, anotadas para não repetir:

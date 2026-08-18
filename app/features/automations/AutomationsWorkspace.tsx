@@ -138,8 +138,7 @@ export function AutomationsWorkspace({ accessToken }: { accessToken: string }) {
 
   /* A PRIMEIRA CARGA É EFEITO DE PROPÓSITO. `carregar` é a única fonte da lista e
      ele grava estado (setLista/setErro) — não existe nada derivável na
-     renderização, os dados vêm do banco. Mesmo caso, mesma solução já adotada em
-     ManagerPanelMobile.tsx e RelatoriosMobile.tsx. */
+     renderização, os dados vêm do banco. */
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { void carregar(); }, [carregar]);
 

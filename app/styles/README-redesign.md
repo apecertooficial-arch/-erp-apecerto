@@ -1,10 +1,10 @@
 # Camada de desenho do ERP (redesenho apêcerto)
 
-Duas folhas, carregadas em sequência pelo `app/layout.tsx`, entre
-`performance.css` e as folhas `app-mobile-*`:
+Duas folhas, carregadas em sequência pelo `app/layout.tsx`, antes das folhas
+`app-mobile-*`:
 
-1. `redesign-apecerto.css` — shell (sidebar, topbar, abas), Início, CRM / Funil
-   2.0 e Performance.
+1. `redesign-apecerto.css` — shell (sidebar, topbar, abas), Início e CRM / Funil
+   2.0.
 2. `redesign-apecerto-produtos-financeiro.css` — Produtos (catálogo, ficha,
    captação), Financeiro (visão geral, vendas, caixa, ranking), ficha da venda,
    abas Indicações / Taxas / Marketing / Meus ganhos e Importar extrato.
@@ -13,8 +13,8 @@ Duas folhas, carregadas em sequência pelo `app/layout.tsx`, entre
 
 - **Só visual.** Cor, tipografia, peso, borda, raio, sombra e respiro sobre
   classes que já existem. Nada de estrutura, dado ou função.
-- **Substituição por cascata.** Cada regra reescreve o valor que `globals.css`,
-  `funil-2.css` ou `performance.css` definia para o mesmo seletor. Não duplique
+- **Substituição por cascata.** Cada regra reescreve o valor que `globals.css`
+  ou `funil-2.css` definia para o mesmo seletor. Não duplique
   aqui o que já está igual lá.
 - **Posição na cascata importa.** Antes de `app-mobile-aprovado.css` e
   `app-mobile-gestor.css`, para que o aplicativo no celular continue com a

@@ -39,7 +39,7 @@ test("o que nao cabe na barra vai para Mais, sem sumir nem repetir", () => {
 test("CORRETOR nao alcanca modulo administrativo por nenhum caminho", () => {
   const { barra, mais } = itensDaNavegacao(CORRETOR);
   const alcancaveis = new Set([...barra, ...mais]);
-  for (const m of ["Usuários", "Perfis e Permissões", "Auditoria", "Financeiro", "Performance", "Minha Equipe"]) {
+  for (const m of ["Usuários", "Perfis e Permissões", "Auditoria", "Financeiro", "Minha Equipe"]) {
     assert.ok(!alcancaveis.has(m), `corretor nao deveria alcancar ${m}`);
   }
 });
@@ -47,12 +47,12 @@ test("CORRETOR nao alcanca modulo administrativo por nenhum caminho", () => {
 test("ADMIN pode ver todo modulo administrativo, e o app so oferece os que tem tela de celular", () => {
   // Permissao e oferta no app sao duas coisas: o admin PODE ver Financeiro,
   // mas o app nao abre uma tela de escritorio comprimida em 390px.
-  for (const m of ["Usuários", "Perfis e Permissões", "Auditoria", "Financeiro", "Performance", "Minha Equipe"]) {
+  for (const m of ["Usuários", "Perfis e Permissões", "Auditoria", "Financeiro", "Minha Equipe"]) {
     assert.equal(podeVer(m, ADMIN), true, `admin deveria poder ver ${m}`);
   }
   const { barra, mais } = itensDaNavegacao(ADMIN);
   const alcancaveis = new Set([...barra, ...mais]);
-  for (const m of ["Usuários", "Perfis e Permissões", "Auditoria", "Financeiro", "Performance", "Minha Equipe"]) {
+  for (const m of ["Usuários", "Perfis e Permissões", "Auditoria", "Financeiro", "Minha Equipe"]) {
     assert.ok(!alcancaveis.has(m), `${m} e mobile:false: o app nao pode oferecer o caminho`);
   }
 });

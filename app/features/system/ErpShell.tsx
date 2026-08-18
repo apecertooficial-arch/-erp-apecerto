@@ -16,7 +16,6 @@ import { useEffect, useState, type ReactNode } from "react";
 import { AppShell } from "../../components/AppShell";
 import { ProfilePanel } from "../../components/ProfilePanel";
 import { PresenceHeartbeat } from "../presence/PresenceHeartbeat";
-import { PerformanceActivityHeartbeat } from "../performance/PerformanceActivityHeartbeat";
 import type { ModuleName } from "./module-map";
 import { moduloDoPath, pathDoModulo, rotasModulo, itensDaNavegacao } from "./erp-routes";
 import { useErpSession } from "./ErpSession";
@@ -31,7 +30,6 @@ function IconeBarra({ modulo }: { modulo: ModuleName | "Mais" }) {
   if (modulo === "CRM") return <svg {...c}><path d="M3 4h18l-7 8v7l-4 2v-9Z" /></svg>;
   if (modulo === "Calendário") return <svg {...c}><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M7 3v4M17 3v4M3 10h18" /></svg>;
   if (modulo === "Notificações") return <svg {...c}><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10 21h4" /></svg>;
-  if (modulo === "Performance") return <svg {...c}><path d="m3 17 6-6 4 4 8-9" /><path d="M15 6h6v6" /></svg>;
   if (modulo === "Minha Equipe") return <svg {...c}><circle cx="9" cy="8" r="3" /><circle cx="17" cy="9" r="2.5" /><path d="M3 21v-2a5 5 0 0 1 10 0v2M14 21v-1.5a4 4 0 0 1 7-2.6" /></svg>;
   if (modulo === "Produtos") return <svg {...c}><path d="M6 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16M3 21h18M10 7h.01M14 7h.01M10 11h.01M14 11h.01M10 15h.01M14 15h.01" /></svg>;
   if (modulo === "Configurações") return <svg {...c}><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" /></svg>;
@@ -187,10 +185,6 @@ export function ErpShell({ children }: { children: ReactNode }) {
           aparece em qualquer módulo e apenas para corretores vinculados. */}
       {role === "corretor" && accessToken && profile?.brokerId != null && (
         <PresenceHeartbeat accessToken={accessToken} initialOnline={profile.online} />
-      )}
-
-      {accessToken && profile?.brokerId != null && (
-        <PerformanceActivityHeartbeat accessToken={accessToken} />
       )}
 
     </AppShell>

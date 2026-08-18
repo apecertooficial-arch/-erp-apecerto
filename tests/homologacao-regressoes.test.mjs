@@ -14,7 +14,7 @@ import { podeVer, itensDaNavegacao, rotasModulo } from "../app/features/system/e
 const CORRETOR = {
   crm: ["ver"], chat: ["ver"], leads: ["ver"], vendas: ["ver"], disparos: ["ver"],
   pipeline: ["ver"], produtos: ["ver"], comissoes: ["ver"], dashboard: ["ver"],
-  abordagens: ["ver"], calendario: ["ver"], performance: ["ver"],
+  abordagens: ["ver"], calendario: ["ver"],
   notificacoes: ["ver"], configuracoes: ["ver"],
 };
 const DIRETOR = { ...CORRETOR, metas: ["ver"], usuarios: ["ver"], financeiro: ["ver"], agentes_ia: ["ver"], automacoes: ["ver"] };
@@ -46,7 +46,7 @@ test("corretor ve os modulos do dia a dia, incluindo Tarefas", () => {
 test("todo slug usado existe no catalogo real de permissoes", () => {
   const doBanco = new Set(["abordagens","agentes_ia","auditoria","automacoes","calendario","chat",
     "comissoes","configuracoes","crm","dashboard","disparos","financeiro","fluxo_caixa","leads",
-    "metas","notificacoes","performance","pipeline","produtos","usuarios","vendas"]);
+    "metas","notificacoes","pipeline","produtos","usuarios","vendas"]);
   for (const [modulo, rota] of Object.entries(rotasModulo)) {
     for (const slug of rota.slugs) {
       assert.ok(doBanco.has(slug), `${modulo} usa slug inexistente "${slug}" -- fail-closed esconderia o modulo de todos`);

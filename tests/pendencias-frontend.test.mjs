@@ -12,13 +12,6 @@ const layoutErp = ler("../app/(erp)/layout.tsx");
 const sw = ler("../public/sw.js");
 const offline = ler("../public/offline.html");
 
-test("a RPC de performance não volta ao anti-join correlacionado por lead", () => {
-  const migration = ler("../supabase/migrations/20260814234000_otimizar_performance_corretores.sql");
-  assert.match(migration, /left join fones f on f\.corretor_id=l\.corretor_id and f\.f8=l\.f8/);
-  assert.match(migration, /left join dupf d on d\.f8=l\.f8/);
-  assert.match(migration, /raise exception 'bloco ld esperado não encontrado'/);
-});
-
 /* ---------------- 2. OFFLINE ---------------- */
 
 test("service worker nunca cacheia dado de cliente", () => {
@@ -85,7 +78,7 @@ test("a chave do convite e limpa no logout", () => {
 const CORRETOR = {
   crm: ["ver"], chat: ["ver"], leads: ["ver"], vendas: ["ver"], disparos: ["ver"],
   pipeline: ["ver"], produtos: ["ver"], comissoes: ["ver"], dashboard: ["ver"],
-  abordagens: ["ver"], calendario: ["ver"], performance: ["ver"],
+  abordagens: ["ver"], calendario: ["ver"],
   notificacoes: ["ver"], configuracoes: ["ver"],
 };
 const comoCorretor = { role: "corretor", permissoes: CORRETOR, carregado: true, isManager: false };
@@ -100,7 +93,7 @@ test("Projetos e Tarefas aparece, e o slug usado e real", () => {
   assert.equal(podeVer("Projetos e Tarefas", comoCorretor), true);
   const doBanco = new Set(["abordagens","agentes_ia","auditoria","automacoes","calendario","chat",
     "comissoes","configuracoes","crm","dashboard","disparos","financeiro","fluxo_caixa","leads",
-    "metas","notificacoes","performance","pipeline","produtos","usuarios","vendas"]);
+    "metas","notificacoes","pipeline","produtos","usuarios","vendas"]);
   for (const [modulo, rota] of Object.entries(rotasModulo)) {
     for (const slug of rota.slugs) {
       assert.ok(doBanco.has(slug), `${modulo} usa slug "${slug}", que nao existe no banco`);

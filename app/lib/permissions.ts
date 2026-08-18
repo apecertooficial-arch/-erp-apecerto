@@ -28,7 +28,6 @@ export const MODULE_CAPABILITIES: Record<string, readonly string[]> = {
   financeiro: ["ver", "criar", "editar", "cancelar", "aprovar", "exportar"],
   fluxo_caixa: ["ver", "criar", "editar", "cancelar", "conciliar"],
   metas: ["ver", "criar", "editar", "excluir"],
-  performance: ["ver"],
   calendario: ["ver", "criar", "editar", "excluir"],
   automacoes: ["ver", "criar", "editar", "excluir", "executar", "consultar_execucoes"],
   agentes_ia: ["ver", "criar", "editar", "configurar"],
@@ -43,7 +42,7 @@ export const MODULE_ORDER: string[] = Object.keys(MODULE_CAPABILITIES);
 export const MODULE_LABELS: Record<string, string> = {
   dashboard: "Início / Dashboard", crm: "CRM", leads: "Leads", pipeline: "Funil (Pipeline)", chat: "Chat ao Vivo",
   disparos: "Disparos", abordagens: "Abordagens", produtos: "Produtos", vendas: "Vendas", comissoes: "Comissões",
-  financeiro: "Financeiro", fluxo_caixa: "Fluxo de caixa", metas: "Metas", performance: "Performance",
+  financeiro: "Financeiro", fluxo_caixa: "Fluxo de caixa", metas: "Metas",
   calendario: "Calendário", automacoes: "Automações", agentes_ia: "Agentes de IA", notificacoes: "Notificações",
   configuracoes: "Configurações", usuarios: "Usuários", auditoria: "Auditoria",
 };

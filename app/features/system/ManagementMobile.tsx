@@ -29,16 +29,12 @@ function IconeGestao({ nome }: { nome: string }) {
  *
  * O que sobrou e o que o gestor faz de fato pelo telefone: ver quem esta
  * trabalhando, olhar a agenda da equipe, conferir os avisos, acompanhar a
- * esteira e ler os relatorios. */
+ * esteira. */
 const itens = [
   { modulo: "Minha Equipe", icone: "equipe", titulo: "Quem está trabalhando", texto: "Presença, carteira e resposta no prazo" },
   { modulo: "Calendário", icone: "agenda", titulo: "Agenda da equipe", texto: "Visitas e compromissos do dia" },
   { modulo: "Notificações", icone: "avisos", titulo: "Avisos", texto: "O que está pedindo ação agora" },
   { modulo: "CRM", icone: "esteira", titulo: "Esteira de vendas", texto: "Atendimentos e oportunidades" },
-  /* Relatorios e a OUTRA leitura de /performance (?vista=relatorios): trabalho,
-     atendimento, funil e receita do periodo. O Inicio do gestor ja e a primeira
-     leitura, e sem o parametro as duas linhas abririam a mesma tela. */
-  { modulo: "Performance", icone: "relatorios", titulo: "Relatórios", texto: "Trabalho, atendimento, funil e receita", vista: "relatorios" },
 ] satisfies Array<{ modulo: ModuleName; icone: string; titulo: string; texto: string; vista?: string }>;
 
 export function ManagementMobile() {

@@ -11,10 +11,6 @@ export const moduleMap = {
     description: "Catálogo, captação, unidades, proprietários e materiais dos imóveis.",
     tables: ["empreendimentos", "unidades", "midias", "proprietarios", "condominios"],
   },
-  Performance: {
-    description: "Eventos, indicadores e metas dos corretores.",
-    tables: ["perf_eventos", "perf_tipos", "metas_corretor"],
-  },
   Financeiro: {
     description: "Lançamentos, recebimentos, vendas e comissões.",
     tables: ["lancamentos_caixa", "recebimentos", "vendas", "comissoes"],
@@ -77,8 +73,8 @@ export const moduleMap = {
     tables: ["wa_instancias", "corretor_instancias"],
   },
   "Minha Equipe": {
-    description: "Execução, atendimento, funil e resultado da equipe, para gestores autorizados.",
-    tables: ["performance_atividade_app", "perf_eventos", "f2_lead", "visitas", "ia_notas_atendimento", "vendas", "metas"],
+    description: "Visão operacional da equipe para gestores autorizados.",
+    tables: ["f2_lead", "visitas", "ia_notas_atendimento", "vendas", "metas"],
   },
   Ajuda: {
     description: "Tutoriais e orientações de uso preservados do ERP original.",
