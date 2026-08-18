@@ -48,11 +48,19 @@ export function VisaoEmpresa({ accessToken }: { accessToken: string }) {
   ];
   const topo = etapas.reduce((maior, e) => Math.max(maior, num(e.valor)), 0);
   const funilTemDado = etapas.some((e) => tem(e.valor));
+  const maiorPerda = etapas.slice(1).map((etapa, indice) => {
+    const anterior = etapas[indice];
+    const perda = tem(etapa.valor) && tem(anterior.valor)
+      ? Math.max(0, num(anterior.valor) - num(etapa.valor))
+      : 0;
+    return { de: anterior.nome, para: etapa.nome, perda };
+  }).reduce((maior, atual) => atual.perda > maior.perda ? atual : maior, { de: "—", para: "—", perda: 0 });
+  const midiaPendente = (dados?.pendencias ?? []).some((p) => p.chave.toLowerCase().includes("midia"));
 
   return (
     <CascaInteligencia accessToken={accessToken}
-      slug="" grupo="empresa" titulo="Visão da empresa"
-      apoio="A operação inteira num lugar. Cada número vem do ERP — o que não veio aparece como pendência, não como zero."
+      slug="" grupo="empresa" titulo="Visão executiva"
+      apoio="Do acesso no site até a venda no Funil 2.0 — o que melhorou, o que piorou e onde agir."
       periodo={periodo} onPeriodo={trocarPeriodo}
       confirmados={confirmados} atualizadoEm={dados?.atualizadoEm}
     >
@@ -60,6 +68,24 @@ export function VisaoEmpresa({ accessToken }: { accessToken: string }) {
 
       {dados && (
         <>
+          <section className="ape-int-diagnostico" aria-label="Resumo executivo do período">
+            <a href={`/inteligencia/conversao?periodo=${periodo}`}>
+              <span className="ape-int-tile verde"><i className="ape-int-ic ic-ok" /></span>
+              <div><small>MELHOR SINAL</small><strong>{tem(empresa?.vendas) ? `${inteiro(empresa?.vendas)} fechamento(s) confirmado(s)` : "Resultado aguardando dado"}</strong><p>{tem(empresa?.vgv) ? `${dinheiro(empresa?.vgv)} em VGV assinado no período.` : "O financeiro ainda não confirmou o VGV do período."}</p></div>
+              <b aria-hidden="true">→</b>
+            </a>
+            <a href={`/inteligencia/conversao?periodo=${periodo}`}>
+              <span className="ape-int-tile vermelho"><i className="ape-int-ic ic-alerta" /></span>
+              <div><small>MAIOR PERDA DO FUNIL</small><strong>{maiorPerda.perda > 0 ? `${maiorPerda.de} → ${maiorPerda.para}` : "Sem perda comparável"}</strong><p>{maiorPerda.perda > 0 ? `${inteiro(maiorPerda.perda)} não avançaram entre essas etapas. Abra a conversão para investigar.` : "As etapas ainda não têm base suficiente para apontar o maior vazamento."}</p></div>
+              <b aria-hidden="true">→</b>
+            </a>
+            <a href={`/inteligencia/aquisicao?periodo=${periodo}`}>
+              <span className="ape-int-tile ambar"><i className="ape-int-ic ic-radar" /></span>
+              <div><small>MERECE ATENÇÃO</small><strong>{midiaPendente ? "Custo de mídia não conectado" : temMeta ? `${inteiro(empresa?.atingimentoVgvPct)}% da meta coberta` : "Meta de VGV não cadastrada"}</strong><p>{midiaPendente ? "Conecte Google Ads e Meta Ads para enxergar CPL, custo por negócio e retorno." : temMeta ? `${dinheiro(Math.max(0, num(empresa?.metaVgv) - num(empresa?.vgv)))} ainda estão descobertos.` : "Sem uma meta cadastrada, a visão executiva não consegue medir cobertura."}</p></div>
+              <b aria-hidden="true">→</b>
+            </a>
+          </section>
+
           <section className="ape-int-secao">
             <span>OS NÚMEROS DO PERÍODO</span>
             <h2>Como a imobiliária está girando</h2>

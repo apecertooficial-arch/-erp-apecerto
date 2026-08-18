@@ -50,6 +50,21 @@ export const TELAS: Array<{ slug: string; nome: string; grupo: Grupo }> = [
   { slug: "privacidade", nome: "Privacidade e tracking", grupo: "governanca" },
 ];
 
+/* Navegação aprovada no arquivo mais recente do Design. A área digital é uma
+ * leitura contínua: não existe uma tela intermediária de "grupos" entre o
+ * clique do menu e o assunto escolhido. As telas executivas adicionais seguem
+ * publicadas em suas rotas, mas não alteram esta sequência principal. */
+export const ABAS_INTELIGENCIA_DIGITAL = [
+  { slug: "", nome: "Visão executiva" },
+  { slug: "aquisicao", nome: "Aquisição" },
+  { slug: "comportamento", nome: "Comportamento" },
+  { slug: "imoveis", nome: "Imóveis" },
+  { slug: "conversao", nome: "Conversão e CRM" },
+  { slug: "proprietarios", nome: "Proprietários" },
+  { slug: "sara", nome: "Sara" },
+  { slug: "privacidade", nome: "Privacidade e tracking" },
+] as const;
+
 const caminho = (slug: string) => (slug ? `/inteligencia/${slug}` : "/inteligencia");
 
 export function CascaInteligencia({
@@ -62,17 +77,16 @@ export function CascaInteligencia({
   fontes?: FonteOpcoes;
   children: React.ReactNode;
 }) {
-  const grupoAtual = GRUPOS.find((g) => g.id === grupo);
   const filtros = useFiltros(periodo);
   /* A query é lida no render para que cada aba já nasça com os filtros atuais. */
   const query = queryAtual();
 
   return (
-    <main className="ape-int-wrap">
+    <main className="ape-int-wrap" data-grupo={grupo}>
       <header className="ape-int-topo">
         <span className="ape-int-tile roxo" aria-hidden="true"><i className="ape-int-ic ic-radar" /></span>
         <div>
-          <span>INTELIGÊNCIA · {(grupoAtual?.nome ?? "").toUpperCase()}</span>
+          <span>INTELIGÊNCIA DIGITAL</span>
           <h1>{titulo}</h1>
           <p>{apoio}</p>
         </div>
@@ -83,18 +97,9 @@ export function CascaInteligencia({
         </div>
       </header>
 
-      <nav className="ape-int-grupos" aria-label="Grupos da área Inteligência">
-        {GRUPOS.map((g) => {
-          const primeira = TELAS.find((t) => t.grupo === g.id);
-          return (
-            <a key={g.id} href={`${caminho(primeira?.slug ?? "")}${query}`} className={g.id === grupo ? "ativo" : ""}>{g.nome}</a>
-          );
-        })}
-      </nav>
-
-      <nav className="ape-int-abas" aria-label="Telas do grupo">
-        {TELAS.filter((t) => t.grupo === grupo).map((t) => (
-          <a key={t.slug || "visao"} href={`${caminho(t.slug)}${query}`} className={t.slug === slug ? "ativo" : ""}>{t.nome}</a>
+      <nav className="ape-int-abas ape-int-abas-principais" aria-label="Telas da Inteligência Digital">
+        {ABAS_INTELIGENCIA_DIGITAL.map((t) => (
+          <a key={t.slug || "visao"} href={`${caminho(t.slug)}${query}`} className={t.slug === slug ? "ativo" : ""} aria-current={t.slug === slug ? "page" : undefined}>{t.nome}</a>
         ))}
       </nav>
 

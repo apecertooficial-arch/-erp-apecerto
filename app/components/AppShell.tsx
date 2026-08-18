@@ -30,7 +30,7 @@ const brokerSystemItems: ModuleName[] = ["Configurações", "Ajuda"];
    redesign-apecerto-menu.css ordena por href, então o href não muda) — e agora
    abre a área nova. A tela antiga continua alcançável em
    /performance?vista=antiga enquanto a transição durar. */
-const rotulosMenu: Partial<Record<ModuleName, string>> = { CRM: "CRM · Meu Dia", Performance: "Inteligência" };
+const rotulosMenu: Partial<Record<ModuleName, string>> = { CRM: "CRM · Meu Dia", Performance: "Inteligência Digital" };
 
 function NavIcon({ item }: { item: ModuleName }) {
   const common = { width: 19, height: 19, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.8, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };

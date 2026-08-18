@@ -58,6 +58,30 @@
   color: #4D4842; font-size: 12.5px; font-weight: 600; text-decoration: none;
 }
 .ape-int-abas a.ativo { border-color: #FF7000; background: #FFF3EA; color: #CC5800; font-weight: 700; }
+.ape-int-abas-principais {
+  flex-wrap: nowrap; overflow-x: auto; padding-bottom: 2px; scrollbar-width: thin;
+}
+.ape-int-abas-principais a { min-height: 36px; white-space: nowrap; }
+
+/* Faixa de interpretação da Visão executiva. O design não abre com uma parede
+   de números: ele responde primeiro onde houve avanço, onde o funil vazou e
+   qual decisão merece atenção. Cada cartão leva à tela que explica o sinal. */
+.ape-int-diagnostico {
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px;
+}
+.ape-int-diagnostico > a {
+  min-width: 0; padding: 16px; border-radius: 18px; background: #fff;
+  box-shadow: 0 2px 6px rgba(31, 28, 26, 0.06); color: inherit;
+  display: grid; grid-template-columns: 34px minmax(0, 1fr) 18px; gap: 12px;
+  align-items: start; text-decoration: none;
+}
+.ape-int-diagnostico > a:hover { box-shadow: 0 7px 20px rgba(31, 28, 26, 0.10); transform: translateY(-1px); }
+.ape-int-diagnostico > a:focus-visible { outline: 3px solid rgba(255, 112, 0, .35); outline-offset: 2px; }
+.ape-int-diagnostico > a > div { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.ape-int-diagnostico small { color: #8B00CC; font-size: 10px; font-weight: 700; letter-spacing: .1em; }
+.ape-int-diagnostico strong { font-size: 14px; line-height: 1.35; }
+.ape-int-diagnostico p { margin: 0; color: #6E6760; font-size: 11.5px; line-height: 1.45; }
+.ape-int-diagnostico > a > b { color: #B7AFA7; font-size: 18px; }
 
 /* ---------------------------------------------------------------------------
    TILE DE ÍCONE — peça 03 do artboard 30b: 34px, raio 10, tint da cor.
@@ -480,7 +504,7 @@
 
 @media (max-width: 900px) {
   .ape-int-wrap { padding: 16px; gap: 14px; }
-  .ape-int-kpis, .ape-int-pendencias, .ape-int-cartoes, .ape-int-decisoes { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ape-int-kpis, .ape-int-pendencias, .ape-int-cartoes, .ape-int-decisoes, .ape-int-diagnostico { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .ape-int-linha { grid-template-columns: 1fr 64px 56px; }
   .ape-int-linha .ape-int-barra { display: none; }
   .ape-int-grupos a, .ape-int-abas a { min-height: 44px; }
@@ -561,7 +585,7 @@
   }
 }
 @media (max-width: 560px) {
-  .ape-int-kpis, .ape-int-pendencias, .ape-int-cartoes, .ape-int-decisoes { grid-template-columns: 1fr; }
+  .ape-int-kpis, .ape-int-pendencias, .ape-int-cartoes, .ape-int-decisoes, .ape-int-diagnostico { grid-template-columns: 1fr; }
   .ape-int-controles { width: 100%; }
   .ape-int-menu { left: auto; right: 0; }
   .ape-int-drawer-numeros { grid-template-columns: 1fr; }
