@@ -16,7 +16,7 @@
 }
 
 .ape-int-topo { display: flex; align-items: flex-end; gap: 16px; flex-wrap: wrap; }
-.ape-int-topo > div:first-child { min-width: 0; }
+.ape-int-topo > div:first-of-type { min-width: 0; }
 .ape-int-topo span {
   font-size: 11px; font-weight: 600; letter-spacing: 0.12em; color: #FF7000;
 }
@@ -35,7 +35,7 @@
 .ape-int-selo.aguardando { background: #FDF1D9; color: #8A6A15; }
 .ape-int-selo.aguardando i { background: #B5700A; }
 
-.ape-int-periodos { display: inline-flex; border: 1px solid #E4DFD9; border-radius: 999px; overflow: hidden; }
+.ape-int-periodos { display: inline-flex; border: 1px solid #E4DFD9; border-radius: 999px; overflow: hidden; flex: none; }
 .ape-int-periodos button {
   height: 32px; padding: 0 13px; border: 0; background: #fff; color: #6E6760;
   font-family: inherit; font-size: 12px; font-weight: 600; cursor: pointer;
@@ -58,6 +58,104 @@
   color: #4D4842; font-size: 12.5px; font-weight: 600; text-decoration: none;
 }
 .ape-int-abas a.ativo { border-color: #FF7000; background: #FFF3EA; color: #CC5800; font-weight: 700; }
+
+/* ---------------------------------------------------------------------------
+   TILE DE ÍCONE — peça 03 do artboard 30b: 34px, raio 10, tint da cor.
+   Ícone por MÁSCARA CSS, mesmo mecanismo já usado no menu lateral do redesenho
+   (redesign-apecerto-menu.css). Nenhuma dependência nova no pacote, e o glifo
+   herda a cor do tile por currentColor.
+   --------------------------------------------------------------------------- */
+.ape-int-tile {
+  width: 34px; height: 34px; border-radius: 10px; flex: none;
+  display: grid; place-items: center;
+  background: #FFE4D1; color: #CC5800;
+}
+.ape-int-tile.laranja { background: #FFE4D1; color: #CC5800; }
+.ape-int-tile.roxo { background: #F7ECFC; color: #66009A; }
+.ape-int-tile.verde { background: #E4F6EC; color: #127A44; }
+.ape-int-tile.vermelho { background: #FBE5E5; color: #B02B2B; }
+.ape-int-tile.ambar { background: #FDF1D9; color: #8A6A15; }
+
+.ape-int-ic {
+  width: 17px; height: 17px; display: block; background: currentColor;
+  -webkit-mask: var(--ic) center / contain no-repeat;
+  mask: var(--ic) center / contain no-repeat;
+}
+.ape-int-ic.ic-radar { --ic: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M19.07 4.93A10 10 0 0 0 6.99 3.34'/%3E%3Cpath d='M4 6h.01'/%3E%3Cpath d='M2.29 9.62A10 10 0 1 0 21.31 8.35'/%3E%3Cpath d='M16.24 7.76A6 6 0 1 0 8.23 16.67'/%3E%3Cpath d='M12 18h.01'/%3E%3Cpath d='M17.99 11.66A6 6 0 0 1 15.77 16.67'/%3E%3Ccircle cx='12' cy='12' r='2'/%3E%3Cpath d='m13.41 10.59 5.66-5.66'/%3E%3C/svg%3E"); }
+.ape-int-ic.ic-filtro { --ic: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M22 3H2l8 9.46V19l4 2v-8.54L22 3z'/%3E%3C/svg%3E"); }
+.ape-int-ic.ic-relogio { --ic: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cpath d='M12 6v6l4 2'/%3E%3C/svg%3E"); }
+.ape-int-ic.ic-x { --ic: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M18 6 6 18M6 6l12 12'/%3E%3C/svg%3E"); }
+.ape-int-ic.ic-voltar { --ic: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8'/%3E%3Cpath d='M3 3v5h5'/%3E%3C/svg%3E"); }
+.ape-int-ic.ic-alerta { --ic: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3'/%3E%3Cpath d='M12 9v4'/%3E%3Cpath d='M12 17h.01'/%3E%3C/svg%3E"); }
+.ape-int-ic.ic-ok { --ic: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E"); }
+
+/* ---------------------------------------------------------------------------
+   BARRA GLOBAL DE FILTROS — artboards 11a e 1b.
+   Uma barra só, no início do conteúdo, igual nas 16 páginas. Laranja é
+   navegação (período); roxo é seleção de dado (chip ativo). Nunca encostados.
+   --------------------------------------------------------------------------- */
+.ape-int-barra {
+  background: #fff; border-radius: 18px; padding: 14px 16px;
+  box-shadow: 0 2px 6px rgba(31, 28, 26, 0.06);
+  display: flex; flex-direction: column; gap: 10px;
+}
+.ape-int-barra-linha { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.ape-int-controles { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.ape-int-controle { position: relative; }
+
+.ape-int-filtro {
+  min-height: 32px; padding: 0 12px; display: inline-flex; align-items: center; gap: 5px;
+  border: 1px solid #E4DFD9; border-radius: 999px; background: #fff; color: #4D4842;
+  font-family: inherit; font-size: 12px; font-weight: 600; cursor: pointer; white-space: nowrap;
+}
+.ape-int-filtro::after {
+  content: ""; width: 11px; height: 11px; flex: none; background: currentColor;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+.ape-int-filtro:hover { border-color: #C9C2BA; }
+.ape-int-filtro.escolhido { background: #F7ECFC; border-color: #C98FE3; color: #66009A; font-weight: 700; }
+
+.ape-int-menu {
+  position: absolute; top: calc(100% + 6px); left: 0; z-index: 20;
+  min-width: 210px; max-width: 300px; padding: 8px;
+  background: #fff; border-radius: 14px; box-shadow: 0 8px 24px rgba(31, 28, 26, 0.14);
+  display: flex; flex-direction: column; gap: 2px;
+}
+.ape-int-menu button {
+  min-height: 34px; padding: 0 10px; border: 0; border-radius: 10px; background: none;
+  color: #4D4842; font-family: inherit; font-size: 12.5px; font-weight: 600;
+  text-align: left; cursor: pointer;
+}
+.ape-int-menu button:hover { background: #FAF8F6; }
+.ape-int-menu button.escolhido { background: #F7ECFC; color: #66009A; }
+.ape-int-menu-nota {
+  margin: 0; padding: 8px 10px; background: #FDF1D9; border-radius: 10px;
+  font-size: 11.5px; line-height: 1.5; color: #8A6A15;
+}
+
+.ape-int-procedencia {
+  margin-left: auto; display: inline-flex; align-items: center; gap: 6px;
+  font-size: 11.5px; font-weight: 600; color: #9A938B; white-space: nowrap;
+}
+.ape-int-procedencia .ape-int-ic { width: 13px; height: 13px; }
+
+.ape-int-chips { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.ape-int-contador { font-size: 11px; font-weight: 700; letter-spacing: 0.06em; color: #66009A; text-transform: uppercase; }
+.ape-int-chip-ativo {
+  min-height: 28px; padding: 0 10px; display: inline-flex; align-items: center; gap: 6px;
+  border: 0; border-radius: 999px; background: #F7ECFC; color: #66009A;
+  font-family: inherit; font-size: 11.5px; font-weight: 700; cursor: pointer;
+}
+.ape-int-chip-ativo .ape-int-ic { width: 11px; height: 11px; }
+.ape-int-chip-ativo:hover { background: #EBD1F5; }
+.ape-int-limpar {
+  min-height: 28px; padding: 0 12px; display: inline-flex; align-items: center; gap: 6px;
+  border: 1px solid #E4DFD9; border-radius: 999px; background: #fff; color: #4D4842;
+  font-family: inherit; font-size: 11.5px; font-weight: 700; cursor: pointer;
+}
+.ape-int-limpar .ape-int-ic { width: 12px; height: 12px; }
+.ape-int-sem-filtro { margin: 0; font-size: 11.5px; color: #9A938B; }
 
 .ape-int-secao > span {
   font-size: 11px; font-weight: 600; letter-spacing: 0.12em; color: #8B00CC;
@@ -148,6 +246,30 @@
 }
 .ape-int-aviso b { color: #66009A; }
 
+/* ---------------------------------------------------------------------------
+   ESQUELETO NA FORMA DO CONTEÚDO — peça 13 do 30b. Três barras genéricas para
+   qualquer bloco prometem a tela errada; cada forma imita o que vai chegar.
+   Cinza #F2EFEC, sem animação chamativa.
+   --------------------------------------------------------------------------- */
+.ape-int-esq-kpi {
+  background: #fff; border-radius: 18px; padding: 18px;
+  box-shadow: 0 2px 6px rgba(31, 28, 26, 0.06);
+  display: flex; flex-direction: column; gap: 8px;
+}
+.ape-int-esq-kpi i { display: block; height: 11px; border-radius: 999px; background: #F2EFEC; }
+.ape-int-esq-kpi i.alto { height: 24px; width: 46%; background: #EDE9E4; }
+
+.ape-int-esq-linhas, .ape-int-esq-tabela {
+  background: #fff; border-radius: 18px; padding: 18px;
+  box-shadow: 0 2px 6px rgba(31, 28, 26, 0.06);
+  display: flex; flex-direction: column; gap: 12px;
+}
+.ape-int-esq-funil { display: grid; grid-template-columns: 200px 1fr 62px; gap: 10px; align-items: center; }
+.ape-int-esq-funil i { display: block; height: 11px; border-radius: 999px; background: #F2EFEC; }
+.ape-int-esq-funil i.barra { height: 14px; background: #EDE9E4; }
+.ape-int-esq-linha { display: flex; align-items: center; gap: 14px; }
+.ape-int-esq-linha i { display: block; height: 11px; border-radius: 999px; background: #F2EFEC; }
+
 .ape-int-skeleton {
   background: #fff; border-radius: 18px; padding: 18px;
   box-shadow: 0 2px 6px rgba(31, 28, 26, 0.06);
@@ -181,7 +303,16 @@
   .ape-int-linha { grid-template-columns: 1fr 64px 56px; }
   .ape-int-linha .ape-int-barra { display: none; }
   .ape-int-grupos a, .ape-int-abas a { min-height: 44px; }
+  /* Alvos de toque ≥44px também na barra (10a): filtro, chip e limpar. */
+  .ape-int-filtro, .ape-int-chip-ativo, .ape-int-limpar { min-height: 44px; }
+  .ape-int-periodos button { height: 44px; }
+  .ape-int-menu button { min-height: 44px; }
+  .ape-int-procedencia { margin-left: 0; }
+  .ape-int-esq-funil { grid-template-columns: 1fr 56px; }
+  .ape-int-esq-funil i.barra { display: none; }
 }
 @media (max-width: 560px) {
   .ape-int-kpis, .ape-int-pendencias, .ape-int-cartoes { grid-template-columns: 1fr; }
+  .ape-int-controles { width: 100%; }
+  .ape-int-menu { left: auto; right: 0; }
 }

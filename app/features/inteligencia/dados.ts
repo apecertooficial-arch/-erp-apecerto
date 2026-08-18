@@ -16,6 +16,8 @@
 
 import { useEffect, useState } from "react";
 
+import { lerPeriodoDaUrl } from "./filtros";
+
 export const SLA_META_MIN = 5;
 export const SLA_ATENCAO_MIN = 15;
 export const PARADO_DIAS = 7;
@@ -141,10 +143,20 @@ export type Leitura = {
   tentarNovamente: () => void;
 };
 
+const PERIODO_VALIDO = (v: string | null): v is Periodo =>
+  !!v && PERIODOS.some((p) => p.id === v);
+
 /* Mesma forma de leitura do PerformanceWorkspace: aborta na saída, guarda o dado
-   anterior quando falha e nunca mostra a mensagem crua do backend. */
+   anterior quando falha e nunca mostra a mensagem crua do backend.
+
+   O período nasce da URL quando ela traz um (11a: link colado reproduz a mesma
+   visão). Quem escreve na URL é a sincronização da barra de filtros, dono único
+   desse lado — aqui só semeamos, no próprio useState, sem setState em efeito. */
 export function useInteligencia(accessToken: string, inicial: Periodo = "30d"): Leitura {
-  const [periodo, setPeriodo] = useState<Periodo>(inicial);
+  const [periodo, setPeriodo] = useState<Periodo>(() => {
+    const daUrl = lerPeriodoDaUrl();
+    return PERIODO_VALIDO(daUrl) ? daUrl : inicial;
+  });
   const [dados, setDados] = useState<Resposta | null>(null);
   const [estado, setEstado] = useState<"carregando" | "pronto" | "falhou">("carregando");
   const [tentativa, setTentativa] = useState(0);
