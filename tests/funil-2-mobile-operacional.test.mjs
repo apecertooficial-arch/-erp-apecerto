@@ -26,8 +26,15 @@ test("todo perfil autorizado entra no F2 sem gate de piloto", () => {
 test("Meu Dia entrega o lead e a chamada; a orientação completa fica na ficha", () => {
   assert.match(MOBILE, /<div className="ape-ordem">[\s\S]*<h3>\{acaoVisivel\(lead\)\}<\/h3>/);
   assert.match(MOBILE, /BotaoWhatsApp/);
-  assert.match(MOBILE, /Agora · \$\{contagens\.agora\}/);
-  assert.match(MOBILE, /Hoje · \$\{contagens\.hoje\}/);
+  // O layout aprovado trocou os chips "Agora · N" por um resumo de tres
+  // contadores com rotulo em palavra. O contrato que importa continua o mesmo:
+  // os tres numeros do dia saem de `contagens` e cada um chega rotulado.
+  for (const [expressao, rotulo] of [["contagens.agora", "aguardando"], ["contagens.novos", "leads novos"], ["contagens.hoje", "para hoje"]]) {
+    assert.ok(MOBILE.includes(`{${expressao}}`), `faltou o numero ${expressao}`);
+    assert.ok(MOBILE.includes(`<span>${rotulo}</span>`), `faltou o rotulo ${rotulo}`);
+  }
+  assert.match(MOBILE, /ape-manchete/);
+  assert.ok(MOBILE.includes("esperam você agora"), "a manchete precisa contar quem espera agora");
 });
 
 test("a ação principal do aplicativo é verde e tem alvo de toque", () => {
