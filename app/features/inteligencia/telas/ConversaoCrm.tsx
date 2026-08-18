@@ -1,19 +1,28 @@
 "use client";
 
-/* 5 · CONVERSÃO E CRM — artboard 5a, na íntegra.
+/* 5 · CONVERSÃO E CRM — artboard 5a, com FUNIL E JORNADA na mesma faixa.
  *
- * Ordem dos blocos igual à do desenho:
- *   1. funil comercial de 9 etapas, com “perdido” fechando a lista
- *   2. indicadores do atendimento (5 KPIs)
- *   3. tempos entre etapas · motivos de perda · conversão por corretor
- *   4. jornada individual (gaveta de 420px) e pipeline em valor
- *   5. rodapé de fontes
+ * Estrutura do desenho (1,25fr · 1fr):
+ *   ESQUERDA
+ *     1. funil comercial de 9 etapas, com “perdido” fechando a lista
+ *     2. quatro indicadores do atendimento (tempo, fila, parados, taxa de perda)
+ *     3. tempos medianos entre etapas em barras roxas · motivos de perda
+ *     4. conversão por corretor · conversão por corte (comprador, locatário,
+ *        proprietário, campanha, imóvel)
+ *     5. faixa “Pipeline e valor fechado”, com o selo de dado ausente
+ *   DIREITA
+ *     6. jornada individual do lead, do primeiro clique ao resultado
+ *     7. “Como o perfil Corretor vê esta área”, com “Solicitar acesso”
+ *   8. rodapé de fontes
+ *
+ * Pipeline e valor fechado não são calculados: o campo de valor não existe no
+ * Funil 2.0, então nascem “—” com o motivo — nunca zero fictício.
  */
 
 import { useState } from "react";
 import type { PropsTela } from "../CascaInteligencia";
-import { fmt, RodapeFontes } from "../dado";
-import { Cabecalho, CartoesLista, Funil, GavetaLateral, GradeKpis, LinhaDoTempo, type Etapa, type Kpi } from "../pecas";
+import { fmt, RodapeFontes, TRACO, Valor } from "../dado";
+import { Cabecalho, Funil, LinhaDoTempo, type Etapa } from "../pecas";
 
 type Jornada = { titulo: string; quando: string; cor: string };
 
@@ -26,25 +35,20 @@ type Dados = {
   pipelineValor: number | null;
   valorFechado: number | null;
   etapas: { nome: string; volume: number | null; largura: number | null; taxa?: string; perda?: string; perdaFinal?: boolean }[];
-  tempos: { l: string; r: string }[];
-  motivos: { l: string; r: string }[];
-  porCorretor: { l: string; r: string; sub?: string; corR?: string }[];
-  lead: { nome: string; papel: string; entrada: string; corretora: string; jornada: Jornada[] };
+  tempos: { l: string; r: string; largura: number }[];
+  motivos: { l: string; r: string; outros?: boolean }[];
+  perdidos: number | null;
+  corretores: { iniciais: string; nome: string; negocios: number | null; contato: string; tomContato: "ambar" | "vermelho" | "verde"; visitas: number | null; fechados: number | null; conv: number | null }[];
+  cortes: { l: string; leads: number | null; negocios: number | null; conv: number | null }[];
+  lead: { nome: string; iniciais: string; papel: string; entrada: string; corretora: string; consentimento: string; jornada: Jornada[]; contato: string; etapa: string };
   atualizado: string;
 };
 
-export function ConversaoCrm({ recorte }: PropsTela) {
-  const [motivoAberto, setMotivoAberto] = useState<string | null>(null);
-  const [jornadaAberta, setJornada] = useState(false);
-  const d = usarDados();
+const CORES_CONTATO = { verde: "#1E7A46", ambar: "#B5700A", vermelho: "#D93E3E" } as const;
 
-  const kpis: Kpi[] = [
-    { rotulo: "Tempo até 1º atendimento", bruto: d.primeiroAtendimento, texto: fmt.duracaoMin(d.primeiroAtendimento), tom: "atencao", tile: "ambar", foot: "mediana · meta 5 min" },
-    { rotulo: "Leads sem atendimento", bruto: d.semAtendimento, texto: fmt.inteiro(d.semAtendimento), tom: "ruim", tile: "vermelho", foot: "fila aberta agora" },
-    { rotulo: "Negócios parados", bruto: d.parados, texto: fmt.inteiro(d.parados), tom: "atencao", tile: "laranja", foot: "sem movimento há 7+ dias" },
-    { rotulo: "Taxa de perda", bruto: d.taxaPerda, texto: fmt.porcento(d.taxaPerda), tom: "ruim", tile: "vermelho", chip: fmt.pontos(d.variacaoPerda), chipTom: "ruim", foot: "dos negócios criados" },
-    { rotulo: "Valor de pipeline", bruto: d.pipelineValor, texto: fmt.dinheiro(d.pipelineValor), tile: "roxo", icone: "dinheiro", chip: "aguardando dado do CRM", chipTom: "aviso", motivo: "integracao", detalhe: "campo de valor ausente no Funil 2.0", foot: "aparece quando o campo existir — nunca zero fictício" },
-  ];
+export function ConversaoCrm({ recorte }: PropsTela) {
+  const d = usarDados();
+  const [motivoAberto, setMotivoAberto] = useState<string | null>(null);
 
   const etapas: Etapa[] = d.etapas.map((e) => ({
     nome: e.nome,
@@ -59,70 +63,211 @@ export function ConversaoCrm({ recorte }: PropsTela) {
 
   return (
     <div className="int-secao">
-      <Cabecalho eyebrow="FUNIL COMERCIAL" titulo="Do lead recebido à chave na mão" cor="#8B00CC" nota="taxa sobre a etapa anterior · perdido = % dos negócios criados" />
-      <Funil etapas={etapas} foot="“detalhes” filtra a página pela etapa · etapa sem dado mostra “—” e continua na lista" />
+      <div className="int-duas par-125">
+        {/* ESQUERDA — funil, indicadores, tempos, cortes */}
+        <div className="int-col">
+          <Cabecalho eyebrow="FUNIL COMERCIAL" titulo="Do lead recebido à chave na mão" cor="#8B00CC" />
+          <Funil etapas={etapas} foot="taxa sobre a etapa anterior · perdido = % dos negócios criados · “detalhes” lista as pessoas da etapa, conforme permissão" />
 
-      <Cabecalho eyebrow="DEPOIS QUE O LEAD ENTRA" titulo="O que precisa de ação agora" nota={`${recorte.periodo}${recorte.compararAnterior ? " · vs. anterior" : ""}`} />
-      <GradeKpis itens={kpis} colunas={5} />
+          <div className="intp-grade" style={{ gridTemplateColumns: "repeat(4, minmax(0, 1fr))" }}>
+            <div className="intp-kpi">
+              <span className="intp-kpi-rotulo">Tempo até 1º atendimento</span>
+              <Valor bruto={d.primeiroAtendimento} texto={fmt.duracaoMin(d.primeiroAtendimento)} />
+              <small className="intp-kpi-foot">mediana · meta 5 min</small>
+            </div>
+            <div className="intp-kpi">
+              <span className="intp-kpi-rotulo">Leads sem atendimento</span>
+              <Valor bruto={d.semAtendimento} texto={fmt.inteiro(d.semAtendimento)} tom="ruim" />
+              <button type="button" className="int-link" style={{ fontWeight: 700, alignSelf: "flex-start" }} onClick={() => recorte.irPara("atendimento")}>Abrir fila de ação →</button>
+            </div>
+            <div className="intp-kpi">
+              <span className="intp-kpi-rotulo">Negócios parados</span>
+              <Valor bruto={d.parados} texto={fmt.inteiro(d.parados)} tom="atencao" />
+              <small className="intp-kpi-foot">sem movimento há 7+ dias</small>
+            </div>
+            <div className="intp-kpi">
+              <span className="intp-kpi-rotulo">Taxa de perda</span>
+              <Valor bruto={d.taxaPerda} texto={fmt.porcento(d.taxaPerda)} />
+              <span className="intp-kpi-chip tom-ruim">{fmt.pontos(d.variacaoPerda)} vs. anterior</span>
+            </div>
+          </div>
 
-      <Cabecalho eyebrow="ONDE O TEMPO E OS NEGÓCIOS SE PERDEM" titulo="Tempos, motivos e conversão por corretor" cor="#8B00CC" />
-      <CartoesLista
-        colunas={3}
-        cartoes={[
-          { titulo: "Tempo mediano entre etapas", linhas: d.tempos, foot: "etapa sem registro de data aparece com “—”" },
-          {
-            titulo: "Motivos de perda · 112",
-            linhas: d.motivos.map((m) => ({ ...m, sub: motivoAberto === m.l ? "recorte aplicado à página" : undefined, abrir: () => { setMotivoAberto(m.l); recorte.filtrar(`Motivo: ${m.l}`); } })),
-            foot: "clicar num motivo filtra a página inteira",
-          },
-          { titulo: "Conversão por corretor", linhas: d.porCorretor, foot: "verde ≤5 min · âmbar 5–15 · vermelho >15", link: { rotulo: "Abrir Corretores →", go: () => recorte.irPara("corretores") } },
-        ]}
-      />
+          <div className="intp-grade" style={{ gridTemplateColumns: "1.2fr 1fr" }}>
+            <div className="intp-cartao">
+              <span className="intp-cartao-titulo">Tempo mediano entre etapas</span>
+              <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+                {d.tempos.map((t) => (
+                  <div key={t.l} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12 }}>
+                    <span style={{ width: 168, fontWeight: 600, color: "#4D4842" }}>{t.l}</span>
+                    <span style={{ flex: 1, height: 8, borderRadius: 999, background: "#F2EFEC" }}>
+                      <span style={{ display: "block", height: "100%", borderRadius: 999, background: "#B24DDD", width: `${t.largura}%` }} />
+                    </span>
+                    <b style={{ width: 52, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{t.r}</b>
+                  </div>
+                ))}
+              </div>
+            </div>
 
-      <CartoesLista
-        colunas={2}
-        cartoes={[
-          {
-            titulo: "Jornada individual",
-            chip: "gaveta",
-            chipTom: "roxo",
-            linhas: [{ l: `${d.lead.nome} · ${d.lead.papel}`, r: "abrir a linha do tempo →", abrir: () => setJornada(true) }],
-            foot: "abre sem IP bruto e sem user agent — só o que serve para atender a pessoa",
-          },
-          {
-            titulo: "Pipeline e valor fechado",
-            linhas: [
-              { l: "Valor de pipeline", r: fmt.dinheiro(d.pipelineValor), corR: "#8A6A15" },
-              { l: "Valor fechado", r: fmt.dinheiro(d.valorFechado), corR: "#8A6A15" },
-            ],
-            foot: "aparecem quando o campo de valor existir no Funil 2.0 — nunca zero fictício",
-          },
-        ]}
-      />
+            <div className="intp-cartao">
+              <span className="intp-cartao-titulo">
+                Motivos de perda <small style={{ fontWeight: 600, color: "#9A938B" }}>· {fmt.inteiro(d.perdidos)} negócios</small>
+              </span>
+              <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+                {d.motivos.map((m) => (
+                  <button
+                    key={m.l}
+                    type="button"
+                    className="intp-linha-btn"
+                    onClick={() => {
+                      setMotivoAberto(m.l);
+                      recorte.filtrar(`Motivo: ${m.l}`);
+                    }}
+                  >
+                    <div className="intp-linha-kv">
+                      <span style={m.outros ? { color: "#9A938B" } : undefined}>{m.l}</span>
+                      <b style={m.outros ? { color: "#6E6760" } : undefined}>{m.r}</b>
+                    </div>
+                    {motivoAberto === m.l ? <small className="intp-linha-sub">recorte aplicado à página</small> : null}
+                  </button>
+                ))}
+              </div>
+              <small className="intp-kpi-foot" style={{ marginTop: "auto" }}>clicar em um motivo lista os negócios</small>
+            </div>
+          </div>
 
-      <GavetaLateral
-        aberta={jornadaAberta}
-        titulo={`${d.lead.nome} — jornada do lead`}
-        sub={`${d.lead.papel} · entrou ${d.lead.entrada} · ${d.lead.corretora}`}
-        fechar={() => setJornada(false)}
-        rodape={
-          <>
-            <button type="button" className="cop-acao" onClick={() => recorte.filtrar(`Lead: ${d.lead.nome}`)}>Filtrar a página por este lead</button>
-            <button type="button" className="cop-acao" onClick={() => recorte.irPara("atendimento")}>Abrir a fila de atendimento →</button>
-          </>
-        }
-      >
-        <LinhaDoTempo eventos={d.lead.jornada} />
-        <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
-          <div className="intp-detalhe-linha"><span>Tempo até o primeiro contato</span><b>9 min</b></div>
-          <div className="intp-detalhe-linha"><span>Etapa atual</span><b>Visita agendada</b></div>
-          <div className="intp-detalhe-linha"><span>Valor do negócio</span><b>—</b></div>
-          <div className="intp-detalhe-linha"><span>Telefone e e-mail</span><b>—</b></div>
+          <div className="intp-grade" style={{ gridTemplateColumns: "1.2fr 1fr" }}>
+            <div className="intp-cartao">
+              <span className="intp-cartao-titulo">Conversão por corretor</span>
+              <table className="intp-tabela">
+                <thead>
+                  <tr>
+                    <th>Corretor</th>
+                    <th className="num">Negócios</th>
+                    <th className="num">1º contato</th>
+                    <th className="num">Visitas</th>
+                    <th className="num">Fechados</th>
+                    <th className="num">Conv.</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {d.corretores.map((c) => (
+                    <tr key={c.nome} onClick={() => recorte.filtrar(`Corretor: ${c.nome}`)}>
+                      <td data-rotulo="Corretor" className="forte">
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: 7 }}>
+                          <span style={{ width: 24, height: 24, borderRadius: 999, background: "#F7ECFC", color: "#66009A", display: "grid", placeItems: "center", fontSize: 10, fontWeight: 700, flex: "none" }}>{c.iniciais}</span>
+                          {c.nome}
+                        </span>
+                      </td>
+                      <td data-rotulo="Negócios" className="num">{fmt.inteiro(c.negocios)}</td>
+                      <td data-rotulo="1º contato" className="num forte" style={{ color: CORES_CONTATO[c.tomContato] }}>{c.contato}</td>
+                      <td data-rotulo="Visitas" className="num">{fmt.inteiro(c.visitas)}</td>
+                      <td data-rotulo="Fechados" className="num">{fmt.inteiro(c.fechados)}</td>
+                      <td data-rotulo="Conv." className="num forte">{fmt.porcento(c.conv)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <small className="intp-kpi-foot">1º contato = mediana · verde ≤5 min (meta) · âmbar 5–15 min · vermelho acima de 15 min</small>
+            </div>
+
+            <div className="intp-cartao">
+              <span className="intp-cartao-titulo">Conversão por corte</span>
+              <table className="intp-tabela">
+                <thead>
+                  <tr>
+                    <th>Corte</th>
+                    <th className="num">Leads</th>
+                    <th className="num">Negócios</th>
+                    <th className="num">Conv.</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {d.cortes.map((c) => (
+                    <tr key={c.l} onClick={() => recorte.filtrar(`Corte: ${c.l}`)}>
+                      <td data-rotulo="Corte" className="forte">{c.l}</td>
+                      <td data-rotulo="Leads" className="num">{fmt.inteiro(c.leads)}</td>
+                      <td data-rotulo="Negócios" className="num">{fmt.inteiro(c.negocios)}</td>
+                      <td data-rotulo="Conv." className="num forte">{fmt.porcento(c.conv, 0)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <small className="intp-kpi-foot" style={{ marginTop: "auto" }}>trocar o corte: tipo de lead · campanha · imóvel</small>
+            </div>
+          </div>
+
+          <div className="intp-cartao" style={{ flexDirection: "row", alignItems: "center", gap: 12, padding: "16px 18px", flexWrap: "wrap" }}>
+            <span className="intp-tile tile-ambar">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <rect x="2" y="6" width="20" height="12" rx="2" />
+                <path d="M16 12h.01M2 10h20" />
+              </svg>
+            </span>
+            <div style={{ flex: 1, minWidth: 240 }}>
+              <span className="intp-cartao-titulo">Pipeline e valor fechado</span>
+              <p style={{ margin: "2px 0 0", fontSize: 12, color: "#6E6760", lineHeight: 1.5 }}>
+                Aparecem quando o campo de valor do negócio existir no Funil 2.0. Sem campo confiável, não mostramos número — nem zero. Pipeline {fmt.dinheiro(d.pipelineValor)} · valor fechado {fmt.dinheiro(d.valorFechado)}.
+              </p>
+            </div>
+            <span className="int-pendencia" style={{ flex: "none" }}>aguardando dado do CRM</span>
+          </div>
         </div>
-        <div className="intp-detalhe-aviso">
-          Sem IP bruto, sem user agent, sem identificador técnico. Telefone e e-mail dependem de permissão de dados pessoais e ficam com “—” aqui; o valor do negócio aparece quando o campo existir no Funil 2.0.
+
+        {/* DIREITA — jornada individual e o recorte do perfil Corretor */}
+        <div className="int-col">
+          <Cabecalho eyebrow="JORNADA INDIVIDUAL" titulo="Um lead, do primeiro clique ao resultado" cor="#8B00CC" />
+          <div className="intp-cartao" style={{ boxShadow: "0 8px 24px rgba(31,28,26,0.10)", gap: 12 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <span style={{ width: 38, height: 38, borderRadius: 999, background: "#F7ECFC", color: "#66009A", display: "grid", placeItems: "center", fontSize: 13, fontWeight: 700, flex: "none" }}>{d.lead.iniciais}</span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <b style={{ fontSize: 14 }}>{d.lead.nome}</b>
+                <small style={{ display: "block", fontSize: 11, color: "#9A938B" }}>
+                  {d.lead.papel} · entrou {d.lead.entrada} · {d.lead.corretora}
+                </small>
+              </div>
+              <span className="intp-cartao-chip tom-roxo" style={{ flex: "none" }}>{d.lead.consentimento}</span>
+            </div>
+
+            <LinhaDoTempo eventos={d.lead.jornada} />
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+              <div className="intp-detalhe-linha"><span>Tempo até o primeiro contato</span><b>{d.lead.contato}</b></div>
+              <div className="intp-detalhe-linha"><span>Etapa atual</span><b>{d.lead.etapa}</b></div>
+              <div className="intp-detalhe-linha"><span>Valor do negócio</span><b>{TRACO}</b></div>
+              <div className="intp-detalhe-linha"><span>Telefone e e-mail</span><b>{TRACO}</b></div>
+            </div>
+
+            <div style={{ background: "#FAF8F6", borderRadius: 12, padding: "10px 14px", display: "flex", gap: 8, alignItems: "flex-start" }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#66009A" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" style={{ flex: "none", marginTop: 2 }} aria-hidden="true">
+                <path d="M12 3 5 6v6c0 4 3 7 7 9 4-2 7-5 7-9V6l-7-3Z" />
+                <path d="m9 12 2 2 4-4" />
+              </svg>
+              <small style={{ fontSize: 11, color: "#6E6760", lineHeight: 1.5 }}>
+                Sem IP bruto, sem user agent, sem identificador técnico — só o que serve para atender bem a pessoa. Telefone, e-mail e valor do negócio dependem de permissão e do campo no CRM, e ficam com “—”.
+              </small>
+            </div>
+
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <button type="button" className="int-btn" onClick={() => recorte.irPara("atendimento")}>Abrir a ficha no Funil 2.0</button>
+              <button type="button" className="int-link" style={{ fontWeight: 700 }} onClick={() => recorte.filtrar(`Lead: ${d.lead.nome}`)}>Filtrar a página por este lead</button>
+            </div>
+          </div>
+
+          <div className="intp-cartao">
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#66009A" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <rect x="4" y="10" width="16" height="11" rx="2" />
+                <path d="M8 10V7a4 4 0 0 1 8 0v3" />
+              </svg>
+              <span className="intp-cartao-titulo">Como o perfil Corretor vê esta área</span>
+            </div>
+            <p style={{ margin: 0, fontSize: 12, color: "#4D4842", lineHeight: 1.5 }}>
+              “Você vê os números agregados. O detalhe por pessoa depende de permissão de dados pessoais.”
+            </p>
+            <button type="button" className="int-btn" style={{ alignSelf: "flex-start", height: 34, fontSize: 12 }} onClick={() => recorte.irPara("privacidade")}>Solicitar acesso</button>
+          </div>
         </div>
-      </GavetaLateral>
+      </div>
 
       <RodapeFontes
         fontes={["leads", "negócios", "wa_mensagens", "motivos de perda", "visitas"]}
@@ -133,6 +278,7 @@ export function ConversaoCrm({ recorte }: PropsTela) {
   );
 }
 
+/* PONTO ÚNICO DE TROCA PARA O BANCO. */
 function usarDados(): Dados {
   return demo;
 }
@@ -141,10 +287,11 @@ const demo: Dados = {
   primeiroAtendimento: 18,
   semAtendimento: 9,
   parados: 21,
-  taxaPerda: 38.5,
+  taxaPerda: 39.6,
   variacaoPerda: 2.1,
   pipelineValor: null,
   valorFechado: null,
+  perdidos: 74,
   etapas: [
     { nome: "Lead recebido", volume: 312, largura: 100, taxa: "100%" },
     { nome: "Negócio criado", volume: 187, largura: 60, taxa: "59,9%", perda: "−125" },
@@ -154,36 +301,50 @@ const demo: Dados = {
     { nome: "Visita agendada", volume: 96, largura: 31, taxa: "75,0%", perda: "−32" },
     { nome: "Proposta", volume: 31, largura: 10, taxa: "32,3%", perda: "−65" },
     { nome: "Venda ou locação", volume: 14, largura: 5, taxa: "45,2%", perda: "−17" },
-    { nome: "Perdido", volume: 74, largura: 24, taxa: "39,6%", perdaFinal: true },
+    { nome: "Perdido", volume: 74, largura: 24, taxa: "39,6%", perda: "motivos ↓", perdaFinal: true },
   ],
   tempos: [
-    { l: "Distribuição → 1º contato", r: "18 min" },
-    { l: "1º contato → qualificado", r: "1,4 d" },
-    { l: "Qualificado → visita", r: "2,8 d" },
-    { l: "Proposta → fechamento", r: "8,5 d" },
+    { l: "Lead → negócio", r: "11 min", largura: 4 },
+    { l: "Negócio → distribuição", r: "4 min", largura: 2 },
+    { l: "Distribuição → 1º contato", r: "18 min", largura: 7 },
+    { l: "1º contato → qualificado", r: "1,4 d", largura: 24 },
+    { l: "Qualificado → visita", r: "2,8 d", largura: 46 },
+    { l: "Visita → proposta", r: "5,2 d", largura: 72 },
+    { l: "Proposta → fechamento", r: "8,5 d", largura: 100 },
   ],
   motivos: [
     { l: "Sem resposta", r: "26" },
     { l: "Preço acima do orçamento", r: "18" },
     { l: "Fechou com outra imobiliária", r: "12" },
     { l: "Adiou a mudança", r: "10" },
-    { l: "Sem motivo registrado", r: "8" },
+    { l: "Outros", r: "8", outros: true },
   ],
-  porCorretor: [
-    { l: "Ana Beatriz", r: "52 neg · 9 min · 9,6%", sub: "1º contato âmbar: acima da meta de 5 min" },
-    { l: "Carlos Mendes", r: "48 · 14 min · 8,3%" },
-    { l: "Fernanda Lima", r: "45 · 22 min · 6,7%" },
-    { l: "Rafael Souza", r: "38 · 41 min · 5,3%", corR: "#D93E3E" },
+  corretores: [
+    { iniciais: "AB", nome: "Ana Beatriz", negocios: 52, contato: "9 min", tomContato: "ambar", visitas: 28, fechados: 5, conv: 9.6 },
+    { iniciais: "CM", nome: "Carlos Mendes", negocios: 48, contato: "14 min", tomContato: "ambar", visitas: 26, fechados: 4, conv: 8.3 },
+    { iniciais: "FL", nome: "Fernanda Lima", negocios: 45, contato: "22 min", tomContato: "vermelho", visitas: 23, fechados: 3, conv: 6.7 },
+    { iniciais: "RS", nome: "Rafael Souza", negocios: 38, contato: "41 min", tomContato: "vermelho", visitas: 19, fechados: 2, conv: 5.3 },
+  ],
+  cortes: [
+    { l: "Comprador", leads: 208, negocios: 131, conv: 63 },
+    { l: "Locatário", leads: 81, negocios: 47, conv: 58 },
+    { l: "Proprietário", leads: 23, negocios: 9, conv: 39 },
+    { l: "Campanha: moema-prontos-ago", leads: 32, negocios: 23, conv: 72 },
+    { l: "Imóvel: Apê Canário 71", leads: 38, negocios: 26, conv: 68 },
   ],
   lead: {
     nome: "Mariana C.",
+    iniciais: "M",
     papel: "compradora",
     entrada: "12 ago, 14:07",
     corretora: "corretora Ana Beatriz",
+    consentimento: "consentiu Analytics",
+    contato: "9 min",
+    etapa: "Visita agendada",
     jornada: [
       { titulo: "Chegou pelo Instagram (bio)", quando: "12 ago 13:52 · entrou pela home", cor: "#FF9A4D" },
       { titulo: "Buscou imóveis", quando: "13:55 · Moema · 2 dorms · até R$ 5.500/mês", cor: "#FF9A4D" },
-      { titulo: "Abriu o Apê Canário 71 · MO-104", quando: "13:58 · viu 12 fotos · leu até o fim da página", cor: "#FF9A4D" },
+      { titulo: "Abriu o Apê Canário 71 · MO-104", quando: "13:58 · viu 12 fotos da galeria · leu até o fim da página", cor: "#FF9A4D" },
       { titulo: "Chamou no WhatsApp", quando: "14:05 · na página do imóvel", cor: "#FF7000" },
       { titulo: "Virou lead e entrou no Funil 2.0", quando: "14:07 · negócio #4812 criado automaticamente", cor: "#8B00CC" },
       { titulo: "Distribuída para Ana Beatriz", quando: "14:11 · regra de rodízio da equipe", cor: "#8B00CC" },
