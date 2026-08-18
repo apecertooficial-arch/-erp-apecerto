@@ -15,6 +15,8 @@
  * integração. Esconder cartão faz a tela mentir por omissão.
  */
 
+import { Children, cloneElement, isValidElement, useMemo, useState, type ReactElement, type ReactNode } from "react";
+
 import { BarraFiltros } from "./BarraFiltros";
 import { PERIODOS, horaSp, type Periodo } from "./dados";
 import { queryAtual, useFiltros, type FonteOpcoes } from "./filtros";
@@ -219,12 +221,93 @@ export function Linha({
   );
 }
 
-export function Tabela({ colunas, children }: { colunas: string[]; children: React.ReactNode }) {
+type OrdemTabela = { coluna: number; direcao: "ascending" | "descending" } | null;
+
+function textoDaCelula(no: ReactNode): string {
+  if (typeof no === "string" || typeof no === "number") return String(no);
+  if (Array.isArray(no)) return no.map(textoDaCelula).join(" ");
+  if (isValidElement(no)) return textoDaCelula((no.props as { children?: ReactNode }).children);
+  return "";
+}
+
+function numeroDaCelula(texto: string): number | null {
+  const limpo = texto.trim().toLowerCase();
+  if (!limpo || limpo === "—" || limpo.includes("sem amostra") || limpo.includes("aguardando")) return null;
+  const tempo = limpo.match(/(-?\d+(?:[.,]\d+)?)\s*(min|h|d)/);
+  if (tempo) {
+    const valor = Number(tempo[1].replace(",", "."));
+    return tempo[2] === "d" ? valor * 1440 : tempo[2] === "h" ? valor * 60 : valor;
+  }
+  const moeda = limpo.replace(/r\$\s*/g, "").replace(/\./g, "").replace(",", ".");
+  const achou = moeda.match(/-?\d+(?:\.\d+)?/);
+  return achou ? Number(achou[0]) : null;
+}
+
+function compararCelulas(a: ReactNode, b: ReactNode): number {
+  const textoA = textoDaCelula(a);
+  const textoB = textoDaCelula(b);
+  const numeroA = numeroDaCelula(textoA);
+  const numeroB = numeroDaCelula(textoB);
+  if (numeroA !== null && numeroB !== null) return numeroA - numeroB;
+  if (numeroA !== null) return -1;
+  if (numeroB !== null) return 1;
+  return textoA.localeCompare(textoB, "pt-BR", { numeric: true, sensitivity: "base" });
+}
+
+function celulasDaLinha(linha: ReactElement<{ children?: ReactNode }>): ReactElement<{ children?: ReactNode }>[] {
+  return Children.toArray(linha.props.children).filter(isValidElement) as ReactElement<{ children?: ReactNode }>[];
+}
+
+export function Tabela({
+  colunas, ordenaveis = [], children,
+}: { colunas: string[]; ordenaveis?: number[]; children: React.ReactNode }) {
+  const [ordem, setOrdem] = useState<OrdemTabela>(null);
+  const linhas = useMemo(
+    () => Children.toArray(children).filter(isValidElement) as ReactElement<{ children?: ReactNode }>[],
+    [children],
+  );
+  const linhasOrdenadas = useMemo(() => {
+    if (!ordem) return linhas;
+    return [...linhas].sort((a, b) => {
+      const celulasA = celulasDaLinha(a);
+      const celulasB = celulasDaLinha(b);
+      const resultado = compararCelulas(celulasA[ordem.coluna]?.props.children, celulasB[ordem.coluna]?.props.children);
+      return ordem.direcao === "ascending" ? resultado : -resultado;
+    });
+  }, [linhas, ordem]);
+
+  const alternar = (coluna: number) => setOrdem((atual) => (
+    atual?.coluna === coluna
+      ? { coluna, direcao: atual.direcao === "ascending" ? "descending" : "ascending" }
+      : { coluna, direcao: "ascending" }
+  ));
+
   return (
     <div className="ape-int-tabela-wrap">
       <table className="ape-int-tabela">
-        <thead><tr>{colunas.map((c) => <th key={c}>{c}</th>)}</tr></thead>
-        <tbody>{children}</tbody>
+        <thead>
+          <tr>{colunas.map((coluna, indice) => {
+            const podeOrdenar = ordenaveis.includes(indice);
+            const ativa = ordem?.coluna === indice;
+            return (
+              <th key={coluna} aria-sort={ativa ? ordem.direcao : undefined}>
+                {podeOrdenar ? (
+                  <button type="button" className="ape-int-ordenar" onClick={() => alternar(indice)}>
+                    {coluna}<i aria-hidden="true" className={ativa ? ordem.direcao : "neutra"} />
+                  </button>
+                ) : coluna}
+              </th>
+            );
+          })}</tr>
+        </thead>
+        <tbody>{linhasOrdenadas.map((linha, indiceLinha) => cloneElement(
+          linha,
+          { key: linha.key ?? `linha-${indiceLinha}` },
+          celulasDaLinha(linha).map((celula, indiceCelula) => cloneElement(celula, {
+            key: celula.key ?? `${indiceLinha}-${indiceCelula}`,
+            "data-label": colunas[indiceCelula] ?? "Dado",
+          } as Record<string, unknown>)),
+        ))}</tbody>
       </table>
     </div>
   );

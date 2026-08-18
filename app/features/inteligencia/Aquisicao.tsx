@@ -85,7 +85,7 @@ export function Aquisicao({ accessToken }: { accessToken: string }) {
             <section className="ape-int-secao">
               <span>ONDE AS PESSOAS ACESSAM</span>
               <h2>Celular, computador e tablet</h2>
-              <Tabela colunas={["Dispositivo", "Sessões", "Participação"]}>
+              <Tabela colunas={["Dispositivo", "Sessões", "Participação"]} ordenaveis={[0, 1, 2]}>
                 {(ga4?.dispositivos ?? []).map((d) => (
                   <tr key={d.dispositivo}>
                     <td><b>{d.dispositivo}</b></td>

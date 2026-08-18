@@ -69,6 +69,18 @@ O contador geral permanece conservador nesta etapa: `6a` continua bloqueado por 
 enquanto a jornada individual não existir. A peça compartilhada 10 está fechada; a peça 09 continua
 parcial até ordenação e cartão móvel no Commit 3.
 
+## Commit 3 — Tabelas e mobile
+
+As oito tabelas reais da área agora usam o mesmo contrato: apenas colunas com valor comparável recebem
+botão de ordenação, `aria-sort` declara direção, e a sequência é calculada sobre o conteúdo exibido —
+texto, número, percentual, moeda e duração. O clique de linha e os drawers do Commit 2 permanecem no
+mesmo elemento, com Enter/Espaço e foco visível.
+
+Abaixo de 900 px, o `<thead>` continua disponível para tecnologia assistiva e cada `<tr>` vira cartão:
+cada célula recebe o rótulo da coluna em `data-label`, não há tabela espremida nem dependência de scroll
+horizontal. Em 560 px, a lista fecha em uma coluna. O contador geral segue conservador porque esta é
+uma peça transversal; nenhum artboard de negócio foi declarado completo só por ganhar o componente.
+
 **Controles selecionáveis hoje** (vocabulário fechado pelo próprio 11a): comparação, dispositivo,
 finalidade, tipo de lead, consentimento. **Lista aberta** (origem, página/tipo, bairro): selecionável
 quando a tela passar `fontes` — o endpoint já devolve os agregados. **Sem fonte no ERP** (mídia,
@@ -87,12 +99,12 @@ opção inventada.
 | 06 Chip de filtro ativo | **fiel (Commit 1)** | `.ape-int-chip-ativo` roxo com ✕ | — |
 | 07 Selo de procedência | fiel | "DADO REAL · hh:mm" / "aguardando dado"; DEMONSTRAÇÃO omitido de propósito | — |
 | 08 Linha de funil | parcial | barra, taxa e clique para o drawer agregador; falta perda absoluta | Commit 3 |
-| 09 Tabela | parcial | tipografia fiel; nenhuma coluna ordenável | Commit 3 |
+| 09 Tabela | **fiel (Commit 3)** | oito tabelas com ordenação real, `aria-sort`, foco e linha clicável preservada | — |
 | 10 Drawer 420px | **fiel (Commit 2)** | um componente para imóvel, jornada e corretor; URL, foco, Esc, scrim e folha móvel | gerente entra no Commit 7 |
 | 11 Bloco de pendência | fiel | `.ape-int-pendencia` alimentado por `pendencias[]` | — |
 | 12 Vazio e erro | fiel | tracejado neutro / #FBE5E5 com "Tentar novamente" | — |
 | 13 Esqueleto | **fiel (Commit 1)** | três formas por bloco | — |
-| 14 Cartão de celular | parcial | grade colapsa e alvos ≥44px; tabela ainda é tabela | Commit 3 |
+| 14 Cartão de celular | **fiel (Commit 3)** | abaixo de 900px cada linha vira cartão com rótulo/valor/status/ação; uma coluna em 560px | — |
 
 Os **tokens não divergem**: a folha usa #FAF8F6, cartão branco raio 18 sombra 0 2px 6px
 rgba(31,28,26,.06), eyebrow 11/600 +0.12em, KPI 26/700 tabular, chips pill em tint, ativo laranja e
@@ -106,12 +118,12 @@ avatar roxo #F7ECFC/#66009A. O desvio é de peças que faltam, não de estilo er
 | Vendas e previsão | 19b 27b 29a 12g | `/inteligencia/vendas` | `VendasPrevisao.tsx` | empresa: vendas, vgv, pendentes, metas, pipelineQuente | sem ordenação, sem drawer | 2 · 3 · 5 |
 | Financeiro e comissões | 20a 27c 29a 12h | `/inteligencia/financeiro` | `Financeiro.tsx` + GuardaModulo | receitaBruta, custos, margemContribuicao | cascata VGV→lucro sem componente | 5 |
 | Captação de proprietários | 7a 25a 28a 1h | `/inteligencia/proprietarios` | `Proprietarios.tsx` | `captacoes_portal` | sem drawer, sem tile por status | 2 · 5 |
-| Atendimento e SLA | 15a 26a 22a 12c | `/inteligencia/atendimento` | `AtendimentoSla.tsx` | corretores: slaAmostra, mediana, sla15Pct; limiares 5/15 min | tabela de 8 colunas sem ordenação/clique | 3 · 6 |
+| Atendimento e SLA | 15a 26a 22a 12c | `/inteligencia/atendimento` | `AtendimentoSla.tsx` | corretores: slaAmostra, mediana, sla15Pct; limiares 5/15 min | tabela ordenável e cartão móvel prontos; falta fila acionável | 6 |
 | Performance da equipe | 16a 26b 29a 12d | `/inteligencia/equipe` | `PerformanceEquipe.tsx` | corretores agregado nos 4 pilares | sem tile por pilar, sem clique para lista filtrada | 7 |
 | Gerentes | 17a 26c 29a 12e | `/inteligencia/gerentes` | `Gerentes.tsx` | corretores por ocupação e vencidas | página do gerente não existe como destino | 2 · 7 |
-| Corretores | 18a 26d 29a 12f | `/inteligencia/corretores` | `Corretores.tsx` | corretores completo | clique abre bloco expandido, não drawer; visão própria sem escopo por perfil | 2 · 7 |
+| Corretores | 18a 26d 29a 12f | `/inteligencia/corretores` | `Corretores.tsx` | corretores completo | drawer e tabela móvel prontos; falta visão própria com escopo por perfil | 7 |
 | Conversão e CRM | 5a 24d 10a 1g | `/inteligencia/conversao` | `ConversaoCrm.tsx` | empresa.fluxo + qualidadeDado | jornada individual do lead inexistente | 2 · 6 |
-| Qualidade | 19a 27a 29a 12g | `/inteligencia/qualidade` | `Qualidade.tsx` | qualidadeDado + notas de IA (amostra mínima 8) | sem drawer, sem ordenação | 3 · 6 |
+| Qualidade | 19a 27a 29a 12g | `/inteligencia/qualidade` | `Qualidade.tsx` | qualidadeDado + notas de IA (amostra mínima 8) | ordenação e cartão móvel prontos; falta drawer | 6 |
 | Aquisição e campanhas | 3a 24a 28a 1d | `/inteligencia/aquisicao` | `Aquisicao.tsx` | GA4 (`app/lib/ga4.ts`) + `site_leads`; custo de mídia = pendência | sem delta, sem tile por canal | 4 · 8 |
 | Comportamento e conteúdo | 4a 24b 28a 1e | `/inteligencia/comportamento` | `Comportamento.tsx` | GA4 páginas/entradas/dispositivos | sem rolagem/mapa de calor (Clarity), sem ordenação | 3 · 8 |
 | Imóveis e procura | 6a 24c 10a 1f | `/inteligencia/imoveis` | `Imoveis.tsx` | `anuncios_site` × `captacoes_portal` | tabela ordenável e drawer do imóvel ausentes | 2 · 3 · 8 |

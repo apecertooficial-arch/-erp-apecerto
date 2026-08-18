@@ -124,7 +124,7 @@ export function ConversaoCrm({ accessToken }: { accessToken: string }) {
           <section className="ape-int-secao">
             <span>POR CORRETOR</span>
             <h2>Onde a conversão acontece</h2>
-            <Tabela colunas={["Corretor", "Negócios", "1º contato", "Visitas", "Vendas", "Visita → venda"]}>
+            <Tabela colunas={["Corretor", "Negócios", "1º contato", "Visitas", "Vendas", "Visita → venda"]} ordenaveis={[0, 1, 2, 3, 4, 5]}>
               {corretores.length ? corretores.map((c) => {
                 const n = num(c.atendimento?.amostraTurnos);
                 return (

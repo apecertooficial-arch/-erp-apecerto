@@ -136,7 +136,7 @@ export function Qualidade({ accessToken }: { accessToken: string }) {
             <section className="ape-int-secao">
               <span>POR PESSOA</span>
               <h2>Nota só com amostra</h2>
-              <Tabela colunas={["Corretor", "Amostra", "Nota geral", "Clareza", "Qualificação", "Objecões", "Condução"]}>
+              <Tabela colunas={["Corretor", "Amostra", "Nota geral", "Clareza", "Qualificação", "Objecões", "Condução"]} ordenaveis={[0, 1, 2, 3, 4, 5, 6]}>
                 {corretores.map((c) => {
                   const n = num(c.atendimento?.iaAmostra);
                   const classificavel = n >= AMOSTRA_MINIMA;

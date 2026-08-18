@@ -99,7 +99,7 @@ export function AtendimentoSla({ accessToken }: { accessToken: string }) {
             <span>POR PESSOA</span>
             <h2>Quem está dentro e quem está fora da meta</h2>
             {corretores.length ? (
-              <Tabela colunas={["Corretor", "Mediana", "P90", `Até ${SLA_META_MIN} min`, `Até ${SLA_ATENCAO_MIN} min`, "Carteira", "Vencidas", "Último acesso"]}>
+              <Tabela colunas={["Corretor", "Mediana", "P90", `Até ${SLA_META_MIN} min`, `Até ${SLA_ATENCAO_MIN} min`, "Carteira", "Vencidas", "Último acesso"]} ordenaveis={[0, 1, 2, 3, 4, 5, 6, 7]}>
                 {corretores.map((c) => {
                   const n = num(c.atendimento?.amostraTurnos);
                   const p50 = num(c.atendimento?.respostaP50Min);
