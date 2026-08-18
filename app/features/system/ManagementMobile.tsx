@@ -30,12 +30,12 @@ function IconeGestao({ nome }: { nome: string }) {
  * O que sobrou e o que o gestor faz de fato pelo telefone: ver quem esta
  * trabalhando, olhar a agenda da equipe, conferir os avisos, acompanhar a
  * esteira. */
-const itens = [
+const itens: Array<{ modulo: ModuleName; icone: string; titulo: string; texto: string; vista?: string }> = [
   { modulo: "Minha Equipe", icone: "equipe", titulo: "Quem está trabalhando", texto: "Presença, carteira e resposta no prazo" },
   { modulo: "Calendário", icone: "agenda", titulo: "Agenda da equipe", texto: "Visitas e compromissos do dia" },
   { modulo: "Notificações", icone: "avisos", titulo: "Avisos", texto: "O que está pedindo ação agora" },
   { modulo: "CRM", icone: "esteira", titulo: "Esteira de vendas", texto: "Atendimentos e oportunidades" },
-] satisfies Array<{ modulo: ModuleName; icone: string; titulo: string; texto: string; vista?: string }>;
+];
 
 export function ManagementMobile() {
   const { role, permissoes, perfilCarregado, isManager } = useErpSession();

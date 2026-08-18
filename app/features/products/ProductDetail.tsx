@@ -3,6 +3,9 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { getBrowserSupabaseClient } from "../../lib/supabase/browser";
+import type { ProductQuality } from "./quality";
+import { MoneyInput } from "./MoneyInput";
+import { applyOfficialWatermark } from "./watermark";
 
 type Media = { id: string; tipo: "foto" | "video" | "pdf" | "apresentacao"; storage_path: string; categoria: string | null; nome: string | null; is_capa: boolean; url: string | null; unidade_id?: string | null };
 type Unit = { id: string; numero: string | null; tipologia: string | null; area_m2: number | null; vagas: number | null; valor_tabela: number | null; valor_promo: number | null; disponivel: boolean; de_terceiros?: boolean; captador_nome?: string | null; proprietario_nome?: string | null; proprietario_contato?: string | null; acesso_tipo?: string | null; acesso_codigo?: string | null; acesso_instrucoes?: string | null; aprovacao?: string | null };
@@ -10,14 +13,16 @@ type Owner = { nome: string; email: string; telefone: string };
 type Condo = { id: string; nome: string; endereco: string; numero: string | null; bairro: string | null; cidade: string; uf: string; cep: string | null };
 type LeadOption = { id: number; nome: string | null; telefone: string | null; linked: boolean };
 type ProductDetailData = {
-  id: string; nome: string; incorporadora: string | null; descricao: string | null; status: string; origem: string;
+  id: string; nome: string; titulo: string | null; slogan: string | null; finalidade: string | null;
+  lazer: string[] | null; diferenciais: string[] | null; incorporadora: string | null; descricao: string | null; status: string; origem: string;
   preco: number | null; condominio_valor: number | null; iptu: number | null; outros_custos: number | null;
   area_util: number | null; dormitorios: number | null; suites: number | null; vagas: number | null; banheiros: number | null;
   endereco: string | null; numero: string | null; complemento: string | null; bairro: string | null; cidade: string | null; uf: string | null; cep: string | null;
-  acesso_tipo: string | null; acesso_codigo: string | null; acesso_instrucoes: string | null; tour_url: string | null; rascunho: boolean;
+  acesso_tipo: string | null; acesso_codigo: string | null; acesso_instrucoes: string | null; tour_url: string | null; rascunho: boolean; publicado?: boolean;
   condominios: Condo | null; proprietarios: Owner | null; unidades: Unit[]; midias: Media[];
   summary_price: number | null; summary_area: number | null;
   completion: { checks: Record<string, boolean>; completed: number; total: number };
+  quality: ProductQuality;
   is_favorite: boolean; leads: LeadOption[];
   aprovacao?: string | null; captado_por_nome?: string | null; mine?: boolean;
   latitude?: number | null; longitude?: number | null;
@@ -25,7 +30,7 @@ type ProductDetailData = {
 
 const money = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
 const mediaCategories = ["Fachada", "Sala", "Cozinha", "Dormitório", "Banheiro", "Varanda", "Piscina", "Lazer", "Planta", "Tabela", "Apresentação", "Outros"];
-const editableFields = ["nome", "incorporadora", "descricao", "preco", "condominio_valor", "iptu", "outros_custos", "area_util", "dormitorios", "suites", "vagas", "banheiros", "endereco", "numero", "complemento", "bairro", "cidade", "uf", "cep", "acesso_tipo", "acesso_codigo", "acesso_instrucoes", "tour_url"] as const;
+const editableFields = ["nome", "titulo", "slogan", "finalidade", "lazer", "diferenciais", "incorporadora", "descricao", "preco", "condominio_valor", "iptu", "outros_custos", "area_util", "dormitorios", "suites", "vagas", "banheiros", "endereco", "numero", "complemento", "bairro", "cidade", "uf", "cep", "acesso_tipo", "acesso_codigo", "acesso_instrucoes", "tour_url"] as const;
 
 function mediaType(file: File): Media["tipo"] {
   if (file.type.startsWith("image/")) return "foto";
@@ -89,7 +94,7 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
   const [leadPanelOpen, setLeadPanelOpen] = useState(false);
   const [documentPreview, setDocumentPreview] = useState<Media | null>(null);
   const [pendingDelete, setPendingDelete] = useState<Media | null>(null);
-  const [tab, setTab] = useState<"resumo" | "localizacao" | "proprietario" | "unidades" | "galeria">("resumo");
+  const [tab, setTab] = useState<"resumo" | "site" | "localizacao" | "proprietario" | "unidades" | "galeria">("resumo");
   const [unitDetail, setUnitDetail] = useState<Unit | null>(null);
   const [unitLightbox, setUnitLightbox] = useState<{ items: { url: string; label: string }[]; index: number } | null>(null);
 
@@ -104,7 +109,10 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
     setUnits(next.unidades);
     setCondominiumId(next.condominios?.id ?? "");
     setNewCondominiumName(next.condominios?.nome ?? "");
-    setDraft(Object.fromEntries(editableFields.map((field) => [field, next[field] ?? (field === "preco" ? next.summary_price : field === "area_util" ? next.summary_area : "")])));
+    setDraft(Object.fromEntries(editableFields.map((field) => {
+      const value = next[field];
+      return [field, Array.isArray(value) ? value.join(", ") : value ?? (field === "preco" ? next.summary_price : field === "area_util" ? next.summary_area : "")];
+    })));
     const supabase = getBrowserSupabaseClient();
     const { data: condoOptions } = await supabase.from("condominios").select("id,nome,endereco,numero,bairro,cidade,uf,cep").order("nome");
     setCondominiums(condoOptions ?? []);
@@ -166,7 +174,8 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
       const supabase = getBrowserSupabaseClient();
       const { data: auth } = await supabase.auth.getUser();
       if (!auth.user) throw new Error("Sua sessão expirou.");
-      for (const file of Array.from(files)) {
+      for (const originalFile of Array.from(files)) {
+        const file = originalFile.type.startsWith("image/") ? await applyOfficialWatermark(originalFile) : originalFile;
         const safeName = file.name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9._-]/g, "-");
         const path = `${auth.user.id}/${productId}/${crypto.randomUUID()}-${safeName}`;
         const { error: uploadError } = await supabase.storage.from("empreendimentos").upload(path, file, { contentType: file.type, upsert: false });
@@ -244,18 +253,32 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
     } catch (error) { setMessage(error instanceof Error ? error.message : "Erro ao enviar solicitação."); } finally { setBusy(false); }
   }
 
-  const completionPct = product ? Math.round((product.completion.completed / product.completion.total) * 100) : 0;
+  async function decideProduct(approve: boolean) {
+    const motivo = approve ? null : (window.prompt("Motivo da reprovação:", "") ?? "");
+    if (!approve && !motivo?.trim()) return;
+    setBusy(true); setMessage("");
+    try {
+      const response = await fetch("/api/capture", { method: "PATCH", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify({ id: productId, action: approve ? "approve" : "reject", motivo }) });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error ?? "Não foi possível concluir a revisão.");
+      await load(); onChanged(); setMessage(approve ? "Imóvel aprovado e liberado para o site." : "Imóvel devolvido ao corretor com o motivo informado.");
+    } catch (error) { setMessage(error instanceof Error ? error.message : "Erro ao revisar o produto."); } finally { setBusy(false); }
+  }
+
+  const completionPct = product?.quality.score ?? 0;
   const completionLabels: Record<string, string> = { basics: "Dados básicos", location: "Endereço", owner: "Proprietário", costs: "Custos", access: "Acesso", media: "Fotos, vídeo e capa", units: "Unidades" };
   const otherPhotos = photos.filter((item) => item.id !== cover?.id);
 
   const publishButton = product && (canPublish
-    ? (product.rascunho
-      ? <button className="fv2-btn fv2-btn-publish" type="button" disabled={busy} title={product.completion.completed < product.completion.total ? `Faltam ${product.completion.total - product.completion.completed} bloco(s) para ficar 100% completo` : "Produto completo"} onClick={() => void publishAction(true)}><IcCheck /> Publicar produto{product.completion.completed < product.completion.total ? " (incompleto)" : ""}</button>
-      : <button className="fv2-btn fv2-btn-ghost" type="button" disabled={busy} onClick={() => void publishAction(false)}><IcRotate /> Voltar a rascunho</button>)
+    ? (product.aprovacao === "pendente" && !product.rascunho
+      ? <div className="fv2-review-actions"><button className="fv2-btn fv2-btn-ghost" type="button" disabled={busy} onClick={() => void decideProduct(false)}>✕ Solicitar correção</button><button className="fv2-btn fv2-btn-publish" type="button" disabled={busy || !product.quality.readyForSite} title={product.quality.readyForSite ? "Aprovar e publicar no site" : product.quality.blocking.join(" · ")} onClick={() => void decideProduct(true)}><IcCheck /> Aprovar e publicar</button></div>
+      : product.rascunho
+        ? <button className="fv2-btn fv2-btn-publish" type="button" disabled={busy || !product.quality.readyForSite} title={product.quality.readyForSite ? "Publicar no site" : product.quality.blocking.join(" · ")} onClick={() => void publishAction(true)}><IcCheck /> {product.quality.readyForSite ? "Publicar no site" : "Complete o cadastro para publicar"}</button>
+        : <button className="fv2-btn fv2-btn-ghost" type="button" disabled={busy} onClick={() => void publishAction(false)}><IcRotate /> Voltar a rascunho</button>)
     : (product.aprovacao === "pendente"
       ? <button className="fv2-btn fv2-btn-ghost" type="button" disabled title="Aguardando aprovação do gestor"><IcClock /> Aguardando aprovação</button>
       : (product.mine && (product.rascunho || product.aprovacao === "reprovado")
-        ? <button className="fv2-btn fv2-btn-publish" type="button" disabled={busy} onClick={() => void submitRequest()}><IcSend /> Enviar solicitação</button>
+        ? <button className="fv2-btn fv2-btn-publish" type="button" disabled={busy || !product.quality.readyForSite} title={product.quality.readyForSite ? "Enviar para aprovação" : product.quality.blocking.join(" · ")} onClick={() => void submitRequest()}><IcSend /> {product.quality.readyForSite ? "Enviar para aprovação" : "Complete antes de enviar"}</button>
         : null)));
 
   const mediaLibrary = product && <section className="detail-section media-library fv2-media">
@@ -277,17 +300,24 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
           <div className="fv2-edit-head"><h2>Editar produto</h2><button className="fv2-btn fv2-btn-ghost" type="button" onClick={() => setEditing(false)}>Cancelar edição</button></div>
           {message && <div className={`detail-message ${message.includes("salv") || message.includes("atualiz") || message.includes("adicionado") ? "success" : ""}`}>{message}</div>}
           {mediaLibrary}<div className="detail-form">
-            <h3>Dados do imóvel</h3><label>Tour virtual (link Matterport ou 360º)<input type="url" placeholder="https://..." value={draft.tour_url ?? ""} onChange={(event) => setDraft({ ...draft, tour_url: event.target.value })} /></label>
+            <h3>Conteúdo que aparece no site</h3>
+            <p className="form-guidance">Preencha estes campos com linguagem comercial. A nota é recalculada automaticamente depois de salvar.</p>
+            <div className="field-grid"><label>Título comercial<input value={draft.titulo ?? ""} onChange={(event) => setDraft({ ...draft, titulo: event.target.value })} placeholder="Ex.: Apartamento pronto para morar em Moema" /></label><label>Finalidade<select value={draft.finalidade ?? ""} onChange={(event) => setDraft({ ...draft, finalidade: event.target.value })}><option value="">Selecione</option><option value="venda">Venda</option><option value="aluguel">Aluguel</option><option value="lancamento">Lançamento</option></select></label></div>
+            <label>Chamada curta (slogan)<input value={draft.slogan ?? ""} onChange={(event) => setDraft({ ...draft, slogan: event.target.value })} placeholder="Uma frase curta que valorize o imóvel" /></label>
+            <label>Descrição completa<textarea rows={5} minLength={80} value={draft.descricao ?? ""} onChange={(event) => setDraft({ ...draft, descricao: event.target.value })} /><small>{String(draft.descricao ?? "").trim().length}/80 caracteres mínimos</small></label>
+            <div className="field-grid"><label>Lazer e áreas comuns<input value={draft.lazer ?? ""} onChange={(event) => setDraft({ ...draft, lazer: event.target.value })} placeholder="Piscina, academia, salão de festas" /></label><label>Diferenciais<input value={draft.diferenciais ?? ""} onChange={(event) => setDraft({ ...draft, diferenciais: event.target.value })} placeholder="Varanda gourmet, vista livre, reformado" /></label></div>
+            <label>Tour virtual (link Matterport ou 360º)<input type="url" placeholder="https://..." value={draft.tour_url ?? ""} onChange={(event) => setDraft({ ...draft, tour_url: event.target.value })} /></label>
+            <h3>Dados do imóvel</h3>
             <div className="field-grid">
-              {(["nome", "incorporadora", "preco", "area_util", "dormitorios", "suites", "vagas", "banheiros"] as const).map((field) => <label key={field}>{field.replaceAll("_", " ")}<input type={["preco","area_util","dormitorios","suites","vagas","banheiros"].includes(field) ? "number" : "text"} value={draft[field] ?? ""} onChange={(event) => setDraft({ ...draft, [field]: event.target.value })} /></label>)}
+              {(["nome", "incorporadora", "area_util", "dormitorios", "suites", "vagas", "banheiros"] as const).map((field) => <label key={field}>{field.replaceAll("_", " ")}<input type={["area_util","dormitorios","suites","vagas","banheiros"].includes(field) ? "number" : "text"} value={draft[field] ?? ""} onChange={(event) => setDraft({ ...draft, [field]: event.target.value })} /></label>)}
             </div>
-            <label>Descrição<textarea rows={3} value={draft.descricao ?? ""} onChange={(event) => setDraft({ ...draft, descricao: event.target.value })} /></label>
+            <MoneyInput label="Preço do imóvel" value={draft.preco} onChange={(value) => setDraft({ ...draft, preco: value })} />
             <h3>Endereço e custos</h3><div className="field-grid">
               {(["endereco", "numero", "complemento", "bairro", "cidade", "uf", "cep", "condominio_valor", "iptu", "outros_custos"] as const).map((field) => <label key={field}>{field.replaceAll("_", " ")}<input type={["condominio_valor","iptu","outros_custos"].includes(field) ? "number" : "text"} value={draft[field] ?? ""} onChange={(event) => setDraft({ ...draft, [field]: event.target.value })} /></label>)}
             </div>
             <label>Condomínio associado<select value={condominiumId} onChange={(event) => { setCondominiumId(event.target.value); if (event.target.value) setNewCondominiumName(""); }}><option value="">Cadastrar novo com o endereço acima</option>{condominiums.map((item) => <option value={item.id} key={item.id}>{item.nome} · {item.bairro ?? item.cidade}</option>)}</select></label>{!condominiumId && <label>Nome do novo condomínio<input value={newCondominiumName} onChange={(event) => setNewCondominiumName(event.target.value)} placeholder="Nome do condomínio" /></label>}
             {product.origem === "terceiros" && <><h3>Acesso ao imóvel</h3><div className="field-grid"><label>Tipo<input value={draft.acesso_tipo ?? ""} onChange={(event) => setDraft({ ...draft, acesso_tipo: event.target.value })} /></label><label>Código digital<input value={draft.acesso_codigo ?? ""} onChange={(event) => setDraft({ ...draft, acesso_codigo: event.target.value })} /></label></div><label>Instruções<textarea rows={3} value={draft.acesso_instrucoes ?? ""} onChange={(event) => setDraft({ ...draft, acesso_instrucoes: event.target.value })} /></label>{owner && <><h3>Proprietário</h3><div className="field-grid">{(["nome", "email", "telefone"] as const).map((field) => <label key={field}>{field}<input value={owner[field]} onChange={(event) => setOwner({ ...owner, [field]: event.target.value })} /></label>)}</div></>}</>}
-            <h3>Unidades</h3><div className="section-row"><small>Edite estoque, tipologia, área e preço.</small><button className="secondary-action" type="button" onClick={() => setUnits([...units, { id: crypto.randomUUID(), numero: "", tipologia: "", area_m2: null, vagas: 0, valor_tabela: null, valor_promo: null, disponivel: true }])}>＋ Unidade</button></div><div className="edit-units">{units.map((unit, index) => <div key={unit.id}><span>{index + 1}</span><input aria-label="Número" value={unit.numero ?? ""} onChange={(event) => setUnits(units.map((item) => item.id === unit.id ? { ...item, numero: event.target.value } : item))} placeholder="Unidade" /><input aria-label="Tipologia" value={unit.tipologia ?? ""} onChange={(event) => setUnits(units.map((item) => item.id === unit.id ? { ...item, tipologia: event.target.value } : item))} placeholder="Tipologia" /><input aria-label="Área" type="number" value={unit.area_m2 ?? ""} onChange={(event) => setUnits(units.map((item) => item.id === unit.id ? { ...item, area_m2: event.target.value ? Number(event.target.value) : null } : item))} placeholder="m²" /><input aria-label="Vagas" type="number" value={unit.vagas ?? ""} onChange={(event) => setUnits(units.map((item) => item.id === unit.id ? { ...item, vagas: event.target.value ? Number(event.target.value) : null } : item))} /><input aria-label="Preço" type="number" value={unit.valor_tabela ?? ""} onChange={(event) => setUnits(units.map((item) => item.id === unit.id ? { ...item, valor_tabela: event.target.value ? Number(event.target.value) : null } : item))} placeholder="Preço" /><label><input type="checkbox" checked={unit.disponivel} onChange={(event) => setUnits(units.map((item) => item.id === unit.id ? { ...item, disponivel: event.target.checked } : item))} /> disponível</label><button type="button" aria-label="Remover unidade" onClick={() => setUnits(units.filter((item) => item.id !== unit.id))}>×</button></div>)}</div>
+            <h3>Unidades</h3><div className="section-row"><small>Edite estoque, tipologia, área e preço.</small><button className="secondary-action" type="button" onClick={() => setUnits([...units, { id: crypto.randomUUID(), numero: "", tipologia: "", area_m2: null, vagas: 0, valor_tabela: null, valor_promo: null, disponivel: true }])}>＋ Unidade</button></div><div className="edit-units">{units.map((unit, index) => <div key={unit.id}><span>{index + 1}</span><input aria-label="Número" value={unit.numero ?? ""} onChange={(event) => setUnits(units.map((item) => item.id === unit.id ? { ...item, numero: event.target.value } : item))} placeholder="Unidade" /><input aria-label="Tipologia" value={unit.tipologia ?? ""} onChange={(event) => setUnits(units.map((item) => item.id === unit.id ? { ...item, tipologia: event.target.value } : item))} placeholder="Tipologia" /><input aria-label="Área" type="number" value={unit.area_m2 ?? ""} onChange={(event) => setUnits(units.map((item) => item.id === unit.id ? { ...item, area_m2: event.target.value ? Number(event.target.value) : null } : item))} placeholder="m²" /><input aria-label="Vagas" type="number" value={unit.vagas ?? ""} onChange={(event) => setUnits(units.map((item) => item.id === unit.id ? { ...item, vagas: event.target.value ? Number(event.target.value) : null } : item))} /><MoneyInput compact label={`Preço da unidade ${unit.numero || index + 1}`} value={unit.valor_tabela} onChange={(value) => setUnits(units.map((item) => item.id === unit.id ? { ...item, valor_tabela: value } : item))} /><label><input type="checkbox" checked={unit.disponivel} onChange={(event) => setUnits(units.map((item) => item.id === unit.id ? { ...item, disponivel: event.target.checked } : item))} /> disponível</label><button type="button" aria-label="Remover unidade" onClick={() => setUnits(units.filter((item) => item.id !== unit.id))}>×</button></div>)}</div>
             <button className="primary-action" disabled={busy} type="button" onClick={() => void save()}>{busy ? "Salvando..." : "Salvar no Supabase"}</button>
           </div>
         </div>
@@ -320,7 +350,7 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
             </div>
 
             <nav className="fv2-tabs">
-              {([["resumo", "Resumo"], ["localizacao", "Localização"], ["proprietario", "Proprietário"], ["unidades", "Unidades"], ["galeria", "Galeria"]] as const).map(([key, label]) => (
+              {([["resumo", "Resumo"], ["site", "Conteúdo do site"], ["localizacao", "Localização"], ["proprietario", "Proprietário"], ["unidades", "Unidades"], ["galeria", "Galeria"]] as const).map(([key, label]) => (
                 (key !== "proprietario" || product.origem === "terceiros") && <button key={key} type="button" className={tab === key ? "active" : ""} onClick={() => setTab(key)}>{label}</button>
               ))}
             </nav>
@@ -329,11 +359,13 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
 
             <div className="fv2-tab-body">
               {tab === "resumo" && <>
-                <div className="fv2-registration">
+                <div className={`fv2-registration quality-${product.quality.level}`}>
                   <span className="fv2-registration-ic"><IcSeal /></span>
-                  <div><strong>Cadastro completo</strong><small>{product.completion.completed} de {product.completion.total} blocos preenchidos</small></div>
+                  <div><strong>Qualidade {product.quality.label.toLowerCase()}</strong><small>{product.quality.readyForSite ? "Apto para publicação no site" : `${product.quality.blocking.length} item(ns) impedem a publicação`}</small></div>
                   <b>{completionPct}%</b>
                 </div>
+                <div className="quality-dimensions">{Object.entries(product.quality.dimensions).map(([key, value]) => <div key={key}><span>{key}</span><strong>{value.score}/{value.max}</strong><i><b style={{ width: `${Math.round((value.score / value.max) * 100)}%` }} /></i></div>)}</div>
+                {product.quality.blocking.length > 0 && <div className="quality-blockers"><strong>Corrija antes de publicar</strong>{product.quality.blocking.map((item) => <button type="button" key={item} onClick={() => setEditing(true)}>⚠ {item}<span>Corrigir</span></button>)}</div>}
                 <div className="fv2-chips">{Object.entries(product.completion.checks).map(([key, ok]) => <span key={key} className={ok ? "done" : ""}><IcCheck />{completionLabels[key] ?? key}</span>)}</div>
                 <div className={product.descricao ? "fv2-desc" : "fv2-desc empty"}>
                   {product.descricao ? <p>{product.descricao}</p> : <><span>Nenhuma descrição cadastrada ainda.</span><button type="button" onClick={() => setEditing(true)}>Adicionar descrição</button></>}
@@ -344,6 +376,15 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
                   <div className="fv2-tile"><small>OUTROS CUSTOS</small><strong>{product.outros_custos ? money.format(product.outros_custos) : "—"}</strong></div>
                 </div>
               </>}
+
+              {tab === "site" && <div className="site-content-review">
+                <div className="site-content-head"><div><small>COMO O IMÓVEL SERÁ APRESENTADO</small><h3>{product.titulo || product.nome}</h3><p>{product.slogan || "Adicione uma chamada curta para valorizar este imóvel."}</p></div><span className={`quality-badge ${product.quality.level}`}>Nota {product.quality.score}</span></div>
+                <div className="site-content-grid"><div><small>FINALIDADE</small><strong>{product.finalidade || "Não informada"}</strong></div><div><small>FOTOS</small><strong>{photos.length}</strong></div><div><small>VÍDEOS / TOUR</small><strong>{videos.length + (product.tour_url ? 1 : 0)}</strong></div><div><small>STATUS</small><strong>{product.publicado ? "Publicado" : product.quality.readyForSite ? "Pronto" : "Bloqueado"}</strong></div></div>
+                <section><h4>Descrição</h4><p>{product.descricao || "Nenhuma descrição cadastrada."}</p></section>
+                <section><h4>Lazer e áreas comuns</h4><div className="site-content-tags">{product.lazer?.length ? product.lazer.map((item) => <span key={item}>{item}</span>) : <em>Não informado</em>}</div></section>
+                <section><h4>Diferenciais</h4><div className="site-content-tags">{product.diferenciais?.length ? product.diferenciais.map((item) => <span key={item}>{item}</span>) : <em>Não informado</em>}</div></section>
+                <div className="site-content-actions"><button className="fv2-btn fv2-btn-outline" type="button" onClick={() => setEditing(true)}><IcEdit /> Editar conteúdo</button><a className="fv2-btn fv2-btn-ghost" href="https://apecerto.com" target="_blank" rel="noreferrer"><IcLink /> Abrir site</a></div>
+              </div>}
 
               {tab === "localizacao" && <>
                 <h3 className="fv2-loc-title">{[product.endereco, product.numero].filter(Boolean).join(", ") || "Endereço não cadastrado"}</h3>

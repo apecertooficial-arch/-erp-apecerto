@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { getBrowserSupabaseClient } from "../../lib/supabase/browser";
+import { MoneyInput } from "./MoneyInput";
+import { applyOfficialWatermark } from "./watermark";
 
 type UnitWizardProps = { accessToken: string; onClose: () => void; onSaved: () => void };
 type Building = { id: string; nome: string; bairro: string | null; cidade: string | null };
@@ -111,7 +113,8 @@ export function UnitWizard({ accessToken, onClose, onSaved }: UnitWizardProps) {
       }
 
       for (let index = 0; index < photos.length; index += 1) {
-        const file = photos[index];
+        const originalFile = photos[index];
+        const file = tipoDaMidia(originalFile) === "foto" ? await applyOfficialWatermark(originalFile) : originalFile;
         const storagePath = `${created.userId}/${empreendimentoId}/${crypto.randomUUID()}-${safeFileName(file.name)}`;
         const { error: uploadError } = await supabase.storage.from("empreendimentos").upload(storagePath, file, { contentType: file.type, upsert: false });
         if (uploadError) throw new Error(`Falha ao enviar ${file.name}: ${uploadError.message}`);
@@ -158,9 +161,8 @@ export function UnitWizard({ accessToken, onClose, onSaved }: UnitWizardProps) {
               <label>Tipologia<input value={tipologia} onChange={(event) => setTipologia(event.target.value)} placeholder="Ex.: HR, 2 dorm." /></label>
               <label>Área (m²)<input type="number" min="0" step="0.01" value={area} onChange={(event) => setArea(event.target.value)} /></label>
               <label>Vagas<input type="number" min="0" value={vagas} onChange={(event) => setVagas(event.target.value)} /></label>
-              <label>Valor de tabela<input type="number" min="0" value={valorTabela} onChange={(event) => setValorTabela(event.target.value)} /></label>
-              <label>Valor promocional<input type="number" min="0" value={valorPromo} onChange={(event) => setValorPromo(event.target.value)} /></label>
             </div>
+            <div className="unit-money-grid"><MoneyInput label="Valor de tabela" value={valorTabela} onChange={(value) => setValorTabela(value === null ? "" : String(value))} /><MoneyInput label="Valor promocional" value={valorPromo} onChange={(value) => setValorPromo(value === null ? "" : String(value))} /></div>
           </div>
 
           <div className="form-section">

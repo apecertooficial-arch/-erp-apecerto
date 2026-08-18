@@ -2262,6 +2262,7 @@ export type Database = {
           status: Database["public"]["Enums"]["status_empreend"]
           suites: number | null
           titulo: string | null
+          tour_url: string | null
           uf: string | null
           vagas: number | null
         }
@@ -2320,6 +2321,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["status_empreend"]
           suites?: number | null
           titulo?: string | null
+          tour_url?: string | null
           uf?: string | null
           vagas?: number | null
         }
@@ -2378,6 +2380,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["status_empreend"]
           suites?: number | null
           titulo?: string | null
+          tour_url?: string | null
           uf?: string | null
           vagas?: number | null
         }

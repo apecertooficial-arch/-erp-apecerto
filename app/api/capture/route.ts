@@ -1,4 +1,5 @@
 import { createServerSupabaseClient } from "../../lib/supabase/server";
+import { assessProductQuality, normalizedKey, PRODUCT_PRICE_MAX, PRODUCT_PRICE_MIN, validateProductPrice } from "../../features/products/quality";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +20,35 @@ export async function PATCH(request: Request) {
   const action = String(body.action || "");
   const id = String(body.id || "");
   if ((action !== "approve" && action !== "reject") || !id) return Response.json({ error: "Ação ou empreendimento inválido." }, { status: 422 });
+  if (action === "approve") {
+    const { data: product, error: productError } = await supabase
+      .from("empreendimentos")
+      .select("nome,titulo,slogan,descricao,finalidade,preco,area_util,dormitorios,banheiros,vagas,endereco,numero,bairro,cidade,uf,cep,condominio_valor,iptu,outros_custos,lazer,diferenciais,tour_url,unidades(area_m2,valor_tabela,valor_promo,disponivel),midias(tipo,categoria,is_capa)")
+      .eq("id", id)
+      .single();
+    if (productError || !product) return Response.json({ error: productError?.message ?? "Produto não encontrado." }, { status: 404 });
+    const units = product.unidades ?? [];
+    const available = units.filter((unit) => unit.disponivel);
+    const prices = available.map((unit) => unit.valor_promo ?? unit.valor_tabela).filter((value): value is number => typeof value === "number" && value > 0);
+    const areas = available.map((unit) => unit.area_m2).filter((value): value is number => typeof value === "number" && value > 0);
+    const media = product.midias ?? [];
+    const quality = assessProductQuality({
+      name: product.nome, title: product.titulo, slogan: product.slogan, description: product.descricao, purpose: product.finalidade,
+      price: product.preco ?? (prices.length ? Math.min(...prices) : null), area: product.area_util ?? (areas.length ? Math.min(...areas) : null),
+      bedrooms: product.dormitorios, bathrooms: product.banheiros, parking: product.vagas,
+      address: product.endereco, number: product.numero, neighborhood: product.bairro, city: product.cidade, state: product.uf, zip: product.cep,
+      condominiumFee: product.condominio_valor, propertyTax: product.iptu, otherCosts: product.outros_custos,
+      photos: media.filter((item) => item.tipo === "foto").length, videos: media.filter((item) => item.tipo === "video").length,
+      hasCover: media.some((item) => item.tipo === "foto" && item.is_capa),
+      mediaCategories: media.filter((item) => item.tipo === "foto").map((item) => item.categoria ?? ""), tourUrl: product.tour_url,
+      units: units.length, availableUnits: available.length,
+      unitsWithValidPrice: prices.filter((value) => value >= PRODUCT_PRICE_MIN && value <= PRODUCT_PRICE_MAX).length,
+      amenities: product.lazer, differentiators: product.diferenciais,
+    });
+    if (!quality.readyForSite) {
+      return Response.json({ error: "O imóvel precisa ser completado antes da aprovação.", code: "PRODUCT_NOT_READY", quality, blocking: quality.blocking }, { status: 422 });
+    }
+  }
   const { data, error } = await supabase.rpc("aprovar_empreendimento", { p_id: id, p_aprovar: action === "approve", p_motivo: action === "reject" ? (body.motivo || undefined) : undefined });
   const result = data && typeof data === "object" ? data as Record<string, unknown> : {};
   if (error || result.ok === false) return Response.json({ error: error?.message || (typeof result.error === "string" ? result.error : "Não foi possível concluir a aprovação.") }, { status: error ? 502 : 403 });
@@ -51,6 +81,12 @@ type CapturePayload = {
   owner: { id: string | null; name: string; email: string; phone: string } | null;
   property: {
     name: string;
+    title?: string;
+    slogan?: string;
+    description?: string;
+    purpose?: string;
+    amenities?: string[];
+    differentiators?: string[];
     developer: string;
     status: "pronto" | "em_obras" | "lancamento";
     price: number;
@@ -129,8 +165,40 @@ export async function POST(request: Request) {
   }
   const numericValues = [property.price, property.condominiumFee, property.propertyTax, property.otherCosts, property.area, property.bedrooms, property.suites, property.bathrooms, property.parking];
   if (!numericValues.every(isNonNegative)) return Response.json({ error: "Revise os valores numéricos do imóvel." }, { status: 422 });
+  const propertyPriceCheck = validateProductPrice(property.price, "Preço do imóvel");
+  if (propertyPriceCheck.error) return Response.json({ error: propertyPriceCheck.error }, { status: 422 });
   if (payload.propertyType === "construtora" && (!units.length || units.some((unit) => !unit.number.trim() || !unit.type.trim() || !isNonNegative(unit.area) || !isNonNegative(unit.price)))) {
     return Response.json({ error: "Adicione ao menos uma unidade completa ao empreendimento." }, { status: 422 });
+  }
+  for (const unit of units) {
+    const tablePriceCheck = validateProductPrice(unit.price, `Preço da unidade ${unit.number || "sem número"}`);
+    if (tablePriceCheck.error) return Response.json({ error: tablePriceCheck.error }, { status: 422 });
+    if (unit.promotionalPrice != null) {
+      const promoPriceCheck = validateProductPrice(unit.promotionalPrice, `Preço promocional da unidade ${unit.number || "sem número"}`);
+      if (promoPriceCheck.error) return Response.json({ error: promoPriceCheck.error }, { status: 422 });
+    }
+  }
+
+  // Evita imóveis repetidos antes de criar qualquer registro auxiliar.
+  const { data: possibleDuplicates } = await supabase
+    .from("empreendimentos")
+    .select("id,nome,endereco,numero,bairro,cidade")
+    .ilike("cidade", condominium.city.trim())
+    .limit(80);
+  const duplicate = (possibleDuplicates ?? []).find((item) => {
+    const sameName = normalizedKey(item.nome) === normalizedKey(property.name);
+    const sameAddress = normalizedKey(item.endereco) === normalizedKey(condominium.address)
+      && normalizedKey(item.numero) === normalizedKey(condominium.number);
+    const sameNeighborhood = normalizedKey(item.bairro) === normalizedKey(condominium.neighborhood);
+    return sameName || (sameAddress && sameNeighborhood);
+  });
+  if (duplicate) {
+    return Response.json({
+      error: `Já existe um produto semelhante: ${duplicate.nome}. Abra o cadastro existente em vez de criar outro.`,
+      code: "DUPLICATE_PRODUCT",
+      existingProductId: duplicate.id,
+      existingName: duplicate.nome,
+    }, { status: 409 });
   }
 
   let condominiumId = condominium.id;
@@ -173,13 +241,17 @@ export async function POST(request: Request) {
 
   const { data: broker } = await supabase.from("corretores").select("id").eq("usuario_id", authData.user.id).maybeSingle();
   const { data: development, error: developmentError } = await supabase.from("empreendimentos").insert({
-    nome: property.name.trim(), titulo: property.name.trim(), incorporadora: property.developer.trim() || null,
+    nome: property.name.trim(), titulo: property.title?.trim() || property.name.trim(), slogan: property.slogan?.trim() || null,
+    descricao: property.description?.trim() || null, finalidade: property.purpose?.trim() || null,
+    lazer: property.amenities?.map((item) => item.trim()).filter(Boolean) || [],
+    diferenciais: property.differentiators?.map((item) => item.trim()).filter(Boolean) || [],
+    incorporadora: property.developer.trim() || null,
     status: property.status, origem: payload.propertyType === "terceiro" ? "terceiros" : "predio",
     condominio_id: condominiumId, proprietario_id: ownerId,
     cep: condominium.zipCode.trim() || null, endereco: condominium.address.trim(), numero: condominium.number.trim() || null,
     complemento: condominium.complement.trim() || null, bairro: condominium.neighborhood.trim() || null,
     cidade: condominium.city.trim(), uf: condominium.state.trim() || "SP",
-    preco: property.price, condominio_valor: property.condominiumFee, iptu: property.propertyTax, outros_custos: property.otherCosts,
+    preco: propertyPriceCheck.value, condominio_valor: property.condominiumFee, iptu: property.propertyTax, outros_custos: property.otherCosts,
     area_util: property.area, dormitorios: property.bedrooms, suites: property.suites, banheiros: property.bathrooms, vagas: property.parking,
     proprietario_nome: owner?.name.trim() || null, proprietario_tel: owner?.phone.trim() || null, proprietario_email: owner?.email.trim().toLowerCase() || null,
     acesso_tipo: access.type, acesso_codigo: access.type === "chave_digital" ? access.code.trim() : null,

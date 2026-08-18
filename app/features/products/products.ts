@@ -1,3 +1,5 @@
+import type { ProductQuality } from "./quality";
+
 export type Product = {
   id?: string;
   name: string;
@@ -23,6 +25,11 @@ export type Product = {
   rejectionReason?: string | null;
   mine?: boolean;
   capturedBy?: string | null;
+  quality?: ProductQuality;
+  published?: boolean;
+  createdAt?: string | null;
+  updatedAt?: string | null;
+  topIssue?: string | null;
 };
 
 export const products: Product[] = [

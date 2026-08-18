@@ -1,6 +1,7 @@
 import { createServerSupabaseClient } from "../../lib/supabase/server";
 import type { Database } from "../../lib/supabase/database.types";
 import { resolveEffectiveAccess, denyIfCannot } from "../../lib/supabase/authz";
+import { assessProductQuality, PRODUCT_PRICE_MAX, PRODUCT_PRICE_MIN, validateProductPrice } from "../../features/products/quality";
 
 export const dynamic = "force-dynamic";
 
@@ -9,7 +10,7 @@ type OwnerUpdate = Database["public"]["Tables"]["proprietarios"]["Update"];
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const productFields = [
-  "nome", "incorporadora", "descricao", "status", "preco", "condominio_valor", "iptu",
+  "nome", "titulo", "slogan", "finalidade", "lazer", "diferenciais", "incorporadora", "descricao", "status", "preco", "condominio_valor", "iptu",
   "outros_custos", "area_util", "dormitorios", "suites", "vagas", "banheiros", "endereco",
   "numero", "complemento", "bairro", "cidade", "uf", "cep", "acesso_tipo", "acesso_codigo",
   "acesso_instrucoes", "tour_url",
@@ -56,6 +57,19 @@ export async function GET(request: Request) {
   const unitAreas = availableUnits.map((item) => item.area_m2).filter((value): value is number => typeof value === "number" && value > 0);
   const photoCount = media.filter((item) => item.tipo === "foto").length;
   const videoCount = media.filter((item) => item.tipo === "video").length;
+  const summaryPrice = data.preco ?? (unitPrices.length ? Math.min(...unitPrices) : null);
+  const summaryArea = data.area_util ?? (unitAreas.length ? Math.min(...unitAreas) : null);
+  const quality = assessProductQuality({
+    name: data.nome, title: data.titulo, slogan: data.slogan, description: data.descricao, purpose: data.finalidade,
+    price: summaryPrice, area: summaryArea, bedrooms: data.dormitorios, bathrooms: data.banheiros, parking: data.vagas,
+    address: data.endereco, number: data.numero, neighborhood: data.bairro, city: data.cidade, state: data.uf, zip: data.cep,
+    condominiumFee: data.condominio_valor, propertyTax: data.iptu, otherCosts: data.outros_custos,
+    photos: photoCount, videos: videoCount, hasCover: media.some((item) => item.tipo === "foto" && item.is_capa),
+    mediaCategories: media.filter((item) => item.tipo === "foto").map((item) => item.categoria ?? ""), tourUrl: data.tour_url,
+    units: units.length, availableUnits: availableUnits.length,
+    unitsWithValidPrice: unitPrices.filter((value) => value >= PRODUCT_PRICE_MIN && value <= PRODUCT_PRICE_MAX).length,
+    amenities: data.lazer, differentiators: data.diferenciais,
+  });
   const { data: broker } = await auth.supabase.from("corretores").select("id").eq("usuario_id", auth.user.id).maybeSingle();
   let leadsQuery = auth.supabase.from("leads").select("id,nome,telefone,corretor_id").order("atualizado_em", { ascending: false }).limit(100);
   if (broker?.id) leadsQuery = leadsQuery.eq("corretor_id", broker.id);
@@ -82,7 +96,7 @@ export async function GET(request: Request) {
     checks.owner = Boolean(data.proprietario_id || (data.proprietario_nome && data.proprietario_tel && data.proprietario_email));
     checks.access = Boolean(data.acesso_tipo && data.acesso_instrucoes && (data.acesso_tipo !== "chave_digital" || data.acesso_codigo));
   }
-  return Response.json({ product: { ...data, midias: media, unidades: unidadesEnriched, captado_por_nome: capturedByName, mine, summary_price: data.preco ?? (unitPrices.length ? Math.min(...unitPrices) : null), summary_area: data.area_util ?? (unitAreas.length ? Math.min(...unitAreas) : null), is_favorite: Boolean(favorite), leads: (leadOptions ?? []).map((lead) => ({ ...lead, linked: linkedIds.has(lead.id) })), completion: { checks, completed: Object.values(checks).filter(Boolean).length, total: Object.keys(checks).length } } });
+  return Response.json({ product: { ...data, midias: media, unidades: unidadesEnriched, captado_por_nome: capturedByName, mine, summary_price: summaryPrice, summary_area: summaryArea, is_favorite: Boolean(favorite), leads: (leadOptions ?? []).map((lead) => ({ ...lead, linked: linkedIds.has(lead.id) })), quality, completion: { checks, completed: Object.values(checks).filter(Boolean).length, total: Object.keys(checks).length } } });
 }
 
 export async function PATCH(request: Request) {
@@ -111,6 +125,13 @@ export async function PATCH(request: Request) {
     if (!numero) return Response.json({ error: "Informe o número da unidade." }, { status: 400 });
     const valorTabela = asNumber(input.valor_tabela);
     if (valorTabela == null) return Response.json({ error: "Informe o valor de tabela da unidade." }, { status: 400 });
+    const tablePriceCheck = validateProductPrice(valorTabela, "Valor de tabela");
+    if (tablePriceCheck.error) return Response.json({ error: tablePriceCheck.error }, { status: 422 });
+    const promoPrice = asNumber(input.valor_promo);
+    if (promoPrice != null) {
+      const promoPriceCheck = validateProductPrice(promoPrice, "Valor promocional");
+      if (promoPriceCheck.error) return Response.json({ error: promoPriceCheck.error }, { status: 422 });
+    }
 
     const { data: broker } = await auth.supabase.from("corretores").select("id").eq("usuario_id", auth.user.id).maybeSingle();
     const unitRow = {
@@ -120,8 +141,8 @@ export async function PATCH(request: Request) {
       tipologia: asString(input.tipologia),
       area_m2: asNumber(input.area_m2),
       vagas: asNumber(input.vagas),
-      valor_tabela: valorTabela,
-      valor_promo: asNumber(input.valor_promo),
+      valor_tabela: tablePriceCheck.value,
+      valor_promo: promoPrice,
       proprietario_nome: asString(input.proprietario_nome),
       proprietario_contato: asString(input.proprietario_contato),
       acesso_tipo: asString(input.acesso_tipo),
@@ -194,7 +215,39 @@ export async function PATCH(request: Request) {
       const { error } = await auth.supabase.from("empreendimentos").update({ rascunho: true }).eq("id", id);
       return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true, rascunho: true });
     }
-    // Publicar: aprovador publica direto — vai pro ar e aprova (limpa a pendência, sai da fila).
+    // Publicar somente após a checagem profissional. A regra fica no servidor para não ser
+    // contornada por chamadas diretas à API.
+    const { data: productToPublish, error: readError } = await auth.supabase
+      .from("empreendimentos")
+      .select("nome,titulo,slogan,descricao,finalidade,preco,area_util,dormitorios,banheiros,vagas,endereco,numero,bairro,cidade,uf,cep,condominio_valor,iptu,outros_custos,lazer,diferenciais,tour_url,unidades(area_m2,valor_tabela,valor_promo,disponivel),midias(tipo,categoria,is_capa)")
+      .eq("id", id)
+      .single();
+    if (readError || !productToPublish) return Response.json({ error: readError?.message ?? "Produto não encontrado." }, { status: 502 });
+    const publishUnits = productToPublish.unidades ?? [];
+    const publishAvailable = publishUnits.filter((unit) => unit.disponivel);
+    const publishPrices = publishAvailable.map((unit) => unit.valor_promo ?? unit.valor_tabela).filter((value): value is number => typeof value === "number" && value > 0);
+    const publishAreas = publishAvailable.map((unit) => unit.area_m2).filter((value): value is number => typeof value === "number" && value > 0);
+    const publishMedia = productToPublish.midias ?? [];
+    const quality = assessProductQuality({
+      name: productToPublish.nome, title: productToPublish.titulo, slogan: productToPublish.slogan,
+      description: productToPublish.descricao, purpose: productToPublish.finalidade,
+      price: productToPublish.preco ?? (publishPrices.length ? Math.min(...publishPrices) : null),
+      area: productToPublish.area_util ?? (publishAreas.length ? Math.min(...publishAreas) : null),
+      bedrooms: productToPublish.dormitorios, bathrooms: productToPublish.banheiros, parking: productToPublish.vagas,
+      address: productToPublish.endereco, number: productToPublish.numero, neighborhood: productToPublish.bairro,
+      city: productToPublish.cidade, state: productToPublish.uf, zip: productToPublish.cep,
+      condominiumFee: productToPublish.condominio_valor, propertyTax: productToPublish.iptu, otherCosts: productToPublish.outros_custos,
+      photos: publishMedia.filter((item) => item.tipo === "foto").length,
+      videos: publishMedia.filter((item) => item.tipo === "video").length,
+      hasCover: publishMedia.some((item) => item.tipo === "foto" && item.is_capa),
+      mediaCategories: publishMedia.filter((item) => item.tipo === "foto").map((item) => item.categoria ?? ""),
+      tourUrl: productToPublish.tour_url, units: publishUnits.length, availableUnits: publishAvailable.length,
+      unitsWithValidPrice: publishPrices.filter((value) => value >= PRODUCT_PRICE_MIN && value <= PRODUCT_PRICE_MAX).length,
+      amenities: productToPublish.lazer, differentiators: productToPublish.diferenciais,
+    });
+    if (!quality.readyForSite) {
+      return Response.json({ error: "Este imóvel ainda não atingiu o padrão para o site.", code: "PRODUCT_NOT_READY", quality, blocking: quality.blocking }, { status: 422 });
+    }
     const { error } = await auth.supabase.from("empreendimentos").update({ rascunho: false, aprovacao: "aprovado", publicado: true, reprovacao_motivo: null }).eq("id", id);
     return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true, rascunho: false, aprovacao: "aprovado" });
   }
@@ -244,9 +297,18 @@ export async function PATCH(request: Request) {
   const incoming = (body.product && typeof body.product === "object" ? body.product : {}) as Record<string, unknown>;
   const update: ProductUpdate = {};
   for (const field of productFields) {
-    if (Object.hasOwn(incoming, field)) (update as Record<string, unknown>)[field] = incoming[field] === "" ? null : incoming[field];
+    if (!Object.hasOwn(incoming, field)) continue;
+    const rawValue = incoming[field];
+    (update as Record<string, unknown>)[field] = (field === "lazer" || field === "diferenciais") && typeof rawValue === "string"
+      ? rawValue.split(",").map((item) => item.trim()).filter(Boolean)
+      : rawValue === "" ? null : rawValue;
   }
   if (!update.nome || typeof update.nome !== "string") return Response.json({ error: "Informe o nome do produto." }, { status: 400 });
+  if (update.preco !== null && update.preco !== undefined) {
+    const priceCheck = validateProductPrice(update.preco, "Preço do imóvel");
+    if (priceCheck.error) return Response.json({ error: priceCheck.error }, { status: 422 });
+    update.preco = priceCheck.value;
+  }
 
   const { error } = await auth.supabase.from("empreendimentos").update(update).eq("id", id);
   if (error) return Response.json({ error: error.message }, { status: 502 });
@@ -322,6 +384,14 @@ export async function PATCH(request: Request) {
         valor_promo: item.valor_promo === "" || item.valor_promo == null ? null : Number(item.valor_promo),
         disponivel: item.disponivel !== false,
       };
+      if (commonRow.valor_tabela != null) {
+        const priceCheck = validateProductPrice(commonRow.valor_tabela, "Valor de tabela");
+        if (priceCheck.error) return Response.json({ error: priceCheck.error }, { status: 422 });
+      }
+      if (commonRow.valor_promo != null) {
+        const priceCheck = validateProductPrice(commonRow.valor_promo, "Valor promocional");
+        if (priceCheck.error) return Response.json({ error: priceCheck.error }, { status: 422 });
+      }
       const unitId = typeof item.id === "string" && existingIds.has(item.id) ? item.id : null;
       const unitResult = unitId
         ? await auth.supabase.from("unidades").update(commonRow as never).eq("id", unitId).eq("empreendimento_id", id)

@@ -45,6 +45,24 @@
 .top-actions .secondary-action:hover { border-color:#FF7000; color:#C25200; }
 .top-actions .primary-action { border:0; background:#FF7000; color:#fff; box-shadow:0 8px 20px rgba(255,112,0,.26); }
 
+/* Saúde do portfólio — mesma linguagem de cartões, pílulas e cores da ApêCerto. */
+.product-quality-overview { display:grid; grid-template-columns:repeat(6,minmax(120px,1fr)); gap:12px; padding:0 28px 8px; }
+.product-quality-overview button { min-width:0; display:grid; grid-template-columns:1fr auto; align-items:end; gap:3px 8px; padding:15px 16px; border:1px solid transparent; border-radius:18px; background:#fff; box-shadow:0 2px 6px rgba(31,28,26,.06); text-align:left; color:var(--ink); cursor:pointer; }
+.product-quality-overview button:hover,.product-quality-overview button.active { border-color:#FF7000; box-shadow:0 7px 18px rgba(31,28,26,.09); }
+.product-quality-overview span { grid-column:1/-1; color:var(--muted); font-size:11.5px; font-weight:700; }
+.product-quality-overview strong { font-size:25px; line-height:1; letter-spacing:-.03em; }
+.product-quality-overview small { color:var(--faint); font-size:10.5px; }
+.quality-badge { display:inline-flex; align-items:center; justify-content:center; width:max-content; border-radius:999px; padding:5px 9px; font-size:10.5px; font-weight:800; white-space:nowrap; }
+.quality-badge.excelente { background:#E4F6EC; color:#0F7A3D; }
+.quality-badge.bom { background:#E1F2F1; color:#12756E; }
+.quality-badge.atencao { background:#FDF1D9; color:#9A6500; }
+.quality-badge.critico { background:#FBE7E5; color:#A93A32; }
+.product-photo .quality-on-photo { position:absolute; z-index:4; right:12px; top:12px; box-shadow:0 2px 8px rgba(31,28,26,.13); }
+.product-info .product-top-issue,.product-top-issue { display:block; margin:9px 0 0; padding:8px 10px; border-radius:10px; background:#FFF8ED; color:#8A5B13; font-size:11px; line-height:1.35; }
+.approval-actions .ap-review { width:100%; min-height:38px; border:1px solid #D7B8EC; border-radius:999px; background:#FDFAFF; color:#66009A; font-size:12px; font-weight:700; }
+.product-info footer { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+.product-info footer span { color:var(--faint); font-size:10.5px; font-weight:700; }
+
 /* ===== Produtos: ficha (classes reais fv2-* do ProductDetail) ===== */
 .product-detail-panel { border-radius:24px; background:#fff; box-shadow:0 28px 64px rgba(31,28,26,.24); }
 .fv2-close { border:1px solid var(--line-strong); border-radius:999px; background:#fff; color:var(--muted); box-shadow:0 2px 6px rgba(31,28,26,.08); }
@@ -72,6 +90,7 @@
 .fv2-tabs button:hover { border-color:#FF7000; color:#C25200; }
 .fv2-tabs button.active, .fv2-tabs button.ativa { background:#FFF3EA; border-color:#FF7000; color:#C25200; font-weight:700; }
 .fv2-registration { border-radius:18px; background:#F7ECFC; }
+.fv2-registration.quality-excelente { background:#E4F6EC; }.fv2-registration.quality-bom { background:#E1F2F1; }.fv2-registration.quality-atencao { background:#FDF1D9; }.fv2-registration.quality-critico { background:#FBE7E5; }
 .fv2-registration-ic { width:34px; height:34px; border-radius:10px; display:grid; place-items:center; background:#fff; color:#8B00CC; }
 .fv2-registration strong { font-size:14.5px; font-weight:700; color:var(--ink); }
 .fv2-registration small { font-size:12px; color:var(--muted); }
@@ -115,6 +134,13 @@
 .detail-form input, .detail-form select, .detail-form textarea, .field-grid input, .field-grid select { min-height:42px; border:1px solid var(--line-strong); border-radius:12px; padding:0 13px; font-size:13px; font-weight:600; color:var(--ink); background:#fff; }
 .detail-form textarea { padding:11px 13px; }
 .detail-form input:focus, .detail-form select:focus, .detail-form textarea:focus, .field-grid input:focus, .field-grid select:focus { outline:0; border-color:#FF7000; box-shadow:0 0 0 3px rgba(255,112,0,.16); }
+.form-guidance { margin:0 0 8px; color:var(--muted); font-size:12.5px; line-height:1.55; }
+.quality-dimensions { display:grid; grid-template-columns:repeat(4,1fr); gap:9px; margin:12px 0; }
+.quality-dimensions>div { padding:11px; border-radius:14px; background:#fff; box-shadow:0 2px 6px rgba(31,28,26,.05); }
+.quality-dimensions span { display:block; text-transform:capitalize; color:var(--muted); font-size:10.5px; font-weight:700; }.quality-dimensions strong { display:block; margin:3px 0 7px; font-size:14px; }.quality-dimensions i { display:block; height:5px; overflow:hidden; border-radius:99px; background:var(--line); }.quality-dimensions i b { display:block; height:100%; border-radius:inherit; background:linear-gradient(90deg,#FF7000,#8B00CC); }
+.quality-blockers { display:grid; gap:6px; margin:12px 0; padding:14px; border-radius:16px; background:#FFF8ED; }.quality-blockers>strong { color:#704A0E; font-size:12px; }.quality-blockers button { display:flex; justify-content:space-between; gap:10px; border:0; border-bottom:1px solid #F1E2C8; padding:7px 0; background:transparent; color:#795521; text-align:left; font-size:11.5px; }.quality-blockers button:last-child { border-bottom:0; }.quality-blockers button span { color:#C25200; font-weight:700; }
+.site-content-review { display:grid; gap:14px; }.site-content-head { display:flex; justify-content:space-between; gap:16px; padding:20px; border-radius:18px; background:linear-gradient(135deg,#FFF3EA,#FDFAFF); }.site-content-head small { color:#C25200; font-size:10px; font-weight:800; letter-spacing:.1em; }.site-content-head h3 { margin:5px 0; font-size:20px; }.site-content-head p { margin:0; color:var(--muted); font-size:13px; }.site-content-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:9px; }.site-content-grid>div,.site-content-review section { padding:15px; border-radius:15px; background:#fff; box-shadow:0 2px 6px rgba(31,28,26,.05); }.site-content-grid small { display:block; color:var(--faint); font-size:9.5px; font-weight:800; letter-spacing:.08em; }.site-content-grid strong { display:block; margin-top:5px; font-size:13px; }.site-content-review section h4 { margin:0 0 8px; font-size:13px; }.site-content-review section p { margin:0; color:var(--muted); font-size:12.5px; line-height:1.6; }.site-content-tags { display:flex; flex-wrap:wrap; gap:7px; }.site-content-tags span { padding:6px 10px; border-radius:999px; background:#F7ECFC; color:#66009A; font-size:11px; font-weight:700; }.site-content-tags em { color:var(--faint); font-size:12px; }.site-content-actions,.fv2-review-actions { display:flex; gap:8px; }.site-content-actions a { text-decoration:none; }.fv2-review-actions { flex-direction:column; }.fv2-review-actions .fv2-btn { justify-content:center; }
+.money-input { display:grid; gap:7px; padding:13px; border:1px solid var(--line); border-radius:15px; background:#fff; }.money-input-head { display:flex; align-items:center; justify-content:space-between; gap:12px; }.money-input-head>span:first-child { color:var(--faint); font-size:11.5px; font-weight:700; letter-spacing:.04em; }.money-mode { display:flex; padding:3px; border-radius:999px; background:var(--page); }.money-mode button { border:0; border-radius:999px; padding:5px 9px; background:transparent; color:var(--muted); font-size:10px; font-weight:700; }.money-mode button.active { background:#FFF3EA; color:#C25200; box-shadow:inset 0 0 0 1px #FF7000; }.money-input-field { display:flex; align-items:center; overflow:hidden; border:1px solid var(--line-strong); border-radius:12px; background:#fff; }.money-input-field>span { padding-left:12px; color:#C25200; font-size:12px; font-weight:800; }.money-input-field input { border:0!important; box-shadow:none!important; background:#fff!important; }.money-input>small { color:#0F7A3D; font-size:11.5px; font-weight:700; }.money-input.compact { min-width:145px; padding:6px; }.money-input.compact .money-input-head { justify-content:flex-end; }.money-input.compact .money-mode button { padding:3px 6px; font-size:8px; }.money-input.compact .money-input-field input { min-height:31px; padding:6px!important; }.unit-money-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:12px; }
 
 /* ===== Produtos: captação completa (classes reais do CaptureWizard) ===== */
 .capture-panel { background:var(--page); }
@@ -165,6 +191,9 @@
 .capture-footer .ghost-action:hover { border-color:#FF7000; color:#C25200; }
 .capture-footer .primary-action { border:0; border-radius:999px; padding:13px 28px; background:#FF7000; color:#fff; font-size:13.5px; font-weight:700; box-shadow:0 8px 20px rgba(255,112,0,.26); }
 .capture-footer .primary-action:hover { background:#E85D00; }
+
+@media (max-width:1100px) { .product-quality-overview { grid-template-columns:repeat(3,1fr); }.quality-dimensions,.site-content-grid { grid-template-columns:repeat(2,1fr); } }
+@media (max-width:720px) { .product-quality-overview { grid-template-columns:repeat(2,1fr); padding-inline:14px; }.quality-dimensions,.site-content-grid,.unit-money-grid { grid-template-columns:1fr; }.site-content-head { flex-direction:column; }.money-input-head { align-items:flex-start; flex-direction:column; } }
 
 /* ===== Financeiro, ficha da venda e Importar extrato ===== */
 .finance-workspace { background:#FAF8F6; }

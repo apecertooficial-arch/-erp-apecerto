@@ -1,4 +1,5 @@
 import { createServerSupabaseClient } from "../../lib/supabase/server";
+import { assessProductQuality, PRODUCT_PRICE_MAX, PRODUCT_PRICE_MIN } from "../../features/products/quality";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +20,7 @@ type MediaRow = {
   categoria: string | null;
   nome: string | null;
   is_capa: boolean;
+  created_at: string;
 };
 
 function publicMediaUrl(path: string) {
@@ -44,11 +46,13 @@ export async function GET(request: Request) {
   const { data, error } = await supabase
     .from("empreendimentos")
     .select(`
-      id, nome, incorporadora, bairro, cidade, status, area_util, rascunho,
-      dormitorios, suites, vagas, preco, created_at, publicado, origem,
+      id, nome, titulo, slogan, descricao, finalidade, incorporadora, endereco, numero,
+      bairro, cidade, uf, cep, status, area_util, rascunho, dormitorios, suites, banheiros,
+      vagas, preco, condominio_valor, iptu, outros_custos, created_at, published_at,
+      publicado, origem, lazer, diferenciais, tour_url,
       aprovacao, reprovacao_motivo, captado_por_usuario, captador_corretor_id,
       unidades (id, area_m2, tipologia, vagas, valor_tabela, valor_promo, disponivel),
-      midias (id, tipo, storage_path, categoria, nome, is_capa)
+      midias (id, tipo, storage_path, categoria, nome, is_capa, created_at)
     `)
     .order("created_at", { ascending: false })
     .limit(120);
@@ -60,6 +64,12 @@ export async function GET(request: Request) {
   const favoriteIds = new Set((favorites ?? []).map((item) => item.empreendimento_id));
   const { data: corretoresList } = await supabase.from("corretores").select("id,nome");
   const corretorNameById = new Map((corretoresList ?? []).map((c) => [c.id, c.nome]));
+  const catalogIds = (data ?? []).map((item) => item.id);
+  const { data: leadLinks } = catalogIds.length
+    ? await supabase.from("lead_produtos").select("empreendimento_id").in("empreendimento_id", catalogIds)
+    : { data: [] };
+  const leadCountByProduct = new Map<string, number>();
+  for (const link of leadLinks ?? []) leadCountByProduct.set(link.empreendimento_id, (leadCountByProduct.get(link.empreendimento_id) ?? 0) + 1);
 
   const catalog = (data ?? []).map((item) => {
     const units = (item.unidades ?? []) as UnitRow[];
@@ -77,6 +87,45 @@ export async function GET(request: Request) {
       const match = unit.tipologia?.match(/(\d+)\s*(?:dorm|su[ií]te)/i);
       return match ? Number(match[1]) : /studio/i.test(unit.tipologia ?? "") ? 0 : null;
     }).filter((value): value is number => value !== null);
+    const price = item.preco ?? (prices.length ? Math.min(...prices) : null);
+    const area = areas.length ? Math.min(...areas) : item.area_util;
+    const photoMedia = media.filter((entry) => entry.tipo === "foto");
+    const videoMedia = media.filter((entry) => entry.tipo === "video");
+    const quality = assessProductQuality({
+      name: item.nome,
+      title: item.titulo,
+      slogan: item.slogan,
+      description: item.descricao,
+      purpose: item.finalidade,
+      price,
+      area,
+      bedrooms: item.dormitorios ?? (bedroomOptions.length ? Math.max(...bedroomOptions) : null),
+      bathrooms: item.banheiros,
+      parking: item.vagas,
+      address: item.endereco,
+      number: item.numero,
+      neighborhood: item.bairro,
+      city: item.cidade,
+      state: item.uf,
+      zip: item.cep,
+      condominiumFee: item.condominio_valor,
+      propertyTax: item.iptu,
+      otherCosts: item.outros_custos,
+      photos: photoMedia.length,
+      videos: videoMedia.length,
+      hasCover: photoMedia.some((entry) => entry.is_capa),
+      mediaCategories: photoMedia.map((entry) => entry.categoria ?? ""),
+      tourUrl: item.tour_url,
+      units: units.length,
+      availableUnits: availableUnits.length,
+      unitsWithValidPrice: prices.filter((value) => value >= PRODUCT_PRICE_MIN && value <= PRODUCT_PRICE_MAX).length,
+      amenities: item.lazer,
+      differentiators: item.diferenciais,
+    });
+    const activityDates = [item.created_at, item.published_at, ...media.map((entry) => entry.created_at)]
+      .map((value) => Date.parse(value ?? ""))
+      .filter(Number.isFinite);
+    const updatedAt = new Date(Math.max(...activityDates)).toISOString();
 
     return {
       id: item.id,
@@ -87,8 +136,8 @@ export async function GET(request: Request) {
       status: item.status,
       origin: item.origem,
       published: item.publicado,
-      price: item.preco ?? (prices.length ? Math.min(...prices) : null),
-      area: areas.length ? Math.min(...areas) : item.area_util,
+      price,
+      area,
       bedrooms: item.dormitorios ?? (bedroomOptions.length ? Math.max(...bedroomOptions) : null),
       suites: item.suites,
       parking: item.vagas,
@@ -102,6 +151,11 @@ export async function GET(request: Request) {
       mine: (item as { captado_por_usuario?: string | null }).captado_por_usuario === authData.user.id,
       capturedBy: corretorNameById.get((item as { captador_corretor_id?: number | null }).captador_corretor_id ?? -1) ?? null,
       favorite: favoriteIds.has(item.id),
+      quality,
+      topIssue: quality.blocking[0] ?? null,
+      createdAt: item.created_at,
+      updatedAt,
+      leads: leadCountByProduct.get(item.id) ?? 0,
     };
   });
 
@@ -109,6 +163,14 @@ export async function GET(request: Request) {
   // Admin/gestor enxergam tudo (inclusive a fila de pendentes).
   const visible = canApprove ? catalog : catalog.filter((p) => p.approval === "aprovado" || p.mine);
   const pendingCount = catalog.filter((p) => p.approval === "pendente" && !p.draft).length;
+  const qualitySummary = {
+    excellent: visible.filter((p) => p.quality.level === "excelente").length,
+    good: visible.filter((p) => p.quality.level === "bom").length,
+    attention: visible.filter((p) => p.quality.level === "atencao").length,
+    critical: visible.filter((p) => p.quality.level === "critico").length,
+    readyForSite: visible.filter((p) => p.quality.readyForSite).length,
+    average: visible.length ? Math.round(visible.reduce((sum, p) => sum + p.quality.score, 0) / visible.length) : 0,
+  };
 
   // Fila de UNIDADES de indicação pendentes (só para aprovadores).
   type PendingUnit = { id: string; numero: string | null; tipologia: string | null; valor: number | null; empreendimentoId: string; predio: string; proprietario: string | null; indicador: string | null; coverUrl: string | null };
@@ -140,6 +202,7 @@ export async function GET(request: Request) {
     role,
     canApprove,
     pendingCount,
+    qualitySummary,
     pendingUnits,
     count: visible.length,
     catalog: visible,
