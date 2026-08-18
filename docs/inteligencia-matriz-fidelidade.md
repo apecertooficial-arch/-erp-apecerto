@@ -147,6 +147,14 @@ a mostrar perda absoluta junto da taxa entre etapas. Qualidade abre a ficha de c
 com amostra, sem criar ranking e sem classificar quem não atingiu o mínimo. Os números continuam vindo
 do mesmo endpoint autenticado; nenhum nome novo é exposto por agregação.
 
+## Commit 7 — Gestão de pessoas
+
+Performance preserva quatro pilares independentes e expõe a base de cada um; Corretores mantém a
+leitura individual sem ranking público e declara que atividade no ERP não é controle de ponto. Em
+Gerentes, cada linha abre o drawer compartilhado com capacidade, pendências e uma decisão calculada
+sobre o limite cadastrado. A hierarquia corretor → gerente continua visível como dependência, portanto
+nenhuma equipe fictícia foi criada para preencher a referência visual.
+
 ## Diferença de sistema — as 14 peças do artboard 30b
 
 | Peça | Situação | Evidência | Ação |
@@ -160,7 +168,7 @@ do mesmo endpoint autenticado; nenhum nome novo é exposto por agregação.
 | 07 Selo de procedência | fiel | "DADO REAL · hh:mm" / "aguardando dado"; DEMONSTRAÇÃO omitido de propósito | — |
 | 08 Linha de funil | **fiel (Commit 6)** | barra, volume, perda absoluta, taxa e clique para o drawer agregador | — |
 | 09 Tabela | **fiel (Commit 3)** | ordenação só em coluna comparável, `aria-sort`, linha clicável por mouse/Enter/Espaço, foco visível | paginação e ordem na URL, quando o volume pedir |
-| 10 Drawer 420px | **fiel (Commit 2)** | um componente para imóvel, jornada e corretor; URL, foco, Esc, scrim e folha móvel | gerente entra no Commit 7 |
+| 10 Drawer 420px | **fiel (Commits 2 e 7)** | um componente para imóvel, jornada, corretor e gerente; URL, foco, Esc, scrim e folha móvel | — |
 | 11 Bloco de pendência | fiel | `.ape-int-pendencia` alimentado por `pendencias[]` | — |
 | 12 Vazio e erro | fiel | tracejado neutro / #FBE5E5 com "Tentar novamente" | — |
 | 13 Esqueleto | **fiel (Commit 1)** | três formas por bloco; o de tabela vira cartão no celular (Commit 3) | — |
