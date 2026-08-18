@@ -4,9 +4,13 @@
  *
  * A casca lê daqui. Tela ausente do registro não vira página em branco: a casca
  * mostra o cabeçalho real dela e o BlocoSemDado com a referência do artboard.
+ *
+ * As folhas da área que não pertencem a um componente único são carregadas aqui,
+ * junto do registro: este módulo é o único que toda tela da área atravessa.
  */
 
 import type { ReactNode } from "react";
+import "../../styles/inteligencia-gaveta.css";
 import type { PropsTela } from "./CascaInteligencia";
 import { VisaoEmpresa } from "./telas/VisaoEmpresa";
 import { VendasPrevisao } from "./telas/VendasPrevisao";
