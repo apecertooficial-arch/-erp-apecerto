@@ -1,18 +1,24 @@
 "use client";
 
-/* CORRETORES — artboard 18a.
- * Lista gerencial com a mesma régua para todos: verde ≤5 min, âmbar 5–15,
- * vermelho acima de 15. Quem não tem amostra não é classificado — e a tela diz
- * por quê, em vez de mostrar zero.
+/* 13 · CORRETORES — artboard 18a, na íntegra.
  *
- * Auditoria de fidelidade: o PERFIL DO CORRETOR do artboard virou a gaveta
- * lateral de 420px — clique na linha da tabela ou em “abrir perfil”.
+ * Ordem dos blocos igual à do desenho:
+ *   1. a régua da casa em quatro números
+ *   2. sobrecarga como contexto obrigatório
+ *   3. lista gerencial (lista + detalhe)
+ *   4. tabela completa, ordenada por negócios
+ *   5. gaveta com o perfil do corretor
+ *   6. quem precisa de ajuda · quem é referência — os dois cortes do artboard
+ *   7. rodapé de fontes
+ *
+ * Régua: verde ≤5 min · âmbar 5–15 · vermelho acima de 15. Sem amostra de 8
+ * atendimentos, a pessoa não é classificada — e a tela diz por quê.
  */
 
 import { useState } from "react";
 import type { PropsTela } from "../CascaInteligencia";
 import { fmt, RodapeFontes } from "../dado";
-import { Banner, Cabecalho, GavetaLateral, GradeKpis, ListaComDetalhe, Tabela, type Detalhe, type Kpi } from "../pecas";
+import { Banner, Cabecalho, CartoesLista, GavetaLateral, GradeKpis, ListaComDetalhe, Tabela, type Detalhe, type Kpi } from "../pecas";
 
 type Corretor = {
   nome: string;
@@ -29,7 +35,16 @@ type Corretor = {
   det: Detalhe;
 };
 
-type Dados = { ativos: number | null; melhor: number | null; pior: number | null; conversaoMedia: number | null; corretores: Corretor[]; atualizado: string };
+type Dados = {
+  ativos: number | null;
+  melhor: number | null;
+  pior: number | null;
+  conversaoMedia: number | null;
+  corretores: Corretor[];
+  precisaAjuda: { l: string; r: string; sub?: string; corR?: string }[];
+  referencia: { l: string; r: string; sub?: string }[];
+  atualizado: string;
+};
 
 const corDoTempo = (min: number | null, novato?: boolean) => {
   if (novato || min === null) return "#8B00CC";
@@ -45,8 +60,8 @@ export function Corretores({ recorte }: PropsTela) {
 
   const kpis: Kpi[] = [
     { rotulo: "Corretores ativos", bruto: d.ativos, texto: fmt.inteiro(d.ativos), tile: "roxo", icone: "pessoas", foot: "1 novato sem amostra" },
-    { rotulo: "Melhor 1º contato", bruto: d.melhor, texto: fmt.duracaoMin(d.melhor), tom: "bom", tile: "verde", foot: "Ana Beatriz" },
-    { rotulo: "Pior 1º contato", bruto: d.pior, texto: fmt.duracaoMin(d.pior), tom: "ruim", tile: "vermelho", foot: "Rafael Souza" },
+    { rotulo: "Melhor 1º contato", bruto: d.melhor, texto: fmt.duracaoMin(d.melhor), tom: "bom", tile: "verde", foot: "Ana Beatriz · ainda acima da meta de 5 min" },
+    { rotulo: "Pior 1º contato", bruto: d.pior, texto: fmt.duracaoMin(d.pior), tom: "ruim", tile: "vermelho", foot: "Rafael Souza · P90 de 3h20 no sábado" },
     { rotulo: "Conversão média", bruto: d.conversaoMedia, texto: fmt.porcento(d.conversaoMedia), tile: "laranja", foot: "lead → venda" },
   ];
 
@@ -81,7 +96,7 @@ export function Corretores({ recorte }: PropsTela) {
 
       <Cabecalho eyebrow="TABELA COMPLETA" titulo="Cada corretor, do tempo à venda" cor="#8B00CC" nota="clique na linha para abrir o perfil · clique no cabeçalho para ordenar" />
       <Tabela
-        colunas={[{ titulo: "Corretor" }, { titulo: "Equipe" }, { titulo: "1º contato", num: true }, { titulo: "Negócios", num: true }, { titulo: "Visitas", num: true }, { titulo: "Conversão", num: true }, { titulo: "Vencidos", num: true }, { titulo: "Situação" }]}
+        colunas={[{ titulo: "Corretor" }, { titulo: "Equipe" }, { titulo: "1º contato", num: true }, { titulo: "Carga" }, { titulo: "Negócios", num: true }, { titulo: "Visitas", num: true }, { titulo: "Conversão", num: true }, { titulo: "Vencidos", num: true }, { titulo: "Situação" }]}
         ordenadaEm="Negócios"
         linhas={d.corretores.map((c) => ({
           chave: c.nome,
@@ -91,6 +106,7 @@ export function Corretores({ recorte }: PropsTela) {
             { texto: c.nome, forte: true },
             { texto: c.equipe },
             { texto: fmt.duracaoMin(c.primeiraResposta), num: true, cor: corDoTempo(c.primeiraResposta, c.novato) },
+            { texto: c.carga, cor: c.carga.startsWith("46") ? "#D93E3E" : undefined },
             { texto: fmt.inteiro(c.negocios), num: true },
             { texto: fmt.inteiro(c.visitas), num: true },
             { texto: c.novato ? "—" : fmt.porcento(c.conversao), num: true },
@@ -140,6 +156,15 @@ export function Corretores({ recorte }: PropsTela) {
         ) : null}
       </GavetaLateral>
 
+      <Cabecalho eyebrow="DOIS CORTES" titulo="Quem precisa de ajuda e quem é referência utilizável" />
+      <CartoesLista
+        colunas={2}
+        cartoes={[
+          { titulo: "Precisa de ajuda", chip: "com o motivo", chipTom: "ruim", linhas: d.precisaAjuda, foot: "cada caso tem causa diferente — tratar como problemas distintos" },
+          { titulo: "Referência utilizável", linhas: d.referencia, foot: "referência não é ranking: é prática para copiar" },
+        ]}
+      />
+
       <RodapeFontes
         fontes={["negócios", "wa_mensagens", "visitas", "avaliações de conversa"]}
         pendencias={["escala/ponto não integrado", "comissão individual restrita a CEO e Financeiro"]}
@@ -165,6 +190,15 @@ const demo: Dados = {
     { nome: "Rafael Souza", equipe: "Locação", primeiraResposta: 41, negocios: 38, visitas: 12, conversao: 5.3, vencidos: 14, carga: "38 de 40", qualidade: 3.6, coaching: "retomada de proposta", det: { titulo: "Rafael Souza", sub: "equipe Locação", linhas: [["Negócios", "38"], ["P90 no sábado", "3h20"], ["Follow-ups vencidos", "14"], ["Coaching", "retomada de proposta"]], aviso: "Uso do ERP não é jornada de trabalho: ausência de registro não é preguiça." } },
     { nome: "Letícia Alves", equipe: "Venda", primeiraResposta: 12, negocios: 31, visitas: 14, conversao: 7.1, vencidos: 5, carga: "29 de 40", qualidade: 4.1, coaching: "não", det: { titulo: "Letícia Alves", sub: "equipe Venda", linhas: [["Negócios", "31"], ["1º contato (mediana)", "12 min"], ["Visitas", "14"], ["Vendas", "2"]], aviso: "Comissão individual só para CEO e Financeiro." } },
     { nome: "Pedro Costa", equipe: "Locação", primeiraResposta: null, negocios: 18, visitas: 2, conversao: null, vencidos: 0, carga: "18 de 40", qualidade: null, coaching: "integração", novato: true, det: { titulo: "Pedro Costa", sub: "admitido há 9 dias", linhas: [["Leads", "18"], ["Atendimentos", "6"], ["Nota de qualidade", "— não exibida"], ["Regra", "mínimo de 8"]], aviso: "Sem amostra não há classificação — nem para o gestor, nem para ele." } },
+  ],
+  precisaAjuda: [
+    { l: "Rafael Souza", r: "rotina de follow-up", sub: "41 min de mediana e 14 vencidos, com carteira dentro da capacidade", corR: "#D93E3E" },
+    { l: "Carlos Mendes", r: "menos carteira", sub: "14 min de mediana com 46 de 40 — atraso por volume, não por ritmo", corR: "#B5700A" },
+    { l: "Fernanda Lima", r: "amostra de qualidade", sub: "5 conversas avaliadas, abaixo do mínimo de 8" },
+  ],
+  referencia: [
+    { l: "Ana Beatriz", r: "9 min · 9,6%", sub: "melhor tempo da casa, ainda acima da meta de 5 min" },
+    { l: "Letícia Alves", r: "12 min · 7,1%", sub: "carteira folgada e disciplina em dia" },
   ],
   atualizado: "14:28",
 };

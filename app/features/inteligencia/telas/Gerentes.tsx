@@ -1,17 +1,23 @@
 "use client";
 
-/* GERENTES — artboard 17a.
- * Carga, cobertura de horário, coaching e intervenções. Com dois gerentes não
- * existe mediana da casa: a comparação é sempre contra a meta, nunca entre pares.
+/* 12 · GERENTES — artboard 17a, na íntegra.
  *
- * Auditoria de fidelidade: a PÁGINA DO GERENTE do artboard virou a gaveta lateral
- * de 420px — clique na linha da tabela.
+ * Ordem dos blocos igual à do desenho:
+ *   1. quatro números dos gerentes
+ *   2. aviso de escala não integrada
+ *   3. carga e cobertura (lista + detalhe)
+ *   4. tabela lado a lado, com a meta em cada coluna
+ *   5. gaveta com a página do gerente
+ *   6. intervenções abertas · coaching em curso
+ *   7. rodapé de fontes
+ *
+ * Com dois gerentes não existe mediana da casa: comparação sempre contra a meta.
  */
 
 import { useState } from "react";
 import type { PropsTela } from "../CascaInteligencia";
 import { fmt, RodapeFontes } from "../dado";
-import { Banner, Cabecalho, GavetaLateral, GradeKpis, ListaComDetalhe, Tabela, type Detalhe, type Kpi } from "../pecas";
+import { Banner, Cabecalho, CartoesLista, GavetaLateral, GradeKpis, ListaComDetalhe, Tabela, type Detalhe, type Kpi } from "../pecas";
 
 type Gerente = {
   nome: string;
@@ -29,7 +35,16 @@ type Gerente = {
   det: Detalhe;
 };
 
-type Dados = { gerentes: number | null; cargaDesequilibrada: number | null; coberturaSabado: number | null; intervencoes: number | null; lista: Gerente[]; atualizado: string };
+type Dados = {
+  gerentes: number | null;
+  cargaDesequilibrada: number | null;
+  coberturaSabado: number | null;
+  intervencoes: number | null;
+  lista: Gerente[];
+  intervencoesAbertas: { l: string; r: string; sub?: string }[];
+  coaching: { l: string; r: string; sub?: string }[];
+  atualizado: string;
+};
 
 export function Gerentes({ recorte }: PropsTela) {
   const [detalhe, setDetalhe] = useState<Detalhe | null>(null);
@@ -40,7 +55,7 @@ export function Gerentes({ recorte }: PropsTela) {
     { rotulo: "Gerentes", bruto: d.gerentes, texto: fmt.inteiro(d.gerentes), tile: "roxo", icone: "pessoas", foot: "sem mediana da casa: são dois" },
     { rotulo: "Carga desequilibrada", bruto: d.cargaDesequilibrada, texto: fmt.inteiro(d.cargaDesequilibrada), tom: "ruim", tile: "vermelho", foot: "Carlos com 46 de 40" },
     { rotulo: "Cobertura de sábado", bruto: d.coberturaSabado, texto: fmt.porcento(d.coberturaSabado, 0), tom: "ruim", tile: "ambar", foot: "no SLA · escala não integrada" },
-    { rotulo: "Intervenções abertas", bruto: d.intervencoes, texto: fmt.inteiro(d.intervencoes), tile: "laranja", foot: "com prazo definido" },
+    { rotulo: "Intervenções abertas", bruto: d.intervencoes, texto: fmt.inteiro(d.intervencoes), tile: "laranja", foot: "com dono e prazo" },
   ];
 
   return (
@@ -73,7 +88,7 @@ export function Gerentes({ recorte }: PropsTela) {
 
       <Cabecalho eyebrow="LADO A LADO" titulo="Cada número com a meta ao lado" cor="#8B00CC" nota="clique na linha para abrir a página do gerente" />
       <Tabela
-        colunas={[{ titulo: "Gerente" }, { titulo: "Equipe" }, { titulo: "Capacidade" }, { titulo: "Leads", num: true }, { titulo: "% SLA", num: true }, { titulo: "Conversão", num: true }, { titulo: "Coaching", num: true }]}
+        colunas={[{ titulo: "Gerente" }, { titulo: "Equipe" }, { titulo: "Capacidade" }, { titulo: "Leads", num: true }, { titulo: "% SLA", num: true }, { titulo: "Conversão", num: true }, { titulo: "Sábado", num: true }, { titulo: "Coaching", num: true }]}
         ordenadaEm="Leads"
         linhas={d.lista.map((g) => ({
           chave: g.nome,
@@ -81,10 +96,11 @@ export function Gerentes({ recorte }: PropsTela) {
           celulas: [
             { texto: g.nome, forte: true },
             { texto: g.equipe },
-            { texto: g.capacidade },
+            { texto: g.capacidade, cor: g.capacidade.startsWith("46") ? "#D93E3E" : undefined },
             { texto: fmt.inteiro(g.leads), num: true },
             { texto: fmt.porcento(g.sla, 0), num: true, cor: (g.sla ?? 100) < 20 ? "#D93E3E" : undefined },
             { texto: fmt.porcento(g.conversao), num: true },
+            { texto: fmt.porcento(g.sabado, 0), num: true, cor: (g.sabado ?? 100) < 20 ? "#D93E3E" : undefined },
             { texto: fmt.inteiro(g.coaching), num: true },
           ],
         }))}
@@ -127,6 +143,15 @@ export function Gerentes({ recorte }: PropsTela) {
         ) : null}
       </GavetaLateral>
 
+      <Cabecalho eyebrow="O QUE ESTÁ EM CURSO" titulo="Intervenções e coaching, com dono e prazo" />
+      <CartoesLista
+        colunas={2}
+        cartoes={[
+          { titulo: "Intervenções abertas", chip: "com prazo", chipTom: "aviso", linhas: d.intervencoesAbertas, foot: "intervenção sem dono não entra na lista — apareceria como pendência" },
+          { titulo: "Coaching em curso", linhas: d.coaching, foot: "visível para a própria pessoa e para o gerente dela", link: { rotulo: "Abrir Qualidade →", go: () => recorte.irPara("qualidade") } },
+        ]}
+      />
+
       <RodapeFontes
         fontes={["negócios", "leads", "carga por corretor", "intervenções"]}
         pendencias={["escala/ponto não integrado", "mediana da casa não se aplica com dois gerentes"]}
@@ -154,6 +179,16 @@ const demo: Dados = {
       nome: "Marcos Vilela", equipe: "Locação", pessoas: 6, leads: 225, fechamentos: 8, sla: 14, conversao: 3.6, capacidade: "46 de 40", sabado: 18, coaching: 2, intervencao: "plantão de sábado · 7 dias", cor: "#D93E3E",
       det: { titulo: "Marcos Vilela", sub: "equipe Locação", linhas: [["Leads da equipe", "225"], ["Locações", "8"], ["Carlos sobrecarregado", "46 de 40"], ["Sábado no SLA", "18%"]], aviso: "Sugestão de redistribuição depende de carga atualizada." },
     },
+  ],
+  intervencoesAbertas: [
+    { l: "Definir plantão de sábado · Locação", r: "7 dias", sub: "dono Marcos Vilela" },
+    { l: "Redistribuir 6 negócios do Carlos", r: "3 dias", sub: "dono Marcos Vilela · efeito SLA +8 pp" },
+    { l: "Cobrar feedback de 12 visitas", r: "5 dias", sub: "dono Juliana Prado" },
+  ],
+  coaching: [
+    { l: "Rafael Souza · retomada de proposta", r: "3 semanas", sub: "14 follow-ups vencidos" },
+    { l: "Carlos Mendes · rotina de follow-up", r: "2 semanas", sub: "12 conversas sem retorno" },
+    { l: "Pedro Costa · integração", r: "em curso", sub: "sem amostra para avaliar" },
   ],
   atualizado: "14:28",
 };
