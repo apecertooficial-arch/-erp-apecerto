@@ -6,6 +6,10 @@
  * segundo, e UMA barra de filtros comum às 17 telas. Trocar de grupo não limpa
  * filtro: o recorte é da área, não da página.
  *
+ * O Copiloto (32a) vive aqui, entre a barra de filtros e o conteúdo — mesma
+ * posição nas 17 páginas, sem flutuar e sem cobrir bloco. O briefing (32f)
+ * aparece só na Visão da empresa.
+ *
  * A casca não decide conteúdo. Cada tela é registrada em registro.tsx e recebe o
  * recorte atual. Enquanto uma tela não estiver publicada, a casca mostra o
  * cabeçalho real dela e um bloco honesto de pendência — nunca uma tela em
@@ -18,6 +22,8 @@ import "../../styles/inteligencia.css";
 import { grupos, periodos, primeiraDoGrupo, telaPorChave, telas, telasDoGrupo, type GrupoChave } from "./telas";
 import { BlocoSemDado, RodapeFontes } from "./dado";
 import { telasPublicadas } from "./registro";
+import { Copiloto, type PerfilCopiloto } from "./Copiloto";
+import { useErpSession } from "../system/ErpSession";
 
 export type Recorte = {
   periodo: string;
@@ -45,6 +51,11 @@ export function CascaInteligencia({ accessToken }: { accessToken: string }) {
   const [periodo, setPeriodo] = useState<string>("30 dias");
   const [comparar, setComparar] = useState(true);
   const [chips, setChips] = useState<string[]>([]);
+  const { role, isManager } = useErpSession();
+
+  /* Perfil do Copiloto a partir do papel real da sessão. Não existe papel
+     “marketing” no ERP hoje; quando existir, entra aqui sem mexer no agente. */
+  const perfilCopiloto: PerfilCopiloto = role === "admin" ? "CEO" : role === "gestor" || isManager ? "Gerente" : "Corretor";
 
   const tela = telaPorChave(chave) ?? telas[0];
   const doGrupo = telasDoGrupo(grupo);
@@ -149,6 +160,8 @@ export function CascaInteligencia({ accessToken }: { accessToken: string }) {
           <span className="int-filtros-nota">o recorte é da área: trocar de grupo ou de página não limpa filtro</span>
         </div>
       </div>
+
+      <Copiloto tela={tela.chave} recorte={recorte} perfil={perfilCopiloto} briefing={tela.chave === "empresa"} />
 
       {Publicada ? (
         Publicada({ accessToken, recorte })
