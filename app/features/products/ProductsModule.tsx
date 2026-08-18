@@ -112,6 +112,17 @@ export function ProductsModule({ accessToken }: { accessToken: string }) {
 
   useEffect(() => { void loadCatalog(accessToken); }, [accessToken, loadCatalog]);
 
+  const decideFromCard = useCallback(async (produtoId: string, approve: boolean) => {
+    const motivo = approve ? null : (window.prompt("Motivo da reprovação:", "") ?? "");
+    if (!approve && !motivo) return;
+    try {
+      const response = await fetch("/api/capture", { method: "PATCH", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify({ id: produtoId, action: approve ? "approve" : "reject", motivo }) });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) { window.alert(typeof (data as { error?: unknown }).error === "string" ? (data as { error: string }).error : "Não foi possível concluir a aprovação."); return; }
+      void loadCatalog(accessToken);
+    } catch { window.alert("Falha de conexão ao aprovar. Tente novamente."); }
+  }, [accessToken, loadCatalog]);
+
   useEffect(() => {
     publicarBadge("Produtos", canApprove ? pendingCount + pendingUnits.length : 0);
   }, [canApprove, pendingCount, pendingUnits, publicarBadge]);
@@ -120,7 +131,7 @@ export function ProductsModule({ accessToken }: { accessToken: string }) {
     const queryKey = normalizedKey(query);
     const matchesQuery = !queryKey || [product.name, product.title, product.address, product.neighborhood, product.city, product.developer]
       .some((value) => normalizedKey(value).includes(queryKey));
-    const normalize = (value: string) => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace("_", " ").toLowerCase();
+    const normalize = (value: string) => value.normalize("NFD").replace(/[̀-ͯ]/g, "").replace("_", " ").toLowerCase();
     const matchesStatus = status === "Todos" || normalize(product.status ?? "") === normalize(status);
     const matchesNeighborhood = neighborhood === "Todos" || normalizedKey(product.neighborhood) === normalizedKey(neighborhood);
     const matchesDeveloper = developer === "Todas" || normalizedKey(product.developer) === normalizedKey(developer);
@@ -159,7 +170,7 @@ export function ProductsModule({ accessToken }: { accessToken: string }) {
     const escape = (value: unknown) => `"${String(value ?? "").replaceAll('"', '""')}"`;
     const header = ["Produto", "Bairro", "Cidade", "Incorporadora", "Preço", "Área", "Unidades disponíveis", "Leads", "Nota", "Qualidade", "No site", "Principal pendência"];
     const rows = produtosVisiveis.map((item) => [item.name, item.neighborhood, item.city, item.developer, item.numericPrice, item.area, item.available, item.leads, item.quality?.score, item.quality?.label, item.published ? "Sim" : "Não", item.topIssue]);
-    const blob = new Blob(["\uFEFF", [header, ...rows].map((row) => row.map(escape).join(";")).join("\n")], { type: "text/csv;charset=utf-8" });
+    const blob = new Blob(["﻿", [header, ...rows].map((row) => row.map(escape).join(";")).join("\n")], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url; link.download = `catalogo-apecerto-${new Date().toISOString().slice(0, 10)}.csv`; link.click();
@@ -265,7 +276,7 @@ export function ProductsModule({ accessToken }: { accessToken: string }) {
           <div className="product-info"><strong className="price">{product.price}</strong><h2>{product.name}</h2><p className="location">⌖ {product.neighborhood} · {product.city}</p>{product.developer && <p className="developer">{product.developer}</p>}
             <div className="specs"><span className="s-area"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 3h18v18H3z"/><path d="M9 3v4"/><path d="M15 17v4"/><path d="M3 9h4"/><path d="M17 15h4"/></svg>{product.area} m²</span><span className="s-dorm"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M2 18v-6a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v6"/><path d="M4 18v3"/><path d="M20 18v3"/><path d="M6 10V7a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v3"/></svg>{product.bedrooms} dorm.</span><span className="s-vaga"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 17h14"/><path d="M6 17v2"/><path d="M18 17v2"/><path d="M4 17l1.5-5.5A2 2 0 0 1 7.4 10h9.2a2 2 0 0 1 1.9 1.5L20 17z"/></svg>{product.parking} vaga</span></div>
             <div className="estoque"><div className="estoque-top"><strong>{product.available} de {product.units ?? 0} disponíveis</strong><span>{product.media ?? 0} mídias</span></div><div className="estoque-bar"><i style={{ width: `${product.units ? Math.min(100, Math.round((product.available / product.units) * 100)) : 0}%` }} /></div></div>
-            {product.topIssue && <p className="product-top-issue">⚠ {product.topIssue}</p>}{product.approval === "reprovado" && product.rejectionReason && <p className="approval-reason">Motivo: {product.rejectionReason}</p>}{canApprove && product.approval === "pendente" && !product.draft && <p className="approval-captador">👤 Captado por: {product.capturedBy ?? "Não informado"}</p>}{canApprove && product.approval === "pendente" && !product.draft && product.id && <div className="approval-actions" onClick={(event) => event.stopPropagation()}><button type="button" className="ap-review" onClick={() => setSelectedProductId(product.id!)}>Revisar ficha para aprovar</button></div>}<footer><strong>{product.priceM2}</strong><span>{product.leads > 0 ? `${product.leads} lead(s) vinculado(s) · ` : ""}{product.published ? "● Publicado no site" : product.quality?.readyForSite ? "Pronto para publicar" : "Cadastro incompleto"}</span></footer></div></article>)}
+            {product.topIssue && <p className="product-top-issue">⚠ {product.topIssue}</p>}{product.approval === "reprovado" && product.rejectionReason && <p className="approval-reason">Motivo: {product.rejectionReason}</p>}{canApprove && product.approval === "pendente" && !product.draft && <p className="approval-captador">👤 Captado por: {product.capturedBy ?? "Não informado"}</p>}{canApprove && product.approval === "pendente" && !product.draft && product.id && <div className="approval-actions" onClick={(event) => event.stopPropagation()}><button type="button" className="ap-approve" disabled={!product.quality?.readyForSite} title={product.quality?.readyForSite ? "Aprovar e publicar no site" : (product.quality?.blocking?.join(" · ") || "Complete o cadastro antes de aprovar")} onClick={() => decideFromCard(product.id!, true)}>✓ Aprovar</button><button type="button" className="ap-reject" onClick={() => decideFromCard(product.id!, false)}>✕ Reprovar</button></div>}<footer><strong>{product.priceM2}</strong><span>{product.leads > 0 ? `${product.leads} lead(s) vinculado(s) · ` : ""}{product.published ? "● Publicado no site" : product.quality?.readyForSite ? "Pronto para publicar" : "Cadastro incompleto"}</span></footer></div></article>)}
       </section>
       {captureOpen && <CaptureWizard onClose={() => setCaptureOpen(false)} onSaved={() => {
         setCaptureOpen(false);
