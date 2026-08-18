@@ -24,12 +24,20 @@ import { useEffect, useState } from "react";
  * mostramos um aviso discreto com o botao de recarregar.
  */
 
-const BUILD = process.env.NEXT_PUBLIC_BUILD_ID
-  || process.env.NEXT_PUBLIC_COMMIT_SHA
-  /* Sem variavel no ambiente, o valor muda a cada carregamento de pagina: o
-     navegador confere o worker com mais frequencia do que o necessario, o que e
-     desperdicio pequeno e seguro. Preferimos isso a servir versao velha. */
-  || String(Date.now());
+async function buildPublicado() {
+  try {
+    const resposta = await fetch("/api/build", { cache: "no-store" });
+    const corpo = await resposta.json() as { build?: unknown };
+    if (resposta.ok && typeof corpo.build === "string" && /^[a-zA-Z0-9._-]{1,80}$/.test(corpo.build)) {
+      return corpo.build;
+    }
+  } catch {
+    // A casca continua abrindo mesmo se a consulta de versão falhar.
+  }
+  /* Fallback deliberadamente estável: Date.now() criava um service worker novo
+     em CADA recarga e deixava o aviso de atualização em ciclo infinito. */
+  return "estavel";
+}
 
 export function RegistroPwa() {
   const [precisaRecarregar, setPrecisaRecarregar] = useState(false);
@@ -41,7 +49,8 @@ export function RegistroPwa() {
 
     const registrar = async () => {
       try {
-        registro = await navigator.serviceWorker.register(`/sw.js?v=${encodeURIComponent(BUILD)}`, { scope: "/" });
+        const build = await buildPublicado();
+        registro = await navigator.serviceWorker.register(`/sw.js?v=${encodeURIComponent(build)}`, { scope: "/" });
         /* updateViaCache padrao pode servir o proprio sw.js do cache HTTP; pedir
            update explicitamente elimina esse atraso. */
         void registro.update();
