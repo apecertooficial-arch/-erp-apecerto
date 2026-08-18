@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useState, type ReactNode } from "react";
 import type { ModuleName } from "../features/system/module-map";
 import { pathDoModulo, podeVer } from "../features/system/erp-routes";
+import "../styles/menu-inteligencia-icone.css";
 
 /* GRUPOS DO MENU — ordem aprovada no desenho.
 
@@ -47,9 +48,9 @@ function NavIcon({ item }: { item: ModuleName }) {
   return <svg {...common}><circle cx="12" cy="12" r="10" /><path d="M9 9a3 3 0 1 1 4.5 2.6C12.6 12.1 12 12.7 12 14M12 18h.01" /></svg>;
 }
 
-/* ÍCONE DA INTELIGÊNCIA — radar. Vem com estilo inline de propósito: a folha do
-   menu pinta ícone por href com máscara CSS sobre .nav-icon, e sem regra para o
-   href novo sobrava um quadrado laranja cheio no lugar do desenho. */
+/* ÍCONE DA INTELIGÊNCIA — radar. O quadrado laranja que aparecia no lugar dele
+   vinha do pseudo-elemento de .nav-icon na folha do menu; quem desliga isso é
+   app/styles/menu-inteligencia-icone.css, importada no topo deste arquivo. */
 function IconeRadar() {
   return (
     <svg width={19} height={19} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
@@ -60,8 +61,6 @@ function IconeRadar() {
     </svg>
   );
 }
-
-const semMascara = { WebkitMaskImage: "none", maskImage: "none", background: "none", width: 19, height: 19, display: "grid", placeItems: "center" } as const;
 
 function NavGroup({ label, items, activeItem, onNavigate, badges, children }: { label: string; items: ModuleName[]; activeItem: ModuleName; onNavigate: (item: ModuleName) => void; badges?: Partial<Record<ModuleName, number>>; children?: ReactNode }) {
   return (
@@ -118,7 +117,7 @@ export function AppShell({ children, activeItem, onNavigate, onOpenProfile, sess
               /* order alto e inline: a folha do menu ordena PRINCIPAL por href e, sem
                  regra para /inteligencia, o item ia para o topo, acima do Início. */
               <Link className={`nav-item ${naInteligencia ? "active" : ""}`} href="/inteligencia" style={{ order: 90 }} aria-current={naInteligencia ? "page" : undefined}>
-                <span className="nav-icon" aria-hidden="true" style={semMascara}><IconeRadar /></span>
+                <span className="nav-icon" aria-hidden="true"><IconeRadar /></span>
                 <span>Inteligência</span>
                 <small className="nav-badge-pending" title="Área nova">novo</small>
               </Link>
