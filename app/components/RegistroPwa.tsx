@@ -2,32 +2,49 @@
 
 import { useEffect, useState } from "react";
 
-// Registra o service worker e avisa quando existe versao nova.
-// A troca so acontece quando a pessoa toca em "Atualizar": nunca no meio de um
-// atendimento, para nao deixar o bundle antigo inconsistente com o novo.
+/* Registro do service worker.
+ *
+ * DEPLOY QUE ASSUME SOZINHO (correcao de agosto/2026).
+ * Antes, a troca de versao dependia de alguem tocar em "Atualizar" e o /sw.js
+ * era identico a cada build -- o navegador nem percebia que havia versao nova, e
+ * o F5 comum continuava servindo o app velho.
+ *
+ * Agora:
+ *   - registramos /sw.js?v=<build>. A query muda a cada deploy, entao o arquivo
+ *     muda, o worker novo instala e o cache dele nasce com outro nome (o proprio
+ *     sw.js le esse `v` para versionar o cache e apagar o antigo no activate);
+ *   - o install chama skipWaiting e o activate chama clients.claim, ou seja a
+ *     versao nova assume sem pedir licenca;
+ *   - pedimos reg.update() ao abrir e ao voltar para a aba, para o navegador
+ *     conferir o build sem esperar o ciclo dele.
+ *
+ * A recarga automatica acontece SO com a aba em segundo plano. Recarregar por
+ * cima de quem esta digitando um atendimento perde texto -- e, com o worker novo
+ * ja no ar, o proximo F5 da pessoa ja traz tudo novo. Quando a aba esta na frente
+ * mostramos um aviso discreto com o botao de recarregar.
+ */
+
+const BUILD = process.env.NEXT_PUBLIC_BUILD_ID
+  || process.env.NEXT_PUBLIC_COMMIT_SHA
+  /* Sem variavel no ambiente, o valor muda a cada carregamento de pagina: o
+     navegador confere o worker com mais frequencia do que o necessario, o que e
+     desperdicio pequeno e seguro. Preferimos isso a servir versao velha. */
+  || String(Date.now());
+
 export function RegistroPwa() {
-  const [aguardando, setAguardando] = useState<ServiceWorker | null>(null);
+  const [precisaRecarregar, setPrecisaRecarregar] = useState(false);
 
   useEffect(() => {
     if (typeof window === "undefined" || !("serviceWorker" in navigator)) return;
-    let cancelado = false;
+
+    let registro: ServiceWorkerRegistration | null = null;
 
     const registrar = async () => {
       try {
-        const reg = await navigator.serviceWorker.register("/sw.js", { scope: "/" });
-
-        if (reg.waiting) setAguardando(reg.waiting);
-
-        reg.addEventListener("updatefound", () => {
-          const novo = reg.installing;
-          if (!novo) return;
-          novo.addEventListener("statechange", () => {
-            // 'installed' com controller ativo = ja havia uma versao rodando.
-            if (novo.state === "installed" && navigator.serviceWorker.controller && !cancelado) {
-              setAguardando(novo);
-            }
-          });
-        });
+        registro = await navigator.serviceWorker.register(`/sw.js?v=${encodeURIComponent(BUILD)}`, { scope: "/" });
+        /* updateViaCache padrao pode servir o proprio sw.js do cache HTTP; pedir
+           update explicitamente elimina esse atraso. */
+        void registro.update();
       } catch {
         // Sem service worker o ERP continua funcionando normalmente pela rede.
       }
@@ -35,21 +52,30 @@ export function RegistroPwa() {
 
     void registrar();
 
+    const conferir = () => { if (document.visibilityState === "visible") void registro?.update(); };
+    document.addEventListener("visibilitychange", conferir);
+
     let recarregando = false;
     const aoTrocar = () => {
       if (recarregando) return;
-      recarregando = true;
-      window.location.reload();
+      /* Aba em segundo plano: pode recarregar sem atropelar ninguem.
+         Aba na frente: avisa, e a pessoa recarrega quando quiser. */
+      if (document.visibilityState === "hidden") {
+        recarregando = true;
+        window.location.reload();
+      } else {
+        setPrecisaRecarregar(true);
+      }
     };
     navigator.serviceWorker.addEventListener("controllerchange", aoTrocar);
 
     return () => {
-      cancelado = true;
+      document.removeEventListener("visibilitychange", conferir);
       navigator.serviceWorker.removeEventListener("controllerchange", aoTrocar);
     };
   }, []);
 
-  if (!aguardando) return null;
+  if (!precisaRecarregar) return null;
 
   return (
     <div
@@ -61,16 +87,16 @@ export function RegistroPwa() {
         font: "14px/1.4 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif",
       }}
     >
-      <span style={{ flex: 1 }}>Nova versao disponivel.</span>
+      <span style={{ flex: 1 }}>Versão nova já instalada.</span>
       <button
         type="button"
-        onClick={() => aguardando.postMessage("ATUALIZAR_AGORA")}
+        onClick={() => window.location.reload()}
         style={{
           padding: "8px 14px", fontWeight: 700, fontSize: 14, color: "#fff",
           background: "#ff6500", border: 0, borderRadius: 10, cursor: "pointer",
         }}
       >
-        Atualizar
+        Recarregar
       </button>
     </div>
   );
@@ -99,7 +125,7 @@ const PREFIXOS_SESSAO: readonly string[] = ["apecerto-", "apecerto_", "ncrm_", "
 
 const pertenceAoApp = (chave: string, prefixos: readonly string[]) => prefixos.some((p) => chave.startsWith(p));
 
-/** Nome de cache criado por este app (ver public/sw.js: apecerto-v1, estatico-apecerto-v1). */
+/** Nome de cache criado por este app (ver public/sw.js: estatico-apecerto-<build>). */
 const cacheDoApp = (nome: string) => nome.includes("apecerto");
 
 export type ResultadoLimpeza = { tipo: "LIMPEZA_CONCLUIDA"; recacheado: boolean };
