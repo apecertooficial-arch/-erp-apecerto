@@ -1,20 +1,24 @@
-/* Folha da área Inteligência — só a casca e o contrato de dado ausente.
+/* Folha da área Inteligência — casca e contrato de dado ausente.
  *
- * Importada pelo próprio componente (CascaInteligencia.tsx), não pelo
- * layout.tsx: a área é uma rota isolada e nada aqui deve alcançar outra tela.
- * Todo seletor nasce prefixado por .int-area, pela lição já paga em Abordagens
- * (ordem de carga não vence seletor antigo com mais classes).
+ * Importada pelo próprio componente (CascaInteligencia.tsx), não pelo layout.tsx:
+ * a área é uma rota isolada e nada aqui deve alcançar outra tela. Todo seletor
+ * nasce prefixado por .int-area, pela lição já paga em Abordagens (ordem de carga
+ * não vence seletor antigo com mais classes).
  *
- * As 17 telas chegam nos lotes seguintes com o markup aprovado; os valores
- * visuais são os tokens da marca: areia #FAF8F6, laranja #FF7000, roxo #8B00CC,
- * cartão branco 18–24px, sombra 0 2px 6px rgba(31,28,26,.06).
+ * DENSIDADE DE ERP (guia da marca): título de página 24px (--text-xl), título de
+ * seção 20px, corpo 14px, rótulo 12px. A área vinha com 26px no h1 e herdava
+ * tamanho maior do .workspace em algumas rotas — agora o valor é declarado aqui,
+ * com o token, e não depende de herança.
  */
 
 .int-area {
   display: flex;
   flex-direction: column;
   gap: 16px;
-  padding: 28px 32px 44px;
+  /* padding-bottom generoso: o FAB da Sara (z 170, canto inferior direito) é
+     função existente do ERP e não sai da tela — então a área reserva espaço para
+     ele não cobrir o último bloco nem o rodapé de fontes. */
+  padding: 28px 32px 104px;
   background: #faf8f6;
   color: #1f1c1a;
   font-family: Quicksand, system-ui, -apple-system, sans-serif;
@@ -23,19 +27,14 @@
 }
 
 .int-area .int-topo { display: flex; align-items: flex-end; gap: 16px; flex-wrap: wrap; }
-.int-area .int-topo h1 { margin: 2px 0 0; font-size: 26px; font-weight: 700; letter-spacing: -0.02em; }
-.int-area .int-topo p { margin: 2px 0 0; font-size: 13px; color: #6e6760; }
+.int-area .int-topo h1 { margin: 2px 0 0; font-size: var(--text-xl, 24px); line-height: 1.15; font-weight: 700; letter-spacing: -0.02em; }
+.int-area .int-topo p { margin: 2px 0 0; font-size: var(--text-sm, 14px); color: #6e6760; }
 .int-area .int-eyebrow { font-size: 11px; font-weight: 600; letter-spacing: 0.12em; color: #ff7000; }
 .int-area .int-topo-acoes { margin-left: auto; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .int-area .int-selo-pend { font-size: 11px; font-weight: 700; letter-spacing: 0.06em; background: #fdf1d9; color: #8a6a15; border-radius: 999px; padding: 7px 14px; }
 
 .int-area .int-btn { height: 38px; padding: 0 16px; border: 1px solid #e4dfd9; border-radius: 999px; background: #fff; color: #4d4842; font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
 .int-area .int-btn:hover { background: #faf8f6; }
-
-.int-area .int-grupos { display: flex; gap: 8px; flex-wrap: wrap; }
-.int-area .int-grupo { height: 40px; padding: 0 18px; display: inline-flex; align-items: center; gap: 8px; border: 1.5px solid #e4dfd9; border-radius: 999px; background: #fff; color: #4d4842; font-family: inherit; font-size: 13.5px; font-weight: 600; cursor: pointer; }
-.int-area .int-grupo:hover { background: #fff3ea; }
-.int-area .int-grupo.ativo { border-color: #ff7000; background: #fff3ea; color: #cc5800; font-weight: 700; }
 
 .int-area .int-paginas { display: flex; gap: 7px; flex-wrap: wrap; }
 .int-area .int-pagina { height: 34px; padding: 0 14px; border: 1.5px solid #e4dfd9; border-radius: 999px; background: #fff; color: #4d4842; font-family: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer; }
@@ -77,6 +76,12 @@
 .int-area .int-rodape-hora { margin-left: auto; }
 
 @media (max-width: 1100px) {
-  .int-area { padding: 20px 18px 36px; }
+  .int-area { padding: 20px 18px 96px; }
   .int-area .int-filtros-nota { margin-left: 0; }
+}
+
+@media (max-width: 720px) {
+  .int-area .int-topo h1 { font-size: var(--text-lg, 20px); }
+  .int-area .int-topo-acoes { margin-left: 0; }
+  .int-area .int-rodape-hora { margin-left: 0; }
 }
