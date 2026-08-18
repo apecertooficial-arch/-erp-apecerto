@@ -1,0 +1,131 @@
+/* INTELIGÊNCIA — Visão da empresa (Fase 1, commit 2).
+   Classes com prefixo ape-, consumindo os mesmos valores do redesenho aprovado:
+   fundo #FAF8F6, cartão branco radius 18 com sombra suave, eyebrow 11px caps
+   laranja, KPI 26px/700 tabular, chips pill. Nenhum valor novo foi inventado. */
+
+.ape-int-wrap {
+  padding: 28px 32px 44px;
+  background: #FAF8F6;
+  color: #1F1C1A;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  min-height: 100%;
+  box-sizing: border-box;
+}
+
+.ape-int-topo { display: flex; align-items: flex-end; gap: 16px; flex-wrap: wrap; }
+.ape-int-topo > div:first-child { min-width: 0; }
+.ape-int-topo span {
+  font-size: 11px; font-weight: 600; letter-spacing: 0.12em; color: #FF7000;
+}
+.ape-int-topo h1 {
+  margin: 2px 0 0; font-size: 26px; font-weight: 700; letter-spacing: -0.02em;
+}
+.ape-int-topo p { margin: 2px 0 0; font-size: 13px; color: #6E6760; }
+.ape-int-selos { margin-left: auto; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+
+.ape-int-selo {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 12px; font-weight: 600; border-radius: 999px; padding: 7px 14px;
+  background: #E4F6EC; color: #1E7A46;
+}
+.ape-int-selo i {
+  width: 7px; height: 7px; border-radius: 999px; background: #1FA85A; display: block;
+}
+.ape-int-selo.aguardando { background: #FDF1D9; color: #8A6A15; }
+.ape-int-selo.aguardando i { background: #B5700A; }
+
+.ape-int-periodos { display: inline-flex; border: 1px solid #E4DFD9; border-radius: 999px; overflow: hidden; }
+.ape-int-periodos button {
+  height: 32px; padding: 0 13px; border: 0; background: #fff; color: #6E6760;
+  font-family: inherit; font-size: 12px; font-weight: 600; cursor: pointer;
+}
+.ape-int-periodos button.ativo {
+  background: #FFF3EA; color: #CC5800; font-weight: 700;
+  border-radius: 999px; box-shadow: inset 0 0 0 1.5px #FF7000;
+}
+
+.ape-int-secao > span {
+  font-size: 11px; font-weight: 600; letter-spacing: 0.12em; color: #8B00CC;
+}
+.ape-int-secao > h2 {
+  margin: 2px 0 10px; font-size: 20px; font-weight: 700; letter-spacing: -0.01em;
+}
+
+.ape-int-kpis {
+  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px;
+}
+.ape-int-kpi {
+  background: #fff; border-radius: 18px; padding: 18px;
+  box-shadow: 0 2px 6px rgba(31, 28, 26, 0.06);
+  display: flex; flex-direction: column; gap: 6px;
+}
+.ape-int-kpi > span { font-size: 12px; font-weight: 600; color: #6E6760; }
+.ape-int-kpi > strong {
+  font-size: 26px; font-weight: 700; font-variant-numeric: tabular-nums;
+}
+.ape-int-kpi > small { font-size: 12px; color: #9A938B; }
+.ape-int-kpi.vazio > strong { font-size: 15px; font-weight: 700; color: #8A6A15; }
+
+.ape-int-linhas {
+  background: #fff; border-radius: 18px; padding: 18px;
+  box-shadow: 0 2px 6px rgba(31, 28, 26, 0.06);
+  display: flex; flex-direction: column; gap: 9px;
+}
+.ape-int-linha {
+  display: grid; grid-template-columns: 190px 1fr 70px 60px; gap: 10px;
+  align-items: center; font-size: 12.5px;
+}
+.ape-int-linha > span:first-child { font-weight: 600; color: #4D4842; }
+.ape-int-linha b { text-align: right; font-variant-numeric: tabular-nums; }
+.ape-int-linha em { text-align: right; font-style: normal; color: #6E6760; }
+.ape-int-barra { height: 14px; border-radius: 999px; background: #F2EFEC; overflow: hidden; }
+.ape-int-barra i {
+  display: block; height: 100%; border-radius: 999px;
+  background: linear-gradient(90deg, #FF9A4D, #FF7000);
+}
+.ape-int-linhas small { font-size: 11px; color: #9A938B; }
+
+.ape-int-pendencias { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.ape-int-pendencia {
+  background: #FDF1D9; border-radius: 18px; padding: 16px;
+  display: flex; flex-direction: column; gap: 6px;
+}
+.ape-int-pendencia b { font-size: 12.5px; color: #7A5E12; }
+.ape-int-pendencia span { font-size: 12px; color: #8A6A15; line-height: 1.5; }
+
+.ape-int-skeleton {
+  background: #fff; border-radius: 18px; padding: 18px;
+  box-shadow: 0 2px 6px rgba(31, 28, 26, 0.06);
+  display: flex; flex-direction: column; gap: 8px;
+}
+.ape-int-skeleton i { display: block; height: 12px; border-radius: 999px; background: #F2EFEC; }
+
+.ape-int-erro {
+  background: #FBE5E5; border-radius: 18px; padding: 16px 18px;
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+}
+.ape-int-erro b { font-size: 13px; color: #B02B2B; }
+.ape-int-erro span { font-size: 12px; color: #8C3232; }
+.ape-int-erro button {
+  margin-left: auto; min-height: 38px; padding: 0 18px; border: 0; border-radius: 999px;
+  background: #fff; color: #B02B2B; font-family: inherit; font-size: 13px; font-weight: 700; cursor: pointer;
+}
+
+.ape-int-vazio {
+  border: 1px dashed #E4DFD9; border-radius: 18px; padding: 26px;
+  display: flex; flex-direction: column; gap: 5px; align-items: center; text-align: center;
+}
+.ape-int-vazio b { font-size: 13.5px; }
+.ape-int-vazio span { font-size: 12px; color: #9A938B; }
+
+@media (max-width: 900px) {
+  .ape-int-wrap { padding: 16px; gap: 14px; }
+  .ape-int-kpis, .ape-int-pendencias { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ape-int-linha { grid-template-columns: 1fr 64px 56px; }
+  .ape-int-linha .ape-int-barra { display: none; }
+}
+@media (max-width: 560px) {
+  .ape-int-kpis, .ape-int-pendencias { grid-template-columns: 1fr; }
+}
