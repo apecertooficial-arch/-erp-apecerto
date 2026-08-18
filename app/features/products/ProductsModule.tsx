@@ -131,7 +131,7 @@ export function ProductsModule({ accessToken }: { accessToken: string }) {
     const queryKey = normalizedKey(query);
     const matchesQuery = !queryKey || [product.name, product.title, product.address, product.neighborhood, product.city, product.developer]
       .some((value) => normalizedKey(value).includes(queryKey));
-    const normalize = (value: string) => value.normalize("NFD").replace(/[̀-ͯ]/g, "").replace("_", " ").toLowerCase();
+    const normalize = (value: string) => value.normalize("NFD").replace(/[\\u0300-\\u036f]/g, "").replace("_", " ").toLowerCase();
     const matchesStatus = status === "Todos" || normalize(product.status ?? "") === normalize(status);
     const matchesNeighborhood = neighborhood === "Todos" || normalizedKey(product.neighborhood) === normalizedKey(neighborhood);
     const matchesDeveloper = developer === "Todas" || normalizedKey(product.developer) === normalizedKey(developer);
@@ -170,7 +170,7 @@ export function ProductsModule({ accessToken }: { accessToken: string }) {
     const escape = (value: unknown) => `"${String(value ?? "").replaceAll('"', '""')}"`;
     const header = ["Produto", "Bairro", "Cidade", "Incorporadora", "Preço", "Área", "Unidades disponíveis", "Leads", "Nota", "Qualidade", "No site", "Principal pendência"];
     const rows = produtosVisiveis.map((item) => [item.name, item.neighborhood, item.city, item.developer, item.numericPrice, item.area, item.available, item.leads, item.quality?.score, item.quality?.label, item.published ? "Sim" : "Não", item.topIssue]);
-    const blob = new Blob(["﻿", [header, ...rows].map((row) => row.map(escape).join(";")).join("\n")], { type: "text/csv;charset=utf-8" });
+    const blob = new Blob(["\\uFEFF", [header, ...rows].map((row) => row.map(escape).join(";")).join("\n")], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url; link.download = `catalogo-apecerto-${new Date().toISOString().slice(0, 10)}.csv`; link.click();
