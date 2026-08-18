@@ -21,23 +21,30 @@ test("erro tecnico do banco nao vai para a tela", () => {
 });
 
 test("mensagem humana e botao de tentar novamente", () => {
-  assert.ok(/Não foi possível carregar a performance agora/.test(perf));
+  // A Sala de Comando reescreveu a mensagem: "confirmar os dados" em vez de
+  // "carregar a performance", porque a tela nunca mostra numero nao confirmado.
+  assert.ok(/Não foi possível confirmar os dados agora/.test(perf));
   assert.ok(/Tentar novamente/.test(perf));
-  assert.ok(/onClick=\{tentarDeNovo\}/.test(perf), "o botao precisa realmente redisparar a busca");
-  assert.ok(/tentativa\]/.test(perf.replace(/\s+/g, "")) || /tentativa/.test(perf), "tentativa precisa estar nas deps do efeito");
+  // O redisparo virou handler inline (setEstado + setTentativa) em vez da
+  // funcao nomeada tentarDeNovo. O que importa e continuar redisparando.
+  assert.ok(/setTentativa\(\(valor\) => valor \+ 1\)/.test(perf), "o botao precisa realmente redisparar a busca");
+  assert.ok(/tentativa/.test(perf), "tentativa precisa estar nas deps do efeito");
 });
 
 test("falha preserva os dados anteriores", () => {
-  // O ponto: no ramo de erro nao pode haver setCorretores([]).
-  const ramoErro = perf.slice(perf.indexOf("if (json.error)"), perf.indexOf("setSituacao(\"falhou\");") + 40);
-  assert.ok(!/setCorretores/.test(ramoErro), "falha nao pode limpar os numeros que ja estavam na tela");
-  assert.ok(/temDadoAnterior/.test(perf), "precisa distinguir falha com e sem dado anterior");
+  // O ponto continua o mesmo: falhar nao pode limpar o que ja estava na tela,
+  // e a tela precisa distinguir falha COM e SEM leitura anterior. Hoje isso
+  // esta explicito no proprio texto do aviso, ramificado por `painel`.
+  assert.match(perf, /\{painel \? "A última consulta válida continua visível\."/);
+  assert.ok(perf.includes("Nenhum número foi exibido sem confirmação."), "sem dado anterior a tela precisa dizer que nao mostrou numero");
+  assert.ok(!/setPainel\(null\)/.test(perf), "falha nao pode limpar os numeros que ja estavam na tela");
 });
 
 test("falha nao se disfarca de sucesso", () => {
   assert.ok(/role="alert"/.test(perf), "o aviso de falha precisa ser anunciado");
-  assert.ok(/falhou && !temDadoAnterior \? null/.test(perf),
-    "sem dado anterior nao pode cair no ramo de 'nenhum corretor', que parece sucesso vazio");
+  assert.match(perf, /\{estado === "falhou" &&/, "a falha precisa ter ramo proprio de renderizacao");
+  assert.ok(perf.includes("Nenhum número foi exibido sem confirmação."),
+    "sem dado anterior nao pode cair num vazio que parece sucesso");
 });
 
 test("a consulta de performance nao foi alterada", () => {
@@ -148,8 +155,13 @@ test("Projetos e Tarefas aparece, e o slug usado e real", () => {
 
 test("admin continua vendo todos os modulos autorizados", () => {
   const { barra, mais } = itensDaNavegacao(comoAdmin);
-  assert.equal(barra.length + mais.length, Object.keys(rotasModulo).length);
+  // O app oferece apenas os modulos com tela de celular (mobile:true); os
+  // demais seguem alcancaveis no computador. Antes desta flag a folha "Mais"
+  // espelhava a sidebar inteira e abria telas de escritorio em 390px.
+  const doApp = Object.entries(rotasModulo).filter(([, rota]) => rota.mobile).map(([nome]) => nome);
+  assert.equal(barra.length + mais.length, doApp.length, "admin precisa alcancar todo modulo com tela de celular");
   for (const m of ["Financeiro", "Usuários", "Perfis e Permissões", "Auditoria", "Projetos e Tarefas"]) {
     assert.equal(podeVer(m, comoAdmin), true, `${m} sumiu para o admin`);
   }
+  assert.ok([...barra, ...mais].includes("Projetos e Tarefas"), "Tarefas tem tela de celular e precisa aparecer");
 });
