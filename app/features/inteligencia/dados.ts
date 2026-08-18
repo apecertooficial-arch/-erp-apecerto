@@ -2,8 +2,8 @@
 
 /* INTELIGÊNCIA — base compartilhada das telas da área.
  *
- * Tipos, formatadores e o hook de leitura. Existe para as 9 telas nunca
- * discordarem sobre como um número é escrito nem sobre o que é "sem dado":
+ * Tipos, formatadores e o hook de leitura. Existe para as telas nunca discordarem
+ * sobre como um número é escrito nem sobre o que é "sem dado":
  *
  *   tem(v)   -> distingue "veio zero" de "não veio". Zero é resultado; ausência é
  *               estado, e nenhuma tela da área pode confundir os dois.
@@ -64,6 +64,13 @@ export type QualidadeDado = {
   perdas?: Numero; perdas_com_motivo?: Numero;
 };
 
+export type Proprietarios = {
+  recebidas?: Numero; comPreco?: Numero; ultimaEm?: string | null;
+  porStatus?: Array<{ chave: string; total: number }>;
+  porBairro?: Array<{ chave: string; total: number }>;
+  porFinalidade?: Array<{ chave: string; total: number }>;
+};
+
 export type Resposta = {
   periodo?: { chave: string; inicio: string; fim: string; rotulo: string; fuso?: string };
   atualizadoEm?: string;
@@ -71,6 +78,7 @@ export type Resposta = {
   corretores?: Corretor[];
   qualidadeDado?: QualidadeDado | null;
   digital?: { leadsDoSite?: Numero; primeiroEm?: string | null; ultimoEm?: string | null } | null;
+  proprietarios?: Proprietarios | null;
   pendencias?: Array<{ chave: string; texto: string }>;
   error?: string;
 };

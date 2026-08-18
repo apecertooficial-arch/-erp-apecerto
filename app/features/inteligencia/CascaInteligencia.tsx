@@ -23,6 +23,7 @@ export const TELAS: Array<{ slug: string; nome: string; grupo: Grupo }> = [
   { slug: "", nome: "Visão da empresa", grupo: "empresa" },
   { slug: "vendas", nome: "Vendas e previsão", grupo: "empresa" },
   { slug: "financeiro", nome: "Financeiro e comissões", grupo: "empresa" },
+  { slug: "proprietarios", nome: "Captação de proprietários", grupo: "empresa" },
   { slug: "atendimento", nome: "Atendimento e SLA", grupo: "operacao" },
   { slug: "equipe", nome: "Performance da equipe", grupo: "operacao" },
   { slug: "gerentes", nome: "Gerentes", grupo: "operacao" },

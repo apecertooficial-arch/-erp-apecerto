@@ -67,6 +67,18 @@ function lerPeriodo(valor: string | null): Periodo {
   return aceitos.includes(valor as Periodo) ? (valor as Periodo) : "30d";
 }
 
+/* Contagem por chave, mantendo "não informado" visível em vez de descartar a linha:
+   volume sem classificação é informação, não sujeira. */
+function contarPor(linhas: Array<Record<string, unknown>>, campo: string) {
+  const mapa = new Map<string, number>();
+  linhas.forEach((linha) => {
+    const bruto = linha[campo];
+    const chave = bruto === null || bruto === undefined || bruto === "" ? "não informado" : String(bruto);
+    mapa.set(chave, (mapa.get(chave) ?? 0) + 1);
+  });
+  return [...mapa.entries()].map(([chave, total]) => ({ chave, total })).sort((a, b) => b.total - a.total);
+}
+
 export async function GET(request: Request) {
   const supabase = await authClient(request);
   if (!supabase) return Response.json({ error: "Sessão inválida ou expirada." }, { status: 401 });
@@ -81,10 +93,7 @@ export async function GET(request: Request) {
   ) => Promise<{ data: unknown; error: { message: string } | null }>;
 
   /* BLOCO 1 — empresa, corretores e qualidade do dado. Fonte canónica já em
-     produção, com escopo por perfil resolvido dentro da própria função. O bloco
-     `empresa` continua sendo a resposta inteira da RPC, como no commit 1 (a tela
-     aceita as duas formas); `corretores` e `qualidadeDado` são extraídos ao lado
-     para as telas de operacão não precisarem cavar o envelope. */
+     produção, com escopo por perfil resolvido dentro da própria função. */
   let empresa: unknown = null;
   let corretores: unknown[] = [];
   let qualidadeDado: unknown = null;
@@ -105,9 +114,7 @@ export async function GET(request: Request) {
   }
 
   /* BLOCO 2 — digital: leads confirmados vindos do site. `site_leads` é a fonte
-     de "Lead do site" na definição das métricas. Se a relação não estiver
-     exposta a este perfil, o bloco volta null com pendência: a tela mostra
-     "aguardando dado", nunca 0 leads. */
+     de "Lead do site" na definição das métricas. */
   let digital: { leadsDoSite: number; primeiroEm: string | null; ultimoEm: string | null } | null = null;
   {
     const consulta = supabase
@@ -134,10 +141,49 @@ export async function GET(request: Request) {
     }
   }
 
+  /* BLOCO 3 — captação de proprietários. `captacoes_portal` guarda o que o
+     proprietário enviou pelo site; é o único funil digital com dado próprio hoje.
+     Agregamos aqui (status, bairro, finalidade) para nenhum dado de contato do
+     proprietário sair do servidor: a tela recebe contagem, não pessoa. */
+  let proprietarios: {
+    recebidas: number; comPreco: number; ultimaEm: string | null;
+    porStatus: Array<{ chave: string; total: number }>;
+    porBairro: Array<{ chave: string; total: number }>;
+    porFinalidade: Array<{ chave: string; total: number }>;
+  } | null = null;
+  {
+    const consulta = supabase
+      .from("captacoes_portal")
+      .select("criado_em,status,bairro,finalidade,preco", { count: "exact" })
+      .gte("criado_em", inicio)
+      .lt("criado_em", fim)
+      .order("criado_em", { ascending: false })
+      .limit(2000) as unknown as Promise<{
+        data: Array<Record<string, unknown>> | null;
+        count: number | null;
+        error: { message: string } | null;
+      }>;
+    const { data, count, error } = await consulta;
+    if (error) {
+      console.error("[inteligencia] captacoes_portal indisponível:", error.message);
+      pendencias.push({ chave: "proprietários", texto: "Captações do site ainda não disponíveis para esta leitura." });
+    } else {
+      const linhas = data ?? [];
+      proprietarios = {
+        recebidas: count ?? linhas.length,
+        comPreco: linhas.filter((l) => l.preco !== null && l.preco !== undefined).length,
+        ultimaEm: linhas.length ? String(linhas[0].criado_em) : null,
+        porStatus: contarPor(linhas, "status"),
+        porBairro: contarPor(linhas, "bairro").slice(0, 8),
+        porFinalidade: contarPor(linhas, "finalidade"),
+      };
+    }
+  }
+
   /* Integrações que ainda não existem entram como pendência declarada, para a
      tela nunca preencher CPL, ROAS ou mapa de calor com número fictício. */
   pendencias.push({ chave: "midia", texto: "Custos de mídia ainda não conectados. Conecte Google Ads e Meta Ads para ver CPL, custo por negócio e ROAS." });
-  pendencias.push({ chave: "analytics", texto: "GA4 ainda não conectado: sessões e usuários com consentimento de Analytics aparecem depois da liberação." });
+  pendencias.push({ chave: "analytics", texto: "GA4 ainda não conectado: sessões, páginas e origem de tráfego aparecem depois da liberação." });
   pendencias.push({ chave: "clarity", texto: "Microsoft Clarity não conectado: mapas de calor e gravações não existem nesta leitura." });
 
   return Response.json({
@@ -148,6 +194,7 @@ export async function GET(request: Request) {
     corretores,
     qualidadeDado,
     digital,
+    proprietarios,
     pendencias,
   });
 }
