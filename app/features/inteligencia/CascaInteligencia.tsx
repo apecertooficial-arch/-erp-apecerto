@@ -1,12 +1,13 @@
 "use client";
 
-/* Casca comum das telas da área: título, selo de procediência do dado, seletor de
- * período, os grupos e as abas do grupo.
+/* Casca comum das telas da área: título, selo de procedência do dado, barra global
+ * de filtros, os grupos e as abas do grupo.
  *
  * Os quatro grupos são os aprovados no canvas (23a): Empresa · Operação comercial
  * · Mercado e digital · Governança. Cada item é um <a href> real — rota de
  * verdade, sem estado escondido, para o navegador voltar e recarregar como
- * qualquer tela.
+ * qualquer tela. Cada href leva a query atual: é assim que o filtro sobrevive à
+ * troca de página (11a).
  *
  * LAYOUT SEMPRE COMPLETO (regra do Romulo): nenhuma seção e nenhum cartão some
  * por falta de dado. Métrica sem dado mostra o rótulo normal e um traço "—" no
@@ -14,7 +15,9 @@
  * integração. Esconder cartão faz a tela mentir por omissão.
  */
 
+import { BarraFiltros } from "./BarraFiltros";
 import { PERIODOS, horaSp, type Periodo } from "./dados";
+import { queryAtual, useFiltros, type FonteOpcoes } from "./filtros";
 
 export type Grupo = "empresa" | "operacao" | "digital" | "governanca";
 
@@ -47,16 +50,23 @@ export const TELAS: Array<{ slug: string; nome: string; grupo: Grupo }> = [
 const caminho = (slug: string) => (slug ? `/inteligencia/${slug}` : "/inteligencia");
 
 export function CascaInteligencia({
-  slug, titulo, apoio, grupo, periodo, onPeriodo, confirmados, atualizadoEm, children,
+  slug, titulo, apoio, grupo, periodo, onPeriodo, confirmados, atualizadoEm, fontes, children,
 }: {
   slug: string; titulo: string; apoio: string; grupo: Grupo;
   periodo: Periodo; onPeriodo: (p: Periodo) => void;
-  confirmados: number; atualizadoEm?: string; children: React.ReactNode;
+  confirmados: number; atualizadoEm?: string;
+  fontes?: FonteOpcoes;
+  children: React.ReactNode;
 }) {
   const grupoAtual = GRUPOS.find((g) => g.id === grupo);
+  const filtros = useFiltros(periodo);
+  /* A query é lida no render para que cada aba já nasça com os filtros atuais. */
+  const query = queryAtual();
+
   return (
     <main className="ape-int-wrap">
       <header className="ape-int-topo">
+        <span className="ape-int-tile roxo" aria-hidden="true"><i className="ape-int-ic ic-radar" /></span>
         <div>
           <span>INTELIGÊNCIA · {(grupoAtual?.nome ?? "").toUpperCase()}</span>
           <h1>{titulo}</h1>
@@ -66,11 +76,6 @@ export function CascaInteligencia({
           {confirmados > 0
             ? <span className="ape-int-selo"><i />DADO REAL · {horaSp(atualizadoEm)}</span>
             : <span className="ape-int-selo aguardando"><i />aguardando dado</span>}
-          <div className="ape-int-periodos">
-            {PERIODOS.map((p) => (
-              <button type="button" key={p.id} className={periodo === p.id ? "ativo" : ""} onClick={() => onPeriodo(p.id)}>{p.nome}</button>
-            ))}
-          </div>
         </div>
       </header>
 
@@ -78,16 +83,26 @@ export function CascaInteligencia({
         {GRUPOS.map((g) => {
           const primeira = TELAS.find((t) => t.grupo === g.id);
           return (
-            <a key={g.id} href={caminho(primeira?.slug ?? "")} className={g.id === grupo ? "ativo" : ""}>{g.nome}</a>
+            <a key={g.id} href={`${caminho(primeira?.slug ?? "")}${query}`} className={g.id === grupo ? "ativo" : ""}>{g.nome}</a>
           );
         })}
       </nav>
 
       <nav className="ape-int-abas" aria-label="Telas do grupo">
         {TELAS.filter((t) => t.grupo === grupo).map((t) => (
-          <a key={t.slug || "visao"} href={caminho(t.slug)} className={t.slug === slug ? "ativo" : ""}>{t.nome}</a>
+          <a key={t.slug || "visao"} href={`${caminho(t.slug)}${query}`} className={t.slug === slug ? "ativo" : ""}>{t.nome}</a>
         ))}
       </nav>
+
+      <BarraFiltros
+        slug={slug}
+        periodo={periodo}
+        periodos={PERIODOS}
+        onPeriodo={(p) => onPeriodo(p as Periodo)}
+        estado={filtros}
+        fontes={fontes}
+        atualizado={horaSp(atualizadoEm)}
+      />
 
       {children}
     </main>
@@ -109,9 +124,49 @@ export function Kpi({
   );
 }
 
+/* Tile de ícone do 30b (peça 03): 34px, raio 10, tint da cor + ícone por máscara
+   CSS — mesmo mecanismo do menu lateral, sem dependência nova no pacote. */
+export function Tile({ icone, cor }: { icone: "radar" | "filtro" | "relogio" | "alerta" | "ok"; cor?: "laranja" | "roxo" | "verde" | "vermelho" | "ambar" }) {
+  return (
+    <span className={`ape-int-tile ${cor ?? "laranja"}`} aria-hidden="true">
+      <i className={`ape-int-ic ic-${icone}`} />
+    </span>
+  );
+}
+
+/* Esqueleto na forma do conteúdo real (30b, peça 13): grade de KPI, linhas de
+   funil ou tabela. Três barras genéricas para tudo prometem a tela errada. */
+export function Esqueleto({ forma }: { forma: "kpis" | "linhas" | "tabela" }) {
+  if (forma === "kpis") {
+    return (
+      <div className="ape-int-kpis" aria-hidden="true">
+        {[0, 1, 2, 3].map((i) => (
+          <div className="ape-int-esq-kpi" key={i}><i style={{ width: "58%" }} /><i className="alto" /><i style={{ width: "40%" }} /></div>
+        ))}
+      </div>
+    );
+  }
+  if (forma === "tabela") {
+    return (
+      <div className="ape-int-esq-tabela" aria-hidden="true">
+        {[0, 1, 2, 3, 4].map((i) => (
+          <div className="ape-int-esq-linha" key={i}><i style={{ width: "26%" }} /><i style={{ width: "14%" }} /><i style={{ width: "14%" }} /><i style={{ width: "10%" }} /></div>
+        ))}
+      </div>
+    );
+  }
+  return (
+    <div className="ape-int-esq-linhas" aria-hidden="true">
+      {[0, 1, 2, 3, 4].map((i) => (
+        <div className="ape-int-esq-funil" key={i}><i style={{ width: "22%" }} /><i className="barra" style={{ width: `${72 - i * 12}%` }} /><i style={{ width: "9%" }} /></div>
+      ))}
+    </div>
+  );
+}
+
 export function Estados({
-  estado, temDado, onTentar,
-}: { estado: "carregando" | "pronto" | "falhou"; temDado: boolean; onTentar: () => void }) {
+  estado, temDado, onTentar, forma,
+}: { estado: "carregando" | "pronto" | "falhou"; temDado: boolean; onTentar: () => void; forma?: "kpis" | "linhas" | "tabela" }) {
   return (
     <>
       {estado === "falhou" && (
@@ -123,9 +178,7 @@ export function Estados({
           <button type="button" onClick={onTentar}>Tentar novamente</button>
         </div>
       )}
-      {estado === "carregando" && !temDado && (
-        <div className="ape-int-skeleton"><i /><i style={{ width: "72%" }} /><i style={{ width: "54%" }} /></div>
-      )}
+      {estado === "carregando" && !temDado && <Esqueleto forma={forma ?? "kpis"} />}
     </>
   );
 }

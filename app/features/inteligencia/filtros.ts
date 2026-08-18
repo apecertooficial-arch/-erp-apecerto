@@ -139,7 +139,10 @@ export function queryAtual(): string {
   return busca ? `?${busca}` : "";
 }
 
-function escrever(periodo: string | null, filtros: Filtros) {
+/* Único escritor do sistema externo (URL + espelho). Chamado de um efeito de
+   sincronização, nunca de dentro de um setState: quem manda é o estado, e a URL
+   apenas o reflete. */
+function sincronizar(periodo: string | null, filtros: Filtros) {
   if (typeof window === "undefined") return;
   const p = new URLSearchParams();
   if (periodo) p.set("periodo", periodo);
@@ -153,10 +156,6 @@ function escrever(periodo: string | null, filtros: Filtros) {
      continua servindo para voltar de página, que é o que a pessoa espera. */
   window.history.replaceState(window.history.state, "", url);
   espelhar(periodo, filtros);
-}
-
-export function gravarPeriodoNaUrl(periodo: string) {
-  escrever(periodo, lerFiltrosDaUrl());
 }
 
 /* ---------------- espelho local (24 h) ---------------- */
@@ -193,35 +192,33 @@ export type EstadoFiltros = {
   limpar: () => void;
 };
 
-/* Sem filtro na URL, restaura o espelho e o devolve PARA a URL — as duas pontas
-   ficam iguais e o link continua reproduzindo a tela. */
-export function useFiltros(periodo: string): EstadoFiltros {
-  const [filtros, setFiltros] = useState<Filtros>({});
+/* Estado inicial resolvido no próprio useState (lazy): URL primeiro, espelho
+   válido como reserva. Semear em efeito obrigaria um setState no primeiro render
+   — renderização em cascata, e a regra do lint está certa em barrar.
 
-  useEffect(() => {
+   O Único efeito daqui é de SINCRONIZAÇÃO: leva o estado atual para a URL e para
+   o espelho. Ele não chama setState, e por isso `definir` e `limpar` só mexem no
+   estado — sem escrever na URL por fora, sem dois donos da mesma verdade. */
+export function useFiltros(periodo: string): EstadoFiltros {
+  const [filtros, setFiltros] = useState<Filtros>(() => {
     const daUrl = lerFiltrosDaUrl();
-    if (Object.keys(daUrl).length) { setFiltros(daUrl); return; }
-    const espelho = lerEspelho();
-    if (espelho && Object.keys(espelho.filtros).length) {
-      setFiltros(espelho.filtros);
-      escrever(periodo, espelho.filtros);
-    }
-  }, [periodo]);
+    if (Object.keys(daUrl).length) return daUrl;
+    return lerEspelho()?.filtros ?? {};
+  });
+
+  useEffect(() => { sincronizar(periodo, filtros); }, [periodo, filtros]);
 
   const definir = useCallback((chave: ChaveFiltro, valor: string | null) => {
     setFiltros((atual) => {
       const proximo: Filtros = { ...atual };
       if (valor) proximo[chave] = valor; else delete proximo[chave];
-      escrever(periodo, proximo);
       return proximo;
     });
-  }, [periodo]);
+  }, []);
 
-  /* Limpar zera os filtros e PRESERVA o período (regra explícita do 11a). */
-  const limparTudo = useCallback(() => {
-    setFiltros({});
-    escrever(periodo, {});
-  }, [periodo]);
+  /* Limpar zera os filtros e PRESERVA o período (regra explícita do 11a): o
+     período não mora neste estado, então a sincronização o reescreve intacto. */
+  const limparTudo = useCallback(() => { setFiltros({}); }, []);
 
   const ativos = CHAVES
     .filter((chave) => filtros[chave])
