@@ -7,6 +7,10 @@
  * sombra 0 2px 6px rgba(31,28,26,.06), tile de ícone 34px raio 10, KPI 26px/700,
  * rótulo 12px/600 #6E6760, pé 11px #9A938B, chips pill 11px/700, funil com barra
  * de 14px e gradiente laranja→laranja (roxo só no funil da Sara).
+ *
+ * A auditoria de fidelidade acrescentou: gaveta lateral de 420px, cabeçalho de
+ * tabela clicável, e o comportamento de celular dos artboards 29a/22a — tabela
+ * virando lista de cartões e alvo de toque de 44px.
  */
 
 .int-area .intp-cab { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
@@ -17,7 +21,7 @@
 .int-area .intp-grade { display: grid; gap: 12px; }
 .int-area .intp-kpi { background: #fff; border-radius: 18px; padding: 16px 18px; box-shadow: 0 2px 6px rgba(31, 28, 26, 0.06); display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 .int-area .intp-kpi-topo { display: flex; align-items: center; gap: 10px; }
-.int-area .intp-tile { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; flex: none; font-size: 15px; font-weight: 700; }
+.int-area .intp-tile { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; flex: none; }
 .int-area .intp-kpi-rotulo { font-size: 12px; font-weight: 600; color: #6e6760; }
 .int-area .intp-kpi-chip { align-self: flex-start; font-size: 11px; font-weight: 700; border-radius: 999px; padding: 3px 9px; }
 .int-area .intp-kpi-foot { font-size: 11px; color: #9a938b; line-height: 1.5; }
@@ -29,9 +33,12 @@
 .int-area .intp-linha-kv { display: flex; gap: 8px; font-size: 12px; font-variant-numeric: tabular-nums; }
 .int-area .intp-linha-kv span { flex: 1; font-weight: 600; color: #4d4842; }
 .int-area .intp-linha-kv b { color: #1f1c1a; }
+.int-area .intp-linha-meio { flex: none !important; color: #6e6760 !important; font-weight: 400 !important; }
 .int-area .intp-linha-sub { font-size: 11px; color: #9a938b; }
 .int-area button.intp-linha-btn { border: 0; background: none; padding: 0; font-family: inherit; text-align: left; cursor: pointer; width: 100%; }
 .int-area button.intp-linha-btn:hover .intp-linha-kv b { color: #cc5800; }
+.int-area button.intp-linha-toque { min-height: 44px; border-radius: 12px; padding: 8px 6px; }
+.int-area button.intp-linha-toque:hover { background: #faf8f6; }
 
 .int-area .intp-funil { background: #fff; border-radius: 18px; padding: 18px; box-shadow: 0 2px 6px rgba(31, 28, 26, 0.06); display: flex; flex-direction: column; gap: 9px; }
 .int-area .intp-etapa { display: grid; grid-template-columns: 212px 1fr 70px 58px 74px 62px; gap: 8px; align-items: center; font-size: 12px; }
@@ -48,10 +55,13 @@
 
 .int-area .intp-tabela-caixa { background: #fff; border-radius: 18px; padding: 6px 18px 14px; box-shadow: 0 2px 6px rgba(31, 28, 26, 0.06); overflow-x: auto; }
 .int-area table.intp-tabela { width: 100%; border-collapse: collapse; font-size: 12px; font-variant-numeric: tabular-nums; }
-.int-area table.intp-tabela th { text-align: left; font-size: 11px; font-weight: 700; color: #9a938b; padding: 10px 7px; border-bottom: 1px solid #f2efec; white-space: nowrap; }
-.int-area table.intp-tabela th.num, .int-area table.intp-tabela td.num { text-align: right; }
-.int-area table.intp-tabela th.ordenada { color: #1f1c1a; }
+.int-area table.intp-tabela th { text-align: left; padding: 0; border-bottom: 1px solid #f2efec; white-space: nowrap; }
+.int-area .intp-th-btn { border: 0; background: none; padding: 10px 7px; font-family: inherit; font-size: 11px; font-weight: 700; color: #9a938b; cursor: pointer; white-space: nowrap; }
+.int-area .intp-th-btn:hover { color: #cc5800; }
+.int-area table.intp-tabela th.num .intp-th-btn { width: 100%; text-align: right; }
+.int-area table.intp-tabela th.ordenada .intp-th-btn { color: #1f1c1a; }
 .int-area table.intp-tabela td { padding: 9px 7px; border-bottom: 1px solid #f7f5f2; color: #6e6760; white-space: nowrap; }
+.int-area table.intp-tabela td.num { text-align: right; }
 .int-area table.intp-tabela td.forte { color: #1f1c1a; font-weight: 700; }
 .int-area table.intp-tabela td small { color: #9a938b; font-weight: 400; }
 .int-area table.intp-tabela tbody tr { cursor: pointer; }
@@ -64,7 +74,7 @@
 .int-area .intp-banner-stat { text-align: center; flex: none; padding: 0 6px; }
 .int-area .intp-banner-stat strong { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; display: block; }
 .int-area .intp-banner-stat small { font-size: 11px; }
-.int-area .intp-banner button { height: 36px; padding: 0 18px; border: 0; border-radius: 999px; background: #fff; font-family: inherit; font-size: 12px; font-weight: 700; cursor: pointer; flex: none; }
+.int-area .intp-banner button { min-height: 36px; padding: 0 18px; border: 0; border-radius: 999px; background: #fff; font-family: inherit; font-size: 12px; font-weight: 700; cursor: pointer; flex: none; }
 .int-area .intp-banner.aviso { background: #fdf1d9; color: #7a5e12; }
 .int-area .intp-banner.roxo { background: #8b00cc; color: #fff; box-shadow: 0 12px 28px rgba(139, 0, 204, 0.24); }
 .int-area .intp-banner.tint-roxo { background: #f7ecfc; color: #66009a; }
@@ -87,6 +97,15 @@
 .int-area .intp-vazio-detalhe b { font-size: 13px; color: #6e6760; }
 .int-area .intp-vazio-detalhe small { font-size: 11.5px; color: #9a938b; line-height: 1.5; }
 
+/* GAVETA LATERAL 420px — artboards 6a, 5a, 18a, 17a. */
+.int-area .intp-gaveta-fundo { position: fixed; inset: 0; background: rgba(31, 28, 26, 0.35); z-index: 55; border: 0; }
+.int-area .intp-gaveta { position: fixed; top: 0; right: 0; bottom: 0; width: 420px; max-width: 96vw; background: #fff; z-index: 56; box-shadow: -16px 0 40px rgba(31, 28, 26, 0.16); padding: 20px 22px; overflow-y: auto; box-sizing: border-box; display: flex; flex-direction: column; gap: 12px; }
+.int-area .intp-gaveta-topo { display: flex; align-items: flex-start; gap: 10px; border-bottom: 1px solid #f2efec; padding-bottom: 12px; }
+.int-area .intp-gaveta-topo b { display: block; font-size: 15px; }
+.int-area .intp-gaveta-topo small { display: block; font-size: 11.5px; color: #9a938b; }
+.int-area .intp-gaveta-corpo { display: flex; flex-direction: column; gap: 12px; }
+.int-area .intp-gaveta-rodape { margin-top: auto; border-top: 1px solid #f2efec; padding-top: 12px; display: flex; gap: 8px; flex-wrap: wrap; }
+
 /* Tons de chip — os mesmos cinco do desenho. */
 .int-area .tom-bom { background: #e4f6ec; color: #1e7a46; }
 .int-area .tom-ruim { background: #fbe5e5; color: #b02b2b; }
@@ -101,7 +120,34 @@
 
 @media (max-width: 1100px) {
   .int-area .intp-duas { grid-template-columns: 1fr; }
-  .int-area .intp-grade { grid-template-columns: repeat(2, 1fr) !important; }
+  .int-area .intp-grade { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
   .int-area .intp-etapa { grid-template-columns: 150px 1fr 60px 52px; }
   .int-area .intp-etapa-perda, .int-area .intp-etapa button { display: none; }
+}
+
+/* CELULAR · 390 — artboards 29a e 22a: um cartão por linha, alvo de toque de
+   44px e nenhuma rolagem horizontal. A tabela não desaparece: cada linha vira
+   cartão com o rótulo da coluna ao lado do valor (data-rotulo). */
+@media (max-width: 720px) {
+  .int-area .intp-grade { grid-template-columns: 1fr !important; }
+  .int-area .intp-cab-nota { margin-left: 0; }
+  .int-area .intp-kpi { padding: 14px 16px; }
+
+  .int-area .intp-tabela-caixa { overflow-x: visible; padding: 6px 12px 12px; }
+  .int-area table.intp-tabela thead { display: none; }
+  .int-area table.intp-tabela, .int-area table.intp-tabela tbody, .int-area table.intp-tabela tr, .int-area table.intp-tabela td { display: block; width: auto; }
+  .int-area table.intp-tabela tbody tr { border: 1px solid #f2efec; border-radius: 16px; padding: 10px 12px; margin: 10px 0; }
+  .int-area table.intp-tabela tbody tr.destaque { border-color: #ffd9b8; }
+  .int-area table.intp-tabela td { border: 0; padding: 5px 0; white-space: normal; display: flex; gap: 10px; align-items: baseline; min-height: 28px; }
+  .int-area table.intp-tabela td::before { content: attr(data-rotulo); flex: 1; font-size: 11px; font-weight: 600; color: #9a938b; }
+  .int-area table.intp-tabela td.num, .int-area table.intp-tabela td.forte { text-align: right; }
+  .int-area table.intp-tabela td.forte { font-size: 14px; border-bottom: 1px solid #f7f5f2; padding-bottom: 8px; margin-bottom: 4px; }
+
+  .int-area .intp-etapa { grid-template-columns: 1fr 64px 52px; row-gap: 4px; }
+  .int-area .intp-etapa-nome { grid-column: 1 / -1; }
+  .int-area .intp-etapa > span:nth-child(2) { grid-column: 1 / -1; }
+
+  .int-area .intp-gaveta { width: 100%; max-width: 100%; }
+  .int-area .intp-banner button, .int-area .intp-th-btn { min-height: 44px; }
+  .int-area button.intp-linha-btn { min-height: 44px; }
 }
