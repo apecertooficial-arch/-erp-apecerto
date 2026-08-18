@@ -65,7 +65,14 @@ function subirSW() {
   const escopo = {
     self: {
       addEventListener: (nome, fn) => { ouvintes[nome] = fn; },
-      location: { origin: ORIGEM },
+      /* Num ServiceWorkerGlobalScope real, self.location e um WorkerLocation
+         absoluto -- o sw.js le self.location.href para tirar o ?v=<build> do
+         proprio registro. Mock so com origin fazia new URL(...) morrer com
+         ERR_INVALID_URL. */
+      location: {
+        origin: ORIGEM,
+        href: `${ORIGEM}/sw.js?v=ci-test`,
+      },
       skipWaiting: () => {},
       clients: { claim: async () => {} },
     },
