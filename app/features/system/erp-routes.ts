@@ -64,7 +64,7 @@ export const rotasModulo: Record<ModuleName, RotaModulo> = {
   "Minha Equipe": { path: "/equipe", slugs: [], classe: "B", rotuloCurto: "Equipe", mobile: false },
   /* Rotulo "Inicio": no celular do gestor esta e a primeira tela, o resumo da
      operacao. "Painel" dizia onde ele estava, nao o que ia encontrar. */
-  Performance: { path: "/performance", slugs: ["performance"], classe: "B", rotuloCurto: "Início", mobile: true },
+  Performance: { path: "/inteligencia", slugs: ["performance"], classe: "B", rotuloCurto: "Inteligência", mobile: true },
   Abordagens: { path: "/abordagens", slugs: ["abordagens"], classe: "B", mobile: false },
   "Automações": { path: "/automacoes", slugs: ["automacoes"], classe: "B", mobile: false },
   "Agentes de IA": { path: "/agentes-ia", slugs: ["agentes_ia"], classe: "B", rotuloCurto: "Agentes", mobile: false },
@@ -100,6 +100,9 @@ export function moduloDoPath(pathname: string): ModuleName | null {
   if (!pathname) return null;
   // "/crm/lead/123" continua sendo o modulo CRM.
   const base = "/" + (pathname.split("/").filter(Boolean)[0] ?? "");
+  // Alias legado: links salvos em /performance continuam selecionando o módulo
+  // correto, mas todo clique novo usa a rota canônica /inteligencia.
+  if (base === "/performance") return "Performance";
   return porPath.get(base) ?? null;
 }
 
