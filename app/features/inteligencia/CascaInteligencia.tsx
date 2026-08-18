@@ -1,21 +1,22 @@
 "use client";
 
 /* Casca comum das telas da área: título, selo de procediência do dado, seletor de
- * período, os 3 grupos e as abas do grupo. Uma tela da área é sempre este
- * cabeçalho + o conteúdo dela, para nenhuma delas inventar navegação própria.
+ * período, os grupos e as abas do grupo.
  *
- * Os grupos e a ordem são os aprovados no canvas (23a): Empresa · Operação
- * comercial · Governança. Cada item é um <a href> real — rota de verdade, sem
- * estado escondido, para o navegador voltar e recarregar como qualquer tela.
+ * Os quatro grupos são os aprovados no canvas (23a): Empresa · Operação comercial
+ * · Mercado e digital · Governança. Cada item é um <a href> real — rota de
+ * verdade, sem estado escondido, para o navegador voltar e recarregar como
+ * qualquer tela.
  */
 
 import { PERIODOS, horaSp, type Periodo } from "./dados";
 
-export type Grupo = "empresa" | "operacao" | "governanca";
+export type Grupo = "empresa" | "operacao" | "digital" | "governanca";
 
 export const GRUPOS: Array<{ id: Grupo; nome: string }> = [
   { id: "empresa", nome: "Empresa" },
   { id: "operacao", nome: "Operação comercial" },
+  { id: "digital", nome: "Mercado e digital" },
   { id: "governanca", nome: "Governança" },
 ];
 
@@ -29,6 +30,8 @@ export const TELAS: Array<{ slug: string; nome: string; grupo: Grupo }> = [
   { slug: "gerentes", nome: "Gerentes", grupo: "operacao" },
   { slug: "corretores", nome: "Corretores", grupo: "operacao" },
   { slug: "qualidade", nome: "Qualidade e desenvolvimento", grupo: "operacao" },
+  { slug: "aquisicao", nome: "Aquisição e campanhas", grupo: "digital" },
+  { slug: "comportamento", nome: "Comportamento e conteúdo", grupo: "digital" },
   { slug: "alertas", nome: "Central de alertas", grupo: "governanca" },
   { slug: "privacidade", nome: "Privacidade e tracking", grupo: "governanca" },
 ];

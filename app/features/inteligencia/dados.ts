@@ -2,9 +2,6 @@
 
 /* INTELIGÊNCIA — base compartilhada das telas da área.
  *
- * Tipos, formatadores e o hook de leitura. Existe para as telas nunca discordarem
- * sobre como um número é escrito nem sobre o que é "sem dado":
- *
  *   tem(v)   -> distingue "veio zero" de "não veio". Zero é resultado; ausência é
  *               estado, e nenhuma tela da área pode confundir os dois.
  *   pct(...) -> só calcula com as duas pontas confirmadas e base > 0.
@@ -12,7 +9,7 @@
  * LIMIARES fixos nesta versão, por decisão de produto (configurável em
  * Configurações fica para uma fase futura):
  *   SLA de primeiro contato: 5 min (verde), 15 min (âmbar), acima disso vermelho.
- *   Negocio parado: 7 dias sem movimento.
+ *   Negócio parado: 7 dias sem movimento.
  *   Sobrecarga de carteira: acima de 100% do limite do corretor.
  *   Amostra mínima para classificar pessoa: 8 atendimentos.
  */
@@ -71,6 +68,15 @@ export type Proprietarios = {
   porFinalidade?: Array<{ chave: string; total: number }>;
 };
 
+/* Leitura do GA4. Cada pedaço pode vir vazio de forma independente: a tela mostra
+   o que existe e declara o que faltou. */
+export type Analytics = {
+  totais: { sessoes: number; visualizacoes: number; sessoesEngajadas: number; taxaEngajamento: number | null } | null;
+  paginas: Array<{ pagina: string; visualizacoes: number; entradas: number }>;
+  origens: Array<{ origem: string; sessoes: number; engajadas: number }>;
+  dispositivos: Array<{ dispositivo: string; sessoes: number }>;
+};
+
 export type Resposta = {
   periodo?: { chave: string; inicio: string; fim: string; rotulo: string; fuso?: string };
   atualizadoEm?: string;
@@ -79,6 +85,7 @@ export type Resposta = {
   qualidadeDado?: QualidadeDado | null;
   digital?: { leadsDoSite?: Numero; primeiroEm?: string | null; ultimoEm?: string | null } | null;
   proprietarios?: Proprietarios | null;
+  analytics?: Analytics | null;
   pendencias?: Array<{ chave: string; texto: string }>;
   error?: string;
 };

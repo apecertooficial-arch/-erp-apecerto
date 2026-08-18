@@ -1,21 +1,16 @@
 import { createServerSupabaseClient } from "../../lib/supabase/server";
+import { ga4Configurado, lerGa4, type Ga4Leitura } from "../../lib/ga4";
 
 /* INTELIGÊNCIA — endpoint agregador da área.
  *
  * Um endpoint só, autenticado, para as leituras da área Inteligência. Ele NÃO
  * cria relação nem função no banco: consome o que já existe hoje. Cada bloco é
  * lido de forma independente e, quando a fonte não responde, o bloco volta como
- * null com uma pendência declarada — nunca zero, nunca número estimado. As telas
- * já estão desenhadas para esse estado ("aguardando dado").
+ * null com uma pendência declarada — nunca zero, nunca número estimado.
  *
  * Escopo e permissão: a RPC performance_sala_comando já resolve o escopo por
- * perfil (can_manage_all para gestor, próprio corretor_id para corretor). Este
- * endpoint só confirma a sessão e repassa o token — nenhuma chave de serviço
- * chega ao navegador, e nada é consultado sem usuário autenticado.
- *
- * Fora deste endpoint, de propósito: GA4, Google e Meta Ads (custos), Clarity.
- * Enquanto não existirem, os campos correspondentes não são inventados — entram
- * em `pendencias`.
+ * perfil. Este endpoint só confirma a sessão e repassa o token — nenhuma chave de
+ * serviço chega ao navegador.
  */
 
 export const dynamic = "force-dynamic";
@@ -92,8 +87,7 @@ export async function GET(request: Request) {
     args: Record<string, unknown>,
   ) => Promise<{ data: unknown; error: { message: string } | null }>;
 
-  /* BLOCO 1 — empresa, corretores e qualidade do dado. Fonte canónica já em
-     produção, com escopo por perfil resolvido dentro da própria função. */
+  /* BLOCO 1 — empresa, corretores e qualidade do dado. */
   let empresa: unknown = null;
   let corretores: unknown[] = [];
   let qualidadeDado: unknown = null;
@@ -113,8 +107,7 @@ export async function GET(request: Request) {
     }
   }
 
-  /* BLOCO 2 — digital: leads confirmados vindos do site. `site_leads` é a fonte
-     de "Lead do site" na definição das métricas. */
+  /* BLOCO 2 — digital: leads confirmados vindos do site. */
   let digital: { leadsDoSite: number; primeiroEm: string | null; ultimoEm: string | null } | null = null;
   {
     const consulta = supabase
@@ -141,10 +134,8 @@ export async function GET(request: Request) {
     }
   }
 
-  /* BLOCO 3 — captação de proprietários. `captacoes_portal` guarda o que o
-     proprietário enviou pelo site; é o único funil digital com dado próprio hoje.
-     Agregamos aqui (status, bairro, finalidade) para nenhum dado de contato do
-     proprietário sair do servidor: a tela recebe contagem, não pessoa. */
+  /* BLOCO 3 — captação de proprietários, agregada no servidor: a tela recebe
+     contagem, não pessoa. */
   let proprietarios: {
     recebidas: number; comPreco: number; ultimaEm: string | null;
     porStatus: Array<{ chave: string; total: number }>;
@@ -180,10 +171,25 @@ export async function GET(request: Request) {
     }
   }
 
-  /* Integrações que ainda não existem entram como pendência declarada, para a
-     tela nunca preencher CPL, ROAS ou mapa de calor com número fictício. */
+  /* BLOCO 4 — GA4. Leitura server-to-server com a conta de serviço (Leitor na
+     propriedade). Sem as variáveis de ambiente, ou com falha na Data API, o bloco
+     volta null e a pendência aparece — as telas nunca escrevem 0 sessões. */
+  let analytics: Ga4Leitura | null = null;
+  if (ga4Configurado()) {
+    try {
+      analytics = await lerGa4(inicio, fim);
+    } catch (erro) {
+      console.error("[inteligencia] GA4 falhou:", erro instanceof Error ? erro.message : erro);
+      analytics = null;
+    }
+    if (!analytics) {
+      pendencias.push({ chave: "analytics", texto: "GA4 configurado, mas a leitura não respondeu agora. Nenhum número de tráfego foi estimado." });
+    }
+  } else {
+    pendencias.push({ chave: "analytics", texto: "GA4 ainda não conectado: sessões, páginas e origem de tráfego aparecem depois da liberação." });
+  }
+
   pendencias.push({ chave: "midia", texto: "Custos de mídia ainda não conectados. Conecte Google Ads e Meta Ads para ver CPL, custo por negócio e ROAS." });
-  pendencias.push({ chave: "analytics", texto: "GA4 ainda não conectado: sessões, páginas e origem de tráfego aparecem depois da liberação." });
   pendencias.push({ chave: "clarity", texto: "Microsoft Clarity não conectado: mapas de calor e gravações não existem nesta leitura." });
 
   return Response.json({
@@ -195,6 +201,7 @@ export async function GET(request: Request) {
     qualidadeDado,
     digital,
     proprietarios,
+    analytics,
     pendencias,
   });
 }
