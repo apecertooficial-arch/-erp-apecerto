@@ -1,0 +1,82 @@
+/* Folha da área Inteligência — só a casca e o contrato de dado ausente.
+ *
+ * Importada pelo próprio componente (CascaInteligencia.tsx), não pelo
+ * layout.tsx: a área é uma rota isolada e nada aqui deve alcançar outra tela.
+ * Todo seletor nasce prefixado por .int-area, pela lição já paga em Abordagens
+ * (ordem de carga não vence seletor antigo com mais classes).
+ *
+ * As 17 telas chegam nos lotes seguintes com o markup aprovado; os valores
+ * visuais são os tokens da marca: areia #FAF8F6, laranja #FF7000, roxo #8B00CC,
+ * cartão branco 18–24px, sombra 0 2px 6px rgba(31,28,26,.06).
+ */
+
+.int-area {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 28px 32px 44px;
+  background: #faf8f6;
+  color: #1f1c1a;
+  font-family: Quicksand, system-ui, -apple-system, sans-serif;
+  box-sizing: border-box;
+  min-height: 100%;
+}
+
+.int-area .int-topo { display: flex; align-items: flex-end; gap: 16px; flex-wrap: wrap; }
+.int-area .int-topo h1 { margin: 2px 0 0; font-size: 26px; font-weight: 700; letter-spacing: -0.02em; }
+.int-area .int-topo p { margin: 2px 0 0; font-size: 13px; color: #6e6760; }
+.int-area .int-eyebrow { font-size: 11px; font-weight: 600; letter-spacing: 0.12em; color: #ff7000; }
+.int-area .int-topo-acoes { margin-left: auto; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.int-area .int-selo-pend { font-size: 11px; font-weight: 700; letter-spacing: 0.06em; background: #fdf1d9; color: #8a6a15; border-radius: 999px; padding: 7px 14px; }
+
+.int-area .int-btn { height: 38px; padding: 0 16px; border: 1px solid #e4dfd9; border-radius: 999px; background: #fff; color: #4d4842; font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+.int-area .int-btn:hover { background: #faf8f6; }
+
+.int-area .int-grupos { display: flex; gap: 8px; flex-wrap: wrap; }
+.int-area .int-grupo { height: 40px; padding: 0 18px; display: inline-flex; align-items: center; gap: 8px; border: 1.5px solid #e4dfd9; border-radius: 999px; background: #fff; color: #4d4842; font-family: inherit; font-size: 13.5px; font-weight: 600; cursor: pointer; }
+.int-area .int-grupo:hover { background: #fff3ea; }
+.int-area .int-grupo.ativo { border-color: #ff7000; background: #fff3ea; color: #cc5800; font-weight: 700; }
+
+.int-area .int-paginas { display: flex; gap: 7px; flex-wrap: wrap; }
+.int-area .int-pagina { height: 34px; padding: 0 14px; border: 1.5px solid #e4dfd9; border-radius: 999px; background: #fff; color: #4d4842; font-family: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer; }
+.int-area .int-pagina:hover { background: #fff3ea; }
+.int-area .int-pagina.ativo { border-color: #ff7000; background: #fff3ea; color: #cc5800; font-weight: 700; }
+
+.int-area .int-filtros { background: #fff; border-radius: 18px; padding: 14px 18px; box-shadow: 0 2px 6px rgba(31, 28, 26, 0.06); display: flex; flex-direction: column; gap: 10px; }
+.int-area .int-filtros-linha { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.int-area .int-periodo { display: inline-flex; border: 1px solid #e4dfd9; border-radius: 999px; overflow: hidden; }
+.int-area .int-periodo button { height: 32px; padding: 0 13px; border: 0; background: #fff; color: #6e6760; font-family: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
+.int-area .int-periodo button.ativo { background: #fff3ea; color: #cc5800; font-weight: 700; box-shadow: inset 0 0 0 1.5px #ff7000; border-radius: 999px; }
+.int-area .int-chip-filtro { height: 32px; padding: 0 13px; border: 1px solid #e4dfd9; border-radius: 999px; background: #fff; color: #4d4842; font-family: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
+.int-area .int-chip-filtro:hover { background: #faf8f6; }
+.int-area .int-chip-filtro.ligado { border-color: #ff7000; background: #fff3ea; color: #cc5800; font-weight: 700; }
+.int-area .int-chip-ativo { height: 32px; padding: 0 13px; border: 1.5px solid #8b00cc; border-radius: 999px; background: #f7ecfc; color: #66009a; font-family: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
+.int-area .int-divisor { width: 1px; height: 22px; background: #f2efec; }
+.int-area .int-filtros-rodape { display: flex; align-items: center; gap: 10px; font-size: 12px; color: #6e6760; flex-wrap: wrap; }
+.int-area .int-contagem-ativa { font-weight: 600; color: #66009a; }
+.int-area .int-link { border: 0; background: none; padding: 0; font-family: inherit; font-size: 12px; font-weight: 600; color: #cc5800; cursor: pointer; }
+.int-area .int-filtros-nota { margin-left: auto; color: #9a938b; }
+
+.int-area .int-secao { display: flex; flex-direction: column; gap: 10px; }
+
+/* CONTRATO DE DADO AUSENTE — o bloco continua no lugar, o valor vira tracinho. */
+.int-area .int-valor { font-size: 26px; font-weight: 700; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; color: #1f1c1a; }
+.int-area .int-valor-vazio { color: #c9c2ba; }
+.int-area .int-valor-ruim { color: #d93e3e; }
+.int-area .int-valor-bom { color: #1e7a46; }
+.int-area .int-valor-atencao { color: #b5700a; }
+.int-area .int-pendencia { display: inline-block; font-size: 11px; font-weight: 700; background: #fdf1d9; color: #8a6a15; border-radius: 999px; padding: 3px 9px; }
+
+.int-area .int-sem-dado { background: #fff; border: 1px dashed #e4dfd9; border-radius: 18px; padding: 20px 22px; display: flex; flex-direction: column; gap: 7px; }
+.int-area .int-sem-dado strong { font-size: 15px; font-weight: 700; }
+.int-area .int-sem-dado span { font-size: 12.5px; color: #6e6760; line-height: 1.55; }
+
+.int-area .int-rodape-fontes { display: flex; gap: 14px; flex-wrap: wrap; font-size: 11px; color: #9a938b; padding: 2px 2px 0; }
+.int-area .int-rodape-fontes b { color: #6e6760; font-weight: 700; }
+.int-area .int-rodape-pendencias { color: #8a6a15; }
+.int-area .int-rodape-hora { margin-left: auto; }
+
+@media (max-width: 1100px) {
+  .int-area { padding: 20px 18px 36px; }
+  .int-area .int-filtros-nota { margin-left: 0; }
+}
