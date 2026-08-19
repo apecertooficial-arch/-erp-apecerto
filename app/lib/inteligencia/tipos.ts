@@ -86,3 +86,19 @@ export type VisaoCeoPayload = {
   pipeline_valor: number | null;
   funil: FunilItem[];
 };
+
+export type AtendimentoLead = { nome: string; responsavel: string | null; gerente: string | null; origem: string; espera_min: number; ultima: string | null; proxima: string };
+
+export type AtendimentoPayload = {
+  atualizado_em: string;
+  periodo_dias: number;
+  mediana_min: number | null;
+  p90_min: number | null;
+  aguardando: number;
+  total_leads: number;
+  recebidas: number;
+  enviadas: number;
+  baldes: { ate5: number; b5_15: number; b15_30: number; b30_60: number; acima60: number };
+  filas: { sem_resposta: number; acima_sla: number; mensagens: number; followup_vencidos: number; sem_proxima: number };
+  leads: AtendimentoLead[];
+};

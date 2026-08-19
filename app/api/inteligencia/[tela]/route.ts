@@ -21,7 +21,7 @@ import type { FonteMeta, MetaInteligencia } from "../../../lib/inteligencia/tipo
 
 export const dynamic = "force-dynamic";
 
-const TELAS_SUPORTADAS = new Set(["privacidade", "digital", "empresa"]);
+const TELAS_SUPORTADAS = new Set(["privacidade", "digital", "empresa", "atendimento"]);
 const CONSENT_VALIDOS = new Set(["essential", "analytics", "marketing"]);
 const DEVICE_VALIDOS = new Set(["desktop", "mobile", "tablet"]);
 
@@ -118,6 +118,18 @@ export async function GET(request: Request) {
       ], null, true, [
         "Escopo do funil: Funil 2.0 (operação). % no SLA, previsão ponderada e valor de pipeline seguem como —.",
       ]);
+      return ok(data, meta);
+    }
+
+    if (tela === "atendimento") {
+      const { data, error } = await chamarRpc(supabase, "intel_atendimento", { p_days: dias });
+      if (error) throw new Error(error.message);
+      const meta = montarMeta(tela, dias, rotulo, [
+        { nome: "wa_mensagens (fila e espera)", status: "ok" },
+        { nome: "leads / negócios", status: "ok" },
+        { nome: "% dentro do SLA de 5 min", status: "ausente", motivo: "sem marco de 1º contato; usamos o tempo de espera do backlog" },
+        { nome: "escala / ponto", status: "ausente", motivo: "não integrado" },
+      ], null, true, ["Fila viva. % no SLA e taxa de resposta seguem como —."]);
       return ok(data, meta);
     }
 
