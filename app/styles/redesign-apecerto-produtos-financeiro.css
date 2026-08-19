@@ -366,3 +366,14 @@
 .extrato-linha-botoes button.extrato-primario { border-color:#FF7000; background:#FF7000; font-weight:700; box-shadow:0 3px 10px rgba(255,112,0,.16); }
 .extrato-linha-botoes button.extrato-primario:hover { background:#E85D00; }
 .extrato-alerta { margin-top:16px; padding:0; border:0; background:transparent; color:#6E6760; font-size:12px; line-height:1.6; }
+
+/* Menu de ações do card (•••): Abrir ficha / Editar / Excluir */
+.product-photo .card-menu { position:absolute; z-index:5; top:9px; right:9px; }
+.product-photo .card-menu-btn { width:32px; height:32px; border:0; border-radius:999px; background:rgba(255,255,255,.94); color:#4C4845; font-weight:700; box-shadow:0 2px 6px rgba(31,28,26,.1); cursor:pointer; }
+.product-photo .card-menu-btn:hover { background:#fff; }
+.card-menu-pop { position:absolute; top:38px; right:0; min-width:150px; background:#fff; border-radius:14px; box-shadow:0 12px 30px rgba(31,28,26,.18); padding:6px; display:flex; flex-direction:column; gap:2px; }
+.card-menu-pop button { text-align:left; border:0; background:none; border-radius:9px; padding:9px 11px; font-size:12.5px; font-weight:700; color:#1F1C1A; cursor:pointer; font-family:inherit; }
+.card-menu-pop button:hover { background:#F7ECFC; color:#66009A; }
+.card-menu-pop button.danger { color:#B33131; }
+.card-menu-pop button.danger:hover { background:#FBE5E5; color:#B33131; }
+.approval-captador .captador-nota { color:#66009A; font-weight:700; }

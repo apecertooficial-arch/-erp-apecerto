@@ -74,7 +74,7 @@ function initials(name?: string | null): string {
   return ((parts[0][0] ?? "") + (parts.length > 1 ? parts[parts.length - 1][0] : "")).toUpperCase();
 }
 
-export function ProductDetail({ productId, accessToken, sessionRole = "corretor", initialUnitId, onClose, onChanged }: { productId: string; accessToken: string; sessionRole?: string; initialUnitId?: string | null; onClose: () => void; onChanged: () => void }) {
+export function ProductDetail({ productId, accessToken, sessionRole = "corretor", initialUnitId, initialEditing = false, captadorScore = null, onClose, onChanged }: { productId: string; accessToken: string; sessionRole?: string; initialUnitId?: string | null; initialEditing?: boolean; captadorScore?: number | null; onClose: () => void; onChanged: () => void }) {
   const canPublish = sessionRole === "admin" || sessionRole === "gestor" || sessionRole === "executivo";
   const [product, setProduct] = useState<ProductDetailData | null>(null);
   const [draft, setDraft] = useState<Record<string, string | number | null>>({});
@@ -83,7 +83,7 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
   const [condominiums, setCondominiums] = useState<Condo[]>([]);
   const [condominiumId, setCondominiumId] = useState("");
   const [newCondominiumName, setNewCondominiumName] = useState("");
-  const [editing, setEditing] = useState(false);
+  const [editing, setEditing] = useState(Boolean(initialEditing));
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [category, setCategory] = useState("Outros");
@@ -461,7 +461,7 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
 
             <div className="fv2-person-card">
               <span className="fv2-avatar purple">{initials(product.captado_por_nome)}</span>
-              <div><strong>{product.captado_por_nome ?? "Não informado"}</strong><small>Corretor da captação</small></div>
+              <div><strong>{product.captado_por_nome ?? "Não informado"}</strong><small>Corretor da captação{typeof captadorScore === "number" ? ` · nota ${captadorScore}` : ""}</small></div>
             </div>
           </aside>
         </div>
