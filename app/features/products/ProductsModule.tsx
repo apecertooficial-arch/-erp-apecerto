@@ -70,6 +70,10 @@ export function ProductsModule({ accessToken }: { accessToken: string }) {
   const [sortBy, setSortBy] = useState("quality-asc");
   const [dataState, setDataState] = useState<"loading" | "live" | "auth" | "error">("loading");
   const [atualizadoEm, setAtualizadoEm] = useState<Date | null>(null);
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [openInEdit, setOpenInEdit] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<Product | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const loadCatalog = useCallback(async function requestCatalog(token: string, allowRefresh = true) {
     setDataState("loading");
@@ -122,6 +126,25 @@ export function ProductsModule({ accessToken }: { accessToken: string }) {
       void loadCatalog(accessToken);
     } catch { window.alert("Falha de conexão ao aprovar. Tente novamente."); }
   }, [accessToken, loadCatalog]);
+
+  useEffect(() => {
+    if (!openMenuId) return;
+    const close = () => setOpenMenuId(null);
+    document.addEventListener("click", close);
+    return () => document.removeEventListener("click", close);
+  }, [openMenuId]);
+
+  const confirmDeleteProduct = useCallback(async () => {
+    if (!deleteTarget?.id) return;
+    setDeleting(true);
+    try {
+      const response = await fetch("/api/product", { method: "PATCH", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify({ id: deleteTarget.id, action: "deleteProduct" }) });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) { window.alert(typeof (data as { error?: unknown }).error === "string" ? (data as { error: string }).error : "Não foi possível excluir o produto."); }
+      else { void loadCatalog(accessToken); }
+    } catch { window.alert("Falha de conexão ao excluir. Tente novamente."); }
+    finally { setDeleting(false); setDeleteTarget(null); }
+  }, [accessToken, deleteTarget, loadCatalog]);
 
   useEffect(() => {
     publicarBadge("Produtos", canApprove ? pendingCount + pendingUnits.length : 0);
@@ -234,7 +257,8 @@ export function ProductsModule({ accessToken }: { accessToken: string }) {
         </article>;
       })}
     </section>}
-    {selectedProductId && <ProductDetail productId={selectedProductId} accessToken={accessToken} sessionRole={role} initialUnitId={initialUnitId} onClose={() => { setSelectedProductId(null); setInitialUnitId(null); }} onChanged={() => void loadCatalog(accessToken)} />}
+    {selectedProductId && <ProductDetail productId={selectedProductId} accessToken={accessToken} sessionRole={role} initialUnitId={initialUnitId} initialEditing={openInEdit} captadorScore={products.find((p) => p.id === selectedProductId)?.capturedByScore ?? null} onClose={() => { setSelectedProductId(null); setInitialUnitId(null); setOpenInEdit(false); }} onChanged={() => void loadCatalog(accessToken)} />}
+    {deleteTarget && <div className="delete-confirm" role="dialog" aria-modal="true" aria-label="Confirmar exclusão do produto"><div><strong>Excluir este produto definitivamente?</strong><p><strong>{deleteTarget.name}</strong> e todas as suas unidades, fotos e vínculos serão removidos para sempre. Esta ação não pode ser desfeita.</p><footer><button type="button" onClick={() => setDeleteTarget(null)}>Cancelar</button><button className="danger" disabled={deleting} type="button" onClick={() => void confirmDeleteProduct()}>Excluir para sempre</button></footer></div></div>}
   </main>;
 
   return (
@@ -272,11 +296,11 @@ export function ProductsModule({ accessToken }: { accessToken: string }) {
       </section>}
       <section className="product-grid">
         {produtosVisiveis.map((product) => <article className={`product-card ${product.draft ? "t-lanc" : /obra/i.test(product.status ?? "") ? "t-obras" : /lan[cç]/i.test(product.status ?? "") ? "t-lanc" : "t-pronto"}`} role="button" tabIndex={0} onClick={() => product.id && setSelectedProductId(product.id)} onKeyDown={(event) => { if ((event.key === "Enter" || event.key === " ") && product.id) setSelectedProductId(product.id); }} key={product.id ?? product.name}>
-          <div className={`product-photo ${product.coverUrl ? "has-image" : ""}`}>{product.coverUrl && <img src={product.coverUrl} alt={`Foto de capa de ${product.name}`} />}<span>{product.draft ? "Rascunho" : product.status?.replace("_", " ") ?? "Pronto"}</span>{product.quality && <span className={`quality-badge quality-on-photo ${product.quality.level}`}>Nota {product.quality.score}</span>}{!product.draft && product.approval && product.approval !== "aprovado" && <span className={`approval-badge ${product.approval}`}>{product.approval === "pendente" ? "⏳ Pendente" : "✕ Reprovado"}</span>}{!product.coverUrl && <div className="building-icon">▥</div>}<button type="button" onClick={(event) => { event.stopPropagation(); if (product.id) setSelectedProductId(product.id); }} aria-label={`Abrir ficha de ${product.name}`}>•••</button></div>
+          <div className={`product-photo ${product.coverUrl ? "has-image" : ""}`}>{product.coverUrl && <img src={product.coverUrl} alt={`Foto de capa de ${product.name}`} />}<span>{product.draft ? "Rascunho" : product.status?.replace("_", " ") ?? "Pronto"}</span>{product.quality && <span className={`quality-badge quality-on-photo ${product.quality.level}`}>Nota {product.quality.score}</span>}{!product.draft && product.approval && product.approval !== "aprovado" && <span className={`approval-badge ${product.approval}`}>{product.approval === "pendente" ? "⏳ Pendente" : "✕ Reprovado"}</span>}{!product.coverUrl && <div className="building-icon">▥</div>}<div className="card-menu" onClick={(event) => event.stopPropagation()}><button type="button" className="card-menu-btn" aria-haspopup="true" aria-label={`Ações de ${product.name}`} onClick={(event) => { event.stopPropagation(); setOpenMenuId(openMenuId === product.id ? null : (product.id ?? null)); }}>•••</button>{openMenuId === product.id && product.id && <div className="card-menu-pop" role="menu"><button type="button" role="menuitem" onClick={() => { setOpenMenuId(null); setOpenInEdit(false); setSelectedProductId(product.id!); }}>Abrir ficha</button><button type="button" role="menuitem" onClick={() => { setOpenMenuId(null); setOpenInEdit(true); setSelectedProductId(product.id!); }}>Editar</button>{canApprove && <button type="button" role="menuitem" className="danger" onClick={() => { setOpenMenuId(null); setDeleteTarget(product); }}>Excluir</button>}</div>}</div></div>
           <div className="product-info"><strong className="price">{product.price}</strong><h2>{product.name}</h2><p className="location">⌖ {product.neighborhood} · {product.city}</p>{product.developer && <p className="developer">{product.developer}</p>}
             <div className="specs"><span className="s-area"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 3h18v18H3z"/><path d="M9 3v4"/><path d="M15 17v4"/><path d="M3 9h4"/><path d="M17 15h4"/></svg>{product.area} m²</span><span className="s-dorm"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M2 18v-6a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v6"/><path d="M4 18v3"/><path d="M20 18v3"/><path d="M6 10V7a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v3"/></svg>{product.bedrooms} dorm.</span><span className="s-vaga"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 17h14"/><path d="M6 17v2"/><path d="M18 17v2"/><path d="M4 17l1.5-5.5A2 2 0 0 1 7.4 10h9.2a2 2 0 0 1 1.9 1.5L20 17z"/></svg>{product.parking} vaga</span></div>
             <div className="estoque"><div className="estoque-top"><strong>{product.available} de {product.units ?? 0} disponíveis</strong><span>{product.media ?? 0} mídias</span></div><div className="estoque-bar"><i style={{ width: `${product.units ? Math.min(100, Math.round((product.available / product.units) * 100)) : 0}%` }} /></div></div>
-            {product.topIssue && <p className="product-top-issue">⚠ {product.topIssue}</p>}{product.approval === "reprovado" && product.rejectionReason && <p className="approval-reason">Motivo: {product.rejectionReason}</p>}{canApprove && product.approval === "pendente" && !product.draft && <p className="approval-captador">👤 Captado por: {product.capturedBy ?? "Não informado"}</p>}{canApprove && product.approval === "pendente" && !product.draft && product.id && <div className="approval-actions" onClick={(event) => event.stopPropagation()}><button type="button" className="ap-approve" disabled={!product.quality?.readyForSite} title={product.quality?.readyForSite ? "Aprovar e publicar no site" : (product.quality?.blocking?.join(" · ") || "Complete o cadastro antes de aprovar")} onClick={() => decideFromCard(product.id!, true)}>✓ Aprovar</button><button type="button" className="ap-reject" onClick={() => decideFromCard(product.id!, false)}>✕ Reprovar</button></div>}<footer><strong>{product.priceM2}</strong><span>{product.leads > 0 ? `${product.leads} lead(s) vinculado(s) · ` : ""}{product.published ? "● Publicado no site" : product.quality?.readyForSite ? "Pronto para publicar" : "Cadastro incompleto"}</span></footer></div></article>)}
+            {product.topIssue && <p className="product-top-issue">⚠ {product.topIssue}</p>}{product.approval === "reprovado" && product.rejectionReason && <p className="approval-reason">Motivo: {product.rejectionReason}</p>}{canApprove && product.approval === "pendente" && !product.draft && <p className="approval-captador">👤 Captado por: {product.capturedBy ?? "Não informado"}{typeof product.capturedByScore === "number" ? <span className="captador-nota"> · nota {product.capturedByScore}</span> : null}</p>}{canApprove && product.approval === "pendente" && !product.draft && product.id && <div className="approval-actions" onClick={(event) => event.stopPropagation()}><button type="button" className="ap-approve" disabled={!product.quality?.readyForSite} title={product.quality?.readyForSite ? "Aprovar e publicar no site" : (product.quality?.blocking?.join(" · ") || "Complete o cadastro antes de aprovar")} onClick={() => decideFromCard(product.id!, true)}>✓ Aprovar</button><button type="button" className="ap-reject" onClick={() => decideFromCard(product.id!, false)}>✕ Reprovar</button></div>}<footer><strong>{product.priceM2}</strong><span>{product.leads > 0 ? `${product.leads} lead(s) vinculado(s) · ` : ""}{product.published ? "● Publicado no site" : product.quality?.readyForSite ? "Pronto para publicar" : "Cadastro incompleto"}</span></footer></div></article>)}
       </section>
       {captureOpen && <CaptureWizard onClose={() => setCaptureOpen(false)} onSaved={() => {
         setCaptureOpen(false);
