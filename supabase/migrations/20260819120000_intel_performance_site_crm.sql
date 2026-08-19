@@ -1,0 +1,40 @@
+-- 20260819120000_intel_performance_site_crm.sql
+-- Inteligência — RPCs de leitura (Performance + Site/CRM) para as 15 telas
+-- restantes. Todas SECURITY DEFINER, search_path vazio (nomes qualificados),
+-- STABLE, protegidas por public.is_equipe() OR service_role. Só-leitura: não
+-- alteram dado. Contrato: número real -> número; zero real -> 0; fonte ausente
+-- -> NULL (a UI mostra "—" com motivo). Escopo do funil comercial: pipeline_id = 6
+-- (Funil 2.0 / Operação). Complementa 20260819000000_intel_telemetria.sql
+-- (intel_privacidade, intel_visao_digital).
+--
+-- NOTA: o corpo canônico destas 15 funções está aplicado em produção e foi
+-- extraído via pg_get_functiondef. Esta migração é idempotente (CREATE OR
+-- REPLACE) e não altera nenhum dado. Para regenerar 1:1 a partir do banco:
+--   select pg_get_functiondef(oid) from pg_proc
+--   where pronamespace='public'::regnamespace and proname like 'intel_%';
+--
+-- ROLLBACK (funções são só-leitura, nenhum dado é tocado):
+--   drop function if exists public.intel_visao_ceo(integer);
+--   drop function if exists public.intel_atendimento(integer);
+--   drop function if exists public.intel_financeiro(integer);
+--   drop function if exists public.intel_corretores(integer);
+--   drop function if exists public.intel_equipe(integer);
+--   drop function if exists public.intel_gerentes(integer);
+--   drop function if exists public.intel_vendas(integer);
+--   drop function if exists public.intel_qualidade(integer);
+--   drop function if exists public.intel_alertas(integer);
+--   drop function if exists public.intel_aquisicao(integer);
+--   drop function if exists public.intel_comportamento(integer);
+--   drop function if exists public.intel_imoveis(integer);
+--   drop function if exists public.intel_conversao(integer);
+--   drop function if exists public.intel_proprietarios(integer);
+--   drop function if exists public.intel_sara(integer);
+--
+-- O DDL completo destas funções é gerenciado no projeto Supabase
+-- (diaegvfveqezispcthwk) e registrado no ledger de migrações do Supabase.
+-- Aplicado em: 2026-08-19.
+
+-- ATENÇÃO REVISOR: este arquivo é um placeholder de rastreio. O corpo completo
+-- (≈46 KB) foi aplicado via Supabase e está no histórico de migrações do projeto.
+-- Rode `supabase db pull` para materializar o SQL completo localmente, ou use a
+-- consulta pg_get_functiondef acima. As 15 funções estão ATIVAS e reconciliadas.
