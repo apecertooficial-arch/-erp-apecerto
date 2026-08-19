@@ -110,3 +110,6 @@ export type FinanceiroPayload = { atualizado_em: string; periodo_dias: number; t
 
 export type CorretorItem = { nome: string; gerente: string; gerente_id: number | null; limite: number | null; leads: number; negocios: number; vendas: number; vgv: number; visitas: number; vencidos: number; mediana: number | null; p90: number | null; aguardando: number };
 export type CorretoresPayload = { atualizado_em: string; periodo_dias: number; totais: { leads: number; vendas: number }; corretores: CorretorItem[] };
+
+export type EquipeRollup = { nome: string; corretores: number; leads: number; vendas: number; vgv: number; vencidos: number; lead_venda: number | null; mediana: number | null; p90: number | null };
+export type EquipePayload = { atualizado_em: string; periodo_dias: number; leads: number; negocios: number; visitas: number; vendas: number; vgv: number; sla: { mediana_min: number | null; p90_min: number | null }; comissao_bruta: number; comissao_pessoas: number; followups_vencidos: number; negocios_sem_proxima: number; visitas_sem_feedback: number; perdas_sem_motivo: number; equipes: EquipeRollup[] };
