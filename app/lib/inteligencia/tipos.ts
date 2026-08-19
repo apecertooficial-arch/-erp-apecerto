@@ -122,3 +122,7 @@ export type VendasEtapa = { etapa: string; negocios: number; vgv: number | null;
 export type VendasItem = { nome: string; corretor: string; vgv: number | null; ciclo: number | null; canal: string };
 export type VendasEquipe = { nome: string; meta: number; realizado: number; pct: number | null };
 export type VendasPayload = { atualizado_em: string; periodo_dias: number; realizado: number; meta: number; realizado_pct: number | null; falta: number; previsao: number | null; cobertura_previsao: number | null; concluidas: number; ciclo_medio: number | null; ritmo: number | null; dias_uteis: number; equipes: VendasEquipe[]; etapas: VendasEtapa[]; total_etapas: { negocios: number; vgv: number | null; ponderado: number | null }; vendas: VendasItem[]; total_vendas: number; fora_da_lista: number };
+
+export type QualidadeCriterios = Record<string, number | null>;
+export type QualidadePessoa = { nome: string; nota: number | null; amostra: number; criterios: QualidadeCriterios };
+export type QualidadePayload = { atualizado_em: string; periodo_dias: number; nota_empresa: number | null; amostra: number; criticas: number; criterios: QualidadeCriterios; pessoas: QualidadePessoa[] };

@@ -21,7 +21,7 @@ import type { FonteMeta, MetaInteligencia } from "../../../lib/inteligencia/tipo
 
 export const dynamic = "force-dynamic";
 
-const TELAS_SUPORTADAS = new Set(["privacidade", "digital", "empresa", "atendimento", "financeiro", "corretores", "equipe", "gerentes", "vendas"]);
+const TELAS_SUPORTADAS = new Set(["privacidade", "digital", "empresa", "atendimento", "financeiro", "corretores", "equipe", "gerentes", "vendas", "qualidade"]);
 const CONSENT_VALIDOS = new Set(["essential", "analytics", "marketing"]);
 const DEVICE_VALIDOS = new Set(["desktop", "mobile", "tablet"]);
 
@@ -73,7 +73,6 @@ export async function GET(request: Request) {
   const { data: authData, error: authError } = await supabase.auth.getUser(token);
   if (authError || !authData.user) return Response.json({ error: "Sessão inválida ou expirada." }, { status: 401 });
 
-  // Escopo por papel ANTES de consultar.
   const acesso = await resolveEffectiveAccess(supabase, authData.user.id);
   if (!acesso.role) return Response.json({ error: "Perfil não encontrado." }, { status: 403 });
   if (TELAS_FAMILIA_SITE.has(tela) && !podeVerFamiliaSite(acesso.role, acesso.permissions)) {
@@ -83,7 +82,6 @@ export async function GET(request: Request) {
     return Response.json({ error: "Sem permissão para a família Performance." }, { status: 403 });
   }
 
-  // Período e filtros validados/limitados.
   const rotulo = url.searchParams.get("periodo") ?? "30 dias";
   const diasParam = Number(url.searchParams.get("dias"));
   const dias = Number.isFinite(diasParam) && diasParam > 0 ? Math.min(Math.trunc(diasParam), 365) : diasDoPeriodo(rotulo);
@@ -189,6 +187,17 @@ export async function GET(request: Request) {
         { nome: "previsão ponderada", status: "ausente", motivo: "sem probabilidade por etapa e sem valor por negócio" },
         { nome: "VGV em aberto por etapa", status: "ausente", motivo: "campo de valor ausente no Funil 2.0" },
       ], null, true, ["Realizado vs meta e pipeline reais; previsão ponderada e VGV por etapa seguem —."]);
+      return ok(data, meta);
+    }
+
+    if (tela === "qualidade") {
+      const { data, error } = await chamarRpc(supabase, "intel_qualidade", { p_days: dias });
+      if (error) throw new Error(error.message);
+      const meta = montarMeta(tela, dias, rotulo, [
+        { nome: "avaliação por IA (ia_notas_atendimento)", status: "ok" },
+        { nome: "cobertura de avaliação", status: "ausente", motivo: "sem total de atendimentos avaliáveis" },
+        { nome: "fila de contestação", status: "ausente", motivo: "fluxo de contestação não registrado" },
+      ], null, true, ["Notas por critério reais (escala 0-5); cobertura e contestação seguem —."]);
       return ok(data, meta);
     }
 

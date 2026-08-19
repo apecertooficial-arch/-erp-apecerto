@@ -19,6 +19,7 @@ export const estadoConexaoTela: Record<string, EstadoConexao> = {
   equipe: "parcial", // Pilares e rollup por equipe reais; qualidade/cobertura seguem —
   gerentes: "parcial", // Rollup por gerente real; cobertura de horário/qualidade seguem —
   vendas: "parcial", // Realizado/meta/pipeline reais; previsão ponderada e VGV por etapa seguem —
+  qualidade: "parcial", // Avaliação por IA real; cobertura/contestação seguem —
 };
 
 export const estadoConexaoDe = (chave: string): EstadoConexao => estadoConexaoTela[chave] ?? "demo";
