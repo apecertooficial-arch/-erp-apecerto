@@ -13,7 +13,7 @@ import type { FonteMeta, MetaInteligencia } from "../../../lib/inteligencia/tipo
 
 export const dynamic = "force-dynamic";
 
-const TELAS_SUPORTADAS = new Set(["privacidade", "digital", "empresa", "atendimento", "financeiro", "corretores", "equipe", "gerentes", "vendas", "qualidade", "alertas"]);
+const TELAS_SUPORTADAS = new Set(["privacidade", "digital", "empresa", "atendimento", "financeiro", "corretores", "equipe", "gerentes", "vendas", "qualidade", "alertas", "aquisicao", "comportamento", "imoveis", "conversao", "proprietarios", "sara"]);
 const CONSENT_VALIDOS = new Set(["essential", "analytics", "marketing"]);
 const DEVICE_VALIDOS = new Set(["desktop", "mobile", "tablet"]);
 
@@ -80,6 +80,10 @@ export async function GET(request: Request) {
   const consent = consentBruto && CONSENT_VALIDOS.has(consentBruto) ? consentBruto : null;
   const device = deviceBruto && DEVICE_VALIDOS.has(deviceBruto) ? deviceBruto : null;
 
+  const site: Record<string, string> = {
+    aquisicao: "intel_aquisicao", comportamento: "intel_comportamento", imoveis: "intel_imoveis",
+    conversao: "intel_conversao", proprietarios: "intel_proprietarios", sara: "intel_sara",
+  };
   const performance: Record<string, string> = {
     empresa: "intel_visao_ceo", atendimento: "intel_atendimento", financeiro: "intel_financeiro",
     corretores: "intel_corretores", equipe: "intel_equipe", gerentes: "intel_gerentes",
@@ -109,6 +113,15 @@ export async function GET(request: Request) {
         { nome: "GA4", status: "ausente", motivo: "GA4_PROPERTY_ID/serviço não confirmados" },
         { nome: "CRM Funil 2.0", status: "ausente", motivo: "negócio/venda ainda não ligados à Inteligência" },
       ], cobertura, true, ["KPIs de CRM (leads, negócios, visitas, pipeline, comissões, Sara) ficam como — até a fonte ser conectada."]);
+      return ok(data, meta);
+    }
+
+    const siteFn = site[tela];
+    if (siteFn) {
+      const { data, error } = await chamarRpc(supabase, siteFn, { p_days: dias });
+      if (error) throw new Error(error.message);
+      const meta = montarMeta(tela, dias, rotulo, [{ nome: "coleta própria (site) + CRM", status: "ok" }], null, true,
+        ["Dado real de site/CRM; custo de mídia, GA4 e atribuição seguem —."]);
       return ok(data, meta);
     }
 

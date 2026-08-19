@@ -1,31 +1,9 @@
-/* Contratos da Inteligência — resposta padrão { data, meta } e formatos crus das
- * RPCs de telemetria. Compartilhado pelo endpoint (servidor) e pelas telas
- * (cliente). Nada aqui fala com Supabase: só tipos. */
+/* Contratos da Inteligência — tipos compartilhados por endpoint e telas. */
 
 export type FonteStatus = "ok" | "parcial" | "ausente";
-
-export type FonteMeta = {
-  nome: string;
-  status: FonteStatus;
-  motivo?: string;
-};
-
-export type MetaInteligencia = {
-  tela: string;
-  periodo: { rotulo: string; dias: number; inicio: string; fim: string };
-  atualizadoEm: string;
-  fontes: FonteMeta[];
-  cobertura: string | null;
-  avisos: string[];
-  parcial: boolean;
-};
-
-export type RespostaInteligencia<T> = {
-  data: T | null;
-  meta: MetaInteligencia;
-};
-
-/* ---- formatos crus vindos das RPCs (jsonb) ---- */
+export type FonteMeta = { nome: string; status: FonteStatus; motivo?: string };
+export type MetaInteligencia = { tela: string; periodo: { rotulo: string; dias: number; inicio: string; fim: string }; atualizadoEm: string; fontes: FonteMeta[]; cobertura: string | null; avisos: string[]; parcial: boolean };
+export type RespostaInteligencia<T> = { data: T | null; meta: MetaInteligencia };
 
 export type ConsentTupla = { nivel: string; eventos?: number; pageviews: number };
 export type DispositivoTupla = { dispositivo: string; eventos?: number; pageviews: number };
@@ -33,75 +11,17 @@ export type EventoTipoTupla = { evento: string; total: number };
 export type HoraTupla = { hora: number; eventos: number };
 export type SemanaTupla = { semana_inicio: string; essenciais: number; analytics: number; marketing: number };
 
-export type PrivacidadePayload = {
-  periodo_dias: number;
-  atualizado_em: string;
-  total_eventos: number;
-  total_pageviews: number;
-  consentimento: ConsentTupla[];
-  dispositivos: DispositivoTupla[];
-  eventos_por_tipo: EventoTipoTupla[];
-  eventos_por_hora_hoje: HoraTupla[];
-  semanas: SemanaTupla[];
-  cobertura_utm: number | null;
-  ultimo_evento_em: string | null;
-};
+export type PrivacidadePayload = { periodo_dias: number; atualizado_em: string; total_eventos: number; total_pageviews: number; consentimento: ConsentTupla[]; dispositivos: DispositivoTupla[]; eventos_por_tipo: EventoTipoTupla[]; eventos_por_hora_hoje: HoraTupla[]; semanas: SemanaTupla[]; cobertura_utm: number | null; ultimo_evento_em: string | null };
 
 export type OrigemTupla = { origem: string; pageviews: number; eventos: number };
 export type PaginaTupla = { pagina: string; pageviews: number; eventos: number };
-
-export type VisaoDigitalPayload = {
-  periodo_dias: number;
-  atualizado_em: string;
-  total_eventos: number;
-  total_pageviews: number;
-  visualizacoes_item: number;
-  intencao: number;
-  leads_site: number;
-  paginas: PaginaTupla[];
-  origens: OrigemTupla[];
-  dispositivos: DispositivoTupla[];
-  consentimento: ConsentTupla[];
-  cobertura_utm: number | null;
-  ultimo_evento_em: string | null;
-};
-
-/* ---- Performance / CRM ---- */
+export type VisaoDigitalPayload = { periodo_dias: number; atualizado_em: string; total_eventos: number; total_pageviews: number; visualizacoes_item: number; intencao: number; leads_site: number; paginas: PaginaTupla[]; origens: OrigemTupla[]; dispositivos: DispositivoTupla[]; consentimento: ConsentTupla[]; cobertura_utm: number | null; ultimo_evento_em: string | null };
 
 export type FunilItem = { nome: string; volume: number };
-
-export type VisaoCeoPayload = {
-  periodo_dias: number;
-  atualizado_em: string;
-  leads: number;
-  leads_site: number;
-  negocios_f2_abertos: number;
-  sla: { aguardando: number; mediana_min: number | null; p90_min: number | null };
-  vendas: number;
-  vgv: number;
-  vgv_ano: number;
-  meta_vgv_ano: number;
-  comissoes_total: number;
-  vendas_sem_comissao: number;
-  pipeline_valor: number | null;
-  funil: FunilItem[];
-};
+export type VisaoCeoPayload = { periodo_dias: number; atualizado_em: string; leads: number; leads_site: number; negocios_f2_abertos: number; sla: { aguardando: number; mediana_min: number | null; p90_min: number | null }; vendas: number; vgv: number; vgv_ano: number; meta_vgv_ano: number; comissoes_total: number; vendas_sem_comissao: number; pipeline_valor: number | null; funil: FunilItem[] };
 
 export type AtendimentoLead = { nome: string; responsavel: string | null; gerente: string | null; origem: string; espera_min: number; ultima: string | null; proxima: string };
-
-export type AtendimentoPayload = {
-  atualizado_em: string;
-  periodo_dias: number;
-  mediana_min: number | null;
-  p90_min: number | null;
-  aguardando: number;
-  total_leads: number;
-  recebidas: number;
-  enviadas: number;
-  baldes: { ate5: number; b5_15: number; b15_30: number; b30_60: number; acima60: number };
-  filas: { sem_resposta: number; acima_sla: number; mensagens: number; followup_vencidos: number; sem_proxima: number };
-  leads: AtendimentoLead[];
-};
+export type AtendimentoPayload = { atualizado_em: string; periodo_dias: number; mediana_min: number | null; p90_min: number | null; aguardando: number; total_leads: number; recebidas: number; enviadas: number; baldes: { ate5: number; b5_15: number; b15_30: number; b30_60: number; acima60: number }; filas: { sem_resposta: number; acima_sla: number; mensagens: number; followup_vencidos: number; sem_proxima: number }; leads: AtendimentoLead[] };
 
 export type FinDegraus = { vgv: number; receita: number; comissoes_pessoas: number; custos: number; contribuicao: number; pagas: number; pendente: number };
 export type FinVenda = { nome: string; codigo: string; vgv: number | null; percentual: number | null; receita: number | null; comissoes: number | null; custos: number | null; contribuicao: number | null; pagamento: string; sem_custo: boolean };
@@ -129,3 +49,20 @@ export type QualidadePayload = { atualizado_em: string; periodo_dias: number; no
 
 export type AlertasTipos = { sla: number; sla_criticos: number; followup: number; mensagem: number; negocio_parado: number; visita_sem_feedback: number; carga: number; venda_sem_comissao: number; meta_sem_cadastro: number; fonte_parada: number };
 export type AlertasPayload = { atualizado_em: string; periodo_dias: number; tipos: AlertasTipos; engine: { total: number; abertos: number; reconhecidos: number } };
+
+export type AquisicaoLinha = { origem: string; leads: number; negocios: number; leadNeg: number | null };
+export type AquisicaoPayload = { atualizado_em: string; periodo_dias: number; visualizacoes: number; intencao: number; leads: number; negocios: number; visitas: number; vendas: number; linhas: AquisicaoLinha[]; nao_atribuido: number };
+
+export type ComportamentoPagina = { pagina: string; pageviews: number; eventos: number };
+export type ComportamentoEvento = { evento: string; total: number };
+export type ComportamentoPayload = { atualizado_em: string; periodo_dias: number; total_pageviews: number; total_eventos: number; scroll_depth: number; paginas: ComportamentoPagina[]; eventos: ComportamentoEvento[]; dispositivos: { dispositivo: string; pageviews: number }[] };
+
+export type ImoveisItem = { pagina: string; pageviews: number; view_item: number };
+export type ImoveisPayload = { atualizado_em: string; periodo_dias: number; view_item: number; property_search: number; filter_change: number; paginas: ImoveisItem[] };
+
+export type ConversaoEtapa = { etapa: string; volume: number; taxa: number | null };
+export type ConversaoPayload = { atualizado_em: string; periodo_dias: number; leads: number; negocios: number; visitas: number; vendas: number; ganho: number; perdido: number; sla_mediana_min: number | null; etapas: ConversaoEtapa[] };
+
+export type ProprietariosPayload = { atualizado_em: string; periodo_dias: number; owner_events: number; vendas_com_proprietario: number; proprietarios_distintos: number; empreendimentos: { nome: string; vendas: number; vgv: number }[] };
+
+export type SaraPayload = { atualizado_em: string; periodo_dias: number; sara_open: number; sara_search: number; sara_results: number; sara_error: number; eventos: { evento: string; total: number }[] };
