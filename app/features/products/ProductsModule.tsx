@@ -32,7 +32,7 @@ type CatalogResponse = {
     status: string; price: number | null; area: number | null; bedrooms: number | null;
     parking: number | null; available: number; units: number; media: number;
     coverUrl: string | null; draft: boolean; origin: string; favorite: boolean;
-    approval?: string; rejectionReason?: string | null; mine?: boolean; capturedBy?: string | null;
+    approval?: string; rejectionReason?: string | null; mine?: boolean; capturedBy?: string | null; capturedByScore?: number | null;
     published?: boolean; quality: ProductQuality; topIssue?: string | null; createdAt?: string | null; updatedAt?: string | null;
     leads?: number;
   }>;
@@ -100,7 +100,7 @@ export function ProductsModule({ accessToken }: { accessToken: string }) {
         units: item.units, media: item.media, coverUrl: item.coverUrl, draft: item.draft,
         origin: item.origin, numericPrice: item.price, favorite: item.favorite,
         approval: item.approval ?? "aprovado", rejectionReason: item.rejectionReason ?? null,
-        mine: item.mine ?? false, capturedBy: item.capturedBy ?? null,
+        mine: item.mine ?? false, capturedBy: item.capturedBy ?? null, capturedByScore: item.capturedByScore ?? null,
         published: item.published, quality: item.quality, topIssue: item.topIssue ?? null,
         createdAt: item.createdAt ?? null, updatedAt: item.updatedAt ?? null,
       })));
@@ -288,11 +288,11 @@ export function ProductsModule({ accessToken }: { accessToken: string }) {
       {canApprove && approvalFilter && pendingUnits.length > 0 && <section className="pending-units">
         <h3>Unidades pendentes de aprovação <span>{pendingUnits.length}</span></h3>
         <p className="pu-sub">Solicitações de indicação aguardando sua validação.</p>
-        {pendingUnits.map((pu) => <div className="pu-row" key={pu.id}>
+        <div className="pu-list">{pendingUnits.map((pu) => <div className="pu-row" key={pu.id}>
           <div className="pu-thumb" style={pu.coverUrl ? { backgroundImage: `url(${pu.coverUrl})` } : undefined}>{!pu.coverUrl && "▥"}</div>
           <div className="pu-main"><strong>{pu.numero || "Unidade"} <span className="pu-chip">Indicação</span></strong><small>{pu.predio} · 👤 {pu.indicador ?? "—"} · Prop.: {pu.proprietario ?? "—"}</small></div>
           <button type="button" className="pu-rev" onClick={() => { setInitialUnitId(pu.id); setSelectedProductId(pu.empreendimentoId); }}>Revisar</button>
-        </div>)}
+        </div>)}</div>
       </section>}
       <section className="product-grid">
         {produtosVisiveis.map((product) => <article className={`product-card ${product.draft ? "t-lanc" : /obra/i.test(product.status ?? "") ? "t-obras" : /lan[cç]/i.test(product.status ?? "") ? "t-lanc" : "t-pronto"}`} role="button" tabIndex={0} onClick={() => product.id && setSelectedProductId(product.id)} onKeyDown={(event) => { if ((event.key === "Enter" || event.key === " ") && product.id) setSelectedProductId(product.id); }} key={product.id ?? product.name}>

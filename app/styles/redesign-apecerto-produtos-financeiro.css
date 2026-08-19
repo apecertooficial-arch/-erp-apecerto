@@ -377,3 +377,6 @@
 .card-menu-pop button.danger { color:#B33131; }
 .card-menu-pop button.danger:hover { background:#FBE5E5; color:#B33131; }
 .approval-captador .captador-nota { color:#66009A; font-weight:700; }
+
+/* Fila de unidades pendentes: caixa rolável para não empurrar os cards de produto pra fora da tela */
+.pending-units .pu-list { max-height: 300px; overflow-y: auto; padding-right: 4px; }
