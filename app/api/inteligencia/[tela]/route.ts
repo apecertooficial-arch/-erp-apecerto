@@ -21,7 +21,7 @@ import type { FonteMeta, MetaInteligencia } from "../../../lib/inteligencia/tipo
 
 export const dynamic = "force-dynamic";
 
-const TELAS_SUPORTADAS = new Set(["privacidade", "digital", "empresa", "atendimento"]);
+const TELAS_SUPORTADAS = new Set(["privacidade", "digital", "empresa", "atendimento", "financeiro"]);
 const CONSENT_VALIDOS = new Set(["essential", "analytics", "marketing"]);
 const DEVICE_VALIDOS = new Set(["desktop", "mobile", "tablet"]);
 
@@ -130,6 +130,17 @@ export async function GET(request: Request) {
         { nome: "% dentro do SLA de 5 min", status: "ausente", motivo: "sem marco de 1º contato; usamos o tempo de espera do backlog" },
         { nome: "escala / ponto", status: "ausente", motivo: "não integrado" },
       ], null, true, ["Fila viva. % no SLA e taxa de resposta seguem como —."]);
+      return ok(data, meta);
+    }
+
+    if (tela === "financeiro") {
+      const { data, error } = await chamarRpc(supabase, "intel_financeiro", { p_days: dias });
+      if (error) throw new Error(error.message);
+      const meta = montarMeta(tela, dias, rotulo, [
+        { nome: "vendas / comissões / pagamentos", status: "ok" },
+        { nome: "custos diretos", status: "parcial", motivo: "lançados por venda, quando existem" },
+        { nome: "impostos e despesas fixas", status: "ausente", motivo: "não integrados — sem lucro líquido" },
+      ], null, true, ["Contribuição estimada não é lucro líquido."]);
       return ok(data, meta);
     }
 

@@ -102,3 +102,8 @@ export type AtendimentoPayload = {
   filas: { sem_resposta: number; acima_sla: number; mensagens: number; followup_vencidos: number; sem_proxima: number };
   leads: AtendimentoLead[];
 };
+
+export type FinDegraus = { vgv: number; receita: number; comissoes_pessoas: number; custos: number; contribuicao: number; pagas: number; pendente: number };
+export type FinVenda = { nome: string; codigo: string; vgv: number | null; percentual: number | null; receita: number | null; comissoes: number | null; custos: number | null; contribuicao: number | null; pagamento: string; sem_custo: boolean };
+export type FinParticipante = { nome: string; papel: string; calculada: number | null; paga: number | null; pendente: number | null };
+export type FinanceiroPayload = { atualizado_em: string; periodo_dias: number; total_vendas: number; degraus: FinDegraus; vendas: FinVenda[]; participantes: FinParticipante[] };
