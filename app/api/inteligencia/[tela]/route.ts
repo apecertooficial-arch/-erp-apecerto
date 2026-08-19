@@ -4,7 +4,7 @@
  *
  * Regras (contrato Fase 1):
  *  · autentica a sessão do ERP no servidor (getUser);
- *  · aplica escopo por papel ANTES de consultar (família Site = admin/gestor/marketing);
+ *  · aplica escopo por papel ANTES de consultar (Site = admin/gestor/marketing; Performance = admin/gestor);
  *  · chama a RPC com o TOKEN DO USUÁRIO (is_equipe() no banco é a 2ª trava; sem service_role no ERP);
  *  · valida/limita filtros e período;
  *  · devolve { data, meta } — meta traz período, fontes[], cobertura e avisos;
@@ -13,12 +13,15 @@
 
 import { createServerSupabaseClient } from "../../../lib/supabase/server";
 import { resolveEffectiveAccess } from "../../../lib/supabase/authz";
-import { diasDoPeriodo, podeVerFamiliaSite, TELAS_FAMILIA_SITE } from "../../../lib/inteligencia/acesso";
+import {
+  diasDoPeriodo, podeVerFamiliaSite, podeVerPerformance,
+  TELAS_FAMILIA_PERFORMANCE, TELAS_FAMILIA_SITE,
+} from "../../../lib/inteligencia/acesso";
 import type { FonteMeta, MetaInteligencia } from "../../../lib/inteligencia/tipos";
 
 export const dynamic = "force-dynamic";
 
-const TELAS_SUPORTADAS = new Set(["privacidade", "digital"]);
+const TELAS_SUPORTADAS = new Set(["privacidade", "digital", "empresa"]);
 const CONSENT_VALIDOS = new Set(["essential", "analytics", "marketing"]);
 const DEVICE_VALIDOS = new Set(["desktop", "mobile", "tablet"]);
 
@@ -76,6 +79,9 @@ export async function GET(request: Request) {
   if (TELAS_FAMILIA_SITE.has(tela) && !podeVerFamiliaSite(acesso.role, acesso.permissions)) {
     return Response.json({ error: "Sem permissão para a família Site e marketing." }, { status: 403 });
   }
+  if (TELAS_FAMILIA_PERFORMANCE.has(tela) && !podeVerPerformance(acesso.role)) {
+    return Response.json({ error: "Sem permissão para a família Performance." }, { status: 403 });
+  }
 
   // Período e filtros validados/limitados.
   const rotulo = url.searchParams.get("periodo") ?? "30 dias";
@@ -100,6 +106,21 @@ export async function GET(request: Request) {
       return ok(data, meta);
     }
 
+    if (tela === "empresa") {
+      const { data, error } = await chamarRpc(supabase, "intel_visao_ceo", { p_days: dias });
+      if (error) throw new Error(error.message);
+      const meta = montarMeta(tela, dias, rotulo, [
+        { nome: "leads / negócios (Funil 2.0)", status: "ok" },
+        { nome: "vendas / comissões / metas", status: "ok" },
+        { nome: "SLA (wa_mensagens)", status: "parcial", motivo: "backlog recente; % dentro do SLA ainda não definido" },
+        { nome: "valor de pipeline", status: "ausente", motivo: "campo de valor ausente no Funil 2.0" },
+        { nome: "previsão ponderada", status: "ausente", motivo: "sem probabilidade por etapa" },
+      ], null, true, [
+        "Escopo do funil: Funil 2.0 (operação). % no SLA, previsão ponderada e valor de pipeline seguem como —.",
+      ]);
+      return ok(data, meta);
+    }
+
     // digital — parcial: só a parte de telemetria de site.
     const { data, error } = await chamarRpc(supabase, "intel_visao_digital", { p_days: dias });
     if (error) throw new Error(error.message);
@@ -111,7 +132,7 @@ export async function GET(request: Request) {
     ], cobertura, true, ["KPIs de CRM (leads, negócios, visitas, pipeline, comissões, Sara) ficam como — até a fonte ser conectada."]);
     return ok(data, meta);
   } catch (e) {
-    const meta = montarMeta(tela, dias, rotulo, [{ nome: "telemetria", status: "ausente", motivo: e instanceof Error ? e.message : "fonte não respondeu" }], null, true, ["Fonte não respondeu — a tela mantém o layout e mostra — nos valores."]);
+    const meta = montarMeta(tela, dias, rotulo, [{ nome: "fonte", status: "ausente", motivo: e instanceof Error ? e.message : "fonte não respondeu" }], null, true, ["Fonte não respondeu — a tela mantém o layout e mostra — nos valores."]);
     return Response.json({ data: null, meta }, { status: 502 });
   }
 }

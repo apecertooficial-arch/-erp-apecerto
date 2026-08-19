@@ -65,3 +65,24 @@ export type VisaoDigitalPayload = {
   cobertura_utm: number | null;
   ultimo_evento_em: string | null;
 };
+
+/* ---- Performance / CRM ---- */
+
+export type FunilItem = { nome: string; volume: number };
+
+export type VisaoCeoPayload = {
+  periodo_dias: number;
+  atualizado_em: string;
+  leads: number;
+  leads_site: number;
+  negocios_f2_abertos: number;
+  sla: { aguardando: number; mediana_min: number | null; p90_min: number | null };
+  vendas: number;
+  vgv: number;
+  vgv_ano: number;
+  meta_vgv_ano: number;
+  comissoes_total: number;
+  vendas_sem_comissao: number;
+  pipeline_valor: number | null;
+  funil: FunilItem[];
+};

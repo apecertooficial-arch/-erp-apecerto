@@ -48,3 +48,15 @@ export function diasDoPeriodo(rotulo: string | null): number {
     default: return 30;
   }
 }
+
+/* Família "Performance" — abre para CEO, gestores e gerentes (não corretor puro).
+ * Como o time hoje é só admin/gestor, isto cobre a decisão atual; refino
+ * por-tela (ex.: corretor vê só a própria página) fica para quando entrar corretor. */
+export const TELAS_FAMILIA_PERFORMANCE = new Set([
+  "empresa", "atendimento", "equipe", "gerentes", "corretores", "qualidade", "vendas", "financeiro", "alertas",
+]);
+
+export function podeVerPerformance(perfilBruto: string | null | undefined): boolean {
+  const papel = normalizarPapel(perfilBruto);
+  return papel === "admin" || papel === "gestor";
+}

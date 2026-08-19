@@ -11,7 +11,7 @@ export type EstadoConexao = "real" | "parcial" | "demo";
 
 export const estadoConexaoTela: Record<string, EstadoConexao> = {
   privacidade: "real",
-  // digital: "parcial"  — próximo commit desta branch
+  empresa: "parcial", // Visão CEO: CRM real; SLA%, previsão ponderada e valor de pipeline seguem —
 };
 
 export const estadoConexaoDe = (chave: string): EstadoConexao => estadoConexaoTela[chave] ?? "demo";
