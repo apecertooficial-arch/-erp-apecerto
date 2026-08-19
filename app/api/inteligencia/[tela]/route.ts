@@ -21,7 +21,7 @@ import type { FonteMeta, MetaInteligencia } from "../../../lib/inteligencia/tipo
 
 export const dynamic = "force-dynamic";
 
-const TELAS_SUPORTADAS = new Set(["privacidade", "digital", "empresa", "atendimento", "financeiro", "corretores", "equipe"]);
+const TELAS_SUPORTADAS = new Set(["privacidade", "digital", "empresa", "atendimento", "financeiro", "corretores", "equipe", "gerentes", "vendas"]);
 const CONSENT_VALIDOS = new Set(["essential", "analytics", "marketing"]);
 const DEVICE_VALIDOS = new Set(["desktop", "mobile", "tablet"]);
 
@@ -165,6 +165,30 @@ export async function GET(request: Request) {
         { nome: "qualidade de atendimento", status: "ausente", motivo: "avaliação por IA ainda não ligada" },
         { nome: "cobertura de horário / presença", status: "ausente", motivo: "escala/ponto não integrado" },
       ], null, true, ["Pilares reais; qualidade, cobertura de horário e presença seguem —."]);
+      return ok(data, meta);
+    }
+
+    if (tela === "gerentes") {
+      const { data, error } = await chamarRpc(supabase, "intel_gerentes", { p_days: dias });
+      if (error) throw new Error(error.message);
+      const meta = montarMeta(tela, dias, rotulo, [
+        { nome: "rollup por gerente (CRM)", status: "ok" },
+        { nome: "SLA por corretor (wa_mensagens)", status: "ok" },
+        { nome: "cobertura de horário / presença", status: "ausente", motivo: "escala/ponto não integrado" },
+        { nome: "qualidade de conversa", status: "ausente", motivo: "avaliação por IA ainda não ligada" },
+      ], null, true, ["Rollup por gerente real; cobertura de horário, qualidade e propostas seguem —."]);
+      return ok(data, meta);
+    }
+
+    if (tela === "vendas") {
+      const { data, error } = await chamarRpc(supabase, "intel_vendas", { p_days: dias });
+      if (error) throw new Error(error.message);
+      const meta = montarMeta(tela, dias, rotulo, [
+        { nome: "vendas / metas (realizado)", status: "ok" },
+        { nome: "pipeline por etapa (Funil 2.0)", status: "ok" },
+        { nome: "previsão ponderada", status: "ausente", motivo: "sem probabilidade por etapa e sem valor por negócio" },
+        { nome: "VGV em aberto por etapa", status: "ausente", motivo: "campo de valor ausente no Funil 2.0" },
+      ], null, true, ["Realizado vs meta e pipeline reais; previsão ponderada e VGV por etapa seguem —."]);
       return ok(data, meta);
     }
 

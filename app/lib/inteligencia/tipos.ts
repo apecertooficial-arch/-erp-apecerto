@@ -113,3 +113,12 @@ export type CorretoresPayload = { atualizado_em: string; periodo_dias: number; t
 
 export type EquipeRollup = { nome: string; corretores: number; leads: number; vendas: number; vgv: number; vencidos: number; lead_venda: number | null; mediana: number | null; p90: number | null };
 export type EquipePayload = { atualizado_em: string; periodo_dias: number; leads: number; negocios: number; visitas: number; vendas: number; vgv: number; sla: { mediana_min: number | null; p90_min: number | null }; comissao_bruta: number; comissao_pessoas: number; followups_vencidos: number; negocios_sem_proxima: number; visitas_sem_feedback: number; perdas_sem_motivo: number; equipes: EquipeRollup[] };
+
+export type GerenteItem = { nome: string; corretores: number; neg: number; lim: number | null; leads: number; mediana: number | null; p90: number | null; lead_venda: number | null; visitas: number; vendas: number; vgv: number; vencidos: number };
+export type GerentePaginaCorretor = { nome: string; carga_neg: number; carga_lim: number | null; leads: number; mediana: number | null; p90: number | null };
+export type GerentesPayload = { atualizado_em: string; periodo_dias: number; lista: GerenteItem[]; pagina: { nome: string; equipe: number; corretores: GerentePaginaCorretor[]; funil: { leads: number; negocios: number; visitas: number; vendas: number }; vgv: number; meta_vgv: number; intervencao: { vencidos: number; aguardando: number } } };
+
+export type VendasEtapa = { etapa: string; negocios: number; vgv: number | null; probabilidade: number | null; ponderado: number | null };
+export type VendasItem = { nome: string; corretor: string; vgv: number | null; ciclo: number | null; canal: string };
+export type VendasEquipe = { nome: string; meta: number; realizado: number; pct: number | null };
+export type VendasPayload = { atualizado_em: string; periodo_dias: number; realizado: number; meta: number; realizado_pct: number | null; falta: number; previsao: number | null; cobertura_previsao: number | null; concluidas: number; ciclo_medio: number | null; ritmo: number | null; dias_uteis: number; equipes: VendasEquipe[]; etapas: VendasEtapa[]; total_etapas: { negocios: number; vgv: number | null; ponderado: number | null }; vendas: VendasItem[]; total_vendas: number; fora_da_lista: number };
