@@ -29,6 +29,7 @@ export type Product = {
   rejectionReason?: string | null;
   mine?: boolean;
   capturedBy?: string | null;
+  capturedByScore?: number | null;
   quality?: ProductQuality;
   published?: boolean;
   createdAt?: string | null;

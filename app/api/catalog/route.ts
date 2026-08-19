@@ -163,6 +163,21 @@ export async function GET(request: Request) {
     };
   });
 
+  // Nota do captador = média das notas de qualidade dos anúncios que ele captou (sem inventar dado).
+  const captadorAgg = new Map<number, { sum: number; count: number }>();
+  (data ?? []).forEach((item, i) => {
+    const cid = (item as { captador_corretor_id?: number | null }).captador_corretor_id ?? null;
+    if (cid == null || !catalog[i]) return;
+    const acc = captadorAgg.get(cid) ?? { sum: 0, count: 0 };
+    acc.sum += catalog[i].quality.score; acc.count += 1; captadorAgg.set(cid, acc);
+  });
+  const captadorScoreById = new Map<number, number>();
+  captadorAgg.forEach((v, k) => captadorScoreById.set(k, Math.round(v.sum / v.count)));
+  catalog.forEach((p, i) => {
+    const cid = (data ?? [])[i] ? (((data ?? [])[i] as { captador_corretor_id?: number | null }).captador_corretor_id ?? null) : null;
+    (p as { capturedByScore?: number | null }).capturedByScore = cid != null ? (captadorScoreById.get(cid) ?? null) : null;
+  });
+
   // Visibilidade: corretor só enxerga aprovados + os que ele mesmo captou (pra acompanhar pendente/reprovado).
   // Admin/gestor enxergam tudo (inclusive a fila de pendentes).
   const visible = canApprove ? catalog : catalog.filter((p) => p.approval === "aprovado" || p.mine);
