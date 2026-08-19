@@ -153,7 +153,14 @@ export function ProductsModule({ accessToken }: { accessToken: string }) {
     average: products.length ? Math.round(products.reduce((sum, item) => sum + (item.quality?.score ?? 0), 0) / products.length) : 0,
   }), [products]);
 
-  const produtosVisiveis = filtered.filter((product) => !approvalFilter || (product.approval === "pendente" && !product.draft));
+  // Uma unidade pendente de indicação NUNCA aparece fora da aba "Pendentes de
+  // aprovação" — antes ela também entrava em Todos/Lançamento/etc. porque o
+  // filtro só isolava pendentes quando approvalFilter estava ligado, mas
+  // deixava passar tudo (pendentes inclusos) quando estava desligado.
+  const produtosVisiveis = filtered.filter((product) => {
+    const pendenteDeRevisao = product.approval === "pendente" && !product.draft;
+    return approvalFilter ? pendenteDeRevisao : !pendenteDeRevisao;
+  });
 
   function exportCatalog() {
     const escape = (value: unknown) => `"${String(value ?? "").replaceAll('"', '""')}"`;
