@@ -83,7 +83,17 @@ export async function GET(request: Request) {
   const corretorNameById = new Map((corretoresList ?? []).map((c) => [c.id, c.nome]));
   const captadorCorretorId = (data as { captador_corretor_id?: number | null }).captador_corretor_id ?? null;
   const capturedByName: string | null = captadorCorretorId ? (corretorNameById.get(captadorCorretorId) ?? null) : null;
-  const unidadesEnriched = (data.unidades ?? []).map((u) => ({ ...u, captador_nome: corretorNameById.get((u as { captador_corretor_id?: number | null }).captador_corretor_id ?? -1) ?? null }));
+  // "mine" por unidade: o corretor que indicou aquela unidade específica pode
+  // editá-la, mesmo sem a permissão geral de editar produtos (que é de
+  // admin/gestor). Unidades de construtora não têm captador — mine fica false.
+  const unidadesEnriched = (data.unidades ?? []).map((u) => {
+    const unitCaptadorId = (u as { captador_corretor_id?: number | null }).captador_corretor_id ?? null;
+    return {
+      ...u,
+      captador_nome: corretorNameById.get(unitCaptadorId ?? -1) ?? null,
+      mine: unitCaptadorId != null && broker?.id != null && unitCaptadorId === broker.id,
+    };
+  });
   const mine = (data as { captado_por_usuario?: string | null }).captado_por_usuario === auth.user.id;
   const checks: Record<string, boolean> = {
     basics: Boolean(data.nome && (data.preco || unitPrices.length) && (data.area_util || unitAreas.length)),
@@ -174,6 +184,72 @@ export async function PATCH(request: Request) {
       : { aprovacao: "reprovado", reprovacao_motivo: typeof body.motivo === "string" ? body.motivo.slice(0, 300) : null };
     const { error } = await auth.supabase.from("unidades").update(patch as never).eq("id", unidadeId).eq("empreendimento_id", id);
     return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true, aprovacao: patch.aprovacao });
+  }
+
+  if (body.action === "editarUnidade") {
+    const unidadeId = typeof body.unidadeId === "string" ? body.unidadeId : "";
+    if (!UUID.test(unidadeId)) return Response.json({ error: "Unidade inválida." }, { status: 400 });
+
+    const { data: unidadeAtual, error: unidadeError } = await auth.supabase
+      .from("unidades")
+      .select("id, captador_corretor_id, aprovacao")
+      .eq("id", unidadeId)
+      .eq("empreendimento_id", id)
+      .maybeSingle();
+    if (unidadeError) return Response.json({ error: unidadeError.message }, { status: 502 });
+    if (!unidadeAtual) return Response.json({ error: "Unidade não encontrada." }, { status: 404 });
+
+    // Quem aprova (admin/gestor/executivo) edita sem reabrir análise. Quem
+    // indicou a unidade (captador_corretor_id) também pode editar a SUA
+    // própria unidade — mas se ela já tinha sido decidida, a edição devolve
+    // para pendente: dado mudou, precisa passar pelo crivo de novo.
+    const { data: me } = await auth.supabase.from("usuarios").select("role").eq("id", auth.user.id).maybeSingle();
+    const role = (me as { role?: string } | null)?.role ?? "corretor";
+    const isApprover = ["admin", "gestor", "executivo"].includes(role);
+    const { data: broker } = await auth.supabase.from("corretores").select("id").eq("usuario_id", auth.user.id).maybeSingle();
+    const isOwner = broker?.id != null && (unidadeAtual as { captador_corretor_id?: number | null }).captador_corretor_id === broker.id;
+    if (!isApprover && !isOwner) return Response.json({ error: "Você só pode editar unidades indicadas por você." }, { status: 403 });
+
+    const input = (body.unidade && typeof body.unidade === "object" ? body.unidade : {}) as Record<string, unknown>;
+    const asString = (value: unknown) => (typeof value === "string" ? value.trim() || null : null);
+    const asNumber = (value: unknown) => {
+      if (value === "" || value == null) return null;
+      const parsed = Number(value);
+      return Number.isFinite(parsed) ? parsed : null;
+    };
+    const numero = asString(input.numero);
+    if (!numero) return Response.json({ error: "Informe o número da unidade." }, { status: 400 });
+    const valorTabela = asNumber(input.valor_tabela);
+    if (valorTabela == null) return Response.json({ error: "Informe o valor de tabela da unidade." }, { status: 400 });
+    const tablePriceCheck = validateProductPrice(valorTabela, "Valor de tabela", currentPurpose);
+    if (tablePriceCheck.error) return Response.json({ error: tablePriceCheck.error }, { status: 422 });
+    const promoPrice = asNumber(input.valor_promo);
+    if (promoPrice != null) {
+      const promoPriceCheck = validateProductPrice(promoPrice, "Valor promocional", currentPurpose);
+      if (promoPriceCheck.error) return Response.json({ error: promoPriceCheck.error }, { status: 422 });
+    }
+
+    const patch: Record<string, unknown> = {
+      numero,
+      tipologia: asString(input.tipologia),
+      area_m2: asNumber(input.area_m2),
+      vagas: asNumber(input.vagas),
+      valor_tabela: tablePriceCheck.value,
+      valor_promo: promoPrice,
+      disponivel: input.disponivel !== false,
+      proprietario_nome: asString(input.proprietario_nome),
+      proprietario_contato: asString(input.proprietario_contato),
+      acesso_tipo: asString(input.acesso_tipo),
+      acesso_codigo: asString(input.acesso_codigo),
+      acesso_instrucoes: asString(input.acesso_instrucoes),
+    };
+    if (!isApprover && (unidadeAtual as { aprovacao?: string | null }).aprovacao !== "pendente") {
+      patch.aprovacao = "pendente";
+      patch.reprovacao_motivo = null;
+    }
+
+    const { error } = await auth.supabase.from("unidades").update(patch as never).eq("id", unidadeId).eq("empreendimento_id", id);
+    return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true, aprovacao: (patch.aprovacao as string | undefined) ?? (unidadeAtual as { aprovacao?: string | null }).aprovacao });
   }
 
   if (body.action === "toggleFavorite") {

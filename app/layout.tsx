@@ -77,6 +77,11 @@ import "./styles/redesign-apecerto-financeiro-abas.css";
 import "./styles/redesign-apecerto-inicio.css";
 import "./styles/redesign-apecerto-esteira.css";
 import "./styles/redesign-apecerto-catalogo.css";
+/* Revisão pontual da aba Produtos (18/08): marca d'água duplicada, botão da
+   Sara sobre a galeria ampliada, lista de unidades pendentes fora do padrão
+   tonal do catálogo. Depois de catalogo.css porque reusa os tokens --tom
+   dela. Ver comentário no topo do arquivo. */
+import "./styles/redesign-apecerto-produtos-revisao.css";
 import "./styles/redesign-apecerto-crm.css";
 import "./styles/redesign-apecerto-abordagens.css";
 import "./styles/redesign-apecerto-abordagens-rodape.css";
