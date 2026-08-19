@@ -107,3 +107,6 @@ export type FinDegraus = { vgv: number; receita: number; comissoes_pessoas: numb
 export type FinVenda = { nome: string; codigo: string; vgv: number | null; percentual: number | null; receita: number | null; comissoes: number | null; custos: number | null; contribuicao: number | null; pagamento: string; sem_custo: boolean };
 export type FinParticipante = { nome: string; papel: string; calculada: number | null; paga: number | null; pendente: number | null };
 export type FinanceiroPayload = { atualizado_em: string; periodo_dias: number; total_vendas: number; degraus: FinDegraus; vendas: FinVenda[]; participantes: FinParticipante[] };
+
+export type CorretorItem = { nome: string; gerente: string; gerente_id: number | null; limite: number | null; leads: number; negocios: number; vendas: number; vgv: number; visitas: number; vencidos: number; mediana: number | null; p90: number | null; aguardando: number };
+export type CorretoresPayload = { atualizado_em: string; periodo_dias: number; totais: { leads: number; vendas: number }; corretores: CorretorItem[] };

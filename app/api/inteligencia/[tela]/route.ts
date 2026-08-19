@@ -21,7 +21,7 @@ import type { FonteMeta, MetaInteligencia } from "../../../lib/inteligencia/tipo
 
 export const dynamic = "force-dynamic";
 
-const TELAS_SUPORTADAS = new Set(["privacidade", "digital", "empresa", "atendimento", "financeiro"]);
+const TELAS_SUPORTADAS = new Set(["privacidade", "digital", "empresa", "atendimento", "financeiro", "corretores"]);
 const CONSENT_VALIDOS = new Set(["essential", "analytics", "marketing"]);
 const DEVICE_VALIDOS = new Set(["desktop", "mobile", "tablet"]);
 
@@ -141,6 +141,18 @@ export async function GET(request: Request) {
         { nome: "custos diretos", status: "parcial", motivo: "lançados por venda, quando existem" },
         { nome: "impostos e despesas fixas", status: "ausente", motivo: "não integrados — sem lucro líquido" },
       ], null, true, ["Contribuição estimada não é lucro líquido."]);
+      return ok(data, meta);
+    }
+
+    if (tela === "corretores") {
+      const { data, error } = await chamarRpc(supabase, "intel_corretores", { p_days: dias });
+      if (error) throw new Error(error.message);
+      const meta = montarMeta(tela, dias, rotulo, [
+        { nome: "leads / negócios / vendas / visitas", status: "ok" },
+        { nome: "SLA por corretor (wa_mensagens)", status: "ok" },
+        { nome: "qualidade de conversa", status: "ausente", motivo: "avaliação por IA ainda não ligada" },
+        { nome: "presença / ponto", status: "ausente", motivo: "não integrado" },
+      ], null, true, ["Régua por corretor real; qualidade, propostas e presença seguem —."]);
       return ok(data, meta);
     }
 

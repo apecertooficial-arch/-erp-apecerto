@@ -1,48 +1,25 @@
 "use client";
 
-/* 13 · CORRETORES — artboard 18a, idêntico ao protótipo.
- *
- * Ordem do desenho:
- *   1. LISTA GERENCIAL — tabela larga com as 13 colunas do artboard: gerente,
- *      carga, leads, % SLA, med/P90, visitas, propostas, vendas·VGV, qualidade,
- *      FU vencidos, parados, presença e tendência
- *   2. PERFIL INDIVIDUAL — o que o gestor vê, com as abas do desenho (Resumo,
- *      Atendimento, Funil, Qualidade, Atividade, Vendas e comissão, Metas)
- *   3. Funil do período · qualidade · vendas e comissão, mais O QUE O PRÓPRIO
- *      CORRETOR VÊ (indo bem, para melhorar, precisam de você, meta)
- *   4. atividade de hoje em linha do tempo, com o aviso de que isto não é
- *      “horas trabalhadas”
- *
- * Régua: verde ≤5 min · âmbar 5–15 · vermelho acima de 15. Novato não é
- * classificado e a tela diz por quê — ausência de amostra nunca vira nota zero.
- */
+/* 13 · CORRETORES — artboard 18a. Agora lê dado real via
+ * /api/inteligencia/corretores (RPC intel_corretores). Régua por corretor:
+ * leads, carga (negócios Funil 2.0), vendas·VGV, visitas, espera (SLA do backlog)
+ * e follow-ups vencidos — reais. Qualidade de conversa, propostas e presença não
+ * têm fonte ligada -> — / "sem amostra". Demo virou fixture. */
 
 import { useState } from "react";
 import "../../../styles/inteligencia-blocos.css";
 import type { PropsTela } from "../CascaInteligencia";
 import { fmt, RodapeFontes } from "../dado";
 import { Cabecalho, CartoesLista, Tabela } from "../pecas";
+import { useDadosInteligencia } from "../useDadosInteligencia";
+import type { CorretoresPayload } from "../../../lib/inteligencia/tipos";
 
 type Corretor = {
-  nome: string;
-  gerente: string;
-  carga: string;
-  acima?: boolean;
-  leads: number | null;
-  sla: number | null;
-  mediana: number | null;
-  p90: number | null;
-  visitas: number | null;
-  propostas: number | null;
-  vendas: number | null;
-  vgv: number | null;
-  qualidade: number | null;
-  amostra: number | null;
-  vencidos: number | null;
-  parados: number | null;
-  presenca: number | null;
-  tendencia: "sobe" | "estavel" | "cai" | "nova";
-  novato?: boolean;
+  nome: string; gerente: string; carga: string; acima?: boolean;
+  leads: number | null; sla: number | null; mediana: number | null; p90: number | null;
+  visitas: number | null; propostas: number | null; vendas: number | null; vgv: number | null;
+  qualidade: number | null; amostra: number | null; vencidos: number | null; parados: number | null;
+  presenca: number | null; tendencia: "sobe" | "estavel" | "cai" | "nova"; novato?: boolean;
 };
 
 type Dados = {
@@ -50,18 +27,14 @@ type Dados = {
   totalLeads: number | null;
   totalVendas: number | null;
   perfil: {
-    nome: string;
-    equipe: string;
-    funil: string;
-    funilNota: string;
-    qualidade: number | null;
-    amostra: number | null;
-    piorCriterio: string;
-    vendas: string;
-    comissao: string;
+    nome: string; equipe: string; funil: string; funilNota: string;
+    qualidade: number | null; amostra: number | null; piorCriterio: string;
+    vendas: string; comissao: string;
     proprio: { tom: "bom" | "aviso" | "acao" | "meta"; titulo: string; texto: string }[];
     metaPercentual: number | null;
   };
+  ajuda: { l: string; r: string; sub: string; corR?: string }[];
+  referencia: { l: string; r: string; sub: string }[];
   atualizado: string;
 };
 
@@ -71,21 +44,20 @@ const corDoTempo = (min: number | null, novato?: boolean) => {
   if (min <= 15) return "#B5700A";
   return "#D93E3E";
 };
-
 const corDoSla = (sla: number | null) => {
   if (sla === null) return undefined;
   if (sla >= 40) return "#1E7A46";
   if (sla >= 25) return "#B5700A";
   return "#D93E3E";
 };
-
 const seta = (t: Corretor["tendencia"]) => (t === "sobe" ? "↗" : t === "cai" ? "↘" : t === "nova" ? "—" : "→");
 const corSeta = (t: Corretor["tendencia"]) => (t === "sobe" ? "#1E7A46" : t === "cai" ? "#D93E3E" : "#9A938B");
 
 const abas = ["Resumo", "Atendimento", "Funil", "Qualidade", "Atividade", "Vendas e comissão", "Metas"] as const;
 
-export function Corretores({ recorte }: PropsTela) {
-  const d = usarDados();
+export function Corretores({ accessToken, recorte }: PropsTela) {
+  const leitura = useDadosInteligencia<CorretoresPayload>("corretores", accessToken, recorte);
+  const d = mapearCorretores(leitura.payload);
   const [aba, setAba] = useState<string>("Resumo");
 
   const tomProprio: Record<string, { bg: string; fg: string }> = {
@@ -97,12 +69,7 @@ export function Corretores({ recorte }: PropsTela) {
 
   return (
     <div className="int-secao">
-      {/* 1 · LISTA GERENCIAL */}
-      <Cabecalho
-        eyebrow="LISTA GERENCIAL"
-        titulo={`Os ${d.corretores.length} corretores, na mesma régua`}
-        nota="verde ≤5 min · âmbar 5–15 · vermelho acima de 15"
-      />
+      <Cabecalho eyebrow="LISTA GERENCIAL" titulo={`Os ${d.corretores.length} corretores, na mesma régua`} nota="espera do lead: verde ≤5 min · âmbar 5–15 · vermelho acima de 15" />
       <Tabela
         colunas={[
           { titulo: "Corretor" }, { titulo: "Gerente" }, { titulo: "Carga" }, { titulo: "Leads", num: true }, { titulo: "% SLA", num: true },
@@ -133,10 +100,9 @@ export function Corretores({ recorte }: PropsTela) {
             { texto: seta(c.tendencia), cor: corSeta(c.tendencia) },
           ],
         }))}
-        foot={`novatos não são classificados (mínimo 8 avaliações) · leads somam ${fmt.inteiro(d.totalLeads)} · vendas somam ${fmt.inteiro(d.totalVendas)} · a linha destacada está aberta abaixo · esta lista é só de gestão — corretores não veem uns aos outros`}
+        foot={`leads somam ${fmt.inteiro(d.totalLeads)} · vendas somam ${fmt.inteiro(d.totalVendas)} · a linha destacada está aberta abaixo · esta lista é só de gestão — corretores não veem uns aos outros`}
       />
 
-      {/* 2 · PERFIL INDIVIDUAL */}
       <div style={{ display: "flex", alignItems: "flex-end", gap: 16, flexWrap: "wrap" }}>
         <div>
           <span className="intp-cab-eyebrow" style={{ color: "#8B00CC" }}>PERFIL INDIVIDUAL · O QUE O GESTOR VÊ</span>
@@ -174,7 +140,6 @@ export function Corretores({ recorte }: PropsTela) {
         </div>
       </div>
 
-      {/* 3 · O QUE O PRÓPRIO CORRETOR VÊ */}
       <div className="intp-op-duas">
         <div className="intp-cartao">
           <span className="intp-cartao-titulo">Atividade de hoje · linha do tempo</span>
@@ -192,7 +157,7 @@ export function Corretores({ recorte }: PropsTela) {
             <span>● sem sinal</span>
           </div>
           <div className="intp-detalhe-aviso">
-            Isto <b>não é “horas trabalhadas”</b>: são presença registrada, disponibilidade online e atividade observada no ERP. Jornada formal só entra com integração de ponto. Movimento de mouse não é produtividade.
+            Ilustração de presença — <b>não é “horas trabalhadas”</b>. Jornada formal só entra com integração de ponto; até lá, esta faixa é apenas conceitual.
           </div>
         </div>
 
@@ -219,68 +184,114 @@ export function Corretores({ recorte }: PropsTela) {
       <CartoesLista
         colunas={2}
         cartoes={[
-          {
-            titulo: "Precisa de ajuda",
-            chip: "com o motivo",
-            chipTom: "ruim",
-            linhas: [
-              { l: "Rafael Souza", r: "rotina de follow-up", sub: "41 min de mediana e 19 vencidos, com carteira dentro da capacidade", corR: "#D93E3E" },
-              { l: "Carlos Mendes", r: "menos carteira", sub: "14 min de mediana com 46 de 40 — atraso por volume, não por ritmo", corR: "#B5700A" },
-            ],
-            link: { rotulo: "Ver carga em Gerentes →", go: () => recorte.irPara("gerentes") },
-          },
-          {
-            titulo: "Referência utilizável",
-            linhas: [
-              { l: "Ana Beatriz", r: "8 min · 34% no SLA", sub: "melhor tempo da casa, ainda acima da meta de 5 min" },
-              { l: "Luiza Braga", r: "5 min · 47% no SLA", sub: "nova, sem amostra de qualidade — fora de classificação" },
-            ],
-            foot: "referência não é ranking: é prática para copiar",
-          },
+          { titulo: "Precisa de ajuda", chip: "com o motivo", chipTom: "ruim", linhas: d.ajuda, link: { rotulo: "Ver carga em Gerentes →", go: () => recorte.irPara("gerentes") } },
+          { titulo: "Referência utilizável", linhas: d.referencia, foot: "referência não é ranking: é prática para copiar" },
         ]}
       />
 
       <RodapeFontes
-        fontes={["negócios", "wa_mensagens", "visitas", "avaliações de conversa", "presença no ERP"]}
-        pendencias={["integração de ponto (jornada formal)", "comissão individual restrita a CEO e Financeiro"]}
+        fontes={["negócios", "wa_mensagens", "visitas", "vendas"]}
+        pendencias={["qualidade de conversa (avaliação por IA)", "integração de ponto (jornada formal)", "comissão individual restrita a CEO e Financeiro"]}
         atualizado={d.atualizado}
       />
     </div>
   );
 }
 
-function usarDados(): Dados {
-  return demo;
+/* PONTO ÚNICO DE TROCA PARA O BANCO — lê a RPC via hook. */
+function hhmm(iso: string | null): string {
+  if (!iso) return "—";
+  const dt = new Date(iso);
+  return Number.isNaN(dt.getTime()) ? "—" : dt.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo" });
 }
 
-const demo: Dados = {
-  totalLeads: 486,
-  totalVendas: 21,
+const PERFIL_VAZIO: Dados["perfil"] = {
+  nome: "—", equipe: "—", funil: "—", funilNota: "leads → negócios abertos → visitas → vendas",
+  qualidade: null, amostra: null, piorCriterio: "—", vendas: "—", comissao: "—", metaPercentual: null,
+  proprio: [],
+};
+
+const vazioCorretores: Dados = {
+  corretores: [], totalLeads: null, totalVendas: null, perfil: PERFIL_VAZIO, ajuda: [], referencia: [], atualizado: "—",
+};
+
+function mapearCorretores(p: CorretoresPayload | null): Dados {
+  if (!p) return vazioCorretores;
+  const cs = p.corretores;
+  const corretores: Corretor[] = cs.map((c) => ({
+    nome: c.nome,
+    gerente: c.gerente,
+    carga: `${c.negocios}/${c.limite ?? "—"}`,
+    acima: c.limite != null && c.negocios > c.limite,
+    leads: c.leads,
+    sla: null,
+    mediana: c.mediana,
+    p90: c.p90,
+    visitas: c.visitas,
+    propostas: null,
+    vendas: c.vendas,
+    vgv: c.vendas > 0 ? c.vgv : null,
+    qualidade: null,
+    amostra: null,
+    vencidos: c.vencidos,
+    parados: null,
+    presenca: null,
+    tendencia: "estavel",
+    novato: c.leads < 20,
+  }));
+
+  const ajuda = [...cs].sort((a, b) => b.aguardando - a.aguardando).slice(0, 2).map((c) => ({
+    l: c.nome,
+    r: `${c.aguardando} aguardando`,
+    sub: `espera mediana ${fmt.duracaoMin(c.mediana)} · ${c.vencidos} follow-ups vencidos`,
+    corR: "#D93E3E",
+  }));
+  const referencia = [...cs].filter((c) => c.mediana != null).sort((a, b) => (a.mediana ?? 0) - (b.mediana ?? 0)).slice(0, 2).map((c) => ({
+    l: c.nome,
+    r: `espera ${fmt.duracaoMin(c.mediana)}`,
+    sub: `${c.vendas} vendas · ${c.leads} leads`,
+  }));
+
+  const top = cs[0];
+  const perfil: Dados["perfil"] = top ? {
+    nome: top.nome,
+    equipe: top.gerente,
+    funil: `${top.leads} → ${top.negocios} → ${top.visitas} → ${top.vendas}`,
+    funilNota: "leads → negócios abertos → visitas → vendas",
+    qualidade: null,
+    amostra: null,
+    piorCriterio: "avaliação por IA ainda não ligada",
+    vendas: `${top.vendas} · ${fmt.dinheiro(top.vendas > 0 ? top.vgv : null)}`,
+    comissao: "comissão individual em Financeiro",
+    metaPercentual: null,
+    proprio: [
+      { tom: "bom", titulo: "Indo bem", texto: `${top.leads} leads recebidos e ${top.visitas} visitas no período.` },
+      { tom: "aviso", titulo: "Para melhorar", texto: top.vencidos > 0 ? `${top.vencidos} follow-ups vencidos para colocar em dia.` : "nenhum follow-up vencido — mantenha o ritmo." },
+      { tom: "acao", titulo: "Precisam de você agora", texto: `${top.aguardando} leads aguardando resposta.` },
+      { tom: "meta", titulo: "Meta", texto: "acompanhe sua meta em Vendas e previsão." },
+    ],
+  } : PERFIL_VAZIO;
+
+  return { corretores, totalLeads: p.totais.leads, totalVendas: p.totais.vendas, perfil, ajuda, referencia, atualizado: hhmm(p.atualizado_em) };
+}
+
+/* Fixture — só Storybook/teste. NUNCA usado na rota de produção. */
+export const demoCorretores: Dados = {
+  totalLeads: 486, totalVendas: 21,
   corretores: [
     { nome: "Ana Beatriz", gerente: "Juliana P.", carga: "38/40", leads: 148, sla: 34, mediana: 8, p90: 42, visitas: 41, propostas: 17, vendas: 8, vgv: 6_800_000, qualidade: 4.6, amostra: 52, vencidos: 9, parados: 3, presenca: 98, tendencia: "sobe" },
-    { nome: "Fernanda Lima", gerente: "Juliana P.", carga: "32/40", leads: 96, sla: 29, mediana: 11, p90: 65, visitas: 24, propostas: 9, vendas: 4, vgv: 3_600_000, qualidade: 4.4, amostra: 38, vencidos: 11, parados: 4, presenca: 96, tendencia: "estavel" },
-    { nome: "Luiza Braga", gerente: "Juliana P.", carga: "10/40", leads: 17, sla: 47, mediana: 5, p90: 19, visitas: 4, propostas: 2, vendas: 1, vgv: 800_000, qualidade: null, amostra: 3, vencidos: 1, parados: 0, presenca: 97, tendencia: "nova", novato: true },
-    { nome: "Carlos Mendes", gerente: "Marcos V.", carga: "46/40", acima: true, leads: 118, sla: 18, mediana: 14, p90: 118, visitas: 27, propostas: 11, vendas: 5, vgv: 4_400_000, qualidade: 4.2, amostra: 44, vencidos: 15, parados: 7, presenca: 94, tendencia: "cai" },
     { nome: "Rafael Souza", gerente: "Marcos V.", carga: "31/40", leads: 92, sla: 8, mediana: 41, p90: 200, visitas: 18, propostas: 6, vendas: 3, vgv: 2_800_000, qualidade: 3.9, amostra: 26, vencidos: 19, parados: 6, presenca: 89, tendencia: "cai" },
-    { nome: "Pedro Costa", gerente: "Marcos V.", carga: "8/40", leads: 15, sla: 44, mediana: 6, p90: 22, visitas: 4, propostas: 2, vendas: 0, vgv: null, qualidade: null, amostra: 2, vencidos: 2, parados: 1, presenca: 95, tendencia: "nova", novato: true },
   ],
   perfil: {
-    nome: "Rafael Souza",
-    equipe: "Marcos Vilela",
-    funil: "92 → 51 → 18 → 6 → 3",
-    funilNota: "lead → negócio → visita → proposta → venda",
-    qualidade: 3.9,
-    amostra: 26,
-    piorCriterio: "pior critério: objeções 3,4 · tendência ↘",
-    vendas: "3 · R$ 2,8 mi",
-    comissao: "comissão calculada R$ 34,2 mil · paga R$ 22,8 mil",
-    metaPercentual: 56,
+    nome: "Rafael Souza", equipe: "Marcos Vilela", funil: "92 → 51 → 18 → 6 → 3", funilNota: "lead → negócio → visita → proposta → venda",
+    qualidade: 3.9, amostra: 26, piorCriterio: "pior critério: objeções 3,4 · tendência ↘",
+    vendas: "3 · R$ 2,8 mi", comissao: "comissão calculada R$ 34,2 mil · paga R$ 22,8 mil", metaPercentual: 56,
     proprio: [
-      { tom: "bom", titulo: "Indo bem", texto: "quando você responde em até 15 min, 2 em cada 3 leads avançam — seu atendimento converte; o gargalo é começar rápido." },
-      { tom: "aviso", titulo: "Para melhorar", texto: "a primeira resposta no sábado está levando horas. Combinar o plantão com o Marcos resolve a maior parte." },
-      { tom: "acao", titulo: "Precisam de você agora", texto: "7 leads esperando ação — abrir a fila →" },
-      { tom: "meta", titulo: "Meta", texto: "faltam R$ 2,2 mi (56% feita). No seu ritmo de conversão, são ~4 visitas por semana até o fim do mês." },
+      { tom: "bom", titulo: "Indo bem", texto: "quando você responde em até 15 min, 2 em cada 3 leads avançam." },
+      { tom: "meta", titulo: "Meta", texto: "faltam R$ 2,2 mi (56% feita)." },
     ],
   },
+  ajuda: [{ l: "Rafael Souza", r: "rotina de follow-up", sub: "41 min de mediana e 19 vencidos", corR: "#D93E3E" }],
+  referencia: [{ l: "Ana Beatriz", r: "8 min · 34% no SLA", sub: "melhor tempo da casa" }],
   atualizado: "14:32",
 };
