@@ -24,6 +24,8 @@ export const estadoConexaoTela: Record<string, EstadoConexao> = {
   aquisicao: "parcial", // Leads por origem (CRM) reais; custo de mídia/atribuição seguem —
   comportamento: "parcial", // Páginas/eventos/dispositivos reais; Clarity/jornada seguem —
   imoveis: "parcial", // Procura (telemetria) real; tabela por imóvel depende de código de imóvel
+  conversao: "parcial", // Funil CRM (Funil 2.0) + SLA + conversão por corretor reais; tempos/motivos/jornada seguem —
+  proprietarios: "parcial", // Vendas por empreendimento reais; captação (funil/cortes) ainda não é rastreada
   sara: "parcial", // Sara ainda não envia eventos à Inteligência (0 no período)
 };
 

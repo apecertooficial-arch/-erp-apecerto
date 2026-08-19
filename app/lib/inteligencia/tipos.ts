@@ -61,7 +61,8 @@ export type ImoveisItem = { pagina: string; pageviews: number; view_item: number
 export type ImoveisPayload = { atualizado_em: string; periodo_dias: number; view_item: number; property_search: number; filter_change: number; paginas: ImoveisItem[] };
 
 export type ConversaoEtapa = { etapa: string; volume: number; taxa: number | null };
-export type ConversaoPayload = { atualizado_em: string; periodo_dias: number; leads: number; negocios: number; visitas: number; vendas: number; ganho: number; perdido: number; sla_mediana_min: number | null; etapas: ConversaoEtapa[] };
+export type ConversaoCorretor = { nome: string; negocios: number; vendas: number; conv: number | null };
+export type ConversaoPayload = { atualizado_em: string; periodo_dias: number; leads: number; negocios: number; visitas: number; vendas: number; ganho: number; perdido: number; sla_mediana_min: number | null; sem_atendimento: number; parados: number; etapas: ConversaoEtapa[]; corretores: ConversaoCorretor[] };
 
 export type ProprietariosPayload = { atualizado_em: string; periodo_dias: number; owner_events: number; vendas_com_proprietario: number; proprietarios_distintos: number; empreendimentos: { nome: string; vendas: number; vgv: number }[] };
 
