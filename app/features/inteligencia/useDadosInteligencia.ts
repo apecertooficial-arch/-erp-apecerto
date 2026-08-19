@@ -5,7 +5,11 @@
  * Consome GET /api/inteligencia/:tela com o accessToken da sessão, preservando
  * os quatro estados do contrato: carregando / erro / vazio / ok. Também reflete
  * período e filtros na URL (persistência do recorte). O mapeamento payload ->
- * formato visual de cada tela fica na própria tela; aqui só entregamos o cru. */
+ * formato visual de cada tela fica na própria tela; aqui só entregamos o cru.
+ *
+ * O estado "carregando" é DERIVADO: a leitura resolvida guarda a chave do
+ * pedido que a gerou; se a chave corrente diferir, ainda está carregando. Assim
+ * nenhum setState roda de forma síncrona dentro do efeito. */
 
 import { useEffect, useState } from "react";
 import type { MetaInteligencia } from "../../lib/inteligencia/tipos";
@@ -43,9 +47,11 @@ function extrairFiltros(chips: string[]): { consent: string | null; device: stri
 }
 
 export function useDadosInteligencia<T>(tela: string, accessToken: string | null, recorte: Recorte): LeituraInteligencia<T> {
-  const [leitura, setLeitura] = useState<LeituraInteligencia<T>>({ estado: "carregando", payload: null, meta: null, erro: null });
   const { consent, device } = extrairFiltros(recorte.chips);
   const periodo = recorte.periodo;
+  const chaveReq = `${tela}|${periodo}|${consent ?? ""}|${device ?? ""}`;
+
+  const [resolvido, setResolvido] = useState<{ chave: string; leitura: LeituraInteligencia<T> } | null>(null);
 
   useEffect(() => {
     if (!accessToken) return;
@@ -64,26 +70,26 @@ export function useDadosInteligencia<T>(tela: string, accessToken: string | null
       window.history.replaceState(null, "", u.toString());
     }
 
-    setLeitura((a) => ({ ...a, estado: "carregando" }));
     fetch(`/api/inteligencia/${tela}?${params.toString()}`, { headers: { Authorization: `Bearer ${accessToken}` } })
       .then(async (r) => {
         const corpo = (await r.json().catch(() => null)) as { data?: T; meta?: MetaInteligencia; error?: string } | null;
         if (!ativo) return;
         if (!r.ok) {
-          setLeitura({ estado: "erro", payload: null, meta: corpo?.meta ?? null, erro: corpo?.error ?? `erro ${r.status}` });
+          setResolvido({ chave: chaveReq, leitura: { estado: "erro", payload: null, meta: corpo?.meta ?? null, erro: corpo?.error ?? `erro ${r.status}` } });
           return;
         }
         const payload = (corpo?.data ?? null) as T | null;
         const total = (payload as { total_eventos?: number } | null)?.total_eventos;
         const vazio = !payload || total === 0;
-        setLeitura({ estado: vazio ? "vazio" : "ok", payload, meta: corpo?.meta ?? null, erro: null });
+        setResolvido({ chave: chaveReq, leitura: { estado: vazio ? "vazio" : "ok", payload, meta: corpo?.meta ?? null, erro: null } });
       })
       .catch((e: unknown) => {
-        if (ativo) setLeitura({ estado: "erro", payload: null, meta: null, erro: e instanceof Error ? e.message : "falha de rede" });
+        if (ativo) setResolvido({ chave: chaveReq, leitura: { estado: "erro", payload: null, meta: null, erro: e instanceof Error ? e.message : "falha de rede" } });
       });
 
     return () => { ativo = false; };
-  }, [tela, accessToken, periodo, consent, device]);
+  }, [chaveReq, tela, accessToken, periodo, consent, device]);
 
-  return leitura;
+  if (resolvido && resolvido.chave === chaveReq) return resolvido.leitura;
+  return { estado: "carregando", payload: null, meta: null, erro: null };
 }
