@@ -20,6 +20,7 @@ export const estadoConexaoTela: Record<string, EstadoConexao> = {
   gerentes: "parcial", // Rollup por gerente real; cobertura de horário/qualidade seguem —
   vendas: "parcial", // Realizado/meta/pipeline reais; previsão ponderada e VGV por etapa seguem —
   qualidade: "parcial", // Avaliação por IA real; cobertura/contestação seguem —
+  alertas: "parcial", // Alertas sintetizados de sinais reais; motor crm_lead_alertas nascente
 };
 
 export const estadoConexaoDe = (chave: string): EstadoConexao => estadoConexaoTela[chave] ?? "demo";

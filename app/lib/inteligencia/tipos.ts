@@ -126,3 +126,6 @@ export type VendasPayload = { atualizado_em: string; periodo_dias: number; reali
 export type QualidadeCriterios = Record<string, number | null>;
 export type QualidadePessoa = { nome: string; nota: number | null; amostra: number; criterios: QualidadeCriterios };
 export type QualidadePayload = { atualizado_em: string; periodo_dias: number; nota_empresa: number | null; amostra: number; criticas: number; criterios: QualidadeCriterios; pessoas: QualidadePessoa[] };
+
+export type AlertasTipos = { sla: number; sla_criticos: number; followup: number; mensagem: number; negocio_parado: number; visita_sem_feedback: number; carga: number; venda_sem_comissao: number; meta_sem_cadastro: number; fonte_parada: number };
+export type AlertasPayload = { atualizado_em: string; periodo_dias: number; tipos: AlertasTipos; engine: { total: number; abertos: number; reconhecidos: number } };

@@ -1,55 +1,38 @@
 "use client";
 
-/* 17 · CENTRAL DE ALERTAS — artboard 21a, idêntico ao protótipo.
- *
- * Ordem do desenho:
- *   1. quatro números por gravidade, cada um com a nota do artboard (o mais antigo
- *      há 4 h 10 · sem prazo estourado ainda · alguém assumiu, ainda não resolveu ·
- *      de 31 abertos, tempo médio 6 h)
- *   2. FILA DE ALERTAS — os 5 críticos abertos agora, uma linha por alerta com
- *      chip de gravidade, impacto + “ver evidência”, responsável, ação recomendada
- *      e os três botões (ação em laranja, Resolver, Reconhecer)
- *   3. os 14 TIPOS DE ALERTA e o CICLO DE VIDA do alerta
- *   4. rodapé de fontes
- *
- * Alerta sem dono é alerta perdido: a tela exige o responsável na própria linha, e
- * quando ninguém assumiu, diz “ninguém atribuído” em vermelho — nunca em branco.
- */
+/* 17 · CENTRAL DE ALERTAS — artboard 21a. Agora lê dado real via
+ * /api/inteligencia/alertas (RPC intel_alertas). A central é SINTETIZADA dos
+ * sinais operacionais reais (SLA, follow-ups, negócios parados, visitas sem
+ * feedback, vendas sem comissão, metas sem cadastro). O motor crm_lead_alertas
+ * ainda é nascente; tipos sem fonte aparecem com —. Demo virou fixture. */
 
 import { useState } from "react";
 import "../../../styles/inteligencia-blocos.css";
 import type { PropsTela } from "../CascaInteligencia";
 import { fmt, RodapeFontes } from "../dado";
 import { Cabecalho, CartoesLista, GradeKpis, IconeInt, type Kpi } from "../pecas";
+import { useDadosInteligencia } from "../useDadosInteligencia";
+import type { AlertasPayload } from "../../../lib/inteligencia/tipos";
 
-type Alerta = {
-  chave: string;
-  titulo: string;
-  impacto: string;
-  responsavel: string | null;
-  acao: string;
-  botao: string;
-  alvo: string;
-};
+type Alerta = { chave: string; titulo: string; impacto: string; responsavel: string | null; acao: string; botao: string; alvo: string };
 
 type Dados = {
-  criticos: number | null;
-  atencao: number | null;
-  reconhecidos: number | null;
-  resolvidos: number | null;
-  totalAbertos: number | null;
-  notaCriticos: string;
-  notaAtencao: string;
-  notaReconhecidos: string;
-  notaResolvidos: string;
-  alertas: Alerta[];
-  tipos: { l: string; r: string }[];
-  ciclo: { etapa: string; texto: string; cor: string }[];
-  atualizado: string;
+  criticos: number | null; atencao: number | null; reconhecidos: number | null; resolvidos: number | null; totalAbertos: number | null;
+  notaCriticos: string; notaAtencao: string; notaReconhecidos: string; notaResolvidos: string;
+  alertas: Alerta[]; tipos: { l: string; r: string }[]; ciclo: { etapa: string; texto: string; cor: string }[]; atualizado: string;
 };
 
-export function CentralAlertas({ recorte }: PropsTela) {
-  const d = usarDados();
+const CICLO: Dados["ciclo"] = [
+  { etapa: "Aberto", texto: "a regra dispara com evidência anexada e dono sugerido — nunca sem prova.", cor: "#D93E3E" },
+  { etapa: "Atribuído", texto: "alguém assume. Sem dono, o alerta aparece como “ninguém atribuído” em vermelho.", cor: "#FF7000" },
+  { etapa: "Reconhecido", texto: "registra quem viu e quando; continua na lista até ser resolvido.", cor: "#8B00CC" },
+  { etapa: "Resolvido", texto: "sai da fila, entra no histórico e fica na Auditoria com o tempo até a resolução.", cor: "#1FA85A" },
+  { etapa: "Reaberto", texto: "se a condição voltar no mesmo período, o alerta reabre com o histórico anterior à vista.", cor: "#B5700A" },
+];
+
+export function CentralAlertas({ accessToken, recorte }: PropsTela) {
+  const leitura = useDadosInteligencia<AlertasPayload>("alertas", accessToken, recorte);
+  const d = mapearAlertas(leitura.payload);
   const [reconhecidos, setReconhecidos] = useState<string[]>([]);
   const [resolvidos, setResolvidos] = useState<string[]>([]);
 
@@ -67,56 +50,31 @@ export function CentralAlertas({ recorte }: PropsTela) {
       <Cabecalho eyebrow="O QUE EXIGE AÇÃO HOJE" titulo="Tudo que exige ação, num lugar só — com dono, evidência e caminho para resolver" nota={`${fmt.inteiro(d.totalAbertos)} alertas no total`} />
       <GradeKpis itens={kpis} colunas={4} />
 
-      {/* FILA DE ALERTAS — uma linha por alerta, com as três ações */}
-      <Cabecalho
-        eyebrow="FILA DE ALERTAS"
-        titulo={`Os ${abertos.length} críticos abertos agora`}
-        cor="#8B00CC"
-        nota="ordenados por impacto × tempo aberto · cada linha tem dono e ação"
-      />
+      <Cabecalho eyebrow="FILA DE ALERTAS" titulo={`Os ${abertos.length} críticos abertos agora`} cor="#8B00CC" nota="ordenados por impacto · cada linha tem dono e ação" />
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         {abertos.map((a) => (
           <div className="intp-cartao" key={a.chave} style={{ padding: "14px 16px" }}>
             <div style={{ display: "grid", gridTemplateColumns: "78px 1fr 150px 168px auto", gap: 12, alignItems: "center" }}>
               <span className="intp-cartao-chip tom-ruim" style={{ justifySelf: "start" }}>crítico</span>
-
               <div style={{ minWidth: 0 }}>
                 <b style={{ fontSize: 13.5 }}>{a.titulo}</b>
                 <small style={{ display: "block", fontSize: 11.5, color: "#9A938B", lineHeight: 1.45 }}>
                   impacto: {a.impacto} ·{" "}
-                  <button type="button" className="int-link" style={{ fontSize: 11.5 }} onClick={() => recorte.filtrar(`Alerta: ${a.titulo}`)}>
-                    ver evidência
-                  </button>
+                  <button type="button" className="int-link" style={{ fontSize: 11.5 }} onClick={() => recorte.filtrar(`Alerta: ${a.titulo}`)}>ver evidência</button>
                 </small>
               </div>
-
               <div>
                 <small style={{ display: "block", fontSize: 10.5, color: "#9A938B" }}>responsável</small>
-                {a.responsavel === null ? (
-                  <b style={{ fontSize: 12, color: "#D93E3E" }}>ninguém atribuído</b>
-                ) : (
-                  <b style={{ fontSize: 12 }}>{a.responsavel}</b>
-                )}
+                {a.responsavel === null ? <b style={{ fontSize: 12, color: "#D93E3E" }}>ninguém atribuído</b> : <b style={{ fontSize: 12 }}>{a.responsavel}</b>}
               </div>
-
               <div>
                 <small style={{ display: "block", fontSize: 10.5, color: "#9A938B" }}>ação recomendada</small>
                 <b style={{ fontSize: 12 }}>{a.acao}</b>
               </div>
-
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap", justifySelf: "end" }}>
-                <button type="button" className="cop-btn-primario" style={{ height: 34, padding: "0 14px", fontSize: 12, background: "#FF7000", boxShadow: "none" }} onClick={() => recorte.irPara(a.alvo)}>
-                  {a.botao}
-                </button>
-                <button type="button" className="cop-acao" onClick={() => setResolvidos((r) => (r.includes(a.chave) ? r : [...r, a.chave]))}>
-                  Resolver
-                </button>
-                <button
-                  type="button"
-                  className="cop-acao"
-                  style={reconhecidos.includes(a.chave) ? { borderColor: "#C9AEDC", color: "#66009A", fontWeight: 700 } : undefined}
-                  onClick={() => setReconhecidos((r) => (r.includes(a.chave) ? r : [...r, a.chave]))}
-                >
+                <button type="button" className="cop-btn-primario" style={{ height: 34, padding: "0 14px", fontSize: 12, background: "#FF7000", boxShadow: "none" }} onClick={() => recorte.irPara(a.alvo)}>{a.botao}</button>
+                <button type="button" className="cop-acao" onClick={() => setResolvidos((r) => (r.includes(a.chave) ? r : [...r, a.chave]))}>Resolver</button>
+                <button type="button" className="cop-acao" style={reconhecidos.includes(a.chave) ? { borderColor: "#C9AEDC", color: "#66009A", fontWeight: 700 } : undefined} onClick={() => setReconhecidos((r) => (r.includes(a.chave) ? r : [...r, a.chave]))}>
                   {reconhecidos.includes(a.chave) ? "Reconhecido ✓" : "Reconhecer"}
                 </button>
               </div>
@@ -125,18 +83,13 @@ export function CentralAlertas({ recorte }: PropsTela) {
         ))}
         {abertos.length === 0 ? (
           <div className="intp-cartao" style={{ display: "flex", flexDirection: "row", gap: 10, alignItems: "center" }}>
-            <span className="intp-tile tile-verde">
-              <IconeInt nome="check" tamanho={15} />
-            </span>
+            <span className="intp-tile tile-verde"><IconeInt nome="check" tamanho={15} /></span>
             <b style={{ fontSize: 13 }}>Nenhum crítico aberto agora — os resolvidos ficam registrados na Auditoria.</b>
           </div>
         ) : null}
       </div>
-      <small className="intp-kpi-foot">
-        resolver, atribuir e reconhecer ficam registrados na Auditoria · alerta reconhecido continua na lista até ser resolvido · nada aqui altera dado do ERP sozinho
-      </small>
+      <small className="intp-kpi-foot">resolver, atribuir e reconhecer ficam registrados na Auditoria · nada aqui altera dado do ERP sozinho</small>
 
-      {/* TIPOS E CICLO DE VIDA */}
       <Cabecalho eyebrow="COMO O ALERTA FUNCIONA" titulo="Os tipos e o ciclo de vida" />
       <div className="intp-op-duas">
         <div className="intp-cartao">
@@ -149,7 +102,7 @@ export function CentralAlertas({ recorte }: PropsTela) {
               </div>
             ))}
           </div>
-          <small className="intp-kpi-foot">tipo sem alerta aberto aparece com 0, porque zero é dado — e não sai da lista</small>
+          <small className="intp-kpi-foot">tipo sem alerta aberto aparece com 0 · tipo sem fonte ainda aparece com —</small>
         </div>
 
         <div className="intp-cartao">
@@ -168,103 +121,91 @@ export function CentralAlertas({ recorte }: PropsTela) {
         colunas={3}
         cartoes={[
           { titulo: "Atendimento", linhas: [{ l: "Leads acima do SLA", r: "abrir →", abrir: () => recorte.irPara("atendimento") }, { l: "Mensagens sem retorno", r: "abrir →", abrir: () => recorte.irPara("atendimento") }], foot: "a ação acontece no Funil 2.0" },
-          { titulo: "Financeiro e cadastro", linhas: [{ l: "Vendas sem % de comissão", r: "abrir →", abrir: () => recorte.irPara("financeiro") }, { l: "Repasse sem data", r: "abrir →", abrir: () => recorte.irPara("financeiro") }], foot: "valores só para quem tem acesso financeiro" },
-          { titulo: "Dado e tracking", linhas: [{ l: "Leads sem sincronizar", r: "abrir →", abrir: () => recorte.irPara("privacidade") }, { l: "UTMs ausentes", r: "abrir →", abrir: () => recorte.irPara("aquisicao") }], foot: "pessoa que pediu contato e ninguém viu é prioridade máxima" },
+          { titulo: "Financeiro e cadastro", linhas: [{ l: "Vendas sem % de comissão", r: "abrir →", abrir: () => recorte.irPara("financeiro") }, { l: "Metas sem cadastro", r: "abrir →", abrir: () => recorte.irPara("vendas") }], foot: "valores só para quem tem acesso financeiro" },
+          { titulo: "Operação", linhas: [{ l: "Negócios parados", r: "abrir →", abrir: () => recorte.irPara("vendas") }, { l: "Visitas sem feedback", r: "abrir →", abrir: () => recorte.irPara("corretores") }], foot: "pessoa que pediu contato e ninguém viu é prioridade máxima" },
         ]}
       />
 
       <RodapeFontes
-        fontes={["motor de regras", "leads", "negócios", "fila de sincronização", "comissões"]}
-        pendencias={["escala não integrada — cobertura de sábado é inferida por atividade"]}
+        fontes={["leads", "negócios", "vendas", "visitas", "wa_mensagens"]}
+        pendencias={["motor de alertas (crm_lead_alertas) nascente", "cobertura de horário, repasses e sync sem fonte"]}
         atualizado={d.atualizado}
       />
     </div>
   );
 }
 
-function usarDados(): Dados {
-  return demo;
+/* PONTO ÚNICO DE TROCA PARA O BANCO — lê a RPC via hook. */
+function hhmm(iso: string | null): string {
+  if (!iso) return "—";
+  const dt = new Date(iso);
+  return Number.isNaN(dt.getTime()) ? "—" : dt.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo" });
 }
 
-const demo: Dados = {
-  criticos: 5,
-  atencao: 18,
-  reconhecidos: 8,
-  resolvidos: 23,
-  totalAbertos: 31,
-  notaCriticos: "o mais antigo há 4 h 10",
-  notaAtencao: "sem prazo estourado ainda",
-  notaReconhecidos: "alguém assumiu, ainda não resolveu",
-  notaResolvidos: "de 31 abertos · tempo médio 6 h",
+const vazioAlertas: Dados = {
+  criticos: null, atencao: null, reconhecidos: null, resolvidos: null, totalAbertos: null,
+  notaCriticos: "aguardando conexão", notaAtencao: "—", notaReconhecidos: "—", notaResolvidos: "—",
+  alertas: [], tipos: [], ciclo: CICLO, atualizado: "—",
+};
+
+function mapearAlertas(p: AlertasPayload | null): Dados {
+  if (!p) return vazioAlertas;
+  const t = p.tipos;
+  const criticos = t.sla_criticos + t.venda_sem_comissao;
+  const atencao = t.followup + t.carga + t.meta_sem_cadastro;
+
+  const candidatos: Alerta[] = [
+    t.sla_criticos > 0 ? { chave: "sla", titulo: `${t.sla_criticos} leads acima do SLA sem resposta`, impacto: "leads esfriando · espera acima de 1 h", responsavel: null, acao: "atribuir e responder", botao: "Abrir Atendimento", alvo: "atendimento" } : null,
+    t.venda_sem_comissao > 0 ? { chave: "com", titulo: `${t.venda_sem_comissao} vendas sem % de comissão`, impacto: "VGV sem cálculo de comissão nem contribuição", responsavel: "Financeiro", acao: "completar o cadastro", botao: "Abrir Financeiro", alvo: "financeiro" } : null,
+    t.carga > 0 ? { chave: "carga", titulo: `${t.carga} corretores acima da capacidade`, impacto: "carteira acima do limite — risco de SLA", responsavel: null, acao: "redistribuir carteira", botao: "Abrir Corretores", alvo: "corretores" } : null,
+    t.meta_sem_cadastro > 0 ? { chave: "meta", titulo: `${t.meta_sem_cadastro} corretores sem meta cadastrada`, impacto: "sem meta não há acompanhamento de resultado", responsavel: null, acao: "cadastrar metas", botao: "Abrir Vendas", alvo: "vendas" } : null,
+    t.negocio_parado > 0 ? { chave: "parado", titulo: `${t.negocio_parado} negócios parados há mais de 7 dias`, impacto: "pipeline sem movimentação recente", responsavel: null, acao: "revisar e atualizar etapa", botao: "Abrir Vendas", alvo: "vendas" } : null,
+  ].filter((a): a is Alerta => a !== null);
+
+  return {
+    criticos,
+    atencao,
+    reconhecidos: p.engine.reconhecidos,
+    resolvidos: null,
+    totalAbertos: criticos + atencao + t.negocio_parado,
+    notaCriticos: `${t.sla_criticos} no SLA · ${t.venda_sem_comissao} de comissão`,
+    notaAtencao: `${t.followup} follow-ups · ${t.carga} sobrecarga`,
+    notaReconhecidos: "no motor de alertas",
+    notaResolvidos: "resolvidos não são rastreados ainda",
+    alertas: candidatos.slice(0, 5),
+    tipos: [
+      { l: "SLA de primeira resposta", r: fmt.inteiro(t.sla) },
+      { l: "Follow-up vencido", r: fmt.inteiro(t.followup) },
+      { l: "Mensagem sem retorno", r: fmt.inteiro(t.mensagem) },
+      { l: "Negócio parado", r: fmt.inteiro(t.negocio_parado) },
+      { l: "Visita sem feedback", r: fmt.inteiro(t.visita_sem_feedback) },
+      { l: "Carga acima da capacidade", r: fmt.inteiro(t.carga) },
+      { l: "Cobertura de horário", r: "—" },
+      { l: "Queda de qualidade", r: "—" },
+      { l: "Venda sem % de comissão", r: fmt.inteiro(t.venda_sem_comissao) },
+      { l: "Repasse sem data", r: "—" },
+      { l: "Lead sem sincronizar", r: "—" },
+      { l: "UTM ausente em anúncio", r: "—" },
+      { l: "Fonte de dado parada", r: fmt.inteiro(t.fonte_parada) },
+      { l: "Meta sem cadastro", r: fmt.inteiro(t.meta_sem_cadastro) },
+    ],
+    ciclo: CICLO,
+    atualizado: hhmm(p.atualizado_em),
+  };
+}
+
+/* Fixture — só Storybook/teste. NUNCA usado na rota de produção. */
+export const demoAlertas: Dados = {
+  criticos: 5, atencao: 18, reconhecidos: 8, resolvidos: 23, totalAbertos: 31,
+  notaCriticos: "o mais antigo há 4 h 10", notaAtencao: "sem prazo estourado ainda", notaReconhecidos: "alguém assumiu", notaResolvidos: "tempo médio 6 h",
   alertas: [
-    {
-      chave: "sla-sonia",
-      titulo: "SLA excedido · lead Sônia R. sem responsável",
-      impacto: "lead quente esfriando · Instagram orgânico · aberto há 4 h 10",
-      responsavel: null,
-      acao: "ligar agora",
-      botao: "Atribuir",
-      alvo: "atendimento",
-    },
-    {
-      chave: "comissao",
-      titulo: "Venda sem % de comissão válido · Apê Colibri 90",
-      impacto: "R$ 1,45 mi de VGV sem cálculo · aberto há 3 dias",
-      responsavel: "Financeiro · gerente Marcos V.",
-      acao: "completar o cadastro",
-      botao: "Abrir a venda",
-      alvo: "financeiro",
-    },
-    {
-      chave: "sabado",
-      titulo: "Falta de cobertura · sábado sem plantão na equipe Marcos",
-      impacto: "19 dos 31 atrasos do mês · cobertura 12% no sábado",
-      responsavel: "Marcos Vilela",
-      acao: "montar escala",
-      botao: "Abrir gerente",
-      alvo: "gerentes",
-    },
-    {
-      chave: "carga",
-      titulo: "Corretor sobrecarregado · Carlos Mendes 46/40",
-      impacto: "SLA 18% e o gargalo qualificado→visita é dele · aberto há 6 dias",
-      responsavel: "Marcos Vilela",
-      acao: "redistribuir 6 leads",
-      botao: "Redistribuir",
-      alvo: "corretores",
-    },
-    {
-      chave: "qualidade",
-      titulo: "Queda de qualidade · Rafael Souza",
-      impacto: "objeções 3,4 (−0,4 em 2 semanas) · amostra n=26",
-      responsavel: "Marcos Vilela",
-      acao: "coaching de objeções",
-      botao: "Abrir perfil",
-      alvo: "qualidade",
-    },
+    { chave: "sla-sonia", titulo: "SLA excedido · lead sem responsável", impacto: "lead quente esfriando · aberto há 4 h 10", responsavel: null, acao: "ligar agora", botao: "Atribuir", alvo: "atendimento" },
   ],
   tipos: [
     { l: "SLA de primeira resposta", r: "9" },
     { l: "Follow-up vencido", r: "57" },
-    { l: "Mensagem sem retorno", r: "44" },
-    { l: "Negócio parado", r: "21" },
-    { l: "Visita sem feedback", r: "12" },
-    { l: "Carga acima da capacidade", r: "1" },
-    { l: "Cobertura de horário", r: "2" },
-    { l: "Queda de qualidade", r: "2" },
     { l: "Venda sem % de comissão", r: "3" },
-    { l: "Repasse sem data", r: "1" },
-    { l: "Lead sem sincronizar", r: "7" },
-    { l: "UTM ausente em anúncio", r: "3" },
-    { l: "Fonte de dado parada", r: "1" },
-    { l: "Meta sem cadastro", r: "0" },
   ],
-  ciclo: [
-    { etapa: "Aberto", texto: "a regra dispara com evidência anexada e dono sugerido — nunca sem prova.", cor: "#D93E3E" },
-    { etapa: "Atribuído", texto: "alguém assume. Sem dono, o alerta aparece como “ninguém atribuído” em vermelho.", cor: "#FF7000" },
-    { etapa: "Reconhecido", texto: "registra quem viu e quando; continua na lista até ser resolvido.", cor: "#8B00CC" },
-    { etapa: "Resolvido", texto: "sai da fila, entra no histórico e fica na Auditoria com o tempo até a resolução.", cor: "#1FA85A" },
-    { etapa: "Reaberto", texto: "se a condição voltar no mesmo período, o alerta reabre com o histórico anterior à vista.", cor: "#B5700A" },
-  ],
+  ciclo: CICLO,
   atualizado: "14:32",
 };
