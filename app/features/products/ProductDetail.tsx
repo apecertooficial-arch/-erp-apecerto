@@ -24,7 +24,7 @@ type ProductDetailData = {
   completion: { checks: Record<string, boolean>; completed: number; total: number };
   quality: ProductQuality;
   is_favorite: boolean; leads: LeadOption[];
-  aprovacao?: string | null; captado_por_nome?: string | null; mine?: boolean;
+  aprovacao?: string | null; captado_por_nome?: string | null; mine?: boolean; pode_editar?: boolean;
   latitude?: number | null; longitude?: number | null;
 };
 
@@ -106,6 +106,7 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
     if (!response.ok) throw new Error(result.error ?? "Não foi possível abrir o produto.");
     const next = result.product as ProductDetailData;
     setProduct(next);
+    if (next.pode_editar === false) setEditing(false);
     setOwner(next.proprietarios ?? { nome: "", email: "", telefone: "" });
     setUnits(next.unidades);
     setCondominiumId(next.condominios?.id ?? "");
@@ -293,7 +294,7 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
         : null)));
 
   const mediaLibrary = product && <section className="detail-section media-library fv2-media">
-    <div className="section-row"><div><h3>Galeria e materiais{product?.tour_url ? <a className="fv2-tour-link" href={product.tour_url} target="_blank" rel="noreferrer">Tour virtual</a> : null}</h3><small>{photos.length} fotos · {videos.length} vídeos · {presentations.length} apresentações</small></div><button className={editImages ? "edit-images-btn active" : "edit-images-btn"} type="button" onClick={() => setEditImages(!editImages)}>{editImages ? "✓ Concluir edição" : "✎ Editar imagens"}</button></div>
+    <div className="section-row"><div><h3>Galeria e materiais{product?.tour_url ? <a className="fv2-tour-link" href={product.tour_url} target="_blank" rel="noreferrer">Tour virtual</a> : null}</h3><small>{photos.length} fotos · {videos.length} vídeos · {presentations.length} apresentações</small></div>{product?.pode_editar !== false && <button className={editImages ? "edit-images-btn active" : "edit-images-btn"} type="button" onClick={() => setEditImages(!editImages)}>{editImages ? "✓ Concluir edição" : "✎ Editar imagens"}</button>}</div>
     <div className="media-tabs"><button className={mediaTab === "fotos" ? "active" : ""} type="button" onClick={() => setMediaTab("fotos")}>Fotos ({photos.length})</button><button className={mediaTab === "videos" ? "active" : ""} type="button" onClick={() => setMediaTab("videos")}>Vídeos ({videos.length})</button><button className={mediaTab === "apresentacoes" ? "active" : ""} type="button" onClick={() => setMediaTab("apresentacoes")}>Apresentações ({presentations.length})</button></div>
     {editImages && <div className="material-upload">{mediaTab === "fotos" && <select value={category} onChange={(event) => setCategory(event.target.value)}>{mediaCategories.map((item) => <option key={item}>{item}</option>)}</select>}<label className="primary-action">＋ {mediaTab === "fotos" ? "Adicionar fotos" : mediaTab === "videos" ? "Adicionar vídeos" : "Adicionar apresentação PDF"}<input disabled={busy} multiple type="file" accept={mediaTab === "fotos" ? "image/*" : mediaTab === "videos" ? "video/*" : ".pdf,application/pdf,.ppt,.pptx"} onChange={(event) => void upload(event.target.files, mediaTab === "videos" ? "Tour" : mediaTab === "apresentacoes" ? "Apresentação" : undefined)} /></label></div>}
     {visibleMedia.length ? <div className="detail-gallery">{visibleMedia.map((item) => <article key={item.id}>
@@ -362,7 +363,7 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
 
             <nav className="fv2-tabs">
               {([["resumo", "Resumo"], ["site", "Conteúdo do site"], ["localizacao", "Localização"], ["proprietario", "Proprietário"], ["unidades", "Unidades"], ["galeria", "Galeria"]] as const).map(([key, label]) => (
-                (key !== "proprietario" || product.origem === "terceiros") && <button key={key} type="button" className={tab === key ? "active" : ""} onClick={() => setTab(key)}>{label}</button>
+                (key !== "proprietario" || (product.origem === "terceiros" && product.proprietarios)) && <button key={key} type="button" className={tab === key ? "active" : ""} onClick={() => setTab(key)}>{label}</button>
               ))}
             </nav>
 
@@ -376,7 +377,7 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
                   <b>{completionPct}%</b>
                 </div>
                 <div className="quality-dimensions">{Object.entries(product.quality.dimensions).map(([key, value]) => <div key={key}><span>{key}</span><strong>{value.score}/{value.max}</strong><i><b style={{ width: `${Math.round((value.score / value.max) * 100)}%` }} /></i></div>)}</div>
-                {product.quality.blocking.length > 0 && <div className="quality-blockers"><strong>Corrija antes de publicar</strong>{product.quality.blocking.map((item) => <button type="button" key={item} onClick={() => setEditing(true)}>⚠ {item}<span>Corrigir</span></button>)}</div>}
+                {product.quality.blocking.length > 0 && <div className="quality-blockers"><strong>Corrija antes de publicar</strong>{product.quality.blocking.map((item) => <button type="button" key={item} onClick={() => { if (product.pode_editar !== false) setEditing(true); }}>⚠ {item}{product.pode_editar !== false && <span>Corrigir</span>}</button>)}</div>}
                 <div className="fv2-chips">{Object.entries(product.completion.checks).map(([key, ok]) => <span key={key} className={ok ? "done" : ""}><IcCheck />{completionLabels[key] ?? key}</span>)}</div>
                 <div className={product.descricao ? "fv2-desc" : "fv2-desc empty"}>
                   {product.descricao ? <p>{product.descricao}</p> : <><span>Nenhuma descrição cadastrada ainda.</span><button type="button" onClick={() => setEditing(true)}>Adicionar descrição</button></>}
@@ -394,7 +395,7 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
                 <section><h4>Descrição</h4><p>{product.descricao || "Nenhuma descrição cadastrada."}</p></section>
                 <section><h4>Lazer e áreas comuns</h4><div className="site-content-tags">{product.lazer?.length ? product.lazer.map((item) => <span key={item}>{item}</span>) : <em>Não informado</em>}</div></section>
                 <section><h4>Diferenciais</h4><div className="site-content-tags">{product.diferenciais?.length ? product.diferenciais.map((item) => <span key={item}>{item}</span>) : <em>Não informado</em>}</div></section>
-                <div className="site-content-actions"><button className="fv2-btn fv2-btn-outline" type="button" onClick={() => setEditing(true)}><IcEdit /> Editar conteúdo</button>{product.site_published && <a className="fv2-btn fv2-btn-ghost" href={`https://apecerto.com/?imovel=${encodeURIComponent(product.slug || product.id)}`} target="_blank" rel="noreferrer"><IcLink /> Ver este imóvel no site</a>}</div>
+                <div className="site-content-actions">{product.pode_editar !== false && <button className="fv2-btn fv2-btn-outline" type="button" onClick={() => setEditing(true)}><IcEdit /> Editar conteúdo</button>}{product.site_published && <a className="fv2-btn fv2-btn-ghost" href={`https://apecerto.com/?imovel=${encodeURIComponent(product.slug || product.id)}`} target="_blank" rel="noreferrer"><IcLink /> Ver este imóvel no site</a>}</div>
               </div>}
 
               {tab === "localizacao" && <>
@@ -407,7 +408,7 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
                 </div>
               </>}
 
-              {tab === "proprietario" && product.origem === "terceiros" && <>
+              {tab === "proprietario" && product.origem === "terceiros" && product.proprietarios && <>
                 <div className="fv2-owner-block">
                   <div className="fv2-owner-lead">
                     <span className="fv2-avatar">{initials(product.proprietarios?.nome)}</span>
@@ -446,7 +447,7 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
             <div className="fv2-actions">
               <button className="fv2-btn fv2-btn-lead" type="button" onClick={() => setLeadPanelOpen(!leadPanelOpen)}><IcLink /> Vincular lead{product.leads.some((lead) => lead.linked) ? ` · ${product.leads.filter((lead) => lead.linked).length}` : ""}</button>
               {leadPanelOpen && <div className="fv2-lead-panel"><div className="lead-link-form"><select value={leadId} onChange={(event) => setLeadId(event.target.value)}><option value="">Selecione um lead...</option>{product.leads.filter((lead) => !lead.linked).map((lead) => <option value={lead.id} key={lead.id}>{lead.nome || "Lead sem nome"} · {lead.telefone || "sem telefone"}</option>)}</select><button className="primary-action" disabled={busy || !leadId} type="button" onClick={() => void productAction("linkLead", leadId)}>Vincular</button></div><div className="linked-leads">{product.leads.filter((lead) => lead.linked).map((lead) => <span key={lead.id}><strong>{lead.nome || "Lead sem nome"}</strong><small>{lead.telefone}</small><button type="button" disabled={busy} onClick={() => void productAction("unlinkLead", lead.id)}>×</button></span>)}</div></div>}
-              <button className="fv2-btn fv2-btn-outline" type="button" onClick={() => setEditing(true)}><IcEdit /> Editar produto</button>
+              {product.pode_editar !== false && <button className="fv2-btn fv2-btn-outline" type="button" onClick={() => setEditing(true)}><IcEdit /> Editar produto</button>}
               <div className="fv2-action-row">
                 <button className={product.is_favorite ? "fv2-btn fv2-btn-outline active" : "fv2-btn fv2-btn-outline"} disabled={busy} type="button" onClick={() => void productAction("toggleFavorite", !product.is_favorite)}><IcStar /> {product.is_favorite ? "Favorito" : "Favoritar"}</button>
               </div>
@@ -454,7 +455,7 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
               {canPublish && <button className="fv2-btn fv2-btn-ghost" type="button" disabled={busy} onClick={() => setConfirmDeleteProduct(true)}>Excluir produto</button>}
             </div>
 
-            {product.origem === "terceiros" && <div className="fv2-person-card">
+            {product.origem === "terceiros" && product.proprietarios && <div className="fv2-person-card">
               <span className="fv2-avatar">{initials(product.proprietarios?.nome)}</span>
               <div><strong>{product.proprietarios?.nome ?? "—"}</strong><small>Proprietária{product.proprietarios?.telefone ? ` · ${product.proprietarios.telefone}` : ""}</small></div>
             </div>}

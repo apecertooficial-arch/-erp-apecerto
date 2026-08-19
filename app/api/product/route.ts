@@ -85,6 +85,11 @@ export async function GET(request: Request) {
   const capturedByName: string | null = captadorCorretorId ? (corretorNameById.get(captadorCorretorId) ?? null) : null;
   const unidadesEnriched = (data.unidades ?? []).map((u) => ({ ...u, captador_nome: corretorNameById.get((u as { captador_corretor_id?: number | null }).captador_corretor_id ?? -1) ?? null }));
   const mine = (data as { captado_por_usuario?: string | null }).captado_por_usuario === auth.user.id;
+  const { data: meuPerfilGet } = await auth.supabase.from("usuarios").select("role").eq("id", auth.user.id).maybeSingle();
+  const gerenciaProdutosGet = ["admin", "gestor", "executivo"].includes((meuPerfilGet as { role?: string } | null)?.role ?? "corretor");
+  const podeEditar = gerenciaProdutosGet || mine;
+  // Dado de proprietário é restrito: corretor só vê o que ele mesmo captou (produto e unidade).
+  const unidadesVisiveis = unidadesEnriched.map((u) => (gerenciaProdutosGet || (broker?.id && (u as { captador_corretor_id?: number | null }).captador_corretor_id === broker.id)) ? u : { ...u, proprietario_nome: null, proprietario_contato: null });
   const checks: Record<string, boolean> = {
     basics: Boolean(data.nome && (data.preco || unitPrices.length) && (data.area_util || unitAreas.length)),
     location: Boolean(data.endereco && data.bairro && data.cidade),
@@ -96,7 +101,7 @@ export async function GET(request: Request) {
     checks.owner = Boolean(data.proprietario_id || (data.proprietario_nome && data.proprietario_tel && data.proprietario_email));
     checks.access = Boolean(data.acesso_tipo && data.acesso_instrucoes && (data.acesso_tipo !== "chave_digital" || data.acesso_codigo));
   }
-  return Response.json({ product: { ...data, site_published: Boolean(data.publicado && !data.rascunho && data.aprovacao === "aprovado"), midias: media, unidades: unidadesEnriched, captado_por_nome: capturedByName, mine, summary_price: summaryPrice, summary_area: summaryArea, is_favorite: Boolean(favorite), leads: (leadOptions ?? []).map((lead) => ({ ...lead, linked: linkedIds.has(lead.id) })), quality, completion: { checks, completed: Object.values(checks).filter(Boolean).length, total: Object.keys(checks).length } } });
+  return Response.json({ product: { ...data, ...(podeEditar ? {} : { proprietarios: null, proprietario_nome: null, proprietario_tel: null, proprietario_email: null }), site_published: Boolean(data.publicado && !data.rascunho && data.aprovacao === "aprovado"), midias: media, unidades: unidadesVisiveis, captado_por_nome: capturedByName, mine, pode_editar: podeEditar, summary_price: summaryPrice, summary_area: summaryArea, is_favorite: Boolean(favorite), leads: (leadOptions ?? []).map((lead) => ({ ...lead, linked: linkedIds.has(lead.id) })), quality, completion: { checks, completed: Object.values(checks).filter(Boolean).length, total: Object.keys(checks).length } } });
 }
 
 export async function PATCH(request: Request) {
@@ -105,8 +110,12 @@ export async function PATCH(request: Request) {
   const body = await request.json() as Record<string, unknown>;
   const id = typeof body.id === "string" ? body.id : "";
   if (!UUID.test(id)) return Response.json({ error: "Produto inválido." }, { status: 400 });
-  const { data: productContext } = await auth.supabase.from("empreendimentos").select("finalidade").eq("id", id).maybeSingle();
+  const { data: productContext } = await auth.supabase.from("empreendimentos").select("finalidade, captado_por_usuario").eq("id", id).maybeSingle();
   const currentPurpose = productContext?.finalidade ?? "venda";
+  const { data: meuPerfilPatch } = await auth.supabase.from("usuarios").select("role").eq("id", auth.user.id).maybeSingle();
+  const gerenciaProdutos = ["admin", "gestor", "executivo"].includes((meuPerfilPatch as { role?: string } | null)?.role ?? "corretor");
+  const souCaptador = (productContext as { captado_por_usuario?: string | null } | null)?.captado_por_usuario === auth.user.id;
+  const negadoPorCaptacao = !gerenciaProdutos && !souCaptador ? Response.json({ error: "Você só pode editar imóveis captados por você." }, { status: 403 }) : null;
 
   // Acesso efetivo resolvido uma vez; admin passa e, sem mapa, libera (RLS é a trava dura).
   // Aprovação/publicação continuam por role logo abaixo (decideUnit/publish).
@@ -264,6 +273,7 @@ export async function PATCH(request: Request) {
   }
 
   if (body.action === "setCover") {
+    if (negadoPorCaptacao) return negadoPorCaptacao;
     const mediaId = typeof body.mediaId === "string" ? body.mediaId : "";
     if (!UUID.test(mediaId)) return Response.json({ error: "Mídia inválida." }, { status: 400 });
     const denied = guard([["produtos", "editar"]], "Você não tem permissão para editar mídias do produto.");
@@ -275,6 +285,7 @@ export async function PATCH(request: Request) {
   }
 
   if (body.action === "updateMedia") {
+    if (negadoPorCaptacao) return negadoPorCaptacao;
     const mediaId = typeof body.mediaId === "string" ? body.mediaId : "";
     const categoria = typeof body.category === "string" ? body.category.trim() : "";
     if (!UUID.test(mediaId) || !categoria) return Response.json({ error: "Mídia ou classificação inválida." }, { status: 400 });
@@ -285,6 +296,7 @@ export async function PATCH(request: Request) {
   }
 
   if (body.action === "deleteMedia") {
+    if (negadoPorCaptacao) return negadoPorCaptacao;
     const mediaId = typeof body.mediaId === "string" ? body.mediaId : "";
     if (!UUID.test(mediaId)) return Response.json({ error: "Mídia inválida." }, { status: 400 });
     const denied = guard([["produtos", "editar"], ["produtos", "excluir"]], "Você não tem permissão para excluir mídias do produto.");
@@ -360,6 +372,7 @@ export async function PATCH(request: Request) {
   // Bloco final = edição geral do produto (nome, dados, proprietário, condomínio).
   const deniedEdit = guard([["produtos", "editar"]], "Você não tem permissão para editar produtos.");
   if (deniedEdit) return deniedEdit;
+  if (negadoPorCaptacao) return negadoPorCaptacao;
   const incoming = (body.product && typeof body.product === "object" ? body.product : {}) as Record<string, unknown>;
   const update: ProductUpdate = {};
   for (const field of productFields) {
