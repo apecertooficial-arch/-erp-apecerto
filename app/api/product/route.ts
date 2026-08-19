@@ -173,7 +173,16 @@ export async function PATCH(request: Request) {
       ? { aprovacao: "aprovado", reprovacao_motivo: null }
       : { aprovacao: "reprovado", reprovacao_motivo: typeof body.motivo === "string" ? body.motivo.slice(0, 300) : null };
     const { error } = await auth.supabase.from("unidades").update(patch as never).eq("id", unidadeId).eq("empreendimento_id", id);
-    return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true, aprovacao: patch.aprovacao });
+    if (error) return Response.json({ error: error.message }, { status: 502 });
+    if (approve) {
+      // Unidade aprovada precisa aparecer no site: garante o prédio aprovado como publicado.
+      const { data: pai } = await auth.supabase.from("empreendimentos").select("aprovacao, publicado, rascunho").eq("id", id).maybeSingle();
+      const paiTyped = pai as { aprovacao?: string; publicado?: boolean; rascunho?: boolean } | null;
+      if (paiTyped && paiTyped.aprovacao === "aprovado" && !paiTyped.rascunho && !paiTyped.publicado) {
+        await auth.supabase.from("empreendimentos").update({ publicado: true } as never).eq("id", id);
+      }
+    }
+    return Response.json({ success: true, aprovacao: patch.aprovacao });
   }
 
   if (body.action === "toggleFavorite") {
