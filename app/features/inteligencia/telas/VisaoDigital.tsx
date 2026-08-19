@@ -1,18 +1,16 @@
 "use client";
 
-/* 1 · VISÃO DO DIGITAL — artboard 2a, com o layout de DUAS COLUNAS do protótipo.
- *
- * Estrutura do desenho (era coluna única na publicação):
- *   · 12 KPIs em duas fileiras de 6, com chip de comparação
- *   · EVOLUÇÃO (esquerda, mais larga) ao lado do FUNIL PRINCIPAL (direita)
- *   · LEITURAS RÁPIDAS em quatro cartões: origens · campanhas · páginas e imóveis ·
- *     muito acesso, pouca conversão
- *   · faixa final: captação · Sara (roxo) · saúde do tracking
- */
+/* 1 · VISÃO DO DIGITAL — artboard 2a. Agora lê a telemetria real do site via
+ * /api/inteligencia/digital (RPC intel_visao_digital). É uma tela CROSS-SOURCE:
+ * a metade de site é real; os KPIs de negócio (negócios, visitas, vendas,
+ * conversão lead→negócio, pipeline, GA4) dependem do CRM/GA4 e seguem — com
+ * motivo até serem ligados. Demo virou fixture. */
 
 import type { PropsTela } from "../CascaInteligencia";
 import { fmt, RodapeFontes } from "../dado";
-import { Cabecalho, CartoesLista, Funil, GradeKpis, IconeInt, type Etapa, type Kpi } from "../pecas";
+import { Cabecalho, Funil, GradeKpis, IconeInt, type Etapa, type Kpi } from "../pecas";
+import { useDadosInteligencia } from "../useDadosInteligencia";
+import type { VisaoDigitalPayload } from "../../../lib/inteligencia/tipos";
 
 type Dados = {
   visualizacoes: number | null;
@@ -37,22 +35,23 @@ type Dados = {
   atualizado: string;
 };
 
-export function VisaoDigital({ recorte }: PropsTela) {
-  const d = usarDados();
+export function VisaoDigital({ accessToken, recorte }: PropsTela) {
+  const leitura = useDadosInteligencia<VisaoDigitalPayload>("digital", accessToken, recorte);
+  const d = mapearVisaoDigital(leitura.payload);
 
   const kpis: Kpi[] = [
-    { rotulo: "Visualizações de página", bruto: d.visualizacoes, texto: fmt.inteiro(d.visualizacoes), chip: "▲ +12,4%", chipTom: "bom" },
-    { rotulo: "Páginas com engajamento", bruto: d.engajadas, texto: fmt.inteiro(d.engajadas), chip: "▲ +8,1%", chipTom: "bom" },
-    { rotulo: "Cliques de intenção", bruto: d.intencao, texto: fmt.inteiro(d.intencao), chip: "▲ +15,2%", chipTom: "bom", foot: "WhatsApp 1.294 · tel. 412 · agenda 233 · form. 371" },
-    { rotulo: "Leads do site", bruto: d.leads, texto: fmt.inteiro(d.leads), chip: "▲ +9,5%", chipTom: "bom" },
-    { rotulo: "Negócios no Funil 2.0", bruto: d.negocios, texto: fmt.inteiro(d.negocios), chip: "▲ +6,3%", chipTom: "bom" },
-    { rotulo: "Visitas agendadas", bruto: d.visitas, texto: fmt.inteiro(d.visitas), chip: "▼ −4,0%", chipTom: "ruim" },
-    { rotulo: "Vendas e locações", bruto: d.fechamentos, texto: fmt.inteiro(d.fechamentos), chip: "▲ +2 vs. anterior", chipTom: "bom", foot: "9 vendas · 5 locações" },
-    { rotulo: "Conversão página → lead", bruto: d.conversaoPagina, texto: fmt.porcento(d.conversaoPagina, 2), chip: "▲ +0,11 pp", chipTom: "bom" },
-    { rotulo: "Conversão lead → negócio", bruto: d.conversaoLead, texto: fmt.porcento(d.conversaoLead), chip: "▼ −1,8 pp", chipTom: "ruim" },
-    { rotulo: "Tempo até 1º atendimento", bruto: d.tempoAtendimento, texto: fmt.duracaoMin(d.tempoAtendimento), chip: "▲ 6 min mais rápido", chipTom: "bom", foot: "mediana · meta 5 min" },
-    { rotulo: "Pipeline atribuído ao site", bruto: d.pipelineAtribuido, texto: fmt.dinheiro(d.pipelineAtribuido), chip: "aguardando dado do CRM", chipTom: "aviso", motivo: "integracao", detalhe: "valor do negócio ausente no Funil 2.0", foot: "Sem campo confiável, não mostramos número." },
-    { rotulo: "Sessões e usuários · GA4", bruto: d.sessoesGa4, chip: "só consentimento Analytics · 31% das visitas", chipTom: "roxo" },
+    { rotulo: "Visualizações de página", bruto: d.visualizacoes, texto: fmt.inteiro(d.visualizacoes), tile: "laranja" },
+    { rotulo: "Páginas com engajamento", bruto: d.engajadas, texto: fmt.inteiro(d.engajadas), motivo: "fonte", detalhe: "engajamento depende do GA4" },
+    { rotulo: "Cliques de intenção", bruto: d.intencao, texto: fmt.inteiro(d.intencao), foot: "WhatsApp, telefone, formulário e CTAs do site" },
+    { rotulo: "Leads do site", bruto: d.leads, texto: fmt.inteiro(d.leads) },
+    { rotulo: "Negócios no Funil 2.0", bruto: d.negocios, texto: fmt.inteiro(d.negocios), motivo: "integracao", detalhe: "atribuição site→CRM ainda não ligada" },
+    { rotulo: "Visitas agendadas", bruto: d.visitas, texto: fmt.inteiro(d.visitas), motivo: "integracao", detalhe: "vem do CRM, ainda não ligado à Inteligência" },
+    { rotulo: "Vendas e locações", bruto: d.fechamentos, texto: fmt.inteiro(d.fechamentos), motivo: "integracao", detalhe: "atribuição site→venda ainda não ligada" },
+    { rotulo: "Conversão página → lead", bruto: d.conversaoPagina, texto: fmt.porcento(d.conversaoPagina, 2) },
+    { rotulo: "Conversão lead → negócio", bruto: d.conversaoLead, texto: fmt.porcento(d.conversaoLead), motivo: "integracao", detalhe: "precisa do vínculo lead do site ↔ negócio" },
+    { rotulo: "Tempo até 1º atendimento", bruto: d.tempoAtendimento, texto: fmt.duracaoMin(d.tempoAtendimento), motivo: "integracao", detalhe: "medido em Atendimento e SLA", foot: "mediana · meta 5 min" },
+    { rotulo: "Pipeline atribuído ao site", bruto: d.pipelineAtribuido, texto: fmt.dinheiro(d.pipelineAtribuido), tile: "ambar", icone: "dinheiro", motivo: "integracao", detalhe: "valor do negócio ausente no Funil 2.0", foot: "nunca estimado por média" },
+    { rotulo: "Sessões e usuários · GA4", bruto: d.sessoesGa4, motivo: "integracao", detalhe: "GA4 não conectado (GA4_PROPERTY_ID)" },
   ];
 
   const etapas: Etapa[] = d.etapas.map((e) => ({
@@ -72,21 +71,14 @@ export function VisaoDigital({ recorte }: PropsTela) {
       {/* EVOLUÇÃO + FUNIL, lado a lado */}
       <div className="int-duas">
         <div className="int-col">
-          <Cabecalho eyebrow="EVOLUÇÃO" titulo="Como o período se moveu" cor="#8B00CC" />
+          <Cabecalho eyebrow="EVOLUÇÃO" titulo="Como o período se moveu" cor="#8B00CC" nota="tendência ilustrativa — série temporal por dia entra no próximo lote" />
           <div className="intp-cartao">
-            <svg width="100%" height="196" viewBox="0 0 560 196" preserveAspectRatio="none" role="img" aria-label="Evolução do período">
+            <svg width="100%" height="196" viewBox="0 0 560 196" preserveAspectRatio="none" role="img" aria-label="Evolução do período (ilustrativa)">
               <line x1="0" y1="49" x2="560" y2="49" stroke="#F2EFEC" strokeWidth="1" />
               <line x1="0" y1="98" x2="560" y2="98" stroke="#F2EFEC" strokeWidth="1" />
               <line x1="0" y1="147" x2="560" y2="147" stroke="#F2EFEC" strokeWidth="1" />
-              {/* anotações do artboard: campanha nova e correção do tracking */}
-              <line x1="306" y1="8" x2="306" y2="170" stroke="#C9AEDC" strokeWidth="1" strokeDasharray="3 4" />
-              <line x1="459" y1="8" x2="459" y2="170" stroke="#C9AEDC" strokeWidth="1" strokeDasharray="3 4" />
-              <polygon points="306,176 302,183 310,183" fill="#8B00CC" />
-              <polygon points="459,176 455,183 463,183" fill="#8B00CC" />
               <polyline points="0,124 51,110 102,118 153,92 204,102 255,74 306,86 357,58 408,70 459,44 510,58 560,32" fill="none" stroke="#C9C2BA" strokeWidth="1.5" strokeDasharray="4 4" />
               <polyline points="0,114 51,100 102,108 153,82 204,94 255,64 306,78 357,50 408,62 459,36 510,50 560,26" fill="none" stroke="#FF7000" strokeWidth="2.5" />
-              <polyline points="0,160 51,152 102,156 153,142 204,148 255,132 306,140 357,124 408,130 459,116 510,124 560,110" fill="none" stroke="#8B00CC" strokeWidth="2.5" />
-              <polyline points="0,178 51,174 102,176 153,168 204,172 255,164 306,168 357,160 408,164 459,156 510,160 560,152" fill="none" stroke="#4D4842" strokeWidth="2" />
             </svg>
             <div style={{ display: "flex", alignItems: "center", gap: 7, flexWrap: "wrap" }}>
               {d.series.map((s) => (
@@ -95,26 +87,22 @@ export function VisaoDigital({ recorte }: PropsTela) {
                   {s.rotulo}
                 </button>
               ))}
-              <button type="button" className="int-drop" style={{ opacity: 0.55 }}>Intenção</button>
-              <button type="button" className="int-drop" style={{ opacity: 0.55 }}>Visitas</button>
             </div>
-            <small className="intp-kpi-foot">
-              pontilhado = período anterior · cada série na própria escala · ▲ anotações: 4 ago campanha nova no Meta · 12 ago correção do tracking
-            </small>
+            <small className="intp-kpi-foot">a linha é ilustrativa; os números dos cartões acima são reais</small>
           </div>
         </div>
 
         <div className="int-col">
-          <Cabecalho eyebrow="FUNIL PRINCIPAL" titulo="Do acesso à chave na mão" cor="#8B00CC" />
-          <Funil etapas={etapas} foot="taxa sobre a etapa anterior · “detalhes” abre pessoas, campanhas, páginas e imóveis da etapa, conforme a sua permissão" />
+          <Cabecalho eyebrow="FUNIL DO SITE" titulo="Do acesso à ação de intenção" cor="#8B00CC" />
+          <Funil etapas={etapas} foot="funil do site (telemetria) · do negócio em diante é o Funil 2.0, ainda não atribuído ao site" />
         </div>
       </div>
 
       {/* LEITURAS RÁPIDAS — quatro cartões */}
-      <Cabecalho eyebrow="LEITURAS RÁPIDAS" titulo="O que está puxando o resultado" />
+      <Cabecalho eyebrow="LEITURAS RÁPIDAS" titulo="O que está puxando o acesso" />
       <div className="intp-grade" style={{ gridTemplateColumns: "repeat(4, minmax(0, 1fr))" }}>
         <div className="intp-cartao">
-          <span className="intp-cartao-titulo">Origens que mais geram negócio</span>
+          <span className="intp-cartao-titulo">Origens que mais trazem acesso</span>
           {d.origens.map((o) => (
             <button key={o.l} type="button" className="intp-linha-btn" onClick={() => recorte.filtrar(`Origem: ${o.l}`)}>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 84px 26px", gap: 8, alignItems: "center", fontSize: 12 }}>
@@ -139,12 +127,12 @@ export function VisaoDigital({ recorte }: PropsTela) {
               </div>
             ))}
           </div>
-          <small className="intp-kpi-foot">ordenado por lead → negócio, não por cliques</small>
+          <small className="intp-kpi-foot">precisa de UTM nas campanhas — cobertura hoje é baixa</small>
           <button type="button" className="int-link" style={{ fontWeight: 700, marginTop: "auto", alignSelf: "flex-start" }} onClick={() => recorte.irPara("aquisicao")}>Abrir Aquisição →</button>
         </div>
 
         <div className="intp-cartao">
-          <span className="intp-cartao-titulo">Páginas e imóveis mais procurados</span>
+          <span className="intp-cartao-titulo">Páginas mais acessadas</span>
           <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
             {d.paginas.map((p) => (
               <div key={p.l} className="intp-linha-kv">
@@ -169,7 +157,7 @@ export function VisaoDigital({ recorte }: PropsTela) {
               </div>
             ))}
           </div>
-          <small className="intp-kpi-foot">fila de correção, sempre com o motivo ao lado</small>
+          <small className="intp-kpi-foot">precisa de conversão por página (vínculo com o CRM)</small>
           <button type="button" className="int-link" style={{ fontWeight: 700, marginTop: "auto", alignSelf: "flex-start" }} onClick={() => recorte.irPara("comportamento")}>Abrir Comportamento →</button>
         </div>
       </div>
@@ -182,9 +170,9 @@ export function VisaoDigital({ recorte }: PropsTela) {
             <span className="intp-cartao-titulo">Captação de proprietários</span>
           </div>
           <div className="intp-grade" style={{ gridTemplateColumns: "repeat(3, 1fr)" }}>
-            <div><strong style={{ fontSize: 22, fontWeight: 700 }}>23</strong><br /><small className="intp-kpi-foot">captações</small></div>
-            <div><strong style={{ fontSize: 22, fontWeight: 700 }}>19</strong><br /><small className="intp-kpi-foot">contatados</small></div>
-            <div><strong style={{ fontSize: 22, fontWeight: 700 }}>6</strong><br /><small className="intp-kpi-foot">publicados</small></div>
+            <div><strong style={{ fontSize: 22, fontWeight: 700 }}>—</strong><br /><small className="intp-kpi-foot">captações</small></div>
+            <div><strong style={{ fontSize: 22, fontWeight: 700 }}>—</strong><br /><small className="intp-kpi-foot">contatados</small></div>
+            <div><strong style={{ fontSize: 22, fontWeight: 700 }}>—</strong><br /><small className="intp-kpi-foot">publicados</small></div>
           </div>
           <button type="button" className="int-link" style={{ fontWeight: 700, marginTop: "auto", alignSelf: "flex-start" }} onClick={() => recorte.irPara("proprietarios")}>Abrir Proprietários →</button>
         </div>
@@ -195,9 +183,9 @@ export function VisaoDigital({ recorte }: PropsTela) {
             <span className="intp-cartao-titulo" style={{ color: "#fff" }}>Sara · assistente de imóveis</span>
           </div>
           <div className="intp-grade" style={{ gridTemplateColumns: "repeat(3, 1fr)" }}>
-            <div><strong style={{ fontSize: 22, fontWeight: 700 }}>1.482</strong><br /><small style={{ fontSize: 11, color: "rgba(255,255,255,0.75)" }}>buscas</small></div>
-            <div><strong style={{ fontSize: 22, fontWeight: 700 }}>47</strong><br /><small style={{ fontSize: 11, color: "rgba(255,255,255,0.75)" }}>leads</small></div>
-            <div><strong style={{ fontSize: 22, fontWeight: 700 }}>9%</strong><br /><small style={{ fontSize: 11, color: "rgba(255,255,255,0.75)" }}>sem resultado</small></div>
+            <div><strong style={{ fontSize: 22, fontWeight: 700 }}>—</strong><br /><small style={{ fontSize: 11, color: "rgba(255,255,255,0.75)" }}>buscas</small></div>
+            <div><strong style={{ fontSize: 22, fontWeight: 700 }}>—</strong><br /><small style={{ fontSize: 11, color: "rgba(255,255,255,0.75)" }}>leads</small></div>
+            <div><strong style={{ fontSize: 22, fontWeight: 700 }}>—</strong><br /><small style={{ fontSize: 11, color: "rgba(255,255,255,0.75)" }}>sem resultado</small></div>
           </div>
           <button type="button" className="int-link" style={{ fontWeight: 700, color: "#fff", marginTop: "auto", alignSelf: "flex-start" }} onClick={() => recorte.irPara("sara")}>Abrir Sara →</button>
         </div>
@@ -221,72 +209,111 @@ export function VisaoDigital({ recorte }: PropsTela) {
       </div>
 
       <RodapeFontes
-        fontes={["coleta própria", "Google Tag", "GA4 (consentimento 31%)", "CRM Funil 2.0"]}
-        pendencias={["pipeline atribuído (campo de valor ausente no CRM)", "custo de mídia não conectado", "Clarity sem evento há 3 h"]}
+        fontes={["coleta própria (site-track)"]}
+        pendencias={["GA4 não conectado", "atribuição site→CRM (leads do site ≈ 0)", "custo de mídia não conectado"]}
         atualizado={d.atualizado}
       />
     </div>
   );
 }
 
-function usarDados(): Dados {
-  return demo;
+/* PONTO ÚNICO DE TROCA PARA O BANCO — lê a RPC via hook. */
+function hhmm(iso: string | null): string {
+  if (!iso) return "—";
+  const dt = new Date(iso);
+  return Number.isNaN(dt.getTime()) ? "—" : dt.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo" });
 }
 
-const demo: Dados = {
-  visualizacoes: 24_618,
-  engajadas: 11_480,
-  intencao: 2_310,
-  leads: 312,
-  negocios: 187,
-  visitas: 96,
-  fechamentos: 14,
-  conversaoPagina: 1.27,
-  conversaoLead: 59.9,
-  tempoAtendimento: 14,
-  pipelineAtribuido: null,
-  sessoesGa4: "8.412 · 5.930",
-  series: [
-    { rotulo: "Visualizações", cor: "#FF7000", chip: "Série: Visualizações" },
-    { rotulo: "Leads", cor: "#8B00CC", chip: "Série: Leads" },
-    { rotulo: "Negócios", cor: "#4D4842", chip: "Série: Negócios" },
+function minutosDesde(iso: string | null): number | null {
+  if (!iso) return null;
+  const t = new Date(iso).getTime();
+  return Number.isNaN(t) ? null : Math.max(0, Math.round((Date.now() - t) / 60_000));
+}
+
+const CORES_ORIGEM = ["#FF7000", "#FF9A4D", "#FFB570", "#C9C2BA", "#EFECE7"];
+const SERIES: Dados["series"] = [
+  { rotulo: "Visualizações", cor: "#FF7000", chip: "Série: Visualizações" },
+  { rotulo: "Intenção", cor: "#8B00CC", chip: "Série: Intenção" },
+];
+
+const vazioVisaoDigital: Dados = {
+  visualizacoes: null, engajadas: null, intencao: null, leads: null, negocios: null, visitas: null, fechamentos: null,
+  conversaoPagina: null, conversaoLead: null, tempoAtendimento: null, pipelineAtribuido: null, sessoesGa4: null,
+  etapas: [], series: SERIES, origens: [], campanhas: [{ l: "sem campanha com UTM no período", r: "—" }],
+  paginas: [], fracas: [{ l: "aguardando conexão", r: "—", sub: "" }],
+  tracking: [
+    { l: "Coleta própria", r: "aguardando", cor: "#B5700A" },
+    { l: "GA4", r: "não conectado", cor: "#B5700A" },
+    { l: "Microsoft Clarity", r: "não conectado", cor: "#B5700A" },
+    { l: "Cobertura de UTMs", r: "—", cor: "#6E6760" },
   ],
+  atualizado: "—",
+};
+
+function mapearVisaoDigital(p: VisaoDigitalPayload | null): Dados {
+  if (!p) return vazioVisaoDigital;
+  const pv = p.total_pageviews;
+  const maxOrig = Math.max(1, ...p.origens.map((o) => o.pageviews));
+  const min = minutosDesde(p.ultimo_evento_em);
+  const coletaBoa = min !== null && min <= 30;
+
+  return {
+    visualizacoes: pv,
+    engajadas: null,
+    intencao: p.intencao,
+    leads: p.leads_site,
+    negocios: null,
+    visitas: null,
+    fechamentos: null,
+    conversaoPagina: pv > 0 ? (100 * p.leads_site) / pv : null,
+    conversaoLead: null,
+    tempoAtendimento: null,
+    pipelineAtribuido: null,
+    sessoesGa4: null,
+    etapas: [
+      { nome: "1 · Página acessada", volume: pv, largura: 100, taxa: "100%" },
+      { nome: "2 · Imóvel visualizado", volume: p.visualizacoes_item, largura: pv > 0 ? Math.round((100 * p.visualizacoes_item) / pv) : 0, taxa: pv > 0 ? `${((100 * p.visualizacoes_item) / pv).toFixed(1).replace(".", ",")}%` : undefined },
+      { nome: "3 · Ação de intenção", volume: p.intencao, largura: pv > 0 ? Math.round((100 * p.intencao) / pv) : 0 },
+      { nome: "4 · Lead do site", volume: p.leads_site, largura: pv > 0 ? Math.round((100 * p.leads_site) / pv) : 0 },
+    ],
+    series: SERIES,
+    origens: p.origens.slice(0, 5).map((o, i) => ({ l: o.origem, r: fmt.inteiro(o.pageviews), largura: Math.round((100 * o.pageviews) / maxOrig), cor: CORES_ORIGEM[i] ?? "#EFECE7" })),
+    campanhas: [{ l: "sem campanha com UTM no período", r: "—" }],
+    paginas: p.paginas.slice(0, 4).map((pg) => ({ l: pg.pagina, r: fmt.inteiro(pg.pageviews) })),
+    fracas: [{ l: "conversão por página", r: "—", sub: "precisa do vínculo com o CRM" }],
+    tracking: [
+      { l: "Coleta própria", r: min === null ? "sem eventos" : `há ${min} min`, cor: coletaBoa ? "#1FA85A" : "#B5700A" },
+      { l: "GA4", r: "não conectado", cor: "#B5700A" },
+      { l: "Microsoft Clarity", r: "não conectado", cor: "#B5700A" },
+      { l: "Cobertura de UTMs", r: p.cobertura_utm === null ? "—" : `${String(p.cobertura_utm).replace(".", ",")}%`, cor: "#6E6760" },
+    ],
+    atualizado: hhmm(p.atualizado_em),
+  };
+}
+
+/* Fixture — só Storybook/teste. NUNCA usado na rota de produção. */
+export const demoVisaoDigital: Dados = {
+  visualizacoes: 24_618, engajadas: 11_480, intencao: 2_310, leads: 312, negocios: 187, visitas: 96, fechamentos: 14,
+  conversaoPagina: 1.27, conversaoLead: 59.9, tempoAtendimento: 14, pipelineAtribuido: null, sessoesGa4: "8.412 · 5.930",
+  series: SERIES,
   etapas: [
     { nome: "1 · Página acessada", volume: 24_618, largura: 100, taxa: "100%" },
-    { nome: "2 · Imóvel visualizado", volume: 15_204, largura: 62, taxa: "61,8%", perda: "−9.414" },
-    { nome: "3 · Ação de intenção", volume: 2_310, largura: 34, taxa: "15,2%", perda: "−12.894" },
-    { nome: "4 · Lead enviado", volume: 312, largura: 20, taxa: "13,5%", perda: "−1.998" },
-    { nome: "5 · Negócio criado", volume: 187, largura: 15, taxa: "59,9%", perda: "−125" },
-    { nome: "6 · Visita agendada", volume: 96, largura: 10, taxa: "51,3%", perda: "−91" },
-    { nome: "7 · Venda ou locação", volume: 14, largura: 6, taxa: "14,6%", perda: "−82" },
+    { nome: "2 · Imóvel visualizado", volume: 15_204, largura: 62, taxa: "61,8%" },
+    { nome: "3 · Ação de intenção", volume: 2_310, largura: 34, taxa: "15,2%" },
+    { nome: "4 · Lead do site", volume: 312, largura: 20, taxa: "13,5%" },
   ],
   origens: [
     { l: "Instagram orgânico", r: "52", largura: 100, cor: "#FF7000" },
     { l: "Google orgânico", r: "41", largura: 79, cor: "#FF9A4D" },
     { l: "Meta Ads", r: "38", largura: 73, cor: "#FFB570" },
-    { l: "Direto", r: "29", largura: 56, cor: "#C9C2BA" },
-    { l: "Não atribuído", r: "27", largura: 52, cor: "#EFECE7" },
   ],
-  campanhas: [
-    { l: "meta · moema-prontos-ago", r: "72%" },
-    { l: "google · apartamento-moema", r: "67%" },
-    { l: "meta · locacao-mobiliado", r: "60%" },
-  ],
-  paginas: [
-    { l: "/imoveis (busca)", r: "6.912" },
-    { l: "Apê Canário 71 · MO-104", r: "1.486" },
-    { l: "Apê Gaivota 402 · MO-118", r: "1.240" },
-    { l: "bairro Moema Pássaros", r: "3.913" },
-  ],
-  fracas: [
-    { l: "Apê Gaivota 402 · MO-118", r: "1.240 vis. · 2 leads", sub: "galeria pouco aberta — revisar fotos" },
-    { l: "/blog/guia-moema", r: "2.180 vis. · 0 leads", sub: "sem CTA de imóvel na página" },
-  ],
+  campanhas: [{ l: "meta · moema-prontos-ago", r: "72%" }],
+  paginas: [{ l: "/imoveis (busca)", r: "6.912" }, { l: "Apê Canário 71", r: "1.486" }],
+  fracas: [{ l: "/blog/guia-moema", r: "2.180 vis. · 0 leads", sub: "sem CTA de imóvel" }],
   tracking: [
-    { l: "Coleta própria", r: "último evento há 2 min", cor: "#1FA85A" },
-    { l: "Google Tag", r: "ok", cor: "#1FA85A" },
-    { l: "Microsoft Clarity", r: "sem evento há 3h", cor: "#B5700A" },
-    { l: "Cobertura de UTMs", r: "74% · não atribuído 11%", cor: "#1FA85A" },
+    { l: "Coleta própria", r: "há 2 min", cor: "#1FA85A" },
+    { l: "GA4", r: "ok", cor: "#1FA85A" },
+    { l: "Cobertura de UTMs", r: "74%", cor: "#1FA85A" },
   ],
   atualizado: "14:32",
 };
