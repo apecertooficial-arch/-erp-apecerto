@@ -1,0 +1,54 @@
+/* =============================================================================
+   REDESENHO APÊCERTO — revisão da aba Produtos (18/08)
+
+   Três correções pontuais, isoladas nesta folha (carregada por último — ver
+   app/layout.tsx) pelo mesmo motivo das outras: globals.css é grande demais
+   pra um diff pequeno e reversível.
+
+   1) Marca d'água duplicada: toda foto já sai com a marca gravada no arquivo
+      (ver watermark.ts, agora centralizada). O preview em CSS
+      (.watermarked-preview::after) ficava desenhando uma SEGUNDA marca por
+      cima, no mesmo canto — os dois selos somados é que pareciam "errados".
+      A classe foi removida do markup para fotos (ProductDetail.tsx); aqui só
+      centralizamos o que sobrou para vídeo/PDF, que não podem ser gravados
+      via canvas. O selo redundante do card do catálogo (.product-photo
+      .has-image::before) some de vez — o card já mostra a foto com a marca
+      real.
+
+   2) Botão da Sara (#sara-fab, z-index 170) por cima do avançar/voltar da
+      galeria ampliada: ela é global e nunca se escondia atrás de nenhum
+      modal. Agora some enquanto qualquer lightbox de foto estiver aberto.
+
+   3) Lista "Unidades pendentes de aprovação": tinha paleta própria
+      (creme/dourado) fora do tom "obras" (âmbar) que o resto do catálogo já
+      usa para pendência — ver --tom em redesign-apecerto-catalogo.css.
+      Realinhado ao mesmo padrão de cartão branco + tom.
+   ============================================================================= */
+
+/* --- 1. Marca d'água --- */
+.watermarked-preview::after { right:auto; bottom:auto; left:50%; top:50%; transform:translate(-50%,-50%); }
+.product-photo.has-image::before { display:none; }
+
+/* --- 2. Sara some atrás de qualquer lightbox/modal aberto --- */
+body:has(.photo-lightbox) #sara-fab, body:has(.photo-lightbox) #sara-panel,
+body:has(.document-preview-modal) #sara-fab, body:has(.document-preview-modal) #sara-panel { display:none !important; }
+
+/* --- 3. Unidades pendentes de aprovação --- */
+.pending-units { --tom:#F2A82C; --tom-bg:#FDF1D9; --tom-ink:#B87800; margin:6px 0 20px; padding:18px 20px; border:0; border-radius:22px; background:#fff; box-shadow:0 3px 10px rgba(31,28,26,.07); }
+.pending-units h3 { font-size:15.5px; font-weight:700; color:#1F1C1A; margin:0 0 2px; }
+.pending-units h3 span { background:var(--tom); color:#fff; border-radius:999px; padding:2px 9px; font-size:12px; font-weight:700; }
+.pu-sub { font-size:13px; font-weight:600; color:#9A938B; margin:2px 0 14px; }
+.pu-row { background:var(--tom-bg); border:0; border-radius:16px; padding:12px 14px; margin-bottom:10px; }
+.pu-row:last-child { margin-bottom:0; }
+.pending-units .pu-thumb { border-radius:13px; background-color:#fff; color:var(--tom); box-shadow:0 2px 6px rgba(31,28,26,.08); }
+.pending-units .pu-main strong { color:#1F1C1A; }
+.pending-units .pu-main small { color:#9A938B; }
+.pu-chip { background:#F7ECFC; color:#66009A; }
+.pending-units .pu-rev { border:0; background:var(--tom); color:#fff; border-radius:999px; padding:10px 18px; transition:transform .15s ease; }
+.pending-units .pu-rev:hover { border-color:transparent; color:#fff; transform:translateY(-1px); box-shadow:0 6px 14px rgba(184,120,0,.28); }
+.approval-filter { background:#FDF1D9; border-color:#F2A82C; color:#B87800; }
+.approval-filter:hover, .approval-filter.active { background:#F2A82C; color:#fff; }
+
+/* --- Formulário de edição de unidade (corretor dono ou aprovador) --- */
+.fv2-ud-head-actions { display:flex; align-items:center; gap:10px; }
+.fv2-ud-check { display:flex; align-items:center; gap:8px; font-size:13px; font-weight:600; color:#5B5551; margin:2px 0 4px; }

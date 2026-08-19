@@ -17,6 +17,10 @@ async function getLogo() {
 /**
  * Grava a marca oficial no arquivo antes do upload. Assim a foto permanece
  * identificada também no site, no WhatsApp e quando for baixada.
+ *
+ * Centralizada (não no canto): fica mais difícil de recortar por terceiros,
+ * e evita duplicar com o preview em CSS (.watermarked-preview), que agora só
+ * é aplicado a vídeo/PDF — mídias que este processo não consegue gravar.
  */
 export async function applyOfficialWatermark(file: File) {
   if (!file.type.startsWith("image/") || typeof createImageBitmap !== "function") return file;
@@ -31,13 +35,12 @@ export async function applyOfficialWatermark(file: File) {
     context.drawImage(photo, 0, 0);
     const logoWidth = Math.min(Math.max(96, Math.round(photo.width * 0.2)), Math.round(photo.width * 0.35));
     const logoHeight = Math.round(logoWidth * (logo.height / logo.width));
-    const margin = Math.max(24, Math.round(photo.width * 0.025));
     context.save();
     context.globalAlpha = 0.78;
     context.shadowColor = "rgba(0,0,0,.58)";
     context.shadowBlur = Math.max(5, Math.round(photo.width * 0.004));
     context.shadowOffsetY = Math.max(2, Math.round(photo.width * 0.0015));
-    context.drawImage(logo, photo.width - logoWidth - margin, photo.height - logoHeight - margin, logoWidth, logoHeight);
+    context.drawImage(logo, (photo.width - logoWidth) / 2, (photo.height - logoHeight) / 2, logoWidth, logoHeight);
     context.restore();
     photo.close();
 
