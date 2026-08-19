@@ -369,6 +369,61 @@ export async function PATCH(request: Request) {
     return Response.json({ success: true });
   }
 
+  if (body.action === "deleteProduct") {
+    const { data: me } = await auth.supabase.from("usuarios").select("role").eq("id", auth.user.id).maybeSingle();
+    const role = (me as { role?: string } | null)?.role ?? "corretor";
+    if (!["admin", "gestor", "executivo"].includes(role)) return Response.json({ error: "Apenas admin, gestor ou executivo podem excluir produtos." }, { status: 403 });
+    const deniedDelete = guard([["produtos", "excluir"]], "Você não tem permissão para excluir produtos.");
+    if (deniedDelete) return deniedDelete;
+
+    const { data: alvo, error: alvoError } = await auth.supabase.from("empreendimentos").select("id, nome").eq("id", id).maybeSingle();
+    if (alvoError) return Response.json({ error: alvoError.message }, { status: 502 });
+    if (!alvo) return Response.json({ error: "Produto não encontrado." }, { status: 404 });
+
+    // Trava dura: não apaga produto com histórico comercial (protege negócios, vendas e visitas).
+    const [neg, ven, vis, f2v, pip, prop, capt] = await Promise.all([
+      auth.supabase.from("negocios").select("empreendimento_id", { count: "exact", head: true }).eq("empreendimento_id", id),
+      auth.supabase.from("vendas").select("empreendimento_id", { count: "exact", head: true }).eq("empreendimento_id", id),
+      auth.supabase.from("visitas").select("empreendimento_id", { count: "exact", head: true }).eq("empreendimento_id", id),
+      auth.supabase.from("f2_visita").select("empreendimento_id", { count: "exact", head: true }).eq("empreendimento_id", id),
+      auth.supabase.from("pipelines").select("empreendimento_id", { count: "exact", head: true }).eq("empreendimento_id", id),
+      auth.supabase.from("ncrm_proposta").select("empreendimento_id", { count: "exact", head: true }).eq("empreendimento_id", id),
+      auth.supabase.from("captacoes_portal").select("empreendimento_id", { count: "exact", head: true }).eq("empreendimento_id", id),
+    ]);
+    const vinculos: string[] = [];
+    if ((neg.count ?? 0) > 0) vinculos.push(`${neg.count} negócio(s)`);
+    if ((ven.count ?? 0) > 0) vinculos.push(`${ven.count} venda(s)`);
+    const totalVisitas = (vis.count ?? 0) + (f2v.count ?? 0);
+    if (totalVisitas > 0) vinculos.push(`${totalVisitas} visita(s)`);
+    if ((pip.count ?? 0) > 0) vinculos.push(`${pip.count} funil(is)`);
+    if ((prop.count ?? 0) > 0) vinculos.push(`${prop.count} proposta(s)`);
+    if ((capt.count ?? 0) > 0) vinculos.push(`${capt.count} captação(ões) do portal`);
+    if (vinculos.length) return Response.json({ error: `Não é possível excluir: este produto tem ${vinculos.join(", ")} vinculado(s). Desvincule antes de excluir.`, code: "PRODUCT_HAS_LINKS" }, { status: 409 });
+
+    // O CASCADE do banco remove as linhas de mídia, mas não os arquivos no storage.
+    const { data: midiasDoProduto } = await auth.supabase.from("midias").select("storage_path").eq("empreendimento_id", id);
+    const paths = (midiasDoProduto ?? []).map((m) => m.storage_path).filter((p): p is string => Boolean(p));
+    if (paths.length) await auth.supabase.storage.from("empreendimentos").remove(paths);
+
+    const { data: removido, error: deleteError } = await auth.supabase.from("empreendimentos").delete().eq("id", id).select("id");
+    if (deleteError) return Response.json({ error: deleteError.message }, { status: 502 });
+    if (!removido || removido.length === 0) return Response.json({ error: "Exclusão bloqueada pelas permissões do banco (RLS)." }, { status: 403 });
+
+    const { data: quem } = await auth.supabase.from("usuarios").select("nome").eq("id", auth.user.id).maybeSingle();
+    await auth.supabase.from("erp_auditoria").insert({
+      usuario_id: auth.user.id,
+      usuario_nome: (quem as { nome?: string } | null)?.nome ?? null,
+      acao: "excluir",
+      modulo: "produtos",
+      entidade: "empreendimento",
+      entidade_id: id,
+      antes: alvo,
+      detalhe: `Produto "${alvo.nome ?? id}" excluído definitivamente (${paths.length} arquivo(s) de mídia removidos do storage).`,
+    } as never);
+
+    return Response.json({ success: true, deleted: true });
+  }
+
   // Bloco final = edição geral do produto (nome, dados, proprietário, condomínio).
   const deniedEdit = guard([["produtos", "editar"]], "Você não tem permissão para editar produtos.");
   if (deniedEdit) return deniedEdit;
