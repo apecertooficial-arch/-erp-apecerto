@@ -29,15 +29,14 @@ export async function applyOfficialWatermark(file: File) {
     if (!context) return file;
 
     context.drawImage(photo, 0, 0);
-    const logoWidth = Math.min(Math.max(96, Math.round(photo.width * 0.2)), Math.round(photo.width * 0.35));
+    const logoWidth = Math.min(Math.max(140, Math.round(photo.width * 0.32)), Math.round(photo.width * 0.45));
     const logoHeight = Math.round(logoWidth * (logo.height / logo.width));
-    const margin = Math.max(24, Math.round(photo.width * 0.025));
     context.save();
-    context.globalAlpha = 0.78;
+    context.globalAlpha = 0.7;
     context.shadowColor = "rgba(0,0,0,.58)";
     context.shadowBlur = Math.max(5, Math.round(photo.width * 0.004));
     context.shadowOffsetY = Math.max(2, Math.round(photo.width * 0.0015));
-    context.drawImage(logo, photo.width - logoWidth - margin, photo.height - logoHeight - margin, logoWidth, logoHeight);
+    context.drawImage(logo, Math.round((photo.width - logoWidth) / 2), Math.round((photo.height - logoHeight) / 2), logoWidth, logoHeight);
     context.restore();
     photo.close();
 
