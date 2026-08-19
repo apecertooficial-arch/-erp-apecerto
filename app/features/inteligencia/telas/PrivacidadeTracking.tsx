@@ -2,30 +2,22 @@
 
 /* 8 · PRIVACIDADE E QUALIDADE DO TRACKING — artboard 9a, em duas colunas.
  *
- * Estrutura do desenho:
- *   ESQUERDA · CONSENTIMENTO
- *     1. três níveis (essenciais · Analytics · Marketing)
- *     2. evolução das escolhas por semana, em barras empilhadas
- *     3. “o que cada nível libera” em tabela
- *     4. “regras que esta tela garante” em chips + nota jurídica
- *   DIREITA · SAÚDE TÉCNICA
- *     5. quatro fontes com selo de estado (fonte parada = atenção, nunca zero)
- *     6. eventos por hora, com a barra vermelha da queda às 9h
- *     7. qualidade dos eventos · atribuição
- *   8. lista fechada dos eventos coletados
- *   9. rodapé de fontes
- *
- * É a única tela autorizada a dizer “não confie ainda”. Nada fora da lista de
- * eventos aparece no painel como se já existisse.
- */
+ * Esta tela agora lê DADO REAL via /api/inteligencia/privacidade (RPC
+ * intel_privacidade, gated por is_equipe). O layout é idêntico ao publicado; só
+ * o corpo de usarDados mudou. O que não tem fonte (Google Tag, Clarity, CRM,
+ * qualidade de eventos, atribuição) aparece como — com motivo — nunca demo,
+ * nunca zero inventado. O demo vira fixture (demoPrivacidade), fora da produção. */
 
 import type { PropsTela } from "../CascaInteligencia";
-import { fmt, RodapeFontes } from "../dado";
+import { fmt, RodapeFontes, TRACO } from "../dado";
 import { Cabecalho, ChipsEventos } from "../pecas";
+import { useDadosInteligencia } from "../useDadosInteligencia";
+import type { ConsentTupla, PrivacidadePayload } from "../../../lib/inteligencia/tipos";
 
 type Estado = "bom" | "aviso";
 
 type Dados = {
+  totalPageviews: number | null;
   niveis: { rotulo: string; pct: number | null; cor: string; foot: string }[];
   semanas: { rotulo: string; essenciais: number; analytics: number; marketing: number }[];
   liberacoes: { nivel: string; propria: string; tag: string; clarity: string; coletado: string }[];
@@ -43,15 +35,16 @@ const SELO: Record<Estado, { fundo: string; cor: string; ponto: string }> = {
   aviso: { fundo: "#FDF1D9", cor: "#8A6A15", ponto: "#F2A82C" },
 };
 
-export function PrivacidadeTracking({ recorte }: PropsTela) {
-  const d = usarDados();
+export function PrivacidadeTracking({ accessToken, recorte }: PropsTela) {
+  const leitura = useDadosInteligencia<PrivacidadePayload>("privacidade", accessToken, recorte);
+  const d = mapearPrivacidade(leitura.payload);
 
   return (
     <div className="int-secao">
       <div className="intp-grade" style={{ gridTemplateColumns: "1fr 1fr", alignItems: "start" }}>
         {/* ESQUERDA — consentimento */}
         <div className="int-col">
-          <Cabecalho eyebrow="CONSENTIMENTO" titulo="O que as pessoas escolheram" nota={`${recorte.periodo} · 24.618 visualizações no total`} />
+          <Cabecalho eyebrow="CONSENTIMENTO" titulo="O que as pessoas escolheram" nota={`${recorte.periodo} · ${fmt.inteiro(d.totalPageviews)} visualizações no total`} />
           <div className="intp-grade" style={{ gridTemplateColumns: "repeat(3, minmax(0, 1fr))" }}>
             {d.niveis.map((n) => (
               <div className="intp-kpi" key={n.rotulo}>
@@ -165,7 +158,7 @@ export function PrivacidadeTracking({ recorte }: PropsTela) {
               ))}
             </div>
             <small className="intp-kpi-foot">
-              barra vermelha = queda brusca às 9h (instabilidade do site) — o alerta dispara sozinho e aparece como anotação nas outras páginas
+              barras por hora do dia (fuso de São Paulo) — quedas bruscas viram alerta e anotação nas outras páginas
             </small>
           </div>
 
@@ -184,7 +177,7 @@ export function PrivacidadeTracking({ recorte }: PropsTela) {
                 ))}
               </div>
               <button type="button" className="int-link" style={{ fontWeight: 700, marginTop: "auto", alignSelf: "flex-start" }} onClick={() => recorte.irPara("alertas")}>Abrir diagnóstico completo →</button>
-              <small className="intp-kpi-foot">lead sem sincronizar vira alerta crítico com dono — evento inválido não é corrigido no escuro, entra na contagem de rejeitados</small>
+              <small className="intp-kpi-foot">qualidade de eventos depende de fonte ainda não ligada à Inteligência</small>
             </div>
 
             <div className="intp-cartao">
@@ -208,23 +201,147 @@ export function PrivacidadeTracking({ recorte }: PropsTela) {
       </div>
 
       <Cabecalho eyebrow="O QUE É COLETADO" titulo="Lista fechada, declarada nesta tela" cor="#8B00CC" />
-      <ChipsEventos titulo={`Eventos coletados hoje · ${d.eventos.length}`} itens={d.eventos} foot="nada fora desta lista aparece no painel como se já existisse" />
+      <ChipsEventos titulo={`Eventos coletados · ${d.eventos.length}`} itens={d.eventos} foot="nada fora desta lista aparece no painel como se já existisse" />
 
       <RodapeFontes
-        fontes={["coleta própria", "Google Tag", "fila de sincronização", "registro de consentimento"]}
-        pendencias={["Clarity sem evento há 3 h", "3 leads sem sincronização com o CRM", "2 páginas sem tracking", "12 imóveis sem código", "UTMs ausentes em 3 anúncios"]}
+        fontes={["coleta própria (site-track)", "registro de consentimento"]}
+        pendencias={["Google Tag, Clarity e CRM ainda não conectados à Inteligência", "qualidade de eventos e atribuição dependem de fontes externas"]}
         atualizado={d.atualizado}
       />
     </div>
   );
 }
 
-/* PONTO ÚNICO DE TROCA PARA O BANCO. */
-function usarDados(): Dados {
-  return demo;
+/* PONTO ÚNICO DE TROCA PARA O BANCO — agora lê a RPC via hook. */
+const CORES_NIVEL: Record<string, string> = { essential: "#1F1C1A", analytics: "#66009A", marketing: "#CC5800" };
+const MESES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
+
+function pvNivel(consent: ConsentTupla[], nivel: string): number {
+  return consent.find((c) => c.nivel === nivel)?.pageviews ?? 0;
+}
+function corHora(frac: number): string {
+  if (frac >= 0.85) return "#FF7000";
+  if (frac >= 0.4) return "#FF9A4D";
+  return "#FFD3B0";
+}
+function rotuloSemana(iso: string): string {
+  const ini = new Date(`${iso}T00:00:00`);
+  if (Number.isNaN(ini.getTime())) return iso;
+  const fim = new Date(ini.getTime() + 6 * 86_400_000);
+  return `${ini.getDate()}–${fim.getDate()} ${MESES[fim.getMonth()]}`;
+}
+function hhmm(iso: string | null): string {
+  if (!iso) return TRACO;
+  const dt = new Date(iso);
+  return Number.isNaN(dt.getTime()) ? TRACO : dt.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo" });
+}
+function minutosDesde(iso: string | null): number | null {
+  if (!iso) return null;
+  const t = new Date(iso).getTime();
+  return Number.isNaN(t) ? null : Math.max(0, Math.round((Date.now() - t) / 60_000));
 }
 
-const demo: Dados = {
+const LIBERACOES: Dados["liberacoes"] = [
+  { nivel: "Essencial", propria: "sim, sem cookie", tag: "não", clarity: "não", coletado: "página e ação, sem identificador persistente" },
+  { nivel: "Analytics", propria: "sim", tag: "sim", clarity: "sim", coletado: "sessão, mapas de calor e gravações" },
+  { nivel: "Marketing", propria: "sim", tag: "sim", clarity: "sim", coletado: "+ atribuição de campanha e remarketing" },
+];
+const REGRAS: string[] = [
+  "essencial sem cookies", "sem fingerprinting", "sem IP bruto", "sem user agent bruto",
+  "eventos retidos 90 dias", "hash antifraude 48 h", "acesso restrito à equipe", "política de privacidade acessível",
+];
+
+const vazioPrivacidade: Dados = {
+  totalPageviews: null,
+  niveis: [
+    { rotulo: "Somente essenciais", pct: null, cor: CORES_NIVEL.essential, foot: TRACO },
+    { rotulo: "Analytics", pct: null, cor: CORES_NIVEL.analytics, foot: TRACO },
+    { rotulo: "Marketing", pct: null, cor: CORES_NIVEL.marketing, foot: TRACO },
+  ],
+  semanas: [],
+  liberacoes: LIBERACOES,
+  regras: REGRAS,
+  fontes: [
+    { rotulo: "Coleta própria", estado: "aviso", selo: "carregando", nota: "aguardando conexão" },
+    { rotulo: "Google Tag", estado: "aviso", selo: TRACO, nota: "aguardando conexão" },
+    { rotulo: "Microsoft Clarity", estado: "aviso", selo: TRACO, nota: "aguardando conexão" },
+    { rotulo: "Sincronização com CRM", estado: "aviso", selo: TRACO, nota: "aguardando conexão" },
+  ],
+  horas: [],
+  qualidade: [
+    { l: "Páginas sem tracking", r: TRACO },
+    { l: "Eventos rejeitados ou inválidos", r: TRACO },
+    { l: "Possíveis duplicidades", r: TRACO },
+    { l: "Imóveis sem código", r: TRACO },
+    { l: "Leads sem sincronização com o CRM", r: TRACO },
+  ],
+  atribuicao: [
+    { l: "Cobertura de UTMs", r: TRACO },
+    { l: "Volume não atribuído", r: TRACO },
+    { l: "UTMs ausentes em anúncios ativos", r: TRACO },
+    { l: "Erros de sincronização · 24 h", r: TRACO },
+    { l: "Última verificação", r: TRACO },
+  ],
+  eventos: [],
+  atualizado: TRACO,
+};
+
+function mapearPrivacidade(p: PrivacidadePayload | null): Dados {
+  if (!p) return vazioPrivacidade;
+  const totalPv = p.total_pageviews;
+  const pct = (n: string) => (totalPv > 0 ? (100 * pvNivel(p.consentimento, n)) / totalPv : null);
+  const maxHora = Math.max(1, ...p.eventos_por_hora_hoje.map((h) => h.eventos));
+  const horas = p.eventos_por_hora_hoje.map((h) => ({ altura: Math.max(6, Math.round((100 * h.eventos) / maxHora)), cor: corHora(h.eventos / maxHora) }));
+  const minColeta = minutosDesde(p.ultimo_evento_em);
+  const coletaBoa = minColeta !== null && minColeta <= 30;
+
+  return {
+    totalPageviews: totalPv,
+    niveis: [
+      { rotulo: "Somente essenciais", pct: pct("essential"), cor: CORES_NIVEL.essential, foot: `${fmt.inteiro(pvNivel(p.consentimento, "essential"))} visualizações` },
+      { rotulo: "Analytics", pct: pct("analytics"), cor: CORES_NIVEL.analytics, foot: `${fmt.inteiro(pvNivel(p.consentimento, "analytics"))} visualizações · habilita GA4 e gravação` },
+      { rotulo: "Marketing", pct: pct("marketing"), cor: CORES_NIVEL.marketing, foot: `${fmt.inteiro(pvNivel(p.consentimento, "marketing"))} visualizações` },
+    ],
+    semanas: p.semanas.map((s) => {
+      const tot = s.essenciais + s.analytics + s.marketing || 1;
+      return {
+        rotulo: rotuloSemana(s.semana_inicio),
+        essenciais: Math.round((100 * s.essenciais) / tot),
+        analytics: Math.round((100 * s.analytics) / tot),
+        marketing: Math.round((100 * s.marketing) / tot),
+      };
+    }),
+    liberacoes: LIBERACOES,
+    regras: REGRAS,
+    fontes: [
+      { rotulo: "Coleta própria", estado: coletaBoa ? "bom" : "aviso", selo: coletaBoa ? "operando" : "sem sinal recente", nota: minColeta === null ? "sem eventos no período" : `último evento há ${minColeta} min` },
+      { rotulo: "Google Tag", estado: "aviso", selo: "não conectada", nota: "integração não conectada" },
+      { rotulo: "Microsoft Clarity", estado: "aviso", selo: "não conectada", nota: "integração não conectada" },
+      { rotulo: "Sincronização com CRM", estado: "aviso", selo: "não conectada", nota: "integração não conectada" },
+    ],
+    horas,
+    qualidade: [
+      { l: "Páginas sem tracking", r: TRACO, sub: "o que não é medido não alerta" },
+      { l: "Eventos rejeitados ou inválidos", r: TRACO },
+      { l: "Possíveis duplicidades", r: TRACO },
+      { l: "Imóveis sem código", r: TRACO },
+      { l: "Leads sem sincronização com o CRM", r: TRACO, sub: "fonte do CRM ainda não ligada" },
+    ],
+    atribuicao: [
+      { l: "Cobertura de UTMs", r: p.cobertura_utm === null ? TRACO : `${String(p.cobertura_utm).replace(".", ",")}%` },
+      { l: "Volume não atribuído", r: TRACO },
+      { l: "UTMs ausentes em anúncios ativos", r: TRACO },
+      { l: "Erros de sincronização · 24 h", r: TRACO },
+      { l: "Última verificação", r: hhmm(p.atualizado_em) },
+    ],
+    eventos: p.eventos_por_tipo.map((e) => e.evento),
+    atualizado: hhmm(p.atualizado_em),
+  };
+}
+
+/* Fixture — só para Storybook/teste. NUNCA é usado na rota de produção. */
+export const demoPrivacidade: Dados = {
+  totalPageviews: 24_618,
   niveis: [
     { rotulo: "Somente essenciais", pct: 61, cor: "#1F1C1A", foot: "15.017 visualizações" },
     { rotulo: "Analytics", pct: 31, cor: "#66009A", foot: "7.632 visualizações · habilita GA4 e gravação" },
@@ -236,21 +353,8 @@ const demo: Dados = {
     { rotulo: "4–10 ago", essenciais: 54, analytics: 30, marketing: 8 },
     { rotulo: "11–17 ago", essenciais: 52, analytics: 32, marketing: 8 },
   ],
-  liberacoes: [
-    { nivel: "Essencial", propria: "sim, sem cookie", tag: "não", clarity: "não", coletado: "página e ação, sem identificador persistente" },
-    { nivel: "Analytics", propria: "sim", tag: "sim", clarity: "sim", coletado: "sessão, mapas de calor e gravações" },
-    { nivel: "Marketing", propria: "sim", tag: "sim", clarity: "sim", coletado: "+ atribuição de campanha e remarketing" },
-  ],
-  regras: [
-    "essencial sem cookies",
-    "sem fingerprinting",
-    "sem IP bruto",
-    "sem user agent bruto",
-    "eventos retidos 90 dias",
-    "hash antifraude 48 h",
-    "acesso restrito à equipe",
-    "política de privacidade acessível",
-  ],
+  liberacoes: LIBERACOES,
+  regras: REGRAS,
   fontes: [
     { rotulo: "Coleta própria", estado: "bom", selo: "operando", nota: "último evento há 2 min" },
     { rotulo: "Google Tag", estado: "bom", selo: "operando", nota: "último evento há 6 min" },
@@ -258,18 +362,9 @@ const demo: Dados = {
     { rotulo: "Sincronização com CRM", estado: "aviso", selo: "3 pendentes", nota: "2 erros nas últimas 24 h" },
   ],
   horas: [
-    { altura: 52, cor: "#FFD3B0" },
-    { altura: 44, cor: "#FFD3B0" },
-    { altura: 38, cor: "#FFD3B0" },
-    { altura: 46, cor: "#FFD3B0" },
-    { altura: 60, cor: "#FFD3B0" },
-    { altura: 72, cor: "#FF9A4D" },
-    { altura: 18, cor: "#F4A6A2", queda: true },
-    { altura: 70, cor: "#FF9A4D" },
-    { altura: 78, cor: "#FF9A4D" },
-    { altura: 84, cor: "#FF7000" },
-    { altura: 76, cor: "#FF9A4D" },
-    { altura: 64, cor: "#FF9A4D" },
+    { altura: 52, cor: "#FFD3B0" }, { altura: 44, cor: "#FFD3B0" }, { altura: 38, cor: "#FFD3B0" }, { altura: 46, cor: "#FFD3B0" },
+    { altura: 60, cor: "#FFD3B0" }, { altura: 72, cor: "#FF9A4D" }, { altura: 18, cor: "#F4A6A2", queda: true }, { altura: 70, cor: "#FF9A4D" },
+    { altura: 78, cor: "#FF9A4D" }, { altura: 84, cor: "#FF7000" }, { altura: 76, cor: "#FF9A4D" }, { altura: 64, cor: "#FF9A4D" },
   ],
   qualidade: [
     { l: "Páginas sem tracking", r: "2", corR: "#B5700A", sub: "o que não é medido não alerta" },

@@ -6,19 +6,16 @@
  * páginas da família ativa. Uma barra de filtros comum às 17, cujo recorte é da
  * área — trocar de família ou de página não limpa filtro.
  *
- * Correções desta rodada, vindas da comparação lado a lado com os artboards:
- *   · cada dimensão de filtro é um DROPDOWN (chevron), não uma pílula chapada;
- *   · filtro ativo virou chip roxo com ✕ e rótulo completo;
- *   · a barra ficou em uma faixa só, com a contagem e a nota de interação à direita;
- *   · o selo do topo declara a carga: “Atualizado 14:32 · dados até 14:15”, e “Ao
- *     vivo” nas telas de fila, que atualizam em tempo real.
- */
+ * O selo do topo agora depende do estado de conexão da tela (estado-conexao):
+ * tela real não mostra selo; parcial mostra “DADOS PARCIAIS”; demo mostra
+ * “DEMONSTRAÇÃO”. */
 
 import { useMemo, useState } from "react";
 import "../../styles/inteligencia.css";
 import { grupos, periodos, primeiraDoGrupo, telaPorChave, telas, telasDoGrupo, type GrupoChave } from "./telas";
 import { BlocoSemDado, RodapeFontes } from "./dado";
 import { telasPublicadas } from "./registro";
+import { estadoConexaoDe } from "./estado-conexao";
 import { Copiloto, type PerfilCopiloto } from "./Copiloto";
 import { useErpSession } from "../system/ErpSession";
 
@@ -66,6 +63,7 @@ export function CascaInteligencia({ accessToken }: { accessToken: string }) {
 
   const Publicada = telasPublicadas[tela.chave];
   const familia = grupos.find((g) => g.chave === grupo);
+  const conexao = estadoConexaoDe(tela.chave);
   /* Dimensão com chip ativo aparece marcada no próprio dropdown. */
   const dimensaoAtiva = (f: string) => chips.some((c) => c.startsWith(`${f}:`));
 
@@ -78,10 +76,12 @@ export function CascaInteligencia({ accessToken }: { accessToken: string }) {
           <p>{tela.sub}</p>
         </div>
         <div className="int-topo-acoes">
-          <span className="int-selo-pend">DEMONSTRAÇÃO — números ilustrativos</span>
+          {conexao === "real" ? null : (
+            <span className="int-selo-pend">{conexao === "parcial" ? "DADOS PARCIAIS — parte em conexão" : "DEMONSTRAÇÃO — números ilustrativos"}</span>
+          )}
           <span className="int-selo-vivo">
             <i />
-            {aoVivo.has(tela.chave) ? "Ao vivo · atualizado 14:32" : "Atualizado 14:32 · dados até 14:15"}
+            {aoVivo.has(tela.chave) ? "Ao vivo" : "Análise"}
           </span>
           <button type="button" className="int-btn">Exportar · CSV / PDF</button>
         </div>
