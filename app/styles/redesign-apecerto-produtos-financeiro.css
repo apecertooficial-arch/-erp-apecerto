@@ -380,3 +380,10 @@
 
 /* Fila de unidades pendentes: caixa rolável para não empurrar os cards de produto pra fora da tela */
 .pending-units .pu-list { max-height: 300px; overflow-y: auto; padding-right: 4px; }
+
+/* Aprovar/Reprovar direto na fila de unidades pendentes */
+.pending-units .pu-actions { display:flex; gap:8px; flex-shrink:0; align-items:center; }
+.pending-units .pu-approve { border:0; border-radius:999px; min-height:38px; padding:0 16px; background:#E4F6EC; color:#0F7A3D; font-size:12.5px; font-weight:700; cursor:pointer; }
+.pending-units .pu-approve:hover { background:#1FA85A; color:#fff; }
+.pending-units .pu-reject { border:0; border-radius:999px; min-height:38px; padding:0 16px; background:#FBE5E5; color:#B33131; font-size:12.5px; font-weight:700; cursor:pointer; }
+.pending-units .pu-reject:hover { background:#D93E3E; color:#fff; }
