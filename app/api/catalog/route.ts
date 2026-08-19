@@ -181,7 +181,7 @@ export async function GET(request: Request) {
   // Visibilidade: corretor só enxerga aprovados + os que ele mesmo captou (pra acompanhar pendente/reprovado).
   // Admin/gestor enxergam tudo (inclusive a fila de pendentes).
   const visible = canApprove ? catalog : catalog.filter((p) => p.approval === "aprovado" || p.mine);
-  const pendingCount = catalog.filter((p) => p.approval === "pendente" && !p.draft).length;
+  const pendingCount = catalog.filter((p) => p.approval === "pendente").length;
   const qualitySummary = {
     excellent: visible.filter((p) => p.quality.level === "excelente").length,
     good: visible.filter((p) => p.quality.level === "bom").length,
