@@ -1,74 +1,49 @@
 "use client";
 
-/* 12 · GERENTES — artboard 17a, idêntico ao protótipo.
- *
- * Ordem do desenho:
- *   1. LISTA — tabela dos gerentes com capacidade, leads, % SLA, 1ª resp. med/P90,
- *      lead→venda, visitas, propostas, vendas·VGV, qualidade, parados, alertas e
- *      evolução
- *   2. PÁGINA DO GERENTE — carga e SLA por corretor, cobertura de horários (manhã,
- *      tarde, almoço, noite, sábado, domingo), funil e meta da equipe
- *   3. COACHING DA SEMANA e PRECISA DE INTERVENÇÃO AGORA
- *   4. rodapé de fontes
- *
- * Com dois gerentes não existe mediana da casa: a comparação é sempre contra a
- * meta. Escala não integrada — a tela mostra atividade, nunca ausência.
- */
+/* 12 · GERENTES — artboard 17a. Agora lê dado real via /api/inteligencia/gerentes
+ * (RPC intel_gerentes). Lista de gerentes e página do gerente vêm do CRM
+ * (Funil 2.0). Cobertura de horário, qualidade e propostas não têm fonte -> —.
+ * Demo virou fixture. */
 
 import { useState } from "react";
 import "../../../styles/inteligencia-blocos.css";
 import type { PropsTela } from "../CascaInteligencia";
 import { fmt, RodapeFontes } from "../dado";
 import { Cabecalho, Tabela } from "../pecas";
+import { useDadosInteligencia } from "../useDadosInteligencia";
+import type { GerentesPayload } from "../../../lib/inteligencia/tipos";
 
 type Gerente = {
-  nome: string;
-  iniciais: string;
-  corretores: number | null;
-  capacidade: string;
-  acima?: boolean;
-  leads: number | null;
-  sla: number | null;
-  mediana: number | null;
-  p90: number | null;
-  leadVenda: number | null;
-  visitas: number | null;
-  propostas: number | null;
-  vendas: number | null;
-  vgv: number | null;
-  qualidade: number | null;
-  amostra: number | null;
-  parados: number | null;
-  alertas: number | null;
-  evolucao: "sobe" | "cai";
+  nome: string; iniciais: string; corretores: number | null; capacidade: string; acima?: boolean;
+  leads: number | null; sla: number | null; mediana: number | null; p90: number | null; leadVenda: number | null;
+  visitas: number | null; propostas: number | null; vendas: number | null; vgv: number | null;
+  qualidade: number | null; amostra: number | null; parados: number | null; alertas: number | null; evolucao: "sobe" | "cai";
 };
 
 type Dados = {
   lista: Gerente[];
   pagina: {
-    nome: string;
-    iniciais: string;
-    equipe: number | null;
-    selo: string;
+    nome: string; iniciais: string; equipe: number | null; selo: string;
     corretores: { nome: string; carga: string; acima?: boolean; leads: number | null; mediana: number | null; p90: number | null; sla: number | null; novato?: boolean }[];
     cobertura: { periodo: string; percentual: number | null; cor: string }[];
     funil: { rotulo: string; valor: string }[];
-    metaPercentual: number | null;
-    metaNota: string;
+    metaPercentual: number | null; metaNota: string;
     coaching: { pessoa: string; texto: string }[];
     intervencao: { l: string; r: string }[];
   };
   atualizado: string;
 };
 
-export function Gerentes({ recorte }: PropsTela) {
-  const d = usarDados();
+const iniciaisDe = (nome: string) => nome.split(" ").filter(Boolean).map((w) => w[0]).join("").slice(0, 2).toUpperCase();
+
+export function Gerentes({ accessToken, recorte }: PropsTela) {
+  const leitura = useDadosInteligencia<GerentesPayload>("gerentes", accessToken, recorte);
+  const d = mapearGerentes(leitura.payload);
   const [aberto, setAberto] = useState<string>(d.pagina.nome);
 
   return (
     <div className="int-secao">
-      {/* 1 · LISTA */}
-      <Cabecalho eyebrow="LISTA" titulo="Os gerentes, na mesma régua" nota={`${recorte.periodo} · sem mediana da casa: são dois`} />
+      <Cabecalho eyebrow="LISTA" titulo="Os gerentes, na mesma régua" nota={`${recorte.periodo} · comparação contra a meta`} />
       <Tabela
         colunas={[
           { titulo: "Gerente" }, { titulo: "Equipe" }, { titulo: "Capacidade" }, { titulo: "Leads", num: true }, { titulo: "% SLA", num: true },
@@ -100,7 +75,6 @@ export function Gerentes({ recorte }: PropsTela) {
         foot="a linha destacada está aberta abaixo · comparação considera origem e qualidade dos leads de cada equipe"
       />
 
-      {/* 2 · PÁGINA DO GERENTE */}
       <div style={{ display: "flex", alignItems: "flex-end", gap: 16, flexWrap: "wrap" }}>
         <div>
           <span className="intp-cab-eyebrow" style={{ color: "#8B00CC" }}>PÁGINA DO GERENTE</span>
@@ -117,20 +91,15 @@ export function Gerentes({ recorte }: PropsTela) {
           <div style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 12 }}>
             {d.pagina.corretores.map((c) => (
               <div key={c.nome} style={{ display: "grid", gridTemplateColumns: "1fr 56px 46px 88px 44px", gap: 8, alignItems: "center", borderBottom: "1px solid #F7F5F2", paddingBottom: 5 }}>
-                <span style={{ fontWeight: 600 }}>
-                  {c.nome}
-                  {c.novato ? <small style={{ color: "#66009A", fontWeight: 700 }}> nova</small> : null}
-                </span>
+                <span style={{ fontWeight: 600 }}>{c.nome}{c.novato ? <small style={{ color: "#66009A", fontWeight: 700 }}> nova</small> : null}</span>
                 <b style={{ textAlign: "right", color: c.acima ? "#D93E3E" : "#1F1C1A", fontVariantNumeric: "tabular-nums" }}>{c.carga}</b>
                 <span style={{ textAlign: "right", color: "#6E6760", fontVariantNumeric: "tabular-nums" }}>{fmt.inteiro(c.leads)}</span>
-                <span style={{ textAlign: "right", color: (c.mediana ?? 0) > 15 ? "#D93E3E" : "#6E6760" }}>
-                  {fmt.duracaoMin(c.mediana)} · {fmt.duracaoMin(c.p90)}
-                </span>
+                <span style={{ textAlign: "right", color: (c.mediana ?? 0) > 15 ? "#D93E3E" : "#6E6760" }}>{fmt.duracaoMin(c.mediana)} · {fmt.duracaoMin(c.p90)}</span>
                 <b style={{ textAlign: "right", color: (c.sla ?? 100) < 20 ? "#D93E3E" : "#1E7A46", fontVariantNumeric: "tabular-nums" }}>{fmt.porcento(c.sla, 0)}</b>
               </div>
             ))}
           </div>
-          <small className="intp-kpi-foot">carga acima da capacidade em âmbar · a distribuição de leads não considera capacidade hoje — sugestão: redistribuir 6 leads do Carlos para o Pedro</small>
+          <small className="intp-kpi-foot">carga acima da capacidade em vermelho · a distribuição de leads ainda não considera capacidade</small>
         </div>
 
         <div className="intp-cartao">
@@ -138,13 +107,11 @@ export function Gerentes({ recorte }: PropsTela) {
           {d.pagina.cobertura.map((c) => (
             <div className="intp-cob" key={c.periodo}>
               <span className="intp-cob-rot">{c.periodo}</span>
-              <span className="intp-cob-trilha">
-                <span className="intp-cob-barra" style={{ width: `${c.percentual ?? 0}%`, background: c.cor }} />
-              </span>
+              <span className="intp-cob-trilha"><span className="intp-cob-barra" style={{ width: `${c.percentual ?? 0}%`, background: c.cor }} /></span>
               <b className="intp-cob-num">{fmt.porcento(c.percentual, 0)}</b>
             </div>
           ))}
-          <small className="intp-kpi-foot">% do horário com pelo menos 1 corretor disponível · os buracos batem com o padrão de atraso do almoço visto em Atendimento e SLA</small>
+          <small className="intp-kpi-foot">cobertura de horário depende de escala/ponto — ainda não integrado</small>
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -158,20 +125,14 @@ export function Gerentes({ recorte }: PropsTela) {
                 </div>
               ))}
             </div>
-            <span className="intp-casc-trilha">
-              <span className="intp-casc-barra entra" style={{ width: `${d.pagina.metaPercentual ?? 0}%` }} />
-            </span>
+            <span className="intp-casc-trilha"><span className="intp-casc-barra entra" style={{ width: `${d.pagina.metaPercentual ?? 0}%` }} /></span>
             <small className="intp-kpi-foot">{d.pagina.metaNota}</small>
           </div>
 
           <div className="intp-cartao" style={{ background: "#FDF1D9", boxShadow: "none" }}>
             <span className="intp-cartao-titulo" style={{ color: "#7A5E12" }}>Coaching desta semana</span>
             <div style={{ display: "flex", flexDirection: "column", gap: 7, fontSize: 12, color: "#7A5E12", lineHeight: 1.5 }}>
-              {d.pagina.coaching.map((c, i) => (
-                <span key={c.pessoa}>
-                  <b>{i + 1} · {c.pessoa}:</b> {c.texto}
-                </span>
-              ))}
+              {d.pagina.coaching.map((c, i) => (<span key={c.pessoa}><b>{i + 1} · {c.pessoa}:</b> {c.texto}</span>))}
             </div>
           </div>
 
@@ -197,57 +158,112 @@ export function Gerentes({ recorte }: PropsTela) {
       </div>
 
       <RodapeFontes
-        fontes={["negócios", "leads", "carga por corretor", "intervenções", "disponibilidade no ERP"]}
-        pendencias={["escala/ponto não integrado", "mediana da casa não se aplica com dois gerentes"]}
+        fontes={["negócios", "leads", "carga por corretor", "wa_mensagens", "vendas"]}
+        pendencias={["escala/ponto não integrado", "cobertura de horário e qualidade sem fonte"]}
         atualizado={d.atualizado}
       />
     </div>
   );
 }
 
-function usarDados(): Dados {
-  return demo;
+/* PONTO ÚNICO DE TROCA PARA O BANCO — lê a RPC via hook. */
+function hhmm(iso: string | null): string {
+  if (!iso) return "—";
+  const dt = new Date(iso);
+  return Number.isNaN(dt.getTime()) ? "—" : dt.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo" });
 }
 
-const demo: Dados = {
+const COBERTURA_PERIODOS = ["Manhã", "Tarde", "Almoço 12–14", "Noite", "Sábado", "Domingo"];
+const coberturaVazia = () => COBERTURA_PERIODOS.map((p) => ({ periodo: p, percentual: null as number | null, cor: "#E4DFD9" }));
+
+const PAGINA_VAZIA: Dados["pagina"] = {
+  nome: "—", iniciais: "—", equipe: null, selo: "sem dados",
+  corretores: [], cobertura: coberturaVazia(),
+  funil: [{ rotulo: "Leads → negócios → visitas", valor: "—" }, { rotulo: "Vendas", valor: "—" }],
+  metaPercentual: null, metaNota: "—", coaching: [], intervencao: [],
+};
+
+const vazioGerentes: Dados = { lista: [], pagina: PAGINA_VAZIA, atualizado: "—" };
+
+function mapearGerentes(p: GerentesPayload | null): Dados {
+  if (!p) return vazioGerentes;
+
+  const lista: Gerente[] = p.lista.map((g) => ({
+    nome: g.nome,
+    iniciais: iniciaisDe(g.nome),
+    corretores: g.corretores,
+    capacidade: `${g.neg}/${g.lim ?? "—"}`,
+    acima: g.lim != null && g.neg > g.lim,
+    leads: g.leads,
+    sla: null,
+    mediana: g.mediana,
+    p90: g.p90,
+    leadVenda: g.lead_venda,
+    visitas: g.visitas,
+    propostas: null,
+    vendas: g.vendas,
+    vgv: g.vendas > 0 ? g.vgv : null,
+    qualidade: null,
+    amostra: null,
+    parados: null,
+    alertas: null,
+    evolucao: "sobe",
+  }));
+
+  const pg = p.pagina;
+  const metaPercentual = pg.meta_vgv > 0 ? Math.round((100 * pg.vgv) / pg.meta_vgv) : null;
+  const pagina: Dados["pagina"] = {
+    nome: pg.nome,
+    iniciais: iniciaisDe(pg.nome),
+    equipe: pg.equipe,
+    selo: `${pg.intervencao.aguardando} aguardando · ${pg.intervencao.vencidos} vencidos`,
+    corretores: pg.corretores.map((c) => ({
+      nome: c.nome,
+      carga: `${c.carga_neg}/${c.carga_lim ?? "—"}`,
+      acima: c.carga_lim != null && c.carga_neg > c.carga_lim,
+      leads: c.leads,
+      mediana: c.mediana,
+      p90: c.p90,
+      sla: null,
+      novato: c.leads < 20,
+    })),
+    cobertura: coberturaVazia(),
+    funil: [
+      { rotulo: "Leads → negócios → visitas", valor: `${pg.funil.leads} · ${pg.funil.negocios} · ${pg.funil.visitas}` },
+      { rotulo: "Vendas", valor: `${pg.funil.vendas}` },
+    ],
+    metaPercentual,
+    metaNota: `meta da equipe: ${fmt.dinheiro(pg.vgv)} de ${fmt.dinheiro(pg.meta_vgv)}${metaPercentual === null ? "" : ` (${metaPercentual}%)`}`,
+    coaching: pg.corretores.slice(0, 2).map((c) => ({ pessoa: c.nome, texto: `espera mediana de ${fmt.duracaoMin(c.mediana)} — priorizar resposta rápida aos leads em aberto.` })),
+    intervencao: [
+      { l: "Leads aguardando resposta", r: String(pg.intervencao.aguardando) },
+      { l: "Follow-ups vencidos", r: String(pg.intervencao.vencidos) },
+    ],
+  };
+
+  return { lista, pagina, atualizado: hhmm(p.atualizado_em) };
+}
+
+/* Fixture — só Storybook/teste. NUNCA usado na rota de produção. */
+export const demoGerentes: Dados = {
   lista: [
     { nome: "Juliana Prado", iniciais: "JP", corretores: 3, capacidade: "96/120", leads: 261, sla: 31, mediana: 9, p90: 58, leadVenda: 4.9, visitas: 69, propostas: 28, vendas: 13, vgv: 11_200_000, qualidade: 4.5, amostra: 104, parados: 8, alertas: 2, evolucao: "sobe" },
     { nome: "Marcos Vilela", iniciais: "MV", corretores: 3, capacidade: "85/120", acima: true, leads: 225, sla: 14, mediana: 22, p90: 161, leadVenda: 3.6, visitas: 49, propostas: 19, vendas: 8, vgv: 7_200_000, qualidade: 4.1, amostra: 78, parados: 13, alertas: 3, evolucao: "cai" },
   ],
   pagina: {
-    nome: "Marcos Vilela",
-    iniciais: "MV",
-    equipe: 3,
-    selo: "evolução ↘ · 3 alertas críticos",
+    nome: "Marcos Vilela", iniciais: "MV", equipe: 3, selo: "evolução ↘ · 3 alertas críticos",
     corretores: [
       { nome: "Carlos Mendes", carga: "46/40", acima: true, leads: 118, mediana: 14, p90: 118, sla: 18 },
-      { nome: "Rafael Souza", carga: "31/40", leads: 92, mediana: 41, p90: 200, sla: 8 },
       { nome: "Pedro Costa", carga: "8/40", leads: 15, mediana: 6, p90: 22, sla: 44, novato: true },
     ],
     cobertura: [
       { periodo: "Manhã", percentual: 90, cor: "#1FA85A" },
-      { periodo: "Tarde", percentual: 82, cor: "#1FA85A" },
       { periodo: "Almoço 12–14", percentual: 34, cor: "#D93E3E" },
-      { periodo: "Noite", percentual: 38, cor: "#FF9A4D" },
-      { periodo: "Sábado", percentual: 12, cor: "#D93E3E" },
-      { periodo: "Domingo", percentual: 8, cor: "#D93E3E" },
     ],
-    funil: [
-      { rotulo: "Leads → negócios → visitas", valor: "225 · 126 · 49" },
-      { rotulo: "Propostas → vendas", valor: "19 · 8" },
-      { rotulo: "Qualificado → visita", valor: "52% (era 61%)" },
-    ],
-    metaPercentual: 72,
-    metaNota: "meta da equipe: R$ 7,2 mi de R$ 10 mi (72%)",
-    coaching: [
-      { pessoa: "Rafael", texto: "P90 de 3 h 20 concentrado no sábado — revisar o plantão." },
-      { pessoa: "Carlos", texto: "sobrecarregado (46/40) e o gargalo qualificado→visita é dele — redistribuir e acompanhar 3 atendimentos juntos." },
-    ],
-    intervencao: [
-      { l: "Leads acima do SLA", r: "18" },
-      { l: "Negócios parados", r: "13" },
-      { l: "Follow-ups vencidos", r: "34" },
-    ],
+    funil: [{ rotulo: "Leads → negócios → visitas", valor: "225 · 126 · 49" }, { rotulo: "Vendas", valor: "8" }],
+    metaPercentual: 72, metaNota: "meta da equipe: R$ 7,2 mi de R$ 10 mi (72%)",
+    coaching: [{ pessoa: "Carlos", texto: "sobrecarregado (46/40) — redistribuir e acompanhar 3 atendimentos juntos." }],
+    intervencao: [{ l: "Leads acima do SLA", r: "18" }, { l: "Follow-ups vencidos", r: "34" }],
   },
   atualizado: "14:32",
 };
