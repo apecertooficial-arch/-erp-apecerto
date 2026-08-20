@@ -4,7 +4,7 @@ const cors = {
   "Content-Type": "application/json",
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
-    "content-type,x-automation-token,x-idempotency-key",
+    "content-type,x-idempotency-key",
   "Access-Control-Allow-Methods": "POST,OPTIONS",
 };
 
@@ -14,6 +14,27 @@ const response = (body: unknown, status = 200) =>
 function firstString(...values: unknown[]): string {
   const value = values.find((item) => typeof item === "string" && item.trim());
   return typeof value === "string" ? value.trim() : "";
+}
+
+function stableJson(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(stableJson).join(",")}]`;
+  if (value && typeof value === "object") {
+    const object = value as Record<string, unknown>;
+    return `{${Object.keys(object).sort().map((key) =>
+      `${JSON.stringify(key)}:${stableJson(object[key])}`
+    ).join(",")}}`;
+  }
+  return JSON.stringify(value) ?? "null";
+}
+
+async function sha256(value: string): Promise<string> {
+  const digest = await crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(value),
+  );
+  return Array.from(new Uint8Array(digest))
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("");
 }
 
 Deno.serve(async (request: Request) => {
@@ -51,7 +72,7 @@ Deno.serve(async (request: Request) => {
 
     const automationRows = await fetch(
       `${supabaseUrl}/rest/v1/automacoes?id=eq.${automationId}` +
-        "&select=id,nome,ativa,status,arquivada,versao_publicada_id,webhook_token,webhook_token_enforced&limit=1",
+        "&select=id,nome,ativa,status,arquivada,versao_publicada_id&limit=1",
       { headers },
     ).then((result) => result.json());
     const automation = Array.isArray(automationRows) ? automationRows[0] : null;
@@ -62,15 +83,6 @@ Deno.serve(async (request: Request) => {
       Number.isInteger(automation.versao_publicada_id);
     if (!runnable) {
       return response({ ok: false, error: "AUTOMATION_NOT_RUNNABLE" }, 409);
-    }
-
-    if (automation.webhook_token_enforced === true) {
-      const requestToken = request.headers.get("x-automation-token") ??
-        url.searchParams.get("token") ?? "";
-      const expected = String(automation.webhook_token ?? "");
-      if (!/^[a-f0-9]{48}$/.test(requestToken) || requestToken !== expected) {
-        return response({ ok: false, error: "WEBHOOK_UNAUTHORIZED" }, 401);
-      }
     }
 
     const lead: Record<string, unknown> = {
@@ -88,7 +100,7 @@ Deno.serve(async (request: Request) => {
     }
     if (digits && digits.length < 10) lead.telefone_suspeito = true;
 
-    const idempotencyKey = firstString(
+    const explicitIdempotencyKey = firstString(
       request.headers.get("x-idempotency-key"),
       body.event_id,
       body.eventId,
@@ -98,13 +110,11 @@ Deno.serve(async (request: Request) => {
       body.lead_id,
       body.id,
     );
-    if (!idempotencyKey) {
-      return response({
-        ok: false,
-        error: "IDEMPOTENCY_KEY_REQUIRED",
-        message: "Envie x-idempotency-key ou um id externo unico no payload",
-      }, 400);
-    }
+    // Webhooks de campanha sao publicos e nao exigem senha nem header customizado.
+    // Se a origem nao enviar um ID, o payload canonico gera uma chave estavel:
+    // retries identicos nao duplicam o lead, mas eventos diferentes continuam distintos.
+    const idempotencyKey = explicitIdempotencyKey ||
+      `auto:${automationId}:payload:${await sha256(stableJson(body))}`;
 
     const queued = await fetch(
       `${supabaseUrl}/rest/v1/rpc/motor_enfileirar_idempotente`,
@@ -148,6 +158,7 @@ Deno.serve(async (request: Request) => {
       fila_id: queueResult.fila_id,
       automacao: automationId,
       versao_id: automation.versao_publicada_id,
+      idempotencia_automatica: !explicitIdempotencyKey,
     });
   } catch (error) {
     return response({ ok: false, error: "UNEXPECTED_ERROR", detail: String(error) }, 500);

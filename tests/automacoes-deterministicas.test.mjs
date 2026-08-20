@@ -119,12 +119,22 @@ test('banco fixa versão e interrompe ou roteia falhas de abordagem', () => {
   assert.match(hardening, /to service_role/);
 });
 
-test('entrada exige automação, token e idempotência explícitos', () => {
+test('entrada pública exige automação e deriva idempotência sem senha', () => {
   assert.match(entrada, /AUTOMATION_ID_REQUIRED/);
   assert.doesNotMatch(entrada, /order=criado_em\.desc/);
-  assert.match(entrada, /x-automation-token/);
-  assert.match(entrada, /IDEMPOTENCY_KEY_REQUIRED/);
+  assert.doesNotMatch(entrada, /x-automation-token/);
+  assert.doesNotMatch(entrada, /WEBHOOK_UNAUTHORIZED/);
+  assert.match(entrada, /stableJson/);
+  assert.match(entrada, /crypto\.subtle\.digest/);
+  assert.match(entrada, /idempotencia_automatica/);
   assert.match(entrada, /motor_enfileirar_idempotente/);
+});
+
+test('construtor mostra webhook público sem senha ou token', () => {
+  assert.match(builder, /URL pública do webhook/);
+  assert.match(builder, /Sem senha e sem token/);
+  assert.doesNotMatch(builder, /Header obrigatório/);
+  assert.doesNotMatch(builder, /webhook_token/);
 });
 
 test('webhook D-API autentica antes de persistir payload', () => {
