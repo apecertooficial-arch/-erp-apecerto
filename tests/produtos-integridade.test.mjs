@@ -34,9 +34,19 @@ test("fila de aprovação abre completa e filtros avançados ficam recolhidos", 
 
 test("unidade pronta usa captador, menu e mídia próprios", () => {
   assert.match(catalog, /capturedBy: corretorNameById\.get\(u\.captador_corretor_id/);
-  assert.match(catalog, /media: buildingMediaCount \+ allProductMedia\.filter/);
+  assert.match(catalog, /media: buildingMediaCount \+ unitMediaCount/);
+  assert.match(catalog, /unitMedia: unitMediaCount/);
+  assert.match(catalog, /referenceMedia: buildingMediaCount/);
   assert.match(productsUi, /product\.unitId \?\? product\.id/);
   assert.match(productsUi, /Editar unidade/);
+});
+
+test("foto herdada do condomínio abre sem fingir que pertence à unidade", () => {
+  assert.match(detail, /focusedUnitUsesReferencePhotos/);
+  assert.match(detail, /Fotos do condomínio de referência/);
+  assert.match(detail, /Ver \$\{focusedUnitPhotos\.length\} foto/);
+  assert.match(productsUi, /do condomínio/);
+  assert.match(detail, /setUnitLightbox/);
 });
 
 test("revisão abre a unidade como produto completo e não deixa o condomínio por baixo", () => {

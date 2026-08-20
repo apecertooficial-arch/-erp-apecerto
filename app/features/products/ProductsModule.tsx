@@ -31,7 +31,7 @@ type CatalogResponse = {
   catalog: Array<{
     id: string; name: string; title?: string | null; slug?: string | null; purpose?: string | null; address?: string | null; developer: string | null; neighborhood: string; city: string;
     status: string; price: number | null; area: number | null; bedrooms: number | null;
-    parking: number | null; available: number; units: number; media: number;
+    parking: number | null; available: number; units: number; media: number; unitMedia?: number; referenceMedia?: number;
     coverUrl: string | null; draft: boolean; origin: string; favorite: boolean;
     approval?: string; rejectionReason?: string | null; mine?: boolean; capturedBy?: string | null; capturedByScore?: number | null; codigo?: string | null; unitId?: string | null;
     published?: boolean; quality: ProductQuality; topIssue?: string | null; createdAt?: string | null; updatedAt?: string | null;
@@ -47,6 +47,13 @@ type CatalogResponse = {
 const emptyQualitySummary = { excellent: 0, good: 0, attention: 0, critical: 0, readyForSite: 0, average: 0 };
 
 const currency = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
+
+function mediaInventoryLabel(product: Product): string {
+  if (!product.unitId) return `${product.media ?? 0} mídias`;
+  if ((product.unitMedia ?? 0) > 0) return `${product.unitMedia} da unidade`;
+  if ((product.referenceMedia ?? 0) > 0) return `${product.referenceMedia} do condomínio`;
+  return "Sem fotos";
+}
 
 export function ProductsModule({ accessToken }: { accessToken: string }) {
   const { publicarBadge, role } = useErpSession();
@@ -111,7 +118,7 @@ export function ProductsModule({ accessToken }: { accessToken: string }) {
         area: item.area ?? 0, bedrooms: item.bedrooms ?? 0, parking: item.parking ?? 0,
         available: item.available, leads: item.leads ?? 0,
         priceM2: item.price && item.area ? `${currency.format(item.price / item.area)}/m²` : "—",
-        units: item.units, media: item.media, coverUrl: item.coverUrl, draft: item.draft,
+        units: item.units, media: item.media, unitMedia: item.unitMedia, referenceMedia: item.referenceMedia, coverUrl: item.coverUrl, draft: item.draft,
         origin: item.origin, numericPrice: item.price, favorite: item.favorite,
         approval: item.approval ?? "aprovado", rejectionReason: item.rejectionReason ?? null,
         mine: item.mine ?? false, capturedBy: item.capturedBy ?? null, capturedByScore: item.capturedByScore ?? null, codigo: item.codigo ?? null, unitId: item.unitId ?? null,
@@ -411,7 +418,7 @@ export function ProductsModule({ accessToken }: { accessToken: string }) {
           </div>
           <div className="product-info"><strong className="price">{product.price}</strong><h2>{product.name}{product.codigo && <span className="cod-imovel">{product.codigo}</span>}</h2><p className="location">⌖ {product.neighborhood} · {product.city}</p>{product.developer && <p className="developer">{product.developer}</p>}
             <div className="specs"><span className="s-area"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 3h18v18H3z"/><path d="M9 3v4"/><path d="M15 17v4"/><path d="M3 9h4"/><path d="M17 15h4"/></svg>{product.area} m²</span><span className="s-dorm"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M2 18v-6a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v6"/><path d="M4 18v3"/><path d="M20 18v3"/><path d="M6 10V7a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v3"/></svg>{product.bedrooms} dorm.</span><span className="s-vaga"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 17h14"/><path d="M6 17v2"/><path d="M18 17v2"/><path d="M4 17l1.5-5.5A2 2 0 0 1 7.4 10h9.2a2 2 0 0 1 1.9 1.5L20 17z"/></svg>{product.parking} vaga</span></div>
-            <div className="estoque"><div className="estoque-top"><strong>{product.available} de {product.units ?? 0} disponíveis</strong><span>{product.media ?? 0} mídias</span></div><div className="estoque-bar"><i style={{ width: `${product.units ? Math.min(100, Math.round((product.available / product.units) * 100)) : 0}%` }} /></div></div>
+            <div className="estoque"><div className="estoque-top"><strong>{product.available} de {product.units ?? 0} disponíveis</strong><span>{mediaInventoryLabel(product)}</span></div><div className="estoque-bar"><i style={{ width: `${product.units ? Math.min(100, Math.round((product.available / product.units) * 100)) : 0}%` }} /></div></div>
             {product.topIssue && <p className="product-top-issue">⚠ {product.topIssue}</p>}{product.approval === "reprovado" && product.rejectionReason && <p className="approval-reason">Motivo: {product.rejectionReason}</p>}{canApprove && product.approval === "pendente" && product.capturedBy && <p className="approval-captador">👤 Captado por: {product.capturedBy}{typeof product.capturedByScore === "number" ? <span className="captador-nota"> · nota {product.capturedByScore}</span> : null}</p>}{canApprove && product.approval === "pendente" && product.id && <div className="approval-actions" onClick={(event) => event.stopPropagation()}><button type="button" className="ap-approve" disabled={!product.quality?.readyForSite} title={product.quality?.readyForSite ? "Aprovar e publicar no site" : (product.quality?.blocking?.join(" · ") || "Complete o cadastro antes de aprovar")} onClick={() => decideFromCard(product.id!, true)}>✓ Aprovar</button><button type="button" className="ap-reject" onClick={() => decideFromCard(product.id!, false)}>✕ Reprovar</button></div>}<footer><strong>{product.priceM2}</strong><span>{product.leads > 0 ? `${product.leads} lead(s) vinculado(s) · ` : ""}{product.published ? "● Publicado no site" : product.approval === "aprovado" && product.quality?.readyForSite ? "○ Fora do ar · pode editar" : product.quality?.readyForSite ? "Pronto para publicar" : "Cadastro incompleto"}</span></footer></div></article>)}
       </section>
       {captureOpen && <CaptureWizard onClose={() => setCaptureOpen(false)} onSaved={() => {

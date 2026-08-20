@@ -20,6 +20,8 @@ export type Product = {
   priceM2: string;
   units?: number;
   media?: number;
+  unitMedia?: number;
+  referenceMedia?: number;
   coverUrl?: string | null;
   draft?: boolean;
   origin?: string;

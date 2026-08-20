@@ -136,8 +136,15 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
   const cover = photos.find((item) => item.is_capa) ?? photos[0];
   const focusedUnit = useMemo(() => initialUnitId && product ? product.unidades.find((unit) => unit.id === initialUnitId) ?? null : null, [initialUnitId, product]);
   const focusedUnitMedia = useMemo(() => focusedUnit ? (product?.midias ?? []).filter((item) => item.unidade_id === focusedUnit.id) : [], [focusedUnit, product]);
-  const focusedUnitPhotos = useMemo(() => focusedUnitMedia.filter((item) => item.tipo === "foto" && item.url), [focusedUnitMedia]);
+  const focusedUnitOwnPhotos = useMemo(() => focusedUnitMedia.filter((item) => item.tipo === "foto" && item.url), [focusedUnitMedia]);
+  const focusedUnitReferencePhotos = useMemo(() => photos.filter((item) => item.url), [photos]);
+  // Alguns apartamentos antigos herdaram a capa do condomínio sem receber cópias
+  // próprias. Nesse caso a imagem precisa continuar abrindo, mas sempre identificada
+  // como referência do prédio para não ser confundida com uma foto da unidade.
+  const focusedUnitUsesReferencePhotos = focusedUnitOwnPhotos.length === 0 && focusedUnitReferencePhotos.length > 0;
+  const focusedUnitPhotos = focusedUnitUsesReferencePhotos ? focusedUnitReferencePhotos : focusedUnitOwnPhotos;
   const focusedUnitCover = focusedUnitPhotos.find((item) => item.is_capa) ?? focusedUnitPhotos[0];
+  const focusedUnitPhotoScope = focusedUnitUsesReferencePhotos ? "condomínio de referência" : "apartamento";
   const focusedUnitPrice = focusedUnit ? (focusedUnit.valor_promo ?? focusedUnit.valor_tabela) : null;
   const focusedUnitPublished = Boolean(product?.site_published && focusedUnit?.publicado !== false && focusedUnit?.disponivel && focusedUnit?.aprovacao === "aprovado");
 
@@ -346,13 +353,14 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
           <button className="fv2-close" type="button" onClick={onClose} aria-label="Fechar ficha do apartamento"><IcClose /></button>
           <div className="fv2-main">
             <div className="fv2-mosaic">
-              <button className="fv2-mosaic-cover" type="button" onClick={() => focusedUnitPhotos.length && setUnitLightbox({ items: focusedUnitPhotos.map((item) => ({ url: item.url ?? "", label: item.categoria || item.nome || "Foto do apartamento" })), index: 0 })} style={focusedUnitCover?.url ? { backgroundImage: `url(${focusedUnitCover.url})` } : undefined} aria-label="Ampliar fotos do apartamento">
+              <button className="fv2-mosaic-cover" type="button" onClick={() => focusedUnitPhotos.length && setUnitLightbox({ items: focusedUnitPhotos.map((item) => ({ url: item.url ?? "", label: focusedUnitUsesReferencePhotos ? `Condomínio · ${item.categoria || item.nome || "Foto do prédio"}` : item.categoria || item.nome || "Foto do apartamento" })), index: 0 })} style={focusedUnitCover?.url ? { backgroundImage: `url(${focusedUnitCover.url})` } : undefined} aria-label={`Ampliar fotos do ${focusedUnitPhotoScope}`}>
                 <span className={`fv2-status ${focusedUnit.aprovacao === "aprovado" ? "ready" : "draft"}`}><i />{focusedUnit.aprovacao === "pendente" ? "Aguardando aprovação" : focusedUnit.aprovacao === "reprovado" ? "Correção solicitada" : "Aprovado"}</span>
+                {focusedUnitUsesReferencePhotos && <span className="unit-reference-photo-badge">Fotos do condomínio</span>}
               </button>
               <div className="fv2-mosaic-side">
                 <div className="fv2-thumb" style={focusedUnitPhotos[1]?.url ? { backgroundImage: `url(${focusedUnitPhotos[1].url})` } : undefined} />
-                <button className="fv2-thumb fv2-thumb-more" type="button" onClick={() => focusedUnitPhotos.length && setUnitLightbox({ items: focusedUnitPhotos.map((item) => ({ url: item.url ?? "", label: item.categoria || item.nome || "Foto do apartamento" })), index: 0 })}>
-                  <IcImages /><span>Ver {focusedUnitPhotos.length} foto{focusedUnitPhotos.length === 1 ? "" : "s"} da unidade</span>
+                <button className="fv2-thumb fv2-thumb-more" type="button" disabled={!focusedUnitPhotos.length} onClick={() => focusedUnitPhotos.length && setUnitLightbox({ items: focusedUnitPhotos.map((item) => ({ url: item.url ?? "", label: focusedUnitUsesReferencePhotos ? `Condomínio · ${item.categoria || item.nome || "Foto do prédio"}` : item.categoria || item.nome || "Foto do apartamento" })), index: 0 })}>
+                  <IcImages /><span>{focusedUnitPhotos.length ? `Ver ${focusedUnitPhotos.length} foto${focusedUnitPhotos.length === 1 ? "" : "s"} ${focusedUnitUsesReferencePhotos ? "do condomínio" : "da unidade"}` : "Nenhuma foto cadastrada"}</span>
                 </button>
               </div>
             </div>
@@ -393,7 +401,7 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
                 <div className="fv2-person-card unit-captor-card"><span className="fv2-avatar purple">{initials(focusedUnit.captador_nome)}</span><div><strong>{focusedUnit.captador_nome || "Sem captador"}</strong><small>Corretor responsável por esta unidade</small></div></div>
               </>}
 
-              {tab === "galeria" && <>{focusedUnitPhotos.length ? <div className="focused-unit-gallery">{focusedUnitPhotos.map((item, index) => <button key={item.id} type="button" className="watermarked-preview" onClick={() => setUnitLightbox({ items: focusedUnitPhotos.map((photo) => ({ url: photo.url ?? "", label: photo.categoria || photo.nome || "Foto do apartamento" })), index })}><img src={item.url ?? ""} alt={item.categoria || item.nome || "Foto do apartamento"} /></button>)}</div> : <p className="empty-media">Nenhuma foto própria foi enviada para este apartamento.</p>}{focusedUnit.pode_editar && <label className="fv2-btn fv2-btn-outline focused-unit-upload">＋ Adicionar fotos ou vídeos<input hidden multiple type="file" accept="image/*,video/*" disabled={busy} onChange={(event) => void uploadUnitMedia(event.target.files, focusedUnit)} /></label>}</>}
+              {tab === "galeria" && <>{focusedUnitUsesReferencePhotos && <div className="unit-reference-media-note"><IcBuilding /><div><strong>Fotos do condomínio de referência</strong><span>Este apartamento ainda não possui fotos próprias. As imagens abaixo são do prédio e estão identificadas para não serem confundidas com a unidade.</span></div></div>}{focusedUnitPhotos.length ? <div className="focused-unit-gallery">{focusedUnitPhotos.map((item, index) => <button key={item.id} type="button" className="watermarked-preview" onClick={() => setUnitLightbox({ items: focusedUnitPhotos.map((photo) => ({ url: photo.url ?? "", label: focusedUnitUsesReferencePhotos ? `Condomínio · ${photo.categoria || photo.nome || "Foto do prédio"}` : photo.categoria || photo.nome || "Foto do apartamento" })), index })}><img src={item.url ?? ""} alt={focusedUnitUsesReferencePhotos ? `Condomínio · ${item.categoria || item.nome || "Foto do prédio"}` : item.categoria || item.nome || "Foto do apartamento"} /></button>)}</div> : <p className="empty-media">Nenhuma foto foi cadastrada para este apartamento nem para o condomínio de referência.</p>}{focusedUnit.pode_editar && <label className="fv2-btn fv2-btn-outline focused-unit-upload">＋ Adicionar fotos ou vídeos da unidade<input hidden multiple type="file" accept="image/*,video/*" disabled={busy} onChange={(event) => void uploadUnitMedia(event.target.files, focusedUnit)} /></label>}</>}
 
               {tab === "localizacao" && <>
                 <h3 className="fv2-loc-title">{[product.endereco, product.numero].filter(Boolean).join(", ") || "Endereço não cadastrado"}</h3>
@@ -624,6 +632,6 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
         <footer className="capture-footer"><button className="ghost-action" type="button" onClick={() => setUnitEdit(null)}>Cancelar</button><button className="primary-action" type="button" disabled={busy} onClick={() => void saveUnit()}>{busy ? "Salvando..." : "Salvar unidade"}</button></footer>
       </section>
     </div>}
-    {unitLightbox && unitLightbox.items[unitLightbox.index]?.url && <div className="photo-lightbox unit-lightbox" role="dialog" aria-modal="true" aria-label="Foto da unidade ampliada"><button className="lightbox-close" type="button" onClick={() => setUnitLightbox(null)} aria-label="Fechar galeria">×</button>{unitLightbox.items.length > 1 && <button className="lightbox-nav previous" type="button" onClick={() => setUnitLightbox((s) => s && ({ ...s, index: (s.index - 1 + s.items.length) % s.items.length }))} aria-label="Foto anterior">‹</button>}<div className="lightbox-image watermarked-preview"><img src={unitLightbox.items[unitLightbox.index].url} alt={unitLightbox.items[unitLightbox.index].label} /></div><div><span>{unitLightbox.index + 1} de {unitLightbox.items.length}</span></div>{unitLightbox.items.length > 1 && <button className="lightbox-nav next" type="button" onClick={() => setUnitLightbox((s) => s && ({ ...s, index: (s.index + 1) % s.items.length }))} aria-label="Próxima foto">›</button>}</div>}
+    {unitLightbox && unitLightbox.items[unitLightbox.index]?.url && <div className="photo-lightbox unit-lightbox" role="dialog" aria-modal="true" aria-label="Foto do imóvel ampliada"><button className="lightbox-close" type="button" onClick={() => setUnitLightbox(null)} aria-label="Fechar galeria">×</button>{unitLightbox.items.length > 1 && <button className="lightbox-nav previous" type="button" onClick={() => setUnitLightbox((s) => s && ({ ...s, index: (s.index - 1 + s.items.length) % s.items.length }))} aria-label="Foto anterior">‹</button>}<div className="lightbox-image watermarked-preview"><img src={unitLightbox.items[unitLightbox.index].url} alt={unitLightbox.items[unitLightbox.index].label} /></div><div><strong>{unitLightbox.items[unitLightbox.index].label}</strong><span>{unitLightbox.index + 1} de {unitLightbox.items.length}</span></div>{unitLightbox.items.length > 1 && <button className="lightbox-nav next" type="button" onClick={() => setUnitLightbox((s) => s && ({ ...s, index: (s.index + 1) % s.items.length }))} aria-label="Próxima foto">›</button>}</div>}
   </div>;
 }

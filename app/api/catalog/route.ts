@@ -290,6 +290,7 @@ export async function GET(request: Request) {
     const buildingMediaCount = allProductMedia.filter((m) => !m.unidade_id).length;
     return unidadesBrutas.map((u) => {
       const fotoDaUnidade = fotos.find((m) => m.unidade_id === u.id && m.is_capa) ?? fotos.find((m) => m.unidade_id === u.id);
+      const unitMediaCount = allProductMedia.filter((m) => m.unidade_id === u.id).length;
       const dormMatch = u.tipologia?.match(/(\d+)\s*(?:dorm|su[ií]te)/i);
       const dormUnidade = dormMatch ? Number(dormMatch[1]) : /studio/i.test(u.tipologia ?? "") ? 0 : null;
       return {
@@ -303,7 +304,9 @@ export async function GET(request: Request) {
         parking: u.vagas ?? p.parking,
         available: 1,
         units: 1,
-        media: buildingMediaCount + allProductMedia.filter((m) => m.unidade_id === u.id).length,
+        media: buildingMediaCount + unitMediaCount,
+        unitMedia: unitMediaCount,
+        referenceMedia: buildingMediaCount,
         coverUrl: fotoDaUnidade ? publicMediaUrl(fotoDaUnidade.storage_path) : p.coverUrl,
         capturedBy: corretorNameById.get(u.captador_corretor_id ?? -1) ?? p.capturedBy,
         capturedByScore: u.captador_corretor_id != null ? (captadorScoreById.get(u.captador_corretor_id) ?? null) : p.capturedByScore,
