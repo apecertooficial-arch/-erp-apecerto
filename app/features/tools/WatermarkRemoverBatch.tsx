@@ -10,6 +10,16 @@
  * de processar e o zip leve. Passar do limite não trava a tela: só recusa o
  * excedente com aviso claro, e o que já cabia entra normalmente.
  *
+ * "Colar da área de transferência": mesmo botão do fluxo unitário, mas aqui
+ * ACRESCENTA a imagem colada à lista (via adicionarArquivos, que já respeita
+ * o limite de 15) em vez de substituir uma foto só -- corretor pode ir
+ * intercalando "colar" com "escolher vários arquivos" na mesma leva. Nome do
+ * arquivo colado leva timestamp pra distinguir vários colados na lista.
+ *
+ * Remover item da lista: cada linha já tem um botão "×" próprio
+ * (wm-lote-remover) -- não precisa de X no preview porque o lote não mostra
+ * miniatura de imagem, só o nome do arquivo.
+ *
  * O zip é montado no navegador com JSZip, importado por CDN em tempo de uso
  * (import dinâmico) -- evita adicionar dependência nova no package.json só
  * pra isso; mesmo padrão de carregar recurso externo que o projeto já usa
@@ -58,6 +68,8 @@ export function WatermarkRemoverBatch({ onVoltar }: { onVoltar: () => void }) {
   const [itens, setItens] = useState<ItemLote[]>([]);
   const [processando, setProcessando] = useState(false);
   const [zipando, setZipando] = useState(false);
+  const [colando, setColando] = useState(false);
+  const [colado, setColado] = useState(false);
   const [erroGeral, setErroGeral] = useState("");
 
   const noLimite = itens.length >= LIMITE_LOTE;
@@ -80,6 +92,38 @@ export function WatermarkRemoverBatch({ onVoltar }: { onVoltar: () => void }) {
     const novos: ItemLote[] = aceitos.map((arquivo) => ({ id: idItem(), arquivo, status: "pendente" as const }));
     setItens((atual) => [...atual, ...novos]);
   }, [itens.length]);
+
+  const avisarColado = useCallback(() => {
+    setColado(true);
+    window.setTimeout(() => setColado(false), 1500);
+  }, []);
+
+  const colarDoClipboard = useCallback(async () => {
+    setErroGeral("");
+    if (!navigator.clipboard || !navigator.clipboard.read) {
+      setErroGeral("Este navegador não permite colar direto pelo botão. Arraste o arquivo ou escolha pela lista.");
+      return;
+    }
+    setColando(true);
+    try {
+      const itensClipboard = await navigator.clipboard.read();
+      for (const item of itensClipboard) {
+        const tipoImagem = item.types.find((t) => t.startsWith("image/"));
+        if (tipoImagem) {
+          const blob = await item.getType(tipoImagem);
+          const file = new File([blob], `colado-${Date.now()}.${tipoImagem.split("/")[1] || "png"}`, { type: tipoImagem });
+          adicionarArquivos([file]);
+          avisarColado();
+          return;
+        }
+      }
+      setErroGeral("Não encontrei nenhuma imagem na área de transferência. Copie a foto de novo e tente outra vez.");
+    } catch {
+      setErroGeral("Não consegui acessar a área de transferência — o navegador pode ter bloqueado a permissão.");
+    } finally {
+      setColando(false);
+    }
+  }, [adicionarArquivos, avisarColado]);
 
   const removerItem = useCallback((id: string) => {
     setItens((atual) => atual.filter((i) => i.id !== id));
@@ -157,6 +201,7 @@ export function WatermarkRemoverBatch({ onVoltar }: { onVoltar: () => void }) {
       </header>
 
       {erroGeral && <div className="wm-error">{erroGeral}</div>}
+      {colado && <div className="wm-aviso-colado">Imagem colada e adicionada à leva</div>}
 
       <div className="wm-card wm-lote-card">
         <label className="wm-campo">
@@ -169,6 +214,10 @@ export function WatermarkRemoverBatch({ onVoltar }: { onVoltar: () => void }) {
             disabled={processando}
           />
         </label>
+
+        <button type="button" className="wm-btn-colar" onClick={() => void colarDoClipboard()} disabled={colando || noLimite}>
+          📋 {colando ? "Colando…" : "Colar da área de transferência"}
+        </button>
 
         <label
           className={`wm-dropzone wm-dropzone-lote ${noLimite ? "wm-dropzone-desabilitada" : ""}`}
