@@ -26,6 +26,17 @@ test("preço em milhares tem confirmação visual e validação também no servi
   assert.match(capture, /validateProductPrice/);
 });
 
+test("imóvel avulso não valida a unidade vazia escondida como preço zero", () => {
+  const wizard = read("app/features/products/CaptureWizard.tsx");
+  const capture = read("app/api/capture/route.ts");
+  assert.match(wizard, /units: propertyType === "construtora" \? units\.map/);
+  assert.match(wizard, /: \[\],/);
+  const unitValidation = capture.match(/if \(payload\.propertyType === "construtora"\) \{[\s\S]*?\/\/ Evita imóveis repetidos/)?.[0] ?? "";
+  assert.match(unitValidation, /for \(const unit of units\)/);
+  assert.match(unitValidation, /Preço da unidade/);
+  assert.doesNotMatch(capture.match(/const propertyPriceCheck[\s\S]*?if \(payload\.propertyType === "construtora"\)/)?.[0] ?? "", /for \(const unit of units\)/);
+});
+
 test("nota pode chegar a 100 e publicação reflete a view pública", () => {
   const quality = read("app/features/products/quality.ts");
   const catalog = read("app/api/catalog/route.ts");

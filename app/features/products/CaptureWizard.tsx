@@ -225,7 +225,10 @@ export function CaptureWizard({ onClose, onSaved, initialStandalone = false }: C
             suites: numberValue(property.suites), bathrooms: numberValue(property.bathrooms), parking: numberValue(property.parking),
           },
           access: { type: accessType, code: accessCode, instructions: accessInstructions },
-          units: units.map((unit) => ({ number: unit.number, type: unit.type, area: numberValue(unit.area), parking: numberValue(unit.parking), price: numberValue(unit.price), promotionalPrice: unit.promotionalPrice ? numberValue(unit.promotionalPrice) : null })),
+          // Imóvel avulso usa os dados e o preço do próprio imóvel. A unidade
+          // técnica é criada no servidor; nunca envie a linha vazia escondida
+          // do editor de estoque da construtora.
+          units: propertyType === "construtora" ? units.map((unit) => ({ number: unit.number, type: unit.type, area: numberValue(unit.area), parking: numberValue(unit.parking), price: numberValue(unit.price), promotionalPrice: unit.promotionalPrice ? numberValue(unit.promotionalPrice) : null })) : [],
         }),
       });
       const created = await createResponse.json() as { id?: string; unidadeId?: string | null; userId?: string; error?: string };
