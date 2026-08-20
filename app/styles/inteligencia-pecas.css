@@ -26,6 +26,38 @@
 .int-area .intp-kpi-chip { align-self: flex-start; font-size: 11px; font-weight: 700; border-radius: 999px; padding: 3px 9px; }
 .int-area .intp-kpi-foot { font-size: 11px; color: #9a938b; line-height: 1.5; }
 
+.int-area .intp-fluxo-caixa { min-width:0; padding:19px 20px; border:1px solid #ebe5df; border-radius:19px; background:#fff; box-shadow:0 3px 12px rgba(31,28,26,.045); }
+.int-area .intp-fluxo-caixa > header { margin-bottom:16px; }
+.int-area .intp-fluxo-caixa > header h3 { margin:0; font-size:15px; }
+.int-area .intp-fluxo-caixa > header p { margin:4px 0 0; color:#9a938b; font-size:10.5px; }
+.int-area .intp-fluxo { display:flex; min-width:0; align-items:stretch; }
+.int-area .intp-fluxo-parte { display:flex; min-width:0; flex:1; align-items:center; }
+.int-area .intp-fluxo-etapa { position:relative; display:flex; min-width:0; min-height:105px; flex:1; flex-direction:column; justify-content:center; padding:13px 12px 12px; overflow:hidden; border:1px solid #f0e9e4; border-radius:15px; background:#fffaf6; }
+.int-area .intp-fluxo-etapa::before { position:absolute; top:0; right:0; left:0; height:4px; background:#ff7000; content:""; }
+.int-area .intp-fluxo-etapa.fluxo-roxo { background:#fcf8fe; }
+.int-area .intp-fluxo-etapa.fluxo-roxo::before { background:#8b00cc; }
+.int-area .intp-fluxo-etapa.fluxo-verde { background:#f6fbf8; }
+.int-area .intp-fluxo-etapa.fluxo-verde::before { background:#1fa85a; }
+.int-area .intp-fluxo-etapa.fluxo-vermelho::before { background:#d93e3e; }
+.int-area .intp-fluxo-etapa.fluxo-ambar::before { background:#d89119; }
+.int-area .intp-fluxo-etapa > span:first-child { overflow:hidden; color:#746d66; font-size:10.5px; font-weight:700; text-overflow:ellipsis; white-space:nowrap; }
+.int-area .intp-fluxo-etapa .int-valor { margin-top:5px; font-size:23px; }
+.int-area .intp-fluxo-etapa small { margin-top:3px; overflow:hidden; color:#9a938b; font-size:9.5px; line-height:1.35; text-overflow:ellipsis; white-space:nowrap; }
+.int-area .intp-fluxo-seta { flex:none; width:23px; color:#c6beb6; font-size:14px; font-style:normal; text-align:center; }
+
+.int-area .intp-ranking { display:flex; flex-direction:column; gap:11px; }
+.int-area .intp-ranking-linha { display:grid; grid-template-columns:minmax(105px,1.15fr) minmax(80px,1fr) auto; gap:10px; align-items:center; min-width:0; }
+.int-area .intp-ranking-linha > div { display:flex; min-width:0; flex-direction:column; }
+.int-area .intp-ranking-linha strong { overflow:hidden; color:#504a45; font-size:10.8px; text-overflow:ellipsis; white-space:nowrap; }
+.int-area .intp-ranking-linha small { overflow:hidden; color:#a09992; font-size:9px; text-overflow:ellipsis; white-space:nowrap; }
+.int-area .intp-ranking-trilho { display:block; height:7px; overflow:hidden; border-radius:999px; background:#f0ece8; }
+.int-area .intp-ranking-trilho i { display:block; height:100%; border-radius:999px; background:#ff7000; }
+.int-area .intp-ranking-trilho i.ranking-roxo { background:#8b00cc; }
+.int-area .intp-ranking-trilho i.ranking-verde { background:#1fa85a; }
+.int-area .intp-ranking-trilho i.ranking-vermelho { background:#d93e3e; }
+.int-area .intp-ranking-trilho i.ranking-ambar { background:#d89119; }
+.int-area .intp-ranking-linha > b { min-width:42px; color:#2f2a27; font-size:10.8px; font-variant-numeric:tabular-nums; text-align:right; white-space:nowrap; }
+
 .int-area .intp-cartao { background: #fff; border-radius: 18px; padding: 18px; box-shadow: 0 2px 6px rgba(31, 28, 26, 0.06); display: flex; flex-direction: column; gap: 10px; min-width: 0; }
 .int-area .intp-cartao-titulo { font-size: 13px; font-weight: 700; }
 .int-area .intp-cartao-chip { font-size: 10.5px; font-weight: 700; border-radius: 999px; padding: 2px 8px; }
@@ -114,6 +146,9 @@
   .int-area .intp-grade { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
   .int-area .intp-etapa { grid-template-columns: 150px 1fr 60px 52px; }
   .int-area .intp-etapa-perda, .int-area .intp-etapa button { display: none; }
+  .int-area .intp-fluxo { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
+  .int-area .intp-fluxo-parte { display:block; }
+  .int-area .intp-fluxo-seta { display:none; }
 }
 
 /* CELULAR · 390 — artboards 29a e 22a: um cartão por linha, alvo de toque de
@@ -140,4 +175,7 @@
 
   .int-area .intp-banner button, .int-area .intp-th-btn { min-height: 44px; }
   .int-area button.intp-linha-btn { min-height: 44px; }
+  .int-area .intp-fluxo { grid-template-columns:1fr; }
+  .int-area .intp-fluxo-etapa { min-height:82px; }
+  .int-area .intp-ranking-linha { grid-template-columns:minmax(105px,1fr) minmax(60px,.8fr) auto; }
 }

@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import type { PropsTela } from "../CascaInteligencia";
 import { fmt, RodapeFontes } from "../dado";
-import { Banner, Cabecalho, GradeKpis, Tabela } from "../pecas";
+import { Banner, Cabecalho, FluxoEtapas, GradeKpis, RankingBarras, Tabela } from "../pecas";
 import { useResumoInteligencia, type CorretorOperacao } from "../usar-resumo";
 
 type Aba = "resumo" | "corretores" | "funil" | "atendimento" | "trabalho" | "resultado";
@@ -59,7 +59,7 @@ export function VisaoEmpresa({ accessToken, recorte }: PropsTela) {
   if (error) return <Banner forte="A Inteligência não respondeu." texto={error} />;
 
   const tabelaCorretores = equipe.map((l)=>({ chave:String(l.corretor_id),abrir:()=>setSelecionadoId(l.corretor_id),destaque:l.corretor_id===selecionado?.corretor_id,celulas:[
-    {texto:l.nome,forte:true,sub:l.no_escritorio_agora?"no escritório":undefined},{texto:fmt.inteiro(l.carteira_ativa),num:true},{texto:fmt.inteiro(l.clientes_aguardando),num:true,cor:l.clientes_criticos?"#D93E3E":undefined},{texto:fmt.duracaoMin(l.resposta_mediana_min),num:true},{texto:fmt.porcento(l.conversao_coorte_visita,1),num:true,forte:true},{texto:`${l.visitas_realizadas}/${l.visitas_canceladas}`,num:true},{texto:fmt.inteiro(l.vendas),num:true},{texto:fmt.dinheiro(l.vgv),num:true},{texto:nota(l.nota_ia),num:true},{texto:`${l.dias_presenca}/${l.dias_uteis_sem_confirmacao}`,num:true}
+    {texto:l.nome,forte:true,sub:l.no_escritorio_agora?"no escritório":undefined},{texto:fmt.inteiro(l.carteira_ativa),num:true},{texto:fmt.inteiro(l.clientes_criticos),num:true,cor:l.clientes_criticos?"#D93E3E":undefined},{texto:fmt.duracaoMin(l.resposta_mediana_min),num:true},{texto:fmt.porcento(l.conversao_coorte_visita,1),num:true,forte:true},{texto:nota(l.nota_ia),num:true}
   ]}));
 
   const acoes = op?.acoes ?? [];
@@ -75,28 +75,45 @@ export function VisaoEmpresa({ accessToken, recorte }: PropsTela) {
     <Abas atual={aba} mudar={setAba} />
 
     {aba==="resumo" && <>
-      <section className="int-escopo-verdade"><div><span>OPERAÇÃO COBRÁVEL</span><strong>{fmt.inteiro(resumo?.leads_funil_ativos)} leads</strong><small>somente cards ativos no Funil 2.0</small></div><i>≠</i><div className="bolsao"><span>BOLSÃO / PESCA</span><strong>{fmt.inteiro(resumo?.leads_bolsao)} leads</strong><small>estoque de oportunidade; fora de SLA e produtividade</small></div></section>
-      <section className="int-decisao-resumo"><div><span className="intp-cab-eyebrow">LEITURA DO DONO</span><h2>{(resumo?.clientes_criticos??0)>0?`${resumo?.clientes_criticos} clientes do Funil 2.0 aguardam há mais de 1 hora`:"Nenhum cliente do Funil 2.0 está crítico por espera"}</h2><p>Esta leitura não inclui nenhum dos {fmt.inteiro(resumo?.leads_bolsao)} leads do Bolsão. A prioridade vem de cliente esperando, ação vencida e capacidade comprovada de converter visita.</p></div><strong className={(resumo?.clientes_criticos??0)>0?"ruim":"bom"}>{fmt.inteiro(acoes.length)} ações</strong></section>
-      <GradeKpis colunas={6} itens={[
-        {rotulo:"No Funil 2.0",bruto:resumo?.leads_funil_ativos,texto:fmt.inteiro(resumo?.leads_funil_ativos),tile:"laranja",foot:`${fmt.inteiro(resumo?.leads_entraram_periodo)} entraram no período`},
-        {rotulo:"Clientes aguardando",bruto:resumo?.clientes_aguardando,texto:fmt.inteiro(resumo?.clientes_aguardando),tile:"vermelho",tom:(resumo?.clientes_criticos??0)>0?"ruim":"neutro",foot:`${fmt.inteiro(resumo?.clientes_criticos)} há mais de 1 hora`},
-        {rotulo:"Ações vencidas",bruto:resumo?.followups_vencidos,texto:fmt.inteiro(resumo?.followups_vencidos),tile:"ambar",foot:"Pescados sem prazo não entram"},
-        {rotulo:"Visitas realizadas",bruto:resumo?.visitas_realizadas,texto:fmt.inteiro(resumo?.visitas_realizadas),tile:"roxo",foot:`${fmt.inteiro(resumo?.visitas_canceladas)} canceladas`},
-        {rotulo:"Vendas ligadas ao F2",bruto:resumo?.vendas,texto:`${fmt.inteiro(resumo?.vendas)} · ${fmt.dinheiro(resumo?.vgv)}`,tile:"verde",foot:`ticket ${fmt.dinheiro(resumo?.ticket_medio)} · não é o total geral`},
-        {rotulo:"Nota da IA",bruto:resumo?.nota_ia,texto:resumo?.nota_ia==null?"—":nota(resumo.nota_ia),tile:"roxo",foot:"somente atendimentos do Funil 2.0"},
-      ]}/>
-      <Cabecalho eyebrow="DECISÕES DE HOJE" titulo="O que merece sua atenção agora" cor="#8B00CC" />
-      <div className="int-decisao-acoes">
-        <article className={(resumo?.clientes_criticos??0)>0?"critico":"positivo"}><span>1 · RESPONDER</span><h3>{fmt.inteiro(resumo?.clientes_criticos)} clientes esperando +1h</h3><p>A lista nominal está em Atendimento; cobre a fila exata, não a empresa inteira.</p></article>
-        <article className={(resumo?.followups_vencidos??0)>0?"atencao":"positivo"}><span>2 · RECUPERAR</span><h3>{pior?`${pior.nome}: ${pior.followups_vencidos} ações vencidas`:"Sem ações vencidas"}</h3><p>Reorganize a carteira antes de enviar mais oportunidade.</p></article>
-        <article className={melhor?"positivo":"atencao"}><span>3 · DISTRIBUIR</span><h3>{melhor?`${melhor.nome}: ${fmt.porcento(melhor.conversao_coorte_visita,1)} lead → visita`:"Amostra ainda pequena"}</h3><p>A comparação usa a coorte que entrou no período, evitando dividir visitas por leads sem relação.</p></article>
-        <article className={(resumo?.visitas_canceladas??0)>0?"atencao":"positivo"}><span>4 · QUALIFICAR</span><h3>{fmt.porcento(resumo?.realizacao_visita,1)} das visitas aconteceram</h3><p>Cancelamento alto pede confirmação, aderência do imóvel e qualidade de agendamento.</p></article>
+      <section className="int-hero-executivo">
+        <div className="int-hero-leitura"><span className="intp-cab-eyebrow">AÇÃO PRIORITÁRIA</span><h2>{(resumo?.clientes_criticos??0)>0?`${fmt.inteiro(resumo?.clientes_criticos)} clientes precisam de resposta agora`:"A fila crítica está sob controle"}</h2><p>{(resumo?.clientes_criticos??0)>0?"São clientes do Funil 2.0 esperando há mais de uma hora. Abra Atendimento e cobre a fila nominal.":"Não há cliente do Funil 2.0 esperando há mais de uma hora neste recorte."}</p><div className="int-hero-chips"><span><b>{fmt.inteiro(resumo?.leads_funil_ativos)}</b> no Funil 2.0</span><span className="bolsao"><b>{fmt.inteiro(resumo?.leads_bolsao)}</b> no Bolsão, fora da cobrança</span></div></div>
+        <aside><span>AÇÕES ABERTAS</span><strong className={(acoes.length??0)>0?"ruim":"bom"}>{fmt.inteiro(acoes.length)}</strong><small>fila nominal do Funil 2.0</small></aside>
+      </section>
+      <div className="int-dashboard-grid">
+        <FluxoEtapas titulo="Do lead ao resultado" nota={`Produção dos últimos ${recorte.periodo.toLowerCase()}`} etapas={[
+          {rotulo:"Entraram no F2",valor:resumo?.leads_entraram_periodo,texto:fmt.inteiro(resumo?.leads_entraram_periodo),sub:"coorte do período",tom:"laranja"},
+          {rotulo:"Visitas agendadas",valor:resumo?.visitas_agendadas,texto:fmt.inteiro(resumo?.visitas_agendadas),tom:"roxo"},
+          {rotulo:"Visitas realizadas",valor:resumo?.visitas_realizadas,texto:fmt.inteiro(resumo?.visitas_realizadas),sub:`${fmt.porcento(resumo?.realizacao_visita,1)} de realização`,tom:"verde"},
+          {rotulo:"Vendas vinculadas",valor:resumo?.vendas,texto:fmt.inteiro(resumo?.vendas),sub:fmt.dinheiro(resumo?.vgv),tom:"verde"},
+        ]}/>
+        <section className="int-card-superficie"><Cabecalho eyebrow="PRESSÃO DA OPERAÇÃO" titulo="Onde o time está acumulando trabalho"/><RankingBarras itens={[
+          {rotulo:"Ações vencidas",valor:resumo?.followups_vencidos??0,texto:fmt.inteiro(resumo?.followups_vencidos),tom:"ambar"},
+          {rotulo:"Clientes aguardando",valor:resumo?.clientes_aguardando??0,texto:fmt.inteiro(resumo?.clientes_aguardando),tom:"laranja"},
+          {rotulo:"Críticos +1h",valor:resumo?.clientes_criticos??0,texto:fmt.inteiro(resumo?.clientes_criticos),tom:"vermelho"},
+          {rotulo:"Visitas canceladas",valor:resumo?.visitas_canceladas??0,texto:fmt.inteiro(resumo?.visitas_canceladas),tom:"roxo"},
+        ]}/></section>
       </div>
+      <GradeKpis colunas={3} itens={[
+        {rotulo:"Carteira ativa do Funil 2.0",bruto:resumo?.leads_funil_ativos,texto:fmt.inteiro(resumo?.leads_funil_ativos),tile:"laranja",foot:`${fmt.inteiro(resumo?.leads_entraram_periodo)} entradas no período; Bolsão excluído`},
+        {rotulo:"Qualidade média da IA",bruto:resumo?.nota_ia,texto:resumo?.nota_ia==null?"—":nota(resumo.nota_ia),tile:"roxo",foot:`${fmt.inteiro(resumo?.avaliacoes_ia)} avaliações ligadas ao Funil 2.0`},
+        {rotulo:"VGV ligado ao Funil 2.0",bruto:resumo?.vgv,texto:fmt.dinheiro(resumo?.vgv),tile:"verde",foot:`${fmt.inteiro(resumo?.vendas)} vendas · ticket ${fmt.dinheiro(resumo?.ticket_medio)}`},
+      ]}/>
+      <section className="int-prioridades"><header><span className="intp-cab-eyebrow">DECISÕES DE HOJE</span><h2>Quatro ações, em ordem</h2></header><div>
+        <article className={(resumo?.clientes_criticos??0)>0?"critico":"positivo"}><b>1</b><span><small>RESPONDER</small><strong>{fmt.inteiro(resumo?.clientes_criticos)} clientes esperando +1h</strong><p>A lista exata está na aba Atendimento.</p></span></article>
+        <article className={(resumo?.followups_vencidos??0)>0?"atencao":"positivo"}><b>2</b><span><small>RECUPERAR</small><strong>{pior?`${pior.nome}: ${pior.followups_vencidos} ações vencidas`:"Sem ações vencidas"}</strong><p>Reorganize a carteira antes de enviar mais oportunidade.</p></span></article>
+        <article className={melhor?"positivo":"atencao"}><b>3</b><span><small>DISTRIBUIR</small><strong>{melhor?`${melhor.nome}: ${fmt.porcento(melhor.conversao_coorte_visita,1)} lead → visita`:"Amostra ainda pequena"}</strong><p>A comparação usa somente a coorte que entrou no período.</p></span></article>
+        <article className={(resumo?.visitas_canceladas??0)>0?"atencao":"positivo"}><b>4</b><span><small>QUALIFICAR</small><strong>{fmt.porcento(resumo?.realizacao_visita,1)} das visitas aconteceram</strong><p>Cancelamento alto pede confirmação e aderência do imóvel.</p></span></article>
+      </div></section>
     </>}
 
     {aba==="corretores" && <>
       <Cabecalho eyebrow="COMPARAÇÃO JUSTA" titulo="Carteira, atendimento, conversão e resultado na mesma régua" nota="clique em um corretor" />
-      <Tabela colunas={[{titulo:"Corretor"},{titulo:"Funil 2.0",num:true},{titulo:"Aguardando",num:true},{titulo:"Resposta",num:true},{titulo:"Lead→visita",num:true},{titulo:"Visitas R/C",num:true},{titulo:"Vendas",num:true},{titulo:"VGV",num:true},{titulo:"Nota IA",num:true},{titulo:"Presença/falta",num:true}]} linhas={tabelaCorretores} ordenadaEm="VGV" foot="Lead→visita usa a mesma coorte. Presença/falta = dias confirmados / dias úteis sem confirmação." />
+      <div className="int-graficos-tres">
+        <section className="int-card-superficie"><h3>Maior carteira ativa</h3><RankingBarras itens={[...equipe].sort((a,b)=>b.carteira_ativa-a.carteira_ativa).slice(0,7).map(l=>({rotulo:l.nome,valor:l.carteira_ativa,texto:fmt.inteiro(l.carteira_ativa),tom:"laranja"}))}/></section>
+        <section className="int-card-superficie"><h3>Melhor conversão em visita</h3><RankingBarras itens={[...equipe].filter(l=>l.conversao_coorte_visita!==null).sort((a,b)=>(b.conversao_coorte_visita??0)-(a.conversao_coorte_visita??0)).slice(0,7).map(l=>({rotulo:l.nome,valor:l.conversao_coorte_visita??0,texto:fmt.porcento(l.conversao_coorte_visita,1),tom:"verde",sub:`${l.cohort_com_visita} de ${l.leads_novos} leads`}))}/></section>
+        <section className="int-card-superficie"><h3>Qualidade do atendimento</h3><RankingBarras itens={[...equipe].filter(l=>l.nota_ia!==null).sort((a,b)=>(b.nota_ia??0)-(a.nota_ia??0)).slice(0,7).map(l=>({rotulo:l.nome,valor:l.nota_ia??0,texto:nota(l.nota_ia),tom:"roxo",sub:`${l.avaliacoes_ia} avaliações`}))}/></section>
+      </div>
+      <Tabela colunas={[{titulo:"Corretor"},{titulo:"Funil 2.0",num:true},{titulo:"Críticos",num:true},{titulo:"Resposta",num:true},{titulo:"Lead→visita",num:true},{titulo:"Nota IA",num:true}]} linhas={tabelaCorretores} ordenadaEm="Lead→visita" foot="A tabela é a conferência rápida. Clique no corretor para abrir carteira, conversão, atendimento, vendas, presença e captações completas." />
       {selecionado && <CorretorFoco linha={selecionado}/>}
     </>}
 
@@ -108,6 +125,7 @@ export function VisaoEmpresa({ accessToken, recorte }: PropsTela) {
     </>}
 
     {aba==="atendimento" && <>
+      <div className="int-duas"><section className="int-card-superficie"><Cabecalho eyebrow="FILA POR CORRETOR" titulo="Quem tem mais clientes críticos"/><RankingBarras itens={[...equipe].sort((a,b)=>b.clientes_criticos-a.clientes_criticos).slice(0,8).map(l=>({rotulo:l.nome,valor:l.clientes_criticos,texto:fmt.inteiro(l.clientes_criticos),tom:l.clientes_criticos?"vermelho":"verde",sub:`${l.clientes_aguardando} aguardando`}))}/></section><section className="int-card-superficie"><Cabecalho eyebrow="TEMPO DE RESPOSTA" titulo="Quem demora mais para responder"/><RankingBarras itens={[...equipe].filter(l=>l.resposta_mediana_min!==null).sort((a,b)=>(b.resposta_mediana_min??0)-(a.resposta_mediana_min??0)).slice(0,8).map(l=>({rotulo:l.nome,valor:l.resposta_mediana_min??0,texto:fmt.duracaoMin(l.resposta_mediana_min),tom:(l.resposta_mediana_min??0)>60?"vermelho":"laranja",sub:`P90 ${fmt.duracaoMin(l.resposta_p90_min)}`}))}/></section></div>
       <Cabecalho eyebrow="FILA REAL" titulo="Clientes do Funil 2.0 que precisam de ação" nota="Bolsão excluído" />
       <Tabela colunas={[{titulo:"Lead"},{titulo:"Corretor"},{titulo:"Etapa"},{titulo:"Motivo"},{titulo:"Espera",num:true}]} linhas={acoes.map(a=>({chave:a.id,celulas:[{texto:a.lead,forte:true},{texto:a.corretor},{texto:a.etapa.replaceAll("_"," ")},{texto:a.motivo},{texto:a.espera_min==null?"—":fmt.duracaoMin(a.espera_min),num:true,cor:a.prioridade===1?"#D93E3E":undefined}]}))} ordenadaEm="Espera" foot="Espera começa na última mensagem recebida do cliente e termina quando o corretor responde." />
       <Cabecalho eyebrow="QUALIDADE" titulo="Velocidade, nota da IA e forma de atendimento" />
@@ -122,6 +140,7 @@ export function VisaoEmpresa({ accessToken, recorte }: PropsTela) {
         {rotulo:"Pulos por inelegibilidade",bruto:pulos,texto:fmt.inteiro(pulos),tile:"vermelho",foot:"rodízio normal não entra"},
         {rotulo:"Leads recebidos",bruto:recebidos,texto:fmt.inteiro(recebidos),tile:"verde",foot:"decisões registradas pela roleta"},
       ]}/>
+      <div className="int-duas"><section className="int-card-superficie"><Cabecalho eyebrow="ATIVIDADE COMPROVADA" titulo="Horas ativas por corretor"/><RankingBarras itens={[...equipe].sort((a,b)=>(b.horas_ativas_erp??0)-(a.horas_ativas_erp??0)).slice(0,10).map(l=>({rotulo:l.nome,valor:l.horas_ativas_erp??0,texto:horas(l.horas_ativas_erp),tom:"verde",sub:`${horas(l.horas_erp)} logado`}))}/></section><section className="int-card-superficie"><Cabecalho eyebrow="DISTRIBUIÇÃO" titulo="Pulos por inelegibilidade"/><RankingBarras itens={[...equipe].sort((a,b)=>(b.pulos_distribuicao??0)-(a.pulos_distribuicao??0)).slice(0,10).map(l=>({rotulo:l.nome,valor:l.pulos_distribuicao??0,texto:fmt.inteiro(l.pulos_distribuicao),tom:(l.pulos_distribuicao??0)>0?"vermelho":"verde",sub:`${l.recebidos_distribuicao} leads recebidos`}))}/></section></div>
       <Cabecalho eyebrow="TRABALHO COMPROVADO" titulo="Tempo no ERP, presença e oportunidades perdidas" nota="clique em um corretor para ver cada dia" />
       <Tabela colunas={[{titulo:"Corretor"},{titulo:"Logado",num:true},{titulo:"Ativo",num:true},{titulo:"No escritório",num:true},{titulo:"Presença/falta",num:true},{titulo:"Pulos",num:true},{titulo:"Recebeu",num:true},{titulo:"Principal motivo"}]} linhas={equipe.map(l=>({chave:String(l.corretor_id),abrir:()=>setSelecionadoId(l.corretor_id),destaque:l.corretor_id===selecionado?.corretor_id,celulas:[{texto:l.nome,forte:true,sub:l.no_escritorio_agora?"no escritório agora":undefined},{texto:horas(l.horas_erp),num:true},{texto:horas(l.horas_ativas_erp),num:true,forte:true},{texto:horas(l.horas_no_escritorio),num:true},{texto:`${l.dias_presenca}/${l.dias_uteis_sem_confirmacao}`,num:true},{texto:fmt.inteiro(l.pulos_distribuicao),num:true,cor:(l.pulos_distribuicao??0)>0?"#D93E3E":undefined},{texto:fmt.inteiro(l.recebidos_distribuicao),num:true},{texto:motivoPulo(l.pulos_motivos?.[0]?.motivo),sub:l.pulos_motivos?.[0]?`${l.pulos_motivos[0].quantidade} ocorrência(s)`:undefined}]}))} ordenadaEm="Horas ativas" foot="Pulo = estava configurado na distribuição, mas inelegível naquele instante. Estar elegível e aguardar o rodízio não conta como pulo." />
       {selecionado && <>
@@ -131,8 +150,8 @@ export function VisaoEmpresa({ accessToken, recorte }: PropsTela) {
     </>}
 
     {aba==="resultado" && <>
-      <GradeKpis colunas={5} itens={[
-        {rotulo:"Agendadas",bruto:resumo?.visitas_agendadas,texto:fmt.inteiro(resumo?.visitas_agendadas),tile:"laranja"},{rotulo:"Realizadas",bruto:resumo?.visitas_realizadas,texto:fmt.inteiro(resumo?.visitas_realizadas),tile:"verde"},{rotulo:"Canceladas",bruto:resumo?.visitas_canceladas,texto:fmt.inteiro(resumo?.visitas_canceladas),tile:"vermelho"},{rotulo:"Vendas vinculadas",bruto:resumo?.vendas,texto:fmt.inteiro(resumo?.vendas),tile:"roxo"},{rotulo:"VGV vinculado",bruto:resumo?.vgv,texto:fmt.dinheiro(resumo?.vgv),tile:"verde"}
+      <FluxoEtapas titulo="Conversão comercial do Funil 2.0" nota="Estoque do Bolsão não entra nesta conta" etapas={[
+        {rotulo:"Leads que entraram",valor:resumo?.leads_entraram_periodo,texto:fmt.inteiro(resumo?.leads_entraram_periodo),tom:"laranja"},{rotulo:"Visitas agendadas",valor:resumo?.visitas_agendadas,texto:fmt.inteiro(resumo?.visitas_agendadas),tom:"roxo"},{rotulo:"Visitas realizadas",valor:resumo?.visitas_realizadas,texto:fmt.inteiro(resumo?.visitas_realizadas),sub:`${fmt.inteiro(resumo?.visitas_canceladas)} canceladas`,tom:"verde"},{rotulo:"Vendas vinculadas",valor:resumo?.vendas,texto:fmt.inteiro(resumo?.vendas),sub:fmt.dinheiro(resumo?.vgv),tom:"verde"}
       ]}/>
       <Cabecalho eyebrow="PRODUTIVIDADE COMERCIAL" titulo="Quem transforma os leads que recebeu em visita e venda" />
       <Tabela colunas={[{titulo:"Corretor"},{titulo:"Coorte",num:true},{titulo:"Com visita",num:true},{titulo:"Lead→visita",num:true},{titulo:"Agendadas",num:true},{titulo:"Realizadas",num:true},{titulo:"Canceladas",num:true},{titulo:"Realização",num:true},{titulo:"Vendas",num:true},{titulo:"VGV",num:true},{titulo:"Ticket",num:true},{titulo:"Comissão",num:true}]} linhas={equipe.map(l=>({chave:String(l.corretor_id),celulas:[{texto:l.nome,forte:true},{texto:fmt.inteiro(l.leads_novos),num:true},{texto:fmt.inteiro(l.cohort_com_visita),num:true},{texto:fmt.porcento(l.conversao_coorte_visita,1),num:true},{texto:fmt.inteiro(l.visitas_agendadas),num:true},{texto:fmt.inteiro(l.visitas_realizadas),num:true},{texto:fmt.inteiro(l.visitas_canceladas),num:true},{texto:fmt.porcento(l.realizacao_visita,1),num:true},{texto:fmt.inteiro(l.vendas),num:true},{texto:fmt.dinheiro(l.vgv),num:true},{texto:fmt.dinheiro(l.ticket_medio),num:true},{texto:fmt.porcento(l.comissao_media_pct,2),num:true}]}))} ordenadaEm="VGV" foot="Coorte = leads que entraram no Funil 2.0 no período. Venda/VGV = fatos canônicos vinculados a cards do Funil 2.0." />

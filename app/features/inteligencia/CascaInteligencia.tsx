@@ -24,11 +24,11 @@ export function CascaInteligencia({ accessToken }: { accessToken: string }) {
           <h1>{atual.titulo}</h1>
           <p>{atual.sub}</p>
         </div>
-        <span className="int-selo-vivo"><i /> Dados reais da operação</span>
+        <span className="int-selo-vivo"><i /> Atualização em tempo real</span>
       </header>
 
-      <div className="int-nivel1 int-nivel1-unico">
-        <span className="int-segmentado" role="tablist" aria-label="Áreas da Inteligência">
+      <div className="int-comando">
+        <span className="int-segmentado int-areas" role="tablist" aria-label="Áreas da Inteligência">
           {grupos.map((item) => (
             <button
               key={item.chave}
@@ -42,18 +42,16 @@ export function CascaInteligencia({ accessToken }: { accessToken: string }) {
             </button>
           ))}
         </span>
-        <span className="int-decisao-regra">O que aconteceu · por que importa · o que fazer</span>
-      </div>
-
-      <div className="int-filtros int-filtros-simples">
-        <span className="int-periodo" aria-label="Período analisado">
-          {periodos.map((item) => (
-            <button key={item} type="button" className={item === periodo ? "ativo" : ""} onClick={() => setPeriodo(item)}>
-              {item}
-            </button>
-          ))}
-        </span>
-        <span className="int-filtros-nota">O estoque atual é identificado; produção e conversão respeitam o período.</span>
+        <div className="int-recorte">
+          <span>PERÍODO</span>
+          <span className="int-periodo" aria-label="Período analisado">
+            {periodos.map((item) => (
+              <button key={item} type="button" className={item === periodo ? "ativo" : ""} onClick={() => setPeriodo(item)}>
+                {item}
+              </button>
+            ))}
+          </span>
+        </div>
       </div>
 
       {grupo === "site"

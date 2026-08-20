@@ -74,6 +74,48 @@ export function GradeKpis({ itens, colunas = 4 }: { itens: Kpi[]; colunas?: numb
   );
 }
 
+export type EtapaFluxo = {
+  rotulo: string;
+  valor: Talvez<number | string>;
+  texto: string;
+  sub?: string;
+  tom?: "laranja" | "roxo" | "verde" | "vermelho" | "ambar";
+};
+
+/** Jornada visual curta. Serve para responder "quanto entrou e quanto chegou
+ * ao próximo resultado" sem transformar quatro números em quatro cartões. */
+export function FluxoEtapas({ etapas, titulo, nota }: { etapas: EtapaFluxo[]; titulo?: string; nota?: string }) {
+  return <section className="intp-fluxo-caixa">
+    {(titulo || nota) && <header><div>{titulo && <h3>{titulo}</h3>}{nota && <p>{nota}</p>}</div></header>}
+    <div className="intp-fluxo">
+      {etapas.map((etapa, indice) => <div className="intp-fluxo-parte" key={etapa.rotulo}>
+        <article className={`intp-fluxo-etapa fluxo-${etapa.tom ?? "laranja"}`}>
+          <span>{etapa.rotulo}</span>
+          <Valor bruto={etapa.valor} texto={etapa.texto} />
+          {etapa.sub && <small>{etapa.sub}</small>}
+        </article>
+        {indice < etapas.length - 1 && <i className="intp-fluxo-seta" aria-hidden>→</i>}
+      </div>)}
+    </div>
+  </section>;
+}
+
+export type ItemRanking = { rotulo: string; valor: number; texto: string; sub?: string; tom?: "laranja" | "roxo" | "verde" | "vermelho" | "ambar" };
+
+/** Ranking com barra proporcional. A barra mostra comparação; o número ao lado
+ * mantém a leitura exata e evita que o gráfico invente precisão. */
+export function RankingBarras({ itens, vazio = "Sem dados no período" }: { itens: ItemRanking[]; vazio?: string }) {
+  const max = Math.max(0, ...itens.map((item) => item.valor));
+  if (!itens.length) return <BlocoSemDado titulo={vazio} detalhe="A visualização será preenchida automaticamente quando a fonte registrar dados." />;
+  return <div className="intp-ranking">
+    {itens.map((item) => <div className="intp-ranking-linha" key={item.rotulo}>
+      <div><strong>{item.rotulo}</strong>{item.sub && <small>{item.sub}</small>}</div>
+      <span className="intp-ranking-trilho"><i className={`ranking-${item.tom ?? "laranja"}`} style={{ width: `${max > 0 ? Math.max(2, 100 * item.valor / max) : 0}%` }} /></span>
+      <b>{item.texto}</b>
+    </div>)}
+  </div>;
+}
+
 export type Celula = { texto: string; forte?: boolean; sub?: string; num?: boolean; chip?: string; chipTom?: Tom; cor?: string };
 export type LinhaTabela = { chave: string; celulas: Celula[]; destaque?: boolean; abrir?: () => void };
 

@@ -3,13 +3,12 @@
 import { useMemo, useState } from "react";
 import type { PropsTela } from "../CascaInteligencia";
 import { fmt, RodapeFontes } from "../dado";
-import { Banner, Cabecalho, GradeKpis, Tabela } from "../pecas";
+import { Banner, Cabecalho, FluxoEtapas, GradeKpis, RankingBarras, Tabela } from "../pecas";
 import { useResumoInteligencia, type AnuncioMidia, type CampanhaMarketing } from "../usar-resumo";
 
 type Aba = "resumo" | "campanhas" | "site" | "tracking";
 const abas: Array<{ chave: Aba; nome: string }> = [{chave:"resumo",nome:"Resumo do marketing"},{chave:"campanhas",nome:"Campanhas e anúncios"},{chave:"site",nome:"Site e comportamento"},{chave:"tracking",nome:"Tracking e privacidade"}];
 const pct = (p:number|null|undefined,t:number|null|undefined)=>t&&p!=null?100*p/t:null;
-const tempo=(s:number|null|undefined)=>s==null?"—":s<60?`${Math.round(s)}s`:`${Math.floor(s/60)}min ${Math.round(s%60)}s`;
 const rotulos:Record<string,string>={page_view:"Página vista",view_item:"Imóvel visualizado",gallery_interaction:"Interação com galeria",favorite_toggle:"Imóvel favoritado",form_start:"Formulário iniciado",generate_lead:"Lead enviado",whatsapp_click:"Clique no WhatsApp",phone_click:"Clique no telefone",cta_click:"Clique em chamada",scroll_depth:"Rolagem da página",engagement_time:"Tempo de atenção",page_exit:"Saída da página",schedule_start:"Agendamento iniciado",schedule_complete:"Agendamento concluído",financing_open:"Simulação aberta",property_search:"Busca de imóvel"};
 
 function Abas({atual,mudar}:{atual:Aba;mudar:(a:Aba)=>void}){return <nav className="int-subabas" aria-label="Leituras de marketing">{abas.map(a=><button type="button" key={a.chave} className={atual===a.chave?"ativo":""} onClick={()=>mudar(a.chave)}>{a.nome}</button>)}</nav>}
@@ -31,29 +30,43 @@ export function VisaoDigital({accessToken,recorte}:PropsTela){
   const campanhaRows=campanhas.map((c:CampanhaMarketing)=>({chave:`${c.source}-${c.medium}-${c.campaign}`,celulas:[{texto:c.campaign,forte:true,sub:`${c.source} · ${c.medium}`},{texto:fmt.inteiro(c.page_views),num:true},{texto:fmt.inteiro(c.cta_clicks),num:true},{texto:fmt.inteiro(c.leads),num:true},{texto:fmt.inteiro(c.visitas_agendadas),num:true},{texto:fmt.inteiro(c.visitas_realizadas),num:true,forte:true},{texto:fmt.porcento(pct(c.visitas_realizadas,c.leads),1),num:true},{texto:fmt.inteiro(c.vendas),num:true},{texto:fmt.dinheiro(c.vgv),num:true}]}));
   const atribuicao=saude?.atribuicao; const cobertura=pct(atribuicao?.com_campanha,atribuicao?.total);
   const eventos=(m?.eventos??[]).map(e=>({...e,nome:rotulos[e.evento]??e.evento.replaceAll("_"," ")})); const maxEvento=Math.max(1,...eventos.map(e=>e.quantidade));
+  const totalCrm=campanhas.reduce((a,c)=>({leads:a.leads+c.leads,agendadas:a.agendadas+c.visitas_agendadas,realizadas:a.realizadas+c.visitas_realizadas,vendas:a.vendas+c.vendas,vgv:a.vgv+c.vgv}),{leads:0,agendadas:0,realizadas:0,vendas:0,vgv:0});
 
   return <div className="int-secao"><Abas atual={aba} mudar={setAba}/>
     {aba==="resumo"&&<>
-      <section className="int-decisao-resumo"><div><span className="intp-cab-eyebrow">LEITURA DO MARKETING</span><h2>{anuncios.length?`${anuncios.length} anúncios ativos com gasto e resultado no mesmo lugar`:"O site está medindo comportamento, mas as contas de mídia ainda não entregam a visão completa"}</h2><p>{anuncios.length?"Decida pela cadeia completa: anúncio → lead → Funil 2.0 → visita → venda.":"A coleta própria existe. O próximo passo obrigatório é dar permissão de leitura às contas de Meta e Google; eventos enviados à Meta não substituem métricas do Gerenciador."}</p></div><strong className={saude?.tracking_atrasado?"ruim":"bom"}>{saude?.tracking_atrasado?"COLETA PARADA":"SITE ATIVO"}</strong></section>
-      <GradeKpis colunas={6} itens={[
-        {rotulo:"Investimento",bruto:anuncios.length?totalMidia.investimento:null,texto:fmt.dinheiro(anuncios.length?totalMidia.investimento:null),tile:"laranja",foot:`${anuncios.length} anúncios com entrega`},
-        {rotulo:"CTR",bruto:ctr,texto:fmt.porcento(ctr,2),tile:"roxo",foot:`${fmt.inteiro(totalMidia.cliques)} cliques`},
-        {rotulo:"CPL da plataforma",bruto:cpl,texto:fmt.dinheiro(cpl),tile:"ambar",foot:`${fmt.inteiro(totalMidia.leads)} conversões reportadas`},
-        {rotulo:"Visitas ao site",bruto:resumo?.visitas_rastreadas,texto:fmt.inteiro(resumo?.visitas_rastreadas),tile:"laranja",foot:`${fmt.inteiro(resumo?.page_views)} páginas vistas`},
-        {rotulo:"Leads do site",bruto:resumo?.leads_gerados,texto:fmt.inteiro(resumo?.leads_gerados),tile:"verde",foot:`${fmt.porcento(pct(resumo?.leads_gerados,resumo?.visitas_rastreadas),1)} das visitas`},
-        {rotulo:"Tempo de atenção",bruto:comportamento?.tempo_engajamento_medio_seg,texto:tempo(comportamento?.tempo_engajamento_medio_seg),tile:"roxo",foot:`${fmt.porcento(comportamento?.saida_rapida_pct,1)} saem rápido`}
-      ]}/>
-      <Cabecalho eyebrow="DECISÕES" titulo="O que fazer com estes dados" cor="#8B00CC"/>
-      <div className="int-decisao-acoes">
-        <article className={metaOk?"positivo":"critico"}><span>1 · META</span><h3>{metaOk?`${meta?.anuncios?.length??0} anúncios ativos lidos`:"Dar acesso de leitura ao Meta Ads"}</h3><p>{metaOk?"Compare campanha, conjunto e anúncio pelo custo e pelas visitas do CRM.":meta?.motivo??"O token atual só envia eventos; ele não lê o Gerenciador."}</p></article>
-        <article className={googleOk?"positivo":"critico"}><span>2 · GOOGLE</span><h3>{googleOk?`${google?.anuncios?.length??0} anúncios ativos lidos`:"Conectar Google Ads"}</h3><p>{googleOk?"Cliques, custo e conversões já podem ser comparados.":google?.motivo??"A conta ainda não fornece campanhas ao ERP."}</p></article>
-        <article className={(cobertura??0)>=80?"positivo":"atencao"}><span>3 · ATRIBUIÇÃO</span><h3>{atribuicao?.total?`${fmt.inteiro(atribuicao.com_campanha)} de ${fmt.inteiro(atribuicao.total)} leads atribuídos identificam campanha`:"Nenhum lead atribuído no período"}</h3><p>UTM, click ID e campanha precisam chegar ao CRM para creditar visita e venda. O percentual sozinho não é usado com amostra pequena.</p></article>
-        <article className={(comportamento?.abandono_formulario??0)>0?"atencao":"positivo"}><span>4 · SITE</span><h3>{fmt.inteiro(comportamento?.abandono_formulario)} formulários abandonados</h3><p>Revise o ponto de abandono antes de aumentar tráfego pago.</p></article>
+      <section className="int-hero-executivo marketing">
+        <div className="int-hero-leitura"><span className="intp-cab-eyebrow">LEITURA DO MARKETING</span><h2>{!metaOk||!googleOk?"Você ainda não consegue comparar todo o dinheiro investido com o resultado real":"Mídia, site e CRM já podem ser lidos na mesma cadeia"}</h2><p>{!metaOk||!googleOk?"O site está coletando comportamento, mas faltam permissões de leitura das contas de mídia. Sem isso, investimento, CTR e CPL completos não podem ser exibidos como se fossem reais.":"Use campanha → lead → visita → venda para decidir onde aumentar, reduzir ou interromper orçamento."}</p><div className="int-hero-chips"><span><b>{fmt.inteiro(resumo?.visitas_rastreadas)}</b> visitas rastreadas</span><span><b>{fmt.inteiro(totalCrm.leads)}</b> leads atribuídos no CRM</span></div></div>
+        <aside><span>SAÚDE DA COLETA</span><strong className={saude?.tracking_atrasado?"ruim":"bom"}>{saude?.tracking_atrasado?"PARADA":"ATIVA"}</strong><small>último evento {fmt.hora(saude?.ultimo_evento_em)}</small></aside>
+      </section>
+      <div className="int-dashboard-grid">
+        <FluxoEtapas titulo="Da visita no site até a venda" nota="Dados próprios e desfecho identificado no CRM" etapas={[
+          {rotulo:"Visitas ao site",valor:resumo?.visitas_rastreadas,texto:fmt.inteiro(resumo?.visitas_rastreadas),sub:`${fmt.inteiro(resumo?.page_views)} páginas vistas`,tom:"laranja"},
+          {rotulo:"Cliques em CTA",valor:resumo?.cliques_cta,texto:fmt.inteiro(resumo?.cliques_cta),tom:"roxo"},
+          {rotulo:"Leads atribuídos",valor:totalCrm.leads,texto:fmt.inteiro(totalCrm.leads),sub:`${fmt.porcento(pct(totalCrm.leads,resumo?.visitas_rastreadas),1)} das visitas`,tom:"verde"},
+          {rotulo:"Visitas realizadas",valor:totalCrm.realizadas,texto:fmt.inteiro(totalCrm.realizadas),sub:`${fmt.inteiro(totalCrm.agendadas)} agendadas`,tom:"verde"},
+          {rotulo:"Vendas",valor:totalCrm.vendas,texto:fmt.inteiro(totalCrm.vendas),sub:fmt.dinheiro(totalCrm.vgv),tom:"verde"},
+        ]}/>
+        <section className="int-card-superficie int-conexoes-resumo"><Cabecalho eyebrow="CONEXÕES ESSENCIAIS" titulo="O que está confiável agora"/><Status nome="Coleta própria do site" status={saude?.tracking_atrasado?"erro":"conectado"} motivo={`${fmt.inteiro(saude?.total_eventos)} eventos registrados`}/><Status nome="Leitura do Meta Ads" status={meta?.status??"erro"} motivo={metaOk?`${meta?.anuncios?.length??0} anúncios disponíveis`:meta?.motivo??"Sem permissão ads_read"}/><Status nome="Google Ads" status={google?.status??"erro"} motivo={googleOk?`${google?.anuncios?.length??0} anúncios disponíveis`:google?.motivo??"Sem credenciais"}/></section>
       </div>
+      <div className="int-graficos-grid">
+        <section className="int-card-superficie"><Cabecalho eyebrow="COMPORTAMENTO" titulo="Eventos mais disparados no site"/><RankingBarras itens={eventos.slice(0,8).map((e,i)=>({rotulo:e.nome,valor:e.quantidade,texto:fmt.inteiro(e.quantidade),tom:i<3?"roxo":"laranja"}))}/></section>
+        <section className="int-card-superficie"><Cabecalho eyebrow="DECISÕES" titulo="O que precisa acontecer agora"/><div className="int-lista-executiva">
+          <article className={metaOk?"positivo":"critico"}><b>1</b><span><strong>{metaOk?"Meta Ads conectado":"Liberar leitura do Meta Ads"}</strong><small>{metaOk?"Custos podem ser comparados ao CRM.":"O envio de eventos não dá acesso a gasto, CTR ou CPL."}</small></span></article>
+          <article className={googleOk?"positivo":"critico"}><b>2</b><span><strong>{googleOk?"Google Ads conectado":"Conectar Google Ads"}</strong><small>{googleOk?"Campanhas e cliques disponíveis.":"Faltam OAuth, developer token e customer ID."}</small></span></article>
+          <article className={(cobertura??0)>=80?"positivo":"atencao"}><b>3</b><span><strong>{atribuicao?.total?`${fmt.inteiro(atribuicao.com_campanha)} de ${fmt.inteiro(atribuicao.total)} leads com campanha`:"Sem atribuição no período"}</strong><small>UTM e click ID precisam chegar ao CRM.</small></span></article>
+          <article className={(comportamento?.abandono_formulario??0)>0?"atencao":"positivo"}><b>4</b><span><strong>{fmt.inteiro(comportamento?.abandono_formulario)} formulários abandonados</strong><small>Revise o ponto de abandono antes de aumentar tráfego.</small></span></article>
+        </div></section>
+      </div>
+      <GradeKpis colunas={3} itens={[
+        {rotulo:"Investimento lido nas plataformas",bruto:anuncios.length?totalMidia.investimento:null,texto:fmt.dinheiro(anuncios.length?totalMidia.investimento:null),tile:"laranja",foot:anuncios.length?`${anuncios.length} anúncios com entrega`:"aguardando permissão real de leitura"},
+        {rotulo:"CTR das campanhas lidas",bruto:ctr,texto:fmt.porcento(ctr,2),tile:"roxo",foot:anuncios.length?`${fmt.inteiro(totalMidia.cliques)} cliques`:"não estimado"},
+        {rotulo:"CPL reportado pelas plataformas",bruto:cpl,texto:fmt.dinheiro(cpl),tile:"verde",foot:anuncios.length?`${fmt.inteiro(totalMidia.leads)} conversões reportadas`:"não estimado"},
+      ]}/>
     </>}
 
     {aba==="campanhas"&&<>
       <Cabecalho eyebrow="MÍDIA ATIVA" titulo="Campanha, conjunto e anúncio — sem esconder a hierarquia" nota={recorte.periodo}/>
+      <div className="int-duas"><section className="int-card-superficie"><h3>Campanhas que mais geram visita realizada</h3><RankingBarras itens={[...campanhas].sort((a,b)=>b.visitas_realizadas-a.visitas_realizadas).slice(0,8).map(c=>({rotulo:c.campaign,valor:c.visitas_realizadas,texto:fmt.inteiro(c.visitas_realizadas),tom:"verde",sub:`${c.leads} leads · ${fmt.porcento(pct(c.visitas_realizadas,c.leads),1)} conversão`}))}/></section><section className="int-card-superficie"><h3>Campanhas que mais geram leads no CRM</h3><RankingBarras itens={[...campanhas].sort((a,b)=>b.leads-a.leads).slice(0,8).map(c=>({rotulo:c.campaign,valor:c.leads,texto:fmt.inteiro(c.leads),tom:"roxo",sub:`${c.source} · ${c.medium}`}))}/></section></div>
       <Tabela colunas={[{titulo:"Canal"},{titulo:"Campanha / conjunto"},{titulo:"Anúncio"},{titulo:"Status"},{titulo:"Gasto",num:true},{titulo:"Impressões",num:true},{titulo:"Cliques",num:true},{titulo:"CTR",num:true},{titulo:"CPC",num:true},{titulo:"Leads mídia",num:true},{titulo:"CPL mídia",num:true}]} linhas={anuncios.map(linhaAnuncio)} ordenadaEm="Gasto" foot="Leads/CPL da mídia são os números reportados pela plataforma. A tabela abaixo mostra o desfecho real no CRM."/>
       {!anuncios.length&&<div className="int-conexao-clara"><strong>As credenciais de leitura ainda não existem ou não têm permissão.</strong><p>Meta precisa de `ads_read` e acesso à conta; Google precisa de OAuth, developer token e customer ID. A estrutura está pronta e mostrará dados reais assim que essas permissões forem concedidas.</p></div>}
       <Cabecalho eyebrow="ATRIBUIÇÃO REAL" titulo="Origem e campanha até visita e venda"/>
