@@ -6,7 +6,7 @@ import type { createServerSupabaseClient } from "./server";
 
 type ServerSupabase = ReturnType<typeof createServerSupabaseClient>;
 
-export type EffectiveAccess = { role: string; permissions: PermissionMap };
+export type EffectiveAccess = { role: string; permissions: PermissionMap; resolved: boolean };
 
 export async function resolveEffectiveAccess(
   supabase: ServerSupabase,
@@ -17,7 +17,7 @@ export async function resolveEffectiveAccess(
     .select("role,permissoes")
     .eq("id", userId)
     .maybeSingle();
-  if (error || !userProfile) return { role: "", permissions: {} };
+  if (error || !userProfile) return { role: "", permissions: {}, resolved: false };
 
   const role = (userProfile as { role?: string }).role ?? "";
   let permissions = (userProfile as { permissoes?: PermissionMap | null }).permissoes ?? null;
@@ -29,11 +29,12 @@ export async function resolveEffectiveAccess(
       .maybeSingle();
     permissions = (roleProfile as { permissoes?: PermissionMap | null } | null)?.permissoes ?? {};
   }
-  return { role, permissions: permissions ?? {} };
+  return { role, permissions: permissions ?? {}, resolved: true };
 }
 
 /** true se o acesso pode executar a ação no módulo. */
 export function accessCan(access: EffectiveAccess, moduleName: string, action: string): boolean {
+  if (!access.resolved) return false;
   return canDo(access.role, access.permissions, moduleName, action);
 }
 

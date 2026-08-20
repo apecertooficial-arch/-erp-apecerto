@@ -29,11 +29,16 @@ test("preço em milhares tem confirmação visual e validação também no servi
 test("nota pode chegar a 100 e publicação reflete a view pública", () => {
   const quality = read("app/features/products/quality.ts");
   const catalog = read("app/api/catalog/route.ts");
+  const product = read("app/api/product/route.ts");
+  const publication = read("app/features/products/publication.ts");
   const detail = read("app/features/products/ProductDetail.tsx");
   assert.match(quality, /cadastro \+= 5/);
   assert.match(quality, /cadastro \+= 3/);
   assert.match(quality, /cadastro \+= 4/);
-  assert.match(catalog, /item\.publicado && !item\.rascunho/);
+  assert.match(catalog, /isProductPublishedOnSite/);
+  assert.match(product, /isProductPublishedOnSite/);
+  assert.match(publication, /status\?\.trim\(\)\.toLowerCase\(\) !== "pronto"/);
+  assert.match(publication, /availableApprovedUnits > 0/);
   assert.match(detail, /site_published/);
 });
 
@@ -60,7 +65,7 @@ test("marca d'água usa o logotipo oficial, sem SVG textual improvisado", () => 
   const css = read("app/globals.css");
   const processor = read("app/features/products/watermark.ts");
   const wizard = read("app/features/products/CaptureWizard.tsx");
-  assert.match(css, /logo-apecerto-branco\.png/);
+  assert.match(processor, /logo-apecerto-branco\.png/);
   assert.doesNotMatch(css, /apêcerto<\/text>/);
   assert.match(processor, /canvas\.toBlob/);
   assert.match(wizard, /applyOfficialWatermark/);

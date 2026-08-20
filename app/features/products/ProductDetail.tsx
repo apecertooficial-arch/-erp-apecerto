@@ -1,14 +1,15 @@
 "use client";
 /* eslint-disable @next/next/no-img-element */
 
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { getBrowserSupabaseClient } from "../../lib/supabase/browser";
 import type { ProductQuality } from "./quality";
+import { isProductManagerRole } from "./access";
 import { MoneyInput } from "./MoneyInput";
 import { applyOfficialWatermark } from "./watermark";
 
 type Media = { id: string; tipo: "foto" | "video" | "pdf" | "apresentacao"; storage_path: string; categoria: string | null; nome: string | null; is_capa: boolean; url: string | null; unidade_id?: string | null };
-type Unit = { id: string; numero: string | null; tipologia: string | null; area_m2: number | null; vagas: number | null; valor_tabela: number | null; valor_promo: number | null; disponivel: boolean; de_terceiros?: boolean; captador_nome?: string | null; proprietario_nome?: string | null; proprietario_contato?: string | null; acesso_tipo?: string | null; acesso_codigo?: string | null; acesso_instrucoes?: string | null; aprovacao?: string | null };
+type Unit = { id: string; codigo?: string | null; numero: string | null; tipologia: string | null; area_m2: number | null; vagas: number | null; valor_tabela: number | null; valor_promo: number | null; disponivel: boolean; de_terceiros?: boolean; captador_nome?: string | null; proprietario_nome?: string | null; proprietario_contato?: string | null; acesso_tipo?: string | null; acesso_codigo?: string | null; acesso_instrucoes?: string | null; aprovacao?: string | null; reprovacao_motivo?: string | null; mine?: boolean; pode_editar?: boolean };
 type Owner = { nome: string; email: string; telefone: string };
 type Condo = { id: string; nome: string; endereco: string; numero: string | null; bairro: string | null; cidade: string; uf: string; cep: string | null };
 type LeadOption = { id: number; nome: string | null; telefone: string | null; linked: boolean };
@@ -24,7 +25,7 @@ type ProductDetailData = {
   completion: { checks: Record<string, boolean>; completed: number; total: number };
   quality: ProductQuality;
   is_favorite: boolean; leads: LeadOption[];
-  aprovacao?: string | null; captado_por_nome?: string | null; mine?: boolean;
+  aprovacao?: string | null; captado_por_nome?: string | null; mine?: boolean; pode_editar?: boolean; codigo?: string | null;
   latitude?: number | null; longitude?: number | null;
 };
 
@@ -74,8 +75,8 @@ function initials(name?: string | null): string {
   return ((parts[0][0] ?? "") + (parts.length > 1 ? parts[parts.length - 1][0] : "")).toUpperCase();
 }
 
-export function ProductDetail({ productId, accessToken, sessionRole = "corretor", initialUnitId, onClose, onChanged }: { productId: string; accessToken: string; sessionRole?: string; initialUnitId?: string | null; onClose: () => void; onChanged: () => void }) {
-  const canPublish = sessionRole === "admin" || sessionRole === "gestor" || sessionRole === "executivo";
+export function ProductDetail({ productId, accessToken, sessionRole = "corretor", initialUnitId, initialEditing = false, captadorScore = null, onClose, onChanged }: { productId: string; accessToken: string; sessionRole?: string; initialUnitId?: string | null; initialEditing?: boolean; captadorScore?: number | null; onClose: () => void; onChanged: () => void }) {
+  const canPublish = isProductManagerRole(sessionRole);
   const [product, setProduct] = useState<ProductDetailData | null>(null);
   const [draft, setDraft] = useState<Record<string, string | number | null>>({});
   const [owner, setOwner] = useState<Owner | null>(null);
@@ -83,7 +84,7 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
   const [condominiums, setCondominiums] = useState<Condo[]>([]);
   const [condominiumId, setCondominiumId] = useState("");
   const [newCondominiumName, setNewCondominiumName] = useState("");
-  const [editing, setEditing] = useState(false);
+  const [editing, setEditing] = useState(Boolean(initialEditing));
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [category, setCategory] = useState("Outros");
@@ -96,6 +97,7 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
   const [pendingDelete, setPendingDelete] = useState<Media | null>(null);
   const [tab, setTab] = useState<"resumo" | "site" | "localizacao" | "proprietario" | "unidades" | "galeria">("resumo");
   const [unitDetail, setUnitDetail] = useState<Unit | null>(null);
+  const [unitEdit, setUnitEdit] = useState<Unit | null>(null);
   const [unitLightbox, setUnitLightbox] = useState<{ items: { url: string; label: string }[]; index: number } | null>(null);
   const [confirmDeleteProduct, setConfirmDeleteProduct] = useState(false);
 
@@ -106,8 +108,9 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
     if (!response.ok) throw new Error(result.error ?? "Não foi possível abrir o produto.");
     const next = result.product as ProductDetailData;
     setProduct(next);
+    if (next.pode_editar === false) setEditing(false);
     setOwner(next.proprietarios ?? { nome: "", email: "", telefone: "" });
-    setUnits(next.unidades);
+    setUnits(next.unidades.filter((unit) => !unit.de_terceiros));
     setCondominiumId(next.condominios?.id ?? "");
     setNewCondominiumName(next.condominios?.nome ?? "");
     setDraft(Object.fromEntries(editableFields.map((field) => {
@@ -130,6 +133,11 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
   const presentations = useMemo(() => buildingMedia.filter((item) => item.tipo === "pdf" || item.tipo === "apresentacao"), [buildingMedia]);
   const visibleMedia = mediaTab === "fotos" ? photos : mediaTab === "videos" ? videos : presentations;
   const cover = photos.find((item) => item.is_capa) ?? photos[0];
+  const focusedUnit = useMemo(() => initialUnitId && product ? product.unidades.find((unit) => unit.id === initialUnitId) ?? null : null, [initialUnitId, product]);
+  const focusedUnitMedia = useMemo(() => focusedUnit ? (product?.midias ?? []).filter((item) => item.unidade_id === focusedUnit.id) : [], [focusedUnit, product]);
+  const focusedUnitPhotos = useMemo(() => focusedUnitMedia.filter((item) => item.tipo === "foto" && item.url), [focusedUnitMedia]);
+  const focusedUnitCover = focusedUnitPhotos.find((item) => item.is_capa) ?? focusedUnitPhotos[0];
+  const focusedUnitPrice = focusedUnit ? (focusedUnit.valor_promo ?? focusedUnit.valor_tabela) : null;
 
   const addressLine = useMemo(() => [product?.endereco, product?.numero, product?.bairro, product?.cidade, product?.uf, product?.cep].filter(Boolean).join(", "), [product]);
   // Query pro embed do Google (por texto) — sempre com cidade/UF/Brasil pra melhorar o acerto.
@@ -220,18 +228,6 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
     } catch (error) { setMessage(error instanceof Error ? error.message : "Erro ao publicar."); } finally { setBusy(false); }
   }
 
-  const initialOpened = useRef(false);
-  useEffect(() => {
-    if (!initialOpened.current && initialUnitId && product) {
-      const u = product.unidades.find((x) => x.id === initialUnitId);
-      if (u) {
-        initialOpened.current = true;
-        const timer = window.setTimeout(() => { setTab("unidades"); setUnitDetail(u); }, 0);
-        return () => window.clearTimeout(timer);
-      }
-    }
-  }, [product, initialUnitId]);
-
   async function decideUnit(unidadeId: string, approve: boolean) {
     let motivo: string | null = null;
     if (!approve) { motivo = window.prompt("Motivo da reprovação (opcional):", "") ?? ""; }
@@ -242,6 +238,37 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
       if (!response.ok) throw new Error(result.error ?? "Não foi possível concluir a decisão.");
       setUnitDetail(null); await load(); onChanged(); setMessage(approve ? "Unidade aprovada." : "Unidade reprovada.");
     } catch (error) { setMessage(error instanceof Error ? error.message : "Erro ao decidir a unidade."); } finally { setBusy(false); }
+  }
+
+  async function saveUnit() {
+    if (!unitEdit) return;
+    setBusy(true); setMessage("");
+    try {
+      const response = await fetch("/api/product", { method: "PATCH", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify({ id: productId, action: "updateUnit", unidadeId: unitEdit.id, unidade: unitEdit }) });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error ?? "Não foi possível salvar a unidade.");
+      setUnitEdit(null); setUnitDetail(null); await load(); onChanged(); setMessage(result.approval === "pendente" ? "Unidade atualizada e reenviada para aprovação." : "Unidade atualizada.");
+    } catch (error) { setMessage(error instanceof Error ? error.message : "Erro ao salvar a unidade."); } finally { setBusy(false); }
+  }
+
+  async function uploadUnitMedia(files: FileList | null, unit: Unit) {
+    if (!files?.length) return;
+    setBusy(true); setMessage("");
+    try {
+      const supabase = getBrowserSupabaseClient();
+      const { data: auth } = await supabase.auth.getUser();
+      if (!auth.user) throw new Error("Sua sessão expirou.");
+      for (const originalFile of Array.from(files)) {
+        const file = originalFile.type.startsWith("image/") ? await applyOfficialWatermark(originalFile) : originalFile;
+        const safeName = file.name.normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-zA-Z0-9._-]/g, "-");
+        const path = `${auth.user.id}/${productId}/${crypto.randomUUID()}-${safeName}`;
+        const { error: uploadError } = await supabase.storage.from("empreendimentos").upload(path, file, { contentType: file.type, upsert: false });
+        if (uploadError) throw uploadError;
+        const { error: insertError } = await supabase.from("midias").insert({ empreendimento_id: productId, unidade_id: unit.id, storage_path: path, tipo: mediaType(file), categoria: "Unidade", nome: file.name, is_capa: false });
+        if (insertError) { await supabase.storage.from("empreendimentos").remove([path]); throw insertError; }
+      }
+      await load(); onChanged(); setMessage("Mídia da unidade adicionada com a marca d’água oficial.");
+    } catch (error) { setMessage(error instanceof Error ? `Falha no upload: ${error.message}` : "Falha no upload."); } finally { setBusy(false); }
   }
 
   async function submitRequest() {
@@ -266,6 +293,12 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
     } catch (error) { setMessage(error instanceof Error ? error.message : "Erro ao revisar o produto."); } finally { setBusy(false); }
   }
 
+  const captadorLabel = useMemo(() => {
+    if (!product) return "Estoque ApêCerto";
+    if (product.captado_por_nome) return product.captado_por_nome;
+    const names = Array.from(new Set(product.unidades.map((unit) => unit.captador_nome).filter((name): name is string => Boolean(name))));
+    return names.length ? names.join(", ") : "Estoque ApêCerto";
+  }, [product]);
   const completionPct = product?.quality.score ?? 0;
   const completionLabels: Record<string, string> = { basics: "Dados básicos", location: "Endereço", owner: "Proprietário", costs: "Custos", access: "Acesso", media: "Fotos, vídeo e capa", units: "Unidades" };
   const otherPhotos = photos.filter((item) => item.id !== cover?.id);
@@ -293,7 +326,7 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
         : null)));
 
   const mediaLibrary = product && <section className="detail-section media-library fv2-media">
-    <div className="section-row"><div><h3>Galeria e materiais{product?.tour_url ? <a className="fv2-tour-link" href={product.tour_url} target="_blank" rel="noreferrer">Tour virtual</a> : null}</h3><small>{photos.length} fotos · {videos.length} vídeos · {presentations.length} apresentações</small></div><button className={editImages ? "edit-images-btn active" : "edit-images-btn"} type="button" onClick={() => setEditImages(!editImages)}>{editImages ? "✓ Concluir edição" : "✎ Editar imagens"}</button></div>
+    <div className="section-row"><div><h3>Galeria e materiais{product?.tour_url ? <a className="fv2-tour-link" href={product.tour_url} target="_blank" rel="noreferrer">Tour virtual</a> : null}</h3><small>{photos.length} fotos · {videos.length} vídeos · {presentations.length} apresentações</small></div>{product?.pode_editar !== false && <button className={editImages ? "edit-images-btn active" : "edit-images-btn"} type="button" onClick={() => setEditImages(!editImages)}>{editImages ? "✓ Concluir edição" : "✎ Editar imagens"}</button>}</div>
     <div className="media-tabs"><button className={mediaTab === "fotos" ? "active" : ""} type="button" onClick={() => setMediaTab("fotos")}>Fotos ({photos.length})</button><button className={mediaTab === "videos" ? "active" : ""} type="button" onClick={() => setMediaTab("videos")}>Vídeos ({videos.length})</button><button className={mediaTab === "apresentacoes" ? "active" : ""} type="button" onClick={() => setMediaTab("apresentacoes")}>Apresentações ({presentations.length})</button></div>
     {editImages && <div className="material-upload">{mediaTab === "fotos" && <select value={category} onChange={(event) => setCategory(event.target.value)}>{mediaCategories.map((item) => <option key={item}>{item}</option>)}</select>}<label className="primary-action">＋ {mediaTab === "fotos" ? "Adicionar fotos" : mediaTab === "videos" ? "Adicionar vídeos" : "Adicionar apresentação PDF"}<input disabled={busy} multiple type="file" accept={mediaTab === "fotos" ? "image/*" : mediaTab === "videos" ? "video/*" : ".pdf,application/pdf,.ppt,.pptx"} onChange={(event) => void upload(event.target.files, mediaTab === "videos" ? "Tour" : mediaTab === "apresentacoes" ? "Apresentação" : undefined)} /></label></div>}
     {visibleMedia.length ? <div className="detail-gallery">{visibleMedia.map((item) => <article key={item.id}>
@@ -306,7 +339,84 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
   return <div className="modal-layer product-detail-layer">
     <button className="modal-scrim" type="button" onClick={onClose} aria-label="Fechar ficha do produto" />
     <aside className="product-detail-panel ficha-v2" aria-label="Ficha completa do produto">
-      {!product ? <div className="detail-loading">{message || "Carregando dados reais do produto..."}</div> : editing ? (
+      {!product ? <div className="detail-loading">{message || "Carregando dados reais do produto..."}</div> : focusedUnit ? (
+        <div className="fv2-page fv2-unit-product">
+          <button className="fv2-close" type="button" onClick={onClose} aria-label="Fechar ficha do apartamento"><IcClose /></button>
+          <div className="fv2-main">
+            <div className="fv2-mosaic">
+              <button className="fv2-mosaic-cover" type="button" onClick={() => focusedUnitPhotos.length && setUnitLightbox({ items: focusedUnitPhotos.map((item) => ({ url: item.url ?? "", label: item.categoria || item.nome || "Foto do apartamento" })), index: 0 })} style={focusedUnitCover?.url ? { backgroundImage: `url(${focusedUnitCover.url})` } : undefined} aria-label="Ampliar fotos do apartamento">
+                <span className={`fv2-status ${focusedUnit.aprovacao === "aprovado" ? "ready" : "draft"}`}><i />{focusedUnit.aprovacao === "pendente" ? "Aguardando aprovação" : focusedUnit.aprovacao === "reprovado" ? "Correção solicitada" : "Aprovado"}</span>
+              </button>
+              <div className="fv2-mosaic-side">
+                <div className="fv2-thumb" style={focusedUnitPhotos[1]?.url ? { backgroundImage: `url(${focusedUnitPhotos[1].url})` } : undefined} />
+                <button className="fv2-thumb fv2-thumb-more" type="button" onClick={() => focusedUnitPhotos.length && setUnitLightbox({ items: focusedUnitPhotos.map((item) => ({ url: item.url ?? "", label: item.categoria || item.nome || "Foto do apartamento" })), index: 0 })}>
+                  <IcImages /><span>Ver {focusedUnitPhotos.length} foto{focusedUnitPhotos.length === 1 ? "" : "s"} da unidade</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="fv2-head">
+              <span className="unit-product-eyebrow">APARTAMENTO INDIVIDUAL</span>
+              <h2>{product.nome} · Un. {focusedUnit.numero || "s/n"}{focusedUnit.codigo && <span className="cod-imovel">{focusedUnit.codigo}</span>}</h2>
+              <p className="fv2-address"><IcPin /> {[product.bairro, product.cidade, product.uf].filter(Boolean).join(" · ") || "Endereço não informado"} · Captado por: {focusedUnit.captador_nome || "—"}</p>
+              <p className="unit-condo-reference"><IcBuilding /> Condomínio de referência: <strong>{product.condominios?.nome || product.nome}</strong></p>
+            </div>
+
+            <div className="fv2-specs">
+              <div className="fv2-spec"><span className="fv2-spec-ic"><IcRuler /></span><strong>{focusedUnit.area_m2 ?? "—"} <em>m²</em></strong><small>área do apartamento</small></div>
+              <div className="fv2-spec"><span className="fv2-spec-ic"><IcBed /></span><strong>{focusedUnit.tipologia || "—"}</strong><small>tipologia própria</small></div>
+              <div className="fv2-spec"><span className="fv2-spec-ic"><IcCar /></span><strong>{focusedUnit.vagas ?? 0}</strong><small>vaga(s)</small></div>
+              <div className="fv2-spec"><span className="fv2-spec-ic"><IcSeal /></span><strong>{focusedUnit.disponivel ? "Sim" : "Não"}</strong><small>disponível</small></div>
+            </div>
+
+            <nav className="fv2-tabs" aria-label="Dados do apartamento">
+              {([["resumo", "Resumo"], ["proprietario", "Proprietário e acesso"], ["galeria", "Galeria da unidade"], ["localizacao", "Condomínio e localização"]] as const).map(([key, label]) => <button key={key} type="button" className={tab === key ? "active" : ""} onClick={() => setTab(key)}>{label}</button>)}
+            </nav>
+
+            {message && <div className={`detail-message ${message.includes("salv") || message.includes("atualiz") || message.includes("aprova") ? "success" : ""}`}>{message}</div>}
+            <div className="fv2-tab-body">
+              {tab === "resumo" && <>
+                <div className="unit-independent-note"><IcSeal /><div><strong>Este apartamento é um produto independente</strong><span>Preço, aprovação, proprietário, acesso e fotos pertencem à unidade. O condomínio serve somente como referência de prédio e localização.</span></div></div>
+                {focusedUnit.aprovacao === "reprovado" && focusedUnit.reprovacao_motivo && <div className="approval-reason"><strong>Correção solicitada:</strong> {focusedUnit.reprovacao_motivo}</div>}
+                <div className="fv2-cost-tiles">
+                  <div className="fv2-tile"><small>NÚMERO</small><strong>{focusedUnit.numero || "—"}</strong></div>
+                  <div className="fv2-tile"><small>CÓDIGO AP</small><strong>{focusedUnit.codigo || "—"}</strong></div>
+                  <div className="fv2-tile"><small>ORIGEM</small><strong>{focusedUnit.de_terceiros ? "Captação individual" : "Estoque da construtora"}</strong></div>
+                </div>
+              </>}
+
+              {tab === "proprietario" && <>
+                {focusedUnit.proprietario_nome ? <div className="fv2-owner-block"><div className="fv2-owner-lead"><span className="fv2-avatar">{initials(focusedUnit.proprietario_nome)}</span><div><strong>{focusedUnit.proprietario_nome}</strong><small>Proprietário deste apartamento</small></div></div>{focusedUnit.proprietario_contato && <div className="fv2-contact-pills"><a className="fv2-pill" href={`tel:${focusedUnit.proprietario_contato}`}><IcPhone />{focusedUnit.proprietario_contato}</a></div>}</div> : <p className="fv2-ud-empty">Proprietário não informado para esta unidade.</p>}
+                <div className="fv2-cost-tiles"><div className="fv2-tile"><small>ACESSO</small><strong>{acessoLabel(focusedUnit.acesso_tipo)}</strong></div><div className="fv2-tile"><small>CÓDIGO</small><strong>{focusedUnit.acesso_codigo || "—"}</strong></div><div className="fv2-tile"><small>INSTRUÇÕES</small><strong>{focusedUnit.acesso_instrucoes || "—"}</strong></div></div>
+                <div className="fv2-person-card unit-captor-card"><span className="fv2-avatar purple">{initials(focusedUnit.captador_nome)}</span><div><strong>{focusedUnit.captador_nome || "Sem captador"}</strong><small>Corretor responsável por esta unidade</small></div></div>
+              </>}
+
+              {tab === "galeria" && <>{focusedUnitPhotos.length ? <div className="focused-unit-gallery">{focusedUnitPhotos.map((item, index) => <button key={item.id} type="button" className="watermarked-preview" onClick={() => setUnitLightbox({ items: focusedUnitPhotos.map((photo) => ({ url: photo.url ?? "", label: photo.categoria || photo.nome || "Foto do apartamento" })), index })}><img src={item.url ?? ""} alt={item.categoria || item.nome || "Foto do apartamento"} /></button>)}</div> : <p className="empty-media">Nenhuma foto própria foi enviada para este apartamento.</p>}{focusedUnit.pode_editar && <label className="fv2-btn fv2-btn-outline focused-unit-upload">＋ Adicionar fotos ou vídeos<input hidden multiple type="file" accept="image/*,video/*" disabled={busy} onChange={(event) => void uploadUnitMedia(event.target.files, focusedUnit)} /></label>}</>}
+
+              {tab === "localizacao" && <>
+                <h3 className="fv2-loc-title">{[product.endereco, product.numero].filter(Boolean).join(", ") || "Endereço não cadastrado"}</h3>
+                <p className="fv2-loc-sub">{[product.bairro, product.cidade].filter(Boolean).join(" · ")}{product.uf ? ` — ${product.uf}` : ""}{product.cep ? ` · CEP ${product.cep}` : ""}</p>
+                <div className="fv2-condo"><span className="fv2-condo-ic"><IcBuilding /></span><div><strong>{product.condominios?.nome || product.nome}</strong><small>Vínculo de prédio — não define o preço nem a identidade deste apartamento</small></div></div>
+                <div className="fv2-map">{mapQuery ? <iframe title="Mapa do apartamento" loading="lazy" referrerPolicy="no-referrer-when-downgrade" src={`https://www.google.com/maps?q=${mapQuery}&output=embed`} /> : <div className="fv2-map-placeholder">Endereço não cadastrado.</div>}</div>
+              </>}
+            </div>
+          </div>
+
+          <aside className="fv2-side">
+            <div className="fv2-price-card unit-price-card">
+              <small>VALOR DESTA UNIDADE</small>
+              <strong>{focusedUnitPrice ? money.format(focusedUnitPrice) : "Sob consulta"}</strong>
+              {focusedUnitPrice && focusedUnit.area_m2 ? <span className="fv2-price-m2">{money.format(Math.round(focusedUnitPrice / focusedUnit.area_m2))} por m²</span> : null}
+              <div className="fv2-side-costs"><div><span>Condomínio</span><b>Não informado na unidade</b></div><div><span>IPTU</span><b>Não informado na unidade</b></div><div><span>Prédio de referência</span><b>{product.condominios?.nome || product.nome}</b></div></div>
+            </div>
+            <div className="fv2-actions">
+              {focusedUnit.pode_editar && <button className="fv2-btn fv2-btn-outline" type="button" disabled={busy} onClick={() => setUnitEdit({ ...focusedUnit })}><IcEdit /> Editar apartamento</button>}
+              {canPublish && focusedUnit.de_terceiros && focusedUnit.aprovacao === "pendente" && <div className="focused-unit-decision"><button type="button" className="fv2-ud-reject" disabled={busy} onClick={() => void decideUnit(focusedUnit.id, false)}>✕ Reprovar</button><button type="button" className="fv2-ud-approve" disabled={busy} onClick={() => void decideUnit(focusedUnit.id, true)}>✓ Aprovar unidade</button></div>}
+            </div>
+            <div className="fv2-person-card"><span className="fv2-avatar purple">{initials(focusedUnit.captador_nome)}</span><div><strong>{focusedUnit.captador_nome || "Sem captador"}</strong><small>Captador desta unidade</small></div></div>
+          </aside>
+        </div>
+      ) : editing ? (
         <div className="fv2-edit">
           <div className="fv2-edit-head"><h2>Editar produto</h2><button className="fv2-btn fv2-btn-ghost" type="button" onClick={() => setEditing(false)}>Cancelar edição</button></div>
           {message && <div className={`detail-message ${message.includes("salv") || message.includes("atualiz") || message.includes("adicionado") ? "success" : ""}`}>{message}</div>}
@@ -328,7 +438,7 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
             </div>
             <label>Condomínio associado<select value={condominiumId} onChange={(event) => { setCondominiumId(event.target.value); if (event.target.value) setNewCondominiumName(""); }}><option value="">Cadastrar novo com o endereço acima</option>{condominiums.map((item) => <option value={item.id} key={item.id}>{item.nome} · {item.bairro ?? item.cidade}</option>)}</select></label>{!condominiumId && <label>Nome do novo condomínio<input value={newCondominiumName} onChange={(event) => setNewCondominiumName(event.target.value)} placeholder="Nome do condomínio" /></label>}
             {product.origem === "terceiros" && <><h3>Acesso ao imóvel</h3><div className="field-grid"><label>Tipo<input value={draft.acesso_tipo ?? ""} onChange={(event) => setDraft({ ...draft, acesso_tipo: event.target.value })} /></label><label>Código digital<input value={draft.acesso_codigo ?? ""} onChange={(event) => setDraft({ ...draft, acesso_codigo: event.target.value })} /></label></div><label>Instruções<textarea rows={3} value={draft.acesso_instrucoes ?? ""} onChange={(event) => setDraft({ ...draft, acesso_instrucoes: event.target.value })} /></label>{owner && <><h3>Proprietário</h3><div className="field-grid">{(["nome", "email", "telefone"] as const).map((field) => <label key={field}>{field}<input value={owner[field]} onChange={(event) => setOwner({ ...owner, [field]: event.target.value })} /></label>)}</div></>}</>}
-            <h3>Unidades</h3><div className="section-row"><small>{draft.finalidade === "aluguel" ? "Edite estoque e aluguel mensal em valor cheio." : "Edite estoque, tipologia, área e preço."}</small><button className="secondary-action" type="button" onClick={() => setUnits([...units, { id: crypto.randomUUID(), numero: "", tipologia: "", area_m2: null, vagas: 0, valor_tabela: null, valor_promo: null, disponivel: true }])}>＋ Unidade</button></div><div className="edit-units">{units.map((unit, index) => <div key={unit.id}><span>{index + 1}</span><input aria-label="Número" value={unit.numero ?? ""} onChange={(event) => setUnits(units.map((item) => item.id === unit.id ? { ...item, numero: event.target.value } : item))} placeholder="Unidade" /><input aria-label="Tipologia" value={unit.tipologia ?? ""} onChange={(event) => setUnits(units.map((item) => item.id === unit.id ? { ...item, tipologia: event.target.value } : item))} placeholder="Tipologia" /><input aria-label="Área" type="number" value={unit.area_m2 ?? ""} onChange={(event) => setUnits(units.map((item) => item.id === unit.id ? { ...item, area_m2: event.target.value ? Number(event.target.value) : null } : item))} placeholder="m²" /><input aria-label="Vagas" type="number" value={unit.vagas ?? ""} onChange={(event) => setUnits(units.map((item) => item.id === unit.id ? { ...item, vagas: event.target.value ? Number(event.target.value) : null } : item))} /><MoneyInput compact defaultMode={draft.finalidade === "aluguel" ? "reais" : "milhares"} label={`Preço da unidade ${unit.numero || index + 1}`} value={unit.valor_tabela} onChange={(value) => setUnits(units.map((item) => item.id === unit.id ? { ...item, valor_tabela: value } : item))} /><label><input type="checkbox" checked={unit.disponivel} onChange={(event) => setUnits(units.map((item) => item.id === unit.id ? { ...item, disponivel: event.target.checked } : item))} /> disponível</label><button type="button" aria-label="Remover unidade" onClick={() => setUnits(units.filter((item) => item.id !== unit.id))}>×</button></div>)}</div>
+            <h3>Estoque da construtora</h3><div className="section-row"><small>{draft.finalidade === "aluguel" ? "Edite o estoque da construtora em valor cheio. Indicações individuais ficam protegidas na aba Unidades." : "Edite o estoque da construtora. Indicações individuais ficam protegidas na aba Unidades."}</small><button className="secondary-action" type="button" onClick={() => setUnits([...units, { id: crypto.randomUUID(), numero: "", tipologia: "", area_m2: null, vagas: 0, valor_tabela: null, valor_promo: null, disponivel: true }])}>＋ Unidade</button></div><div className="edit-units">{units.map((unit, index) => <div key={unit.id}><span>{index + 1}</span><input aria-label="Número" value={unit.numero ?? ""} onChange={(event) => setUnits(units.map((item) => item.id === unit.id ? { ...item, numero: event.target.value } : item))} placeholder="Unidade" /><input aria-label="Tipologia" value={unit.tipologia ?? ""} onChange={(event) => setUnits(units.map((item) => item.id === unit.id ? { ...item, tipologia: event.target.value } : item))} placeholder="Tipologia" /><input aria-label="Área" type="number" value={unit.area_m2 ?? ""} onChange={(event) => setUnits(units.map((item) => item.id === unit.id ? { ...item, area_m2: event.target.value ? Number(event.target.value) : null } : item))} placeholder="m²" /><input aria-label="Vagas" type="number" value={unit.vagas ?? ""} onChange={(event) => setUnits(units.map((item) => item.id === unit.id ? { ...item, vagas: event.target.value ? Number(event.target.value) : null } : item))} /><MoneyInput compact defaultMode={draft.finalidade === "aluguel" ? "reais" : "milhares"} label={`Preço da unidade ${unit.numero || index + 1}`} value={unit.valor_tabela} onChange={(value) => setUnits(units.map((item) => item.id === unit.id ? { ...item, valor_tabela: value } : item))} /><label><input type="checkbox" checked={unit.disponivel} onChange={(event) => setUnits(units.map((item) => item.id === unit.id ? { ...item, disponivel: event.target.checked } : item))} /> disponível</label><button type="button" aria-label="Remover unidade" onClick={() => setUnits(units.filter((item) => item.id !== unit.id))}>×</button></div>)}</div>
             <button className="primary-action" disabled={busy} type="button" onClick={() => void save()}>{busy ? "Salvando..." : "Salvar no Supabase"}</button>
           </div>
         </div>
@@ -349,8 +459,8 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
             </div>
 
             <div className="fv2-head">
-              <h2>{product.nome}</h2>
-              <p className="fv2-address"><IcPin /> {[product.bairro, product.cidade, product.uf].filter(Boolean).join(" · ") || "Endereço não informado"} · Captado por: {product.captado_por_nome ?? "Não informado"}</p>
+              <h2>{product.nome}{product.codigo && <span className="cod-imovel">{product.codigo}</span>}</h2>
+              <p className="fv2-address"><IcPin /> {[product.bairro, product.cidade, product.uf].filter(Boolean).join(" · ") || "Endereço não informado"} · Captado por: {captadorLabel}</p>
             </div>
 
             <div className="fv2-specs">
@@ -362,7 +472,7 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
 
             <nav className="fv2-tabs">
               {([["resumo", "Resumo"], ["site", "Conteúdo do site"], ["localizacao", "Localização"], ["proprietario", "Proprietário"], ["unidades", "Unidades"], ["galeria", "Galeria"]] as const).map(([key, label]) => (
-                (key !== "proprietario" || product.origem === "terceiros") && <button key={key} type="button" className={tab === key ? "active" : ""} onClick={() => setTab(key)}>{label}</button>
+                (key !== "proprietario" || (product.origem === "terceiros" && product.proprietarios)) && <button key={key} type="button" className={tab === key ? "active" : ""} onClick={() => setTab(key)}>{label}</button>
               ))}
             </nav>
 
@@ -376,7 +486,7 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
                   <b>{completionPct}%</b>
                 </div>
                 <div className="quality-dimensions">{Object.entries(product.quality.dimensions).map(([key, value]) => <div key={key}><span>{key}</span><strong>{value.score}/{value.max}</strong><i><b style={{ width: `${Math.round((value.score / value.max) * 100)}%` }} /></i></div>)}</div>
-                {product.quality.blocking.length > 0 && <div className="quality-blockers"><strong>Corrija antes de publicar</strong>{product.quality.blocking.map((item) => <button type="button" key={item} onClick={() => setEditing(true)}>⚠ {item}<span>Corrigir</span></button>)}</div>}
+                {product.quality.blocking.length > 0 && <div className="quality-blockers"><strong>Corrija antes de publicar</strong>{product.quality.blocking.map((item) => <button type="button" key={item} onClick={() => { if (product.pode_editar !== false) setEditing(true); }}>⚠ {item}{product.pode_editar !== false && <span>Corrigir</span>}</button>)}</div>}
                 <div className="fv2-chips">{Object.entries(product.completion.checks).map(([key, ok]) => <span key={key} className={ok ? "done" : ""}><IcCheck />{completionLabels[key] ?? key}</span>)}</div>
                 <div className={product.descricao ? "fv2-desc" : "fv2-desc empty"}>
                   {product.descricao ? <p>{product.descricao}</p> : <><span>Nenhuma descrição cadastrada ainda.</span><button type="button" onClick={() => setEditing(true)}>Adicionar descrição</button></>}
@@ -394,7 +504,7 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
                 <section><h4>Descrição</h4><p>{product.descricao || "Nenhuma descrição cadastrada."}</p></section>
                 <section><h4>Lazer e áreas comuns</h4><div className="site-content-tags">{product.lazer?.length ? product.lazer.map((item) => <span key={item}>{item}</span>) : <em>Não informado</em>}</div></section>
                 <section><h4>Diferenciais</h4><div className="site-content-tags">{product.diferenciais?.length ? product.diferenciais.map((item) => <span key={item}>{item}</span>) : <em>Não informado</em>}</div></section>
-                <div className="site-content-actions"><button className="fv2-btn fv2-btn-outline" type="button" onClick={() => setEditing(true)}><IcEdit /> Editar conteúdo</button>{product.site_published && <a className="fv2-btn fv2-btn-ghost" href={`https://apecerto.com/?imovel=${encodeURIComponent(product.slug || product.id)}`} target="_blank" rel="noreferrer"><IcLink /> Ver este imóvel no site</a>}</div>
+                <div className="site-content-actions">{product.pode_editar !== false && <button className="fv2-btn fv2-btn-outline" type="button" onClick={() => setEditing(true)}><IcEdit /> Editar conteúdo</button>}{product.site_published && <a className="fv2-btn fv2-btn-ghost" href={`https://apecerto.com/?imovel=${encodeURIComponent(product.slug || product.id)}`} target="_blank" rel="noreferrer"><IcLink /> Ver este imóvel no site</a>}</div>
               </div>}
 
               {tab === "localizacao" && <>
@@ -407,7 +517,7 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
                 </div>
               </>}
 
-              {tab === "proprietario" && product.origem === "terceiros" && <>
+              {tab === "proprietario" && product.origem === "terceiros" && product.proprietarios && <>
                 <div className="fv2-owner-block">
                   <div className="fv2-owner-lead">
                     <span className="fv2-avatar">{initials(product.proprietarios?.nome)}</span>
@@ -425,7 +535,7 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
                 </div>
               </>}
 
-              {tab === "unidades" && <div className="fv2-units">{product.unidades.length ? <><div className="fv2-unit-head"><span>Unidade / Origem</span><span>Tipologia</span><span>Área</span><span>Vagas</span><span>Valor</span><span>Status</span></div>{product.unidades.map((unit) => { const ind = Boolean(unit.de_terceiros); return <button type="button" className="fv2-unit-row" key={unit.id} onClick={() => setUnitDetail(unit)}><span className="fv2-unit-main"><span className="fv2-unit-num">{unit.numero || "—"}</span><span className={`fv2-unit-origin ${ind ? "indic" : "constru"}`}>{ind ? "Indicação" : "Construtora"}</span>{ind && (unit.captador_nome || unit.proprietario_nome) && <small className="fv2-unit-sub">👤 {unit.captador_nome ?? "—"}{unit.proprietario_nome ? ` · Prop.: ${unit.proprietario_nome}` : ""}</small>}</span><span className="fv2-unit-c">{unit.tipologia || "—"}</span><span className="fv2-unit-c">{unit.area_m2 ?? "—"} m²</span><span className="fv2-unit-c">{unit.vagas ?? 0} vaga(s)</span><strong className="fv2-unit-val">{money.format(unit.valor_promo ?? unit.valor_tabela ?? 0)}</strong><i className={`fv2-unit-status ${unit.disponivel ? "on" : "off"}`}>{unit.disponivel ? "Disponível" : "Indisponível"}</i></button>; })}</> : <p className="empty-media">Nenhuma unidade individual cadastrada.</p>}</div>}
+              {tab === "unidades" && <div className="fv2-units">{product.unidades.length ? <><div className="fv2-unit-head"><span>Unidade / Origem</span><span>Tipologia</span><span>Área</span><span>Vagas</span><span>Valor</span><span>Status</span></div>{product.unidades.map((unit) => { const ind = Boolean(unit.de_terceiros); return <button type="button" className="fv2-unit-row" key={unit.id} onClick={() => setUnitDetail(unit)}><span className="fv2-unit-main"><span className="fv2-unit-num">{unit.numero || "—"}{unit.codigo ? <em className="fv2-unit-cod">{unit.codigo}</em> : null}</span><span className={`fv2-unit-origin ${ind ? "indic" : "constru"}`}>{ind ? "Indicação" : "Construtora"}</span>{ind && (unit.captador_nome || unit.proprietario_nome) && <small className="fv2-unit-sub">👤 {unit.captador_nome ?? "—"}{unit.proprietario_nome ? ` · Prop.: ${unit.proprietario_nome}` : ""}</small>}</span><span className="fv2-unit-c">{unit.tipologia || "—"}</span><span className="fv2-unit-c">{unit.area_m2 ?? "—"} m²</span><span className="fv2-unit-c">{unit.vagas ?? 0} vaga(s)</span><strong className="fv2-unit-val">{money.format(unit.valor_promo ?? unit.valor_tabela ?? 0)}</strong><i className={`fv2-unit-status ${unit.disponivel ? "on" : "off"}`}>{unit.disponivel ? "Disponível" : "Indisponível"}</i></button>; })}</> : <p className="empty-media">Nenhuma unidade individual cadastrada.</p>}</div>}
 
               {tab === "galeria" && mediaLibrary}
             </div>
@@ -446,7 +556,7 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
             <div className="fv2-actions">
               <button className="fv2-btn fv2-btn-lead" type="button" onClick={() => setLeadPanelOpen(!leadPanelOpen)}><IcLink /> Vincular lead{product.leads.some((lead) => lead.linked) ? ` · ${product.leads.filter((lead) => lead.linked).length}` : ""}</button>
               {leadPanelOpen && <div className="fv2-lead-panel"><div className="lead-link-form"><select value={leadId} onChange={(event) => setLeadId(event.target.value)}><option value="">Selecione um lead...</option>{product.leads.filter((lead) => !lead.linked).map((lead) => <option value={lead.id} key={lead.id}>{lead.nome || "Lead sem nome"} · {lead.telefone || "sem telefone"}</option>)}</select><button className="primary-action" disabled={busy || !leadId} type="button" onClick={() => void productAction("linkLead", leadId)}>Vincular</button></div><div className="linked-leads">{product.leads.filter((lead) => lead.linked).map((lead) => <span key={lead.id}><strong>{lead.nome || "Lead sem nome"}</strong><small>{lead.telefone}</small><button type="button" disabled={busy} onClick={() => void productAction("unlinkLead", lead.id)}>×</button></span>)}</div></div>}
-              <button className="fv2-btn fv2-btn-outline" type="button" onClick={() => setEditing(true)}><IcEdit /> Editar produto</button>
+              {product.pode_editar !== false && <button className="fv2-btn fv2-btn-outline" type="button" onClick={() => setEditing(true)}><IcEdit /> Editar produto</button>}
               <div className="fv2-action-row">
                 <button className={product.is_favorite ? "fv2-btn fv2-btn-outline active" : "fv2-btn fv2-btn-outline"} disabled={busy} type="button" onClick={() => void productAction("toggleFavorite", !product.is_favorite)}><IcStar /> {product.is_favorite ? "Favorito" : "Favoritar"}</button>
               </div>
@@ -454,15 +564,20 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
               {canPublish && <button className="fv2-btn fv2-btn-ghost" type="button" disabled={busy} onClick={() => setConfirmDeleteProduct(true)}>Excluir produto</button>}
             </div>
 
-            {product.origem === "terceiros" && <div className="fv2-person-card">
+            {product.origem === "terceiros" && product.proprietarios && <div className="fv2-person-card">
               <span className="fv2-avatar">{initials(product.proprietarios?.nome)}</span>
               <div><strong>{product.proprietarios?.nome ?? "—"}</strong><small>Proprietária{product.proprietarios?.telefone ? ` · ${product.proprietarios.telefone}` : ""}</small></div>
             </div>}
 
-            <div className="fv2-person-card">
-              <span className="fv2-avatar purple">{initials(product.captado_por_nome)}</span>
-              <div><strong>{product.captado_por_nome ?? "Não informado"}</strong><small>Corretor da captação</small></div>
-            </div>
+            {(() => {
+              const captadores = product.captado_por_nome ? [product.captado_por_nome] : Array.from(new Set((product.unidades ?? []).map((u) => u.captador_nome).filter((n): n is string => Boolean(n))));
+              const rotulo = captadores.length ? captadores.join(", ") : "Estoque ApêCerto";
+              const legenda = captadores.length > 1 ? "Corretores das captações" : captadores.length === 1 ? "Corretor da captação" : "Prédio sem captador vinculado";
+              return <div className="fv2-person-card">
+                <span className="fv2-avatar purple">{initials(captadores[0] ?? "ApêCerto")}</span>
+                <div><strong>{rotulo}</strong><small>{legenda}{typeof captadorScore === "number" && captadores.length === 1 ? ` · nota ${captadorScore}` : ""}</small></div>
+              </div>;
+            })()}
           </aside>
         </div>
       )}
@@ -471,24 +586,38 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
     {documentPreview?.url && <div className="document-preview-modal" role="dialog" aria-modal="true" aria-label="Visualizar apresentação"><header><strong>{documentPreview.nome || "Apresentação do produto"}</strong><button type="button" onClick={() => setDocumentPreview(null)} aria-label="Fechar apresentação">×</button></header><div className="document-frame watermarked-preview"><iframe src={documentPreview.url} title={documentPreview.nome || "Apresentação do produto"} /></div></div>}
     {pendingDelete && <div className="delete-confirm" role="dialog" aria-modal="true" aria-label="Confirmar exclusão"><div><strong>Excluir este arquivo?</strong><p>{pendingDelete.nome || "O arquivo selecionado"} será removido definitivamente da galeria e do armazenamento.</p><footer><button type="button" onClick={() => setPendingDelete(null)}>Cancelar</button><button className="danger" disabled={busy} type="button" onClick={() => { const id = pendingDelete.id; setPendingDelete(null); void mediaAction("deleteMedia", id); }}>Excluir arquivo</button></footer></div></div>}
     {confirmDeleteProduct && <div className="delete-confirm" role="dialog" aria-modal="true" aria-label="Confirmar exclusão do produto"><div><strong>Excluir este produto definitivamente?</strong><p><strong>{product?.nome || "Este produto"}</strong> e todas as suas unidades, fotos e vínculos serão removidos para sempre. Esta ação não pode ser desfeita.</p><footer><button type="button" onClick={() => setConfirmDeleteProduct(false)}>Cancelar</button><button className="danger" disabled={busy} type="button" onClick={() => void deleteProduct()}>Excluir para sempre</button></footer></div></div>}
-    {unitDetail && (() => { const u = unitDetail; const ind = Boolean(u.de_terceiros); return <div className="ficha-v2 fv2-unit-detail-ov" role="dialog" aria-modal="true" aria-label="Detalhe da unidade" onMouseDown={(event) => { if (event.target === event.currentTarget) setUnitDetail(null); }}>
-      <div className="fv2-unit-detail">
-        <div className="fv2-ud-head"><h2>Unidade {u.numero || "—"}</h2><button type="button" onClick={() => setUnitDetail(null)} aria-label="Fechar"><IcClose /></button></div>
-        <div className="fv2-ud-body">
-          <div className="fv2-ud-badges"><span className={`fv2-unit-origin ${ind ? "indic" : "constru"}`}>{ind ? "Indicação" : "Construtora"}</span>{ind && u.aprovacao && u.aprovacao !== "aprovado" && <span className={`fv2-ud-aprov ${u.aprovacao}`}>{u.aprovacao === "pendente" ? "⏳ Pendente" : "✕ Reprovado"}</span>}<span className={`fv2-unit-status ${u.disponivel ? "on" : "off"}`}>{u.disponivel ? "Disponível" : "Indisponível"}</span></div>
-          <div className="fv2-ud-sec">Dados da unidade</div>
-          <div className="fv2-cost-tiles"><div className="fv2-tile"><small>TIPOLOGIA</small><strong>{u.tipologia || "—"}</strong></div><div className="fv2-tile"><small>ÁREA</small><strong>{u.area_m2 ?? "—"} m²</strong></div><div className="fv2-tile"><small>VAGAS</small><strong>{u.vagas ?? 0}</strong></div><div className="fv2-tile"><small>VALOR</small><strong>{money.format(u.valor_promo ?? u.valor_tabela ?? 0)}</strong></div></div>
-          <div className="fv2-ud-sec">Proprietário</div>
-          {ind && u.proprietario_nome ? <div className="fv2-person-card"><span className="fv2-avatar">{initials(u.proprietario_nome)}</span><div><strong>{u.proprietario_nome}</strong><small>{u.proprietario_contato || "Sem contato"}</small></div></div> : <p className="fv2-ud-empty">Sem proprietário — unidade da construtora.</p>}
-          <div className="fv2-ud-sec">Corretor indicador</div>
-          {ind && u.captador_nome ? <div className="fv2-person-card"><span className="fv2-avatar purple">{initials(u.captador_nome)}</span><div><strong>{u.captador_nome}</strong><small>Indicou esta unidade</small></div></div> : <p className="fv2-ud-empty">Sem indicador — unidade da construtora.</p>}
-          <div className="fv2-ud-sec">Acesso</div>
-          <div className="fv2-cost-tiles"><div className="fv2-tile"><small>TIPO</small><strong>{acessoLabel(u.acesso_tipo)}</strong></div><div className="fv2-tile"><small>CÓDIGO</small><strong>{u.acesso_codigo || "—"}</strong></div><div className="fv2-tile"><small>INSTRUÇÕES</small><strong>{u.acesso_instrucoes || "—"}</strong></div></div>
-          {ind && <><div className="fv2-ud-sec">Fotos da unidade</div>{(() => { const um = (product?.midias ?? []).filter((m) => m.unidade_id === u.id && m.tipo === "foto" && m.url); return um.length ? <div className="fv2-ud-gallery">{um.map((m, i) => <button key={m.id} type="button" onClick={() => setUnitLightbox({ items: um.map((x) => ({ url: x.url ?? "", label: x.categoria || x.nome || "Foto da unidade" })), index: i })} className="fv2-ud-photo watermarked-preview" style={{ backgroundImage: `url(${m.url})` }} aria-label="Ampliar foto da unidade" />)}</div> : <p className="fv2-ud-empty">Nenhuma foto enviada para esta unidade ainda.</p>; })()}</>}
+    {unitDetail && (() => {
+      const u = unitDetail;
+      const ind = Boolean(u.de_terceiros);
+      const unitMedia = (product?.midias ?? []).filter((m) => m.unidade_id === u.id && m.tipo === "foto" && m.url);
+      return <div className="ficha-v2 fv2-unit-detail-ov" role="dialog" aria-modal="true" aria-label="Detalhe da unidade" onMouseDown={(event) => { if (event.target === event.currentTarget) setUnitDetail(null); }}>
+        <div className="fv2-unit-detail">
+          <div className="fv2-ud-head"><div><h2>Unidade {u.numero || "—"}</h2>{u.codigo && <span className="cod-imovel">{u.codigo}</span>}</div><button type="button" onClick={() => setUnitDetail(null)} aria-label="Fechar"><IcClose /></button></div>
+          <div className="fv2-ud-body">
+            <div className="fv2-ud-badges"><span className={`fv2-unit-origin ${ind ? "indic" : "constru"}`}>{ind ? "Indicação" : "Construtora"}</span>{ind && u.aprovacao && u.aprovacao !== "aprovado" && <span className={`fv2-ud-aprov ${u.aprovacao}`}>{u.aprovacao === "pendente" ? "⏳ Pendente" : "✕ Reprovado"}</span>}<span className={`fv2-unit-status ${u.disponivel ? "on" : "off"}`}>{u.disponivel ? "Disponível" : "Indisponível"}</span></div>
+            {u.aprovacao === "reprovado" && u.reprovacao_motivo && <div className="approval-reason"><strong>Correção solicitada:</strong> {u.reprovacao_motivo}</div>}
+            <div className="fv2-ud-sec">Dados da unidade</div>
+            <div className="fv2-cost-tiles"><div className="fv2-tile"><small>TIPOLOGIA</small><strong>{u.tipologia || "—"}</strong></div><div className="fv2-tile"><small>ÁREA</small><strong>{u.area_m2 ?? "—"} m²</strong></div><div className="fv2-tile"><small>VAGAS</small><strong>{u.vagas ?? 0}</strong></div><div className="fv2-tile"><small>VALOR</small><strong>{money.format(u.valor_promo ?? u.valor_tabela ?? 0)}</strong></div></div>
+            <div className="fv2-ud-sec">Proprietário</div>
+            {ind && u.proprietario_nome ? <div className="fv2-person-card"><span className="fv2-avatar">{initials(u.proprietario_nome)}</span><div><strong>{u.proprietario_nome}</strong><small>{u.proprietario_contato || "Sem contato"}</small></div></div> : <p className="fv2-ud-empty">{ind ? "Dados protegidos — visíveis apenas ao captador e à gestão." : "Sem proprietário — unidade da construtora."}</p>}
+            <div className="fv2-ud-sec">Corretor indicador</div>
+            {ind && u.captador_nome ? <div className="fv2-person-card"><span className="fv2-avatar purple">{initials(u.captador_nome)}</span><div><strong>{u.captador_nome}</strong><small>Indicou esta unidade</small></div></div> : <p className="fv2-ud-empty">Sem indicador — unidade da construtora.</p>}
+            <div className="fv2-ud-sec">Acesso</div>
+            <div className="fv2-cost-tiles"><div className="fv2-tile"><small>TIPO</small><strong>{acessoLabel(u.acesso_tipo)}</strong></div><div className="fv2-tile"><small>CÓDIGO</small><strong>{u.acesso_codigo || "—"}</strong></div><div className="fv2-tile"><small>INSTRUÇÕES</small><strong>{u.acesso_instrucoes || "—"}</strong></div></div>
+            {ind && <><div className="fv2-ud-sec">Fotos da unidade</div>{unitMedia.length ? <div className="fv2-ud-gallery">{unitMedia.map((m, i) => <button key={m.id} type="button" onClick={() => setUnitLightbox({ items: unitMedia.map((x) => ({ url: x.url ?? "", label: x.categoria || x.nome || "Foto da unidade" })), index: i })} className="fv2-ud-photo watermarked-preview" style={{ backgroundImage: `url(${m.url})` }} aria-label="Ampliar foto da unidade" />)}</div> : <p className="fv2-ud-empty">Nenhuma foto enviada para esta unidade ainda.</p>}{u.pode_editar && <label className="fv2-btn fv2-btn-outline">＋ Adicionar fotos ou vídeos<input hidden multiple type="file" accept="image/*,video/*" disabled={busy} onChange={(event) => void uploadUnitMedia(event.target.files, u)} /></label>}</>}
+          </div>
+          {(u.pode_editar || (canPublish && ind && u.aprovacao === "pendente")) && <div className="fv2-ud-foot">{u.pode_editar && <button type="button" className="fv2-btn fv2-btn-outline" disabled={busy} onClick={() => setUnitEdit({ ...u })}><IcEdit /> Editar unidade</button>}{canPublish && ind && u.aprovacao === "pendente" && <><button type="button" className="fv2-ud-reject" disabled={busy} onClick={() => void decideUnit(u.id, false)}>✕ Reprovar</button><button type="button" className="fv2-ud-approve" disabled={busy} onClick={() => void decideUnit(u.id, true)}>✓ Aprovar</button></>}</div>}
         </div>
-        {canPublish && ind && u.aprovacao === "pendente" && <div className="fv2-ud-foot"><button type="button" className="fv2-ud-reject" disabled={busy} onClick={() => void decideUnit(u.id, false)}>✕ Reprovar</button><button type="button" className="fv2-ud-approve" disabled={busy} onClick={() => void decideUnit(u.id, true)}>✓ Aprovar</button></div>}
-      </div>
-    </div>; })()}
+      </div>;
+    })()}
+    {unitEdit && <div className="modal-layer fv2-unit-edit-layer" role="dialog" aria-modal="true" aria-label="Editar unidade">
+      <button className="modal-scrim" type="button" onClick={() => setUnitEdit(null)} aria-label="Fechar edição" />
+      <section className="capture-panel fv2-unit-edit-panel">
+        <header className="capture-header"><div><span className="eyebrow">{unitEdit.codigo || "UNIDADE"}</span><h2>Editar unidade {unitEdit.numero || ""}</h2><p>Ao salvar, uma correção feita pelo corretor volta para aprovação.</p></div><button className="icon-button" type="button" onClick={() => setUnitEdit(null)} aria-label="Fechar">×</button></header>
+        <div className="capture-body"><div className="form-section"><div className="field-grid"><label>Número<input value={unitEdit.numero ?? ""} onChange={(event) => setUnitEdit({ ...unitEdit, numero: event.target.value })} /></label><label>Tipologia<input value={unitEdit.tipologia ?? ""} onChange={(event) => setUnitEdit({ ...unitEdit, tipologia: event.target.value })} /></label><label>Área (m²)<input type="number" min="0" value={unitEdit.area_m2 ?? ""} onChange={(event) => setUnitEdit({ ...unitEdit, area_m2: event.target.value ? Number(event.target.value) : null })} /></label><label>Vagas<input type="number" min="0" value={unitEdit.vagas ?? ""} onChange={(event) => setUnitEdit({ ...unitEdit, vagas: event.target.value ? Number(event.target.value) : null })} /></label></div><div className="unit-money-grid"><MoneyInput label="Valor de tabela" value={unitEdit.valor_tabela} onChange={(value) => setUnitEdit({ ...unitEdit, valor_tabela: value })} /><MoneyInput label="Valor promocional" value={unitEdit.valor_promo} onChange={(value) => setUnitEdit({ ...unitEdit, valor_promo: value })} /></div><h3>Proprietário</h3><div className="field-grid"><label>Nome<input value={unitEdit.proprietario_nome ?? ""} onChange={(event) => setUnitEdit({ ...unitEdit, proprietario_nome: event.target.value })} /></label><label>Contato<input value={unitEdit.proprietario_contato ?? ""} onChange={(event) => setUnitEdit({ ...unitEdit, proprietario_contato: event.target.value })} /></label></div><h3>Acesso</h3><div className="field-grid"><label>Tipo<input value={unitEdit.acesso_tipo ?? ""} onChange={(event) => setUnitEdit({ ...unitEdit, acesso_tipo: event.target.value })} /></label><label>Código<input value={unitEdit.acesso_codigo ?? ""} onChange={(event) => setUnitEdit({ ...unitEdit, acesso_codigo: event.target.value })} /></label></div><label>Instruções<textarea rows={4} value={unitEdit.acesso_instrucoes ?? ""} onChange={(event) => setUnitEdit({ ...unitEdit, acesso_instrucoes: event.target.value })} /></label><label className="toggle"><input type="checkbox" checked={unitEdit.disponivel} onChange={(event) => setUnitEdit({ ...unitEdit, disponivel: event.target.checked })} /> Unidade disponível</label></div></div>
+        <footer className="capture-footer"><button className="ghost-action" type="button" onClick={() => setUnitEdit(null)}>Cancelar</button><button className="primary-action" type="button" disabled={busy} onClick={() => void saveUnit()}>{busy ? "Salvando..." : "Salvar unidade"}</button></footer>
+      </section>
+    </div>}
     {unitLightbox && unitLightbox.items[unitLightbox.index]?.url && <div className="photo-lightbox unit-lightbox" role="dialog" aria-modal="true" aria-label="Foto da unidade ampliada"><button className="lightbox-close" type="button" onClick={() => setUnitLightbox(null)} aria-label="Fechar galeria">×</button>{unitLightbox.items.length > 1 && <button className="lightbox-nav previous" type="button" onClick={() => setUnitLightbox((s) => s && ({ ...s, index: (s.index - 1 + s.items.length) % s.items.length }))} aria-label="Foto anterior">‹</button>}<div className="lightbox-image watermarked-preview"><img src={unitLightbox.items[unitLightbox.index].url} alt={unitLightbox.items[unitLightbox.index].label} /></div><div><span>{unitLightbox.index + 1} de {unitLightbox.items.length}</span></div>{unitLightbox.items.length > 1 && <button className="lightbox-nav next" type="button" onClick={() => setUnitLightbox((s) => s && ({ ...s, index: (s.index + 1) % s.items.length }))} aria-label="Próxima foto">›</button>}</div>}
   </div>;
 }

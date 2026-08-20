@@ -2224,6 +2224,7 @@ export type Database = {
           captador_corretor_id: number | null
           cep: string | null
           cidade: string | null
+          codigo: string | null
           complemento: string | null
           condominio_id: string | null
           condominio_valor: number | null
@@ -2283,6 +2284,7 @@ export type Database = {
           captador_corretor_id?: number | null
           cep?: string | null
           cidade?: string | null
+          codigo?: string | null
           complemento?: string | null
           condominio_id?: string | null
           condominio_valor?: number | null
@@ -2342,6 +2344,7 @@ export type Database = {
           captador_corretor_id?: number | null
           cep?: string | null
           cidade?: string | null
+          codigo?: string | null
           complemento?: string | null
           condominio_id?: string | null
           condominio_valor?: number | null
@@ -9638,6 +9641,7 @@ export type Database = {
           aprovacao: string
           area_m2: number | null
           captador_corretor_id: number | null
+          codigo: string | null
           de_terceiros: boolean
           disponivel: boolean
           empreendimento_id: string
@@ -9661,6 +9665,7 @@ export type Database = {
           aprovacao?: string
           area_m2?: number | null
           captador_corretor_id?: number | null
+          codigo?: string | null
           de_terceiros?: boolean
           disponivel?: boolean
           empreendimento_id: string
@@ -9684,6 +9689,7 @@ export type Database = {
           aprovacao?: string
           area_m2?: number | null
           captador_corretor_id?: number | null
+          codigo?: string | null
           de_terceiros?: boolean
           disponivel?: boolean
           empreendimento_id?: string
@@ -12070,6 +12076,9 @@ export type Database = {
       admin_dashboard_funil: { Args: never; Returns: Json }
       admin_dashboard_na_mesa: { Args: never; Returns: Json }
       admin_dashboard_rodagem: { Args: never; Returns: Json }
+      tracking_360_ceo: { Args: { p_days?: number }; Returns: Json }
+      tracking_360_digital_health: { Args: { p_days?: number }; Returns: Json }
+      tracking_delivery_health: { Args: { p_days?: number }; Returns: Json }
       agenda_link_regenerar: { Args: never; Returns: string }
       agenda_link_token: { Args: never; Returns: string }
       agenda_publica: {

@@ -1,5 +1,6 @@
 import { createServerSupabaseClient } from "../../lib/supabase/server";
 import { assessProductQuality, isPlausibleProductPrice, normalizedKey, validateProductPrice } from "../../features/products/quality";
+import { isProductManagerRole } from "../../features/products/access";
 
 export const dynamic = "force-dynamic";
 
@@ -21,17 +22,22 @@ export async function PATCH(request: Request) {
   const id = String(body.id || "");
   if ((action !== "approve" && action !== "reject") || !id) return Response.json({ error: "Ação ou empreendimento inválido." }, { status: 422 });
   if (action === "approve") {
+    const { data: approver } = await supabase.from("usuarios").select("role").eq("id", authData.user.id).maybeSingle();
+    if (!isProductManagerRole(approver?.role)) return Response.json({ error: "Apenas a gestão de Produtos pode aprovar imóveis." }, { status: 403 });
     const { data: product, error: productError } = await supabase
       .from("empreendimentos")
-      .select("nome,titulo,slogan,descricao,finalidade,preco,area_util,dormitorios,banheiros,vagas,endereco,numero,bairro,cidade,uf,cep,condominio_valor,iptu,outros_custos,lazer,diferenciais,tour_url,unidades(area_m2,valor_tabela,valor_promo,disponivel),midias(tipo,categoria,is_capa)")
+      .select("nome,titulo,slogan,descricao,finalidade,status,preco,area_util,dormitorios,banheiros,vagas,endereco,numero,bairro,cidade,uf,cep,condominio_valor,iptu,outros_custos,lazer,diferenciais,tour_url,unidades(area_m2,valor_tabela,valor_promo,disponivel,aprovacao),midias(tipo,categoria,is_capa,unidade_id)")
       .eq("id", id)
       .single();
     if (productError || !product) return Response.json({ error: productError?.message ?? "Produto não encontrado." }, { status: 404 });
-    const units = product.unidades ?? [];
+    const units = (product.unidades ?? []).filter((unit) => (unit.aprovacao ?? "aprovado") === "aprovado");
     const available = units.filter((unit) => unit.disponivel);
     const prices = available.map((unit) => unit.valor_promo ?? unit.valor_tabela).filter((value): value is number => typeof value === "number" && value > 0);
     const areas = available.map((unit) => unit.area_m2).filter((value): value is number => typeof value === "number" && value > 0);
-    const media = product.midias ?? [];
+    const media = (product.midias ?? []).filter((item) => !item.unidade_id);
+    if (/pronto/i.test(product.status ?? "") && available.length === 0) {
+      return Response.json({ error: "Produto pronto precisa ter ao menos uma unidade aprovada e disponível para aparecer no site.", code: "READY_PRODUCT_WITHOUT_APPROVED_UNIT" }, { status: 422 });
+    }
     const quality = assessProductQuality({
       name: product.nome, title: product.titulo, slogan: product.slogan, description: product.descricao, purpose: product.finalidade,
       price: product.preco ?? (prices.length ? Math.min(...prices) : null), area: product.area_util ?? (areas.length ? Math.min(...areas) : null),
@@ -67,6 +73,7 @@ type UnitInput = {
 type CapturePayload = {
   action: "create";
   propertyType: "terceiro" | "construtora";
+  semCondominio?: boolean;
   condominium: {
     id: string | null;
     name: string;
@@ -151,8 +158,9 @@ export async function POST(request: Request) {
   }
 
   const { property, condominium, owner, access, units } = payload;
-  if (!property.name.trim() || !condominium.name.trim() || !condominium.address.trim() || !condominium.city.trim()) {
-    return Response.json({ error: "Nome do produto, condomínio e endereço completo são obrigatórios." }, { status: 422 });
+  const semCondominio = payload.semCondominio === true;
+  if (!property.name.trim() || (!semCondominio && !condominium.name.trim()) || !condominium.address.trim() || !condominium.city.trim()) {
+    return Response.json({ error: semCondominio ? "Nome do produto e endereço completo são obrigatórios." : "Nome do produto, condomínio e endereço completo são obrigatórios." }, { status: 422 });
   }
   if (payload.propertyType === "terceiro" && (!owner || !owner.name.trim() || !owner.email.trim() || !owner.phone.trim())) {
     return Response.json({ error: "O proprietário com nome, telefone e e-mail é obrigatório." }, { status: 422 });
@@ -202,7 +210,8 @@ export async function POST(request: Request) {
   }
 
   let condominiumId = condominium.id;
-  if (!condominiumId) {
+  if (semCondominio) condominiumId = null;
+  if (!condominiumId && !semCondominio) {
     // Anti-duplicata: reaproveita um condomínio com o mesmo nome + endereço + cidade (case-insensitive).
     // Evita a enxurrada de repetidos que acontecia quando um cadastro falhava e era refeito.
     const nomeN = condominium.name.trim();
@@ -247,7 +256,7 @@ export async function POST(request: Request) {
     diferenciais: property.differentiators?.map((item) => item.trim()).filter(Boolean) || [],
     incorporadora: property.developer.trim() || null,
     status: property.status, origem: payload.propertyType === "terceiro" ? "terceiros" : "predio",
-    condominio_id: condominiumId, proprietario_id: ownerId,
+    condominio_id: condominiumId || null, proprietario_id: ownerId,
     cep: condominium.zipCode.trim() || null, endereco: condominium.address.trim(), numero: condominium.number.trim() || null,
     complemento: condominium.complement.trim() || null, bairro: condominium.neighborhood.trim() || null,
     cidade: condominium.city.trim(), uf: condominium.state.trim() || "SP",
