@@ -327,7 +327,8 @@ export function ProductsModule({ accessToken }: { accessToken: string }) {
         setUnitWizardOpen(false);
         if (accessToken) void loadCatalog(accessToken);
       }} />}
-      {selectedProductId && accessToken && <ProductDetail productId={selectedProductId} accessToken={accessToken} sessionRole={role} initialUnitId={initialUnitId} onClose={() => { setSelectedProductId(null); setInitialUnitId(null); }} onChanged={() => void loadCatalog(accessToken)} />}
+      {selectedProductId && accessToken && <ProductDetail productId={selectedProductId} accessToken={accessToken} sessionRole={role} initialUnitId={initialUnitId} initialEditing={openInEdit} captadorScore={products.find((p) => p.id === selectedProductId)?.capturedByScore ?? null} onClose={() => { setSelectedProductId(null); setInitialUnitId(null); setOpenInEdit(false); }} onChanged={() => void loadCatalog(accessToken)} />}
+      {deleteTarget && <div className="delete-confirm" role="dialog" aria-modal="true" aria-label="Confirmar exclusão do produto"><div><strong>Excluir este produto definitivamente?</strong><p><strong>{deleteTarget.name}</strong> e todas as suas unidades, fotos e vínculos serão removidos para sempre. Esta ação não pode ser desfeita.</p><footer><button type="button" onClick={() => setDeleteTarget(null)}>Cancelar</button><button className="danger" disabled={deleting} type="button" onClick={() => void confirmDeleteProduct()}>Excluir para sempre</button></footer></div></div>}
       </>
   );
 }
