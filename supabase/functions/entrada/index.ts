@@ -4,7 +4,7 @@ const cors = {
   "Content-Type": "application/json",
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
-    "content-type,x-idempotency-key",
+    "content-type,x-automation-token,x-idempotency-key",
   "Access-Control-Allow-Methods": "POST,OPTIONS",
 };
 
@@ -72,7 +72,7 @@ Deno.serve(async (request: Request) => {
 
     const automationRows = await fetch(
       `${supabaseUrl}/rest/v1/automacoes?id=eq.${automationId}` +
-        "&select=id,nome,ativa,status,arquivada,versao_publicada_id&limit=1",
+        "&select=id,nome,ativa,status,arquivada,versao_publicada_id,webhook_token,webhook_token_enforced&limit=1",
       { headers },
     ).then((result) => result.json());
     const automation = Array.isArray(automationRows) ? automationRows[0] : null;
@@ -83,6 +83,17 @@ Deno.serve(async (request: Request) => {
       Number.isInteger(automation.versao_publicada_id);
     if (!runnable) {
       return response({ ok: false, error: "AUTOMATION_NOT_RUNNABLE" }, 409);
+    }
+
+    // A publicacao preserva esta configuracao: webhooks publicos continuam
+    // publicos e integracoes explicitamente protegidas continuam protegidas.
+    if (automation.webhook_token_enforced === true) {
+      const requestToken = request.headers.get("x-automation-token") ??
+        url.searchParams.get("token") ?? "";
+      const expected = String(automation.webhook_token ?? "");
+      if (!/^[a-f0-9]{48}$/.test(requestToken) || requestToken !== expected) {
+        return response({ ok: false, error: "WEBHOOK_UNAUTHORIZED" }, 401);
+      }
     }
 
     const lead: Record<string, unknown> = {

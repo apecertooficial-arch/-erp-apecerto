@@ -1,18 +1,8 @@
 begin;
 
--- A URL da automacao e o contrato do webhook. Publicar ou republicar nao pode
--- criar uma senha oculta que o Make precise conhecer.
-update public.automacoes a
-   set webhook_token_enforced = false
-  from public.automacao_versoes av
- where av.id = a.versao_publicada_id
-   and exists (
-     select 1
-       from jsonb_array_elements(av.mapa->'automation'->'blocks') b,
-            lateral jsonb_array_elements(coalesce(b->'options'->'triggers','[]'::jsonb)) t
-      where t->>'name' = 'json-http-request-trigger'
-   );
-
+-- Publicar uma automacao nao decide a politica de autenticacao do webhook.
+-- A configuracao explicita e preservada: false continua publico e true
+-- continua exigindo o token configurado.
 create or replace function public.automacao_versao_publicada_compat()
 returns trigger
 language plpgsql
@@ -21,7 +11,6 @@ set search_path = ''
 as $function$
 declare
   v_validacao jsonb;
-  v_tem_webhook boolean;
 begin
   if new.criado_por is distinct from 'construtor' then
     return new;
@@ -33,13 +22,6 @@ begin
       message='AUTOMATION_INVALID: '||(v_validacao->'erros')::text;
   end if;
 
-  select exists (
-    select 1
-      from jsonb_array_elements(new.mapa->'automation'->'blocks') b,
-           lateral jsonb_array_elements(coalesce(b->'options'->'triggers','[]'::jsonb)) t
-     where t->>'name'='json-http-request-trigger'
-  ) into v_tem_webhook;
-
   update public.automacoes
      set nome=coalesce(nullif(btrim(new.nome),''),nome),
          mapa=new.mapa,
@@ -47,8 +29,7 @@ begin
          versao_publicada_id=new.id,
          status='publicado',
          publicado_em=now(),
-         atualizada_em=now(),
-         webhook_token_enforced=case when v_tem_webhook then false else webhook_token_enforced end
+         atualizada_em=now()
    where id=new.automacao_id;
   return new;
 end;
@@ -70,7 +51,8 @@ declare
   v_validacao jsonb;
   v_versao integer;
   v_versao_id bigint;
-  v_tem_webhook boolean;
+  v_token text;
+  v_token_enforced boolean;
 begin
   if not public.can_manage_all() then
     raise exception using errcode='42501', message='AUTOMATION_FORBIDDEN';
@@ -97,13 +79,6 @@ begin
     'Publicacao atomica pelo construtor',auth.uid()::text
   ) returning id into v_versao_id;
 
-  select exists (
-    select 1
-      from jsonb_array_elements(p_mapa->'automation'->'blocks') b,
-           lateral jsonb_array_elements(coalesce(b->'options'->'triggers','[]'::jsonb)) t
-     where t->>'name'='json-http-request-trigger'
-  ) into v_tem_webhook;
-
   update public.automacoes
      set nome=coalesce(nullif(btrim(p_nome),''),nome),
          mapa=p_mapa,
@@ -111,14 +86,18 @@ begin
          versao_publicada_id=v_versao_id,
          status='publicado',
          publicado_em=now(),
-         atualizada_em=now(),
-         webhook_token_enforced=case when v_tem_webhook then false else webhook_token_enforced end
+         atualizada_em=now()
    where id=p_automacao_id;
+
+  select a.webhook_token,a.webhook_token_enforced
+    into v_token,v_token_enforced
+    from public.automacoes a
+   where a.id=p_automacao_id;
 
   return jsonb_build_object(
     'ok',true,'versao',v_versao,'versao_id',v_versao_id,
-    'webhook_token',null,
-    'webhook_token_enforced',false
+    'webhook_token',v_token,
+    'webhook_token_enforced',v_token_enforced
   );
 end;
 $function$;
@@ -129,6 +108,6 @@ grant execute on function public.automacao_publicar(bigint,text,jsonb)
   to authenticated, service_role;
 
 comment on function public.automacao_publicar(bigint,text,jsonb) is
-  'Publica snapshot atomico; webhook HTTP permanece publico, sem senha ou token.';
+  'Publica snapshot atomico sem alterar a configuracao de autenticacao do webhook.';
 
 commit;
