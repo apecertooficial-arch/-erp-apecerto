@@ -4,7 +4,7 @@
  * /api/inteligencia/corretores (RPC intel_corretores). Régua por corretor:
  * leads, carga (negócios Funil 2.0), vendas·VGV, visitas, espera (SLA do backlog)
  * e follow-ups vencidos — reais. Qualidade de conversa, propostas e presença não
- * têm fonte ligada -> — / "sem amostra". Demo virou fixture. */
+ * têm fonte ligada -> — / "sem amostra". */
 
 import { useState } from "react";
 import "../../../styles/inteligencia-blocos.css";
@@ -140,28 +140,7 @@ export function Corretores({ accessToken, recorte }: PropsTela) {
         </div>
       </div>
 
-      <div className="intp-op-duas">
-        <div className="intp-cartao">
-          <span className="intp-cartao-titulo">Atividade de hoje · linha do tempo</span>
-          <span style={{ display: "flex", height: 14, borderRadius: 999, overflow: "hidden" }}>
-            <span style={{ width: "34%", background: "#1FA85A" }} />
-            <span style={{ width: "14%", background: "#EFECE7" }} />
-            <span style={{ width: "18%", background: "#8FD9AC" }} />
-            <span style={{ width: "12%", background: "#8B00CC" }} />
-            <span style={{ width: "22%", background: "#1FA85A" }} />
-          </span>
-          <div style={{ display: "flex", gap: 12, flexWrap: "wrap", fontSize: 11, color: "#6E6760" }}>
-            <span>● presença + disponível</span>
-            <span>● atividade observada no ERP</span>
-            <span>● visita</span>
-            <span>● sem sinal</span>
-          </div>
-          <div className="intp-detalhe-aviso">
-            Ilustração de presença — <b>não é “horas trabalhadas”</b>. Jornada formal só entra com integração de ponto; até lá, esta faixa é apenas conceitual.
-          </div>
-        </div>
-
-        <div className="intp-cartao">
+      <div className="intp-cartao">
           <span className="intp-cartao-titulo" style={{ color: "#66009A" }}>O QUE O PRÓPRIO {d.perfil.nome.split(" ")[0].toUpperCase()} VÊ</span>
           <b style={{ fontSize: 15 }}>Olá, {d.perfil.nome.split(" ")[0]} — seu mês até aqui</b>
           <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
@@ -178,7 +157,6 @@ export function Corretores({ accessToken, recorte }: PropsTela) {
             <span className="intp-casc-barra entra" style={{ width: `${d.perfil.metaPercentual ?? 0}%` }} />
           </span>
           <small className="intp-kpi-foot">orientação prática, sem comparação nominal com colegas — o corretor só vê os próprios dados</small>
-        </div>
       </div>
 
       <CartoesLista
@@ -191,7 +169,7 @@ export function Corretores({ accessToken, recorte }: PropsTela) {
 
       <RodapeFontes
         fontes={["negócios", "wa_mensagens", "visitas", "vendas"]}
-        pendencias={["qualidade de conversa (avaliação por IA)", "integração de ponto (jornada formal)", "comissão individual restrita a CEO e Financeiro"]}
+        pendencias={["comissão individual restrita a CEO e Financeiro"]}
         atualizado={d.atualizado}
       />
     </div>
@@ -274,24 +252,3 @@ function mapearCorretores(p: CorretoresPayload | null): Dados {
 
   return { corretores, totalLeads: p.totais.leads, totalVendas: p.totais.vendas, perfil, ajuda, referencia, atualizado: hhmm(p.atualizado_em) };
 }
-
-/* Fixture — só Storybook/teste. NUNCA usado na rota de produção. */
-export const demoCorretores: Dados = {
-  totalLeads: 486, totalVendas: 21,
-  corretores: [
-    { nome: "Ana Beatriz", gerente: "Juliana P.", carga: "38/40", leads: 148, sla: 34, mediana: 8, p90: 42, visitas: 41, propostas: 17, vendas: 8, vgv: 6_800_000, qualidade: 4.6, amostra: 52, vencidos: 9, parados: 3, presenca: 98, tendencia: "sobe" },
-    { nome: "Rafael Souza", gerente: "Marcos V.", carga: "31/40", leads: 92, sla: 8, mediana: 41, p90: 200, visitas: 18, propostas: 6, vendas: 3, vgv: 2_800_000, qualidade: 3.9, amostra: 26, vencidos: 19, parados: 6, presenca: 89, tendencia: "cai" },
-  ],
-  perfil: {
-    nome: "Rafael Souza", equipe: "Marcos Vilela", funil: "92 → 51 → 18 → 6 → 3", funilNota: "lead → negócio → visita → proposta → venda",
-    qualidade: 3.9, amostra: 26, piorCriterio: "pior critério: objeções 3,4 · tendência ↘",
-    vendas: "3 · R$ 2,8 mi", comissao: "comissão calculada R$ 34,2 mil · paga R$ 22,8 mil", metaPercentual: 56,
-    proprio: [
-      { tom: "bom", titulo: "Indo bem", texto: "quando você responde em até 15 min, 2 em cada 3 leads avançam." },
-      { tom: "meta", titulo: "Meta", texto: "faltam R$ 2,2 mi (56% feita)." },
-    ],
-  },
-  ajuda: [{ l: "Rafael Souza", r: "rotina de follow-up", sub: "41 min de mediana e 19 vencidos", corR: "#D93E3E" }],
-  referencia: [{ l: "Ana Beatriz", r: "8 min · 34% no SLA", sub: "melhor tempo da casa" }],
-  atualizado: "14:32",
-};

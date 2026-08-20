@@ -4,11 +4,12 @@
  * /api/inteligencia/vendas (RPC intel_vendas). Realizado vs meta, ritmo, pipeline
  * por etapa (Funil 2.0) e vendas do período são reais. Previsão ponderada e VGV
  * por etapa não têm fonte (sem valor por negócio, sem probabilidade) -> —.
- * Demo virou fixture. */
+ * */
 
 import "../../../styles/inteligencia-blocos.css";
 import type { PropsTela } from "../CascaInteligencia";
-import { fmt, RodapeFontes } from "../dado";
+import { BlocoSemDado, fmt, RodapeFontes } from "../dado";
+import { EsqueletoAviso, EsqueletoKpis, EsqueletoTabela } from "../esqueleto";
 import { Banner, Cabecalho, GradeKpis, Tabela, type Kpi } from "../pecas";
 import { useDadosInteligencia } from "../useDadosInteligencia";
 import type { VendasPayload } from "../../../lib/inteligencia/tipos";
@@ -28,18 +29,25 @@ type Dados = {
 
 export function VendasPrevisao({ accessToken, recorte }: PropsTela) {
   const leitura = useDadosInteligencia<VendasPayload>("vendas", accessToken, recorte);
+
+  if (leitura.estado === "carregando") {
+    return <div className="int-secao"><EsqueletoAviso texto="Atualizando vendas e meta." /><EsqueletoKpis colunas={4} /><EsqueletoTabela colunas={5} linhas={4} /></div>;
+  }
+  if (leitura.estado === "erro") {
+    return <div className="int-secao"><BlocoSemDado titulo="Não foi possível atualizar Vendas" motivo="fonte" detalhe={`${leitura.erro ?? "A fonte não respondeu."} Nenhum valor anterior foi repetido.`} /></div>;
+  }
   const d = mapearVendas(leitura.payload);
 
   const kpis: Kpi[] = [
-    { rotulo: "Realizado vs. meta", bruto: d.realizadoPercentual, texto: fmt.porcento(d.realizadoPercentual, 0), tile: "laranja", icone: "dinheiro", foot: `${fmt.dinheiro(d.realizado)} de ${fmt.dinheiro(d.meta)}` },
+    { rotulo: "Realizado da meta · ano", bruto: d.realizadoPercentual, texto: fmt.porcento(d.realizadoPercentual, 0), tile: "laranja", icone: "dinheiro", foot: `${fmt.dinheiro(d.realizado)} de ${fmt.dinheiro(d.meta)} no ano` },
     { rotulo: "Previsão ponderada", bruto: d.previsao, texto: fmt.dinheiro(d.previsao), tom: "bom", tile: "verde", motivo: "integracao", detalhe: "sem probabilidade por etapa nem valor por negócio", foot: `cobre ${fmt.porcento(d.coberturaPrevisao, 0)} do que falta` },
-    { rotulo: "Vendas concluídas", bruto: d.concluidas, texto: fmt.inteiro(d.concluidas), tile: "roxo", foot: `ciclo médio ${fmt.inteiro(d.cicloMedio)} dias` },
-    { rotulo: "Ritmo necessário", bruto: d.ritmo, texto: `${fmt.dinheiro(d.ritmo)}/dia`, tom: "atencao", tile: "ambar", foot: `${fmt.inteiro(d.diasUteis)} dias úteis até o fim do mês` },
+    { rotulo: `Vendas concluídas · ${recorte.periodo}`, bruto: d.concluidas, texto: fmt.inteiro(d.concluidas), tile: "roxo", foot: `ciclo médio ${fmt.inteiro(d.cicloMedio)} dias no recorte` },
+    { rotulo: "Falta para a meta · ano", bruto: d.falta, texto: fmt.dinheiro(d.falta), tom: "atencao", tile: "ambar", foot: "meta anual; não muda com o seletor de período" },
   ];
 
   return (
     <div className="int-secao">
-      <Cabecalho eyebrow="COBERTURA DA META" titulo="O mês fecha? O pipeline responde — com probabilidade por etapa, não com torcida" nota={`${recorte.periodo}${recorte.compararAnterior ? " · vs. anterior" : ""}`} />
+      <Cabecalho eyebrow="VENDAS E META" titulo="Resultado anual, vendas do período e limites da previsão" nota={recorte.periodo} />
       <GradeKpis itens={kpis} colunas={4} />
 
       <div className="intp-op-duas">
@@ -54,7 +62,7 @@ export function VendasPrevisao({ accessToken, recorte }: PropsTela) {
               <b className={`intp-casc-valor${c.tipo === "sobra" ? " sobra" : ""}`}>{fmt.dinheiro(c.valor)}</b>
             </div>
           ))}
-          <small className="intp-kpi-foot">o gap vira diagnóstico na Visão CEO</small>
+          <small className="intp-kpi-foot">meta e realizado são anuais; a lista de vendas respeita o período selecionado</small>
         </div>
 
         <div className="intp-cartao">
@@ -123,17 +131,18 @@ export function VendasPrevisao({ accessToken, recorte }: PropsTela) {
               { texto: v.canal },
             ],
           }))}
-          foot={`mostrando ${d.vendas.length} de ${fmt.inteiro(d.totalVendas)} · a linha abre a ficha da venda`}
-          acaoFinal={<button type="button" className="int-link" style={{ fontWeight: 700 }}>Ver todas →</button>}
+          foot={`mostrando ${d.vendas.length} de ${fmt.inteiro(d.totalVendas)} vendas do período · clique aplica o recorte da venda`}
         />
       </div>
 
-      <Banner
-        tom="aviso"
-        forte={`${fmt.inteiro(d.foraDaLista)} vendas sem % válido de comissão`}
-        texto="— o VGV aparece aqui, mas receita e contribuição ficam com “—” no Financeiro até o cadastro ser corrigido."
-        botao={{ rotulo: "Resolver em Financeiro →", go: () => recorte.irPara("financeiro") }}
-      />
+      {(d.foraDaLista ?? 0) > 0 ? (
+        <Banner
+          tom="aviso"
+          forte={`${fmt.inteiro(d.foraDaLista)} vendas sem % válido de comissão`}
+          texto="— o VGV aparece aqui, mas receita e contribuição ficam com “—” no Financeiro até o cadastro ser corrigido."
+          botao={{ rotulo: "Revisar em Financeiro →", go: () => recorte.irPara("financeiro") }}
+        />
+      ) : null}
 
       <RodapeFontes
         fontes={["vendas", "metas cadastradas", "negócios (Funil 2.0)"]}
@@ -155,9 +164,9 @@ const vazioVendas: Dados = {
   realizadoPercentual: null, realizado: null, meta: null, previsao: null, coberturaPrevisao: null, falta: null,
   concluidas: null, cicloMedio: null, ritmo: null, diasUteis: null,
   cobertura: [
-    { rotulo: "Fechado", valor: null, largura: 2, tipo: "entra" },
+    { rotulo: "Realizado no ano", valor: null, largura: 2, tipo: "entra" },
     { rotulo: "+ previsão ponderada", valor: null, largura: 2, tipo: "sobra" },
-    { rotulo: "Meta do ano", valor: null, largura: 2, tipo: "meta" },
+    { rotulo: "Meta anual", valor: null, largura: 2, tipo: "meta" },
   ],
   equipes: [], etapas: [], totalEtapas: { negocios: null, vgv: null, ponderado: null }, vendas: [],
   totalVendas: null, foraDaLista: null, atualizado: "—",
@@ -179,9 +188,9 @@ function mapearVendas(p: VendasPayload | null): Dados {
     ritmo: p.ritmo,
     diasUteis: p.dias_uteis,
     cobertura: [
-      { rotulo: "Fechado", valor: p.realizado, largura: Math.min(100, pct), tipo: "entra" },
+      { rotulo: "Realizado no ano", valor: p.realizado, largura: Math.min(100, pct), tipo: "entra" },
       { rotulo: "+ previsão ponderada", valor: p.previsao, largura: Math.min(100, pct), tipo: "sobra" },
-      { rotulo: "Meta do ano", valor: p.meta, largura: 100, tipo: "meta" },
+      { rotulo: "Meta anual", valor: p.meta, largura: 100, tipo: "meta" },
     ],
     equipes: p.equipes.map((e) => ({
       nome: e.nome,
@@ -196,19 +205,3 @@ function mapearVendas(p: VendasPayload | null): Dados {
     atualizado: hhmm(p.atualizado_em),
   };
 }
-
-/* Fixture — só Storybook/teste. NUNCA usado na rota de produção. */
-export const demoVendas: Dados = {
-  realizadoPercentual: 77, realizado: 18_400_000, meta: 24_000_000, previsao: 6_100_000, coberturaPrevisao: 102, falta: 5_600_000,
-  concluidas: 21, cicloMedio: 38, ritmo: 400_000, diasUteis: 14,
-  cobertura: [
-    { rotulo: "Fechado", valor: 18_400_000, largura: 77, tipo: "entra" },
-    { rotulo: "+ previsão ponderada", valor: 24_500_000, largura: 100, tipo: "sobra" },
-    { rotulo: "Meta de agosto", valor: 24_000_000, largura: 100, tipo: "meta" },
-  ],
-  equipes: [{ nome: "Equipe Juliana Prado", valor: "R$ 11,2 de 13 mi", percentual: 86 }],
-  etapas: [{ etapa: "Proposta", negocios: 31, vgv: 4_200_000, probabilidade: 60, ponderado: 2_520_000 }],
-  totalEtapas: { negocios: 255, vgv: 26_000_000, ponderado: 6_100_000 },
-  vendas: [{ nome: "Apê Canário 71 · MO-104", corretor: "Ana Beatriz", vgv: 890_000, ciclo: 26, canal: "site" }],
-  totalVendas: 21, foraDaLista: 3, atualizado: "14:32",
-};

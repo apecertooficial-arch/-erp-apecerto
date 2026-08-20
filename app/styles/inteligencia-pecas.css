@@ -8,8 +8,8 @@
  * rótulo 12px/600 #6E6760, pé 11px #9A938B, chips pill 11px/700, funil com barra
  * de 14px e gradiente laranja→laranja (roxo só no funil da Sara).
  *
- * A auditoria de fidelidade acrescentou: gaveta lateral de 420px, cabeçalho de
- * tabela clicável, e o comportamento de celular dos artboards 29a/22a — tabela
+ * A auditoria de fidelidade acrescentou cabeçalho de tabela clicável e o
+ * comportamento de celular dos artboards 29a/22a — tabela
  * virando lista de cartões e alvo de toque de 44px.
  */
 
@@ -97,15 +97,6 @@
 .int-area .intp-vazio-detalhe b { font-size: 13px; color: #6e6760; }
 .int-area .intp-vazio-detalhe small { font-size: 11.5px; color: #9a938b; line-height: 1.5; }
 
-/* GAVETA LATERAL 420px — artboards 6a, 5a, 18a, 17a. */
-.int-area .intp-gaveta-fundo { position: fixed; inset: 0; background: rgba(31, 28, 26, 0.35); z-index: 55; border: 0; }
-.int-area .intp-gaveta { position: fixed; top: 0; right: 0; bottom: 0; width: 420px; max-width: 96vw; background: #fff; z-index: 56; box-shadow: -16px 0 40px rgba(31, 28, 26, 0.16); padding: 20px 22px; overflow-y: auto; box-sizing: border-box; display: flex; flex-direction: column; gap: 12px; }
-.int-area .intp-gaveta-topo { display: flex; align-items: flex-start; gap: 10px; border-bottom: 1px solid #f2efec; padding-bottom: 12px; }
-.int-area .intp-gaveta-topo b { display: block; font-size: 15px; }
-.int-area .intp-gaveta-topo small { display: block; font-size: 11.5px; color: #9a938b; }
-.int-area .intp-gaveta-corpo { display: flex; flex-direction: column; gap: 12px; }
-.int-area .intp-gaveta-rodape { margin-top: auto; border-top: 1px solid #f2efec; padding-top: 12px; display: flex; gap: 8px; flex-wrap: wrap; }
-
 /* Tons de chip — os mesmos cinco do desenho. */
 .int-area .tom-bom { background: #e4f6ec; color: #1e7a46; }
 .int-area .tom-ruim { background: #fbe5e5; color: #b02b2b; }
@@ -147,7 +138,6 @@
   .int-area .intp-etapa-nome { grid-column: 1 / -1; }
   .int-area .intp-etapa > span:nth-child(2) { grid-column: 1 / -1; }
 
-  .int-area .intp-gaveta { width: 100%; max-width: 100%; }
   .int-area .intp-banner button, .int-area .intp-th-btn { min-height: 44px; }
   .int-area button.intp-linha-btn { min-height: 44px; }
 }

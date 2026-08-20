@@ -3,7 +3,7 @@
 /* 12 · GERENTES — artboard 17a. Agora lê dado real via /api/inteligencia/gerentes
  * (RPC intel_gerentes). Lista de gerentes e página do gerente vêm do CRM
  * (Funil 2.0). Cobertura de horário, qualidade e propostas não têm fonte -> —.
- * Demo virou fixture. */
+ * */
 
 import { useState } from "react";
 import "../../../styles/inteligencia-blocos.css";
@@ -243,27 +243,3 @@ function mapearGerentes(p: GerentesPayload | null): Dados {
 
   return { lista, pagina, atualizado: hhmm(p.atualizado_em) };
 }
-
-/* Fixture — só Storybook/teste. NUNCA usado na rota de produção. */
-export const demoGerentes: Dados = {
-  lista: [
-    { nome: "Juliana Prado", iniciais: "JP", corretores: 3, capacidade: "96/120", leads: 261, sla: 31, mediana: 9, p90: 58, leadVenda: 4.9, visitas: 69, propostas: 28, vendas: 13, vgv: 11_200_000, qualidade: 4.5, amostra: 104, parados: 8, alertas: 2, evolucao: "sobe" },
-    { nome: "Marcos Vilela", iniciais: "MV", corretores: 3, capacidade: "85/120", acima: true, leads: 225, sla: 14, mediana: 22, p90: 161, leadVenda: 3.6, visitas: 49, propostas: 19, vendas: 8, vgv: 7_200_000, qualidade: 4.1, amostra: 78, parados: 13, alertas: 3, evolucao: "cai" },
-  ],
-  pagina: {
-    nome: "Marcos Vilela", iniciais: "MV", equipe: 3, selo: "evolução ↘ · 3 alertas críticos",
-    corretores: [
-      { nome: "Carlos Mendes", carga: "46/40", acima: true, leads: 118, mediana: 14, p90: 118, sla: 18 },
-      { nome: "Pedro Costa", carga: "8/40", leads: 15, mediana: 6, p90: 22, sla: 44, novato: true },
-    ],
-    cobertura: [
-      { periodo: "Manhã", percentual: 90, cor: "#1FA85A" },
-      { periodo: "Almoço 12–14", percentual: 34, cor: "#D93E3E" },
-    ],
-    funil: [{ rotulo: "Leads → negócios → visitas", valor: "225 · 126 · 49" }, { rotulo: "Vendas", valor: "8" }],
-    metaPercentual: 72, metaNota: "meta da equipe: R$ 7,2 mi de R$ 10 mi (72%)",
-    coaching: [{ pessoa: "Carlos", texto: "sobrecarregado (46/40) — redistribuir e acompanhar 3 atendimentos juntos." }],
-    intervencao: [{ l: "Leads acima do SLA", r: "18" }, { l: "Follow-ups vencidos", r: "34" }],
-  },
-  atualizado: "14:32",
-};

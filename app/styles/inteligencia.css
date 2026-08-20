@@ -35,6 +35,10 @@
 
 .int-area .int-btn { height: 38px; padding: 0 16px; border: 1px solid #e4dfd9; border-radius: 999px; background: #fff; color: #4d4842; font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
 .int-area .int-btn:hover { background: #faf8f6; }
+.int-area .int-btn-primario { min-height: 34px; padding: 0 14px; border: 0; border-radius: 999px; background: #ff7000; color: #fff; font-family: inherit; font-size: 12px; font-weight: 700; cursor: pointer; white-space: nowrap; }
+.int-area .int-btn-primario:hover { background: #e96500; }
+.int-area .int-btn-secundario { min-height: 34px; padding: 0 14px; border: 1px solid #e4dfd9; border-radius: 999px; background: #fff; color: #4d4842; font-family: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
+.int-area .int-btn-secundario:hover { background: #faf8f6; }
 
 .int-area .int-paginas { display: flex; gap: 7px; flex-wrap: wrap; }
 .int-area .int-pagina { height: 34px; padding: 0 14px; border: 1.5px solid #e4dfd9; border-radius: 999px; background: #fff; color: #4d4842; font-family: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer; }

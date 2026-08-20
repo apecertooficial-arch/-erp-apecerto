@@ -4,7 +4,7 @@
  * intel_sara, eventos sara_* da telemetria). Hoje a Sara ainda NÃO envia eventos
  * para a Inteligência: os números vêm 0 — é o contrato funcionando, não bug.
  * Temas/bairros/faixas/resultados dependem de eventos de busca (ausentes) e ficam
- * vazios. Demo virou fixture. */
+ * vazios. */
 
 import type { PropsTela } from "../CascaInteligencia";
 import { fmt, RodapeFontes, Valor } from "../dado";
@@ -127,15 +127,3 @@ function mapearSara(p: SaraPayload | null): Dados {
     atualizado: hhmm(p.atualizado_em),
   };
 }
-
-/* Fixture — só Storybook/teste. NUNCA usado na rota de produção. */
-export const demoSara: Dados = {
-  aberturas: 2_104, buscas: 1_482, buscaConcluida: 91, mediaResultados: 6.4, semResultado: 133, erros: 21,
-  dispositivos: [{ l: "Celular", r: "1.678 ab." }, { l: "Desktop", r: "426 ab." }],
-  etapas: [{ nome: "1 · Sara aberta", volume: 2_104, largura: 100, taxa: "100%" }],
-  temas: [{ l: "2 dormitórios", r: "512" }], bairros: [{ l: "Moema Pássaros", r: "44%" }], finalidade: { locacao: 58, venda: 42 },
-  faixas: [{ l: "R$ 4–6 mil/mês", r: "38%" }],
-  cliques: [{ imovel: "Apê Canário 71 · MO-104", apresentado: 412, clicado: 186, intencao: 64, leads: 12 }],
-  bannerTitulo: "A Sara respondeu 91% das buscas e gerou 47 leads.", bannerStats: [{ v: "1.482", l: "buscas" }, { v: "47", l: "leads" }, { v: "28", l: "negócios" }],
-  atualizado: "14:28",
-};

@@ -3,7 +3,7 @@
 /* 11 · PERFORMANCE DA EQUIPE — artboard 16a. Agora lê dado real via
  * /api/inteligencia/equipe (RPC intel_equipe). Os 4 pilares e o rollup por equipe
  * vêm do CRM (Funil 2.0). Qualidade de conversa, cobertura de horário e presença
- * não têm fonte ligada -> — / barras vazias. Demo virou fixture. */
+ * não têm fonte ligada -> — / barras vazias. */
 
 import "../../../styles/inteligencia-blocos.css";
 import type { PropsTela } from "../CascaInteligencia";
@@ -216,32 +216,3 @@ function mapearEquipe(p: EquipePayload | null): Dados {
     atualizado: hhmm(p.atualizado_em),
   };
 }
-
-/* Fixture — só Storybook/teste. NUNCA usado na rota de produção. */
-export const demoEquipe: Dados = {
-  velocidade: [
-    { l: "Leads recebidos", r: "486" },
-    { l: "1ª resposta med · P90", r: "14 min · 1 h 52", cor: "#D93E3E", forte: true },
-  ],
-  cobertura: [
-    { periodo: "manhã", percentual: 92, cor: "#1FA85A" },
-    { periodo: "tarde", percentual: 88, cor: "#1FA85A" },
-    { periodo: "noite", percentual: 41, cor: "#FF9A4D" },
-    { periodo: "fds", percentual: 16, cor: "#D93E3E" },
-  ],
-  notaQualidade: 4.3, amostraQualidade: 182,
-  criterios: [
-    { nome: "Cordialidade", nota: 4.7, largura: 94 },
-    { nome: "Objeções", nota: 3.8, largura: 76 },
-  ],
-  conversao: [
-    { l: "Leads → negócios → visitas", r: "486 · 274 · 118" },
-    { l: "VGV", r: "R$ 18,4 mi" },
-  ],
-  disciplina: [{ l: "Follow-ups feitos · vencidos", r: "412 · 57", cor: "#D93E3E", forte: true }],
-  equipes: [
-    { nome: "Equipe Juliana Prado", iniciais: "JP", leads: 261, sla: 31, mediana: 9, p90: 58, qualidade: 4.5, amostra: 104, leadVenda: 4.9, vendas: 13, vgv: 11_200_000, vencidos: 23, ajuda: "cobertura de fim de semana" },
-  ],
-  totais: "leads 486 · vendas 21 · VGV R$ 18,4 mi",
-  atualizado: "14:32",
-};

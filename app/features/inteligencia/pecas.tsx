@@ -5,12 +5,11 @@
  * Contrato de dado ausente (dado.tsx) em todas: o bloco existe sempre; sem
  * número, aparece “—” com o motivo. Nenhuma peça se esconde sozinha.
  *
- * Esta rodada da auditoria fechou a acessibilidade da gaveta de 420px: Esc no
- * documento, foco inicial no botão de fechar, devolução do foco a quem abriu,
- * ci clo de tabulação preso dentro dela e rolagem do fundo travada.
+ * Detalhes operacionais permanecem no fluxo da própria página; a área não usa
+ * gavetas ou telas sobrepostas.
  */
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import "../../styles/inteligencia-pecas.css";
 import { BlocoSemDado, existe, TRACO, Valor, type MotivoPendencia, type Talvez } from "./dado";
 
@@ -323,90 +322,6 @@ export function ChipsEventos({ titulo, itens, foot }: { titulo: string; itens: s
 
 export type Detalhe = { titulo: string; sub: string; linhas: [string, string][]; aviso: string };
 
-/* GAVETA LATERAL de 420px — artboards 6a (imóvel), 5a (jornada do lead),
- * 18a (perfil do corretor) e 17a (página do gerente).
- *
- * Acessibilidade fechada nesta rodada: role=dialog + aria-modal, foco inicial no
- * botão de fechar, Esc no documento, foco devolvido ao elemento que abriu,
- * tabulação presa dentro da gaveta e rolagem do fundo travada enquanto aberta.
- * No celular ocupa a tela inteira, sem rolagem horizontal (folha de peças).
- */
-export function GavetaLateral({
-  aberta,
-  titulo,
-  sub,
-  selo,
-  fechar,
-  children,
-  rodape,
-}: {
-  aberta: boolean;
-  titulo: string;
-  sub?: string;
-  selo?: string;
-  fechar: () => void;
-  children: ReactNode;
-  rodape?: ReactNode;
-}) {
-  const caixa = useRef<HTMLElement | null>(null);
-  const botaoFechar = useRef<HTMLButtonElement | null>(null);
-  const anterior = useRef<HTMLElement | null>(null);
-
-  useEffect(() => {
-    if (!aberta) return;
-    anterior.current = document.activeElement as HTMLElement | null;
-    botaoFechar.current?.focus();
-    const rolagem = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-
-    const naTecla = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        e.stopPropagation();
-        fechar();
-        return;
-      }
-      if (e.key !== "Tab" || !caixa.current) return;
-      const focaveis = caixa.current.querySelectorAll<HTMLElement>('button, a[href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
-      if (focaveis.length === 0) return;
-      const primeiro = focaveis[0];
-      const ultimo = focaveis[focaveis.length - 1];
-      if (e.shiftKey && document.activeElement === primeiro) {
-        e.preventDefault();
-        ultimo.focus();
-      } else if (!e.shiftKey && document.activeElement === ultimo) {
-        e.preventDefault();
-        primeiro.focus();
-      }
-    };
-
-    document.addEventListener("keydown", naTecla, true);
-    return () => {
-      document.removeEventListener("keydown", naTecla, true);
-      document.body.style.overflow = rolagem;
-      anterior.current?.focus?.();
-    };
-  }, [aberta, fechar]);
-
-  if (!aberta) return null;
-  return (
-    <>
-      <button type="button" className="intp-gaveta-fundo" aria-label="Fechar" onClick={fechar} tabIndex={-1} />
-      <aside className="intp-gaveta" role="dialog" aria-modal="true" aria-label={titulo} ref={caixa}>
-        <div className="intp-gaveta-topo">
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <b>{titulo}</b>
-            {sub ? <small>{sub}</small> : null}
-          </div>
-          {selo ? <span className="intp-cartao-chip tom-bom">{selo}</span> : null}
-          <button type="button" className="intp-detalhe-fechar" onClick={fechar} aria-label="Fechar gaveta" ref={botaoFechar}>✕</button>
-        </div>
-        <div className="intp-gaveta-corpo">{children}</div>
-        {rodape ? <div className="intp-gaveta-rodape">{rodape}</div> : null}
-      </aside>
-    </>
-  );
-}
-
 /** Linhas clicáveis + detalhe ao lado — o par das telas de operação (15a–21a). */
 export function ListaComDetalhe({
   eyebrow,
@@ -478,24 +393,6 @@ export function ListaComDetalhe({
         )}
         {rodape}
       </div>
-    </div>
-  );
-}
-
-/* Linha do tempo da jornada — usada na gaveta do lead (5a). Sem IP bruto, sem
-   user agent: só o que serve para atender a pessoa. */
-export function LinhaDoTempo({ eventos }: { eventos: { titulo: string; quando: string; cor: string }[] }) {
-  return (
-    <div className="intp-tempo">
-      {eventos.map((e) => (
-        <div className="intp-tempo-item" key={`${e.titulo}-${e.quando}`}>
-          <span className="intp-tempo-ponto" style={{ background: e.cor }} />
-          <div>
-            <b>{e.titulo}</b>
-            <small>{e.quando}</small>
-          </div>
-        </div>
-      ))}
     </div>
   );
 }

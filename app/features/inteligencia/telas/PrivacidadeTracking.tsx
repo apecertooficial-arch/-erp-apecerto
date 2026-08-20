@@ -5,8 +5,8 @@
  * Esta tela agora lê DADO REAL via /api/inteligencia/privacidade (RPC
  * intel_privacidade, gated por is_equipe). O layout é idêntico ao publicado; só
  * o corpo de usarDados mudou. O que não tem fonte (Google Tag, Clarity, CRM,
- * qualidade de eventos, atribuição) aparece como — com motivo — nunca demo,
- * nunca zero inventado. O demo vira fixture (demoPrivacidade), fora da produção. */
+ * qualidade de eventos, atribuição) aparece como — com motivo, nunca zero
+ * inventado. */
 
 import type { PropsTela } from "../CascaInteligencia";
 import { fmt, RodapeFontes, TRACO } from "../dado";
@@ -338,52 +338,3 @@ function mapearPrivacidade(p: PrivacidadePayload | null): Dados {
     atualizado: hhmm(p.atualizado_em),
   };
 }
-
-/* Fixture — só para Storybook/teste. NUNCA é usado na rota de produção. */
-export const demoPrivacidade: Dados = {
-  totalPageviews: 24_618,
-  niveis: [
-    { rotulo: "Somente essenciais", pct: 61, cor: "#1F1C1A", foot: "15.017 visualizações" },
-    { rotulo: "Analytics", pct: 31, cor: "#66009A", foot: "7.632 visualizações · habilita GA4 e gravação" },
-    { rotulo: "Marketing", pct: 8, cor: "#CC5800", foot: "1.969 visualizações" },
-  ],
-  semanas: [
-    { rotulo: "21–27 jul", essenciais: 55, analytics: 26, marketing: 7 },
-    { rotulo: "28–3 ago", essenciais: 56, analytics: 28, marketing: 7 },
-    { rotulo: "4–10 ago", essenciais: 54, analytics: 30, marketing: 8 },
-    { rotulo: "11–17 ago", essenciais: 52, analytics: 32, marketing: 8 },
-  ],
-  liberacoes: LIBERACOES,
-  regras: REGRAS,
-  fontes: [
-    { rotulo: "Coleta própria", estado: "bom", selo: "operando", nota: "último evento há 2 min" },
-    { rotulo: "Google Tag", estado: "bom", selo: "operando", nota: "último evento há 6 min" },
-    { rotulo: "Microsoft Clarity", estado: "aviso", selo: "atenção", nota: "sem evento há 3 h", diagnostico: true },
-    { rotulo: "Sincronização com CRM", estado: "aviso", selo: "3 pendentes", nota: "2 erros nas últimas 24 h" },
-  ],
-  horas: [
-    { altura: 52, cor: "#FFD3B0" }, { altura: 44, cor: "#FFD3B0" }, { altura: 38, cor: "#FFD3B0" }, { altura: 46, cor: "#FFD3B0" },
-    { altura: 60, cor: "#FFD3B0" }, { altura: 72, cor: "#FF9A4D" }, { altura: 18, cor: "#F4A6A2", queda: true }, { altura: 70, cor: "#FF9A4D" },
-    { altura: 78, cor: "#FF9A4D" }, { altura: 84, cor: "#FF7000" }, { altura: 76, cor: "#FF9A4D" }, { altura: 64, cor: "#FF9A4D" },
-  ],
-  qualidade: [
-    { l: "Páginas sem tracking", r: "2", corR: "#B5700A", sub: "o que não é medido não alerta" },
-    { l: "Eventos rejeitados ou inválidos", r: "118 (0,3%)" },
-    { l: "Possíveis duplicidades", r: "42" },
-    { l: "Imóveis sem código", r: "12", sub: "418 eventos em “não identificado”" },
-    { l: "Leads sem sincronização com o CRM", r: "3", corR: "#D93E3E", sub: "desde 14 ago · crítico" },
-  ],
-  atribuicao: [
-    { l: "Cobertura de UTMs", r: "74%" },
-    { l: "Volume não atribuído", r: "11%", sub: "sem UTM 48% · sem consentimento 39% · referência perdida 13%" },
-    { l: "UTMs ausentes em anúncios ativos", r: "3", sub: "41 leads sem origem por mês" },
-    { l: "Erros de sincronização · 24 h", r: "2" },
-    { l: "Última verificação", r: "hoje, 14:30" },
-  ],
-  eventos: [
-    "page_view", "consent_update", "view_item", "view_inventory", "generate_lead", "whatsapp_click", "phone_click", "social_click",
-    "sara_open", "sara_search", "sara_results", "sara_error", "favorite_toggle", "gallery_interaction", "property_search", "cta_click",
-    "owner_cta_click", "form_start", "filter_change", "scroll_depth",
-  ],
-  atualizado: "14:30",
-};

@@ -1,153 +1,100 @@
 "use client";
 
-/* 5 · CONVERSÃO E CRM — artboard 5a. Agora lê dado real via
- * /api/inteligencia/conversao (RPC intel_conversao). Funil comercial (Funil 2.0),
- * SLA, backlog, negócios parados e conversão por corretor vêm do CRM. Tempos
- * entre etapas, motivos de perda detalhados, cortes e a jornada individual do
- * lead dependem de fontes ainda não ligadas -> —. Pipeline e valor fechado
- * seguem — (campo de valor ausente no Funil 2.0). Demo virou fixture. */
+/* CONVERSÃO E CRM — coorte do período para o funil; backlog atual aparece
+ * separado. Não há jornada individual ou valor de pipeline sem vínculo/campo. */
 
 import type { PropsTela } from "../CascaInteligencia";
-import { fmt, RodapeFontes, Valor } from "../dado";
-import { Cabecalho, Funil, type Etapa } from "../pecas";
+import { BlocoSemDado, fmt, RodapeFontes, Valor } from "../dado";
+import { EsqueletoAviso, EsqueletoKpis, EsqueletoTabela } from "../esqueleto";
+import { Banner, Cabecalho, Funil, Tabela, type Etapa } from "../pecas";
 import { useDadosInteligencia } from "../useDadosInteligencia";
 import type { ConversaoPayload } from "../../../lib/inteligencia/tipos";
 
-type Dados = {
-  primeiroAtendimento: number | null; semAtendimento: number | null; parados: number | null; taxaPerda: number | null;
-  pipelineValor: number | null; valorFechado: number | null;
-  etapas: { nome: string; volume: number | null; largura: number | null; taxa?: string; perda?: string; perdaFinal?: boolean }[];
-  corretores: { iniciais: string; nome: string; negocios: number | null; contato: string; tomContato: "ambar" | "vermelho" | "verde"; visitas: number | null; fechados: number | null; conv: number | null }[];
-  atualizado: string;
-};
-
-const iniciaisDe = (nome: string) => nome.split(" ").filter(Boolean).map((w) => w[0]).join("").slice(0, 2).toUpperCase();
-
-export function ConversaoCrm({ accessToken, recorte }: PropsTela) {
-  const leitura = useDadosInteligencia<ConversaoPayload>("conversao", accessToken, recorte);
-  const d = mapearConversao(leitura.payload);
-
-  const etapas: Etapa[] = d.etapas.map((e) => ({
-    nome: e.nome, largura: e.largura, volume: e.volume, volumeTexto: fmt.inteiro(e.volume), taxa: e.taxa, perda: e.perda, perdaFinal: e.perdaFinal,
-    detalhes: () => recorte.filtrar(`Etapa: ${e.nome}`),
-  }));
-
-  return (
-    <div className="int-secao">
-      <div className="int-duas par-125">
-        <div className="int-col">
-          <Cabecalho eyebrow="FUNIL COMERCIAL" titulo="Do lead recebido à chave na mão" cor="#8B00CC" nota="escopo: Funil 2.0 (operação)" />
-          <Funil etapas={etapas} foot="volumes reais do Funil 2.0 · a taxa entre etapas e os motivos de perda detalhados entram quando o histórico de transição for agregado" />
-
-          <div className="intp-grade" style={{ gridTemplateColumns: "repeat(4, minmax(0, 1fr))" }}>
-            <div className="intp-kpi"><span className="intp-kpi-rotulo">Espera do lead · mediana</span><Valor bruto={d.primeiroAtendimento} texto={fmt.duracaoMin(d.primeiroAtendimento)} /><small className="intp-kpi-foot">tempo esperando resposta do corretor</small></div>
-            <div className="intp-kpi"><span className="intp-kpi-rotulo">Leads sem atendimento</span><Valor bruto={d.semAtendimento} texto={fmt.inteiro(d.semAtendimento)} tom="ruim" /><button type="button" className="int-link" style={{ fontWeight: 700, alignSelf: "flex-start" }} onClick={() => recorte.irPara("atendimento")}>Abrir fila de ação →</button></div>
-            <div className="intp-kpi"><span className="intp-kpi-rotulo">Negócios parados</span><Valor bruto={d.parados} texto={fmt.inteiro(d.parados)} tom="atencao" /><small className="intp-kpi-foot">sem movimento há 7+ dias</small></div>
-            <div className="intp-kpi"><span className="intp-kpi-rotulo">Taxa de perda</span><Valor bruto={d.taxaPerda} texto={fmt.porcento(d.taxaPerda, 1)} motivo="amostra" detalhe="poucos negócios fechados no período" /><small className="intp-kpi-foot">perdidos sobre negócios</small></div>
-          </div>
-
-          <div className="intp-cartao">
-            <span className="intp-cartao-titulo">Conversão por corretor</span>
-            <table className="intp-tabela">
-              <thead><tr><th>Corretor</th><th className="num">Negócios abertos</th><th className="num">Vendas</th><th className="num">Conv.</th></tr></thead>
-              <tbody>
-                {d.corretores.map((c) => (
-                  <tr key={c.nome} onClick={() => recorte.filtrar(`Corretor: ${c.nome}`)}>
-                    <td data-rotulo="Corretor" className="forte">
-                      <span style={{ display: "inline-flex", alignItems: "center", gap: 7 }}>
-                        <span style={{ width: 24, height: 24, borderRadius: 999, background: "#F7ECFC", color: "#66009A", display: "grid", placeItems: "center", fontSize: 10, fontWeight: 700, flex: "none" }}>{c.iniciais}</span>
-                        {c.nome}
-                      </span>
-                    </td>
-                    <td data-rotulo="Negócios abertos" className="num">{fmt.inteiro(c.negocios)}</td>
-                    <td data-rotulo="Vendas" className="num">{fmt.inteiro(c.fechados)}</td>
-                    <td data-rotulo="Conv." className="num forte">{fmt.porcento(c.conv, 1)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            <small className="intp-kpi-foot">tempo de 1º contato por corretor entra junto com o histórico de mensagens</small>
-          </div>
-
-          <div className="intp-cartao" style={{ flexDirection: "row", alignItems: "center", gap: 12, padding: "16px 18px", flexWrap: "wrap" }}>
-            <span className="intp-tile tile-ambar">
-              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="2" y="6" width="20" height="12" rx="2" /><path d="M16 12h.01M2 10h20" /></svg>
-            </span>
-            <div style={{ flex: 1, minWidth: 240 }}>
-              <span className="intp-cartao-titulo">Pipeline e valor fechado</span>
-              <p style={{ margin: "2px 0 0", fontSize: 12, color: "#6E6760", lineHeight: 1.5 }}>Aparecem quando o campo de valor do negócio existir no Funil 2.0. Sem campo confiável, não mostramos número — nem zero. Pipeline {fmt.dinheiro(d.pipelineValor)} · valor fechado {fmt.dinheiro(d.valorFechado)}.</p>
-            </div>
-            <span className="int-pendencia" style={{ flex: "none" }}>aguardando dado do CRM</span>
-          </div>
-        </div>
-
-        <div className="int-col">
-          <Cabecalho eyebrow="JORNADA INDIVIDUAL" titulo="Um lead, do primeiro clique ao resultado" cor="#8B00CC" />
-          <div className="intp-cartao" style={{ gap: 10 }}>
-            <p style={{ margin: 0, fontSize: 12.5, color: "#6E6760", lineHeight: 1.55 }}>
-              A jornada individual cruza os eventos do site (primeiro clique, busca, WhatsApp) com o histórico do lead no Funil 2.0. Esse cruzamento depende do vínculo lead do site ↔ negócio, que hoje quase não existe (o site praticamente não alimenta o CRM). Quando o lead do site passar a cair no Funil 2.0 com o identificador, a linha do tempo por lead aparece aqui — sem IP bruto, sem user agent, só o que serve para atender.
-            </p>
-            <button type="button" className="int-btn" style={{ alignSelf: "flex-start", height: 34, fontSize: 12 }} onClick={() => recorte.irPara("atendimento")}>Abrir a fila no Funil 2.0</button>
-          </div>
-          <div className="intp-cartao">
-            <span className="intp-cartao-titulo">Como o perfil Corretor vê esta área</span>
-            <p style={{ margin: 0, fontSize: 12, color: "#4D4842", lineHeight: 1.5 }}>“Você vê os números agregados. O detalhe por pessoa depende de permissão de dados pessoais.”</p>
-          </div>
-        </div>
-      </div>
-
-      <RodapeFontes
-        fontes={["leads", "negócios (Funil 2.0)", "wa_mensagens", "visitas", "vendas"]}
-        pendencias={["tempos entre etapas e motivos de perda (histórico de transição)", "valor de pipeline/fechado (campo ausente no CRM)", "jornada individual (vínculo site↔CRM)"]}
-        atualizado={d.atualizado}
-      />
-    </div>
-  );
-}
-
-/* PONTO ÚNICO DE TROCA PARA O BANCO — lê a RPC via hook. */
 function hhmm(iso: string | null): string {
   if (!iso) return "—";
   const dt = new Date(iso);
   return Number.isNaN(dt.getTime()) ? "—" : dt.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo" });
 }
 
-const vazioConversao: Dados = {
-  primeiroAtendimento: null, semAtendimento: null, parados: null, taxaPerda: null, pipelineValor: null, valorFechado: null,
-  etapas: [], corretores: [], atualizado: "—",
-};
+export function ConversaoCrm({ accessToken, recorte }: PropsTela) {
+  const leitura = useDadosInteligencia<ConversaoPayload>("conversao", accessToken, recorte);
 
-function mapearConversao(p: ConversaoPayload | null): Dados {
-  if (!p) return vazioConversao;
-  const total = p.negocios + p.ganho + p.perdido;
-  const maxV = Math.max(1, p.leads, ...p.etapas.map((e) => e.volume), p.perdido);
+  if (leitura.estado === "carregando") {
+    return <div className="int-secao"><EsqueletoAviso texto="Reconciliando o funil do período." /><EsqueletoKpis colunas={4} /><EsqueletoTabela colunas={4} linhas={6} /></div>;
+  }
+  if (leitura.estado === "erro") {
+    return <div className="int-secao"><BlocoSemDado titulo="Não foi possível atualizar Conversão" motivo="fonte" detalhe={`${leitura.erro ?? "A fonte não respondeu."} O funil não foi substituído por valores ilustrativos.`} /></div>;
+  }
+  const p = leitura.payload;
+  if (!p) return <div className="int-secao"><BlocoSemDado titulo="Conversão ainda sem leitura" detalhe="A consulta terminou sem dados para o período." /></div>;
 
-  const etapas = [
-    { nome: "Lead recebido", volume: p.leads, largura: 100, taxa: "100%" as string | undefined },
-    ...p.etapas.map((e) => ({ nome: e.etapa, volume: e.volume, largura: Math.round((100 * e.volume) / maxV), taxa: undefined as string | undefined })),
-    { nome: "Ganho", volume: p.ganho, largura: Math.round((100 * p.ganho) / maxV), taxa: undefined as string | undefined },
+  const maxV = Math.max(1, p.leads, ...p.etapas.map((e) => e.volume), p.ganho, p.perdido);
+  const largura = (v: number) => Math.max(2, Math.round((100 * v) / maxV));
+  const etapas: Etapa[] = [
+    { nome: "Leads operacionais", volume: p.leads, largura: largura(p.leads), volumeTexto: fmt.inteiro(p.leads) },
+    ...p.etapas.map((e) => ({ nome: e.etapa, volume: e.volume, largura: largura(e.volume), volumeTexto: fmt.inteiro(e.volume) })),
+    { nome: "Ganho", volume: p.ganho, largura: largura(p.ganho), volumeTexto: fmt.inteiro(p.ganho) },
+    { nome: "Perdido", volume: p.perdido, largura: largura(p.perdido), volumeTexto: fmt.inteiro(p.perdido), perdaFinal: true },
   ];
-  const etapasFull = [...etapas, { nome: "Perdido", volume: p.perdido, largura: Math.round((100 * p.perdido) / maxV), taxa: undefined as string | undefined, perdaFinal: true }];
+  const taxaPerda = p.negocios > 0 ? (100 * p.perdido) / p.negocios : null;
 
-  return {
-    primeiroAtendimento: p.sla_mediana_min,
-    semAtendimento: p.sem_atendimento,
-    parados: p.parados,
-    taxaPerda: total > 0 ? Math.round((1000 * p.perdido) / total) / 10 : null,
-    pipelineValor: null,
-    valorFechado: null,
-    etapas: etapasFull,
-    corretores: p.corretores.map((c) => ({
-      iniciais: iniciaisDe(c.nome), nome: c.nome, negocios: c.negocios, contato: "—", tomContato: "ambar", visitas: null, fechados: c.vendas, conv: c.conv,
-    })),
-    atualizado: hhmm(p.atualizado_em),
-  };
+  return (
+    <div className="int-secao">
+      <Cabecalho eyebrow="CONVERSÃO E CRM" titulo="O que entrou no funil e o que exige ação agora" nota={recorte.periodo} />
+
+      {p.leads_carga_historica > 0 ? (
+        <Banner tom="aviso" forte="A carga Aquário não entra no funil de aquisição." texto={`${fmt.inteiro(p.leads_carga_historica)} registros históricos foram mantidos fora do cartão de leads operacionais para preservar a conversão do período.`} />
+      ) : null}
+
+      <div className="intp-grade" style={{ gridTemplateColumns: "repeat(4, minmax(0, 1fr))" }}>
+        <div className="intp-kpi"><span className="intp-kpi-rotulo">Espera atual · mediana</span><Valor bruto={p.sla_mediana_min} texto={fmt.duracaoMin(p.sla_mediana_min)} /><small className="intp-kpi-foot">fila sem resposta dos últimos 7 dias</small></div>
+        <div className="intp-kpi"><span className="intp-kpi-rotulo">Pessoas aguardando agora</span><Valor bruto={p.sem_atendimento} texto={fmt.inteiro(p.sem_atendimento)} tom="ruim" /><button type="button" className="int-link" style={{ fontWeight: 700, alignSelf: "flex-start" }} onClick={() => recorte.irPara("atendimento")}>Abrir atendimento →</button></div>
+        <div className="intp-kpi"><span className="intp-kpi-rotulo">Negócios parados · agora</span><Valor bruto={p.parados} texto={fmt.inteiro(p.parados)} tom="atencao" /><small className="intp-kpi-foot">estoque aberto sem movimento há 7+ dias</small></div>
+        <div className="intp-kpi"><span className="intp-kpi-rotulo">Perda da coorte</span><Valor bruto={taxaPerda} texto={fmt.porcento(taxaPerda, 1)} /><small className="intp-kpi-foot">perdidos ÷ negócios criados no período</small></div>
+      </div>
+
+      <div className="int-duas par-125">
+        <div className="int-col">
+          <Cabecalho eyebrow="COORTE DO PERÍODO" titulo="Negócios criados e estágio atual" cor="#8B00CC" />
+          <Funil etapas={etapas} foot="cada negócio aparece conforme seu estágio atual; ganhos e perdas pertencem à mesma coorte de criação" />
+        </div>
+        <div className="int-col">
+          <Cabecalho eyebrow="PRODUÇÃO DO PERÍODO" titulo="Registros confirmados" cor="#8B00CC" />
+          <div className="intp-cartao">
+            <div className="intp-detalhe-linha"><span>Leads operacionais</span><b>{fmt.inteiro(p.leads)}</b></div>
+            <div className="intp-detalhe-linha"><span>Negócios criados</span><b>{fmt.inteiro(p.negocios)}</b></div>
+            <div className="intp-detalhe-linha"><span>Visitas registradas</span><b>{fmt.inteiro(p.visitas)}</b></div>
+            <div className="intp-detalhe-linha"><span>Vendas concluídas</span><b>{fmt.inteiro(p.vendas)}</b></div>
+            <div className="intp-detalhe-linha"><span>VGV concluído</span><b>{fmt.dinheiro(p.valor_fechado)}</b></div>
+          </div>
+          <div className="intp-cartao">
+            <span className="intp-cartao-titulo">Valor da carteira aberta</span>
+            <strong style={{ fontSize: 22 }}>{fmt.dinheiro(p.pipeline_valor)}</strong>
+            <small className="intp-kpi-foot">Hoje nenhum negócio aberto do Funil 2.0 possui valor válido; por isso o indicador permanece “—”.</small>
+          </div>
+        </div>
+      </div>
+
+      <Tabela
+        colunas={[{ titulo: "Corretor" }, { titulo: "Negócios criados", num: true }, { titulo: "Vendas concluídas", num: true }, { titulo: "Relação vendas/negócios", num: true }]}
+        ordenadaEm="Negócios criados"
+        linhas={p.corretores.map((c) => ({
+          chave: c.nome,
+          celulas: [
+            { texto: c.nome, forte: true },
+            { texto: fmt.inteiro(c.negocios), num: true },
+            { texto: fmt.inteiro(c.vendas), num: true },
+            { texto: fmt.porcento(c.conv, 1), num: true, forte: true },
+          ],
+        }))}
+        foot="relação operacional do mesmo período; não é atribuição individual de uma venda a um lead"
+      />
+
+      <RodapeFontes
+        fontes={["leads", "negócios do Funil 2.0", "fila de WhatsApp", "visitas", "vendas"]}
+        pendencias={["histórico de transição entre etapas não existe", "valor não preenchido nos negócios abertos", "site e CRM ainda sem vínculo suficiente para jornada individual"]}
+        atualizado={hhmm(p.atualizado_em)}
+      />
+    </div>
+  );
 }
-
-/* Fixture — só Storybook/teste. NUNCA usado na rota de produção. */
-export const demoConversao: Dados = {
-  primeiroAtendimento: 18, semAtendimento: 9, parados: 21, taxaPerda: 39.6, pipelineValor: null, valorFechado: null,
-  etapas: [{ nome: "Lead recebido", volume: 312, largura: 100, taxa: "100%" }, { nome: "Perdido", volume: 74, largura: 24, perdaFinal: true }],
-  corretores: [{ iniciais: "AB", nome: "Ana Beatriz", negocios: 52, contato: "9 min", tomContato: "ambar", visitas: 28, fechados: 5, conv: 9.6 }],
-  atualizado: "14:28",
-};

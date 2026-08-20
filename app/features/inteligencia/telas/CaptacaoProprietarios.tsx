@@ -5,7 +5,7 @@
  * banco são as VENDAS por empreendimento (reais) e os eventos de CTA de
  * proprietário no site. O funil de captação (página → contato → imóvel publicado)
  * e os cortes ainda NÃO são rastreados como pipeline — então aparecem com —, não
- * com número inventado. Demo virou fixture. */
+ * com número inventado. */
 
 import type { PropsTela } from "../CascaInteligencia";
 import { fmt, RodapeFontes, Valor } from "../dado";
@@ -110,11 +110,3 @@ function mapearProprietarios(p: ProprietariosPayload | null): Dados {
     atualizado: hhmm(p.atualizado_em),
   };
 }
-
-/* Fixture — só Storybook/teste. NUNCA usado na rota de produção. */
-export const demoProprietarios: Dados = {
-  recebidas: 23, publicados: 6, proprietarios: 21, custoPorCaptacao: null,
-  etapas: [{ nome: "1 · Página de captação acessada", volume: 1_108, largura: 100, taxa: "100%" }, { nome: "8 · Imóvel publicado", volume: 6, largura: 8 }],
-  empreendimentos: [{ nome: "Terrare Trisul", vendas: 5, vgv: 2_149_694 }, { nome: "Claris", vendas: 3, vgv: 1_617_100 }],
-  atualizado: "14:28",
-};

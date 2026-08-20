@@ -5,26 +5,30 @@
  * percentual_comissao é fração no banco (0,04 = 4%). "Comissões calculadas" = o
  * que vai para pessoas (papel ≠ apecerto); contribuição = parte retida − custos.
  * Lucro líquido (impostos/despesas fixas) não existe no banco → segue —.
- * Demo virou fixture. */
+ * */
 
-import { useState } from "react";
 import "../../../styles/inteligencia-cascata.css";
 import type { PropsTela } from "../CascaInteligencia";
-import { fmt, RodapeFontes } from "../dado";
+import { BlocoSemDado, fmt, RodapeFontes } from "../dado";
+import { EsqueletoAviso, EsqueletoCartoes, EsqueletoTabela } from "../esqueleto";
 import { Banner, Cabecalho, Tabela } from "../pecas";
 import { useDadosInteligencia } from "../useDadosInteligencia";
 import type { FinanceiroPayload } from "../../../lib/inteligencia/tipos";
 
 type Degrau = { chave: string; rotulo: string; tipo: "entra" | "sai" | "sobra"; valor: number | null; largura: number; nota: string };
-type Venda = { nome: string; codigo: string; vgv: number | null; percentual: number | null; receita: number | null; comissoes: number | null; custos: number | null; contribuicao: number | null; pagamento: "pago" | "a pagar" | "bloqueado"; semCusto?: boolean };
-type Participante = { nome: string; papel: string; calculada: number | null; paga: number | null; pendente: number | null };
-type Dados = { degraus: Degrau[]; vendas: Venda[]; participantes: Participante[]; totalVendas: number; atualizado: string };
-
-const cortes = ["Por venda", "Corretor", "Gerente", "Equipe", "Empreendimento", "Canal"] as const;
+type Venda = { nome: string; codigo: string; vgv: number | null; percentual: number | null; receita: number | null; comissoes: number | null; custos: number | null; contribuicao: number | null; pagamento: "pago" | "a pagar" | "bloqueado" | "divergente"; semCusto?: boolean };
+type Participante = { nome: string; papel: string; calculada: number | null; paga: number | null; pendente: number | null; excedente: number | null };
+type Dados = { degraus: Degrau[]; vendas: Venda[]; participantes: Participante[]; totalVendas: number; conciliacaoInconsistente: boolean; excedente: number; vendasDivergentes: number; atualizado: string };
 
 export function FinanceiroComissoes({ accessToken, recorte }: PropsTela) {
-  const [corte, setCorte] = useState<string>("Por venda");
   const leitura = useDadosInteligencia<FinanceiroPayload>("financeiro", accessToken, recorte);
+
+  if (leitura.estado === "carregando") {
+    return <div className="int-secao"><EsqueletoAviso texto="Conciliando vendas, comissões e pagamentos." /><EsqueletoCartoes colunas={3} linhas={4} /><EsqueletoTabela colunas={8} linhas={4} /></div>;
+  }
+  if (leitura.estado === "erro") {
+    return <div className="int-secao"><BlocoSemDado titulo="Não foi possível atualizar o Financeiro" motivo="fonte" detalhe={`${leitura.erro ?? "A fonte não respondeu."} Saldos não foram estimados nem repetidos.`} /></div>;
+  }
   const d = mapearFinanceiro(leitura.payload);
 
   return (
@@ -50,13 +54,13 @@ export function FinanceiroComissoes({ accessToken, recorte }: PropsTela) {
         texto="Lucro líquido existe só depois de impostos e despesas fixas — quando esses dados entrarem, a linha aparece; antes disso, nem zero."
       />
 
-      <div className="intp-cortes">
-        {cortes.map((c) => (
-          <button key={c} type="button" className={`intp-corte${c === corte ? " ativo" : ""}`} onClick={() => setCorte(c)} aria-pressed={c === corte}>
-            {c}
-          </button>
-        ))}
-      </div>
+      {d.conciliacaoInconsistente ? (
+        <Banner
+          tom="aviso"
+          forte={`${fmt.dinheiro(d.excedente)} pagos acima da comissão calculada em ${fmt.inteiro(d.vendasDivergentes)} venda.`}
+          texto="A divergência continua visível e o pendente fica separado em zero; um pagamento excedente nunca é apresentado como dívida negativa."
+        />
+      ) : null}
 
       <div className="intp-fin-duas">
         <Tabela
@@ -77,13 +81,14 @@ export function FinanceiroComissoes({ accessToken, recorte }: PropsTela) {
               { texto: fmt.dinheiro(v.contribuicao), num: true, forte: true, cor: v.contribuicao === null ? undefined : "#1E7A46" },
               v.pagamento === "pago"
                 ? { texto: "", chip: "pago", chipTom: "bom" as const }
+                : v.pagamento === "divergente"
+                  ? { texto: "", chip: "divergente", chipTom: "ruim" as const }
                 : v.pagamento === "a pagar"
                   ? { texto: "", chip: "a pagar", chipTom: "aviso" as const }
                   : { texto: "", chip: "bloqueado", chipTom: "ruim" as const },
             ],
           }))}
-          foot={`mostrando ${d.vendas.length} de ${d.totalVendas} · a linha abre a ficha da venda com o rateio · vermelho = falta dado para calcular`}
-          acaoFinal={<button type="button" className="int-link" style={{ fontWeight: 700 }}>Ver todas →</button>}
+          foot={`mostrando ${d.vendas.length} de ${d.totalVendas} · clique aplica o recorte da venda · vermelho = falta dado para calcular`}
         />
 
         <div className="intp-cartao">
@@ -97,6 +102,7 @@ export function FinanceiroComissoes({ accessToken, recorte }: PropsTela) {
                   <th className="num"><span className="intp-th-btn" style={{ cursor: "default" }}>Calculada</span></th>
                   <th className="num"><span className="intp-th-btn" style={{ cursor: "default" }}>Paga</span></th>
                   <th className="num"><span className="intp-th-btn" style={{ cursor: "default" }}>Pendente</span></th>
+                  <th className="num"><span className="intp-th-btn" style={{ cursor: "default" }}>Excedente</span></th>
                 </tr>
               </thead>
               <tbody>
@@ -107,6 +113,7 @@ export function FinanceiroComissoes({ accessToken, recorte }: PropsTela) {
                     <td data-rotulo="Calculada" className="num">{fmt.dinheiro(p.calculada)}</td>
                     <td data-rotulo="Paga" className="num">{fmt.dinheiro(p.paga)}</td>
                     <td data-rotulo="Pendente" className="num">{fmt.dinheiro(p.pendente)}</td>
+                    <td data-rotulo="Excedente" className="num" style={{ color: (p.excedente ?? 0) > 0 ? "#D93E3E" : undefined }}>{fmt.dinheiro(p.excedente)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -142,12 +149,13 @@ const vazioFinanceiro: Dados = {
     { chave: "custos", rotulo: "− Custos diretos", tipo: "sai", valor: null, largura: 2, nota: "" },
     { chave: "contribuicao", rotulo: "= Contribuição estimada", tipo: "sobra", valor: null, largura: 2, nota: "" },
   ],
-  vendas: [], participantes: [], totalVendas: 0, atualizado: "—",
+  vendas: [], participantes: [], totalVendas: 0, conciliacaoInconsistente: false, excedente: 0, vendasDivergentes: 0, atualizado: "—",
 };
 
 function mapearFinanceiro(p: FinanceiroPayload | null): Dados {
   if (!p) return vazioFinanceiro;
   const g = p.degraus;
+  const conciliacaoInconsistente = g.excedente > 0;
   const base = 85;
   const larg = (v: number) => (g.receita > 0 ? Math.max(2, Math.round((base * v) / g.receita)) : 2);
 
@@ -155,7 +163,7 @@ function mapearFinanceiro(p: FinanceiroPayload | null): Dados {
     degraus: [
       { chave: "vgv", rotulo: "VGV · imóveis vendidos", tipo: "entra", valor: g.vgv, largura: 100, nota: `${p.total_vendas} ${p.total_vendas === 1 ? "venda" : "vendas"} no período` },
       { chave: "receita", rotulo: "Receita bruta de comissão", tipo: "entra", valor: g.receita, largura: base, nota: "comissão bruta da imobiliária" },
-      { chave: "comissoes", rotulo: "− Comissões calculadas", tipo: "sai", valor: g.comissoes_pessoas, largura: larg(g.comissoes_pessoas), nota: `pagas ${fmt.dinheiro(g.pagas)} · pendentes ${fmt.dinheiro(g.pendente)}` },
+      { chave: "comissoes", rotulo: "− Comissões calculadas", tipo: "sai", valor: g.comissoes_pessoas, largura: larg(g.comissoes_pessoas), nota: conciliacaoInconsistente ? `pagas ${fmt.dinheiro(g.pagas)} · excedente a conciliar ${fmt.dinheiro(g.excedente)}` : `pagas ${fmt.dinheiro(g.pagas)} · pendentes ${fmt.dinheiro(g.pendente)}` },
       { chave: "custos", rotulo: "− Custos diretos", tipo: "sai", valor: g.custos, largura: larg(g.custos), nota: "custos diretos lançados" },
       { chave: "contribuicao", rotulo: "= Contribuição estimada", tipo: "sobra", valor: g.contribuicao, largura: larg(Math.max(0, g.contribuicao)), nota: g.receita > 0 ? `${Math.round((100 * g.contribuicao) / g.receita)}% da comissão bruta` : "" },
     ],
@@ -168,32 +176,14 @@ function mapearFinanceiro(p: FinanceiroPayload | null): Dados {
       comissoes: v.comissoes,
       custos: v.custos,
       contribuicao: v.contribuicao,
-      pagamento: v.pagamento as "pago" | "a pagar" | "bloqueado",
+      pagamento: v.pagamento,
       semCusto: v.sem_custo,
     })),
-    participantes: p.participantes.map((pt) => ({ nome: pt.nome, papel: pt.papel, calculada: pt.calculada, paga: pt.paga, pendente: pt.pendente })),
+    participantes: p.participantes.map((pt) => ({ nome: pt.nome, papel: pt.papel, calculada: pt.calculada, paga: pt.paga, pendente: pt.pendente, excedente: pt.excedente })),
     totalVendas: p.total_vendas,
+    conciliacaoInconsistente,
+    excedente: g.excedente,
+    vendasDivergentes: p.vendas_divergentes,
     atualizado: hhmm(p.atualizado_em),
   };
 }
-
-/* Fixture — só Storybook/teste. NUNCA usado na rota de produção. */
-export const demoFinanceiro: Dados = {
-  degraus: [
-    { chave: "vgv", rotulo: "VGV · imóveis vendidos", tipo: "entra", valor: 18_400_000, largura: 100, nota: "21 vendas no período" },
-    { chave: "receita", rotulo: "Receita bruta de comissão", tipo: "entra", valor: 920_000, largura: 85, nota: "comissão bruta da imobiliária" },
-    { chave: "comissoes", rotulo: "− Comissões calculadas", tipo: "sai", valor: 488_000, largura: 45, nota: "pagas R$ 361 mil · pendentes R$ 127 mil" },
-    { chave: "custos", rotulo: "− Custos diretos", tipo: "sai", valor: 74_000, largura: 7, nota: "mídia, cartório, brindes" },
-    { chave: "contribuicao", rotulo: "= Contribuição estimada", tipo: "sobra", valor: 358_000, largura: 33, nota: "39% da comissão bruta" },
-  ],
-  totalVendas: 21,
-  vendas: [
-    { nome: "Apê Canário 71", codigo: "MO-104", vgv: 890_000, percentual: 5.0, receita: 44_500, comissoes: 23_600, custos: 3_400, contribuicao: 17_500, pagamento: "pago" },
-    { nome: "Apê Colibri 90", codigo: "MO-127", vgv: 1_450_000, percentual: null, receita: null, comissoes: null, custos: null, contribuicao: null, pagamento: "bloqueado", semCusto: true },
-  ],
-  participantes: [
-    { nome: "Ana Beatriz", papel: "corretora", calculada: 96_400, paga: 78_000, pendente: 18_400 },
-    { nome: "Luiza Braga", papel: "corretora", calculada: 10_800, paga: 10_800, pendente: null },
-  ],
-  atualizado: "14:32",
-};

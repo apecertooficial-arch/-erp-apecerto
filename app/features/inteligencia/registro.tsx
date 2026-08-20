@@ -7,14 +7,11 @@
  *
  * As folhas da área que não pertencem a um componente único são carregadas aqui,
  * junto do registro: este módulo é o único que toda tela da área atravessa.
- * A ordem importa — inteligencia-camadas.css vem por último, porque é ela que
- * corrige o z-index das gavetas e do painel para ficarem acima do FAB da Sara.
+ * Não há folhas de sobreposição: todas as leituras vivem na própria página.
  */
 
 import type { ReactNode } from "react";
 import "../../styles/inteligencia-nivel1.css";
-import "../../styles/inteligencia-gaveta.css";
-import "../../styles/inteligencia-camadas.css";
 import type { PropsTela } from "./CascaInteligencia";
 import { VisaoEmpresa } from "./telas/VisaoEmpresa";
 import { VendasPrevisao } from "./telas/VendasPrevisao";

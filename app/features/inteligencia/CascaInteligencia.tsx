@@ -7,8 +7,7 @@
  * área — trocar de família ou de página não limpa filtro.
  *
  * O selo do topo agora depende do estado de conexão da tela (estado-conexao):
- * tela real não mostra selo; parcial mostra “DADOS PARCIAIS”; demo mostra
- * “DEMONSTRAÇÃO”. */
+ * tela real não mostra selo; parcial mostra “DADOS PARCIAIS”. */
 
 import { useMemo, useState } from "react";
 import "../../styles/inteligencia.css";
@@ -16,9 +15,7 @@ import { grupos, periodos, primeiraDoGrupo, telaPorChave, telas, telasDoGrupo, t
 import { BlocoSemDado, RodapeFontes } from "./dado";
 import { telasPublicadas } from "./registro";
 import { estadoConexaoDe } from "./estado-conexao";
-import { Copiloto, type PerfilCopiloto } from "./Copiloto";
 import { opcoesReaisPorTela } from "./filtros";
-import { useErpSession } from "../system/ErpSession";
 
 export type Recorte = {
   periodo: string;
@@ -37,11 +34,7 @@ export function CascaInteligencia({ accessToken }: { accessToken: string }) {
   const [grupo, setGrupo] = useState<GrupoChave>("performance");
   const [chave, setChave] = useState<string>(primeiraDoGrupo("performance"));
   const [periodo, setPeriodo] = useState<string>("30 dias");
-  const [comparar, setComparar] = useState(true);
   const [chips, setChips] = useState<string[]>([]);
-  const { role, isManager } = useErpSession();
-
-  const perfilCopiloto: PerfilCopiloto = role === "admin" ? "CEO" : role === "gestor" || isManager ? "Gerente" : "Corretor";
 
   const tela = telaPorChave(chave) ?? telas[0];
   const daFamilia = telasDoGrupo(grupo);
@@ -49,7 +42,7 @@ export function CascaInteligencia({ accessToken }: { accessToken: string }) {
   const recorte: Recorte = useMemo(
     () => ({
       periodo,
-      compararAnterior: comparar,
+      compararAnterior: false,
       chips,
       filtrar: (chip: string) => setChips((atuais) => (atuais.includes(chip) ? atuais : [...atuais, chip])),
       irPara: (destino: string) => {
@@ -59,12 +52,13 @@ export function CascaInteligencia({ accessToken }: { accessToken: string }) {
         setChave(alvo.chave);
       },
     }),
-    [periodo, comparar, chips],
+    [periodo, chips],
   );
 
   const Publicada = telasPublicadas[tela.chave];
   const familia = grupos.find((g) => g.chave === grupo);
   const conexao = estadoConexaoDe(tela.chave);
+  const filtrosDisponiveis = tela.filtros.filter((f) => Boolean(opcoesReaisPorTela[tela.chave]?.[f]));
   /* Dimensão com chip ativo aparece marcada no próprio dropdown. */
   const dimensaoAtiva = (f: string) => chips.some((c) => c.startsWith(`${f}:`));
   const selecionarDimensao = (dimensao: string, valor: string) => {
@@ -78,19 +72,16 @@ export function CascaInteligencia({ accessToken }: { accessToken: string }) {
     <div className="int-area">
       <header className="int-topo">
         <div>
-          <span className="int-eyebrow">INTELIGÊNCIA DIGITAL · {familia?.rotulo.toUpperCase()}</span>
+          <span className="int-eyebrow">CENTRAL DE INTELIGÊNCIA · {familia?.rotulo.toUpperCase()}</span>
           <h1>{tela.titulo}</h1>
           <p>{tela.sub}</p>
         </div>
         <div className="int-topo-acoes">
-          {conexao === "real" ? null : (
-            <span className="int-selo-pend">{conexao === "parcial" ? "DADOS PARCIAIS — parte em conexão" : "DEMONSTRAÇÃO — números ilustrativos"}</span>
-          )}
+          {conexao === "parcial" ? <span className="int-selo-pend">DADOS PARCIAIS — parte em conexão</span> : null}
           <span className="int-selo-vivo">
             <i />
-            {aoVivo.has(tela.chave) ? "Ao vivo" : "Análise"}
+            {aoVivo.has(tela.chave) ? "Situação atual" : "Dados reais"}
           </span>
-          <button type="button" className="int-btn">Exportar · CSV / PDF</button>
         </div>
       </header>
 
@@ -141,10 +132,7 @@ export function CascaInteligencia({ accessToken }: { accessToken: string }) {
               </button>
             ))}
           </span>
-          <button type="button" className={`int-drop${comparar ? " ligado" : ""}`} onClick={() => setComparar((v) => !v)}>
-            vs. período anterior
-          </button>
-          {tela.filtros.map((f) => {
+          {filtrosDisponiveis.map((f) => {
             const opcoes = opcoesReaisPorTela[tela.chave]?.[f];
             return (
               <label
@@ -163,9 +151,7 @@ export function CascaInteligencia({ accessToken }: { accessToken: string }) {
                       <option value="__todos__">Todos</option>
                       {opcoes.map((opcao) => <option key={opcao.parametro} value={opcao.rotulo}>{opcao.rotulo}</option>)}
                     </>
-                  ) : (
-                    <option value="__pendente__" disabled>Valores ainda sem fonte ligada</option>
-                  )}
+                  ) : null}
                 </select>
               </label>
             );
@@ -176,7 +162,7 @@ export function CascaInteligencia({ accessToken }: { accessToken: string }) {
               <span aria-hidden="true">✕</span>
             </button>
           ))}
-          <span className="int-filtros-nota">clicar em uma série, barra ou linha da tabela filtra o resto da página</span>
+          <span className="int-filtros-nota">cada indicador informa se representa período, ano ou situação atual</span>
         </div>
         <div className="int-filtros-rodape">
           <span className={chips.length ? "int-contagem-ativa" : ""}>
@@ -187,11 +173,9 @@ export function CascaInteligencia({ accessToken }: { accessToken: string }) {
               Limpar filtros
             </button>
           ) : null}
-          <span className="int-filtros-nota">o recorte é da área: trocar de família ou de página não limpa filtro</span>
+          <span className="int-filtros-nota">só aparecem filtros efetivamente ligados à fonte desta tela</span>
         </div>
       </div>
-
-      <Copiloto tela={tela.chave} recorte={recorte} perfil={perfilCopiloto} briefing={tela.chave === "empresa"} />
 
       {Publicada ? (
         Publicada({ accessToken, recorte })

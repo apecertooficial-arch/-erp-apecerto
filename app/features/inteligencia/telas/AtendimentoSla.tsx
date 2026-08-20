@@ -4,12 +4,13 @@
  * /api/inteligencia/atendimento (RPC intel_atendimento). SLA = tempo que o lead
  * está esperando resposta do corretor (cliente_ultima > env_ultima). Nome do
  * lead vem mascarado. % no SLA de 5 min e taxa de resposta seguem — (sem marco
- * de 1º contato). Demo virou fixture. */
+ * de 1º contato). */
 
 import { useState } from "react";
 import "../../../styles/inteligencia-blocos.css";
 import type { PropsTela } from "../CascaInteligencia";
-import { fmt, RodapeFontes } from "../dado";
+import { BlocoSemDado, fmt, RodapeFontes } from "../dado";
+import { EsqueletoAviso, EsqueletoKpis, EsqueletoTabela } from "../esqueleto";
 import { Cabecalho, GradeKpis, Tabela, type Kpi } from "../pecas";
 import { useDadosInteligencia } from "../useDadosInteligencia";
 import type { AtendimentoPayload } from "../../../lib/inteligencia/tipos";
@@ -39,14 +40,21 @@ type Dados = {
 
 export function AtendimentoSla({ accessToken, recorte }: PropsTela) {
   const leitura = useDadosInteligencia<AtendimentoPayload>("atendimento", accessToken, recorte);
-  const d = mapearAtendimento(leitura.payload);
   const [filaAtiva, setFilaAtiva] = useState<string>("sla");
+
+  if (leitura.estado === "carregando") {
+    return <div className="int-secao"><EsqueletoAviso texto="Atualizando a fila de atendimento." /><EsqueletoKpis colunas={4} /><EsqueletoTabela colunas={8} linhas={5} /></div>;
+  }
+  if (leitura.estado === "erro") {
+    return <div className="int-secao"><BlocoSemDado titulo="Não foi possível atualizar a fila" motivo="fonte" detalhe={`${leitura.erro ?? "A fonte não respondeu."} A fila anterior não foi exibida como se fosse atual.`} /></div>;
+  }
+  const d = mapearAtendimento(leitura.payload);
 
   const kpis: Kpi[] = [
     { rotulo: "Espera do lead · mediana", bruto: d.mediana, texto: fmt.duracaoMin(d.mediana), tom: "ruim", tile: "vermelho", chip: "quanto o lead espera resposta", chipTom: "aviso" },
     { rotulo: "Espera do lead · P90", bruto: d.p90, texto: fmt.duracaoMin(d.p90), tom: "atencao", tile: "ambar", foot: "10% dos leads esperaram mais que isso" },
     { rotulo: "% dentro do SLA (5 min)", bruto: d.percentualSla, texto: fmt.porcento(d.percentualSla, 0), tom: "ruim", tile: "vermelho", motivo: "integracao", detalhe: "sem marco de 1º contato — medimos o tempo de espera do backlog", chip: `${fmt.pontos(d.variacaoSla)} vs. anterior`, chipTom: "ruim" },
-    { rotulo: "Mensagens e follow-ups", bruto: d.taxaResposta, texto: fmt.porcento(d.taxaResposta, 0), tile: "verde", motivo: "amostra", detalhe: "taxa de resposta depende de pareamento de mensagens", foot: `${fmt.inteiro(d.recebidas)} recebidas · ${fmt.inteiro(d.enviadas)} enviadas · follow-ups vencidos ${fmt.inteiro(d.followVencidos)}` },
+    { rotulo: "Acima do SLA · agora", bruto: d.totalFila, texto: fmt.inteiro(d.totalFila), tile: "vermelho", tom: "ruim", foot: `follow-ups vencidos ${fmt.inteiro(d.followVencidos)} · situação atual` },
   ];
 
   return (
@@ -69,7 +77,7 @@ export function AtendimentoSla({ accessToken, recorte }: PropsTela) {
         ))}
       </div>
       <small className="intp-kpi-foot">
-        {fmt.inteiro(d.totalLeads)} leads no período · clicar num balde abre a lista de quem está nele · a cobertura por gerente aparece em Gerentes
+        {fmt.inteiro(d.totalLeads)} pessoas aguardando resposta agora · os baldes representam o estoque atual, não o período selecionado
       </small>
 
       {/* FILAS DE AÇÃO + FILA ABERTA */}
@@ -113,17 +121,12 @@ export function AtendimentoSla({ accessToken, recorte }: PropsTela) {
                 { texto: l.espera, num: true, forte: true, cor: "#D93E3E" },
                 { texto: l.ultima },
                 { texto: l.proxima },
-                { texto: "abrir no CRM ↗", cor: "#CC5800" },
+                { texto: "ver detalhes", cor: "#CC5800" },
               ],
             }))}
             foot={`mostrando ${d.leads.length} de ${fmt.inteiro(d.totalFila)} · ordenado pelo maior tempo de espera`}
           />
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <button type="button" className="cop-btn-primario" style={{ boxShadow: "none", background: "#FF7000" }}>Atribuir selecionados</button>
-            <button type="button" className="cop-acao">Lembrar responsáveis</button>
-            <button type="button" className="cop-acao">Reconhecer</button>
-          </div>
-          <small className="intp-kpi-foot">nada aqui executa sozinho: atribuir e lembrar pedem confirmação e ficam registrados na Auditoria</small>
+          <small className="intp-kpi-foot">esta tela é somente leitura; ações operacionais devem ser feitas no CRM até existir persistência e auditoria reais</small>
         </div>
       </div>
 
@@ -208,30 +211,3 @@ function mapearAtendimento(p: AtendimentoPayload | null): Dados {
     atualizado: hhmm(p.atualizado_em),
   };
 }
-
-/* Fixture — só Storybook/teste. NUNCA usado na rota de produção. */
-export const demoAtendimento: Dados = {
-  mediana: 14, p90: 112, percentualSla: 22, variacaoSla: -5, taxaResposta: 87,
-  recebidas: 3_418, enviadas: 2_986, followFeitos: 412, followVencidos: 57, totalLeads: 486,
-  baldes: [
-    { rotulo: "≤ 5 min", marca: "no SLA", volume: 107, largura: 22, cor: "#1FA85A", corNum: "#1E7A46" },
-    { rotulo: "5–15 min", marca: "", volume: 158, largura: 33, cor: "#FFB570", corNum: "#1F1C1A" },
-    { rotulo: "15–30 min", marca: "", volume: 96, largura: 20, cor: "#FF9A4D", corNum: "#1F1C1A" },
-    { rotulo: "30–60 min", marca: "", volume: 97, largura: 20, cor: "#FF7000", corNum: "#B5700A" },
-    { rotulo: "> 60 min", marca: "crítico", volume: 28, largura: 6, cor: "#D93E3E", corNum: "#D93E3E" },
-  ],
-  filas: [
-    { chave: "sem-resposta", nome: "Leads novos sem primeira resposta", volume: 9, cor: "#D93E3E", tom: "#D93E3E" },
-    { chave: "sla", nome: "Leads acima do SLA · aberto ao lado", volume: 31, cor: "#FF7000", tom: "#CC5800" },
-    { chave: "mensagens", nome: "Mensagens recebidas sem retorno", volume: 44, cor: "#B5700A", tom: "#1F1C1A" },
-    { chave: "followup", nome: "Follow-ups vencidos", volume: 57, cor: "#B5700A", tom: "#1F1C1A" },
-    { chave: "sem-acao", nome: "Negócios sem próxima ação", volume: 26, cor: "#B5700A", tom: "#1F1C1A" },
-  ],
-  filaAberta: "Leads acima do SLA",
-  totalFila: 31,
-  leads: [
-    { nome: "Sônia R.", responsavel: null, gerente: null, origem: "Instagram orgânica", espera: "4 h 10", ultima: "nenhuma", proxima: "1º contato · lead novo" },
-    { nome: "Paulo M.", responsavel: "Rafael Souza", gerente: "Marcos V.", origem: "Portal externo", espera: "1 h 47", ultima: "msg recebida 12:45", proxima: "responder · em atendimento" },
-  ],
-  atualizado: "14:32",
-};

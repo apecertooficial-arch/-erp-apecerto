@@ -4,7 +4,7 @@
  * /api/inteligencia/imoveis (RPC intel_imoveis). Views de imóvel, buscas e
  * mudanças de filtro vêm da telemetria. A tabela por imóvel e as leituras
  * complementares dependem do código de imóvel na telemetria — hoje o site publica
- * page_path genérico, então essas quebras ficam com —. Demo virou fixture. */
+ * page_path genérico, então essas quebras ficam com —. */
 
 import { useState } from "react";
 import type { PropsTela } from "../CascaInteligencia";
@@ -119,12 +119,3 @@ function mapearImoveis(p: ImoveisPayload | null): Dados {
     atualizado: hhmm(p.atualizado_em),
   };
 }
-
-/* Fixture — só Storybook/teste. NUNCA usado na rota de produção. */
-export const demoImoveis: Dados = {
-  views: 3_240, buscas: 1_812, filtros: 3_842, paginas: 31,
-  imoveis: [
-    { nome: "Apê Canário 71", codigo: "MO-104", visualizacoes: 1_486, intencao: 312, leads: 38, negocios: 26, visitas: 14, imovelLead: 2.56, dias: 34, status: "ativo" },
-  ],
-  atualizado: "14:28",
-};

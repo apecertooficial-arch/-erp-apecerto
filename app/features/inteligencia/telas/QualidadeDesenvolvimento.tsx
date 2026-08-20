@@ -4,7 +4,7 @@
  * /api/inteligencia/qualidade (RPC intel_qualidade). Nota geral e os critérios
  * vêm de ia_notas_atendimento (escala 0-100 no banco, convertida para 0-5).
  * Cobertura de avaliação e fila de contestação não têm fonte -> —. Abaixo de 8
- * avaliações a nota não é exibida. Demo virou fixture. */
+ * avaliações a nota não é exibida. */
 
 import "../../../styles/inteligencia-blocos.css";
 import type { PropsTela } from "../CascaInteligencia";
@@ -87,7 +87,7 @@ export function QualidadeDesenvolvimento({ accessToken, recorte }: PropsTela) {
           <p style={{ margin: 0, fontSize: 12.5, lineHeight: 1.55, color: "#66009A" }}>
             Avaliações automatizadas são revisíveis: o corretor contesta, o gestor revê com a conversa ao lado — só no drill, com permissão. A decisão substitui a nota e fica na Auditoria. (Fluxo de contestação ainda não registrado no banco.)
           </p>
-          <button type="button" className="cop-acao" style={{ alignSelf: "flex-start" }} onClick={() => recorte.filtrar("Fila: revisão de avaliação")}>Abrir fila de revisão</button>
+          <button type="button" className="int-btn-secundario" style={{ alignSelf: "flex-start" }} onClick={() => recorte.filtrar("Fila: revisão de avaliação")}>Abrir fila de revisão</button>
         </div>
 
         <div className="intp-cartao" style={{ background: "#FDF1D9", boxShadow: "none" }}>
@@ -182,19 +182,3 @@ function mapearQualidade(p: QualidadePayload | null): Dados {
     atualizado: hhmm(p.atualizado_em),
   };
 }
-
-/* Fixture — só Storybook/teste. NUNCA usado na rota de produção. */
-export const demoQualidade: Dados = {
-  notaEmpresa: 4.3, amostra: 182, cobertura: 37, metaCobertura: 50, contestadas: 6, semClassificacao: 2, semNomes: "Luiza e Pedro",
-  criterios: [
-    { nome: "Cordialidade", nota: 4.7, largura: 94 },
-    { nome: "Objeções", nota: 3.8, largura: 76 },
-    { nome: "Registro no ERP", nota: null, largura: 0 },
-  ],
-  pessoas: [
-    { nome: "Ana Beatriz", nota: 4.6, amostra: 52, pior: "objeções 4,1", melhor: "cordialidade 4,9", tendencia: "sobe" },
-    { nome: "Luiza Braga", nota: null, amostra: 3, pior: "—", melhor: "—", tendencia: "sem", semClassificacao: "sem classificação · 3 de 8 avaliações" },
-  ],
-  treino: { criterio: "Objeções", nota: 3.8, texto: "é o pior critério e caiu 0,2 no período." },
-  atualizado: "14:32",
-};
