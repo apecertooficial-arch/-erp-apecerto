@@ -34,7 +34,7 @@ export type PropsTela = { accessToken: string; recorte: Recorte };
 
 /* Telas de fila mostram “Ao vivo”; as de análise, a carga fechada. */
 const aoVivo = new Set(["atendimento", "alertas"]);
-const conectadoAoBanco = new Set(["empresa"]);
+const conectadoAoBanco = new Set(["empresa", "privacidade"]);
 
 export function CascaInteligencia({ accessToken }: { accessToken: string }) {
   const [grupo, setGrupo] = useState<GrupoChave>("performance");

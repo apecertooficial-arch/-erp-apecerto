@@ -19,13 +19,16 @@
  * eventos aparece no painel como se já existisse.
  */
 
+import { useMemo } from "react";
 import type { PropsTela } from "../CascaInteligencia";
 import { fmt, RodapeFontes } from "../dado";
 import { Cabecalho, ChipsEventos } from "../pecas";
+import { useResumoInteligencia, type Tracking360Resumo } from "../usar-resumo";
 
 type Estado = "bom" | "aviso";
 
 type Dados = {
+  totalObservado: number | null;
   niveis: { rotulo: string; pct: number | null; cor: string; foot: string }[];
   semanas: { rotulo: string; essenciais: number; analytics: number; marketing: number }[];
   liberacoes: { nivel: string; propria: string; tag: string; clarity: string; coletado: string }[];
@@ -43,15 +46,15 @@ const SELO: Record<Estado, { fundo: string; cor: string; ponto: string }> = {
   aviso: { fundo: "#FDF1D9", cor: "#8A6A15", ponto: "#F2A82C" },
 };
 
-export function PrivacidadeTracking({ recorte }: PropsTela) {
-  const d = usarDados();
+export function PrivacidadeTracking({ accessToken, recorte }: PropsTela) {
+  const d = useDados(accessToken, recorte.periodo);
 
   return (
     <div className="int-secao">
       <div className="intp-grade" style={{ gridTemplateColumns: "1fr 1fr", alignItems: "start" }}>
         {/* ESQUERDA — consentimento */}
         <div className="int-col">
-          <Cabecalho eyebrow="CONSENTIMENTO" titulo="O que as pessoas escolheram" nota={`${recorte.periodo} · 24.618 visualizações no total`} />
+          <Cabecalho eyebrow="CONSENTIMENTO" titulo="O que as pessoas escolheram" nota={`${recorte.periodo} · ${fmt.inteiro(d.totalObservado)} sessões observadas`} />
           <div className="intp-grade" style={{ gridTemplateColumns: "repeat(3, minmax(0, 1fr))" }}>
             {d.niveis.map((n) => (
               <div className="intp-kpi" key={n.rotulo}>
@@ -165,7 +168,7 @@ export function PrivacidadeTracking({ recorte }: PropsTela) {
               ))}
             </div>
             <small className="intp-kpi-foot">
-              barra vermelha = queda brusca às 9h (instabilidade do site) — o alerta dispara sozinho e aparece como anotação nas outras páginas
+              volume real recebido por hora; horário sem barra significa ausência de eventos, não ausência de visitantes
             </small>
           </div>
 
@@ -212,30 +215,44 @@ export function PrivacidadeTracking({ recorte }: PropsTela) {
 
       <RodapeFontes
         fontes={["coleta própria", "Google Tag", "fila de sincronização", "registro de consentimento"]}
-        pendencias={["Clarity sem evento há 3 h", "3 leads sem sincronização com o CRM", "2 páginas sem tracking", "12 imóveis sem código", "UTMs ausentes em 3 anúncios"]}
+        pendencias={["saúde do Google Tag exige API externa", "Clarity ainda sem telemetria no ERP", "inventário automático de páginas ainda não conectado"]}
         atualizado={d.atualizado}
       />
     </div>
   );
 }
 
-/* PONTO ÚNICO DE TROCA PARA O BANCO. */
-function usarDados(): Dados {
-  return demo;
+function pct(value: number | undefined, total: number | undefined) {
+  return total && total > 0 ? (100 * (value ?? 0)) / total : null;
 }
 
-const demo: Dados = {
+function useDados(accessToken: string, periodo: string): Dados {
+  const { data } = useResumoInteligencia(accessToken, periodo);
+  return useMemo(() => montarDados(data), [data]);
+}
+
+function montarDados(resumo: Tracking360Resumo | null): Dados {
+  const health = resumo?.digital_health;
+  const consent = health?.consent;
+  const total = consent?.total;
+  const maxHour = Math.max(1, ...(health?.hours_today ?? []).map((item) => item.eventos));
+  const lastEvent = health?.quality?.last_event_at ? new Date(health.quality.last_event_at) : null;
+  const minutesSinceLast = lastEvent ? Math.max(0, Math.round((Date.now() - lastEvent.getTime()) / 60_000)) : null;
+  const attributionTotal = health?.attribution?.total;
+
+  return {
+  totalObservado: total ?? null,
   niveis: [
-    { rotulo: "Somente essenciais", pct: 61, cor: "#1F1C1A", foot: "15.017 visualizações" },
-    { rotulo: "Analytics", pct: 31, cor: "#66009A", foot: "7.632 visualizações · habilita GA4 e gravação" },
-    { rotulo: "Marketing", pct: 8, cor: "#CC5800", foot: "1.969 visualizações" },
+    { rotulo: "Somente essenciais", pct: pct(consent?.essential, total), cor: "#1F1C1A", foot: `${fmt.inteiro(consent?.essential ?? null)} sessões` },
+    { rotulo: "Analytics", pct: pct(consent?.analytics, total), cor: "#66009A", foot: `${fmt.inteiro(consent?.analytics ?? null)} sessões observadas` },
+    { rotulo: "Marketing", pct: pct(consent?.marketing, total), cor: "#CC5800", foot: `${fmt.inteiro(consent?.marketing ?? null)} sessões observadas` },
   ],
-  semanas: [
-    { rotulo: "21–27 jul", essenciais: 55, analytics: 26, marketing: 7 },
-    { rotulo: "28–3 ago", essenciais: 56, analytics: 28, marketing: 7 },
-    { rotulo: "4–10 ago", essenciais: 54, analytics: 30, marketing: 8 },
-    { rotulo: "11–17 ago", essenciais: 52, analytics: 32, marketing: 8 },
-  ],
+  semanas: (health?.weeks ?? []).map((week) => ({
+    rotulo: new Date(`${week.inicio}T12:00:00`).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" }),
+    essenciais: pct(week.essential, week.total) ?? 0,
+    analytics: pct(week.analytics, week.total) ?? 0,
+    marketing: pct(week.marketing, week.total) ?? 0,
+  })),
   liberacoes: [
     { nivel: "Essencial", propria: "sim, sem cookie", tag: "não", clarity: "não", coletado: "página e ação, sem identificador persistente" },
     { nivel: "Analytics", propria: "sim", tag: "sim", clarity: "sim", coletado: "sessão, mapas de calor e gravações" },
@@ -252,43 +269,27 @@ const demo: Dados = {
     "política de privacidade acessível",
   ],
   fontes: [
-    { rotulo: "Coleta própria", estado: "bom", selo: "operando", nota: "último evento há 2 min" },
-    { rotulo: "Google Tag", estado: "bom", selo: "operando", nota: "último evento há 6 min" },
-    { rotulo: "Microsoft Clarity", estado: "aviso", selo: "atenção", nota: "sem evento há 3 h", diagnostico: true },
-    { rotulo: "Sincronização com CRM", estado: "aviso", selo: "3 pendentes", nota: "2 erros nas últimas 24 h" },
+    { rotulo: "Coleta própria", estado: minutesSinceLast !== null && minutesSinceLast <= 120 ? "bom" : "aviso", selo: minutesSinceLast !== null && minutesSinceLast <= 120 ? "operando" : "atenção", nota: minutesSinceLast === null ? "nenhum evento no período" : `último evento há ${minutesSinceLast} min` },
+    { rotulo: "Google Tag", estado: "aviso", selo: "verificação externa", nota: "o banco não confirma entrega ao Google", diagnostico: true },
+    { rotulo: "Microsoft Clarity", estado: "aviso", selo: "não conectado", nota: "sem telemetria de saúde no ERP", diagnostico: true },
+    { rotulo: "Sincronização com CRM", estado: (health?.crm_sync?.errors ?? 0) > 0 ? "aviso" : "bom", selo: (health?.crm_sync?.errors ?? 0) > 0 ? `${health?.crm_sync?.errors} erros` : "operando", nota: `${health?.crm_sync?.pending ?? 0} pendentes no período` },
   ],
-  horas: [
-    { altura: 52, cor: "#FFD3B0" },
-    { altura: 44, cor: "#FFD3B0" },
-    { altura: 38, cor: "#FFD3B0" },
-    { altura: 46, cor: "#FFD3B0" },
-    { altura: 60, cor: "#FFD3B0" },
-    { altura: 72, cor: "#FF9A4D" },
-    { altura: 18, cor: "#F4A6A2", queda: true },
-    { altura: 70, cor: "#FF9A4D" },
-    { altura: 78, cor: "#FF9A4D" },
-    { altura: 84, cor: "#FF7000" },
-    { altura: 76, cor: "#FF9A4D" },
-    { altura: 64, cor: "#FF9A4D" },
-  ],
+  horas: (health?.hours_today ?? []).map((hour) => ({ altura: Math.max(3, Math.round((100 * hour.eventos) / maxHour)), cor: hour.eventos > 0 ? "#FF9A4D" : "#EFECE7" })),
   qualidade: [
-    { l: "Páginas sem tracking", r: "2", corR: "#B5700A", sub: "o que não é medido não alerta" },
-    { l: "Eventos rejeitados ou inválidos", r: "118 (0,3%)" },
-    { l: "Possíveis duplicidades", r: "42" },
-    { l: "Imóveis sem código", r: "12", sub: "418 eventos em “não identificado”" },
-    { l: "Leads sem sincronização com o CRM", r: "3", corR: "#D93E3E", sub: "desde 14 ago · crítico" },
+    { l: "Páginas sem tracking", r: "não mensurado", corR: "#B5700A", sub: "exige inventário de rotas publicado" },
+    { l: "Eventos fora da lista permitida", r: fmt.inteiro(health?.quality?.invalid_events ?? null) },
+    { l: "Possíveis duplicidades", r: fmt.inteiro(health?.quality?.possible_duplicates ?? null) },
+    { l: "Eventos coletados", r: fmt.inteiro(health?.quality?.total_events ?? null) },
+    { l: "Leads com erro de sincronização", r: fmt.inteiro(health?.crm_sync?.errors ?? null), corR: (health?.crm_sync?.errors ?? 0) > 0 ? "#D93E3E" : undefined },
   ],
   atribuicao: [
-    { l: "Cobertura de UTMs", r: "74%" },
-    { l: "Volume não atribuído", r: "11%", sub: "sem UTM 48% · sem consentimento 39% · referência perdida 13%" },
-    { l: "UTMs ausentes em anúncios ativos", r: "3", sub: "41 leads sem origem por mês" },
-    { l: "Erros de sincronização · 24 h", r: "2" },
-    { l: "Última verificação", r: "hoje, 14:30" },
+    { l: "Cobertura de origem", r: fmt.porcento(pct(health?.attribution?.with_source, attributionTotal), 0) },
+    { l: "Cobertura de campanha", r: fmt.porcento(pct(health?.attribution?.with_campaign, attributionTotal), 0) },
+    { l: "Leads com click ID", r: fmt.inteiro(health?.attribution?.with_click_id ?? null), sub: "gclid, gbraid, wbraid ou fbclid" },
+    { l: "Volume não atribuído", r: fmt.inteiro(attributionTotal !== undefined ? Math.max(0, attributionTotal - (health?.attribution?.with_source ?? 0)) : null) },
+    { l: "Última verificação", r: health?.updated_at ? new Date(health.updated_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : "—" },
   ],
-  eventos: [
-    "page_view", "consent_update", "view_item", "view_inventory", "generate_lead", "whatsapp_click", "phone_click", "social_click",
-    "sara_open", "sara_search", "sara_results", "sara_error", "favorite_toggle", "gallery_interaction", "property_search", "cta_click",
-    "owner_cta_click", "form_start", "filter_change", "scroll_depth",
-  ],
-  atualizado: "14:30",
-};
+  eventos: health?.events ?? [],
+  atualizado: health?.updated_at ? new Date(health.updated_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : "—",
+  };
+}

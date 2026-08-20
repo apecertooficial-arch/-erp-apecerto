@@ -6,6 +6,10 @@ const migration = readFileSync(
   new URL("../supabase/migrations/20260820174500_tracking_360_ceo.sql", import.meta.url),
   "utf8",
 );
+const digitalMigration = readFileSync(
+  new URL("../supabase/migrations/20260820183500_tracking_360_digital_health.sql", import.meta.url),
+  "utf8",
+);
 const api = readFileSync(new URL("../app/api/inteligencia/route.ts", import.meta.url), "utf8");
 const ceo = readFileSync(new URL("../app/features/inteligencia/telas/VisaoEmpresa.tsx", import.meta.url), "utf8");
 const shell = readFileSync(new URL("../app/features/inteligencia/CascaInteligencia.tsx", import.meta.url), "utf8");
@@ -44,5 +48,13 @@ test("Visão CEO usa dados reais e não mantém o objeto demo", () => {
   assert.match(ceo, /useResumoInteligencia\(accessToken, periodo\)/);
   assert.doesNotMatch(ceo, /const demo/);
   assert.match(shell, /DADOS REAIS — site, CRM e financeiro/);
-  assert.match(shell, /conectadoAoBanco = new Set\(\["empresa"\]\)/);
+  assert.match(shell, /conectadoAoBanco = new Set\(\["empresa", "privacidade"\]\)/);
+});
+
+test("Privacidade usa saúde digital real sem inventar integração externa", () => {
+  assert.match(digitalMigration, /tracking_360_digital_health/);
+  assert.match(digitalMigration, /session_consent/);
+  assert.match(digitalMigration, /possible_duplicates/);
+  assert.match(api, /tracking_360_digital_health/);
+  assert.match(shell, /"empresa", "privacidade"/);
 });

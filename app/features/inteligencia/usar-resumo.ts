@@ -52,6 +52,16 @@ export type Tracking360Resumo = {
     vgv: number;
     followups_vencidos: number;
   }>;
+  digital_health?: {
+    consent?: { total?: number; essential?: number; analytics?: number; marketing?: number };
+    weeks?: Array<{ inicio: string; total: number; essential: number; analytics: number; marketing: number }>;
+    hours_today?: Array<{ hora: number; eventos: number }>;
+    quality?: { invalid_events?: number; possible_duplicates?: number; last_event_at?: string | null; total_events?: number };
+    crm_sync?: { pending?: number; errors?: number; total?: number };
+    attribution?: { total?: number; with_source?: number; with_campaign?: number; with_click_id?: number };
+    events?: string[];
+    updated_at?: string;
+  };
   atualizado_em?: string;
 };
 

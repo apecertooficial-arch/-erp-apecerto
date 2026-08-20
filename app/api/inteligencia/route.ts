@@ -23,15 +23,18 @@ export async function GET(request: Request) {
 
   const requestedDays = Number(new URL(request.url).searchParams.get("days") ?? 30);
   const days = Number.isFinite(requestedDays) ? Math.max(1, Math.min(Math.round(requestedDays), 365)) : 30;
-  const { data, error } = await supabase.rpc("tracking_360_ceo", { p_days: days });
+  const [{ data, error }, { data: digitalHealth, error: digitalError }] = await Promise.all([
+    supabase.rpc("tracking_360_ceo", { p_days: days }),
+    supabase.rpc("tracking_360_digital_health", { p_days: days }),
+  ]);
 
-  if (error) {
-    console.error("tracking_360_ceo falhou:", error.message);
+  if (error || digitalError) {
+    console.error("tracking_360 falhou:", error?.message ?? digitalError?.message);
     return Response.json({ error: "Não foi possível carregar a Inteligência agora." }, { status: 502 });
   }
 
   return Response.json(
-    { resumo: data },
+    { resumo: { ...(data as Record<string, unknown>), digital_health: digitalHealth } },
     { headers: { "Cache-Control": "private, no-store" } },
   );
 }
