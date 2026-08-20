@@ -74,7 +74,14 @@ export function ErpShell({ children }: { children: ReactNode }) {
      daquele modulo; ate la o sino aparece limpo, que e a verdade. */
   const naoLidas = badges["Notificações"] ?? 0;
   const rotuloSino = naoLidas > 0 ? `Notificações: ${naoLidas} não lidas` : "Notificações";
-  const { barra: itensBarra, mais: itensMais } = itensDaNavegacao({ role, permissoes, carregado: perfilCarregado, isManager });
+  const temCorretorVinculado = profile?.brokerId != null;
+  const { barra: itensBarra, mais: itensMais } = itensDaNavegacao({
+    role,
+    permissoes,
+    carregado: perfilCarregado,
+    isManager,
+    temCorretorVinculado,
+  });
   const rotuloMobile = rotasModulo[moduloAtual].rotuloCurto ?? moduloAtual;
   const gruposMais = GRUPOS_MAIS
     .map((grupo) => ({ titulo: grupo.titulo, itens: itensMais.filter((m) => rotasModulo[m].classe === grupo.classe) }))
@@ -101,6 +108,7 @@ export function ErpShell({ children }: { children: ReactNode }) {
       sessionName={profile?.name ?? "Corretor"}
       modulePermissions={permissoes}
       isManager={isManager}
+      temCorretorVinculado={temCorretorVinculado}
       perfilCarregado={perfilCarregado}
       badges={badges as Partial<Record<ModuleName, number>>}
     >

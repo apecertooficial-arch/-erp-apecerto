@@ -16,13 +16,19 @@ import { podeVer } from "./erp-routes";
 import { useErpSession } from "./ErpSession";
 
 export function GuardaModulo({ modulo, children }: { modulo: ModuleName; children: (accessToken: string) => ReactNode }) {
-  const { accessToken, role, permissoes, perfilCarregado, isManager } = useErpSession();
+  const { accessToken, profile, role, permissoes, perfilCarregado, isManager } = useErpSession();
 
   if (!perfilCarregado || !accessToken) {
     return <div className="workspace-loading"><span /><strong>Carregando seu ERP…</strong></div>;
   }
 
-  if (!podeVer(modulo, { role, permissoes, carregado: perfilCarregado, isManager })) {
+  if (!podeVer(modulo, {
+    role,
+    permissoes,
+    carregado: perfilCarregado,
+    isManager,
+    temCorretorVinculado: profile?.brokerId != null,
+  })) {
     return (
       <div className="modulo-sem-acesso" role="alert">
         <strong>Você não tem acesso a {modulo}.</strong>

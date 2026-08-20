@@ -83,7 +83,7 @@ function NavGroup({ label, items, activeItem, onNavigate, badges, children }: { 
   );
 }
 
-export function AppShell({ children, activeItem, onNavigate, onOpenProfile, sessionRole = "corretor", sessionName = "Corretor", modulePermissions = null, isManager = false, badges, perfilCarregado = false }: { children: ReactNode; activeItem: ModuleName; onNavigate: (item: ModuleName) => void; onOpenProfile?: () => void; sessionRole?: "admin" | "gestor" | "corretor"; sessionName?: string; modulePermissions?: Record<string, string[]> | null; isManager?: boolean; badges?: Partial<Record<ModuleName, number>>; perfilCarregado?: boolean }) {
+export function AppShell({ children, activeItem, onNavigate, onOpenProfile, sessionRole = "corretor", sessionName = "Corretor", modulePermissions = null, isManager = false, temCorretorVinculado = false, badges, perfilCarregado = false }: { children: ReactNode; activeItem: ModuleName; onNavigate: (item: ModuleName) => void; onOpenProfile?: () => void; sessionRole?: "admin" | "gestor" | "corretor"; sessionName?: string; modulePermissions?: Record<string, string[]> | null; isManager?: boolean; temCorretorVinculado?: boolean; badges?: Partial<Record<ModuleName, number>>; perfilCarregado?: boolean }) {
   const isBroker = sessionRole === "corretor";
   const [navCollapsed, setNavCollapsed] = useState(false);
   const pathname = usePathname();
@@ -92,7 +92,7 @@ export function AppShell({ children, activeItem, onNavigate, onOpenProfile, sess
      features/system/erp-routes.ts, porque o menu do celular usa a MESMA.
      Isto controla EXPOSIÇÃO DE MENU, não autorização de dados. */
   const canSee = (item: ModuleName) =>
-    podeVer(item, { role: sessionRole, permissoes: modulePermissions, carregado: perfilCarregado, isManager });
+    podeVer(item, { role: sessionRole, permissoes: modulePermissions, carregado: perfilCarregado, isManager, temCorretorVinculado });
 
   const mainItems = (isBroker ? brokerMainItems : adminMainItems).filter(canSee);
   const toolItems = (isBroker ? brokerToolItems : adminToolItems).filter(canSee);
