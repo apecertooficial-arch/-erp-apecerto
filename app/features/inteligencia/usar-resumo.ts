@@ -14,22 +14,27 @@ export type CorretorOperacao = {
   corretor_id: number;
   nome: string;
   leads_novos: number;
-  carteira_aberta: number;
-  carteira_critica: number;
+  carteira_ativa: number;
+  pescados_na_carteira: number;
+  clientes_aguardando: number;
+  clientes_criticos: number;
   etapas: EtapaOperacao[];
-  sem_primeira_resposta: number;
   resposta_mediana_min: number | null;
   resposta_p90_min: number | null;
+  conversas_respondidas: number;
+  conversas_sem_resposta: number;
   visitas_agendadas: number;
   visitas_realizadas: number;
   visitas_canceladas: number;
-  conversao_lead_visita: number | null;
+  cohort_com_visita: number;
+  conversao_coorte_visita: number | null;
   realizacao_visita: number | null;
   vendas: number;
   vgv: number;
   ticket_medio: number | null;
   comissao_media_pct: number | null;
   dias_presenca: number;
+  dias_uteis_sem_confirmacao: number;
   no_escritorio_agora: boolean;
   ultima_presenca: string | null;
   captacoes: number;
@@ -50,17 +55,19 @@ export type OperacaoResumo = {
   operacao?: {
     corretores_ativos?: number;
     no_escritorio_agora?: number;
-    leads_novos?: number;
-    carteira_aberta?: number;
-    carteira_critica?: number;
-    sem_primeira_resposta?: number;
+    leads_funil_ativos?: number;
+    leads_entraram_periodo?: number;
+    pescados_na_carteira?: number;
+    leads_bolsao?: number;
+    disponiveis_pesca?: number;
+    clientes_aguardando?: number;
+    clientes_criticos?: number;
     visitas_agendadas?: number;
     visitas_realizadas?: number;
     visitas_canceladas?: number;
     vendas?: number;
     vgv?: number;
     ticket_medio?: number | null;
-    conversao_lead_visita?: number | null;
     realizacao_visita?: number | null;
     nota_ia?: number | null;
     avaliacoes_ia?: number;
@@ -74,6 +81,12 @@ export type OperacaoResumo = {
   };
   funil?: EtapaOperacao[];
   equipe?: CorretorOperacao[];
+  acoes?: Array<{ id: string; lead: string; corretor: string; etapa: string; prioridade: number; espera_min: number | null; motivo: string }>;
+  bolsao?: {
+    origens?: Array<{ origem: string; quantidade: number }>;
+    oportunidades?: Array<{ id: number; nome: string; origem: string; negocio_id: number; ultima_interacao: string | null; qtd_recebidas: number | null; qtd_enviadas: number | null; criado_em: string }>;
+  };
+  regra_escopo?: { fonte: string; criterio: string; bolsao: string };
   fontes?: FonteOperacao[];
   atualizado_em?: string;
 };
@@ -123,6 +136,18 @@ export type MarketingResumo = {
   eventos?: Array<{ evento: string; quantidade: number }>;
   paginas?: Array<{ page_path: string; visualizacoes: number; cliques_cta: number; leads: number }>;
   imoveis?: Array<{ item_id: string; imovel: string; bairro: string | null; visualizacoes: number; visitas: number }>;
+  midia?: {
+    meta?: PlataformaMidia;
+    google?: PlataformaMidia;
+    atualizado_em?: string;
+  };
+  ga4?: {
+    totais: { sessoes: number; visualizacoes: number; sessoesEngajadas: number; taxaEngajamento: number | null } | null;
+    paginas: Array<{ pagina: string; visualizacoes: number; entradas: number }>;
+    origens: Array<{ origem: string; sessoes: number; engajadas: number }>;
+    dispositivos: Array<{ dispositivo: string; sessoes: number }>;
+  } | null;
+  ga4_configurado?: boolean;
   saude?: {
     total_eventos?: number;
     ultimo_evento_em?: string | null;
@@ -137,6 +162,33 @@ export type MarketingResumo = {
     entrega_midia?: { total?: number; entregues?: number; pendentes?: number; falhas?: number; ultima_entrega_em?: string | null };
   };
   atualizado_em?: string;
+};
+
+export type AnuncioMidia = {
+  plataforma: "Meta" | "Google";
+  campanha_id?: string;
+  campanha: string;
+  conjunto_id?: string;
+  conjunto: string;
+  anuncio_id?: string;
+  anuncio: string;
+  objetivo?: string | null;
+  status: string;
+  investimento: number;
+  impressoes: number;
+  alcance?: number;
+  cliques: number;
+  ctr: number;
+  cpc: number;
+  leads_plataforma: number;
+  cpl_plataforma: number | null;
+};
+
+export type PlataformaMidia = {
+  status: "conectado" | "nao_configurado" | "sem_permissao" | "sem_conta" | "erro" | "indisponivel";
+  motivo?: string | null;
+  contas?: Array<{ id: string; nome: string; moeda: string }>;
+  anuncios?: AnuncioMidia[];
 };
 
 export type InteligenciaResumo = {

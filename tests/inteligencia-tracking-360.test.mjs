@@ -3,6 +3,8 @@ import { existsSync, readFileSync } from "node:fs";
 import test from "node:test";
 
 const migration = readFileSync(new URL("../supabase/migrations/20260820213000_inteligencia_decisao_unificada.sql", import.meta.url), "utf8");
+const migrationF2 = readFileSync(new URL("../supabase/migrations/20260820230000_inteligencia_funil_2_canonico.sql", import.meta.url), "utf8");
+const adsRead = readFileSync(new URL("../supabase/functions/marketing-ads-read/index.ts", import.meta.url), "utf8");
 const cleanup = readFileSync(new URL("../supabase/migrations/20260820214000_inteligencia_remover_camadas_antigas.sql", import.meta.url), "utf8");
 const cleanupSnapshot = readFileSync(new URL("../supabase/migrations/20260820215000_inteligencia_remover_snapshot_antigo.sql", import.meta.url), "utf8");
 const api = readFileSync(new URL("../app/api/inteligencia/route.ts", import.meta.url), "utf8");
@@ -31,28 +33,31 @@ test("as duas RPCs canônicas são protegidas e não inventam horas ou pulos", (
 });
 
 test("empresa e operação usam CRM, presença, IA, mensagens, visitas e vendas reais", () => {
-  for (const fonte of ["corretor_presencas", "ia_notas_atendimento", "perf_eventos", "visitas", "vendas", "f2_lead"]) {
-    assert.ok(migration.includes(fonte), `faltou ${fonte}`);
+  for (const fonte of ["corretor_presencas", "ia_notas_atendimento", "wa_mensagens", "visitas", "vendas", "f2_lead"]) {
+    assert.ok(migrationF2.includes(fonte), `faltou ${fonte}`);
   }
+  assert.match(migrationF2, /f2_active as \(select \* from f2_all where descartado_em is null\)/);
+  assert.match(migrationF2, /todo lead sem card ativo/);
   assert.match(operacao, /useResumoInteligencia\(accessToken, recorte\.periodo\)/);
-  assert.match(operacao, /Carteira e velocidade/);
-  assert.match(operacao, /Visitas e resultado/);
-  assert.match(operacao, /Atendimento observado/);
-  assert.match(operacao, /Presença e captação/);
+  assert.match(operacao, /Funil 2\.0 e Bolsão/);
+  assert.match(operacao, /Conversão comparável/);
+  assert.match(operacao, /Qualidade do atendimento/);
+  assert.match(operacao, /Resultado e presença/);
   assert.doesNotMatch(operacao, /const demo/);
 });
 
-test("marketing liga campanha a lead, visita e venda e declara mídia ausente", () => {
+test("marketing liga campanha a lead, visita e venda e lê Meta/Google sem inventar conexão", () => {
   for (const trecho of ["lead_campaign", "campaign_outcomes", "visitas_realizadas", "vendas", "vgv", "lead_attribution", "tracking_delivery_logs"]) {
     assert.ok(migration.includes(trecho), `faltou ${trecho}`);
   }
   assert.match(migration, /null::numeric investimento/);
-  assert.match(marketing, /Qual campanha vira visita e venda/);
-  assert.match(marketing, /Meta Ads e conversões/);
-  assert.match(marketing, /Google Ads \/ Analytics/);
+  assert.match(marketing, /Campanha, conjunto e anúncio/);
+  assert.match(marketing, /Meta Pixel \+ CAPI/);
+  assert.match(marketing, /Google Ads/);
   assert.match(marketing, /Google Tag Manager/);
-  assert.match(marketing, /campanhas\.some\(\(item\) => item\.investimento !== null/);
-  assert.match(marketing, /a conta do Meta Ads não está integrada/);
+  assert.match(adsRead, /META_ADS_TOKEN/);
+  assert.match(adsRead, /GOOGLE_ADS_DEVELOPER_TOKEN/);
+  assert.match(adsRead, /me\/adaccounts/);
   assert.doesNotMatch(marketing, /const demo/);
 });
 

@@ -8,6 +8,34 @@
 .int-area .int-selo-vivo i { width: 7px; height: 7px; border-radius: 999px; background: #1fa85a; flex: none; }
 .int-area .int-duas { display: grid; grid-template-columns: 1.35fr 1fr; gap: 12px; align-items: start; }
 .int-area .int-col { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.int-area .int-subabas { display:flex; gap:4px; padding:5px; overflow-x:auto; border:1px solid #e6e0da; border-radius:15px; background:#fff; box-shadow:0 2px 8px rgba(31,28,26,.04); }
+.int-area .int-subabas button { flex:1; min-width:max-content; padding:10px 15px; border:0; border-radius:11px; background:transparent; color:#746d66; font:600 11.5px/1.2 inherit; cursor:pointer; }
+.int-area .int-subabas button:hover { background:#faf7f4; }
+.int-area .int-subabas button.ativo { background:#2f2925; color:#fff; box-shadow:0 3px 8px rgba(47,41,37,.14); }
+.int-area .int-escopo-verdade { display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:15px; padding:18px 22px; border:1px solid #dfeae3; border-radius:19px; background:linear-gradient(120deg,#f3fbf6,#fff 48%,#fff8f2); }
+.int-area .int-escopo-verdade>div { display:grid; gap:3px; }
+.int-area .int-escopo-verdade>div:last-child { text-align:right; }
+.int-area .int-escopo-verdade>span,.int-area .int-escopo-verdade span { color:#1b7a48; font-size:10px; font-weight:800; letter-spacing:.09em; }
+.int-area .int-escopo-verdade .bolsao span { color:#c15a16; }
+.int-area .int-escopo-verdade strong { font-size:24px; letter-spacing:-.03em; }
+.int-area .int-escopo-verdade small { color:#746d66; font-size:11px; }
+.int-area .int-escopo-verdade>i { color:#b5aca4; font-size:22px; font-style:normal; font-weight:800; }
+.int-area .int-painel { min-height:220px; padding:18px 20px; border:1px solid #ebe5df; border-radius:18px; background:#fff; box-shadow:0 2px 8px rgba(31,28,26,.04); }
+.int-area .int-barras,.int-area .int-mapa-eventos { display:flex; flex-direction:column; gap:12px; }
+.int-area .int-barras>div,.int-area .int-mapa-eventos>div { display:grid; grid-template-columns:minmax(125px,1fr) 2fr 52px; align-items:center; gap:12px; }
+.int-area .int-barras span,.int-area .int-mapa-eventos span { overflow:hidden; color:#5f5852; font-size:11px; font-weight:600; text-overflow:ellipsis; white-space:nowrap; text-transform:capitalize; }
+.int-area .int-barras i,.int-area .int-mapa-eventos i { height:8px; overflow:hidden; border-radius:99px; background:#f0ece8; }
+.int-area .int-barras b,.int-area .int-mapa-eventos b { display:block; height:100%; border-radius:99px; background:linear-gradient(90deg,#ff7000,#ff9c62); }
+.int-area .int-mapa-eventos b { background:linear-gradient(90deg,#8b00cc,#c763f1); }
+.int-area .int-barras strong,.int-area .int-mapa-eventos strong { text-align:right; font-size:12px; font-variant-numeric:tabular-nums; }
+.int-area .int-conexao-clara { padding:18px 20px; border:1px solid #efd7c7; border-radius:17px; background:#fff7f1; }
+.int-area .int-conexao-clara strong { font-size:13px; }
+.int-area .int-conexao-clara p { margin:6px 0 0; color:#746d66; font-size:11.5px; line-height:1.55; }
+.int-area .int-privacidade { display:grid; grid-template-columns:repeat(3,1fr); gap:11px; }
+.int-area .int-privacidade article { padding:18px; border:1px solid #e9e3de; border-radius:17px; background:#fff; }
+.int-area .int-privacidade span { color:#8b00cc; font-size:10px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; }
+.int-area .int-privacidade strong { display:block; margin-top:7px; font-size:14px; }
+.int-area .int-privacidade p { margin:7px 0 0; color:#6e6760; font-size:11.5px; line-height:1.5; }
 
 .int-area.int-decisao { gap: 18px; }
 .int-area .int-nivel1-unico { justify-content: space-between; }
@@ -86,4 +114,10 @@
   .int-area .int-filtros-simples, .int-area .int-decisao-resumo { align-items: flex-start; flex-direction: column; }
   .int-area .int-decisao-acoes, .int-area .int-decisao-fontes, .int-area .int-corretor-grade, .int-area .int-operacao-fontes > div:last-child { grid-template-columns: 1fr; }
   .int-area .int-corretor-foco { padding: 15px; }
+  .int-area .int-subabas button { flex:0 0 auto; min-height:42px; }
+  .int-area .int-escopo-verdade { grid-template-columns:1fr; }
+  .int-area .int-escopo-verdade>div:last-child { text-align:left; }
+  .int-area .int-escopo-verdade>i { transform:rotate(90deg); }
+  .int-area .int-privacidade { grid-template-columns:1fr; }
+  .int-area .int-barras>div,.int-area .int-mapa-eventos>div { grid-template-columns:110px 1fr 38px; }
 }
