@@ -10,6 +10,7 @@ const captureWizard = await readFile("app/features/products/CaptureWizard.tsx", 
 const detail = await readFile("app/features/products/ProductDetail.tsx", "utf8");
 const migration = await readFile("supabase/migrations/20260820153819_produtos_fluxo_seguro_site_unidades.sql", "utf8");
 const unpublishMigration = await readFile("supabase/migrations/20260820193000_produtos_despublicacao_individual.sql", "utf8");
+const unitMediaMigration = await readFile("supabase/migrations/20260820220000_captador_exclui_midia_da_propria_unidade.sql", "utf8");
 
 test("catálogo separa contagem de empreendimentos e imóveis", () => {
   assert.match(catalog, /buildingCount: visible\.filter\(\(product\) => !product\.standalone\)\.length/);
@@ -102,6 +103,23 @@ test("edição do prédio nunca altera indicação individual", () => {
   assert.match(detail, /next\.unidades\.filter\(\(unit\) => !unit\.de_terceiros\)/);
   assert.match(productApi, /Indicações de corretores devem ser editadas pela ficha da própria unidade/);
   assert.match(productApi, /\.eq\("de_terceiros", false\)/);
+});
+
+test("captador edita a própria unidade e suas imagens sem controlar o condomínio", () => {
+  const updateUnitBlock = productApi.match(/if \(body\.action === "updateUnit"\) \{[\s\S]*?if \(body\.action === "decideUnit"\)/)?.[0] ?? "";
+  assert.doesNotMatch(updateUnitBlock, /guard\(/);
+  assert.match(updateUnitBlock, /currentUnit\.captador_corretor_id === broker\.id/);
+  assert.match(productApi, /async function editableMediaContext/);
+  assert.match(productApi, /unit\?\.de_terceiros && broker\?\.id != null && unit\.captador_corretor_id === broker\.id/);
+  assert.match(productApi, /context\.media\.unidade_id \? clearQuery\.eq\("unidade_id"/);
+  assert.match(productApi, /media\.unidade_id \? nextQuery\.eq\("unidade_id"/);
+  assert.match(detail, /Editar imagens da unidade/);
+  assert.match(detail, /A unidade reina sobre o condomínio/);
+  assert.match(detail, /setUnitMediaEdit/);
+  assert.match(detail, /unitMediaEditorItems/);
+  assert.match(unitMediaMigration, /m\.storage_path = storage\.objects\.name/);
+  assert.match(unitMediaMigration, /c\.usuario_id = \(select auth\.uid\(\)\)/);
+  assert.match(unitMediaMigration, /u\.de_terceiros/);
 });
 
 test("migração bloqueia unidade pendente e dados privados no acesso anônimo", () => {

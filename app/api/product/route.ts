@@ -129,6 +129,8 @@ export async function PATCH(request: Request) {
   const body = await request.json() as Record<string, unknown>;
   const id = typeof body.id === "string" ? body.id : "";
   if (!UUID.test(id)) return Response.json({ error: "Produto inválido." }, { status: 400 });
+  const authenticatedSupabase = auth.supabase;
+  const authenticatedUserId = auth.user.id;
   const { data: productContext } = await auth.supabase.from("empreendimentos").select("nome, finalidade, origem, condominio_id, captado_por_usuario, aprovacao, publicado, rascunho").eq("id", id).maybeSingle();
   const currentPurpose = productContext?.finalidade ?? "venda";
   const { data: meuPerfilPatch } = await auth.supabase.from("usuarios").select("role").eq("id", auth.user.id).maybeSingle();
@@ -155,6 +157,26 @@ export async function PATCH(request: Request) {
       depois: { publicado: publish },
       detalhe: publish ? `${label} publicado novamente no site.` : `${label} retirado temporariamente do site sem perder aprovação ou disponibilidade.`,
     } as never);
+  }
+
+  async function editableMediaContext(mediaId: string) {
+    const { data: media, error } = await authenticatedSupabase
+      .from("midias")
+      .select("id,unidade_id,storage_path,is_capa,tipo")
+      .eq("id", mediaId)
+      .eq("empreendimento_id", id)
+      .maybeSingle();
+    if (error) return { error: Response.json({ error: error.message }, { status: 502 }) } as const;
+    if (!media) return { error: Response.json({ error: "Mídia não encontrada." }, { status: 404 }) } as const;
+    if (!media.unidade_id) {
+      return { media, canEdit: gerenciaProdutos || souCaptador } as const;
+    }
+    const [{ data: unit }, { data: broker }] = await Promise.all([
+      authenticatedSupabase.from("unidades").select("captador_corretor_id,de_terceiros").eq("id", media.unidade_id).eq("empreendimento_id", id).maybeSingle(),
+      authenticatedSupabase.from("corretores").select("id").eq("usuario_id", authenticatedUserId).maybeSingle(),
+    ]);
+    const ownsUnit = Boolean(unit?.de_terceiros && broker?.id != null && unit.captador_corretor_id === broker.id);
+    return { media, canEdit: gerenciaProdutos || ownsUnit } as const;
   }
 
   if (body.action === "publishUnit" || body.action === "unpublishUnit") {
@@ -247,8 +269,6 @@ export async function PATCH(request: Request) {
   }
 
   if (body.action === "updateUnit") {
-    const denied = guard([["produtos", "editar"]], "Você não tem permissão para editar unidades.");
-    if (denied) return denied;
     const unidadeId = typeof body.unidadeId === "string" ? body.unidadeId : "";
     if (!UUID.test(unidadeId)) return Response.json({ error: "Unidade inválida." }, { status: 400 });
     const { data: broker } = await auth.supabase.from("corretores").select("id").eq("usuario_id", auth.user.id).maybeSingle();
@@ -428,42 +448,46 @@ export async function PATCH(request: Request) {
   }
 
   if (body.action === "setCover") {
-    if (negadoPorCaptacao) return negadoPorCaptacao;
     const mediaId = typeof body.mediaId === "string" ? body.mediaId : "";
     if (!UUID.test(mediaId)) return Response.json({ error: "Mídia inválida." }, { status: 400 });
-    const denied = guard([["produtos", "editar"]], "Você não tem permissão para editar mídias do produto.");
-    if (denied) return denied;
-    const { error: clearError } = await auth.supabase.from("midias").update({ is_capa: false }).eq("empreendimento_id", id);
+    const context = await editableMediaContext(mediaId);
+    if ("error" in context) return context.error;
+    if (!context.canEdit) return Response.json({ error: context.media.unidade_id ? "Você só pode editar as imagens da unidade que captou." : "Você só pode editar as imagens do produto que captou." }, { status: 403 });
+    if (context.media.tipo !== "foto") return Response.json({ error: "A capa precisa ser uma foto." }, { status: 422 });
+    let clearQuery = auth.supabase.from("midias").update({ is_capa: false }).eq("empreendimento_id", id).eq("tipo", "foto");
+    clearQuery = context.media.unidade_id ? clearQuery.eq("unidade_id", context.media.unidade_id) : clearQuery.is("unidade_id", null);
+    const { error: clearError } = await clearQuery;
     if (clearError) return Response.json({ error: clearError.message }, { status: 502 });
     const { error } = await auth.supabase.from("midias").update({ is_capa: true }).eq("id", mediaId).eq("empreendimento_id", id).eq("tipo", "foto");
     return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
   }
 
   if (body.action === "updateMedia") {
-    if (negadoPorCaptacao) return negadoPorCaptacao;
     const mediaId = typeof body.mediaId === "string" ? body.mediaId : "";
     const categoria = typeof body.category === "string" ? body.category.trim() : "";
     if (!UUID.test(mediaId) || !categoria) return Response.json({ error: "Mídia ou classificação inválida." }, { status: 400 });
-    const denied = guard([["produtos", "editar"]], "Você não tem permissão para editar mídias do produto.");
-    if (denied) return denied;
+    const context = await editableMediaContext(mediaId);
+    if ("error" in context) return context.error;
+    if (!context.canEdit) return Response.json({ error: context.media.unidade_id ? "Você só pode editar as imagens da unidade que captou." : "Você só pode editar as imagens do produto que captou." }, { status: 403 });
     const { error } = await auth.supabase.from("midias").update({ categoria }).eq("id", mediaId).eq("empreendimento_id", id);
     return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
   }
 
   if (body.action === "deleteMedia") {
-    if (negadoPorCaptacao) return negadoPorCaptacao;
     const mediaId = typeof body.mediaId === "string" ? body.mediaId : "";
     if (!UUID.test(mediaId)) return Response.json({ error: "Mídia inválida." }, { status: 400 });
-    const denied = guard([["produtos", "editar"], ["produtos", "excluir"]], "Você não tem permissão para excluir mídias do produto.");
-    if (denied) return denied;
-    const { data: media, error: readError } = await auth.supabase.from("midias").select("storage_path,is_capa,tipo").eq("id", mediaId).eq("empreendimento_id", id).single();
-    if (readError) return Response.json({ error: readError.message }, { status: 502 });
+    const context = await editableMediaContext(mediaId);
+    if ("error" in context) return context.error;
+    if (!context.canEdit) return Response.json({ error: context.media.unidade_id ? "Você só pode excluir imagens da unidade que captou." : "Você só pode excluir imagens do produto que captou." }, { status: 403 });
+    const { media } = context;
     const { error: storageError } = await auth.supabase.storage.from("empreendimentos").remove([media.storage_path]);
     if (storageError) return Response.json({ error: `Não foi possível excluir o arquivo: ${storageError.message}` }, { status: 502 });
     const { error: deleteError } = await auth.supabase.from("midias").delete().eq("id", mediaId).eq("empreendimento_id", id);
     if (deleteError) return Response.json({ error: deleteError.message }, { status: 502 });
     if (media.is_capa && media.tipo === "foto") {
-      const { data: nextPhoto } = await auth.supabase.from("midias").select("id").eq("empreendimento_id", id).eq("tipo", "foto").order("created_at", { ascending: true }).limit(1).maybeSingle();
+      let nextQuery = auth.supabase.from("midias").select("id").eq("empreendimento_id", id).eq("tipo", "foto");
+      nextQuery = media.unidade_id ? nextQuery.eq("unidade_id", media.unidade_id) : nextQuery.is("unidade_id", null);
+      const { data: nextPhoto } = await nextQuery.order("created_at", { ascending: true }).limit(1).maybeSingle();
       if (nextPhoto) await auth.supabase.from("midias").update({ is_capa: true }).eq("id", nextPhoto.id);
     }
     return Response.json({ success: true });

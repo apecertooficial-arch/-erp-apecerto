@@ -98,6 +98,8 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
   const [tab, setTab] = useState<"resumo" | "site" | "localizacao" | "proprietario" | "unidades" | "galeria">("resumo");
   const [unitDetail, setUnitDetail] = useState<Unit | null>(null);
   const [unitEdit, setUnitEdit] = useState<Unit | null>(null);
+  const [unitMediaEdit, setUnitMediaEdit] = useState<Unit | null>(null);
+  const [unitMediaCategory, setUnitMediaCategory] = useState("Outros");
   const [unitLightbox, setUnitLightbox] = useState<{ items: { url: string; label: string }[]; index: number } | null>(null);
   const [confirmDeleteProduct, setConfirmDeleteProduct] = useState(false);
   const [confirmUnpublish, setConfirmUnpublish] = useState<{ label: string; unitId?: string } | null>(null);
@@ -268,14 +270,18 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
       const supabase = getBrowserSupabaseClient();
       const { data: auth } = await supabase.auth.getUser();
       if (!auth.user) throw new Error("Sua sessão expirou.");
+      let unitPhotoCount = (product?.midias ?? []).filter((item) => item.unidade_id === unit.id && item.tipo === "foto").length;
       for (const originalFile of Array.from(files)) {
         const file = originalFile.type.startsWith("image/") ? await applyOfficialWatermark(originalFile) : originalFile;
         const safeName = file.name.normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-zA-Z0-9._-]/g, "-");
         const path = `${auth.user.id}/${productId}/${crypto.randomUUID()}-${safeName}`;
         const { error: uploadError } = await supabase.storage.from("empreendimentos").upload(path, file, { contentType: file.type, upsert: false });
         if (uploadError) throw uploadError;
-        const { error: insertError } = await supabase.from("midias").insert({ empreendimento_id: productId, unidade_id: unit.id, storage_path: path, tipo: mediaType(file), categoria: "Unidade", nome: file.name, is_capa: false });
+        const tipo = mediaType(file);
+        const isCover = tipo === "foto" && unitPhotoCount === 0;
+        const { error: insertError } = await supabase.from("midias").insert({ empreendimento_id: productId, unidade_id: unit.id, storage_path: path, tipo, categoria: tipo === "foto" ? unitMediaCategory : "Tour", nome: file.name, is_capa: isCover });
         if (insertError) { await supabase.storage.from("empreendimentos").remove([path]); throw insertError; }
+        if (tipo === "foto") unitPhotoCount += 1;
       }
       await load(); onChanged(); setMessage("Mídia da unidade adicionada com a marca d’água oficial.");
     } catch (error) { setMessage(error instanceof Error ? `Falha no upload: ${error.message}` : "Falha no upload."); } finally { setBusy(false); }
@@ -345,6 +351,25 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
       {editImages ? <div><select aria-label={`Classificação de ${item.nome ?? "material"}`} value={item.categoria ?? "Outros"} onChange={(event) => void mediaAction("updateMedia", item.id, event.target.value)}>{mediaCategories.map((entry) => <option key={entry}>{entry}</option>)}</select><small>{item.nome}</small><div className="media-actions">{item.tipo === "foto" && <button disabled={busy || item.is_capa} type="button" onClick={() => void setCover(item.id)}>{item.is_capa ? "✓ Foto de capa" : "Usar como capa"}</button>}</div></div> : null}
     </article>)}</div> : <p className="empty-media">Nenhum material nesta categoria. Use o botão acima para adicionar.</p>}
   </section>;
+
+  const unitMediaEditorItems = unitMediaEdit ? (product?.midias ?? []).filter((item) => item.unidade_id === unitMediaEdit.id && (item.tipo === "foto" || item.tipo === "video")) : [];
+  const unitMediaEditorPhotos = unitMediaEditorItems.filter((item) => item.tipo === "foto" && item.url);
+  const unitMediaEditor = unitMediaEdit && product ? <div className="modal-layer fv2-unit-media-edit-layer" role="dialog" aria-modal="true" aria-label="Editar imagens da unidade">
+    <button className="modal-scrim" type="button" onClick={() => setUnitMediaEdit(null)} aria-label="Fechar edição de imagens" />
+    <section className="capture-panel fv2-unit-media-edit-panel">
+      <header className="capture-header"><div><span className="eyebrow">IMÓVEL CAPTADO · {unitMediaEdit.codigo || "UNIDADE"}</span><h2>Editar imagens da unidade {unitMediaEdit.numero || ""}</h2><p>{product.nome} é apenas o condomínio de referência. Estas mídias pertencem exclusivamente a esta unidade.</p></div><button className="icon-button" type="button" onClick={() => setUnitMediaEdit(null)} aria-label="Fechar">×</button></header>
+      <div className="capture-body">
+        <div className="unit-media-edit-toolbar"><select aria-label="Categoria das novas fotos" value={unitMediaCategory} onChange={(event) => setUnitMediaCategory(event.target.value)}>{mediaCategories.map((item) => <option key={item}>{item}</option>)}</select><label className="primary-action">＋ Adicionar fotos ou vídeos<input hidden disabled={busy} multiple type="file" accept="image/*,video/*" onChange={(event) => { void uploadUnitMedia(event.target.files, unitMediaEdit); event.currentTarget.value = ""; }} /></label></div>
+        <div className="unit-independent-note"><IcSeal /><div><strong>A unidade reina sobre o condomínio</strong><span>Adicionar, classificar, escolher capa ou excluir aqui altera somente a unidade {unitMediaEdit.numero || ""}. As mídias do condomínio permanecem intactas.</span></div></div>
+        {unitMediaEditorItems.length ? <div className="detail-gallery unit-media-editor-grid">{unitMediaEditorItems.map((item) => <article key={item.id}>
+          <button className="media-delete" disabled={busy} type="button" onClick={() => setPendingDelete(item)} aria-label={`Excluir ${item.nome ?? "arquivo"}`}>×</button>
+          {item.tipo === "foto" && item.url ? <button className="gallery-open watermarked-preview" type="button" onClick={() => setUnitLightbox({ items: unitMediaEditorPhotos.map((photo) => ({ url: photo.url ?? "", label: photo.categoria || photo.nome || "Foto da unidade" })), index: Math.max(0, unitMediaEditorPhotos.findIndex((photo) => photo.id === item.id)) })}><img src={item.url} alt={item.categoria || item.nome || "Foto da unidade"} /></button> : item.url ? <div className="watermarked-preview"><video src={item.url} controls preload="metadata" /></div> : <div className="file-tile">Mídia indisponível</div>}
+          <div><select aria-label={`Classificação de ${item.nome ?? "material"}`} value={item.categoria ?? "Outros"} onChange={(event) => void mediaAction("updateMedia", item.id, event.target.value)}>{mediaCategories.map((entry) => <option key={entry}>{entry}</option>)}</select><small>{item.nome}</small><div className="media-actions">{item.tipo === "foto" && <button disabled={busy || item.is_capa} type="button" onClick={() => void setCover(item.id)}>{item.is_capa ? "✓ Foto de capa" : "Usar como capa"}</button>}</div></div>
+        </article>)}</div> : <p className="empty-media">Nenhuma mídia própria desta unidade. Adicione as fotos do imóvel acima.</p>}
+      </div>
+      <footer className="capture-footer"><span>{unitMediaEditorItems.length} mídia(s) própria(s) da unidade</span><button className="primary-action" type="button" onClick={() => setUnitMediaEdit(null)}>✓ Concluir edição</button></footer>
+    </section>
+  </div> : null;
 
   return <div className="modal-layer product-detail-layer">
     <button className="modal-scrim" type="button" onClick={onClose} aria-label="Fechar ficha do produto" />
@@ -422,6 +447,7 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
             </div>
             <div className="fv2-actions">
               {focusedUnit.pode_editar && <button className="fv2-btn fv2-btn-outline" type="button" disabled={busy} onClick={() => setUnitEdit({ ...focusedUnit })}><IcEdit /> Editar apartamento</button>}
+              {focusedUnit.pode_editar && <button className="fv2-btn fv2-btn-outline" type="button" disabled={busy} onClick={() => setUnitMediaEdit({ ...focusedUnit })}><IcImages /> Editar imagens da unidade</button>}
               {canPublish && focusedUnit.de_terceiros && focusedUnit.aprovacao === "pendente" && <div className="focused-unit-decision"><button type="button" className="fv2-ud-reject" disabled={busy} onClick={() => void decideUnit(focusedUnit.id, false)}>✕ Reprovar</button><button type="button" className="fv2-ud-approve" disabled={busy} onClick={() => void decideUnit(focusedUnit.id, true)}>✓ Aprovar unidade</button></div>}
               {canPublish && focusedUnit.aprovacao === "aprovado" && (focusedUnitPublished
                 ? <button className="fv2-btn fv2-btn-unpublish" type="button" disabled={busy} onClick={() => setConfirmUnpublish({ unitId: focusedUnit.id, label: `${product.nome} · Un. ${focusedUnit.numero || "s/n"}` })}><IcRotate /> Tirar imóvel do ar</button>
@@ -621,7 +647,7 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
             <div className="fv2-cost-tiles"><div className="fv2-tile"><small>TIPO</small><strong>{acessoLabel(u.acesso_tipo)}</strong></div><div className="fv2-tile"><small>CÓDIGO</small><strong>{u.acesso_codigo || "—"}</strong></div><div className="fv2-tile"><small>INSTRUÇÕES</small><strong>{u.acesso_instrucoes || "—"}</strong></div></div>
             {ind && <><div className="fv2-ud-sec">Fotos da unidade</div>{unitMedia.length ? <div className="fv2-ud-gallery">{unitMedia.map((m, i) => <button key={m.id} type="button" onClick={() => setUnitLightbox({ items: unitMedia.map((x) => ({ url: x.url ?? "", label: x.categoria || x.nome || "Foto da unidade" })), index: i })} className="fv2-ud-photo watermarked-preview" style={{ backgroundImage: `url(${m.url})` }} aria-label="Ampliar foto da unidade" />)}</div> : <p className="fv2-ud-empty">Nenhuma foto enviada para esta unidade ainda.</p>}{u.pode_editar && <label className="fv2-btn fv2-btn-outline">＋ Adicionar fotos ou vídeos<input hidden multiple type="file" accept="image/*,video/*" disabled={busy} onChange={(event) => void uploadUnitMedia(event.target.files, u)} /></label>}</>}
           </div>
-          {(u.pode_editar || (canPublish && ind && u.aprovacao === "pendente")) && <div className="fv2-ud-foot">{u.pode_editar && <button type="button" className="fv2-btn fv2-btn-outline" disabled={busy} onClick={() => setUnitEdit({ ...u })}><IcEdit /> Editar unidade</button>}{canPublish && ind && u.aprovacao === "pendente" && <><button type="button" className="fv2-ud-reject" disabled={busy} onClick={() => void decideUnit(u.id, false)}>✕ Reprovar</button><button type="button" className="fv2-ud-approve" disabled={busy} onClick={() => void decideUnit(u.id, true)}>✓ Aprovar</button></>}</div>}
+          {(u.pode_editar || (canPublish && ind && u.aprovacao === "pendente")) && <div className="fv2-ud-foot">{u.pode_editar && <><button type="button" className="fv2-btn fv2-btn-outline" disabled={busy} onClick={() => setUnitEdit({ ...u })}><IcEdit /> Editar unidade</button><button type="button" className="fv2-btn fv2-btn-outline" disabled={busy} onClick={() => { setUnitDetail(null); setUnitMediaEdit({ ...u }); }}><IcImages /> Editar imagens</button></>}{canPublish && ind && u.aprovacao === "pendente" && <><button type="button" className="fv2-ud-reject" disabled={busy} onClick={() => void decideUnit(u.id, false)}>✕ Reprovar</button><button type="button" className="fv2-ud-approve" disabled={busy} onClick={() => void decideUnit(u.id, true)}>✓ Aprovar</button></>}</div>}
         </div>
       </div>;
     })()}
@@ -633,6 +659,7 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
         <footer className="capture-footer"><button className="ghost-action" type="button" onClick={() => setUnitEdit(null)}>Cancelar</button><button className="primary-action" type="button" disabled={busy} onClick={() => void saveUnit()}>{busy ? "Salvando..." : "Salvar unidade"}</button></footer>
       </section>
     </div>}
+    {unitMediaEditor}
     {unitLightbox && unitLightbox.items[unitLightbox.index]?.url && <div className="photo-lightbox unit-lightbox" role="dialog" aria-modal="true" aria-label="Foto do imóvel ampliada"><button className="lightbox-close" type="button" onClick={() => setUnitLightbox(null)} aria-label="Fechar galeria">×</button>{unitLightbox.items.length > 1 && <button className="lightbox-nav previous" type="button" onClick={() => setUnitLightbox((s) => s && ({ ...s, index: (s.index - 1 + s.items.length) % s.items.length }))} aria-label="Foto anterior">‹</button>}<div className="lightbox-image watermarked-preview"><img src={unitLightbox.items[unitLightbox.index].url} alt={unitLightbox.items[unitLightbox.index].label} /></div><div><strong>{unitLightbox.items[unitLightbox.index].label}</strong><span>{unitLightbox.index + 1} de {unitLightbox.items.length}</span></div>{unitLightbox.items.length > 1 && <button className="lightbox-nav next" type="button" onClick={() => setUnitLightbox((s) => s && ({ ...s, index: (s.index + 1) % s.items.length }))} aria-label="Próxima foto">›</button>}</div>}
   </div>;
 }
