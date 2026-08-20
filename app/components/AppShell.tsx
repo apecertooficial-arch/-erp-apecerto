@@ -1,11 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
 import { useState, type ReactNode } from "react";
 import type { ModuleName } from "../features/system/module-map";
 import { pathDoModulo, podeVer } from "../features/system/erp-routes";
-import "../styles/menu-inteligencia-icone.css";
 
 /* GRUPOS DO MENU — ordem aprovada no desenho.
 
@@ -49,21 +47,7 @@ function NavIcon({ item }: { item: ModuleName }) {
   return <svg {...common}><circle cx="12" cy="12" r="10" /><path d="M9 9a3 3 0 1 1 4.5 2.6C12.6 12.1 12 12.7 12 14M12 18h.01" /></svg>;
 }
 
-/* ÍCONE DA INTELIGÊNCIA — radar. O quadrado laranja que aparecia no lugar dele
-   vinha do pseudo-elemento de .nav-icon na folha do menu; quem desliga isso é
-   app/styles/menu-inteligencia-icone.css, importada no topo deste arquivo. */
-function IconeRadar() {
-  return (
-    <svg width={19} height={19} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
-      <path d="M19.07 4.93A10 10 0 1 1 6.99 3.34" />
-      <path d="M15.54 8.46A5 5 0 1 0 8.46 15.54" />
-      <circle cx="12" cy="12" r="1.6" />
-      <path d="m13.2 10.8 7.3-7.3" />
-    </svg>
-  );
-}
-
-function NavGroup({ label, items, activeItem, onNavigate, badges, children }: { label: string; items: ModuleName[]; activeItem: ModuleName; onNavigate: (item: ModuleName) => void; badges?: Partial<Record<ModuleName, number>>; children?: ReactNode }) {
+function NavGroup({ label, items, activeItem, onNavigate, badges }: { label: string; items: ModuleName[]; activeItem: ModuleName; onNavigate: (item: ModuleName) => void; badges?: Partial<Record<ModuleName, number>> }) {
   return (
     <section className="nav-group">
       <span className="nav-label">{label}</span>
@@ -79,7 +63,6 @@ function NavGroup({ label, items, activeItem, onNavigate, badges, children }: { 
           </Link>
         );
       })}
-      {children}
     </section>
   );
 }
@@ -87,8 +70,6 @@ function NavGroup({ label, items, activeItem, onNavigate, badges, children }: { 
 export function AppShell({ children, activeItem, onNavigate, onOpenProfile, sessionRole = "corretor", sessionName = "Corretor", modulePermissions = null, isManager = false, temCorretorVinculado = false, badges, perfilCarregado = false }: { children: ReactNode; activeItem: ModuleName; onNavigate: (item: ModuleName) => void; onOpenProfile?: () => void; sessionRole?: "admin" | "gestor" | "corretor"; sessionName?: string; modulePermissions?: Record<string, string[]> | null; isManager?: boolean; temCorretorVinculado?: boolean; badges?: Partial<Record<ModuleName, number>>; perfilCarregado?: boolean }) {
   const isBroker = sessionRole === "corretor";
   const [navCollapsed, setNavCollapsed] = useState(false);
-  const pathname = usePathname();
-  const naInteligencia = !!pathname?.startsWith("/inteligencia");
   /* Doc §14 — sem "ver" no módulo, ele some do menu. Regra única em
      features/system/erp-routes.ts, porque o menu do celular usa a MESMA.
      Isto controla EXPOSIÇÃO DE MENU, não autorização de dados. */
@@ -100,12 +81,6 @@ export function AppShell({ children, activeItem, onNavigate, onOpenProfile, sess
   // "Minha Equipe" é liberada por papel real (isManager), não por slug — regra vive em podeVer().
   if (canSee("Minha Equipe") && !toolItems.includes("Minha Equipe")) toolItems.unshift("Minha Equipe");
   const systemItems = (isBroker ? brokerSystemItems : adminSystemItems).filter(canSee);
-  /* Inteligência: área com rota e guarda próprias. Gestão vê; corretor não,
-     porque a área mostra número de equipe, financeiro e comissão. */
-  const verInteligencia = sessionRole === "admin" || sessionRole === "gestor" || isManager === true;
-  /* Em /inteligencia nenhum ModuleName está ativo — sem isto o Início continuava
-     aceso junto com o item novo. */
-  const itemAtivo = naInteligencia ? ("" as ModuleName) : activeItem;
   const initial = sessionName.trim().slice(0, 1).toUpperCase() || "C";
   const roleLabel = sessionRole === "admin" ? "Admin" : sessionRole === "gestor" ? "Gestor" : "Corretor";
   return (
@@ -113,19 +88,9 @@ export function AppShell({ children, activeItem, onNavigate, onOpenProfile, sess
       <aside className="sidebar">
         <div className="brand"><span className="brand-mark"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M4 14 16 5l12 9v13H7V15" /><path d="m11 15 4 4 7-8" /></svg></span><strong>apê<span>certo</span></strong><button className="nav-collapse-btn" type="button" onClick={() => setNavCollapsed((v) => !v)} title={navCollapsed ? "Expandir menu" : "Minimizar menu"} aria-label="Minimizar menu">{navCollapsed ? "»" : "«"}</button></div>
         <nav>
-          <NavGroup label="PRINCIPAL" items={mainItems} activeItem={itemAtivo} onNavigate={onNavigate} badges={badges}>
-            {verInteligencia ? (
-              /* order alto e inline: a folha do menu ordena PRINCIPAL por href e, sem
-                 regra para /inteligencia, o item ia para o topo, acima do Início. */
-              <Link className={`nav-item ${naInteligencia ? "active" : ""}`} href="/inteligencia" style={{ order: 90 }} aria-current={naInteligencia ? "page" : undefined}>
-                <span className="nav-icon" aria-hidden="true"><IconeRadar /></span>
-                <span>Inteligência</span>
-                <small className="nav-badge-pending" title="Área nova">novo</small>
-              </Link>
-            ) : null}
-          </NavGroup>
-          <NavGroup label="FERRAMENTAS" items={toolItems} activeItem={itemAtivo} onNavigate={onNavigate} badges={badges} />
-          <NavGroup label="SISTEMA" items={systemItems} activeItem={itemAtivo} onNavigate={onNavigate} badges={badges} />
+          <NavGroup label="PRINCIPAL" items={mainItems} activeItem={activeItem} onNavigate={onNavigate} badges={badges} />
+          <NavGroup label="FERRAMENTAS" items={toolItems} activeItem={activeItem} onNavigate={onNavigate} badges={badges} />
+          <NavGroup label="SISTEMA" items={systemItems} activeItem={activeItem} onNavigate={onNavigate} badges={badges} />
         </nav>
         <button className="profile" type="button" onClick={onOpenProfile} title="Abrir meu perfil"><span>{initial}</span><div><strong>{sessionName}</strong><small>{roleLabel} · apêcerto</small></div><i>⌄</i></button>
       </aside>

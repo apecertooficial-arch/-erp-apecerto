@@ -1,7 +1,7 @@
 /* Marca d'Água — ferramenta avulsa (FERRAMENTAS). Upload sem vinculo com
    empreendimento; a foto limpa so existe no link temporario da Unwatermark
    (expira em 24h) ate o corretor decidir onde ela entra. CSS isolado aqui
-   (mesmo padrao de menu-inteligencia-icone.css) em vez de globals.css, que
+   em folha isolada em vez de globals.css, que
    ja concentra o CSS de todas as telas existentes. */
 
 .wm-workspace { min-height: 100vh; background: var(--page); padding: 0 0 40px; }

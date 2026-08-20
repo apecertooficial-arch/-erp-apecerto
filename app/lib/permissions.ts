@@ -70,7 +70,7 @@ export function isCapability(moduleName: string, action: string): boolean {
 }
 
 // ============================================================================
-// NÍVEIS DE ACESSO — a "inteligência" que simplifica a tela.
+// NÍVEIS DE ACESSO — a lógica que simplifica a tela.
 // Cada módulo é controlado por um nível; o nível expande para o conjunto exato
 // de ações granulares (mantém o mesmo modelo de permissão salvo no banco).
 //   Sem acesso → nada   |   Ver → só leitura

@@ -24,7 +24,7 @@ import { useErpSession } from "./ErpSession";
  * fora da barra inferior, e o resultado na folha "Mais" era uma coluna de
  * hamburgueres identicos: onze itens com o mesmo desenho nao ajudam ninguem a
  * achar nada. Tracado de 1.8 e cantos redondos, como o resto da marca. */
-function IconeBarra({ modulo }: { modulo: ModuleName | "Mais" | "Inteligência" }) {
+function IconeBarra({ modulo }: { modulo: ModuleName | "Mais" }) {
   const c = { width: 22, height: 22, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.8, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
   if (modulo === "Início") return <svg {...c}><path d="M3 10 12 3l9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1Z" /></svg>;
   if (modulo === "CRM") return <svg {...c}><path d="M3 4h18l-7 8v7l-4 2v-9Z" /></svg>;
@@ -46,7 +46,6 @@ function IconeBarra({ modulo }: { modulo: ModuleName | "Mais" | "Inteligência" 
   if (modulo === "Financiamento") return <svg {...c}><path d="M3 10 12 4l9 6" /><path d="M5 10v9h14v-9M9 19v-5h6v5" /></svg>;
   if (modulo === "Base de conhecimento") return <svg {...c}><path d="M4 5a2 2 0 0 1 2-2h5v18H6a2 2 0 0 1-2-2Z" /><path d="M20 5a2 2 0 0 0-2-2h-5v18h5a2 2 0 0 0 2-2Z" /></svg>;
   if (modulo === "Marca d'Água") return <svg {...c}><circle cx="12" cy="12" r="9" /><path d="M12 6.5C12 6.5 8.3 11.4 8.3 14.2A3.7 3.7 0 0 0 15.7 14.2C15.7 11.4 12 6.5 12 6.5Z" /><path d="m5.6 18.4 12.8-12.8" /></svg>;
-  if (modulo === "Inteligência") return <svg {...c}><path d="M12 12 2.5 8.5A10 10 0 0 1 21.5 12M12 12l3.5 9.5A10 10 0 0 1 2.5 8.5" /><circle cx="12" cy="12" r="2.2" /></svg>;
   if (modulo === "Ajuda") return <svg {...c}><circle cx="12" cy="12" r="9" /><path d="M9.5 9.5a2.6 2.6 0 1 1 3.6 2.4c-.7.3-1.1.9-1.1 1.6v.4M12 17h.01" /></svg>;
   return <svg {...c}><path d="M4 12h16M4 6h16M4 18h16" /></svg>;
 }
@@ -87,12 +86,6 @@ export function ErpShell({ children }: { children: ReactNode }) {
   const gruposMais = GRUPOS_MAIS
     .map((grupo) => ({ titulo: grupo.titulo, itens: itensMais.filter((m) => rotasModulo[m].classe === grupo.classe) }))
     .filter((grupo) => grupo.itens.length > 0);
-  /* Inteligência é área própria, não um módulo do mapa: entra como atalho fixo
-     no grupo Gestão da folha "Mais", com a mesma guarda de leitura da página
-     (gestor, admin ou quem lidera time). O mapa exaustivo de módulos segue
-     intocado -- nada de item novo para manter em paralelo na sidebar. */
-  const podeVerInteligencia = role === "admin" || role === "gestor" || isManager;
-  const inteligenciaAtiva = pathname.startsWith("/inteligencia");
 
   // Trocar de rota volta o scroll pro topo. Sem setState aqui: a folha "Mais"
   // e fechada no proprio clique do link, que e onde a intencao acontece.
@@ -182,32 +175,9 @@ export function ErpShell({ children }: { children: ReactNode }) {
                     <b aria-hidden="true">›</b>
                   </Link>
                 ))}
-                {grupo.titulo === "Gestão" && podeVerInteligencia && (
-                  <Link
-                    href="/inteligencia"
-                    onClick={() => setMaisAberto(false)}
-                    aria-current={inteligenciaAtiva ? "page" : undefined}
-                  >
-                    <span className="ape-mais-icone" aria-hidden="true"><IconeBarra modulo="Inteligência" /></span>
-                    <span className="ape-mais-rotulo">Inteligência</span>
-                    <b aria-hidden="true">›</b>
-                  </Link>
-                )}
               </div>
             </div>
           )) : <p className="ape-mais-vazio">Nenhuma outra opção disponível.</p>}
-          {gruposMais.every((grupo) => grupo.titulo !== "Gestão") && podeVerInteligencia && (
-            <div className="ape-mais-grupo">
-              <p className="ape-mais-titulo">Gestão</p>
-              <div className="ape-mais-itens">
-                <Link href="/inteligencia" onClick={() => setMaisAberto(false)}>
-                  <span className="ape-mais-icone" aria-hidden="true"><IconeBarra modulo="Inteligência" /></span>
-                  <span className="ape-mais-rotulo">Inteligência</span>
-                  <b aria-hidden="true">›</b>
-                </Link>
-              </div>
-            </div>
-          )}
         </section>
       </div>}
 

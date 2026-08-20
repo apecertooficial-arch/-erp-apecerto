@@ -47,14 +47,7 @@ export async function GET(request: Request) {
     return Response.json({ config: data, corretores: brokers ?? [] });
   }
   const noEscritorio = await naRedeDoEscritorio(request, a.supabase);
-  const registrarAtividade = url.searchParams.get("atividade") === "1";
-  const ativo = url.searchParams.get("ativo") === "1";
-  const [{ data, error }] = await Promise.all([
-    a.supabase.rpc("presenca_status"),
-    registrarAtividade
-      ? a.supabase.rpc("corretor_atividade_heartbeat", { p_ativo: ativo, p_no_escritorio: noEscritorio })
-      : Promise.resolve({ data: null, error: null }),
-  ]);
+  const { data, error } = await a.supabase.rpc("presenca_status");
   if (error) return Response.json({ error: error.message }, { status: 502 });
 
   const status = data && typeof data === "object" && !Array.isArray(data) ? data : { ativa: false, prompt: false };
