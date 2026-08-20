@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState, type ReactNode } from "react";
 import type { ModuleName } from "../features/system/module-map";
 import { pathDoModulo, podeVer } from "../features/system/erp-routes";
+import "../styles/menu-marca-dagua-icone.css";
 
 /* GRUPOS DO MENU — ordem aprovada no desenho.
 
