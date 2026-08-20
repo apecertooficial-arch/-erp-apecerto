@@ -19,6 +19,19 @@
  * v3 -- cada download ganha um nome de arquivo unico (nome original + sufixo
  * curto aleatorio), pra nao sobrescrever quando o corretor processa varias
  * fotos seguidas -- mesmo comportamento do site da propria Unwatermark.
+ *
+ * v4 -- Ctrl+V cola direto uma imagem copiada (print, "copiar imagem" do
+ * navegador, WhatsApp Web etc.).
+ *
+ * v5 -- Ctrl+V passivo (so o listener de "paste") e menos confiavel do que
+ * parece: depende de qual elemento esta com foco na hora, e em alguns
+ * navegadores o gesto de teclado nao chega a expor a imagem via
+ * clipboardData. Pra corretor nao ter que adivinhar se funcionou, virou
+ * BOTAO: clique em "Colar da area de transferencia" chama
+ * navigator.clipboard.read() (API assincrona, aciona o dialogo nativo de
+ * permissao do navegador na primeira vez) -- caminho mais confiavel porque
+ * nasce de um clique direto do usuario, nao de um evento passivo. O Ctrl+V
+ * continua funcionando como atalho extra pra quem preferir.
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -64,8 +77,10 @@ export function WatermarkRemoverWorkspace() {
   const [removerTexto, setRemoverTexto] = useState(false);
   const [melhorarQualidade, setMelhorarQualidade] = useState(false);
   const [processando, setProcessando] = useState(false);
+  const [colando, setColando] = useState(false);
   const [erro, setErro] = useState("");
   const [resultado, setResultado] = useState<Resultado | null>(null);
+  const [colado, setColado] = useState(false);
 
   const limparResultado = useCallback(() => {
     setResultado((atual) => {
@@ -83,6 +98,62 @@ export function WatermarkRemoverWorkspace() {
       return file ? URL.createObjectURL(file) : null;
     });
   }, [limparResultado]);
+
+  const avisarColado = useCallback(() => {
+    setColado(true);
+    window.setTimeout(() => setColado(false), 1500);
+  }, []);
+
+  // Botão "Colar da área de transferência": caminho principal. Gesto direto
+  // de clique -> Clipboard API assíncrona, mais confiável entre navegadores
+  // do que depender só do evento passivo de teclado.
+  const colarDoClipboard = useCallback(async () => {
+    setErro("");
+    if (!navigator.clipboard || !navigator.clipboard.read) {
+      setErro("Este navegador não permite colar direto pelo botão. Tente Ctrl+V ou arraste o arquivo.");
+      return;
+    }
+    setColando(true);
+    try {
+      const itens = await navigator.clipboard.read();
+      for (const item of itens) {
+        const tipoImagem = item.types.find((t) => t.startsWith("image/"));
+        if (tipoImagem) {
+          const blob = await item.getType(tipoImagem);
+          const file = new File([blob], `colado.${tipoImagem.split("/")[1] || "png"}`, { type: tipoImagem });
+          escolherArquivo(file);
+          avisarColado();
+          return;
+        }
+      }
+      setErro("Não encontrei nenhuma imagem na área de transferência. Copie a foto de novo e tente outra vez.");
+    } catch {
+      setErro("Não consegui acessar a área de transferência — o navegador pode ter bloqueado a permissão. Tente Ctrl+V ou arraste o arquivo.");
+    } finally {
+      setColando(false);
+    }
+  }, [escolherArquivo, avisarColado]);
+
+  // Ctrl+V continua funcionando como atalho extra em cima do botão acima.
+  useEffect(() => {
+    function aoColar(evento: ClipboardEvent) {
+      const itens = evento.clipboardData?.items;
+      if (!itens) return;
+      for (const item of itens) {
+        if (item.type.startsWith("image/")) {
+          const file = item.getAsFile();
+          if (file) {
+            evento.preventDefault();
+            escolherArquivo(file);
+            avisarColado();
+          }
+          break;
+        }
+      }
+    }
+    document.addEventListener("paste", aoColar);
+    return () => document.removeEventListener("paste", aoColar);
+  }, [escolherArquivo, avisarColado]);
 
   const processar = useCallback(async () => {
     if (!arquivo) return;
@@ -148,9 +219,14 @@ export function WatermarkRemoverWorkspace() {
       </header>
 
       {erro && <div className="wm-error">{erro}</div>}
+      {colado && <div className="wm-aviso-colado">Imagem colada da área de transferência</div>}
 
       <div className="wm-grid">
         <section className="wm-card">
+          <button type="button" className="wm-btn-colar" onClick={() => void colarDoClipboard()} disabled={colando}>
+            📋 {colando ? "Colando…" : "Colar da área de transferência"}
+          </button>
+
           <label
             className="wm-dropzone"
             onDragOver={(e) => e.preventDefault()}
