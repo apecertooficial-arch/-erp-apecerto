@@ -10,8 +10,20 @@
 .wm-workspace > header h1 { margin: 4px 0 6px; font-size: 22px; color: var(--ink); }
 .wm-workspace > header p { margin: 0; max-width: 52ch; color: var(--muted); font-size: 13px; line-height: 1.5; }
 
+.wm-voltar { display: inline-flex; align-items: center; gap: 4px; margin-bottom: 10px; padding: 0; border: none; background: none; color: var(--muted); font-weight: 700; font-size: 13px; cursor: pointer; }
+.wm-voltar:hover { color: var(--orange-700); }
+
 .wm-error { margin: 16px 28px 0; padding: 12px 16px; border-radius: 10px; background: #ffeded; color: #9c2a26; font-size: 13px; font-weight: 600; }
 .wm-aviso-colado { margin: 16px 28px 0; padding: 10px 16px; border-radius: 10px; background: var(--orange-soft); color: var(--orange-700); font-size: 12px; font-weight: 700; width: fit-content; }
+
+/* Tela de escolha — dois botões grandes, sem meio-termo visual. */
+.wm-escolha { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; padding: 28px; }
+@media (max-width: 720px) { .wm-escolha { grid-template-columns: 1fr; padding: 16px; } }
+.wm-escolha-card { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; text-align: left; background: var(--surface); border: 1px solid var(--line); border-radius: 20px; box-shadow: 0 2px 6px rgba(31,24,19,.06); padding: 28px 24px; cursor: pointer; transition: transform .15s ease, border-color .15s ease, box-shadow .15s ease; min-height: 190px; }
+.wm-escolha-card:hover { transform: translateY(-2px); border-color: var(--orange); box-shadow: 0 12px 28px rgba(31,24,19,.1); }
+.wm-escolha-icone { display: grid; place-items: center; width: 56px; height: 56px; border-radius: 16px; background: var(--orange-soft); color: var(--orange-700); }
+.wm-escolha-card strong { font-size: 17px; color: var(--ink); }
+.wm-escolha-card span:not(.wm-escolha-icone) { color: var(--muted); font-size: 13px; line-height: 1.5; }
 
 .wm-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; padding: 24px 28px; align-items: start; }
 @media (max-width: 860px) { .wm-grid { grid-template-columns: 1fr; padding: 16px; } }
@@ -28,13 +40,32 @@
 .wm-dropzone span { color: var(--muted); font-size: 12px; }
 .wm-dropzone img { max-width: 100%; max-height: 260px; border-radius: 10px; object-fit: contain; }
 .wm-dropzone input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.wm-dropzone-lote { min-height: 140px; }
 
 .wm-opcoes { display: flex; flex-direction: column; gap: 10px; }
 .wm-check { display: flex; flex-direction: column; gap: 2px; font-size: 13px; color: var(--ink); font-weight: 500; }
 .wm-check input { margin-right: 8px; }
 .wm-check small { color: var(--muted); font-weight: 400; font-size: 11px; margin-left: 24px; }
 
-.wm-acoes { display: flex; gap: 10px; }
+.wm-campo { display: flex; flex-direction: column; gap: 6px; }
+.wm-campo span { font-size: 12px; font-weight: 700; color: var(--ink); }
+.wm-campo input[type="text"] { height: 42px; padding: 0 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--page); color: var(--ink); font-size: 13px; }
+.wm-campo input[type="text"]:focus { outline: 2px solid var(--orange); outline-offset: 1px; }
+.wm-campo input[type="text"]:disabled { opacity: .6; }
+
+.wm-lote-card { gap: 18px; }
+.wm-lote-lista { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; max-height: 320px; overflow-y: auto; }
+.wm-lote-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--page); font-size: 13px; }
+.wm-lote-num { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 999px; background: var(--surface); border: 1px solid var(--line); color: var(--muted); font-size: 11px; font-weight: 700; flex: none; }
+.wm-lote-nome { flex: 1; color: var(--ink); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wm-lote-status { color: var(--muted); font-size: 12px; flex: none; }
+.wm-lote-pronto .wm-lote-status { color: #17874e; font-weight: 700; }
+.wm-lote-erro .wm-lote-status { color: #9c2a26; font-weight: 700; }
+.wm-lote-processando .wm-lote-status { color: var(--orange-700); font-weight: 700; }
+.wm-lote-remover { border: none; background: none; color: var(--muted); font-size: 16px; line-height: 1; cursor: pointer; flex: none; padding: 2px 4px; }
+.wm-lote-remover:hover { color: #9c2a26; }
+
+.wm-acoes { display: flex; gap: 10px; flex-wrap: wrap; }
 .wm-btn-primary { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 40px; padding: 0 18px; border: none; border-radius: var(--radius-pill); background: var(--orange); color: #fff; font-weight: 700; font-size: 13px; cursor: pointer; text-decoration: none; box-shadow: 0 8px 20px rgba(255,101,0,.2); transition: transform .15s ease; }
 .wm-btn-primary:hover { transform: translateY(-1px); }
 .wm-btn-primary:disabled { opacity: .55; cursor: default; transform: none; box-shadow: none; pointer-events: none; }
