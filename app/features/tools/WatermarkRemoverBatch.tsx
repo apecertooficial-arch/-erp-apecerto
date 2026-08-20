@@ -6,6 +6,10 @@
  * chamadas em paralelo) e devolve tudo junto num .zip, com os arquivos
  * nomeados "<nome-da-leva>-imagem-1.jpg", "-imagem-2.jpg" etc.
  *
+ * Limite de 15 fotos por leva -- pedido explícito, pra manter o lote rápido
+ * de processar e o zip leve. Passar do limite não trava a tela: só recusa o
+ * excedente com aviso claro, e o que já cabia entra normalmente.
+ *
  * O zip é montado no navegador com JSZip, importado por CDN em tempo de uso
  * (import dinâmico) -- evita adicionar dependência nova no package.json só
  * pra isso; mesmo padrão de carregar recurso externo que o projeto já usa
@@ -46,6 +50,7 @@ const rotuloStatus: Record<StatusItem, string> = {
 };
 
 const JSZIP_CDN_URL = "https://cdn.jsdelivr.net/npm/jszip@3.10.1/+esm";
+const LIMITE_LOTE = 15;
 
 export function WatermarkRemoverBatch({ onVoltar }: { onVoltar: () => void }) {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -55,12 +60,26 @@ export function WatermarkRemoverBatch({ onVoltar }: { onVoltar: () => void }) {
   const [zipando, setZipando] = useState(false);
   const [erroGeral, setErroGeral] = useState("");
 
+  const noLimite = itens.length >= LIMITE_LOTE;
+
   const adicionarArquivos = useCallback((lista: FileList | File[]) => {
-    const novos: ItemLote[] = Array.from(lista)
-      .filter((f) => f.type.startsWith("image/"))
-      .map((arquivo) => ({ id: idItem(), arquivo, status: "pendente" as const }));
-    if (novos.length) setItens((atual) => [...atual, ...novos]);
-  }, []);
+    const candidatos = Array.from(lista).filter((f) => f.type.startsWith("image/"));
+    const vagas = LIMITE_LOTE - itens.length;
+    if (vagas <= 0) {
+      setErroGeral(`Essa leva já está no limite de ${LIMITE_LOTE} fotos. Remova alguma da lista pra adicionar outra.`);
+      return;
+    }
+    const aceitos = candidatos.slice(0, vagas);
+    const recusados = candidatos.length - aceitos.length;
+    if (recusados > 0) {
+      setErroGeral(`Essa leva aceita no máximo ${LIMITE_LOTE} fotos: ${aceitos.length} foto${aceitos.length === 1 ? "" : "s"} entr${aceitos.length === 1 ? "ou" : "aram"}, ${recusados} ficou${recusados === 1 ? "" : "aram"} de fora.`);
+    } else {
+      setErroGeral("");
+    }
+    if (aceitos.length === 0) return;
+    const novos: ItemLote[] = aceitos.map((arquivo) => ({ id: idItem(), arquivo, status: "pendente" as const }));
+    setItens((atual) => [...atual, ...novos]);
+  }, [itens.length]);
 
   const removerItem = useCallback((id: string) => {
     setItens((atual) => atual.filter((i) => i.id !== id));
@@ -133,7 +152,7 @@ export function WatermarkRemoverBatch({ onVoltar }: { onVoltar: () => void }) {
           <button type="button" className="wm-voltar" onClick={onVoltar}>← Voltar</button>
           <span>FERRAMENTAS · FOTOS</span>
           <h1>Marca d&apos;Água · Várias fotos</h1>
-          <p>Dê um nome pra essa leva, suba as fotos e remova a marca d&apos;água de todas de uma vez.</p>
+          <p>Dê um nome pra essa leva, suba as fotos (até {LIMITE_LOTE}) e remova a marca d&apos;água de todas de uma vez.</p>
         </div>
       </header>
 
@@ -152,20 +171,30 @@ export function WatermarkRemoverBatch({ onVoltar }: { onVoltar: () => void }) {
         </label>
 
         <label
-          className="wm-dropzone wm-dropzone-lote"
+          className={`wm-dropzone wm-dropzone-lote ${noLimite ? "wm-dropzone-desabilitada" : ""}`}
           onDragOver={(e) => e.preventDefault()}
           onDrop={(e) => {
             e.preventDefault();
             if (e.dataTransfer.files?.length) adicionarArquivos(e.dataTransfer.files);
           }}
         >
-          <strong>Arraste as fotos aqui</strong>
-          <span>ou clique para escolher várias de uma vez · JPG, PNG ou WebP</span>
+          {noLimite ? (
+            <>
+              <strong>Limite de {LIMITE_LOTE} fotos atingido</strong>
+              <span>Remova alguma da lista abaixo pra adicionar outra.</span>
+            </>
+          ) : (
+            <>
+              <strong>Arraste as fotos aqui</strong>
+              <span>ou clique para escolher várias de uma vez · até {LIMITE_LOTE} fotos por leva · JPG, PNG ou WebP</span>
+            </>
+          )}
           <input
             ref={inputRef}
             type="file"
             accept="image/jpeg,image/png,image/webp"
             multiple
+            disabled={noLimite}
             onChange={(e) => {
               if (e.target.files?.length) adicionarArquivos(e.target.files);
               e.target.value = "";
@@ -174,18 +203,21 @@ export function WatermarkRemoverBatch({ onVoltar }: { onVoltar: () => void }) {
         </label>
 
         {itens.length > 0 && (
-          <ul className="wm-lote-lista">
-            {itens.map((item, indice) => (
-              <li key={item.id} className={`wm-lote-item wm-lote-${item.status}`}>
-                <span className="wm-lote-num">{indice + 1}</span>
-                <span className="wm-lote-nome">{item.arquivo.name}</span>
-                <span className="wm-lote-status">{rotuloStatus[item.status]}{item.status === "erro" && item.erro ? ` · ${item.erro}` : ""}</span>
-                {item.status !== "processando" && (
-                  <button type="button" className="wm-lote-remover" onClick={() => removerItem(item.id)} aria-label={`Remover ${item.arquivo.name} da lista`}>×</button>
-                )}
-              </li>
-            ))}
-          </ul>
+          <>
+            <p className="wm-lote-contador">{itens.length} de {LIMITE_LOTE} fotos nesta leva</p>
+            <ul className="wm-lote-lista">
+              {itens.map((item, indice) => (
+                <li key={item.id} className={`wm-lote-item wm-lote-${item.status}`}>
+                  <span className="wm-lote-num">{indice + 1}</span>
+                  <span className="wm-lote-nome">{item.arquivo.name}</span>
+                  <span className="wm-lote-status">{rotuloStatus[item.status]}{item.status === "erro" && item.erro ? ` · ${item.erro}` : ""}</span>
+                  {item.status !== "processando" && (
+                    <button type="button" className="wm-lote-remover" onClick={() => removerItem(item.id)} aria-label={`Remover ${item.arquivo.name} da lista`}>×</button>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </>
         )}
 
         <div className="wm-acoes">
