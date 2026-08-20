@@ -70,6 +70,15 @@ test("revisão abre a unidade como produto completo e não deixa o condomínio p
   assert.doesNotMatch(detail, /initialOpened/);
 });
 
+test("corretor vê todas as fotos e dados operacionais, mas não o proprietário alheio", () => {
+  assert.match(productApi, /midias: media/);
+  assert.doesNotMatch(productApi, /const visibleMedia = media\.filter/);
+  assert.match(productApi, /proprietarios: null, proprietario_nome: null, proprietario_tel: null, proprietario_email: null/);
+  assert.match(productApi, /proprietario_nome: null, proprietario_contato: null/);
+  assert.doesNotMatch(productApi, /proprietario_contato: null, acesso_tipo: null/);
+  assert.doesNotMatch(productApi, /proprietario_email: null, acesso_tipo: null/);
+});
+
 test("imóvel pode sair do site sem perder aprovação ou disponibilidade", () => {
   assert.match(productsUi, /Tirar imóvel do ar/);
   assert.match(productsUi, /publishUnit/);

@@ -93,18 +93,14 @@ export async function GET(request: Request) {
   const { data: meuPerfilGet } = await auth.supabase.from("usuarios").select("role").eq("id", auth.user.id).maybeSingle();
   const gerenciaProdutosGet = isProductManagerRole((meuPerfilGet as { role?: string } | null)?.role);
   const podeEditar = gerenciaProdutosGet || mine;
-  // Dado de proprietário é restrito: corretor só vê o que ele mesmo captou (produto e unidade).
+  // Todos os corretores autenticados podem consultar a ficha operacional completa.
+  // Somente os dados do proprietário continuam restritos a captador e gestão.
   const unidadesVisiveis = unidadesEnriched.map((u) => {
     const unidadeMinha = Boolean(broker?.id && (u as { captador_corretor_id?: number | null }).captador_corretor_id === broker.id);
     const podeEditarUnidade = gerenciaProdutosGet || unidadeMinha;
     return podeEditarUnidade
       ? { ...u, mine: unidadeMinha, pode_editar: true }
-      : { ...u, mine: false, pode_editar: false, proprietario_nome: null, proprietario_contato: null, acesso_tipo: null, acesso_codigo: null, acesso_instrucoes: null };
-  });
-  const visibleMedia = media.filter((item) => {
-    if (!item.unidade_id || gerenciaProdutosGet) return true;
-    const unit = unidadesEnriched.find((entry) => entry.id === item.unidade_id);
-    return Boolean(unit && ((unit.aprovacao ?? "aprovado") === "aprovado" || (broker?.id && unit.captador_corretor_id === broker.id)));
+      : { ...u, mine: false, pode_editar: false, proprietario_nome: null, proprietario_contato: null };
   });
   const checks: Record<string, boolean> = {
     basics: Boolean(data.nome && (data.preco || unitPrices.length) && (data.area_util || unitAreas.length)),
@@ -124,7 +120,7 @@ export async function GET(request: Request) {
     status: data.status,
     availableApprovedUnits: publishedAvailableUnits.length,
   });
-  return Response.json({ product: { ...data, ...(podeEditar ? {} : { proprietarios: null, proprietario_nome: null, proprietario_tel: null, proprietario_email: null, acesso_tipo: null, acesso_codigo: null, acesso_instrucoes: null }), site_published: sitePublished, midias: visibleMedia, unidades: unidadesVisiveis, captado_por_nome: capturedByName, mine, pode_editar: podeEditar, summary_price: summaryPrice, summary_area: summaryArea, is_favorite: Boolean(favorite), leads: (leadOptions ?? []).map((lead) => ({ ...lead, linked: linkedIds.has(lead.id) })), quality, completion: { checks, completed: Object.values(checks).filter(Boolean).length, total: Object.keys(checks).length } } });
+  return Response.json({ product: { ...data, ...(podeEditar ? {} : { proprietarios: null, proprietario_nome: null, proprietario_tel: null, proprietario_email: null }), site_published: sitePublished, midias: media, unidades: unidadesVisiveis, captado_por_nome: capturedByName, mine, pode_editar: podeEditar, summary_price: summaryPrice, summary_area: summaryArea, is_favorite: Boolean(favorite), leads: (leadOptions ?? []).map((lead) => ({ ...lead, linked: linkedIds.has(lead.id) })), quality, completion: { checks, completed: Object.values(checks).filter(Boolean).length, total: Object.keys(checks).length } } });
 }
 
 export async function PATCH(request: Request) {
