@@ -4,6 +4,7 @@ import test from "node:test";
 
 const catalog = await readFile("app/api/catalog/route.ts", "utf8");
 const productApi = await readFile("app/api/product/route.ts", "utf8");
+const captureApi = await readFile("app/api/capture/route.ts", "utf8");
 const productsUi = await readFile("app/features/products/ProductsModule.tsx", "utf8");
 const unitWizard = await readFile("app/features/products/UnitWizard.tsx", "utf8");
 const captureWizard = await readFile("app/features/products/CaptureWizard.tsx", "utf8");
@@ -11,6 +12,7 @@ const detail = await readFile("app/features/products/ProductDetail.tsx", "utf8")
 const migration = await readFile("supabase/migrations/20260820153819_produtos_fluxo_seguro_site_unidades.sql", "utf8");
 const unpublishMigration = await readFile("supabase/migrations/20260820193000_produtos_despublicacao_individual.sql", "utf8");
 const unitMediaMigration = await readFile("supabase/migrations/20260820220000_captador_exclui_midia_da_propria_unidade.sql", "utf8");
+const captorIntegrityMigration = await readFile("supabase/migrations/20260820223000_produtos_captador_unidade_obrigatorio.sql", "utf8");
 
 test("catálogo separa contagem de empreendimentos e imóveis", () => {
   assert.match(catalog, /buildingCount: visible\.filter\(\(product\) => !product\.standalone\)\.length/);
@@ -120,6 +122,16 @@ test("captador edita a própria unidade e suas imagens sem controlar o condomín
   assert.match(unitMediaMigration, /m\.storage_path = storage\.objects\.name/);
   assert.match(unitMediaMigration, /c\.usuario_id = \(select auth\.uid\(\)\)/);
   assert.match(unitMediaMigration, /u\.de_terceiros/);
+});
+
+test("captador da unidade é obrigatório, preservado e visível em todas as situações", () => {
+  assert.match(captorIntegrityMigration, /unidades_terceiros_exige_captador_check/);
+  assert.match(captorIntegrityMigration, /captador_corretor_id is not null/);
+  assert.match(captureWizard, /action: "finalize"/);
+  assert.match(captureApi, /Esta captação pertence a outro corretor e não pode ser reassociada/);
+  assert.doesNotMatch(catalog, /\.in\("aprovacao", \["pendente", "reprovado"\]\)/);
+  assert.match(productsUi, /Todos os imóveis captados por você, aprovados ou em análise/);
+  assert.match(productsUi, /product\.capturedBy && <p className="approval-captador">/);
 });
 
 test("migração bloqueia unidade pendente e dados privados no acesso anônimo", () => {

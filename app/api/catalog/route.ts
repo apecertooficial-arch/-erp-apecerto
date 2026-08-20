@@ -255,10 +255,10 @@ export async function GET(request: Request) {
   if (currentBrokerId != null) {
     const { data: mineRows } = await supabase
       .from("unidades")
-      .select("id, numero, tipologia, valor_tabela, valor_promo, empreendimento_id, proprietario_nome, captador_corretor_id, aprovacao, reprovacao_motivo, codigo, empreendimentos(nome)")
+      .select("id, numero, tipologia, valor_tabela, valor_promo, empreendimento_id, proprietario_nome, captador_corretor_id, aprovacao, reprovacao_motivo, codigo, publicado, disponivel, empreendimentos(nome)")
       .eq("de_terceiros", true)
       .eq("captador_corretor_id", currentBrokerId)
-      .in("aprovacao", ["pendente", "reprovado"]);
+      .order("codigo", { ascending: false });
     const mineIds = (mineRows ?? []).map((u) => u.id);
     const coverByMine = new Map<string, string | null>();
     if (mineIds.length) {
@@ -276,6 +276,8 @@ export async function GET(request: Request) {
       approval: u.aprovacao ?? "pendente",
       rejectionReason: u.reprovacao_motivo ?? null,
       codigo: u.codigo ?? null,
+      published: u.publicado !== false,
+      available: u.disponivel,
     }));
   }
 

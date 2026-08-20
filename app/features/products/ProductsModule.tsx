@@ -41,7 +41,7 @@ type CatalogResponse = {
   canApprove?: boolean;
   pendingCount?: number;
   pendingUnits?: Array<{ id: string; numero: string | null; tipologia: string | null; valor: number | null; empreendimentoId: string; predio: string; proprietario: string | null; indicador: string | null; coverUrl: string | null; approval: string; rejectionReason: string | null; codigo: string | null }>;
-  myUnits?: Array<{ id: string; numero: string | null; tipologia: string | null; valor: number | null; empreendimentoId: string; predio: string; proprietario: string | null; indicador: string | null; coverUrl: string | null; approval: string; rejectionReason: string | null; codigo: string | null }>;
+  myUnits?: Array<{ id: string; numero: string | null; tipologia: string | null; valor: number | null; empreendimentoId: string; predio: string; proprietario: string | null; indicador: string | null; coverUrl: string | null; approval: string; rejectionReason: string | null; codigo: string | null; published: boolean; available: boolean }>;
 };
 
 const emptyQualitySummary = { excellent: 0, good: 0, attention: 0, critical: 0, readyForSite: 0, average: 0 };
@@ -53,6 +53,13 @@ function mediaInventoryLabel(product: Product): string {
   if ((product.unitMedia ?? 0) > 0) return `${product.unitMedia} da unidade`;
   if ((product.referenceMedia ?? 0) > 0) return `${product.referenceMedia} do condomínio`;
   return "Sem fotos";
+}
+
+function captureStatusLabel(unit: NonNullable<CatalogResponse["myUnits"]>[number]): string {
+  if (unit.approval === "reprovado") return `Correção solicitada${unit.rejectionReason ? `: ${unit.rejectionReason}` : ""}`;
+  if (unit.approval === "pendente") return "Aguardando aprovação da gestão";
+  if (!unit.available) return "Aprovado · indisponível";
+  return unit.published ? "Aprovado · publicado no site" : "Aprovado · fora do ar";
 }
 
 export function ProductsModule({ accessToken }: { accessToken: string }) {
@@ -296,7 +303,7 @@ export function ProductsModule({ accessToken }: { accessToken: string }) {
     {dataState === "error" && <div className="ape-estado ruim" role="alert"><strong>Não foi possível carregar os produtos.</strong><p>Confira sua conexão e tente novamente.</p><button type="button" onClick={() => void loadCatalog(accessToken)}>Tentar novamente</button></div>}
     {dataState === "live" && produtosVisiveis.length === 0 && <div className="ape-estado"><div className="ape-estado-icone" aria-hidden="true">⌕</div><strong>Nenhum produto encontrado</strong><p>Ajuste a busca ou escolha outro filtro.</p></div>}
 
-    {myUnitsOpen && myUnits.length > 0 && <section className="ape-mobile-captacoes"><h2>Minhas captações</h2>{myUnits.map((unit) => <button type="button" key={unit.id} onClick={() => { setInitialUnitId(unit.id); setSelectedProductId(unit.empreendimentoId); }}><strong>{unit.predio} · Un. {unit.numero ?? "s/n"}{unit.codigo ? ` · ${unit.codigo}` : ""}</strong><span>{unit.approval === "reprovado" ? "Correção solicitada" : "Aguardando aprovação"}</span>{unit.rejectionReason && <small>{unit.rejectionReason}</small>}</button>)}</section>}
+    {myUnitsOpen && myUnits.length > 0 && <section className="ape-mobile-captacoes"><h2>Minhas captações</h2>{myUnits.map((unit) => <button type="button" key={unit.id} onClick={() => { setInitialUnitId(unit.id); setSelectedProductId(unit.empreendimentoId); }}><strong>{unit.predio} · Un. {unit.numero ?? "s/n"}{unit.codigo ? ` · ${unit.codigo}` : ""}</strong><span>{captureStatusLabel(unit)}</span></button>)}</section>}
     {canApprove && approvalFilter && pendingUnitsVisiveis.length > 0 && <section className="ape-mobile-captacoes"><h2>Unidades para aprovar</h2>{pendingUnitsVisiveis.map((unit) => <div key={unit.id}><button type="button" onClick={() => { setInitialUnitId(unit.id); setSelectedProductId(unit.empreendimentoId); }}><strong>{unit.predio} · Un. {unit.numero ?? "s/n"}</strong><span>{unit.indicador ?? "Sem captador"}</span></button><div><button type="button" onClick={() => void decideUnitFromList(unit.empreendimentoId, unit.id, true)}>✓ Aprovar</button><button type="button" onClick={() => void decideUnitFromList(unit.empreendimentoId, unit.id, false)}>✕ Reprovar</button></div></div>)}</section>}
 
     {dataState === "live" && produtosVisiveis.length > 0 && <section className="ape-produto-lista">
@@ -389,12 +396,12 @@ export function ProductsModule({ accessToken }: { accessToken: string }) {
         </div>)}</div>
       </section>}
       {myUnits.length > 0 && <section className="pending-units my-captured-units">
-        <h3>Minhas captações em análise ou correção <span>{myUnits.length}</span></h3>
-        <p className="pu-sub">Acompanhe cada unidade individual sem depender da ficha do condomínio.</p>
+        <h3>Minhas captações <span>{myUnits.length}</span></h3>
+        <p className="pu-sub">Todos os imóveis captados por você, aprovados ou em análise, sem depender da ficha do condomínio.</p>
         <button type="button" className="pu-toggle" onClick={() => setMyUnitsOpen(!myUnitsOpen)}>{myUnitsOpen ? "▲ Recolher lista" : `▼ Ver minhas ${myUnits.length} captações`}</button>
         {myUnitsOpen && <div className="pu-list expandida">{myUnits.map((unit) => <div className="pu-row" key={unit.id}>
           <div className="pu-thumb" style={unit.coverUrl ? { backgroundImage: `url(${unit.coverUrl})` } : undefined}>{!unit.coverUrl && "▥"}</div>
-          <div className="pu-main"><strong>{unit.predio} · Un. {unit.numero || "s/n"} {unit.codigo && <span className="cod-imovel">{unit.codigo}</span>}</strong><small>{unit.approval === "reprovado" ? `Correção solicitada: ${unit.rejectionReason || "revise os dados"}` : "Aguardando aprovação da gestão"}</small></div>
+          <div className="pu-main"><strong>{unit.predio} · Un. {unit.numero || "s/n"} {unit.codigo && <span className="cod-imovel">{unit.codigo}</span>}</strong><small>👤 {unit.indicador || "Captador não identificado"} · {captureStatusLabel(unit)}</small></div>
           <div className="pu-actions"><button type="button" className="pu-rev" onClick={() => { setInitialUnitId(unit.id); setSelectedProductId(unit.empreendimentoId); }}>Abrir e editar</button></div>
         </div>)}</div>}
       </section>}
@@ -422,7 +429,7 @@ export function ProductsModule({ accessToken }: { accessToken: string }) {
           <div className="product-info"><strong className="price">{product.price}</strong><h2>{product.name}{product.codigo && <span className="cod-imovel">{product.codigo}</span>}</h2><p className="location">⌖ {product.neighborhood} · {product.city}</p>{product.developer && <p className="developer">{product.developer}</p>}
             <div className="specs"><span className="s-area"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 3h18v18H3z"/><path d="M9 3v4"/><path d="M15 17v4"/><path d="M3 9h4"/><path d="M17 15h4"/></svg>{product.area} m²</span><span className="s-dorm"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M2 18v-6a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v6"/><path d="M4 18v3"/><path d="M20 18v3"/><path d="M6 10V7a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v3"/></svg>{product.bedrooms} dorm.</span><span className="s-vaga"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 17h14"/><path d="M6 17v2"/><path d="M18 17v2"/><path d="M4 17l1.5-5.5A2 2 0 0 1 7.4 10h9.2a2 2 0 0 1 1.9 1.5L20 17z"/></svg>{product.parking} vaga</span></div>
             <div className="estoque"><div className="estoque-top"><strong>{product.available} de {product.units ?? 0} disponíveis</strong><span>{mediaInventoryLabel(product)}</span></div><div className="estoque-bar"><i style={{ width: `${product.units ? Math.min(100, Math.round((product.available / product.units) * 100)) : 0}%` }} /></div></div>
-            {product.topIssue && <p className="product-top-issue">⚠ {product.topIssue}</p>}{product.approval === "reprovado" && product.rejectionReason && <p className="approval-reason">Motivo: {product.rejectionReason}</p>}{canApprove && product.approval === "pendente" && product.capturedBy && <p className="approval-captador">👤 Captado por: {product.capturedBy}{typeof product.capturedByScore === "number" ? <span className="captador-nota"> · nota {product.capturedByScore}</span> : null}</p>}{canApprove && product.approval === "pendente" && product.id && <div className="approval-actions" onClick={(event) => event.stopPropagation()}><button type="button" className="ap-approve" disabled={!product.quality?.readyForSite} title={product.quality?.readyForSite ? "Aprovar e publicar no site" : (product.quality?.blocking?.join(" · ") || "Complete o cadastro antes de aprovar")} onClick={() => decideFromCard(product.id!, true)}>✓ Aprovar</button><button type="button" className="ap-reject" onClick={() => decideFromCard(product.id!, false)}>✕ Reprovar</button></div>}<footer><strong>{product.priceM2}</strong><span>{product.leads > 0 ? `${product.leads} lead(s) vinculado(s) · ` : ""}{product.published ? "● Publicado no site" : product.approval === "aprovado" && product.quality?.readyForSite ? "○ Fora do ar · pode editar" : product.quality?.readyForSite ? "Pronto para publicar" : "Cadastro incompleto"}</span></footer></div></article>)}
+            {product.topIssue && <p className="product-top-issue">⚠ {product.topIssue}</p>}{product.approval === "reprovado" && product.rejectionReason && <p className="approval-reason">Motivo: {product.rejectionReason}</p>}{product.capturedBy && <p className="approval-captador">👤 Captado por: {product.capturedBy}{typeof product.capturedByScore === "number" ? <span className="captador-nota"> · nota {product.capturedByScore}</span> : null}</p>}{canApprove && product.approval === "pendente" && product.id && <div className="approval-actions" onClick={(event) => event.stopPropagation()}><button type="button" className="ap-approve" disabled={!product.quality?.readyForSite} title={product.quality?.readyForSite ? "Aprovar e publicar no site" : (product.quality?.blocking?.join(" · ") || "Complete o cadastro antes de aprovar")} onClick={() => decideFromCard(product.id!, true)}>✓ Aprovar</button><button type="button" className="ap-reject" onClick={() => decideFromCard(product.id!, false)}>✕ Reprovar</button></div>}<footer><strong>{product.priceM2}</strong><span>{product.leads > 0 ? `${product.leads} lead(s) vinculado(s) · ` : ""}{product.published ? "● Publicado no site" : product.approval === "aprovado" && product.quality?.readyForSite ? "○ Fora do ar · pode editar" : product.quality?.readyForSite ? "Pronto para publicar" : "Cadastro incompleto"}</span></footer></div></article>)}
       </section>
       {captureOpen && <CaptureWizard onClose={() => setCaptureOpen(false)} onSaved={() => {
         setCaptureOpen(false);
