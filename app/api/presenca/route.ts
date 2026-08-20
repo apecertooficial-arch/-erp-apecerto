@@ -46,10 +46,17 @@ export async function GET(request: Request) {
     if (error) return Response.json({ error: error.message }, { status: 403 });
     return Response.json({ config: data, corretores: brokers ?? [] });
   }
-  const { data, error } = await a.supabase.rpc("presenca_status");
+  const noEscritorio = await naRedeDoEscritorio(request, a.supabase);
+  const registrarAtividade = url.searchParams.get("atividade") === "1";
+  const ativo = url.searchParams.get("ativo") === "1";
+  const [{ data, error }] = await Promise.all([
+    a.supabase.rpc("presenca_status"),
+    registrarAtividade
+      ? a.supabase.rpc("corretor_atividade_heartbeat", { p_ativo: ativo, p_no_escritorio: noEscritorio })
+      : Promise.resolve({ data: null, error: null }),
+  ]);
   if (error) return Response.json({ error: error.message }, { status: 502 });
 
-  const noEscritorio = await naRedeDoEscritorio(request, a.supabase);
   const status = data && typeof data === "object" && !Array.isArray(data) ? data : { ativa: false, prompt: false };
   return Response.json({ ...status, no_escritorio_ip: noEscritorio });
 }

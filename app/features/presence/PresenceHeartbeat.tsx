@@ -20,6 +20,15 @@ export function PresenceHeartbeat({ accessToken, initialOnline }: { accessToken:
   const [actionError, setActionError] = useState("");
   const [returning, setReturning] = useState(false);
   const jaDerrubou = useRef(false);
+  const ultimaInteracao = useRef(0);
+
+  useEffect(() => {
+    ultimaInteracao.current = Date.now();
+    const marcarAtividade = () => { ultimaInteracao.current = Date.now(); };
+    const eventos: Array<keyof WindowEventMap> = ["pointerdown", "keydown", "touchstart", "scroll"];
+    eventos.forEach((evento) => window.addEventListener(evento, marcarAtividade, { passive: true }));
+    return () => eventos.forEach((evento) => window.removeEventListener(evento, marcarAtividade));
+  }, []);
 
   useEffect(() => {
     let stopped = false;
@@ -68,7 +77,8 @@ export function PresenceHeartbeat({ accessToken, initialOnline }: { accessToken:
     let stopped = false;
     const poll = async () => {
       try {
-        const res = await fetch("/api/presenca", { headers: { Authorization: `Bearer ${accessToken}` } });
+        const ativo = document.visibilityState === "visible" && Date.now() - ultimaInteracao.current <= 5 * 60 * 1000;
+        const res = await fetch(`/api/presenca?atividade=1&ativo=${ativo ? "1" : "0"}`, { headers: { Authorization: `Bearer ${accessToken}` } });
         const data = await res.json() as { prompt?: boolean; prazo_seg?: number; no_escritorio_ip?: boolean };
         if (stopped) return;
         /* Celular só pergunta no WiFi do escritório: presença serve para saber

@@ -4,11 +4,14 @@ import test from "node:test";
 
 const migration = readFileSync(new URL("../supabase/migrations/20260820213000_inteligencia_decisao_unificada.sql", import.meta.url), "utf8");
 const migrationF2 = readFileSync(new URL("../supabase/migrations/20260820230000_inteligencia_funil_2_canonico.sql", import.meta.url), "utf8");
+const telemetria = readFileSync(new URL("../supabase/migrations/20260820233000_inteligencia_horas_e_pulos.sql", import.meta.url), "utf8");
 const adsRead = readFileSync(new URL("../supabase/functions/marketing-ads-read/index.ts", import.meta.url), "utf8");
 const cleanup = readFileSync(new URL("../supabase/migrations/20260820214000_inteligencia_remover_camadas_antigas.sql", import.meta.url), "utf8");
 const cleanupSnapshot = readFileSync(new URL("../supabase/migrations/20260820215000_inteligencia_remover_snapshot_antigo.sql", import.meta.url), "utf8");
 const api = readFileSync(new URL("../app/api/inteligencia/route.ts", import.meta.url), "utf8");
 const operacao = readFileSync(new URL("../app/features/inteligencia/telas/VisaoEmpresa.tsx", import.meta.url), "utf8");
+const presencaApi = readFileSync(new URL("../app/api/presenca/route.ts", import.meta.url), "utf8");
+const presencaHeartbeat = readFileSync(new URL("../app/features/presence/PresenceHeartbeat.tsx", import.meta.url), "utf8");
 const marketing = readFileSync(new URL("../app/features/inteligencia/telas/VisaoDigital.tsx", import.meta.url), "utf8");
 const shell = readFileSync(new URL("../app/features/inteligencia/CascaInteligencia.tsx", import.meta.url), "utf8");
 const catalogo = readFileSync(new URL("../app/features/inteligencia/telas.ts", import.meta.url), "utf8");
@@ -22,7 +25,7 @@ test("mantém somente as duas áreas de decisão na interface", () => {
   assert.equal(existsSync(new URL("../app/api/inteligencia/[tela]/route.ts", import.meta.url)), false);
 });
 
-test("as duas RPCs canônicas são protegidas e não inventam horas ou pulos", () => {
+test("as duas RPCs canônicas são protegidas e dados ausentes nunca são inventados", () => {
   for (const nome of ["tracking_360_ceo", "tracking_360_jornada_digital"]) {
     assert.match(migration, new RegExp(`security definer[\\s\\S]*revoke all on function public\\.${nome}\\(integer\\) from public, anon, authenticated`));
     assert.match(migration, new RegExp(`grant execute on function public\\.${nome}\\(integer\\) to authenticated, service_role`));
@@ -30,6 +33,23 @@ test("as duas RPCs canônicas são protegidas e não inventam horas ou pulos", (
   assert.match(migration, /set search_path = ''/);
   assert.match(migration, /'horas_erp', null/);
   assert.match(migration, /'pulos_distribuicao', null/);
+});
+
+test("horas e pulos passam a ter histórico canônico sem reconstruir o passado", () => {
+  for (const fonte of ["corretor_atividade_estado", "corretor_atividade_diaria", "motor_roleta_eventos"]) {
+    assert.match(telemetria, new RegExp(fonte));
+  }
+  assert.match(telemetria, /resultado in \('recebeu','aguardou','pulado'\)/);
+  assert.match(telemetria, /rodizio_normal/);
+  assert.match(telemetria, /intervalos suspensos não entram/i);
+  assert.match(telemetria, /revoke all on ncrm_private\.inteligencia_telemetria_config/);
+  assert.match(telemetria, /revoke all on function public\.corretor_atividade_heartbeat\(boolean,boolean\)/);
+  assert.match(presencaApi, /corretor_atividade_heartbeat/);
+  assert.match(presencaHeartbeat, /document\.visibilityState/);
+  assert.match(presencaHeartbeat, /ultimaInteracao/);
+  assert.match(operacao, /Trabalho e presença/);
+  assert.match(operacao, /Pulos por inelegibilidade/);
+  assert.match(operacao, /atividade_diaria/);
 });
 
 test("empresa e operação usam CRM, presença, IA, mensagens, visitas e vendas reais", () => {

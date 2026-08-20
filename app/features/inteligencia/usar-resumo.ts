@@ -45,9 +45,16 @@ export type CorretorOperacao = {
   imagens: number;
   followups_vencidos: number;
   horas_erp: number | null;
+  horas_ativas_erp: number | null;
+  horas_no_escritorio: number | null;
   horas_erp_motivo: string;
   pulos_distribuicao: number | null;
   pulos_distribuicao_motivo: string;
+  recebidos_distribuicao: number;
+  pulos_motivos: Array<{ motivo: string; quantidade: number }>;
+  atividade_diaria: Array<{ dia: string; horas_logado: number; horas_ativas: number; horas_no_escritorio: number }>;
+  horas_medidas_desde: string | null;
+  pulos_medidos_desde: string | null;
 };
 
 export type OperacaoResumo = {

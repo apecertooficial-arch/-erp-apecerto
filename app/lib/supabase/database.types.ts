@@ -13633,6 +13633,10 @@ export type Database = {
         }
         Returns: Json
       }
+      corretor_atividade_heartbeat: {
+        Args: { p_ativo?: boolean; p_no_escritorio?: boolean }
+        Returns: Json
+      }
       presenca_confirmar:
         | { Args: never; Returns: Json }
         | { Args: { p_no_escritorio?: boolean }; Returns: Json }
