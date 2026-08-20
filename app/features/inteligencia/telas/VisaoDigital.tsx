@@ -47,7 +47,7 @@ export function VisaoDigital({accessToken,recorte}:PropsTela){
       <div className="int-decisao-acoes">
         <article className={metaOk?"positivo":"critico"}><span>1 · META</span><h3>{metaOk?`${meta?.anuncios?.length??0} anúncios ativos lidos`:"Dar acesso de leitura ao Meta Ads"}</h3><p>{metaOk?"Compare campanha, conjunto e anúncio pelo custo e pelas visitas do CRM.":meta?.motivo??"O token atual só envia eventos; ele não lê o Gerenciador."}</p></article>
         <article className={googleOk?"positivo":"critico"}><span>2 · GOOGLE</span><h3>{googleOk?`${google?.anuncios?.length??0} anúncios ativos lidos`:"Conectar Google Ads"}</h3><p>{googleOk?"Cliques, custo e conversões já podem ser comparados.":google?.motivo??"A conta ainda não fornece campanhas ao ERP."}</p></article>
-        <article className={(cobertura??0)>=80?"positivo":"atencao"}><span>3 · ATRIBUIÇÃO</span><h3>{fmt.porcento(cobertura,0)} dos leads identificam campanha</h3><p>UTM, click ID e campanha precisam chegar ao CRM para creditar visita e venda.</p></article>
+        <article className={(cobertura??0)>=80?"positivo":"atencao"}><span>3 · ATRIBUIÇÃO</span><h3>{atribuicao?.total?`${fmt.inteiro(atribuicao.com_campanha)} de ${fmt.inteiro(atribuicao.total)} leads atribuídos identificam campanha`:"Nenhum lead atribuído no período"}</h3><p>UTM, click ID e campanha precisam chegar ao CRM para creditar visita e venda. O percentual sozinho não é usado com amostra pequena.</p></article>
         <article className={(comportamento?.abandono_formulario??0)>0?"atencao":"positivo"}><span>4 · SITE</span><h3>{fmt.inteiro(comportamento?.abandono_formulario)} formulários abandonados</h3><p>Revise o ponto de abandono antes de aumentar tráfego pago.</p></article>
       </div>
     </>}
@@ -80,7 +80,7 @@ export function VisaoDigital({accessToken,recorte}:PropsTela){
         <Status nome="Google Ads" status={google?.status??"erro"} motivo={googleOk?"Campanhas e métricas disponíveis.":google?.motivo??"Sem credenciais."}/>
         <Status nome="Google Analytics" status={m?.ga4?"conectado":"erro"} motivo={m?.ga4?"Relatórios oficiais do GA4 disponíveis.":"Propriedade/conta de serviço não configurada."}/>
         <Status nome="Google Tag Manager" status={saude?.gtm_containers?"conectado":"parcial"} motivo={saude?.gtm_containers?`${saude.gtm_containers} containers inventariados.`:saude?.gtm_motivo??"O ERP ainda não lê containers e tags."}/>
-        <Status nome="Atribuição ao CRM" status={(cobertura??0)>=80?"conectado":"parcial"} motivo={`${fmt.porcento(cobertura,0)} dos leads têm campanha identificada.`}/>
+        <Status nome="Atribuição ao CRM" status={(cobertura??0)>=80?"conectado":"parcial"} motivo={atribuicao?.total?`${fmt.inteiro(atribuicao.com_campanha)} de ${fmt.inteiro(atribuicao.total)} leads atribuídos têm campanha identificada.`:"Nenhum lead atribuído no período."}/>
         <Status nome="Mapa de calor visual" status="erro" motivo="Ainda não há coleta de coordenadas/Clarity. O mapa de interação acima usa eventos reais, sem fingir heatmap."/>
       </div>
       <Cabecalho eyebrow="PRIVACIDADE NA PRÁTICA" titulo="O que cada escolha do visitante libera"/>
