@@ -736,7 +736,7 @@ function Detalhe({
         {whatsapp ? <a className="f2-principal f2-link" href={whatsapp} target="_blank" rel="noreferrer">{tentativa ? `Abrir WhatsApp · enviar tentativa ${tentativa}` : "Abrir WhatsApp e executar"}</a> : <button type="button" className="f2-principal" disabled>Telefone inválido · corrija o cadastro</button>}
         <button type="button" className="f2-chat-sec" onClick={() => setChatAberto(true)}>Ver conversa antes de agir</button>
         {momento.exige_dapi && <div className="f2-dapi"><i /> <span><b>A conclusão vem do D-API</b>O clique não conclui a tarefa. O envio confirmado no celular é a evidência.</span></div>}
-        <div className="f2-evidencia"><div><span>Última ação confirmada</span><b>{dataCurta(lead.ultima_acao_confirmada_em)}</b></div><div><span>Sara reavaliou</span><b>{dataCurta(lead.ultima_reavaliacao_sara_em)}</b></div></div>
+        <div className="f2-evidencia"><div><span>Última ação confirmada</span><b>{dataCurta(lead.ultima_acao_confirmada_em)}</b></div><div><span>Sara reavaliou</span><b>{dataCurta(lead.ultima_reavaliacao_sara_em)}</b></div><div><span>Nota do atendimento</span><b>{lead.qualidade_atendimento_nota == null ? "Ainda não avaliado" : `${Number(lead.qualidade_atendimento_nota).toFixed(1)}/10`}</b></div></div>
       </section>
 
       <section className="f2-atualizar">
@@ -753,6 +753,7 @@ function Detalhe({
       <section className="f2-sara-resumo">
         <span className="f2-eyebrow">RESUMO DA SARA</span>
         <h3>{lead.ultima_reavaliacao_resumo ?? "Ainda não existe uma leitura resumida."}</h3>
+        {lead.qualidade_atendimento_resumo ? <p><b>Qualidade do atendimento:</b> {lead.qualidade_atendimento_resumo}</p> : null}
         <p>A Sara deve conferir o histórico, validar o momento oficial e gerar a próxima obrigação — sem criar classificações livres.</p>
       </section>
 

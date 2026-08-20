@@ -136,6 +136,9 @@ export type LeadFunil2 = {
   acao_codigo: string;
   acao_rotulo: string;
   proxima_acao_em: string;
+  qualidade_atendimento_nota: number | null;
+  qualidade_atendimento_resumo: string | null;
+  qualidade_atendimento_em: string | null;
   cadencia_passo: number;
   ultima_interacao_em: string | null;
   ultima_acao_confirmada_em: string | null;
