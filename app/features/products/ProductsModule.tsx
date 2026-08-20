@@ -27,6 +27,7 @@ import { useEhCelular } from "../system/useFormato";
 type CatalogResponse = {
   mode: string;
   count: number;
+  buildingCount?: number;
   catalog: Array<{
     id: string; name: string; title?: string | null; slug?: string | null; purpose?: string | null; address?: string | null; developer: string | null; neighborhood: string; city: string;
     status: string; price: number | null; area: number | null; bedrooms: number | null;
@@ -39,8 +40,11 @@ type CatalogResponse = {
   qualitySummary?: { excellent: number; good: number; attention: number; critical: number; readyForSite: number; average: number };
   canApprove?: boolean;
   pendingCount?: number;
-  pendingUnits?: Array<{ id: string; numero: string | null; tipologia: string | null; valor: number | null; empreendimentoId: string; predio: string; proprietario: string | null; indicador: string | null; coverUrl: string | null }>;
+  pendingUnits?: Array<{ id: string; numero: string | null; tipologia: string | null; valor: number | null; empreendimentoId: string; predio: string; proprietario: string | null; indicador: string | null; coverUrl: string | null; approval: string; rejectionReason: string | null; codigo: string | null }>;
+  myUnits?: Array<{ id: string; numero: string | null; tipologia: string | null; valor: number | null; empreendimentoId: string; predio: string; proprietario: string | null; indicador: string | null; coverUrl: string | null; approval: string; rejectionReason: string | null; codigo: string | null }>;
 };
+
+const emptyQualitySummary = { excellent: 0, good: 0, attention: 0, critical: 0, readyForSite: 0, average: 0 };
 
 const currency = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
 
@@ -63,6 +67,10 @@ export function ProductsModule({ accessToken }: { accessToken: string }) {
   const [canApprove, setCanApprove] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
   const [pendingUnits, setPendingUnits] = useState<NonNullable<CatalogResponse["pendingUnits"]>>([]);
+  const [myUnits, setMyUnits] = useState<NonNullable<CatalogResponse["myUnits"]>>([]);
+  const [myUnitsOpen, setMyUnitsOpen] = useState(false);
+  const [buildingCount, setBuildingCount] = useState(0);
+  const [qualitySummary, setQualitySummary] = useState(emptyQualitySummary);
   const [initialUnitId, setInitialUnitId] = useState<string | null>(null);
   const [approvalFilter, setApprovalFilter] = useState(false);
   const [qualityFilter, setQualityFilter] = useState("Todas");
@@ -76,6 +84,8 @@ export function ProductsModule({ accessToken }: { accessToken: string }) {
   const [deleting, setDeleting] = useState(false);
   const [captadorFilter, setCaptadorFilter] = useState("Todos");
   const [puExpandida, setPuExpandida] = useState(false);
+  const [mineOnly, setMineOnly] = useState(false);
+  const [moreFiltersOpen, setMoreFiltersOpen] = useState(false);
 
   const loadCatalog = useCallback(async function requestCatalog(token: string, allowRefresh = true) {
     setDataState("loading");
@@ -109,6 +119,9 @@ export function ProductsModule({ accessToken }: { accessToken: string }) {
       setCanApprove(Boolean(result.canApprove));
       setPendingCount(result.pendingCount ?? 0);
       setPendingUnits(result.pendingUnits ?? []);
+      setMyUnits(result.myUnits ?? []);
+      setBuildingCount(result.buildingCount ?? result.count);
+      setQualitySummary(result.qualitySummary ?? emptyQualitySummary);
       setDataState("live");
       setAtualizadoEm(new Date());
     } catch {
@@ -174,40 +187,32 @@ export function ProductsModule({ accessToken }: { accessToken: string }) {
     const matchesBedrooms = bedrooms === "Qualquer" || (bedrooms === "4" ? product.bedrooms >= 4 : product.bedrooms === Number(bedrooms));
     const matchesStock = !stockOnly || product.available > 0;
     const matchesFavorite = !favoritesOnly || product.favorite;
+    const matchesMine = !mineOnly || product.mine;
     const matchesMedia = !noMediaOnly || (product.media ?? 0) === 0;
     const price = product.numericPrice ?? 0;
     const matchesPrice = priceBand === "Todas" || (priceBand === "Até 500 mil" ? price > 0 && price <= 500000 : priceBand === "500 mil a 1 mi" ? price > 500000 && price <= 1000000 : price > 1000000);
     const matchesQuality = qualityFilter === "Todas" || product.quality?.level === qualityFilter;
     const matchesPublication = publicationFilter === "Todos"
       || (publicationFilter === "site" ? product.published : publicationFilter === "ready" ? product.quality?.readyForSite && !product.published : !product.quality?.readyForSite);
-    return matchesQuery && matchesStatus && matchesNeighborhood && matchesDeveloper && matchesBedrooms && matchesStock && matchesPrice && matchesFavorite && matchesMedia && matchesQuality && matchesPublication;
+    return matchesQuery && matchesStatus && matchesNeighborhood && matchesDeveloper && matchesBedrooms && matchesStock && matchesPrice && matchesFavorite && matchesMine && matchesMedia && matchesQuality && matchesPublication;
   }).sort((a, b) => {
     if (sortBy === "quality-asc") return (a.quality?.score ?? 0) - (b.quality?.score ?? 0);
     if (sortBy === "quality-desc") return (b.quality?.score ?? 0) - (a.quality?.score ?? 0);
     if (sortBy === "price-asc") return (a.numericPrice ?? Number.MAX_SAFE_INTEGER) - (b.numericPrice ?? Number.MAX_SAFE_INTEGER);
     if (sortBy === "price-desc") return (b.numericPrice ?? 0) - (a.numericPrice ?? 0);
     return Date.parse(b.updatedAt ?? b.createdAt ?? "") - Date.parse(a.updatedAt ?? a.createdAt ?? "");
-  }), [products, query, status, neighborhood, developer, bedrooms, stockOnly, priceBand, favoritesOnly, noMediaOnly, qualityFilter, publicationFilter, sortBy, captadorFilter]);
+  }), [products, query, status, neighborhood, developer, bedrooms, stockOnly, priceBand, favoritesOnly, mineOnly, noMediaOnly, qualityFilter, publicationFilter, sortBy, captadorFilter]);
 
   const neighborhoods = useMemo(() => Array.from(new Map(products.map((item) => [normalizedKey(item.neighborhood), item.neighborhood])).values()).filter(Boolean).sort((a, b) => a.localeCompare(b, "pt-BR")), [products]);
   const developers = useMemo(() => Array.from(new Map(products.filter((item) => Boolean(item.developer)).map((item) => [normalizedKey(item.developer), item.developer as string])).values()).sort((a, b) => a.localeCompare(b, "pt-BR")), [products]);
-  const qualitySummary = useMemo(() => ({
-    excellent: products.filter((item) => item.quality?.level === "excelente").length,
-    good: products.filter((item) => item.quality?.level === "bom").length,
-    attention: products.filter((item) => item.quality?.level === "atencao").length,
-    critical: products.filter((item) => item.quality?.level === "critico").length,
-    readyForSite: products.filter((item) => item.quality?.readyForSite && !item.published).length,
-    average: products.length ? Math.round(products.reduce((sum, item) => sum + (item.quality?.score ?? 0), 0) / products.length) : 0,
-  }), [products]);
-
   const produtosVisiveis = filtered.filter((product) => !approvalFilter || product.approval === "pendente");
   const captadores = useMemo(() => Array.from(new Set([...products.map((p) => p.capturedBy), ...pendingUnits.map((u) => u.indicador)].filter(Boolean) as string[])).sort((a, b) => a.localeCompare(b, "pt-BR")), [products, pendingUnits]);
   const pendingUnitsVisiveis = captadorFilter === "Todos" ? pendingUnits : pendingUnits.filter((u) => u.indicador === captadorFilter);
 
   function exportCatalog() {
     const escape = (value: unknown) => `"${String(value ?? "").replaceAll('"', '""')}"`;
-    const header = ["Produto", "Bairro", "Cidade", "Incorporadora", "Preço", "Área", "Unidades disponíveis", "Leads", "Nota", "Qualidade", "No site", "Principal pendência"];
-    const rows = produtosVisiveis.map((item) => [item.name, item.neighborhood, item.city, item.developer, item.numericPrice, item.area, item.available, item.leads, item.quality?.score, item.quality?.label, item.published ? "Sim" : "Não", item.topIssue]);
+    const header = ["Código", "Produto", "Tipo", "Bairro", "Cidade", "Incorporadora", "Captador", "Preço", "Área", "Unidades disponíveis", "Leads", "Aprovação", "Nota", "Qualidade", "No site", "Principal pendência"];
+    const rows = produtosVisiveis.map((item) => [item.codigo, item.name, item.unitId ? "Unidade" : "Empreendimento", item.neighborhood, item.city, item.developer, item.capturedBy, item.numericPrice, item.area, item.available, item.leads, item.approval, item.quality?.score, item.quality?.label, item.published ? "Sim" : "Não", item.topIssue]);
     const blob = new Blob(["﻿", [header, ...rows].map((row) => row.map(escape).join(";")).join("\n")], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -216,22 +221,45 @@ export function ProductsModule({ accessToken }: { accessToken: string }) {
   }
 
   const hasActiveFilters = Boolean(query || status !== "Todos" || neighborhood !== "Todos" || developer !== "Todas"
-    || priceBand !== "Todas" || bedrooms !== "Qualquer" || stockOnly || favoritesOnly || noMediaOnly
+    || priceBand !== "Todas" || bedrooms !== "Qualquer" || stockOnly || favoritesOnly || mineOnly || noMediaOnly
     || approvalFilter || qualityFilter !== "Todas" || publicationFilter !== "Todos" || sortBy !== "quality-asc" || captadorFilter !== "Todos");
 
   function clearFilters() {
     setQuery(""); setStatus("Todos"); setNeighborhood("Todos"); setDeveloper("Todas"); setPriceBand("Todas");
-    setBedrooms("Qualquer"); setStockOnly(false); setFavoritesOnly(false); setNoMediaOnly(false); setApprovalFilter(false); setCaptadorFilter("Todos");
+    setBedrooms("Qualquer"); setStockOnly(false); setFavoritesOnly(false); setMineOnly(false); setNoMediaOnly(false); setApprovalFilter(false); setCaptadorFilter("Todos");
     setQualityFilter("Todas"); setPublicationFilter("Todos"); setSortBy("quality-asc");
+  }
+
+  function showCatalog() {
+    setApprovalFilter(false);
+  }
+
+  function showApprovalQueue() {
+    setQuery("");
+    setStatus("Todos");
+    setNeighborhood("Todos");
+    setDeveloper("Todas");
+    setPriceBand("Todas");
+    setBedrooms("Qualquer");
+    setStockOnly(false);
+    setFavoritesOnly(false);
+    setMineOnly(false);
+    setNoMediaOnly(false);
+    setQualityFilter("Todas");
+    setPublicationFilter("Todos");
+    setCaptadorFilter("Todos");
+    setApprovalFilter(true);
+    setPuExpandida(true);
   }
 
   if (ehCelular === null) return null;
   if (ehCelular && dataState === "auth") return <AppMobileSessaoExpirada />;
   if (ehCelular) return <main className="ape-produtos">
     <AppMobileOffline atualizadoEm={atualizadoEm} />
+    <div className="ape-produto-mobile-actions"><button type="button" className="principal" onClick={() => setUnitWizardOpen(true)}>＋ Cadastrar apartamento</button><button type="button" onClick={() => setCaptureOpen(true)}>＋ Cadastrar condomínio</button>{myUnits.length > 0 && <button type="button" className={myUnitsOpen ? "ativo" : ""} onClick={() => setMyUnitsOpen(!myUnitsOpen)}>Minhas captações · {myUnits.length}</button>}{canApprove && <button type="button" className={approvalFilter ? "ativo" : ""} onClick={() => approvalFilter ? showCatalog() : showApprovalQueue()}>Aprovar · {pendingCount + pendingUnits.length}</button>}</div>
     <label className="ape-produto-busca">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m20 20-4-4" /></svg>
-      <input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar empreendimento ou rua" />
+      <input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar nome, código AP ou rua" />
     </label>
     <nav className="ape-filtros ape-produto-filtros" aria-label="Filtrar produtos">
       {([
@@ -245,11 +273,15 @@ export function ProductsModule({ accessToken }: { accessToken: string }) {
     {dataState === "error" && <div className="ape-estado ruim" role="alert"><strong>Não foi possível carregar os produtos.</strong><p>Confira sua conexão e tente novamente.</p><button type="button" onClick={() => void loadCatalog(accessToken)}>Tentar novamente</button></div>}
     {dataState === "live" && produtosVisiveis.length === 0 && <div className="ape-estado"><div className="ape-estado-icone" aria-hidden="true">⌕</div><strong>Nenhum produto encontrado</strong><p>Ajuste a busca ou escolha outro filtro.</p></div>}
 
+    {myUnitsOpen && myUnits.length > 0 && <section className="ape-mobile-captacoes"><h2>Minhas captações</h2>{myUnits.map((unit) => <button type="button" key={unit.id} onClick={() => { setInitialUnitId(unit.id); setSelectedProductId(unit.empreendimentoId); }}><strong>{unit.predio} · Un. {unit.numero ?? "s/n"}{unit.codigo ? ` · ${unit.codigo}` : ""}</strong><span>{unit.approval === "reprovado" ? "Correção solicitada" : "Aguardando aprovação"}</span>{unit.rejectionReason && <small>{unit.rejectionReason}</small>}</button>)}</section>}
+    {canApprove && approvalFilter && pendingUnitsVisiveis.length > 0 && <section className="ape-mobile-captacoes"><h2>Unidades para aprovar</h2>{pendingUnitsVisiveis.map((unit) => <div key={unit.id}><button type="button" onClick={() => { setInitialUnitId(unit.id); setSelectedProductId(unit.empreendimentoId); }}><strong>{unit.predio} · Un. {unit.numero ?? "s/n"}</strong><span>{unit.indicador ?? "Sem captador"}</span></button><div><button type="button" onClick={() => void decideUnitFromList(unit.empreendimentoId, unit.id, true)}>✓ Aprovar</button><button type="button" onClick={() => void decideUnitFromList(unit.empreendimentoId, unit.id, false)}>✕ Reprovar</button></div></div>)}</section>}
+
     {dataState === "live" && produtosVisiveis.length > 0 && <section className="ape-produto-lista">
       {produtosVisiveis.map((product) => {
-        const compartilhar = encodeURIComponent(`${product.name} — ${product.neighborhood}, ${product.city} — ${product.price}`);
-        return <article className="ape-produto-card" key={product.id ?? product.name}>
-          <button type="button" className={`ape-produto-foto${product.coverUrl ? " com-foto" : ""}`} onClick={() => product.id && setSelectedProductId(product.id)} aria-label={`Abrir ${product.name}`}>
+        const linkSite = product.published && product.id ? `https://apecerto.com/?imovel=${encodeURIComponent(product.slug || product.id)}${product.codigo ? `&cod=${encodeURIComponent(product.codigo)}` : ""}` : null;
+        const compartilhar = encodeURIComponent(`${product.name} — ${product.neighborhood}, ${product.city} — ${product.price}${linkSite ? ` — ${linkSite}` : ""}`);
+        return <article className="ape-produto-card" key={product.unitId ?? product.id ?? product.name}>
+          <button type="button" className={`ape-produto-foto${product.coverUrl ? " com-foto" : ""}`} onClick={() => { if (product.id) { setInitialUnitId(product.unitId ?? null); setSelectedProductId(product.id); } }} aria-label={`Abrir ${product.name}`}>
             {product.coverUrl ? <img src={product.coverUrl} alt={`Foto de ${product.name}`} /> : <span aria-hidden="true">▥</span>}
             <em>{product.draft ? "Rascunho" : product.status?.replaceAll("_", " ") || "Produto"}</em>
           </button>
@@ -266,12 +298,14 @@ export function ProductsModule({ accessToken }: { accessToken: string }) {
             {product.topIssue && <small className="product-top-issue">⚠ {product.topIssue}</small>}
           </div>
           <div className="ape-produto-acoes">
-            <a href={`https://wa.me/?text=${compartilhar}`} target="_blank" rel="noopener noreferrer">Compartilhar no WhatsApp</a>
-            <button type="button" onClick={() => product.id && setSelectedProductId(product.id)} aria-label={`Ver detalhes de ${product.name}`}>•••</button>
+            {linkSite && <a href={`https://wa.me/?text=${compartilhar}`} target="_blank" rel="noopener noreferrer">Compartilhar no WhatsApp</a>}
+            <button type="button" onClick={() => { if (product.id) { setInitialUnitId(product.unitId ?? null); setSelectedProductId(product.id); } }} aria-label={`Ver detalhes de ${product.name}`}>•••</button>
           </div>
         </article>;
       })}
     </section>}
+    {captureOpen && <CaptureWizard onClose={() => setCaptureOpen(false)} onSaved={() => { setCaptureOpen(false); void loadCatalog(accessToken); }} />}
+    {unitWizardOpen && <UnitWizard accessToken={accessToken} onCreateCondominium={() => { setUnitWizardOpen(false); setCaptureOpen(true); }} onClose={() => setUnitWizardOpen(false)} onSaved={() => { setUnitWizardOpen(false); void loadCatalog(accessToken); }} />}
     {selectedProductId && <ProductDetail productId={selectedProductId} accessToken={accessToken} sessionRole={role} initialUnitId={initialUnitId} initialEditing={openInEdit} captadorScore={products.find((p) => p.id === selectedProductId)?.capturedByScore ?? null} onClose={() => { setSelectedProductId(null); setInitialUnitId(null); setOpenInEdit(false); }} onChanged={() => void loadCatalog(accessToken)} />}
     {deleteTarget && <div className="delete-confirm" role="dialog" aria-modal="true" aria-label="Confirmar exclusão do produto"><div><strong>Excluir este produto definitivamente?</strong><p><strong>{deleteTarget.name}</strong> e todas as suas unidades, fotos e vínculos serão removidos para sempre. Esta ação não pode ser desfeita.</p><footer><button type="button" onClick={() => setDeleteTarget(null)}>Cancelar</button><button className="danger" disabled={deleting} type="button" onClick={() => void confirmDeleteProduct()}>Excluir para sempre</button></footer></div></div>}
   </main>;
@@ -279,41 +313,85 @@ export function ProductsModule({ accessToken }: { accessToken: string }) {
   return (
 <>
       <header className="topbar">
-        <div><h1>Produtos</h1><p>{products.length} empreendimentos no portfólio</p></div>
-        <div className="top-actions"><button className="secondary-action" onClick={exportCatalog} type="button">↓ Exportar catálogo</button><button className="secondary-action" onClick={() => setUnitWizardOpen(true)} type="button">＋ Cadastrar unidade</button><button className="primary-action" onClick={() => setCaptureOpen(true)} type="button">＋ Cadastrar condomínio</button></div>
+        <div><h1>Produtos</h1><p>{buildingCount} empreendimentos · {products.length} imóveis no catálogo</p></div>
+        <div className="top-actions"><button className="secondary-action" onClick={exportCatalog} type="button">↓ Exportar</button><button className="secondary-action" onClick={() => setCaptureOpen(true)} type="button">＋ Cadastrar condomínio</button><button className="primary-action" onClick={() => setUnitWizardOpen(true)} type="button">＋ Cadastrar apartamento</button></div>
       </header>
-      <section className="product-quality-overview" aria-label="Saúde do portfólio">
+      <section className="product-entry-guide" aria-label="Qual cadastro devo usar?">
+        <div><strong>Apartamento em condomínio existente</strong><span>Use para captar uma unidade específica de um proprietário.</span></div>
+        <div><strong>Condomínio ou prédio novo</strong><span>Use para cadastrar o edifício, lançamento ou estoque da construtora.</span></div>
+      </section>
+      {!approvalFilter && <section className="product-quality-overview" aria-label="Saúde do portfólio">
         <button type="button" className={qualityFilter === "Todas" ? "active" : ""} onClick={() => setQualityFilter("Todas")}><span>Nota média</span><strong>{qualitySummary.average}</strong><small>de 100</small></button>
         <button type="button" className={qualityFilter === "excelente" ? "active" : ""} onClick={() => setQualityFilter("excelente")}><span>Excelentes</span><strong>{qualitySummary.excellent}</strong><small>90 a 100</small></button>
         <button type="button" className={qualityFilter === "bom" ? "active" : ""} onClick={() => setQualityFilter("bom")}><span>Bons</span><strong>{qualitySummary.good}</strong><small>75 a 89</small></button>
         <button type="button" className={qualityFilter === "atencao" ? "active" : ""} onClick={() => setQualityFilter("atencao")}><span>Com atenção</span><strong>{qualitySummary.attention}</strong><small>60 a 74</small></button>
         <button type="button" className={qualityFilter === "critico" ? "active" : ""} onClick={() => setQualityFilter("critico")}><span>Críticos</span><strong>{qualitySummary.critical}</strong><small>prioridade</small></button>
         <button type="button" className={publicationFilter === "ready" ? "active" : ""} onClick={() => { setQualityFilter("Todas"); setPublicationFilter(publicationFilter === "ready" ? "Todos" : "ready"); }}><span>Prontos para o site</span><strong>{qualitySummary.readyForSite}</strong><small>sem bloqueios</small></button>
-      </section>
+      </section>}
       <section className="catalog-controls">
-        <div className="catalog-heading"><strong className="catalog-title">Catálogo</strong><span className={`data-status ${dataState}`}>{dataState === "live" ? "● Dados reais · sessão protegida" : dataState === "loading" ? "○ Conectando ao Supabase..." : dataState === "auth" ? "○ Login necessário" : "○ Erro de conexão"}</span></div>
-        <div className="filter-row">
-          <span className="filter-symbol">▽</span>
-          {["Todos", "Lançamento", "Em obras", "Pronto"].map((item) => <button className={status === item ? "active" : ""} onClick={() => setStatus(item)} type="button" key={item}>{item}</button>)}
-          <button className={favoritesOnly ? "favorite-filter active" : "favorite-filter"} onClick={() => setFavoritesOnly(!favoritesOnly)} type="button">★ Meus favoritos</button>
-          {canApprove && <button className={approvalFilter ? "approval-filter active" : "approval-filter"} onClick={() => setApprovalFilter((v) => !v)} type="button">⏳ Pendentes de aprovação{(pendingCount + pendingUnits.length) > 0 && <b>{pendingCount + pendingUnits.length}</b>}</button>}
+        <div className="catalog-heading"><nav className="catalog-view-tabs" aria-label="Visão de produtos"><button type="button" className={!approvalFilter ? "active" : ""} onClick={showCatalog}>Catálogo</button>{canApprove && <button type="button" className={approvalFilter ? "active" : ""} onClick={showApprovalQueue}>Fila de aprovação <b>{pendingCount + pendingUnits.length}</b></button>}</nav><span className={`data-status ${dataState}`}>{dataState === "live" ? "● Dados reais · sessão protegida" : dataState === "loading" ? "○ Conectando ao Supabase..." : dataState === "auth" ? "○ Login necessário" : "○ Erro de conexão"}</span></div>
+        {!approvalFilter && <div className="filter-row quick-filters">
+          {['Todos', 'Lançamento', 'Em obras', 'Pronto'].map((item) => <button className={!favoritesOnly && !mineOnly && status === item ? "active" : ""} onClick={() => { setStatus(item); setFavoritesOnly(false); setMineOnly(false); }} type="button" key={item}>{item}</button>)}
+          <button className={favoritesOnly ? "favorite-filter active" : "favorite-filter"} onClick={() => { setFavoritesOnly(!favoritesOnly); setMineOnly(false); }} type="button">★ Favoritos</button>
+          <button className={mineOnly ? "mine-filter active" : "mine-filter"} onClick={() => { setMineOnly(!mineOnly); setFavoritesOnly(false); }} type="button">Meus imóveis</button>
+        </div>}
+        <div className="filter-row filter-primary">
+          <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar nome, código AP, rua ou incorporadora..." />
+          <select aria-label="Bairro" value={neighborhood} onChange={(event) => setNeighborhood(event.target.value)}><option value="Todos">Todos os bairros</option>{neighborhoods.map((item) => <option key={item}>{item}</option>)}</select>
+          {canApprove && <select aria-label="Captador" value={captadorFilter} onChange={(event) => setCaptadorFilter(event.target.value)}><option value="Todos">Todos os captadores</option>{captadores.map((item) => <option key={item}>{item}</option>)}</select>}
+          {!approvalFilter && <button className={moreFiltersOpen ? "active" : ""} type="button" onClick={() => setMoreFiltersOpen(!moreFiltersOpen)}>Mais filtros {moreFiltersOpen ? "▲" : "▼"}</button>}
+          {hasActiveFilters && <button className="secondary-action clear-product-filters" type="button" onClick={clearFilters}>Limpar</button>}
+          <span className="product-count">{approvalFilter ? `${pendingUnitsVisiveis.length + produtosVisiveis.length} aguardando` : `${produtosVisiveis.length} imóveis`}</span>
         </div>
-        <div className="filter-row selects"><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar nome, título, rua ou incorporadora..." /><select aria-label="Bairro" value={neighborhood} onChange={(event) => setNeighborhood(event.target.value)}><option value="Todos">Todos os bairros</option>{neighborhoods.map((item) => <option key={item}>{item}</option>)}</select><select aria-label="Incorporadora" value={developer} onChange={(event) => setDeveloper(event.target.value)}><option value="Todas">Todas as incorporadoras</option>{developers.map((item) => <option key={item}>{item}</option>)}</select><select aria-label="Captador" value={captadorFilter} onChange={(event) => setCaptadorFilter(event.target.value)}><option value="Todos">Todos os captadores</option>{captadores.map((item) => <option key={item}>{item}</option>)}</select><select aria-label="Faixa de preço" value={priceBand} onChange={(event) => setPriceBand(event.target.value)}><option>Todas</option><option>Até 500 mil</option><option>500 mil a 1 mi</option><option>Acima de 1 mi</option></select><select aria-label="Dormitórios" value={bedrooms} onChange={(event) => setBedrooms(event.target.value)}><option value="Qualquer">Qualquer dorm.</option><option value="0">Studio</option><option value="1">1 dorm.</option><option value="2">2 dorm.</option><option value="3">3 dorm.</option><option value="4">4+ dorm.</option></select><select aria-label="Publicação" value={publicationFilter} onChange={(event) => setPublicationFilter(event.target.value)}><option value="Todos">Todos os produtos</option><option value="site">Publicados no site</option><option value="ready">Prontos para publicar</option><option value="blocked">Bloqueados para publicação</option></select><select aria-label="Ordenação" value={sortBy} onChange={(event) => setSortBy(event.target.value)}><option value="quality-asc">Menor nota primeiro</option><option value="quality-desc">Maior nota primeiro</option><option value="updated">Atualizados recentemente</option><option value="price-asc">Menor preço</option><option value="price-desc">Maior preço</option></select><label className="toggle"><input type="checkbox" checked={stockOnly} onChange={(event) => setStockOnly(event.target.checked)} /> Com estoque disponível</label><label className="toggle"><input type="checkbox" checked={noMediaOnly} onChange={(event) => setNoMediaOnly(event.target.checked)} /> Sem nenhuma mídia</label>{hasActiveFilters && <button className="secondary-action clear-product-filters" type="button" onClick={clearFilters}>Limpar filtros</button>}<span className="product-count">{filtered.length} produtos exibidos</span></div>
+        {!approvalFilter && moreFiltersOpen && <div className="filter-row filter-advanced">
+          <select aria-label="Incorporadora" value={developer} onChange={(event) => setDeveloper(event.target.value)}><option value="Todas">Todas as incorporadoras</option>{developers.map((item) => <option key={item}>{item}</option>)}</select>
+          <select aria-label="Faixa de preço" value={priceBand} onChange={(event) => setPriceBand(event.target.value)}><option>Todas</option><option>Até 500 mil</option><option>500 mil a 1 mi</option><option>Acima de 1 mi</option></select>
+          <select aria-label="Dormitórios" value={bedrooms} onChange={(event) => setBedrooms(event.target.value)}><option value="Qualquer">Qualquer dorm.</option><option value="0">Studio</option><option value="1">1 dorm.</option><option value="2">2 dorm.</option><option value="3">3 dorm.</option><option value="4">4+ dorm.</option></select>
+          <select aria-label="Publicação" value={publicationFilter} onChange={(event) => setPublicationFilter(event.target.value)}><option value="Todos">Todos os produtos</option><option value="site">Publicados no site</option><option value="ready">Prontos para publicar</option><option value="blocked">Bloqueados para publicação</option></select>
+          <select aria-label="Ordenação" value={sortBy} onChange={(event) => setSortBy(event.target.value)}><option value="quality-asc">Menor nota primeiro</option><option value="quality-desc">Maior nota primeiro</option><option value="updated">Atualizados recentemente</option><option value="price-asc">Menor preço</option><option value="price-desc">Maior preço</option></select>
+          <label className="toggle"><input type="checkbox" checked={stockOnly} onChange={(event) => setStockOnly(event.target.checked)} /> Com estoque disponível</label>
+          <label className="toggle"><input type="checkbox" checked={noMediaOnly} onChange={(event) => setNoMediaOnly(event.target.checked)} /> Sem nenhuma mídia</label>
+        </div>}
       </section>
-      {canApprove && approvalFilter && <div className="pendentes-resumo"><strong>⏳ {pendingUnitsVisiveis.length + produtosVisiveis.length} aguardando aprovação</strong><span>{pendingUnitsVisiveis.length} unidade(s) na lista logo abaixo + {produtosVisiveis.length} prédio(s)/condomínio(s) nos cards no fim da página</span></div>}
+      {canApprove && approvalFilter && <div className="pendentes-resumo"><strong>{pendingUnitsVisiveis.length + produtosVisiveis.length} aguardando aprovação</strong><span>{pendingUnitsVisiveis.length} apartamento(s) + {produtosVisiveis.length} condomínio(s). A fila está aberta por completo.</span></div>}
       {canApprove && approvalFilter && pendingUnitsVisiveis.length > 0 && <section className="pending-units">
-        <h3>Unidades pendentes de aprovação <span>{pendingUnitsVisiveis.length}</span></h3>
-        <p className="pu-sub">Solicitações de indicação aguardando sua validação.</p>
-        <button type="button" className="pu-toggle" onClick={() => setPuExpandida(!puExpandida)}>{puExpandida ? "▲ Recolher lista" : `▼ Ver todas as ${pendingUnitsVisiveis.length} unidades`}</button>
+        <h3>Apartamentos para aprovar <span>{pendingUnitsVisiveis.length}</span></h3>
+        <p className="pu-sub">Captações individuais aguardando a validação da gestão.</p>
         <div className={puExpandida ? "pu-list expandida" : "pu-list"}>{pendingUnitsVisiveis.map((pu) => <div className="pu-row" key={pu.id}>
           <div className="pu-thumb" style={pu.coverUrl ? { backgroundImage: `url(${pu.coverUrl})` } : undefined}>{!pu.coverUrl && "▥"}</div>
           <div className="pu-main"><strong>{pu.numero || "Unidade"} <span className="pu-chip">Indicação</span></strong><small>{pu.predio} · 👤 {pu.indicador ?? "—"} · Prop.: {pu.proprietario ?? "—"}</small></div>
           <div className="pu-actions"><button type="button" className="pu-approve" onClick={() => void decideUnitFromList(pu.empreendimentoId, pu.id, true)}>✓ Aprovar</button><button type="button" className="pu-reject" onClick={() => void decideUnitFromList(pu.empreendimentoId, pu.id, false)}>✕ Reprovar</button><button type="button" className="pu-rev" onClick={() => { setInitialUnitId(pu.id); setSelectedProductId(pu.empreendimentoId); }}>Revisar</button></div>
         </div>)}</div>
       </section>}
+      {myUnits.length > 0 && <section className="pending-units my-captured-units">
+        <h3>Minhas captações em análise ou correção <span>{myUnits.length}</span></h3>
+        <p className="pu-sub">Acompanhe cada unidade individual sem depender da ficha do condomínio.</p>
+        <button type="button" className="pu-toggle" onClick={() => setMyUnitsOpen(!myUnitsOpen)}>{myUnitsOpen ? "▲ Recolher lista" : `▼ Ver minhas ${myUnits.length} captações`}</button>
+        {myUnitsOpen && <div className="pu-list expandida">{myUnits.map((unit) => <div className="pu-row" key={unit.id}>
+          <div className="pu-thumb" style={unit.coverUrl ? { backgroundImage: `url(${unit.coverUrl})` } : undefined}>{!unit.coverUrl && "▥"}</div>
+          <div className="pu-main"><strong>{unit.predio} · Un. {unit.numero || "s/n"} {unit.codigo && <span className="cod-imovel">{unit.codigo}</span>}</strong><small>{unit.approval === "reprovado" ? `Correção solicitada: ${unit.rejectionReason || "revise os dados"}` : "Aguardando aprovação da gestão"}</small></div>
+          <div className="pu-actions"><button type="button" className="pu-rev" onClick={() => { setInitialUnitId(unit.id); setSelectedProductId(unit.empreendimentoId); }}>Abrir e editar</button></div>
+        </div>)}</div>}
+      </section>}
+      {approvalFilter && produtosVisiveis.length > 0 && <h2 className="approval-building-title">Condomínios para aprovar <span>{produtosVisiveis.length}</span></h2>}
       <section className="product-grid">
         {produtosVisiveis.map((product) => <article className={`product-card ${product.draft ? "t-lanc" : /obra/i.test(product.status ?? "") ? "t-obras" : /lan[cç]/i.test(product.status ?? "") ? "t-lanc" : "t-pronto"}`} role="button" tabIndex={0} onClick={() => { if (product.id) { setInitialUnitId(product.unitId ?? null); setSelectedProductId(product.id); } }} onKeyDown={(event) => { if ((event.key === "Enter" || event.key === " ") && product.id) { setInitialUnitId(product.unitId ?? null); setSelectedProductId(product.id); } }} key={product.unitId ?? product.id ?? product.name}>
-          <div className={`product-photo ${product.coverUrl ? "has-image" : ""}`}>{product.coverUrl && <img src={product.coverUrl} alt={`Foto de capa de ${product.name}`} />}<span>{product.draft ? "Rascunho" : product.status?.replace("_", " ") ?? "Pronto"}</span>{product.quality && <span className={`quality-badge quality-on-photo ${product.quality.level}`}>Nota {product.quality.score}</span>}{product.approval && product.approval !== "aprovado" && <span className={`approval-badge ${product.approval}`}>{product.approval === "pendente" ? "⏳ Pendente" : "✕ Reprovado"}</span>}{!product.coverUrl && <div className="building-icon">▥</div>}<div className="card-menu" onClick={(event) => event.stopPropagation()}><button type="button" className="card-menu-btn" aria-haspopup="true" aria-label={`Ações de ${product.name}`} onClick={(event) => { event.stopPropagation(); setOpenMenuId(openMenuId === product.id ? null : (product.id ?? null)); }}>•••</button>{openMenuId === product.id && product.id && <div className="card-menu-pop" role="menu"><button type="button" role="menuitem" onClick={() => { setOpenMenuId(null); setOpenInEdit(false); setInitialUnitId(product.unitId ?? null); setSelectedProductId(product.id!); }}>Abrir ficha</button><button type="button" role="menuitem" onClick={() => { const link = `https://apecerto.com/?imovel=${encodeURIComponent(product.slug || product.id!)}${product.codigo ? `&cod=${encodeURIComponent(product.codigo)}` : ""}`; void navigator.clipboard.writeText(link); setOpenMenuId(null); }}>Copiar link do site</button>{(canApprove || product.mine) && <button type="button" role="menuitem" onClick={() => { setOpenMenuId(null); setOpenInEdit(true); setSelectedProductId(product.id!); }}>Editar</button>}{canApprove && !product.unitId && <button type="button" role="menuitem" className="danger" onClick={() => { setOpenMenuId(null); setDeleteTarget(product); }}>Excluir</button>}</div>}</div></div>
+          <div className={`product-photo ${product.coverUrl ? "has-image" : ""}`}>
+            {product.coverUrl && <img src={product.coverUrl} alt={`Foto de capa de ${product.name}`} />}
+            <span>{product.draft ? "Rascunho" : product.status?.replace("_", " ") ?? "Pronto"}</span>
+            {product.quality && <span className={`quality-badge quality-on-photo ${product.quality.level}`}>Nota {product.quality.score}</span>}
+            {product.approval && product.approval !== "aprovado" && <span className={`approval-badge ${product.approval}`}>{product.approval === "pendente" ? "⏳ Pendente" : "✕ Reprovado"}</span>}
+            {!product.coverUrl && <div className="building-icon">▥</div>}
+            <div className="card-menu" onClick={(event) => event.stopPropagation()}>
+              <button type="button" className="card-menu-btn" aria-haspopup="true" aria-label={`Ações de ${product.name}`} onClick={(event) => { event.stopPropagation(); const key = product.unitId ?? product.id ?? null; setOpenMenuId(openMenuId === key ? null : key); }}>•••</button>
+              {openMenuId === (product.unitId ?? product.id) && product.id && <div className="card-menu-pop" role="menu">
+                <button type="button" role="menuitem" onClick={() => { setOpenMenuId(null); setOpenInEdit(false); setInitialUnitId(product.unitId ?? null); setSelectedProductId(product.id!); }}>Abrir ficha</button>
+                {product.published && <button type="button" role="menuitem" onClick={() => { const link = `https://apecerto.com/?imovel=${encodeURIComponent(product.slug || product.id!)}${product.codigo ? `&cod=${encodeURIComponent(product.codigo)}` : ""}`; void navigator.clipboard.writeText(link); setOpenMenuId(null); }}>Copiar link do site</button>}
+                {(canApprove || product.mine) && <button type="button" role="menuitem" onClick={() => { setOpenMenuId(null); setOpenInEdit(!product.unitId); setInitialUnitId(product.unitId ?? null); setSelectedProductId(product.id!); }}>{product.unitId ? "Editar unidade" : "Editar produto"}</button>}
+                {canApprove && !product.unitId && <button type="button" role="menuitem" className="danger" onClick={() => { setOpenMenuId(null); setDeleteTarget(product); }}>Excluir</button>}
+              </div>}
+            </div>
+          </div>
           <div className="product-info"><strong className="price">{product.price}</strong><h2>{product.name}{product.codigo && <span className="cod-imovel">{product.codigo}</span>}</h2><p className="location">⌖ {product.neighborhood} · {product.city}</p>{product.developer && <p className="developer">{product.developer}</p>}
             <div className="specs"><span className="s-area"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 3h18v18H3z"/><path d="M9 3v4"/><path d="M15 17v4"/><path d="M3 9h4"/><path d="M17 15h4"/></svg>{product.area} m²</span><span className="s-dorm"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M2 18v-6a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v6"/><path d="M4 18v3"/><path d="M20 18v3"/><path d="M6 10V7a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v3"/></svg>{product.bedrooms} dorm.</span><span className="s-vaga"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 17h14"/><path d="M6 17v2"/><path d="M18 17v2"/><path d="M4 17l1.5-5.5A2 2 0 0 1 7.4 10h9.2a2 2 0 0 1 1.9 1.5L20 17z"/></svg>{product.parking} vaga</span></div>
             <div className="estoque"><div className="estoque-top"><strong>{product.available} de {product.units ?? 0} disponíveis</strong><span>{product.media ?? 0} mídias</span></div><div className="estoque-bar"><i style={{ width: `${product.units ? Math.min(100, Math.round((product.available / product.units) * 100)) : 0}%` }} /></div></div>
@@ -323,7 +401,7 @@ export function ProductsModule({ accessToken }: { accessToken: string }) {
         setCaptureOpen(false);
         if (accessToken) void loadCatalog(accessToken);
       }} />}
-      {unitWizardOpen && accessToken && <UnitWizard accessToken={accessToken} onClose={() => setUnitWizardOpen(false)} onSaved={() => {
+      {unitWizardOpen && accessToken && <UnitWizard accessToken={accessToken} onCreateCondominium={() => { setUnitWizardOpen(false); setCaptureOpen(true); }} onClose={() => setUnitWizardOpen(false)} onSaved={() => {
         setUnitWizardOpen(false);
         if (accessToken) void loadCatalog(accessToken);
       }} />}

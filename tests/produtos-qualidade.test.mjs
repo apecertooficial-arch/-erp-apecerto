@@ -60,7 +60,7 @@ test("marca d'água usa o logotipo oficial, sem SVG textual improvisado", () => 
   const css = read("app/globals.css");
   const processor = read("app/features/products/watermark.ts");
   const wizard = read("app/features/products/CaptureWizard.tsx");
-  assert.match(css, /logo-apecerto-branco\.png/);
+  assert.match(processor, /logo-apecerto-branco\.png/);
   assert.doesNotMatch(css, /apêcerto<\/text>/);
   assert.match(processor, /canvas\.toBlob/);
   assert.match(wizard, /applyOfficialWatermark/);

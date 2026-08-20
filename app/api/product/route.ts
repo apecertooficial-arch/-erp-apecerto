@@ -2,6 +2,7 @@ import { createServerSupabaseClient } from "../../lib/supabase/server";
 import type { Database } from "../../lib/supabase/database.types";
 import { resolveEffectiveAccess, denyIfCannot } from "../../lib/supabase/authz";
 import { assessProductQuality, isPlausibleProductPrice, validateProductPrice } from "../../features/products/quality";
+import { isProductManagerRole } from "../../features/products/access";
 
 export const dynamic = "force-dynamic";
 
@@ -51,12 +52,14 @@ export async function GET(request: Request) {
 
   if (error) return Response.json({ error: error.message }, { status: error.code === "PGRST116" ? 404 : 502 });
   const media = (data.midias ?? []).map((item) => ({ ...item, url: publicMediaUrl(item.storage_path) }));
+  const buildingMedia = media.filter((item) => !item.unidade_id);
   const units = data.unidades ?? [];
-  const availableUnits = units.filter((item) => item.disponivel);
+  const approvedUnits = units.filter((item) => (item.aprovacao ?? "aprovado") === "aprovado");
+  const availableUnits = approvedUnits.filter((item) => item.disponivel);
   const unitPrices = availableUnits.map((item) => item.valor_promo ?? item.valor_tabela).filter((value): value is number => typeof value === "number" && value > 0);
   const unitAreas = availableUnits.map((item) => item.area_m2).filter((value): value is number => typeof value === "number" && value > 0);
-  const photoCount = media.filter((item) => item.tipo === "foto").length;
-  const videoCount = media.filter((item) => item.tipo === "video").length;
+  const photoCount = buildingMedia.filter((item) => item.tipo === "foto").length;
+  const videoCount = buildingMedia.filter((item) => item.tipo === "video").length;
   const summaryPrice = data.preco ?? (unitPrices.length ? Math.min(...unitPrices) : null);
   const summaryArea = data.area_util ?? (unitAreas.length ? Math.min(...unitAreas) : null);
   const quality = assessProductQuality({
@@ -64,9 +67,9 @@ export async function GET(request: Request) {
     price: summaryPrice, area: summaryArea, bedrooms: data.dormitorios, bathrooms: data.banheiros, parking: data.vagas,
     address: data.endereco, number: data.numero, neighborhood: data.bairro, city: data.cidade, state: data.uf, zip: data.cep,
     condominiumFee: data.condominio_valor, propertyTax: data.iptu, otherCosts: data.outros_custos,
-    photos: photoCount, videos: videoCount, hasCover: media.some((item) => item.tipo === "foto" && item.is_capa),
-    mediaCategories: media.filter((item) => item.tipo === "foto").map((item) => item.categoria ?? ""), tourUrl: data.tour_url,
-    units: units.length, availableUnits: availableUnits.length,
+    photos: photoCount, videos: videoCount, hasCover: buildingMedia.some((item) => item.tipo === "foto" && item.is_capa),
+    mediaCategories: buildingMedia.filter((item) => item.tipo === "foto").map((item) => item.categoria ?? ""), tourUrl: data.tour_url,
+    units: approvedUnits.length, availableUnits: availableUnits.length,
     unitsWithValidPrice: unitPrices.filter((value) => isPlausibleProductPrice(value, data.finalidade)).length,
     amenities: data.lazer, differentiators: data.diferenciais,
   });
@@ -86,10 +89,21 @@ export async function GET(request: Request) {
   const unidadesEnriched = (data.unidades ?? []).map((u) => ({ ...u, captador_nome: corretorNameById.get((u as { captador_corretor_id?: number | null }).captador_corretor_id ?? -1) ?? null }));
   const mine = (data as { captado_por_usuario?: string | null }).captado_por_usuario === auth.user.id;
   const { data: meuPerfilGet } = await auth.supabase.from("usuarios").select("role").eq("id", auth.user.id).maybeSingle();
-  const gerenciaProdutosGet = ["admin", "gestor", "executivo"].includes((meuPerfilGet as { role?: string } | null)?.role ?? "corretor");
+  const gerenciaProdutosGet = isProductManagerRole((meuPerfilGet as { role?: string } | null)?.role);
   const podeEditar = gerenciaProdutosGet || mine;
   // Dado de proprietário é restrito: corretor só vê o que ele mesmo captou (produto e unidade).
-  const unidadesVisiveis = unidadesEnriched.map((u) => (gerenciaProdutosGet || (broker?.id && (u as { captador_corretor_id?: number | null }).captador_corretor_id === broker.id)) ? u : { ...u, proprietario_nome: null, proprietario_contato: null });
+  const unidadesVisiveis = unidadesEnriched.map((u) => {
+    const unidadeMinha = Boolean(broker?.id && (u as { captador_corretor_id?: number | null }).captador_corretor_id === broker.id);
+    const podeEditarUnidade = gerenciaProdutosGet || unidadeMinha;
+    return podeEditarUnidade
+      ? { ...u, mine: unidadeMinha, pode_editar: true }
+      : { ...u, mine: false, pode_editar: false, proprietario_nome: null, proprietario_contato: null, acesso_tipo: null, acesso_codigo: null, acesso_instrucoes: null };
+  });
+  const visibleMedia = media.filter((item) => {
+    if (!item.unidade_id || gerenciaProdutosGet) return true;
+    const unit = unidadesEnriched.find((entry) => entry.id === item.unidade_id);
+    return Boolean(unit && ((unit.aprovacao ?? "aprovado") === "aprovado" || (broker?.id && unit.captador_corretor_id === broker.id)));
+  });
   const checks: Record<string, boolean> = {
     basics: Boolean(data.nome && (data.preco || unitPrices.length) && (data.area_util || unitAreas.length)),
     location: Boolean(data.endereco && data.bairro && data.cidade),
@@ -101,7 +115,7 @@ export async function GET(request: Request) {
     checks.owner = Boolean(data.proprietario_id || (data.proprietario_nome && data.proprietario_tel && data.proprietario_email));
     checks.access = Boolean(data.acesso_tipo && data.acesso_instrucoes && (data.acesso_tipo !== "chave_digital" || data.acesso_codigo));
   }
-  return Response.json({ product: { ...data, ...(podeEditar ? {} : { proprietarios: null, proprietario_nome: null, proprietario_tel: null, proprietario_email: null }), site_published: Boolean(data.publicado && !data.rascunho && data.aprovacao === "aprovado"), midias: media, unidades: unidadesVisiveis, captado_por_nome: capturedByName, mine, pode_editar: podeEditar, summary_price: summaryPrice, summary_area: summaryArea, is_favorite: Boolean(favorite), leads: (leadOptions ?? []).map((lead) => ({ ...lead, linked: linkedIds.has(lead.id) })), quality, completion: { checks, completed: Object.values(checks).filter(Boolean).length, total: Object.keys(checks).length } } });
+  return Response.json({ product: { ...data, ...(podeEditar ? {} : { proprietarios: null, proprietario_nome: null, proprietario_tel: null, proprietario_email: null, acesso_tipo: null, acesso_codigo: null, acesso_instrucoes: null }), site_published: Boolean(data.publicado && !data.rascunho && data.aprovacao === "aprovado"), midias: visibleMedia, unidades: unidadesVisiveis, captado_por_nome: capturedByName, mine, pode_editar: podeEditar, summary_price: summaryPrice, summary_area: summaryArea, is_favorite: Boolean(favorite), leads: (leadOptions ?? []).map((lead) => ({ ...lead, linked: linkedIds.has(lead.id) })), quality, completion: { checks, completed: Object.values(checks).filter(Boolean).length, total: Object.keys(checks).length } } });
 }
 
 export async function PATCH(request: Request) {
@@ -110,10 +124,10 @@ export async function PATCH(request: Request) {
   const body = await request.json() as Record<string, unknown>;
   const id = typeof body.id === "string" ? body.id : "";
   if (!UUID.test(id)) return Response.json({ error: "Produto inválido." }, { status: 400 });
-  const { data: productContext } = await auth.supabase.from("empreendimentos").select("finalidade, captado_por_usuario").eq("id", id).maybeSingle();
+  const { data: productContext } = await auth.supabase.from("empreendimentos").select("finalidade, captado_por_usuario, aprovacao, publicado, rascunho").eq("id", id).maybeSingle();
   const currentPurpose = productContext?.finalidade ?? "venda";
   const { data: meuPerfilPatch } = await auth.supabase.from("usuarios").select("role").eq("id", auth.user.id).maybeSingle();
-  const gerenciaProdutos = ["admin", "gestor", "executivo"].includes((meuPerfilPatch as { role?: string } | null)?.role ?? "corretor");
+  const gerenciaProdutos = isProductManagerRole((meuPerfilPatch as { role?: string } | null)?.role);
   const souCaptador = (productContext as { captado_por_usuario?: string | null } | null)?.captado_por_usuario === auth.user.id;
   const negadoPorCaptacao = !gerenciaProdutos && !souCaptador ? Response.json({ error: "Você só pode editar imóveis captados por você." }, { status: 403 }) : null;
 
@@ -134,6 +148,17 @@ export async function PATCH(request: Request) {
     };
     const numero = asString(input.numero);
     if (!numero) return Response.json({ error: "Informe o número da unidade." }, { status: 400 });
+    const tipologia = asString(input.tipologia);
+    const area = asNumber(input.area_m2);
+    const proprietarioNome = asString(input.proprietario_nome);
+    const proprietarioContato = asString(input.proprietario_contato);
+    const acessoTipo = asString(input.acesso_tipo);
+    const acessoCodigo = asString(input.acesso_codigo);
+    const acessoInstrucoes = asString(input.acesso_instrucoes);
+    if (!tipologia || area == null || area <= 0) return Response.json({ error: "Informe tipologia e área útil da unidade." }, { status: 422 });
+    if (!proprietarioNome || !proprietarioContato) return Response.json({ error: "Informe nome e contato do proprietário." }, { status: 422 });
+    if (!acessoTipo || !acessoInstrucoes) return Response.json({ error: "Informe o tipo e as instruções de acesso." }, { status: 422 });
+    if (acessoTipo === "chave_digital" && !acessoCodigo) return Response.json({ error: "Informe o código da chave digital." }, { status: 422 });
     const valorTabela = asNumber(input.valor_tabela);
     if (valorTabela == null) return Response.json({ error: "Informe o valor de tabela da unidade." }, { status: 400 });
     const tablePriceCheck = validateProductPrice(valorTabela, "Valor de tabela", currentPurpose);
@@ -145,20 +170,21 @@ export async function PATCH(request: Request) {
     }
 
     const { data: broker } = await auth.supabase.from("corretores").select("id").eq("usuario_id", auth.user.id).maybeSingle();
+    if (!broker?.id && !gerenciaProdutos) return Response.json({ error: "Seu usuário ainda não está vinculado a um corretor ativo." }, { status: 422 });
     const unitRow = {
       empreendimento_id: id, de_terceiros: true, aprovacao: "pendente", disponivel: true,
       captador_corretor_id: broker?.id ?? null,
       numero,
-      tipologia: asString(input.tipologia),
-      area_m2: asNumber(input.area_m2),
+      tipologia,
+      area_m2: area,
       vagas: asNumber(input.vagas),
       valor_tabela: tablePriceCheck.value,
       valor_promo: promoPrice,
-      proprietario_nome: asString(input.proprietario_nome),
-      proprietario_contato: asString(input.proprietario_contato),
-      acesso_tipo: asString(input.acesso_tipo),
-      acesso_codigo: asString(input.acesso_codigo),
-      acesso_instrucoes: asString(input.acesso_instrucoes),
+      proprietario_nome: proprietarioNome,
+      proprietario_contato: proprietarioContato,
+      acesso_tipo: acessoTipo,
+      acesso_codigo: acessoCodigo,
+      acesso_instrucoes: acessoInstrucoes,
     };
     const { data: novaUnidade, error } = await auth.supabase.from("unidades").insert(unitRow as never).select("id").single();
     if (error) {
@@ -171,13 +197,78 @@ export async function PATCH(request: Request) {
     return Response.json({ unidadeId: novaUnidade.id, userId: auth.user.id });
   }
 
+  if (body.action === "updateUnit") {
+    const denied = guard([["produtos", "editar"]], "Você não tem permissão para editar unidades.");
+    if (denied) return denied;
+    const unidadeId = typeof body.unidadeId === "string" ? body.unidadeId : "";
+    if (!UUID.test(unidadeId)) return Response.json({ error: "Unidade inválida." }, { status: 400 });
+    const { data: broker } = await auth.supabase.from("corretores").select("id").eq("usuario_id", auth.user.id).maybeSingle();
+    const { data: currentUnit, error: currentUnitError } = await auth.supabase.from("unidades").select("id,captador_corretor_id,de_terceiros,aprovacao").eq("id", unidadeId).eq("empreendimento_id", id).maybeSingle();
+    if (currentUnitError) return Response.json({ error: currentUnitError.message }, { status: 502 });
+    if (!currentUnit) return Response.json({ error: "Unidade não encontrada." }, { status: 404 });
+    const ownsUnit = broker?.id != null && currentUnit.captador_corretor_id === broker.id;
+    if (!gerenciaProdutos && (!currentUnit.de_terceiros || !ownsUnit)) return Response.json({ error: "Você só pode editar a unidade que captou." }, { status: 403 });
+    const input = (body.unidade && typeof body.unidade === "object" ? body.unidade : {}) as Record<string, unknown>;
+    const asString = (value: unknown) => (typeof value === "string" ? value.trim() || null : null);
+    const asNumber = (value: unknown) => {
+      if (value === "" || value == null) return null;
+      const parsed = Number(value);
+      return Number.isFinite(parsed) ? parsed : null;
+    };
+    const numero = asString(input.numero);
+    const tipologia = asString(input.tipologia);
+    const area = asNumber(input.area_m2);
+    const valorTabela = asNumber(input.valor_tabela);
+    const valorPromo = asNumber(input.valor_promo);
+    const proprietarioNome = asString(input.proprietario_nome);
+    const proprietarioContato = asString(input.proprietario_contato);
+    const acessoTipo = asString(input.acesso_tipo);
+    const acessoCodigo = asString(input.acesso_codigo);
+    const acessoInstrucoes = asString(input.acesso_instrucoes);
+    if (!numero || !tipologia || area == null || area <= 0) return Response.json({ error: "Informe número, tipologia e área útil da unidade." }, { status: 422 });
+    if (valorTabela == null) return Response.json({ error: "Informe o valor de tabela da unidade." }, { status: 422 });
+    const tablePriceCheck = validateProductPrice(valorTabela, "Valor de tabela", currentPurpose);
+    if (tablePriceCheck.error) return Response.json({ error: tablePriceCheck.error }, { status: 422 });
+    if (valorPromo != null) {
+      const promoCheck = validateProductPrice(valorPromo, "Valor promocional", currentPurpose);
+      if (promoCheck.error) return Response.json({ error: promoCheck.error }, { status: 422 });
+    }
+    if (!proprietarioNome || !proprietarioContato) return Response.json({ error: "Informe nome e contato do proprietário." }, { status: 422 });
+    if (!acessoTipo || !acessoInstrucoes) return Response.json({ error: "Informe o tipo e as instruções de acesso." }, { status: 422 });
+    if (acessoTipo === "chave_digital" && !acessoCodigo) return Response.json({ error: "Informe o código da chave digital." }, { status: 422 });
+    const patch = {
+      numero, tipologia, area_m2: area, vagas: asNumber(input.vagas),
+      valor_tabela: tablePriceCheck.value, valor_promo: valorPromo,
+      disponivel: input.disponivel !== false,
+      proprietario_nome: proprietarioNome, proprietario_contato: proprietarioContato,
+      acesso_tipo: acessoTipo, acesso_codigo: acessoCodigo, acesso_instrucoes: acessoInstrucoes,
+      ...(gerenciaProdutos ? {} : { aprovacao: "pendente", reprovacao_motivo: null }),
+    };
+    const { error } = await auth.supabase.from("unidades").update(patch as never).eq("id", unidadeId).eq("empreendimento_id", id);
+    return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true, approval: gerenciaProdutos ? currentUnit.aprovacao : "pendente" });
+  }
+
   if (body.action === "decideUnit") {
     const { data: me } = await auth.supabase.from("usuarios").select("role").eq("id", auth.user.id).maybeSingle();
     const role = (me as { role?: string } | null)?.role ?? "corretor";
-    if (!["admin", "gestor", "executivo"].includes(role)) return Response.json({ error: "Apenas admin, gestor ou executivo podem aprovar unidades." }, { status: 403 });
+    if (!isProductManagerRole(role)) return Response.json({ error: "Apenas a gestão de Produtos pode aprovar unidades." }, { status: 403 });
     const unidadeId = typeof body.unidadeId === "string" ? body.unidadeId : "";
     if (!UUID.test(unidadeId)) return Response.json({ error: "Unidade inválida." }, { status: 400 });
     const approve = body.approve === true;
+    if (approve) {
+      const [{ data: unitToApprove, error: unitReadError }, mediaCount] = await Promise.all([
+        auth.supabase.from("unidades").select("numero,tipologia,area_m2,valor_tabela,valor_promo,proprietario_nome,proprietario_contato,acesso_tipo,acesso_codigo,acesso_instrucoes").eq("id", unidadeId).eq("empreendimento_id", id).maybeSingle(),
+        auth.supabase.from("midias").select("id", { count: "exact", head: true }).eq("unidade_id", unidadeId).eq("tipo", "foto"),
+      ]);
+      if (unitReadError || !unitToApprove) return Response.json({ error: unitReadError?.message ?? "Unidade não encontrada." }, { status: 404 });
+      const blocking: string[] = [];
+      if (!unitToApprove.numero || !unitToApprove.tipologia || !unitToApprove.area_m2 || unitToApprove.area_m2 <= 0) blocking.push("Número, tipologia e área útil");
+      if (!isPlausibleProductPrice(unitToApprove.valor_promo ?? unitToApprove.valor_tabela, currentPurpose)) blocking.push("Preço válido");
+      if (!unitToApprove.proprietario_nome || !unitToApprove.proprietario_contato) blocking.push("Proprietário e contato");
+      if (!unitToApprove.acesso_tipo || !unitToApprove.acesso_instrucoes || (unitToApprove.acesso_tipo === "chave_digital" && !unitToApprove.acesso_codigo)) blocking.push("Instruções de acesso");
+      if ((mediaCount.count ?? 0) < 1) blocking.push("Ao menos uma foto da unidade");
+      if (blocking.length) return Response.json({ error: `Complete a unidade antes de aprovar: ${blocking.join("; ")}.`, code: "UNIT_NOT_READY", blocking }, { status: 422 });
+    }
     const patch = approve
       ? { aprovacao: "aprovado", reprovacao_motivo: null }
       : { aprovacao: "reprovado", reprovacao_motivo: typeof body.motivo === "string" ? body.motivo.slice(0, 300) : null };
@@ -216,7 +307,7 @@ export async function PATCH(request: Request) {
   if (body.action === "publish" || body.action === "unpublish" || body.action === "solicitar") {
     const { data: me } = await auth.supabase.from("usuarios").select("role").eq("id", auth.user.id).maybeSingle();
     const role = (me as { role?: string } | null)?.role ?? "corretor";
-    const isApprover = ["admin", "gestor", "executivo"].includes(role);
+    const isApprover = isProductManagerRole(role);
 
     // Corretor (dono) envia solicitação: vira pendente, NÃO vai pro ar. Passa pela alçada de aprovação.
     if (body.action === "solicitar") {
@@ -239,15 +330,18 @@ export async function PATCH(request: Request) {
     // contornada por chamadas diretas à API.
     const { data: productToPublish, error: readError } = await auth.supabase
       .from("empreendimentos")
-      .select("nome,titulo,slogan,descricao,finalidade,preco,area_util,dormitorios,banheiros,vagas,endereco,numero,bairro,cidade,uf,cep,condominio_valor,iptu,outros_custos,lazer,diferenciais,tour_url,unidades(area_m2,valor_tabela,valor_promo,disponivel),midias(tipo,categoria,is_capa)")
+      .select("nome,titulo,slogan,descricao,finalidade,status,preco,area_util,dormitorios,banheiros,vagas,endereco,numero,bairro,cidade,uf,cep,condominio_valor,iptu,outros_custos,lazer,diferenciais,tour_url,unidades(area_m2,valor_tabela,valor_promo,disponivel,aprovacao),midias(tipo,categoria,is_capa,unidade_id)")
       .eq("id", id)
       .single();
     if (readError || !productToPublish) return Response.json({ error: readError?.message ?? "Produto não encontrado." }, { status: 502 });
-    const publishUnits = productToPublish.unidades ?? [];
+    const publishUnits = (productToPublish.unidades ?? []).filter((unit) => (unit.aprovacao ?? "aprovado") === "aprovado");
     const publishAvailable = publishUnits.filter((unit) => unit.disponivel);
     const publishPrices = publishAvailable.map((unit) => unit.valor_promo ?? unit.valor_tabela).filter((value): value is number => typeof value === "number" && value > 0);
     const publishAreas = publishAvailable.map((unit) => unit.area_m2).filter((value): value is number => typeof value === "number" && value > 0);
-    const publishMedia = productToPublish.midias ?? [];
+    const publishMedia = (productToPublish.midias ?? []).filter((item) => !item.unidade_id);
+    if (/pronto/i.test(productToPublish.status ?? "") && publishAvailable.length === 0) {
+      return Response.json({ error: "Produto pronto precisa ter ao menos uma unidade aprovada e disponível para aparecer no site.", code: "READY_PRODUCT_WITHOUT_APPROVED_UNIT" }, { status: 422 });
+    }
     const quality = assessProductQuality({
       name: productToPublish.nome, title: productToPublish.titulo, slogan: productToPublish.slogan,
       description: productToPublish.descricao, purpose: productToPublish.finalidade,
@@ -317,7 +411,7 @@ export async function PATCH(request: Request) {
   if (body.action === "deleteProduct") {
     const { data: me } = await auth.supabase.from("usuarios").select("role").eq("id", auth.user.id).maybeSingle();
     const role = (me as { role?: string } | null)?.role ?? "corretor";
-    if (!["admin", "gestor", "executivo"].includes(role)) return Response.json({ error: "Apenas admin, gestor ou executivo podem excluir produtos." }, { status: 403 });
+    if (!isProductManagerRole(role)) return Response.json({ error: "Apenas a gestão de Produtos pode excluir produtos." }, { status: 403 });
     const deniedDelete = guard([["produtos", "excluir"]], "Você não tem permissão para excluir produtos.");
     if (deniedDelete) return deniedDelete;
 
@@ -388,6 +482,46 @@ export async function PATCH(request: Request) {
     if (priceCheck.error) return Response.json({ error: priceCheck.error }, { status: 422 });
     update.preco = priceCheck.value;
   }
+  if (!gerenciaProdutos && productContext?.publicado && productContext.aprovacao === "aprovado") {
+    update.publicado = false;
+    update.aprovacao = "pendente";
+    update.rascunho = false;
+    update.reprovacao_motivo = null;
+  }
+
+  type PreparedUnit = { unitId: string | null; row: { numero: string; tipologia: string; area_m2: number; vagas: number; valor_tabela: number; valor_promo: number | null; disponivel: boolean } };
+  let preparedUnits: PreparedUnit[] | null = null;
+  let constructorUnitIdsToRemove: string[] = [];
+  if (Array.isArray(body.units)) {
+    const { data: existingUnits, error: unitsReadError } = await auth.supabase.from("unidades").select("id,de_terceiros").eq("empreendimento_id", id);
+    if (unitsReadError) return Response.json({ error: unitsReadError.message }, { status: 502 });
+    const constructorIds = new Set((existingUnits ?? []).filter((item) => !item.de_terceiros).map((item) => item.id));
+    const indicationIds = new Set((existingUnits ?? []).filter((item) => item.de_terceiros).map((item) => item.id));
+    const incomingUnits = body.units as Array<Record<string, unknown>>;
+    preparedUnits = [];
+    for (const item of incomingUnits) {
+      const rawId = typeof item.id === "string" ? item.id : null;
+      if (rawId && indicationIds.has(rawId)) return Response.json({ error: "Indicações de corretores devem ser editadas pela ficha da própria unidade." }, { status: 422 });
+      const numero = typeof item.numero === "string" ? item.numero.trim() : "";
+      const tipologia = typeof item.tipologia === "string" ? item.tipologia.trim() : "";
+      const area = Number(item.area_m2);
+      const vagas = item.vagas === "" || item.vagas == null ? 0 : Number(item.vagas);
+      const tableValue = Number(item.valor_tabela);
+      const promoValue = item.valor_promo === "" || item.valor_promo == null ? null : Number(item.valor_promo);
+      if (!numero || !tipologia || !Number.isFinite(area) || area <= 0 || !Number.isFinite(vagas) || vagas < 0) return Response.json({ error: "Preencha número, tipologia, área e vagas de todas as unidades da construtora." }, { status: 422 });
+      if (!Number.isFinite(tableValue)) return Response.json({ error: `Informe o valor de tabela da unidade ${numero}.` }, { status: 422 });
+      const tableCheck = validateProductPrice(tableValue, `Valor de tabela da unidade ${numero}`, update.finalidade ?? currentPurpose);
+      if (tableCheck.error) return Response.json({ error: tableCheck.error }, { status: 422 });
+      if (promoValue != null) {
+        if (!Number.isFinite(promoValue)) return Response.json({ error: `Valor promocional inválido na unidade ${numero}.` }, { status: 422 });
+        const promoCheck = validateProductPrice(promoValue, `Valor promocional da unidade ${numero}`, update.finalidade ?? currentPurpose);
+        if (promoCheck.error) return Response.json({ error: promoCheck.error }, { status: 422 });
+      }
+      preparedUnits.push({ unitId: rawId && constructorIds.has(rawId) ? rawId : null, row: { numero, tipologia, area_m2: area, vagas, valor_tabela: tableCheck.value!, valor_promo: promoValue, disponivel: item.disponivel !== false } });
+    }
+    const keptIds = new Set(preparedUnits.map((item) => item.unitId).filter((value): value is string => Boolean(value)));
+    constructorUnitIdsToRemove = [...constructorIds].filter((unitId) => !keptIds.has(unitId));
+  }
 
   const { error } = await auth.supabase.from("empreendimentos").update(update).eq("id", id);
   if (error) return Response.json({ error: error.message }, { status: 502 });
@@ -440,41 +574,15 @@ export async function PATCH(request: Request) {
     if (linkError) return Response.json({ error: linkError.message }, { status: 502 });
   }
 
-  if (Array.isArray(body.units)) {
-    const { data: existingUnits, error: unitsReadError } = await auth.supabase.from("unidades").select("id").eq("empreendimento_id", id);
-    if (unitsReadError) return Response.json({ error: unitsReadError.message }, { status: 502 });
-    const incomingUnits = body.units as Array<Record<string, unknown>>;
-    const existingIds = new Set((existingUnits ?? []).map((item) => item.id));
-    const keptIds = incomingUnits.map((item) => typeof item.id === "string" && existingIds.has(item.id) ? item.id : null).filter((value): value is string => Boolean(value));
-    const removeIds = (existingUnits ?? []).map((item) => item.id).filter((unitId) => !keptIds.includes(unitId));
-    if (removeIds.length) {
-      const { error: deleteError } = await auth.supabase.from("unidades").delete().in("id", removeIds);
+  if (preparedUnits) {
+    if (constructorUnitIdsToRemove.length) {
+      const { error: deleteError } = await auth.supabase.from("unidades").delete().eq("empreendimento_id", id).eq("de_terceiros", false).in("id", constructorUnitIdsToRemove);
       if (deleteError) return Response.json({ error: deleteError.message }, { status: 502 });
     }
-    for (const item of incomingUnits) {
-      // Só os campos COMERCIAIS da unidade. de_terceiros, proprietário, indicador e acesso
-      // são propriedades da unidade/indicação e NUNCA são alterados pela edição do produto.
-      const commonRow = {
-        numero: typeof item.numero === "string" ? item.numero.trim() || null : null,
-        tipologia: typeof item.tipologia === "string" ? item.tipologia.trim() || null : null,
-        area_m2: item.area_m2 === "" || item.area_m2 == null ? null : Number(item.area_m2),
-        vagas: item.vagas === "" || item.vagas == null ? null : Number(item.vagas),
-        valor_tabela: item.valor_tabela === "" || item.valor_tabela == null ? null : Number(item.valor_tabela),
-        valor_promo: item.valor_promo === "" || item.valor_promo == null ? null : Number(item.valor_promo),
-        disponivel: item.disponivel !== false,
-      };
-      if (commonRow.valor_tabela != null) {
-        const priceCheck = validateProductPrice(commonRow.valor_tabela, "Valor de tabela", update.finalidade ?? currentPurpose);
-        if (priceCheck.error) return Response.json({ error: priceCheck.error }, { status: 422 });
-      }
-      if (commonRow.valor_promo != null) {
-        const priceCheck = validateProductPrice(commonRow.valor_promo, "Valor promocional", update.finalidade ?? currentPurpose);
-        if (priceCheck.error) return Response.json({ error: priceCheck.error }, { status: 422 });
-      }
-      const unitId = typeof item.id === "string" && existingIds.has(item.id) ? item.id : null;
-      const unitResult = unitId
-        ? await auth.supabase.from("unidades").update(commonRow as never).eq("id", unitId).eq("empreendimento_id", id)
-        : await auth.supabase.from("unidades").insert({ ...commonRow, empreendimento_id: id, de_terceiros: body.origin === "terceiros" } as never);
+    for (const item of preparedUnits) {
+      const unitResult = item.unitId
+        ? await auth.supabase.from("unidades").update(item.row as never).eq("id", item.unitId).eq("empreendimento_id", id).eq("de_terceiros", false)
+        : await auth.supabase.from("unidades").insert({ ...item.row, empreendimento_id: id, de_terceiros: false, aprovacao: "aprovado" } as never);
       if (unitResult.error) return Response.json({ error: unitResult.error.message }, { status: 502 });
     }
   }

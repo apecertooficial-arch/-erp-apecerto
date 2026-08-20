@@ -8,7 +8,7 @@ import { MoneyInput } from "./MoneyInput";
 import { applyOfficialWatermark } from "./watermark";
 
 type Media = { id: string; tipo: "foto" | "video" | "pdf" | "apresentacao"; storage_path: string; categoria: string | null; nome: string | null; is_capa: boolean; url: string | null; unidade_id?: string | null };
-type Unit = { id: string; codigo?: string | null; numero: string | null; tipologia: string | null; area_m2: number | null; vagas: number | null; valor_tabela: number | null; valor_promo: number | null; disponivel: boolean; de_terceiros?: boolean; captador_nome?: string | null; proprietario_nome?: string | null; proprietario_contato?: string | null; acesso_tipo?: string | null; acesso_codigo?: string | null; acesso_instrucoes?: string | null; aprovacao?: string | null };
+type Unit = { id: string; codigo?: string | null; numero: string | null; tipologia: string | null; area_m2: number | null; vagas: number | null; valor_tabela: number | null; valor_promo: number | null; disponivel: boolean; de_terceiros?: boolean; captador_nome?: string | null; proprietario_nome?: string | null; proprietario_contato?: string | null; acesso_tipo?: string | null; acesso_codigo?: string | null; acesso_instrucoes?: string | null; aprovacao?: string | null; reprovacao_motivo?: string | null; mine?: boolean; pode_editar?: boolean };
 type Owner = { nome: string; email: string; telefone: string };
 type Condo = { id: string; nome: string; endereco: string; numero: string | null; bairro: string | null; cidade: string; uf: string; cep: string | null };
 type LeadOption = { id: number; nome: string | null; telefone: string | null; linked: boolean };
@@ -96,6 +96,7 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
   const [pendingDelete, setPendingDelete] = useState<Media | null>(null);
   const [tab, setTab] = useState<"resumo" | "site" | "localizacao" | "proprietario" | "unidades" | "galeria">("resumo");
   const [unitDetail, setUnitDetail] = useState<Unit | null>(null);
+  const [unitEdit, setUnitEdit] = useState<Unit | null>(null);
   const [unitLightbox, setUnitLightbox] = useState<{ items: { url: string; label: string }[]; index: number } | null>(null);
   const [confirmDeleteProduct, setConfirmDeleteProduct] = useState(false);
 
@@ -108,7 +109,7 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
     setProduct(next);
     if (next.pode_editar === false) setEditing(false);
     setOwner(next.proprietarios ?? { nome: "", email: "", telefone: "" });
-    setUnits(next.unidades);
+    setUnits(next.unidades.filter((unit) => !unit.de_terceiros));
     setCondominiumId(next.condominios?.id ?? "");
     setNewCondominiumName(next.condominios?.nome ?? "");
     setDraft(Object.fromEntries(editableFields.map((field) => {
@@ -245,6 +246,37 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
     } catch (error) { setMessage(error instanceof Error ? error.message : "Erro ao decidir a unidade."); } finally { setBusy(false); }
   }
 
+  async function saveUnit() {
+    if (!unitEdit) return;
+    setBusy(true); setMessage("");
+    try {
+      const response = await fetch("/api/product", { method: "PATCH", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify({ id: productId, action: "updateUnit", unidadeId: unitEdit.id, unidade: unitEdit }) });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error ?? "Não foi possível salvar a unidade.");
+      setUnitEdit(null); setUnitDetail(null); await load(); onChanged(); setMessage(result.approval === "pendente" ? "Unidade atualizada e reenviada para aprovação." : "Unidade atualizada.");
+    } catch (error) { setMessage(error instanceof Error ? error.message : "Erro ao salvar a unidade."); } finally { setBusy(false); }
+  }
+
+  async function uploadUnitMedia(files: FileList | null, unit: Unit) {
+    if (!files?.length) return;
+    setBusy(true); setMessage("");
+    try {
+      const supabase = getBrowserSupabaseClient();
+      const { data: auth } = await supabase.auth.getUser();
+      if (!auth.user) throw new Error("Sua sessão expirou.");
+      for (const originalFile of Array.from(files)) {
+        const file = originalFile.type.startsWith("image/") ? await applyOfficialWatermark(originalFile) : originalFile;
+        const safeName = file.name.normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-zA-Z0-9._-]/g, "-");
+        const path = `${auth.user.id}/${productId}/${crypto.randomUUID()}-${safeName}`;
+        const { error: uploadError } = await supabase.storage.from("empreendimentos").upload(path, file, { contentType: file.type, upsert: false });
+        if (uploadError) throw uploadError;
+        const { error: insertError } = await supabase.from("midias").insert({ empreendimento_id: productId, unidade_id: unit.id, storage_path: path, tipo: mediaType(file), categoria: "Unidade", nome: file.name, is_capa: false });
+        if (insertError) { await supabase.storage.from("empreendimentos").remove([path]); throw insertError; }
+      }
+      await load(); onChanged(); setMessage("Mídia da unidade adicionada com a marca d’água oficial.");
+    } catch (error) { setMessage(error instanceof Error ? `Falha no upload: ${error.message}` : "Falha no upload."); } finally { setBusy(false); }
+  }
+
   async function submitRequest() {
     setBusy(true); setMessage("");
     try {
@@ -267,6 +299,12 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
     } catch (error) { setMessage(error instanceof Error ? error.message : "Erro ao revisar o produto."); } finally { setBusy(false); }
   }
 
+  const captadorLabel = useMemo(() => {
+    if (!product) return "Estoque ApêCerto";
+    if (product.captado_por_nome) return product.captado_por_nome;
+    const names = Array.from(new Set(product.unidades.map((unit) => unit.captador_nome).filter((name): name is string => Boolean(name))));
+    return names.length ? names.join(", ") : "Estoque ApêCerto";
+  }, [product]);
   const completionPct = product?.quality.score ?? 0;
   const completionLabels: Record<string, string> = { basics: "Dados básicos", location: "Endereço", owner: "Proprietário", costs: "Custos", access: "Acesso", media: "Fotos, vídeo e capa", units: "Unidades" };
   const otherPhotos = photos.filter((item) => item.id !== cover?.id);
@@ -329,7 +367,7 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
             </div>
             <label>Condomínio associado<select value={condominiumId} onChange={(event) => { setCondominiumId(event.target.value); if (event.target.value) setNewCondominiumName(""); }}><option value="">Cadastrar novo com o endereço acima</option>{condominiums.map((item) => <option value={item.id} key={item.id}>{item.nome} · {item.bairro ?? item.cidade}</option>)}</select></label>{!condominiumId && <label>Nome do novo condomínio<input value={newCondominiumName} onChange={(event) => setNewCondominiumName(event.target.value)} placeholder="Nome do condomínio" /></label>}
             {product.origem === "terceiros" && <><h3>Acesso ao imóvel</h3><div className="field-grid"><label>Tipo<input value={draft.acesso_tipo ?? ""} onChange={(event) => setDraft({ ...draft, acesso_tipo: event.target.value })} /></label><label>Código digital<input value={draft.acesso_codigo ?? ""} onChange={(event) => setDraft({ ...draft, acesso_codigo: event.target.value })} /></label></div><label>Instruções<textarea rows={3} value={draft.acesso_instrucoes ?? ""} onChange={(event) => setDraft({ ...draft, acesso_instrucoes: event.target.value })} /></label>{owner && <><h3>Proprietário</h3><div className="field-grid">{(["nome", "email", "telefone"] as const).map((field) => <label key={field}>{field}<input value={owner[field]} onChange={(event) => setOwner({ ...owner, [field]: event.target.value })} /></label>)}</div></>}</>}
-            <h3>Unidades</h3><div className="section-row"><small>{draft.finalidade === "aluguel" ? "Edite estoque e aluguel mensal em valor cheio." : "Edite estoque, tipologia, área e preço."}</small><button className="secondary-action" type="button" onClick={() => setUnits([...units, { id: crypto.randomUUID(), numero: "", tipologia: "", area_m2: null, vagas: 0, valor_tabela: null, valor_promo: null, disponivel: true }])}>＋ Unidade</button></div><div className="edit-units">{units.map((unit, index) => <div key={unit.id}><span>{index + 1}</span><input aria-label="Número" value={unit.numero ?? ""} onChange={(event) => setUnits(units.map((item) => item.id === unit.id ? { ...item, numero: event.target.value } : item))} placeholder="Unidade" /><input aria-label="Tipologia" value={unit.tipologia ?? ""} onChange={(event) => setUnits(units.map((item) => item.id === unit.id ? { ...item, tipologia: event.target.value } : item))} placeholder="Tipologia" /><input aria-label="Área" type="number" value={unit.area_m2 ?? ""} onChange={(event) => setUnits(units.map((item) => item.id === unit.id ? { ...item, area_m2: event.target.value ? Number(event.target.value) : null } : item))} placeholder="m²" /><input aria-label="Vagas" type="number" value={unit.vagas ?? ""} onChange={(event) => setUnits(units.map((item) => item.id === unit.id ? { ...item, vagas: event.target.value ? Number(event.target.value) : null } : item))} /><MoneyInput compact defaultMode={draft.finalidade === "aluguel" ? "reais" : "milhares"} label={`Preço da unidade ${unit.numero || index + 1}`} value={unit.valor_tabela} onChange={(value) => setUnits(units.map((item) => item.id === unit.id ? { ...item, valor_tabela: value } : item))} /><label><input type="checkbox" checked={unit.disponivel} onChange={(event) => setUnits(units.map((item) => item.id === unit.id ? { ...item, disponivel: event.target.checked } : item))} /> disponível</label><button type="button" aria-label="Remover unidade" onClick={() => setUnits(units.filter((item) => item.id !== unit.id))}>×</button></div>)}</div>
+            <h3>Estoque da construtora</h3><div className="section-row"><small>{draft.finalidade === "aluguel" ? "Edite o estoque da construtora em valor cheio. Indicações individuais ficam protegidas na aba Unidades." : "Edite o estoque da construtora. Indicações individuais ficam protegidas na aba Unidades."}</small><button className="secondary-action" type="button" onClick={() => setUnits([...units, { id: crypto.randomUUID(), numero: "", tipologia: "", area_m2: null, vagas: 0, valor_tabela: null, valor_promo: null, disponivel: true }])}>＋ Unidade</button></div><div className="edit-units">{units.map((unit, index) => <div key={unit.id}><span>{index + 1}</span><input aria-label="Número" value={unit.numero ?? ""} onChange={(event) => setUnits(units.map((item) => item.id === unit.id ? { ...item, numero: event.target.value } : item))} placeholder="Unidade" /><input aria-label="Tipologia" value={unit.tipologia ?? ""} onChange={(event) => setUnits(units.map((item) => item.id === unit.id ? { ...item, tipologia: event.target.value } : item))} placeholder="Tipologia" /><input aria-label="Área" type="number" value={unit.area_m2 ?? ""} onChange={(event) => setUnits(units.map((item) => item.id === unit.id ? { ...item, area_m2: event.target.value ? Number(event.target.value) : null } : item))} placeholder="m²" /><input aria-label="Vagas" type="number" value={unit.vagas ?? ""} onChange={(event) => setUnits(units.map((item) => item.id === unit.id ? { ...item, vagas: event.target.value ? Number(event.target.value) : null } : item))} /><MoneyInput compact defaultMode={draft.finalidade === "aluguel" ? "reais" : "milhares"} label={`Preço da unidade ${unit.numero || index + 1}`} value={unit.valor_tabela} onChange={(value) => setUnits(units.map((item) => item.id === unit.id ? { ...item, valor_tabela: value } : item))} /><label><input type="checkbox" checked={unit.disponivel} onChange={(event) => setUnits(units.map((item) => item.id === unit.id ? { ...item, disponivel: event.target.checked } : item))} /> disponível</label><button type="button" aria-label="Remover unidade" onClick={() => setUnits(units.filter((item) => item.id !== unit.id))}>×</button></div>)}</div>
             <button className="primary-action" disabled={busy} type="button" onClick={() => void save()}>{busy ? "Salvando..." : "Salvar no Supabase"}</button>
           </div>
         </div>
@@ -351,7 +389,7 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
 
             <div className="fv2-head">
               <h2>{product.nome}{product.codigo && <span className="cod-imovel">{product.codigo}</span>}</h2>
-              <p className="fv2-address"><IcPin /> {[product.bairro, product.cidade, product.uf].filter(Boolean).join(" · ") || "Endereço não informado"} · Captado por: {product.captado_por_nome ?? "Não informado"}</p>
+              <p className="fv2-address"><IcPin /> {[product.bairro, product.cidade, product.uf].filter(Boolean).join(" · ") || "Endereço não informado"} · Captado por: {captadorLabel}</p>
             </div>
 
             <div className="fv2-specs">
@@ -477,24 +515,38 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
     {documentPreview?.url && <div className="document-preview-modal" role="dialog" aria-modal="true" aria-label="Visualizar apresentação"><header><strong>{documentPreview.nome || "Apresentação do produto"}</strong><button type="button" onClick={() => setDocumentPreview(null)} aria-label="Fechar apresentação">×</button></header><div className="document-frame watermarked-preview"><iframe src={documentPreview.url} title={documentPreview.nome || "Apresentação do produto"} /></div></div>}
     {pendingDelete && <div className="delete-confirm" role="dialog" aria-modal="true" aria-label="Confirmar exclusão"><div><strong>Excluir este arquivo?</strong><p>{pendingDelete.nome || "O arquivo selecionado"} será removido definitivamente da galeria e do armazenamento.</p><footer><button type="button" onClick={() => setPendingDelete(null)}>Cancelar</button><button className="danger" disabled={busy} type="button" onClick={() => { const id = pendingDelete.id; setPendingDelete(null); void mediaAction("deleteMedia", id); }}>Excluir arquivo</button></footer></div></div>}
     {confirmDeleteProduct && <div className="delete-confirm" role="dialog" aria-modal="true" aria-label="Confirmar exclusão do produto"><div><strong>Excluir este produto definitivamente?</strong><p><strong>{product?.nome || "Este produto"}</strong> e todas as suas unidades, fotos e vínculos serão removidos para sempre. Esta ação não pode ser desfeita.</p><footer><button type="button" onClick={() => setConfirmDeleteProduct(false)}>Cancelar</button><button className="danger" disabled={busy} type="button" onClick={() => void deleteProduct()}>Excluir para sempre</button></footer></div></div>}
-    {unitDetail && (() => { const u = unitDetail; const ind = Boolean(u.de_terceiros); return <div className="ficha-v2 fv2-unit-detail-ov" role="dialog" aria-modal="true" aria-label="Detalhe da unidade" onMouseDown={(event) => { if (event.target === event.currentTarget) setUnitDetail(null); }}>
-      <div className="fv2-unit-detail">
-        <div className="fv2-ud-head"><h2>Unidade {u.numero || "—"}</h2><button type="button" onClick={() => setUnitDetail(null)} aria-label="Fechar"><IcClose /></button></div>
-        <div className="fv2-ud-body">
-          <div className="fv2-ud-badges"><span className={`fv2-unit-origin ${ind ? "indic" : "constru"}`}>{ind ? "Indicação" : "Construtora"}</span>{ind && u.aprovacao && u.aprovacao !== "aprovado" && <span className={`fv2-ud-aprov ${u.aprovacao}`}>{u.aprovacao === "pendente" ? "⏳ Pendente" : "✕ Reprovado"}</span>}<span className={`fv2-unit-status ${u.disponivel ? "on" : "off"}`}>{u.disponivel ? "Disponível" : "Indisponível"}</span></div>
-          <div className="fv2-ud-sec">Dados da unidade</div>
-          <div className="fv2-cost-tiles"><div className="fv2-tile"><small>TIPOLOGIA</small><strong>{u.tipologia || "—"}</strong></div><div className="fv2-tile"><small>ÁREA</small><strong>{u.area_m2 ?? "—"} m²</strong></div><div className="fv2-tile"><small>VAGAS</small><strong>{u.vagas ?? 0}</strong></div><div className="fv2-tile"><small>VALOR</small><strong>{money.format(u.valor_promo ?? u.valor_tabela ?? 0)}</strong></div></div>
-          <div className="fv2-ud-sec">Proprietário</div>
-          {ind && u.proprietario_nome ? <div className="fv2-person-card"><span className="fv2-avatar">{initials(u.proprietario_nome)}</span><div><strong>{u.proprietario_nome}</strong><small>{u.proprietario_contato || "Sem contato"}</small></div></div> : <p className="fv2-ud-empty">Sem proprietário — unidade da construtora.</p>}
-          <div className="fv2-ud-sec">Corretor indicador</div>
-          {ind && u.captador_nome ? <div className="fv2-person-card"><span className="fv2-avatar purple">{initials(u.captador_nome)}</span><div><strong>{u.captador_nome}</strong><small>Indicou esta unidade</small></div></div> : <p className="fv2-ud-empty">Sem indicador — unidade da construtora.</p>}
-          <div className="fv2-ud-sec">Acesso</div>
-          <div className="fv2-cost-tiles"><div className="fv2-tile"><small>TIPO</small><strong>{acessoLabel(u.acesso_tipo)}</strong></div><div className="fv2-tile"><small>CÓDIGO</small><strong>{u.acesso_codigo || "—"}</strong></div><div className="fv2-tile"><small>INSTRUÇÕES</small><strong>{u.acesso_instrucoes || "—"}</strong></div></div>
-          {ind && <><div className="fv2-ud-sec">Fotos da unidade</div>{(() => { const um = (product?.midias ?? []).filter((m) => m.unidade_id === u.id && m.tipo === "foto" && m.url); return um.length ? <div className="fv2-ud-gallery">{um.map((m, i) => <button key={m.id} type="button" onClick={() => setUnitLightbox({ items: um.map((x) => ({ url: x.url ?? "", label: x.categoria || x.nome || "Foto da unidade" })), index: i })} className="fv2-ud-photo watermarked-preview" style={{ backgroundImage: `url(${m.url})` }} aria-label="Ampliar foto da unidade" />)}</div> : <p className="fv2-ud-empty">Nenhuma foto enviada para esta unidade ainda.</p>; })()}</>}
+    {unitDetail && (() => {
+      const u = unitDetail;
+      const ind = Boolean(u.de_terceiros);
+      const unitMedia = (product?.midias ?? []).filter((m) => m.unidade_id === u.id && m.tipo === "foto" && m.url);
+      return <div className="ficha-v2 fv2-unit-detail-ov" role="dialog" aria-modal="true" aria-label="Detalhe da unidade" onMouseDown={(event) => { if (event.target === event.currentTarget) setUnitDetail(null); }}>
+        <div className="fv2-unit-detail">
+          <div className="fv2-ud-head"><div><h2>Unidade {u.numero || "—"}</h2>{u.codigo && <span className="cod-imovel">{u.codigo}</span>}</div><button type="button" onClick={() => setUnitDetail(null)} aria-label="Fechar"><IcClose /></button></div>
+          <div className="fv2-ud-body">
+            <div className="fv2-ud-badges"><span className={`fv2-unit-origin ${ind ? "indic" : "constru"}`}>{ind ? "Indicação" : "Construtora"}</span>{ind && u.aprovacao && u.aprovacao !== "aprovado" && <span className={`fv2-ud-aprov ${u.aprovacao}`}>{u.aprovacao === "pendente" ? "⏳ Pendente" : "✕ Reprovado"}</span>}<span className={`fv2-unit-status ${u.disponivel ? "on" : "off"}`}>{u.disponivel ? "Disponível" : "Indisponível"}</span></div>
+            {u.aprovacao === "reprovado" && u.reprovacao_motivo && <div className="approval-reason"><strong>Correção solicitada:</strong> {u.reprovacao_motivo}</div>}
+            <div className="fv2-ud-sec">Dados da unidade</div>
+            <div className="fv2-cost-tiles"><div className="fv2-tile"><small>TIPOLOGIA</small><strong>{u.tipologia || "—"}</strong></div><div className="fv2-tile"><small>ÁREA</small><strong>{u.area_m2 ?? "—"} m²</strong></div><div className="fv2-tile"><small>VAGAS</small><strong>{u.vagas ?? 0}</strong></div><div className="fv2-tile"><small>VALOR</small><strong>{money.format(u.valor_promo ?? u.valor_tabela ?? 0)}</strong></div></div>
+            <div className="fv2-ud-sec">Proprietário</div>
+            {ind && u.proprietario_nome ? <div className="fv2-person-card"><span className="fv2-avatar">{initials(u.proprietario_nome)}</span><div><strong>{u.proprietario_nome}</strong><small>{u.proprietario_contato || "Sem contato"}</small></div></div> : <p className="fv2-ud-empty">{ind ? "Dados protegidos — visíveis apenas ao captador e à gestão." : "Sem proprietário — unidade da construtora."}</p>}
+            <div className="fv2-ud-sec">Corretor indicador</div>
+            {ind && u.captador_nome ? <div className="fv2-person-card"><span className="fv2-avatar purple">{initials(u.captador_nome)}</span><div><strong>{u.captador_nome}</strong><small>Indicou esta unidade</small></div></div> : <p className="fv2-ud-empty">Sem indicador — unidade da construtora.</p>}
+            <div className="fv2-ud-sec">Acesso</div>
+            <div className="fv2-cost-tiles"><div className="fv2-tile"><small>TIPO</small><strong>{acessoLabel(u.acesso_tipo)}</strong></div><div className="fv2-tile"><small>CÓDIGO</small><strong>{u.acesso_codigo || "—"}</strong></div><div className="fv2-tile"><small>INSTRUÇÕES</small><strong>{u.acesso_instrucoes || "—"}</strong></div></div>
+            {ind && <><div className="fv2-ud-sec">Fotos da unidade</div>{unitMedia.length ? <div className="fv2-ud-gallery">{unitMedia.map((m, i) => <button key={m.id} type="button" onClick={() => setUnitLightbox({ items: unitMedia.map((x) => ({ url: x.url ?? "", label: x.categoria || x.nome || "Foto da unidade" })), index: i })} className="fv2-ud-photo watermarked-preview" style={{ backgroundImage: `url(${m.url})` }} aria-label="Ampliar foto da unidade" />)}</div> : <p className="fv2-ud-empty">Nenhuma foto enviada para esta unidade ainda.</p>}{u.pode_editar && <label className="fv2-btn fv2-btn-outline">＋ Adicionar fotos ou vídeos<input hidden multiple type="file" accept="image/*,video/*" disabled={busy} onChange={(event) => void uploadUnitMedia(event.target.files, u)} /></label>}</>}
+          </div>
+          {(u.pode_editar || (canPublish && ind && u.aprovacao === "pendente")) && <div className="fv2-ud-foot">{u.pode_editar && <button type="button" className="fv2-btn fv2-btn-outline" disabled={busy} onClick={() => setUnitEdit({ ...u })}><IcEdit /> Editar unidade</button>}{canPublish && ind && u.aprovacao === "pendente" && <><button type="button" className="fv2-ud-reject" disabled={busy} onClick={() => void decideUnit(u.id, false)}>✕ Reprovar</button><button type="button" className="fv2-ud-approve" disabled={busy} onClick={() => void decideUnit(u.id, true)}>✓ Aprovar</button></>}</div>}
         </div>
-        {canPublish && ind && u.aprovacao === "pendente" && <div className="fv2-ud-foot"><button type="button" className="fv2-ud-reject" disabled={busy} onClick={() => void decideUnit(u.id, false)}>✕ Reprovar</button><button type="button" className="fv2-ud-approve" disabled={busy} onClick={() => void decideUnit(u.id, true)}>✓ Aprovar</button></div>}
-      </div>
-    </div>; })()}
+      </div>;
+    })()}
+    {unitEdit && <div className="modal-layer fv2-unit-edit-layer" role="dialog" aria-modal="true" aria-label="Editar unidade">
+      <button className="modal-scrim" type="button" onClick={() => setUnitEdit(null)} aria-label="Fechar edição" />
+      <section className="capture-panel fv2-unit-edit-panel">
+        <header className="capture-header"><div><span className="eyebrow">{unitEdit.codigo || "UNIDADE"}</span><h2>Editar unidade {unitEdit.numero || ""}</h2><p>Ao salvar, uma correção feita pelo corretor volta para aprovação.</p></div><button className="icon-button" type="button" onClick={() => setUnitEdit(null)} aria-label="Fechar">×</button></header>
+        <div className="capture-body"><div className="form-section"><div className="field-grid"><label>Número<input value={unitEdit.numero ?? ""} onChange={(event) => setUnitEdit({ ...unitEdit, numero: event.target.value })} /></label><label>Tipologia<input value={unitEdit.tipologia ?? ""} onChange={(event) => setUnitEdit({ ...unitEdit, tipologia: event.target.value })} /></label><label>Área (m²)<input type="number" min="0" value={unitEdit.area_m2 ?? ""} onChange={(event) => setUnitEdit({ ...unitEdit, area_m2: event.target.value ? Number(event.target.value) : null })} /></label><label>Vagas<input type="number" min="0" value={unitEdit.vagas ?? ""} onChange={(event) => setUnitEdit({ ...unitEdit, vagas: event.target.value ? Number(event.target.value) : null })} /></label></div><div className="unit-money-grid"><MoneyInput label="Valor de tabela" value={unitEdit.valor_tabela} onChange={(value) => setUnitEdit({ ...unitEdit, valor_tabela: value })} /><MoneyInput label="Valor promocional" value={unitEdit.valor_promo} onChange={(value) => setUnitEdit({ ...unitEdit, valor_promo: value })} /></div><h3>Proprietário</h3><div className="field-grid"><label>Nome<input value={unitEdit.proprietario_nome ?? ""} onChange={(event) => setUnitEdit({ ...unitEdit, proprietario_nome: event.target.value })} /></label><label>Contato<input value={unitEdit.proprietario_contato ?? ""} onChange={(event) => setUnitEdit({ ...unitEdit, proprietario_contato: event.target.value })} /></label></div><h3>Acesso</h3><div className="field-grid"><label>Tipo<input value={unitEdit.acesso_tipo ?? ""} onChange={(event) => setUnitEdit({ ...unitEdit, acesso_tipo: event.target.value })} /></label><label>Código<input value={unitEdit.acesso_codigo ?? ""} onChange={(event) => setUnitEdit({ ...unitEdit, acesso_codigo: event.target.value })} /></label></div><label>Instruções<textarea rows={4} value={unitEdit.acesso_instrucoes ?? ""} onChange={(event) => setUnitEdit({ ...unitEdit, acesso_instrucoes: event.target.value })} /></label><label className="toggle"><input type="checkbox" checked={unitEdit.disponivel} onChange={(event) => setUnitEdit({ ...unitEdit, disponivel: event.target.checked })} /> Unidade disponível</label></div></div>
+        <footer className="capture-footer"><button className="ghost-action" type="button" onClick={() => setUnitEdit(null)}>Cancelar</button><button className="primary-action" type="button" disabled={busy} onClick={() => void saveUnit()}>{busy ? "Salvando..." : "Salvar unidade"}</button></footer>
+      </section>
+    </div>}
     {unitLightbox && unitLightbox.items[unitLightbox.index]?.url && <div className="photo-lightbox unit-lightbox" role="dialog" aria-modal="true" aria-label="Foto da unidade ampliada"><button className="lightbox-close" type="button" onClick={() => setUnitLightbox(null)} aria-label="Fechar galeria">×</button>{unitLightbox.items.length > 1 && <button className="lightbox-nav previous" type="button" onClick={() => setUnitLightbox((s) => s && ({ ...s, index: (s.index - 1 + s.items.length) % s.items.length }))} aria-label="Foto anterior">‹</button>}<div className="lightbox-image watermarked-preview"><img src={unitLightbox.items[unitLightbox.index].url} alt={unitLightbox.items[unitLightbox.index].label} /></div><div><span>{unitLightbox.index + 1} de {unitLightbox.items.length}</span></div>{unitLightbox.items.length > 1 && <button className="lightbox-nav next" type="button" onClick={() => setUnitLightbox((s) => s && ({ ...s, index: (s.index + 1) % s.items.length }))} aria-label="Próxima foto">›</button>}</div>}
   </div>;
 }

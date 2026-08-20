@@ -2913,6 +2913,9 @@ body { overflow:hidden; background:#eee8e2; }
 .fv2-unit-detail-ov .fv2-ud-approve { background:var(--fv-green); color:#fff; }
 .fv2-unit-detail-ov .fv2-ud-reject { background:#fff; color:#c62828; border:1px solid #f0c3c3 !important; }
 .fv2-unit-detail-ov .fv2-ud-foot button:disabled { opacity:.5; }
+.fv2-unit-edit-layer { z-index:260; }
+.fv2-unit-edit-panel { width:min(720px, calc(100vw - 24px)); }
+.fv2-unit-edit-panel .toggle { margin-top:14px; }
 /* Lista de unidades pendentes (dentro do filtro Pendentes de aprovação em Produtos) */
 .pending-units { margin:6px 0 18px; padding:16px 18px; border:1px solid #f0d9a8; border-radius:16px; background:linear-gradient(180deg,#fffdf8,#fff8ec); }
 .pending-units h3 { font-size:15px; display:flex; align-items:center; gap:8px; color:#8a5d00; }

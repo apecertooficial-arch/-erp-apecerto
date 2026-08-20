@@ -14,6 +14,15 @@
 /* ===== Produtos: catálogo ===== */
 .catalog-controls { padding:8px 28px 16px; background:transparent; border-bottom:0; }
 .catalog-title { font-size:20px; font-weight:700; letter-spacing:-.02em; color:var(--ink); }
+.product-entry-guide { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:0 28px 12px; padding:12px 14px; border:1px solid #F0E5DB; border-radius:16px; background:#FFFDFC; }
+.product-entry-guide div { display:grid; gap:2px; padding-left:12px; border-left:3px solid #FF7000; }
+.product-entry-guide div:last-child { border-left-color:#8B00CC; }
+.product-entry-guide strong { color:var(--ink); font-size:12.5px; }
+.product-entry-guide span { color:var(--muted); font-size:11.5px; }
+.catalog-view-tabs { display:flex; gap:7px; padding:4px; border-radius:999px; background:#F1EDEA; }
+.catalog-view-tabs button { min-height:36px; border:0; border-radius:999px; padding:0 16px; background:transparent; color:var(--muted); font-family:inherit; font-size:13px; font-weight:700; cursor:pointer; }
+.catalog-view-tabs button.active { background:#fff; color:#C25200; box-shadow:0 2px 7px rgba(31,28,26,.08); }
+.catalog-view-tabs b { display:inline-grid; min-width:21px; min-height:21px; place-items:center; margin-left:5px; border-radius:999px; background:#8B00CC; color:#fff; font-size:10.5px; }
 .filter-row { gap:8px; margin-top:10px; padding:12px 14px; border-radius:18px; background:#fff; box-shadow:0 2px 6px rgba(31,28,26,.06); }
 .filter-row input, .filter-row select { height:42px; border:1px solid var(--line-strong); border-radius:999px; padding:0 16px; font-size:13px; font-weight:600; color:var(--ink-soft); background:var(--page); }
 .filter-row input:hover, .filter-row select:hover { background:#fff; }
@@ -22,10 +31,20 @@
 .filter-row>button:hover { border-color:#FF7000; color:#C25200; }
 .filter-row>button.active { background:#FFF3EA; border-color:#FF7000; color:#C25200; }
 .filter-row .favorite-filter { border-color:transparent; background:#FDF1D9; color:#B87800; }
+.filter-row .mine-filter { border-color:transparent; background:#F7ECFC; color:#66009A; }
 .filter-row .approval-filter { border-color:transparent; background:#F7ECFC; color:#66009A; }
 .filter-row .approval-filter b { border-radius:999px; padding:2px 8px; background:#8B00CC; color:#fff; font-size:11px; }
 .filter-row .product-count { margin-left:auto; padding:9px 15px; border-radius:999px; background:#FFE4D1; color:#C25200; font-size:12.5px; font-weight:700; }
 .filter-row label, .filter-row .toggle { font-size:12.5px; font-weight:600; color:var(--muted); }
+.filter-primary input { flex:1 1 320px; width:auto; }
+.filter-primary select { flex:0 1 210px; }
+.filter-advanced { border:1px solid #EFE9E4; background:#FFFEFD; box-shadow:none; }
+.filter-advanced .toggle { background:#fff; }
+.approval-building-title { display:flex; align-items:center; gap:8px; margin:14px 28px 10px; color:var(--ink); font-size:17px; }
+.approval-building-title span { display:inline-grid; min-width:25px; min-height:25px; place-items:center; border-radius:999px; background:#F7ECFC; color:#66009A; font-size:11px; }
+.unit-building-help { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:10px; }
+.unit-building-help span { color:var(--muted); font-size:12px; font-weight:600; }
+.unit-building-help .secondary-action { min-height:38px; }
 .data-status { border-radius:999px; padding:7px 12px; background:#E4F6EC; color:#0F7A3D; font-size:12px; font-weight:700; }
 .product-grid { gap:18px; }
 .product-card { border:0; border-radius:22px; background:#fff; box-shadow:0 2px 6px rgba(31,28,26,.06); overflow:hidden; transition:box-shadow .15s ease, transform .15s ease; }
@@ -193,7 +212,7 @@
 .capture-footer .primary-action:hover { background:#E85D00; }
 
 @media (max-width:1100px) { .product-quality-overview { grid-template-columns:repeat(3,1fr); }.quality-dimensions,.site-content-grid { grid-template-columns:repeat(2,1fr); } }
-@media (max-width:720px) { .product-quality-overview { grid-template-columns:repeat(2,1fr); padding-inline:14px; }.quality-dimensions,.site-content-grid,.unit-money-grid { grid-template-columns:1fr; }.site-content-head { flex-direction:column; }.money-input-head { align-items:flex-start; flex-direction:column; } }
+@media (max-width:720px) { .product-quality-overview { grid-template-columns:repeat(2,1fr); padding-inline:14px; }.product-entry-guide { grid-template-columns:1fr; margin-inline:14px; }.catalog-heading { align-items:flex-start; flex-direction:column; }.catalog-view-tabs { width:100%; }.catalog-view-tabs button { flex:1; }.quality-dimensions,.site-content-grid,.unit-money-grid { grid-template-columns:1fr; }.site-content-head { flex-direction:column; }.money-input-head { align-items:flex-start; flex-direction:column; }.unit-building-help { align-items:stretch; flex-direction:column; } }
 
 /* ===== Financeiro, ficha da venda e Importar extrato ===== */
 .finance-workspace { background:#FAF8F6; }

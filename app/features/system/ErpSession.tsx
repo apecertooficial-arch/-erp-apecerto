@@ -35,7 +35,7 @@ export type SessionProfile = {
 
 /* Mesmo conjunto que ProductCatalog usava. Papel de gestao nao vem de slug de
    permissao, vem do perfil real -- por isso fica separado. */
-export const MANAGER_ROLES = new Set(["admin", "executivo", "diretor", "gerente", "gestor_comercial", "gestor_equipe"]);
+export const MANAGER_ROLES = new Set(["admin", "gestor", "executivo", "gestor_comercial", "gestor_equipe"]);
 
 export type EstadoDados = "loading" | "live" | "auth" | "error";
 

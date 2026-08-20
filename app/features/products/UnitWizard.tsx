@@ -5,7 +5,7 @@ import { getBrowserSupabaseClient } from "../../lib/supabase/browser";
 import { MoneyInput } from "./MoneyInput";
 import { applyOfficialWatermark } from "./watermark";
 
-type UnitWizardProps = { accessToken: string; onClose: () => void; onSaved: () => void };
+type UnitWizardProps = { accessToken: string; onClose: () => void; onSaved: () => void; onCreateCondominium?: () => void };
 type Building = { id: string; nome: string; bairro: string | null; cidade: string | null; finalidade: string | null };
 
 const accessOptions: Array<[string, string]> = [
@@ -27,8 +27,9 @@ function tipoDaMidia(file: File): "foto" | "video" {
   return (file.type || "").startsWith("video/") ? "video" : "foto";
 }
 
-export function UnitWizard({ accessToken, onClose, onSaved }: UnitWizardProps) {
+export function UnitWizard({ accessToken, onClose, onSaved, onCreateCondominium }: UnitWizardProps) {
   const [buildings, setBuildings] = useState<Building[]>([]);
+  const [buildingQuery, setBuildingQuery] = useState("");
   const [empreendimentoId, setEmpreendimentoId] = useState("");
   const [numero, setNumero] = useState("");
   const [tipologia, setTipologia] = useState("");
@@ -55,6 +56,11 @@ export function UnitWizard({ accessToken, onClose, onSaved }: UnitWizardProps) {
 
   const selectedPurpose = buildings.find((item) => item.id === empreendimentoId)?.finalidade ?? "venda";
   const moneyMode = selectedPurpose === "aluguel" ? "reais" : "milhares";
+  const visibleBuildings = buildings.filter((item) => {
+    const key = buildingQuery.trim().toLocaleLowerCase("pt-BR");
+    if (!key || item.id === empreendimentoId) return true;
+    return [item.nome, item.bairro, item.cidade].some((value) => value?.toLocaleLowerCase("pt-BR").includes(key));
+  }).slice(0, 40);
 
   function addPhotos(files: FileList | null) {
     if (!files) return;
@@ -68,9 +74,15 @@ export function UnitWizard({ accessToken, onClose, onSaved }: UnitWizardProps) {
   }
 
   function validate() {
-    if (!empreendimentoId) return "Selecione o prédio da unidade.";
+    if (!empreendimentoId) return "Selecione o condomínio ou prédio do apartamento.";
     if (!numero.trim()) return "Informe o número da unidade.";
+    if (!tipologia.trim()) return "Informe a tipologia da unidade.";
+    if (!area.trim() || Number(area) <= 0) return "Informe a área útil da unidade.";
     if (!valorTabela.trim()) return "Informe o valor de tabela da unidade.";
+    if (!proprietarioNome.trim() || !proprietarioContato.trim()) return "Informe nome e contato do proprietário.";
+    if (!acessoTipo || !acessoInstrucoes.trim()) return "Informe o tipo e as instruções de acesso.";
+    if (acessoTipo === "chave_digital" && !acessoCodigo.trim()) return "Informe o código da chave digital.";
+    if (photos.filter((file) => tipoDaMidia(file) === "foto").length < 1) return "Adicione ao menos uma foto da unidade para a aprovação.";
     return "";
   }
 
@@ -142,23 +154,25 @@ export function UnitWizard({ accessToken, onClose, onSaved }: UnitWizardProps) {
   }
 
   return (
-    <div className="modal-layer" role="dialog" aria-modal="true" aria-label="Cadastrar unidade">
+    <div className="modal-layer" role="dialog" aria-modal="true" aria-label="Cadastrar apartamento">
       <button className="modal-scrim" onClick={onClose} aria-label="Fechar cadastro" type="button" />
       <section className="capture-panel">
         <header className="capture-header">
-          <div><span className="eyebrow">CAPTAÇÃO DE UNIDADE</span><h2>Cadastrar unidade</h2><p>Adicione a sua unidade a um prédio já existente.</p></div>
+          <div><span className="eyebrow">CAPTAÇÃO DE APARTAMENTO</span><h2>Cadastrar apartamento</h2><p>Associe o apartamento captado a um condomínio ou prédio já existente.</p></div>
           <button className="icon-button" onClick={onClose} type="button" aria-label="Fechar">×</button>
         </header>
 
         <div className="capture-body">
           <div className="form-section">
-            <h3>Prédio</h3>
-            <p>Selecione o empreendimento onde fica a unidade.</p>
-            <label>Prédio<select value={empreendimentoId} onChange={(event) => setEmpreendimentoId(event.target.value)}><option value="">Selecione...</option>{buildings.map((item) => <option value={item.id} key={item.id}>{item.nome}{item.bairro ? ` · ${item.bairro}` : ""}</option>)}</select></label>
+            <h3>Condomínio do apartamento</h3>
+            <p>Primeiro encontre o condomínio. O apartamento será um produto próprio no catálogo, sem ficar escondido dentro do prédio.</p>
+            <label>Buscar condomínio<input type="search" value={buildingQuery} onChange={(event) => setBuildingQuery(event.target.value)} placeholder="Digite nome, bairro ou cidade" /></label>
+            <label>Condomínio ou prédio<select value={empreendimentoId} onChange={(event) => setEmpreendimentoId(event.target.value)}><option value="">Selecione...</option>{visibleBuildings.map((item) => <option value={item.id} key={item.id}>{item.nome}{item.bairro ? ` · ${item.bairro}` : ""}{item.cidade ? ` · ${item.cidade}` : ""}</option>)}</select></label>
+            <div className="unit-building-help"><span>{visibleBuildings.length > 0 ? `${visibleBuildings.length} condomínio(s) encontrado(s)` : "Nenhum condomínio encontrado"}</span>{onCreateCondominium && <button className="secondary-action" type="button" onClick={onCreateCondominium}>＋ Cadastrar condomínio novo</button>}</div>
           </div>
 
           <div className="form-section">
-            <h3>Dados da unidade</h3>
+            <h3>Dados do apartamento</h3>
             <div className="field-grid">
               <label>Número<input value={numero} onChange={(event) => setNumero(event.target.value)} placeholder="Ex.: 142" /></label>
               <label>Tipologia<input value={tipologia} onChange={(event) => setTipologia(event.target.value)} placeholder="Ex.: HR, 2 dorm." /></label>
@@ -200,7 +214,7 @@ export function UnitWizard({ accessToken, onClose, onSaved }: UnitWizardProps) {
 
         <footer className="capture-footer">
           <button className="ghost-action" onClick={onClose} disabled={saving} type="button">Cancelar</button>
-          <button className="primary-action" disabled={saving} onClick={() => void save()} type="button">{saving ? "Cadastrando..." : "Cadastrar unidade"}</button>
+          <button className="primary-action" disabled={saving} onClick={() => void save()} type="button">{saving ? "Cadastrando..." : "Cadastrar apartamento"}</button>
         </footer>
       </section>
     </div>
