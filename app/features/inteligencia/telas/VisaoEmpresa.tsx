@@ -1,342 +1,159 @@
 "use client";
 
-/* VISÃO DO DONO
- *
- * Esta tela não tenta resumir a empresa em um "score" inventado. Ela começa
- * pela fotografia disponível, explicita o escopo de cada número e transforma
- * somente fatos observados no banco em prioridades. Dados anuais, do período e
- * de estoque atual nunca são apresentados como se fossem o mesmo recorte.
- */
-
-import "../../../styles/inteligencia-dono.css";
-import type { MetaInteligencia, VisaoCeoPayload } from "../../../lib/inteligencia/tipos";
+import { useMemo, useState } from "react";
 import type { PropsTela } from "../CascaInteligencia";
-import { BlocoSemDado, fmt } from "../dado";
-import { EsqueletoAviso, EsqueletoCartoes, EsqueletoKpis } from "../esqueleto";
-import { Cabecalho, CartoesLista, GradeKpis, IconeInt, type Kpi, type NomeIcone } from "../pecas";
-import { useDadosInteligencia } from "../useDadosInteligencia";
+import { fmt, RodapeFontes } from "../dado";
+import { Banner, Cabecalho, GradeKpis, Tabela } from "../pecas";
+import { useResumoInteligencia, type CorretorOperacao } from "../usar-resumo";
 
-type TomPrioridade = "critico" | "atencao" | "bom" | "neutro";
-
-type Prioridade = {
-  chave: string;
-  tom: TomPrioridade;
-  etiqueta: string;
-  icone: NomeIcone;
-  titulo: string;
-  explicacao: string;
-  evidencia: string;
-  alvo: string;
-  acao: string;
-};
-
-function horaSaoPaulo(iso: string | null | undefined): string {
-  if (!iso) return "—";
-  const data = new Date(iso);
-  if (Number.isNaN(data.getTime())) return "—";
-  return data.toLocaleString("pt-BR", {
-    day: "2-digit",
-    month: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    timeZone: "America/Sao_Paulo",
-  });
+function pior<T>(linhas: T[], valor: (linha: T) => number | null | undefined) {
+  return linhas.reduce<T | null>((atual, linha) => !atual || (valor(linha) ?? -1) > (valor(atual) ?? -1) ? linha : atual, null);
 }
 
-function intervaloDaMeta(meta: MetaInteligencia | null): string {
-  if (!meta) return "período não informado";
-  const inicio = new Date(meta.periodo.inicio);
-  const fim = new Date(meta.periodo.fim);
-  if (Number.isNaN(inicio.getTime()) || Number.isNaN(fim.getTime())) return meta.periodo.rotulo;
-  const formatar = (data: Date) => data.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", timeZone: "America/Sao_Paulo" });
-  return `${formatar(inicio)} a ${formatar(fim)}`;
+function melhorConversao(linhas: CorretorOperacao[]) {
+  return linhas
+    .filter((linha) => linha.leads_novos >= 5 && linha.conversao_lead_visita !== null)
+    .sort((a,b) => (b.conversao_lead_visita ?? 0) - (a.conversao_lead_visita ?? 0))[0] ?? null;
 }
 
-function prioridadesDe(p: VisaoCeoPayload): Prioridade[] {
-  const cobertura = p.meta_vgv_ano > 0 ? (100 * p.vgv_ano) / p.meta_vgv_ano : null;
-  const faltaMeta = Math.max(0, p.meta_vgv_ano - p.vgv_ano);
-
-  return [
-    p.sla.aguardando > 0
-      ? {
-          chave: "atendimento",
-          tom: "critico",
-          etiqueta: "AGIR AGORA",
-          icone: "relogio",
-          titulo: `${fmt.inteiro(p.sla.aguardando)} pessoas aguardam resposta`,
-          explicacao: "A fila existe neste momento. Priorizar os casos mais antigos reduz perda por demora.",
-          evidencia: `mediana ${fmt.duracaoMin(p.sla.mediana_min)} · P90 ${fmt.duracaoMin(p.sla.p90_min)}`,
-          alvo: "atendimento",
-          acao: "Abrir fila de atendimento",
-        }
-      : {
-          chave: "atendimento",
-          tom: "bom",
-          etiqueta: "SEM PENDÊNCIA",
-          icone: "check",
-          titulo: "Nenhuma pessoa aguardando resposta",
-          explicacao: "A fila atual não apresenta backlog nas fontes disponíveis.",
-          evidencia: `atualizado ${horaSaoPaulo(p.atualizado_em)}`,
-          alvo: "atendimento",
-          acao: "Ver atendimento",
-        },
-    p.vendas_sem_comissao > 0
-      ? {
-          chave: "comissao",
-          tom: "atencao",
-          etiqueta: "CORRIGIR DADO",
-          icone: "dinheiro",
-          titulo: `${fmt.inteiro(p.vendas_sem_comissao)} vendas sem percentual de comissão`,
-          explicacao: "Sem esse cadastro, o resultado financeiro e os valores a pagar ficam incompletos.",
-          evidencia: `${fmt.dinheiro(p.comissoes_total)} calculados nas vendas do recorte`,
-          alvo: "financeiro",
-          acao: "Revisar financeiro",
-        }
-      : {
-          chave: "comissao",
-          tom: "bom",
-          etiqueta: "DADO COMPLETO",
-          icone: "check",
-          titulo: "Vendas do recorte com comissão cadastrada",
-          explicacao: "Não há venda sinalizada sem percentual de comissão neste recorte.",
-          evidencia: `${fmt.dinheiro(p.comissoes_total)} calculados`,
-          alvo: "financeiro",
-          acao: "Ver financeiro",
-        },
-    p.negocios_f2_parados > 0
-      ? {
-          chave: "carteira-parada",
-          tom: "atencao",
-          etiqueta: "REVISAR CARTEIRA",
-          icone: "alerta",
-          titulo: `${fmt.inteiro(p.negocios_f2_parados)} negócios abertos estão parados há 7+ dias`,
-          explicacao: "É estoque atual, não produção do período. Uma carteira antiga desse tamanho exige limpeza, próxima ação ou encerramento.",
-          evidencia: `${fmt.inteiro(p.negocios_f2_abertos)} negócios abertos no total`,
-          alvo: "conversao",
-          acao: "Revisar o funil",
-        }
-      : {
-          chave: "carteira-parada",
-          tom: "bom",
-          etiqueta: "CARTEIRA ATIVA",
-          icone: "check",
-          titulo: "Nenhum negócio aberto parado há mais de 7 dias",
-          explicacao: "A carteira atual não tem negócio sem movimentação acima do limite observado.",
-          evidencia: `${fmt.inteiro(p.negocios_f2_abertos)} negócios abertos`,
-          alvo: "conversao",
-          acao: "Ver funil",
-        },
-    p.leads_carga_historica > 0
-      ? {
-          chave: "carga-historica",
-          tom: "neutro",
-          etiqueta: "CONTEXTO DO DADO",
-          icone: "pessoas",
-          titulo: `${fmt.inteiro(p.leads_carga_historica)} registros da base Aquário entraram no recorte`,
-          explicacao: "A carga histórica continua visível, mas foi separada da aquisição operacional para não inflar a leitura de crescimento.",
-          evidencia: `${fmt.inteiro(p.leads_operacionais)} leads operacionais no mesmo período`,
-          alvo: "aquisicao",
-          acao: "Ver origens",
-        }
-      : {
-          chave: "carga-historica",
-          tom: "bom",
-          etiqueta: "RECORTE LIMPO",
-          icone: "check",
-          titulo: "Nenhuma carga histórica misturada ao período",
-          explicacao: "Todos os registros do cartão de leads pertencem ao fluxo operacional conhecido.",
-          evidencia: `${fmt.inteiro(p.leads_operacionais)} leads operacionais`,
-          alvo: "aquisicao",
-          acao: "Ver aquisição",
-        },
-    faltaMeta > 0
-      ? {
-          chave: "meta",
-          tom: "neutro",
-          etiqueta: "ACOMPANHAR",
-          icone: "tendencia",
-          titulo: `${fmt.dinheiro(faltaMeta)} para a meta anual`,
-          explicacao: "O número é anual e não muda com o seletor de período. Ele aparece separado para evitar comparação indevida.",
-          evidencia: `${fmt.porcento(cobertura, 0)} da meta anual realizada`,
-          alvo: "vendas",
-          acao: "Abrir vendas",
-        }
-      : {
-          chave: "meta",
-          tom: "bom",
-          etiqueta: "META ANUAL",
-          icone: "tendencia",
-          titulo: "Meta anual atingida",
-          explicacao: "O VGV anual realizado alcançou ou superou a meta cadastrada.",
-          evidencia: `${fmt.porcento(cobertura, 0)} da meta anual`,
-          alvo: "vendas",
-          acao: "Ver composição das vendas",
-        },
-  ];
+function Fonte({ nome, status, motivo }: { nome: string; status: string; motivo?: string }) {
+  return <div className={`int-operacao-fonte status-${status}`}><i /><span><strong>{nome}</strong>{motivo ? ` — ${motivo}` : ""}</span></div>;
 }
 
 export function VisaoEmpresa({ accessToken, recorte }: PropsTela) {
-  const leitura = useDadosInteligencia<VisaoCeoPayload>("empresa", accessToken, recorte);
+  const { data, loading, error } = useResumoInteligencia(accessToken, recorte.periodo);
+  const operacao = data?.operacao;
+  const resumo = operacao?.operacao;
+  const equipe = useMemo(() => operacao?.equipe ?? [], [operacao?.equipe]);
+  const [selecionadoId, setSelecionadoId] = useState<number | null>(null);
 
-  if (leitura.estado === "carregando") {
-    return (
-      <div className="int-secao intd-secao">
-        <Cabecalho eyebrow="SAÚDE DO NEGÓCIO" titulo="Montando a fotografia da empresa" nota={recorte.periodo} />
-        <EsqueletoAviso texto="Buscando os indicadores reais da operação." />
-        <EsqueletoKpis colunas={5} />
-        <EsqueletoCartoes colunas={3} linhas={3} />
-      </div>
-    );
-  }
+  const maisCritico = useMemo(() => pior(equipe, (linha) => linha.carteira_critica), [equipe]);
+  const maisLento = useMemo(() => pior(equipe, (linha) => linha.resposta_mediana_min), [equipe]);
+  const maisCancela = useMemo(() => pior(equipe, (linha) => linha.visitas_canceladas), [equipe]);
+  const melhor = useMemo(() => melhorConversao(equipe), [equipe]);
 
-  if (leitura.estado === "erro") {
-    return (
-      <div className="int-secao intd-secao">
-        <BlocoSemDado
-          titulo="Não foi possível atualizar a Visão do dono"
-          motivo="fonte"
-          detalhe={`${leitura.erro ?? "A fonte não respondeu."} Nenhum número anterior ou estimado foi colocado no lugar.`}
-        />
-      </div>
-    );
-  }
+  const selecionado = equipe.find((linha) => linha.corretor_id === selecionadoId) ?? maisCritico ?? equipe[0];
 
-  const p = leitura.payload;
-  if (!p) {
-    return (
-      <div className="int-secao intd-secao">
-        <BlocoSemDado titulo="Ainda não há uma fotografia disponível" detalhe="A consulta terminou sem dados. Ajuste o período ou verifique as fontes declaradas abaixo." />
-      </div>
-    );
-  }
+  if (loading) return <Banner tom="tint-roxo" forte="Carregando a operação real." texto="CRM, visitas, vendas, presença e qualidade estão sendo reconciliados." />;
+  if (error) return <Banner forte="A Inteligência não respondeu." texto={error} />;
 
-  const cobertura = p.meta_vgv_ano > 0 ? (100 * p.vgv_ano) / p.meta_vgv_ano : null;
-  const pendencias = Number(p.sla.aguardando > 0) + Number(p.vendas_sem_comissao > 0) + Number(p.negocios_f2_parados > 0);
-  const prioridades = prioridadesDe(p);
-  const kpis: Kpi[] = [
-    { rotulo: `Leads operacionais · ${recorte.periodo}`, bruto: p.leads_operacionais, texto: fmt.inteiro(p.leads_operacionais), tile: "laranja", foot: `${fmt.inteiro(p.leads)} registros no total · ${fmt.inteiro(p.leads_carga_historica)} da carga Aquário` },
-    { rotulo: `Vendas · ${recorte.periodo}`, bruto: p.vendas, texto: fmt.inteiro(p.vendas), tile: "verde", foot: "vendas pagas ou concluídas no recorte" },
-    { rotulo: `VGV · ${recorte.periodo}`, bruto: p.vgv, texto: fmt.dinheiro(p.vgv), tile: "roxo", foot: "somente vendas do período selecionado" },
-    { rotulo: "Negócios abertos · agora", bruto: p.negocios_f2_abertos, texto: fmt.inteiro(p.negocios_f2_abertos), tile: "ambar", foot: "estoque atual do Funil 2.0, independentemente da criação" },
-    { rotulo: "Meta de VGV · ano", bruto: cobertura, texto: fmt.porcento(cobertura, 0), tile: "roxo", foot: `${fmt.dinheiro(p.vgv_ano)} de ${fmt.dinheiro(p.meta_vgv_ano)}` },
-  ];
+  const linhas = equipe.map((linha) => ({
+    chave: String(linha.corretor_id),
+    abrir: () => setSelecionadoId(linha.corretor_id),
+    destaque: linha.corretor_id === selecionado?.corretor_id,
+    celulas: [
+      { texto: linha.nome, forte: true, sub: linha.no_escritorio_agora ? "no escritório agora" : undefined },
+      { texto: fmt.inteiro(linha.leads_novos), num: true },
+      { texto: fmt.inteiro(linha.carteira_aberta), num: true },
+      { texto: fmt.inteiro(linha.carteira_critica), num: true, cor: linha.carteira_critica > 0 ? "#D93E3E" : undefined },
+      { texto: fmt.duracaoMin(linha.resposta_mediana_min), num: true, cor: (linha.resposta_mediana_min ?? 0)>60 ? "#D93E3E" : undefined },
+      { texto: `${fmt.inteiro(linha.visitas_realizadas)} / ${fmt.inteiro(linha.visitas_canceladas)}`, num: true },
+      { texto: fmt.porcento(linha.realizacao_visita,0), num: true, forte: true },
+      { texto: fmt.inteiro(linha.vendas), num: true },
+      { texto: fmt.dinheiro(linha.vgv), num: true },
+      { texto: linha.nota_ia === null ? "—" : `${linha.nota_ia.toFixed(1).replace(".",",")}/100`, num: true },
+      { texto: fmt.inteiro(linha.dias_presenca), num: true },
+    ],
+  }));
 
   return (
-    <div className="int-secao intd-secao">
-      <section className={`intd-resumo ${pendencias ? "com-pendencia" : "sem-pendencia"}`}>
-        <div className="intd-resumo-principal">
-          <span className="intd-eyebrow">SAÚDE DO NEGÓCIO</span>
-          <div className="intd-status-linha">
-            <span className="intd-status-icone"><IconeInt nome={pendencias ? "alerta" : "check"} tamanho={20} /></span>
-            <div>
-              <h2>{pendencias ? `${pendencias} ${pendencias === 1 ? "frente exige" : "frentes exigem"} sua decisão` : "Nenhuma pendência crítica nas fontes disponíveis"}</h2>
-              <p>Conclusão limitada aos dados conectados. A central não estima caixa, lucro ou previsão que ainda não existam no ERP.</p>
-            </div>
-          </div>
+    <div className="int-secao">
+      <section className="int-decisao-resumo">
+        <div>
+          <span className="intp-cab-eyebrow">LEITURA DO DONO</span>
+          <h2>{(resumo?.carteira_critica ?? 0) > 0 ? `${fmt.inteiro(resumo?.carteira_critica)} negócios precisam de ação` : "A carteira não tem sinal crítico no recorte"}</h2>
+          <p>Prioridade: corrigir oportunidade esquecida, melhorar conversão em visita e reconhecer quem produz melhor com os leads que recebe.</p>
         </div>
-        <div className="intd-resumo-contexto">
-          <span>Fotografia consultada</span>
-          <strong>{intervaloDaMeta(leitura.meta)}</strong>
-          <small>atualizada {horaSaoPaulo(leitura.meta?.atualizadoEm ?? p.atualizado_em)}</small>
-          <span className={`intd-cobertura ${leitura.meta?.parcial ? "parcial" : "completa"}`}>
-            {leitura.meta?.parcial ? "cobertura parcial" : "fontes completas"}
-          </span>
-        </div>
+        <strong className={(resumo?.sem_primeira_resposta ?? 0)>0 ? "ruim" : "bom"}>{fmt.inteiro(resumo?.sem_primeira_resposta)} sem 1ª resposta</strong>
       </section>
 
-      <Cabecalho eyebrow="FOTOGRAFIA" titulo="Cinco números para entender a empresa" nota="cada cartão declara o próprio escopo" />
-      <GradeKpis itens={kpis} colunas={5} />
-
-      <Cabecalho eyebrow="DECISÕES" titulo="O que merece sua atenção" nota="prioridades geradas apenas por regras verificáveis" cor="#8B00CC" />
-      <div className="intd-prioridades">
-        {prioridades.map((item) => (
-          <article className={`intd-prioridade tom-${item.tom}`} key={item.chave}>
-            <div className="intd-prioridade-topo">
-              <span className="intd-prioridade-icone"><IconeInt nome={item.icone} tamanho={17} /></span>
-              <span className="intd-prioridade-etiqueta">{item.etiqueta}</span>
-            </div>
-            <h3>{item.titulo}</h3>
-            <p>{item.explicacao}</p>
-            <small>{item.evidencia}</small>
-            <button type="button" className="int-link" onClick={() => recorte.irPara(item.alvo)}>{item.acao} →</button>
-          </article>
-        ))}
+      <Cabecalho eyebrow="O QUE FAZER AGORA" titulo="A central já interpreta a operação" cor="#8B00CC" />
+      <div className="int-decisao-acoes">
+        <article className="critico">
+          <span>1 · LIMPAR CARTEIRA</span>
+          <h3>{maisCritico ? `${maisCritico.nome}: ${fmt.inteiro(maisCritico.carteira_critica)} negócios críticos` : "Sem carteira crítica"}</h3>
+          <p>Antes de entregar mais leads, definir próxima ação ou encerrar oportunidades sem movimento.</p>
+        </article>
+        <article className={(maisLento?.resposta_mediana_min ?? 0)>60 ? "critico" : "atencao"}>
+          <span>2 · CORRIGIR VELOCIDADE</span>
+          <h3>{maisLento ? `${maisLento.nome}: mediana de ${fmt.duracaoMin(maisLento.resposta_mediana_min)}` : "Sem amostra de primeira resposta"}</h3>
+          <p>Tempo alto de resposta reduz a chance de visita. O gestor deve atacar a fila, não apenas cobrar volume.</p>
+        </article>
+        <article className={melhor ? "positivo" : "atencao"}>
+          <span>3 · DISTRIBUIR MELHOR</span>
+          <h3>{melhor ? `${melhor.nome} converte ${fmt.porcento(melhor.conversao_lead_visita,1)} dos leads em visita` : "Ainda não há amostra suficiente"}</h3>
+          <p>{melhor ? "A eficiência indica capacidade para receber mais oportunidades, desde que a carteira crítica permaneça controlada." : "A distribuição deve esperar uma amostra mínima de cinco leads."}</p>
+        </article>
+        <article className={(maisCancela?.visitas_canceladas ?? 0)>0 ? "atencao" : "positivo"}>
+          <span>4 · QUALIFICAR VISITAS</span>
+          <h3>{maisCancela ? `${maisCancela.nome}: ${fmt.inteiro(maisCancela.visitas_canceladas)} visitas canceladas` : "Sem cancelamentos no período"}</h3>
+          <p>Cancelamento alto pede revisão de qualificação, confirmação e aderência do imóvel ao cliente.</p>
+        </article>
       </div>
 
-      <Cabecalho eyebrow="QUATRO FRENTES" titulo="Aprofunde somente onde precisar" />
-      <CartoesLista
-        colunas={4}
-        cartoes={[
-          {
-            titulo: "Atendimento",
-            chip: "situação atual",
-            chipTom: p.sla.aguardando > 0 ? "ruim" : "bom",
-            linhas: [
-              { l: "Aguardando resposta", r: fmt.inteiro(p.sla.aguardando), corR: p.sla.aguardando > 0 ? "#D93E3E" : "#1E7A46" },
-              { l: "Espera mediana", r: fmt.duracaoMin(p.sla.mediana_min) },
-              { l: "P90 da espera", r: fmt.duracaoMin(p.sla.p90_min) },
-            ],
-            link: { rotulo: "Abrir atendimento →", go: () => recorte.irPara("atendimento") },
-          },
-          {
-            titulo: "Comercial",
-            chip: recorte.periodo,
-            chipTom: "neutro",
-            linhas: [
-              { l: "Leads operacionais", r: fmt.inteiro(p.leads_operacionais) },
-              { l: "Vendas concluídas", r: fmt.inteiro(p.vendas) },
-              { l: "VGV do recorte", r: fmt.dinheiro(p.vgv) },
-            ],
-            link: { rotulo: "Abrir vendas →", go: () => recorte.irPara("vendas") },
-          },
-          {
-            titulo: "Financeiro",
-            chip: recorte.periodo,
-            chipTom: p.vendas_sem_comissao > 0 ? "aviso" : "bom",
-            linhas: [
-              { l: "Comissões calculadas", r: fmt.dinheiro(p.comissoes_total) },
-              { l: "Vendas sem comissão", r: fmt.inteiro(p.vendas_sem_comissao), corR: p.vendas_sem_comissao > 0 ? "#B5700A" : "#1E7A46" },
-              { l: "Lucro e caixa", r: "—", sub: "fonte ainda não conectada" },
-            ],
-            link: { rotulo: "Abrir financeiro →", go: () => recorte.irPara("financeiro") },
-          },
-          {
-            titulo: "Pessoas e qualidade",
-            chip: "aprofundamento",
-            chipTom: "roxo",
-            linhas: [
-              { l: "Corretores", r: "ver operação" },
-              { l: "Qualidade", r: "ver avaliações" },
-              { l: "Ranking público", r: "não utilizado" },
-            ],
-            link: { rotulo: "Abrir qualidade →", go: () => recorte.irPara("qualidade") },
-          },
+      <Cabecalho eyebrow="SAÚDE COMERCIAL" titulo="Poucos números para entender a empresa" nota={recorte.periodo} />
+      <GradeKpis colunas={6} itens={[
+        { rotulo: "Leads novos", bruto: resumo?.leads_novos, texto: fmt.inteiro(resumo?.leads_novos), tile: "laranja", foot: "aquisição operacional do período" },
+        { rotulo: "Carteira crítica", bruto: resumo?.carteira_critica, texto: fmt.inteiro(resumo?.carteira_critica), tile: "vermelho", tom: (resumo?.carteira_critica ?? 0)>0 ? "ruim" : "bom", foot: `${fmt.inteiro(resumo?.carteira_aberta)} negócios abertos agora` },
+        { rotulo: "Lead → visita", bruto: resumo?.conversao_lead_visita, texto: fmt.porcento(resumo?.conversao_lead_visita,1), tile: "verde", foot: "visitas realizadas" },
+        { rotulo: "Visitas realizadas", bruto: resumo?.visitas_realizadas, texto: fmt.inteiro(resumo?.visitas_realizadas), tile: "roxo", foot: `${fmt.inteiro(resumo?.visitas_canceladas)} canceladas` },
+        { rotulo: "Vendas e VGV", bruto: resumo?.vendas, texto: `${fmt.inteiro(resumo?.vendas)} · ${fmt.dinheiro(resumo?.vgv)}`, tile: "verde", foot: `ticket ${fmt.dinheiro(resumo?.ticket_medio)}` },
+        { rotulo: "Qualidade da IA", bruto: resumo?.nota_ia, texto: resumo?.nota_ia === null || resumo?.nota_ia === undefined ? "—" : `${resumo.nota_ia.toFixed(1).replace(".",",")}/100`, tile: "roxo", foot: `${fmt.inteiro(resumo?.avaliacoes_ia)} avaliações` },
+      ]} />
+
+      <Cabecalho eyebrow="CORRETOR POR CORRETOR" titulo="Trabalho, conversão e resultado na mesma régua" nota="clique em uma linha para aprofundar sem abrir outra tela" />
+      <Tabela
+        colunas={[
+          { titulo: "Corretor" }, { titulo: "Leads", num: true }, { titulo: "Carteira", num: true }, { titulo: "Críticos", num: true }, { titulo: "Resposta", num: true },
+          { titulo: "Visitas R/C", num: true }, { titulo: "Realização", num: true }, { titulo: "Vendas", num: true }, { titulo: "VGV", num: true }, { titulo: "Nota IA", num: true }, { titulo: "Presenças", num: true },
         ]}
+        linhas={linhas}
+        ordenadaEm="VGV"
+        foot="R/C = realizadas / canceladas. Presença é confirmação por dia; não representa jornada completa."
       />
 
-      <section className="intd-transparencia">
-        <div className="intd-transparencia-topo">
-          <div>
-            <span className="intd-eyebrow">TRANSPARÊNCIA DOS NÚMEROS</span>
-            <h2>O que esta leitura sabe — e o que ainda não sabe</h2>
+      {selecionado ? (
+        <section className="int-corretor-foco">
+          <div className="int-corretor-foco-topo">
+            <div><span className="intp-cab-eyebrow">CORRETOR EM FOCO</span><h2>{selecionado.nome}</h2></div>
+            <span>{selecionado.no_escritorio_agora ? "No escritório agora" : `última presença ${fmt.hora(selecionado.ultima_presenca)}`}</span>
           </div>
-          <span>atualizado {horaSaoPaulo(leitura.meta?.atualizadoEm ?? p.atualizado_em)}</span>
-        </div>
-        <div className="intd-fontes">
-          {(leitura.meta?.fontes ?? []).map((fonte) => (
-            <div className="intd-fonte" key={fonte.nome}>
-              <i className={`status-${fonte.status}`} />
-              <span><b>{fonte.nome}</b>{fonte.motivo ? ` — ${fonte.motivo}` : ""}</span>
-            </div>
-          ))}
-          {leitura.meta?.cobertura ? <div className="intd-fonte"><i className="status-parcial" /><span><b>Cobertura:</b> {leitura.meta.cobertura}</span></div> : null}
-        </div>
-        {(leitura.meta?.avisos ?? []).length ? (
-          <div className="intd-avisos">
-            {(leitura.meta?.avisos ?? []).map((aviso) => <span key={aviso}>{aviso}</span>)}
+          <div className="int-corretor-grade">
+            <article>
+              <h3>Carteira e velocidade</h3>
+              <dl><div><dt>Leads novos</dt><dd>{fmt.inteiro(selecionado.leads_novos)}</dd></div><div><dt>Carteira aberta</dt><dd>{fmt.inteiro(selecionado.carteira_aberta)}</dd></div><div><dt>Críticos</dt><dd>{fmt.inteiro(selecionado.carteira_critica)}</dd></div><div><dt>Sem 1ª resposta</dt><dd>{fmt.inteiro(selecionado.sem_primeira_resposta)}</dd></div><div><dt>Resposta mediana</dt><dd>{fmt.duracaoMin(selecionado.resposta_mediana_min)}</dd></div></dl>
+            </article>
+            <article>
+              <h3>Visitas e resultado</h3>
+              <dl><div><dt>Agendadas</dt><dd>{fmt.inteiro(selecionado.visitas_agendadas)}</dd></div><div><dt>Realizadas</dt><dd>{fmt.inteiro(selecionado.visitas_realizadas)}</dd></div><div><dt>Canceladas</dt><dd>{fmt.inteiro(selecionado.visitas_canceladas)}</dd></div><div><dt>Vendas</dt><dd>{fmt.inteiro(selecionado.vendas)}</dd></div><div><dt>Ticket médio</dt><dd>{fmt.dinheiro(selecionado.ticket_medio)}</dd></div></dl>
+            </article>
+            <article>
+              <h3>Atendimento observado</h3>
+              <dl><div><dt>Nota da IA</dt><dd>{selecionado.nota_ia === null ? "—" : `${selecionado.nota_ia.toFixed(1).replace(".",",")}/100`}</dd></div><div><dt>Mensagens</dt><dd>{fmt.inteiro(selecionado.mensagens_texto)}</dd></div><div><dt>Áudios</dt><dd>{fmt.inteiro(selecionado.audios)}</dd></div><div><dt>Imagens</dt><dd>{fmt.inteiro(selecionado.imagens)}</dd></div><div><dt>Follow-ups vencidos</dt><dd>{fmt.inteiro(selecionado.followups_vencidos)}</dd></div></dl>
+            </article>
+            <article>
+              <h3>Presença e captação</h3>
+              <dl><div><dt>Dias com presença</dt><dd>{fmt.inteiro(selecionado.dias_presenca)}</dd></div><div><dt>Imóveis captados</dt><dd>{fmt.inteiro(selecionado.captacoes)}</dd></div><div><dt>Horas no ERP</dt><dd>—</dd></div><div><dt>Pulos na roleta</dt><dd>—</dd></div></dl>
+              <small>{selecionado.horas_erp_motivo} {selecionado.pulos_distribuicao_motivo}</small>
+            </article>
           </div>
-        ) : null}
+          <div className="int-corretor-etapas">
+            <h3>Carteira por etapa do Funil 2.0</h3>
+            <div>{selecionado.etapas.map((etapa) => <span key={etapa.etapa}><b>{etapa.quantidade}</b>{etapa.etapa}</span>)}</div>
+          </div>
+        </section>
+      ) : null}
+
+      <section className="int-operacao-fontes">
+        <Cabecalho eyebrow="CONFIABILIDADE" titulo="O que está medido — sem o aviso genérico de CRM pendente" cor="#8B00CC" />
+        <div>{(operacao?.fontes ?? []).map((fonte) => <Fonte key={fonte.nome} {...fonte} />)}</div>
       </section>
+
+      <RodapeFontes
+        fontes={["CRM Funil 2.0", "visitas", "vendas", "perf_eventos", "ia_notas_atendimento", "corretor_presencas"]}
+        pendencias={["sessão individual para horas reais", "histórico de elegibilidade/pulo da roleta"]}
+        atualizado={fmt.hora(operacao?.atualizado_em)}
+      />
     </div>
   );
 }

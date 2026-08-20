@@ -24,30 +24,21 @@ export async function GET(request: Request) {
   const requestedDays = Number(new URL(request.url).searchParams.get("days") ?? 30);
   const days = Number.isFinite(requestedDays) ? Math.max(1, Math.min(Math.round(requestedDays), 365)) : 30;
   const [
-    { data, error },
-    { data: digitalHealth, error: digitalError },
-    { data: deliveryHealth, error: deliveryError },
-    { data: digitalJourney, error: journeyError },
+    { data: operacao, error: operacaoError },
+    { data: marketing, error: marketingError },
   ] = await Promise.all([
     supabase.rpc("tracking_360_ceo", { p_days: days }),
-    supabase.rpc("tracking_360_digital_health", { p_days: days }),
-    supabase.rpc("tracking_delivery_health", { p_days: days }),
     supabase.rpc("tracking_360_jornada_digital", { p_days: days }),
   ]);
 
-  if (error || digitalError || deliveryError || journeyError) {
-    console.error("tracking_360 falhou:", error?.message ?? digitalError?.message ?? deliveryError?.message ?? journeyError?.message);
+  if (operacaoError || marketingError) {
+    console.error("inteligencia_decisao falhou:", operacaoError?.message ?? marketingError?.message);
     return Response.json({ error: "Não foi possível carregar a Inteligência agora." }, { status: 502 });
   }
 
   return Response.json(
     {
-      resumo: {
-        ...(data as Record<string, unknown>),
-        digital_health: digitalHealth,
-        delivery_health: deliveryHealth,
-        digital_journey: digitalJourney,
-      },
+      resumo: { operacao, marketing },
     },
     { headers: { "Cache-Control": "private, no-store" } },
   );

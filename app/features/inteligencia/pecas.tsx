@@ -1,17 +1,10 @@
 "use client";
 
-/* PEÇAS DAS TELAS DA INTELIGÊNCIA — biblioteca do artboard 30b.
- *
- * Contrato de dado ausente (dado.tsx) em todas: o bloco existe sempre; sem
- * número, aparece “—” com o motivo. Nenhuma peça se esconde sozinha.
- *
- * Detalhes operacionais permanecem no fluxo da própria página; a área não usa
- * gavetas ou telas sobrepostas.
- */
+/* Peças compartilhadas pelas duas leituras canônicas da Inteligência. */
 
 import { useState, type ReactNode } from "react";
 import "../../styles/inteligencia-pecas.css";
-import { BlocoSemDado, existe, TRACO, Valor, type MotivoPendencia, type Talvez } from "./dado";
+import { BlocoSemDado, TRACO, Valor, type MotivoPendencia, type Talvez } from "./dado";
 
 export type Tom = "bom" | "ruim" | "aviso" | "roxo" | "neutro";
 export type Tile = "laranja" | "roxo" | "verde" | "vermelho" | "ambar";
@@ -77,45 +70,6 @@ export function GradeKpis({ itens, colunas = 4 }: { itens: Kpi[]; colunas?: numb
           {k.foot ? <small className="intp-kpi-foot">{k.foot}</small> : null}
         </div>
       ))}
-    </div>
-  );
-}
-
-export type Etapa = {
-  nome: string;
-  largura: Talvez<number>;
-  volume: Talvez<number>;
-  volumeTexto?: string;
-  taxa?: string;
-  perda?: string;
-  roxo?: boolean;
-  perdaFinal?: boolean;
-  detalhes?: () => void;
-};
-
-export function Funil({ etapas, foot }: { etapas: Etapa[]; foot?: string }) {
-  const semNenhum = etapas.every((e) => !existe(e.volume));
-  return (
-    <div className="intp-funil">
-      {etapas.map((e) => (
-        <div className={`intp-etapa${e.perdaFinal ? " intp-etapa-final" : ""}`} key={e.nome}>
-          <span className="intp-etapa-nome">{e.nome}</span>
-          <span>
-            <span
-              className={`intp-etapa-barra${e.roxo ? " roxo" : ""}${e.perdaFinal ? " perda" : ""}`}
-              style={{ width: existe(e.largura) ? `${Math.max(2, Math.min(100, e.largura))}%` : "2%", opacity: existe(e.largura) ? 1 : 0.35 }}
-            />
-          </span>
-          <b className="intp-etapa-vol">{existe(e.volume) ? (e.volumeTexto ?? String(e.volume)) : TRACO}</b>
-          <span className="intp-etapa-taxa">{e.taxa ?? TRACO}</span>
-          <span className="intp-etapa-perda">{e.perda ?? ""}</span>
-          {e.detalhes ? <button type="button" onClick={e.detalhes}>detalhes</button> : <span />}
-        </div>
-      ))}
-      {semNenhum ? (
-        <BlocoSemDado titulo="Funil sem dado no recorte atual" detalhe="As etapas continuam listadas, com “—” em cada uma. Nenhuma etapa foi removida e nada foi estimado." />
-      ) : null}
-      {foot ? <small className="intp-kpi-foot">{foot}</small> : null}
     </div>
   );
 }
@@ -205,76 +159,6 @@ export function Tabela({
   );
 }
 
-export type LinhaCartao = { l: string; r: string; sub?: string; corR?: string; abrir?: () => void };
-export type CartaoLista = {
-  titulo: string;
-  chip?: string;
-  chipTom?: Tom;
-  linhas: LinhaCartao[];
-  foot?: string;
-  link?: { rotulo: string; go: () => void };
-  fundo?: "branco" | "roxo" | "tint-roxo";
-};
-
-export function CartoesLista({ cartoes, colunas = 3 }: { cartoes: CartaoLista[]; colunas?: number }) {
-  return (
-    <div className="intp-grade" style={{ gridTemplateColumns: `repeat(${colunas}, minmax(0, 1fr))` }}>
-      {cartoes.map((c) => {
-        const escuro = c.fundo === "roxo";
-        return (
-          <div
-            className="intp-cartao"
-            key={c.titulo}
-            style={
-              escuro
-                ? { background: "#8B00CC", color: "#fff", boxShadow: "0 12px 28px rgba(139,0,204,0.24)" }
-                : c.fundo === "tint-roxo"
-                  ? { background: "#F7ECFC", color: "#66009A", boxShadow: "none" }
-                  : undefined
-            }
-          >
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <span className="intp-cartao-titulo">{c.titulo}</span>
-              {c.chip ? <span className={`intp-cartao-chip tom-${c.chipTom ?? "neutro"}`}>{c.chip}</span> : null}
-            </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
-              {c.linhas.length === 0 ? (
-                <span className="intp-linha-sub">sem dado no recorte — {TRACO}</span>
-              ) : (
-                c.linhas.map((r) =>
-                  r.abrir ? (
-                    <button className="intp-linha-btn" type="button" key={r.l} onClick={r.abrir}>
-                      <div className="intp-linha-kv">
-                        <span style={escuro ? { color: "rgba(255,255,255,0.85)" } : undefined}>{r.l}</span>
-                        <b style={escuro ? { color: "#fff" } : r.corR ? { color: r.corR } : undefined}>{r.r}</b>
-                      </div>
-                      {r.sub ? <small className="intp-linha-sub">{r.sub}</small> : null}
-                    </button>
-                  ) : (
-                    <div key={r.l}>
-                      <div className="intp-linha-kv">
-                        <span style={escuro ? { color: "rgba(255,255,255,0.85)" } : undefined}>{r.l}</span>
-                        <b style={escuro ? { color: "#fff" } : r.corR ? { color: r.corR } : undefined}>{r.r}</b>
-                      </div>
-                      {r.sub ? <small className="intp-linha-sub">{r.sub}</small> : null}
-                    </div>
-                  ),
-                )
-              )}
-            </div>
-            {c.foot ? <small className="intp-cartao-foot" style={escuro ? { color: "rgba(255,255,255,0.75)" } : undefined}>{c.foot}</small> : null}
-            {c.link ? (
-              <button className="int-link" type="button" onClick={c.link.go} style={{ marginTop: "auto", alignSelf: "flex-start", color: escuro ? "#fff" : undefined, fontWeight: 700 }}>
-                {c.link.rotulo}
-              </button>
-            ) : null}
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
 export function Banner({
   tom = "aviso",
   forte,
@@ -304,95 +188,6 @@ export function Banner({
           {botao.rotulo}
         </button>
       ) : null}
-    </div>
-  );
-}
-
-export function ChipsEventos({ titulo, itens, foot }: { titulo: string; itens: string[]; foot?: string }) {
-  return (
-    <div className="intp-cartao">
-      <span className="intp-cartao-titulo">{titulo}</span>
-      <div className="intp-chips">
-        {itens.length ? itens.map((i) => <span className="intp-chip-mono" key={i}>{i}</span>) : <span className="intp-linha-sub">{TRACO} nenhum evento declarado</span>}
-      </div>
-      {foot ? <small className="intp-kpi-foot">{foot}</small> : null}
-    </div>
-  );
-}
-
-export type Detalhe = { titulo: string; sub: string; linhas: [string, string][]; aviso: string };
-
-/** Linhas clicáveis + detalhe ao lado — o par das telas de operação (15a–21a). */
-export function ListaComDetalhe({
-  eyebrow,
-  titulo,
-  nota,
-  linhas,
-  detalhe,
-  fechar,
-  rodape,
-}: {
-  eyebrow: string;
-  titulo: string;
-  nota?: string;
-  linhas: { chave: string; nome: string; meio: string; fim: string; cor: string; abrir: () => void; ativa?: boolean }[];
-  detalhe: Detalhe | null;
-  fechar: () => void;
-  rodape?: ReactNode;
-}) {
-  return (
-    <div className="intp-duas">
-      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        <Cabecalho eyebrow={eyebrow} titulo={titulo} cor="#8B00CC" />
-        <div className="intp-cartao">
-          {linhas.length === 0 ? (
-            <BlocoSemDado titulo="Nada a listar no recorte atual" detalhe="A seção continua aqui. Sem item, o certo é dizer isso — não esconder o bloco." />
-          ) : (
-            linhas.map((l) => (
-              <button className="intp-linha-btn intp-linha-toque" type="button" key={l.chave} onClick={l.abrir} style={{ background: l.ativa ? "#FFF9F4" : undefined }}>
-                <div className="intp-linha-kv" style={{ alignItems: "center" }}>
-                  <span style={{ display: "flex", alignItems: "center", gap: 9, fontWeight: 700, color: "#1F1C1A" }}>
-                    <span style={{ width: 9, height: 9, borderRadius: 999, background: l.cor, flex: "none" }} />
-                    {l.nome}
-                  </span>
-                  <span className="intp-linha-meio">{l.meio}</span>
-                  <b style={{ width: 92, textAlign: "right" }}>{l.fim}</b>
-                </div>
-              </button>
-            ))
-          )}
-          {nota ? <small className="intp-kpi-foot">{nota}</small> : null}
-        </div>
-      </div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        {detalhe ? (
-          <div className="intp-detalhe">
-            <div className="intp-detalhe-topo">
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <span className="rot">DETALHE</span>
-                <b>{detalhe.titulo}</b>
-                <small>{detalhe.sub}</small>
-              </div>
-              <button className="intp-detalhe-fechar" type="button" onClick={fechar} aria-label="Fechar detalhe">✕</button>
-            </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
-              {detalhe.linhas.map(([k, v]) => (
-                <div className="intp-detalhe-linha" key={k}>
-                  <span>{k}</span>
-                  <b>{v}</b>
-                </div>
-              ))}
-            </div>
-            <div className="intp-detalhe-aviso">{detalhe.aviso}</div>
-          </div>
-        ) : (
-          <div className="intp-vazio-detalhe">
-            <b>Clique em uma linha</b>
-            <small>O detalhe abre aqui, com a evidência e o aviso de privacidade da tela.</small>
-          </div>
-        )}
-        {rodape}
-      </div>
     </div>
   );
 }
