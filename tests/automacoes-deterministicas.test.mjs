@@ -55,6 +55,13 @@ const canonicalSensors = readFileSync(
   ),
   'utf8',
 );
+const saraRealtime = readFileSync(
+  new URL(
+    '../supabase/migrations/20260820223000_central_automacoes_sara_conversa_tempo_real.sql',
+    import.meta.url,
+  ),
+  'utf8',
+);
 const entrada = readFileSync(
   new URL('../supabase/functions/entrada/index.ts', import.meta.url),
   'utf8',
@@ -241,6 +248,24 @@ test('efeito da IA só acontece no bloco de ação explícito', () => {
   assert.match(funilModel, /qualidade_atendimento_nota: number \| null/);
   assert.match(funilWorkspace, /Nota do atendimento/);
   assert.match(saraTasks, /qualidade_atendimento_resumo/);
+});
+
+test('toda mudança da conversa acorda a Sara sem criar um efeito oculto', () => {
+  assert.match(builder, /lead-mensagem-enviada-trigger/);
+  assert.match(builder, /Corretor enviou mensagem/);
+  assert.match(saraRealtime, /lead-mensagem-recebida-trigger/);
+  assert.match(saraRealtime, /lead-mensagem-enviada-trigger/);
+  assert.match(saraRealtime, /mensagem_recebida/);
+  assert.match(saraRealtime, /mensagem_enviada/);
+  assert.match(saraRealtime, /f2_sara_aplicar_analise/);
+  assert.match(saraRealtime, /'aplicado',false,'terminal',true/);
+  assert.match(saraRealtime, /ultima_consulta_em/);
+  assert.match(saraRealtime, /cron\.unschedule\(r\.jobid\)/);
+  assert.match(saraRealtime, /drop trigger if exists trg_resp_antecipar/);
+  assert.match(saraRealtime, /set modelo='gpt-5\.4-mini',status='publicado'/);
+  assert.match(saraRealtime, /where id=57/);
+  assert.match(saraRealtime, /where id=60/);
+  assert.doesNotMatch(saraRealtime, /insert into public\.wa_mensagens/);
 });
 
 test('envio usa um modelo e somente a instância do dono, sem transferência', () => {
