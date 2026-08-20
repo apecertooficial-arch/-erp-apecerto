@@ -45,6 +45,11 @@
 .wm-dropzone-desabilitada:hover { border-color: var(--line); background: var(--page); }
 .wm-dropzone-desabilitada input { cursor: default; }
 
+.wm-preview-wrap { position: relative; display: inline-block; max-width: 100%; }
+.wm-preview-wrap img { display: block; }
+.wm-preview-remover { position: absolute; top: 8px; right: 8px; z-index: 2; display: grid; place-items: center; width: 28px; height: 28px; border: none; border-radius: 999px; background: rgba(31,24,19,.65); color: #fff; font-size: 16px; line-height: 1; cursor: pointer; transition: background .15s ease, transform .15s ease; }
+.wm-preview-remover:hover { background: #9c2a26; transform: scale(1.06); }
+
 .wm-opcoes { display: flex; flex-direction: column; gap: 10px; }
 .wm-check { display: flex; flex-direction: column; gap: 2px; font-size: 13px; color: var(--ink); font-weight: 500; }
 .wm-check input { margin-right: 8px; }
