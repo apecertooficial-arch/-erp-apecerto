@@ -110,7 +110,7 @@ export function RankingBarras({ itens, vazio = "Sem dados no período" }: { iten
   return <div className="intp-ranking">
     {itens.map((item) => <div className="intp-ranking-linha" key={item.rotulo}>
       <div><strong>{item.rotulo}</strong>{item.sub && <small>{item.sub}</small>}</div>
-      <span className="intp-ranking-trilho"><i className={`ranking-${item.tom ?? "laranja"}`} style={{ width: `${max > 0 ? Math.max(2, 100 * item.valor / max) : 0}%` }} /></span>
+      <span className="intp-ranking-trilho"><i className={`ranking-${item.tom ?? "laranja"}`} style={{ width: `${item.valor > 0 && max > 0 ? Math.max(2, 100 * item.valor / max) : 0}%` }} /></span>
       <b>{item.texto}</b>
     </div>)}
   </div>;
