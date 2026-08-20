@@ -2224,6 +2224,7 @@ export type Database = {
           captador_corretor_id: number | null
           cep: string | null
           cidade: string | null
+          codigo: string | null
           complemento: string | null
           condominio_id: string | null
           condominio_valor: number | null
@@ -2283,6 +2284,7 @@ export type Database = {
           captador_corretor_id?: number | null
           cep?: string | null
           cidade?: string | null
+          codigo?: string | null
           complemento?: string | null
           condominio_id?: string | null
           condominio_valor?: number | null
@@ -2342,6 +2344,7 @@ export type Database = {
           captador_corretor_id?: number | null
           cep?: string | null
           cidade?: string | null
+          codigo?: string | null
           complemento?: string | null
           condominio_id?: string | null
           condominio_valor?: number | null
@@ -9638,6 +9641,7 @@ export type Database = {
           aprovacao: string
           area_m2: number | null
           captador_corretor_id: number | null
+          codigo: string | null
           de_terceiros: boolean
           disponivel: boolean
           empreendimento_id: string
@@ -9661,6 +9665,7 @@ export type Database = {
           aprovacao?: string
           area_m2?: number | null
           captador_corretor_id?: number | null
+          codigo?: string | null
           de_terceiros?: boolean
           disponivel?: boolean
           empreendimento_id: string
@@ -9684,6 +9689,7 @@ export type Database = {
           aprovacao?: string
           area_m2?: number | null
           captador_corretor_id?: number | null
+          codigo?: string | null
           de_terceiros?: boolean
           disponivel?: boolean
           empreendimento_id?: string
