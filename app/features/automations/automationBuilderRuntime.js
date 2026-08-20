@@ -193,7 +193,7 @@ function renderSidebar(f=''){
 async function openAutomacao(id){
  if(dirty&&!confirm('Há alterações não salvas. Descartar e abrir outra?'))return;
  try{setStatus('Abrindo…','#f59e0b');
-  const rows=await sbGet('/automacoes?id=eq.'+id+'&select=id,nome,grupo,ativa,status,publicado_em,arquivada,mapa,mapa_rascunho,versao_publicada_id');const row=rows[0];
+  const rows=await sbGet('/automacoes?id=eq.'+id+'&select=id,nome,grupo,ativa,status,publicado_em,arquivada,mapa,mapa_rascunho,versao_publicada_id,webhook_token,webhook_token_enforced');const row=rows[0];
   if(!row){toast('Automação não encontrada','err');return;}
   cur=hydrate(row);selectedId=null;dirty=false;
   document.getElementById('flowName').textContent=cur.nome;
@@ -219,7 +219,7 @@ function hydrate(row){
  let wires=(ed.wires||[]).slice();
  if(!wires.length){(au.blocks||[]).forEach(b=>{const o=b.options||{};if(o.nextBlockId)wires.push({from:b.id,port:'out',to:o.nextBlockId});if(o.trueNextBlockId)wires.push({from:b.id,port:'true',to:o.trueNextBlockId});if(o.falseNextBlockId)wires.push({from:b.id,port:'false',to:o.falseNextBlockId});if(o.errorNextBlockId)wires.push({from:b.id,port:'err',to:o.errorNextBlockId});if(o.timeoutNextBlockId)wires.push({from:b.id,port:'timeout',to:o.timeoutNextBlockId});if(o.respondeuNextBlockId)wires.push({from:b.id,port:'respondeu',to:o.respondeuNextBlockId});if(o.naoRespondeuNextBlockId)wires.push({from:b.id,port:'naoRespondeu',to:o.naoRespondeuNextBlockId});(o.randomizers||[]).forEach(r=>{if(r.nextBlockId)wires.push({from:b.id,port:r.id,to:r.nextBlockId});});(o.conditions||[]).forEach(c=>{if(c.id&&c.trueNextBlockId)wires.push({from:b.id,port:c.id,to:c.trueNextBlockId});});});}
  wires=wires.filter(w=>nodes[w.from]&&nodes[w.to]);
- return {id:row.id,nome:row.nome,grupo:row.grupo,ativa:row.ativa,status:row.status||'publicado',publicado_em:row.publicado_em,arquivada:!!row.arquivada,versao_publicada_id:row.versao_publicada_id,name:au.name||row.nome,provider:au.provider||'apecerto-erp',anotacoes:au.anotacoes||[],uid:ed.uid||100,notes:ed.notes||{},nodes,wires};
+ return {id:row.id,nome:row.nome,grupo:row.grupo,ativa:row.ativa,status:row.status||'publicado',publicado_em:row.publicado_em,arquivada:!!row.arquivada,versao_publicada_id:row.versao_publicada_id,webhook_token:row.webhook_token||'',webhook_token_enforced:row.webhook_token_enforced===true,name:au.name||row.nome,provider:au.provider||'apecerto-erp',anotacoes:au.anotacoes||[],uid:ed.uid||100,notes:ed.notes||{},nodes,wires};
 }
 
 /* =====================================================================
@@ -287,9 +287,9 @@ function bodyHtml(n){
   if(t.name==='initiated-by-another-automation-trigger')ex=`<div class="ne-lb">Fonte de dados</div><div><span style="display:inline-block;background:var(--brand-soft);color:var(--brand);font-size:11px;font-weight:600;padding:3px 9px;border-radius:6px">Api-request-1</span></div><div style="font-size:11px;color:var(--ink-faint);margin-top:6px;line-height:1.4">Esta automação é iniciada por <b>outra</b>. Quem escolhe iniciá-la é a automação chamadora, na ação <b>"Iniciar outra automação"</b>.</div>`;
   if(t.name==='tag-added-trigger')ex=`<div class="ne-lb">Tag</div><input class="ne-inp" data-tk="tag" value="${esc(o.tag||'')}">`;
   if(t.name==='lead-entered-stage-trigger'||t.name==='lead-moved-stage-trigger')ex=`<div class="ne-lb">Funil</div><select class="ne-sel" data-tk="pipeline">${pipeOpts(o.pipeline_id)}</select><div class="ne-lb">Etapa</div><select class="ne-sel" data-tk="etapa">${stageOpts(o.etapa_id,o.pipeline_id)}</select>`;
-  const hook=t.name==='json-http-request-trigger'?`<div class="ne-lb">URL pública do webhook desta automação</div><div class="hookbox"><code data-hook>${cur.id?SUPA_URL+'/functions/v1/entrada?auto='+cur.id:'salve para gerar'}</code><button class="hookbtn" data-copyhook>${ico('copy',12)} copiar</button></div><div style="font-size:10.5px;color:var(--ink-faint);margin-top:7px;line-height:1.45"><b>Sem senha e sem token.</b> Faça um POST JSON direto nesta URL. Se houver um ID único no payload, ele será usado; caso contrário, a Central evita duplicações automaticamente.</div>`:'';
+  const hook=t.name==='json-http-request-trigger'?`<div class="ne-lb">URL ${cur.webhook_token_enforced?'protegida':'pública'} do webhook desta automação</div><div class="hookbox"><code data-hook>${cur.id?SUPA_URL+'/functions/v1/entrada?auto='+cur.id:'salve para gerar'}</code><button class="hookbtn" data-copyhook>${ico('copy',12)} copiar</button></div>${cur.webhook_token_enforced?`<div class="ne-lb">Header configurado</div><div class="hookbox"><code data-hooktoken>x-automation-token: ${cur.webhook_token||'token não configurado'}</code><button class="hookbtn" data-copytoken>${ico('copy',12)} copiar</button></div>`:`<div style="font-size:10.5px;color:var(--ink-faint);margin-top:7px;line-height:1.45"><b>Sem senha e sem token.</b> Faça um POST JSON direto nesta URL. Se houver um ID único no payload, ele será usado; caso contrário, a Central evita duplicações automaticamente.</div>`}`:'';
   return `<div class="ne-lb">Tipo de gatilho</div><select class="ne-sel" data-trig>${selOpts(TRIGGERS,t.name)}</select>${ex}${hook}${portRow('out','Quando ocorrer','ok')}`;
- }
+  const ct=q('[data-copytoken]');if(ct)ct.onclick=e=>{e.stopPropagation();if(!cur.webhook_token){toast('Token não configurado','warn');return;}navigator.clipboard.writeText(cur.webhook_token).then(()=>toast('Token copiado','ok'));};}
  if(n.type==='condition'){const cs=n.opts.conditions||[];cs.forEach(c=>{if(!c.id)c.id='k'+(cur.uid++);});
   return `<div style="font-size:11px;color:var(--ink-faint);padding:2px 0">Faça filtros para seguir caminhos diferentes.</div>${cs.map((c,i)=>condRow(c,i)).join('')}<button class="ne-add" data-addcond>${ico('plus',14)} adicionar condição</button>${portRow('true','Todas as condições verdadeiras','branch')}${portRow('false','Quando não atender a nenhuma','err')}`;
  }
@@ -830,7 +830,7 @@ function pickGroup(atual){return new Promise(resolve=>{
 async function publish(){if(!cur){toast('Abra uma automação');return;}
  const errs=computeIssues().filter(x=>x.lvl==='erro');if(errs.length){toast('Corrija os '+errs.length+' erro(s) antes de publicar','err');validate();return;}
  try{setStatus('Publicando…','#f59e0b');if(dirty)await save();const r=await sbRpc('automacao_publicar',{p_automacao_id:cur.id,p_nome:cur.nome,p_mapa:compile()});
-  cur.status='publicado';cur.publicado_em=new Date().toISOString();cur.versao_publicada_id=r.versao_id;const a=ref.automacoes.find(x=>x.id===cur.id);if(a)a.status='publicado';
+  cur.status='publicado';cur.publicado_em=new Date().toISOString();cur.versao_publicada_id=r.versao_id;cur.webhook_token=r.webhook_token||cur.webhook_token;cur.webhook_token_enforced=r.webhook_token_enforced===true;const a=ref.automacoes.find(x=>x.id===cur.id);if(a)a.status='publicado';
   renderNodes();renderStateBadges();renderSidebar(document.getElementById('sbSearch').value);setStatus('Publicado','#10b981');toast('Publicada (v'+r.versao+')','ok');
  }catch(e){setStatus('Erro','#dc2626');toast('Erro ao publicar: '+e.message,'err');}}
 async function openVersions(){if(!cur){toast('Abra uma automação');return;}

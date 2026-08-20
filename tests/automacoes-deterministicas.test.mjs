@@ -59,6 +59,13 @@ const entrada = readFileSync(
   new URL('../supabase/functions/entrada/index.ts', import.meta.url),
   'utf8',
 );
+const publicWebhook = readFileSync(
+  new URL(
+    '../supabase/migrations/20260820195736_webhook_entrada_publico_sem_senha.sql',
+    import.meta.url,
+  ),
+  'utf8',
+);
 const dapi = readFileSync(
   new URL('../supabase/functions/dapi-webhook/index.ts', import.meta.url),
   'utf8',
@@ -119,11 +126,11 @@ test('banco fixa versão e interrompe ou roteia falhas de abordagem', () => {
   assert.match(hardening, /to service_role/);
 });
 
-test('entrada pública exige automação e deriva idempotência sem senha', () => {
+test('entrada respeita configuração explícita e deriva idempotência sem header', () => {
   assert.match(entrada, /AUTOMATION_ID_REQUIRED/);
   assert.doesNotMatch(entrada, /order=criado_em\.desc/);
-  assert.doesNotMatch(entrada, /x-automation-token/);
-  assert.doesNotMatch(entrada, /WEBHOOK_UNAUTHORIZED/);
+  assert.match(entrada, /webhook_token_enforced === true/);
+  assert.match(entrada, /WEBHOOK_UNAUTHORIZED/);
   assert.match(entrada, /stableJson/);
   assert.match(entrada, /crypto\.subtle\.digest/);
   assert.match(entrada, /idempotencia_automatica/);
@@ -131,10 +138,16 @@ test('entrada pública exige automação e deriva idempotência sem senha', () =
 });
 
 test('construtor mostra webhook público sem senha ou token', () => {
-  assert.match(builder, /URL pública do webhook/);
+  assert.match(builder, /'protegida':'pública'/);
   assert.match(builder, /Sem senha e sem token/);
+  assert.match(builder, /webhook_token_enforced/);
   assert.doesNotMatch(builder, /Header obrigatório/);
-  assert.doesNotMatch(builder, /webhook_token/);
+});
+
+test('publicar preserva a configuração de segurança do webhook', () => {
+  assert.doesNotMatch(publicWebhook, /set webhook_token_enforced\s*=\s*false/);
+  assert.doesNotMatch(publicWebhook, /webhook_token_enforced=case/);
+  assert.match(publicWebhook, /select a\.webhook_token,a\.webhook_token_enforced/);
 });
 
 test('webhook D-API autentica antes de persistir payload', () => {
