@@ -19,6 +19,12 @@
  * v3 -- cada download ganha um nome de arquivo unico (nome original + sufixo
  * curto aleatorio), pra nao sobrescrever quando o corretor processa varias
  * fotos seguidas -- mesmo comportamento do site da propria Unwatermark.
+ *
+ * v4 -- Ctrl+V cola direto uma imagem copiada (print, "copiar imagem" do
+ * navegador, WhatsApp Web etc.) sem precisar salvar no disco e fazer upload
+ * do arquivo depois. Ouve o evento de colar no documento inteiro enquanto a
+ * tela estiver montada -- nao ha outro campo de texto nesta tela que
+ * disputaria o Ctrl+V.
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -66,6 +72,7 @@ export function WatermarkRemoverWorkspace() {
   const [processando, setProcessando] = useState(false);
   const [erro, setErro] = useState("");
   const [resultado, setResultado] = useState<Resultado | null>(null);
+  const [colado, setColado] = useState(false);
 
   const limparResultado = useCallback(() => {
     setResultado((atual) => {
@@ -83,6 +90,29 @@ export function WatermarkRemoverWorkspace() {
       return file ? URL.createObjectURL(file) : null;
     });
   }, [limparResultado]);
+
+  // Ctrl+V em qualquer lugar da tela: se o clipboard trouxer uma imagem, usa
+  // ela como se tivesse sido arrastada ou escolhida pelo input de arquivo.
+  useEffect(() => {
+    function aoColar(evento: ClipboardEvent) {
+      const itens = evento.clipboardData?.items;
+      if (!itens) return;
+      for (const item of itens) {
+        if (item.type.startsWith("image/")) {
+          const file = item.getAsFile();
+          if (file) {
+            evento.preventDefault();
+            escolherArquivo(file);
+            setColado(true);
+            window.setTimeout(() => setColado(false), 1500);
+          }
+          break;
+        }
+      }
+    }
+    document.addEventListener("paste", aoColar);
+    return () => document.removeEventListener("paste", aoColar);
+  }, [escolherArquivo]);
 
   const processar = useCallback(async () => {
     if (!arquivo) return;
@@ -148,6 +178,7 @@ export function WatermarkRemoverWorkspace() {
       </header>
 
       {erro && <div className="wm-error">{erro}</div>}
+      {colado && <div className="wm-aviso-colado">Imagem colada da área de transferência</div>}
 
       <div className="wm-grid">
         <section className="wm-card">
@@ -166,7 +197,7 @@ export function WatermarkRemoverWorkspace() {
             ) : (
               <>
                 <strong>Arraste uma foto aqui</strong>
-                <span>ou clique para escolher · JPG, PNG ou WebP</span>
+                <span>ou clique para escolher · ou cole com Ctrl+V · JPG, PNG ou WebP</span>
               </>
             )}
             <input
