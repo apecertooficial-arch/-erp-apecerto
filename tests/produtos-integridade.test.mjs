@@ -9,6 +9,7 @@ const productsUi = await readFile("app/features/products/ProductsModule.tsx", "u
 const unitWizard = await readFile("app/features/products/UnitWizard.tsx", "utf8");
 const captureWizard = await readFile("app/features/products/CaptureWizard.tsx", "utf8");
 const detail = await readFile("app/features/products/ProductDetail.tsx", "utf8");
+const globalCss = await readFile("app/globals.css", "utf8");
 const migration = await readFile("supabase/migrations/20260820153819_produtos_fluxo_seguro_site_unidades.sql", "utf8");
 const unpublishMigration = await readFile("supabase/migrations/20260820193000_produtos_despublicacao_individual.sql", "utf8");
 const unitMediaMigration = await readFile("supabase/migrations/20260820220000_captador_exclui_midia_da_propria_unidade.sql", "utf8");
@@ -62,6 +63,12 @@ test("foto herdada do condomínio abre sem fingir que pertence à unidade", () =
   assert.match(detail, /Ver \$\{focusedUnitPhotos\.length\} foto/);
   assert.match(productsUi, /do condomínio/);
   assert.match(detail, /setUnitLightbox/);
+});
+
+test("setas da galeria ampliada permanecem centralizadas ao lado da foto", () => {
+  assert.match(globalCss, /\.lightbox-nav\s*\{[^}]*grid-row:1;[^}]*align-self:center;/);
+  assert.match(globalCss, /\.lightbox-nav\.previous\s*\{\s*grid-column:1;/);
+  assert.match(globalCss, /\.lightbox-nav\.next\s*\{\s*grid-column:3;/);
 });
 
 test("revisão abre a unidade como produto completo e não deixa o condomínio por baixo", () => {
