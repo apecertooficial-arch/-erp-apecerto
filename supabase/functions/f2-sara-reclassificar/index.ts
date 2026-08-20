@@ -1,6 +1,7 @@
-// Funil 2.0 — Sara classificadora de etapa, momento, ação e prazo.
-// Nunca envia WhatsApp, não cria visita/proposta/venda e só escreve via RPC
-// service-role na cópia f2_lead. O histórico vem das tabelas D-API wa_*.
+// Funil 2.0 — Sara analisa etapa, momento, ação, prazo e qualidade.
+// Contrato do módulo: somente lê e devolve JSON estruturado. Não altera lead,
+// negócio, card, momento, etapa ou ação. A aplicação pertence a um bloco de
+// Ação explícito no mapa publicado da Central de Automações.
 // @ts-nocheck
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.110.2";
 
@@ -78,7 +79,8 @@ ${regras}
 ESTADO ATUAL: etapa=${c.etapa}; momento=${c.momento_codigo}; cadência_passo=${c.cadencia_passo}; agora=${new Date().toISOString()}.
 CONVERSA D-API EM ORDEM CRONOLÓGICA (recorte mais recente, até ${MAX_MENSAGENS} mensagens):
 ${conversa}
-Responda SOMENTE JSON válido: {"momento_codigo":"CÓDIGO_DO_CATÁLOGO","resumo":"diagnóstico objetivo em até 2 frases","proxima_acao_especifica":"orientação concreta para o corretor","confianca":0.0,"evidencias":["trecho literal do cliente"],"prazo_sugerido":null}.`;
+Também avalie a qualidade do atendimento do CORRETOR de 0 a 10. A nota mede clareza, agilidade, condução para o próximo passo e aderência ao que o cliente pediu. Sem mensagens do corretor, use nota null. Não desconte pontos por fatos que não aparecem na conversa.
+Responda SOMENTE JSON válido: {"momento_codigo":"CÓDIGO_DO_CATÁLOGO","resumo":"diagnóstico objetivo em até 2 frases","proxima_acao_especifica":"orientação concreta para o corretor","confianca":0.0,"evidencias":["trecho literal do cliente"],"prazo_sugerido":null,"qualidade_nota":0.0,"qualidade_resumo":"justificativa objetiva da nota"}.`;
 }
 
 async function carregarMensagens(db: any, c: Candidato) {
@@ -110,43 +112,40 @@ async function carregarMensagens(db: any, c: Candidato) {
     .slice(-MAX_MENSAGENS);
 }
 
-async function registrar(db: any, c: Candidato, hash: string, values: Record<string, unknown>) {
-  const { data, error } = await db.rpc("f2_sara_registrar_classificacao", {
-    p_funil_lead_id: c.funil_lead_id, p_versao: c.versao, p_context_hash: hash,
-    p_origem: values.origem, p_status: values.status,
-    p_momento_codigo: values.momento_codigo ?? null, p_resumo: values.resumo,
-    p_evidencias: values.evidencias ?? [], p_confianca: values.confianca ?? null,
-    p_mensagens: values.mensagens ?? 0, p_prazo_sugerido: values.prazo_sugerido ?? null,
-  });
-  if (error || data?.ok === false) throw new Error(`registro_${data?.erro ?? error?.message ?? "falhou"}`);
-  return data;
-}
-
-async function processar(db: any, c: Candidato, catalogo: Catalogo[]) {
+async function processar(db: any, c: Candidato, catalogo: Catalogo[], agenteSlug: string) {
   const mensagens = await carregarMensagens(db, c);
   const hash = await sha256(JSON.stringify({ lead: c.funil_lead_id, versao: c.versao,
+    agente: agenteSlug,
     mensagens: mensagens.map((m: any) => [m.id,m.enviado_em ?? m.criado_em]),
     catalogo: catalogo.map((m) => [m.codigo,m.etapa,m.acao_codigo,m.prazo_minutos]) }));
   if (!mensagens.length) {
-    const data = await registrar(db,c,hash,{ origem:"deterministica",status:"sem_historico",
+    return { id:c.funil_lead_id,versao_base:c.versao,context_hash:hash,
+      origem:"deterministica",status:"sem_historico",momento_codigo:null,
+      etapa:null,acao_codigo:null,acao_rotulo:null,prazo_sugerido:null,
       resumo:c.historico_completo
         ? "Nenhum histórico D-API foi localizado para este lead; classificação anterior preservada."
-        : "Sem histórico D-API posterior à entrada no Funil 2.0; classificação anterior preservada.",mensagens:0 });
-    return { id:c.funil_lead_id,status:data.status ?? "sem_historico" };
+        : "Sem histórico D-API posterior à entrada no Funil 2.0; classificação anterior preservada.",
+      evidencias:[],confianca:null,mensagens:0,qualidade_nota:null,
+      qualidade_resumo:"Sem mensagens suficientes para avaliar o atendimento." };
   }
   const entradas = mensagens.filter((m: any) => direcaoCliente(m.direcao));
   const saidas = mensagens.filter((m: any) => direcaoCorretor(m.direcao));
   if (!entradas.length && saidas.length) {
-    const data = await registrar(db,c,hash,{ origem:"deterministica",status:"sugestao",
-      momento_codigo:"CADENCIA_SEM_RESPOSTA",resumo:"O corretor já tentou contato, mas o cliente ainda não respondeu; seguir a cadência oficial.",
-      evidencias:[],confianca:1,mensagens:mensagens.length });
-    return { id:c.funil_lead_id,status:data.status };
+    const momento = catalogo.find((m) => m.codigo === "CADENCIA_SEM_RESPOSTA");
+    if (!momento) throw new Error("catalogo_sem_cadencia");
+    return { id:c.funil_lead_id,versao_base:c.versao,context_hash:hash,
+      origem:"deterministica",status:"sugestao",momento_codigo:"CADENCIA_SEM_RESPOSTA",
+      etapa:momento.etapa,acao_codigo:momento.acao_codigo,acao_rotulo:momento.acao_rotulo,
+      prazo_sugerido:null,
+      resumo:"O corretor já tentou contato, mas o cliente ainda não respondeu; seguir a cadência oficial.",
+      evidencias:[],confianca:1,mensagens:mensagens.length,qualidade_nota:null,
+      qualidade_resumo:"Sem resposta do cliente; a qualidade não foi pontuada automaticamente." };
   }
 
   const input = prompt(c,catalogo,mensagens);
   const response = await fetch(`${SUPABASE_URL}/functions/v1/ia-router`, {
     method:"POST",headers:{Authorization:`Bearer ${SERVICE_ROLE_KEY}`,"Content-Type":"application/json"},
-    body:JSON.stringify({agente_slug:"sara",input,override_prompt:"Classifique estritamente pelo catálogo fechado do input. Retorne somente JSON."}),
+    body:JSON.stringify({agente_slug:agenteSlug,input,override_prompt:"Classifique estritamente pelo catálogo fechado do input. Retorne somente JSON."}),
     signal:AbortSignal.timeout(25000),
   });
   if (!response.ok) throw new Error(`ia_router_http_${response.status}`);
@@ -168,10 +167,20 @@ async function processar(db: any, c: Candidato, catalogo: Catalogo[]) {
     .slice(0,5);
   const prazo = typeof parsed.prazo_sugerido==="string" && !Number.isNaN(Date.parse(parsed.prazo_sugerido))
     ? new Date(parsed.prazo_sugerido).toISOString() : null;
-  const data = await registrar(db,c,hash,{ origem:"ia",status:"sugestao",momento_codigo:momento.codigo,
+  const notaRaw = parsed.qualidade_nota;
+  const nota = notaRaw === null || notaRaw === undefined ? null : Number(notaRaw);
+  if (nota !== null && (!Number.isFinite(nota) || nota < 0 || nota > 10))
+    throw new Error("ia_nota_invalida");
+  const qualidadeResumo = texto(parsed.qualidade_resumo,500)
+    ?? (nota === null ? "Sem mensagens suficientes para avaliar o atendimento." : null);
+  if (nota !== null && !qualidadeResumo) throw new Error("ia_qualidade_sem_justificativa");
+  return { id:c.funil_lead_id,versao_base:c.versao,context_hash:hash,
+    origem:"ia",status:"sugestao",momento_codigo:momento.codigo,
+    etapa:momento.etapa,acao_codigo:momento.acao_codigo,acao_rotulo:momento.acao_rotulo,
+    prazo_sugerido:prazo,
     resumo:`${resumoBase}${proxima ? ` Próxima direção: ${proxima}` : ""}`.slice(0,800),
-    evidencias,confianca,mensagens:mensagens.length,prazo_sugerido:prazo });
-  return { id:c.funil_lead_id,status:data.status };
+    evidencias,confianca,mensagens:mensagens.length,qualidade_nota:nota,
+    qualidade_resumo:qualidadeResumo };
 }
 
 Deno.serve(async (req: Request) => {
@@ -179,20 +188,36 @@ Deno.serve(async (req: Request) => {
     return Response.json({ok:false,erro:"nao_autorizado"},{status:401});
   const db = createClient(SUPABASE_URL,SERVICE_ROLE_KEY,{auth:{persistSession:false}});
   try {
+    const body = await req.json().catch(()=>({})) as Record<string, unknown>;
+    const funilLeadId = texto(body.funil_lead_id, 36);
+    if (funilLeadId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(funilLeadId))
+      return Response.json({ok:false,erro:"funil_lead_id_invalido"},{status:400});
+    const agenteSlug = texto(body.agente_slug, 80) ?? "sara";
+    if (!/^[a-z0-9][a-z0-9-]{0,79}$/.test(agenteSlug))
+      return Response.json({ok:false,erro:"agente_slug_invalido"},{status:400});
+
     const { data: config, error: ec } = await db.from("f2_sara_config").select("enabled,lote").eq("id",true).maybeSingle();
     if (ec || !config) throw new Error("config_indisponivel");
-    if (!config.enabled) return Response.json({ok:true,executou:false,motivo:"desligado"});
-    const lotePedido = Number((await req.json().catch(()=>({})))?.lote ?? config.lote);
-    const lote = Math.min(10,Math.max(1,Number.isInteger(lotePedido)?lotePedido:config.lote));
+    if (!config.enabled) return Response.json({ok:false,executou:false,motivo:"desligado"},{status:503});
+    if (!funilLeadId)
+      return Response.json({ok:false,erro:"funil_lead_id_obrigatorio",motivo:"o modulo de IA nao executa varredura em lote"},{status:400});
+    const candidatoQuery = db.rpc("f2_sara_candidato",{p_funil_lead_id:funilLeadId});
     const [{data:candidatos,error:e1},{data:catalogo,error:e2}] = await Promise.all([
-      db.rpc("f2_sara_elegiveis",{p_lote:lote}),
+      candidatoQuery,
       db.from("f2_momento_config").select("codigo,etapa,rotulo,descricao,acao_codigo,acao_rotulo,prazo_minutos").eq("ativo",true).order("ordem"),
     ]);
     if (e1 || e2 || !catalogo?.length) throw new Error("fila_indisponivel");
-    const resultados = await Promise.allSettled((candidatos ?? []).map((c:Candidato)=>processar(db,c,catalogo)));
+    if (funilLeadId && !(candidatos ?? []).length)
+      return Response.json({ok:false,erro:"card_nao_encontrado",funil_lead_id:funilLeadId},{status:404});
+    const resultados = await Promise.allSettled(
+      (candidatos ?? []).map((c:Candidato)=>processar(db,c,catalogo,agenteSlug)),
+    );
     const ok = resultados.filter((r)=>r.status==="fulfilled").map((r:any)=>r.value);
     const erros = resultados.filter((r)=>r.status==="rejected").map((r:any)=>String(r.reason?.message ?? "falha").slice(0,80));
-    return Response.json({ok:true,executou:true,selecionados:(candidatos??[]).length,processados:ok.length,erros:erros.length,resultados:ok,detalhes_erros:erros});
+    const resposta = {ok:erros.length===0,executou:true,modo:"direto",somente_analise:true,
+      agente_slug:agenteSlug,selecionados:(candidatos??[]).length,processados:ok.length,
+      erros:erros.length,resultados:ok,detalhes_erros:erros};
+    return Response.json(resposta,{status:funilLeadId&&erros.length?502:200});
   } catch (e) {
     console.error("f2-sara-reclassificar",e instanceof Error?e.message:"falha");
     return Response.json({ok:false,erro:"falha_interna"},{status:500});

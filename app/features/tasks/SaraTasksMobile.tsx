@@ -150,6 +150,7 @@ export function SaraTasksMobile({ accessToken }: { accessToken: string }) {
           <h2>{sugestao ? analise?.acao_sugerida : acaoVisivel(lead)}</h2>
           <div className="ape-tarefa-lead"><span>{iniciais(lead.nome)}</span><strong>{lead.nome}</strong></div>
           {(analise?.resumo || lead.ultima_reavaliacao_resumo) && <p className="ape-tarefa-sara"><b>Sara:</b> {analise?.resumo || lead.ultima_reavaliacao_resumo}</p>}
+          {lead.qualidade_atendimento_nota != null && <p className="ape-tarefa-sara"><b>Nota do atendimento:</b> {Number(lead.qualidade_atendimento_nota).toFixed(1)}/10{lead.qualidade_atendimento_resumo ? ` · ${lead.qualidade_atendimento_resumo}` : ""}</p>}
           {sugestao && analise ? <div className="ape-tarefa-decidir"><button type="button" disabled={decidindo === analise.id} onClick={() => void decidir(analise, "aceita")}>Aceitar sugestão</button><button type="button" disabled={decidindo === analise.id} onClick={() => void decidir(analise, "recusada")}>Recusar</button></div>
             : <div className="ape-tarefa-whatsapp"><BotaoWhatsApp telefone={lead.telefone} negocioId={lead.origem_negocio_id} compacto /></div>}
         </article>;
