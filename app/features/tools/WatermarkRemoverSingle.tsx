@@ -11,6 +11,10 @@
  * Clipboard API assíncrona, mais confiável entre navegadores do que depender
  * só do evento passivo de teclado. Ctrl+V continua funcionando como atalho
  * extra em cima do botão.
+ *
+ * X no preview: fica dentro do <label> do dropzone, então o clique nele
+ * precisa de preventDefault -- senão o navegador trata como clique no label
+ * e abre o seletor de arquivo por baixo do botão de remover.
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -168,8 +172,23 @@ export function WatermarkRemoverSingle({ onVoltar }: { onVoltar: () => void }) {
             }}
           >
             {preview ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={preview} alt="Foto selecionada" />
+              <div className="wm-preview-wrap">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={preview} alt="Foto selecionada" />
+                <button
+                  type="button"
+                  className="wm-preview-remover"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    limpar();
+                  }}
+                  aria-label="Remover foto selecionada"
+                  title="Remover foto"
+                >
+                  ×
+                </button>
+              </div>
             ) : (
               <>
                 <strong>Arraste uma foto aqui</strong>
