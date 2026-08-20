@@ -14,6 +14,7 @@
 import { useEffect, useState } from "react";
 import type { MetaInteligencia } from "../../lib/inteligencia/tipos";
 import type { Recorte } from "./CascaInteligencia";
+import { extrairFiltros } from "./filtros";
 
 export type EstadoCarga = "carregando" | "ok" | "erro" | "vazio";
 
@@ -23,28 +24,6 @@ export type LeituraInteligencia<T> = {
   meta: MetaInteligencia | null;
   erro: string | null;
 };
-
-const CONSENT: Record<string, string> = {
-  "somente essenciais": "essential", essenciais: "essential", essencial: "essential",
-  analytics: "analytics", marketing: "marketing",
-};
-const DEVICE: Record<string, string> = {
-  desktop: "desktop", computador: "desktop", mobile: "mobile", celular: "mobile", tablet: "tablet",
-};
-
-function extrairFiltros(chips: string[]): { consent: string | null; device: string | null } {
-  let consent: string | null = null;
-  let device: string | null = null;
-  for (const chip of chips) {
-    const partes = chip.split(":");
-    const dim = (partes[0] ?? "").trim().toLowerCase();
-    const valor = (partes[1] ?? "").trim().toLowerCase();
-    if (!valor || valor === "todos") continue;
-    if (dim.includes("consent")) consent = CONSENT[valor] ?? null;
-    if (dim.includes("dispositiv")) device = DEVICE[valor] ?? null;
-  }
-  return { consent, device };
-}
 
 export function useDadosInteligencia<T>(tela: string, accessToken: string | null, recorte: Recorte): LeituraInteligencia<T> {
   const { consent, device } = extrairFiltros(recorte.chips);

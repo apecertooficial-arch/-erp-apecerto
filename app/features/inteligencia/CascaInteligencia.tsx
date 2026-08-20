@@ -17,6 +17,7 @@ import { BlocoSemDado, RodapeFontes } from "./dado";
 import { telasPublicadas } from "./registro";
 import { estadoConexaoDe } from "./estado-conexao";
 import { Copiloto, type PerfilCopiloto } from "./Copiloto";
+import { opcoesReaisPorTela } from "./filtros";
 import { useErpSession } from "../system/ErpSession";
 
 export type Recorte = {
@@ -66,6 +67,12 @@ export function CascaInteligencia({ accessToken }: { accessToken: string }) {
   const conexao = estadoConexaoDe(tela.chave);
   /* Dimensão com chip ativo aparece marcada no próprio dropdown. */
   const dimensaoAtiva = (f: string) => chips.some((c) => c.startsWith(`${f}:`));
+  const selecionarDimensao = (dimensao: string, valor: string) => {
+    setChips((atuais) => {
+      const semDimensao = atuais.filter((chip) => !chip.startsWith(`${dimensao}:`));
+      return valor === "__todos__" ? semDimensao : [...semDimensao, `${dimensao}: ${valor}`];
+    });
+  };
 
   return (
     <div className="int-area">
@@ -137,16 +144,32 @@ export function CascaInteligencia({ accessToken }: { accessToken: string }) {
           <button type="button" className={`int-drop${comparar ? " ligado" : ""}`} onClick={() => setComparar((v) => !v)}>
             vs. período anterior
           </button>
-          {tela.filtros.map((f) => (
-            <button
-              key={f}
-              type="button"
-              className={`int-drop${dimensaoAtiva(f) ? " ligado" : ""}`}
-              onClick={() => recorte.filtrar(`${f}: todos`)}
-            >
-              {f}
-            </button>
-          ))}
+          {tela.filtros.map((f) => {
+            const opcoes = opcoesReaisPorTela[tela.chave]?.[f];
+            return (
+              <label
+                key={f}
+                className={`int-drop-select${dimensaoAtiva(f) ? " ligado" : ""}`}
+                title={opcoes ? `Filtrar por ${f.toLowerCase()}` : `${f}: valores ainda sem fonte ligada nesta tela`}
+              >
+                <select
+                  aria-label={`Filtrar por ${f}`}
+                  value=""
+                  onChange={(event) => selecionarDimensao(f, event.target.value)}
+                >
+                  <option value="" disabled>{f}</option>
+                  {opcoes ? (
+                    <>
+                      <option value="__todos__">Todos</option>
+                      {opcoes.map((opcao) => <option key={opcao.parametro} value={opcao.rotulo}>{opcao.rotulo}</option>)}
+                    </>
+                  ) : (
+                    <option value="__pendente__" disabled>Valores ainda sem fonte ligada</option>
+                  )}
+                </select>
+              </label>
+            );
+          })}
           {chips.map((c) => (
             <button key={c} type="button" className="int-chip-ativo" onClick={() => setChips((atuais) => atuais.filter((x) => x !== c))} title={`Remover ${c}`}>
               {c}

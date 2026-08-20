@@ -39,6 +39,15 @@
 .int-area .int-drop.ligado { border-color: #ff7000; background: #fff3ea; color: #cc5800; font-weight: 700; }
 .int-area .int-drop.ligado::after { border-color: #cc5800; }
 
+/* Select nativo mantém teclado e seletor móvel, vestido como o dropdown do
+ * artboard. O chevron fica no invólucro para não depender do navegador. */
+.int-area .int-drop-select { position: relative; display: inline-flex; align-items: center; }
+.int-area .int-drop-select select { appearance: none; height: 30px; padding: 0 30px 0 12px; border: 1px solid #e4dfd9; border-radius: 999px; background: #fff; color: #4d4842; font-family: inherit; font-size: 11.5px; font-weight: 600; cursor: pointer; }
+.int-area .int-drop-select::after { content: ""; position: absolute; right: 13px; width: 6px; height: 6px; border-right: 1.5px solid #9a938b; border-bottom: 1.5px solid #9a938b; transform: rotate(45deg) translateY(-1px); pointer-events: none; }
+.int-area .int-drop-select:hover select { background: #faf8f6; border-color: #d8d3cc; }
+.int-area .int-drop-select.ligado select { border-color: #ff7000; background: #fff3ea; color: #cc5800; font-weight: 700; }
+.int-area .int-drop-select.ligado::after { border-color: #cc5800; }
+
 /* Filtro ativo: chip roxo com o rótulo completo e o ✕. */
 .int-area .int-chip-ativo { display: inline-flex; align-items: center; gap: 8px; height: 30px; padding: 0 12px; border: 1.5px solid #8b00cc; border-radius: 999px; background: #f7ecfc; color: #66009a; font-family: inherit; font-size: 11.5px; font-weight: 700; cursor: pointer; }
 .int-area .int-chip-ativo span { font-size: 13px; line-height: 1; opacity: 0.75; }
@@ -84,7 +93,7 @@
   .int-area .int-segmentado button { flex: 1; min-height: 44px; }
   .int-area .int-familia-nota { display: none; }
   .int-area .int-pagina { min-height: 44px; }
-  .int-area .int-drop, .int-area .int-chip-ativo { min-height: 44px; }
+  .int-area .int-drop, .int-area .int-drop-select select, .int-area .int-chip-ativo { min-height: 44px; }
   .int-area .intp-cartao.int-eventos { grid-template-columns: 1fr; }
   .int-area .int-jornada { flex-direction: column; gap: 12px; }
   .int-area .int-jornada > div { border-right: 0 !important; border-bottom: 1px dashed #e4dfd9; padding: 0 0 12px !important; }
