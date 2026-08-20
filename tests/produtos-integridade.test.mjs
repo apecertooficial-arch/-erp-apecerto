@@ -38,6 +38,15 @@ test("unidade pronta usa captador, menu e mídia próprios", () => {
   assert.match(productsUi, /Editar unidade/);
 });
 
+test("revisão abre a unidade como produto completo e não deixa o condomínio por baixo", () => {
+  assert.match(detail, /const focusedUnit = useMemo/);
+  assert.match(detail, /VALOR DESTA UNIDADE/);
+  assert.match(detail, /focusedUnitPrice/);
+  assert.match(detail, /Este apartamento é um produto independente/);
+  assert.match(detail, /Condomínio de referência/);
+  assert.doesNotMatch(detail, /initialOpened/);
+});
+
 test("edição do prédio nunca altera indicação individual", () => {
   assert.match(detail, /next\.unidades\.filter\(\(unit\) => !unit\.de_terceiros\)/);
   assert.match(productApi, /Indicações de corretores devem ser editadas pela ficha da própria unidade/);

@@ -1,9 +1,10 @@
 "use client";
 /* eslint-disable @next/next/no-img-element */
 
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { getBrowserSupabaseClient } from "../../lib/supabase/browser";
 import type { ProductQuality } from "./quality";
+import { isProductManagerRole } from "./access";
 import { MoneyInput } from "./MoneyInput";
 import { applyOfficialWatermark } from "./watermark";
 
@@ -75,7 +76,7 @@ function initials(name?: string | null): string {
 }
 
 export function ProductDetail({ productId, accessToken, sessionRole = "corretor", initialUnitId, initialEditing = false, captadorScore = null, onClose, onChanged }: { productId: string; accessToken: string; sessionRole?: string; initialUnitId?: string | null; initialEditing?: boolean; captadorScore?: number | null; onClose: () => void; onChanged: () => void }) {
-  const canPublish = sessionRole === "admin" || sessionRole === "gestor" || sessionRole === "executivo";
+  const canPublish = isProductManagerRole(sessionRole);
   const [product, setProduct] = useState<ProductDetailData | null>(null);
   const [draft, setDraft] = useState<Record<string, string | number | null>>({});
   const [owner, setOwner] = useState<Owner | null>(null);
@@ -132,6 +133,11 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
   const presentations = useMemo(() => buildingMedia.filter((item) => item.tipo === "pdf" || item.tipo === "apresentacao"), [buildingMedia]);
   const visibleMedia = mediaTab === "fotos" ? photos : mediaTab === "videos" ? videos : presentations;
   const cover = photos.find((item) => item.is_capa) ?? photos[0];
+  const focusedUnit = useMemo(() => initialUnitId && product ? product.unidades.find((unit) => unit.id === initialUnitId) ?? null : null, [initialUnitId, product]);
+  const focusedUnitMedia = useMemo(() => focusedUnit ? (product?.midias ?? []).filter((item) => item.unidade_id === focusedUnit.id) : [], [focusedUnit, product]);
+  const focusedUnitPhotos = useMemo(() => focusedUnitMedia.filter((item) => item.tipo === "foto" && item.url), [focusedUnitMedia]);
+  const focusedUnitCover = focusedUnitPhotos.find((item) => item.is_capa) ?? focusedUnitPhotos[0];
+  const focusedUnitPrice = focusedUnit ? (focusedUnit.valor_promo ?? focusedUnit.valor_tabela) : null;
 
   const addressLine = useMemo(() => [product?.endereco, product?.numero, product?.bairro, product?.cidade, product?.uf, product?.cep].filter(Boolean).join(", "), [product]);
   // Query pro embed do Google (por texto) — sempre com cidade/UF/Brasil pra melhorar o acerto.
@@ -221,18 +227,6 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
       await load(); onChanged(); setMessage(publish ? "Produto publicado — já aparece no disparo, nas abordagens e no catálogo." : "Produto voltou para rascunho (fica invisível no disparo e nas abordagens).");
     } catch (error) { setMessage(error instanceof Error ? error.message : "Erro ao publicar."); } finally { setBusy(false); }
   }
-
-  const initialOpened = useRef(false);
-  useEffect(() => {
-    if (!initialOpened.current && initialUnitId && product) {
-      const u = product.unidades.find((x) => x.id === initialUnitId);
-      if (u) {
-        initialOpened.current = true;
-        const timer = window.setTimeout(() => { setTab("unidades"); setUnitDetail(u); }, 0);
-        return () => window.clearTimeout(timer);
-      }
-    }
-  }, [product, initialUnitId]);
 
   async function decideUnit(unidadeId: string, approve: boolean) {
     let motivo: string | null = null;
@@ -345,7 +339,84 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
   return <div className="modal-layer product-detail-layer">
     <button className="modal-scrim" type="button" onClick={onClose} aria-label="Fechar ficha do produto" />
     <aside className="product-detail-panel ficha-v2" aria-label="Ficha completa do produto">
-      {!product ? <div className="detail-loading">{message || "Carregando dados reais do produto..."}</div> : editing ? (
+      {!product ? <div className="detail-loading">{message || "Carregando dados reais do produto..."}</div> : focusedUnit ? (
+        <div className="fv2-page fv2-unit-product">
+          <button className="fv2-close" type="button" onClick={onClose} aria-label="Fechar ficha do apartamento"><IcClose /></button>
+          <div className="fv2-main">
+            <div className="fv2-mosaic">
+              <button className="fv2-mosaic-cover" type="button" onClick={() => focusedUnitPhotos.length && setUnitLightbox({ items: focusedUnitPhotos.map((item) => ({ url: item.url ?? "", label: item.categoria || item.nome || "Foto do apartamento" })), index: 0 })} style={focusedUnitCover?.url ? { backgroundImage: `url(${focusedUnitCover.url})` } : undefined} aria-label="Ampliar fotos do apartamento">
+                <span className={`fv2-status ${focusedUnit.aprovacao === "aprovado" ? "ready" : "draft"}`}><i />{focusedUnit.aprovacao === "pendente" ? "Aguardando aprovação" : focusedUnit.aprovacao === "reprovado" ? "Correção solicitada" : "Aprovado"}</span>
+              </button>
+              <div className="fv2-mosaic-side">
+                <div className="fv2-thumb" style={focusedUnitPhotos[1]?.url ? { backgroundImage: `url(${focusedUnitPhotos[1].url})` } : undefined} />
+                <button className="fv2-thumb fv2-thumb-more" type="button" onClick={() => focusedUnitPhotos.length && setUnitLightbox({ items: focusedUnitPhotos.map((item) => ({ url: item.url ?? "", label: item.categoria || item.nome || "Foto do apartamento" })), index: 0 })}>
+                  <IcImages /><span>Ver {focusedUnitPhotos.length} foto{focusedUnitPhotos.length === 1 ? "" : "s"} da unidade</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="fv2-head">
+              <span className="unit-product-eyebrow">APARTAMENTO INDIVIDUAL</span>
+              <h2>{product.nome} · Un. {focusedUnit.numero || "s/n"}{focusedUnit.codigo && <span className="cod-imovel">{focusedUnit.codigo}</span>}</h2>
+              <p className="fv2-address"><IcPin /> {[product.bairro, product.cidade, product.uf].filter(Boolean).join(" · ") || "Endereço não informado"} · Captado por: {focusedUnit.captador_nome || "—"}</p>
+              <p className="unit-condo-reference"><IcBuilding /> Condomínio de referência: <strong>{product.condominios?.nome || product.nome}</strong></p>
+            </div>
+
+            <div className="fv2-specs">
+              <div className="fv2-spec"><span className="fv2-spec-ic"><IcRuler /></span><strong>{focusedUnit.area_m2 ?? "—"} <em>m²</em></strong><small>área do apartamento</small></div>
+              <div className="fv2-spec"><span className="fv2-spec-ic"><IcBed /></span><strong>{focusedUnit.tipologia || "—"}</strong><small>tipologia própria</small></div>
+              <div className="fv2-spec"><span className="fv2-spec-ic"><IcCar /></span><strong>{focusedUnit.vagas ?? 0}</strong><small>vaga(s)</small></div>
+              <div className="fv2-spec"><span className="fv2-spec-ic"><IcSeal /></span><strong>{focusedUnit.disponivel ? "Sim" : "Não"}</strong><small>disponível</small></div>
+            </div>
+
+            <nav className="fv2-tabs" aria-label="Dados do apartamento">
+              {([["resumo", "Resumo"], ["proprietario", "Proprietário e acesso"], ["galeria", "Galeria da unidade"], ["localizacao", "Condomínio e localização"]] as const).map(([key, label]) => <button key={key} type="button" className={tab === key ? "active" : ""} onClick={() => setTab(key)}>{label}</button>)}
+            </nav>
+
+            {message && <div className={`detail-message ${message.includes("salv") || message.includes("atualiz") || message.includes("aprova") ? "success" : ""}`}>{message}</div>}
+            <div className="fv2-tab-body">
+              {tab === "resumo" && <>
+                <div className="unit-independent-note"><IcSeal /><div><strong>Este apartamento é um produto independente</strong><span>Preço, aprovação, proprietário, acesso e fotos pertencem à unidade. O condomínio serve somente como referência de prédio e localização.</span></div></div>
+                {focusedUnit.aprovacao === "reprovado" && focusedUnit.reprovacao_motivo && <div className="approval-reason"><strong>Correção solicitada:</strong> {focusedUnit.reprovacao_motivo}</div>}
+                <div className="fv2-cost-tiles">
+                  <div className="fv2-tile"><small>NÚMERO</small><strong>{focusedUnit.numero || "—"}</strong></div>
+                  <div className="fv2-tile"><small>CÓDIGO AP</small><strong>{focusedUnit.codigo || "—"}</strong></div>
+                  <div className="fv2-tile"><small>ORIGEM</small><strong>{focusedUnit.de_terceiros ? "Captação individual" : "Estoque da construtora"}</strong></div>
+                </div>
+              </>}
+
+              {tab === "proprietario" && <>
+                {focusedUnit.proprietario_nome ? <div className="fv2-owner-block"><div className="fv2-owner-lead"><span className="fv2-avatar">{initials(focusedUnit.proprietario_nome)}</span><div><strong>{focusedUnit.proprietario_nome}</strong><small>Proprietário deste apartamento</small></div></div>{focusedUnit.proprietario_contato && <div className="fv2-contact-pills"><a className="fv2-pill" href={`tel:${focusedUnit.proprietario_contato}`}><IcPhone />{focusedUnit.proprietario_contato}</a></div>}</div> : <p className="fv2-ud-empty">Proprietário não informado para esta unidade.</p>}
+                <div className="fv2-cost-tiles"><div className="fv2-tile"><small>ACESSO</small><strong>{acessoLabel(focusedUnit.acesso_tipo)}</strong></div><div className="fv2-tile"><small>CÓDIGO</small><strong>{focusedUnit.acesso_codigo || "—"}</strong></div><div className="fv2-tile"><small>INSTRUÇÕES</small><strong>{focusedUnit.acesso_instrucoes || "—"}</strong></div></div>
+                <div className="fv2-person-card unit-captor-card"><span className="fv2-avatar purple">{initials(focusedUnit.captador_nome)}</span><div><strong>{focusedUnit.captador_nome || "Sem captador"}</strong><small>Corretor responsável por esta unidade</small></div></div>
+              </>}
+
+              {tab === "galeria" && <>{focusedUnitPhotos.length ? <div className="focused-unit-gallery">{focusedUnitPhotos.map((item, index) => <button key={item.id} type="button" className="watermarked-preview" onClick={() => setUnitLightbox({ items: focusedUnitPhotos.map((photo) => ({ url: photo.url ?? "", label: photo.categoria || photo.nome || "Foto do apartamento" })), index })}><img src={item.url ?? ""} alt={item.categoria || item.nome || "Foto do apartamento"} /></button>)}</div> : <p className="empty-media">Nenhuma foto própria foi enviada para este apartamento.</p>}{focusedUnit.pode_editar && <label className="fv2-btn fv2-btn-outline focused-unit-upload">＋ Adicionar fotos ou vídeos<input hidden multiple type="file" accept="image/*,video/*" disabled={busy} onChange={(event) => void uploadUnitMedia(event.target.files, focusedUnit)} /></label>}</>}
+
+              {tab === "localizacao" && <>
+                <h3 className="fv2-loc-title">{[product.endereco, product.numero].filter(Boolean).join(", ") || "Endereço não cadastrado"}</h3>
+                <p className="fv2-loc-sub">{[product.bairro, product.cidade].filter(Boolean).join(" · ")}{product.uf ? ` — ${product.uf}` : ""}{product.cep ? ` · CEP ${product.cep}` : ""}</p>
+                <div className="fv2-condo"><span className="fv2-condo-ic"><IcBuilding /></span><div><strong>{product.condominios?.nome || product.nome}</strong><small>Vínculo de prédio — não define o preço nem a identidade deste apartamento</small></div></div>
+                <div className="fv2-map">{mapQuery ? <iframe title="Mapa do apartamento" loading="lazy" referrerPolicy="no-referrer-when-downgrade" src={`https://www.google.com/maps?q=${mapQuery}&output=embed`} /> : <div className="fv2-map-placeholder">Endereço não cadastrado.</div>}</div>
+              </>}
+            </div>
+          </div>
+
+          <aside className="fv2-side">
+            <div className="fv2-price-card unit-price-card">
+              <small>VALOR DESTA UNIDADE</small>
+              <strong>{focusedUnitPrice ? money.format(focusedUnitPrice) : "Sob consulta"}</strong>
+              {focusedUnitPrice && focusedUnit.area_m2 ? <span className="fv2-price-m2">{money.format(Math.round(focusedUnitPrice / focusedUnit.area_m2))} por m²</span> : null}
+              <div className="fv2-side-costs"><div><span>Condomínio</span><b>Não informado na unidade</b></div><div><span>IPTU</span><b>Não informado na unidade</b></div><div><span>Prédio de referência</span><b>{product.condominios?.nome || product.nome}</b></div></div>
+            </div>
+            <div className="fv2-actions">
+              {focusedUnit.pode_editar && <button className="fv2-btn fv2-btn-outline" type="button" disabled={busy} onClick={() => setUnitEdit({ ...focusedUnit })}><IcEdit /> Editar apartamento</button>}
+              {canPublish && focusedUnit.de_terceiros && focusedUnit.aprovacao === "pendente" && <div className="focused-unit-decision"><button type="button" className="fv2-ud-reject" disabled={busy} onClick={() => void decideUnit(focusedUnit.id, false)}>✕ Reprovar</button><button type="button" className="fv2-ud-approve" disabled={busy} onClick={() => void decideUnit(focusedUnit.id, true)}>✓ Aprovar unidade</button></div>}
+            </div>
+            <div className="fv2-person-card"><span className="fv2-avatar purple">{initials(focusedUnit.captador_nome)}</span><div><strong>{focusedUnit.captador_nome || "Sem captador"}</strong><small>Captador desta unidade</small></div></div>
+          </aside>
+        </div>
+      ) : editing ? (
         <div className="fv2-edit">
           <div className="fv2-edit-head"><h2>Editar produto</h2><button className="fv2-btn fv2-btn-ghost" type="button" onClick={() => setEditing(false)}>Cancelar edição</button></div>
           {message && <div className={`detail-message ${message.includes("salv") || message.includes("atualiz") || message.includes("adicionado") ? "success" : ""}`}>{message}</div>}

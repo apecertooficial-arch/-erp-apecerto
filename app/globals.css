@@ -3034,6 +3034,30 @@ body { overflow:hidden; background:#eee8e2; }
 
 /* Lightbox das fotos da unidade: botão sem aparência default + acima do modal da unidade */
 .fv2-unit-detail-ov .fv2-ud-photo { padding:0; cursor:pointer; }
+
+/* Apartamento captado = produto independente; o prédio fica só como referência. */
+.ficha-v2 .fv2-unit-product .unit-product-eyebrow { display:block; margin-bottom:6px; color:var(--fv-orange); font-size:11px; font-weight:800; letter-spacing:.09em; }
+.ficha-v2 .fv2-unit-product .unit-condo-reference { display:flex; align-items:center; gap:7px; margin:10px 0 0; color:var(--fv-muted); font-size:13px; }
+.ficha-v2 .fv2-unit-product .unit-condo-reference svg { width:17px; height:17px; color:var(--fv-purple); }
+.ficha-v2 .fv2-unit-product .unit-independent-note { display:flex; align-items:flex-start; gap:13px; padding:16px 18px; margin-bottom:18px; border:1px solid #ead9f4; border-radius:17px; background:#fbf5ff; }
+.ficha-v2 .fv2-unit-product .unit-independent-note > svg { flex:none; color:var(--fv-purple); }
+.ficha-v2 .fv2-unit-product .unit-independent-note strong,
+.ficha-v2 .fv2-unit-product .unit-independent-note span { display:block; }
+.ficha-v2 .fv2-unit-product .unit-independent-note span { margin-top:3px; color:var(--fv-muted); font-size:13px; line-height:1.45; }
+.ficha-v2 .fv2-unit-product .unit-captor-card { margin-top:16px; }
+.ficha-v2 .fv2-unit-product .focused-unit-gallery { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; }
+.ficha-v2 .fv2-unit-product .focused-unit-gallery button { padding:0; aspect-ratio:4/3; overflow:hidden; border:1px solid var(--fv-line); border-radius:14px; background:#eee; cursor:pointer; }
+.ficha-v2 .fv2-unit-product .focused-unit-gallery img { width:100%; height:100%; object-fit:cover; display:block; }
+.ficha-v2 .fv2-unit-product .focused-unit-upload { margin-top:14px; }
+.ficha-v2 .fv2-unit-product .unit-price-card > strong { color:var(--fv-orange); }
+.ficha-v2 .fv2-unit-product .fv2-side-costs b { max-width:170px; text-align:right; font-size:12px; }
+.ficha-v2 .fv2-unit-product .focused-unit-decision { display:grid; grid-template-columns:1fr 1.35fr; gap:9px; }
+.ficha-v2 .fv2-unit-product .focused-unit-decision button { min-height:44px; border-radius:12px; font-family:inherit; font-size:13px; font-weight:700; cursor:pointer; }
+.ficha-v2 .fv2-unit-product .focused-unit-decision .fv2-ud-approve { border:0; background:var(--fv-green); color:#fff; }
+.ficha-v2 .fv2-unit-product .focused-unit-decision .fv2-ud-reject { border:1px solid #f0c3c3; background:#fff; color:#c62828; }
+@media(max-width:760px){
+  .ficha-v2 .fv2-unit-product .focused-unit-gallery { grid-template-columns:repeat(2,minmax(0,1fr)); }
+}
 .photo-lightbox.unit-lightbox { z-index:1200; }
 
 /* ===== Ficha pública de financiamento (/ficha/<token>) ===== */
