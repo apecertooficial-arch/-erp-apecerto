@@ -75,7 +75,118 @@ export type Tracking360Resumo = {
     by_channel?: Record<string, { total?: number; delivered?: number; pending?: number; failed?: number; blocked?: number }>;
     updated_at?: string;
   };
+  digital_journey?: Tracking360JornadaDigital;
   atualizado_em?: string;
+};
+
+export type Tracking360LinhaCanal = {
+  source: string;
+  medium: string;
+  campaign: string;
+  page_views: number;
+  tracked_page_visits: number;
+  property_views: number;
+  whatsapp_clicks: number;
+  form_starts: number;
+  leads: number;
+};
+
+export type Tracking360Jornada = {
+  visit_ref: string;
+  started_at: string;
+  last_at: string;
+  page_path: string;
+  device: string | null;
+  source: string;
+  medium: string;
+  campaign: string;
+  max_scroll: number;
+  products: string[];
+  clicked_whatsapp: boolean;
+  clicked_phone: boolean;
+  started_form: boolean;
+  generated_lead: boolean;
+  identified: boolean;
+  identified_first_name: string | null;
+  masked_phone: string | null;
+  crm_lead_id: number | null;
+  crm_negocio_id: number | null;
+  event_names: string[];
+};
+
+export type Tracking360JornadaDigital = {
+  period?: { days?: number; since?: string; until?: string };
+  overview?: {
+    page_views?: number;
+    tracked_page_visits?: number;
+    engaged_page_visits?: number;
+    property_views?: number;
+    unique_properties?: number;
+    whatsapp_clicks?: number;
+    phone_clicks?: number;
+    intent_clicks?: number;
+    form_starts?: number;
+    generated_leads?: number;
+    attributed_page_visits?: number;
+    last_event_at?: string | null;
+  };
+  behavior?: {
+    form_abandonments?: number;
+    scroll_25?: number;
+    scroll_50?: number;
+    scroll_75?: number;
+    scroll_90?: number;
+    page_visits_with_whatsapp?: number;
+    page_visits_with_property?: number;
+  };
+  channels?: Tracking360LinhaCanal[];
+  campaigns?: Tracking360LinhaCanal[];
+  pages?: Array<{
+    page_path: string;
+    page_views: number;
+    tracked_page_visits: number;
+    property_views: number;
+    whatsapp_clicks: number;
+    form_starts: number;
+    leads: number;
+  }>;
+  products?: Array<{
+    item_id: string;
+    item_name: string;
+    neighborhood: string | null;
+    value: number | null;
+    views: number;
+    tracked_page_visits: number;
+  }>;
+  daily?: Array<{ day: string; page_views: number; property_views: number; intent_clicks: number; leads: number }>;
+  recent_journeys?: Tracking360Jornada[];
+  identified_leads?: Array<{
+    id: string;
+    criado_em: string;
+    lead_type: string;
+    first_name: string;
+    masked_phone: string;
+    empreendimento_nome: string | null;
+    source: string;
+    campaign: string;
+    crm_lead_id: number | null;
+    crm_negocio_id: number | null;
+    crm_synced_at: string | null;
+    crm_sync_error: string | null;
+  }>;
+  whatsapp?: {
+    new_conversations?: number;
+    with_ad_source?: number;
+    with_ctwa_click_id?: number;
+    last_conversation_at?: string | null;
+  };
+  quality?: {
+    qa_events_excluded?: number;
+    site_clicks_without_identity?: number;
+    whatsapp_attribution_gap?: number;
+    session_scope?: string;
+  };
+  updated_at?: string;
 };
 
 export function diasDoPeriodo(periodo: string) {

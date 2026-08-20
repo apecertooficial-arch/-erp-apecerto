@@ -14,9 +14,14 @@ const deliveryMigration = readFileSync(
   new URL("../supabase/migrations/20260820190000_tracking_delivery_health.sql", import.meta.url),
   "utf8",
 );
+const journeyMigration = readFileSync(
+  new URL("../supabase/migrations/20260820203000_tracking_360_jornada_digital.sql", import.meta.url),
+  "utf8",
+);
 const api = readFileSync(new URL("../app/api/inteligencia/route.ts", import.meta.url), "utf8");
 const ceo = readFileSync(new URL("../app/features/inteligencia/telas/VisaoEmpresa.tsx", import.meta.url), "utf8");
 const privacidade = readFileSync(new URL("../app/features/inteligencia/telas/PrivacidadeTracking.tsx", import.meta.url), "utf8");
+const digital = readFileSync(new URL("../app/features/inteligencia/telas/VisaoDigital.tsx", import.meta.url), "utf8");
 const shell = readFileSync(new URL("../app/features/inteligencia/CascaInteligencia.tsx", import.meta.url), "utf8");
 
 test("resumo 360 exige gestão e não expõe tabelas diretamente", () => {
@@ -67,4 +72,18 @@ test("Privacidade usa saúde digital real sem inventar integração externa", ()
   assert.doesNotMatch(deliveryMigration, /select\s+payload/i);
   assert.match(privacidade, /useResumoInteligencia\(accessToken, periodo\)/);
   assert.doesNotMatch(privacidade, /const demo/);
+});
+
+test("Visão do digital reconcilia campanhas, comportamento e identidade sem demo", () => {
+  assert.match(journeyMigration, /tracking_360_jornada_digital/);
+  assert.match(journeyMigration, /security definer/);
+  assert.match(journeyMigration, /page_journeys/);
+  assert.match(journeyMigration, /form_abandonments/);
+  assert.match(journeyMigration, /wa_conversas/);
+  assert.match(journeyMigration, /masked_phone/);
+  assert.doesNotMatch(journeyMigration, /select\s+sl\.telefone\s*[,\n]/i);
+  assert.match(api, /tracking_360_jornada_digital/);
+  assert.match(digital, /useResumoInteligencia\(accessToken, recorte\.periodo\)/);
+  assert.match(digital, /JORNADAS RECENTES/);
+  assert.doesNotMatch(digital, /const demo/);
 });

@@ -1,258 +1,273 @@
 "use client";
 
-/* 1 · VISÃO DO DIGITAL — artboard 2a. Agora lê a telemetria real do site via
- * /api/inteligencia/digital (RPC intel_visao_digital). É uma tela CROSS-SOURCE:
- * a metade de site é real; os KPIs de negócio (negócios, visitas, vendas,
- * conversão lead→negócio, pipeline, GA4) dependem do CRM/GA4 e seguem — com
- * motivo até serem ligados. */
-
+import { useMemo } from "react";
 import type { PropsTela } from "../CascaInteligencia";
-import { fmt, RodapeFontes } from "../dado";
-import { Cabecalho, Funil, GradeKpis, IconeInt, type Etapa, type Kpi } from "../pecas";
-import { useDadosInteligencia } from "../useDadosInteligencia";
-import type { VisaoDigitalPayload } from "../../../lib/inteligencia/tipos";
+import { BlocoSemDado, fmt, RodapeFontes } from "../dado";
+import { Cabecalho, Funil, GradeKpis, IconeInt, Tabela, type Etapa, type Kpi } from "../pecas";
+import { useResumoInteligencia, type Tracking360Jornada } from "../usar-resumo";
 
-type Dados = {
-  visualizacoes: number | null;
-  engajadas: number | null;
-  intencao: number | null;
-  leads: number | null;
-  negocios: number | null;
-  visitas: number | null;
-  fechamentos: number | null;
-  conversaoPagina: number | null;
-  conversaoLead: number | null;
-  tempoAtendimento: number | null;
-  pipelineAtribuido: number | null;
-  sessoesGa4: string | null;
-  etapas: { nome: string; volume: number | null; largura: number | null; taxa?: string; perda?: string }[];
-  origens: { l: string; r: string; largura: number; cor: string }[];
-  campanhas: { l: string; r: string }[];
-  paginas: { l: string; r: string }[];
-  fracas: { l: string; r: string; sub: string }[];
-  tracking: { l: string; r: string; cor: string }[];
-  atualizado: string;
-};
+function n(value: number | null | undefined) {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function pct(part: number | null, total: number | null) {
+  return part !== null && total !== null && total > 0 ? (100 * part) / total : null;
+}
+
+function width(part: number | null, total: number | null) {
+  const value = pct(part, total);
+  return value === null ? null : Math.max(3, Math.min(100, Math.round(value)));
+}
+
+function conversion(leads: number, visits: number) {
+  return visits > 0 ? fmt.porcento((100 * leads) / visits, 1) : "—";
+}
+
+function shortCampaign(value: string) {
+  if (value === "(sem campanha)") return value;
+  return value.length > 24 ? `${value.slice(0, 21)}…` : value;
+}
+
+function actions(journey: Tracking360Jornada) {
+  const result: string[] = [];
+  if (journey.products.length) result.push(`imóvel: ${journey.products[0]}`);
+  if (journey.max_scroll) result.push(`rolou ${Math.round(journey.max_scroll)}%`);
+  if (journey.started_form) result.push("começou formulário");
+  if (journey.clicked_whatsapp) result.push("clicou WhatsApp");
+  if (journey.clicked_phone) result.push("clicou telefone");
+  if (journey.generated_lead) result.push("enviou lead");
+  return result.join(" · ") || "visualizou a página";
+}
 
 export function VisaoDigital({ accessToken, recorte }: PropsTela) {
-  const leitura = useDadosInteligencia<VisaoDigitalPayload>("digital", accessToken, recorte);
-  const d = mapearVisaoDigital(leitura.payload);
+  const { data, loading, error } = useResumoInteligencia(accessToken, recorte.periodo);
+  const journey = data?.digital_journey;
+  const overview = journey?.overview;
+  const behavior = journey?.behavior;
+  const whatsapp = journey?.whatsapp;
+
+  const visits = n(overview?.tracked_page_visits);
+  const engaged = n(overview?.engaged_page_visits);
+  const attributed = n(overview?.attributed_page_visits);
+  const propertyViews = n(overview?.property_views);
+  const intent = n(overview?.intent_clicks);
+  const whatsappClicks = n(overview?.whatsapp_clicks);
+  const formStarts = n(overview?.form_starts);
+  const abandoned = n(behavior?.form_abandonments);
+  const leads = n(overview?.generated_leads);
 
   const kpis: Kpi[] = [
-    { rotulo: "Visualizações de página", bruto: d.visualizacoes, texto: fmt.inteiro(d.visualizacoes), tile: "laranja" },
-    { rotulo: "Páginas com engajamento", bruto: d.engajadas, texto: fmt.inteiro(d.engajadas), motivo: "fonte", detalhe: "engajamento depende do GA4" },
-    { rotulo: "Cliques de intenção", bruto: d.intencao, texto: fmt.inteiro(d.intencao), foot: "WhatsApp, telefone, formulário e CTAs do site" },
-    { rotulo: "Leads do site", bruto: d.leads, texto: fmt.inteiro(d.leads) },
-    { rotulo: "Negócios no Funil 2.0", bruto: d.negocios, texto: fmt.inteiro(d.negocios), motivo: "integracao", detalhe: "atribuição site→CRM ainda não ligada" },
-    { rotulo: "Visitas agendadas", bruto: d.visitas, texto: fmt.inteiro(d.visitas), motivo: "integracao", detalhe: "vem do CRM, ainda não ligado à Inteligência" },
-    { rotulo: "Vendas e locações", bruto: d.fechamentos, texto: fmt.inteiro(d.fechamentos), motivo: "integracao", detalhe: "atribuição site→venda ainda não ligada" },
-    { rotulo: "Conversão página → lead", bruto: d.conversaoPagina, texto: fmt.porcento(d.conversaoPagina, 2) },
-    { rotulo: "Conversão lead → negócio", bruto: d.conversaoLead, texto: fmt.porcento(d.conversaoLead), motivo: "integracao", detalhe: "precisa do vínculo lead do site ↔ negócio" },
-    { rotulo: "Tempo até 1º atendimento", bruto: d.tempoAtendimento, texto: fmt.duracaoMin(d.tempoAtendimento), motivo: "integracao", detalhe: "medido em Atendimento e SLA", foot: "mediana · meta 5 min" },
-    { rotulo: "Pipeline atribuído ao site", bruto: d.pipelineAtribuido, texto: fmt.dinheiro(d.pipelineAtribuido), tile: "ambar", icone: "dinheiro", motivo: "integracao", detalhe: "valor do negócio ausente no Funil 2.0", foot: "nunca estimado por média" },
-    { rotulo: "Sessões e usuários · GA4", bruto: d.sessoesGa4, motivo: "integracao", detalhe: "GA4 não conectado (GA4_PROPERTY_ID)" },
+    { rotulo: "Visitas rastreadas", bruto: visits, texto: fmt.inteiro(visits), tile: "laranja", foot: `${fmt.inteiro(n(overview?.page_views))} page views` },
+    { rotulo: "Com origem identificada", bruto: attributed, texto: fmt.inteiro(attributed), tile: "roxo", foot: `${fmt.porcento(pct(attributed, visits), 1)} das visitas` },
+    { rotulo: "Visitas com interação", bruto: engaged, texto: fmt.inteiro(engaged), tile: "verde", foot: `${fmt.porcento(pct(engaged, visits), 1)} das visitas` },
+    { rotulo: "Imóveis visualizados", bruto: propertyViews, texto: fmt.inteiro(propertyViews), tile: "laranja", foot: `${fmt.inteiro(n(overview?.unique_properties))} imóveis diferentes` },
+    { rotulo: "Cliques no WhatsApp", bruto: whatsappClicks, texto: fmt.inteiro(whatsappClicks), tile: "verde", foot: `${fmt.inteiro(intent)} ações de intenção no total` },
+    { rotulo: "Começaram formulário", bruto: formStarts, texto: fmt.inteiro(formStarts), tile: "roxo", foot: "uma vez por visita à página" },
+    { rotulo: "Abandonaram formulário", bruto: abandoned, texto: fmt.inteiro(abandoned), tile: abandoned && abandoned > 0 ? "vermelho" : "verde", foot: "começaram e não enviaram" },
+    { rotulo: "Leads enviados", bruto: leads, texto: fmt.inteiro(leads), tile: leads && leads > 0 ? "verde" : "ambar", foot: `${fmt.porcento(pct(leads, visits), 2)} de conversão` },
   ];
 
-  const etapas: Etapa[] = d.etapas.map((e) => ({
-    nome: e.nome,
-    largura: e.largura,
-    volume: e.volume,
-    volumeTexto: fmt.inteiro(e.volume),
-    taxa: e.taxa,
-    perda: e.perda,
-    detalhes: () => recorte.filtrar(`Etapa do site: ${e.nome}`),
-  }));
+  const funnel: Etapa[] = [
+    { nome: "Página acessada", volume: visits, volumeTexto: fmt.inteiro(visits), largura: width(visits, visits), taxa: visits === null ? undefined : "100%" },
+    { nome: "Imóvel visualizado", volume: propertyViews, volumeTexto: fmt.inteiro(propertyViews), largura: width(propertyViews, visits), taxa: fmt.porcento(pct(propertyViews, visits), 1) },
+    { nome: "Ação de intenção", volume: intent, volumeTexto: fmt.inteiro(intent), largura: width(intent, visits), taxa: fmt.porcento(pct(intent, visits), 1) },
+    { nome: "Formulário iniciado", volume: formStarts, volumeTexto: fmt.inteiro(formStarts), largura: width(formStarts, visits), taxa: fmt.porcento(pct(formStarts, visits), 1) },
+    { nome: "Lead enviado", volume: leads, volumeTexto: fmt.inteiro(leads), largura: width(leads, visits), taxa: fmt.porcento(pct(leads, visits), 1) },
+  ];
+
+  const campaignRows = useMemo(() => (journey?.campaigns ?? [])
+    .filter((row) => !row.source.startsWith("codex") && row.medium !== "validation")
+    .map((row) => ({
+      chave: `${row.source}-${row.medium}-${row.campaign}`,
+      destaque: row.whatsapp_clicks > 0 || row.leads > 0,
+      abrir: () => recorte.filtrar(`Campanha: ${row.campaign}`),
+      celulas: [
+        { texto: `${row.source} / ${row.medium}`, forte: true, sub: shortCampaign(row.campaign) },
+        { texto: fmt.inteiro(row.page_views), num: true },
+        { texto: fmt.inteiro(row.property_views), num: true },
+        { texto: fmt.inteiro(row.whatsapp_clicks), num: true },
+        { texto: fmt.inteiro(row.form_starts), num: true },
+        { texto: fmt.inteiro(row.leads), num: true },
+        { texto: conversion(row.leads, row.page_views), num: true },
+      ],
+    })), [journey?.campaigns, recorte]);
+
+  const recentRows = useMemo(() => (journey?.recent_journeys ?? []).map((row) => ({
+    chave: `${row.visit_ref}-${row.last_at}`,
+    destaque: row.clicked_whatsapp || row.generated_lead,
+    abrir: () => recorte.filtrar(`Visita: ${row.visit_ref}`),
+    celulas: [
+      { texto: new Date(row.last_at).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }), forte: true, sub: `ref. ${row.visit_ref}` },
+      { texto: `${row.source} / ${row.medium}`, sub: shortCampaign(row.campaign) },
+      { texto: row.page_path || "/", sub: row.device ?? undefined },
+      { texto: actions(row) },
+      row.identified
+        ? { texto: `${row.identified_first_name ?? "Lead"} ${row.masked_phone ?? ""}`.trim(), chip: "identificado", chipTom: "bom" as const }
+        : { texto: "anônimo", chip: "anônimo", chipTom: row.clicked_whatsapp ? "aviso" as const : "neutro" as const },
+    ],
+  })), [journey?.recent_journeys, recorte]);
+
+  const channelRows = (journey?.channels ?? []).filter((row) => !row.source.startsWith("codex") && row.medium !== "validation");
+  const paid = channelRows.filter((row) => row.medium === "paid" || row.medium === "paid_social" || row.medium === "cpc");
+  const paidClicks = paid.reduce((sum, row) => sum + row.whatsapp_clicks, 0);
+  const paidVisits = paid.reduce((sum, row) => sum + row.page_views, 0);
+  const maxDaily = Math.max(1, ...(journey?.daily ?? []).map((row) => row.page_views));
+
+  if (loading || error || !journey) {
+    return (
+      <div className="int-secao">
+        <BlocoSemDado
+          titulo={loading ? "Consolidando a jornada digital real" : "A jornada digital não respondeu"}
+          detalhe={loading ? "Canais, campanhas, páginas, imóveis e leads estão sendo reconciliados. Nenhum número demonstrativo será exibido." : error ?? "Tente novamente."}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="int-secao">
-      <GradeKpis itens={kpis} colunas={6} />
+      <Cabecalho eyebrow="RESPOSTA DIRETA" titulo="O que aconteceu com as campanhas e com o site" nota={`${recorte.periodo} · sem dados demonstrativos`} />
+      <div className="intp-grade" style={{ gridTemplateColumns: "repeat(3, minmax(0, 1fr))" }}>
+        <DiagnosticCard
+          tone="roxo"
+          title="Tráfego pago detectado"
+          value={`${fmt.inteiro(paidVisits)} visitas · ${fmt.inteiro(paidClicks)} cliques no WhatsApp`}
+          detail={paid.length ? `Campanha ${paid[0].campaign}; origem ${paid.map((row) => row.source).join(" + ")}.` : "Nenhuma visita com mídia paga apareceu neste recorte."}
+        />
+        <DiagnosticCard
+          tone={abandoned && abandoned > 0 ? "vermelho" : "verde"}
+          title="Formulário"
+          value={`${fmt.inteiro(formStarts)} começaram · ${fmt.inteiro(leads)} enviaram`}
+          detail={`${fmt.inteiro(abandoned)} visitas iniciaram e não concluíram. Isso é abandono, não lead.`}
+        />
+        <DiagnosticCard
+          tone={(whatsapp?.with_ad_source ?? 0) > 0 ? "verde" : "ambar"}
+          title="WhatsApp e identidade"
+          value={`${fmt.inteiro(whatsappClicks)} cliques no site · ${fmt.inteiro(whatsapp?.with_ad_source)} conversas atribuídas`}
+          detail="O clique tem campanha e página. O nome só é comprovado após formulário ou quando o WhatsApp entrega a referência do anúncio."
+        />
+      </div>
 
-      <Cabecalho eyebrow="FUNIL DO SITE" titulo="Do acesso à ação de intenção" cor="#8B00CC" nota="somente telemetria observada" />
-      <Funil etapas={etapas} foot="funil do site (telemetria) · do negócio em diante é o Funil 2.0, ainda não atribuído ao site" />
+      <Cabecalho eyebrow="INDICADORES" titulo="Da visita ao lead, em números verificáveis" cor="#8B00CC" />
+      <GradeKpis itens={kpis} colunas={4} />
 
-      {/* LEITURAS RÁPIDAS — quatro cartões */}
-      <Cabecalho eyebrow="LEITURAS RÁPIDAS" titulo="O que está puxando o acesso" />
-      <div className="intp-grade" style={{ gridTemplateColumns: "repeat(4, minmax(0, 1fr))" }}>
-        <div className="intp-cartao">
-          <span className="intp-cartao-titulo">Origens que mais trazem acesso</span>
-          {d.origens.map((o) => (
-            <button key={o.l} type="button" className="intp-linha-btn" onClick={() => recorte.filtrar(`Origem: ${o.l}`)}>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 84px 26px", gap: 8, alignItems: "center", fontSize: 12 }}>
-                <span style={{ fontWeight: 600, color: "#4D4842" }}>{o.l}</span>
-                <span className="intp-casc-trilha" style={{ height: 8 }}>
-                  <span className="intp-casc-barra" style={{ height: 8, width: `${o.largura}%`, background: o.cor }} />
-                </span>
-                <b style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{o.r}</b>
-              </div>
-            </button>
-          ))}
-          <button type="button" className="int-link" style={{ fontWeight: 700, marginTop: "auto", alignSelf: "flex-start" }} onClick={() => recorte.irPara("aquisicao")}>Abrir Aquisição →</button>
-        </div>
-
-        <div className="intp-cartao">
-          <span className="intp-cartao-titulo">Campanhas com melhor conversão</span>
-          <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
-            {d.campanhas.map((c) => (
-              <div key={c.l} className="intp-linha-kv">
-                <span>{c.l}</span>
-                <b>{c.r}</b>
-              </div>
-            ))}
+      <div className="int-duas">
+        <div className="int-col">
+          <Cabecalho eyebrow="EVOLUÇÃO" titulo="Volume real por dia" nota="barras = page views" />
+          <div className="intp-cartao">
+            <div style={{ display: "flex", alignItems: "flex-end", gap: 10, height: 180 }}>
+              {(journey.daily ?? []).map((row) => (
+                <button
+                  type="button"
+                  key={row.day}
+                  title={`${row.day}: ${row.page_views} page views · ${row.intent_clicks} intenções · ${row.leads} leads`}
+                  onClick={() => recorte.filtrar(`Dia: ${row.day}`)}
+                  style={{ flex: 1, minWidth: 18, height: "100%", border: 0, background: "transparent", padding: 0, display: "flex", flexDirection: "column", justifyContent: "flex-end", alignItems: "stretch", gap: 6, cursor: "pointer" }}
+                >
+                  <span style={{ fontSize: 11, fontWeight: 700, color: "#4D4842" }}>{row.page_views}</span>
+                  <span style={{ minHeight: 4, height: `${Math.max(4, (145 * row.page_views) / maxDaily)}px`, borderRadius: "7px 7px 3px 3px", background: row.intent_clicks > 0 ? "linear-gradient(180deg,#8B00CC,#FF7000)" : "#FF9A4D" }} />
+                  <small style={{ fontSize: 9, color: "#9A938B" }}>{new Date(`${row.day}T12:00:00`).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })}</small>
+                </button>
+              ))}
+            </div>
+            <small className="intp-kpi-foot">passe o mouse para ver page views, intenções e leads; clique para aplicar o dia ao recorte</small>
           </div>
-          <small className="intp-kpi-foot">precisa de UTM nas campanhas — cobertura hoje é baixa</small>
-          <button type="button" className="int-link" style={{ fontWeight: 700, marginTop: "auto", alignSelf: "flex-start" }} onClick={() => recorte.irPara("aquisicao")}>Abrir Aquisição →</button>
         </div>
-
-        <div className="intp-cartao">
-          <span className="intp-cartao-titulo">Páginas mais acessadas</span>
-          <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
-            {d.paginas.map((p) => (
-              <div key={p.l} className="intp-linha-kv">
-                <span>{p.l}</span>
-                <b>{p.r}</b>
-              </div>
-            ))}
-          </div>
-          <button type="button" className="int-link" style={{ fontWeight: 700, marginTop: "auto", alignSelf: "flex-start" }} onClick={() => recorte.irPara("imoveis")}>Abrir Imóveis →</button>
-        </div>
-
-        <div className="intp-cartao">
-          <span className="intp-cartao-titulo">Muito acesso, pouca conversão</span>
-          <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
-            {d.fracas.map((f) => (
-              <div key={f.l}>
-                <div className="intp-linha-kv">
-                  <span>{f.l}</span>
-                  <b>{f.r}</b>
-                </div>
-                <small className="intp-linha-sub">{f.sub}</small>
-              </div>
-            ))}
-          </div>
-          <small className="intp-kpi-foot">precisa de conversão por página (vínculo com o CRM)</small>
-          <button type="button" className="int-link" style={{ fontWeight: 700, marginTop: "auto", alignSelf: "flex-start" }} onClick={() => recorte.irPara("comportamento")}>Abrir Comportamento →</button>
+        <div className="int-col">
+          <Cabecalho eyebrow="FUNIL DIGITAL" titulo="Onde as pessoas param" cor="#8B00CC" />
+          <Funil etapas={funnel} foot="as etapas são volumes de eventos do período; uma visita pode visualizar mais de um imóvel" />
         </div>
       </div>
 
-      {/* FAIXA FINAL — captação · Sara · saúde do tracking */}
-      <div className="intp-grade" style={{ gridTemplateColumns: "1fr 1fr 1fr" }}>
-        <div className="intp-cartao">
-          <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
-            <span className="intp-tile tile-laranja"><IconeInt nome="casa" tamanho={15} /></span>
-            <span className="intp-cartao-titulo">Captação de proprietários</span>
-          </div>
-          <div className="intp-grade" style={{ gridTemplateColumns: "repeat(3, 1fr)" }}>
-            <div><strong style={{ fontSize: 22, fontWeight: 700 }}>—</strong><br /><small className="intp-kpi-foot">captações</small></div>
-            <div><strong style={{ fontSize: 22, fontWeight: 700 }}>—</strong><br /><small className="intp-kpi-foot">contatados</small></div>
-            <div><strong style={{ fontSize: 22, fontWeight: 700 }}>—</strong><br /><small className="intp-kpi-foot">publicados</small></div>
-          </div>
-          <button type="button" className="int-link" style={{ fontWeight: 700, marginTop: "auto", alignSelf: "flex-start" }} onClick={() => recorte.irPara("proprietarios")}>Abrir Proprietários →</button>
-        </div>
+      <Cabecalho eyebrow="CAMPANHAS" titulo="Qual anúncio trouxe visita, clique e lead" nota="custo e impressão entram quando as APIs de Ads forem conectadas" />
+      <Tabela
+        colunas={[
+          { titulo: "Origem / campanha" }, { titulo: "Page views", num: true }, { titulo: "Imóveis", num: true },
+          { titulo: "WhatsApp", num: true }, { titulo: "Formulários", num: true }, { titulo: "Leads", num: true }, { titulo: "Conversão", num: true },
+        ]}
+        linhas={campaignRows}
+        ordenadaEm="Page views"
+        foot="Meta/Google informam impressão, clique e custo; a coleta própria informa o que aconteceu depois que a pessoa chegou ao site."
+      />
 
-        <div className="intp-cartao" style={{ background: "#8B00CC", color: "#fff", boxShadow: "0 12px 28px rgba(139,0,204,0.24)" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
-            <span className="intp-tile" style={{ background: "rgba(255,255,255,0.16)", color: "#fff" }}><IconeInt nome="faisca" tamanho={15} /></span>
-            <span className="intp-cartao-titulo" style={{ color: "#fff" }}>Sara · assistente de imóveis</span>
-          </div>
-          <div className="intp-grade" style={{ gridTemplateColumns: "repeat(3, 1fr)" }}>
-            <div><strong style={{ fontSize: 22, fontWeight: 700 }}>—</strong><br /><small style={{ fontSize: 11, color: "rgba(255,255,255,0.75)" }}>buscas</small></div>
-            <div><strong style={{ fontSize: 22, fontWeight: 700 }}>—</strong><br /><small style={{ fontSize: 11, color: "rgba(255,255,255,0.75)" }}>leads</small></div>
-            <div><strong style={{ fontSize: 22, fontWeight: 700 }}>—</strong><br /><small style={{ fontSize: 11, color: "rgba(255,255,255,0.75)" }}>sem resultado</small></div>
-          </div>
-          <button type="button" className="int-link" style={{ fontWeight: 700, color: "#fff", marginTop: "auto", alignSelf: "flex-start" }} onClick={() => recorte.irPara("sara")}>Abrir Sara →</button>
-        </div>
+      <Cabecalho eyebrow="JORNADAS RECENTES" titulo="O caminho de cada visita rastreada" nota="anônimo até a pessoa se identificar voluntariamente" />
+      <Tabela
+        colunas={[{ titulo: "Quando" }, { titulo: "Origem" }, { titulo: "Página" }, { titulo: "O que fez" }, { titulo: "Identidade" }]}
+        linhas={recentRows}
+        ordenadaEm="Quando"
+        foot="A referência é efêmera por página. Nome e telefone só aparecem após envio; não tentamos descobrir a pessoa escondida atrás de um clique."
+      />
 
+      <Cabecalho eyebrow="COMPORTAMENTO" titulo="Profundidade, páginas e produtos" />
+      <div className="intp-grade" style={{ gridTemplateColumns: "repeat(3, minmax(0, 1fr))" }}>
         <div className="intp-cartao">
-          <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
-            <span className="intp-tile tile-verde"><IconeInt nome="check" tamanho={15} /></span>
-            <span className="intp-cartao-titulo">Saúde do tracking</span>
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            {d.tracking.map((t) => (
-              <div key={t.l} style={{ display: "flex", gap: 8, fontSize: 12, alignItems: "center" }}>
-                <span style={{ width: 7, height: 7, borderRadius: 999, background: t.cor, flex: "none" }} />
-                <span style={{ flex: 1, color: "#4D4842", fontWeight: 600 }}>{t.l}</span>
-                <b style={{ color: t.cor === "#D93E3E" || t.cor === "#B5700A" ? t.cor : "#6E6760", fontWeight: 600 }}>{t.r}</b>
-              </div>
-            ))}
-          </div>
-          <button type="button" className="int-link" style={{ fontWeight: 700, marginTop: "auto", alignSelf: "flex-start" }} onClick={() => recorte.irPara("privacidade")}>Abrir Privacidade e tracking →</button>
+          <span className="intp-cartao-titulo">Até onde rolaram</span>
+          <MetricLine label="Chegaram a 25%" value={behavior?.scroll_25} />
+          <MetricLine label="Chegaram a 50%" value={behavior?.scroll_50} />
+          <MetricLine label="Chegaram a 75%" value={behavior?.scroll_75} />
+          <MetricLine label="Chegaram a 90%" value={behavior?.scroll_90} />
+          <small className="intp-kpi-foot">contagem por visita à página, não por disparo do evento</small>
         </div>
+        <div className="intp-cartao">
+          <span className="intp-cartao-titulo">Páginas com mais ação</span>
+          {(journey.pages ?? []).slice(0, 6).map((row) => (
+            <MetricLine key={row.page_path} label={row.page_path || "/"} value={row.page_views} sub={`${row.whatsapp_clicks} WhatsApp · ${row.form_starts} formulários`} />
+          ))}
+        </div>
+        <div className="intp-cartao">
+          <span className="intp-cartao-titulo">Imóveis mais vistos</span>
+          {(journey.products ?? []).slice(0, 6).map((row) => (
+            <MetricLine key={row.item_id} label={row.item_name} value={row.views} sub={`${row.neighborhood ?? "bairro não informado"} · ${row.value ? fmt.dinheiro(row.value) : "preço não informado"}`} />
+          ))}
+        </div>
+      </div>
+
+      <Cabecalho eyebrow="COMO LER" titulo="Um painel, quatro fontes com papéis diferentes" cor="#8B00CC" />
+      <div className="intp-grade" style={{ gridTemplateColumns: "repeat(4, minmax(0, 1fr))" }}>
+        <SourceCard title="ERP · coleta própria" status="conectado" text="Página, UTM, imóvel, rolagem, formulário, WhatsApp e vínculo com o CRM." tone="verde" />
+        <SourceCard title="GA4 + Google Tag" status="coleta consentida" text="Sessões, canais e funis agregados. Só mede Analytics após consentimento." tone="roxo" />
+        <SourceCard title="Microsoft Clarity" status="fora do ERP" text="Gravações e mapas de calor consentidos. O painel mostra o evento; a gravação continua no Clarity." tone="ambar" />
+        <SourceCard title="Meta / Google Ads" status="API de mídia pendente" text="Impressões, gasto, CPM, CPC e criativo ainda precisam de conexão oficial das contas." tone="ambar" />
       </div>
 
       <RodapeFontes
-        fontes={["coleta própria (site-track)"]}
-        pendencias={["GA4 não conectado", "atribuição site→CRM (leads do site ≈ 0)", "custo de mídia não conectado"]}
-        atualizado={d.atualizado}
+        fontes={["site_events_anon", "site_leads", "wa_conversas", "CRM Funil 2.0"]}
+        pendencias={["custos e impressões das plataformas de Ads", "referência de anúncio nas conversas atuais do WhatsApp", "atalho direto para gravação do Clarity"]}
+        atualizado={journey.updated_at ? fmt.hora(journey.updated_at) : "—"}
       />
     </div>
   );
 }
 
-/* PONTO ÚNICO DE TROCA PARA O BANCO — lê a RPC via hook. */
-function hhmm(iso: string | null): string {
-  if (!iso) return "—";
-  const dt = new Date(iso);
-  return Number.isNaN(dt.getTime()) ? "—" : dt.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo" });
+function DiagnosticCard({ tone, title, value, detail }: { tone: "roxo" | "verde" | "vermelho" | "ambar"; title: string; value: string; detail: string }) {
+  const colors = { roxo: "#8B00CC", verde: "#1FA85A", vermelho: "#D93E3E", ambar: "#B5700A" };
+  return (
+    <div className="intp-cartao" style={{ borderTop: `3px solid ${colors[tone]}` }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
+        <span className={`intp-tile tile-${tone}`}><IconeInt nome={tone === "vermelho" ? "alerta" : tone === "ambar" ? "relogio" : tone === "verde" ? "check" : "faisca"} tamanho={15} /></span>
+        <span className="intp-cartao-titulo">{title}</span>
+      </div>
+      <strong style={{ fontSize: 18, color: "#1F1C1A" }}>{value}</strong>
+      <small className="intp-kpi-foot">{detail}</small>
+    </div>
+  );
 }
 
-function minutosDesde(iso: string | null): number | null {
-  if (!iso) return null;
-  const t = new Date(iso).getTime();
-  return Number.isNaN(t) ? null : Math.max(0, Math.round((Date.now() - t) / 60_000));
+function MetricLine({ label, value, sub }: { label: string; value: number | null | undefined; sub?: string }) {
+  return (
+    <div>
+      <div className="intp-linha-kv"><span>{label}</span><b>{fmt.inteiro(n(value))}</b></div>
+      {sub ? <small className="intp-linha-sub">{sub}</small> : null}
+    </div>
+  );
 }
 
-const CORES_ORIGEM = ["#FF7000", "#FF9A4D", "#FFB570", "#C9C2BA", "#EFECE7"];
-const vazioVisaoDigital: Dados = {
-  visualizacoes: null, engajadas: null, intencao: null, leads: null, negocios: null, visitas: null, fechamentos: null,
-  conversaoPagina: null, conversaoLead: null, tempoAtendimento: null, pipelineAtribuido: null, sessoesGa4: null,
-  etapas: [], origens: [], campanhas: [{ l: "sem campanha com UTM no período", r: "—" }],
-  paginas: [], fracas: [{ l: "aguardando conexão", r: "—", sub: "" }],
-  tracking: [
-    { l: "Coleta própria", r: "aguardando", cor: "#B5700A" },
-    { l: "GA4", r: "não conectado", cor: "#B5700A" },
-    { l: "Microsoft Clarity", r: "não conectado", cor: "#B5700A" },
-    { l: "Cobertura de UTMs", r: "—", cor: "#6E6760" },
-  ],
-  atualizado: "—",
-};
-
-function mapearVisaoDigital(p: VisaoDigitalPayload | null): Dados {
-  if (!p) return vazioVisaoDigital;
-  const pv = p.total_pageviews;
-  const maxOrig = Math.max(1, ...p.origens.map((o) => o.pageviews));
-  const min = minutosDesde(p.ultimo_evento_em);
-  const coletaBoa = min !== null && min <= 30;
-
-  return {
-    visualizacoes: pv,
-    engajadas: null,
-    intencao: p.intencao,
-    leads: p.leads_site,
-    negocios: null,
-    visitas: null,
-    fechamentos: null,
-    conversaoPagina: pv > 0 ? (100 * p.leads_site) / pv : null,
-    conversaoLead: null,
-    tempoAtendimento: null,
-    pipelineAtribuido: null,
-    sessoesGa4: null,
-    etapas: [
-      { nome: "1 · Página acessada", volume: pv, largura: 100, taxa: "100%" },
-      { nome: "2 · Imóvel visualizado", volume: p.visualizacoes_item, largura: pv > 0 ? Math.round((100 * p.visualizacoes_item) / pv) : 0, taxa: pv > 0 ? `${((100 * p.visualizacoes_item) / pv).toFixed(1).replace(".", ",")}%` : undefined },
-      { nome: "3 · Ação de intenção", volume: p.intencao, largura: pv > 0 ? Math.round((100 * p.intencao) / pv) : 0 },
-      { nome: "4 · Lead do site", volume: p.leads_site, largura: pv > 0 ? Math.round((100 * p.leads_site) / pv) : 0 },
-    ],
-    origens: p.origens.slice(0, 5).map((o, i) => ({ l: o.origem, r: fmt.inteiro(o.pageviews), largura: Math.round((100 * o.pageviews) / maxOrig), cor: CORES_ORIGEM[i] ?? "#EFECE7" })),
-    campanhas: [{ l: "sem campanha com UTM no período", r: "—" }],
-    paginas: p.paginas.slice(0, 4).map((pg) => ({ l: pg.pagina, r: fmt.inteiro(pg.pageviews) })),
-    fracas: [{ l: "conversão por página", r: "—", sub: "precisa do vínculo com o CRM" }],
-    tracking: [
-      { l: "Coleta própria", r: min === null ? "sem eventos" : `há ${min} min`, cor: coletaBoa ? "#1FA85A" : "#B5700A" },
-      { l: "GA4", r: "não conectado", cor: "#B5700A" },
-      { l: "Microsoft Clarity", r: "não conectado", cor: "#B5700A" },
-      { l: "Cobertura de UTMs", r: p.cobertura_utm === null ? "—" : `${String(p.cobertura_utm).replace(".", ",")}%`, cor: "#6E6760" },
-    ],
-    atualizado: hhmm(p.atualizado_em),
-  };
+function SourceCard({ title, status, text, tone }: { title: string; status: string; text: string; tone: "verde" | "roxo" | "ambar" }) {
+  return (
+    <div className="intp-cartao">
+      <span className="intp-cartao-titulo">{title}</span>
+      <span className={`intp-cartao-chip tom-${tone === "verde" ? "bom" : tone === "roxo" ? "roxo" : "aviso"}`}>{status}</span>
+      <small className="intp-kpi-foot">{text}</small>
+    </div>
+  );
 }

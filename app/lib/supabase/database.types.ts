@@ -12078,6 +12078,7 @@ export type Database = {
       admin_dashboard_rodagem: { Args: never; Returns: Json }
       tracking_360_ceo: { Args: { p_days?: number }; Returns: Json }
       tracking_360_digital_health: { Args: { p_days?: number }; Returns: Json }
+      tracking_360_jornada_digital: { Args: { p_days?: number }; Returns: Json }
       tracking_delivery_health: { Args: { p_days?: number }; Returns: Json }
       agenda_link_regenerar: { Args: never; Returns: string }
       agenda_link_token: { Args: never; Returns: string }
