@@ -16,6 +16,7 @@ export async function PATCH(request: Request) {
   const supabase = createServerSupabaseClient(accessToken);
   const { data: authData, error: authError } = await supabase.auth.getUser(accessToken);
   if (authError || !authData.user) return Response.json({ error: "Sessão inválida ou expirada." }, { status: 401 });
+
   let body: { action?: string; id?: string; motivo?: string };
   try { body = await request.json() as typeof body; } catch { return Response.json({ error: "Dados inválidos." }, { status: 400 }); }
   const action = String(body.action || "");
@@ -127,6 +128,17 @@ export async function POST(request: Request) {
   const { data: authData, error: authError } = await supabase.auth.getUser(accessToken);
   if (authError || !authData.user) return Response.json({ error: "Sessão inválida ou expirada." }, { status: 401 });
 
+  // Toda captação precisa nascer com um corretor responsável. Sem este vínculo,
+  // a unidade some de "Minhas captações" e o corretor perde a edição operacional.
+  // Resolver antes de criar condomínio/proprietário também evita registros órfãos
+  // quando um usuário ainda não foi cadastrado na tabela de corretores.
+  const { data: broker, error: brokerError } = await supabase
+    .from("corretores")
+    .select("id")
+    .eq("usuario_id", authData.user.id)
+    .maybeSingle();
+  if (brokerError) return Response.json({ error: brokerError.message }, { status: 502 });
+
   let payload: CapturePayload | { action: "finalize"; id: string };
   try {
     payload = await request.json() as CapturePayload | { action: "finalize"; id: string };
@@ -135,6 +147,21 @@ export async function POST(request: Request) {
   }
 
   if (payload.action === "finalize") {
+    if (!broker?.id) {
+      return Response.json({ error: "Seu usuário ainda não está vinculado a um corretor. Peça à gestão para corrigir o cadastro antes de publicar uma captação." }, { status: 422 });
+    }
+    const { data: capture, error: captureError } = await supabase
+      .from("empreendimentos")
+      .select("aprovacao,rascunho,captado_por_usuario,captador_corretor_id")
+      .eq("id", payload.id)
+      .maybeSingle();
+    if (captureError) return Response.json({ error: captureError.message }, { status: 502 });
+    if (!capture) return Response.json({ error: "Captação não encontrada." }, { status: 404 });
+    if ((capture.captado_por_usuario && capture.captado_por_usuario !== authData.user.id)
+      || (capture.captador_corretor_id && capture.captador_corretor_id !== broker.id)) {
+      return Response.json({ error: "Esta captação pertence a outro corretor e não pode ser reassociada ao finalizar." }, { status: 403 });
+    }
+
     const { data: media, error: mediaError } = await supabase
       .from("midias")
       .select("tipo,is_capa")
@@ -148,16 +175,26 @@ export async function POST(request: Request) {
 
     // Ao publicar (finalizar a captação), o empreendimento entra na fila de aprovação do gestor.
     // Se já estava aprovado (edição de algo publicado), mantém aprovado — não re-gateia edições.
-    const { data: cur } = await supabase.from("empreendimentos").select("aprovacao").eq("id", payload.id).maybeSingle();
-    const patch = (cur as { aprovacao?: string } | null)?.aprovacao === "aprovado"
-      ? { rascunho: false }
-      : { rascunho: false, aprovacao: "pendente", reprovacao_motivo: null };
+    const patch = capture.aprovacao === "aprovado"
+      ? { rascunho: false, captado_por_usuario: authData.user.id, captador_corretor_id: broker.id }
+      : { rascunho: false, aprovacao: "pendente", reprovacao_motivo: null, captado_por_usuario: authData.user.id, captador_corretor_id: broker.id };
     const { error } = await supabase.from("empreendimentos").update(patch).eq("id", payload.id);
     if (error) return Response.json({ error: error.message }, { status: 400 });
+    // Repara somente unidades ainda sem responsável dentro da captação que este
+    // usuário acabou de finalizar; um vínculo existente nunca é sobrescrito.
+    const { error: unitCaptorError } = await supabase
+      .from("unidades")
+      .update({ captador_corretor_id: broker.id })
+      .eq("empreendimento_id", payload.id)
+      .is("captador_corretor_id", null);
+    if (unitCaptorError) return Response.json({ error: unitCaptorError.message }, { status: 502 });
     return Response.json({ ok: true, id: payload.id, aprovacao: (patch as { aprovacao?: string }).aprovacao ?? "aprovado" });
   }
 
   const { property, condominium, owner, access, units } = payload;
+  if (payload.propertyType === "terceiro" && !broker?.id) {
+    return Response.json({ error: "Seu usuário ainda não está vinculado a um corretor. Peça à gestão para corrigir o cadastro antes de publicar uma captação." }, { status: 422 });
+  }
   const semCondominio = payload.semCondominio === true;
   if (!property.name.trim() || (!semCondominio && !condominium.name.trim()) || !condominium.address.trim() || !condominium.city.trim()) {
     return Response.json({ error: semCondominio ? "Nome do produto e endereço completo são obrigatórios." : "Nome do produto, condomínio e endereço completo são obrigatórios." }, { status: 422 });
@@ -254,7 +291,6 @@ export async function POST(request: Request) {
     }
   }
 
-  const { data: broker } = await supabase.from("corretores").select("id").eq("usuario_id", authData.user.id).maybeSingle();
   const { data: development, error: developmentError } = await supabase.from("empreendimentos").insert({
     nome: property.name.trim(), titulo: property.title?.trim() || property.name.trim(), slogan: property.slogan?.trim() || null,
     descricao: property.description?.trim() || null, finalidade: property.purpose?.trim() || null,
