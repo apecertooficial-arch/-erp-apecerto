@@ -82,6 +82,11 @@ export const rotasModulo: Record<ModuleName, RotaModulo> = {
   Disparos: { path: "/disparos", slugs: ["disparos"], classe: "C", mobile: false },
   Financiamento: { path: "/financiamento", slugs: [], classe: "C", mobile: false },
   "Base de conhecimento": { path: "/conhecimento", slugs: [], classe: "C", rotuloCurto: "Base", mobile: false },
+  /* Ferramenta avulsa: nao depende de midia_id/empreendimento_id, entao nao
+     ganhou slug de permissao proprio -- mesmo raciocinio de "Projetos e
+     Tarefas" acima. Mobile:true porque a foto tipicamente chega pro corretor
+     pelo WhatsApp, no celular. */
+  "Marca d'Água": { path: "/marca-dagua", slugs: [], classe: "C", rotuloCurto: "Marca d'Água", mobile: true },
   "Configurações": { path: "/configuracoes", slugs: ["configuracoes"], classe: "C", rotuloCurto: "Gestão", mobile: true },
   Ajuda: { path: "/ajuda", slugs: [], classe: "C", mobile: true },
 };

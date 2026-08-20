@@ -45,6 +45,7 @@ function IconeBarra({ modulo }: { modulo: ModuleName | "Mais" | "Inteligência" 
   if (modulo === "Disparos") return <svg {...c}><path d="m3 11 18-8-8 18-2-7-8-3Z" /></svg>;
   if (modulo === "Financiamento") return <svg {...c}><path d="M3 10 12 4l9 6" /><path d="M5 10v9h14v-9M9 19v-5h6v5" /></svg>;
   if (modulo === "Base de conhecimento") return <svg {...c}><path d="M4 5a2 2 0 0 1 2-2h5v18H6a2 2 0 0 1-2-2Z" /><path d="M20 5a2 2 0 0 0-2-2h-5v18h5a2 2 0 0 0 2-2Z" /></svg>;
+  if (modulo === "Marca d'Água") return <svg {...c}><rect x="3" y="5" width="18" height="14" rx="2" /><circle cx="8.5" cy="10" r="1.5" /><path d="m3 16 5-5 4 4 3-3 6 6" /><path d="M16 3l2.2 2.2M18.2 3 16 5.2" /></svg>;
   if (modulo === "Inteligência") return <svg {...c}><path d="M12 12 2.5 8.5A10 10 0 0 1 21.5 12M12 12l3.5 9.5A10 10 0 0 1 2.5 8.5" /><circle cx="12" cy="12" r="2.2" /></svg>;
   if (modulo === "Ajuda") return <svg {...c}><circle cx="12" cy="12" r="9" /><path d="M9.5 9.5a2.6 2.6 0 1 1 3.6 2.4c-.7.3-1.1.9-1.1 1.6v.4M12 17h.01" /></svg>;
   return <svg {...c}><path d="M4 12h16M4 6h16M4 18h16" /></svg>;
