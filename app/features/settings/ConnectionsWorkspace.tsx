@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { getBrowserSupabaseClient } from "../../lib/supabase/browser";
 
 /* V7.2 — a tela passa a ler a FONTE CANÔNICA (`wa_v7_painel`), que materializa
    o último snapshot COMPLETO e válido do D-API. Antes, esta tela lia
@@ -29,6 +28,27 @@ type Painel = {
   modo: string | null;
   gerado_em: string;
 };
+type QrResult = { status?: string; qrCodeImage?: string | null; conectada?: boolean; error?: string };
+type ConnectionsApiResponse = { painel?: Painel | null; result?: QrResult | null; error?: string };
+
+async function connectionsApi(
+  accessToken: string,
+  options?: { action: "qr" | "restart"; instanciaId: number },
+): Promise<ConnectionsApiResponse> {
+  const response = await fetch("/api/connections", {
+    method: options ? "POST" : "GET",
+    cache: "no-store",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      ...(options ? { "Content-Type": "application/json" } : {}),
+    },
+    body: options ? JSON.stringify(options) : undefined,
+    signal: AbortSignal.timeout(15_000),
+  });
+  const payload = await response.json().catch(() => ({})) as ConnectionsApiResponse;
+  if (!response.ok) throw new Error(payload.error || "Não foi possível carregar suas conexões.");
+  return payload;
+}
 
 
 export function ConnectionsWorkspace({ accessToken }: { accessToken: string }) {
@@ -56,12 +76,16 @@ export function ConnectionsWorkspace({ accessToken }: { accessToken: string }) {
   const load = useCallback(async () => {
     setLoading(true); setError("");
     try {
-      const { data, error: rpcError } = await getBrowserSupabaseClient().rpc("wa_v7_painel");
-      if (rpcError) { setError("Não foi possível carregar o inventário de conexões."); return; }
-      setPainel((data ?? null) as Painel | null);
-    } catch { setError("Não foi possível carregar suas conexões."); }
+      const payload = await connectionsApi(accessToken);
+      setPainel(payload.painel ?? null);
+    } catch (cause) {
+      const demorou = cause instanceof Error && (cause.name === "TimeoutError" || cause.name === "AbortError");
+      setError(demorou
+        ? "A consulta das instâncias demorou demais. Toque em Atualizar para tentar novamente."
+        : cause instanceof Error ? cause.message : "Não foi possível carregar suas conexões.");
+    }
     finally { setLoading(false); }
-  }, []);
+  }, [accessToken]);
   useEffect(() => {
     const timer = window.setTimeout(() => void load(), 0);
     return () => window.clearTimeout(timer);
@@ -77,13 +101,16 @@ export function ConnectionsWorkspace({ accessToken }: { accessToken: string }) {
     if (!legado) { setError("Esta sessão ainda não tem vínculo local; recarregue em alguns minutos."); return; }
     setQr({ id: legado, nome: inst.nome ?? inst.provider_session_id, status: "carregando", image: null }); setQrBusy(true);
     try {
-      const { data } = await getBrowserSupabaseClient().functions.invoke("dapi-qr", { body: { action: restart ? "restart" : "qr", instanciaId: legado } });
-      const result = (data ?? {}) as { status?: string; qrCodeImage?: string | null; conectada?: boolean; error?: string };
+      const payload = await connectionsApi(accessToken, { action: restart ? "restart" : "qr", instanciaId: legado });
+      const result = payload.result ?? {};
       setQr({ id: legado, nome: inst.nome ?? inst.provider_session_id, status: result.error || result.status || "desconhecido", image: result.qrCodeImage ?? null });
       if (result.conectada) await load();
-    } catch { setQr((current) => current ? { ...current, status: "erro" } : current); }
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Não foi possível gerar o QR desta instância.");
+      setQr((current) => current ? { ...current, status: "erro" } : current);
+    }
     finally { setQrBusy(false); }
-  }, [load]);
+  }, [accessToken, load]);
   useEffect(() => {
     if (!qr || qr.status === "connected" || qr.status === "erro") return;
     const timer = window.setTimeout(() => { const inst = sessoes.find((item) => item.legado_instancia_id === qr.id); if (inst) void openQr(inst); }, 4500);

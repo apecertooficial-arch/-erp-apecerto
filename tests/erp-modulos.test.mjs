@@ -187,6 +187,8 @@ test("Financiamento lê fichas reais com o JWT e respeita RLS", () => {
 
 test("Configurações possui uma única camada: Conexões", () => {
   const settings = readFileSync(join(raizApp, "features/settings/SettingsWorkspace.tsx"), "utf8");
+  const connections = readFileSync(join(raizApp, "features/settings/ConnectionsWorkspace.tsx"), "utf8");
+  const api = readFileSync(join(raizApp, "api/connections/route.ts"), "utf8");
   const globals = readFileSync(join(raizApp, "globals.css"), "utf8");
 
   assert.match(settings, /return <ConnectionsWorkspace accessToken=\{accessToken\} \/>/);
@@ -194,6 +196,17 @@ test("Configurações possui uma única camada: Conexões", () => {
     "CSS da antiga central de Configurações não pode voltar a sobrepor Conexões");
   assert.match(globals, /\.connections-workspace/,
     "a camada visual vigente de Conexões precisa permanecer disponível");
+  assert.match(connections, /fetch\("\/api\/connections"/,
+    "o celular deve consultar as conexões pelo domínio do ERP");
+  assert.doesNotMatch(connections, /getBrowserSupabaseClient|\.rpc\("wa_v7_painel"\)/,
+    "a tela não pode ficar presa na sessão compartilhada do cliente Supabase");
+  assert.match(connections, /AbortSignal\.timeout\(15_000\)/,
+    "a tela precisa terminar em dados ou erro acionável, nunca carregar para sempre");
+  assert.match(api, /auth\.getUser\(token\)/);
+  assert.match(api, /rpc\("wa_v7_painel"\)/);
+  assert.match(api, /functions\.invoke\("dapi-qr"/);
+  assert.doesNotMatch(api, /service.?role/i,
+    "o proxy deve preservar o JWT e o escopo do próprio corretor");
 });
 
 test("identidade visual não sobrescreve componentes operacionais do celular", () => {
