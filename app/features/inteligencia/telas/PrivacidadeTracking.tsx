@@ -239,6 +239,8 @@ function montarDados(resumo: Tracking360Resumo | null): Dados {
   const lastEvent = health?.quality?.last_event_at ? new Date(health.quality.last_event_at) : null;
   const minutesSinceLast = lastEvent ? Math.max(0, Math.round((Date.now() - lastEvent.getTime()) / 60_000)) : null;
   const attributionTotal = health?.attribution?.total;
+  const delivery = resumo?.delivery_health;
+  const deliveryProblems = (delivery?.failed ?? 0) + (delivery?.blocked ?? 0);
 
   return {
   totalObservado: total ?? null,
@@ -273,6 +275,7 @@ function montarDados(resumo: Tracking360Resumo | null): Dados {
     { rotulo: "Google Tag", estado: "aviso", selo: "verificação externa", nota: "o banco não confirma entrega ao Google", diagnostico: true },
     { rotulo: "Microsoft Clarity", estado: "aviso", selo: "não conectado", nota: "sem telemetria de saúde no ERP", diagnostico: true },
     { rotulo: "Sincronização com CRM", estado: (health?.crm_sync?.errors ?? 0) > 0 ? "aviso" : "bom", selo: (health?.crm_sync?.errors ?? 0) > 0 ? `${health?.crm_sync?.errors} erros` : "operando", nota: `${health?.crm_sync?.pending ?? 0} pendentes no período` },
+    { rotulo: "Meta CAPI", estado: deliveryProblems > 0 ? "aviso" : "bom", selo: deliveryProblems > 0 ? `${deliveryProblems} falhas` : "operando", nota: `${delivery?.delivered ?? 0} entregues · ${delivery?.pending ?? 0} em processamento`, diagnostico: deliveryProblems > 0 },
   ],
   horas: (health?.hours_today ?? []).map((hour) => ({ altura: Math.max(3, Math.round((100 * hour.eventos) / maxHour)), cor: hour.eventos > 0 ? "#FF9A4D" : "#EFECE7" })),
   qualidade: [
@@ -281,6 +284,7 @@ function montarDados(resumo: Tracking360Resumo | null): Dados {
     { l: "Possíveis duplicidades", r: fmt.inteiro(health?.quality?.possible_duplicates ?? null) },
     { l: "Eventos coletados", r: fmt.inteiro(health?.quality?.total_events ?? null) },
     { l: "Leads com erro de sincronização", r: fmt.inteiro(health?.crm_sync?.errors ?? null), corR: (health?.crm_sync?.errors ?? 0) > 0 ? "#D93E3E" : undefined },
+    { l: "Entregas à Meta com falha", r: fmt.inteiro(deliveryProblems), corR: deliveryProblems > 0 ? "#D93E3E" : undefined, sub: delivery?.last_error ?? undefined },
   ],
   atribuicao: [
     { l: "Cobertura de origem", r: fmt.porcento(pct(health?.attribution?.with_source, attributionTotal), 0) },

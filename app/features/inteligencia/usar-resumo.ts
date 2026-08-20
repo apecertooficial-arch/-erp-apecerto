@@ -62,6 +62,19 @@ export type Tracking360Resumo = {
     events?: string[];
     updated_at?: string;
   };
+  delivery_health?: {
+    total?: number;
+    delivered?: number;
+    pending?: number;
+    failed?: number;
+    blocked?: number;
+    skipped?: number;
+    last_delivery_at?: string | null;
+    last_error_at?: string | null;
+    last_error?: string | null;
+    by_channel?: Record<string, { total?: number; delivered?: number; pending?: number; failed?: number; blocked?: number }>;
+    updated_at?: string;
+  };
   atualizado_em?: string;
 };
 

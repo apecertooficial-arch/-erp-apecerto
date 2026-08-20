@@ -10,6 +10,10 @@ const digitalMigration = readFileSync(
   new URL("../supabase/migrations/20260820183500_tracking_360_digital_health.sql", import.meta.url),
   "utf8",
 );
+const deliveryMigration = readFileSync(
+  new URL("../supabase/migrations/20260820190000_tracking_delivery_health.sql", import.meta.url),
+  "utf8",
+);
 const api = readFileSync(new URL("../app/api/inteligencia/route.ts", import.meta.url), "utf8");
 const ceo = readFileSync(new URL("../app/features/inteligencia/telas/VisaoEmpresa.tsx", import.meta.url), "utf8");
 const shell = readFileSync(new URL("../app/features/inteligencia/CascaInteligencia.tsx", import.meta.url), "utf8");
@@ -56,5 +60,8 @@ test("Privacidade usa saúde digital real sem inventar integração externa", ()
   assert.match(digitalMigration, /session_consent/);
   assert.match(digitalMigration, /possible_duplicates/);
   assert.match(api, /tracking_360_digital_health/);
+  assert.match(api, /tracking_delivery_health/);
+  assert.match(deliveryMigration, /private\.tracking_delivery_logs/);
+  assert.doesNotMatch(deliveryMigration, /select\s+payload/i);
   assert.match(shell, /"empresa", "privacidade"/);
 });
