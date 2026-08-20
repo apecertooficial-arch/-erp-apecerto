@@ -4,6 +4,7 @@ import test from "node:test";
 
 const migration = readFileSync(new URL("../supabase/migrations/20260820213000_inteligencia_decisao_unificada.sql", import.meta.url), "utf8");
 const cleanup = readFileSync(new URL("../supabase/migrations/20260820214000_inteligencia_remover_camadas_antigas.sql", import.meta.url), "utf8");
+const cleanupSnapshot = readFileSync(new URL("../supabase/migrations/20260820215000_inteligencia_remover_snapshot_antigo.sql", import.meta.url), "utf8");
 const api = readFileSync(new URL("../app/api/inteligencia/route.ts", import.meta.url), "utf8");
 const operacao = readFileSync(new URL("../app/features/inteligencia/telas/VisaoEmpresa.tsx", import.meta.url), "utf8");
 const marketing = readFileSync(new URL("../app/features/inteligencia/telas/VisaoDigital.tsx", import.meta.url), "utf8");
@@ -68,5 +69,6 @@ test("a publicação remove as RPCs da arquitetura anterior", () => {
   for (const nome of ["intel_visao_ceo", "intel_visao_digital", "intel_aquisicao", "intel_corretores", "tracking_360_digital_health", "tracking_delivery_health"]) {
     assert.match(cleanup, new RegExp(`drop function if exists public\\.${nome}`));
   }
+  assert.match(cleanupSnapshot, /drop function if exists public\.tracking_360_snapshot\(integer\)/);
   assert.doesNotMatch(api + shell + catalogo, /intel_visao_ceo|intel_visao_digital|tracking_360_digital_health|tracking_delivery_health/);
 });
