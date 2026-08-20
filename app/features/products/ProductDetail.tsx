@@ -460,10 +460,15 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
               <div><strong>{product.proprietarios?.nome ?? "—"}</strong><small>Proprietária{product.proprietarios?.telefone ? ` · ${product.proprietarios.telefone}` : ""}</small></div>
             </div>}
 
-            <div className="fv2-person-card">
-              <span className="fv2-avatar purple">{initials(product.captado_por_nome)}</span>
-              <div><strong>{product.captado_por_nome ?? "Não informado"}</strong><small>Corretor da captação{typeof captadorScore === "number" ? ` · nota ${captadorScore}` : ""}</small></div>
-            </div>
+            {(() => {
+              const captadores = product.captado_por_nome ? [product.captado_por_nome] : Array.from(new Set((product.unidades ?? []).map((u) => u.captador_nome).filter((n): n is string => Boolean(n))));
+              const rotulo = captadores.length ? captadores.join(", ") : "Estoque ApêCerto";
+              const legenda = captadores.length > 1 ? "Corretores das captações" : captadores.length === 1 ? "Corretor da captação" : "Prédio sem captador vinculado";
+              return <div className="fv2-person-card">
+                <span className="fv2-avatar purple">{initials(captadores[0] ?? "ApêCerto")}</span>
+                <div><strong>{rotulo}</strong><small>{legenda}{typeof captadorScore === "number" && captadores.length === 1 ? ` · nota ${captadorScore}` : ""}</small></div>
+              </div>;
+            })()}
           </aside>
         </div>
       )}
