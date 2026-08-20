@@ -11,6 +11,10 @@ export const moduleMap = {
     description: "Catálogo, captação, unidades, proprietários e materiais dos imóveis.",
     tables: ["empreendimentos", "unidades", "midias", "proprietarios", "condominios"],
   },
+  "Remover Marca d'Água": {
+    description: "Ferramenta avulsa: remove marca d'água/logo de fotos recebidas de construtoras parceiras (via Unwatermark AI) antes de usar no catálogo ou em qualquer outro material.",
+    tables: ["midias"],
+  },
   Financeiro: {
     description: "Lançamentos, recebimentos, vendas e comissões.",
     tables: ["lancamentos_caixa", "recebimentos", "vendas", "comissoes"],
