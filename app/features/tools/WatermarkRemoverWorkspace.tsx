@@ -6,15 +6,37 @@
  * Remover V2.3 sync) e decide DEPOIS se anexa a foto limpa em algum produto.
  *
  * Esta tela nao grava nada no banco nem no Storage -- so chama a function e
- * mostra o resultado. O link que a Unwatermark devolve expira em 24h, entao
- * o aviso de download fica visivel junto do resultado.
+ * mostra o resultado.
+ *
+ * v2 -- a function agora devolve os BYTES prontos (base64), nao mais um link
+ * pro CDN da Unwatermark: o link direto nao carregava no <img> (a Unwatermark
+ * bloqueia hotlink/CORS de fora do site deles) e o atributo download nao
+ * funcionava num link cross-origin (so abria aba nova em vez de baixar). Os
+ * bytes viram um Blob local -- preview e download instantaneo, sem depender
+ * de nada externo. Se a function cair no modo de fallback (raw url), avisamos
+ * que so abre em nova aba.
  */
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { getBrowserSupabaseClient } from "../../lib/supabase/browser";
 import "../../styles/marca-dagua.css";
 
-type Resultado = { url: string; expiraEm: string };
+type Resultado =
+  | { kind: "blob"; blobUrl: string; extensao: string }
+  | { kind: "externo"; url: string; expiraEm: string };
+
+function extensaoDoMime(mime: string): string {
+  if (mime.includes("png")) return "png";
+  if (mime.includes("webp")) return "webp";
+  return "jpg";
+}
+
+function base64ParaBlob(base64: string, mime: string): Blob {
+  const binario = atob(base64);
+  const bytes = new Uint8Array(binario.length);
+  for (let i = 0; i < binario.length; i++) bytes[i] = binario.charCodeAt(i);
+  return new Blob([bytes], { type: mime });
+}
 
 export function WatermarkRemoverWorkspace() {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -26,21 +48,28 @@ export function WatermarkRemoverWorkspace() {
   const [erro, setErro] = useState("");
   const [resultado, setResultado] = useState<Resultado | null>(null);
 
+  const limparResultado = useCallback(() => {
+    setResultado((atual) => {
+      if (atual?.kind === "blob") URL.revokeObjectURL(atual.blobUrl);
+      return null;
+    });
+  }, []);
+
   const escolherArquivo = useCallback((file: File | null) => {
-    setResultado(null);
+    limparResultado();
     setErro("");
     setArquivo(file);
     setPreview((atual) => {
       if (atual) URL.revokeObjectURL(atual);
       return file ? URL.createObjectURL(file) : null;
     });
-  }, []);
+  }, [limparResultado]);
 
   const processar = useCallback(async () => {
     if (!arquivo) return;
     setProcessando(true);
     setErro("");
-    setResultado(null);
+    limparResultado();
     try {
       const form = new FormData();
       form.append("arquivo", arquivo);
@@ -53,22 +82,40 @@ export function WatermarkRemoverWorkspace() {
         const detalhe = ctx && typeof ctx.json === "function" ? await ctx.json().catch(() => null) : null;
         throw new Error((detalhe as { detail?: string })?.detail || (detalhe as { error?: string })?.error || error.message);
       }
-      const r = (data ?? {}) as { ok?: boolean; url?: string; expira_em?: string; error?: string; detail?: string };
-      if (!r.ok || !r.url) throw new Error(r.detail || r.error || "A Unwatermark não devolveu um resultado.");
-      setResultado({ url: r.url, expiraEm: r.expira_em ?? "24h" });
+      const r = (data ?? {}) as { ok?: boolean; base64?: string; mime?: string; url?: string; expira_em?: string; error?: string; detail?: string };
+      if (!r.ok) throw new Error(r.detail || r.error || "A Unwatermark não devolveu um resultado.");
+      if (r.base64 && r.mime) {
+        const blob = base64ParaBlob(r.base64, r.mime);
+        setResultado({ kind: "blob", blobUrl: URL.createObjectURL(blob), extensao: extensaoDoMime(r.mime) });
+      } else if (r.url) {
+        setResultado({ kind: "externo", url: r.url, expiraEm: r.expira_em ?? "24h" });
+      } else {
+        throw new Error("A Unwatermark não devolveu um resultado.");
+      }
     } catch (e) {
       setErro(e instanceof Error ? e.message : "Não foi possível remover a marca d'água.");
     } finally {
       setProcessando(false);
     }
-  }, [arquivo, removerTexto, melhorarQualidade]);
+  }, [arquivo, removerTexto, melhorarQualidade, limparResultado]);
 
   const limpar = useCallback(() => {
     escolherArquivo(null);
-    setResultado(null);
     setErro("");
     if (inputRef.current) inputRef.current.value = "";
   }, [escolherArquivo]);
+
+  // Libera os blobs (preview e resultado) quando a tela fecha.
+  useEffect(() => {
+    return () => {
+      if (preview) URL.revokeObjectURL(preview);
+      setResultado((atual) => {
+        if (atual?.kind === "blob") URL.revokeObjectURL(atual.blobUrl);
+        return atual;
+      });
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div className="wm-workspace">
@@ -129,15 +176,24 @@ export function WatermarkRemoverWorkspace() {
         </section>
 
         <section className="wm-card wm-resultado">
-          {resultado ? (
+          {resultado?.kind === "blob" ? (
             <>
               <strong>Pronto</strong>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={resultado.url} alt="Foto sem marca d'água" />
-              <a className="wm-btn-primary" href={resultado.url} download target="_blank" rel="noreferrer">
+              <img src={resultado.blobUrl} alt="Foto sem marca d'água" />
+              <a className="wm-btn-primary" href={resultado.blobUrl} download={`foto-sem-marca-dagua.${resultado.extensao}`}>
                 ↓ Baixar foto limpa
               </a>
-              <p className="wm-aviso">Esse link expira em {resultado.expiraEm} — baixe agora. Anexar a foto a um empreendimento é feito na tela de Produtos, depois de baixar.</p>
+              <p className="wm-aviso">Anexar a foto a um empreendimento é feito na tela de Produtos, depois de baixar.</p>
+            </>
+          ) : resultado?.kind === "externo" ? (
+            <>
+              <strong>Pronto (sem preview)</strong>
+              <p className="wm-aviso">Não deu pra carregar o preview aqui dentro desta vez, mas o resultado está pronto.</p>
+              <a className="wm-btn-primary" href={resultado.url} target="_blank" rel="noreferrer">
+                ↗ Abrir resultado em nova aba
+              </a>
+              <p className="wm-aviso">Esse link expira em {resultado.expiraEm} — baixe agora.</p>
             </>
           ) : (
             <p className="wm-resultado-vazio">{processando ? "Processando na Unwatermark…" : "O resultado aparece aqui depois de remover a marca d'água."}</p>
