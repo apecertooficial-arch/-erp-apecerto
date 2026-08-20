@@ -41,6 +41,9 @@
 .wm-dropzone img { max-width: 100%; max-height: 260px; border-radius: 10px; object-fit: contain; }
 .wm-dropzone input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
 .wm-dropzone-lote { min-height: 140px; }
+.wm-dropzone-desabilitada { cursor: default; opacity: .65; background: var(--page); }
+.wm-dropzone-desabilitada:hover { border-color: var(--line); background: var(--page); }
+.wm-dropzone-desabilitada input { cursor: default; }
 
 .wm-opcoes { display: flex; flex-direction: column; gap: 10px; }
 .wm-check { display: flex; flex-direction: column; gap: 2px; font-size: 13px; color: var(--ink); font-weight: 500; }
@@ -54,6 +57,7 @@
 .wm-campo input[type="text"]:disabled { opacity: .6; }
 
 .wm-lote-card { gap: 18px; }
+.wm-lote-contador { margin: 0; color: var(--muted); font-size: 12px; font-weight: 700; }
 .wm-lote-lista { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; max-height: 320px; overflow-y: auto; }
 .wm-lote-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--page); font-size: 13px; }
 .wm-lote-num { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 999px; background: var(--surface); border: 1px solid var(--line); color: var(--muted); font-size: 11px; font-weight: 700; flex: none; }
