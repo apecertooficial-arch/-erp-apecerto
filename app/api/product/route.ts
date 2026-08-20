@@ -3,6 +3,7 @@ import type { Database } from "../../lib/supabase/database.types";
 import { resolveEffectiveAccess, denyIfCannot } from "../../lib/supabase/authz";
 import { assessProductQuality, isPlausibleProductPrice, validateProductPrice } from "../../features/products/quality";
 import { isProductManagerRole } from "../../features/products/access";
+import { isProductPublishedOnSite } from "../../features/products/publication";
 
 export const dynamic = "force-dynamic";
 
@@ -115,7 +116,14 @@ export async function GET(request: Request) {
     checks.owner = Boolean(data.proprietario_id || (data.proprietario_nome && data.proprietario_tel && data.proprietario_email));
     checks.access = Boolean(data.acesso_tipo && data.acesso_instrucoes && (data.acesso_tipo !== "chave_digital" || data.acesso_codigo));
   }
-  return Response.json({ product: { ...data, ...(podeEditar ? {} : { proprietarios: null, proprietario_nome: null, proprietario_tel: null, proprietario_email: null, acesso_tipo: null, acesso_codigo: null, acesso_instrucoes: null }), site_published: Boolean(data.publicado && !data.rascunho && data.aprovacao === "aprovado"), midias: visibleMedia, unidades: unidadesVisiveis, captado_por_nome: capturedByName, mine, pode_editar: podeEditar, summary_price: summaryPrice, summary_area: summaryArea, is_favorite: Boolean(favorite), leads: (leadOptions ?? []).map((lead) => ({ ...lead, linked: linkedIds.has(lead.id) })), quality, completion: { checks, completed: Object.values(checks).filter(Boolean).length, total: Object.keys(checks).length } } });
+  const sitePublished = isProductPublishedOnSite({
+    published: data.publicado,
+    draft: data.rascunho,
+    approval: data.aprovacao,
+    status: data.status,
+    availableApprovedUnits: availableUnits.length,
+  });
+  return Response.json({ product: { ...data, ...(podeEditar ? {} : { proprietarios: null, proprietario_nome: null, proprietario_tel: null, proprietario_email: null, acesso_tipo: null, acesso_codigo: null, acesso_instrucoes: null }), site_published: sitePublished, midias: visibleMedia, unidades: unidadesVisiveis, captado_por_nome: capturedByName, mine, pode_editar: podeEditar, summary_price: summaryPrice, summary_area: summaryArea, is_favorite: Boolean(favorite), leads: (leadOptions ?? []).map((lead) => ({ ...lead, linked: linkedIds.has(lead.id) })), quality, completion: { checks, completed: Object.values(checks).filter(Boolean).length, total: Object.keys(checks).length } } });
 }
 
 export async function PATCH(request: Request) {

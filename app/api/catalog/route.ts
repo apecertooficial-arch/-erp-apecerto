@@ -1,6 +1,7 @@
 import { createServerSupabaseClient } from "../../lib/supabase/server";
 import { assessProductQuality, isPlausibleProductPrice } from "../../features/products/quality";
 import { isProductManagerRole } from "../../features/products/access";
+import { isProductPublishedOnSite } from "../../features/products/publication";
 
 export const dynamic = "force-dynamic";
 
@@ -152,7 +153,13 @@ export async function GET(request: Request) {
       city: item.cidade ?? "São Paulo",
       status: item.status,
       origin: item.origem,
-      published: Boolean(item.publicado && !item.rascunho && item.aprovacao === "aprovado"),
+      published: isProductPublishedOnSite({
+        published: item.publicado,
+        draft: item.rascunho,
+        approval: item.aprovacao,
+        status: item.status,
+        availableApprovedUnits: availableUnits.length,
+      }),
       price,
       area,
       bedrooms: item.dormitorios ?? (bedroomOptions.length ? Math.max(...bedroomOptions) : null),
