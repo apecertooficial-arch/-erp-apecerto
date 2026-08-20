@@ -67,6 +67,7 @@ type UnitInput = {
 type CapturePayload = {
   action: "create";
   propertyType: "terceiro" | "construtora";
+  semCondominio?: boolean;
   condominium: {
     id: string | null;
     name: string;
@@ -151,8 +152,9 @@ export async function POST(request: Request) {
   }
 
   const { property, condominium, owner, access, units } = payload;
-  if (!property.name.trim() || !condominium.name.trim() || !condominium.address.trim() || !condominium.city.trim()) {
-    return Response.json({ error: "Nome do produto, condomínio e endereço completo são obrigatórios." }, { status: 422 });
+  const semCondominio = payload.semCondominio === true;
+  if (!property.name.trim() || (!semCondominio && !condominium.name.trim()) || !condominium.address.trim() || !condominium.city.trim()) {
+    return Response.json({ error: semCondominio ? "Nome do produto e endereço completo são obrigatórios." : "Nome do produto, condomínio e endereço completo são obrigatórios." }, { status: 422 });
   }
   if (payload.propertyType === "terceiro" && (!owner || !owner.name.trim() || !owner.email.trim() || !owner.phone.trim())) {
     return Response.json({ error: "O proprietário com nome, telefone e e-mail é obrigatório." }, { status: 422 });
@@ -202,7 +204,8 @@ export async function POST(request: Request) {
   }
 
   let condominiumId = condominium.id;
-  if (!condominiumId) {
+  if (semCondominio) condominiumId = null;
+  if (!condominiumId && !semCondominio) {
     // Anti-duplicata: reaproveita um condomínio com o mesmo nome + endereço + cidade (case-insensitive).
     // Evita a enxurrada de repetidos que acontecia quando um cadastro falhava e era refeito.
     const nomeN = condominium.name.trim();
@@ -247,7 +250,7 @@ export async function POST(request: Request) {
     diferenciais: property.differentiators?.map((item) => item.trim()).filter(Boolean) || [],
     incorporadora: property.developer.trim() || null,
     status: property.status, origem: payload.propertyType === "terceiro" ? "terceiros" : "predio",
-    condominio_id: condominiumId, proprietario_id: ownerId,
+    condominio_id: condominiumId || null, proprietario_id: ownerId,
     cep: condominium.zipCode.trim() || null, endereco: condominium.address.trim(), numero: condominium.number.trim() || null,
     complemento: condominium.complement.trim() || null, bairro: condominium.neighborhood.trim() || null,
     cidade: condominium.city.trim(), uf: condominium.state.trim() || "SP",

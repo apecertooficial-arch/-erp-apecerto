@@ -400,3 +400,7 @@
 .product-info h2 .cod-imovel, .ape-produto-card h2 .cod-imovel { display:inline-block; margin-left:8px; border-radius:999px; padding:3px 9px; background:#F7ECFC; color:#66009A; font-size:11px; font-weight:800; letter-spacing:.03em; vertical-align:middle; }
 .fv2-head h2 .cod-imovel { display:inline-block; margin-left:10px; border-radius:999px; padding:4px 11px; background:#F7ECFC; color:#66009A; font-size:12px; font-weight:800; letter-spacing:.03em; vertical-align:middle; }
 .fv2-unit-num .fv2-unit-cod { display:block; font-style:normal; font-size:10.5px; font-weight:800; color:#66009A; }
+
+/* Cadastro: opção de imóvel avulso (sem condomínio) */
+.capture-panel .toggle-sem-condominio { display:flex; align-items:center; gap:9px; margin:2px 0 12px; padding:11px 14px; border:1px solid #E4DFD9; border-radius:12px; background:#FFF8F2; font-size:13px; font-weight:700; color:#1F1C1A; cursor:pointer; }
+.capture-panel .toggle-sem-condominio input { accent-color:#FF7000; width:17px; height:17px; }
