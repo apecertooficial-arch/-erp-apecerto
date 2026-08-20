@@ -30,6 +30,8 @@ export type Product = {
   mine?: boolean;
   capturedBy?: string | null;
   capturedByScore?: number | null;
+  codigo?: string | null;
+  unitId?: string | null;
   quality?: ProductQuality;
   published?: boolean;
   createdAt?: string | null;

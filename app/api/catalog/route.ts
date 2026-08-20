@@ -5,17 +5,21 @@ export const dynamic = "force-dynamic";
 
 type UnitRow = {
   id: string;
+  numero: string | null;
   area_m2: number | null;
   tipologia: string | null;
   vagas: number | null;
   valor_tabela: number | null;
   valor_promo: number | null;
   disponivel: boolean;
+  aprovacao: string | null;
+  codigo: string | null;
 };
 
 type MediaRow = {
   id: string;
   tipo: string;
+  unidade_id?: string | null;
   storage_path: string;
   categoria: string | null;
   nome: string | null;
@@ -51,8 +55,9 @@ export async function GET(request: Request) {
       vagas, preco, condominio_valor, iptu, outros_custos, created_at, published_at,
       publicado, origem, lazer, diferenciais, tour_url,
       aprovacao, reprovacao_motivo, captado_por_usuario, captador_corretor_id,
-      unidades (id, area_m2, tipologia, vagas, valor_tabela, valor_promo, disponivel),
-      midias (id, tipo, storage_path, categoria, nome, is_capa, created_at)
+      codigo,
+      unidades (id, numero, area_m2, tipologia, vagas, valor_tabela, valor_promo, disponivel, aprovacao, codigo),
+      midias (id, tipo, storage_path, categoria, nome, is_capa, created_at, unidade_id)
     `)
     .order("created_at", { ascending: false })
     .limit(120);
@@ -160,6 +165,8 @@ export async function GET(request: Request) {
       createdAt: item.created_at,
       updatedAt,
       leads: leadCountByProduct.get(item.id) ?? 0,
+      codigo: (item as { codigo?: string | null }).codigo ?? null,
+      unitId: null as string | null,
     };
   });
 
@@ -216,6 +223,35 @@ export async function GET(request: Request) {
     }));
   }
 
+  // Produto PRONTO aprovado: cada unidade disponível e aprovada é um imóvel próprio no catálogo.
+  const rowById = new Map((data ?? []).map((item) => [item.id, item]));
+  const catalogFinal = visible.flatMap((p) => {
+    const bruto = rowById.get(p.id);
+    const ehPronto = /pronto/i.test(p.status ?? "");
+    if (!bruto || p.draft || p.approval !== "aprovado" || !ehPronto) return [p];
+    const unidadesBrutas = ((bruto.unidades ?? []) as UnitRow[]).filter((u) => u.disponivel && (u.aprovacao ?? "aprovado") === "aprovado");
+    if (!unidadesBrutas.length) return [p];
+    const fotos = ((bruto.midias ?? []) as MediaRow[]).filter((m) => m.tipo === "foto");
+    return unidadesBrutas.map((u) => {
+      const fotoDaUnidade = fotos.find((m) => m.unidade_id === u.id && m.is_capa) ?? fotos.find((m) => m.unidade_id === u.id);
+      const dormMatch = u.tipologia?.match(/(\d+)\s*(?:dorm|su[ií]te)/i);
+      const dormUnidade = dormMatch ? Number(dormMatch[1]) : /studio/i.test(u.tipologia ?? "") ? 0 : null;
+      return {
+        ...p,
+        unitId: u.id,
+        codigo: u.codigo ?? p.codigo,
+        name: `${p.name} · Un. ${u.numero ?? "s/n"}`,
+        price: (u.valor_promo ?? u.valor_tabela) ?? p.price,
+        area: u.area_m2 ?? p.area,
+        bedrooms: dormUnidade ?? p.bedrooms,
+        parking: u.vagas ?? p.parking,
+        available: 1,
+        units: 1,
+        coverUrl: fotoDaUnidade ? publicMediaUrl(fotoDaUnidade.storage_path) : p.coverUrl,
+      };
+    });
+  });
+
   return Response.json({
     mode: "production-readonly",
     role,
@@ -223,7 +259,7 @@ export async function GET(request: Request) {
     pendingCount,
     qualitySummary,
     pendingUnits,
-    count: visible.length,
-    catalog: visible,
+    count: catalogFinal.length,
+    catalog: catalogFinal,
   });
 }
