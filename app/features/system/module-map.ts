@@ -81,6 +81,10 @@ export const moduleMap = {
     tables: [],
     gap: "O conteúdo de ajuda continua local, como no HTML final, até a base de conhecimento ser migrada.",
   },
+  "Marca d'Água": {
+    description: "Remove marca d'água ou logo de uma foto avulsa antes do corretor decidir em qual empreendimento ela entra. Não grava nada no banco.",
+    tables: [],
+  },
 } as const;
 
 export type ModuleName = keyof typeof moduleMap;
