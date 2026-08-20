@@ -15,6 +15,10 @@
  * bytes viram um Blob local -- preview e download instantaneo, sem depender
  * de nada externo. Se a function cair no modo de fallback (raw url), avisamos
  * que so abre em nova aba.
+ *
+ * v3 -- cada download ganha um nome de arquivo unico (nome original + sufixo
+ * curto aleatorio), pra nao sobrescrever quando o corretor processa varias
+ * fotos seguidas -- mesmo comportamento do site da propria Unwatermark.
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -22,13 +26,28 @@ import { getBrowserSupabaseClient } from "../../lib/supabase/browser";
 import "../../styles/marca-dagua.css";
 
 type Resultado =
-  | { kind: "blob"; blobUrl: string; extensao: string }
+  | { kind: "blob"; blobUrl: string; nomeArquivo: string }
   | { kind: "externo"; url: string; expiraEm: string };
 
 function extensaoDoMime(mime: string): string {
   if (mime.includes("png")) return "png";
   if (mime.includes("webp")) return "webp";
   return "jpg";
+}
+
+// Curto o bastante pra não poluir o nome do arquivo, único o bastante pra não
+// colidir entre downloads da mesma sessão.
+function idCurto(): string {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) return crypto.randomUUID().slice(0, 8);
+  return Math.random().toString(36).slice(2, 10);
+}
+
+// Nome base sem extensão, sem espaço e sem caractere que confunda o SO na hora
+// de salvar o download.
+function nomeBase(nomeOriginal: string): string {
+  const semExtensao = nomeOriginal.replace(/\.[^./\\]+$/, "");
+  const limpo = semExtensao.trim().replace(/[^\p{L}\p{N}._-]+/gu, "-").slice(0, 40);
+  return limpo || "foto";
 }
 
 function base64ParaBlob(base64: string, mime: string): Blob {
@@ -86,7 +105,8 @@ export function WatermarkRemoverWorkspace() {
       if (!r.ok) throw new Error(r.detail || r.error || "A Unwatermark não devolveu um resultado.");
       if (r.base64 && r.mime) {
         const blob = base64ParaBlob(r.base64, r.mime);
-        setResultado({ kind: "blob", blobUrl: URL.createObjectURL(blob), extensao: extensaoDoMime(r.mime) });
+        const nomeArquivo = `${nomeBase(arquivo.name)}-sem-marca-dagua-${idCurto()}.${extensaoDoMime(r.mime)}`;
+        setResultado({ kind: "blob", blobUrl: URL.createObjectURL(blob), nomeArquivo });
       } else if (r.url) {
         setResultado({ kind: "externo", url: r.url, expiraEm: r.expira_em ?? "24h" });
       } else {
@@ -181,10 +201,10 @@ export function WatermarkRemoverWorkspace() {
               <strong>Pronto</strong>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={resultado.blobUrl} alt="Foto sem marca d'água" />
-              <a className="wm-btn-primary" href={resultado.blobUrl} download={`foto-sem-marca-dagua.${resultado.extensao}`}>
+              <a className="wm-btn-primary" href={resultado.blobUrl} download={resultado.nomeArquivo}>
                 ↓ Baixar foto limpa
               </a>
-              <p className="wm-aviso">Anexar a foto a um empreendimento é feito na tela de Produtos, depois de baixar.</p>
+              <p className="wm-aviso">Arquivo: {resultado.nomeArquivo} · anexar a um empreendimento é feito na tela de Produtos, depois de baixar.</p>
             </>
           ) : resultado?.kind === "externo" ? (
             <>
