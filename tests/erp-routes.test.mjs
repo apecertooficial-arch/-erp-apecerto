@@ -60,6 +60,17 @@ test("Minha Equipe depende do papel real, nao de slug", () => {
   assert.equal(podeVer("Minha Equipe", corretor({}, true, true)), true);
 });
 
+test("corretor vinculado sempre alcança a configuração da própria conexão", () => {
+  assert.equal(podeVer("Configurações", {
+    role: "corretor", permissoes: {}, carregado: true,
+    isManager: false, temCorretorVinculado: true,
+  }), true);
+  assert.equal(podeVer("Configurações", {
+    role: "corretor", permissoes: {}, carregado: true,
+    isManager: false, temCorretorVinculado: false,
+  }), false);
+});
+
 test("cada modulo tem um path unico", () => {
   const paths = Object.values(rotasModulo).map((r) => r.path);
   assert.equal(new Set(paths).size, paths.length);

@@ -18,6 +18,7 @@ const modulosDoApp = Object.entries(rotasModulo).filter(([, rota]) => rota.mobil
 
 const CORRETOR = {
   role: "corretor", carregado: true, isManager: false,
+  temCorretorVinculado: true,
   permissoes: { dashboard: ["ver"], crm: ["ver"], calendario: ["ver"], notificacoes: ["ver"], produtos: ["ver"], projetos: ["ver"] },
 };
 const GESTOR = { ...CORRETOR, isManager: true };
@@ -27,6 +28,12 @@ test("app do corretor tem Inicio, CRM, Agenda e Avisos", () => {
   const { barra } = itensDaNavegacao(CORRETOR);
   assert.deepEqual(barra, ["Início", "CRM", "Calendário", "Notificações"]);
   assert.deepEqual(barra.map(pathDoModulo), ["/inicio", "/crm", "/agenda", "/notificacoes"]);
+});
+
+test("corretor encontra Configurações em Mais para conectar o próprio número", () => {
+  const { barra, mais } = itensDaNavegacao(CORRETOR);
+  assert.ok(!barra.includes("Configurações"));
+  assert.ok(mais.includes("Configurações"));
 });
 
 test("o que nao cabe na barra vai para Mais, sem sumir nem repetir", () => {

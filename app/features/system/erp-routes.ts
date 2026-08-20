@@ -129,15 +129,20 @@ export function podeVer(
     permissoes: Record<string, string[]> | null;
     carregado: boolean;
     isManager?: boolean;
+    /** Vínculo operacional confirmado por /api/session. */
+    temCorretorVinculado?: boolean;
   },
 ): boolean {
-  const { role, permissoes, carregado, isManager = false } = opcoes;
+  const { role, permissoes, carregado, isManager = false, temCorretorVinculado = false } = opcoes;
 
   if (role === "admin") return true;
-  // Painel, Equipe e Gestão são a rotina do gestor e nunca a do corretor.
+  // Equipe é rotina de gestão. Configurações também contém "Minha conexão":
+  // todo corretor realmente vinculado precisa alcançá-la para conectar o
+  // próprio WhatsApp, mesmo que um override de permissões omita o módulo.
   if (nome === "Minha Equipe" || nome === "Configurações") {
     if (isManager || role === "gestor") return true;
     if (nome === "Minha Equipe") return false;
+    if (carregado && temCorretorVinculado) return true;
   }
 
   const { slugs } = rotasModulo[nome];
