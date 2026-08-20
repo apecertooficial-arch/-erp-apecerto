@@ -1,0 +1,24 @@
+/* Ferramenta "Remover Marca d'Água" — tela avulsa em FERRAMENTAS.
+   Reaproveita .topbar, .form-section, .media-dropzone, .media-dz-head,
+   .media-dz-icon, .media-upload-actions, .upload-button, .primary-action,
+   .secondary-action, .ghost-action e .form-message do globals.css. Só o que
+   é específico desta tela mora aqui. */
+
+.wm-tool-body { display: grid; gap: var(--space-4, 16px); max-width: 720px; }
+
+.wm-tool-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4, 16px); }
+@media (max-width: 640px) { .wm-tool-grid { grid-template-columns: 1fr; } }
+
+.wm-tool-preview { margin: 0; border: 1px solid var(--line); border-radius: var(--radius-lg, 18px); overflow: hidden; background: var(--bg-sunken, #f6f3f0); }
+.wm-tool-preview img { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; }
+.wm-tool-placeholder { display: flex; align-items: center; justify-content: center; aspect-ratio: 4 / 3; color: var(--muted); font-size: 13px; text-align: center; padding: 16px; }
+.wm-tool-preview figcaption { padding: 8px 12px; font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); border-top: 1px solid var(--line); }
+
+.wm-tool-flags { display: grid; gap: 10px; padding: 14px 16px; border: 1px solid var(--line); border-radius: var(--radius-lg, 18px); background: var(--bg-surface, #fff); }
+.wm-tool-flags label { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; font-size: 13px; color: var(--ink); }
+.wm-tool-flags label small { display: block; flex-basis: 100%; margin-left: 26px; color: var(--muted); font-size: 11px; line-height: 1.4; }
+.wm-tool-formato { gap: 8px; font-weight: 600; }
+.wm-tool-formato select { border: 1px solid var(--line); border-radius: var(--radius-md, 12px); padding: 6px 10px; }
+
+.wm-tool-expira { padding: 10px 14px; border: 1px solid var(--warning, #e5a800); border-radius: var(--radius-md, 12px); background: var(--warning-bg, #fff6de); color: var(--ink); font-size: 12.5px; }
+.wm-tool-expira strong { color: var(--warning, #e5a800); }

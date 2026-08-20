@@ -49,6 +49,11 @@ export const rotasModulo: Record<ModuleName, RotaModulo> = {
   "Calendário": { path: "/agenda", slugs: ["calendario"], classe: "A", rotuloCurto: "Agenda", mobile: true },
   "Notificações": { path: "/notificacoes", slugs: ["notificacoes"], classe: "A", rotuloCurto: "Avisos", mobile: true },
   Produtos: { path: "/produtos", slugs: ["produtos"], classe: "A", rotuloCurto: "Produtos", mobile: true },
+  /* Ferramenta avulsa, sem slug de permissao proprio (mesma logica de
+     Financiamento: qualquer papel que enxergue o menu usa). Volume baixo
+     (~50 imagens/mes) -> classe C. mobile:true porque a foto da construtora
+     costuma chegar no WhatsApp do celular do corretor. */
+  "Remover Marca d'Água": { path: "/ferramentas/marca-dagua", slugs: [], classe: "C", rotuloCurto: "Marca d'Água", mobile: true },
   /* "projetos" NAO existe no catalogo de permissoes do banco -- conferido na
      homologacao contra /api/permissions. Como podeVer() e fail-closed, um slug
      inexistente escondia Tarefas de TODO mundo que nao fosse admin. Sem
