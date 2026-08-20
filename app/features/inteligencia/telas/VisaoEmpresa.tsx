@@ -13,11 +13,12 @@
  * O briefing do Copiloto entra acima disto, montado pela casca.
  */
 
-import { useState } from "react";
+import { useMemo } from "react";
 import "../../../styles/inteligencia-blocos.css";
 import type { PropsTela } from "../CascaInteligencia";
 import { fmt, RodapeFontes } from "../dado";
 import { Cabecalho, CartoesLista, Funil, GradeKpis, IconeInt, type Etapa, type Kpi, type NomeIcone } from "../pecas";
+import { useResumoInteligencia, type Tracking360Resumo } from "../usar-resumo";
 
 type Diagnostico = {
   chave: string;
@@ -48,16 +49,25 @@ type Dados = {
   atualizado: string;
 };
 
-export function VisaoEmpresa({ recorte }: PropsTela) {
-  const d = usarDados();
-  const [aberto, setAberto] = useState<string | null>(null);
+export function VisaoEmpresa({ accessToken, recorte }: PropsTela) {
+  const d = useDados(accessToken, recorte.periodo);
 
   const kpis: Kpi[] = [
     { rotulo: "Leads recebidos", bruto: d.leads, texto: fmt.inteiro(d.leads), tile: "laranja", foot: `${fmt.inteiro(d.leadsDoSite)} vieram do site` },
     { rotulo: "% no SLA de 5 min", bruto: d.slaPercentual, texto: fmt.porcento(d.slaPercentual, 0), tom: "ruim", tile: "vermelho", foot: `mediana ${fmt.duracaoMin(d.slaMediana)} · P90 ${fmt.duracaoMin(d.slaP90)}` },
     { rotulo: "Vendas e locações", bruto: d.vendas, texto: fmt.inteiro(d.vendas), tile: "verde", foot: `${fmt.dinheiro(d.vgv)} de VGV` },
     { rotulo: "Cobertura da meta", bruto: d.metaCobertura, texto: fmt.porcento(d.metaCobertura, 0), tile: "roxo", foot: `previsão ponderada ${fmt.porcento(d.previsaoPonderada, 0)}` },
-    { rotulo: "Valor de pipeline", bruto: d.pipelineValor, texto: fmt.dinheiro(d.pipelineValor), tile: "ambar", icone: "dinheiro", chip: "aguardando dado do CRM", chipTom: "aviso", motivo: "integracao", detalhe: "campo de valor ausente no Funil 2.0", foot: "nunca estimado por média" },
+    {
+      rotulo: "Valor de pipeline",
+      bruto: d.pipelineValor,
+      texto: fmt.dinheiro(d.pipelineValor),
+      tile: "ambar",
+      icone: "dinheiro",
+      ...(d.pipelineValor === null
+        ? { chip: "aguardando dado do CRM", chipTom: "aviso" as const, motivo: "integracao" as const, detalhe: "campo de valor ausente no Funil 2.0" }
+        : {}),
+      foot: "nunca estimado por média",
+    },
   ];
 
   const etapas: Etapa[] = d.funil.map((e) => ({
@@ -122,82 +132,138 @@ export function VisaoEmpresa({ recorte }: PropsTela) {
   );
 }
 
-function usarDados(): Dados {
-  return demo;
+function useDados(accessToken: string, periodo: string): Dados {
+  const { data, loading, error } = useResumoInteligencia(accessToken, periodo);
+  return useMemo(() => montarDados(data, loading, error), [data, loading, error]);
 }
 
-const demo: Dados = {
-  diagnosticos: [
+function numero(valor: number | null | undefined) {
+  return typeof valor === "number" && Number.isFinite(valor) ? valor : null;
+}
+
+function largura(volume: number | null, total: number | null) {
+  if (volume === null || total === null || total <= 0) return null;
+  return Math.max(3, Math.min(100, Math.round((100 * volume) / total)));
+}
+
+function taxa(volume: number | null, anterior: number | null) {
+  if (volume === null || anterior === null || anterior <= 0) return undefined;
+  return `${((100 * volume) / anterior).toFixed(1).replace(".", ",")}%`;
+}
+
+function montarDados(resumo: Tracking360Resumo | null, loading: boolean, error: string | null): Dados {
+  const crm = resumo?.crm;
+  const digital = resumo?.digital;
+  const sla = resumo?.sla;
+  const visitas = resumo?.visitas;
+  const propostas = resumo?.propostas;
+  const vendas = resumo?.vendas;
+  const processo = resumo?.processo;
+  const qualidade = resumo?.qualidade_dados;
+
+  const leads = numero(crm?.leads);
+  const negocios = numero(crm?.deals);
+  const respondidos = numero(sla?.responded);
+  const visitasTotal = numero(visitas?.total);
+  const propostasTotal = numero(propostas?.total);
+  const vendasTotal = numero(vendas?.total);
+  const perdidos = numero(crm?.lost_deals);
+  const validos = numero(sla?.valid);
+  const dentro = numero(sla?.within_5);
+  const slaPercentual = validos !== null && validos > 0 && dentro !== null ? (100 * dentro) / validos : null;
+  const semValor = numero(qualidade?.negocios_abertos_sem_valor);
+  const semFeedback = numero(qualidade?.visitas_realizadas_sem_resultado);
+  const semResposta = numero(qualidade?.sla_sem_resposta);
+
+  const diagnosticos: Diagnostico[] = loading || error || !resumo ? [
     {
-      chave: "oportunidade",
-      chip: "principal oportunidade",
-      tomChip: "bom",
+      chave: "carga",
+      chip: loading ? "carregando" : "fonte indisponível",
+      tomChip: loading ? "aviso" : "ruim",
+      icone: "relogio",
+      tile: loading ? "ambar" : "vermelho",
+      destaque: loading ? "Consolidando os dados reais da operação" : "A leitura executiva não respondeu",
+      texto: loading ? " — o desenho permanece completo e nenhum número ilustrativo é usado." : ` — ${error ?? "tente novamente"}.`,
+      alvo: "privacidade",
+      rotulo: "Ver saúde dos dados →",
+    },
+  ] : [
+    {
+      chave: "meta",
+      chip: "resultado do mês",
+      tomChip: (vendas?.target_coverage_percent ?? 0) >= 100 ? "bom" : "aviso",
       icone: "tendencia",
-      tile: "verde",
-      destaque: "O pipeline ponderado cobre 102% da meta",
-      texto: "— faltam 9 visitas viradas em proposta para garantir o mês.",
+      tile: (vendas?.target_coverage_percent ?? 0) >= 100 ? "verde" : "ambar",
+      destaque: `A cobertura da meta está em ${fmt.porcento(numero(vendas?.target_coverage_percent), 1)}`,
+      texto: ` — ${fmt.dinheiro(numero(vendas?.vgv))} de VGV realizado sobre ${fmt.dinheiro(numero(vendas?.target_vgv))}.`,
       alvo: "vendas",
       rotulo: "Investigar em Vendas e previsão →",
     },
     {
-      chave: "gargalo",
-      chip: "maior gargalo",
-      tomChip: "ruim",
-      icone: "alerta",
-      tile: "vermelho",
-      destaque: "Qualificado → visita caiu de 61% para 52%",
-      texto: ", concentrado na equipe do Carlos — custa ~6 visitas por mês.",
-      alvo: "gerentes",
-      rotulo: "Investigar em Gerentes →",
-    },
-    {
-      chave: "financeiro",
-      chip: "risco financeiro",
-      tomChip: "aviso",
-      icone: "dinheiro",
-      tile: "ambar",
-      destaque: "3 vendas sem % de comissão válido",
-      texto: "— R$ 2,9 mi de VGV sem cálculo de comissão nem contribuição.",
-      alvo: "financeiro",
-      rotulo: "Investigar em Financeiro →",
-    },
-    {
-      chave: "atendimento",
-      chip: "problema de atendimento",
-      tomChip: "roxo",
+      chave: "sla",
+      chip: "atendimento",
+      tomChip: (slaPercentual ?? 0) >= 80 ? "bom" : "ruim",
       icone: "relogio",
-      tile: "roxo",
-      destaque: "O P90 da 1ª resposta subiu para 1 h 52",
-      texto: "; 28 leads esperaram mais de 60 min — quase todos no fim de semana.",
+      tile: (slaPercentual ?? 0) >= 80 ? "verde" : "vermelho",
+      destaque: `${fmt.inteiro(semResposta)} leads estão sem primeira resposta medida`,
+      texto: ` — ${fmt.porcento(slaPercentual, 1)} das respostas válidas ocorreram em até 5 minutos.`,
       alvo: "atendimento",
       rotulo: "Investigar em Atendimento e SLA →",
     },
-  ],
-  leads: 486,
-  leadsDoSite: 312,
-  slaPercentual: 22,
-  slaMediana: 14,
-  slaP90: 112,
-  vendas: 21,
-  vgv: 18_400_000,
-  metaCobertura: 77,
-  previsaoPonderada: 102,
-  pipelineValor: null,
-  areas: [
-    { titulo: "Atendimento", linhas: [{ l: "1º contato · mediana", r: "14 min", corR: "#D93E3E" }, { l: "Sem resposta agora", r: "9", corR: "#D93E3E" }, { l: "Follow-ups vencidos", r: "57" }], alvo: "atendimento", rotulo: "Abrir Atendimento e SLA →" },
-    { titulo: "Comercial", linhas: [{ l: "Assinado", r: "R$ 18,4 mi" }, { l: "Previsão ponderada", r: "R$ 6,1 mi" }, { l: "Falta para a meta", r: "R$ 5,6 mi", corR: "#B5700A" }], alvo: "vendas", rotulo: "Abrir Vendas e previsão →" },
-    { titulo: "Financeiro", linhas: [{ l: "Receita bruta de comissão", r: "R$ 920 mil" }, { l: "Comissões calculadas", r: "R$ 488 mil" }, { l: "Contribuição estimada", r: "R$ 358 mil" }], alvo: "financeiro", rotulo: "Abrir Financeiro →" },
-    { titulo: "Digital", linhas: [{ l: "Leads do site", r: "312" }, { l: "Negócios", r: "187" }, { l: "Melhor canal", r: "Meta Ads · 72%" }], alvo: "digital", rotulo: "Abrir Visão do digital →" },
-  ],
-  funil: [
-    { nome: "Lead recebido", volume: 486, largura: 100, taxa: "100%" },
-    { nome: "Negócio criado", volume: 291, largura: 60, taxa: "59,9%", perda: "−195" },
-    { nome: "Primeiro contato", volume: 255, largura: 53, taxa: "87,6%", perda: "−36" },
-    { nome: "Qualificado", volume: 128, largura: 41, taxa: "50,2%", perda: "−127" },
-    { nome: "Visita agendada", volume: 96, largura: 31, taxa: "75,0%", perda: "−32" },
-    { nome: "Proposta", volume: 46, largura: 15, taxa: "47,9%", perda: "−50" },
-    { nome: "Venda ou locação", volume: 21, largura: 7, taxa: "45,7%", perda: "−25" },
-    { nome: "Perdido", volume: 112, largura: 23, taxa: "38,5%", perdaFinal: true },
-  ],
-  atualizado: "14:32",
-};
+    {
+      chave: "processo",
+      chip: "disciplina",
+      tomChip: (processo?.overdue_actions ?? 0) > 0 ? "aviso" : "bom",
+      icone: "alerta",
+      tile: (processo?.overdue_actions ?? 0) > 0 ? "ambar" : "verde",
+      destaque: `${fmt.inteiro(numero(processo?.overdue_actions))} próximas ações estão vencidas`,
+      texto: ` — ${fmt.inteiro(numero(processo?.without_next_action))} leads ativos não têm próxima ação definida.`,
+      alvo: "alertas",
+      rotulo: "Abrir Central de alertas →",
+    },
+    {
+      chave: "qualidade",
+      chip: "qualidade do dado",
+      tomChip: (semFeedback ?? 0) + (semValor ?? 0) > 0 ? "roxo" : "bom",
+      icone: "faisca",
+      tile: "roxo",
+      destaque: `${fmt.inteiro(semFeedback)} visitas realizadas estão sem resultado`,
+      texto: ` e ${fmt.inteiro(semValor)} negócios abertos não têm valor confiável de pipeline.`,
+      alvo: "qualidade",
+      rotulo: "Investigar em Qualidade →",
+    },
+  ];
+
+  const funil = [
+    { nome: "Lead recebido", volume: leads, largura: largura(leads, leads), taxa: leads === null ? undefined : "100%" },
+    { nome: "Negócio criado", volume: negocios, largura: largura(negocios, leads), taxa: taxa(negocios, leads), perda: leads !== null && negocios !== null ? `−${Math.max(0, leads - negocios)}` : undefined },
+    { nome: "Primeiro contato", volume: respondidos, largura: largura(respondidos, leads), taxa: taxa(respondidos, negocios), perda: negocios !== null && respondidos !== null ? `−${Math.max(0, negocios - respondidos)}` : undefined },
+    { nome: "Qualificado", volume: null, largura: null },
+    { nome: "Visita agendada", volume: visitasTotal, largura: largura(visitasTotal, leads), taxa: undefined },
+    { nome: "Proposta", volume: propostasTotal, largura: largura(propostasTotal, leads), taxa: taxa(propostasTotal, visitasTotal) },
+    { nome: "Venda ou locação", volume: vendasTotal, largura: largura(vendasTotal, leads), taxa: taxa(vendasTotal, propostasTotal) },
+    { nome: "Perdido", volume: perdidos, largura: largura(perdidos, leads), taxa: taxa(perdidos, negocios), perdaFinal: true },
+  ];
+
+  return {
+    diagnosticos,
+    leads,
+    leadsDoSite: numero(digital?.site_leads?.total),
+    slaPercentual,
+    slaMediana: numero(sla?.median_minutes),
+    slaP90: numero(sla?.p90_minutes),
+    vendas: vendasTotal,
+    vgv: numero(vendas?.vgv),
+    metaCobertura: numero(vendas?.target_coverage_percent),
+    previsaoPonderada: null,
+    pipelineValor: numero(crm?.pipeline_value),
+    areas: [
+      { titulo: "Atendimento", linhas: [{ l: "1º contato · mediana", r: fmt.duracaoMin(numero(sla?.median_minutes)), corR: "#D93E3E" }, { l: "Sem resposta medida", r: fmt.inteiro(semResposta), corR: "#D93E3E" }, { l: "Follow-ups vencidos", r: fmt.inteiro(numero(processo?.overdue_actions)) }], alvo: "atendimento", rotulo: "Abrir Atendimento e SLA →" },
+      { titulo: "Comercial", linhas: [{ l: "VGV realizado", r: fmt.dinheiro(numero(vendas?.vgv)) }, { l: "Vendas", r: fmt.inteiro(vendasTotal) }, { l: "Cobertura da meta", r: fmt.porcento(numero(vendas?.target_coverage_percent), 1), corR: "#B5700A" }], alvo: "vendas", rotulo: "Abrir Vendas e previsão →" },
+      { titulo: "Financeiro", linhas: [{ l: "Receita bruta de comissão", r: fmt.dinheiro(numero(vendas?.gross_commission)) }, { l: "Comissões calculadas", r: fmt.dinheiro(numero(vendas?.payouts)) }, { l: "Contribuição após custos", r: fmt.dinheiro(numero(vendas?.net_contribution)) }], alvo: "financeiro", rotulo: "Abrir Financeiro →" },
+      { titulo: "Digital", linhas: [{ l: "Visualizações", r: fmt.inteiro(numero(digital?.page_views)) }, { l: "Leads do site", r: fmt.inteiro(numero(digital?.site_leads?.total)) }, { l: "Atribuições com origem", r: fmt.inteiro(numero(digital?.attribution?.with_source)) }], alvo: "digital", rotulo: "Abrir Visão do digital →" },
+    ],
+    funil,
+    atualizado: resumo?.atualizado_em ? new Date(resumo.atualizado_em).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : "—",
+  };
+}

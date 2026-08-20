@@ -34,6 +34,7 @@ export type PropsTela = { accessToken: string; recorte: Recorte };
 
 /* Telas de fila mostram “Ao vivo”; as de análise, a carga fechada. */
 const aoVivo = new Set(["atendimento", "alertas"]);
+const conectadoAoBanco = new Set(["empresa"]);
 
 export function CascaInteligencia({ accessToken }: { accessToken: string }) {
   const [grupo, setGrupo] = useState<GrupoChave>("performance");
@@ -78,10 +79,16 @@ export function CascaInteligencia({ accessToken }: { accessToken: string }) {
           <p>{tela.sub}</p>
         </div>
         <div className="int-topo-acoes">
-          <span className="int-selo-pend">DEMONSTRAÇÃO — números ilustrativos</span>
+          <span className={conectadoAoBanco.has(tela.chave) ? "int-selo-vivo" : "int-selo-pend"}>
+            {conectadoAoBanco.has(tela.chave) ? "DADOS REAIS — site, CRM e financeiro" : "DEMONSTRAÇÃO — números ilustrativos"}
+          </span>
           <span className="int-selo-vivo">
             <i />
-            {aoVivo.has(tela.chave) ? "Ao vivo · atualizado 14:32" : "Atualizado 14:32 · dados até 14:15"}
+            {conectadoAoBanco.has(tela.chave)
+              ? "Atualização sob demanda"
+              : aoVivo.has(tela.chave)
+                ? "Ao vivo · atualizado 14:32"
+                : "Atualizado 14:32 · dados até 14:15"}
           </span>
           <button type="button" className="int-btn">Exportar · CSV / PDF</button>
         </div>
