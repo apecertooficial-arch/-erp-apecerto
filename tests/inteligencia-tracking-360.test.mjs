@@ -47,9 +47,11 @@ test("marketing liga campanha a lead, visita e venda e declara mídia ausente", 
   }
   assert.match(migration, /null::numeric investimento/);
   assert.match(marketing, /Qual campanha vira visita e venda/);
-  assert.match(marketing, /Meta Pixel \/ API de Conversões/);
+  assert.match(marketing, /Meta Ads e conversões/);
   assert.match(marketing, /Google Ads \/ Analytics/);
   assert.match(marketing, /Google Tag Manager/);
+  assert.match(marketing, /campanhas\.some\(\(item\) => item\.investimento !== null/);
+  assert.match(marketing, /a conta do Meta Ads não está integrada/);
   assert.doesNotMatch(marketing, /const demo/);
 });
 

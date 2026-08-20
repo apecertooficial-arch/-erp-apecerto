@@ -43,7 +43,9 @@ export function VisaoDigital({ accessToken, recorte }: PropsTela) {
   if (loading) return <Banner tom="tint-roxo" forte="Carregando a leitura real." texto="Campanhas, site e CRM estão sendo reconciliados." />;
   if (error) return <Banner forte="A Inteligência não respondeu." texto={error} />;
 
-  const semMidia = !saude?.meta_ads_conectado && !saude?.google_ads_conectado;
+  const temMetricasMidia = campanhas.some((item) => item.investimento !== null || item.impressoes !== null || item.cliques_midia !== null);
+  const semMidia = !temMetricasMidia;
+  const entregasMeta = saude?.entrega_midia?.entregues ?? 0;
   const campanhasLinhas = campanhas.slice(0, 12).map((item: CampanhaMarketing) => ({
     chave: `${item.source}-${item.medium}-${item.campaign}`,
     destaque: item === topCampanha,
@@ -135,7 +137,7 @@ export function VisaoDigital({ accessToken, recorte }: PropsTela) {
       <Cabecalho eyebrow="SAÚDE DO TRACKING" titulo="O que está funcionando e o que está impedindo decisão" cor="#8B00CC" />
       <div className="int-decisao-fontes">
         <Integracao nome="Coleta própria do site" status={saude?.tracking_atrasado ? "erro" : "ok"} explicacao={saude?.tracking_atrasado ? "Nenhum evento recente. Visitas podem estar acontecendo sem chegar ao ERP." : `${fmt.inteiro(saude?.total_eventos)} eventos recebidos; último às ${fmt.hora(saude?.ultimo_evento_em)}.`} />
-        <Integracao nome="Meta Pixel / API de Conversões" status={saude?.meta_ads_conectado ? "ok" : "erro"} explicacao={saude?.meta_ads_conectado ? `${fmt.inteiro(saude?.entrega_midia?.entregues)} eventos confirmados pela fila.` : "Nenhum evento enviado pela integração do ERP. Públicos e otimização da Meta ficam sem sinal comprovado."} />
+        <Integracao nome="Meta Ads e conversões" status={entregasMeta > 0 ? "parcial" : "erro"} explicacao={entregasMeta > 0 ? `A API de Conversões entregou ${fmt.inteiro(entregasMeta)} evento, mas a conta do Meta Ads não está integrada. Campanhas ativas, gasto, CTR e CPL seguem indisponíveis.` : "Nem a conta do Meta Ads nem o envio de eventos pela API de Conversões têm funcionamento comprovado no ERP."} />
         <Integracao nome="Google Ads / Analytics" status={saude?.google_ads_conectado ? "ok" : "erro"} explicacao={saude?.google_ads_conectado ? "Conta e conversões recebidas." : "Conta de mídia e conversões não estão conectadas ao ERP; gasto, cliques e CPL permanecem indisponíveis."} />
         <Integracao nome="Google Tag Manager" status={saude?.gtm_containers ? "ok" : "parcial"} explicacao={saude?.gtm_containers ? `${saude.gtm_containers} containers inventariados.` : (saude?.gtm_motivo ?? "Inventário de containers e tags não disponível.")} />
       </div>
