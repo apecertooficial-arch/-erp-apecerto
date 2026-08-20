@@ -10,6 +10,13 @@
  * (import dinâmico) -- evita adicionar dependência nova no package.json só
  * pra isso; mesmo padrão de carregar recurso externo que o projeto já usa
  * pra a fonte Quicksand em globals.css.
+ *
+ * A URL do CDN fica numa variável (não como string literal dentro do
+ * import()): string literal ali faz o TypeScript tentar resolver como
+ * módulo instalado e quebrar o typecheck. Com variável, o import() é tratado
+ * como valor dinâmico (Promise<any>), sem passar por resolução de módulo. O
+ * comentário mágico correto pro bundler deste projeto é @vite-ignore (aqui é
+ * Vite/vinext, não Webpack).
  */
 
 import { useCallback, useRef, useState } from "react";
@@ -37,6 +44,8 @@ const rotuloStatus: Record<StatusItem, string> = {
   pronto: "✓ Pronto",
   erro: "Erro",
 };
+
+const JSZIP_CDN_URL = "https://cdn.jsdelivr.net/npm/jszip@3.10.1/+esm";
 
 export function WatermarkRemoverBatch({ onVoltar }: { onVoltar: () => void }) {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -86,16 +95,16 @@ export function WatermarkRemoverBatch({ onVoltar }: { onVoltar: () => void }) {
     setZipando(true);
     setErroGeral("");
     try {
-      const { default: JSZip } = await import(
-        /* webpackIgnore: true */ "https://cdn.jsdelivr.net/npm/jszip@3.10.1/+esm"
-      );
+      const modulo: { default: new () => { file: (nome: string, blob: Blob) => void; generateAsync: (opts: { type: "blob" }) => Promise<Blob> } } =
+        await import(/* @vite-ignore */ JSZIP_CDN_URL);
+      const JSZip = modulo.default;
       const zip = new JSZip();
       const base = nomeBase(prefixo || "fotos");
       prontos.forEach((item, indice) => {
         const ext = extensaoDoMime(item.mime || "image/jpeg");
         zip.file(`${base}-imagem-${indice + 1}.${ext}`, item.blob);
       });
-      const conteudo: Blob = await zip.generateAsync({ type: "blob" });
+      const conteudo = await zip.generateAsync({ type: "blob" });
       const url = URL.createObjectURL(conteudo);
       const a = document.createElement("a");
       a.href = url;
