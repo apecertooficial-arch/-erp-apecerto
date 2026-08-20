@@ -1,0 +1,43 @@
+/* ÍCONE DA MARCA D'ÁGUA NO MENU — mesmo conserto de especificidade do ícone
+ * da Inteligência (ver menu-inteligencia-icone.css, mesmo diretório).
+ *
+ * A folha do menu (redesign-apecerto-menu.css) pinta o ícone de cada item com
+ * `background` + `mask-image` no PSEUDO-ELEMENTO de .nav-icon, keyed pelo
+ * href do item. Como /marca-dagua é uma rota nova, não existe regra de
+ * mask-image pra ela — o pseudo-elemento cai num quadrado sem desenho no
+ * lugar do SVG inline (o mesmo bug documentado pro ícone da Inteligência).
+ *
+ * Aqui o pseudo-elemento é desligado e o SVG volta a aparecer. Escopo travado
+ * no href /marca-dagua: nenhum outro item do menu é afetado.
+ *
+ * Carregada pelo AppShell, depois da folha do menu — e com especificidade
+ * maior (atributo + classe + pseudo), para não depender de ordem de carga.
+ */
+
+.sidebar .nav-item[href="/marca-dagua"] .nav-icon::before,
+.sidebar .nav-item[href="/marca-dagua"] .nav-icon::after {
+  content: none !important;
+  display: none !important;
+  background: none !important;
+  -webkit-mask-image: none !important;
+  mask-image: none !important;
+}
+
+.sidebar .nav-item[href="/marca-dagua"] .nav-icon {
+  background: none !important;
+  -webkit-mask-image: none !important;
+  mask-image: none !important;
+  display: grid !important;
+  place-items: center !important;
+  width: 19px;
+  height: 19px;
+  flex: none;
+}
+
+.sidebar .nav-item[href="/marca-dagua"] .nav-icon svg {
+  display: block !important;
+  width: 19px;
+  height: 19px;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
