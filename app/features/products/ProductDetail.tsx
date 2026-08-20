@@ -9,7 +9,7 @@ import { MoneyInput } from "./MoneyInput";
 import { applyOfficialWatermark } from "./watermark";
 
 type Media = { id: string; tipo: "foto" | "video" | "pdf" | "apresentacao"; storage_path: string; categoria: string | null; nome: string | null; is_capa: boolean; url: string | null; unidade_id?: string | null };
-type Unit = { id: string; codigo?: string | null; numero: string | null; tipologia: string | null; area_m2: number | null; vagas: number | null; valor_tabela: number | null; valor_promo: number | null; disponivel: boolean; de_terceiros?: boolean; captador_nome?: string | null; proprietario_nome?: string | null; proprietario_contato?: string | null; acesso_tipo?: string | null; acesso_codigo?: string | null; acesso_instrucoes?: string | null; aprovacao?: string | null; reprovacao_motivo?: string | null; mine?: boolean; pode_editar?: boolean };
+type Unit = { id: string; codigo?: string | null; numero: string | null; tipologia: string | null; area_m2: number | null; vagas: number | null; valor_tabela: number | null; valor_promo: number | null; disponivel: boolean; publicado?: boolean; de_terceiros?: boolean; captador_nome?: string | null; proprietario_nome?: string | null; proprietario_contato?: string | null; acesso_tipo?: string | null; acesso_codigo?: string | null; acesso_instrucoes?: string | null; aprovacao?: string | null; reprovacao_motivo?: string | null; mine?: boolean; pode_editar?: boolean };
 type Owner = { nome: string; email: string; telefone: string };
 type Condo = { id: string; nome: string; endereco: string; numero: string | null; bairro: string | null; cidade: string; uf: string; cep: string | null };
 type LeadOption = { id: number; nome: string | null; telefone: string | null; linked: boolean };
@@ -100,6 +100,7 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
   const [unitEdit, setUnitEdit] = useState<Unit | null>(null);
   const [unitLightbox, setUnitLightbox] = useState<{ items: { url: string; label: string }[]; index: number } | null>(null);
   const [confirmDeleteProduct, setConfirmDeleteProduct] = useState(false);
+  const [confirmUnpublish, setConfirmUnpublish] = useState<{ label: string; unitId?: string } | null>(null);
 
   const load = useCallback(async () => {
     setMessage("");
@@ -138,6 +139,7 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
   const focusedUnitPhotos = useMemo(() => focusedUnitMedia.filter((item) => item.tipo === "foto" && item.url), [focusedUnitMedia]);
   const focusedUnitCover = focusedUnitPhotos.find((item) => item.is_capa) ?? focusedUnitPhotos[0];
   const focusedUnitPrice = focusedUnit ? (focusedUnit.valor_promo ?? focusedUnit.valor_tabela) : null;
+  const focusedUnitPublished = Boolean(product?.site_published && focusedUnit?.publicado !== false && focusedUnit?.disponivel && focusedUnit?.aprovacao === "aprovado");
 
   const addressLine = useMemo(() => [product?.endereco, product?.numero, product?.bairro, product?.cidade, product?.uf, product?.cep].filter(Boolean).join(", "), [product]);
   // Query pro embed do Google (por texto) — sempre com cidade/UF/Brasil pra melhorar o acerto.
@@ -218,13 +220,13 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
     } catch (error) { setMessage(error instanceof Error ? error.message : "Erro ao concluir a ação."); } finally { setBusy(false); }
   }
 
-  async function publishAction(publish: boolean) {
+  async function publishAction(publish: boolean, unitId?: string) {
     setBusy(true); setMessage("");
     try {
-      const response = await fetch("/api/product", { method: "PATCH", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify({ id: productId, action: publish ? "publish" : "unpublish" }) });
+      const response = await fetch("/api/product", { method: "PATCH", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify({ id: productId, action: unitId ? (publish ? "publishUnit" : "unpublishUnit") : (publish ? "publish" : "unpublish"), unidadeId: unitId }) });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error ?? "Não foi possível concluir a ação.");
-      await load(); onChanged(); setMessage(publish ? "Produto publicado — já aparece no disparo, nas abordagens e no catálogo." : "Produto voltou para rascunho (fica invisível no disparo e nas abordagens).");
+      await load(); onChanged(); setConfirmUnpublish(null); setMessage(publish ? "Imóvel publicado novamente no site." : "Imóvel retirado do ar. O cadastro, a aprovação e a disponibilidade foram mantidos.");
     } catch (error) { setMessage(error instanceof Error ? error.message : "Erro ao publicar."); } finally { setBusy(false); }
   }
 
@@ -318,7 +320,7 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
       ? <div className="fv2-review-actions"><button className="fv2-btn fv2-btn-ghost" type="button" disabled={busy} onClick={() => void decideProduct(false)}>✕ Solicitar correção</button><button className="fv2-btn fv2-btn-publish" type="button" disabled={busy || !product.quality.readyForSite} title={product.quality.readyForSite ? "Aprovar e publicar no site" : product.quality.blocking.join(" · ")} onClick={() => void decideProduct(true)}><IcCheck /> Aprovar e publicar</button></div>
       : !product.site_published
         ? <button className="fv2-btn fv2-btn-publish" type="button" disabled={busy || !product.quality.readyForSite} title={product.quality.readyForSite ? "Publicar no site" : product.quality.blocking.join(" · ")} onClick={() => void publishAction(true)}><IcCheck /> {product.quality.readyForSite ? "Publicar no site" : "Complete o cadastro para publicar"}</button>
-        : <button className="fv2-btn fv2-btn-ghost" type="button" disabled={busy} onClick={() => void publishAction(false)}><IcRotate /> Voltar a rascunho</button>)
+        : <button className="fv2-btn fv2-btn-unpublish" type="button" disabled={busy} onClick={() => setConfirmUnpublish({ label: product.nome })}><IcRotate /> Tirar imóvel do ar</button>)
     : (product.aprovacao === "pendente"
       ? <button className="fv2-btn fv2-btn-ghost" type="button" disabled title="Aguardando aprovação do gestor"><IcClock /> Aguardando aprovação</button>
       : (product.mine && (product.rascunho || product.aprovacao === "reprovado")
@@ -412,6 +414,9 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
             <div className="fv2-actions">
               {focusedUnit.pode_editar && <button className="fv2-btn fv2-btn-outline" type="button" disabled={busy} onClick={() => setUnitEdit({ ...focusedUnit })}><IcEdit /> Editar apartamento</button>}
               {canPublish && focusedUnit.de_terceiros && focusedUnit.aprovacao === "pendente" && <div className="focused-unit-decision"><button type="button" className="fv2-ud-reject" disabled={busy} onClick={() => void decideUnit(focusedUnit.id, false)}>✕ Reprovar</button><button type="button" className="fv2-ud-approve" disabled={busy} onClick={() => void decideUnit(focusedUnit.id, true)}>✓ Aprovar unidade</button></div>}
+              {canPublish && focusedUnit.aprovacao === "aprovado" && (focusedUnitPublished
+                ? <button className="fv2-btn fv2-btn-unpublish" type="button" disabled={busy} onClick={() => setConfirmUnpublish({ unitId: focusedUnit.id, label: `${product.nome} · Un. ${focusedUnit.numero || "s/n"}` })}><IcRotate /> Tirar imóvel do ar</button>
+                : <button className="fv2-btn fv2-btn-publish" type="button" disabled={busy || !focusedUnit.disponivel} title={focusedUnit.disponivel ? "Publicar este apartamento no site" : "A unidade precisa estar disponível"} onClick={() => void publishAction(true, focusedUnit.id)}><IcCheck /> Publicar imóvel no site</button>)}
             </div>
             <div className="fv2-person-card"><span className="fv2-avatar purple">{initials(focusedUnit.captador_nome)}</span><div><strong>{focusedUnit.captador_nome || "Sem captador"}</strong><small>Captador desta unidade</small></div></div>
           </aside>
@@ -500,7 +505,7 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
 
               {tab === "site" && <div className="site-content-review">
                 <div className="site-content-head"><div><small>COMO O IMÓVEL SERÁ APRESENTADO</small><h3>{product.titulo || product.nome}</h3><p>{product.slogan || "Adicione uma chamada curta para valorizar este imóvel."}</p></div><span className={`quality-badge ${product.quality.level}`}>Nota {product.quality.score}</span></div>
-                <div className="site-content-grid"><div><small>FINALIDADE</small><strong>{product.finalidade || "Não informada"}</strong></div><div><small>FOTOS</small><strong>{photos.length}</strong></div><div><small>VÍDEOS / TOUR</small><strong>{videos.length + (product.tour_url ? 1 : 0)}</strong></div><div><small>STATUS</small><strong>{product.site_published ? "Publicado no site" : product.quality.readyForSite ? "Pronto para publicar" : "Bloqueado"}</strong></div></div>
+                <div className="site-content-grid"><div><small>FINALIDADE</small><strong>{product.finalidade || "Não informada"}</strong></div><div><small>FOTOS</small><strong>{photos.length}</strong></div><div><small>VÍDEOS / TOUR</small><strong>{videos.length + (product.tour_url ? 1 : 0)}</strong></div><div><small>STATUS</small><strong>{product.site_published ? "Publicado no site" : product.aprovacao === "aprovado" ? "Fora do ar — pode editar" : product.quality.readyForSite ? "Pronto para publicar" : "Bloqueado"}</strong></div></div>
                 <section><h4>Descrição</h4><p>{product.descricao || "Nenhuma descrição cadastrada."}</p></section>
                 <section><h4>Lazer e áreas comuns</h4><div className="site-content-tags">{product.lazer?.length ? product.lazer.map((item) => <span key={item}>{item}</span>) : <em>Não informado</em>}</div></section>
                 <section><h4>Diferenciais</h4><div className="site-content-tags">{product.diferenciais?.length ? product.diferenciais.map((item) => <span key={item}>{item}</span>) : <em>Não informado</em>}</div></section>
@@ -586,6 +591,7 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
     {documentPreview?.url && <div className="document-preview-modal" role="dialog" aria-modal="true" aria-label="Visualizar apresentação"><header><strong>{documentPreview.nome || "Apresentação do produto"}</strong><button type="button" onClick={() => setDocumentPreview(null)} aria-label="Fechar apresentação">×</button></header><div className="document-frame watermarked-preview"><iframe src={documentPreview.url} title={documentPreview.nome || "Apresentação do produto"} /></div></div>}
     {pendingDelete && <div className="delete-confirm" role="dialog" aria-modal="true" aria-label="Confirmar exclusão"><div><strong>Excluir este arquivo?</strong><p>{pendingDelete.nome || "O arquivo selecionado"} será removido definitivamente da galeria e do armazenamento.</p><footer><button type="button" onClick={() => setPendingDelete(null)}>Cancelar</button><button className="danger" disabled={busy} type="button" onClick={() => { const id = pendingDelete.id; setPendingDelete(null); void mediaAction("deleteMedia", id); }}>Excluir arquivo</button></footer></div></div>}
     {confirmDeleteProduct && <div className="delete-confirm" role="dialog" aria-modal="true" aria-label="Confirmar exclusão do produto"><div><strong>Excluir este produto definitivamente?</strong><p><strong>{product?.nome || "Este produto"}</strong> e todas as suas unidades, fotos e vínculos serão removidos para sempre. Esta ação não pode ser desfeita.</p><footer><button type="button" onClick={() => setConfirmDeleteProduct(false)}>Cancelar</button><button className="danger" disabled={busy} type="button" onClick={() => void deleteProduct()}>Excluir para sempre</button></footer></div></div>}
+    {confirmUnpublish && <div className="delete-confirm" role="dialog" aria-modal="true" aria-label="Confirmar retirada do imóvel do site"><div><strong>Tirar este imóvel do ar?</strong><p><strong>{confirmUnpublish.label}</strong> desaparecerá do site imediatamente. O cadastro, a aprovação e a disponibilidade serão preservados para você editar e publicar novamente depois.</p><footer><button type="button" onClick={() => setConfirmUnpublish(null)}>Cancelar</button><button className="danger" disabled={busy} type="button" onClick={() => void publishAction(false, confirmUnpublish.unitId)}>Tirar do ar</button></footer></div></div>}
     {unitDetail && (() => {
       const u = unitDetail;
       const ind = Boolean(u.de_terceiros);

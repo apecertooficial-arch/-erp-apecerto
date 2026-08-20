@@ -19,6 +19,7 @@ type UnitRow = {
   captador_corretor_id: number | null;
   de_terceiros: boolean | null;
   reprovacao_motivo: string | null;
+  publicado: boolean;
 };
 
 type MediaRow = {
@@ -61,7 +62,7 @@ export async function GET(request: Request) {
       publicado, origem, lazer, diferenciais, tour_url,
       aprovacao, reprovacao_motivo, captado_por_usuario, captador_corretor_id,
       codigo,
-      unidades (id, numero, area_m2, tipologia, vagas, valor_tabela, valor_promo, disponivel, aprovacao, codigo, captador_corretor_id, de_terceiros, reprovacao_motivo),
+      unidades (id, numero, area_m2, tipologia, vagas, valor_tabela, valor_promo, disponivel, aprovacao, codigo, captador_corretor_id, de_terceiros, reprovacao_motivo, publicado),
       midias (id, tipo, storage_path, categoria, nome, is_capa, created_at, unidade_id)
     `)
     .order("created_at", { ascending: false })
@@ -89,6 +90,7 @@ export async function GET(request: Request) {
     const media = allMedia.filter((entry) => !entry.unidade_id);
     const approvedUnits = units.filter((unit) => (unit.aprovacao ?? "aprovado") === "aprovado");
     const availableUnits = approvedUnits.filter((unit) => unit.disponivel);
+    const publishedAvailableUnits = availableUnits.filter((unit) => unit.publicado !== false);
     const prices = availableUnits
       .map((unit) => unit.valor_promo ?? unit.valor_tabela)
       .filter((value): value is number => typeof value === "number");
@@ -158,7 +160,7 @@ export async function GET(request: Request) {
         draft: item.rascunho,
         approval: item.aprovacao,
         status: item.status,
-        availableApprovedUnits: availableUnits.length,
+        availableApprovedUnits: publishedAvailableUnits.length,
       }),
       price,
       area,
@@ -306,6 +308,7 @@ export async function GET(request: Request) {
         capturedBy: corretorNameById.get(u.captador_corretor_id ?? -1) ?? p.capturedBy,
         capturedByScore: u.captador_corretor_id != null ? (captadorScoreById.get(u.captador_corretor_id) ?? null) : p.capturedByScore,
         mine: currentBrokerId != null && u.captador_corretor_id === currentBrokerId,
+        published: Boolean(p.published && u.publicado !== false),
       };
     });
   });

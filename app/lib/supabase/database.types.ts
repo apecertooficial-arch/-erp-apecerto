@@ -9651,6 +9651,7 @@ export type Database = {
           obs: string | null
           proprietario_contato: string | null
           proprietario_nome: string | null
+          publicado: boolean
           reprovacao_motivo: string | null
           tipologia: string | null
           vagas: number | null
@@ -9675,6 +9676,7 @@ export type Database = {
           obs?: string | null
           proprietario_contato?: string | null
           proprietario_nome?: string | null
+          publicado?: boolean
           reprovacao_motivo?: string | null
           tipologia?: string | null
           vagas?: number | null
@@ -9699,6 +9701,7 @@ export type Database = {
           obs?: string | null
           proprietario_contato?: string | null
           proprietario_nome?: string | null
+          publicado?: boolean
           reprovacao_motivo?: string | null
           tipologia?: string | null
           vagas?: number | null

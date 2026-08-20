@@ -57,6 +57,7 @@ export async function GET(request: Request) {
   const units = data.unidades ?? [];
   const approvedUnits = units.filter((item) => (item.aprovacao ?? "aprovado") === "aprovado");
   const availableUnits = approvedUnits.filter((item) => item.disponivel);
+  const publishedAvailableUnits = availableUnits.filter((item) => item.publicado !== false);
   const unitPrices = availableUnits.map((item) => item.valor_promo ?? item.valor_tabela).filter((value): value is number => typeof value === "number" && value > 0);
   const unitAreas = availableUnits.map((item) => item.area_m2).filter((value): value is number => typeof value === "number" && value > 0);
   const photoCount = buildingMedia.filter((item) => item.tipo === "foto").length;
@@ -121,7 +122,7 @@ export async function GET(request: Request) {
     draft: data.rascunho,
     approval: data.aprovacao,
     status: data.status,
-    availableApprovedUnits: availableUnits.length,
+    availableApprovedUnits: publishedAvailableUnits.length,
   });
   return Response.json({ product: { ...data, ...(podeEditar ? {} : { proprietarios: null, proprietario_nome: null, proprietario_tel: null, proprietario_email: null, acesso_tipo: null, acesso_codigo: null, acesso_instrucoes: null }), site_published: sitePublished, midias: visibleMedia, unidades: unidadesVisiveis, captado_por_nome: capturedByName, mine, pode_editar: podeEditar, summary_price: summaryPrice, summary_area: summaryArea, is_favorite: Boolean(favorite), leads: (leadOptions ?? []).map((lead) => ({ ...lead, linked: linkedIds.has(lead.id) })), quality, completion: { checks, completed: Object.values(checks).filter(Boolean).length, total: Object.keys(checks).length } } });
 }
@@ -132,7 +133,7 @@ export async function PATCH(request: Request) {
   const body = await request.json() as Record<string, unknown>;
   const id = typeof body.id === "string" ? body.id : "";
   if (!UUID.test(id)) return Response.json({ error: "Produto inválido." }, { status: 400 });
-  const { data: productContext } = await auth.supabase.from("empreendimentos").select("finalidade, captado_por_usuario, aprovacao, publicado, rascunho").eq("id", id).maybeSingle();
+  const { data: productContext } = await auth.supabase.from("empreendimentos").select("nome, finalidade, captado_por_usuario, aprovacao, publicado, rascunho").eq("id", id).maybeSingle();
   const currentPurpose = productContext?.finalidade ?? "venda";
   const { data: meuPerfilPatch } = await auth.supabase.from("usuarios").select("role").eq("id", auth.user.id).maybeSingle();
   const gerenciaProdutos = isProductManagerRole((meuPerfilPatch as { role?: string } | null)?.role);
@@ -143,6 +144,50 @@ export async function PATCH(request: Request) {
   // Aprovação/publicação continuam por role logo abaixo (decideUnit/publish).
   const access = await resolveEffectiveAccess(auth.supabase, auth.user.id);
   const guard = (pairs: Array<[string, string]>, msg: string) => denyIfCannot(access, pairs, msg);
+  const publicationAuth = auth;
+
+  async function auditPublication(entity: "empreendimento" | "unidade", entityId: string, publish: boolean, label: string) {
+    const { data: who } = await publicationAuth.supabase.from("usuarios").select("nome").eq("id", publicationAuth.user.id).maybeSingle();
+    await publicationAuth.supabase.from("erp_auditoria").insert({
+      usuario_id: publicationAuth.user.id,
+      usuario_nome: (who as { nome?: string } | null)?.nome ?? null,
+      acao: publish ? "publicar" : "despublicar",
+      modulo: "produtos",
+      entidade: entity,
+      entidade_id: entityId,
+      antes: { publicado: !publish },
+      depois: { publicado: publish },
+      detalhe: publish ? `${label} publicado novamente no site.` : `${label} retirado temporariamente do site sem perder aprovação ou disponibilidade.`,
+    } as never);
+  }
+
+  if (body.action === "publishUnit" || body.action === "unpublishUnit") {
+    const { data: me } = await auth.supabase.from("usuarios").select("role").eq("id", auth.user.id).maybeSingle();
+    const role = (me as { role?: string } | null)?.role ?? "corretor";
+    if (!isProductManagerRole(role)) return Response.json({ error: "Apenas a gestão de Produtos pode publicar ou retirar imóveis do site." }, { status: 403 });
+    const unidadeId = typeof body.unidadeId === "string" ? body.unidadeId : "";
+    if (!UUID.test(unidadeId)) return Response.json({ error: "Unidade inválida." }, { status: 400 });
+    const { data: unit, error: unitReadError } = await auth.supabase
+      .from("unidades")
+      .select("id,numero,codigo,publicado,disponivel,aprovacao")
+      .eq("id", unidadeId)
+      .eq("empreendimento_id", id)
+      .maybeSingle();
+    if (unitReadError) return Response.json({ error: unitReadError.message }, { status: 502 });
+    if (!unit) return Response.json({ error: "Unidade não encontrada." }, { status: 404 });
+    const publish = body.action === "publishUnit";
+    if (publish && unit.aprovacao !== "aprovado") return Response.json({ error: "A unidade precisa estar aprovada antes de voltar ao site." }, { status: 422 });
+    if (publish && !unit.disponivel) return Response.json({ error: "A unidade está indisponível. Marque-a como disponível antes de publicar." }, { status: 422 });
+    if (publish && productContext?.aprovacao !== "aprovado") return Response.json({ error: "O cadastro do empreendimento de referência precisa estar aprovado." }, { status: 422 });
+    const { error: unitUpdateError } = await auth.supabase.from("unidades").update({ publicado: publish }).eq("id", unidadeId).eq("empreendimento_id", id);
+    if (unitUpdateError) return Response.json({ error: unitUpdateError.message }, { status: 502 });
+    if (publish && (!productContext?.publicado || productContext.rascunho)) {
+      const { error: parentUpdateError } = await auth.supabase.from("empreendimentos").update({ publicado: true, rascunho: false }).eq("id", id).eq("aprovacao", "aprovado");
+      if (parentUpdateError) return Response.json({ error: parentUpdateError.message }, { status: 502 });
+    }
+    await auditPublication("unidade", unidadeId, publish, `${productContext?.nome ?? "Imóvel"} · Un. ${unit.numero ?? unit.codigo ?? "s/n"}`);
+    return Response.json({ success: true, unidadeId, publicado: publish, approval: unit.aprovacao, disponivel: unit.disponivel });
+  }
 
   if (body.action === "criarUnidade") {
     const denied = guard([["produtos", "criar"], ["produtos", "editar"]], "Você não tem permissão para cadastrar unidades.");
@@ -328,11 +373,13 @@ export async function PATCH(request: Request) {
       return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true, aprovacao: "pendente" });
     }
 
-    // Publicar / voltar a rascunho: só aprovadores (admin, gestor, executivo).
+    // Publicar / retirar do ar: só aprovadores (admin, gestor, executivo).
     if (!isApprover) return Response.json({ error: "Apenas administradores, gestores ou executivos podem publicar produtos." }, { status: 403 });
     if (body.action === "unpublish") {
-      const { error } = await auth.supabase.from("empreendimentos").update({ rascunho: true, publicado: false }).eq("id", id);
-      return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true, rascunho: true, publicado: false });
+      const { error } = await auth.supabase.from("empreendimentos").update({ rascunho: false, publicado: false }).eq("id", id);
+      if (error) return Response.json({ error: error.message }, { status: 502 });
+      await auditPublication("empreendimento", id, false, productContext?.nome ?? "Imóvel");
+      return Response.json({ success: true, rascunho: false, publicado: false, aprovacao: productContext?.aprovacao });
     }
     // Publicar somente após a checagem profissional. A regra fica no servidor para não ser
     // contornada por chamadas diretas à API.
@@ -371,7 +418,9 @@ export async function PATCH(request: Request) {
       return Response.json({ error: "Este imóvel ainda não atingiu o padrão para o site.", code: "PRODUCT_NOT_READY", quality, blocking: quality.blocking }, { status: 422 });
     }
     const { error } = await auth.supabase.from("empreendimentos").update({ rascunho: false, aprovacao: "aprovado", publicado: true, reprovacao_motivo: null }).eq("id", id);
-    return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true, rascunho: false, aprovacao: "aprovado" });
+    if (error) return Response.json({ error: error.message }, { status: 502 });
+    await auditPublication("empreendimento", id, true, productContext?.nome ?? "Imóvel");
+    return Response.json({ success: true, rascunho: false, aprovado: true, publicado: true, aprovacao: "aprovado" });
   }
 
   if (body.action === "setCover") {

@@ -9,6 +9,7 @@ const unitWizard = await readFile("app/features/products/UnitWizard.tsx", "utf8"
 const captureWizard = await readFile("app/features/products/CaptureWizard.tsx", "utf8");
 const detail = await readFile("app/features/products/ProductDetail.tsx", "utf8");
 const migration = await readFile("supabase/migrations/20260820153819_produtos_fluxo_seguro_site_unidades.sql", "utf8");
+const unpublishMigration = await readFile("supabase/migrations/20260820193000_produtos_despublicacao_individual.sql", "utf8");
 
 test("catálogo separa contagem de empreendimentos e imóveis", () => {
   assert.match(catalog, /buildingCount: visible\.length/);
@@ -45,6 +46,25 @@ test("revisão abre a unidade como produto completo e não deixa o condomínio p
   assert.match(detail, /Este apartamento é um produto independente/);
   assert.match(detail, /Condomínio de referência/);
   assert.doesNotMatch(detail, /initialOpened/);
+});
+
+test("imóvel pode sair do site sem perder aprovação ou disponibilidade", () => {
+  assert.match(productsUi, /Tirar imóvel do ar/);
+  assert.match(productsUi, /publishUnit/);
+  assert.match(detail, /Tirar imóvel do ar/);
+  assert.match(detail, /O cadastro, a aprovação e a disponibilidade foram mantidos/);
+  assert.match(productApi, /body\.action === "publishUnit" \|\| body\.action === "unpublishUnit"/);
+  assert.match(productApi, /update\(\{ publicado: publish \}\)/);
+  assert.match(productApi, /update\(\{ rascunho: false, publicado: false \}\)/);
+  assert.doesNotMatch(productApi, /update\(\{ rascunho: true, publicado: false \}\)/);
+});
+
+test("publicação individual não tira outras unidades do mesmo condomínio do ar", () => {
+  assert.match(catalog, /publicado: boolean/);
+  assert.match(catalog, /published: Boolean\(p\.published && u\.publicado !== false\)/);
+  assert.match(unpublishMigration, /add column if not exists publicado boolean not null default true/);
+  assert.match(unpublishMigration, /u\.publicado and u\.disponivel and u\.aprovacao = 'aprovado'/);
+  assert.match(unpublishMigration, /Controle editorial do site\. Não altera disponibilidade comercial/);
 });
 
 test("edição do prédio nunca altera indicação individual", () => {

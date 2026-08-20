@@ -2852,6 +2852,8 @@ body { overflow:hidden; background:#eee8e2; }
 .ficha-v2 .fv2-btn-outline.active svg { color:var(--fv-orange); }
 .ficha-v2 .fv2-btn-publish { background:var(--fv-purple); color:#fff; }
 .ficha-v2 .fv2-btn-publish:hover { background:#7a00b3; }
+.ficha-v2 .fv2-btn-unpublish { border-color:#e7b8b3; background:#fff7f6; color:#a62d25; }
+.ficha-v2 .fv2-btn-unpublish:hover { border-color:#c74335; background:#fbe5e5; color:#8f211b; }
 .ficha-v2 .fv2-btn-ghost { background:none; color:var(--fv-muted); min-height:44px; font-weight:600; }
 .ficha-v2 .fv2-btn-ghost:hover { color:var(--fv-ink); }
 .ficha-v2 .fv2-action-row { display:flex; gap:10px; }
