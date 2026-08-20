@@ -2999,6 +2999,10 @@ body { overflow:hidden; background:#eee8e2; }
 .uw-photo-row small { color:#8a807b; font-size:12px; }
 .uw-photo-row button { border:none; background:#f1ecee; color:#8a807b; width:26px; height:26px; border-radius:8px; cursor:pointer; font-size:16px; line-height:1; }
 .uw-photo-row button:hover { background:#e9dfe4; color:#6e2a94; }
+.unit-standalone-action { width:100%; display:flex; flex-direction:column; align-items:flex-start; gap:4px; margin:0 0 18px; padding:15px 17px; border:1px solid #ead0f5; border-radius:14px; background:#fbf5ff; color:#5e1c84; text-align:left; cursor:pointer; }
+.unit-standalone-action:hover { border-color:#8b00cc; box-shadow:0 5px 18px rgba(139,0,204,.09); }
+.unit-standalone-action strong { font-size:14px; }
+.unit-standalone-action span { color:#7c6f82; font-size:12.5px; line-height:1.45; }
 
 /* ===== Rodagem do atendimento (cards clicáveis + gráficos) ===== */
 .rodagem-head { display:flex; align-items:baseline; gap:10px; margin:6px 0 12px; }

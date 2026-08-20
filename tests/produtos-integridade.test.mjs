@@ -12,7 +12,7 @@ const migration = await readFile("supabase/migrations/20260820153819_produtos_fl
 const unpublishMigration = await readFile("supabase/migrations/20260820193000_produtos_despublicacao_individual.sql", "utf8");
 
 test("catálogo separa contagem de empreendimentos e imóveis", () => {
-  assert.match(catalog, /buildingCount: visible\.length/);
+  assert.match(catalog, /buildingCount: visible\.filter\(\(product\) => !product\.standalone\)\.length/);
   assert.match(productsUi, /\{buildingCount\} empreendimentos · \{products\.length\} imóveis/);
   assert.match(productsUi, /`\$\{produtosVisiveis\.length\} imóveis`/);
 });
@@ -23,6 +23,18 @@ test("apartamento é a captação principal e condomínio tem fluxo separado", (
   assert.match(unitWizard, /Associe o apartamento captado a um condomínio ou prédio já existente/);
   assert.match(unitWizard, /onCreateCondominium/);
   assert.match(captureWizard, /Só quer cadastrar um apartamento\?/);
+});
+
+test("apartamento pode ser cadastrado sem associação falsa a condomínio", () => {
+  assert.match(unitWizard, /Cadastrar imóvel sem condomínio/);
+  assert.match(unitWizard, /onCreateStandalone/);
+  assert.match(captureWizard, /initialStandalone/);
+  assert.match(captureWizard, /Nenhum condomínio ou prédio será criado automaticamente/);
+  assert.match(captureWizard, /unidade_id: standalone \? created\.unidadeId : null/);
+  assert.match(catalog, /standalone = item\.origem === "terceiros" && !item\.condominio_id/);
+  assert.match(catalog, /if \(p\.standalone\)/);
+  assert.match(productApi, /O registro-base existe apenas para dar identidade, endereço e publicação ao/);
+  assert.match(productApi, /aprovacao: "aprovado", rascunho: false, publicado: true/);
 });
 
 test("fila de aprovação abre completa e filtros avançados ficam recolhidos", () => {
@@ -53,7 +65,7 @@ test("revisão abre a unidade como produto completo e não deixa o condomínio p
   assert.match(detail, /const focusedUnit = useMemo/);
   assert.match(detail, /VALOR DESTA UNIDADE/);
   assert.match(detail, /focusedUnitPrice/);
-  assert.match(detail, /Este apartamento é um produto independente/);
+  assert.match(detail, /Este imóvel é um produto independente/);
   assert.match(detail, /Condomínio de referência/);
   assert.doesNotMatch(detail, /initialOpened/);
 });

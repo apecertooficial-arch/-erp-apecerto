@@ -270,17 +270,20 @@ export async function POST(request: Request) {
   if (developmentError) return Response.json({ error: developmentError.message }, { status: 400 });
 
   const unitRows = payload.propertyType === "construtora" ? units : [{
-    number: condominium.number || "Única", type: `${property.bedrooms} dorm.`, area: property.area,
+    number: semCondominio ? "Imóvel único" : condominium.number || "Única", type: `${property.bedrooms} dorm.`, area: property.area,
     parking: property.parking, price: property.price, promotionalPrice: null,
   }];
-  const { error: unitsError } = await supabase.from("unidades").insert(unitRows.map((unit) => ({
+  const { data: createdUnits, error: unitsError } = await supabase.from("unidades").insert(unitRows.map((unit) => ({
     empreendimento_id: development.id, numero: unit.number.trim(), area_m2: unit.area,
     tipologia: unit.type.trim(), vagas: unit.parking, valor_tabela: unit.price,
     valor_promo: unit.promotionalPrice, valor_m2: unit.area > 0 ? (unit.promotionalPrice ?? unit.price) / unit.area : null,
     disponivel: true, de_terceiros: payload.propertyType === "terceiro", captador_corretor_id: broker?.id ?? null,
+    aprovacao: payload.propertyType === "terceiro" ? "pendente" : "aprovado",
     proprietario_nome: owner?.name.trim() || null, proprietario_contato: owner?.phone.trim() || null,
-  })));
+    acesso_tipo: access.type, acesso_codigo: access.type === "chave_digital" ? access.code.trim() : null,
+    acesso_instrucoes: access.instructions.trim(),
+  }))).select("id");
   if (unitsError) return Response.json({ error: `Produto salvo como rascunho, mas as unidades falharam: ${unitsError.message}` }, { status: 400 });
 
-  return Response.json({ ok: true, id: development.id, userId: authData.user.id, draft: true });
+  return Response.json({ ok: true, id: development.id, unidadeId: payload.propertyType === "terceiro" ? createdUnits?.[0]?.id ?? null : null, userId: authData.user.id, draft: true });
 }

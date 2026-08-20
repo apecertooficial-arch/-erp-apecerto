@@ -25,6 +25,7 @@ export type Product = {
   coverUrl?: string | null;
   draft?: boolean;
   origin?: string;
+  standalone?: boolean;
   numericPrice?: number | null;
   favorite?: boolean;
   approval?: string;

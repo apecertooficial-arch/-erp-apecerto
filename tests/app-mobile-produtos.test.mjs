@@ -22,3 +22,9 @@ test("Produtos mobile tem estados e filtros do protótipo", () => {
     assert.ok(tela.includes(trecho), `faltou ${trecho}`);
   }
 });
+
+test("cadastro mobile também alcança imóvel sem condomínio", () => {
+  assert.match(tela, /standaloneOpen/);
+  assert.match(tela, /initialStandalone/);
+  assert.match(tela, /onCreateStandalone/);
+});

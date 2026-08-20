@@ -59,7 +59,7 @@ export async function GET(request: Request) {
       id, nome, titulo, slug, slogan, descricao, finalidade, incorporadora, endereco, numero,
       bairro, cidade, uf, cep, status, area_util, rascunho, dormitorios, suites, banheiros,
       vagas, preco, condominio_valor, iptu, outros_custos, created_at, published_at,
-      publicado, origem, lazer, diferenciais, tour_url,
+      publicado, origem, condominio_id, lazer, diferenciais, tour_url,
       aprovacao, reprovacao_motivo, captado_por_usuario, captador_corretor_id,
       codigo,
       unidades (id, numero, area_m2, tipologia, vagas, valor_tabela, valor_promo, disponivel, aprovacao, codigo, captador_corretor_id, de_terceiros, reprovacao_motivo, publicado),
@@ -87,7 +87,8 @@ export async function GET(request: Request) {
   const catalog = (data ?? []).map((item) => {
     const units = (item.unidades ?? []) as UnitRow[];
     const allMedia = (item.midias ?? []) as MediaRow[];
-    const media = allMedia.filter((entry) => !entry.unidade_id);
+    const standalone = item.origem === "terceiros" && !item.condominio_id;
+    const media = standalone ? allMedia : allMedia.filter((entry) => !entry.unidade_id);
     const approvedUnits = units.filter((unit) => (unit.aprovacao ?? "aprovado") === "aprovado");
     const availableUnits = approvedUnits.filter((unit) => unit.disponivel);
     const publishedAvailableUnits = availableUnits.filter((unit) => unit.publicado !== false);
@@ -155,6 +156,7 @@ export async function GET(request: Request) {
       city: item.cidade ?? "São Paulo",
       status: item.status,
       origin: item.origem,
+      standalone,
       published: isProductPublishedOnSite({
         published: item.publicado,
         draft: item.rascunho,
@@ -211,7 +213,7 @@ export async function GET(request: Request) {
   // Visibilidade: corretor só enxerga aprovados + os que ele mesmo captou (pra acompanhar pendente/reprovado).
   // Admin/gestor enxergam tudo (inclusive a fila de pendentes).
   const visible = canApprove ? catalog : catalog.filter((p) => p.approval === "aprovado" || p.mine);
-  const pendingCount = catalog.filter((p) => p.approval === "pendente").length;
+  const pendingCount = catalog.filter((p) => p.approval === "pendente" && !p.standalone).length;
   const qualitySummary = {
     excellent: visible.filter((p) => p.quality.level === "excelente").length,
     good: visible.filter((p) => p.quality.level === "bom").length,
@@ -282,9 +284,13 @@ export async function GET(request: Request) {
   const catalogFinal = visible.flatMap((p) => {
     const bruto = rowById.get(p.id);
     const ehPronto = /pronto/i.test(p.status ?? "");
-    if (!bruto || p.draft || p.approval !== "aprovado" || !ehPronto) return [p];
+    if (!bruto) return [p];
     const unidadesBrutas = ((bruto.unidades ?? []) as UnitRow[]).filter((u) => u.disponivel && (u.aprovacao ?? "aprovado") === "aprovado");
-    if (!unidadesBrutas.length) return [p];
+    if (p.standalone) {
+      if (p.draft || p.approval !== "aprovado" || !ehPronto || !unidadesBrutas.length) return [];
+    } else {
+      if (p.draft || p.approval !== "aprovado" || !ehPronto || !unidadesBrutas.length) return [p];
+    }
     const allProductMedia = (bruto.midias ?? []) as MediaRow[];
     const fotos = allProductMedia.filter((m) => m.tipo === "foto");
     const buildingMediaCount = allProductMedia.filter((m) => !m.unidade_id).length;
@@ -297,7 +303,7 @@ export async function GET(request: Request) {
         ...p,
         unitId: u.id,
         codigo: u.codigo ?? p.codigo,
-        name: `${p.name} · Un. ${u.numero == null ? "s/n" : String(u.numero).replace(/\.0+$/, "")}`,
+        name: p.standalone ? p.name : `${p.name} · Un. ${u.numero == null ? "s/n" : String(u.numero).replace(/\.0+$/, "")}`,
         price: (u.valor_promo ?? u.valor_tabela) ?? p.price,
         area: u.area_m2 ?? p.area,
         bedrooms: dormUnidade ?? p.bedrooms,
@@ -324,7 +330,7 @@ export async function GET(request: Request) {
     qualitySummary,
     pendingUnits,
     myUnits,
-    buildingCount: visible.length,
+    buildingCount: visible.filter((product) => !product.standalone).length,
     count: catalogFinal.length,
     catalog: catalogFinal,
   });

@@ -133,7 +133,7 @@ export async function PATCH(request: Request) {
   const body = await request.json() as Record<string, unknown>;
   const id = typeof body.id === "string" ? body.id : "";
   if (!UUID.test(id)) return Response.json({ error: "Produto inválido." }, { status: 400 });
-  const { data: productContext } = await auth.supabase.from("empreendimentos").select("nome, finalidade, captado_por_usuario, aprovacao, publicado, rascunho").eq("id", id).maybeSingle();
+  const { data: productContext } = await auth.supabase.from("empreendimentos").select("nome, finalidade, origem, condominio_id, captado_por_usuario, aprovacao, publicado, rascunho").eq("id", id).maybeSingle();
   const currentPurpose = productContext?.finalidade ?? "venda";
   const { data: meuPerfilPatch } = await auth.supabase.from("usuarios").select("role").eq("id", auth.user.id).maybeSingle();
   const gerenciaProdutos = isProductManagerRole((meuPerfilPatch as { role?: string } | null)?.role);
@@ -328,11 +328,19 @@ export async function PATCH(request: Request) {
     const { error } = await auth.supabase.from("unidades").update(patch as never).eq("id", unidadeId).eq("empreendimento_id", id);
     if (error) return Response.json({ error: error.message }, { status: 502 });
     if (approve) {
-      // Unidade aprovada precisa aparecer no site: garante o prédio aprovado como publicado.
-      const { data: pai } = await auth.supabase.from("empreendimentos").select("aprovacao, publicado, rascunho").eq("id", id).maybeSingle();
-      const paiTyped = pai as { aprovacao?: string; publicado?: boolean; rascunho?: boolean } | null;
-      if (paiTyped && paiTyped.aprovacao === "aprovado" && !paiTyped.rascunho && !paiTyped.publicado) {
-        await auth.supabase.from("empreendimentos").update({ publicado: true } as never).eq("id", id);
+      const standalone = productContext?.origem === "terceiros" && !productContext.condominio_id;
+      if (standalone) {
+        // O registro-base existe apenas para dar identidade, endereço e publicação ao
+        // imóvel avulso. A aprovação da unidade conclui o produto inteiro sem criar condomínio.
+        const { error: parentError } = await auth.supabase.from("empreendimentos").update({ aprovacao: "aprovado", rascunho: false, publicado: true, reprovacao_motivo: null } as never).eq("id", id);
+        if (parentError) return Response.json({ error: parentError.message }, { status: 502 });
+      } else {
+        // Unidade aprovada precisa aparecer no site: garante o prédio aprovado como publicado.
+        const { data: pai } = await auth.supabase.from("empreendimentos").select("aprovacao, publicado, rascunho").eq("id", id).maybeSingle();
+        const paiTyped = pai as { aprovacao?: string; publicado?: boolean; rascunho?: boolean } | null;
+        if (paiTyped && paiTyped.aprovacao === "aprovado" && !paiTyped.rascunho && !paiTyped.publicado) {
+          await auth.supabase.from("empreendimentos").update({ publicado: true } as never).eq("id", id);
+        }
       }
     }
     return Response.json({ success: true, aprovacao: patch.aprovacao });

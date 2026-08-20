@@ -32,7 +32,7 @@ type CatalogResponse = {
     id: string; name: string; title?: string | null; slug?: string | null; purpose?: string | null; address?: string | null; developer: string | null; neighborhood: string; city: string;
     status: string; price: number | null; area: number | null; bedrooms: number | null;
     parking: number | null; available: number; units: number; media: number; unitMedia?: number; referenceMedia?: number;
-    coverUrl: string | null; draft: boolean; origin: string; favorite: boolean;
+    coverUrl: string | null; draft: boolean; origin: string; standalone?: boolean; favorite: boolean;
     approval?: string; rejectionReason?: string | null; mine?: boolean; capturedBy?: string | null; capturedByScore?: number | null; codigo?: string | null; unitId?: string | null;
     published?: boolean; quality: ProductQuality; topIssue?: string | null; createdAt?: string | null; updatedAt?: string | null;
     leads?: number;
@@ -68,6 +68,7 @@ export function ProductsModule({ accessToken }: { accessToken: string }) {
   const [favoritesOnly, setFavoritesOnly] = useState(false);
   const [noMediaOnly, setNoMediaOnly] = useState(false);
   const [captureOpen, setCaptureOpen] = useState(false);
+  const [standaloneOpen, setStandaloneOpen] = useState(false);
   const [unitWizardOpen, setUnitWizardOpen] = useState(false);
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
@@ -119,7 +120,7 @@ export function ProductsModule({ accessToken }: { accessToken: string }) {
         available: item.available, leads: item.leads ?? 0,
         priceM2: item.price && item.area ? `${currency.format(item.price / item.area)}/m²` : "—",
         units: item.units, media: item.media, unitMedia: item.unitMedia, referenceMedia: item.referenceMedia, coverUrl: item.coverUrl, draft: item.draft,
-        origin: item.origin, numericPrice: item.price, favorite: item.favorite,
+        origin: item.origin, standalone: item.standalone, numericPrice: item.price, favorite: item.favorite,
         approval: item.approval ?? "aprovado", rejectionReason: item.rejectionReason ?? null,
         mine: item.mine ?? false, capturedBy: item.capturedBy ?? null, capturedByScore: item.capturedByScore ?? null, codigo: item.codigo ?? null, unitId: item.unitId ?? null,
         published: item.published, quality: item.quality, topIssue: item.topIssue ?? null,
@@ -327,7 +328,8 @@ export function ProductsModule({ accessToken }: { accessToken: string }) {
       })}
     </section>}
     {captureOpen && <CaptureWizard onClose={() => setCaptureOpen(false)} onSaved={() => { setCaptureOpen(false); void loadCatalog(accessToken); }} />}
-    {unitWizardOpen && <UnitWizard accessToken={accessToken} onCreateCondominium={() => { setUnitWizardOpen(false); setCaptureOpen(true); }} onClose={() => setUnitWizardOpen(false)} onSaved={() => { setUnitWizardOpen(false); void loadCatalog(accessToken); }} />}
+    {standaloneOpen && <CaptureWizard initialStandalone onClose={() => setStandaloneOpen(false)} onSaved={() => { setStandaloneOpen(false); void loadCatalog(accessToken); }} />}
+    {unitWizardOpen && <UnitWizard accessToken={accessToken} onCreateStandalone={() => { setUnitWizardOpen(false); setStandaloneOpen(true); }} onCreateCondominium={() => { setUnitWizardOpen(false); setCaptureOpen(true); }} onClose={() => setUnitWizardOpen(false)} onSaved={() => { setUnitWizardOpen(false); void loadCatalog(accessToken); }} />}
     {selectedProductId && <ProductDetail productId={selectedProductId} accessToken={accessToken} sessionRole={role} initialUnitId={initialUnitId} initialEditing={openInEdit} captadorScore={products.find((p) => p.id === selectedProductId)?.capturedByScore ?? null} onClose={() => { setSelectedProductId(null); setInitialUnitId(null); setOpenInEdit(false); }} onChanged={() => void loadCatalog(accessToken)} />}
     {deleteTarget && <div className="delete-confirm" role="dialog" aria-modal="true" aria-label="Confirmar exclusão do produto"><div><strong>Excluir este produto definitivamente?</strong><p><strong>{deleteTarget.name}</strong> e todas as suas unidades, fotos e vínculos serão removidos para sempre. Esta ação não pode ser desfeita.</p><footer><button type="button" onClick={() => setDeleteTarget(null)}>Cancelar</button><button className="danger" disabled={deleting} type="button" onClick={() => void confirmDeleteProduct()}>Excluir para sempre</button></footer></div></div>}
   </main>;
@@ -340,6 +342,7 @@ export function ProductsModule({ accessToken }: { accessToken: string }) {
       </header>
       <section className="product-entry-guide" aria-label="Qual cadastro devo usar?">
         <div><strong>Apartamento em condomínio existente</strong><span>Use para captar uma unidade específica de um proprietário.</span></div>
+        <div><strong>Imóvel sem condomínio</strong><span>Casa, apartamento avulso, sala ou terreno com endereço próprio.</span></div>
         <div><strong>Condomínio ou prédio novo</strong><span>Use para cadastrar o edifício, lançamento ou estoque da construtora.</span></div>
       </section>
       {!approvalFilter && <section className="product-quality-overview" aria-label="Saúde do portfólio">
@@ -425,7 +428,11 @@ export function ProductsModule({ accessToken }: { accessToken: string }) {
         setCaptureOpen(false);
         if (accessToken) void loadCatalog(accessToken);
       }} />}
-      {unitWizardOpen && accessToken && <UnitWizard accessToken={accessToken} onCreateCondominium={() => { setUnitWizardOpen(false); setCaptureOpen(true); }} onClose={() => setUnitWizardOpen(false)} onSaved={() => {
+      {standaloneOpen && <CaptureWizard initialStandalone onClose={() => setStandaloneOpen(false)} onSaved={() => {
+        setStandaloneOpen(false);
+        if (accessToken) void loadCatalog(accessToken);
+      }} />}
+      {unitWizardOpen && accessToken && <UnitWizard accessToken={accessToken} onCreateStandalone={() => { setUnitWizardOpen(false); setStandaloneOpen(true); }} onCreateCondominium={() => { setUnitWizardOpen(false); setCaptureOpen(true); }} onClose={() => setUnitWizardOpen(false)} onSaved={() => {
         setUnitWizardOpen(false);
         if (accessToken) void loadCatalog(accessToken);
       }} />}

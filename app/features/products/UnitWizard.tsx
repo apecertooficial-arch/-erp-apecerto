@@ -5,8 +5,8 @@ import { getBrowserSupabaseClient } from "../../lib/supabase/browser";
 import { MoneyInput } from "./MoneyInput";
 import { applyOfficialWatermark } from "./watermark";
 
-type UnitWizardProps = { accessToken: string; onClose: () => void; onSaved: () => void; onCreateCondominium?: () => void };
-type Building = { id: string; nome: string; bairro: string | null; cidade: string | null; finalidade: string | null };
+type UnitWizardProps = { accessToken: string; onClose: () => void; onSaved: () => void; onCreateCondominium?: () => void; onCreateStandalone?: () => void };
+type Building = { id: string; nome: string; bairro: string | null; cidade: string | null; finalidade: string | null; origem: string | null; condominio_id: string | null };
 
 const accessOptions: Array<[string, string]> = [
   ["chave_digital", "Chave digital"],
@@ -27,7 +27,7 @@ function tipoDaMidia(file: File): "foto" | "video" {
   return (file.type || "").startsWith("video/") ? "video" : "foto";
 }
 
-export function UnitWizard({ accessToken, onClose, onSaved, onCreateCondominium }: UnitWizardProps) {
+export function UnitWizard({ accessToken, onClose, onSaved, onCreateCondominium, onCreateStandalone }: UnitWizardProps) {
   const [buildings, setBuildings] = useState<Building[]>([]);
   const [buildingQuery, setBuildingQuery] = useState("");
   const [empreendimentoId, setEmpreendimentoId] = useState("");
@@ -49,8 +49,8 @@ export function UnitWizard({ accessToken, onClose, onSaved, onCreateCondominium 
 
   useEffect(() => {
     const supabase = getBrowserSupabaseClient();
-    void supabase.from("empreendimentos").select("id,nome,bairro,cidade,finalidade").order("nome").then(({ data }) => {
-      if (data) setBuildings(data as Building[]);
+    void supabase.from("empreendimentos").select("id,nome,bairro,cidade,finalidade,origem,condominio_id").order("nome").then(({ data }) => {
+      if (data) setBuildings((data as Building[]).filter((item) => !(item.origem === "terceiros" && !item.condominio_id)));
     });
   }, []);
 
@@ -166,6 +166,7 @@ export function UnitWizard({ accessToken, onClose, onSaved, onCreateCondominium 
           <div className="form-section">
             <h3>Condomínio do apartamento</h3>
             <p>Primeiro encontre o condomínio. O apartamento será um produto próprio no catálogo, sem ficar escondido dentro do prédio.</p>
+            {onCreateStandalone && <button className="unit-standalone-action" type="button" onClick={onCreateStandalone}><strong>⌂ Cadastrar imóvel sem condomínio</strong><span>Use para casa, apartamento avulso, sala, terreno ou outro imóvel que não pertence a condomínio.</span></button>}
             <label>Buscar condomínio<input type="search" value={buildingQuery} onChange={(event) => setBuildingQuery(event.target.value)} placeholder="Digite nome, bairro ou cidade" /></label>
             <label>Condomínio ou prédio<select value={empreendimentoId} onChange={(event) => setEmpreendimentoId(event.target.value)}><option value="">Selecione...</option>{visibleBuildings.map((item) => <option value={item.id} key={item.id}>{item.nome}{item.bairro ? ` · ${item.bairro}` : ""}{item.cidade ? ` · ${item.cidade}` : ""}</option>)}</select></label>
             <div className="unit-building-help"><span>{visibleBuildings.length > 0 ? `${visibleBuildings.length} condomínio(s) encontrado(s)` : "Nenhum condomínio encontrado"}</span>{onCreateCondominium && <button className="secondary-action" type="button" onClick={onCreateCondominium}>＋ Cadastrar condomínio novo</button>}</div>

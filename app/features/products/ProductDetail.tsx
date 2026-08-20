@@ -14,7 +14,7 @@ type Owner = { nome: string; email: string; telefone: string };
 type Condo = { id: string; nome: string; endereco: string; numero: string | null; bairro: string | null; cidade: string; uf: string; cep: string | null };
 type LeadOption = { id: number; nome: string | null; telefone: string | null; linked: boolean };
 type ProductDetailData = {
-  id: string; nome: string; titulo: string | null; slug: string | null; slogan: string | null; finalidade: string | null;
+  id: string; nome: string; titulo: string | null; slug: string | null; slogan: string | null; finalidade: string | null; condominio_id?: string | null;
   lazer: string[] | null; diferenciais: string[] | null; incorporadora: string | null; descricao: string | null; status: string; origem: string;
   preco: number | null; condominio_valor: number | null; iptu: number | null; outros_custos: number | null;
   area_util: number | null; dormitorios: number | null; suites: number | null; vagas: number | null; banheiros: number | null;
@@ -147,6 +147,7 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
   const focusedUnitPhotoScope = focusedUnitUsesReferencePhotos ? "condomínio de referência" : "apartamento";
   const focusedUnitPrice = focusedUnit ? (focusedUnit.valor_promo ?? focusedUnit.valor_tabela) : null;
   const focusedUnitPublished = Boolean(product?.site_published && focusedUnit?.publicado !== false && focusedUnit?.disponivel && focusedUnit?.aprovacao === "aprovado");
+  const focusedUnitStandalone = Boolean(focusedUnit && product?.origem === "terceiros" && !product.condominio_id);
 
   const addressLine = useMemo(() => [product?.endereco, product?.numero, product?.bairro, product?.cidade, product?.uf, product?.cep].filter(Boolean).join(", "), [product]);
   // Query pro embed do Google (por texto) — sempre com cidade/UF/Brasil pra melhorar o acerto.
@@ -367,9 +368,9 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
 
             <div className="fv2-head">
               <span className="unit-product-eyebrow">APARTAMENTO INDIVIDUAL</span>
-              <h2>{product.nome} · Un. {focusedUnit.numero || "s/n"}{focusedUnit.codigo && <span className="cod-imovel">{focusedUnit.codigo}</span>}</h2>
+              <h2>{product.nome}{!focusedUnitStandalone && <> · Un. {focusedUnit.numero || "s/n"}</>}{focusedUnit.codigo && <span className="cod-imovel">{focusedUnit.codigo}</span>}</h2>
               <p className="fv2-address"><IcPin /> {[product.bairro, product.cidade, product.uf].filter(Boolean).join(" · ") || "Endereço não informado"} · Captado por: {focusedUnit.captador_nome || "—"}</p>
-              <p className="unit-condo-reference"><IcBuilding /> Condomínio de referência: <strong>{product.condominios?.nome || product.nome}</strong></p>
+              {focusedUnitStandalone ? <p className="unit-condo-reference standalone"><IcSeal /> <strong>Imóvel sem condomínio</strong> · endereço próprio</p> : <p className="unit-condo-reference"><IcBuilding /> Condomínio de referência: <strong>{product.condominios?.nome || product.nome}</strong></p>}
             </div>
 
             <div className="fv2-specs">
@@ -386,7 +387,7 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
             {message && <div className={`detail-message ${message.includes("salv") || message.includes("atualiz") || message.includes("aprova") ? "success" : ""}`}>{message}</div>}
             <div className="fv2-tab-body">
               {tab === "resumo" && <>
-                <div className="unit-independent-note"><IcSeal /><div><strong>Este apartamento é um produto independente</strong><span>Preço, aprovação, proprietário, acesso e fotos pertencem à unidade. O condomínio serve somente como referência de prédio e localização.</span></div></div>
+                <div className="unit-independent-note"><IcSeal /><div><strong>Este imóvel é um produto independente</strong><span>{focusedUnitStandalone ? "Preço, endereço, aprovação, proprietário, acesso e fotos pertencem ao próprio imóvel. Não existe condomínio associado." : "Preço, aprovação, proprietário, acesso e fotos pertencem à unidade. O condomínio serve somente como referência de prédio e localização."}</span></div></div>
                 {focusedUnit.aprovacao === "reprovado" && focusedUnit.reprovacao_motivo && <div className="approval-reason"><strong>Correção solicitada:</strong> {focusedUnit.reprovacao_motivo}</div>}
                 <div className="fv2-cost-tiles">
                   <div className="fv2-tile"><small>NÚMERO</small><strong>{focusedUnit.numero || "—"}</strong></div>
@@ -406,7 +407,7 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
               {tab === "localizacao" && <>
                 <h3 className="fv2-loc-title">{[product.endereco, product.numero].filter(Boolean).join(", ") || "Endereço não cadastrado"}</h3>
                 <p className="fv2-loc-sub">{[product.bairro, product.cidade].filter(Boolean).join(" · ")}{product.uf ? ` — ${product.uf}` : ""}{product.cep ? ` · CEP ${product.cep}` : ""}</p>
-                <div className="fv2-condo"><span className="fv2-condo-ic"><IcBuilding /></span><div><strong>{product.condominios?.nome || product.nome}</strong><small>Vínculo de prédio — não define o preço nem a identidade deste apartamento</small></div></div>
+                {focusedUnitStandalone ? <div className="fv2-condo standalone"><span className="fv2-condo-ic"><IcSeal /></span><div><strong>Sem condomínio associado</strong><small>O endereço acima pertence diretamente a este imóvel.</small></div></div> : <div className="fv2-condo"><span className="fv2-condo-ic"><IcBuilding /></span><div><strong>{product.condominios?.nome || product.nome}</strong><small>Vínculo de prédio — não define o preço nem a identidade deste apartamento</small></div></div>}
                 <div className="fv2-map">{mapQuery ? <iframe title="Mapa do apartamento" loading="lazy" referrerPolicy="no-referrer-when-downgrade" src={`https://www.google.com/maps?q=${mapQuery}&output=embed`} /> : <div className="fv2-map-placeholder">Endereço não cadastrado.</div>}</div>
               </>}
             </div>
@@ -417,7 +418,7 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
               <small>VALOR DESTA UNIDADE</small>
               <strong>{focusedUnitPrice ? money.format(focusedUnitPrice) : "Sob consulta"}</strong>
               {focusedUnitPrice && focusedUnit.area_m2 ? <span className="fv2-price-m2">{money.format(Math.round(focusedUnitPrice / focusedUnit.area_m2))} por m²</span> : null}
-              <div className="fv2-side-costs"><div><span>Condomínio</span><b>Não informado na unidade</b></div><div><span>IPTU</span><b>Não informado na unidade</b></div><div><span>Prédio de referência</span><b>{product.condominios?.nome || product.nome}</b></div></div>
+              <div className="fv2-side-costs"><div><span>Condomínio</span><b>{focusedUnitStandalone ? "Não se aplica" : "Não informado na unidade"}</b></div><div><span>IPTU</span><b>Não informado na unidade</b></div>{!focusedUnitStandalone && <div><span>Prédio de referência</span><b>{product.condominios?.nome || product.nome}</b></div>}</div>
             </div>
             <div className="fv2-actions">
               {focusedUnit.pode_editar && <button className="fv2-btn fv2-btn-outline" type="button" disabled={busy} onClick={() => setUnitEdit({ ...focusedUnit })}><IcEdit /> Editar apartamento</button>}

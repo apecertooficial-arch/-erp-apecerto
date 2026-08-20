@@ -1,17 +1,17 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { getBrowserSupabaseClient } from "../../lib/supabase/browser";
 import { MoneyInput } from "./MoneyInput";
 import { applyOfficialWatermark } from "./watermark";
 import { validateProductPrice } from "./quality";
 
 const steps = ["Tipo", "Localização", "Proprietário", "Imóvel", "Acesso", "Mídia", "Revisão"];
-const visibleStepIndexes = [0, 1, 3, 4, 5, 6];
+const condominiumStepIndexes = [0, 1, 3, 4, 5, 6];
 const mediaCategories = ["Fachada", "Sala", "Cozinha", "Quarto", "Suíte", "Banheiro", "Varanda", "Piscina", "Lazer", "Planta", "Vista", "Tour", "Outro"];
 const unitTypologies = ["HR", "HIS", "HMP", "R2V"];
 
-type CaptureWizardProps = { onClose: () => void; onSaved: () => void };
+type CaptureWizardProps = { onClose: () => void; onSaved: () => void; initialStandalone?: boolean };
 type Condominium = { id: string; nome: string; cep: string | null; endereco: string; numero: string | null; complemento: string | null; bairro: string | null; cidade: string; uf: string };
 type Owner = { id: string; nome: string; email: string; telefone: string };
 type Unit = { id: string; number: string; type: string; area: string; parking: string; price: string; promotionalPrice: string };
@@ -30,14 +30,14 @@ function newUnit(): Unit {
   return { id: crypto.randomUUID(), number: "", type: "", area: "", parking: "0", price: "", promotionalPrice: "" };
 }
 
-export function CaptureWizard({ onClose, onSaved }: CaptureWizardProps) {
-  const [step, setStep] = useState(0);
-  // Este wizard cadastra SEMPRE um empreendimento/prédio. Imóvel de terceiro (indicação)
-  // agora entra pelo fluxo "Cadastrar apartamento" (UnitWizard), evitando prédios duplicados.
-  const [propertyType] = useState<"terceiro" | "construtora">("construtora");
+export function CaptureWizard({ onClose, onSaved, initialStandalone = false }: CaptureWizardProps) {
+  const standalone = initialStandalone === true;
+  const visibleStepIndexes = standalone ? [1, 2, 3, 4, 5, 6] : condominiumStepIndexes;
+  const [step, setStep] = useState(standalone ? 1 : 0);
+  const [propertyType] = useState<"terceiro" | "construtora">(standalone ? "terceiro" : "construtora");
   // O nome do condomínio é busca com seleção: bateu com um existente, a captação entra nele.
   const [condominiumId, setCondominiumId] = useState("");
-  const [semCondominio, setSemCondominio] = useState(false);
+  const [semCondominio] = useState(standalone);
   const condominiumMode: "existing" | "new" = condominiumId ? "existing" : "new";
   const [ownerMode, setOwnerMode] = useState<"existing" | "new">("new");
   const [condominiums, setCondominiums] = useState<Condominium[]>([]);
@@ -59,7 +59,7 @@ export function CaptureWizard({ onClose, onSaved }: CaptureWizardProps) {
   const photos = media.filter((item) => item.kind === "foto");
   const videos = media.filter((item) => item.kind === "video");
   const visibleStepPosition = Math.max(0, visibleStepIndexes.indexOf(step));
-  const progress = useMemo(() => `${Math.round(((visibleStepPosition + 1) / visibleStepIndexes.length) * 100)}%`, [visibleStepPosition]);
+  const progress = `${Math.round(((visibleStepPosition + 1) / visibleStepIndexes.length) * 100)}%`;
 
   useEffect(() => {
     const supabase = getBrowserSupabaseClient();
@@ -228,8 +228,9 @@ export function CaptureWizard({ onClose, onSaved }: CaptureWizardProps) {
           units: units.map((unit) => ({ number: unit.number, type: unit.type, area: numberValue(unit.area), parking: numberValue(unit.parking), price: numberValue(unit.price), promotionalPrice: unit.promotionalPrice ? numberValue(unit.promotionalPrice) : null })),
         }),
       });
-      const created = await createResponse.json() as { id?: string; userId?: string; error?: string };
+      const created = await createResponse.json() as { id?: string; unidadeId?: string | null; userId?: string; error?: string };
       if (!createResponse.ok || !created.id || !created.userId) throw new Error(created.error ?? "Não foi possível criar o rascunho.");
+      if (standalone && !created.unidadeId) throw new Error("O imóvel foi iniciado, mas a unidade avulsa não foi criada.");
 
       // A capa é sempre a primeira foto na ordem definida na revisão.
       const coverPhotoId = media.find((entry) => entry.kind === "foto")?.id;
@@ -241,7 +242,7 @@ export function CaptureWizard({ onClose, onSaved }: CaptureWizardProps) {
         if (uploadError) throw new Error(`Falha ao enviar ${item.file.name}: ${uploadError.message}`);
 
         const { error: mediaError } = await supabase.from("midias").insert({
-          empreendimento_id: created.id, tipo: item.kind, storage_path: storagePath, nome: item.file.name,
+          empreendimento_id: created.id, unidade_id: standalone ? created.unidadeId : null, tipo: item.kind, storage_path: storagePath, nome: item.file.name,
           categoria: item.category.toLowerCase(), is_capa: item.id === coverPhotoId,
         });
         if (mediaError) {
@@ -269,11 +270,11 @@ export function CaptureWizard({ onClose, onSaved }: CaptureWizardProps) {
   }
 
   return (
-    <div className="modal-layer" role="dialog" aria-modal="true" aria-label="Cadastrar condomínio">
+    <div className="modal-layer" role="dialog" aria-modal="true" aria-label={standalone ? "Cadastrar imóvel sem condomínio" : "Cadastrar condomínio"}>
       <button className="modal-scrim" onClick={onClose} aria-label="Fechar cadastro" type="button" />
       <section className="capture-panel">
         <header className="capture-header">
-          <div><span className="eyebrow">CADASTRO DO PRÉDIO</span><h2>Cadastrar condomínio</h2><p>Cadastre o prédio, lançamento ou estoque da construtora. Apartamentos individuais usam o outro fluxo.</p></div>
+          <div><span className="eyebrow">{standalone ? "IMÓVEL AVULSO" : "CADASTRO DO PRÉDIO"}</span><h2>{standalone ? "Cadastrar imóvel sem condomínio" : "Cadastrar condomínio"}</h2><p>{standalone ? "Cadastre casa, apartamento, sala ou outro imóvel com endereço próprio, sem criar ou associar um condomínio." : "Cadastre o prédio, lançamento ou estoque da construtora. Apartamentos individuais usam o outro fluxo."}</p></div>
           <button className="icon-button" onClick={onClose} type="button" aria-label="Fechar">×</button>
         </header>
         <div className="progress-track"><span style={{ width: progress }} /></div>
@@ -284,7 +285,7 @@ export function CaptureWizard({ onClose, onSaved }: CaptureWizardProps) {
         <div className="capture-body">
           {step === 0 && <div className="form-section"><h3>Cadastrar condomínio (prédio)</h3><p>Este cadastro cria um <strong>condomínio/prédio</strong> no catálogo — com unidades, plantas e preços individuais.</p><div className="notice"><strong>Só quer cadastrar um apartamento?</strong><span>Feche aqui e use o botão laranja <strong>“＋ Cadastrar apartamento”</strong> no catálogo. Ele vincula o apê a um prédio já existente, sem criar um condomínio duplicado.</span></div></div>}
 
-          {step === 1 && <div className="form-section"><h3>Localização do empreendimento</h3><label className="toggle toggle-sem-condominio"><input type="checkbox" checked={semCondominio} onChange={(event) => { setSemCondominio(event.target.checked); if (event.target.checked) { setCondominiumId(""); setCondominium({ ...condominium, name: "" }); } }} /> Imóvel avulso — não faz parte de condomínio ou prédio</label>{semCondominio ? <p className="hint-inline">Sem condomínio: preencha só o endereço do imóvel abaixo e siga em frente.</p> : <p>Digite o nome do condomínio: se ele <strong>já existir</strong>, selecione na lista e a captação entra nele. Para um prédio novo, endereço, bairro e cidade são obrigatórios porque alimentam a busca do site.</p>}{!semCondominio && <label>Nome do condomínio<input list="cw-condominios" value={condominium.name} onChange={(event) => { const nome = event.target.value; setCondominium({ ...condominium, name: nome }); const achado = condominiums.find((c) => c.nome.trim().toLowerCase() === nome.trim().toLowerCase()); setCondominiumId(achado?.id ?? ""); }} placeholder="Digite para buscar ou criar" /><datalist id="cw-condominios">{condominiums.map((c) => <option key={c.id} value={c.nome}>{[c.bairro, c.cidade].filter(Boolean).join(" · ")}</option>)}</datalist></label>}{!semCondominio && (condominiumId ? <p className="notice" style={{marginTop:6}}><strong>Condomínio já cadastrado</strong><span> — a unidade entra nele; endereço e fotos do prédio já existem.</span></p> : <p className="hint-inline">Novo condomínio: complete os campos de localização abaixo antes de continuar.</p>)}<div className="field-grid"><label>CEP<input value={condominium.zipCode} onChange={(event) => setCondominium({ ...condominium, zipCode: event.target.value })} placeholder="00000-000" /></label><label>Endereço *<input value={condominium.address} onChange={(event) => setCondominium({ ...condominium, address: event.target.value })} placeholder="Rua, avenida..." /></label><label>Número<input value={condominium.number} onChange={(event) => setCondominium({ ...condominium, number: event.target.value })} /></label><label>Complemento<input value={condominium.complement} onChange={(event) => setCondominium({ ...condominium, complement: event.target.value })} /></label><label>Bairro *<input value={condominium.neighborhood} onChange={(event) => setCondominium({ ...condominium, neighborhood: event.target.value })} /></label><label>Cidade *<input value={condominium.city} onChange={(event) => setCondominium({ ...condominium, city: event.target.value })} /></label><label>UF<input value={condominium.state} maxLength={2} onChange={(event) => setCondominium({ ...condominium, state: event.target.value.toUpperCase() })} /></label></div></div>}
+          {step === 1 && <div className="form-section"><h3>{standalone ? "Endereço do imóvel" : "Localização do empreendimento"}</h3>{standalone ? <div className="notice standalone-capture-notice"><strong>Sem condomínio</strong><span>Este endereço será do próprio imóvel. Nenhum condomínio ou prédio será criado automaticamente.</span></div> : <p>Digite o nome do condomínio: se ele <strong>já existir</strong>, selecione na lista e a captação entra nele. Para um prédio novo, endereço, bairro e cidade são obrigatórios porque alimentam a busca do site.</p>}{!standalone && <label>Nome do condomínio<input list="cw-condominios" value={condominium.name} onChange={(event) => { const nome = event.target.value; setCondominium({ ...condominium, name: nome }); const achado = condominiums.find((c) => c.nome.trim().toLowerCase() === nome.trim().toLowerCase()); setCondominiumId(achado?.id ?? ""); }} placeholder="Digite para buscar ou criar" /><datalist id="cw-condominios">{condominiums.map((c) => <option key={c.id} value={c.nome}>{[c.bairro, c.cidade].filter(Boolean).join(" · ")}</option>)}</datalist></label>}{!standalone && (condominiumId ? <p className="notice" style={{marginTop:6}}><strong>Condomínio já cadastrado</strong><span> — a unidade entra nele; endereço e fotos do prédio já existem.</span></p> : <p className="hint-inline">Novo condomínio: complete os campos de localização abaixo antes de continuar.</p>)}<div className="field-grid"><label>CEP<input value={condominium.zipCode} onChange={(event) => setCondominium({ ...condominium, zipCode: event.target.value })} placeholder="00000-000" /></label><label>Endereço *<input value={condominium.address} onChange={(event) => setCondominium({ ...condominium, address: event.target.value })} placeholder="Rua, avenida..." /></label><label>Número<input value={condominium.number} onChange={(event) => setCondominium({ ...condominium, number: event.target.value })} /></label><label>Complemento<input value={condominium.complement} onChange={(event) => setCondominium({ ...condominium, complement: event.target.value })} /></label><label>Bairro *<input value={condominium.neighborhood} onChange={(event) => setCondominium({ ...condominium, neighborhood: event.target.value })} /></label><label>Cidade *<input value={condominium.city} onChange={(event) => setCondominium({ ...condominium, city: event.target.value })} /></label><label>UF<input value={condominium.state} maxLength={2} onChange={(event) => setCondominium({ ...condominium, state: event.target.value.toUpperCase() })} /></label></div></div>}
 
           {step === 2 && <div className="form-section"><h3>{propertyType === "terceiro" ? "Proprietário responsável" : "Responsável pelo produto"}</h3>{propertyType === "construtora" ? <div className="notice"><strong>Empreendimento de construtora</strong><span>O responsável comercial será identificado pela incorporadora na próxima etapa; proprietário não é obrigatório.</span></div> : <><p>Todo imóvel de terceiro fica associado a um proprietário cadastrado.</p><div className="mode-switch"><button className={ownerMode === "existing" ? "active" : ""} onClick={() => setOwnerMode("existing")} type="button">Selecionar existente</button><button className={ownerMode === "new" ? "active" : ""} onClick={() => setOwnerMode("new")} type="button">＋ Novo proprietário</button></div>{ownerMode === "existing" ? <label>Proprietário<select value={ownerId} onChange={(event) => setOwnerId(event.target.value)}><option value="">Selecione...</option>{owners.map((item) => <option value={item.id} key={item.id}>{item.nome} · {item.telefone}</option>)}</select></label> : <><label>Nome completo<input value={owner.name} onChange={(event) => setOwner({ ...owner, name: event.target.value })} /></label><div className="field-grid"><label>Telefone<input value={owner.phone} onChange={(event) => setOwner({ ...owner, phone: event.target.value })} placeholder="(11) 99999-9999" /></label><label>E-mail<input type="email" value={owner.email} onChange={(event) => setOwner({ ...owner, email: event.target.value })} placeholder="nome@email.com" /></label></div></>}</>}</div>}
 
@@ -304,12 +305,12 @@ export function CaptureWizard({ onClose, onSaved }: CaptureWizardProps) {
 
           {step === 5 && <div className="form-section media-section"><h3>Fotos, vídeo e identificação</h3><p>Mínimo de 1 foto para salvar, mas o site exige 6 fotos para publicar o anúncio. Vídeo e capa são opcionais — quanto mais material, melhor o anúncio.</p><div className="media-dropzone" onDragOver={(event) => { event.preventDefault(); event.currentTarget.classList.add("dragging"); }} onDragLeave={(event) => event.currentTarget.classList.remove("dragging")} onDrop={(event) => { event.preventDefault(); event.currentTarget.classList.remove("dragging"); if (event.dataTransfer.files?.length) ingestFiles(Array.from(event.dataTransfer.files)); }}><div className="media-dz-head"><span className="media-dz-icon">⬆</span><div><strong>Arraste aqui, cole (Ctrl+V) ou selecione</strong><small>Fotos e vídeos — ou adicione por link abaixo</small></div></div><div className="media-upload-actions"><label className="upload-button">＋ Adicionar fotos<input type="file" accept="image/*" multiple onChange={(event) => { addFiles(event.target.files, "foto"); event.currentTarget.value = ""; }} /></label><label className="upload-button secondary">＋ Adicionar vídeo<input type="file" accept="video/*" multiple onChange={(event) => { addFiles(event.target.files, "video"); event.currentTarget.value = ""; }} /></label></div><div className="media-link-row"><input type="url" value={mediaUrl} onChange={(event) => setMediaUrl(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); void addByUrl(mediaUrl); } }} placeholder="Cole o link de uma imagem ou vídeo (https://...)" /><button type="button" className="secondary-action" onClick={() => void addByUrl(mediaUrl)} disabled={!mediaUrl.trim()}>Adicionar por link</button></div><div className="media-totals"><strong className={photos.length >= 1 ? "ok" : ""}>{photos.length} foto{photos.length === 1 ? "" : "s"}{photos.length >= 6 ? " · pronto p/ site" : ` · faltam ${6 - photos.length} p/ publicar no site`}</strong><strong className={videos.length >= 1 ? "ok" : ""}>{videos.length} vídeo{videos.length === 1 ? "" : "s"} (opcional)</strong></div></div><div className="media-list">{media.map((item) => <div className="media-row" key={item.id}><span className={`media-kind ${item.kind}`}>{item.kind === "foto" ? "FOTO" : "VÍDEO"}</span><div className="media-name"><strong>{item.file.name}</strong><small>{(item.file.size / 1024 / 1024).toFixed(1)} MB</small></div><select aria-label={`Classificar ${item.file.name}`} value={item.category} onChange={(event) => setMedia(media.map((entry) => entry.id === item.id ? { ...entry, category: event.target.value } : entry))}>{mediaCategories.map((category) => <option key={category}>{category}</option>)}</select>{item.kind === "foto" ? <label className="cover-choice"><input type="radio" name="cover" checked={item.cover} onChange={() => setMedia(media.map((entry) => ({ ...entry, cover: entry.id === item.id })))} /> Capa</label> : <span className="cover-placeholder" />}<button aria-label={`Remover ${item.file.name}`} onClick={() => removeMedia(item.id)} type="button">×</button></div>)}</div></div>}
 
-          {step === 6 && <div className="form-section"><h3>Revisão antes de salvar</h3><div className="review-list"><span className="complete">Condomínio e endereço completo</span><span className={propertyType === "construtora" || Boolean(ownerId || owner.name) ? "complete" : ""}>Proprietário associado</span><span className="complete">Preço, custos e características</span><span className="complete">Instruções de acesso</span><span className={photos.length >= 1 ? "complete" : ""}>{photos.length} foto(s) e {videos.length} vídeo(s)</span><span className={photos.length ? "complete" : ""}>Capa: a primeira foto da ordem abaixo</span>{propertyType === "construtora" && <span className={units.length ? "complete" : ""}>{units.length} unidade(s) cadastrada(s)</span>}</div>{media.length > 0 && <ReviewMedia media={media} setMedia={setMedia} />}<div className="notice"><strong>Gravação segura</strong><span>O produto será criado como rascunho, os arquivos serão enviados e somente então a captação será finalizada.</span></div>{saving && <div className="upload-progress"><span style={{ width: `${uploadProgress}%` }} /><strong>Enviando mídias · {uploadProgress}%</strong></div>}</div>}
+          {step === 6 && <div className="form-section"><h3>Revisão antes de salvar</h3><div className="review-list"><span className="complete">{standalone ? "Endereço próprio, sem condomínio" : "Condomínio e endereço completo"}</span><span className={propertyType === "construtora" || Boolean(ownerId || owner.name) ? "complete" : ""}>Proprietário associado</span><span className="complete">Preço, custos e características</span><span className="complete">Instruções de acesso</span><span className={photos.length >= 1 ? "complete" : ""}>{photos.length} foto(s) e {videos.length} vídeo(s)</span><span className={photos.length ? "complete" : ""}>Capa: a primeira foto da ordem abaixo</span>{propertyType === "construtora" && <span className={units.length ? "complete" : ""}>{units.length} unidade(s) cadastrada(s)</span>}</div>{media.length > 0 && <ReviewMedia media={media} setMedia={setMedia} />}<div className="notice"><strong>Gravação segura</strong><span>O produto será criado como rascunho, os arquivos serão enviados e somente então a captação será finalizada.</span></div>{saving && <div className="upload-progress"><span style={{ width: `${uploadProgress}%` }} /><strong>Enviando mídias · {uploadProgress}%</strong></div>}</div>}
 
           {message && <div className={message.includes("sucesso") ? "form-message success" : "form-message"} role="alert">{message}</div>}
         </div>
 
-        <footer className="capture-footer"><button className="ghost-action" onClick={back} disabled={step === 0 || saving} type="button">Voltar</button><span>Etapa {visibleStepPosition + 1} de {visibleStepIndexes.length}</span>{step < steps.length - 1 ? <button className="primary-action" onClick={next} type="button">Continuar</button> : <button className="primary-action" disabled={saving} onClick={() => void save()} type="button">{saving ? "Salvando..." : "Cadastrar condomínio"}</button>}</footer>
+        <footer className="capture-footer"><button className="ghost-action" onClick={back} disabled={step === visibleStepIndexes[0] || saving} type="button">Voltar</button><span>Etapa {visibleStepPosition + 1} de {visibleStepIndexes.length}</span>{step < steps.length - 1 ? <button className="primary-action" onClick={next} type="button">Continuar</button> : <button className="primary-action" disabled={saving} onClick={() => void save()} type="button">{saving ? "Salvando..." : standalone ? "Cadastrar imóvel" : "Cadastrar condomínio"}</button>}</footer>
       </section>
     </div>
   );
