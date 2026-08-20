@@ -1,212 +1,25 @@
 "use client";
 
-/* Ferramenta avulsa (FERRAMENTAS > Marca d'Água): o corretor sobe uma foto
- * que AINDA NAO tem vinculo com nenhum empreendimento, remove a marca
- * d'agua/logo via a function remover-marca-dagua (Unwatermark AI, Auto
- * Remover V2.3 sync) e decide DEPOIS se anexa a foto limpa em algum produto.
- *
- * Esta tela nao grava nada no banco nem no Storage -- so chama a function e
- * mostra o resultado.
- *
- * v2 -- a function agora devolve os BYTES prontos (base64), nao mais um link
- * pro CDN da Unwatermark: o link direto nao carregava no <img> (a Unwatermark
- * bloqueia hotlink/CORS de fora do site deles) e o atributo download nao
- * funcionava num link cross-origin (so abria aba nova em vez de baixar). Os
- * bytes viram um Blob local -- preview e download instantaneo, sem depender
- * de nada externo. Se a function cair no modo de fallback (raw url), avisamos
- * que so abre em nova aba.
- *
- * v3 -- cada download ganha um nome de arquivo unico (nome original + sufixo
- * curto aleatorio), pra nao sobrescrever quando o corretor processa varias
- * fotos seguidas -- mesmo comportamento do site da propria Unwatermark.
- *
- * v4 -- Ctrl+V cola direto uma imagem copiada (print, "copiar imagem" do
- * navegador, WhatsApp Web etc.).
- *
- * v5 -- Ctrl+V passivo (so o listener de "paste") e menos confiavel do que
- * parece: depende de qual elemento esta com foco na hora, e em alguns
- * navegadores o gesto de teclado nao chega a expor a imagem via
- * clipboardData. Pra corretor nao ter que adivinhar se funcionou, virou
- * BOTAO: clique em "Colar da area de transferencia" chama
- * navigator.clipboard.read() (API assincrona, aciona o dialogo nativo de
- * permissao do navegador na primeira vez) -- caminho mais confiavel porque
- * nasce de um clique direto do usuario, nao de um evento passivo. O Ctrl+V
- * continua funcionando como atalho extra pra quem preferir.
+/* Marca d'Água — tela de escolha. Dois caminhos bem grandes e diretos, sem
+ * meio-termo visual: uma foto (rápido, unitário) ou várias fotos de uma vez
+ * (lote, com nome de leva e download em .zip no final). Publico do ERP tem
+ * pouca familiaridade com informática -- por isso a escolha vem antes de
+ * qualquer campo ou upload, em vez de esconder o modo lote atrás de uma
+ * opção avançada.
  */
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import { getBrowserSupabaseClient } from "../../lib/supabase/browser";
+import { useState } from "react";
+import { WatermarkRemoverSingle } from "./WatermarkRemoverSingle";
+import { WatermarkRemoverBatch } from "./WatermarkRemoverBatch";
 import "../../styles/marca-dagua.css";
 
-type Resultado =
-  | { kind: "blob"; blobUrl: string; nomeArquivo: string }
-  | { kind: "externo"; url: string; expiraEm: string };
-
-function extensaoDoMime(mime: string): string {
-  if (mime.includes("png")) return "png";
-  if (mime.includes("webp")) return "webp";
-  return "jpg";
-}
-
-// Curto o bastante pra não poluir o nome do arquivo, único o bastante pra não
-// colidir entre downloads da mesma sessão.
-function idCurto(): string {
-  if (typeof crypto !== "undefined" && "randomUUID" in crypto) return crypto.randomUUID().slice(0, 8);
-  return Math.random().toString(36).slice(2, 10);
-}
-
-// Nome base sem extensão, sem espaço e sem caractere que confunda o SO na hora
-// de salvar o download.
-function nomeBase(nomeOriginal: string): string {
-  const semExtensao = nomeOriginal.replace(/\.[^./\\]+$/, "");
-  const limpo = semExtensao.trim().replace(/[^\p{L}\p{N}._-]+/gu, "-").slice(0, 40);
-  return limpo || "foto";
-}
-
-function base64ParaBlob(base64: string, mime: string): Blob {
-  const binario = atob(base64);
-  const bytes = new Uint8Array(binario.length);
-  for (let i = 0; i < binario.length; i++) bytes[i] = binario.charCodeAt(i);
-  return new Blob([bytes], { type: mime });
-}
+type Modo = "escolha" | "unica" | "lote";
 
 export function WatermarkRemoverWorkspace() {
-  const inputRef = useRef<HTMLInputElement>(null);
-  const [arquivo, setArquivo] = useState<File | null>(null);
-  const [preview, setPreview] = useState<string | null>(null);
-  const [removerTexto, setRemoverTexto] = useState(false);
-  const [melhorarQualidade, setMelhorarQualidade] = useState(false);
-  const [processando, setProcessando] = useState(false);
-  const [colando, setColando] = useState(false);
-  const [erro, setErro] = useState("");
-  const [resultado, setResultado] = useState<Resultado | null>(null);
-  const [colado, setColado] = useState(false);
+  const [modo, setModo] = useState<Modo>("escolha");
 
-  const limparResultado = useCallback(() => {
-    setResultado((atual) => {
-      if (atual?.kind === "blob") URL.revokeObjectURL(atual.blobUrl);
-      return null;
-    });
-  }, []);
-
-  const escolherArquivo = useCallback((file: File | null) => {
-    limparResultado();
-    setErro("");
-    setArquivo(file);
-    setPreview((atual) => {
-      if (atual) URL.revokeObjectURL(atual);
-      return file ? URL.createObjectURL(file) : null;
-    });
-  }, [limparResultado]);
-
-  const avisarColado = useCallback(() => {
-    setColado(true);
-    window.setTimeout(() => setColado(false), 1500);
-  }, []);
-
-  // Botão "Colar da área de transferência": caminho principal. Gesto direto
-  // de clique -> Clipboard API assíncrona, mais confiável entre navegadores
-  // do que depender só do evento passivo de teclado.
-  const colarDoClipboard = useCallback(async () => {
-    setErro("");
-    if (!navigator.clipboard || !navigator.clipboard.read) {
-      setErro("Este navegador não permite colar direto pelo botão. Tente Ctrl+V ou arraste o arquivo.");
-      return;
-    }
-    setColando(true);
-    try {
-      const itens = await navigator.clipboard.read();
-      for (const item of itens) {
-        const tipoImagem = item.types.find((t) => t.startsWith("image/"));
-        if (tipoImagem) {
-          const blob = await item.getType(tipoImagem);
-          const file = new File([blob], `colado.${tipoImagem.split("/")[1] || "png"}`, { type: tipoImagem });
-          escolherArquivo(file);
-          avisarColado();
-          return;
-        }
-      }
-      setErro("Não encontrei nenhuma imagem na área de transferência. Copie a foto de novo e tente outra vez.");
-    } catch {
-      setErro("Não consegui acessar a área de transferência — o navegador pode ter bloqueado a permissão. Tente Ctrl+V ou arraste o arquivo.");
-    } finally {
-      setColando(false);
-    }
-  }, [escolherArquivo, avisarColado]);
-
-  // Ctrl+V continua funcionando como atalho extra em cima do botão acima.
-  useEffect(() => {
-    function aoColar(evento: ClipboardEvent) {
-      const itens = evento.clipboardData?.items;
-      if (!itens) return;
-      for (const item of itens) {
-        if (item.type.startsWith("image/")) {
-          const file = item.getAsFile();
-          if (file) {
-            evento.preventDefault();
-            escolherArquivo(file);
-            avisarColado();
-          }
-          break;
-        }
-      }
-    }
-    document.addEventListener("paste", aoColar);
-    return () => document.removeEventListener("paste", aoColar);
-  }, [escolherArquivo, avisarColado]);
-
-  const processar = useCallback(async () => {
-    if (!arquivo) return;
-    setProcessando(true);
-    setErro("");
-    limparResultado();
-    try {
-      const form = new FormData();
-      form.append("arquivo", arquivo);
-      form.append("remover_logo", "true");
-      form.append("remover_texto", String(removerTexto));
-      form.append("melhorar_qualidade", String(melhorarQualidade));
-      const { data, error } = await getBrowserSupabaseClient().functions.invoke("remover-marca-dagua", { body: form });
-      if (error) {
-        const ctx = (error as { context?: Response }).context;
-        const detalhe = ctx && typeof ctx.json === "function" ? await ctx.json().catch(() => null) : null;
-        throw new Error((detalhe as { detail?: string })?.detail || (detalhe as { error?: string })?.error || error.message);
-      }
-      const r = (data ?? {}) as { ok?: boolean; base64?: string; mime?: string; url?: string; expira_em?: string; error?: string; detail?: string };
-      if (!r.ok) throw new Error(r.detail || r.error || "A Unwatermark não devolveu um resultado.");
-      if (r.base64 && r.mime) {
-        const blob = base64ParaBlob(r.base64, r.mime);
-        const nomeArquivo = `${nomeBase(arquivo.name)}-sem-marca-dagua-${idCurto()}.${extensaoDoMime(r.mime)}`;
-        setResultado({ kind: "blob", blobUrl: URL.createObjectURL(blob), nomeArquivo });
-      } else if (r.url) {
-        setResultado({ kind: "externo", url: r.url, expiraEm: r.expira_em ?? "24h" });
-      } else {
-        throw new Error("A Unwatermark não devolveu um resultado.");
-      }
-    } catch (e) {
-      setErro(e instanceof Error ? e.message : "Não foi possível remover a marca d'água.");
-    } finally {
-      setProcessando(false);
-    }
-  }, [arquivo, removerTexto, melhorarQualidade, limparResultado]);
-
-  const limpar = useCallback(() => {
-    escolherArquivo(null);
-    setErro("");
-    if (inputRef.current) inputRef.current.value = "";
-  }, [escolherArquivo]);
-
-  // Libera os blobs (preview e resultado) quando a tela fecha.
-  useEffect(() => {
-    return () => {
-      if (preview) URL.revokeObjectURL(preview);
-      setResultado((atual) => {
-        if (atual?.kind === "blob") URL.revokeObjectURL(atual.blobUrl);
-        return atual;
-      });
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  if (modo === "unica") return <WatermarkRemoverSingle onVoltar={() => setModo("escolha")} />;
+  if (modo === "lote") return <WatermarkRemoverBatch onVoltar={() => setModo("escolha")} />;
 
   return (
     <div className="wm-workspace">
@@ -214,87 +27,30 @@ export function WatermarkRemoverWorkspace() {
         <div>
           <span>FERRAMENTAS · FOTOS</span>
           <h1>Marca d&apos;Água</h1>
-          <p>Suba uma foto solta, remova a marca d&apos;água ou logo, e baixe o resultado. Anexar a um empreendimento é um passo à parte, em Produtos.</p>
+          <p>Escolha como você quer remover a marca d&apos;água ou logo das suas fotos.</p>
         </div>
       </header>
 
-      {erro && <div className="wm-error">{erro}</div>}
-      {colado && <div className="wm-aviso-colado">Imagem colada da área de transferência</div>}
+      <div className="wm-escolha">
+        <button type="button" className="wm-escolha-card" onClick={() => setModo("unica")}>
+          <span className="wm-escolha-icone" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="5" width="18" height="14" rx="2" /><circle cx="9" cy="10" r="1.6" /><path d="m4 17 5-5 4 4 3-3 4 4" />
+            </svg>
+          </span>
+          <strong>Uma foto</strong>
+          <span>Sobe uma foto, remove a marca e já baixa limpa. O jeito mais rápido pra um caso só.</span>
+        </button>
 
-      <div className="wm-grid">
-        <section className="wm-card">
-          <button type="button" className="wm-btn-colar" onClick={() => void colarDoClipboard()} disabled={colando}>
-            📋 {colando ? "Colando…" : "Colar da área de transferência"}
-          </button>
-
-          <label
-            className="wm-dropzone"
-            onDragOver={(e) => e.preventDefault()}
-            onDrop={(e) => {
-              e.preventDefault();
-              const file = e.dataTransfer.files?.[0];
-              if (file) escolherArquivo(file);
-            }}
-          >
-            {preview ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={preview} alt="Foto selecionada" />
-            ) : (
-              <>
-                <strong>Arraste uma foto aqui</strong>
-                <span>ou clique para escolher · JPG, PNG ou WebP</span>
-              </>
-            )}
-            <input
-              ref={inputRef}
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              onChange={(e) => escolherArquivo(e.target.files?.[0] ?? null)}
-            />
-          </label>
-
-          <div className="wm-opcoes">
-            <label className="wm-check">
-              <span><input type="checkbox" checked={removerTexto} onChange={(e) => setRemoverTexto(e.target.checked)} /> Também remover texto (marca d&apos;água escrita)</span>
-            </label>
-            <label className="wm-check">
-              <span><input type="checkbox" checked={melhorarQualidade} onChange={(e) => setMelhorarQualidade(e.target.checked)} /> Melhorar qualidade automaticamente</span>
-              <small>Pode alterar cor/exposição da foto — evite se a cor real do ambiente importa.</small>
-            </label>
-          </div>
-
-          <div className="wm-acoes">
-            <button type="button" className="wm-btn-primary" disabled={!arquivo || processando} onClick={() => void processar()}>
-              {processando ? "Removendo…" : "Remover marca d'água"}
-            </button>
-            {arquivo && <button type="button" className="wm-btn-secondary" disabled={processando} onClick={limpar}>Limpar</button>}
-          </div>
-        </section>
-
-        <section className="wm-card wm-resultado">
-          {resultado?.kind === "blob" ? (
-            <>
-              <strong>Pronto</strong>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={resultado.blobUrl} alt="Foto sem marca d'água" />
-              <a className="wm-btn-primary" href={resultado.blobUrl} download={resultado.nomeArquivo}>
-                ↓ Baixar foto limpa
-              </a>
-              <p className="wm-aviso">Arquivo: {resultado.nomeArquivo} · anexar a um empreendimento é feito na tela de Produtos, depois de baixar.</p>
-            </>
-          ) : resultado?.kind === "externo" ? (
-            <>
-              <strong>Pronto (sem preview)</strong>
-              <p className="wm-aviso">Não deu pra carregar o preview aqui dentro desta vez, mas o resultado está pronto.</p>
-              <a className="wm-btn-primary" href={resultado.url} target="_blank" rel="noreferrer">
-                ↗ Abrir resultado em nova aba
-              </a>
-              <p className="wm-aviso">Esse link expira em {resultado.expiraEm} — baixe agora.</p>
-            </>
-          ) : (
-            <p className="wm-resultado-vazio">{processando ? "Processando na Unwatermark…" : "O resultado aparece aqui depois de remover a marca d'água."}</p>
-          )}
-        </section>
+        <button type="button" className="wm-escolha-card" onClick={() => setModo("lote")}>
+          <span className="wm-escolha-icone" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="6" y="7" width="14" height="14" rx="2" /><path d="M4 4h14v3M4 4v14h3" />
+            </svg>
+          </span>
+          <strong>Várias fotos (lote)</strong>
+          <span>Dá um nome pra leva, sobe várias fotos de uma vez e baixa tudo limpo junto, num arquivo só.</span>
+        </button>
       </div>
     </div>
   );
