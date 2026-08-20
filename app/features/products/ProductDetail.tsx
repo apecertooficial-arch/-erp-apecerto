@@ -8,7 +8,7 @@ import { MoneyInput } from "./MoneyInput";
 import { applyOfficialWatermark } from "./watermark";
 
 type Media = { id: string; tipo: "foto" | "video" | "pdf" | "apresentacao"; storage_path: string; categoria: string | null; nome: string | null; is_capa: boolean; url: string | null; unidade_id?: string | null };
-type Unit = { id: string; numero: string | null; tipologia: string | null; area_m2: number | null; vagas: number | null; valor_tabela: number | null; valor_promo: number | null; disponivel: boolean; de_terceiros?: boolean; captador_nome?: string | null; proprietario_nome?: string | null; proprietario_contato?: string | null; acesso_tipo?: string | null; acesso_codigo?: string | null; acesso_instrucoes?: string | null; aprovacao?: string | null };
+type Unit = { id: string; codigo?: string | null; numero: string | null; tipologia: string | null; area_m2: number | null; vagas: number | null; valor_tabela: number | null; valor_promo: number | null; disponivel: boolean; de_terceiros?: boolean; captador_nome?: string | null; proprietario_nome?: string | null; proprietario_contato?: string | null; acesso_tipo?: string | null; acesso_codigo?: string | null; acesso_instrucoes?: string | null; aprovacao?: string | null };
 type Owner = { nome: string; email: string; telefone: string };
 type Condo = { id: string; nome: string; endereco: string; numero: string | null; bairro: string | null; cidade: string; uf: string; cep: string | null };
 type LeadOption = { id: number; nome: string | null; telefone: string | null; linked: boolean };
@@ -24,7 +24,7 @@ type ProductDetailData = {
   completion: { checks: Record<string, boolean>; completed: number; total: number };
   quality: ProductQuality;
   is_favorite: boolean; leads: LeadOption[];
-  aprovacao?: string | null; captado_por_nome?: string | null; mine?: boolean; pode_editar?: boolean;
+  aprovacao?: string | null; captado_por_nome?: string | null; mine?: boolean; pode_editar?: boolean; codigo?: string | null;
   latitude?: number | null; longitude?: number | null;
 };
 
@@ -350,7 +350,7 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
             </div>
 
             <div className="fv2-head">
-              <h2>{product.nome}</h2>
+              <h2>{product.nome}{product.codigo && <span className="cod-imovel">{product.codigo}</span>}</h2>
               <p className="fv2-address"><IcPin /> {[product.bairro, product.cidade, product.uf].filter(Boolean).join(" · ") || "Endereço não informado"} · Captado por: {product.captado_por_nome ?? "Não informado"}</p>
             </div>
 
@@ -426,7 +426,7 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
                 </div>
               </>}
 
-              {tab === "unidades" && <div className="fv2-units">{product.unidades.length ? <><div className="fv2-unit-head"><span>Unidade / Origem</span><span>Tipologia</span><span>Área</span><span>Vagas</span><span>Valor</span><span>Status</span></div>{product.unidades.map((unit) => { const ind = Boolean(unit.de_terceiros); return <button type="button" className="fv2-unit-row" key={unit.id} onClick={() => setUnitDetail(unit)}><span className="fv2-unit-main"><span className="fv2-unit-num">{unit.numero || "—"}</span><span className={`fv2-unit-origin ${ind ? "indic" : "constru"}`}>{ind ? "Indicação" : "Construtora"}</span>{ind && (unit.captador_nome || unit.proprietario_nome) && <small className="fv2-unit-sub">👤 {unit.captador_nome ?? "—"}{unit.proprietario_nome ? ` · Prop.: ${unit.proprietario_nome}` : ""}</small>}</span><span className="fv2-unit-c">{unit.tipologia || "—"}</span><span className="fv2-unit-c">{unit.area_m2 ?? "—"} m²</span><span className="fv2-unit-c">{unit.vagas ?? 0} vaga(s)</span><strong className="fv2-unit-val">{money.format(unit.valor_promo ?? unit.valor_tabela ?? 0)}</strong><i className={`fv2-unit-status ${unit.disponivel ? "on" : "off"}`}>{unit.disponivel ? "Disponível" : "Indisponível"}</i></button>; })}</> : <p className="empty-media">Nenhuma unidade individual cadastrada.</p>}</div>}
+              {tab === "unidades" && <div className="fv2-units">{product.unidades.length ? <><div className="fv2-unit-head"><span>Unidade / Origem</span><span>Tipologia</span><span>Área</span><span>Vagas</span><span>Valor</span><span>Status</span></div>{product.unidades.map((unit) => { const ind = Boolean(unit.de_terceiros); return <button type="button" className="fv2-unit-row" key={unit.id} onClick={() => setUnitDetail(unit)}><span className="fv2-unit-main"><span className="fv2-unit-num">{unit.numero || "—"}{unit.codigo ? <em className="fv2-unit-cod">{unit.codigo}</em> : null}</span><span className={`fv2-unit-origin ${ind ? "indic" : "constru"}`}>{ind ? "Indicação" : "Construtora"}</span>{ind && (unit.captador_nome || unit.proprietario_nome) && <small className="fv2-unit-sub">👤 {unit.captador_nome ?? "—"}{unit.proprietario_nome ? ` · Prop.: ${unit.proprietario_nome}` : ""}</small>}</span><span className="fv2-unit-c">{unit.tipologia || "—"}</span><span className="fv2-unit-c">{unit.area_m2 ?? "—"} m²</span><span className="fv2-unit-c">{unit.vagas ?? 0} vaga(s)</span><strong className="fv2-unit-val">{money.format(unit.valor_promo ?? unit.valor_tabela ?? 0)}</strong><i className={`fv2-unit-status ${unit.disponivel ? "on" : "off"}`}>{unit.disponivel ? "Disponível" : "Indisponível"}</i></button>; })}</> : <p className="empty-media">Nenhuma unidade individual cadastrada.</p>}</div>}
 
               {tab === "galeria" && mediaLibrary}
             </div>
