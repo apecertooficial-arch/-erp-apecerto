@@ -19,7 +19,11 @@ export function PresenceHeartbeat({ accessToken, initialOnline }: { accessToken:
   const [foraDaFila, setForaDaFila] = useState(!initialOnline);
   const [actionError, setActionError] = useState("");
   const [returning, setReturning] = useState(false);
+  const [naRedeDoEscritorio, setNaRedeDoEscritorio] = useState<boolean | null>(null);
+  const [mostrarAvisoExterno, setMostrarAvisoExterno] = useState(false);
   const jaDerrubou = useRef(false);
+  const avisoExternoJaMostrado = useRef(false);
+  const avisoExternoTimer = useRef<number | null>(null);
 
   useEffect(() => {
     let stopped = false;
@@ -87,14 +91,33 @@ export function PresenceHeartbeat({ accessToken, initialOnline }: { accessToken:
         const res = await fetch("/api/presenca", { headers: { Authorization: `Bearer ${accessToken}` } });
         const data = await res.json() as { prompt?: boolean; prazo_seg?: number; no_escritorio_ip?: boolean };
         if (stopped) return;
-        /* Celular só pergunta no WiFi do escritório: presença serve para saber
-           quem está LÁ, e confirmar do sofá não prova nada. */
-        const ehCelular = window.matchMedia?.("(max-width: 900px)").matches ?? false;
-        const vale = !ehCelular || data.no_escritorio_ip === true;
-        if (data.prompt && vale) {
+        const estaNaRede = data.no_escritorio_ip === true;
+        setNaRedeDoEscritorio(estaNaRede);
+        /* Acesso ao ERP e aptidão para receber lead são estados separados.
+           Qualquer aparelho fora do IP continua no sistema, mas sai da fila. */
+        if (!estaNaRede) {
+          if (!avisoExternoJaMostrado.current) {
+            avisoExternoJaMostrado.current = true;
+            setMostrarAvisoExterno(true);
+            avisoExternoTimer.current = window.setTimeout(() => {
+              setMostrarAvisoExterno(false);
+              avisoExternoTimer.current = null;
+            }, 9000);
+          }
+          setPrompt(false);
+          void sairDaFila();
+        } else if (data.prompt) {
+          avisoExternoJaMostrado.current = false;
+          if (avisoExternoTimer.current != null) window.clearTimeout(avisoExternoTimer.current);
+          avisoExternoTimer.current = null;
+          setMostrarAvisoExterno(false);
           setSeconds(Math.round(data.prazo_seg ?? 60));
           setPrompt(true);
         } else if (!data.prompt) {
+          avisoExternoJaMostrado.current = false;
+          if (avisoExternoTimer.current != null) window.clearTimeout(avisoExternoTimer.current);
+          avisoExternoTimer.current = null;
+          setMostrarAvisoExterno(false);
           setPrompt(false);
           jaDerrubou.current = false;
         }
@@ -102,8 +125,12 @@ export function PresenceHeartbeat({ accessToken, initialOnline }: { accessToken:
     };
     void poll();
     const id = window.setInterval(poll, 20000);
-    return () => { stopped = true; window.clearInterval(id); };
-  }, [accessToken]);
+    return () => {
+      stopped = true;
+      window.clearInterval(id);
+      if (avisoExternoTimer.current != null) window.clearTimeout(avisoExternoTimer.current);
+    };
+  }, [accessToken, sairDaFila]);
 
   /* Som ao abrir E A CADA 30 SEGUNDOS enquanto nao confirmar. Ordem do
      operador: o corretor de costas para a tela precisa ser incomodado ate
@@ -131,6 +158,14 @@ export function PresenceHeartbeat({ accessToken, initialOnline }: { accessToken:
   }, [prompt, sairDaFila]);
 
   if (!prompt) {
+    if (naRedeDoEscritorio === false) {
+      if (!mostrarAvisoExterno) return null;
+      return <div className="presence-external-toast" role="status">
+        <span aria-hidden="true">✓</span>
+        <div><strong>Acesso externo liberado</strong><p>Você pode usar agenda e sistema normalmente. Apenas novos leads ficam pausados fora da rede do escritório.</p></div>
+        <button type="button" aria-label="Fechar aviso" onClick={() => setMostrarAvisoExterno(false)}>×</button>
+      </div>;
+    }
     /* Sem pergunta aberta, mas fora da fila (ex.: recarregou a página): a barra
        persistente garante que ele nunca fique fora sem saber. */
     if (!foraDaFila) return null;

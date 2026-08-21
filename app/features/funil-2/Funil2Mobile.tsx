@@ -252,7 +252,9 @@ function AgendarVisitaMobile({
         body: JSON.stringify({
           action: "salvarVisita",
           leadId: lead.id,
-          inicioEm: new Date(quando).toISOString(),
+          // `datetime-local` não carrega fuso. O servidor converte esta hora
+          // de parede usando America/Sao_Paulo, independentemente do aparelho.
+          inicioEm: quando,
           imovel: unidade.trim() || "",
           empreendimentoId: empreendimento || null,
           unidade: unidade.trim() || null,

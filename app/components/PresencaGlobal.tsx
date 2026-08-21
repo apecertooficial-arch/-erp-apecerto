@@ -18,7 +18,7 @@ import { PresenceHeartbeat } from "../features/presence/PresenceHeartbeat";
  * e devolve prompt=false para quem nao esta la. Para gestao pura o componente
  * so faz um GET leve a cada 20s e nunca mostra nada. */
 export function PresencaGlobal() {
-  const { accessToken, perfilCarregado } = useErpSession();
-  if (!accessToken || !perfilCarregado) return null;
-  return <PresenceHeartbeat accessToken={accessToken} initialOnline />;
+  const { accessToken, perfilCarregado, profile } = useErpSession();
+  if (!accessToken || !perfilCarregado || profile?.brokerId == null) return null;
+  return <PresenceHeartbeat accessToken={accessToken} initialOnline={profile.online} />;
 }

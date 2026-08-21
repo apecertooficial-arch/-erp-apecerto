@@ -7,6 +7,9 @@ const agendaApi = await readFile(new URL("../app/api/agenda/route.ts", import.me
 const desktop = await readFile(new URL("../app/features/calendar/CalendarWorkspace.tsx", import.meta.url), "utf8");
 const mobile = await readFile(new URL("../app/features/calendar/TelaAgendaMobile.tsx", import.meta.url), "utf8");
 const chat = await readFile(new URL("../app/features/chat/LiveChatWorkspace.tsx", import.meta.url), "utf8");
+const funilApi = await readFile(new URL("../app/api/funil2/route.ts", import.meta.url), "utf8");
+const funilDesktop = await readFile(new URL("../app/features/funil-2/Funil2Workspace.tsx", import.meta.url), "utf8");
+const funilMobile = await readFile(new URL("../app/features/funil-2/Funil2Mobile.tsx", import.meta.url), "utf8");
 
 test("desktop e mobile consomem somente a API canônica da Agenda", () => {
   assert.match(desktop, /\/api\/agenda\?workspace=1/);
@@ -45,4 +48,14 @@ test("o workspace não oferece a base histórica de recall como lead ativo", () 
   assert.ok(cardLookup >= 0 && dealLookup > cardLookup && leadLookup > dealLookup);
   assert.match(agendaApi, /\.in\("id", negocioIds\)/);
   assert.match(agendaApi, /\.in\("id", leadIds\)/);
+});
+
+test("todas as portas do Funil 2 tratam datetime-local como horário de São Paulo", () => {
+  assert.match(funilApi, /normalizarInstanteSaoPaulo\(String\(body\.inicioEm/);
+  assert.doesNotMatch(funilApi, /new Date\(String\(body\.inicioEm/);
+  assert.match(funilMobile, /inicioEm: quando/);
+  assert.doesNotMatch(funilMobile, /inicioEm: new Date\(quando\)\.toISOString/);
+  assert.match(funilDesktop, /inicioEm: inicio/);
+  assert.match(funilDesktop, /dataHoraLocalSaoPaulo/);
+  assert.match(funilDesktop, /timeZone: FUSO_OPERACAO/);
 });

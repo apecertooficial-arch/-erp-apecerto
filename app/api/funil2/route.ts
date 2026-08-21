@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createServerSupabaseClient } from "../../lib/supabase/server";
+import { normalizarInstanteSaoPaulo } from "../../lib/timezone";
 import { interesseDasTags, normalizarTagsDoLead, type TagDoLead } from "../../lib/lead-tags";
 
 export const dynamic = "force-dynamic";
@@ -260,12 +261,14 @@ export async function POST(request: Request) {
       p_ordem: Number(body.ordem), p_exige_dapi: body.exigeDapi === true, p_ativo: body.ativo !== false,
     };
   } else if (action === "salvarVisita") {
-    const inicio = new Date(String(body.inicioEm ?? ""));
-    if (Number.isNaN(inicio.getTime())) return Response.json({ error: "Data da visita inválida." }, { status: 422 });
+    const inicio = normalizarInstanteSaoPaulo(String(body.inicioEm ?? ""));
+    if (!inicio) return Response.json({ error: "Data da visita inválida." }, { status: 422 });
+    const fim = body.fimEm ? normalizarInstanteSaoPaulo(String(body.fimEm)) : null;
+    if (body.fimEm && !fim) return Response.json({ error: "Horário final da visita inválido." }, { status: 422 });
     rpc = "f2_salvar_visita";
     args = {
       p_id: body.id || null, p_lead_id: body.leadId,
-      p_inicio_em: inicio.toISOString(),
+      p_inicio_em: inicio,
       p_imovel: String(body.imovel ?? "").slice(0, 120),
       p_status: body.status || "agendada",
       p_observacao: body.observacao ? String(body.observacao).slice(0, 500) : null,
@@ -276,7 +279,7 @@ export async function POST(request: Request) {
       p_unidade: body.unidade ? String(body.unidade).slice(0, 60) : null,
       p_com_gerente: body.comGerente === true,
       p_gerente_id: body.gerenteId ? Number(body.gerenteId) : null,
-      p_fim_em: body.fimEm ? new Date(String(body.fimEm)).toISOString() : null,
+      p_fim_em: fim,
     };
   } else if (action === "salvarNota") {
     const leadId = String(body.leadId ?? "");

@@ -3508,6 +3508,13 @@ body { overflow:hidden; background:#eee8e2; }
 .presence-offline-bar strong{display:block;font-size:14px}
 .presence-offline-bar p{margin:2px 0 0;font-size:12px;opacity:.85}
 .presence-offline-bar .presence-yes{white-space:nowrap}
+.presence-external-toast{position:fixed;right:18px;top:78px;z-index:390;display:flex;align-items:flex-start;gap:10px;
+  width:min(390px,calc(100vw - 32px));padding:12px 14px;border:1px solid #b9e4c8;border-radius:14px;
+  background:#f1fbf5;color:#235b37;box-shadow:0 12px 34px rgba(27,74,43,.16)}
+.presence-external-toast>span{display:grid;place-items:center;flex:none;width:24px;height:24px;border-radius:50%;background:#2ba866;color:#fff;font-weight:800}
+.presence-external-toast strong{display:block;font-size:13px}.presence-external-toast p{margin:2px 0 0;font-size:11.5px;line-height:1.35}
+.presence-external-toast>button{flex:none;border:0;background:transparent;color:#39704b;font-size:20px;line-height:1;cursor:pointer}
+@media(max-width:900px){.presence-external-toast{top:66px;right:12px;width:calc(100vw - 24px)}}
 .connections-legacy{margin-top:22px;padding:14px 16px;border:1px dashed var(--border,#333);border-radius:12px;opacity:.85}
 .connections-legacy h2{font-size:14px;margin:0 0 4px}
 .connections-legacy p{font-size:12px;margin:0 0 8px;opacity:.8}

@@ -40,6 +40,8 @@ test("confirmação valida sessão e IP na borda antes de usar service role", ()
   assert.doesNotMatch(edge, /atob\(|split\("\."\)|payload\.sub/);
   assert.match(heartbeat, /\/functions\/v1\/presenca/);
   assert.match(heartbeat, /data\.no_escritorio !== true/);
+  assert.match(heartbeat, /setNaRedeDoEscritorio\(estaNaRede\)/);
+  assert.match(heartbeat, /if \(!estaNaRede\)[\s\S]*setPrompt\(false\)[\s\S]*sairDaFila/);
   assert.doesNotMatch(route, /rpc\("presenca_confirmar"/);
   assert.match(supabaseConfig, /\[functions\.presenca\][\s\S]*verify_jwt = true/);
 });

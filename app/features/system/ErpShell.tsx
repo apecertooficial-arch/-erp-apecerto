@@ -15,7 +15,6 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import { AppShell } from "../../components/AppShell";
 import { ProfilePanel } from "../../components/ProfilePanel";
-import { PresenceHeartbeat } from "../presence/PresenceHeartbeat";
 import type { ModuleName } from "./module-map";
 import { moduloDoPath, pathDoModulo, rotasModulo, itensDaNavegacao } from "./erp-routes";
 import { useErpSession } from "./ErpSession";
@@ -60,7 +59,7 @@ const GRUPOS_MAIS = [
 
 export function ErpShell({ children }: { children: ReactNode }) {
   const pathname = usePathname() || "/";
-  const { accessToken, profile, permissoes, role, isManager, perfilCarregado, badges, recarregarPerfil } = useErpSession();
+  const { profile, permissoes, role, isManager, perfilCarregado, badges, recarregarPerfil } = useErpSession();
   const [perfilAberto, setPerfilAberto] = useState(false);
   const [maisAberto, setMaisAberto] = useState(false);
 
@@ -187,13 +186,6 @@ export function ErpShell({ children }: { children: ReactNode }) {
           onClose={() => setPerfilAberto(false)}
           onSaved={() => { void recarregarPerfil(); }}
         />
-      )}
-
-      {/* A confirmação existia desde a V7.2, mas deixou de ser montada quando
-          o ERP ganhou o layout persistente. Ela volta a viver na casca global:
-          aparece em qualquer módulo e apenas para corretores vinculados. */}
-      {role === "corretor" && accessToken && profile?.brokerId != null && (
-        <PresenceHeartbeat accessToken={accessToken} initialOnline={profile.online} />
       )}
 
     </AppShell>
