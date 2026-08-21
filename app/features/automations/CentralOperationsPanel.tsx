@@ -73,7 +73,7 @@ export function CentralOperationsPanel({ accessToken }: { accessToken: string })
   const contratos = saude?.contratos ?? [];
   const contratosOk = contratos.filter((item) => item.ok).length;
   const totalCritico = numero(saude?.automacoes?.invalidas)
-    + numero(saude?.fila?.pendentes)
+    + numero(saude?.fila?.quarentena)
     + numero(saude?.integridade?.negocio_funil2_sem_card)
     + contratos.length - contratosOk;
   const estado = !saude ? "carregando" : totalCritico === 0 ? "saudavel" : "atencao";

@@ -73,6 +73,11 @@ test("painel operacional não recria a antiga tela intermediária", () => {
   assert.doesNotMatch(panel, /Nova automação|Biblioteca de rotinas/);
 });
 
+test("fila futura não é exibida como pane operacional", () => {
+  assert.match(panel, /totalCritico = numero\(saude\?\.automacoes\?\.invalidas\)[\s\S]*numero\(saude\?\.fila\?\.quarentena\)/);
+  assert.doesNotMatch(panel, /totalCritico = numero\(saude\?\.automacoes\?\.invalidas\)[\s\S]{0,120}numero\(saude\?\.fila\?\.pendentes\)/);
+});
+
 test("autoteste prova os nove contratos sem criar lead real", () => {
   const contratos = migration.match(/'contratos',jsonb_build_array\([\s\S]*?\n    \)\n  \) into v_result/)?.[0] ?? "";
   assert.equal((contratos.match(/jsonb_build_object\('nome'/g) ?? []).length, 9);
