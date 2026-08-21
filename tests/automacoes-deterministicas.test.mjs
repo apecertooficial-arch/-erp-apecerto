@@ -118,6 +118,20 @@ const autonomyFinal = readFileSync(
   ),
   'utf8',
 );
+const campaignApproaches = readFileSync(
+  new URL(
+    '../supabase/migrations/20260821235500_miruna_abordagens_deterministicas_e_adelmo_presenca.sql',
+    import.meta.url,
+  ),
+  'utf8',
+);
+const weekendPresence = readFileSync(
+  new URL(
+    '../supabase/migrations/20260822001000_restaurar_presenca_fim_de_semana.sql',
+    import.meta.url,
+  ),
+  'utf8',
+);
 const entrada = readFileSync(
   new URL('../supabase/functions/entrada/index.ts', import.meta.url),
   'utf8',
@@ -461,4 +475,24 @@ test('validador do banco repete os contratos críticos da interface', () => {
   assert.match(moduleHardening, /revoke all on function public\.motor_acoes/);
   assert.match(moduleHardening, /revoke all on function public\.motor_campos/);
   assert.match(moduleHardening, /revoke all on function public\.motor_cond/);
+});
+
+test('Miruna escolhe, registra e envia uma unica abordagem por ramo', () => {
+  assert.match(campaignApproaches, /'Miruna 603 \| 01','perc',34/);
+  assert.match(campaignApproaches, /'Miruna 603 \| 02','perc',33/);
+  assert.match(campaignApproaches, /'Miruna 603 \| 03','perc',33/);
+  assert.match(campaignApproaches, /additional-field\[abordagem_nome\]/);
+  assert.match(campaignApproaches, /'type','send-approach'/);
+  assert.match(campaignApproaches, /'abordagemIds',jsonb_build_array\(v_a1\)/);
+  assert.match(campaignApproaches, /ABORDAGEM_AUTOMATICA_DEVE_ESTAR_DESLIGADA/);
+  assert.match(campaignApproaches, /Entrada Adelmo[\s\S]*onlineOnly\}','true'/);
+});
+
+test('fim de semana ignora somente presenca fisica', () => {
+  assert.match(weekendPresence, /v_fim_de_semana/);
+  assert.match(weekendPresence, /status_dapi='connected'/);
+  assert.match(weekendPresence, /feedback_visita_pendente/);
+  assert.match(weekendPresence, /'motivo','suspenso'/);
+  assert.match(weekendPresence, /fim_de_semana_sem_exigencia_presenca/);
+  assert.match(weekendPresence, /if v_fim_de_semana then[\s\S]*'elegivel',true/);
 });
