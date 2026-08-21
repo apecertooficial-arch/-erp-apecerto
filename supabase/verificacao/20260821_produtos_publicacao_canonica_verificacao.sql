@@ -240,7 +240,12 @@ begin
   if lower(coalesce(v_txt, '')) not like '%publicado is not true%'
      or lower(coalesce(v_txt, '')) not like '%rascunho is false%'
      or lower(coalesce(v_txt, '')) not like '%disponivel is true%'
-     or lower(coalesce(v_txt, '')) not like '%is not distinct from ''aprovado''%' then
+     or (
+       lower(coalesce(v_txt, '')) not like '%is not distinct from ''aprovado''%'
+       -- pg_get_constraintdef normaliza `IS NOT DISTINCT FROM` para a forma
+       -- logicamente equivalente `NOT (... IS DISTINCT FROM ...)` no PG 17.
+       and lower(coalesce(v_txt, '')) not like '%not (aprovacao is distinct from ''aprovado''%'
+     ) then
     raise exception 'FALHA 3b4: constraints editoriais pai/unidade nao sao fechadas a NULL.';
   end if;
 
