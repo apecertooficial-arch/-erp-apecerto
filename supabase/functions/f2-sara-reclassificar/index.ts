@@ -120,7 +120,7 @@ async function carregarMensagens(db: any, c: Candidato) {
 async function processar(db: any, c: Candidato, catalogo: Catalogo[], agenteSlug: string) {
   const mensagens = await carregarMensagens(db, c);
   const hash = await sha256(JSON.stringify({ lead: c.funil_lead_id, versao: c.versao,
-    contrato:"evidencia-id-v2",
+    contrato:"evidencia-id-v3-recorte",
     agente: agenteSlug,
     mensagens: mensagens.map((m: any) => [m.id,m.enviado_em ?? m.criado_em]),
     catalogo: catalogo.map((m) => [m.codigo,m.etapa,m.acao_codigo,m.prazo_minutos]) }));
