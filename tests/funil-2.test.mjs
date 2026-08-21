@@ -19,6 +19,7 @@ const conversaRoute = readFileSync(new URL("../app/api/funil2/conversa/route.ts"
 const modelo = readFileSync(new URL("../app/features/funil-2/modelo.ts", import.meta.url), "utf8");
 const respostaInstanciasApp = readFileSync(new URL("../supabase/migrations/20260811037000_funil_2_resposta_instancias_app.sql", import.meta.url), "utf8");
 const reinicioPiloto = readFileSync(new URL("../supabase/migrations/20260812010000_funil_2_zerar_com_arquivo_e_fila_independente.sql", import.meta.url), "utf8");
+const ordemConfig = readFileSync(new URL("../supabase/migrations/20260821181737_corrigir_ordem_config_funil.sql", import.meta.url), "utf8");
 
 test("Funil 2.0 se apresenta como carteira operacional com origens preservadas", () => {
   assert.match(ui, /OPERAÇÃO OFICIAL/);
@@ -226,10 +227,23 @@ test("pesca é simples para o usuário e reinicia a cópia em primeira abordagem
 test("etapas e momentos são configuráveis com proteção administrativa", () => {
   assert.match(ui, /Horas permitidas/);
   assert.match(ui, /Salvar momento e prazo/);
+  assert.match(ui, /editor === "etapa" && <Modal/);
+  assert.match(ui, /editor === "momento" && <Modal/);
+  assert.match(ui, /details className="f2-config-operacao"/);
+  assert.match(ui, /Desativar/);
   assert.match(operacao, /f2_configurar_etapa/);
   assert.match(operacao, /f2_configurar_momento/);
   assert.match(operacao, /etapa_em_uso/);
   assert.match(operacao, /momento_em_uso/);
+});
+
+test("ordenação configurável move a sequência sem colisão e mantém Pescado no final", () => {
+  assert.match(ordemConfig, /unique \(ordem\) deferrable initially immediate/i);
+  assert.match(ordemConfig, /unique \(etapa, ordem\) deferrable initially immediate/i);
+  assert.match(ordemConfig, /when 'pescado' then 7/);
+  assert.match(ordemConfig, /PESCADO_NAO_E_A_ULTIMA_ETAPA_ATIVA/);
+  assert.match(ordemConfig, /ordem > v_ordem_anterior and ordem <= p_ordem/);
+  assert.match(ordemConfig, /when p_prazo_minutos is null then 'sem prazo'/);
 });
 
 test("Todos os Leads filtra pelas etapas do vocabulário oficial", () => {
