@@ -60,7 +60,7 @@ begin
     return jsonb_build_object('ok', false, 'erro', 'etapa_em_uso');
   end if;
 
-  set constraints f2_etapa_config_ordem_key deferred;
+  set constraints public.f2_etapa_config_ordem_key deferred;
 
   if v_existe then
     if v_ordem_anterior <> p_ordem then
@@ -186,7 +186,7 @@ begin
     else p_prazo_minutos || ' minutos'
   end;
 
-  set constraints f2_momento_etapa_ordem_uk deferred;
+  set constraints public.f2_momento_etapa_ordem_uk deferred;
 
   if v_existe and v_etapa_anterior = p_etapa and v_ordem_anterior <> p_ordem then
     update public.f2_momento_config
