@@ -29,9 +29,8 @@ function ipDaRequisicao(request: Request): string {
 async function naRedeDoEscritorio(request: Request, supabase: SupabaseLike): Promise<boolean> {
   const ip = ipDaRequisicao(request);
   if (!ip) return false;
-  const { data: cfg } = await supabase.from("escritorio_config").select("ips").maybeSingle();
-  const permitidos = (cfg?.ips ?? []) as string[];
-  return permitidos.some((permitido) => permitido.trim() === ip);
+  const { data, error } = await supabase.rpc("presenca_ip_confere", { p_ip: ip });
+  return !error && data === true;
 }
 
 export async function GET(request: Request) {
@@ -61,16 +60,9 @@ export async function POST(request: Request) {
   const action = String(body.action ?? "");
 
   if (action === "confirm") {
-    /* O que decide a fila e ESTE valor, apurado no servidor. */
-    const { data, error } = await a.supabase.rpc("presenca_confirmar", {
-      p_no_escritorio: await naRedeDoEscritorio(request, a.supabase),
-      /* O IP de origem tambem e gravado: sem ver o valor real nao da para
-         descobrir por que a checagem falha -- se o cadastro esta velho, se a
-         operadora mudou, ou se o corretor esta no 4G. */
-      p_ip: ipDaRequisicao(request),
-    });
-    if (error) return Response.json({ error: error.message }, { status: 502 });
-    return Response.json(data ?? { ok: true });
+    return Response.json({
+      error: "A confirmação de presença deve passar pela validação segura da rede do escritório.",
+    }, { status: 409 });
   }
   if (action === "drop") {
     const { data, error } = await a.supabase.rpc("presenca_derrubar");

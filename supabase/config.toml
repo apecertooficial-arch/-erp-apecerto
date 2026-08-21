@@ -418,3 +418,9 @@ enabled = true
 [functions.f2-sara-reclassificar]
 enabled = true
 verify_jwt = false
+
+# Presenca fisica: a borda valida o JWT e observa o IP real antes de chamar a
+# unica RPC com permissao para recolocar um corretor na fila.
+[functions.presenca]
+enabled = true
+verify_jwt = true

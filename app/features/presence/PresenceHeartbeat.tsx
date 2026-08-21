@@ -49,14 +49,30 @@ export function PresenceHeartbeat({ accessToken, initialOnline }: { accessToken:
     setActionError("");
     setReturning(true);
     try {
-      const response = await fetch("/api/presenca", { method: "POST", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify({ action: "confirm" }) });
-      const data = await response.json().catch(() => null) as { ok?: boolean } | null;
-      if (!response.ok || data?.ok === false) throw new Error("confirm_failed");
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+      const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+      if (!supabaseUrl || !publishableKey) throw new Error("presence_not_configured");
+      const response = await fetch(`${supabaseUrl}/functions/v1/presenca`, {
+        method: "POST",
+        headers: {
+          apikey: publishableKey,
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ action: "confirm" }),
+      });
+      const data = await response.json().catch(() => null) as { ok?: boolean; no_escritorio?: boolean; error?: string } | null;
+      if (!response.ok || data?.ok !== true || data.no_escritorio !== true) {
+        if (data?.error === "OUTSIDE_OFFICE") throw new Error("outside_office");
+        throw new Error("confirm_failed");
+      }
       jaDerrubou.current = false;
       setForaDaFila(false);
       setPrompt(false);
-    } catch {
-      setActionError("Não foi possível confirmar. O aviso continua aqui até dar certo.");
+    } catch (error) {
+      setActionError(error instanceof Error && error.message === "outside_office"
+        ? "Você não está na rede do escritório. A presença não foi confirmada e você continua fora da fila."
+        : "Não foi possível confirmar. O aviso continua aqui até dar certo.");
     } finally {
       setReturning(false);
     }
