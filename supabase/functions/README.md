@@ -1,12 +1,14 @@
 # Edge Functions de envio — proveniência
 
-Este diretório versiona os **sources ativos** das três Edge Functions de envio do
+Este diretório versiona os **sources ativos** das Edge Functions operacionais do
 projeto Supabase `diaegvfveqezispcthwk`. Elas tinham sido deployadas direto pelo
 painel e nunca existiram no Git. O que está aqui é um **espelho fiel** do que estava
 rodando em produção no momento da captura — nenhuma linha de comportamento foi
 alterada.
 
-Captura em 2026-07-31, pela API de gerenciamento do Supabase.
+As três funções de WhatsApp foram capturadas em 2026-07-31. `meta-capi` foi
+capturada em 2026-08-21, também pela API de gerenciamento do Supabase. A captura
+não fez redeploy.
 
 ## Tabela de proveniência
 
@@ -15,6 +17,7 @@ Captura em 2026-07-31, pela API de gerenciamento do Supabase.
 | `dapi-enviar` | 13 | `false` | `90b4a70364e2dcf8b4680d01ef4902e8383b5a8154c43c0cd7faa38f4685ddce` | Envio real de WhatsApp pela D-API — texto, áudio, imagem, vídeo e documento. Resolve qual instância usar, tenta as duas formas do 9º dígito e registra a mensagem em `wa_mensagens`. | `enviar-produto` (máquina) e serviços operacionais autorizados. O frontend usa os contratos canônicos de Chat/Funil 2. |
 | `enviar-produto` | 6 | `false` | `ce7225e4065e310e3a357e65be3496f09f5203137d2f998c52c0a7030b10ee39` | Envia o pack de um empreendimento numa única chamada — fotos ordenadas (capa, fachada, decorado, lazer, planta, sala) mais o book em PDF. Delega cada envio a `dapi-enviar`. Aceita `dry_run` para conferir o plano sem disparar nada. | Nenhum caller no repositório. Só automações externas, em modo máquina. |
 | `enviar-whatsapp` | 5 | `true` | `7b1f19b92db00d61c4e7c2ebba20e25a66aae5264173717edbfebd2bfdf8434f` | Envio de texto por uma instancia. A instancia e resolvida no servidor por `ncrm_resolver_envio_autorizado`; o `instancia_id` do body virou apenas um pedido. Consulta a autoridade do piloto antes de enviar. | Nenhum caller conhecido no repositorio. Mantida por precaucao, mas fechada. |
+| `meta-capi` | 7 | `true` | `e11064a8e58705c870d20c8e4cb20e59f6f62215719b5cab6282533b2b727371` | Encaminha eventos consentidos para a Meta CAPI com o mesmo `event_id` do Pixel, deduplicação, hash de identificadores e trilha de entrega. | Site público, para eventos allowlisted como `schedule_complete`, `owner_cta_click` e `financing_open`. |
 
 O `ezbr_sha256` identifica o **bundle publicado** (o eszip que a plataforma executa),
 não o texto do arquivo. Ele serve para afirmar "esta é exatamente a build que estava

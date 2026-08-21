@@ -58,8 +58,23 @@ export async function PATCH(request: Request) {
   }
   const { data, error } = await supabase.rpc("aprovar_empreendimento", { p_id: id, p_aprovar: action === "approve", p_motivo: action === "reject" ? (body.motivo || undefined) : undefined });
   const result = data && typeof data === "object" ? data as Record<string, unknown> : {};
-  if (error || result.ok === false) return Response.json({ error: error?.message || (typeof result.error === "string" ? result.error : "Não foi possível concluir a aprovação.") }, { status: error ? 502 : 403 });
-  return Response.json({ ok: true, aprovacao: result.aprovacao });
+  if (error || result.ok === false) {
+    const raw = error?.message || (typeof result.error === "string" ? result.error : "Não foi possível concluir a aprovação.");
+    const match = raw.match(/^([A-Z][A-Z0-9_]+):\s*([\s\S]+)$/);
+    const code = match?.[1] ?? (error?.code === "P0001" ? "PUBLICATION_RULE" : "PUBLICATION_FAILED");
+    const status = code.endsWith("FORBIDDEN") || error?.code === "42501"
+      ? 403
+      : code.endsWith("NOT_FOUND")
+        ? 404
+        : error?.code === "P0001" || code.endsWith("NOT_READY")
+          ? 422
+          : error ? 502 : 403;
+    return Response.json({ error: match?.[2] ?? raw, code }, { status });
+  }
+  if (action === "approve" && result.site_visivel !== true) {
+    return Response.json({ error: "A aprovação foi processada, mas o imóvel ainda não ficou visível no site.", code: "SITE_PUBLICATION_NOT_CONFIRMED", publication: result }, { status: 502 });
+  }
+  return Response.json({ ok: true, aprovacao: result.aprovacao, publicado: result.publicado, site_visivel: result.site_visivel, publication: result });
 }
 
 type UnitInput = {

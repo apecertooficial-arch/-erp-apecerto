@@ -42,6 +42,22 @@ export type Product = {
   topIssue?: string | null;
 };
 
+function siteSlug(value: string | null | undefined): string {
+  return String(value ?? "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
+export function sitePropertyUrl(input: Pick<Product, "id" | "slug" | "unitId" | "codigo">): string {
+  const base = siteSlug(input.slug) || (input.unitId ? "imovel" : siteSlug(input.id)) || siteSlug(input.codigo) || "catalogo";
+  const code = siteSlug(input.codigo);
+  const slug = input.unitId
+    ? `${base}-un-${code ? `${code}-` : ""}${input.unitId}`
+    : base;
+  return `https://apecerto.com/imovel/${slug}/`;
+}
+
 export const products: Product[] = [
   { name: "AP Moema", price: "R$ 403.350", neighborhood: "Moema", city: "São Paulo", area: 30, bedrooms: 1, parking: 2, available: 21, leads: 36, priceM2: "R$ 13.445/m²" },
   { name: "Bem Moema", price: "R$ 655.180", neighborhood: "Moema", city: "São Paulo", area: 28, bedrooms: 1, parking: 0, available: 1, leads: 6, priceM2: "R$ 23.399/m²" },

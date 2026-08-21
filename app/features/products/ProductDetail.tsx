@@ -7,6 +7,7 @@ import type { ProductQuality } from "./quality";
 import { isProductManagerRole } from "./access";
 import { MoneyInput } from "./MoneyInput";
 import { applyOfficialWatermark } from "./watermark";
+import { sitePropertyUrl } from "./products";
 
 type Media = { id: string; tipo: "foto" | "video" | "pdf" | "apresentacao"; storage_path: string; categoria: string | null; nome: string | null; is_capa: boolean; url: string | null; unidade_id?: string | null };
 type Unit = { id: string; codigo?: string | null; numero: string | null; tipologia: string | null; area_m2: number | null; vagas: number | null; valor_tabela: number | null; valor_promo: number | null; disponivel: boolean; publicado?: boolean; de_terceiros?: boolean; captador_nome?: string | null; proprietario_nome?: string | null; proprietario_contato?: string | null; acesso_tipo?: string | null; acesso_codigo?: string | null; acesso_instrucoes?: string | null; aprovacao?: string | null; reprovacao_motivo?: string | null; mine?: boolean; pode_editar?: boolean };
@@ -446,6 +447,7 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
               <div className="fv2-side-costs"><div><span>Condomínio</span><b>{focusedUnitStandalone ? "Não se aplica" : "Não informado na unidade"}</b></div><div><span>IPTU</span><b>Não informado na unidade</b></div>{!focusedUnitStandalone && <div><span>Prédio de referência</span><b>{product.condominios?.nome || product.nome}</b></div>}</div>
             </div>
             <div className="fv2-actions">
+              {focusedUnitPublished && <a className="fv2-btn fv2-btn-ghost" href={sitePropertyUrl({ id: product.id, slug: product.slug, unitId: focusedUnit.id, codigo: focusedUnit.codigo })} target="_blank" rel="noreferrer"><IcLink /> Ver este imóvel no site</a>}
               {focusedUnit.pode_editar && <button className="fv2-btn fv2-btn-outline" type="button" disabled={busy} onClick={() => setUnitEdit({ ...focusedUnit })}><IcEdit /> Editar apartamento</button>}
               {focusedUnit.pode_editar && <button className="fv2-btn fv2-btn-outline" type="button" disabled={busy} onClick={() => setUnitMediaEdit({ ...focusedUnit })}><IcImages /> Editar imagens da unidade</button>}
               {canPublish && focusedUnit.de_terceiros && focusedUnit.aprovacao === "pendente" && <div className="focused-unit-decision"><button type="button" className="fv2-ud-reject" disabled={busy} onClick={() => void decideUnit(focusedUnit.id, false)}>✕ Reprovar</button><button type="button" className="fv2-ud-approve" disabled={busy} onClick={() => void decideUnit(focusedUnit.id, true)}>✓ Aprovar unidade</button></div>}
@@ -544,7 +546,7 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
                 <section><h4>Descrição</h4><p>{product.descricao || "Nenhuma descrição cadastrada."}</p></section>
                 <section><h4>Lazer e áreas comuns</h4><div className="site-content-tags">{product.lazer?.length ? product.lazer.map((item) => <span key={item}>{item}</span>) : <em>Não informado</em>}</div></section>
                 <section><h4>Diferenciais</h4><div className="site-content-tags">{product.diferenciais?.length ? product.diferenciais.map((item) => <span key={item}>{item}</span>) : <em>Não informado</em>}</div></section>
-                <div className="site-content-actions">{product.pode_editar !== false && <button className="fv2-btn fv2-btn-outline" type="button" onClick={() => setEditing(true)}><IcEdit /> Editar conteúdo</button>}{product.site_published && <a className="fv2-btn fv2-btn-ghost" href={`https://apecerto.com/?imovel=${encodeURIComponent(product.slug || product.id)}`} target="_blank" rel="noreferrer"><IcLink /> Ver este imóvel no site</a>}</div>
+                <div className="site-content-actions">{product.pode_editar !== false && <button className="fv2-btn fv2-btn-outline" type="button" onClick={() => setEditing(true)}><IcEdit /> Editar conteúdo</button>}{product.site_published && <a className="fv2-btn fv2-btn-ghost" href={sitePropertyUrl({ id: product.id, slug: product.slug, unitId: null, codigo: product.codigo })} target="_blank" rel="noreferrer"><IcLink /> Ver este imóvel no site</a>}</div>
               </div>}
 
               {tab === "localizacao" && <>
