@@ -306,6 +306,15 @@ test("Abordagens preserva vídeo e personaliza lead e corretor em todos os envio
   assert.match(chat, /corretor_nome: brokerName \|\| null/);
 });
 
+test("Abordagens lista somente produtos que possuem abordagem associada", () => {
+  const tela = readFileSync(join(raizApp, "features/approaches/ApproachesWorkspace.tsx"), "utf8");
+  assert.match(tela, /const productIdsWithApproaches = new Set/);
+  assert.match(tela, /productIdsWithApproaches\.has\(product\.id\)/);
+  assert.match(tela, /visibleProducts\.map\(\(product\)/);
+  assert.doesNotMatch(tela, /\{data\?\.products\.map\(\(product\)/);
+  assert.match(tela, /empreendimento\{visibleProducts\.length === 1 \? "" : "s"\} com abordagem/);
+});
+
 test("venda manual pode nascer ligada ao negócio real do CRM", () => {
   const modal = readFileSync(join(raizApp, "features/finance/VendaModal.tsx"), "utf8");
   const api = readFileSync(join(raizApp, "api/finance/route.ts"), "utf8");
