@@ -134,14 +134,14 @@ const campaignApproaches = readFileSync(
 );
 const weekendPresence = readFileSync(
   new URL(
-    '../supabase/migrations/20260822002000_visita_pendente_retorna_segunda.sql',
+    '../supabase/migrations/20260822012000_visita_pendente_retorna_segunda.sql',
     import.meta.url,
   ),
   'utf8',
 );
 const weekdayVisitFeedback = readFileSync(
   new URL(
-    '../supabase/migrations/20260822002500_feedback_visita_ativo_dias_uteis.sql',
+    '../supabase/migrations/20260822012500_feedback_visita_ativo_dias_uteis.sql',
     import.meta.url,
   ),
   'utf8',
