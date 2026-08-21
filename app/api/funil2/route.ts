@@ -364,9 +364,17 @@ export async function PATCH(request: Request) {
   const action = String(body.action ?? "");
   let rpc = "";
   let args: Record<string, unknown> = {};
+  let momentoAnterior: string | null = null;
   if (action === "atualizarMomento") {
     const momento = String(body.momentoCodigo ?? "");
     if (!/^[A-Z_]{3,50}$/.test(momento)) return Response.json({ error: "Momento inválido." }, { status: 422 });
+    const { data: leadAntes, error: leadAntesErro } = await db
+      .from("f2_lead")
+      .select("momento_codigo")
+      .eq("id", id)
+      .maybeSingle();
+    if (leadAntesErro) return Response.json({ error: leadAntesErro.message }, { status: 502 });
+    momentoAnterior = (leadAntes as { momento_codigo?: string } | null)?.momento_codigo ?? null;
     const prazo = body.prazoCombinado ? new Date(String(body.prazoCombinado)) : null;
     if (prazo && Number.isNaN(prazo.getTime())) return Response.json({ error: "Prazo combinado inválido." }, { status: 422 });
     rpc = "f2_atualizar_momento";
@@ -415,5 +423,16 @@ export async function PATCH(request: Request) {
     // de versão sem depender do texto traduzido.
     return Response.json({ error: RECUSAS[chave] || resultado.erro || "Ação não permitida.", erro: chave }, { status: 409 });
   }
-  return Response.json({ ok: true, resultado });
+  let rastreamentoMeta: unknown = null;
+  if (action === "atualizarMomento" && momentoAnterior) {
+    const { data: trackingData, error: trackingError } = await db.rpc("tracking_register_qualified_transition", {
+      p_f2_lead_id: id,
+      p_previous_momento: momentoAnterior,
+      p_new_momento: String(args.p_momento_codigo ?? ""),
+    });
+    rastreamentoMeta = trackingError
+      ? { ok: false, erro: trackingError.message }
+      : trackingData;
+  }
+  return Response.json({ ok: true, resultado, rastreamentoMeta });
 }
