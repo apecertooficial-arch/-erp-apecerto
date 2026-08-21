@@ -56,7 +56,8 @@ test("nota pode chegar a 100 e publicação reflete a view pública", () => {
 test("ERP e site compartilham título, tour e link direto do imóvel", () => {
   const detail = read("app/features/products/ProductDetail.tsx");
   const migration = read("supabase/migrations/20260818130000_produtos_site_conectados.sql");
-  assert.match(detail, /\?imovel=/);
+  assert.match(detail, /sitePropertyUrl/);
+  assert.doesNotMatch(detail, /\?imovel=/);
   assert.match(migration, /e\.titulo/);
   assert.match(migration, /e\.tour_url/);
   assert.match(migration, /security_invoker = true/);

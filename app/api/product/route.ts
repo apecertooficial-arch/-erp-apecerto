@@ -11,6 +11,35 @@ type ProductUpdate = Database["public"]["Tables"]["empreendimentos"]["Update"];
 type OwnerUpdate = Database["public"]["Tables"]["proprietarios"]["Update"];
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const PUBLICATION_RULE_CODES = new Set([
+  "PRODUCT_NOT_READY",
+  "UNIT_NOT_READY",
+  "PRODUCT_PUBLICATION_INVALID",
+  "UNIT_PRICE_INVALID",
+  "UNIT_PROMO_PRICE_INVALID",
+  "UNIT_PROMO_ABOVE_LIST",
+  "INVALID_PRODUCT",
+  "INVALID_UNIT",
+  "INVALID_PRICE",
+]);
+
+function publicationErrorResponse(error: { code?: string; message?: string }) {
+  const raw = error.message?.trim() || "Não foi possível atualizar a publicação do imóvel.";
+  const match = raw.match(/^([A-Z][A-Z0-9_]+):\s*([\s\S]+)$/);
+  const businessCode = match?.[1] ?? (error.code === "P0001" ? "PUBLICATION_RULE" : "PUBLICATION_FAILED");
+  const message = match?.[2] ?? raw;
+  const normalized = raw.toLowerCase();
+  const status = businessCode.endsWith("FORBIDDEN") || error.code === "42501" || normalized.includes("sem permissão") || normalized.includes("nao autorizado")
+    ? 403
+    : businessCode.endsWith("NOT_FOUND") || normalized.includes("não encontrado") || normalized.includes("nao encontrado")
+      ? 404
+      : businessCode === "PRODUCT_HAS_LINKS"
+        ? 409
+      : PUBLICATION_RULE_CODES.has(businessCode) || error.code === "P0001"
+        ? 422
+        : 502;
+  return Response.json({ error: message, code: businessCode }, { status });
+}
 const productFields = [
   "nome", "titulo", "slogan", "finalidade", "lazer", "diferenciais", "incorporadora", "descricao", "status", "preco", "condominio_valor", "iptu",
   "outros_custos", "area_util", "dormitorios", "suites", "vagas", "banheiros", "endereco",
@@ -142,21 +171,29 @@ export async function PATCH(request: Request) {
   // Aprovação/publicação continuam por role logo abaixo (decideUnit/publish).
   const access = await resolveEffectiveAccess(auth.supabase, auth.user.id);
   const guard = (pairs: Array<[string, string]>, msg: string) => denyIfCannot(access, pairs, msg);
-  const publicationAuth = auth;
 
-  async function auditPublication(entity: "empreendimento" | "unidade", entityId: string, publish: boolean, label: string) {
-    const { data: who } = await publicationAuth.supabase.from("usuarios").select("nome").eq("id", publicationAuth.user.id).maybeSingle();
-    await publicationAuth.supabase.from("erp_auditoria").insert({
-      usuario_id: publicationAuth.user.id,
-      usuario_nome: (who as { nome?: string } | null)?.nome ?? null,
-      acao: publish ? "publicar" : "despublicar",
-      modulo: "produtos",
-      entidade: entity,
-      entidade_id: entityId,
-      antes: { publicado: !publish },
-      depois: { publicado: publish },
-      detalhe: publish ? `${label} publicado novamente no site.` : `${label} retirado temporariamente do site sem perder aprovação ou disponibilidade.`,
-    } as never);
+  async function definePublication(publish: boolean, unidadeId: string | null = null) {
+    const { data, error } = await authenticatedSupabase.rpc("produto_definir_publicacao", {
+      p_empreendimento_id: id,
+      p_publicado: publish,
+      p_unidade_id: unidadeId,
+    });
+    if (error) return { response: publicationErrorResponse(error) } as const;
+    const publication = data && typeof data === "object" && !Array.isArray(data)
+      ? data as Record<string, unknown>
+      : {};
+    if (publication.ok !== true || publication.site_visivel !== publish) {
+      return {
+        response: Response.json({
+          error: publish
+            ? "O banco concluiu a operação, mas o imóvel ainda não ficou visível na vitrine. Nenhuma confirmação falsa foi exibida."
+            : "O banco concluiu a operação, mas o imóvel ainda aparece na vitrine.",
+          code: "SITE_PUBLICATION_NOT_CONFIRMED",
+          publication,
+        }, { status: 502 }),
+      } as const;
+    }
+    return { publication } as const;
   }
 
   async function editableMediaContext(mediaId: string) {
@@ -197,14 +234,16 @@ export async function PATCH(request: Request) {
     if (publish && unit.aprovacao !== "aprovado") return Response.json({ error: "A unidade precisa estar aprovada antes de voltar ao site." }, { status: 422 });
     if (publish && !unit.disponivel) return Response.json({ error: "A unidade está indisponível. Marque-a como disponível antes de publicar." }, { status: 422 });
     if (publish && productContext?.aprovacao !== "aprovado") return Response.json({ error: "O cadastro do empreendimento de referência precisa estar aprovado." }, { status: 422 });
-    const { error: unitUpdateError } = await auth.supabase.from("unidades").update({ publicado: publish }).eq("id", unidadeId).eq("empreendimento_id", id);
-    if (unitUpdateError) return Response.json({ error: unitUpdateError.message }, { status: 502 });
-    if (publish && (!productContext?.publicado || productContext.rascunho)) {
-      const { error: parentUpdateError } = await auth.supabase.from("empreendimentos").update({ publicado: true, rascunho: false }).eq("id", id).eq("aprovacao", "aprovado");
-      if (parentUpdateError) return Response.json({ error: parentUpdateError.message }, { status: 502 });
-    }
-    await auditPublication("unidade", unidadeId, publish, `${productContext?.nome ?? "Imóvel"} · Un. ${unit.numero ?? unit.codigo ?? "s/n"}`);
-    return Response.json({ success: true, unidadeId, publicado: publish, approval: unit.aprovacao, disponivel: unit.disponivel });
+    const result = await definePublication(publish, unidadeId);
+    if ("response" in result) return result.response;
+    return Response.json({
+      success: true,
+      unidadeId,
+      publicado: publish,
+      approval: publish ? "aprovado" : unit.aprovacao,
+      disponivel: unit.disponivel,
+      publication: result.publication,
+    });
   }
 
   if (body.action === "criarUnidade") {
@@ -337,28 +376,13 @@ export async function PATCH(request: Request) {
       if (!unitToApprove.acesso_tipo || !unitToApprove.acesso_instrucoes || (unitToApprove.acesso_tipo === "chave_digital" && !unitToApprove.acesso_codigo)) blocking.push("Instruções de acesso");
       if ((mediaCount.count ?? 0) < 1) blocking.push("Ao menos uma foto da unidade");
       if (blocking.length) return Response.json({ error: `Complete a unidade antes de aprovar: ${blocking.join("; ")}.`, code: "UNIT_NOT_READY", blocking }, { status: 422 });
+      const result = await definePublication(true, unidadeId);
+      if ("response" in result) return result.response;
+      return Response.json({ success: true, aprovacao: "aprovado", publicado: true, publication: result.publication });
     }
-    const patch = approve
-      ? { aprovacao: "aprovado", reprovacao_motivo: null }
-      : { aprovacao: "reprovado", reprovacao_motivo: typeof body.motivo === "string" ? body.motivo.slice(0, 300) : null };
+    const patch = { aprovacao: "reprovado", publicado: false, reprovacao_motivo: typeof body.motivo === "string" ? body.motivo.slice(0, 300) : null };
     const { error } = await auth.supabase.from("unidades").update(patch as never).eq("id", unidadeId).eq("empreendimento_id", id);
     if (error) return Response.json({ error: error.message }, { status: 502 });
-    if (approve) {
-      const standalone = productContext?.origem === "terceiros" && !productContext.condominio_id;
-      if (standalone) {
-        // O registro-base existe apenas para dar identidade, endereço e publicação ao
-        // imóvel avulso. A aprovação da unidade conclui o produto inteiro sem criar condomínio.
-        const { error: parentError } = await auth.supabase.from("empreendimentos").update({ aprovacao: "aprovado", rascunho: false, publicado: true, reprovacao_motivo: null } as never).eq("id", id);
-        if (parentError) return Response.json({ error: parentError.message }, { status: 502 });
-      } else {
-        // Unidade aprovada precisa aparecer no site: garante o prédio aprovado como publicado.
-        const { data: pai } = await auth.supabase.from("empreendimentos").select("aprovacao, publicado, rascunho").eq("id", id).maybeSingle();
-        const paiTyped = pai as { aprovacao?: string; publicado?: boolean; rascunho?: boolean } | null;
-        if (paiTyped && paiTyped.aprovacao === "aprovado" && !paiTyped.rascunho && !paiTyped.publicado) {
-          await auth.supabase.from("empreendimentos").update({ publicado: true } as never).eq("id", id);
-        }
-      }
-    }
     return Response.json({ success: true, aprovacao: patch.aprovacao });
   }
 
@@ -400,10 +424,9 @@ export async function PATCH(request: Request) {
     // Publicar / retirar do ar: só aprovadores (admin, gestor, executivo).
     if (!isApprover) return Response.json({ error: "Apenas administradores, gestores ou executivos podem publicar produtos." }, { status: 403 });
     if (body.action === "unpublish") {
-      const { error } = await auth.supabase.from("empreendimentos").update({ rascunho: false, publicado: false }).eq("id", id);
-      if (error) return Response.json({ error: error.message }, { status: 502 });
-      await auditPublication("empreendimento", id, false, productContext?.nome ?? "Imóvel");
-      return Response.json({ success: true, rascunho: false, publicado: false, aprovacao: productContext?.aprovacao });
+      const result = await definePublication(false);
+      if ("response" in result) return result.response;
+      return Response.json({ success: true, rascunho: false, publicado: false, aprovacao: productContext?.aprovacao, publication: result.publication });
     }
     // Publicar somente após a checagem profissional. A regra fica no servidor para não ser
     // contornada por chamadas diretas à API.
@@ -441,10 +464,9 @@ export async function PATCH(request: Request) {
     if (!quality.readyForSite) {
       return Response.json({ error: "Este imóvel ainda não atingiu o padrão para o site.", code: "PRODUCT_NOT_READY", quality, blocking: quality.blocking }, { status: 422 });
     }
-    const { error } = await auth.supabase.from("empreendimentos").update({ rascunho: false, aprovacao: "aprovado", publicado: true, reprovacao_motivo: null }).eq("id", id);
-    if (error) return Response.json({ error: error.message }, { status: 502 });
-    await auditPublication("empreendimento", id, true, productContext?.nome ?? "Imóvel");
-    return Response.json({ success: true, rascunho: false, aprovado: true, publicado: true, aprovacao: "aprovado" });
+    const result = await definePublication(true);
+    if ("response" in result) return result.response;
+    return Response.json({ success: true, rascunho: false, aprovado: true, publicado: true, aprovacao: "aprovado", publication: result.publication });
   }
 
   if (body.action === "setCover") {
@@ -500,52 +522,37 @@ export async function PATCH(request: Request) {
     const deniedDelete = guard([["produtos", "excluir"]], "Você não tem permissão para excluir produtos.");
     if (deniedDelete) return deniedDelete;
 
-    const { data: alvo, error: alvoError } = await auth.supabase.from("empreendimentos").select("id, nome").eq("id", id).maybeSingle();
-    if (alvoError) return Response.json({ error: alvoError.message }, { status: 502 });
-    if (!alvo) return Response.json({ error: "Produto não encontrado." }, { status: 404 });
-
-    // Trava dura: não apaga produto com histórico comercial (protege negócios, vendas e visitas).
-    const [neg, ven, vis, f2v, pip, prop, capt] = await Promise.all([
-      auth.supabase.from("negocios").select("empreendimento_id", { count: "exact", head: true }).eq("empreendimento_id", id),
-      auth.supabase.from("vendas").select("empreendimento_id", { count: "exact", head: true }).eq("empreendimento_id", id),
-      auth.supabase.from("visitas").select("empreendimento_id", { count: "exact", head: true }).eq("empreendimento_id", id),
-      auth.supabase.from("f2_visita").select("empreendimento_id", { count: "exact", head: true }).eq("empreendimento_id", id),
-      auth.supabase.from("pipelines").select("empreendimento_id", { count: "exact", head: true }).eq("empreendimento_id", id),
-      auth.supabase.from("ncrm_proposta").select("empreendimento_id", { count: "exact", head: true }).eq("empreendimento_id", id),
-      auth.supabase.from("captacoes_portal").select("empreendimento_id", { count: "exact", head: true }).eq("empreendimento_id", id),
-    ]);
-    const vinculos: string[] = [];
-    if ((neg.count ?? 0) > 0) vinculos.push(`${neg.count} negócio(s)`);
-    if ((ven.count ?? 0) > 0) vinculos.push(`${ven.count} venda(s)`);
-    const totalVisitas = (vis.count ?? 0) + (f2v.count ?? 0);
-    if (totalVisitas > 0) vinculos.push(`${totalVisitas} visita(s)`);
-    if ((pip.count ?? 0) > 0) vinculos.push(`${pip.count} funil(is)`);
-    if ((prop.count ?? 0) > 0) vinculos.push(`${prop.count} proposta(s)`);
-    if ((capt.count ?? 0) > 0) vinculos.push(`${capt.count} captação(ões) do portal`);
-    if (vinculos.length) return Response.json({ error: `Não é possível excluir: este produto tem ${vinculos.join(", ")} vinculado(s). Desvincule antes de excluir.`, code: "PRODUCT_HAS_LINKS" }, { status: 409 });
-
-    // O CASCADE do banco remove as linhas de mídia, mas não os arquivos no storage.
-    const { data: midiasDoProduto } = await auth.supabase.from("midias").select("storage_path").eq("empreendimento_id", id);
-    const paths = (midiasDoProduto ?? []).map((m) => m.storage_path).filter((p): p is string => Boolean(p));
-    if (paths.length) await auth.supabase.storage.from("empreendimentos").remove(paths);
-
-    const { data: removido, error: deleteError } = await auth.supabase.from("empreendimentos").delete().eq("id", id).select("id");
-    if (deleteError) return Response.json({ error: deleteError.message }, { status: 502 });
-    if (!removido || removido.length === 0) return Response.json({ error: "Exclusão bloqueada pelas permissões do banco (RLS)." }, { status: 403 });
-
-    const { data: quem } = await auth.supabase.from("usuarios").select("nome").eq("id", auth.user.id).maybeSingle();
-    await auth.supabase.from("erp_auditoria").insert({
-      usuario_id: auth.user.id,
-      usuario_nome: (quem as { nome?: string } | null)?.nome ?? null,
-      acao: "excluir",
-      modulo: "produtos",
-      entidade: "empreendimento",
-      entidade_id: id,
-      antes: alvo,
-      detalhe: `Produto "${alvo.nome ?? id}" excluído definitivamente (${paths.length} arquivo(s) de mídia removidos do storage).`,
-    } as never);
-
-    return Response.json({ success: true, deleted: true });
+    // A RPC faz autorização, trava os vínculos comerciais, audita e exclui o
+    // banco em uma única transação. O Storage só é limpo depois do commit.
+    const { data, error } = await auth.supabase.rpc("produto_excluir", { p_empreendimento_id: id });
+    if (error) return publicationErrorResponse(error);
+    const deletion = (data && typeof data === "object" ? data : {}) as {
+      ok?: boolean;
+      empreendimento_id?: string;
+      nome?: string;
+      midias_paths?: unknown;
+      midias_total?: number;
+      unidades_total?: number;
+    };
+    if (deletion.ok !== true || deletion.empreendimento_id !== id) {
+      return Response.json({ error: "O banco não confirmou a exclusão do produto.", code: "PRODUCT_DELETE_NOT_CONFIRMED" }, { status: 502 });
+    }
+    const paths = Array.isArray(deletion.midias_paths)
+      ? deletion.midias_paths.filter((path): path is string => typeof path === "string" && path.length > 0)
+      : [];
+    let storageWarning: string | null = null;
+    if (paths.length) {
+      const { error: storageError } = await auth.supabase.storage.from("empreendimentos").remove(paths);
+      if (storageError) storageWarning = "O produto foi excluído, mas alguns arquivos de mídia aguardam limpeza automática.";
+    }
+    return Response.json({
+      success: true,
+      deleted: true,
+      product: { id: deletion.empreendimento_id, name: deletion.nome ?? null },
+      removedMedia: storageWarning ? 0 : paths.length,
+      storageCleanupPending: Boolean(storageWarning),
+      warning: storageWarning,
+    });
   }
 
   // Bloco final = edição geral do produto (nome, dados, proprietário, condomínio).

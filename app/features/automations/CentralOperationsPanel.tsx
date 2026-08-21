@@ -45,6 +45,17 @@ function data(value: string | null | undefined) {
   return new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(new Date(value));
 }
 
+async function consultarSaude(accessToken: string, signal?: AbortSignal) {
+  const response = await fetch("/api/automacoes-operacao", {
+    headers: { Authorization: `Bearer ${accessToken}` },
+    cache: "no-store",
+    signal,
+  });
+  const body = await response.json().catch(() => ({})) as Saude & { error?: string };
+  if (!response.ok) throw new Error(body.error || "Não foi possível consultar a Central.");
+  return body;
+}
+
 export function CentralOperationsPanel({ accessToken }: { accessToken: string }) {
   const [saude, setSaude] = useState<Saude | null>(null);
   const [erro, setErro] = useState<string | null>(null);
@@ -54,12 +65,7 @@ export function CentralOperationsPanel({ accessToken }: { accessToken: string })
   const carregar = useCallback(async () => {
     setCarregando(true);
     try {
-      const response = await fetch("/api/automacoes-operacao", {
-        headers: { Authorization: `Bearer ${accessToken}` },
-        cache: "no-store",
-      });
-      const body = await response.json().catch(() => ({})) as Saude & { error?: string };
-      if (!response.ok) throw new Error(body.error || "Não foi possível consultar a Central.");
+      const body = await consultarSaude(accessToken);
       setSaude(body);
       setErro(null);
     } catch (e) {
@@ -69,7 +75,24 @@ export function CentralOperationsPanel({ accessToken }: { accessToken: string })
     }
   }, [accessToken]);
 
-  useEffect(() => { void carregar(); }, [carregar]);
+  useEffect(() => {
+    const controller = new AbortController();
+
+    void consultarSaude(accessToken, controller.signal)
+      .then((body) => {
+        setSaude(body);
+        setErro(null);
+      })
+      .catch((e) => {
+        if (e instanceof DOMException && e.name === "AbortError") return;
+        setErro(e instanceof Error ? e.message : "Não foi possível consultar a Central.");
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setCarregando(false);
+      });
+
+    return () => controller.abort();
+  }, [accessToken]);
 
   const contratos = saude?.contratos ?? [];
   const contratosOk = contratos.filter((item) => item.ok).length;

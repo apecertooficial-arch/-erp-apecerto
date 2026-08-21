@@ -9,6 +9,7 @@ const productsUi = await readFile("app/features/products/ProductsModule.tsx", "u
 const unitWizard = await readFile("app/features/products/UnitWizard.tsx", "utf8");
 const captureWizard = await readFile("app/features/products/CaptureWizard.tsx", "utf8");
 const detail = await readFile("app/features/products/ProductDetail.tsx", "utf8");
+const productsModel = await readFile("app/features/products/products.ts", "utf8");
 const globalCss = await readFile("app/globals.css", "utf8");
 const migration = await readFile("supabase/migrations/20260820153819_produtos_fluxo_seguro_site_unidades.sql", "utf8");
 const unpublishMigration = await readFile("supabase/migrations/20260820193000_produtos_despublicacao_individual.sql", "utf8");
@@ -37,8 +38,8 @@ test("apartamento pode ser cadastrado sem associação falsa a condomínio", () 
   assert.match(captureWizard, /unidade_id: standalone \? created\.unidadeId : null/);
   assert.match(catalog, /standalone = item\.origem === "terceiros" && !item\.condominio_id/);
   assert.match(catalog, /if \(p\.standalone\)/);
-  assert.match(productApi, /O registro-base existe apenas para dar identidade, endereço e publicação ao/);
-  assert.match(productApi, /aprovacao: "aprovado", rascunho: false, publicado: true/);
+  assert.match(productApi, /definePublication\(true, unidadeId\)/);
+  assert.match(productApi, /produto_definir_publicacao/);
 });
 
 test("fila de aprovação abre completa e filtros avançados ficam recolhidos", () => {
@@ -95,9 +96,10 @@ test("imóvel pode sair do site sem perder aprovação ou disponibilidade", () =
   assert.match(detail, /Tirar imóvel do ar/);
   assert.match(detail, /O cadastro, a aprovação e a disponibilidade foram mantidos/);
   assert.match(productApi, /body\.action === "publishUnit" \|\| body\.action === "unpublishUnit"/);
-  assert.match(productApi, /update\(\{ publicado: publish \}\)/);
-  assert.match(productApi, /update\(\{ rascunho: false, publicado: false \}\)/);
+  assert.match(productApi, /definePublication\(publish, unidadeId\)/);
+  assert.match(productApi, /definePublication\(false\)/);
   assert.doesNotMatch(productApi, /update\(\{ rascunho: true, publicado: false \}\)/);
+  assert.doesNotMatch(productApi, /async function auditPublication/);
 });
 
 test("publicação individual não tira outras unidades do mesmo condomínio do ar", () => {
@@ -106,6 +108,23 @@ test("publicação individual não tira outras unidades do mesmo condomínio do 
   assert.match(unpublishMigration, /add column if not exists publicado boolean not null default true/);
   assert.match(unpublishMigration, /u\.publicado and u\.disponivel and u\.aprovacao = 'aprovado'/);
   assert.match(unpublishMigration, /Controle editorial do site\. Não altera disponibilidade comercial/);
+});
+
+test("publicação do ERP é transacional e só confirma o que ficou visível no site", () => {
+  assert.match(productApi, /rpc\("produto_definir_publicacao"/);
+  assert.match(productApi, /publication\.ok !== true \|\| publication\.site_visivel !== publish/);
+  assert.match(productApi, /SITE_PUBLICATION_NOT_CONFIRMED/);
+  assert.match(productApi, /PRODUCT_NOT_READY/);
+  assert.match(productApi, /UNIT_NOT_READY/);
+  assert.match(captureApi, /result\.site_visivel !== true/);
+  assert.match(captureApi, /publication: result/);
+});
+
+test("ERP abre e compartilha a URL limpa da unidade publicada", () => {
+  assert.match(productsModel, /https:\/\/apecerto\.com\/imovel\/\$\{slug\}\//);
+  assert.match(productsModel, /\$\{base\}-un-\$\{code \? `\$\{code\}-` : ""\}\$\{input\.unitId\}/);
+  assert.doesNotMatch(productsUi, /apecerto\.com\/\?imovel=/);
+  assert.doesNotMatch(detail, /apecerto\.com\/\?imovel=/);
 });
 
 test("edição do prédio nunca altera indicação individual", () => {

@@ -9538,6 +9538,7 @@ export type Database = {
           origem: string
           preferencia_horario: string | null
           telefone: string
+          unidade_id: string | null
         }
         Insert: {
           atendido?: boolean
@@ -9549,6 +9550,7 @@ export type Database = {
           origem?: string
           preferencia_horario?: string | null
           telefone: string
+          unidade_id?: string | null
         }
         Update: {
           atendido?: boolean
@@ -9560,6 +9562,7 @@ export type Database = {
           origem?: string
           preferencia_horario?: string | null
           telefone?: string
+          unidade_id?: string | null
         }
         Relationships: [
           {
@@ -9602,6 +9605,13 @@ export type Database = {
             columns: ["empreendimento_id"]
             isOneToOne: false
             referencedRelation: "vw_produtos_publicos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "site_leads_unidade_id_fkey"
+            columns: ["unidade_id"]
+            isOneToOne: false
+            referencedRelation: "unidades"
             referencedColumns: ["id"]
           },
         ]
@@ -12134,6 +12144,18 @@ export type Database = {
       aprovar_descarte: { Args: { p_negocio: number }; Returns: Json }
       aprovar_empreendimento: {
         Args: { p_aprovar: boolean; p_id: string; p_motivo?: string }
+        Returns: Json
+      }
+      produto_definir_publicacao: {
+        Args: {
+          p_empreendimento_id: string
+          p_publicado: boolean
+          p_unidade_id?: string | null
+        }
+        Returns: Json
+      }
+      produto_excluir: {
+        Args: { p_empreendimento_id: string }
         Returns: Json
       }
       aprovar_solicitacao: { Args: { p_id: string }; Returns: Json }

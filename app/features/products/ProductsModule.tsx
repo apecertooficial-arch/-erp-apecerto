@@ -16,7 +16,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { CaptureWizard } from "./CaptureWizard";
 import { UnitWizard } from "./UnitWizard";
 import { ProductDetail } from "./ProductDetail";
-import type { Product } from "./products";
+import { sitePropertyUrl, type Product } from "./products";
 import type { ProductQuality } from "./quality";
 import { normalizedKey } from "./quality";
 import { getBrowserSupabaseClient } from "../../lib/supabase/browser";
@@ -308,7 +308,7 @@ export function ProductsModule({ accessToken }: { accessToken: string }) {
 
     {dataState === "live" && produtosVisiveis.length > 0 && <section className="ape-produto-lista">
       {produtosVisiveis.map((product) => {
-        const linkSite = product.published && product.id ? `https://apecerto.com/?imovel=${encodeURIComponent(product.slug || product.id)}${product.codigo ? `&cod=${encodeURIComponent(product.codigo)}` : ""}` : null;
+        const linkSite = product.published && product.id ? sitePropertyUrl(product) : null;
         const compartilhar = encodeURIComponent(`${product.name} — ${product.neighborhood}, ${product.city} — ${product.price}${linkSite ? ` — ${linkSite}` : ""}`);
         return <article className="ape-produto-card" key={product.unitId ?? product.id ?? product.name}>
           <button type="button" className={`ape-produto-foto${product.coverUrl ? " com-foto" : ""}`} onClick={() => { if (product.id) { setInitialUnitId(product.unitId ?? null); setSelectedProductId(product.id); } }} aria-label={`Abrir ${product.name}`}>
@@ -418,7 +418,7 @@ export function ProductsModule({ accessToken }: { accessToken: string }) {
               <button type="button" className="card-menu-btn" aria-haspopup="true" aria-label={`Ações de ${product.name}`} onClick={(event) => { event.stopPropagation(); const key = product.unitId ?? product.id ?? null; setOpenMenuId(openMenuId === key ? null : key); }}>•••</button>
               {openMenuId === (product.unitId ?? product.id) && product.id && <div className="card-menu-pop" role="menu">
                 <button type="button" role="menuitem" onClick={() => { setOpenMenuId(null); setOpenInEdit(false); setInitialUnitId(product.unitId ?? null); setSelectedProductId(product.id!); }}>Abrir ficha</button>
-                {product.published && <button type="button" role="menuitem" onClick={() => { const link = `https://apecerto.com/?imovel=${encodeURIComponent(product.slug || product.id!)}${product.codigo ? `&cod=${encodeURIComponent(product.codigo)}` : ""}`; void navigator.clipboard.writeText(link); setOpenMenuId(null); }}>Copiar link do site</button>}
+                {product.published && <button type="button" role="menuitem" onClick={() => { void navigator.clipboard.writeText(sitePropertyUrl(product)); setOpenMenuId(null); }}>Copiar link do site</button>}
                 {canApprove && product.published && <button type="button" role="menuitem" className="danger" onClick={() => { setOpenMenuId(null); setPublicationTarget(product); }}>Tirar imóvel do ar</button>}
                 {canApprove && !product.published && product.approval === "aprovado" && product.quality?.readyForSite && <button type="button" role="menuitem" onClick={() => void changePublicationFromCard(product, true)}>Publicar no site</button>}
                 {(canApprove || product.mine) && <button type="button" role="menuitem" onClick={() => { setOpenMenuId(null); setOpenInEdit(!product.unitId); setInitialUnitId(product.unitId ?? null); setSelectedProductId(product.id!); }}>{product.unitId ? "Editar unidade" : "Editar produto"}</button>}
