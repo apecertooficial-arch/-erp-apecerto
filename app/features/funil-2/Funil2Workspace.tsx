@@ -39,6 +39,16 @@ function linkWhatsapp(telefone: string | null) {
   return `https://wa.me/${digitos.startsWith("55") ? digitos : `55${digitos}`}`;
 }
 
+function InteresseLead({ lead, detalhado = false }: { lead: LeadFunil2; detalhado?: boolean }) {
+  if (!lead.interesse && !(lead.tags?.length)) return null;
+  const titulo = (lead.tags ?? []).map((tag) => tag.nome).join(" · ");
+  return <span className={`f2-interesse-lead${detalhado ? " detalhado" : ""}`} title={titulo || undefined}>
+    <b>{lead.interesse ? "Interesse" : "Tags"}</b>
+    <strong>{lead.interesse ?? `${lead.tags?.length ?? 0} associada(s)`}</strong>
+    {(lead.tags?.length ?? 0) > 1 ? <em>{lead.tags!.length} tags</em> : null}
+  </span>;
+}
+
 /* O input datetime-local so entende hora local sem fuso. Sem esta conversao o
    corretor abre a visita das 14h, ve 17h e remarca sem querer. */
 function paraCampoLocal(data: string) {
@@ -268,7 +278,7 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
                   const cadencia = rotuloCadencia(item);
                   const tentativa = tentativaAtual(item);
                   return <article key={item.id} role="button" tabIndex={0} className={`f2-card ${selecionado === item.id ? "selecionado" : ""}`} onClick={() => setSelecionado(item.id)} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") setSelecionado(item.id); }}>
-                    <div className="f2-card-ident"><i>{iniciais(item.nome)}</i><div><strong>{item.nome}</strong><span>{item.corretor_nome ?? "Sem corretor"}{item.instancia_rotulo ? <em className="f2-instancia" title={`Contato saindo por ${item.instancia_rotulo}`}> · {item.instancia_rotulo}</em> : null}</span></div></div>
+                    <div className="f2-card-ident"><i>{iniciais(item.nome)}</i><div><strong>{item.nome}</strong><span>{item.corretor_nome ?? "Sem corretor"}{item.instancia_rotulo ? <em className="f2-instancia" title={`Contato saindo por ${item.instancia_rotulo}`}> · {item.instancia_rotulo}</em> : null}</span><InteresseLead lead={item} /></div></div>
                     <div className="f2-card-trio">
                       <div className="etapa"><span>ETAPA</span><b>{etapa.rotulo}</b></div>
                       <div className="momento"><span>MOMENTO</span><b>{momento?.rotulo ?? item.momento_codigo}</b></div>
@@ -321,7 +331,7 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
             const cadencia = rotuloCadencia(item);
             const tentativa = tentativaAtual(item);
             return <button key={item.id} type="button" className="f2-dia-item" onClick={() => setSelecionado(item.id)}>
-              <span className="f2-dia-ordem">{index + 1}</span><div><strong>{item.nome}</strong><small>{item.corretor_nome ?? "Sem corretor"}{item.instancia_rotulo ? <em className="f2-instancia" title={`Contato saindo por ${item.instancia_rotulo}`}> · {item.instancia_rotulo}</em> : null}</small></div><div><span>ETAPA</span><b>{etapasAtivas.find((e) => e.codigo === item.etapa)?.rotulo}</b></div><div><span>{cadencia ? "MOMENTO · CADÊNCIA" : "MOMENTO"}</span><b>{momento?.rotulo}</b></div><em className={prazo.classe}>{prazo.rotulo}</em><i>{tentativa ? `Enviar tentativa ${tentativa}` : "Executar ação"}</i>
+              <span className="f2-dia-ordem">{index + 1}</span><div><strong>{item.nome}</strong><small>{item.corretor_nome ?? "Sem corretor"}{item.instancia_rotulo ? <em className="f2-instancia" title={`Contato saindo por ${item.instancia_rotulo}`}> · {item.instancia_rotulo}</em> : null}</small><InteresseLead lead={item} /></div><div><span>ETAPA</span><b>{etapasAtivas.find((e) => e.codigo === item.etapa)?.rotulo}</b></div><div><span>{cadencia ? "MOMENTO · CADÊNCIA" : "MOMENTO"}</span><b>{momento?.rotulo}</b></div><em className={prazo.classe}>{prazo.rotulo}</em><i>{tentativa ? `Enviar tentativa ${tentativa}` : "Executar ação"}</i>
             </button>;
           })}
           {aFazer.length > limiteDia && <button type="button" className="f2-dia-mais" onClick={() => setLimiteDia((atual) => atual + 50)}>Mostrar mais 50 · ainda faltam {aFazer.length - limiteDia}</button>}
@@ -485,7 +495,7 @@ function TodosLeads({ leads, momentos, etapas, accessToken, busy, onAbrir, onPes
     <div className="f2-leads-busca"><label><span>Buscar lead</span><input value={busca} onChange={(event) => { setBusca(event.target.value); setPagina(1); }} placeholder="Nome ou telefone" aria-label="Buscar lead por nome ou telefone" /></label><label><span>Situação do prazo</span><select value={situacao} onChange={(event) => { setSituacao(event.target.value); setPagina(1); }}><option value="todas">Todos os prazos</option><option value="atrasado">Atrasados</option><option value="urgente">Vencem em até 2h</option><option value="no-prazo">No prazo</option></select></label><b>{filtrados.length} encontrado(s)</b></div>
     <div className="f2-leads-filtros"><button type="button" className={filtro === "todos" ? "ativo" : ""} onClick={() => { setFiltro("todos"); setPagina(1); }}>Todos · {leads.length}</button>{etapas.map((etapa) => <button type="button" className={filtro === etapa.codigo ? "ativo" : ""} onClick={() => { setFiltro(etapa.codigo); setPagina(1); }} key={etapa.codigo}>{etapa.rotulo} · {leads.filter((lead) => lead.etapa === etapa.codigo).length}</button>)}<span>{atrasados} atrasado(s)</span></div>
     <div className="f2-tabela-cab"><span>Cliente</span><span>Etapa</span><span>Momento</span><span>Próxima ação</span><span>Prazo</span><span></span></div>
-    <div className="f2-tabela f2-tabela-compacta">{exibidos.map((lead) => { const prazo = prazoDaAcao(lead); const whatsapp = linkWhatsapp(lead.telefone); return <article key={lead.id} className={`f2-lead-linha prazo-${prazo.classe}`}><div className="f2-nome"><i>{iniciais(lead.nome)}</i><span><b>{lead.nome}</b><small>{lead.corretor_nome ?? "Responsável não definido"}{lead.instancia_rotulo ? <em className="f2-instancia" title={`Contato saindo por ${lead.instancia_rotulo}`}> · {lead.instancia_rotulo}</em> : null}</small></span></div><span className="f2-lead-chip etapa"><i />{etapas.find((e) => e.codigo === lead.etapa)?.rotulo}</span><span className="f2-lead-chip momento">{momentos.find((m) => m.codigo === lead.momento_codigo)?.rotulo}</span><strong className="f2-lead-acao">{acaoVisivel(lead)}</strong><em className={prazo.classe}>{prazo.rotulo}</em><div className="f2-lead-acoes"><button type="button" onClick={() => onAbrir(lead.id)}>💬 Chat</button>{whatsapp && <a href={whatsapp} target="_blank" rel="noreferrer">WhatsApp</a>}<button type="button" className="primario" onClick={() => onAbrir(lead.id)}>Abrir</button></div></article>; })}{filtrados.length === 0 && <div className="f2-sem-resultado"><b>Nenhum lead encontrado.</b><span>Revise a busca ou os filtros selecionados.</span></div>}</div>
+    <div className="f2-tabela f2-tabela-compacta">{exibidos.map((lead) => { const prazo = prazoDaAcao(lead); const whatsapp = linkWhatsapp(lead.telefone); return <article key={lead.id} className={`f2-lead-linha prazo-${prazo.classe}`}><div className="f2-nome"><i>{iniciais(lead.nome)}</i><span><b>{lead.nome}</b><small>{lead.corretor_nome ?? "Responsável não definido"}{lead.instancia_rotulo ? <em className="f2-instancia" title={`Contato saindo por ${lead.instancia_rotulo}`}> · {lead.instancia_rotulo}</em> : null}</small><InteresseLead lead={lead} /></span></div><span className="f2-lead-chip etapa"><i />{etapas.find((e) => e.codigo === lead.etapa)?.rotulo}</span><span className="f2-lead-chip momento">{momentos.find((m) => m.codigo === lead.momento_codigo)?.rotulo}</span><strong className="f2-lead-acao">{acaoVisivel(lead)}</strong><em className={prazo.classe}>{prazo.rotulo}</em><div className="f2-lead-acoes"><button type="button" onClick={() => onAbrir(lead.id)}>💬 Chat</button>{whatsapp && <a href={whatsapp} target="_blank" rel="noreferrer">WhatsApp</a>}<button type="button" className="primario" onClick={() => onAbrir(lead.id)}>Abrir</button></div></article>; })}{filtrados.length === 0 && <div className="f2-sem-resultado"><b>Nenhum lead encontrado.</b><span>Revise a busca ou os filtros selecionados.</span></div>}</div>
     {filtrados.length > porPagina && <div className="f2-paginacao"><button type="button" disabled={paginaSegura === 1} onClick={() => setPagina((atual) => Math.max(1, atual - 1))}>← Anterior</button><span>Página {paginaSegura} de {totalPaginas}</span><button type="button" disabled={paginaSegura === totalPaginas} onClick={() => setPagina((atual) => Math.min(totalPaginas, atual + 1))}>Próxima →</button></div>}
 
     {/* Carteira antiga: mesma busca, seção separada. Só aparece quando há algo
@@ -718,7 +728,7 @@ function Detalhe({
 
   return <div className="f2-overlay" onClick={onFechar}>
     <aside className="f2-detalhe" aria-label={`Detalhe de ${lead.nome}`} onClick={(e) => e.stopPropagation()}>
-      <div className="f2-detalhe-topo"><div><span className="f2-eyebrow">LEAD-CÓPIA · #{lead.origem_negocio_id}</span><h2>{lead.nome}</h2><p>{lead.corretor_nome ?? "Sem corretor"}{lead.instancia_rotulo ? <em className="f2-instancia" title={`Contato saindo por ${lead.instancia_rotulo}`}> · {lead.instancia_rotulo}</em> : null} · original protegido</p></div><button type="button" onClick={onFechar} aria-label="Fechar detalhe">×</button></div>
+      <div className="f2-detalhe-topo"><div><span className="f2-eyebrow">LEAD-CÓPIA · #{lead.origem_negocio_id}</span><h2>{lead.nome}</h2><p>{lead.corretor_nome ?? "Sem corretor"}{lead.instancia_rotulo ? <em className="f2-instancia" title={`Contato saindo por ${lead.instancia_rotulo}`}> · {lead.instancia_rotulo}</em> : null} · original protegido</p><InteresseLead lead={lead} detalhado /></div><button type="button" onClick={onFechar} aria-label="Fechar detalhe">×</button></div>
 
       <div className="f2-atalhos" aria-label="Ações rápidas do lead">
         <button type="button" onClick={() => setChatAberto(true)}>💬 Chat</button>
