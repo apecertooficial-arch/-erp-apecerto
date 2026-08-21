@@ -62,6 +62,34 @@ const saraRealtime = readFileSync(
   ),
   'utf8',
 );
+const deterministicEntryFields = readFileSync(
+  new URL(
+    '../supabase/migrations/20260821124000_entrada_deterministica_campos_tags.sql',
+    import.meta.url,
+  ),
+  'utf8',
+);
+const safePublish = readFileSync(
+  new URL(
+    '../supabase/migrations/20260821124500_publicacao_sem_sobrescrever_e_miruna.sql',
+    import.meta.url,
+  ),
+  'utf8',
+);
+const adelmoMerge = readFileSync(
+  new URL(
+    '../supabase/migrations/20260821125000_mesclar_adelmo_sem_redistribuir.sql',
+    import.meta.url,
+  ),
+  'utf8',
+);
+const moduleBackfill = readFileSync(
+  new URL(
+    '../supabase/migrations/20260821125500_corrigir_evento_adelmo_pelos_modulos.sql',
+    import.meta.url,
+  ),
+  'utf8',
+);
 const entrada = readFileSync(
   new URL('../supabase/functions/entrada/index.ts', import.meta.url),
   'utf8',
@@ -284,6 +312,49 @@ test('entrada materializa o contato e operações de campos não criam lead', ()
   assert.match(atomicFields, /FIELD_OPERATION_REQUIRES_EXISTING_LEAD/);
   assert.match(atomicFields, /insert into leads\(nome,telefone,email,origem,status\)/);
   assert.match(atomicFields, /position\('insert into leads\(nome,telefone,email,origem,status\)' in v_new\)>0/);
+});
+
+test('entrada entrega JSON aos módulos de campos e tags sem atalho oculto', () => {
+  assert.doesNotMatch(
+    deterministicEntryFields.match(
+      /create or replace function public\.motor_enfileirar_idempotente[\s\S]*?revoke all on function public\.motor_enfileirar_idempotente/,
+    )?.[0] ?? '',
+    /motor_materializar_entrada/,
+  );
+  assert.match(deterministicEntryFields, /motor_entrada_modulo/);
+  assert.match(deterministicEntryFields, /motor_campos_deterministico/);
+  assert.match(deterministicEntryFields, /store-json-payload-field-operation/);
+  assert.match(deterministicEntryFields, /'contexto',v_contexto/);
+  assert.match(deterministicEntryFields, /p_lead:=coalesce\(_res->'contexto',p_lead\)/);
+  assert.match(deterministicEntryFields, /'remove-tag-action'.*'Aquário'/s);
+  assert.match(deterministicEntryFields, /meta_campaign_name/);
+  assert.match(deterministicEntryFields, /additional-field\[tracking\]/);
+  assert.match(builder, /guardar JSON completo/);
+  assert.match(builder, /store-json-payload-field-operation/);
+});
+
+test('uma aba antiga não consegue apagar uma publicação mais nova', () => {
+  assert.match(builder, /p_expected_version_id:cur\.versao_publicada_id/);
+  assert.match(builder, /AUTOMATION_STALE_VERSION/);
+  assert.match(safePublish, /p_expected_version_id bigint/);
+  assert.match(safePublish, /v_atual_id is distinct from p_expected_version_id/);
+  assert.match(safePublish, /AUTOMATION_STALE_VERSION/);
+  assert.match(safePublish, /Mescla segura: campos\/tags deterministas/);
+});
+
+test('tag manual do Adelmo é mesclada sem repetir distribuição ou mensagem', () => {
+  assert.match(adelmoMerge, /Adelmo 2100/);
+  assert.match(adelmoMerge, /b-tags-entrada-65/);
+  assert.doesNotMatch(adelmoMerge, /motor_roleta|motor_envia_abordagem/);
+});
+
+test('backfill encontra a saída da Entrada e chama apenas Campos e Tags', () => {
+  assert.match(moduleBackfill, /jsonb_build_object\('__lead_id',l\.id\)/);
+  assert.match(moduleBackfill, /meta-lead-2045245893021711/);
+  assert.match(moduleBackfill, /where id=65/);
+  assert.match(moduleBackfill, /motor_campos_deterministico/);
+  assert.match(moduleBackfill, /motor_acoes/);
+  assert.doesNotMatch(moduleBackfill, /motor_roleta|motor_envia_abordagem/);
 });
 
 test('site e WhatsApp não mantêm motores paralelos fora do mapa', () => {
