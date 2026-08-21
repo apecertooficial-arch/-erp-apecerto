@@ -162,7 +162,7 @@ async function boot(){
    sbGet('/automacoes?select=id,nome,grupo,ativa,status,arquivada,atualizada_em&order=grupo,id')]);
   ref.pipelines=pi;ref.stages=stg;ref.corretores=co;ref.instancias=ins;ref.automacoes=au;if(_ctx&&_ctx.onAutomationsLoaded){try{_ctx.onAutomationsLoaded(au);}catch(_e){}}
   try{ref.tags=await sbRpc('automacao_tags')||[];}catch(_t){ref.tags=[];}   try{ref.momentos=await sbGet('/lead_momento_catalogo?select=slug,rotulo,grupo,ordem&ativo=eq.true&order=ordem')||[];}catch(_m){ref.momentos=[];}
-  try{const [pr,ab]=await Promise.all([sbGet('/produtos?select=id,nome,ativo&order=nome'),sbGet('/abordagens?select=id,produto_id,nome,ordem,ativo,mensagens&order=ordem')]);ref.produtos=pr||[];ref.abordagens=ab||[];}catch(_p){ref.produtos=[];ref.abordagens=[];}
+  try{const [pr,ab]=await Promise.all([sbGet('/produtos?select=id,nome,ativo&order=nome'),sbGet('/abordagens?select=id,produto_id,nome,grupo,ordem,ativo,mensagens&ativo=is.true&order=grupo,ordem,id')]);ref.produtos=pr||[];ref.abordagens=ab||[];}catch(_p){ref.produtos=[];ref.abordagens=[];}
   try{ref.agentes=await sbGet('/agentes_ia?select=id,slug,nome,categoria,ativo&ativo=is.true&order=categoria,nome')||[];}catch(_ag){ref.agentes=[];}
   setStatus('Conectado — '+au.length+' automações','#10b981');renderSidebar();
  }catch(e){console.error(e);setStatus('Falha de conexão','#dc2626');toast('Erro ao conectar: '+e.message,'err');}
@@ -298,7 +298,7 @@ function bodyHtml(n){
   return `<div style="font-size:11px;color:var(--ink-faint);padding:2px 0">Execute ações no sistema.</div>${as.map((a,i)=>actRow(a,i)).join('')}<button class="ne-add" data-addact>${ico('plus',14)} adicionar ação</button>${portRow('out','Próximo passo','ok')}${portRow('err','Caso ocorrer erro','err')}`;
  }
  if(n.type==='randomizer'){const rs=n.ramos||[];
-  return `<div style="font-size:11px;color:var(--ink-faint);padding:2px 0 7px;line-height:1.45">Escolhe um caminho pelos percentuais publicados. A mesma execução mantém o mesmo caminho em retry. Para variar abordagens, conecte cada saída a um bloco <b>Enviar abordagem</b> com um único modelo.</div>${rs.map((r,i)=>ramoRow(r,i)).join('')}<button class="ne-add" data-addramo>${ico('plus',14)} adicionar caminho</button>`;
+  return `<div style="font-size:11px;color:var(--ink-faint);padding:2px 0 7px;line-height:1.45">Escolhe um caminho pelos percentuais publicados. A mesma execução mantém o mesmo caminho em retry. Use este bloco apenas quando os caminhos seguintes forem diferentes.</div>${rs.map((r,i)=>ramoRow(r,i)).join('')}<button class="ne-add" data-addramo>${ico('plus',14)} adicionar caminho</button>`;
  }
  if(n.type==='distribution'){if(!n.opts)n.opts={};const d=n.opts.distribuicao=n.opts.distribuicao||{items:[],onlineOnly:false,tambemNegocio:false};const its=d.items=d.items||[];
   /* Sincroniza com o cadastro: corretor ATIVO que ainda não está na lista (ex.: recém-criado)
@@ -322,7 +322,7 @@ function bodyHtml(n){
    (function(){const dprod=d.produtoId||0;const abList=(ref.abordagens||[]).filter(a=>(a.produto_id||0)===dprod);const selAb=d.abordagemIds||[];
     return `<div style="height:1px;background:var(--line-soft);margin:11px 0 6px"></div><div class="ne-lb" style="margin-top:0">Abordagem a enviar (opcional)</div>`+
      `<select class="ne-sel" data-distprod disabled><option value="0" ${dprod===0?'selected':''}>— Modelos gerais (sem produto) —</option>${(ref.produtos||[]).map(p=>`<option value="${p.id}" ${p.id===dprod?'selected':''}>${esc(p.nome)}</option>`).join('')}</select>`+
-     `<div style="font-size:11px;color:var(--ink-faint);margin:6px 0 3px">Configuração legada desativada. Distribuição não envia mensagem. Use <b>Randomizador → Enviar abordagem</b>, com um modelo exato em cada saída.</div>`+
+     `<div style="font-size:11px;color:var(--ink-faint);margin:6px 0 3px">Configuração legada desativada. Distribuição não envia mensagem. Use depois um único bloco <b>Enviar abordagem</b>.</div>`+
      (abList.length?abList.map(a=>`<label style="display:flex;align-items:center;gap:7px;font-size:12px;padding:3px 0;color:var(--ink-faint)"><input type="checkbox" disabled data-distab="${a.id}" ${selAb.indexOf(a.id)>=0?'checked':''} style="width:15px;height:15px;flex:0 0 auto">${esc(a.nome)} <span style="font-size:10.5px">(${(a.mensagens||[]).length})</span></label>`).join(''):`<div style="font-size:11px;color:var(--ink-faint)">Sem abordagens aqui. Crie em <b>Abordagens (produtos)</b>.</div>`);
    })()+
    (function(){const pr=Array.isArray(d.protecao)?d.protecao:['venda','visita_agendada','visita_realizada'];const opts=[['venda','Venda em processo'],['visita_agendada','Visita agendada'],['visita_realizada','Visita realizada'],['sempre','Sempre manter o dono (nunca redistribui)']];
@@ -368,13 +368,14 @@ function bodyHtml(n){
    portRow('out','Próximo passo','ok')+portRow('err','Se ninguém disponível','err');
  }
  if(n.type==='send-approach'){const o=n.opts||{};
-  return `<div style="font-size:11.5px;color:var(--ink-soft);padding:2px 0 6px;line-height:1.45">Envia <b>um modelo exato</b> pela instância do corretor DONO do lead. Para alternar modelos, use um <b>Randomizador</b> antes e conecte cada saída a um bloco de envio.</div>`+
-   (function(){const dprod=o.produtoId||0;const abList=(ref.abordagens||[]).filter(a=>(a.produto_id||0)===dprod);const selAb=o.abordagemIds||[];
-    return `<div class="ne-lb" style="margin-top:0">Produto das abordagens</div>`+
-     `<select class="ne-sel" data-sapprod><option value="0" ${dprod===0?'selected':''}>— Modelos gerais (sem produto) —</option>${(ref.produtos||[]).map(p=>`<option value="${p.id}" ${p.id===dprod?'selected':''}>${esc(p.nome)}</option>`).join('')}</select>`+
-     `<div style="font-size:11px;color:var(--ink-faint);margin:6px 0 3px">Selecione exatamente uma abordagem:</div>`+
-     (abList.length?abList.map(a=>`<label style="display:flex;align-items:center;gap:7px;font-size:12px;padding:3px 0;cursor:pointer"><input type="radio" name="send-approach-${esc(n.id)}" data-sapab="${a.id}" ${selAb.indexOf(a.id)>=0?'checked':''} style="width:15px;height:15px;flex:0 0 auto">${esc(a.nome)} <span style="color:var(--ink-faint);font-size:10.5px">(${(a.mensagens||[]).length})</span></label>`).join(''):`<div style="font-size:11px;color:var(--ink-faint)">Sem abordagens aqui. Crie em <b>Abordagens (produtos)</b>.</div>`)+
-     `<div style="font-size:10.5px;color:var(--ink-faint);margin-top:7px;line-height:1.45">Variáveis disponíveis no modelo: <b>{primeiro_nome}</b>, <b>{nome}</b>, <b>{corretor_primeiro_nome}</b>, <b>{corretor}</b> e <b>{produto}</b>.</div>`;
+  return `<div style="font-size:11.5px;color:var(--ink-soft);padding:2px 0 6px;line-height:1.45">Envia a abordagem pela instância do corretor <b>dono do lead</b>. Este bloco não distribui nem troca o corretor.</div>`+
+   (function(){const all=(ref.abordagens||[]).filter(a=>a.ativo!==false);const groups=[...new Set(all.map(a=>String(a.grupo||'').trim()))].sort((a,b)=>a.localeCompare(b,'pt-BR'));const chosen=String(o.abordagemGrupo||'').trim();const abList=all.filter(a=>String(a.grupo||'').trim()===chosen).sort((a,b)=>(+a.ordem||0)-(+b.ordem||0)||(+a.id||0)-(+b.id||0));const selAb=Array.isArray(o.abordagemIds)?o.abordagemIds.map(Number):[];const count=selAb.length;
+    return `<div class="ne-lb" style="margin-top:0">1. Grupo de abordagens</div>`+
+     `<select class="ne-sel" data-sapgroup><option value="" ${chosen===''?'selected':''}>— Sem grupo —</option>${groups.filter(g=>g!=='').map(g=>`<option value="${esc(g)}" ${g===chosen?'selected':''}>${esc(g)}</option>`).join('')}</select>`+
+     `<div class="ne-lb">2. Abordagens que participam</div>`+
+     (abList.length?abList.map(a=>`<label style="display:flex;align-items:center;gap:7px;font-size:12px;padding:3px 0;cursor:pointer"><input type="checkbox" data-sapab="${a.id}" ${selAb.indexOf(+a.id)>=0?'checked':''} style="width:15px;height:15px;flex:0 0 auto">${esc(a.nome)} <span style="color:var(--ink-faint);font-size:10.5px">(${(a.mensagens||[]).length} partes)</span></label>`).join(''):`<div style="font-size:11px;color:var(--ink-faint)">Este grupo não tem abordagens ativas.</div>`)+
+     `<div style="font-size:10.5px;color:${count?'var(--ink-faint)':'#dc2626'};margin-top:7px;line-height:1.45">${count===0?'Selecione pelo menos uma abordagem.':count===1?'Uma selecionada: este modelo será usado em todos os leads.':count+' selecionadas: alternância igual, na ordem do grupo, sem repetir em retry.'}</div>`+
+     `<div style="font-size:10.5px;color:var(--ink-faint);margin-top:7px;line-height:1.45">Variáveis: <b>{primeiro_nome}</b>, <b>{nome}</b>, <b>{corretor_primeiro_nome}</b>, <b>{corretor}</b> e <b>{produto}</b>.</div>`;
    })()+
    portRow('out','Somente quando enviar','ok')+portRow('err','Bloqueado ou falhou','err');
  }
@@ -558,8 +559,8 @@ function bindBody(n,el){
    if(cb.checked){if(ix<0)d.protecao.push(k);}else if(ix>=0)d.protecao.splice(ix,1);setDirty();});
   const rp2=q('[data-dsreport]');if(rp2)rp2.onclick=e=>{e.stopPropagation();void relatorioDistribuicao(n);};}
  if(n.type==='send-approach'){const o=n.opts=n.opts||{};
-  const sp=q('[data-sapprod]');if(sp)sp.onchange=()=>{o.produtoId=+sp.value||0;o.abordagemIds=[];setDirty();reNode(n);};
-  qa('[data-sapab]').forEach(cb=>cb.onchange=()=>{const id=+cb.dataset.sapab;o.abordagemIds=cb.checked?[id]:[];setDirty();reNode(n);});}
+  const sg=q('[data-sapgroup]');if(sg)sg.onchange=()=>{o.abordagemGrupo=sg.value;o.abordagemIds=[];o.selectionMode='round-robin';setDirty();reNode(n);};
+  qa('[data-sapab]').forEach(cb=>cb.onchange=()=>{const id=+cb.dataset.sapab;o.abordagemIds=Array.isArray(o.abordagemIds)?o.abordagemIds.map(Number):[];const ix=o.abordagemIds.indexOf(id);if(cb.checked&&ix<0)o.abordagemIds.push(id);else if(!cb.checked&&ix>=0)o.abordagemIds.splice(ix,1);o.selectionMode='round-robin';setDirty();reNode(n);});}
  if(n.type==='resposta'){const o=n.opts=n.opts||{};
   const rv=q('[data-rvalor]');if(rv)rv.onchange=()=>{o.janelaValor=Math.max(1,+rv.value||1);setDirty();};
   const ru=q('[data-runidade]');if(ru)ru.onchange=()=>{o.janelaUnidade=ru.value;setDirty();};}
@@ -649,7 +650,7 @@ function addNode(type,x,y){const id='b'+(cur.uid++);const base={id,type,sub:'',x
  if(type==='randomizer')base.ramos=[{id:'r'+(cur.uid++),name:'A',perc:50},{id:'r'+(cur.uid++),name:'B',perc:50}];
  if(type==='distribution')base.opts={distribuicao:{items:(ref.corretores||[]).filter(c=>c.ativo!==false).map(c=>({corretor:c.nome,peso:(c.peso||1),on:true})),onlineOnly:true,tambemNegocio:false}};
  if(type==='distribution-simple')base.opts={distribuicao:{items:(ref.corretores||[]).filter(c=>c.ativo!==false).map(c=>({corretor:c.nome,peso:1,on:true})),onlineOnly:true,tambemNegocio:true}};
- if(type==='send-approach')base.opts={produtoId:0,abordagemIds:[]};
+ if(type==='send-approach')base.opts={produtoId:0,abordagemGrupo:'',abordagemIds:[],selectionMode:'round-robin'};
  if(type==='resposta')base.opts={janelaValor:12,janelaUnidade:'horas'};
  if(type==='ai-agent')base.opts={agenteId:0,funcao:AI_FUNCOES[0][0]};
  cur.nodes[id]=base;selectedId=id;setDirty();renderNodes();markSel();return id;}
@@ -753,7 +754,7 @@ function computeIssues(){
   if(n.type==='action'){const as=n.opts.actions||[];if(!as.length)add('erro',n.id,'Bloco de ação sem ações.');as.forEach(a=>{const o=a.options||{};if(!PUBLISHABLE_ACTIONS.has(a.name))add('erro',n.id,'Ação não implementada: '+a.name+'.');if(['create-tags-action','add-tag-action','remove-tag-action'].includes(a.name)&&!o.tag)add('erro',n.id,'Ação de tag sem tag.');if(a.name==='set-lead-momento-action'&&!o.momento)add('erro',n.id,'Ação "definir momento" sem momento escolhido.');if(a.name==='apply-ai-analysis-action'&&!hasUpstreamType(n.id,'ai-agent'))add('erro',n.id,'A ação "Aplicar análise da IA" precisa receber a saída de um bloco de IA anterior.');if(a.name==='apply-ai-analysis-action'&&['aplicarMomento','aplicarEtapa','aplicarAcao','aplicarQualidade'].every(k=>o[k]===false))add('erro',n.id,'Escolha ao menos um campo para aplicar da análise da IA.');if(['add-attendant-on-business-action','assign-lead-attendant-action'].includes(a.name)&&!o.corretor)add('erro',n.id,'Ação "atribuir corretor" sem corretor.');if(['create-business-action','move-business-action'].includes(a.name)&&(!o.pipeline||!o.etapa))add('erro',n.id,'Ação de negócio precisa de funil e etapa.');if(a.name==='business-lose-action'&&!o.motivo)add('erro',n.id,'Ação "perder negócio" sem motivo.');if(a.name==='start-another-automation-action'){if(!o.automacao)add('erro',n.id,'Ação "iniciar automação" sem alvo.');else if(o.automacao===cur.nome)add('erro',n.id,'Automação chamando ela mesma.');}});}
   if(n.type==='field-operation'){const fs=n.opts.fieldOperations||[];if(!fs.length)add('erro',n.id,'Operações de campos sem nenhum mapeamento.');fs.forEach(f=>{const o=f.options||{};if(!['set-field-operation','parse-phone-field-operation','store-json-payload-field-operation','sync-meta-attribution-field-operation'].includes(f.name))add('erro',n.id,'Operação de campo não implementada: '+(f.name||'vazia')+'.');if(['set-field-operation','store-json-payload-field-operation'].includes(f.name)&&!o.parameter)add('erro',n.id,'Mapeamento de campo sem destino.');});}
   if(n.type==='time'){if(!PUBLISHABLE_WAITS.has(n.opts.wait_type))add('erro',n.id,'Tipo de espera ainda não implementado.');if(!(+n.opts.valor>0))add('erro',n.id,'Espera precisa ter duração maior que zero.');}
-  if(n.type==='send-approach'&&(n.opts.abordagemIds||[]).length!==1)add('erro',n.id,'Selecione exatamente uma abordagem; este módulo não sorteia modelos.');
+  if(n.type==='send-approach'){const ids=(n.opts.abordagemIds||[]).map(Number);if(!ids.length)add('erro',n.id,'Selecione pelo menos uma abordagem.');if(new Set(ids).size!==ids.length)add('erro',n.id,'A mesma abordagem foi selecionada mais de uma vez.');const group=String(n.opts.abordagemGrupo||'').trim();const allowed=new Set((ref.abordagens||[]).filter(a=>a.ativo!==false&&String(a.grupo||'').trim()===group).map(a=>+a.id));if(ids.some(id=>!allowed.has(id)))add('erro',n.id,'Há uma abordagem fora do grupo escolhido ou inativa.');}
   if(n.type==='resposta'){if(!(+n.opts.janelaValor>0))add('erro',n.id,'Informe uma janela de resposta válida.');if(!hasOut(n.id,'respondeu'))add('erro',n.id,'Conecte a saída "respondeu".');if(!hasOut(n.id,'naoRespondeu'))add('erro',n.id,'Conecte a saída "não respondeu".');}
   if(n.type==='ai-agent'){if(!(+n.opts.agenteId>0))add('erro',n.id,'Selecione o agente de IA que este módulo deve chamar.');if(!AI_FUNCOES.some(x=>x[0]===n.opts.funcao))add('erro',n.id,'Função de IA não implementada: '+(n.opts.funcao||'vazia')+'.');}
   if(n.type==='distribution-simple'&&!((n.opts.distribuicao&&n.opts.distribuicao.items)||[]).some(x=>x.on!==false&&(+x.peso||0)>0))add('erro',n.id,'Distribuição sem corretor ativo e com peso positivo.');

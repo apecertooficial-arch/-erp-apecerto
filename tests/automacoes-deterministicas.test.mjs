@@ -41,6 +41,13 @@ const isolatedSend = readFileSync(
   ),
   'utf8',
 );
+const groupedApproachSend = readFileSync(
+  new URL(
+    '../supabase/migrations/20260822001000_enviar_abordagem_grupo_alternancia.sql',
+    import.meta.url,
+  ),
+  'utf8',
+);
 const atomicFields = readFileSync(
   new URL(
     '../supabase/migrations/20260820205500_central_automacoes_entrada_e_campos_atomicos.sql',
@@ -278,10 +285,10 @@ test('randomizador repete o mesmo ramo no retry da mesma execução', () => {
   assert.match(moduleHardening, /position\('__motor_execution_id' in v_new\)=0/);
 });
 
-test('construtor explica variação de abordagem sem sorteio oculto', () => {
-  assert.doesNotMatch(builder, /o sistema alterna entre elas/i);
-  assert.match(builder, /Para alternar modelos, use um <b>Randomizador<\/b>/);
-  assert.match(builder, /type="radio" name="send-approach-/);
+test('construtor torna a alternância uma responsabilidade explícita do envio', () => {
+  assert.match(builder, /alternância igual, na ordem do grupo, sem repetir em retry/);
+  assert.doesNotMatch(builder, /Para alternar modelos, use um <b>Randomizador<\/b>/);
+  assert.match(builder, /type="checkbox" data-sapab=/);
   assert.match(builder, /\{primeiro_nome\}.*\{corretor_primeiro_nome\}/s);
 });
 
@@ -373,13 +380,17 @@ test('Sara valida evidência por ID real da mensagem do cliente', () => {
   assert.match(saraConversationCutoff, /coalesce\(wm\.enviado_em,wm\.criado_em\)>=v_lead\.corte_conversa_em/);
 });
 
-test('envio usa um modelo e somente a instância do dono, sem transferência', () => {
-  assert.match(builder, /Selecione exatamente uma abordagem/);
-  assert.match(isolatedSend, /v_count<>1/);
+test('envio alterna abordagens no próprio módulo e usa somente a instância do dono', () => {
+  assert.match(builder, /Selecione pelo menos uma abordagem/);
+  assert.match(builder, /data-sapgroup/);
+  assert.match(builder, /selectionMode='round-robin'/);
+  assert.match(groupedApproachSend, /private\.motor_escolher_abordagem/);
+  assert.match(groupedApproachSend, /posicao%v_quantidade/);
+  assert.match(groupedApproachSend, /primary key\(execution_id,automacao_id,bloco_id\)/);
   assert.match(isolatedSend, /i\.corretor_id=p_corretor_id/);
   assert.match(isolatedSend, /nenhum failover foi feito/);
-  assert.doesNotMatch(isolatedSend, /update leads set corretor_id/);
-  assert.doesNotMatch(isolatedSend, /motor_roleta_transferir_contagem/);
+  assert.doesNotMatch(groupedApproachSend, /update (public\.)?leads set corretor_id/);
+  assert.doesNotMatch(groupedApproachSend, /motor_roleta_transferir_contagem/);
   assert.match(isolatedSend, /motor_mensagem_partes/);
   assert.match(isolatedSend, /AUTOMATION_RETRY: MESSAGE_SEND_FAILED/);
 });
@@ -484,14 +495,14 @@ test('validador do banco repete os contratos críticos da interface', () => {
   assert.match(moduleHardening, /revoke all on function public\.motor_cond/);
 });
 
-test('Miruna escolhe, registra e envia uma unica abordagem por ramo', () => {
-  assert.match(campaignApproaches, /'Miruna 603 \| 01','perc',34/);
-  assert.match(campaignApproaches, /'Miruna 603 \| 02','perc',33/);
-  assert.match(campaignApproaches, /'Miruna 603 \| 03','perc',33/);
-  assert.match(campaignApproaches, /additional-field\[abordagem_nome\]/);
-  assert.match(campaignApproaches, /'type','send-approach'/);
-  assert.match(campaignApproaches, /'abordagemIds',jsonb_build_array\(v_a1\)/);
-  assert.match(campaignApproaches, /ABORDAGEM_AUTOMATICA_DEVE_ESTAR_DESLIGADA/);
+test('Miruna publica um único bloco com o grupo e alternância igual', () => {
+  assert.match(groupedApproachSend, /grupo='Miruna 603'/);
+  assert.match(groupedApproachSend, /'type','send-approach'/);
+  assert.match(groupedApproachSend, /'abordagemGrupo','Miruna 603'/);
+  assert.match(groupedApproachSend, /'abordagemIds',v_abordagem_ids/);
+  assert.match(groupedApproachSend, /'selectionMode','round-robin'/);
+  assert.match(groupedApproachSend, /- 'b19' - 'b20' - 'b22' - 'b23' - 'b25' - 'b26'/);
+  assert.match(groupedApproachSend, /ABORDAGEM_AUTOMATICA_DEVE_ESTAR_DESLIGADA/);
   assert.match(campaignApproaches, /Entrada Adelmo[\s\S]*onlineOnly\}','true'/);
 });
 
