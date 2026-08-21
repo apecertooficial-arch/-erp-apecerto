@@ -31,9 +31,11 @@ test("sem histórico preserva classificação; ausência de resposta usa cadênc
   assert.match(edge, /!entradas\.length && saidas\.length/);
 });
 
-test("evidência da IA precisa existir literalmente na fala do cliente", () => {
-  assert.match(edge, /falasCliente/);
-  assert.match(edge, /fala\.includes\(e\.toLowerCase\(\)\)/);
+test("evidência da IA precisa apontar uma mensagem real do cliente", () => {
+  assert.match(edge, /evidencia_ids/);
+  assert.match(edge, /entradasPorId/);
+  assert.match(edge, /normalizarEvidencia/);
+  assert.match(edge, /Nunca use ID de CORRETOR/);
   assert.match(migration, /p_origem='ia'.*p_momento_codigo<>'CADENCIA_SEM_RESPOSTA'/s);
   assert.match(migration, /jsonb_array_length/);
 });

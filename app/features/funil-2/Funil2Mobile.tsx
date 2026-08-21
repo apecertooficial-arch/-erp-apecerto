@@ -154,6 +154,7 @@ function CartaoLead({
     <div className="ape-etiquetas">
       <span className="ape-etapa">{nomeEtapa(lead.etapa)}</span>
       <span className="ape-momento">{momento?.rotulo ?? lead.momento_codigo}</span>
+      {lead.qualidade_atendimento_nota != null ? <span className="ape-momento">Atendimento {Number(lead.qualidade_atendimento_nota).toFixed(1)}/10</span> : null}
     </div>
 
     {momento?.descricao ? <div className="ape-contexto">

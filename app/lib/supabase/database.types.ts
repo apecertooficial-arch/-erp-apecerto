@@ -3356,6 +3356,9 @@ export type Database = {
           nome: string
           origem_negocio_id: number
           proxima_acao_em: string
+          qualidade_atendimento_em: string | null
+          qualidade_atendimento_nota: number | null
+          qualidade_atendimento_resumo: string | null
           telefone: string | null
           ultima_acao_confirmada_em: string | null
           ultima_acao_fonte: string | null
@@ -3386,6 +3389,9 @@ export type Database = {
           nome: string
           origem_negocio_id: number
           proxima_acao_em: string
+          qualidade_atendimento_em?: string | null
+          qualidade_atendimento_nota?: number | null
+          qualidade_atendimento_resumo?: string | null
           telefone?: string | null
           ultima_acao_confirmada_em?: string | null
           ultima_acao_fonte?: string | null
@@ -3416,6 +3422,9 @@ export type Database = {
           nome?: string
           origem_negocio_id?: number
           proxima_acao_em?: string
+          qualidade_atendimento_em?: string | null
+          qualidade_atendimento_nota?: number | null
+          qualidade_atendimento_resumo?: string | null
           telefone?: string | null
           ultima_acao_confirmada_em?: string | null
           ultima_acao_fonte?: string | null
@@ -3707,10 +3716,13 @@ export type Database = {
       f2_sara_analise: {
         Row: {
           acao_sugerida: string | null
+          acao_rotulo_sugerida: string | null
+          aplicada_em: string | null
           analisado_em: string
           confianca: number | null
           context_hash: string
           evidencias: Json
+          etapa_sugerida: string | null
           funil_lead_id: string
           id: number
           mensagens_consideradas: number
@@ -3718,16 +3730,22 @@ export type Database = {
           momento_sugerido: string | null
           origem: string
           origem_negocio_id: number
+          prazo_sugerido: string | null
+          qualidade_nota: number | null
+          qualidade_resumo: string | null
           resumo: string
           status: string
           versao_base: number
         }
         Insert: {
           acao_sugerida?: string | null
+          acao_rotulo_sugerida?: string | null
+          aplicada_em?: string | null
           analisado_em?: string
           confianca?: number | null
           context_hash: string
           evidencias?: Json
+          etapa_sugerida?: string | null
           funil_lead_id: string
           id?: number
           mensagens_consideradas?: number
@@ -3735,16 +3753,22 @@ export type Database = {
           momento_sugerido?: string | null
           origem: string
           origem_negocio_id: number
+          prazo_sugerido?: string | null
+          qualidade_nota?: number | null
+          qualidade_resumo?: string | null
           resumo: string
           status: string
           versao_base: number
         }
         Update: {
           acao_sugerida?: string | null
+          acao_rotulo_sugerida?: string | null
+          aplicada_em?: string | null
           analisado_em?: string
           confianca?: number | null
           context_hash?: string
           evidencias?: Json
+          etapa_sugerida?: string | null
           funil_lead_id?: string
           id?: number
           mensagens_consideradas?: number
@@ -3752,6 +3776,9 @@ export type Database = {
           momento_sugerido?: string | null
           origem?: string
           origem_negocio_id?: number
+          prazo_sugerido?: string | null
+          qualidade_nota?: number | null
+          qualidade_resumo?: string | null
           resumo?: string
           status?: string
           versao_base?: number
@@ -13635,6 +13662,11 @@ export type Database = {
         | { Args: { p_ip?: string; p_no_escritorio?: boolean }; Returns: Json }
       presenca_derrubar: { Args: never; Returns: Json }
       presenca_derrubar_expirados: { Args: never; Returns: number }
+      presenca_ip_confere: { Args: { p_ip: string }; Returns: boolean }
+      presenca_registrar_segura: {
+        Args: { p_ip?: string; p_no_escritorio: boolean; p_sub: string }
+        Returns: Json
+      }
       presenca_registrar_dia: { Args: never; Returns: undefined }
       presenca_status: { Args: never; Returns: Json }
       processar_agendadas: { Args: never; Returns: number }
