@@ -90,6 +90,13 @@ const moduleBackfill = readFileSync(
   ),
   'utf8',
 );
+const saraExactCard = readFileSync(
+  new URL(
+    '../supabase/migrations/20260821132000_sara_card_exato_e_prioridade.sql',
+    import.meta.url,
+  ),
+  'utf8',
+);
 const entrada = readFileSync(
   new URL('../supabase/functions/entrada/index.ts', import.meta.url),
   'utf8',
@@ -294,6 +301,24 @@ test('toda mudança da conversa acorda a Sara sem criar um efeito oculto', () =>
   assert.match(saraRealtime, /where id=57/);
   assert.match(saraRealtime, /where id=60/);
   assert.doesNotMatch(saraRealtime, /insert into public\.wa_mensagens/);
+});
+
+test('sensor entrega o card exato e mensagens têm prioridade sobre a varredura', () => {
+  assert.match(saraExactCard, /'__funil_lead_id',r\.card/);
+  assert.match(saraExactCard, /'__funil_lead_id',r\.id/);
+  assert.match(saraExactCard, /v_card_contexto:=nullif\(p_lead->>'__funil_lead_id'/);
+  assert.match(saraExactCard, /where f\.id=v_card_contexto and f\.descartado_em is null/);
+  assert.match(saraExactCard, /'__motor_priority',0/);
+  assert.match(saraExactCard, /'__motor_priority',20/);
+  assert.match(saraExactCard, /order by[\s\S]*__motor_priority/);
+});
+
+test('Sara valida evidência por ID real da mensagem do cliente', () => {
+  assert.match(sara, /evidencia_ids/);
+  assert.match(sara, /entradasPorId/);
+  assert.match(sara, /normalizarEvidencia/);
+  assert.match(sara, /contrato:"evidencia-id-v2"/);
+  assert.match(sara, /Nunca use ID de CORRETOR/);
 });
 
 test('envio usa um modelo e somente a instância do dono, sem transferência', () => {

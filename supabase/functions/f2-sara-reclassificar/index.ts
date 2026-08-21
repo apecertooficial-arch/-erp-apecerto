@@ -45,6 +45,11 @@ function texto(v: unknown, max: number) {
   return typeof v === "string" && v.trim() ? v.trim().slice(0, max) : null;
 }
 
+function normalizarEvidencia(v: unknown) {
+  return String(v ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase().replace(/[^a-z0-9]+/g, " ").trim().replace(/\s+/g, " ");
+}
+
 function direcaoCliente(v: unknown) {
   return ["recebida", "entrada", "in", "inbound", "received"].includes(String(v ?? "").toLowerCase());
 }
@@ -60,7 +65,7 @@ function prompt(c: Candidato, catalogo: Catalogo[], mensagens: any[]) {
     const papel = direcaoCliente(m.direcao) ? "CLIENTE" : "CORRETOR";
     const data = String(m.enviado_em ?? m.criado_em ?? "").slice(0, 16).replace("T", " ");
     const conteudo = texto(m.transcricao, 500) ?? texto(m.conteudo, 500) ?? `(${m.tipo ?? "mensagem"} sem texto)`;
-    return `[${papel} ${data}] ${conteudo}`;
+    return `[${papel} id=${String(m.id)} ${data}] ${conteudo}`;
   }).join("\n");
   return `Você é a Sara, supervisora de atendimento imobiliário. Classifique a conversa no catálogo FECHADO do Funil 2.0.
 OBJETIVO: nenhum lead fica parado; etapa organiza, momento explica, ação e prazo movem o trabalho.
@@ -72,7 +77,7 @@ REGRAS OBRIGATÓRIAS:
 - Se há intenção de visita sem data fechada: TENTANDO_AGENDAMENTO.
 - Pós-visita, cancelamento e remarcação usam somente momentos de pós-visita do catálogo.
 - RETORNO_PROGRAMADO só quando há data/prazo combinado; sem data explícita, o CRM usará 5 dias.
-- Evidências são trechos literais ditos PELO CLIENTE, nunca do corretor.
+- Evidências são mensagens do CLIENTE. Em evidencia_ids, devolva somente IDs exibidos em linhas CLIENTE e que sustentem a classificação. Nunca use ID de CORRETOR.
 - Não invente informação e não crie momento/ação livre. Você não envia mensagem.
 CATÁLOGO OFICIAL:
 ${regras}
@@ -80,7 +85,7 @@ ESTADO ATUAL: etapa=${c.etapa}; momento=${c.momento_codigo}; cadência_passo=${c
 CONVERSA D-API EM ORDEM CRONOLÓGICA (recorte mais recente, até ${MAX_MENSAGENS} mensagens):
 ${conversa}
 Também avalie a qualidade do atendimento do CORRETOR de 0 a 10. A nota mede clareza, agilidade, condução para o próximo passo e aderência ao que o cliente pediu. Sem mensagens do corretor, use nota null. Não desconte pontos por fatos que não aparecem na conversa.
-Responda SOMENTE JSON válido: {"momento_codigo":"CÓDIGO_DO_CATÁLOGO","resumo":"diagnóstico objetivo em até 2 frases","proxima_acao_especifica":"orientação concreta para o corretor","confianca":0.0,"evidencias":["trecho literal do cliente"],"prazo_sugerido":null,"qualidade_nota":0.0,"qualidade_resumo":"justificativa objetiva da nota"}.`;
+Responda SOMENTE JSON válido: {"momento_codigo":"CÓDIGO_DO_CATÁLOGO","resumo":"diagnóstico objetivo em até 2 frases","proxima_acao_especifica":"orientação concreta para o corretor","confianca":0.0,"evidencia_ids":["ID_DA_MENSAGEM_DO_CLIENTE"],"evidencias":["trecho literal do cliente"],"prazo_sugerido":null,"qualidade_nota":0.0,"qualidade_resumo":"justificativa objetiva da nota"}.`;
 }
 
 async function carregarMensagens(db: any, c: Candidato) {
@@ -115,6 +120,7 @@ async function carregarMensagens(db: any, c: Candidato) {
 async function processar(db: any, c: Candidato, catalogo: Catalogo[], agenteSlug: string) {
   const mensagens = await carregarMensagens(db, c);
   const hash = await sha256(JSON.stringify({ lead: c.funil_lead_id, versao: c.versao,
+    contrato:"evidencia-id-v2",
     agente: agenteSlug,
     mensagens: mensagens.map((m: any) => [m.id,m.enviado_em ?? m.criado_em]),
     catalogo: catalogo.map((m) => [m.codigo,m.etapa,m.acao_codigo,m.prazo_minutos]) }));
@@ -159,12 +165,21 @@ async function processar(db: any, c: Candidato, catalogo: Catalogo[], agenteSlug
   const resumoBase = texto(parsed.resumo,550);
   const proxima = texto(parsed.proxima_acao_especifica,220);
   if (!momento || !resumoBase || !Number.isFinite(confianca) || confianca<0 || confianca>1) throw new Error("ia_contrato_invalido");
-  const falasCliente = entradas.map((m: any) => String(m.transcricao ?? m.conteudo ?? "").toLowerCase());
-  const evidencias = (Array.isArray(parsed.evidencias) ? parsed.evidencias : [])
+  const entradasPorId = new Map(entradas.map((m: any) => [String(m.id), m]));
+  const evidenciasPorId = (Array.isArray(parsed.evidencia_ids) ? parsed.evidencia_ids : [])
+    .map((id: unknown) => entradasPorId.get(String(id)))
+    .filter(Boolean)
+    .map((m: any) => texto(m.transcricao, 300) ?? texto(m.conteudo, 300))
+    .filter((e: string | null): e is string => Boolean(e));
+  const falasCliente = entradas.map((m: any) => normalizarEvidencia(m.transcricao ?? m.conteudo ?? ""));
+  const evidenciasTexto = (Array.isArray(parsed.evidencias) ? parsed.evidencias : [])
     .filter((e: unknown) => typeof e==="string" && e.trim().length>=4)
     .map((e: string) => e.trim().slice(0,300))
-    .filter((e: string) => falasCliente.some((fala: string) => fala.includes(e.toLowerCase())))
-    .slice(0,5);
+    .filter((e: string) => {
+      const normalizada = normalizarEvidencia(e);
+      return normalizada.length >= 4 && falasCliente.some((fala: string) => fala.includes(normalizada));
+    });
+  const evidencias = [...new Set([...evidenciasPorId, ...evidenciasTexto])].slice(0,5);
   const prazo = typeof parsed.prazo_sugerido==="string" && !Number.isNaN(Date.parse(parsed.prazo_sugerido))
     ? new Date(parsed.prazo_sugerido).toISOString() : null;
   const notaRaw = parsed.qualidade_nota;
