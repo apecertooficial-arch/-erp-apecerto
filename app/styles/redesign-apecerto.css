@@ -367,3 +367,59 @@ body .f2-indicadores button span { font-size:12px; font-weight:600; }
 .f2-conversa-composer textarea:focus { outline:0; border-color:#FF7000; background:#fff; box-shadow:0 0 0 3px rgba(255,112,0,.16); }
 .f2-conversa-composer button { border:0; border-radius:999px; padding:12px 20px; background:#FF7000; color:#fff; font-weight:700; font-size:13px; cursor:pointer; box-shadow:0 12px 28px rgba(255,112,0,.28); }
 .f2-conversa-composer button:hover { background:#E66200; }
+
+/* Configurações do Funil 2.0: listas compactas e edição apenas em modal. */
+.f2-config-pagina { padding-top:18px; }
+.f2-config-pagina>.f2-pagina-cab { margin-bottom:10px; padding:13px 16px; }
+.f2-config-pagina>.f2-pagina-cab h2 { font-size:18px; }
+.f2-sara-status-compacto { min-height:64px; margin-bottom:10px; padding:11px 14px; }
+.f2-sara-status-compacto h3 { margin:2px 0; font-size:13px; }
+.f2-sara-status-compacto details { font-size:9px; color:var(--f2-muted); }
+.f2-sara-status-compacto summary { width:max-content; cursor:pointer; color:#7524A5; font-weight:800; }
+.f2-sara-status-compacto details p { max-width:760px; margin-top:7px; }
+.f2-sara-status-compacto>strong { padding:7px 10px; font-size:9px; }
+.f2-config-pagina .f2-config-grid { grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr); gap:10px; }
+.f2-config-pagina .f2-config-bloco { min-width:0; padding:13px; border-radius:14px; }
+.f2-config-pagina .f2-config-titulo { min-height:38px; }
+.f2-config-pagina .f2-config-titulo h3 { margin:2px 0; font-size:13px; }
+.f2-config-pagina .f2-config-titulo small { display:block; color:var(--f2-muted); font-size:8px; }
+.f2-config-pagina .f2-config-titulo select { max-width:170px; margin-top:3px; border:0; background:transparent; color:#7A6F68; font-size:8px; font-weight:700; }
+.f2-config-pagina .f2-config-titulo>button { padding:7px 10px; border-radius:8px; font-size:10px; }
+.f2-config-pagina .f2-config-lista { max-height:390px; margin:9px 0 0; gap:4px; }
+.f2-config-pagina .f2-config-lista article { grid-template-columns:24px minmax(0,1fr) auto auto; gap:5px; padding:7px 8px; border-radius:9px; }
+.f2-config-pagina .f2-config-lista article>b { width:20px; height:20px; font-size:9px; }
+.f2-config-pagina .f2-config-lista article>span { min-width:0; }
+.f2-config-pagina .f2-config-lista strong { font-size:9px; }
+.f2-config-pagina .f2-config-lista small { overflow:hidden; font-size:7px; text-overflow:ellipsis; white-space:nowrap; }
+.f2-config-pagina .f2-config-lista button { padding:5px; font-size:7px; cursor:pointer; }
+.f2-config-pagina .f2-config-lista button:disabled { cursor:not-allowed; opacity:.4; }
+.f2-config-pagina details.f2-config-operacao { margin-top:10px; padding:0 14px; }
+.f2-config-operacao>summary { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px 0; cursor:pointer; list-style:none; }
+.f2-config-operacao>summary::-webkit-details-marker { display:none; }
+.f2-config-operacao>summary>span { display:flex; flex-direction:column; gap:2px; }
+.f2-config-operacao>summary b { font-size:12px; }
+.f2-config-operacao>summary em { color:#FF7000; font-size:9px; font-style:normal; font-weight:800; }
+.f2-config-operacao[open]>summary em { font-size:0; }
+.f2-config-operacao[open]>summary em:after { content:"Fechar"; font-size:9px; }
+.f2-config-operacao .f2-config-operacao-intro { padding-top:8px; border-top:1px solid var(--f2-line); }
+.f2-config-operacao .f2-config-operacao-intro p { margin:0; color:var(--f2-muted); font-size:9px; }
+.f2-config-operacao[open] form { margin-bottom:14px; }
+.f2-config-modal-form { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.f2-config-modal-form label { display:flex; flex-direction:column; gap:5px; color:#554D47; font-size:9px; font-weight:800; }
+.f2-config-modal-form label.largo,.f2-config-modal-form>button { grid-column:1/-1; }
+.f2-config-modal-form input,.f2-config-modal-form select { width:100%; min-width:0; padding:10px; border:1px solid var(--f2-line); border-radius:9px; background:#fff; color:var(--f2-ink); }
+.f2-config-modal-form .f2-check { flex-direction:row; align-items:center; align-self:end; min-height:37px; }
+.f2-config-modal-form .f2-check input { width:auto; }
+.f2-config-modal-form>button { border:0; border-radius:10px; background:#FF7000; color:#fff; padding:11px; font-weight:800; cursor:pointer; }
+.f2-config-modal-form>button:disabled { opacity:.5; }
+@media(max-width:900px) {
+  .f2-config-pagina .f2-config-grid { grid-template-columns:1fr; }
+  .f2-config-pagina .f2-config-lista { max-height:320px; }
+}
+@media(max-width:700px) {
+  .f2-config-modal-form { grid-template-columns:1fr; }
+  .f2-config-modal-form>* { grid-column:1!important; }
+  .f2-sara-status-compacto { align-items:flex-start; }
+  .f2-config-pagina .f2-config-lista article { grid-template-columns:24px minmax(0,1fr) auto; }
+  .f2-config-pagina .f2-config-lista article button:last-child { grid-column:2/-1; justify-self:end; }
+}

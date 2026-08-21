@@ -256,7 +256,7 @@ export async function POST(request: Request) {
     args = {
       p_codigo: String(body.codigo ?? "").slice(0, 50), p_etapa: String(body.etapa ?? "").slice(0, 40),
       p_rotulo: String(body.rotulo ?? "").slice(0, 80), p_descricao: String(body.descricao ?? "").slice(0, 300),
-      p_acao_rotulo: String(body.acaoRotulo ?? "").slice(0, 120), p_prazo_minutos: Number(body.prazoMinutos),
+      p_acao_rotulo: String(body.acaoRotulo ?? "").slice(0, 120), p_prazo_minutos: body.prazoMinutos == null ? null : Number(body.prazoMinutos),
       p_ordem: Number(body.ordem), p_exige_dapi: body.exigeDapi === true, p_ativo: body.ativo !== false,
     };
   } else if (action === "salvarVisita") {
@@ -320,14 +320,23 @@ export async function POST(request: Request) {
   const { data, error } = await auth.db.rpc(rpc, args);
   if (error) return Response.json({ error: error.message }, { status: 502 });
   const resultado = (data ?? {}) as { ok?: boolean; erro?: string };
-  if (resultado.ok === false) return Response.json({ error: resultado.erro || "Ação não permitida." }, { status: 409 });
+  if (resultado.ok === false) {
+    const chave = String(resultado.erro ?? "");
+    return Response.json({ error: RECUSAS[chave] || resultado.erro || "Ação não permitida.", erro: chave }, { status: 409 });
+  }
   return Response.json({ ok: true, resultado });
 }
 
 /* Mensagem em portugues para cada recusa da RPC. Sem isto o corretor ve
    "motivo_invalido" na tela e nao sabe o que fazer. */
 const RECUSAS: Record<string, string> = {
-  sem_permissao: "Este lead não é seu.",
+  sem_permissao: "Você não tem permissão para concluir esta ação.",
+  dados_invalidos: "Revise os campos obrigatórios, o prazo e a posição informada.",
+  ordem_em_uso: "Essa posição está ocupada e não pôde ser reorganizada. Recarregue e tente novamente.",
+  etapa_em_uso: "Esta etapa possui leads ou momentos ativos. Edite-a ou mova os itens antes de desativar.",
+  momento_em_uso: "Este momento está associado a leads. Edite-o ou reclassifique os leads antes de desativar.",
+  limite_etapas: "Não há uma posição livre para criar outra etapa.",
+  limite_momentos: "Não há uma posição livre para criar outro momento nesta etapa.",
   lead_nao_encontrado: "Lead não encontrado.",
   versao_desatualizada: "Alguém mexeu neste lead agora. Recarregue e tente de novo.",
   ja_descartado: "Este lead já foi descartado.",

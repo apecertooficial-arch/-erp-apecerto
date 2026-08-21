@@ -4,12 +4,12 @@
    deixar mentir. */
 export const ETAPAS_FUNIL2 = [
   { codigo: "novo", rotulo: "Lead novo", ajuda: "Chegou agora; primeira abordagem em até 5 minutos." },
-  { codigo: "pescado", rotulo: "Pescado", ajuda: "Puxado do Aquário; sem prazo e fora do Meu Dia. Uma chamada: se responder, sai sozinho; se não, o corretor atualiza." },
   { codigo: "tentando_contato", rotulo: "Tentando contato", ajuda: "Nunca respondeu; seis tentativas em dias úteis, a última é a despedida." },
   { codigo: "em_atendimento", rotulo: "Em atendimento", ajuda: "Respondeu; qualificar e provocar a visita." },
   { codigo: "visita", rotulo: "Visita", ajuda: "Agendada, realizada ou cancelada." },
   { codigo: "atualizar_manual", rotulo: "Atualizar manualmente", ajuda: "Sem conversa para a Sara ler; o corretor classifica com o que sabe." },
   { codigo: "legado", rotulo: "Leads legado", ajuda: "Carteira anterior preservada, sem prazo e fora do Meu Dia." },
+  { codigo: "pescado", rotulo: "Pescado", ajuda: "Puxado do Aquário; sem prazo e fora do Meu Dia. Uma chamada: se responder, sai sozinho; se não, o corretor atualiza." },
 ] as const;
 
 export type EtapaFunil2 = string;

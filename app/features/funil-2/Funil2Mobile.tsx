@@ -59,13 +59,13 @@ const MOTIVOS_DESCARTE = [
 
 const ETAPAS_FALLBACK = [
   ["novo", "Novos"],
-  ["pescado", "Pescado"],
   ["tentando_contato", "Tentando contato"],
   ["em_atendimento", "Em atendimento"],
   ["visita", "Visita"],
   ["pos_visita", "Pós-visita"],
   ["atualizar_manual", "Atualizar manualmente"],
   ["legado", "Leads legado"],
+  ["pescado", "Pescado"],
 ] as const;
 
 /* Icones em traço de 2px e ponta arredondada, como manda a identidade. */
