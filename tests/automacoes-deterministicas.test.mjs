@@ -111,6 +111,13 @@ const saraConversationCutoff = readFileSync(
   ),
   'utf8',
 );
+const autonomyFinal = readFileSync(
+  new URL(
+    '../supabase/migrations/20260821165928_central_automacoes_autonomia_final.sql',
+    import.meta.url,
+  ),
+  'utf8',
+);
 const entrada = readFileSync(
   new URL('../supabase/functions/entrada/index.ts', import.meta.url),
   'utf8',
@@ -373,6 +380,30 @@ test('entrada entrega JSON aos módulos de campos e tags sem atalho oculto', () 
   assert.match(deterministicEntryFields, /additional-field\[tracking\]/);
   assert.match(builder, /guardar JSON completo/);
   assert.match(builder, /store-json-payload-field-operation/);
+});
+
+test('rastreamento Meta só existe como operação explícita do módulo de campos', () => {
+  assert.match(builder, /registrar rastreamento Meta/);
+  assert.match(builder, /sync-meta-attribution-field-operation/);
+  assert.match(autonomyFinal, /drop trigger if exists trg_motor_fila_meta_attribution/);
+  assert.match(autonomyFinal, /drop function if exists private\.sync_meta_lead_attribution_from_queue/);
+  assert.match(autonomyFinal, /private\.motor_atribuicao_meta_por_campos/);
+  assert.match(autonomyFinal, /v_name='sync-meta-attribution-field-operation'/);
+  assert.match(autonomyFinal, /'json-http-request-trigger','site-lead-created-trigger'/);
+  assert.match(autonomyFinal, /Existe entrada ativa sem o modulo explicito de rastreamento Meta/);
+  assert.match(autonomyFinal, /Rastreamento Meta executado somente pelo bloco de Campos/);
+});
+
+test('runtime rejeita snapshot legado e isola confirmação concorrente de envio', () => {
+  assert.match(autonomyFinal, /AUTOMATION_RUNTIME_CONTRACT_INVALID/);
+  assert.match(autonomyFinal, /v_validacao:=public\.automacao_validar_mapa\(v_mapa\)/);
+  assert.match(autonomyFinal, /send-confirmation-lock/);
+  assert.match(autonomyFinal, /pg_advisory_xact_lock\(hashtext\('module:'/);
+  assert.match(autonomyFinal, /me\.id>_module_log_id/);
+  assert.doesNotMatch(
+    autonomyFinal.match(/do \$patch_send_confirmation\$[\s\S]*?\$patch_send_confirmation\$;/)?.[0] ?? '',
+    /execute\s+public\.motor_rodar|motor_enfileirar/,
+  );
 });
 
 test('uma aba antiga não consegue apagar uma publicação mais nova', () => {
