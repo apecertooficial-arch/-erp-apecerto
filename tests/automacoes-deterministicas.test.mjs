@@ -257,6 +257,13 @@ test('randomizador repete o mesmo ramo no retry da mesma execução', () => {
   assert.match(moduleHardening, /position\('__motor_execution_id' in v_new\)=0/);
 });
 
+test('construtor explica variação de abordagem sem sorteio oculto', () => {
+  assert.doesNotMatch(builder, /o sistema alterna entre elas/i);
+  assert.match(builder, /Para alternar modelos, use um <b>Randomizador<\/b>/);
+  assert.match(builder, /type="radio" name="send-approach-/);
+  assert.match(builder, /\{primeiro_nome\}.*\{corretor_primeiro_nome\}/s);
+});
+
 test('condições inválidas falham sem presumir resultado verdadeiro', () => {
   assert.match(moduleHardening, /lead-has-tag sem tag/);
   assert.match(moduleHardening, /pipeline configurada nao existe/);

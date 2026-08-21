@@ -298,7 +298,7 @@ function bodyHtml(n){
   return `<div style="font-size:11px;color:var(--ink-faint);padding:2px 0">Execute ações no sistema.</div>${as.map((a,i)=>actRow(a,i)).join('')}<button class="ne-add" data-addact>${ico('plus',14)} adicionar ação</button>${portRow('out','Próximo passo','ok')}${portRow('err','Caso ocorrer erro','err')}`;
  }
  if(n.type==='randomizer'){const rs=n.ramos||[];
-  return `${rs.map((r,i)=>ramoRow(r,i)).join('')}<button class="ne-add" data-addramo>${ico('plus',14)} adicionar caminho</button>`;
+  return `<div style="font-size:11px;color:var(--ink-faint);padding:2px 0 7px;line-height:1.45">Escolhe um caminho pelos percentuais publicados. A mesma execução mantém o mesmo caminho em retry. Para variar abordagens, conecte cada saída a um bloco <b>Enviar abordagem</b> com um único modelo.</div>${rs.map((r,i)=>ramoRow(r,i)).join('')}<button class="ne-add" data-addramo>${ico('plus',14)} adicionar caminho</button>`;
  }
  if(n.type==='distribution'){if(!n.opts)n.opts={};const d=n.opts.distribuicao=n.opts.distribuicao||{items:[],onlineOnly:false,tambemNegocio:false};const its=d.items=d.items||[];
   /* Sincroniza com o cadastro: corretor ATIVO que ainda não está na lista (ex.: recém-criado)
@@ -321,9 +321,9 @@ function bodyHtml(n){
    `<label style="display:flex;align-items:center;gap:7px;margin-top:5px;font-size:12px;color:var(--ink);cursor:pointer"><input type="checkbox" data-distneg ${d.tambemNegocio?'checked':''} style="width:15px;height:15px"> Atribuir também no negócio do lead</label>`+
    (function(){const dprod=d.produtoId||0;const abList=(ref.abordagens||[]).filter(a=>(a.produto_id||0)===dprod);const selAb=d.abordagemIds||[];
     return `<div style="height:1px;background:var(--line-soft);margin:11px 0 6px"></div><div class="ne-lb" style="margin-top:0">Abordagem a enviar (opcional)</div>`+
-     `<select class="ne-sel" data-distprod><option value="0" ${dprod===0?'selected':''}>— Modelos gerais (sem produto) —</option>${(ref.produtos||[]).map(p=>`<option value="${p.id}" ${p.id===dprod?'selected':''}>${esc(p.nome)}</option>`).join('')}</select>`+
-     `<div style="font-size:11px;color:var(--ink-faint);margin:6px 0 3px">Marque quais abordagens serão enviadas pelo número do corretor (o sistema alterna entre elas):</div>`+
-     (abList.length?abList.map(a=>`<label style="display:flex;align-items:center;gap:7px;font-size:12px;padding:3px 0;cursor:pointer"><input type="checkbox" data-distab="${a.id}" ${selAb.indexOf(a.id)>=0?'checked':''} style="width:15px;height:15px;flex:0 0 auto">${esc(a.nome)} <span style="color:var(--ink-faint);font-size:10.5px">(${(a.mensagens||[]).length})</span></label>`).join(''):`<div style="font-size:11px;color:var(--ink-faint)">Sem abordagens aqui. Crie em <b>Abordagens (produtos)</b>.</div>`);
+     `<select class="ne-sel" data-distprod disabled><option value="0" ${dprod===0?'selected':''}>— Modelos gerais (sem produto) —</option>${(ref.produtos||[]).map(p=>`<option value="${p.id}" ${p.id===dprod?'selected':''}>${esc(p.nome)}</option>`).join('')}</select>`+
+     `<div style="font-size:11px;color:var(--ink-faint);margin:6px 0 3px">Configuração legada desativada. Distribuição não envia mensagem. Use <b>Randomizador → Enviar abordagem</b>, com um modelo exato em cada saída.</div>`+
+     (abList.length?abList.map(a=>`<label style="display:flex;align-items:center;gap:7px;font-size:12px;padding:3px 0;color:var(--ink-faint)"><input type="checkbox" disabled data-distab="${a.id}" ${selAb.indexOf(a.id)>=0?'checked':''} style="width:15px;height:15px;flex:0 0 auto">${esc(a.nome)} <span style="font-size:10.5px">(${(a.mensagens||[]).length})</span></label>`).join(''):`<div style="font-size:11px;color:var(--ink-faint)">Sem abordagens aqui. Crie em <b>Abordagens (produtos)</b>.</div>`);
    })()+
    (function(){const pr=Array.isArray(d.protecao)?d.protecao:['venda','visita_agendada','visita_realizada'];const opts=[['venda','Venda em processo'],['visita_agendada','Visita agendada'],['visita_realizada','Visita realizada'],['sempre','Sempre manter o dono (nunca redistribui)']];
     return `<div style="height:1px;background:var(--line-soft);margin:11px 0 6px"></div><div class="ne-lb" style="margin-top:0">Proteção do dono do lead</div><div style="font-size:11px;color:var(--ink-faint);margin:2px 0 4px">Lead que JÁ tem corretor só fica com ele se marcar alguma situação abaixo — senão volta pro rodízio:</div>`+opts.map(([k,l])=>`<label style="display:flex;align-items:center;gap:7px;font-size:12px;padding:2px 0;cursor:pointer"><input type="checkbox" data-distprot="${k}" ${pr.indexOf(k)>=0?'checked':''} style="width:15px;height:15px;flex:0 0 auto">${l}</label>`).join('');})()+
@@ -368,12 +368,13 @@ function bodyHtml(n){
    portRow('out','Próximo passo','ok')+portRow('err','Se ninguém disponível','err');
  }
  if(n.type==='send-approach'){const o=n.opts||{};
-  return `<div style="font-size:11.5px;color:var(--ink-soft);padding:2px 0 6px;line-height:1.45">Envia a abordagem <b>pela instância do corretor DONO do lead</b> (definido pela Distribuição). Use depois de um bloco Distribuir, ou em follow-ups.</div>`+
+  return `<div style="font-size:11.5px;color:var(--ink-soft);padding:2px 0 6px;line-height:1.45">Envia <b>um modelo exato</b> pela instância do corretor DONO do lead. Para alternar modelos, use um <b>Randomizador</b> antes e conecte cada saída a um bloco de envio.</div>`+
    (function(){const dprod=o.produtoId||0;const abList=(ref.abordagens||[]).filter(a=>(a.produto_id||0)===dprod);const selAb=o.abordagemIds||[];
     return `<div class="ne-lb" style="margin-top:0">Produto das abordagens</div>`+
      `<select class="ne-sel" data-sapprod><option value="0" ${dprod===0?'selected':''}>— Modelos gerais (sem produto) —</option>${(ref.produtos||[]).map(p=>`<option value="${p.id}" ${p.id===dprod?'selected':''}>${esc(p.nome)}</option>`).join('')}</select>`+
-     `<div style="font-size:11px;color:var(--ink-faint);margin:6px 0 3px">Marque as abordagens (o sistema alterna entre elas):</div>`+
-     (abList.length?abList.map(a=>`<label style="display:flex;align-items:center;gap:7px;font-size:12px;padding:3px 0;cursor:pointer"><input type="checkbox" data-sapab="${a.id}" ${selAb.indexOf(a.id)>=0?'checked':''} style="width:15px;height:15px;flex:0 0 auto">${esc(a.nome)} <span style="color:var(--ink-faint);font-size:10.5px">(${(a.mensagens||[]).length})</span></label>`).join(''):`<div style="font-size:11px;color:var(--ink-faint)">Sem abordagens aqui. Crie em <b>Abordagens (produtos)</b>.</div>`);
+     `<div style="font-size:11px;color:var(--ink-faint);margin:6px 0 3px">Selecione exatamente uma abordagem:</div>`+
+     (abList.length?abList.map(a=>`<label style="display:flex;align-items:center;gap:7px;font-size:12px;padding:3px 0;cursor:pointer"><input type="radio" name="send-approach-${esc(n.id)}" data-sapab="${a.id}" ${selAb.indexOf(a.id)>=0?'checked':''} style="width:15px;height:15px;flex:0 0 auto">${esc(a.nome)} <span style="color:var(--ink-faint);font-size:10.5px">(${(a.mensagens||[]).length})</span></label>`).join(''):`<div style="font-size:11px;color:var(--ink-faint)">Sem abordagens aqui. Crie em <b>Abordagens (produtos)</b>.</div>`)+
+     `<div style="font-size:10.5px;color:var(--ink-faint);margin-top:7px;line-height:1.45">Variáveis disponíveis no modelo: <b>{primeiro_nome}</b>, <b>{nome}</b>, <b>{corretor_primeiro_nome}</b>, <b>{corretor}</b> e <b>{produto}</b>.</div>`;
    })()+
    portRow('out','Somente quando enviar','ok')+portRow('err','Bloqueado ou falhou','err');
  }
