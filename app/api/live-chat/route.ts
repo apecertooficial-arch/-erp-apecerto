@@ -72,6 +72,22 @@ async function canUseInstance(auth: AuthContext, instanceId: number) {
   return !error && Boolean(data);
 }
 
+async function brokerNameForInstance(auth: AuthContext, instanceId: number) {
+  const { data: instance } = await auth.supabase.from("instancias").select("corretor_id").eq("id", instanceId).maybeSingle();
+  if (!instance?.corretor_id) return "";
+  const { data: broker } = await auth.supabase.from("corretores").select("nome").eq("id", instance.corretor_id).maybeSingle();
+  return text(broker?.nome, 120);
+}
+
+function fillApproachVariables(value: unknown, leadFirstName: string, brokerName: string) {
+  const brokerFirstName = brokerName.split(/\s+/)[0] || "";
+  return text(value, 4000)
+    .replaceAll("{primeiro_nome}", leadFirstName)
+    .replaceAll("{corretor_primeiro_nome}", brokerFirstName)
+    .replaceAll("{primeiro_nome_corretor}", brokerFirstName)
+    .replaceAll("{corretor_nome}", brokerName);
+}
+
 async function canMessagePhone(auth: AuthContext, phone: string) {
   const requested = new Set(phoneKeys(phone));
   if (!requested.size) return false;
@@ -225,19 +241,20 @@ export async function POST(request: Request) {
     if (approachError || !approach || !Array.isArray(approach.mensagens)) return Response.json({ error: approachError?.message || "Abordagem não encontrada." }, { status: 404 });
     let cursor = Date.now() + 5_000;
     const firstName = text(body.leadName, 120).split(/\s+/)[0] || "cliente";
+    const brokerName = await brokerNameForInstance(auth, instanceId);
     const rows: Array<TablesInsert<"mensagens_agendadas">> = [];
     for (const rawPart of approach.mensagens) {
       if (!rawPart || typeof rawPart !== "object") continue;
       const part = rawPart as Record<string, unknown>; const name = text(part.name, 60); const options = part.options && typeof part.options === "object" ? part.options as Record<string, unknown> : {};
       if (name === "delay") { cursor += delayMilliseconds(options); continue; }
-      const common = { telefone: phone, instancia_id: instanceId, lead_id: Number.isSafeInteger(leadId) ? leadId : null, quando: new Date(cursor).toISOString(), status: "agendado", criado_por: auth.user.id };
+      const common = { telefone: phone, instancia_id: instanceId, lead_id: Number.isSafeInteger(leadId) ? leadId : null, corretor_nome: brokerName || null, quando: new Date(cursor).toISOString(), status: "agendado", criado_por: auth.user.id };
       if (name === "send-text-message") {
-        const content = text(options.text, 4000).replaceAll("{primeiro_nome}", firstName);
+        const content = fillApproachVariables(options.text, firstName, brokerName);
         if (content) rows.push({ ...common, tipo: "text", texto: content });
       } else if (name.startsWith("send-") && name.endsWith("-message")) {
         const url = text(options.url, 2000); if (!url) continue;
         const kind = name.replace("send-", "").replace("-message", "");
-        rows.push({ ...common, tipo: kind, url, texto: text(options.caption, 4000) || null, file_name: text(options.filename, 200) || null, mimetype: text(options.mimetype, 120) || null });
+        rows.push({ ...common, tipo: kind, url, texto: fillApproachVariables(options.caption, firstName, brokerName) || null, file_name: text(options.filename, 200) || null, mimetype: text(options.mimetype, 120) || null });
       }
       cursor += 1_000;
     }
@@ -253,19 +270,20 @@ export async function POST(request: Request) {
     if (approachError || !approach || !Array.isArray(approach.mensagens)) return Response.json({ error: approachError?.message || "Abordagem não encontrada." }, { status: 404 });
     let cursor = when.getTime();
     const firstName = text(body.leadName, 120).split(/\s+/)[0] || "cliente";
+    const brokerName = await brokerNameForInstance(auth, instanceId);
     const rows: Array<TablesInsert<"mensagens_agendadas">> = [];
     for (const rawPart of approach.mensagens) {
       if (!rawPart || typeof rawPart !== "object") continue;
       const part = rawPart as Record<string, unknown>; const name = text(part.name, 60); const options = part.options && typeof part.options === "object" ? part.options as Record<string, unknown> : {};
       if (name === "delay") { cursor += delayMilliseconds(options); continue; }
-      const common = { telefone: phone, instancia_id: instanceId, lead_id: Number.isSafeInteger(leadId) ? leadId : null, quando: new Date(cursor).toISOString(), status: "agendado", criado_por: auth.user.id };
+      const common = { telefone: phone, instancia_id: instanceId, lead_id: Number.isSafeInteger(leadId) ? leadId : null, corretor_nome: brokerName || null, quando: new Date(cursor).toISOString(), status: "agendado", criado_por: auth.user.id };
       if (name === "send-text-message") {
-        const content = text(options.text, 4000).replaceAll("{primeiro_nome}", firstName);
+        const content = fillApproachVariables(options.text, firstName, brokerName);
         if (content) rows.push({ ...common, tipo: "text", texto: content });
       } else if (name.startsWith("send-") && name.endsWith("-message")) {
         const url = text(options.url, 2000); if (!url) continue;
         const kind = name.replace("send-", "").replace("-message", "");
-        rows.push({ ...common, tipo: kind, url, texto: text(options.caption, 4000) || null, file_name: text(options.filename, 200) || null, mimetype: text(options.mimetype, 120) || null });
+        rows.push({ ...common, tipo: kind, url, texto: fillApproachVariables(options.caption, firstName, brokerName) || null, file_name: text(options.filename, 200) || null, mimetype: text(options.mimetype, 120) || null });
       }
       cursor += 1_000;
     }
