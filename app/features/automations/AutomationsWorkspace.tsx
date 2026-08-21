@@ -9,6 +9,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { ExplicadorAutomacoes } from "./ExplicadorAutomacoes";
+import { CentralOperationsPanel } from "./CentralOperationsPanel";
 import { decorarBlocos, type MapaTitulos } from "./decorarBlocos";
 import "../../styles/automation-builder.css";
 
@@ -210,6 +211,7 @@ export function AutomationsWorkspace({ accessToken }: { accessToken: string }) {
         </button>
         <span className="apn-chip apn-chip-ok">{totalAutomacoes} automações</span>
       </header>
+      <CentralOperationsPanel accessToken={accessToken} />
       {aviso && <div className="apn-aviso-arranjo">{aviso}</div>}
       <div className="original-automation-host" ref={hostRef} />
       <ExplicadorAutomacoes accessToken={accessToken} />
