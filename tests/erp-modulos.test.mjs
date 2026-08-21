@@ -293,6 +293,28 @@ test("Disparos não exibe busca falsa nem chama modelos locais de IA", () => {
   assert.match(disparos, /if \(!response\.ok\)/);
 });
 
+test("Abordagens preserva vídeo e personaliza lead e corretor em todos os envios", () => {
+  const tela = readFileSync(join(raizApp, "features/approaches/ApproachesWorkspace.tsx"), "utf8");
+  const chat = readFileSync(join(raizApp, "api/live-chat/route.ts"), "utf8");
+  assert.match(tela, /addPart\("send-image-message"\)/);
+  assert.match(tela, /addPart\("send-video-message"\)/);
+  assert.doesNotMatch(tela, /addPart\("send-media"\)/);
+  assert.match(tela, /corretor_primeiro_nome\|primeiro_nome_corretor\|corretor_nome\|corretor/);
+  assert.match(chat, /brokerNameForInstance/);
+  assert.match(chat, /replaceAll\("\{primeiro_nome\}", leadFirstName\)/);
+  assert.match(chat, /replaceAll\("\{corretor_primeiro_nome\}", brokerFirstName\)/);
+  assert.match(chat, /corretor_nome: brokerName \|\| null/);
+});
+
+test("Abordagens lista somente produtos que possuem abordagem associada", () => {
+  const tela = readFileSync(join(raizApp, "features/approaches/ApproachesWorkspace.tsx"), "utf8");
+  assert.match(tela, /const productIdsWithApproaches = new Set/);
+  assert.match(tela, /productIdsWithApproaches\.has\(product\.id\)/);
+  assert.match(tela, /visibleProducts\.map\(\(product\)/);
+  assert.doesNotMatch(tela, /\{data\?\.products\.map\(\(product\)/);
+  assert.match(tela, /empreendimento\{visibleProducts\.length === 1 \? "" : "s"\} com abordagem/);
+});
+
 test("venda manual pode nascer ligada ao negócio real do CRM", () => {
   const modal = readFileSync(join(raizApp, "features/finance/VendaModal.tsx"), "utf8");
   const api = readFileSync(join(raizApp, "api/finance/route.ts"), "utf8");
