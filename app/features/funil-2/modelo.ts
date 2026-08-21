@@ -124,6 +124,12 @@ export type TagLeadFunil2 = {
   cor: string | null;
 };
 
+export type TagCatalogoFunil2 = {
+  id: string;
+  nome: string;
+  cor: string;
+};
+
 export type LeadFunil2 = {
   id: string;
   origem_negocio_id: number;

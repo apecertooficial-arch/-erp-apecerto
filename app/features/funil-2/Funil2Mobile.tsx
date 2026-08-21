@@ -18,6 +18,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { BotaoWhatsApp } from "./BotaoWhatsApp";
+import { AssociarTagLead } from "./AssociarTagLead";
 import { getBrowserSupabaseClient } from "../../lib/supabase/browser";
 import {
   acaoVisivel,
@@ -29,6 +30,7 @@ import {
   type LeadFunil2,
   type MomentoFunil2,
   type NotaFunil2,
+  type TagCatalogoFunil2,
 } from "./modelo";
 
 type PayloadMobile = {
@@ -36,6 +38,7 @@ type PayloadMobile = {
   momentos?: MomentoFunil2[];
   eventos?: EventoFunil2[];
   notas?: NotaFunil2[];
+  tagCatalogo?: TagCatalogoFunil2[];
   error?: string;
 };
 
@@ -440,6 +443,7 @@ function FichaLead({
   accessToken,
   onSalvo,
   onRecarregar,
+  tagCatalogo,
 }: {
   lead: LeadFunil2;
   momento: MomentoFunil2 | null;
@@ -449,6 +453,7 @@ function FichaLead({
   accessToken: string;
   onSalvo: () => void;
   onRecarregar: () => void;
+  tagCatalogo: TagCatalogoFunil2[];
 }) {
   const prazo = prazoDaAcao(lead);
   return <div className="ape-folha" role="dialog" aria-modal="true" aria-label={`Atendimento de ${lead.nome}`}>
@@ -465,6 +470,7 @@ function FichaLead({
           <span className="ape-momento">{momento?.rotulo ?? lead.momento_codigo}</span>
         </div>
         <ContextoDoLead lead={lead} completo />
+        <AssociarTagLead leadId={lead.id} catalogo={tagCatalogo} accessToken={accessToken} onSalvo={onRecarregar} mobile />
       </div>
 
       <div className="ape-ordem">
@@ -663,6 +669,7 @@ export function Funil2Mobile({
       momento={momentos.find((momento) => momento.codigo === leadAberto.momento_codigo) ?? null}
       eventos={eventos.filter((evento) => evento.funil_lead_id === leadAberto.id).sort((a, b) => +new Date(b.criado_em) - +new Date(a.criado_em))}
       notas={notas.filter((nota) => nota.funil_lead_id === leadAberto.id)}
+      tagCatalogo={dados?.tagCatalogo ?? []}
       onFechar={() => { setSelecionado("__fechado__"); limparLeadDaUrl(); }}
       accessToken={accessToken}
       onSalvo={() => { void recarregar(); setSelecionado(null); }}

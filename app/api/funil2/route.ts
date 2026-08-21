@@ -108,7 +108,7 @@ export async function GET(request: Request) {
     { data: etapas, error: e4 }, { data: visitas, error: e5 }, { data: negociacoes, error: e6 },
     { data: aquario, error: e7 }, { data: operacao, error: e8 }, { data: notas },
     { data: saraModo }, { data: saraRunner }, { data: saraF2Config }, saraF2Analises,
-    analisesSara, { data: decisoesSara },
+    analisesSara, { data: decisoesSara }, { data: tagCatalogo, error: e9 },
   ] = await Promise.all([
     listarLeadsSemCorte(db),
     db.from("f2_momento_config").select("*").order("etapa", { ascending: true }).order("ordem", { ascending: true }),
@@ -125,9 +125,10 @@ export async function GET(request: Request) {
     db.from("f2_sara_analise").select("id", { count: "exact", head: true }),
     listarAnalisesSemCorte(db),
     db.from("f2_sara_decisao").select("id,analise_id,funil_lead_id,decisao,motivo,decidido_em").order("decidido_em", { ascending: false }),
+    db.from("lead_tag_catalogo").select("id,nome,cor").eq("ativo", true).order("nome"),
   ]);
-  if (e1 || e2 || e3 || e4 || e5 || e6 || e7 || analisesSara.error) {
-    const message = e1?.message || e2?.message || e3?.message || e4?.message || e5?.message || e6?.message || e7?.message || analisesSara.error?.message || "Falha ao carregar o Funil 2.0.";
+  if (e1 || e2 || e3 || e4 || e5 || e6 || e7 || e9 || analisesSara.error) {
+    const message = e1?.message || e2?.message || e3?.message || e4?.message || e5?.message || e6?.message || e7?.message || e9?.message || analisesSara.error?.message || "Falha ao carregar o Funil 2.0.";
     return Response.json({ error: message }, { status: message.toLowerCase().includes("permission") ? 403 : 502 });
   }
   const negociosIds = [...new Set((leads ?? []).map((lead) => Number(lead.origem_negocio_id)).filter(Number.isFinite))];
@@ -178,7 +179,7 @@ export async function GET(request: Request) {
   return Response.json({
     leads: leadsComOrigem, momentos: momentos ?? [], eventos: eventos ?? [], etapas: etapas ?? [],
     visitas: visitas ?? [], negociacoes: negociacoes ?? [], aquario: aquario ?? [], operacao: e8 ? null : operacao ?? null,
-    notas: notas ?? [], analisesSara: analisesSara.data ?? [], decisoesSara: decisoesSara ?? [],
+    notas: notas ?? [], analisesSara: analisesSara.data ?? [], decisoesSara: decisoesSara ?? [], tagCatalogo: tagCatalogo ?? [],
     sara: {
       modo: typeof saraModo === "object" && saraModo !== null && "modo" in saraModo ? String((saraModo as { modo?: unknown }).modo ?? "") || null : null,
       runnerAtivo: typeof saraRunner === "object" && saraRunner !== null && "enabled" in saraRunner ? (saraRunner as { enabled?: unknown }).enabled === true : false,
@@ -200,6 +201,26 @@ export async function POST(request: Request) {
   try { body = await request.json() as Record<string, unknown>; }
   catch { return Response.json({ error: "JSON inválido." }, { status: 400 }); }
   const action = String(body.action ?? "");
+  if (action === "associarTag") {
+    const leadId = String(body.leadId ?? "");
+    const tagId = String(body.tagId ?? "");
+    const cor = String(body.cor ?? "").trim().toUpperCase();
+    if (!/^[0-9a-f-]{36}$/i.test(leadId) || !/^[0-9a-f-]{36}$/i.test(tagId)) {
+      return Response.json({ error: "Lead ou tag inválidos." }, { status: 422 });
+    }
+    if (!/^#[0-9A-F]{6}$/.test(cor)) return Response.json({ error: "Escolha uma cor válida." }, { status: 422 });
+    const { data, error } = await auth.db.rpc("f2_associar_tag", { p_funil_lead_id: leadId, p_tag_id: tagId, p_cor: cor });
+    if (error) return Response.json({ error: "Não foi possível associar a tag." }, { status: 502 });
+    const resultado = (data ?? {}) as { ok?: boolean; erro?: string };
+    if (resultado.ok !== true) {
+      const mensagens: Record<string, string> = {
+        sem_permissao: "Este lead não pertence à sua carteira.", tag_invalida: "Essa tag não está mais disponível.",
+        lead_nao_encontrado: "Lead não encontrado.", cor_invalida: "Escolha uma cor válida.",
+      };
+      return Response.json({ error: mensagens[resultado.erro ?? ""] ?? "Não foi possível associar a tag." }, { status: resultado.erro === "sem_permissao" ? 403 : 409 });
+    }
+    return Response.json({ ok: true, resultado });
+  }
   if (action === "decidirSugestao") {
     const analiseId = Number(body.analiseId);
     const decisao = body.decisao === "aceita" ? "aceita" : body.decisao === "recusada" ? "recusada" : "";
