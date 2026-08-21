@@ -39,6 +39,7 @@ function IconeBarra({ modulo }: { modulo: ModuleName | "Mais" }) {
   if (modulo === "Usuários") return <svg {...c}><circle cx="12" cy="8" r="3.4" /><path d="M5 21v-1.6A6.4 6.4 0 0 1 11.4 13h1.2A6.4 6.4 0 0 1 19 19.4V21" /></svg>;
   if (modulo === "Perfis e Permissões") return <svg {...c}><path d="M12 3l7 3v5.5c0 4.3-2.9 7.8-7 9.5-4.1-1.7-7-5.2-7-9.5V6l7-3Z" /><path d="m9 12 2 2 4-4" /></svg>;
   if (modulo === "Financeiro") return <svg {...c}><rect x="3" y="6" width="18" height="12" rx="2" /><circle cx="12" cy="12" r="2.4" /><path d="M7 12h.01M17 12h.01" /></svg>;
+  if (modulo === "Tracking 360") return <svg {...c}><path d="M4 19V9M10 19V5M16 19v-7M22 19V3" /><path d="m3 8 7-5 6 7 6-8" /></svg>;
   if (modulo === "Auditoria") return <svg {...c}><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8l-5-5Z" /><path d="M14 3v5h5M9 13h5M9 17h3" /></svg>;
   if (modulo === "Chat ao Vivo") return <svg {...c}><path d="M20 15a2 2 0 0 1-2 2H8l-4 4V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2Z" /><path d="M8 10h8M8 13h5" /></svg>;
   if (modulo === "Disparos") return <svg {...c}><path d="m3 11 18-8-8 18-2-7-8-3Z" /></svg>;

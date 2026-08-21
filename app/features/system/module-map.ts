@@ -15,6 +15,10 @@ export const moduleMap = {
     description: "Lançamentos, recebimentos, vendas e comissões.",
     tables: ["lancamentos_caixa", "recebimentos", "vendas", "comissoes"],
   },
+  "Tracking 360": {
+    description: "Visão executiva do site, atribuição de mídia, CRM e entregas de conversão.",
+    tables: ["site_events_anon", "lead_attribution", "tracking_delivery_logs", "leads", "negocios"],
+  },
   Abordagens: {
     description: "Modelos de abordagem cadastrados para produtos e campanhas.",
     tables: ["abordagens"],
