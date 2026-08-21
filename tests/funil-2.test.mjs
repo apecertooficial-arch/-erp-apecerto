@@ -20,6 +20,7 @@ const modelo = readFileSync(new URL("../app/features/funil-2/modelo.ts", import.
 const respostaInstanciasApp = readFileSync(new URL("../supabase/migrations/20260811037000_funil_2_resposta_instancias_app.sql", import.meta.url), "utf8");
 const reinicioPiloto = readFileSync(new URL("../supabase/migrations/20260812010000_funil_2_zerar_com_arquivo_e_fila_independente.sql", import.meta.url), "utf8");
 const ordemConfig = readFileSync(new URL("../supabase/migrations/20260821181737_corrigir_ordem_config_funil.sql", import.meta.url), "utf8");
+const hotfixOrdemConfig = readFileSync(new URL("../supabase/migrations/20260821183639_qualificar_constraints_config_funil.sql", import.meta.url), "utf8");
 
 test("Funil 2.0 se apresenta como carteira operacional com origens preservadas", () => {
   assert.match(ui, /OPERAÇÃO OFICIAL/);
@@ -244,6 +245,9 @@ test("ordenação configurável move a sequência sem colisão e mantém Pescado
   assert.match(ordemConfig, /PESCADO_NAO_E_A_ULTIMA_ETAPA_ATIVA/);
   assert.match(ordemConfig, /ordem > v_ordem_anterior and ordem <= p_ordem/);
   assert.match(ordemConfig, /when p_prazo_minutos is null then 'sem prazo'/);
+  assert.match(ordemConfig, /set constraints public\.f2_etapa_config_ordem_key deferred/i);
+  assert.match(ordemConfig, /set constraints public\.f2_momento_etapa_ordem_uk deferred/i);
+  assert.match(hotfixOrdemConfig, /CONSTRAINT_ETAPA_NAO_QUALIFICADA/);
 });
 
 test("Todos os Leads filtra pelas etapas do vocabulário oficial", () => {
