@@ -203,6 +203,14 @@
     box-shadow: 0 12px 30px rgba(139, 0, 204, .34) !important;
   }
 }
+
+@media (max-width: 760px) {
+  .ape-ficha-nome .f2-tag-associar.mobile { width: 100%; margin-top: 12px; padding: 11px; border-radius: 12px; font-size: 12px; }
+  .ape-ficha-nome .f2-tag-editor.mobile { margin-top: 12px; text-align: left; }
+  .ape-ficha-nome .f2-tag-editor.mobile label { font-size: 11px; }
+  .ape-ficha-nome .f2-tag-editor.mobile select { font-size: 14px; }
+  .ape-ficha-nome .f2-tag-editor.mobile .f2-tag-paleta button { width: 31px !important; height: 31px !important; }
+}
 /* Telas operacionais restantes. Cada seletor novo casa com markup .ape-*;
    as classes antigas permanecem apenas para o desenho do desktop. */
 .ape-offline { display: none; }

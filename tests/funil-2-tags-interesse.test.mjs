@@ -44,3 +44,29 @@ test("API e as duas interfaces carregam e mostram interesse e tags", () => {
   assert.match(mobile, /<ContextoDoLead lead=\{lead\}/);
   assert.match(desktop, /<InteresseLead lead=\{item\}/);
 });
+
+test("ficha permite associar somente tag aprovada e escolher a cor", () => {
+  const rota = ler("../app/api/funil2/route.ts");
+  const editor = ler("../app/features/funil-2/AssociarTagLead.tsx");
+  const mobile = ler("../app/features/funil-2/Funil2Mobile.tsx");
+  const desktop = ler("../app/features/funil-2/Funil2Workspace.tsx");
+  assert.match(rota, /action === "associarTag"/);
+  assert.match(rota, /rpc\("f2_associar_tag"/);
+  assert.match(editor, /＋ Associar tag/);
+  assert.match(editor, /type="color"/);
+  assert.match(editor, /Associar ao lead/);
+  assert.match(mobile, /<AssociarTagLead/);
+  assert.match(desktop, /<AssociarTagLead/);
+});
+
+test("catálogo manual substitui a varredura de tags antigas no seletor", () => {
+  const migracao = ler("../supabase/migrations/20260821165000_catalogo_tags_manuais_funil2.sql");
+  const seguranca = ler("../supabase/migrations/20260821165100_associar_tag_security_invoker.sql");
+  assert.match(migracao, /create table if not exists public\.lead_tag_catalogo/);
+  assert.match(migracao, /'GRC \| CARINAS'/);
+  assert.match(migracao, /'COMPOSITE \| NR'/);
+  assert.match(migracao, /from public\.lead_tag_catalogo/);
+  assert.match(migracao, /enable row level security/);
+  assert.match(seguranca, /security invoker/);
+  assert.match(seguranca, /public\.f2_pode_operar_lead/);
+});

@@ -1,15 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useState, type ReactNode } from "react";
-import { acaoVisivel, dataCurta, duracao, esperandoPrimeiraChamada, prazoDaAcao, rotuloCadencia, situacaoPrazo, tentativaAtual, venceHoje, type CandidatoAquarioFunil2, type EtapaConfigFunil2, type EventoFunil2, type LeadFunil2, type MomentoFunil2, type NegociacaoFunil2, type NotaFunil2, type OperacaoConfigFunil2, type SaraStatusFunil2, type VisitaFunil2 } from "./modelo";
+import { acaoVisivel, dataCurta, duracao, esperandoPrimeiraChamada, prazoDaAcao, rotuloCadencia, situacaoPrazo, tentativaAtual, venceHoje, type CandidatoAquarioFunil2, type EtapaConfigFunil2, type EventoFunil2, type LeadFunil2, type MomentoFunil2, type NegociacaoFunil2, type NotaFunil2, type OperacaoConfigFunil2, type SaraStatusFunil2, type TagCatalogoFunil2, type VisitaFunil2 } from "./modelo";
 import { SalesProcessView } from "../sales/SalesProcessWorkspace";
 import { Funil2ConversationDrawer } from "./Funil2ConversationDrawer";
+import { AssociarTagLead } from "./AssociarTagLead";
 import { getBrowserSupabaseClient } from "../../lib/supabase/browser";
 
 type Perfil = { userId: string; role: string; name: string };
 type Payload = {
   leads?: LeadFunil2[]; momentos?: MomentoFunil2[]; eventos?: EventoFunil2[]; etapas?: EtapaConfigFunil2[];
-  visitas?: VisitaFunil2[]; negociacoes?: NegociacaoFunil2[]; notas?: NotaFunil2[]; aquario?: CandidatoAquarioFunil2[]; operacao?: OperacaoConfigFunil2 | null; sara?: SaraStatusFunil2; error?: string;
+  visitas?: VisitaFunil2[]; negociacoes?: NegociacaoFunil2[]; notas?: NotaFunil2[]; aquario?: CandidatoAquarioFunil2[]; operacao?: OperacaoConfigFunil2 | null; sara?: SaraStatusFunil2; tagCatalogo?: TagCatalogoFunil2[]; error?: string;
 };
 
 /* Lista fechada, igual a da tabela motivos_descarte. Motivo escrito a mao nao
@@ -76,6 +77,7 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
   const [momentos, setMomentos] = useState<MomentoFunil2[]>([]);
   const [eventos, setEventos] = useState<EventoFunil2[]>([]);
   const [notas, setNotas] = useState<NotaFunil2[]>([]);
+  const [tagCatalogo, setTagCatalogo] = useState<TagCatalogoFunil2[]>([]);
   const [etapas, setEtapas] = useState<EtapaConfigFunil2[]>([]);
   const [visitas, setVisitas] = useState<VisitaFunil2[]>([]);
   const [aquario, setAquario] = useState<CandidatoAquarioFunil2[]>([]);
@@ -111,6 +113,7 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
     setMomentos(resposta.json.momentos ?? []);
     setEventos(resposta.json.eventos ?? []);
     setNotas(resposta.json.notas ?? []);
+    setTagCatalogo(resposta.json.tagCatalogo ?? []);
     setEtapas(resposta.json.etapas ?? []);
     setVisitas(resposta.json.visitas ?? []);
     setAquario(resposta.json.aquario ?? []);
@@ -129,6 +132,7 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
       setMomentos(resposta.json.momentos ?? []);
       setEventos(resposta.json.eventos ?? []);
       setNotas(resposta.json.notas ?? []);
+      setTagCatalogo(resposta.json.tagCatalogo ?? []);
       setEtapas(resposta.json.etapas ?? []);
       setVisitas(resposta.json.visitas ?? []);
       setAquario(resposta.json.aquario ?? []);
@@ -352,7 +356,7 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
       {modal === "descartar" && lead && <ModalDescartar nome={lead.nome} busy={busy} onFechar={() => setModal(null)} onDescartar={(motivo, detalhe) => { void atualizar("descartar", { motivo, detalhe }).then((ok) => { if (ok) { setModal(null); setSelecionado(null); } }); }} />}
 
       {lead && momentoAtual && <Detalhe key={`${lead.id}:${lead.versao}`}
-        accessToken={accessToken} lead={lead} momento={momentoAtual} momentos={momentosAtivos} etapas={etapasAtivas} eventos={eventosLead} notas={notasLead} busy={busy}
+        accessToken={accessToken} lead={lead} momento={momentoAtual} momentos={momentosAtivos} etapas={etapasAtivas} eventos={eventosLead} notas={notasLead} tagCatalogo={tagCatalogo} busy={busy}
         abrirNoChat={abrirNoChat}
         onFechar={() => { setSelecionado(null); setAbrirNoChat(false); }}
         onMomento={(codigo, prazo, obs) => void atualizar("atualizarMomento", { momentoCodigo: codigo, prazoCombinado: prazo || null, observacao: obs })}
@@ -361,6 +365,7 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
         onGerarNegociacao={() => setModal("negociacao")}
         onDescartar={() => setModal("descartar")}
         onSalvarNota={(texto) => executar("salvarNota", { leadId: lead.id, texto })}
+        onTagSalva={() => void carregar()}
       />}
       <footer className="f2-rodape">Sessão: {profile.name} · somente administradores · origens dos pipes antigos preservadas</footer>
     </div>
@@ -707,12 +712,13 @@ function ModalNegociacao({ leads, busy, onFechar, onSalvar }: { leads: LeadFunil
 function Modal({ titulo, texto, onFechar, children }: { titulo:string; texto:string; onFechar:()=>void; children:ReactNode }) { return <div className="f2-modal-overlay" onClick={onFechar}><div className="f2-modal" onClick={(e)=>e.stopPropagation()}><header><div><span className="f2-eyebrow">FUNIL 2.0</span><h2>{titulo}</h2><p>{texto}</p></div><button type="button" onClick={onFechar}>×</button></header>{children}</div></div>; }
 
 function Detalhe({
-  abrirNoChat, accessToken, lead, momento, momentos, etapas, eventos, notas, busy, onFechar, onMomento, onConfirmar, onAgendarVisita, onGerarNegociacao, onDescartar, onSalvarNota }: {
+  abrirNoChat, accessToken, lead, momento, momentos, etapas, eventos, notas, tagCatalogo, busy, onFechar, onMomento, onConfirmar, onAgendarVisita, onGerarNegociacao, onDescartar, onSalvarNota, onTagSalva }: {
   accessToken: string;
-  lead: LeadFunil2; momento: MomentoFunil2; momentos: MomentoFunil2[]; etapas: EtapaConfigFunil2[]; eventos: EventoFunil2[]; notas: NotaFunil2[]; busy: boolean;
+  lead: LeadFunil2; momento: MomentoFunil2; momentos: MomentoFunil2[]; etapas: EtapaConfigFunil2[]; eventos: EventoFunil2[]; notas: NotaFunil2[]; tagCatalogo: TagCatalogoFunil2[]; busy: boolean;
   onFechar: () => void; onMomento: (codigo: string, prazo: string, obs: string) => void; onConfirmar: (fonte: "dapi" | "registro_operacional", obs: string) => void;
   onAgendarVisita: () => void; onGerarNegociacao: () => void;
   onDescartar: () => void; onSalvarNota: (texto: string) => Promise<boolean>;
+  onTagSalva: () => void;
   abrirNoChat?: boolean;
 }) {
   const [codigo, setCodigo] = useState(lead.momento_codigo);
@@ -728,7 +734,7 @@ function Detalhe({
 
   return <div className="f2-overlay" onClick={onFechar}>
     <aside className="f2-detalhe" aria-label={`Detalhe de ${lead.nome}`} onClick={(e) => e.stopPropagation()}>
-      <div className="f2-detalhe-topo"><div><span className="f2-eyebrow">LEAD-CÓPIA · #{lead.origem_negocio_id}</span><h2>{lead.nome}</h2><p>{lead.corretor_nome ?? "Sem corretor"}{lead.instancia_rotulo ? <em className="f2-instancia" title={`Contato saindo por ${lead.instancia_rotulo}`}> · {lead.instancia_rotulo}</em> : null} · original protegido</p><InteresseLead lead={lead} detalhado /></div><button type="button" onClick={onFechar} aria-label="Fechar detalhe">×</button></div>
+      <div className="f2-detalhe-topo"><div><span className="f2-eyebrow">LEAD-CÓPIA · #{lead.origem_negocio_id}</span><h2>{lead.nome}</h2><p>{lead.corretor_nome ?? "Sem corretor"}{lead.instancia_rotulo ? <em className="f2-instancia" title={`Contato saindo por ${lead.instancia_rotulo}`}> · {lead.instancia_rotulo}</em> : null} · original protegido</p><InteresseLead lead={lead} detalhado /><AssociarTagLead leadId={lead.id} catalogo={tagCatalogo} accessToken={accessToken} onSalvo={onTagSalva} /></div><button type="button" onClick={onFechar} aria-label="Fechar detalhe">×</button></div>
 
       <div className="f2-atalhos" aria-label="Ações rápidas do lead">
         <button type="button" onClick={() => setChatAberto(true)}>💬 Chat</button>
