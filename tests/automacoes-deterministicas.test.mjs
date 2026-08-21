@@ -97,6 +97,13 @@ const saraExactCard = readFileSync(
   ),
   'utf8',
 );
+const shortQueueBatch = readFileSync(
+  new URL(
+    '../supabase/migrations/20260821133500_motor_fila_lotes_curtos.sql',
+    import.meta.url,
+  ),
+  'utf8',
+);
 const entrada = readFileSync(
   new URL('../supabase/functions/entrada/index.ts', import.meta.url),
   'utf8',
@@ -311,6 +318,7 @@ test('sensor entrega o card exato e mensagens têm prioridade sobre a varredura'
   assert.match(saraExactCard, /'__motor_priority',0/);
   assert.match(saraExactCard, /'__motor_priority',20/);
   assert.match(saraExactCard, /order by[\s\S]*__motor_priority/);
+  assert.match(shortQueueBatch, /limit 10 for update skip locked/);
 });
 
 test('Sara valida evidência por ID real da mensagem do cliente', () => {
