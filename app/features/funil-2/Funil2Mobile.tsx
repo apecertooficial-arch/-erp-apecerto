@@ -669,7 +669,7 @@ export function Funil2Mobile({
       momento={momentos.find((momento) => momento.codigo === leadAberto.momento_codigo) ?? null}
       eventos={eventos.filter((evento) => evento.funil_lead_id === leadAberto.id).sort((a, b) => +new Date(b.criado_em) - +new Date(a.criado_em))}
       notas={notas.filter((nota) => nota.funil_lead_id === leadAberto.id)}
-      tagCatalogo={dados.tagCatalogo ?? []}
+      tagCatalogo={dados?.tagCatalogo ?? []}
       onFechar={() => { setSelecionado("__fechado__"); limparLeadDaUrl(); }}
       accessToken={accessToken}
       onSalvo={() => { void recarregar(); setSelecionado(null); }}
