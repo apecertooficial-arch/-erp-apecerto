@@ -57,3 +57,6 @@ body .f2-lead-linha.prazo-sem-prazo{border-left-color:#cbd5e1}
 body .f2-coluna[data-etapa="pescado"] .f2-coluna-cab{border-bottom-color:#e2e8f0}
 body .ncrm-wa-alt{display:flex;align-items:center;justify-content:center;gap:6px;min-height:44px;margin-top:8px;padding:10px 14px;border:1px solid #fed7aa;border-radius:10px;background:#fff7ed;color:#9a3412;font-size:13.5px;font-weight:600;line-height:1.3;text-align:center;text-decoration:none}
 body .ncrm-wa-alt:active{background:#ffedd5}
+
+/* Interesse do lead: produto visível antes da primeira abordagem. */
+.f2-interesse-lead{display:flex!important;align-items:center;gap:5px;max-width:100%;margin-top:5px;color:#8a3700!important;font-size:9px!important;line-height:1.2}.f2-interesse-lead>b{flex:0 0 auto;padding:3px 5px;border-radius:5px;background:#ffe5d4;color:#b84200;font-size:7px;text-transform:uppercase;letter-spacing:.06em}.f2-interesse-lead>strong{overflow:hidden;min-width:0;color:#713000;font-size:9px;text-overflow:ellipsis;white-space:nowrap}.f2-interesse-lead>em{flex:0 0 auto;padding:2px 5px!important;border-radius:999px!important;background:#f4eafb!important;color:#7620b6!important;font-size:7px!important;font-style:normal!important}.f2-interesse-lead.detalhado{margin-top:8px}.f2-interesse-lead.detalhado>strong{font-size:11px;white-space:normal}
