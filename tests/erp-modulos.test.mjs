@@ -260,6 +260,17 @@ test("construtor de Automações pertence à feature e não é injetado como glo
   assert.equal(existsSync(new URL("../public/automation-builder-original.css", import.meta.url)), false);
 });
 
+test("Automações abre direto no construtor, sem biblioteca intermediária duplicada", () => {
+  const workspace = readFileSync(join(raizApp, "features/automations/AutomationsWorkspace.tsx"), "utf8");
+  const runtime = readFileSync(join(raizApp, "features/automations/automationBuilderRuntime.js"), "utf8");
+
+  assert.match(workspace, /<div className="original-automation-host" ref=\{hostRef\} \/>/);
+  assert.doesNotMatch(workspace, /Biblioteca na frente|BIBLIOTECA DE ROTINAS|Abrir construtor/);
+  assert.doesNotMatch(workspace, /useState<"biblioteca" \| "construtor">/);
+  assert.match(workspace, /onAutomationOpened: \(automacao\) => setAbrirId\(automacao\.id\)/);
+  assert.match(runtime, /_ctx\.onAutomationOpened\(\{id:cur\.id,nome:cur\.nome,grupo:cur\.grupo\}\)/);
+});
+
 test("Central de Automações não carrega gestores duplicados de CRM, funis e captação", () => {
   const runtime = readFileSync(join(raizApp, "features/automations/automationBuilderRuntime.js"), "utf8");
   assert.doesNotMatch(runtime, /open(?:Abordagens|Captacao|Pipelines|Crm)Manager|CRM real|PIPELINE — gestão real/);
