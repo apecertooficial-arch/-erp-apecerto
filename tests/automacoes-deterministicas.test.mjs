@@ -104,6 +104,13 @@ const shortQueueBatch = readFileSync(
   ),
   'utf8',
 );
+const saraConversationCutoff = readFileSync(
+  new URL(
+    '../supabase/migrations/20260821134500_sara_respeitar_recorte_conversa.sql',
+    import.meta.url,
+  ),
+  'utf8',
+);
 const entrada = readFileSync(
   new URL('../supabase/functions/entrada/index.ts', import.meta.url),
   'utf8',
@@ -325,8 +332,10 @@ test('Sara valida evidência por ID real da mensagem do cliente', () => {
   assert.match(sara, /evidencia_ids/);
   assert.match(sara, /entradasPorId/);
   assert.match(sara, /normalizarEvidencia/);
-  assert.match(sara, /contrato:"evidencia-id-v2"/);
+  assert.match(sara, /contrato:"evidencia-id-v3-recorte"/);
   assert.match(sara, /Nunca use ID de CORRETOR/);
+  assert.match(saraConversationCutoff, /v_lead\.historico_completo/);
+  assert.match(saraConversationCutoff, /coalesce\(wm\.enviado_em,wm\.criado_em\)>=v_lead\.corte_conversa_em/);
 });
 
 test('envio usa um modelo e somente a instância do dono, sem transferência', () => {
