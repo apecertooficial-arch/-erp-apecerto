@@ -43,7 +43,7 @@ const isolatedSend = readFileSync(
 );
 const groupedApproachSend = readFileSync(
   new URL(
-    '../supabase/migrations/20260822001000_enviar_abordagem_grupo_alternancia.sql',
+    '../supabase/migrations/20260822011000_enviar_abordagem_grupo_alternancia.sql',
     import.meta.url,
   ),
   'utf8',

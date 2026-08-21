@@ -285,7 +285,7 @@ begin
   ) values (
     v_auto.id,v_version,v_auto.nome,v_map,
     'Um unico bloco Enviar abordagem com alternancia igual no grupo Miruna 603',
-    'migration:20260822001000'
+    'migration:20260822011000'
   ) returning id into v_version_id;
   update public.automacoes
      set mapa=v_map,mapa_rascunho=v_map,versao_publicada_id=v_version_id,
@@ -293,4 +293,3 @@ begin
    where id=v_auto.id;
 end
 $publish_miruna$;
-
