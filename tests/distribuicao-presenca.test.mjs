@@ -3,16 +3,26 @@ import { existsSync, readFileSync } from "node:fs";
 import test from "node:test";
 
 const shell = readFileSync(new URL("../app/features/system/ErpShell.tsx", import.meta.url), "utf8");
+const layout = readFileSync(new URL("../app/(erp)/layout.tsx", import.meta.url), "utf8");
+const globalPresence = readFileSync(new URL("../app/components/PresencaGlobal.tsx", import.meta.url), "utf8");
 const heartbeat = readFileSync(new URL("../app/features/presence/PresenceHeartbeat.tsx", import.meta.url), "utf8");
 const migration = readFileSync(new URL("../supabase/migrations/20260812030000_ncrm_roleta_igualitaria_e_presenca.sql", import.meta.url), "utf8");
 
 test("confirmação de presença é global, exclusiva do corretor e usa 15 minutos", () => {
-  assert.match(shell, /<PresenceHeartbeat/);
-  assert.match(shell, /role === "corretor"/);
-  assert.match(shell, /profile\?\.brokerId != null/);
+  assert.match(layout, /<PresencaGlobal/);
+  assert.match(globalPresence, /profile\?\.brokerId == null/);
+  assert.match(globalPresence, /<PresenceHeartbeat/);
+  assert.doesNotMatch(shell, /<PresenceHeartbeat/);
   assert.match(heartbeat, /Você ainda está conectado\?/);
   assert.match(heartbeat, /window\.setInterval\(poll, 20000\)/);
   assert.match(migration, /ativa=true[\s\S]*intervalo_min=15/);
+});
+
+test("fora do IP o ERP permanece acessível e somente a fila de leads é pausada", () => {
+  assert.match(heartbeat, /if \(!estaNaRede\)[\s\S]*setPrompt\(false\)[\s\S]*sairDaFila/);
+  assert.match(heartbeat, /Acesso externo liberado/);
+  assert.match(heartbeat, /usar agenda e sistema normalmente/);
+  assert.doesNotMatch(heartbeat, /const ehCelular/);
 });
 
 test("API geral do CRM foi aposentada; criação ocorre somente no Funil 2", () => {

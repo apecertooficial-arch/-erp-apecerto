@@ -6,6 +6,7 @@ import { SalesProcessView } from "../sales/SalesProcessWorkspace";
 import { Funil2ConversationDrawer } from "./Funil2ConversationDrawer";
 import { AssociarTagLead } from "./AssociarTagLead";
 import { getBrowserSupabaseClient } from "../../lib/supabase/browser";
+import { dataHoraLocalSaoPaulo, dataIsoSaoPaulo, FUSO_OPERACAO } from "../../lib/timezone";
 
 type Perfil = { userId: string; role: string; name: string };
 type Payload = {
@@ -53,9 +54,7 @@ function InteresseLead({ lead, detalhado = false }: { lead: LeadFunil2; detalhad
 /* O input datetime-local so entende hora local sem fuso. Sem esta conversao o
    corretor abre a visita das 14h, ve 17h e remarca sem querer. */
 function paraCampoLocal(data: string) {
-  const quando = new Date(data);
-  if (Number.isNaN(quando.getTime())) return "";
-  return new Date(quando.getTime() - quando.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+  return dataHoraLocalSaoPaulo(data);
 }
 
 function Icone({ nome }: { nome: "quadro" | "dia" | "historico" | "leads" | "visitas" | "vendas" | "config" | "sino" }) {
@@ -173,8 +172,9 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
   const urgentes = leads.filter((l) => situacaoPrazo(l.proxima_acao_em).classe === "urgente").length;
   const vencemHoje = leads.filter((l) => venceHoje(l)).length;
   const leadsNovos = leads.filter((l) => esperandoPrimeiraChamada(l)).length;
+  const hojeSaoPaulo = dataIsoSaoPaulo(new Date());
   const visitasDoDia = visitas
-    .filter((v) => new Date(v.inicio_em).toDateString() === new Date().toDateString())
+    .filter((v) => dataIsoSaoPaulo(v.inicio_em) === hojeSaoPaulo)
     .sort((a, b) => +new Date(a.inicio_em) - +new Date(b.inicio_em));
   const visitasHoje = visitasDoDia.length;
 
@@ -322,7 +322,7 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
               continua vendo uma fila só e clicando para abrir o cliente. */}
           {mostrandoVisitas && visitasDoDia.slice(0, limiteDia).map((visita, index) => {
             const leadDaVisita = leads.find((l) => l.id === visita.funil_lead_id);
-            const hora = new Intl.DateTimeFormat("pt-BR", { hour: "2-digit", minute: "2-digit" }).format(new Date(visita.inicio_em));
+            const hora = new Intl.DateTimeFormat("pt-BR", { timeZone: FUSO_OPERACAO, hour: "2-digit", minute: "2-digit" }).format(new Date(visita.inicio_em));
             const situacao: Record<string, string> = { agendada: "Agendada", confirmada: "Confirmada", realizada: "Realizada", cancelada: "Cancelada", nao_compareceu: "Não compareceu" };
             return <button key={visita.id} type="button" className="f2-dia-item" disabled={!leadDaVisita} onClick={() => leadDaVisita && setSelecionado(leadDaVisita.id)}>
               <span className="f2-dia-ordem">{index + 1}</span><div><strong>{leadDaVisita?.nome ?? "Lead removido"}</strong><small>{leadDaVisita?.corretor_nome ?? "Sem corretor"}</small></div><div><span>IMÓVEL</span><b>{visita.imovel || "—"}</b></div><div><span>SITUAÇÃO</span><b>{situacao[visita.status] ?? visita.status}</b></div><em className={visita.status === "cancelada" || visita.status === "nao_compareceu" ? "atrasado" : "no-prazo"}>{hora}</em><i>{leadDaVisita ? "Abrir cliente" : "Sem ficha"}</i>
@@ -582,7 +582,7 @@ function VisitaCard({ visita, lead, busy, onSalvar }: { visita: VisitaFunil2; le
     <input type="text" style={CAMPO_VISITA} disabled={busy} value={imovel} onChange={(e) => setImovel(e.target.value)} maxLength={120} placeholder="Imóvel ou unidade" aria-label="Imóvel da visita" />
     <select disabled={busy} value={status} onChange={(e) => setStatus(e.target.value as VisitaFunil2["status"])}><option value="agendada">Agendada</option><option value="confirmada">Confirmada</option><option value="realizada">Realizada</option><option value="cancelada">Cancelada</option><option value="nao_compareceu">Não compareceu</option></select>
     {precisaFeedback && <textarea value={feedback} onChange={(e) => setFeedback(e.target.value)} placeholder="Feedback obrigatório: interesse, objeção e próximo passo" maxLength={500} />}
-    <button type="button" disabled={busy || !inicio || (precisaFeedback && feedback.trim().length < 10)} onClick={() => onSalvar({ id: visita.id, leadId: visita.funil_lead_id, inicioEm: new Date(inicio).toISOString(), imovel: imovel.trim() || visita.imovel, status, observacao: feedback || null, empreendimentoId: visita.empreendimento_id ?? null, unidade: visita.unidade ?? null, comGerente: visita.com_gerente === true, gerenteId: visita.gerente_id ?? null, fimEm: visita.fim_em ?? null })}>{busy ? "Salvando…" : precisaFeedback && !visita.feedback_em ? "Registrar resultado" : "Salvar atualização"}</button>
+    <button type="button" disabled={busy || !inicio || (precisaFeedback && feedback.trim().length < 10)} onClick={() => onSalvar({ id: visita.id, leadId: visita.funil_lead_id, inicioEm: inicio, imovel: imovel.trim() || visita.imovel, status, observacao: feedback || null, empreendimentoId: visita.empreendimento_id ?? null, unidade: visita.unidade ?? null, comGerente: visita.com_gerente === true, gerenteId: visita.gerente_id ?? null, fimEm: visita.fim_em ?? null })}>{busy ? "Salvando…" : precisaFeedback && !visita.feedback_em ? "Registrar resultado" : "Salvar atualização"}</button>
     {visita.status === "realizada" && <small>{visita.feedback_em ? "Feedback concluído" : "Feedback pendente — novos leads podem ser bloqueados"}</small>}
   </article>;
 }

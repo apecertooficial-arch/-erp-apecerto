@@ -82,6 +82,7 @@ import "./styles/redesign-apecerto-abordagens.css";
 import "./styles/redesign-apecerto-abordagens-rodape.css";
 import "./styles/redesign-apecerto-abordagens-icones.css";
 import "./styles/redesign-apecerto-menu.css";
+import "./styles/tracking-360.css";
 import "./styles/redesign-apecerto-disparos.css";
 import "./styles/redesign-apecerto-calendario.css";
 import "./styles/redesign-apecerto-automacoes.css";

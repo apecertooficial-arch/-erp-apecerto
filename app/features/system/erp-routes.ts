@@ -76,6 +76,7 @@ export const rotasModulo: Record<ModuleName, RotaModulo> = {
      nao e o mesmo que abrir o Financeiro da imobiliaria.
      Quem tem o slug hoje: admin, auditor, diretor, financeiro. */
   Financeiro: { path: "/financeiro", slugs: ["financeiro"], classe: "B", mobile: false },
+  "Tracking 360": { path: "/tracking", slugs: ["auditoria"], classe: "B", rotuloCurto: "Tracking", mobile: true },
   Auditoria: { path: "/auditoria", slugs: ["auditoria"], classe: "B", mobile: false },
 
   "Chat ao Vivo": { path: "/chat", slugs: ["chat"], classe: "C", rotuloCurto: "Chat", mobile: false },

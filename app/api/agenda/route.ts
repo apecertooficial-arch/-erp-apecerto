@@ -9,6 +9,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { createServerSupabaseClient } from "../../lib/supabase/server";
 import type { TablesUpdate } from "../../lib/supabase/database.types";
 import { denyIfCannot, resolveEffectiveAccess } from "../../lib/supabase/authz";
+import { instanteSaoPaulo } from "../../lib/timezone";
 
 export const dynamic = "force-dynamic";
 
@@ -33,12 +34,6 @@ function texto(value: unknown, max = 300) {
 function inteiroPositivo(value: unknown) {
   const parsed = Number(value);
   return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null;
-}
-
-function instanteSaoPaulo(data: string, hora: string | null) {
-  if (!data || !hora) return null;
-  const instante = new Date(`${data}T${hora.slice(0, 8)}-03:00`);
-  return Number.isNaN(instante.getTime()) ? null : instante.toISOString();
 }
 
 function lerData(bruto: string | null): string | null {
@@ -146,7 +141,8 @@ export async function PATCH(request: Request) {
     }
     const inicioEm = instanteSaoPaulo(date, startTime);
     if (!inicioEm) return Response.json({ error: "Data ou horário inválido." }, { status: 422 });
-    const fimEm = instanteSaoPaulo(date, texto(body.endTime, 8) || null);
+    const endTime = texto(body.endTime, 8);
+    const fimEm = endTime ? instanteSaoPaulo(date, endTime) : null;
     const { data: result, error } = await auth.supabase.rpc("f2_salvar_visita", {
       p_id: null, p_lead_id: card.id, p_inicio_em: inicioEm,
       p_imovel: product?.nome ?? (texto(body.productName, 180) || local || "Visita"),
@@ -202,8 +198,8 @@ export async function PATCH(request: Request) {
     const merged = { ...current, ...patch };
     const { data: result, error } = await auth.supabase.rpc("f2_salvar_visita", {
       p_id: visitId, p_lead_id: card.id,
-      p_inicio_em: instanteSaoPaulo(String(merged.data), merged.hora_inicio ? String(merged.hora_inicio) : null),
-      p_fim_em: instanteSaoPaulo(String(merged.data), merged.hora_fim ? String(merged.hora_fim) : null),
+      p_inicio_em: merged.hora_inicio ? instanteSaoPaulo(String(merged.data), String(merged.hora_inicio)) : null,
+      p_fim_em: merged.hora_fim ? instanteSaoPaulo(String(merged.data), String(merged.hora_fim)) : null,
       p_imovel: merged.produto || "Visita", p_status: merged.status || "agendada",
       p_observacao: merged.observacoes, p_empreendimento_id: merged.empreendimento_id,
       p_unidade: merged.unidade, p_com_gerente: merged.com_gerente === true,
@@ -247,8 +243,8 @@ export async function PATCH(request: Request) {
     const observation = status === "cancelada" ? (texto(body.reason, 500) || visit.observacoes) : visit.observacoes;
     const { data: result, error } = await auth.supabase.rpc("f2_salvar_visita", {
       p_id: visitId, p_lead_id: card.id,
-      p_inicio_em: instanteSaoPaulo(String(visit.data), visit.hora_inicio ? String(visit.hora_inicio) : null),
-      p_fim_em: instanteSaoPaulo(String(visit.data), visit.hora_fim ? String(visit.hora_fim) : null),
+      p_inicio_em: visit.hora_inicio ? instanteSaoPaulo(String(visit.data), String(visit.hora_inicio)) : null,
+      p_fim_em: visit.hora_fim ? instanteSaoPaulo(String(visit.data), String(visit.hora_fim)) : null,
       p_imovel: visit.produto || "Visita", p_status: status, p_observacao: observation,
       p_empreendimento_id: visit.empreendimento_id, p_unidade: visit.unidade,
       p_com_gerente: visit.com_gerente === true, p_gerente_id: visit.gerente_id,
