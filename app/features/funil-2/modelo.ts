@@ -9,6 +9,7 @@ export const ETAPAS_FUNIL2 = [
   { codigo: "em_atendimento", rotulo: "Em atendimento", ajuda: "Respondeu; qualificar e provocar a visita." },
   { codigo: "visita", rotulo: "Visita", ajuda: "Agendada, realizada ou cancelada." },
   { codigo: "atualizar_manual", rotulo: "Atualizar manualmente", ajuda: "Sem conversa para a Sara ler; o corretor classifica com o que sabe." },
+  { codigo: "legado", rotulo: "Leads legado", ajuda: "Carteira anterior preservada, sem prazo e fora do Meu Dia." },
 ] as const;
 
 export type EtapaFunil2 = string;

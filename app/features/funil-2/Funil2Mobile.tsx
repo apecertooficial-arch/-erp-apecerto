@@ -27,6 +27,7 @@ import {
   situacaoPrazo,
   venceHoje,
   type EventoFunil2,
+  type EtapaConfigFunil2,
   type LeadFunil2,
   type MomentoFunil2,
   type NotaFunil2,
@@ -39,6 +40,7 @@ type PayloadMobile = {
   eventos?: EventoFunil2[];
   notas?: NotaFunil2[];
   tagCatalogo?: TagCatalogoFunil2[];
+  etapas?: EtapaConfigFunil2[];
   error?: string;
 };
 
@@ -55,12 +57,15 @@ const MOTIVOS_DESCARTE = [
   "Produto incompatível",
 ] as const;
 
-const ETAPAS = [
-  ["todos", "Todos"],
+const ETAPAS_FALLBACK = [
   ["novo", "Novos"],
+  ["pescado", "Pescado"],
   ["tentando_contato", "Tentando contato"],
   ["em_atendimento", "Em atendimento"],
+  ["visita", "Visita"],
   ["pos_visita", "Pós-visita"],
+  ["atualizar_manual", "Atualizar manualmente"],
+  ["legado", "Leads legado"],
 ] as const;
 
 /* Icones em traço de 2px e ponta arredondada, como manda a identidade. */
@@ -74,7 +79,7 @@ function IconeMais() { return <svg width="19" height="19" viewBox="0 0 24 24" fi
 function IconeVoltar() { return <svg width="19" height="19" viewBox="0 0 24 24" {...tracos} aria-hidden="true"><path d="m15 18-6-6 6-6" /></svg>; }
 
 function nomeEtapa(codigo: string) {
-  return ETAPAS.find(([chave]) => chave === codigo)?.[1] ?? codigo.replaceAll("_", " ");
+  return ETAPAS_FALLBACK.find(([chave]) => chave === codigo)?.[1] ?? codigo.replaceAll("_", " ");
 }
 
 function iniciais(nome: string) {
@@ -520,7 +525,7 @@ export function Funil2Mobile({
   /* No Meu Dia a lista NAO e filtrada por chip: os tres grupos abaixo dao conta
      do recorte. "todos" aqui significa "deixe o agrupamento decidir". */
   const [filtroDia, setFiltroDia] = useState<FiltroDia>("todos");
-  const [etapa, setEtapa] = useState("todos");
+  const [etapa, setEtapa] = useState("ativos");
   const [busca, setBusca] = useState("");
   const [selecionado, setSelecionado] = useState<string | null>(null);
   const [pedidoUrl] = useState(lerLeadDaUrl);
@@ -530,6 +535,12 @@ export function Funil2Mobile({
   const momentos = dados?.momentos ?? [];
   const eventos = dados?.eventos ?? [];
   const notas = dados?.notas ?? [];
+  const etapas = useMemo(() => {
+    const configuradas = (dados?.etapas ?? []).filter((item) => item.ativo);
+    return configuradas.length > 0
+      ? configuradas.map((item) => [item.codigo, item.rotulo] as const)
+      : [...ETAPAS_FALLBACK];
+  }, [dados]);
 
   const fimHoje = useMemo(() => { const data = new Date(agora); data.setHours(23, 59, 59, 999); return +data; }, [agora]);
   const contagens = useMemo(() => ({
@@ -545,7 +556,7 @@ export function Funil2Mobile({
       const cabeNoDia = filtroDia === "todos"
         || (filtroDia === "novos" ? esperandoPrimeiraChamada(lead)
           : filtroDia === "agora" ? prazo <= agora : prazo <= fimHoje);
-      const cabeNaEtapa = etapa === "todos" || lead.etapa === etapa;
+      const cabeNaEtapa = etapa === "ativos" ? lead.etapa !== "legado" : lead.etapa === etapa;
       const cabeNaBusca = !termo || `${lead.nome} ${lead.telefone ?? ""} ${lead.interesse ?? ""} ${(lead.tags ?? []).map((tag) => tag.nome).join(" ")}`.toLocaleLowerCase("pt-BR").includes(termo);
       return cabeNoDia && cabeNaEtapa && cabeNaBusca;
     });
@@ -613,7 +624,8 @@ export function Funil2Mobile({
     </label>}
 
     {modo === "crm" && <nav className="ape-filtros" aria-label="Filtrar atendimentos">
-      {ETAPAS.map(([chave, rotulo]) => <button key={chave} type="button" className={etapa === chave ? "ativo" : ""} onClick={() => setEtapa(chave)}>{rotulo}</button>)}
+      <button type="button" className={etapa === "ativos" ? "ativo" : ""} onClick={() => setEtapa("ativos")}>Ativos</button>
+      {etapas.map(([chave, rotulo]) => <button key={chave} type="button" className={etapa === chave ? "ativo" : ""} onClick={() => setEtapa(chave)}>{rotulo}</button>)}
     </nav>}
 
     {erro && <div className="ape-estado ruim">

@@ -233,7 +233,9 @@ test("etapas e momentos são configuráveis com proteção administrativa", () =
 });
 
 test("Todos os Leads filtra pelas etapas do vocabulário oficial", () => {
-  assert.match(ui, /const \[filtro, setFiltro\] = useState\("todos"\)/);
+  assert.match(ui, /const \[filtro, setFiltro\] = useState\("ativos"\)/);
+  assert.match(ui, /filtro === "ativos" && lead\.etapa === "legado"/);
+  assert.match(ui, />Ativos · \{leads\.filter/);
   assert.match(ui, /const \[busca, setBusca\]/);
   assert.match(ui, /Nome ou telefone/);
   assert.match(ui, /Situação do prazo/);
