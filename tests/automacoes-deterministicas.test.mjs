@@ -127,7 +127,14 @@ const campaignApproaches = readFileSync(
 );
 const weekendPresence = readFileSync(
   new URL(
-    '../supabase/migrations/20260822001000_restaurar_presenca_fim_de_semana.sql',
+    '../supabase/migrations/20260822002000_visita_pendente_retorna_segunda.sql',
+    import.meta.url,
+  ),
+  'utf8',
+);
+const weekdayVisitFeedback = readFileSync(
+  new URL(
+    '../supabase/migrations/20260822002500_feedback_visita_ativo_dias_uteis.sql',
     import.meta.url,
   ),
   'utf8',
@@ -488,11 +495,18 @@ test('Miruna escolhe, registra e envia uma unica abordagem por ramo', () => {
   assert.match(campaignApproaches, /Entrada Adelmo[\s\S]*onlineOnly\}','true'/);
 });
 
-test('fim de semana ignora somente presenca fisica', () => {
+test('fim de semana ignora presenca e visita pendente; segunda restaura as regras', () => {
   assert.match(weekendPresence, /v_fim_de_semana/);
   assert.match(weekendPresence, /status_dapi='connected'/);
   assert.match(weekendPresence, /feedback_visita_pendente/);
   assert.match(weekendPresence, /'motivo','suspenso'/);
   assert.match(weekendPresence, /fim_de_semana_sem_exigencia_presenca/);
   assert.match(weekendPresence, /if v_fim_de_semana then[\s\S]*'elegivel',true/);
+  assert.match(weekendPresence, /'feedback_visita_exigido',false/);
+  assert.ok(
+    weekendPresence.indexOf('if v_fim_de_semana then') <
+      weekendPresence.indexOf('if coalesce(cfg.exigir_feedback_visita,true) then'),
+    'a excecao de fim de semana precisa acontecer antes do bloqueio por visita',
+  );
+  assert.match(weekdayVisitFeedback, /set exigir_feedback_visita=true/);
 });
