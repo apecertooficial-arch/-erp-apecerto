@@ -445,7 +445,7 @@ type LeadCarteiraAntiga = {
 };
 
 function TodosLeads({ leads, momentos, etapas, accessToken, busy, onAbrir, onPescar, onTrazer }: { leads: LeadFunil2[]; momentos: MomentoFunil2[]; etapas: EtapaConfigFunil2[]; accessToken: string; busy: boolean; onAbrir: (id: string) => void; onPescar: () => void; onTrazer: (leadId: number, etapa: string, momento: string) => Promise<boolean> }) {
-  const [filtro, setFiltro] = useState("todos");
+  const [filtro, setFiltro] = useState("ativos");
   const [situacao, setSituacao] = useState("todas");
   const [busca, setBusca] = useState("");
   const [pagina, setPagina] = useState(1);
@@ -460,7 +460,8 @@ function TodosLeads({ leads, momentos, etapas, accessToken, busy, onAbrir, onPes
   const atrasados = leads.filter((lead) => situacaoPrazo(lead.proxima_acao_em).classe === "atrasado").length;
   const termo = busca.trim().toLocaleLowerCase("pt-BR");
   const filtrados = leads.filter((lead) => {
-    if (filtro !== "todos" && lead.etapa !== filtro) return false;
+    if (filtro === "ativos" && lead.etapa === "legado") return false;
+    if (filtro !== "ativos" && lead.etapa !== filtro) return false;
     const prazo = situacaoPrazo(lead.proxima_acao_em).classe;
     if (situacao !== "todas" && prazo !== situacao) return false;
     if (!termo) return true;
@@ -498,7 +499,7 @@ function TodosLeads({ leads, momentos, etapas, accessToken, busy, onAbrir, onPes
   }, [busca, accessToken]);
   return <main className="f2-pagina"><CabecalhoPagina titulo="Todos os Leads" texto="A mesma leitura operacional do Funil 2.0: cliente, etapa, momento, ação e prazo — sem informações soltas." acao="Pescar um lead" onAcao={onPescar} />
     <div className="f2-leads-busca"><label><span>Buscar lead</span><input value={busca} onChange={(event) => { setBusca(event.target.value); setPagina(1); }} placeholder="Nome ou telefone" aria-label="Buscar lead por nome ou telefone" /></label><label><span>Situação do prazo</span><select value={situacao} onChange={(event) => { setSituacao(event.target.value); setPagina(1); }}><option value="todas">Todos os prazos</option><option value="atrasado">Atrasados</option><option value="urgente">Vencem em até 2h</option><option value="no-prazo">No prazo</option></select></label><b>{filtrados.length} encontrado(s)</b></div>
-    <div className="f2-leads-filtros"><button type="button" className={filtro === "todos" ? "ativo" : ""} onClick={() => { setFiltro("todos"); setPagina(1); }}>Todos · {leads.length}</button>{etapas.map((etapa) => <button type="button" className={filtro === etapa.codigo ? "ativo" : ""} onClick={() => { setFiltro(etapa.codigo); setPagina(1); }} key={etapa.codigo}>{etapa.rotulo} · {leads.filter((lead) => lead.etapa === etapa.codigo).length}</button>)}<span>{atrasados} atrasado(s)</span></div>
+    <div className="f2-leads-filtros"><button type="button" className={filtro === "ativos" ? "ativo" : ""} onClick={() => { setFiltro("ativos"); setPagina(1); }}>Ativos · {leads.filter((lead) => lead.etapa !== "legado").length}</button>{etapas.map((etapa) => <button type="button" className={filtro === etapa.codigo ? "ativo" : ""} onClick={() => { setFiltro(etapa.codigo); setPagina(1); }} key={etapa.codigo}>{etapa.rotulo} · {leads.filter((lead) => lead.etapa === etapa.codigo).length}</button>)}<span>{atrasados} atrasado(s)</span></div>
     <div className="f2-tabela-cab"><span>Cliente</span><span>Etapa</span><span>Momento</span><span>Próxima ação</span><span>Prazo</span><span></span></div>
     <div className="f2-tabela f2-tabela-compacta">{exibidos.map((lead) => { const prazo = prazoDaAcao(lead); const whatsapp = linkWhatsapp(lead.telefone); return <article key={lead.id} className={`f2-lead-linha prazo-${prazo.classe}`}><div className="f2-nome"><i>{iniciais(lead.nome)}</i><span><b>{lead.nome}</b><small>{lead.corretor_nome ?? "Responsável não definido"}{lead.instancia_rotulo ? <em className="f2-instancia" title={`Contato saindo por ${lead.instancia_rotulo}`}> · {lead.instancia_rotulo}</em> : null}</small><InteresseLead lead={lead} /></span></div><span className="f2-lead-chip etapa"><i />{etapas.find((e) => e.codigo === lead.etapa)?.rotulo}</span><span className="f2-lead-chip momento">{momentos.find((m) => m.codigo === lead.momento_codigo)?.rotulo}</span><strong className="f2-lead-acao">{acaoVisivel(lead)}</strong><em className={prazo.classe}>{prazo.rotulo}</em><div className="f2-lead-acoes"><button type="button" onClick={() => onAbrir(lead.id)}>💬 Chat</button>{whatsapp && <a href={whatsapp} target="_blank" rel="noreferrer">WhatsApp</a>}<button type="button" className="primario" onClick={() => onAbrir(lead.id)}>Abrir</button></div></article>; })}{filtrados.length === 0 && <div className="f2-sem-resultado"><b>Nenhum lead encontrado.</b><span>Revise a busca ou os filtros selecionados.</span></div>}</div>
     {filtrados.length > porPagina && <div className="f2-paginacao"><button type="button" disabled={paginaSegura === 1} onClick={() => setPagina((atual) => Math.max(1, atual - 1))}>← Anterior</button><span>Página {paginaSegura} de {totalPaginas}</span><button type="button" disabled={paginaSegura === totalPaginas} onClick={() => setPagina((atual) => Math.min(totalPaginas, atual + 1))}>Próxima →</button></div>}
