@@ -82,6 +82,35 @@ function horaAgora() {
   return new Intl.DateTimeFormat("pt-BR", { hour: "2-digit", minute: "2-digit" }).format(new Date());
 }
 
+function textoCurto(texto: string, limite = 56) {
+  return texto.length > limite ? `${texto.slice(0, limite - 1).trim()}…` : texto;
+}
+
+/* Interesse e tags sao coisas diferentes da etapa: etapa diz onde atender;
+   interesse diz O QUE o cliente pediu. No card, o produto fica inteiro e as
+   tags de aquisicao entram logo abaixo como contexto. */
+function ContextoDoLead({ lead, completo = false }: { lead: LeadFunil2; completo?: boolean }) {
+  const tags = lead.tags ?? [];
+  const contexto = tags.filter((tag) =>
+    tag.nome.toLocaleLowerCase("pt-BR") !== lead.interesse?.toLocaleLowerCase("pt-BR")
+    && !/^automa[cç][aã]o\s*:/i.test(tag.nome),
+  );
+  const exibidas = completo ? tags : contexto.slice(0, 3);
+  if (!lead.interesse && exibidas.length === 0) return null;
+  return <div className={`ape-interesse-wrap${completo ? " completo" : ""}`}>
+    {lead.interesse ? <div className="ape-interesse">
+      <span>INTERESSE DO LEAD</span>
+      <strong>{lead.interesse}</strong>
+    </div> : null}
+    {exibidas.length > 0 ? <div className="ape-tags-lead" aria-label="Tags de origem e interesse">
+      {exibidas.map((tag) => <span key={tag.nome} title={tag.nome}>
+        <i style={tag.cor ? { backgroundColor: tag.cor } : undefined} />{textoCurto(tag.nome)}
+      </span>)}
+      {!completo && contexto.length > exibidas.length ? <em>+{contexto.length - exibidas.length} tags</em> : null}
+    </div> : null}
+  </div>;
+}
+
 function lerLeadDaUrl() {
   if (typeof window === "undefined") return null;
   const valor = Number(new URLSearchParams(window.location.search).get("lead"));
@@ -156,6 +185,8 @@ function CartaoLead({
       <span className="ape-momento">{momento?.rotulo ?? lead.momento_codigo}</span>
       {lead.qualidade_atendimento_nota != null ? <span className="ape-momento">Atendimento {Number(lead.qualidade_atendimento_nota).toFixed(1)}/10</span> : null}
     </div>
+
+    <ContextoDoLead lead={lead} />
 
     {momento?.descricao ? <div className="ape-contexto">
       <span className="ape-contexto-titulo">
@@ -433,6 +464,7 @@ function FichaLead({
           <span className="ape-etapa">{nomeEtapa(lead.etapa)}</span>
           <span className="ape-momento">{momento?.rotulo ?? lead.momento_codigo}</span>
         </div>
+        <ContextoDoLead lead={lead} completo />
       </div>
 
       <div className="ape-ordem">
@@ -508,7 +540,7 @@ export function Funil2Mobile({
         || (filtroDia === "novos" ? esperandoPrimeiraChamada(lead)
           : filtroDia === "agora" ? prazo <= agora : prazo <= fimHoje);
       const cabeNaEtapa = etapa === "todos" || lead.etapa === etapa;
-      const cabeNaBusca = !termo || `${lead.nome} ${lead.telefone ?? ""}`.toLocaleLowerCase("pt-BR").includes(termo);
+      const cabeNaBusca = !termo || `${lead.nome} ${lead.telefone ?? ""} ${lead.interesse ?? ""} ${(lead.tags ?? []).map((tag) => tag.nome).join(" ")}`.toLocaleLowerCase("pt-BR").includes(termo);
       return cabeNoDia && cabeNaEtapa && cabeNaBusca;
     });
   }, [agora, busca, etapa, filtroDia, fimHoje, leads]);

@@ -69,6 +69,27 @@
   .ape-etapa { background: #FFE4D1; color: #CC5800; }
   .ape-momento { background: #F4F0EC; color: #6B635C; }
 
+  /* Produto antes da abordagem: nao disputa espaco com etapa/momento. */
+  .ape-interesse-wrap { display: flex; flex-direction: column; gap: 7px; margin-top: 10px; }
+  .ape-interesse {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    min-width: 0; padding: 10px 12px; border: 1px solid #FFD2B8; border-radius: 12px;
+    background: #FFF3EA;
+  }
+  .ape-interesse span { flex: 0 0 auto; color: #B84300; font-size: 9px; font-weight: 800; letter-spacing: .09em; }
+  .ape-interesse strong { overflow: hidden; color: #7D3000; font-size: 14px; font-weight: 800; text-align: right; text-overflow: ellipsis; white-space: nowrap; }
+  .ape-tags-lead { display: flex; flex-wrap: wrap; gap: 6px; }
+  .ape-tags-lead span, .ape-tags-lead em {
+    display: inline-flex; align-items: center; gap: 5px; max-width: 100%; padding: 5px 8px;
+    border-radius: 999px; background: #F7F4F1; color: #625A54; font-size: 10px; font-style: normal;
+    font-weight: 600; line-height: 1.2;
+  }
+  .ape-tags-lead span i { flex: 0 0 auto; width: 6px; height: 6px; border-radius: 999px; background: #FF7000; }
+  .ape-tags-lead em { background: #F4EAFB; color: #7620B6; }
+  .ape-interesse-wrap.completo { margin-top: 14px; }
+  .ape-interesse-wrap.completo .ape-interesse { align-items: flex-start; flex-direction: column; gap: 3px; }
+  .ape-interesse-wrap.completo .ape-interesse strong { white-space: normal; text-align: left; }
+
   /* Bloco roxo: lugar fixo do contexto do atendimento, no card e na ficha. */
   .ape-contexto { display: flex; flex-direction: column; gap: 5px; margin-top: 10px; padding: 11px 12px; border-radius: 12px; background: #F7ECFC; }
   .ape-contexto-titulo { display: flex; align-items: center; gap: 6px; color: #8B00CC; font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }

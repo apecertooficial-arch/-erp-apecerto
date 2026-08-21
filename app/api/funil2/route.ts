@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createServerSupabaseClient } from "../../lib/supabase/server";
+import { interesseDasTags, normalizarTagsDoLead, type TagDoLead } from "../../lib/lead-tags";
 
 export const dynamic = "force-dynamic";
 
@@ -136,6 +137,20 @@ export async function GET(request: Request) {
     if (error) return Response.json({ error: "Não foi possível vincular o histórico real dos leads." }, { status: 502 });
     for (const negocio of negocios ?? []) negocioLead.set(Number(negocio.id), Number(negocio.lead_id));
   }
+  /* f2_lead e uma copia operacional e, de proposito, nao duplica as tags.
+     Voltamos ao lead original pelo negocio e lemos com o MESMO cliente
+     autenticado da sessao: as policies de RLS continuam decidindo exatamente
+     quais tags o corretor pode ver. */
+  const tagsPorLead = new Map<number, { tags: TagDoLead[]; interesse: string | null }>();
+  const leadsOriginaisIds = [...new Set(negocioLead.values())].filter(Number.isFinite);
+  for (let inicio = 0; inicio < leadsOriginaisIds.length; inicio += 500) {
+    const { data: originais, error } = await db.from("leads").select("id,tags").in("id", leadsOriginaisIds.slice(inicio, inicio + 500));
+    if (error) return Response.json({ error: "Não foi possível carregar as tags de interesse dos leads." }, { status: 502 });
+    for (const original of originais ?? []) {
+      const tags = normalizarTagsDoLead(original.tags);
+      tagsPorLead.set(Number(original.id), { tags, interesse: interesseDasTags(tags) });
+    }
+  }
   const corretorIds = [...new Set((leads ?? []).map((lead) => Number(lead.corretor_id)).filter(Number.isFinite))];
   const [instancias, instanciaDoLead] = await Promise.all([
     instanciasPorCorretor(db, corretorIds),
@@ -147,9 +162,13 @@ export async function GET(request: Request) {
        selo vira uma previsao ("vai sair por aqui") em vez de um fato. */
     const daConversa = instanciaDoLead.get(String(lead.id));
     const instancia = daConversa ?? instancias.get(Number(lead.corretor_id));
+    const leadOriginalId = negocioLead.get(Number(lead.origem_negocio_id)) ?? 0;
+    const contexto = tagsPorLead.get(leadOriginalId);
     return {
       ...lead,
-      lead_id: negocioLead.get(Number(lead.origem_negocio_id)) ?? 0,
+      lead_id: leadOriginalId,
+      interesse: contexto?.interesse ?? null,
+      tags: contexto?.tags ?? [],
       instancia_rotulo: instancia?.rotulo ?? null,
       instancia_telefone: instancia?.telefone ?? null,
       instancia_status: instancia?.status ?? null,

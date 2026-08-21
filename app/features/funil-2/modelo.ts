@@ -119,6 +119,11 @@ export type InstanciaDoLead = {
   status: string | null;
 };
 
+export type TagLeadFunil2 = {
+  nome: string;
+  cor: string | null;
+};
+
 export type LeadFunil2 = {
   id: string;
   origem_negocio_id: number;
@@ -131,6 +136,10 @@ export type LeadFunil2 = {
   instancia_rotulo?: string | null;
   instancia_telefone?: string | null;
   instancia_status?: string | null;
+  /** Interesse principal inferido somente das tags reais do lead original. */
+  interesse?: string | null;
+  /** Tags normalizadas do lead original (produto, anúncio, campanha e origem). */
+  tags?: TagLeadFunil2[];
   etapa: EtapaFunil2;
   momento_codigo: string;
   acao_codigo: string;
