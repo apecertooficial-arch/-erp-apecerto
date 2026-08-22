@@ -1,7 +1,12 @@
 import { createServerSupabaseClient } from "../../lib/supabase/server";
 import type { Database } from "../../lib/supabase/database.types";
 import { resolveEffectiveAccess, denyIfCannot } from "../../lib/supabase/authz";
-import { assessProductQuality, isPlausibleProductPrice, validateProductPrice } from "../../features/products/quality";
+import {
+  assessProductQuality,
+  isPlausibleProductPrice,
+  validateProductPrice,
+  validateProductPricePerSquareMeter,
+} from "../../features/products/quality";
 import { isProductManagerRole } from "../../features/products/access";
 import { isProductPublishedOnSite } from "../../features/products/publication";
 
@@ -372,6 +377,13 @@ export async function PATCH(request: Request) {
       const blocking: string[] = [];
       if (!unitToApprove.numero || !unitToApprove.tipologia || !unitToApprove.area_m2 || unitToApprove.area_m2 <= 0) blocking.push("Número, tipologia e área útil");
       if (!isPlausibleProductPrice(unitToApprove.valor_promo ?? unitToApprove.valor_tabela, currentPurpose)) blocking.push("Preço válido");
+      const pricePerSquareMeter = validateProductPricePerSquareMeter(
+        unitToApprove.valor_promo ?? unitToApprove.valor_tabela,
+        unitToApprove.area_m2,
+        "Unidade",
+        currentPurpose,
+      );
+      if (pricePerSquareMeter.error) blocking.push(pricePerSquareMeter.error);
       if (!unitToApprove.proprietario_nome || !unitToApprove.proprietario_contato) blocking.push("Proprietário e contato");
       if (!unitToApprove.acesso_tipo || !unitToApprove.acesso_instrucoes || (unitToApprove.acesso_tipo === "chave_digital" && !unitToApprove.acesso_codigo)) blocking.push("Instruções de acesso");
       if ((mediaCount.count ?? 0) < 1) blocking.push("Ao menos uma foto da unidade");
