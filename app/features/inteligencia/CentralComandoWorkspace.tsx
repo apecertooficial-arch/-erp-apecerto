@@ -77,7 +77,7 @@ function toneFor(value: number, goal: number, inverse = false) {
 }
 
 function Kpi({ label, value, comparisonText, meta, tone = "plain", help, status }: { label: string; value: string; comparisonText?: string; meta?: string; tone?: "plain" | "brand" | "purple" | "good" | "warn"; help?: string; status?: string }) {
-  return <article className={`cc-kpi ${tone}`}>
+  return <article className={`cc-kpi cc-tone-${tone}`}>
     <div><span>{label}</span>{help && <button type="button" className="cc-info" title={help} aria-label={`Explicação: ${help}`}>i</button>}{status && <mark>{status}</mark>}</div>
     <strong>{value}</strong>
     {comparisonText && <small>{comparisonText}</small>}
