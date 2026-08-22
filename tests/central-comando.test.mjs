@@ -1,0 +1,56 @@
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import test from "node:test";
+import { podeVer, rotasModulo } from "../app/features/system/erp-routes.ts";
+
+const workspace = readFileSync(new URL("../app/features/inteligencia/CentralComandoWorkspace.tsx", import.meta.url), "utf8");
+const api = readFileSync(new URL("../app/api/central-comando/route.ts", import.meta.url), "utf8");
+const css = readFileSync(new URL("../app/styles/central-comando.css", import.meta.url), "utf8");
+const migration = readFileSync(new URL("../supabase/migrations/20260822145143_central_comando_dados_reais.sql", import.meta.url), "utf8");
+
+test("Central de Comando tem rota própria e fica restrita à gestão", () => {
+  assert.equal(rotasModulo["Central de Comando"].path, "/inteligencia");
+  assert.equal(podeVer("Central de Comando", { role: "admin", permissoes: null, carregado: true }), true);
+  assert.equal(podeVer("Central de Comando", { role: "gestor", permissoes: { dashboard: ["ver"] }, carregado: true }), true);
+  assert.equal(podeVer("Central de Comando", { role: "corretor", permissoes: { dashboard: ["ver"] }, carregado: true }), false);
+});
+
+test("painel usa fontes reais e não tem fallback de números mockados", () => {
+  assert.match(api, /central_comando_dashboard/);
+  assert.match(api, /tracking_360_dashboard/);
+  assert.match(api, /marketing-ads-read/);
+  assert.match(api, /lerGa4/);
+  assert.doesNotMatch(workspace, /mock|fixture|fakeData|Math\.random/i);
+  assert.match(workspace, /Nenhum número fictício será exibido/);
+});
+
+test("visão do sócio mantém no máximo seis indicadores principais", () => {
+  const partnerBlock = workspace.split('<div className="cc-kpis partner">')[1].split('</div>\n      <div className="cc-grid partner-grid">')[0];
+  assert.equal((partnerBlock.match(/<Kpi /g) ?? []).length, 6);
+  for (const label of ["Vendas", "Valor vendido", "Comissão", "Investimento em mídia", "Pessoas interessadas", "Visitas realizadas"]) {
+    assert.match(partnerBlock, new RegExp(`label="${label}"`));
+  }
+  assert.match(workspace, /Ver detalhes da operação/);
+});
+
+test("hierarquia de cores usa o laranja e roxo oficiais", () => {
+  assert.match(css, /--cc-orange:#ff7000/);
+  assert.match(css, /--cc-orange-hover:#e66200/);
+  assert.match(css, /--cc-orange-text:#cc5800/);
+  assert.match(css, /--cc-purple:#8b00cc/);
+  assert.match(css, /--cc-purple-dark:#66009a/);
+});
+
+test("atividade começa na implantação e não fabrica histórico", () => {
+  assert.match(migration, /nenhum tempo anterior é inventado/i);
+  assert.match(migration, /least\(65,/);
+  assert.match(migration, /Intervalos suspensos não entram/);
+  assert.match(workspace, /Não existe reconstrução retroativa/);
+});
+
+test("segurança consolida números sem expor PII", () => {
+  assert.match(migration, /security definer/);
+  assert.match(migration, /central_gestao_autorizada/);
+  assert.match(migration, /enable row level security/);
+  assert.doesNotMatch(api, /telefone|email|wa_mensagens|mensagem_texto/i);
+});

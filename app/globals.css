@@ -3,8 +3,8 @@
 
 :root {
   /* Marca */
-  --orange:#ff6500; --orange-600:#e65a00; --orange-700:#c94f00; --orange-soft:#fff2e9; --orange-100:#ffe1cb; --orange-50:#fff7f0;
-  --purple:#8d2bd1; --purple-600:#7a1fb8; --purple-700:#661a9c; --purple-soft:#f5ebfb; --purple-100:#ecd6f7;
+  --orange:#ff7000; --orange-600:#e66200; --orange-700:#cc5800; --orange-soft:#fff2e9; --orange-100:#ffe1cb; --orange-50:#fff7f0;
+  --purple:#8b00cc; --purple-600:#7900b4; --purple-700:#66009a; --purple-soft:#f5ebfb; --purple-100:#ecd6f7;
   /* Neutros quentes */
   --ink:#1f1c1a; --ink-soft:#4d4842; --muted:#6e6760; --faint:#9a938b;
   --line:#e9e3dc; --line-strong:#d8d0c7; --surface:#ffffff; --page:#faf8f6; --sunken:#f3efeb;
