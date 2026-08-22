@@ -48,7 +48,7 @@ export async function GET(request: Request) {
   }).rpc.bind(auth.supabase);
 
   const [central, tracking, attribution, media, ga4, alertActions] = await Promise.all([
-    rpc("central_comando_dashboard", { p_days: days }),
+    rpc("central_comando_dashboard_v2", { p_days: days }),
     rpc("tracking_360_dashboard", { p_days: days }),
     rpc("tracking_360_attribution_scope", { p_days: days }),
     auth.supabase.functions
