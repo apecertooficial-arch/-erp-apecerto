@@ -160,6 +160,13 @@ const recoveryVersionGuard = readFileSync(
   ),
   'utf8',
 );
+const resilientMessageTransport = readFileSync(
+  new URL(
+    '../supabase/migrations/20260822163000_transporte_video_tolerante_a_instabilidade.sql',
+    import.meta.url,
+  ),
+  'utf8',
+);
 const entrada = readFileSync(
   new URL('../supabase/functions/entrada/index.ts', import.meta.url),
   'utf8',
@@ -583,4 +590,14 @@ test('recuperacao de abordagem respeita o mapa da execucao original', () => {
   assert.match(recoveryVersionGuard, /original\.automacao_versao_id/);
   assert.match(recoveryVersionGuard, /bloco->>'type'='send-approach'/);
   assert.match(recoveryVersionGuard, /recuperacao_fora_da_versao_original/);
+});
+
+test('instabilidade do video preserva a distribuicao e recupera sem duplicar', () => {
+  assert.match(resilientMessageTransport, /motor_resolver_resultados_incertos/);
+  assert.match(resilientMessageTransport, /reconciliacao-resultado-incerto/);
+  assert.match(resilientMessageTransport, /verificacoes_confirmacao/);
+  assert.match(resilientMessageTransport, /from_me/);
+  assert.match(resilientMessageTransport, /envio ausente no historico confirmado/);
+  assert.match(resilientMessageTransport, /\(408\|409\|425\|429\|5\[0-9\]\[0-9\]\)\(:\|\$\)/);
+  assert.match(resilientMessageTransport, /retentativas_transporte<5/);
 });
