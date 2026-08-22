@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { TrackingLeadJourney } from "./TrackingLeadJourney";
+import { TrackingLinkBuilder } from "./TrackingLinkBuilder";
 
 type Row = Record<string, unknown>;
 type Dashboard = {
@@ -50,7 +52,7 @@ function Bar({ label, value, max, note }: { label: string; value: number; max: n
 
 export function Tracking360Workspace({ accessToken }: { accessToken: string }) {
   const [days, setDays] = useState(30);
-  const [tab, setTab] = useState<"visao" | "site" | "crm" | "campanhas" | "saude">("visao");
+  const [tab, setTab] = useState<"visao" | "site" | "crm" | "campanhas" | "jornada" | "links" | "saude">("visao");
   const [data, setData] = useState<Dashboard | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
@@ -101,7 +103,7 @@ export function Tracking360Workspace({ accessToken }: { accessToken: string }) {
     <div className="t360-controls">
       <div>{[7,30,90].map((value) => <button type="button" className={days===value?"active":""} key={value} onClick={() => setDays(value)}>{value} dias</button>)}</div>
       <nav>{([
-        ["visao","Visão executiva"],["site","Site e intenção"],["crm","CRM e Meta"],["campanhas","Campanhas"],["saude","Saúde técnica"],
+        ["visao","Visão executiva"],["site","Site e intenção"],["crm","CRM e Meta"],["campanhas","Campanhas"],["jornada","Jornada do lead"],["links","Links rastreáveis"],["saude","Saúde técnica"],
       ] as const).map(([key,label]) => <button type="button" className={tab===key?"active":""} key={key} onClick={() => setTab(key)}>{label}</button>)}</nav>
     </div>
 
@@ -154,6 +156,10 @@ export function Tracking360Workspace({ accessToken }: { accessToken: string }) {
         <article className="t360-card"><header><div><p>ORIGENS DO CRM</p><h2>De onde os cadastros vieram</h2></div></header>{(attribution.origins??[]).map((row)=><Bar key={String(row.origin)} label={String(row.origin)} value={n(row.leads)} max={Math.max(1,...(attribution.origins??[]).map(r=>n(r.leads)))} />)}</article>
         <article className="t360-card"><header><div><p>LEITURA</p><h2>Como usar este painel</h2></div></header><ol className="t360-steps"><li>Compare campanhas pelo avanço no CRM, não só pelo lead barato.</li><li>Crie semelhantes de quem respondeu, qualificou e visitou.</li><li>Use WhatsApp e galeria para remarketing de intenção.</li><li>Não misture Miruna e Aratans: os IDs continuam separados.</li></ol></article>
       </div>}
+
+      {tab === "jornada" && <TrackingLeadJourney accessToken={accessToken} />}
+
+      {tab === "links" && <TrackingLinkBuilder />}
 
       {tab === "saude" && <div className="t360-grid two">
         <article className="t360-card"><header><div><p>COLETA</p><h2>Últimos sinais</h2></div></header><div className="t360-health"><div><i className="ok"/><span>Site</span><strong>{ago(site.last_site_event_at)}</strong></div><div><i className={meta.last_delivery_at?"ok":"warn"}/><span>Meta CAPI</span><strong>{ago(meta.last_delivery_at)}</strong></div><div><i className={n(attribution.coverage_percent)>=95?"ok":"warn"}/><span>Atribuição Meta</span><strong>{pct(attribution.coverage_percent)}</strong></div><div><i className={n(meta.errors)===0?"ok":"bad"}/><span>Entregas com erro</span><strong>{fmt(meta.errors)}</strong></div></div></article>
