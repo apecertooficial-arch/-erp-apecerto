@@ -16,7 +16,7 @@ import "../styles/menu-marca-dagua-icone.css";
    olhar o outro faz item saltar de lugar.
 
    Nenhum item foi removido em relação ao publicado. */
-const adminMainItems: ModuleName[] = ["Início", "CRM", "Produtos", "Financeiro", "Tracking 360"];
+const adminMainItems: ModuleName[] = ["Início", "Central de Comando", "CRM", "Produtos", "Financeiro", "Tracking 360"];
 const adminToolItems: ModuleName[] = ["Abordagens", "Automações", "Financiamento", "Chat ao Vivo", "Disparos", "Calendário", "Projetos e Tarefas", "Agentes de IA", "Marca d'Água", "Notificações", "Base de conhecimento"];
 const adminSystemItems: ModuleName[] = ["Usuários", "Perfis e Permissões", "Auditoria", "Configurações", "Ajuda"];
 const brokerMainItems: ModuleName[] = ["Início", "CRM", "Produtos", "Financeiro"];
@@ -28,6 +28,7 @@ const rotulosMenu: Partial<Record<ModuleName, string>> = { CRM: "CRM · Meu Dia"
 function NavIcon({ item }: { item: ModuleName }) {
   const common = { width: 19, height: 19, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.8, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
   if (item === "Início") return <svg {...common}><path d="M3 10 12 3l9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1Z" /></svg>;
+  if (item === "Central de Comando") return <svg {...common}><path d="M4 19V9M10 19V5M16 19v-7M22 19V3" /><path d="M3 21h19" /><circle cx="10" cy="5" r="1.4" /><circle cx="16" cy="12" r="1.4" /><circle cx="22" cy="3" r="1.4" /></svg>;
   if (item === "CRM") return <svg {...common}><path d="M3 4h18l-7 8v7l-4 2v-9Z" /></svg>;
   if (item === "Produtos") return <svg {...common}><path d="M6 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16M3 21h18M10 7h.01M14 7h.01M10 11h.01M14 11h.01M10 15h.01M14 15h.01" /></svg>;
   if (item === "Financeiro") return <svg {...common}><rect x="3" y="6" width="18" height="13" rx="2" /><path d="M3 10h18M16 14h.01" /></svg>;

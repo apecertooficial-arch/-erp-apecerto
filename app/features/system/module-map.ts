@@ -3,6 +3,10 @@ export const moduleMap = {
     description: "Visão geral da operação e dos principais movimentos do ERP.",
     tables: ["leads", "empreendimentos", "wa_conversas", "vendas"],
   },
+  "Central de Comando": {
+    description: "Visão executiva consolidada de marketing, tracking, CRM, equipe e resultado financeiro.",
+    tables: ["f2_lead", "f2_visita", "perf_eventos", "vendas", "recebimentos", "central_alerta_acoes"],
+  },
   CRM: {
     description: "Leads, funis, tarefas, atividades e visitas comerciais.",
     tables: ["leads", "negocios", "pipelines", "pipeline_stages", "crm_atividades", "crm_tarefas", "visitas"],

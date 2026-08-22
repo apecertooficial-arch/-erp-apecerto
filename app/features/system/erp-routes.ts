@@ -45,6 +45,7 @@ export const rotasModulo: Record<ModuleName, RotaModulo> = {
      chegou, o que chamar agora, o que fica para mais tarde. O rotulo diz o que
      o corretor vai encontrar, nao onde ele esta. */
   "Início": { path: "/inicio", slugs: ["dashboard"], classe: "A", rotuloCurto: "Meu Dia", mobile: true },
+  "Central de Comando": { path: "/inteligencia", slugs: ["dashboard"], classe: "B", rotuloCurto: "Comando", mobile: false },
   CRM: { path: "/crm", slugs: ["crm", "leads", "pipeline"], classe: "A", rotuloCurto: "CRM", mobile: true },
   "Calendário": { path: "/agenda", slugs: ["calendario"], classe: "A", rotuloCurto: "Agenda", mobile: true },
   "Notificações": { path: "/notificacoes", slugs: ["notificacoes"], classe: "A", rotuloCurto: "Avisos", mobile: true },
@@ -142,6 +143,9 @@ export function podeVer(
   const { role, permissoes, carregado, isManager = false, temCorretorVinculado = false } = opcoes;
 
   if (role === "admin") return true;
+  // A API e a RPC repetem esta autorização. Na interface, a Central aparece
+  // somente para quem exerce gestão; corretor não recebe nem o link.
+  if (nome === "Central de Comando" && !(isManager || role === "gestor")) return false;
   // Equipe é rotina de gestão. Configurações também contém "Minha conexão":
   // todo corretor realmente vinculado precisa alcançá-la para conectar o
   // próprio WhatsApp, mesmo que um override de permissões omita o módulo.
