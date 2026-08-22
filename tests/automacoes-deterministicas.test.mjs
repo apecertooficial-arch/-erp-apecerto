@@ -132,6 +132,13 @@ const campaignApproaches = readFileSync(
   ),
   'utf8',
 );
+const mirunaWhatsappMp4 = readFileSync(
+  new URL(
+    '../supabase/migrations/20260822025000_miruna_mp4_whatsapp.sql',
+    import.meta.url,
+  ),
+  'utf8',
+);
 const weekendPresence = readFileSync(
   new URL(
     '../supabase/migrations/20260822012000_visita_pendente_retorna_segunda.sql',
@@ -537,6 +544,14 @@ test('Miruna publica um único bloco com o grupo e alternância igual', () => {
   assert.match(groupedApproachSend, /- 'b19' - 'b20' - 'b22' - 'b23' - 'b25' - 'b26'/);
   assert.match(groupedApproachSend, /ABORDAGEM_AUTOMATICA_DEVE_ESTAR_DESLIGADA/);
   assert.match(campaignApproaches, /Entrada Adelmo[\s\S]*onlineOnly\}','true'/);
+});
+
+test('abordagens Miruna usam MP4 compatível com WhatsApp', () => {
+  assert.match(mirunaWhatsappMp4, /miruna-01-whatsapp-720p\.mp4/);
+  assert.match(mirunaWhatsappMp4, /miruna-02-whatsapp-720p\.mp4/);
+  assert.match(mirunaWhatsappMp4, /metadata->>'mimetype'='video\/mp4'/);
+  assert.match(mirunaWhatsappMp4, /where id in \(18,19,20\) and grupo='Miruna 603'/);
+  assert.match(mirunaWhatsappMp4, /case when id=19 then v_new_02 else v_new_01 end/);
 });
 
 test('fim de semana ignora presenca e visita pendente; segunda restaura as regras', () => {
