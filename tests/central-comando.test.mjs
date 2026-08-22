@@ -31,6 +31,8 @@ test("coorte executiva não confunde importação histórica com lead novo", () 
   assert.match(workspace, /Sem base no período anterior/);
   assert.match(workspace, /as contas ainda não autorizaram a leitura/);
   assert.match(workspace, /Quando a leitura não está autorizada, o painel não apresenta zero/);
+  assert.match(workspace, /document\.body\.appendChild\(link\)/);
+  assert.match(workspace, /Exportação preparada:/);
   assert.doesNotMatch(workspace, /Math\.max\(1, flow\[index - 1\]\.value\)/);
 });
 

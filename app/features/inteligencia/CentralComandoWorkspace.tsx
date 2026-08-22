@@ -133,6 +133,7 @@ export function CentralComandoWorkspace({ accessToken }: { accessToken: string }
   const [owner, setOwner] = useState("");
   const [deadline, setDeadline] = useState("");
   const [saving, setSaving] = useState(false);
+  const [notice, setNotice] = useState("");
 
   const load = useCallback(async (quiet = false) => {
     if (quiet) setRefreshing(true); else setLoading(true);
@@ -206,11 +207,16 @@ export function CentralComandoWorkspace({ accessToken }: { accessToken: string }
 
   const exportCsv = () => {
     const rows = tab === "equipe" ? (central.team ?? []) : tab === "marketing" ? ads : tab === "crm" ? (central.funnel?.flow ?? []) : tab === "site" ? ((tracking.top_pages as Row[] | undefined) ?? []) : tab === "financeiro" ? [finance] : [summary];
-    if (!rows.length) return;
+    if (!rows.length) { setNotice("Não há linhas para exportar nesta visão."); return; }
     const keys = Array.from(new Set(rows.flatMap((row) => Object.keys(row))));
     const quote = (value: unknown) => `"${String(value ?? "").replaceAll('"', '""')}"`;
     const csv = [keys.map(quote).join(";"), ...rows.map((row) => keys.map((key) => quote(row[key as keyof typeof row])).join(";"))].join("\n");
-    const link = document.createElement("a"); link.href = URL.createObjectURL(new Blob([`\ufeff${csv}`], { type: "text/csv;charset=utf-8" })); link.download = `central-${tab}-${days}d.csv`; link.click(); URL.revokeObjectURL(link.href);
+    const url = URL.createObjectURL(new Blob([`\ufeff${csv}`], { type: "text/csv;charset=utf-8" }));
+    const link = document.createElement("a"); link.href = url; link.download = `central-${tab}-${days}d.csv`;
+    document.body.appendChild(link); link.click(); link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1_000);
+    setNotice(`Exportação preparada: central-${tab}-${days}d.csv`);
+    window.setTimeout(() => setNotice(""), 3_000);
   };
 
   if (loading && !data) return <section className="cc-shell"><div className="cc-loading"><i /><strong>Conectando CRM, mídia, site, equipe e financeiro…</strong><span>Nenhum número fictício será exibido.</span></div></section>;
@@ -286,6 +292,7 @@ export function CentralComandoWorkspace({ accessToken }: { accessToken: string }
     </>}
 
     {error && data && <button className="cc-inline-error" type="button" onClick={() => setError("")}>{error} · fechar</button>}
+    {notice && <div className="cc-inline-notice" role="status">{notice}</div>}
 
     {alertOpen && <div className="cc-drawer-layer" role="presentation" onClick={() => setAlertOpen(null)}><aside className="cc-drawer" role="dialog" aria-modal="true" aria-label={`Alerta: ${alertOpen.title}`} onClick={(event) => event.stopPropagation()}><header><div><p>ALERTA EXECUTIVO</p><h2>{alertOpen.title}</h2></div><button type="button" onClick={() => setAlertOpen(null)} aria-label="Fechar">×</button></header><section><div className={`cc-alert-detail ${alertOpen.level}`}><strong>O que aconteceu</strong><span>{alertOpen.what}</span></div><div><strong>Impacto</strong><p>{alertOpen.impact}</p></div><div><strong>Próxima ação</strong><p>{alertOpen.next}</p></div><label><span>Quem está cuidando</span><select value={owner} onChange={(event) => setOwner(event.target.value)}><option value="">Escolha o responsável</option><option>Samuel</option><option>Sócio / direção</option><option>Gestor comercial</option><option>Gestor de tráfego</option><option>Equipe de corretores</option><option>TI / integrações</option></select></label><label><span>Prazo</span><input type="date" value={deadline} onChange={(event) => setDeadline(event.target.value)} /></label></section><footer><button type="button" className="secondary" disabled={saving} onClick={() => void saveAlert("seen")}>Marcar como visto</button><button type="button" className="secondary" disabled={saving || !owner} onClick={() => void saveAlert("assign")}>Salvar responsável</button><button type="button" className="primary" disabled={saving} onClick={() => void saveAlert("resolve")}>Marcar resolvido</button></footer></aside></div>}
   </section>;
