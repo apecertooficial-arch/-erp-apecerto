@@ -30,9 +30,26 @@
    ========================================================================== */
 
 /* ---------- Funil 2.0 — quadro de etapas ---------- */
-body .f2-coluna { display: flex; flex-direction: column; min-height: 0; max-height: calc(100vh - 210px); }
+body .f2-board {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+}
+body .f2-coluna { display: flex; flex-direction: column; min-height: 0; max-height: calc(100vh - 210px); overflow: hidden; }
 body .f2-coluna-topo { flex: 0 0 auto; border-bottom: 1px solid var(--f2-line); }
-body .f2-lista { flex: 1 1 auto; min-height: 110px; overflow-y: auto; overscroll-behavior: contain; padding-top: 9px; }
+body .f2-lista {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 110px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior-x: auto;
+  overscroll-behavior-y: contain;
+  padding-top: 9px;
+}
 body .f2-lista > * { flex: 0 0 auto; }
 body .f2-lista::-webkit-scrollbar { width: 9px; }
 body .f2-lista::-webkit-scrollbar-thumb { background: #d3c9c1; border-radius: 8px; border: 2px solid #f8f3ef; }

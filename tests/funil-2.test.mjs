@@ -21,6 +21,7 @@ const respostaInstanciasApp = readFileSync(new URL("../supabase/migrations/20260
 const reinicioPiloto = readFileSync(new URL("../supabase/migrations/20260812010000_funil_2_zerar_com_arquivo_e_fila_independente.sql", import.meta.url), "utf8");
 const ordemConfig = readFileSync(new URL("../supabase/migrations/20260821181737_corrigir_ordem_config_funil.sql", import.meta.url), "utf8");
 const hotfixOrdemConfig = readFileSync(new URL("../supabase/migrations/20260821183639_qualificar_constraints_config_funil.sql", import.meta.url), "utf8");
+const rolagemEtapas = readFileSync(new URL("../app/styles/esteira-rolagem.css", import.meta.url), "utf8");
 
 test("Funil 2.0 se apresenta como carteira operacional com origens preservadas", () => {
   assert.match(ui, /OPERAÇÃO OFICIAL/);
@@ -58,6 +59,16 @@ test("reinício do piloto arquiva as cópias, preserva os originais e mantém os
 test("quadro deixa etapa, momento, ação e prazo explícitos", () => {
   for (const texto of ["MOMENTO", "FAÇA AGORA", "O QUE FAZER AGORA", "Próxima ação", "Prazo padrão"]) assert.match(ui, new RegExp(texto));
   assert.match(ui, /<select value=\{codigo\}/);
+});
+
+test("quadro rola para os lados e cada etapa rola somente para cima e para baixo", () => {
+  const regraQuadro = rolagemEtapas.match(/body \.f2-board \{[\s\S]*?\}/)?.[0] ?? "";
+  const regraLista = rolagemEtapas.match(/body \.f2-lista \{[\s\S]*?\}/)?.[0] ?? "";
+  assert.match(regraQuadro, /overflow-x:\s*auto/);
+  assert.match(regraQuadro, /overflow-y:\s*hidden/);
+  assert.match(regraLista, /overflow-x:\s*hidden/);
+  assert.match(regraLista, /overflow-y:\s*auto/);
+  assert.match(regraLista, /overscroll-behavior-x:\s*auto/);
 });
 
 test("Funil 2.0 inclui mapa interativo de etapas, momentos, ações e prazos", () => {
