@@ -153,6 +153,13 @@ const weekdayVisitFeedback = readFileSync(
   ),
   'utf8',
 );
+const recoveryVersionGuard = readFileSync(
+  new URL(
+    '../supabase/migrations/20260822160000_bloquear_recuperacao_anterior_ao_envio_automatico.sql',
+    import.meta.url,
+  ),
+  'utf8',
+);
 const entrada = readFileSync(
   new URL('../supabase/functions/entrada/index.ts', import.meta.url),
   'utf8',
@@ -568,4 +575,12 @@ test('fim de semana ignora presenca e visita pendente; segunda restaura as regra
     'a excecao de fim de semana precisa acontecer antes do bloqueio por visita',
   );
   assert.match(weekdayVisitFeedback, /set exigir_feedback_visita=true/);
+});
+
+test('recuperacao de abordagem respeita o mapa da execucao original', () => {
+  assert.match(recoveryVersionGuard, /__motor_recovery_of/);
+  assert.match(recoveryVersionGuard, /__motor_recovery_card_of/);
+  assert.match(recoveryVersionGuard, /original\.automacao_versao_id/);
+  assert.match(recoveryVersionGuard, /bloco->>'type'='send-approach'/);
+  assert.match(recoveryVersionGuard, /recuperacao_fora_da_versao_original/);
 });
