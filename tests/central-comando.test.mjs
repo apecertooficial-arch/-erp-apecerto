@@ -65,4 +65,6 @@ test("segurança consolida números sem expor PII", () => {
   assert.match(migration, /central_gestao_autorizada/);
   assert.match(migration, /enable row level security/);
   assert.doesNotMatch(api, /telefone|email|wa_mensagens|mensagem_texto/i);
+  const revokeLegacy = readFileSync(new URL("../supabase/migrations/20260822154702_central_comando_revoga_rpc_legada.sql", import.meta.url), "utf8");
+  assert.match(revokeLegacy, /revoke execute on function public\.central_comando_dashboard\(integer\)[\s\S]*from authenticated/);
 });
