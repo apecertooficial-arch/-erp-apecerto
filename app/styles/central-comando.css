@@ -1,5 +1,6 @@
+.app-shell:has(.cc-shell){grid-template-columns:minmax(0,1fr)!important}
 .app-shell:has(.cc-shell)>.sidebar{display:none}
-.app-shell:has(.cc-shell)>.workspace{width:100%;max-width:none;margin:0;padding:0;overflow:auto}
+.app-shell:has(.cc-shell)>.workspace{grid-column:1/-1!important;width:100%;max-width:none;margin:0;padding:0;overflow:auto}
 .cc-shell{--cc-orange:#ff7000;--cc-orange-hover:#e66200;--cc-orange-text:#cc5800;--cc-purple:#8b00cc;--cc-purple-dark:#66009a;--cc-page:#faf8f6;--cc-line:#e4dfd9;--cc-ink:#1f1c1a;display:grid;grid-template-columns:257px minmax(0,1fr);width:100%;min-height:100vh;background:var(--cc-page);color:var(--cc-ink);font-family:Quicksand,system-ui,-apple-system,"Segoe UI",sans-serif}
 .cc-shell *{box-sizing:border-box}.cc-shell button,.cc-shell select,.cc-shell input{font:inherit}.cc-shell button{cursor:pointer}.cc-shell button:focus-visible,.cc-shell select:focus-visible,.cc-shell input:focus-visible,.cc-shell a:focus-visible{outline:2.5px solid var(--cc-purple);outline-offset:2px}
 
