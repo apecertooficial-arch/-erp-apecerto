@@ -53,6 +53,12 @@ test("hierarquia de cores usa o laranja e roxo oficiais", () => {
   assert.match(css, /--cc-purple-dark:#66009a/);
 });
 
+test("tons dos indicadores não colidem com classes globais do ERP", () => {
+  assert.match(workspace, /cc-kpi cc-tone-\$\{tone\}/);
+  assert.doesNotMatch(workspace, /className=\{`cc-kpi \$\{tone\}`\}/);
+  for (const tone of ["purple", "good", "warn"]) assert.match(css, new RegExp(`\\.cc-kpi\\.cc-tone-${tone}`));
+});
+
 test("estrutura publicada preserva a arquitetura visual do Claude Design", () => {
   assert.match(workspace, /cc-local-nav/);
   assert.match(workspace, /cc-module|moduleCopy/);
