@@ -161,6 +161,20 @@ const dapi = readFileSync(
   new URL('../supabase/functions/dapi-webhook/index.ts', import.meta.url),
   'utf8',
 );
+const confirmedMessaging = readFileSync(
+  new URL(
+    '../supabase/migrations/20260822020000_motor_mensagens_confirmacao_webhook.sql',
+    import.meta.url,
+  ),
+  'utf8',
+);
+const confirmedMessageContinuation = readFileSync(
+  new URL(
+    '../supabase/migrations/20260822021500_motor_mensagem_continuacao_confirmada.sql',
+    import.meta.url,
+  ),
+  'utf8',
+);
 const sara = readFileSync(
   new URL('../supabase/functions/f2-sara-reclassificar/index.ts', import.meta.url),
   'utf8',
@@ -393,6 +407,25 @@ test('envio alterna abordagens no próprio módulo e usa somente a instância do
   assert.doesNotMatch(groupedApproachSend, /motor_roleta_transferir_contagem/);
   assert.match(isolatedSend, /motor_mensagem_partes/);
   assert.match(isolatedSend, /AUTOMATION_RETRY: MESSAGE_SEND_FAILED/);
+});
+
+test('mensagem só libera a próxima parte após confirmação real da D-API', () => {
+  assert.match(confirmedMessaging, /status in \('pendente','processando','aceita','enviada','entregue','lida','erro','erro_incerto'\)/);
+  assert.match(confirmedMessaging, /aceita pela D-API; aguardando confirmacao messages\.sent/);
+  assert.match(confirmedMessaging, /p\.parte=v_parte\.parte\+1/);
+  assert.match(confirmedMessaging, /p\.status not in \('enviada','entregue','lida'\)/);
+  assert.match(confirmedMessaging, /resultado incerto; nao sera repetida automaticamente/);
+  assert.match(dapi, /normalizedEvent === "messages\.sent"/);
+  assert.match(dapi, /motor_confirmar_mensagem_evento/);
+  assert.match(dapi, /p_status: "enviada"/);
+  assert.match(dapi, /nextStatus === "enviado"[\s\S]*?"enviada"/);
+  assert.match(dapi, /nextStatus === "lido"[\s\S]*?"lida"/);
+  assert.match(dapi, /p_status: motorEventStatus/);
+  assert.match(confirmedMessageContinuation, /private\.motor_continuar_apos_mensagem/);
+  assert.match(confirmedMessageContinuation, /continuacao_bloco_id/);
+  assert.match(confirmedMessageContinuation, /__motor_next_block_id/);
+  assert.match(confirmedMessageContinuation, /aguardando confirmacao da mensagem/);
+  assert.match(confirmedMessageContinuation, /v_ultima\.continuacao_em is not null/);
 });
 
 test('entrada materializa o contato e operações de campos não criam lead', () => {

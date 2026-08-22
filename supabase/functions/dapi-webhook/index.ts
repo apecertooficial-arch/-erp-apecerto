@@ -23,6 +23,25 @@ const json = (body: unknown, status = 200) =>
 
 const RANK: Record<string, number> = { enviado: 1, entregue: 2, lido: 3 };
 
+function recordValue(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object"
+    ? value as Record<string, unknown>
+    : {};
+}
+
+function eventTimestamp(
+  payload: Record<string, unknown>,
+  data: Record<string, unknown>,
+): string {
+  const raw = payload.timestamp ?? data.timestamp;
+  if (typeof raw === "number") {
+    const millis = raw > 10_000_000_000 ? raw : raw * 1000;
+    return new Date(millis).toISOString();
+  }
+  const parsed = new Date(String(raw ?? ""));
+  return Number.isNaN(parsed.getTime()) ? new Date().toISOString() : parsed.toISOString();
+}
+
 function mapAck(value: unknown): string | null {
   const text = String(value ?? "").toLowerCase();
   if (!text) return null;
@@ -105,19 +124,82 @@ Deno.serve(async (request) => {
   const waEventoId = inserted.data?.id ?? null;
 
   const normalizedEvent = event.toLowerCase();
+  const messageId = dataObj.message_id ?? dataObj.id ?? dataObj.messageId ??
+    (dataObj.key as Record<string, unknown> | undefined)?.id ??
+    payload.message_id ?? payload.id ?? null;
+  const destination = recordValue(dataObj.to).jid ?? dataObj.to ??
+    dataObj.remote_jid ?? dataObj.remoteJid ?? null;
+  const messageType = dataObj.type ?? dataObj.messageType ?? null;
+  const content = dataObj.message ?? dataObj.body ?? dataObj.text ?? null;
+  const mediaData = recordValue(dataObj.media_data);
+  const pendingMediaUrl = mediaData.pending_media_url ??
+    dataObj.pending_media_url ?? dataObj.media_url ?? null;
+  const occurredAt = eventTimestamp(payload, dataObj);
+
+  // messages.sent e a confirmacao canonica de que a D-API realmente enviou.
+  // Ela precisa ser ingerida como mensagem antes de liberar a proxima parte.
+  if (normalizedEvent === "messages.sent") {
+    const ingested = await admin.rpc("wa_ingerir", { p_payload: payload });
+    if (ingested.error || (ingested.data as { ok?: boolean } | null)?.ok === false) {
+      const detail = ingested.error?.message ??
+        String((ingested.data as { erro?: unknown } | null)?.erro ?? "INGEST_FAILED");
+      if (waEventoId) {
+        await admin.from("wa_eventos").update({ erro: detail.slice(0, 1000) })
+          .eq("id", waEventoId);
+      }
+      return json({ ok: false, stored: true, error: "MESSAGE_INGEST_FAILED" }, 503);
+    }
+
+    let motorResult: { ok?: boolean; retry?: boolean } | null = null;
+    let motorError: string | null = null;
+    for (const waitMs of [0, 250, 500, 1000]) {
+      if (waitMs) await new Promise((resolve) => setTimeout(resolve, waitMs));
+      const confirmed = await admin.rpc("motor_confirmar_mensagem_evento", {
+        p_session_id: session ? String(session) : "",
+        p_message_id: messageId ? String(messageId) : "",
+        p_status: "enviada",
+        p_destino_jid: destination ? String(destination) : null,
+        p_tipo: messageType ? String(messageType) : null,
+        p_conteudo: content ? String(content) : null,
+        p_media_url: pendingMediaUrl ? String(pendingMediaUrl) : null,
+        p_evento_em: occurredAt,
+        p_trace_id: payload.traceId ? String(payload.traceId) : null,
+      });
+      motorError = confirmed.error?.message ?? null;
+      motorResult = confirmed.data as { ok?: boolean; retry?: boolean } | null;
+      if (!motorError && (motorResult?.ok || !motorResult?.retry)) break;
+    }
+
+    if (waEventoId) {
+      await admin.from("wa_eventos").update({
+        processado: true,
+        erro: motorError ? motorError.slice(0, 1000) : null,
+      }).eq("id", waEventoId);
+    }
+    return json({
+      ok: true,
+      stored: true,
+      tipo: "messages.sent",
+      wa_message_id: messageId,
+      motor: motorResult,
+    });
+  }
+
   const rawStatus = dataObj.status ?? dataObj.ack ?? dataObj.ackType ??
     payload.status ?? payload.ack ?? null;
   const hasContent = Boolean(
     dataObj.message || dataObj.content || dataObj.body || dataObj.text,
   );
   const nextStatus = mapAck(rawStatus) ?? statusFromEvent(normalizedEvent);
+  const motorEventStatus = nextStatus === "enviado"
+    ? "enviada"
+    : nextStatus === "lido"
+    ? "lida"
+    : nextStatus;
   const isAck = nextStatus !== null && !hasContent &&
     /ack|receipt|status|deliver|read|sent|update/.test(normalizedEvent);
 
   if (isAck) {
-    const messageId = dataObj.message_id ?? dataObj.id ?? dataObj.messageId ??
-      (dataObj.key as Record<string, unknown> | undefined)?.id ??
-      payload.message_id ?? payload.id ?? null;
     let updated = 0;
 
     if (messageId && nextStatus) {
@@ -137,8 +219,29 @@ Deno.serve(async (request) => {
       }
     }
 
+    let motorStatus: unknown = null;
+    let motorStatusError: string | null = null;
+    if (messageId && motorEventStatus) {
+      const result = await admin.rpc("motor_confirmar_mensagem_evento", {
+        p_session_id: session ? String(session) : "",
+        p_message_id: String(messageId),
+        p_status: motorEventStatus,
+        p_destino_jid: destination ? String(destination) : null,
+        p_tipo: messageType ? String(messageType) : null,
+        p_conteudo: content ? String(content) : null,
+        p_media_url: pendingMediaUrl ? String(pendingMediaUrl) : null,
+        p_evento_em: occurredAt,
+        p_trace_id: payload.traceId ? String(payload.traceId) : null,
+      });
+      motorStatus = result.data;
+      motorStatusError = result.error?.message ?? null;
+    }
+
     if (waEventoId) {
-      await admin.from("wa_eventos").update({ processado: true }).eq("id", waEventoId);
+      await admin.from("wa_eventos").update({
+        processado: true,
+        erro: motorStatusError ? motorStatusError.slice(0, 1000) : null,
+      }).eq("id", waEventoId);
     }
     return json({
       ok: true,
@@ -147,6 +250,7 @@ Deno.serve(async (request) => {
       status: nextStatus,
       wa_message_id: messageId,
       atualizadas: updated,
+      motor: motorStatus,
     });
   }
 
