@@ -9,6 +9,7 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const CRON_SECRET = Deno.env.get("CRON_SECRET") ?? "";
 const MAX_MENSAGENS = 60;
+const TEMPERATURAS = ["frio", "morno", "quente", "negociando"] as const;
 
 type Catalogo = {
   codigo: string; etapa: string; rotulo: string; descricao: string;
@@ -78,6 +79,13 @@ REGRAS OBRIGATÓRIAS:
 - Pós-visita, cancelamento e remarcação usam somente momentos de pós-visita do catálogo.
 - RETORNO_PROGRAMADO só quando há data/prazo combinado; sem data explícita, o CRM usará 5 dias.
 - Evidências são mensagens do CLIENTE. Em evidencia_ids, devolva somente IDs exibidos em linhas CLIENTE e que sustentem a classificação. Nunca use ID de CORRETOR.
+- Temperatura descreve a intenção REAL do cliente, nunca o esforço do corretor:
+  frio = não respondeu, recusou ou não demonstrou intenção concreta;
+  morno = respondeu e existe interesse, mas ainda sem urgência ou próximo passo forte;
+  quente = declarou intenção concreta de visitar, escolher, financiar, enviar documentos ou decidir em curto prazo;
+  negociando = existe proposta, reserva, contrato ou negociação explícita de valores/condições.
+- QUENTE e NEGOCIANDO exigem fala literal do CLIENTE e confiança mínima de 0.85. Mensagem automática, insistência do corretor, quantidade de mensagens e momento atual nunca tornam um lead quente.
+- Em temperatura_evidencia_ids, devolva apenas IDs de mensagens do CLIENTE que provam a temperatura escolhida.
 - Não invente informação e não crie momento/ação livre. Você não envia mensagem.
 CATÁLOGO OFICIAL:
 ${regras}
@@ -85,7 +93,7 @@ ESTADO ATUAL: etapa=${c.etapa}; momento=${c.momento_codigo}; cadência_passo=${c
 CONVERSA D-API EM ORDEM CRONOLÓGICA (recorte mais recente, até ${MAX_MENSAGENS} mensagens):
 ${conversa}
 Também avalie a qualidade do atendimento do CORRETOR de 0 a 10. A nota mede clareza, agilidade, condução para o próximo passo e aderência ao que o cliente pediu. Sem mensagens do corretor, use nota null. Não desconte pontos por fatos que não aparecem na conversa.
-Responda SOMENTE JSON válido: {"momento_codigo":"CÓDIGO_DO_CATÁLOGO","resumo":"diagnóstico objetivo em até 2 frases","proxima_acao_especifica":"orientação concreta para o corretor","confianca":0.0,"evidencia_ids":["ID_DA_MENSAGEM_DO_CLIENTE"],"evidencias":["trecho literal do cliente"],"prazo_sugerido":null,"qualidade_nota":0.0,"qualidade_resumo":"justificativa objetiva da nota"}.`;
+Responda SOMENTE JSON válido: {"momento_codigo":"CÓDIGO_DO_CATÁLOGO","resumo":"diagnóstico objetivo em até 2 frases","proxima_acao_especifica":"orientação concreta para o corretor","confianca":0.0,"evidencia_ids":["ID_DA_MENSAGEM_DO_CLIENTE"],"evidencias":["trecho literal do cliente"],"temperatura":"frio|morno|quente|negociando","temperatura_confianca":0.0,"temperatura_evidencia_ids":["ID_DA_MENSAGEM_DO_CLIENTE"],"prazo_sugerido":null,"qualidade_nota":0.0,"qualidade_resumo":"justificativa objetiva da nota"}.`;
 }
 
 async function carregarMensagens(db: any, c: Candidato) {
@@ -120,7 +128,7 @@ async function carregarMensagens(db: any, c: Candidato) {
 async function processar(db: any, c: Candidato, catalogo: Catalogo[], agenteSlug: string) {
   const mensagens = await carregarMensagens(db, c);
   const hash = await sha256(JSON.stringify({ lead: c.funil_lead_id, versao: c.versao,
-    contrato:"evidencia-id-v3-recorte",
+    contrato:"evidencia-id-v4-temperatura-real",
     agente: agenteSlug,
     mensagens: mensagens.map((m: any) => [m.id,m.enviado_em ?? m.criado_em]),
     catalogo: catalogo.map((m) => [m.codigo,m.etapa,m.acao_codigo,m.prazo_minutos]) }));
@@ -132,6 +140,7 @@ async function processar(db: any, c: Candidato, catalogo: Catalogo[], agenteSlug
         ? "Nenhum histórico D-API foi localizado para este lead; classificação anterior preservada."
         : "Sem histórico D-API posterior à entrada no Funil 2.0; classificação anterior preservada.",
       evidencias:[],confianca:null,mensagens:0,qualidade_nota:null,
+      temperatura:null,temperatura_confianca:null,temperatura_evidencias:[],
       qualidade_resumo:"Sem mensagens suficientes para avaliar o atendimento." };
   }
   const entradas = mensagens.filter((m: any) => direcaoCliente(m.direcao));
@@ -145,6 +154,7 @@ async function processar(db: any, c: Candidato, catalogo: Catalogo[], agenteSlug
       prazo_sugerido:null,
       resumo:"O corretor já tentou contato, mas o cliente ainda não respondeu; seguir a cadência oficial.",
       evidencias:[],confianca:1,mensagens:mensagens.length,qualidade_nota:null,
+      temperatura:"frio",temperatura_confianca:1,temperatura_evidencias:[],
       qualidade_resumo:"Sem resposta do cliente; a qualidade não foi pontuada automaticamente." };
   }
 
@@ -180,6 +190,21 @@ async function processar(db: any, c: Candidato, catalogo: Catalogo[], agenteSlug
       return normalizada.length >= 4 && falasCliente.some((fala: string) => fala.includes(normalizada));
     });
   const evidencias = [...new Set([...evidenciasPorId, ...evidenciasTexto])].slice(0,5);
+  const temperatura = texto(parsed.temperatura, 20);
+  const temperaturaConfianca = Number(parsed.temperatura_confianca);
+  if (!TEMPERATURAS.includes(temperatura as (typeof TEMPERATURAS)[number]) ||
+      !Number.isFinite(temperaturaConfianca) || temperaturaConfianca < 0 || temperaturaConfianca > 1)
+    throw new Error("ia_temperatura_invalida");
+  const temperaturaEvidencias = [...new Set(
+    (Array.isArray(parsed.temperatura_evidencia_ids) ? parsed.temperatura_evidencia_ids : [])
+      .map((id: unknown) => entradasPorId.get(String(id)))
+      .filter(Boolean)
+      .map((m: any) => texto(m.transcricao, 300) ?? texto(m.conteudo, 300))
+      .filter((e: string | null): e is string => Boolean(e)),
+  )].slice(0,5);
+  if (!temperaturaEvidencias.length) throw new Error("ia_temperatura_sem_evidencia_cliente");
+  if (["quente", "negociando"].includes(temperatura!) && temperaturaConfianca < 0.85)
+    throw new Error("ia_temperatura_alta_sem_confianca");
   const prazo = typeof parsed.prazo_sugerido==="string" && !Number.isNaN(Date.parse(parsed.prazo_sugerido))
     ? new Date(parsed.prazo_sugerido).toISOString() : null;
   const notaRaw = parsed.qualidade_nota;
@@ -195,6 +220,8 @@ async function processar(db: any, c: Candidato, catalogo: Catalogo[], agenteSlug
     prazo_sugerido:prazo,
     resumo:`${resumoBase}${proxima ? ` Próxima direção: ${proxima}` : ""}`.slice(0,800),
     evidencias,confianca,mensagens:mensagens.length,qualidade_nota:nota,
+    temperatura,temperatura_confianca:temperaturaConfianca,
+    temperatura_evidencias:temperaturaEvidencias,
     qualidade_resumo:qualidadeResumo };
 }
 

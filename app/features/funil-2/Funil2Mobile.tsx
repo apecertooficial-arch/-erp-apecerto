@@ -24,6 +24,7 @@ import {
   acaoVisivel,
   esperandoPrimeiraChamada,
   prazoDaAcao,
+  rotuloTemperatura,
   situacaoPrazo,
   venceHoje,
   type EventoFunil2,
@@ -191,6 +192,7 @@ function CartaoLead({
     <div className="ape-etiquetas">
       <span className="ape-etapa">{nomeEtapa(lead.etapa)}</span>
       <span className="ape-momento">{momento?.rotulo ?? lead.momento_codigo}</span>
+      {rotuloTemperatura(lead.temperatura) ? <span className={`ape-momento temperatura-${lead.temperatura}`}>{rotuloTemperatura(lead.temperatura)}</span> : null}
       {lead.qualidade_atendimento_nota != null ? <span className="ape-momento">Atendimento {Number(lead.qualidade_atendimento_nota).toFixed(1)}/10</span> : null}
     </div>
 

@@ -174,6 +174,13 @@ const operationalNotifications = readFileSync(
   ),
   'utf8',
 );
+const saraRealityTemperature = readFileSync(
+  new URL(
+    '../supabase/migrations/20260822190000_sara_realidade_e_temperatura.sql',
+    import.meta.url,
+  ),
+  'utf8',
+);
 const entrada = readFileSync(
   new URL('../supabase/functions/entrada/index.ts', import.meta.url),
   'utf8',
@@ -416,7 +423,7 @@ test('Sara valida evidência por ID real da mensagem do cliente', () => {
   assert.match(sara, /evidencia_ids/);
   assert.match(sara, /entradasPorId/);
   assert.match(sara, /normalizarEvidencia/);
-  assert.match(sara, /contrato:"evidencia-id-v3-recorte"/);
+  assert.match(sara, /contrato:"evidencia-id-v4-temperatura-real"/);
   assert.match(sara, /Nunca use ID de CORRETOR/);
   assert.match(saraConversationCutoff, /v_lead\.historico_completo/);
   assert.match(saraConversationCutoff, /coalesce\(wm\.enviado_em,wm\.criado_em\)>=v_lead\.corte_conversa_em/);
@@ -618,4 +625,16 @@ test('notificacoes operacionais usam resultados explicitos e nao concorrem com a
   assert.match(operationalNotifications, /CADENCIA_SEM_RESPOSTA[\s\S]*tentando_contato/);
   assert.match(operationalNotifications, /ultima_interacao<=now\(\)-interval '10 minutes'/);
   assert.doesNotMatch(operationalNotifications, /perform\s+public\.f2_sara_aplicar_analise/);
+});
+
+test('Sara só classifica atendimento e temperatura com realidade da conversa', () => {
+  assert.match(sara, /temperatura_evidencia_ids/);
+  assert.match(sara, /ia_temperatura_sem_evidencia_cliente/);
+  assert.match(sara, /Mensage?m automática[\s\S]*nunca tornam um lead quente/i);
+  assert.match(saraRealityTemperature, /not v_respondeu[\s\S]*CADENCIA_SEM_RESPOSTA/);
+  assert.match(saraRealityTemperature, /v_m\.etapa<>'tentando_contato'/);
+  assert.match(saraRealityTemperature, /p_temperatura in \('quente','negociando'\)[\s\S]*0\.85/);
+  assert.match(saraRealityTemperature, /temperatura='frio'/);
+  assert.match(saraRealityTemperature, /somenteAiTemperaturaAlteradaPara/);
+  assert.match(builder, /aplicarTemperatura/);
 });

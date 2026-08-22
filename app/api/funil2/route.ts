@@ -42,7 +42,7 @@ async function listarAnalisesSemCorte(db: SupabaseClient) {
   const todos: Record<string, unknown>[] = [];
   for (let inicio = 0; ; inicio += pagina) {
     const { data, error } = await db.from("f2_sara_analise")
-      .select("id,funil_lead_id,status,momento_sugerido,acao_sugerida,resumo,confianca,analisado_em")
+      .select("id,funil_lead_id,status,momento_sugerido,acao_sugerida,resumo,confianca,temperatura_sugerida,temperatura_confianca,temperatura_evidencias,analisado_em")
       .order("analisado_em", { ascending: false }).range(inicio, inicio + pagina - 1);
     if (error) return { data: null, error };
     todos.push(...((data ?? []) as Record<string, unknown>[]));
