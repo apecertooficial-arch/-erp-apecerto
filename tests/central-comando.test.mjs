@@ -16,12 +16,20 @@ test("Central de Comando tem rota própria e fica restrita à gestão", () => {
 });
 
 test("painel usa fontes reais e não tem fallback de números mockados", () => {
-  assert.match(api, /central_comando_dashboard/);
+  assert.match(api, /central_comando_dashboard_v2/);
   assert.match(api, /tracking_360_dashboard/);
   assert.match(api, /marketing-ads-read/);
   assert.match(api, /lerGa4/);
   assert.doesNotMatch(workspace, /mock|fixture|fakeData|Math\.random/i);
   assert.match(workspace, /Nenhum número fictício será exibido/);
+});
+
+test("coorte executiva não confunde importação histórica com lead novo", () => {
+  const correction = readFileSync(new URL("../supabase/migrations/20260822152410_central_comando_funil_sem_legado.sql", import.meta.url), "utf8");
+  assert.match(correction, /momento_codigo <> 'LEAD_LEGADO'/);
+  assert.match(correction, /Lead novo = card que entrou no Funil 2/);
+  assert.match(workspace, /Sem base no período anterior/);
+  assert.doesNotMatch(workspace, /Math\.max\(1, flow\[index - 1\]\.value\)/);
 });
 
 test("visão do sócio mantém no máximo seis indicadores principais", () => {
