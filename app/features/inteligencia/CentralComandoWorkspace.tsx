@@ -27,6 +27,7 @@ type Payload = {
   error?: string;
 };
 type Tab = "resumo" | "marketing" | "tracking" | "crm" | "equipe" | "site" | "financeiro";
+type Experience = "ceo" | "socio" | "trafego" | "comercial";
 type Alert = {
   key: string;
   title: string;
@@ -40,7 +41,7 @@ type Alert = {
 
 const TABS: Array<[Tab, string]> = [
   ["resumo", "Visão CEO"], ["marketing", "Marketing"], ["tracking", "Tracking"],
-  ["crm", "CRM e funil"], ["equipe", "Equipe"], ["site", "Site"], ["financeiro", "Financeiro"],
+  ["crm", "CRM e funil"], ["equipe", "Equipe e corretores"], ["site", "Site e imóveis"], ["financeiro", "Financeiro"],
 ];
 const EMPTY_ROW: Row = {};
 const EMPTY_CENTRAL: CentralData = {};
@@ -62,12 +63,6 @@ function comparison(current: unknown, previous: unknown) {
   const delta = change(a, b);
   return `${delta >= 0 ? "+" : ""}${fmt(delta, 1)}% vs. período anterior`;
 }
-function responseComparison(current: unknown, previous: unknown) {
-  const a = num(current); const b = num(previous);
-  if (!b) return "Sem base no período anterior";
-  const delta = ((a - b) / b) * 100;
-  return delta <= 0 ? `${fmt(Math.abs(delta), 1)}% mais rápido` : `${fmt(delta, 1)}% mais lento`;
-}
 function dateTime(value: unknown) {
   if (!value) return "Ainda não medido";
   return new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(new Date(String(value)));
@@ -81,9 +76,9 @@ function toneFor(value: number, goal: number, inverse = false) {
   return ok ? "good" : "warn";
 }
 
-function Kpi({ label, value, comparisonText, meta, tone = "plain", help }: { label: string; value: string; comparisonText?: string; meta?: string; tone?: "plain" | "brand" | "purple" | "good" | "warn"; help?: string }) {
+function Kpi({ label, value, comparisonText, meta, tone = "plain", help, status }: { label: string; value: string; comparisonText?: string; meta?: string; tone?: "plain" | "brand" | "purple" | "good" | "warn"; help?: string; status?: string }) {
   return <article className={`cc-kpi ${tone}`}>
-    <div><span>{label}</span>{help && <button type="button" className="cc-info" title={help} aria-label={`Explicação: ${help}`}>i</button>}</div>
+    <div><span>{label}</span>{help && <button type="button" className="cc-info" title={help} aria-label={`Explicação: ${help}`}>i</button>}{status && <mark>{status}</mark>}</div>
     <strong>{value}</strong>
     {comparisonText && <small>{comparisonText}</small>}
     {meta && <em>{meta}</em>}
@@ -122,7 +117,7 @@ function Trend({ rows }: { rows: Row[] }) {
 export function CentralComandoWorkspace({ accessToken }: { accessToken: string }) {
   const [days, setDays] = useState(30);
   const [tab, setTab] = useState<Tab>("resumo");
-  const [partner, setPartner] = useState(false);
+  const [experience, setExperience] = useState<Experience>("ceo");
   const [partnerDetails, setPartnerDetails] = useState(false);
   const [data, setData] = useState<Payload | null>(null);
   const [loading, setLoading] = useState(true);
@@ -148,10 +143,11 @@ export function CentralComandoWorkspace({ accessToken }: { accessToken: string }
 
   useEffect(() => {
     const stored = window.localStorage.getItem("apecerto-central-view");
-    const viewTimer = stored === "socio" ? window.setTimeout(() => setPartner(true), 0) : 0;
+    const storedExperience: Experience = stored === "socio" || stored === "trafego" || stored === "comercial" ? stored : "ceo";
+    const viewTimer = window.setTimeout(() => setExperience(storedExperience), 0);
     const timer = window.setTimeout(() => void load(), 0);
     const interval = window.setInterval(() => void load(true), 60_000);
-    return () => { if (viewTimer) window.clearTimeout(viewTimer); window.clearTimeout(timer); window.clearInterval(interval); };
+    return () => { window.clearTimeout(viewTimer); window.clearTimeout(timer); window.clearInterval(interval); };
   }, [load]);
 
   const central = data?.central ?? EMPTY_CENTRAL;
@@ -185,6 +181,7 @@ export function CentralComandoWorkspace({ accessToken }: { accessToken: string }
   }, [actions, ads, adsGoogle, data?.ga4, data?.ga4_configurado, metaDelivery.errors, summary]);
 
   const criticalCount = alerts.filter((item) => item.level === "critical").length;
+  const partner = experience === "socio";
   const healthText = criticalCount > 0
     ? `A operação tem ${criticalCount} ponto${criticalCount === 1 ? "" : "s"} crítico${criticalCount === 1 ? "" : "s"} que precisa${criticalCount === 1 ? "" : "m"} de ação hoje.`
     : alerts.length ? `A operação está saudável, mas existem ${alerts.length} pontos que precisam de atenção.` : "A operação está saudável e não há alertas abertos agora.";
@@ -231,28 +228,68 @@ export function CentralComandoWorkspace({ accessToken }: { accessToken: string }
   const topPages = ((tracking.top_pages as Row[] | undefined) ?? []);
   const metaEvents = ((tracking.meta_events as Row[] | undefined) ?? []);
 
-  return <section className="cc-shell">
-    <header className="cc-head">
-      <div><p>CENTRAL DE COMANDO</p><h1>{partner ? "Resumo da operação" : "Inteligência da operação"}</h1><span>{partner ? "O que importa para decidir em menos de 30 segundos." : "Marketing, tracking, CRM, equipe e resultado financeiro na mesma leitura."}</span></div>
-      <div className="cc-actions">
-        <label className="cc-view"><span>Experiência</span><select value={partner ? "socio" : "completa"} onChange={(event) => { const next = event.target.value === "socio"; setPartner(next); setTab("resumo"); setPartnerDetails(false); window.localStorage.setItem("apecerto-central-view", next ? "socio" : "completa"); }}><option value="completa">CEO / administrador</option><option value="socio">Sócio — resumo simples</option></select></label>
-        <span className="cc-updated"><i /> Dados reais · {dateTime(data?.generated_at)}</span>
-        <button type="button" onClick={() => void load(true)} disabled={refreshing}>{refreshing ? "Atualizando…" : "↻ Atualizar"}</button>
-      </div>
-    </header>
+  const tabsForExperience: Array<[Tab, string]> = partner
+    ? [["resumo", "Resumo da operação"], ["financeiro", "Financeiro"]]
+    : experience === "trafego"
+      ? TABS.filter(([key]) => ["marketing", "tracking", "site", "financeiro"].includes(key))
+      : experience === "comercial"
+        ? TABS.filter(([key]) => ["resumo", "crm", "equipe", "site"].includes(key))
+        : TABS;
+  const moduleCopy: Record<Tab, [string, string]> = {
+    resumo: [partner ? "Resumo da operação" : "Visão CEO", partner ? "Como a apêcerto está indo neste período" : "Saúde da operação e decisões prioritárias"],
+    marketing: ["Marketing", "Meta Ads e Google Ads · campanha, conjunto, anúncio e criativo"],
+    tracking: ["Tracking", "Do clique ao corretor, eventos, atribuição e falhas técnicas"],
+    crm: ["CRM e funil", "Atendimento, SLA, envelhecimento e coortes"],
+    equipe: ["Equipe e corretores", "Atividade, qualidade, visitas, vendas e avaliação da IA"],
+    site: ["Site e imóveis", "Comportamento, conversão, páginas e imóveis mais acessados"],
+    financeiro: ["Financeiro", "VGV, comissões, custo de aquisição e previsão"],
+  };
+  const [moduleTitle, moduleSubtitle] = moduleCopy[tab];
+  const experienceLabel = experience === "socio" ? "Sócio" : experience === "trafego" ? "Gestor de tráfego" : experience === "comercial" ? "Gestor comercial" : "CEO / admin";
 
-    <div className="cc-restricted" role="note"><strong>Acesso restrito à gestão.</strong><span>Os indicadores são consolidados e não expõem mensagens ou dados pessoais de clientes.</span></div>
+  return <section className="cc-shell">
+    <aside className="cc-local-nav" aria-label="Navegação da Central de Comando">
+      <div className="cc-local-logo"><i /><strong>apê<span>certo</span></strong></div>
+      <p>CENTRAL DE COMANDO</p>
+      <nav>
+        {tabsForExperience.map(([key, label]) => <button type="button" key={key} className={tab === key ? "active" : ""} onClick={() => setTab(key)}><span aria-hidden="true">{key === "resumo" ? "⌂" : key === "marketing" ? "◈" : key === "tracking" ? "⌁" : key === "crm" ? "▽" : key === "equipe" ? "♙" : key === "site" ? "▥" : "▣"}</span>{label}{key === "resumo" && alerts.length > 0 && <b>{alerts.length}</b>}</button>)}
+      </nav>
+      {!partner && <><hr /><p>OPERAÇÃO</p><a href="/crm"><span aria-hidden="true">□</span>Meu dia<b>{fmt(summary.acoes_vencidas)}</b></a></>}
+      <label className="cc-local-profile"><span>{experienceLabel.slice(0, 2).toUpperCase()}</span><div><strong>Samuel</strong><select value={experience} aria-label="Perfil da Central de Comando" onChange={(event) => { const next = event.target.value as Experience; setExperience(next); setTab(next === "trafego" ? "marketing" : "resumo"); setPartnerDetails(false); window.localStorage.setItem("apecerto-central-view", next); }}><option value="ceo">CEO / admin</option><option value="socio">Sócio</option><option value="trafego">Gestor de tráfego</option><option value="comercial">Gestor comercial</option></select></div></label>
+    </aside>
+
+    <div className="cc-stage">
+      <header className="cc-head">
+        <div><h1>{moduleTitle}</h1><span>{moduleSubtitle}</span></div>
+        <div className="cc-actions">
+          <span className="cc-updated"><i /> Sincronizado · {dateTime(data?.generated_at)}</span>
+          <button type="button" onClick={exportCsv}>⇩ Exportar</button>
+          <button className="primary" type="button" onClick={() => void load(true)} disabled={refreshing}>{refreshing ? "Atualizando…" : "Atualizar dados"}</button>
+        </div>
+        {(!partner || tab === "financeiro") && <div className="cc-filterbar">
+          <button type="button">Período <strong>Últimos {days} dias</strong></button>
+          <button type="button">Comparação <strong>Período anterior</strong></button>
+          <button type="button">Canal <strong>todos</strong></button>
+          <button type="button">Equipe ou corretor <strong>todos</strong></button>
+          <button type="button">☷ Mais filtros <strong>nenhum</strong></button>
+          <button className="text" type="button" onClick={() => setDays(30)}>Limpar</button>
+          <button className="text" type="button" onClick={() => { setNotice("Visualização salva neste navegador."); window.setTimeout(() => setNotice(""), 2500); }}>Salvar visualização</button>
+          <span>Recorte: últimos {days} dias · vs período anterior</span>
+        </div>}
+      </header>
+
+      <main className="cc-stage-main">
+        <div className="cc-restricted" role="note"><strong>Acesso restrito à gestão.</strong><span>Indicadores consolidados; mensagens e dados pessoais de clientes não são exibidos.</span></div>
 
     {partner ? <>
-      <div className={`cc-health-sentence ${alerts.some((item) => item.level === "critical") ? "critical" : alerts.length ? "attention" : "healthy"}`}><i /><strong>{healthText}</strong><span>Período: últimos {days} dias</span></div>
-      <div className="cc-partner-controls"><div>{[7, 30, 90].map((value) => <button type="button" className={days === value ? "active" : ""} key={value} onClick={() => setDays(value)}>{value} dias</button>)}</div></div>
+      <div className={`cc-health-sentence partner-health ${alerts.some((item) => item.level === "critical") ? "critical" : alerts.length ? "attention" : "healthy"}`}><i /><div><strong>{healthText}</strong><p>{finance.vendas ? `${fmt(finance.vendas)} vendas somaram ${money(finance.vgv, true)} no período. ` : "Ainda não há vendas no período. "}{alerts.length ? `Existem ${alerts.length} pendências operacionais abertas; as três de maior impacto aparecem abaixo.` : "Não há pendências relevantes abertas agora."}</p></div><span>Últimos {days} dias</span></div>
       <div className="cc-kpis partner">
-        <Kpi label="Vendas" value={fmt(finance.vendas)} comparisonText={comparison(finance.vendas, finance.vendas_anterior)} meta={num(finance.vendas) > 0 ? "com vendas no período" : "nenhuma venda no período"} tone="purple" help="Negócios marcados como concluídos ou pagos neste período." />
-        <Kpi label="Valor vendido" value={money(finance.vgv, true)} comparisonText={comparison(finance.vgv, finance.vgv_anterior)} meta="soma do valor dos imóveis vendidos" tone="brand" help="Valor geral das vendas concluídas no período." />
-        <Kpi label="Comissão" value={money(finance.comissao_recebida, true)} comparisonText={`Prevista: ${money(finance.comissao_prevista, true)}`} meta="recebida no período" tone="purple" help="Quanto entrou e quanto está previsto de comissão." />
-        <Kpi label="Investimento em mídia" value={adsAvailable ? money(spend, true) : "Indisponível"} meta={adsAvailable ? `${ads.length} anúncios com dados${adsPartial ? " · leitura parcial" : ""}` : "as contas ainda não autorizaram a leitura"} tone="brand" help="Soma do investimento devolvido pelas contas de Meta e Google Ads. Quando a leitura não está autorizada, o painel não apresenta zero." />
-        <Kpi label="Pessoas interessadas" value={fmt(summary.leads_validos)} comparisonText={comparison(summary.leads_validos, summary.leads_validos_anterior)} meta="entraram no atendimento" help="Leads que ingressaram no novo funil comercial no período." />
-        <Kpi label="Visitas realizadas" value={fmt(summary.visitas_realizadas)} comparisonText={comparison(summary.visitas_realizadas, summary.visitas_realizadas_anterior)} meta="encontros confirmados" tone="good" help="Visitas registradas como realizadas pela equipe." />
+        <Kpi label="Vendas fechadas" value={fmt(finance.vendas)} comparisonText={comparison(finance.vendas, finance.vendas_anterior)} meta={num(finance.vendas) > 0 ? "Contratos registrados como concluídos no período." : "Nenhuma venda foi concluída neste período."} tone="purple" status={num(finance.vendas) >= num(finance.vendas_anterior) ? "✓ melhorou" : "~ atenção"} help="Negócios marcados como concluídos ou pagos neste período." />
+        <Kpi label="Valor vendido" value={money(finance.vgv, true)} comparisonText={comparison(finance.vgv, finance.vgv_anterior)} meta="É a soma do preço dos imóveis vendidos, não o dinheiro que já entrou em caixa." tone="brand" status={num(finance.vgv) >= num(finance.vgv_anterior) ? "✓ melhorou" : "~ atenção"} help="Valor geral das vendas concluídas no período." />
+        <Kpi label="Comissão recebida" value={money(finance.comissao_recebida, true)} comparisonText={`de ${money(finance.comissao_prevista, true)} previstos`} meta="O restante permanece como comissão prevista até o recebimento." tone="purple" status={num(finance.comissao_recebida) > 0 ? "✓ entrou em caixa" : "~ ainda não entrou"} help="Quanto entrou e quanto está previsto de comissão." />
+        <Kpi label="Investimento em anúncios" value={adsAvailable ? money(spend, true) : "Indisponível"} comparisonText={adsAvailable ? `${ads.length} anúncios com dados${adsPartial ? " · leitura parcial" : ""}` : "as contas ainda não autorizaram a leitura"} meta={adsAvailable ? "Soma do investimento devolvido pelas plataformas." : "O painel não apresenta zero quando a fonte não pode ser lida."} tone="brand" status={adsAvailable ? "✓ leitura ativa" : "~ autorizar conta"} help="Quando a leitura não está autorizada, o painel não apresenta zero." />
+        <Kpi label="Pessoas interessadas" value={fmt(summary.leads_validos)} comparisonText={comparison(summary.leads_validos, summary.leads_validos_anterior)} meta="Pessoas que entraram no novo atendimento, sem a carga histórica importada." status="dados do CRM" help="Leads que ingressaram no novo funil comercial no período." />
+        <Kpi label="Visitas realizadas" value={fmt(summary.visitas_realizadas)} comparisonText={comparison(summary.visitas_realizadas, summary.visitas_realizadas_anterior)} meta="Encontros registrados como realizados pela equipe." tone="good" status="confirmadas" help="Visitas registradas como realizadas pela equipe." />
       </div>
       <div className="cc-grid partner-grid">
         <Panel eyebrow="CAMINHO COMERCIAL" title="Pessoas interessadas → visitas → vendas">
@@ -262,20 +299,35 @@ export function CentralComandoWorkspace({ accessToken }: { accessToken: string }
             <div className="purple"><span>Com venda concluída</span><strong>{fmt(cohortSales)}</strong><small>{summary.leads_validos ? `${fmt(num(cohortSales) / num(summary.leads_validos) * 100, 1)} de cada 100` : "sem base"}</small></div>
           </div>
         </Panel>
-        <Panel eyebrow="PRIORIDADES" title="Os três pontos de maior impacto">
-          <div className="cc-alert-list compact">{alerts.slice(0, 3).length ? alerts.slice(0, 3).map((alert) => <button type="button" key={alert.key} className={alert.level} onClick={() => openAlert(alert)}><i /><span><strong>{alert.title}</strong><small>{alert.what}</small><em>{alert.action?.responsavel ? `${alert.action.responsavel}${alert.action.prazo ? ` · até ${new Date(`${alert.action.prazo}T12:00:00`).toLocaleDateString("pt-BR")}` : ""}` : "Ainda sem responsável"}</em></span><b>›</b></button>) : <Empty title="Nenhum alerta aberto" detail="A operação não apresenta exceções relevantes agora." />}</div>
+        <Panel eyebrow="O QUE PRECISA DA SUA ATENÇÃO" title="Os três pontos de maior impacto no resultado">
+          <div className="cc-alert-list compact partner-alerts">{alerts.slice(0, 3).length ? alerts.slice(0, 3).map((alert) => <button type="button" key={alert.key} className={alert.level} onClick={() => openAlert(alert)}><i>!</i><span><strong>{alert.title}</strong><small><b>O que aconteceu</b>{alert.what}</small><em><b>Impacto</b>{alert.impact}</em><em><b>Quem está cuidando</b>{alert.action?.responsavel ? `${alert.action.responsavel}${alert.action.prazo ? ` · até ${new Date(`${alert.action.prazo}T12:00:00`).toLocaleDateString("pt-BR")}` : ""}` : "Responsável ainda não definido"}</em><em><b>O que precisa ser feito</b>{alert.next}</em></span></button>) : <Empty title="Nenhum alerta aberto" detail="A operação não apresenta exceções relevantes agora." />}</div>
         </Panel>
       </div>
       <button className="cc-details-toggle" type="button" onClick={() => setPartnerDetails((value) => !value)}>{partnerDetails ? "Ocultar detalhes da operação" : "Ver detalhes da operação"} <span>{partnerDetails ? "↑" : "↓"}</span></button>
       {partnerDetails && <div className="cc-partner-details"><div className="cc-kpis"><Kpi label="Custo por pessoa interessada" value={platformLeads ? money(spend / platformLeads) : "Sem base"} meta="também chamado de custo por lead" /><Kpi label="Tempo para primeira resposta" value={`${fmt(summary.primeira_resposta_mediana_min, 1)} min`} meta="mediana da equipe" tone={toneFor(num(summary.primeira_resposta_mediana_min), 30, true)} /><Kpi label="Nota da IA" value={`${fmt(summary.nota_ia, 1)}/10`} meta="qualidade dos atendimentos avaliados" tone="purple" /><Kpi label="Leads acompanhados" value={fmt(summary.carteira_ativa)} meta="carteira comercial ativa" /></div><div className="cc-alert-list">{alerts.slice(3).map((alert) => <button type="button" key={alert.key} className={alert.level} onClick={() => openAlert(alert)}><i /><span><strong>{alert.title}</strong><small>{alert.what}</small></span><b>›</b></button>)}</div></div>}
     </> : <>
-      <div className="cc-toolbar"><nav>{TABS.map(([key, label]) => <button type="button" key={key} className={tab === key ? "active" : ""} onClick={() => setTab(key)}>{label}</button>)}</nav><div>{[7, 30, 90].map((value) => <button type="button" className={days === value ? "active" : ""} key={value} onClick={() => setDays(value)}>{value}d</button>)}<button type="button" onClick={exportCsv}>Exportar CSV</button></div></div>
 
       {tab === "resumo" && <div className="cc-stack">
-        <div className={`cc-health-sentence ${alerts.some((item) => item.level === "critical") ? "critical" : alerts.length ? "attention" : "healthy"}`}><i /><strong>{healthText}</strong><span>{fmt(summary.no_escritorio_agora)} de {fmt(summary.corretores_ativos)} corretores no escritório agora</span></div>
-        <div className="cc-kpis"><Kpi label="Vendas" value={fmt(finance.vendas)} comparisonText={comparison(finance.vendas, finance.vendas_anterior)} tone="purple" /><Kpi label="VGV" value={money(finance.vgv, true)} comparisonText={comparison(finance.vgv, finance.vgv_anterior)} tone="purple" /><Kpi label="Leads novos" value={fmt(summary.leads_validos)} comparisonText={comparison(summary.leads_validos, summary.leads_validos_anterior)} tone="brand" /><Kpi label="Visitas realizadas" value={fmt(summary.visitas_realizadas)} comparisonText={comparison(summary.visitas_realizadas, summary.visitas_realizadas_anterior)} tone="good" /><Kpi label="Primeira resposta" value={`${fmt(summary.primeira_resposta_mediana_min, 1)} min`} comparisonText={responseComparison(summary.primeira_resposta_mediana_min, summary.primeira_resposta_mediana_anterior_min)} tone={toneFor(num(summary.primeira_resposta_mediana_min), 30, true)} /><Kpi label="Nota da IA" value={`${fmt(summary.nota_ia, 1)}/10`} meta={`${fmt(summary.carteira_ativa)} leads em carteira`} /></div>
-        <div className="cc-grid"><Panel eyebrow="MOVIMENTO" title="Leads, visitas e vendas" aside={<span className="cc-legend"><i /> Leads <b /> Visitas <em>◆</em> Vendas</span>}><Trend rows={central.trend ?? []} /></Panel><Panel eyebrow="ALERTAS EXECUTIVOS" title="O que precisa de decisão" aside={<span>{alerts.length} abertos</span>}><div className="cc-alert-list compact">{alerts.slice(0, 5).map((alert) => <button type="button" key={alert.key} className={alert.level} onClick={() => openAlert(alert)}><i /><span><strong>{alert.title}</strong><small>{alert.what}</small><em>{alert.action?.responsavel || "Definir responsável"}</em></span><b>›</b></button>)}</div></Panel></div>
-        <Panel eyebrow="FUNIL REAL" title="Coorte dos leads novos que entraram no período" wide><div className="cc-funnel">{flow.map((item, index) => { const previous = index ? num(flow[index - 1].value) : 0; const sequential = previous > 0 && item.value <= previous; return <div key={item.key} className={item.key === "sales" ? "purple" : ""}><span>{item.label}</span><strong>{fmt(item.value)}</strong><i style={{ width: `${Math.max(item.value ? 3 : 0, item.value / maxFlow * 100)}%` }} /><small>{index === 0 ? `${days} dias · sem importados` : sequential ? `${pct(item.value / previous * 100)} da etapa anterior` : "medição independente"}</small></div>; })}</div></Panel>
+        <div className="cc-kpis cc-ceo-kpis">
+          <Kpi label="Leads válidos" value={fmt(summary.leads_validos)} comparisonText={comparison(summary.leads_validos, summary.leads_validos_anterior)} meta="dados reais do CRM" tone="brand" help="Leads novos válidos que entraram no período, sem a carga histórica importada." />
+          <Kpi label="Investimento em mídia" value={adsAvailable ? money(spend) : "Indisponível"} meta={adsAvailable ? "Meta + Google Ads" : "leitura ainda não autorizada"} tone={adsAvailable ? "good" : "warn"} />
+          <Kpi label="CPL válido" value={adsAvailable && platformLeads ? money(spend / platformLeads) : "Indisponível"} meta="investimento ÷ leads medidos" tone="brand" />
+          <Kpi label="Visitas realizadas" value={fmt(summary.visitas_realizadas)} comparisonText={comparison(summary.visitas_realizadas, summary.visitas_realizadas_anterior)} meta="confirmadas no CRM" tone="brand" />
+          <Kpi label="Vendas" value={fmt(finance.vendas)} comparisonText={comparison(finance.vendas, finance.vendas_anterior)} meta="contratos no período" tone="good" />
+          <Kpi label="VGV" value={money(finance.vgv, true)} comparisonText={comparison(finance.vgv, finance.vgv_anterior)} meta="valor geral vendido" tone="purple" />
+          <Kpi label="Comissão prevista" value={money(finance.comissao_prevista, true)} comparisonText={comparison(finance.comissao_prevista, finance.comissao_prevista_anterior)} meta="a receber" tone="purple" />
+          <Kpi label="CAC por venda" value={!adsAvailable ? "Indisponível" : num(finance.vendas) ? money(spend / num(finance.vendas)) : "Sem base"} meta="mídia ÷ vendas" tone="good" />
+        </div>
+        <div className="cc-grid cc-ceo-grid">
+          <Panel eyebrow="FUNIL COMERCIAL" title="Fluxo real do período" aside={<span>Conversão sempre sobre a etapa anterior</span>}>
+            <div className="cc-flow-table"><div className="cc-flow-head"><span>Etapa</span><span>Leads</span><span>Conversão</span></div>{flow.map((item, index) => { const previous = index ? num(flow[index - 1].value) : 0; return <div className={item.key === "sales" ? "purple" : ""} key={item.key}><span>{item.label}</span><i><b style={{ width: `${Math.max(item.value ? 2 : 0, item.value / maxFlow * 100)}%` }} /></i><strong>{fmt(item.value)}</strong><em>{index === 0 ? "—" : previous ? pct(item.value / previous * 100) : "sem base"}</em></div>; })}</div>
+          </Panel>
+          <Panel eyebrow="ONDE AGIR AGORA" title={`${criticalCount} críticos · ${Math.max(0, alerts.length - criticalCount)} em atenção`} aside={<span>{alerts.length} alertas ativos</span>}>
+            <div className="cc-alert-filters"><button className="active" type="button">Todas {alerts.length}</button><button type="button">Crítico {criticalCount}</button><button type="button">Atenção {Math.max(0, alerts.length - criticalCount)}</button></div>
+            <div className="cc-alert-list prototype">{alerts.slice(0, 5).map((alert) => <button type="button" key={alert.key} className={alert.level} onClick={() => openAlert(alert)}><i>!</i><span><strong>{alert.title}</strong><small>{alert.what}</small><em>Impacto: {alert.impact}</em><b>{alert.action?.responsavel || "Definir responsável"} · {alert.next} →</b></span></button>)}</div>
+          </Panel>
+        </div>
+        <Panel eyebrow="TENDÊNCIA" title="Leads válidos, visitas e vendas por dia" wide><Trend rows={central.trend ?? []} /></Panel>
       </div>}
 
       {tab === "marketing" && <div className="cc-stack"><div className="cc-kpis"><Kpi label="Investimento" value={adsAvailable ? money(spend) : "Indisponível"} meta={adsPartial ? "leitura parcial das plataformas" : undefined} tone="brand" /><Kpi label="Leads nas plataformas" value={adsAvailable ? fmt(platformLeads) : "Indisponível"} /><Kpi label="Custo médio por lead" value={adsAvailable ? (platformLeads ? money(spend / platformLeads) : "Sem base") : "Indisponível"} /><Kpi label="Impressões" value={adsAvailable ? fmt(ads.reduce((sum, row) => sum + num(row.impressoes), 0)) : "Indisponível"} /><Kpi label="Cliques" value={adsAvailable ? fmt(ads.reduce((sum, row) => sum + num(row.cliques), 0)) : "Indisponível"} /><Kpi label="Cobertura de atribuição" value={pct(attribution.coverage_percent)} tone="good" /></div><div className="cc-integration-row"><span className={adsMeta.status === "conectado" ? "ok" : "warn"}>Meta Ads · {statusLabel(adsMeta.status)}</span><span className={adsGoogle.status === "conectado" ? "ok" : "warn"}>Google Ads · {statusLabel(adsGoogle.status)}</span></div><Panel eyebrow="CAMPANHAS ATIVAS" title="Desempenho por anúncio" aside={<span>{ads.length} anúncios com leitura</span>} wide>{ads.length ? <div className="cc-table-wrap"><table className="cc-table ads"><thead><tr><th>Plataforma / campanha</th><th>Investimento</th><th>Alcance</th><th>Cliques</th><th>Taxa de clique</th><th>Leads</th><th>Custo por lead</th></tr></thead><tbody>{ads.map((row, index) => { const key = `${row.plataforma}-${row.anuncio_id}-${index}`; return <Fragment key={key}><tr className="clickable" onClick={() => setExpandedAd(expandedAd === key ? "" : key)}><td><strong>{String(row.campanha ?? "Campanha sem nome")}</strong><small>{String(row.anuncio ?? "Anúncio sem nome")} · {String(row.conjunto ?? "Conjunto não informado")}</small></td><td>{money(row.investimento)}</td><td>{fmt(row.alcance ?? row.impressoes)}</td><td>{fmt(row.cliques)}</td><td>{pct(row.ctr)}</td><td>{fmt(row.leads_plataforma)}</td><td>{row.cpl_plataforma ? money(row.cpl_plataforma) : "—"}</td></tr>{expandedAd === key && <tr className="cc-ad-detail"><td colSpan={7}><div><strong>Detalhe do anúncio</strong><span>Objetivo: {String(row.objetivo ?? "não informado")}</span><span>Conjunto: {String(row.conjunto ?? "não informado")}</span><span>CPC: {money(row.cpc)}</span><em>Os ativos individuais do criativo dinâmico aparecem somente quando a API da plataforma os disponibiliza; o painel nunca inventa uma variação vencedora.</em></div></td></tr>}</Fragment>; })}</tbody></table></div> : <Empty title="Nenhum anúncio disponível" detail={`${adsMeta.motivo ?? ""} ${adsGoogle.motivo ?? ""}`.trim() || "As plataformas não devolveram anúncios ativos no período."} />}</Panel></div>}
@@ -290,6 +342,8 @@ export function CentralComandoWorkspace({ accessToken }: { accessToken: string }
 
       {tab === "financeiro" && <div className="cc-stack"><div className="cc-kpis"><Kpi label="Vendas" value={fmt(finance.vendas)} comparisonText={comparison(finance.vendas, finance.vendas_anterior)} tone="purple" /><Kpi label="VGV" value={money(finance.vgv)} comparisonText={comparison(finance.vgv, finance.vgv_anterior)} tone="purple" /><Kpi label="Comissão prevista" value={money(finance.comissao_prevista)} comparisonText={comparison(finance.comissao_prevista, finance.comissao_prevista_anterior)} tone="brand" /><Kpi label="Comissão recebida" value={money(finance.comissao_recebida)} tone="good" /><Kpi label="Investimento em mídia" value={adsAvailable ? money(spend) : "Indisponível"} /><Kpi label="Custo de mídia por venda" value={!adsAvailable ? "Indisponível" : num(finance.vendas) ? money(spend / num(finance.vendas)) : "Sem base"} /></div><div className="cc-grid"><Panel eyebrow="RECEITA" title="Vendido, previsto e recebido"><div className="cc-money-bars"><div><span>VGV</span><i><b style={{ height: "100%" }} /></i><strong>{money(finance.vgv, true)}</strong></div><div><span>Comissão prevista</span><i><b className="orange" style={{ height: `${num(finance.vgv) ? Math.max(4, num(finance.comissao_prevista) / num(finance.vgv) * 100) : 0}%` }} /></i><strong>{money(finance.comissao_prevista, true)}</strong></div><div><span>Comissão recebida</span><i><b className="green" style={{ height: `${num(finance.comissao_prevista) ? Math.min(100, num(finance.comissao_recebida) / num(finance.comissao_prevista) * 100) : 0}%` }} /></i><strong>{money(finance.comissao_recebida, true)}</strong></div></div></Panel><Panel eyebrow="LEITURA EXECUTIVA" title="Eficiência financeira"><div className="cc-diagnostics"><div className="brand"><strong>Conversão</strong><span>{fmt(finance.vendas)} vendas para {fmt(summary.leads_validos)} leads novos.</span></div><div className="privacy"><strong>Comissão recebida</strong><span>{num(finance.comissao_prevista) ? pct(num(finance.comissao_recebida) / num(finance.comissao_prevista) * 100) : "Sem base"} do previsto no período.</span></div><div className="good"><strong>Mídia</strong><span>{adsAvailable ? `${money(spend)} investidos; ${num(finance.vendas) ? `${money(spend / num(finance.vendas))} por venda` : "ainda sem venda no período"}.` : "Leitura de investimento indisponível até as plataformas autorizarem o acesso."}</span></div></div></Panel></div></div>}
     </>}
+      </main>
+    </div>
 
     {error && data && <button className="cc-inline-error" type="button" onClick={() => setError("")}>{error} · fechar</button>}
     {notice && <div className="cc-inline-notice" role="status">{notice}</div>}

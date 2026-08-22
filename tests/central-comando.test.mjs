@@ -39,7 +39,7 @@ test("coorte executiva não confunde importação histórica com lead novo", () 
 test("visão do sócio mantém no máximo seis indicadores principais", () => {
   const partnerBlock = workspace.split('<div className="cc-kpis partner">')[1].split('</div>\n      <div className="cc-grid partner-grid">')[0];
   assert.equal((partnerBlock.match(/<Kpi /g) ?? []).length, 6);
-  for (const label of ["Vendas", "Valor vendido", "Comissão", "Investimento em mídia", "Pessoas interessadas", "Visitas realizadas"]) {
+  for (const label of ["Vendas fechadas", "Valor vendido", "Comissão recebida", "Investimento em anúncios", "Pessoas interessadas", "Visitas realizadas"]) {
     assert.match(partnerBlock, new RegExp(`label="${label}"`));
   }
   assert.match(workspace, /Ver detalhes da operação/);
@@ -51,6 +51,21 @@ test("hierarquia de cores usa o laranja e roxo oficiais", () => {
   assert.match(css, /--cc-orange-text:#cc5800/);
   assert.match(css, /--cc-purple:#8b00cc/);
   assert.match(css, /--cc-purple-dark:#66009a/);
+});
+
+test("estrutura publicada preserva a arquitetura visual do Claude Design", () => {
+  assert.match(workspace, /cc-local-nav/);
+  assert.match(workspace, /cc-module|moduleCopy/);
+  assert.match(workspace, /Período anterior/);
+  assert.match(workspace, /Canal <strong>todos/);
+  assert.match(workspace, /Equipe ou corretor/);
+  assert.match(workspace, /FUNIL COMERCIAL/);
+  assert.match(workspace, /ONDE AGIR AGORA/);
+  for (const profile of ["CEO \/ admin", "Sócio", "Gestor de tráfego", "Gestor comercial"]) assert.match(workspace, new RegExp(profile));
+  assert.match(css, /grid-template-columns:257px minmax\(0,1fr\)/);
+  assert.match(css, /\.cc-head\{position:sticky/);
+  assert.match(css, /\.cc-filterbar/);
+  assert.match(css, /\.cc-flow-table/);
 });
 
 test("atividade começa na implantação e não fabrica histórico", () => {
