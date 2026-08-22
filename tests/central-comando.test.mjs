@@ -29,6 +29,8 @@ test("coorte executiva não confunde importação histórica com lead novo", () 
   assert.match(correction, /momento_codigo <> 'LEAD_LEGADO'/);
   assert.match(correction, /Lead novo = card que entrou no Funil 2/);
   assert.match(workspace, /Sem base no período anterior/);
+  assert.match(workspace, /as contas ainda não autorizaram a leitura/);
+  assert.match(workspace, /Quando a leitura não está autorizada, o painel não apresenta zero/);
   assert.doesNotMatch(workspace, /Math\.max\(1, flow\[index - 1\]\.value\)/);
 });
 
