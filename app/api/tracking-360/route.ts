@@ -17,6 +17,29 @@ export async function GET(request: Request) {
   if (authError || !auth.user) return Response.json({ error: "Sessão inválida ou expirada." }, { status: 401 });
 
   const rpc = (supabase as unknown as { rpc: (name: string, args: Record<string, unknown>) => Promise<RpcResult> }).rpc.bind(supabase);
+  const action = url.searchParams.get("action");
+  if (action === "search") {
+    const result = await rpc("tracking_360_lead_search", {
+      p_query: url.searchParams.get("q") || null,
+      p_limit: 30,
+    });
+    if (result.error) {
+      const forbidden = /forbidden|permission|permissão|42501/i.test(result.error.message || "");
+      return Response.json({ error: forbidden ? "Acesso restrito à gestão." : "Não foi possível localizar os leads.", detail: result.error.message }, { status: forbidden ? 403 : 502 });
+    }
+    return Response.json({ leads: result.data }, { headers: { "Cache-Control": "no-store, max-age=0" } });
+  }
+  if (action === "journey") {
+    const leadId = Number(url.searchParams.get("lead_id"));
+    if (!Number.isSafeInteger(leadId) || leadId <= 0) return Response.json({ error: "Lead inválido." }, { status: 400 });
+    const result = await rpc("tracking_360_lead_journey", { p_lead_id: leadId });
+    if (result.error) {
+      const forbidden = /forbidden|permission|permissão|42501/i.test(result.error.message || "");
+      const missing = /not_found|P0002/i.test(result.error.message || "");
+      return Response.json({ error: forbidden ? "Acesso restrito à gestão." : missing ? "Lead não encontrado." : "Não foi possível montar a jornada.", detail: result.error.message }, { status: forbidden ? 403 : missing ? 404 : 502 });
+    }
+    return Response.json(result.data, { headers: { "Cache-Control": "no-store, max-age=0" } });
+  }
   const [dashboard, attribution] = await Promise.all([
     rpc("tracking_360_dashboard", { p_days: days }),
     rpc("tracking_360_attribution_scope", { p_days: days }),
