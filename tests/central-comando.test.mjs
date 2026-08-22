@@ -63,6 +63,8 @@ test("estrutura publicada preserva a arquitetura visual do Claude Design", () =>
   assert.match(workspace, /ONDE AGIR AGORA/);
   for (const profile of ["CEO \/ admin", "Sócio", "Gestor de tráfego", "Gestor comercial"]) assert.match(workspace, new RegExp(profile));
   assert.match(css, /grid-template-columns:257px minmax\(0,1fr\)/);
+  assert.match(css, /\.app-shell:has\(\.cc-shell\)\{grid-template-columns:minmax\(0,1fr\)!important\}/);
+  assert.match(css, /\.workspace\{grid-column:1\/-1!important/);
   assert.match(css, /\.cc-head\{position:sticky/);
   assert.match(css, /\.cc-filterbar/);
   assert.match(css, /\.cc-flow-table/);
