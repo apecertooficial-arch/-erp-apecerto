@@ -2,6 +2,10 @@ export const PRODUCT_PRICE_MIN = 100_000;
 export const PRODUCT_PRICE_MAX = 100_000_000;
 export const RENT_PRICE_MIN = 500;
 export const RENT_PRICE_MAX = 500_000;
+export const PRODUCT_PRICE_PER_M2_MIN = 3_000;
+export const PRODUCT_PRICE_PER_M2_MAX = 100_000;
+export const RENT_PRICE_PER_M2_MIN = 10;
+export const RENT_PRICE_PER_M2_MAX = 2_000;
 
 export type QualityLevel = "excelente" | "bom" | "atencao" | "critico";
 
@@ -57,6 +61,15 @@ export type ProductQualityInput = {
   differentiators?: unknown[] | null;
 };
 
+export type ProductPricePerSquareMeterValidation = {
+  value: number | null;
+  min: number;
+  max: number;
+  plausible: boolean | null;
+  direction: "below" | "above" | null;
+  error: string | null;
+};
+
 const hasText = (value: unknown) => typeof value === "string" && value.trim().length > 0;
 const textLength = (value: unknown) => (typeof value === "string" ? value.trim().length : 0);
 const isKnownNumber = (value: number | null | undefined) => value !== null && value !== undefined && Number.isFinite(value);
@@ -71,9 +84,53 @@ export function productPriceBounds(purpose?: unknown) {
     : { min: PRODUCT_PRICE_MIN, max: PRODUCT_PRICE_MAX, rental: false };
 }
 
+export function productPricePerSquareMeterBounds(purpose?: unknown) {
+  return isRentalPurpose(purpose)
+    ? { min: RENT_PRICE_PER_M2_MIN, max: RENT_PRICE_PER_M2_MAX, rental: true }
+    : { min: PRODUCT_PRICE_PER_M2_MIN, max: PRODUCT_PRICE_PER_M2_MAX, rental: false };
+}
+
 export function isPlausibleProductPrice(value: number | null | undefined, purpose?: unknown) {
   const bounds = productPriceBounds(purpose);
   return isKnownNumber(value) && Number(value) >= bounds.min && Number(value) <= bounds.max;
+}
+
+function formatPricePerSquareMeter(value: number) {
+  return `R$ ${Math.round(value).toLocaleString("pt-BR")}/m²`;
+}
+
+/**
+ * Cruza preço total e área útil usando a faixa comercial já adotada pela nota.
+ * Retorna `plausible: null` quando preço ou área já são inválidos por si só;
+ * nesses casos a checagem básica produz uma orientação mais precisa.
+ */
+export function validateProductPricePerSquareMeter(
+  price: number | null | undefined,
+  area: number | null | undefined,
+  field = "Imóvel",
+  purpose?: unknown,
+): ProductPricePerSquareMeterValidation {
+  const bounds = productPricePerSquareMeterBounds(purpose);
+  if (!isPlausibleProductPrice(price, purpose) || !isPositive(area)) {
+    return { value: null, min: bounds.min, max: bounds.max, plausible: null, direction: null, error: null };
+  }
+
+  const value = Number(price) / Number(area);
+  const direction = value < bounds.min ? "below" : value > bounds.max ? "above" : null;
+  if (!direction) {
+    return { value, min: bounds.min, max: bounds.max, plausible: true, direction: null, error: null };
+  }
+
+  const position = direction === "below" ? "abaixo" : "acima";
+  const operation = bounds.rental ? "aluguel" : "venda";
+  return {
+    value,
+    min: bounds.min,
+    max: bounds.max,
+    plausible: false,
+    direction,
+    error: `${field}: ${formatPricePerSquareMeter(value)} está ${position} da faixa plausível para ${operation} (${formatPricePerSquareMeter(bounds.min)} a ${formatPricePerSquareMeter(bounds.max)}). Revise o preço total e a área útil.`,
+  };
 }
 
 export function assessProductQuality(input: ProductQualityInput): ProductQuality {
@@ -90,7 +147,7 @@ export function assessProductQuality(input: ProductQualityInput): ProductQuality
   const hasDifferentiators = Boolean(input.differentiators?.length);
   const priceBounds = productPriceBounds(input.purpose);
   const plausiblePrice = isPlausibleProductPrice(input.price, input.purpose);
-  const priceM2 = plausiblePrice && isPositive(input.area) ? Number(input.price) / Number(input.area) : null;
+  const pricePerSquareMeterCheck = validateProductPricePerSquareMeter(input.price, input.area, "Imóvel", input.purpose);
 
   let cadastro = 0;
   if (hasText(input.name)) cadastro += 5;
@@ -119,7 +176,7 @@ export function assessProductQuality(input: ProductQualityInput): ProductQuality
 
   let comercial = 0;
   if (plausiblePrice) comercial += 8;
-  if (priceM2 !== null && (priceBounds.rental ? priceM2 >= 10 && priceM2 <= 2_000 : priceM2 >= 3_000 && priceM2 <= 100_000)) comercial += 4;
+  if (pricePerSquareMeterCheck.plausible) comercial += 4;
   if (isKnownNumber(input.condominiumFee)) comercial += 2;
   if (isKnownNumber(input.propertyTax)) comercial += 1;
   if (isKnownNumber(input.otherCosts)) comercial += 1;
@@ -139,6 +196,7 @@ export function assessProductQuality(input: ProductQualityInput): ProductQuality
     ? "Corrigir o aluguel mensal (use o valor total em reais)"
     : "Corrigir o preço (use o valor total em reais)");
   if (!isPositive(input.area)) blocking.push("Informar a área útil");
+  if (pricePerSquareMeterCheck.error) blocking.push(pricePerSquareMeterCheck.error);
   if (!hasText(input.address) || !hasText(input.neighborhood) || !hasText(input.city)) blocking.push("Completar a localização");
   if (descriptionLength < 80) blocking.push("Escrever uma descrição com pelo menos 80 caracteres");
   if (photos < 6) blocking.push("Adicionar pelo menos 6 fotos");
