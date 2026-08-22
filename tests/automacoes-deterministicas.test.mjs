@@ -167,6 +167,13 @@ const resilientMessageTransport = readFileSync(
   ),
   'utf8',
 );
+const operationalNotifications = readFileSync(
+  new URL(
+    '../supabase/migrations/20260822182000_notificacoes_operacionais_deterministicas.sql',
+    import.meta.url,
+  ),
+  'utf8',
+);
 const entrada = readFileSync(
   new URL('../supabase/functions/entrada/index.ts', import.meta.url),
   'utf8',
@@ -600,4 +607,15 @@ test('instabilidade do video preserva a distribuicao e recupera sem duplicar', (
   assert.match(resilientMessageTransport, /envio ausente no historico confirmado/);
   assert.match(resilientMessageTransport, /\(408\|409\|425\|429\|5\[0-9\]\[0-9\]\)\(:\|\$\)/);
   assert.match(resilientMessageTransport, /retentativas_transporte<5/);
+});
+
+test('notificacoes operacionais usam resultados explicitos e nao concorrem com a Sara', () => {
+  assert.match(operationalNotifications, /Novo lead: \{nome\} → \{corretor\}/);
+  assert.match(operationalNotifications, /Lead respondeu: \{nome\}/);
+  assert.match(operationalNotifications, /somenteAiEtapaAlteradaPara/);
+  assert.match(operationalNotifications, /__ai_etapa_anterior/);
+  assert.match(operationalNotifications, /__ai_etapa_nova/);
+  assert.match(operationalNotifications, /CADENCIA_SEM_RESPOSTA[\s\S]*tentando_contato/);
+  assert.match(operationalNotifications, /ultima_interacao<=now\(\)-interval '10 minutes'/);
+  assert.doesNotMatch(operationalNotifications, /perform\s+public\.f2_sara_aplicar_analise/);
 });
