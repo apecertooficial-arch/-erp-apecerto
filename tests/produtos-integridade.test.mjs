@@ -188,7 +188,25 @@ test("captador da unidade é obrigatório, preservado e visível em todas as sit
   assert.doesNotMatch(catalog, /\.in\("aprovacao", \["pendente", "reprovado"\]\)/);
   assert.match(productsUi, /Minhas captações/);
   assert.match(productsUi, /Captador: <b>\{product\.capturedBy \|\| "não identificado"\}<\/b>/);
-  assert.match(productsUi, /product\.capturedBy \|\| "Sem captador"/);
+  assert.match(productsUi, /group\.segment === "terceiros" \? "Sem captador" : "Estoque ApêCerto"/);
+});
+
+test("corretor encontra produtos por vagas e por origem comercial", () => {
+  assert.match(productsUi, /aria-label="Vagas"/);
+  assert.match(productsUi, /product\.parking >= Number\(parking\)/);
+  assert.match(productsUi, /Terceiros/);
+  assert.match(productsUi, /Lançamentos/);
+  assert.match(productsUi, /Remanescentes/);
+  assert.match(productsUi, /Condomínio de referência ainda não vinculado/);
+  assert.match(catalog, /u\.de_terceiros === true \? "terceiros" : ehPronto \? "remanescente" : "lancamento"/);
+});
+
+test("dados do proprietário da unidade ficam apenas com o captador", () => {
+  assert.match(productApi, /return unidadeMinha/);
+  assert.match(productApi, /pode_ver_proprietario: false/);
+  assert.match(productApi, /proprietario_nome: null, proprietario_contato: null/);
+  assert.match(productApi, /ownsUnit \? \{ proprietario_nome: proprietarioNome, proprietario_contato: proprietarioContato \} : \{\}/);
+  assert.match(detail, /somente o corretor captador pode consultar ou alterar o proprietário/);
 });
 
 test("migração bloqueia unidade pendente e dados privados no acesso anônimo", () => {

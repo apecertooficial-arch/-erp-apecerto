@@ -187,6 +187,8 @@ export async function GET(request: Request) {
       leads: leadCountByProduct.get(item.id) ?? 0,
       codigo: (item as { codigo?: string | null }).codigo ?? null,
       unitId: null as string | null,
+      segment: null as "terceiros" | "lancamento" | "remanescente" | null,
+      condominiumLinked: Boolean(item.condominio_id),
     };
   });
 
@@ -324,6 +326,8 @@ export async function GET(request: Request) {
         capturedBy: corretorNameById.get(u.captador_corretor_id ?? -1) ?? null,
         capturedByScore: u.captador_corretor_id != null ? (captadorScoreById.get(u.captador_corretor_id) ?? null) : null,
         mine: currentBrokerId != null && u.captador_corretor_id === currentBrokerId,
+        segment: u.de_terceiros === true ? "terceiros" : ehPronto ? "remanescente" : "lancamento",
+        condominiumLinked: Boolean(bruto.condominio_id),
         published: Boolean(p.published && u.publicado !== false && unitMediaCount > 0),
       };
     });

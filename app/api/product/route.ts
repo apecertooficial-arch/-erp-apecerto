@@ -132,10 +132,13 @@ export async function GET(request: Request) {
   const unidadesVisiveis = unidadesEnriched.map((u) => {
     const unidadeMinha = Boolean(broker?.id && (u as { captador_corretor_id?: number | null }).captador_corretor_id === broker.id);
     const podeEditarUnidade = gerenciaProdutosGet || unidadeMinha;
-    return podeEditarUnidade
-      ? { ...u, mine: unidadeMinha, pode_editar: true }
-      : { ...u, mine: false, pode_editar: false, proprietario_nome: null, proprietario_contato: null };
+    const ownerComplete = Boolean(u.proprietario_nome && u.proprietario_contato);
+    return unidadeMinha
+      ? { ...u, mine: true, pode_editar: podeEditarUnidade, pode_ver_proprietario: true, owner_complete: ownerComplete }
+      : { ...u, mine: false, pode_editar: podeEditarUnidade, pode_ver_proprietario: false, owner_complete: ownerComplete, proprietario_nome: null, proprietario_contato: null };
   });
+  const produtoDeTerceiro = data.origem === "terceiros";
+  const podeVerProprietarioProduto = !produtoDeTerceiro || mine;
   const checks: Record<string, boolean> = {
     basics: Boolean(data.nome && (data.preco || unitPrices.length) && (data.area_util || unitAreas.length)),
     location: Boolean(data.endereco && data.bairro && data.cidade),
@@ -154,7 +157,7 @@ export async function GET(request: Request) {
     status: data.status,
     availableApprovedUnits: publishedAvailableUnits.length,
   });
-  return Response.json({ product: { ...data, ...(podeEditar ? {} : { proprietarios: null, proprietario_nome: null, proprietario_tel: null, proprietario_email: null }), site_published: sitePublished, midias: media, unidades: unidadesVisiveis, captado_por_nome: capturedByName, mine, pode_editar: podeEditar, summary_price: summaryPrice, summary_area: summaryArea, is_favorite: Boolean(favorite), leads: (leadOptions ?? []).map((lead) => ({ ...lead, linked: linkedIds.has(lead.id) })), quality, completion: { checks, completed: Object.values(checks).filter(Boolean).length, total: Object.keys(checks).length } } });
+  return Response.json({ product: { ...data, ...(podeVerProprietarioProduto ? {} : { proprietarios: null, proprietario_nome: null, proprietario_tel: null, proprietario_email: null }), site_published: sitePublished, midias: media, unidades: unidadesVisiveis, captado_por_nome: capturedByName, mine, pode_editar: podeEditar, pode_ver_proprietario: podeVerProprietarioProduto, summary_price: summaryPrice, summary_area: summaryArea, is_favorite: Boolean(favorite), leads: (leadOptions ?? []).map((lead) => ({ ...lead, linked: linkedIds.has(lead.id) })), quality, completion: { checks, completed: Object.values(checks).filter(Boolean).length, total: Object.keys(checks).length } } });
 }
 
 export async function PATCH(request: Request) {
@@ -346,14 +349,14 @@ export async function PATCH(request: Request) {
       const promoCheck = validateProductPrice(valorPromo, "Valor promocional", currentPurpose);
       if (promoCheck.error) return Response.json({ error: promoCheck.error }, { status: 422 });
     }
-    if (!proprietarioNome || !proprietarioContato) return Response.json({ error: "Informe nome e contato do proprietário." }, { status: 422 });
+    if (ownsUnit && (!proprietarioNome || !proprietarioContato)) return Response.json({ error: "Informe nome e contato do proprietário." }, { status: 422 });
     if (!acessoTipo || !acessoInstrucoes) return Response.json({ error: "Informe o tipo e as instruções de acesso." }, { status: 422 });
     if (acessoTipo === "chave_digital" && !acessoCodigo) return Response.json({ error: "Informe o código da chave digital." }, { status: 422 });
     const patch = {
       numero, tipologia, area_m2: area, vagas: asNumber(input.vagas),
       valor_tabela: tablePriceCheck.value, valor_promo: valorPromo,
       disponivel: input.disponivel !== false,
-      proprietario_nome: proprietarioNome, proprietario_contato: proprietarioContato,
+      ...(ownsUnit ? { proprietario_nome: proprietarioNome, proprietario_contato: proprietarioContato } : {}),
       acesso_tipo: acessoTipo, acesso_codigo: acessoCodigo, acesso_instrucoes: acessoInstrucoes,
       ...(gerenciaProdutos ? {} : { aprovacao: "pendente", reprovacao_motivo: null }),
     };

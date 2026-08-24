@@ -35,6 +35,8 @@ export type Product = {
   capturedByScore?: number | null;
   codigo?: string | null;
   unitId?: string | null;
+  segment?: "terceiros" | "lancamento" | "remanescente" | null;
+  condominiumLinked?: boolean;
   quality?: ProductQuality;
   published?: boolean;
   createdAt?: string | null;
