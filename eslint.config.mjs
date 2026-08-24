@@ -20,6 +20,9 @@ const eslintConfig = defineConfig([
     // Export estático do protótipo visual aprovado; o código do aplicativo
     // vigente mora em app/ e continua coberto pelo lint.
     "public/prototipo/**",
+    // Bundle gerado do runtime do protótipo da Central. Ele é idêntico ao
+    // support.js do export acima; não há código-fonte editável neste repositório.
+    "public/central-comando/support.js",
     "next-env.d.ts",
     // Bundle gerado pelo harness de teste do shell — nao e codigo-fonte.
     "tests/shell/.build/**",

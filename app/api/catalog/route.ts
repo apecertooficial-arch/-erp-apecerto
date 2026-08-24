@@ -281,22 +281,25 @@ export async function GET(request: Request) {
     }));
   }
 
-  // Produto PRONTO aprovado: cada unidade disponível e aprovada é um imóvel próprio no catálogo.
+  // Cada captação individual é um imóvel próprio, inclusive quando o prédio de
+  // referência está em obras ou é lançamento. O estágio do empreendimento não
+  // pode esconder a unidade comercial captada pelo corretor.
   const rowById = new Map((data ?? []).map((item) => [item.id, item]));
   const catalogFinal = visible.flatMap((p) => {
     const bruto = rowById.get(p.id);
     const ehPronto = /pronto/i.test(p.status ?? "");
     if (!bruto) return [p];
     const unidadesBrutas = ((bruto.unidades ?? []) as UnitRow[]).filter((u) => u.disponivel && (u.aprovacao ?? "aprovado") === "aprovado");
+    const unidadesComerciais = ehPronto ? unidadesBrutas : unidadesBrutas.filter((u) => u.de_terceiros === true);
     if (p.standalone) {
-      if (p.draft || p.approval !== "aprovado" || !ehPronto || !unidadesBrutas.length) return [];
+      if (p.draft || p.approval !== "aprovado" || !unidadesComerciais.length) return [];
     } else {
-      if (p.draft || p.approval !== "aprovado" || !ehPronto || !unidadesBrutas.length) return [p];
+      if (p.draft || p.approval !== "aprovado" || !unidadesComerciais.length) return [p];
     }
     const allProductMedia = (bruto.midias ?? []) as MediaRow[];
     const fotos = allProductMedia.filter((m) => m.tipo === "foto");
     const buildingMediaCount = allProductMedia.filter((m) => !m.unidade_id).length;
-    return unidadesBrutas.map((u) => {
+    const unitCards = unidadesComerciais.map((u) => {
       const fotoDaUnidade = fotos.find((m) => m.unidade_id === u.id && m.is_capa) ?? fotos.find((m) => m.unidade_id === u.id);
       const unitMediaCount = allProductMedia.filter((m) => m.unidade_id === u.id).length;
       const dormMatch = u.tipologia?.match(/(\d+)\s*(?:dorm|su[ií]te)/i);
@@ -312,16 +315,17 @@ export async function GET(request: Request) {
         parking: u.vagas ?? p.parking,
         available: 1,
         units: 1,
-        media: buildingMediaCount + unitMediaCount,
+        media: unitMediaCount,
         unitMedia: unitMediaCount,
         referenceMedia: buildingMediaCount,
-        coverUrl: fotoDaUnidade ? publicMediaUrl(fotoDaUnidade.storage_path) : p.coverUrl,
-        capturedBy: corretorNameById.get(u.captador_corretor_id ?? -1) ?? p.capturedBy,
-        capturedByScore: u.captador_corretor_id != null ? (captadorScoreById.get(u.captador_corretor_id) ?? null) : p.capturedByScore,
+        coverUrl: fotoDaUnidade ? publicMediaUrl(fotoDaUnidade.storage_path) : null,
+        capturedBy: corretorNameById.get(u.captador_corretor_id ?? -1) ?? null,
+        capturedByScore: u.captador_corretor_id != null ? (captadorScoreById.get(u.captador_corretor_id) ?? null) : null,
         mine: currentBrokerId != null && u.captador_corretor_id === currentBrokerId,
-        published: Boolean(p.published && u.publicado !== false),
+        published: Boolean(p.published && u.publicado !== false && unitMediaCount > 0),
       };
     });
+    return ehPronto || p.standalone ? unitCards : [p, ...unitCards];
   });
 
   return Response.json({

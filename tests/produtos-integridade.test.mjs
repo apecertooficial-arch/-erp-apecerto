@@ -19,7 +19,10 @@ const captorIntegrityMigration = await readFile("supabase/migrations/20260820223
 
 test("catálogo separa contagem de empreendimentos e imóveis", () => {
   assert.match(catalog, /buildingCount: visible\.filter\(\(product\) => !product\.standalone\)\.length/);
-  assert.match(productsUi, /<b>\{products\.length\}<\/b><em>No catálogo<\/em>/);
+  assert.match(productsUi, /const commercialUnits = products\.filter/);
+  assert.match(productsUi, /<b>\{commercialUnits\.length\}<\/b><em>No catálogo<\/em>/);
+  assert.match(productsUi, /const publishedCount = commercialUnits\.filter/);
+  assert.match(productsUi, /const offlineCount = commercialUnits\.filter/);
   assert.match(productsUi, /\{unitProducts\.length\} unidades encontradas/);
 });
 
@@ -54,18 +57,26 @@ test("fila de aprovação abre completa e filtros avançados ficam recolhidos", 
 
 test("unidade pronta usa captador, menu e mídia próprios", () => {
   assert.match(catalog, /capturedBy: corretorNameById\.get\(u\.captador_corretor_id/);
-  assert.match(catalog, /media: buildingMediaCount \+ unitMediaCount/);
+  assert.match(catalog, /media: unitMediaCount/);
   assert.match(catalog, /unitMedia: unitMediaCount/);
   assert.match(catalog, /referenceMedia: buildingMediaCount/);
   assert.match(productsUi, /product\.unitId \?\? product\.id/);
   assert.match(productsUi, /Editar unidade/);
 });
 
+test("captação individual não desaparece quando o empreendimento está em obras", () => {
+  assert.match(catalog, /const unidadesComerciais = ehPronto \? unidadesBrutas : unidadesBrutas\.filter\(\(u\) => u\.de_terceiros === true\)/);
+  assert.match(catalog, /return ehPronto \|\| p\.standalone \? unitCards : \[p, \.\.\.unitCards\]/);
+});
+
 test("foto herdada do condomínio abre sem fingir que pertence à unidade", () => {
-  assert.match(detail, /focusedUnitUsesReferencePhotos/);
-  assert.match(detail, /Fotos do condomínio de referência/);
+  assert.match(detail, /const focusedUnitPhotos = focusedUnitOwnPhotos/);
+  assert.match(detail, /Áreas comuns do condomínio/);
+  assert.match(detail, /nunca são usadas como capa ou como fotos privativas da unidade/);
+  assert.doesNotMatch(detail, /focusedUnitPhotos = focusedUnitUsesReferencePhotos \? focusedUnitReferencePhotos/);
   assert.match(detail, /Ver \$\{focusedUnitPhotos\.length\} foto/);
   assert.match(catalog, /referenceMedia: buildingMediaCount/);
+  assert.match(catalog, /coverUrl: fotoDaUnidade \? publicMediaUrl\(fotoDaUnidade\.storage_path\) : null/);
   assert.match(detail, /setUnitLightbox/);
 });
 
@@ -119,7 +130,7 @@ test("imóvel pode sair do site sem perder aprovação ou disponibilidade", () =
 
 test("publicação individual não tira outras unidades do mesmo condomínio do ar", () => {
   assert.match(catalog, /publicado: boolean/);
-  assert.match(catalog, /published: Boolean\(p\.published && u\.publicado !== false\)/);
+  assert.match(catalog, /published: Boolean\(p\.published && u\.publicado !== false && unitMediaCount > 0\)/);
   assert.match(unpublishMigration, /add column if not exists publicado boolean not null default true/);
   assert.match(unpublishMigration, /u\.publicado and u\.disponivel and u\.aprovacao = 'aprovado'/);
   assert.match(unpublishMigration, /Controle editorial do site\. Não altera disponibilidade comercial/);

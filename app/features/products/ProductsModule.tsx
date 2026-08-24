@@ -265,8 +265,11 @@ export function ProductsModule({ accessToken }: { accessToken: string }) {
   const referenceProducts = filtered.filter((product) => !product.unitId && !product.standalone);
   const developmentProducts = referenceProducts.filter((product) => /lan[cç]|obra/i.test(product.status ?? "") || Boolean(product.developer));
   const condominiumProducts = referenceProducts.filter((product) => !developmentProducts.includes(product));
-  const publishedCount = products.filter((product) => product.published).length;
-  const offlineCount = products.filter((product) => !product.published && product.approval === "aprovado").length;
+  // Os indicadores da tela de Unidades contam somente imóveis vendáveis.
+  // Referências de condomínio/empreendimento não podem inflar o número do site.
+  const commercialUnits = products.filter((product) => Boolean(product.unitId || product.standalone));
+  const publishedCount = commercialUnits.filter((product) => product.published).length;
+  const offlineCount = commercialUnits.filter((product) => !product.published && product.approval === "aprovado").length;
   const approvalTotal = pendingCount + pendingUnits.length;
 
   function openProduct(product: Product, edit = false) {
@@ -389,7 +392,7 @@ export function ProductsModule({ accessToken }: { accessToken: string }) {
       </header>
 
       {section !== "aprovacoes" && <section className="pv3-kpis" aria-label="Resumo dos produtos">
-        <button type="button" className={publicationFilter === "Todos" ? "orange active" : "orange"} onClick={() => setPublicationFilter("Todos")}><span><Icon name="layers" /></span><b>{products.length}</b><em>No catálogo</em></button>
+        <button type="button" className={publicationFilter === "Todos" ? "orange active" : "orange"} onClick={() => setPublicationFilter("Todos")}><span><Icon name="layers" /></span><b>{commercialUnits.length}</b><em>No catálogo</em></button>
         <button type="button" className={publicationFilter === "site" ? "green active" : "green"} onClick={() => setPublicationFilter(publicationFilter === "site" ? "Todos" : "site")}><span><Icon name="home" /></span><b>{publishedCount}</b><em>No site</em></button>
         <button type="button" className="purple" onClick={() => chooseSection("aprovacoes")}><span><Icon name="check" /></span><b>{approvalTotal}</b><em>Em aprovação</em></button>
         <button type="button" className={publicationFilter === "ready" ? "yellow active" : "yellow"} onClick={() => setPublicationFilter(publicationFilter === "ready" ? "Todos" : "ready")}><span><Icon name="home" /></span><b>{offlineCount}</b><em>Fora do ar</em></button>
