@@ -64,6 +64,11 @@ test("unidade pronta usa captador, menu e mídia próprios", () => {
   assert.match(productsUi, /Editar unidade/);
 });
 
+test("captação individual não desaparece quando o empreendimento está em obras", () => {
+  assert.match(catalog, /const unidadesComerciais = ehPronto \? unidadesBrutas : unidadesBrutas\.filter\(\(u\) => u\.de_terceiros === true\)/);
+  assert.match(catalog, /return ehPronto \|\| p\.standalone \? unitCards : \[p, \.\.\.unitCards\]/);
+});
+
 test("foto herdada do condomínio abre sem fingir que pertence à unidade", () => {
   assert.match(detail, /const focusedUnitPhotos = focusedUnitOwnPhotos/);
   assert.match(detail, /Áreas comuns do condomínio/);
