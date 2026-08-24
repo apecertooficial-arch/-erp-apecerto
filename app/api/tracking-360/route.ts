@@ -40,17 +40,18 @@ export async function GET(request: Request) {
     }
     return Response.json(result.data, { headers: { "Cache-Control": "no-store, max-age=0" } });
   }
-  const [dashboard, attribution] = await Promise.all([
+  const [dashboard, attribution, quality] = await Promise.all([
     rpc("tracking_360_dashboard", { p_days: days }),
     rpc("tracking_360_attribution_scope", { p_days: days }),
+    rpc("tracking_360_quality", { p_days: days }),
   ]);
-  const error = dashboard.error || attribution.error;
+  const error = dashboard.error || attribution.error || quality.error;
   if (error) {
     const forbidden = /forbidden|permission|permissão|42501/i.test(error.message || "");
     return Response.json({ error: forbidden ? "Acesso restrito à gestão." : "Não foi possível carregar o tracking.", detail: error.message }, { status: forbidden ? 403 : 502 });
   }
 
-  return Response.json({ ...(dashboard.data as Record<string, unknown>), attribution: attribution.data }, {
+  return Response.json({ ...(dashboard.data as Record<string, unknown>), attribution: attribution.data, quality: quality.data }, {
     headers: { "Cache-Control": "no-store, max-age=0" },
   });
 }
