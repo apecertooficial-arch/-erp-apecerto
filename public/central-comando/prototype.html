@@ -3400,20 +3400,21 @@ class Component extends DCLogic {
       fecharDrawer: () => this.setState({ drawer: null, atribuindo: null, atribPessoa: null, atribPrazo: null })
     };
     if (!realView) return view;
-    const corretorReal = view.corretor ? Object.assign({}, view.corretor, {
+    const corretorFonteReal = this.CORRETORES.find(item => item.id === st.corretorSel) || this.CORRETORES[0];
+    const corretorReal = view.corretor && corretorFonteReal ? Object.assign({}, view.corretor, {
       pontos: [
         { glifo: '✓', fg: 'var(--cc-ok)', bg: 'var(--success-bg)', texto: 'Indicadores abaixo usam somente movimentos consolidados do ERP.' },
         { glifo: '~', fg: 'var(--cc-atencao)', bg: 'var(--warning-bg)', texto: 'Conversas individuais não são exibidas sem uma fonte real autorizada.' }
       ],
       acoes: [
-        { titulo: 'Revisar próximas ações vencidas', detalhe: this.num(view.corretor.e.venc) + ' ações registradas para este corretor.', prazo: 'hoje', fg: view.corretor.e.venc ? 'var(--cc-atencao)' : 'var(--cc-ok)', onClick: () => {} },
-        { titulo: 'Retomar carteira ativa', detalhe: this.num(view.corretor.e.parados) + ' leads na carteira atual.', prazo: 'esta semana', fg: 'var(--fg-3)', onClick: () => {} }
+        { titulo: 'Revisar próximas ações vencidas', detalhe: this.num(corretorFonteReal.e.venc) + ' ações registradas para este corretor.', prazo: 'hoje', fg: corretorFonteReal.e.venc ? 'var(--cc-atencao)' : 'var(--cc-ok)', onClick: () => {} },
+        { titulo: 'Retomar carteira ativa', detalhe: this.num(corretorFonteReal.e.parados) + ' leads na carteira atual.', prazo: 'esta semana', fg: 'var(--fg-3)', onClick: () => {} }
       ],
       atividade: [
-        { k: 'Movimentações registradas', v: this.num(view.corretor.e.trab) },
-        { k: 'Mensagens enviadas', v: this.num(view.corretor.e.fups) },
-        { k: 'Leads recebidos', v: this.num(view.corretor.e.recebidos) },
-        { k: 'Vendas', v: this.num(view.corretor.r.vendas) }
+        { k: 'Movimentações registradas', v: this.num(corretorFonteReal.e.trab) },
+        { k: 'Mensagens enviadas', v: this.num(corretorFonteReal.e.fups) },
+        { k: 'Leads recebidos', v: this.num(corretorFonteReal.e.recebidos) },
+        { k: 'Vendas', v: this.num(corretorFonteReal.r.vendas) }
       ],
       conversas: []
     }) : view.corretor;
