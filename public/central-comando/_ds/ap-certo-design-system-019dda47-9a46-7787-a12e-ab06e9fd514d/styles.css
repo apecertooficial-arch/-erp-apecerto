@@ -1,0 +1,9 @@
+/* ============================================
+   ApêCerto Design System — root stylesheet
+   Single entry point for consumers.
+   Link this ONE file and you get the whole system:
+     <link rel="stylesheet" href="styles.css">
+   ============================================ */
+
+@import url('colors_and_type.css');
+@import url('erp.css');

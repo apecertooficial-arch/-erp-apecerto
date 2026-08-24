@@ -346,3 +346,8 @@ button.ape-nav-item[disabled]{opacity:1;color:var(--fg-3);cursor:pointer}
 .cc-prototype .cc-loading{width:100%;height:100vh;display:grid;place-items:center;align-content:center;gap:8px}
 @media(max-width:1180px){.cc-prototype>.ape-nav{width:68px;min-width:68px}.cc-prototype .cc-brand-lockup{width:30px;height:30px;background-image:url('/brand/simbolo-cores.png')}.cc-prototype .cc-kpigrid.ceo,.cc-prototype .cc-kpigrid{grid-template-columns:repeat(3,minmax(0,1fr))}.cc-prototype .cc-2col{grid-template-columns:1fr}}
 @media(max-width:960px){.cc-prototype-main{padding:16px}.cc-prototype-header>.ape-page-header{padding-inline:16px}.cc-prototype .cc-kpigrid,.cc-prototype .cc-kpigrid.ceo{grid-template-columns:repeat(2,minmax(0,1fr))}.cc-prototype .partner-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.cc-prototype .cc-flow-row{grid-template-columns:150px minmax(100px,1fr) 50px 58px 58px 58px}.cc-prototype .cc-selected-ad{grid-template-columns:1fr}}
+
+.central-prototype-embed{position:relative;width:100%;height:100dvh;min-height:720px;overflow:hidden;background:#faf8f6}
+.central-prototype-embed>iframe{display:block;width:100%;height:100%;border:0;background:#faf8f6}
+.central-prototype-boot{position:absolute;inset:0;z-index:2;display:grid;place-content:center;justify-items:center;gap:12px;background:#faf8f6;color:#4d4842;font:600 14px/1.4 Quicksand,system-ui,sans-serif}
+.central-prototype-boot>span{width:28px;height:28px;border:3px solid #ffe4d1;border-top-color:#ff7000;border-radius:50%;animation:cc-spin .8s linear infinite}
