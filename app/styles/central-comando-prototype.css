@@ -267,6 +267,11 @@ button.ape-nav-item[disabled]{opacity:1;color:var(--fg-3);cursor:pointer}
 .cc-prototype{min-height:100vh;height:100vh;display:flex;background:var(--bg-page);color:var(--fg-1);font-family:var(--font-body)}
 .cc-prototype *{box-sizing:border-box}
 .cc-prototype>.ape-nav{width:257px;min-width:257px}
+.cc-prototype .cc-brand-lockup{display:block;width:132px;height:28px;background:url('/brand/logo-cores.png') left center/contain no-repeat}
+.cc-prototype .ape-nav-icon{width:20px;height:20px;display:grid;place-items:center;flex:none}
+.cc-prototype .ape-nav-icon svg{width:20px;height:20px}
+.cc-prototype .ape-badge{display:inline-flex;align-items:center;min-height:24px;padding:3px 9px;border-radius:999px;background:var(--neutral-100);color:var(--fg-3);font-size:11px;font-weight:600;white-space:nowrap}
+.cc-prototype .ape-badge--success{background:var(--success-bg);color:var(--success)}
 .cc-prototype-stage{min-width:0;flex:1;display:flex;flex-direction:column;height:100vh}
 .cc-prototype-header{position:relative;z-index:20;flex:none;background:var(--bg-surface);border-bottom:1px solid var(--border-soft)}
 .cc-prototype-header>.ape-page-header{padding:16px 24px 8px}
@@ -334,5 +339,5 @@ button.ape-nav-item[disabled]{opacity:1;color:var(--fg-3);cursor:pointer}
 .cc-prototype .cc-drawer>section{flex:1;overflow:auto;padding:20px 22px;display:grid;align-content:start;gap:14px}
 .cc-prototype .cc-drawer>footer{border-top:1px solid var(--border-soft);border-bottom:0;justify-content:flex-end}
 .cc-prototype .cc-loading{width:100%;height:100vh;display:grid;place-items:center;align-content:center;gap:8px}
-@media(max-width:1180px){.cc-prototype>.ape-nav{width:68px;min-width:68px}.cc-prototype .cc-kpigrid.ceo,.cc-prototype .cc-kpigrid{grid-template-columns:repeat(3,minmax(0,1fr))}.cc-prototype .cc-2col{grid-template-columns:1fr}}
+@media(max-width:1180px){.cc-prototype>.ape-nav{width:68px;min-width:68px}.cc-prototype .cc-brand-lockup{width:30px;height:30px;background-image:url('/brand/simbolo-cores.png')}.cc-prototype .cc-kpigrid.ceo,.cc-prototype .cc-kpigrid{grid-template-columns:repeat(3,minmax(0,1fr))}.cc-prototype .cc-2col{grid-template-columns:1fr}}
 @media(max-width:960px){.cc-prototype-main{padding:16px}.cc-prototype-header>.ape-page-header{padding-inline:16px}.cc-prototype .cc-kpigrid,.cc-prototype .cc-kpigrid.ceo{grid-template-columns:repeat(2,minmax(0,1fr))}.cc-prototype .partner-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.cc-prototype .cc-flow-row{grid-template-columns:150px minmax(100px,1fr) 50px 58px 58px 58px}.cc-prototype .cc-selected-ad{grid-template-columns:1fr}}

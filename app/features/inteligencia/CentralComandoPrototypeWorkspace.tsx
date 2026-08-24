@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import { Fragment, useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 
 type Row = Record<string, unknown>;
@@ -24,8 +23,8 @@ type Alert = { key: string; title: string; what: string; impact: string; next: s
 
 const EMPTY: Row = {};
 const NAV: Array<[Page, string, string]> = [
-  ["ceo", "Visão CEO", "⌂"], ["marketing", "Marketing", "◇"], ["tracking", "Tracking", "⌁"],
-  ["crm", "CRM e funil", "▽"], ["equipe", "Equipe e corretores", "♙"], ["site", "Site e imóveis", "▥"], ["financeiro", "Financeiro", "▣"],
+  ["ceo", "Visão CEO", "gauge"], ["marketing", "Marketing", "megaphone"], ["tracking", "Tracking", "activity"],
+  ["crm", "CRM e funil", "funnel"], ["equipe", "Equipe e corretores", "users"], ["site", "Site e imóveis", "building"], ["financeiro", "Financeiro", "wallet"],
 ];
 const PAGE_COPY: Record<Page, [string, string]> = {
   ceo: ["Visão CEO", "Saúde da operação · decisões prioritárias"],
@@ -54,6 +53,18 @@ function dateTime(value: unknown) {
 }
 function sourceLabel(source: AdsSource) {
   return source.status === "conectado" ? "conectado" : source.status === "sem_permissao" ? "sem permissão" : source.status === "nao_configurado" ? "não configurado" : "indisponível";
+}
+
+function NavIcon({ name }: { name: string }) {
+  const common = { fill: "none", stroke: "currentColor", strokeWidth: 1.8, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
+  if (name === "gauge") return <svg viewBox="0 0 24 24" aria-hidden="true" {...common}><path d="M4 14a8 8 0 1 1 16 0" /><path d="m12 14 4-4" /><circle cx="12" cy="14" r="1.5" /></svg>;
+  if (name === "megaphone") return <svg viewBox="0 0 24 24" aria-hidden="true" {...common}><path d="m3 11 14-6v14L3 13z" /><path d="M7 14v5h4l-1.5-6" /><path d="M19 9a4 4 0 0 1 0 6" /></svg>;
+  if (name === "activity") return <svg viewBox="0 0 24 24" aria-hidden="true" {...common}><path d="M3 12h4l2-6 4 12 2-6h6" /></svg>;
+  if (name === "funnel") return <svg viewBox="0 0 24 24" aria-hidden="true" {...common}><path d="M3 5h18l-7 8v5l-4 2v-7z" /></svg>;
+  if (name === "users") return <svg viewBox="0 0 24 24" aria-hidden="true" {...common}><circle cx="9" cy="8" r="3" /><path d="M3 20c0-4 2-6 6-6s6 2 6 6" /><path d="M16 5a3 3 0 0 1 0 6M17 14c2.7.4 4 2.4 4 5" /></svg>;
+  if (name === "building") return <svg viewBox="0 0 24 24" aria-hidden="true" {...common}><path d="M5 21V4h10v17M15 9h4v12M3 21h18" /><path d="M8 8h1M12 8h1M8 12h1M12 12h1M8 16h1M12 16h1" /></svg>;
+  if (name === "calendar") return <svg viewBox="0 0 24 24" aria-hidden="true" {...common}><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M7 3v4M17 3v4M3 10h18" /></svg>;
+  return <svg viewBox="0 0 24 24" aria-hidden="true" {...common}><path d="M3 7h18v12H3zM3 10h18" /><path d="M16 15h2" /></svg>;
 }
 
 function Info({ text }: { text: string }) { return <span className="cc-i" title={text} aria-label={text}>i</span>; }
@@ -299,7 +310,7 @@ export function CentralComandoPrototypeWorkspace({ accessToken }: { accessToken:
   const content: Record<Page, ReactNode> = { ceo: pageCeo, marketing: pageMarketing, tracking: pageTracking, crm: pageCrm, equipe: pageTeam, site: pageSite, financeiro: pageFinance };
 
   return <section className="cc-prototype">
-    <nav className="ape-nav cc-nav" aria-label="Navegação principal"><div className="ape-nav-logo"><Image src="/brand/logo-cores.png" alt="apêcerto" width={132} height={28} priority /></div><div className="ape-nav-group cc-navlabel">CENTRAL DE COMANDO</div>{allowed.map(([key, label, icon]) => <button className={`ape-nav-item cc-tip${page === key ? " is-active" : ""}`} data-tip={label} aria-current={page === key ? "page" : undefined} type="button" key={key} onClick={() => setPage(key)}><span className="ape-nav-icon">{icon}</span><span className="cc-navlabel">{partner && key === "ceo" ? "Resumo da operação" : label}</span>{key === "ceo" && alerts.length > 0 && <span className="ape-count">{alerts.length}</span>}</button>)}{!partner && <><div className="ape-divider" /><div className="ape-nav-group cc-navlabel">OPERAÇÃO</div><a className="ape-nav-item cc-tip" data-tip="Meu dia" href="/crm"><span className="ape-nav-icon">□</span><span className="cc-navlabel">Meu dia</span><span className="ape-count">{integer(summary.acoes_vencidas)}</span></a></>}<div className="spacer" /><label className="cc-navmeta ape-toolbar"><span className="ape-avatar ape-avatar--orange">{profile === "socio" ? "SÓ" : "CE"}</span><span className="cc-usermeta"><strong>Samuel</strong><select className="ape-input" value={profile} aria-label="Perfil da Central de Comando" onChange={event => { const next = event.target.value as Profile; setProfile(next); setPage(next === "socio" || next === "comercial" ? "ceo" : next === "trafego" ? "marketing" : "ceo"); setPartnerDetails(false); }}><option value="ceo">CEO / admin</option><option value="socio">Sócio</option><option value="trafego">Gestor de tráfego</option><option value="comercial">Gestor comercial</option></select></span></label></nav>
+    <nav className="ape-nav cc-nav" aria-label="Navegação principal"><div className="ape-nav-logo"><span className="cc-brand-lockup" role="img" aria-label="apêcerto" /></div><div className="ape-nav-group cc-navlabel">CENTRAL DE COMANDO</div>{allowed.map(([key, label, icon]) => <button className={`ape-nav-item cc-tip${page === key ? " is-active" : ""}`} data-tip={label} aria-current={page === key ? "page" : undefined} type="button" key={key} onClick={() => setPage(key)}><span className="ape-nav-icon"><NavIcon name={icon} /></span><span className="cc-navlabel">{partner && key === "ceo" ? "Resumo da operação" : label}</span>{key === "ceo" && alerts.length > 0 && <span className="ape-count">{alerts.length}</span>}</button>)}{!partner && <><div className="ape-divider" /><div className="ape-nav-group cc-navlabel">OPERAÇÃO</div><a className="ape-nav-item cc-tip" data-tip="Meu dia" href="/crm"><span className="ape-nav-icon"><NavIcon name="calendar" /></span><span className="cc-navlabel">Meu dia</span><span className="ape-count">{integer(summary.acoes_vencidas)}</span></a></>}<div className="spacer" /><label className="cc-navmeta ape-toolbar"><span className="ape-avatar ape-avatar--orange">{profile === "socio" ? "SÓ" : "CE"}</span><span className="cc-usermeta"><strong>Samuel</strong><select className="ape-input" value={profile} aria-label="Perfil da Central de Comando" onChange={event => { const next = event.target.value as Profile; setProfile(next); setPage(next === "socio" || next === "comercial" ? "ceo" : next === "trafego" ? "marketing" : "ceo"); setPartnerDetails(false); }}><option value="ceo">CEO / admin</option><option value="socio">Sócio</option><option value="trafego">Gestor de tráfego</option><option value="comercial">Gestor comercial</option></select></span></label></nav>
     <div className="cc-prototype-stage">{header}<main className="cc-prototype-main cc-scroll"><div><div className="cc-restricted-prototype" role="note"><strong>Acesso restrito à gestão.</strong> Indicadores consolidados; mensagens e dados pessoais de clientes não são exibidos.</div>{content[page]}</div></main></div>
     {(error && data || notice) && <button type="button" className="ape-toast" onClick={() => { setError(""); setNotice(""); }}>{error || notice}</button>}
     {alertOpen && <div className="cc-drawer-layer" onClick={() => setAlertOpen(null)}><aside className="cc-drawer" role="dialog" aria-modal="true" aria-label={`Alerta: ${alertOpen.title}`} onClick={event => event.stopPropagation()}><header><div><p className="eyebrow">ALERTA EXECUTIVO</p><h2 className="ape-page-title">{alertOpen.title}</h2></div><button className="ape-btn ape-btn--ghost" type="button" onClick={() => setAlertOpen(null)}>×</button></header><section><div><strong>O que aconteceu</strong><p>{alertOpen.what}</p></div><div><strong>Impacto</strong><p>{alertOpen.impact}</p></div><div><strong>O que precisa ser feito</strong><p>{alertOpen.next}</p></div><label>Quem está cuidando<select className="ape-input" value={owner} onChange={e => setOwner(e.target.value)}><option value="">Escolha o responsável</option><option>Samuel</option><option>Gestor comercial</option><option>Gestor de tráfego</option><option>Equipe de corretores</option><option>TI / integrações</option></select></label><label>Prazo<input className="ape-input" type="date" value={deadline} onChange={e => setDeadline(e.target.value)} /></label></section><footer><button className="ape-btn ape-btn--secondary" type="button" disabled={saving} onClick={() => void saveAlert("seen")}>Marcar como visto</button><button className="ape-btn" type="button" disabled={!owner || saving} onClick={() => void saveAlert("assign")}>{saving ? "Salvando…" : "Salvar responsável"}</button></footer></aside></div>}
