@@ -17,6 +17,7 @@ type Dashboard = {
   meta_events?: Row[];
   campaigns?: Row[];
   attribution?: Row & { origins?: Row[]; campaigns?: Row[] };
+  quality?: Row;
 };
 
 const EVENT_LABEL: Record<string, string> = {
@@ -78,6 +79,7 @@ export function Tracking360Workspace({ accessToken }: { accessToken: string }) {
   const crm = useMemo(() => data?.crm ?? {}, [data]);
   const meta = useMemo(() => data?.meta ?? {}, [data]);
   const attribution = useMemo(() => data?.attribution ?? {}, [data]);
+  const quality = useMemo(() => data?.quality ?? {}, [data]);
   const metaEvents = useMemo(() => data?.meta_events ?? [], [data]);
   const campaigns = useMemo(() => attribution.campaigns ?? data?.campaigns ?? [], [attribution, data]);
   const maxEvent = useMemo(() => Math.max(1, ...metaEvents.map((row) => n(row.total))), [metaEvents]);
@@ -86,13 +88,16 @@ export function Tracking360Workspace({ accessToken }: { accessToken: string }) {
     if (!data) return 0;
     let score = 100;
     const observedAt = new Date(String(data.generated_at || 0)).getTime();
-    if (!site.last_site_event_at || observedAt - new Date(String(site.last_site_event_at)).getTime() > 86400000) score -= 25;
-    if (!meta.last_delivery_at || observedAt - new Date(String(meta.last_delivery_at)).getTime() > 604800000) score -= 20;
+    if (!site.last_site_event_at || observedAt - new Date(String(site.last_site_event_at)).getTime() > 86400000) score -= 20;
+    if (!meta.last_delivery_at || observedAt - new Date(String(meta.last_delivery_at)).getTime() > 604800000) score -= 15;
     if (n(meta.errors) > 0) score -= 20;
-    if (n(attribution.coverage_percent) < 95) score -= 20;
+    if (n(quality.meta_id_coverage_percent) < 98) score -= 15;
+    if (n(quality.campaign_hierarchy_coverage_percent) < 95) score -= 15;
+    if (n(quality.site_crm_linkage_percent) < 95) score -= 15;
+    if (n(quality.pageview_duplicate_rate_24h) > 5) score -= Math.min(25, Math.ceil(n(quality.pageview_duplicate_rate_24h) / 4));
     if (n(site.form_starts) > 0 && n(site.form_attempts) === 0) score -= 10;
     return Math.max(0, score);
-  }, [data, site, meta, attribution]);
+  }, [data, site, meta, quality]);
 
   return <section className="t360-shell">
     <header className="t360-head">
@@ -109,7 +114,7 @@ export function Tracking360Workspace({ accessToken }: { accessToken: string }) {
 
     {loading && !data ? <div className="t360-loading"><i /><strong>Conectando site, CRM e mídia…</strong></div> : error ? <div className="t360-error"><strong>Não foi possível abrir o painel.</strong><span>{error}</span><button type="button" onClick={() => void load()}>Tentar novamente</button></div> : <>
       {tab === "visao" && <div className="t360-stack">
-        <div className="t360-score"><div><span>Saúde do tracking</span><strong>{healthScore}<small>/100</small></strong></div><p>{healthScore >= 90 ? "Coleta e devolução operando. Agora o foco é aumentar volume real." : "Há sinais que merecem atenção antes de escalar mídia."}</p><i style={{ "--score": `${healthScore}%` } as React.CSSProperties} /></div>
+        <div className="t360-score"><div><span>Saúde interna comprovada</span><strong>{healthScore}<small>/100</small></strong></div><p>{healthScore >= 90 ? "Banco, atribuição e devolução estão coerentes. Meta, GA4 e Google Ads aparecem separadamente porque exigem prova na própria plataforma." : "Há sinais mensuráveis que merecem atenção antes de escalar mídia."}</p><i style={{ "--score": `${healthScore}%` } as React.CSSProperties} /></div>
         <div className="t360-kpis">
           <Kpi label="Páginas vistas" value={fmt(site.page_views)} detail={`${fmt(site.sessions)} sessões identificadas`} />
           <Kpi label="Imóveis visualizados" value={fmt(site.property_views)} detail={`${fmt(site.gallery_interactions)} interações em galerias`} tone="brand" />
@@ -162,8 +167,8 @@ export function Tracking360Workspace({ accessToken }: { accessToken: string }) {
       {tab === "links" && <TrackingLinkBuilder />}
 
       {tab === "saude" && <div className="t360-grid two">
-        <article className="t360-card"><header><div><p>COLETA</p><h2>Últimos sinais</h2></div></header><div className="t360-health"><div><i className="ok"/><span>Site</span><strong>{ago(site.last_site_event_at)}</strong></div><div><i className={meta.last_delivery_at?"ok":"warn"}/><span>Meta CAPI</span><strong>{ago(meta.last_delivery_at)}</strong></div><div><i className={n(attribution.coverage_percent)>=95?"ok":"warn"}/><span>Atribuição Meta</span><strong>{pct(attribution.coverage_percent)}</strong></div><div><i className={n(meta.errors)===0?"ok":"bad"}/><span>Entregas com erro</span><strong>{fmt(meta.errors)}</strong></div></div></article>
-        <article className="t360-card"><header><div><p>DIAGNÓSTICO</p><h2>O que merece atenção</h2></div></header><ul className="t360-diagnostics"><li className={n(meta.errors)>0?"warn":"ok"}><strong>Meta</strong><span>{n(meta.errors)>0?`${fmt(meta.errors)} entregas exigem correção.`:"Nenhum erro de entrega no período."}</span></li><li className={n(site.form_starts)>0&&n(site.form_attempts)===0?"warn":"ok"}><strong>Formulários</strong><span>{n(site.form_starts)>0&&n(site.form_attempts)===0?"Há início sem tentativa registrada; valide a jornada publicada.":"Eventos de início e envio estão coerentes."}</span></li><li className={n(attribution.coverage_percent)<95?"warn":"ok"}><strong>Atribuição</strong><span>{pct(attribution.coverage_percent)} dos Meta Lead Ads possuem vínculo canônico.</span></li></ul></article>
+        <article className="t360-card"><header><div><p>COLETA</p><h2>Últimos sinais verificáveis</h2></div></header><div className="t360-health"><div><i className="ok"/><span>Site</span><strong>{ago(site.last_site_event_at)}</strong></div><div><i className={meta.last_delivery_at?"ok":"warn"}/><span>Meta CAPI CRM</span><strong>{ago(meta.last_delivery_at)}</strong></div><div><i className={n(quality.meta_id_coverage_percent)>=98?"ok":"warn"}/><span>Meta Lead ID</span><strong>{pct(quality.meta_id_coverage_percent)}</strong></div><div><i className={n(quality.campaign_hierarchy_coverage_percent)>=95?"ok":"warn"}/><span>Campanha + conjunto + anúncio</span><strong>{pct(quality.campaign_hierarchy_coverage_percent)}</strong></div><div><i className={n(quality.site_crm_linkage_percent)>=95?"ok":"warn"}/><span>Site ligado ao CRM</span><strong>{pct(quality.site_crm_linkage_percent)}</strong></div><div><i className={n(quality.pageview_duplicate_rate_24h)<=5?"ok":"bad"}/><span>Excesso de page_view · 24 h</span><strong>{pct(quality.pageview_duplicate_rate_24h)}</strong></div></div></article>
+        <article className="t360-card"><header><div><p>DIAGNÓSTICO</p><h2>O que merece atenção</h2></div></header><ul className="t360-diagnostics"><li className={n(meta.errors)>0?"warn":"ok"}><strong>Meta CRM</strong><span>{n(meta.errors)>0?`${fmt(meta.errors)} entregas exigem correção.`:"Nenhum erro de entrega no período."}</span></li><li className={n(site.form_starts)>0&&n(site.form_attempts)===0?"warn":"ok"}><strong>Formulários</strong><span>{n(site.form_starts)>0&&n(site.form_attempts)===0?"Há início sem tentativa registrada; valide a jornada publicada.":"Eventos de início e envio estão coerentes."}</span></li><li className={n(quality.campaign_hierarchy_coverage_percent)<95?"warn":"ok"}><strong>Hierarquia de mídia</strong><span>{pct(quality.campaign_hierarchy_coverage_percent)} dos leads Meta têm campanha, conjunto e anúncio completos.</span></li><li className={n(quality.pageview_duplicate_rate_24h)>5?"warn":"ok"}><strong>Page views</strong><span>{n(quality.pageview_duplicate_rate_24h)>5?`${fmt(quality.pageview_duplicate_excess_24h)} eventos excedentes nas últimas 24 h; a correção entra na próxima publicação do site.`:"Sem inflação relevante nas últimas 24 h."}</span></li></ul></article>
       </div>}
     </>}
   </section>;

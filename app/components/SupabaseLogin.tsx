@@ -16,7 +16,8 @@ export function SupabaseLogin({ onAuthenticated, preview = false, onClose }: { o
     setMessage("");
 
     const supabase = getBrowserSupabaseClient();
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    const normalizedEmail = email.trim().toLowerCase();
+    const { data, error } = await supabase.auth.signInWithPassword({ email: normalizedEmail, password });
     if (error || !data.session) {
       setMessage("Não foi possível entrar. Confira o mesmo e-mail e senha usados no ERP.");
       setLoading(false);
@@ -72,7 +73,7 @@ export function SupabaseLogin({ onAuthenticated, preview = false, onClose }: { o
               <span>E-mail</span>
               <div className="login-input">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4" /><path d="M4 21c0-4 4-6 8-6s8 2 8 6" /></svg>
-                <input type="email" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="username" required placeholder="voce@apecerto.com" />
+                <input type="email" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="username" autoCapitalize="none" autoCorrect="off" spellCheck={false} inputMode="email" required placeholder="voce@apecerto.com" />
               </div>
             </label>
 
@@ -80,7 +81,7 @@ export function SupabaseLogin({ onAuthenticated, preview = false, onClose }: { o
               <span>Senha</span>
               <div className="login-input">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2" /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></svg>
-                <input type={showPassword ? "text" : "password"} value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="current-password" required placeholder="Sua senha" />
+                <input type={showPassword ? "text" : "password"} value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="current-password" autoCapitalize="none" autoCorrect="off" spellCheck={false} required placeholder="Sua senha" />
                 <button type="button" className="login-eye" onClick={() => setShowPassword(!showPassword)} aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}>
                   {showPassword
                     ? <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3l18 18" /><path d="M10.6 10.6a2 2 0 0 0 2.8 2.8" /><path d="M9.4 5.2A9.4 9.4 0 0 1 12 5c5 0 9 4.5 9 7-.4 1-1.2 2.1-2.3 3.1M6.2 6.2C3.9 7.6 2.4 9.8 2 12c.6 1.6 4 7 10 7a9.6 9.6 0 0 0 3.3-.6" /></svg>
