@@ -539,7 +539,7 @@ button.ape-nav-item[disabled]{opacity:1;color:var(--fg-3);cursor:pointer}
               <path d="{{ serieLinha }}" fill="none" stroke="var(--chart-1)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
             </svg>
             <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--fg-3);margin-top:4px">
-              <span>21 jul</span><span>28 jul</span><span>4 ago</span><span>11 ago</span><span>19 ago</span>
+              <sc-for list="{{ serieDatas }}" as="data" hint-placeholder-count="5"><span>{{ data }}</span></sc-for>
             </div>
           </section>
         </div>
@@ -1569,6 +1569,15 @@ class Component extends DCLogic {
     const media = payload.media || {};
     const ads = [].concat((media.meta && media.meta.anuncios) || [], (media.google && media.google.anuncios) || []);
     const n = (v) => Number.isFinite(Number(v)) ? Number(v) : 0;
+    const dataCurta = (value) => {
+      const date = new Date(value);
+      return Number.isNaN(date.getTime()) ? '—' : date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' }).replace('.', '');
+    };
+    const period = central.period || {};
+    const recorte = dataCurta(period.start) + ' – ' + dataCurta(period.end);
+    this.PAGES.ceo.sub = 'Saúde da operação · ' + recorte + ' · comparado ao período anterior';
+    this.PAGES.resumo.sub = 'Como a apêcerto está indo · ' + recorte;
+    this.PAGES.eqp.sub = 'Execução e resultado de ' + this.num(team.length) + ' corretor(es)';
     const delta = (a, b) => b ? ((a - b) / Math.abs(b) * 100) : null;
     const deltaTexto = (a, b) => {
       const d = delta(n(a), n(b));
@@ -1776,6 +1785,9 @@ class Component extends DCLogic {
     const saude = { frase: this.ALERTAS.length ? 'A operação tem '+this.ALERTAS.length+' pontos que precisam de atenção.' : 'A operação não tem alertas críticos neste recorte.', sub: 'Leitura construída somente com dados reais disponíveis no ERP.', glifo: this.ALERTAS.length ? '~' : '✓', fg: this.ALERTAS.length ? 'var(--cc-atencao)' : 'var(--cc-ok)' };
 
     const trackingUnavailable = !n(metaTrack.total) && !n(site.sessions) && !n(attribution.eligible);
+    const trendDates = trend.map(row => new Date(row.day)).filter(date => !Number.isNaN(date.getTime()));
+    const dateIndexes = trendDates.length ? [0, .25, .5, .75, 1].map(f => Math.min(trendDates.length - 1, Math.round((trendDates.length - 1) * f))) : [];
+    const serieDatas = dateIndexes.map(index => trendDates[index].toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }).replace('.', ''));
     const mktKpis = [
       info('Investimento', spend ? this.brl(spend) : unavailable, spend ? 'Meta + Google' : 'autorizar contas', null, 'Fonte real: APIs de mídia.'),
       info('CPL válido', spend && n(summary.leads_validos) ? this.brl(spend / n(summary.leads_validos)) : unavailable, 'investimento ÷ leads válidos', spend ? 'var(--cc-atencao)' : 'var(--fg-3)', 'Calculado somente quando há mídia real.'),
@@ -1821,7 +1833,7 @@ class Component extends DCLogic {
     const previsao = [{ janela:'Próximos 30 dias',valor:'Indisponível',nota:'o ERP ainda não fornece probabilidade financeira por data' },{ janela:'Próximos 60 dias',valor:'Indisponível',nota:'sem projeção inventada' },{ janela:'Próximos 90 dias',valor:'Indisponível',nota:'sem projeção inventada' }];
     const socioAlertas = this.ALERTAS.slice(0,3).map(item => ({ titulo:item.titulo,oQue:item.detalhe,impacto:'requer atenção',quem:'Gestão da operação',oQueFazer:item.acao,fg:item.nivel==='critico'?'var(--cc-risco)':'var(--cc-atencao)',bg:item.nivel==='critico'?'var(--danger-bg)':'var(--warning-bg)',glifo:item.nivel==='critico'?'!':'~',nivelLabel:item.nivel==='critico'?'precisa de ação hoje':'acompanhar',impactoFg:item.nivel==='critico'?'var(--cc-risco)':'var(--cc-atencao)',onClick:noop }));
     const socioAvancados = [{label:'Custo por interessado',valor:spend&&n(summary.leads_validos)?this.brl(spend/n(summary.leads_validos)):unavailable,fg:'var(--cc-atencao)',explica:'Investimento real dividido pelos leads válidos.'},{label:'Custo por venda',valor:spend&&n(finance.vendas)?this.brl(spend/n(finance.vendas)):unavailable,fg:'var(--cc-ok)',explica:'Investimento real dividido pelas vendas.'},{label:'Retorno sobre anúncios',valor:spend?(n(finance.comissao_prevista)/spend).toLocaleString('pt-BR',{maximumFractionDigits:1})+'x':unavailable,fg:'var(--ape-purple-700)',explica:'Comissão prevista dividida pelo investimento real.'}];
-    return { crmKpis, envelhecimento, heatCols, heatCells, coortes, diaKpis, diaTarefas, siteKpis, sitePaginas, imoveis, finKpis, pipeline, pipelineTotal, finBarras, receitaGrupos, socioKpis, socioFunil, saude, trackingUnavailable, clicks, mediaLeads, mktKpis, tronco, trilhas, trkGrupos, trkErros, trkAbertos: trkErros.length + ' em aberto', trkVazioShow: trkErros.length ? 'none' : 'block', siteDispositivos, siteProblemas, previsao, socioAlertas, socioAvancados, socioOutros: [] };
+    return { crmKpis, envelhecimento, heatCols, heatCells, coortes, diaKpis, diaTarefas, siteKpis, sitePaginas, imoveis, finKpis, pipeline, pipelineTotal, finBarras, receitaGrupos, socioKpis, socioFunil, saude, trackingUnavailable, clicks, mediaLeads, serieDatas, mktKpis, tronco, trilhas, trkGrupos, trkErros, trkAbertos: trkErros.length + ' em aberto', trkVazioShow: trkErros.length ? 'none' : 'block', siteDispositivos, siteProblemas, previsao, socioAlertas, socioAvancados, socioOutros: [] };
   }
 
   FILTROS = {
@@ -2209,6 +2221,12 @@ class Component extends DCLogic {
       fin: { badge: '', hint: 'Comissão, CAC e previsão' },
       dia: { badge: '41', hint: 'Tarefas do dia geradas pela IA' }
     };
+    if (st.realData) {
+      const realSummary = ((st.realData.central || {}).summary || {});
+      const realTracking = ((st.realData.tracking || {}).meta || {});
+      NAV_META.dia.badge = String(Number(realSummary.acoes_vencidas || 0));
+      NAV_META.trk.badge = Number(realTracking.errors || 0) ? String(Number(realTracking.errors)) : '';
+    }
     const NOME_AREA = { resumo: 'Resumo da operação', ceo: 'Visão CEO', mkt: 'Marketing', trk: 'Tracking', crm: 'CRM e funil', eqp: 'Equipe e corretores', site: 'Site e imóveis', fin: 'Financeiro', dia: 'Meu dia' };
     NAV_META.resumo = { badge: '', hint: 'Como a empresa está indo' };
     const nav = {};
@@ -2358,16 +2376,21 @@ class Component extends DCLogic {
       'Erro na integração': { texto: 'Falha na sincronização', fg: 'var(--cc-risco)', bg: 'var(--danger-bg)', hint: 'Meta Ads respondeu 500 nas últimas 3 tentativas' },
       'Integração desconectada': { texto: 'Google Ads desconectado', fg: 'var(--cc-risco)', bg: 'var(--danger-bg)', hint: 'Token expirado em 12 ago' }
     };
+    const mediaReal = (st.realData || {}).media || {};
+    const fontesPendentes = st.realData ? ['Meta', 'Google'].filter(nome => ((mediaReal[nome.toLowerCase()] || {}).status !== 'conectado')) : [];
+    const syncReal = fontesPendentes.length
+      ? { texto: 'CRM em dia · mídia parcial', fg: 'var(--cc-atencao)', bg: 'var(--warning-bg)', hint: fontesPendentes.join(' e ') + ' sem leitura autorizada neste recorte' }
+      : { texto: 'Sincronizado agora', fg: 'var(--cc-ok)', bg: 'var(--success-bg)', hint: 'Fontes reais carregadas pelo ERP' };
     const sync = syncMap[estado] || (st.atualizando
       ? { texto: 'Sincronizando…', fg: 'var(--cc-atencao)', bg: 'var(--ape-orange-100)', hint: 'Buscando dados nas integrações' }
-      : { texto: 'Sincronizado há ' + st.syncMin + ' min', fg: 'var(--cc-ok)', bg: 'var(--success-bg)', hint: 'CRM, Meta Ads, Google Ads e GA4 em dia' });
+      : st.realData ? syncReal : { texto: 'Sincronizado há ' + st.syncMin + ' min', fg: 'var(--cc-ok)', bg: 'var(--success-bg)', hint: 'CRM, Meta Ads, Google Ads e GA4 em dia' });
 
     const kpis = this.KPIS.map(k => {
       const s = this.STATUS[k.status];
       return Object.assign({}, k, {
         statusLabel: s.label, statusFg: s.fg, statusBg: s.bg, graf: s.graf,
         deltaFg: k.dir === 'up' ? 'var(--cc-ok)' : 'var(--cc-risco)',
-        atualizado: 'há 6 min', spark: this.spark(k.s), metaShow: mostrarMetas ? 'block' : 'none',
+        atualizado: st.realData ? 'agora' : 'há 6 min', spark: this.spark(k.s), metaShow: mostrarMetas ? 'block' : 'none',
         meta: mostrarMetas ? k.meta : '—',
         onClick: () => this.abrir({
           eyebrow: 'Aprofundar indicador', titulo: k.label, sub: 'Contribuição por canal no período · ' + F.periodo,
@@ -3351,7 +3374,7 @@ class Component extends DCLogic {
         ? 'Fluxo: leads que entraram ou avançaram para cada etapa dentro do período. Conversão e perda são sempre sobre a etapa anterior; a última coluna compara com o período anterior.'
         : 'Estoque: leads parados em cada etapa neste momento, independentemente de quando entraram. Não tem conversão nem perda — tem idade, SLA e tendência. O estoque não precisa ser decrescente.',
       alertasCriticos: contaGrav('crítico') + ' críticos · ' + contaGrav('atenção') + ' atenção · ' + contaGrav('oportunidade') + ' oportunidades',
-      serieBarras, serieLinha, serieMeta: 'M0 ' + yMeta + ' L720 ' + yMeta,
+      serieBarras, serieLinha, serieDatas: ['21 jul', '28 jul', '4 ago', '11 ago', '19 ago'], serieMeta: 'M0 ' + yMeta + ' L720 ' + yMeta,
       atribuir: (() => {
         const id = st.atribuindo;
         const alerta = id ? todosAlertas.find(a => a.titulo === id) : null;
@@ -3437,6 +3460,7 @@ class Component extends DCLogic {
       socioKpis: realView.socioKpis,
       socioFunil: realView.socioFunil,
       saude: realView.saude,
+      serieDatas: realView.serieDatas,
       mktKpis: realView.mktKpis,
       tronco: realView.tronco,
       trilhas: realView.trilhas,
