@@ -1740,17 +1740,21 @@ class Component extends DCLogic {
       info('Imóveis vistos', this.num(n(site.property_views)), 'páginas de imóveis', 'var(--cc-atencao)', 'Fonte real: Tracking 360.'),
       info('Galeria', this.num(n(site.gallery_interactions)), 'interações nas fotos', null, 'Fonte real: eventos próprios.'),
       info('Cliques no WhatsApp', this.num(n(site.whatsapp_clicks)), 'intenção de contato', 'var(--cc-ok)', 'Fonte real: eventos próprios.'),
+      info('Cliques em telefone', unavailable, 'evento ainda não exposto pela API', 'var(--fg-3)', 'A estrutura foi preservada sem inventar leitura.'),
       info('Leads enviados', this.num(n(site.site_leads)), 'convertidos pelo site', 'var(--ape-purple-700)', 'Fonte real: CRM + site.'),
       info('Conversão por sessão', pct(site.site_leads, site.sessions), 'leads ÷ sessões', null, 'Calculado com dados reais.'),
-      info('GA4', payload.ga4_configurado ? 'Configurado' : 'Indisponível', payload.ga4_configurado ? 'leitura autorizada' : 'sem autorização', payload.ga4_configurado ? 'var(--cc-ok)' : 'var(--cc-atencao)', 'Status real da integração.')
+      info('GA4', payload.ga4_configurado ? 'Configurado' : 'Indisponível', payload.ga4_configurado ? 'leitura autorizada' : 'sem autorização', payload.ga4_configurado ? 'var(--cc-ok)' : 'var(--cc-atencao)', 'Status real da integração.'),
+      info('LCP médio', unavailable, 'Core Web Vitals ainda sem leitura', 'var(--fg-3)', 'A estrutura foi preservada sem inventar desempenho.')
     ];
     const sitePaginas = topPages.map(row => ({ pagina: String(row.title || row.path || 'Página'), origem: String(row.path || ''), sessoes: this.num(n(row.sessions)), engajadas: '—', forms: this.num(n(row.form_starts)), whats: this.num(n(row.whatsapp_clicks)), conv: pct(row.leads, row.views), fg: n(row.leads) ? 'var(--cc-ok)' : 'var(--fg-3)', onClick: () => {} }));
     const imoveis = topPages.map(row => ({ nome: String(row.title || row.path || 'Página'), detalhe: String(row.path || ''), cells: [n(row.views),n(row.sessions),n(row.form_starts),n(row.whatsapp_clicks),pct(row.leads,row.views),n(row.leads),'—','—','—','—','—','—','—'].map(v => ({ v: typeof v === 'number' ? this.num(v) : v, fg: 'var(--fg-2)', peso: 400 })), onClick: () => {} }));
 
     const finKpis = [
       info('VGV vendido', this.brl(n(finance.vgv)), n(finance.vendas) + ' contratos concluídos', null, 'Fonte real: vendas.'),
+      info('VGV cancelado', unavailable, 'distratos ainda não expostos pela API', 'var(--fg-3)', 'Sem estimativa.'),
       info('Vendas', this.num(n(finance.vendas)), 'contratos concluídos', 'var(--cc-ok)', 'Fonte real: Financeiro.'),
       info('Comissão bruta prevista', this.brl(n(finance.comissao_prevista)), 'sobre contratos concluídos', 'var(--ape-purple-700)', 'Fonte real: contratos.'),
+      info('Comissão líquida prevista', unavailable, 'repasse e impostos ainda sem consolidação', 'var(--fg-3)', 'Sem estimativa.'),
       info('Comissão recebida', this.brl(n(finance.comissao_recebida)), pct(finance.comissao_recebida, finance.comissao_prevista) + ' do previsto', 'var(--cc-ok)', 'Fonte real: recebimentos.'),
       info('Comissão a receber', this.brl(Math.max(0, n(finance.comissao_prevista) - n(finance.comissao_recebida))), 'previsto menos recebido', 'var(--cc-atencao)', 'Calculado com dados reais.'),
       info('Investimento em mídia', spend ? this.brl(spend) : unavailable, spend ? 'Meta + Google' : 'autorizar contas', null, 'Fonte real: plataformas de mídia.'),
@@ -1824,7 +1828,11 @@ class Component extends DCLogic {
     ];
     const trkGrupos = [
       { titulo:'Falha técnica de entrega',nota:'Eventos que deveriam ter sido entregues e retornaram erro.',glifo:'!',fg:n(metaTrack.errors)?'var(--cc-risco)':'var(--cc-ok)',bg:n(metaTrack.errors)?'var(--danger-bg)':'var(--success-bg)',itens:[{label:'Erros de entrega',nota:'Tracking 360',valor:this.num(n(metaTrack.errors)),fg:n(metaTrack.errors)?'var(--cc-risco)':'var(--cc-ok)',onClick:noop}] },
+      { titulo:'Deduplicação de leads no CRM',nota:'A API ainda não separa unificação por telefone e e-mail.',glifo:'⊕',fg:'var(--cc-atencao)',bg:'var(--ape-orange-100)',itens:[{label:'Leads unificados',nota:'fonte ainda não exposta',valor:unavailable,fg:'var(--fg-3)',onClick:noop}] },
+      { titulo:'Deduplicação pixel × CAPI',nota:'Exige event_id pareado entre navegador e servidor.',glifo:'⊕',fg:'var(--ape-purple-700)',bg:'var(--ape-purple-100)',itens:[{label:'Eventos casados por event_id',nota:'fonte ainda não exposta',valor:unavailable,fg:'var(--fg-3)',onClick:noop}] },
+      { titulo:'Qualidade de correspondência',nota:'Cobertura real de identificadores preservados para atribuição.',glifo:'~',fg:'var(--cc-atencao)',bg:'var(--warning-bg)',itens:[{label:'Cobertura de atribuição',nota:this.num(n(attribution.eligible))+' leads elegíveis',valor:attribution.coverage_percent==null?'—':n(attribution.coverage_percent).toLocaleString('pt-BR',{maximumFractionDigits:1})+'%',fg:'var(--cc-atencao)',onClick:noop}] },
       { titulo:'Atribuição plataforma × CRM',nota:'Cobertura real de leads elegíveis com origem identificada.',glifo:'≠',fg:'var(--cc-atencao)',bg:'var(--warning-bg)',itens:[{label:'Leads atribuídos',nota:this.num(n(attribution.eligible))+' elegíveis',valor:this.num(n(attribution.attributed)),fg:'var(--ape-purple-700)',onClick:noop},{label:'Cobertura de atribuição',nota:'sem estimativa',valor:attribution.coverage_percent==null?'—':n(attribution.coverage_percent).toLocaleString('pt-BR',{maximumFractionDigits:1})+'%',fg:'var(--cc-atencao)',onClick:noop}] },
+      { titulo:'Limitação de medição e privacidade',nota:'Consentimento limita relatórios, mas não impede o lead de entrar no CRM.',glifo:'◐',fg:'var(--ape-purple-700)',bg:'var(--ape-purple-100)',itens:[{label:'Sessões com consentimento de marketing',nota:'Tracking 360',valor:tracking.consent&&tracking.consent.marketing!=null?this.num(n(tracking.consent.marketing)):unavailable,fg:'var(--ape-purple-700)',onClick:noop}] },
       { titulo:'Conversão comercial',nota:'Resultado de negócio; não é classificado como erro técnico.',glifo:'✓',fg:'var(--cc-ok)',bg:'var(--success-bg)',itens:[{label:'Leads válidos',nota:'CRM',valor:this.num(n(summary.leads_validos)),fg:'var(--fg-1)',onClick:noop},{label:'Vendas',nota:'Financeiro',valor:this.num(n(finance.vendas)),fg:'var(--cc-ok)',onClick:noop}] }
     ];
     const trkErros = n(metaTrack.errors) ? [{ titulo:'Eventos não entregues à plataforma',detalhe:'O Tracking 360 registrou falhas de entrega neste período.',origem:'Conversions API',quando:'período selecionado',registros:this.num(n(metaTrack.errors)),impacto:'atribuição parcial',situacao:'aberto',fg:'var(--cc-risco)',bg:'var(--danger-bg)',glifo:'!',tipo:'Falha técnica',tipoFg:'var(--cc-risco)',tipoBg:'var(--danger-bg)',onClick:noop }] : [];
