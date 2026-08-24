@@ -455,7 +455,8 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
     const productUrl = sitePropertyUrl({ id: currentProduct.id, slug: currentProduct.slug, unitId: null, codigo: currentProduct.codigo });
     const published = Boolean(currentProduct.site_published);
     const statusLabel = published ? "Publicado" : currentProduct.aprovacao === "pendente" ? "Em aprovação" : currentProduct.aprovacao === "reprovado" ? "Ajustes solicitados" : currentProduct.rascunho ? "Rascunho" : "Fora do ar";
-    const productKind = /lan[cç]|obra/i.test(currentProduct.status || "") ? "Empreendimento" : currentProduct.origem === "terceiros" ? "Unidade individual" : "Condomínio";
+    const hasDeveloperStock = currentProduct.unidades.some((unit) => !unit.de_terceiros);
+    const productKind = hasDeveloperStock || /lan[cç]|obra/i.test(currentProduct.status || "") ? "Empreendimento" : currentProduct.origem === "terceiros" ? "Unidade individual" : "Condomínio";
     const captadores = currentProduct.captado_por_nome ? [currentProduct.captado_por_nome] : Array.from(new Set(currentProduct.unidades.map((unit) => unit.captador_nome).filter((name): name is string => Boolean(name))));
     const captor = captadores.length ? captadores.join(", ") : "Equipe ApêCerto";
 
