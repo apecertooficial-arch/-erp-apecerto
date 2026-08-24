@@ -158,7 +158,7 @@ async function boot(){
    sbGet('/pipelines?select=id,nome&order=id'),
    sbGet('/pipeline_stages?select=id,pipeline_id,nome,ordem&order=pipeline_id,ordem'),
    sbGet('/corretores?select=id,nome,ativo,peso,online,ordem&order=ordem,nome'),
-   sbGet('/instancias?select=id,nome,ativa&order=id'),
+   sbGet('/instancias?select=id,nome,ativa,conectada,status_dapi,numero_conectado,corretor_id&order=id'),
    sbGet('/automacoes?select=id,nome,grupo,ativa,status,arquivada,atualizada_em&order=grupo,id')]);
   ref.pipelines=pi;ref.stages=stg;ref.corretores=co;ref.instancias=ins;ref.automacoes=au;if(_ctx&&_ctx.onAutomationsLoaded){try{_ctx.onAutomationsLoaded(au);}catch(_e){}}
   try{ref.tags=await sbRpc('automacao_tags')||[];}catch(_t){ref.tags=[];}   try{ref.momentos=await sbGet('/lead_momento_catalogo?select=slug,rotulo,grupo,ordem&ativo=eq.true&order=ordem')||[];}catch(_m){ref.momentos=[];}
@@ -230,6 +230,31 @@ function pipeOpts(v){return '<option value="">— funil —</option>'+ref.pipeli
 function stageOpts(v,pid){return '<option value="">— etapa —</option>'+ref.stages.filter(s=>!pid||String(s.pipeline_id)===String(pid)).map(s=>`<option value="${s.id}" ${String(s.id)===String(v)?'selected':''}>${esc(s.nome)}</option>`).join('');}
 function corOpts(v){return '<option value="">— corretor —</option>'+ref.corretores.map(c=>`<option ${c.nome===v?'selected':''}>${esc(c.nome)}</option>`).join('');}
 function instOpts(v){return '<option value="">— instância —</option>'+ref.instancias.map(i=>`<option ${i.nome===v?'selected':''}>${esc(i.nome)}</option>`).join('');}
+function corretoresDistribuidosNoFluxo(blockId){
+ const nomes=new Set();
+ if(!cur)return [];
+ let permitidos=null;
+ if(blockId){
+  permitidos=new Set();const fila=[blockId];
+  while(fila.length){const atual=fila.pop();(cur.wires||[]).filter(w=>w.to===atual).forEach(w=>{if(!permitidos.has(w.from)){permitidos.add(w.from);fila.push(w.from);}});}
+ }
+ Object.values(cur.nodes||{}).filter(n=>(!permitidos||permitidos.has(n.id))&&(n.type==='distribution-simple'||n.type==='distribution')).forEach(n=>{
+  const d=(n.opts&&n.opts.distribuicao)||{};
+  (d.items||[]).filter(x=>x.on!==false&&(+x.peso||0)>0).forEach(x=>nomes.add(String(x.corretor||'').trim().toLowerCase()));
+ });
+ return (ref.corretores||[]).filter(c=>nomes.has(String(c.nome||'').trim().toLowerCase()));
+}
+function instanciaAutomacaoValida(i,corretorId){
+ return +i.corretor_id===+corretorId&&i.ativa!==false&&i.conectada===true&&i.status_dapi==='connected';
+}
+function rotasInstanciaIniciais(){
+ const rotas={};
+ corretoresDistribuidosNoFluxo().forEach(c=>{
+  const opcoes=(ref.instancias||[]).filter(i=>instanciaAutomacaoValida(i,c.id));
+  if(opcoes.length===1)rotas[String(c.id)]=+opcoes[0].id;
+ });
+ return rotas;
+}
 function autoOpts(v){return '<option value="">— automação —</option>'+ref.automacoes.map(a=>`<option ${a.nome===v?'selected':''}>${esc(a.nome)}</option>`).join('');}
 function selOpts(list,v){return list.map(x=>`<option value="${esc(x[0])}" ${x[0]===v?'selected':''}>${esc(x[1])}</option>`).join('');}
 function portRow(port,lbl,kind){return `<div class="ne-port ${kind==='err'?'err':''}"><span class="lbl">${esc(lbl)}</span><span class="port-dot dot ${kind}" data-port="${port}"></span></div>`;}
@@ -369,13 +394,20 @@ function bodyHtml(n){
    portRow('out','Próximo passo','ok')+portRow('err','Se ninguém disponível','err');
  }
  if(n.type==='send-approach'){const o=n.opts||{};
-  return `<div style="font-size:11.5px;color:var(--ink-soft);padding:2px 0 6px;line-height:1.45">Envia a abordagem pela instância do corretor <b>dono do lead</b>. Este bloco não distribui nem troca o corretor.</div>`+
+  return `<div style="font-size:11.5px;color:var(--ink-soft);padding:2px 0 6px;line-height:1.45">Envia a abordagem pela instância <b>explicitamente escolhida abaixo</b> para o corretor dono do lead. Este bloco não distribui, não troca o corretor e não usa outra instância como alternativa.</div>`+
    (function(){const all=(ref.abordagens||[]).filter(a=>a.ativo!==false);const groups=[...new Set(all.map(a=>String(a.grupo||'').trim()))].sort((a,b)=>a.localeCompare(b,'pt-BR'));const chosen=String(o.abordagemGrupo||'').trim();const abList=all.filter(a=>String(a.grupo||'').trim()===chosen).sort((a,b)=>(+a.ordem||0)-(+b.ordem||0)||(+a.id||0)-(+b.id||0));const selAb=Array.isArray(o.abordagemIds)?o.abordagemIds.map(Number):[];const count=selAb.length;
+    const rotas=(o.instanciaPorCorretor&&typeof o.instanciaPorCorretor==='object')?o.instanciaPorCorretor:{};const membros=corretoresDistribuidosNoFluxo(n.id);
+    const linhasRotas=membros.map(c=>{const atual=+rotas[String(c.id)]||0;const opcoes=(ref.instancias||[]).filter(i=>+i.corretor_id===+c.id&&(instanciaAutomacaoValida(i,c.id)||+i.id===atual));
+     return `<div class="ne-row" style="padding:7px 9px"><div style="font-size:11.5px;font-weight:650;color:var(--ink);margin-bottom:4px">${esc(c.nome)}</div><select class="ne-sel" data-sapinst="${c.id}"><option value="">— escolha a instância exata —</option>${opcoes.map(i=>`<option value="${i.id}" ${+i.id===atual?'selected':''}>${esc(i.nome)}${i.numero_conectado?' · '+esc(String(i.numero_conectado).slice(-4)):''}${instanciaAutomacaoValida(i,c.id)?'':' · indisponível'}</option>`).join('')}</select></div>`;
+    }).join('');
     return `<div class="ne-lb" style="margin-top:0">1. Grupo de abordagens</div>`+
      `<select class="ne-sel" data-sapgroup><option value="" ${chosen===''?'selected':''}>— Sem grupo —</option>${groups.filter(g=>g!=='').map(g=>`<option value="${esc(g)}" ${g===chosen?'selected':''}>${esc(g)}</option>`).join('')}</select>`+
      `<div class="ne-lb">2. Abordagens que participam</div>`+
      (abList.length?abList.map(a=>`<label style="display:flex;align-items:center;gap:7px;font-size:12px;padding:3px 0;cursor:pointer"><input type="checkbox" data-sapab="${a.id}" ${selAb.indexOf(+a.id)>=0?'checked':''} style="width:15px;height:15px;flex:0 0 auto">${esc(a.nome)} <span style="color:var(--ink-faint);font-size:10.5px">(${(a.mensagens||[]).length} partes)</span></label>`).join(''):`<div style="font-size:11px;color:var(--ink-faint)">Este grupo não tem abordagens ativas.</div>`)+
      `<div style="font-size:10.5px;color:${count?'var(--ink-faint)':'#dc2626'};margin-top:7px;line-height:1.45">${count===0?'Selecione pelo menos uma abordagem.':count===1?'Uma selecionada: este modelo será usado em todos os leads.':count+' selecionadas: alternância igual, na ordem do grupo, sem repetir em retry.'}</div>`+
+     `<div class="ne-lb">3. Instância exata por corretor</div>`+
+     (membros.length?linhasRotas:`<div style="font-size:11px;color:#dc2626">Conecte antes um bloco de distribuição com corretores ativos.</div>`)+
+     `<div style="font-size:10.5px;color:var(--ink-faint);margin-top:6px;line-height:1.45">A escolha fica salva e publicada neste bloco. Se a instância escolhida estiver indisponível, o envio falha pela saída de erro; <b>não existe troca automática</b>.</div>`+
      `<div style="font-size:10.5px;color:var(--ink-faint);margin-top:7px;line-height:1.45">Variáveis: <b>{primeiro_nome}</b>, <b>{nome}</b>, <b>{corretor_primeiro_nome}</b>, <b>{corretor}</b> e <b>{produto}</b>.</div>`;
    })()+
    portRow('out','Somente quando enviar','ok')+portRow('err','Bloqueado ou falhou','err');
@@ -561,7 +593,8 @@ function bindBody(n,el){
   const rp2=q('[data-dsreport]');if(rp2)rp2.onclick=e=>{e.stopPropagation();void relatorioDistribuicao(n);};}
  if(n.type==='send-approach'){const o=n.opts=n.opts||{};
   const sg=q('[data-sapgroup]');if(sg)sg.onchange=()=>{o.abordagemGrupo=sg.value;o.abordagemIds=[];o.selectionMode='round-robin';setDirty();reNode(n);};
-  qa('[data-sapab]').forEach(cb=>cb.onchange=()=>{const id=+cb.dataset.sapab;o.abordagemIds=Array.isArray(o.abordagemIds)?o.abordagemIds.map(Number):[];const ix=o.abordagemIds.indexOf(id);if(cb.checked&&ix<0)o.abordagemIds.push(id);else if(!cb.checked&&ix>=0)o.abordagemIds.splice(ix,1);o.selectionMode='round-robin';setDirty();reNode(n);});}
+  qa('[data-sapab]').forEach(cb=>cb.onchange=()=>{const id=+cb.dataset.sapab;o.abordagemIds=Array.isArray(o.abordagemIds)?o.abordagemIds.map(Number):[];const ix=o.abordagemIds.indexOf(id);if(cb.checked&&ix<0)o.abordagemIds.push(id);else if(!cb.checked&&ix>=0)o.abordagemIds.splice(ix,1);o.selectionMode='round-robin';setDirty();reNode(n);});
+  qa('[data-sapinst]').forEach(sel=>sel.onchange=()=>{o.instanciaPorCorretor=(o.instanciaPorCorretor&&typeof o.instanciaPorCorretor==='object')?o.instanciaPorCorretor:{};const k=String(sel.dataset.sapinst);if(sel.value)o.instanciaPorCorretor[k]=+sel.value;else delete o.instanciaPorCorretor[k];setDirty();});}
  if(n.type==='resposta'){const o=n.opts=n.opts||{};
   const rv=q('[data-rvalor]');if(rv)rv.onchange=()=>{o.janelaValor=Math.max(1,+rv.value||1);setDirty();};
   const ru=q('[data-runidade]');if(ru)ru.onchange=()=>{o.janelaUnidade=ru.value;setDirty();};}
@@ -651,7 +684,7 @@ function addNode(type,x,y){const id='b'+(cur.uid++);const base={id,type,sub:'',x
  if(type==='randomizer')base.ramos=[{id:'r'+(cur.uid++),name:'A',perc:50},{id:'r'+(cur.uid++),name:'B',perc:50}];
  if(type==='distribution')base.opts={distribuicao:{items:(ref.corretores||[]).filter(c=>c.ativo!==false).map(c=>({corretor:c.nome,peso:(c.peso||1),on:true})),onlineOnly:true,tambemNegocio:false}};
  if(type==='distribution-simple')base.opts={distribuicao:{items:(ref.corretores||[]).filter(c=>c.ativo!==false).map(c=>({corretor:c.nome,peso:1,on:true})),onlineOnly:true,tambemNegocio:true}};
- if(type==='send-approach')base.opts={produtoId:0,abordagemGrupo:'',abordagemIds:[],selectionMode:'round-robin'};
+ if(type==='send-approach')base.opts={produtoId:0,abordagemGrupo:'',abordagemIds:[],selectionMode:'round-robin',instanciaPorCorretor:rotasInstanciaIniciais()};
  if(type==='resposta')base.opts={janelaValor:12,janelaUnidade:'horas'};
  if(type==='ai-agent')base.opts={agenteId:0,funcao:AI_FUNCOES[0][0]};
  cur.nodes[id]=base;selectedId=id;setDirty();renderNodes();markSel();return id;}
@@ -755,7 +788,7 @@ function computeIssues(){
   if(n.type==='action'){const as=n.opts.actions||[];if(!as.length)add('erro',n.id,'Bloco de ação sem ações.');as.forEach(a=>{const o=a.options||{};if(!PUBLISHABLE_ACTIONS.has(a.name))add('erro',n.id,'Ação não implementada: '+a.name+'.');if(['create-tags-action','add-tag-action','remove-tag-action'].includes(a.name)&&!o.tag)add('erro',n.id,'Ação de tag sem tag.');if(a.name==='set-lead-momento-action'&&!o.momento)add('erro',n.id,'Ação "definir momento" sem momento escolhido.');if(a.name==='apply-ai-analysis-action'&&!hasUpstreamType(n.id,'ai-agent'))add('erro',n.id,'A ação "Aplicar análise da IA" precisa receber a saída de um bloco de IA anterior.');if(a.name==='apply-ai-analysis-action'&&['aplicarMomento','aplicarEtapa','aplicarTemperatura','aplicarAcao','aplicarQualidade'].every(k=>o[k]===false))add('erro',n.id,'Escolha ao menos um campo para aplicar da análise da IA.');if(['add-attendant-on-business-action','assign-lead-attendant-action'].includes(a.name)&&!o.corretor)add('erro',n.id,'Ação "atribuir corretor" sem corretor.');if(['create-business-action','move-business-action'].includes(a.name)&&(!o.pipeline||!o.etapa))add('erro',n.id,'Ação de negócio precisa de funil e etapa.');if(a.name==='business-lose-action'&&!o.motivo)add('erro',n.id,'Ação "perder negócio" sem motivo.');if(a.name==='start-another-automation-action'){if(!o.automacao)add('erro',n.id,'Ação "iniciar automação" sem alvo.');else if(o.automacao===cur.nome)add('erro',n.id,'Automação chamando ela mesma.');}});}
   if(n.type==='field-operation'){const fs=n.opts.fieldOperations||[];if(!fs.length)add('erro',n.id,'Operações de campos sem nenhum mapeamento.');fs.forEach(f=>{const o=f.options||{};if(!['set-field-operation','parse-phone-field-operation','store-json-payload-field-operation','sync-meta-attribution-field-operation'].includes(f.name))add('erro',n.id,'Operação de campo não implementada: '+(f.name||'vazia')+'.');if(['set-field-operation','store-json-payload-field-operation'].includes(f.name)&&!o.parameter)add('erro',n.id,'Mapeamento de campo sem destino.');});}
   if(n.type==='time'){if(!PUBLISHABLE_WAITS.has(n.opts.wait_type))add('erro',n.id,'Tipo de espera ainda não implementado.');if(!(+n.opts.valor>0))add('erro',n.id,'Espera precisa ter duração maior que zero.');}
-  if(n.type==='send-approach'){const ids=(n.opts.abordagemIds||[]).map(Number);if(!ids.length)add('erro',n.id,'Selecione pelo menos uma abordagem.');if(new Set(ids).size!==ids.length)add('erro',n.id,'A mesma abordagem foi selecionada mais de uma vez.');const group=String(n.opts.abordagemGrupo||'').trim();const allowed=new Set((ref.abordagens||[]).filter(a=>a.ativo!==false&&String(a.grupo||'').trim()===group).map(a=>+a.id));if(ids.some(id=>!allowed.has(id)))add('erro',n.id,'Há uma abordagem fora do grupo escolhido ou inativa.');}
+  if(n.type==='send-approach'){const ids=(n.opts.abordagemIds||[]).map(Number);if(!ids.length)add('erro',n.id,'Selecione pelo menos uma abordagem.');if(new Set(ids).size!==ids.length)add('erro',n.id,'A mesma abordagem foi selecionada mais de uma vez.');const group=String(n.opts.abordagemGrupo||'').trim();const allowed=new Set((ref.abordagens||[]).filter(a=>a.ativo!==false&&String(a.grupo||'').trim()===group).map(a=>+a.id));if(ids.some(id=>!allowed.has(id)))add('erro',n.id,'Há uma abordagem fora do grupo escolhido ou inativa.');const rotas=(n.opts.instanciaPorCorretor&&typeof n.opts.instanciaPorCorretor==='object')?n.opts.instanciaPorCorretor:{};const membros=corretoresDistribuidosNoFluxo(n.id);if(!membros.length)add('erro',n.id,'Enviar abordagem precisa receber um corretor de um bloco de distribuição.');membros.forEach(c=>{const iid=+rotas[String(c.id)]||0;const inst=(ref.instancias||[]).find(i=>+i.id===iid);if(!iid)add('erro',n.id,'Escolha a instância exata de '+c.nome+'.');else if(!inst||!instanciaAutomacaoValida(inst,c.id))add('erro',n.id,'A instância escolhida de '+c.nome+' não está conectada e disponível.');});}
   if(n.type==='resposta'){if(!(+n.opts.janelaValor>0))add('erro',n.id,'Informe uma janela de resposta válida.');if(!hasOut(n.id,'respondeu'))add('erro',n.id,'Conecte a saída "respondeu".');if(!hasOut(n.id,'naoRespondeu'))add('erro',n.id,'Conecte a saída "não respondeu".');}
   if(n.type==='ai-agent'){if(!(+n.opts.agenteId>0))add('erro',n.id,'Selecione o agente de IA que este módulo deve chamar.');if(!AI_FUNCOES.some(x=>x[0]===n.opts.funcao))add('erro',n.id,'Função de IA não implementada: '+(n.opts.funcao||'vazia')+'.');}
   if(n.type==='distribution-simple'&&!((n.opts.distribuicao&&n.opts.distribuicao.items)||[]).some(x=>x.on!==false&&(+x.peso||0)>0))add('erro',n.id,'Distribuição sem corretor ativo e com peso positivo.');
