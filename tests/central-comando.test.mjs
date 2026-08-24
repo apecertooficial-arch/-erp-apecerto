@@ -7,13 +7,14 @@ const wrapper = readFileSync(new URL("../app/features/inteligencia/CentralComand
 const prototype = readFileSync(new URL("../public/central-comando/prototype.html", import.meta.url), "utf8");
 const api = readFileSync(new URL("../app/api/central-comando/route.ts", import.meta.url), "utf8");
 const migration = readFileSync(new URL("../supabase/migrations/20260822145143_central_comando_dados_reais.sql", import.meta.url), "utf8");
+const teamExecutionMigration = readFileSync(new URL("../supabase/migrations/20260824190000_central_equipe_execucao_real.sql", import.meta.url), "utf8");
 
 test("Central de Comando é uma rota interna e fica restrita à gestão", () => {
   assert.equal(rotasModulo["Central de Comando"].path, "/inteligencia");
   assert.equal(podeVer("Central de Comando", { role: "admin", permissoes: null, carregado: true }), true);
   assert.equal(podeVer("Central de Comando", { role: "gestor", permissoes: { dashboard: ["ver"] }, carregado: true }), true);
   assert.equal(podeVer("Central de Comando", { role: "corretor", permissoes: { dashboard: ["ver"] }, carregado: true }), false);
-  assert.match(wrapper, /src="\/central-comando\/prototype\.html\?v=20260824-7"/);
+  assert.match(wrapper, /src="\/central-comando\/prototype\.html\?v=20260824-8"/);
   assert.doesNotMatch(wrapper, /target=|window\.open/);
 });
 
@@ -94,4 +95,14 @@ test("segurança consolida números sem expor PII", () => {
   assert.doesNotMatch(api, /telefone|email|wa_mensagens|mensagem_texto/i);
   const revokeLegacy = readFileSync(new URL("../supabase/migrations/20260822154702_central_comando_revoga_rpc_legada.sql", import.meta.url), "utf8");
   assert.match(revokeLegacy, /revoke execute on function public\.central_comando_dashboard\(integer\)[\s\S]*from authenticated/);
+});
+
+test("execução da equipe usa leads distintos e nunca eventos como percentual", () => {
+  assert.match(api, /central_comando_equipe_execucao/);
+  assert.match(teamExecutionMigration, /count\(distinct ca\.lead_id\)/);
+  assert.match(teamExecutionMigration, /pct_carteira_trabalhada/);
+  assert.match(teamExecutionMigration, /percentile_cont\(0\.9\)/);
+  assert.match(teamExecutionMigration, /p\.valor <= 15/);
+  assert.doesNotMatch(prototype, /n\(row\.movimentacoes\) \/ n\(row\.leads_recebidos\)/);
+  assert.match(prototype, /row\.pct_carteira_trabalhada/);
 });

@@ -47,8 +47,9 @@ export async function GET(request: Request) {
     rpc: (name: string, args: Record<string, unknown>) => Promise<RpcResult>;
   }).rpc.bind(auth.supabase);
 
-  const [central, tracking, attribution, quality, media, ga4, alertActions] = await Promise.all([
+  const [central, teamExecution, tracking, attribution, quality, media, ga4, alertActions] = await Promise.all([
     rpc("central_comando_dashboard_v2", { p_days: days }),
+    rpc("central_comando_equipe_execucao", { p_days: days }),
     rpc("tracking_360_dashboard", { p_days: days }),
     rpc("tracking_360_attribution_scope", { p_days: days }),
     rpc("tracking_360_quality", { p_days: days }),
@@ -59,7 +60,7 @@ export async function GET(request: Request) {
     loose.from("central_alerta_acoes").select("alerta_chave,responsavel,prazo,visto,resolvido,atualizado_em"),
   ]);
 
-  const firstError = central.error || tracking.error || attribution.error || quality.error;
+  const firstError = central.error || teamExecution.error || tracking.error || attribution.error || quality.error;
   if (firstError) {
     const forbidden = /forbidden|permission|permissão|acesso_negado|42501/i.test(firstError.message ?? "");
     return Response.json(
@@ -77,9 +78,22 @@ export async function GET(request: Request) {
   const metaRecord = (mediaRecord.meta ?? {}) as Record<string, unknown>;
   const googleRecord = (mediaRecord.google ?? {}) as Record<string, unknown>;
   const ga4IsConfigured = ga4Configurado();
+  const centralRecord = (central.data ?? {}) as Record<string, unknown>;
+  const teamRows = Array.isArray(centralRecord.team) ? centralRecord.team : [];
+  const executionRows = Array.isArray(teamExecution.data) ? teamExecution.data : [];
+  const executionByBroker = new Map(
+    executionRows.map((row) => [String((row as Record<string, unknown>).corretor_id), row as Record<string, unknown>]),
+  );
+  const centralData = {
+    ...centralRecord,
+    team: teamRows.map((row) => {
+      const broker = row as Record<string, unknown>;
+      return { ...broker, ...(executionByBroker.get(String(broker.corretor_id)) ?? {}) };
+    }),
+  };
 
   return Response.json({
-    central: central.data,
+    central: centralData,
     tracking: { ...(tracking.data as Record<string, unknown>), attribution: attribution.data, quality: quality.data },
     media: mediaData,
     ga4,

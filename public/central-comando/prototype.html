@@ -1602,6 +1602,14 @@ class Component extends DCLogic {
       const d = delta(n(a), n(b));
       return d === null ? 'sem base anterior' : (d >= 0 ? '+' : '') + d.toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + '%';
     };
+    const tempoMin = value => {
+      if (value == null || !Number.isFinite(Number(value))) return '—';
+      const minutos = Number(value);
+      if (minutos < 60) return minutos.toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + ' min';
+      const horas = Math.floor(minutos / 60);
+      const resto = Math.round(minutos % 60);
+      return horas + ' h' + (resto ? ' ' + String(resto).padStart(2, '0') : '');
+    };
     const serie = (key, fallback) => {
       const values = trend.map(r => n(r[key]));
       while (values.length < 12) values.unshift(0);
@@ -1643,7 +1651,7 @@ class Component extends DCLogic {
       id: String(row.corretor_id || index), nome: row.nome || 'Corretor',
       ini: String(row.nome || 'C').split(/\s+/).slice(0,2).map(p => p[0]).join('').toUpperCase(),
       equipe: row.no_escritorio ? 'No escritório' : row.online ? 'Online agora' : 'Equipe', av: index === 0 ? 'ape-avatar--orange' : '',
-      e: { recebidos: n(row.leads_recebidos), trab: n(row.movimentacoes), pct: n(row.leads_recebidos) ? (n(row.movimentacoes) / n(row.leads_recebidos) * 100).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + '%' : '—', med: row.primeira_resposta_mediana_min == null ? '—' : n(row.primeira_resposta_mediana_min).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + ' min', p90: '—', sla: '—', fups: n(row.mensagens_enviadas), venc: n(row.acoes_vencidas), parados: n(row.carteira_ativa), nota: row.nota_media == null ? '—' : n(row.nota_media).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) },
+      e: { recebidos: n(row.leads_recebidos), trab: n(row.carteira_trabalhada), movimentos: n(row.movimentacoes), pct: row.pct_carteira_trabalhada == null ? '—' : n(row.pct_carteira_trabalhada).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + '%', med: tempoMin(row.primeira_resposta_mediana_min), p90: tempoMin(row.primeira_resposta_p90_min), sla: row.sla_15_pct == null ? '—' : n(row.sla_15_pct).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + '%', fups: n(row.mensagens_enviadas), venc: n(row.acoes_vencidas), parados: n(row.carteira_ativa), nota: row.nota_media == null ? '—' : n(row.nota_media).toLocaleString('pt-BR', { maximumFractionDigits: 1 }), atividade: { horasLogado: row.horas_logado, horasAtivas: row.horas_ativas, diasPresenca: n(row.dias_presenca), ultimaAtividade: row.ultima_atividade_em } },
       r: { agend: n(row.visitas_agendadas), real: n(row.visitas_realizadas), cancel: this.num(n(row.visitas_canceladas)) + ' / —', feed: '—', prop: null, vendas: n(row.vendas), conv: n(row.leads_recebidos) ? (n(row.vendas) / n(row.leads_recebidos) * 100).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + '%' : '—', vgv: this.brl(n(row.vgv)), com: '—', ciclo: '—' }
     }));
     this.MKT = this.montarArvoreRealDeMidia(ads, campanhasTracking);
@@ -3254,7 +3262,7 @@ class Component extends DCLogic {
       setEqpResult: () => this.setState({ eqpModo: 'result' }),
       voltarEquipe: () => this.setState({ corretorSel: null }),
       eqpCols: (st.eqpModo === 'exec'
-        ? ['Recebidos', 'Trabalhados', '% carteira', 'Mediana resp.', 'P90 resp.', 'SLA', 'Follow-ups', 'Vencidos', 'Parados', 'Nota IA']
+        ? ['Recebidos', 'Ativos trabalhados', '% carteira', 'Mediana resp.', 'P90 resp.', 'SLA 15 min', 'Follow-ups', 'Vencidos', 'Carteira ativa', 'Nota IA']
         : ['Vis. agendadas', 'Vis. realizadas', 'Cancel. / no-show', 'Feedback no prazo', 'Propostas', 'Vendas', 'Conv. lead→venda', 'VGV', 'Comissão', 'Ciclo']).map(nome => ({ nome })),
       eqpRows: this.CORRETORES.filter(c => (!(F.corretores || []).length || F.corretores.indexOf(c.nome) >= 0) && (!(F.equipes || []).length || F.equipes.some(eq => c.equipe.toLowerCase().indexOf(eq.toLowerCase()) >= 0))).map(c => {
         const e = c.e, r = c.r, nota = parseFloat(e.nota.replace(',', '.'));
@@ -3573,14 +3581,16 @@ class Component extends DCLogic {
         { titulo: 'Retomar carteira ativa', detalhe: this.num(corretorFonteReal.e.parados) + ' leads na carteira atual.', prazo: 'esta semana', fg: 'var(--fg-3)', onClick: () => {} }
       ],
       atividade: [
-        { k: 'Movimentações registradas', v: this.num(corretorFonteReal.e.trab) },
+        { k: 'Horas logadas medidas', v: corretorFonteReal.e.atividade.horasLogado == null ? 'Ainda sem histórico' : this.num(corretorFonteReal.e.atividade.horasLogado) + ' h' },
+        { k: 'Horas ativas medidas', v: corretorFonteReal.e.atividade.horasAtivas == null ? 'Ainda sem histórico' : this.num(corretorFonteReal.e.atividade.horasAtivas) + ' h' },
+        { k: 'Dias com presença', v: this.num(corretorFonteReal.e.atividade.diasPresenca) },
+        { k: 'Movimentações registradas', v: this.num(corretorFonteReal.e.movimentos) },
         { k: 'Mensagens enviadas', v: this.num(corretorFonteReal.e.fups) },
-        { k: 'Leads recebidos', v: this.num(corretorFonteReal.e.recebidos) },
-        { k: 'Vendas', v: this.num(corretorFonteReal.r.vendas) }
+        { k: 'Leads distintos trabalhados', v: this.num(corretorFonteReal.e.trab) }
       ],
       kpis: [
-        { label: 'Leads recebidos', valor: this.num(corretorFonteReal.e.recebidos), nota: this.num(corretorFonteReal.e.trab) + ' movimentações', fg: 'var(--fg-1)' },
-        { label: 'Mediana 1ª resposta', valor: corretorFonteReal.e.med, nota: 'fonte: eventos do CRM', fg: 'var(--fg-1)' },
+        { label: '% carteira trabalhada', valor: corretorFonteReal.e.pct, nota: this.num(corretorFonteReal.e.trab) + ' de ' + this.num(corretorFonteReal.e.parados) + ' leads ativos', fg: parseFloat(corretorFonteReal.e.pct) < 80 ? 'var(--cc-risco)' : 'var(--fg-1)' },
+        { label: 'Mediana 1ª resposta', valor: corretorFonteReal.e.med, nota: 'P90 ' + corretorFonteReal.e.p90, fg: 'var(--fg-1)' },
         { label: 'Ações vencidas', valor: this.num(corretorFonteReal.e.venc), nota: 'próximas ações fora do prazo', fg: corretorFonteReal.e.venc ? 'var(--cc-atencao)' : 'var(--cc-ok)' },
         { label: 'Visitas realizadas', valor: this.num(corretorFonteReal.r.real), nota: this.num(corretorFonteReal.r.agend) + ' agendadas', fg: 'var(--fg-1)' },
         { label: 'Vendas', valor: this.num(corretorFonteReal.r.vendas), nota: 'contratos concluídos', fg: corretorFonteReal.r.vendas ? 'var(--cc-ok)' : 'var(--fg-1)' },
