@@ -44,7 +44,13 @@ type AgentListResponse = { agentes: AgentSummary[] };
 
 const mensagemErro = (error: unknown) => error instanceof Error ? error.message : "Falha na operação.";
 
-const MODELOS = ["gpt-4o-mini", "gpt-4o"];
+/* A lista precisa acompanhar os modelos aceitos pelo ia-router. Se o modelo
+   publicado nao existir neste select, o navegador cai visualmente no primeiro
+   item e um simples "Salvar" rebaixa o agente sem o gestor perceber. */
+const MODELOS = [
+  "gpt-4o-mini", "gpt-4o",
+  "gpt-5.4-nano", "gpt-5.4-mini", "gpt-5.4", "gpt-5.5", "gpt-5.6-sol",
+];
 const STATUS = [
   { v: "rascunho", label: "Rascunho" },
   { v: "em_teste", label: "Em teste" },

@@ -23,7 +23,28 @@ Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   const json = (b: unknown, s=200) => new Response(JSON.stringify(b), { status:s, headers:{...cors, "Content-Type":"application/json"} });
   try {
-    const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const supabase = createClient(supabaseUrl, serviceRoleKey, { auth:{persistSession:false} });
+    const authHeader = req.headers.get("authorization") || "";
+    const token = authHeader.replace(/^Bearer\s+/i, "").trim();
+    const { data: authData, error: authError } = await supabase.auth.getUser(token);
+    if (authError || !authData.user) return json({ok:false,reason:"sessao_invalida"},401);
+    const usuarioId = authData.user.id;
+    const userSupabase = createClient(supabaseUrl, anonKey, {
+      auth:{persistSession:false}, global:{headers:{Authorization:`Bearer ${token}`}},
+    });
+    const [{ data: cor }, { data: usuario }] = await Promise.all([
+      supabase.from("corretores").select("id").eq("usuario_id", usuarioId).maybeSingle(),
+      supabase.from("usuarios").select("role,ativo").eq("id", usuarioId).maybeSingle(),
+    ]);
+    const corretorId: number | null = cor?.id ?? null;
+    const perfil = String(usuario?.role ?? (corretorId ? "corretor" : "")).toLowerCase();
+    const perfilFerramenta = perfil === "gerente" ? "gestor" : perfil;
+    const podeVisaoGeral = perfil === "admin" || perfil === "gerente";
+    if (usuario?.ativo === false || (!corretorId && !podeVisaoGeral))
+      return json({ok:false,reason:"perfil_operacional_nao_encontrado"},403);
     const b = await req.json();
     const action = b.action || "run";
     const slug = b.agente_slug || null, nome = b.agente_nome || null;
@@ -32,8 +53,14 @@ Deno.serve(async (req: Request) => {
     const { data: agente, error: aErr } = await aq.maybeSingle();
     if (aErr || !agente) return json({ok:false,reason:"agente_nao_encontrado"},404);
 
-    if (action==="get") return json({ ok:true, slug:agente.slug, nome:agente.nome, modelo:agente.modelo, system_prompt:agente.system_prompt||"", config:agente.config||{}, ativo:agente.ativo });
-    if (action==="save") { const { error } = await supabase.from("agentes_ia").update({ system_prompt: b.system_prompt ?? "" }).eq("id", agente.id); return error? json({ok:false,reason:"erro_salvar",detalhe:error.message},502) : json({ok:true}); }
+    if (action==="get") return perfil === "admin"
+      ? json({ ok:true, slug:agente.slug, nome:agente.nome, modelo:agente.modelo, system_prompt:agente.system_prompt||"", config:agente.config||{}, ativo:agente.ativo })
+      : json({ok:false,reason:"sem_permissao"},403);
+    if (action==="save") {
+      if (perfil !== "admin") return json({ok:false,reason:"sem_permissao"},403);
+      const { error } = await supabase.from("agentes_ia").update({ system_prompt: b.system_prompt ?? "" }).eq("id", agente.id);
+      return error? json({ok:false,reason:"erro_salvar",detalhe:error.message},502) : json({ok:true});
+    }
 
     const hasMessages = Array.isArray(b.messages) && b.messages.length>0;
     if (!b.input && !hasMessages) return json({ok:false,reason:"faltando input"},400);
@@ -47,20 +74,6 @@ Deno.serve(async (req: Request) => {
     const modelo = MODELOS_OK.has(agente.modelo) ? agente.modelo : MODELO_PADRAO;
     const cfg = agente.config || {};
 
-    let corretorId: number | null = null;
-    try {
-      const h = req.headers.get("authorization") || "";
-      const tok = h.replace(/^Bearer\s+/i, "").trim();
-      const part = tok.split(".")[1];
-      if (part) {
-        const payload = JSON.parse(atob(part.replace(/-/g,"+").replace(/_/g,"/").padEnd(Math.ceil(part.length/4)*4,"=")));
-        if (payload && payload.role === "authenticated" && payload.sub) {
-          const { data: cor } = await supabase.from("corretores").select("id").eq("usuario_id", payload.sub).maybeSingle();
-          corretorId = cor?.id ?? null;
-        }
-      }
-    } catch { /* sem identidade */ }
-
     const fontesUsadas: {id:number;titulo:string;versao:string}[] = [];
     let conhecimento = "";
     const { data: links } = await supabase.from("agente_fonte_links").select("fonte_id").eq("agente_id", agente.id);
@@ -70,46 +83,107 @@ Deno.serve(async (req: Request) => {
       for (const f of (fontes||[])) { conhecimento += `\n\n### FONTE: ${f.titulo} (v${f.versao||"?"})\n${f.conteudo||""}`; fontesUsadas.push({id:f.id,titulo:f.titulo,versao:f.versao}); }
     }
 
-    const { data: perms } = await supabase.from("agente_ferramenta_permissoes").select("ferramenta_id, habilitado").eq("agente_id", agente.id).eq("habilitado", true);
-    const permIds = (perms||[]).map((p:{ferramenta_id:number})=>p.ferramenta_id);
+    const { data: perms } = await supabase.from("agente_ferramenta_permissoes").select("ferramenta_id,habilitado,perfis_autorizados").eq("agente_id", agente.id).eq("habilitado", true);
+    const permsDoPerfil = (perms||[]).filter((p:{perfis_autorizados?:string[]|null}) => {
+      const perfis = Array.isArray(p.perfis_autorizados) ? p.perfis_autorizados : [];
+      return perfis.length===0 || perfis.includes(perfil) || perfis.includes(perfilFerramenta);
+    });
+    const permIds = permsDoPerfil.map((p:{ferramenta_id:number})=>p.ferramenta_id);
     let toolSlugs: string[] = [];
     if (permIds.length) { const { data: ferr } = await supabase.from("agente_ferramentas").select("id,slug,tipo,ativo").in("id", permIds); toolSlugs = (ferr||[]).filter((f:{ativo:boolean})=>f.ativo).map((f:{slug:string})=>f.slug); }
 
     const TOOLDEFS: Record<string, any> = {
       "consultar-produtos": { type:"function", function:{ name:"consultar_produtos", description:"Busca UNIDADES/imoveis reais do catalogo (ao vivo) com tipologia, area, vagas, preco e empreendimento. Use para produtos, precos, disponibilidade. Nunca invente.", parameters:{ type:"object", properties:{ bairro:{type:"string"}, dormitorios_min:{type:"integer"}, valor_max:{type:"number"}, vagas_min:{type:"integer"}, texto:{type:"string"} } } } },
-      "consultar-cliente": { type:"function", function:{ name:"consultar_cliente", description:"Busca um lead pelo nome ou telefone (dados basicos).", parameters:{ type:"object", properties:{ nome:{type:"string"}, telefone:{type:"string"} } } } },
+      "consultar-cliente": { type:"function", function:{ name:"consultar_cliente", description:"Localiza leads reais por nome ou telefone dentro do escopo permitido ao usuario. Pode retornar varias pessoas; se houver ambiguidade, mostre as opcoes e pergunte qual e, sem adivinhar.", parameters:{ type:"object", properties:{ texto:{type:"string"} }, required:["texto"] } } },
       "consultar-carteira": { type:"function", function:{ name:"consultar_carteira", description:"Carteira do corretor logado: resumo (atencao=amarelo 3-7d sem interacao, atrasados=vermelho 7d+, em_dia) e leads criticos. Use para carteira, pendencias, quem precisa de feedback/follow-up, o que fazer hoje.", parameters:{ type:"object", properties:{ filtro:{type:"string", enum:["atencao","atrasados","atencao_e_atraso","todos"] } } } } },
       "consultar-vendas": { type:"function", function:{ name:"consultar_vendas", description:"Vendas feitas: resumo (qtd, VGV total, VGV 30 dias) e ultimas vendas. Use para vendas/VGV/faturamento.", parameters:{ type:"object", properties:{} } } },
       "consultar-recebiveis": { type:"function", function:{ name:"consultar_recebiveis", description:"Valores a receber: comissoes do corretor e parcelas pendentes. Use para comissao, quanto vou receber.", parameters:{ type:"object", properties:{} } } },
-      "consultar-lead": { type:"function", function:{ name:"consultar_lead", description:"Situacao completa de UM lead pelo nome/telefone: etapa, dias parado, valor, corretor, status.", parameters:{ type:"object", properties:{ texto:{type:"string"} }, required:["texto"] } } },
-      "avaliar-conversa": { type:"function", function:{ name:"avaliar_conversa", description:"Puxa as ultimas mensagens de WhatsApp de um lead (nome/telefone) para avaliar o atendimento. Use quando pedirem para avaliar/analisar a conversa, dar nota, ou ajudar a responder o cliente.", parameters:{ type:"object", properties:{ texto:{type:"string"} }, required:["texto"] } } },
+      "consultar-lead": { type:"function", function:{ name:"consultar_lead", description:"Localiza e mostra a situacao operacional de leads reais pelo nome ou telefone. Se encontrar mais de um, nao escolha sozinho: apresente candidatos e peca a identificacao.", parameters:{ type:"object", properties:{ texto:{type:"string"} }, required:["texto"] } } },
+      "avaliar-conversa": { type:"function", function:{ name:"avaliar_conversa", description:"Puxa as ultimas mensagens reais de WhatsApp de um lead ja identificado. Use quando pedirem para avaliar/analisar a conversa, dar nota ou ajudar a responder. Nunca leia conversa de outro corretor.", parameters:{ type:"object", properties:{ lead_id:{type:"string",description:"UUID retornado por consultar_lead"}, texto:{type:"string",description:"Nome ou telefone, usado apenas se ainda nao houver lead_id"} } } } },
       "estrutura-crm": { type:"function", function:{ name:"consultar_estrutura_crm", description:"Funis e etapas do CRM. Use para explicar como o CRM/funil funciona ou tirar duvidas sobre etapas.", parameters:{ type:"object", properties:{} } } },
       "mover-lead": { type:"function", function:{ name:"mover_lead", description:"Move um lead de etapa. FLUXO: confirmar=false para preview (de/para), peca confirmacao; so confirmar=true apos o sim. So leads do proprio corretor.", parameters:{ type:"object", properties:{ lead:{type:"string"}, etapa_destino:{type:"string"}, confirmar:{type:"boolean"} }, required:["lead","etapa_destino"] } } },
-      "criar-tarefa": { type:"function", function:{ name:"criar_tarefa", description:"Cria uma tarefa/agendamento de follow-up para um lead, com prazo em dias. FLUXO: confirmar=false para preview (cliente, titulo, quando), peca confirmacao; so confirmar=true apos o sim. So no proprio lead.", parameters:{ type:"object", properties:{ lead:{type:"string"}, titulo:{type:"string",description:"o que fazer"}, dias:{type:"integer",description:"prazo em dias; padrao 1"}, confirmar:{type:"boolean"} }, required:["lead","titulo"] } } },
-      "registrar-feedback": { type:"function", function:{ name:"registrar_feedback", description:"Registra uma anotacao/feedback no historico de um lead. FLUXO: confirmar=false para preview, peca confirmacao; so confirmar=true apos o sim. So no proprio lead.", parameters:{ type:"object", properties:{ lead:{type:"string"}, texto:{type:"string"}, confirmar:{type:"boolean"} }, required:["lead","texto"] } } }
+      "criar-tarefa": { type:"function", function:{ name:"criar_tarefa", description:"Cria uma tarefa de follow-up para um lead em data e hora exatas. FLUXO: localizar o lead; se ambiguo, perguntar; exigir horario exato; confirmar=false para previa; confirmar=true somente depois do sim explicito.", parameters:{ type:"object", properties:{ lead:{type:"string"}, lead_id:{type:"string"}, titulo:{type:"string",description:"o que fazer"}, vencimento_em:{type:"string",description:"ISO 8601 com fuso, por exemplo 2026-08-25T15:00:00-03:00"}, confirmar:{type:"boolean"} }, required:["titulo","vencimento_em"] } } },
+      "registrar-feedback": { type:"function", function:{ name:"registrar_feedback", description:"Registra uma anotacao/feedback no historico de um lead. FLUXO: confirmar=false para preview, peca confirmacao; so confirmar=true apos o sim. So no proprio lead.", parameters:{ type:"object", properties:{ lead:{type:"string"}, texto:{type:"string"}, confirmar:{type:"boolean"} }, required:["lead","texto"] } } },
+      "agendar-visita": { type:"function", function:{ name:"agendar_visita", description:"Agenda uma visita REAL na Agenda canonica e atualiza o Funil 2.0. Exige lead sem ambiguidade, imovel e data/hora exatas. Nunca escolha um horario que o corretor nao informou. FLUXO: confirmar=false para previa; confirmar=true somente apos o sim explicito.", parameters:{ type:"object", properties:{ lead:{type:"string"}, lead_id:{type:"string"}, inicio_em:{type:"string",description:"ISO 8601 com fuso America/Sao_Paulo"}, fim_em:{type:"string",description:"ISO 8601 opcional"}, imovel:{type:"string"}, observacao:{type:"string"}, confirmar:{type:"boolean"} }, required:["inicio_em","imovel"] } } }
     };
     const tools = b.disable_tools===true ? [] : toolSlugs.filter(s=>TOOLDEFS[s]).map(s=>TOOLDEFS[s]);
-    const nameToSlug: Record<string,string> = { consultar_produtos:"consultar-produtos", consultar_cliente:"consultar-cliente", consultar_carteira:"consultar-carteira", consultar_vendas:"consultar-vendas", consultar_recebiveis:"consultar-recebiveis", consultar_lead:"consultar-lead", avaliar_conversa:"avaliar-conversa", consultar_estrutura_crm:"estrutura-crm", mover_lead:"mover-lead", criar_tarefa:"criar-tarefa", registrar_feedback:"registrar-feedback" };
+    const nameToSlug: Record<string,string> = { consultar_produtos:"consultar-produtos", consultar_cliente:"consultar-cliente", consultar_carteira:"consultar-carteira", consultar_vendas:"consultar-vendas", consultar_recebiveis:"consultar-recebiveis", consultar_lead:"consultar-lead", avaliar_conversa:"avaliar-conversa", consultar_estrutura_crm:"estrutura-crm", mover_lead:"mover-lead", criar_tarefa:"criar-tarefa", registrar_feedback:"registrar-feedback", agendar_visita:"agendar-visita" };
+
+    async function localizarLead(args:any) {
+      const textoLead = String(args?.lead_id || args?.lead || args?.texto || args?.nome || args?.telefone || "").trim();
+      if (!textoLead) return { ok:false, erro:"informe_nome_telefone_ou_id", encontrados:0, candidatos:[] };
+      const { data, error } = await supabase.rpc("ia_localizar_leads_seguro", {
+        p_usuario_id:usuarioId, p_texto:textoLead, p_limite:5,
+      });
+      if (error) return { ok:false, erro:error.message, encontrados:0, candidatos:[] };
+      return data as {ok?:boolean;erro?:string;encontrados?:number;ambigua?:boolean;candidatos?:any[]};
+    }
+
+    async function leadUnico(args:any) {
+      const busca = await localizarLead(args);
+      const candidatos = Array.isArray(busca.candidatos) ? busca.candidatos : [];
+      if (candidatos.length!==1) return { busca, lead:null };
+      return { busca, lead:candidatos[0] };
+    }
 
     async function runTool(fnName:string, args:any) {
       if (fnName==="consultar_produtos") { const { data, error } = await supabase.rpc("ia_buscar_unidades", { p_dormitorios: args.dormitorios_min ?? args.dormitorios ?? null, p_valor_max: args.valor_max ?? null, p_vagas_min: args.vagas_min ?? null, p_bairro: args.bairro ?? null, p_texto: args.texto ?? null, p_limite: 8 }); if (error) return { encontrados:0, imoveis:[], erro:error.message }; return { encontrados:(data||[]).length, imoveis:data||[] }; }
-      if (fnName==="consultar_cliente") { let q = supabase.from("leads").select("id,nome,telefone,status,origem").limit(5); if (args.telefone) q=q.ilike("telefone", `%${args.telefone}%`); else if (args.nome) q=q.ilike("nome", `%${args.nome}%`); const { data, error } = await q; if (error) return { encontrados:0, clientes:[], erro:error.message }; return { encontrados:(data||[]).length, clientes:data||[] }; }
+      if (fnName==="consultar_cliente") return localizarLead(args);
       if (fnName==="consultar_carteira") { const { data, error } = await supabase.rpc("ia_carteira", { p_corretor_id: corretorId, p_filtro: args.filtro || "atencao_e_atraso", p_limite: 12 }); if (error) return { encontrados:0, erro:error.message }; return { encontrados:(data?.leads||[]).length, ...data }; }
       if (fnName==="consultar_vendas") { const { data, error } = await supabase.rpc("ia_vendas", { p_corretor_id: corretorId, p_limite: 8 }); if (error) return { encontrados:0, erro:error.message }; return { encontrados:(data?.vendas||[]).length, ...data }; }
       if (fnName==="consultar_recebiveis") { const { data, error } = await supabase.rpc("ia_recebiveis", { p_corretor_id: corretorId }); if (error) return { encontrados:0, erro:error.message }; return { encontrados: data?.comissoes_qtd ?? 0, ...data }; }
-      if (fnName==="consultar_lead") { const { data, error } = await supabase.rpc("ia_lead", { p_texto: args.texto || "" }); if (error) return { encontrados:0, erro:error.message }; return { encontrados: data?.encontrado?1:0, ...data }; }
-      if (fnName==="avaliar_conversa") { const { data, error } = await supabase.rpc("ia_conversa", { p_texto: args.texto || "", p_limite: 12 }); if (error) return { encontrados:0, erro:error.message }; return { encontrados:(data?.mensagens||[]).length, ...data }; }
-      if (fnName==="consultar_estrutura_crm") { const { data, error } = await supabase.rpc("ia_estrutura_crm"); if (error) return { encontrados:0, erro:error.message }; return { encontrados:(data||[]).length, funis:data }; }
+      if (fnName==="consultar_lead") return localizarLead(args);
+      if (fnName==="avaliar_conversa") {
+        const { busca, lead } = await leadUnico(args);
+        if (!lead) return busca;
+        const { data, error } = await supabase.rpc("ia_conversa_segura", { p_usuario_id:usuarioId, p_funil_lead_id:lead.id, p_limite:12 });
+        if (error) return { encontrados:0, erro:error.message };
+        return { encontrados:(data?.mensagens||[]).length, ...data };
+      }
+      if (fnName==="consultar_estrutura_crm") { const { data, error } = await supabase.rpc("ia_estrutura_funil2"); if (error) return { encontrados:0, erro:error.message }; return { encontrados:(data?.momentos||[]).length, ...data }; }
       if (fnName==="mover_lead") { const { data, error } = await supabase.rpc("ia_mover_lead", { p_corretor_id: corretorId, p_texto_lead: args.lead || "", p_etapa_destino: args.etapa_destino || "", p_confirmar: args.confirmar===true }); if (error) return { ok:false, erro:error.message }; return data; }
-      if (fnName==="criar_tarefa") { const { data, error } = await supabase.rpc("ia_criar_tarefa", { p_corretor_id: corretorId, p_texto_lead: args.lead || "", p_titulo: args.titulo || "", p_dias: args.dias ?? 1, p_confirmar: args.confirmar===true }); if (error) return { ok:false, erro:error.message }; return data; }
+      if (fnName==="criar_tarefa") {
+        const { busca, lead } = await leadUnico(args);
+        if (!lead) return busca;
+        const { data, error } = await supabase.rpc("ia_criar_tarefa_v2", {
+          p_usuario_id:usuarioId, p_funil_lead_id:lead.id, p_titulo:args.titulo || "",
+          p_vencimento_em:args.vencimento_em || null, p_confirmar:args.confirmar===true,
+        });
+        if (error) return { ok:false, erro:error.message };
+        return data;
+      }
       if (fnName==="registrar_feedback") { const { data, error } = await supabase.rpc("ia_registrar_feedback", { p_corretor_id: corretorId, p_texto_lead: args.lead || "", p_texto: args.texto || "", p_confirmar: args.confirmar===true }); if (error) return { ok:false, erro:error.message }; return data; }
+      if (fnName==="agendar_visita") {
+        const { busca, lead } = await leadUnico(args);
+        if (!lead) return busca;
+        const inicio = typeof args.inicio_em==="string" ? new Date(args.inicio_em) : null;
+        const fim = typeof args.fim_em==="string" && args.fim_em ? new Date(args.fim_em) : null;
+        const imovel = String(args.imovel || "").trim();
+        if (!inicio || Number.isNaN(inicio.getTime()) || inicio.getTime()<=Date.now()) return {ok:false,erro:"data_hora_exata_futura_obrigatoria"};
+        if (fim && (Number.isNaN(fim.getTime()) || fim.getTime()<=inicio.getTime())) return {ok:false,erro:"horario_final_invalido"};
+        if (imovel.length<2) return {ok:false,erro:"imovel_obrigatorio"};
+        const previa = {ok:true,preview:true,cliente:lead.cliente,inicio_em:inicio.toISOString(),fim_em:fim?.toISOString()||null,imovel};
+        if (args.confirmar!==true) return previa;
+        const { data, error } = await userSupabase.rpc("f2_salvar_visita", {
+          p_id:null,p_lead_id:lead.id,p_inicio_em:inicio.toISOString(),p_fim_em:fim?.toISOString()||null,
+          p_imovel:imovel.slice(0,120),p_status:"agendada",p_observacao:String(args.observacao||"").slice(0,500)||null,
+          p_empreendimento_id:null,p_unidade:null,p_com_gerente:false,p_gerente_id:null,
+        });
+        if (error) return {ok:false,erro:error.message};
+        return {...(data||{}),executado:(data as any)?.ok===true,cliente:lead.cliente};
+      }
       return { erro:"ferramenta_desconhecida" };
     }
 
+    const agoraSaoPaulo = new Intl.DateTimeFormat("pt-BR", {
+      timeZone:"America/Sao_Paulo", dateStyle:"full", timeStyle:"long",
+    }).format(new Date());
     const systemPrompt = (b.override_prompt || agente.system_prompt || "") +
       (conhecimento ? `\n\n=== BASE DE CONHECIMENTO (use como verdade; nunca contradiga) ===${conhecimento}` : "") +
-      (tools.length ? "\n\n=== FERRAMENTAS ===\nVoce PODE e DEVE consultar dados reais do ERP com as ferramentas antes de responder sobre produtos, clientes, carteira, vendas, recebiveis, um lead, uma conversa ou a estrutura do CRM. NUNCA invente; se a ferramenta nao retornar, diga que nao encontrou. Acoes de escrita (mover, criar tarefa, registrar feedback) sempre em 2 passos: preview (confirmar=false) e execucao (confirmar=true) so apos o sim explicito do corretor." : "") +
-      (corretorId ? "" : "\n\n(Observacao: nao identifiquei o corretor logado; carteira/recebiveis pessoais mostram a visao geral - deixe claro.)");
+      `\n\n=== CONTEXTO DA SESSAO ===\nAgora em America/Sao_Paulo: ${agoraSaoPaulo}. Perfil: ${perfil}. ` +
+      "Entenda datas relativas nesse fuso. Nunca escolha sozinho uma hora vaga como 'de tarde': pergunte o horario exato. " +
+      (tools.length ? "\n\n=== FERRAMENTAS ===\nVoce PODE e DEVE consultar dados reais do ERP antes de responder sobre produtos, clientes, carteira, vendas, recebiveis, um lead, uma conversa ou a estrutura do CRM. NUNCA invente; se a busca retornar mais de um lead, mostre opcoes seguras e pergunte qual e. Acoes de escrita (mover, criar tarefa, registrar feedback, agendar visita) sempre em 2 passos: primeiro previa com confirmar=false; depois execucao com confirmar=true somente apos um sim explicito para aquela previa. Visita exige lead inequivoco, imovel, data e hora exatas." : "") +
+      (corretorId ? "" : "\n\nEste perfil tem visao gerencial autorizada; deixe claro quando a resposta usar o escopo geral.");
 
     const baseMsgs: any[] = hasMessages
       ? [{role:"system",content:systemPrompt}, ...b.messages.slice(-14).map((m:{role:string;content:string})=>({role:m.role==="user"?"user":"assistant", content:String(m.content).slice(0,4000)}))]
@@ -123,7 +197,11 @@ Deno.serve(async (req: Request) => {
       const body:any = { model:modelo, messages };
       if (modelo.startsWith("gpt-5.6")) {
         const esforcos = new Set(["none","low","medium","high","xhigh","max"]);
-        body.reasoning_effort = esforcos.has(cfg.reasoning_effort) ? cfg.reasoning_effort : "low";
+        // Chat Completions rejeita ferramentas + reasoning_effort diferente de
+        // "none" no gpt-5.6-sol. Sem ferramentas, preservamos a configuracao.
+        body.reasoning_effort = tools.length
+          ? "none"
+          : (esforcos.has(cfg.reasoning_effort) ? cfg.reasoning_effort : "low");
       } else {
         body.temperature = cfg.temperatura ?? 0.5;
       }
