@@ -74,6 +74,7 @@ import "./styles/funil-2.css";
 import "./styles/redesign-apecerto.css";
 import "./styles/redesign-apecerto-produtos-financeiro.css";
 import "./styles/produtos-v3.css";
+import "./styles/produtos-v3-detail.css";
 import "./styles/redesign-apecerto-financeiro-abas.css";
 import "./styles/redesign-apecerto-inicio.css";
 import "./styles/redesign-apecerto-esteira.css";

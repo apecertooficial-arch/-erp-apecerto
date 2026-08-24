@@ -63,6 +63,10 @@ const IcRotate = () => <Svg size={17}><path d="M4 12a8 8 0 1 0 2.6-5.9M4 4v4h4" 
 const IcClock = () => <Svg size={17}><circle cx="12" cy="12" r="8.5" /><path d="M12 7.5V12l3 2" /></Svg>;
 const IcSend = () => <Svg size={17}><path d="M21 3L10.5 13.5M21 3l-6.5 18-4-8-8-4z" /></Svg>;
 const IcCheck = () => <Svg size={17}><path d="M4 12.5l5 5 11-11" /></Svg>;
+const IcFile = () => <Svg size={17}><path d="M6 3h8l4 4v14H6z" /><path d="M14 3v5h5M9 13h6M9 17h6" /></Svg>;
+const IcCalendar = () => <Svg size={17}><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M8 3v4M16 3v4M3 10h18" /></Svg>;
+const IcCopy = () => <Svg size={17}><rect x="8" y="8" width="12" height="12" rx="2" /><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3" /></Svg>;
+const IcUserPlus = () => <Svg size={17}><circle cx="9" cy="8" r="4" /><path d="M2 21a7 7 0 0 1 14 0M19 8v6M16 11h6" /></Svg>;
 
 function acessoLabel(tipo?: string | null): string {
   if (!tipo) return "—";
@@ -151,6 +155,18 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
   const focusedUnitPrice = focusedUnit ? (focusedUnit.valor_promo ?? focusedUnit.valor_tabela) : null;
   const focusedUnitPublished = Boolean(product?.site_published && focusedUnit?.publicado !== false && focusedUnit?.disponivel && focusedUnit?.aprovacao === "aprovado");
   const focusedUnitStandalone = Boolean(focusedUnit && product?.origem === "terceiros" && !product.condominio_id);
+  const focusedUnitChecks = useMemo(() => focusedUnit ? {
+    "Dados básicos": Boolean(focusedUnit.numero && focusedUnit.tipologia && focusedUnit.area_m2 && focusedUnit.area_m2 > 0),
+    Endereço: Boolean(product?.endereco && product?.bairro && product?.cidade),
+    Custos: Boolean(focusedUnitPrice && focusedUnitPrice > 0),
+    "Fotos, vídeo e capa": focusedUnitOwnPhotos.length > 0,
+    Proprietário: Boolean(focusedUnit.proprietario_nome && focusedUnit.proprietario_contato && focusedUnit.acesso_tipo && focusedUnit.acesso_instrucoes),
+  } : {}, [focusedUnit, focusedUnitOwnPhotos.length, focusedUnitPrice, product]);
+  const focusedUnitScore = useMemo(() => {
+    const values = Object.values(focusedUnitChecks);
+    return values.length ? Math.round((values.filter(Boolean).length / values.length) * 100) : 0;
+  }, [focusedUnitChecks]);
+  const focusedUnitBlocking = Object.values(focusedUnitChecks).filter((value) => !value).length;
 
   const addressLine = useMemo(() => [product?.endereco, product?.numero, product?.bairro, product?.cidade, product?.uf, product?.cep].filter(Boolean).join(", "), [product]);
   // Query pro embed do Google (por texto) — sempre com cidade/UF/Brasil pra melhorar o acerto.
@@ -165,6 +181,25 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
     // geocoding NO SERVIDOR só pra CACHEAR — na próxima abertura já vem OSM.
     void fetch(`/api/geocode?id=${product.id}`, { headers: { Authorization: `Bearer ${accessToken}` } }).catch(() => {});
   }, [tab, product, accessToken]);
+
+  async function copyListingLink(unitId?: string | null) {
+    if (!product) return;
+    const code = unitId ? product.unidades.find((item) => item.id === unitId)?.codigo : product.codigo;
+    await navigator.clipboard.writeText(sitePropertyUrl({ id: product.id, slug: product.slug, unitId: unitId ?? null, codigo: code }));
+    setMessage("Link do imóvel copiado.");
+  }
+
+  async function shareListing(unitId?: string | null) {
+    if (!product) return;
+    const unit = unitId ? product.unidades.find((item) => item.id === unitId) : null;
+    const url = sitePropertyUrl({ id: product.id, slug: product.slug, unitId: unitId ?? null, codigo: unit?.codigo ?? product.codigo });
+    if (navigator.share) {
+      await navigator.share({ title: unit ? `${product.nome} · Unidade ${unit.numero || "s/n"}` : product.nome, url });
+      return;
+    }
+    await navigator.clipboard.writeText(url);
+    setMessage("Link copiado para você enviar ao cliente.");
+  }
 
   async function save() {
     setBusy(true); setMessage("");
@@ -372,11 +407,93 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
     </section>
   </div> : null;
 
+  function renderFocusedUnitDesign(currentProduct: ProductDetailData, unit: Unit) {
+    const unitTitle = focusedUnitStandalone ? currentProduct.nome : `Apartamento ${unit.numero || "s/n"}`;
+    const unitUrl = sitePropertyUrl({ id: currentProduct.id, slug: currentProduct.slug, unitId: unit.id, codigo: unit.codigo });
+    const statusLabel = focusedUnitPublished ? "Publicado" : unit.aprovacao === "pendente" ? "Em aprovação" : unit.aprovacao === "reprovado" ? "Ajustes solicitados" : "Fora do ar";
+    const qualityLabel = focusedUnitScore >= 90 ? "Excelente" : focusedUnitScore >= 75 ? "Boa" : focusedUnitScore >= 60 ? "Atenção" : "Crítica";
+    const photoItems = focusedUnitPhotos.map((item) => ({ url: item.url ?? "", label: focusedUnitUsesReferencePhotos ? `Condomínio · ${item.categoria || item.nome || "Foto do prédio"}` : item.categoria || item.nome || "Foto do apartamento" }));
+    const openGallery = (index = 0) => focusedUnitPhotos.length && setUnitLightbox({ items: photoItems, index });
+    const canShowOnSite = focusedUnitPublished;
+
+    return <div className="pv3-detail pv3-detail-unit">
+      <section className="pv3-detail-main">
+        <header className="pv3-detail-head"><div className="pv3-detail-chips"><span className={`state ${focusedUnitPublished ? "published" : unit.aprovacao || "offline"}`}>{statusLabel}</span><span className="quality">Nota {focusedUnitScore} · {qualityLabel}</span><span className="code">{unit.codigo || "Código pendente"}</span></div><h2>{unitTitle}</h2><p>Apartamento individual · {[currentProduct.bairro,currentProduct.cidade].filter(Boolean).join(" · ") || "Localização não informada"}</p></header>
+
+        <nav className="pv3-detail-tabs" aria-label="Dados do apartamento">{([['resumo','Resumo'],['site','Site'],['localizacao','Localização'],['unidades',focusedUnitStandalone ? 'Imóvel independente' : `Condomínio (${currentProduct.unidades.length})`],['proprietario','Proprietário'],['galeria',`Fotos (${focusedUnitPhotos.length})`]] as const).map(([key,label]) => <button key={key} type="button" className={tab === key ? "active" : ""} onClick={() => setTab(key)}>{label}</button>)}</nav>
+
+        <div className="pv3-detail-scroll">
+          {message && <div className={`detail-message ${/salv|atualiz|aprova|copiad/i.test(message) ? "success" : ""}`}>{message}</div>}
+          {tab === "resumo" && <div className="pv3-detail-summary">
+            <div className="pv3-detail-specs"><span><b>{unit.area_m2 ?? "—"} m²</b><em>área privativa</em></span><span><b>{currentProduct.dormitorios ?? unit.tipologia ?? "—"}</b><em>dormitório(s)</em></span><span><b>{currentProduct.suites ?? "—"}</b><em>suíte(s)</em></span><span><b>{unit.vagas ?? 0}</b><em>vaga(s)</em></span></div>
+            <div className="pv3-detail-quick-actions">{canShowOnSite ? <a href={unitUrl} target="_blank" rel="noreferrer"><IcLink />Ver no site</a> : <button type="button" disabled title="O imóvel ainda não está publicado"><IcLink />Ver no site</button>}<button type="button" onClick={() => void copyListingLink(unit.id)}><IcLink />Copiar link</button><button type="button" onClick={() => void shareListing(unit.id)}><IcSend />Enviar ao cliente</button><button type="button" onClick={() => window.print()}><IcFile />Gerar book</button><a href={`/auditoria?produto=${currentProduct.id}`}><IcClock />Histórico</a></div>
+            <div className={`pv3-detail-hero ${focusedUnitCover?.url ? "has-photo" : ""}`} style={focusedUnitCover?.url ? { backgroundImage:`url(${focusedUnitCover.url})` } : undefined}>{!focusedUnitCover?.url && <div><IcImages /><span>Nenhuma foto cadastrada</span></div>}{focusedUnitCover?.url && <span className="pv3-detail-photo-label">{focusedUnitCover.categoria || focusedUnitCover.nome || (focusedUnitUsesReferencePhotos ? "Foto do condomínio" : "Foto da unidade")}</span>}{unit.pode_editar && <button type="button" className="cover" onClick={() => setUnitMediaEdit({ ...unit })}><IcImages />Definir capa</button>}<button type="button" className="view" disabled={!focusedUnitPhotos.length} onClick={() => openGallery(0)}><IcImages />Ver {focusedUnitPhotos.length} fotos</button></div>
+            {focusedUnitPhotos.length > 1 && <div className="pv3-detail-thumbs">{focusedUnitPhotos.slice(1,3).map((item,index) => <button key={item.id} type="button" onClick={() => openGallery(index + 1)} style={item.url ? { backgroundImage:`url(${item.url})` } : undefined}><span>{item.categoria || item.nome || `Foto ${index + 2}`}</span></button>)}</div>}
+            <section className={`pv3-detail-readiness ${focusedUnitBlocking === 0 ? "ready" : "blocked"}`}><header><span><IcSeal /></span><div><strong>{focusedUnitBlocking === 0 ? "Pronto para publicar" : "Pendências antes de publicar"}</strong><small>{focusedUnitBlocking === 0 ? "Nenhum item impede a publicação" : `${focusedUnitBlocking} item(ns) impedem a publicação`}</small></div><b>{focusedUnitScore}%</b></header>{focusedUnitBlocking > 0 && <div className="pv3-detail-blockers">{Object.entries(focusedUnitChecks).filter(([,ok]) => !ok).map(([label]) => <button type="button" key={label} onClick={() => unit.pode_editar && setUnitEdit({ ...unit })}><span>○ {label}</span>{unit.pode_editar && <em>Corrigir</em>}</button>)}</div>}<div className="pv3-detail-ready-chips">{Object.entries(focusedUnitChecks).map(([label,ok]) => <span key={label} className={ok ? "done" : ""}>{ok ? "✓" : "○"} {label}</span>)}</div></section>
+            <section className="pv3-detail-description"><header><h3>Sobre o imóvel</h3>{unit.pode_editar && <button type="button" onClick={() => setUnitEdit({ ...unit })}><IcEdit />Editar texto</button>}</header><p>{currentProduct.descricao || "Descrição comercial ainda não cadastrada para esta unidade."}</p></section>
+          </div>}
+
+          {tab === "site" && <div className="site-content-review pv3-detail-tab-card"><div className="site-content-head"><div><small>COMO O IMÓVEL SERÁ APRESENTADO</small><h3>{currentProduct.titulo || unitTitle}</h3><p>{currentProduct.slogan || "Adicione uma chamada curta para valorizar este imóvel."}</p></div><span className={`quality-badge ${currentProduct.quality.level}`}>Nota {focusedUnitScore}</span></div><section><h4>Descrição</h4><p>{currentProduct.descricao || "Nenhuma descrição cadastrada."}</p></section><div className="site-content-actions">{unit.pode_editar && <button className="fv2-btn fv2-btn-outline" type="button" onClick={() => setUnitEdit({ ...unit })}><IcEdit />Editar apartamento</button>}{canShowOnSite && <a className="fv2-btn fv2-btn-ghost" href={unitUrl} target="_blank" rel="noreferrer"><IcLink />Ver este imóvel no site</a>}</div></div>}
+          {tab === "localizacao" && <div className="pv3-detail-tab-card"><h3 className="fv2-loc-title">{[currentProduct.endereco,currentProduct.numero].filter(Boolean).join(", ") || "Endereço não cadastrado"}</h3><p className="fv2-loc-sub">{[currentProduct.bairro,currentProduct.cidade].filter(Boolean).join(" · ")}{currentProduct.uf ? ` — ${currentProduct.uf}` : ""}{currentProduct.cep ? ` · CEP ${currentProduct.cep}` : ""}</p><div className="fv2-map">{mapQuery ? <iframe title="Mapa do apartamento" loading="lazy" referrerPolicy="no-referrer-when-downgrade" src={`https://www.google.com/maps?q=${mapQuery}&output=embed`} /> : <div className="fv2-map-placeholder">Endereço não cadastrado.</div>}</div></div>}
+          {tab === "unidades" && <div className="pv3-detail-tab-card">{focusedUnitStandalone ? <div className="unit-independent-note"><IcSeal /><div><strong>Imóvel independente, sem condomínio</strong><span>Preço, endereço, aprovação, proprietário, acesso e fotos pertencem integralmente a este imóvel.</span></div></div> : <><div className="fv2-condo"><span className="fv2-condo-ic"><IcBuilding /></span><div><strong>{currentProduct.condominios?.nome || currentProduct.nome}</strong><small>Referência de prédio — não controla preço, mídia ou aprovação da unidade</small></div></div><div className="pv3-sibling-units"><strong>{currentProduct.unidades.length} unidade(s) vinculada(s)</strong><p>Cada apartamento continua sendo um produto independente.</p></div></>}</div>}
+          {tab === "proprietario" && <div className="pv3-detail-tab-card">{unit.proprietario_nome ? <div className="fv2-owner-block"><div className="fv2-owner-lead"><span className="fv2-avatar">{initials(unit.proprietario_nome)}</span><div><strong>{unit.proprietario_nome}</strong><small>Proprietário deste apartamento</small></div></div>{unit.proprietario_contato && <div className="fv2-contact-pills"><a className="fv2-pill" href={`tel:${unit.proprietario_contato}`}><IcPhone />{unit.proprietario_contato}</a></div>}</div> : <p className="fv2-ud-empty">Dados do proprietário protegidos ou não informados.</p>}<div className="fv2-cost-tiles"><div className="fv2-tile"><small>ACESSO</small><strong>{acessoLabel(unit.acesso_tipo)}</strong></div><div className="fv2-tile"><small>CÓDIGO</small><strong>{unit.acesso_codigo || "—"}</strong></div><div className="fv2-tile"><small>INSTRUÇÕES</small><strong>{unit.acesso_instrucoes || "—"}</strong></div></div></div>}
+          {tab === "galeria" && <div className="pv3-detail-tab-card">{focusedUnitUsesReferencePhotos && <div className="unit-reference-media-note"><IcBuilding /><div><strong>Fotos do condomínio de referência</strong><span>Esta unidade ainda não tem fotos próprias; as imagens abaixo estão identificadas como referência do prédio.</span></div></div>}{focusedUnitPhotos.length ? <div className="focused-unit-gallery">{focusedUnitPhotos.map((item,index) => <button key={item.id} type="button" className="watermarked-preview" onClick={() => openGallery(index)}><img src={item.url ?? ""} alt={item.categoria || item.nome || "Foto do apartamento"} /></button>)}</div> : <p className="empty-media">Nenhuma foto cadastrada.</p>}{unit.pode_editar && <button className="fv2-btn fv2-btn-outline focused-unit-upload" type="button" onClick={() => setUnitMediaEdit({ ...unit })}>＋ Editar fotos e vídeos da unidade</button>}</div>}
+        </div>
+      </section>
+
+      <aside className="pv3-detail-side"><button className="pv3-detail-close" type="button" onClick={onClose} aria-label="Fechar ficha do apartamento"><IcClose /></button><div className="pv3-detail-price"><small>Valor do imóvel</small><strong>{focusedUnitPrice ? money.format(focusedUnitPrice) : "Sob consulta"}</strong>{focusedUnitPrice && unit.area_m2 ? <span>{money.format(Math.round(focusedUnitPrice / unit.area_m2))} por m²</span> : null}<div><p><span>Condomínio</span><b>{focusedUnitStandalone ? "—" : currentProduct.condominio_valor ? money.format(currentProduct.condominio_valor) : "—"}</b></p><p><span>IPTU</span><b>{currentProduct.iptu ? money.format(currentProduct.iptu) : "—"}</b></p><p><span>Outros custos</span><b>{currentProduct.outros_custos ? money.format(currentProduct.outros_custos) : "—"}</b></p></div></div>
+        <div className="pv3-detail-side-group"><span>COMERCIAL</span><button className="lead" type="button" onClick={() => setLeadPanelOpen(!leadPanelOpen)}><IcLink />Vincular lead</button><div className="row"><a href="/crm"><IcCalendar />Visita</a><a href="/crm"><IcFile />Proposta</a></div>{leadPanelOpen && <div className="fv2-lead-panel"><div className="lead-link-form"><select value={leadId} onChange={(event) => setLeadId(event.target.value)}><option value="">Selecione um lead...</option>{currentProduct.leads.filter((lead) => !lead.linked).map((lead) => <option value={lead.id} key={lead.id}>{lead.nome || "Lead sem nome"}</option>)}</select><button className="primary-action" disabled={busy || !leadId} type="button" onClick={() => void productAction("linkLead",leadId)}>Vincular</button></div></div>}</div>
+        <div className="pv3-detail-side-group"><span>CADASTRO</span>{unit.pode_editar && <button type="button" onClick={() => setUnitEdit({ ...unit })}><IcEdit />Editar produto</button>}<div className="row"><button type="button" disabled title="Duplicação ainda não habilitada"><IcCopy />Duplicar</button><button type="button" onClick={() => setTab("proprietario")}><IcUserPlus />Captação</button></div></div>
+        <div className="pv3-detail-captor"><span className="fv2-avatar purple">{initials(unit.captador_nome)}</span><div><strong>{unit.captador_nome || "Sem captador"}</strong><small>Corretor da captação{typeof captadorScore === "number" ? ` · nota ${captadorScore}` : ""}</small></div></div>
+        {canPublish && unit.de_terceiros && unit.aprovacao === "pendente" && <div className="focused-unit-decision"><button type="button" className="fv2-ud-reject" disabled={busy} onClick={() => void decideUnit(unit.id,false)}>✕ Reprovar</button><button type="button" className="fv2-ud-approve" disabled={busy || focusedUnitBlocking > 0} onClick={() => void decideUnit(unit.id,true)}>✓ Aprovar unidade</button></div>}
+        {canPublish && unit.aprovacao === "aprovado" && (focusedUnitPublished ? <button className="pv3-detail-unpublish" type="button" disabled={busy} onClick={() => setConfirmUnpublish({ unitId:unit.id,label:`${currentProduct.nome} · Un. ${unit.numero || "s/n"}` })}><IcRotate />Tirar imóvel do ar</button> : <button className="pv3-detail-publish" type="button" disabled={busy || !unit.disponivel || focusedUnitBlocking > 0} onClick={() => void publishAction(true,unit.id)}><IcCheck />Publicar imóvel no site</button>)}
+      </aside>
+    </div>;
+  }
+
+  function renderProductDesign(currentProduct: ProductDetailData) {
+    const productUrl = sitePropertyUrl({ id: currentProduct.id, slug: currentProduct.slug, unitId: null, codigo: currentProduct.codigo });
+    const published = Boolean(currentProduct.site_published);
+    const statusLabel = published ? "Publicado" : currentProduct.aprovacao === "pendente" ? "Em aprovação" : currentProduct.aprovacao === "reprovado" ? "Ajustes solicitados" : currentProduct.rascunho ? "Rascunho" : "Fora do ar";
+    const productKind = /lan[cç]|obra/i.test(currentProduct.status || "") ? "Empreendimento" : currentProduct.origem === "terceiros" ? "Unidade individual" : "Condomínio";
+    const captadores = currentProduct.captado_por_nome ? [currentProduct.captado_por_nome] : Array.from(new Set(currentProduct.unidades.map((unit) => unit.captador_nome).filter((name): name is string => Boolean(name))));
+    const captor = captadores.length ? captadores.join(", ") : "Equipe ApêCerto";
+
+    return <div className="pv3-detail pv3-detail-product">
+      <section className="pv3-detail-main">
+        <header className="pv3-detail-head"><div className="pv3-detail-chips"><span className={`state ${published ? "published" : currentProduct.aprovacao || "offline"}`}>{statusLabel}</span><span className="quality">Nota {currentProduct.quality.score} · {currentProduct.quality.label}</span><span className="code">{currentProduct.codigo || productKind}</span></div><h2>{currentProduct.nome}</h2><p>{productKind} · {[currentProduct.bairro,currentProduct.cidade].filter(Boolean).join(" · ") || "Localização não informada"}</p></header>
+        <nav className="pv3-detail-tabs" aria-label="Dados do produto">{([['resumo','Resumo'],['site','Site'],['localizacao','Localização'],['unidades',`Unidades (${currentProduct.unidades.length})`],['proprietario','Proprietário'],['galeria',`Fotos (${photos.length})`]] as const).map(([key,label]) => (key !== "proprietario" || (currentProduct.origem === "terceiros" && currentProduct.proprietarios)) && <button key={key} type="button" className={tab === key ? "active" : ""} onClick={() => setTab(key)}>{label}</button>)}</nav>
+        <div className="pv3-detail-scroll">
+          {message && <div className={`detail-message ${/salv|atualiz|aprova|copiad/i.test(message) ? "success" : ""}`}>{message}</div>}
+          {tab === "resumo" && <div className="pv3-detail-summary">
+            <div className="pv3-detail-specs"><span><b>{currentProduct.summary_area ?? "—"} m²</b><em>área</em></span><span><b>{currentProduct.dormitorios ?? "—"}</b><em>dormitório(s)</em></span><span><b>{currentProduct.suites ?? "—"}</b><em>suíte(s)</em></span><span><b>{currentProduct.vagas ?? "—"}</b><em>vaga(s)</em></span></div>
+            <div className="pv3-detail-quick-actions">{published ? <a href={productUrl} target="_blank" rel="noreferrer"><IcLink />Ver no site</a> : <button type="button" disabled><IcLink />Ver no site</button>}<button type="button" onClick={() => void copyListingLink()}><IcLink />Copiar link</button><button type="button" onClick={() => void shareListing()}><IcSend />Enviar ao cliente</button><button type="button" onClick={() => window.print()}><IcFile />Gerar book</button><a href={`/auditoria?produto=${currentProduct.id}`}><IcClock />Histórico</a></div>
+            <div className={`pv3-detail-hero ${cover?.url ? "has-photo" : ""}`} style={cover?.url ? { backgroundImage:`url(${cover.url})` } : undefined}>{!cover?.url && <div><IcImages /><span>Nenhuma foto cadastrada</span></div>}{cover?.url && <span className="pv3-detail-photo-label">{cover.categoria || cover.nome || "Foto de capa"}</span>}{currentProduct.pode_editar !== false && <button type="button" className="cover" onClick={() => { setTab("galeria"); setEditImages(true); }}><IcImages />Definir capa</button>}<button type="button" className="view" disabled={!photos.length} onClick={() => photos.length && setLightboxIndex(0)}><IcImages />Ver {photos.length} fotos</button></div>
+            {photos.length > 1 && <div className="pv3-detail-thumbs">{photos.slice(1,3).map((item,index) => <button key={item.id} type="button" onClick={() => setLightboxIndex(index + 1)} style={item.url ? { backgroundImage:`url(${item.url})` } : undefined}><span>{item.categoria || item.nome || `Foto ${index + 2}`}</span></button>)}</div>}
+            <section className={`pv3-detail-readiness ${currentProduct.quality.readyForSite ? "ready" : "blocked"}`}><header><span><IcSeal /></span><div><strong>{currentProduct.quality.readyForSite ? "Pronto para publicar" : "Pendências antes de publicar"}</strong><small>{currentProduct.quality.readyForSite ? "Nenhum item impede a publicação" : `${currentProduct.quality.blocking.length} item(ns) impedem a publicação`}</small></div><b>{currentProduct.quality.score}%</b></header>{currentProduct.quality.blocking.length > 0 && <div className="pv3-detail-blockers">{currentProduct.quality.blocking.map((item) => <button type="button" key={item} onClick={() => currentProduct.pode_editar !== false && setEditing(true)}><span>○ {item}</span>{currentProduct.pode_editar !== false && <em>Corrigir</em>}</button>)}</div>}<div className="pv3-detail-ready-chips">{Object.entries(currentProduct.completion.checks).map(([key,ok]) => <span key={key} className={ok ? "done" : ""}>{ok ? "✓" : "○"} {completionLabels[key] || key}</span>)}</div></section>
+            <section className="pv3-detail-description"><header><h3>Sobre o produto</h3>{currentProduct.pode_editar !== false && <button type="button" onClick={() => setEditing(true)}><IcEdit />Editar texto</button>}</header><p>{currentProduct.descricao || "Descrição comercial ainda não cadastrada."}</p></section>
+          </div>}
+          {tab === "site" && <div className="site-content-review pv3-detail-tab-card"><div className="site-content-head"><div><small>COMO SERÁ APRESENTADO NO SITE</small><h3>{currentProduct.titulo || currentProduct.nome}</h3><p>{currentProduct.slogan || "Adicione uma chamada curta para valorizar este produto."}</p></div><span className={`quality-badge ${currentProduct.quality.level}`}>Nota {currentProduct.quality.score}</span></div><section><h4>Descrição</h4><p>{currentProduct.descricao || "Nenhuma descrição cadastrada."}</p></section><div className="site-content-actions">{currentProduct.pode_editar !== false && <button className="fv2-btn fv2-btn-outline" type="button" onClick={() => setEditing(true)}><IcEdit />Editar conteúdo</button>}{published && <a className="fv2-btn fv2-btn-ghost" href={productUrl} target="_blank" rel="noreferrer"><IcLink />Ver no site</a>}</div></div>}
+          {tab === "localizacao" && <div className="pv3-detail-tab-card"><h3 className="fv2-loc-title">{[currentProduct.endereco,currentProduct.numero].filter(Boolean).join(", ") || "Endereço não cadastrado"}</h3><p className="fv2-loc-sub">{[currentProduct.bairro,currentProduct.cidade].filter(Boolean).join(" · ")}{currentProduct.uf ? ` — ${currentProduct.uf}` : ""}{currentProduct.cep ? ` · CEP ${currentProduct.cep}` : ""}</p>{currentProduct.condominios && <div className="fv2-condo"><span className="fv2-condo-ic"><IcBuilding /></span><div><strong>{currentProduct.condominios.nome}</strong><small>Condomínio de referência</small></div></div>}<div className="fv2-map">{mapQuery ? <iframe title="Mapa do produto" loading="lazy" referrerPolicy="no-referrer-when-downgrade" src={`https://www.google.com/maps?q=${mapQuery}&output=embed`} /> : <div className="fv2-map-placeholder">Endereço não cadastrado.</div>}</div></div>}
+          {tab === "unidades" && <div className="pv3-detail-tab-card fv2-units">{currentProduct.unidades.length ? <>{currentProduct.unidades.map((unit) => <button type="button" className="fv2-unit-row" key={unit.id} onClick={() => setUnitDetail(unit)}><span className="fv2-unit-main"><span className="fv2-unit-num">{unit.numero || "—"}{unit.codigo && <em className="fv2-unit-cod">{unit.codigo}</em>}</span><small className="fv2-unit-sub">{unit.captador_nome || "Estoque do empreendimento"}</small></span><span className="fv2-unit-c">{unit.tipologia || "—"}</span><span className="fv2-unit-c">{unit.area_m2 ?? "—"} m²</span><span className="fv2-unit-c">{unit.vagas ?? 0} vaga(s)</span><strong className="fv2-unit-val">{money.format(unit.valor_promo ?? unit.valor_tabela ?? 0)}</strong><i className={`fv2-unit-status ${unit.disponivel ? "on" : "off"}`}>{unit.disponivel ? "Disponível" : "Indisponível"}</i></button>)}</> : <p className="empty-media">Nenhuma unidade cadastrada.</p>}</div>}
+          {tab === "proprietario" && currentProduct.proprietarios && <div className="pv3-detail-tab-card"><div className="fv2-owner-block"><div className="fv2-owner-lead"><span className="fv2-avatar">{initials(currentProduct.proprietarios.nome)}</span><div><strong>{currentProduct.proprietarios.nome}</strong><small>Proprietário</small></div></div><div className="fv2-contact-pills">{currentProduct.proprietarios.telefone && <a className="fv2-pill" href={`tel:${currentProduct.proprietarios.telefone}`}><IcPhone />{currentProduct.proprietarios.telefone}</a>}{currentProduct.proprietarios.email && <a className="fv2-pill" href={`mailto:${currentProduct.proprietarios.email}`}><IcMail />{currentProduct.proprietarios.email}</a>}</div></div></div>}
+          {tab === "galeria" && <div className="pv3-detail-tab-card pv3-detail-media">{mediaLibrary}</div>}
+        </div>
+      </section>
+      <aside className="pv3-detail-side"><button className="pv3-detail-close" type="button" onClick={onClose} aria-label="Fechar ficha do produto"><IcClose /></button><div className="pv3-detail-price"><small>Valor do produto</small><strong>{currentProduct.summary_price ? money.format(currentProduct.summary_price) : "Sob consulta"}</strong>{currentProduct.summary_price && currentProduct.summary_area ? <span>{money.format(Math.round(currentProduct.summary_price / currentProduct.summary_area))} por m²</span> : null}<div><p><span>Condomínio</span><b>{currentProduct.condominio_valor ? money.format(currentProduct.condominio_valor) : "—"}</b></p><p><span>IPTU</span><b>{currentProduct.iptu ? money.format(currentProduct.iptu) : "—"}</b></p><p><span>Outros custos</span><b>{currentProduct.outros_custos ? money.format(currentProduct.outros_custos) : "—"}</b></p></div></div>
+        <div className="pv3-detail-side-group"><span>COMERCIAL</span><button className="lead" type="button" onClick={() => setLeadPanelOpen(!leadPanelOpen)}><IcLink />Vincular lead</button><div className="row"><a href="/crm"><IcCalendar />Visita</a><a href="/crm"><IcFile />Proposta</a></div>{leadPanelOpen && <div className="fv2-lead-panel"><div className="lead-link-form"><select value={leadId} onChange={(event) => setLeadId(event.target.value)}><option value="">Selecione um lead...</option>{currentProduct.leads.filter((lead) => !lead.linked).map((lead) => <option value={lead.id} key={lead.id}>{lead.nome || "Lead sem nome"}</option>)}</select><button className="primary-action" disabled={busy || !leadId} type="button" onClick={() => void productAction("linkLead",leadId)}>Vincular</button></div></div>}</div>
+        <div className="pv3-detail-side-group"><span>CADASTRO</span>{currentProduct.pode_editar !== false && <button type="button" onClick={() => setEditing(true)}><IcEdit />Editar produto</button>}<div className="row"><button type="button" disabled title="Duplicação ainda não habilitada"><IcCopy />Duplicar</button><button type="button" onClick={() => setTab(currentProduct.proprietarios ? "proprietario" : "unidades")}><IcUserPlus />Captação</button></div></div>
+        <div className="pv3-detail-captor"><span className="fv2-avatar purple">{initials(captadores[0] || "ApêCerto")}</span><div><strong>{captor}</strong><small>{captadores.length > 1 ? "Corretores das captações" : "Corretor da captação"}</small></div></div>
+        <div className="pv3-detail-publish-slot">{publishButton}</div>{canPublish && <button className="pv3-detail-delete" type="button" disabled={busy} onClick={() => setConfirmDeleteProduct(true)}>Excluir produto</button>}
+      </aside>
+    </div>;
+  }
+
   return <div className="modal-layer product-detail-layer">
     <button className="modal-scrim" type="button" onClick={onClose} aria-label="Fechar ficha do produto" />
     <aside className="product-detail-panel ficha-v2" aria-label="Ficha completa do produto">
       {!product ? <div className="detail-loading">{message || "Carregando dados reais do produto..."}</div> : focusedUnit ? (
-        <div className="fv2-page fv2-unit-product">
+        <>{renderFocusedUnitDesign(product, focusedUnit)}<div className="legacy-focused-unit" hidden><div className="fv2-page fv2-unit-product">
           <button className="fv2-close" type="button" onClick={onClose} aria-label="Fechar ficha do apartamento"><IcClose /></button>
           <div className="fv2-main">
             <div className="fv2-mosaic">
@@ -457,7 +574,7 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
             </div>
             <div className="fv2-person-card"><span className="fv2-avatar purple">{initials(focusedUnit.captador_nome)}</span><div><strong>{focusedUnit.captador_nome || "Sem captador"}</strong><small>Captador desta unidade</small></div></div>
           </aside>
-        </div>
+        </div></div></>
       ) : editing ? (
         <div className="fv2-edit">
           <div className="fv2-edit-head"><h2>Editar produto</h2><button className="fv2-btn fv2-btn-ghost" type="button" onClick={() => setEditing(false)}>Cancelar edição</button></div>
@@ -485,7 +602,7 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
           </div>
         </div>
       ) : (
-        <div className="fv2-page">
+        <>{renderProductDesign(product)}<div className="legacy-product-detail" hidden><div className="fv2-page">
           <button className="fv2-close" type="button" onClick={onClose} aria-label="Fechar ficha do produto"><IcClose /></button>
           <div className="fv2-main">
             <div className="fv2-mosaic">
@@ -621,7 +738,7 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
               </div>;
             })()}
           </aside>
-        </div>
+        </div></div></>
       )}
     </aside>
     {lightboxIndex !== null && photos[lightboxIndex]?.url && <div className="photo-lightbox" role="dialog" aria-modal="true" aria-label="Galeria ampliada"><button className="lightbox-close" type="button" onClick={() => setLightboxIndex(null)} aria-label="Fechar galeria">×</button><button className="lightbox-nav previous" type="button" onClick={() => setLightboxIndex((lightboxIndex - 1 + photos.length) % photos.length)} aria-label="Foto anterior">‹</button><div className="lightbox-image watermarked-preview"><img src={photos[lightboxIndex].url ?? ""} alt={photos[lightboxIndex].categoria || photos[lightboxIndex].nome || "Foto ampliada do imóvel"} /></div><div><strong>{photos[lightboxIndex].categoria || "Foto do imóvel"}</strong><span>{lightboxIndex + 1} de {photos.length}</span></div><button className="lightbox-nav next" type="button" onClick={() => setLightboxIndex((lightboxIndex + 1) % photos.length)} aria-label="Próxima foto">›</button></div>}

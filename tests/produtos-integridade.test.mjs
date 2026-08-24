@@ -9,6 +9,7 @@ const productsUi = await readFile("app/features/products/ProductsModule.tsx", "u
 const unitWizard = await readFile("app/features/products/UnitWizard.tsx", "utf8");
 const captureWizard = await readFile("app/features/products/CaptureWizard.tsx", "utf8");
 const detail = await readFile("app/features/products/ProductDetail.tsx", "utf8");
+const detailCss = await readFile("app/styles/produtos-v3-detail.css", "utf8");
 const productsModel = await readFile("app/features/products/products.ts", "utf8");
 const globalCss = await readFile("app/globals.css", "utf8");
 const migration = await readFile("supabase/migrations/20260820153819_produtos_fluxo_seguro_site_unidades.sql", "utf8");
@@ -81,6 +82,18 @@ test("revisão abre a unidade como produto completo e não deixa o condomínio p
   assert.match(detail, /Este imóvel é um produto independente/);
   assert.match(detail, /Condomínio de referência/);
   assert.doesNotMatch(detail, /initialOpened/);
+});
+
+test("ficha aberta usa o Produtos v3 e mantém a composição aprovada", () => {
+  assert.match(detail, /renderFocusedUnitDesign/);
+  assert.match(detail, /renderProductDesign/);
+  assert.match(detail, /pv3-detail-quick-actions/);
+  assert.match(detail, /pv3-detail-readiness/);
+  assert.match(detail, /pv3-detail-side-group/);
+  assert.match(detailCss, /grid-template-columns: minmax\(0, 1fr\) 340px/);
+  assert.match(detailCss, /height: min\(900px, 90vh\)/);
+  assert.match(detailCss, /legacy-focused-unit\[hidden\]/);
+  assert.match(detailCss, /legacy-product-detail\[hidden\]/);
 });
 
 test("corretor vê todas as fotos e dados operacionais, mas não o proprietário alheio", () => {
