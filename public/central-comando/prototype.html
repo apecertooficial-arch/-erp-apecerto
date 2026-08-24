@@ -3341,7 +3341,7 @@ class Component extends DCLogic {
         ? 'Totais do recorte: ' + this.brl(totalGeral.inv) + ' investidos · ' + this.num(totalGeral.validos) + ' leads válidos · ' + this.num(totalGeral.vendas) + ' vendas · comissão atribuída ' + this.brl(totalGeral.comissao) + ' · ROAS de comissão ' + this.dec(totalGeral.comissao / totalGeral.inv, 1) + 'x. Vendas sem origem identificada não aparecem aqui.'
         : 'Meta Ads e Google Ads ainda não forneceram investimento neste recorte. Nenhum zero estimado é apresentado como dado real.',
       mktVazioShow: mktRows.length ? 'none' : 'block',
-      mktVazioTexto: st.realData && !this.MKT.length ? 'Meta Ads e Google Ads não devolveram anúncios neste recorte. Autorize as contas para carregar campanhas, conjuntos, anúncios e criativos.' : 'Nenhuma linha corresponde à busca e aos filtros ativos. Limpe a busca ou remova um filtro de canal ou campanha.',
+      mktVazioTexto: st.realData && !mktRows.length && !totalGeral.inv ? 'Meta Ads e Google Ads não devolveram anúncios neste recorte. Autorize as contas para carregar campanhas, conjuntos, anúncios e criativos.' : 'Nenhuma linha corresponde à busca e aos filtros ativos. Limpe a busca ou remova um filtro de canal ou campanha.',
       mktBusca: st.mktBusca || '',
       onMktBusca: (e) => this.setState({ mktBusca: e.target.value }),
       mktFiltroShow: (canaisSel.length || campSel.length || busca) ? 'block' : 'none',
