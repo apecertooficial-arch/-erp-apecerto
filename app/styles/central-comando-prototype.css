@@ -264,31 +264,38 @@ button.ape-nav-item[disabled]{opacity:1;color:var(--fg-3);cursor:pointer}
 .app-shell:has(.cc-prototype){grid-template-columns:minmax(0,1fr)!important}
 .app-shell:has(.cc-prototype)>.sidebar{display:none}
 .app-shell:has(.cc-prototype)>.workspace{grid-column:1/-1!important;width:100%;max-width:none;margin:0;padding:0;overflow:hidden}
-.cc-prototype{min-height:100vh;height:100vh;display:flex;background:var(--bg-page);color:var(--fg-1);font-family:var(--font-body)}
-.cc-prototype *{box-sizing:border-box}
-.cc-prototype>.ape-nav{width:257px;min-width:257px}
+.cc-prototype{min-height:100vh;height:100vh;display:flex;background:var(--bg-page);color:var(--fg-1);font-family:var(--font-body);box-sizing:content-box}
+.cc-prototype *{box-sizing:content-box}
+.cc-prototype button,.cc-prototype select{box-sizing:border-box}
+.cc-prototype>.ape-nav{width:240px;min-width:240px}
 .cc-prototype .cc-brand-lockup{display:block;width:132px;height:28px;background:url('/brand/logo-cores.png') left center/contain no-repeat}
 .cc-prototype .ape-nav-icon{width:20px;height:20px;display:grid;place-items:center;flex:none}
 .cc-prototype .ape-nav-icon svg{width:20px;height:20px}
 .cc-prototype .ape-badge{display:inline-flex;align-items:center;min-height:24px;padding:3px 9px;border-radius:999px;background:var(--neutral-100);color:var(--fg-3);font-size:11px;font-weight:600;white-space:nowrap}
 .cc-prototype .ape-badge--success{background:var(--success-bg);color:var(--success)}
 .cc-prototype-stage{min-width:0;flex:1;display:flex;flex-direction:column;height:100vh}
-.cc-prototype-header{position:relative;z-index:20;flex:none;background:var(--bg-surface);border-bottom:1px solid var(--border-soft)}
-.cc-prototype-header>.ape-page-header{padding:16px 24px 8px}
-.cc-prototype-main{flex:1;min-height:0;overflow:auto;padding:20px 24px 56px}
+.cc-prototype-header{position:relative;z-index:20;flex:none;display:flex;flex-direction:column;gap:12px;padding:14px 24px 0;background:var(--bg-surface);border-bottom:1px solid var(--border-soft)}
+.cc-prototype-header>.ape-page-header{display:contents}
+.cc-prototype-header>.ape-page-header>.ape-toolbar:first-child{align-items:flex-start;gap:16px}
+.cc-prototype-header>.ape-page-header>.ape-toolbar:first-child>div:first-child{display:flex;flex-direction:column;gap:2px;min-width:0}
+.cc-prototype-header>.ape-page-header>.ape-toolbar:nth-child(2){padding-bottom:12px;row-gap:8px}
+.cc-prototype-header>.ape-page-header>.ape-toolbar:nth-child(2)>.ape-btn--ghost{height:28px;padding:0 10px;font-size:12px}
+.cc-prototype-main{flex:1;min-height:0;overflow:auto;padding:20px 24px 48px}
 .cc-prototype-main>div{display:grid;gap:16px}
-.cc-prototype .cc-kpigrid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px}
+.cc-prototype .cc-kpigrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(196px,1fr));gap:12px}
 .cc-prototype .cc-kpigrid.ceo{grid-template-columns:repeat(5,minmax(0,1fr))}
-.cc-prototype .ape-kpi{min-width:0;min-height:90px;padding:14px 16px;display:flex;flex-direction:column;gap:6px}
+.cc-prototype .ape-kpi{min-width:0;min-height:0;padding:12px 16px;display:flex;flex-direction:column;gap:4px}
 .cc-prototype .ape-kpi>div:first-child{display:flex;align-items:center;gap:6px}
-.cc-prototype .ape-kpi-label{font-size:11px;letter-spacing:.08em;text-transform:uppercase}
-.cc-prototype .ape-kpi-value{font-size:24px;line-height:1.05;white-space:nowrap}
+.cc-prototype .ape-kpi-label{font-size:12px;letter-spacing:.05em;text-transform:uppercase}
+.cc-prototype .ape-kpi-value{font-size:22px;line-height:1.1;white-space:nowrap}
 .cc-prototype .ape-kpi-meta{font-size:11px}
-.cc-prototype .cc-card{padding:16px;min-width:0}
-.cc-prototype .cc-card>.ape-toolbar{min-height:44px}
+.cc-prototype .ape-kpi>.ape-toolbar{justify-content:space-between;gap:10px;font-size:11px;color:var(--fg-3)}
+.cc-prototype .ape-section-title{font-size:16px;line-height:1.25}
+.cc-prototype .cc-card{padding:16px;min-width:0;display:flex;flex-direction:column;gap:12px;position:relative}
+.cc-prototype .cc-card>.ape-toolbar{min-height:0}
 .cc-prototype .cc-2col{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(360px,.75fr);gap:16px}
 .cc-prototype .cc-3col{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
-.cc-prototype .cc-card .ape-table{min-width:1120px}
+.cc-prototype .cc-card .ape-table{min-width:1180px}
 .cc-prototype .cc-tablewrap{width:100%}
 .cc-prototype .cc-tablewrap.empty{min-height:330px}
 .cc-prototype .cc-table-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}

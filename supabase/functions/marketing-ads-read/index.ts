@@ -39,7 +39,17 @@ async function meta(days: number) {
   const filter = encodeURIComponent(JSON.stringify([{ field: "ad.effective_status", operator: "IN", value: ["ACTIVE"] }]));
   const url = `${GRAPH}/act_${accountId}/insights?level=ad&fields=${fields}&time_range=${encodeURIComponent(JSON.stringify({ since, until }))}&filtering=${filter}&limit=500&access_token=${encodeURIComponent(token)}`;
   const insightsResponse = await fetch(url);
-  if (!insightsResponse.ok) return { status: "erro", motivo: erroSeguro("A Meta recusou a leitura das métricas", insightsResponse.status), contas: [{ id: accountId, nome: accountName, moeda: currency }], anuncios: [] };
+  if (!insightsResponse.ok) {
+    const semPermissao = insightsResponse.status === 401 || insightsResponse.status === 403;
+    return {
+      status: semPermissao ? "sem_permissao" : "erro",
+      motivo: semPermissao
+        ? "A conta de anúncios foi identificada, mas o token atual não possui ads_read e acesso a esse ativo da empresa."
+        : erroSeguro("A Meta recusou a leitura das métricas", insightsResponse.status),
+      contas: [{ id: accountId, nome: accountName, moeda: currency }],
+      anuncios: [],
+    };
+  }
   const data = (await insightsResponse.json().catch(() => ({})))?.data ?? [];
   const action = (items: any[], keys: string[]) => Number(items?.find((a: any) => keys.includes(a.action_type))?.value ?? 0) || 0;
   const cost = (items: any[], keys: string[]) => Number(items?.find((a: any) => keys.includes(a.action_type))?.value ?? 0) || null;
@@ -66,8 +76,15 @@ async function google(days: number) {
   const refreshToken = Deno.env.get("GOOGLE_ADS_REFRESH_TOKEN") ?? "";
   const customer = (Deno.env.get("GOOGLE_ADS_CUSTOMER_ID") ?? "").replace(/-/g, "");
   const login = (Deno.env.get("GOOGLE_ADS_LOGIN_CUSTOMER_ID") ?? "").replace(/-/g, "");
-  if (!developer || !clientId || !clientSecret || !refreshToken || !customer) {
-    return { status: "nao_configurado", motivo: "Google Ads exige OAuth, developer token e customer ID; essas credenciais ainda não estão configuradas.", anuncios: [] };
+  const faltando = [
+    !developer && "developer token",
+    !clientId && "OAuth client ID",
+    !clientSecret && "OAuth client secret",
+    !refreshToken && "OAuth refresh token",
+    !customer && "customer ID",
+  ].filter(Boolean);
+  if (faltando.length) {
+    return { status: "nao_configurado", motivo: `Google Ads ainda precisa de: ${faltando.join(", ")}.`, faltando, anuncios: [] };
   }
   const tokenResponse = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" },
