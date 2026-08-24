@@ -213,10 +213,16 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
 
   async function executar(action: string, body: Record<string, unknown>) {
     setBusy(true); setErro(null);
-    const resposta = await api(accessToken, { method: "POST", body: JSON.stringify({ action, ...body }) });
-    setBusy(false);
-    if (!resposta.ok) { setErro(resposta.json.error ?? "Não foi possível concluir a ação."); return false; }
-    setModal(null); await carregar(); return true;
+    try {
+      const resposta = await api(accessToken, { method: "POST", body: JSON.stringify({ action, ...body }) });
+      if (!resposta.ok) { setErro(resposta.json.error ?? "Não foi possível concluir a ação."); return false; }
+      setModal(null); await carregar(); return true;
+    } catch {
+      setErro("Não foi possível falar com o servidor. Confira a conexão e tente novamente.");
+      return false;
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function atualizar(action: string, body: Record<string, unknown>) {
@@ -354,7 +360,7 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
       {!carregando && aba === "config" && <Configuracoes etapas={etapas} momentos={momentos} operacao={operacao} sara={sara} busy={busy} onEtapa={(dados) => executar("configurarEtapa", dados)} onMomento={(dados) => executar("configurarMomento", dados)} onOperacao={(dados) => executar("configurarOperacao", dados)} />}
 
       {modal === "pescar" && <ModalPescar candidatos={aquario} busy={busy} onFechar={() => setModal(null)} onPescar={(negocioId) => void executar("pescar", { negocioId })} />}
-      {modal === "visita" && <ModalVisita leads={leads} leadFoco={lead} busy={busy} onFechar={() => setModal(null)} onSalvar={(dados) => void executar("salvarVisita", dados)} />}
+      {modal === "visita" && <ModalVisita key={lead?.id ?? "nova-visita"} leads={leads} leadFoco={lead} busy={busy} erroExterno={erro} onFechar={() => setModal(null)} onSalvar={(dados) => executar("salvarVisita", dados)} />}
       {modal === "negociacao" && <ModalNegociacao leads={leads} leadFoco={lead} busy={busy} onFechar={() => setModal(null)} onSalvar={(dados) => void executar("salvarNegociacao", dados)} />}
       {modal === "descartar" && lead && <ModalDescartar nome={lead.nome} busy={busy} onFechar={() => setModal(null)} onDescartar={(motivo, detalhe) => { void atualizar("descartar", { motivo, detalhe }).then((ok) => { if (ok) { setModal(null); setSelecionado(null); } }); }} />}
 
@@ -700,7 +706,14 @@ function SeletorLead({ leads, value, onChange }: { leads: LeadFunil2[]; value: s
   </div>;
 }
 
-function ModalVisita({ leads, leadFoco, busy, onFechar, onSalvar }: { leads: LeadFunil2[]; leadFoco?: LeadFunil2 | null; busy: boolean; onFechar: () => void; onSalvar: (d: Record<string, unknown>) => void }) {
+function ModalVisita({ leads, leadFoco, busy, erroExterno, onFechar, onSalvar }: {
+  leads: LeadFunil2[];
+  leadFoco?: LeadFunil2 | null;
+  busy: boolean;
+  erroExterno: string | null;
+  onFechar: () => void;
+  onSalvar: (d: Record<string, unknown>) => Promise<boolean>;
+}) {
   const [leadId, setLeadId] = useState(leadFoco?.id ?? "");
   const [inicio, setInicio] = useState("");
   const [empreendimento, setEmpreendimento] = useState("");
@@ -725,6 +738,18 @@ function ModalVisita({ leads, leadFoco, busy, onFechar, onSalvar }: { leads: Lea
   }, []);
 
   const podeSalvar = !busy && leadId && inicio && (empreendimento || unidade.trim().length >= 2) && (!comGerente || gerente);
+
+  async function salvar() {
+    if (!podeSalvar) return;
+    await onSalvar({
+      leadId, inicioEm: inicio,
+      imovel: unidade.trim() || "",
+      empreendimentoId: empreendimento || null,
+      unidade: unidade.trim() || null,
+      comGerente, gerenteId: comGerente ? Number(gerente) : null,
+      status: "agendada",
+    });
+  }
 
   return <Modal titulo="Agendar visita" texto="A visita aparecerá no Pipe sem duplicar o lead." onFechar={onFechar}>
     {leadFoco ? <div className="f2-lead-escolhido fixo"><span>CLIENTE DESTA VISITA</span><strong>{leadFoco.nome}</strong><small>{leadFoco.telefone || "Telefone não informado"}</small></div> : <SeletorLead leads={leads} value={leadId} onChange={setLeadId} />}
@@ -751,15 +776,10 @@ function ModalVisita({ leads, leadFoco, busy, onFechar, onSalvar }: { leads: Lea
         {equipe.map((g) => <option key={g.id} value={g.id}>{g.nome}</option>)}
       </select>
     </label>}
-    <button type="button" className="f2-modal-primary" disabled={!podeSalvar}
-      onClick={() => onSalvar({
-        leadId, inicioEm: inicio,
-        imovel: unidade.trim() || "",
-        empreendimentoId: empreendimento || null,
-        unidade: unidade.trim() || null,
-        comGerente, gerenteId: comGerente ? Number(gerente) : null,
-        status: "agendada",
-      })}>Criar visita</button>
+    {erroExterno && <p className="f2-modal-erro" role="alert">{erroExterno}</p>}
+    <button type="button" className="f2-modal-primary" disabled={!podeSalvar} onClick={() => void salvar()}>
+      {busy ? "Agendando…" : "Confirmar visita"}
+    </button>
   </Modal>;
 }
 

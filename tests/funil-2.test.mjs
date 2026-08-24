@@ -124,6 +124,15 @@ test("card e ficha oferecem conversa e atalhos operacionais", () => {
   assert.match(ui, /Criar negociação/);
 });
 
+test("agendamento aberto pela ficha fica preso ao lead clicado e mostra a falha no próprio modal", () => {
+  assert.match(ui, /leadFoco=\{lead\}/);
+  assert.match(ui, /leadFoco\?\.id \?\? ""/);
+  assert.match(ui, /leadFoco \? <div className="f2-lead-escolhido fixo"/);
+  assert.match(ui, /erroExterno && <p className="f2-modal-erro"/);
+  assert.match(ui, /busy \? "Agendando…" : "Confirmar visita"/);
+  assert.doesNotMatch(ui, /const \[leadId, setLeadId\] = useState\(leads\[0\]\?\.id/);
+});
+
 test("chat identifica a instância D-API atual e diferencia histórico com mais de uma", () => {
   const conversa = readFileSync(new URL("../app/features/funil-2/Funil2ConversationDrawer.tsx", import.meta.url), "utf8");
   assert.match(conversa, /instancias\.map/);
