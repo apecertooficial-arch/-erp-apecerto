@@ -61,6 +61,13 @@ Deno.serve(async (req: Request) => {
       const { error } = await supabase.from("agentes_ia").update({ system_prompt: b.system_prompt ?? "" }).eq("id", agente.id);
       return error? json({ok:false,reason:"erro_salvar",detalhe:error.message},502) : json({ok:true});
     }
+    if (action==="feedback") {
+      const execucaoId = Number(b.execucao_id);
+      const avaliacao = b.avaliacao === "util" ? "util" : b.avaliacao === "nao_util" ? "nao_util" : "";
+      if (!Number.isSafeInteger(execucaoId) || !avaliacao) return json({ok:false,reason:"feedback_invalido"},422);
+      const { data, error } = await userSupabase.rpc("ia_avaliar_execucao", { p_execucao_id:execucaoId, p_avaliacao:avaliacao });
+      return error ? json({ok:false,reason:"erro_feedback",detalhe:error.message},502) : json(data);
+    }
 
     const hasMessages = Array.isArray(b.messages) && b.messages.length>0;
     if (!b.input && !hasMessages) return json({ok:false,reason:"faltando input"},400);
@@ -101,13 +108,18 @@ Deno.serve(async (req: Request) => {
       "consultar-lead": { type:"function", function:{ name:"consultar_lead", description:"Localiza e mostra a situacao operacional de leads reais pelo nome ou telefone. Se encontrar mais de um, nao escolha sozinho: apresente candidatos e peca a identificacao.", parameters:{ type:"object", properties:{ texto:{type:"string"} }, required:["texto"] } } },
       "avaliar-conversa": { type:"function", function:{ name:"avaliar_conversa", description:"Puxa as ultimas mensagens reais de WhatsApp de um lead ja identificado. Use quando pedirem para avaliar/analisar a conversa, dar nota ou ajudar a responder. Nunca leia conversa de outro corretor.", parameters:{ type:"object", properties:{ lead_id:{type:"string",description:"UUID retornado por consultar_lead"}, texto:{type:"string",description:"Nome ou telefone, usado apenas se ainda nao houver lead_id"} } } } },
       "estrutura-crm": { type:"function", function:{ name:"consultar_estrutura_crm", description:"Funis e etapas do CRM. Use para explicar como o CRM/funil funciona ou tirar duvidas sobre etapas.", parameters:{ type:"object", properties:{} } } },
-      "mover-lead": { type:"function", function:{ name:"mover_lead", description:"Move um lead de etapa. FLUXO: confirmar=false para preview (de/para), peca confirmacao; so confirmar=true apos o sim. So leads do proprio corretor.", parameters:{ type:"object", properties:{ lead:{type:"string"}, etapa_destino:{type:"string"}, confirmar:{type:"boolean"} }, required:["lead","etapa_destino"] } } },
-      "criar-tarefa": { type:"function", function:{ name:"criar_tarefa", description:"Cria uma tarefa de follow-up para um lead em data e hora exatas. FLUXO: localizar o lead; se ambiguo, perguntar; exigir horario exato; confirmar=false para previa; confirmar=true somente depois do sim explicito.", parameters:{ type:"object", properties:{ lead:{type:"string"}, lead_id:{type:"string"}, titulo:{type:"string",description:"o que fazer"}, vencimento_em:{type:"string",description:"ISO 8601 com fuso, por exemplo 2026-08-25T15:00:00-03:00"}, confirmar:{type:"boolean"} }, required:["titulo","vencimento_em"] } } },
-      "registrar-feedback": { type:"function", function:{ name:"registrar_feedback", description:"Registra uma anotacao/feedback no historico de um lead. FLUXO: confirmar=false para preview, peca confirmacao; so confirmar=true apos o sim. So no proprio lead.", parameters:{ type:"object", properties:{ lead:{type:"string"}, texto:{type:"string"}, confirmar:{type:"boolean"} }, required:["lead","texto"] } } },
-      "agendar-visita": { type:"function", function:{ name:"agendar_visita", description:"Agenda uma visita REAL na Agenda canonica e atualiza o Funil 2.0. Exige lead sem ambiguidade, imovel e data/hora exatas. Nunca escolha um horario que o corretor nao informou. FLUXO: confirmar=false para previa; confirmar=true somente apos o sim explicito.", parameters:{ type:"object", properties:{ lead:{type:"string"}, lead_id:{type:"string"}, inicio_em:{type:"string",description:"ISO 8601 com fuso America/Sao_Paulo"}, fim_em:{type:"string",description:"ISO 8601 opcional"}, imovel:{type:"string"}, observacao:{type:"string"}, confirmar:{type:"boolean"} }, required:["inicio_em","imovel"] } } }
+      "mover-lead": { type:"function", function:{ name:"mover_lead", description:"Move um lead de etapa. Primeiro gere previa; confirme somente com o preview_id pendente e o sim explicito.", parameters:{ type:"object", properties:{ lead:{type:"string"}, etapa_destino:{type:"string"}, confirmar:{type:"boolean"}, preview_id:{type:"string"} }, required:["lead","etapa_destino"] } } },
+      "criar-tarefa": { type:"function", function:{ name:"criar_tarefa", description:"Cria follow-up com data/hora exatas. Primeiro gere previa; confirme somente com o preview_id pendente.", parameters:{ type:"object", properties:{ lead:{type:"string"}, lead_id:{type:"string"}, titulo:{type:"string"}, vencimento_em:{type:"string"}, confirmar:{type:"boolean"}, preview_id:{type:"string"} }, required:["titulo","vencimento_em"] } } },
+      "registrar-feedback": { type:"function", function:{ name:"registrar_feedback", description:"Registra anotacao no historico. Primeiro gere previa; confirme somente com o preview_id pendente.", parameters:{ type:"object", properties:{ lead:{type:"string"}, texto:{type:"string"}, confirmar:{type:"boolean"}, preview_id:{type:"string"} }, required:["lead","texto"] } } },
+      "agendar-visita": { type:"function", function:{ name:"agendar_visita", description:"Agenda visita na Agenda canonica, checa conflito e atualiza o Funil 2.0. Exige lead, imovel e data/hora exatas. Primeiro gere previa; confirme somente com o preview_id pendente.", parameters:{ type:"object", properties:{ lead:{type:"string"}, lead_id:{type:"string"}, inicio_em:{type:"string"}, fim_em:{type:"string"}, imovel:{type:"string"}, observacao:{type:"string"}, confirmar:{type:"boolean"}, preview_id:{type:"string"} }, required:["inicio_em","imovel"] } } },
+      "consultar-agenda": { type:"function", function:{ name:"consultar_agenda", description:"Localiza visitas reais por cliente, imovel ou ID no escopo do usuario.", parameters:{ type:"object", properties:{ busca:{type:"string"} } } } },
+      "alterar-visita": { type:"function", function:{ name:"alterar_visita", description:"Reagenda ou cancela uma visita real. Localize uma unica visita, preserve dados nao alterados, cheque conflito e use previa exata.", parameters:{ type:"object", properties:{ busca:{type:"string"}, visita_id:{type:"string"}, novo_inicio_em:{type:"string"}, novo_fim_em:{type:"string"}, novo_status:{type:"string",enum:["agendada","confirmada","cancelada"]}, motivo:{type:"string"}, confirmar:{type:"boolean"}, preview_id:{type:"string"} }, required:["novo_status"] } } },
+      "desfazer-acao": { type:"function", function:{ name:"desfazer_acao", description:"Desfaz a ultima acao de visita feita pela Sara dentro de 30 minutos, sempre com previa exata.", parameters:{ type:"object", properties:{ confirmar:{type:"boolean"}, preview_id:{type:"string"} } } } },
+      "enviar-whatsapp": { type:"function", function:{ name:"enviar_whatsapp", description:"Envia uma mensagem de texto REAL pelo WhatsApp oficial. Exige lead inequivoco, texto final e previa exata. O retorno de envio nao equivale a entrega; use consultar_comprovante_whatsapp.", parameters:{ type:"object", properties:{ lead:{type:"string"}, lead_id:{type:"string"}, texto:{type:"string"}, confirmar:{type:"boolean"}, preview_id:{type:"string"} }, required:["texto"] } } },
+      "comprovante-whatsapp": { type:"function", function:{ name:"consultar_comprovante_whatsapp", description:"Consulta o status real de uma mensagem pelo ID devolvido no envio. Apenas entregue ou lida valem como comprovante.", parameters:{ type:"object", properties:{ lead:{type:"string"}, lead_id:{type:"string"}, message_id:{type:"string"} }, required:["message_id"] } } }
     };
     const tools = b.disable_tools===true ? [] : toolSlugs.filter(s=>TOOLDEFS[s]).map(s=>TOOLDEFS[s]);
-    const nameToSlug: Record<string,string> = { consultar_produtos:"consultar-produtos", consultar_cliente:"consultar-cliente", consultar_carteira:"consultar-carteira", consultar_vendas:"consultar-vendas", consultar_recebiveis:"consultar-recebiveis", consultar_lead:"consultar-lead", avaliar_conversa:"avaliar-conversa", consultar_estrutura_crm:"estrutura-crm", mover_lead:"mover-lead", criar_tarefa:"criar-tarefa", registrar_feedback:"registrar-feedback", agendar_visita:"agendar-visita" };
+    const nameToSlug: Record<string,string> = { consultar_produtos:"consultar-produtos", consultar_cliente:"consultar-cliente", consultar_carteira:"consultar-carteira", consultar_vendas:"consultar-vendas", consultar_recebiveis:"consultar-recebiveis", consultar_lead:"consultar-lead", avaliar_conversa:"avaliar-conversa", consultar_estrutura_crm:"estrutura-crm", mover_lead:"mover-lead", criar_tarefa:"criar-tarefa", registrar_feedback:"registrar-feedback", agendar_visita:"agendar-visita", consultar_agenda:"consultar-agenda", alterar_visita:"alterar-visita", desfazer_acao:"desfazer-acao", enviar_whatsapp:"enviar-whatsapp", consultar_comprovante_whatsapp:"comprovante-whatsapp" };
 
     async function localizarLead(args:any) {
       const textoLead = String(args?.lead_id || args?.lead || args?.texto || args?.nome || args?.telefone || "").trim();
@@ -126,6 +138,30 @@ Deno.serve(async (req: Request) => {
       return { busca, lead:candidatos[0] };
     }
 
+    async function criarPrevia(acao:string, payload:Record<string,unknown>, exibicao:Record<string,unknown>) {
+      const { data, error } = await supabase.rpc("ia_criar_previa_segura", {
+        p_usuario_id:usuarioId,p_agente_id:agente.id,p_acao:acao,p_payload:payload,
+      });
+      if (error || !(data as any)?.ok) return {ok:false,erro:error?.message || (data as any)?.erro || "falha_criar_previa"};
+      return {ok:true,preview:true,preview_id:(data as any).preview_id,expira_em:(data as any).expira_em,...exibicao};
+    }
+
+    async function consumirPrevia(acao:string, payload:Record<string,unknown>, args:any) {
+      const previewId = String(args?.preview_id || b.pending_preview_id || "").trim();
+      if (!previewId) return {ok:false,erro:"preview_id_obrigatorio"};
+      const { data, error } = await supabase.rpc("ia_consumir_previa_segura", {
+        p_usuario_id:usuarioId,p_preview_id:previewId,p_acao:acao,p_payload:payload,
+      });
+      if (error || !(data as any)?.ok) return {ok:false,erro:error?.message || (data as any)?.erro || "previa_invalida"};
+      return {ok:true,preview_id:previewId};
+    }
+
+    async function auditarAcao(acao:string, entidadeId:string|null, antes:unknown, depois:unknown) {
+      await supabase.from("sara_acoes_audit").insert({
+        usuario_id:usuarioId,agente_id:agente.id,acao,entidade:"visita",entidade_id:entidadeId,antes,depois,
+      });
+    }
+
     async function runTool(fnName:string, args:any) {
       if (fnName==="consultar_produtos") { const { data, error } = await supabase.rpc("ia_buscar_unidades", { p_dormitorios: args.dormitorios_min ?? args.dormitorios ?? null, p_valor_max: args.valor_max ?? null, p_vagas_min: args.vagas_min ?? null, p_bairro: args.bairro ?? null, p_texto: args.texto ?? null, p_limite: 8 }); if (error) return { encontrados:0, imoveis:[], erro:error.message }; return { encontrados:(data||[]).length, imoveis:data||[] }; }
       if (fnName==="consultar_cliente") return localizarLead(args);
@@ -141,18 +177,40 @@ Deno.serve(async (req: Request) => {
         return { encontrados:(data?.mensagens||[]).length, ...data };
       }
       if (fnName==="consultar_estrutura_crm") { const { data, error } = await supabase.rpc("ia_estrutura_funil2"); if (error) return { encontrados:0, erro:error.message }; return { encontrados:(data?.momentos||[]).length, ...data }; }
-      if (fnName==="mover_lead") { const { data, error } = await supabase.rpc("ia_mover_lead", { p_corretor_id: corretorId, p_texto_lead: args.lead || "", p_etapa_destino: args.etapa_destino || "", p_confirmar: args.confirmar===true }); if (error) return { ok:false, erro:error.message }; return data; }
+      if (fnName==="mover_lead") {
+        const { data: previaBase, error: pErr } = await supabase.rpc("ia_mover_lead", { p_corretor_id:corretorId,p_texto_lead:args.lead||"",p_etapa_destino:args.etapa_destino||"",p_confirmar:false });
+        if (pErr || !(previaBase as any)?.ok) return {ok:false,erro:pErr?.message || (previaBase as any)?.erro};
+        const payload = {lead:(previaBase as any).lead || args.lead,etapa_origem:(previaBase as any).etapa_origem || null,etapa_destino:args.etapa_destino};
+        if (args.confirmar!==true) return criarPrevia("mover_lead",payload,previaBase as any);
+        const validada = await consumirPrevia("mover_lead",payload,args); if (!validada.ok) return validada;
+        const { data, error } = await supabase.rpc("ia_mover_lead", { p_corretor_id:corretorId,p_texto_lead:args.lead||"",p_etapa_destino:args.etapa_destino||"",p_confirmar:true });
+        if (error) return {ok:false,erro:error.message}; return data;
+      }
       if (fnName==="criar_tarefa") {
         const { busca, lead } = await leadUnico(args);
         if (!lead) return busca;
-        const { data, error } = await supabase.rpc("ia_criar_tarefa_v2", {
+        const params = {
           p_usuario_id:usuarioId, p_funil_lead_id:lead.id, p_titulo:args.titulo || "",
-          p_vencimento_em:args.vencimento_em || null, p_confirmar:args.confirmar===true,
-        });
-        if (error) return { ok:false, erro:error.message };
-        return data;
+          p_vencimento_em:args.vencimento_em || null, p_confirmar:false,
+        };
+        const { data:previaBase,error:pErr } = await supabase.rpc("ia_criar_tarefa_v2",params);
+        if (pErr || !(previaBase as any)?.ok) return {ok:false,erro:pErr?.message || (previaBase as any)?.erro};
+        const payload={lead_id:lead.id,titulo:(previaBase as any).titulo,vencimento:(previaBase as any).vencimento};
+        if(args.confirmar!==true) return criarPrevia("criar_tarefa",payload,previaBase as any);
+        const validada=await consumirPrevia("criar_tarefa",payload,args); if(!validada.ok)return validada;
+        const {data,error}=await supabase.rpc("ia_criar_tarefa_v2",{...params,p_confirmar:true});
+        if(error)return {ok:false,erro:error.message}; return data;
       }
-      if (fnName==="registrar_feedback") { const { data, error } = await supabase.rpc("ia_registrar_feedback", { p_corretor_id: corretorId, p_texto_lead: args.lead || "", p_texto: args.texto || "", p_confirmar: args.confirmar===true }); if (error) return { ok:false, erro:error.message }; return data; }
+      if (fnName==="registrar_feedback") {
+        const params={p_corretor_id:corretorId,p_texto_lead:args.lead||"",p_texto:args.texto||"",p_confirmar:false};
+        const {data:previaBase,error:pErr}=await supabase.rpc("ia_registrar_feedback",params);
+        if(pErr || !(previaBase as any)?.ok)return {ok:false,erro:pErr?.message || (previaBase as any)?.erro};
+        const payload={lead:(previaBase as any).lead || args.lead,texto:args.texto};
+        if(args.confirmar!==true)return criarPrevia("registrar_feedback",payload,previaBase as any);
+        const validada=await consumirPrevia("registrar_feedback",payload,args);if(!validada.ok)return validada;
+        const {data,error}=await supabase.rpc("ia_registrar_feedback",{...params,p_confirmar:true});
+        if(error)return {ok:false,erro:error.message};return data;
+      }
       if (fnName==="agendar_visita") {
         const { busca, lead } = await leadUnico(args);
         if (!lead) return busca;
@@ -162,15 +220,76 @@ Deno.serve(async (req: Request) => {
         if (!inicio || Number.isNaN(inicio.getTime()) || inicio.getTime()<=Date.now()) return {ok:false,erro:"data_hora_exata_futura_obrigatoria"};
         if (fim && (Number.isNaN(fim.getTime()) || fim.getTime()<=inicio.getTime())) return {ok:false,erro:"horario_final_invalido"};
         if (imovel.length<2) return {ok:false,erro:"imovel_obrigatorio"};
-        const previa = {ok:true,preview:true,cliente:lead.cliente,inicio_em:inicio.toISOString(),fim_em:fim?.toISOString()||null,imovel};
-        if (args.confirmar!==true) return previa;
+        const payload={lead_id:lead.id,inicio_em:inicio.toISOString(),fim_em:fim?.toISOString()||null,imovel:imovel.slice(0,120),observacao:String(args.observacao||"").slice(0,500)||null};
+        const {data:conflitos,error:cErr}=await supabase.rpc("ia_conflitos_visita_seguro",{p_usuario_id:usuarioId,p_funil_lead_id:lead.id,p_inicio_em:payload.inicio_em,p_fim_em:payload.fim_em,p_excluir:null});
+        if(cErr)return {ok:false,erro:cErr.message}; if((conflitos as any)?.conflito)return {ok:false,erro:"conflito_de_agenda",...(conflitos as any)};
+        if (args.confirmar!==true) return criarPrevia("agendar_visita",payload,{cliente:lead.cliente,...payload});
+        const validada=await consumirPrevia("agendar_visita",payload,args);if(!validada.ok)return validada;
         const { data, error } = await userSupabase.rpc("f2_salvar_visita", {
           p_id:null,p_lead_id:lead.id,p_inicio_em:inicio.toISOString(),p_fim_em:fim?.toISOString()||null,
           p_imovel:imovel.slice(0,120),p_status:"agendada",p_observacao:String(args.observacao||"").slice(0,500)||null,
           p_empreendimento_id:null,p_unidade:null,p_com_gerente:false,p_gerente_id:null,
         });
         if (error) return {ok:false,erro:error.message};
+        const visitaId=String((data as any)?.visita_id || (data as any)?.id || "");
+        await auditarAcao("agendar_visita",visitaId||null,null,{...payload,visita_id:visitaId||null});
         return {...(data||{}),executado:(data as any)?.ok===true,cliente:lead.cliente};
+      }
+      if(fnName==="consultar_agenda"){
+        const {data,error}=await supabase.rpc("ia_localizar_visitas_seguro",{p_usuario_id:usuarioId,p_texto:args.busca||null,p_limite:8});
+        if(error)return {ok:false,erro:error.message};return data;
+      }
+      if(fnName==="alterar_visita"){
+        const busca=String(args.visita_id || args.busca || "").trim();
+        const {data:lista,error:lErr}=await supabase.rpc("ia_localizar_visitas_seguro",{p_usuario_id:usuarioId,p_texto:busca||null,p_limite:8});
+        if(lErr)return {ok:false,erro:lErr.message};
+        const visitas=Array.isArray((lista as any)?.visitas)?(lista as any).visitas:[];
+        if(visitas.length!==1)return {...(lista as any),ok:false,erro:visitas.length?"visita_ambigua":"visita_nao_encontrada"};
+        const atual=visitas[0]; const status=String(args.novo_status||atual.status);
+        const inicio=args.novo_inicio_em?new Date(args.novo_inicio_em):new Date(atual.inicio_em);
+        const fim=args.novo_fim_em?new Date(args.novo_fim_em):(atual.fim_em?new Date(atual.fim_em):null);
+        if(Number.isNaN(inicio.getTime()) || (fim && (Number.isNaN(fim.getTime()) || fim.getTime()<=inicio.getTime())))return {ok:false,erro:"horario_invalido"};
+        if(!["agendada","confirmada","cancelada"].includes(status))return {ok:false,erro:"status_invalido"};
+        const payload={visita_id:atual.id,lead_id:atual.funil_lead_id,inicio_em:inicio.toISOString(),fim_em:fim?.toISOString()||null,imovel:atual.imovel,status,observacao:String(args.motivo||atual.observacao||"").slice(0,500)||null,empreendimento_id:atual.empreendimento_id||null,unidade:atual.unidade||null,com_gerente:atual.com_gerente===true,gerente_id:atual.gerente_id||null};
+        if(status!=="cancelada"){const {data:conf,error:cErr}=await supabase.rpc("ia_conflitos_visita_seguro",{p_usuario_id:usuarioId,p_funil_lead_id:payload.lead_id,p_inicio_em:payload.inicio_em,p_fim_em:payload.fim_em,p_excluir:payload.visita_id});if(cErr)return {ok:false,erro:cErr.message};if((conf as any)?.conflito)return {ok:false,erro:"conflito_de_agenda",...(conf as any)};}
+        if(args.confirmar!==true)return criarPrevia("alterar_visita",payload,{cliente:atual.cliente,...payload});
+        const validada=await consumirPrevia("alterar_visita",payload,args);if(!validada.ok)return validada;
+        const {data,error}=await userSupabase.rpc("f2_salvar_visita",{p_id:payload.visita_id,p_lead_id:payload.lead_id,p_inicio_em:payload.inicio_em,p_fim_em:payload.fim_em,p_imovel:payload.imovel,p_status:payload.status,p_observacao:payload.observacao,p_empreendimento_id:payload.empreendimento_id,p_unidade:payload.unidade,p_com_gerente:payload.com_gerente,p_gerente_id:payload.gerente_id});
+        if(error)return {ok:false,erro:error.message};
+        await auditarAcao("alterar_visita",payload.visita_id,atual,payload);
+        return {...(data||{}),executado:(data as any)?.ok===true,cliente:atual.cliente};
+      }
+      if(fnName==="desfazer_acao"){
+        const {data:audit,error:aErr}=await supabase.from("sara_acoes_audit").select("*").eq("usuario_id",usuarioId).eq("entidade","visita").eq("status","executada").gt("desfazivel_ate",new Date().toISOString()).order("criado_em",{ascending:false}).limit(1).maybeSingle();
+        if(aErr || !audit)return {ok:false,erro:aErr?.message || "nenhuma_acao_desfazivel"};
+        const payload={audit_id:audit.id,acao_original:audit.acao,entidade_id:audit.entidade_id};
+        if(args.confirmar!==true)return criarPrevia("desfazer_acao",payload,{acao_original:audit.acao,criado_em:audit.criado_em});
+        const validada=await consumirPrevia("desfazer_acao",payload,args);if(!validada.ok)return validada;
+        const alvo=(audit.antes || audit.depois) as any;
+        if(!alvo?.lead_id && !alvo?.funil_lead_id)return {ok:false,erro:"snapshot_incompleto"};
+        const cancelar=!audit.antes;
+        const {data,error}=await userSupabase.rpc("f2_salvar_visita",{p_id:audit.entidade_id,p_lead_id:alvo.lead_id||alvo.funil_lead_id,p_inicio_em:alvo.inicio_em,p_fim_em:alvo.fim_em||null,p_imovel:alvo.imovel,p_status:cancelar?"cancelada":alvo.status,p_observacao:cancelar?"Desfeita pela Sara":alvo.observacao||null,p_empreendimento_id:alvo.empreendimento_id||null,p_unidade:alvo.unidade||null,p_com_gerente:alvo.com_gerente===true,p_gerente_id:alvo.gerente_id||null});
+        if(error)return {ok:false,erro:error.message};
+        await supabase.from("sara_acoes_audit").update({status:"desfeita",desfeita_em:new Date().toISOString()}).eq("id",audit.id);
+        return {...(data||{}),executado:true,acao_desfeita:audit.acao};
+      }
+      if(fnName==="enviar_whatsapp"){
+        const {busca,lead}=await leadUnico(args);if(!lead)return busca;
+        const texto=String(args.texto||"").trim();if(texto.length<1 || texto.length>1500)return {ok:false,erro:"texto_invalido"};
+        const {data:dest,error:dErr}=await supabase.rpc("ia_destino_whatsapp_seguro",{p_usuario_id:usuarioId,p_funil_lead_id:lead.id});
+        if(dErr || !(dest as any)?.ok)return {ok:false,erro:dErr?.message || (dest as any)?.erro};
+        const payload={lead_id:lead.id,cliente:lead.cliente,telefone_mascarado:(dest as any).telefone_mascarado,texto};
+        if(args.confirmar!==true)return criarPrevia("enviar_whatsapp",payload,payload);
+        const validada=await consumirPrevia("enviar_whatsapp",payload,args);if(!validada.ok)return validada;
+        const wr=await fetch(supabaseUrl+"/functions/v1/dapi-enviar",{method:"POST",headers:{Authorization:authHeader,apikey:anonKey,"Content-Type":"application/json"},body:JSON.stringify({to:(dest as any).telefone,tipo:"text",texto})});
+        const wd=await wr.json().catch(()=>({}));
+        if(!wr.ok || !wd?.ok)return {ok:false,erro:wd?.motivo || wd?.error || "falha_envio_whatsapp"};
+        return {ok:true,executado:true,cliente:lead.cliente,telefone_mascarado:(dest as any).telefone_mascarado,message_id:wd.messageId,status:"enviado_aguardando_confirmacao",proximo_passo:"Use consultar_comprovante_whatsapp para confirmar entrega ou leitura."};
+      }
+      if(fnName==="consultar_comprovante_whatsapp"){
+        const {busca,lead}=await leadUnico(args);if(!lead)return busca;
+        const {data,error}=await supabase.rpc("ia_comprovante_whatsapp_seguro",{p_usuario_id:usuarioId,p_funil_lead_id:lead.id,p_message_id:String(args.message_id||"")});
+        if(error)return {ok:false,erro:error.message};return data;
       }
       return { erro:"ferramenta_desconhecida" };
     }
@@ -182,7 +301,7 @@ Deno.serve(async (req: Request) => {
       (conhecimento ? `\n\n=== BASE DE CONHECIMENTO (use como verdade; nunca contradiga) ===${conhecimento}` : "") +
       `\n\n=== CONTEXTO DA SESSAO ===\nAgora em America/Sao_Paulo: ${agoraSaoPaulo}. Perfil: ${perfil}. ` +
       "Entenda datas relativas nesse fuso. Nunca escolha sozinho uma hora vaga como 'de tarde': pergunte o horario exato. " +
-      (tools.length ? "\n\n=== FERRAMENTAS ===\nVoce PODE e DEVE consultar dados reais do ERP antes de responder sobre produtos, clientes, carteira, vendas, recebiveis, um lead, uma conversa ou a estrutura do CRM. NUNCA invente; se a busca retornar mais de um lead, mostre opcoes seguras e pergunte qual e. Acoes de escrita (mover, criar tarefa, registrar feedback, agendar visita) sempre em 2 passos: primeiro previa com confirmar=false; depois execucao com confirmar=true somente apos um sim explicito para aquela previa. Visita exige lead inequivoco, imovel, data e hora exatas." : "") +
+      (tools.length ? "\n\n=== FERRAMENTAS ===\nConsulte dados reais antes de responder. Acoes de escrita sempre usam previa exata, de uso unico: primeiro confirmar=false; depois confirmar=true somente apos sim explicito. Preserve o preview_id retornado. Uma confirmacao antiga, expirada, ja usada ou de payload diferente nunca vale. A agenda permite consultar, reagendar e cancelar; conflito bloqueia a gravacao. WhatsApp so e entregue/lido quando consultar_comprovante_whatsapp comprovar; apenas o envio nao e comprovante. Desfazer exige nova previa." : "") +
       (corretorId ? "" : "\n\nEste perfil tem visao gerencial autorizada; deixe claro quando a resposta usar o escopo geral.");
 
     const baseMsgs: any[] = hasMessages
@@ -190,6 +309,7 @@ Deno.serve(async (req: Request) => {
       : [{role:"system",content:systemPrompt},{role:"user",content: typeof b.input==="string"?b.input:JSON.stringify(b.input)}];
 
     const ferramentasUsadas: {ferramenta:string;args:any;encontrados:number}[] = [];
+    const previewsGeradas: {preview_id:string;acao:string;expira_em?:string}[] = [];
     let tin=0, tout=0; const t0=Date.now();
     let messages = baseMsgs; let finalText="";
     const limite = cfg.max_tokens ?? 800;
@@ -217,6 +337,7 @@ Deno.serve(async (req: Request) => {
         for (const tc of msg.tool_calls) {
           let args:any={}; try { args = JSON.parse(tc.function.arguments||"{}"); } catch {}
           const result = await runTool(tc.function.name, args);
+          if ((result as any)?.preview===true && (result as any)?.preview_id) previewsGeradas.push({preview_id:String((result as any).preview_id),acao:nameToSlug[tc.function.name]||tc.function.name,expira_em:(result as any).expira_em});
           ferramentasUsadas.push({ ferramenta: nameToSlug[tc.function.name]||tc.function.name, args, encontrados:(result as any).encontrados ?? 0 });
           messages.push({ role:"tool", tool_call_id: tc.id, content: JSON.stringify(result) });
         }
@@ -227,8 +348,8 @@ Deno.serve(async (req: Request) => {
 
     const p = PRICES[modelo] || PRICES[MODELO_PADRAO]; const custo = (tin/1e6)*p.in + (tout/1e6)*p.out;
     let saida:unknown = finalText; try { saida = JSON.parse(finalText); } catch {}
-    const { data: exec } = await supabase.from("agente_execucoes").insert({ agente_id:agente.id, agente_slug:agente.slug, agente_versao:agente.versao_atual, entrada:{input:b.input,messages:b.messages}, saida, modelo, tokens_entrada:tin, tokens_saida:tout, custo_usd:custo, status:"ok", fontes_consultadas: fontesUsadas, ferramentas_acionadas: ferramentasUsadas, latencia_ms: Date.now()-t0 }).select("id").maybeSingle();
+    const { data: exec } = await supabase.from("agente_execucoes").insert({ agente_id:agente.id, agente_slug:agente.slug, agente_versao:agente.versao_atual, entrada:{input:b.input,messages:b.messages}, saida, modelo, tokens_entrada:tin, tokens_saida:tout, custo_usd:custo, status:"ok", fontes_consultadas: fontesUsadas, ferramentas_acionadas: ferramentasUsadas, latencia_ms: Date.now()-t0, usuario:usuarioId, tela:typeof b.tela==="string"?b.tela.slice(0,120):null }).select("id").maybeSingle();
 
-    return json({ ok:true, execucao_id: exec?.id ?? null, agente:agente.slug, corretor_id:corretorId, resposta:finalText, saida, tokens:{entrada:tin,saida:tout}, custo_usd:Number(custo.toFixed(6)), ms:Date.now()-t0, fontes:fontesUsadas.map(f=>f.titulo), ferramentas:ferramentasUsadas });
+    return json({ ok:true, execucao_id: exec?.id ?? null, agente:agente.slug, corretor_id:corretorId, resposta:finalText, saida, pending_preview_id:previewsGeradas.at(-1)?.preview_id ?? null, previews:previewsGeradas, tokens:{entrada:tin,saida:tout}, custo_usd:Number(custo.toFixed(6)), ms:Date.now()-t0, fontes:fontesUsadas.map(f=>f.titulo), ferramentas:ferramentasUsadas });
   } catch (e) { return json({ok:false,reason:"excecao",detalhe:String(e)},500); }
 });

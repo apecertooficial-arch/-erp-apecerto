@@ -24,10 +24,17 @@ type Execucao = {
   id: number; status: string; criado_em: string; ferramentas_acionadas: FerramentaAcionada[] | null;
   fontes_consultadas: string[] | null; tokens_entrada: number | null; tokens_saida: number | null;
   custo_usd: number | null; latencia_ms: number | null;
+  avaliacao_humana?: string | null; usuario?: string | null; tela?: string | null;
 };
+type Metricas = {
+  execucoes_30d: number; sucessos: number; falhas: number; sucesso_pct: number;
+  minutos_economizados: number; avaliadas: number; satisfacao_pct: number | null; usuarios_ativos: number;
+};
+type Piloto = { ok?: boolean; participantes?: number; ativos?: number; execucoes_30d?: number; jornadas?: string[] };
 type AgentDetail = {
   agente: Agent; fontes: Fonte[]; fonteLinks: number[]; ferramentas: Ferramenta[];
   permissoes: Permissao[]; cenarios: Cenario[]; avaliacoes: Avaliacao[]; execucoes: Execucao[];
+  metricas?: Metricas; piloto?: Piloto | null;
 };
 type TestResult = {
   ferramentas?: FerramentaAcionada[]; fontes?: string[]; custo_usd?: number | null;
@@ -195,6 +202,16 @@ export function AgentTrainingWorkspace({ accessToken }: { accessToken: string })
     } catch (e) { setNotice(mensagemErro(e)); } finally { setRunning(false); }
   };
 
+  const promoverDuvidas = async () => {
+    if (!slug) return;
+    setBusy(true); setNotice(null);
+    try {
+      const r = await api<{ criados?: number }>("POST", "/api/agentes", { action:"promoverDuvidas",slug });
+      await loadDetail(slug);
+      setNotice(r.criados ? `${r.criados} dúvida(s) real(is), já anonimizadas, viraram cenários de treinamento.` : "Nenhuma dúvida nova para transformar em cenário.");
+    } catch (e) { setNotice(mensagemErro(e)); } finally { setBusy(false); }
+  };
+
   const resumo = useMemo(() => {
     const a = detail?.avaliacoes || [];
     if (!a.length) return null;
@@ -354,7 +371,10 @@ export function AgentTrainingWorkspace({ accessToken }: { accessToken: string })
 
                   <div className="lab-battery-head">
                     <div><strong>Bateria de cenários</strong><small>{detail.cenarios.length} cenários cadastrados</small></div>
-                    <button className="primary" type="button" disabled={running || !detail.cenarios.length} onClick={rodarBateria}>{running ? `Rodando ${progress.done}/${progress.total}…` : "Rodar bateria"}</button>
+                    <div className="lab-inline-actions">
+                      <button className="mini" type="button" disabled={busy} onClick={promoverDuvidas}>Aprender com dúvidas reais</button>
+                      <button className="primary" type="button" disabled={running || !detail.cenarios.length} onClick={rodarBateria}>{running ? `Rodando ${progress.done}/${progress.total}…` : "Rodar bateria"}</button>
+                    </div>
                   </div>
                   {running && <div className="lab-progress"><i style={{ width: `${progress.total ? (100 * progress.done) / progress.total : 0}%` }} /></div>}
 
@@ -375,6 +395,17 @@ export function AgentTrainingWorkspace({ accessToken }: { accessToken: string })
 
               {tab === "monitor" && (
                 <div className="lab-panel">
+                  <div className="lab-metrics">
+                    <article><span>Uso em 30 dias</span><strong>{detail.metricas?.execucoes_30d ?? 0}</strong><small>{detail.metricas?.usuarios_ativos ?? 0} usuário(s) ativo(s)</small></article>
+                    <article><span>Sucesso</span><strong>{detail.metricas?.sucesso_pct ?? 0}%</strong><small>{detail.metricas?.falhas ?? 0} falha(s)</small></article>
+                    <article><span>Tempo economizado</span><strong>{detail.metricas?.minutos_economizados ?? 0} min</strong><small>estimativa por ação concluída</small></article>
+                    <article><span>Satisfação</span><strong>{detail.metricas?.satisfacao_pct == null ? "—" : `${detail.metricas.satisfacao_pct}%`}</strong><small>{detail.metricas?.avaliadas ?? 0} resposta(s)</small></article>
+                  </div>
+                  <section className="lab-pilot">
+                    <div><span>PILOTO CONTROLADO</span><strong>{detail.piloto?.ativos ?? 0} de {detail.piloto?.participantes ?? 0} corretores ativos</strong></div>
+                    <div>{(detail.piloto?.jornadas || ["Localizar lead","Agenda completa","Direção do dia"]).map((j) => <em key={j}>✓ {j}</em>)}</div>
+                    <small>{detail.piloto?.execucoes_30d ?? 0} interações nas jornadas nos últimos 30 dias. A participação é observacional e não altera distribuição nem permissões.</small>
+                  </section>
                   {detail.execucoes.length ? (
                     <table className="lab-table">
                       <thead><tr><th>Quando</th><th>Status</th><th>Ferramentas</th><th>Fontes</th><th>Tokens</th><th>Custo</th><th>Latência</th></tr></thead>

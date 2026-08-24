@@ -8,6 +8,8 @@ type SaraRouterResponse = {
   reason?: string;
   resposta?: string;
   saida?: unknown;
+  execucao_id?: number | null;
+  pending_preview_id?: string | null;
 };
 
 declare global {
@@ -28,8 +30,9 @@ export function SaraWidget() {
     const SB = "https://diaegvfveqezispcthwk.supabase.co";
     const ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRpYWVndmZ2ZXFlemlzcGN0aHdrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5OTU4MjIsImV4cCI6MjA5ODU3MTgyMn0.312n8BuI-loQrQ20x9j1hNjKZs2UO71ey9gvIo0eY0I";
     const messages: SaraMessage[] = [];
+    let pendingPreviewId: string | null = null;
     function currentToken(): Promise<string> { try { return getBrowserSupabaseClient().auth.getSession().then(function (r) { return (r && r.data && r.data.session && r.data.session.access_token) || ANON; }).catch(function () { return ANON; }); } catch { return Promise.resolve(ANON); } }
-    function fn(body: { agente_slug: string; messages: SaraMessage[] }): Promise<SaraRouterResponse> { return currentToken().then(function (tok) { return fetch(SB + "/functions/v1/ia-router", { method: "POST", headers: { Authorization: "Bearer " + tok, apikey: ANON, "Content-Type": "application/json" }, body: JSON.stringify(body) }).then(function (r) { return r.json() as Promise<SaraRouterResponse>; }); }); }
+    function fn(body: Record<string, unknown>): Promise<SaraRouterResponse> { return currentToken().then(function (tok) { return fetch(SB + "/functions/v1/ia-router", { method: "POST", headers: { Authorization: "Bearer " + tok, apikey: ANON, "Content-Type": "application/json" }, body: JSON.stringify(body) }).then(function (r) { return r.json() as Promise<SaraRouterResponse>; }); }); }
     function esc(s: string): string { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
     function md(s: string): string {
       s = esc(s).replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>").replace(/\*(.+?)\*/g, "<em>$1</em>");
@@ -67,6 +70,7 @@ export function SaraWidget() {
     ".sara-chips{display:flex;flex-wrap:wrap;gap:7px;padding:2px 2px 4px 36px;}",
     ".sara-chip{background:#fff;border:1px solid #e0dcf0;color:#7c3aed;font-size:12px;font-weight:600;padding:7px 12px;border-radius:999px;cursor:pointer;}",
     ".sara-chip:hover{background:#7c3aed;color:#fff;}",
+    ".sara-rate{display:flex;align-items:center;gap:6px;padding:0 2px 3px 36px;color:#6f6784;font-size:11px}.sara-rate button{border:1px solid #ddd8ee;background:#fff;border-radius:999px;padding:5px 9px;cursor:pointer;color:#5f5578}.sara-rate button:hover{border-color:#7c3aed;color:#7c3aed}.sara-rate.done{color:#23825b}",
     ".sara-typing{display:flex;gap:4px;padding:12px 14px;}.sara-typing span{width:7px;height:7px;border-radius:50%;background:#b7add9;animation:saraT 1.2s infinite;}",
     ".sara-typing span:nth-child(2){animation-delay:.2s;}.sara-typing span:nth-child(3){animation-delay:.4s;}",
     "@keyframes saraT{0%,60%,100%{transform:translateY(0);opacity:.5;}30%{transform:translateY(-4px);opacity:1;}}",
@@ -93,6 +97,20 @@ export function SaraWidget() {
       line.appendChild(b); msgsEl.appendChild(line); msgsEl.scrollTop = msgsEl.scrollHeight; return b;
     }
     function typing(): HTMLDivElement { const line = document.createElement("div"); line.className = "sara-line a"; line.innerHTML = '<div class="mini">S</div><div class="sara-b a sara-typing"><span></span><span></span><span></span></div>'; msgsEl.appendChild(line); msgsEl.scrollTop = msgsEl.scrollHeight; return line; }
+    function pedirAvaliacao(execucaoId: number): void {
+      const rate = document.createElement("div"); rate.className = "sara-rate"; rate.textContent = "Isso ajudou?";
+      [["👍","util"],["👎","nao_util"]].forEach(function (op) {
+        const bt = document.createElement("button"); bt.type = "button"; bt.textContent = op[0];
+        bt.onclick = async function () {
+          rate.querySelectorAll("button").forEach(function (b) { (b as HTMLButtonElement).disabled = true; });
+          const r = await fn({ agente_slug:"sara", action:"feedback", execucao_id:execucaoId, avaliacao:op[1] });
+          rate.textContent = r.ok ? "Obrigado — isso entra no treinamento da Sara." : "Não consegui registrar agora.";
+          rate.classList.add("done");
+        };
+        rate.appendChild(bt);
+      });
+      msgsEl.appendChild(rate); msgsEl.scrollTop = msgsEl.scrollHeight;
+    }
     let greeted = false;
     const sugestoes = ["O que preciso fazer hoje?", "Explique os momentos do Funil 2.0", "Avalie a conversa de um lead"];
     function greet() {
@@ -108,8 +126,13 @@ export function SaraWidget() {
     async function enviar(texto?: string): Promise<void> {
       const txt = (texto != null ? texto : inEl.value).trim(); if (!txt) return; inEl.value = "";
       bubble("user", txt); messages.push({ role: "user", content: txt }); const t = typing();
-      try { const r = await fn({ agente_slug: "sara", messages: messages.slice(-12) }); t.remove();
-        if (r && r.ok) { const resp = r.resposta || (typeof r.saida === "string" ? r.saida : JSON.stringify(r.saida)); bubble("assistant", resp); messages.push({ role: "assistant", content: resp }); }
+      try { const r = await fn({ agente_slug: "sara", messages: messages.slice(-12), pending_preview_id:pendingPreviewId, tela:window.location.pathname }); t.remove();
+        if (r && r.ok) {
+          const resp = r.resposta || (typeof r.saida === "string" ? r.saida : JSON.stringify(r.saida));
+          bubble("assistant", resp); messages.push({ role: "assistant", content: resp });
+          pendingPreviewId = r.pending_preview_id || null;
+          if (r.execucao_id) pedirAvaliacao(r.execucao_id);
+        }
         else { bubble("assistant", (r && r.reason === "sem_chave") ? "Estou sem chave de IA configurada." : "Ops, tive um problema pra responder agora. Tenta de novo?"); }
       } catch { t.remove(); bubble("assistant", "Sem conexão agora. Tenta de novo em instantes."); }
     }

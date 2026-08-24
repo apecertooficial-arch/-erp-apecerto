@@ -18,6 +18,11 @@ async function authed(request: Request) {
 
 const str = (v: unknown, max = 8000) => (typeof v === "string" ? v.slice(0, max) : "");
 const STATUSES = ["rascunho", "em_teste", "revisao", "aprovado", "publicado"];
+const anonimizar = (texto: string) => texto
+  .replace(/[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}/g, "[email]")
+  .replace(/\b(?:\+?55\s*)?(?:\(?\d{2}\)?\s*)?9?\d{4}[-\s]?\d{4}\b/g, "[telefone]")
+  .replace(/\b[0-9a-f]{8}-[0-9a-f-]{27,}\b/gi, "[id]")
+  .replace(/\s+/g, " ").trim().slice(0, 500);
 
 export async function GET(request: Request) {
   const auth = await authed(request);
@@ -46,7 +51,7 @@ export async function GET(request: Request) {
     auth.supabase.from("agente_ferramenta_permissoes").select("ferramenta_id,habilitado,perfis_autorizados").eq("agente_id", agente.id),
     auth.supabase.from("agente_cenarios").select("id,pergunta,categoria,peso,ferramentas_esperadas,fontes_esperadas").eq("agente_id", agente.id).order("id"),
     auth.supabase.from("agente_avaliacoes").select("cenario_id,agente_versao,nota_auto,aprovado,regras_descumpridas,criado_em").eq("agente_id", agente.id).order("criado_em", { ascending: false }).limit(400),
-    auth.supabase.from("agente_execucoes").select("id,modelo,tokens_entrada,tokens_saida,custo_usd,status,ferramentas_acionadas,fontes_consultadas,latencia_ms,criado_em").eq("agente_id", agente.id).order("criado_em", { ascending: false }).limit(20),
+    auth.supabase.from("agente_execucoes").select("id,modelo,tokens_entrada,tokens_saida,custo_usd,status,ferramentas_acionadas,fontes_consultadas,latencia_ms,criado_em,avaliacao_humana,usuario,tela").eq("agente_id", agente.id).order("criado_em", { ascending: false }).limit(200),
   ]);
 
   const fonteLinks = (links.data ?? []).map((l) => l.fonte_id);
@@ -54,6 +59,27 @@ export async function GET(request: Request) {
     .from("agente_fontes")
     .select("id,titulo,tipo,conteudo,versao,situacao,responsavel,validade,atualizado_em")
     .order("id", { ascending: false });
+
+  const execucoes = execs.data ?? [];
+  const desde = Date.now() - 30 * 86400000;
+  const rec = execucoes.filter((e) => new Date(e.criado_em).getTime() >= desde);
+  const ok = rec.filter((e) => e.status === "ok").length;
+  const avaliadas = rec.filter((e) => e.avaliacao_humana === "util" || e.avaliacao_humana === "nao_util");
+  const uteis = avaliadas.filter((e) => e.avaliacao_humana === "util").length;
+  const minutosEconomizados = rec.reduce((total, e) => {
+    const fs = Array.isArray(e.ferramentas_acionadas) ? e.ferramentas_acionadas : [];
+    return total + fs.reduce<number>((s, item) => {
+      if (!item || typeof item !== "object" || Array.isArray(item)) return s;
+      const registro = item as Record<string, unknown>;
+      if (!("ferramenta" in registro)) return s;
+      const nome = String(registro.ferramenta);
+      return s + (nome.includes("visita") ? 8 : nome.includes("whatsapp") ? 5 : nome.includes("tarefa") || nome.includes("mover") ? 4 : 2);
+    }, 0);
+  }, 0);
+  type RpcResult = { data: unknown; error: { message: string } | null };
+  const looseRpc = auth.supabase.rpc as unknown as (fn: string, args: Record<string, unknown>) => PromiseLike<RpcResult>;
+  const pilotoResp = await looseRpc("sara_piloto_resumo", { p_agente_id: agente.id });
+  const piloto = pilotoResp.error ? null : pilotoResp.data;
 
   // latest evaluation per cenario
   const latest = new Map<number, { cenario_id: number; agente_versao: number; nota_auto: number; aprovado: boolean; regras_descumpridas: string[] }>();
@@ -76,7 +102,18 @@ export async function GET(request: Request) {
     permissoes: perms.data ?? [],
     cenarios: cenarios.data ?? [],
     avaliacoes: [...latest.values()],
-    execucoes: execs.data ?? [],
+    execucoes: execucoes.slice(0, 50),
+    metricas: {
+      execucoes_30d: rec.length,
+      sucessos: ok,
+      falhas: rec.length - ok,
+      sucesso_pct: rec.length ? Math.round(100 * ok / rec.length) : 0,
+      minutos_economizados: minutosEconomizados,
+      avaliadas: avaliadas.length,
+      satisfacao_pct: avaliadas.length ? Math.round(100 * uteis / avaliadas.length) : null,
+      usuarios_ativos: new Set(rec.map((e) => e.usuario).filter(Boolean)).size,
+    },
+    piloto,
   });
 }
 
@@ -163,6 +200,44 @@ export async function POST(request: Request) {
     const url = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/ia-testes`;
     const r = await fetch(url, { method: "POST", headers: { Authorization: `Bearer ${auth.token}`, "Content-Type": "application/json" }, body: JSON.stringify({ agente_slug: slug, offset, limit }) });
     return Response.json(await r.json(), { status: r.ok ? 200 : 502 });
+  }
+
+  if (action === "promoverDuvidas") {
+    if (!slug) return Response.json({ error: "Agente não informado." }, { status: 422 });
+    const { data: agente } = await auth.supabase.from("agentes_ia").select("id").eq("slug", slug).maybeSingle();
+    if (!agente) return Response.json({ error: "Agente não encontrado." }, { status: 404 });
+    const { data: execucoes, error } = await auth.supabase.from("agente_execucoes")
+      .select("id,entrada").eq("agente_id", agente.id).eq("status", "ok").order("criado_em", { ascending: false }).limit(80);
+    if (error) return Response.json({ error: error.message }, { status: 502 });
+    const perguntas: Array<{ pergunta: string; execucao_id: number }> = [];
+    for (const e of execucoes ?? []) {
+      const entrada = e.entrada && typeof e.entrada === "object" && !Array.isArray(e.entrada) ? e.entrada : null;
+      let texto = "";
+      if (entrada && "input" in entrada && typeof entrada.input === "string") texto = entrada.input;
+      if (!texto && entrada && "messages" in entrada && Array.isArray(entrada.messages)) {
+        const usuarios = entrada.messages.filter((m) => m && typeof m === "object" && "role" in m && m.role === "user");
+        const ultima = usuarios.at(-1);
+        if (ultima && typeof ultima === "object" && !Array.isArray(ultima)) {
+          const registro = ultima as Record<string, unknown>;
+          if (typeof registro.content === "string") texto = registro.content;
+        }
+      }
+      const pergunta = anonimizar(texto);
+      if (pergunta.length >= 8 && !perguntas.some((p) => p.pergunta.toLowerCase() === pergunta.toLowerCase())) perguntas.push({ pergunta, execucao_id:e.id });
+      if (perguntas.length >= 10) break;
+    }
+    if (!perguntas.length) return Response.json({ ok: true, criados: 0 });
+    const existentes = await auth.supabase.from("agente_cenarios").select("pergunta").eq("agente_id", agente.id);
+    const ja = new Set((existentes.data ?? []).map((c) => c.pergunta.toLowerCase()));
+    const novos: TablesInsert<"agente_cenarios">[] = perguntas.filter((p) => !ja.has(p.pergunta.toLowerCase())).map((p) => ({
+      agente_id:agente.id,pergunta:p.pergunta,categoria:"duvida_real_anonimizada",peso:2,
+      resposta_esperada:"Responder com dados reais, respeitar o escopo e pedir apenas a informação que faltar.",
+      respostas_proibidas:["inventar dados","expor telefone completo","afirmar execução sem comprovante"],
+      criterio_aprovacao:"Resposta útil, segura, verificável e coerente com a operação.",
+      contexto:{ origem:"execucao_anonimizada",execucao_id:p.execucao_id },
+    }));
+    const { error: iErr } = novos.length ? await auth.supabase.from("agente_cenarios").insert(novos) : { error:null };
+    return iErr ? Response.json({ error:iErr.message }, { status:502 }) : Response.json({ ok:true,criados:novos.length });
   }
 
   return Response.json({ error: "Ação inválida." }, { status: 422 });
