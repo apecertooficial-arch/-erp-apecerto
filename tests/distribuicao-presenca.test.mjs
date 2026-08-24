@@ -7,6 +7,10 @@ const layout = readFileSync(new URL("../app/(erp)/layout.tsx", import.meta.url),
 const globalPresence = readFileSync(new URL("../app/components/PresencaGlobal.tsx", import.meta.url), "utf8");
 const heartbeat = readFileSync(new URL("../app/features/presence/PresenceHeartbeat.tsx", import.meta.url), "utf8");
 const migration = readFileSync(new URL("../supabase/migrations/20260812030000_ncrm_roleta_igualitaria_e_presenca.sql", import.meta.url), "utf8");
+const fridayNightRelease = readFileSync(
+  new URL("../supabase/migrations/20260822030000_liberar_operacao_sexta_noite.sql", import.meta.url),
+  "utf8",
+);
 
 test("confirmação de presença é global, exclusiva do corretor e usa 15 minutos", () => {
   assert.match(layout, /<PresencaGlobal/);
@@ -48,4 +52,14 @@ test("lead sem corretor apto fica em retry e a fila histórica permanece pausada
   assert.match(migration, /recuperado_apos_correcao_da_roleta/);
   assert.match(migration, /n\.criado_em>=now\(\)-interval '3 hours'/);
   assert.match(migration, /lower\(COALESCE\(l\.origem,''\)\)='manual'/);
+});
+
+test("operação externa começa na sexta à noite sem ignorar D-API ou suspensão", () => {
+  assert.match(fridayNightRelease, /extract\(isodow from v_local\)=5/);
+  assert.match(fridayNightRelease, /v_local::time>=time '18:00'/);
+  assert.match(fridayNightRelease, /i\.status_dapi='connected'/);
+  assert.match(fridayNightRelease, /if suspenso_ate is not null then/);
+  assert.match(fridayNightRelease, /feedback_visita_exigido',false/);
+  assert.match(fridayNightRelease, /values\('abordagem_automatica',true,now\(\)\)/);
+  assert.match(fridayNightRelease, /REPROCESSAMENTO_AUTORIZADO_OPERACAO_LIBERADA/);
 });

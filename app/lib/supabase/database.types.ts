@@ -3360,6 +3360,7 @@ export type Database = {
           qualidade_atendimento_nota: number | null
           qualidade_atendimento_resumo: string | null
           telefone: string | null
+          temperatura: string | null
           ultima_acao_confirmada_em: string | null
           ultima_acao_fonte: string | null
           ultima_interacao_em: string | null
@@ -3393,6 +3394,7 @@ export type Database = {
           qualidade_atendimento_nota?: number | null
           qualidade_atendimento_resumo?: string | null
           telefone?: string | null
+          temperatura?: string | null
           ultima_acao_confirmada_em?: string | null
           ultima_acao_fonte?: string | null
           ultima_interacao_em?: string | null
@@ -3426,6 +3428,7 @@ export type Database = {
           qualidade_atendimento_nota?: number | null
           qualidade_atendimento_resumo?: string | null
           telefone?: string | null
+          temperatura?: string | null
           ultima_acao_confirmada_em?: string | null
           ultima_acao_fonte?: string | null
           ultima_interacao_em?: string | null
@@ -3735,6 +3738,9 @@ export type Database = {
           qualidade_resumo: string | null
           resumo: string
           status: string
+          temperatura_confianca: number | null
+          temperatura_evidencias: Json
+          temperatura_sugerida: string | null
           versao_base: number
         }
         Insert: {
@@ -3758,6 +3764,9 @@ export type Database = {
           qualidade_resumo?: string | null
           resumo: string
           status: string
+          temperatura_confianca?: number | null
+          temperatura_evidencias?: Json
+          temperatura_sugerida?: string | null
           versao_base: number
         }
         Update: {
@@ -3781,6 +3790,9 @@ export type Database = {
           qualidade_resumo?: string | null
           resumo?: string
           status?: string
+          temperatura_confianca?: number | null
+          temperatura_evidencias?: Json
+          temperatura_sugerida?: string | null
           versao_base?: number
         }
         Relationships: [

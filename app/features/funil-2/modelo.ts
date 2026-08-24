@@ -13,6 +13,11 @@ export const ETAPAS_FUNIL2 = [
 ] as const;
 
 export type EtapaFunil2 = string;
+export type TemperaturaLead = "frio" | "morno" | "quente" | "negociando";
+
+export function rotuloTemperatura(temperatura: TemperaturaLead | null | undefined) {
+  return temperatura ? ({ frio: "Frio", morno: "Morno", quente: "Quente", negociando: "Negociando" } as const)[temperatura] : null;
+}
 
 export type EtapaConfigFunil2 = {
   codigo: string;
@@ -149,6 +154,7 @@ export type LeadFunil2 = {
   tags?: TagLeadFunil2[];
   etapa: EtapaFunil2;
   momento_codigo: string;
+  temperatura: TemperaturaLead | null;
   acao_codigo: string;
   acao_rotulo: string;
   proxima_acao_em: string;

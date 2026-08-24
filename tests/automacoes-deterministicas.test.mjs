@@ -132,6 +132,13 @@ const campaignApproaches = readFileSync(
   ),
   'utf8',
 );
+const mirunaWhatsappMp4 = readFileSync(
+  new URL(
+    '../supabase/migrations/20260822025000_miruna_mp4_whatsapp.sql',
+    import.meta.url,
+  ),
+  'utf8',
+);
 const weekendPresence = readFileSync(
   new URL(
     '../supabase/migrations/20260822012000_visita_pendente_retorna_segunda.sql',
@@ -144,6 +151,80 @@ const weekdayVisitFeedback = readFileSync(
     '../supabase/migrations/20260822012500_feedback_visita_ativo_dias_uteis.sql',
     import.meta.url,
   ),
+  'utf8',
+);
+const recoveryVersionGuard = readFileSync(
+  new URL(
+    '../supabase/migrations/20260822160000_bloquear_recuperacao_anterior_ao_envio_automatico.sql',
+    import.meta.url,
+  ),
+  'utf8',
+);
+const resilientMessageTransport = readFileSync(
+  new URL(
+    '../supabase/migrations/20260822163000_transporte_video_tolerante_a_instabilidade.sql',
+    import.meta.url,
+  ),
+  'utf8',
+);
+const operationalNotifications = readFileSync(
+  new URL(
+    '../supabase/migrations/20260822182000_notificacoes_operacionais_deterministicas.sql',
+    import.meta.url,
+  ),
+  'utf8',
+);
+const saraRealityTemperature = readFileSync(
+  new URL(
+    '../supabase/migrations/20260822190000_sara_realidade_e_temperatura.sql',
+    import.meta.url,
+  ),
+  'utf8',
+);
+const saraNotificationVocabulary = readFileSync(
+  new URL(
+    '../supabase/migrations/20260824100000_corrigir_tipos_notificacao_sara.sql',
+    import.meta.url,
+  ),
+  'utf8',
+);
+const saraIdempotentNotification = readFileSync(
+  new URL(
+    '../supabase/migrations/20260824101500_sara_notificacao_condicao_idempotente.sql',
+    import.meta.url,
+  ),
+  'utf8',
+);
+const modularNotificationDiagnostics = readFileSync(
+  new URL(
+    '../supabase/migrations/20260824102000_diagnostico_notificacao_modular.sql',
+    import.meta.url,
+  ),
+  'utf8',
+);
+const saraNotificationParentheses = readFileSync(
+  new URL(
+    '../supabase/migrations/20260824102500_parenteses_condicao_notificacao_sara.sql',
+    import.meta.url,
+  ),
+  'utf8',
+);
+const saraNotificationTextParentheses = readFileSync(
+  new URL(
+    '../supabase/migrations/20260824103000_parenteses_texto_notificacao_sara.sql',
+    import.meta.url,
+  ),
+  'utf8',
+);
+const centralCampaignsSara = readFileSync(
+  new URL(
+    '../supabase/migrations/20260824143230_central_deterministica_campanhas_sara.sql',
+    import.meta.url,
+  ),
+  'utf8',
+);
+const iaRouter = readFileSync(
+  new URL('../supabase/functions/ia-router/index.ts', import.meta.url),
   'utf8',
 );
 const entrada = readFileSync(
@@ -159,6 +240,20 @@ const publicWebhook = readFileSync(
 );
 const dapi = readFileSync(
   new URL('../supabase/functions/dapi-webhook/index.ts', import.meta.url),
+  'utf8',
+);
+const confirmedMessaging = readFileSync(
+  new URL(
+    '../supabase/migrations/20260822020000_motor_mensagens_confirmacao_webhook.sql',
+    import.meta.url,
+  ),
+  'utf8',
+);
+const confirmedMessageContinuation = readFileSync(
+  new URL(
+    '../supabase/migrations/20260822021500_motor_mensagem_continuacao_confirmada.sql',
+    import.meta.url,
+  ),
   'utf8',
 );
 const sara = readFileSync(
@@ -374,7 +469,7 @@ test('Sara valida evidência por ID real da mensagem do cliente', () => {
   assert.match(sara, /evidencia_ids/);
   assert.match(sara, /entradasPorId/);
   assert.match(sara, /normalizarEvidencia/);
-  assert.match(sara, /contrato:"evidencia-id-v3-recorte"/);
+  assert.match(sara, /contrato:"evidencia-id-v5-revisao-segura"/);
   assert.match(sara, /Nunca use ID de CORRETOR/);
   assert.match(saraConversationCutoff, /v_lead\.historico_completo/);
   assert.match(saraConversationCutoff, /coalesce\(wm\.enviado_em,wm\.criado_em\)>=v_lead\.corte_conversa_em/);
@@ -393,6 +488,25 @@ test('envio alterna abordagens no próprio módulo e usa somente a instância do
   assert.doesNotMatch(groupedApproachSend, /motor_roleta_transferir_contagem/);
   assert.match(isolatedSend, /motor_mensagem_partes/);
   assert.match(isolatedSend, /AUTOMATION_RETRY: MESSAGE_SEND_FAILED/);
+});
+
+test('mensagem só libera a próxima parte após confirmação real da D-API', () => {
+  assert.match(confirmedMessaging, /status in \('pendente','processando','aceita','enviada','entregue','lida','erro','erro_incerto'\)/);
+  assert.match(confirmedMessaging, /aceita pela D-API; aguardando confirmacao messages\.sent/);
+  assert.match(confirmedMessaging, /p\.parte=v_parte\.parte\+1/);
+  assert.match(confirmedMessaging, /p\.status not in \('enviada','entregue','lida'\)/);
+  assert.match(confirmedMessaging, /resultado incerto; nao sera repetida automaticamente/);
+  assert.match(dapi, /normalizedEvent === "messages\.sent"/);
+  assert.match(dapi, /motor_confirmar_mensagem_evento/);
+  assert.match(dapi, /p_status: "enviada"/);
+  assert.match(dapi, /nextStatus === "enviado"[\s\S]*?"enviada"/);
+  assert.match(dapi, /nextStatus === "lido"[\s\S]*?"lida"/);
+  assert.match(dapi, /p_status: motorEventStatus/);
+  assert.match(confirmedMessageContinuation, /private\.motor_continuar_apos_mensagem/);
+  assert.match(confirmedMessageContinuation, /continuacao_bloco_id/);
+  assert.match(confirmedMessageContinuation, /__motor_next_block_id/);
+  assert.match(confirmedMessageContinuation, /aguardando confirmacao da mensagem/);
+  assert.match(confirmedMessageContinuation, /v_ultima\.continuacao_em is not null/);
 });
 
 test('entrada materializa o contato e operações de campos não criam lead', () => {
@@ -506,6 +620,14 @@ test('Miruna publica um único bloco com o grupo e alternância igual', () => {
   assert.match(campaignApproaches, /Entrada Adelmo[\s\S]*onlineOnly\}','true'/);
 });
 
+test('abordagens Miruna usam MP4 compatível com WhatsApp', () => {
+  assert.match(mirunaWhatsappMp4, /miruna-01-whatsapp-720p\.mp4/);
+  assert.match(mirunaWhatsappMp4, /miruna-02-whatsapp-720p\.mp4/);
+  assert.match(mirunaWhatsappMp4, /metadata->>'mimetype'='video\/mp4'/);
+  assert.match(mirunaWhatsappMp4, /where id in \(18,19,20\) and grupo='Miruna 603'/);
+  assert.match(mirunaWhatsappMp4, /case when id=19 then v_new_02 else v_new_01 end/);
+});
+
 test('fim de semana ignora presenca e visita pendente; segunda restaura as regras', () => {
   assert.match(weekendPresence, /v_fim_de_semana/);
   assert.match(weekendPresence, /status_dapi='connected'/);
@@ -520,4 +642,130 @@ test('fim de semana ignora presenca e visita pendente; segunda restaura as regra
     'a excecao de fim de semana precisa acontecer antes do bloqueio por visita',
   );
   assert.match(weekdayVisitFeedback, /set exigir_feedback_visita=true/);
+});
+
+test('recuperacao de abordagem respeita o mapa da execucao original', () => {
+  assert.match(recoveryVersionGuard, /__motor_recovery_of/);
+  assert.match(recoveryVersionGuard, /__motor_recovery_card_of/);
+  assert.match(recoveryVersionGuard, /original\.automacao_versao_id/);
+  assert.match(recoveryVersionGuard, /bloco->>'type'='send-approach'/);
+  assert.match(recoveryVersionGuard, /recuperacao_fora_da_versao_original/);
+});
+
+test('instabilidade do video preserva a distribuicao e recupera sem duplicar', () => {
+  assert.match(resilientMessageTransport, /motor_resolver_resultados_incertos/);
+  assert.match(resilientMessageTransport, /reconciliacao-resultado-incerto/);
+  assert.match(resilientMessageTransport, /verificacoes_confirmacao/);
+  assert.match(resilientMessageTransport, /from_me/);
+  assert.match(resilientMessageTransport, /envio ausente no historico confirmado/);
+  assert.match(resilientMessageTransport, /\(408\|409\|425\|429\|5\[0-9\]\[0-9\]\)\(:\|\$\)/);
+  assert.match(resilientMessageTransport, /retentativas_transporte<5/);
+});
+
+test('notificacoes operacionais usam resultados explicitos e nao concorrem com a Sara', () => {
+  assert.match(operationalNotifications, /Novo lead: \{nome\} → \{corretor\}/);
+  assert.match(operationalNotifications, /Lead respondeu: \{nome\}/);
+  assert.match(operationalNotifications, /somenteAiEtapaAlteradaPara/);
+  assert.match(operationalNotifications, /__ai_etapa_anterior/);
+  assert.match(operationalNotifications, /__ai_etapa_nova/);
+  assert.match(operationalNotifications, /CADENCIA_SEM_RESPOSTA[\s\S]*tentando_contato/);
+  assert.match(operationalNotifications, /ultima_interacao<=now\(\)-interval '10 minutes'/);
+  assert.doesNotMatch(operationalNotifications, /perform\s+public\.f2_sara_aplicar_analise/);
+});
+
+test('Sara só classifica atendimento e temperatura com realidade da conversa', () => {
+  assert.match(sara, /temperatura_evidencia_ids/);
+  assert.match(sara, /ia_temperatura_sem_evidencia_cliente/);
+  assert.match(sara, /Mensage?m automática[\s\S]*nunca tornam um lead quente/i);
+  assert.match(saraRealityTemperature, /not v_respondeu[\s\S]*CADENCIA_SEM_RESPOSTA/);
+  assert.match(saraRealityTemperature, /v_m\.etapa<>'tentando_contato'/);
+  assert.match(saraRealityTemperature, /p_temperatura in \('quente','negociando'\)[\s\S]*0\.85/);
+  assert.match(saraRealityTemperature, /temperatura='frio'/);
+  assert.match(saraRealityTemperature, /somenteAiTemperaturaAlteradaPara/);
+  assert.match(builder, /aplicarTemperatura/);
+});
+
+test('notificacoes da Sara pertencem ao vocabulario aceito pelo banco', () => {
+  assert.match(saraNotificationVocabulary, /ncrm_notificacao_tipo_check/);
+  assert.match(saraNotificationVocabulary, /'lead_em_atendimento'/);
+  assert.match(saraNotificationVocabulary, /'lead_quente'/);
+  assert.match(saraNotificationVocabulary, /insert into public\.ncrm_notificacao_tipos_ativos/);
+});
+
+test('reuso idempotente da Sara nao inventa uma nova mudanca nem novo aviso', () => {
+  assert.match(saraIdempotentNotification, /'aplicado',false,'idempotente',true/);
+  assert.match(saraIdempotentNotification, /coalesce\(p_lead->>'__ai_aplicado','false'\)='true'/);
+  assert.match(saraIdempotentNotification, /Aviso ignorado: a etapa nao mudou/);
+  assert.match(saraIdempotentNotification, /Aviso ignorado: a temperatura nao mudou/);
+});
+
+test('falha de notificacao preserva codigo e contexto no log do modulo', () => {
+  assert.match(modularNotificationDiagnostics, /get stacked diagnostics/);
+  assert.match(modularNotificationDiagnostics, /pg_exception_context/);
+  assert.match(modularNotificationDiagnostics, /SQLSTATE/);
+});
+
+test('condicoes de notificacao parentizam operadores JSON explicitamente', () => {
+  assert.ok(saraNotificationParentheses.includes(
+    "coalesce((p_lead->>'__ai_etapa_nova'),'')=(ao->>'somenteAiEtapaAlteradaPara')",
+  ));
+  assert.ok(saraNotificationParentheses.includes(
+    "coalesce((p_lead->>'__ai_temperatura_nova'),'')=(ao->>'somenteAiTemperaturaAlteradaPara')",
+  ));
+});
+
+test('texto do aviso nao e interpretado como concatenacao JSON', () => {
+  assert.ok(saraNotificationTextParentheses.includes(
+    "'Aviso ignorado: a etapa nao mudou para '||(ao->>'somenteAiEtapaAlteradaPara')",
+  ));
+  assert.ok(saraNotificationTextParentheses.includes(
+    "'Aviso ignorado: a temperatura nao mudou para '||(ao->>'somenteAiTemperaturaAlteradaPara')",
+  ));
+});
+
+test('captacao nova usa um unico preflight e preserva idempotencia da entrada', () => {
+  assert.match(centralCampaignsSara, /motor_abordagem_preflight_execucao/);
+  assert.match(centralCampaignsSara, /position\('ncrm_bloqueia_abordagem_automatica'/);
+  assert.match(centralCampaignsSara, /captacao nova/);
+  assert.doesNotMatch(centralCampaignsSara, /drop function public\.motor_enfileirar_idempotente/);
+});
+
+test('tags de produto sao substituidas no bloco sem apagar tags operacionais', () => {
+  assert.match(centralCampaignsSara, /'remove-tag-action'.*'Aquário'/s);
+  assert.match(centralCampaignsSara, /'remove-tag-action'.*'GRC \| CARINAS'/s);
+  assert.match(centralCampaignsSara, /'remove-tag-action'.*'COMPOSITE \| NR'/s);
+  assert.match(centralCampaignsSara, /case when r\.id=65 then 'Adelmo 2100' else 'MIRUNA' end/);
+  assert.doesNotMatch(centralCampaignsSara, /'Respondeu Primeira'.*remove-tag-action/s);
+  assert.doesNotMatch(centralCampaignsSara, /'Visita Realizada'.*remove-tag-action/s);
+});
+
+test('regra diaria da Sara e visivel, configuravel e deduplicada por card', () => {
+  assert.match(centralCampaignsSara, /'intervaloHoras',24/);
+  assert.match(centralCampaignsSara, /'atrasoInteracaoMinutos',10/);
+  assert.match(centralCampaignsSara, /'limitePorCiclo',12/);
+  assert.match(centralCampaignsSara, /'__sara_daily_key'/);
+  assert.match(centralCampaignsSara, /t->'options'/);
+  assert.doesNotMatch(centralCampaignsSara, /cron\.schedule/);
+  assert.match(builder, /data-tk="intervaloHoras"/);
+  assert.match(builder, /data-tk="atrasoInteracaoMinutos"/);
+  assert.match(builder, /data-tk="limitePorCiclo"/);
+});
+
+test('os fluxos chamam a Sara real e falham fechados sem alterar o lead', () => {
+  assert.match(centralCampaignsSara, /jsonb_set\(b,'\{options,agenteId\}','16'::jsonb,true\)/);
+  assert.match(centralCampaignsSara, /modelo='gpt-5\.6-sol'/);
+  assert.match(centralCampaignsSara, /'reasoning_effort','low'/);
+  assert.match(sara, /evidencia-id-v5-revisao-segura/);
+  assert.match(sara, /confianca:0/);
+  assert.match(sara, /cadastro foi preservado para revisao humana/);
+  assert.match(iaRouter, /"gpt-5\.6-sol":\{in:4\.00,out:20\.00\}/);
+  assert.match(iaRouter, /body\.reasoning_effort/);
+  assert.match(sara, /disable_tools:true/);
+  assert.match(iaRouter, /b\.disable_tools===true \? \[\]/);
+});
+
+test('feedback de visita sai sem desligar presenca ou DAPI', () => {
+  assert.match(centralCampaignsSara, /set exigir_feedback_visita=false/);
+  assert.doesNotMatch(centralCampaignsSara, /presenca_ttl_min\s*=/);
+  assert.doesNotMatch(centralCampaignsSara, /status_dapi\s*=/);
 });
