@@ -13,7 +13,7 @@ test("Central de Comando é uma rota interna e fica restrita à gestão", () => 
   assert.equal(podeVer("Central de Comando", { role: "admin", permissoes: null, carregado: true }), true);
   assert.equal(podeVer("Central de Comando", { role: "gestor", permissoes: { dashboard: ["ver"] }, carregado: true }), true);
   assert.equal(podeVer("Central de Comando", { role: "corretor", permissoes: { dashboard: ["ver"] }, carregado: true }), false);
-  assert.match(wrapper, /src="\/central-comando\/prototype\.html"/);
+  assert.match(wrapper, /src="\/central-comando\/prototype\.html\?v=20260824-6"/);
   assert.doesNotMatch(wrapper, /target=|window\.open/);
 });
 
