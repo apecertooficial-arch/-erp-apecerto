@@ -76,10 +76,19 @@ export async function GET(request: Request) {
       return s + (nome.includes("visita") ? 8 : nome.includes("whatsapp") ? 5 : nome.includes("tarefa") || nome.includes("mover") ? 4 : 2);
     }, 0);
   }, 0);
-  type RpcResult = { data: unknown; error: { message: string } | null };
-  const looseRpc = auth.supabase.rpc as unknown as (fn: string, args: Record<string, unknown>) => PromiseLike<RpcResult>;
-  const pilotoResp = await looseRpc("sara_piloto_resumo", { p_agente_id: agente.id });
-  const piloto = pilotoResp.error ? null : pilotoResp.data;
+  let piloto: { ok: boolean; participantes: number; ativos: number; execucoes_30d: number; jornadas: string[] } | null = null;
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+  if (supabaseUrl && publishableKey) {
+    const pResp = await fetch(`${supabaseUrl}/rest/v1/sara_piloto_participantes?select=usuario_id,ativo`, {
+      headers: { Authorization:`Bearer ${auth.token}`,apikey:publishableKey },cache:"no-store",
+    });
+    if (pResp.ok) {
+      const rows = await pResp.json() as Array<{ usuario_id: string; ativo: boolean }>;
+      const ativos = new Set(rows.filter((p) => p.ativo).map((p) => p.usuario_id));
+      piloto = { ok:true,participantes:rows.length,ativos:ativos.size,execucoes_30d:rec.filter((e) => e.usuario && ativos.has(e.usuario)).length,jornadas:["Localizar lead","Agenda completa","Direção do dia"] };
+    }
+  }
 
   // latest evaluation per cenario
   const latest = new Map<number, { cenario_id: number; agente_versao: number; nota_auto: number; aprovado: boolean; regras_descumpridas: string[] }>();
