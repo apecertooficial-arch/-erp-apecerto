@@ -19,7 +19,10 @@ const captorIntegrityMigration = await readFile("supabase/migrations/20260820223
 
 test("catálogo separa contagem de empreendimentos e imóveis", () => {
   assert.match(catalog, /buildingCount: visible\.filter\(\(product\) => !product\.standalone\)\.length/);
-  assert.match(productsUi, /<b>\{products\.length\}<\/b><em>No catálogo<\/em>/);
+  assert.match(productsUi, /const commercialUnits = products\.filter/);
+  assert.match(productsUi, /<b>\{commercialUnits\.length\}<\/b><em>No catálogo<\/em>/);
+  assert.match(productsUi, /const publishedCount = commercialUnits\.filter/);
+  assert.match(productsUi, /const offlineCount = commercialUnits\.filter/);
   assert.match(productsUi, /\{unitProducts\.length\} unidades encontradas/);
 });
 
