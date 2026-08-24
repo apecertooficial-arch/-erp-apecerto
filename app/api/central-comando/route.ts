@@ -47,10 +47,11 @@ export async function GET(request: Request) {
     rpc: (name: string, args: Record<string, unknown>) => Promise<RpcResult>;
   }).rpc.bind(auth.supabase);
 
-  const [central, tracking, attribution, media, ga4, alertActions] = await Promise.all([
+  const [central, tracking, attribution, quality, media, ga4, alertActions] = await Promise.all([
     rpc("central_comando_dashboard_v2", { p_days: days }),
     rpc("tracking_360_dashboard", { p_days: days }),
     rpc("tracking_360_attribution_scope", { p_days: days }),
+    rpc("tracking_360_quality", { p_days: days }),
     auth.supabase.functions
       .invoke("marketing-ads-read", { body: { days } })
       .catch(() => ({ data: null, error: { message: "Leitura de mídia indisponível." } })),
@@ -58,7 +59,7 @@ export async function GET(request: Request) {
     loose.from("central_alerta_acoes").select("alerta_chave,responsavel,prazo,visto,resolvido,atualizado_em"),
   ]);
 
-  const firstError = central.error || tracking.error || attribution.error;
+  const firstError = central.error || tracking.error || attribution.error || quality.error;
   if (firstError) {
     const forbidden = /forbidden|permission|permissão|acesso_negado|42501/i.test(firstError.message ?? "");
     return Response.json(
@@ -69,7 +70,7 @@ export async function GET(request: Request) {
 
   return Response.json({
     central: central.data,
-    tracking: { ...(tracking.data as Record<string, unknown>), attribution: attribution.data },
+    tracking: { ...(tracking.data as Record<string, unknown>), attribution: attribution.data, quality: quality.data },
     media: media.data ?? {
       ok: false,
       meta: { status: "indisponivel", motivo: media.error?.message ?? "Leitura indisponível.", anuncios: [] },

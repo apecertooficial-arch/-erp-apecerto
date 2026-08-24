@@ -125,6 +125,13 @@ const autonomyFinal = readFileSync(
   ),
   'utf8',
 );
+const trackingAttributionFinal = readFileSync(
+  new URL(
+    '../supabase/migrations/20260824130000_tracking_attribution_final_10.sql',
+    import.meta.url,
+  ),
+  'utf8',
+);
 const campaignApproaches = readFileSync(
   new URL(
     '../supabase/migrations/20260821235500_miruna_abordagens_deterministicas_e_adelmo_presenca.sql',
@@ -545,6 +552,17 @@ test('rastreamento Meta só existe como operação explícita do módulo de camp
   assert.match(autonomyFinal, /'json-http-request-trigger','site-lead-created-trigger'/);
   assert.match(autonomyFinal, /Existe entrada ativa sem o modulo explicito de rastreamento Meta/);
   assert.match(autonomyFinal, /Rastreamento Meta executado somente pelo bloco de Campos/);
+});
+
+test('rastreamento do site liga sessão ao CRM somente pela operação explícita', () => {
+  assert.match(builder, /registrar rastreamento do site/);
+  assert.match(builder, /sync-site-attribution-field-operation/);
+  assert.match(trackingAttributionFinal, /private\.motor_atribuicao_site_por_campos/);
+  assert.match(trackingAttributionFinal, /v_name='sync-site-attribution-field-operation'/);
+  assert.match(trackingAttributionFinal, /where a\.id=42 and a\.ativa is true/);
+  assert.match(trackingAttributionFinal, /Atribuicao do site executada somente pelo bloco de Campos/);
+  assert.doesNotMatch(trackingAttributionFinal, /create trigger/);
+  assert.doesNotMatch(trackingAttributionFinal, /cron\.schedule/);
 });
 
 test('runtime rejeita snapshot legado e isola confirmação concorrente de envio', () => {
