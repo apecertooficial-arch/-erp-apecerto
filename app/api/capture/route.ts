@@ -319,7 +319,6 @@ export async function POST(request: Request) {
     cidade: condominium.city.trim(), uf: condominium.state.trim() || "SP",
     preco: propertyPriceCheck.value, condominio_valor: property.condominiumFee, iptu: property.propertyTax, outros_custos: property.otherCosts,
     area_util: property.area, dormitorios: property.bedrooms, suites: property.suites, banheiros: property.bathrooms, vagas: property.parking,
-    proprietario_nome: owner?.name.trim() || null, proprietario_tel: owner?.phone.trim() || null, proprietario_email: owner?.email.trim().toLowerCase() || null,
     acesso_tipo: access.type, acesso_codigo: access.type === "chave_digital" ? access.code.trim() : null,
     acesso_instrucoes: access.instructions.trim(), captado_por_usuario: authData.user.id,
     captador_corretor_id: broker?.id ?? null, captacao_habilitada: true, rascunho: true, publicado: false,

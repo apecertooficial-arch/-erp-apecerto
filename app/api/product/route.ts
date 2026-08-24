@@ -9,6 +9,7 @@ import {
 } from "../../features/products/quality";
 import { isProductManagerRole } from "../../features/products/access";
 import { isProductPublishedOnSite } from "../../features/products/publication";
+import { canViewUnitOwner } from "../../features/products/product-domain";
 
 export const dynamic = "force-dynamic";
 
@@ -122,19 +123,32 @@ export async function GET(request: Request) {
   const corretorNameById = new Map((corretoresList ?? []).map((c) => [c.id, c.nome]));
   const captadorCorretorId = (data as { captador_corretor_id?: number | null }).captador_corretor_id ?? null;
   const capturedByName: string | null = captadorCorretorId ? (corretorNameById.get(captadorCorretorId) ?? null) : null;
+  const unitIds = (data.unidades ?? []).map((unit) => unit.id);
+  const [{ data: privateOwners }, { data: ownerStatuses }] = await Promise.all([
+    auth.supabase.rpc("produto_unidades_proprietarios_ler", { p_empreendimento_ids: [id] }),
+    unitIds.length
+      ? auth.supabase.rpc("produto_unidades_proprietario_status", { p_unidade_ids: unitIds })
+      : Promise.resolve({ data: [] }),
+  ]);
+  const privateOwnerByUnit = new Map((privateOwners ?? []).map((owner) => [owner.unidade_id, owner]));
+  const ownerCompleteByUnit = new Map((ownerStatuses ?? []).map((owner) => [owner.unidade_id, owner.completo]));
   const unidadesEnriched = (data.unidades ?? []).map((u) => ({ ...u, captador_nome: corretorNameById.get((u as { captador_corretor_id?: number | null }).captador_corretor_id ?? -1) ?? null }));
   const mine = (data as { captado_por_usuario?: string | null }).captado_por_usuario === auth.user.id;
   const { data: meuPerfilGet } = await auth.supabase.from("usuarios").select("role").eq("id", auth.user.id).maybeSingle();
   const gerenciaProdutosGet = isProductManagerRole((meuPerfilGet as { role?: string } | null)?.role);
   const podeEditar = gerenciaProdutosGet || mine;
   // Todos os corretores autenticados podem consultar a ficha operacional completa.
-  // Somente os dados do proprietário continuam restritos a captador e gestão.
+  // Somente o captador da unidade recebe nome e contato do proprietário.
   const unidadesVisiveis = unidadesEnriched.map((u) => {
-    const unidadeMinha = Boolean(broker?.id && (u as { captador_corretor_id?: number | null }).captador_corretor_id === broker.id);
+    const unidadeMinha = canViewUnitOwner({
+      viewerBrokerId: broker?.id,
+      captorBrokerId: (u as { captador_corretor_id?: number | null }).captador_corretor_id,
+    });
     const podeEditarUnidade = gerenciaProdutosGet || unidadeMinha;
-    const ownerComplete = Boolean(u.proprietario_nome && u.proprietario_contato);
+    const privateOwner = privateOwnerByUnit.get(u.id);
+    const ownerComplete = ownerCompleteByUnit.get(u.id) ?? Boolean(u.proprietario_nome && u.proprietario_contato);
     return unidadeMinha
-      ? { ...u, mine: true, pode_editar: podeEditarUnidade, pode_ver_proprietario: true, owner_complete: ownerComplete }
+      ? { ...u, proprietario_nome: privateOwner?.proprietario_nome ?? u.proprietario_nome, proprietario_contato: privateOwner?.proprietario_contato ?? u.proprietario_contato, mine: true, pode_editar: podeEditarUnidade, pode_ver_proprietario: true, owner_complete: ownerComplete }
       : { ...u, mine: false, pode_editar: podeEditarUnidade, pode_ver_proprietario: false, owner_complete: ownerComplete, proprietario_nome: null, proprietario_contato: null };
   });
   const produtoDeTerceiro = data.origem === "terceiros";
@@ -147,7 +161,7 @@ export async function GET(request: Request) {
     units: data.origem === "terceiros" || units.length > 0,
   };
   if (data.origem === "terceiros") {
-    checks.owner = Boolean(data.proprietario_id || (data.proprietario_nome && data.proprietario_tel && data.proprietario_email));
+    checks.owner = Boolean(data.proprietario_id);
     checks.access = Boolean(data.acesso_tipo && data.acesso_instrucoes && (data.acesso_tipo !== "chave_digital" || data.acesso_codigo));
   }
   const sitePublished = isProductPublishedOnSite({
@@ -157,7 +171,7 @@ export async function GET(request: Request) {
     status: data.status,
     availableApprovedUnits: publishedAvailableUnits.length,
   });
-  return Response.json({ product: { ...data, ...(podeVerProprietarioProduto ? {} : { proprietarios: null, proprietario_nome: null, proprietario_tel: null, proprietario_email: null }), site_published: sitePublished, midias: media, unidades: unidadesVisiveis, captado_por_nome: capturedByName, mine, pode_editar: podeEditar, pode_ver_proprietario: podeVerProprietarioProduto, summary_price: summaryPrice, summary_area: summaryArea, is_favorite: Boolean(favorite), leads: (leadOptions ?? []).map((lead) => ({ ...lead, linked: linkedIds.has(lead.id) })), quality, completion: { checks, completed: Object.values(checks).filter(Boolean).length, total: Object.keys(checks).length } } });
+  return Response.json({ product: { ...data, proprietarios: podeVerProprietarioProduto ? data.proprietarios : null, proprietario_nome: null, proprietario_tel: null, proprietario_email: null, site_published: sitePublished, midias: media, unidades: unidadesVisiveis, captado_por_nome: capturedByName, mine, pode_editar: podeEditar, pode_ver_proprietario: podeVerProprietarioProduto, summary_price: summaryPrice, summary_area: summaryArea, is_favorite: Boolean(favorite), leads: (leadOptions ?? []).map((lead) => ({ ...lead, linked: linkedIds.has(lead.id) })), quality, completion: { checks, completed: Object.values(checks).filter(Boolean).length, total: Object.keys(checks).length } } });
 }
 
 export async function PATCH(request: Request) {
@@ -372,9 +386,10 @@ export async function PATCH(request: Request) {
     if (!UUID.test(unidadeId)) return Response.json({ error: "Unidade inválida." }, { status: 400 });
     const approve = body.approve === true;
     if (approve) {
-      const [{ data: unitToApprove, error: unitReadError }, mediaCount] = await Promise.all([
+      const [{ data: unitToApprove, error: unitReadError }, mediaCount, ownerStatus] = await Promise.all([
         auth.supabase.from("unidades").select("numero,tipologia,area_m2,valor_tabela,valor_promo,proprietario_nome,proprietario_contato,acesso_tipo,acesso_codigo,acesso_instrucoes").eq("id", unidadeId).eq("empreendimento_id", id).maybeSingle(),
         auth.supabase.from("midias").select("id", { count: "exact", head: true }).eq("unidade_id", unidadeId).eq("tipo", "foto"),
+        auth.supabase.rpc("produto_unidades_proprietario_status", { p_unidade_ids: [unidadeId] }),
       ]);
       if (unitReadError || !unitToApprove) return Response.json({ error: unitReadError?.message ?? "Unidade não encontrada." }, { status: 404 });
       const blocking: string[] = [];
@@ -387,7 +402,8 @@ export async function PATCH(request: Request) {
         currentPurpose,
       );
       if (pricePerSquareMeter.error) blocking.push(pricePerSquareMeter.error);
-      if (!unitToApprove.proprietario_nome || !unitToApprove.proprietario_contato) blocking.push("Proprietário e contato");
+      const ownerComplete = ownerStatus.data?.[0]?.completo ?? Boolean(unitToApprove.proprietario_nome && unitToApprove.proprietario_contato);
+      if (!ownerComplete) blocking.push("Proprietário e contato");
       if (!unitToApprove.acesso_tipo || !unitToApprove.acesso_instrucoes || (unitToApprove.acesso_tipo === "chave_digital" && !unitToApprove.acesso_codigo)) blocking.push("Instruções de acesso");
       if ((mediaCount.count ?? 0) < 1) blocking.push("Ao menos uma foto da unidade");
       if (blocking.length) return Response.json({ error: `Complete a unidade antes de aprovar: ${blocking.join("; ")}.`, code: "UNIT_NOT_READY", blocking }, { status: 422 });
@@ -643,7 +659,6 @@ export async function PATCH(request: Request) {
       }
       const { error: ownerError } = await auth.supabase.from("proprietarios").update(owner).eq("id", product.proprietario_id);
       if (ownerError) return Response.json({ error: ownerError.message }, { status: 502 });
-      await auth.supabase.from("empreendimentos").update({ proprietario_nome: owner.nome ?? null, proprietario_email: owner.email ?? null, proprietario_tel: owner.telefone ?? null }).eq("id", id);
     } else {
       const ownerInput = body.owner as Record<string, unknown>;
       const nome = typeof ownerInput.nome === "string" ? ownerInput.nome.trim() : "";
@@ -653,7 +668,7 @@ export async function PATCH(request: Request) {
         if (!nome || !email || !telefone) return Response.json({ error: "Preencha nome, e-mail e telefone do proprietário." }, { status: 422 });
         const { data: createdOwner, error: ownerError } = await auth.supabase.from("proprietarios").insert({ nome, email, telefone, created_by: auth.user.id }).select("id").single();
         if (ownerError) return Response.json({ error: ownerError.message }, { status: 502 });
-        const { error: linkError } = await auth.supabase.from("empreendimentos").update({ proprietario_id: createdOwner.id, proprietario_nome: nome, proprietario_email: email, proprietario_tel: telefone }).eq("id", id);
+        const { error: linkError } = await auth.supabase.from("empreendimentos").update({ proprietario_id: createdOwner.id }).eq("id", id);
         if (linkError) return Response.json({ error: linkError.message }, { status: 502 });
       }
     }

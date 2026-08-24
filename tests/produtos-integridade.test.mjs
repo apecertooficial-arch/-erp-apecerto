@@ -114,7 +114,8 @@ test("ficha aberta usa o Produtos v3 e mantém a composição aprovada", () => {
 test("corretor vê todas as fotos e dados operacionais, mas não o proprietário alheio", () => {
   assert.match(productApi, /midias: media/);
   assert.doesNotMatch(productApi, /const visibleMedia = media\.filter/);
-  assert.match(productApi, /proprietarios: null, proprietario_nome: null, proprietario_tel: null, proprietario_email: null/);
+  assert.match(productApi, /proprietarios: podeVerProprietarioProduto \? data\.proprietarios : null/);
+  assert.match(productApi, /proprietario_nome: null, proprietario_tel: null, proprietario_email: null/);
   assert.match(productApi, /proprietario_nome: null, proprietario_contato: null/);
   assert.doesNotMatch(productApi, /proprietario_contato: null, acesso_tipo: null/);
   assert.doesNotMatch(productApi, /proprietario_email: null, acesso_tipo: null/);
@@ -198,7 +199,8 @@ test("corretor encontra produtos por vagas e por origem comercial", () => {
   assert.match(productsUi, /Lançamentos/);
   assert.match(productsUi, /Remanescentes/);
   assert.match(productsUi, /Condomínio de referência ainda não vinculado/);
-  assert.match(catalog, /u\.de_terceiros === true \? "terceiros" : ehPronto \? "remanescente" : "lancamento"/);
+  assert.match(catalog, /resolveCommercialOrigin\(\{/);
+  assert.match(catalog, /explicit: originByUnit\.get\(u\.id\) \?\? null/);
 });
 
 test("dados do proprietário da unidade ficam apenas com o captador", () => {

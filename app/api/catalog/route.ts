@@ -2,6 +2,7 @@ import { createServerSupabaseClient } from "../../lib/supabase/server";
 import { assessProductQuality, isPlausibleProductPrice } from "../../features/products/quality";
 import { isProductManagerRole } from "../../features/products/access";
 import { isProductPublishedOnSite } from "../../features/products/publication";
+import { resolveCommercialOrigin } from "../../features/products/product-domain";
 
 export const dynamic = "force-dynamic";
 
@@ -77,6 +78,18 @@ export async function GET(request: Request) {
   const corretorNameById = new Map((corretoresList ?? []).map((c) => [c.id, c.nome]));
   const { data: currentBroker } = await supabase.from("corretores").select("id").eq("usuario_id", authData.user.id).maybeSingle();
   const currentBrokerId = currentBroker?.id ?? null;
+  const { data: qualityRows } = await supabase.rpc("produto_qualidade_fila");
+  const { data: originRows } = await supabase.rpc("produto_unidades_origens");
+  const originByUnit = new Map((originRows ?? []).map((row) => [row.unidade_id, row.origem_comercial]));
+  const qualityQueue = (qualityRows ?? []).map((row) => ({
+    unitId: row.unidade_id,
+    productId: row.empreendimento_id,
+    codigo: row.codigo,
+    numero: row.numero,
+    productName: row.produto_nome,
+    segment: row.origem_comercial,
+    issues: row.problemas,
+  }));
   const catalogIds = (data ?? []).map((item) => item.id);
   const { data: leadLinks } = catalogIds.length
     ? await supabase.from("lead_produtos").select("empreendimento_id").in("empreendimento_id", catalogIds)
@@ -231,7 +244,7 @@ export async function GET(request: Request) {
   if (canApprove) {
     const { data: pu } = await supabase
       .from("unidades")
-      .select("id, numero, tipologia, valor_tabela, valor_promo, empreendimento_id, proprietario_nome, captador_corretor_id, aprovacao, reprovacao_motivo, codigo, empreendimentos(nome)")
+      .select("id, numero, tipologia, valor_tabela, valor_promo, empreendimento_id, captador_corretor_id, aprovacao, reprovacao_motivo, codigo, empreendimentos(nome)")
       .eq("de_terceiros", true).eq("aprovacao", "pendente");
     const unitIds = (pu ?? []).map((u) => u.id);
     const coverByUnit = new Map<string, string | null>();
@@ -244,7 +257,7 @@ export async function GET(request: Request) {
       valor: u.valor_promo ?? u.valor_tabela ?? null,
       empreendimentoId: u.empreendimento_id,
       predio: ((u.empreendimentos as { nome?: string } | null)?.nome) ?? "—",
-      proprietario: u.proprietario_nome,
+      proprietario: null,
       indicador: corretorNameById.get(u.captador_corretor_id ?? -1) ?? null,
       coverUrl: coverByUnit.get(u.id) ?? null,
       approval: u.aprovacao ?? "pendente",
@@ -257,7 +270,7 @@ export async function GET(request: Request) {
   if (currentBrokerId != null) {
     const { data: mineRows } = await supabase
       .from("unidades")
-      .select("id, numero, tipologia, valor_tabela, valor_promo, empreendimento_id, proprietario_nome, captador_corretor_id, aprovacao, reprovacao_motivo, codigo, publicado, disponivel, empreendimentos(nome)")
+      .select("id, numero, tipologia, valor_tabela, valor_promo, empreendimento_id, captador_corretor_id, aprovacao, reprovacao_motivo, codigo, publicado, disponivel, empreendimentos(nome)")
       .eq("de_terceiros", true)
       .eq("captador_corretor_id", currentBrokerId)
       .order("codigo", { ascending: false });
@@ -267,12 +280,17 @@ export async function GET(request: Request) {
       const { data: mineMedia } = await supabase.from("midias").select("unidade_id, storage_path, is_capa, created_at").in("unidade_id", mineIds).eq("tipo", "foto").order("is_capa", { ascending: false }).order("created_at", { ascending: true });
       for (const m of mineMedia ?? []) { const uid = (m as { unidade_id?: string }).unidade_id; if (uid && !coverByMine.has(uid)) coverByMine.set(uid, publicMediaUrl((m as { storage_path: string }).storage_path)); }
     }
+    const mineProductIds = [...new Set((mineRows ?? []).map((u) => u.empreendimento_id))];
+    const { data: privateOwners } = mineProductIds.length
+      ? await supabase.rpc("produto_unidades_proprietarios_ler", { p_empreendimento_ids: mineProductIds })
+      : { data: [] };
+    const privateOwnerByUnit = new Map((privateOwners ?? []).map((owner) => [owner.unidade_id, owner]));
     myUnits = (mineRows ?? []).map((u) => ({
       id: u.id, numero: u.numero, tipologia: u.tipologia,
       valor: u.valor_promo ?? u.valor_tabela ?? null,
       empreendimentoId: u.empreendimento_id,
       predio: ((u.empreendimentos as { nome?: string } | null)?.nome) ?? "—",
-      proprietario: u.proprietario_nome,
+      proprietario: privateOwnerByUnit.get(u.id)?.proprietario_nome ?? null,
       indicador: corretorNameById.get(u.captador_corretor_id ?? -1) ?? null,
       coverUrl: coverByMine.get(u.id) ?? null,
       approval: u.aprovacao ?? "pendente",
@@ -326,7 +344,11 @@ export async function GET(request: Request) {
         capturedBy: corretorNameById.get(u.captador_corretor_id ?? -1) ?? null,
         capturedByScore: u.captador_corretor_id != null ? (captadorScoreById.get(u.captador_corretor_id) ?? null) : null,
         mine: currentBrokerId != null && u.captador_corretor_id === currentBrokerId,
-        segment: u.de_terceiros === true ? "terceiros" : ehPronto ? "remanescente" : "lancamento",
+        segment: resolveCommercialOrigin({
+          explicit: originByUnit.get(u.id) ?? null,
+          thirdParty: u.de_terceiros,
+          buildingStatus: p.status,
+        }),
         condominiumLinked: Boolean(bruto.condominio_id),
         published: Boolean(p.published && u.publicado !== false && unitMediaCount > 0),
       };
@@ -342,6 +364,7 @@ export async function GET(request: Request) {
     qualitySummary,
     pendingUnits,
     myUnits,
+    qualityQueue,
     buildingCount: visible.filter((product) => !product.standalone).length,
     count: catalogFinal.length,
     catalog: catalogFinal,

@@ -9698,6 +9698,7 @@ export type Database = {
           id: string
           numero: string | null
           obs: string | null
+          origem_comercial: string
           proprietario_contato: string | null
           proprietario_nome: string | null
           publicado: boolean
@@ -9723,6 +9724,7 @@ export type Database = {
           id?: string
           numero?: string | null
           obs?: string | null
+          origem_comercial?: string
           proprietario_contato?: string | null
           proprietario_nome?: string | null
           publicado?: boolean
@@ -9748,6 +9750,7 @@ export type Database = {
           id?: string
           numero?: string | null
           obs?: string | null
+          origem_comercial?: string
           proprietario_contato?: string | null
           proprietario_nome?: string | null
           publicado?: boolean
@@ -12169,6 +12172,34 @@ export type Database = {
       produto_excluir: {
         Args: { p_empreendimento_id: string }
         Returns: Json
+      }
+      produto_qualidade_fila: {
+        Args: never
+        Returns: {
+          codigo: string | null
+          empreendimento_id: string
+          numero: string | null
+          origem_comercial: string
+          problemas: string[]
+          produto_nome: string
+          unidade_id: string
+        }[]
+      }
+      produto_unidades_proprietario_status: {
+        Args: { p_unidade_ids: string[] }
+        Returns: { completo: boolean; unidade_id: string }[]
+      }
+      produto_unidades_origens: {
+        Args: never
+        Returns: { origem_comercial: string; unidade_id: string }[]
+      }
+      produto_unidades_proprietarios_ler: {
+        Args: { p_empreendimento_ids: string[] }
+        Returns: {
+          proprietario_contato: string
+          proprietario_nome: string
+          unidade_id: string
+        }[]
       }
       aprovar_solicitacao: { Args: { p_id: string }; Returns: Json }
       aquario_stage_id: { Args: never; Returns: number }
