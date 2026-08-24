@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useId, useState, type ReactNode } from "react";
 import { acaoVisivel, dataCurta, duracao, esperandoPrimeiraChamada, prazoDaAcao, rotuloCadencia, rotuloTemperatura, situacaoPrazo, tentativaAtual, venceHoje, type CandidatoAquarioFunil2, type EtapaConfigFunil2, type EventoFunil2, type LeadFunil2, type MomentoFunil2, type NegociacaoFunil2, type NotaFunil2, type OperacaoConfigFunil2, type SaraStatusFunil2, type TagCatalogoFunil2, type VisitaFunil2 } from "./modelo";
 import { SalesProcessView } from "../sales/SalesProcessWorkspace";
 import { Funil2ConversationDrawer } from "./Funil2ConversationDrawer";
@@ -174,7 +174,11 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
   const leadsNovos = leads.filter((l) => esperandoPrimeiraChamada(l)).length;
   const hojeSaoPaulo = dataIsoSaoPaulo(new Date());
   const visitasDoDia = visitas
-    .filter((v) => dataIsoSaoPaulo(v.inicio_em) === hojeSaoPaulo)
+    .filter((v) => {
+      const aindaExigeAtencao = v.status === "agendada" || v.status === "confirmada";
+      const fichaExiste = leads.some((leadAtual) => leadAtual.id === v.funil_lead_id);
+      return aindaExigeAtencao && fichaExiste && dataIsoSaoPaulo(v.inicio_em) === hojeSaoPaulo;
+    })
     .sort((a, b) => +new Date(a.inicio_em) - +new Date(b.inicio_em));
   const visitasHoje = visitasDoDia.length;
 
@@ -229,8 +233,8 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
       <header className="f2-topo">
         <div className="f2-marca">
           <span className="f2-eyebrow">OPERAÇÃO OFICIAL</span>
-          <h1>Funil 2.0</h1>
-          <p>Carteira dos pipes antigos organizada por etapa, momento, ação e prazo.</p>
+          <h1>CRM</h1>
+          <p>Etapa, momento, ação e prazo em uma única operação.</p>
         </div>
         <div className="f2-topo-acoes">
           <span className="f2-isolado"><i /> Origens preservadas</span>
@@ -248,7 +252,7 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
         <button type="button" className={aba === "leads" ? "ativo" : ""} onClick={() => setAba("leads")}><Icone nome="leads" /> Todos os Leads</button>
         <button type="button" className={aba === "visitas" ? "ativo" : ""} onClick={() => setAba("visitas")}><Icone nome="visitas" /> Visitas</button>
         <button type="button" className={aba === "vendas" ? "ativo" : ""} onClick={() => setAba("vendas")}><Icone nome="vendas" /> Esteira</button>
-        <button type="button" className={aba === "config" ? "ativo" : ""} onClick={() => setAba("config")}><Icone nome="config" /> Configurações</button>
+        <button type="button" className={aba === "config" ? "ativo" : ""} onClick={() => setAba("config")}><Icone nome="config" /> Regras do CRM</button>
         <span>Carteira operacional · Aquário fora da migração</span>
       </nav>
 
@@ -282,14 +286,13 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
                   const cadencia = rotuloCadencia(item);
                   const tentativa = tentativaAtual(item);
                   return <article key={item.id} role="button" tabIndex={0} className={`f2-card ${selecionado === item.id ? "selecionado" : ""}`} onClick={() => setSelecionado(item.id)} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") setSelecionado(item.id); }}>
-                    <div className="f2-card-ident"><i>{iniciais(item.nome)}</i><div><strong>{item.nome}</strong><span>{item.corretor_nome ?? "Sem corretor"}{item.instancia_rotulo ? <em className="f2-instancia" title={`Contato saindo por ${item.instancia_rotulo}`}> · {item.instancia_rotulo}</em> : null}{rotuloTemperatura(item.temperatura) ? <em className="f2-instancia"> · {rotuloTemperatura(item.temperatura)}</em> : null}</span><InteresseLead lead={item} /></div></div>
-                    <div className="f2-card-trio">
-                      <div className="etapa"><span>ETAPA</span><b>{etapa.rotulo}</b></div>
+                    <div className="f2-card-ident"><i>{iniciais(item.nome)}</i><div><strong>{item.nome}</strong><span>{item.corretor_nome ?? "Sem corretor"}{item.instancia_rotulo ? <em className="f2-instancia" title={`Contato saindo por ${item.instancia_rotulo}`}> · {item.instancia_rotulo}</em> : null}{rotuloTemperatura(item.temperatura) ? <em className={`f2-instancia temperatura-${item.temperatura}`}><i /> · {rotuloTemperatura(item.temperatura)}</em> : null}</span><InteresseLead lead={item} /></div></div>
+                    <div className="f2-card-trio f2-card-trio-compacto">
                       <div className="momento"><span>MOMENTO</span><b>{momento?.rotulo ?? item.momento_codigo}</b></div>
                       <div className="acao"><span>{cadencia ? "CADÊNCIA" : "PRÓXIMA AÇÃO"} <em className="f2-em-obra">em implementação</em></span><b>{acaoVisivel(item)}</b></div>
                     </div>
                     <div className={`f2-prazo ${prazo.classe}`}>{prazo.rotulo}</div>
-                    <div className="f2-card-botoes"><button type="button" onClick={(e) => { e.stopPropagation(); setAbrirNoChat(true); setSelecionado(item.id); }}>💬 Conversa</button>{linkWhatsapp(item.telefone) && <a href={linkWhatsapp(item.telefone)!} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}>WhatsApp</a>}<button type="button" className="f2-descartar" onClick={(e) => { e.stopPropagation(); setSelecionado(item.id); setModal("descartar"); }}>Descartar</button><button type="button" className="principal" onClick={(e) => { e.stopPropagation(); setSelecionado(item.id); }}>{tentativa ? `Executar tentativa ${tentativa}` : "Abrir ação"}</button></div>
+                    <div className="f2-card-botoes"><button type="button" onClick={(e) => { e.stopPropagation(); setAbrirNoChat(true); setSelecionado(item.id); }}>💬 Conversa</button><button type="button" className="principal" onClick={(e) => { e.stopPropagation(); setSelecionado(item.id); }}>{tentativa ? `Executar tentativa ${tentativa}` : "Abrir atendimento"}</button></div>
                   </article>;
                 })}
                 {daEtapa.length > 100 && <div className="f2-vazio">Mais {daEtapa.length - 100} lead(s) nesta etapa. Consulte “Todos os Leads”.</div>}
@@ -313,7 +316,7 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
             <button type="button" className={`roxo${filtroDia === "novos" ? " f2-ind-ativo" : ""}`} aria-pressed={filtroDia === "novos"} onClick={() => trocarFiltroDia("novos")}><b>{leadsNovos}</b><span>leads para chamar</span></button>
             <button type="button" className={`verde${filtroDia === "visitas" ? " f2-ind-ativo" : ""}`} aria-pressed={filtroDia === "visitas"} onClick={() => trocarFiltroDia("visitas")}><b>{visitasHoje}</b><span>visitas do dia</span></button>
           </div>
-          <div className="f2-como"><span><i>1</i><b>Siga a ordem</b><small>O primeiro item é o mais urgente.</small></span><span><i>2</i><b>Execute a ação</b><small>WhatsApp, visita, produto ou retorno.</small></span><span><i>3</i><b>Conclua no CRM</b><small>A Sara relê e prepara o próximo passo.</small></span></div>
+          <details className="f2-como-recolhido"><summary>Como usar o Meu Dia</summary><div className="f2-como"><span><i>1</i><b>Siga a ordem</b><small>O primeiro item é o mais urgente.</small></span><span><i>2</i><b>Execute a ação</b><small>WhatsApp, visita, produto ou retorno.</small></span><span><i>3</i><b>Conclua no CRM</b><small>A Sara relê e prepara o próximo passo.</small></span></div></details>
         </section>
         <div className="f2-dia-cab"><div><span className="f2-eyebrow">{mostrandoVisitas ? "AGENDA DO DIA" : "OBRIGAÇÕES ORDENADAS"}</span><h2>Seu dia, sem adivinhação.</h2><p>{filtroDia === "atrasadas" ? "Só o que já passou do prazo, do mais antigo para o mais recente." : `Mostrando ${filtroAtivo.rotulo}. Toque em “ações atrasadas” para voltar.`}</p></div><b>{totalDoFiltro} {filtroAtivo.rotulo}</b></div>
         <div className="f2-dia-colunas">{mostrandoVisitas ? <><span>Cliente</span><span>Imóvel</span><span>Situação</span><span>Horário</span><span></span></> : <><span>Cliente</span><span>Etapa</span><span>Momento</span><span>Tempo</span><span></span></>}</div>
@@ -343,16 +346,16 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
         </div>
       </main>}
 
-      {!carregando && aba === "leads" && <TodosLeads leads={leads} momentos={momentosAtivos} etapas={etapasAtivas} accessToken={accessToken} busy={busy} onAbrir={(id) => setSelecionado(id)} onPescar={() => setModal("pescar")} onTrazer={(leadId, etapa, momento) => executar("trazerLeadAntigo", { leadId, etapa, momento })} />}
+      {!carregando && aba === "leads" && <TodosLeads leads={leads} momentos={momentosAtivos} etapas={etapasAtivas} accessToken={accessToken} busy={busy} onAbrir={(id) => setSelecionado(id)} onTrazer={(leadId, etapa, momento) => executar("trazerLeadAntigo", { leadId, etapa, momento })} />}
       {!carregando && aba === "visitas" && <PipeVisitas visitas={visitas} leads={leads} busy={busy} onNova={() => setModal("visita")} onSalvar={(visita) => void executar("salvarVisita", visita)} />}
       {/* Só a esteira. O CRM antigo inteiro (cabeçalho, barra de visões, filtros
           e funil) não entra aqui — o Funil 2.0 já é a navegação da operação. */}
-      {!carregando && aba === "vendas" && <main className="f2-pagina f2-esteira-oficial"><CabecalhoPagina titulo="Esteira de Vendas 3.0" texto="A mesma estrutura oficial de contratos, documentação, responsáveis, prazos e valores — sem uma segunda esteira desconectada." /><SalesProcessView accessToken={accessToken} sessionRole="admin" /></main>}
+      {!carregando && aba === "vendas" && <main className="f2-pagina f2-esteira-oficial"><SalesProcessView accessToken={accessToken} sessionRole="admin" /></main>}
       {!carregando && aba === "config" && <Configuracoes etapas={etapas} momentos={momentos} operacao={operacao} sara={sara} busy={busy} onEtapa={(dados) => executar("configurarEtapa", dados)} onMomento={(dados) => executar("configurarMomento", dados)} onOperacao={(dados) => executar("configurarOperacao", dados)} />}
 
       {modal === "pescar" && <ModalPescar candidatos={aquario} busy={busy} onFechar={() => setModal(null)} onPescar={(negocioId) => void executar("pescar", { negocioId })} />}
-      {modal === "visita" && <ModalVisita leads={leads} busy={busy} onFechar={() => setModal(null)} onSalvar={(dados) => void executar("salvarVisita", dados)} />}
-      {modal === "negociacao" && <ModalNegociacao leads={leads} busy={busy} onFechar={() => setModal(null)} onSalvar={(dados) => void executar("salvarNegociacao", dados)} />}
+      {modal === "visita" && <ModalVisita leads={leads} leadFoco={lead} busy={busy} onFechar={() => setModal(null)} onSalvar={(dados) => void executar("salvarVisita", dados)} />}
+      {modal === "negociacao" && <ModalNegociacao leads={leads} leadFoco={lead} busy={busy} onFechar={() => setModal(null)} onSalvar={(dados) => void executar("salvarNegociacao", dados)} />}
       {modal === "descartar" && lead && <ModalDescartar nome={lead.nome} busy={busy} onFechar={() => setModal(null)} onDescartar={(motivo, detalhe) => { void atualizar("descartar", { motivo, detalhe }).then((ok) => { if (ok) { setModal(null); setSelecionado(null); } }); }} />}
 
       {lead && momentoAtual && <Detalhe key={`${lead.id}:${lead.versao}`}
@@ -360,7 +363,6 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
         abrirNoChat={abrirNoChat}
         onFechar={() => { setSelecionado(null); setAbrirNoChat(false); }}
         onMomento={(codigo, prazo, obs) => void atualizar("atualizarMomento", { momentoCodigo: codigo, prazoCombinado: prazo || null, observacao: obs })}
-        onConfirmar={(fonte, obs) => void atualizar("confirmarAcao", { fonte, observacao: obs })}
         onAgendarVisita={() => setModal("visita")}
         onGerarNegociacao={() => setModal("negociacao")}
         onDescartar={() => setModal("descartar")}
@@ -386,7 +388,9 @@ function MapaOperacao({ leads, etapas, momentos, etapaAtiva, onEtapa }: {
     .filter((momento) => momento.etapa === etapaSelecionada.codigo)
     .sort((a, b) => a.ordem - b.ordem);
 
-  return <section className="f2-mapa" aria-label="Mapa da operação do Funil 2.0">
+  return <details className="f2-mapa f2-mapa-recolhido">
+    <summary><span>Entender o funil</span><small>Etapas, momentos, ações e prazos oficiais</small></summary>
+    <div aria-label="Mapa da operação do Funil 2.0">
     <header className="f2-mapa-cabecalho">
       <div><span className="f2-eyebrow">MAPA DA OPERAÇÃO</span><h2>Etapa organiza. Momento explica. Ação e prazo movem o dia.</h2></div>
       <p>O corretor não precisa interpretar: o CRM mostra o que está acontecendo, o que fazer e até quando.</p>
@@ -412,7 +416,8 @@ function MapaOperacao({ leads, etapas, momentos, etapaAtiva, onEtapa }: {
         {momentosDaEtapa.length === 0 && <p>Nenhum momento ativo nesta etapa.</p>}
       </div>
     </div>
-  </section>;
+    </div>
+  </details>;
 }
 
 function CentralAtencao({ leads, momentos, etapas, onAbrir, onMeuDia }: {
@@ -422,12 +427,11 @@ function CentralAtencao({ leads, momentos, etapas, onAbrir, onMeuDia }: {
   const ordenados = [...leads].sort((a, b) => +new Date(a.proxima_acao_em) - +new Date(b.proxima_acao_em));
   const atrasados = ordenados.filter((lead) => situacaoPrazo(lead.proxima_acao_em).classe === "atrasado");
   const urgentes = ordenados.filter((lead) => situacaoPrazo(lead.proxima_acao_em).classe === "urgente");
-  const hoje = ordenados.filter((lead) => venceHoje(lead));
-  const novos = ordenados.filter((lead) => esperandoPrimeiraChamada(lead));
+  const excecoes = [...atrasados, ...urgentes].sort((a, b) => +new Date(a.proxima_acao_em) - +new Date(b.proxima_acao_em));
   return <div className="f2-avisos-pop">
     <span className="f2-eyebrow">CENTRAL DE ATENÇÃO</span><h3>O que pede ação agora</h3>
-    <div className="f2-avisos-resumo"><article className="vermelho"><b>{atrasados.length}</b><span>atrasadas</span></article><article className="amarelo"><b>{urgentes.length}</b><span>até 2h</span></article><article className="roxo"><b>{novos.length}</b><span>para chamar</span></article><article className="verde"><b>{hoje.length}</b><span>para hoje</span></article></div>
-    <div className="f2-avisos-lista">{ordenados.slice(0, 5).map((lead) => {
+    <div className="f2-avisos-resumo f2-avisos-resumo-excecoes"><article className="vermelho"><b>{atrasados.length}</b><span>atrasadas</span></article><article className="amarelo"><b>{urgentes.length}</b><span>até 2h</span></article></div>
+    <div className="f2-avisos-lista">{excecoes.slice(0, 5).map((lead) => {
       const prazo = prazoDaAcao(lead);
       return <button type="button" key={lead.id} onClick={() => onAbrir(lead.id)}><span><b>{lead.nome}</b><small>{etapas.find((etapa) => etapa.codigo === lead.etapa)?.rotulo} · {momentos.find((momento) => momento.codigo === lead.momento_codigo)?.rotulo}</small></span><em className={prazo.classe}>{acaoVisivel(lead)} · {prazo.rotulo}</em></button>;
     })}</div>
@@ -444,7 +448,7 @@ type LeadCarteiraAntiga = {
   criado_em: string; ultima_mensagem_em: string | null; mensagens: number;
 };
 
-function TodosLeads({ leads, momentos, etapas, accessToken, busy, onAbrir, onPescar, onTrazer }: { leads: LeadFunil2[]; momentos: MomentoFunil2[]; etapas: EtapaConfigFunil2[]; accessToken: string; busy: boolean; onAbrir: (id: string) => void; onPescar: () => void; onTrazer: (leadId: number, etapa: string, momento: string) => Promise<boolean> }) {
+function TodosLeads({ leads, momentos, etapas, accessToken, busy, onAbrir, onTrazer }: { leads: LeadFunil2[]; momentos: MomentoFunil2[]; etapas: EtapaConfigFunil2[]; accessToken: string; busy: boolean; onAbrir: (id: string) => void; onTrazer: (leadId: number, etapa: string, momento: string) => Promise<boolean> }) {
   const [filtro, setFiltro] = useState("ativos");
   const [situacao, setSituacao] = useState("todas");
   const [busca, setBusca] = useState("");
@@ -497,11 +501,11 @@ function TodosLeads({ leads, momentos, etapas, accessToken, busy, onAbrir, onPes
     }, 350);
     return () => { vivo = false; window.clearTimeout(t); };
   }, [busca, accessToken]);
-  return <main className="f2-pagina"><CabecalhoPagina titulo="Todos os Leads" texto="A mesma leitura operacional do Funil 2.0: cliente, etapa, momento, ação e prazo — sem informações soltas." acao="Pescar um lead" onAcao={onPescar} />
+  return <main className="f2-pagina"><CabecalhoPagina titulo="Todos os Leads" texto="Encontre e compare a carteira por cliente, etapa, momento, ação e prazo." />
     <div className="f2-leads-busca"><label><span>Buscar lead</span><input value={busca} onChange={(event) => { setBusca(event.target.value); setPagina(1); }} placeholder="Nome ou telefone" aria-label="Buscar lead por nome ou telefone" /></label><label><span>Situação do prazo</span><select value={situacao} onChange={(event) => { setSituacao(event.target.value); setPagina(1); }}><option value="todas">Todos os prazos</option><option value="atrasado">Atrasados</option><option value="urgente">Vencem em até 2h</option><option value="no-prazo">No prazo</option></select></label><b>{filtrados.length} encontrado(s)</b></div>
     <div className="f2-leads-filtros"><button type="button" className={filtro === "ativos" ? "ativo" : ""} onClick={() => { setFiltro("ativos"); setPagina(1); }}>Ativos · {leads.filter((lead) => lead.etapa !== "legado").length}</button>{etapas.map((etapa) => <button type="button" className={filtro === etapa.codigo ? "ativo" : ""} onClick={() => { setFiltro(etapa.codigo); setPagina(1); }} key={etapa.codigo}>{etapa.rotulo} · {leads.filter((lead) => lead.etapa === etapa.codigo).length}</button>)}<span>{atrasados} atrasado(s)</span></div>
     <div className="f2-tabela-cab"><span>Cliente</span><span>Etapa</span><span>Momento</span><span>Próxima ação</span><span>Prazo</span><span></span></div>
-    <div className="f2-tabela f2-tabela-compacta">{exibidos.map((lead) => { const prazo = prazoDaAcao(lead); const whatsapp = linkWhatsapp(lead.telefone); return <article key={lead.id} className={`f2-lead-linha prazo-${prazo.classe}`}><div className="f2-nome"><i>{iniciais(lead.nome)}</i><span><b>{lead.nome}</b><small>{lead.corretor_nome ?? "Responsável não definido"}{lead.instancia_rotulo ? <em className="f2-instancia" title={`Contato saindo por ${lead.instancia_rotulo}`}> · {lead.instancia_rotulo}</em> : null}</small><InteresseLead lead={lead} /></span></div><span className="f2-lead-chip etapa"><i />{etapas.find((e) => e.codigo === lead.etapa)?.rotulo}</span><span className="f2-lead-chip momento">{momentos.find((m) => m.codigo === lead.momento_codigo)?.rotulo}</span><strong className="f2-lead-acao">{acaoVisivel(lead)}</strong><em className={prazo.classe}>{prazo.rotulo}</em><div className="f2-lead-acoes"><button type="button" onClick={() => onAbrir(lead.id)}>💬 Chat</button>{whatsapp && <a href={whatsapp} target="_blank" rel="noreferrer">WhatsApp</a>}<button type="button" className="primario" onClick={() => onAbrir(lead.id)}>Abrir</button></div></article>; })}{filtrados.length === 0 && <div className="f2-sem-resultado"><b>Nenhum lead encontrado.</b><span>Revise a busca ou os filtros selecionados.</span></div>}</div>
+    <div className="f2-tabela f2-tabela-compacta">{exibidos.map((lead) => { const prazo = prazoDaAcao(lead); return <article key={lead.id} role="button" tabIndex={0} onClick={() => onAbrir(lead.id)} onKeyDown={(evento) => { if (evento.key === "Enter" || evento.key === " ") onAbrir(lead.id); }} className={`f2-lead-linha prazo-${prazo.classe}`}><div className="f2-nome"><i>{iniciais(lead.nome)}</i><span><b>{lead.nome}</b><small>{lead.corretor_nome ?? "Responsável não definido"}{lead.instancia_rotulo ? <em className="f2-instancia" title={`Contato saindo por ${lead.instancia_rotulo}`}> · {lead.instancia_rotulo}</em> : null}</small><InteresseLead lead={lead} /></span></div><span className="f2-lead-chip etapa"><i />{etapas.find((e) => e.codigo === lead.etapa)?.rotulo}</span><span className="f2-lead-chip momento">{momentos.find((m) => m.codigo === lead.momento_codigo)?.rotulo}</span><strong className="f2-lead-acao">{acaoVisivel(lead)}</strong><em className={prazo.classe}>{prazo.rotulo}</em><div className="f2-lead-acoes"><button type="button" className="primario" onClick={(evento) => { evento.stopPropagation(); onAbrir(lead.id); }}>Abrir ficha</button></div></article>; })}{filtrados.length === 0 && <div className="f2-sem-resultado"><b>Nenhum lead encontrado.</b><span>Revise a busca ou os filtros selecionados.</span></div>}</div>
     {filtrados.length > porPagina && <div className="f2-paginacao"><button type="button" disabled={paginaSegura === 1} onClick={() => setPagina((atual) => Math.max(1, atual - 1))}>← Anterior</button><span>Página {paginaSegura} de {totalPaginas}</span><button type="button" disabled={paginaSegura === totalPaginas} onClick={() => setPagina((atual) => Math.min(totalPaginas, atual + 1))}>Próxima →</button></div>}
 
     {/* Carteira antiga: mesma busca, seção separada. Só aparece quando há algo
@@ -556,13 +560,28 @@ function ModalTrazerLeadAntigo({ alvo, etapas, momentos, busy, onFechar, onConfi
 }
 
 function PipeVisitas({ visitas, leads, busy, onNova, onSalvar }: { visitas: VisitaFunil2[]; leads: LeadFunil2[]; busy: boolean; onNova: () => void; onSalvar: (v: Record<string, unknown>) => void }) {
+  const [modo, setModo] = useState<"agenda" | "quadro">("agenda");
+  const [agora, setAgora] = useState(() => Date.now());
+  useEffect(() => {
+    const relogio = window.setInterval(() => setAgora(Date.now()), 60_000);
+    return () => window.clearInterval(relogio);
+  }, []);
+  const hoje = dataIsoSaoPaulo(new Date(agora));
+  const ativas = visitas.filter((visita) => visita.status === "agendada" || visita.status === "confirmada");
+  const gruposAgenda = [
+    { codigo: "atrasadas", rotulo: "Atrasadas para atualizar", itens: ativas.filter((visita) => +new Date(visita.inicio_em) < agora) },
+    { codigo: "hoje", rotulo: "Hoje", itens: ativas.filter((visita) => +new Date(visita.inicio_em) >= agora && dataIsoSaoPaulo(visita.inicio_em) === hoje) },
+    { codigo: "proximas", rotulo: "Próximas", itens: ativas.filter((visita) => +new Date(visita.inicio_em) >= agora && dataIsoSaoPaulo(visita.inicio_em) !== hoje) },
+  ];
   const colunas = [
     { codigo: "agendada", rotulo: "Agendadas" }, { codigo: "confirmada", rotulo: "Confirmadas" },
     { codigo: "realizada", rotulo: "Realizadas" }, { codigo: "encerrada", rotulo: "Canceladas / faltou" },
   ];
-  return <main className="f2-pagina"><CabecalhoPagina titulo="Pipe de Visitas" texto="Agendada fica no atendimento; realizada exige feedback; cancelada ou falta volta para tentativa de agendamento." acao="+ Nova visita" onAcao={onNova} />
-    <section className="f2-visita-regra"><b>Fluxo automático</b><span>Agendada → confirmar 24h antes</span><span>Realizada → feedback em até 2h</span><span>Cancelada/faltou → remarcar em até 12h</span></section>
-    <section className="f2-pipe">{colunas.map((coluna) => { const itens = visitas.filter((v) => coluna.codigo === "encerrada" ? ["cancelada","nao_compareceu"].includes(v.status) : v.status === coluna.codigo); return <div key={coluna.codigo}><header><h3>{coluna.rotulo}</h3><b>{itens.length}</b></header>{itens.map((visita) => <VisitaCard key={visita.id} visita={visita} lead={leads.find((l) => l.id === visita.funil_lead_id)} busy={busy} onSalvar={onSalvar} />)}{itens.length === 0 && <p className="f2-pipe-vazio">Nenhuma visita.</p>}</div>; })}</section>
+  const grupos = modo === "agenda" ? gruposAgenda : colunas.map((coluna) => ({ ...coluna, itens: visitas.filter((visita) => coluna.codigo === "encerrada" ? ["cancelada", "nao_compareceu"].includes(visita.status) : visita.status === coluna.codigo) }));
+  return <main className="f2-pagina"><CabecalhoPagina titulo="Visitas" texto="Agenda e Pipe de Visitas no mesmo lugar: veja primeiro atrasos, compromissos de hoje e próximos horários." acao="+ Nova visita" onAcao={onNova} />
+    <div className="f2-visitas-modos" role="group" aria-label="Modo de visualização das visitas"><button type="button" className={modo === "agenda" ? "ativo" : ""} onClick={() => setModo("agenda")}>Agenda</button><button type="button" className={modo === "quadro" ? "ativo" : ""} onClick={() => setModo("quadro")}>Quadro por status</button></div>
+    <details className="f2-visita-regra"><summary>Entender o fluxo de visitas</summary><div><b>Fluxo automático</b><span>Agendada → confirmar 24h antes</span><span>Realizada → feedback em até 2h</span><span>Cancelada/faltou → remarcar em até 12h</span></div></details>
+    <section className={`f2-pipe ${modo === "agenda" ? "f2-agenda-visitas" : ""}`}>{grupos.map((grupo) => <div key={grupo.codigo}><header><h3>{grupo.rotulo}</h3><b>{grupo.itens.length}</b></header>{grupo.itens.map((visita) => <VisitaCard key={visita.id} visita={visita} lead={leads.find((lead) => lead.id === visita.funil_lead_id)} busy={busy} onSalvar={onSalvar} />)}{grupo.itens.length === 0 && <p className="f2-pipe-vazio">Nenhuma visita.</p>}</div>)}</section>
   </main>;
 }
 
@@ -572,17 +591,21 @@ function PipeVisitas({ visitas, leads, busy, onNova, onSalvar }: { visitas: Visi
    visita e o pipe passava a mostrar duas para o mesmo cliente. Como a API ja
    faz upsert por id, mandar data e imovel editados corrige a mesma visita. */
 function VisitaCard({ visita, lead, busy, onSalvar }: { visita: VisitaFunil2; lead?: LeadFunil2; busy: boolean; onSalvar: (v: Record<string, unknown>) => void }) {
+  const [editando, setEditando] = useState(false);
   const [status, setStatus] = useState(visita.status);
   const [feedback, setFeedback] = useState(visita.observacao ?? "");
   const [inicio, setInicio] = useState(paraCampoLocal(visita.inicio_em));
   const [imovel, setImovel] = useState(visita.imovel ?? "");
   const precisaFeedback = status === "realizada";
-  return <article><span>{dataCurta(visita.inicio_em)}</span><h4>{lead?.nome ?? "Lead removido"}</h4><p>{visita.imovel}</p>
-    <input type="datetime-local" style={CAMPO_VISITA} disabled={busy} value={inicio} onChange={(e) => setInicio(e.target.value)} aria-label="Data e hora da visita" />
+  const rotulos: Record<VisitaFunil2["status"], string> = { agendada: "Agendada", confirmada: "Confirmada", realizada: "Realizada", cancelada: "Cancelada", nao_compareceu: "Não compareceu" };
+  return <article className={!lead ? "f2-visita-vinculo-ausente" : ""}><span>{dataCurta(visita.inicio_em)}</span><h4>{lead?.nome ?? "Vínculo ausente"}</h4><p>{visita.imovel || "Imóvel não informado"}</p><em className={`f2-visita-status status-${visita.status}`}>{rotulos[visita.status]}</em>
+    {!lead && <small>Esta visita precisa de correção administrativa porque a ficha do cliente não está disponível.</small>}
+    {!editando && <button type="button" className="f2-visita-editar" onClick={() => setEditando(true)}>Editar visita</button>}
+    {editando && <div className="f2-visita-form"><input type="datetime-local" style={CAMPO_VISITA} disabled={busy} value={inicio} onChange={(e) => setInicio(e.target.value)} aria-label="Data e hora da visita" />
     <input type="text" style={CAMPO_VISITA} disabled={busy} value={imovel} onChange={(e) => setImovel(e.target.value)} maxLength={120} placeholder="Imóvel ou unidade" aria-label="Imóvel da visita" />
     <select disabled={busy} value={status} onChange={(e) => setStatus(e.target.value as VisitaFunil2["status"])}><option value="agendada">Agendada</option><option value="confirmada">Confirmada</option><option value="realizada">Realizada</option><option value="cancelada">Cancelada</option><option value="nao_compareceu">Não compareceu</option></select>
     {precisaFeedback && <textarea value={feedback} onChange={(e) => setFeedback(e.target.value)} placeholder="Feedback obrigatório: interesse, objeção e próximo passo" maxLength={500} />}
-    <button type="button" disabled={busy || !inicio || (precisaFeedback && feedback.trim().length < 10)} onClick={() => onSalvar({ id: visita.id, leadId: visita.funil_lead_id, inicioEm: inicio, imovel: imovel.trim() || visita.imovel, status, observacao: feedback || null, empreendimentoId: visita.empreendimento_id ?? null, unidade: visita.unidade ?? null, comGerente: visita.com_gerente === true, gerenteId: visita.gerente_id ?? null, fimEm: visita.fim_em ?? null })}>{busy ? "Salvando…" : precisaFeedback && !visita.feedback_em ? "Registrar resultado" : "Salvar atualização"}</button>
+    <div className="f2-visita-form-acoes"><button type="button" onClick={() => setEditando(false)}>Cancelar</button><button type="button" disabled={busy || !inicio || (precisaFeedback && feedback.trim().length < 10)} onClick={() => onSalvar({ id: visita.id, leadId: visita.funil_lead_id, inicioEm: inicio, imovel: imovel.trim() || visita.imovel, status, observacao: feedback || null, empreendimentoId: visita.empreendimento_id ?? null, unidade: visita.unidade ?? null, comGerente: visita.com_gerente === true, gerenteId: visita.gerente_id ?? null, fimEm: visita.fim_em ?? null })}>{busy ? "Salvando…" : precisaFeedback && !visita.feedback_em ? "Registrar resultado" : "Salvar atualização"}</button></div></div>}
     {visita.status === "realizada" && <small>{visita.feedback_em ? "Feedback concluído" : "Feedback pendente — novos leads podem ser bloqueados"}</small>}
   </article>;
 }
@@ -608,8 +631,8 @@ function Configuracoes({ etapas, momentos, operacao, sara, busy, onEtapa, onMome
     suspensaoNivel2H: operacao?.suspensao_nivel_2_h ?? 48, suspensaoNivel3H: operacao?.suspensao_nivel_3_h ?? 72,
   });
   const momentosVisiveis = filtroMomento === "todos" ? momentos : momentos.filter((m) => m.etapa === filtroMomento);
-  return <main className="f2-pagina f2-config-pagina"><CabecalhoPagina titulo="Configurações da operação" texto="Etapas, condutas, prazos e regras oficiais em uma única tela." />
-    <section className="f2-sara-status f2-sara-status-compacto"><div><span className="f2-eyebrow">PAPEL DA SARA</span><h3>Ela lê, classifica e fiscaliza.</h3><details><summary>Como funciona</summary><p>Quando o D-API registra mensagem nova, a Sara relê a conversa, escolhe um momento oficial e recalcula ação e prazo. Ela está em <b>{sara.modo ?? "estado indisponível"}</b>; o runner está <b>{sara.runnerAtivo ? "ligado" : "desligado"}</b>. Ela não envia por você.</p></details></div><strong className={sara.reavaliacaoAutomaticaFunil2 ? "ativo" : "pendente"}>{sara.reavaliacaoAutomaticaFunil2 ? `Conectado · lote ${sara.loteFunil2 ?? "—"}` : "Reavaliação automática do Funil 2.0 ainda não conectada"}</strong></section>
+  return <main className="f2-pagina f2-config-pagina"><CabecalhoPagina titulo="Regras do CRM" texto="Configurações da operação: etapas, momentos, prazos, Sara e limites oficiais." />
+    <section className="f2-sara-status f2-sara-status-compacto"><div><span className="f2-eyebrow">PAPEL DA SARA</span><h3>Ela lê, classifica e fiscaliza.</h3><small>O estado de cada função aparece separadamente, sem termos técnicos.</small>{!sara.reavaliacaoAutomaticaFunil2 && <p className="f2-sara-aviso">Reavaliação automática do Funil 2.0 ainda não conectada.</p>}<details><summary>Como funciona</summary><p>Quando o D-API registra mensagem nova, a Sara relê a conversa, escolhe um momento oficial e recalcula ação e prazo. Ela está em <b>{sara.modo ?? "estado indisponível"}</b>; o runner está <b>{sara.runnerAtivo ? "ligado" : "desligado"}</b>. Ela não envia por você.</p></details></div><div className="f2-sara-estados"><span className="ativo"><b>Observação</b><small>Ativa</small></span><span className={sara.reavaliacaoAutomaticaFunil2 ? "ativo" : "pendente"}><b>Classificação</b><small>{sara.reavaliacaoAutomaticaFunil2 ? "Ativa" : "Inativa"}</small></span><span><b>Envio automático</b><small>Inativo</small></span></div></section>
     <section className="f2-config-grid">
       <div className="f2-config-bloco"><div className="f2-config-titulo"><div><span className="f2-eyebrow">ETAPAS</span><h3>Colunas do funil</h3><small>{etapas.filter((e) => e.ativo).length} ativas</small></div><button type="button" onClick={() => { setEtapa(etapaVazia); setEditor("etapa"); }}>+ Criar</button></div>
         <div className="f2-config-lista">{etapas.map((e) => <article key={e.codigo} className={!e.ativo ? "inativo" : ""}><b>{e.ordem}</b><span><strong>{e.rotulo}</strong><small>{e.ajuda || "Sem descrição"}</small></span><button type="button" onClick={() => { setEtapa({...e}); setEditor("etapa"); }}>Editar</button><button type="button" disabled={busy || !e.ativo} title="Etapas com leads ou momentos ativos não podem ser desativadas" onClick={() => void onEtapa({...e,ativo:false})}>Desativar</button></article>)}</div>
@@ -658,8 +681,27 @@ function ModalDescartar({ nome, busy, onFechar, onDescartar }: { nome: string; b
    campos que o historico prova que eram usados: de 140 visitas, 55 com gerente
    e 53 com produto. Sem gerente escolhido nao ha como checar conflito de
    agenda, e o choque so aparece no dia, com o cliente na porta. */
-function ModalVisita({ leads, busy, onFechar, onSalvar }: { leads: LeadFunil2[]; busy: boolean; onFechar: () => void; onSalvar: (d: Record<string, unknown>) => void }) {
-  const [leadId, setLeadId] = useState(leads[0]?.id ?? "");
+function SeletorLead({ leads, value, onChange }: { leads: LeadFunil2[]; value: string; onChange: (id: string) => void }) {
+  const [busca, setBusca] = useState("");
+  const escolhido = leads.find((lead) => lead.id === value) ?? null;
+  const termo = busca.trim().toLocaleLowerCase("pt-BR");
+  const resultados = termo.length >= 2
+    ? leads.filter((lead) => `${lead.nome} ${lead.telefone ?? ""}`.toLocaleLowerCase("pt-BR").includes(termo)).slice(0, 8)
+    : [];
+
+  if (escolhido) return <div className="f2-lead-escolhido"><span>CLIENTE</span><strong>{escolhido.nome}</strong><small>{escolhido.telefone || "Telefone não informado"}</small><button type="button" onClick={() => { onChange(""); setBusca(""); }}>Trocar cliente</button></div>;
+
+  return <div className="f2-lead-picker">
+    <label>Buscar cliente<input type="search" value={busca} onChange={(evento) => setBusca(evento.target.value)} placeholder="Digite nome ou telefone" autoComplete="off" /></label>
+    {termo.length < 2 ? <p>Digite pelo menos dois caracteres para localizar o cliente.</p> : <div className="f2-lead-resultados">
+      {resultados.map((lead) => <button key={lead.id} type="button" onClick={() => onChange(lead.id)}><strong>{lead.nome}</strong><small>{lead.telefone || "Sem telefone"} · {lead.corretor_nome || "Sem responsável"}</small></button>)}
+      {resultados.length === 0 && <p>Nenhum cliente encontrado.</p>}
+    </div>}
+  </div>;
+}
+
+function ModalVisita({ leads, leadFoco, busy, onFechar, onSalvar }: { leads: LeadFunil2[]; leadFoco?: LeadFunil2 | null; busy: boolean; onFechar: () => void; onSalvar: (d: Record<string, unknown>) => void }) {
+  const [leadId, setLeadId] = useState(leadFoco?.id ?? "");
   const [inicio, setInicio] = useState("");
   const [empreendimento, setEmpreendimento] = useState("");
   const [unidade, setUnidade] = useState("");
@@ -667,11 +709,17 @@ function ModalVisita({ leads, busy, onFechar, onSalvar }: { leads: LeadFunil2[];
   const [gerente, setGerente] = useState("");
   const [produtos, setProdutos] = useState<{ id: string; nome: string }[]>([]);
   const [equipe, setEquipe] = useState<{ id: number; nome: string }[]>([]);
+  const [carregandoProdutos, setCarregandoProdutos] = useState(true);
+  const [erroProdutos, setErroProdutos] = useState("");
 
   useEffect(() => {
     const sb = getBrowserSupabaseClient();
     void sb.from("empreendimentos").select("id,nome").order("nome").limit(200)
-      .then(({ data }) => setProdutos((data ?? []) as { id: string; nome: string }[]));
+      .then(({ data, error }) => {
+        setCarregandoProdutos(false);
+        if (error) { setErroProdutos("Não foi possível carregar os produtos. Tente novamente em instantes."); return; }
+        setProdutos((data ?? []) as { id: string; nome: string }[]);
+      });
     void sb.from("gerentes").select("id,nome").eq("ativo", true).order("geral", { ascending: false }).order("nome")
       .then(({ data }) => setEquipe((data ?? []) as { id: number; nome: string }[]));
   }, []);
@@ -679,17 +727,14 @@ function ModalVisita({ leads, busy, onFechar, onSalvar }: { leads: LeadFunil2[];
   const podeSalvar = !busy && leadId && inicio && (empreendimento || unidade.trim().length >= 2) && (!comGerente || gerente);
 
   return <Modal titulo="Agendar visita" texto="A visita aparecerá no Pipe sem duplicar o lead." onFechar={onFechar}>
-    <label>Lead
-      <select value={leadId} onChange={(e) => setLeadId(e.target.value)}>
-        {leads.map((l) => <option key={l.id} value={l.id}>{l.nome}</option>)}
-      </select>
-    </label>
+    {leadFoco ? <div className="f2-lead-escolhido fixo"><span>CLIENTE DESTA VISITA</span><strong>{leadFoco.nome}</strong><small>{leadFoco.telefone || "Telefone não informado"}</small></div> : <SeletorLead leads={leads} value={leadId} onChange={setLeadId} />}
     <label>Produto
-      <select value={empreendimento} onChange={(e) => setEmpreendimento(e.target.value)}>
-        <option value="">— escolha o empreendimento —</option>
+      <select value={empreendimento} disabled={carregandoProdutos || Boolean(erroProdutos)} onChange={(e) => setEmpreendimento(e.target.value)}>
+        <option value="">{carregandoProdutos ? "Carregando produtos…" : erroProdutos ? "Produtos indisponíveis" : produtos.length === 0 ? "Nenhum produto disponível" : "— escolha o empreendimento —"}</option>
         {produtos.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
       </select>
     </label>
+    {erroProdutos && <p className="f2-modal-erro" role="alert">{erroProdutos}</p>}
     <label>Unidade <small>(opcional)</small>
       <input value={unidade} onChange={(e) => setUnidade(e.target.value)} placeholder="Ex.: apto 402" />
     </label>
@@ -718,15 +763,34 @@ function ModalVisita({ leads, busy, onFechar, onSalvar }: { leads: LeadFunil2[];
   </Modal>;
 }
 
-function ModalNegociacao({ leads, busy, onFechar, onSalvar }: { leads: LeadFunil2[]; busy: boolean; onFechar: () => void; onSalvar: (d: Record<string, unknown>) => void }) { const [leadId,setLeadId]=useState(leads[0]?.id??""); const [titulo,setTitulo]=useState(""); const [valor,setValor]=useState(""); return <Modal titulo="Lançar negociação" texto="A negociação nasce ligada ao lead e avança na Esteira de Vendas." onFechar={onFechar}><label>Lead<select value={leadId} onChange={(e)=>setLeadId(e.target.value)}>{leads.map((l)=><option key={l.id} value={l.id}>{l.nome}</option>)}</select></label><label>Negociação<input value={titulo} onChange={(e)=>setTitulo(e.target.value)} placeholder="Imóvel ou oportunidade"/></label><label>Valor estimado<input type="number" min="0" value={valor} onChange={(e)=>setValor(e.target.value)}/></label><button type="button" className="f2-modal-primary" disabled={busy||!leadId||titulo.length<2} onClick={()=>onSalvar({leadId,titulo,valor,etapa:"qualificacao"})}>Criar negociação</button></Modal>; }
+function ModalNegociacao({ leads, leadFoco, busy, onFechar, onSalvar }: { leads: LeadFunil2[]; leadFoco?: LeadFunil2 | null; busy: boolean; onFechar: () => void; onSalvar: (d: Record<string, unknown>) => void }) {
+  const [leadId, setLeadId] = useState(leadFoco?.id ?? "");
+  const [titulo, setTitulo] = useState("");
+  const [valor, setValor] = useState("");
+  return <Modal titulo="Lançar negociação" texto="A oportunidade nasce vinculada ao cliente e entra na etapa inicial da Esteira de Vendas." onFechar={onFechar}>
+    {leadFoco ? <div className="f2-lead-escolhido fixo"><span>CLIENTE DESTA NEGOCIAÇÃO</span><strong>{leadFoco.nome}</strong><small>{leadFoco.telefone || "Telefone não informado"}</small></div> : <SeletorLead leads={leads} value={leadId} onChange={setLeadId} />}
+    <label>Oportunidade<input value={titulo} onChange={(e) => setTitulo(e.target.value)} placeholder="Ex.: Apartamento no Centro" maxLength={120} /></label>
+    <label>Valor estimado <small>(opcional)</small><input type="number" min="0" step="0.01" value={valor} onChange={(e) => setValor(e.target.value)} /></label>
+    <div className="f2-modal-destino"><span>DESTINO</span><b>Esteira · Qualificação</b><small>Responsável: {leadFoco?.corretor_nome || leads.find((item) => item.id === leadId)?.corretor_nome || "será definido pela equipe"}</small></div>
+    <button type="button" className="f2-modal-primary" disabled={busy || !leadId || titulo.trim().length < 2} onClick={() => onSalvar({ leadId, titulo: titulo.trim(), valor: valor ? Number(valor) : null, etapa: "qualificacao" })}>{busy ? "Criando…" : "Criar negociação"}</button>
+  </Modal>;
+}
 
-function Modal({ titulo, texto, onFechar, children }: { titulo:string; texto:string; onFechar:()=>void; children:ReactNode }) { return <div className="f2-modal-overlay" onClick={onFechar}><div className="f2-modal" onClick={(e)=>e.stopPropagation()}><header><div><span className="f2-eyebrow">FUNIL 2.0</span><h2>{titulo}</h2><p>{texto}</p></div><button type="button" onClick={onFechar}>×</button></header>{children}</div></div>; }
+function Modal({ titulo, texto, onFechar, children }: { titulo:string; texto:string; onFechar:()=>void; children:ReactNode }) {
+  const tituloId = useId();
+  useEffect(() => {
+    const fecharComEscape = (evento: KeyboardEvent) => { if (evento.key === "Escape") onFechar(); };
+    document.addEventListener("keydown", fecharComEscape);
+    return () => document.removeEventListener("keydown", fecharComEscape);
+  }, [onFechar]);
+  return <div className="f2-modal-overlay" onMouseDown={(evento) => { if (evento.target === evento.currentTarget) onFechar(); }}><div className="f2-modal" role="dialog" aria-modal="true" aria-labelledby={tituloId}><header><div><span className="f2-eyebrow">FUNIL 2.0</span><h2 id={tituloId}>{titulo}</h2><p>{texto}</p></div><button type="button" onClick={onFechar} aria-label={`Fechar ${titulo}`}>×</button></header>{children}</div></div>;
+}
 
 function Detalhe({
-  abrirNoChat, accessToken, lead, momento, momentos, etapas, eventos, notas, tagCatalogo, busy, onFechar, onMomento, onConfirmar, onAgendarVisita, onGerarNegociacao, onDescartar, onSalvarNota, onTagSalva }: {
+  abrirNoChat, accessToken, lead, momento, momentos, etapas, eventos, notas, tagCatalogo, busy, onFechar, onMomento, onAgendarVisita, onGerarNegociacao, onDescartar, onSalvarNota, onTagSalva }: {
   accessToken: string;
   lead: LeadFunil2; momento: MomentoFunil2; momentos: MomentoFunil2[]; etapas: EtapaConfigFunil2[]; eventos: EventoFunil2[]; notas: NotaFunil2[]; tagCatalogo: TagCatalogoFunil2[]; busy: boolean;
-  onFechar: () => void; onMomento: (codigo: string, prazo: string, obs: string) => void; onConfirmar: (fonte: "dapi" | "registro_operacional", obs: string) => void;
+  onFechar: () => void; onMomento: (codigo: string, prazo: string, obs: string) => void;
   onAgendarVisita: () => void; onGerarNegociacao: () => void;
   onDescartar: () => void; onSalvarNota: (texto: string) => Promise<boolean>;
   onTagSalva: () => void;
@@ -736,77 +800,81 @@ function Detalhe({
   const [prazo, setPrazo] = useState("");
   const [obs, setObs] = useState("");
   const [nota, setNota] = useState("");
-  const [chatAberto, setChatAberto] = useState(abrirNoChat === true);
+  const [abaDetalhe, setAbaDetalhe] = useState<"atendimento" | "notas" | "historico">("atendimento");
+  const [chatAberto, setChatAberto] = useState(Boolean(abrirNoChat));
+  const [maisAcoes, setMaisAcoes] = useState(false);
+  const [tagAberta, setTagAberta] = useState(false);
   const config = momentos.find((m) => m.codigo === codigo) ?? momento;
-  const situacao = prazoDaAcao(lead);
-  const cadencia = rotuloCadencia(lead);
+  const situacao = situacaoPrazo(lead.proxima_acao_em);
   const tentativa = tentativaAtual(lead);
   const whatsapp = linkWhatsapp(lead.telefone);
+  const temperatura = lead.temperatura ?? null;
+  const temperaturaRotulo = rotuloTemperatura(temperatura) ?? "Aguardando leitura";
+  const etapaRotulo = etapas.find((e) => e.codigo === lead.etapa)?.rotulo ?? lead.etapa;
 
-  return <div className="f2-overlay" onClick={onFechar}>
-    <aside className="f2-detalhe" aria-label={`Detalhe de ${lead.nome}`} onClick={(e) => e.stopPropagation()}>
-      <div className="f2-detalhe-topo"><div><span className="f2-eyebrow">LEAD-CÓPIA · #{lead.origem_negocio_id}</span><h2>{lead.nome}</h2><p>{lead.corretor_nome ?? "Sem corretor"}{lead.instancia_rotulo ? <em className="f2-instancia" title={`Contato saindo por ${lead.instancia_rotulo}`}> · {lead.instancia_rotulo}</em> : null} · original protegido</p><InteresseLead lead={lead} detalhado /><AssociarTagLead leadId={lead.id} catalogo={tagCatalogo} accessToken={accessToken} onSalvo={onTagSalva} /></div><button type="button" onClick={onFechar} aria-label="Fechar detalhe">×</button></div>
+  useEffect(() => {
+    const fecharComEscape = (evento: KeyboardEvent) => {
+      if (evento.key !== "Escape" || document.querySelector(".f2-modal")) return;
+      if (chatAberto) setChatAberto(false);
+      else if (tagAberta) setTagAberta(false);
+      else if (maisAcoes) setMaisAcoes(false);
+      else onFechar();
+    };
+    document.addEventListener("keydown", fecharComEscape);
+    return () => document.removeEventListener("keydown", fecharComEscape);
+  }, [chatAberto, maisAcoes, onFechar, tagAberta]);
 
-      <div className="f2-atalhos" aria-label="Ações rápidas do lead">
-        <button type="button" onClick={() => setChatAberto(true)}>💬 Chat</button>
-        {whatsapp ? <a href={whatsapp} target="_blank" rel="noreferrer">WhatsApp</a> : <span>WhatsApp indisponível</span>}
-        <button type="button" onClick={onAgendarVisita}>▣ Agendar visita</button>
-        <button type="button" onClick={onGerarNegociacao}>↗ Gerar negociação</button>
-        <button type="button" className="f2-descartar" onClick={onDescartar}>✖ Descartar lead</button>
+  return <div className="f2-overlay" onMouseDown={(evento) => { if (evento.target === evento.currentTarget) onFechar(); }}>
+    <aside className="f2-detalhe" role="dialog" aria-modal="true" aria-label={`Atendimento de ${lead.nome}`}>
+      <header className="f2-ficha-cabecalho">
+        <div className="f2-ficha-titulo"><h2>{lead.nome}</h2><p>{lead.corretor_nome ?? "Sem responsável"}{lead.instancia_rotulo ? ` · ${lead.instancia_rotulo}` : ""} · negócio #{lead.origem_negocio_id}</p></div>
+        <button type="button" className="f2-ficha-fechar" onClick={onFechar} aria-label="Fechar ficha">×</button>
+        <div className="f2-ficha-chips">
+          <span className="f2-chip-resumo etapa"><small>Etapa</small>{etapaRotulo}</span>
+          <span className="f2-chip-resumo momento"><small>Momento</small>{momento.rotulo}</span>
+          <span className={`f2-chip-resumo temperatura temperatura-${temperatura ?? "aguardando"}`} title="Temperatura classificada pela Sara a partir da conversa"><i /><small>Temp.</small>{temperaturaRotulo}</span>
+          <em className={`f2-chip-resumo prazo ${situacao.classe}`}><small>Prazo</small>{situacao.rotulo}</em>
+        </div>
+        <p className="f2-ficha-interesse">Interesse: <b>{lead.interesse ?? "Não identificado"}</b></p>
+      </header>
+
+      <div className="f2-ficha-corpo">
+        <section className="f2-proxima-acao" aria-label="Próxima ação">
+          <div className="f2-proxima-info"><span>Próxima ação</span>{momento.exige_dapi && <details className="f2-dapi-ajuda"><summary aria-label="Como esta tarefa é concluída">i</summary><p>A conclusão vem do D-API: o clique não fecha a tarefa; o envio confirmado no celular é a evidência.</p></details>}<em className={situacao.classe}>{situacao.rotulo}</em></div>
+          <div className="f2-proxima-conteudo"><div><h3>{acaoVisivel(lead)}</h3><p>{momento.descricao}</p></div><div className="f2-proxima-execucao">{whatsapp ? <a href={whatsapp} target="_blank" rel="noreferrer">{tentativa ? `Chamar no WhatsApp · tentativa ${tentativa}` : "Chamar no WhatsApp"}</a> : <button type="button" disabled>Telefone inválido</button>}<small>Aguardando confirmação do envio</small></div></div>
+        </section>
+
+        <div className="f2-ficha-acoes">
+          <button type="button" onClick={() => setChatAberto(true)}>Chat</button>
+          <button type="button" onClick={onAgendarVisita}>Agendar visita</button>
+          <span><button type="button" aria-expanded={maisAcoes} onClick={() => setMaisAcoes((valor) => !valor)}>Mais ações</button>{maisAcoes && <div className="f2-mais-menu" role="menu"><button type="button" onClick={() => { setMaisAcoes(false); onGerarNegociacao(); }}>Gerar negociação</button><button type="button" onClick={() => { setMaisAcoes(false); setTagAberta(true); }}>Adicionar tag</button><hr /><button type="button" className="risco" onClick={() => { setMaisAcoes(false); onDescartar(); }}>Descartar lead</button></div>}</span>
+        </div>
+
+        <nav className="f2-detalhe-abas" aria-label="Áreas do atendimento" role="tablist">
+          {([ ["atendimento", "Atendimento"], ["notas", "Notas"], ["historico", "Histórico"] ] as const).map(([chave, rotulo]) => <button key={chave} type="button" role="tab" aria-selected={abaDetalhe === chave} className={abaDetalhe === chave ? "ativa" : ""} onClick={() => setAbaDetalhe(chave)}>{rotulo}</button>)}
+        </nav>
+
+        <div className="f2-detalhe-conteudo">
+          {abaDetalhe === "atendimento" && <>
+            <section className="f2-sara-resumo f2-sara-aprovado"><span>RESUMO DA SARA</span><p>{lead.ultima_reavaliacao_resumo ?? "Ainda não existe uma leitura resumida."}</p>{lead.qualidade_atendimento_resumo ? <small><b>Qualidade:</b> {lead.qualidade_atendimento_resumo}</small> : null}</section>
+            <details className="f2-detalhes-atendimento">
+              <summary>Detalhes do atendimento <span>última ação {dataCurta(lead.ultima_acao_confirmada_em)} · nota {lead.qualidade_atendimento_nota == null ? "ainda não avaliada" : `${Number(lead.qualidade_atendimento_nota).toFixed(1)}/10`}</span></summary>
+              <div className="f2-detalhes-indicadores"><div><span>Última ação confirmada</span><b>{dataCurta(lead.ultima_acao_confirmada_em)}</b></div><div><span>Sara reavaliou</span><b>{dataCurta(lead.ultima_reavaliacao_sara_em)}</b></div><div><span>Nota do atendimento</span><b>{lead.qualidade_atendimento_nota == null ? "Ainda não avaliado" : `${Number(lead.qualidade_atendimento_nota).toFixed(1)}/10`}</b></div></div>
+              <dl className="f2-detalhes-cliente"><div><dt>Telefone</dt><dd>{lead.telefone || "Não informado"}</dd></div><div><dt>Responsável</dt><dd>{lead.corretor_nome || "Não definido"}</dd></div><div><dt>Canal</dt><dd>{lead.instancia_rotulo || "Não identificado"}</dd></div></dl>
+              <div className="f2-dados-tags"><strong>Tags associadas</strong>{lead.tags?.length ? <div>{lead.tags.map((tag) => <span key={tag.nome}><i style={tag.cor ? { backgroundColor: tag.cor } : undefined} />{tag.nome}</span>)}</div> : <p>Nenhuma tag associada.</p>}</div>
+              <p>A Sara confere o histórico, valida o momento oficial e gera a próxima obrigação. A temperatura vem da conversa; quente e negociando exigem evidência e confiança mínima.</p>
+            </details>
+            <section className="f2-atualizar f2-atualizar-aprovado"><h3>O cliente continua aqui ou mudou?</h3><p className="f2-explica">Se nada mudou, confirme o mesmo momento: o prazo reinicia e a atualização fica registrada.</p><div className="f2-atualizar-campos"><label>Momento oficial<select value={codigo} onChange={(e) => setCodigo(e.target.value)}>{momentos.map((m) => <option key={m.codigo} value={m.codigo}>{etapas.find((e) => e.codigo === m.etapa)?.rotulo} · {m.rotulo}</option>)}</select></label>{codigo === "RETORNO_PROGRAMADO" && <label>Data e hora combinadas<input type="datetime-local" value={prazo} onChange={(e) => setPrazo(e.target.value)} /></label>}</div><div className="f2-preview"><span>Próxima ação</span><b>{config.acao_rotulo}</b><small>Prazo padrão: {config.prazo_rotulo}</small></div><label>Observação<textarea value={obs} onChange={(e) => setObs(e.target.value)} placeholder="Por que este é o momento correto?" maxLength={500} /></label><button type="button" className="f2-secundario" disabled={busy} onClick={() => onMomento(codigo, prazo, obs)}>{busy ? "Atualizando…" : codigo === lead.momento_codigo ? "Continua neste momento · atualizar prazo" : "Salvar novo momento e prazo"}</button></section>
+          </>}
+
+          {abaDetalhe === "notas" && <section className="f2-notas f2-notas-aprovado"><h3>O que ficou combinado</h3><p>A conversa guarda mensagens; a nota guarda o combinado.</p><div className="f2-notas-lista">{notas.map((item) => <article key={item.id}><strong>{item.autor_nome ?? "Equipe"}</strong><small>{dataCurta(item.criado_em)}</small><span>{item.texto}</span></article>)}{notas.length === 0 && <p>Nenhuma nota escrita ainda.</p>}</div><label>Nova nota<textarea value={nota} onChange={(e) => setNota(e.target.value)} placeholder="Combinado, objeção, contexto — o que o próximo a abrir precisa saber." maxLength={2000} /></label><button type="button" className="f2-secundario" disabled={busy || nota.trim().length < 2} onClick={() => { void onSalvarNota(nota.trim()).then((ok) => { if (ok) setNota(""); }); }}>{busy ? "Salvando…" : "Salvar nota"}</button></section>}
+
+          {abaDetalhe === "historico" && <section className="f2-historico f2-historico-aprovado"><div><Icone nome="historico" /><h3>Histórico de atualizações</h3></div>{eventos.map((evento) => <article key={evento.id}><i /><div><strong>{evento.titulo}</strong><span>{evento.detalhe}</span><small>{dataCurta(evento.criado_em)}</small></div></article>)}{eventos.length === 0 && <p>Nenhuma atualização registrada.</p>}</section>}
+        </div>
       </div>
 
-      <section className="f2-agora">
-        <div className="f2-agora-cab"><span>O QUE FAZER AGORA</span><em className={situacao.classe}>{situacao.rotulo}</em></div>
-        <div className="f2-agora-grid"><div className="etapa"><span>ETAPA</span><b>{etapas.find((e) => e.codigo === lead.etapa)?.rotulo}</b></div><div className="momento"><span>MOMENTO</span><b>{momento.rotulo}</b></div><div className="acao"><span>TEMPERATURA</span><b>{rotuloTemperatura(lead.temperatura) ?? "Aguardando leitura"}</b></div></div>
-        {cadencia && <div className="f2-cadencia-dia"><span>CADÊNCIA OFICIAL</span><b>{tentativa ? `${tentativa}ª` : "Fim"}</b><small>{cadencia}. Este é o passo exato que deve ser executado agora.</small></div>}
-        <span>FAÇA AGORA</span><h3>{acaoVisivel(lead)}</h3><p>{momento.descricao}</p>
-        {whatsapp ? <a className="f2-principal f2-link" href={whatsapp} target="_blank" rel="noreferrer">{tentativa ? `Abrir WhatsApp · enviar tentativa ${tentativa}` : "Abrir WhatsApp e executar"}</a> : <button type="button" className="f2-principal" disabled>Telefone inválido · corrija o cadastro</button>}
-        <button type="button" className="f2-chat-sec" onClick={() => setChatAberto(true)}>Ver conversa antes de agir</button>
-        {momento.exige_dapi && <div className="f2-dapi"><i /> <span><b>A conclusão vem do D-API</b>O clique não conclui a tarefa. O envio confirmado no celular é a evidência.</span></div>}
-        <div className="f2-evidencia"><div><span>Última ação confirmada</span><b>{dataCurta(lead.ultima_acao_confirmada_em)}</b></div><div><span>Sara reavaliou</span><b>{dataCurta(lead.ultima_reavaliacao_sara_em)}</b></div><div><span>Temperatura</span><b>{rotuloTemperatura(lead.temperatura) ?? "Aguardando leitura"}</b></div><div><span>Nota do atendimento</span><b>{lead.qualidade_atendimento_nota == null ? "Ainda não avaliado" : `${Number(lead.qualidade_atendimento_nota).toFixed(1)}/10`}</b></div></div>
-      </section>
-
-      <section className="f2-atualizar">
-        <span className="f2-eyebrow">ATUALIZAR O MOMENTO</span>
-        <h3>O cliente continua aqui ou mudou?</h3>
-        <p className="f2-explica">Se nada mudou, confirme o mesmo momento. O prazo reinicia e a atualização fica registrada.</p>
-        <label>Momento oficial<select value={codigo} onChange={(e) => setCodigo(e.target.value)}>{momentos.map((m) => <option key={m.codigo} value={m.codigo}>{etapas.find((e) => e.codigo === m.etapa)?.rotulo} · {m.rotulo}</option>)}</select></label>
-        <div className="f2-preview"><span>Próxima ação</span><b>{config.acao_rotulo}</b><small>Prazo padrão: {config.prazo_rotulo}</small></div>
-        {codigo === "RETORNO_PROGRAMADO" && <label>Data e hora combinadas<input type="datetime-local" value={prazo} onChange={(e) => setPrazo(e.target.value)} /></label>}
-        <label>Observação<textarea value={obs} onChange={(e) => setObs(e.target.value)} placeholder="Por que este é o momento correto?" maxLength={500} /></label>
-        <button type="button" className="f2-secundario" disabled={busy} onClick={() => onMomento(codigo, prazo, obs)}>{busy ? "Atualizando…" : codigo === lead.momento_codigo ? "Continua neste momento · atualizar prazo" : "Salvar novo momento e prazo"}</button>
-      </section>
-
-      <section className="f2-sara-resumo">
-        <span className="f2-eyebrow">RESUMO DA SARA</span>
-        <h3>{lead.ultima_reavaliacao_resumo ?? "Ainda não existe uma leitura resumida."}</h3>
-        {lead.qualidade_atendimento_resumo ? <p><b>Qualidade do atendimento:</b> {lead.qualidade_atendimento_resumo}</p> : null}
-        <p>A Sara deve conferir o histórico, validar o momento oficial e gerar a próxima obrigação — sem criar classificações livres.</p>
-      </section>
-
-      {/* A conversa guarda mensagem, nao guarda combinado. A nota e o unico
-          lugar onde cabe o que foi acertado por telefone, na visita ou no
-          corredor -- e quem abrir este lead amanha precisa ler isso antes de
-          falar com o cliente. */}
-      <section className="f2-notas">
-        <span className="f2-eyebrow">NOTAS DO ATENDIMENTO</span>
-        <h3>O que ficou combinado</h3>
-        <div className="f2-notas-lista">
-          {notas.map((item) => <article key={item.id}><strong>{item.autor_nome ?? "Equipe"}</strong><small>{dataCurta(item.criado_em)}</small><span>{item.texto}</span></article>)}
-          {notas.length === 0 && <p>Nenhuma nota escrita ainda.</p>}
-        </div>
-        <label>Nova nota<textarea value={nota} onChange={(e) => setNota(e.target.value)} placeholder="Combinado, objeção, contexto — o que o próximo a abrir precisa saber." maxLength={2000} /></label>
-        <button type="button" className="f2-secundario" disabled={busy || nota.trim().length < 2} onClick={() => { void onSalvarNota(nota.trim()).then((ok) => { if (ok) setNota(""); }); }}>{busy ? "Salvando…" : "Salvar nota"}</button>
-      </section>
-
-      <section className="f2-historico">
-        <div><Icone nome="historico" /><h3>Histórico de atualizações</h3></div>
-        {eventos.map((evento) => <article key={evento.id}><i /><div><strong>{evento.titulo}</strong><span>{evento.detalhe}</span><small>{dataCurta(evento.criado_em)}</small></div></article>)}
-        {eventos.length === 0 && <p>Nenhuma atualização registrada.</p>}
-      </section>
-
-      <details className="f2-lab-tools"><summary>Ferramentas do laboratório</summary><p>Somente para testar o avanço da cópia. No fluxo definitivo, o webhook do D-API executará esta confirmação.</p><button type="button" disabled={busy} onClick={() => onConfirmar(momento.exige_dapi ? "dapi" : "registro_operacional", obs)}>{busy ? "Atualizando…" : "Simular evidência confirmada"}</button></details>
+      {chatAberto && (lead.lead_id > 0 ? <Funil2ConversationDrawer accessToken={accessToken} leadId={lead.id} nome={lead.nome} onClose={() => setChatAberto(false)} /> : <div className="f2-acao-painel-overlay" onMouseDown={(evento) => { if (evento.target === evento.currentTarget) setChatAberto(false); }}><section className="f2-acao-painel"><header><strong>Conversa</strong><button type="button" onClick={() => setChatAberto(false)}>×</button></header><p>Este lead ainda não possui uma conversa vinculada.</p></section></div>)}
+      {tagAberta && <div className="f2-acao-painel-overlay" onMouseDown={(evento) => { if (evento.target === evento.currentTarget) setTagAberta(false); }}><div className="f2-acao-painel"><AssociarTagLead leadId={lead.id} catalogo={tagCatalogo} tagsAssociadas={(lead.tags ?? []).map((tag) => tag.nome)} accessToken={accessToken} onSalvo={onTagSalva} abertoInicial onFechar={() => setTagAberta(false)} /></div></div>}
     </aside>
-    {chatAberto && lead.lead_id > 0 && <Funil2ConversationDrawer accessToken={accessToken} leadId={lead.id} nome={lead.nome} onClose={() => setChatAberto(false)} />}
   </div>;
 }

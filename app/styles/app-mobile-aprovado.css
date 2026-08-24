@@ -204,6 +204,115 @@
   }
 }
 
+/* Ficha de atendimento mobile aprovada: resumo compacto, três abas, ações
+   secundárias em bottom sheet e WhatsApp sempre acessível no rodapé. */
+@media (max-width:900px) {
+  .ape-ficha { position:relative; height:100dvh; max-height:100dvh; border-radius:0; padding:0; }
+  .ape-ficha-topo { padding:8px 16px 4px; background:#fff; }
+  .ape-ficha-nome { padding:0 16px 12px; background:#fff; border-bottom:1px solid #E4DFD9; }
+  .ape-ficha-nome h2 { font-size:20px; }
+  .ape-ficha-nome > p { margin-top:2px; font-size:12.5px; }
+  .ape-ficha-nome .ape-ficha-interesse { margin-top:8px; }
+  .ape-ficha-resumo-chips { gap:6px; margin-top:9px; }
+  .ape-ficha-resumo-chips span,.ape-ficha-resumo-chips em { display:inline-flex; align-items:center; gap:5px; min-height:31px; padding:0 9px; border:1px solid transparent; border-radius:999px; font-size:11px; font-weight:700; font-style:normal; }
+  .ape-ficha-resumo-chips small { font-size:8px; letter-spacing:.07em; text-transform:uppercase; opacity:.72; }
+  .ape-ficha-resumo-chips .ape-etapa { border-color:#FFD6BD; background:#FFF3EA; color:#B84300; }
+  .ape-ficha-resumo-chips .ape-momento { border-color:#E7D0F5; background:#F7ECFC; color:#66009A; }
+  .ape-ficha-resumo-chips .temperatura-quente { border-color:#F6CDBF; background:#FDEAE3; color:#A8391A; }
+  .ape-ficha-resumo-chips .temperatura-negociando { border-color:#E7D0F5; background:#F7ECFC; color:#66009A; }
+  .ape-ficha-resumo-chips .temperatura-morno { border-color:#F3DFAE; background:#FDF2DC; color:#7E5A00; }
+  .ape-ficha-resumo-chips .temperatura-frio { border-color:#CFDEF4; background:#E9F0FB; color:#23548C; }
+  .ape-ficha-resumo-chips .temperatura-aguardando { border-color:#E4DFD9; background:#F2EFEC; color:#6B635C; }
+  .ape-ficha-resumo-chips .temperatura-quente i,.ape-ficha-resumo-chips .temperatura-negociando i,.ape-ficha-resumo-chips .temperatura-morno i,.ape-ficha-resumo-chips .temperatura-frio i,.ape-ficha-resumo-chips .temperatura-aguardando i { width:6px; height:6px; border-radius:50%; background:currentColor; }
+  .ape-ficha-resumo-chips em.atrasado { border-color:#F2D6D2; background:#FDF0EF; color:#A32C2C; }
+  .ape-ficha-resumo-chips em.urgente { border-color:#F1DEAA; background:#FFF6DE; color:#7E5A00; }
+  .ape-ficha-resumo-chips em.no-prazo { border-color:#CDE7D7; background:#EAF7EF; color:#136B3D; }
+  .ape-proxima-aprovada { flex:none; margin:0 16px 12px; padding:13px 15px; border-radius:16px; }
+  .ape-proxima-aprovada .ape-contexto-titulo { color:#8B00CC; font-size:11px; letter-spacing:.08em; text-transform:uppercase; }
+  .ape-ficha-acoes-aprovadas { flex:none; display:flex; flex-wrap:wrap; gap:7px; padding:0 16px 12px; background:#fff; }
+  .ape-ficha-acoes-aprovadas button { min-height:42px; padding:0 14px; border:1px solid #E4DFD9; border-radius:999px; background:#fff; color:#1F1C1A; font-family:inherit; font-size:13px; font-weight:700; }
+  .ape-ficha > .ape-ficha-abas { grid-template-columns:repeat(3,1fr); margin:0 16px 12px; padding:4px; border:0; border-radius:999px; background:#F2EFEC; }
+  .ape-ficha > .ape-ficha-abas button { min-height:40px; font-size:12px; }
+  .ape-ficha > .ape-ficha-abas button.ativa { border:0; background:#fff; color:#1F1C1A; box-shadow:0 1px 3px rgba(31,28,26,.12); }
+  .ape-ficha > .ape-ficha-painel { padding:2px 16px 96px; }
+  .ape-ficha > .ape-ficha-painel > section { margin-left:0; margin-right:0; }
+  .f2m-sara-aprovado { margin-top:0; padding:15px; border-radius:18px; background:#fff; box-shadow:0 1px 2px rgba(31,28,26,.04); }
+  .f2m-detalhes-atendimento { margin-top:12px; padding:14px 15px; border-radius:16px; background:#fff; box-shadow:0 1px 2px rgba(31,28,26,.04); }
+  .f2m-detalhes-atendimento summary { font-size:14px; font-weight:700; cursor:pointer; }
+  .f2m-detalhes-atendimento > div { display:flex; flex-direction:column; gap:8px; margin-top:11px; }
+  .f2m-detalhes-atendimento > div > span { display:flex; justify-content:space-between; gap:10px; font-size:13px; }
+  .f2m-detalhes-atendimento > div > span b { color:#6B635C; font-weight:600; }
+  .f2m-detalhes-atendimento > div > span strong { text-align:right; }
+  .f2m-detalhes-atendimento > p { color:#6B635C; font-size:12.5px; line-height:1.5; }
+  .ape-ficha-rodape-aprovado { position:absolute; left:0; right:0; bottom:0; z-index:8; display:grid; grid-template-columns:1fr 56px; gap:10px; padding:12px 16px calc(18px + env(safe-area-inset-bottom,0px)); border-top:1px solid #E4DFD9; background:rgba(255,255,255,.98); }
+  .ape-ficha-rodape-aprovado .ncrm-wa-principal { min-height:54px !important; border-radius:999px !important; background:#1E9E5A !important; color:#fff !important; font-size:16px !important; box-shadow:0 12px 28px rgba(30,158,90,.26); }
+  .ape-ficha-rodape-aprovado .ncrm-wa-secundarias,.ape-ficha-rodape-aprovado .ncrm-wa-nota { display:none !important; }
+  .ape-ficha-rodape-aprovado .ncrm-wa-alt { display:block; min-height:0; margin:5px 0 0; padding:0; border:0; background:transparent; color:#8B6B58; font-size:9.5px; font-weight:600; line-height:1.25; text-align:center; }
+  .ape-ficha-rodape-aprovado > button { display:grid; place-items:center; width:56px; height:54px; overflow:hidden; border:1px solid #E4DFD9; border-radius:999px; background:#fff; color:#6B635C; font-size:11px; font-weight:700; }
+  .ape-ficha-sheet { position:absolute; inset:0; z-index:75; display:flex; align-items:flex-end; background:rgba(31,28,26,.42); }
+  .ape-ficha-sheet > section { width:100%; max-height:82%; overflow:auto; padding:10px 16px calc(22px + env(safe-area-inset-bottom,0px)); border-radius:24px 24px 0 0; background:#FAF8F6; }
+  .ape-ficha-sheet > section > i:first-child { display:block; width:44px; height:4px; margin:6px auto 14px; border-radius:999px; background:#E4DFD9; }
+  .ape-ficha-sheet > section[aria-label="Mais ações"] > button { display:flex; align-items:center; width:100%; min-height:52px; margin-bottom:8px; padding:0 14px; border:0; border-radius:14px; background:#fff; color:#1F1C1A; font-family:inherit; font-size:14.5px; font-weight:600; text-align:left; }
+  .ape-ficha-sheet > section[aria-label="Mais ações"] hr { margin:14px 0 8px; border:0; border-top:1px solid #E4DFD9; }
+  .ape-ficha-sheet > section[aria-label="Mais ações"] button.risco { border:1px solid #F2D6D2; background:#FDF0EF; color:#B33131; font-weight:700; }
+  .ape-ficha-sheet > section[aria-label="Mais ações"] p { color:#6E6760; font-size:12px; }
+  .ape-ficha-sheet .f2m-agendar,.ape-ficha-sheet .f2-tag-editor { margin:0 !important; border:0 !important; box-shadow:none !important; }
+  .ape-ficha-sheet .f2-tag-editor { position:static !important; width:100% !important; }
+}
+
+/* Atendimento móvel organizado nas mesmas quatro áreas do desktop. Estas
+   regras vivem fora do bloco anterior para manter a cascata explícita. */
+@media (max-width: 900px) {
+  .ape-ficha { display:flex; flex-direction:column; overflow:hidden; }
+  .ape-ficha-topo,.ape-ficha-nome,.ape-ficha-abas { flex:0 0 auto; }
+  .ape-ficha-nome { padding-bottom:10px; }
+  .ape-ficha-abas { display:grid; grid-template-columns:repeat(4,minmax(max-content,1fr)); gap:4px; padding:8px 12px; overflow-x:auto; border-top:1px solid #EFEAE5; border-bottom:1px solid #EFEAE5; background:#fff; }
+  .ape-ficha-abas button { min-height:38px; padding:0 10px; white-space:nowrap; border:1px solid transparent; border-radius:999px; background:transparent; color:#716860; font-family:inherit; font-size:10px; font-weight:700; }
+  .ape-ficha-abas button.ativa { border-color:#FFD3B5; background:#FFF3EA; color:#C25200; }
+  .ape-ficha-painel { flex:1 1 auto; min-height:0; overflow-y:auto; padding:14px 0 calc(22px + env(safe-area-inset-bottom,0px)); }
+  .ape-ficha-painel .ape-ordem { margin-top:0; }
+
+  .ape-ficha-conversa { padding-inline:14px; }
+  .ape-ficha-conversa .ape-ficha-acao { margin:0 6px 10px; }
+  .ape-ficha-conversa .ape-ficha-nota { margin:0 8px 12px; }
+  .ape-ficha-conversa .f2-conversa-embutida { width:100%; height:calc(94dvh - 250px); min-height:390px; border:1px solid #E8E1DB; border-radius:18px; box-shadow:none; overflow:hidden; }
+  .ape-ficha-conversa .f2-conversa-embutida > header { padding:14px 16px; }
+  .ape-ficha-conversa .f2-conversa-embutida > header h2 { margin:3px 0; font-size:17px; }
+  .ape-ficha-conversa .f2-conversa-instancias { padding:8px 10px; }
+  .ape-ficha-conversa .f2-conversa-mensagens { min-height:230px; padding:12px; }
+  .ape-ficha-vazio { margin:12px 6px; padding:18px; border:1px dashed #DED5CE; border-radius:14px; color:#716860; font-size:12px; text-align:center; }
+
+  .f2m-momento-abrir,.f2m-negociacao-abrir { display:block; width:calc(100% - 40px); min-height:50px; margin:10px 20px 0; border:1px solid #E4DFD9; border-radius:999px; background:#fff; color:#1F1C1A; font-family:inherit; font-size:14px; font-weight:650; }
+  .f2m-momento-abrir { border-color:#DCC4EC; background:#FBF7FD; color:#7620B6; }
+  .f2m-momento-form,.f2m-negociacao-form { margin-left:20px; margin-right:20px; }
+  .f2m-momento-preview { display:flex; flex-direction:column; gap:3px; padding:11px 12px; border-radius:12px; background:#F7ECFC; }
+  .f2m-momento-preview span { color:#8B00CC; font-size:9px; font-weight:800; letter-spacing:.09em; }
+  .f2m-momento-preview strong { font-size:13px; }
+  .f2m-momento-preview small { color:#6B635C; font-size:11px; }
+  .f2m-sara-resumo { display:flex; flex-direction:column; gap:6px; margin:14px 20px 0; padding:14px; border-left:4px solid #8B00CC; border-radius:14px; background:#F7ECFC; }
+  .f2m-sara-resumo > span { color:#8B00CC; font-size:9px; font-weight:800; letter-spacing:.1em; }
+  .f2m-sara-resumo strong { font-size:13px; line-height:1.4; }
+  .f2m-sara-resumo small { color:#6B635C; font-size:11px; }
+
+  .f2m-dados { margin:0 20px; padding:16px; border-radius:18px; background:#fff; box-shadow:0 2px 6px rgba(31,28,26,.06); }
+  .f2m-dados h3 { margin:0 0 12px; font-size:16px; }
+  .f2m-dados dl { display:grid; gap:7px; margin:0; }
+  .f2m-dados dl div { padding:10px 11px; border-radius:11px; background:#FAF8F6; }
+  .f2m-dados dt { color:#9A918A; font-size:9px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; }
+  .f2m-dados dd { margin:3px 0 0; color:#1F1C1A; font-size:13px; font-weight:650; overflow-wrap:anywhere; }
+  .f2m-dados .ape-interesse-wrap { margin-top:12px; }
+  .f2m-dados .f2-tag-editor.mobile { position:static; width:100%; box-shadow:none; }
+
+  .f2m-encerrar { margin:16px 20px 0; padding:13px 14px; border:1px solid #F0DDD9; border-radius:15px; background:#FFF9F8; }
+  .f2m-encerrar summary { color:#8B5D57; font-size:13px; font-weight:700; cursor:pointer; }
+  .f2m-encerrar > p { color:#806F69; font-size:11px; line-height:1.45; }
+  .f2m-encerrar .f2m-descartar-abrir { width:100%; margin:8px 0 0; }
+  .f2m-encerrar .f2m-descartar { margin:10px 0 0; }
+
+  /* O convite só existe dentro da folha Mais; nunca disputa a tela com o CRM. */
+  .ape-mais-folha .convite-instalar { margin:0 0 14px; }
+}
+
 @media (max-width: 760px) {
   .ape-ficha-nome .f2-tag-associar.mobile { width: 100%; margin-top: 12px; padding: 11px; border-radius: 12px; font-size: 12px; }
   .ape-ficha-nome .f2-tag-editor.mobile { margin-top: 12px; text-align: left; }

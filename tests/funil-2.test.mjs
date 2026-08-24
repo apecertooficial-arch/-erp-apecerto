@@ -57,7 +57,7 @@ test("reinício do piloto arquiva as cópias, preserva os originais e mantém os
 });
 
 test("quadro deixa etapa, momento, ação e prazo explícitos", () => {
-  for (const texto of ["MOMENTO", "FAÇA AGORA", "O QUE FAZER AGORA", "Próxima ação", "Prazo padrão"]) assert.match(ui, new RegExp(texto));
+  for (const texto of ["Momento", "Próxima ação", "Prazo padrão", "Atendimento", "Notas", "Histórico"]) assert.match(ui, new RegExp(texto));
   assert.match(ui, /<select value=\{codigo\}/);
 });
 
@@ -98,29 +98,30 @@ test("acesso visual é explícito e administrativo; RLS repete a regra", () => {
   assert.match(migration, /REVOKE ALL ON public\.f2_momento_config,public\.f2_lead,public\.f2_evento FROM PUBLIC,anon/);
 });
 
-test("mensagem precisa de confirmação D-API e toda mudança gera histórico", () => {
+test("mensagem precisa de confirmação D-API real e toda mudança gera histórico", () => {
   assert.match(migration, /confirmacao_dapi_obrigatoria/);
   assert.match(migration, /'acao_confirmada'/);
   assert.match(migration, /'sara_reavaliou'/);
-  assert.match(ui, /Simular evidência confirmada/);
-  assert.match(ui, /o webhook do D-API executará esta confirmação/);
+  assert.match(ui, /A conclusão vem do D-API/);
+  assert.match(ui, /envio confirmado no celular é a evidência/i);
+  assert.doesNotMatch(ui, /Simular evidência confirmada/);
 });
 
-test("cadência mostra com honestidade o passo oficial em implementação", () => {
+test("cadência mostra com honestidade a tentativa oficial sem duplicar instruções", () => {
   assert.match(modelo, /TOTAL_TENTATIVAS_CADENCIA = 6/);
   assert.match(modelo, /FOLGA_ENTRE_TENTATIVAS = \[0, 1, 1, 1, 2, 1\]/);
-  assert.match(ui, /CADÊNCIA OFICIAL/);
-  assert.match(ui, /Enviar tentativa/);
+  assert.match(ui, /tentativaAtual\(lead\)/);
+  assert.match(ui, /Chamar no WhatsApp · tentativa/);
   assert.match(ui, /f2-em-obra/);
-  assert.match(ui, /passo exato que deve ser executado agora/);
+  assert.doesNotMatch(ui, /passo exato que deve ser executado agora/);
 });
 
 test("card e ficha oferecem conversa e atalhos operacionais", () => {
-  assert.match(ui, />💬 Chat</);
+  assert.match(ui, />💬 (?:Chat|Conversa)</);
   assert.match(ui, /Funil2ConversationDrawer/);
   assert.match(ui, /WhatsApp/);
   assert.match(ui, /Agendar visita/);
-  assert.match(ui, /Gerar negociação/);
+  assert.match(ui, /Criar negociação/);
 });
 
 test("chat identifica a instância D-API atual e diferencia histórico com mais de uma", () => {
@@ -174,11 +175,11 @@ test("lead pescado nasce sem expor o histórico anterior no Funil 2.0", () => {
 
 test("card e ficha separam etapa, momento e próxima ação", () => {
   assert.match(ui, /f2-card-trio/);
-  assert.match(ui, /f2-agora-grid/);
-  assert.match(ui, /className="etapa"/);
-  assert.match(ui, /className="momento"/);
-  assert.match(ui, /className="acao"/);
-  assert.match(ui, /PRÓXIMA AÇÃO/);
+  assert.match(ui, /f2-ficha-chips/);
+  assert.match(ui, /f2-chip-resumo etapa/);
+  assert.match(ui, /f2-chip-resumo momento/);
+  assert.match(ui, /f2-proxima-acao/);
+  assert.match(ui, /Próxima ação/);
 });
 
 test("central de atenção lista obrigações acionáveis e não apenas contadores", () => {

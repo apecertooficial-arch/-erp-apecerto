@@ -8,26 +8,36 @@ const CORES = ["#FF7000", "#EA580C", "#FDBA74", "#10B981", "#3B82F6", "#7620B6",
 export function AssociarTagLead({
   leadId,
   catalogo,
+  tagsAssociadas = [],
   accessToken,
   onSalvo,
   mobile = false,
+  abertoInicial = false,
+  onFechar,
 }: {
   leadId: string;
   catalogo: TagCatalogoFunil2[];
+  tagsAssociadas?: string[];
   accessToken: string;
   onSalvo: () => void;
   mobile?: boolean;
+  abertoInicial?: boolean;
+  onFechar?: () => void;
 }) {
-  const [aberto, setAberto] = useState(false);
-  const [tagId, setTagId] = useState(catalogo[0]?.id ?? "");
-  const selecionada = useMemo(() => catalogo.find((tag) => tag.id === tagId) ?? catalogo[0] ?? null, [catalogo, tagId]);
+  const disponiveis = useMemo(() => {
+    const nomes = new Set(tagsAssociadas.map((nome) => nome.trim().toLocaleLowerCase("pt-BR")));
+    return catalogo.filter((tag) => !nomes.has(tag.nome.trim().toLocaleLowerCase("pt-BR")));
+  }, [catalogo, tagsAssociadas]);
+  const [aberto, setAberto] = useState(abertoInicial);
+  const [tagId, setTagId] = useState("");
+  const selecionada = useMemo(() => disponiveis.find((tag) => tag.id === tagId) ?? null, [disponiveis, tagId]);
   const [corManual, setCorManual] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState("");
   const cor = corManual ?? selecionada?.cor ?? "#FF7000";
 
   async function associar() {
-    if (!selecionada) return;
+    if (!selecionada) { setErro("Escolha uma tag para associar."); return; }
     setSalvando(true); setErro("");
     try {
       const resposta = await fetch("/api/funil2", {
@@ -37,7 +47,7 @@ export function AssociarTagLead({
       });
       const json = await resposta.json().catch(() => ({})) as { error?: string };
       if (!resposta.ok) throw new Error(json.error || "Não foi possível associar a tag.");
-      setAberto(false); setCorManual(null); onSalvo();
+      setAberto(false); setTagId(""); setCorManual(null); onSalvo(); onFechar?.();
     } catch (falha) {
       setErro(falha instanceof Error ? falha.message : "Não foi possível associar a tag.");
     } finally { setSalvando(false); }
@@ -46,11 +56,12 @@ export function AssociarTagLead({
   if (!aberto) return <button type="button" className={`f2-tag-associar${mobile ? " mobile" : ""}`} onClick={() => setAberto(true)}>＋ Associar tag</button>;
 
   return <section className={`f2-tag-editor${mobile ? " mobile" : ""}`} aria-label="Associar tag ao lead">
-    <div className="f2-tag-editor-cab"><strong>Associar tag</strong><button type="button" onClick={() => { setAberto(false); setErro(""); }} aria-label="Fechar associação">×</button></div>
-    {catalogo.length ? <>
+    <div className="f2-tag-editor-cab"><strong>Associar tag</strong><button type="button" onClick={() => { setAberto(false); setErro(""); onFechar?.(); }} aria-label="Fechar associação">×</button></div>
+    {disponiveis.length ? <>
       <label>Tag
         <select value={selecionada?.id ?? ""} onChange={(evento) => { setTagId(evento.target.value); setCorManual(null); }}>
-          {catalogo.map((tag) => <option key={tag.id} value={tag.id}>{tag.nome}</option>)}
+          <option value="">— escolha uma tag —</option>
+          {disponiveis.map((tag) => <option key={tag.id} value={tag.id}>{tag.nome}</option>)}
         </select>
       </label>
       <label>Cor da tag
@@ -59,7 +70,7 @@ export function AssociarTagLead({
       <div className="f2-tag-paleta" aria-label="Cores rápidas">{CORES.map((item) => <button key={item} type="button" aria-label={`Usar cor ${item}`} className={item === cor ? "ativa" : ""} style={{ backgroundColor: item }} onClick={() => setCorManual(item)} />)}</div>
       <div className="f2-tag-preview"><i style={{ backgroundColor: cor }} /><span>{selecionada?.nome}</span></div>
       {erro ? <p>{erro}</p> : null}
-      <button type="button" className="f2-tag-confirmar" disabled={salvando} onClick={() => void associar()}>{salvando ? "Associando…" : "Associar ao lead"}</button>
-    </> : <p>Nenhuma tag aprovada está disponível.</p>}
+      <button type="button" className="f2-tag-confirmar" disabled={salvando || !selecionada} onClick={() => void associar()}>{salvando ? "Associando…" : "Associar ao lead"}</button>
+    </> : <p>Todas as tags disponíveis já estão associadas a este lead.</p>}
   </section>;
 }

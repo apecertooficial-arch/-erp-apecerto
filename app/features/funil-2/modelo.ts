@@ -154,6 +154,7 @@ export type LeadFunil2 = {
   tags?: TagLeadFunil2[];
   etapa: EtapaFunil2;
   momento_codigo: string;
+  /** Leitura oficial da Sara, sustentada por evidências da conversa. */
   temperatura: TemperaturaLead | null;
   acao_codigo: string;
   acao_rotulo: string;

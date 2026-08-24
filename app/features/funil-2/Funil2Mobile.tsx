@@ -19,11 +19,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { BotaoWhatsApp } from "./BotaoWhatsApp";
 import { AssociarTagLead } from "./AssociarTagLead";
+import { Funil2ConversationDrawer } from "./Funil2ConversationDrawer";
 import { getBrowserSupabaseClient } from "../../lib/supabase/browser";
 import {
   acaoVisivel,
   esperandoPrimeiraChamada,
-  prazoDaAcao,
   rotuloTemperatura,
   situacaoPrazo,
   venceHoje,
@@ -59,7 +59,7 @@ const MOTIVOS_DESCARTE = [
 ] as const;
 
 const ETAPAS_FALLBACK = [
-  ["novo", "Novos"],
+  ["novo", "Lead novo"],
   ["tentando_contato", "Tentando contato"],
   ["em_atendimento", "Em atendimento"],
   ["visita", "Visita"],
@@ -178,7 +178,7 @@ function CartaoLead({
   momento: MomentoFunil2 | null;
   onAbrir: () => void;
 }) {
-  const prazo = prazoDaAcao(lead);
+  const prazo = situacaoPrazo(lead.proxima_acao_em);
   return <article className="ape-card">
     <div className="ape-card-topo">
       <span className="ape-avatar" aria-hidden="true">{iniciais(lead.nome)}</span>
@@ -192,8 +192,7 @@ function CartaoLead({
     <div className="ape-etiquetas">
       <span className="ape-etapa">{nomeEtapa(lead.etapa)}</span>
       <span className="ape-momento">{momento?.rotulo ?? lead.momento_codigo}</span>
-      {rotuloTemperatura(lead.temperatura) ? <span className={`ape-momento temperatura-${lead.temperatura}`}>{rotuloTemperatura(lead.temperatura)}</span> : null}
-      {lead.qualidade_atendimento_nota != null ? <span className="ape-momento">Atendimento {Number(lead.qualidade_atendimento_nota).toFixed(1)}/10</span> : null}
+      {rotuloTemperatura(lead.temperatura) ? <span className={`ape-momento temperatura-${lead.temperatura}`}><i />{rotuloTemperatura(lead.temperatura)}</span> : null}
     </div>
 
     <ContextoDoLead lead={lead} />
@@ -217,12 +216,16 @@ function AgendarVisitaMobile({
   lead,
   accessToken,
   onSalvo,
+  abertoInicial = false,
+  onFechar,
 }: {
   lead: LeadFunil2;
   accessToken: string;
   onSalvo: () => void;
+  abertoInicial?: boolean;
+  onFechar?: () => void;
 }) {
-  const [aberto, setAberto] = useState(false);
+  const [aberto, setAberto] = useState(abertoInicial);
   const [quando, setQuando] = useState("");
   const [empreendimento, setEmpreendimento] = useState("");
   const [unidade, setUnidade] = useState("");
@@ -232,12 +235,18 @@ function AgendarVisitaMobile({
   const [erro, setErro] = useState("");
   const [produtos, setProdutos] = useState<{ id: string; nome: string }[]>([]);
   const [gerentes, setGerentes] = useState<{ id: number; nome: string }[]>([]);
+  const [carregandoProdutos, setCarregandoProdutos] = useState(false);
+  const [erroProdutos, setErroProdutos] = useState("");
 
   useEffect(() => {
     if (!aberto) return;
     const sb = getBrowserSupabaseClient();
     void sb.from("empreendimentos").select("id,nome").order("nome").limit(200)
-      .then(({ data }) => setProdutos((data ?? []) as { id: string; nome: string }[]));
+      .then(({ data, error }) => {
+        setCarregandoProdutos(false);
+        if (error) { setErroProdutos("Não foi possível carregar os produtos. Tente novamente em instantes."); return; }
+        setProdutos((data ?? []) as { id: string; nome: string }[]);
+      });
     void sb.from("gerentes").select("id,nome").eq("ativo", true).order("geral", { ascending: false }).order("nome")
       .then(({ data }) => setGerentes((data ?? []) as { id: number; nome: string }[]));
   }, [aberto]);
@@ -274,7 +283,7 @@ function AgendarVisitaMobile({
       }
       setAberto(false); setQuando(""); setEmpreendimento(""); setUnidade("");
       setComGerente(false); setGerente("");
-      onSalvo();
+      onSalvo(); onFechar?.();
     } catch {
       setErro("Não foi possível agendar. Tente de novo.");
     } finally {
@@ -283,18 +292,19 @@ function AgendarVisitaMobile({
   }
 
   if (!aberto) {
-    return <button type="button" className="f2m-agendar-abrir" onClick={() => setAberto(true)}>Agendar visita</button>;
+    return <button type="button" className="f2m-agendar-abrir" onClick={() => { setCarregandoProdutos(true); setErroProdutos(""); setAberto(true); }}>Agendar visita</button>;
   }
 
   return <section className="f2m-agendar">
     <h3>Agendar visita</h3>
 
     <label>Produto
-      <select value={empreendimento} onChange={(e) => setEmpreendimento(e.target.value)}>
-        <option value="">— escolha o empreendimento —</option>
+      <select value={empreendimento} disabled={carregandoProdutos || Boolean(erroProdutos)} onChange={(e) => setEmpreendimento(e.target.value)}>
+        <option value="">{carregandoProdutos ? "Carregando produtos…" : erroProdutos ? "Produtos indisponíveis" : produtos.length === 0 ? "Nenhum produto disponível" : "— escolha o empreendimento —"}</option>
         {produtos.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
       </select>
     </label>
+    {erroProdutos && <p className="f2m-agendar-erro" role="alert">{erroProdutos}</p>}
 
     <label>Unidade <small>(opcional)</small>
       <input type="text" value={unidade} placeholder="Ex.: apto 402" onChange={(e) => setUnidade(e.target.value)} />
@@ -318,11 +328,99 @@ function AgendarVisitaMobile({
 
     {erro && <p className="f2m-agendar-erro">{erro}</p>}
     <div className="f2m-agendar-acoes">
-      <button type="button" className="f2m-agendar-nao" onClick={() => setAberto(false)} disabled={salvando}>Cancelar</button>
-      <button type="button" className="f2m-agendar-ok" onClick={() => void salvar()} disabled={salvando}>
+      <button type="button" className="f2m-agendar-nao" onClick={() => { setAberto(false); onFechar?.(); }} disabled={salvando}>Cancelar</button>
+      <button type="button" className="f2m-agendar-ok" onClick={() => void salvar()} disabled={salvando || !quando || (!empreendimento && unidade.trim().length < 2) || (comGerente && !gerente)}>
         {salvando ? "Agendando…" : "Confirmar visita"}
       </button>
     </div>
+  </section>;
+}
+
+function AtualizarMomentoMobile({ lead, momento, momentos, etapas, accessToken, onSalvo, abertoInicial = false }: {
+  lead: LeadFunil2;
+  momento: MomentoFunil2 | null;
+  momentos: MomentoFunil2[];
+  etapas: EtapaConfigFunil2[];
+  accessToken: string;
+  onSalvo: () => void;
+  abertoInicial?: boolean;
+}) {
+  const [aberto, setAberto] = useState(abertoInicial);
+  const [codigo, setCodigo] = useState(lead.momento_codigo);
+  const [prazo, setPrazo] = useState("");
+  const [observacao, setObservacao] = useState("");
+  const [salvando, setSalvando] = useState(false);
+  const [erro, setErro] = useState("");
+  const escolhido = momentos.find((item) => item.codigo === codigo) ?? momento;
+
+  async function salvar() {
+    if (!codigo) { setErro("Escolha o momento do cliente."); return; }
+    if (codigo === "RETORNO_PROGRAMADO" && !prazo) { setErro("Informe a data e a hora combinadas."); return; }
+    setSalvando(true); setErro("");
+    try {
+      const resposta = await fetch("/api/funil2", {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "atualizarMomento", id: lead.id, versao: lead.versao, momentoCodigo: codigo, prazoCombinado: prazo || null, observacao: observacao.trim() || null }),
+      });
+      const dados = await resposta.json().catch(() => null) as { ok?: boolean; error?: string } | null;
+      if (!resposta.ok || dados?.ok === false) { setErro(dados?.error || "Não foi possível atualizar o momento."); return; }
+      setAberto(false); setObservacao(""); setPrazo(""); onSalvo();
+    } catch {
+      setErro("Não foi possível atualizar. Tente novamente.");
+    } finally { setSalvando(false); }
+  }
+
+  if (!aberto) return <button type="button" className="f2m-momento-abrir" onClick={() => setAberto(true)}>Atualizar momento do cliente</button>;
+
+  return <section className="f2m-agendar f2m-momento-form">
+    <h3>Atualizar momento</h3><p>Registre onde o cliente está agora. O próximo prazo será recalculado automaticamente.</p>
+    <label>Momento oficial<select value={codigo} onChange={(evento) => setCodigo(evento.target.value)}>
+      {etapas.filter((etapa) => etapa.ativo).map((etapa) => {
+        const opcoes = momentos.filter((item) => item.ativo !== false && item.etapa === etapa.codigo);
+        return opcoes.length ? <optgroup key={etapa.codigo} label={etapa.rotulo}>{opcoes.map((item) => <option key={item.codigo} value={item.codigo}>{item.rotulo}</option>)}</optgroup> : null;
+      })}
+    </select></label>
+    {escolhido && <div className="f2m-momento-preview"><span>PRÓXIMA AÇÃO</span><strong>{escolhido.acao_rotulo}</strong><small>{escolhido.prazo_rotulo || "Data combinada"}</small></div>}
+    {codigo === "RETORNO_PROGRAMADO" && <label>Data e hora combinadas<input type="datetime-local" value={prazo} onChange={(evento) => setPrazo(evento.target.value)} /></label>}
+    <label>Observação <small>(opcional)</small><textarea value={observacao} onChange={(evento) => setObservacao(evento.target.value)} placeholder="O que mudou ou ficou combinado?" maxLength={500} rows={3} /></label>
+    {erro && <p className="f2m-agendar-erro">{erro}</p>}
+    <div className="f2m-agendar-acoes"><button type="button" className="f2m-agendar-nao" onClick={() => setAberto(false)} disabled={salvando}>Cancelar</button><button type="button" className="f2m-agendar-ok" onClick={() => void salvar()} disabled={salvando}>{salvando ? "Salvando…" : "Salvar momento"}</button></div>
+  </section>;
+}
+
+function GerarNegociacaoMobile({ lead, accessToken, onSalvo, abertoInicial = false, onFechar }: { lead: LeadFunil2; accessToken: string; onSalvo: () => void; abertoInicial?: boolean; onFechar?: () => void }) {
+  const [aberto, setAberto] = useState(abertoInicial);
+  const [titulo, setTitulo] = useState("");
+  const [valor, setValor] = useState("");
+  const [salvando, setSalvando] = useState(false);
+  const [erro, setErro] = useState("");
+
+  async function salvar() {
+    if (titulo.trim().length < 2) { setErro("Informe qual é a oportunidade."); return; }
+    setSalvando(true); setErro("");
+    try {
+      const resposta = await fetch("/api/funil2", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "salvarNegociacao", leadId: lead.id, titulo: titulo.trim(), valor: valor ? Number(valor) : null, etapa: "qualificacao" }),
+      });
+      const dados = await resposta.json().catch(() => null) as { ok?: boolean; error?: string } | null;
+      if (!resposta.ok || dados?.ok === false) { setErro(dados?.error || "Não foi possível criar a negociação."); return; }
+      setAberto(false); setTitulo(""); setValor(""); onSalvo(); onFechar?.();
+    } catch {
+      setErro("Não foi possível criar a negociação. Tente novamente.");
+    } finally { setSalvando(false); }
+  }
+
+  if (!aberto) return <button type="button" className="f2m-negociacao-abrir" onClick={() => setAberto(true)}>Criar negociação</button>;
+
+  return <section className="f2m-agendar f2m-negociacao-form">
+    <h3>Criar negociação</h3><p>A oportunidade será vinculada a {lead.nome} e entrará em Qualificação na Esteira.</p>
+    <label>Oportunidade<input value={titulo} onChange={(evento) => setTitulo(evento.target.value)} placeholder="Ex.: Apartamento no Centro" maxLength={120} /></label>
+    <label>Valor estimado <small>(opcional)</small><input type="number" min="0" step="0.01" value={valor} onChange={(evento) => setValor(evento.target.value)} /></label>
+    {erro && <p className="f2m-agendar-erro">{erro}</p>}
+    <div className="f2m-agendar-acoes"><button type="button" className="f2m-agendar-nao" onClick={() => { setAberto(false); onFechar?.(); }} disabled={salvando}>Cancelar</button><button type="button" className="f2m-agendar-ok" onClick={() => void salvar()} disabled={salvando || titulo.trim().length < 2}>{salvando ? "Criando…" : "Criar negociação"}</button></div>
   </section>;
 }
 
@@ -381,12 +479,16 @@ function DescartarMobile({
   lead,
   accessToken,
   onDescartado,
+  abertoInicial = false,
+  onFechar,
 }: {
   lead: LeadFunil2;
   accessToken: string;
   onDescartado: () => void;
+  abertoInicial?: boolean;
+  onFechar?: () => void;
 }) {
-  const [aberto, setAberto] = useState(false);
+  const [aberto, setAberto] = useState(abertoInicial);
   const [motivo, setMotivo] = useState("");
   const [detalhe, setDetalhe] = useState("");
   const [salvando, setSalvando] = useState(false);
@@ -433,7 +535,7 @@ function DescartarMobile({
 
     {erro && <p className="f2m-agendar-erro">{erro}</p>}
     <div className="f2m-agendar-acoes">
-      <button type="button" className="f2m-agendar-nao" onClick={() => setAberto(false)} disabled={salvando}>Cancelar</button>
+      <button type="button" className="f2m-agendar-nao" onClick={() => { setAberto(false); onFechar?.(); }} disabled={salvando}>Cancelar</button>
       <button type="button" className="f2m-agendar-ok" onClick={() => void descartar()} disabled={salvando || !motivo}>
         {salvando ? "Descartando…" : "Confirmar descarte"}
       </button>
@@ -446,6 +548,8 @@ function DescartarMobile({
 function FichaLead({
   lead,
   momento,
+  momentos,
+  etapas,
   eventos,
   notas,
   onFechar,
@@ -456,6 +560,8 @@ function FichaLead({
 }: {
   lead: LeadFunil2;
   momento: MomentoFunil2 | null;
+  momentos: MomentoFunil2[];
+  etapas: EtapaConfigFunil2[];
   eventos: EventoFunil2[];
   notas: NotaFunil2[];
   onFechar: () => void;
@@ -464,8 +570,26 @@ function FichaLead({
   onRecarregar: () => void;
   tagCatalogo: TagCatalogoFunil2[];
 }) {
-  const prazo = prazoDaAcao(lead);
-  return <div className="ape-folha" role="dialog" aria-modal="true" aria-label={`Atendimento de ${lead.nome}`}>
+  const [aba, setAba] = useState<"atendimento" | "notas" | "historico">("atendimento");
+  const [chatAberto, setChatAberto] = useState(false);
+  const [maisAcoes, setMaisAcoes] = useState(false);
+  const [acaoMais, setAcaoMais] = useState<"visita" | "negociacao" | "tag" | "descarte" | null>(null);
+  const prazo = situacaoPrazo(lead.proxima_acao_em);
+  const temperatura = lead.temperatura ?? null;
+  const temperaturaRotulo = rotuloTemperatura(temperatura) ?? "Aguardando leitura";
+  useEffect(() => {
+    const fechar = (evento: KeyboardEvent) => {
+      if (evento.key !== "Escape") return;
+      if (chatAberto) setChatAberto(false);
+      else if (acaoMais) setAcaoMais(null);
+      else if (maisAcoes) setMaisAcoes(false);
+      else onFechar();
+    };
+    document.addEventListener("keydown", fechar);
+    return () => document.removeEventListener("keydown", fechar);
+  }, [acaoMais, chatAberto, maisAcoes, onFechar]);
+
+  return <div className="ape-folha" role="dialog" aria-modal="true" aria-label={`Atendimento de ${lead.nome}`} onMouseDown={(evento) => { if (evento.target === evento.currentTarget) onFechar(); }}>
     <section className="ape-ficha">
       <div className="ape-ficha-topo">
         <button type="button" className="ape-voltar" onClick={onFechar}><IconeVoltar />Fila</button>
@@ -473,43 +597,30 @@ function FichaLead({
 
       <div className="ape-ficha-nome">
         <h2>{lead.nome}</h2>
-        <p>{lead.corretor_nome ?? "Sem responsável"}{lead.instancia_rotulo ? ` · ${lead.instancia_rotulo}` : ""}</p>
-        <div className="ape-ficha-etiquetas">
-          <span className="ape-etapa">{nomeEtapa(lead.etapa)}</span>
-          <span className="ape-momento">{momento?.rotulo ?? lead.momento_codigo}</span>
-        </div>
-        <ContextoDoLead lead={lead} completo />
-        <AssociarTagLead leadId={lead.id} catalogo={tagCatalogo} accessToken={accessToken} onSalvo={onRecarregar} mobile />
+        <p>{lead.corretor_nome ?? "Sem responsável"} · negócio #{lead.origem_negocio_id}</p>
+        <div className="ape-ficha-etiquetas ape-ficha-resumo-chips"><span className="ape-etapa"><small>Etapa</small>{nomeEtapa(lead.etapa)}</span><span className="ape-momento"><small>Momento</small>{momento?.rotulo ?? lead.momento_codigo}</span><span className={`ape-momento temperatura-${temperatura ?? "aguardando"}`}><i /><small>Temp.</small>{temperaturaRotulo}</span><em className={`ape-momento prazo-${prazo.classe}`}><small>Prazo</small>{prazo.rotulo}</em></div>
+        <p className="ape-ficha-interesse">Interesse: <b>{lead.interesse ?? "Não identificado"}</b></p>
       </div>
 
-      <div className="ape-ordem">
-        <span className="ape-contexto-titulo">
-          <span className="ape-contexto-selo"><IconeCheck tamanho={10} /></span>
-          O que fazer agora
-        </span>
-        <h3>{acaoVisivel(lead)}</h3>
-        {momento?.descricao ? <p>{momento.descricao}</p> : null}
-        <em className={`ape-ordem-prazo ${prazo.classe}`}>{prazo.rotulo}</em>
-      </div>
+      <section className="ape-ordem ape-proxima-aprovada"><span className="ape-contexto-titulo">Próxima ação</span><h3>{acaoVisivel(lead)}</h3>{momento?.descricao ? <p>{momento.descricao}</p> : null}</section>
 
-      <div className="ape-ficha-acao">
-        <BotaoWhatsApp telefone={lead.telefone} negocioId={lead.origem_negocio_id} />
-      </div>
-      <p className="ape-ficha-nota">A mensagem sai do seu WhatsApp. O app não envia nada por você.</p>
+      <div className="ape-ficha-acoes-aprovadas"><button type="button" onClick={() => setChatAberto(true)}>Chat</button><button type="button" onClick={() => setAcaoMais("visita")}>Agendar visita</button><button type="button" aria-expanded={maisAcoes} onClick={() => setMaisAcoes(true)}>Mais</button></div>
 
-      <AgendarVisitaMobile lead={lead} accessToken={accessToken} onSalvo={onSalvo} />
+      <nav className="ape-ficha-abas" role="tablist" aria-label="Áreas do atendimento">{([ ["atendimento", "Atendimento"], ["notas", "Notas"], ["historico", "Histórico"] ] as const).map(([chave, rotulo]) => <button key={chave} type="button" role="tab" aria-selected={aba === chave} className={aba === chave ? "ativa" : ""} onClick={() => setAba(chave)}>{rotulo}</button>)}</nav>
 
-      <DescartarMobile lead={lead} accessToken={accessToken} onDescartado={() => { onSalvo(); onFechar(); }} />
+      {aba === "atendimento" && <div className="ape-ficha-painel"><section className="f2m-sara-resumo f2m-sara-aprovado"><span>RESUMO DA SARA</span><strong>{lead.ultima_reavaliacao_resumo ?? "Ainda não existe uma leitura resumida."}</strong>{lead.qualidade_atendimento_resumo && <small>{lead.qualidade_atendimento_resumo}</small>}</section><details className="f2m-detalhes-atendimento"><summary>Detalhes do atendimento</summary><div><span><b>Última ação confirmada</b><strong>{lead.ultima_acao_confirmada_em ? new Date(lead.ultima_acao_confirmada_em).toLocaleString("pt-BR") : "Ainda não confirmada"}</strong></span><span><b>Sara reavaliou</b><strong>{lead.ultima_reavaliacao_sara_em ? new Date(lead.ultima_reavaliacao_sara_em).toLocaleString("pt-BR") : "Ainda não reavaliou"}</strong></span><span><b>Nota do atendimento</b><strong>{lead.qualidade_atendimento_nota == null ? "Ainda não avaliado" : `${Number(lead.qualidade_atendimento_nota).toFixed(1)}/10`}</strong></span><span><b>Telefone</b><strong>{lead.telefone || "Não informado"}</strong></span><span><b>Canal</b><strong>{lead.instancia_rotulo || "Não identificado"}</strong></span></div><ContextoDoLead lead={lead} completo /><p>A temperatura vem da conversa e é classificada pela Sara. A conclusão da tarefa vem do D-API.</p></details><AtualizarMomentoMobile lead={lead} momento={momento} momentos={momentos} etapas={etapas} accessToken={accessToken} onSalvo={onRecarregar} abertoInicial /></div>}
 
-      <NotasMobile lead={lead} notas={notas} accessToken={accessToken} onSalvo={onRecarregar} />
+      {aba === "notas" && <div className="ape-ficha-painel"><NotasMobile lead={lead} notas={notas} accessToken={accessToken} onSalvo={onRecarregar} /></div>}
 
-      <section className="f2m-historico">
-        <h3>Últimas atualizações</h3>
-        {eventos.length === 0 ? <p>Ainda não há atualização registrada neste atendimento.</p> : eventos.slice(0, 8).map((evento) => <article key={evento.id}>
-          <i />
-          <div><strong>{evento.titulo}</strong>{evento.detalhe && <span>{evento.detalhe}</span>}<small>{new Date(evento.criado_em).toLocaleString("pt-BR")}</small></div>
-        </article>)}
-      </section>
+      {aba === "historico" && <div className="ape-ficha-painel"><section className="f2m-historico"><h3>Últimas atualizações</h3>{eventos.length === 0 ? <p>Ainda não há atualização registrada neste atendimento.</p> : eventos.slice(0, 8).map((evento) => <article key={evento.id}><i /><div><strong>{evento.titulo}</strong>{evento.detalhe && <span>{evento.detalhe}</span>}<small>{new Date(evento.criado_em).toLocaleString("pt-BR")}</small></div></article>)}</section></div>}
+
+      <div className="ape-ficha-rodape-aprovado"><BotaoWhatsApp telefone={lead.telefone} negocioId={lead.origem_negocio_id} compacto /><button type="button" onClick={() => setChatAberto(true)} aria-label="Ver conversa">Chat</button></div>
+
+      {chatAberto && (lead.lead_id > 0 ? <Funil2ConversationDrawer accessToken={accessToken} leadId={lead.id} nome={lead.nome} onClose={() => setChatAberto(false)} /> : <div className="ape-ficha-sheet" onMouseDown={(evento) => { if (evento.target === evento.currentTarget) setChatAberto(false); }}><section><button type="button" onClick={() => setChatAberto(false)}>×</button><p>Este cliente ainda não possui conversa vinculada.</p></section></div>)}
+
+      {maisAcoes && <div className="ape-ficha-sheet" onMouseDown={(evento) => { if (evento.target === evento.currentTarget) setMaisAcoes(false); }}><section role="dialog" aria-label="Mais ações"><i /><button type="button" onClick={() => { setMaisAcoes(false); setAcaoMais("negociacao"); }}>Gerar negociação</button><button type="button" onClick={() => { setMaisAcoes(false); setAcaoMais("tag"); }}>Adicionar tag</button><hr /><button type="button" className="risco" onClick={() => { setMaisAcoes(false); setAcaoMais("descarte"); }}>Descartar lead</button><p>O descarte pede motivo e confirmação antes de concluir.</p></section></div>}
+
+      {acaoMais && <div className="ape-ficha-sheet" onMouseDown={(evento) => { if (evento.target === evento.currentTarget) setAcaoMais(null); }}><section role="dialog" aria-label={acaoMais === "visita" ? "Agendar visita" : acaoMais === "negociacao" ? "Gerar negociação" : acaoMais === "tag" ? "Adicionar tag" : "Descartar lead"}><i />{acaoMais === "visita" && <AgendarVisitaMobile lead={lead} accessToken={accessToken} onSalvo={onSalvo} abertoInicial onFechar={() => setAcaoMais(null)} />}{acaoMais === "negociacao" && <GerarNegociacaoMobile lead={lead} accessToken={accessToken} onSalvo={onRecarregar} abertoInicial onFechar={() => setAcaoMais(null)} />}{acaoMais === "tag" && <AssociarTagLead leadId={lead.id} catalogo={tagCatalogo} tagsAssociadas={(lead.tags ?? []).map((tag) => tag.nome)} accessToken={accessToken} onSalvo={onRecarregar} mobile abertoInicial onFechar={() => setAcaoMais(null)} />}{acaoMais === "descarte" && <DescartarMobile lead={lead} accessToken={accessToken} onDescartado={() => { onSalvo(); onFechar(); }} abertoInicial onFechar={() => setAcaoMais(null)} />}</section></div>}
     </section>
   </div>;
 }
@@ -528,7 +639,7 @@ export function Funil2Mobile({
   const { dados, erro, recarregar } = useFunil2Mobile(accessToken);
   /* No Meu Dia a lista NAO e filtrada por chip: os tres grupos abaixo dao conta
      do recorte. "todos" aqui significa "deixe o agrupamento decidir". */
-  const [filtroDia, setFiltroDia] = useState<FiltroDia>("todos");
+  const filtroDia: FiltroDia = "todos";
   const [etapa, setEtapa] = useState("ativos");
   const [busca, setBusca] = useState("");
   const [selecionado, setSelecionado] = useState<string | null>(null);
@@ -683,6 +794,8 @@ export function Funil2Mobile({
     {leadAberto && <FichaLead
       lead={leadAberto}
       momento={momentos.find((momento) => momento.codigo === leadAberto.momento_codigo) ?? null}
+      momentos={momentos}
+      etapas={dados?.etapas ?? []}
       eventos={eventos.filter((evento) => evento.funil_lead_id === leadAberto.id).sort((a, b) => +new Date(b.criado_em) - +new Date(a.criado_em))}
       notas={notas.filter((nota) => nota.funil_lead_id === leadAberto.id)}
       tagCatalogo={dados?.tagCatalogo ?? []}

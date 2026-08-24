@@ -24,7 +24,7 @@ test("todo perfil autorizado entra no F2 sem gate de piloto", () => {
 });
 
 test("Meu Dia entrega o lead e a chamada; a orientação completa fica na ficha", () => {
-  assert.match(MOBILE, /<div className="ape-ordem">[\s\S]*<h3>\{acaoVisivel\(lead\)\}<\/h3>/);
+  assert.match(MOBILE, /className="ape-ordem ape-proxima-aprovada">[\s\S]*<h3>\{acaoVisivel\(lead\)\}<\/h3>/);
   assert.match(MOBILE, /BotaoWhatsApp/);
   // O layout aprovado trocou os chips "Agora · N" por um resumo de tres
   // contadores com rotulo em palavra. O contrato que importa continua o mesmo:
@@ -52,7 +52,7 @@ test("a folha mobile antiga não mantém estruturas mortas do aplicativo", () =>
 
 test("CRM mobile troca o quadro de desktop por busca, filtros e cartões", () => {
   assert.match(MOBILE, /placeholder="Buscar cliente ou telefone"/);
-  for (const etapa of ["Novos", "Tentando contato", "Em atendimento", "Pós-visita"]) {
+  for (const etapa of ["Lead novo", "Tentando contato", "Em atendimento", "Pós-visita"]) {
     assert.ok(MOBILE.includes(etapa), `falta filtro ${etapa}`);
   }
   assert.match(MOBILE, /modo: "inicio" \| "crm"/);
