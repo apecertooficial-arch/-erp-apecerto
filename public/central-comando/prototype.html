@@ -610,7 +610,7 @@ button.ape-nav-item[disabled]{opacity:1;color:var(--fg-3);cursor:pointer}
                   </sc-for>
                 </tbody>
               </table>
-              <div class="ape-table-empty" style="display:{{ mktVazioShow }}">Nenhuma linha corresponde à busca e aos filtros ativos. Limpe a busca ou remova um filtro de canal ou campanha.</div>
+              <div class="ape-table-empty" style="display:{{ mktVazioShow }}">{{ mktVazioTexto }}</div>
             </div>
             <span style="font-size:11px;color:var(--fg-3)">{{ mktRodape }}</span>
             <div class="cc-pop" style="right:16px;top:64px;display:{{ popSecao.show }}" role="dialog" aria-label="{{ popSecao.titulo }}">
@@ -2631,7 +2631,8 @@ class Component extends DCLogic {
     const FADIGA = {
       ok: { fg: 'var(--cc-ok)', bg: 'var(--success-bg)', glifo: '\u2713', titulo: 'Sem sinal de fadiga', nota: 'CTR est\u00e1vel nos \u00faltimos 14 dias com frequ\u00eancia sob controle. Pode seguir no ar.' },
       atencao: { fg: 'var(--cc-atencao)', bg: 'var(--warning-bg)', glifo: '~', titulo: 'Sinal de fadiga', nota: 'CTR caiu 22% em 7 dias enquanto a frequ\u00eancia subiu. Renove o criativo antes que o CPL acompanhe.' },
-      critico: { fg: 'var(--cc-risco)', bg: 'var(--danger-bg)', glifo: '!', titulo: 'Fadiga alta ou entrega sem retorno', nota: 'Frequ\u00eancia acima de 4 ou investimento sem lead v\u00e1lido. Pausar ou substituir o criativo.' }
+      critico: { fg: 'var(--cc-risco)', bg: 'var(--danger-bg)', glifo: '!', titulo: 'Fadiga alta ou entrega sem retorno', nota: 'Frequ\u00eancia acima de 4 ou investimento sem lead v\u00e1lido. Pausar ou substituir o criativo.' },
+      indisponivel: { fg: 'var(--cc-atencao)', bg: 'var(--warning-bg)', glifo: '~', titulo: 'Leitura de criativo indisponível', nota: 'Autorize Meta Ads ou Google Ads para calcular frequência, CTR e fadiga sem estimativas.' }
     };
     const achaNo = (id) => {
       let achado = null;
@@ -2648,8 +2649,9 @@ class Component extends DCLogic {
       statusFg: adNode.id === 'real-empty' ? 'var(--cc-atencao)' : 'var(--cc-ok)',
       statusBg: adNode.id === 'real-empty' ? 'var(--warning-bg)' : 'var(--success-bg)',
       tempo: 'período selecionado', titulo: adNode.nome, texto: 'Detalhes criativos dependem da autorização da conta de anúncios.',
-      cta: '—', fadiga: 'atencao'
+      cta: '—', fadiga: adNode.id === 'real-empty' ? 'indisponivel' : 'atencao'
     } : AD_INFO.ad1);
+    const semAdReal = !!st.realData && adNode.id === 'real-empty';
     const adM = this.soma(adNode);
     const fad = FADIGA[adInfo.fadiga];
     const pctTxt = (a2, b2) => b2 ? this.dec((a2 / b2) * 100, 2) + '%' : '\u2014';
@@ -2658,7 +2660,16 @@ class Component extends DCLogic {
       status: adInfo.status, statusFg: adInfo.statusFg, statusBg: adInfo.statusBg, tempo: adInfo.tempo,
       titulo: adInfo.titulo, texto: adInfo.texto, cta: adInfo.cta,
       fadigaFg: fad.fg, fadigaBg: fad.bg, fadigaGlifo: fad.glifo, fadigaTitulo: fad.titulo, fadigaNota: fad.nota,
-      metricas: [
+      metricas: semAdReal ? [
+        { k: 'Investimento', v: 'Indisponível', nota: 'autorizar plataforma', fg: 'var(--fg-3)' },
+        { k: 'Impressões', v: 'Indisponível', nota: 'sem estimativa', fg: 'var(--fg-3)' },
+        { k: 'CTR link', v: 'Indisponível', nota: 'sem estimativa', fg: 'var(--fg-3)' },
+        { k: 'Leads válidos', v: 'Indisponível', nota: 'atribuição sem mídia', fg: 'var(--fg-3)' },
+        { k: 'CPL válido', v: 'Indisponível', nota: 'sem investimento', fg: 'var(--fg-3)' },
+        { k: 'Qualificados', v: 'Indisponível', nota: 'atribuição sem mídia', fg: 'var(--fg-3)' },
+        { k: 'Visitas', v: 'Indisponível', nota: 'atribuição sem mídia', fg: 'var(--fg-3)' },
+        { k: 'Vendas', v: 'Indisponível', nota: 'atribuição sem mídia', fg: 'var(--fg-3)' }
+      ] : [
         { k: 'Investimento', v: this.brl(adM.inv), nota: 'no per\u00edodo', fg: 'var(--fg-1)' },
         { k: 'Impress\u00f5es', v: this.num(adM.impr), nota: 'freq. ' + (adM.alc ? this.dec(adM.impr / adM.alc, 1) : '—'), fg: 'var(--fg-1)' },
         { k: 'CTR link', v: pctTxt(adM.cliques, adM.impr), nota: this.num(adM.cliques) + ' cliques', fg: 'var(--fg-1)' },
@@ -2673,7 +2684,7 @@ class Component extends DCLogic {
       dinamicoBody: st.dinamicoAberto ? 'flex' : 'none',
       dinamicoLabel: st.dinamicoAberto ? 'recolher' : 'expandir',
       onDinamico: () => this.setState({ dinamicoAberto: !st.dinamicoAberto }),
-      elementos: [
+      elementos: semAdReal ? [] : [
         { tipo: 'Imagem', nome: 'Sala com sof\u00e1 claro', uso: 'alta rota\u00e7\u00e3o', perf: 'CTR 0,61%', fg: 'var(--cc-atencao)' },
         { tipo: 'Imagem', nome: 'Varanda ao sol', uso: 'm\u00e9dia', perf: 'CTR 0,58%', fg: 'var(--cc-atencao)' },
         { tipo: 'V\u00eddeo', nome: 'Tour 20s vertical', uso: 'baixa', perf: 'CTR 0,42%', fg: 'var(--cc-risco)' },
@@ -2681,7 +2692,7 @@ class Component extends DCLogic {
         { tipo: 'T\u00edtulo', nome: 'Mobiliado e decorado', uso: 'm\u00e9dia', perf: 'estimado', fg: 'var(--fg-3)' },
         { tipo: 'Descri\u00e7\u00e3o', nome: '5 min do metr\u00f4 Eucaliptos', uso: 'alta', perf: 'estimado', fg: 'var(--fg-3)' }
       ],
-      onFunil: () => this.abrir({
+      onFunil: semAdReal ? () => this.avisar('Mídia indisponível', 'Autorize Meta Ads ou Google Ads para abrir o funil real do anúncio.') : () => this.abrir({
         eyebrow: 'Funil do an\u00fancio', titulo: adNode.nome, sub: adInfo.caminho, cta: 'Abrir no gerenciador',
         fonte: 'Fonte: plataforma de m\u00eddia + CRM \u00b7 atribui\u00e7\u00e3o por \u00faltimo clique n\u00e3o direto',
         cols: [{ nome: 'Etapa' }, { nome: 'Volume' }, { nome: 'Convers\u00e3o' }, { nome: 'Custo' }],
@@ -3330,6 +3341,7 @@ class Component extends DCLogic {
         ? 'Totais do recorte: ' + this.brl(totalGeral.inv) + ' investidos · ' + this.num(totalGeral.validos) + ' leads válidos · ' + this.num(totalGeral.vendas) + ' vendas · comissão atribuída ' + this.brl(totalGeral.comissao) + ' · ROAS de comissão ' + this.dec(totalGeral.comissao / totalGeral.inv, 1) + 'x. Vendas sem origem identificada não aparecem aqui.'
         : 'Meta Ads e Google Ads ainda não forneceram investimento neste recorte. Nenhum zero estimado é apresentado como dado real.',
       mktVazioShow: mktRows.length ? 'none' : 'block',
+      mktVazioTexto: st.realData && !this.MKT.length ? 'Meta Ads e Google Ads não devolveram anúncios neste recorte. Autorize as contas para carregar campanhas, conjuntos, anúncios e criativos.' : 'Nenhuma linha corresponde à busca e aos filtros ativos. Limpe a busca ou remova um filtro de canal ou campanha.',
       mktBusca: st.mktBusca || '',
       onMktBusca: (e) => this.setState({ mktBusca: e.target.value }),
       mktFiltroShow: (canaisSel.length || campSel.length || busca) ? 'block' : 'none',
