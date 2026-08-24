@@ -75,6 +75,8 @@ test("estrutura publicada preserva a arquitetura visual do Claude Design", () =>
   assert.match(css, /\.cc-prototype-header\{[^}]*gap:12px[^}]*padding:14px 24px 0/);
   assert.match(css, /\.cc-prototype \.ape-kpi\{[^}]*padding:12px 16px[^}]*gap:4px/);
   assert.match(css, /\.cc-prototype \.ape-section-title\{font-size:16px/);
+  assert.match(css, /\.cc-prototype-main>div\{display:grid;gap:16px\}/);
+  assert.doesNotMatch(workspace, /<main className="cc-prototype-main cc-scroll"><div>\{content\[page\]\}<\/div><\/main>/);
   assert.match(css, /\.app-shell:has\(\.cc-prototype\)\{grid-template-columns:minmax\(0,1fr\)!important\}/);
   assert.match(css, /\.cc-prototype-header/);
   assert.match(css, /\.cc-prototype-main/);
