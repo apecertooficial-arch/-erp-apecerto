@@ -11,6 +11,7 @@ import {
 const migration = await readFile(new URL("../supabase/migrations/20260824215809_produtos_dados_privados_origem_qualidade.sql", import.meta.url), "utf8");
 const catalog = await readFile(new URL("../app/api/catalog/route.ts", import.meta.url), "utf8");
 const product = await readFile(new URL("../app/api/product/route.ts", import.meta.url), "utf8");
+const detail = await readFile(new URL("../app/features/products/ProductDetail.tsx", import.meta.url), "utf8");
 
 test("origem comercial explícita prevalece e o fallback preserva o estoque atual", () => {
   assert.equal(resolveCommercialOrigin({ explicit: "terceiros", thirdParty: false, buildingStatus: "Pronto" }), "terceiros");
@@ -45,4 +46,9 @@ test("APIs consomem a camada privada e a origem canônica", () => {
   assert.match(catalog, /produto_qualidade_fila/);
   assert.match(catalog, /resolveCommercialOrigin/);
   assert.doesNotMatch(catalog, /\.select\("[^"]*proprietario_nome/);
+});
+
+test("unidade já publicada apresenta pendências antigas como correções recomendadas", () => {
+  assert.match(detail, /focusedUnitPublished \? "Correções recomendadas"/);
+  assert.match(detail, /ajuste\(s\) de qualidade ainda pendente\(s\)/);
 });
