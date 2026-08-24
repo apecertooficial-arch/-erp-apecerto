@@ -312,14 +312,14 @@ export async function GET(request: Request) {
         parking: u.vagas ?? p.parking,
         available: 1,
         units: 1,
-        media: buildingMediaCount + unitMediaCount,
+        media: unitMediaCount,
         unitMedia: unitMediaCount,
         referenceMedia: buildingMediaCount,
-        coverUrl: fotoDaUnidade ? publicMediaUrl(fotoDaUnidade.storage_path) : p.coverUrl,
-        capturedBy: corretorNameById.get(u.captador_corretor_id ?? -1) ?? p.capturedBy,
-        capturedByScore: u.captador_corretor_id != null ? (captadorScoreById.get(u.captador_corretor_id) ?? null) : p.capturedByScore,
+        coverUrl: fotoDaUnidade ? publicMediaUrl(fotoDaUnidade.storage_path) : null,
+        capturedBy: corretorNameById.get(u.captador_corretor_id ?? -1) ?? null,
+        capturedByScore: u.captador_corretor_id != null ? (captadorScoreById.get(u.captador_corretor_id) ?? null) : null,
         mine: currentBrokerId != null && u.captador_corretor_id === currentBrokerId,
-        published: Boolean(p.published && u.publicado !== false),
+        published: Boolean(p.published && u.publicado !== false && unitMediaCount > 0),
       };
     });
   });
