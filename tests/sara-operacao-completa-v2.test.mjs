@@ -8,6 +8,7 @@ const migration = ler("../supabase/migrations/20260825012000_sara_operacao_compl
 const widget = ler("../app/components/SaraWidget.tsx");
 const lab = ler("../app/features/agents/AgentTrainingWorkspace.tsx");
 const api = ler("../app/api/agentes/route.ts");
+const bateria = ler("../supabase/functions/ia-testes/index.ts");
 
 test("confirmacao e atomica, expira e compara a previa exata", () => {
   assert.match(migration, /create table if not exists public\.sara_previews/i);
@@ -42,6 +43,12 @@ test("piloto, satisfacao, metricas e duvidas reais ficam instrumentados", () => 
   assert.match(lab, /PILOTO CONTROLADO/);
   assert.match(api, /promoverDuvidas/);
   assert.match(api, /anonimizar/);
+});
+
+test("bateria repassa a identidade humana e nunca usa service role como usuario", () => {
+  assert.match(bateria, /supabase\.auth\.getUser\(token\)/);
+  assert.match(bateria, /Authorization:authHeader/);
+  assert.doesNotMatch(bateria, /Authorization:\`Bearer \$\{srk\}\`/);
 });
 
 test("novas tabelas sensiveis nao ficam abertas ao Data API", () => {

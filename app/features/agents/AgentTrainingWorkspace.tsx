@@ -190,7 +190,7 @@ export function AgentTrainingWorkspace({ accessToken }: { accessToken: string })
       let offset = 0;
       let acc: BatteryResult[] = [];
       for (let guard = 0; guard < 40; guard++) {
-        const r = await api<BatteryResponse>("POST", "/api/agentes", { action: "bateria", slug, offset, limit: 5 });
+        const r = await api<BatteryResponse>("POST", "/api/agentes", { action: "bateria", slug, offset, limit: 2 });
         acc = acc.concat(r.resultados || []);
         setBatResults([...acc]);
         setProgress({ done: acc.length, total: r.total_cenarios || total });
