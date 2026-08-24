@@ -216,6 +216,17 @@ const saraNotificationTextParentheses = readFileSync(
   ),
   'utf8',
 );
+const centralCampaignsSara = readFileSync(
+  new URL(
+    '../supabase/migrations/20260824143230_central_deterministica_campanhas_sara.sql',
+    import.meta.url,
+  ),
+  'utf8',
+);
+const iaRouter = readFileSync(
+  new URL('../supabase/functions/ia-router/index.ts', import.meta.url),
+  'utf8',
+);
 const entrada = readFileSync(
   new URL('../supabase/functions/entrada/index.ts', import.meta.url),
   'utf8',
@@ -458,7 +469,7 @@ test('Sara valida evidência por ID real da mensagem do cliente', () => {
   assert.match(sara, /evidencia_ids/);
   assert.match(sara, /entradasPorId/);
   assert.match(sara, /normalizarEvidencia/);
-  assert.match(sara, /contrato:"evidencia-id-v4-temperatura-real"/);
+  assert.match(sara, /contrato:"evidencia-id-v5-revisao-segura"/);
   assert.match(sara, /Nunca use ID de CORRETOR/);
   assert.match(saraConversationCutoff, /v_lead\.historico_completo/);
   assert.match(saraConversationCutoff, /coalesce\(wm\.enviado_em,wm\.criado_em\)>=v_lead\.corte_conversa_em/);
@@ -710,4 +721,51 @@ test('texto do aviso nao e interpretado como concatenacao JSON', () => {
   assert.ok(saraNotificationTextParentheses.includes(
     "'Aviso ignorado: a temperatura nao mudou para '||(ao->>'somenteAiTemperaturaAlteradaPara')",
   ));
+});
+
+test('captacao nova usa um unico preflight e preserva idempotencia da entrada', () => {
+  assert.match(centralCampaignsSara, /motor_abordagem_preflight_execucao/);
+  assert.match(centralCampaignsSara, /position\('ncrm_bloqueia_abordagem_automatica'/);
+  assert.match(centralCampaignsSara, /captacao nova/);
+  assert.doesNotMatch(centralCampaignsSara, /drop function public\.motor_enfileirar_idempotente/);
+});
+
+test('tags de produto sao substituidas no bloco sem apagar tags operacionais', () => {
+  assert.match(centralCampaignsSara, /'remove-tag-action'.*'Aquário'/s);
+  assert.match(centralCampaignsSara, /'remove-tag-action'.*'GRC \| CARINAS'/s);
+  assert.match(centralCampaignsSara, /'remove-tag-action'.*'COMPOSITE \| NR'/s);
+  assert.match(centralCampaignsSara, /case when r\.id=65 then 'Adelmo 2100' else 'MIRUNA' end/);
+  assert.doesNotMatch(centralCampaignsSara, /'Respondeu Primeira'.*remove-tag-action/s);
+  assert.doesNotMatch(centralCampaignsSara, /'Visita Realizada'.*remove-tag-action/s);
+});
+
+test('regra diaria da Sara e visivel, configuravel e deduplicada por card', () => {
+  assert.match(centralCampaignsSara, /'intervaloHoras',24/);
+  assert.match(centralCampaignsSara, /'atrasoInteracaoMinutos',10/);
+  assert.match(centralCampaignsSara, /'limitePorCiclo',12/);
+  assert.match(centralCampaignsSara, /'__sara_daily_key'/);
+  assert.match(centralCampaignsSara, /t->'options'/);
+  assert.doesNotMatch(centralCampaignsSara, /cron\.schedule/);
+  assert.match(builder, /data-tk="intervaloHoras"/);
+  assert.match(builder, /data-tk="atrasoInteracaoMinutos"/);
+  assert.match(builder, /data-tk="limitePorCiclo"/);
+});
+
+test('os fluxos chamam a Sara real e falham fechados sem alterar o lead', () => {
+  assert.match(centralCampaignsSara, /jsonb_set\(b,'\{options,agenteId\}','16'::jsonb,true\)/);
+  assert.match(centralCampaignsSara, /modelo='gpt-5\.6-sol'/);
+  assert.match(centralCampaignsSara, /'reasoning_effort','low'/);
+  assert.match(sara, /evidencia-id-v5-revisao-segura/);
+  assert.match(sara, /confianca:0/);
+  assert.match(sara, /cadastro foi preservado para revisao humana/);
+  assert.match(iaRouter, /"gpt-5\.6-sol":\{in:4\.00,out:20\.00\}/);
+  assert.match(iaRouter, /body\.reasoning_effort/);
+  assert.match(sara, /disable_tools:true/);
+  assert.match(iaRouter, /b\.disable_tools===true \? \[\]/);
+});
+
+test('feedback de visita sai sem desligar presenca ou DAPI', () => {
+  assert.match(centralCampaignsSara, /set exigir_feedback_visita=false/);
+  assert.doesNotMatch(centralCampaignsSara, /presenca_ttl_min\s*=/);
+  assert.doesNotMatch(centralCampaignsSara, /status_dapi\s*=/);
 });

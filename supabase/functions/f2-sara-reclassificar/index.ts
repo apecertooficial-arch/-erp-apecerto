@@ -128,7 +128,7 @@ async function carregarMensagens(db: any, c: Candidato) {
 async function processar(db: any, c: Candidato, catalogo: Catalogo[], agenteSlug: string) {
   const mensagens = await carregarMensagens(db, c);
   const hash = await sha256(JSON.stringify({ lead: c.funil_lead_id, versao: c.versao,
-    contrato:"evidencia-id-v4-temperatura-real",
+    contrato:"evidencia-id-v5-revisao-segura",
     agente: agenteSlug,
     mensagens: mensagens.map((m: any) => [m.id,m.enviado_em ?? m.criado_em]),
     catalogo: catalogo.map((m) => [m.codigo,m.etapa,m.acao_codigo,m.prazo_minutos]) }));
@@ -158,10 +158,34 @@ async function processar(db: any, c: Candidato, catalogo: Catalogo[], agenteSlug
       qualidade_resumo:"Sem resposta do cliente; a qualidade não foi pontuada automaticamente." };
   }
 
+  const revisaoSegura = (motivo: string) => {
+    const momento = catalogo.find((m) => m.codigo === "CONVERSANDO_QUALIFICANDO")
+      ?? catalogo.find((m) => m.codigo === c.momento_codigo)
+      ?? catalogo[0];
+    const ultimaEntrada = entradas.at(-1);
+    const evidencia = ultimaEntrada
+      ? texto(ultimaEntrada.transcricao, 300)
+        ?? texto(ultimaEntrada.conteudo, 300)
+        ?? `Mensagem recebida do cliente (id ${String(ultimaEntrada.id)}), sem texto disponivel.`
+      : null;
+    return { id:c.funil_lead_id,versao_base:c.versao,context_hash:hash,
+      origem:"ia",status:"sugestao",momento_codigo:momento.codigo,
+      etapa:momento.etapa,acao_codigo:momento.acao_codigo,acao_rotulo:momento.acao_rotulo,
+      prazo_sugerido:null,
+      resumo:"A resposta do modelo nao atingiu o contrato seguro; o cadastro foi preservado para revisao humana.",
+      evidencias:evidencia ? [evidencia] : [],confianca:0,mensagens:mensagens.length,
+      qualidade_nota:null,temperatura:"morno",temperatura_confianca:0,
+      temperatura_evidencias:evidencia ? [evidencia] : [],
+      qualidade_resumo:"A avaliacao automatica nao foi aplicada porque faltou uma saida estruturada confiavel.",
+      revisao_motivo:motivo.slice(0,80) };
+  };
+
+  try {
   const input = prompt(c,catalogo,mensagens);
   const response = await fetch(`${SUPABASE_URL}/functions/v1/ia-router`, {
     method:"POST",headers:{Authorization:`Bearer ${SERVICE_ROLE_KEY}`,"Content-Type":"application/json"},
-    body:JSON.stringify({agente_slug:agenteSlug,input,override_prompt:"Classifique estritamente pelo catálogo fechado do input. Retorne somente JSON."}),
+    body:JSON.stringify({agente_slug:agenteSlug,input,disable_tools:true,
+      override_prompt:"Classifique estritamente pelo catálogo fechado do input. Retorne somente JSON."}),
     signal:AbortSignal.timeout(25000),
   });
   if (!response.ok) throw new Error(`ia_router_http_${response.status}`);
@@ -223,6 +247,11 @@ async function processar(db: any, c: Candidato, catalogo: Catalogo[], agenteSlug
     temperatura,temperatura_confianca:temperaturaConfianca,
     temperatura_evidencias:temperaturaEvidencias,
     qualidade_resumo:qualidadeResumo };
+  } catch (e) {
+    const motivo = e instanceof Error ? e.message : "ia_falhou";
+    console.warn("f2-sara-reclassificar:revisao-segura", motivo.slice(0,80));
+    return revisaoSegura(motivo);
+  }
 }
 
 Deno.serve(async (req: Request) => {
