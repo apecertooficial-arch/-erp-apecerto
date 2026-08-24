@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 const migrationPath = "supabase/migrations/20260824181028_mapa_geolocalizacao_validada_v2.sql";
+const tempusMigrationPath = "supabase/migrations/20260824183000_mapa_tempus_e_publicacao_geolocalizada.sql";
 
 test("migration corrige exatamente os 21 empreendimentos sem alterar publicação", async () => {
   const sql = await readFile(migrationPath, "utf8");
@@ -49,4 +50,23 @@ test("preflight, verificação e rollback são versionados e fail-closed", async
   assert.match(verification, /has_function_privilege\('anon'/);
   assert.match(rollback, /ROLLBACK_MAP_BLOCKED/);
   assert.match(rollback, /v_total not in \(0, 21\)/);
+});
+
+test("Tempus entra no mapa sem alterar regras globais de publicação", async () => {
+  const [sql, preflight, verification, rollback] = await Promise.all([
+    readFile(tempusMigrationPath, "utf8"),
+    readFile("supabase/verificacao/20260824_mapa_tempus_e_publicacao_geolocalizada_preflight.sql", "utf8"),
+    readFile("supabase/verificacao/20260824_mapa_tempus_e_publicacao_geolocalizada_verificacao.sql", "utf8"),
+    readFile("supabase/rollback/20260824_mapa_tempus_e_publicacao_geolocalizada_rollback.sql", "utf8"),
+  ]);
+
+  assert.match(sql, /where e\.codigo = 'AP0058'/);
+  assert.match(sql, /set latitude = -23\.612253,[\s\S]*?longitude = -46\.668321/);
+  assert.doesNotMatch(sql, /set\s+publicado\s*=/i);
+  assert.doesNotMatch(sql, /create\s+trigger/i);
+  assert.doesNotMatch(sql, /create\s+or\s+replace\s+function/i);
+  assert.match(preflight, /bloqueado_estado_inesperado/);
+  assert.match(verification, /FALHA MAP-T2/);
+  assert.match(verification, /auditoria AP0058/);
+  assert.match(rollback, /ROLLBACK_MAP_TEMPUS_BLOCKED/);
 });
