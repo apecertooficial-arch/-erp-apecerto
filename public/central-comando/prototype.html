@@ -521,7 +521,7 @@ button.ape-nav-item[disabled]{opacity:1;color:var(--fg-3);cursor:pointer}
           <section class="cc-card" style="padding:16px">
             <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
               <h2 class="ape-section-title" style="margin:0;font-size:16px">Leads válidos, investimento e CPL por dia</h2>
-              <span class="cc-i" title="Barras = investimento diário (Meta + Google). Linha = leads válidos recebidos no CRM. Linha tracejada = meta diária de 27 leads. Fonte: APIs de mídia + CRM.">i</span>
+              <span class="cc-i" title="Barras = investimento diário (Meta + Google). Linha = leads válidos recebidos no CRM. A linha de meta só aparece quando uma meta real estiver cadastrada. Fonte: APIs de mídia + CRM.">i</span>
               <div style="margin-left:auto;display:flex;gap:14px;font-size:11px;color:var(--fg-3)">
                 <span style="display:inline-flex;align-items:center;gap:5px"><span style="width:10px;height:10px;border-radius:3px;background:var(--ape-orange-100)"></span>Investimento</span>
                 <span style="display:inline-flex;align-items:center;gap:5px"><span style="width:14px;height:2px;background:var(--chart-1)"></span>Leads válidos</span>
@@ -1541,12 +1541,20 @@ class Component extends DCLogic {
     window.parent.postMessage({ type: 'apecerto:central:ready' }, location.origin);
   }
 
-  async carregarDadosReais(accessToken) {
-    if (!accessToken || this._centralToken === accessToken && this.state.realData) return;
+  diasDoPeriodo(rotulo) {
+    if (rotulo === 'Últimos 7 dias') return 7;
+    if (rotulo === 'Últimos 90 dias') return 90;
+    if (rotulo === 'Este mês') return new Date().getDate();
+    return 30;
+  }
+
+  async carregarDadosReais(accessToken, force, periodoRotulo) {
+    if (!accessToken || (!force && this._centralToken === accessToken && this.state.realData)) return;
     this._centralToken = accessToken;
     this.setState({ atualizando: true, realError: null });
     try {
-      const response = await fetch('/api/central-comando?days=30', {
+      const days = this.diasDoPeriodo(periodoRotulo || this.state.filtros.periodo);
+      const response = await fetch('/api/central-comando?days=' + days, {
         headers: { Authorization: 'Bearer ' + accessToken },
         cache: 'no-store'
       });
@@ -1568,6 +1576,8 @@ class Component extends DCLogic {
     const trend = central.trend || [];
     const media = payload.media || {};
     const ads = [].concat((media.meta && media.meta.anuncios) || [], (media.google && media.google.anuncios) || []);
+    const campanhasTracking = ((payload.tracking || {}).campaigns) || [];
+    const topPages = ((payload.tracking || {}).top_pages) || [];
     const n = (v) => Number.isFinite(Number(v)) ? Number(v) : 0;
     const dataCurta = (value) => {
       const date = new Date(value);
@@ -1578,6 +1588,15 @@ class Component extends DCLogic {
     this.PAGES.ceo.sub = 'Saúde da operação · ' + recorte + ' · comparado ao período anterior';
     this.PAGES.resumo.sub = 'Como a apêcerto está indo · ' + recorte;
     this.PAGES.eqp.sub = 'Execução e resultado de ' + this.num(team.length) + ' corretor(es)';
+    this.FILTROS.corretores.opts = team.map(row => String(row.nome || 'Corretor'));
+    this.FILTROS.corretores.metas = {};
+    this.FILTROS.campanhas.opts = Array.from(new Set(ads.map(row => String(row.campanha || '')).filter(Boolean)));
+    this.FILTROS.imoveis.opts = Array.from(new Set(topPages.map(row => String(row.title || row.path || '')).filter(Boolean)));
+    this.FILTROS.etapas.opts = flow.map(row => String(row.label || '')).filter(Boolean);
+    this.FILTROS.equipes.opts = [];
+    this.FILTROS.origens.opts = [];
+    this.FILTROS.regioes.opts = [];
+    this.FILTROS.tipos.opts = [];
     const delta = (a, b) => b ? ((a - b) / Math.abs(b) * 100) : null;
     const deltaTexto = (a, b) => {
       const d = delta(n(a), n(b));
@@ -1589,7 +1608,7 @@ class Component extends DCLogic {
       return values.length ? values.slice(-12) : fallback;
     };
     const spend = ads.reduce((total, row) => total + n(row.investimento), 0);
-    const mediaValidos = ads.reduce((total, row) => total + n(row.leads_validos || row.leads_crm || row.leads_plataforma), 0);
+    const mediaValidos = campanhasTracking.reduce((total, row) => total + ((row.campaign_id || !/não identificada/i.test(String(row.campaign || ''))) ? n(row.leads) : 0), 0);
     const visits = n(summary.visitas_realizadas);
     const sales = n(finance.vendas);
     const leads = n(summary.leads_validos);
@@ -1625,14 +1644,22 @@ class Component extends DCLogic {
       ini: String(row.nome || 'C').split(/\s+/).slice(0,2).map(p => p[0]).join('').toUpperCase(),
       equipe: row.no_escritorio ? 'No escritório' : row.online ? 'Online agora' : 'Equipe', av: index === 0 ? 'ape-avatar--orange' : '',
       e: { recebidos: n(row.leads_recebidos), trab: n(row.movimentacoes), pct: n(row.leads_recebidos) ? (n(row.movimentacoes) / n(row.leads_recebidos) * 100).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + '%' : '—', med: row.primeira_resposta_mediana_min == null ? '—' : n(row.primeira_resposta_mediana_min).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + ' min', p90: '—', sla: '—', fups: n(row.mensagens_enviadas), venc: n(row.acoes_vencidas), parados: n(row.carteira_ativa), nota: row.nota_media == null ? '—' : n(row.nota_media).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) },
-      r: { agend: n(row.visitas_agendadas), real: n(row.visitas_realizadas), cancel: this.num(n(row.visitas_canceladas)), feed: '—', prop: 0, vendas: n(row.vendas), conv: n(row.leads_recebidos) ? (n(row.vendas) / n(row.leads_recebidos) * 100).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + '%' : '—', vgv: this.brl(n(row.vgv)), com: '—', ciclo: '—' }
+      r: { agend: n(row.visitas_agendadas), real: n(row.visitas_realizadas), cancel: this.num(n(row.visitas_canceladas)) + ' / —', feed: '—', prop: null, vendas: n(row.vendas), conv: n(row.leads_recebidos) ? (n(row.vendas) / n(row.leads_recebidos) * 100).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + '%' : '—', vgv: this.brl(n(row.vgv)), com: '—', ciclo: '—' }
     }));
-    this.MKT = this.montarArvoreRealDeMidia(ads);
+    this.MKT = this.montarArvoreRealDeMidia(ads, campanhasTracking);
     this.ALERTAS = this.montarAlertasReais(summary, payload.tracking || {}, media);
-    this.setState({ realData: payload, realError: null, atualizando: false, syncMin: 0, abertos: { meta: true, google: true } });
+    const alertaStatus = {};
+    const alertaResp = {};
+    (payload.alert_actions || []).forEach(action => {
+      const alerta = this.ALERTAS.find(item => this.chaveAlerta(item.titulo) === action.alerta_chave);
+      if (!alerta) return;
+      alertaStatus[alerta.titulo] = action.resolvido ? 'resolvido' : action.responsavel ? 'atribuido' : action.visto ? 'visto' : '';
+      if (action.responsavel) alertaResp[alerta.titulo] = { pessoa: action.responsavel, prazo: action.prazo || 'Sem prazo' };
+    });
+    this.setState({ realData: payload, realError: null, atualizando: false, syncMin: 0, abertos: { meta: true, google: true }, alertaStatus, alertaResp });
   }
 
-  montarArvoreRealDeMidia(ads) {
+  montarArvoreRealDeMidia(ads, campanhasCrm) {
     const n = (v) => Number.isFinite(Number(v)) ? Number(v) : 0;
     const canais = {};
     ads.forEach((row, index) => {
@@ -1644,12 +1671,28 @@ class Component extends DCLogic {
       canais[plataforma][campanha][conjunto] ||= [];
       canais[plataforma][campanha][conjunto].push({
         id: 'real-ad-' + String(row.anuncio_id || index), nome: String(row.anuncio || 'Anúncio sem nome'), sub: String(row.objetivo || 'anúncio'), tag: 'anúncio',
-        b: { inv: n(row.investimento), impr: n(row.impressoes), alc: n(row.alcance), cliques: n(row.cliques), lpv: n(row.lpv), leadsPlat: n(row.leads_plataforma), leadsCrm: n(row.leads_crm), validos: n(row.leads_validos || row.leads_crm || row.leads_plataforma), qualif: n(row.qualificados), visitas: n(row.visitas), vendas: n(row.vendas), comissao: n(row.comissao_atribuida) }
+        campaignId: String(row.campanha_id || ''),
+        b: { inv: n(row.investimento), impr: n(row.impressoes), alc: n(row.alcance), cliques: n(row.cliques), lpv: n(row.lpv), leadsPlat: n(row.leads_plataforma), leadsCrm: row.leads_crm == null ? null : n(row.leads_crm), validos: row.leads_validos == null && row.leads_crm == null ? null : n(row.leads_validos || row.leads_crm), qualif: row.qualificados == null ? null : n(row.qualificados), visitas: row.visitas == null ? null : n(row.visitas), vendas: row.vendas == null ? null : n(row.vendas), comissao: row.comissao_atribuida == null ? null : n(row.comissao_atribuida) }
       });
     });
+    const crm = Array.isArray(campanhasCrm) ? campanhasCrm : [];
     return Object.entries(canais).map(([plataforma, campanhas]) => ({
       id: plataforma.toLowerCase(), nome: plataforma + (plataforma === 'Meta' ? ' Ads' : plataforma === 'Google' ? ' Ads' : ''), tag: 'canal',
-      filhos: Object.entries(campanhas).map(([campanha, conjuntos], ci) => ({ id: plataforma + '-c-' + ci, nome: campanha, sub: 'campanha real', tag: 'campanha', filhos: Object.entries(conjuntos).map(([conjunto, rows], si) => ({ id: plataforma + '-c-' + ci + '-s-' + si, nome: conjunto, sub: 'conjunto', tag: plataforma === 'Google' ? 'grupo' : 'conjunto', filhos: rows })) }))
+      filhos: Object.entries(campanhas).map(([campanha, conjuntos], ci) => {
+        const filhos = Object.entries(conjuntos).map(([conjunto, rows], si) => {
+          const somaGrupo = chave => rows.reduce((total, item) => total + n((item.b || {})[chave]), 0);
+          return { id: plataforma + '-c-' + ci + '-s-' + si, nome: conjunto, sub: 'conjunto', tag: plataforma === 'Google' ? 'grupo' : 'conjunto', filhos: rows,
+            b: { inv:somaGrupo('inv'), impr:somaGrupo('impr'), alc:somaGrupo('alc'), cliques:somaGrupo('cliques'), lpv:somaGrupo('lpv'), leadsPlat:somaGrupo('leadsPlat'), leadsCrm:null, validos:null, qualif:null, visitas:null, vendas:null, comissao:null }
+          };
+        });
+        const todos = Object.values(conjuntos).flat();
+        const id = (todos[0] || {}).campaignId || '';
+        const atrib = crm.find(row => (id && String(row.campaign_id || '') === id) || String(row.campaign || '') === campanha);
+        const soma = chave => todos.reduce((total, item) => total + n((item.b || {})[chave]), 0);
+        return { id: plataforma + '-c-' + ci, nome: campanha, sub: 'campanha real', tag: 'campanha', filhos,
+          b: { inv:soma('inv'), impr:soma('impr'), alc:soma('alc'), cliques:soma('cliques'), lpv:soma('lpv'), leadsPlat:soma('leadsPlat'), leadsCrm: atrib ? n(atrib.leads) : null, validos: atrib ? n(atrib.leads) : null, qualif: atrib ? n(atrib.qualified) : null, visitas:null, vendas:null, comissao:null }
+        };
+      })
     }));
   }
 
@@ -1670,12 +1713,15 @@ class Component extends DCLogic {
     if (!payload) return null;
     const central = payload.central || {}, summary = central.summary || {}, finance = central.finance || {};
     const tracking = payload.tracking || {}, site = tracking.site || {}, metaTrack = tracking.meta || {}, attribution = tracking.attribution || {};
+    const campaignRows = tracking.campaigns || [];
     const media = payload.media || {}, ads = [].concat((media.meta && media.meta.anuncios) || [], (media.google && media.google.anuncios) || []);
     const n = (v) => Number.isFinite(Number(v)) ? Number(v) : 0;
     const pct = (a, b) => b ? (n(a) / n(b) * 100).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + '%' : '—';
     const spend = ads.reduce((s, row) => s + n(row.investimento), 0);
     const clicks = ads.reduce((s, row) => s + n(row.cliques), 0);
     const mediaLeads = ads.reduce((s, row) => s + n(row.leads_plataforma), 0);
+    const attributedMediaLeads = campaignRows.reduce((s, row) => s + ((row.campaign_id || !/não identificada/i.test(String(row.campaign || ''))) ? n(row.leads) : 0), 0);
+    const attributedQualified = campaignRows.reduce((s, row) => s + ((row.campaign_id || !/não identificada/i.test(String(row.campaign || ''))) ? n(row.qualified) : 0), 0);
     const topPages = tracking.top_pages || [];
     const stock = (central.funnel && central.funnel.stock) || [];
     const trend = central.trend || [];
@@ -1743,11 +1789,14 @@ class Component extends DCLogic {
       info('Cliques em telefone', unavailable, 'evento ainda não exposto pela API', 'var(--fg-3)', 'A estrutura foi preservada sem inventar leitura.'),
       info('Leads enviados', this.num(n(site.site_leads)), 'convertidos pelo site', 'var(--ape-purple-700)', 'Fonte real: CRM + site.'),
       info('Conversão por sessão', pct(site.site_leads, site.sessions), 'leads ÷ sessões', null, 'Calculado com dados reais.'),
-      info('GA4', payload.ga4_configurado ? 'Configurado' : 'Indisponível', payload.ga4_configurado ? 'leitura autorizada' : 'sem autorização', payload.ga4_configurado ? 'var(--cc-ok)' : 'var(--cc-atencao)', 'Status real da integração.'),
+      info('GA4', payload.ga4 ? 'Conectado' : 'Indisponível', payload.ga4 ? 'Data API com leitura' : ((((payload.sources || {}).ga4 || {}).motivo) || 'sem autorização'), payload.ga4 ? 'var(--cc-ok)' : 'var(--cc-atencao)', 'Status real da integração.'),
       info('LCP médio', unavailable, 'Core Web Vitals ainda sem leitura', 'var(--fg-3)', 'A estrutura foi preservada sem inventar desempenho.')
     ];
     const sitePaginas = topPages.map(row => ({ pagina: String(row.title || row.path || 'Página'), origem: String(row.path || ''), sessoes: this.num(n(row.sessions)), engajadas: '—', forms: this.num(n(row.form_starts)), whats: this.num(n(row.whatsapp_clicks)), conv: pct(row.leads, row.views), fg: n(row.leads) ? 'var(--cc-ok)' : 'var(--fg-3)', onClick: () => {} }));
-    const imoveis = topPages.map(row => ({ nome: String(row.title || row.path || 'Página'), detalhe: String(row.path || ''), cells: [n(row.views),n(row.sessions),n(row.form_starts),n(row.whatsapp_clicks),pct(row.leads,row.views),n(row.leads),'—','—','—','—','—','—','—'].map(v => ({ v: typeof v === 'number' ? this.num(v) : v, fg: 'var(--fg-2)', peso: 400 })), onClick: () => {} }));
+    const imoveisSelecionados = (this.state.filtros.imoveis || []);
+    const imoveis = topPages
+      .filter(row => !imoveisSelecionados.length || imoveisSelecionados.indexOf(String(row.title || row.path || 'Página')) >= 0)
+      .map(row => ({ nome: String(row.title || row.path || 'Página'), detalhe: String(row.path || ''), cells: [n(row.views),n(row.sessions),n(row.form_starts),n(row.whatsapp_clicks),pct(row.leads,row.views),n(row.leads),'—','—','—','—','—','—','—'].map(v => ({ v: typeof v === 'number' ? this.num(v) : v, fg: 'var(--fg-2)', peso: 400 })), onClick: () => {} }));
 
     const finKpis = [
       info('VGV vendido', this.brl(n(finance.vgv)), n(finance.vendas) + ' contratos concluídos', null, 'Fonte real: vendas.'),
@@ -1794,8 +1843,8 @@ class Component extends DCLogic {
     const serieDatas = dateIndexes.map(index => trendDates[index].toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }).replace('.', ''));
     const mktKpis = [
       info('Investimento', spend ? this.brl(spend) : unavailable, spend ? 'Meta + Google' : 'autorizar contas', null, 'Fonte real: APIs de mídia.'),
-      info('CPL válido', spend && n(summary.leads_validos) ? this.brl(spend / n(summary.leads_validos)) : unavailable, 'investimento ÷ leads válidos', spend ? 'var(--cc-atencao)' : 'var(--fg-3)', 'Calculado somente quando há mídia real.'),
-      info('Custo/qualificado', spend && n(summary.qualificados) ? this.brl(spend / n(summary.qualificados)) : unavailable, 'sem estimativas', null, 'Calculado somente quando a qualificação real está disponível.'),
+      info('CPL válido', spend && attributedMediaLeads ? this.brl(spend / attributedMediaLeads) : unavailable, 'investimento ÷ leads atribuídos no CRM', spend ? 'var(--cc-atencao)' : 'var(--fg-3)', 'Calculado somente quando mídia e atribuição real estão disponíveis.'),
+      info('Custo/qualificado', spend && attributedQualified ? this.brl(spend / attributedQualified) : unavailable, 'qualificação atribuída por campanha', null, 'Calculado somente quando a qualificação real está disponível.'),
       info('Custo/visita', spend && n(summary.visitas_realizadas) ? this.brl(spend / n(summary.visitas_realizadas)) : unavailable, this.num(n(summary.visitas_realizadas)) + ' visitas', null, 'Investimento real ÷ visitas realizadas.'),
       info('CAC', spend && n(finance.vendas) ? this.brl(spend / n(finance.vendas)) : unavailable, this.num(n(finance.vendas)) + ' vendas', null, 'Investimento real ÷ vendas.'),
       info('ROAS de comissão', spend ? (n(finance.comissao_prevista) / spend).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + 'x' : unavailable, 'comissão ÷ investimento', spend ? 'var(--cc-ok)' : 'var(--fg-3)', 'Comissão prevista real ÷ investimento real.')
@@ -1815,7 +1864,7 @@ class Component extends DCLogic {
         etapa('Distribuição', summary.leads_distribuidos || summary.leads_validos, 'encaminhados à equipe', 'real', 'var(--ape-orange)'),
         etapa('Clientes aguardando', summary.clientes_aguardando, 'sem resposta registrada', n(summary.clientes_aguardando) ? 'atenção' : 'ok', n(summary.clientes_aguardando) ? 'var(--cc-atencao)' : 'var(--cc-ok)')
       ] },
-      { nome: 'Analytics (GA4)', cor: 'var(--chart-2)', saude: payload.ga4_configurado ? 'configurado' : 'indisponível', saudeFg: payload.ga4_configurado ? 'var(--cc-ok)' : 'var(--cc-atencao)', saudeBg: payload.ga4_configurado ? 'var(--success-bg)' : 'var(--warning-bg)', nota: 'Leitura comportamental do site; indisponibilidade não impede a entrada do lead.', etapas: [
+      { nome: 'Analytics (GA4)', cor: 'var(--chart-2)', saude: payload.ga4 ? 'conectado' : 'indisponível', saudeFg: payload.ga4 ? 'var(--cc-ok)' : 'var(--cc-atencao)', saudeBg: payload.ga4 ? 'var(--success-bg)' : 'var(--warning-bg)', nota: payload.ga4 ? 'Data API com leitura real.' : ((((payload.sources || {}).ga4 || {}).motivo) || 'Leitura comportamental indisponível.'), etapas: [
         etapa('Páginas vistas', site.page_views, 'Tracking 360', 'real', 'var(--cc-ok)'),
         etapa('Sessões', site.sessions, 'Tracking 360', 'real', 'var(--cc-ok)'),
         etapa('Leads do site', site.site_leads, 'entregues ao CRM', 'real', 'var(--ape-purple-700)')
@@ -1836,12 +1885,12 @@ class Component extends DCLogic {
       { titulo:'Conversão comercial',nota:'Resultado de negócio; não é classificado como erro técnico.',glifo:'✓',fg:'var(--cc-ok)',bg:'var(--success-bg)',itens:[{label:'Leads válidos',nota:'CRM',valor:this.num(n(summary.leads_validos)),fg:'var(--fg-1)',onClick:noop},{label:'Vendas',nota:'Financeiro',valor:this.num(n(finance.vendas)),fg:'var(--cc-ok)',onClick:noop}] }
     ];
     const trkErros = n(metaTrack.errors) ? [{ titulo:'Eventos não entregues à plataforma',detalhe:'O Tracking 360 registrou falhas de entrega neste período.',origem:'Conversions API',quando:'período selecionado',registros:this.num(n(metaTrack.errors)),impacto:'atribuição parcial',situacao:'aberto',fg:'var(--cc-risco)',bg:'var(--danger-bg)',glifo:'!',tipo:'Falha técnica',tipoFg:'var(--cc-risco)',tipoBg:'var(--danger-bg)',onClick:noop }] : [];
-    const siteDispositivos = [{ nome:'Base real disponível',pct:'100%',nota:'Tracking 360 · divisão por dispositivo ainda não exposta pela API',cor:'var(--ape-orange)' }];
+    const siteDispositivos = [{ nome:'Distribuição por dispositivo',pct:'0%',nota:'Indisponível até a conexão da GA4 Data API',cor:'var(--neutral-400)' }];
     const siteProblemas = [];
     const previsao = [{ janela:'Próximos 30 dias',valor:'Indisponível',nota:'o ERP ainda não fornece probabilidade financeira por data' },{ janela:'Próximos 60 dias',valor:'Indisponível',nota:'sem projeção inventada' },{ janela:'Próximos 90 dias',valor:'Indisponível',nota:'sem projeção inventada' }];
     const socioAlertas = this.ALERTAS.slice(0,3).map(item => ({ titulo:item.titulo,oQue:item.detalhe,impacto:'requer atenção',quem:'Gestão da operação',oQueFazer:item.acao,fg:item.nivel==='critico'?'var(--cc-risco)':'var(--cc-atencao)',bg:item.nivel==='critico'?'var(--danger-bg)':'var(--warning-bg)',glifo:item.nivel==='critico'?'!':'~',nivelLabel:item.nivel==='critico'?'precisa de ação hoje':'acompanhar',impactoFg:item.nivel==='critico'?'var(--cc-risco)':'var(--cc-atencao)',onClick:noop }));
     const socioAvancados = [{label:'Custo por interessado',valor:spend&&n(summary.leads_validos)?this.brl(spend/n(summary.leads_validos)):unavailable,fg:'var(--cc-atencao)',explica:'Investimento real dividido pelos leads válidos.'},{label:'Custo por venda',valor:spend&&n(finance.vendas)?this.brl(spend/n(finance.vendas)):unavailable,fg:'var(--cc-ok)',explica:'Investimento real dividido pelas vendas.'},{label:'Retorno sobre anúncios',valor:spend?(n(finance.comissao_prevista)/spend).toLocaleString('pt-BR',{maximumFractionDigits:1})+'x':unavailable,fg:'var(--ape-purple-700)',explica:'Comissão prevista dividida pelo investimento real.'}];
-    return { crmKpis, envelhecimento, heatCols, heatCells, coortes, diaKpis, diaTarefas, siteKpis, sitePaginas, imoveis, finKpis, pipeline, pipelineTotal, finBarras, receitaGrupos, socioKpis, socioFunil, saude, trackingUnavailable, clicks, mediaLeads, serieDatas, mktKpis, tronco, trilhas, trkGrupos, trkErros, trkAbertos: trkErros.length + ' em aberto', trkVazioShow: trkErros.length ? 'none' : 'block', siteDispositivos, siteProblemas, previsao, socioAlertas, socioAvancados, socioOutros: [] };
+    return { crmKpis, envelhecimento, heatCols, heatCells, coortes, diaKpis, diaTarefas, siteKpis, sitePaginas, imoveis, finKpis, pipeline, pipelineTotal, finBarras, receitaGrupos, socioKpis, socioFunil, saude, trackingUnavailable, clicks, mediaLeads, serieDatas, mktKpis, tronco, trilhas, trkGrupos, trkErros, trkAbertos: trkErros.length + ' em aberto', trkVazioShow: trkErros.length ? 'none' : 'block', siteDispositivos, siteProblemas, previsao, socioAlertas, socioAvancados, socioOutros: [], iaCriterios: [], iaFalhas: [], paradoPct: 'Indisponível', paradoQualif: '—' };
   }
 
   FILTROS = {
@@ -1891,7 +1940,66 @@ class Component extends DCLogic {
   }
 
   aplicar() {
-    this.setState({ filtros: Object.assign({}, this.state.rascunho || this.state.filtros), rascunho: null, pop: null, filtrosAberto: false });
+    const filtros = Object.assign({}, this.state.rascunho || this.state.filtros);
+    const periodoMudou = filtros.periodo !== this.state.filtros.periodo;
+    this.setState({ filtros, rascunho: null, pop: null, filtrosAberto: false });
+    if (periodoMudou && this._centralToken) this.carregarDadosReais(this._centralToken, true, filtros.periodo);
+  }
+
+  chaveAlerta(titulo) {
+    return 'central:' + String(titulo || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 100);
+  }
+
+  prazoData(rotulo) {
+    if (rotulo === 'Sem prazo') return '';
+    const data = new Date();
+    if (rotulo === 'Amanhã') data.setDate(data.getDate() + 1);
+    if (rotulo === 'Esta semana') data.setDate(data.getDate() + 7);
+    return data.toISOString().slice(0, 10);
+  }
+
+  async salvarAcaoAlerta(titulo, action, extra) {
+    if (!this._centralToken) return;
+    try {
+      const response = await fetch('/api/central-comando', {
+        method: 'POST',
+        headers: { Authorization: 'Bearer ' + this._centralToken, 'Content-Type': 'application/json' },
+        body: JSON.stringify(Object.assign({ key: this.chaveAlerta(titulo), action }, extra || {}))
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || 'Não foi possível salvar a ação.');
+      const data = payload.action || {};
+      const status = data.resolvido ? 'resolvido' : data.responsavel ? 'atribuido' : data.visto ? 'visto' : '';
+      const alertaStatus = Object.assign({}, this.state.alertaStatus, { [titulo]: status });
+      const alertaResp = Object.assign({}, this.state.alertaResp);
+      if (data.responsavel) alertaResp[titulo] = { pessoa: data.responsavel, prazo: data.prazo || 'Sem prazo' };
+      this.setState({ alertaStatus, alertaResp, atribuindo: null, atribPessoa: null, atribPrazo: null, drawer: null,
+        toast: { glifo: '✓', fg: 'var(--cc-ok)', bg: 'var(--success-bg)', titulo: 'Ação salva no ERP', detalhe: 'A situação do alerta foi atualizada para toda a gestão.', acao: 'Fechar' } });
+    } catch (error) {
+      this.setState({ toast: { glifo: '!', fg: 'var(--cc-risco)', bg: 'var(--danger-bg)', titulo: 'A ação não foi salva', detalhe: error && error.message ? error.message : 'Tente novamente.', acao: 'Fechar' } });
+    }
+  }
+
+  baixarCsvMarketing() {
+    const media = (this.state.realData || {}).media || {};
+    const ads = [].concat((media.meta && media.meta.anuncios) || [], (media.google && media.google.anuncios) || []);
+    if (!ads.length) {
+      this.avisar('Sem dados para exportar', 'As plataformas de mídia ainda não devolveram anúncios reais neste recorte.');
+      return;
+    }
+    const colunas = ['plataforma','campanha','conjunto','anuncio','investimento','impressoes','alcance','cliques','ctr','cpc','leads_plataforma','leads_crm','leads_validos'];
+    const limpar = value => '"' + String(value == null ? '' : value).replace(/"/g, '""') + '"';
+    const csv = [colunas.join(';')].concat(ads.map(row => colunas.map(coluna => limpar(row[coluna])).join(';'))).join('\n');
+    const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'central-marketing-' + new Date().toISOString().slice(0, 10) + '.csv';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+    this.avisar('CSV exportado', ads.length + ' anúncio(s) reais foram incluídos no arquivo.');
   }
 
   avisar(titulo, detalhe, acao) {
@@ -2135,21 +2243,22 @@ class Component extends DCLogic {
 
   mktCells(m, modo) {
     const P = (x) => this.dec(x * 100, 2).replace('.', ',') + '%';
+    const N = (x) => x == null ? '—' : this.num(x);
     if (modo === 'midia') return [
       { v: this.brl(m.inv) }, { v: this.num(m.impr) }, { v: this.num(m.alc) },
       { v: this.div(m.impr, m.alc, x => this.dec(x, 2)) }, { v: this.div(m.inv, m.impr / 1000, x => this.brl(x, 2)) },
       { v: this.num(m.cliques) }, { v: this.div(m.cliques, m.impr, P) }, { v: this.div(m.inv, m.cliques, x => this.brl(x, 2)) },
-      { v: this.num(m.lpv) }, { v: this.num(m.leadsPlat) }, { v: this.num(m.leadsCrm) },
-      { v: this.num(m.validos), peso: 600 },
+      { v: this.num(m.lpv) }, { v: this.num(m.leadsPlat) }, { v: N(m.leadsCrm) },
+      { v: N(m.validos), peso: 600 },
       { v: this.div(m.inv, m.validos, x => this.brl(x)), fg: m.validos && m.inv / m.validos > 100 ? 'var(--cc-risco)' : 'var(--fg-1)', peso: 600 }
     ];
     const roas = m.inv ? m.comissao / m.inv : 0;
     return [
-      { v: this.num(m.validos) }, { v: this.num(m.qualif) },
+      { v: N(m.validos) }, { v: N(m.qualif) },
       { v: this.div(m.qualif, m.validos, P) },
       { v: this.div(m.inv, m.qualif, x => this.brl(x)) },
-      { v: this.num(m.visitas) }, { v: this.div(m.inv, m.visitas, x => this.brl(x)) },
-      { v: this.num(m.vendas), peso: 600 },
+      { v: N(m.visitas) }, { v: this.div(m.inv, m.visitas, x => this.brl(x)) },
+      { v: N(m.vendas), peso: 600 },
       { v: this.div(m.inv, m.vendas, x => this.brl(x)) },
       { v: m.comissao ? this.brl(m.comissao) : '—' },
       { v: m.inv && m.comissao ? this.dec(roas, 1) + 'x' : '—', peso: 700, fg: roas >= 4 ? 'var(--cc-ok)' : roas > 0 ? 'var(--cc-atencao)' : 'var(--cc-risco)' }
@@ -2385,9 +2494,14 @@ class Component extends DCLogic {
       'Integração desconectada': { texto: 'Google Ads desconectado', fg: 'var(--cc-risco)', bg: 'var(--danger-bg)', hint: 'Token expirado em 12 ago' }
     };
     const mediaReal = (st.realData || {}).media || {};
-    const fontesPendentes = st.realData ? ['Meta', 'Google'].filter(nome => ((mediaReal[nome.toLowerCase()] || {}).status !== 'conectado')) : [];
+    const fontes = (st.realData || {}).sources || {};
+    const fontesPendentes = st.realData ? ['Meta', 'Google', 'GA4'].filter(nome => ((fontes[nome.toLowerCase()] || {}).status !== 'conectado')) : [];
+    const motivosPendentes = fontesPendentes.map(nome => {
+      const fonte = fontes[nome.toLowerCase()] || mediaReal[nome.toLowerCase()] || {};
+      return nome + ': ' + (fonte.motivo || 'leitura não autorizada');
+    });
     const syncReal = fontesPendentes.length
-      ? { texto: 'CRM em dia · mídia parcial', fg: 'var(--cc-atencao)', bg: 'var(--warning-bg)', hint: fontesPendentes.join(' e ') + ' sem leitura autorizada neste recorte' }
+      ? { texto: 'CRM em dia · integrações parciais', fg: 'var(--cc-atencao)', bg: 'var(--warning-bg)', hint: motivosPendentes.join(' · ') }
       : { texto: 'Sincronizado agora', fg: 'var(--cc-ok)', bg: 'var(--success-bg)', hint: 'Fontes reais carregadas pelo ERP' };
     const sync = syncMap[estado] || (st.atualizando
       ? { texto: 'Sincronizando…', fg: 'var(--cc-atencao)', bg: 'var(--ape-orange-100)', hint: 'Buscando dados nas integrações' }
@@ -2404,7 +2518,7 @@ class Component extends DCLogic {
           eyebrow: 'Aprofundar indicador', titulo: k.label, sub: 'Contribuição por canal no período · ' + F.periodo,
           cta: 'Abrir em Marketing', fonte: k.tip,
           cols: [{ nome: 'Canal' }, { nome: 'Campanha principal' }, { nome: 'Participação' }, { nome: k.label }],
-          rows: [
+          rows: st.realData ? [] : [
             { a: 'Meta Ads', a2: '4 campanhas ativas', b: 'Moema pronto pra morar', c: '46%', d: k.valor, dFg: 'var(--fg-1)' },
             { a: 'Google Ads', a2: '3 campanhas ativas', b: 'Search apartamento Moema', c: '31%', d: '—', dFg: 'var(--fg-2)' },
             { a: 'Site orgânico', a2: 'SEO + direto', b: '—', c: '14%', d: '—', dFg: 'var(--fg-2)' },
@@ -2415,7 +2529,9 @@ class Component extends DCLogic {
     });
 
     const modoFluxo = st.funilModo === 'fluxo';
-    const ESTOQUE = [
+    const ESTOQUE = st.realData ? this.FUNIL.map(f => ({
+      nome: f.nome, qtd: f.estoque, idade: '—', acimaSla: 0, maisAntigo: '—', tend: '—', ruim: false
+    })) : [
       { nome: 'Novo, sem contato', qtd: 61, idade: '4 h', acimaSla: 23, maisAntigo: '2 d 4 h', tend: '+12', ruim: true },
       { nome: 'Em contato', qtd: 84, idade: '1 d 6 h', acimaSla: 14, maisAntigo: '9 d', tend: '+6', ruim: true },
       { nome: 'Qualificado', qtd: 96, idade: '3 d 2 h', acimaSla: 31, maisAntigo: '21 d', tend: '\u22124', ruim: false },
@@ -2424,8 +2540,8 @@ class Component extends DCLogic {
       { nome: 'Proposta', qtd: 12, idade: '5 d', acimaSla: 4, maisAntigo: '26 d', tend: '\u22121', ruim: false },
       { nome: 'Sem corretor', qtd: 12, idade: '3 h', acimaSla: 12, maisAntigo: '1 d 2 h', tend: '+12', ruim: true }
     ];
-    const baseFluxo = this.FUNIL[0].fluxo;
-    const VAR_FLUXO = ['+8,2%', '+4,1%', '+2,6%', '\u22123,4%', '+6,0%', '\u22123,0%', '+10,7%', '+28,6%'];
+    const baseFluxo = this.FUNIL[0] ? Math.max(1, this.FUNIL[0].fluxo) : 1;
+    const VAR_FLUXO = st.realData ? [] : ['+8,2%', '+4,1%', '+2,6%', '\u22123,4%', '+6,0%', '\u22123,0%', '+10,7%', '+28,6%'];
     const fluxo = this.FUNIL.map((f, i) => {
       const perdaAlta = parseFloat(String(f.perda).replace(',', '.')) > 45;
       const v = VAR_FLUXO[i] || '\u2014';
@@ -2439,7 +2555,7 @@ class Component extends DCLogic {
           eyebrow: 'Fluxo da etapa', titulo: f.nome, sub: this.num(f.fluxo) + ' leads entraram ou avan\u00e7aram \u00b7 ' + F.periodo,
           cta: 'Abrir no CRM', fonte: 'Fonte: CRM \u00b7 eventos de mudan\u00e7a de etapa dentro do per\u00edodo \u00b7 atualizado h\u00e1 6 min',
           cols: [{ nome: 'Lead' }, { nome: 'Origem' }, { nome: 'Corretor' }, { nome: 'Entrou na etapa' }],
-          rows: [
+          rows: st.realData ? [] : [
             { a: 'Fernanda Baptista', a2: 'Locat\u00e1rio \u00b7 Ed. Jacutinga', b: 'Meta Ads \u00b7 Lead Ads', c: 'Renata Lopes', d: '19 ago 14:02', dFg: 'var(--fg-1)' },
             { a: 'Rodrigo Sena', a2: 'Comprador \u00b7 Pav\u00e3o 260', b: 'Google Ads \u00b7 Search', c: 'Diego Antunes', d: '19 ago 11:26', dFg: 'var(--fg-1)' },
             { a: 'Aline Prado', a2: 'Investidor \u00b7 Can\u00e1rio 118', b: 'Site \u00b7 formul\u00e1rio', c: 'Camila Ferraz', d: '18 ago 16:40', dFg: 'var(--fg-1)' },
@@ -2497,7 +2613,7 @@ class Component extends DCLogic {
       resolvido: { label: 'resolvido', fg: 'var(--fg-3)', bg: 'var(--neutral-100)', glifo: '\u2713' }
     };
     const statusMap = st.alertaStatus || {};
-    const todosAlertas = this.ALERTAS.map(a => Object.assign({}, a, ALERTA_META[a.titulo] || { area: 'CRM', responsavel: 'Gestor comercial', impacto: '\u2014', impactoFg: 'var(--fg-3)' })).concat(OPORTUNIDADES);
+    const todosAlertas = this.ALERTAS.map(a => Object.assign({}, a, ALERTA_META[a.titulo] || { area: 'CRM', responsavel: 'Gestor comercial', impacto: '\u2014', impactoFg: 'var(--fg-3)' })).concat(st.realData ? [] : OPORTUNIDADES);
     const gravSel = st.alertaGrav || 'Todas', areaSel = st.alertaArea || 'Todas';
     const nivelEfetivo = (a) => statusMap[a.titulo] === 'resolvido' ? 'resolvido' : a.nivel;
     const alertasFiltrados = todosAlertas.filter(a => {
@@ -2529,14 +2645,17 @@ class Component extends DCLogic {
       onClick: () => this.setState({ alertaArea: ar })
     }));
 
-    const maxInv = Math.max(...this.DIAS_INV);
-    const serieBarras = this.DIAS_INV.map((v, i) => {
+    const tendenciaReal = st.realData ? (((st.realData.central || {}).trend) || []) : [];
+    const diasInv = st.realData ? tendenciaReal.map(() => 0) : this.DIAS_INV;
+    const diasLeads = st.realData ? tendenciaReal.map(row => Number(row.leads || 0)) : this.DIAS_LEADS;
+    const maxInv = Math.max(1, ...diasInv);
+    const serieBarras = diasInv.map((v, i) => {
       const h = (v / maxInv) * 96;
       return { x: (i * 24 + 4).toFixed(0), y: (150 - h).toFixed(1), h: h.toFixed(1) };
     });
-    const maxLead = Math.max(...this.DIAS_LEADS);
-    const serieLinha = this.DIAS_LEADS.map((v, i) => (i ? 'L' : 'M') + (i * 24 + 12) + ' ' + (150 - (v / maxLead) * 130).toFixed(1)).join(' ');
-    const yMeta = (150 - (27 / maxLead) * 130).toFixed(1);
+    const maxLead = Math.max(1, ...diasLeads);
+    const serieLinha = diasLeads.map((v, i) => (i ? 'L' : 'M') + (i * 24 + 12) + ' ' + (150 - (v / maxLead) * 130).toFixed(1)).join(' ');
+    const yMeta = st.realData ? '150' : (150 - (27 / maxLead) * 130).toFixed(1);
 
     const modo = st.mktModo;
     const NIVEL_TAG = {
@@ -2649,10 +2768,11 @@ class Component extends DCLogic {
       statusFg: adNode.id === 'real-empty' ? 'var(--cc-atencao)' : 'var(--cc-ok)',
       statusBg: adNode.id === 'real-empty' ? 'var(--warning-bg)' : 'var(--success-bg)',
       tempo: 'período selecionado', titulo: adNode.nome, texto: 'Detalhes criativos dependem da autorização da conta de anúncios.',
-      cta: '—', fadiga: adNode.id === 'real-empty' ? 'indisponivel' : 'atencao'
+      cta: '—', fadiga: 'indisponivel'
     } : AD_INFO.ad1);
     const semAdReal = !!st.realData && adNode.id === 'real-empty';
     const adM = this.soma(adNode);
+    const semAtribuicaoAd = !!st.realData && adM.validos == null;
     const fad = FADIGA[adInfo.fadiga];
     const pctTxt = (a2, b2) => b2 ? this.dec((a2 / b2) * 100, 2) + '%' : '\u2014';
     const ad = {
@@ -2673,18 +2793,18 @@ class Component extends DCLogic {
         { k: 'Investimento', v: this.brl(adM.inv), nota: 'no per\u00edodo', fg: 'var(--fg-1)' },
         { k: 'Impress\u00f5es', v: this.num(adM.impr), nota: 'freq. ' + (adM.alc ? this.dec(adM.impr / adM.alc, 1) : '—'), fg: 'var(--fg-1)' },
         { k: 'CTR link', v: pctTxt(adM.cliques, adM.impr), nota: this.num(adM.cliques) + ' cliques', fg: 'var(--fg-1)' },
-        { k: 'Leads v\u00e1lidos', v: this.num(adM.validos), nota: adM.leadsCrm + ' no CRM', fg: 'var(--fg-1)' },
-        { k: 'CPL v\u00e1lido', v: adM.validos ? this.brl(adM.inv / adM.validos) : '\u2014', nota: 'meta \u2264 R$ 78', fg: adM.validos && adM.inv / adM.validos > 100 ? 'var(--cc-risco)' : 'var(--fg-1)' },
-        { k: 'Qualificados', v: this.num(adM.qualif), nota: adM.qualif ? this.brl(adM.inv / adM.qualif) + ' cada' : 'sem qualifica\u00e7\u00e3o', fg: 'var(--fg-1)' },
-        { k: 'Visitas', v: this.num(adM.visitas), nota: adM.visitas ? this.brl(adM.inv / adM.visitas) + ' cada' : 'nenhuma', fg: 'var(--fg-1)' },
-        { k: 'Vendas', v: this.num(adM.vendas), nota: adM.vendas ? this.brl(adM.comissao) + ' de comiss\u00e3o' : 'nenhuma no per\u00edodo', fg: adM.vendas ? 'var(--cc-ok)' : 'var(--cc-risco)' }
+        { k: 'Leads v\u00e1lidos', v: adM.validos == null ? 'Indisponível' : this.num(adM.validos), nota: adM.leadsCrm == null ? 'atribuição por anúncio não exposta' : adM.leadsCrm + ' no CRM', fg: 'var(--fg-1)' },
+        { k: 'CPL v\u00e1lido', v: adM.validos ? this.brl(adM.inv / adM.validos) : '\u2014', nota: 'sem meta cadastrada', fg: adM.validos && adM.inv / adM.validos > 100 ? 'var(--cc-risco)' : 'var(--fg-1)' },
+        { k: 'Qualificados', v: adM.qualif == null ? 'Indisponível' : this.num(adM.qualif), nota: adM.qualif ? this.brl(adM.inv / adM.qualif) + ' cada' : (adM.qualif == null ? 'sem atribuição por anúncio' : 'nenhum'), fg: 'var(--fg-1)' },
+        { k: 'Visitas', v: adM.visitas == null ? 'Indisponível' : this.num(adM.visitas), nota: adM.visitas ? this.brl(adM.inv / adM.visitas) + ' cada' : (adM.visitas == null ? 'sem atribuição por anúncio' : 'nenhuma'), fg: 'var(--fg-1)' },
+        { k: 'Vendas', v: adM.vendas == null ? 'Indisponível' : this.num(adM.vendas), nota: adM.vendas ? this.brl(adM.comissao) + ' de comiss\u00e3o' : (adM.vendas == null ? 'sem atribuição por anúncio' : 'nenhuma no período'), fg: adM.vendas ? 'var(--cc-ok)' : 'var(--fg-3)' }
       ],
       dinamicoShow: adInfo.dinamico ? 'flex' : 'none',
       dinamicoAberto: st.dinamicoAberto ? 'true' : 'false',
       dinamicoBody: st.dinamicoAberto ? 'flex' : 'none',
       dinamicoLabel: st.dinamicoAberto ? 'recolher' : 'expandir',
       onDinamico: () => this.setState({ dinamicoAberto: !st.dinamicoAberto }),
-      elementos: semAdReal ? [] : [
+      elementos: st.realData ? [] : [
         { tipo: 'Imagem', nome: 'Sala com sof\u00e1 claro', uso: 'alta rota\u00e7\u00e3o', perf: 'CTR 0,61%', fg: 'var(--cc-atencao)' },
         { tipo: 'Imagem', nome: 'Varanda ao sol', uso: 'm\u00e9dia', perf: 'CTR 0,58%', fg: 'var(--cc-atencao)' },
         { tipo: 'V\u00eddeo', nome: 'Tour 20s vertical', uso: 'baixa', perf: 'CTR 0,42%', fg: 'var(--cc-risco)' },
@@ -2692,7 +2812,7 @@ class Component extends DCLogic {
         { tipo: 'T\u00edtulo', nome: 'Mobiliado e decorado', uso: 'm\u00e9dia', perf: 'estimado', fg: 'var(--fg-3)' },
         { tipo: 'Descri\u00e7\u00e3o', nome: '5 min do metr\u00f4 Eucaliptos', uso: 'alta', perf: 'estimado', fg: 'var(--fg-3)' }
       ],
-      onFunil: semAdReal ? () => this.avisar('Mídia indisponível', 'Autorize Meta Ads ou Google Ads para abrir o funil real do anúncio.') : () => this.abrir({
+      onFunil: semAdReal ? () => this.avisar('Mídia indisponível', 'Autorize Meta Ads ou Google Ads para abrir o funil real do anúncio.') : semAtribuicaoAd ? () => this.avisar('Funil por anúncio indisponível', 'A plataforma devolve o anúncio, mas o CRM ainda atribui resultados no nível de campanha. Nenhum resultado por anúncio será estimado.') : () => this.abrir({
         eyebrow: 'Funil do an\u00fancio', titulo: adNode.nome, sub: adInfo.caminho, cta: 'Abrir no gerenciador',
         fonte: 'Fonte: plataforma de m\u00eddia + CRM \u00b7 atribui\u00e7\u00e3o por \u00faltimo clique n\u00e3o direto',
         cols: [{ nome: 'Etapa' }, { nome: 'Volume' }, { nome: 'Convers\u00e3o' }, { nome: 'Custo' }],
@@ -3093,14 +3213,14 @@ class Component extends DCLogic {
       atualizarLabel: st.atualizando ? 'Sincronizando…' : 'Atualizar dados',
       atualizar: () => {
         if (st.atualizando) return;
-        this.setState({ atualizando: true, toast: null });
-        setTimeout(() => this.setState({ atualizando: false, syncMin: 0, toast: { glifo: '✓', fg: 'var(--cc-ok)', bg: 'var(--success-bg)', titulo: 'Dados atualizados', detalhe: 'CRM, Meta Ads, Google Ads e GA4 sincronizados agora. Próxima sincronização automática em 15 min.', acao: 'Fechar' } }), 1400);
+        this.setState({ toast: null });
+        this.carregarDadosReais(this._centralToken, true, F.periodo);
       },
       abrirExportar: (e) => this.abrirMenu({
         titulo: 'Exportar', opcoes: [
-          { label: 'PDF — relatório da área', meta: '2 páginas', on: '0', mark: '', chkRadius: '5px', onClick: () => this.avisar('PDF gerado', 'Relatório da área ' + this.PAGES[page].titulo + ' com o recorte atual. No protótipo o arquivo não é gravado.') },
-          { label: 'CSV — dados da tela', meta: 'até 5.000 linhas', on: '0', mark: '', chkRadius: '5px', onClick: () => this.avisar('CSV gerado', 'Exportação com as colunas visíveis e o recorte de filtros ativo. No protótipo o arquivo não é gravado.') },
-          { label: 'Imagem — captura da tela', meta: 'PNG', on: '0', mark: '', chkRadius: '5px', onClick: () => this.avisar('Imagem gerada', 'Captura da área visível em PNG. No protótipo o arquivo não é gravado.') }
+          { label: 'PDF — relatório da área', meta: 'em preparação', on: '0', mark: '', chkRadius: '5px', onClick: () => this.avisar('PDF ainda indisponível', 'Esta exportação não será simulada. Ela será liberada quando o gerador real estiver conectado.') },
+          { label: 'CSV — dados de marketing', meta: 'dados reais', on: '0', mark: '', chkRadius: '5px', onClick: () => this.baixarCsvMarketing() },
+          { label: 'Imagem — captura da tela', meta: 'em preparação', on: '0', mark: '', chkRadius: '5px', onClick: () => this.avisar('Imagem ainda indisponível', 'Esta exportação não será simulada. Ela será liberada quando a captura real estiver conectada.') }
         ]
       }, e),
       popAberto: !!st.pop, pop, fecharPop: () => this.setState({ pop: null, rascunho: null, popSecao: null }),
@@ -3146,7 +3266,7 @@ class Component extends DCLogic {
              { v: this.num(e.parados), fg: e.parados > 30 ? 'var(--cc-risco)' : 'var(--fg-2)' },
              { v: e.nota, fg: this.corNota(nota), peso: 700 }]
           : [{ v: this.num(r.agend) }, { v: this.num(r.real), peso: 600 }, { v: r.cancel }, { v: r.feed, fg: parseFloat(r.feed) < 75 ? 'var(--cc-risco)' : 'var(--fg-2)' },
-             { v: this.num(r.prop) }, { v: this.num(r.vendas), peso: 700 }, { v: r.conv }, { v: r.vgv }, { v: r.com, peso: 600 }, { v: r.ciclo, fg: parseInt(r.ciclo) > 55 ? 'var(--cc-atencao)' : 'var(--fg-2)' }];
+             { v: r.prop == null ? '—' : this.num(r.prop) }, { v: this.num(r.vendas), peso: 700 }, { v: r.conv }, { v: r.vgv }, { v: r.com, peso: 600 }, { v: r.ciclo, fg: parseInt(r.ciclo) > 55 ? 'var(--cc-atencao)' : 'var(--fg-2)' }];
         return {
           nome: c.nome, equipe: c.equipe, iniciais: c.ini, avatarCls: c.av,
           cells: cells.map(x => ({ v: x.v, fg: x.fg || 'var(--fg-2)', peso: x.peso || 400 })),
@@ -3341,7 +3461,7 @@ class Component extends DCLogic {
         ? 'Totais do recorte: ' + this.brl(totalGeral.inv) + ' investidos · ' + this.num(totalGeral.validos) + ' leads válidos · ' + this.num(totalGeral.vendas) + ' vendas · comissão atribuída ' + this.brl(totalGeral.comissao) + ' · ROAS de comissão ' + this.dec(totalGeral.comissao / totalGeral.inv, 1) + 'x. Vendas sem origem identificada não aparecem aqui.'
         : 'Meta Ads e Google Ads ainda não forneceram investimento neste recorte. Nenhum zero estimado é apresentado como dado real.',
       mktVazioShow: mktRows.length ? 'none' : 'block',
-      mktVazioTexto: st.realData && !mktRows.length && !totalGeral.inv ? 'Meta Ads e Google Ads não devolveram anúncios neste recorte. Autorize as contas para carregar campanhas, conjuntos, anúncios e criativos.' : 'Nenhuma linha corresponde à busca e aos filtros ativos. Limpe a busca ou remova um filtro de canal ou campanha.',
+      mktVazioTexto: st.realData && !mktRows.length && !totalGeral.inv ? (motivosPendentes.filter(item => item.indexOf('Meta:') === 0 || item.indexOf('Google:') === 0).join(' · ') || 'As plataformas não devolveram anúncios neste recorte.') : 'Nenhuma linha corresponde à busca e aos filtros ativos. Limpe a busca ou remova um filtro de canal ou campanha.',
       mktBusca: st.mktBusca || '',
       onMktBusca: (e) => this.setState({ mktBusca: e.target.value }),
       mktFiltroShow: (canaisSel.length || campSel.length || busca) ? 'block' : 'none',
@@ -3376,7 +3496,7 @@ class Component extends DCLogic {
               onClick: () => this.setState({ filtros: Object.assign({}, F, { comparacao: o }), popSecao: null })
             })) }
           : { show: 'none', titulo: '', role: 'menuitem', grupoRole: 'menu', opcoes: [] },
-      exportarCsv: () => this.avisar('CSV gerado', 'Tabela de marketing com ' + mktRows.length + ' linha(s), ' + visiveis.length + ' coluna(s) vis\u00edveis e o recorte de filtros ativo. No prot\u00f3tipo o arquivo n\u00e3o \u00e9 gravado.'),
+      exportarCsv: () => this.baixarCsvMarketing(),
       mktKpis: [
         { label: 'Investimento', valor: this.brl(totalGeral.inv), delta: '+4,1%', deltaFg: 'var(--fg-3)', contexto: 'Meta 58% · Google 42%', fg: 'var(--fg-1)', tip: 'Fórmula: soma do gasto das plataformas no período. Fonte: Meta Ads API + Google Ads API · há 22 min.' },
         { label: 'CPL válido', valor: this.brl(totalGeral.inv / totalGeral.validos), delta: '+9,2% vs anterior', deltaFg: 'var(--cc-risco)', contexto: 'meta ≤ R$ 78', fg: 'var(--cc-atencao)', tip: 'Fórmula: investimento ÷ leads válidos. Fonte: mídia + CRM.' },
@@ -3394,7 +3514,7 @@ class Component extends DCLogic {
         ? 'Fluxo: leads que entraram ou avançaram para cada etapa dentro do período. Conversão e perda são sempre sobre a etapa anterior; a última coluna compara com o período anterior.'
         : 'Estoque: leads parados em cada etapa neste momento, independentemente de quando entraram. Não tem conversão nem perda — tem idade, SLA e tendência. O estoque não precisa ser decrescente.',
       alertasCriticos: contaGrav('crítico') + ' críticos · ' + contaGrav('atenção') + ' atenção · ' + contaGrav('oportunidade') + ' oportunidades',
-      serieBarras, serieLinha, serieDatas: ['21 jul', '28 jul', '4 ago', '11 ago', '19 ago'], serieMeta: 'M0 ' + yMeta + ' L720 ' + yMeta,
+      serieBarras, serieLinha, serieDatas: ['21 jul', '28 jul', '4 ago', '11 ago', '19 ago'], serieMeta: st.realData ? '' : 'M0 ' + yMeta + ' L720 ' + yMeta,
       atribuir: (() => {
         const id = st.atribuindo;
         const alerta = id ? todosAlertas.find(a => a.titulo === id) : null;
@@ -3409,12 +3529,7 @@ class Component extends DCLogic {
           pessoas: lista.map(p => ({ label: p, cls: 'ape-chip' + (pessoa === p ? ' is-active' : ''), pressed: pessoa === p ? 'true' : 'false', onClick: () => this.setState({ atribPessoa: p }) })),
           prazos: ['Hoje', 'Amanhã', 'Esta semana', 'Sem prazo'].map(p => ({ label: p, cls: 'ape-chip' + (prazo === p ? ' is-active' : ''), pressed: prazo === p ? 'true' : 'false', onClick: () => this.setState({ atribPrazo: p }) })),
           onCancelar: () => this.setState({ atribuindo: null, atribPessoa: null, atribPrazo: null }),
-          onConfirmar: () => this.setState({
-            alertaStatus: Object.assign({}, statusMap, { [id]: 'atribuido' }),
-            alertaResp: Object.assign({}, st.alertaResp || {}, { [id]: { pessoa, prazo } }),
-            atribuindo: null, atribPessoa: null, atribPrazo: null, drawer: null,
-            toast: { glifo: '✓', fg: 'var(--cc-ok)', bg: 'var(--success-bg)', titulo: 'Alerta atribuído a ' + pessoa, detalhe: '“' + id + '” ficou com ' + pessoa + ', prazo ' + prazo.toLowerCase() + '. No protótipo não há envio de notificação.', acao: 'Fechar' }
-          })
+          onConfirmar: () => this.salvarAcaoAlerta(id, 'assign', { responsavel: pessoa, prazo: this.prazoData(prazo) })
         };
       })(),
       drawerAberto: !!st.drawer, drawer: Object.assign({
@@ -3424,10 +3539,10 @@ class Component extends DCLogic {
           : '',
         cols: [], rows: [], fonte: '', cta: 'Abrir', eyebrow: '', titulo: '', sub: '',
         acoesShow: st.drawer && st.drawer.alertaId ? 'flex' : 'none',
-        onVisto: () => { const id = st.drawer.alertaId; this.setState({ alertaStatus: Object.assign({}, statusMap, { [id]: 'visto' }), drawer: null, toast: { glifo: '✓', fg: 'var(--cc-ok)', bg: 'var(--success-bg)', titulo: 'Alerta marcado como visto', detalhe: '“' + id + '” sai da fila de novos e continua listado até ser resolvido.', acao: 'Fechar' } }); },
+        onVisto: () => { const id = st.drawer.alertaId; this.salvarAcaoAlerta(id, 'seen'); },
         onAtribuir: () => this.setState({ atribuindo: (st.drawer || {}).alertaId }),
-        onResolver: () => { const id = st.drawer.alertaId; this.setState({ alertaStatus: Object.assign({}, statusMap, { [id]: 'resolvido' }), drawer: null, toast: { glifo: '✓', fg: 'var(--cc-ok)', bg: 'var(--success-bg)', titulo: 'Alerta resolvido', detalhe: '“' + id + '” passa para o grupo resolvido e sai da contagem de críticos.', acao: 'Fechar' } }); },
-        onExportar: () => this.avisar('Lista exportada', 'CSV com os registros do drawer. No protótipo o arquivo não é gravado.'),
+        onResolver: () => { const id = st.drawer.alertaId; this.salvarAcaoAlerta(id, 'resolve'); },
+        onExportar: () => this.avisar('Exportação ainda indisponível', 'A lista do detalhe não será simulada; o botão será liberado quando a exportação real estiver pronta.'),
         onCta: () => {
           const c = ((st.drawer || {}).cta || '').toLowerCase();
           const destino = /marketing|campanha|gerenciador|criativo|anúncio/.test(c) ? 'mkt'
@@ -3437,7 +3552,7 @@ class Component extends DCLogic {
             : /corretor|camila|equipe/.test(c) ? 'eqp'
             : /imóvel|ga4|site/.test(c) ? 'site' : null;
           if (destino) this.setState({ page: destino, navegou: true, drawer: null, pop: null, corretorSel: destino === 'eqp' ? 'camila' : null });
-          else this.avisar('Ação simulada', 'Esta ação documenta o comportamento esperado do ERP e não altera os dados do protótipo.');
+          else this.avisar('Ação indisponível', 'Este atalho ainda não possui um destino real conectado no ERP.');
         }
       }, st.drawer || {}),
       fecharDrawer: () => this.setState({ drawer: null, atribuindo: null, atribPessoa: null, atribPrazo: null })
@@ -3445,6 +3560,10 @@ class Component extends DCLogic {
     if (!realView) return view;
     const corretorFonteReal = this.CORRETORES.find(item => item.id === st.corretorSel) || this.CORRETORES[0];
     const corretorReal = view.corretor && corretorFonteReal ? Object.assign({}, view.corretor, {
+      tendencia: 'Sem comparação real por critério',
+      tendFg: 'var(--fg-3)',
+      contexto: this.num(corretorFonteReal.e.recebidos) + ' leads recebidos · ' + this.num(corretorFonteReal.r.vendas) + ' vendas no período',
+      criterios: [],
       pontos: [
         { glifo: '✓', fg: 'var(--cc-ok)', bg: 'var(--success-bg)', texto: 'Indicadores abaixo usam somente movimentos consolidados do ERP.' },
         { glifo: '~', fg: 'var(--cc-atencao)', bg: 'var(--warning-bg)', texto: 'Conversas individuais não são exibidas sem uma fonte real autorizada.' }
@@ -3459,6 +3578,14 @@ class Component extends DCLogic {
         { k: 'Leads recebidos', v: this.num(corretorFonteReal.e.recebidos) },
         { k: 'Vendas', v: this.num(corretorFonteReal.r.vendas) }
       ],
+      kpis: [
+        { label: 'Leads recebidos', valor: this.num(corretorFonteReal.e.recebidos), nota: this.num(corretorFonteReal.e.trab) + ' movimentações', fg: 'var(--fg-1)' },
+        { label: 'Mediana 1ª resposta', valor: corretorFonteReal.e.med, nota: 'fonte: eventos do CRM', fg: 'var(--fg-1)' },
+        { label: 'Ações vencidas', valor: this.num(corretorFonteReal.e.venc), nota: 'próximas ações fora do prazo', fg: corretorFonteReal.e.venc ? 'var(--cc-atencao)' : 'var(--cc-ok)' },
+        { label: 'Visitas realizadas', valor: this.num(corretorFonteReal.r.real), nota: this.num(corretorFonteReal.r.agend) + ' agendadas', fg: 'var(--fg-1)' },
+        { label: 'Vendas', valor: this.num(corretorFonteReal.r.vendas), nota: 'contratos concluídos', fg: corretorFonteReal.r.vendas ? 'var(--cc-ok)' : 'var(--fg-1)' },
+        { label: 'VGV', valor: corretorFonteReal.r.vgv, nota: 'valor vendido no período', fg: 'var(--fg-1)' }
+      ],
       conversas: []
     }) : view.corretor;
     return Object.assign(view, {
@@ -3469,6 +3596,10 @@ class Component extends DCLogic {
       heatCols: realView.heatCols,
       heatCells: realView.heatCells,
       coortes: realView.coortes,
+      paradoPct: realView.paradoPct,
+      paradoQualif: realView.paradoQualif,
+      iaCriterios: realView.iaCriterios,
+      iaFalhas: realView.iaFalhas,
       siteKpis: realView.siteKpis,
       sitePaginas: realView.sitePaginas,
       imoveis: realView.imoveis,

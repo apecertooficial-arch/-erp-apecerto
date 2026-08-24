@@ -13,7 +13,7 @@ test("Central de Comando é uma rota interna e fica restrita à gestão", () => 
   assert.equal(podeVer("Central de Comando", { role: "admin", permissoes: null, carregado: true }), true);
   assert.equal(podeVer("Central de Comando", { role: "gestor", permissoes: { dashboard: ["ver"] }, carregado: true }), true);
   assert.equal(podeVer("Central de Comando", { role: "corretor", permissoes: { dashboard: ["ver"] }, carregado: true }), false);
-  assert.match(wrapper, /src="\/central-comando\/prototype\.html\?v=20260824-6"/);
+  assert.match(wrapper, /src="\/central-comando\/prototype\.html\?v=20260824-7"/);
   assert.doesNotMatch(wrapper, /target=|window\.open/);
 });
 
@@ -44,6 +44,23 @@ test("dados reais substituem todas as áreas operacionais", () => {
   assert.match(prototype, /Indisponível/);
   assert.match(prototype, /Nenhum zero estimado é apresentado como dado real/);
   assert.match(prototype, /Conversas individuais não são exibidas sem uma fonte real autorizada/);
+  assert.match(api, /sources:/);
+  assert.match(prototype, /st\.realData \? \[\] : OPORTUNIDADES/);
+  assert.match(prototype, /const VAR_FLUXO = st\.realData \? \[\]/);
+  assert.match(prototype, /iaCriterios: realView\.iaCriterios/);
+  assert.match(prototype, /iaFalhas: realView\.iaFalhas/);
+  assert.match(prototype, /elementos: st\.realData \? \[\]/);
+  assert.doesNotMatch(prototype, /row\.leads_validos \|\| row\.leads_crm \|\| row\.leads_plataforma/);
+});
+
+test("atualização, período, alertas e CSV usam operações reais", () => {
+  assert.match(prototype, /diasDoPeriodo\(rotulo\)/);
+  assert.match(prototype, /carregarDadosReais\(this\._centralToken, true, F\.periodo\)/);
+  assert.doesNotMatch(prototype, /setTimeout\(\(\) => this\.setState\(\{ atualizando: false/);
+  assert.match(prototype, /salvarAcaoAlerta/);
+  assert.match(prototype, /method: 'POST'/);
+  assert.match(prototype, /baixarCsvMarketing/);
+  assert.match(prototype, /CSV exportado/);
 });
 
 test("Meta e Google preservam a hierarquia e não quebram quando desconectados", () => {

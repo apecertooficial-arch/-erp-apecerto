@@ -68,16 +68,33 @@ export async function GET(request: Request) {
     );
   }
 
+  const mediaData = media.data ?? {
+    ok: false,
+    meta: { status: "indisponivel", motivo: media.error?.message ?? "Leitura indisponível.", anuncios: [] },
+    google: { status: "indisponivel", motivo: "Leitura indisponível.", anuncios: [] },
+  };
+  const mediaRecord = mediaData as Record<string, unknown>;
+  const metaRecord = (mediaRecord.meta ?? {}) as Record<string, unknown>;
+  const googleRecord = (mediaRecord.google ?? {}) as Record<string, unknown>;
+  const ga4IsConfigured = ga4Configurado();
+
   return Response.json({
     central: central.data,
     tracking: { ...(tracking.data as Record<string, unknown>), attribution: attribution.data, quality: quality.data },
-    media: media.data ?? {
-      ok: false,
-      meta: { status: "indisponivel", motivo: media.error?.message ?? "Leitura indisponível.", anuncios: [] },
-      google: { status: "indisponivel", motivo: "Leitura indisponível.", anuncios: [] },
-    },
+    media: mediaData,
     ga4,
-    ga4_configurado: ga4Configurado(),
+    ga4_configurado: ga4IsConfigured,
+    sources: {
+      crm: { status: "conectado", motivo: null },
+      tracking: { status: "conectado", motivo: null },
+      meta: { status: String(metaRecord.status ?? "indisponivel"), motivo: metaRecord.motivo ?? null },
+      google: { status: String(googleRecord.status ?? "indisponivel"), motivo: googleRecord.motivo ?? null },
+      ga4: ga4
+        ? { status: "conectado", motivo: null }
+        : ga4IsConfigured
+          ? { status: "erro", motivo: "A GA4 está configurada, mas a Data API não devolveu leitura neste recorte." }
+          : { status: "nao_configurado", motivo: "Faltam GA4_SERVICE_ACCOUNT_JSON e GA4_PROPERTY_ID no servidor." },
+    },
     alert_actions: alertActions.data ?? [],
     period_days: days,
     generated_at: new Date().toISOString(),

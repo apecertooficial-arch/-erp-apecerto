@@ -37,7 +37,7 @@ export function CentralComandoWorkspace({ accessToken }: { accessToken: string }
       {!ready && <div className="central-prototype-boot"><span /><strong>Carregando a Central de Comando…</strong></div>}
       <iframe
         ref={frame}
-        src="/central-comando/prototype.html?v=20260824-6"
+        src="/central-comando/prototype.html?v=20260824-7"
         title="Central de Comando"
         onLoad={authorize}
       />
