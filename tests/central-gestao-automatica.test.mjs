@@ -56,6 +56,8 @@ test("saúde, quarentena e replay são operações administrativas explícitas",
   assert.match(migration, /CENTRAL_ADMIN_REQUIRED/);
   assert.match(route, /central_saude_operacional/);
   assert.match(route, /central_reprocessar_fila/);
+  assert.match(route, /central_reprocessar_fila_versao_publicada/);
+  assert.match(panel, /Migrar versão e reprocessar/);
 });
 
 test("freio de mensagens fica visível e a migração nunca o libera", () => {

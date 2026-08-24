@@ -120,6 +120,15 @@ export function CentralOperationsPanel({ accessToken }: { accessToken: string })
     finally { setProcessando(null); }
   }, [executar]);
 
+  const reprocessarNaVersaoPublicada = useCallback(async (id: number) => {
+    const mensagem = "A versão original não atende mais ao contrato atual. A Central só continuará na versão publicada se nenhuma parte de mensagem tiver sido criada. A troca de versão ficará registrada. Continuar?";
+    if (!window.confirm(mensagem)) return;
+    setProcessando(id); setErro(null);
+    try { await executar({ action: "reprocessar_versao_publicada", fila_id: id }); }
+    catch (e) { setErro(e instanceof Error ? e.message : "Não foi possível migrar e reprocessar."); }
+    finally { setProcessando(null); }
+  }, [executar]);
+
   const alternarAbordagem = useCallback(async () => {
     if (!saude) return;
     const liberar = !saude.abordagem_automatica;
@@ -176,10 +185,15 @@ export function CentralOperationsPanel({ accessToken }: { accessToken: string })
         <section className="central-ops-secao">
           <header><div><span className="central-ops-eyebrow">QUARENTENA</span><h3>Falhou sem continuar nem presumir sucesso</h3></div><small>{numero(saude?.fila?.quarentena)} item(ns)</small></header>
           {(saude?.quarentena ?? []).length ? <div className="central-lista">
-            {(saude?.quarentena ?? []).map((item) => <article key={item.id}>
-              <div><b>#{item.id} · {item.automacao}</b><span>Bloco {item.bloco_id} · {data(item.criado_em)}</span><p>{item.erro}</p></div>
-              <button type="button" onClick={() => void reprocessar(item.id)} disabled={processando === item.id}>{processando === item.id ? "Enviando…" : "Reprocessar com segurança"}</button>
-            </article>)}
+            {(saude?.quarentena ?? []).map((item) => {
+              const versaoIncompativel = item.erro.includes("AUTOMATION_RUNTIME_CONTRACT_INVALID");
+              return <article key={item.id}>
+                <div><b>#{item.id} · {item.automacao}</b><span>Bloco {item.bloco_id} · {data(item.criado_em)}</span><p>{item.erro}</p></div>
+                {versaoIncompativel
+                  ? <button type="button" onClick={() => void reprocessarNaVersaoPublicada(item.id)} disabled={processando === item.id}>{processando === item.id ? "Verificando…" : "Migrar versão e reprocessar"}</button>
+                  : <button type="button" onClick={() => void reprocessar(item.id)} disabled={processando === item.id}>{processando === item.id ? "Enviando…" : "Reprocessar com segurança"}</button>}
+              </article>;
+            })}
           </div> : <p className="central-vazio">Nenhuma falha aguardando decisão.</p>}
         </section>
 
