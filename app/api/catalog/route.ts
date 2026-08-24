@@ -290,7 +290,9 @@ export async function GET(request: Request) {
     const ehPronto = /pronto/i.test(p.status ?? "");
     if (!bruto) return [p];
     const unidadesBrutas = ((bruto.unidades ?? []) as UnitRow[]).filter((u) => u.disponivel && (u.aprovacao ?? "aprovado") === "aprovado");
-    const unidadesComerciais = ehPronto ? unidadesBrutas : unidadesBrutas.filter((u) => u.de_terceiros === true);
+    const unidadesComerciais = ehPronto
+      ? unidadesBrutas
+      : unidadesBrutas.filter((u) => u.de_terceiros === true || u.publicado !== false);
     if (p.standalone) {
       if (p.draft || p.approval !== "aprovado" || !unidadesComerciais.length) return [];
     } else {

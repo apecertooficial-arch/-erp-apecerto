@@ -65,8 +65,12 @@ test("unidade pronta usa captador, menu e mídia próprios", () => {
 });
 
 test("captação individual não desaparece quando o empreendimento está em obras", () => {
-  assert.match(catalog, /const unidadesComerciais = ehPronto \? unidadesBrutas : unidadesBrutas\.filter\(\(u\) => u\.de_terceiros === true\)/);
+  assert.match(catalog, /unidadesBrutas\.filter\(\(u\) => u\.de_terceiros === true \|\| u\.publicado !== false\)/);
   assert.match(catalog, /return ehPronto \|\| p\.standalone \? unitCards : \[p, \.\.\.unitCards\]/);
+});
+
+test("unidade tipo publicada aparece mesmo em lançamento ou obra", () => {
+  assert.match(catalog, /u\.de_terceiros === true \|\| u\.publicado !== false/);
 });
 
 test("foto herdada do condomínio abre sem fingir que pertence à unidade", () => {
