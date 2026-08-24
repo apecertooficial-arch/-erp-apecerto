@@ -18,13 +18,15 @@ const captorIntegrityMigration = await readFile("supabase/migrations/20260820223
 
 test("catálogo separa contagem de empreendimentos e imóveis", () => {
   assert.match(catalog, /buildingCount: visible\.filter\(\(product\) => !product\.standalone\)\.length/);
-  assert.match(productsUi, /\{buildingCount\} empreendimentos · \{products\.length\} imóveis/);
-  assert.match(productsUi, /`\$\{produtosVisiveis\.length\} imóveis`/);
+  assert.match(productsUi, /<b>\{products\.length\}<\/b><em>No catálogo<\/em>/);
+  assert.match(productsUi, /\{unitProducts\.length\} unidades encontradas/);
 });
 
 test("apartamento é a captação principal e condomínio tem fluxo separado", () => {
-  assert.ok(productsUi.includes('<button className="primary-action" onClick={() => setUnitWizardOpen(true)} type="button">＋ Cadastrar apartamento</button>'));
-  assert.ok(productsUi.includes('<button className="secondary-action" onClick={() => setCaptureOpen(true)} type="button">＋ Cadastrar condomínio</button>'));
+  assert.match(productsUi, /setRegistrationOpen\(true\)/);
+  assert.match(productsUi, /\["apartamento", "Apartamento individual"/);
+  assert.match(productsUi, /\["condominio", "Condomínio"/);
+  assert.match(productsUi, /registrationChoice === "apartamento" \|\| registrationChoice === "remanescente"/);
   assert.match(unitWizard, /Associe o apartamento captado a um condomínio ou prédio já existente/);
   assert.match(unitWizard, /onCreateCondominium/);
   assert.match(captureWizard, /Só quer cadastrar um apartamento\?/);
@@ -43,10 +45,10 @@ test("apartamento pode ser cadastrado sem associação falsa a condomínio", () 
 });
 
 test("fila de aprovação abre completa e filtros avançados ficam recolhidos", () => {
-  assert.match(productsUi, /Fila de aprovação/);
+  assert.match(productsUi, /Central de aprovação/);
   assert.match(productsUi, /function showApprovalQueue\(\)[\s\S]*setStatus\("Todos"\)[\s\S]*setPuExpandida\(true\)/);
-  assert.match(productsUi, /Mais filtros/);
-  assert.match(productsUi, /moreFiltersOpen && <div className="filter-row filter-advanced"/);
+  assert.match(productsUi, /Filtros/);
+  assert.match(productsUi, /moreFiltersOpen && <section className="pv3-filters"/);
 });
 
 test("unidade pronta usa captador, menu e mídia próprios", () => {
@@ -62,7 +64,7 @@ test("foto herdada do condomínio abre sem fingir que pertence à unidade", () =
   assert.match(detail, /focusedUnitUsesReferencePhotos/);
   assert.match(detail, /Fotos do condomínio de referência/);
   assert.match(detail, /Ver \$\{focusedUnitPhotos\.length\} foto/);
-  assert.match(productsUi, /do condomínio/);
+  assert.match(catalog, /referenceMedia: buildingMediaCount/);
   assert.match(detail, /setUnitLightbox/);
 });
 
@@ -156,8 +158,9 @@ test("captador da unidade é obrigatório, preservado e visível em todas as sit
   assert.match(captureWizard, /action: "finalize"/);
   assert.match(captureApi, /Esta captação pertence a outro corretor e não pode ser reassociada/);
   assert.doesNotMatch(catalog, /\.in\("aprovacao", \["pendente", "reprovado"\]\)/);
-  assert.match(productsUi, /Todos os imóveis captados por você, aprovados ou em análise/);
-  assert.match(productsUi, /product\.capturedBy && <p className="approval-captador">/);
+  assert.match(productsUi, /Minhas captações/);
+  assert.match(productsUi, /Captador: <b>\{product\.capturedBy \|\| "não identificado"\}<\/b>/);
+  assert.match(productsUi, /product\.capturedBy \|\| "Sem captador"/);
 });
 
 test("migração bloqueia unidade pendente e dados privados no acesso anônimo", () => {
