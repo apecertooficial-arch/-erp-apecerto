@@ -158,6 +158,13 @@ Antes de publicar, apresente uma revisão legível:
 
 Mostre falhas que pararam com segurança. Cada item deve informar automação, versão, bloco, motivo, impacto, tentativas e ações disponíveis. A ação “Reprocessar” precisa explicar que mantém a mesma identidade e não duplica efeitos.
 
+Inclua dois estados que o incidente real de 24/08 tornou obrigatórios:
+
+- **Aguardando corretor elegível:** não é erro técnico. O bloco de distribuição mostra candidatos, motivos de inelegibilidade, próxima tentativa, tempo aguardado, SLA configurado e as saídas desenhadas para “elegível encontrado” e “prazo vencido”. Retentativa e prazo pertencem à configuração visível do fluxo; o relógio apenas desperta a mesma execução.
+- **Versão histórica incompatível:** mostre versão da execução, contrato que mudou e três desfechos distintos: reprocessar na mesma versão quando compatível; migrar explicitamente para a versão publicada somente sem efeito externo e com auditoria; ou encerrar sem executar. Nunca represente migração de versão como um replay comum.
+
+Na matriz, trate como defeito confirmado a situação em que uma versão publicada anteriormente é rejeitada por uma validação adicionada depois. O critério de aceite é abrir e testar todos os mapas históricos referenciados por fila sem que uma mudança de contrato produza falha silenciosa.
+
 ## Direção estética
 
 Siga estritamente o design system vinculado. A Central deve parecer profissional, calma e operacional, com canvas amplo, densidade controlada, laranja da marca para ação primária, roxo para IA/lógica e cores semânticas acessíveis para sucesso, atenção e erro. Evite excesso de cartões flutuantes, ícones sem rótulo, sombras pesadas e painéis que roubem espaço do canvas.

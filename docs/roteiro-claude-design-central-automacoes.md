@@ -190,10 +190,18 @@ Agora desenhe as evoluções funcionais faltantes, integradas ao mesmo construto
 - efeito interrompido;
 - tentativas;
 - ação “Reprocessar com segurança” explicando idempotência;
+- estado “Aguardando corretor elegível”, com motivos, próxima tentativa e SLA definidos no próprio bloco;
+- recuperação incompatível com a versão histórica separada do replay comum, exibindo versão anterior, versão publicada e prova de ausência de efeitos externos;
 - ação para abrir o bloco responsável;
 - filtros por atual, histórico, distribuição, mensagem, IA e ação.
 
 Integre essas telas à proposta aprovada. Não crie outro painel separado do produto.
+
+### Evidência obrigatória adicionada ao Comando 1
+
+Considere o incidente real de 24/08: três execuções da Miruna esgotaram seis tentativas de distribuição em cerca de quinze minutos por ausência de corretor elegível. Ao serem reprocessadas, a versão histórica 104 foi rejeitada porque o runtime novo passou a exigir `instanciaPorCorretor`. Nenhuma parte de mensagem havia sido criada; a recuperação explícita migrou as três filas para a versão publicada 123, registrou a troca e então confirmou vídeo antes do texto.
+
+Use esse caso para corrigir a matriz sem inventar: “sem elegível” precisa virar espera configurada pelo fluxo, e alteração de contrato precisa manter compatibilidade com versões históricas ou oferecer migração explícita e auditada. Não avance ao Comando 2 sem que esses dois estados estejam representados na matriz revisada.
 
 ## Comando 4 — Handoff implementável
 

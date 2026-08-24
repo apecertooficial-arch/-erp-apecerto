@@ -46,6 +46,16 @@ export async function POST(request: Request) {
     return Response.json(data ?? {});
   }
 
+  if (body.action === "reprocessar_versao_publicada") {
+    const filaId = Number(body.fila_id);
+    if (!Number.isSafeInteger(filaId) || filaId < 1) {
+      return Response.json({ error: "Item de quarentena inválido." }, { status: 422 });
+    }
+    const { data, error } = await auth.db.rpc("central_reprocessar_fila_versao_publicada", { p_fila_id: filaId });
+    if (error) return Response.json({ error: error.message }, { status: error.code === "42501" ? 403 : 502 });
+    return Response.json(data ?? {});
+  }
+
   if (body.action === "abordagem") {
     if (typeof body.liberar !== "boolean") {
       return Response.json({ error: "Informe se o envio deve ser liberado ou bloqueado." }, { status: 422 });

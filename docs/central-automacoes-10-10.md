@@ -64,6 +64,8 @@ O padrão de aceitação é simples: o gestor consegue criar, testar, publicar, 
 8. Erro recuperável usa retentativa com limite; erro definitivo vai para exceções.
 9. IA analisa; somente um bloco explícito aplica a análise.
 10. Relógios e filas apenas transportam eventos criados por automações publicadas.
+11. “Nenhum corretor elegível” é um resultado operacional do módulo de distribuição, não uma pane técnica: o mapa publicado define se aguarda, por quanto tempo, quando tenta novamente e qual saída recebe o prazo vencido.
+12. Uma evolução de contrato nunca invalida silenciosamente uma execução histórica. Compatibilidade, migração explícita para a versão atual ou encerramento seguro precisam ser decididos e auditados pela Central.
 
 ## Produto e experiência
 
@@ -124,6 +126,8 @@ Indicadores mínimos:
 - exceções abertas;
 - entrega de mensagem por parte;
 - distribuição indisponível;
+- itens aguardando corretor elegível, com próxima tentativa e SLA visíveis;
+- incompatibilidades entre a versão presa à execução e o contrato atual;
 - análises da Sara aplicadas, ignoradas e enviadas para revisão humana;
 - entradas sem card, negócio ou abordagem confirmada.
 
@@ -193,6 +197,7 @@ Critério de saída: cada módulo possui teste unitário de sucesso, erro e repe
 - Entrega de mensagem por parte.
 - Fila de exceções com motivo, impacto e ação segura.
 - Reprocessamento preso à mesma versão e identidade.
+- Recuperação excepcional na versão publicada somente quando não houve efeito externo, com troca de versão explícita, validação prévia e trilha de auditoria.
 - SLOs e alertas apenas para falhas novas e acionáveis.
 
 Critério de saída: uma falha pode ser localizada em menos de dois minutos, sem consulta manual ao banco.
@@ -243,6 +248,8 @@ Critério de saída: zero efeito duplicado, zero continuação após erro, zero 
 No início deste projeto foram encontrados 14 fluxos no total: 13 não arquivados e um arquivado. Os 13 fluxos operacionais somavam 79 blocos, com 10 automações ativas. Nas últimas 24 horas havia 4.810 registros de execução: 4.738 `ok`, 25 alertas e 47 erros. A fila possuía um item pendente e 97 itens históricos em erro. A entrega de mensagens dos últimos sete dias registrava 103 partes entregues e seis registros antigos sem confirmação conclusiva.
 
 Os erros recentes concentravam-se em uma versão antiga da automação de resposta da Sara e em três tentativas de distribuição sem corretor elegível na Miruna. Isso confirma duas necessidades do projeto: separar erro histórico de falha nova e mostrar a execução completa por versão.
+
+Em 24/08, os três itens da Miruna chegaram ao limite de seis tentativas em aproximadamente quinze minutos e foram para a quarentena. O primeiro replay seguro revelou uma segunda falha: a versão histórica 104 não possuía o roteamento explícito de instância exigido pelo contrato novo do runtime. Como nenhuma parte de mensagem existia, foi criada a operação administrativa `central_reprocessar_fila_versao_publicada`: ela exige gestão, valida a versão publicada, bloqueia qualquer execução que já possua parte de mensagem, migra a fila de forma explícita e registra a versão anterior e a nova. Os três itens migraram para a versão 123 e terminaram com distribuição e entrega confirmada de vídeo antes do texto. Esse caso passa a ser teste obrigatório de compatibilidade e recuperação, não uma exceção manual tolerada.
 
 ## Decisões de segurança
 
