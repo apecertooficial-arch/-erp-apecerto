@@ -181,6 +181,41 @@ const saraRealityTemperature = readFileSync(
   ),
   'utf8',
 );
+const saraNotificationVocabulary = readFileSync(
+  new URL(
+    '../supabase/migrations/20260824100000_corrigir_tipos_notificacao_sara.sql',
+    import.meta.url,
+  ),
+  'utf8',
+);
+const saraIdempotentNotification = readFileSync(
+  new URL(
+    '../supabase/migrations/20260824101500_sara_notificacao_condicao_idempotente.sql',
+    import.meta.url,
+  ),
+  'utf8',
+);
+const modularNotificationDiagnostics = readFileSync(
+  new URL(
+    '../supabase/migrations/20260824102000_diagnostico_notificacao_modular.sql',
+    import.meta.url,
+  ),
+  'utf8',
+);
+const saraNotificationParentheses = readFileSync(
+  new URL(
+    '../supabase/migrations/20260824102500_parenteses_condicao_notificacao_sara.sql',
+    import.meta.url,
+  ),
+  'utf8',
+);
+const saraNotificationTextParentheses = readFileSync(
+  new URL(
+    '../supabase/migrations/20260824103000_parenteses_texto_notificacao_sara.sql',
+    import.meta.url,
+  ),
+  'utf8',
+);
 const entrada = readFileSync(
   new URL('../supabase/functions/entrada/index.ts', import.meta.url),
   'utf8',
@@ -637,4 +672,42 @@ test('Sara só classifica atendimento e temperatura com realidade da conversa', 
   assert.match(saraRealityTemperature, /temperatura='frio'/);
   assert.match(saraRealityTemperature, /somenteAiTemperaturaAlteradaPara/);
   assert.match(builder, /aplicarTemperatura/);
+});
+
+test('notificacoes da Sara pertencem ao vocabulario aceito pelo banco', () => {
+  assert.match(saraNotificationVocabulary, /ncrm_notificacao_tipo_check/);
+  assert.match(saraNotificationVocabulary, /'lead_em_atendimento'/);
+  assert.match(saraNotificationVocabulary, /'lead_quente'/);
+  assert.match(saraNotificationVocabulary, /insert into public\.ncrm_notificacao_tipos_ativos/);
+});
+
+test('reuso idempotente da Sara nao inventa uma nova mudanca nem novo aviso', () => {
+  assert.match(saraIdempotentNotification, /'aplicado',false,'idempotente',true/);
+  assert.match(saraIdempotentNotification, /coalesce\(p_lead->>'__ai_aplicado','false'\)='true'/);
+  assert.match(saraIdempotentNotification, /Aviso ignorado: a etapa nao mudou/);
+  assert.match(saraIdempotentNotification, /Aviso ignorado: a temperatura nao mudou/);
+});
+
+test('falha de notificacao preserva codigo e contexto no log do modulo', () => {
+  assert.match(modularNotificationDiagnostics, /get stacked diagnostics/);
+  assert.match(modularNotificationDiagnostics, /pg_exception_context/);
+  assert.match(modularNotificationDiagnostics, /SQLSTATE/);
+});
+
+test('condicoes de notificacao parentizam operadores JSON explicitamente', () => {
+  assert.ok(saraNotificationParentheses.includes(
+    "coalesce((p_lead->>'__ai_etapa_nova'),'')=(ao->>'somenteAiEtapaAlteradaPara')",
+  ));
+  assert.ok(saraNotificationParentheses.includes(
+    "coalesce((p_lead->>'__ai_temperatura_nova'),'')=(ao->>'somenteAiTemperaturaAlteradaPara')",
+  ));
+});
+
+test('texto do aviso nao e interpretado como concatenacao JSON', () => {
+  assert.ok(saraNotificationTextParentheses.includes(
+    "'Aviso ignorado: a etapa nao mudou para '||(ao->>'somenteAiEtapaAlteradaPara')",
+  ));
+  assert.ok(saraNotificationTextParentheses.includes(
+    "'Aviso ignorado: a temperatura nao mudou para '||(ao->>'somenteAiTemperaturaAlteradaPara')",
+  ));
 });
