@@ -69,7 +69,12 @@ test("estrutura publicada preserva a arquitetura visual do Claude Design", () =>
   assert.match(workspace, /FUNIL COMERCIAL/);
   assert.match(workspace, /ONDE AGIR AGORA/);
   for (const profile of ["CEO \/ admin", "Sócio", "Gestor de tráfego", "Gestor comercial"]) assert.match(workspace, new RegExp(profile));
-  assert.match(css, /\.cc-prototype>\.ape-nav\{width:257px;min-width:257px\}/);
+  assert.match(css, /\.cc-prototype \*\{box-sizing:content-box\}/);
+  assert.match(css, /\.cc-prototype button,\.cc-prototype select\{box-sizing:border-box\}/);
+  assert.match(css, /\.cc-prototype>\.ape-nav\{width:240px;min-width:240px\}/);
+  assert.match(css, /\.cc-prototype-header\{[^}]*gap:12px[^}]*padding:14px 24px 0/);
+  assert.match(css, /\.cc-prototype \.ape-kpi\{[^}]*padding:12px 16px[^}]*gap:4px/);
+  assert.match(css, /\.cc-prototype \.ape-section-title\{font-size:16px/);
   assert.match(css, /\.app-shell:has\(\.cc-prototype\)\{grid-template-columns:minmax\(0,1fr\)!important\}/);
   assert.match(css, /\.cc-prototype-header/);
   assert.match(css, /\.cc-prototype-main/);
