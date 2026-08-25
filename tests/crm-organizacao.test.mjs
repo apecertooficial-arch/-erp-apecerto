@@ -9,6 +9,7 @@ const tags = ler("../app/features/funil-2/AssociarTagLead.tsx");
 const api = ler("../app/api/funil2/route.ts");
 const esteira = ler("../app/features/sales/SalesProcessWorkspace.tsx");
 const crmCss = ler("../app/styles/redesign-apecerto-crm.css");
+const modelo = ler("../app/features/funil-2/modelo.ts");
 const temperaturaMigration = ler("../supabase/migrations/20260825150000_funil_2_temperatura_manual_auditavel.sql");
 
 test("desktop replica a ficha aprovada em três áreas e abre a conversa sob demanda", () => {
@@ -110,6 +111,17 @@ test("desktop intermediário preserva nome, contexto e proporção operacional",
   assert.match(crmCss, /@media\(max-width:1200px\)[\s\S]*\.f2-resumo\s*\{[^}]*repeat\(3,minmax\(0,1fr\)\)/);
   assert.match(crmCss, /\.f2-resumo>details\s*\{[^}]*grid-column:1\/-1/);
   assert.match(crmCss, /\.f2-nav::-webkit-scrollbar\s*\{[^}]*display:none/);
+});
+
+test("funil e listas não repetem frases longas entre ação e prazo", () => {
+  assert.match(modelo, /export function prazoDaAcao[\s\S]*return situacao;/);
+  assert.doesNotMatch(modelo, /rotulo:\s*`\$\{situacao\.rotulo\} para \$\{acaoVisivel/);
+  assert.match(desktop, /function resumoEtapa/);
+  assert.match(desktop, /<ChipTemperatura lead=\{item\} compacto \/>/);
+  assert.match(desktop, /<small className="f2-card-cadencia">\{cadencia\}<\/small>/);
+  assert.match(desktop, /<strong className="f2-lead-acao">\{lead\.acao_rotulo\}<\/strong>/);
+  assert.match(crmCss, /\.f2-tabela-compacta \.f2-lead-linha>em\s*\{[^}]*white-space:nowrap/);
+  assert.match(crmCss, /\.f2-dia-item>em\s*\{[^}]*white-space:nowrap/);
 });
 
 test("Meu Dia e Todos os Leads usam temperatura e próxima ação como informação decisória", () => {

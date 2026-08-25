@@ -271,9 +271,9 @@ export function acaoVisivel(lead: Pick<LeadFunil2, "momento_codigo" | "cadencia_
   return lead.acao_rotulo;
 }
 
-export function prazoDaAcao(lead: Pick<LeadFunil2, "proxima_acao_em" | "momento_codigo" | "cadencia_passo" | "acao_rotulo">, agora = Date.now()) {
+export function prazoDaAcao(lead: Pick<LeadFunil2, "proxima_acao_em">, agora = Date.now()) {
   const situacao = situacaoPrazo(lead.proxima_acao_em, agora);
-  return { ...situacao, rotulo: `${situacao.rotulo} para ${acaoVisivel(lead).toLowerCase()}` };
+  return situacao;
 }
 
 /* SEM PRAZO.

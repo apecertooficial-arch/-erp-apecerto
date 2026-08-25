@@ -32,9 +32,10 @@ function temperaturaDoLead(lead: LeadFunil2): Exclude<TemperaturaFiltro, "todas"
   return lead.temperatura ?? "aguardando";
 }
 
-function ChipTemperatura({ lead, className = "" }: { lead: LeadFunil2; className?: string }) {
+function ChipTemperatura({ lead, className = "", compacto = false }: { lead: LeadFunil2; className?: string; compacto?: boolean }) {
   const codigo = temperaturaDoLead(lead);
-  return <span className={`f2-lead-chip temperatura temperatura-${codigo} ${className}`.trim()}><i />{rotuloTemperatura(lead.temperatura) ?? "Aguardando leitura"}</span>;
+  const rotulo = rotuloTemperatura(lead.temperatura) ?? (compacto ? "Sem leitura" : "Aguardando leitura");
+  return <span className={`f2-lead-chip temperatura temperatura-${codigo} ${className}`.trim()}><i />{rotulo}</span>;
 }
 
 function FiltrosTemperatura({ leads, valor, onChange, className = "" }: { leads: LeadFunil2[]; valor: TemperaturaFiltro; onChange: (valor: TemperaturaFiltro) => void; className?: string }) {
@@ -60,6 +61,19 @@ async function api(token: string, init?: RequestInit) {
 
 function iniciais(nome: string) {
   return nome.split(/\s+/).filter(Boolean).slice(0, 2).map((p) => p[0]?.toUpperCase()).join("");
+}
+
+function resumoEtapa(etapa: EtapaConfigFunil2) {
+  const resumos: Record<string, string> = {
+    novo: "Primeiro contato pendente",
+    tentando_contato: "Aguardando resposta",
+    em_atendimento: "Conversa em andamento",
+    visita: "Visita marcada ou realizada",
+    atualizar_manual: "Revisão manual necessária",
+    legado: "Carteira preservada",
+    pescado: "Resgatado do Aquário",
+  };
+  return resumos[etapa.codigo] ?? etapa.ajuda.split(/[.;]/)[0];
 }
 
 function linkWhatsapp(telefone: string | null) {
@@ -324,7 +338,7 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
           {etapasAtivas.map((etapa, indice) => {
             const daEtapa = leads.filter((l) => l.etapa === etapa.codigo && (temperaturaQuadro === "todas" || temperaturaDoLead(l) === temperaturaQuadro));
             return <div key={etapa.codigo} className={`f2-coluna etapa-${etapa.codigo}`}>
-              <div className="f2-coluna-topo"><span>{indice + 1}</span><div><h2>{etapa.rotulo}</h2><p>{etapa.ajuda}</p></div><b>{daEtapa.length}</b></div>
+              <div className="f2-coluna-topo"><span>{indice + 1}</span><div><h2>{etapa.rotulo}</h2><p title={etapa.ajuda}>{resumoEtapa(etapa)}</p></div><b>{daEtapa.length}</b></div>
               <div className="f2-lista">
                 {daEtapa.slice(0, 100).map((item) => {
                   const momento = momentosAtivos.find((m) => m.codigo === item.momento_codigo);
@@ -336,8 +350,8 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
                     <div className="f2-card-trio f2-card-trio-compacto">
                       <div className="etapa"><span>ETAPA</span><b>{etapa.rotulo}</b></div>
                       <div className="momento"><span>MOMENTO</span><b>{momento?.rotulo ?? item.momento_codigo}</b></div>
-                      <div className="temperatura"><span>TEMPERATURA</span><ChipTemperatura lead={item} /></div>
-                      <div className="acao"><span>{cadencia ? "CADÊNCIA" : "PRÓXIMA AÇÃO"}</span><b>{acaoVisivel(item)}</b><InteresseLead lead={item} /></div>
+                      <div className="temperatura"><span>TEMPERATURA</span><ChipTemperatura lead={item} compacto /></div>
+                      <div className="acao"><span>PRÓXIMA AÇÃO</span><b>{item.acao_rotulo}</b>{cadencia && <small className="f2-card-cadencia">{cadencia}</small>}<InteresseLead lead={item} /></div>
                     </div>
                     <div className="f2-card-botoes"><button type="button" onClick={(e) => { e.stopPropagation(); setAbrirNoChat(true); setSelecionado(item.id); }}>💬 Conversa</button><button type="button" className="principal" onClick={(e) => { e.stopPropagation(); setSelecionado(item.id); }}>{tentativa ? `Executar tentativa ${tentativa}` : "Abrir atendimento"}</button></div>
                   </article>;
@@ -506,7 +520,7 @@ function TodosLeads({ leads, momentos, etapas, accessToken, busy, onAbrir, onTra
     <div className="f2-leads-filtros"><button type="button" className={filtro === "ativos" ? "ativo" : ""} onClick={() => { setFiltro("ativos"); setPagina(1); }}>Ativos · {leads.filter((lead) => lead.etapa !== "legado").length}</button>{etapas.map((etapa) => <button type="button" className={filtro === etapa.codigo ? "ativo" : ""} onClick={() => { setFiltro(etapa.codigo); setPagina(1); }} key={etapa.codigo}>{etapa.rotulo} · {leads.filter((lead) => lead.etapa === etapa.codigo).length}</button>)}<span>{atrasados} atrasado(s)</span></div>
     <FiltrosTemperatura leads={leads.filter((lead) => filtro === "ativos" ? lead.etapa !== "legado" : lead.etapa === filtro)} valor={temperatura} onChange={(valor) => { setTemperatura(valor); setPagina(1); }} className="f2-temperatura-leads" />
     <div className="f2-tabela-cab"><span>Cliente</span><span>Etapa</span><span>Momento</span><span>Temperatura</span><span>Próxima ação</span><span>Prazo</span><span></span></div>
-    <div className="f2-tabela f2-tabela-compacta">{exibidos.map((lead) => { const prazo = prazoDaAcao(lead); return <article key={lead.id} role="button" tabIndex={0} onClick={() => onAbrir(lead.id)} onKeyDown={(evento) => { if (evento.key === "Enter" || evento.key === " ") onAbrir(lead.id); }} className={`f2-lead-linha prazo-${prazo.classe}`}><div className="f2-nome"><i>{iniciais(lead.nome)}</i><span><b>{lead.nome}</b><small>{lead.corretor_nome ?? "Responsável não definido"}{lead.interesse ? ` · ${lead.interesse}` : ""}</small></span></div><span className="f2-lead-chip etapa"><i />{etapas.find((e) => e.codigo === lead.etapa)?.rotulo}</span><span className="f2-lead-chip momento">{momentos.find((m) => m.codigo === lead.momento_codigo)?.rotulo}</span><ChipTemperatura lead={lead} /><strong className="f2-lead-acao">{acaoVisivel(lead)}</strong><em className={prazo.classe}>{prazo.rotulo}</em><div className="f2-lead-acoes">{linkWhatsapp(lead.telefone) && <a href={linkWhatsapp(lead.telefone)!} target="_blank" rel="noreferrer" onClick={(evento) => evento.stopPropagation()} aria-label={`Chamar ${lead.nome} no WhatsApp`}>☎</a>}<button type="button" className="primario" onClick={(evento) => { evento.stopPropagation(); onAbrir(lead.id); }}>Abrir ficha</button></div></article>; })}{filtrados.length === 0 && <div className="f2-sem-resultado"><b>Nenhum lead encontrado.</b><span>Revise a busca ou os filtros selecionados.</span></div>}</div>
+    <div className="f2-tabela f2-tabela-compacta">{exibidos.map((lead) => { const prazo = prazoDaAcao(lead); return <article key={lead.id} role="button" tabIndex={0} onClick={() => onAbrir(lead.id)} onKeyDown={(evento) => { if (evento.key === "Enter" || evento.key === " ") onAbrir(lead.id); }} className={`f2-lead-linha prazo-${prazo.classe}`}><div className="f2-nome"><i>{iniciais(lead.nome)}</i><span><b>{lead.nome}</b><small>{lead.corretor_nome ?? "Responsável não definido"}{lead.interesse ? ` · ${lead.interesse}` : ""}</small></span></div><span className="f2-lead-chip etapa"><i />{etapas.find((e) => e.codigo === lead.etapa)?.rotulo}</span><span className="f2-lead-chip momento">{momentos.find((m) => m.codigo === lead.momento_codigo)?.rotulo}</span><ChipTemperatura lead={lead} /><strong className="f2-lead-acao">{lead.acao_rotulo}</strong><em className={prazo.classe}>{prazo.rotulo}</em><div className="f2-lead-acoes">{linkWhatsapp(lead.telefone) && <a href={linkWhatsapp(lead.telefone)!} target="_blank" rel="noreferrer" onClick={(evento) => evento.stopPropagation()} aria-label={`Chamar ${lead.nome} no WhatsApp`}>☎</a>}<button type="button" className="primario" onClick={(evento) => { evento.stopPropagation(); onAbrir(lead.id); }}>Abrir ficha</button></div></article>; })}{filtrados.length === 0 && <div className="f2-sem-resultado"><b>Nenhum lead encontrado.</b><span>Revise a busca ou os filtros selecionados.</span></div>}</div>
     {filtrados.length > porPagina && <div className="f2-paginacao"><button type="button" disabled={paginaSegura === 1} onClick={() => setPagina((atual) => Math.max(1, atual - 1))}>← Anterior</button><span>Página {paginaSegura} de {totalPaginas}</span><button type="button" disabled={paginaSegura === totalPaginas} onClick={() => setPagina((atual) => Math.min(totalPaginas, atual + 1))}>Próxima →</button></div>}
 
     {/* Carteira antiga: mesma busca, seção separada. Só aparece quando há algo
