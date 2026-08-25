@@ -981,7 +981,7 @@ body .f2-indicadores button {min-height:64px;justify-content:center
 }
 .f2-config-nav button.ativo {border-color:var(--f2-orange);background:var(--f2-orange-soft);color:var(--f2-orange-strong)
 }
-.f2-config-grid.uma-coluna {grid-template-columns:minmax(0,760px)
+.f2-config-grid.uma-coluna {grid-template-columns:minmax(0,1fr);width:100%
 }
 .f2-config-grid.uma-coluna .f2-config-lista {max-height:none
 }
@@ -1171,7 +1171,7 @@ body .ncrm-wa-alt:active {background:#ffedd5
 }
 .f2-visita-regra > div { display:flex; flex-wrap:wrap; gap:10px 18px; padding:0 16px 14px
 }
-.f2-agenda-visitas { grid-template-columns:repeat(3,minmax(250px,1fr))
+.f2-agenda-visitas { grid-template-columns:repeat(auto-fit,minmax(300px,1fr));width:100%
 }
 .f2-visita-status { display:inline-flex; align-items:center; width:max-content; min-height:25px; padding:0 9px; border-radius:999px; background:#F1EEEB; color:#625B55; font-size:11px; font-weight:800; font-style:normal
 }
