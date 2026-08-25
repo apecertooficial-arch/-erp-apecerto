@@ -114,7 +114,7 @@ test("cadência mostra com honestidade a tentativa oficial sem duplicar instruç
 });
 
 test("card e ficha oferecem conversa e atalhos operacionais", () => {
-  assert.match(ui, />💬 (?:Chat|Conversa)</);
+  assert.match(ui, />Conversa<\/button>/);
   assert.match(ui, /Funil2ConversationDrawer/);
   assert.match(ui, /WhatsApp/);
   assert.match(ui, /Agendar visita/);

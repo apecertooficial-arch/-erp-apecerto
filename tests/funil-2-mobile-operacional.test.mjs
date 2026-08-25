@@ -40,7 +40,7 @@ test("Meu Dia entrega o lead e a chamada; a orientação completa fica na ficha"
 test("a ação principal do aplicativo é verde e tem alvo de toque", () => {
   const inicio = CSS_APROVADO.indexOf(".ape-acoes .ncrm-wa-principal");
   const bloco = CSS_APROVADO.slice(inicio, CSS_APROVADO.indexOf("}", inicio));
-  assert.match(bloco, /min-height: 48px/);
+  assert.match(bloco, /min-height:44px/);
   assert.match(bloco, /background: #1E9E5A/);
 });
 

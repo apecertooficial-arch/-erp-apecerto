@@ -25,7 +25,8 @@ import "./styles/tela-explicador.css";
 /* Botao de tour virtual na galeria de Produtos. */
 import "./styles/tela-produtos-tour.css";
 import "./styles/tela-suporte-financiamento.css";
-/* Módulos ativos antes injetados por JavaScript; estáticos e únicos. */
+/* CRM/Funil 2: folha canônica única. Ela contém estrutura, identidade e
+   responsividade do módulo, sem uma segunda camada de correção posterior. */
 import "./styles/funil-2.css";
 /* DESENHO VIGENTE DO ERP (desktop) — padrão apêcerto.
 
@@ -38,19 +39,18 @@ import "./styles/funil-2.css";
      4. ...-inicio.css ........................ Início: topo, seções, ranking, estados
      5. ...-esteira.css ....................... Esteira de Vendas 3.0 (pós-fechamento)
      6. ...-catalogo.css ...................... card do catálogo de Produtos
-     7. ...-crm.css ........................... CRM: menu, cartão do lead, ações rápidas
-     8. ...-abordagens.css .................... Abordagens: biblioteca, cartões, editor, prévia
-     9. ...-abordagens-rodape.css ............. Abordagens: as regras de 3 classes do globals
-    10. ...-abordagens-icones.css ............. Abordagens: glifos e emoji viram Lucide por máscara
-    11. ...-menu.css ......................... Menu lateral: ordem aprovada (order) + ícones Lucide
-    12. ...-disparos.css ..................... Disparos: público, mensagem, cadência, revisão, recentes
-    13. ...-calendario.css ................... Calendário: Dia/Semana/Mês/Lista, resumo, modais
-    14. ...-automacoes.css ................... Automações: construtor e explicador
-    15. ...-automacoes-tela.css .............. Automações: biblioteca da tela do módulo (apn-*)
-    16. ...-automacoes-cartao.css ............ Automações: rodapé de ações do cartão + passos
-    17. ...-construtor-paridade.css .......... Construtor: cartão de bloco em paridade com o desenho
+     7. ...-abordagens.css .................... Abordagens: biblioteca, cartões, editor, prévia
+     8. ...-abordagens-rodape.css ............. Abordagens: as regras de 3 classes do globals
+     9. ...-abordagens-icones.css ............. Abordagens: glifos e emoji viram Lucide por máscara
+    10. ...-menu.css ......................... Menu lateral: ordem aprovada (order) + ícones Lucide
+    11. ...-disparos.css ..................... Disparos: público, mensagem, cadência, revisão, recentes
+    12. ...-calendario.css ................... Calendário: Dia/Semana/Mês/Lista, resumo, modais
+    13. ...-automacoes.css ................... Automações: construtor e explicador
+    14. ...-automacoes-tela.css .............. Automações: biblioteca da tela do módulo (apn-*)
+    15. ...-automacoes-cartao.css ............ Automações: rodapé de ações do cartão + passos
+    16. ...-construtor-paridade.css .......... Construtor: cartão de bloco em paridade com o desenho
 
-   Elas substituem por cascata os valores visuais que globals.css, funil-2.css,
+   Elas substituem por cascata os valores visuais que globals.css,
    automation-builder.css definia para os MESMOS seletores —
    não são tema opcional nem segunda pele: são o visual do produto.
 
@@ -79,7 +79,6 @@ import "./styles/redesign-apecerto-financeiro-abas.css";
 import "./styles/redesign-apecerto-inicio.css";
 import "./styles/redesign-apecerto-esteira.css";
 import "./styles/redesign-apecerto-catalogo.css";
-import "./styles/redesign-apecerto-crm.css";
 import "./styles/redesign-apecerto-abordagens.css";
 import "./styles/redesign-apecerto-abordagens-rodape.css";
 import "./styles/redesign-apecerto-abordagens-icones.css";

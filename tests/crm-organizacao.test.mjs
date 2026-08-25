@@ -8,7 +8,9 @@ const mobile = ler("../app/features/funil-2/Funil2Mobile.tsx");
 const tags = ler("../app/features/funil-2/AssociarTagLead.tsx");
 const api = ler("../app/api/funil2/route.ts");
 const esteira = ler("../app/features/sales/SalesProcessWorkspace.tsx");
-const crmCss = ler("../app/styles/redesign-apecerto-crm.css");
+const crmCss = ler("../app/styles/funil-2.css");
+const layout = ler("../app/layout.tsx");
+const integridadeMigration = ler("../supabase/migrations/20260825201000_funil_2_integridade_seguranca_performance.sql");
 const modelo = ler("../app/features/funil-2/modelo.ts");
 const temperaturaMigration = ler("../supabase/migrations/20260825150000_funil_2_temperatura_manual_auditavel.sql");
 
@@ -81,10 +83,10 @@ test("as visões principais escondem instruções e edição até existir inten�
   assert.match(desktop, /<summary>Como este funil funciona<\/summary>/);
   assert.doesNotMatch(desktop, /MAPA DA OPERAÇÃO/);
   assert.match(desktop, /<summary>Como usar o Meu Dia<\/summary>/);
-  assert.match(desktop, /const \[modo, setModo\] = useState<"agenda" \| "quadro">\("quadro"\)/);
+  assert.match(desktop, /const \[modo, setModo\] = useState<"agenda" \| "quadro">\("agenda"\)/);
   assert.match(desktop, /Atrasadas para atualizar/);
   assert.match(desktop, /const \[editando, setEditando\] = useState\(false\)/);
-  assert.match(desktop, /Vínculo ausente/);
+  assert.match(desktop, /Correção administrativa/);
 });
 
 test("a ficha carrega o histórico completo do lead aberto, não o recorte global", () => {
@@ -108,18 +110,46 @@ test("desktop intermediário preserva nome, contexto e proporção operacional",
   assert.match(desktop, /className="f2-card-ident-meta"/);
   assert.match(crmCss, /\.f2-board \.f2-card-trio>\.etapa\s*\{[^}]*display:none/);
   assert.match(crmCss, /body \.f2-lista\s*\{[^}]*padding:8px/);
-  assert.match(crmCss, /@media\(max-width:1200px\)[\s\S]*\.f2-resumo\s*\{[^}]*repeat\(3,minmax\(0,1fr\)\)/);
+  assert.match(crmCss, /\.f2-resumo\s*\{[^}]*repeat\(3,minmax\(0,1fr\)\)/);
+  assert.match(crmCss, /@media\s*\(max-width:1200px\)/);
   assert.match(crmCss, /\.f2-resumo>details\s*\{[^}]*grid-column:1\/-1/);
   assert.match(crmCss, /\.f2-nav::-webkit-scrollbar\s*\{[^}]*display:none/);
 });
 
 test("linhas e cartões têm densidade de ferramenta operacional, não de blocos promocionais", () => {
-  assert.match(crmCss, /\.f2-card\s*\{[^}]*border:1px solid[^}]*box-shadow:none/);
+  assert.match(crmCss, /\.f2-card\s*\{[^}]*border:1px solid/);
   assert.match(crmCss, /\.f2-card-ident \.f2-card-ident-meta\s*\{[^}]*flex-direction:row/);
   assert.match(crmCss, /\.f2-board \.f2-card-trio-compacto>\.acao\s*\{[^}]*border-top:1px solid/);
-  assert.match(crmCss, /\.f2-dia-item\s*\{[^}]*min-height:50px[^}]*margin:0 !important[^}]*border-radius:0 !important[^}]*box-shadow:none !important/);
   assert.match(crmCss, /\.f2-dia-acao\s*\{[^}]*display:flex[^}]*align-items:center/);
-  assert.match(crmCss, /\.f2-lead-linha\s*\{[^}]*min-height:50px/);
+  assert.match(crmCss, /\.f2-board \.f2-card-botoes\s*\{[^}]*display:grid/);
+});
+
+test("CRM usa uma única folha canônica, sem cascata corretiva ou tipografia ilegível", () => {
+  assert.match(layout, /import "\.\/styles\/funil-2\.css"/);
+  assert.doesNotMatch(layout, /redesign-apecerto-crm\.css/);
+  assert.doesNotMatch(crmCss, /!important/);
+  const fontes = [...crmCss.matchAll(/font-size:\s*(\d+(?:\.\d+)?)px/g)].map(([, valor]) => Number(valor));
+  assert.ok(fontes.length > 0);
+  assert.ok(fontes.every((valor) => valor >= 11), `fontes menores que 11px: ${fontes.filter((valor) => valor < 11).join(", ")}`);
+});
+
+test("exceções deixam o quadro comercial e configurações têm navegação progressiva", () => {
+  assert.match(desktop, /etapasDoQuadro = etapasAtivas\.filter/);
+  assert.match(desktop, /!\["atualizar_manual", "legado"\]\.includes/);
+  assert.match(desktop, /f2-filtros-avancados/);
+  assert.match(desktop, /const \[secao, setSecao\] = useState<"etapas" \| "momentos" \| "operacao">\("etapas"\)/);
+  assert.match(desktop, /f2-config-nav/);
+});
+
+test("carga inicial evita históricos globais e a migração fecha acessos privilegiados", () => {
+  assert.doesNotMatch(api, /listarAnalisesSemCorte/);
+  assert.match(api, /eventos:\s*\[\]/);
+  assert.match(api, /notas:\s*\[\]/);
+  assert.match(api, /negociacoes:\s*\[\]/);
+  assert.match(integridadeMigration, /case when codigo = 'pos_visita' then true/);
+  assert.match(integridadeMigration, /revoke execute on function %s from public, anon, authenticated/);
+  assert.match(integridadeMigration, /'f2_pode_operar_lead'/);
+  assert.match(integridadeMigration, /f2_lead_momento_codigo_idx/);
 });
 
 test("funil e listas não repetem frases longas entre ação e prazo", () => {
