@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import { createServiceAccountAssertion, GOOGLE_TOKEN_URI } from "../_shared/google-service-account.ts";
 
 const GRAPH = "https://graph.facebook.com/v25.0";
 const GOOGLE_ADS = "https://googleads.googleapis.com/v25";
@@ -12,6 +13,21 @@ const json = (body: unknown, status = 200) => new Response(JSON.stringify(body),
 
 function erroSeguro(prefixo: string, status?: number) {
   return `${prefixo}${status ? ` (HTTP ${status})` : ""}`;
+}
+
+async function googleServiceAccountAccessToken(rawCredentials: string) {
+  const credentials = await createServiceAccountAssertion(rawCredentials);
+  if (!credentials) return { access: "", status: 0 };
+  const response = await fetch(credentials.tokenUri, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
+      assertion: credentials.assertion,
+    }),
+  });
+  const access = (await response.json().catch(() => ({})))?.access_token ?? "";
+  return { access: String(access), status: response.status };
 }
 
 async function meta(days: number) {
@@ -71,6 +87,7 @@ async function meta(days: number) {
 
 async function google(days: number) {
   const developer = Deno.env.get("GOOGLE_ADS_DEVELOPER_TOKEN") ?? "";
+  const serviceAccount = Deno.env.get("GOOGLE_ADS_SERVICE_ACCOUNT_JSON") ?? "";
   const clientId = Deno.env.get("GOOGLE_ADS_CLIENT_ID") ?? "";
   const clientSecret = Deno.env.get("GOOGLE_ADS_CLIENT_SECRET") ?? "";
   const refreshToken = Deno.env.get("GOOGLE_ADS_REFRESH_TOKEN") ?? "";
@@ -78,20 +95,29 @@ async function google(days: number) {
   const login = (Deno.env.get("GOOGLE_ADS_LOGIN_CUSTOMER_ID") ?? "").replace(/-/g, "");
   const faltando = [
     !developer && "developer token",
-    !clientId && "OAuth client ID",
-    !clientSecret && "OAuth client secret",
-    !refreshToken && "OAuth refresh token",
+    !serviceAccount && !clientId && "OAuth client ID ou conta de serviço",
+    !serviceAccount && !clientSecret && "OAuth client secret",
+    !serviceAccount && !refreshToken && "OAuth refresh token",
     !customer && "customer ID",
   ].filter(Boolean);
   if (faltando.length) {
     return { status: "nao_configurado", motivo: `Google Ads ainda precisa de: ${faltando.join(", ")}.`, faltando, anuncios: [] };
   }
-  const tokenResponse = await fetch("https://oauth2.googleapis.com/token", {
-    method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({ grant_type: "refresh_token", client_id: clientId, client_secret: clientSecret, refresh_token: refreshToken }),
-  });
-  const access = (await tokenResponse.json().catch(() => ({})))?.access_token;
-  if (!tokenResponse.ok || !access) return { status: "erro", motivo: erroSeguro("Falha na autorização do Google Ads", tokenResponse.status), anuncios: [] };
+  let access = "";
+  let tokenStatus = 0;
+  if (serviceAccount) {
+    const token = await googleServiceAccountAccessToken(serviceAccount);
+    access = token.access;
+    tokenStatus = token.status;
+  } else {
+    const tokenResponse = await fetch(GOOGLE_TOKEN_URI, {
+      method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({ grant_type: "refresh_token", client_id: clientId, client_secret: clientSecret, refresh_token: refreshToken }),
+    });
+    access = String((await tokenResponse.json().catch(() => ({})))?.access_token ?? "");
+    tokenStatus = tokenResponse.status;
+  }
+  if (!access) return { status: "erro", motivo: erroSeguro("Falha na autorização do Google Ads", tokenStatus), anuncios: [] };
   const since = new Date(Date.now() - (days - 1) * 86400000).toISOString().slice(0, 10);
   const until = new Date().toISOString().slice(0, 10);
   const query = `SELECT campaign.id,campaign.name,campaign.status,ad_group.id,ad_group.name,ad_group.status,ad_group_ad.ad.id,ad_group_ad.ad.name,ad_group_ad.status,metrics.cost_micros,metrics.impressions,metrics.clicks,metrics.ctr,metrics.average_cpc,metrics.conversions,metrics.cost_per_conversion FROM ad_group_ad WHERE segments.date BETWEEN '${since}' AND '${until}' AND campaign.status = 'ENABLED' AND ad_group.status = 'ENABLED' AND ad_group_ad.status = 'ENABLED'`;
