@@ -45,13 +45,8 @@ import "./styles/funil-2.css";
     11. ...-menu.css ......................... Menu lateral: ordem aprovada (order) + ícones Lucide
     12. ...-disparos.css ..................... Disparos: público, mensagem, cadência, revisão, recentes
     13. ...-calendario.css ................... Calendário: Dia/Semana/Mês/Lista, resumo, modais
-    14. ...-automacoes.css ................... Automações: construtor e explicador
-    15. ...-automacoes-tela.css .............. Automações: biblioteca da tela do módulo (apn-*)
-    16. ...-automacoes-cartao.css ............ Automações: rodapé de ações do cartão + passos
-    17. ...-construtor-paridade.css .......... Construtor: cartão de bloco em paridade com o desenho
-
    Elas substituem por cascata os valores visuais que globals.css, funil-2.css,
-   automation-builder.css definia para os MESMOS seletores —
+   definia para os MESMOS seletores —
    não são tema opcional nem segunda pele: são o visual do produto.
 
    DUAS ARMADILHAS JÁ PAGAS, anotadas para não repetir:
@@ -60,17 +55,8 @@ import "./styles/funil-2.css";
        (ex.: .approach-list .approach-card > footer .approach-edit-btn). Por isso
        cada folha nasce prefixada pela classe raiz da tela.
 
-   (b) DENTRO DO CONSTRUTOR o seletor é COMPOSTO, não descendente: o runtime faz
-       ROOT.classList.add('apecerto-automation-builder') no MESMO nó que já tem
-       original-automation-host. ".original-automation-host .apecerto-..." (com
-       espaço) não casa com nada — foi o que deixou regras mortas nas folhas 15 e
-       16 e rendeu três rodadas de "não mudou nada". A folha 17 é a que vale para o
-       cartão de bloco. E onde o runtime escreve style="..." inline, só !important
-       alcança (origem na cascata).
-
    Ficam ANTES das folhas do aplicativo no celular, logo abaixo: o app do
-   corretor continua exatamente como está. O runtime do construtor (159 KB,
-   fechado) não é tocado — as folhas 14 e 17 só repintam o que ele desenha. */
+   corretor continua exatamente como está. */
 import "./styles/redesign-apecerto.css";
 import "./styles/redesign-apecerto-produtos-financeiro.css";
 import "./styles/produtos-v3.css";
@@ -89,10 +75,6 @@ import "./styles/central-comando.css";
 import "./styles/central-comando-prototype.css";
 import "./styles/redesign-apecerto-disparos.css";
 import "./styles/redesign-apecerto-calendario.css";
-import "./styles/redesign-apecerto-automacoes.css";
-import "./styles/redesign-apecerto-automacoes-tela.css";
-import "./styles/redesign-apecerto-automacoes-cartao.css";
-import "./styles/redesign-apecerto-construtor-paridade.css";
 /* INTERFACE DO APLICATIVO NO CELULAR — versão aprovada.
    Não é correção da folha antiga: o markup do Meu Dia e do CRM usa classes
    próprias (.ape-*), então esta folha é a única que os desenha. As regras

@@ -6,7 +6,8 @@ const migration = readFileSync(new URL("../supabase/migrations/20260821223000_ce
 const presence = readFileSync(new URL("../supabase/migrations/20260820175550_presenca_deterministica_fail_closed.sql", import.meta.url), "utf8");
 const route = readFileSync(new URL("../app/api/automacoes-operacao/route.ts", import.meta.url), "utf8");
 const panel = readFileSync(new URL("../app/features/automations/CentralOperationsPanel.tsx", import.meta.url), "utf8");
-const workspace = readFileSync(new URL("../app/features/automations/AutomationsWorkspace.tsx", import.meta.url), "utf8");
+const workspace = readFileSync(new URL("../app/features/automations/AutomationsWorkspaceV2.tsx", import.meta.url), "utf8");
+const home = readFileSync(new URL("../app/features/automations/AutomationsHome.tsx", import.meta.url), "utf8");
 
 test("fila antiga da Sara é arquivada e deixa de ser um segundo motor", () => {
   assert.match(migration, /central_sara_fila_legacy_archive/);
@@ -68,8 +69,8 @@ test("freio de mensagens fica visível e a migração nunca o libera", () => {
   assert.match(panel, /window\.confirm/);
 });
 
-test("painel operacional não recria a antiga tela intermediária", () => {
-  assert.match(workspace, /CentralOperationsPanel/);
+test("painel operacional fica em uma aba própria fora do canvas", () => {
+  assert.match(home, /CentralOperationsPanel/);
   assert.match(workspace, /original-automation-host/);
   assert.match(panel, /Saúde da Central/);
   assert.doesNotMatch(panel, /Nova automação|Biblioteca de rotinas/);

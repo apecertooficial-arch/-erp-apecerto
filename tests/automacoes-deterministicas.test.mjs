@@ -283,7 +283,7 @@ const saraTasks = readFileSync(
 test('construtor salva rascunho, publica por RPC e não simula ações reais', () => {
   assert.match(builder, /mapa_rascunho:compile\(\)/);
   assert.match(builder, /sbRpc\('automacao_publicar'/);
-  assert.match(builder, /Simulação segura ainda não está disponível/);
+  assert.match(builder, /Prévia segura/);
   assert.doesNotMatch(
     builder.match(/async function simular\(\)[\s\S]*?\n}/)?.[0] ?? '',
     /motor_rodar/,

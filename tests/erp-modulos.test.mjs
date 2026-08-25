@@ -242,7 +242,7 @@ test("migração assistida do CRM antigo foi removida como um conjunto fechado",
 });
 
 test("construtor de Automações pertence à feature e não é injetado como global", () => {
-  const workspace = readFileSync(join(raizApp, "features/automations/AutomationsWorkspace.tsx"), "utf8");
+  const workspace = readFileSync(join(raizApp, "features/automations/AutomationsWorkspaceV2.tsx"), "utf8");
   const runtime = readFileSync(join(raizApp, "features/automations/automationBuilderRuntime.js"), "utf8");
 
   assert.match(workspace, /import\("\.\/automationBuilderRuntime\.js"\)/);
@@ -260,14 +260,14 @@ test("construtor de Automações pertence à feature e não é injetado como glo
   assert.equal(existsSync(new URL("../public/automation-builder-original.css", import.meta.url)), false);
 });
 
-test("Automações abre direto no construtor, sem biblioteca intermediária duplicada", () => {
-  const workspace = readFileSync(join(raizApp, "features/automations/AutomationsWorkspace.tsx"), "utf8");
+test("Automações separa a Home do construtor sem criar um segundo motor", () => {
+  const workspace = readFileSync(join(raizApp, "features/automations/AutomationsWorkspaceV2.tsx"), "utf8");
   const runtime = readFileSync(join(raizApp, "features/automations/automationBuilderRuntime.js"), "utf8");
 
   assert.match(workspace, /<div className="original-automation-host" ref=\{hostRef\} \/>/);
-  assert.doesNotMatch(workspace, /Biblioteca na frente|BIBLIOTECA DE ROTINAS|Abrir construtor/);
-  assert.doesNotMatch(workspace, /useState<"biblioteca" \| "construtor">/);
-  assert.match(workspace, /onAutomationOpened: \(automacao\) => setAbrirId\(automacao\.id\)/);
+  assert.match(workspace, /AutomationsHome/);
+  assert.doesNotMatch(workspace, /AutomationsCentral(?:Cloud)?V4/);
+  assert.match(workspace, /onAutomationOpened: \(automacao\) => \{/);
   assert.match(runtime, /_ctx\.onAutomationOpened\(\{id:cur\.id,nome:cur\.nome,grupo:cur\.grupo\}\)/);
 });
 
