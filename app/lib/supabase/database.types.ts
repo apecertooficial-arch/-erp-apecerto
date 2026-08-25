@@ -9691,14 +9691,18 @@ export type Database = {
           area_m2: number | null
           captador_corretor_id: number | null
           codigo: string | null
+          compre_ja_alugado: boolean
+          condominio_valor: number | null
           de_terceiros: boolean
           disponivel: boolean
           empreendimento_id: string
           enquadramento: string | null
           id: string
+          iptu: number | null
           numero: string | null
           obs: string | null
           origem_comercial: string
+          outros_custos: number | null
           proprietario_contato: string | null
           proprietario_nome: string | null
           publicado: boolean
@@ -9717,14 +9721,18 @@ export type Database = {
           area_m2?: number | null
           captador_corretor_id?: number | null
           codigo?: string | null
+          compre_ja_alugado?: boolean
+          condominio_valor?: number | null
           de_terceiros?: boolean
           disponivel?: boolean
           empreendimento_id: string
           enquadramento?: string | null
           id?: string
+          iptu?: number | null
           numero?: string | null
           obs?: string | null
           origem_comercial?: string
+          outros_custos?: number | null
           proprietario_contato?: string | null
           proprietario_nome?: string | null
           publicado?: boolean
@@ -9743,14 +9751,18 @@ export type Database = {
           area_m2?: number | null
           captador_corretor_id?: number | null
           codigo?: string | null
+          compre_ja_alugado?: boolean
+          condominio_valor?: number | null
           de_terceiros?: boolean
           disponivel?: boolean
           empreendimento_id?: string
           enquadramento?: string | null
           id?: string
+          iptu?: number | null
           numero?: string | null
           obs?: string | null
           origem_comercial?: string
+          outros_custos?: number | null
           proprietario_contato?: string | null
           proprietario_nome?: string | null
           publicado?: boolean
@@ -12171,6 +12183,18 @@ export type Database = {
       }
       produto_excluir: {
         Args: { p_empreendimento_id: string }
+        Returns: Json
+      }
+      produto_unidade_definir_disponibilidade: {
+        Args: {
+          p_disponivel: boolean
+          p_empreendimento_id: string
+          p_unidade_id: string
+        }
+        Returns: Json
+      }
+      produto_unidade_excluir: {
+        Args: { p_empreendimento_id: string; p_unidade_id: string }
         Returns: Json
       }
       produto_qualidade_fila: {

@@ -39,7 +39,7 @@ function publicationErrorResponse(error: { code?: string; message?: string }) {
     ? 403
     : businessCode.endsWith("NOT_FOUND") || normalized.includes("não encontrado") || normalized.includes("nao encontrado")
       ? 404
-      : businessCode === "PRODUCT_HAS_LINKS"
+      : businessCode === "PRODUCT_HAS_LINKS" || businessCode === "UNIT_HAS_LINKS"
         ? 409
       : PUBLICATION_RULE_CODES.has(businessCode) || error.code === "P0001"
         ? 422
@@ -133,7 +133,8 @@ export async function GET(request: Request) {
   const privateOwnerByUnit = new Map((privateOwners ?? []).map((owner) => [owner.unidade_id, owner]));
   const ownerCompleteByUnit = new Map((ownerStatuses ?? []).map((owner) => [owner.unidade_id, owner.completo]));
   const unidadesEnriched = (data.unidades ?? []).map((u) => ({ ...u, captador_nome: corretorNameById.get((u as { captador_corretor_id?: number | null }).captador_corretor_id ?? -1) ?? null }));
-  const mine = (data as { captado_por_usuario?: string | null }).captado_por_usuario === auth.user.id;
+  const mine = (data as { captado_por_usuario?: string | null }).captado_por_usuario === auth.user.id
+    || (broker?.id != null && captadorCorretorId === broker.id);
   const { data: meuPerfilGet } = await auth.supabase.from("usuarios").select("role").eq("id", auth.user.id).maybeSingle();
   const gerenciaProdutosGet = isProductManagerRole((meuPerfilGet as { role?: string } | null)?.role);
   const podeEditar = gerenciaProdutosGet || mine;
@@ -182,11 +183,13 @@ export async function PATCH(request: Request) {
   if (!UUID.test(id)) return Response.json({ error: "Produto inválido." }, { status: 400 });
   const authenticatedSupabase = auth.supabase;
   const authenticatedUserId = auth.user.id;
-  const { data: productContext } = await auth.supabase.from("empreendimentos").select("nome, finalidade, origem, condominio_id, captado_por_usuario, aprovacao, publicado, rascunho").eq("id", id).maybeSingle();
+  const { data: productContext } = await auth.supabase.from("empreendimentos").select("nome, finalidade, origem, condominio_id, captado_por_usuario, captador_corretor_id, aprovacao, publicado, rascunho").eq("id", id).maybeSingle();
   const currentPurpose = productContext?.finalidade ?? "venda";
   const { data: meuPerfilPatch } = await auth.supabase.from("usuarios").select("role").eq("id", auth.user.id).maybeSingle();
   const gerenciaProdutos = isProductManagerRole((meuPerfilPatch as { role?: string } | null)?.role);
-  const souCaptador = (productContext as { captado_por_usuario?: string | null } | null)?.captado_por_usuario === auth.user.id;
+  const { data: brokerContext } = await auth.supabase.from("corretores").select("id").eq("usuario_id", auth.user.id).maybeSingle();
+  const souCaptador = (productContext as { captado_por_usuario?: string | null } | null)?.captado_por_usuario === auth.user.id
+    || (brokerContext?.id != null && productContext?.captador_corretor_id === brokerContext.id);
   const negadoPorCaptacao = !gerenciaProdutos && !souCaptador ? Response.json({ error: "Você só pode editar imóveis captados por você." }, { status: 403 }) : null;
 
   // Acesso efetivo resolvido uma vez; admin passa e, sem mapa, libera (RLS é a trava dura).
@@ -300,6 +303,8 @@ export async function PATCH(request: Request) {
       const promoPriceCheck = validateProductPrice(promoPrice, "Valor promocional", currentPurpose);
       if (promoPriceCheck.error) return Response.json({ error: promoPriceCheck.error }, { status: 422 });
     }
+    const unitCosts = [asNumber(input.condominio_valor), asNumber(input.iptu), asNumber(input.outros_custos)];
+    if (unitCosts.some((value) => value != null && value < 0)) return Response.json({ error: "Condomínio, IPTU e outros custos não podem ser negativos." }, { status: 422 });
 
     const { data: broker } = await auth.supabase.from("corretores").select("id").eq("usuario_id", auth.user.id).maybeSingle();
     if (!broker?.id && !gerenciaProdutos) return Response.json({ error: "Seu usuário ainda não está vinculado a um corretor ativo." }, { status: 422 });
@@ -312,6 +317,10 @@ export async function PATCH(request: Request) {
       vagas: asNumber(input.vagas),
       valor_tabela: tablePriceCheck.value,
       valor_promo: promoPrice,
+      compre_ja_alugado: input.compre_ja_alugado === true,
+      condominio_valor: asNumber(input.condominio_valor),
+      iptu: asNumber(input.iptu),
+      outros_custos: asNumber(input.outros_custos),
       proprietario_nome: proprietarioNome,
       proprietario_contato: proprietarioContato,
       acesso_tipo: acessoTipo,
@@ -333,7 +342,7 @@ export async function PATCH(request: Request) {
     const unidadeId = typeof body.unidadeId === "string" ? body.unidadeId : "";
     if (!UUID.test(unidadeId)) return Response.json({ error: "Unidade inválida." }, { status: 400 });
     const { data: broker } = await auth.supabase.from("corretores").select("id").eq("usuario_id", auth.user.id).maybeSingle();
-    const { data: currentUnit, error: currentUnitError } = await auth.supabase.from("unidades").select("id,captador_corretor_id,de_terceiros,aprovacao").eq("id", unidadeId).eq("empreendimento_id", id).maybeSingle();
+    const { data: currentUnit, error: currentUnitError } = await auth.supabase.from("unidades").select("id,captador_corretor_id,de_terceiros,aprovacao,publicado").eq("id", unidadeId).eq("empreendimento_id", id).maybeSingle();
     if (currentUnitError) return Response.json({ error: currentUnitError.message }, { status: 502 });
     if (!currentUnit) return Response.json({ error: "Unidade não encontrada." }, { status: 404 });
     const ownsUnit = broker?.id != null && currentUnit.captador_corretor_id === broker.id;
@@ -363,6 +372,8 @@ export async function PATCH(request: Request) {
       const promoCheck = validateProductPrice(valorPromo, "Valor promocional", currentPurpose);
       if (promoCheck.error) return Response.json({ error: promoCheck.error }, { status: 422 });
     }
+    const unitCosts = [asNumber(input.condominio_valor), asNumber(input.iptu), asNumber(input.outros_custos)];
+    if (unitCosts.some((value) => value != null && value < 0)) return Response.json({ error: "Condomínio, IPTU e outros custos não podem ser negativos." }, { status: 422 });
     if (ownsUnit && (!proprietarioNome || !proprietarioContato)) return Response.json({ error: "Informe nome e contato do proprietário." }, { status: 422 });
     if (!acessoTipo || !acessoInstrucoes) return Response.json({ error: "Informe o tipo e as instruções de acesso." }, { status: 422 });
     if (acessoTipo === "chave_digital" && !acessoCodigo) return Response.json({ error: "Informe o código da chave digital." }, { status: 422 });
@@ -370,12 +381,68 @@ export async function PATCH(request: Request) {
       numero, tipologia, area_m2: area, vagas: asNumber(input.vagas),
       valor_tabela: tablePriceCheck.value, valor_promo: valorPromo,
       disponivel: input.disponivel !== false,
+      compre_ja_alugado: input.compre_ja_alugado === true,
+      condominio_valor: asNumber(input.condominio_valor),
+      iptu: asNumber(input.iptu),
+      outros_custos: asNumber(input.outros_custos),
       ...(ownsUnit ? { proprietario_nome: proprietarioNome, proprietario_contato: proprietarioContato } : {}),
       acesso_tipo: acessoTipo, acesso_codigo: acessoCodigo, acesso_instrucoes: acessoInstrucoes,
-      ...(gerenciaProdutos ? {} : { aprovacao: "pendente", reprovacao_motivo: null }),
+      ...(gerenciaProdutos ? {} : { aprovacao: "pendente", publicado: false, reprovacao_motivo: null }),
     };
-    const { error } = await auth.supabase.from("unidades").update(patch as never).eq("id", unidadeId).eq("empreendimento_id", id);
-    return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true, approval: gerenciaProdutos ? currentUnit.aprovacao : "pendente" });
+    const { data: updatedUnit, error } = await auth.supabase.from("unidades").update(patch as never).eq("id", unidadeId).eq("empreendimento_id", id).select("id").maybeSingle();
+    if (error) return Response.json({ error: error.message }, { status: 502 });
+    if (!updatedUnit) return Response.json({ error: "A unidade não foi alterada. Atualize a tela e tente novamente.", code: "UNIT_UPDATE_NOT_CONFIRMED" }, { status: 409 });
+    return Response.json({ success: true, approval: gerenciaProdutos ? currentUnit.aprovacao : "pendente" });
+  }
+
+  if (body.action === "setUnitAvailability") {
+    const unidadeId = typeof body.unidadeId === "string" ? body.unidadeId : "";
+    if (!UUID.test(unidadeId)) return Response.json({ error: "Unidade inválida." }, { status: 400 });
+    const disponivel = body.disponivel === true;
+    const { data, error } = await auth.supabase.rpc("produto_unidade_definir_disponibilidade", {
+      p_empreendimento_id: id,
+      p_unidade_id: unidadeId,
+      p_disponivel: disponivel,
+    });
+    if (error) return publicationErrorResponse(error);
+    const result = data && typeof data === "object" && !Array.isArray(data) ? data as Record<string, unknown> : {};
+    if (result.ok !== true || result.unidade_id !== unidadeId || result.disponivel !== disponivel) {
+      return Response.json({ error: "O banco não confirmou a alteração de disponibilidade.", code: "UNIT_AVAILABILITY_NOT_CONFIRMED" }, { status: 502 });
+    }
+    return Response.json({ success: true, unidadeId, disponivel, publicado: result.publicado === true });
+  }
+
+  if (body.action === "deleteUnit") {
+    const unidadeId = typeof body.unidadeId === "string" ? body.unidadeId : "";
+    if (!UUID.test(unidadeId)) return Response.json({ error: "Unidade inválida." }, { status: 400 });
+    const { data, error } = await auth.supabase.rpc("produto_unidade_excluir", {
+      p_empreendimento_id: id,
+      p_unidade_id: unidadeId,
+    });
+    if (error) return publicationErrorResponse(error);
+    const deletion = (data && typeof data === "object" && !Array.isArray(data) ? data : {}) as {
+      ok?: boolean; unidade_id?: string; produto_excluido?: boolean; midias_paths?: unknown;
+    };
+    if (deletion.ok !== true || deletion.unidade_id !== unidadeId) {
+      return Response.json({ error: "O banco não confirmou a exclusão do imóvel.", code: "UNIT_DELETE_NOT_CONFIRMED" }, { status: 502 });
+    }
+    const paths = Array.isArray(deletion.midias_paths)
+      ? deletion.midias_paths.filter((path): path is string => typeof path === "string" && path.length > 0)
+      : [];
+    let storageWarning: string | null = null;
+    if (paths.length) {
+      const { error: storageError } = await auth.supabase.storage.from("empreendimentos").remove(paths);
+      if (storageError) storageWarning = "O imóvel foi excluído, mas alguns arquivos aguardam limpeza automática.";
+    }
+    return Response.json({
+      success: true,
+      deleted: true,
+      unidadeId,
+      productDeleted: deletion.produto_excluido === true,
+      removedMedia: storageWarning ? 0 : paths.length,
+      storageCleanupPending: Boolean(storageWarning),
+      warning: storageWarning,
+    });
   }
 
   if (body.action === "decideUnit") {

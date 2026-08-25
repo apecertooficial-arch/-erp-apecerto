@@ -42,6 +42,8 @@ export type Product = {
   createdAt?: string | null;
   updatedAt?: string | null;
   topIssue?: string | null;
+  alreadyRented?: boolean;
+  condominiumFee?: number | null;
 };
 
 function siteSlug(value: string | null | undefined): string {

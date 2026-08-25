@@ -39,6 +39,10 @@ export function UnitWizard({ accessToken, onClose, onSaved, onCreateCondominium,
   const [vagas, setVagas] = useState("");
   const [valorTabela, setValorTabela] = useState("");
   const [valorPromo, setValorPromo] = useState("");
+  const [condominioValor, setCondominioValor] = useState("");
+  const [iptu, setIptu] = useState("");
+  const [outrosCustos, setOutrosCustos] = useState("");
+  const [compreJaAlugado, setCompreJaAlugado] = useState(false);
   const [proprietarioNome, setProprietarioNome] = useState("");
   const [proprietarioContato, setProprietarioContato] = useState("");
   const [acessoTipo, setAcessoTipo] = useState("chave_digital");
@@ -48,6 +52,9 @@ export function UnitWizard({ accessToken, onClose, onSaved, onCreateCondominium,
   const [message, setMessage] = useState("");
   const [saving, setSaving] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [createdUnitId, setCreatedUnitId] = useState<string | null>(null);
+  const [createdUserId, setCreatedUserId] = useState<string | null>(null);
+  const [uploadedItemIds, setUploadedItemIds] = useState<string[]>([]);
 
   useEffect(() => {
     const supabase = getBrowserSupabaseClient();
@@ -121,61 +128,80 @@ export function UnitWizard({ accessToken, onClose, onSaved, onCreateCondominium,
     setSaving(true);
     setMessage("");
     setUploadProgress(0);
+    let unitId = createdUnitId;
+    let userId = createdUserId;
+    const completed = new Set(uploadedItemIds);
     try {
       const supabase = getBrowserSupabaseClient();
       const { data: sessionData } = await supabase.auth.getSession();
       const token = sessionData.session?.access_token ?? accessToken;
       if (!token) throw new Error("Sua sessão expirou. Entre novamente.");
 
-      const response = await fetch("/api/product", {
-        method: "PATCH",
-        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-        body: JSON.stringify({
-          id: empreendimentoId,
-          action: "criarUnidade",
-          unidade: {
-            numero,
-            tipologia,
-            area_m2: area,
-            vagas,
-            valor_tabela: valorTabela,
-            valor_promo: valorPromo,
-            proprietario_nome: proprietarioNome,
-            proprietario_contato: proprietarioContato,
-            acesso_tipo: acessoTipo,
-            acesso_codigo: acessoCodigo,
-            acesso_instrucoes: acessoInstrucoes,
-          },
-        }),
-      });
-      const created = await response.json() as { unidadeId?: string; userId?: string; error?: string };
-      if (!response.ok || !created.unidadeId || !created.userId) {
-        throw new Error(created.error ?? "Não foi possível cadastrar a unidade.");
+      if (!unitId || !userId) {
+        const response = await fetch("/api/product", {
+          method: "PATCH",
+          headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            id: empreendimentoId,
+            action: "criarUnidade",
+            unidade: {
+              numero,
+              tipologia,
+              area_m2: area,
+              vagas,
+              valor_tabela: valorTabela,
+              valor_promo: valorPromo,
+              condominio_valor: condominioValor,
+              iptu,
+              outros_custos: outrosCustos,
+              compre_ja_alugado: compreJaAlugado,
+              proprietario_nome: proprietarioNome,
+              proprietario_contato: proprietarioContato,
+              acesso_tipo: acessoTipo,
+              acesso_codigo: acessoCodigo,
+              acesso_instrucoes: acessoInstrucoes,
+            },
+          }),
+        });
+        const created = await response.json() as { unidadeId?: string; userId?: string; error?: string };
+        if (!response.ok || !created.unidadeId || !created.userId) {
+          throw new Error(created.error ?? "Não foi possível cadastrar a unidade.");
+        }
+        unitId = created.unidadeId;
+        userId = created.userId;
+        setCreatedUnitId(unitId);
+        setCreatedUserId(userId);
       }
 
       for (let index = 0; index < photos.length; index += 1) {
         const item = photos[index];
+        if (completed.has(item.id)) continue;
         const originalFile = item.file;
         const file = tipoDaMidia(originalFile) === "foto" ? await applyOfficialWatermark(originalFile) : originalFile;
-        const storagePath = `${created.userId}/${empreendimentoId}/${crypto.randomUUID()}-${safeFileName(file.name)}`;
+        const storagePath = `${userId}/${empreendimentoId}/${crypto.randomUUID()}-${safeFileName(file.name)}`;
         const { error: uploadError } = await supabase.storage.from("empreendimentos").upload(storagePath, file, { contentType: file.type, upsert: false });
         if (uploadError) throw new Error(`Falha ao enviar ${file.name}: ${uploadError.message}`);
         const { error: mediaError } = await supabase.from("midias").insert({
-          empreendimento_id: empreendimentoId, unidade_id: created.unidadeId, tipo: tipoDaMidia(file),
+          empreendimento_id: empreendimentoId, unidade_id: unitId, tipo: tipoDaMidia(file),
           storage_path: storagePath, nome: file.name, categoria: item.category.toLowerCase(), is_capa: Boolean(item.cover),
         } as never);
         if (mediaError) {
           await supabase.storage.from("empreendimentos").remove([storagePath]);
           throw new Error(`Falha ao registrar ${file.name}: ${mediaError.message}`);
         }
-        setUploadProgress(Math.round(((index + 1) / photos.length) * 100));
+        completed.add(item.id);
+        setUploadedItemIds(Array.from(completed));
+        setUploadProgress(Math.round((completed.size / photos.length) * 100));
       }
 
       setMessage("Unidade enviada para aprovação.");
       await new Promise((resolve) => setTimeout(resolve, 700));
       onSaved();
     } catch (reason) {
-      setMessage(reason instanceof Error ? reason.message : "Não foi possível cadastrar a unidade.");
+      const detail = reason instanceof Error ? reason.message : "Não foi possível cadastrar a unidade.";
+      setMessage(unitId
+        ? `A unidade foi criada sem duplicar o cadastro, mas nem todas as fotos chegaram. ${detail} Clique em “Enviar fotos restantes” para continuar.`
+        : detail);
       setSaving(false);
     }
   }
@@ -208,6 +234,8 @@ export function UnitWizard({ accessToken, onClose, onSaved, onCreateCondominium,
               <label>Vagas<input type="number" min="0" value={vagas} onChange={(event) => setVagas(event.target.value)} /></label>
             </div>
             <div className="unit-money-grid"><MoneyInput key={`tabela-${moneyMode}`} defaultMode={moneyMode} label={selectedPurpose === "aluguel" ? "Aluguel mensal" : "Valor de tabela"} value={valorTabela} onChange={(value) => setValorTabela(value === null ? "" : String(value))} /><MoneyInput key={`promo-${moneyMode}`} defaultMode={moneyMode} label="Valor promocional" value={valorPromo} onChange={(value) => setValorPromo(value === null ? "" : String(value))} /></div>
+            <div className="field-grid"><label>Condomínio mensal<input type="number" min="0" value={condominioValor} onChange={(event) => setCondominioValor(event.target.value)} /></label><label>IPTU<input type="number" min="0" value={iptu} onChange={(event) => setIptu(event.target.value)} /></label><label>Outros custos<input type="number" min="0" value={outrosCustos} onChange={(event) => setOutrosCustos(event.target.value)} /></label></div>
+            <label className="toggle commercial-toggle"><input type="checkbox" checked={compreJaAlugado} onChange={(event) => setCompreJaAlugado(event.target.checked)} /><span><strong>Compre já alugado</strong><small>O comprador recebe o imóvel com contrato de locação vigente.</small></span></label>
           </div>
 
           <div className="form-section">
@@ -242,7 +270,7 @@ export function UnitWizard({ accessToken, onClose, onSaved, onCreateCondominium,
 
         <footer className="capture-footer">
           <button className="ghost-action" onClick={onClose} disabled={saving} type="button">Cancelar</button>
-          <button className="primary-action" disabled={saving} onClick={() => void save()} type="button">{saving ? "Cadastrando..." : "Cadastrar apartamento"}</button>
+          <button className="primary-action" disabled={saving} onClick={() => void save()} type="button">{saving ? "Cadastrando..." : createdUnitId ? "Enviar fotos restantes" : "Cadastrar apartamento"}</button>
         </footer>
       </section>
     </div>

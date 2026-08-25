@@ -84,6 +84,7 @@ type UnitInput = {
   parking: number;
   price: number;
   promotionalPrice: number | null;
+  alreadyRented?: boolean;
 };
 
 type CapturePayload = {
@@ -121,6 +122,7 @@ type CapturePayload = {
     suites: number;
     bathrooms: number;
     parking: number;
+    alreadyRented?: boolean;
   };
   access: { type: "chave_fisica" | "chave_digital" | "proprietario" | "portaria" | "outro"; code: string; instructions: string };
   units: UnitInput[];
@@ -327,12 +329,16 @@ export async function POST(request: Request) {
 
   const unitRows = payload.propertyType === "construtora" ? units : [{
     number: semCondominio ? "Imóvel único" : condominium.number || "Única", type: `${property.bedrooms} dorm.`, area: property.area,
-    parking: property.parking, price: property.price, promotionalPrice: null,
+    parking: property.parking, price: property.price, promotionalPrice: null, alreadyRented: property.alreadyRented === true,
   }];
   const { data: createdUnits, error: unitsError } = await supabase.from("unidades").insert(unitRows.map((unit) => ({
     empreendimento_id: development.id, numero: unit.number.trim(), area_m2: unit.area,
     tipologia: unit.type.trim(), vagas: unit.parking, valor_tabela: unit.price,
     valor_promo: unit.promotionalPrice, valor_m2: unit.area > 0 ? (unit.promotionalPrice ?? unit.price) / unit.area : null,
+    compre_ja_alugado: unit.alreadyRented === true,
+    condominio_valor: property.condominiumFee,
+    iptu: property.propertyTax,
+    outros_custos: property.otherCosts,
     disponivel: true, de_terceiros: payload.propertyType === "terceiro", captador_corretor_id: broker?.id ?? null,
     aprovacao: payload.propertyType === "terceiro" ? "pendente" : "aprovado",
     proprietario_nome: owner?.name.trim() || null, proprietario_contato: owner?.phone.trim() || null,

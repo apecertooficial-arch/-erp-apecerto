@@ -21,6 +21,10 @@ type UnitRow = {
   de_terceiros: boolean | null;
   reprovacao_motivo: string | null;
   publicado: boolean;
+  compre_ja_alugado: boolean;
+  condominio_valor: number | null;
+  iptu: number | null;
+  outros_custos: number | null;
 };
 
 type MediaRow = {
@@ -63,7 +67,7 @@ export async function GET(request: Request) {
       publicado, origem, condominio_id, lazer, diferenciais, tour_url,
       aprovacao, reprovacao_motivo, captado_por_usuario, captador_corretor_id,
       codigo,
-      unidades (id, numero, area_m2, tipologia, vagas, valor_tabela, valor_promo, disponivel, aprovacao, codigo, captador_corretor_id, de_terceiros, reprovacao_motivo, publicado),
+      unidades (id, numero, area_m2, tipologia, vagas, valor_tabela, valor_promo, condominio_valor, iptu, outros_custos, compre_ja_alugado, disponivel, aprovacao, codigo, captador_corretor_id, de_terceiros, reprovacao_motivo, publicado),
       midias (id, tipo, storage_path, categoria, nome, is_capa, created_at, unidade_id)
     `)
     .order("created_at", { ascending: false })
@@ -202,6 +206,8 @@ export async function GET(request: Request) {
       unitId: null as string | null,
       segment: null as "terceiros" | "lancamento" | "remanescente" | null,
       condominiumLinked: Boolean(item.condominio_id),
+      alreadyRented: false,
+      condominiumFee: item.condominio_valor,
     };
   });
 
@@ -350,6 +356,8 @@ export async function GET(request: Request) {
           buildingStatus: p.status,
         }),
         condominiumLinked: Boolean(bruto.condominio_id),
+        alreadyRented: u.compre_ja_alugado === true,
+        condominiumFee: u.condominio_valor ?? bruto.condominio_valor,
         published: Boolean(p.published && u.publicado !== false && unitMediaCount > 0),
       };
     });
