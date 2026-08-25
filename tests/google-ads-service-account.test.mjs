@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { webcrypto } from "node:crypto";
-import { createServiceAccountAssertion, GOOGLE_ADS_SCOPE } from "../supabase/functions/_shared/google-service-account.ts";
+import { createServiceAccountAssertion, GOOGLE_ADS_SCOPE } from "../supabase/functions/marketing-ads-read/google-service-account.ts";
 
 const decodeBase64Url = (value) => {
   const normalized = value.replace(/-/g, "+").replace(/_/g, "/");

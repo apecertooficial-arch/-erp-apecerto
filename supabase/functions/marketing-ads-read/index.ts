@@ -1,6 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
-import { createServiceAccountAssertion, GOOGLE_TOKEN_URI } from "../_shared/google-service-account.ts";
+import { createServiceAccountAssertion, GOOGLE_TOKEN_URI } from "./google-service-account.ts";
 
 const GRAPH = "https://graph.facebook.com/v25.0";
 const GOOGLE_ADS = "https://googleads.googleapis.com/v25";
