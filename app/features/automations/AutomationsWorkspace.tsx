@@ -1,9 +1,8 @@
 "use client";
 
-/* AUTOMAÇÕES — entrada direta no construtor operacional.
- *
- * A lista duplicada que antecedia o construtor foi removida. A coluna lateral do
- * próprio runtime é a fonte única para localizar, criar e administrar fluxos.
+/* Construtor operacional preservado como motor da nova Central.
+ * A camada V4 escolhe a automação ou a ação de entrada; este componente mantém
+ * o runtime responsável por editar, validar, versionar e publicar os fluxos.
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -42,11 +41,23 @@ function lerLigacoes(m: Mapa): Array<{ from: string; to: string }> {
   return saida;
 }
 
-export function AutomationsWorkspace({ accessToken }: { accessToken: string }) {
+export type BuilderEntryAction = { type: "new" | "office" | "group"; group?: string } | null;
+
+export function AutomationBuilderWorkspace({
+  accessToken,
+  initialAutomationId = null,
+  entryAction = null,
+  onBack,
+}: {
+  accessToken: string;
+  initialAutomationId?: number | null;
+  entryAction?: BuilderEntryAction;
+  onBack?: () => void;
+}) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 
-  const [abrirId, setAbrirId] = useState<number | null>(null);
+  const [abrirId, setAbrirId] = useState<number | null>(initialAutomationId);
   const [totalAutomacoes, setTotalAutomacoes] = useState(0);
   const [remontar, setRemontar] = useState(0);
   const [arranjando, setArranjando] = useState(false);
@@ -120,11 +131,17 @@ export function AutomationsWorkspace({ accessToken }: { accessToken: string }) {
           void salvarTitulo(blocoId, novo.trim());
         },
       );
-      if (abrirId == null) return;
       let tentativas = 0;
       const tentar = () => {
         if (!ativo) return;
-        const item = hostRef.current?.querySelector<HTMLElement>(`.sb-item[data-id="${abrirId}"]`);
+        let item: HTMLElement | null = null;
+        if (abrirId != null) item = hostRef.current?.querySelector<HTMLElement>(`.sb-item[data-id="${abrirId}"]`) ?? null;
+        else if (entryAction?.type === "new") item = hostRef.current?.querySelector<HTMLElement>("#btnAddAutomation") ?? null;
+        else if (entryAction?.type === "office") item = hostRef.current?.querySelector<HTMLElement>("#btnEscritorio") ?? null;
+        else if (entryAction?.type === "group") {
+          item = [...(hostRef.current?.querySelectorAll<HTMLElement>("[data-addgrp]") ?? [])]
+            .find((candidate) => candidate.dataset.addgrp === entryAction.group) ?? null;
+        }
         if (item) { item.click(); return; }
         if (tentativas++ < 40) setTimeout(tentar, 150);
       };
@@ -134,7 +151,7 @@ export function AutomationsWorkspace({ accessToken }: { accessToken: string }) {
       hostRef.current.innerHTML = `<div class="original-automation-error">${e instanceof Error ? e.message : "Erro ao carregar Automações."}</div>`;
     });
     return () => { ativo = false; pararDecoracao?.(); builder?.unmount(); };
-  }, [abrirId, remontar, accessToken, cab, publishableKey, salvarTitulo, supabaseUrl]);
+  }, [abrirId, entryAction, remontar, accessToken, cab, publishableKey, salvarTitulo, supabaseUrl]);
 
   /* ORGANIZAR NA HORIZONTAL.
      O canvas do runtime sempre foi horizontal por dentro — entrada na ESQUERDA do
@@ -205,6 +222,7 @@ export function AutomationsWorkspace({ accessToken }: { accessToken: string }) {
   return (
     <div className="automations-v2-shell apn-shell">
       <header className="apn-topo-construtor">
+        {onBack && <button type="button" className="apn-v4-back" onClick={onBack}><span aria-hidden="true">←</span> Central</button>}
         <div className="apn-topo-txt"><span>CENTRAL DE AUTOMAÇÕES</span><h1>Construtor de fluxos</h1></div>
         <button type="button" className="apn-arranjo" onClick={() => void organizarH()} disabled={arranjando || abrirId == null} title="Reposiciona os blocos da esquerda para a direita seguindo os fios. Salve o que estiver aberto antes.">
           {arranjando ? "Organizando…" : "Organizar na horizontal"}

@@ -93,6 +93,7 @@ import "./styles/redesign-apecerto-automacoes.css";
 import "./styles/redesign-apecerto-automacoes-tela.css";
 import "./styles/redesign-apecerto-automacoes-cartao.css";
 import "./styles/redesign-apecerto-construtor-paridade.css";
+import "./styles/central-automacoes-v4.css";
 /* INTERFACE DO APLICATIVO NO CELULAR — versão aprovada.
    Não é correção da folha antiga: o markup do Meu Dia e do CRM usa classes
    próprias (.ape-*), então esta folha é a única que os desenha. As regras
