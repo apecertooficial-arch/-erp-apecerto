@@ -58,14 +58,14 @@
   .ape-filtros button.ape-chip-novo:not(.ativo) { border-color: #FFD6BD; background: #FFF3EA; color: #B84300; }
 
   /* ---------- Card do cliente ---------- */
-  .ape-lista { display: flex; flex-direction: column; gap: 12px; }
-  .ape-card { padding: 14px; border-radius: 18px; background: #fff; box-shadow: 0 2px 6px rgba(31, 28, 26, .06); }
-  .ape-card-topo { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; align-items: flex-start; gap: 11px; }
-  .ape-avatar { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 999px; background: #FFE4D1; color: #CC5800; font-size: 14px; font-weight: 700; }
+  .ape-lista { display: flex; flex-direction: column; gap:9px; }
+  .ape-card { background:#fff; box-shadow:0 1px 3px rgba(31,28,26,.06); padding:12px; border:1px solid #eee9e5; border-radius:16px; }
+  .ape-card-topo { display: grid; align-items: flex-start; grid-template-columns:36px minmax(0,1fr) auto; gap:9px; }
+  .ape-avatar { display: grid; place-items: center; border-radius: 999px; background: #FFE4D1; color: #CC5800; font-weight: 700; width:36px; height:36px; font-size:12px; }
   .ape-quem { display: flex; flex-direction: column; gap: 2px; min-width: 0; padding: 0; border: 0; background: transparent; font-family: inherit; text-align: left; cursor: pointer; }
-  .ape-quem strong { overflow: hidden; color: #1F1C1A; font-size: 16px; font-weight: 700; letter-spacing: -.01em; text-overflow: ellipsis; white-space: nowrap; }
-  .ape-quem span { overflow: hidden; color: #9A918A; font-size: 12px; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
-  .ape-prazo { display: inline-flex; align-items: center; gap: 4px; padding: 5px 9px; border-radius: 999px; background: #F4F0EC; color: #6B635C; font-size: 11px; font-weight: 600; white-space: nowrap; }
+  .ape-quem strong { overflow: hidden; color: #1F1C1A; font-weight: 700; letter-spacing: -.01em; text-overflow: ellipsis; white-space: nowrap; font-size:14.5px; }
+  .ape-quem span { overflow: hidden; color: #9A918A; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; font-size:11px; }
+  .ape-prazo { display: inline-flex; align-items: center; gap: 4px; border-radius: 999px; background: #F4F0EC; color: #6B635C; font-weight: 600; white-space: nowrap; padding:4px 8px; font-size:11px; }
   .ape-prazo.atrasado { background: #FBE5E5; color: #A32C2C; }
   .ape-prazo.urgente { background: #FFF3D6; color: #8A6100; }
   .ape-prazo.no-prazo { background: #E6F5EC; color: #136B3D; }
@@ -103,13 +103,12 @@
   .ape-contexto p { margin: 0; color: #3B342F; font-size: 13px; font-weight: 500; line-height: 1.45; text-wrap: pretty; }
 
   /* ---------- Ação principal ---------- */
-  .ape-acoes { display: grid; grid-template-columns: 1fr 48px; align-items: start; gap: 8px; margin-top: 11px; }
+  .ape-acoes { display:grid; grid-template-columns:1fr 44px; align-items:start; gap:8px; margin-top:8px; }
   .ape-acoes .ncrm-wa { width: 100%; }
   .ape-acoes .ncrm-wa-principal {
-    display: flex; align-items: center; justify-content: center; gap: 9px; width: 100%; min-height: 48px;
+    display: flex; align-items: center; justify-content: center; gap: 9px; width: 100%;
     border: 0; border-radius: 999px; background: #1E9E5A; color: #fff;
-    font-family: inherit; font-size: 15px; font-weight: 600; text-decoration: none;
-    box-shadow: 0 12px 28px rgba(30, 158, 90, .26);
+    font-family:inherit; font-weight:600; text-decoration:none; min-height:44px; font-size:13px; box-shadow:none;
   }
   .ape-acoes .ncrm-wa-erro { min-height: 48px; padding: 9px 11px; border-radius: 12px; font-size: 12px; }
   .ape-acoes .ncrm-wa-erro-dica { display: none; }
@@ -135,7 +134,10 @@
     min-height: 36px; padding: 0 4px; border: 0; background: transparent;
     color: #9A918A; font-family: inherit; font-size: 11px; font-weight: 600; line-height: 1.35; text-align: center;
   }
-  .ape-mais { display: grid; place-items: center; width: 48px; height: 48px; border: 1.5px solid #E4DFD9; border-radius: 14px; background: #fff; color: #6B635C; cursor: pointer; }
+  .ape-acoes .ncrm-wa-alt,
+  .ape-acoes .ncrm-wa-secundarias,
+  .ape-acoes .ncrm-wa-nota { display:none; }
+  .ape-mais { display:grid; place-items:center; width:44px; height:44px; border:1px solid #E4DFD9; border-radius:12px; background:#fff; color:#6B635C; cursor:pointer; }
 
   /* ---------- Estados ---------- */
   .ape-estado { display: flex; flex-direction: column; align-items: center; gap: 10px; margin-top: 8px; padding: 44px 28px; border-radius: 18px; background: #fff; box-shadow: 0 2px 6px rgba(31, 28, 26, .06); text-align: center; }
@@ -159,11 +161,11 @@
   /* ---------- Ficha do cliente ---------- */
   .ape-folha { position: fixed; inset: 0; z-index: 90; display: flex; align-items: flex-end; background: rgba(31, 28, 26, .42); }
   @keyframes ape-sobe { from { transform: translateY(100%); } to { transform: none; } }
-  .ape-ficha { width: 100%; max-height: 94dvh; overflow-y: auto; border-radius: 24px 24px 0 0; background: #FAF8F6; padding-bottom: calc(28px + env(safe-area-inset-bottom, 0px)); animation: ape-sobe 240ms cubic-bezier(.2, .8, .2, 1); font-family: 'Quicksand', system-ui, sans-serif; }
-  .ape-ficha-topo { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: 4px; padding: 8px 12px 10px; background: rgba(250, 248, 246, .94); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); }
+  .ape-ficha { width: 100%; overflow-y: auto; background: #FAF8F6; padding-bottom: calc(28px + env(safe-area-inset-bottom, 0px)); animation: ape-sobe 240ms cubic-bezier(.2, .8, .2, 1); font-family: 'Quicksand', system-ui, sans-serif; display:flex; flex-direction:column; overflow:hidden; position:relative; height:100dvh; max-height:100dvh; border-radius:0; padding:0; }
+  .ape-ficha-topo { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: 4px; backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); padding:8px 16px 4px; background:#fff; }
   .ape-voltar { display: flex; align-items: center; gap: 3px; min-height: 44px; padding: 0 8px; border: 0; background: transparent; color: #FF7000; font-family: inherit; font-size: 15px; font-weight: 600; cursor: pointer; }
-  .ape-ficha-nome { padding: 0 20px 14px; }
-  .ape-ficha-nome h2 { margin: 0; font-size: 24px; font-weight: 700; line-height: 1.15; letter-spacing: -.02em; }
+  .ape-ficha-nome { padding-bottom:10px; padding:0 16px 12px; background:#fff; border-bottom:1px solid #E4DFD9; }
+  .ape-ficha-nome h2 { margin: 0; font-weight: 700; line-height: 1.15; letter-spacing: -.02em; font-size:20px; }
   .ape-ficha-nome p { margin: 6px 0 0; color: #6B635C; font-size: 14px; font-weight: 500; }
   .ape-ficha-etiquetas { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 10px; }
   .ape-ficha-etiquetas span { padding: 5px 10px; border-radius: 999px; font-size: 11px; font-weight: 600; }
@@ -200,7 +202,7 @@
   .ape-ficha .f2m-historico h3 { margin: 0 0 10px; font-size: 15px; font-weight: 700; }
 
   /* BOTÃO FLUTUANTE DA SARA.
-     O widget injeta o proprio <style> em tempo de execucao, com seletor de id e
+     O widget injeta o proprio \3c style> em tempo de execucao, com seletor de id e
      um degrade vermelho/rosa que nao existe na marca. Como aquela folha entra
      depois desta, a unica forma de corrigir a cor sem reescrever o widget e o
      !important -- excecao consciente, registrada aqui. */
@@ -208,127 +210,9 @@
     background: linear-gradient(140deg, #FF7000, #8B00CC) !important;
     box-shadow: 0 12px 30px rgba(139, 0, 204, .34) !important;
   }
-}
-
-/* CRM mobile fiel ao protótipo: dois níveis de filtro, cartões curtos e a
-   temperatura editável sem abrir uma tela administrativa. */
-@media (max-width:900px) {
-  .ape-temperatura-filtros { display:flex; align-items:center; gap:7px; overflow-x:auto; margin:-5px -20px 13px; padding:0 20px 3px; scrollbar-width:none; }
-  .ape-temperatura-filtros::-webkit-scrollbar { display:none; }
-  .ape-temperatura-filtros>span { flex:none; color:#918981; font-size:10px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; }
-  .ape-temperatura-filtros button { flex:none; display:inline-flex; align-items:center; gap:6px; min-height:32px; padding:0 11px; border:1px solid #E4DFD9; border-radius:999px; background:#fff; color:#68615B; font-family:inherit; font-size:11px; font-weight:700; }
-  .ape-temperatura-filtros button::before { content:""; width:6px; height:6px; border-radius:50%; background:currentColor; }
-  .ape-temperatura-filtros button.ativo { border-color:currentColor; box-shadow:0 0 0 2px color-mix(in srgb,currentColor 12%,transparent); }
-  .ape-temperatura-filtros .temperatura-quente { color:#B84325; background:#FDEAE3; border-color:#F3C2B5; }
-  .ape-temperatura-filtros .temperatura-negociando { color:#7620B6; background:#F7ECFC; border-color:#DEC3EF; }
-  .ape-temperatura-filtros .temperatura-morno { color:#806000; background:#FFF4D9; border-color:#EDD89F; }
-  .ape-temperatura-filtros .temperatura-frio { color:#2A5F9E; background:#EAF1FB; border-color:#C5D7EF; }
-  .ape-temperatura-filtros .temperatura-aguardando { color:#6E6760; background:#F2EFEC; }
-
-  .ape-lista { gap:9px; }
-  .ape-card { padding:12px; border-radius:16px; }
-  .ape-card-topo { grid-template-columns:36px minmax(0,1fr) auto; gap:9px; }
-  .ape-avatar { width:36px; height:36px; font-size:12px; }
-  .ape-quem strong { font-size:14.5px; }
-  .ape-quem span { font-size:11px; }
-  .ape-prazo { padding:4px 8px; font-size:10px; }
-  .ape-card-leitura { display:grid; grid-template-columns:1fr 1fr; gap:7px; margin-top:9px; }
-  .ape-card-leitura>span { display:flex; flex-direction:column; gap:3px; min-width:0; padding:8px 9px; border-radius:11px; background:#FAF8F6; }
-  .ape-card-leitura small { color:#918981; font-size:9px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; }
-  .ape-card-leitura b { overflow:hidden; font-size:11px; text-overflow:ellipsis; white-space:nowrap; }
-  .ape-card-leitura .temperatura-quente b { color:#B84325; }
-  .ape-card-leitura .temperatura-negociando b { color:#7620B6; }
-  .ape-card-leitura .temperatura-morno b { color:#806000; }
-  .ape-card-leitura .temperatura-frio b { color:#2A5F9E; }
-  .ape-card-leitura .temperatura-aguardando b { color:#6E6760; }
-  .ape-card-acao { display:grid; grid-template-columns:1fr; gap:3px; margin-top:7px; padding:9px 10px; border-left:3px solid #FF7000; border-radius:9px; background:#FFF3EA; }
-  .ape-card-acao small { color:#B84300; font-size:9px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; }
-  .ape-card-acao strong { overflow:hidden; color:#493C34; font-size:11.5px; text-overflow:ellipsis; white-space:nowrap; }
-  .ape-card-acao span { overflow:hidden; color:#776E67; font-size:10.5px; text-overflow:ellipsis; white-space:nowrap; }
-  .ape-acoes { margin-top:9px; }
-  .ape-acoes .ncrm-wa-principal { min-height:44px; font-size:13.5px; box-shadow:0 7px 18px rgba(30,158,90,.2); }
-  .ape-mais { width:44px; height:44px; }
-
-  .ape-temperatura-controle { position:relative; display:inline-flex; }
-  .ape-temperatura-controle>button { display:inline-flex; align-items:center; gap:5px; min-height:31px; padding:0 9px; border:1px solid #E4DFD9; border-radius:999px; font-family:inherit; font-size:11px; font-weight:700; }
-  .ape-temperatura-controle>button i { width:6px; height:6px; border-radius:50%; background:currentColor; }
-  .ape-temperatura-popover { position:absolute; top:calc(100% + 7px); left:0; z-index:72; width:220px; padding:8px; border:1px solid #E4DFD9; border-radius:15px; background:#fff; box-shadow:0 16px 40px rgba(31,28,26,.2); }
-  .ape-temperatura-popover>strong { display:block; padding:4px 5px 8px; font-size:11px; }
-  .ape-temperatura-popover button { display:flex; align-items:center; gap:8px; width:100%; min-height:36px; padding:0 10px; border:0; border-radius:10px; background:transparent; color:#514B46; font-family:inherit; font-size:11px; font-weight:700; text-align:left; }
-  .ape-temperatura-popover button:hover,.ape-temperatura-popover button.ativo { background:#FAF8F6; }
-  .ape-temperatura-popover button i { width:7px; height:7px; border-radius:50%; background:currentColor; }
-  .ape-temperatura-popover .temperatura-quente { color:#B84325; }
-  .ape-temperatura-popover .temperatura-negociando { color:#7620B6; }
-  .ape-temperatura-popover .temperatura-morno { color:#806000; }
-  .ape-temperatura-popover .temperatura-frio { color:#2A5F9E; }
-  .ape-temperatura-popover .temperatura-aguardando { color:#6E6760; }
-  .ape-ficha > .ape-ficha-painel { padding-bottom:112px; }
-}
-
-/* Ficha de atendimento mobile aprovada: resumo compacto, três abas, ações
-   secundárias em bottom sheet e WhatsApp sempre acessível no rodapé. */
-@media (max-width:900px) {
-  .ape-ficha { position:relative; height:100dvh; max-height:100dvh; border-radius:0; padding:0; }
-  .ape-ficha-topo { padding:8px 16px 4px; background:#fff; }
-  .ape-ficha-nome { padding:0 16px 12px; background:#fff; border-bottom:1px solid #E4DFD9; }
-  .ape-ficha-nome h2 { font-size:20px; }
-  .ape-ficha-nome > p { margin-top:2px; font-size:12.5px; }
-  .ape-ficha-nome .ape-ficha-interesse { margin-top:8px; }
-  .ape-ficha-resumo-chips { gap:6px; margin-top:9px; }
-  .ape-ficha-resumo-chips span,.ape-ficha-resumo-chips em { display:inline-flex; align-items:center; gap:5px; min-height:31px; padding:0 9px; border:1px solid transparent; border-radius:999px; font-size:11px; font-weight:700; font-style:normal; }
-  .ape-ficha-resumo-chips small { font-size:8px; letter-spacing:.07em; text-transform:uppercase; opacity:.72; }
-  .ape-ficha-resumo-chips .ape-etapa { border-color:#FFD6BD; background:#FFF3EA; color:#B84300; }
-  .ape-ficha-resumo-chips .ape-momento { border-color:#E7D0F5; background:#F7ECFC; color:#66009A; }
-  .ape-ficha-resumo-chips .temperatura-quente { border-color:#F6CDBF; background:#FDEAE3; color:#A8391A; }
-  .ape-ficha-resumo-chips .temperatura-negociando { border-color:#E7D0F5; background:#F7ECFC; color:#66009A; }
-  .ape-ficha-resumo-chips .temperatura-morno { border-color:#F3DFAE; background:#FDF2DC; color:#7E5A00; }
-  .ape-ficha-resumo-chips .temperatura-frio { border-color:#CFDEF4; background:#E9F0FB; color:#23548C; }
-  .ape-ficha-resumo-chips .temperatura-aguardando { border-color:#E4DFD9; background:#F2EFEC; color:#6B635C; }
-  .ape-ficha-resumo-chips .temperatura-quente i,.ape-ficha-resumo-chips .temperatura-negociando i,.ape-ficha-resumo-chips .temperatura-morno i,.ape-ficha-resumo-chips .temperatura-frio i,.ape-ficha-resumo-chips .temperatura-aguardando i { width:6px; height:6px; border-radius:50%; background:currentColor; }
-  .ape-ficha-resumo-chips em.atrasado { border-color:#F2D6D2; background:#FDF0EF; color:#A32C2C; }
-  .ape-ficha-resumo-chips em.urgente { border-color:#F1DEAA; background:#FFF6DE; color:#7E5A00; }
-  .ape-ficha-resumo-chips em.no-prazo { border-color:#CDE7D7; background:#EAF7EF; color:#136B3D; }
-  .ape-proxima-aprovada { flex:none; margin:0 16px 12px; padding:13px 15px; border-radius:16px; }
-  .ape-proxima-aprovada .ape-contexto-titulo { color:#8B00CC; font-size:11px; letter-spacing:.08em; text-transform:uppercase; }
-  .ape-ficha-acoes-aprovadas { flex:none; display:flex; flex-wrap:wrap; gap:7px; padding:0 16px 12px; background:#fff; }
-  .ape-ficha-acoes-aprovadas button { min-height:42px; padding:0 14px; border:1px solid #E4DFD9; border-radius:999px; background:#fff; color:#1F1C1A; font-family:inherit; font-size:13px; font-weight:700; }
-  .ape-ficha > .ape-ficha-abas { grid-template-columns:repeat(3,1fr); margin:0 16px 12px; padding:4px; border:0; border-radius:999px; background:#F2EFEC; }
-  .ape-ficha > .ape-ficha-abas button { min-height:40px; font-size:12px; }
-  .ape-ficha > .ape-ficha-abas button.ativa { border:0; background:#fff; color:#1F1C1A; box-shadow:0 1px 3px rgba(31,28,26,.12); }
-  .ape-ficha > .ape-ficha-painel { padding:2px 16px 96px; }
-  .ape-ficha > .ape-ficha-painel > section { margin-left:0; margin-right:0; }
-  .f2m-sara-aprovado { margin-top:0; padding:15px; border-radius:18px; background:#fff; box-shadow:0 1px 2px rgba(31,28,26,.04); }
-  .f2m-detalhes-atendimento { margin-top:12px; padding:14px 15px; border-radius:16px; background:#fff; box-shadow:0 1px 2px rgba(31,28,26,.04); }
-  .f2m-detalhes-atendimento summary { font-size:14px; font-weight:700; cursor:pointer; }
-  .f2m-detalhes-atendimento > div { display:flex; flex-direction:column; gap:8px; margin-top:11px; }
-  .f2m-detalhes-atendimento > div > span { display:flex; justify-content:space-between; gap:10px; font-size:13px; }
-  .f2m-detalhes-atendimento > div > span b { color:#6B635C; font-weight:600; }
-  .f2m-detalhes-atendimento > div > span strong { text-align:right; }
-  .f2m-detalhes-atendimento > p { color:#6B635C; font-size:12.5px; line-height:1.5; }
-  .ape-ficha-rodape-aprovado { position:absolute; left:0; right:0; bottom:0; z-index:8; display:grid; grid-template-columns:1fr 56px; gap:10px; padding:12px 16px calc(18px + env(safe-area-inset-bottom,0px)); border-top:1px solid #E4DFD9; background:rgba(255,255,255,.98); }
-  .ape-ficha-rodape-aprovado .ncrm-wa-principal { min-height:54px !important; border-radius:999px !important; background:#1E9E5A !important; color:#fff !important; font-size:16px !important; box-shadow:0 12px 28px rgba(30,158,90,.26); }
-  .ape-ficha-rodape-aprovado .ncrm-wa-secundarias,.ape-ficha-rodape-aprovado .ncrm-wa-nota { display:none !important; }
-  .ape-ficha-rodape-aprovado .ncrm-wa-alt { display:block; min-height:0; margin:5px 0 0; padding:0; border:0; background:transparent; color:#8B6B58; font-size:9.5px; font-weight:600; line-height:1.25; text-align:center; }
-  .ape-ficha-rodape-aprovado > button { display:grid; place-items:center; width:56px; height:54px; overflow:hidden; border:1px solid #E4DFD9; border-radius:999px; background:#fff; color:#6B635C; font-size:11px; font-weight:700; }
-  .ape-ficha-sheet { position:absolute; inset:0; z-index:75; display:flex; align-items:flex-end; background:rgba(31,28,26,.42); }
-  .ape-ficha-sheet > section { width:100%; max-height:82%; overflow:auto; padding:10px 16px calc(22px + env(safe-area-inset-bottom,0px)); border-radius:24px 24px 0 0; background:#FAF8F6; }
-  .ape-ficha-sheet > section > i:first-child { display:block; width:44px; height:4px; margin:6px auto 14px; border-radius:999px; background:#E4DFD9; }
-  .ape-ficha-sheet > section[aria-label="Mais ações"] > button { display:flex; align-items:center; width:100%; min-height:52px; margin-bottom:8px; padding:0 14px; border:0; border-radius:14px; background:#fff; color:#1F1C1A; font-family:inherit; font-size:14.5px; font-weight:600; text-align:left; }
-  .ape-ficha-sheet > section[aria-label="Mais ações"] hr { margin:14px 0 8px; border:0; border-top:1px solid #E4DFD9; }
-  .ape-ficha-sheet > section[aria-label="Mais ações"] button.risco { border:1px solid #F2D6D2; background:#FDF0EF; color:#B33131; font-weight:700; }
-  .ape-ficha-sheet > section[aria-label="Mais ações"] p { color:#6E6760; font-size:12px; }
-  .ape-ficha-sheet .f2m-agendar,.ape-ficha-sheet .f2-tag-editor { margin:0 !important; border:0 !important; box-shadow:none !important; }
-  .ape-ficha-sheet .f2-tag-editor { position:static !important; width:100% !important; }
-}
-
-/* Atendimento móvel organizado nas mesmas quatro áreas do desktop. Estas
-   regras vivem fora do bloco anterior para manter a cascata explícita. */
-@media (max-width: 900px) {
-  .ape-ficha { display:flex; flex-direction:column; overflow:hidden; }
   .ape-ficha-topo,.ape-ficha-nome,.ape-ficha-abas { flex:0 0 auto; }
-  .ape-ficha-nome { padding-bottom:10px; }
   .ape-ficha-abas { display:grid; grid-template-columns:repeat(4,minmax(max-content,1fr)); gap:4px; padding:8px 12px; overflow-x:auto; border-top:1px solid #EFEAE5; border-bottom:1px solid #EFEAE5; background:#fff; }
-  .ape-ficha-abas button { min-height:38px; padding:0 10px; white-space:nowrap; border:1px solid transparent; border-radius:999px; background:transparent; color:#716860; font-family:inherit; font-size:10px; font-weight:700; }
+  .ape-ficha-abas button { min-height:38px; padding:0 10px; white-space:nowrap; border:1px solid transparent; border-radius:999px; background:transparent; color:#716860; font-family:inherit; font-size:11px; font-weight:700; }
   .ape-ficha-abas button.ativa { border-color:#FFD3B5; background:#FFF3EA; color:#C25200; }
   .ape-ficha-painel { flex:1 1 auto; min-height:0; overflow-y:auto; padding:14px 0 calc(22px + env(safe-area-inset-bottom,0px)); }
   .ape-ficha-painel .ape-ordem { margin-top:0; }
@@ -347,19 +231,23 @@
   .f2m-momento-abrir { border-color:#DCC4EC; background:#FBF7FD; color:#7620B6; }
   .f2m-momento-form,.f2m-negociacao-form { margin-left:20px; margin-right:20px; }
   .f2m-momento-preview { display:flex; flex-direction:column; gap:3px; padding:11px 12px; border-radius:12px; background:#F7ECFC; }
-  .f2m-momento-preview span { color:#8B00CC; font-size:9px; font-weight:800; letter-spacing:.09em; }
+  .f2m-momento-preview span { color:#8B00CC; font-size:11px; font-weight:800; letter-spacing:.09em; }
   .f2m-momento-preview strong { font-size:13px; }
   .f2m-momento-preview small { color:#6B635C; font-size:11px; }
   .f2m-sara-resumo { display:flex; flex-direction:column; gap:6px; margin:14px 20px 0; padding:14px; border-left:4px solid #8B00CC; border-radius:14px; background:#F7ECFC; }
-  .f2m-sara-resumo > span { color:#8B00CC; font-size:9px; font-weight:800; letter-spacing:.1em; }
+  .f2m-sara-resumo > span { color:#8B00CC; font-size:11px; font-weight:800; letter-spacing:.1em; }
   .f2m-sara-resumo strong { font-size:13px; line-height:1.4; }
   .f2m-sara-resumo small { color:#6B635C; font-size:11px; }
+  .f2m-sara-frase { display:-webkit-box; overflow:hidden; -webkit-box-orient:vertical; -webkit-line-clamp:3; }
+  .f2m-sara-resumo details { padding-top:7px; border-top:1px solid #E4DFD9; }
+  .f2m-sara-resumo details summary { color:#7620B6; font-size:12px; font-weight:700; cursor:pointer; }
+  .f2m-sara-resumo details small { display:block; margin-top:6px; line-height:1.45; }
 
   .f2m-dados { margin:0 20px; padding:16px; border-radius:18px; background:#fff; box-shadow:0 2px 6px rgba(31,28,26,.06); }
   .f2m-dados h3 { margin:0 0 12px; font-size:16px; }
   .f2m-dados dl { display:grid; gap:7px; margin:0; }
   .f2m-dados dl div { padding:10px 11px; border-radius:11px; background:#FAF8F6; }
-  .f2m-dados dt { color:#9A918A; font-size:9px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; }
+  .f2m-dados dt { color:#9A918A; font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; }
   .f2m-dados dd { margin:3px 0 0; color:#1F1C1A; font-size:13px; font-weight:650; overflow-wrap:anywhere; }
   .f2m-dados .ape-interesse-wrap { margin-top:12px; }
   .f2m-dados .f2-tag-editor.mobile { position:static; width:100%; box-shadow:none; }
@@ -372,22 +260,6 @@
 
   /* O convite só existe dentro da folha Mais; nunca disputa a tela com o CRM. */
   .ape-mais-folha .convite-instalar { margin:0 0 14px; }
-}
-
-@media (max-width: 760px) {
-  .ape-ficha-nome .f2-tag-associar.mobile { width: 100%; margin-top: 12px; padding: 11px; border-radius: 12px; font-size: 12px; }
-  .ape-ficha-nome .f2-tag-editor.mobile { margin-top: 12px; text-align: left; }
-  .ape-ficha-nome .f2-tag-editor.mobile label { font-size: 11px; }
-  .ape-ficha-nome .f2-tag-editor.mobile select { font-size: 14px; }
-  .ape-ficha-nome .f2-tag-editor.mobile .f2-tag-paleta button { width: 31px !important; height: 31px !important; }
-}
-/* Telas operacionais restantes. Cada seletor novo casa com markup .ape-*;
-   as classes antigas permanecem apenas para o desenho do desktop. */
-.ape-offline { display: none; }
-.ape-sessao-expirada { min-height: 60vh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 28px; text-align: center; }
-.ape-sessao-expirada p { margin: 0; }
-
-@media (max-width: 900px) {
   .ape-avisos {
     width: 100%; max-width: 620px; margin: 0 auto;
     padding: 4px 20px calc(24px + env(safe-area-inset-bottom, 0px));
@@ -448,15 +320,6 @@
   .ape-sessao-expirada strong { font-size: 22px; font-weight: 700; }
   .ape-sessao-expirada p { max-width: 280px; margin: 0; color: #6B635C; font-size: 14px; font-weight: 500; line-height: 1.5; }
   .ape-sessao-expirada a { display: inline-flex; align-items: center; justify-content: center; min-height: 48px; margin-top: 6px; padding: 0 24px; border-radius: 999px; background: #FF7000; color: #fff; font-size: 15px; font-weight: 600; text-decoration: none; }
-}
-/* =====================================================================
-   AGENDA NO CELULAR — desenho do print 05
-   Só celular. Carrega depois de apecerto-identidade.css e usa os tokens.
-   ===================================================================== */
-
-.ape-agenda { display: none; }
-
-@media (max-width: 900px) {
   .ape-agenda {
     display: block;
     width: 100%; max-width: 620px; margin: 0 auto; padding: 4px 20px calc(24px + env(safe-area-inset-bottom, 0px));
@@ -600,9 +463,6 @@
     border-radius: var(--radius-pill); background: var(--ape-orange);
     color: var(--fg-inverse); font-weight: var(--weight-semibold); cursor: pointer;
   }
-}
-/* Tarefas da Sara: ações reais do Funil 2.0 e decisões auditáveis. */
-@media (max-width: 900px) {
   .ape-tarefas {
     width: 100%; max-width: 620px; margin: 0 auto;
     padding: 4px 20px calc(24px + env(safe-area-inset-bottom, 0px));
@@ -640,9 +500,6 @@
   .ape-tarefa-whatsapp .ncrm-wa-secundarias { display: none; }
   .ape-tarefa-card.concluida { opacity: .88; }
   .ape-tarefas-nota { margin: 16px 12px 0; color: #9A918A; font-size: 11px; font-weight: 500; line-height: 1.5; text-align: center; }
-}
-/* Catálogo mobile: os mesmos produtos reais de /api/catalog, sem fallback. */
-@media (max-width: 900px) {
   .ape-produtos {
     width: 100%; max-width: 620px; margin: 0 auto;
     padding: 4px 20px calc(24px + env(safe-area-inset-bottom, 0px));
@@ -686,10 +543,6 @@
   .ape-produto-esqueleto span { display: block; height: 190px; margin: 0 -14px 14px; background: linear-gradient(90deg, #EFEAE5 25%, #F7F4F1 50%, #EFEAE5 75%); background-size: 240px 100%; animation: ape-brilho 1.2s linear infinite; }
   .ape-produto-esqueleto i { display: block; width: 70%; height: 13px; margin-top: 9px; border-radius: 999px; background: #EFEAE5; }
   .ape-produto-esqueleto i:last-child { width: 45%; }
-}
-
-/* Painel e área de gestão: visíveis somente na navegação de gestor/admin. */
-@media (max-width: 900px) {
   .ape-painel, .ape-gestao {
     width: 100%; max-width: 620px; margin: 0 auto;
     padding: 4px 20px calc(24px + env(safe-area-inset-bottom, 0px));
@@ -735,4 +588,122 @@
   .app-mais-grid > a { gap: 10px; }
   .app-mais-grid > a > span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
   .app-mais-grid > a > b { color: #C9C1B9; font-size: 19px; font-weight: 500; }
+  .ape-temperatura-filtros { display:flex; align-items:center; gap:7px; overflow-x:auto; margin:-5px -20px 13px; padding:0 20px 3px; scrollbar-width:none; }
+  .ape-temperatura-filtros::-webkit-scrollbar { display:none; }
+  .ape-temperatura-filtros>span { flex:none; color:#918981; font-size:11px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; }
+  .ape-temperatura-filtros button { flex:none; display:inline-flex; align-items:center; gap:6px; min-height:32px; padding:0 11px; border:1px solid #E4DFD9; border-radius:999px; background:#fff; color:#68615B; font-family:inherit; font-size:11px; font-weight:700; }
+  .ape-temperatura-filtros button::before { content:""; width:6px; height:6px; border-radius:50%; background:currentColor; }
+  .ape-temperatura-filtros button.ativo { border-color:currentColor; box-shadow:0 0 0 2px color-mix(in srgb,currentColor 12%,transparent); }
+  .ape-temperatura-filtros .temperatura-quente { color:#B84325; background:#FDEAE3; border-color:#F3C2B5; }
+  .ape-temperatura-filtros .temperatura-negociando { color:#7620B6; background:#F7ECFC; border-color:#DEC3EF; }
+  .ape-temperatura-filtros .temperatura-morno { color:#806000; background:#FFF4D9; border-color:#EDD89F; }
+  .ape-temperatura-filtros .temperatura-frio { color:#2A5F9E; background:#EAF1FB; border-color:#C5D7EF; }
+  .ape-temperatura-filtros .temperatura-aguardando { color:#6E6760; background:#F2EFEC; }
+  .ape-card-leitura { display:flex; align-items:center; gap:6px; margin-top:7px; overflow:hidden; }
+  .ape-card-leitura>span { display:block; min-width:0; padding:0; background:transparent; }
+  .ape-card-leitura small { display:none; }
+  .ape-card-leitura b { display:inline-flex; align-items:center; min-height:24px; max-width:150px; overflow:hidden; padding:0 8px; border:1px solid #E4DFD9; border-radius:999px; background:#FAF8F6; font-size:11px; text-overflow:ellipsis; white-space:nowrap; }
+  .ape-card-leitura .temperatura-quente b { color:#B84325; }
+  .ape-card-leitura .temperatura-negociando b { color:#7620B6; }
+  .ape-card-leitura .temperatura-morno b { color:#806000; }
+  .ape-card-leitura .temperatura-frio b { color:#2A5F9E; }
+  .ape-card-leitura .temperatura-aguardando b { color:#6E6760; }
+  .ape-card-acao { display:block; margin-top:7px; padding:0; border:0; background:transparent; }
+  .ape-card-acao small { display:none; }
+  .ape-card-acao strong { display:block; overflow:hidden; color:#493C34; font-size:12px; text-overflow:ellipsis; white-space:nowrap; }
+  .ape-card-acao span { display:none; }
+
+  .ape-temperatura-controle { position:relative; display:inline-flex; }
+  .ape-temperatura-controle>button { display:inline-flex; align-items:center; gap:5px; min-height:31px; padding:0 9px; border:1px solid #E4DFD9; border-radius:999px; font-family:inherit; font-size:11px; font-weight:700; }
+  .ape-temperatura-controle>button i { width:6px; height:6px; border-radius:50%; background:currentColor; }
+  .ape-temperatura-popover { position:absolute; top:calc(100% + 7px); left:0; z-index:72; width:220px; padding:8px; border:1px solid #E4DFD9; border-radius:15px; background:#fff; box-shadow:0 16px 40px rgba(31,28,26,.2); }
+  .ape-temperatura-popover>strong { display:block; padding:4px 5px 8px; font-size:11px; }
+  .ape-temperatura-popover button { display:flex; align-items:center; gap:8px; width:100%; min-height:36px; padding:0 10px; border:0; border-radius:10px; background:transparent; color:#514B46; font-family:inherit; font-size:11px; font-weight:700; text-align:left; }
+  .ape-temperatura-popover button:hover,.ape-temperatura-popover button.ativo { background:#FAF8F6; }
+  .ape-temperatura-popover button i { width:7px; height:7px; border-radius:50%; background:currentColor; }
+  .ape-temperatura-popover .temperatura-quente { color:#B84325; }
+  .ape-temperatura-popover .temperatura-negociando { color:#7620B6; }
+  .ape-temperatura-popover .temperatura-morno { color:#806000; }
+  .ape-temperatura-popover .temperatura-frio { color:#2A5F9E; }
+  .ape-temperatura-popover .temperatura-aguardando { color:#6E6760; }
+  .ape-ficha > .ape-ficha-painel { padding:2px 16px 18px; }
+  .ape-ficha-nome > p { margin-top:2px; font-size:12.5px; }
+  .ape-ficha-nome .ape-ficha-interesse { margin-top:8px; }
+  .ape-ficha-resumo-chips { gap:6px; margin-top:9px; }
+  .ape-ficha-resumo-chips span,.ape-ficha-resumo-chips em { display:inline-flex; align-items:center; gap:5px; min-height:31px; padding:0 9px; border:1px solid transparent; border-radius:999px; font-size:11px; font-weight:700; font-style:normal; }
+  .ape-ficha-resumo-chips small { font-size:11px; letter-spacing:.07em; text-transform:uppercase; opacity:.72; }
+  .ape-ficha-resumo-chips .ape-etapa { border-color:#FFD6BD; background:#FFF3EA; color:#B84300; }
+  .ape-ficha-resumo-chips .ape-momento { border-color:#E7D0F5; background:#F7ECFC; color:#66009A; }
+  .ape-ficha-resumo-chips .temperatura-quente { border-color:#F6CDBF; background:#FDEAE3; color:#A8391A; }
+  .ape-ficha-resumo-chips .temperatura-negociando { border-color:#E7D0F5; background:#F7ECFC; color:#66009A; }
+  .ape-ficha-resumo-chips .temperatura-morno { border-color:#F3DFAE; background:#FDF2DC; color:#7E5A00; }
+  .ape-ficha-resumo-chips .temperatura-frio { border-color:#CFDEF4; background:#E9F0FB; color:#23548C; }
+  .ape-ficha-resumo-chips .temperatura-aguardando { border-color:#E4DFD9; background:#F2EFEC; color:#6B635C; }
+  .ape-ficha-resumo-chips .temperatura-quente i,.ape-ficha-resumo-chips .temperatura-negociando i,.ape-ficha-resumo-chips .temperatura-morno i,.ape-ficha-resumo-chips .temperatura-frio i,.ape-ficha-resumo-chips .temperatura-aguardando i { width:6px; height:6px; border-radius:50%; background:currentColor; }
+  .ape-ficha-resumo-chips em.atrasado { border-color:#F2D6D2; background:#FDF0EF; color:#A32C2C; }
+  .ape-ficha-resumo-chips em.urgente { border-color:#F1DEAA; background:#FFF6DE; color:#7E5A00; }
+  .ape-ficha-resumo-chips em.no-prazo { border-color:#CDE7D7; background:#EAF7EF; color:#136B3D; }
+  .ape-proxima-aprovada { flex:none; margin:0 16px 12px; padding:13px 15px; border-radius:16px; }
+  .ape-proxima-aprovada .ape-contexto-titulo { color:#8B00CC; font-size:11px; letter-spacing:.08em; text-transform:uppercase; }
+  .ape-ficha-acoes-aprovadas { flex:none; display:flex; flex-wrap:wrap; gap:7px; padding:0 16px 12px; background:#fff; }
+  .ape-ficha-acoes-aprovadas button { min-height:42px; padding:0 14px; border:1px solid #E4DFD9; border-radius:999px; background:#fff; color:#1F1C1A; font-family:inherit; font-size:13px; font-weight:700; }
+  .ape-ficha > .ape-ficha-abas { grid-template-columns:repeat(3,1fr); margin:0 16px 12px; padding:4px; border:0; border-radius:999px; background:#F2EFEC; }
+  .ape-ficha > .ape-ficha-abas button { min-height:40px; font-size:12px; }
+  .ape-ficha > .ape-ficha-abas button.ativa { border:0; background:#fff; color:#1F1C1A; box-shadow:0 1px 3px rgba(31,28,26,.12); }
+  .ape-ficha > .ape-ficha-painel > section { margin-left:0; margin-right:0; }
+  .f2m-sara-aprovado { margin-top:0; padding:15px; border-radius:18px; background:#fff; box-shadow:0 1px 2px rgba(31,28,26,.04); }
+  .f2m-detalhes-atendimento { margin-top:12px; padding:14px 15px; border-radius:16px; background:#fff; box-shadow:0 1px 2px rgba(31,28,26,.04); }
+  .f2m-detalhes-atendimento summary { font-size:14px; font-weight:700; cursor:pointer; }
+  .f2m-detalhes-atendimento > div { display:flex; flex-direction:column; gap:8px; margin-top:11px; }
+  .f2m-detalhes-atendimento > div > span { display:flex; justify-content:space-between; gap:10px; font-size:13px; }
+  .f2m-detalhes-atendimento > div > span b { color:#6B635C; font-weight:600; }
+  .f2m-detalhes-atendimento > div > span strong { text-align:right; }
+  .f2m-detalhes-atendimento > p { color:#6B635C; font-size:12.5px; line-height:1.5; }
+  .ape-ficha-rodape-aprovado { position:relative; z-index:8; flex:0 0 auto; display:grid; grid-template-columns:1fr 56px; gap:10px; padding:12px 16px calc(18px + env(safe-area-inset-bottom,0px)); border-top:1px solid #E4DFD9; background:#fff; }
+  .ape-ficha-rodape-aprovado .ncrm-wa-principal { min-height:54px !important; border-radius:999px !important; background:#1E9E5A !important; color:#fff !important; font-size:16px !important; box-shadow:0 12px 28px rgba(30,158,90,.26); }
+  .ape-ficha-rodape-aprovado .ncrm-wa-secundarias,.ape-ficha-rodape-aprovado .ncrm-wa-nota { display:none !important; }
+  .ape-ficha-rodape-aprovado .ncrm-wa-alt { display:block; min-height:0; margin:5px 0 0; padding:0; border:0; background:transparent; color:#8B6B58; font-size:11px; font-weight:600; line-height:1.25; text-align:center; }
+  .ape-ficha-rodape-aprovado > button { display:grid; place-items:center; width:56px; height:54px; overflow:hidden; border:1px solid #E4DFD9; border-radius:999px; background:#fff; color:#6B635C; font-size:11px; font-weight:700; }
+  .ape-ficha-sheet { position:absolute; inset:0; z-index:75; display:flex; align-items:flex-end; background:rgba(31,28,26,.42); }
+  .ape-ficha-sheet > section { width:100%; max-height:82%; overflow:auto; padding:10px 16px calc(22px + env(safe-area-inset-bottom,0px)); border-radius:24px 24px 0 0; background:#FAF8F6; }
+  .ape-ficha-sheet > section > i:first-child { display:block; width:44px; height:4px; margin:6px auto 14px; border-radius:999px; background:#E4DFD9; }
+  .ape-ficha-sheet > section[aria-label="Mais ações"] > button { display:flex; align-items:center; width:100%; min-height:52px; margin-bottom:8px; padding:0 14px; border:0; border-radius:14px; background:#fff; color:#1F1C1A; font-family:inherit; font-size:14.5px; font-weight:600; text-align:left; }
+  .ape-ficha-sheet > section[aria-label="Mais ações"] hr { margin:14px 0 8px; border:0; border-top:1px solid #E4DFD9; }
+  .ape-ficha-sheet > section[aria-label="Mais ações"] button.risco { border:1px solid #F2D6D2; background:#FDF0EF; color:#B33131; font-weight:700; }
+  .ape-ficha-sheet > section[aria-label="Mais ações"] p { color:#6E6760; font-size:12px; }
+  .ape-ficha-sheet .f2m-agendar,.ape-ficha-sheet .f2-tag-editor { margin:0 !important; border:0 !important; box-shadow:none !important; }
+  .ape-ficha-sheet .f2-tag-editor { position:static !important; width:100% !important; }
+  body:has(.ape-folha) #sara-fab { display:none !important; }
 }
+
+/* CRM mobile fiel ao protótipo: dois níveis de filtro, cartões curtos e a
+   temperatura editável sem abrir uma tela administrativa. */
+
+/* Ficha de atendimento mobile aprovada: resumo compacto, três abas, ações
+   secundárias em bottom sheet e WhatsApp sempre acessível no rodapé. */
+
+/* Atendimento móvel organizado nas mesmas quatro áreas do desktop. Estas
+   regras vivem fora do bloco anterior para manter a cascata explícita. */
+
+@media (max-width: 760px) {
+  .ape-ficha-nome .f2-tag-associar.mobile { width: 100%; margin-top: 12px; padding: 11px; border-radius: 12px; font-size: 12px; }
+  .ape-ficha-nome .f2-tag-editor.mobile { margin-top: 12px; text-align: left; }
+  .ape-ficha-nome .f2-tag-editor.mobile label { font-size: 11px; }
+  .ape-ficha-nome .f2-tag-editor.mobile select { font-size: 14px; }
+  .ape-ficha-nome .f2-tag-editor.mobile .f2-tag-paleta button { width: 31px !important; height: 31px !important; }
+}
+/* Telas operacionais restantes. Cada seletor novo casa com markup .ape-*;
+   as classes antigas permanecem apenas para o desenho do desktop. */
+.ape-offline { display: none; }
+.ape-sessao-expirada { min-height: 60vh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 28px; text-align: center; }
+.ape-sessao-expirada p { margin: 0; }
+/* =====================================================================
+   AGENDA NO CELULAR — desenho do print 05
+   Só celular. Carrega depois de apecerto-identidade.css e usa os tokens.
+   ===================================================================== */
+
+.ape-agenda { display: none; }
+/* Tarefas da Sara: ações reais do Funil 2.0 e decisões auditáveis. */
+/* Catálogo mobile: os mesmos produtos reais de /api/catalog, sem fallback. */
+
+/* Painel e área de gestão: visíveis somente na navegação de gestor/admin. */

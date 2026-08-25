@@ -37,19 +37,6 @@ async function listarLeadsSemCorte(db: SupabaseClient) {
   }
 }
 
-async function listarAnalisesSemCorte(db: SupabaseClient) {
-  const pagina = 1000;
-  const todos: Record<string, unknown>[] = [];
-  for (let inicio = 0; ; inicio += pagina) {
-    const { data, error } = await db.from("f2_sara_analise")
-      .select("id,funil_lead_id,status,momento_sugerido,acao_sugerida,resumo,confianca,temperatura_sugerida,temperatura_confianca,temperatura_evidencias,analisado_em")
-      .order("analisado_em", { ascending: false }).range(inicio, inicio + pagina - 1);
-    if (error) return { data: null, error };
-    todos.push(...((data ?? []) as Record<string, unknown>[]));
-    if ((data?.length ?? 0) < pagina) return { data: todos, error: null };
-  }
-}
-
 /* A instancia REAL de cada lead: a da ultima mensagem da conversa dele, em
    qualquer direcao. E a conversa viva -- se o cliente escreveu para o numero A,
    e por A que ele tem que ser respondido, nao importa qual numero o corretor
@@ -119,31 +106,26 @@ export async function GET(request: Request) {
     return Response.json({ eventos: eventos ?? [], notas: notas ?? [] });
   }
   const [
-    { data: leads, error: e1 }, { data: momentos, error: e2 }, { data: eventos, error: e3 },
-    { data: etapas, error: e4 }, { data: visitas, error: e5 }, { data: negociacoes, error: e6 },
-    { data: aquario, error: e7 }, { data: operacao, error: e8 }, { data: notas },
+    { data: leads, error: e1 }, { data: momentos, error: e2 },
+    { data: etapas, error: e4 }, { data: visitas, error: e5 },
+    { data: aquario, error: e7 }, { data: operacao, error: e8 },
     { data: saraModo }, { data: saraRunner }, { data: saraF2Config }, saraF2Analises,
-    analisesSara, { data: decisoesSara }, { data: tagCatalogo, error: e9 },
+    { data: tagCatalogo, error: e9 },
   ] = await Promise.all([
     listarLeadsSemCorte(db),
     db.from("f2_momento_config").select("*").order("etapa", { ascending: true }).order("ordem", { ascending: true }),
-    db.from("f2_evento").select("id,funil_lead_id,tipo,titulo,detalhe,payload,criado_em").order("criado_em", { ascending: false }).limit(100),
     db.from("f2_etapa_config").select("codigo,ordem,rotulo,ajuda,ativo").order("ordem", { ascending: true }),
     db.from("f2_visita").select("id,funil_lead_id,inicio_em,fim_em,imovel,status,observacao,empreendimento_id,unidade,com_gerente,gerente_id,feedback_em,feedback_por,atualizado_em").order("inicio_em", { ascending: true }),
-    db.from("f2_negociacao").select("id,funil_lead_id,titulo,etapa,valor,observacao,atualizado_em").order("atualizado_em", { ascending: false }),
     db.rpc("f2_listar_aquario"),
     db.from("f2_operacao_config").select("*").eq("id", true).maybeSingle(),
-    db.from("f2_nota").select("id,funil_lead_id,texto,origem,autor_nome,criado_em").order("criado_em", { ascending: false }).limit(500),
     db.rpc("ncrm_sara_modo_status"),
     db.rpc("ncrm_sara_runner_status"),
     db.from("f2_sara_config").select("enabled,lote,modo_execucao,canary_limite").eq("id", true).maybeSingle(),
     db.from("f2_sara_analise").select("id", { count: "exact", head: true }),
-    listarAnalisesSemCorte(db),
-    db.from("f2_sara_decisao").select("id,analise_id,funil_lead_id,decisao,motivo,decidido_em").order("decidido_em", { ascending: false }),
     db.from("lead_tag_catalogo").select("id,nome,cor").eq("ativo", true).order("nome"),
   ]);
-  if (e1 || e2 || e3 || e4 || e5 || e6 || e7 || e9 || analisesSara.error) {
-    const message = e1?.message || e2?.message || e3?.message || e4?.message || e5?.message || e6?.message || e7?.message || e9?.message || analisesSara.error?.message || "Falha ao carregar o Funil 2.0.";
+  if (e1 || e2 || e4 || e5 || e7 || e9) {
+    const message = e1?.message || e2?.message || e4?.message || e5?.message || e7?.message || e9?.message || "Falha ao carregar o Funil 2.0.";
     return Response.json({ error: message }, { status: message.toLowerCase().includes("permission") ? 403 : 502 });
   }
   const negociosIds = [...new Set((leads ?? []).map((lead) => Number(lead.origem_negocio_id)).filter(Number.isFinite))];
@@ -192,9 +174,9 @@ export async function GET(request: Request) {
     };
   });
   return Response.json({
-    leads: leadsComOrigem, momentos: momentos ?? [], eventos: eventos ?? [], etapas: etapas ?? [],
-    visitas: visitas ?? [], negociacoes: negociacoes ?? [], aquario: aquario ?? [], operacao: e8 ? null : operacao ?? null,
-    notas: notas ?? [], analisesSara: analisesSara.data ?? [], decisoesSara: decisoesSara ?? [], tagCatalogo: tagCatalogo ?? [],
+    leads: leadsComOrigem, momentos: momentos ?? [], eventos: [], etapas: etapas ?? [],
+    visitas: visitas ?? [], negociacoes: [], aquario: aquario ?? [], operacao: e8 ? null : operacao ?? null,
+    notas: [], tagCatalogo: tagCatalogo ?? [],
     sara: {
       modo: typeof saraModo === "object" && saraModo !== null && "modo" in saraModo ? String((saraModo as { modo?: unknown }).modo ?? "") || null : null,
       runnerAtivo: typeof saraRunner === "object" && saraRunner !== null && "enabled" in saraRunner ? (saraRunner as { enabled?: unknown }).enabled === true : false,
