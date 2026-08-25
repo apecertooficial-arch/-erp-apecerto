@@ -53,3 +53,11 @@ test("atalhos da Central entram em funções reais do runtime", () => {
   assert.match(builder, /\[data-addgrp\]/);
   assert.match(builder, /\.sb-item\[data-id=/);
 });
+
+test("a Home reconhece o formato real dos gatilhos salvos pelo runtime", () => {
+  assert.match(central, /block\.type === "trigger"/);
+  assert.match(central, /options\?\.triggers\?\.\[0\]\?\.name/);
+  for (const trigger of ["lead-distribuido-trigger", "lead-mensagem-recebida-trigger", "retomar-na-data-trigger", "checagem-diaria-trigger"]) {
+    assert.match(central, new RegExp(trigger));
+  }
+});

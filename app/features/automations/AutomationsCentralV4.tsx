@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { CentralOperationsPanel } from "./CentralOperationsPanel";
 import { AutomationBuilderWorkspace, type BuilderEntryAction } from "./AutomationsWorkspace";
 
-type Block = { type?: string };
+type Block = { type?: string; options?: { triggers?: Array<{ name?: string }> } };
 type MapData = { automation?: { blocks?: Block[] } };
 type Automation = {
   id: number;
@@ -38,19 +38,19 @@ type Filter = "all" | "active" | "inactive" | "draft" | "archived";
 
 const TRIGGERS: Record<string, string> = {
   "json-http-request-trigger": "Webhook (HTTP)",
-  "site-lead-created-trigger": "Novo lead do site",
-  "automation-start-trigger": "Iniciada por outra automação",
-  "manual-trigger": "Início manual",
+  "site-lead-created-trigger": "Lead criado no site",
+  "initiated-by-another-automation-trigger": "Iniciada por outra automação",
+  "manually-lead-trigger": "Início manual",
   "tag-added-trigger": "Tag adicionada",
-  "entered-stage-trigger": "Entrada em etapa",
-  "moved-stage-trigger": "Mudança de etapa",
-  "lead-distributed-trigger": "Lead distribuído",
-  "lead-message-received-trigger": "Mensagem recebida do lead",
-  "broker-message-sent-trigger": "Mensagem enviada pelo corretor",
-  "moment-deadline-trigger": "Prazo do momento",
-  "resume-date-trigger": "Data de retomada",
-  "entered-moment-trigger": "Entrada em momento",
-  "sara-daily-clock-trigger": "Relógio diário da Sara",
+  "lead-entered-stage-trigger": "Entrada em etapa",
+  "lead-moved-stage-trigger": "Mudança de etapa",
+  "lead-distribuido-trigger": "Lead distribuído",
+  "lead-mensagem-recebida-trigger": "Mensagem recebida do lead",
+  "lead-mensagem-enviada-trigger": "Mensagem enviada pelo corretor",
+  "momento-prazo-vencido-trigger": "Prazo do momento",
+  "retomar-na-data-trigger": "Data de retomada",
+  "lead-entrou-momento-trigger": "Entrada em momento",
+  "checagem-diaria-trigger": "Relógio diário da Sara",
 };
 
 const NAV: Array<{ id: Area; label: string; hint: string }> = [
@@ -63,8 +63,10 @@ const NAV: Array<{ id: Area; label: string; hint: string }> = [
 
 function mapInfo(map: MapData | null | undefined) {
   const blocks = map?.automation?.blocks ?? [];
-  const trigger = blocks.find((block) => String(block.type ?? "").endsWith("-trigger"));
-  const triggerKey = String(trigger?.type ?? "no-trigger");
+  const trigger = blocks.find((block) => block.type === "trigger" || String(block.type ?? "").endsWith("-trigger"));
+  const triggerKey = trigger?.type === "trigger"
+    ? String(trigger.options?.triggers?.[0]?.name ?? "no-trigger")
+    : String(trigger?.type ?? "no-trigger");
   return { blocks: blocks.length, triggerKey, triggerLabel: TRIGGERS[triggerKey] ?? "Gatilho não identificado" };
 }
 
