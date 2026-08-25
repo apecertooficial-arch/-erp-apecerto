@@ -10,8 +10,10 @@ type Automation = {
   id: number; nome: string; grupo: string | null; ativa: boolean; status: string | null;
   arquivada: boolean; atualizada_em: string | null; versao_publicada_id: number | null;
   mapa: AutomationMap | null; mapa_rascunho: AutomationMap | null; version: number | null;
+  produto_id: number | null;
   triggerKey: string; triggerLabel: string; blocks: number;
 };
+type Product = { id: number; nome: string; ativo: boolean };
 type Run = { id: number; automacao_id: number | null; automacao_nome: string | null; bloco_id: string | null; evento: string | null; status: string | null; detalhe: string | null; lead_nome: string | null; lead_telefone: string | null; criado_em: string | null };
 type Quarantine = { id: number; automacao: string; bloco_id: string; tentativas: number; erro: string; criado_em: string };
 type Review = { analise_id: number; funil_lead_id: string; nome: string; momento_codigo: string; resumo: string | null; confianca: number | null; analisado_em: string };
@@ -46,9 +48,10 @@ export function AutomationsCentralCloudV4({ accessToken }: { accessToken: string
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
   const headers = useMemo(() => ({ apikey: publishableKey ?? "", Authorization: `Bearer ${accessToken}` }), [accessToken, publishableKey]);
-  const [screen, setScreen] = useState<"central" | "builder">("central");
+  const [screen, setScreen] = useState<"central" | "builder">(() => typeof window !== "undefined" && (new URLSearchParams(window.location.search).has("automation") || new URLSearchParams(window.location.search).has("new")) ? "builder" : "central");
   const [area, setArea] = useState<Area>("automations");
   const [automations, setAutomations] = useState<Automation[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const [runs, setRuns] = useState<Run[]>([]);
   const [health, setHealth] = useState<Health | null>(null);
   const [loading, setLoading] = useState(true);
@@ -58,8 +61,8 @@ export function AutomationsCentralCloudV4({ accessToken }: { accessToken: string
   const [filter, setFilter] = useState<Filter>("all");
   const [triggerFilter, setTriggerFilter] = useState("all");
   const [view, setView] = useState<"list" | "grid">("list");
-  const [builderId, setBuilderId] = useState<number | null>(null);
-  const [builderAction, setBuilderAction] = useState<BuilderEntryAction>(null);
+  const [builderId, setBuilderId] = useState<number | null>(() => { if (typeof window === "undefined") return null; const value = Number(new URLSearchParams(window.location.search).get("automation")); return value > 0 ? value : null; });
+  const [builderAction, setBuilderAction] = useState<BuilderEntryAction>(() => typeof window !== "undefined" && new URLSearchParams(window.location.search).has("new") ? { type: "new" } : null);
   const [expandedRun, setExpandedRun] = useState<number | null>(null);
   const [exceptionTab, setExceptionTab] = useState<"quarantine" | "review">("quarantine");
   const [processing, setProcessing] = useState<number | null>(null);
@@ -81,29 +84,50 @@ export function AutomationsCentralCloudV4({ accessToken }: { accessToken: string
   const load = useCallback(async () => {
     setLoading(true); setError(null);
     try {
-      const [rows, versions, runRows, healthData] = await Promise.all([
-        request<Array<Omit<Automation, "version" | "triggerKey" | "triggerLabel" | "blocks">>>("/automacoes?select=id,nome,grupo,ativa,status,arquivada,atualizada_em,versao_publicada_id,mapa,mapa_rascunho&order=grupo,id"),
+      const [rows, versions, runRows, healthData, productRows] = await Promise.all([
+        request<Array<Omit<Automation, "version" | "triggerKey" | "triggerLabel" | "blocks">>>("/automacoes?select=id,nome,grupo,ativa,status,arquivada,atualizada_em,versao_publicada_id,produto_id,mapa,mapa_rascunho&order=grupo,id").catch(async () => {
+          const legacy = await request<Array<Omit<Automation, "version" | "triggerKey" | "triggerLabel" | "blocks" | "produto_id">>>("/automacoes?select=id,nome,grupo,ativa,status,arquivada,atualizada_em,versao_publicada_id,mapa,mapa_rascunho&order=grupo,id");
+          return legacy.map((item) => ({ ...item, produto_id: null }));
+        }),
         request<Array<{ id: number; versao: number }>>("/automacao_versoes?select=id,versao&order=versao.desc"),
         request<Run[]>("/motor_execucoes?select=id,automacao_id,automacao_nome,bloco_id,evento,status,detalhe,lead_nome,lead_telefone,criado_em&order=id.desc&limit=100").catch(() => []), getHealth().catch(() => null),
+        request<Product[]>("/produtos?select=id,nome,ativo&order=nome").catch(() => []),
       ]);
       const versionsById = new Map(versions.map((item) => [item.id, item.versao]));
       setAutomations(rows.map((row) => ({ ...row, arquivada: Boolean(row.arquivada), version: row.versao_publicada_id ? versionsById.get(row.versao_publicada_id) ?? null : null, ...mapInfo(row.mapa_rascunho ?? row.mapa) })));
-      setRuns(runRows); setHealth(healthData);
+      setRuns(runRows); setHealth(healthData); setProducts(productRows);
     } catch (failure) { setError(failure instanceof Error ? failure.message : "Não foi possível carregar a Central."); } finally { setLoading(false); }
   }, [getHealth, request]);
   useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    const syncFromUrl = () => {
+      const params = new URLSearchParams(window.location.search);
+      const value = Number(params.get("automation"));
+      if (value > 0) { setBuilderId(value); setBuilderAction(null); setScreen("builder"); }
+      else if (params.has("new")) { setBuilderId(null); setBuilderAction({ type: "new" }); setScreen("builder"); }
+      else { setBuilderId(null); setBuilderAction(null); setScreen("central"); }
+    };
+    window.addEventListener("popstate", syncFromUrl);
+    return () => window.removeEventListener("popstate", syncFromUrl);
+  }, []);
 
   const counts = useMemo(() => { const operational = automations.filter((item) => !item.arquivada); return { total: operational.length, active: operational.filter((item) => item.ativa).length, inactive: operational.filter((item) => !item.ativa).length, archived: automations.filter((item) => item.arquivada).length }; }, [automations]);
   const filtered = useMemo(() => automations.filter((item) => {
     if (filter === "archived" ? !item.arquivada : item.arquivada) return false; if (filter === "active" && !item.ativa) return false; if (filter === "inactive" && item.ativa) return false; if (triggerFilter !== "all" && item.triggerKey !== triggerFilter) return false;
-    const term = query.trim().toLocaleLowerCase("pt-BR"); return !term || `${item.nome} ${item.grupo ?? ""} ${item.triggerLabel}`.toLocaleLowerCase("pt-BR").includes(term);
-  }), [automations, filter, query, triggerFilter]);
+    const product = products.find((candidate) => candidate.id === item.produto_id)?.nome ?? "";
+    const term = query.trim().toLocaleLowerCase("pt-BR"); return !term || `${item.nome} ${item.grupo ?? ""} ${product} ${item.triggerLabel}`.toLocaleLowerCase("pt-BR").includes(term);
+  }), [automations, filter, products, query, triggerFilter]);
   const groups = useMemo(() => { const result = new Map<string, Automation[]>(); filtered.forEach((item) => { const group = item.grupo?.trim() || "Sem grupo"; result.set(group, [...(result.get(group) ?? []), item]); }); return [...result.entries()]; }, [filtered]);
   const triggerUsage = useMemo(() => new Map(TRIGGER_CATALOG.map(([key]) => [key, automations.filter((item) => !item.arquivada && item.triggerKey === key).length])), [automations]);
   const contracts = health?.contratos ?? []; const contractsOk = contracts.filter((item) => item.ok).length; const exceptionCount = number(health?.fila?.quarentena) + number(health?.sara?.revisao_humana);
-  const openBuilder = (id: number | null, action: BuilderEntryAction = null) => { setBuilderId(id); setBuilderAction(action); setScreen("builder"); };
+  const openBuilder = (id: number | null, action: BuilderEntryAction = null) => {
+    setBuilderId(id); setBuilderAction(action); setScreen("builder");
+    const url = new URL(window.location.href);
+    if (id) url.searchParams.set("automation", String(id)); else url.searchParams.set("new", action?.type ?? "new");
+    window.history.pushState({}, "", url);
+  };
   const patchAutomation = useCallback(async (id: number, body: Record<string, unknown>) => { await request<void>(`/automacoes?id=eq.${id}`, { method: "PATCH", headers: { "Content-Type": "application/json", Prefer: "return=minimal" }, body: JSON.stringify(body) }); await load(); }, [load, request]);
-  const duplicarAutomacao = async (item: Automation) => { try { const map = item.mapa_rascunho ?? item.mapa ?? { automation: { blocks: [] } }; await request("/automacoes", { method: "POST", headers: { "Content-Type": "application/json", Prefer: "return=representation" }, body: JSON.stringify({ nome: `${item.nome} (cópia)`, grupo: item.grupo, ativa: false, status: "rascunho", mapa: map, mapa_rascunho: map }) }); setNotice("Automação duplicada como rascunho."); await load(); } catch (failure) { setError(failure instanceof Error ? failure.message : "Não foi possível duplicar."); } };
+  const duplicarAutomacao = async (item: Automation) => { try { const map = item.mapa_rascunho ?? item.mapa ?? { automation: { blocks: [] } }; await request("/automacoes", { method: "POST", headers: { "Content-Type": "application/json", Prefer: "return=representation" }, body: JSON.stringify({ nome: `${item.nome} (cópia)`, grupo: item.grupo, produto_id: item.produto_id, ativa: false, status: "rascunho", mapa: map, mapa_rascunho: map }) }); setNotice("Automação duplicada como rascunho."); await load(); } catch (failure) { setError(failure instanceof Error ? failure.message : "Não foi possível duplicar."); } };
   const arquivarAutomacao = async (item: Automation) => { try { await patchAutomation(item.id, { arquivada: !item.arquivada }); setNotice(item.arquivada ? "Automação desarquivada." : "Automação arquivada."); } catch (failure) { setError(failure instanceof Error ? failure.message : "Não foi possível arquivar."); } };
   const moverAutomacao = async (item: Automation) => { const group = window.prompt("Mover para qual grupo?", item.grupo ?? ""); if (group == null) return; try { await patchAutomation(item.id, { grupo: group.trim() || null }); setNotice("Automação movida."); } catch (failure) { setError(failure instanceof Error ? failure.message : "Não foi possível mover."); } };
   const excluirAutomacao = async (item: Automation) => { if (!window.confirm(`Excluir “${item.nome}” definitivamente? Esta ação não pode ser desfeita.`)) return; try { await request<void>(`/automacoes?id=eq.${item.id}`, { method: "DELETE", headers: { Prefer: "return=minimal" } }); setNotice("Automação excluída."); await load(); } catch (failure) { setError(failure instanceof Error ? failure.message : "Não foi possível excluir."); } };
@@ -135,7 +159,7 @@ export function AutomationsCentralCloudV4({ accessToken }: { accessToken: string
   };
 
   if (screen === "builder") {
-    return <AutomationFlowBuilderV4 accessToken={accessToken} initialAutomationId={builderId} entryAction={builderAction} onBack={() => { setScreen("central"); setBuilderAction(null); void load(); }} />;
+    return <AutomationFlowBuilderV4 accessToken={accessToken} initialAutomationId={builderId} entryAction={builderAction} onBack={() => { const url = new URL(window.location.href); url.searchParams.delete("automation"); url.searchParams.delete("new"); window.history.pushState({}, "", url); setScreen("central"); setBuilderId(null); setBuilderAction(null); void load(); }} />;
   }
   const navCounts: Partial<Record<Area, number>> = { automations: counts.total, triggers: TRIGGER_CATALOG.length, runs: runs.length, exceptions: exceptionCount };
 
@@ -143,7 +167,7 @@ export function AutomationsCentralCloudV4({ accessToken }: { accessToken: string
     <aside className="apn-v4-nav" aria-label="Áreas da Central de Automações"><p>CENTRAL</p>{NAV.map((item) => <button key={item.id} type="button" className={area === item.id ? "is-active" : ""} onClick={() => setArea(item.id)}>{icon(item.id)}<span>{item.label}</span>{navCounts[item.id] != null && <em>{navCounts[item.id]}</em>}{item.id === "exceptions" && exceptionCount > 0 && <i />}</button>)}<hr /><button type="button" onClick={() => { window.location.href = "/abordagens"; }}>{icon("approaches")}<span>Abordagens</span></button><button type="button" onClick={() => void openOffice()}>{icon("office")}<span>IP do escritório</span></button></aside>
     <main className="apn-v4-content">{error && <div className="apn-v4-alert is-error" role="alert"><span>{error}</span><button type="button" onClick={() => setError(null)}>Fechar</button></div>}{notice && <div className="apn-v4-alert" role="status"><span>{notice}</span><button type="button" onClick={() => setNotice(null)}>Fechar</button></div>}
       {area === "automations" && <section className="apn-v4-page"><header className="apn-v4-page-head"><h1>Minhas automações</h1><div><button type="button" onClick={() => { window.location.href = "/abordagens"; }}>Abordagens</button><button type="button" onClick={() => void openOffice()}>IP do escritório</button><button type="button" className="apn-v4-primary" onClick={() => openBuilder(null, { type: "new" })}>{icon("plus")}Nova automação</button></div></header><div className="apn-v4-toolbar"><label>{icon("search")}<input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar" /></label><select aria-label="Qualquer gatilho" value={triggerFilter} onChange={(event) => setTriggerFilter(event.target.value)}><option value="all">Qualquer gatilho</option>{TRIGGER_CATALOG.map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select><div className="apn-v4-pills">{([['all', 'Todas', counts.total], ['active', 'Ativas', counts.active], ['inactive', 'Inativas', counts.inactive], ['archived', 'Arquivadas', counts.archived]] as Array<[Filter, string, number]>).map(([id, label, total]) => <button key={id} type="button" className={filter === id ? "is-active" : ""} onClick={() => setFilter(id)}>{label}<span>{total}</span></button>)}</div><button type="button" className="apn-v4-view" onClick={() => setView((current) => current === "list" ? "grid" : "list")}>{icon(view === "list" ? "grid" : "list")}{view === "list" ? "Ver em grade" : "Ver em lista"}</button><button type="button" className="apn-v4-icon-button" aria-label="Ver arquivadas" onClick={() => setFilter("archived")}>{icon("trash")}</button></div>
-        {loading ? <div className="apn-v4-loading">Carregando automações…</div> : !groups.length ? <div className="apn-v4-empty"><b>Nenhuma automação encontrada</b><p>Ajuste os filtros ou crie um novo rascunho.</p><button type="button" onClick={() => openBuilder(null, { type: "new" })}>Nova automação</button></div> : <div className={`apn-v4-groups is-${view}`}>{groups.map(([group, items]) => <section className="apn-v4-group" key={group}><header><b>{group}</b><span>{items.length} {items.length === 1 ? "automação" : "automações"}</span></header><div>{items.map((item) => <article className="apn-v4-item" key={item.id}><button type="button" className="apn-v4-item-main" onClick={() => openBuilder(item.id)}><span className="apn-v4-item-name"><i className={item.ativa ? "is-active" : ""} /><b>{item.nome}</b></span><span className="apn-v4-trigger">{icon("triggers")}<em>{item.triggerLabel}</em></span><span className={`apn-v4-state ${item.ativa ? "is-active" : ""}`}><i />{item.arquivada ? "Arquivada" : item.ativa ? "Ativa" : "Inativa"}</span><span className="apn-v4-version">{item.version ? `Publicada v${item.version}` : item.status === "rascunho" ? "Rascunho" : "Sem versão"}</span></button><details className="apn-v4-menu"><summary aria-label={`Ações de ${item.nome}`}>•••</summary><div><button type="button" onClick={() => openBuilder(item.id)}>Abrir construtor</button><button type="button" onClick={() => void duplicarAutomacao(item)}>Duplicar</button><button type="button" onClick={() => exportarAutomacao(item)}>Exportar JSON</button><button type="button" onClick={() => void moverAutomacao(item)}>Mover para grupo</button><button type="button" onClick={() => void arquivarAutomacao(item)}>{item.arquivada ? "Desarquivar" : "Arquivar"}</button><button type="button" className="is-danger" onClick={() => void excluirAutomacao(item)}>Excluir</button></div></details></article>)}</div></section>)}</div>}</section>}
+        {loading ? <div className="apn-v4-loading">Carregando automações…</div> : !groups.length ? <div className="apn-v4-empty"><b>Nenhuma automação encontrada</b><p>Ajuste os filtros ou crie um novo rascunho.</p><button type="button" onClick={() => openBuilder(null, { type: "new" })}>Nova automação</button></div> : <div className={`apn-v4-groups is-${view}`}>{groups.map(([group, items]) => <section className="apn-v4-group" key={group}><header><b>{group}</b><span>{items.length} {items.length === 1 ? "automação" : "automações"}</span></header><div>{items.map((item) => <article className="apn-v4-item" key={item.id}><button type="button" className="apn-v4-item-main" onClick={() => openBuilder(item.id)}><span className="apn-v4-item-name"><i className={item.ativa ? "is-active" : ""} /><span><b>{item.nome}</b><small>{products.find((product) => product.id === item.produto_id)?.nome ?? "Produto não vinculado"}</small></span></span><span className="apn-v4-trigger">{icon("triggers")}<em>{item.triggerLabel}</em></span><span className={`apn-v4-state ${item.ativa ? "is-active" : ""}`}><i />{item.arquivada ? "Arquivada" : item.ativa ? "Ativa" : "Inativa"}</span><span className="apn-v4-version">{item.version ? `Publicada v${item.version}` : item.status === "rascunho" ? "Rascunho" : "Sem versão"}</span></button><details className="apn-v4-menu"><summary aria-label={`Ações de ${item.nome}`}>•••</summary><div><button type="button" onClick={() => openBuilder(item.id)}>Abrir construtor</button><button type="button" onClick={() => void duplicarAutomacao(item)}>Duplicar</button><button type="button" onClick={() => exportarAutomacao(item)}>Exportar JSON</button><button type="button" onClick={() => void moverAutomacao(item)}>Mover para grupo</button><button type="button" onClick={() => void arquivarAutomacao(item)}>{item.arquivada ? "Restaurar da lixeira" : "Mover para a lixeira"}</button>{item.arquivada && <button type="button" className="is-danger" onClick={() => void excluirAutomacao(item)}>Excluir permanentemente</button>}</div></details></article>)}</div></section>)}</div>}</section>}
       {area === "overview" && <Overview counts={counts} health={health} contracts={contracts} contractsOk={contractsOk} exceptionCount={exceptionCount} onAutomations={(next) => { setFilter(next); setArea("automations"); }} onExceptions={(next) => { setExceptionTab(next); setArea("exceptions"); }} />}
       {area === "triggers" && <section className="apn-v4-page"><header className="apn-v4-page-head"><h1>Gatilhos</h1></header><div className="apn-v4-trigger-catalog">{[...new Set(TRIGGER_CATALOG.map((item) => item[3]))].map((category) => <section key={category}><h2>{category}</h2><div>{TRIGGER_CATALOG.filter((item) => item[3] === category).map(([key, label, description]) => { const usage = triggerUsage.get(key) ?? 0; return <button type="button" key={key} onClick={() => { setTriggerFilter(key); setFilter("all"); setArea("automations"); }}><span>{icon("triggers")}</span><div><b>{label}</b><small>{description}</small></div><em>{usage ? `${usage} ${usage === 1 ? "automação" : "automações"}` : "nenhuma ainda"}</em><i className={usage ? "is-used" : ""}>{usage ? "em uso" : "disponível"}</i></button>; })}</div></section>)}</div></section>}
       {area === "runs" && <RunsPage runs={runs} automations={automations} loading={loading} expanded={expandedRun} onExpanded={setExpandedRun} onOpen={(id) => openBuilder(id)} onReload={() => void load()} />}

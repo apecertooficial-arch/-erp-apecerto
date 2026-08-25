@@ -57,6 +57,46 @@ export type FlowIssue = {
   detail: string;
 };
 
+export type FlowDiff = {
+  kind: "added" | "removed" | "changed" | "connection";
+  title: string;
+  detail: string;
+  nodeId?: string;
+};
+
+export type SimulationStep = {
+  nodeId: string;
+  type: string;
+  port: string | null;
+  status: "simulated" | "stopped";
+  detail: string;
+};
+
+export type SimulationResult = {
+  safe: true;
+  steps: SimulationStep[];
+  output: Record<string, unknown>;
+  stoppedReason?: string;
+};
+
+export type FlowReferenceItem = {
+  id: number;
+  nome?: string;
+  ativo?: boolean;
+  ativa?: boolean;
+  produto_id?: number | null;
+  corretor_id?: number | null;
+  conectada?: boolean;
+  status_dapi?: string | null;
+};
+
+export type FlowReferences = {
+  produtos: FlowReferenceItem[];
+  abordagens: FlowReferenceItem[];
+  agentes: FlowReferenceItem[];
+  instancias: FlowReferenceItem[];
+};
+
 export const TRIGGER_CATALOG = [
   ["json-http-request-trigger", "Webhook HTTP", "Recebe um POST JSON por URL única", "Entrada e integração"],
   ["site-lead-created-trigger", "Lead criado no site", "Começa quando o formulário cria um lead", "Entrada e integração"],
@@ -138,7 +178,9 @@ export function hydrateFlow(map: AutomationMap | null | undefined, fallbackName:
   const storedBlocks = automation.blocks ?? [];
   const byId = new Map(storedBlocks.map((block) => [block.id, block]));
   const editorBlocks = editor.blocks ?? {};
-  const ids = Object.keys(editorBlocks).length ? Object.keys(editorBlocks) : storedBlocks.map((block) => block.id);
+  // O contrato executável é a fonte canônica. Metadados visuais nunca podem
+  // esconder um bloco real — isso evita truncar um rascunho no próximo save.
+  const ids = storedBlocks.length ? storedBlocks.map((block) => block.id) : Object.keys(editorBlocks);
   const nodes = ids.map((id, index): FlowNode => {
     const stored = byId.get(id);
     const visual = editorBlocks[id] ?? {};
@@ -163,8 +205,10 @@ export function hydrateFlow(map: AutomationMap | null | undefined, fallbackName:
     };
   });
   const nodeIds = new Set(nodes.map((node) => node.id));
-  const wires = (editor.wires?.length ? copy(editor.wires) : storedBlocks.flatMap(routeWires))
-    .filter((wire) => nodeIds.has(wire.from) && nodeIds.has(wire.to));
+  const wireByPort = new Map<string, AutomationWire>();
+  storedBlocks.flatMap(routeWires).forEach((wire) => wireByPort.set(`${wire.from}:${wire.port}`, wire));
+  (editor.wires ?? []).forEach((wire) => wireByPort.set(`${wire.from}:${wire.port}`, copy(wire)));
+  const wires = [...wireByPort.values()].filter((wire) => nodeIds.has(wire.from) && nodeIds.has(wire.to));
   return {
     uid: editor.uid ?? 100,
     name: automation.name ?? fallbackName,
@@ -182,9 +226,7 @@ function uuid() {
 }
 
 export function compileFlow(flow: FlowModel): AutomationMap {
-  flow.nodes.forEach((node) => {
-    if (!node.sourceBlockId) node.sourceBlockId = uuid();
-  });
+  const sourceIds = new Map(flow.nodes.map((node) => [node.id, node.sourceBlockId || uuid()]));
   const targetByPort = (nodeId: string, port: string) => flow.wires.find((wire) => wire.from === nodeId && wire.port === port)?.to ?? "";
   const blocks = flow.nodes.map((node): AutomationBlock => {
     const options = copy(node.options ?? {});
@@ -207,7 +249,7 @@ export function compileFlow(flow: FlowModel): AutomationMap {
       type: node.type,
       options,
       presentation: { x: Math.round(node.x), y: Math.round(node.y) },
-      sourceBlockId: node.sourceBlockId,
+      sourceBlockId: sourceIds.get(node.id),
     };
   });
   const editorBlocks: NonNullable<NonNullable<AutomationMap["editor"]>["blocks"]> = {};
@@ -220,7 +262,7 @@ export function compileFlow(flow: FlowModel): AutomationMap {
       y: Math.round(node.y),
       note: node.note ?? "",
       ramos: copy(node.ramos ?? []),
-      extra: { sourceBlockId: node.sourceBlockId },
+      extra: { sourceBlockId: sourceIds.get(node.id) },
     };
   });
   return {
@@ -284,7 +326,11 @@ export function nodePresentation(node: FlowNode) {
     const active = asArray(distribution.items).filter((item) => (item as Record<string, unknown>).on !== false).length;
     return { type: "Distribuir lead", title: node.sub || "Escolher e atribuir corretor", lines: [`${active} corretores · ${distribution.onlineOnly === false ? "todos configurados" : "somente online"}`, "Proteções ativas"] };
   }
-  if (node.type === "send-approach") return { type: "Enviar abordagem", title: node.sub || "Abordagem de entrada", lines: ["1  Vídeo", "2  Texto"] };
+  if (node.type === "send-approach") {
+    const selected = asArray(opts.abordagemIds).length;
+    const product = Number(opts.produtoId ?? 0);
+    return { type: "Enviar abordagem", title: node.sub || "Abordagem de entrada", lines: [`${selected} abordagem${selected === 1 ? "" : "s"} · round-robin`, product ? `Produto #${product}` : "Produto não definido"] };
+  }
   if (node.type === "action") {
     const actions = asArray(opts.actions) as Array<Record<string, unknown>>;
     const name = String(actions[0]?.name ?? "");
@@ -297,6 +343,155 @@ export function nodePresentation(node: FlowNode) {
   if (node.type === "time") return { type: "Espera", title: node.sub || "Aguardar", lines: [`${String(opts.valor ?? 5)} ${String(opts.unidade ?? "minutos")}`] };
   if (node.type === "ai-agent") return { type: "Agente de IA", title: node.sub || "Analisar atendimento", lines: [opts.agenteId ? "Agente definido" : "Escolha um agente"] };
   return { type: "Bloco", title: node.sub || node.type, lines: [] };
+}
+
+export function arrangeFlow(flow: FlowModel): FlowModel {
+  const outgoing = new Map<string, string[]>();
+  const incomingCount = new Map(flow.nodes.map((node) => [node.id, 0]));
+  flow.wires.forEach((wire) => {
+    outgoing.set(wire.from, [...(outgoing.get(wire.from) ?? []), wire.to]);
+    incomingCount.set(wire.to, (incomingCount.get(wire.to) ?? 0) + 1);
+  });
+  const roots = flow.nodes.filter((node) => node.type === "trigger" || (incomingCount.get(node.id) ?? 0) === 0);
+  const depth = new Map<string, number>();
+  const queue = roots.map((node) => ({ id: node.id, depth: 0 }));
+  let guard = Math.max(1, flow.nodes.length * Math.max(1, flow.wires.length + 1));
+  while (queue.length && guard-- > 0) {
+    const current = queue.shift()!;
+    const known = depth.get(current.id);
+    if (known != null && known >= current.depth) continue;
+    depth.set(current.id, current.depth);
+    (outgoing.get(current.id) ?? []).forEach((id) => queue.push({ id, depth: current.depth + 1 }));
+  }
+  flow.nodes.forEach((node) => { if (!depth.has(node.id)) depth.set(node.id, 0); });
+  const layers = new Map<number, string[]>();
+  flow.nodes.forEach((node) => {
+    const layer = depth.get(node.id) ?? 0;
+    layers.set(layer, [...(layers.get(layer) ?? []), node.id]);
+  });
+  const position = new Map<string, { x: number; y: number }>();
+  [...layers.entries()].sort(([a], [b]) => a - b).forEach(([layer, ids]) => {
+    ids.forEach((id, row) => position.set(id, { x: 120 + layer * 410, y: 160 + row * 310 }));
+  });
+  return { ...flow, nodes: flow.nodes.map((node) => ({ ...node, ...(position.get(node.id) ?? {}) })) };
+}
+
+function valueAtPath(payload: Record<string, unknown>, path: string) {
+  return path.split(".").filter(Boolean).reduce<unknown>((value, key) => value && typeof value === "object" ? (value as Record<string, unknown>)[key] : undefined, payload);
+}
+
+function evaluateCondition(node: FlowNode, payload: Record<string, unknown>) {
+  const conditions = asArray(node.options.conditions) as Array<Record<string, unknown>>;
+  return conditions.every((condition) => {
+    const name = String(condition.name ?? "").replace(/-condition$/, "");
+    const options = nestedOptions(condition);
+    const value = valueAtPath(payload, String(options.campo ?? ""));
+    if (name === "field-equals") return String(value ?? "") === String(options.valor ?? "");
+    if (name === "field-contains") return String(value ?? "").includes(String(options.valor ?? ""));
+    if (name === "field-has-value") return value !== undefined && value !== null && value !== "";
+    if (name === "field-between") return Number(value) >= Number(options.min ?? -Infinity) && Number(value) <= Number(options.max ?? Infinity);
+    if (name === "lead-exists") return Boolean(payload.lead);
+    if (name === "lead-name-exists") return Boolean(valueAtPath(payload, "lead.nome"));
+    if (name === "lead-phone-exists") return Boolean(valueAtPath(payload, "lead.telefone"));
+    if (name === "lead-email-exists") return Boolean(valueAtPath(payload, "lead.email"));
+    if (name === "lead-cpf-exists") return Boolean(valueAtPath(payload, "lead.cpf"));
+    return false;
+  });
+}
+
+export function simulateFlow(flow: FlowModel, input: Record<string, unknown>): SimulationResult {
+  const trigger = flow.nodes.find((node) => node.type === "trigger");
+  const byId = new Map(flow.nodes.map((node) => [node.id, node]));
+  const steps: SimulationStep[] = [];
+  const output = copy(input);
+  let current = trigger;
+  const visited = new Map<string, number>();
+  const maxSteps = Math.max(20, flow.nodes.length * 4);
+  while (current && steps.length < maxSteps) {
+    visited.set(current.id, (visited.get(current.id) ?? 0) + 1);
+    if ((visited.get(current.id) ?? 0) > 2) return { safe: true, steps, output, stoppedReason: `Ciclo interrompido com segurança em ${current.id}.` };
+    let port: string | null = "out";
+    let detail = "Contrato validado sem executar efeitos externos.";
+    if (current.type === "condition") {
+      const result = evaluateCondition(current, output);
+      port = result ? "true" : "false";
+      detail = result ? "Condição verdadeira." : "Condição falsa.";
+    } else if (current.type === "randomizer") {
+      port = current.ramos?.[0]?.id ?? null;
+      detail = "Primeiro ramo escolhido de forma determinística na simulação.";
+    } else if (current.type === "resposta") {
+      port = "respondeu";
+      detail = "Resposta sintética escolhida; nenhuma espera foi criada.";
+    }
+    steps.push({ nodeId: current.id, type: current.type, port, status: "simulated", detail });
+    if (!port) break;
+    const wire = flow.wires.find((candidate) => candidate.from === current!.id && candidate.port === port);
+    if (!wire) break;
+    current = byId.get(wire.to);
+  }
+  return { safe: true, steps, output, stoppedReason: steps.length >= maxSteps ? "Limite seguro de passos atingido." : undefined };
+}
+
+function stable(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(stable).join(",")}]`;
+  if (value && typeof value === "object") return `{${Object.entries(value as Record<string, unknown>).sort(([a], [b]) => a.localeCompare(b)).map(([key, item]) => `${JSON.stringify(key)}:${stable(item)}`).join(",")}}`;
+  return JSON.stringify(value);
+}
+
+export function diffFlows(current: FlowModel, published: FlowModel): FlowDiff[] {
+  const diffs: FlowDiff[] = [];
+  const currentNodes = new Map(current.nodes.map((node) => [node.id, node]));
+  const publishedNodes = new Map(published.nodes.map((node) => [node.id, node]));
+  currentNodes.forEach((node, id) => {
+    const previous = publishedNodes.get(id);
+    if (!previous) diffs.push({ kind: "added", nodeId: id, title: "Bloco adicionado", detail: nodePresentation(node).title });
+    else if (stable({ type: node.type, options: node.options, sub: node.sub, ramos: node.ramos }) !== stable({ type: previous.type, options: previous.options, sub: previous.sub, ramos: previous.ramos })) diffs.push({ kind: "changed", nodeId: id, title: "Configuração alterada", detail: nodePresentation(node).title });
+  });
+  publishedNodes.forEach((node, id) => { if (!currentNodes.has(id)) diffs.push({ kind: "removed", nodeId: id, title: "Bloco removido", detail: nodePresentation(node).title }); });
+  const wireKey = (wire: AutomationWire) => `${wire.from}:${wire.port}:${wire.to}`;
+  const now = new Set(current.wires.map(wireKey));
+  const before = new Set(published.wires.map(wireKey));
+  const added = [...now].filter((key) => !before.has(key)).length;
+  const removed = [...before].filter((key) => !now.has(key)).length;
+  if (added || removed) diffs.push({ kind: "connection", title: "Conexões alteradas", detail: `${added} adicionadas · ${removed} removidas` });
+  return diffs;
+}
+
+export function validateFlowReferences(flow: FlowModel, references: FlowReferences, automationProductId?: number | null, allowLegacyProductless = false): FlowIssue[] {
+  const issues: FlowIssue[] = [];
+  const products = new Map(references.produtos.map((item) => [item.id, item]));
+  const approaches = new Map(references.abordagens.map((item) => [item.id, item]));
+  const agents = new Map(references.agentes.map((item) => [item.id, item]));
+  const instances = new Map(references.instancias.map((item) => [item.id, item]));
+  if (automationProductId) {
+    const product = products.get(automationProductId);
+    if (!product || product.ativo === false) issues.push({ level: "block", title: "Produto da automação indisponível", detail: "Escolha um produto ativo antes de publicar." });
+  }
+  flow.nodes.forEach((node) => {
+    if (node.type === "send-approach") {
+      const productId = Number(node.options.produtoId ?? automationProductId ?? 0);
+      if (!productId && !allowLegacyProductless) issues.push({ level: "block", nodeId: node.id, title: "Produto da abordagem não definido", detail: "Escolha o produto que determina as abordagens disponíveis." });
+      const product = products.get(productId);
+      if (productId && (!product || product.ativo === false)) issues.push({ level: "block", nodeId: node.id, title: "Produto da abordagem indisponível", detail: "O produto selecionado não existe ou está inativo." });
+      asArray(node.options.abordagemIds).map(Number).forEach((id) => {
+        const approach = approaches.get(id);
+        if (!approach || approach.ativo === false) issues.push({ level: "block", nodeId: node.id, title: "Abordagem indisponível", detail: `A abordagem #${id} não existe ou está inativa.` });
+        else if (productId && approach.produto_id !== productId) issues.push({ level: "block", nodeId: node.id, title: "Abordagem fora do produto", detail: `A abordagem #${id} não está vinculada ao produto selecionado.` });
+        else if (!productId && allowLegacyProductless && approach.produto_id != null) issues.push({ level: "block", nodeId: node.id, title: "Abordagem legada incompatível", detail: `A abordagem #${id} já pertence a um produto; vincule a automação ao mesmo produto.` });
+      });
+      const routes = node.options.instanciaPorCorretor && typeof node.options.instanciaPorCorretor === "object" ? node.options.instanciaPorCorretor as Record<string, unknown> : {};
+      Object.entries(routes).forEach(([memberId, rawInstanceId]) => {
+        const instance = instances.get(Number(rawInstanceId));
+        if (!instance || instance.ativa === false || instance.conectada !== true || instance.status_dapi !== "connected") issues.push({ level: "block", nodeId: node.id, title: "Instância de envio indisponível", detail: `A rota do corretor #${memberId} precisa apontar para uma instância conectada.` });
+        else if (instance.corretor_id && instance.corretor_id !== Number(memberId)) issues.push({ level: "block", nodeId: node.id, title: "Instância pertence a outro corretor", detail: `Revise a rota de envio do corretor #${memberId}.` });
+      });
+    }
+    if (node.type === "ai-agent") {
+      const agent = agents.get(Number(node.options.agenteId ?? 0));
+      if (node.options.agenteId && (!agent || agent.ativo === false)) issues.push({ level: "block", nodeId: node.id, title: "Agente de IA indisponível", detail: "Escolha um agente ativo." });
+    }
+  });
+  return issues;
 }
 
 export function validateFlow(flow: FlowModel): FlowIssue[] {
