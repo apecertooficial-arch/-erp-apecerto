@@ -23,6 +23,7 @@ import { Funil2ConversationDrawer } from "./Funil2ConversationDrawer";
 import { getBrowserSupabaseClient } from "../../lib/supabase/browser";
 import {
   acaoVisivel,
+  erroAgendamentoVisita,
   esperandoPrimeiraChamada,
   rotuloTemperatura,
   situacaoPrazo,
@@ -235,7 +236,7 @@ function AgendarVisitaMobile({
   const [erro, setErro] = useState("");
   const [produtos, setProdutos] = useState<{ id: string; nome: string }[]>([]);
   const [gerentes, setGerentes] = useState<{ id: number; nome: string }[]>([]);
-  const [carregandoProdutos, setCarregandoProdutos] = useState(false);
+  const [carregandoProdutos, setCarregandoProdutos] = useState(abertoInicial);
   const [erroProdutos, setErroProdutos] = useState("");
 
   useEffect(() => {
@@ -252,9 +253,15 @@ function AgendarVisitaMobile({
   }, [aberto]);
 
   async function salvar() {
-    if (!quando) { setErro("Escolha a data e a hora."); return; }
-    if (!empreendimento && !unidade.trim()) { setErro("Escolha o produto da visita."); return; }
-    if (comGerente && !gerente) { setErro("Escolha qual gerente vai junto."); return; }
+    const erroFormulario = erroAgendamentoVisita({
+      leadId: lead.id,
+      inicio: quando,
+      empreendimentoId: empreendimento,
+      unidade,
+      comGerente,
+      gerenteId: gerente,
+    });
+    if (erroFormulario) { setErro(erroFormulario); return; }
     setSalvando(true); setErro("");
     try {
       const resposta = await fetch("/api/funil2", {
@@ -274,11 +281,11 @@ function AgendarVisitaMobile({
           status: "agendada",
         }),
       });
-      const dados = await resposta.json().catch(() => null) as { ok?: boolean; erro?: string } | null;
+      const dados = await resposta.json().catch(() => null) as { ok?: boolean; error?: string; erro?: string } | null;
       if (!resposta.ok || dados?.ok === false) {
-        setErro(dados?.erro === "gerente_ocupado"
+        setErro(dados?.error || (dados?.erro === "gerente_ocupado"
           ? "Esse gerente já tem visita nesse horário. Escolha outro horário ou outro gerente."
-          : "Não foi possível agendar. Confira os dados e tente de novo.");
+          : "Não foi possível agendar. Confira os dados e tente de novo."));
         return;
       }
       setAberto(false); setQuando(""); setEmpreendimento(""); setUnidade("");
@@ -299,7 +306,7 @@ function AgendarVisitaMobile({
     <h3>Agendar visita</h3>
 
     <label>Produto
-      <select value={empreendimento} disabled={carregandoProdutos || Boolean(erroProdutos)} onChange={(e) => setEmpreendimento(e.target.value)}>
+      <select value={empreendimento} disabled={carregandoProdutos || Boolean(erroProdutos)} onChange={(e) => { setEmpreendimento(e.target.value); setErro(""); }}>
         <option value="">{carregandoProdutos ? "Carregando produtos…" : erroProdutos ? "Produtos indisponíveis" : produtos.length === 0 ? "Nenhum produto disponível" : "— escolha o empreendimento —"}</option>
         {produtos.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
       </select>
@@ -307,29 +314,29 @@ function AgendarVisitaMobile({
     {erroProdutos && <p className="f2m-agendar-erro" role="alert">{erroProdutos}</p>}
 
     <label>Unidade <small>(opcional)</small>
-      <input type="text" value={unidade} placeholder="Ex.: apto 402" onChange={(e) => setUnidade(e.target.value)} />
+      <input type="text" value={unidade} placeholder="Ex.: apto 402" onChange={(e) => { setUnidade(e.target.value); setErro(""); }} />
     </label>
 
     <label>Data e hora
-      <input type="datetime-local" value={quando} onChange={(e) => setQuando(e.target.value)} />
+      <input type="datetime-local" value={quando} onChange={(e) => { setQuando(e.target.value); setErro(""); }} />
     </label>
 
     <label className="f2m-agendar-check">
-      <input type="checkbox" checked={comGerente} onChange={(e) => setComGerente(e.target.checked)} />
+      <input type="checkbox" checked={comGerente} onChange={(e) => { setComGerente(e.target.checked); setErro(""); }} />
       Quero o gerente presente
     </label>
 
     {comGerente && <label>Qual gerente
-      <select value={gerente} onChange={(e) => setGerente(e.target.value)}>
+      <select value={gerente} onChange={(e) => { setGerente(e.target.value); setErro(""); }}>
         <option value="">— escolha —</option>
         {gerentes.map((g) => <option key={g.id} value={g.id}>{g.nome}</option>)}
       </select>
     </label>}
 
-    {erro && <p className="f2m-agendar-erro">{erro}</p>}
+    {erro && <p className="f2m-agendar-erro" role="alert">{erro}</p>}
     <div className="f2m-agendar-acoes">
       <button type="button" className="f2m-agendar-nao" onClick={() => { setAberto(false); onFechar?.(); }} disabled={salvando}>Cancelar</button>
-      <button type="button" className="f2m-agendar-ok" onClick={() => void salvar()} disabled={salvando || !quando || (!empreendimento && unidade.trim().length < 2) || (comGerente && !gerente)}>
+      <button type="button" className="f2m-agendar-ok" onClick={() => void salvar()} disabled={salvando}>
         {salvando ? "Agendando…" : "Confirmar visita"}
       </button>
     </div>
@@ -643,6 +650,7 @@ export function Funil2Mobile({
   const [etapa, setEtapa] = useState("ativos");
   const [busca, setBusca] = useState("");
   const [selecionado, setSelecionado] = useState<string | null>(null);
+  const [sucesso, setSucesso] = useState<string | null>(null);
   const [pedidoUrl] = useState(lerLeadDaUrl);
   const [agora] = useState(() => Date.now());
 
@@ -727,6 +735,12 @@ export function Funil2Mobile({
       </div>
     </header>
 
+    {sucesso && <div className="ape-visita-sucesso" role="status">
+      <div><strong>Visita agendada com sucesso</strong><span>{sucesso}</span></div>
+      <button type="button" onClick={() => { setSucesso(null); onIr("/agenda"); }}>Abrir Agenda</button>
+      <button type="button" className="fechar" aria-label="Fechar confirmação" onClick={() => setSucesso(null)}>×</button>
+    </div>}
+
     {modo === "inicio" && <section className="ape-numeros" aria-label="Resumo do dia">
       <article><b>{contagens.agora}</b><span>aguardando</span></article>
       <article><b>{contagens.novos}</b><span>leads novos</span></article>
@@ -801,7 +815,7 @@ export function Funil2Mobile({
       tagCatalogo={dados?.tagCatalogo ?? []}
       onFechar={() => { setSelecionado("__fechado__"); limparLeadDaUrl(); }}
       accessToken={accessToken}
-      onSalvo={() => { void recarregar(); setSelecionado(null); }}
+      onSalvo={() => { setSucesso("Ela já está na Agenda, no horário escolhido."); void recarregar(); setSelecionado(null); }}
       onRecarregar={() => { void recarregar(); }}
     />}
   </main>;

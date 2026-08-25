@@ -15,6 +15,27 @@ export const ETAPAS_FUNIL2 = [
 export type EtapaFunil2 = string;
 export type TemperaturaLead = "frio" | "morno" | "quente" | "negociando";
 
+export type DadosAgendamentoVisita = {
+  leadId?: string | null;
+  inicio?: string | null;
+  empreendimentoId?: string | null;
+  unidade?: string | null;
+  comGerente?: boolean;
+  gerenteId?: string | number | null;
+};
+
+/* A mesma regra atende web e aplicativo. O botão continua clicável para que
+   o corretor receba uma orientação objetiva em vez de um bloqueio silencioso. */
+export function erroAgendamentoVisita(dados: DadosAgendamentoVisita): string | null {
+  if (!dados.leadId) return "Não foi possível identificar o cliente. Feche e abra a ficha novamente.";
+  if (!dados.inicio) return "Escolha a data e a hora da visita.";
+  if (!dados.empreendimentoId && (dados.unidade?.trim().length ?? 0) < 2) {
+    return "Escolha o produto da visita ou informe a unidade.";
+  }
+  if (dados.comGerente && !dados.gerenteId) return "Escolha qual gerente vai acompanhar a visita.";
+  return null;
+}
+
 export function rotuloTemperatura(temperatura: TemperaturaLead | null | undefined) {
   return temperatura ? ({ frio: "Frio", morno: "Morno", quente: "Quente", negociando: "Negociando" } as const)[temperatura] : null;
 }

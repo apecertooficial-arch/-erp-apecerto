@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useId, useState, type ReactNode } from "react";
-import { acaoVisivel, dataCurta, duracao, esperandoPrimeiraChamada, prazoDaAcao, rotuloCadencia, rotuloTemperatura, situacaoPrazo, tentativaAtual, venceHoje, type CandidatoAquarioFunil2, type EtapaConfigFunil2, type EventoFunil2, type LeadFunil2, type MomentoFunil2, type NegociacaoFunil2, type NotaFunil2, type OperacaoConfigFunil2, type SaraStatusFunil2, type TagCatalogoFunil2, type VisitaFunil2 } from "./modelo";
+import { acaoVisivel, dataCurta, duracao, erroAgendamentoVisita, esperandoPrimeiraChamada, prazoDaAcao, rotuloCadencia, rotuloTemperatura, situacaoPrazo, tentativaAtual, venceHoje, type CandidatoAquarioFunil2, type EtapaConfigFunil2, type EventoFunil2, type LeadFunil2, type MomentoFunil2, type NegociacaoFunil2, type NotaFunil2, type OperacaoConfigFunil2, type SaraStatusFunil2, type TagCatalogoFunil2, type VisitaFunil2 } from "./modelo";
 import { SalesProcessView } from "../sales/SalesProcessWorkspace";
 import { Funil2ConversationDrawer } from "./Funil2ConversationDrawer";
 import { AssociarTagLead } from "./AssociarTagLead";
@@ -89,6 +89,7 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
   const [abrirNoChat, setAbrirNoChat] = useState(false);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
+  const [sucesso, setSucesso] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [modal, setModal] = useState<"pescar" | "visita" | "negociacao" | "descartar" | null>(null);
   // Aviso nunca abre sozinho: no celular um painel automático encobria o CRM.
@@ -212,11 +213,13 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
   const momentosAtivos = momentos.filter((m) => m.ativo !== false);
 
   async function executar(action: string, body: Record<string, unknown>) {
-    setBusy(true); setErro(null);
+    setBusy(true); setErro(null); setSucesso(null);
     try {
       const resposta = await api(accessToken, { method: "POST", body: JSON.stringify({ action, ...body }) });
       if (!resposta.ok) { setErro(resposta.json.error ?? "Não foi possível concluir a ação."); return false; }
-      setModal(null); await carregar(); return true;
+      setModal(null);
+      if (action === "salvarVisita") setSucesso("Visita agendada com sucesso. Ela já está na Agenda.");
+      await carregar(); return true;
     } catch {
       setErro("Não foi possível falar com o servidor. Confira a conexão e tente novamente.");
       return false;
@@ -263,6 +266,7 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
       </nav>
 
       {erro && <div className="f2-erro">{erro}</div>}
+      {sucesso && <div className="f2-sucesso" role="status"><span>{sucesso}</span><button type="button" onClick={() => { setAba("visitas"); setSucesso(null); }}>Ver visitas</button><button type="button" className="fechar" aria-label="Fechar confirmação" onClick={() => setSucesso(null)}>×</button></div>}
       {carregando && <div className="f2-loading">Carregando o Funil 2.0…</div>}
 
       {!carregando && aba === "quadro" && <main className="f2-main">
@@ -724,6 +728,7 @@ function ModalVisita({ leads, leadFoco, busy, erroExterno, onFechar, onSalvar }:
   const [equipe, setEquipe] = useState<{ id: number; nome: string }[]>([]);
   const [carregandoProdutos, setCarregandoProdutos] = useState(true);
   const [erroProdutos, setErroProdutos] = useState("");
+  const [erroFormulario, setErroFormulario] = useState("");
 
   useEffect(() => {
     const sb = getBrowserSupabaseClient();
@@ -737,10 +742,17 @@ function ModalVisita({ leads, leadFoco, busy, erroExterno, onFechar, onSalvar }:
       .then(({ data }) => setEquipe((data ?? []) as { id: number; nome: string }[]));
   }, []);
 
-  const podeSalvar = !busy && leadId && inicio && (empreendimento || unidade.trim().length >= 2) && (!comGerente || gerente);
-
   async function salvar() {
-    if (!podeSalvar) return;
+    const mensagem = erroAgendamentoVisita({
+      leadId,
+      inicio,
+      empreendimentoId: empreendimento,
+      unidade,
+      comGerente,
+      gerenteId: gerente,
+    });
+    if (mensagem) { setErroFormulario(mensagem); return; }
+    setErroFormulario("");
     await onSalvar({
       leadId, inicioEm: inicio,
       imovel: unidade.trim() || "",
@@ -751,33 +763,34 @@ function ModalVisita({ leads, leadFoco, busy, erroExterno, onFechar, onSalvar }:
     });
   }
 
-  return <Modal titulo="Agendar visita" texto="A visita aparecerá no Pipe sem duplicar o lead." onFechar={onFechar}>
-    {leadFoco ? <div className="f2-lead-escolhido fixo"><span>CLIENTE DESTA VISITA</span><strong>{leadFoco.nome}</strong><small>{leadFoco.telefone || "Telefone não informado"}</small></div> : <SeletorLead leads={leads} value={leadId} onChange={setLeadId} />}
+  return <Modal titulo="Agendar visita" texto="A visita aparecerá na Agenda sem duplicar o lead." onFechar={onFechar}>
+    {leadFoco ? <div className="f2-lead-escolhido fixo"><span>CLIENTE DESTA VISITA</span><strong>{leadFoco.nome}</strong><small>{leadFoco.telefone || "Telefone não informado"}</small></div> : <SeletorLead leads={leads} value={leadId} onChange={(id) => { setLeadId(id); setErroFormulario(""); }} />}
     <label>Produto
-      <select value={empreendimento} disabled={carregandoProdutos || Boolean(erroProdutos)} onChange={(e) => setEmpreendimento(e.target.value)}>
+      <select value={empreendimento} disabled={carregandoProdutos || Boolean(erroProdutos)} onChange={(e) => { setEmpreendimento(e.target.value); setErroFormulario(""); }}>
         <option value="">{carregandoProdutos ? "Carregando produtos…" : erroProdutos ? "Produtos indisponíveis" : produtos.length === 0 ? "Nenhum produto disponível" : "— escolha o empreendimento —"}</option>
         {produtos.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
       </select>
     </label>
     {erroProdutos && <p className="f2-modal-erro" role="alert">{erroProdutos}</p>}
     <label>Unidade <small>(opcional)</small>
-      <input value={unidade} onChange={(e) => setUnidade(e.target.value)} placeholder="Ex.: apto 402" />
+      <input value={unidade} onChange={(e) => { setUnidade(e.target.value); setErroFormulario(""); }} placeholder="Ex.: apto 402" />
     </label>
     <label>Data e hora
-      <input type="datetime-local" value={inicio} onChange={(e) => setInicio(e.target.value)} />
+      <input type="datetime-local" value={inicio} onChange={(e) => { setInicio(e.target.value); setErroFormulario(""); }} />
     </label>
     <label className="f2-modal-check">
-      <input type="checkbox" checked={comGerente} onChange={(e) => setComGerente(e.target.checked)} />
+      <input type="checkbox" checked={comGerente} onChange={(e) => { setComGerente(e.target.checked); setErroFormulario(""); }} />
       Quero o gerente presente
     </label>
     {comGerente && <label>Qual gerente
-      <select value={gerente} onChange={(e) => setGerente(e.target.value)}>
+      <select value={gerente} onChange={(e) => { setGerente(e.target.value); setErroFormulario(""); }}>
         <option value="">— escolha —</option>
         {equipe.map((g) => <option key={g.id} value={g.id}>{g.nome}</option>)}
       </select>
     </label>}
+    {erroFormulario && <p className="f2-modal-erro" role="alert">{erroFormulario}</p>}
     {erroExterno && <p className="f2-modal-erro" role="alert">{erroExterno}</p>}
-    <button type="button" className="f2-modal-primary" disabled={!podeSalvar} onClick={() => void salvar()}>
+    <button type="button" className="f2-modal-primary" disabled={busy} onClick={() => void salvar()}>
       {busy ? "Agendando…" : "Confirmar visita"}
     </button>
   </Modal>;

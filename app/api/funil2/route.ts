@@ -335,6 +335,7 @@ export async function POST(request: Request) {
 const RECUSAS: Record<string, string> = {
   sem_permissao: "Você não tem permissão para concluir esta ação.",
   dados_invalidos: "Revise os campos obrigatórios, o prazo e a posição informada.",
+  gerente_ocupado: "Esse gerente já tem uma visita nesse horário. Escolha outro horário ou outro gerente.",
   ordem_em_uso: "Essa posição está ocupada e não pôde ser reorganizada. Recarregue e tente novamente.",
   etapa_em_uso: "Esta etapa possui leads ou momentos ativos. Edite-a ou mova os itens antes de desativar.",
   momento_em_uso: "Este momento está associado a leads. Edite-o ou reclassifique os leads antes de desativar.",

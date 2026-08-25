@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
+import { erroAgendamentoVisita } from "../app/features/funil-2/modelo.ts";
 
 const agendaApi = await readFile(new URL("../app/api/agenda/route.ts", import.meta.url), "utf8");
 const desktop = await readFile(new URL("../app/features/calendar/CalendarWorkspace.tsx", import.meta.url), "utf8");
@@ -58,4 +59,35 @@ test("todas as portas do Funil 2 tratam datetime-local como horário de São Pau
   assert.match(funilDesktop, /inicioEm: inicio/);
   assert.match(funilDesktop, /dataHoraLocalSaoPaulo/);
   assert.match(funilDesktop, /timeZone: FUSO_OPERACAO/);
+});
+
+test("web e app explicam cada dado ausente antes de tentar agendar", () => {
+  assert.equal(erroAgendamentoVisita({}), "Não foi possível identificar o cliente. Feche e abra a ficha novamente.");
+  assert.equal(erroAgendamentoVisita({ leadId: "lead-1" }), "Escolha a data e a hora da visita.");
+  assert.equal(
+    erroAgendamentoVisita({ leadId: "lead-1", inicio: "2026-08-25T09:00" }),
+    "Escolha o produto da visita ou informe a unidade.",
+  );
+  assert.equal(
+    erroAgendamentoVisita({ leadId: "lead-1", inicio: "2026-08-25T09:00", empreendimentoId: "produto-1", comGerente: true }),
+    "Escolha qual gerente vai acompanhar a visita.",
+  );
+  assert.equal(
+    erroAgendamentoVisita({ leadId: "lead-1", inicio: "2026-08-25T09:00", empreendimentoId: "produto-1" }),
+    null,
+  );
+});
+
+test("confirmar visita nunca fica silenciosamente bloqueado na web ou no app", () => {
+  assert.match(funilDesktop, /className="f2-modal-primary" disabled=\{busy\}/);
+  assert.doesNotMatch(funilDesktop, /disabled=\{!podeSalvar\}/);
+  assert.match(funilMobile, /disabled=\{salvando\}>\s*\{salvando \? "Agendando…"/);
+  assert.doesNotMatch(funilMobile, /disabled=\{salvando \|\| !quando/);
+});
+
+test("app mostra a mensagem humana da API e os dois formatos confirmam o destino", () => {
+  assert.match(funilMobile, /dados\?\.error/);
+  assert.match(funilMobile, /Visita agendada com sucesso[\s\S]*Abrir Agenda/);
+  assert.match(funilDesktop, /Visita agendada com sucesso[\s\S]*Ver visitas/);
+  assert.match(funilApi, /gerente_ocupado:\s*"Esse gerente já tem uma visita nesse horário/);
 });

@@ -165,6 +165,10 @@
 .f2-modal-destino b { font-size:12px; }
 .f2-modal-destino small { color:#6E6760; font-size:9px; }
 .f2-modal-erro { margin:7px 0; padding:9px 11px; border-radius:10px; background:#FFF1F0; color:#A9322B; font-size:10px; font-weight:700; }
+.f2-sucesso { display:flex; align-items:center; gap:10px; margin:12px 24px 0; padding:11px 14px; border:1px solid #B8DFC8; border-radius:12px; background:#ECF9F1; color:#116B3D; font-size:11px; font-weight:700; }
+.f2-sucesso span { flex:1; }
+.f2-sucesso button { min-height:32px; padding:0 12px; border:0; border-radius:999px; background:#1E9E5A; color:#fff; font:inherit; cursor:pointer; }
+.f2-sucesso button.fechar { min-width:32px; padding:0; background:transparent; color:#116B3D; font-size:18px; }
 
 @media(max-width:700px){
   .f2-detalhe-abas { padding-inline:12px; }

@@ -12,6 +12,12 @@
 .ape-app { display: none; }
 
 @media (max-width: 900px) {
+  .ape-visita-sucesso { position:relative; display:grid; grid-template-columns:1fr auto; gap:10px; margin:10px 16px; padding:13px 42px 13px 14px; border:1px solid #B8DFC8; border-radius:16px; background:#ECF9F1; color:#116B3D; }
+  .ape-visita-sucesso div { display:flex; flex-direction:column; gap:2px; }
+  .ape-visita-sucesso strong { font-size:13px; }
+  .ape-visita-sucesso span { font-size:11px; line-height:1.35; }
+  .ape-visita-sucesso button { min-height:36px; padding:0 12px; border:0; border-radius:999px; background:#1E9E5A; color:#fff; font-family:inherit; font-size:11px; font-weight:750; }
+  .ape-visita-sucesso button.fechar { position:absolute; top:7px; right:7px; min-width:28px; min-height:28px; padding:0; background:transparent; color:#116B3D; font-size:18px; }
   .workspace { background: #FAF8F6; }
 
   .ape-app {
