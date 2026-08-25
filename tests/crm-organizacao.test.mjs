@@ -115,7 +115,7 @@ test("desktop intermediário preserva nome, contexto e proporção operacional",
 
 test("linhas e cartões têm densidade de ferramenta operacional, não de blocos promocionais", () => {
   assert.match(crmCss, /\.f2-card\s*\{[^}]*border:1px solid[^}]*box-shadow:none/);
-  assert.match(crmCss, /\.f2-card-ident-meta\s*\{[^}]*flex-direction:row/);
+  assert.match(crmCss, /\.f2-card-ident \.f2-card-ident-meta\s*\{[^}]*flex-direction:row/);
   assert.match(crmCss, /\.f2-board \.f2-card-trio-compacto>\.acao\s*\{[^}]*border-top:1px solid/);
   assert.match(crmCss, /\.f2-dia-item\s*\{[^}]*min-height:50px[^}]*margin:0 !important[^}]*border-radius:0 !important[^}]*box-shadow:none !important/);
   assert.match(crmCss, /\.f2-dia-acao\s*\{[^}]*display:flex[^}]*align-items:center/);
