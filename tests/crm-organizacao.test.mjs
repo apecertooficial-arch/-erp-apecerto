@@ -8,6 +8,7 @@ const mobile = ler("../app/features/funil-2/Funil2Mobile.tsx");
 const tags = ler("../app/features/funil-2/AssociarTagLead.tsx");
 const api = ler("../app/api/funil2/route.ts");
 const esteira = ler("../app/features/sales/SalesProcessWorkspace.tsx");
+const crmCss = ler("../app/styles/redesign-apecerto-crm.css");
 const temperaturaMigration = ler("../supabase/migrations/20260825150000_funil_2_temperatura_manual_auditavel.sql");
 
 test("desktop replica a ficha aprovada em três áreas e abre a conversa sob demanda", () => {
@@ -64,6 +65,7 @@ test("visita e negociação abertas pela ficha não pedem o cliente de novo", ()
 test("Meu Dia mostra somente visitas ativas e com ficha existente", () => {
   assert.match(desktop, /v\.status === "agendada" \|\| v\.status === "confirmada"/);
   assert.match(desktop, /leads\.some\(\(leadAtual\) => leadAtual\.id === v\.funil_lead_id\)/);
+  assert.match(crmCss, /\.f2-visita-contexto > span \{[^}]*flex-direction:column/);
 });
 
 test("tags já associadas saem do seletor e o formulário começa sem escolha implícita", () => {
