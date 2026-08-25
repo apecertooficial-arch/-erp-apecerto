@@ -102,6 +102,16 @@ test("listas e cartões reduzem ações concorrentes", () => {
   assert.match(desktop, /f2-avisos-resumo-excecoes/);
 });
 
+test("desktop intermediário preserva nome, contexto e proporção operacional", () => {
+  assert.match(crmCss, /\.f2-card-ident\s*\{[^}]*grid-template-columns:32px minmax\(0,1fr\)/);
+  assert.match(crmCss, /\.f2-card-ident>em\s*\{[^}]*grid-column:2/);
+  assert.match(crmCss, /\.f2-board \.f2-card-trio>\.etapa\s*\{[^}]*display:none/);
+  assert.match(crmCss, /body \.f2-lista\s*\{[^}]*padding:10px/);
+  assert.match(crmCss, /@media\(max-width:1200px\)[\s\S]*\.f2-resumo\s*\{[^}]*repeat\(3,minmax\(0,1fr\)\)/);
+  assert.match(crmCss, /\.f2-resumo>details\s*\{[^}]*grid-column:1\/-1/);
+  assert.match(crmCss, /\.f2-nav::-webkit-scrollbar\s*\{[^}]*display:none/);
+});
+
 test("Meu Dia e Todos os Leads usam temperatura e próxima ação como informação decisória", () => {
   assert.match(desktop, /f2-dia-colunas[\s\S]*Temperatura[\s\S]*Próxima ação[\s\S]*Tempo/);
   assert.match(desktop, /f2-tabela-cab[\s\S]*Temperatura[\s\S]*Próxima ação/);
