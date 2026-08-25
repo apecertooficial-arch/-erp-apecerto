@@ -25,15 +25,12 @@ import "./styles/tela-explicador.css";
 /* Botao de tour virtual na galeria de Produtos. */
 import "./styles/tela-produtos-tour.css";
 import "./styles/tela-suporte-financiamento.css";
-/* CRM/Funil 2: folha canônica única. Ela contém estrutura, identidade e
-   responsividade do módulo, sem uma segunda camada de correção posterior. */
-import "./styles/funil-2.css";
 /* DESENHO VIGENTE DO ERP (desktop) — padrão apêcerto.
 
    UMA camada de desenho, dividida por domínio do mesmo jeito que o resto deste
    arquivo já divide (venda-ficha, extrato-import, fluxo-caixa-acoes…):
 
-     1. redesign-apecerto.css ................. shell, Início e CRM
+     1. redesign-apecerto.css ................. shell e Início
      2. ...-produtos-financeiro.css ........... Produtos, ficha da venda, Financeiro
      3. ...-financeiro-abas.css ............... Marketing, Indicações, Taxas, Metas, Meus ganhos
      4. ...-inicio.css ........................ Início: topo, seções, ranking, estados
@@ -75,6 +72,10 @@ import "./styles/central-comando.css";
 import "./styles/central-comando-prototype.css";
 import "./styles/redesign-apecerto-disparos.css";
 import "./styles/redesign-apecerto-calendario.css";
+/* CRM/Funil 2: folha canônica única e final. Estrutura, identidade e
+   responsividade do módulo vivem somente nela; nenhuma folha posterior toca
+   nas classes f2-* do desktop. */
+import "./styles/funil-2.css";
 /* INTERFACE DO APLICATIVO NO CELULAR — versão aprovada.
    Não é correção da folha antiga: o markup do Meu Dia e do CRM usa classes
    próprias (.ape-*), então esta folha é a única que os desenha. As regras

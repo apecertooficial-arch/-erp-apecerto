@@ -9,6 +9,7 @@ const tags = ler("../app/features/funil-2/AssociarTagLead.tsx");
 const api = ler("../app/api/funil2/route.ts");
 const esteira = ler("../app/features/sales/SalesProcessWorkspace.tsx");
 const crmCss = ler("../app/styles/funil-2.css");
+const identidadeGeral = ler("../app/styles/redesign-apecerto.css");
 const layout = ler("../app/layout.tsx");
 const integridadeMigration = ler("../supabase/migrations/20260825201000_funil_2_integridade_seguranca_performance.sql");
 const modelo = ler("../app/features/funil-2/modelo.ts");
@@ -117,7 +118,7 @@ test("desktop intermediário preserva nome, contexto e proporção operacional",
 });
 
 test("linhas e cartões têm densidade de ferramenta operacional, não de blocos promocionais", () => {
-  assert.match(crmCss, /\.f2-card\s*\{[^}]*border:1px solid/);
+  assert.match(crmCss, /\.f2-card\s*\{[^}]*border:0[^}]*box-shadow:0 2px 6px/);
   assert.match(crmCss, /\.f2-card-ident \.f2-card-ident-meta\s*\{[^}]*flex-direction:row/);
   assert.match(crmCss, /\.f2-board \.f2-card-trio-compacto>\.acao\s*\{[^}]*border-top:1px solid/);
   assert.match(crmCss, /\.f2-dia-acao\s*\{[^}]*display:flex[^}]*align-items:center/);
@@ -127,6 +128,8 @@ test("linhas e cartões têm densidade de ferramenta operacional, não de blocos
 test("CRM usa uma única folha canônica, sem cascata corretiva ou tipografia ilegível", () => {
   assert.match(layout, /import "\.\/styles\/funil-2\.css"/);
   assert.doesNotMatch(layout, /redesign-apecerto-crm\.css/);
+  assert.doesNotMatch(identidadeGeral, /\.f2-/);
+  assert.ok(layout.indexOf('import "./styles/funil-2.css"') > layout.indexOf('import "./styles/redesign-apecerto-calendario.css"'));
   assert.doesNotMatch(crmCss, /!important/);
   const fontes = [...crmCss.matchAll(/font-size:\s*(\d+(?:\.\d+)?)px/g)].map(([, valor]) => Number(valor));
   assert.ok(fontes.length > 0);
