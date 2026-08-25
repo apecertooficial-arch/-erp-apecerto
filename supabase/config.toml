@@ -415,6 +415,10 @@ enabled = true
 
 # Funil 2.0 — classificador da carteira. Usa o mesmo segredo forte do runner
 # observer e jamais aceita JWT de usuário como substituto do x-cron-secret.
+[functions.ia-router]
+enabled = true
+verify_jwt = false
+
 [functions.f2-sara-reclassificar]
 enabled = true
 verify_jwt = false

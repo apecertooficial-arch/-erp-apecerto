@@ -183,7 +183,7 @@ async function processar(db: any, c: Candidato, catalogo: Catalogo[], agenteSlug
   try {
   const input = prompt(c,catalogo,mensagens);
   const response = await fetch(`${SUPABASE_URL}/functions/v1/ia-router`, {
-    method:"POST",headers:{Authorization:`Bearer ${SERVICE_ROLE_KEY}`,"Content-Type":"application/json"},
+    method:"POST",headers:{apikey:SERVICE_ROLE_KEY,"Content-Type":"application/json"},
     body:JSON.stringify({agente_slug:agenteSlug,input,disable_tools:true,
       override_prompt:"Classifique estritamente pelo catálogo fechado do input. Retorne somente JSON."}),
     signal:AbortSignal.timeout(25000),

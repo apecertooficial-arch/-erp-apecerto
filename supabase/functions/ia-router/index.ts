@@ -19,6 +19,13 @@ const usaMaxCompletion = (m: string) => !m.startsWith("gpt-4");
 
 const cors = { "Access-Control-Allow-Origin":"*", "Access-Control-Allow-Headers":"authorization, x-client-info, apikey, content-type", "Access-Control-Allow-Methods":"POST, OPTIONS" };
 
+function segredoIgual(recebido: string | null, esperado: string) {
+  if (!recebido || !esperado || recebido.length !== esperado.length) return false;
+  let diff = 0;
+  for (let i = 0; i < esperado.length; i++) diff |= recebido.charCodeAt(i) ^ esperado.charCodeAt(i);
+  return diff === 0;
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   const json = (b: unknown, s=200) => new Response(JSON.stringify(b), { status:s, headers:{...cors, "Content-Type":"application/json"} });
@@ -27,26 +34,37 @@ Deno.serve(async (req: Request) => {
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
     const supabase = createClient(supabaseUrl, serviceRoleKey, { auth:{persistSession:false} });
+    const chamadaInterna = segredoIgual(req.headers.get("apikey"), serviceRoleKey);
     const authHeader = req.headers.get("authorization") || "";
     const token = authHeader.replace(/^Bearer\s+/i, "").trim();
-    const { data: authData, error: authError } = await supabase.auth.getUser(token);
-    if (authError || !authData.user) return json({ok:false,reason:"sessao_invalida"},401);
-    const usuarioId = authData.user.id;
-    const userSupabase = createClient(supabaseUrl, anonKey, {
-      auth:{persistSession:false}, global:{headers:{Authorization:`Bearer ${token}`}},
-    });
-    const [{ data: cor }, { data: usuario }] = await Promise.all([
-      supabase.from("corretores").select("id").eq("usuario_id", usuarioId).maybeSingle(),
-      supabase.from("usuarios").select("role,ativo").eq("id", usuarioId).maybeSingle(),
-    ]);
-    const corretorId: number | null = cor?.id ?? null;
-    const perfil = String(usuario?.role ?? (corretorId ? "corretor" : "")).toLowerCase();
+    let usuarioId: string | null = null;
+    let corretorId: number | null = null;
+    let perfil = "servico_interno";
+    let usuarioAtivo = true;
+    let userSupabase = supabase;
+    if (!chamadaInterna) {
+      const { data: authData, error: authError } = await supabase.auth.getUser(token);
+      if (authError || !authData.user) return json({ok:false,reason:"sessao_invalida"},401);
+      usuarioId = authData.user.id;
+      userSupabase = createClient(supabaseUrl, anonKey, {
+        auth:{persistSession:false}, global:{headers:{Authorization:`Bearer ${token}`}},
+      });
+      const [{ data: cor }, { data: usuario }] = await Promise.all([
+        supabase.from("corretores").select("id").eq("usuario_id", usuarioId).maybeSingle(),
+        supabase.from("usuarios").select("role,ativo").eq("id", usuarioId).maybeSingle(),
+      ]);
+      corretorId = cor?.id ?? null;
+      perfil = String(usuario?.role ?? (corretorId ? "corretor" : "")).toLowerCase();
+      usuarioAtivo = usuario?.ativo !== false;
+    }
     const perfilFerramenta = perfil === "gerente" ? "gestor" : perfil;
-    const podeVisaoGeral = perfil === "admin" || perfil === "gerente";
-    if (usuario?.ativo === false || (!corretorId && !podeVisaoGeral))
+    const podeVisaoGeral = chamadaInterna || perfil === "admin" || perfil === "gerente";
+    if (!usuarioAtivo || (!corretorId && !podeVisaoGeral))
       return json({ok:false,reason:"perfil_operacional_nao_encontrado"},403);
     const b = await req.json();
     const action = b.action || "run";
+    if (chamadaInterna && (action!=="run" || b.disable_tools!==true || b.agente_slug!=="sara"))
+      return json({ok:false,reason:"chamada_interna_fora_do_contrato"},403);
     const slug = b.agente_slug || null, nome = b.agente_nome || null;
     let aq = supabase.from("agentes_ia").select("*");
     if (slug) aq = aq.eq("slug", slug); else if (nome) aq = aq.eq("nome", nome); else return json({ok:false,reason:"faltando agente"},400);
@@ -90,7 +108,9 @@ Deno.serve(async (req: Request) => {
       for (const f of (fontes||[])) { conhecimento += `\n\n### FONTE: ${f.titulo} (v${f.versao||"?"})\n${f.conteudo||""}`; fontesUsadas.push({id:f.id,titulo:f.titulo,versao:f.versao}); }
     }
 
-    const { data: perms } = await supabase.from("agente_ferramenta_permissoes").select("ferramenta_id,habilitado,perfis_autorizados").eq("agente_id", agente.id).eq("habilitado", true);
+    const { data: perms } = chamadaInterna
+      ? { data: [] }
+      : await supabase.from("agente_ferramenta_permissoes").select("ferramenta_id,habilitado,perfis_autorizados").eq("agente_id", agente.id).eq("habilitado", true);
     const permsDoPerfil = (perms||[]).filter((p:{perfis_autorizados?:string[]|null}) => {
       const perfis = Array.isArray(p.perfis_autorizados) ? p.perfis_autorizados : [];
       return perfis.length===0 || perfis.includes(perfil) || perfis.includes(perfilFerramenta);
@@ -302,7 +322,7 @@ Deno.serve(async (req: Request) => {
       `\n\n=== CONTEXTO DA SESSAO ===\nAgora em America/Sao_Paulo: ${agoraSaoPaulo}. Perfil: ${perfil}. ` +
       "Entenda datas relativas nesse fuso. Nunca escolha sozinho uma hora vaga como 'de tarde': pergunte o horario exato. " +
       (tools.length ? "\n\n=== FERRAMENTAS ===\nConsulte dados reais antes de responder. Acoes de escrita sempre usam previa exata, de uso unico: primeiro confirmar=false; depois confirmar=true somente apos sim explicito. Preserve o preview_id retornado. Uma confirmacao antiga, expirada, ja usada ou de payload diferente nunca vale. A agenda permite consultar, reagendar e cancelar; conflito bloqueia a gravacao. WhatsApp so e entregue/lido quando consultar_comprovante_whatsapp comprovar; apenas o envio nao e comprovante. Desfazer exige nova previa." : "") +
-      (corretorId ? "" : "\n\nEste perfil tem visao gerencial autorizada; deixe claro quando a resposta usar o escopo geral.");
+      (corretorId || chamadaInterna ? "" : "\n\nEste perfil tem visao gerencial autorizada; deixe claro quando a resposta usar o escopo geral.");
 
     const baseMsgs: any[] = hasMessages
       ? [{role:"system",content:systemPrompt}, ...b.messages.slice(-14).map((m:{role:string;content:string})=>({role:m.role==="user"?"user":"assistant", content:String(m.content).slice(0,4000)}))]

@@ -362,7 +362,8 @@ function bodyHtml(n){
  /* Funil 2.0 — distribui e passa a bola. Sem abordagem automatica e sem reter o lead.
     Quem manda a mensagem e o corretor, pelo celular; a evidencia e o D-API. */
  if(n.type==='distribution-simple'){if(!n.opts)n.opts={};
-  const d=n.opts.distribuicao=n.opts.distribuicao||{items:[],onlineOnly:true,tambemNegocio:true};
+  const d=n.opts.distribuicao=n.opts.distribuicao||{items:[],onlineOnly:true,tambemNegocio:true,regraElegibilidade:{modo:'dia-operacional',timezone:'America/Sao_Paulo',inicio:'09:30',fim:'18:30',presencaAtualPrioritaria:true,comparecimentoForaDoHorario:true,fimDeSemana:'todos-configurados'}};
+  d.regraElegibilidade=d.regraElegibilidade||{modo:d.onlineOnly===false?'todos-configurados':'presenca-atual',timezone:'America/Sao_Paulo',inicio:'09:30',fim:'18:30',presencaAtualPrioritaria:true,comparecimentoForaDoHorario:true,fimDeSemana:'todos-configurados'};
   const its=d.items=d.items||[];d.tambemNegocio=true;
   (function(){const nomes=its.map(x=>String(x.corretor||'').trim().toLowerCase());
    (ref.corretores||[]).filter(c=>c.ativo!==false&&nomes.indexOf(String(c.nome||'').trim().toLowerCase())<0)
@@ -383,8 +384,10 @@ function bodyHtml(n){
   return `<div style="font-size:11px;color:var(--ink-faint);padding:2px 0 6px;line-height:1.45">Distribui o lead em <b>sequencia proporcional aos pesos publicados</b> e segue o fluxo. <b>Nao envia abordagem</b> e <b>nao retem o lead</b> — quem manda a mensagem e o corretor, pelo celular, e o D-API confirma.</div>`+
    (its.length?linhas:'<div style="font-size:11px;color:var(--ink-faint);padding:4px 0">Nenhum corretor. Recarregue a página para listar.</div>')+
    `<div style="font-size:10.5px;color:var(--ink-faint);margin-top:5px">${ligados} de ${its.length} no rodízio. <b>Peso 0 tira o corretor da sequência.</b> Pesos iguais = mesma frequência. <b>Corretor recém-cadastrado entra desmarcado</b> — marque e publique para incluir.</div>`+
-   `<label style="display:flex;align-items:center;gap:7px;margin-top:8px;font-size:12px;color:var(--ink);cursor:pointer"><input type="checkbox" data-dsonline ${d.onlineOnly!==false?'checked':''} style="width:15px;height:15px"> Exigir <b>elegibilidade operacional</b></label>`+
-   `<div style="font-size:10.5px;color:var(--ink-faint);margin-top:4px;line-height:1.45">Ligado: corretor ativo, D-API conectada, sem suspensão, sem feedback de visita vencido e com presença válida. Desligado: exige somente corretor ativo. Essas regras não são acrescentadas fora deste botão.</div>`+
+   `<div class="ne-lb">Regra de elegibilidade</div>`+
+   `<select class="ne-sel" data-dsregra><option value="dia-operacional" ${d.regraElegibilidade.modo==='dia-operacional'?'selected':''}>Dia operacional · 09:30 até 18:30</option><option value="presenca-atual" ${d.regraElegibilidade.modo==='presenca-atual'?'selected':''}>Somente presença atual</option><option value="todos-configurados" ${d.regraElegibilidade.modo==='todos-configurados'?'selected':''}>Todos os configurados</option></select>`+
+   `<div style="font-size:10.5px;color:var(--ink-faint);margin-top:4px">Exigir <b>elegibilidade operacional</b> conforme a política selecionada neste bloco. Essas regras não são acrescentadas fora deste botão.</div>`+
+   `<div style="font-size:10.5px;color:var(--ink-faint);margin-top:4px;line-height:1.45"><b>Dia operacional:</b> entre 09:30 e 18:30 recebe quem está presente. Antes/depois, presença atual tem prioridade; quando o escritório esvazia, recebem os corretores que compareceram naquele dia operacional. Sábado e domingo não exigem presença física. D-API conectada e ausência de suspensão continuam obrigatórias.</div>`+
    `<div style="height:1px;background:var(--line-soft);margin:11px 0 6px"></div><div class="ne-lb" style="margin-top:0">Proteção do dono do lead</div>`+
    `<div style="font-size:11px;color:var(--ink-faint);margin:2px 0 4px">Lead que JÁ tem corretor só fica com ele nas situações marcadas — senão volta pro rodízio:</div>`+
    optsProt.map(([k,l])=>`<label style="display:flex;align-items:center;gap:7px;font-size:12px;padding:3px 0;cursor:pointer"><input type="checkbox" data-dsprot="${k}" ${pr.indexOf(k)>=0?'checked':''} style="width:15px;height:15px;flex:0 0 auto">${esc(l)}</label>`).join('')+
@@ -585,12 +588,13 @@ function bindBody(n,el){
   qa('[data-distprot]').forEach(cb=>cb.onchange=()=>{const k=cb.dataset.distprot;d.protecao=Array.isArray(d.protecao)?d.protecao:['venda','visita_agendada','visita_realizada'];const ix=d.protecao.indexOf(k);if(cb.checked&&ix<0)d.protecao.push(k);else if(!cb.checked&&ix>=0)d.protecao.splice(ix,1);setDirty();});
   const rpB=q('[data-distreport]');if(rpB)rpB.onclick=e=>{e.stopPropagation();void relatorioDistribuicao(n);};}
  // distribuição simples (Funil 2.0) — rodízio por peso, sem abordagem e sem retenção
- if(n.type==='distribution-simple'){n.opts.distribuicao=n.opts.distribuicao||{items:[],onlineOnly:true,tambemNegocio:true};const d=n.opts.distribuicao;d.items=d.items||[];d.tambemNegocio=true;
+ if(n.type==='distribution-simple'){n.opts.distribuicao=n.opts.distribuicao||{items:[],onlineOnly:true,tambemNegocio:true,regraElegibilidade:{modo:'dia-operacional',timezone:'America/Sao_Paulo',inicio:'09:30',fim:'18:30',presencaAtualPrioritaria:true,comparecimentoForaDoHorario:true,fimDeSemana:'todos-configurados'}};const d=n.opts.distribuicao;d.items=d.items||[];d.tambemNegocio=true;
+  d.regraElegibilidade=d.regraElegibilidade||{modo:d.onlineOnly===false?'todos-configurados':'presenca-atual',timezone:'America/Sao_Paulo',inicio:'09:30',fim:'18:30',presencaAtualPrioritaria:true,comparecimentoForaDoHorario:true,fimDeSemana:'todos-configurados'};
   if(!Array.isArray(d.protecao))d.protecao=['venda','visita_agendada','visita_realizada'];
   qa('[data-dsrow]').forEach(row=>{const i=+row.dataset.dsrow,it=d.items[i];if(!it)return;
    const on=row.querySelector('[data-dson]');if(on)on.onchange=()=>{it.on=on.checked;setDirty();reNode(n);};
    const pz=row.querySelector('[data-dspeso]');if(pz)pz.onchange=()=>{it.peso=Math.max(0,+pz.value||0);setDirty();reNode(n);};});
-  const onl=q('[data-dsonline]');if(onl)onl.onchange=()=>{d.onlineOnly=onl.checked;setDirty();};
+  const regra=q('[data-dsregra]');if(regra)regra.onchange=()=>{d.regraElegibilidade={modo:regra.value,timezone:'America/Sao_Paulo',inicio:'09:30',fim:'18:30',presencaAtualPrioritaria:true,comparecimentoForaDoHorario:true,fimDeSemana:'todos-configurados'};d.onlineOnly=regra.value!=='todos-configurados';setDirty();};
   qa('[data-dsprot]').forEach(cb=>cb.onchange=()=>{const k=cb.dataset.dsprot,ix=d.protecao.indexOf(k);
    if(cb.checked){if(ix<0)d.protecao.push(k);}else if(ix>=0)d.protecao.splice(ix,1);setDirty();});
   const rp2=q('[data-dsreport]');if(rp2)rp2.onclick=e=>{e.stopPropagation();void relatorioDistribuicao(n);};}
@@ -687,7 +691,7 @@ function addNode(type,x,y){const id='b'+(cur.uid++);const base={id,type,sub:'',x
  if(type==='field-operation')base.opts={fieldOperations:[]};
  if(type==='randomizer')base.ramos=[{id:'r'+(cur.uid++),name:'A',perc:50},{id:'r'+(cur.uid++),name:'B',perc:50}];
  if(type==='distribution')base.opts={distribuicao:{items:(ref.corretores||[]).filter(c=>c.ativo!==false).map(c=>({corretor:c.nome,peso:(c.peso||1),on:true})),onlineOnly:true,tambemNegocio:false}};
- if(type==='distribution-simple')base.opts={distribuicao:{items:(ref.corretores||[]).filter(c=>c.ativo!==false).map(c=>({corretor:c.nome,peso:1,on:true})),onlineOnly:true,tambemNegocio:true}};
+ if(type==='distribution-simple')base.opts={distribuicao:{items:(ref.corretores||[]).filter(c=>c.ativo!==false).map(c=>({corretor:c.nome,peso:1,on:true})),onlineOnly:true,tambemNegocio:true,regraElegibilidade:{modo:'dia-operacional',timezone:'America/Sao_Paulo',inicio:'09:30',fim:'18:30',presencaAtualPrioritaria:true,comparecimentoForaDoHorario:true,fimDeSemana:'todos-configurados'}}};
  if(type==='send-approach')base.opts={produtoId:0,abordagemGrupo:'',abordagemIds:[],selectionMode:'round-robin',instanciaPorCorretor:rotasInstanciaIniciais()};
  if(type==='resposta')base.opts={janelaValor:12,janelaUnidade:'horas'};
  if(type==='ai-agent')base.opts={agenteId:0,funcao:AI_FUNCOES[0][0]};
@@ -699,7 +703,7 @@ function routeFor(n){const outs=cur.wires.filter(w=>w.from===n.id),by=p=>(outs.f
  else if(n.type==='randomizer'){o.randomizers=(n.ramos||[]).map(r=>({id:r.id,name:r.name,perc:r.perc,nextBlockId:by(r.id)}));}
  else if(n.type==='resposta'){o.respondeuNextBlockId=by('respondeu');o.naoRespondeuNextBlockId=by('naoRespondeu');}
  else{o.nextBlockId=by('out');if(['action','chat','field-operation','api','distribution','distribution-simple','send-approach','ai-agent'].includes(n.type))o.errorNextBlockId=by('err');if(n.type==='chat')o.timeoutNextBlockId=by('timeout');if(n.type==='distribution'){o.respondeuNextBlockId=by('respondeu');o.naoRespondeuNextBlockId=by('naoRespondeu');}
-  if(n.type==='distribution-simple'){const dd=o.distribuicao=o.distribuicao||{};dd.tambemNegocio=true;if(!Array.isArray(dd.protecao))dd.protecao=['venda','visita_agendada','visita_realizada'];(dd.items||[]).forEach(x=>{x.peso=Math.max(0,+x.peso||0);});delete dd.produtoId;delete dd.abordagemIds;delete dd.respostaValor;delete dd.respostaUnidade;delete o.respondeuNextBlockId;delete o.naoRespondeuNextBlockId;}}
+  if(n.type==='distribution-simple'){const dd=o.distribuicao=o.distribuicao||{};dd.tambemNegocio=true;if(!Array.isArray(dd.protecao))dd.protecao=['venda','visita_agendada','visita_realizada'];dd.regraElegibilidade=dd.regraElegibilidade||{modo:dd.onlineOnly===false?'todos-configurados':'presenca-atual',timezone:'America/Sao_Paulo',inicio:'09:30',fim:'18:30',presencaAtualPrioritaria:true,comparecimentoForaDoHorario:true,fimDeSemana:'todos-configurados'};dd.onlineOnly=dd.regraElegibilidade.modo!=='todos-configurados';(dd.items||[]).forEach(x=>{x.peso=Math.max(0,+x.peso||0);});delete dd.produtoId;delete dd.abordagemIds;delete dd.respostaValor;delete dd.respostaUnidade;delete o.respondeuNextBlockId;delete o.naoRespondeuNextBlockId;}}
  return o;}
 function compile(){const blocks=Object.values(cur.nodes).map(n=>{if(!n.sourceBlockId)n.sourceBlockId=_uuid();return {id:n.id,type:n.type,options:routeFor(n),presentation:{x:Math.round(n.x),y:Math.round(n.y)},sourceBlockId:n.sourceBlockId};});
  const eb={};Object.values(cur.nodes).forEach(n=>{eb[n.id]={id:n.id,fam:TYPES[n.type].fam,sub:n.sub||'',x:Math.round(n.x),y:Math.round(n.y),note:n.note||'',extra:{},parts:[],ramos:n.ramos||[],noteOpen:false};});
