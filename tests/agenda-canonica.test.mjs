@@ -11,6 +11,7 @@ const chat = await readFile(new URL("../app/features/chat/LiveChatWorkspace.tsx"
 const funilApi = await readFile(new URL("../app/api/funil2/route.ts", import.meta.url), "utf8");
 const funilDesktop = await readFile(new URL("../app/features/funil-2/Funil2Workspace.tsx", import.meta.url), "utf8");
 const funilMobile = await readFile(new URL("../app/features/funil-2/Funil2Mobile.tsx", import.meta.url), "utf8");
+const identidadeCss = await readFile(new URL("../app/styles/apecerto-identidade.css", import.meta.url), "utf8");
 
 test("desktop e mobile consomem somente a API canônica da Agenda", () => {
   assert.match(desktop, /\/api\/agenda\?workspace=1/);
@@ -90,4 +91,9 @@ test("app mostra a mensagem humana da API e os dois formatos confirmam o destino
   assert.match(funilMobile, /Visita agendada com sucesso[\s\S]*Abrir Agenda/);
   assert.match(funilDesktop, /Visita agendada com sucesso[\s\S]*Ver visitas/);
   assert.match(funilApi, /gerente_ocupado:\s*"Esse gerente já tem uma visita nesse horário/);
+});
+
+test("convite de notificações não cobre a ficha nem o agendamento no aplicativo", () => {
+  assert.match(identidadeCss, /body:has\(\.ape-folha\) \.aviso-push-convite/);
+  assert.match(identidadeCss, /body:has\(\.ape-folha\) \.aviso-push-ok\s*\{\s*display:\s*none/);
 });

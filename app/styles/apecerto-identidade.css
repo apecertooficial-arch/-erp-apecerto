@@ -308,6 +308,10 @@ h1, h2, h3, h4, h5 {
    ficava sem conseguir trocar de aba enquanto ele estivesse na tela. */
 @media (max-width: 900px) {
   .aviso-push-convite, .aviso-push-ok { bottom: calc(72px + env(safe-area-inset-bottom, 0px)); }
+  /* A ficha e seus formulários são a tarefa em andamento. O convite global
+     volta quando a ficha fecha, mas nunca cobre campos, alertas ou botões. */
+  body:has(.ape-folha) .aviso-push-convite,
+  body:has(.ape-folha) .aviso-push-ok { display: none; }
 }
 
 /* Etiqueta "em implementação": a sugestão de próxima ação ainda é o texto fixo
