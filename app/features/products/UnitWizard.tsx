@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { getBrowserSupabaseClient } from "../../lib/supabase/browser";
 import { MoneyInput } from "./MoneyInput";
+import { PendingMediaClassifier, type PendingMediaItem } from "./PendingMediaClassifier";
 import { applyOfficialWatermark } from "./watermark";
 
 type UnitWizardProps = { accessToken: string; onClose: () => void; onSaved: () => void; onCreateCondominium?: () => void; onCreateStandalone?: () => void };
@@ -16,6 +17,7 @@ const accessOptions: Array<[string, string]> = [
   ["corretor", "Corretor"],
   ["proprietario", "Proprietário"],
 ];
+const unitMediaCategories = ["Sala", "Cozinha", "Quarto", "Suíte", "Banheiro", "Varanda", "Vista", "Planta", "Fachada", "Lazer", "Tour", "Outro"];
 
 function safeFileName(name: string) {
   return name.replace(/[^\w.\-]+/g, "_");
@@ -42,7 +44,7 @@ export function UnitWizard({ accessToken, onClose, onSaved, onCreateCondominium,
   const [acessoTipo, setAcessoTipo] = useState("chave_digital");
   const [acessoCodigo, setAcessoCodigo] = useState("");
   const [acessoInstrucoes, setAcessoInstrucoes] = useState("");
-  const [photos, setPhotos] = useState<File[]>([]);
+  const [photos, setPhotos] = useState<PendingMediaItem[]>([]);
   const [message, setMessage] = useState("");
   const [saving, setSaving] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -66,11 +68,35 @@ export function UnitWizard({ accessToken, onClose, onSaved, onCreateCondominium,
     if (!files) return;
     const list = Array.from(files);
     if (!list.length) return;
-    setPhotos((current) => [...current, ...list]);
+    setPhotos((current) => {
+      const hasCover = current.some((item) => item.cover);
+      const firstPhotoIndex = list.findIndex((file) => tipoDaMidia(file) === "foto");
+      const additions = list.map((file, index) => {
+        const kind = tipoDaMidia(file);
+        return {
+          id: crypto.randomUUID(),
+          file,
+          kind,
+          category: kind === "video" ? "Tour" : "Sala",
+          preview: URL.createObjectURL(file),
+          cover: kind === "foto" && !hasCover && index === firstPhotoIndex,
+        } satisfies PendingMediaItem;
+      });
+      return [...current, ...additions];
+    });
   }
 
-  function removePhoto(index: number) {
-    setPhotos((current) => current.filter((_, i) => i !== index));
+  function removePhoto(id: string) {
+    setPhotos((current) => {
+      const removed = current.find((item) => item.id === id);
+      if (removed) URL.revokeObjectURL(removed.preview);
+      const remaining = current.filter((item) => item.id !== id);
+      if (removed?.cover) {
+        const nextCover = remaining.find((item) => item.kind === "foto");
+        return remaining.map((item) => ({ ...item, cover: item.id === nextCover?.id }));
+      }
+      return remaining;
+    });
   }
 
   function validate() {
@@ -82,7 +108,7 @@ export function UnitWizard({ accessToken, onClose, onSaved, onCreateCondominium,
     if (!proprietarioNome.trim() || !proprietarioContato.trim()) return "Informe nome e contato do proprietário.";
     if (!acessoTipo || !acessoInstrucoes.trim()) return "Informe o tipo e as instruções de acesso.";
     if (acessoTipo === "chave_digital" && !acessoCodigo.trim()) return "Informe o código da chave digital.";
-    if (photos.filter((file) => tipoDaMidia(file) === "foto").length < 1) return "Adicione ao menos uma foto da unidade para a aprovação.";
+    if (photos.filter((item) => item.kind === "foto").length < 1) return "Adicione ao menos uma foto da unidade para a aprovação.";
     return "";
   }
 
@@ -128,14 +154,15 @@ export function UnitWizard({ accessToken, onClose, onSaved, onCreateCondominium,
       }
 
       for (let index = 0; index < photos.length; index += 1) {
-        const originalFile = photos[index];
+        const item = photos[index];
+        const originalFile = item.file;
         const file = tipoDaMidia(originalFile) === "foto" ? await applyOfficialWatermark(originalFile) : originalFile;
         const storagePath = `${created.userId}/${empreendimentoId}/${crypto.randomUUID()}-${safeFileName(file.name)}`;
         const { error: uploadError } = await supabase.storage.from("empreendimentos").upload(storagePath, file, { contentType: file.type, upsert: false });
         if (uploadError) throw new Error(`Falha ao enviar ${file.name}: ${uploadError.message}`);
         const { error: mediaError } = await supabase.from("midias").insert({
           empreendimento_id: empreendimentoId, unidade_id: created.unidadeId, tipo: tipoDaMidia(file),
-          storage_path: storagePath, nome: file.name, categoria: "unidade", is_capa: false,
+          storage_path: storagePath, nome: file.name, categoria: item.category.toLowerCase(), is_capa: Boolean(item.cover),
         } as never);
         if (mediaError) {
           await supabase.storage.from("empreendimentos").remove([storagePath]);
@@ -206,7 +233,7 @@ export function UnitWizard({ accessToken, onClose, onSaved, onCreateCondominium,
               <label className="upload-button">＋ Adicionar fotos ou vídeos<input type="file" accept="image/*,video/*" multiple onChange={(event) => { addPhotos(event.target.files); event.currentTarget.value = ""; }} /></label>
               <strong className={photos.length ? "ok" : ""}>{photos.length} mídia{photos.length === 1 ? "" : "s"} selecionada{photos.length === 1 ? "" : "s"}</strong>
             </div>
-            {photos.length > 0 && <div className="uw-photo-list">{photos.map((file, index) => <div className="uw-photo-row" key={`${file.name}-${index}`}><span className="uw-photo-name" title={file.name}>{file.name}</span><small>{(file.size / 1024 / 1024).toFixed(1)} MB</small><button type="button" aria-label={`Remover ${file.name}`} onClick={() => removePhoto(index)}>×</button></div>)}</div>}
+            <PendingMediaClassifier items={photos} categories={unitMediaCategories} onCategoryChange={(id, category) => setPhotos((current) => current.map((item) => item.id === id ? { ...item, category } : item))} onRemove={removePhoto} onCoverChange={(id) => setPhotos((current) => current.map((item) => ({ ...item, cover: item.id === id })))} />
           </div>
 
           {saving && photos.length > 0 && <div className="upload-progress"><span style={{ width: `${uploadProgress}%` }} /><strong>Enviando mídias · {uploadProgress}%</strong></div>}

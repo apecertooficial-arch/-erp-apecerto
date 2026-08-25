@@ -8,6 +8,7 @@ const captureApi = await readFile("app/api/capture/route.ts", "utf8");
 const productsUi = await readFile("app/features/products/ProductsModule.tsx", "utf8");
 const unitWizard = await readFile("app/features/products/UnitWizard.tsx", "utf8");
 const captureWizard = await readFile("app/features/products/CaptureWizard.tsx", "utf8");
+const pendingMediaClassifier = await readFile("app/features/products/PendingMediaClassifier.tsx", "utf8");
 const detail = await readFile("app/features/products/ProductDetail.tsx", "utf8");
 const detailCss = await readFile("app/styles/produtos-v3-detail.css", "utf8");
 const productsModel = await readFile("app/features/products/products.ts", "utf8");
@@ -34,6 +35,17 @@ test("apartamento é a captação principal e condomínio tem fluxo separado", (
   assert.match(unitWizard, /Associe o apartamento captado a um condomínio ou prédio já existente/);
   assert.match(unitWizard, /onCreateCondominium/);
   assert.match(captureWizard, /Só quer cadastrar um apartamento\?/);
+});
+
+test("corretor classifica cada mídia pela miniatura antes de cadastrar", () => {
+  assert.match(pendingMediaClassifier, /className="pmc-preview"/);
+  assert.match(pendingMediaClassifier, /<img src=\{item\.preview\}/);
+  assert.match(pendingMediaClassifier, /aria-label=\{`Classificar \$\{item\.file\.name\}`\}/);
+  assert.match(captureWizard, /<PendingMediaClassifier/);
+  assert.match(unitWizard, /URL\.createObjectURL\(file\)/);
+  assert.match(unitWizard, /categoria: item\.category/);
+  assert.match(unitWizard, /is_capa: Boolean\(item\.cover\)/);
+  assert.match(captureWizard, /entry\.kind === "foto" && entry\.cover/);
 });
 
 test("apartamento pode ser cadastrado sem associação falsa a condomínio", () => {

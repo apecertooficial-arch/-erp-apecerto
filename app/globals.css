@@ -3029,6 +3029,31 @@ body { overflow:hidden; background:#eee8e2; }
    ========================================================================== */
 
 /* Cadastrar unidade (UnitWizard) */
+.pmc-wrap { margin-top:16px; }
+.pmc-wrap > header { display:flex; align-items:flex-start; justify-content:space-between; gap:14px; margin-bottom:10px; }
+.pmc-wrap > header div { display:flex; flex-direction:column; gap:2px; }
+.pmc-wrap > header strong { color:#332d29; font-size:14px; }
+.pmc-wrap > header small { color:#8a807b; font-size:12px; }
+.pmc-wrap > header > span { flex:none; padding:5px 9px; border-radius:999px; background:#f4eee9; color:#71665f; font-size:11px; font-weight:750; }
+.pmc-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(190px,1fr)); gap:12px; }
+.pmc-grid article { overflow:hidden; border:1px solid #e2d9d2; border-radius:14px; background:#fff; box-shadow:0 2px 8px rgba(48,35,27,.04); }
+.pmc-grid article.is-cover { border-color:#ff7000; box-shadow:0 0 0 2px rgba(255,112,0,.12); }
+.pmc-preview { position:relative; aspect-ratio:4/3; overflow:hidden; background:#eee8e3; }
+.pmc-preview img, .pmc-preview video { display:block; width:100%; height:100%; object-fit:cover; }
+.pmc-preview > b { position:absolute; top:8px; left:8px; min-width:23px; height:23px; display:grid; place-items:center; padding:0 6px; border-radius:7px; background:rgba(31,24,20,.72); color:#fff; font-size:11px; }
+.pmc-preview > em { position:absolute; right:8px; bottom:8px; padding:4px 8px; border-radius:999px; background:#ff7000; color:#fff; font-size:10px; font-style:normal; font-weight:850; }
+.pmc-preview > button { position:absolute; top:8px; right:8px; width:30px; height:30px; border:0; border-radius:50%; background:rgba(31,24,20,.76); color:#fff; font-size:20px; line-height:1; cursor:pointer; }
+.pmc-kind { position:absolute; left:8px; bottom:8px; padding:4px 8px; border-radius:999px; background:rgba(24,116,68,.88); color:#fff; font-size:10px; font-weight:800; text-transform:uppercase; }
+.pmc-kind.video { background:rgba(112,40,152,.9); }
+.pmc-fields { display:flex; flex-direction:column; gap:9px; padding:11px; }
+.pmc-fields > label:not(.pmc-cover) { display:flex; flex-direction:column; gap:5px; margin:0; }
+.pmc-fields > label > span { color:#5f554e; font-size:11px; font-weight:750; }
+.pmc-fields select { width:100%; min-height:39px; border:1px solid #ddd4cd; border-radius:9px; padding:0 9px; background:#fff; color:#332d29; font:inherit; font-size:13px; }
+.pmc-fields > div { display:flex; justify-content:space-between; gap:8px; }
+.pmc-fields > div small { min-width:0; overflow:hidden; color:#91867e; font-size:10.5px; text-overflow:ellipsis; white-space:nowrap; }
+.pmc-fields > div small:first-child { flex:1; }
+.pmc-cover { display:flex; flex-direction:row!important; align-items:center; gap:7px; margin:0; color:#755f52; font-size:11.5px; font-weight:700; }
+.pmc-cover input { accent-color:#ff7000; }
 .uw-photos { display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
 .uw-photos strong { font-size:13px; color:#8a807b; }
 .uw-photos strong.ok { color:#1f8f4e; }
@@ -3038,6 +3063,13 @@ body { overflow:hidden; background:#eee8e2; }
 .uw-photo-row small { color:#8a807b; font-size:12px; }
 .uw-photo-row button { border:none; background:#f1ecee; color:#8a807b; width:26px; height:26px; border-radius:8px; cursor:pointer; font-size:16px; line-height:1; }
 .uw-photo-row button:hover { background:#e9dfe4; color:#6e2a94; }
+@media(max-width:620px){
+  .pmc-wrap > header { align-items:flex-start; flex-direction:column; }
+  .pmc-grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:9px; }
+  .pmc-fields { padding:9px; }
+  .pmc-fields > label > span { min-height:28px; }
+  .pmc-fields > div small:last-child { display:none; }
+}
 .unit-standalone-action { width:100%; display:flex; flex-direction:column; align-items:flex-start; gap:4px; margin:0 0 18px; padding:15px 17px; border:1px solid #ead0f5; border-radius:14px; background:#fbf5ff; color:#5e1c84; text-align:left; cursor:pointer; }
 .unit-standalone-action:hover { border-color:#8b00cc; box-shadow:0 5px 18px rgba(139,0,204,.09); }
 .unit-standalone-action strong { font-size:14px; }

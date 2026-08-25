@@ -1,8 +1,10 @@
 "use client";
+/* eslint-disable @next/next/no-img-element */
 
 import { useEffect, useState } from "react";
 import { getBrowserSupabaseClient } from "../../lib/supabase/browser";
 import { MoneyInput } from "./MoneyInput";
+import { PendingMediaClassifier } from "./PendingMediaClassifier";
 import { applyOfficialWatermark } from "./watermark";
 import { validateProductPrice } from "./quality";
 
@@ -164,7 +166,9 @@ export function CaptureWizard({ onClose, onSaved, initialStandalone = false }: C
 
   function removeMedia(id: string) {
     setMedia((current) => {
-      const removedCover = current.find((item) => item.id === id)?.cover;
+      const removed = current.find((item) => item.id === id);
+      const removedCover = removed?.cover;
+      if (removed?.preview.startsWith("blob:")) URL.revokeObjectURL(removed.preview);
       const remaining = current.filter((item) => item.id !== id);
       if (removedCover) {
         const firstPhoto = remaining.find((item) => item.kind === "foto");
@@ -235,8 +239,8 @@ export function CaptureWizard({ onClose, onSaved, initialStandalone = false }: C
       if (!createResponse.ok || !created.id || !created.userId) throw new Error(created.error ?? "Não foi possível criar o rascunho.");
       if (standalone && !created.unidadeId) throw new Error("O imóvel foi iniciado, mas a unidade avulsa não foi criada.");
 
-      // A capa é sempre a primeira foto na ordem definida na revisão.
-      const coverPhotoId = media.find((entry) => entry.kind === "foto")?.id;
+      const coverPhotoId = media.find((entry) => entry.kind === "foto" && entry.cover)?.id
+        ?? media.find((entry) => entry.kind === "foto")?.id;
       for (let index = 0; index < media.length; index += 1) {
         const item = media[index];
         const uploadFile = item.kind === "foto" ? await applyOfficialWatermark(item.file) : item.file;
@@ -306,9 +310,9 @@ export function CaptureWizard({ onClose, onSaved, initialStandalone = false }: C
 
           {step === 4 && <div className="form-section"><h3>Como entrar no imóvel?</h3><div className="choice-grid compact access-grid">{([['chave_fisica','Chave física'],['chave_digital','Chave digital'],['proprietario','Com proprietário'],['portaria','Portaria'],['outro','Outro']] as const).map(([value, label]) => <button className={accessType === value ? "selected" : ""} onClick={() => setAccessType(value)} type="button" key={value}>{label}</button>)}</div>{accessType === "chave_digital" && <label>Código de acesso<input value={accessCode} onChange={(event) => setAccessCode(event.target.value)} placeholder="Código da fechadura" /></label>}<label>Instruções completas<textarea value={accessInstructions} onChange={(event) => setAccessInstructions(event.target.value)} placeholder="Local da chave, portaria, autorização, horários e todas as instruções..." rows={6} /></label></div>}
 
-          {step === 5 && <div className="form-section media-section"><h3>Fotos, vídeo e identificação</h3><p>Mínimo de 1 foto para salvar, mas o site exige 6 fotos para publicar o anúncio. Vídeo e capa são opcionais — quanto mais material, melhor o anúncio.</p><div className="media-dropzone" onDragOver={(event) => { event.preventDefault(); event.currentTarget.classList.add("dragging"); }} onDragLeave={(event) => event.currentTarget.classList.remove("dragging")} onDrop={(event) => { event.preventDefault(); event.currentTarget.classList.remove("dragging"); if (event.dataTransfer.files?.length) ingestFiles(Array.from(event.dataTransfer.files)); }}><div className="media-dz-head"><span className="media-dz-icon">⬆</span><div><strong>Arraste aqui, cole (Ctrl+V) ou selecione</strong><small>Fotos e vídeos — ou adicione por link abaixo</small></div></div><div className="media-upload-actions"><label className="upload-button">＋ Adicionar fotos<input type="file" accept="image/*" multiple onChange={(event) => { addFiles(event.target.files, "foto"); event.currentTarget.value = ""; }} /></label><label className="upload-button secondary">＋ Adicionar vídeo<input type="file" accept="video/*" multiple onChange={(event) => { addFiles(event.target.files, "video"); event.currentTarget.value = ""; }} /></label></div><div className="media-link-row"><input type="url" value={mediaUrl} onChange={(event) => setMediaUrl(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); void addByUrl(mediaUrl); } }} placeholder="Cole o link de uma imagem ou vídeo (https://...)" /><button type="button" className="secondary-action" onClick={() => void addByUrl(mediaUrl)} disabled={!mediaUrl.trim()}>Adicionar por link</button></div><div className="media-totals"><strong className={photos.length >= 1 ? "ok" : ""}>{photos.length} foto{photos.length === 1 ? "" : "s"}{photos.length >= 6 ? " · pronto p/ site" : ` · faltam ${6 - photos.length} p/ publicar no site`}</strong><strong className={videos.length >= 1 ? "ok" : ""}>{videos.length} vídeo{videos.length === 1 ? "" : "s"} (opcional)</strong></div></div><div className="media-list">{media.map((item) => <div className="media-row" key={item.id}><span className={`media-kind ${item.kind}`}>{item.kind === "foto" ? "FOTO" : "VÍDEO"}</span><div className="media-name"><strong>{item.file.name}</strong><small>{(item.file.size / 1024 / 1024).toFixed(1)} MB</small></div><select aria-label={`Classificar ${item.file.name}`} value={item.category} onChange={(event) => setMedia(media.map((entry) => entry.id === item.id ? { ...entry, category: event.target.value } : entry))}>{mediaCategories.map((category) => <option key={category}>{category}</option>)}</select>{item.kind === "foto" ? <label className="cover-choice"><input type="radio" name="cover" checked={item.cover} onChange={() => setMedia(media.map((entry) => ({ ...entry, cover: entry.id === item.id })))} /> Capa</label> : <span className="cover-placeholder" />}<button aria-label={`Remover ${item.file.name}`} onClick={() => removeMedia(item.id)} type="button">×</button></div>)}</div></div>}
+          {step === 5 && <div className="form-section media-section"><h3>Fotos, vídeo e identificação</h3><p>Mínimo de 1 foto para salvar, mas o site exige 6 fotos para publicar o anúncio. Vídeo e capa são opcionais — quanto mais material, melhor o anúncio.</p><div className="media-dropzone" onDragOver={(event) => { event.preventDefault(); event.currentTarget.classList.add("dragging"); }} onDragLeave={(event) => event.currentTarget.classList.remove("dragging")} onDrop={(event) => { event.preventDefault(); event.currentTarget.classList.remove("dragging"); if (event.dataTransfer.files?.length) ingestFiles(Array.from(event.dataTransfer.files)); }}><div className="media-dz-head"><span className="media-dz-icon">⬆</span><div><strong>Arraste aqui, cole (Ctrl+V) ou selecione</strong><small>Fotos e vídeos — ou adicione por link abaixo</small></div></div><div className="media-upload-actions"><label className="upload-button">＋ Adicionar fotos<input type="file" accept="image/*" multiple onChange={(event) => { addFiles(event.target.files, "foto"); event.currentTarget.value = ""; }} /></label><label className="upload-button secondary">＋ Adicionar vídeo<input type="file" accept="video/*" multiple onChange={(event) => { addFiles(event.target.files, "video"); event.currentTarget.value = ""; }} /></label></div><div className="media-link-row"><input type="url" value={mediaUrl} onChange={(event) => setMediaUrl(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); void addByUrl(mediaUrl); } }} placeholder="Cole o link de uma imagem ou vídeo (https://...)" /><button type="button" className="secondary-action" onClick={() => void addByUrl(mediaUrl)} disabled={!mediaUrl.trim()}>Adicionar por link</button></div><div className="media-totals"><strong className={photos.length >= 1 ? "ok" : ""}>{photos.length} foto{photos.length === 1 ? "" : "s"}{photos.length >= 6 ? " · pronto p/ site" : ` · faltam ${6 - photos.length} p/ publicar no site`}</strong><strong className={videos.length >= 1 ? "ok" : ""}>{videos.length} vídeo{videos.length === 1 ? "" : "s"} (opcional)</strong></div></div><PendingMediaClassifier items={media} categories={mediaCategories} onCategoryChange={(id, category) => setMedia((current) => current.map((entry) => entry.id === id ? { ...entry, category } : entry))} onRemove={removeMedia} onCoverChange={(id) => setMedia((current) => current.map((entry) => ({ ...entry, cover: entry.id === id })))} /></div>}
 
-          {step === 6 && <div className="form-section"><h3>Revisão antes de salvar</h3><div className="review-list"><span className="complete">{standalone ? "Endereço próprio, sem condomínio" : "Condomínio e endereço completo"}</span><span className={propertyType === "construtora" || Boolean(ownerId || owner.name) ? "complete" : ""}>Proprietário associado</span><span className="complete">Preço, custos e características</span><span className="complete">Instruções de acesso</span><span className={photos.length >= 1 ? "complete" : ""}>{photos.length} foto(s) e {videos.length} vídeo(s)</span><span className={photos.length ? "complete" : ""}>Capa: a primeira foto da ordem abaixo</span>{propertyType === "construtora" && <span className={units.length ? "complete" : ""}>{units.length} unidade(s) cadastrada(s)</span>}</div>{media.length > 0 && <ReviewMedia media={media} setMedia={setMedia} />}<div className="notice"><strong>Gravação segura</strong><span>O produto será criado como rascunho, os arquivos serão enviados e somente então a captação será finalizada.</span></div>{saving && <div className="upload-progress"><span style={{ width: `${uploadProgress}%` }} /><strong>Enviando mídias · {uploadProgress}%</strong></div>}</div>}
+          {step === 6 && <div className="form-section"><h3>Revisão antes de salvar</h3><div className="review-list"><span className="complete">{standalone ? "Endereço próprio, sem condomínio" : "Condomínio e endereço completo"}</span><span className={propertyType === "construtora" || Boolean(ownerId || owner.name) ? "complete" : ""}>Proprietário associado</span><span className="complete">Preço, custos e características</span><span className="complete">Instruções de acesso</span><span className={photos.length >= 1 ? "complete" : ""}>{photos.length} foto(s) e {videos.length} vídeo(s)</span><span className={photos.length ? "complete" : ""}>Foto de capa selecionada</span>{propertyType === "construtora" && <span className={units.length ? "complete" : ""}>{units.length} unidade(s) cadastrada(s)</span>}</div>{media.length > 0 && <ReviewMedia media={media} setMedia={setMedia} />}<div className="notice"><strong>Gravação segura</strong><span>O produto será criado como rascunho, os arquivos serão enviados e somente então a captação será finalizada.</span></div>{saving && <div className="upload-progress"><span style={{ width: `${uploadProgress}%` }} /><strong>Enviando mídias · {uploadProgress}%</strong></div>}</div>}
 
           {message && <div className={message.includes("sucesso") ? "form-message success" : "form-message"} role="alert">{message}</div>}
         </div>
@@ -332,16 +336,12 @@ function ReviewMedia({ media, setMedia }: { media: MediaItem[]; setMedia: (value
     return arr;
   });
   const makeCover = (id: string) => setMedia((cur) => {
-    const arr = [...cur];
-    const idx = arr.findIndex((m) => m.id === id);
-    if (idx < 0) return arr;
-    const [moved] = arr.splice(idx, 1);
-    arr.unshift(moved);
-    return arr;
+    return cur.map((item) => ({ ...item, cover: item.kind === "foto" && item.id === id }));
   });
-  const firstPhotoId = media.find((m) => m.kind === "foto")?.id;
+  const firstPhotoId = media.find((item) => item.kind === "foto" && item.cover)?.id
+    ?? media.find((item) => item.kind === "foto")?.id;
   return <div className="review-media">
-    <div className="review-media-head"><strong>Mídias e ordem de exibição</strong><small>Arraste para reordenar. A primeira foto é a capa do produto.</small></div>
+    <div className="review-media-head"><strong>Mídias e ordem de exibição</strong><small>Arraste para reordenar e confirme qual foto será a capa.</small></div>
     <div className="review-media-grid">
       {media.map((item, index) => {
         const isCover = item.id === firstPhotoId;
