@@ -104,13 +104,22 @@ test("listas e cartões reduzem ações concorrentes", () => {
 });
 
 test("desktop intermediário preserva nome, contexto e proporção operacional", () => {
-  assert.match(crmCss, /\.f2-card-ident\s*\{[^}]*grid-template-columns:32px minmax\(0,1fr\)/);
-  assert.match(crmCss, /\.f2-card-ident>em\s*\{[^}]*grid-column:2/);
+  assert.match(crmCss, /\.f2-card-ident\s*\{[^}]*grid-template-columns:28px minmax\(0,1fr\)/);
+  assert.match(desktop, /className="f2-card-ident-meta"/);
   assert.match(crmCss, /\.f2-board \.f2-card-trio>\.etapa\s*\{[^}]*display:none/);
-  assert.match(crmCss, /body \.f2-lista\s*\{[^}]*padding:10px/);
+  assert.match(crmCss, /body \.f2-lista\s*\{[^}]*padding:8px/);
   assert.match(crmCss, /@media\(max-width:1200px\)[\s\S]*\.f2-resumo\s*\{[^}]*repeat\(3,minmax\(0,1fr\)\)/);
   assert.match(crmCss, /\.f2-resumo>details\s*\{[^}]*grid-column:1\/-1/);
   assert.match(crmCss, /\.f2-nav::-webkit-scrollbar\s*\{[^}]*display:none/);
+});
+
+test("linhas e cartões têm densidade de ferramenta operacional, não de blocos promocionais", () => {
+  assert.match(crmCss, /\.f2-card\s*\{[^}]*border:1px solid[^}]*box-shadow:none/);
+  assert.match(crmCss, /\.f2-card-ident-meta\s*\{[^}]*flex-direction:row/);
+  assert.match(crmCss, /\.f2-board \.f2-card-trio-compacto>\.acao\s*\{[^}]*border-top:1px solid/);
+  assert.match(crmCss, /\.f2-dia-item\s*\{[^}]*min-height:50px[^}]*margin:0 !important[^}]*border-radius:0 !important[^}]*box-shadow:none !important/);
+  assert.match(crmCss, /\.f2-dia-acao\s*\{[^}]*display:flex[^}]*align-items:center/);
+  assert.match(crmCss, /\.f2-lead-linha\s*\{[^}]*min-height:50px/);
 });
 
 test("funil e listas não repetem frases longas entre ação e prazo", () => {

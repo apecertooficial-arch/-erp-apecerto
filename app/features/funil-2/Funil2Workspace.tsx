@@ -346,7 +346,7 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
                   const cadencia = rotuloCadencia(item);
                   const tentativa = tentativaAtual(item);
                   return <article key={item.id} role="button" tabIndex={0} className={`f2-card ${selecionado === item.id ? "selecionado" : ""}`} onClick={() => setSelecionado(item.id)} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") setSelecionado(item.id); }}>
-                    <div className="f2-card-ident"><i>{iniciais(item.nome)}</i><div><strong>{item.nome}</strong><span>{item.corretor_nome ?? "Sem corretor"}{item.instancia_rotulo ? <em className="f2-instancia" title={`Contato saindo por ${item.instancia_rotulo}`}> · {item.instancia_rotulo}</em> : null}</span></div><em className={prazo.classe}>{prazo.rotulo}</em></div>
+                    <div className="f2-card-ident"><i>{iniciais(item.nome)}</i><div><strong>{item.nome}</strong><div className="f2-card-ident-meta"><span>{item.corretor_nome ?? "Sem corretor"}{item.instancia_rotulo ? <em className="f2-instancia" title={`Contato saindo por ${item.instancia_rotulo}`}> · {item.instancia_rotulo}</em> : null}</span><em className={prazo.classe}>{prazo.rotulo}</em></div></div></div>
                     <div className="f2-card-trio f2-card-trio-compacto">
                       <div className="etapa"><span>ETAPA</span><b>{etapa.rotulo}</b></div>
                       <div className="momento"><span>MOMENTO</span><b>{momento?.rotulo ?? item.momento_codigo}</b></div>
