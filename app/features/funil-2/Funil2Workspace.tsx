@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useId, useState, type ReactNode } from "react";
-import { acaoVisivel, dataCurta, duracao, erroAgendamentoVisita, esperandoPrimeiraChamada, prazoDaAcao, rotuloCadencia, rotuloTemperatura, situacaoPrazo, tentativaAtual, venceHoje, type CandidatoAquarioFunil2, type EtapaConfigFunil2, type EventoFunil2, type LeadFunil2, type MomentoFunil2, type NegociacaoFunil2, type NotaFunil2, type OperacaoConfigFunil2, type SaraStatusFunil2, type TagCatalogoFunil2, type VisitaFunil2 } from "./modelo";
+import { acaoVisivel, dataCurta, erroAgendamentoVisita, esperandoPrimeiraChamada, prazoDaAcao, rotuloCadencia, rotuloTemperatura, situacaoPrazo, tentativaAtual, venceHoje, type CandidatoAquarioFunil2, type EtapaConfigFunil2, type EventoFunil2, type LeadFunil2, type MomentoFunil2, type NegociacaoFunil2, type NotaFunil2, type OperacaoConfigFunil2, type SaraStatusFunil2, type TagCatalogoFunil2, type TemperaturaLead, type VisitaFunil2 } from "./modelo";
 import { SalesProcessView } from "../sales/SalesProcessWorkspace";
 import { Funil2ConversationDrawer } from "./Funil2ConversationDrawer";
 import { AssociarTagLead } from "./AssociarTagLead";
@@ -17,6 +17,33 @@ type Payload = {
 /* Lista fechada, igual a da tabela motivos_descarte. Motivo escrito a mao nao
    vira relatorio: ninguem consegue contar quantos "sem grana" existem. */
 const MOTIVOS_DESCARTE = ["Contato inválido", "Sem interesse", "Sem capacidade financeira", "Fora da região", "Já comprou", "Duplicado", "Pediu para não receber contato", "Produto incompatível"] as const;
+
+type TemperaturaFiltro = TemperaturaLead | "aguardando" | "todas";
+
+const TEMPERATURAS: ReadonlyArray<{ codigo: Exclude<TemperaturaFiltro, "todas">; rotulo: string }> = [
+  { codigo: "quente", rotulo: "Quente" },
+  { codigo: "negociando", rotulo: "Negociando" },
+  { codigo: "morno", rotulo: "Morno" },
+  { codigo: "frio", rotulo: "Frio" },
+  { codigo: "aguardando", rotulo: "Aguardando leitura" },
+];
+
+function temperaturaDoLead(lead: LeadFunil2): Exclude<TemperaturaFiltro, "todas"> {
+  return lead.temperatura ?? "aguardando";
+}
+
+function ChipTemperatura({ lead, className = "" }: { lead: LeadFunil2; className?: string }) {
+  const codigo = temperaturaDoLead(lead);
+  return <span className={`f2-lead-chip temperatura temperatura-${codigo} ${className}`.trim()}><i />{rotuloTemperatura(lead.temperatura) ?? "Aguardando leitura"}</span>;
+}
+
+function FiltrosTemperatura({ leads, valor, onChange, className = "" }: { leads: LeadFunil2[]; valor: TemperaturaFiltro; onChange: (valor: TemperaturaFiltro) => void; className?: string }) {
+  return <div className={`f2-temperatura-filtros ${className}`.trim()} role="group" aria-label="Filtrar por temperatura">
+    <span>TEMPERATURA</span>
+    <button type="button" className={valor === "todas" ? "ativo" : ""} onClick={() => onChange("todas")}>Todas <b>{leads.length}</b></button>
+    {TEMPERATURAS.map((item) => <button type="button" key={item.codigo} className={`${valor === item.codigo ? "ativo " : ""}temperatura-${item.codigo}`} onClick={() => onChange(item.codigo)}><i />{item.rotulo} <b>{leads.filter((lead) => temperaturaDoLead(lead) === item.codigo).length}</b></button>)}
+  </div>;
+}
 
 /* O pipe de visitas nunca teve campo de data nem de imovel, entao nao existe
    regra de estilo para eles. Ate o CSS ganhar a sua, o campo copia a borda e o
@@ -95,7 +122,8 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
   // Aviso nunca abre sozinho: no celular um painel automático encobria o CRM.
   // O corretor abre pelo sino quando quiser e fecha sem perder o contexto.
   const [avisosAbertos, setAvisosAbertos] = useState(false);
-  const [etapaMapa, setEtapaMapa] = useState("em_atendimento");
+  const [temperaturaQuadro, setTemperaturaQuadro] = useState<TemperaturaFiltro>("todas");
+  const [historicoDetalhe, setHistoricoDetalhe] = useState<{ leadId: string; eventos: EventoFunil2[]; notas: NotaFunil2[] } | null>(null);
   const [limiteDia, setLimiteDia] = useState(50);
   /* Filtro do Meu Dia. Começa em "atrasadas": é o que o corretor tem que
      resolver agora. Os outros recortes existem, mas por escolha dele. */
@@ -166,8 +194,21 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
 
   const lead = leads.find((item) => item.id === selecionado) ?? null;
   const momentoAtual = lead ? momentos.find((m) => m.codigo === lead.momento_codigo) ?? null : null;
-  const eventosLead = lead ? eventos.filter((e) => e.funil_lead_id === lead.id) : [];
-  const notasLead = lead ? notas.filter((n) => n.funil_lead_id === lead.id) : [];
+  const leadHistoricoId = lead?.id ?? null;
+  const leadHistoricoVersao = lead?.versao ?? null;
+  useEffect(() => {
+    if (!leadHistoricoId) return;
+    let ativo = true;
+    void fetch(`/api/funil2?historicoLeadId=${encodeURIComponent(leadHistoricoId)}`, { headers: { Authorization: `Bearer ${accessToken}` } })
+      .then(async (response) => ({ ok: response.ok, json: await response.json().catch(() => ({})) as Payload }))
+      .then((resposta) => {
+        if (!ativo || !resposta.ok) return;
+        setHistoricoDetalhe({ leadId: leadHistoricoId, eventos: resposta.json.eventos ?? [], notas: resposta.json.notas ?? [] });
+      });
+    return () => { ativo = false; };
+  }, [accessToken, leadHistoricoId, leadHistoricoVersao]);
+  const eventosLead = lead ? (historicoDetalhe?.leadId === lead.id ? historicoDetalhe.eventos : eventos.filter((e) => e.funil_lead_id === lead.id)) : [];
+  const notasLead = lead ? (historicoDetalhe?.leadId === lead.id ? historicoDetalhe.notas : notas.filter((n) => n.funil_lead_id === lead.id)) : [];
   const atrasados = leads.filter((l) => situacaoPrazo(l.proxima_acao_em).classe === "atrasado").length;
   const atualizados = leads.filter((l) => l.ultima_acao_confirmada_em).length;
   const urgentes = leads.filter((l) => situacaoPrazo(l.proxima_acao_em).classe === "urgente").length;
@@ -270,23 +311,18 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
       {carregando && <div className="f2-loading">Carregando o Funil 2.0…</div>}
 
       {!carregando && aba === "quadro" && <main className="f2-main">
-        <MapaOperacao
-          leads={leads}
-          etapas={etapasAtivas}
-          momentos={momentosAtivos}
-          etapaAtiva={etapaMapa}
-          onEtapa={setEtapaMapa}
-        />
         <section className="f2-resumo" aria-label="Resumo da carteira">
           <article><b>{leads.length}</b><span>leads na carteira</span></article>
           <article className={atrasados ? "alerta" : ""}><b>{atrasados}</b><span>ações atrasadas</span></article>
           <article><b>{atualizados}</b><span>com ação confirmada</span></article>
-          <div><strong>Como ler o quadro</strong><span>Etapa organiza · momento explica · ação e prazo movem o trabalho.</span></div>
+          <details><summary>Como este funil funciona</summary><span>Etapa organiza · momento explica · ação e prazo movem o trabalho.</span></details>
         </section>
+
+        <FiltrosTemperatura leads={leads} valor={temperaturaQuadro} onChange={setTemperaturaQuadro} />
 
         <section className="f2-board" aria-label="Etapas do Funil 2.0">
           {etapasAtivas.map((etapa, indice) => {
-            const daEtapa = leads.filter((l) => l.etapa === etapa.codigo);
+            const daEtapa = leads.filter((l) => l.etapa === etapa.codigo && (temperaturaQuadro === "todas" || temperaturaDoLead(l) === temperaturaQuadro));
             return <div key={etapa.codigo} className={`f2-coluna etapa-${etapa.codigo}`}>
               <div className="f2-coluna-topo"><span>{indice + 1}</span><div><h2>{etapa.rotulo}</h2><p>{etapa.ajuda}</p></div><b>{daEtapa.length}</b></div>
               <div className="f2-lista">
@@ -296,12 +332,13 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
                   const cadencia = rotuloCadencia(item);
                   const tentativa = tentativaAtual(item);
                   return <article key={item.id} role="button" tabIndex={0} className={`f2-card ${selecionado === item.id ? "selecionado" : ""}`} onClick={() => setSelecionado(item.id)} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") setSelecionado(item.id); }}>
-                    <div className="f2-card-ident"><i>{iniciais(item.nome)}</i><div><strong>{item.nome}</strong><span>{item.corretor_nome ?? "Sem corretor"}{item.instancia_rotulo ? <em className="f2-instancia" title={`Contato saindo por ${item.instancia_rotulo}`}> · {item.instancia_rotulo}</em> : null}{rotuloTemperatura(item.temperatura) ? <em className={`f2-instancia temperatura-${item.temperatura}`}><i /> · {rotuloTemperatura(item.temperatura)}</em> : null}</span><InteresseLead lead={item} /></div></div>
+                    <div className="f2-card-ident"><i>{iniciais(item.nome)}</i><div><strong>{item.nome}</strong><span>{item.corretor_nome ?? "Sem corretor"}{item.instancia_rotulo ? <em className="f2-instancia" title={`Contato saindo por ${item.instancia_rotulo}`}> · {item.instancia_rotulo}</em> : null}</span></div><em className={prazo.classe}>{prazo.rotulo}</em></div>
                     <div className="f2-card-trio f2-card-trio-compacto">
+                      <div className="etapa"><span>ETAPA</span><b>{etapa.rotulo}</b></div>
                       <div className="momento"><span>MOMENTO</span><b>{momento?.rotulo ?? item.momento_codigo}</b></div>
-                      <div className="acao"><span>{cadencia ? "CADÊNCIA" : "PRÓXIMA AÇÃO"} <em className="f2-em-obra">em implementação</em></span><b>{acaoVisivel(item)}</b></div>
+                      <div className="temperatura"><span>TEMPERATURA</span><ChipTemperatura lead={item} /></div>
+                      <div className="acao"><span>{cadencia ? "CADÊNCIA" : "PRÓXIMA AÇÃO"}</span><b>{acaoVisivel(item)}</b><InteresseLead lead={item} /></div>
                     </div>
-                    <div className={`f2-prazo ${prazo.classe}`}>{prazo.rotulo}</div>
                     <div className="f2-card-botoes"><button type="button" onClick={(e) => { e.stopPropagation(); setAbrirNoChat(true); setSelecionado(item.id); }}>💬 Conversa</button><button type="button" className="principal" onClick={(e) => { e.stopPropagation(); setSelecionado(item.id); }}>{tentativa ? `Executar tentativa ${tentativa}` : "Abrir atendimento"}</button></div>
                   </article>;
                 })}
@@ -314,11 +351,7 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
       </main>}
 
       {!carregando && aba === "dia" && <main className="f2-dia">
-        <section className="f2-plano">
-          <div className="f2-plano-titulo"><div><span className="f2-eyebrow">SEU PLANO DE TRABALHO</span><h2>O CRM colocou o dia na ordem certa.</h2><p>Aqui embaixo só o que está atrasado. Para ver outro recorte, toque num dos quadros.</p></div><b>{totalDoFiltro}<small>{filtroAtivo.rotulo}</small></b></div>
-          {aFazer[0] && <div className="f2-proxima"><div><span>PRIMEIRO DA FILA</span><h3>{aFazer[0].nome}</h3><b>{etapasAtivas.find((e) => e.codigo === aFazer[0].etapa)?.rotulo} · {momentosAtivos.find((m) => m.codigo === aFazer[0].momento_codigo)?.rotulo}</b><small>{prazoDaAcao(aFazer[0]).rotulo}</small></div><button type="button" onClick={() => setSelecionado(aFazer[0].id)}>Atender agora</button></div>}
-          {/* Os quadros são o filtro da lista, não um placar: cada um abre
-              embaixo a lista do que ele conta, para o corretor escolher. */}
+        <section className="f2-dia-controles" aria-label="Filtros do Meu Dia">
           <div className="f2-indicadores">
             <button type="button" className={`vermelho${filtroDia === "atrasadas" ? " f2-ind-ativo" : ""}`} aria-pressed={filtroDia === "atrasadas"} onClick={() => trocarFiltroDia("atrasadas")}><b>{atrasados}</b><span>ações atrasadas</span></button>
             <button type="button" className={`amarelo${filtroDia === "urgentes" ? " f2-ind-ativo" : ""}`} aria-pressed={filtroDia === "urgentes"} onClick={() => trocarFiltroDia("urgentes")}><b>{urgentes}</b><span>vencem em até 2h</span></button>
@@ -328,8 +361,9 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
           </div>
           <details className="f2-como-recolhido"><summary>Como usar o Meu Dia</summary><div className="f2-como"><span><i>1</i><b>Siga a ordem</b><small>O primeiro item é o mais urgente.</small></span><span><i>2</i><b>Execute a ação</b><small>WhatsApp, visita, produto ou retorno.</small></span><span><i>3</i><b>Conclua no CRM</b><small>A Sara relê e prepara o próximo passo.</small></span></div></details>
         </section>
-        <div className="f2-dia-cab"><div><span className="f2-eyebrow">{mostrandoVisitas ? "AGENDA DO DIA" : "OBRIGAÇÕES ORDENADAS"}</span><h2>Seu dia, sem adivinhação.</h2><p>{filtroDia === "atrasadas" ? "Só o que já passou do prazo, do mais antigo para o mais recente." : `Mostrando ${filtroAtivo.rotulo}. Toque em “ações atrasadas” para voltar.`}</p></div><b>{totalDoFiltro} {filtroAtivo.rotulo}</b></div>
-        <div className="f2-dia-colunas">{mostrandoVisitas ? <><span>Cliente</span><span>Imóvel</span><span>Situação</span><span>Horário</span><span></span></> : <><span>Cliente</span><span>Etapa</span><span>Momento</span><span>Tempo</span><span></span></>}</div>
+        {aFazer[0] && <section className="f2-proxima"><div><span>PRIMEIRO DA FILA</span><h3>{aFazer[0].nome}</h3><div className="f2-proxima-chips"><b>{etapasAtivas.find((e) => e.codigo === aFazer[0].etapa)?.rotulo}</b><b>{momentosAtivos.find((m) => m.codigo === aFazer[0].momento_codigo)?.rotulo}</b><ChipTemperatura lead={aFazer[0]} /><small>{prazoDaAcao(aFazer[0]).rotulo}</small></div><p>{acaoVisivel(aFazer[0])}</p></div><button type="button" onClick={() => setSelecionado(aFazer[0].id)}>Atender agora</button></section>}
+        <div className="f2-dia-cab"><div><h2>{mostrandoVisitas ? "Agenda do dia" : "Do mais antigo para o mais recente"}</h2></div><b>{totalDoFiltro} {filtroAtivo.rotulo}</b></div>
+        <div className={`f2-dia-colunas ${mostrandoVisitas ? "visitas" : "leads"}`}>{mostrandoVisitas ? <><span></span><span>Cliente</span><span>Imóvel</span><span>Situação</span><span>Horário</span><span></span></> : <><span></span><span>Cliente</span><span>Etapa</span><span>Momento</span><span>Temperatura</span><span>Próxima ação</span><span>Tempo</span><span></span></>}</div>
         <div className="f2-dia-lista">
           {/* Visita entra na mesma lista, com as colunas trocadas: o corretor
               continua vendo uma fila só e clicando para abrir o cliente. */}
@@ -337,18 +371,17 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
             const leadDaVisita = leads.find((l) => l.id === visita.funil_lead_id);
             const hora = new Intl.DateTimeFormat("pt-BR", { timeZone: FUSO_OPERACAO, hour: "2-digit", minute: "2-digit" }).format(new Date(visita.inicio_em));
             const situacao: Record<string, string> = { agendada: "Agendada", confirmada: "Confirmada", realizada: "Realizada", cancelada: "Cancelada", nao_compareceu: "Não compareceu" };
-            return <button key={visita.id} type="button" className="f2-dia-item" disabled={!leadDaVisita} onClick={() => leadDaVisita && setSelecionado(leadDaVisita.id)}>
+            return <button key={visita.id} type="button" className="f2-dia-item visita" disabled={!leadDaVisita} onClick={() => leadDaVisita && setSelecionado(leadDaVisita.id)}>
               <span className="f2-dia-ordem">{index + 1}</span><div><strong>{leadDaVisita?.nome ?? "Lead removido"}</strong><small>{leadDaVisita?.corretor_nome ?? "Sem corretor"}</small></div><div><span>IMÓVEL</span><b>{visita.imovel || "—"}</b></div><div><span>SITUAÇÃO</span><b>{situacao[visita.status] ?? visita.status}</b></div><em className={visita.status === "cancelada" || visita.status === "nao_compareceu" ? "atrasado" : "no-prazo"}>{hora}</em><i>{leadDaVisita ? "Abrir cliente" : "Sem ficha"}</i>
             </button>;
           })}
           {mostrandoVisitas && visitasHoje > limiteDia && <button type="button" className="f2-dia-mais" onClick={() => setLimiteDia((atual) => atual + 50)}>Mostrar mais 50 · ainda faltam {visitasHoje - limiteDia}</button>}
-          {aFazer.slice(0, limiteDia).map((item, index) => {
+          {aFazer.slice(0, limiteDia).map((item) => {
             const momento = momentosAtivos.find((m) => m.codigo === item.momento_codigo);
             const prazo = prazoDaAcao(item);
-            const cadencia = rotuloCadencia(item);
             const tentativa = tentativaAtual(item);
-            return <button key={item.id} type="button" className="f2-dia-item" onClick={() => setSelecionado(item.id)}>
-              <span className="f2-dia-ordem">{index + 1}</span><div><strong>{item.nome}</strong><small>{item.corretor_nome ?? "Sem corretor"}{item.instancia_rotulo ? <em className="f2-instancia" title={`Contato saindo por ${item.instancia_rotulo}`}> · {item.instancia_rotulo}</em> : null}</small><InteresseLead lead={item} /></div><div><span>ETAPA</span><b>{etapasAtivas.find((e) => e.codigo === item.etapa)?.rotulo}</b></div><div><span>{cadencia ? "MOMENTO · CADÊNCIA" : "MOMENTO"}</span><b>{momento?.rotulo}</b></div><em className={prazo.classe}>{prazo.rotulo}</em><i>{tentativa ? `Enviar tentativa ${tentativa}` : "Executar ação"}</i>
+            return <button key={item.id} type="button" className="f2-dia-item lead" onClick={() => setSelecionado(item.id)}>
+              <span className="f2-dia-ordem">{iniciais(item.nome)}</span><div><strong>{item.nome}</strong><small>{item.corretor_nome ?? "Sem corretor"}{item.instancia_rotulo ? <em className="f2-instancia" title={`Contato saindo por ${item.instancia_rotulo}`}> · {item.instancia_rotulo}</em> : null}</small></div><div><span>ETAPA</span><b>{etapasAtivas.find((e) => e.codigo === item.etapa)?.rotulo}</b></div><div><span>MOMENTO</span><b>{momento?.rotulo}</b></div><ChipTemperatura lead={item} /><div className="f2-dia-acao"><b>{acaoVisivel(item)}</b><InteresseLead lead={item} /></div><em className={prazo.classe}>{prazo.rotulo}</em><i>{tentativa ? `Enviar tentativa ${tentativa}` : "Executar ação"}</i>
             </button>;
           })}
           {aFazer.length > limiteDia && <button type="button" className="f2-dia-mais" onClick={() => setLimiteDia((atual) => atual + 50)}>Mostrar mais 50 · ainda faltam {aFazer.length - limiteDia}</button>}
@@ -357,7 +390,7 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
       </main>}
 
       {!carregando && aba === "leads" && <TodosLeads leads={leads} momentos={momentosAtivos} etapas={etapasAtivas} accessToken={accessToken} busy={busy} onAbrir={(id) => setSelecionado(id)} onTrazer={(leadId, etapa, momento) => executar("trazerLeadAntigo", { leadId, etapa, momento })} />}
-      {!carregando && aba === "visitas" && <PipeVisitas visitas={visitas} leads={leads} busy={busy} onNova={() => setModal("visita")} onSalvar={(visita) => void executar("salvarVisita", visita)} />}
+      {!carregando && aba === "visitas" && <PipeVisitas visitas={visitas} leads={leads} momentos={momentosAtivos} busy={busy} onNova={() => setModal("visita")} onAbrir={setSelecionado} onSalvar={(visita) => void executar("salvarVisita", visita)} />}
       {/* Só a esteira. O CRM antigo inteiro (cabeçalho, barra de visões, filtros
           e funil) não entra aqui — o Funil 2.0 já é a navegação da operação. */}
       {!carregando && aba === "vendas" && <main className="f2-pagina f2-esteira-oficial"><SalesProcessView accessToken={accessToken} sessionRole="admin" /></main>}
@@ -373,6 +406,7 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
         abrirNoChat={abrirNoChat}
         onFechar={() => { setSelecionado(null); setAbrirNoChat(false); }}
         onMomento={(codigo, prazo, obs) => void atualizar("atualizarMomento", { momentoCodigo: codigo, prazoCombinado: prazo || null, observacao: obs })}
+        onTemperatura={(temperatura) => atualizar("atualizarTemperatura", { temperatura })}
         onAgendarVisita={() => setModal("visita")}
         onGerarNegociacao={() => setModal("negociacao")}
         onDescartar={() => setModal("descartar")}
@@ -382,52 +416,6 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
       <footer className="f2-rodape">Sessão: {profile.name} · somente administradores · origens dos pipes antigos preservadas</footer>
     </div>
   );
-}
-
-function MapaOperacao({ leads, etapas, momentos, etapaAtiva, onEtapa }: {
-  leads: LeadFunil2[];
-  etapas: EtapaConfigFunil2[];
-  momentos: MomentoFunil2[];
-  etapaAtiva: string;
-  onEtapa: (etapa: string) => void;
-}) {
-  const etapaSelecionada = etapas.find((etapa) => etapa.codigo === etapaAtiva) ?? etapas[0];
-  if (!etapaSelecionada) return null;
-
-  const momentosDaEtapa = momentos
-    .filter((momento) => momento.etapa === etapaSelecionada.codigo)
-    .sort((a, b) => a.ordem - b.ordem);
-
-  return <details className="f2-mapa f2-mapa-recolhido">
-    <summary><span>Entender o funil</span><small>Etapas, momentos, ações e prazos oficiais</small></summary>
-    <div aria-label="Mapa da operação do Funil 2.0">
-    <header className="f2-mapa-cabecalho">
-      <div><span className="f2-eyebrow">MAPA DA OPERAÇÃO</span><h2>Etapa organiza. Momento explica. Ação e prazo movem o dia.</h2></div>
-      <p>O corretor não precisa interpretar: o CRM mostra o que está acontecendo, o que fazer e até quando.</p>
-    </header>
-
-    <nav className="f2-mapa-etapas" aria-label="Etapas oficiais do funil">
-      {etapas.map((etapa, indice) => {
-        const ativa = etapa.codigo === etapaSelecionada.codigo;
-        return <button key={etapa.codigo} type="button" className={ativa ? "ativa" : ""} aria-pressed={ativa} onClick={() => onEtapa(etapa.codigo)}>
-          <small>ETAPA {indice + 1}</small><strong>{etapa.rotulo}</strong><b>{leads.filter((lead) => lead.etapa === etapa.codigo).length}</b>
-        </button>;
-      })}
-    </nav>
-
-    <div className="f2-mapa-detalhe">
-      <div className="f2-mapa-intro"><span>VOCÊ ESTÁ VENDO</span><strong>{etapaSelecionada.rotulo}</strong><small>{etapaSelecionada.ajuda}</small></div>
-      <div className="f2-mapa-momentos">
-        {momentosDaEtapa.map((momento) => <article key={momento.codigo}>
-          <i>{momento.ordem}</i>
-          <div><span>MOMENTO</span><strong>{momento.rotulo}</strong><small>{momento.acao_rotulo}</small></div>
-          <b>{momento.prazo_rotulo || (momento.prazo_minutos ? `até ${duracao(momento.prazo_minutos)}` : "data combinada")}</b>
-        </article>)}
-        {momentosDaEtapa.length === 0 && <p>Nenhum momento ativo nesta etapa.</p>}
-      </div>
-    </div>
-    </div>
-  </details>;
 }
 
 function CentralAtencao({ leads, momentos, etapas, onAbrir, onMeuDia }: {
@@ -461,6 +449,7 @@ type LeadCarteiraAntiga = {
 function TodosLeads({ leads, momentos, etapas, accessToken, busy, onAbrir, onTrazer }: { leads: LeadFunil2[]; momentos: MomentoFunil2[]; etapas: EtapaConfigFunil2[]; accessToken: string; busy: boolean; onAbrir: (id: string) => void; onTrazer: (leadId: number, etapa: string, momento: string) => Promise<boolean> }) {
   const [filtro, setFiltro] = useState("ativos");
   const [situacao, setSituacao] = useState("todas");
+  const [temperatura, setTemperatura] = useState<TemperaturaFiltro>("todas");
   const [busca, setBusca] = useState("");
   const [pagina, setPagina] = useState(1);
   const porPagina = 50;
@@ -478,6 +467,7 @@ function TodosLeads({ leads, momentos, etapas, accessToken, busy, onAbrir, onTra
     if (filtro !== "ativos" && lead.etapa !== filtro) return false;
     const prazo = situacaoPrazo(lead.proxima_acao_em).classe;
     if (situacao !== "todas" && prazo !== situacao) return false;
+    if (temperatura !== "todas" && temperaturaDoLead(lead) !== temperatura) return false;
     if (!termo) return true;
     const telefone = (lead.telefone ?? "").replace(/\D/g, "");
     const termoNumerico = termo.replace(/\D/g, "");
@@ -514,8 +504,9 @@ function TodosLeads({ leads, momentos, etapas, accessToken, busy, onAbrir, onTra
   return <main className="f2-pagina"><CabecalhoPagina titulo="Todos os Leads" texto="Encontre e compare a carteira por cliente, etapa, momento, ação e prazo." />
     <div className="f2-leads-busca"><label><span>Buscar lead</span><input value={busca} onChange={(event) => { setBusca(event.target.value); setPagina(1); }} placeholder="Nome ou telefone" aria-label="Buscar lead por nome ou telefone" /></label><label><span>Situação do prazo</span><select value={situacao} onChange={(event) => { setSituacao(event.target.value); setPagina(1); }}><option value="todas">Todos os prazos</option><option value="atrasado">Atrasados</option><option value="urgente">Vencem em até 2h</option><option value="no-prazo">No prazo</option></select></label><b>{filtrados.length} encontrado(s)</b></div>
     <div className="f2-leads-filtros"><button type="button" className={filtro === "ativos" ? "ativo" : ""} onClick={() => { setFiltro("ativos"); setPagina(1); }}>Ativos · {leads.filter((lead) => lead.etapa !== "legado").length}</button>{etapas.map((etapa) => <button type="button" className={filtro === etapa.codigo ? "ativo" : ""} onClick={() => { setFiltro(etapa.codigo); setPagina(1); }} key={etapa.codigo}>{etapa.rotulo} · {leads.filter((lead) => lead.etapa === etapa.codigo).length}</button>)}<span>{atrasados} atrasado(s)</span></div>
-    <div className="f2-tabela-cab"><span>Cliente</span><span>Etapa</span><span>Momento</span><span>Próxima ação</span><span>Prazo</span><span></span></div>
-    <div className="f2-tabela f2-tabela-compacta">{exibidos.map((lead) => { const prazo = prazoDaAcao(lead); return <article key={lead.id} role="button" tabIndex={0} onClick={() => onAbrir(lead.id)} onKeyDown={(evento) => { if (evento.key === "Enter" || evento.key === " ") onAbrir(lead.id); }} className={`f2-lead-linha prazo-${prazo.classe}`}><div className="f2-nome"><i>{iniciais(lead.nome)}</i><span><b>{lead.nome}</b><small>{lead.corretor_nome ?? "Responsável não definido"}{lead.instancia_rotulo ? <em className="f2-instancia" title={`Contato saindo por ${lead.instancia_rotulo}`}> · {lead.instancia_rotulo}</em> : null}</small><InteresseLead lead={lead} /></span></div><span className="f2-lead-chip etapa"><i />{etapas.find((e) => e.codigo === lead.etapa)?.rotulo}</span><span className="f2-lead-chip momento">{momentos.find((m) => m.codigo === lead.momento_codigo)?.rotulo}</span><strong className="f2-lead-acao">{acaoVisivel(lead)}</strong><em className={prazo.classe}>{prazo.rotulo}</em><div className="f2-lead-acoes"><button type="button" className="primario" onClick={(evento) => { evento.stopPropagation(); onAbrir(lead.id); }}>Abrir ficha</button></div></article>; })}{filtrados.length === 0 && <div className="f2-sem-resultado"><b>Nenhum lead encontrado.</b><span>Revise a busca ou os filtros selecionados.</span></div>}</div>
+    <FiltrosTemperatura leads={leads.filter((lead) => filtro === "ativos" ? lead.etapa !== "legado" : lead.etapa === filtro)} valor={temperatura} onChange={(valor) => { setTemperatura(valor); setPagina(1); }} className="f2-temperatura-leads" />
+    <div className="f2-tabela-cab"><span>Cliente</span><span>Etapa</span><span>Momento</span><span>Temperatura</span><span>Próxima ação</span><span>Prazo</span><span></span></div>
+    <div className="f2-tabela f2-tabela-compacta">{exibidos.map((lead) => { const prazo = prazoDaAcao(lead); return <article key={lead.id} role="button" tabIndex={0} onClick={() => onAbrir(lead.id)} onKeyDown={(evento) => { if (evento.key === "Enter" || evento.key === " ") onAbrir(lead.id); }} className={`f2-lead-linha prazo-${prazo.classe}`}><div className="f2-nome"><i>{iniciais(lead.nome)}</i><span><b>{lead.nome}</b><small>{lead.corretor_nome ?? "Responsável não definido"}{lead.interesse ? ` · ${lead.interesse}` : ""}</small></span></div><span className="f2-lead-chip etapa"><i />{etapas.find((e) => e.codigo === lead.etapa)?.rotulo}</span><span className="f2-lead-chip momento">{momentos.find((m) => m.codigo === lead.momento_codigo)?.rotulo}</span><ChipTemperatura lead={lead} /><strong className="f2-lead-acao">{acaoVisivel(lead)}</strong><em className={prazo.classe}>{prazo.rotulo}</em><div className="f2-lead-acoes">{linkWhatsapp(lead.telefone) && <a href={linkWhatsapp(lead.telefone)!} target="_blank" rel="noreferrer" onClick={(evento) => evento.stopPropagation()} aria-label={`Chamar ${lead.nome} no WhatsApp`}>☎</a>}<button type="button" className="primario" onClick={(evento) => { evento.stopPropagation(); onAbrir(lead.id); }}>Abrir ficha</button></div></article>; })}{filtrados.length === 0 && <div className="f2-sem-resultado"><b>Nenhum lead encontrado.</b><span>Revise a busca ou os filtros selecionados.</span></div>}</div>
     {filtrados.length > porPagina && <div className="f2-paginacao"><button type="button" disabled={paginaSegura === 1} onClick={() => setPagina((atual) => Math.max(1, atual - 1))}>← Anterior</button><span>Página {paginaSegura} de {totalPaginas}</span><button type="button" disabled={paginaSegura === totalPaginas} onClick={() => setPagina((atual) => Math.min(totalPaginas, atual + 1))}>Próxima →</button></div>}
 
     {/* Carteira antiga: mesma busca, seção separada. Só aparece quando há algo
@@ -569,8 +560,8 @@ function ModalTrazerLeadAntigo({ alvo, etapas, momentos, busy, onFechar, onConfi
   </Modal>;
 }
 
-function PipeVisitas({ visitas, leads, busy, onNova, onSalvar }: { visitas: VisitaFunil2[]; leads: LeadFunil2[]; busy: boolean; onNova: () => void; onSalvar: (v: Record<string, unknown>) => void }) {
-  const [modo, setModo] = useState<"agenda" | "quadro">("agenda");
+function PipeVisitas({ visitas, leads, momentos, busy, onNova, onAbrir, onSalvar }: { visitas: VisitaFunil2[]; leads: LeadFunil2[]; momentos: MomentoFunil2[]; busy: boolean; onNova: () => void; onAbrir: (id: string) => void; onSalvar: (v: Record<string, unknown>) => void }) {
+  const [modo, setModo] = useState<"agenda" | "quadro">("quadro");
   const [agora, setAgora] = useState(() => Date.now());
   useEffect(() => {
     const relogio = window.setInterval(() => setAgora(Date.now()), 60_000);
@@ -591,7 +582,7 @@ function PipeVisitas({ visitas, leads, busy, onNova, onSalvar }: { visitas: Visi
   return <main className="f2-pagina"><CabecalhoPagina titulo="Visitas" texto="Agenda e Pipe de Visitas no mesmo lugar: veja primeiro atrasos, compromissos de hoje e próximos horários." acao="+ Nova visita" onAcao={onNova} />
     <div className="f2-visitas-modos" role="group" aria-label="Modo de visualização das visitas"><button type="button" className={modo === "agenda" ? "ativo" : ""} onClick={() => setModo("agenda")}>Agenda</button><button type="button" className={modo === "quadro" ? "ativo" : ""} onClick={() => setModo("quadro")}>Quadro por status</button></div>
     <details className="f2-visita-regra"><summary>Entender o fluxo de visitas</summary><div><b>Fluxo automático</b><span>Agendada → confirmar 24h antes</span><span>Realizada → feedback em até 2h</span><span>Cancelada/faltou → remarcar em até 12h</span></div></details>
-    <section className={`f2-pipe ${modo === "agenda" ? "f2-agenda-visitas" : ""}`}>{grupos.map((grupo) => <div key={grupo.codigo}><header><h3>{grupo.rotulo}</h3><b>{grupo.itens.length}</b></header>{grupo.itens.map((visita) => <VisitaCard key={visita.id} visita={visita} lead={leads.find((lead) => lead.id === visita.funil_lead_id)} busy={busy} onSalvar={onSalvar} />)}{grupo.itens.length === 0 && <p className="f2-pipe-vazio">Nenhuma visita.</p>}</div>)}</section>
+    <section className={`f2-pipe ${modo === "agenda" ? "f2-agenda-visitas" : ""}`}>{grupos.map((grupo) => <div key={grupo.codigo}><header><h3>{grupo.rotulo}</h3><b>{grupo.itens.length}</b></header>{grupo.itens.map((visita) => { const lead = leads.find((item) => item.id === visita.funil_lead_id); return <VisitaCard key={visita.id} visita={visita} lead={lead} momentoRotulo={momentos.find((momento) => momento.codigo === lead?.momento_codigo)?.rotulo} busy={busy} onAbrir={onAbrir} onSalvar={onSalvar} />; })}{grupo.itens.length === 0 && <p className="f2-pipe-vazio">Nenhuma visita.</p>}</div>)}</section>
   </main>;
 }
 
@@ -600,7 +591,7 @@ function PipeVisitas({ visitas, leads, busy, onNova, onSalvar }: { visitas: Visi
    errada ou trocava o imovel nao tinha como consertar: criava uma segunda
    visita e o pipe passava a mostrar duas para o mesmo cliente. Como a API ja
    faz upsert por id, mandar data e imovel editados corrige a mesma visita. */
-function VisitaCard({ visita, lead, busy, onSalvar }: { visita: VisitaFunil2; lead?: LeadFunil2; busy: boolean; onSalvar: (v: Record<string, unknown>) => void }) {
+function VisitaCard({ visita, lead, momentoRotulo, busy, onAbrir, onSalvar }: { visita: VisitaFunil2; lead?: LeadFunil2; momentoRotulo?: string; busy: boolean; onAbrir: (id: string) => void; onSalvar: (v: Record<string, unknown>) => void }) {
   const [editando, setEditando] = useState(false);
   const [status, setStatus] = useState(visita.status);
   const [feedback, setFeedback] = useState(visita.observacao ?? "");
@@ -609,6 +600,8 @@ function VisitaCard({ visita, lead, busy, onSalvar }: { visita: VisitaFunil2; le
   const precisaFeedback = status === "realizada";
   const rotulos: Record<VisitaFunil2["status"], string> = { agendada: "Agendada", confirmada: "Confirmada", realizada: "Realizada", cancelada: "Cancelada", nao_compareceu: "Não compareceu" };
   return <article className={!lead ? "f2-visita-vinculo-ausente" : ""}><span>{dataCurta(visita.inicio_em)}</span><h4>{lead?.nome ?? "Vínculo ausente"}</h4><p>{visita.imovel || "Imóvel não informado"}</p><em className={`f2-visita-status status-${visita.status}`}>{rotulos[visita.status]}</em>
+    {lead && <div className="f2-visita-contexto"><span><small>MOMENTO</small><b>{momentoRotulo ?? lead.momento_codigo}</b></span><span><small>TEMPERATURA</small><ChipTemperatura lead={lead} /></span></div>}
+    {lead && <button type="button" className="f2-visita-abrir" onClick={() => onAbrir(lead.id)}>Abrir ficha de {lead.nome}</button>}
     {!lead && <small>Esta visita precisa de correção administrativa porque a ficha do cliente não está disponível.</small>}
     {!editando && <button type="button" className="f2-visita-editar" onClick={() => setEditando(true)}>Editar visita</button>}
     {editando && <div className="f2-visita-form"><input type="datetime-local" style={CAMPO_VISITA} disabled={busy} value={inicio} onChange={(e) => setInicio(e.target.value)} aria-label="Data e hora da visita" />
@@ -758,7 +751,7 @@ function ModalVisita({ leads, leadFoco, busy, erroExterno, onFechar, onSalvar }:
       imovel: unidade.trim() || "",
       empreendimentoId: empreendimento || null,
       unidade: unidade.trim() || null,
-      comGerente, gerenteId: comGerente ? Number(gerente) : null,
+      comGerente, gerenteId: gerente ? Number(gerente) : null,
       status: "agendada",
     });
   }
@@ -778,16 +771,16 @@ function ModalVisita({ leads, leadFoco, busy, erroExterno, onFechar, onSalvar }:
     <label>Data e hora
       <input type="datetime-local" value={inicio} onChange={(e) => { setInicio(e.target.value); setErroFormulario(""); }} />
     </label>
-    <label className="f2-modal-check">
-      <input type="checkbox" checked={comGerente} onChange={(e) => { setComGerente(e.target.checked); setErroFormulario(""); }} />
-      Quero o gerente presente
-    </label>
-    {comGerente && <label>Qual gerente
+    <label>Gerente <small>(opcional)</small>
       <select value={gerente} onChange={(e) => { setGerente(e.target.value); setErroFormulario(""); }}>
-        <option value="">— escolha —</option>
+        <option value="">— nenhum gerente selecionado —</option>
         {equipe.map((g) => <option key={g.id} value={g.id}>{g.nome}</option>)}
       </select>
-    </label>}
+    </label>
+    <label className="f2-modal-check">
+      <input type="checkbox" checked={comGerente} onChange={(e) => { setComGerente(e.target.checked); setErroFormulario(""); }} />
+      Gerente estará presente na visita
+    </label>
     {erroFormulario && <p className="f2-modal-erro" role="alert">{erroFormulario}</p>}
     {erroExterno && <p className="f2-modal-erro" role="alert">{erroExterno}</p>}
     <button type="button" className="f2-modal-primary" disabled={busy} onClick={() => void salvar()}>
@@ -820,10 +813,11 @@ function Modal({ titulo, texto, onFechar, children }: { titulo:string; texto:str
 }
 
 function Detalhe({
-  abrirNoChat, accessToken, lead, momento, momentos, etapas, eventos, notas, tagCatalogo, busy, onFechar, onMomento, onAgendarVisita, onGerarNegociacao, onDescartar, onSalvarNota, onTagSalva }: {
+  abrirNoChat, accessToken, lead, momento, momentos, etapas, eventos, notas, tagCatalogo, busy, onFechar, onMomento, onTemperatura, onAgendarVisita, onGerarNegociacao, onDescartar, onSalvarNota, onTagSalva }: {
   accessToken: string;
   lead: LeadFunil2; momento: MomentoFunil2; momentos: MomentoFunil2[]; etapas: EtapaConfigFunil2[]; eventos: EventoFunil2[]; notas: NotaFunil2[]; tagCatalogo: TagCatalogoFunil2[]; busy: boolean;
   onFechar: () => void; onMomento: (codigo: string, prazo: string, obs: string) => void;
+  onTemperatura: (temperatura: TemperaturaLead | null) => Promise<boolean>;
   onAgendarVisita: () => void; onGerarNegociacao: () => void;
   onDescartar: () => void; onSalvarNota: (texto: string) => Promise<boolean>;
   onTagSalva: () => void;
@@ -837,6 +831,7 @@ function Detalhe({
   const [chatAberto, setChatAberto] = useState(Boolean(abrirNoChat));
   const [maisAcoes, setMaisAcoes] = useState(false);
   const [tagAberta, setTagAberta] = useState(false);
+  const [temperaturaAberta, setTemperaturaAberta] = useState(false);
   const config = momentos.find((m) => m.codigo === codigo) ?? momento;
   const situacao = situacaoPrazo(lead.proxima_acao_em);
   const tentativa = tentativaAtual(lead);
@@ -851,11 +846,12 @@ function Detalhe({
       if (chatAberto) setChatAberto(false);
       else if (tagAberta) setTagAberta(false);
       else if (maisAcoes) setMaisAcoes(false);
+      else if (temperaturaAberta) setTemperaturaAberta(false);
       else onFechar();
     };
     document.addEventListener("keydown", fecharComEscape);
     return () => document.removeEventListener("keydown", fecharComEscape);
-  }, [chatAberto, maisAcoes, onFechar, tagAberta]);
+  }, [chatAberto, maisAcoes, onFechar, tagAberta, temperaturaAberta]);
 
   return <div className="f2-overlay" onMouseDown={(evento) => { if (evento.target === evento.currentTarget) onFechar(); }}>
     <aside className="f2-detalhe" role="dialog" aria-modal="true" aria-label={`Atendimento de ${lead.nome}`}>
@@ -865,7 +861,10 @@ function Detalhe({
         <div className="f2-ficha-chips">
           <span className="f2-chip-resumo etapa"><small>Etapa</small>{etapaRotulo}</span>
           <span className="f2-chip-resumo momento"><small>Momento</small>{momento.rotulo}</span>
-          <span className={`f2-chip-resumo temperatura temperatura-${temperatura ?? "aguardando"}`} title="Temperatura classificada pela Sara a partir da conversa"><i /><small>Temp.</small>{temperaturaRotulo}</span>
+          <span className="f2-temperatura-controle">
+            <button type="button" className={`f2-chip-resumo temperatura temperatura-${temperatura ?? "aguardando"}`} aria-expanded={temperaturaAberta} aria-label={`Alterar temperatura. Atual: ${temperaturaRotulo}`} disabled={busy} onClick={() => setTemperaturaAberta((aberta) => !aberta)}><i /><small>Temp.</small>{temperaturaRotulo}<b>⌄</b></button>
+            {temperaturaAberta && <div className="f2-temperatura-popover" role="dialog" aria-label="Alterar temperatura"><strong>Temperatura do lead</strong><p>Escolha a leitura que melhor representa a conversa atual.</p>{TEMPERATURAS.map((item) => <button type="button" key={item.codigo} className={`temperatura-${item.codigo}${temperaturaDoLead(lead) === item.codigo ? " ativa" : ""}`} disabled={busy} onClick={() => { const nova = item.codigo === "aguardando" ? null : item.codigo; void onTemperatura(nova).then((ok) => { if (ok) setTemperaturaAberta(false); }); }}><i />{item.rotulo}</button>)}</div>}
+          </span>
           <em className={`f2-chip-resumo prazo ${situacao.classe}`}><small>Prazo</small>{situacao.rotulo}</em>
         </div>
         <p className="f2-ficha-interesse">Interesse: <b>{lead.interesse ?? "Não identificado"}</b></p>

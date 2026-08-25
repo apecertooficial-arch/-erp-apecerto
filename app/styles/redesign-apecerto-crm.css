@@ -256,3 +256,100 @@
 .f2-acao-painel > header button { width:32px; height:32px; border:0; border-radius:999px; background:#EDE8E3; }
 .f2-acao-painel .f2-tag-editor { position:static !important; width:100% !important; box-shadow:none !important; }
 @media(max-width:700px){ .f2-proxima-conteudo { align-items:stretch; flex-direction:column; } .f2-proxima-execucao { align-items:stretch; } .f2-atualizar-campos,.f2-detalhes-indicadores,.f2-detalhes-cliente { grid-template-columns:1fr; } }
+
+/* Fidelidade final do CRM: leitura rápida, temperatura como decisão e menos
+   blocos concorrendo pela atenção. Mantém os componentes e ações reais. */
+.f2-root {
+  --f2-quente:#E6532F; --f2-negociando:#8B35C8; --f2-morno:#D99A16;
+  --f2-frio:#3E78C7; --f2-aguardando:#AAA29A;
+}
+.f2-resumo { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)) minmax(190px,.7fr); gap:10px; margin:0 0 14px; }
+.f2-resumo>div,.f2-resumo>details { min-width:0; padding:13px 15px; border:1px solid #EAE4DE; border-radius:16px; background:#fff; box-shadow:none; }
+.f2-resumo>details summary { color:#6E6760; font-size:11px; font-weight:700; cursor:pointer; }
+.f2-resumo>details>span,.f2-resumo>details p { display:block; margin:8px 0 0; color:#6E6760; font-size:11px; line-height:1.45; }
+.f2-temperatura-filtros { display:flex; align-items:center; gap:7px; overflow-x:auto; margin:0 0 13px; padding:1px 0 3px; scrollbar-width:none; }
+.f2-temperatura-filtros::-webkit-scrollbar { display:none; }
+.f2-temperatura-filtros>span { flex:none; margin-right:3px; color:#8A837C; font-size:10px; font-weight:800; letter-spacing:.09em; text-transform:uppercase; }
+.f2-temperatura-filtros button,.f2-lead-chip.temperatura { display:inline-flex; align-items:center; gap:6px; min-height:30px; padding:0 11px; border:1px solid #E4DFD9; border-radius:999px; background:#fff; color:#625B55; font-size:11px; font-weight:700; white-space:nowrap; }
+.f2-temperatura-filtros button::before { content:""; width:6px; height:6px; flex:none; border-radius:50%; background:currentColor; }
+.f2-lead-chip.temperatura>i { width:6px; height:6px; flex:none; border-radius:50%; background:currentColor; }
+.f2-temperatura-filtros button.ativo { border-color:currentColor; box-shadow:0 0 0 2px color-mix(in srgb,currentColor 12%,transparent); }
+.temperatura-quente { color:var(--f2-quente) !important; background:#FDEAE3 !important; border-color:#F3C2B5 !important; }
+.temperatura-negociando { color:var(--f2-negociando) !important; background:#F7ECFC !important; border-color:#DEC3EF !important; }
+.temperatura-morno { color:#8A6100 !important; background:#FFF4D9 !important; border-color:#EDD89F !important; }
+.temperatura-frio { color:var(--f2-frio) !important; background:#EAF1FB !important; border-color:#C5D7EF !important; }
+.temperatura-aguardando { color:#6E6760 !important; background:#F2EFEC !important; border-color:#DED8D2 !important; }
+
+.f2-board { display:flex; gap:12px; overflow-x:auto; padding:1px 1px 14px; scroll-snap-type:x proximity; }
+.f2-coluna { flex:0 0 274px; min-width:274px; padding:10px; border-radius:17px; background:#F2EFEC; scroll-snap-align:start; }
+.f2-coluna-topo { min-height:42px; padding:2px 3px 10px; }
+.f2-coluna-topo h2 { font-size:12.5px; }
+.f2-card { padding:12px !important; border:0 !important; border-radius:15px !important; background:#fff !important; box-shadow:0 1px 3px rgba(31,28,26,.06) !important; }
+.f2-card+.f2-card { margin-top:8px; }
+.f2-card-ident { display:grid; grid-template-columns:32px minmax(0,1fr) auto; align-items:center; gap:8px; margin-bottom:8px; }
+.f2-card-ident>div { min-width:0; }
+.f2-card-ident strong { display:block; overflow:hidden; font-size:13px; text-overflow:ellipsis; white-space:nowrap; }
+.f2-card-ident span { display:block; overflow:hidden; margin-top:2px; color:#8B837C; font-size:10.5px; text-overflow:ellipsis; white-space:nowrap; }
+.f2-card-trio { display:grid; grid-template-columns:1fr; gap:6px; margin:9px 0; }
+.f2-card-trio>div { display:grid; grid-template-columns:64px 1fr; align-items:center; gap:6px; min-width:0; }
+.f2-card-trio span { color:#989089; font-size:9px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; }
+.f2-card-trio b { overflow:hidden; color:#403B37; font-size:11px; text-overflow:ellipsis; white-space:nowrap; }
+.f2-card-botoes { margin-top:8px; }
+
+.f2-dia { display:flex; flex-direction:column; gap:12px; }
+.f2-dia-controles { display:flex; align-items:center; gap:7px; flex-wrap:wrap; }
+.f2-dia-controles>button { min-height:34px; padding:0 13px; border:1px solid #E4DFD9; border-radius:999px; background:#fff; color:#615A54; font-size:11px; font-weight:700; }
+.f2-dia-controles>button.ativo { border-color:#FF7000; background:#FFF3EA; color:#B84300; }
+.f2-dia-ajuda { margin-left:auto; }
+.f2-dia-ajuda summary { color:#756D67; font-size:11px; font-weight:700; cursor:pointer; }
+.f2-dia-ajuda p { max-width:440px; color:#6E6760; font-size:11px; line-height:1.45; }
+.f2-dia .f2-proxima { margin:0; padding:14px 16px; border:1px solid #FFD3B5; border-radius:17px; background:#FFF3EA; box-shadow:none; }
+.f2-dia .f2-proxima>div>span { color:#B84300 !important; }
+.f2-dia .f2-proxima h3 { color:#1F1C1A; font-size:16px; }
+.f2-dia .f2-proxima>div b { color:#4D4842; }
+.f2-dia .f2-proxima>div small { color:#A32C2C; }
+.f2-dia .f2-proxima p { color:#4D4842; font-size:11.5px; }
+.f2-proxima-chips { display:flex; align-items:center; flex-wrap:wrap; gap:6px; margin:3px 0; }
+.f2-proxima-chips>b { display:inline-flex; align-items:center; min-height:25px; padding:0 8px; border-radius:999px; background:#fff; font-size:10px !important; }
+.f2-dia-cab { margin:0; padding:3px 2px 6px; border:0; border-radius:0; background:transparent; box-shadow:none; color:#1F1C1A; }
+.f2-dia-cab h2 { margin:0; font-size:15px; }
+.f2-dia-cab>b { color:#B84300; font-size:11px; }
+.f2-dia>h2 { margin:2px 0 -3px; font-size:15px; }
+.f2-dia-lista { border:1px solid #E8E2DC; border-radius:16px; background:#fff; overflow:hidden; }
+.f2-dia-colunas,.f2-dia-item { display:grid; align-items:center; gap:8px; min-width:900px; padding:9px 12px; }
+.f2-dia-colunas.leads,.f2-dia-item.lead { grid-template-columns:30px minmax(150px,1.25fr) 100px 130px 105px minmax(170px,1.4fr) 75px 88px; }
+.f2-dia-colunas.visitas,.f2-dia-item.visita { grid-template-columns:30px minmax(160px,1.25fr) 130px minmax(180px,1.4fr) 80px 88px; }
+.f2-dia-colunas { background:#FAF8F6; color:#8F8780; font-size:9px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; }
+.f2-dia-colunas span:first-child { grid-column:auto; }
+.f2-dia-item { border-top:1px solid #F0ECE8; font-size:11.5px; }
+.f2-dia-item:hover { background:#FFFAF6; }
+.f2-dia-item .f2-lead-chip.temperatura { min-height:25px; padding-inline:8px; font-size:10px; }
+.f2-dia-item>i { color:#fff !important; }
+.f2-avatar-mini { display:grid; place-items:center; width:28px; height:28px; border-radius:9px; background:#FFE4D1; color:#B84300; font-size:9px; font-weight:800; }
+
+.f2-tabela { overflow-x:auto; border:1px solid #E8E2DC; border-radius:16px; background:#fff; }
+.f2-tabela-cab,.f2-lead-linha { display:grid; grid-template-columns:minmax(180px,1.3fr) 110px 130px 110px minmax(160px,1.2fr) 95px 118px; align-items:center; gap:10px; min-width:970px; padding:10px 13px; }
+.f2-tabela.f2-tabela-compacta .f2-lead-linha { grid-template-columns:minmax(180px,1.3fr) 110px 130px 110px minmax(160px,1.2fr) 95px 118px; }
+.f2-tabela-cab { background:#FAF8F6; color:#8F8780; font-size:9px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; }
+.f2-lead-linha { border-top:1px solid #F0ECE8; font-size:11.5px; }
+.f2-lead-linha .f2-lead-chip.temperatura { justify-self:start; min-height:26px; padding-inline:8px; font-size:10px; }
+
+.f2-temperatura-controle { position:relative; display:inline-flex; }
+.f2-temperatura-controle>button { cursor:pointer; }
+.f2-temperatura-popover { position:absolute; top:calc(100% + 8px); left:0; z-index:70; width:230px; padding:9px; border:1px solid #E4DFD9; border-radius:15px; background:#fff; box-shadow:0 16px 40px rgba(31,28,26,.18); }
+.f2-temperatura-popover>strong { display:block; padding:3px 5px 8px; color:#403B37; font-size:11px; }
+.f2-temperatura-popover p { margin:0 5px 7px; color:#817970; font-size:10px; line-height:1.4; }
+.f2-temperatura-popover button { display:flex; align-items:center; gap:8px; width:100%; min-height:35px; margin:2px 0; padding:0 10px; border:0; border-radius:10px; background:transparent; color:#514B46; font-size:11px; font-weight:700; text-align:left; }
+.f2-temperatura-popover button:hover,.f2-temperatura-popover button.ativo { background:#FAF8F6; }
+.f2-temperatura-popover button i { width:7px; height:7px; border-radius:50%; background:currentColor; }
+.f2-visita-contexto { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+.f2-visita-abrir { margin-top:9px !important; border-color:#FFD3B5 !important; background:#FFF3EA !important; color:#B84300 !important; }
+
+@media(max-width:1100px) {
+  .f2-resumo { grid-template-columns:repeat(2,minmax(0,1fr)); }
+}
+@media(max-width:700px) {
+  .f2-resumo { grid-template-columns:1fr; }
+  .f2-dia-controles { flex-wrap:nowrap; overflow-x:auto; padding-bottom:3px; }
+  .f2-dia-ajuda { display:none; }
+}

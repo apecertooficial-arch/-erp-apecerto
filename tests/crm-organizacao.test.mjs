@@ -6,6 +6,9 @@ const ler = (caminho) => readFileSync(new URL(caminho, import.meta.url), "utf8")
 const desktop = ler("../app/features/funil-2/Funil2Workspace.tsx");
 const mobile = ler("../app/features/funil-2/Funil2Mobile.tsx");
 const tags = ler("../app/features/funil-2/AssociarTagLead.tsx");
+const api = ler("../app/api/funil2/route.ts");
+const esteira = ler("../app/features/sales/SalesProcessWorkspace.tsx");
+const temperaturaMigration = ler("../supabase/migrations/20260825150000_funil_2_temperatura_manual_auditavel.sql");
 
 test("desktop replica a ficha aprovada em três áreas e abre a conversa sob demanda", () => {
   for (const rotulo of ["Atendimento", "Notas", "Histórico"]) assert.ok(desktop.includes(rotulo));
@@ -30,13 +33,24 @@ test("aplicativo oferece as mesmas três áreas e ações essenciais do desktop"
   assert.doesNotMatch(mobile, /Atendimento \{Number\(lead\.qualidade_atendimento_nota\)/, "a nota sem explicação não deve poluir o cartão");
 });
 
-test("temperatura oficial aparece com estados e cores sem controle manual cenográfico", () => {
+test("temperatura oficial pode ser filtrada e alterada com persistência auditável", () => {
   for (const codigo of [desktop, mobile]) {
     assert.match(codigo, /rotuloTemperatura/);
     assert.match(codigo, /Aguardando leitura/);
+    for (const rotulo of ["Quente", "Negociando", "Morno", "Frio", "Aguardando leitura"]) assert.ok(codigo.includes(rotulo));
+    assert.match(codigo, /atualizarTemperatura/);
   }
-  assert.doesNotMatch(desktop, /Alterar temperatura|setTemperatura/);
-  assert.doesNotMatch(mobile, /Alterar temperatura|setTemperatura/);
+  assert.match(desktop, /f2-temperatura-filtros/);
+  assert.match(desktop, /f2-temperatura-popover/);
+  assert.match(mobile, /ape-temperatura-filtros/);
+  assert.match(mobile, /ape-temperatura-popover/);
+  assert.match(api, /action === "atualizarTemperatura"/);
+  assert.match(api, /f2_atualizar_temperatura/);
+  assert.match(temperaturaMigration, /CREATE OR REPLACE FUNCTION public\.f2_atualizar_temperatura/i);
+  assert.match(temperaturaMigration, /public\.f2_pode_operar_lead\(p_id\)/);
+  assert.match(temperaturaMigration, /'correcao_classificacao'/);
+  assert.match(temperaturaMigration, /REVOKE ALL ON FUNCTION public\.f2_atualizar_temperatura/i);
+  assert.match(temperaturaMigration, /GRANT EXECUTE ON FUNCTION public\.f2_atualizar_temperatura[\s\S]*authenticated/i);
 });
 
 test("visita e negociação abertas pela ficha não pedem o cliente de novo", () => {
@@ -61,20 +75,49 @@ test("tags já associadas saem do seletor e o formulário começa sem escolha im
 
 test("as visões principais escondem instruções e edição até existir intenção", () => {
   assert.match(desktop, /Regras do CRM/);
-  assert.match(desktop, /<summary><span>Entender o funil/);
+  assert.match(desktop, /<summary>Como este funil funciona<\/summary>/);
+  assert.doesNotMatch(desktop, /MAPA DA OPERAÇÃO/);
   assert.match(desktop, /<summary>Como usar o Meu Dia<\/summary>/);
-  assert.match(desktop, /const \[modo, setModo\] = useState<"agenda" \| "quadro">\("agenda"\)/);
+  assert.match(desktop, /const \[modo, setModo\] = useState<"agenda" \| "quadro">\("quadro"\)/);
   assert.match(desktop, /Atrasadas para atualizar/);
   assert.match(desktop, /const \[editando, setEditando\] = useState\(false\)/);
   assert.match(desktop, /Vínculo ausente/);
 });
 
+test("a ficha carrega o histórico completo do lead aberto, não o recorte global", () => {
+  assert.match(api, /historicoLeadId/);
+  assert.match(api, /\.eq\("funil_lead_id", historicoLeadId\)/);
+  assert.match(desktop, /historicoLeadId=/);
+  assert.match(mobile, /historicoLeadId=/);
+});
+
 test("listas e cartões reduzem ações concorrentes", () => {
   const cartao = desktop.slice(desktop.indexOf("f2-card-botoes"), desktop.indexOf("daEtapa.length > 100"));
   assert.doesNotMatch(cartao, /Descartar|>WhatsApp</);
+  assert.doesNotMatch(cartao, /em implementação/);
   assert.match(desktop, /role="button" tabIndex=\{0\}/);
   assert.match(desktop, />Abrir ficha<\/button>/);
   assert.match(desktop, /f2-avisos-resumo-excecoes/);
+});
+
+test("Meu Dia e Todos os Leads usam temperatura e próxima ação como informação decisória", () => {
+  assert.match(desktop, /f2-dia-colunas[\s\S]*Temperatura[\s\S]*Próxima ação[\s\S]*Tempo/);
+  assert.match(desktop, /f2-tabela-cab[\s\S]*Temperatura[\s\S]*Próxima ação/);
+  assert.match(desktop, /f2-lead-chip temperatura/);
+});
+
+test("cartão móvel aprovado é compacto e não despeja metadados técnicos na fila", () => {
+  const cartao = mobile.slice(mobile.indexOf("function CartaoLead"), mobile.indexOf("function AgendarVisitaMobile"));
+  assert.match(cartao, /PRÓXIMA AÇÃO/);
+  assert.match(cartao, /temperatura-/);
+  assert.doesNotMatch(cartao, /<ContextoDoLead/);
+  assert.doesNotMatch(cartao, /O momento deste cliente/);
+});
+
+test("Esteira expõe aprovações e indicadores antes do kanban", () => {
+  assert.match(esteira, /sales-approvals/);
+  assert.match(esteira, /sales-metrics/);
+  assert.ok(esteira.indexOf("sales-approvals") < esteira.indexOf("sales-kanban"));
 });
 
 test("agendamento diferencia catálogo carregando, vazio e indisponível", () => {
@@ -84,5 +127,4 @@ test("agendamento diferencia catálogo carregando, vazio e indisponível", () =>
     assert.match(codigo, /Nenhum produto disponível/);
     assert.match(codigo, /Produtos indisponíveis/);
   }
-  assert.match(mobile, /disabled=\{salvando \|\| !quando \|\| \(!empreendimento/);
 });

@@ -71,14 +71,11 @@ test("quadro rola para os lados e cada etapa rola somente para cima e para baixo
   assert.match(regraLista, /overscroll-behavior-x:\s*auto/);
 });
 
-test("Funil 2.0 inclui mapa interativo de etapas, momentos, ações e prazos", () => {
-  assert.match(ui, /function MapaOperacao/);
-  assert.match(ui, /MAPA DA OPERAÇÃO/);
-  assert.match(ui, /Etapa organiza\. Momento explica\. Ação e prazo movem o dia\./);
-  assert.match(ui, /aria-label="Etapas oficiais do funil"/);
-  assert.match(ui, /onClick=\{\(\) => onEtapa\(etapa\.codigo\)\}/);
-  assert.match(ui, /momento\.acao_rotulo/);
-  assert.match(ui, /momento\.prazo_rotulo/);
+test("Funil 2.0 mantém a explicação recolhida e prioriza o quadro operacional", () => {
+  assert.match(ui, /<summary>Como este funil funciona<\/summary>/);
+  assert.match(ui, /Etapa organiza · momento explica · ação e prazo movem o trabalho\./);
+  assert.doesNotMatch(ui, /MAPA DA OPERAÇÃO|function MapaOperacao/);
+  assert.match(ui, /aria-label="Etapas do Funil 2\.0"/);
 });
 
 test("sandbox não escreve em tabelas operacionais e tem dez momentos", () => {
@@ -111,8 +108,8 @@ test("cadência mostra com honestidade a tentativa oficial sem duplicar instruç
   assert.match(modelo, /TOTAL_TENTATIVAS_CADENCIA = 6/);
   assert.match(modelo, /FOLGA_ENTRE_TENTATIVAS = \[0, 1, 1, 1, 2, 1\]/);
   assert.match(ui, /tentativaAtual\(lead\)/);
-  assert.match(ui, /Chamar no WhatsApp · tentativa/);
-  assert.match(ui, /f2-em-obra/);
+  assert.match(ui, /Enviar tentativa/);
+  assert.doesNotMatch(ui, /f2-em-obra|em implementação/);
   assert.doesNotMatch(ui, /passo exato que deve ser executado agora/);
 });
 
@@ -219,7 +216,8 @@ test("mesmo momento pode ser revalidado sem reiniciar a cadência", () => {
 });
 
 test("Meu Dia mostra cliente, etapa, momento, tempo e central de atenção", () => {
-  for (const texto of ["SEU PLANO DE TRABALHO", "Cliente", "Etapa", "Momento", "Tempo", "CENTRAL DE ATENÇÃO"]) assert.match(ui, new RegExp(texto));
+  for (const texto of ["PRIMEIRO DA FILA", "Cliente", "Etapa", "Momento", "Temperatura", "Próxima ação", "Tempo"]) assert.match(ui, new RegExp(texto));
+  assert.match(ui, /CentralAtencao/);
   assert.match(ui, /ações atrasadas/);
   assert.match(ui, /vencem em até 2h/);
 });

@@ -34,6 +34,7 @@ import {
   type MomentoFunil2,
   type NotaFunil2,
   type TagCatalogoFunil2,
+  type TemperaturaLead,
 } from "./modelo";
 
 type PayloadMobile = {
@@ -47,6 +48,17 @@ type PayloadMobile = {
 };
 
 type FiltroDia = "agora" | "novos" | "hoje" | "todos";
+type TemperaturaFiltroMobile = TemperaturaLead | "aguardando" | "todas";
+
+const TEMPERATURAS_MOBILE: ReadonlyArray<{ codigo: Exclude<TemperaturaFiltroMobile, "todas">; rotulo: string }> = [
+  { codigo: "quente", rotulo: "Quente" },
+  { codigo: "negociando", rotulo: "Negociando" },
+  { codigo: "morno", rotulo: "Morno" },
+  { codigo: "frio", rotulo: "Frio" },
+  { codigo: "aguardando", rotulo: "Aguardando leitura" },
+];
+
+const temperaturaMobile = (lead: LeadFunil2): Exclude<TemperaturaFiltroMobile, "todas"> => lead.temperatura ?? "aguardando";
 
 const MOTIVOS_DESCARTE = [
   "Contato inválido",
@@ -167,9 +179,9 @@ function useFunil2Mobile(accessToken: string) {
   return { dados, erro, recarregar };
 }
 
-/* Card do cliente: quem, por que agora, em que ponto está, e a única ação que
-   importa. O bloco roxo só aparece quando o momento tem descrição no banco --
-   espaço vazio é melhor do que conselho inventado. */
+/* A fila mostra somente o necessário para decidir e agir. Origem, campanha,
+   tags completas, canal e explicações ficam na ficha, onde existe espaço e
+   intenção de leitura. */
 function CartaoLead({
   lead,
   momento,
@@ -185,26 +197,17 @@ function CartaoLead({
       <span className="ape-avatar" aria-hidden="true">{iniciais(lead.nome)}</span>
       <button type="button" className="ape-quem" onClick={onAbrir}>
         <strong>{lead.nome}</strong>
-        <span>{lead.corretor_nome ?? "Aguardando responsável"}{lead.instancia_rotulo ? ` · ${lead.instancia_rotulo}` : ""}</span>
+        <span>{nomeEtapa(lead.etapa)} · {lead.corretor_nome ?? "Aguardando responsável"}</span>
       </button>
       <span className={`ape-prazo ${prazo.classe}`}><IconeRelogio />{situacaoPrazo(lead.proxima_acao_em).rotulo}</span>
     </div>
 
-    <div className="ape-etiquetas">
-      <span className="ape-etapa">{nomeEtapa(lead.etapa)}</span>
-      <span className="ape-momento">{momento?.rotulo ?? lead.momento_codigo}</span>
-      {rotuloTemperatura(lead.temperatura) ? <span className={`ape-momento temperatura-${lead.temperatura}`}><i />{rotuloTemperatura(lead.temperatura)}</span> : null}
+    <div className="ape-card-leitura">
+      <span><small>MOMENTO</small><b className="ape-momento">{momento?.rotulo ?? lead.momento_codigo}</b></span>
+      <span><small>TEMPERATURA</small><b className={`ape-momento temperatura-${temperaturaMobile(lead)}`}><i />{rotuloTemperatura(lead.temperatura) ?? "Aguardando leitura"}</b></span>
     </div>
 
-    <ContextoDoLead lead={lead} />
-
-    {momento?.descricao ? <div className="ape-contexto">
-      <span className="ape-contexto-titulo">
-        <span className="ape-contexto-selo"><IconeCheck tamanho={10} /></span>
-        O momento deste cliente
-      </span>
-      <p>{momento.descricao}</p>
-    </div> : null}
+    <div className="ape-card-acao"><small>PRÓXIMA AÇÃO</small><strong>{acaoVisivel(lead)}</strong>{lead.interesse && <span>{lead.interesse}</span>}</div>
 
     <div className="ape-acoes">
       <BotaoWhatsApp telefone={lead.telefone} negocioId={lead.origem_negocio_id} compacto />
@@ -581,6 +584,9 @@ function FichaLead({
   const [chatAberto, setChatAberto] = useState(false);
   const [maisAcoes, setMaisAcoes] = useState(false);
   const [acaoMais, setAcaoMais] = useState<"visita" | "negociacao" | "tag" | "descarte" | null>(null);
+  const [temperaturaAberta, setTemperaturaAberta] = useState(false);
+  const [salvandoTemperatura, setSalvandoTemperatura] = useState(false);
+  const [erroTemperatura, setErroTemperatura] = useState("");
   const prazo = situacaoPrazo(lead.proxima_acao_em);
   const temperatura = lead.temperatura ?? null;
   const temperaturaRotulo = rotuloTemperatura(temperatura) ?? "Aguardando leitura";
@@ -590,11 +596,31 @@ function FichaLead({
       if (chatAberto) setChatAberto(false);
       else if (acaoMais) setAcaoMais(null);
       else if (maisAcoes) setMaisAcoes(false);
+      else if (temperaturaAberta) setTemperaturaAberta(false);
       else onFechar();
     };
     document.addEventListener("keydown", fechar);
     return () => document.removeEventListener("keydown", fechar);
-  }, [acaoMais, chatAberto, maisAcoes, onFechar]);
+  }, [acaoMais, chatAberto, maisAcoes, onFechar, temperaturaAberta]);
+
+  async function atualizarTemperatura(temperaturaNova: TemperaturaLead | null) {
+    setSalvandoTemperatura(true); setErroTemperatura("");
+    try {
+      const resposta = await fetch("/api/funil2", {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "atualizarTemperatura", id: lead.id, versao: lead.versao, temperatura: temperaturaNova }),
+      });
+      const json = await resposta.json().catch(() => ({})) as { error?: string };
+      if (!resposta.ok) throw new Error(json.error || "Não foi possível alterar a temperatura.");
+      setTemperaturaAberta(false);
+      onRecarregar();
+    } catch (falha) {
+      setErroTemperatura(falha instanceof Error ? falha.message : "Não foi possível alterar a temperatura.");
+    } finally {
+      setSalvandoTemperatura(false);
+    }
+  }
 
   return <div className="ape-folha" role="dialog" aria-modal="true" aria-label={`Atendimento de ${lead.nome}`} onMouseDown={(evento) => { if (evento.target === evento.currentTarget) onFechar(); }}>
     <section className="ape-ficha">
@@ -605,7 +631,7 @@ function FichaLead({
       <div className="ape-ficha-nome">
         <h2>{lead.nome}</h2>
         <p>{lead.corretor_nome ?? "Sem responsável"} · negócio #{lead.origem_negocio_id}</p>
-        <div className="ape-ficha-etiquetas ape-ficha-resumo-chips"><span className="ape-etapa"><small>Etapa</small>{nomeEtapa(lead.etapa)}</span><span className="ape-momento"><small>Momento</small>{momento?.rotulo ?? lead.momento_codigo}</span><span className={`ape-momento temperatura-${temperatura ?? "aguardando"}`}><i /><small>Temp.</small>{temperaturaRotulo}</span><em className={`ape-momento prazo-${prazo.classe}`}><small>Prazo</small>{prazo.rotulo}</em></div>
+        <div className="ape-ficha-etiquetas ape-ficha-resumo-chips"><span className="ape-etapa"><small>Etapa</small>{nomeEtapa(lead.etapa)}</span><span className="ape-momento"><small>Momento</small>{momento?.rotulo ?? lead.momento_codigo}</span><span className="ape-temperatura-controle"><button type="button" className={`ape-momento temperatura-${temperatura ?? "aguardando"}`} aria-expanded={temperaturaAberta} aria-label={`Alterar temperatura. Atual: ${temperaturaRotulo}`} disabled={salvandoTemperatura} onClick={() => setTemperaturaAberta((aberta) => !aberta)}><i /><small>Temp.</small>{temperaturaRotulo}<b>⌄</b></button>{temperaturaAberta && <span className="ape-temperatura-popover" role="dialog" aria-label="Alterar temperatura"><strong>Temperatura do lead</strong>{TEMPERATURAS_MOBILE.map((item) => <button type="button" key={item.codigo} disabled={salvandoTemperatura} className={`temperatura-${item.codigo}${temperaturaMobile(lead) === item.codigo ? " ativa" : ""}`} onClick={() => void atualizarTemperatura(item.codigo === "aguardando" ? null : item.codigo)}><i />{item.rotulo}</button>)}{erroTemperatura && <em role="alert">{erroTemperatura}</em>}</span>}</span><em className={`ape-momento prazo-${prazo.classe}`}><small>Prazo</small>{prazo.rotulo}</em></div>
         <p className="ape-ficha-interesse">Interesse: <b>{lead.interesse ?? "Não identificado"}</b></p>
       </div>
 
@@ -648,9 +674,11 @@ export function Funil2Mobile({
      do recorte. "todos" aqui significa "deixe o agrupamento decidir". */
   const filtroDia: FiltroDia = "todos";
   const [etapa, setEtapa] = useState("ativos");
+  const [temperatura, setTemperatura] = useState<TemperaturaFiltroMobile>("todas");
   const [busca, setBusca] = useState("");
   const [selecionado, setSelecionado] = useState<string | null>(null);
   const [sucesso, setSucesso] = useState<string | null>(null);
+  const [historicoDetalhe, setHistoricoDetalhe] = useState<{ leadId: string; eventos: EventoFunil2[]; notas: NotaFunil2[] } | null>(null);
   const [pedidoUrl] = useState(lerLeadDaUrl);
   const [agora] = useState(() => Date.now());
 
@@ -680,10 +708,11 @@ export function Funil2Mobile({
         || (filtroDia === "novos" ? esperandoPrimeiraChamada(lead)
           : filtroDia === "agora" ? prazo <= agora : prazo <= fimHoje);
       const cabeNaEtapa = etapa === "ativos" ? lead.etapa !== "legado" : lead.etapa === etapa;
+      const cabeNaTemperatura = temperatura === "todas" || temperaturaMobile(lead) === temperatura;
       const cabeNaBusca = !termo || `${lead.nome} ${lead.telefone ?? ""} ${lead.interesse ?? ""} ${(lead.tags ?? []).map((tag) => tag.nome).join(" ")}`.toLocaleLowerCase("pt-BR").includes(termo);
-      return cabeNoDia && cabeNaEtapa && cabeNaBusca;
+      return cabeNoDia && cabeNaEtapa && cabeNaTemperatura && cabeNaBusca;
     });
-  }, [agora, busca, etapa, filtroDia, fimHoje, leads]);
+  }, [agora, busca, etapa, filtroDia, fimHoje, leads, temperatura]);
 
   /* OS TRES GRUPOS DO MEU DIA, na ordem em que o corretor age.
      "Acabou de chegar" vem primeiro mesmo com prazo mais folgado: lead novo tem
@@ -711,6 +740,19 @@ export function Funil2Mobile({
 
   const leadPedido = pedidoUrl === null ? null : leads.find((lead) => lead.origem_negocio_id === pedidoUrl) ?? null;
   const leadAberto = selecionado === "__fechado__" ? null : leads.find((lead) => lead.id === selecionado) ?? leadPedido;
+  const leadHistoricoId = leadAberto?.id ?? null;
+  const leadHistoricoVersao = leadAberto?.versao ?? null;
+  useEffect(() => {
+    if (!leadHistoricoId) return;
+    let ativo = true;
+    void fetch(`/api/funil2?historicoLeadId=${encodeURIComponent(leadHistoricoId)}`, { headers: { Authorization: `Bearer ${accessToken}` } })
+      .then(async (response) => ({ ok: response.ok, json: await response.json().catch(() => ({})) as PayloadMobile }))
+      .then((resposta) => {
+        if (!ativo || !resposta.ok) return;
+        setHistoricoDetalhe({ leadId: leadHistoricoId, eventos: resposta.json.eventos ?? [], notas: resposta.json.notas ?? [] });
+      });
+    return () => { ativo = false; };
+  }, [accessToken, leadHistoricoId, leadHistoricoVersao]);
   const primeiroNome = nome.trim().split(/\s+/)[0] || "corretor";
 
   const cartao = (lead: LeadFunil2) => <CartaoLead
@@ -755,6 +797,12 @@ export function Funil2Mobile({
     {modo === "crm" && <nav className="ape-filtros" aria-label="Filtrar atendimentos">
       <button type="button" className={etapa === "ativos" ? "ativo" : ""} onClick={() => setEtapa("ativos")}>Ativos</button>
       {etapas.map(([chave, rotulo]) => <button key={chave} type="button" className={etapa === chave ? "ativo" : ""} onClick={() => setEtapa(chave)}>{rotulo}</button>)}
+    </nav>}
+
+    {modo === "crm" && <nav className="ape-temperatura-filtros" aria-label="Filtrar por temperatura">
+      <span>TEMPERATURA</span>
+      <button type="button" className={temperatura === "todas" ? "ativo" : ""} onClick={() => setTemperatura("todas")}>Todas</button>
+      {TEMPERATURAS_MOBILE.map((item) => <button type="button" key={item.codigo} className={`${temperatura === item.codigo ? "ativo " : ""}temperatura-${item.codigo}`} onClick={() => setTemperatura(item.codigo)}><i />{item.rotulo}</button>)}
     </nav>}
 
     {erro && <div className="ape-estado ruim">
@@ -810,8 +858,8 @@ export function Funil2Mobile({
       momento={momentos.find((momento) => momento.codigo === leadAberto.momento_codigo) ?? null}
       momentos={momentos}
       etapas={dados?.etapas ?? []}
-      eventos={eventos.filter((evento) => evento.funil_lead_id === leadAberto.id).sort((a, b) => +new Date(b.criado_em) - +new Date(a.criado_em))}
-      notas={notas.filter((nota) => nota.funil_lead_id === leadAberto.id)}
+      eventos={(historicoDetalhe?.leadId === leadAberto.id ? historicoDetalhe.eventos : eventos.filter((evento) => evento.funil_lead_id === leadAberto.id)).sort((a, b) => +new Date(b.criado_em) - +new Date(a.criado_em))}
+      notas={historicoDetalhe?.leadId === leadAberto.id ? historicoDetalhe.notas : notas.filter((nota) => nota.funil_lead_id === leadAberto.id)}
       tagCatalogo={dados?.tagCatalogo ?? []}
       onFechar={() => { setSelecionado("__fechado__"); limparLeadDaUrl(); }}
       accessToken={accessToken}

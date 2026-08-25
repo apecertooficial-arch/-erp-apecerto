@@ -104,6 +104,20 @@ export async function GET(request: Request) {
   const auth = await clienteAutenticado(request);
   if (auth.erro) return auth.erro;
   const db = auth.db;
+  const historicoLeadId = new URL(request.url).searchParams.get("historicoLeadId");
+  if (historicoLeadId) {
+    if (!/^[0-9a-f-]{36}$/i.test(historicoLeadId)) return Response.json({ error: "Lead inválido." }, { status: 422 });
+    /* A carga inicial é deliberadamente curta para o CRM abrir rápido. A ficha,
+       porém, precisa do histórico daquele cliente — e não dos 100 eventos mais
+       recentes da operação inteira. O RLS continua decidindo o que a sessão
+       autenticada pode ler. */
+    const [{ data: eventos, error: erroEventos }, { data: notas, error: erroNotas }] = await Promise.all([
+      db.from("f2_evento").select("id,funil_lead_id,tipo,titulo,detalhe,payload,criado_em").eq("funil_lead_id", historicoLeadId).order("criado_em", { ascending: false }).limit(500),
+      db.from("f2_nota").select("id,funil_lead_id,texto,origem,autor_nome,criado_em").eq("funil_lead_id", historicoLeadId).order("criado_em", { ascending: false }).limit(500),
+    ]);
+    if (erroEventos || erroNotas) return Response.json({ error: "Não foi possível carregar o histórico deste atendimento." }, { status: 502 });
+    return Response.json({ eventos: eventos ?? [], notas: notas ?? [] });
+  }
   const [
     { data: leads, error: e1 }, { data: momentos, error: e2 }, { data: eventos, error: e3 },
     { data: etapas, error: e4 }, { data: visitas, error: e5 }, { data: negociacoes, error: e6 },
@@ -348,6 +362,7 @@ const RECUSAS: Record<string, string> = {
   motivo_invalido: "Motivo de descarte desconhecido.",
   texto_vazio: "Escreva a nota antes de salvar.",
   texto_muito_longo: "A nota passou de 2000 caracteres.",
+  temperatura_invalida: "Escolha uma temperatura válida.",
   versao_conflito: "O lead acabou de mudar. Tente salvar novamente.",
 };
 
@@ -383,6 +398,15 @@ export async function PATCH(request: Request) {
     if (prazo && Number.isNaN(prazo.getTime())) return Response.json({ error: "Prazo combinado inválido." }, { status: 422 });
     rpc = "f2_atualizar_momento";
     args = { p_id: id, p_versao: versao, p_momento_codigo: momento, p_prazo_combinado: prazo?.toISOString() ?? null, p_observacao: String(body.observacao ?? "").slice(0, 500) || null };
+  } else if (action === "atualizarTemperatura") {
+    const temperatura = body.temperatura == null || body.temperatura === "aguardando"
+      ? null
+      : String(body.temperatura);
+    if (temperatura !== null && !["frio", "morno", "quente", "negociando"].includes(temperatura)) {
+      return Response.json({ error: "Temperatura inválida." }, { status: 422 });
+    }
+    rpc = "f2_atualizar_temperatura";
+    args = { p_id: id, p_versao: versao, p_temperatura: temperatura };
   } else if (action === "confirmarAcao") {
     const fonte = body.fonte === "dapi" ? "dapi" : body.fonte === "registro_operacional" ? "registro_operacional" : "";
     if (!fonte) return Response.json({ error: "Fonte de confirmação inválida." }, { status: 422 });
