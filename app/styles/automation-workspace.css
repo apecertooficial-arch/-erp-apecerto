@@ -461,6 +461,11 @@
   background: var(--bg-muted);
 }
 
+.automation-card-statuses .needs-review {
+  color: var(--warning-fg);
+  background: var(--warning-bg);
+}
+
 .automation-card footer {
   display: flex;
   align-items: center;
@@ -856,6 +861,38 @@
   font-size: 10.5px;
 }
 
+.original-automation-host.apecerto-automation-builder .integrity-banner {
+  display: flex;
+  width: 330px;
+  margin-top: 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--warning-border);
+  border-radius: 10px;
+  flex-direction: column;
+  gap: 2px;
+  color: var(--warning-fg);
+  background: color-mix(in srgb, var(--warning-bg) 92%, var(--bg-surface));
+  box-shadow: var(--shadow-sm);
+  font-size: 10px;
+  line-height: 1.35;
+}
+
+.original-automation-host.apecerto-automation-builder .integrity-banner[hidden] {
+  display: none;
+}
+
+.original-automation-host.apecerto-automation-builder .integrity-banner b {
+  font-size: 10.5px;
+}
+
+.original-automation-host.apecerto-automation-builder .flow-title:has(.integrity-banner:not([hidden])) {
+  max-width: 356px;
+}
+
+.original-automation-host.apecerto-automation-builder .flow-title:has(.integrity-banner:not([hidden])) ~ .palette-toggle {
+  top: 144px;
+}
+
 .original-automation-host.apecerto-automation-builder .state-badges {
   display: inline-flex;
   gap: 5px;
@@ -988,6 +1025,33 @@
   transform: none;
   border-color: var(--automation-accent);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--automation-accent) 14%, transparent), 0 16px 40px color-mix(in srgb, var(--fg-1) 14%, transparent);
+}
+
+.original-automation-host.apecerto-automation-builder .node.editable.integrity-recovered {
+  border-color: color-mix(in srgb, var(--warning-fg) 48%, var(--border-default));
+}
+
+.original-automation-host.apecerto-automation-builder .node.editable.integrity-editor-only {
+  border-color: color-mix(in srgb, var(--danger-fg) 46%, var(--border-default));
+}
+
+.original-automation-host.apecerto-automation-builder .node-integrity {
+  flex: 0 0 auto;
+  border-radius: 999px;
+  padding: 3px 6px;
+  font-size: 7.5px;
+  font-weight: 900;
+  letter-spacing: .04em;
+}
+
+.original-automation-host.apecerto-automation-builder .node-integrity.recovered {
+  color: var(--warning-fg);
+  background: var(--warning-bg);
+}
+
+.original-automation-host.apecerto-automation-builder .node-integrity.editor-only {
+  color: var(--danger-fg);
+  background: var(--danger-bg);
 }
 
 .original-automation-host.apecerto-automation-builder .node .bar {
@@ -1392,6 +1456,10 @@
    nas demais telas da Central. */
 body:has(.apn-builder-shell) #sara-fab,
 body:has(.apn-builder-shell) #sara-panel {
+  display: none !important;
+}
+
+body.automation-builder-focus .erp-nav-fab {
   display: none !important;
 }
 

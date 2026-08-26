@@ -58,6 +58,14 @@ test("os cartões usam resumo compacto e expandem a configuração no próprio b
   assert.match(builderCss, /\.node\.editable\.selected/);
 });
 
+test("o construtor reconcilia editor e mapa executável por ID", () => {
+  assert.match(runtime, /function reconcileAutomationMap/);
+  assert.match(runtime, /blockIds:\[\.\.\.automationIds/);
+  assert.match(runtime, /recoveredRuntimeIds/);
+  assert.match(runtime, /editorOnlyIds/);
+  assert.doesNotMatch(runtime, /Object\.keys\(edB\)\.length\?Object\.keys\(edB\)/);
+});
+
 test("organização atua no estado aberto e fica pendente de salvar", () => {
   assert.match(runtime, /function organizeHorizontal/);
   assert.match(runtime, /setDirty\(\)/);

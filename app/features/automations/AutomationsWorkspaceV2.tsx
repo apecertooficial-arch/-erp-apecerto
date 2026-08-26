@@ -74,13 +74,17 @@ export function AutomationsWorkspaceV2({ accessToken }: { accessToken: string })
 
   useEffect(() => {
     if (!noConstrutor) return;
-    let ativo = true;
-    let builder: OriginalAutomationBuilder | null = null;
 
     if (!supabaseUrl || !publishableKey) {
       if (hostRef.current) hostRef.current.innerHTML = '<div class="original-automation-error">Configuração pública do Supabase não encontrada.</div>';
       return;
     }
+
+    const body = document.body;
+    const navegacaoJaEstavaRecolhida = body.classList.contains("erp-nav-collapsed");
+    body.classList.add("automation-builder-focus", "erp-nav-collapsed");
+    let ativo = true;
+    let builder: OriginalAutomationBuilder | null = null;
 
     void (async () => {
       const { default: modulo } = await import("./automationBuilderRuntime.js");
@@ -108,6 +112,8 @@ export function AutomationsWorkspaceV2({ accessToken }: { accessToken: string })
       ativo = false;
       builder?.unmount();
       if (builderRef.current === builder) builderRef.current = null;
+      body.classList.remove("automation-builder-focus");
+      if (!navegacaoJaEstavaRecolhida) body.classList.remove("erp-nav-collapsed");
     };
   }, [accessToken, noConstrutor, publishableKey, supabaseUrl]);
 

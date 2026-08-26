@@ -61,6 +61,10 @@ function passaFiltro(a: Automacao, filtro: Filtro) {
   return true;
 }
 
+function nomeProvisorio(a: Automacao) {
+  return a.ativa && /(?:\bteste\b|\bc[oó]pia\b|renomeie)/iu.test(`${a.nome} ${a.grupo || ""}`);
+}
+
 export function AutomationsHome({
   accessToken,
   supabaseUrl,
@@ -255,6 +259,7 @@ export function AutomationsHome({
                           <span className={`automation-card-mark ${a.ativa ? "running" : publicada ? "published" : "draft"}`} aria-hidden="true">⌁</span>
                           <span className="automation-card-copy"><strong>{a.nome}</strong><small>{dataCurta(a.atualizada_em)}</small></span>
                           <span className="automation-card-statuses">
+                            {nomeProvisorio(a) ? <span className="needs-review">Revisar nome</span> : null}
                             <span className={publicada ? "published" : "draft"}>{publicada ? "Publicada" : "Rascunho"}</span>
                             <span className={a.ativa ? "running" : "inactive"}>{a.ativa ? "Ativa" : "Inativa"}</span>
                           </span>
