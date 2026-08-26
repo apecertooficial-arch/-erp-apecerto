@@ -142,6 +142,21 @@ test("nota pode chegar a 100 e publicação reflete a view pública", () => {
   assert.match(detail, /site_published/);
 });
 
+test("nota mínima 80 fica visível na gestão e bloqueia publicação abaixo do padrão", () => {
+  const quality = read("app/features/products/quality.ts");
+  const queue = read("app/features/products/ProductQualityQueue.tsx");
+  const products = read("app/features/products/ProductsModule.tsx");
+  assert.match(quality, /blocking\.length === 0 && score >= 80/);
+  assert.match(queue, /Nota mínima 80 para publicar/);
+  assert.match(queue, /Nota alta/);
+  assert.match(queue, /Imóveis que precisam melhorar/);
+  assert.match(queue, /item\.readyForSite/);
+  assert.match(products, /qualityAttentionCount/);
+  assert.match(products, /qualityAttentionKeys/);
+  assert.match(products, /setOpenInEdit\(!item\.unitId\)/);
+  assert.match(products, /onOpenScore=\{openQualityScoreItem\}/);
+});
+
 test("ERP e site compartilham título, tour e link direto do imóvel", () => {
   const detail = read("app/features/products/ProductDetail.tsx");
   const migration = read("supabase/migrations/20260818130000_produtos_site_conectados.sql");

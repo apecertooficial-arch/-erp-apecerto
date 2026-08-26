@@ -17,7 +17,7 @@ import { CaptureWizard } from "./CaptureWizard";
 import { CondominiumWizard } from "./CondominiumWizard";
 import { UnitWizard } from "./UnitWizard";
 import { ProductDetail } from "./ProductDetail";
-import { ProductQualityQueue, type ProductQualityQueueItem } from "./ProductQualityQueue";
+import { ProductQualityQueue, type ProductQualityQueueItem, type ProductQualityScoreItem } from "./ProductQualityQueue";
 import { sitePropertyUrl, type Product } from "./products";
 import type { ProductQuality } from "./quality";
 import { isPlausibleProductPrice, normalizedKey } from "./quality";
@@ -337,6 +337,26 @@ export function ProductsModule({ accessToken }: { accessToken: string }) {
   const publishedCount = commercialUnits.filter((product) => product.published).length;
   const offlineCount = commercialUnits.filter((product) => !product.published && product.approval === "aprovado").length;
   const approvalTotal = pendingCount + pendingUnits.length;
+  const qualityScoreItems: ProductQualityScoreItem[] = commercialUnits.filter((product) => Boolean(product.id && product.quality)).map((product) => ({
+    productId: product.id as string,
+    unitId: product.unitId,
+    codigo: product.codigo,
+    productName: product.name,
+    segment: product.segment || "terceiros",
+    score: product.quality?.score ?? 0,
+    label: product.quality?.label ?? "Sem nota",
+    level: product.quality?.level ?? "critico",
+    readyForSite: product.quality?.readyForSite === true,
+    blocking: product.quality?.blocking ?? [],
+    warnings: product.quality?.warnings ?? [],
+  }));
+  const qualityAttentionKeys = new Set(
+    qualityScoreItems
+      .filter((item) => !item.readyForSite)
+      .map((item) => item.unitId || `product:${item.productId}`),
+  );
+  qualityQueue.forEach((item) => qualityAttentionKeys.add(item.unitId || `product:${item.productId}`));
+  const qualityAttentionCount = qualityAttentionKeys.size;
 
   function openProduct(product: Product, action: UnitOpenAction = "view") {
     if (!product.id) return;
@@ -349,6 +369,13 @@ export function ProductsModule({ accessToken }: { accessToken: string }) {
   function openQualityItem(item: ProductQualityQueueItem, action: QualityRepairAction) {
     setInitialUnitId(item.unitId);
     setInitialUnitAction(action);
+    setSelectedProductId(item.productId);
+  }
+
+  function openQualityScoreItem(item: ProductQualityScoreItem) {
+    setOpenInEdit(!item.unitId);
+    setInitialUnitId(item.unitId ?? null);
+    setInitialUnitAction(item.unitId ? "edit" : "view");
     setSelectedProductId(item.productId);
   }
 
@@ -405,7 +432,7 @@ export function ProductsModule({ accessToken }: { accessToken: string }) {
   if (ehCelular && dataState === "auth") return <AppMobileSessaoExpirada />;
   if (ehCelular) return <main className="ape-produtos">
     <AppMobileOffline atualizadoEm={atualizadoEm} />
-    <div className="ape-produto-mobile-actions"><button type="button" className="principal" onClick={() => setUnitWizardOpen(true)}>＋ Cadastrar apartamento</button><button type="button" onClick={() => setCondominiumOpen(true)}>＋ Cadastrar condomínio</button>{myUnits.length > 0 && <button type="button" className={myUnitsOpen ? "ativo" : ""} onClick={() => setMyUnitsOpen(!myUnitsOpen)}>Minhas captações · {myUnits.length}</button>}<button type="button" className={section === "qualidade" ? "ativo" : ""} onClick={() => section === "qualidade" ? showCatalog() : setSection("qualidade")}>Qualidade · {qualityQueue.length}</button>{canApprove && <button type="button" className={approvalFilter ? "ativo" : ""} onClick={() => approvalFilter ? showCatalog() : showApprovalQueue()}>Aprovar · {pendingCount + pendingUnits.length}</button>}</div>
+    <div className="ape-produto-mobile-actions"><button type="button" className="principal" onClick={() => setUnitWizardOpen(true)}>＋ Cadastrar apartamento</button><button type="button" onClick={() => setCondominiumOpen(true)}>＋ Cadastrar condomínio</button>{myUnits.length > 0 && <button type="button" className={myUnitsOpen ? "ativo" : ""} onClick={() => setMyUnitsOpen(!myUnitsOpen)}>Minhas captações · {myUnits.length}</button>}<button type="button" className={section === "qualidade" ? "ativo" : ""} onClick={() => section === "qualidade" ? showCatalog() : setSection("qualidade")}>Qualidade · {qualityAttentionCount}</button>{canApprove && <button type="button" className={approvalFilter ? "ativo" : ""} onClick={() => approvalFilter ? showCatalog() : showApprovalQueue()}>Aprovar · {pendingCount + pendingUnits.length}</button>}</div>
     {inventorySummary && <section className="ape-inventory-truth" aria-label="Resumo completo do estoque"><strong>{inventorySummary.totalUnits} unidades no estoque</strong><span>{inventorySummary.catalogUnits} no catálogo · {inventorySummary.publishedUnits} no site</span><span>{inventorySummary.outsideCommercialCatalog} fora do catálogo · {inventorySummary.unavailableUnits} inativas</span></section>}
     <label className="ape-produto-busca">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m20 20-4-4" /></svg>
@@ -431,7 +458,7 @@ export function ProductsModule({ accessToken }: { accessToken: string }) {
     {dataState === "error" && <div className="ape-estado ruim" role="alert"><strong>Não foi possível carregar os produtos.</strong><p>Confira sua conexão e tente novamente.</p><button type="button" onClick={() => void loadCatalog(accessToken)}>Tentar novamente</button></div>}
     {dataState === "live" && section !== "qualidade" && produtosVisiveis.length === 0 && <div className="ape-estado"><div className="ape-estado-icone" aria-hidden="true">⌕</div><strong>Nenhum produto encontrado</strong><p>Ajuste a busca ou escolha outro filtro.</p></div>}
 
-    {dataState === "live" && section === "qualidade" && <ProductQualityQueue items={qualityQueue} onOpen={openQualityItem} />}
+    {dataState === "live" && section === "qualidade" && <ProductQualityQueue items={qualityQueue} scoredItems={qualityScoreItems} onOpen={openQualityItem} onOpenScore={openQualityScoreItem} />}
 
     {myUnitsOpen && myUnits.length > 0 && <section className="ape-mobile-captacoes"><h2>Minhas captações</h2>{myUnits.map((unit) => <button type="button" key={unit.id} onClick={() => { setInitialUnitId(unit.id); setSelectedProductId(unit.empreendimentoId); }}><strong>{unit.predio} · Un. {unit.numero ?? "s/n"}{unit.codigo ? ` · ${unit.codigo}` : ""}</strong><span>{captureStatusLabel(unit)}</span></button>)}</section>}
     {canApprove && approvalFilter && pendingUnitsVisiveis.length > 0 && <section className="ape-mobile-captacoes"><h2>Unidades para aprovar</h2>{pendingUnitsVisiveis.map((unit) => <div key={unit.id}><button type="button" onClick={() => { setInitialUnitId(unit.id); setSelectedProductId(unit.empreendimentoId); }}><strong>{unit.predio} · Un. {unit.numero ?? "s/n"}</strong><span>{unit.indicador ?? "Sem captador"}</span></button><div><button type="button" onClick={() => void decideUnitFromList(unit.empreendimentoId, unit.id, true)}>✓ Aprovar</button><button type="button" onClick={() => void decideUnitFromList(unit.empreendimentoId, unit.id, false)}>✕ Reprovar</button></div></div>)}</section>}
@@ -495,7 +522,7 @@ export function ProductsModule({ accessToken }: { accessToken: string }) {
         <button type="button" className={section === "unidades" ? "active" : ""} onClick={() => chooseSection("unidades")}>Unidades</button>
         <button type="button" className={section === "empreendimentos" ? "active" : ""} onClick={() => chooseSection("empreendimentos")}>Empreendimentos</button>
         <button type="button" className={section === "condominios" ? "active" : ""} onClick={() => chooseSection("condominios")}>Condomínios</button>
-        <button type="button" className={section === "qualidade" ? "active" : ""} onClick={() => chooseSection("qualidade")}>Qualidade <span>{qualityQueue.length}</span></button>
+        <button type="button" className={section === "qualidade" ? "active" : ""} onClick={() => chooseSection("qualidade")}>Qualidade <span>{qualityAttentionCount}</span></button>
         {canApprove && <button type="button" className={section === "aprovacoes" ? "active" : ""} onClick={() => chooseSection("aprovacoes")}>Aprovações <span>{approvalTotal}</span></button>}
       </nav>
 
@@ -541,7 +568,7 @@ export function ProductsModule({ accessToken }: { accessToken: string }) {
 
       {dataState === "live" && section === "condominios" && <section className="pv3-content"><div className="pv3-section-head"><div><h2><span><Icon name="building" /></span>Condomínios e referências</h2><p>Referências reais dos prédios. Condomínio organiza áreas comuns; cada unidade continua sendo um imóvel independente.</p></div><button type="button" className="pv3-secondary" onClick={() => setCondominiumOpen(true)}><Icon name="plus" /> Novo condomínio</button></div><div className="pv3-condo-grid">{visibleCondominiums.map((condominium) => { const pct = condominium.units ? Math.round((condominium.publishedUnits / condominium.units) * 100) : 0; const referenceProduct = condominium.referenceProductId ? products.find((product) => product.id === condominium.referenceProductId) : null; return <article key={condominium.id} className={referenceProduct ? "" : "pv3-condo-reference-only"} onClick={() => { if (referenceProduct) openProduct(referenceProduct); }}><header><span><Icon name="building" /></span><em>Condomínio de referência</em>{referenceProduct && <Icon name="arrow" />}</header><span className="pv3-ref-ok"><Icon name="check" /> Referência cadastrada</span><h3>{condominium.name}</h3><p>{[condominium.address, condominium.number, condominium.neighborhood, condominium.city].filter(Boolean).join(" · ")}</p><div className="pv3-condo-metrics"><span>{condominium.units} unidades</span><span>{condominium.captures} captações</span><span>{condominium.publishedUnits} publicadas</span></div><footer><span>{condominium.units ? `${pct}% das unidades publicadas` : "Sem unidade vinculada"}</span><i><b style={{ width: `${pct}%` }}/></i></footer></article>; })}</div>{!visibleCondominiums.length && <div className="pv3-empty"><strong>Nenhum condomínio encontrado</strong><p>Ajuste a busca ou cadastre uma nova referência.</p></div>}</section>}
 
-      {dataState === "live" && section === "qualidade" && <ProductQualityQueue items={qualityQueue} onOpen={openQualityItem} />}
+      {dataState === "live" && section === "qualidade" && <ProductQualityQueue items={qualityQueue} scoredItems={qualityScoreItems} onOpen={openQualityItem} onOpenScore={openQualityScoreItem} />}
 
       {dataState === "live" && section === "aprovacoes" && canApprove && <section className="pv3-approval"><header><h2>Central de aprovação</h2><p>Escolha uma requisição para revisar.</p></header><div className="pv3-approval-list"><div className="pv3-approval-list-head"><strong>Requisições pendentes</strong><span>{approvalTotal} na fila · {pendingUnitsVisiveis.filter((u) => u.rejectionReason).length + produtosVisiveis.filter((p) => !p.quality?.readyForSite).length} com bloqueios</span></div>{pendingUnitsVisiveis.map((unit) => <button type="button" key={unit.id} onClick={() => { setInitialUnitId(unit.id); setSelectedProductId(unit.empreendimentoId); }}><div className="pv3-approval-thumb" style={unit.coverUrl ? { backgroundImage: `url(${unit.coverUrl})` } : undefined}>{!unit.coverUrl && <Icon name="home" />}</div><span><strong>{unit.numero ? `Unidade ${unit.numero}` : "Unidade"} · {unit.predio}</strong><small>Unidade individual · {unit.indicador || "Captador não identificado"}</small></span><em className={unit.rejectionReason ? "blocked" : "ready"}>{unit.rejectionReason ? "1 bloqueio" : "Revisar cadastro"}</em><Icon name="arrow" /></button>)}{produtosVisiveis.map((product) => <button type="button" key={product.id} onClick={() => openProduct(product)}><div className="pv3-approval-thumb" style={product.coverUrl ? { backgroundImage: `url(${product.coverUrl})` } : undefined}>{!product.coverUrl && <Icon name="building" />}</div><span><strong>{product.name}</strong><small>{/lan[cç]|obra/i.test(product.status ?? "") ? "Empreendimento" : "Condomínio"} · {product.capturedBy || product.developer || "Equipe ApêCerto"}</small></span><em className={product.quality?.readyForSite ? "ready" : "blocked"}>{product.quality?.readyForSite ? "Pronto para aprovar" : `${product.quality?.blocking.length || 1} bloqueio(s)`}</em><Icon name="arrow" /></button>)}</div>{approvalTotal === 0 && <div className="pv3-empty"><strong>Fila de aprovação vazia</strong><p>Nenhuma solicitação aguarda revisão.</p></div>}</section>}
 

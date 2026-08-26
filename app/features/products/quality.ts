@@ -222,7 +222,7 @@ export function assessProductQuality(input: ProductQualityInput): ProductQuality
     score,
     level,
     label,
-    readyForSite: blocking.length === 0 && score >= 75,
+    readyForSite: blocking.length === 0 && score >= 80,
     blocking,
     warnings,
     dimensions: {
