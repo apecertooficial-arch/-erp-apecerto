@@ -572,6 +572,16 @@
   letter-spacing: -0.035em;
 }
 
+.pv3-detail-price.invalid {
+  border-color: #f2c9c9;
+  background: #fff8f8;
+}
+
+.pv3-detail-price.invalid > strong,
+.pv3-detail-price.invalid > span {
+  color: #b42318;
+}
+
 .pv3-detail-price > span {
   display: block;
   margin-top: 4px;

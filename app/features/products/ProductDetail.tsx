@@ -3,7 +3,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { getBrowserSupabaseClient } from "../../lib/supabase/browser";
-import type { ProductQuality } from "./quality";
+import { isPlausibleProductPrice, type ProductQuality } from "./quality";
 import { isProductManagerRole } from "./access";
 import { MoneyInput } from "./MoneyInput";
 import { applyOfficialWatermark } from "./watermark";
@@ -158,15 +158,16 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
   const focusedUnitCover = focusedUnitPhotos.find((item) => item.is_capa) ?? focusedUnitPhotos[0];
   const focusedUnitPhotoScope = "apartamento";
   const focusedUnitPrice = focusedUnit ? (focusedUnit.valor_promo ?? focusedUnit.valor_tabela) : null;
+  const focusedUnitPriceValid = isPlausibleProductPrice(focusedUnitPrice, product?.finalidade);
   const focusedUnitPublished = Boolean(product?.site_published && focusedUnit?.publicado !== false && focusedUnit?.disponivel && focusedUnit?.aprovacao === "aprovado");
   const focusedUnitStandalone = Boolean(focusedUnit && product?.origem === "terceiros" && !product.condominio_id);
   const focusedUnitChecks = useMemo(() => focusedUnit ? {
     "Dados básicos": Boolean(focusedUnit.numero && focusedUnit.tipologia && focusedUnit.area_m2 && focusedUnit.area_m2 > 0),
     Endereço: Boolean(product?.endereco && product?.bairro && product?.cidade),
-    Custos: Boolean(focusedUnitPrice && focusedUnitPrice > 0),
+    "Preço válido": focusedUnitPriceValid,
     "Fotos, vídeo e capa": focusedUnitOwnPhotos.length > 0,
-    Proprietário: Boolean(focusedUnit.owner_complete && focusedUnit.acesso_tipo && focusedUnit.acesso_instrucoes),
-  } : {}, [focusedUnit, focusedUnitOwnPhotos.length, focusedUnitPrice, product]);
+    Proprietário: !focusedUnit.de_terceiros || Boolean(focusedUnit.owner_complete && focusedUnit.acesso_tipo && focusedUnit.acesso_instrucoes),
+  } : {}, [focusedUnit, focusedUnitOwnPhotos.length, focusedUnitPriceValid, product]);
   const focusedUnitScore = useMemo(() => {
     const values = Object.values(focusedUnitChecks);
     return values.length ? Math.round((values.filter(Boolean).length / values.length) * 100) : 0;
@@ -493,7 +494,7 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
         </div>
       </section>
 
-      <aside className="pv3-detail-side"><button className="pv3-detail-close" type="button" onClick={onClose} aria-label="Fechar ficha do apartamento"><IcClose /></button><div className="pv3-detail-price"><small>Valor do imóvel</small><strong>{focusedUnitPrice ? money.format(focusedUnitPrice) : "Sob consulta"}</strong>{focusedUnitPrice && unit.area_m2 ? <span>{money.format(Math.round(focusedUnitPrice / unit.area_m2))} por m²</span> : null}<div><p><span>Condomínio</span><b>{unitCondominiumFee != null ? money.format(unitCondominiumFee) : "—"}</b></p><p><span>IPTU</span><b>{unitPropertyTax != null ? money.format(unitPropertyTax) : "—"}</b></p><p><span>Outros custos</span><b>{unitOtherCosts != null ? money.format(unitOtherCosts) : "—"}</b></p></div></div>
+      <aside className="pv3-detail-side"><button className="pv3-detail-close" type="button" onClick={onClose} aria-label="Fechar ficha do apartamento"><IcClose /></button><div className={`pv3-detail-price ${!focusedUnitPriceValid ? "invalid" : ""}`}><small>Valor do imóvel</small><strong>{focusedUnitPriceValid && focusedUnitPrice ? money.format(focusedUnitPrice) : "⚠ Preço inválido"}</strong>{focusedUnitPriceValid && focusedUnitPrice && unit.area_m2 ? <span>{money.format(Math.round(focusedUnitPrice / unit.area_m2))} por m²</span> : <span>Corrija o valor antes de publicar</span>}<div><p><span>Condomínio</span><b>{unitCondominiumFee != null ? money.format(unitCondominiumFee) : "—"}</b></p><p><span>IPTU</span><b>{unitPropertyTax != null ? money.format(unitPropertyTax) : "—"}</b></p><p><span>Outros custos</span><b>{unitOtherCosts != null ? money.format(unitOtherCosts) : "—"}</b></p></div></div>
         <div className="pv3-detail-side-group"><span>COMERCIAL</span><button className="lead" type="button" onClick={() => setLeadPanelOpen(!leadPanelOpen)}><IcLink />Vincular lead</button><div className="row"><a href="/crm"><IcCalendar />Visita</a><a href="/crm"><IcFile />Proposta</a></div>{leadPanelOpen && <div className="fv2-lead-panel"><div className="lead-link-form"><select value={leadId} onChange={(event) => setLeadId(event.target.value)}><option value="">Selecione um lead...</option>{currentProduct.leads.filter((lead) => !lead.linked).map((lead) => <option value={lead.id} key={lead.id}>{lead.nome || "Lead sem nome"}</option>)}</select><button className="primary-action" disabled={busy || !leadId} type="button" onClick={() => void productAction("linkLead",leadId)}>Vincular</button></div></div>}</div>
         <div className="pv3-detail-side-group"><span>CADASTRO</span>{unit.pode_editar && <button type="button" onClick={() => setUnitEdit({ ...unit })}><IcEdit />Editar produto</button>}<div className="row"><button type="button" disabled title="Duplicação ainda não habilitada"><IcCopy />Duplicar</button><button type="button" onClick={() => setTab("proprietario")}><IcUserPlus />Captação</button></div></div>
         <div className="pv3-detail-captor"><span className="fv2-avatar purple">{initials(unit.captador_nome)}</span><div><strong>{unit.captador_nome || "Sem captador"}</strong><small>Corretor da captação{typeof captadorScore === "number" ? ` · nota ${captadorScore}` : ""}</small></div></div>

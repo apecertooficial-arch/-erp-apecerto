@@ -127,6 +127,14 @@ test("ficha aberta usa o Produtos v3 e mantém a composição aprovada", () => {
   assert.match(detail, /renderProductDesign\(product\)\}\{false &&/);
 });
 
+test("ficha da unidade não mascara preço inválido nem libera publicação", () => {
+  assert.match(detail, /isPlausibleProductPrice\(focusedUnitPrice, product\?\.finalidade\)/);
+  assert.match(detail, /"Preço válido": focusedUnitPriceValid/);
+  assert.match(detail, /⚠ Preço inválido/);
+  assert.match(detail, /disabled=\{busy \|\| !unit\.disponivel \|\| focusedUnitBlocking > 0\}/);
+  assert.match(detailCss, /\.pv3-detail-price\.invalid/);
+});
+
 test("corretor vê todas as fotos e dados operacionais, mas não o proprietário alheio", () => {
   assert.match(productApi, /midias: media/);
   assert.doesNotMatch(productApi, /const visibleMedia = media\.filter/);
