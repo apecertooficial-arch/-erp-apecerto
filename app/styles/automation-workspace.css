@@ -781,6 +781,12 @@
   box-shadow: 4px 0 18px color-mix(in srgb, var(--fg-1) 4%, transparent);
 }
 
+.original-automation-host.apecerto-automation-builder .app.sb-collapsed .sidebar {
+  min-width: 0;
+  flex-basis: 0;
+  visibility: hidden;
+}
+
 .original-automation-host.apecerto-automation-builder .sb-head {
   padding: 16px 15px 7px;
 }
