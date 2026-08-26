@@ -7,6 +7,7 @@ const page = readFileSync(new URL("app/(erp)/automacoes/page.tsx", root), "utf8"
 const layout = readFileSync(new URL("app/layout.tsx", root), "utf8");
 const workspace = readFileSync(new URL("app/features/automations/AutomationsWorkspaceV2.tsx", root), "utf8");
 const home = readFileSync(new URL("app/features/automations/AutomationsHome.tsx", root), "utf8");
+const operations = readFileSync(new URL("app/features/automations/CentralOperationsPanel.tsx", root), "utf8");
 const runtime = readFileSync(new URL("app/features/automations/automationBuilderRuntime.js", root), "utf8");
 const builderCss = readFileSync(new URL("app/styles/automation-workspace.css", root), "utf8");
 
@@ -101,4 +102,34 @@ test("o construtor oferece biblioteca pesquisável, importação segura e atalho
   assert.match(runtime, /data-transfer-type/);
   assert.match(builderCss, /\.zoom-level/);
   assert.match(builderCss, /\.palette-section/);
+});
+
+test("a Home separa as cinco responsabilidades sem empilhar uma segunda navegação", () => {
+  for (const label of ["Visão geral", "Minhas automações", "Gatilhos", "Execuções", "Exceções"]) {
+    assert.match(home, new RegExp(label));
+  }
+  assert.match(home, /automation-table/);
+  assert.match(home, /CentralOperationsPanel accessToken=\{accessToken\} view="overview"/);
+  assert.match(home, /CentralOperationsPanel accessToken=\{accessToken\} view="executions"/);
+  assert.match(home, /CentralOperationsPanel accessToken=\{accessToken\} view="exceptions"/);
+  assert.doesNotMatch(home, /Execuções e saúde/);
+});
+
+test("operação usa dados reais e renderiza cada responsabilidade de forma independente", () => {
+  assert.match(operations, /type View = "overview" \| "executions" \| "exceptions"/);
+  assert.match(operations, /Object\.entries\(saude\?\.execucoes_24h/);
+  assert.match(operations, /saude\?\.quarentena/);
+  assert.match(operations, /saude\?\.revisoes/);
+  assert.doesNotMatch(operations, /dados demonstrativos/i);
+});
+
+test("o Builder abre legível, mantém ajuste geral separado e informa o período dos contadores", () => {
+  assert.match(runtime, /zoomFit'\)\.onclick=\(\)=>fitView\(false\)/);
+  assert.match(runtime, /view\.scale=\.82/);
+  assert.match(runtime, /Últimos 200 eventos/);
+  assert.match(runtime, /toolbarGroup\('Editar'/);
+  assert.match(runtime, /toolbarGroup\('Verificar'/);
+  assert.match(runtime, /toolbarGroup\('Salvar e publicar'/);
+  assert.match(builderCss, /\.toolbar-group/);
+  assert.match(builderCss, /\.node-counter-period/);
 });
