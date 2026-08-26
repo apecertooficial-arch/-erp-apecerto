@@ -421,7 +421,7 @@
 
 .automation-card-copy small {
   color: var(--fg-muted);
-  font-size: 10.5px;
+  font-size: 11px;
 }
 
 .automation-card-statuses {
@@ -436,7 +436,7 @@
 .state-chip {
   border-radius: 999px;
   padding: 3px 8px;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 850;
   letter-spacing: .02em;
 }
@@ -482,7 +482,7 @@
   border-radius: 8px;
   color: var(--fg-2);
   background: transparent;
-  font-size: 10.5px;
+  font-size: 11px;
   font-weight: 750;
   cursor: pointer;
 }
@@ -907,7 +907,7 @@
 .original-automation-host.apecerto-automation-builder .flow-title p {
   margin: 2px 0 0;
   color: var(--fg-muted);
-  font-size: 10.5px;
+  font-size: 11px;
 }
 
 .original-automation-host.apecerto-automation-builder .integrity-banner {
@@ -922,7 +922,7 @@
   color: var(--warning-fg);
   background: color-mix(in srgb, var(--warning-bg) 92%, var(--bg-surface));
   box-shadow: var(--shadow-sm);
-  font-size: 10px;
+  font-size: 11px;
   line-height: 1.35;
 }
 
@@ -931,7 +931,7 @@
 }
 
 .original-automation-host.apecerto-automation-builder .integrity-banner b {
-  font-size: 10.5px;
+  font-size: 11px;
 }
 
 .original-automation-host.apecerto-automation-builder .flow-title:has(.integrity-banner:not([hidden])) {
@@ -952,7 +952,7 @@
 
 .original-automation-host.apecerto-automation-builder .state-chip {
   padding: 2px 7px;
-  font-size: 9.5px;
+  font-size: 11px;
 }
 
 .original-automation-host.apecerto-automation-builder .toolbar {
@@ -1088,7 +1088,7 @@
 .original-automation-host.apecerto-automation-builder .palette-section h4 {
   margin: 0 3px 7px;
   color: var(--fg-muted);
-  font-size: 9.5px;
+  font-size: 11px;
   font-weight: 850;
   letter-spacing: .08em;
   text-transform: uppercase;
@@ -1130,7 +1130,7 @@
 .original-automation-host.apecerto-automation-builder .pal-copy small {
   overflow: hidden;
   color: var(--fg-muted);
-  font-size: 9.5px;
+  font-size: 11px;
   font-weight: 500;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1221,7 +1221,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  min-height: 52px;
+  min-height: 58px;
   padding: 10px 10px 8px 12px;
 }
 
@@ -1250,7 +1250,7 @@
 
 .original-automation-host.apecerto-automation-builder .node-type {
   color: var(--fg-muted);
-  font-size: 9.5px;
+  font-size: 11px;
   font-weight: 800;
   letter-spacing: .08em;
   text-transform: uppercase;
@@ -1276,7 +1276,7 @@
   border-radius: 8px;
   color: var(--fg-muted);
   background: var(--bg-muted);
-  font-size: 9.5px;
+  font-size: 11px;
   font-weight: 850;
 }
 
@@ -1333,7 +1333,7 @@
 .original-automation-host.apecerto-automation-builder .node-summary b {
   flex: 0 0 auto;
   color: var(--automation-accent-strong);
-  font-size: 10.5px;
+  font-size: 11px;
 }
 
 .original-automation-host.apecerto-automation-builder .node-summary:hover {
@@ -1351,7 +1351,7 @@
   border-radius: 9px;
   color: var(--warning-fg);
   background: var(--warning-bg);
-  font-size: 10.5px;
+  font-size: 11px;
   line-height: 1.4;
 }
 
@@ -1365,7 +1365,7 @@
 .original-automation-host.apecerto-automation-builder .ne-lb,
 .original-automation-host.apecerto-automation-builder .dw-label {
   color: var(--fg-muted);
-  font-size: 10.5px;
+  font-size: 11px;
 }
 
 .original-automation-host.apecerto-automation-builder .ne-sel,
@@ -1403,7 +1403,7 @@
 
 .original-automation-host.apecerto-automation-builder .ne-port {
   min-height: 24px;
-  font-size: 10.5px;
+  font-size: 11px;
 }
 
 .original-automation-host.apecerto-automation-builder .port-dot,
@@ -1448,7 +1448,7 @@
 
 .original-automation-host.apecerto-automation-builder .node .foot .st span {
   overflow: hidden;
-  font-size: 9.5px;
+  font-size: 11px;
   text-overflow: ellipsis;
 }
 
@@ -1561,7 +1561,7 @@
   border-radius: 8px;
   color: var(--automation-accent-strong);
   background: var(--automation-accent-soft);
-  font-size: 9.5px;
+  font-size: 11px;
   font-weight: 850;
 }
 
@@ -1574,7 +1574,7 @@
 .original-automation-host.apecerto-automation-builder .preview-step p {
   margin: 2px 0 0;
   color: var(--fg-muted);
-  font-size: 10.5px;
+  font-size: 11px;
 }
 
 .original-automation-host.apecerto-automation-builder .zoombar {
@@ -1598,7 +1598,7 @@
   min-height: 24px;
   border-block: 1px solid var(--border-soft);
   color: var(--fg-muted);
-  font-size: 9.5px;
+  font-size: 11px;
   font-weight: 800;
   line-height: 1;
 }
@@ -1817,7 +1817,7 @@ body.automation-builder-focus .app-shell > .sidebar {
   overflow: hidden;
   max-width: 100%;
   color: var(--fg-muted);
-  font-size: 9.5px;
+  font-size: 11px;
   font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1924,7 +1924,7 @@ body.automation-builder-focus .app-shell > .sidebar {
   color: var(--fg-muted);
   border-bottom: 1px solid var(--border-soft);
   background: var(--bg-muted);
-  font-size: 9.5px;
+  font-size: 11px;
   font-weight: 800;
   letter-spacing: .06em;
   text-transform: uppercase;
@@ -1975,7 +1975,7 @@ body.automation-builder-focus .app-shell > .sidebar {
 .automation-row-main small,
 .automation-row-date {
   color: var(--fg-muted);
-  font-size: 10.5px;
+  font-size: 11px;
 }
 
 .automation-row .automation-card-mark {
@@ -2017,7 +2017,7 @@ body.automation-builder-focus .app-shell > .sidebar {
   border-radius: 8px;
   color: var(--fg-2);
   background: transparent;
-  font-size: 10.5px;
+  font-size: 11px;
   font-weight: 750;
   cursor: pointer;
 }
@@ -2062,7 +2062,7 @@ body.automation-builder-focus .app-shell > .sidebar {
 
 .automation-trigger-groups header > span {
   color: var(--fg-muted);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 800;
 }
 
@@ -2102,7 +2102,7 @@ body.automation-builder-focus .app-shell > .sidebar {
 .automation-trigger-groups p {
   margin: 2px 0 0;
   color: var(--fg-muted);
-  font-size: 10.5px;
+  font-size: 11px;
   line-height: 1.35;
 }
 
@@ -2140,7 +2140,7 @@ body.automation-builder-focus .app-shell > .sidebar {
 
 .central-ops-context {
   color: var(--brand-purple);
-  font-size: 8.5px;
+  font-size: 11px;
   font-weight: 800;
   letter-spacing: .08em;
   line-height: 1;
@@ -2154,7 +2154,7 @@ body.automation-builder-focus .app-shell > .sidebar {
 
 .central-ops-state small {
   color: var(--fg-muted);
-  font-size: 10px;
+  font-size: 11px;
 }
 
 .central-ops-pulso {
@@ -2179,7 +2179,7 @@ body.automation-builder-focus .app-shell > .sidebar {
   border-radius: 9px;
   color: var(--fg-2);
   background: var(--bg-surface);
-  font-size: 10.5px;
+  font-size: 11px;
   font-weight: 800;
   cursor: pointer;
 }
@@ -2205,7 +2205,7 @@ body.automation-builder-focus .app-shell > .sidebar {
 .central-ops-grid span,
 .central-ops-grid small {
   color: var(--fg-muted);
-  font-size: 10px;
+  font-size: 11px;
 }
 
 .central-ops-grid b {
@@ -2244,7 +2244,7 @@ body.automation-builder-focus .app-shell > .sidebar {
 
 .central-ops-eyebrow {
   color: var(--automation-accent-strong);
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 850;
   letter-spacing: .1em;
 }
@@ -2260,7 +2260,7 @@ body.automation-builder-focus .app-shell > .sidebar {
 .central-data-note,
 .central-vazio {
   color: var(--fg-muted);
-  font-size: 10.5px;
+  font-size: 11px;
   line-height: 1.45;
 }
 
@@ -2273,7 +2273,7 @@ body.automation-builder-focus .app-shell > .sidebar {
 .central-contratos > span {
   padding: 5px 8px;
   border-radius: 999px;
-  font-size: 9.5px;
+  font-size: 11px;
   font-weight: 800;
 }
 
@@ -2291,7 +2291,7 @@ body.automation-builder-focus .app-shell > .sidebar {
   border-top: 1px solid var(--border-soft);
   color: var(--fg-muted);
   background: var(--bg-muted);
-  font-size: 10px;
+  font-size: 11px;
 }
 
 .central-execution-list {
@@ -2310,7 +2310,7 @@ body.automation-builder-focus .app-shell > .sidebar {
   border: 1px solid var(--border-soft);
   border-radius: 10px;
   color: var(--fg-2);
-  font-size: 10.5px;
+  font-size: 11px;
 }
 
 .central-execution-list strong {
@@ -2343,8 +2343,8 @@ body.automation-builder-focus .app-shell > .sidebar {
 }
 
 .central-lista b { color: var(--fg-1); font-size: 11px; }
-.central-lista span { color: var(--fg-muted); font-size: 9.5px; }
-.central-lista p { margin: 3px 0 0; color: var(--fg-2); font-size: 10px; line-height: 1.4; overflow-wrap: anywhere; }
+.central-lista span { color: var(--fg-muted); font-size: 11px; }
+.central-lista p { margin: 3px 0 0; color: var(--fg-2); font-size: 11px; line-height: 1.4; overflow-wrap: anywhere; }
 .central-ops-erro { margin: 14px; padding: 11px; border: 1px solid var(--danger-border); border-radius: 10px; color: var(--danger-fg); background: var(--danger-bg); font-size: 11px; }
 .central-ops-erro button { margin-left: 10px; }
 
@@ -2355,7 +2355,7 @@ body.automation-builder-focus .app-shell > .sidebar {
   grid-template-columns: minmax(180px, 1fr) auto minmax(280px, 1fr);
 }
 
-.apn-builder-heading .automation-eyebrow { font-size: 9px; }
+.apn-builder-heading .automation-eyebrow { font-size: 11px; }
 .apn-builder-heading h1 { font-size: 14px; }
 .apn-organize { min-height: 36px; padding: 0 12px; font-size: 11px; }
 .apn-back { min-height: 36px; padding: 0 12px; font-size: 11px; }
@@ -2380,7 +2380,7 @@ body.automation-builder-focus .app-shell > .sidebar {
   display: flex;
   align-items: flex-end;
   gap: 2px;
-  padding: 12px 5px 2px;
+  padding: 18px 5px 3px;
   border-right: 1px solid var(--border-soft);
 }
 
@@ -2394,7 +2394,7 @@ body.automation-builder-focus .app-shell > .sidebar {
   top: 2px;
   left: 7px;
   color: var(--fg-muted);
-  font-size: 7px;
+  font-size: 11px;
   font-weight: 850;
   letter-spacing: .06em;
   line-height: 1;
@@ -2479,7 +2479,7 @@ body.automation-builder-focus .app-shell > .sidebar {
 }
 
 .original-automation-host.apecerto-automation-builder .node-type {
-  font-size: 10px;
+  font-size: 11px;
 }
 
 .original-automation-host.apecerto-automation-builder .node .ttl {
@@ -2523,7 +2523,7 @@ body.automation-builder-focus .app-shell > .sidebar {
   border-top: 1px solid var(--border-soft);
   color: var(--fg-muted);
   background: color-mix(in srgb, var(--bg-muted) 55%, var(--bg-surface));
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: .02em;
   text-align: center;
@@ -2539,7 +2539,7 @@ body.automation-builder-focus .app-shell > .sidebar {
 }
 
 .original-automation-host.apecerto-automation-builder .node .foot .st span {
-  font-size: 10px;
+  font-size: 11px;
 }
 
 .original-automation-host.apecerto-automation-builder .palette {
@@ -2561,7 +2561,7 @@ body.automation-builder-focus .app-shell > .sidebar {
 }
 
 .original-automation-host.apecerto-automation-builder .pal-copy small {
-  font-size: 10px;
+  font-size: 11px;
 }
 
 .original-automation-host.apecerto-automation-builder .runtime-panel {
@@ -2579,7 +2579,7 @@ body.automation-builder-focus .app-shell > .sidebar {
   color: var(--fg-muted);
   background: var(--bg-surface);
   box-shadow: var(--shadow-xs);
-  font-size: 9.5px;
+  font-size: 11px;
   font-weight: 750;
 }
 
