@@ -66,6 +66,11 @@ test("o construtor reconcilia editor e mapa executável por ID", () => {
   assert.doesNotMatch(runtime, /Object\.keys\(edB\)\.length\?Object\.keys\(edB\)/);
 });
 
+test("modo foco remove a navegação global e preserva somente a navegação do construtor", () => {
+  assert.match(builderCss, /body\.automation-builder-focus \.app-shell > \.sidebar/);
+  assert.match(builderCss, /grid-template-columns:\s*minmax\(0,\s*1fr\)\s*!important/);
+});
+
 test("organização atua no estado aberto e fica pendente de salvar", () => {
   assert.match(runtime, /function organizeHorizontal/);
   assert.match(runtime, /setDirty\(\)/);
