@@ -49,6 +49,13 @@ type CatalogResponse = {
   myUnits?: Array<{ id: string; numero: string | null; tipologia: string | null; valor: number | null; empreendimentoId: string; predio: string; proprietario: string | null; indicador: string | null; coverUrl: string | null; approval: string; rejectionReason: string | null; codigo: string | null; published: boolean; available: boolean }>;
   qualityQueue?: ProductQualityQueueItem[];
   inventorySummary?: InventorySummary;
+  inventoryUnits?: Array<{
+    id: string; productId: string; codigo: string | null; numero: string | null; productName: string;
+    neighborhood: string; city: string; captador: string | null; mine: boolean; available: boolean;
+    approval: string; published: boolean; inCommercialCatalog: boolean; price: number | null; area: number | null;
+    parking: number | null; ownMedia: number; referenceMedia: number; coverUrl: string | null;
+    segment: "terceiros" | "lancamento" | "remanescente";
+  }>;
   condominiums?: CondominiumSummary[];
 };
 
@@ -79,7 +86,7 @@ function captureStatusLabel(unit: NonNullable<CatalogResponse["myUnits"]>[number
   return unit.published ? "Aprovado · publicado no site" : "Aprovado · fora do ar";
 }
 
-type ProductsSection = "unidades" | "empreendimentos" | "condominios" | "qualidade" | "aprovacoes";
+type ProductsSection = "unidades" | "empreendimentos" | "condominios" | "estoque" | "qualidade" | "aprovacoes";
 type RegistrationChoice = "apartamento" | "remanescente" | "condominio" | "empreendimento";
 type ProductSegment = "todos" | "terceiros" | "lancamento" | "remanescente";
 type UnitOpenAction = "view" | "edit" | "media" | "delete";
@@ -158,6 +165,7 @@ export function ProductsModule({ accessToken }: { accessToken: string }) {
   const [myUnits, setMyUnits] = useState<NonNullable<CatalogResponse["myUnits"]>>([]);
   const [qualityQueue, setQualityQueue] = useState<ProductQualityQueueItem[]>([]);
   const [inventorySummary, setInventorySummary] = useState<InventorySummary | null>(null);
+  const [inventoryUnits, setInventoryUnits] = useState<NonNullable<CatalogResponse["inventoryUnits"]>>([]);
   const [myUnitsOpen, setMyUnitsOpen] = useState(false);
   const [initialUnitId, setInitialUnitId] = useState<string | null>(null);
   const [initialUnitAction, setInitialUnitAction] = useState<UnitOpenAction>("view");
@@ -222,6 +230,7 @@ export function ProductsModule({ accessToken }: { accessToken: string }) {
       setMyUnits(result.myUnits ?? []);
       setQualityQueue(result.qualityQueue ?? []);
       setInventorySummary(result.inventorySummary ?? null);
+      setInventoryUnits(result.inventoryUnits ?? []);
       setCondominiums(result.condominiums ?? []);
       setDataState("live");
       setAtualizadoEm(new Date());
@@ -319,6 +328,11 @@ export function ProductsModule({ accessToken }: { accessToken: string }) {
   const produtosVisiveis = filtered.filter((product) => !approvalFilter || product.approval === "pendente");
   const captadores = useMemo(() => Array.from(new Set([...products.map((p) => p.capturedBy), ...pendingUnits.map((u) => u.indicador)].filter(Boolean) as string[])).sort((a, b) => a.localeCompare(b, "pt-BR")), [products, pendingUnits]);
   const pendingUnitsVisiveis = captadorFilter === "Todos" ? pendingUnits : pendingUnits.filter((u) => u.indicador === captadorFilter);
+  const inventoryUnitsVisible = useMemo(() => {
+    const queryKey = normalizedKey(query);
+    return inventoryUnits.filter((unit) => !queryKey || [unit.codigo, unit.numero, unit.productName, unit.neighborhood, unit.city, unit.captador]
+      .some((value) => normalizedKey(value).includes(queryKey)));
+  }, [inventoryUnits, query]);
   const unitProducts = filtered.filter((product) => Boolean(product.unitId || product.standalone));
   const unitGroups = (["terceiros", "lancamento", "remanescente"] as const)
     .map((segment) => ({ segment, products: unitProducts.filter((product) => product.segment === segment) }))
@@ -350,6 +364,12 @@ export function ProductsModule({ accessToken }: { accessToken: string }) {
     setInitialUnitId(item.unitId);
     setInitialUnitAction(action);
     setSelectedProductId(item.productId);
+  }
+
+  function openInventoryUnit(unit: NonNullable<CatalogResponse["inventoryUnits"]>[number], action: UnitOpenAction = "view") {
+    setInitialUnitId(unit.id);
+    setInitialUnitAction(action);
+    setSelectedProductId(unit.productId);
   }
 
   function chooseSection(next: ProductsSection) {
@@ -405,13 +425,13 @@ export function ProductsModule({ accessToken }: { accessToken: string }) {
   if (ehCelular && dataState === "auth") return <AppMobileSessaoExpirada />;
   if (ehCelular) return <main className="ape-produtos">
     <AppMobileOffline atualizadoEm={atualizadoEm} />
-    <div className="ape-produto-mobile-actions"><button type="button" className="principal" onClick={() => setUnitWizardOpen(true)}>＋ Cadastrar apartamento</button><button type="button" onClick={() => setCondominiumOpen(true)}>＋ Cadastrar condomínio</button>{myUnits.length > 0 && <button type="button" className={myUnitsOpen ? "ativo" : ""} onClick={() => setMyUnitsOpen(!myUnitsOpen)}>Minhas captações · {myUnits.length}</button>}<button type="button" className={section === "qualidade" ? "ativo" : ""} onClick={() => section === "qualidade" ? showCatalog() : setSection("qualidade")}>Qualidade · {qualityQueue.length}</button>{canApprove && <button type="button" className={approvalFilter ? "ativo" : ""} onClick={() => approvalFilter ? showCatalog() : showApprovalQueue()}>Aprovar · {pendingCount + pendingUnits.length}</button>}</div>
-    {inventorySummary && <section className="ape-inventory-truth" aria-label="Resumo completo do estoque"><strong>{inventorySummary.totalUnits} unidades no estoque</strong><span>{inventorySummary.catalogUnits} no catálogo · {inventorySummary.publishedUnits} no site</span><span>{inventorySummary.outsideCommercialCatalog} fora do catálogo · {inventorySummary.unavailableUnits} inativas</span></section>}
+    <div className="ape-produto-mobile-actions"><button type="button" className="principal" onClick={() => setUnitWizardOpen(true)}>＋ Cadastrar apartamento</button><button type="button" onClick={() => setCondominiumOpen(true)}>＋ Cadastrar condomínio</button>{myUnits.length > 0 && <button type="button" className={myUnitsOpen ? "ativo" : ""} onClick={() => setMyUnitsOpen(!myUnitsOpen)}>Minhas captações · {myUnits.length}</button>}<button type="button" className={section === "estoque" ? "ativo" : ""} onClick={() => section === "estoque" ? showCatalog() : setSection("estoque")}>Estoque completo · {inventoryUnits.length}</button><button type="button" className={section === "qualidade" ? "ativo" : ""} onClick={() => section === "qualidade" ? showCatalog() : setSection("qualidade")}>Qualidade · {qualityQueue.length}</button>{canApprove && <button type="button" className={approvalFilter ? "ativo" : ""} onClick={() => approvalFilter ? showCatalog() : showApprovalQueue()}>Aprovar · {pendingCount + pendingUnits.length}</button>}</div>
+    {inventorySummary && <button type="button" className="ape-inventory-truth" aria-label="Abrir estoque completo" onClick={() => setSection("estoque")}><strong>{inventorySummary.totalUnits} unidades no estoque</strong><span>{inventorySummary.catalogUnits} no catálogo · {inventorySummary.publishedUnits} no site</span><span>{inventorySummary.outsideCommercialCatalog} fora do catálogo · {inventorySummary.unavailableUnits} inativas</span></button>}
     <label className="ape-produto-busca">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m20 20-4-4" /></svg>
       <input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar nome, código AP ou rua" />
     </label>
-    <nav className="ape-filtros ape-produto-filtros" aria-label="Filtrar produtos">
+    {section !== "estoque" && section !== "qualidade" && <><nav className="ape-filtros ape-produto-filtros" aria-label="Filtrar produtos">
       {([
         ["Todos", "Todos"], ["Pronto", "Pronto pra morar"], ["Em obras", "Obras"], ["Lançamento", "Lançamento"],
       ] as const).map(([valor, rotulo]) => <button type="button" key={valor} className={!favoritesOnly && status === valor ? "ativo" : ""} onClick={() => { setFavoritesOnly(false); setStatus(valor); }}>{rotulo}</button>)}
@@ -425,18 +445,19 @@ export function ProductsModule({ accessToken }: { accessToken: string }) {
       <select aria-label="Vagas" value={parking} onChange={(event) => setParking(event.target.value)}>
         <option value="Qualquer">Qualquer vaga</option><option value="0">Sem vaga</option><option value="1">1+ vaga</option><option value="2">2+ vagas</option><option value="3">3+ vagas</option>
       </select>
-    </div>
+    </div></>}
 
     {dataState === "loading" && <div className="ape-produto-esqueleto" aria-hidden="true">{[0, 1, 2].map((i) => <div key={i}><span /><i /><i /></div>)}</div>}
     {dataState === "error" && <div className="ape-estado ruim" role="alert"><strong>Não foi possível carregar os produtos.</strong><p>Confira sua conexão e tente novamente.</p><button type="button" onClick={() => void loadCatalog(accessToken)}>Tentar novamente</button></div>}
-    {dataState === "live" && section !== "qualidade" && produtosVisiveis.length === 0 && <div className="ape-estado"><div className="ape-estado-icone" aria-hidden="true">⌕</div><strong>Nenhum produto encontrado</strong><p>Ajuste a busca ou escolha outro filtro.</p></div>}
+    {dataState === "live" && section !== "qualidade" && section !== "estoque" && produtosVisiveis.length === 0 && <div className="ape-estado"><div className="ape-estado-icone" aria-hidden="true">⌕</div><strong>Nenhum produto encontrado</strong><p>Ajuste a busca ou escolha outro filtro.</p></div>}
 
     {dataState === "live" && section === "qualidade" && <ProductQualityQueue items={qualityQueue} onOpen={openQualityItem} />}
+    {dataState === "live" && section === "estoque" && <section className="ape-mobile-inventory"><header><h2>Estoque completo</h2><p>Inclui imóveis inativos, legados e fora do catálogo comercial.</p></header>{inventoryUnitsVisible.map((unit) => <article key={unit.id}><button type="button" className="ape-mobile-inventory-main" onClick={() => openInventoryUnit(unit)}>{unit.coverUrl ? <img src={unit.coverUrl} alt={`Foto de ${unit.productName}`} onError={retryProductMediaImage} /> : <span aria-hidden="true">▥</span>}<div><small>{unit.codigo || "Sem código"} · {unit.captador || "Sem captador"}</small><strong>{unit.productName} · Un. {unit.numero || "s/n"}</strong><em>{unit.inCommercialCatalog ? "No catálogo" : unit.available ? "Fora do catálogo" : "Inativo"} · {unit.ownMedia} foto(s) próprias</em></div></button><footer>{(canApprove || unit.mine) && <button type="button" onClick={() => openInventoryUnit(unit, "edit")}>Editar dados</button>}{(canApprove || unit.mine) && <button type="button" onClick={() => openInventoryUnit(unit, "media")}>Editar fotos</button>}{(canApprove || unit.mine) && <button type="button" className="danger" onClick={() => openInventoryUnit(unit, "delete")}>Excluir</button>}</footer></article>)}{inventoryUnitsVisible.length === 0 && <div className="ape-estado"><strong>Nenhuma unidade encontrada no estoque</strong><p>Revise o código AP ou o nome informado.</p></div>}</section>}
 
     {myUnitsOpen && myUnits.length > 0 && <section className="ape-mobile-captacoes"><h2>Minhas captações</h2>{myUnits.map((unit) => <button type="button" key={unit.id} onClick={() => { setInitialUnitId(unit.id); setSelectedProductId(unit.empreendimentoId); }}><strong>{unit.predio} · Un. {unit.numero ?? "s/n"}{unit.codigo ? ` · ${unit.codigo}` : ""}</strong><span>{captureStatusLabel(unit)}</span></button>)}</section>}
     {canApprove && approvalFilter && pendingUnitsVisiveis.length > 0 && <section className="ape-mobile-captacoes"><h2>Unidades para aprovar</h2>{pendingUnitsVisiveis.map((unit) => <div key={unit.id}><button type="button" onClick={() => { setInitialUnitId(unit.id); setSelectedProductId(unit.empreendimentoId); }}><strong>{unit.predio} · Un. {unit.numero ?? "s/n"}</strong><span>{unit.indicador ?? "Sem captador"}</span></button><div><button type="button" onClick={() => void decideUnitFromList(unit.empreendimentoId, unit.id, true)}>✓ Aprovar</button><button type="button" onClick={() => void decideUnitFromList(unit.empreendimentoId, unit.id, false)}>✕ Reprovar</button></div></div>)}</section>}
 
-    {dataState === "live" && section !== "qualidade" && produtosVisiveis.length > 0 && <section className="ape-produto-lista">
+    {dataState === "live" && section !== "qualidade" && section !== "estoque" && produtosVisiveis.length > 0 && <section className="ape-produto-lista">
       {produtosVisiveis.map((product) => {
         const linkSite = product.published && product.id ? sitePropertyUrl(product) : null;
         const compartilhar = encodeURIComponent(`${product.name} — ${product.neighborhood}, ${product.city} — ${product.price}${linkSite ? ` — ${linkSite}` : ""}`);
@@ -489,24 +510,25 @@ export function ProductsModule({ accessToken }: { accessToken: string }) {
         <button type="button" className={publicationFilter === "ready" ? "yellow active" : "yellow"} onClick={() => setPublicationFilter(publicationFilter === "ready" ? "Todos" : "ready")}><span><Icon name="home" /></span><b>{offlineCount}</b><em>Fora do ar no catálogo</em></button>
       </section>}
 
-      {section !== "aprovacoes" && inventorySummary && <section className="pv3-inventory-truth" aria-label="Conciliação do estoque"><div><strong>Estoque total: {inventorySummary.totalUnits} unidades</strong><span>A contagem completa do banco, sem esconder cadastro legado ou inativo.</span></div><dl><div><dt>Aprovadas e disponíveis</dt><dd>{inventorySummary.approvedAvailable}</dd></div><div><dt>No catálogo comercial</dt><dd>{inventorySummary.catalogUnits}</dd></div><div><dt>Fora do catálogo</dt><dd>{inventorySummary.outsideCommercialCatalog}</dd></div><div><dt>Inativas</dt><dd>{inventorySummary.unavailableUnits}</dd></div></dl><button type="button" onClick={() => chooseSection("qualidade")}>Abrir {inventorySummary.qualityBlocked} correções →</button></section>}
+      {section !== "aprovacoes" && inventorySummary && <section className="pv3-inventory-truth" aria-label="Conciliação do estoque"><div><strong>Estoque total: {inventorySummary.totalUnits} unidades</strong><span>A contagem completa do banco, sem esconder cadastro legado ou inativo.</span></div><dl><div><dt>Aprovadas e disponíveis</dt><dd>{inventorySummary.approvedAvailable}</dd></div><div><dt>No catálogo comercial</dt><dd>{inventorySummary.catalogUnits}</dd></div><div><dt>Fora do catálogo</dt><dd>{inventorySummary.outsideCommercialCatalog}</dd></div><div><dt>Inativas</dt><dd>{inventorySummary.unavailableUnits}</dd></div></dl><div className="pv3-inventory-actions"><button type="button" onClick={() => chooseSection("estoque")}>Abrir estoque completo →</button><button type="button" onClick={() => chooseSection("qualidade")}>Abrir {inventorySummary.qualityBlocked} correções →</button></div></section>}
 
       <nav className="pv3-tabs" aria-label="Áreas de produtos">
         <button type="button" className={section === "unidades" ? "active" : ""} onClick={() => chooseSection("unidades")}>Unidades</button>
         <button type="button" className={section === "empreendimentos" ? "active" : ""} onClick={() => chooseSection("empreendimentos")}>Empreendimentos</button>
         <button type="button" className={section === "condominios" ? "active" : ""} onClick={() => chooseSection("condominios")}>Condomínios</button>
+        <button type="button" className={section === "estoque" ? "active" : ""} onClick={() => chooseSection("estoque")}>Estoque completo <span>{inventoryUnits.length}</span></button>
         <button type="button" className={section === "qualidade" ? "active" : ""} onClick={() => chooseSection("qualidade")}>Qualidade <span>{qualityQueue.length}</span></button>
         {canApprove && <button type="button" className={section === "aprovacoes" ? "active" : ""} onClick={() => chooseSection("aprovacoes")}>Aprovações <span>{approvalTotal}</span></button>}
       </nav>
 
       {section !== "aprovacoes" && section !== "qualidade" && <>
         <section className="pv3-toolbar">
-          <label className="pv3-search"><Icon name="search" /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={section === "empreendimentos" ? "Buscar em empreendimentos..." : section === "condominios" ? "Buscar em condomínios..." : "Buscar em produtos..."} /></label>
-          <button className={moreFiltersOpen ? "pv3-secondary active" : "pv3-secondary"} type="button" onClick={() => setMoreFiltersOpen(!moreFiltersOpen)}><Icon name="filter" /> Filtros</button>
+          <label className="pv3-search"><Icon name="search" /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={section === "empreendimentos" ? "Buscar em empreendimentos..." : section === "condominios" ? "Buscar em condomínios..." : section === "estoque" ? "Buscar código AP, prédio, unidade ou captador..." : "Buscar em produtos..."} /></label>
+          {section !== "estoque" && <><button className={moreFiltersOpen ? "pv3-secondary active" : "pv3-secondary"} type="button" onClick={() => setMoreFiltersOpen(!moreFiltersOpen)}><Icon name="filter" /> Filtros</button>
           <label className="pv3-sort"><Icon name="sort" /><select aria-label="Ordenação" value={sortBy} onChange={(event) => setSortBy(event.target.value)}><option value="updated">Mais recentes</option><option value="quality-asc">Menor nota</option><option value="quality-desc">Maior nota</option><option value="price-asc">Menor preço</option><option value="price-desc">Maior preço</option></select></label>
-          <div className="pv3-layout-toggle"><button type="button" className={catalogLayout === "grid" ? "active" : ""} onClick={() => setCatalogLayout("grid")} aria-label="Exibir em grade"><Icon name="grid" /></button><button type="button" className={catalogLayout === "list" ? "active" : ""} onClick={() => setCatalogLayout("list")} aria-label="Exibir em lista"><Icon name="list" /></button></div>
+          <div className="pv3-layout-toggle"><button type="button" className={catalogLayout === "grid" ? "active" : ""} onClick={() => setCatalogLayout("grid")} aria-label="Exibir em grade"><Icon name="grid" /></button><button type="button" className={catalogLayout === "list" ? "active" : ""} onClick={() => setCatalogLayout("list")} aria-label="Exibir em lista"><Icon name="list" /></button></div></>}
         </section>
-        {moreFiltersOpen && <section className="pv3-filters">
+        {section !== "estoque" && moreFiltersOpen && <section className="pv3-filters">
           <select aria-label="Situação" value={status} onChange={(event) => setStatus(event.target.value)}><option>Todos</option><option>Pronto</option><option>Em obras</option><option>Lançamento</option></select>
           <select aria-label="Bairro" value={neighborhood} onChange={(event) => setNeighborhood(event.target.value)}><option value="Todos">Todos os bairros</option>{neighborhoods.map((item) => <option key={item}>{item}</option>)}</select>
           <select aria-label="Incorporadora" value={developer} onChange={(event) => setDeveloper(event.target.value)}><option value="Todas">Todas as incorporadoras</option>{developers.map((item) => <option key={item}>{item}</option>)}</select>
@@ -536,6 +558,8 @@ export function ProductsModule({ accessToken }: { accessToken: string }) {
         })}</div></section>)}</div> : <div className="pv3-empty"><strong>Nenhuma unidade encontrada</strong><p>Ajuste a busca ou limpe os filtros.</p></div>}
         {myUnits.length > 0 && <div className="pv3-my-captures"><button type="button" onClick={() => setMyUnitsOpen(!myUnitsOpen)}><span><Icon name="user" /><b>Minhas captações</b><em>{myUnits.length}</em></span>{myUnitsOpen ? "Recolher" : "Ver todas"}</button>{myUnitsOpen && <div>{myUnits.map((unit) => <button type="button" key={unit.id} onClick={() => { setInitialUnitId(unit.id); setSelectedProductId(unit.empreendimentoId); }}><strong>{unit.predio} · Unidade {unit.numero || "s/n"}</strong><span>{unit.codigo || "Sem código"} · {captureStatusLabel(unit)}</span><Icon name="arrow" /></button>)}</div>}</div>}
       </section>}
+
+      {dataState === "live" && section === "estoque" && <section className="pv3-inventory-list"><header><div><h2>Estoque completo</h2><p>Busca operacional em todas as unidades, inclusive inativas, legadas e fora do catálogo comercial.</p></div><strong>{inventoryUnitsVisible.length} de {inventoryUnits.length} unidades</strong></header><div>{inventoryUnitsVisible.map((unit) => <article key={unit.id}><button type="button" className="pv3-inventory-unit" onClick={() => openInventoryUnit(unit)}>{unit.coverUrl ? <img src={unit.coverUrl} alt={`Foto de ${unit.productName}`} onError={retryProductMediaImage} /> : <span className="pv3-inventory-placeholder"><Icon name="building" /></span>}<div><small>{unit.codigo || "Sem código"} · Captador: {unit.captador || "não identificado"}</small><strong>{unit.productName} · Unidade {unit.numero || "s/n"}</strong><span>{unit.neighborhood} · {unit.city} · {unit.ownMedia} foto(s) próprias</span></div><em className={unit.inCommercialCatalog ? "catalog" : unit.available ? "offline" : "inactive"}>{unit.inCommercialCatalog ? "No catálogo" : unit.available ? "Fora do catálogo" : "Inativo"}</em></button><footer>{(canApprove || unit.mine) && <button type="button" onClick={() => openInventoryUnit(unit, "edit")}>Editar dados</button>}{(canApprove || unit.mine) && <button type="button" onClick={() => openInventoryUnit(unit, "media")}>Editar fotos</button>}{(canApprove || unit.mine) && <button type="button" className="danger" onClick={() => openInventoryUnit(unit, "delete")}>Excluir imóvel</button>}</footer></article>)}</div>{inventoryUnitsVisible.length === 0 && <div className="pv3-empty"><strong>Nenhuma unidade encontrada no estoque</strong><p>Revise o código AP, nome do prédio, unidade ou captador.</p></div>}</section>}
 
       {dataState === "live" && section === "empreendimentos" && <section className="pv3-content"><div className="pv3-section-head"><div><h2><span className="purple"><Icon name="building" /></span>Empreendimentos e estoque</h2><p>Visão consolidada do projeto. As unidades de estoque só viram produto individual quando necessário.</p></div><button type="button" className="pv3-secondary" onClick={() => { setRegistrationChoice("empreendimento"); setRegistrationOpen(true); }}><Icon name="plus" /> Cadastrar empreendimento</button></div><div className="pv3-development-list">{developmentProducts.map((product) => { const total = Math.max(product.units ?? 0, product.available); const sold = Math.max(0, total - product.available); const pct = total ? Math.round((sold / total) * 100) : 0; return <article key={product.id} className="pv3-development" onClick={() => openProduct(product)}><div className="pv3-dev-image" style={product.coverUrl ? { backgroundImage: `url(${product.coverUrl})` } : undefined}><span>EMPREENDIMENTO</span>{!product.coverUrl && <Icon name="building" />}</div><div className="pv3-dev-main"><p>{product.codigo || "EMP"} · {product.developer || "Incorporadora não informada"}</p><h3>{product.name}</h3><span><Icon name="pin" /> {product.neighborhood} · {product.city}</span>{!product.condominiumLinked && <span className="pv3-link-pending">⚠ Condomínio de referência ainda não vinculado</span>}<div className="pv3-dev-metrics"><em><b>{total}</b>Total</em><em className="green"><b>{product.available}</b>Disponíveis</em><em className="yellow"><b>0</b>Reservadas</em><em><b>{sold}</b>Vendidas</em></div><div className="pv3-progress"><span>Vendas <b>{pct}%</b></span><i><b style={{ width: `${pct}%` }} /></i></div></div><aside><span className={`pv3-state ${product.published ? "site" : "review"}`}>{product.published ? "Publicado" : product.approval === "pendente" ? "Em revisão" : "Fora do ar"}</span><strong>{product.price}</strong><button type="button">Ver ficha do empreendimento <Icon name="arrow" /></button></aside></article>; })}</div>{!developmentProducts.length && <div className="pv3-empty"><strong>Nenhum empreendimento encontrado</strong><p>Cadastre um lançamento ou ajuste os filtros.</p></div>}</section>}
 

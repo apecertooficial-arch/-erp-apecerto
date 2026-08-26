@@ -418,6 +418,50 @@ export async function GET(request: Request) {
   });
 
   const commercialCatalogUnits = catalogFinal.filter((product) => Boolean(product.unitId) && product.available > 0 && product.approval === "aprovado");
+  const commercialUnitIds = new Set(commercialCatalogUnits.map((product) => product.unitId).filter((id): id is string => Boolean(id)));
+  // Inventário operacional é separado do catálogo comercial: o gestor precisa
+  // localizar também unidades inativas, rejeitadas ou legadas sem recolocá-las
+  // à venda por acidente. Corretores recebem somente as próprias captações fora
+  // do catálogo; dados de proprietário nunca trafegam por esta resposta.
+  const inventoryUnits = (data ?? []).flatMap((item) => {
+    const parent = catalog.find((product) => product.id === item.id);
+    if (!parent) return [];
+    const allMedia = (item.midias ?? []) as MediaRow[];
+    const buildingMediaCount = allMedia.filter((media) => !media.unidade_id).length;
+    return ((item.unidades ?? []) as UnitRow[])
+      .filter((unit) => canApprove || (currentBrokerId != null && unit.captador_corretor_id === currentBrokerId))
+      .map((unit) => {
+        const ownPhotos = allMedia.filter((media) => media.unidade_id === unit.id && media.tipo === "foto");
+        const cover = ownPhotos.find((media) => media.is_capa) ?? ownPhotos[0];
+        const explicitOrigin = originByUnit.get(unit.id) ?? null;
+        return {
+          id: unit.id,
+          productId: item.id,
+          codigo: unit.codigo ?? item.codigo ?? null,
+          numero: unit.numero,
+          productName: item.nome,
+          neighborhood: item.bairro ?? "Bairro não informado",
+          city: item.cidade ?? "São Paulo",
+          captador: corretorNameById.get(unit.captador_corretor_id ?? -1) ?? null,
+          mine: currentBrokerId != null && unit.captador_corretor_id === currentBrokerId,
+          available: unit.disponivel,
+          approval: unit.aprovacao ?? "aprovado",
+          published: commercialUnitIds.has(unit.id) && unit.publicado !== false && parent.published,
+          inCommercialCatalog: commercialUnitIds.has(unit.id),
+          price: unit.valor_promo ?? unit.valor_tabela,
+          area: unit.area_m2,
+          parking: unit.vagas,
+          ownMedia: ownPhotos.length,
+          referenceMedia: buildingMediaCount,
+          coverUrl: cover ? publicMediaUrl(cover.storage_path) : null,
+          segment: resolveCommercialOrigin({
+            explicit: explicitOrigin,
+            thirdParty: unit.de_terceiros,
+            buildingStatus: item.status,
+          }),
+        };
+      });
+  });
   const inventorySummary = summarizeInventory({
     totalUnits: rawUnits.length,
     approvedAvailable: rawUnits.filter((unit) => unit.disponivel && (unit.aprovacao ?? "aprovado") === "aprovado").length,
@@ -437,6 +481,7 @@ export async function GET(request: Request) {
     myUnits,
     qualityQueue,
     inventorySummary,
+    inventoryUnits,
     buildingCount: visible.filter((product) => !product.standalone).length,
     count: catalogFinal.length,
     catalog: catalogFinal,

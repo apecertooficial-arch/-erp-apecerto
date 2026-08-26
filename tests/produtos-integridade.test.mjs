@@ -29,6 +29,16 @@ test("catálogo separa contagem de empreendimentos e imóveis", () => {
   assert.match(productsUi, /\{unitProducts\.length\} unidades encontradas/);
 });
 
+test("gestão localiza e corrige qualquer unidade sem contaminar o catálogo comercial", () => {
+  assert.match(catalog, /const inventoryUnits = \(data \?\? \[\]\)\.flatMap/);
+  assert.match(catalog, /canApprove \|\| \(currentBrokerId != null && unit\.captador_corretor_id === currentBrokerId\)/);
+  assert.match(catalog, /inCommercialCatalog: commercialUnitIds\.has\(unit\.id\)/);
+  assert.match(productsUi, /Estoque completo <span>\{inventoryUnits\.length\}<\/span>/);
+  assert.match(productsUi, /Buscar código AP, prédio, unidade ou captador/);
+  assert.match(productsUi, /openInventoryUnit\(unit, "media"\)/);
+  assert.match(productsUi, /openInventoryUnit\(unit, "delete"\)/);
+});
+
 test("apartamento é a captação principal e condomínio tem fluxo separado", () => {
   assert.match(productsUi, /setRegistrationOpen\(true\)/);
   assert.match(productsUi, /\["apartamento", "Apartamento individual"/);
