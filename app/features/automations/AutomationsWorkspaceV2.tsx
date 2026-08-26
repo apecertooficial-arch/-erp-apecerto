@@ -20,6 +20,7 @@ type OriginalAutomationBuilder = {
   unmount: () => void;
   isMounted: () => boolean;
   organizeHorizontal: () => boolean;
+  organizeVertical: () => boolean;
   hasUnsavedChanges: () => boolean;
 };
 
@@ -124,6 +125,13 @@ export function AutomationsWorkspaceV2({ accessToken }: { accessToken: string })
       : "Abra uma automação com blocos para organizar.");
   }, []);
 
+  const organizarV = useCallback(() => {
+    const organizado = builderRef.current?.organizeVertical() ?? false;
+    setAviso(organizado
+      ? "Fluxo organizado de cima para baixo no rascunho. Revise e clique em Salvar para confirmar."
+      : "Abra uma automação com blocos para organizar.");
+  }, []);
+
   if (!supabaseUrl || !publishableKey) {
     return <div className="automation-feedback error">Configuração pública do Supabase não encontrada.</div>;
   }
@@ -139,7 +147,10 @@ export function AutomationsWorkspaceV2({ accessToken }: { accessToken: string })
         <div className="apn-builder-heading"><span className="automation-eyebrow">CENTRAL DE AUTOMAÇÕES</span><h1>Construtor de fluxos</h1></div>
         <div className="apn-builder-actions">
           <span className="apn-total">{totalAutomacoes} automações</span>
-          <button type="button" className="apn-organize" onClick={organizarH}>Organizar na horizontal</button>
+          <div className="apn-layout-actions" role="group" aria-label="Organização do fluxo">
+            <button type="button" className="apn-organize" onClick={organizarH}>Organizar na horizontal →</button>
+            <button type="button" className="apn-organize" onClick={organizarV}>Organizar na vertical ↓</button>
+          </div>
         </div>
       </header>
       {aviso ? <div className="apn-builder-feedback" role="status">{aviso}<button type="button" aria-label="Fechar aviso" onClick={() => setAviso(null)}>×</button></div> : null}

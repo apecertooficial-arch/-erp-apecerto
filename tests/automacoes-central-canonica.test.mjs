@@ -91,3 +91,14 @@ test("logs e validação ficam escopados ao painel aberto", () => {
   assert.doesNotMatch(runtime, /document\.querySelectorAll\('\[data-logtab\]'\)/);
   assert.doesNotMatch(runtime, /document\.querySelectorAll\('\[data-vgo\]'\)/);
 });
+
+test("o construtor oferece biblioteca pesquisável, importação segura e atalhos de edição", () => {
+  assert.match(runtime, /AUTOMATION_EXPORT_SCHEMA/);
+  assert.match(runtime, /Importar JSON/);
+  assert.match(runtime, /palette-search/);
+  assert.match(runtime, /findCollisionFreePosition/);
+  assert.match(runtime, /isEditableTarget/);
+  assert.match(runtime, /data-transfer-type/);
+  assert.match(builderCss, /\.zoom-level/);
+  assert.match(builderCss, /\.palette-section/);
+});
