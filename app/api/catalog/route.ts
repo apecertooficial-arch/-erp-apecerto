@@ -2,7 +2,7 @@ import { createServerSupabaseClient } from "../../lib/supabase/server";
 import { assessProductQuality, isPlausibleProductPrice } from "../../features/products/quality";
 import { isProductManagerRole } from "../../features/products/access";
 import { isProductPublishedOnSite } from "../../features/products/publication";
-import { resolveCommercialOrigin } from "../../features/products/product-domain";
+import { resolveCommercialOrigin, summarizeInventory } from "../../features/products/product-domain";
 
 export const dynamic = "force-dynamic";
 
@@ -101,6 +101,8 @@ export async function GET(request: Request) {
   const { data: qualityRows } = await supabase.rpc("produto_qualidade_fila");
   const { data: originRows } = await supabase.rpc("produto_unidades_origens");
   const originByUnit = new Map((originRows ?? []).map((row) => [row.unidade_id, row.origem_comercial]));
+  const rawUnits = (data ?? []).flatMap((product) => (product.unidades ?? []) as UnitRow[]);
+  const rawUnitById = new Map(rawUnits.map((unit) => [unit.id, unit]));
   const qualityQueue = (qualityRows ?? []).map((row) => ({
     unitId: row.unidade_id,
     productId: row.empreendimento_id,
@@ -109,6 +111,7 @@ export async function GET(request: Request) {
     productName: row.produto_nome,
     segment: row.origem_comercial,
     issues: row.problemas,
+    capturedBy: corretorNameById.get(rawUnitById.get(row.unidade_id)?.captador_corretor_id ?? -1) ?? null,
   }));
   const catalogIds = (data ?? []).map((item) => item.id);
   const { data: leadLinks } = catalogIds.length
@@ -414,6 +417,16 @@ export async function GET(request: Request) {
     };
   });
 
+  const commercialCatalogUnits = catalogFinal.filter((product) => Boolean(product.unitId) && product.available > 0 && product.approval === "aprovado");
+  const inventorySummary = summarizeInventory({
+    totalUnits: rawUnits.length,
+    approvedAvailable: rawUnits.filter((unit) => unit.disponivel && (unit.aprovacao ?? "aprovado") === "aprovado").length,
+    catalogUnits: commercialCatalogUnits.length,
+    publishedUnits: commercialCatalogUnits.filter((product) => product.published).length,
+    qualityBlocked: qualityQueue.length,
+    unavailableUnits: rawUnits.filter((unit) => !unit.disponivel).length,
+  });
+
   return Response.json({
     mode: "production-readonly",
     role,
@@ -423,6 +436,7 @@ export async function GET(request: Request) {
     pendingUnits,
     myUnits,
     qualityQueue,
+    inventorySummary,
     buildingCount: visible.filter((product) => !product.standalone).length,
     count: catalogFinal.length,
     catalog: catalogFinal,

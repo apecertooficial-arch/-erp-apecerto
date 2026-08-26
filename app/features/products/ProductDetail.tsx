@@ -1,13 +1,14 @@
 "use client";
 /* eslint-disable @next/next/no-img-element */
 
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type SyntheticEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { getBrowserSupabaseClient } from "../../lib/supabase/browser";
-import type { ProductQuality } from "./quality";
+import { isPlausibleProductPrice, type ProductQuality } from "./quality";
 import { isProductManagerRole } from "./access";
 import { MoneyInput } from "./MoneyInput";
 import { applyOfficialWatermark } from "./watermark";
 import { sitePropertyUrl } from "./products";
+import { retryProductMediaImage as retryMediaImage } from "./media-image";
 
 type Media = { id: string; tipo: "foto" | "video" | "pdf" | "apresentacao"; storage_path: string; categoria: string | null; nome: string | null; is_capa: boolean; url: string | null; unidade_id?: string | null };
 type Unit = { id: string; codigo?: string | null; numero: string | null; tipologia: string | null; area_m2: number | null; vagas: number | null; valor_tabela: number | null; valor_promo: number | null; condominio_valor?: number | null; iptu?: number | null; outros_custos?: number | null; compre_ja_alugado?: boolean; disponivel: boolean; publicado?: boolean; de_terceiros?: boolean; captador_nome?: string | null; proprietario_nome?: string | null; proprietario_contato?: string | null; acesso_tipo?: string | null; acesso_codigo?: string | null; acesso_instrucoes?: string | null; aprovacao?: string | null; reprovacao_motivo?: string | null; mine?: boolean; pode_editar?: boolean; pode_ver_proprietario?: boolean; owner_complete?: boolean };
@@ -78,18 +79,6 @@ function initials(name?: string | null): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
   if (!parts.length) return "?";
   return ((parts[0][0] ?? "") + (parts.length > 1 ? parts[parts.length - 1][0] : "")).toUpperCase();
-}
-
-function retryMediaImage(event: SyntheticEvent<HTMLImageElement>) {
-  const image = event.currentTarget;
-  if (image.dataset.retry === "1") {
-    image.dataset.failed = "1";
-    image.alt = "Foto temporariamente indisponível";
-    return;
-  }
-  image.dataset.retry = "1";
-  const separator = image.src.includes("?") ? "&" : "?";
-  image.src = `${image.src}${separator}retry=${Date.now()}`;
 }
 
 export type UnitOpenAction = "view" | "edit" | "media" | "delete";
@@ -169,15 +158,16 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
   const focusedUnitCover = focusedUnitPhotos.find((item) => item.is_capa) ?? focusedUnitPhotos[0];
   const focusedUnitPhotoScope = "apartamento";
   const focusedUnitPrice = focusedUnit ? (focusedUnit.valor_promo ?? focusedUnit.valor_tabela) : null;
+  const focusedUnitPriceValid = isPlausibleProductPrice(focusedUnitPrice, product?.finalidade);
   const focusedUnitPublished = Boolean(product?.site_published && focusedUnit?.publicado !== false && focusedUnit?.disponivel && focusedUnit?.aprovacao === "aprovado");
   const focusedUnitStandalone = Boolean(focusedUnit && product?.origem === "terceiros" && !product.condominio_id);
   const focusedUnitChecks = useMemo(() => focusedUnit ? {
     "Dados básicos": Boolean(focusedUnit.numero && focusedUnit.tipologia && focusedUnit.area_m2 && focusedUnit.area_m2 > 0),
     Endereço: Boolean(product?.endereco && product?.bairro && product?.cidade),
-    Custos: Boolean(focusedUnitPrice && focusedUnitPrice > 0),
+    "Preço válido": focusedUnitPriceValid,
     "Fotos, vídeo e capa": focusedUnitOwnPhotos.length > 0,
-    Proprietário: Boolean(focusedUnit.owner_complete && focusedUnit.acesso_tipo && focusedUnit.acesso_instrucoes),
-  } : {}, [focusedUnit, focusedUnitOwnPhotos.length, focusedUnitPrice, product]);
+    Proprietário: !focusedUnit.de_terceiros || Boolean(focusedUnit.owner_complete && focusedUnit.acesso_tipo && focusedUnit.acesso_instrucoes),
+  } : {}, [focusedUnit, focusedUnitOwnPhotos.length, focusedUnitPriceValid, product]);
   const focusedUnitScore = useMemo(() => {
     const values = Object.values(focusedUnitChecks);
     return values.length ? Math.round((values.filter(Boolean).length / values.length) * 100) : 0;
@@ -504,7 +494,7 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
         </div>
       </section>
 
-      <aside className="pv3-detail-side"><button className="pv3-detail-close" type="button" onClick={onClose} aria-label="Fechar ficha do apartamento"><IcClose /></button><div className="pv3-detail-price"><small>Valor do imóvel</small><strong>{focusedUnitPrice ? money.format(focusedUnitPrice) : "Sob consulta"}</strong>{focusedUnitPrice && unit.area_m2 ? <span>{money.format(Math.round(focusedUnitPrice / unit.area_m2))} por m²</span> : null}<div><p><span>Condomínio</span><b>{unitCondominiumFee != null ? money.format(unitCondominiumFee) : "—"}</b></p><p><span>IPTU</span><b>{unitPropertyTax != null ? money.format(unitPropertyTax) : "—"}</b></p><p><span>Outros custos</span><b>{unitOtherCosts != null ? money.format(unitOtherCosts) : "—"}</b></p></div></div>
+      <aside className="pv3-detail-side"><button className="pv3-detail-close" type="button" onClick={onClose} aria-label="Fechar ficha do apartamento"><IcClose /></button><div className={`pv3-detail-price ${!focusedUnitPriceValid ? "invalid" : ""}`}><small>Valor do imóvel</small><strong>{focusedUnitPriceValid && focusedUnitPrice ? money.format(focusedUnitPrice) : "⚠ Preço inválido"}</strong>{focusedUnitPriceValid && focusedUnitPrice && unit.area_m2 ? <span>{money.format(Math.round(focusedUnitPrice / unit.area_m2))} por m²</span> : <span>Corrija o valor antes de publicar</span>}<div><p><span>Condomínio</span><b>{unitCondominiumFee != null ? money.format(unitCondominiumFee) : "—"}</b></p><p><span>IPTU</span><b>{unitPropertyTax != null ? money.format(unitPropertyTax) : "—"}</b></p><p><span>Outros custos</span><b>{unitOtherCosts != null ? money.format(unitOtherCosts) : "—"}</b></p></div></div>
         <div className="pv3-detail-side-group"><span>COMERCIAL</span><button className="lead" type="button" onClick={() => setLeadPanelOpen(!leadPanelOpen)}><IcLink />Vincular lead</button><div className="row"><a href="/crm"><IcCalendar />Visita</a><a href="/crm"><IcFile />Proposta</a></div>{leadPanelOpen && <div className="fv2-lead-panel"><div className="lead-link-form"><select value={leadId} onChange={(event) => setLeadId(event.target.value)}><option value="">Selecione um lead...</option>{currentProduct.leads.filter((lead) => !lead.linked).map((lead) => <option value={lead.id} key={lead.id}>{lead.nome || "Lead sem nome"}</option>)}</select><button className="primary-action" disabled={busy || !leadId} type="button" onClick={() => void productAction("linkLead",leadId)}>Vincular</button></div></div>}</div>
         <div className="pv3-detail-side-group"><span>CADASTRO</span>{unit.pode_editar && <button type="button" onClick={() => setUnitEdit({ ...unit })}><IcEdit />Editar produto</button>}<div className="row"><button type="button" disabled title="Duplicação ainda não habilitada"><IcCopy />Duplicar</button><button type="button" onClick={() => setTab("proprietario")}><IcUserPlus />Captação</button></div></div>
         <div className="pv3-detail-captor"><span className="fv2-avatar purple">{initials(unit.captador_nome)}</span><div><strong>{unit.captador_nome || "Sem captador"}</strong><small>Corretor da captação{typeof captadorScore === "number" ? ` · nota ${captadorScore}` : ""}</small></div></div>
@@ -559,7 +549,7 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
     <button className="modal-scrim" type="button" onClick={onClose} aria-label="Fechar ficha do produto" />
     <aside className="product-detail-panel ficha-v2" aria-label="Ficha completa do produto">
       {!product ? <div className="detail-loading">{message || "Carregando dados reais do produto..."}</div> : focusedUnit ? (
-        <>{renderFocusedUnitDesign(product, focusedUnit)}<div className="legacy-focused-unit" hidden><div className="fv2-page fv2-unit-product">
+        <>{renderFocusedUnitDesign(product, focusedUnit)}{false && <div className="legacy-focused-unit"><div className="fv2-page fv2-unit-product">
           <button className="fv2-close" type="button" onClick={onClose} aria-label="Fechar ficha do apartamento"><IcClose /></button>
           <div className="fv2-main">
             <div className="fv2-mosaic">
@@ -640,7 +630,7 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
             </div>
             <div className="fv2-person-card"><span className="fv2-avatar purple">{initials(focusedUnit.captador_nome)}</span><div><strong>{focusedUnit.captador_nome || "Sem captador"}</strong><small>Captador desta unidade</small></div></div>
           </aside>
-        </div></div></>
+        </div></div>}</>
       ) : editing ? (
         <div className="fv2-edit">
           <div className="fv2-edit-head"><h2>Editar produto</h2><button className="fv2-btn fv2-btn-ghost" type="button" onClick={() => setEditing(false)}>Cancelar edição</button></div>
@@ -668,7 +658,7 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
           </div>
         </div>
       ) : (
-        <>{renderProductDesign(product)}<div className="legacy-product-detail" hidden><div className="fv2-page">
+        <>{renderProductDesign(product)}{false && <div className="legacy-product-detail"><div className="fv2-page">
           <button className="fv2-close" type="button" onClick={onClose} aria-label="Fechar ficha do produto"><IcClose /></button>
           <div className="fv2-main">
             <div className="fv2-mosaic">
@@ -804,7 +794,7 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
               </div>;
             })()}
           </aside>
-        </div></div></>
+        </div></div>}</>
       )}
     </aside>
     {lightboxIndex !== null && photos[lightboxIndex]?.url && <div className="photo-lightbox" role="dialog" aria-modal="true" aria-label="Galeria ampliada"><button className="lightbox-close" type="button" onClick={() => setLightboxIndex(null)} aria-label="Fechar galeria">×</button><button className="lightbox-nav previous" type="button" onClick={() => setLightboxIndex((lightboxIndex - 1 + photos.length) % photos.length)} aria-label="Foto anterior">‹</button><div className="lightbox-image watermarked-preview"><img src={photos[lightboxIndex].url ?? ""} alt={photos[lightboxIndex].categoria || photos[lightboxIndex].nome || "Foto ampliada do imóvel"} onError={retryMediaImage} /></div><div><strong>{photos[lightboxIndex].categoria || "Foto do imóvel"}</strong><span>{lightboxIndex + 1} de {photos.length}</span></div><button className="lightbox-nav next" type="button" onClick={() => setLightboxIndex((lightboxIndex + 1) % photos.length)} aria-label="Próxima foto">›</button></div>}
