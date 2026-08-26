@@ -1,7 +1,7 @@
 "use client";
 /* eslint-disable @next/next/no-img-element */
 
-import { useCallback, useEffect, useMemo, useState, type ReactNode, type SyntheticEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type SyntheticEvent } from "react";
 import { getBrowserSupabaseClient } from "../../lib/supabase/browser";
 import type { ProductQuality } from "./quality";
 import { isProductManagerRole } from "./access";
@@ -92,7 +92,9 @@ function retryMediaImage(event: SyntheticEvent<HTMLImageElement>) {
   image.src = `${image.src}${separator}retry=${Date.now()}`;
 }
 
-export function ProductDetail({ productId, accessToken, sessionRole = "corretor", initialUnitId, initialEditing = false, captadorScore = null, onClose, onChanged }: { productId: string; accessToken: string; sessionRole?: string; initialUnitId?: string | null; initialEditing?: boolean; captadorScore?: number | null; onClose: () => void; onChanged: () => void }) {
+export type UnitOpenAction = "view" | "edit" | "media" | "delete";
+
+export function ProductDetail({ productId, accessToken, sessionRole = "corretor", initialUnitId, initialUnitAction = "view", initialEditing = false, captadorScore = null, onClose, onChanged }: { productId: string; accessToken: string; sessionRole?: string; initialUnitId?: string | null; initialUnitAction?: UnitOpenAction; initialEditing?: boolean; captadorScore?: number | null; onClose: () => void; onChanged: () => void }) {
   const canPublish = isProductManagerRole(sessionRole);
   const [product, setProduct] = useState<ProductDetailData | null>(null);
   const [draft, setDraft] = useState<Record<string, string | number | null>>({});
@@ -122,6 +124,7 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
   const [confirmUnpublish, setConfirmUnpublish] = useState<{ label: string; unitId?: string } | null>(null);
   const [confirmUnitAvailability, setConfirmUnitAvailability] = useState<{ unit: Unit; disponivel: boolean } | null>(null);
   const [confirmDeleteUnit, setConfirmDeleteUnit] = useState<Unit | null>(null);
+  const initialUnitActionApplied = useRef("");
 
   const load = useCallback(async () => {
     setMessage("");
@@ -180,6 +183,19 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
     return values.length ? Math.round((values.filter(Boolean).length / values.length) * 100) : 0;
   }, [focusedUnitChecks]);
   const focusedUnitBlocking = Object.values(focusedUnitChecks).filter((value) => !value).length;
+
+  useEffect(() => {
+    if (!focusedUnit || !focusedUnit.pode_editar || initialUnitAction === "view") return;
+    const actionKey = `${focusedUnit.id}:${initialUnitAction}`;
+    if (initialUnitActionApplied.current === actionKey) return;
+    initialUnitActionApplied.current = actionKey;
+    const timer = window.setTimeout(() => {
+      if (initialUnitAction === "edit") setUnitEdit({ ...focusedUnit });
+      if (initialUnitAction === "media") setUnitMediaEdit({ ...focusedUnit });
+      if (initialUnitAction === "delete") setConfirmDeleteUnit(focusedUnit);
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [focusedUnit, initialUnitAction]);
 
   const addressLine = useMemo(() => [product?.endereco, product?.numero, product?.bairro, product?.cidade, product?.uf, product?.cep].filter(Boolean).join(", "), [product]);
   // Query pro embed do Google (por texto) — sempre com cidade/UF/Brasil pra melhorar o acerto.
