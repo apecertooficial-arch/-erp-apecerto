@@ -17,11 +17,6 @@
   box-shadow: 0 28px 80px rgb(48 34 24 / 22%);
 }
 
-.legacy-focused-unit[hidden],
-.legacy-product-detail[hidden] {
-  display: none !important;
-}
-
 .pv3-detail,
 .pv3-detail * {
   box-sizing: border-box;

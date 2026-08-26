@@ -27,6 +27,7 @@ export type Product = {
   origin?: string;
   standalone?: boolean;
   numericPrice?: number | null;
+  priceInvalid?: boolean;
   favorite?: boolean;
   approval?: string;
   rejectionReason?: string | null;

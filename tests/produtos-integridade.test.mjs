@@ -21,7 +21,9 @@ const captorIntegrityMigration = await readFile("supabase/migrations/20260820223
 test("catálogo separa contagem de empreendimentos e imóveis", () => {
   assert.match(catalog, /buildingCount: visible\.filter\(\(product\) => !product\.standalone\)\.length/);
   assert.match(productsUi, /const commercialUnits = products\.filter/);
-  assert.match(productsUi, /<b>\{commercialUnits\.length\}<\/b><em>No catálogo<\/em>/);
+  assert.match(productsUi, /<b>\{commercialUnits\.length\}<\/b><em>Catálogo comercial<\/em>/);
+  assert.match(productsUi, /Estoque total: \{inventorySummary\.totalUnits\} unidades/);
+  assert.match(catalog, /inventorySummary = summarizeInventory/);
   assert.match(productsUi, /const publishedCount = commercialUnits\.filter/);
   assert.match(productsUi, /const offlineCount = commercialUnits\.filter/);
   assert.match(productsUi, /\{unitProducts\.length\} unidades encontradas/);
@@ -119,8 +121,10 @@ test("ficha aberta usa o Produtos v3 e mantém a composição aprovada", () => {
   assert.match(detail, /pv3-detail-side-group/);
   assert.match(detailCss, /grid-template-columns: minmax\(0, 1fr\) 340px/);
   assert.match(detailCss, /height: min\(900px, 90vh\)/);
-  assert.match(detailCss, /legacy-focused-unit\[hidden\]/);
-  assert.match(detailCss, /legacy-product-detail\[hidden\]/);
+  assert.doesNotMatch(detail, /className="legacy-focused-unit" hidden/);
+  assert.doesNotMatch(detail, /className="legacy-product-detail" hidden/);
+  assert.match(detail, /renderFocusedUnitDesign\(product, focusedUnit\)\}\{false &&/);
+  assert.match(detail, /renderProductDesign\(product\)\}\{false &&/);
 });
 
 test("corretor vê todas as fotos e dados operacionais, mas não o proprietário alheio", () => {
