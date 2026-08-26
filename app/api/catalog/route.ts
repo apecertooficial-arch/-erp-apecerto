@@ -38,6 +38,17 @@ type MediaRow = {
   created_at: string;
 };
 
+type CondominiumRow = {
+  id: string;
+  nome: string;
+  cep: string | null;
+  endereco: string;
+  numero: string | null;
+  bairro: string | null;
+  cidade: string;
+  uf: string;
+};
+
 function publicMediaUrl(path: string) {
   const base = process.env.NEXT_PUBLIC_SUPABASE_URL;
   if (!base) return null;
@@ -82,6 +93,11 @@ export async function GET(request: Request) {
   const corretorNameById = new Map((corretoresList ?? []).map((c) => [c.id, c.nome]));
   const { data: currentBroker } = await supabase.from("corretores").select("id").eq("usuario_id", authData.user.id).maybeSingle();
   const currentBrokerId = currentBroker?.id ?? null;
+  const { data: condominiumRows, error: condominiumError } = await supabase
+    .from("condominios")
+    .select("id,nome,cep,endereco,numero,bairro,cidade,uf")
+    .order("nome");
+  if (condominiumError) return Response.json({ error: condominiumError.message }, { status: 502 });
   const { data: qualityRows } = await supabase.rpc("produto_qualidade_fila");
   const { data: originRows } = await supabase.rpc("produto_unidades_origens");
   const originByUnit = new Map((originRows ?? []).map((row) => [row.unidade_id, row.origem_comercial]));
@@ -103,6 +119,7 @@ export async function GET(request: Request) {
 
   const catalog = (data ?? []).map((item) => {
     const units = (item.unidades ?? []) as UnitRow[];
+    const unitMine = currentBrokerId != null && units.some((unit) => unit.captador_corretor_id === currentBrokerId);
     const allMedia = (item.midias ?? []) as MediaRow[];
     const standalone = item.origem === "terceiros" && !item.condominio_id;
     const media = standalone ? allMedia : allMedia.filter((entry) => !entry.unidade_id);
@@ -193,7 +210,7 @@ export async function GET(request: Request) {
       draft: item.rascunho,
       approval: (item as { aprovacao?: string }).aprovacao ?? "aprovado",
       rejectionReason: (item as { reprovacao_motivo?: string | null }).reprovacao_motivo ?? null,
-      mine: (item as { captado_por_usuario?: string | null }).captado_por_usuario === authData.user.id,
+      mine: (item as { captado_por_usuario?: string | null }).captado_por_usuario === authData.user.id || unitMine,
       capturedBy: corretorNameById.get((item as { captador_corretor_id?: number | null }).captador_corretor_id ?? -1) ?? null,
       capturedByScore: null as number | null,
       favorite: favoriteIds.has(item.id),
@@ -315,14 +332,18 @@ export async function GET(request: Request) {
     const bruto = rowById.get(p.id);
     const ehPronto = /pronto/i.test(p.status ?? "");
     if (!bruto) return [p];
-    const unidadesBrutas = ((bruto.unidades ?? []) as UnitRow[]).filter((u) => u.disponivel && (u.aprovacao ?? "aprovado") === "aprovado");
+    const unidadesBrutas = ((bruto.unidades ?? []) as UnitRow[]).filter((u) =>
+      (u.disponivel && (u.aprovacao ?? "aprovado") === "aprovado")
+      || (currentBrokerId != null && u.captador_corretor_id === currentBrokerId)
+    );
     const unidadesComerciais = ehPronto
       ? unidadesBrutas
       : unidadesBrutas.filter((u) => u.de_terceiros === true || u.publicado !== false);
+    const hasOwnUnit = currentBrokerId != null && unidadesComerciais.some((unit) => unit.captador_corretor_id === currentBrokerId);
     if (p.standalone) {
-      if (p.draft || p.approval !== "aprovado" || !unidadesComerciais.length) return [];
+      if ((!hasOwnUnit && (p.draft || p.approval !== "aprovado")) || !unidadesComerciais.length) return [];
     } else {
-      if (p.draft || p.approval !== "aprovado" || !unidadesComerciais.length) return [p];
+      if ((!hasOwnUnit && (p.draft || p.approval !== "aprovado")) || !unidadesComerciais.length) return [p];
     }
     const allProductMedia = (bruto.midias ?? []) as MediaRow[];
     const fotos = allProductMedia.filter((m) => m.tipo === "foto");
@@ -341,7 +362,7 @@ export async function GET(request: Request) {
         area: u.area_m2 ?? p.area,
         bedrooms: dormUnidade ?? p.bedrooms,
         parking: u.vagas ?? p.parking,
-        available: 1,
+        available: u.disponivel ? 1 : 0,
         units: 1,
         media: unitMediaCount,
         unitMedia: unitMediaCount,
@@ -350,6 +371,9 @@ export async function GET(request: Request) {
         capturedBy: corretorNameById.get(u.captador_corretor_id ?? -1) ?? null,
         capturedByScore: u.captador_corretor_id != null ? (captadorScoreById.get(u.captador_corretor_id) ?? null) : null,
         mine: currentBrokerId != null && u.captador_corretor_id === currentBrokerId,
+        approval: u.aprovacao ?? "aprovado",
+        rejectionReason: u.reprovacao_motivo ?? null,
+        draft: false,
         segment: resolveCommercialOrigin({
           explicit: originByUnit.get(u.id) ?? null,
           thirdParty: u.de_terceiros,
@@ -364,6 +388,32 @@ export async function GET(request: Request) {
     return ehPronto || p.standalone ? unitCards : [p, ...unitCards];
   });
 
+  const condominiums = ((condominiumRows ?? []) as CondominiumRow[]).map((condominium) => {
+    const linkedProducts = (data ?? []).filter((product) => product.condominio_id === condominium.id);
+    const linkedUnits = linkedProducts.flatMap((product) => (product.unidades ?? []) as UnitRow[]);
+    const publishedUnits = linkedUnits.filter((unit) => unit.disponivel && (unit.aprovacao ?? "aprovado") === "aprovado" && unit.publicado !== false).length;
+    const captures = linkedUnits.filter((unit) => unit.de_terceiros === true).length;
+    const buildingPhotos = linkedProducts.flatMap((product) => ((product.midias ?? []) as MediaRow[]).filter((media) => !media.unidade_id && media.tipo === "foto"));
+    const cover = buildingPhotos.find((media) => media.is_capa) ?? buildingPhotos[0];
+    return {
+      id: condominium.id,
+      name: condominium.nome,
+      zipCode: condominium.cep,
+      address: condominium.endereco,
+      number: condominium.numero,
+      neighborhood: condominium.bairro,
+      city: condominium.cidade,
+      state: condominium.uf,
+      linkedProducts: linkedProducts.length,
+      units: linkedUnits.length,
+      captures,
+      publishedUnits,
+      availableUnits: linkedUnits.filter((unit) => unit.disponivel).length,
+      referenceProductId: linkedProducts[0]?.id ?? null,
+      coverUrl: cover ? publicMediaUrl(cover.storage_path) : null,
+    };
+  });
+
   return Response.json({
     mode: "production-readonly",
     role,
@@ -376,5 +426,6 @@ export async function GET(request: Request) {
     buildingCount: visible.filter((product) => !product.standalone).length,
     count: catalogFinal.length,
     catalog: catalogFinal,
+    condominiums: condominiums,
   });
 }

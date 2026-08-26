@@ -14,6 +14,7 @@
 
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { CaptureWizard } from "./CaptureWizard";
+import { CondominiumWizard } from "./CondominiumWizard";
 import { UnitWizard } from "./UnitWizard";
 import { ProductDetail } from "./ProductDetail";
 import { ProductQualityQueue, type ProductQualityQueueItem } from "./ProductQualityQueue";
@@ -45,6 +46,25 @@ type CatalogResponse = {
   pendingUnits?: Array<{ id: string; numero: string | null; tipologia: string | null; valor: number | null; empreendimentoId: string; predio: string; proprietario: string | null; indicador: string | null; coverUrl: string | null; approval: string; rejectionReason: string | null; codigo: string | null }>;
   myUnits?: Array<{ id: string; numero: string | null; tipologia: string | null; valor: number | null; empreendimentoId: string; predio: string; proprietario: string | null; indicador: string | null; coverUrl: string | null; approval: string; rejectionReason: string | null; codigo: string | null; published: boolean; available: boolean }>;
   qualityQueue?: ProductQualityQueueItem[];
+  condominiums?: CondominiumSummary[];
+};
+
+type CondominiumSummary = {
+  id: string;
+  name: string;
+  zipCode: string | null;
+  address: string;
+  number: string | null;
+  neighborhood: string | null;
+  city: string;
+  state: string;
+  linkedProducts: number;
+  units: number;
+  captures: number;
+  publishedUnits: number;
+  availableUnits: number;
+  referenceProductId: string | null;
+  coverUrl: string | null;
 };
 
 const currency = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
@@ -59,6 +79,7 @@ function captureStatusLabel(unit: NonNullable<CatalogResponse["myUnits"]>[number
 type ProductsSection = "unidades" | "empreendimentos" | "condominios" | "qualidade" | "aprovacoes";
 type RegistrationChoice = "apartamento" | "remanescente" | "condominio" | "empreendimento";
 type ProductSegment = "todos" | "terceiros" | "lancamento" | "remanescente";
+type UnitOpenAction = "view" | "edit" | "media" | "delete";
 
 const segmentInfo = {
   terceiros: { label: "Terceiros", description: "Imóveis captados pelos corretores" },
@@ -121,10 +142,13 @@ export function ProductsModule({ accessToken }: { accessToken: string }) {
   const [favoritesOnly, setFavoritesOnly] = useState(false);
   const [noMediaOnly, setNoMediaOnly] = useState(false);
   const [captureOpen, setCaptureOpen] = useState(false);
+  const [condominiumOpen, setCondominiumOpen] = useState(false);
+  const [returnToUnitAfterCondominium, setReturnToUnitAfterCondominium] = useState(false);
   const [standaloneOpen, setStandaloneOpen] = useState(false);
   const [unitWizardOpen, setUnitWizardOpen] = useState(false);
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
+  const [condominiums, setCondominiums] = useState<CondominiumSummary[]>([]);
   const [canApprove, setCanApprove] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
   const [pendingUnits, setPendingUnits] = useState<NonNullable<CatalogResponse["pendingUnits"]>>([]);
@@ -132,6 +156,7 @@ export function ProductsModule({ accessToken }: { accessToken: string }) {
   const [qualityQueue, setQualityQueue] = useState<ProductQualityQueueItem[]>([]);
   const [myUnitsOpen, setMyUnitsOpen] = useState(false);
   const [initialUnitId, setInitialUnitId] = useState<string | null>(null);
+  const [initialUnitAction, setInitialUnitAction] = useState<UnitOpenAction>("view");
   const [approvalFilter, setApprovalFilter] = useState(false);
   const [qualityFilter, setQualityFilter] = useState("Todas");
   const [publicationFilter, setPublicationFilter] = useState("Todos");
@@ -188,6 +213,7 @@ export function ProductsModule({ accessToken }: { accessToken: string }) {
       setPendingUnits(result.pendingUnits ?? []);
       setMyUnits(result.myUnits ?? []);
       setQualityQueue(result.qualityQueue ?? []);
+      setCondominiums(result.condominiums ?? []);
       setDataState("live");
       setAtualizadoEm(new Date());
     } catch {
@@ -275,6 +301,12 @@ export function ProductsModule({ accessToken }: { accessToken: string }) {
 
   const neighborhoods = useMemo(() => Array.from(new Map(products.map((item) => [normalizedKey(item.neighborhood), item.neighborhood])).values()).filter(Boolean).sort((a, b) => a.localeCompare(b, "pt-BR")), [products]);
   const developers = useMemo(() => Array.from(new Map(products.filter((item) => Boolean(item.developer)).map((item) => [normalizedKey(item.developer), item.developer as string])).values()).sort((a, b) => a.localeCompare(b, "pt-BR")), [products]);
+  const visibleCondominiums = useMemo(() => condominiums.filter((item) => {
+    const queryKey = normalizedKey(query);
+    const matchesQuery = !queryKey || [item.name, item.address, item.neighborhood, item.city].some((value) => normalizedKey(value).includes(queryKey));
+    const matchesNeighborhood = neighborhood === "Todos" || normalizedKey(item.neighborhood) === normalizedKey(neighborhood);
+    return matchesQuery && matchesNeighborhood;
+  }), [condominiums, query, neighborhood]);
   const produtosVisiveis = filtered.filter((product) => !approvalFilter || product.approval === "pendente");
   const captadores = useMemo(() => Array.from(new Set([...products.map((p) => p.capturedBy), ...pendingUnits.map((u) => u.indicador)].filter(Boolean) as string[])).sort((a, b) => a.localeCompare(b, "pt-BR")), [products, pendingUnits]);
   const pendingUnitsVisiveis = captadorFilter === "Todos" ? pendingUnits : pendingUnits.filter((u) => u.indicador === captadorFilter);
@@ -284,7 +316,6 @@ export function ProductsModule({ accessToken }: { accessToken: string }) {
     .filter((group) => group.products.length > 0);
   const referenceProducts = filtered.filter((product) => !product.unitId && !product.standalone);
   const developmentProducts = referenceProducts.filter((product) => /lan[cç]|obra/i.test(product.status ?? "") || Boolean(product.developer));
-  const condominiumProducts = referenceProducts.filter((product) => !developmentProducts.includes(product));
   // Os indicadores da tela de Unidades contam somente imóveis vendáveis.
   // Referências de condomínio/empreendimento não podem inflar o número do site.
   const commercialUnits = products.filter((product) => Boolean(product.unitId || product.standalone));
@@ -298,9 +329,10 @@ export function ProductsModule({ accessToken }: { accessToken: string }) {
   const offlineCount = commercialUnits.filter((product) => !product.published && product.approval === "aprovado").length;
   const approvalTotal = pendingCount + pendingUnits.length;
 
-  function openProduct(product: Product, edit = false) {
+  function openProduct(product: Product, action: UnitOpenAction = "view") {
     if (!product.id) return;
-    setOpenInEdit(edit && !product.unitId);
+    setOpenInEdit(action === "edit" && !product.unitId);
+    setInitialUnitAction(product.unitId ? action : "view");
     setInitialUnitId(product.unitId ?? null);
     setSelectedProductId(product.id);
   }
@@ -314,7 +346,8 @@ export function ProductsModule({ accessToken }: { accessToken: string }) {
   function continueRegistration() {
     setRegistrationOpen(false);
     if (registrationChoice === "apartamento" || registrationChoice === "remanescente") setUnitWizardOpen(true);
-    else setCaptureOpen(true);
+    if (registrationChoice === "condominio") setCondominiumOpen(true);
+    if (registrationChoice === "empreendimento") setCaptureOpen(true);
   }
 
   const hasActiveFilters = Boolean(query || status !== "Todos" || neighborhood !== "Todos" || developer !== "Todas"
@@ -357,7 +390,7 @@ export function ProductsModule({ accessToken }: { accessToken: string }) {
   if (ehCelular && dataState === "auth") return <AppMobileSessaoExpirada />;
   if (ehCelular) return <main className="ape-produtos">
     <AppMobileOffline atualizadoEm={atualizadoEm} />
-    <div className="ape-produto-mobile-actions"><button type="button" className="principal" onClick={() => setUnitWizardOpen(true)}>＋ Cadastrar apartamento</button><button type="button" onClick={() => setCaptureOpen(true)}>＋ Cadastrar condomínio</button>{myUnits.length > 0 && <button type="button" className={myUnitsOpen ? "ativo" : ""} onClick={() => setMyUnitsOpen(!myUnitsOpen)}>Minhas captações · {myUnits.length}</button>}<button type="button" className={section === "qualidade" ? "ativo" : ""} onClick={() => section === "qualidade" ? showCatalog() : setSection("qualidade")}>Qualidade · {qualityQueue.length}</button>{canApprove && <button type="button" className={approvalFilter ? "ativo" : ""} onClick={() => approvalFilter ? showCatalog() : showApprovalQueue()}>Aprovar · {pendingCount + pendingUnits.length}</button>}</div>
+    <div className="ape-produto-mobile-actions"><button type="button" className="principal" onClick={() => setUnitWizardOpen(true)}>＋ Cadastrar apartamento</button><button type="button" onClick={() => setCondominiumOpen(true)}>＋ Cadastrar condomínio</button>{myUnits.length > 0 && <button type="button" className={myUnitsOpen ? "ativo" : ""} onClick={() => setMyUnitsOpen(!myUnitsOpen)}>Minhas captações · {myUnits.length}</button>}<button type="button" className={section === "qualidade" ? "ativo" : ""} onClick={() => section === "qualidade" ? showCatalog() : setSection("qualidade")}>Qualidade · {qualityQueue.length}</button>{canApprove && <button type="button" className={approvalFilter ? "ativo" : ""} onClick={() => approvalFilter ? showCatalog() : showApprovalQueue()}>Aprovar · {pendingCount + pendingUnits.length}</button>}</div>
     <label className="ape-produto-busca">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m20 20-4-4" /></svg>
       <input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar nome, código AP ou rua" />
@@ -411,15 +444,18 @@ export function ProductsModule({ accessToken }: { accessToken: string }) {
           </div>
           <div className="ape-produto-acoes">
             {linkSite && <a href={`https://wa.me/?text=${compartilhar}`} target="_blank" rel="noopener noreferrer">Compartilhar no WhatsApp</a>}
+            {(canApprove || product.mine) && product.unitId && <button type="button" onClick={() => openProduct(product, "media")}>Editar fotos</button>}
+            {(canApprove || product.mine) && product.unitId && <button type="button" onClick={() => openProduct(product, "delete")}>Excluir imóvel</button>}
             <button type="button" onClick={() => { if (product.id) { setInitialUnitId(product.unitId ?? null); setSelectedProductId(product.id); } }} aria-label={`Ver detalhes de ${product.name}`}>•••</button>
           </div>
         </article>;
       })}
     </section>}
     {captureOpen && <CaptureWizard onClose={() => setCaptureOpen(false)} onSaved={() => { setCaptureOpen(false); void loadCatalog(accessToken); }} />}
+    {condominiumOpen && <CondominiumWizard accessToken={accessToken} onClose={() => { setCondominiumOpen(false); setReturnToUnitAfterCondominium(false); }} onSaved={() => { setCondominiumOpen(false); void loadCatalog(accessToken); if (returnToUnitAfterCondominium) setUnitWizardOpen(true); setReturnToUnitAfterCondominium(false); }} />}
     {standaloneOpen && <CaptureWizard initialStandalone onClose={() => setStandaloneOpen(false)} onSaved={() => { setStandaloneOpen(false); void loadCatalog(accessToken); }} />}
-    {unitWizardOpen && <UnitWizard accessToken={accessToken} onCreateStandalone={() => { setUnitWizardOpen(false); setStandaloneOpen(true); }} onCreateCondominium={() => { setUnitWizardOpen(false); setCaptureOpen(true); }} onClose={() => setUnitWizardOpen(false)} onSaved={() => { setUnitWizardOpen(false); void loadCatalog(accessToken); }} />}
-    {selectedProductId && <ProductDetail productId={selectedProductId} accessToken={accessToken} sessionRole={role} initialUnitId={initialUnitId} initialEditing={openInEdit} captadorScore={products.find((p) => p.id === selectedProductId)?.capturedByScore ?? null} onClose={() => { setSelectedProductId(null); setInitialUnitId(null); setOpenInEdit(false); }} onChanged={() => void loadCatalog(accessToken)} />}
+    {unitWizardOpen && <UnitWizard accessToken={accessToken} onCreateStandalone={() => { setUnitWizardOpen(false); setStandaloneOpen(true); }} onCreateCondominium={() => { setUnitWizardOpen(false); setReturnToUnitAfterCondominium(true); setCondominiumOpen(true); }} onClose={() => setUnitWizardOpen(false)} onSaved={() => { setUnitWizardOpen(false); void loadCatalog(accessToken); }} />}
+    {selectedProductId && <ProductDetail productId={selectedProductId} accessToken={accessToken} sessionRole={role} initialUnitId={initialUnitId} initialUnitAction={initialUnitAction} initialEditing={openInEdit} captadorScore={products.find((p) => p.id === selectedProductId)?.capturedByScore ?? null} onClose={() => { setSelectedProductId(null); setInitialUnitId(null); setInitialUnitAction("view"); setOpenInEdit(false); }} onChanged={() => void loadCatalog(accessToken)} />}
     {deleteTarget && <div className="delete-confirm" role="dialog" aria-modal="true" aria-label="Confirmar exclusão do produto"><div><strong>Excluir este produto definitivamente?</strong><p><strong>{deleteTarget.name}</strong> e todas as suas unidades, fotos e vínculos serão removidos para sempre. Esta ação não pode ser desfeita.</p><footer><button type="button" onClick={() => setDeleteTarget(null)}>Cancelar</button><button className="danger" disabled={deleting} type="button" onClick={() => void confirmDeleteProduct()}>Excluir para sempre</button></footer></div></div>}
   </main>;
 
@@ -476,7 +512,7 @@ export function ProductsModule({ accessToken }: { accessToken: string }) {
         {unitProducts.length ? <div className="pv3-unit-groups">{unitGroups.map((group) => <section className={`pv3-unit-group ${group.segment}`} key={group.segment}><header><div><strong>{segmentInfo[group.segment].label}</strong><span>{segmentInfo[group.segment].description}</span></div><em>{group.products.length} {group.products.length === 1 ? "unidade" : "unidades"}</em></header><div className={`pv3-unit-grid ${catalogLayout}`}>{group.products.map((product) => {
           const state = productState(product); const menuKey = product.unitId ?? product.id ?? product.codigo ?? product.name;
           return <article className={`pv3-unit-card tint-${product.quality?.level ?? "neutral"}`} key={menuKey} onClick={() => openProduct(product)}>
-            <div className="pv3-unit-cover" style={product.coverUrl ? { backgroundImage: `url(${product.coverUrl})` } : undefined}><div className="pv3-card-badges"><span className={`pv3-state ${state.tone}`}>{state.label}</span><span className={`pv3-segment-badge ${group.segment}`}>{segmentInfo[group.segment].label}</span></div>{!product.coverUrl && <Icon name="building" />}<div className="pv3-card-menu" onClick={(event) => event.stopPropagation()}><button type="button" aria-label={`Ações de ${product.name}`} onClick={() => setOpenMenuId(openMenuId === menuKey ? null : menuKey)}><Icon name="more" /></button>{openMenuId === menuKey && <div role="menu"><button type="button" onClick={() => openProduct(product)}>Abrir ficha</button>{product.published && <button type="button" onClick={() => void navigator.clipboard.writeText(sitePropertyUrl(product))}>Copiar link do site</button>}{(canApprove || product.mine) && <button type="button" onClick={() => openProduct(product, true)}>Editar unidade</button>}{canApprove && product.published && <button type="button" className="danger" onClick={() => setPublicationTarget(product)}>Tirar imóvel do ar</button>}{canApprove && !product.published && product.approval === "aprovado" && product.quality?.readyForSite && <button type="button" onClick={() => void changePublicationFromCard(product, true)}>Publicar no site</button>}</div>}</div></div>
+            <div className="pv3-unit-cover" style={product.coverUrl ? { backgroundImage: `url(${product.coverUrl})` } : undefined}><div className="pv3-card-badges"><span className={`pv3-state ${state.tone}`}>{state.label}</span><span className={`pv3-segment-badge ${group.segment}`}>{segmentInfo[group.segment].label}</span></div>{!product.coverUrl && <Icon name="building" />}<div className="pv3-card-menu" onClick={(event) => event.stopPropagation()}><button type="button" aria-label={`Ações de ${product.name}`} onClick={() => setOpenMenuId(openMenuId === menuKey ? null : menuKey)}><Icon name="more" /></button>{openMenuId === menuKey && <div role="menu"><button type="button" onClick={() => openProduct(product)}>Abrir ficha</button>{product.published && <button type="button" onClick={() => void navigator.clipboard.writeText(sitePropertyUrl(product))}>Copiar link do site</button>}{(canApprove || product.mine) && <button type="button" onClick={() => openProduct(product, "edit")}>Editar unidade (dados)</button>}{(canApprove || product.mine) && product.unitId && <button type="button" onClick={() => openProduct(product, "media")}>Editar fotos</button>}{(canApprove || product.mine) && product.unitId && <button type="button" className="danger" onClick={() => openProduct(product, "delete")}>Excluir imóvel</button>}{canApprove && product.published && <button type="button" className="danger" onClick={() => setPublicationTarget(product)}>Tirar imóvel do ar</button>}{canApprove && !product.published && product.approval === "aprovado" && product.quality?.readyForSite && <button type="button" onClick={() => void changePublicationFromCard(product, true)}>Publicar no site</button>}</div>}</div></div>
             <div className="pv3-unit-body"><p className="pv3-code">{product.codigo || "Código pendente"} · Captador: <b>{product.capturedBy || "não identificado"}</b></p><h2>{cleanUnitTitle(product)}</h2>{product.alreadyRented && <span className="pv3-rented-badge">Compre já alugado</span>}<p className="pv3-building"><Icon name="building" />{productBuilding(product)}</p><p className="pv3-location"><Icon name="pin" />{product.neighborhood} · {product.city}</p>{group.segment === "terceiros" && !product.condominiumLinked && <p className="pv3-association independent">Imóvel independente · sem condomínio associado</p>}{group.segment !== "terceiros" && !product.condominiumLinked && <p className="pv3-association pending">Referência de condomínio pendente</p>}<strong className="pv3-price">{product.price}</strong><div className="pv3-specs"><span><Icon name="area" />{product.area || "—"} m²</span><span><Icon name="bed" />{product.bedrooms} dorm.</span><span><Icon name="car" />{product.parking} vaga(s)</span></div><footer><span><Icon name="user" />{product.capturedBy || (group.segment === "terceiros" ? "Sem captador" : "Estoque ApêCerto")}</span><em className={product.available ? "available" : "unavailable"}>{product.available ? "Disponível" : "Inativo"}</em></footer></div>
           </article>;
         })}</div></section>)}</div> : <div className="pv3-empty"><strong>Nenhuma unidade encontrada</strong><p>Ajuste a busca ou limpe os filtros.</p></div>}
@@ -485,7 +521,7 @@ export function ProductsModule({ accessToken }: { accessToken: string }) {
 
       {dataState === "live" && section === "empreendimentos" && <section className="pv3-content"><div className="pv3-section-head"><div><h2><span className="purple"><Icon name="building" /></span>Empreendimentos e estoque</h2><p>Visão consolidada do projeto. As unidades de estoque só viram produto individual quando necessário.</p></div><button type="button" className="pv3-secondary" onClick={() => { setRegistrationChoice("empreendimento"); setRegistrationOpen(true); }}><Icon name="plus" /> Cadastrar empreendimento</button></div><div className="pv3-development-list">{developmentProducts.map((product) => { const total = Math.max(product.units ?? 0, product.available); const sold = Math.max(0, total - product.available); const pct = total ? Math.round((sold / total) * 100) : 0; return <article key={product.id} className="pv3-development" onClick={() => openProduct(product)}><div className="pv3-dev-image" style={product.coverUrl ? { backgroundImage: `url(${product.coverUrl})` } : undefined}><span>EMPREENDIMENTO</span>{!product.coverUrl && <Icon name="building" />}</div><div className="pv3-dev-main"><p>{product.codigo || "EMP"} · {product.developer || "Incorporadora não informada"}</p><h3>{product.name}</h3><span><Icon name="pin" /> {product.neighborhood} · {product.city}</span>{!product.condominiumLinked && <span className="pv3-link-pending">⚠ Condomínio de referência ainda não vinculado</span>}<div className="pv3-dev-metrics"><em><b>{total}</b>Total</em><em className="green"><b>{product.available}</b>Disponíveis</em><em className="yellow"><b>0</b>Reservadas</em><em><b>{sold}</b>Vendidas</em></div><div className="pv3-progress"><span>Vendas <b>{pct}%</b></span><i><b style={{ width: `${pct}%` }} /></i></div></div><aside><span className={`pv3-state ${product.published ? "site" : "review"}`}>{product.published ? "Publicado" : product.approval === "pendente" ? "Em revisão" : "Fora do ar"}</span><strong>{product.price}</strong><button type="button">Ver ficha do empreendimento <Icon name="arrow" /></button></aside></article>; })}</div>{!developmentProducts.length && <div className="pv3-empty"><strong>Nenhum empreendimento encontrado</strong><p>Cadastre um lançamento ou ajuste os filtros.</p></div>}</section>}
 
-      {dataState === "live" && section === "condominios" && <section className="pv3-content"><div className="pv3-section-head"><div><h2><span><Icon name="building" /></span>Condomínios e referências</h2><p>Prédios vinculados às captações individuais e aos empreendimentos cadastrados.</p></div><button type="button" className="pv3-secondary" onClick={() => { setRegistrationChoice("condominio"); setRegistrationOpen(true); }}><Icon name="plus" /> Novo condomínio</button></div><div className="pv3-condo-grid">{condominiumProducts.map((product) => { const total = Math.max(product.units ?? 0, product.available); const pct = total ? Math.round((product.available / total) * 100) : 0; return <article key={product.id} onClick={() => openProduct(product)}><header><span><Icon name="building" /></span><em>Condomínio de captação</em><Icon name="arrow" /></header><span className="pv3-ref-ok"><Icon name="check" /> Referência aprovada</span><h3>{product.name}</h3><p>{product.address || product.neighborhood} · {product.city}</p><div className="pv3-condo-metrics"><span>{total} unidades</span><span>{Math.max(0, total - product.available)} captações</span><span>{product.available} publicadas</span></div><footer><span>{pct}% das unidades publicadas</span><i><b style={{ width: `${pct}%` }}/></i></footer></article>; })}</div>{!condominiumProducts.length && <div className="pv3-empty"><strong>Nenhum condomínio encontrado</strong><p>Os prédios de referência aparecerão aqui.</p></div>}</section>}
+      {dataState === "live" && section === "condominios" && <section className="pv3-content"><div className="pv3-section-head"><div><h2><span><Icon name="building" /></span>Condomínios e referências</h2><p>Referências reais dos prédios. Condomínio organiza áreas comuns; cada unidade continua sendo um imóvel independente.</p></div><button type="button" className="pv3-secondary" onClick={() => setCondominiumOpen(true)}><Icon name="plus" /> Novo condomínio</button></div><div className="pv3-condo-grid">{visibleCondominiums.map((condominium) => { const pct = condominium.units ? Math.round((condominium.publishedUnits / condominium.units) * 100) : 0; const referenceProduct = condominium.referenceProductId ? products.find((product) => product.id === condominium.referenceProductId) : null; return <article key={condominium.id} className={referenceProduct ? "" : "pv3-condo-reference-only"} onClick={() => { if (referenceProduct) openProduct(referenceProduct); }}><header><span><Icon name="building" /></span><em>Condomínio de referência</em>{referenceProduct && <Icon name="arrow" />}</header><span className="pv3-ref-ok"><Icon name="check" /> Referência cadastrada</span><h3>{condominium.name}</h3><p>{[condominium.address, condominium.number, condominium.neighborhood, condominium.city].filter(Boolean).join(" · ")}</p><div className="pv3-condo-metrics"><span>{condominium.units} unidades</span><span>{condominium.captures} captações</span><span>{condominium.publishedUnits} publicadas</span></div><footer><span>{condominium.units ? `${pct}% das unidades publicadas` : "Sem unidade vinculada"}</span><i><b style={{ width: `${pct}%` }}/></i></footer></article>; })}</div>{!visibleCondominiums.length && <div className="pv3-empty"><strong>Nenhum condomínio encontrado</strong><p>Ajuste a busca ou cadastre uma nova referência.</p></div>}</section>}
 
       {dataState === "live" && section === "qualidade" && <ProductQualityQueue items={qualityQueue} onOpen={(item) => { setInitialUnitId(item.unitId); setSelectedProductId(item.productId); }} />}
 
@@ -501,15 +537,21 @@ export function ProductsModule({ accessToken }: { accessToken: string }) {
         setCaptureOpen(false);
         if (accessToken) void loadCatalog(accessToken);
       }} />}
+      {condominiumOpen && <CondominiumWizard accessToken={accessToken} onClose={() => { setCondominiumOpen(false); setReturnToUnitAfterCondominium(false); }} onSaved={() => {
+        setCondominiumOpen(false);
+        if (accessToken) void loadCatalog(accessToken);
+        if (returnToUnitAfterCondominium) setUnitWizardOpen(true);
+        setReturnToUnitAfterCondominium(false);
+      }} />}
       {standaloneOpen && <CaptureWizard initialStandalone onClose={() => setStandaloneOpen(false)} onSaved={() => {
         setStandaloneOpen(false);
         if (accessToken) void loadCatalog(accessToken);
       }} />}
-      {unitWizardOpen && accessToken && <UnitWizard accessToken={accessToken} onCreateStandalone={() => { setUnitWizardOpen(false); setStandaloneOpen(true); }} onCreateCondominium={() => { setUnitWizardOpen(false); setCaptureOpen(true); }} onClose={() => setUnitWizardOpen(false)} onSaved={() => {
+      {unitWizardOpen && accessToken && <UnitWizard accessToken={accessToken} onCreateStandalone={() => { setUnitWizardOpen(false); setStandaloneOpen(true); }} onCreateCondominium={() => { setUnitWizardOpen(false); setReturnToUnitAfterCondominium(true); setCondominiumOpen(true); }} onClose={() => setUnitWizardOpen(false)} onSaved={() => {
         setUnitWizardOpen(false);
         if (accessToken) void loadCatalog(accessToken);
       }} />}
-      {selectedProductId && accessToken && <ProductDetail productId={selectedProductId} accessToken={accessToken} sessionRole={role} initialUnitId={initialUnitId} initialEditing={openInEdit} captadorScore={products.find((p) => p.id === selectedProductId)?.capturedByScore ?? null} onClose={() => { setSelectedProductId(null); setInitialUnitId(null); setOpenInEdit(false); }} onChanged={() => void loadCatalog(accessToken)} />}
+      {selectedProductId && accessToken && <ProductDetail productId={selectedProductId} accessToken={accessToken} sessionRole={role} initialUnitId={initialUnitId} initialUnitAction={initialUnitAction} initialEditing={openInEdit} captadorScore={products.find((p) => p.id === selectedProductId)?.capturedByScore ?? null} onClose={() => { setSelectedProductId(null); setInitialUnitId(null); setInitialUnitAction("view"); setOpenInEdit(false); }} onChanged={() => void loadCatalog(accessToken)} />}
       {deleteTarget && <div className="delete-confirm" role="dialog" aria-modal="true" aria-label="Confirmar exclusão do produto"><div><strong>Excluir este produto definitivamente?</strong><p><strong>{deleteTarget.name}</strong> e todas as suas unidades, fotos e vínculos serão removidos para sempre. Esta ação não pode ser desfeita.</p><footer><button type="button" onClick={() => setDeleteTarget(null)}>Cancelar</button><button className="danger" disabled={deleting} type="button" onClick={() => void confirmDeleteProduct()}>Excluir para sempre</button></footer></div></div>}
       {publicationTarget && <div className="delete-confirm" role="dialog" aria-modal="true" aria-label="Confirmar retirada do imóvel do site"><div><strong>Tirar este imóvel do ar?</strong><p><strong>{publicationTarget.name}</strong> desaparecerá do site imediatamente. O cadastro, a aprovação e a disponibilidade continuam preservados para edição e publicação posterior.</p><footer><button type="button" onClick={() => setPublicationTarget(null)}>Cancelar</button><button className="danger" disabled={publishing} type="button" onClick={() => void changePublicationFromCard(publicationTarget, false)}>Tirar do ar</button></footer></div></div>}
     </main>

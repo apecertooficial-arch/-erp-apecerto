@@ -1,6 +1,7 @@
 /* Ficha de produto do Produtos v3 — reproduz a composição aprovada no design.
    Escopo estrito em .pv3-detail para não alterar fichas de outros módulos. */
 .product-detail-layer:has(.pv3-detail) {
+  z-index: 80;
   padding: 24px;
 }
 
