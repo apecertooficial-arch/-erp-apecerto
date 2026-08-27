@@ -15,7 +15,7 @@ Contrato corrigido: `claude-design/CRM V3.dc.html`
 | Sombras | `--shadow-xs/sm`; sem sombra de marca repetida | Sombras próprias e densas em cartões | `ape-lead-card` e sombra discreta | Capturas |
 | Botões | Um CTA laranja por contexto; 32 px desktop e 44 px mobile | 12 CTAs laranja e controles de 22–28 px | Um CTA primário por contexto; secundários/ghost; 44 px móvel | Navegação e formulários |
 | Ícones | Lucide; não usar glifos funcionais | `⌄ ··· × ✓ ↑ ↓ ← › • ! +` | SVGs Lucide inline com nome acessível | Busca final e testes |
-| Tabs | `ape-tabs/ape-tab`, overflow horizontal | Navegações próprias e grupos duplicados | Oito áreas operacionais no desktop e cinco destinos próprios no CRM mobile | Capturas |
+| Tabs | `ape-tabs/ape-tab`, overflow horizontal | Navegações próprias e grupos duplicados | Tabs oficiais; nove áreas no desktop, cinco no mobile + Mais | Capturas |
 | Toolbar | `ape-toolbar`, busca, chips, contagem e ações | Controles soltos e proporções inconsistentes | Toolbar oficial compacta, quebra responsiva | Negócios e Leads |
 | Kanban | `ape-kanban`, colunas a partir de 200 px | Coluna de 330 px e cartão redesenhado | Coluna de 240 px para preservar os quatro dados operacionais | 1440/1280 |
 | Cartão | `ape-lead-card`, compacto, quatro dados essenciais | Texto excessivo e blocos dentro do cartão | Nome, valor, temperatura, ação/prazo e metadados compactos | Capturas |
@@ -25,7 +25,7 @@ Contrato corrigido: `claude-design/CRM V3.dc.html`
 | Ficha | Único drawer/dialog; sete áreas; sem modal sobre modal | Cards dentro de cards e hierarquia excessiva | Superfície única com divisores e sete tabs | Teste de foco e captura |
 | Timeline | `ape-timeline/ape-tl-*`; humano e automação distintos | Histórico visual próprio | Timeline oficial e origem explícita | Aba Histórico |
 | Offline | Mensagem explícita e ações bloqueadas descritas | Banner incompleto no desktop | “Sem conexão — exibindo dados em cache” + indisponibilidades | Estado Sem conexão |
-| Responsividade | Sem overflow do documento; Kanban pode rolar; alvo 44 px | Boards rígidos e scroll indevido | Documento sem vazamento; Kanban com rolagem própria; filtros de 44 px e navegação móvel de 56 px | 390/1280/1440 |
+| Responsividade | Sem overflow do documento; Kanban pode rolar; alvo 44 px | Boards rígidos e scroll indevido | Visitas/Esteira em grid responsivo; Kanban com rolagem própria | 390/1280/1440 |
 | Acessibilidade | Foco laranja 3 px, contraste, nomes e teclado | Foco e nomes inconsistentes | Anel oficial, SVGs ocultos, labels, tabs e dialog semantics | Smoke de teclado |
 
 ## Limitações aceitas no contrato visual

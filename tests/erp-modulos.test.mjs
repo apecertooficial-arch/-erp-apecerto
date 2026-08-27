@@ -386,7 +386,7 @@ test("CSS global não mantém as camadas visuais do CRM V2 e dos módulos operac
   assert.doesNotMatch(globals, /\.(?:esteira-docs|hist-|momentox|presence-cfg|dist-config|momcfg-|cse-|minerva-)/);
   assert.doesNotMatch(globals, /\.(?:attention-|broker-picker-|resp-toast|chat-rec-bar|sap-|visit-edit-)/);
   assert.doesNotMatch(globals, /\.(?:sale-drawer|sale-esteira-stage|lead-funnel-status|pj-panel-grid|detail-hero|nova-venda-modal)/);
-  assert.match(readFileSync(join(raizApp, "styles/funil.css"), "utf8"), /\.f2-esteira-oficial>\.sales-process/);
+  assert.match(readFileSync(join(raizApp, "styles/funil-2.css"), "utf8"), /\.f2-esteira-oficial>\.sales-process/);
 });
 
 test("autenticação do ERP não mantém o scaffold órfão do ChatGPT", () => {

@@ -95,13 +95,6 @@ export function ErpShell({ children }: { children: ReactNode }) {
     window.scrollTo({ top: 0, left: 0, behavior: "auto" });
   }, [pathname]);
 
-  /* O Funil aprovado já contém sua própria navegação desktop e mobile.
-     Não montamos o AppShell nesta rota: isso evita dois shells, duas barras
-     inferiores e qualquer resíduo visual da interface anterior. */
-  if (moduloAtual === "CRM") {
-    return <div className="funil-product-shell">{children}</div>;
-  }
-
   return (
     <AppShell
       activeItem={moduloAtual}

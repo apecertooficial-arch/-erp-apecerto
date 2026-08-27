@@ -23,7 +23,7 @@ const brokerMainItems: ModuleName[] = ["Início", "CRM", "Produtos", "apêcerto 
 const brokerToolItems: ModuleName[] = ["Chat ao Vivo", "Financiamento", "Disparos", "Calendário", "Marca d'Água", "Notificações"];
 const brokerSystemItems: ModuleName[] = ["Configurações", "Ajuda"];
 
-const rotulosMenu: Partial<Record<ModuleName, string>> = { CRM: "Funil" };
+const rotulosMenu: Partial<Record<ModuleName, string>> = { CRM: "CRM · Meu Dia" };
 
 function NavIcon({ item }: { item: ModuleName }) {
   const common = { width: 19, height: 19, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.8, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
@@ -61,6 +61,7 @@ function NavGroup({ label, items, activeItem, onNavigate, badges }: { label: str
           <Link className={`nav-item ${item === activeItem ? "active" : ""}`} key={item} href={pathDoModulo(item)} onClick={() => onNavigate(item)} aria-current={item === activeItem ? "page" : undefined}>
             <span className="nav-icon" aria-hidden="true"><NavIcon item={item} /></span>
             <span>{rotulosMenu[item] ?? item}</span>
+            {item === "CRM" && <small>20</small>}
             {item === "Automações" && <small>2</small>}
             {item === "Produtos" && badge > 0 && <small className="nav-badge-pending" title={`${badge} produto(s) aguardando aprovação`}>{badge}</small>}
           </Link>
