@@ -74,6 +74,10 @@ test("V3 entrega a navegação aprovada e mantém a navegação legada separada"
   assert.match(workspace, /experience === "legacy" && <nav className="f2-nav"/);
   assert.match(workspace, /Todos os Leads/);
   assert.match(workspace, /Regras do CRM/);
+  assert.match(mobile, /aria-label="Navegação do CRM"/);
+  for (const label of ["Meu Dia", "Funil", "Leads", "Agenda", "Visitas"]) {
+    assert.match(mobile, new RegExp(`>${label}<`));
+  }
 });
 
 test("menu, arrasto e massa convergem no mesmo motor canônico de movimento", () => {
@@ -122,5 +126,7 @@ test("Design System do V3 usa tokens, colunas compactas e alvos móveis", () => 
   assert.match(css, /background:var\(--ape-orange\)/);
   assert.match(css, /font-family:var\(--font-body\)/);
   assert.match(css, /min-height:44px/);
+  assert.match(css, /\.app-shell:has\(\.crm-v3-official\.modo-crm\) \.app-bottom-nav/);
+  assert.match(css, /\.crm-v3-official \.ape-crm-v3-nav button\{[^}]*min-height:56px/);
   assert.doesNotMatch(css, /border:[2-9]px/);
 });

@@ -52,6 +52,7 @@ type PayloadMobile = {
 
 type FiltroDia = "agora" | "novos" | "hoje" | "todos";
 type TemperaturaFiltroMobile = TemperaturaLead | "aguardando" | "todas";
+type AreaCrmMobile = "funil" | "leads" | "visitas";
 
 const TEMPERATURAS_MOBILE: ReadonlyArray<{ codigo: Exclude<TemperaturaFiltroMobile, "todas">; rotulo: string }> = [
   { codigo: "quente", rotulo: "Quente" },
@@ -718,6 +719,7 @@ export function Funil2Mobile({
   const [etapa, setEtapa] = useState("ativos");
   const [temperatura, setTemperatura] = useState<TemperaturaFiltroMobile>("todas");
   const [busca, setBusca] = useState("");
+  const [areaCrm, setAreaCrm] = useState<AreaCrmMobile>("funil");
   const [selecionado, setSelecionado] = useState<string | null>(null);
   const [sucesso, setSucesso] = useState<string | null>(null);
   const [historicoDetalhe, setHistoricoDetalhe] = useState<{ leadId: string; eventos: EventoFunil2[]; notas: NotaFunil2[] } | null>(null);
@@ -811,7 +813,7 @@ export function Funil2Mobile({
         <h1 className="ape-manchete">{esperandoAgora === 1 ? "1 pessoa espera você agora" : `${esperandoAgora} pessoas esperam você agora`}</h1>
       </> : <>
         <span className="ape-sobrancelha">{experience === "v3" ? "CRM V3" : "Carteira"}</span>
-        <h1 className="ape-manchete">{experience === "v3" ? "Sua carteira" : "Seus clientes"}</h1>
+        <h1 className="ape-manchete">{experience === "v3" ? areaCrm === "funil" ? "Funil" : areaCrm === "leads" ? "Leads" : "Visitas" : "Seus clientes"}</h1>
       </>}
       <div className="ape-atualizado">
         <span>Atualizado {horaAgora()}</span>
@@ -836,7 +838,7 @@ export function Funil2Mobile({
       <input type="search" value={busca} onChange={(evento) => setBusca(evento.target.value)} placeholder="Buscar cliente ou telefone" />
     </label>}
 
-    {modo === "crm" && <nav className="ape-filtros" aria-label="Filtrar atendimentos">
+    {modo === "crm" && (experience !== "v3" || areaCrm === "funil") && <nav className="ape-filtros" aria-label="Filtrar atendimentos">
       <button type="button" className={etapa === "ativos" ? "ativo" : ""} onClick={() => setEtapa("ativos")}>Ativos</button>
       {etapas.map(([chave, rotulo]) => <button key={chave} type="button" className={etapa === chave ? "ativo" : ""} onClick={() => setEtapa(chave)}>{rotulo}</button>)}
     </nav>}
@@ -890,6 +892,14 @@ export function Funil2Mobile({
           <div className="ape-lista">{grupo.leads.map(cartao)}</div>
         </section>)
       : <section className="ape-lista" aria-label="Atendimentos">{visiveis.slice(0, 60).map(cartao)}</section>}
+
+    {modo === "crm" && experience === "v3" && <nav className="ape-crm-v3-nav" aria-label="Navegação do CRM">
+      <button type="button" onClick={() => onIr("/inicio")}>Meu Dia</button>
+      <button type="button" className={areaCrm === "funil" ? "ativo" : ""} onClick={() => { setAreaCrm("funil"); setEtapa("ativos"); }}>Funil</button>
+      <button type="button" className={areaCrm === "leads" ? "ativo" : ""} onClick={() => { setAreaCrm("leads"); setEtapa("ativos"); }}>Leads</button>
+      <button type="button" onClick={() => onIr("/agenda")}>Agenda</button>
+      <button type="button" className={areaCrm === "visitas" ? "ativo" : ""} onClick={() => { setAreaCrm("visitas"); setEtapa("visita"); }}>Visitas</button>
+    </nav>}
 
     {modo === "inicio" && totalNoDia > 0 && <button type="button" className="ape-ver-carteira" onClick={() => onIr("/crm")}>
       Ver minha carteira ({leads.length})
