@@ -28,3 +28,9 @@
 - Evidências visuais: `studio-production-desktop.png` e `studio-production-mobile.png`.
 - A URL publicada ainda serve o build `7deaf82535eed2c22db3db5d2ac76be5553419bd`, anterior ao commit local `19dea90`; portanto a homologação publicada não comprova as alterações deste commit.
 - Migrations do Studio de catálogo e colaboração aparecem ausentes na lista remota; não foram aplicadas porque o código correspondente ainda não está publicado e o ambiente local não possui as variáveis públicas do Supabase para validação ponta a ponta.
+
+## Atualização de publicação
+
+- As duas migrations aditivas foram aplicadas com sucesso no projeto `diaegvfveqezispcthwk`.
+- O commit foi enviado à branch `main` (merge `ef87646`, contendo `19dea90`).
+- O serviço Render não atualizou o build após o período de polling; a URL continuou retornando `7deaf82535eed2c22db3db5d2ac76be5553419bd`. O gatilho/controle de deploy do Render não está exposto neste ambiente, portanto não foi possível disparar ou confirmar o deploy.
