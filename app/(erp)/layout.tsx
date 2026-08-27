@@ -1,5 +1,4 @@
 import type { ReactNode } from "react";
-import { ErpRuntime } from "../features/system/ErpRuntime";
 import { ErpSessionProvider } from "../features/system/ErpSession";
 import { ErpShell } from "../features/system/ErpShell";
 import { SaraWidget } from "../components/SaraWidget";
@@ -13,16 +12,14 @@ import { CentralActivityHeartbeat } from "../features/inteligencia/CentralActivi
    carrega uma vez, e nao a cada troca de modulo. O "(erp)" nao aparece na URL. */
 export default function ErpLayout({ children }: { children: ReactNode }) {
   return (
-    <ErpRuntime localContent={children}>
-      <ErpSessionProvider>
-        <ErpShell>{children}</ErpShell>
-        <AvisoNotificacoesGlobal />
-        <AvisoNaTela />
-        <PresencaGlobal />
-        <CentralActivityHeartbeat />
-        <SaraWidget />
-        <ConviteInstalar />
-      </ErpSessionProvider>
-    </ErpRuntime>
+    <ErpSessionProvider>
+      <ErpShell>{children}</ErpShell>
+      <AvisoNotificacoesGlobal />
+      <AvisoNaTela />
+      <PresencaGlobal />
+      <CentralActivityHeartbeat />
+      <SaraWidget />
+      <ConviteInstalar />
+    </ErpSessionProvider>
   );
 }

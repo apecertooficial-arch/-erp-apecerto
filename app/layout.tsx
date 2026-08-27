@@ -76,9 +76,6 @@ import "./styles/redesign-apecerto-calendario.css";
    responsividade do módulo vivem somente nela; nenhuma folha posterior toca
    nas classes f2-* do desktop. */
 import "./styles/funil-2.css";
-/* CRM V3: rota paralela e local. A folha é totalmente isolada sob .crm-v3;
-   não altera o Funil 2.0 canônico nem qualquer outra tela do ERP. */
-import "./styles/funil-2-v3.css";
 /* INTERFACE DO APLICATIVO NO CELULAR — versão aprovada.
    Não é correção da folha antiga: o markup do Meu Dia e do CRM usa classes
    próprias (.ape-*), então esta folha é a única que os desenha. As regras
@@ -87,6 +84,9 @@ import "./styles/app-mobile-aprovado.css";
 /* Telas do gestor no celular (folha "Mais" e Minha Equipe). Depois da folha
    aprovada porque reusa os mesmos valores e completa o que faltava dela. */
 import "./styles/app-mobile-gestor.css";
+/* CRM V3 oficial: última palavra apenas dentro de .crm-v3-official.
+   Sem a classe, CRM_V3_EXPERIENCE=legacy preserva o visual canônico acima. */
+import "./styles/crm-v3-official.css";
 import { RegistroPwa } from "./components/RegistroPwa";
 
 export const metadata: Metadata = {

@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 
 const ler = (caminho) => readFileSync(new URL(caminho, import.meta.url), "utf8");
 const MOBILE = ler("../app/features/funil-2/Funil2Mobile.tsx");
-const ENTRADA = ler("../app/(erp)/crm/page.tsx");
+const ENTRADA = `${ler("../app/(erp)/crm/page.tsx")}\n${ler("../app/features/funil-2/CrmEntry.tsx")}`;
 const INICIO = ler("../app/features/home/InicioApp.tsx");
 const CSS = ler("../app/styles/app-mobile.css");
 const CSS_APROVADO = ler("../app/styles/app-mobile-aprovado.css");

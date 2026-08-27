@@ -7,6 +7,7 @@ import { Funil2ConversationDrawer } from "./Funil2ConversationDrawer";
 import { AssociarTagLead } from "./AssociarTagLead";
 import { getBrowserSupabaseClient } from "../../lib/supabase/browser";
 import { dataHoraLocalSaoPaulo, dataIsoSaoPaulo, FUSO_OPERACAO } from "../../lib/timezone";
+import type { CrmExperience } from "./CrmEntry";
 
 type Perfil = { userId: string; role: string; name: string };
 type Payload = {
@@ -112,7 +113,7 @@ function Icone({ nome }: { nome: "quadro" | "dia" | "historico" | "leads" | "vis
   return <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths}</svg>;
 }
 
-export function Funil2Workspace({ accessToken, profile }: { accessToken: string; profile: Perfil }) {
+export function Funil2Workspace({ accessToken, profile, experience = "legacy" }: { accessToken: string; profile: Perfil; experience?: CrmExperience }) {
   const [leads, setLeads] = useState<LeadFunil2[]>([]);
   const [momentos, setMomentos] = useState<MomentoFunil2[]>([]);
   const [eventos, setEventos] = useState<EventoFunil2[]>([]);
@@ -123,7 +124,7 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
   const [aquario, setAquario] = useState<CandidatoAquarioFunil2[]>([]);
   const [operacao, setOperacao] = useState<OperacaoConfigFunil2 | null>(null);
   const [sara, setSara] = useState<SaraStatusFunil2>({ modo: null, runnerAtivo: false, analisesNoLaboratorio: 0, reavaliacaoAutomaticaFunil2: false });
-  const [aba, setAba] = useState<"quadro" | "dia" | "leads" | "visitas" | "vendas" | "config">("dia");
+  const [aba, setAba] = useState<"quadro" | "dia" | "leads" | "visitas" | "vendas" | "config">(experience === "v3" ? "quadro" : "dia");
   const [selecionado, setSelecionado] = useState<string | null>(null);
   /* Quem clica em "Conversa" quer a conversa, nao a ficha com um botao de chat
      dentro. Guardamos a intencao para a ficha ja abrir no mini chat. */
@@ -294,12 +295,12 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
   }
 
   return (
-    <div className="f2-root">
+    <div className={`f2-root${experience === "v3" ? " crm-v3-official" : ""}`} data-crm-experience={experience}>
       <header className="f2-topo">
         <div className="f2-marca">
-          <span className="f2-eyebrow">OPERAÇÃO OFICIAL</span>
+          <span className="f2-eyebrow">{experience === "v3" ? "CRM V3 · OPERAÇÃO OFICIAL" : "OPERAÇÃO OFICIAL"}</span>
           <h1>CRM</h1>
-          <p>Etapa, momento, ação e prazo em uma única operação.</p>
+          <p>{experience === "v3" ? "Carteira, próxima ação e prazo com leitura direta." : "Etapa, momento, ação e prazo em uma única operação."}</p>
         </div>
         <div className="f2-topo-acoes">
           <span className="f2-isolado"><i /> Origens preservadas</span>
@@ -311,13 +312,13 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
         </div>
       </header>
 
-      <nav className="f2-nav" aria-label="Visões do Funil 2.0">
+      <nav className="f2-nav" aria-label={experience === "v3" ? "Áreas do CRM" : "Visões do Funil 2.0"}>
         <button type="button" className={aba === "dia" ? "ativo" : ""} onClick={() => setAba("dia")}><Icone nome="dia" /> Meu Dia</button>
         <button type="button" className={aba === "quadro" ? "ativo" : ""} onClick={() => setAba("quadro")}><Icone nome="quadro" /> Funil</button>
-        <button type="button" className={aba === "leads" ? "ativo" : ""} onClick={() => setAba("leads")}><Icone nome="leads" /> Todos os Leads</button>
+        <button type="button" className={aba === "leads" ? "ativo" : ""} onClick={() => setAba("leads")}><Icone nome="leads" /> {experience === "v3" ? "Leads" : "Todos os Leads"}</button>
         <button type="button" className={aba === "visitas" ? "ativo" : ""} onClick={() => setAba("visitas")}><Icone nome="visitas" /> Visitas</button>
         <button type="button" className={aba === "vendas" ? "ativo" : ""} onClick={() => setAba("vendas")}><Icone nome="vendas" /> Esteira</button>
-        <button type="button" className={aba === "config" ? "ativo" : ""} onClick={() => setAba("config")}><Icone nome="config" /> Regras do CRM</button>
+        <button type="button" className={aba === "config" ? "ativo" : ""} onClick={() => setAba("config")}><Icone nome="config" /> {experience === "v3" ? "Configurações" : "Regras do CRM"}</button>
         <span>Carteira operacional · Aquário fora da migração</span>
       </nav>
 

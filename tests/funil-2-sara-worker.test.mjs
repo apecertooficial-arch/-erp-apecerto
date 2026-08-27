@@ -7,7 +7,7 @@ const migration = readFileSync(new URL("../supabase/migrations/20260811020000_fu
 const route = readFileSync(new URL("../app/api/funil2/route.ts", import.meta.url), "utf8");
 const historico = readFileSync(new URL("../supabase/migrations/20260811034000_funil_2_historico_completo.sql", import.meta.url), "utf8");
 const visitas = readFileSync(new URL("../supabase/migrations/20260811035000_funil_2_visitas_com_feedback.sql", import.meta.url), "utf8");
-const entradaCrm = readFileSync(new URL("../app/(erp)/crm/page.tsx", import.meta.url), "utf8");
+const entradaCrm = `${readFileSync(new URL("../app/(erp)/crm/page.tsx", import.meta.url), "utf8")}\n${readFileSync(new URL("../app/features/funil-2/CrmEntry.tsx", import.meta.url), "utf8")}`;
 const respostaInstanciasApp = readFileSync(new URL("../supabase/migrations/20260811037000_funil_2_resposta_instancias_app.sql", import.meta.url), "utf8");
 
 test("worker exige segredo antes de ler o banco", () => {

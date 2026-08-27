@@ -4,7 +4,7 @@ import test from "node:test";
 
 const ui = readFileSync(new URL("../app/features/funil-2/Funil2Workspace.tsx", import.meta.url), "utf8");
 const esteira = readFileSync(new URL("../app/features/sales/SalesProcessWorkspace.tsx", import.meta.url), "utf8");
-const entradaCrm = readFileSync(new URL("../app/(erp)/crm/page.tsx", import.meta.url), "utf8");
+const entradaCrm = `${readFileSync(new URL("../app/(erp)/crm/page.tsx", import.meta.url), "utf8")}\n${readFileSync(new URL("../app/features/funil-2/CrmEntry.tsx", import.meta.url), "utf8")}`;
 const migration = readFileSync(new URL("../supabase/migrations/20260810150000_funil_2_isolado.sql", import.meta.url), "utf8");
 const clareza = readFileSync(new URL("../supabase/migrations/20260810160000_funil_2_cadencia_clara.sql", import.meta.url), "utf8");
 const operacao = readFileSync(new URL("../supabase/migrations/20260810170000_funil_2_operacao_completa.sql", import.meta.url), "utf8");

@@ -1,8 +1,8 @@
 # CRM V3 — auditoria final, correções e validação local
 
-Data: 27/08/2026  
-Ambiente: local, sem credenciais e sem integração externa  
-Rota de validação: `http://localhost:3001/crm-v3`  
+Data: 27/08/2026
+Ambiente: local, sem credenciais e sem integração externa
+Rota de validação: `http://localhost:3001/crm-v3`
 Resultado: **aprovado no escopo local; nenhum finding aberto desta auditoria**
 
 ## Base confirmada

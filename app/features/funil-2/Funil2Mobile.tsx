@@ -19,6 +19,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { BotaoWhatsApp } from "./BotaoWhatsApp";
 import { AssociarTagLead } from "./AssociarTagLead";
+import type { CrmExperience } from "./CrmEntry";
 import { Funil2ConversationDrawer } from "./Funil2ConversationDrawer";
 import { getBrowserSupabaseClient } from "../../lib/supabase/browser";
 import {
@@ -662,11 +663,13 @@ export function Funil2Mobile({
   accessToken,
   nome,
   modo,
+  experience = "legacy",
   onIr,
 }: {
   accessToken: string;
   nome: string;
   modo: "inicio" | "crm";
+  experience?: CrmExperience;
   onIr: (destino: string) => void;
 }) {
   const { dados, erro, recarregar } = useFunil2Mobile(accessToken);
@@ -762,14 +765,14 @@ export function Funil2Mobile({
     onAbrir={() => setSelecionado(lead.id)}
   />;
 
-  return <main className={`ape-app modo-${modo}`} aria-label={modo === "inicio" ? `Meu Dia de ${primeiroNome}` : "CRM"}>
+  return <main className={`ape-app modo-${modo}${experience === "v3" ? " crm-v3-official" : ""}`} data-crm-experience={experience} aria-label={modo === "inicio" ? `Meu Dia de ${primeiroNome}` : "CRM"}>
     <header className="ape-abertura">
       {modo === "inicio" ? <>
         <span className="ape-sobrancelha">Meu Dia</span>
         <h1 className="ape-manchete">{esperandoAgora === 1 ? "1 pessoa espera você agora" : `${esperandoAgora} pessoas esperam você agora`}</h1>
       </> : <>
-        <span className="ape-sobrancelha">Carteira</span>
-        <h1 className="ape-manchete">Seus clientes</h1>
+        <span className="ape-sobrancelha">{experience === "v3" ? "CRM V3" : "Carteira"}</span>
+        <h1 className="ape-manchete">{experience === "v3" ? "Sua carteira" : "Seus clientes"}</h1>
       </>}
       <div className="ape-atualizado">
         <span>Atualizado {horaAgora()}</span>
