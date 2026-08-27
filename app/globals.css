@@ -3562,3 +3562,5 @@ body { overflow:hidden; background:#eee8e2; }
 .connections-legacy h2{font-size:14px;margin:0 0 4px}
 .connections-legacy p{font-size:12px;margin:0 0 8px;opacity:.8}
 .connections-legacy ul{margin:0;padding-left:18px;font-size:12px}
+/* Compatibilidade visual: borda de prioridade da tabela de leads. */
+.crm-leads-table-v3 tbody tr.lead-tone-1{border-left-color:#ff6500!important}

@@ -208,4 +208,12 @@ test("copiloto, colaboração, board e métricas têm contratos honestos e RLS",
   assert.match(ui, /Colaboração e governança/);
   assert.match(ui, /Visão do gestor/);
   assert.match(ui, /Meta não conectada/);
+  assert.match(ui, /Sem responsável/);
+  assert.match(ui, /Novo horário ISO/);
+  assert.match(ui, /moveSchedule/);
+  assert.match(ui, /viewMode/);
+  assert.match(api, /schedule_conflict/);
+  assert.match(ui, /Importar retorno JSON/);
+  assert.match(ui, /assets: data\.snapshots/);
+  assert.match(api, /importCanvaPackage/);
 });

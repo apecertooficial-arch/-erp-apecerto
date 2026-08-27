@@ -101,12 +101,14 @@ export type StudioData = {
   tasks?: StudioTask[];
   comments?: StudioComment[];
   metrics?: StudioMetric[];
+  members?: StudioMember[];
   setupRequired?: boolean;
 };
 
 export type StudioTask = { id: string; piece_id: string; responsavel_id: string | null; revisor_id: string | null; prazo_em: string | null; status: string; pendencia: string | null; atualizado_em?: string };
 export type StudioComment = { id: string; piece_id: string; piece_version_id: string | null; slide_index: number | null; cena_index: number | null; comentario: string; autor_id: string; resolvido_em: string | null; criado_em: string };
 export type StudioMetric = { id: string; campaign_id: string | null; piece_id: string | null; template_version_id: string | null; periodo_inicio: string; periodo_fim: string; fonte: string; alcance: number | null; impressoes: number | null; curtidas: number | null; comentarios: number | null; compartilhamentos: number | null; salvamentos: number | null; cliques: number | null; observacao: string | null };
+export type StudioMember = { id: string; nome: string; role?: string | null; ativo?: boolean };
 
 export type StudioBrief = {
   id: string;
