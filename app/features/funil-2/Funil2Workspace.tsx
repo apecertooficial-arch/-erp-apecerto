@@ -401,6 +401,7 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
           </div>
           <label className="f2-v3-busca"><span>Buscar</span><input type="search" value={buscaQuadro} onChange={(evento) => setBuscaQuadro(evento.target.value)} placeholder="Lead, telefone, nº ou interesse" /></label>
           <details className="f2-v3-filtros"><summary>Filtros{temperaturaQuadro !== "todas" ? " · 1" : ""}</summary><FiltrosTemperatura leads={leads} valor={temperaturaQuadro} onChange={setTemperaturaQuadro} /></details>
+          <span className="f2-v3-quebra" aria-hidden="true" />
           <label className="f2-v3-ordenacao"><span>Ordenação</span><select aria-label="Ordenar negócios" value={ordenacaoQuadro} onChange={(evento) => setOrdenacaoQuadro(evento.target.value as "urgente" | "nome")}><option value="urgente">Atividade mais urgente</option><option value="nome">Nome do lead</option></select></label>
           <label className="f2-v3-periodo"><span>Período</span><select aria-label="Período do quadro" value={periodoQuadro} onChange={(evento) => setPeriodoQuadro(evento.target.value as "30" | "90" | "todos")}><option value="30">Últimos 30 dias · movimentação</option><option value="90">Últimos 90 dias · movimentação</option><option value="todos">Todo o período</option></select></label>
           <span className="f2-v3-separador" aria-hidden="true" />
