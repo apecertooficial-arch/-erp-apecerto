@@ -7,8 +7,14 @@ import { GuardaModulo } from "../system/GuardaModulo";
 import { useErpSession } from "../system/ErpSession";
 import { useEhCelular } from "../system/useFormato";
 
-/** Entrada única do Funil. Dados, permissões e mutações continuam canônicos. */
-export function FunilEntry() {
+export type CrmExperience = "v3" | "legacy";
+
+/**
+ * Uma única entrada funcional para as duas apresentações. V3 e rollback usam
+ * a mesma sessão, o mesmo Funil 2.0 e as mesmas APIs/RPCs; somente a camada de
+ * apresentação muda. Isso mantém o retorno ao legado pequeno e reversível.
+ */
+export function CrmEntry({ experience }: { experience: CrmExperience }) {
   const { profile, role } = useErpSession();
   const ehCelular = useEhCelular();
   const router = useRouter();
@@ -23,6 +29,7 @@ export function FunilEntry() {
               accessToken={accessToken}
               nome={profile?.name ?? "Corretor"}
               modo="crm"
+              experience={experience}
               onIr={(destino) => router.push(destino)}
             />
           );
@@ -30,6 +37,7 @@ export function FunilEntry() {
         return (
           <Funil2Workspace
             accessToken={accessToken}
+            experience={experience}
             profile={{
               userId: profile?.userId ?? "",
               role,

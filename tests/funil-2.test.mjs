@@ -4,7 +4,7 @@ import test from "node:test";
 
 const ui = readFileSync(new URL("../app/features/funil-2/Funil2Workspace.tsx", import.meta.url), "utf8");
 const esteira = readFileSync(new URL("../app/features/sales/SalesProcessWorkspace.tsx", import.meta.url), "utf8");
-const entradaCrm = `${readFileSync(new URL("../app/(erp)/crm/page.tsx", import.meta.url), "utf8")}\n${readFileSync(new URL("../app/features/funil-2/FunilEntry.tsx", import.meta.url), "utf8")}`;
+const entradaCrm = `${readFileSync(new URL("../app/(erp)/crm/page.tsx", import.meta.url), "utf8")}\n${readFileSync(new URL("../app/features/funil-2/CrmEntry.tsx", import.meta.url), "utf8")}`;
 const migration = readFileSync(new URL("../supabase/migrations/20260810150000_funil_2_isolado.sql", import.meta.url), "utf8");
 const clareza = readFileSync(new URL("../supabase/migrations/20260810160000_funil_2_cadencia_clara.sql", import.meta.url), "utf8");
 const operacao = readFileSync(new URL("../supabase/migrations/20260810170000_funil_2_operacao_completa.sql", import.meta.url), "utf8");
@@ -23,10 +23,10 @@ const ordemConfig = readFileSync(new URL("../supabase/migrations/20260821181737_
 const hotfixOrdemConfig = readFileSync(new URL("../supabase/migrations/20260821183639_qualificar_constraints_config_funil.sql", import.meta.url), "utf8");
 const rolagemEtapas = readFileSync(new URL("../app/styles/esteira-rolagem.css", import.meta.url), "utf8");
 
-test("Funil se apresenta como carteira operacional com origens preservadas", () => {
-  assert.match(ui, /data-module="funil"/);
-  assert.match(ui, /aria-label="Módulos do Funil"/);
-  assert.match(ui, /Capturar lead do Aquário/);
+test("Funil 2.0 se apresenta como carteira operacional com origens preservadas", () => {
+  assert.match(ui, /OPERAÇÃO OFICIAL/);
+  assert.match(ui, /Origens preservadas/);
+  assert.match(ui, /Aquário fora da migração/);
   assert.match(promocao, /DROP TRIGGER IF EXISTS f2_lead_limite_dois/);
 });
 
@@ -71,11 +71,11 @@ test("quadro rola para os lados e cada etapa rola somente para cima e para baixo
   assert.match(regraLista, /overscroll-behavior-x:\s*auto/);
 });
 
-test("Funil prioriza o quadro operacional sem dashboard duplicado", () => {
-  assert.match(ui, /className="f2-v3-toolbar"/);
-  assert.match(ui, /className="f2-board"/);
+test("Funil 2.0 mantém a explicação recolhida e prioriza o quadro operacional", () => {
+  assert.match(ui, /<summary>Como este funil funciona<\/summary>/);
+  assert.match(ui, /Etapa organiza · momento explica · ação e prazo movem o trabalho\./);
   assert.doesNotMatch(ui, /MAPA DA OPERAÇÃO|function MapaOperacao/);
-  assert.match(ui, /aria-label="Etapas do Funil"/);
+  assert.match(ui, /aria-label="Etapas do Funil 2\.0"/);
 });
 
 test("sandbox não escreve em tabelas operacionais e tem dez momentos", () => {
@@ -114,7 +114,7 @@ test("cadência mostra com honestidade a tentativa oficial sem duplicar instruç
 });
 
 test("card e ficha oferecem conversa e atalhos operacionais", () => {
-  assert.match(ui, /Abrir conversa/);
+  assert.match(ui, />Conversa<\/button>/);
   assert.match(ui, /Funil2ConversationDrawer/);
   assert.match(ui, /WhatsApp/);
   assert.match(ui, /Agendar visita/);
@@ -180,8 +180,7 @@ test("lead pescado nasce sem expor o histórico anterior no Funil 2.0", () => {
 });
 
 test("card e ficha separam etapa, momento e próxima ação", () => {
-  assert.match(ui, /f2-card-linha momento/);
-  assert.match(ui, /f2-card-linha acao/);
+  assert.match(ui, /f2-card-trio/);
   assert.match(ui, /f2-ficha-chips/);
   assert.match(ui, /f2-chip-resumo etapa/);
   assert.match(ui, /f2-chip-resumo momento/);
@@ -223,17 +222,17 @@ test("Meu Dia mostra cliente, etapa, momento, tempo e central de atenção", () 
   assert.match(ui, /vencem em até 2h/);
 });
 
-test("Funil entrega áreas operacionais e captura sem tocar nas origens", () => {
-  for (const texto of ["Todos os Leads", "Pipe de Visitas", "Esteira de Vendas", "Configurações da operação", "Capturar lead"]) assert.match(ui, new RegExp(texto));
+test("laboratório entrega abas operacionais e pesca sem tocar no legado", () => {
+  for (const texto of ["Todos os Leads", "Pipe de Visitas", "Esteira de Vendas", "Configurações da operação", "Pescar um lead"]) assert.match(ui, new RegExp(texto));
   for (const objeto of ["f2_etapa_config", "f2_visita", "f2_negociacao", "f2_config_audit"]) assert.match(operacao, new RegExp(`CREATE TABLE public\\.${objeto}`));
   assert.match(operacao, /f2_pescar_negocio/);
   assert.doesNotMatch(operacao, /UPDATE public\.(?:ncrm_estado|negocios|leads|visitas|vendas)/);
   assert.doesNotMatch(operacao, /DELETE FROM public\.(?:ncrm_estado|negocios|leads|visitas|vendas)/);
 });
 
-test("captura é simples para o usuário e reinicia a cópia em primeira abordagem", () => {
-  assert.match(ui, /Capturar lead/);
-  assert.match(ui, /Lead novo · Primeira abordagem/);
+test("pesca é simples para o usuário e reinicia a cópia em primeira abordagem", () => {
+  assert.match(ui, /Pescar lead/);
+  assert.match(ui, /Novo · Primeira abordagem/);
   assert.match(ui, /Prazo de 5 minutos/);
   assert.doesNotMatch(ui, /Cópia a substituir|Substituir cópia e pescar/);
   assert.match(pesca, /pg_advisory_xact_lock/);
@@ -321,9 +320,9 @@ test("pesca lista somente a base canônica do Aquário e não herda corretor ou 
   assert.doesNotMatch(ui, /c\.corretor_nome/);
 });
 
-test("interface declara com honestidade o papel e o estado da Sara no Funil", () => {
+test("interface declara com honestidade o papel e o estado da Sara no Funil 2.0", () => {
   assert.match(ui, /PAPEL DA SARA/);
   assert.match(ui, /Ela lê, classifica e fiscaliza/);
-  assert.match(ui, /Reavaliação automática do Funil ainda não conectada/);
+  assert.match(ui, /Reavaliação automática do Funil 2\.0 ainda não conectada/);
   assert.match(ui, /não envia por você/i);
 });
