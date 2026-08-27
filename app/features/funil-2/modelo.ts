@@ -160,6 +160,8 @@ export type TagCatalogoFunil2 = {
 export type LeadFunil2 = {
   id: string;
   origem_negocio_id: number;
+  /** Valor canônico do negócio de origem, quando informado. */
+  valor?: number | null;
   /** Lead original. Usado pelo mini-chat oficial para localizar a conversa real. */
   lead_id: number;
   nome: string;

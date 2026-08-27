@@ -16,7 +16,7 @@ import { readFileSync } from "node:fs";
 const ler = (p) => readFileSync(new URL(p, import.meta.url), "utf8");
 const SW = ler("../public/sw.js");
 const ROTA = ler("../app/api/notificacoes/route.ts");
-const ENTRADA = `${ler("../app/(erp)/crm/page.tsx")}\n${ler("../app/features/funil-2/CrmEntry.tsx")}`;
+const ENTRADA = `${ler("../app/(erp)/crm/page.tsx")}\n${ler("../app/features/funil-2/FunilEntry.tsx")}`;
 const LISTA = ler("../app/features/funil-2/Funil2Mobile.tsx");
 const REDIRECT = ler("../app/(erp)/negocio/[...caminho]/page.tsx");
 const MIGRACAO = ler("../supabase/migrations/20260803010000_push_vencendo_e_deep_links_reais.sql");
