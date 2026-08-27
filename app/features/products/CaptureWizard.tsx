@@ -1,12 +1,13 @@
 "use client";
 /* eslint-disable @next/next/no-img-element */
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { getBrowserSupabaseClient } from "../../lib/supabase/browser";
 import { MoneyInput } from "./MoneyInput";
 import { PendingMediaClassifier } from "./PendingMediaClassifier";
 import { applyOfficialWatermark } from "./watermark";
 import { validateProductPrice } from "./quality";
+import { buildMediaAltText } from "./media-editorial";
 
 const steps = ["Tipo", "Localização", "Proprietário", "Imóvel", "Acesso", "Mídia", "Revisão"];
 const condominiumStepIndexes = [0, 1, 3, 4, 5, 6];
@@ -17,7 +18,7 @@ type CaptureWizardProps = { onClose: () => void; onSaved: () => void; initialSta
 type Condominium = { id: string; nome: string; cep: string | null; endereco: string; numero: string | null; complemento: string | null; bairro: string | null; cidade: string; uf: string };
 type Owner = { id: string; nome: string; email: string; telefone: string };
 type Unit = { id: string; number: string; type: string; area: string; parking: string; price: string; promotionalPrice: string };
-type MediaItem = { id: string; file: File; kind: "foto" | "video"; category: string; cover: boolean; preview: string };
+type MediaItem = { id: string; file: File; kind: "foto" | "video"; category: string; cover: boolean; preview: string; altText?: string };
 
 const emptyCondominium = { name: "", zipCode: "", address: "", number: "", complement: "", neighborhood: "", city: "São Paulo", state: "SP" };
 const emptyOwner = { name: "", email: "", phone: "" };
@@ -57,6 +58,9 @@ export function CaptureWizard({ onClose, onSaved, initialStandalone = false }: C
   const [saving, setSaving] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [mediaUrl, setMediaUrl] = useState("");
+  const [draftReady, setDraftReady] = useState(false);
+  const [draftStatus, setDraftStatus] = useState("Carregando rascunho...");
+  const draftVersion = useRef<number | null>(null);
 
   const photos = media.filter((item) => item.kind === "foto");
   const videos = media.filter((item) => item.kind === "video");
@@ -67,12 +71,84 @@ export function CaptureWizard({ onClose, onSaved, initialStandalone = false }: C
     const supabase = getBrowserSupabaseClient();
     void Promise.all([
       supabase.from("condominios").select("id,nome,cep,endereco,numero,complemento,bairro,cidade,uf").order("nome"),
-      supabase.from("proprietarios").select("id,nome,email,telefone").order("nome"),
+      supabase.rpc("produto_proprietarios_meus"),
     ]).then(([condominiumResult, ownerResult]) => {
       if (condominiumResult.data) setCondominiums(condominiumResult.data);
       if (ownerResult.data) setOwners(ownerResult.data);
     });
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadDraft = async () => {
+      try {
+        const supabase = getBrowserSupabaseClient();
+        const { data } = await supabase.auth.getSession();
+        const token = data.session?.access_token;
+        if (!token) throw new Error("Sessão expirada");
+        const response = await fetch("/api/capture", { headers: { Authorization: `Bearer ${token}` } });
+        const result = await response.json() as { draft?: { payload?: Record<string, unknown>; etapa?: number; versao?: number }; error?: string };
+        if (!response.ok) throw new Error(result.error ?? "Falha ao carregar rascunho");
+        const saved = result.draft?.payload;
+        draftVersion.current = typeof result.draft?.versao === "number" ? result.draft.versao : null;
+        if (!cancelled && saved && saved.standalone === standalone) {
+          if (typeof saved.condominiumId === "string") setCondominiumId(saved.condominiumId);
+          if (saved.ownerMode === "existing" || saved.ownerMode === "new") setOwnerMode(saved.ownerMode);
+          if (typeof saved.ownerId === "string") setOwnerId(saved.ownerId);
+          if (saved.condominium && typeof saved.condominium === "object") setCondominium({ ...emptyCondominium, ...saved.condominium } as typeof emptyCondominium);
+          if (saved.owner && typeof saved.owner === "object") setOwner({ ...emptyOwner, ...saved.owner } as typeof emptyOwner);
+          if (saved.property && typeof saved.property === "object") setProperty({ ...emptyProperty, ...saved.property } as typeof emptyProperty);
+          if (typeof saved.accessType === "string") setAccessType(saved.accessType as typeof accessType);
+          if (typeof saved.accessCode === "string") setAccessCode(saved.accessCode);
+          if (typeof saved.accessInstructions === "string") setAccessInstructions(saved.accessInstructions);
+          if (Array.isArray(saved.units) && saved.units.length) setUnits(saved.units as Unit[]);
+          if (typeof result.draft?.etapa === "number" && visibleStepIndexes.includes(result.draft.etapa)) setStep(result.draft.etapa);
+          setDraftStatus("Rascunho recuperado · fotos precisam ser selecionadas novamente");
+        } else if (!cancelled) {
+          setDraftStatus("Rascunho automático ativo");
+        }
+      } catch {
+        if (!cancelled) setDraftStatus("Rascunho automático indisponível");
+      } finally {
+        if (!cancelled) setDraftReady(true);
+      }
+    };
+    void loadDraft();
+    return () => { cancelled = true; };
+    // O rascunho é carregado uma única vez para o tipo de fluxo aberto.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (!draftReady || saving) return;
+    const timer = window.setTimeout(() => {
+      void (async () => {
+        try {
+          const supabase = getBrowserSupabaseClient();
+          const { data } = await supabase.auth.getSession();
+          const token = data.session?.access_token;
+          if (!token) return;
+          const response = await fetch("/api/capture", {
+            method: "POST",
+            headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+            body: JSON.stringify({
+              action: "saveDraft",
+              step,
+              expectedVersion: draftVersion.current,
+              payload: { standalone, condominiumId, ownerMode, ownerId, condominium, owner, property, accessType, accessCode, accessInstructions, units },
+            }),
+          });
+          const saved = await response.json() as { versao?: number; error?: string };
+          if (!response.ok) throw new Error(saved.error ?? "Falha ao salvar");
+          if (typeof saved.versao === "number") draftVersion.current = saved.versao;
+          setDraftStatus(`Rascunho salvo às ${new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`);
+        } catch (error) {
+          setDraftStatus(error instanceof Error ? error.message : "Não foi possível salvar o rascunho agora");
+        }
+      })();
+    }, 900);
+    return () => window.clearTimeout(timer);
+  }, [accessCode, accessInstructions, accessType, condominium, condominiumId, draftReady, owner, ownerId, ownerMode, property, saving, standalone, step, units]);
 
   function selectedCondominium() {
     return condominiums.find((item) => item.id === condominiumId) ?? null;
@@ -130,7 +206,7 @@ export function CaptureWizard({ onClose, onSaved, initialStandalone = false }: C
     setMedia((current) => {
       const hasCover = current.some((item) => item.cover);
       const additions = list.map((file, index) => ({
-        id: crypto.randomUUID(), file, kind, category: kind === "video" ? "Tour" : "Sala", cover: kind === "foto" && !hasCover && index === 0, preview: URL.createObjectURL(file),
+        id: crypto.randomUUID(), file, kind, category: kind === "video" ? "Tour" : "Sala", cover: kind === "foto" && !hasCover && index === 0, preview: URL.createObjectURL(file), altText: "",
       }));
       return [...current, ...additions];
     });
@@ -251,7 +327,8 @@ export function CaptureWizard({ onClose, onSaved, initialStandalone = false }: C
 
         const { error: mediaError } = await supabase.from("midias").insert({
           empreendimento_id: created.id, unidade_id: standalone ? created.unidadeId : null, tipo: item.kind, storage_path: storagePath, nome: item.file.name,
-          categoria: item.category.toLowerCase(), is_capa: item.id === coverPhotoId,
+          categoria: item.category.toLowerCase(), is_capa: item.id === coverPhotoId, ordem: index,
+          alt_text: item.kind === "foto" ? (item.altText?.trim() || buildMediaAltText({ category: item.category, propertyName: property.title || property.name, unitNumber: standalone ? condominium.number : null, neighborhood: condominium.neighborhood })) : null,
         });
         if (mediaError) {
           await supabase.storage.from("empreendimentos").remove([storagePath]);
@@ -267,6 +344,12 @@ export function CaptureWizard({ onClose, onSaved, initialStandalone = false }: C
       });
       const finalized = await finalizeResponse.json() as { error?: string };
       if (!finalizeResponse.ok) throw new Error(finalized.error ?? "O produto ficou salvo como rascunho, mas não foi finalizado.");
+
+      await fetch("/api/capture", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${sessionData.session.access_token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "deleteDraft" }),
+      });
 
       setMessage("Produto cadastrado e conectado ao Supabase com sucesso.");
       await new Promise((resolve) => setTimeout(resolve, 700));
@@ -286,6 +369,7 @@ export function CaptureWizard({ onClose, onSaved, initialStandalone = false }: C
           <button className="icon-button" onClick={onClose} type="button" aria-label="Fechar">×</button>
         </header>
         <div className="progress-track"><span style={{ width: progress }} /></div>
+        <div className="capture-draft-status" role="status">{draftStatus}</div>
         <div className="step-list" aria-label="Etapas do cadastro">
           {visibleStepIndexes.map((index, position) => <span className={index === step ? "current" : index < step ? "done" : ""} key={steps[index]}>{index < step ? "✓" : position + 1}<small>{steps[index]}</small></span>)}
         </div>
@@ -304,15 +388,15 @@ export function CaptureWizard({ onClose, onSaved, initialStandalone = false }: C
             <label>Chamada curta<input value={property.slogan} onChange={(event) => setProperty({ ...property, slogan: event.target.value })} placeholder="Uma frase curta e convincente" /></label>
             <label>Descrição comercial<textarea rows={5} minLength={80} value={property.description} onChange={(event) => setProperty({ ...property, description: event.target.value })} placeholder="Descreva ambientes, estado do imóvel, localização e benefícios para o comprador." /><small>{property.description.trim().length}/80 caracteres mínimos</small></label>
             <div className="field-grid"><label>Lazer (separe por vírgulas)<input value={property.amenities} onChange={(event) => setProperty({ ...property, amenities: event.target.value })} placeholder="Piscina, academia, salão" /></label><label>Diferenciais (separe por vírgulas)<input value={property.differentiators} onChange={(event) => setProperty({ ...property, differentiators: event.target.value })} placeholder="Vista livre, reformado, varanda" /></label></div>
-            <MoneyInput key={`principal-${property.purpose}`} defaultMode={property.purpose === "aluguel" ? "reais" : "milhares"} label={property.purpose === "aluguel" ? "Aluguel mensal" : "Preço de venda"} value={property.price} onChange={(value) => setProperty({ ...property, price: value === null ? "" : String(value) })} />
+            <MoneyInput key={`principal-${property.purpose}`} purpose={property.purpose} defaultMode={property.purpose === "aluguel" ? "reais" : "milhares"} label={property.purpose === "aluguel" ? "Aluguel mensal" : "Preço de venda"} value={property.price} onChange={(value) => setProperty({ ...property, price: value === null ? "" : String(value) })} />
             <div className="field-grid"><label>Condomínio mensal<input type="number" min="0" value={property.condominiumFee} onChange={(event) => setProperty({ ...property, condominiumFee: event.target.value })} /></label><label>IPTU mensal<input type="number" min="0" value={property.propertyTax} onChange={(event) => setProperty({ ...property, propertyTax: event.target.value })} /></label><label>Outros custos<input type="number" min="0" value={property.otherCosts} onChange={(event) => setProperty({ ...property, otherCosts: event.target.value })} /></label><label>Área privativa<input type="number" min="0" step="0.01" value={property.area} onChange={(event) => setProperty({ ...property, area: event.target.value })} /></label><label>Dormitórios<input type="number" min="0" value={property.bedrooms} onChange={(event) => setProperty({ ...property, bedrooms: event.target.value })} /></label><label>Suítes<input type="number" min="0" value={property.suites} onChange={(event) => setProperty({ ...property, suites: event.target.value })} /></label><label>Banheiros<input type="number" min="0" value={property.bathrooms} onChange={(event) => setProperty({ ...property, bathrooms: event.target.value })} /></label><label>Vagas<input type="number" min="0" value={property.parking} onChange={(event) => setProperty({ ...property, parking: event.target.value })} /></label></div>
             {propertyType === "terceiro" && <label className="toggle commercial-toggle"><input type="checkbox" checked={property.alreadyRented} onChange={(event) => setProperty({ ...property, alreadyRented: event.target.checked })} /><span><strong>Compre já alugado</strong><small>Marque quando o imóvel será vendido com contrato de locação vigente.</small></span></label>}
-            {propertyType === "construtora" && <div className="unit-editor"><div className="section-row"><div><strong>Unidades do empreendimento</strong><small>{property.purpose === "aluguel" ? "Aluguel mensal em valor cheio, com confirmação antes de salvar." : "Preço em milhares por padrão, com confirmação do valor final."}</small></div><button className="secondary-action" onClick={() => setUnits([...units, newUnit()])} type="button">＋ Adicionar unidade</button></div>{units.map((unit, index) => <div className="unit-row professional" key={unit.id}><span>{index + 1}</span><input aria-label="Número da unidade" value={unit.number} onChange={(event) => setUnits(units.map((item) => item.id === unit.id ? { ...item, number: event.target.value } : item))} placeholder="Unidade" /><select aria-label="Tipologia" value={unit.type} onChange={(event) => setUnits(units.map((item) => item.id === unit.id ? { ...item, type: event.target.value } : item))}><option value="">Tipologia</option>{unitTypologies.map((t) => <option key={t} value={t}>{t}</option>)}</select><input aria-label="Área" type="number" min="0" value={unit.area} onChange={(event) => setUnits(units.map((item) => item.id === unit.id ? { ...item, area: event.target.value } : item))} placeholder="m²" /><input aria-label="Vagas" type="number" min="0" value={unit.parking} onChange={(event) => setUnits(units.map((item) => item.id === unit.id ? { ...item, parking: event.target.value } : item))} placeholder="Vagas" /><MoneyInput compact defaultMode={property.purpose === "aluguel" ? "reais" : "milhares"} label={`Preço da unidade ${unit.number || index + 1}`} value={unit.price} onChange={(value) => setUnits(units.map((item) => item.id === unit.id ? { ...item, price: value === null ? "" : String(value) } : item))} /><MoneyInput compact defaultMode={property.purpose === "aluguel" ? "reais" : "milhares"} label={`Preço promocional da unidade ${unit.number || index + 1}`} value={unit.promotionalPrice} onChange={(value) => setUnits(units.map((item) => item.id === unit.id ? { ...item, promotionalPrice: value === null ? "" : String(value) } : item))} /><button aria-label="Remover unidade" disabled={units.length === 1} onClick={() => setUnits(units.filter((item) => item.id !== unit.id))} type="button">×</button></div>)}</div>}
+            {propertyType === "construtora" && <div className="unit-editor"><div className="section-row"><div><strong>Unidades do empreendimento</strong><small>{property.purpose === "aluguel" ? "Aluguel mensal em valor cheio, com confirmação antes de salvar." : "Preço em milhares por padrão, com confirmação do valor final."}</small></div><button className="secondary-action" onClick={() => setUnits([...units, newUnit()])} type="button">＋ Adicionar unidade</button></div>{units.map((unit, index) => <div className="unit-row professional" key={unit.id}><span>{index + 1}</span><input aria-label="Número da unidade" value={unit.number} onChange={(event) => setUnits(units.map((item) => item.id === unit.id ? { ...item, number: event.target.value } : item))} placeholder="Unidade" /><select aria-label="Tipologia" value={unit.type} onChange={(event) => setUnits(units.map((item) => item.id === unit.id ? { ...item, type: event.target.value } : item))}><option value="">Tipologia</option>{unitTypologies.map((t) => <option key={t} value={t}>{t}</option>)}</select><input aria-label="Área" type="number" min="0" value={unit.area} onChange={(event) => setUnits(units.map((item) => item.id === unit.id ? { ...item, area: event.target.value } : item))} placeholder="m²" /><input aria-label="Vagas" type="number" min="0" value={unit.parking} onChange={(event) => setUnits(units.map((item) => item.id === unit.id ? { ...item, parking: event.target.value } : item))} placeholder="Vagas" /><MoneyInput compact purpose={property.purpose} defaultMode={property.purpose === "aluguel" ? "reais" : "milhares"} label={`Preço da unidade ${unit.number || index + 1}`} value={unit.price} onChange={(value) => setUnits(units.map((item) => item.id === unit.id ? { ...item, price: value === null ? "" : String(value) } : item))} /><MoneyInput compact purpose={property.purpose} defaultMode={property.purpose === "aluguel" ? "reais" : "milhares"} label={`Preço promocional da unidade ${unit.number || index + 1}`} value={unit.promotionalPrice} onChange={(value) => setUnits(units.map((item) => item.id === unit.id ? { ...item, promotionalPrice: value === null ? "" : String(value) } : item))} /><button aria-label="Remover unidade" disabled={units.length === 1} onClick={() => setUnits(units.filter((item) => item.id !== unit.id))} type="button">×</button></div>)}</div>}
           </div>}
 
           {step === 4 && <div className="form-section"><h3>Como entrar no imóvel?</h3><div className="choice-grid compact access-grid">{([['chave_fisica','Chave física'],['chave_digital','Chave digital'],['proprietario','Com proprietário'],['portaria','Portaria'],['outro','Outro']] as const).map(([value, label]) => <button className={accessType === value ? "selected" : ""} onClick={() => setAccessType(value)} type="button" key={value}>{label}</button>)}</div>{accessType === "chave_digital" && <label>Código de acesso<input value={accessCode} onChange={(event) => setAccessCode(event.target.value)} placeholder="Código da fechadura" /></label>}<label>Instruções completas<textarea value={accessInstructions} onChange={(event) => setAccessInstructions(event.target.value)} placeholder="Local da chave, portaria, autorização, horários e todas as instruções..." rows={6} /></label></div>}
 
-          {step === 5 && <div className="form-section media-section"><h3>Fotos, vídeo e identificação</h3><p>Mínimo de 1 foto para salvar, mas o site exige 6 fotos para publicar o anúncio. Vídeo e capa são opcionais — quanto mais material, melhor o anúncio.</p><div className="media-dropzone" onDragOver={(event) => { event.preventDefault(); event.currentTarget.classList.add("dragging"); }} onDragLeave={(event) => event.currentTarget.classList.remove("dragging")} onDrop={(event) => { event.preventDefault(); event.currentTarget.classList.remove("dragging"); if (event.dataTransfer.files?.length) ingestFiles(Array.from(event.dataTransfer.files)); }}><div className="media-dz-head"><span className="media-dz-icon">⬆</span><div><strong>Arraste aqui, cole (Ctrl+V) ou selecione</strong><small>Fotos e vídeos — ou adicione por link abaixo</small></div></div><div className="media-upload-actions"><label className="upload-button">＋ Adicionar fotos<input type="file" accept="image/*" multiple onChange={(event) => { addFiles(event.target.files, "foto"); event.currentTarget.value = ""; }} /></label><label className="upload-button secondary">＋ Adicionar vídeo<input type="file" accept="video/*" multiple onChange={(event) => { addFiles(event.target.files, "video"); event.currentTarget.value = ""; }} /></label></div><div className="media-link-row"><input type="url" value={mediaUrl} onChange={(event) => setMediaUrl(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); void addByUrl(mediaUrl); } }} placeholder="Cole o link de uma imagem ou vídeo (https://...)" /><button type="button" className="secondary-action" onClick={() => void addByUrl(mediaUrl)} disabled={!mediaUrl.trim()}>Adicionar por link</button></div><div className="media-totals"><strong className={photos.length >= 1 ? "ok" : ""}>{photos.length} foto{photos.length === 1 ? "" : "s"}{photos.length >= 6 ? " · pronto p/ site" : ` · faltam ${6 - photos.length} p/ publicar no site`}</strong><strong className={videos.length >= 1 ? "ok" : ""}>{videos.length} vídeo{videos.length === 1 ? "" : "s"} (opcional)</strong></div></div><PendingMediaClassifier items={media} categories={mediaCategories} onCategoryChange={(id, category) => setMedia((current) => current.map((entry) => entry.id === id ? { ...entry, category } : entry))} onRemove={removeMedia} onCoverChange={(id) => setMedia((current) => current.map((entry) => ({ ...entry, cover: entry.id === id })))} /></div>}
+          {step === 5 && <div className="form-section media-section"><h3>Fotos, vídeo e identificação</h3><p>Mínimo de 1 foto para salvar, mas o site exige 6 fotos para publicar o anúncio. Vídeo e capa são opcionais — quanto mais material, melhor o anúncio.</p><div className="media-dropzone" onDragOver={(event) => { event.preventDefault(); event.currentTarget.classList.add("dragging"); }} onDragLeave={(event) => event.currentTarget.classList.remove("dragging")} onDrop={(event) => { event.preventDefault(); event.currentTarget.classList.remove("dragging"); if (event.dataTransfer.files?.length) ingestFiles(Array.from(event.dataTransfer.files)); }}><div className="media-dz-head"><span className="media-dz-icon">⬆</span><div><strong>Arraste aqui, cole (Ctrl+V) ou selecione</strong><small>Fotos e vídeos — ou adicione por link abaixo</small></div></div><div className="media-upload-actions"><label className="upload-button">＋ Adicionar fotos<input type="file" accept="image/*" multiple onChange={(event) => { addFiles(event.target.files, "foto"); event.currentTarget.value = ""; }} /></label><label className="upload-button secondary">＋ Adicionar vídeo<input type="file" accept="video/*" multiple onChange={(event) => { addFiles(event.target.files, "video"); event.currentTarget.value = ""; }} /></label></div><div className="media-link-row"><input type="url" value={mediaUrl} onChange={(event) => setMediaUrl(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); void addByUrl(mediaUrl); } }} placeholder="Cole o link de uma imagem ou vídeo (https://...)" /><button type="button" className="secondary-action" onClick={() => void addByUrl(mediaUrl)} disabled={!mediaUrl.trim()}>Adicionar por link</button></div><div className="media-totals"><strong className={photos.length >= 1 ? "ok" : ""}>{photos.length} foto{photos.length === 1 ? "" : "s"}{photos.length >= 6 ? " · pronto p/ site" : ` · faltam ${6 - photos.length} p/ publicar no site`}</strong><strong className={videos.length >= 1 ? "ok" : ""}>{videos.length} vídeo{videos.length === 1 ? "" : "s"} (opcional)</strong></div></div><PendingMediaClassifier items={media} categories={mediaCategories} onCategoryChange={(id, category) => setMedia((current) => current.map((entry) => entry.id === id ? { ...entry, category } : entry))} onAltTextChange={(id, altText) => setMedia((current) => current.map((entry) => entry.id === id ? { ...entry, altText } : entry))} onRemove={removeMedia} onCoverChange={(id) => setMedia((current) => current.map((entry) => ({ ...entry, cover: entry.id === id })))} /></div>}
 
           {step === 6 && <div className="form-section"><h3>Revisão antes de salvar</h3><div className="review-list"><span className="complete">{standalone ? "Endereço próprio, sem condomínio" : "Condomínio e endereço completo"}</span><span className={propertyType === "construtora" || Boolean(ownerId || owner.name) ? "complete" : ""}>Proprietário associado</span><span className="complete">Preço, custos e características</span><span className="complete">Instruções de acesso</span><span className={photos.length >= 1 ? "complete" : ""}>{photos.length} foto(s) e {videos.length} vídeo(s)</span><span className={photos.length ? "complete" : ""}>Foto de capa selecionada</span>{propertyType === "construtora" && <span className={units.length ? "complete" : ""}>{units.length} unidade(s) cadastrada(s)</span>}</div>{media.length > 0 && <ReviewMedia media={media} setMedia={setMedia} />}<div className="notice"><strong>Gravação segura</strong><span>O produto será criado como rascunho, os arquivos serão enviados e somente então a captação será finalizada.</span></div>{saving && <div className="upload-progress"><span style={{ width: `${uploadProgress}%` }} /><strong>Enviando mídias · {uploadProgress}%</strong></div>}</div>}
 
