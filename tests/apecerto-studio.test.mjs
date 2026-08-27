@@ -16,6 +16,8 @@ const css = readFileSync(new URL("../app/styles/apecerto-studio.css", import.met
 const catalogMigration = readFileSync(new URL("../supabase/migrations/20260827170000_studio_template_catalog_20.sql", import.meta.url), "utf8");
 const collaborationMigration = readFileSync(new URL("../supabase/migrations/20260827180000_studio_collaboration_metrics.sql", import.meta.url), "utf8");
 const calendar = readFileSync(new URL("../app/features/studio/StudioCalendar.tsx", import.meta.url), "utf8");
+const board = readFileSync(new URL("../app/features/studio/StudioManagerBoard.tsx", import.meta.url), "utf8");
+const metricsDashboard = readFileSync(new URL("../app/features/studio/StudioMetricsDashboard.tsx", import.meta.url), "utf8");
 
 test("Studio é um módulo nativo, roteável e fail-closed", () => {
   assert.equal(pathDoModulo("apêcerto Studio"), "/studio");
@@ -238,4 +240,9 @@ test("calendário usa três estruturas e drop real sem prompt", () => {
   assert.match(calendar, /role="dialog"/);
   assert.doesNotMatch(calendar, /window\.prompt/);
   assert.match(calendar, /schedule_conflict/);
+});
+
+test("board e métricas são componentes próprios com filtros e agregação executável", () => {
+  for (const token of ["template", "revisor", "vencidos", "hoje", "sem_prazo", "Ordenar por prazo", "Ordenar por status"]) assert.match(board, new RegExp(token));
+  for (const token of ["property", "template", "from", "to", "aggregateStudioMetrics", "curtidas", "comentarios", "compartilhamentos", "salvamentos", "cliques"]) assert.match(metricsDashboard, new RegExp(token));
 });

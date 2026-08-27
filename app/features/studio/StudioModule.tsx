@@ -13,6 +13,8 @@ import {
   type StudioTab,
 } from "./domain";
 import { StudioCalendar as StudioCalendarNew } from "./StudioCalendar";
+import { StudioMetricsDashboard as StudioMetricsDashboardNew } from "./StudioMetricsDashboard";
+import { StudioManagerBoard as StudioManagerBoardNew } from "./StudioManagerBoard";
 
 type ApiResult = { ok?: boolean; error?: string; code?: string; result?: { campaign_id?: string }; details?: unknown; authorization_url?: string };
 type IconName = "sparkles" | "grid" | "campaign" | "calendar" | "settings" | "plus" | "home" | "image" | "layers" | "video" | "check" | "clock" | "send" | "refresh" | "warning" | "chevron" | "close" | "upload";
@@ -178,7 +180,7 @@ function Overview({ data, onCreate, onOpen }: { data: StudioData; onCreate: () =
       <div className="studio-hero-flow" aria-label="Fluxo operacional"><FlowStep icon="campaign" label="Produto" done/><FlowStep icon="sparkles" label="Criação"/><FlowStep icon="check" label="Aprovação"/><FlowStep icon="calendar" label="Agenda"/><FlowStep icon="send" label="Publicação"/></div>
     </section>
     <section className="studio-kpis"><Kpi label="Campanhas" value={data.campaigns.length}/><Kpi label="Peças aprovadas" value={ready} tone="purple"/><Kpi label="Programadas" value={scheduled} tone="success"/><Kpi label="Falhas abertas" value={failures} tone={failures ? "danger" : undefined}/></section>
-    <StudioManagerBoard data={data} onOpen={onOpen}/><StudioMetricsDashboard data={data} onOpen={onOpen}/>
+    <StudioManagerBoardNew data={data} onOpen={onOpen}/><StudioMetricsDashboardNew data={data} onOpen={onOpen}/>
     <section className="studio-section"><header><div><span className="studio-eyebrow">Em andamento</span><h2>Campanhas recentes</h2></div></header>
       {data.campaigns.length ? <div className="studio-campaign-grid">{data.campaigns.slice(0, 6).map((campaign) => <CampaignCard key={campaign.id} campaign={campaign} pieces={data.pieces.filter((piece) => piece.campaign_id === campaign.id)} onOpen={() => onOpen(campaign.id)}/>)}</div> : <EmptyState icon="campaign" title="Nenhuma campanha ainda" text="Crie a primeira usando o código de um produto do ERP." action="Criar campanha" onAction={onCreate}/>}</section>
   </main>;
