@@ -269,6 +269,7 @@ async function createHumanVersion(auth: Auth, body: Record<string, unknown>) {
     headline: clean(fields.headline, 120),
     legenda: clean(fields.legenda, 2200),
     cta: clean(fields.cta, 80),
+    estrutura: jsonObject(fields.estrutura) ? fields.estrutura : undefined,
   };
   if (!versionId || !allowed.headline || !allowed.legenda || !allowed.cta) {
     throw new StudioError("Headline, legenda e chamada são obrigatórias.", 422, "invalid_piece_content");
@@ -278,7 +279,7 @@ async function createHumanVersion(auth: Auth, body: Record<string, unknown>) {
   if (!source) throw new StudioError("A versão de origem não foi encontrada.", 404, "version_not_found");
   if (allowed.headline === clean(source.conteudo.headline, 120) && allowed.legenda === clean(source.conteudo.legenda, 2200) && allowed.cta === clean(source.conteudo.cta, 80)) return { ok: true, unchanged: true, versionId: source.id };
   const latest = await rest<Array<{ versao: number }>>(auth, `social_piece_versions?piece_id=eq.${source.piece_id}&select=versao&order=versao.desc&limit=1`);
-  const content = { ...source.conteudo, ...allowed };
+  const content = { ...source.conteudo, headline: allowed.headline, legenda: allowed.legenda, cta: allowed.cta, ...(allowed.estrutura ?? {}) };
   const checksum = await sha256({ snapshot_id: source.snapshot_id, template_version_id: source.template_version_id, content });
   const created = await rest<StudioPieceVersion[]>(auth, "social_piece_versions", {
     method: "POST",

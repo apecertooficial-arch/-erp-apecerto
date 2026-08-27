@@ -306,17 +306,20 @@ function PiecePreview({ piece, version, snapshot, demoContent }: { piece: Studio
 }
 
 function VersionEditor({ version, busy, mutate }: { version: StudioPieceVersion; busy: boolean; mutate: (body: Record<string, unknown>, success?: string) => Promise<ApiResult> }) {
+  const initialStructure = JSON.stringify({ ...(Array.isArray(version.conteudo.slides) ? { slides: version.conteudo.slides } : {}), ...(Array.isArray(version.conteudo.stories) ? { stories: version.conteudo.stories } : {}), ...(Array.isArray(version.conteudo.cenas) ? { cenas: version.conteudo.cenas } : {}) }, null, 2);
   const [fields, setFields] = useState({
     headline: String(version.conteudo.headline ?? ""),
     legenda: String(version.conteudo.legenda ?? ""),
     cta: String(version.conteudo.cta ?? ""),
+    estrutura: initialStructure,
   });
-  const changed = fields.headline !== String(version.conteudo.headline ?? "") || fields.legenda !== String(version.conteudo.legenda ?? "") || fields.cta !== String(version.conteudo.cta ?? "");
+  const changed = fields.headline !== String(version.conteudo.headline ?? "") || fields.legenda !== String(version.conteudo.legenda ?? "") || fields.cta !== String(version.conteudo.cta ?? "") || fields.estrutura !== initialStructure;
   return <div className="studio-version-editor">
     <label className="studio-field"><span>Headline</span><textarea value={fields.headline} maxLength={120} onChange={(event) => setFields({ ...fields, headline: event.target.value })}/><small>{fields.headline.length}/120</small></label>
     <label className="studio-field"><span>Legenda</span><textarea value={fields.legenda} maxLength={2200} onChange={(event) => setFields({ ...fields, legenda: event.target.value })}/><small>{fields.legenda.length}/2200</small></label>
     <label className="studio-field"><span>Chamada</span><input value={fields.cta} maxLength={80} onChange={(event) => setFields({ ...fields, cta: event.target.value })}/><small>{fields.cta.length}/80</small></label>
-    <button type="button" className="studio-save-version" disabled={busy || !changed || !fields.headline.trim() || !fields.legenda.trim() || !fields.cta.trim()} onClick={() => void mutate({ action: "createVersion", versionId: version.id, fields }, "Nova versão criada. A aprovação anterior não vale para este conteúdo.")}><Icon name="check"/> Salvar como nova versão</button>
+    <label className="studio-field"><span>Slides / cenas (JSON editável)</span><textarea value={fields.estrutura} onChange={(event) => setFields({ ...fields, estrutura: event.target.value })}/><small>Edite slides, stories ou cenas sem perder a versão anterior.</small></label>
+    <button type="button" className="studio-save-version" disabled={busy || !changed || !fields.headline.trim() || !fields.legenda.trim() || !fields.cta.trim()} onClick={() => { let estrutura: Record<string, unknown> = {}; try { estrutura = JSON.parse(fields.estrutura) as Record<string, unknown>; } catch { window.alert("Estrutura inválida. Use JSON válido."); return; } void mutate({ action: "createVersion", versionId: version.id, fields: { ...fields, estrutura } }, "Nova versão criada. A aprovação anterior não vale para este conteúdo."); }}><Icon name="check"/> Salvar como nova versão</button>
   </div>;
 }
 
