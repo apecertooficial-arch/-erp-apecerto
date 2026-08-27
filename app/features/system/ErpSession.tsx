@@ -85,6 +85,16 @@ export function ErpSessionProvider({ children }: { children: ReactNode }) {
   const carregarPerfil = useCallback(async (token: string) => {
     try {
       const resposta = await fetch("/api/session", { headers: { Authorization: `Bearer ${token}` } });
+      if (resposta.status === 401) {
+        /* O PWA pode acordar depois de horas com um access token salvo, mas sem
+           refresh token utilizavel. Nessa situacao a versao anterior mantinha o
+           token vencido em memoria e o corretor ficava preso fora do login. */
+        await getBrowserSupabaseClient().auth.signOut({ scope: "local" }).catch(() => undefined);
+        setAccessToken(null);
+        setProfile(null);
+        setEstado("auth");
+        return;
+      }
       if (!resposta.ok) throw new Error("perfil indisponivel");
       setProfile(await resposta.json() as SessionProfile);
       setEstado("live");
@@ -99,8 +109,19 @@ export function ErpSessionProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const recarregarPerfil = useCallback(async () => {
-    if (accessToken) await carregarPerfil(accessToken);
+    if (!accessToken) return;
+    setEstado("loading");
+    setPerfilCarregado(false);
+    await carregarPerfil(accessToken);
   }, [accessToken, carregarPerfil]);
+
+  const voltarAoLogin = useCallback(async () => {
+    await getBrowserSupabaseClient().auth.signOut({ scope: "local" }).catch(() => undefined);
+    setAccessToken(null);
+    setProfile(null);
+    setPerfilCarregado(true);
+    setEstado("auth");
+  }, []);
 
   useEffect(() => {
     const supabase = getBrowserSupabaseClient();
@@ -108,26 +129,48 @@ export function ErpSessionProvider({ children }: { children: ReactNode }) {
 
     const ehRecovery = typeof window !== "undefined" && window.location.hash.includes("type=recovery");
 
-    void supabase.auth.getSession().then(async ({ data }) => {
-      if (!ativo || ehRecovery) return;
-      if (!data.session) {
-        setEstado("auth");
-        setPerfilCarregado(true);
-        return;
-      }
-      const expiraLogo = Number(data.session.expires_at || 0) * 1000 <= Date.now() + 60_000;
-      if (expiraLogo) {
-        const renovada = await supabase.auth.refreshSession();
-        if (!ativo) return;
-        if (renovada.data.session) {
-          setAccessToken(renovada.data.session.access_token);
-          await carregarPerfil(renovada.data.session.access_token);
+    const iniciarSessao = async () => {
+      try {
+        const { data, error } = await supabase.auth.getSession();
+        if (!ativo || ehRecovery) return;
+        if (error || !data.session) {
+          setAccessToken(null);
+          setEstado("auth");
+          setPerfilCarregado(true);
           return;
         }
+
+        let sessao = data.session;
+        const expiraLogo = Number(sessao.expires_at || 0) * 1000 <= Date.now() + 60_000;
+        if (expiraLogo) {
+          const renovada = await supabase.auth.refreshSession();
+          if (!ativo) return;
+          if (renovada.error || !renovada.data.session) {
+            await supabase.auth.signOut({ scope: "local" }).catch(() => undefined);
+            if (!ativo) return;
+            setAccessToken(null);
+            setProfile(null);
+            setEstado("auth");
+            setPerfilCarregado(true);
+            return;
+          }
+          sessao = renovada.data.session;
+        }
+
+        setAccessToken(sessao.access_token);
+        await carregarPerfil(sessao.access_token);
+      } catch {
+        /* Falha no bootstrap nao pode deixar "Abrindo o ERP" eternamente.
+           Liberamos a tela de entrada para a pessoa tentar de novo. */
+        if (!ativo || ehRecovery) return;
+        setAccessToken(null);
+        setProfile(null);
+        setEstado("auth");
+        setPerfilCarregado(true);
       }
-      setAccessToken(data.session.access_token);
-      await carregarPerfil(data.session.access_token);
-    });
+    };
+
+    void iniciarSessao();
 
     const { data: listener } = supabase.auth.onAuthStateChange((evento, sessao) => {
       if (!ativo) return;
@@ -186,9 +229,29 @@ export function ErpSessionProvider({ children }: { children: ReactNode }) {
     return (
       <div className="login-page">
         <SupabaseLogin onAuthenticated={(token) => {
+          setEstado("loading");
+          setPerfilCarregado(false);
           setAccessToken(token);
           void carregarPerfil(token);
         }} />
+      </div>
+    );
+  }
+
+  if (estado === "error") {
+    return (
+      <div className="login-page">
+        <section className="auth-layer" role="alert">
+          <div className="auth-card auth-card-v2">
+            <div className="auth-welcome">
+              <span>ACESSO AO ERP</span>
+              <h2>Não conseguimos carregar sua sessão</h2>
+              <p>Verifique sua internet e tente novamente. Se a sessão terminou, volte para a tela de entrada.</p>
+            </div>
+            <button className="primary-action" type="button" onClick={() => void recarregarPerfil()}>Tentar novamente</button>
+            <button type="button" onClick={() => void voltarAoLogin()}>Voltar ao login</button>
+          </div>
+        </section>
       </div>
     );
   }
