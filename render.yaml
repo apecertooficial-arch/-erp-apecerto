@@ -16,6 +16,10 @@ services:
         sync: false
       - key: NEXT_PUBLIC_APECERTO_DATA_MODE
         value: production-readonly
+      # Corte visual reversível: `legacy` retorna imediatamente à apresentação
+      # anterior sem trocar APIs, sessão, RLS ou dados do Funil 2.0.
+      - key: CRM_V3_EXPERIENCE
+        value: v3
       - key: NEXT_PUBLIC_SITE_URL
         value: https://apecerto-erp.onrender.com
       - key: NODE_VERSION

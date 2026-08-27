@@ -4,112 +4,129 @@ import test from "node:test";
 
 const read = (path) => readFileSync(new URL(path, import.meta.url), "utf8");
 const route = read("../app/(erp)/crm/page.tsx");
-const entry = read("../app/features/funil-2/FunilEntry.tsx");
 const workspace = read("../app/features/funil-2/Funil2Workspace.tsx");
 const mobile = read("../app/features/funil-2/Funil2Mobile.tsx");
 const api = read("../app/api/funil2/route.ts");
 const layout = read("../app/layout.tsx");
 const erpLayout = read("../app/(erp)/layout.tsx");
 const shell = read("../app/features/system/ErpShell.tsx");
-const routes = read("../app/features/system/erp-routes.ts");
-const render = read("../render.yaml");
-const css = read("../app/styles/funil.css");
 
-test("/crm possui uma única entrada oficial chamada Funil", () => {
+test("/crm promove V3 por padrão e possui rollback servidor para o legado", () => {
   assert.doesNotMatch(route, /"use client"/);
-  assert.match(route, /<FunilEntry/);
-  assert.doesNotMatch(`${route}\n${entry}`, /CRM_V3_EXPERIENCE|CrmEntry|experience=|legacy|CrmV3Route|fixture|localValidation/);
-  assert.doesNotMatch(render, /CRM_V3_EXPERIENCE/);
-  assert.match(routes, /CRM: \{[^\n]+rotuloCurto: "Funil"/);
+  assert.match(route, /process\.env\.CRM_V3_EXPERIENCE === "legacy"/);
+  assert.match(route, /<CrmEntry experience=\{experience\}/);
+  assert.doesNotMatch(route, /CrmV3Route|fixture|localValidation/);
 });
 
-test("o Funil oficial reutiliza sessão, autorização e motor canônico", () => {
-  assert.match(entry, /GuardaModulo modulo="CRM"/);
-  assert.match(entry, /useErpSession/);
-  assert.match(entry, /<Funil2Workspace/);
-  assert.match(entry, /<Funil2Mobile/);
+test("V3 oficial é uma apresentação do motor canônico, não um segundo CRM", () => {
+  assert.match(workspace, /experience = "legacy"/);
+  assert.match(workspace, /crm-v3-official/);
   assert.match(workspace, /fetch\("\/api\/funil2"/);
+  assert.match(mobile, /experience = "legacy"/);
+  assert.match(mobile, /crm-v3-official/);
   assert.match(mobile, /fetch\("\/api\/funil2"/);
-  assert.doesNotMatch(`${workspace}\n${mobile}`, /localStorage|sessionStorage|fixture|validationAdapter|mock/i);
 });
 
-test("autenticação, RLS e mutações continuam na API canônica", () => {
+test("autenticação, RLS e mutações continuam na API Funil 2.0", () => {
   assert.match(api, /supabase\.auth\.getUser\(token\)/);
   assert.match(api, /f2_atualizar_momento/);
   assert.match(api, /f2_confirmar_acao/);
   assert.match(api, /f2_salvar_visita/);
-  assert.match(api, /select\("id,lead_id,valor"\)/);
   assert.match(workspace, /Feedback pendente/);
   assert.match(workspace, /Registrar resultado/);
   assert.doesNotMatch(api, /CRM_V3|fixture|validationAdapter/);
 });
 
-test("laboratório e rota paralela não fazem parte da produção", () => {
+test("laboratório local não faz parte do caminho compilado de produção", () => {
   assert.equal(existsSync(new URL("../app/(erp)/crm-v3/page.tsx", import.meta.url)), false);
   assert.equal(existsSync(new URL("../app/features/funil-2-v3/fixtures.ts", import.meta.url)), false);
   assert.equal(existsSync(new URL("../app/features/funil-2-v3/validationAdapter.ts", import.meta.url)), false);
   assert.equal(existsSync(new URL("../app/features/system/ErpRuntime.tsx", import.meta.url)), false);
-  assert.doesNotMatch(layout, /funil-2-v3|crm-v3-official/);
+  assert.doesNotMatch(layout, /funil-2-v3\.css/);
   assert.doesNotMatch(erpLayout, /ErpRuntime/);
   assert.doesNotMatch(shell, /crmV3Validation|\/crm-v3/);
 });
 
-test("a apresentação do Funil é uma folha única, sem camada visual antiga", () => {
-  assert.match(layout, /styles\/funil\.css/);
-  assert.equal(existsSync(new URL("../app/styles/funil-2.css", import.meta.url)), false);
-  assert.equal(existsSync(new URL("../app/styles/crm-v3-official.css", import.meta.url)), false);
-  assert.match(css, /\.funil-oficial/);
-  assert.doesNotMatch(css, /\.crm-v3-official|CRM_V3_EXPERIENCE/);
+test("folha oficial é isolada e o legado permanece intacto sem a classe V3", () => {
+  assert.match(layout, /crm-v3-official\.css/);
+  const css = read("../app/styles/crm-v3-official.css");
+  assert.match(css, /^\.crm-v3-official/m);
+  assert.doesNotMatch(css, /^(html|body|:root|\*)[\s,{]/m);
   assert.doesNotMatch(css, /!important/);
-  assert.match(css, /@media\s*\(max-width:\s*720px\)/);
+  assert.match(css, /@media\(max-width:720px\)/);
 });
 
-test("o shell antigo não é montado junto com o Funil", () => {
-  assert.match(shell, /if \(moduloAtual === "CRM"\)/);
-  assert.match(shell, /return <div className="funil-product-shell">\{children\}<\/div>/);
-  assert.match(workspace, /className="f2-root funil-oficial"/);
-  assert.match(mobile, /modo-\$\{modo\} funil-oficial/);
-});
-
-test("ficha preserva foco, prende teclado e navega sete abas", () => {
-  const sete = ["Atendimento", "Histórico", "Atividades", "Negócios", "Imóveis", "Arquivos", "Dados do lead"];
+test("ficha preserva foco, prende teclado e navega abas no desktop e celular", () => {
   for (const source of [workspace, mobile]) {
     assert.match(source, /focoOrigemRef/);
     assert.match(source, /requestAnimationFrame/);
     assert.match(source, /evento\.key === "Tab"/);
     assert.match(source, /"ArrowLeft", "ArrowRight", "Home", "End"/);
     assert.match(source, /focoOrigemRef\.current\?\.focus\(\)/);
-    for (const label of sete) assert.match(source, new RegExp(`"${label}"`));
-    assert.doesNotMatch(source, /experience ===|\["notas", "Notas"\]/);
   }
 });
 
-test("navegação aprovada existe em desktop e mobile", () => {
+test("V3 entrega a navegação aprovada e mantém a navegação legada separada", () => {
+  assert.match(workspace, /experience === "v3" && <nav className="f2-nav f2-v3-modulos"/);
   for (const label of ["Meu Dia", "Negócios", "Leads", "Atividades", "Visitas", "Esteira", "Painel", "Configurações"]) {
-    assert.match(workspace, new RegExp(`>${label}<|\\/> ${label}(?: |<)`));
+    assert.match(workspace, new RegExp(`>${label}<|\\/?> ${label}(?: |<)`));
   }
-  assert.match(mobile, /aria-label="Navegação do Funil"/);
-  for (const label of ["Meu Dia", "Funil", "Leads", "Agenda", "Visitas"]) assert.match(mobile, new RegExp(`>${label}<`));
+  assert.match(workspace, /experience === "legacy" && <nav className="f2-nav"/);
+  assert.match(workspace, /Todos os Leads/);
+  assert.match(workspace, /Regras do CRM/);
+  assert.match(mobile, /aria-label="Navegação do CRM"/);
+  for (const label of ["Meu Dia", "Funil", "Leads", "Agenda", "Visitas"]) {
+    assert.match(mobile, new RegExp(`>${label}<`));
+  }
 });
 
-test("menu, arrasto e massa convergem no mesmo motor canônico", () => {
+test("menu, arrasto e massa convergem no mesmo motor canônico de movimento", () => {
   assert.match(workspace, /async function movimentar\(ids: string\[\], etapaCodigo: string\)/);
   assert.match(workspace, /action: "atualizarMomento"/);
   assert.match(workspace, /onDrop=.*movimentar\(\[id\], etapa\.codigo\)/s);
   assert.match(workspace, /movimentar\(selecionados, destinoMassa\)[^>]*>Mover selecionados/);
-  assert.match(workspace, /movimentar\(\[item\.id\], destino\)[^>]*>[\s\S]*Escolha a etapa/);
+  assert.match(workspace, /movimentar\(\[item\.id\], destino\)[^>]*>[\s\S]*Mover para…/);
   assert.doesNotMatch(workspace, /setLeads\([^)]*etapa/);
 });
 
-test("perfis, filtros e Design System permanecem explícitos", () => {
+test("ficha V3 possui sete áreas reais no desktop e no celular sem remover as três legadas", () => {
+  const sete = ["Atendimento", "Histórico", "Atividades", "Negócios", "Imóveis", "Arquivos", "Dados do lead"];
+  for (const label of sete) {
+    assert.match(workspace, new RegExp(`"${label}"`));
+    assert.match(mobile, new RegExp(`"${label}"`));
+  }
+  for (const source of [workspace, mobile]) {
+    assert.match(source, /experience === "legacy"/);
+    assert.match(source, /\["notas", "Notas"\]/);
+  }
+  assert.match(workspace, /visitas=\{visitas\.filter/);
+  assert.match(mobile, /visitas=\{\(dados\?\.visitas/);
+});
+
+test("permissão real chega à Esteira e gestão não aparece para Corretor", () => {
   assert.match(workspace, /sessionRole=\{profile\.role\}/);
+  assert.doesNotMatch(workspace, /sessionRole="admin"/);
   assert.match(workspace, /const podeGerir = \["admin", "gestor"\]\.includes/);
+  assert.match(workspace, /\{podeGerir && <a href="\/inteligencia"/);
+  assert.match(workspace, /\{podeGerir && <button[^>]+aba === "config"/);
+});
+
+test("busca, seleção e filtros V3 não simulam persistência nem sucesso", () => {
   assert.match(workspace, /type="search" value=\{buscaQuadro\}/);
   assert.match(workspace, /temperaturaQuadro === "todas"/);
+  assert.match(workspace, /setSelecionados\(\[\]\); setModoSelecao\(false\)/);
   assert.match(workspace, /Nenhum sucesso foi presumido/);
+  assert.doesNotMatch(workspace, /localStorage|sessionStorage|fixture|mock/i);
+});
+
+test("Design System do V3 usa tokens, colunas compactas e alvos móveis", () => {
+  const css = read("../app/styles/crm-v3-official.css");
   assert.match(css, /flex:0 0 240px/);
+  assert.match(css, /border:1px solid var\(--border-soft\)/);
   assert.match(css, /background:var\(--ape-orange\)/);
   assert.match(css, /font-family:var\(--font-body\)/);
   assert.match(css, /min-height:44px/);
-  assert.match(css, /body:has\(\.funil-oficial\.modo-crm\) #sara-fab\{bottom:calc\(134px/);
+  assert.match(css, /\.app-shell:has\(\.crm-v3-official\.modo-crm\) \.app-bottom-nav/);
+  assert.match(css, /\.crm-v3-official \.ape-crm-v3-nav button\{[^}]*min-height:56px/);
+  assert.doesNotMatch(css, /border:[2-9]px/);
 });

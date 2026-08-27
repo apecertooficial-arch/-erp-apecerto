@@ -72,6 +72,10 @@ import "./styles/central-comando.css";
 import "./styles/central-comando-prototype.css";
 import "./styles/redesign-apecerto-disparos.css";
 import "./styles/redesign-apecerto-calendario.css";
+/* CRM/Funil 2: folha canônica única e final. Estrutura, identidade e
+   responsividade do módulo vivem somente nela; nenhuma folha posterior toca
+   nas classes f2-* do desktop. */
+import "./styles/funil-2.css";
 /* INTERFACE DO APLICATIVO NO CELULAR — versão aprovada.
    Não é correção da folha antiga: o markup do Meu Dia e do CRM usa classes
    próprias (.ape-*), então esta folha é a única que os desenha. As regras
@@ -80,9 +84,9 @@ import "./styles/app-mobile-aprovado.css";
 /* Telas do gestor no celular (folha "Mais" e Minha Equipe). Depois da folha
    aprovada porque reusa os mesmos valores e completa o que faltava dela. */
 import "./styles/app-mobile-gestor.css";
-/* Funil: folha canônica única e final. Carregada depois das bases compartilhadas
-   porque contém desktop e mobile completos do produto, sem segunda pele. */
-import "./styles/funil.css";
+/* CRM V3 oficial: última palavra apenas dentro de .crm-v3-official.
+   Sem a classe, CRM_V3_EXPERIENCE=legacy preserva o visual canônico acima. */
+import "./styles/crm-v3-official.css";
 /* Módulo nativo de produção editorial. Carrega por último porque suas classes
    são totalmente isoladas sob .studio-* e consomem os tokens oficiais. */
 import "./styles/apecerto-studio.css";
