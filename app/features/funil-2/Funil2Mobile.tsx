@@ -16,7 +16,7 @@
  * urgente -- o grupo responde isso antes da leitura.
  */
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BotaoWhatsApp } from "./BotaoWhatsApp";
 import { AssociarTagLead } from "./AssociarTagLead";
 import type { CrmExperience } from "./CrmEntry";
@@ -588,11 +588,31 @@ function FichaLead({
   const [temperaturaAberta, setTemperaturaAberta] = useState(false);
   const [salvandoTemperatura, setSalvandoTemperatura] = useState(false);
   const [erroTemperatura, setErroTemperatura] = useState("");
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const focoOrigemRef = useRef<HTMLElement | null>(null);
   const prazo = situacaoPrazo(lead.proxima_acao_em);
   const temperatura = lead.temperatura ?? null;
   const temperaturaRotulo = rotuloTemperatura(temperatura) ?? "Aguardando leitura";
   useEffect(() => {
+    focoOrigemRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const quadro = requestAnimationFrame(() => dialogRef.current?.querySelector<HTMLElement>(".ape-voltar")?.focus());
+    return () => {
+      cancelAnimationFrame(quadro);
+      focoOrigemRef.current?.focus();
+    };
+  }, []);
+  useEffect(() => {
     const fechar = (evento: KeyboardEvent) => {
+      if (evento.key === "Tab") {
+        const focaveis = Array.from(dialogRef.current?.querySelectorAll<HTMLElement>('button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), summary') ?? []);
+        if (focaveis.length > 0) {
+          const primeiro = focaveis[0];
+          const ultimo = focaveis[focaveis.length - 1];
+          if (evento.shiftKey && document.activeElement === primeiro) { evento.preventDefault(); ultimo.focus(); }
+          else if (!evento.shiftKey && document.activeElement === ultimo) { evento.preventDefault(); primeiro.focus(); }
+        }
+        return;
+      }
       if (evento.key !== "Escape") return;
       if (chatAberto) setChatAberto(false);
       else if (acaoMais) setAcaoMais(null);
@@ -623,7 +643,7 @@ function FichaLead({
     }
   }
 
-  return <div className="ape-folha" role="dialog" aria-modal="true" aria-label={`Atendimento de ${lead.nome}`} onMouseDown={(evento) => { if (evento.target === evento.currentTarget) onFechar(); }}>
+  return <div ref={dialogRef} className="ape-folha" role="dialog" aria-modal="true" aria-label={`Atendimento de ${lead.nome}`} onMouseDown={(evento) => { if (evento.target === evento.currentTarget) onFechar(); }}>
     <section className="ape-ficha">
       <div className="ape-ficha-topo">
         <button type="button" className="ape-voltar" onClick={onFechar}><IconeVoltar />Fila</button>
@@ -640,7 +660,7 @@ function FichaLead({
 
       <div className="ape-ficha-acoes-aprovadas"><button type="button" onClick={() => setChatAberto(true)}>Chat</button><button type="button" onClick={() => setAcaoMais("visita")}>Agendar visita</button><button type="button" aria-expanded={maisAcoes} onClick={() => setMaisAcoes(true)}>Mais</button></div>
 
-      <nav className="ape-ficha-abas" role="tablist" aria-label="Áreas do atendimento">{([ ["atendimento", "Atendimento"], ["notas", "Notas"], ["historico", "Histórico"] ] as const).map(([chave, rotulo]) => <button key={chave} type="button" role="tab" aria-selected={aba === chave} className={aba === chave ? "ativa" : ""} onClick={() => setAba(chave)}>{rotulo}</button>)}</nav>
+      <nav className="ape-ficha-abas" role="tablist" aria-label="Áreas do atendimento" onKeyDown={(evento) => { if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(evento.key)) return; evento.preventDefault(); const abas = Array.from(evento.currentTarget.querySelectorAll<HTMLButtonElement>('[role="tab"]')); const atual = Math.max(0, abas.indexOf(document.activeElement as HTMLButtonElement)); const proxima = evento.key === "Home" ? 0 : evento.key === "End" ? abas.length - 1 : evento.key === "ArrowRight" ? (atual + 1) % abas.length : (atual - 1 + abas.length) % abas.length; abas[proxima]?.click(); abas[proxima]?.focus(); }}>{([ ["atendimento", "Atendimento"], ["notas", "Notas"], ["historico", "Histórico"] ] as const).map(([chave, rotulo]) => <button key={chave} type="button" role="tab" aria-selected={aba === chave} className={aba === chave ? "ativa" : ""} onClick={() => setAba(chave)}>{rotulo}</button>)}</nav>
 
       {aba === "atendimento" && <div className="ape-ficha-painel"><section className="f2m-sara-resumo f2m-sara-aprovado"><span>LEITURA DA SARA</span><strong className="f2m-sara-frase">{lead.ultima_reavaliacao_resumo ?? "Ainda não existe uma leitura resumida."}</strong>{lead.qualidade_atendimento_resumo && <details><summary>Ver avaliação do atendimento</summary><small>{lead.qualidade_atendimento_resumo}</small></details>}</section><details className="f2m-detalhes-atendimento"><summary>Detalhes do atendimento</summary><div><span><b>Última ação confirmada</b><strong>{lead.ultima_acao_confirmada_em ? new Date(lead.ultima_acao_confirmada_em).toLocaleString("pt-BR") : "Ainda não confirmada"}</strong></span><span><b>Sara reavaliou</b><strong>{lead.ultima_reavaliacao_sara_em ? new Date(lead.ultima_reavaliacao_sara_em).toLocaleString("pt-BR") : "Ainda não reavaliou"}</strong></span><span><b>Nota do atendimento</b><strong>{lead.qualidade_atendimento_nota == null ? "Ainda não avaliado" : `${Number(lead.qualidade_atendimento_nota).toFixed(1)}/10`}</strong></span><span><b>Telefone</b><strong>{lead.telefone || "Não informado"}</strong></span><span><b>Canal</b><strong>{lead.instancia_rotulo || "Não identificado"}</strong></span></div><ContextoDoLead lead={lead} completo /><p>A temperatura vem da conversa e é classificada pela Sara. A conclusão da tarefa vem do D-API.</p></details><AtualizarMomentoMobile lead={lead} momento={momento} momentos={momentos} etapas={etapas} accessToken={accessToken} onSalvo={onRecarregar} abertoInicial /></div>}
 

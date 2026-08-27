@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useId, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { acaoVisivel, dataCurta, erroAgendamentoVisita, esperandoPrimeiraChamada, prazoDaAcao, rotuloCadencia, rotuloTemperatura, situacaoPrazo, tentativaAtual, venceHoje, type CandidatoAquarioFunil2, type EtapaConfigFunil2, type EventoFunil2, type LeadFunil2, type MomentoFunil2, type NegociacaoFunil2, type NotaFunil2, type OperacaoConfigFunil2, type SaraStatusFunil2, type TagCatalogoFunil2, type TemperaturaLead, type VisitaFunil2 } from "./modelo";
 import { SalesProcessView } from "../sales/SalesProcessWorkspace";
 import { Funil2ConversationDrawer } from "./Funil2ConversationDrawer";
@@ -861,6 +861,8 @@ function Detalhe({
   const [maisAcoes, setMaisAcoes] = useState(false);
   const [tagAberta, setTagAberta] = useState(false);
   const [temperaturaAberta, setTemperaturaAberta] = useState(false);
+  const dialogRef = useRef<HTMLElement>(null);
+  const focoOrigemRef = useRef<HTMLElement | null>(null);
   const config = momentos.find((m) => m.codigo === codigo) ?? momento;
   const situacao = situacaoPrazo(lead.proxima_acao_em);
   const tentativa = tentativaAtual(lead);
@@ -870,7 +872,26 @@ function Detalhe({
   const etapaRotulo = etapas.find((e) => e.codigo === lead.etapa)?.rotulo ?? lead.etapa;
 
   useEffect(() => {
+    focoOrigemRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const quadro = requestAnimationFrame(() => dialogRef.current?.querySelector<HTMLElement>(".f2-ficha-fechar")?.focus());
+    return () => {
+      cancelAnimationFrame(quadro);
+      focoOrigemRef.current?.focus();
+    };
+  }, []);
+
+  useEffect(() => {
     const fecharComEscape = (evento: KeyboardEvent) => {
+      if (evento.key === "Tab" && !document.querySelector(".f2-modal")) {
+        const focaveis = Array.from(dialogRef.current?.querySelectorAll<HTMLElement>('button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), summary') ?? []);
+        if (focaveis.length > 0) {
+          const primeiro = focaveis[0];
+          const ultimo = focaveis[focaveis.length - 1];
+          if (evento.shiftKey && document.activeElement === primeiro) { evento.preventDefault(); ultimo.focus(); }
+          else if (!evento.shiftKey && document.activeElement === ultimo) { evento.preventDefault(); primeiro.focus(); }
+        }
+        return;
+      }
       if (evento.key !== "Escape" || document.querySelector(".f2-modal")) return;
       if (chatAberto) setChatAberto(false);
       else if (tagAberta) setTagAberta(false);
@@ -883,7 +904,7 @@ function Detalhe({
   }, [chatAberto, maisAcoes, onFechar, tagAberta, temperaturaAberta]);
 
   return <div className="f2-overlay" onMouseDown={(evento) => { if (evento.target === evento.currentTarget) onFechar(); }}>
-    <aside className="f2-detalhe" role="dialog" aria-modal="true" aria-label={`Atendimento de ${lead.nome}`}>
+    <aside ref={dialogRef} className="f2-detalhe" role="dialog" aria-modal="true" aria-label={`Atendimento de ${lead.nome}`}>
       <header className="f2-ficha-cabecalho">
         <div className="f2-ficha-titulo"><h2>{lead.nome}</h2><p>{lead.corretor_nome ?? "Sem responsável"}{lead.instancia_rotulo ? ` · ${lead.instancia_rotulo}` : ""} · negócio #{lead.origem_negocio_id}</p></div>
         <button type="button" className="f2-ficha-fechar" onClick={onFechar} aria-label="Fechar ficha">×</button>
@@ -911,7 +932,15 @@ function Detalhe({
           <span><button type="button" aria-expanded={maisAcoes} onClick={() => setMaisAcoes((valor) => !valor)}>Mais ações</button>{maisAcoes && <div className="f2-mais-menu" role="menu"><button type="button" onClick={() => { setMaisAcoes(false); onGerarNegociacao(); }}>Gerar negociação</button><button type="button" onClick={() => { setMaisAcoes(false); setTagAberta(true); }}>Adicionar tag</button><hr /><button type="button" className="risco" onClick={() => { setMaisAcoes(false); onDescartar(); }}>Descartar lead</button></div>}</span>
         </div>
 
-        <nav className="f2-detalhe-abas" aria-label="Áreas do atendimento" role="tablist">
+        <nav className="f2-detalhe-abas" aria-label="Áreas do atendimento" role="tablist" onKeyDown={(evento) => {
+          if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(evento.key)) return;
+          evento.preventDefault();
+          const abas = Array.from(evento.currentTarget.querySelectorAll<HTMLButtonElement>('[role="tab"]'));
+          const atual = Math.max(0, abas.indexOf(document.activeElement as HTMLButtonElement));
+          const proxima = evento.key === "Home" ? 0 : evento.key === "End" ? abas.length - 1 : evento.key === "ArrowRight" ? (atual + 1) % abas.length : (atual - 1 + abas.length) % abas.length;
+          abas[proxima]?.click();
+          abas[proxima]?.focus();
+        }}>
           {([ ["atendimento", "Atendimento"], ["notas", "Notas"], ["historico", "Histórico"] ] as const).map(([chave, rotulo]) => <button key={chave} type="button" role="tab" aria-selected={abaDetalhe === chave} className={abaDetalhe === chave ? "ativa" : ""} onClick={() => setAbaDetalhe(chave)}>{rotulo}</button>)}
         </nav>
 

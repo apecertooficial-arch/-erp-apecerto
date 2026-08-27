@@ -55,3 +55,13 @@ test("folha oficial é isolada e o legado permanece intacto sem a classe V3", ()
   assert.doesNotMatch(css, /!important/);
   assert.match(css, /@media\(max-width:720px\)/);
 });
+
+test("ficha preserva foco, prende teclado e navega abas no desktop e celular", () => {
+  for (const source of [workspace, mobile]) {
+    assert.match(source, /focoOrigemRef/);
+    assert.match(source, /requestAnimationFrame/);
+    assert.match(source, /evento\.key === "Tab"/);
+    assert.match(source, /"ArrowLeft", "ArrowRight", "Home", "End"/);
+    assert.match(source, /focoOrigemRef\.current\?\.focus\(\)/);
+  }
+});
