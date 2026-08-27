@@ -34,3 +34,14 @@
 - As duas migrations aditivas foram aplicadas com sucesso no projeto `diaegvfveqezispcthwk`.
 - O commit foi enviado à branch `main` (merge `ef87646`, contendo `19dea90`).
 - O serviço Render não atualizou o build após o período de polling; a URL continuou retornando `7deaf82535eed2c22db3db5d2ac76be5553419bd`. O gatilho/controle de deploy do Render não está exposto neste ambiente, portanto não foi possível disparar ou confirmar o deploy.
+
+## Homologação pós-deploy
+
+- Build confirmado na URL: `1360df56e030dd0bfbee89479827d1478a60a55f`.
+- Sessão autenticada abriu `/studio` sem erro.
+- AP0358 e AP0348 carregaram no construtor; ambos exibem os quatro formatos e a biblioteca visual.
+- Board, filtros de template e deep link `campaign + piece` observados em produção.
+- Métricas exibiram filtros de imóvel/template/formato/período e estado vazio honesto.
+- Calendário exibiu modos mês/semana/lista; Copilot mostrou sandbox sem custo e proteção factual.
+- Evidências novas: `studio-production-desktop-new.png` e `studio-production-mobile-new.png`.
+- Nenhuma publicação real, aprovação operacional ou chamada paga foi executada.
