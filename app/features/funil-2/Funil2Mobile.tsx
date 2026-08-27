@@ -97,6 +97,14 @@ function nomeEtapa(codigo: string) {
   return ETAPAS_FALLBACK.find(([chave]) => chave === codigo)?.[1] ?? codigo.replaceAll("_", " ");
 }
 
+function valorCompacto(lead: LeadFunil2) {
+  const valor = Number(lead.valor);
+  if (!Number.isFinite(valor) || valor <= 0) return `Negócio #${lead.origem_negocio_id}`;
+  if (valor >= 1_000_000) return `R$ ${(valor / 1_000_000).toLocaleString("pt-BR", { maximumFractionDigits: 1 })} mi`;
+  if (valor >= 1_000) return `R$ ${Math.round(valor / 1_000).toLocaleString("pt-BR")} mil`;
+  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 }).format(valor);
+}
+
 function iniciais(nome: string) {
   return nome.split(/\s+/).filter(Boolean).slice(0, 2).map((parte) => parte[0]?.toUpperCase()).join("") || "?";
 }
@@ -203,7 +211,7 @@ function CartaoLead({
     </div>
 
     <div className="ape-card-resumo">
-      <strong>Negócio #{lead.origem_negocio_id}</strong>
+      <strong>{valorCompacto(lead)}</strong>
       <span>{acaoVisivel(lead)}</span>
       <em className={prazo.classe}>{prazo.rotulo}</em>
     </div>
@@ -709,6 +717,8 @@ export function Funil2Mobile({
   const [busca, setBusca] = useState("");
   const [areaCrm, setAreaCrm] = useState<AreaCrmMobile>("funil");
   const [maisAreas, setMaisAreas] = useState(false);
+  const [novoNegocioAberto, setNovoNegocioAberto] = useState(false);
+  const [novoNegocioLeadId, setNovoNegocioLeadId] = useState("");
   const [selecionado, setSelecionado] = useState<string | null>(null);
   const [abrirNoChat, setAbrirNoChat] = useState(false);
   const [sucesso, setSucesso] = useState<string | null>(null);
@@ -774,6 +784,7 @@ export function Funil2Mobile({
 
   const leadPedido = pedidoUrl === null ? null : leads.find((lead) => lead.origem_negocio_id === pedidoUrl) ?? null;
   const leadAberto = selecionado === "__fechado__" ? null : leads.find((lead) => lead.id === selecionado) ?? leadPedido;
+  const leadNovoNegocio = leads.find((lead) => lead.id === novoNegocioLeadId) ?? null;
   const leadHistoricoId = leadAberto?.id ?? null;
   const leadHistoricoVersao = leadAberto?.versao ?? null;
   useEffect(() => {
@@ -882,6 +893,8 @@ export function Funil2Mobile({
         </section>)
       : <section className="ape-lista" aria-label="Atendimentos">{visiveis.slice(0, 60).map(cartao)}</section>}
 
+    {modo === "crm" && areaCrm === "funil" && !leadAberto && <button type="button" className="ape-novo-negocio-fixo" onClick={() => setNovoNegocioAberto(true)}>Novo negócio</button>}
+
     {modo === "crm" && <nav className="ape-crm-v3-nav" aria-label="Navegação do Funil">
       <button type="button" onClick={() => onIr("/inicio")}>Meu Dia</button>
       <button type="button" className={areaCrm === "funil" ? "ativo" : ""} onClick={() => { setAreaCrm("funil"); setEtapa("ativos"); }}>Funil</button>
@@ -893,6 +906,8 @@ export function Funil2Mobile({
     {modo === "inicio" && totalNoDia > 0 && <button type="button" className="ape-ver-carteira" onClick={() => onIr("/crm")}>
       Ver minha carteira ({leads.length})
     </button>}
+
+    {novoNegocioAberto && !leadAberto && <div className="ape-ficha-sheet" onMouseDown={(evento) => { if (evento.target === evento.currentTarget) { setNovoNegocioAberto(false); setNovoNegocioLeadId(""); } }}><section role="dialog" aria-label="Novo negócio"><i /><header className="ape-novo-negocio-cab"><div><h3>Novo negócio</h3><p>Escolha o lead para criar a oportunidade na Esteira.</p></div><button type="button" aria-label="Fechar novo negócio" onClick={() => { setNovoNegocioAberto(false); setNovoNegocioLeadId(""); }}>×</button></header><label className="ape-novo-negocio-lead">Lead<select value={novoNegocioLeadId} onChange={(evento) => setNovoNegocioLeadId(evento.target.value)}><option value="">Selecione o lead</option>{leads.map((item) => <option key={item.id} value={item.id}>{item.nome} · #{item.origem_negocio_id}</option>)}</select></label>{leadNovoNegocio && <GerarNegociacaoMobile lead={leadNovoNegocio} accessToken={accessToken} onSalvo={() => { void recarregar(); setNovoNegocioAberto(false); setNovoNegocioLeadId(""); }} abertoInicial onFechar={() => { setNovoNegocioAberto(false); setNovoNegocioLeadId(""); }} />}</section></div>}
 
     {leadAberto && <FichaLead
       abrirNoChat={abrirNoChat}

@@ -129,18 +129,21 @@ export async function GET(request: Request) {
     return Response.json({ error: message }, { status: message.toLowerCase().includes("permission") ? 403 : 502 });
   }
   const negociosIds = [...new Set((leads ?? []).map((lead) => Number(lead.origem_negocio_id)).filter(Number.isFinite))];
-  const negocioLead = new Map<number, number>();
+  const negocioLead = new Map<number, { leadId: number; valor: number | null }>();
   for (let inicio = 0; inicio < negociosIds.length; inicio += 500) {
-    const { data: negocios, error } = await db.from("negocios").select("id,lead_id").in("id", negociosIds.slice(inicio, inicio + 500));
+    const { data: negocios, error } = await db.from("negocios").select("id,lead_id,valor").in("id", negociosIds.slice(inicio, inicio + 500));
     if (error) return Response.json({ error: "Não foi possível vincular o histórico real dos leads." }, { status: 502 });
-    for (const negocio of negocios ?? []) negocioLead.set(Number(negocio.id), Number(negocio.lead_id));
+    for (const negocio of negocios ?? []) negocioLead.set(Number(negocio.id), {
+      leadId: Number(negocio.lead_id),
+      valor: negocio.valor == null ? null : Number(negocio.valor),
+    });
   }
   /* f2_lead e uma copia operacional e, de proposito, nao duplica as tags.
      Voltamos ao lead original pelo negocio e lemos com o MESMO cliente
      autenticado da sessao: as policies de RLS continuam decidindo exatamente
      quais tags o corretor pode ver. */
   const tagsPorLead = new Map<number, { tags: TagDoLead[]; interesse: string | null }>();
-  const leadsOriginaisIds = [...new Set(negocioLead.values())].filter(Number.isFinite);
+  const leadsOriginaisIds = [...new Set([...negocioLead.values()].map((negocio) => negocio.leadId))].filter(Number.isFinite);
   for (let inicio = 0; inicio < leadsOriginaisIds.length; inicio += 500) {
     const { data: originais, error } = await db.from("leads").select("id,tags").in("id", leadsOriginaisIds.slice(inicio, inicio + 500));
     if (error) return Response.json({ error: "Não foi possível carregar as tags de interesse dos leads." }, { status: 502 });
@@ -160,11 +163,13 @@ export async function GET(request: Request) {
        selo vira uma previsao ("vai sair por aqui") em vez de um fato. */
     const daConversa = instanciaDoLead.get(String(lead.id));
     const instancia = daConversa ?? instancias.get(Number(lead.corretor_id));
-    const leadOriginalId = negocioLead.get(Number(lead.origem_negocio_id)) ?? 0;
+    const negocio = negocioLead.get(Number(lead.origem_negocio_id));
+    const leadOriginalId = negocio?.leadId ?? 0;
     const contexto = tagsPorLead.get(leadOriginalId);
     return {
       ...lead,
       lead_id: leadOriginalId,
+      valor: negocio?.valor ?? null,
       interesse: contexto?.interesse ?? null,
       tags: contexto?.tags ?? [],
       instancia_rotulo: instancia?.rotulo ?? null,

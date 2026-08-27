@@ -2042,7 +2042,7 @@ body .f2-indicadores button span { font-size:12px; font-weight:600; }
 .funil-oficial .f2-sino{width:auto;min-width:92px;display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:0 12px;border-radius:999px;font-size:11px;font-weight:600}
 .funil-oficial .f2-sino>b{position:static;min-width:20px;height:20px;display:grid;place-items:center;padding:0 5px;border-radius:999px;background:var(--bg-tint-danger,#FBE5E5);color:var(--fg-danger,#D93E3E);font-size:9px}
 @media(max-width:720px){
-  .funil-oficial.ape-app.modo-crm{padding:0 14px calc(76px + env(safe-area-inset-bottom));background:var(--bg-page,#FAF8F6)}
+  .funil-oficial.ape-app.modo-crm{padding:0 14px calc(132px + env(safe-area-inset-bottom));background:var(--bg-page,#FAF8F6)}
   .funil-oficial.modo-crm .ape-abertura{padding:14px 0 10px}
   .funil-oficial.modo-crm .ape-atualizado{display:none}
   .funil-oficial .ape-mobile-funil-titulo{display:flex;align-items:center;justify-content:space-between;gap:12px}
@@ -2073,6 +2073,14 @@ body .f2-indicadores button span { font-size:12px; font-weight:600; }
   .funil-oficial .ape-card-resumo>em{padding:3px 6px;border-radius:999px;font-size:9px;font-style:normal;white-space:nowrap}
   .funil-oficial .ape-card-acoes-compactas{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
   .funil-oficial .ape-card-acoes-compactas button{min-height:44px;border:1px solid var(--border-default,#E4DFD9);border-radius:10px;background:#fff;color:var(--fg-1,#1F1C1A);font-size:12px;font-weight:600}
+  .funil-oficial>.ape-novo-negocio-fixo{position:fixed;z-index:79;right:14px;bottom:calc(70px + env(safe-area-inset-bottom));left:14px;min-height:44px;border:0;border-radius:12px;background:var(--ape-orange,#FF7000);color:#fff;font:600 13px/1 var(--font-ui,"Quicksand",sans-serif);box-shadow:var(--shadow-sm,0 2px 6px rgba(31,28,26,.06))}
+  .funil-oficial>.ape-ficha-sheet{position:fixed;z-index:90}
+  .funil-oficial .ape-novo-negocio-cab{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:14px}
+  .funil-oficial .ape-novo-negocio-cab h3{margin:0;color:var(--fg-1,#1F1C1A);font-size:18px}
+  .funil-oficial .ape-novo-negocio-cab p{margin:4px 0 0;color:var(--fg-3,#6E6760);font-size:12px}
+  .funil-oficial .ape-novo-negocio-cab>button{width:44px;height:44px;flex:none;padding:0;border:1px solid var(--border-default,#E4DFD9);border-radius:12px;background:#fff;color:var(--fg-2,#4C4845);font-size:22px}
+  .funil-oficial .ape-novo-negocio-lead{display:flex;flex-direction:column;gap:6px;color:var(--fg-2,#4C4845);font-size:12px;font-weight:600}
+  .funil-oficial .ape-novo-negocio-lead select{width:100%;min-height:48px;padding:0 12px;border:1px solid var(--border-default,#E4DFD9);border-radius:12px;background:#fff;color:var(--fg-1,#1F1C1A);font:500 13px/1 var(--font-ui,"Quicksand",sans-serif)}
 }
 
 @media(max-width:720px){

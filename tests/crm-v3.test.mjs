@@ -38,6 +38,7 @@ test("autenticação, RLS e mutações continuam na API canônica", () => {
   assert.match(api, /f2_atualizar_momento/);
   assert.match(api, /f2_confirmar_acao/);
   assert.match(api, /f2_salvar_visita/);
+  assert.match(api, /select\("id,lead_id,valor"\)/);
   assert.match(workspace, /Feedback pendente/);
   assert.match(workspace, /Registrar resultado/);
   assert.doesNotMatch(api, /CRM_V3|fixture|validationAdapter/);
