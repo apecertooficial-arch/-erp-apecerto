@@ -19,3 +19,12 @@
 - Não foi feito deploy, migration remota ou publicação real nesta rodada.
 - Não foi possível executar navegador autenticado/screenshot neste ambiente porque o runtime de automação visual não está disponível; portanto não há afirmação de validação visual de sessão real.
 - O fluxo Canva agora valida e persiste retorno; a tela ainda precisa de uma etapa visual explícita de preview/diff antes do clique final de importação para cumprir integralmente esse requisito de UX.
+
+## Homologação da URL atualmente publicada
+
+- URL: https://apecerto-erp.onrender.com/studio
+- Sessão autenticada existente abriu o Studio e carregou as campanhas reais de demonstração AP0358 e AP0348.
+- AP0358 foi aberto no construtor; foram observados os quatro formatos (Feed, Carrossel, Stories e Reel), seleção de modelo, sandbox determinístico e painel de revisão.
+- Evidências visuais: `studio-production-desktop.png` e `studio-production-mobile.png`.
+- A URL publicada ainda serve o build `7deaf82535eed2c22db3db5d2ac76be5553419bd`, anterior ao commit local `19dea90`; portanto a homologação publicada não comprova as alterações deste commit.
+- Migrations do Studio de catálogo e colaboração aparecem ausentes na lista remota; não foram aplicadas porque o código correspondente ainda não está publicado e o ambiente local não possui as variáveis públicas do Supabase para validação ponta a ponta.
