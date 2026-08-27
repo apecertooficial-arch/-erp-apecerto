@@ -63,19 +63,6 @@ function iniciais(nome: string) {
   return nome.split(/\s+/).filter(Boolean).slice(0, 2).map((p) => p[0]?.toUpperCase()).join("");
 }
 
-function resumoEtapa(etapa: EtapaConfigFunil2) {
-  const resumos: Record<string, string> = {
-    novo: "Primeiro contato pendente",
-    tentando_contato: "Aguardando resposta",
-    em_atendimento: "Conversa em andamento",
-    visita: "Visita marcada ou realizada",
-    atualizar_manual: "Revisão manual necessária",
-    legado: "Carteira preservada",
-    pescado: "Resgatado do Aquário",
-  };
-  return resumos[etapa.codigo] ?? etapa.ajuda.split(/[.;]/)[0];
-}
-
 function linkWhatsapp(telefone: string | null) {
   const digitos = (telefone ?? "").replace(/\D/g, "");
   if (digitos.length < 10) return null;
@@ -122,6 +109,7 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
   const [tagCatalogo, setTagCatalogo] = useState<TagCatalogoFunil2[]>([]);
   const [etapas, setEtapas] = useState<EtapaConfigFunil2[]>([]);
   const [visitas, setVisitas] = useState<VisitaFunil2[]>([]);
+  const [negociacoes, setNegociacoes] = useState<NegociacaoFunil2[]>([]);
   const [aquario, setAquario] = useState<CandidatoAquarioFunil2[]>([]);
   const [operacao, setOperacao] = useState<OperacaoConfigFunil2 | null>(null);
   const [sara, setSara] = useState<SaraStatusFunil2>({ modo: null, runnerAtivo: false, analisesNoLaboratorio: 0, reavaliacaoAutomaticaFunil2: false });
@@ -141,6 +129,9 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
   const [temperaturaQuadro, setTemperaturaQuadro] = useState<TemperaturaFiltro>("todas");
   const [buscaQuadro, setBuscaQuadro] = useState("");
   const [ordenacaoQuadro, setOrdenacaoQuadro] = useState<"urgente" | "nome">("urgente");
+  const [visaoQuadro, setVisaoQuadro] = useState<"andamento" | "ganhos" | "perdidos" | "triagem">("andamento");
+  const [periodoQuadro, setPeriodoQuadro] = useState<"30" | "90" | "todos">("30");
+  const [agoraQuadro] = useState(() => Date.now());
   const [modoSelecao, setModoSelecao] = useState(false);
   const [selecionados, setSelecionados] = useState<string[]>([]);
   const [destinoMassa, setDestinoMassa] = useState("");
@@ -172,6 +163,7 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
     setTagCatalogo(resposta.json.tagCatalogo ?? []);
     setEtapas(resposta.json.etapas ?? []);
     setVisitas(resposta.json.visitas ?? []);
+    setNegociacoes(resposta.json.negociacoes ?? []);
     setAquario(resposta.json.aquario ?? []);
     setOperacao(resposta.json.operacao ?? null);
     setSara(resposta.json.sara ?? { modo: null, runnerAtivo: false, analisesNoLaboratorio: 0, reavaliacaoAutomaticaFunil2: false });
@@ -191,6 +183,7 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
       setTagCatalogo(resposta.json.tagCatalogo ?? []);
       setEtapas(resposta.json.etapas ?? []);
       setVisitas(resposta.json.visitas ?? []);
+      setNegociacoes(resposta.json.negociacoes ?? []);
       setAquario(resposta.json.aquario ?? []);
       setOperacao(resposta.json.operacao ?? null);
       setSara(resposta.json.sara ?? { modo: null, runnerAtivo: false, analisesNoLaboratorio: 0, reavaliacaoAutomaticaFunil2: false });
@@ -359,11 +352,14 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
   } as const;
   const podeGerir = ["admin", "gestor"].includes(profile.role.toLowerCase());
   const termoQuadro = buscaQuadro.trim().toLocaleLowerCase("pt-BR");
+  const limitePeriodo = periodoQuadro === "todos" ? null : agoraQuadro - Number(periodoQuadro) * 24 * 60 * 60 * 1000;
+  const leadsDoPeriodo = leads.filter((item) => limitePeriodo === null || +new Date(item.atualizado_em) >= limitePeriodo);
+  const ganhos = negociacoes.filter((item) => item.etapa === "venda");
+  const perdidos = negociacoes.filter((item) => item.etapa === "perdida");
 
   return (
     <div className="f2-root funil-oficial" data-module="funil">
       <nav className="f2-nav f2-v3-modulos" aria-label="Módulos do Funil">
-        <span className="f2-v3-brand" aria-label="apêcerto"><strong>apê</strong><b>certo</b><em>Funil</em></span>
         <button type="button" className={aba === "dia" ? "ativo" : ""} onClick={() => trocarAba("dia")}><Icone nome="dia" /> Meu Dia <b>{atrasados}</b></button>
         <button type="button" className={aba === "quadro" ? "ativo" : ""} onClick={() => trocarAba("quadro")}><Icone nome="quadro" /> Negócios <b>{leads.length}</b></button>
         <button type="button" className={aba === "leads" ? "ativo" : ""} onClick={() => trocarAba("leads")}><Icone nome="leads" /> Leads <b>{leads.length}</b></button>
@@ -372,7 +368,6 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
         <button type="button" className={aba === "vendas" ? "ativo" : ""} onClick={() => trocarAba("vendas")}><Icone nome="vendas" /> Esteira</button>
         {podeGerir && <a href="/inteligencia"><Icone nome="painel" /> Painel</a>}
         {podeGerir && <button type="button" className={aba === "config" ? "ativo" : ""} onClick={() => trocarAba("config")}><Icone nome="config" /> Configurações</button>}
-        <span className="f2-v3-perfil"><i>{iniciais(profile.name)}</i><strong>{profile.name}</strong></span>
       </nav>
 
       <header className="f2-topo">
@@ -386,13 +381,7 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
             <button type="button" className="f2-sino" onClick={() => setAvisosAbertos((v) => !v)} aria-label="Abrir avisos"><span>Avisos</span><b>{atrasados + urgentes}</b></button>
             {avisosAbertos && <CentralAtencao leads={leads} momentos={momentosAtivos} etapas={etapasAtivas} onAbrir={(id) => { setSelecionado(id); setAvisosAbertos(false); }} onMeuDia={() => { trocarAba("dia"); setAvisosAbertos(false); }} />}
           </div>
-          <details className="f2-novo-menu">
-            <summary className="f2-pescar">+ Novo</summary>
-            <div role="menu" aria-label="Criar no Funil">
-              <button type="button" onClick={(evento) => { evento.currentTarget.closest("details")?.removeAttribute("open"); setModal("negociacao"); }}>Novo negócio</button>
-              <button type="button" onClick={(evento) => { evento.currentTarget.closest("details")?.removeAttribute("open"); setModal("pescar"); }}>Capturar lead do Aquário</button>
-            </div>
-          </details>
+          <button type="button" className="f2-pescar" onClick={() => setModal("negociacao")}>Novo negócio</button>
         </div>
       </header>
 
@@ -403,11 +392,20 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
       {!carregando && aba === "quadro" && <main className="f2-main">
         <section className="f2-v3-toolbar" aria-label="Busca, filtros e ações do quadro">
           <label className="f2-v3-pipeline"><span>Pipeline</span><select aria-label="Pipeline" value="comercial" onChange={() => undefined}><option value="comercial">Comercial</option></select></label>
-          <div className="f2-v3-visoes" role="group" aria-label="Situação dos negócios"><button type="button" className="ativo">Em andamento <b>{leads.length}</b></button><button type="button" onClick={() => trocarAba("vendas")}>Esteira</button></div>
+          <span className="f2-v3-separador" aria-hidden="true" />
+          <div className="f2-v3-visoes" role="group" aria-label="Situação dos negócios">
+            <button type="button" className={visaoQuadro === "andamento" ? "ativo" : ""} onClick={() => setVisaoQuadro("andamento")}>Em andamento <b>{leadsDoPeriodo.length}</b></button>
+            <button type="button" className={visaoQuadro === "ganhos" ? "ativo" : ""} onClick={() => setVisaoQuadro("ganhos")}>Ganhos <b>{ganhos.length}</b></button>
+            <button type="button" className={visaoQuadro === "perdidos" ? "ativo" : ""} onClick={() => setVisaoQuadro("perdidos")}>Perdidos <b>{perdidos.length}</b></button>
+            <button type="button" className={visaoQuadro === "triagem" ? "ativo" : ""} onClick={() => setVisaoQuadro("triagem")}>Triagem <b>{aquario.length}</b></button>
+          </div>
           <label className="f2-v3-busca"><span>Buscar</span><input type="search" value={buscaQuadro} onChange={(evento) => setBuscaQuadro(evento.target.value)} placeholder="Lead, telefone, nº ou interesse" /></label>
           <details className="f2-v3-filtros"><summary>Filtros{temperaturaQuadro !== "todas" ? " · 1" : ""}</summary><FiltrosTemperatura leads={leads} valor={temperaturaQuadro} onChange={setTemperaturaQuadro} /></details>
           <label className="f2-v3-ordenacao"><span>Ordenação</span><select aria-label="Ordenar negócios" value={ordenacaoQuadro} onChange={(evento) => setOrdenacaoQuadro(evento.target.value as "urgente" | "nome")}><option value="urgente">Atividade mais urgente</option><option value="nome">Nome do lead</option></select></label>
+          <label className="f2-v3-periodo"><span>Período</span><select aria-label="Período do quadro" value={periodoQuadro} onChange={(evento) => setPeriodoQuadro(evento.target.value as "30" | "90" | "todos")}><option value="30">Últimos 30 dias · movimentação</option><option value="90">Últimos 90 dias · movimentação</option><option value="todos">Todo o período</option></select></label>
+          <span className="f2-v3-separador" aria-hidden="true" />
           <button type="button" className={modoSelecao ? "ativo" : ""} onClick={() => { setModoSelecao((valor) => !valor); setSelecionados([]); }}>Selecionar</button>
+          <details className="f2-v3-mais"><summary aria-label="Mais ações do quadro">•••</summary><div><button type="button" onClick={(evento) => { evento.currentTarget.closest("details")?.removeAttribute("open"); setModal("pescar"); }}>Capturar lead da Triagem</button><button type="button" onClick={() => trocarAba("vendas")}>Abrir Esteira</button></div></details>
         </section>
         {selecionados.length > 0 && <section className="f2-v3-bulk" role="region" aria-label="Ações em massa">
           <strong>{selecionados.length} negócio(s) selecionado(s)</strong>
@@ -416,11 +414,13 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
           <button type="button" className="secundario" onClick={() => { setSelecionados([]); setDestinoMassa(""); }}>Cancelar</button>
         </section>}
 
-        <section className="f2-board" aria-label="Etapas do Funil">
-          {etapasDoQuadro.map((etapa, indice) => {
-            const daEtapa = leads.filter((l) => l.etapa === etapa.codigo && (temperaturaQuadro === "todas" || temperaturaDoLead(l) === temperaturaQuadro) && (!termoQuadro || `${l.nome} ${l.telefone ?? ""} ${l.origem_negocio_id} ${l.interesse ?? ""}`.toLocaleLowerCase("pt-BR").includes(termoQuadro))).sort((a, b) => ordenacaoQuadro === "nome" ? a.nome.localeCompare(b.nome, "pt-BR") : +new Date(a.proxima_acao_em) - +new Date(b.proxima_acao_em));
+        {visaoQuadro !== "andamento" && <section className="f2-v3-recorte" aria-live="polite"><div><span>{visaoQuadro === "ganhos" ? "GANHOS" : visaoQuadro === "perdidos" ? "PERDIDOS" : "TRIAGEM"}</span><h2>{visaoQuadro === "ganhos" ? `${ganhos.length} negócios ganhos` : visaoQuadro === "perdidos" ? `${perdidos.length} negócios perdidos` : `${aquario.length} leads aguardando análise`}</h2><p>Este recorte usa os registros canônicos do Funil. Abra a ficha ou a Esteira para consultar todos os detalhes.</p></div>{visaoQuadro === "triagem" && <button type="button" onClick={() => setModal("pescar")}>Capturar lead</button>}{visaoQuadro !== "triagem" && <button type="button" onClick={() => trocarAba("vendas")}>Abrir Esteira</button>}</section>}
+        {visaoQuadro === "andamento" && <section className="f2-board" aria-label="Etapas do Funil">
+          {etapasDoQuadro.map((etapa) => {
+            const daEtapa = leadsDoPeriodo.filter((l) => l.etapa === etapa.codigo && (temperaturaQuadro === "todas" || temperaturaDoLead(l) === temperaturaQuadro) && (!termoQuadro || `${l.nome} ${l.telefone ?? ""} ${l.origem_negocio_id} ${l.interesse ?? ""}`.toLocaleLowerCase("pt-BR").includes(termoQuadro))).sort((a, b) => ordenacaoQuadro === "nome" ? a.nome.localeCompare(b.nome, "pt-BR") : +new Date(a.proxima_acao_em) - +new Date(b.proxima_acao_em));
+            const valorEtapa = daEtapa.reduce((total, item) => total + (Number(item.valor) || 0), 0);
             return <div key={etapa.codigo} className={`f2-coluna etapa-${etapa.codigo}`} onDragOver={(evento) => evento.preventDefault()} onDrop={(evento) => { evento.preventDefault(); const id = evento.dataTransfer.getData("text/funil2-lead"); if (id) void movimentar([id], etapa.codigo); }}>
-              <div className="f2-coluna-topo"><span>{indice + 1}</span><div><h2>{etapa.rotulo}</h2><p title={etapa.ajuda}>{resumoEtapa(etapa)}</p></div><b>{daEtapa.length}</b></div>
+              <div className="f2-coluna-topo"><span aria-hidden="true" /><div><h2>{etapa.rotulo}</h2><p>{daEtapa.length} negócios · {valorEtapa > 0 ? new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 }).format(valorEtapa) : "valor não informado"}</p></div><button type="button" aria-label={`Criar negócio em ${etapa.rotulo}`} onClick={() => setModal("negociacao")}>＋</button><b>{daEtapa.length}</b><details><summary aria-label={`Mais opções de ${etapa.rotulo}`}>•••</summary><div><button type="button" onClick={() => setModal("negociacao")}>Novo negócio</button></div></details></div>
               <div className="f2-lista">
                 {daEtapa.slice(0, 100).map((item) => {
                   const momento = momentosAtivos.find((m) => m.codigo === item.momento_codigo);
@@ -454,7 +454,7 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
               </div>
             </div>;
           })}
-        </section>
+        </section>}
       </main>}
 
       {!carregando && aba === "dia" && <main className="f2-dia">

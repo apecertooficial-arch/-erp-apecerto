@@ -64,11 +64,18 @@ test("a apresentação do Funil é uma folha única, sem camada visual antiga", 
   assert.match(css, /@media\s*\(max-width:\s*720px\)/);
 });
 
-test("o shell antigo não é montado junto com o Funil", () => {
-  assert.match(shell, /if \(moduloAtual === "CRM"\)/);
-  assert.match(shell, /return <div className="funil-product-shell">\{children\}<\/div>/);
+test("o Funil permanece dentro do shell global do ERP sem shell interno duplicado", () => {
+  assert.doesNotMatch(shell, /if \(moduloAtual === "CRM"\)[\s\S]*funil-product-shell/);
+  assert.match(shell, /return \([\s\S]*<AppShell/);
   assert.match(workspace, /className="f2-root funil-oficial"/);
   assert.match(mobile, /modo-\$\{modo\} funil-oficial/);
+});
+
+test("cartão inteiro abre a ficha correta por mouse e teclado", () => {
+  assert.match(workspace, /className=\{`f2-card[\s\S]*onClick=\{\(\) => \{ if \(modoSelecao\) alternarSelecao\(item\.id\); else setSelecionado\(item\.id\); \}\}/);
+  assert.match(workspace, /if \(e\.key === "Enter" \|\| e\.key === " "\)[\s\S]*setSelecionado\(item\.id\)/);
+  assert.match(workspace, /lead=\{lead\}[\s\S]*onFechar=\{\(\) => \{ setSelecionado\(null\)/);
+  assert.match(mobile, /onAbrir=\{\(\) => \{ setAbrirNoChat\(false\); setSelecionado\(lead\.id\); \}\}/);
 });
 
 test("ficha preserva foco, prende teclado e navega sete abas", () => {
@@ -107,9 +114,15 @@ test("perfis, filtros e Design System permanecem explícitos", () => {
   assert.match(workspace, /type="search" value=\{buscaQuadro\}/);
   assert.match(workspace, /temperaturaQuadro === "todas"/);
   assert.match(workspace, /Nenhum sucesso foi presumido/);
-  assert.match(css, /flex:0 0 240px/);
+  assert.match(workspace, />Ganhos <b>/);
+  assert.match(workspace, />Perdidos <b>/);
+  assert.match(workspace, />Triagem <b>/);
+  assert.match(workspace, /Últimos 30 dias · movimentação/);
+  assert.match(workspace, />Novo negócio<\/button>/);
+  assert.match(css, /flex:0 0 304px/);
   assert.match(css, /background:var\(--ape-orange\)/);
   assert.match(css, /font-family:var\(--font-body\)/);
   assert.match(css, /min-height:44px/);
-  assert.match(css, /body:has\(\.funil-oficial\.modo-crm\) #sara-fab\{bottom:calc\(134px/);
+  assert.match(css, /body:has\(\.funil-oficial\.modo-crm\) #sara-fab[^}]*display:none/);
+  assert.match(mobile, />Sara<\/button>/);
 });

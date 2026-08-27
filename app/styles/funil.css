@@ -2107,8 +2107,7 @@ body .f2-indicadores button span { font-size:12px; font-weight:600; }
 }
 
 
-/* Estrutura oficial única do produto Funil. */
-.funil-product-shell{min-width:0;min-height:100dvh;background:var(--bg-page,#FAF8F6)}
+/* Estrutura oficial única do produto Funil, sempre dentro do AppShell do ERP. */
 .funil-oficial .f2-v3-brand{flex:none;display:inline-flex;align-items:center;gap:0;margin:0 var(--space-3,12px) 0 0;color:var(--fg-1,#1F1C1A);font-size:18px;font-style:normal;letter-spacing:-.03em}
 .funil-oficial .f2-v3-brand strong{font-weight:700}
 .funil-oficial .f2-v3-brand>b{color:var(--ape-orange,#FF7000);font-size:inherit}
@@ -2158,4 +2157,37 @@ body .f2-indicadores button span { font-size:12px; font-weight:600; }
 @media(max-width:900px){
   .funil-oficial .f2-v3-ordenacao{display:none}
   .funil-oficial .f2-v3-filtros>.f2-temperatura-filtros{right:auto;left:0;width:min(420px,calc(100vw - 32px))}
+}
+
+/* Paridade do contrato visual congelado do Funil. */
+.funil-oficial .f2-v3-separador{width:1px;height:24px;flex:none;background:var(--border-soft,#F2EFEC)}
+.funil-oficial .f2-v3-periodo{position:relative;flex:none}
+.funil-oficial .f2-v3-periodo>span{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}
+.funil-oficial .f2-v3-periodo select{min-height:40px;max-width:210px;padding:0 30px 0 12px;border:1px solid var(--border-default,#E4DFD9);border-radius:999px;background:#fff;color:var(--fg-2,#4C4845);font-size:11px;font-weight:600}
+.funil-oficial .f2-v3-mais{position:relative;flex:none}
+.funil-oficial .f2-v3-mais>summary{width:40px;height:40px;display:grid;place-items:center;list-style:none;border:1px solid var(--border-default,#E4DFD9);border-radius:999px;background:#fff;color:var(--fg-2,#4C4845);cursor:pointer}
+.funil-oficial .f2-v3-mais>summary::-webkit-details-marker{display:none}
+.funil-oficial .f2-v3-mais>div,.funil-oficial .f2-coluna-topo>details>div{position:absolute;z-index:35;right:0;top:44px;width:200px;padding:6px;border:1px solid var(--border-default,#E4DFD9);border-radius:10px;background:#fff;box-shadow:var(--shadow-lg,0 16px 40px rgba(31,28,26,.14))}
+.funil-oficial .f2-v3-mais>div button,.funil-oficial .f2-coluna-topo>details button{width:100%;min-height:36px;padding:0 10px;border:0;border-radius:7px;background:transparent;color:var(--fg-1,#1F1C1A);font-size:11px;text-align:left}
+.funil-oficial .f2-v3-recorte{min-height:180px;display:flex;align-items:center;justify-content:space-between;gap:24px;padding:28px;border:1px solid var(--border-default,#E4DFD9);border-radius:16px;background:#fff}
+.funil-oficial .f2-v3-recorte span{color:var(--ape-orange-700,#CC5800);font-size:10px;font-weight:700;letter-spacing:.1em}
+.funil-oficial .f2-v3-recorte h2{margin:5px 0 4px;font-size:20px}
+.funil-oficial .f2-v3-recorte p{margin:0;color:var(--fg-3,#6E6760);font-size:12px}
+.funil-oficial .f2-v3-recorte button{min-height:40px;padding:0 16px;border:1px solid var(--border-default,#E4DFD9);border-radius:999px;background:#fff;font-weight:600}
+.funil-oficial .f2-coluna,.funil-oficial .f2-coluna:nth-child(n){flex:0 0 304px;min-width:304px}
+.funil-oficial .f2-coluna-topo{position:relative;grid-template-columns:10px minmax(0,1fr) 28px 26px 28px;gap:8px;align-items:center;min-height:58px}
+.funil-oficial .f2-coluna-topo>span{width:8px;height:8px;border-radius:999px;background:var(--ape-orange,#FF7000)}
+.funil-oficial .f2-coluna-topo>button,.funil-oficial .f2-coluna-topo>details>summary{width:28px;height:28px;display:grid;place-items:center;padding:0;list-style:none;border:0;border-radius:8px;background:transparent;color:var(--fg-3,#6E6760);cursor:pointer}
+.funil-oficial .f2-coluna-topo>details{position:relative}
+.funil-oficial .f2-coluna-topo>details>summary::-webkit-details-marker{display:none}
+.funil-oficial .f2-coluna-topo>details>div{top:32px}
+
+@media(max-width:900px){
+  .app-shell:has(.funil-oficial.modo-crm) .app-mobile-top{display:none}
+  .funil-oficial .f2-v3-periodo,.funil-oficial .f2-v3-separador,.funil-oficial .f2-v3-mais{display:none}
+}
+@media(max-width:720px){
+  body:has(.funil-oficial.modo-crm) #sara-fab,body:has(.funil-oficial.modo-crm) #sara-panel{display:none}
+  .funil-oficial .ape-mobile-mais-areas{grid-template-columns:repeat(4,minmax(0,1fr))}
+  .funil-oficial.modo-crm>.ape-filtros button b{margin-left:5px;font-size:9px}
 }

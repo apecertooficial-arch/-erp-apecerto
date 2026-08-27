@@ -97,9 +97,19 @@ function nomeEtapa(codigo: string) {
   return ETAPAS_FALLBACK.find(([chave]) => chave === codigo)?.[1] ?? codigo.replaceAll("_", " ");
 }
 
+function rotuloEtapaMobile(codigo: string, rotulo?: string) {
+  if (codigo === "novo") return "Novo";
+  return rotulo ?? nomeEtapa(codigo);
+}
+
+function acaoCompactaMobile(lead: LeadFunil2) {
+  const acao = acaoVisivel(lead);
+  return /whats/i.test(acao) ? acao : `WhatsApp · ${acao}`;
+}
+
 function valorCompacto(lead: LeadFunil2) {
   const valor = Number(lead.valor);
-  if (!Number.isFinite(valor) || valor <= 0) return `Negócio #${lead.origem_negocio_id}`;
+  if (!Number.isFinite(valor) || valor <= 0) return "Valor não informado";
   if (valor >= 1_000_000) return `R$ ${(valor / 1_000_000).toLocaleString("pt-BR", { maximumFractionDigits: 1 })} mi`;
   if (valor >= 1_000) return `R$ ${Math.round(valor / 1_000).toLocaleString("pt-BR")} mil`;
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 }).format(valor);
@@ -201,24 +211,24 @@ function CartaoLead({
   onConversa: () => void;
 }) {
   const prazo = situacaoPrazo(lead.proxima_acao_em);
-  return <article className="ape-card">
+  return <article className="ape-card" role="button" tabIndex={0} aria-label={`Abrir ficha de ${lead.nome}`} onClick={onAbrir} onKeyDown={(evento) => { if (evento.key === "Enter" || evento.key === " ") { evento.preventDefault(); onAbrir(); } }}>
     <div className="ape-card-topo">
-      <button type="button" className="ape-quem" onClick={onAbrir}>
+      <div className="ape-quem">
         <strong>{lead.nome}</strong>
         <span>{lead.interesse ?? lead.instancia_rotulo ?? nomeEtapa(lead.etapa)}</span>
-      </button>
+      </div>
       <b className={`ape-momento temperatura-${temperaturaMobile(lead)}`}><i />{rotuloTemperatura(lead.temperatura) ?? "Aguardando leitura"}</b>
     </div>
 
     <div className="ape-card-resumo">
       <strong>{valorCompacto(lead)}</strong>
-      <span>{acaoVisivel(lead)}</span>
+      <span>{acaoCompactaMobile(lead)}</span>
       <em className={prazo.classe}>{prazo.rotulo}</em>
     </div>
 
     <div className="ape-card-acoes-compactas">
-      <button type="button" onClick={onConversa}>Conversa</button>
-      <button type="button" onClick={onAbrir}>Abrir</button>
+      <button type="button" onClick={(evento) => { evento.stopPropagation(); onConversa(); }}>Conversa</button>
+      <button type="button" onClick={(evento) => { evento.stopPropagation(); onAbrir(); }}>Abrir</button>
     </div>
   </article>;
 }
@@ -712,7 +722,7 @@ export function Funil2Mobile({
   /* No Meu Dia a lista NAO e filtrada por chip: os tres grupos abaixo dao conta
      do recorte. "todos" aqui significa "deixe o agrupamento decidir". */
   const filtroDia: FiltroDia = "todos";
-  const [etapa, setEtapa] = useState("ativos");
+  const [etapa, setEtapa] = useState("novo");
   const [temperatura, setTemperatura] = useState<TemperaturaFiltroMobile>("todas");
   const [busca, setBusca] = useState("");
   const [areaCrm, setAreaCrm] = useState<AreaCrmMobile>("funil");
@@ -751,12 +761,12 @@ export function Funil2Mobile({
       const cabeNoDia = filtroDia === "todos"
         || (filtroDia === "novos" ? esperandoPrimeiraChamada(lead)
           : filtroDia === "agora" ? prazo <= agora : prazo <= fimHoje);
-      const cabeNaEtapa = etapa === "ativos" ? lead.etapa !== "legado" : lead.etapa === etapa;
+      const cabeNaEtapa = areaCrm === "leads" ? lead.etapa !== "legado" : lead.etapa === etapa;
       const cabeNaTemperatura = temperatura === "todas" || temperaturaMobile(lead) === temperatura;
       const cabeNaBusca = !termo || `${lead.nome} ${lead.telefone ?? ""} ${lead.interesse ?? ""} ${(lead.tags ?? []).map((tag) => tag.nome).join(" ")}`.toLocaleLowerCase("pt-BR").includes(termo);
       return cabeNoDia && cabeNaEtapa && cabeNaTemperatura && cabeNaBusca;
     });
-  }, [agora, busca, etapa, filtroDia, fimHoje, leads, temperatura]);
+  }, [agora, areaCrm, busca, etapa, filtroDia, fimHoje, leads, temperatura]);
 
   /* OS TRES GRUPOS DO MEU DIA, na ordem em que o corretor age.
      "Acabou de chegar" vem primeiro mesmo com prazo mais folgado: lead novo tem
@@ -821,7 +831,7 @@ export function Funil2Mobile({
       </div>
     </header>
 
-    {modo === "crm" && maisAreas && <nav className="ape-mobile-mais-areas" aria-label="Mais áreas do ERP"><button type="button" onClick={() => onIr("/inicio")}>Meu Dia</button><button type="button" onClick={() => onIr("/agenda")}>Agenda</button><button type="button" onClick={() => onIr("/produtos")}>Produtos</button><button type="button" onClick={() => onIr("/notificacoes")}>Avisos</button></nav>}
+    {modo === "crm" && maisAreas && <nav className="ape-mobile-mais-areas" aria-label="Mais áreas do ERP"><button type="button" onClick={() => onIr("/inicio")}>Meu Dia</button><button type="button" onClick={() => onIr("/agenda")}>Agenda</button><button type="button" onClick={() => onIr("/produtos")}>Produtos</button><button type="button" aria-label="Abrir a Sara" onClick={() => { setMaisAreas(false); document.querySelector<HTMLButtonElement>("#sara-fab")?.click(); }}>Sara</button></nav>}
 
     {sucesso && <div className="ape-visita-sucesso" role="status">
       <div><strong>Visita agendada com sucesso</strong><span>{sucesso}</span></div>
@@ -845,8 +855,7 @@ export function Funil2Mobile({
     </nav></details></div>}
 
     {modo === "crm" && areaCrm === "funil" && <nav className="ape-filtros" aria-label="Filtrar atendimentos">
-      <button type="button" className={etapa === "ativos" ? "ativo" : ""} onClick={() => setEtapa("ativos")}>Ativos</button>
-      {etapas.map(([chave, rotulo]) => <button key={chave} type="button" className={etapa === chave ? "ativo" : ""} onClick={() => setEtapa(chave)}>{rotulo}</button>)}
+      {etapas.filter(([chave]) => !["legado", "atualizar_manual"].includes(chave)).map(([chave, rotulo]) => <button key={chave} type="button" className={etapa === chave ? "ativo" : ""} onClick={() => setEtapa(chave)}>{rotuloEtapaMobile(chave, rotulo)} <b>{leads.filter((lead) => lead.etapa === chave).length}</b></button>)}
     </nav>}
 
     {erro && <div className="ape-estado ruim">
@@ -897,8 +906,8 @@ export function Funil2Mobile({
 
     {modo === "crm" && <nav className="ape-crm-v3-nav" aria-label="Navegação do Funil">
       <button type="button" onClick={() => onIr("/inicio")}>Meu Dia</button>
-      <button type="button" className={areaCrm === "funil" ? "ativo" : ""} onClick={() => { setAreaCrm("funil"); setEtapa("ativos"); }}>Funil</button>
-      <button type="button" className={areaCrm === "leads" ? "ativo" : ""} onClick={() => { setAreaCrm("leads"); setEtapa("ativos"); }}>Leads</button>
+      <button type="button" className={areaCrm === "funil" ? "ativo" : ""} onClick={() => { setAreaCrm("funil"); setEtapa("novo"); }}>Funil</button>
+      <button type="button" className={areaCrm === "leads" ? "ativo" : ""} onClick={() => { setAreaCrm("leads"); setEtapa("novo"); }}>Leads</button>
       <button type="button" onClick={() => onIr("/agenda")}>Agenda</button>
       <button type="button" className={areaCrm === "visitas" ? "ativo" : ""} onClick={() => { setAreaCrm("visitas"); setEtapa("visita"); }}>Visitas</button>
     </nav>}

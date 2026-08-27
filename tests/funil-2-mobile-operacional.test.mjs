@@ -61,6 +61,10 @@ test("CRM mobile troca o quadro de desktop por busca, filtros e cartões", () =>
   assert.match(MOBILE, />Novo negócio<\/button>/);
   assert.match(MOBILE, /GerarNegociacaoMobile lead=\{leadNovoNegocio\}/);
   assert.match(MOBILE, /valorCompacto\(lead\)/);
+  assert.doesNotMatch(MOBILE, />Ativos<\/button>/);
+  assert.match(MOBILE, /rotuloEtapaMobile/);
+  assert.match(MOBILE, /acaoCompactaMobile/);
+  assert.match(MOBILE, /aria-label="Abrir a Sara"/);
 });
 
 test("WhatsApp continua nativo: a tela não chama endpoint de envio", () => {
