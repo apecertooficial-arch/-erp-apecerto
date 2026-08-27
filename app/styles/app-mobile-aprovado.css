@@ -9,7 +9,7 @@
  * Os dados sao os reais, servidos por /api/funil2.
  */
 
-.ape-app { display: none; }
+.ape-app, .ape-agenda { display: none; }
 
 @media (max-width: 900px) {
   .ape-visita-sucesso { position:relative; display:grid; grid-template-columns:1fr auto; gap:10px; margin:10px 16px; padding:13px 42px 13px 14px; border:1px solid #B8DFC8; border-radius:16px; background:#ECF9F1; color:#116B3D; }
@@ -702,7 +702,6 @@
    Só celular. Carrega depois de apecerto-identidade.css e usa os tokens.
    ===================================================================== */
 
-.ape-agenda { display: none; }
 /* Tarefas da Sara: ações reais do Funil 2.0 e decisões auditáveis. */
 /* Catálogo mobile: os mesmos produtos reais de /api/catalog, sem fallback. */
 
