@@ -4,6 +4,7 @@ import test from "node:test";
 
 import { validateGeneratedPackage, validateTemplateManifest } from "../app/features/studio/domain.ts";
 import { moduloDoPath, pathDoModulo, podeVer } from "../app/features/system/erp-routes.ts";
+import { aggregateStudioMetrics, filterBoardPieces, validCommentContext } from "../app/features/studio/studio-utils.ts";
 
 const migration = readFileSync(new URL("../supabase/migrations/20260826210311_apecerto_studio_operacional.sql", import.meta.url), "utf8");
 const api = readFileSync(new URL("../app/api/studio/route.ts", import.meta.url), "utf8");
@@ -216,7 +217,7 @@ test("copiloto, colaboração, board e métricas têm contratos honestos e RLS",
   assert.match(ui, /moveSchedule/);
   assert.match(ui, /viewMode/);
   assert.match(api, /schedule_conflict/);
-  assert.match(ui, /Importar retorno JSON/);
+  assert.match(ui, /Selecionar retorno JSON/);
   assert.match(ui, /assets: data\.snapshots/);
   assert.match(api, /importCanvaPackage/);
   assert.match(ui, /StudioManagerBoard/);
@@ -245,4 +246,35 @@ test("calendário usa três estruturas e drop real sem prompt", () => {
 test("board e métricas são componentes próprios com filtros e agregação executável", () => {
   for (const token of ["template", "revisor", "vencidos", "hoje", "sem_prazo", "Ordenar por prazo", "Ordenar por status"]) assert.match(board, new RegExp(token));
   for (const token of ["property", "template", "from", "to", "aggregateStudioMetrics", "curtidas", "comentarios", "compartilhamentos", "salvamentos", "cliques"]) assert.match(metricsDashboard, new RegExp(token));
+  assert.match(board, /value=\{x\}.*labels\[x\]/s);
+  assert.match(board, /onOpen\(p\.campaign_id,p\.id\)/);
+  assert.match(api, /organization_id=eq\.\$\{STUDIO_ORGANIZATION_ID\}/);
+  assert.match(api, /base_version_id/);
+  assert.match(api, /authorized\.has/);
+});
+
+test("board filtra dados por template, status, responsável e prazo com valores canônicos", () => {
+  const data = { pieces: [{ id: "p1", campaign_id: "c1", formato: "feed", status: "aprovada", current_version_id: "v1" }, { id: "p2", campaign_id: "c1", formato: "story", status: "rascunho", current_version_id: "v2" }], versions: [{ id: "v1", template_version_id: "t1" }, { id: "v2", template_version_id: "t2" }], tasks: [{ piece_id: "p1", responsavel_id: "m1", revisor_id: "m2", prazo_em: "2026-08-20T10:00:00Z" }, { piece_id: "p2", responsavel_id: "m2", revisor_id: "m1", prazo_em: null }] };
+  assert.deepEqual(filterBoardPieces(data, { template: "t1", status: "aprovada", responsavel: "m1", period: "vencidos", now: new Date("2026-08-27T12:00:00Z") }).map((p) => p.id), ["p1"]);
+  assert.deepEqual(filterBoardPieces(data, { period: "sem_prazo" }).map((p) => p.id), ["p2"]);
+});
+
+test("métricas agregam os sete indicadores e contexto de comentário valida índice existente", () => {
+  assert.deepEqual(aggregateStudioMetrics([{ alcance: 10, impressoes: 20, curtidas: 3, comentarios: 2, compartilhamentos: 1, salvamentos: 4, cliques: 5 }, { alcance: 2, impressoes: 4, curtidas: 1, comentarios: 0, compartilhamentos: 2, salvamentos: 1, cliques: 3 }]), { alcance: 12, impressoes: 24, curtidas: 4, comentarios: 2, compartilhamentos: 3, salvamentos: 5, cliques: 8 });
+  const version = { conteudo: { slides: [{}, {}], cenas: [{}] } };
+  assert.equal(validCommentContext(version, "slide", 1), true);
+  assert.equal(validCommentContext(version, "slide", 2), false);
+  assert.equal(validCommentContext(version, "cena", 0), true);
+  assert.equal(validCommentContext(version, "cena", 1), false);
+  assert.equal(validCommentContext(version, "geral", null), true);
+});
+
+test("retorno Canva exige prévia e confirmação antes de persistir", () => {
+  assert.match(ui, /setPreview\(JSON\.parse/);
+  assert.match(ui, /Prévia antes de importar/);
+  assert.match(ui, /Cancelar/);
+  assert.match(ui, /Confirmar importação/);
+  assert.match(ui, /mutate\(\{ action: "importCanvaPackage"/);
+  assert.match(api, /schema_version !== 1/);
+  assert.match(api, /piece\.current_version_id !== clean\(pkg\.base_version_id/);
 });
