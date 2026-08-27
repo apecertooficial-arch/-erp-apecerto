@@ -1,0 +1,17 @@
+{
+  "meta_lead_id": "900000000000001",
+  "leadgen_id": "900000000000001",
+  "meta_form_id": "900000000000002",
+  "meta_page_id": "900000000000003",
+  "meta_created_time": "2026-08-27T12:00:00.000Z",
+  "meta_is_organic": false,
+  "meta_campaign_id": "900000000000004",
+  "meta_campaign_name": "CAMPANHA TESTE SANITIZADA",
+  "meta_adset_id": "900000000000005",
+  "meta_adset_name": "CONJUNTO TESTE SANITIZADO",
+  "meta_ad_id": "900000000000006",
+  "meta_ad_name": "ANUNCIO TESTE SANITIZADO",
+  "source": "facebook",
+  "medium": "lead_ads",
+  "platform": "facebook"
+}
