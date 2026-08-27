@@ -8,7 +8,7 @@ const mobile = ler("../app/features/funil-2/Funil2Mobile.tsx");
 const tags = ler("../app/features/funil-2/AssociarTagLead.tsx");
 const api = ler("../app/api/funil2/route.ts");
 const esteira = ler("../app/features/sales/SalesProcessWorkspace.tsx");
-const crmCss = ler("../app/styles/funil-2.css");
+const crmCss = ler("../app/styles/funil.css");
 const identidadeGeral = ler("../app/styles/redesign-apecerto.css");
 const layout = ler("../app/layout.tsx");
 const integridadeMigration = ler("../supabase/migrations/20260825201000_funil_2_integridade_seguranca_performance.sql");
@@ -129,7 +129,7 @@ test("CRM usa uma única folha canônica, sem cascata corretiva ou tipografia il
   assert.match(layout, /import "\.\/styles\/funil-2\.css"/);
   assert.doesNotMatch(layout, /redesign-apecerto-crm\.css/);
   assert.doesNotMatch(identidadeGeral, /\.f2-/);
-  assert.ok(layout.indexOf('import "./styles/funil-2.css"') > layout.indexOf('import "./styles/redesign-apecerto-calendario.css"'));
+  assert.ok(layout.indexOf('import "./styles/funil.css"') > layout.indexOf('import "./styles/redesign-apecerto-calendario.css"'));
   assert.doesNotMatch(crmCss, /!important/);
   const fontes = [...crmCss.matchAll(/font-size:\s*(\d+(?:\.\d+)?)px/g)].map(([, valor]) => Number(valor));
   assert.ok(fontes.length > 0);
