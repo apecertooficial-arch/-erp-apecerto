@@ -13,6 +13,7 @@ import {
 
 const edge = await readFile("supabase/functions/ia-router/index.ts", "utf8");
 const component = await readFile("app/features/products/PhotoAiOrganizer.tsx", "utf8");
+const productDetail = await readFile("app/features/products/ProductDetail.tsx", "utf8");
 const api = await readFile("app/api/product/route.ts", "utf8");
 const migration = await readFile("supabase/migrations/20260827193000_produtos_organizador_fotos_ia.sql", "utf8");
 
@@ -109,4 +110,9 @@ test("aplicação é atômica, autorizada, versionada e reversível", () => {
   assert.match(api,/restorePhotoAiSuggestions/);
   assert.match(api,/rpc\("produto_midias_aplicar_ia"/);
   assert.match(api,/status === 409/);
+});
+
+test("upload da unidade preserva os arquivos antes de limpar o seletor", () => {
+  assert.match(productDetail, /const pendingFiles = files \? Array\.from\(files\) : \[\];/);
+  assert.match(productDetail, /for \(const \[fileIndex, originalFile\] of pendingFiles\.entries\(\)\)/);
 });

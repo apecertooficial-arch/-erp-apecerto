@@ -360,14 +360,17 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
   }
 
   async function uploadUnitMedia(files: FileList | null, unit: Unit) {
-    if (!files?.length) return;
+    // Chromium exposes a live FileList. Snapshot it before the input is
+    // cleared, otherwise the async auth/watermark step can see zero files.
+    const pendingFiles = files ? Array.from(files) : [];
+    if (!pendingFiles.length) return;
     setBusy(true); setMessage("");
     try {
       const supabase = getBrowserSupabaseClient();
       const { data: auth } = await supabase.auth.getUser();
       if (!auth.user) throw new Error("Sua sessão expirou.");
       let unitPhotoCount = (product?.midias ?? []).filter((item) => item.unidade_id === unit.id && item.tipo === "foto").length;
-      for (const [fileIndex, originalFile] of Array.from(files).entries()) {
+      for (const [fileIndex, originalFile] of pendingFiles.entries()) {
         const file = originalFile.type.startsWith("image/") ? await applyOfficialWatermark(originalFile) : originalFile;
         const safeName = file.name.normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-zA-Z0-9._-]/g, "-");
         const path = `${auth.user.id}/${productId}/${crypto.randomUUID()}-${safeName}`;
