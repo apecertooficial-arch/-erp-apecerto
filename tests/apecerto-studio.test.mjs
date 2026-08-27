@@ -164,3 +164,18 @@ test("mudança no produto alerta, invalida aprovação e permite novo snapshot",
   assert.match(ui, /O produto mudou no ERP/);
   assert.match(api, /action === "refreshSnapshot"/);
 });
+
+test("fat ia vertical do Studio persiste briefing, variações e deep links", () => {
+  assert.match(api, /social_briefs\?\$\{org\}/);
+  assert.match(api, /action === "saveBrief"/);
+  assert.match(api, /action === "createVariant"/);
+  assert.match(api, /parent_version_id/);
+  assert.match(api, /social_piece_versions/);
+  assert.match(ui, /URLSearchParams\(window\.location\.search\)/);
+  assert.match(ui, /window\.history\.replaceState/);
+  assert.match(ui, /BriefingEditor/);
+  assert.match(ui, /Salvar briefing/);
+  assert.match(ui, /Salvar no histórico/);
+  assert.match(ui, /Gerar variação/);
+  assert.match(ui, /5 modelos editoriais/);
+});

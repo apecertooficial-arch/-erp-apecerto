@@ -94,7 +94,32 @@ export type StudioData = {
   jobs: StudioJob[];
   integrations: StudioIntegration[];
   budgets: Array<{ provider: string; limite_usd: number; consumido_usd: number }>;
+  briefs: StudioBrief[];
+  templates: StudioTemplate[];
   setupRequired?: boolean;
+};
+
+export type StudioBrief = {
+  id: string;
+  campaign_id: string;
+  versao: number;
+  publico: Record<string, unknown>;
+  tom: string;
+  canais: string[];
+  restricoes_factuais: string[];
+  conteudo: Record<string, unknown>;
+  criado_em: string;
+};
+
+export type StudioTemplate = {
+  id: string;
+  slug: string;
+  nome: string;
+  formato: StudioFormat;
+  ativo: boolean;
+  versao_publicada?: number;
+  origem?: string;
+  manifesto?: Record<string, unknown>;
 };
 
 export type GeneratedPiece = {

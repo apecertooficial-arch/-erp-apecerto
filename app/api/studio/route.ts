@@ -90,7 +90,7 @@ async function rpc<T>(auth: Auth, name: string, body: Record<string, unknown>): 
 async function studioData(auth: Auth): Promise<StudioData> {
   requirePermission(auth, "ver");
   const org = `organization_id=eq.${STUDIO_ORGANIZATION_ID}`;
-  const [campaigns, snapshots, pieces, versions, schedules, jobs, integrations, budgets] = await Promise.all([
+  const [campaigns, snapshots, pieces, versions, schedules, jobs, integrations, budgets, briefs, templates] = await Promise.all([
     rest<StudioData["campaigns"]>(auth, `social_campaigns?${org}&select=id,nome,objetivo,periodo_inicio,periodo_fim,status,produto_codigo,produto_alterado_em,produto_alterado_motivo,snapshot_atual_id,budget_usd,gasto_usd,atualizado_em&order=atualizado_em.desc&limit=100`),
     rest<StudioData["snapshots"]>(auth, `social_product_snapshots?${org}&select=id,campaign_id,versao,produto_codigo,fatos,midias,checksum,criado_em&order=criado_em.desc&limit=100`),
     rest<StudioData["pieces"]>(auth, `social_pieces?${org}&select=id,campaign_id,formato,titulo,status,current_version_id,atualizado_em&order=atualizado_em.desc&limit=500`),
@@ -99,8 +99,10 @@ async function studioData(auth: Auth): Promise<StudioData> {
     rest<StudioData["jobs"]>(auth, `social_generation_jobs?${org}&select=id,campaign_id,piece_id,tipo,status,progresso,tentativas,max_tentativas,erro_mensagem,criado_em&order=criado_em.desc&limit=100`),
     rest<StudioData["integrations"]>(auth, `social_integrations?${org}&select=provider,status,config_publica,verificado_em&order=provider`),
     rest<StudioData["budgets"]>(auth, `social_budgets?${org}&mes=eq.${new Date().toISOString().slice(0, 7)}-01&select=provider,limite_usd,consumido_usd`),
+    rest<StudioData["briefs"]>(auth, `social_briefs?${org}&select=id,campaign_id,versao,publico,tom,canais,restricoes_factuais,conteudo,criado_em&order=criado_em.desc&limit=300`),
+    rest<StudioData["templates"]>(auth, `social_templates?${org}&ativo=eq.true&select=id,slug,nome,formato,ativo&order=nome.asc&limit=100`),
   ]);
-  return { organizationId: STUDIO_ORGANIZATION_ID, timezone: STUDIO_TIMEZONE, campaigns, snapshots, pieces, versions, schedules, jobs, integrations, budgets };
+  return { organizationId: STUDIO_ORGANIZATION_ID, timezone: STUDIO_TIMEZONE, campaigns, snapshots, pieces, versions, schedules, jobs, integrations, budgets, briefs, templates };
 }
 
 function errorResponse(reason: unknown) {
@@ -305,6 +307,42 @@ async function createHumanVersion(auth: Auth, body: Record<string, unknown>) {
   return { ok: true, unchanged: false, versionId: version.id, version: version.versao, checksum };
 }
 
+async function saveBrief(auth: Auth, body: Record<string, unknown>) {
+  requirePermission(auth, "editar");
+  const campaignId = clean(body.campaignId, 80);
+  if (!campaignId) throw new StudioError("Campanha obrigatória.", 422, "invalid_brief");
+  const current = await rest<Array<{ versao: number }>>(auth, `social_briefs?organization_id=eq.${STUDIO_ORGANIZATION_ID}&campaign_id=eq.${encodeURIComponent(campaignId)}&select=versao&order=versao.desc&limit=1`);
+  const publico = jsonObject(body.publico) ? body.publico : {};
+  const conteudo = jsonObject(body.conteudo) ? body.conteudo : {};
+  const tom = clean(body.tom, 240) || "Jovial, direto, otimista e confiável";
+  const canais = Array.isArray(body.canais) ? body.canais.map((item) => clean(item, 30)).filter(Boolean).slice(0, 8) : ["instagram"];
+  const restricoes = Array.isArray(body.restricoesFactuais) ? body.restricoesFactuais.map((item) => clean(item, 240)).filter(Boolean).slice(0, 20) : [];
+  const created = await rest<Array<{ id: string; versao: number }>>(auth, "social_briefs", { method: "POST", headers: { Prefer: "return=representation" }, body: JSON.stringify({ organization_id: STUDIO_ORGANIZATION_ID, campaign_id: campaignId, versao: (current[0]?.versao ?? 0) + 1, publico, tom, canais, restricoes_factuais: restricoes, conteudo, criado_por: auth.userId }) });
+  if (!created[0]) throw new StudioError("Não foi possível salvar o briefing.", 502, "brief_persist_failed");
+  return { ok: true, brief: created[0] };
+}
+
+async function createPersistedVariant(auth: Auth, body: Record<string, unknown>) {
+  requirePermission(auth, "editar");
+  const pieceId = clean(body.pieceId, 80);
+  if (!pieceId) throw new StudioError("Peça obrigatória.", 422, "invalid_variant");
+  const pieces = await rest<StudioPiece[]>(auth, `social_pieces?id=eq.${encodeURIComponent(pieceId)}&select=id,campaign_id,formato,titulo,status,current_version_id,atualizado_em`);
+  const piece = pieces[0];
+  if (!piece) throw new StudioError("Peça não encontrada.", 404, "piece_not_found");
+  const snapshots = await rest<StudioSnapshot[]>(auth, `social_product_snapshots?campaign_id=eq.${encodeURIComponent(piece.campaign_id)}&select=id,checksum&order=versao.desc&limit=1`);
+  const source = piece.current_version_id ? (await rest<StudioPieceVersion[]>(auth, `social_piece_versions?id=eq.${encodeURIComponent(piece.current_version_id)}&select=id,piece_id,versao,snapshot_id,template_version_id,conteudo,output_manifest,checksum,criado_em`))[0] : null;
+  const snapshotId = source?.snapshot_id ?? snapshots[0]?.id;
+  if (!snapshotId) throw new StudioError("Snapshot factual não encontrado.", 409, "snapshot_not_found");
+  const content = jsonObject(body.conteudo) ? body.conteudo : { headline: `${piece.titulo} · variação`, legenda: "Variação editorial baseada no snapshot factual.", cta: "Agende sua visita" };
+  const latest = await rest<Array<{ versao: number }>>(auth, `social_piece_versions?piece_id=eq.${encodeURIComponent(piece.id)}&select=versao&order=versao.desc&limit=1`);
+  const checksum = await sha256({ snapshot_id: snapshotId, template_version_id: source?.template_version_id ?? null, content });
+  const created = await rest<StudioPieceVersion[]>(auth, "social_piece_versions", { method: "POST", headers: { Prefer: "return=representation" }, body: JSON.stringify({ organization_id: STUDIO_ORGANIZATION_ID, piece_id: piece.id, parent_version_id: source?.id ?? null, versao: (latest[0]?.versao ?? 0) + 1, snapshot_id: snapshotId, template_version_id: source?.template_version_id ?? null, conteudo: content, output_manifest: {}, checksum, change_scope: clean(body.changeScope, 30) || "conteudo", criado_por: auth.userId }) });
+  const version = created[0];
+  if (!version) throw new StudioError("Não foi possível persistir a variação.", 502, "variant_persist_failed");
+  await rest(auth, `social_pieces?id=eq.${encodeURIComponent(piece.id)}`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ current_version_id: version.id, status: "em_revisao" }) });
+  return { ok: true, versionId: version.id, versao: version.versao, checksum };
+}
+
 async function enqueueRender(auth: Auth, body: Record<string, unknown>) {
   requirePermission(auth, "gerar");
   const versionId = clean(body.versionId, 80);
@@ -369,6 +407,8 @@ export async function POST(request: Request) {
       return Response.json(await rpc(auth, "social_refresh_campaign_snapshot", { p_campaign_id: clean(body.campaignId, 80) }));
     }
     if (action === "createVersion") return Response.json(await createHumanVersion(auth, body));
+    if (action === "saveBrief") return Response.json(await saveBrief(auth, body));
+    if (action === "createVariant") return Response.json(await createPersistedVariant(auth, body));
     if (action === "enqueueRender") return Response.json(await enqueueRender(auth, body));
     if (action === "approve" || action === "requestChanges") {
       requirePermission(auth, action === "approve" ? "aprovar" : "revisar");

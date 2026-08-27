@@ -99,6 +99,13 @@ const fixture: StudioData = {
     { provider: "renderer", limite_usd: 0, consumido_usd: 0 },
     { provider: "instagram", limite_usd: 0, consumido_usd: 0 },
   ],
+  briefs: [{ id: "57000000-0000-4000-8000-000000000001", campaign_id: campaignId, versao: 1, publico: { segmento: "Compradores" }, tom: "Jovial, direto e confiável", canais: ["instagram"], restricoes_factuais: [], conteudo: { angulo_editorial: "Vida urbana em Moema", pilares: ["localização", "diferenciais"] }, criado_em: "2026-08-27T12:00:00Z" }],
+  templates: [
+    { id: "58000000-0000-4000-8000-000000000001", slug: "feed-editorial-premium", nome: "Feed Editorial premium", formato: "feed", ativo: true, versao_publicada: 1, origem: "design_system" },
+    { id: "58000000-0000-4000-8000-000000000002", slug: "carousel-tour-imovel", nome: "Carrossel Tour do imóvel", formato: "carousel", ativo: true, versao_publicada: 1, origem: "design_system" },
+    { id: "58000000-0000-4000-8000-000000000003", slug: "story-enquete", nome: "Stories Enquete", formato: "story", ativo: true, versao_publicada: 1, origem: "design_system" },
+    { id: "58000000-0000-4000-8000-000000000004", slug: "reel-tour-30s", nome: "Reel Tour 30s", formato: "reel", ativo: true, versao_publicada: 1, origem: "design_system" },
+  ],
 };
 
 export default function StudioVisualTestPage() {
