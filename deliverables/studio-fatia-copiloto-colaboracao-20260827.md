@@ -18,10 +18,10 @@ Data: 27/08/2026. Execução local, sem deploy, publicação ou gasto externo.
 - Suíte Studio: 55 testes passaram (incluindo contratos de RLS, Copilot, colaboração e métricas).
 - Build `vinext`: passou.
 - ESLint nos arquivos alterados: passou sem erros.
-- Regressão ampla `node --test tests/*.mjs`: não passou por dois contratos preexistentes e não relacionados a esta fatia: seletor visual legado em `tests/crm-organizacao.test.mjs` e revogação de RPC legada em `tests/studio-meta-contract.test.mjs`. O conjunto Studio permaneceu verde.
+- Regressão ampla `node --test tests/*.mjs`: 487/487 testes passaram após restaurar o contrato de migration histórica e o seletor visual legado.
 
 ## Limitações
 
-- Migration `20260827180000_studio_collaboration_metrics.sql` ainda não foi aplicada remotamente por solicitação de não fazer deploy.
+- Migration `20260827180000_studio_collaboration_metrics.sql` ainda não foi aplicada remotamente; a branch foi enviada ao GitHub, mas o projeto Supabase/credencial de migração não está disponível neste ambiente.
 - Não foi possível comprovar a nova persistência na sessão autenticada publicada sem publicar esta versão; nenhuma publicação real foi feita.
 - Métricas Meta ficam vazias até conexão autorizada; a interface não inventa números.
