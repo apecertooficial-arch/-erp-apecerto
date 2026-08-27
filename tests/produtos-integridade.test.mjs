@@ -17,6 +17,7 @@ const migration = await readFile("supabase/migrations/20260820153819_produtos_fl
 const unpublishMigration = await readFile("supabase/migrations/20260820193000_produtos_despublicacao_individual.sql", "utf8");
 const unitMediaMigration = await readFile("supabase/migrations/20260820220000_captador_exclui_midia_da_propria_unidade.sql", "utf8");
 const captorIntegrityMigration = await readFile("supabase/migrations/20260820223000_produtos_captador_unidade_obrigatorio.sql", "utf8");
+const editorialMigration = await readFile("supabase/migrations/20260826193000_produtos_editorial_midias_rascunhos.sql", "utf8");
 
 test("catálogo separa contagem de empreendimentos e imóveis", () => {
   assert.match(catalog, /buildingCount: visible\.filter\(\(product\) => !product\.standalone\)\.length/);
@@ -102,7 +103,7 @@ test("foto herdada do condomínio abre sem fingir que pertence à unidade", () =
   assert.match(detail, /Áreas comuns do condomínio/);
   assert.match(detail, /nunca são usadas como capa ou como fotos privativas da unidade/);
   assert.doesNotMatch(detail, /focusedUnitPhotos = focusedUnitUsesReferencePhotos \? focusedUnitReferencePhotos/);
-  assert.match(detail, /Ver \$\{focusedUnitPhotos\.length\} foto/);
+  assert.match(detail, /Ver \{focusedUnitPhotos\.length\} fotos/);
   assert.match(catalog, /referenceMedia: buildingMediaCount/);
   assert.match(catalog, /coverUrl: fotoDaUnidade \? publicMediaUrl\(fotoDaUnidade\.storage_path\) : null/);
   assert.match(detail, /setUnitLightbox/);
@@ -116,10 +117,10 @@ test("setas da galeria ampliada permanecem centralizadas ao lado da foto", () =>
 
 test("revisão abre a unidade como produto completo e não deixa o condomínio por baixo", () => {
   assert.match(detail, /const focusedUnit = useMemo/);
-  assert.match(detail, /VALOR DESTA UNIDADE/);
+  assert.match(detail, /<small>Valor do imóvel<\/small>/);
   assert.match(detail, /focusedUnitPrice/);
-  assert.match(detail, /Este imóvel é um produto independente/);
-  assert.match(detail, /Condomínio de referência/);
+  assert.match(detail, /Cada apartamento continua sendo um produto independente/);
+  assert.match(detail, /Referência de prédio — não controla preço, mídia ou aprovação da unidade/);
   assert.doesNotMatch(detail, /initialOpened/);
 });
 
@@ -133,8 +134,10 @@ test("ficha aberta usa o Produtos v3 e mantém a composição aprovada", () => {
   assert.match(detailCss, /height: min\(900px, 90vh\)/);
   assert.doesNotMatch(detail, /className="legacy-focused-unit" hidden/);
   assert.doesNotMatch(detail, /className="legacy-product-detail" hidden/);
-  assert.match(detail, /renderFocusedUnitDesign\(product, focusedUnit\)\}\{false &&/);
-  assert.match(detail, /renderProductDesign\(product\)\}\{false &&/);
+  assert.match(detail, /focusedUnit \? renderFocusedUnitDesign\(product, focusedUnit\)/);
+  assert.match(detail, /: renderProductDesign\(product\)\}/);
+  assert.doesNotMatch(detail, /\{false &&/);
+  assert.doesNotMatch(detail, /legacy-(?:focused-unit|product-detail)/);
 });
 
 test("ficha da unidade não mascara preço inválido nem libera publicação", () => {
@@ -148,7 +151,8 @@ test("ficha da unidade não mascara preço inválido nem libera publicação", (
 test("corretor vê todas as fotos e dados operacionais, mas não o proprietário alheio", () => {
   assert.match(productApi, /midias: media/);
   assert.doesNotMatch(productApi, /const visibleMedia = media\.filter/);
-  assert.match(productApi, /proprietarios: podeVerProprietarioProduto \? data\.proprietarios : null/);
+  assert.match(productApi, /proprietarios: podeVerProprietarioProduto \? productOwner : null/);
+  assert.match(productApi, /rpc\("produto_proprietario_ler"/);
   assert.match(productApi, /proprietario_nome: null, proprietario_tel: null, proprietario_email: null/);
   assert.match(productApi, /proprietario_nome: null, proprietario_contato: null/);
   assert.doesNotMatch(productApi, /proprietario_contato: null, acesso_tipo: null/);
@@ -203,8 +207,8 @@ test("captador edita a própria unidade e suas imagens sem controlar o condomín
   assert.doesNotMatch(updateUnitBlock, /guard\(/);
   assert.match(updateUnitBlock, /currentUnit\.captador_corretor_id === broker\.id/);
   assert.match(productApi, /async function editableMediaContext/);
-  assert.match(productApi, /unit\?\.de_terceiros && broker\?\.id != null && unit\.captador_corretor_id === broker\.id/);
-  assert.match(productApi, /context\.media\.unidade_id \? clearQuery\.eq\("unidade_id"/);
+  assert.match(productApi, /broker\?\.id != null && unit\?\.captador_corretor_id === broker\.id/);
+  assert.match(productApi, /rpc\("produto_midia_definir_capa"/);
   assert.match(productApi, /media\.unidade_id \? nextQuery\.eq\("unidade_id"/);
   assert.match(detail, /Editar imagens da unidade/);
   assert.match(detail, /A unidade reina sobre o condomínio/);
@@ -212,7 +216,7 @@ test("captador edita a própria unidade e suas imagens sem controlar o condomín
   assert.match(detail, /unitMediaEditorItems/);
   assert.match(unitMediaMigration, /m\.storage_path = storage\.objects\.name/);
   assert.match(unitMediaMigration, /c\.usuario_id = \(select auth\.uid\(\)\)/);
-  assert.match(unitMediaMigration, /u\.de_terceiros/);
+  assert.doesNotMatch(editorialMigration.match(/create policy emp_storage_delete_captador[\s\S]*?;\n\n-- Compatibilidade/)?.[0] ?? "", /u\.de_terceiros/);
 });
 
 test("captador da unidade é obrigatório, preservado e visível em todas as situações", () => {
@@ -237,12 +241,12 @@ test("corretor encontra produtos por vagas e por origem comercial", () => {
   assert.match(catalog, /explicit: originByUnit\.get\(u\.id\) \?\? null/);
 });
 
-test("dados do proprietário da unidade ficam apenas com o captador", () => {
-  assert.match(productApi, /return unidadeMinha/);
+test("dados do proprietário da unidade ficam apenas com o captador e a gestão", () => {
+  assert.match(productApi, /isManager: gerenciaProdutosGet/);
   assert.match(productApi, /pode_ver_proprietario: false/);
   assert.match(productApi, /proprietario_nome: null, proprietario_contato: null/);
-  assert.match(productApi, /ownsUnit \? \{ proprietario_nome: proprietarioNome, proprietario_contato: proprietarioContato \} : \{\}/);
-  assert.match(detail, /somente o corretor captador pode consultar ou alterar o proprietário/);
+  assert.match(productApi, /canEditUnitOwner \? \{ proprietario_nome: proprietarioNome, proprietario_contato: proprietarioContato \} : \{\}/);
+  assert.match(detail, /apenas o captador e a gestão podem consultar ou alterar o proprietário/);
 });
 
 test("migração bloqueia unidade pendente e dados privados no acesso anônimo", () => {
