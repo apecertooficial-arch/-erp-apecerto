@@ -124,6 +124,8 @@ test("perfis, filtros e Design System permanecem explícitos", () => {
   assert.match(css, /font-family:var\(--font-body\)/);
   assert.match(css, /min-height:44px/);
   assert.match(css, /body:has\(\.funil-oficial\.modo-crm\) #sara-fab[^}]*display:none/);
+  assert.match(css, /body:has\(\.funil-oficial\) #sara-fab[^}]*display:none/);
   assert.match(css, /body:has\(\.funil-oficial \.f2-overlay\) #sara-fab[^}]*display:none/);
+  assert.match(workspace, />Abrir Sara<\/button>/);
   assert.match(mobile, />Sara<\/button>/);
 });
