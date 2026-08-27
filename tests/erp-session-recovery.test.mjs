@@ -18,5 +18,6 @@ test("falha no bootstrap e no formulario nunca deixa a entrada travada", () => {
 });
 
 test("atalho de entrar novamente possui rota publicada", () => {
-  assert.match(loginRoute, /redirect\("\/inicio"\)/);
+  assert.match(loginRoute, /window\.location\.replace\("\/inicio"\)/);
+  assert.doesNotMatch(loginRoute, /redirect\(/);
 });
