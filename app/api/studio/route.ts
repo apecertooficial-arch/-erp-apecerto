@@ -86,11 +86,12 @@ async function rest<T>(auth: Auth, path: string, init: RequestInit = {}): Promis
 async function rpc<T>(auth: Auth, name: string, body: Record<string, unknown>): Promise<T> {
   return rest<T>(auth, `rpc/${name}`, { method: "POST", body: JSON.stringify(body) });
 }
+async function optionalRest<T>(auth: Auth, path: string, fallback: T): Promise<T> { try { return await rest<T>(auth, path); } catch (error) { if (error instanceof StudioError && error.code === "studio_schema_missing") return fallback; throw error; } }
 
 async function studioData(auth: Auth): Promise<StudioData> {
   requirePermission(auth, "ver");
   const org = `organization_id=eq.${STUDIO_ORGANIZATION_ID}`;
-  const [campaigns, snapshots, pieces, versions, schedules, jobs, integrations, budgets, briefs, templates, templateVersions] = await Promise.all([
+  const [campaigns, snapshots, pieces, versions, schedules, jobs, integrations, budgets, briefs, templates, templateVersions, tasks, comments, metrics] = await Promise.all([
     rest<StudioData["campaigns"]>(auth, `social_campaigns?${org}&select=id,nome,objetivo,periodo_inicio,periodo_fim,status,produto_codigo,produto_alterado_em,produto_alterado_motivo,snapshot_atual_id,budget_usd,gasto_usd,atualizado_em&order=atualizado_em.desc&limit=100`),
     rest<StudioData["snapshots"]>(auth, `social_product_snapshots?${org}&select=id,campaign_id,versao,produto_codigo,fatos,midias,checksum,criado_em&order=criado_em.desc&limit=100`),
     rest<StudioData["pieces"]>(auth, `social_pieces?${org}&select=id,campaign_id,formato,titulo,status,current_version_id,atualizado_em&order=atualizado_em.desc&limit=500`),
@@ -102,9 +103,12 @@ async function studioData(auth: Auth): Promise<StudioData> {
     rest<StudioData["briefs"]>(auth, `social_briefs?${org}&select=id,campaign_id,versao,publico,tom,canais,restricoes_factuais,conteudo,criado_em&order=criado_em.desc&limit=300`),
     rest<StudioData["templates"]>(auth, `social_templates?${org}&ativo=eq.true&select=id,slug,nome,formato,ativo&order=nome.asc&limit=100`),
     rest<Array<{ id: string; template_id: string; versao: number; origem: string; manifesto: Record<string, unknown> }>>(auth, `social_template_versions?${org}&status=eq.publicada&select=id,template_id,versao,origem,manifesto&order=versao.desc&limit=200`),
+    optionalRest(auth, `social_piece_tasks?${org}&select=id,piece_id,responsavel_id,revisor_id,prazo_em,status,pendencia,atualizado_em&order=prazo_em.asc&limit=500`, []),
+    optionalRest(auth, `social_piece_comments?${org}&select=id,piece_id,piece_version_id,slide_index,cena_index,comentario,autor_id,resolvido_em,criado_em&order=criado_em.desc&limit=500`, []),
+    optionalRest(auth, `social_metrics_snapshots?${org}&select=id,campaign_id,piece_id,template_version_id,periodo_inicio,periodo_fim,fonte,alcance,impressoes,curtidas,comentarios,compartilhamentos,salvamentos,cliques,observacao,criado_em&order=periodo_fim.desc&limit=500`, []),
   ]);
   const enrichedTemplates = templates.map((template) => { const published = templateVersions.find((version) => version.template_id === template.id); return { ...template, versao_publicada: published?.versao, origem: published?.origem, manifesto: published?.manifesto }; });
-  return { organizationId: STUDIO_ORGANIZATION_ID, timezone: STUDIO_TIMEZONE, campaigns, snapshots, pieces, versions, schedules, jobs, integrations, budgets, briefs, templates: enrichedTemplates };
+  return { organizationId: STUDIO_ORGANIZATION_ID, timezone: STUDIO_TIMEZONE, campaigns, snapshots, pieces, versions, schedules, jobs, integrations, budgets, briefs, templates: enrichedTemplates, tasks, comments, metrics };
 }
 
 function errorResponse(reason: unknown) {
@@ -414,6 +418,8 @@ export async function POST(request: Request) {
     if (action === "createVersion") return Response.json(await createHumanVersion(auth, body));
     if (action === "saveBrief") return Response.json(await saveBrief(auth, body));
     if (action === "createVariant") return Response.json(await createPersistedVariant(auth, body));
+    if (action === "saveTask") { requirePermission(auth, "editar"); const pieceId = clean(body.pieceId, 80); if (!pieceId) throw new StudioError("Peça obrigatória.", 422, "invalid_task"); const rows = await rest<Array<Record<string, unknown>>>(auth, "social_piece_tasks", { method: "POST", headers: { Prefer: "return=representation" }, body: JSON.stringify({ organization_id: STUDIO_ORGANIZATION_ID, piece_id: pieceId, responsavel_id: clean(body.responsavelId, 80) || null, revisor_id: clean(body.revisorId, 80) || null, prazo_em: clean(body.prazoEm, 40) || null, status: clean(body.status, 30) || "pendente", pendencia: clean(body.pendencia, 500) || null, criado_por: auth.userId }) }); return Response.json({ ok: true, task: rows[0] }); }
+    if (action === "addComment") { requirePermission(auth, "revisar"); const pieceId = clean(body.pieceId, 80), comentario = clean(body.comentario, 2000); if (!pieceId || !comentario) throw new StudioError("Peça e comentário são obrigatórios.", 422, "invalid_comment"); const rows = await rest<Array<Record<string, unknown>>>(auth, "social_piece_comments", { method: "POST", headers: { Prefer: "return=representation" }, body: JSON.stringify({ organization_id: STUDIO_ORGANIZATION_ID, piece_id: pieceId, piece_version_id: clean(body.versionId, 80) || null, slide_index: Number.isInteger(body.slideIndex) ? body.slideIndex : null, cena_index: Number.isInteger(body.cenaIndex) ? body.cenaIndex : null, comentario, autor_id: auth.userId }) }); return Response.json({ ok: true, comment: rows[0] }); }
     if (action === "enqueueRender") return Response.json(await enqueueRender(auth, body));
     if (action === "approve" || action === "requestChanges") {
       requirePermission(auth, action === "approve" ? "aprovar" : "revisar");

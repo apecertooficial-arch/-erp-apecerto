@@ -14,6 +14,7 @@ const publisher = readFileSync(new URL("../supabase/functions/social-publisher/i
 const metaOAuth = readFileSync(new URL("../supabase/functions/social-meta-oauth/index.ts", import.meta.url), "utf8");
 const css = readFileSync(new URL("../app/styles/apecerto-studio.css", import.meta.url), "utf8");
 const catalogMigration = readFileSync(new URL("../supabase/migrations/20260827170000_studio_template_catalog_20.sql", import.meta.url), "utf8");
+const collaborationMigration = readFileSync(new URL("../supabase/migrations/20260827180000_studio_collaboration_metrics.sql", import.meta.url), "utf8");
 
 test("Studio é um módulo nativo, roteável e fail-closed", () => {
   assert.equal(pathDoModulo("apêcerto Studio"), "/studio");
@@ -194,4 +195,17 @@ test("catálogo visual tem vinte templates versionados e workspace com mídia/hi
   assert.match(ui, /Desfazer/);
   assert.match(ui, /Exportar pacote para Canva/);
   assert.match(ui, /Modelos importados do Figma/);
+});
+
+test("copiloto, colaboração, board e métricas têm contratos honestos e RLS", () => {
+  for (const table of ["social_piece_tasks", "social_piece_comments", "social_metrics_snapshots"]) assert.match(collaborationMigration, new RegExp(`create table if not exists public\\.${table}`));
+  assert.match(collaborationMigration, /enable row level security/g);
+  assert.match(collaborationMigration, /social_has_permission\('revisar', organization_id\)/);
+  assert.match(api, /action === "addComment"/);
+  assert.match(api, /action === "saveTask"/);
+  assert.match(ui, /StudioCopilot contextual/);
+  assert.match(ui, /preview\/diff/);
+  assert.match(ui, /Colaboração e governança/);
+  assert.match(ui, /Visão do gestor/);
+  assert.match(ui, /Meta não conectada/);
 });
