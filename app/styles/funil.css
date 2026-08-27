@@ -2205,4 +2205,7 @@ body:has(.funil-oficial .f2-overlay) #sara-fab,body:has(.funil-oficial .f2-overl
   .funil-oficial .ape-mobile-mais-areas{grid-template-columns:repeat(4,minmax(0,1fr))}
   .funil-oficial.modo-crm>.ape-filtros button.ativo{border-color:#FFD6BD;background:#FFF3EA;color:#B84300;font-weight:700}
   .funil-oficial.modo-crm>.ape-filtros button b{margin-left:5px;font-size:9px}
+  .funil-oficial .ape-ficha-rodape-aprovado .ncrm-wa-erro{min-height:54px;display:flex;flex-direction:column;justify-content:center;gap:2px;overflow:hidden;padding:7px 10px;border:1px solid #F2D6D2;border-radius:12px;background:#FDF0EF;color:#8E2E2E;font-size:10px;line-height:1.25}
+  .funil-oficial .ape-ficha-rodape-aprovado .ncrm-wa-erro strong{font-size:11px}
+  .funil-oficial .ape-ficha-rodape-aprovado .ncrm-wa-erro-dica{display:none}
 }
