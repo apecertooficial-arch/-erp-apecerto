@@ -93,13 +93,16 @@ export function StudioModule({ accessToken, initialData, mutationHandler }: {
 
   useEffect(() => { const timer = window.setTimeout(() => void load().catch((reason) => setError(reason instanceof Error ? reason.message : "Falha ao carregar.")), 0); return () => window.clearTimeout(timer); }, [load]);
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const requestedTab = params.get("tab") as StudioTab | null;
-    if (requestedTab && ["visao", "campanhas", "workspace", "calendario", "configuracoes"].includes(requestedTab)) setTab(requestedTab);
-    const requestedCampaign = params.get("campaign");
-    if (requestedCampaign && data?.campaigns.some((item) => item.id === requestedCampaign)) setCampaignId(requestedCampaign);
-    const requestedPiece = params.get("piece");
-    if (requestedPiece && data?.pieces.some((item) => item.id === requestedPiece)) setPieceId(requestedPiece);
+    const timer = window.setTimeout(() => {
+      const params = new URLSearchParams(window.location.search);
+      const requestedTab = params.get("tab") as StudioTab | null;
+      if (requestedTab && ["visao", "campanhas", "workspace", "calendario", "configuracoes"].includes(requestedTab)) setTab(requestedTab);
+      const requestedCampaign = params.get("campaign");
+      if (requestedCampaign && data?.campaigns.some((item) => item.id === requestedCampaign)) setCampaignId(requestedCampaign);
+      const requestedPiece = params.get("piece");
+      if (requestedPiece && data?.pieces.some((item) => item.id === requestedPiece)) setPieceId(requestedPiece);
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, [data]);
   useEffect(() => {
     if (!data?.jobs.some((job) => ["pendente", "processando"].includes(job.status))) return;
@@ -203,6 +206,8 @@ function Builder({ data, campaign, campaignId, piece, version, snapshot, pieces,
   const [command, setCommand] = useState("");
   const [variant, setVariant] = useState(0);
   const [template, setTemplate] = useState("Editorial premium");
+  const [mediaIndex, setMediaIndex] = useState(0);
+  const [compareVersionId, setCompareVersionId] = useState<string | null>(null);
   const renderJob = piece ? data.jobs.find((job) => job.piece_id === piece.id && job.tipo === "render") : null;
   const renderActive = Boolean(renderJob && ["pendente", "processando"].includes(renderJob.status));
   if (!campaignId || !campaign) return <main className="studio-content"><EmptyState icon="grid" title="Escolha uma campanha" text="O construtor mostra as peças e versões de uma campanha."/></main>;
@@ -216,7 +221,7 @@ function Builder({ data, campaign, campaignId, piece, version, snapshot, pieces,
       <div className="studio-product-summary"><span className="studio-product-cover"><Icon name="home" size={22}/></span><div><small>{snapshot?.produto_codigo ?? campaign.produto_codigo}</small><strong>{String(snapshot?.fatos.nome ?? "Produto do ERP")}</strong><p>{String(snapshot?.fatos.bairro ?? "Localização não informada")}</p></div></div>
       <div className="studio-builder-label">Formatos <small>{pieces.filter((item) => item.current_version_id).length}/{pieces.length} gerados</small></div>
       <div className="studio-piece-list">{pieces.map((item) => <button type="button" key={item.id} className={item.id === piece?.id ? "active" : ""} onClick={() => onPiece(item.id)}><span><Icon name={FORMAT_META[item.formato].icon}/></span><div><strong>{FORMAT_META[item.formato].label}</strong><small>{statusLabel[item.status] ?? item.status}</small></div>{item.current_version_id && <b><Icon name="check"/></b>}</button>)}</div>
-      <div className="studio-template-picker"><div className="studio-builder-label">Modelo visual</div><select value={template} onChange={(event) => setTemplate(event.target.value)}><option>Editorial premium</option><option>Tour do imóvel</option><option>Guia do bairro</option><option>Prova social</option><option>Oferta direta</option></select><small>5 modelos editoriais · Design System ApêCerto</small></div>
+      <TemplateLibrary templates={data.templates.filter((item) => item.formato === piece?.formato)} selected={template} onSelect={setTemplate}/>
       <button className="studio-generate" type="button" disabled={busy} onClick={() => { if (realGenerationBlocked) { setSandboxGenerated(true); return; } void mutate({ action: "generatePackage", campaignId }, "Pacote gerado e enviado para revisão."); }}><Icon name="sparkles"/>{busy ? "Gerando…" : realGenerationBlocked ? "Gerar demonstração sem custo" : version ? "Regenerar pacote" : "Gerar pacote com IA"}</button>
       <p className="studio-safe-note">{realGenerationBlocked ? "Sandbox ativo: conteúdo determinístico, sem chamada paga e sem publicação." : "IA governada ativa · orçamento aprovado."}</p>
       <div className="studio-generator-catalog"><strong>Geradores</strong><span>Feed · 5 modelos</span><span>Carrossel · 5, 7 ou 10 páginas</span><span>Stories · 3 a 7 telas</span><span>Reel · roteiro e cenas</span></div>
@@ -226,7 +231,7 @@ function Builder({ data, campaign, campaignId, piece, version, snapshot, pieces,
       {campaign.produto_alterado_em && <div className="studio-product-changed" role="alert"><Icon name="warning"/><div><strong>O produto mudou no ERP</strong><span>Atualize o snapshot antes de aprovar ou programar. As aprovações atuais estão bloqueadas.</span></div><button type="button" disabled={busy} onClick={() => void mutate({ action: "refreshSnapshot", campaignId }, "Novo snapshot factual criado. Regenere apenas as peças afetadas.")}><Icon name="refresh"/> Atualizar snapshot</button></div>}
       <div className="studio-brief-strip"><span><strong>Estratégia</strong> {String(snapshot?.fatos.bairro ?? "bairro")}, foco em visita qualificada</span><span><strong>Pilares</strong> localização · diferenciais · estilo de vida</span><span><strong>Status</strong> {sandboxGenerated ? "Demonstração pronta para revisão" : "Aguardando geração"}</span></div>
       <BriefingEditor campaignId={campaign.id} brief={brief} busy={busy} mutate={mutate}/>
-      {piece ? <div className={`studio-canvas-frame ${piece.formato}`}><PiecePreview piece={piece} version={version} snapshot={snapshot} demoContent={sandboxGenerated ? demo : null}/></div> : <EmptyState icon="grid" title="Nenhuma peça" text="Esta campanha ainda não tem formatos."/>}
+      {piece ? <div className={`studio-canvas-frame ${piece.formato}`}><PiecePreview piece={piece} version={version} snapshot={snapshot} mediaIndex={mediaIndex} demoContent={sandboxGenerated ? demo : null}/><AssetStrip snapshot={snapshot} selected={mediaIndex} onSelect={setMediaIndex} onPersist={version ? () => void mutate({ action: "createVariant", pieceId: piece.id, conteudo: { ...version.conteudo, media_index: mediaIndex }, changeScope: "midia" }, "Mídia do ERP salva como nova versão.") : undefined}/></div> : <EmptyState icon="grid" title="Nenhuma peça" text="Esta campanha ainda não tem formatos."/>}
       <div className="studio-ai-command"><div><strong>Comando para a IA</strong><small>Gere variações sem perder os fatos do snapshot.</small></div><textarea value={command} onChange={(event) => setCommand(event.target.value)} placeholder="Ex.: crie uma versão mais premium para famílias e encurte a headline"/><div className="studio-command-actions"><button type="button" className="studio-secondary" onClick={() => { setCommand("Crie uma versão mais premium sem alterar os fatos"); setSandboxGenerated(true); setVariant((current) => current + 1); }}>Mais premium</button><button type="button" className="studio-secondary" onClick={() => { setCommand("Transforme em conteúdo educativo"); setSandboxGenerated(true); setVariant((current) => current + 1); }}>Educativo</button><button type="button" className="studio-primary" disabled={!command.trim()} onClick={applyCommand}><Icon name="sparkles"/> Gerar variação</button></div></div>
       {piece && version && snapshot && <div className="studio-render-actions">
         <button type="button" className="studio-primary" disabled={busy || renderActive || !snapshot.midias.length} onClick={() => void mutate(
@@ -243,6 +248,7 @@ function Builder({ data, campaign, campaignId, piece, version, snapshot, pieces,
       <div className="studio-inspector-head"><div><span className="studio-eyebrow">Revisão</span><h3>Conteúdo da peça</h3></div></div>
       {sandboxGenerated ? <DemoInspector piece={piece} demo={demo} variant={variant} onVariant={() => setVariant((current) => current + 1)} mutate={mutate} /> : version ? <>
         <VersionEditor key={version.id} version={version} busy={busy} mutate={mutate}/>
+        <VersionHistory versions={data.versions.filter((item) => item.piece_id === piece.id)} current={version} compareVersionId={compareVersionId} onCompare={setCompareVersionId} busy={busy} mutate={mutate}/>
         <label className="studio-field"><span>Comentário da revisão</span><textarea value={comment} onChange={(event) => setComment(event.target.value)} placeholder="Explique o ajuste ou registre a decisão."/></label>
         <div className="studio-review-actions"><button type="button" className="studio-secondary" disabled={busy} onClick={() => void mutate({ action: "requestChanges", versionId: version.id, comment }, "Ajuste solicitado sem perder a versão anterior.")}><Icon name="refresh"/> Solicitar ajuste</button><button type="button" className="studio-primary" disabled={busy} onClick={() => void mutate({ action: "approve", versionId: version.id, comment }, "Versão aprovada com checksum registrado.")}><Icon name="check"/> Aprovar versão</button></div>
         <button type="button" className="studio-bulk-approve" disabled={busy || pieces.some((item) => !item.current_version_id)} onClick={() => void mutate({ action: "bulkApprove", versionIds: pieces.map((item) => item.current_version_id).filter(Boolean), comment: "Pacote mensal aprovado em lote no Studio." }, "Todas as versões atuais do pacote foram aprovadas.")}><Icon name="check"/> Aprovar pacote completo</button>
@@ -278,6 +284,10 @@ function demoContent(format: StudioFormat, snapshot: StudioData["snapshots"][num
   return format === "carousel" ? { ...base, slides: ["Capa: o imóvel em um olhar", "Localização que facilita sua rotina", "Ambientes pensados para viver", "Diferenciais que fazem diferença", "Agende sua visita"] } : format === "story" ? { ...base, stories: ["Tour rápido", "Diferenciais", "Enquete: quer conhecer?", "Chame no direct"] } : format === "reel" ? { ...base, cenas: ["Gancho · 0–3s", "Tour · 3–18s", "Diferencial · 18–26s", "CTA · 26–30s"] } : base;
 }
 
+function TemplateLibrary({ templates, selected, onSelect }: { templates: StudioData["templates"]; selected: string; onSelect: (value: string) => void }) {
+  return <section className="studio-template-library"><div className="studio-builder-label">Biblioteca visual <small>{templates.length} templates publicados · 5 modelos editoriais por formato</small></div>{templates.length ? <div className="studio-template-grid">{templates.map((item) => <button type="button" key={item.id} className={selected === item.nome ? "selected" : ""} onClick={() => onSelect(item.nome)}><span className="studio-template-thumb" aria-hidden="true"><i/><b/><em/></span><strong>{item.nome.replace(/^.*· /, "")}</strong><small>v{item.versao_publicada ?? 1} · {item.origem === "figma" ? "Figma" : "Design System"}</small></button>)}</div> : <div className="studio-template-empty">Nenhum template publicado para este formato. Importe um manifesto na área Configurações.</div>}</section>;
+}
+
 function BriefingEditor({ campaignId, brief, busy, mutate }: { campaignId: string; brief: StudioData["briefs"][number] | null; busy: boolean; mutate: (body: Record<string, unknown>, success?: string) => Promise<ApiResult> }) {
   const [audience, setAudience] = useState(String(brief?.publico?.segmento ?? "Compradores de imóveis"));
   const [tone, setTone] = useState(brief?.tom ?? "Jovial, direto, otimista e confiável");
@@ -292,9 +302,15 @@ function DemoInspector({ piece, demo, variant, onVariant, mutate }: { piece: Stu
   return <div className="studio-demo-inspector"><div className="studio-demo-badge">SANDBOX · SEM CUSTO · NÃO PUBLICÁVEL</div><label className="studio-field"><span>Headline</span><textarea value={String(demo.headline)} readOnly/></label><label className="studio-field"><span>Legenda</span><textarea value={String(demo.legenda)} readOnly/></label><label className="studio-field"><span>CTA</span><input value={String(demo.cta)} readOnly/></label><div className="studio-variant-list"><strong>Variação {variant + 1}</strong>{rows.map((row, index) => <span key={`${String(row)}-${index}`}>{String(row)}</span>)}</div><div className="studio-command-actions"><button type="button" className="studio-secondary" onClick={onVariant}><Icon name="refresh"/> Gerar outra variação</button><button type="button" className="studio-primary" onClick={() => void mutate({ action: "createVariant", pieceId: piece.id, conteudo: demo, changeScope: piece.formato === "carousel" || piece.formato === "reel" ? "cena" : "copy" }, "Variação persistida no histórico da peça.")}><Icon name="check"/> Salvar no histórico</button></div><small>Sandbox sem custo. A versão persistida permanece em revisão e não é publicada automaticamente.</small></div>;
 }
 
-function PiecePreview({ piece, version, snapshot, demoContent }: { piece: StudioPiece; version: StudioPieceVersion | null; snapshot: StudioData["snapshots"][number] | null; demoContent?: Record<string, unknown> | null }) {
+function AssetStrip({ snapshot, selected, onSelect, onPersist }: { snapshot: StudioData["snapshots"][number] | null; selected: number; onSelect: (index: number) => void; onPersist?: () => void }) {
+  const media = snapshot?.midias ?? [];
+  if (!media.length) return null;
+  return <div className="studio-asset-strip"><strong>Mídias do ERP</strong>{media.slice(0, 12).map((item, index) => <button type="button" key={`${String(item.storage_path)}-${index}`} className={selected === index ? "selected" : ""} onClick={() => onSelect(index)}><img src={publicMediaUrl(item.storage_path) ?? ""} alt={`Mídia ${index + 1}`} /><span>{index + 1}</span></button>)}{onPersist && <button type="button" className="studio-secondary studio-asset-save" onClick={onPersist}>Salvar mídia nesta versão</button>}</div>;
+}
+
+function PiecePreview({ piece, version, snapshot, mediaIndex = 0, demoContent }: { piece: StudioPiece; version: StudioPieceVersion | null; snapshot: StudioData["snapshots"][number] | null; mediaIndex?: number; demoContent?: Record<string, unknown> | null }) {
   const content = version?.conteudo ?? demoContent ?? {};
-  const media = snapshot?.midias.find((item) => item.is_capa === true) ?? snapshot?.midias[0];
+  const media = snapshot?.midias[mediaIndex] ?? snapshot?.midias.find((item) => item.is_capa === true) ?? snapshot?.midias[0];
   const url = publicMediaUrl(media?.storage_path);
   return <article className={`studio-piece-preview ${piece.formato}`} style={{ aspectRatio: FORMAT_META[piece.formato].ratio }}>
     {url ? <img src={url} alt="Foto do imóvel usada na peça"/> : <div className="studio-preview-empty"><Icon name={piece.formato === "reel" ? "video" : "image"} size={28}/><span>Produto sem prévia de mídia</span></div>}
@@ -323,6 +339,12 @@ function VersionEditor({ version, busy, mutate }: { version: StudioPieceVersion;
   </div>;
 }
 
+function VersionHistory({ versions, current, compareVersionId, onCompare, busy, mutate }: { versions: StudioPieceVersion[]; current: StudioPieceVersion; compareVersionId: string | null; onCompare: (id: string | null) => void; busy: boolean; mutate: (body: Record<string, unknown>, success?: string) => Promise<ApiResult> }) {
+  const compare = versions.find((item) => item.id === compareVersionId) ?? null;
+  const ordered = [...versions].sort((a, b) => b.versao - a.versao);
+  return <section className="studio-version-history"><div className="studio-builder-label">Histórico visual <small>{versions.length} versões persistidas · desfazer cria uma nova versão</small></div><div className="studio-history-list">{ordered.slice(0, 8).map((item) => <article key={item.id} className={item.id === current.id ? "current" : ""}><div><strong>v{item.versao}</strong><small>{item.id === current.id ? "Atual" : item.change_scope ?? "Edição"}</small></div><button type="button" className="studio-secondary" onClick={() => onCompare(item.id === current.id ? null : item.id)}>{item.id === compareVersionId ? "Fechar comparação" : "Comparar"}</button><button type="button" className="studio-secondary" disabled={busy || item.id === current.id} onClick={() => void mutate({ action: "createVersion", versionId: current.id, fields: { headline: String(item.conteudo.headline ?? ""), legenda: String(item.conteudo.legenda ?? ""), cta: String(item.conteudo.cta ?? ""), estrutura: { slides: item.conteudo.slides, stories: item.conteudo.stories, cenas: item.conteudo.cenas } } }, "Desfeito com segurança: nova versão criada a partir do histórico.")}>Desfazer</button></article>)}</div>{compare && <div className="studio-history-compare"><div><span>Atual · v{current.versao}</span><p>{String(current.conteudo.headline ?? "")}</p><small>{String(current.conteudo.cta ?? "")}</small></div><div><span>Comparação · v{compare.versao}</span><p>{String(compare.conteudo.headline ?? "")}</p><small>{String(compare.conteudo.cta ?? "")}</small></div></div>}</section>;
+}
+
 function CalendarView({ data, busy, mutate }: { data: StudioData; busy: boolean; mutate: (body: Record<string, unknown>, success?: string) => Promise<ApiResult> }) {
   const grouped = useMemo(() => { const map = new Map<string, StudioData["schedules"]>(); for (const item of data.schedules) { const key = new Intl.DateTimeFormat("en-CA", { timeZone: STUDIO_TIMEZONE }).format(new Date(item.agendado_para)); const rows = map.get(key) ?? []; rows.push(item); map.set(key, rows); } return [...map.entries()]; }, [data.schedules]);
   return <main className="studio-content"><section className="studio-section"><header><div><span className="studio-eyebrow">Agenda editorial</span><h2>Calendário de conteúdo</h2><p>Datas reais em {STUDIO_TIMEZONE}, com a versão exata de cada peça.</p></div></header>
@@ -339,6 +361,8 @@ function Settings({ data, busy, mutate }: { data: StudioData; busy: boolean; mut
       </div>
     </section>
     <section className="studio-section studio-manifest"><header><div><span className="studio-eyebrow">Templates versionados</span><h2>Importar manifesto do Figma</h2><p>O Figma é a oficina. O Studio usa a versão publicada sem depender dele a cada geração.</p></div></header><label className="studio-field"><span>Manifesto JSON</span><textarea value={manifest} onChange={(event) => setManifest(event.target.value)} placeholder={'{"schema_version":1,"slug":"feed-novo",...}'}/></label><button className="studio-secondary" type="button" disabled={busy || !manifest.trim()} onClick={() => { try { const parsed = JSON.parse(manifest); void mutate({ action: "importTemplate", manifest: parsed }, "Nova versão de template publicada no catálogo interno.").then(() => setManifest("")); } catch { window.alert("O JSON do manifesto é inválido."); } }}><Icon name="upload"/> Validar e publicar versão</button></section>
+    <section className="studio-section studio-catalog"><header><div><span className="studio-eyebrow">Catálogo visual</span><h2>Modelos importados do Figma</h2><p>{data.templates.filter((item) => item.origem === "figma").length} modelos com manifesto publicado. O Studio não finge sincronização em tempo real.</p></div></header><div className="studio-template-grid">{data.templates.filter((item) => item.origem === "figma").map((item) => <article className="studio-template-catalog-card" key={item.id}><span className="studio-template-thumb" aria-hidden="true"><i/><b/><em/></span><strong>{item.nome}</strong><small>Manifesto versionado · v{item.versao_publicada ?? 1}</small></article>)}</div></section>
+    <section className="studio-section studio-canva"><header><div><span className="studio-eyebrow">Canva</span><h2>Exportação honesta</h2><p>Não há sincronização conectada neste ambiente. Exporte um pacote editável e abra o Canva manualmente.</p></div></header><div className="studio-review-actions"><button type="button" className="studio-primary" onClick={() => { const payload = { exported_at: new Date().toISOString(), templates: data.templates, campaigns: data.campaigns.map((item) => ({ id: item.id, nome: item.nome })), note: "Pacote de referência do ApêCerto Studio; importe e ajuste no Canva." }; const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" }); const url = URL.createObjectURL(blob); const anchor = document.createElement("a"); anchor.href = url; anchor.download = "apecerto-canva-package.json"; anchor.click(); URL.revokeObjectURL(url); }}>Exportar pacote para Canva</button><button type="button" className="studio-secondary" disabled title="A abertura automática exige conexão Canva aprovada">Abrir no Canva (conexão não configurada)</button></div></section>
     <section className="studio-section studio-budget"><header><div><span className="studio-eyebrow">Custos</span><h2>Limites do mês</h2><p>O padrão seguro é zero. Apenas um administrador pode autorizar um novo limite.</p></div></header><div>{data.budgets.map((budget) => <BudgetEditor key={`${budget.provider}-${budget.limite_usd}`} budget={budget} busy={busy} mutate={mutate}/>)}</div></section>
   </main>;
 }

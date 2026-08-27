@@ -29,6 +29,8 @@ export type StudioSnapshot = {
   midias: Array<Record<string, unknown>>;
   checksum: string;
   criado_em: string;
+  change_scope?: string | null;
+  parent_version_id?: string | null;
 };
 
 export type StudioPiece = {

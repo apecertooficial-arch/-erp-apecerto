@@ -33,7 +33,11 @@ const fixture: StudioData = {
     versao: 1,
     produto_codigo: "APTESTE-81",
     fatos: { nome: "Apartamento ensolarado", bairro: "Moema", cidade: "São Paulo", area_m2: 87, dormitorios: 2, vagas: 1, preco: 1250000 },
-    midias: [{ storage_path: "homologacao/sala.jpg", is_capa: true }],
+    midias: [
+      { storage_path: "homologacao/sala.jpg", is_capa: true },
+      { storage_path: "homologacao/fachada.jpg", is_capa: false },
+      { storage_path: "homologacao/varanda.jpg", is_capa: false },
+    ],
     checksum: "a".repeat(64),
     criado_em: "2026-08-27T12:00:00Z",
   }],
@@ -100,12 +104,15 @@ const fixture: StudioData = {
     { provider: "instagram", limite_usd: 0, consumido_usd: 0 },
   ],
   briefs: [{ id: "57000000-0000-4000-8000-000000000001", campaign_id: campaignId, versao: 1, publico: { segmento: "Compradores" }, tom: "Jovial, direto e confiável", canais: ["instagram"], restricoes_factuais: [], conteudo: { angulo_editorial: "Vida urbana em Moema", pilares: ["localização", "diferenciais"] }, criado_em: "2026-08-27T12:00:00Z" }],
-  templates: [
-    { id: "58000000-0000-4000-8000-000000000001", slug: "feed-editorial-premium", nome: "Feed Editorial premium", formato: "feed", ativo: true, versao_publicada: 1, origem: "design_system" },
-    { id: "58000000-0000-4000-8000-000000000002", slug: "carousel-tour-imovel", nome: "Carrossel Tour do imóvel", formato: "carousel", ativo: true, versao_publicada: 1, origem: "design_system" },
-    { id: "58000000-0000-4000-8000-000000000003", slug: "story-enquete", nome: "Stories Enquete", formato: "story", ativo: true, versao_publicada: 1, origem: "design_system" },
-    { id: "58000000-0000-4000-8000-000000000004", slug: "reel-tour-30s", nome: "Reel Tour 30s", formato: "reel", ativo: true, versao_publicada: 1, origem: "design_system" },
-  ],
+  templates: formats.flatMap((formato, formatIndex) => Array.from({ length: 5 }, (_, variant) => ({
+    id: `58000000-0000-4000-8000-${String(formatIndex * 5 + variant + 1).padStart(12, "0")}`,
+    slug: `${formato}-oficial-${variant + 1}`,
+    nome: `${formato === "carousel" ? "Carrossel" : formato === "story" ? "Stories" : formato === "reel" ? "Reel" : "Feed"} · ${["Editorial", "Tour", "Prova social", "Comparativo", "Oferta"][variant]}`,
+    formato,
+    ativo: true,
+    versao_publicada: 1,
+    origem: variant === 0 ? "figma" : "design_system",
+  }))),
 };
 
 export default function StudioVisualTestPage() {

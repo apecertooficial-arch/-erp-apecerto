@@ -90,19 +90,21 @@ async function rpc<T>(auth: Auth, name: string, body: Record<string, unknown>): 
 async function studioData(auth: Auth): Promise<StudioData> {
   requirePermission(auth, "ver");
   const org = `organization_id=eq.${STUDIO_ORGANIZATION_ID}`;
-  const [campaigns, snapshots, pieces, versions, schedules, jobs, integrations, budgets, briefs, templates] = await Promise.all([
+  const [campaigns, snapshots, pieces, versions, schedules, jobs, integrations, budgets, briefs, templates, templateVersions] = await Promise.all([
     rest<StudioData["campaigns"]>(auth, `social_campaigns?${org}&select=id,nome,objetivo,periodo_inicio,periodo_fim,status,produto_codigo,produto_alterado_em,produto_alterado_motivo,snapshot_atual_id,budget_usd,gasto_usd,atualizado_em&order=atualizado_em.desc&limit=100`),
     rest<StudioData["snapshots"]>(auth, `social_product_snapshots?${org}&select=id,campaign_id,versao,produto_codigo,fatos,midias,checksum,criado_em&order=criado_em.desc&limit=100`),
     rest<StudioData["pieces"]>(auth, `social_pieces?${org}&select=id,campaign_id,formato,titulo,status,current_version_id,atualizado_em&order=atualizado_em.desc&limit=500`),
-    rest<StudioData["versions"]>(auth, `social_piece_versions?${org}&select=id,piece_id,versao,snapshot_id,template_version_id,conteudo,output_manifest,checksum,criado_em&order=criado_em.desc&limit=500`),
+    rest<StudioData["versions"]>(auth, `social_piece_versions?${org}&select=id,piece_id,versao,snapshot_id,template_version_id,conteudo,output_manifest,checksum,criado_em,change_scope,parent_version_id&order=criado_em.desc&limit=500`),
     rest<StudioData["schedules"]>(auth, `social_schedules?${org}&select=id,piece_version_id,canal,agendado_para,timezone,status,conflito&order=agendado_para.asc&limit=500`),
     rest<StudioData["jobs"]>(auth, `social_generation_jobs?${org}&select=id,campaign_id,piece_id,tipo,status,progresso,tentativas,max_tentativas,erro_mensagem,criado_em&order=criado_em.desc&limit=100`),
     rest<StudioData["integrations"]>(auth, `social_integrations?${org}&select=provider,status,config_publica,verificado_em&order=provider`),
     rest<StudioData["budgets"]>(auth, `social_budgets?${org}&mes=eq.${new Date().toISOString().slice(0, 7)}-01&select=provider,limite_usd,consumido_usd`),
     rest<StudioData["briefs"]>(auth, `social_briefs?${org}&select=id,campaign_id,versao,publico,tom,canais,restricoes_factuais,conteudo,criado_em&order=criado_em.desc&limit=300`),
     rest<StudioData["templates"]>(auth, `social_templates?${org}&ativo=eq.true&select=id,slug,nome,formato,ativo&order=nome.asc&limit=100`),
+    rest<Array<{ id: string; template_id: string; versao: number; origem: string; manifesto: Record<string, unknown> }>>(auth, `social_template_versions?${org}&status=eq.publicada&select=id,template_id,versao,origem,manifesto&order=versao.desc&limit=200`),
   ]);
-  return { organizationId: STUDIO_ORGANIZATION_ID, timezone: STUDIO_TIMEZONE, campaigns, snapshots, pieces, versions, schedules, jobs, integrations, budgets, briefs, templates };
+  const enrichedTemplates = templates.map((template) => { const published = templateVersions.find((version) => version.template_id === template.id); return { ...template, versao_publicada: published?.versao, origem: published?.origem, manifesto: published?.manifesto }; });
+  return { organizationId: STUDIO_ORGANIZATION_ID, timezone: STUDIO_TIMEZONE, campaigns, snapshots, pieces, versions, schedules, jobs, integrations, budgets, briefs, templates: enrichedTemplates };
 }
 
 function errorResponse(reason: unknown) {
@@ -277,7 +279,9 @@ async function createHumanVersion(auth: Auth, body: Record<string, unknown>) {
   const versions = await rest<StudioPieceVersion[]>(auth, `social_piece_versions?id=eq.${encodeURIComponent(versionId)}&select=id,piece_id,versao,snapshot_id,template_version_id,conteudo,output_manifest,checksum,criado_em`);
   const source = versions[0];
   if (!source) throw new StudioError("A versão de origem não foi encontrada.", 404, "version_not_found");
-  if (allowed.headline === clean(source.conteudo.headline, 120) && allowed.legenda === clean(source.conteudo.legenda, 2200) && allowed.cta === clean(source.conteudo.cta, 80)) return { ok: true, unchanged: true, versionId: source.id };
+  const sourceStructure = JSON.stringify({ ...(Array.isArray(source.conteudo.slides) ? { slides: source.conteudo.slides } : {}), ...(Array.isArray(source.conteudo.stories) ? { stories: source.conteudo.stories } : {}), ...(Array.isArray(source.conteudo.cenas) ? { cenas: source.conteudo.cenas } : {}) });
+  const nextStructure = JSON.stringify(jsonObject(fields.estrutura) ? fields.estrutura : {});
+  if (allowed.headline === clean(source.conteudo.headline, 120) && allowed.legenda === clean(source.conteudo.legenda, 2200) && allowed.cta === clean(source.conteudo.cta, 80) && sourceStructure === nextStructure) return { ok: true, unchanged: true, versionId: source.id };
   const latest = await rest<Array<{ versao: number }>>(auth, `social_piece_versions?piece_id=eq.${source.piece_id}&select=versao&order=versao.desc&limit=1`);
   const content = { ...source.conteudo, headline: allowed.headline, legenda: allowed.legenda, cta: allowed.cta, ...(allowed.estrutura ?? {}) };
   const checksum = await sha256({ snapshot_id: source.snapshot_id, template_version_id: source.template_version_id, content });

@@ -13,6 +13,7 @@ const renderWorker = readFileSync(new URL("../workers/studio-renderer/index.mjs"
 const publisher = readFileSync(new URL("../supabase/functions/social-publisher/index.ts", import.meta.url), "utf8");
 const metaOAuth = readFileSync(new URL("../supabase/functions/social-meta-oauth/index.ts", import.meta.url), "utf8");
 const css = readFileSync(new URL("../app/styles/apecerto-studio.css", import.meta.url), "utf8");
+const catalogMigration = readFileSync(new URL("../supabase/migrations/20260827170000_studio_template_catalog_20.sql", import.meta.url), "utf8");
 
 test("Studio é um módulo nativo, roteável e fail-closed", () => {
   assert.equal(pathDoModulo("apêcerto Studio"), "/studio");
@@ -178,4 +179,19 @@ test("fat ia vertical do Studio persiste briefing, variações e deep links", ()
   assert.match(ui, /Salvar no histórico/);
   assert.match(ui, /Gerar variação/);
   assert.match(ui, /5 modelos editoriais/);
+});
+
+test("catálogo visual tem vinte templates versionados e workspace com mídia/histórico", () => {
+  assert.match(catalogMigration, /v_format \|\| '-oficial-' /);
+  assert.match(catalogMigration, /array\['feed','carousel','story','reel'\]/);
+  assert.match(catalogMigration, /for v_variant in 1\.\.5 loop/);
+  assert.match(catalogMigration, /layout_variant/);
+  assert.match(ui, /TemplateLibrary/);
+  assert.match(ui, /Mídias do ERP/);
+  assert.match(ui, /Salvar mídia nesta versão/);
+  assert.match(ui, /VersionHistory/);
+  assert.match(ui, /Comparar/);
+  assert.match(ui, /Desfazer/);
+  assert.match(ui, /Exportar pacote para Canva/);
+  assert.match(ui, /Modelos importados do Figma/);
 });
