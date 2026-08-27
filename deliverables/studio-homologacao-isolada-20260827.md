@@ -7,3 +7,8 @@
 - Console: encontrados avisos de `src` vazio e chave ausente no calendário; corrigidos (asset sem URL agora mostra placeholder e eventos possuem `key`).
 - Suíte após correção: 506/506 testes aprovados; build concluído; lint sem erros.
 - Produção foi somente leitura. O serviço retornou build anterior durante o polling do novo commit; nenhuma aprovação, agendamento ou publicação real foi executada.
+- Correção final de responsividade: o indicador Produto→Publicação agora usa `scroll-snap` e scrollbar invisível, com cada etapa cabendo em toque horizontal.
+- Validação em 390 px clicando nas telas: Visão geral (overflow=false), Construtor (canvas/revisão), Board (filtro Template: todos), Calendário (Mês/Semana/Lista) e Configurações (Canva). Métricas ficaram visíveis na Visão geral.
+- Medição de documento: `scrollWidth === clientWidth` em 320, 390 e 430 px.
+- Novas capturas: `studio-390-all-screens.png` e `studio-desktop-final.png`.
+- Suíte após ajuste: 509/509 testes aprovados; build concluído; lint sem erros.
