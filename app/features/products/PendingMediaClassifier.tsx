@@ -10,6 +10,7 @@ export type PendingMediaItem = {
   category: string;
   preview: string;
   cover?: boolean;
+  altText?: string;
 };
 
 export function PendingMediaClassifier({
@@ -18,12 +19,14 @@ export function PendingMediaClassifier({
   onCategoryChange,
   onRemove,
   onCoverChange,
+  onAltTextChange,
 }: {
   items: PendingMediaItem[];
   categories: readonly string[];
   onCategoryChange: (id: string, category: string) => void;
   onRemove: (id: string) => void;
   onCoverChange?: (id: string) => void;
+  onAltTextChange?: (id: string, value: string) => void;
 }) {
   const coverGroupName = useId();
 
@@ -47,6 +50,7 @@ export function PendingMediaClassifier({
         </div>
         <div className="pmc-fields">
           <label><span>O que aparece nesta imagem?</span><select aria-label={`Classificar ${item.file.name}`} value={item.category} onChange={(event) => onCategoryChange(item.id, event.target.value)}>{categories.map((category) => <option key={category}>{category}</option>)}</select></label>
+          {item.kind === "foto" && onAltTextChange && <label><span>Descrição acessível da foto</span><input maxLength={220} value={item.altText ?? ""} onChange={(event) => onAltTextChange(item.id, event.target.value)} placeholder="Ex.: Sala integrada da unidade 1204" /></label>}
           <div><small title={item.file.name}>{item.file.name}</small><small>{(item.file.size / 1024 / 1024).toFixed(1)} MB</small></div>
           {item.kind === "foto" && onCoverChange && <label className="pmc-cover"><input type="radio" name={coverGroupName} checked={Boolean(item.cover)} onChange={() => onCoverChange(item.id)} /> Usar como capa</label>}
         </div>
