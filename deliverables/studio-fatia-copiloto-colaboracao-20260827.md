@@ -18,6 +18,7 @@ Data: 27/08/2026. Execução local, sem deploy, publicação ou gasto externo.
 - Suíte Studio: 55 testes passaram (incluindo contratos de RLS, Copilot, colaboração e métricas).
 - Build `vinext`: passou.
 - ESLint nos arquivos alterados: passou sem erros.
+- Regressão ampla `node --test tests/*.mjs`: não passou por dois contratos preexistentes e não relacionados a esta fatia: seletor visual legado em `tests/crm-organizacao.test.mjs` e revogação de RPC legada em `tests/studio-meta-contract.test.mjs`. O conjunto Studio permaneceu verde.
 
 ## Limitações
 
