@@ -43,6 +43,7 @@ test("proprietário é liberado somente ao captador ou à gestão ativa", () => 
   assert.match(migration, /create or replace function public\.produto_proprietarios_meus\(\)/);
   assert.match(migration, /create or replace function public\.produto_proprietario_ler/);
   assert.match(migration, /create or replace function public\.produto_unidades_proprietarios_ler/);
+  assert.match(migration, /select p\.unidade_id, p\.nome, p\.contato\s+from private\.unidade_proprietarios p/);
   assert.match(migration, /select public\.is_product_manager\(\)/);
   assert.match(captureWizard, /rpc\("produto_proprietarios_meus"\)/);
   assert.doesNotMatch(captureWizard, /from\("proprietarios"\)\.select\("id,nome,email,telefone"\)/);

@@ -364,7 +364,7 @@ stable
 security definer
 set search_path = ''
 as $$
-  select p.unidade_id, p.proprietario_nome, p.proprietario_contato
+  select p.unidade_id, p.nome, p.contato
   from private.unidade_proprietarios p
   join public.unidades u on u.id = p.unidade_id
   left join public.corretores c on c.id = u.captador_corretor_id
