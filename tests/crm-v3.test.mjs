@@ -65,3 +65,62 @@ test("ficha preserva foco, prende teclado e navega abas no desktop e celular", (
     assert.match(source, /focoOrigemRef\.current\?\.focus\(\)/);
   }
 });
+
+test("V3 entrega a navegação aprovada e mantém a navegação legada separada", () => {
+  assert.match(workspace, /experience === "v3" && <nav className="f2-nav f2-v3-modulos"/);
+  for (const label of ["Meu Dia", "Negócios", "Leads", "Atividades", "Visitas", "Esteira", "Painel", "Configurações"]) {
+    assert.match(workspace, new RegExp(`>${label}<|\\/?> ${label}(?: |<)`));
+  }
+  assert.match(workspace, /experience === "legacy" && <nav className="f2-nav"/);
+  assert.match(workspace, /Todos os Leads/);
+  assert.match(workspace, /Regras do CRM/);
+});
+
+test("menu, arrasto e massa convergem no mesmo motor canônico de movimento", () => {
+  assert.match(workspace, /async function movimentar\(ids: string\[\], etapaCodigo: string\)/);
+  assert.match(workspace, /action: "atualizarMomento"/);
+  assert.match(workspace, /onDrop=.*movimentar\(\[id\], etapa\.codigo\)/s);
+  assert.match(workspace, /movimentar\(selecionados, destinoMassa\)[^>]*>Mover selecionados/);
+  assert.match(workspace, /movimentar\(\[item\.id\], destino\)[^>]*>[\s\S]*Mover para…/);
+  assert.doesNotMatch(workspace, /setLeads\([^)]*etapa/);
+});
+
+test("ficha V3 possui sete áreas reais no desktop e no celular sem remover as três legadas", () => {
+  const sete = ["Atendimento", "Histórico", "Atividades", "Negócios", "Imóveis", "Arquivos", "Dados do lead"];
+  for (const label of sete) {
+    assert.match(workspace, new RegExp(`"${label}"`));
+    assert.match(mobile, new RegExp(`"${label}"`));
+  }
+  for (const source of [workspace, mobile]) {
+    assert.match(source, /experience === "legacy"/);
+    assert.match(source, /\["notas", "Notas"\]/);
+  }
+  assert.match(workspace, /visitas=\{visitas\.filter/);
+  assert.match(mobile, /visitas=\{\(dados\?\.visitas/);
+});
+
+test("permissão real chega à Esteira e gestão não aparece para Corretor", () => {
+  assert.match(workspace, /sessionRole=\{profile\.role\}/);
+  assert.doesNotMatch(workspace, /sessionRole="admin"/);
+  assert.match(workspace, /const podeGerir = \["admin", "gestor"\]\.includes/);
+  assert.match(workspace, /\{podeGerir && <a href="\/inteligencia"/);
+  assert.match(workspace, /\{podeGerir && <button[^>]+aba === "config"/);
+});
+
+test("busca, seleção e filtros V3 não simulam persistência nem sucesso", () => {
+  assert.match(workspace, /type="search" value=\{buscaQuadro\}/);
+  assert.match(workspace, /temperaturaQuadro === "todas"/);
+  assert.match(workspace, /setSelecionados\(\[\]\); setModoSelecao\(false\)/);
+  assert.match(workspace, /Nenhum sucesso foi presumido/);
+  assert.doesNotMatch(workspace, /localStorage|sessionStorage|fixture|mock/i);
+});
+
+test("Design System do V3 usa tokens, colunas compactas e alvos móveis", () => {
+  const css = read("../app/styles/crm-v3-official.css");
+  assert.match(css, /flex:0 0 240px/);
+  assert.match(css, /border:1px solid var\(--border-soft\)/);
+  assert.match(css, /background:var\(--ape-orange\)/);
+  assert.match(css, /font-family:var\(--font-body\)/);
+  assert.match(css, /min-height:44px/);
+  assert.doesNotMatch(css, /border:[2-9]px/);
+});
