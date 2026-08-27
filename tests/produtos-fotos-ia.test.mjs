@@ -70,6 +70,8 @@ test("parser da Responses API lê somente output_text", () => {
 
 test("endpoint é desligável, autenticado, limitado e não registra conteúdo", () => {
   assert.match(edge,/OPENAI_PHOTO_ORGANIZER_ENABLED/);
+  assert.match(edge,/\.from\("app_secrets"\)[\s\S]*\.eq\("chave", "OPENAI_PHOTO_ORGANIZER_ENABLED"\)/);
+  assert.match(edge,/runtimeFlag\?\.valor \?\? envFlag/);
   assert.match(edge,/Deno\.env\.get\("OPENAI_API_KEY"\)/);
   assert.match(edge,/OPENAI_PHOTO_ORGANIZER_MODEL/);
   assert.match(edge,/PHOTO_ORGANIZER_MAX_IMAGES/);

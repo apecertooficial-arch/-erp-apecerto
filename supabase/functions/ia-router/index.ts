@@ -76,7 +76,11 @@ async function handlePhotoOrganizer(input:{
   const safeLog = (status:string, code?:string, count=0) => console.log(JSON.stringify({
     event:"photo_organizer",duration_ms:Date.now()-startedAt,model,count,status,error_code:code||null,
   }));
-  if (Deno.env.get("OPENAI_PHOTO_ORGANIZER_ENABLED") !== "true") {
+  const envFlag = Deno.env.get("OPENAI_PHOTO_ORGANIZER_ENABLED") || "false";
+  const { data: runtimeFlag } = await input.supabase.from("app_secrets")
+    .select("valor").eq("chave", "OPENAI_PHOTO_ORGANIZER_ENABLED").maybeSingle();
+  const enabled = String(runtimeFlag?.valor ?? envFlag).toLowerCase() === "true";
+  if (!enabled) {
     safeLog("disabled");
     return input.json({ok:false,reason:"ia_indisponivel"},503);
   }
