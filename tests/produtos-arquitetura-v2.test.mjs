@@ -20,10 +20,11 @@ test("origem comercial explícita prevalece e o fallback preserva o estoque atua
   assert.equal(resolveCommercialOrigin({ explicit: null, thirdParty: false, buildingStatus: "Lançamento" }), "lancamento");
 });
 
-test("somente o captador da unidade enxerga o proprietário", () => {
+test("captador e gestão enxergam o proprietário; outro corretor não", () => {
   assert.equal(canViewUnitOwner({ viewerBrokerId: 12, captorBrokerId: 12 }), true);
   assert.equal(canViewUnitOwner({ viewerBrokerId: 99, captorBrokerId: 12 }), false);
   assert.equal(canViewUnitOwner({ viewerBrokerId: null, captorBrokerId: 12 }), false);
+  assert.equal(canViewUnitOwner({ viewerBrokerId: 99, captorBrokerId: 12, isManager: true }), true);
 });
 
 test("fila de qualidade traduz bloqueios sem expor dados privados", () => {
