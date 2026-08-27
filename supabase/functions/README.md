@@ -1,10 +1,9 @@
-# Edge Functions de envio — proveniência
+# Edge Functions — proveniência e fontes locais
 
-Este diretório versiona os **sources ativos** das Edge Functions operacionais do
-projeto Supabase `diaegvfveqezispcthwk`. Elas tinham sido deployadas direto pelo
-painel e nunca existiram no Git. O que está aqui é um **espelho fiel** do que estava
-rodando em produção no momento da captura — nenhuma linha de comportamento foi
-alterada.
+Este diretório reúne dois grupos distintos. As funções legadas listadas na tabela
+abaixo são espelhos dos bundles que estavam ativos no projeto Supabase no momento
+da captura. As funções do apêcerto Studio são **fontes novas, somente locais e não
+implantadas**; elas não devem ser confundidas com o estado de produção.
 
 As três funções de WhatsApp foram capturadas em 2026-07-31. `meta-capi` foi
 capturada em 2026-08-21, também pela API de gerenciamento do Supabase. A captura
@@ -18,6 +17,33 @@ não fez redeploy.
 | `enviar-produto` | 6 | `false` | `ce7225e4065e310e3a357e65be3496f09f5203137d2f998c52c0a7030b10ee39` | Envia o pack de um empreendimento numa única chamada — fotos ordenadas (capa, fachada, decorado, lazer, planta, sala) mais o book em PDF. Delega cada envio a `dapi-enviar`. Aceita `dry_run` para conferir o plano sem disparar nada. | Nenhum caller no repositório. Só automações externas, em modo máquina. |
 | `enviar-whatsapp` | 5 | `true` | `7b1f19b92db00d61c4e7c2ebba20e25a66aae5264173717edbfebd2bfdf8434f` | Envio de texto por uma instancia. A instancia e resolvida no servidor por `ncrm_resolver_envio_autorizado`; o `instancia_id` do body virou apenas um pedido. Consulta a autoridade do piloto antes de enviar. | Nenhum caller conhecido no repositorio. Mantida por precaucao, mas fechada. |
 | `meta-capi` | 7 | `true` | `e11064a8e58705c870d20c8e4cb20e59f6f62215719b5cab6282533b2b727371` | Encaminha eventos consentidos para a Meta CAPI com o mesmo `event_id` do Pixel, deduplicação, hash de identificadores e trilha de entrega. | Site público, para eventos allowlisted como `schedule_complete`, `owner_cta_click` e `financing_open`. |
+
+## Funções novas do apêcerto Studio — não implantadas
+
+| função | autenticação de entrada | estado local | finalidade |
+| --- | --- | --- | --- |
+| `ia-router` | JWT de usuário + RLS/permissão | pronta para ativação | Único caminho de geração de copy. Respeita orçamento, valida schema e registra custo/latência. |
+| `social-meta-oauth` | JWT no início/desconexão; callback protegido por `state` | pronta para ativação, não validada externamente | Facebook Login para conta profissional. O token fica no Vault e nunca é devolvido ao navegador. |
+| `social-publisher` | segredo de worker + contratos no banco | pronta para ativação, não validada externamente | Publica somente versão aprovada e arquivo final, com idempotência, retry e confirmação remota. |
+
+Configuração necessária para `social-meta-oauth`:
+
+- `META_OAUTH_ENABLED=true` somente na ativação autorizada;
+- `META_APP_ID` e `META_APP_SECRET` no gerenciador de secrets;
+- `META_OAUTH_REDIRECT_URI` exatamente igual ao cadastrado na Meta;
+- `META_STUDIO_RETURN_URL` HTTPS (ou localhost em desenvolvimento);
+- `META_GRAPH_API_VERSION` fixada no formato `vNN.N`;
+- `SUPABASE_URL`, `SUPABASE_ANON_KEY` e `SUPABASE_SERVICE_ROLE_KEY` fornecidas pela plataforma.
+
+Configuração necessária para `social-publisher`:
+
+- `STUDIO_PUBLISHER_SECRET` no gerenciador de secrets;
+- `META_GRAPH_API_VERSION` fixada;
+- `SUPABASE_URL` e `SUPABASE_SERVICE_ROLE_KEY` fornecidas pela plataforma.
+
+O deploy, o cadastro de secrets, o login Meta e qualquer publicação real precisam
+de uma janela de homologação externa autorizada. Nenhuma dessas ações foi feita
+pela implementação local.
 
 O `ezbr_sha256` identifica o **bundle publicado** (o eszip que a plataforma executa),
 não o texto do arquivo. Ele serve para afirmar "esta é exatamente a build que estava

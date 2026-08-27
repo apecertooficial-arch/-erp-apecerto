@@ -34,6 +34,10 @@ begin
      or position('public.sara_checagem_diaria(null)' in v_def)=0 then
     raise exception 'relogio ainda sobrepoe a configuracao do gatilho';
   end if;
+  if to_regclass('public.apecerto_baseline_metadata') is not null
+     and not exists (select 1 from public.automacoes) then
+    return;
+  end if;
   if not exists(
     select 1
       from public.automacoes a,

@@ -31,6 +31,7 @@ export const MODULE_CAPABILITIES: Record<string, readonly string[]> = {
   calendario: ["ver", "criar", "editar", "excluir"],
   automacoes: ["ver", "criar", "editar", "excluir", "executar", "consultar_execucoes"],
   agentes_ia: ["ver", "criar", "editar", "configurar"],
+  studio_social: ["ver", "criar", "editar", "gerar", "revisar", "comentar", "aprovar", "rejeitar", "agendar", "publicar", "cancelar_publicacao", "configurar", "gerenciar"],
   notificacoes: ["ver", "configurar"],
   configuracoes: ["ver", "configurar", "ver_conexoes"],
   usuarios: ["ver", "criar", "editar", "excluir", "gerenciar_permissoes"],
@@ -44,6 +45,7 @@ export const MODULE_LABELS: Record<string, string> = {
   disparos: "Disparos", abordagens: "Abordagens", produtos: "Produtos", vendas: "Vendas", comissoes: "Comissões",
   financeiro: "Financeiro", fluxo_caixa: "Fluxo de caixa", metas: "Metas",
   calendario: "Calendário", automacoes: "Automações", agentes_ia: "Agentes de IA", notificacoes: "Notificações",
+  studio_social: "apêcerto Studio",
   configuracoes: "Configurações", usuarios: "Usuários", auditoria: "Auditoria",
 };
 
@@ -53,6 +55,8 @@ export const ACTION_LABELS: Record<string, string> = {
   atribuir: "Atribuir", atribuir_proprio: "Atribuir (próprio)", transferir: "Transferir", publicar: "Publicar",
   configurar: "Configurar", executar: "Executar", gerenciar_permissoes: "Gerenciar permissões", ver_conexoes: "Ver conexões",
   visualizar_historico: "Ver histórico", consultar_execucoes: "Consultar execuções",
+  gerar: "Gerar", revisar: "Revisar", comentar: "Comentar", rejeitar: "Rejeitar", agendar: "Agendar",
+  cancelar_publicacao: "Cancelar publicação", gerenciar: "Administrar",
 };
 
 // Ordem canônica das colunas de ação (as demais, se surgirem, vão para o fim).

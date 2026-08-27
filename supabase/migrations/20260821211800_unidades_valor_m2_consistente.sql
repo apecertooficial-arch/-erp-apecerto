@@ -230,6 +230,16 @@ declare
   v_antes jsonb;
   v_depois jsonb;
 begin
+  -- A correcao abaixo e um patch de dado historico. Em uma base criada pelo
+  -- baseline nao existe AP0062/AP0342 para corrigir; o contrato estrutural e
+  -- os gatilhos acima continuam sendo instalados normalmente.
+  if to_regclass('public.apecerto_baseline_metadata') is not null
+     and not exists (
+       select 1 from public.empreendimentos e where e.codigo='AP0062'
+     ) then
+    return;
+  end if;
+
   -- Os códigos possuem índices UNIQUE no esquema canônico. Resolver primeiro
   -- o pai e depois a unidade evita UUID gerado hardcoded e fixa a ordem de lock.
   select e.id

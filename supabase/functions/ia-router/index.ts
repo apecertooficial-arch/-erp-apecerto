@@ -59,9 +59,17 @@ Deno.serve(async (req: Request) => {
     }
     const perfilFerramenta = perfil === "gerente" ? "gestor" : perfil;
     const podeVisaoGeral = chamadaInterna || perfil === "admin" || perfil === "gerente";
-    if (!usuarioAtivo || (!corretorId && !podeVisaoGeral))
-      return json({ok:false,reason:"perfil_operacional_nao_encontrado"},403);
     const b = await req.json();
+    let podeGerarNoStudio = false;
+    if (!chamadaInterna && b.agente_slug === "social-media-apecerto") {
+      const { data: permitido } = await userSupabase.rpc("social_has_permission", {
+        p_action: "gerar",
+        p_organization_id: "00000000-0000-4000-8000-000000000001",
+      });
+      podeGerarNoStudio = permitido === true;
+    }
+    if (!usuarioAtivo || (!corretorId && !podeVisaoGeral && !podeGerarNoStudio))
+      return json({ok:false,reason:"perfil_operacional_nao_encontrado"},403);
     const action = b.action || "run";
     if (chamadaInterna && (action!=="run" || b.disable_tools!==true || b.agente_slug!=="sara"))
       return json({ok:false,reason:"chamada_interna_fora_do_contrato"},403);

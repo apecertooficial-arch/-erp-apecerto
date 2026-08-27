@@ -87,6 +87,9 @@ import "./styles/app-mobile-gestor.css";
 /* CRM V3 oficial: última palavra apenas dentro de .crm-v3-official.
    Sem a classe, CRM_V3_EXPERIENCE=legacy preserva o visual canônico acima. */
 import "./styles/crm-v3-official.css";
+/* Módulo nativo de produção editorial. Carrega por último porque suas classes
+   são totalmente isoladas sob .studio-* e consomem os tokens oficiais. */
+import "./styles/apecerto-studio.css";
 import { RegistroPwa } from "./components/RegistroPwa";
 
 export const metadata: Metadata = {

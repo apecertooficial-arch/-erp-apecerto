@@ -306,6 +306,7 @@ WHERE id=1;
 DO $check$
 DECLARE v_pesos integer; v_job_ativo boolean;
 BEGIN
+  IF to_regclass('public.apecerto_baseline_metadata') IS NOT NULL THEN RETURN; END IF;
   SELECT count(DISTINCT i.item->>'peso') INTO v_pesos
   FROM public.automacoes a
   CROSS JOIN LATERAL jsonb_array_elements(a.mapa->'automation'->'blocks') b(bloco)

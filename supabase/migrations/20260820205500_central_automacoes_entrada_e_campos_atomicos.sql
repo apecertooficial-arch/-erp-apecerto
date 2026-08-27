@@ -50,6 +50,17 @@ begin
   end if;
   execute v_new;
 
+  if to_regclass('public.apecerto_baseline_metadata') is not null then
+    select pg_get_functiondef(p.oid) into v_def from pg_proc p
+    join pg_namespace n on n.oid=p.pronamespace
+    where n.nspname='public' and p.proname='motor_campos';
+    if position('FIELD_OPERATION_REQUIRES_EXISTING_LEAD' in coalesce(v_def,''))=0
+       or position('insert into leads(nome,telefone,email,origem,status)' in coalesce(v_def,''))>0 then
+      raise exception 'motor_campos do baseline nao esta fail-closed';
+    end if;
+    return;
+  end if;
+
   select pg_get_functiondef(p.oid) into v_def from pg_proc p
   join pg_namespace n on n.oid=p.pronamespace
   where n.nspname='public' and p.proname='motor_campos';

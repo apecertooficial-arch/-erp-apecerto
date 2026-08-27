@@ -5,6 +5,11 @@ declare
   v_atuais integer;
   v_validas integer;
 begin
+  if to_regclass('public.apecerto_baseline_metadata') is not null
+     and not exists (select 1 from public.abordagens where id in (18,19,20)) then
+    return;
+  end if;
+
   select count(*)
     into v_atuais
     from public.abordagens a

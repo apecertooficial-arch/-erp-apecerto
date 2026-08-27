@@ -332,6 +332,9 @@ begin
       versao_publicada_id=v_version_id,status='publicado',ativa=true,
       publicado_em=now(),atualizada_em=now() where id=r.id;
   end loop;
+  if v_count=0 and to_regclass('public.apecerto_baseline_metadata') is not null then
+    return;
+  end if;
   if v_count<>2 then raise exception 'Esperadas 2 automacoes de entrada; encontradas %',v_count; end if;
 end
 $publicar_regra$;

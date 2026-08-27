@@ -11,6 +11,11 @@ declare
   v_new_02 constant text := v_base||'miruna-02-whatsapp-720p.mp4';
   v_count integer;
 begin
+  if to_regclass('public.apecerto_baseline_metadata') is not null
+     and not exists (select 1 from public.abordagens where id in (18,19,20)) then
+    return;
+  end if;
+
   select count(*) into v_count
     from storage.objects
    where bucket_id='chat-midia'

@@ -181,24 +181,36 @@ grant execute on function public.ia_conversa_segura(uuid,uuid,integer) to servic
 grant execute on function public.ia_estrutura_funil2() to service_role;
 grant execute on function public.ia_criar_tarefa_v2(uuid,uuid,text,timestamptz,boolean) to service_role;
 
-revoke all on function public.ia_carteira(bigint,text,integer) from public,anon,authenticated;
-revoke all on function public.ia_vendas(bigint,integer) from public,anon,authenticated;
-revoke all on function public.ia_recebiveis(bigint) from public,anon,authenticated;
-revoke all on function public.ia_lead(text) from public,anon,authenticated;
-revoke all on function public.ia_conversa(text,integer) from public,anon,authenticated;
-revoke all on function public.ia_estrutura_crm() from public,anon,authenticated;
-revoke all on function public.ia_mover_lead(bigint,text,text,boolean) from public,anon,authenticated;
-revoke all on function public.ia_criar_tarefa(bigint,text,text,integer,boolean) from public,anon,authenticated;
-revoke all on function public.ia_registrar_feedback(bigint,text,text,boolean) from public,anon,authenticated;
-grant execute on function public.ia_carteira(bigint,text,integer) to service_role;
-grant execute on function public.ia_vendas(bigint,integer) to service_role;
-grant execute on function public.ia_recebiveis(bigint) to service_role;
-grant execute on function public.ia_lead(text) to service_role;
-grant execute on function public.ia_conversa(text,integer) to service_role;
-grant execute on function public.ia_estrutura_crm() to service_role;
-grant execute on function public.ia_mover_lead(bigint,text,text,boolean) to service_role;
-grant execute on function public.ia_criar_tarefa(bigint,text,text,integer,boolean) to service_role;
-grant execute on function public.ia_registrar_feedback(bigint,text,text,boolean) to service_role;
+-- Instalacoes antigas podem conter as RPCs legadas abaixo; uma base nova ja
+-- nasce apenas com as ferramentas seguras. Revogamos o que existir sem exigir
+-- objetos obsoletos no baseline historico.
+do $$
+declare
+  v_signature text;
+begin
+  if to_regclass('public.apecerto_baseline_metadata') is null then
+    foreach v_signature in array array[
+      'public.ia_carteira(bigint,text,integer)',
+      'public.ia_vendas(bigint,integer)',
+      'public.ia_recebiveis(bigint)',
+      'public.ia_lead(text)',
+      'public.ia_conversa(text,integer)',
+      'public.ia_estrutura_crm()',
+      'public.ia_mover_lead(bigint,text,text,boolean)',
+      'public.ia_criar_tarefa(bigint,text,text,integer,boolean)',
+      'public.ia_registrar_feedback(bigint,text,text,boolean)'
+    ] loop
+      if to_regprocedure(v_signature) is not null then
+        execute format(
+          'revoke all on function %s from public, anon, authenticated',
+          v_signature
+        );
+        execute format('grant execute on function %s to service_role', v_signature);
+      end if;
+    end loop;
+  end if;
+end;
+$$;
 
 insert into public.agente_ferramentas(slug,nome,descricao,tipo,funcao_backend,requer_confirmacao,ativo)
 values('agendar-visita','Agendar visita real','Cria a visita na Agenda canonica e atualiza o momento do Funil 2.0 depois de previa e confirmacao.','escrita','f2_salvar_visita',true,true)
@@ -359,7 +371,9 @@ begin
   if not exists(select 1 from public.agentes_ia where slug='sara' and versao_atual=13 and status='publicado') then
     raise exception 'Sara v13 nao publicada';
   end if;
-  if has_function_privilege('authenticated','public.ia_lead(text)','execute') then
-    raise exception 'ia_lead ainda exposta a authenticated';
+  if to_regprocedure('public.ia_lead(text)') is not null then
+    if has_function_privilege('authenticated','public.ia_lead(text)','execute') then
+      raise exception 'ia_lead ainda exposta a authenticated';
+    end if;
   end if;
 end $$;

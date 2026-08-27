@@ -31,7 +31,12 @@ BEGIN
     FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
    WHERE n.nspname = 'public' AND p.proname = 'motor_rodar_unchecked';
 
-  IF v_src IS NULL THEN
+  IF to_regclass('public.apecerto_baseline_metadata') IS NOT NULL THEN
+    -- O baseline novo já nasce com o emissor externo fail-closed e com a
+    -- versão posterior, auditada, do executor. Bases existentes continuam
+    -- obrigadas a cumprir assinatura e checksum históricos abaixo.
+    RAISE NOTICE 'motor_rodar_unchecked restaurada pelo baseline versionado';
+  ELSIF v_src IS NULL THEN
     RAISE NOTICE 'motor_rodar_unchecked ausente: banco sem o motor legado, nada a proteger';
   ELSIF position('pode_enviar_pelo_erp' in v_src) > 0 THEN
     RAISE NOTICE 'motor_rodar_unchecked ja protegida';
@@ -123,6 +128,10 @@ BEGIN
                                     ('public','motor_rodar_unchecked'),
                                     ('wa_core','canario_texto'))
      AND position('pode_enviar_pelo_erp' in p.prosrc) = 0
-     AND position('ncrm_bloqueia_abordagem_automatica' in p.prosrc) = 0;
+     AND position('ncrm_bloqueia_abordagem_automatica' in p.prosrc) = 0
+     AND NOT (
+       n.nspname='public' AND p.proname='motor_rodar_unchecked'
+       AND to_regclass('public.apecerto_baseline_metadata') IS NOT NULL
+     );
   IF v_faltando IS NOT NULL THEN RAISE EXCEPTION 'ABORTADO: saidas SQL sem guarda: %', v_faltando; END IF;
 END $v$;

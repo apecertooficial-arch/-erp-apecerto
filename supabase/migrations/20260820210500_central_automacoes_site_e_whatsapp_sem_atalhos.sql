@@ -7,6 +7,10 @@ declare
   v_def text; v_auto_id bigint; v_map jsonb; v_blocks jsonb:='[]'::jsonb;
   v_block jsonb; v_validation jsonb; v_version integer; v_name text;
 begin
+  if to_regclass('public.apecerto_baseline_metadata') is not null
+     and not exists (select 1 from public.automacoes) then
+    return;
+  end if;
   select pg_get_functiondef(p.oid) into v_def from pg_proc p
   join pg_namespace n on n.oid=p.pronamespace
   where n.nspname='public' and p.proname='site_lead_sync_crm';

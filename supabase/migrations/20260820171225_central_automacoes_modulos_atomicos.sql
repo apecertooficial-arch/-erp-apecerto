@@ -868,6 +868,12 @@ declare
   v_def text;
   v_new text;
 begin
+  if to_regclass('public.apecerto_baseline_metadata') is not null then
+    if to_regprocedure('public.motor_cond(text,jsonb,jsonb,bigint,bigint)') is null then
+      raise exception 'motor_cond ausente no baseline';
+    end if;
+    return;
+  end if;
   select pg_get_functiondef(p.oid) into v_def
     from pg_proc p join pg_namespace n on n.oid=p.pronamespace
    where n.nspname='public' and p.proname='motor_cond'

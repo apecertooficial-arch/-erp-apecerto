@@ -15,6 +15,10 @@ export const moduleMap = {
     description: "Catálogo, captação, unidades, proprietários e materiais dos imóveis.",
     tables: ["empreendimentos", "unidades", "midias", "proprietarios", "condominios"],
   },
+  "apêcerto Studio": {
+    description: "Produção, revisão, aprovação, calendário e publicação de conteúdo imobiliário.",
+    tables: ["social_campaigns", "social_product_snapshots", "social_assets", "social_pieces", "social_piece_versions", "social_schedules", "social_publications"],
+  },
   Financeiro: {
     description: "Lançamentos, recebimentos, vendas e comissões.",
     tables: ["lancamentos_caixa", "recebimentos", "vendas", "comissoes"],

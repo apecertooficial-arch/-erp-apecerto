@@ -14,6 +14,10 @@ begin
   for update;
 
   if not found then
+    if to_regclass('public.apecerto_baseline_metadata') is not null then
+      return;
+    end if;
+
     raise exception using
       errcode = 'P0001',
       message = 'MAP_PRODUCT_NOT_FOUND: AP0058 não encontrado.';

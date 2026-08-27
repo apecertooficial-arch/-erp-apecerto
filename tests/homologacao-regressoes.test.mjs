@@ -46,7 +46,7 @@ test("corretor ve os modulos do dia a dia, incluindo Tarefas", () => {
 test("todo slug usado existe no catalogo real de permissoes", () => {
   const doBanco = new Set(["abordagens","agentes_ia","auditoria","automacoes","calendario","chat",
     "comissoes","configuracoes","crm","dashboard","disparos","financeiro","fluxo_caixa","leads",
-    "metas","notificacoes","pipeline","produtos","usuarios","vendas"]);
+    "metas","notificacoes","pipeline","produtos","studio_social","usuarios","vendas"]);
   for (const [modulo, rota] of Object.entries(rotasModulo)) {
     for (const slug of rota.slugs) {
       assert.ok(doBanco.has(slug), `${modulo} usa slug inexistente "${slug}" -- fail-closed esconderia o modulo de todos`);

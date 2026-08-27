@@ -237,6 +237,11 @@ declare
   r public.automacoes%rowtype; v_mapa jsonb; v_blocks jsonb; v_wires jsonb;
   v_idx int; v_apply_idx int; v_versao int; v_versao_id bigint;
 begin
+  if to_regclass('public.apecerto_baseline_metadata') is not null
+     and not exists (select 1 from public.automacoes where id=49) then
+    return;
+  end if;
+
   select * into r from public.automacoes where id=49 for update;
   if r.versao_publicada_id is distinct from 52 then
     raise exception 'automacao 49 mudou: versao publicada %',r.versao_publicada_id;

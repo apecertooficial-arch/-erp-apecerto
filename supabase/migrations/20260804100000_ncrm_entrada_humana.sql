@@ -559,6 +559,11 @@ DECLARE v_oid oid; v_def text; v_sum text; v_owner text; v_grants text; v_over i
         v_anchor text; v_guard text; v_novo text;
         c_assinatura constant text := 'motor_envia_abordagem(bigint,text,text,jsonb,bigint,bigint,bigint,jsonb)';
 BEGIN
+  IF to_regclass('public.apecerto_baseline_metadata') IS NOT NULL THEN
+    -- O emissor de instalações novas ainda é o stub fail-closed do baseline.
+    -- O corpo canônico completo entra em 20260820204500; não há legado a editar.
+    RETURN;
+  END IF;
   SELECT count(*) INTO v_over FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
    WHERE n.nspname='public' AND p.proname='motor_envia_abordagem';
   IF v_over = 0 THEN
