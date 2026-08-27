@@ -1405,7 +1405,7 @@ insert into public.agentes_ia (
 ) values (
   'social-media-apecerto',
   'Social media apêcerto',
-  'especialista',
+  'base',
   'marketing',
   'gpt-5.4-mini',
   'aprovado',
