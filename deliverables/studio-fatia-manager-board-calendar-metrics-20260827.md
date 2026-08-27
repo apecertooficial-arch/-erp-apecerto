@@ -18,6 +18,8 @@
 - Lint dos arquivos Studio: verde.
 - Projeto Supabase principal confirmado pelo conector: `diaegvfveqezispcthwk` (ACTIVE_HEALTHY).
 - Sem migration remota, deploy ou publicação nesta rodada, conforme instrução.
+- Regressão completa executada novamente: 487/487 verdes; Studio 18/18; build verde.
+- Teste visual automatizado foi tentado no servidor local, mas o runtime Playwright/conector de navegador não está disponível neste workspace; nenhum screenshot foi inventado.
 
 ## Limitação de validação autenticada
 
