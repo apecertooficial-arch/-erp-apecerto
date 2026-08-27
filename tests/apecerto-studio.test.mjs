@@ -216,4 +216,8 @@ test("copiloto, colaboração, board e métricas têm contratos honestos e RLS",
   assert.match(ui, /Importar retorno JSON/);
   assert.match(ui, /assets: data\.snapshots/);
   assert.match(api, /importCanvaPackage/);
+  assert.match(ui, /StudioManagerBoard/);
+  assert.match(ui, /StudioMetricsDashboard/);
+  assert.match(ui, /Todas as campanhas/);
+  assert.match(ui, /draggable/);
 });
