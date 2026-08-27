@@ -2074,7 +2074,7 @@ body .f2-indicadores button span { font-size:12px; font-weight:600; }
   .funil-oficial .ape-card-acoes-compactas{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
   .funil-oficial .ape-card-acoes-compactas button{min-height:44px;border:1px solid var(--border-default,#E4DFD9);border-radius:10px;background:#fff;color:var(--fg-1,#1F1C1A);font-size:12px;font-weight:600}
   .funil-oficial>.ape-novo-negocio-fixo{position:fixed;z-index:79;right:14px;bottom:calc(70px + env(safe-area-inset-bottom));left:14px;min-height:44px;border:0;border-radius:12px;background:var(--ape-orange,#FF7000);color:#fff;font:600 13px/1 var(--font-ui,"Quicksand",sans-serif);box-shadow:var(--shadow-sm,0 2px 6px rgba(31,28,26,.06))}
-  body:has(.funil-oficial.modo-crm) #sara-fab{bottom:calc(122px + env(safe-area-inset-bottom,0px))}
+  body:has(.funil-oficial.modo-crm) #sara-fab{bottom:calc(134px + env(safe-area-inset-bottom,0px))}
   body:has(.funil-oficial.modo-crm) #sara-panel{bottom:calc(180px + env(safe-area-inset-bottom,0px))}
   body:has(.funil-oficial>.ape-ficha-sheet) #sara-fab,body:has(.funil-oficial>.ape-ficha-sheet) #sara-panel{display:none}
   .funil-oficial>.ape-ficha-sheet{position:fixed;z-index:90}
