@@ -45,3 +45,4 @@
 - Calendário exibiu modos mês/semana/lista; Copilot mostrou sandbox sem custo e proteção factual.
 - Evidências novas: `studio-production-desktop-new.png` e `studio-production-mobile-new.png`.
 - Nenhuma publicação real, aprovação operacional ou chamada paga foi executada.
+- Após atualização automática do serviço, `/api/build` confirmou `997cd134bc4ae33304acc39e6ea940fbe1ba0bdc`; a sessão autenticada continua carregando o Studio, board, filtros e calendário sem erro.
