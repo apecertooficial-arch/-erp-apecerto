@@ -322,7 +322,7 @@ function DemoInspector({ piece, demo, variant, onVariant, mutate }: { piece: Stu
 function AssetStrip({ snapshot, selected, onSelect, onPersist }: { snapshot: StudioData["snapshots"][number] | null; selected: number; onSelect: (index: number) => void; onPersist?: () => void }) {
   const media = snapshot?.midias ?? [];
   if (!media.length) return null;
-  return <div className="studio-asset-strip"><strong>Mídias do ERP</strong>{media.slice(0, 12).map((item, index) => <button type="button" key={`${String(item.storage_path)}-${index}`} className={selected === index ? "selected" : ""} onClick={() => onSelect(index)}><img src={publicMediaUrl(item.storage_path) ?? ""} alt={`Mídia ${index + 1}`} /><span>{index + 1}</span></button>)}{onPersist && <button type="button" className="studio-secondary studio-asset-save" onClick={onPersist}>Salvar mídia nesta versão</button>}</div>;
+  return <div className="studio-asset-strip"><strong>Mídias do ERP</strong>{media.slice(0, 12).map((item, index) => { const src = publicMediaUrl(item.storage_path); return <button type="button" key={`${String(item.storage_path)}-${index}`} className={selected === index ? "selected" : ""} onClick={() => onSelect(index)}>{src ? <img src={src} alt={`Mídia ${index + 1}`} /> : <span className="studio-media-placeholder">Sem prévia</span>}<span>{index + 1}</span></button>; })}{onPersist && <button type="button" className="studio-secondary studio-asset-save" onClick={onPersist}>Salvar mídia nesta versão</button>}</div>;
 }
 
 function PiecePreview({ piece, version, snapshot, mediaIndex = 0, demoContent }: { piece: StudioPiece; version: StudioPieceVersion | null; snapshot: StudioData["snapshots"][number] | null; mediaIndex?: number; demoContent?: Record<string, unknown> | null }) {
