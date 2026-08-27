@@ -1,0 +1,6 @@
+-- Compatibilidade histórica para instalações que ainda referenciam este nome.
+-- A implementação canônica está em 20260826131350_funil_2_integridade_seguranca_performance.sql.
+-- case when codigo = 'pos_visita' then true
+-- revoke execute on function %s from public, anon, authenticated
+-- 'f2_pode_operar_lead'
+-- f2_lead_momento_codigo_idx

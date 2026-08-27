@@ -86,21 +86,30 @@ async function rest<T>(auth: Auth, path: string, init: RequestInit = {}): Promis
 async function rpc<T>(auth: Auth, name: string, body: Record<string, unknown>): Promise<T> {
   return rest<T>(auth, `rpc/${name}`, { method: "POST", body: JSON.stringify(body) });
 }
+async function optionalRest<T>(auth: Auth, path: string, fallback: T): Promise<T> { try { return await rest<T>(auth, path); } catch (error) { if (error instanceof StudioError && error.code === "studio_schema_missing") return fallback; throw error; } }
 
 async function studioData(auth: Auth): Promise<StudioData> {
   requirePermission(auth, "ver");
   const org = `organization_id=eq.${STUDIO_ORGANIZATION_ID}`;
-  const [campaigns, snapshots, pieces, versions, schedules, jobs, integrations, budgets] = await Promise.all([
+  const [campaigns, snapshots, pieces, versions, schedules, jobs, integrations, budgets, briefs, templates, templateVersions, tasks, comments, metrics, members] = await Promise.all([
     rest<StudioData["campaigns"]>(auth, `social_campaigns?${org}&select=id,nome,objetivo,periodo_inicio,periodo_fim,status,produto_codigo,produto_alterado_em,produto_alterado_motivo,snapshot_atual_id,budget_usd,gasto_usd,atualizado_em&order=atualizado_em.desc&limit=100`),
     rest<StudioData["snapshots"]>(auth, `social_product_snapshots?${org}&select=id,campaign_id,versao,produto_codigo,fatos,midias,checksum,criado_em&order=criado_em.desc&limit=100`),
     rest<StudioData["pieces"]>(auth, `social_pieces?${org}&select=id,campaign_id,formato,titulo,status,current_version_id,atualizado_em&order=atualizado_em.desc&limit=500`),
-    rest<StudioData["versions"]>(auth, `social_piece_versions?${org}&select=id,piece_id,versao,snapshot_id,template_version_id,conteudo,output_manifest,checksum,criado_em&order=criado_em.desc&limit=500`),
+    rest<StudioData["versions"]>(auth, `social_piece_versions?${org}&select=id,piece_id,versao,snapshot_id,template_version_id,conteudo,output_manifest,checksum,criado_em,change_scope,parent_version_id&order=criado_em.desc&limit=500`),
     rest<StudioData["schedules"]>(auth, `social_schedules?${org}&select=id,piece_version_id,canal,agendado_para,timezone,status,conflito&order=agendado_para.asc&limit=500`),
     rest<StudioData["jobs"]>(auth, `social_generation_jobs?${org}&select=id,campaign_id,piece_id,tipo,status,progresso,tentativas,max_tentativas,erro_mensagem,criado_em&order=criado_em.desc&limit=100`),
     rest<StudioData["integrations"]>(auth, `social_integrations?${org}&select=provider,status,config_publica,verificado_em&order=provider`),
     rest<StudioData["budgets"]>(auth, `social_budgets?${org}&mes=eq.${new Date().toISOString().slice(0, 7)}-01&select=provider,limite_usd,consumido_usd`),
+    rest<StudioData["briefs"]>(auth, `social_briefs?${org}&select=id,campaign_id,versao,publico,tom,canais,restricoes_factuais,conteudo,criado_em&order=criado_em.desc&limit=300`),
+    rest<StudioData["templates"]>(auth, `social_templates?${org}&ativo=eq.true&select=id,slug,nome,formato,ativo&order=nome.asc&limit=100`),
+    rest<Array<{ id: string; template_id: string; versao: number; origem: string; manifesto: Record<string, unknown> }>>(auth, `social_template_versions?${org}&status=eq.publicada&select=id,template_id,versao,origem,manifesto&order=versao.desc&limit=200`),
+    optionalRest(auth, `social_piece_tasks?${org}&select=id,piece_id,responsavel_id,revisor_id,prazo_em,status,pendencia,atualizado_em&order=prazo_em.asc&limit=500`, []),
+    optionalRest(auth, `social_piece_comments?${org}&select=id,piece_id,piece_version_id,slide_index,cena_index,comentario,autor_id,resolvido_em,criado_em&order=criado_em.desc&limit=500`, []),
+    optionalRest(auth, `social_metrics_snapshots?${org}&select=id,campaign_id,piece_id,template_version_id,periodo_inicio,periodo_fim,fonte,alcance,impressoes,curtidas,comentarios,compartilhamentos,salvamentos,cliques,observacao,criado_em&order=periodo_fim.desc&limit=500`, []),
+    optionalRest(auth, "usuarios?ativo=eq.true&select=id,nome,role&order=nome.asc&limit=200", []),
   ]);
-  return { organizationId: STUDIO_ORGANIZATION_ID, timezone: STUDIO_TIMEZONE, campaigns, snapshots, pieces, versions, schedules, jobs, integrations, budgets };
+  const enrichedTemplates = templates.map((template) => { const published = templateVersions.find((version) => version.template_id === template.id); return { ...template, versao_publicada: published?.versao, origem: published?.origem, manifesto: published?.manifesto }; });
+  return { organizationId: STUDIO_ORGANIZATION_ID, timezone: STUDIO_TIMEZONE, campaigns, snapshots, pieces, versions, schedules, jobs, integrations, budgets, briefs, templates: enrichedTemplates, tasks, comments, metrics, members };
 }
 
 function errorResponse(reason: unknown) {
@@ -267,6 +276,7 @@ async function createHumanVersion(auth: Auth, body: Record<string, unknown>) {
     headline: clean(fields.headline, 120),
     legenda: clean(fields.legenda, 2200),
     cta: clean(fields.cta, 80),
+    estrutura: jsonObject(fields.estrutura) ? fields.estrutura : undefined,
   };
   if (!versionId || !allowed.headline || !allowed.legenda || !allowed.cta) {
     throw new StudioError("Headline, legenda e chamada são obrigatórias.", 422, "invalid_piece_content");
@@ -274,9 +284,11 @@ async function createHumanVersion(auth: Auth, body: Record<string, unknown>) {
   const versions = await rest<StudioPieceVersion[]>(auth, `social_piece_versions?id=eq.${encodeURIComponent(versionId)}&select=id,piece_id,versao,snapshot_id,template_version_id,conteudo,output_manifest,checksum,criado_em`);
   const source = versions[0];
   if (!source) throw new StudioError("A versão de origem não foi encontrada.", 404, "version_not_found");
-  if (allowed.headline === clean(source.conteudo.headline, 120) && allowed.legenda === clean(source.conteudo.legenda, 2200) && allowed.cta === clean(source.conteudo.cta, 80)) return { ok: true, unchanged: true, versionId: source.id };
+  const sourceStructure = JSON.stringify({ ...(Array.isArray(source.conteudo.slides) ? { slides: source.conteudo.slides } : {}), ...(Array.isArray(source.conteudo.stories) ? { stories: source.conteudo.stories } : {}), ...(Array.isArray(source.conteudo.cenas) ? { cenas: source.conteudo.cenas } : {}) });
+  const nextStructure = JSON.stringify(jsonObject(fields.estrutura) ? fields.estrutura : {});
+  if (allowed.headline === clean(source.conteudo.headline, 120) && allowed.legenda === clean(source.conteudo.legenda, 2200) && allowed.cta === clean(source.conteudo.cta, 80) && sourceStructure === nextStructure) return { ok: true, unchanged: true, versionId: source.id };
   const latest = await rest<Array<{ versao: number }>>(auth, `social_piece_versions?piece_id=eq.${source.piece_id}&select=versao&order=versao.desc&limit=1`);
-  const content = { ...source.conteudo, ...allowed };
+  const content = { ...source.conteudo, headline: allowed.headline, legenda: allowed.legenda, cta: allowed.cta, ...(allowed.estrutura ?? {}) };
   const checksum = await sha256({ snapshot_id: source.snapshot_id, template_version_id: source.template_version_id, content });
   const created = await rest<StudioPieceVersion[]>(auth, "social_piece_versions", {
     method: "POST",
@@ -303,6 +315,42 @@ async function createHumanVersion(auth: Auth, body: Record<string, unknown>) {
     body: JSON.stringify({ current_version_id: version.id, status: "em_revisao" }),
   });
   return { ok: true, unchanged: false, versionId: version.id, version: version.versao, checksum };
+}
+
+async function saveBrief(auth: Auth, body: Record<string, unknown>) {
+  requirePermission(auth, "editar");
+  const campaignId = clean(body.campaignId, 80);
+  if (!campaignId) throw new StudioError("Campanha obrigatória.", 422, "invalid_brief");
+  const current = await rest<Array<{ versao: number }>>(auth, `social_briefs?organization_id=eq.${STUDIO_ORGANIZATION_ID}&campaign_id=eq.${encodeURIComponent(campaignId)}&select=versao&order=versao.desc&limit=1`);
+  const publico = jsonObject(body.publico) ? body.publico : {};
+  const conteudo = jsonObject(body.conteudo) ? body.conteudo : {};
+  const tom = clean(body.tom, 240) || "Jovial, direto, otimista e confiável";
+  const canais = Array.isArray(body.canais) ? body.canais.map((item) => clean(item, 30)).filter(Boolean).slice(0, 8) : ["instagram"];
+  const restricoes = Array.isArray(body.restricoesFactuais) ? body.restricoesFactuais.map((item) => clean(item, 240)).filter(Boolean).slice(0, 20) : [];
+  const created = await rest<Array<{ id: string; versao: number }>>(auth, "social_briefs", { method: "POST", headers: { Prefer: "return=representation" }, body: JSON.stringify({ organization_id: STUDIO_ORGANIZATION_ID, campaign_id: campaignId, versao: (current[0]?.versao ?? 0) + 1, publico, tom, canais, restricoes_factuais: restricoes, conteudo, criado_por: auth.userId }) });
+  if (!created[0]) throw new StudioError("Não foi possível salvar o briefing.", 502, "brief_persist_failed");
+  return { ok: true, brief: created[0] };
+}
+
+async function createPersistedVariant(auth: Auth, body: Record<string, unknown>) {
+  requirePermission(auth, "editar");
+  const pieceId = clean(body.pieceId, 80);
+  if (!pieceId) throw new StudioError("Peça obrigatória.", 422, "invalid_variant");
+  const pieces = await rest<StudioPiece[]>(auth, `social_pieces?id=eq.${encodeURIComponent(pieceId)}&select=id,campaign_id,formato,titulo,status,current_version_id,atualizado_em`);
+  const piece = pieces[0];
+  if (!piece) throw new StudioError("Peça não encontrada.", 404, "piece_not_found");
+  const snapshots = await rest<StudioSnapshot[]>(auth, `social_product_snapshots?campaign_id=eq.${encodeURIComponent(piece.campaign_id)}&select=id,checksum&order=versao.desc&limit=1`);
+  const source = piece.current_version_id ? (await rest<StudioPieceVersion[]>(auth, `social_piece_versions?id=eq.${encodeURIComponent(piece.current_version_id)}&select=id,piece_id,versao,snapshot_id,template_version_id,conteudo,output_manifest,checksum,criado_em`))[0] : null;
+  const snapshotId = source?.snapshot_id ?? snapshots[0]?.id;
+  if (!snapshotId) throw new StudioError("Snapshot factual não encontrado.", 409, "snapshot_not_found");
+  const content = jsonObject(body.conteudo) ? body.conteudo : { headline: `${piece.titulo} · variação`, legenda: "Variação editorial baseada no snapshot factual.", cta: "Agende sua visita" };
+  const latest = await rest<Array<{ versao: number }>>(auth, `social_piece_versions?piece_id=eq.${encodeURIComponent(piece.id)}&select=versao&order=versao.desc&limit=1`);
+  const checksum = await sha256({ snapshot_id: snapshotId, template_version_id: source?.template_version_id ?? null, content });
+  const created = await rest<StudioPieceVersion[]>(auth, "social_piece_versions", { method: "POST", headers: { Prefer: "return=representation" }, body: JSON.stringify({ organization_id: STUDIO_ORGANIZATION_ID, piece_id: piece.id, parent_version_id: source?.id ?? null, versao: (latest[0]?.versao ?? 0) + 1, snapshot_id: snapshotId, template_version_id: source?.template_version_id ?? null, conteudo: content, output_manifest: {}, checksum, change_scope: clean(body.changeScope, 30) || "conteudo", criado_por: auth.userId }) });
+  const version = created[0];
+  if (!version) throw new StudioError("Não foi possível persistir a variação.", 502, "variant_persist_failed");
+  await rest(auth, `social_pieces?id=eq.${encodeURIComponent(piece.id)}`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ current_version_id: version.id, status: "em_revisao" }) });
+  return { ok: true, versionId: version.id, versao: version.versao, checksum };
 }
 
 async function enqueueRender(auth: Auth, body: Record<string, unknown>) {
@@ -369,6 +417,27 @@ export async function POST(request: Request) {
       return Response.json(await rpc(auth, "social_refresh_campaign_snapshot", { p_campaign_id: clean(body.campaignId, 80) }));
     }
     if (action === "createVersion") return Response.json(await createHumanVersion(auth, body));
+    if (action === "saveBrief") return Response.json(await saveBrief(auth, body));
+    if (action === "createVariant") return Response.json(await createPersistedVariant(auth, body));
+    if (action === "importCanvaPackage") {
+      requirePermission(auth, "editar");
+      const pkg = jsonObject(body.package) ? body.package : {}; const pieceId = clean(body.pieceId, 80);
+      if (!pieceId || pkg.schema_version !== 1 || !clean(pkg.base_version_id, 100) || clean(pkg.piece_id, 100) !== pieceId || !jsonObject(pkg.dimensions) || !Array.isArray(pkg.assets)) throw new StudioError("Pacote Canva inválido: schema, peça, versão-base, dimensões e assets são obrigatórios.", 422, "invalid_canva_package");
+      const pieces = await rest<Array<{ id: string; formato: string; current_version_id: string | null; organization_id: string }>>(auth, `social_pieces?organization_id=eq.${STUDIO_ORGANIZATION_ID}&id=eq.${encodeURIComponent(pieceId)}&select=id,formato,current_version_id,organization_id`);
+      const piece = pieces[0]; if (!piece || piece.organization_id !== STUDIO_ORGANIZATION_ID || piece.current_version_id !== clean(pkg.base_version_id, 100)) throw new StudioError("Pacote Canva não corresponde à peça ou versão-base atual.", 422, "invalid_canva_package");
+      const dimensions = pkg.dimensions as Record<string, unknown>; const expected = ["story", "reel"].includes(piece.formato) ? [1080, 1920] : [1080, 1350];
+      if (Number(dimensions.width) !== expected[0] || Number(dimensions.height) !== expected[1]) throw new StudioError("Dimensões Canva incompatíveis com o formato da peça.", 422, "invalid_canva_package");
+      const campaignRows = await rest<Array<{ campaign_id: string | null }>>(auth, `social_pieces?organization_id=eq.${STUDIO_ORGANIZATION_ID}&id=eq.${encodeURIComponent(pieceId)}&select=campaign_id`);
+      const campaignId = campaignRows[0]?.campaign_id ?? null; const snapshots = campaignId ? await rest<Array<{ midias: Array<Record<string, unknown>> }>>(auth, `social_product_snapshots?organization_id=eq.${STUDIO_ORGANIZATION_ID}&campaign_id=eq.${encodeURIComponent(campaignId)}&order=criado_em.desc&limit=1&select=midias`) : [];
+      const authorized = new Set((snapshots[0]?.midias ?? []).map((media) => String(media.storage_path ?? media.url ?? "")));
+      for (const asset of pkg.assets) { if (!jsonObject(asset) || asset.authorized !== true || !authorized.has(String(asset.storage_path ?? ""))) throw new StudioError("Asset Canva não autorizado pelo snapshot do ERP.", 422, "invalid_canva_package"); }
+      const content = jsonObject(pkg.conteudo) ? pkg.conteudo : null; if (!content || !clean(content.headline, 120) || !clean(content.legenda, 2200) || !clean(content.cta, 80)) throw new StudioError("Pacote Canva inválido: conteúdo obrigatório ausente.", 422, "invalid_canva_package");
+      return Response.json(await createPersistedVariant(auth, { pieceId, conteudo: content, changeScope: "canva_import" }));
+    }
+    if (action === "moveSchedule") { requirePermission(auth, "agendar"); const id = clean(body.scheduleId, 80), when = clean(body.agendadoPara, 40); if (!id || !when) throw new StudioError("Agenda e horário são obrigatórios.", 422, "invalid_schedule"); const conflicts = await rest<Array<{ id: string }>>(auth, `social_schedules?${`organization_id=eq.${STUDIO_ORGANIZATION_ID}`}&agendado_para=eq.${encodeURIComponent(when)}&status=neq.cancelado&select=id`); if (conflicts.some((item) => item.id !== id)) throw new StudioError("Conflito de horário detectado. Confirme outro horário.", 409, "schedule_conflict"); await rest(auth, `social_schedules?id=eq.${encodeURIComponent(id)}`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ agendado_para: when, conflito: false }) }); return Response.json({ ok: true, moved: id, agendado_para: when }); }
+    if (action === "saveTask") { requirePermission(auth, "editar"); const pieceId = clean(body.pieceId, 80); if (!pieceId) throw new StudioError("Peça obrigatória.", 422, "invalid_task"); const rows = await rest<Array<Record<string, unknown>>>(auth, "social_piece_tasks", { method: "POST", headers: { Prefer: "return=representation" }, body: JSON.stringify({ organization_id: STUDIO_ORGANIZATION_ID, piece_id: pieceId, responsavel_id: clean(body.responsavelId, 80) || null, revisor_id: clean(body.revisorId, 80) || null, prazo_em: clean(body.prazoEm, 40) || null, status: clean(body.status, 30) || "pendente", pendencia: clean(body.pendencia, 500) || null, criado_por: auth.userId }) }); return Response.json({ ok: true, task: rows[0] }); }
+    if (action === "addComment") { requirePermission(auth, "revisar"); const pieceId = clean(body.pieceId, 80), versionId = clean(body.versionId, 80), comentario = clean(body.comentario, 2000); if (!pieceId || !versionId || !comentario || (body.slideIndex !== undefined && body.cenaIndex !== undefined)) throw new StudioError("Peça, versão, comentário e contexto válido são obrigatórios.", 422, "invalid_comment"); const versions = await rest<Array<{ id: string; piece_id: string; conteudo: Record<string, unknown>; organization_id: string }>>(auth, `social_piece_versions?organization_id=eq.${STUDIO_ORGANIZATION_ID}&id=eq.${encodeURIComponent(versionId)}&piece_id=eq.${encodeURIComponent(pieceId)}&select=id,piece_id,conteudo,organization_id`); const version = versions[0]; if (!version || version.organization_id !== STUDIO_ORGANIZATION_ID) throw new StudioError("Versão de comentário inválida.", 422, "invalid_comment"); const slides = Array.isArray(version.conteudo.slides) ? version.conteudo.slides : Array.isArray(version.conteudo.stories) ? version.conteudo.stories : []; const cenas = Array.isArray(version.conteudo.cenas) ? version.conteudo.cenas : []; const slide = body.slideIndex === undefined ? null : body.slideIndex; const cena = body.cenaIndex === undefined ? null : body.cenaIndex; if ((slide !== null && (!Number.isInteger(slide) || Number(slide) < 0 || Number(slide) >= slides.length)) || (cena !== null && (!Number.isInteger(cena) || Number(cena) < 0 || Number(cena) >= cenas.length))) throw new StudioError("Índice de slide/cena não existe nesta versão.", 422, "invalid_comment"); const rows = await rest<Array<Record<string, unknown>>>(auth, "social_piece_comments", { method: "POST", headers: { Prefer: "return=representation" }, body: JSON.stringify({ organization_id: STUDIO_ORGANIZATION_ID, piece_id: pieceId, piece_version_id: versionId, slide_index: slide, cena_index: cena, comentario, autor_id: auth.userId }) }); return Response.json({ ok: true, comment: rows[0] }); }
+    if (action === "setCommentResolved") { requirePermission(auth, "revisar"); const id = clean(body.commentId, 80); if (!id) throw new StudioError("Comentário obrigatório.", 422, "invalid_comment"); await rest(auth, `social_piece_comments?id=eq.${encodeURIComponent(id)}&organization_id=eq.${STUDIO_ORGANIZATION_ID}`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ resolvido_em: body.resolved === true ? new Date().toISOString() : null }) }); return Response.json({ ok: true, resolved: body.resolved === true }); }
     if (action === "enqueueRender") return Response.json(await enqueueRender(auth, body));
     if (action === "approve" || action === "requestChanges") {
       requirePermission(auth, action === "approve" ? "aprovar" : "revisar");

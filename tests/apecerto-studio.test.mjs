@@ -4,6 +4,7 @@ import test from "node:test";
 
 import { validateGeneratedPackage, validateTemplateManifest } from "../app/features/studio/domain.ts";
 import { moduloDoPath, pathDoModulo, podeVer } from "../app/features/system/erp-routes.ts";
+import { aggregateStudioMetrics, filterBoardPieces, validCommentContext } from "../app/features/studio/studio-utils.ts";
 
 const migration = readFileSync(new URL("../supabase/migrations/20260826210311_apecerto_studio_operacional.sql", import.meta.url), "utf8");
 const api = readFileSync(new URL("../app/api/studio/route.ts", import.meta.url), "utf8");
@@ -13,6 +14,11 @@ const renderWorker = readFileSync(new URL("../workers/studio-renderer/index.mjs"
 const publisher = readFileSync(new URL("../supabase/functions/social-publisher/index.ts", import.meta.url), "utf8");
 const metaOAuth = readFileSync(new URL("../supabase/functions/social-meta-oauth/index.ts", import.meta.url), "utf8");
 const css = readFileSync(new URL("../app/styles/apecerto-studio.css", import.meta.url), "utf8");
+const catalogMigration = readFileSync(new URL("../supabase/migrations/20260827170000_studio_template_catalog_20.sql", import.meta.url), "utf8");
+const collaborationMigration = readFileSync(new URL("../supabase/migrations/20260827180000_studio_collaboration_metrics.sql", import.meta.url), "utf8");
+const calendar = readFileSync(new URL("../app/features/studio/StudioCalendar.tsx", import.meta.url), "utf8");
+const board = readFileSync(new URL("../app/features/studio/StudioManagerBoard.tsx", import.meta.url), "utf8");
+const metricsDashboard = readFileSync(new URL("../app/features/studio/StudioMetricsDashboard.tsx", import.meta.url), "utf8");
 
 test("Studio é um módulo nativo, roteável e fail-closed", () => {
   assert.equal(pathDoModulo("apêcerto Studio"), "/studio");
@@ -163,4 +169,112 @@ test("mudança no produto alerta, invalida aprovação e permite novo snapshot",
   assert.match(migration, /social_refresh_campaign_snapshot/);
   assert.match(ui, /O produto mudou no ERP/);
   assert.match(api, /action === "refreshSnapshot"/);
+});
+
+test("fat ia vertical do Studio persiste briefing, variações e deep links", () => {
+  assert.match(api, /social_briefs\?\$\{org\}/);
+  assert.match(api, /action === "saveBrief"/);
+  assert.match(api, /action === "createVariant"/);
+  assert.match(api, /parent_version_id/);
+  assert.match(api, /social_piece_versions/);
+  assert.match(ui, /URLSearchParams\(window\.location\.search\)/);
+  assert.match(ui, /window\.history\.replaceState/);
+  assert.match(ui, /BriefingEditor/);
+  assert.match(ui, /Salvar briefing/);
+  assert.match(ui, /Salvar no histórico/);
+  assert.match(ui, /Gerar variação/);
+  assert.match(ui, /5 modelos editoriais/);
+});
+
+test("catálogo visual tem vinte templates versionados e workspace com mídia/histórico", () => {
+  assert.match(catalogMigration, /v_format \|\| '-oficial-' /);
+  assert.match(catalogMigration, /array\['feed','carousel','story','reel'\]/);
+  assert.match(catalogMigration, /for v_variant in 1\.\.5 loop/);
+  assert.match(catalogMigration, /layout_variant/);
+  assert.match(ui, /TemplateLibrary/);
+  assert.match(ui, /Mídias do ERP/);
+  assert.match(ui, /Salvar mídia nesta versão/);
+  assert.match(ui, /VersionHistory/);
+  assert.match(ui, /Comparar/);
+  assert.match(ui, /Desfazer/);
+  assert.match(ui, /Exportar pacote para Canva/);
+  assert.match(ui, /Modelos importados do Figma/);
+});
+
+test("copiloto, colaboração, board e métricas têm contratos honestos e RLS", () => {
+  for (const table of ["social_piece_tasks", "social_piece_comments", "social_metrics_snapshots"]) assert.match(collaborationMigration, new RegExp(`create table if not exists public\\.${table}`));
+  assert.match(collaborationMigration, /enable row level security/g);
+  assert.match(collaborationMigration, /social_has_permission\('revisar', organization_id\)/);
+  assert.match(api, /action === "addComment"/);
+  assert.match(api, /action === "saveTask"/);
+  assert.match(ui, /StudioCopilot contextual/);
+  assert.match(ui, /preview\/diff/);
+  assert.match(ui, /Colaboração e governança/);
+  assert.match(ui, /Visão do gestor/);
+  assert.match(ui, /Meta não conectada/);
+  assert.match(ui, /Sem responsável/);
+  assert.match(ui, /Novo horário ISO/);
+  assert.match(ui, /moveSchedule/);
+  assert.match(ui, /viewMode/);
+  assert.match(api, /schedule_conflict/);
+  assert.match(ui, /Selecionar retorno JSON/);
+  assert.match(ui, /assets: data\.snapshots/);
+  assert.match(api, /importCanvaPackage/);
+  assert.match(ui, /StudioManagerBoard/);
+  assert.match(ui, /StudioMetricsDashboard/);
+  assert.match(ui, /Todas as campanhas/);
+  assert.match(ui, /draggable/);
+  assert.match(ui, /Contexto do comentário/);
+  assert.match(ui, /Resolver/);
+  assert.match(ui, /Reabrir/);
+  assert.match(api, /setCommentResolved/);
+});
+
+test("calendário usa três estruturas e drop real sem prompt", () => {
+  assert.match(calendar, /data-testid="calendar-month"/);
+  assert.match(calendar, /data-testid="calendar-week"/);
+  assert.match(calendar, /data-testid="calendar-list"/);
+  assert.match(calendar, /onDragStart/);
+  assert.match(calendar, /onDragOver/);
+  assert.match(calendar, /onDrop/);
+  assert.match(calendar, /scheduleDropInstant/);
+  assert.match(calendar, /role="dialog"/);
+  assert.doesNotMatch(calendar, /window\.prompt/);
+  assert.match(calendar, /schedule_conflict/);
+});
+
+test("board e métricas são componentes próprios com filtros e agregação executável", () => {
+  for (const token of ["template", "revisor", "vencidos", "hoje", "sem_prazo", "Ordenar por prazo", "Ordenar por status"]) assert.match(board, new RegExp(token));
+  for (const token of ["property", "template", "from", "to", "aggregateStudioMetrics", "curtidas", "comentarios", "compartilhamentos", "salvamentos", "cliques"]) assert.match(metricsDashboard, new RegExp(token));
+  assert.match(board, /value=\{x\}.*labels\[x\]/s);
+  assert.match(board, /onOpen\(p\.campaign_id,p\.id\)/);
+  assert.match(api, /organization_id=eq\.\$\{STUDIO_ORGANIZATION_ID\}/);
+  assert.match(api, /base_version_id/);
+  assert.match(api, /authorized\.has/);
+});
+
+test("board filtra dados por template, status, responsável e prazo com valores canônicos", () => {
+  const data = { pieces: [{ id: "p1", campaign_id: "c1", formato: "feed", status: "aprovada", current_version_id: "v1" }, { id: "p2", campaign_id: "c1", formato: "story", status: "rascunho", current_version_id: "v2" }], versions: [{ id: "v1", template_version_id: "t1" }, { id: "v2", template_version_id: "t2" }], tasks: [{ piece_id: "p1", responsavel_id: "m1", revisor_id: "m2", prazo_em: "2026-08-20T10:00:00Z" }, { piece_id: "p2", responsavel_id: "m2", revisor_id: "m1", prazo_em: null }] };
+  assert.deepEqual(filterBoardPieces(data, { template: "t1", status: "aprovada", responsavel: "m1", period: "vencidos", now: new Date("2026-08-27T12:00:00Z") }).map((p) => p.id), ["p1"]);
+  assert.deepEqual(filterBoardPieces(data, { period: "sem_prazo" }).map((p) => p.id), ["p2"]);
+});
+
+test("métricas agregam os sete indicadores e contexto de comentário valida índice existente", () => {
+  assert.deepEqual(aggregateStudioMetrics([{ alcance: 10, impressoes: 20, curtidas: 3, comentarios: 2, compartilhamentos: 1, salvamentos: 4, cliques: 5 }, { alcance: 2, impressoes: 4, curtidas: 1, comentarios: 0, compartilhamentos: 2, salvamentos: 1, cliques: 3 }]), { alcance: 12, impressoes: 24, curtidas: 4, comentarios: 2, compartilhamentos: 3, salvamentos: 5, cliques: 8 });
+  const version = { conteudo: { slides: [{}, {}], cenas: [{}] } };
+  assert.equal(validCommentContext(version, "slide", 1), true);
+  assert.equal(validCommentContext(version, "slide", 2), false);
+  assert.equal(validCommentContext(version, "cena", 0), true);
+  assert.equal(validCommentContext(version, "cena", 1), false);
+  assert.equal(validCommentContext(version, "geral", null), true);
+});
+
+test("retorno Canva exige prévia e confirmação antes de persistir", () => {
+  assert.match(ui, /setPreview\(JSON\.parse/);
+  assert.match(ui, /Prévia antes de importar/);
+  assert.match(ui, /Cancelar/);
+  assert.match(ui, /Confirmar importação/);
+  assert.match(ui, /mutate\(\{ action: "importCanvaPackage"/);
+  assert.match(api, /schema_version !== 1/);
+  assert.match(api, /piece\.current_version_id !== clean\(pkg\.base_version_id/);
 });
