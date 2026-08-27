@@ -61,6 +61,7 @@ const GRUPOS_MAIS = [
 
 export function ErpShell({ children }: { children: ReactNode }) {
   const pathname = usePathname() || "/";
+  const crmV3Validation = pathname === "/crm-v3";
   const { profile, permissoes, role, isManager, perfilCarregado, badges, recarregarPerfil } = useErpSession();
   const [perfilAberto, setPerfilAberto] = useState(false);
   const [maisAberto, setMaisAberto] = useState(false);
@@ -93,6 +94,11 @@ export function ErpShell({ children }: { children: ReactNode }) {
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: "auto" });
   }, [pathname]);
+
+  // O CRM V3 já possui o shell operacional aprovado (desktop e mobile).
+  // Mantê-lo dentro do AppShell criaria duas sidebars e duas hierarquias de
+  // navegação. A sessão e a guarda do ERP continuam ativas no layout pai.
+  if (crmV3Validation) return <>{children}</>;
 
   return (
     <AppShell

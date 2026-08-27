@@ -104,6 +104,9 @@ const porPath = new Map<string, ModuleName>(
 
 export function moduloDoPath(pathname: string): ModuleName | null {
   if (!pathname) return null;
+  // Rota de validação local do CRM V3 continua pertencendo ao módulo CRM.
+  // Não muda o path canônico do menu, que permanece /crm.
+  if (pathname === "/crm-v3") return "CRM";
   // "/crm/lead/123" continua sendo o modulo CRM.
   const base = "/" + (pathname.split("/").filter(Boolean)[0] ?? "");
   return porPath.get(base) ?? null;

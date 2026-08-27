@@ -76,6 +76,9 @@ import "./styles/redesign-apecerto-calendario.css";
    responsividade do módulo vivem somente nela; nenhuma folha posterior toca
    nas classes f2-* do desktop. */
 import "./styles/funil-2.css";
+/* CRM V3: rota paralela e local. A folha é totalmente isolada sob .crm-v3;
+   não altera o Funil 2.0 canônico nem qualquer outra tela do ERP. */
+import "./styles/funil-2-v3.css";
 /* INTERFACE DO APLICATIVO NO CELULAR — versão aprovada.
    Não é correção da folha antiga: o markup do Meu Dia e do CRM usa classes
    próprias (.ape-*), então esta folha é a única que os desenha. As regras
