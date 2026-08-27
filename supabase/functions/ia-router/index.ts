@@ -1,5 +1,15 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import {
+  PHOTO_ORGANIZER_ACTION,
+  PHOTO_ORGANIZER_MAX_IMAGES,
+  buildPhotoOrganizerRequest,
+  extractResponseText,
+  normalizePropertyType,
+  sanitizeCurrentCategory,
+  validatePhotoOrganizerOutput,
+  type PhotoOrganizerOutput,
+} from "./photo-organizer.ts";
 
 // Precos por 1M de tokens. Sem a entrada aqui, o custo gravado sai errado.
 const PRICES: Record<string,{in:number;out:number}> = {
@@ -18,6 +28,178 @@ const MODELO_PADRAO = "gpt-5.4-mini";
 const usaMaxCompletion = (m: string) => !m.startsWith("gpt-4");
 
 const cors = { "Access-Control-Allow-Origin":"*", "Access-Control-Allow-Headers":"authorization, x-client-info, apikey, content-type", "Access-Control-Allow-Methods":"POST, OPTIONS" };
+
+const PHOTO_ORGANIZER_MODELS = new Set(["gpt-4o-mini", "gpt-5.4-mini", "gpt-5.4"]);
+const PHOTO_ORGANIZER_MANAGER_ROLES = new Set(["admin", "gestor", "executivo", "gestor_comercial", "gestor_equipe"]);
+const PHOTO_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const photoOrganizerCache = new Map<string, { expiresAt:number; response:Record<string,unknown> }>();
+const photoOrganizerRate = new Map<string, number[]>();
+
+function base64(bytes: Uint8Array) {
+  let binary = "";
+  for (let offset = 0; offset < bytes.length; offset += 8192) {
+    binary += String.fromCharCode(...bytes.subarray(offset, offset + 8192));
+  }
+  return btoa(binary);
+}
+
+function base64Url(bytes: Uint8Array) {
+  return base64(bytes).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+}
+
+async function opaquePhotoToken(value: string) {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
+  return `img_${base64Url(new Uint8Array(digest)).slice(0, 20)}`;
+}
+
+async function transformedPhotoDataUrl(supabase:any, storagePath:string) {
+  const { data, error } = await supabase.storage.from("empreendimentos").createSignedUrl(storagePath, 90, {
+    transform:{width:1024,height:1024,resize:"contain",quality:70},
+  });
+  if (error || !data?.signedUrl) throw new Error("photo_transform_unavailable");
+  const response = await fetch(data.signedUrl, { signal:AbortSignal.timeout(15000) });
+  if (!response.ok) throw new Error("photo_download_failed");
+  const contentType = response.headers.get("content-type")?.split(";")[0] || "image/webp";
+  if (!contentType.startsWith("image/")) throw new Error("photo_format_invalid");
+  const bytes = new Uint8Array(await response.arrayBuffer());
+  if (bytes.length < 1 || bytes.length > 3_000_000) throw new Error("photo_size_invalid");
+  return `data:${contentType};base64,${base64(bytes)}`;
+}
+
+async function handlePhotoOrganizer(input:{
+  b:any; supabase:any; userSupabase:any; usuarioId:string|null; corretorId:number|null;
+  perfil:string; chamadaInterna:boolean; json:(body:unknown,status?:number)=>Response;
+}) {
+  const startedAt = Date.now();
+  const modelEnv = Deno.env.get("OPENAI_PHOTO_ORGANIZER_MODEL") || "gpt-4o-mini";
+  const model = PHOTO_ORGANIZER_MODELS.has(modelEnv) ? modelEnv : "gpt-4o-mini";
+  const safeLog = (status:string, code?:string, count=0) => console.log(JSON.stringify({
+    event:"photo_organizer",duration_ms:Date.now()-startedAt,model,count,status,error_code:code||null,
+  }));
+  if (Deno.env.get("OPENAI_PHOTO_ORGANIZER_ENABLED") !== "true") {
+    safeLog("disabled");
+    return input.json({ok:false,reason:"ia_indisponivel"},503);
+  }
+  if (input.chamadaInterna || !input.usuarioId) {
+    safeLog("denied","invalid_session");
+    return input.json({ok:false,reason:"sem_permissao"},403);
+  }
+  const empreendimentoId = typeof input.b.empreendimento_id === "string" ? input.b.empreendimento_id : "";
+  const unidadeId = typeof input.b.unidade_id === "string" && input.b.unidade_id ? input.b.unidade_id : null;
+  const mediaIds = Array.isArray(input.b.media_ids) ? input.b.media_ids.filter((id:unknown):id is string=>typeof id === "string") : [];
+  if (!PHOTO_UUID.test(empreendimentoId) || (unidadeId && !PHOTO_UUID.test(unidadeId)) || mediaIds.length < 1 || mediaIds.length > PHOTO_ORGANIZER_MAX_IMAGES || mediaIds.some((id:string)=>!PHOTO_UUID.test(id)) || new Set(mediaIds).size !== mediaIds.length) {
+    safeLog("invalid","invalid_batch",mediaIds.length);
+    return input.json({ok:false,reason:"lote_invalido"},422);
+  }
+  const now = Date.now();
+  const requests = (photoOrganizerRate.get(input.usuarioId) || []).filter((time)=>now-time<600_000);
+  if (requests.length >= 3) {
+    safeLog("limited","rate_limit",mediaIds.length);
+    return input.json({ok:false,reason:"limite_temporario"},429);
+  }
+  const manager = PHOTO_ORGANIZER_MANAGER_ROLES.has(input.perfil);
+  let authorized = manager;
+  if (unidadeId) {
+    const { data:unit } = await input.supabase.from("unidades").select("empreendimento_id,captador_corretor_id").eq("id",unidadeId).maybeSingle();
+    authorized = authorized || Boolean(unit && unit.empreendimento_id === empreendimentoId && input.corretorId != null && unit.captador_corretor_id === input.corretorId);
+  } else {
+    const { data:product } = await input.supabase.from("empreendimentos").select("captado_por_usuario,captador_corretor_id").eq("id",empreendimentoId).maybeSingle();
+    authorized = authorized || Boolean(product && (product.captado_por_usuario === input.usuarioId || (input.corretorId != null && product.captador_corretor_id === input.corretorId)));
+  }
+  if (!authorized) {
+    safeLog("denied","not_captor",mediaIds.length);
+    return input.json({ok:false,reason:"sem_permissao"},403);
+  }
+  const { data:media, error:mediaError } = await input.supabase.from("midias")
+    .select("id,empreendimento_id,unidade_id,tipo,storage_path,categoria,nome,is_capa,ordem,alt_text,created_at")
+    .in("id",mediaIds);
+  const rows = Array.isArray(media) ? media : [];
+  if (mediaError || rows.length !== mediaIds.length || rows.some((item:any)=>item.empreendimento_id!==empreendimentoId || item.unidade_id!==unidadeId || item.tipo!=="foto")) {
+    safeLog("invalid","media_mismatch",mediaIds.length);
+    return input.json({ok:false,reason:"midias_invalidas"},422);
+  }
+  const { data:versionData, error:versionError } = await input.userSupabase.rpc("produto_midias_versao", {
+    p_empreendimento_id:empreendimentoId,p_unidade_id:unidadeId,
+  });
+  const setVersion = typeof versionData === "string" ? versionData : "";
+  if (versionError || !setVersion) {
+    safeLog("error","version_unavailable",mediaIds.length);
+    return input.json({ok:false,reason:"versao_indisponivel"},502);
+  }
+  const cacheKey = `${input.usuarioId}:${setVersion}:${mediaIds.join(",")}`;
+  const cached = photoOrganizerCache.get(cacheKey);
+  if (cached && cached.expiresAt > now) {
+    safeLog("cache_hit",undefined,mediaIds.length);
+    return input.json({...cached.response,cached:true});
+  }
+  requests.push(now); photoOrganizerRate.set(input.usuarioId,requests);
+  const secret = Deno.env.get("PHOTO_ORGANIZER_TOKEN_SECRET") || Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "photo-organizer";
+  const byId = new Map(rows.map((item:any)=>[item.id,item]));
+  const tokenMap = new Map<string,string>();
+  const photos = [];
+  try {
+    for (const mediaId of mediaIds) {
+      const item:any = byId.get(mediaId);
+      const token = await opaquePhotoToken(`${secret}:${setVersion}:${mediaId}`);
+      tokenMap.set(token,mediaId);
+      photos.push({token,category:sanitizeCurrentCategory(item.categoria),dataUrl:await transformedPhotoDataUrl(input.supabase,item.storage_path)});
+    }
+  } catch {
+    safeLog("error","image_prepare_failed",mediaIds.length);
+    return input.json({ok:false,reason:"imagem_indisponivel"},422);
+  }
+  let apiKey = Deno.env.get("OPENAI_API_KEY");
+  if (!apiKey) {
+    const { data:secretRow } = await input.supabase.from("app_secrets").select("valor").eq("chave","OPENAI_API_KEY").maybeSingle();
+    apiKey = secretRow?.valor;
+  }
+  if (!apiKey) {
+    safeLog("disabled","missing_key",mediaIds.length);
+    return input.json({ok:false,reason:"ia_indisponivel"},503);
+  }
+  const requestBody = buildPhotoOrganizerRequest({
+    model,
+    propertyType:normalizePropertyType(input.b.tipo_imovel),
+    photos,
+  });
+  let openAiResponse:Response;
+  try {
+    const headers:Record<string,string> = {Authorization:`Bearer ${apiKey}`,"Content-Type":"application/json"};
+    const projectId = Deno.env.get("OPENAI_PROJECT_ID");
+    if (projectId) headers["OpenAI-Project"] = projectId;
+    headers["Idempotency-Key"] = await opaquePhotoToken(`request:${cacheKey}`);
+    openAiResponse = await fetch("https://api.openai.com/v1/responses", {
+      method:"POST",headers,body:JSON.stringify(requestBody),signal:AbortSignal.timeout(45_000),
+    });
+  } catch (error) {
+    const code = error instanceof DOMException && error.name === "TimeoutError" ? "timeout" : "network_error";
+    safeLog("error",code,mediaIds.length);
+    return input.json({ok:false,reason:code},code==="timeout"?504:502);
+  }
+  const responseData = await openAiResponse.json().catch(()=>null);
+  if (!openAiResponse.ok) {
+    const code = openAiResponse.status===429 ? "rate_limit" : openAiResponse.status>=500 ? "provider_unavailable" : "provider_rejected";
+    safeLog("error",code,mediaIds.length);
+    return input.json({ok:false,reason:code},openAiResponse.status===429?429:502);
+  }
+  const rawText = extractResponseText(responseData);
+  let parsed:unknown = null;
+  try { parsed = JSON.parse(rawText); } catch { /* resposta não confiável */ }
+  const validated:PhotoOrganizerOutput|null = validatePhotoOrganizerOutput(parsed,photos.map((photo)=>photo.token));
+  if (!validated || (responseData as any)?.status !== "completed") {
+    safeLog("partial","invalid_or_incomplete",mediaIds.length);
+    return input.json({ok:false,partial:true,reason:"resposta_parcial"},206);
+  }
+  const suggestions = validated.suggestions.map((item)=>({...item,media_id:tokenMap.get(item.token),token:undefined}));
+  const usage = (responseData as any)?.usage || {};
+  const price = PRICES[model] || PRICES["gpt-4o-mini"];
+  const costUsd = ((Number(usage.input_tokens)||0)/1e6)*price.in + ((Number(usage.output_tokens)||0)/1e6)*price.out;
+  const payload = {ok:true,set_version:setVersion,suggestions,model,store:false,ms:Date.now()-startedAt,cost_usd:Number(costUsd.toFixed(6))};
+  photoOrganizerCache.set(cacheKey,{expiresAt:now+600_000,response:payload});
+  if (photoOrganizerCache.size>100) for (const [key,value] of photoOrganizerCache) if (value.expiresAt<=now) photoOrganizerCache.delete(key);
+  safeLog("ok",undefined,mediaIds.length);
+  return input.json(payload);
+}
 
 function segredoIgual(recebido: string | null, esperado: string) {
   if (!recebido || !esperado || recebido.length !== esperado.length) return false;
@@ -71,6 +253,9 @@ Deno.serve(async (req: Request) => {
     if (!usuarioAtivo || (!corretorId && !podeVisaoGeral && !podeGerarNoStudio))
       return json({ok:false,reason:"perfil_operacional_nao_encontrado"},403);
     const action = b.action || "run";
+    if (action === PHOTO_ORGANIZER_ACTION) {
+      return handlePhotoOrganizer({b,supabase,userSupabase,usuarioId,corretorId,perfil,chamadaInterna,json});
+    }
     if (chamadaInterna && (action!=="run" || b.disable_tools!==true || b.agente_slug!=="sara"))
       return json({ok:false,reason:"chamada_interna_fora_do_contrato"},403);
     const slug = b.agente_slug || null, nome = b.agente_nome || null;

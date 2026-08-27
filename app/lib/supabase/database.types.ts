@@ -12228,6 +12228,20 @@ export type Database = {
         Args: { p_empreendimento_id: string; p_ids: string[]; p_unidade_id: string | null }
         Returns: Json
       }
+      produto_midias_versao: {
+        Args: { p_empreendimento_id: string; p_unidade_id?: string | null }
+        Returns: string
+      }
+      produto_midias_aplicar_ia: {
+        Args: {
+          p_empreendimento_id: string
+          p_restaurar?: boolean
+          p_sugestoes: Json
+          p_unidade_id: string | null
+          p_versao_esperada: string
+        }
+        Returns: Json
+      }
       produto_proprietarios_meus: {
         Args: never
         Returns: { email: string; id: string; nome: string; telefone: string }[]
