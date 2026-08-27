@@ -14,7 +14,7 @@ Duas folhas, carregadas em sequência pelo `app/layout.tsx`, antes das folhas
 - **Só visual.** Cor, tipografia, peso, borda, raio, sombra e respiro sobre
   classes que já existem. Nada de estrutura, dado ou função.
 - **Substituição por cascata.** Cada regra reescreve o valor que `globals.css`
-  ou `funil-2.css` definia para o mesmo seletor. Não duplique
+  ou `funil.css` definia para o mesmo seletor. Não duplique
   aqui o que já está igual lá.
 - **Posição na cascata importa.** Antes de `app-mobile-aprovado.css` e
   `app-mobile-gestor.css`, para que o aplicativo no celular continue com a

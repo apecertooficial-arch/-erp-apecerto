@@ -621,6 +621,31 @@ export async function PATCH(request: Request) {
     return Response.json(data ?? { ok: true });
   }
 
+  if (body.action === "applyPhotoAiSuggestions" || body.action === "restorePhotoAiSuggestions") {
+    const unitId = typeof body.unitId === "string" && body.unitId ? body.unitId : null;
+    const expectedVersion = typeof body.expectedVersion === "string" ? body.expectedVersion : "";
+    const suggestions = Array.isArray(body.suggestions) ? body.suggestions : [];
+    const restoring = body.action === "restorePhotoAiSuggestions";
+    if ((unitId && !UUID.test(unitId)) || !/^[0-9a-f]{32}$/i.test(expectedVersion) || suggestions.length < 1 || (!restoring && suggestions.length > 20)) {
+      return Response.json({ error: "Revisão de fotos inválida." }, { status: 400 });
+    }
+    const { data, error } = await auth.supabase.rpc("produto_midias_aplicar_ia", {
+      p_empreendimento_id: id,
+      p_unidade_id: unitId,
+      p_versao_esperada: expectedVersion,
+      p_sugestoes: suggestions as Database["public"]["Functions"]["produto_midias_aplicar_ia"]["Args"]["p_sugestoes"],
+      p_restaurar: restoring,
+    });
+    if (error) {
+      const message = error.message?.replace(/^[A-Z_]+:\s*/, "") || "Não foi possível aplicar a revisão das fotos.";
+      const status = /MEDIA_AI_CONFLICT/.test(error.message ?? "") ? 409
+        : /MEDIA_AI_FORBIDDEN|permission denied/i.test(error.message ?? "") ? 403
+          : /MEDIA_AI_INVALID/.test(error.message ?? "") ? 422 : 502;
+      return Response.json({ error: message, code: status === 409 ? "MEDIA_AI_CONFLICT" : undefined }, { status });
+    }
+    return Response.json(data ?? { ok: true });
+  }
+
   if (body.action === "deleteMedia") {
     const mediaId = typeof body.mediaId === "string" ? body.mediaId : "";
     if (!UUID.test(mediaId)) return Response.json({ error: "Mídia inválida." }, { status: 400 });
