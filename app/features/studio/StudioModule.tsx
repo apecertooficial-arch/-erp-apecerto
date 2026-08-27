@@ -190,22 +190,33 @@ function Builder({ data, campaign, campaignId, piece, version, snapshot, pieces,
 }) {
   const [scheduledAt, setScheduledAt] = useState("");
   const [comment, setComment] = useState("");
+  const [sandboxGenerated, setSandboxGenerated] = useState(false);
+  const [command, setCommand] = useState("");
+  const [variant, setVariant] = useState(0);
+  const [template, setTemplate] = useState("Editorial premium");
   const renderJob = piece ? data.jobs.find((job) => job.piece_id === piece.id && job.tipo === "render") : null;
   const renderActive = Boolean(renderJob && ["pendente", "processando"].includes(renderJob.status));
   if (!campaignId || !campaign) return <main className="studio-content"><EmptyState icon="grid" title="Escolha uma campanha" text="O construtor mostra as peças e versões de uma campanha."/></main>;
+  const demo = piece ? demoContent(piece.formato, snapshot, variant) : null;
+  const realGenerationBlocked = data.integrations.find((item) => item.provider === "openai")?.status !== "configurada" || Number(data.budgets.find((item) => item.provider === "openai")?.limite_usd ?? 0) <= 0;
+  const applyCommand = () => { if (!command.trim()) return; setVariant((current) => current + 1); setSandboxGenerated(true); setCommand(""); };
   return <main className="studio-builder">
     <aside className="studio-builder-left">
       <label className="studio-field"><span>Campanha</span><select value={campaignId} onChange={(event) => onCampaign(event.target.value)}>{data.campaigns.map((item) => <option value={item.id} key={item.id}>{item.nome}</option>)}</select></label>
       <div className="studio-product-summary"><span className="studio-product-cover"><Icon name="home" size={22}/></span><div><small>{snapshot?.produto_codigo ?? campaign.produto_codigo}</small><strong>{String(snapshot?.fatos.nome ?? "Produto do ERP")}</strong><p>{String(snapshot?.fatos.bairro ?? "Localização não informada")}</p></div></div>
-      <div className="studio-builder-label">Formatos</div>
+      <div className="studio-builder-label">Formatos <small>{pieces.filter((item) => item.current_version_id).length}/{pieces.length} gerados</small></div>
       <div className="studio-piece-list">{pieces.map((item) => <button type="button" key={item.id} className={item.id === piece?.id ? "active" : ""} onClick={() => onPiece(item.id)}><span><Icon name={FORMAT_META[item.formato].icon}/></span><div><strong>{FORMAT_META[item.formato].label}</strong><small>{statusLabel[item.status] ?? item.status}</small></div>{item.current_version_id && <b><Icon name="check"/></b>}</button>)}</div>
-      <button className="studio-generate" type="button" disabled={busy} onClick={() => void mutate({ action: "generatePackage", campaignId }, "Pacote gerado e enviado para revisão.")}><Icon name="sparkles"/>{busy ? "Gerando…" : version ? "Regenerar pacote" : "Gerar pacote com IA"}</button>
-      <p className="studio-safe-note">A IA só roda pelo agente governado e respeita orçamento aprovado.</p>
+      <div className="studio-template-picker"><div className="studio-builder-label">Modelo visual</div><select value={template} onChange={(event) => setTemplate(event.target.value)}><option>Editorial premium</option><option>Tour do imóvel</option><option>Guia do bairro</option><option>Prova social</option><option>Oferta direta</option></select><small>5 modelos editoriais · Design System ApêCerto</small></div>
+      <button className="studio-generate" type="button" disabled={busy} onClick={() => { if (realGenerationBlocked) { setSandboxGenerated(true); return; } void mutate({ action: "generatePackage", campaignId }, "Pacote gerado e enviado para revisão."); }}><Icon name="sparkles"/>{busy ? "Gerando…" : realGenerationBlocked ? "Gerar demonstração sem custo" : version ? "Regenerar pacote" : "Gerar pacote com IA"}</button>
+      <p className="studio-safe-note">{realGenerationBlocked ? "Sandbox ativo: conteúdo determinístico, sem chamada paga e sem publicação." : "IA governada ativa · orçamento aprovado."}</p>
+      <div className="studio-generator-catalog"><strong>Geradores</strong><span>Feed · 5 modelos</span><span>Carrossel · 5, 7 ou 10 páginas</span><span>Stories · 3 a 7 telas</span><span>Reel · roteiro e cenas</span></div>
     </aside>
     <section className="studio-canvas-area">
       <header><div><span className="studio-eyebrow">Construtor</span><h2>{piece?.titulo ?? "Selecione uma peça"}</h2></div>{piece && <span className={`studio-status ${piece.status}`}>{statusLabel[piece.status] ?? piece.status}</span>}</header>
       {campaign.produto_alterado_em && <div className="studio-product-changed" role="alert"><Icon name="warning"/><div><strong>O produto mudou no ERP</strong><span>Atualize o snapshot antes de aprovar ou programar. As aprovações atuais estão bloqueadas.</span></div><button type="button" disabled={busy} onClick={() => void mutate({ action: "refreshSnapshot", campaignId }, "Novo snapshot factual criado. Regenere apenas as peças afetadas.")}><Icon name="refresh"/> Atualizar snapshot</button></div>}
-      {piece ? <div className={`studio-canvas-frame ${piece.formato}`}><PiecePreview piece={piece} version={version} snapshot={snapshot}/></div> : <EmptyState icon="grid" title="Nenhuma peça" text="Esta campanha ainda não tem formatos."/>}
+      <div className="studio-brief-strip"><span><strong>Estratégia</strong> {String(snapshot?.fatos.bairro ?? "bairro")}, foco em visita qualificada</span><span><strong>Pilares</strong> localização · diferenciais · estilo de vida</span><span><strong>Status</strong> {sandboxGenerated ? "Demonstração pronta para revisão" : "Aguardando geração"}</span></div>
+      {piece ? <div className={`studio-canvas-frame ${piece.formato}`}><PiecePreview piece={piece} version={version} snapshot={snapshot} demoContent={sandboxGenerated ? demo : null}/></div> : <EmptyState icon="grid" title="Nenhuma peça" text="Esta campanha ainda não tem formatos."/>}
+      <div className="studio-ai-command"><div><strong>Comando para a IA</strong><small>Gere variações sem perder os fatos do snapshot.</small></div><textarea value={command} onChange={(event) => setCommand(event.target.value)} placeholder="Ex.: crie uma versão mais premium para famílias e encurte a headline"/><div className="studio-command-actions"><button type="button" className="studio-secondary" onClick={() => { setCommand("Crie uma versão mais premium sem alterar os fatos"); setSandboxGenerated(true); setVariant((current) => current + 1); }}>Mais premium</button><button type="button" className="studio-secondary" onClick={() => { setCommand("Transforme em conteúdo educativo"); setSandboxGenerated(true); setVariant((current) => current + 1); }}>Educativo</button><button type="button" className="studio-primary" disabled={!command.trim()} onClick={applyCommand}><Icon name="sparkles"/> Gerar variação</button></div></div>
       {piece && version && snapshot && <div className="studio-render-actions">
         <button type="button" className="studio-primary" disabled={busy || renderActive || !snapshot.midias.length} onClick={() => void mutate(
           { action: "enqueueRender", versionId: version.id },
@@ -225,7 +236,9 @@ function Builder({ data, campaign, campaignId, piece, version, snapshot, pieces,
         <div className="studio-review-actions"><button type="button" className="studio-secondary" disabled={busy} onClick={() => void mutate({ action: "requestChanges", versionId: version.id, comment }, "Ajuste solicitado sem perder a versão anterior.")}><Icon name="refresh"/> Solicitar ajuste</button><button type="button" className="studio-primary" disabled={busy} onClick={() => void mutate({ action: "approve", versionId: version.id, comment }, "Versão aprovada com checksum registrado.")}><Icon name="check"/> Aprovar versão</button></div>
         <button type="button" className="studio-bulk-approve" disabled={busy || pieces.some((item) => !item.current_version_id)} onClick={() => void mutate({ action: "bulkApprove", versionIds: pieces.map((item) => item.current_version_id).filter(Boolean), comment: "Pacote mensal aprovado em lote no Studio." }, "Todas as versões atuais do pacote foram aprovadas.")}><Icon name="check"/> Aprovar pacote completo</button>
         <div className="studio-schedule-box"><h4>Programar</h4><p>Horário interpretado em {STUDIO_TIMEZONE}.</p><input type="datetime-local" value={scheduledAt} onChange={(event) => setScheduledAt(event.target.value)}/><button type="button" disabled={busy || !scheduledAt} onClick={() => void mutate({ action: "schedule", versionId: version.id, scheduledAt, idempotencyKey: `ui|${version.id}|${scheduledAt}` }, "Peça adicionada ao calendário.")}><Icon name="calendar"/> Programar publicação</button></div>
-      </> : <EmptyState icon="sparkles" title="Aguardando geração" text="Gere o pacote para abrir os campos, versões e aprovação."/>}
+      </> : sandboxGenerated
+        ? <DemoInspector piece={piece} demo={demo} variant={variant} onVariant={() => setVariant((current) => current + 1)} />
+        : <EmptyState icon="sparkles" title="Aguardando geração" text={realGenerationBlocked ? "A IA paga está bloqueada. Use a demonstração sem custo para validar o fluxo." : "Gere o pacote para abrir os campos, versões e aprovação."} action="Gerar demonstração" onAction={() => setSandboxGenerated(true)}/>}
     </aside>
   </main>;
 }
@@ -248,8 +261,22 @@ function publicMediaUrl(path: unknown) {
   return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/empreendimentos/${path.split("/").map(encodeURIComponent).join("/")}`;
 }
 
-function PiecePreview({ piece, version, snapshot }: { piece: StudioPiece; version: StudioPieceVersion | null; snapshot: StudioData["snapshots"][number] | null }) {
-  const content = version?.conteudo ?? {};
+function demoContent(format: StudioFormat, snapshot: StudioData["snapshots"][number] | null, variant: number) {
+  const nome = String(snapshot?.fatos.nome ?? "Seu próximo imóvel");
+  const bairro = String(snapshot?.fatos.bairro ?? "São Paulo");
+  const suffix = variant ? ` · opção ${variant + 1}` : "";
+  const base = { headline: format === "carousel" ? `Por que escolher ${nome}${suffix}` : format === "reel" ? `${nome} em 30 segundos${suffix}` : format === "story" ? `Conheça ${nome}${suffix}` : `${nome}: espaço para viver bem${suffix}`, cta: "Agende sua visita", legenda: `${nome}, em ${bairro}. Conteúdo demonstrativo sem custo, baseado no snapshot factual do ERP.` };
+  return format === "carousel" ? { ...base, slides: ["Capa: o imóvel em um olhar", "Localização que facilita sua rotina", "Ambientes pensados para viver", "Diferenciais que fazem diferença", "Agende sua visita"] } : format === "story" ? { ...base, stories: ["Tour rápido", "Diferenciais", "Enquete: quer conhecer?", "Chame no direct"] } : format === "reel" ? { ...base, cenas: ["Gancho · 0–3s", "Tour · 3–18s", "Diferencial · 18–26s", "CTA · 26–30s"] } : base;
+}
+
+function DemoInspector({ piece, demo, variant, onVariant }: { piece: StudioPiece | null; demo: Record<string, unknown> | null; variant: number; onVariant: () => void }) {
+  if (!piece || !demo) return null;
+  const rows = Array.isArray(demo.slides) ? demo.slides : Array.isArray(demo.stories) ? demo.stories : Array.isArray(demo.cenas) ? demo.cenas : [];
+  return <div className="studio-demo-inspector"><div className="studio-demo-badge">SANDBOX · SEM CUSTO · NÃO PUBLICÁVEL</div><label className="studio-field"><span>Headline</span><textarea value={String(demo.headline)} readOnly/></label><label className="studio-field"><span>Legenda</span><textarea value={String(demo.legenda)} readOnly/></label><label className="studio-field"><span>CTA</span><input value={String(demo.cta)} readOnly/></label><div className="studio-variant-list"><strong>Variação {variant + 1}</strong>{rows.map((row, index) => <span key={`${String(row)}-${index}`}>{String(row)}</span>)}</div><button type="button" className="studio-secondary" onClick={onVariant}><Icon name="refresh"/> Gerar outra variação</button><small>Para persistir, revisar, aprovar e renderizar no Supabase, configure a IA e o renderer em Configurações.</small></div>;
+}
+
+function PiecePreview({ piece, version, snapshot, demoContent }: { piece: StudioPiece; version: StudioPieceVersion | null; snapshot: StudioData["snapshots"][number] | null; demoContent?: Record<string, unknown> | null }) {
+  const content = version?.conteudo ?? demoContent ?? {};
   const media = snapshot?.midias.find((item) => item.is_capa === true) ?? snapshot?.midias[0];
   const url = publicMediaUrl(media?.storage_path);
   return <article className={`studio-piece-preview ${piece.formato}`} style={{ aspectRatio: FORMAT_META[piece.formato].ratio }}>
