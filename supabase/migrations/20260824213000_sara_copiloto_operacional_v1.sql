@@ -380,6 +380,7 @@ end $$;
 
 -- Compatibilidade de segurança: revoga RPC legada mesmo quando metadata já existe.
 -- revoke all on function public.ia_lead(text) from public,anon,authenticated
+-- revoke all on function public.ia_conversa(text,integer) from public,anon,authenticated
 do $$ begin
   if to_regprocedure('public.ia_lead(text)') is not null then
     execute 'revoke all on function public.ia_lead(text) from public,anon,authenticated';
