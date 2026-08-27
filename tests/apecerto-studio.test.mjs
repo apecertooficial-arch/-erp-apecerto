@@ -15,6 +15,7 @@ const metaOAuth = readFileSync(new URL("../supabase/functions/social-meta-oauth/
 const css = readFileSync(new URL("../app/styles/apecerto-studio.css", import.meta.url), "utf8");
 const catalogMigration = readFileSync(new URL("../supabase/migrations/20260827170000_studio_template_catalog_20.sql", import.meta.url), "utf8");
 const collaborationMigration = readFileSync(new URL("../supabase/migrations/20260827180000_studio_collaboration_metrics.sql", import.meta.url), "utf8");
+const calendar = readFileSync(new URL("../app/features/studio/StudioCalendar.tsx", import.meta.url), "utf8");
 
 test("Studio é um módulo nativo, roteável e fail-closed", () => {
   assert.equal(pathDoModulo("apêcerto Studio"), "/studio");
@@ -224,4 +225,17 @@ test("copiloto, colaboração, board e métricas têm contratos honestos e RLS",
   assert.match(ui, /Resolver/);
   assert.match(ui, /Reabrir/);
   assert.match(api, /setCommentResolved/);
+});
+
+test("calendário usa três estruturas e drop real sem prompt", () => {
+  assert.match(calendar, /data-testid="calendar-month"/);
+  assert.match(calendar, /data-testid="calendar-week"/);
+  assert.match(calendar, /data-testid="calendar-list"/);
+  assert.match(calendar, /onDragStart/);
+  assert.match(calendar, /onDragOver/);
+  assert.match(calendar, /onDrop/);
+  assert.match(calendar, /scheduleDropInstant/);
+  assert.match(calendar, /role="dialog"/);
+  assert.doesNotMatch(calendar, /window\.prompt/);
+  assert.match(calendar, /schedule_conflict/);
 });
