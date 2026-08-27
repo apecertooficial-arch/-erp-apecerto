@@ -12,6 +12,7 @@ const funilApi = await readFile(new URL("../app/api/funil2/route.ts", import.met
 const funilDesktop = await readFile(new URL("../app/features/funil-2/Funil2Workspace.tsx", import.meta.url), "utf8");
 const funilMobile = await readFile(new URL("../app/features/funil-2/Funil2Mobile.tsx", import.meta.url), "utf8");
 const identidadeCss = await readFile(new URL("../app/styles/apecerto-identidade.css", import.meta.url), "utf8");
+const appMobileCss = await readFile(new URL("../app/styles/app-mobile-aprovado.css", import.meta.url), "utf8");
 
 test("desktop e mobile consomem somente a API canônica da Agenda", () => {
   assert.match(desktop, /\/api\/agenda\?workspace=1/);
@@ -20,6 +21,14 @@ test("desktop e mobile consomem somente a API canônica da Agenda", () => {
   assert.doesNotMatch(mobile, /\/api\/crm/);
   assert.match(chat, /\/api\/agenda/);
   assert.doesNotMatch(chat, /createVisit[\s\S]{0,500}\/api\/crm/);
+});
+
+test("Agenda do app fica visível no breakpoint mobile", () => {
+  const inicioMobile = appMobileCss.indexOf("\n@media (max-width: 900px) {");
+  const agendaVisivel = appMobileCss.indexOf(".ape-agenda {", inicioMobile);
+  assert.ok(inicioMobile >= 0 && agendaVisivel > inicioMobile);
+  assert.match(appMobileCss.slice(agendaVisivel, agendaVisivel + 120), /display:\s*block/);
+  assert.doesNotMatch(appMobileCss.slice(agendaVisivel + 120), /\.ape-agenda\s*\{\s*display:\s*none/);
 });
 
 test("escritas de visita existem somente na Agenda; API geral do CRM não existe", () => {
