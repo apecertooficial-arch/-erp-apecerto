@@ -384,6 +384,11 @@ do $verify$
 declare
   v_test jsonb;
 begin
+  if to_regclass('public.apecerto_baseline_metadata') is not null
+     and not exists (select 1 from public.automacoes where id=42) then
+    return;
+  end if;
+
   if position('sync-site-attribution-field-operation' in
     pg_get_functiondef('public.automacao_validar_mapa(jsonb)'::regprocedure))=0 then
     raise exception 'Operacao site ausente do validador';

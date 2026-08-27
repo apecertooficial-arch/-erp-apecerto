@@ -16,6 +16,11 @@ declare
   v_version integer;
   v_version_id bigint;
 begin
+  if to_regclass('public.apecerto_baseline_metadata') is not null
+     and not exists (select 1 from public.automacoes where nome='Entrada Adelmo') then
+    return;
+  end if;
+
   if coalesce((select ativo from public.motor_flags where nome='abordagem_automatica'),false) then
     raise exception 'ABORDAGEM_AUTOMATICA_DEVE_ESTAR_DESLIGADA';
   end if;
@@ -113,6 +118,11 @@ declare
   v_map jsonb;
   v_block jsonb;
 begin
+  if to_regclass('public.apecerto_baseline_metadata') is not null
+     and not exists (select 1 from public.automacoes where nome='Entrada Adelmo') then
+    return;
+  end if;
+
   select mapa into strict v_map
     from public.automacoes where nome='Entrada Adelmo';
   select b into strict v_block

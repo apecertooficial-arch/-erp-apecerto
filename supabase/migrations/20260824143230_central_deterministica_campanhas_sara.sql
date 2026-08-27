@@ -68,6 +68,11 @@ declare
   r record; v_auto public.automacoes%rowtype; v_map jsonb; v_blocks jsonb;
   v_valid jsonb; v_version integer; v_version_id bigint; v_actions jsonb;
 begin
+  if to_regclass('public.apecerto_baseline_metadata') is not null
+     and not exists (select 1 from public.automacoes where id in (49,64,65,66,69)) then
+    return;
+  end if;
+
   for r in
     select * from (values
       (49::bigint,'09f5ea28ce303100c45620e2a71e76b6'::text),
@@ -315,6 +320,10 @@ begin
   if position('ncrm_bloqueia_abordagem_automatica' in pg_get_functiondef(
     'public.motor_envia_abordagem(bigint,text,text,jsonb,bigint,bigint,bigint,jsonb)'::regprocedure
   ))>0 then raise exception 'trava legada ainda presente no emissor'; end if;
+  if to_regclass('public.apecerto_baseline_metadata') is not null
+     and not exists (select 1 from public.automacoes where id=64) then
+    return;
+  end if;
   select mapa into v_map from public.automacoes where id=64;
   if not exists(
     select 1 from jsonb_array_elements(v_map#>'{automation,blocks}') b

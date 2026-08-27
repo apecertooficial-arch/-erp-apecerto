@@ -323,6 +323,7 @@ grant execute on function ncrm_private.f2_distribuicao_programada_tick() to serv
 do $check$
 declare v_fila integer;
 begin
+  if to_regclass('public.apecerto_baseline_metadata') is not null then return; end if;
   if exists(select 1 from public.f2_lead) then raise exception 'f2_nao_foi_zerado'; end if;
   select count(*) into v_fila from ncrm_private.f2_distribuicao_programada
     where programa='pipes-antigos-20260805' and status='pendente';

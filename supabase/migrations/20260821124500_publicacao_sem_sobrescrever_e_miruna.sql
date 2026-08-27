@@ -108,6 +108,10 @@ declare
   v_version_id bigint;
   v_name text;
 begin
+  if to_regclass('public.apecerto_baseline_metadata') is not null
+     and not exists (select 1 from public.automacoes where id=66) then
+    return;
+  end if;
   select nome,mapa into v_name,v_current
     from public.automacoes where id=66 for update;
   if v_current is null then raise exception 'Entrada Miruna ausente'; end if;
@@ -188,6 +192,10 @@ do $verify$
 declare
   v_map jsonb;
 begin
+  if to_regclass('public.apecerto_baseline_metadata') is not null
+     and not exists (select 1 from public.automacoes where id=66) then
+    return;
+  end if;
   select mapa into v_map from public.automacoes where id=66;
   if coalesce((public.automacao_validar_mapa(v_map)->>'ok')::boolean,false) is not true then
     raise exception 'Miruna invalida';

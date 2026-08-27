@@ -26,7 +26,8 @@ begin
     );
   end loop;
 
-  if v_encontrados <> 4 then
+  if v_encontrados <> 4
+     and not (v_encontrados = 0 and to_regclass('public.apecerto_baseline_metadata') is not null) then
     raise exception 'cron_datacrazy_quantidade_inesperada:%', v_encontrados;
   end if;
 

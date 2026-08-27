@@ -220,6 +220,10 @@ declare
   v_validacao jsonb;
   v_tag text;
 begin
+  if to_regclass('public.apecerto_baseline_metadata') is not null
+     and not exists (select 1 from public.automacoes where nome='Entrada Adelmo') then
+    return;
+  end if;
   select id,nome,mapa into v_auto_id,v_nome,v_mapa
     from public.automacoes
    where nome='Entrada Adelmo' and ativa is true and arquivada is false
@@ -359,6 +363,10 @@ declare
   v_auto_id bigint;
   v_mapa jsonb;
 begin
+  if to_regclass('public.apecerto_baseline_metadata') is not null
+     and not exists (select 1 from public.automacoes where nome='Entrada Adelmo') then
+    return;
+  end if;
   select id,mapa into v_auto_id,v_mapa from public.automacoes where nome='Entrada Adelmo';
   if coalesce((public.automacao_validar_mapa(v_mapa)->>'ok')::boolean,false) is not true then
     raise exception 'mapa publicado da Entrada Adelmo invalido';

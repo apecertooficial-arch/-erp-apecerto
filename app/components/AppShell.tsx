@@ -16,10 +16,10 @@ import "../styles/menu-marca-dagua-icone.css";
    olhar o outro faz item saltar de lugar.
 
    Nenhum item foi removido em relação ao publicado. */
-const adminMainItems: ModuleName[] = ["Início", "Central de Comando", "CRM", "Produtos", "Financeiro", "Tracking 360"];
+const adminMainItems: ModuleName[] = ["Início", "Central de Comando", "CRM", "Produtos", "apêcerto Studio", "Financeiro", "Tracking 360"];
 const adminToolItems: ModuleName[] = ["Abordagens", "Automações", "Financiamento", "Chat ao Vivo", "Disparos", "Calendário", "Projetos e Tarefas", "Agentes de IA", "Marca d'Água", "Notificações", "Base de conhecimento"];
 const adminSystemItems: ModuleName[] = ["Usuários", "Perfis e Permissões", "Auditoria", "Configurações", "Ajuda"];
-const brokerMainItems: ModuleName[] = ["Início", "CRM", "Produtos", "Financeiro"];
+const brokerMainItems: ModuleName[] = ["Início", "CRM", "Produtos", "apêcerto Studio", "Financeiro"];
 const brokerToolItems: ModuleName[] = ["Chat ao Vivo", "Financiamento", "Disparos", "Calendário", "Marca d'Água", "Notificações"];
 const brokerSystemItems: ModuleName[] = ["Configurações", "Ajuda"];
 
@@ -31,6 +31,7 @@ function NavIcon({ item }: { item: ModuleName }) {
   if (item === "Central de Comando") return <svg {...common}><path d="M4 19V9M10 19V5M16 19v-7M22 19V3" /><path d="M3 21h19" /><circle cx="10" cy="5" r="1.4" /><circle cx="16" cy="12" r="1.4" /><circle cx="22" cy="3" r="1.4" /></svg>;
   if (item === "CRM") return <svg {...common}><path d="M3 4h18l-7 8v7l-4 2v-9Z" /></svg>;
   if (item === "Produtos") return <svg {...common}><path d="M6 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16M3 21h18M10 7h.01M14 7h.01M10 11h.01M14 11h.01M10 15h.01M14 15h.01" /></svg>;
+  if (item === "apêcerto Studio") return <svg {...common}><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M8 15h8M8 11h5M16.5 6.5v3M15 8h3"/></svg>;
   if (item === "Financeiro") return <svg {...common}><rect x="3" y="6" width="18" height="13" rx="2" /><path d="M3 10h18M16 14h.01" /></svg>;
   if (item === "Tracking 360") return <svg {...common}><path d="M4 19V9M10 19V5M16 19v-7M22 19V3" /><path d="m3 8 7-5 6 7 6-8" /></svg>;
   if (item === "Abordagens" || item === "Disparos") return <svg {...common}><path d="m22 2-7 20-4-9-9-4Z" /><path d="m22 2-11 11" /></svg>;

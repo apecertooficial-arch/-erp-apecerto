@@ -76,7 +76,24 @@ CREATE TABLE public.f2_lead (
   versao integer NOT NULL DEFAULT 1 CHECK (versao > 0),
   criado_em timestamptz NOT NULL DEFAULT now(),
   atualizado_em timestamptz NOT NULL DEFAULT now(),
-  atualizado_por uuid NULL
+  atualizado_por uuid NULL,
+  -- Colunas medidas no schema produtivo, mas antes ausentes do histórico Git.
+  -- Entram na criação da tabela para que bases novas recebam o mesmo contrato;
+  -- bases existentes já aplicaram esta migration e não são alteradas.
+  descartado_em timestamptz NULL,
+  descartado_por uuid NULL,
+  descarte_motivo text NULL,
+  descarte_detalhe text NULL,
+  abordagem_passadas smallint NOT NULL DEFAULT 0,
+  qualidade_atendimento_nota numeric NULL CHECK (
+    qualidade_atendimento_nota IS NULL
+    OR qualidade_atendimento_nota BETWEEN 0 AND 10
+  ),
+  qualidade_atendimento_resumo text NULL,
+  qualidade_atendimento_em timestamptz NULL,
+  temperatura text NULL CHECK (
+    temperatura IS NULL OR temperatura IN ('frio','morno','quente','negociando')
+  )
 );
 CREATE INDEX f2_lead_etapa_prazo_idx ON public.f2_lead(etapa,proxima_acao_em);
 

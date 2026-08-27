@@ -2,6 +2,16 @@
 -- Confirmacoes ficam vinculadas a uma previa exata, de uso unico e com 15 min de validade.
 -- Inclui agenda conversacional, comprovante do WhatsApp, desfazer visita e piloto mensuravel.
 
+-- Estes campos ja faziam parte do contrato operacional da agenda antes desta
+-- migration, mas nao existia uma migration versionada para cria-los. O bloco
+-- e idempotente para upgrades e fecha o baseline para instalacoes novas.
+alter table public.f2_visita
+  add column if not exists fim_em timestamptz,
+  add column if not exists empreendimento_id uuid references public.empreendimentos(id) on delete set null,
+  add column if not exists unidade text,
+  add column if not exists com_gerente boolean not null default false,
+  add column if not exists gerente_id bigint references public.corretores(id) on delete set null;
+
 create table if not exists public.sara_previews (
   id uuid primary key default gen_random_uuid(),
   usuario_id uuid not null references auth.users(id) on delete cascade,

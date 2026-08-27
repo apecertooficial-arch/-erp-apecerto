@@ -9,6 +9,11 @@ declare
   v_alvo record;
   v_total integer := 0;
 begin
+  if to_regclass('public.apecerto_baseline_metadata') is not null
+     and not exists (select 1 from public.empreendimentos where codigo='AP0001') then
+    return;
+  end if;
+
   if (select count(*) from public.empreendimentos where codigo in (
     'AP0001','AP0004','AP0006','AP0010','AP0011','AP0014','AP0015',
     'AP0016','AP0017','AP0019','AP0023','AP0027','AP0031','AP0032',

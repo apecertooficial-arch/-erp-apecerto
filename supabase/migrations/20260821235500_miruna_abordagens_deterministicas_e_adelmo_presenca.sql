@@ -14,6 +14,13 @@ declare
   v_a2 bigint;
   v_a3 bigint;
 begin
+  if to_regclass('public.apecerto_baseline_metadata') is not null
+     and not exists (
+       select 1 from public.automacoes where nome in ('Entrada Miruna','Entrada Adelmo')
+     ) then
+    return;
+  end if;
+
   if coalesce((select ativo from public.motor_flags where nome='abordagem_automatica'),false) then
     raise exception 'ABORDAGEM_AUTOMATICA_DEVE_ESTAR_DESLIGADA';
   end if;

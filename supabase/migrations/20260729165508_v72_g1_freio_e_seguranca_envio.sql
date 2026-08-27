@@ -13,6 +13,12 @@ begin
     from pg_proc p join pg_namespace n on n.oid = p.pronamespace
    where n.nspname = 'public' and p.proname = 'motor_envia_abordagem';
 
+  if to_regclass('public.apecerto_baseline_metadata') is not null then
+    -- Instalações reconstruídas não possuem o corpo remoto legado. O stub do
+    -- baseline permanece fail-closed até 20260820204500 versionar o emissor.
+    return;
+  end if;
+
   if _md5 <> '6411390a39050fda6153b6993b4e59dc' then
     raise exception 'ABORTADO: corpo de motor_envia_abordagem divergente do auditado (md5=%)', _md5;
   end if;

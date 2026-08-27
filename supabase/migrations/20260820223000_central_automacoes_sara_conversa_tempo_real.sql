@@ -598,6 +598,10 @@ update public.automacoes set ativa=false,arquivada=true,atualizada_em=now() wher
 do $publish$
 declare v_map jsonb; v_validation jsonb; v_auto_id bigint; v_version integer;
 begin
+  if to_regclass('public.apecerto_baseline_metadata') is not null
+     and not exists (select 1 from public.automacoes where id=49) then
+    return;
+  end if;
   select mapa into v_map from public.automacoes where id=49 for update;
   if v_map is null then raise exception 'automacao 49 inexistente'; end if;
 

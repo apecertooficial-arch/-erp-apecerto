@@ -8,6 +8,14 @@ declare
   v_instancia_3785 bigint;
   v_total_alvos integer;
 begin
+  if to_regclass('public.apecerto_baseline_metadata') is not null
+     and not exists (
+       select 1 from public.corretores c
+        where lower(trim(c.nome))='claudia' and coalesce(c.ativo,false)
+     ) then
+    return;
+  end if;
+
   select c.id
     into v_corretor_id
     from public.corretores c

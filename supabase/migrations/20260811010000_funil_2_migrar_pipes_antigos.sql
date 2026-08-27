@@ -14,6 +14,11 @@ DECLARE
   v_pipes integer;
   v_fontes integer;
 BEGIN
+  IF to_regclass('public.apecerto_baseline_metadata') IS NOT NULL THEN
+    -- Base nova não possui carteira histórica para promover; os INSERTs abaixo
+    -- são naturalmente no-op, preservando o mesmo schema final.
+    RETURN;
+  END IF;
   IF v_aquario IS NULL THEN
     RAISE EXCEPTION 'f2_migracao_abortada:aquario_sem_stage_canonico';
   END IF;

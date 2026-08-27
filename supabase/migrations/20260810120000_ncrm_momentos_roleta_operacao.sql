@@ -455,6 +455,7 @@ DO $guard$
 DECLARE v_oid regprocedure:='ncrm_private.sla_redistribuir(integer)'::regprocedure;
         v_def text; v_ancora text;
 BEGIN
+  IF to_regclass('public.apecerto_baseline_metadata') IS NOT NULL THEN RETURN; END IF;
   SELECT pg_get_functiondef(v_oid::oid) INTO v_def;
   IF strpos(v_def,'NCRM31_SLA_SOMENTE_OFICIAL')>0 THEN RETURN; END IF;
   IF md5(v_def)<>'bc9eb203366730ff46123d8166513805' AND strpos(v_def,'NCRM_TEST_STUB_ROLL')=0 THEN

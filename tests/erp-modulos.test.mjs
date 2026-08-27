@@ -226,7 +226,7 @@ test("Automações usa um único histórico de execução", () => {
   assert.match(mapa, /"motor_execucoes"/);
   assert.doesNotMatch(mapa, /"automacao_execucoes"/);
   assert.doesNotMatch(tipos, /automacao_execucoes:/);
-  assert.match(migration, /drop table public\.automacao_execucoes/);
+  assert.match(migration, /drop table (?:if exists )?public\.automacao_execucoes/);
 });
 
 test("migração assistida do CRM antigo foi removida como um conjunto fechado", () => {

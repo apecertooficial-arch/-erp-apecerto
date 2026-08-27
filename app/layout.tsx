@@ -84,6 +84,9 @@ import "./styles/app-mobile-aprovado.css";
 /* Telas do gestor no celular (folha "Mais" e Minha Equipe). Depois da folha
    aprovada porque reusa os mesmos valores e completa o que faltava dela. */
 import "./styles/app-mobile-gestor.css";
+/* Módulo nativo de produção editorial. Carrega por último porque suas classes
+   são totalmente isoladas sob .studio-* e consomem os tokens oficiais. */
+import "./styles/apecerto-studio.css";
 import { RegistroPwa } from "./components/RegistroPwa";
 
 export const metadata: Metadata = {

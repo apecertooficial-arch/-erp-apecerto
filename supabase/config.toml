@@ -423,6 +423,17 @@ verify_jwt = false
 enabled = true
 verify_jwt = false
 
+# Worker privado do Studio: aceita somente o segredo de cron e nunca JWT de usuário.
+[functions.social-publisher]
+enabled = true
+verify_jwt = false
+
+# O callback OAuth não possui JWT; a função valida state de uso único e
+# reautoriza o usuário nas ações start/disconnect.
+[functions.social-meta-oauth]
+enabled = true
+verify_jwt = false
+
 # Presenca fisica: a borda valida o JWT e observa o IP real antes de chamar a
 # unica RPC com permissao para recolocar um corretor na fila.
 [functions.presenca]

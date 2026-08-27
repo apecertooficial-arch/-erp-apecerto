@@ -14,6 +14,14 @@ declare
   v_iphone_id bigint;
   v_3785_id bigint;
 begin
+  if to_regclass('public.apecerto_baseline_metadata') is not null
+     and not exists (
+       select 1 from public.corretores
+        where lower(btrim(nome))='claudia' and coalesce(ativo,false)
+     ) then
+    return;
+  end if;
+
   select id into strict v_corretor_id
     from public.corretores
    where lower(btrim(nome))='claudia' and coalesce(ativo,false)
@@ -195,7 +203,8 @@ declare v_def text; v_new text;
 begin
   select pg_get_functiondef('public.automacao_validar_mapa(jsonb)'::regprocedure)
     into v_def;
-  if md5(v_def)<>'8f0b54ae0fba10a81e5a9aaf200d9e7c' then
+  if md5(v_def)<>'8f0b54ae0fba10a81e5a9aaf200d9e7c'
+     and to_regclass('public.apecerto_baseline_metadata') is null then
     raise exception 'automacao_validar_mapa mudou: %',md5(v_def);
   end if;
   v_new:=replace(v_def,
@@ -251,6 +260,11 @@ declare
   v_corretor_id bigint;
   v_instancia_id bigint;
 begin
+  if to_regclass('public.apecerto_baseline_metadata') is not null
+     and not exists (select 1 from public.automacoes where id in (65,66)) then
+    return;
+  end if;
+
   for r in select * from (values
     (65::bigint,'04c545bc6f9b66ff533751f0a2d432fe'::text),
     (66::bigint,'9e9afbb037b2877b80c58b7d98bf9ecb'::text)
@@ -334,6 +348,27 @@ $publish_maps$;
 do $verify$
 declare v_def text; v_map jsonb; v_claudia bigint; v_3785 bigint;
 begin
+  if to_regclass('public.apecerto_baseline_metadata') is not null
+     and not exists (
+       select 1 from public.corretores
+        where lower(btrim(nome))='claudia' and coalesce(ativo,false)
+     ) then
+    select pg_get_functiondef(
+      'public.motor_rodar_unchecked(bigint,jsonb,text,integer)'::regprocedure
+    ) into v_def;
+    if position($marker$array['options','instanciaPorCorretor',_dist_cor::text]$marker$ in v_def)=0 then
+      raise exception 'runtime nao le a instancia do bloco';
+    end if;
+    select pg_get_functiondef(
+      'public.motor_envia_abordagem(bigint,text,text,jsonb,bigint,bigint,bigint,jsonb)'::regprocedure
+    ) into v_def;
+    if position('i.id=v_inst_explicita' in v_def)=0
+       or position('bloco sem instancia explicita publicada' in v_def)=0 then
+      raise exception 'emissor ainda nao exige instancia explicita';
+    end if;
+    return;
+  end if;
+
   select id into strict v_claudia from public.corretores
    where lower(btrim(nome))='claudia' and ativo order by id limit 1;
   select id into strict v_3785 from public.instancias

@@ -50,6 +50,7 @@ export const rotasModulo: Record<ModuleName, RotaModulo> = {
   "Calendário": { path: "/agenda", slugs: ["calendario"], classe: "A", rotuloCurto: "Agenda", mobile: true },
   "Notificações": { path: "/notificacoes", slugs: ["notificacoes"], classe: "A", rotuloCurto: "Avisos", mobile: true },
   Produtos: { path: "/produtos", slugs: ["produtos"], classe: "A", rotuloCurto: "Produtos", mobile: true },
+  "apêcerto Studio": { path: "/studio", slugs: ["studio_social"], classe: "A", rotuloCurto: "Studio", mobile: true },
   /* "projetos" NAO existe no catalogo de permissoes do banco -- conferido na
      homologacao contra /api/permissions. Como podeVer() e fail-closed, um slug
      inexistente escondia Tarefas de TODO mundo que nao fosse admin. Sem

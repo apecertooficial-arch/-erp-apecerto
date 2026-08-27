@@ -56,6 +56,9 @@ do $$
 declare
   v_total integer;
 begin
+  if to_regclass('public.apecerto_baseline_metadata') is not null then
+    return;
+  end if;
   select count(*) into v_total
   from ncrm_private.f2_distribuicao_programada
   where programa = 'pipes-antigos-20260805';
@@ -267,4 +270,3 @@ select cron.schedule(
   '30 * * * *',
   $cron$select ncrm_private.f2_distribuicao_programada_tick();$cron$
 );
-
