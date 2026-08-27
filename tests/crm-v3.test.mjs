@@ -111,4 +111,5 @@ test("perfis, filtros e Design System permanecem explícitos", () => {
   assert.match(css, /background:var\(--ape-orange\)/);
   assert.match(css, /font-family:var\(--font-body\)/);
   assert.match(css, /min-height:44px/);
+  assert.match(css, /body:has\(\.funil-oficial\.modo-crm\) #sara-fab\{bottom:calc\(122px/);
 });
