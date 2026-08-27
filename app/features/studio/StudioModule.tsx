@@ -230,15 +230,13 @@ function Builder({ data, campaign, campaignId, piece, version, snapshot, pieces,
     </section>
     <aside className="studio-inspector">
       <div className="studio-inspector-head"><div><span className="studio-eyebrow">Revisão</span><h3>Conteúdo da peça</h3></div></div>
-      {version ? <>
+      {sandboxGenerated ? <DemoInspector piece={piece} demo={demo} variant={variant} onVariant={() => setVariant((current) => current + 1)} /> : version ? <>
         <VersionEditor key={version.id} version={version} busy={busy} mutate={mutate}/>
         <label className="studio-field"><span>Comentário da revisão</span><textarea value={comment} onChange={(event) => setComment(event.target.value)} placeholder="Explique o ajuste ou registre a decisão."/></label>
         <div className="studio-review-actions"><button type="button" className="studio-secondary" disabled={busy} onClick={() => void mutate({ action: "requestChanges", versionId: version.id, comment }, "Ajuste solicitado sem perder a versão anterior.")}><Icon name="refresh"/> Solicitar ajuste</button><button type="button" className="studio-primary" disabled={busy} onClick={() => void mutate({ action: "approve", versionId: version.id, comment }, "Versão aprovada com checksum registrado.")}><Icon name="check"/> Aprovar versão</button></div>
         <button type="button" className="studio-bulk-approve" disabled={busy || pieces.some((item) => !item.current_version_id)} onClick={() => void mutate({ action: "bulkApprove", versionIds: pieces.map((item) => item.current_version_id).filter(Boolean), comment: "Pacote mensal aprovado em lote no Studio." }, "Todas as versões atuais do pacote foram aprovadas.")}><Icon name="check"/> Aprovar pacote completo</button>
         <div className="studio-schedule-box"><h4>Programar</h4><p>Horário interpretado em {STUDIO_TIMEZONE}.</p><input type="datetime-local" value={scheduledAt} onChange={(event) => setScheduledAt(event.target.value)}/><button type="button" disabled={busy || !scheduledAt} onClick={() => void mutate({ action: "schedule", versionId: version.id, scheduledAt, idempotencyKey: `ui|${version.id}|${scheduledAt}` }, "Peça adicionada ao calendário.")}><Icon name="calendar"/> Programar publicação</button></div>
-      </> : sandboxGenerated
-        ? <DemoInspector piece={piece} demo={demo} variant={variant} onVariant={() => setVariant((current) => current + 1)} />
-        : <EmptyState icon="sparkles" title="Aguardando geração" text={realGenerationBlocked ? "A IA paga está bloqueada. Use a demonstração sem custo para validar o fluxo." : "Gere o pacote para abrir os campos, versões e aprovação."} action="Gerar demonstração" onAction={() => setSandboxGenerated(true)}/>}
+      </> : <EmptyState icon="sparkles" title="Aguardando geração" text={realGenerationBlocked ? "A IA paga está bloqueada. Use a demonstração sem custo para validar o fluxo." : "Gere o pacote para abrir os campos, versões e aprovação."} action="Gerar demonstração" onAction={() => setSandboxGenerated(true)}/>}
     </aside>
   </main>;
 }
