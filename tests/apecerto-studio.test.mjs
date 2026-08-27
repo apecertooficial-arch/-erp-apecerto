@@ -220,4 +220,8 @@ test("copiloto, colaboração, board e métricas têm contratos honestos e RLS",
   assert.match(ui, /StudioMetricsDashboard/);
   assert.match(ui, /Todas as campanhas/);
   assert.match(ui, /draggable/);
+  assert.match(ui, /Contexto do comentário/);
+  assert.match(ui, /Resolver/);
+  assert.match(ui, /Reabrir/);
+  assert.match(api, /setCommentResolved/);
 });
