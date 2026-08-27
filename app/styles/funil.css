@@ -2183,6 +2183,7 @@ body .f2-indicadores button span { font-size:12px; font-weight:600; }
 .funil-oficial .f2-coluna-topo>details>div{top:32px}
 .funil-oficial .f2-v3-quebra{display:none}
 body:has(.funil-oficial) #sara-fab{display:none}
+body:has(.funil-oficial) .convite-instalar{display:none}
 body:has(.funil-oficial .f2-overlay) #sara-fab,body:has(.funil-oficial .f2-overlay) #sara-panel{display:none}
 
 /* Dentro do shell oficial, 1440 px deixam cerca de 1200 px úteis. A faixa
@@ -2202,5 +2203,6 @@ body:has(.funil-oficial .f2-overlay) #sara-fab,body:has(.funil-oficial .f2-overl
 @media(max-width:720px){
   body:has(.funil-oficial.modo-crm) #sara-fab{display:none}
   .funil-oficial .ape-mobile-mais-areas{grid-template-columns:repeat(4,minmax(0,1fr))}
+  .funil-oficial.modo-crm>.ape-filtros button.ativo{border-color:#FFD6BD;background:#FFF3EA;color:#B84300;font-weight:700}
   .funil-oficial.modo-crm>.ape-filtros button b{margin-left:5px;font-size:9px}
 }
