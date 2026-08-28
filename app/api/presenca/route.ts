@@ -1,4 +1,5 @@
 import { createServerSupabaseClient } from "../../lib/supabase/server";
+import { criarDiagnosticoPresenca } from "../../features/presence/presenceDiagnostic.mjs";
 
 type SupabaseLike = ReturnType<typeof createServerSupabaseClient>;
 
@@ -26,11 +27,21 @@ function ipDaRequisicao(request: Request): string {
   return (bruto ?? "").trim();
 }
 
-async function naRedeDoEscritorio(request: Request, supabase: SupabaseLike): Promise<boolean> {
+async function diagnosticarRedeDoEscritorio(request: Request, supabase: SupabaseLike) {
   const ip = ipDaRequisicao(request);
-  if (!ip) return false;
+  const observadoEm = new Date().toISOString();
+  if (!ip) {
+    return {
+      noEscritorio: false,
+      diagnostico: criarDiagnosticoPresenca({ ip: "", corresponde: false, observadoEm }),
+    };
+  }
   const { data, error } = await supabase.rpc("presenca_ip_confere", { p_ip: ip });
-  return !error && data === true;
+  const noEscritorio = !error && data === true;
+  return {
+    noEscritorio,
+    diagnostico: criarDiagnosticoPresenca({ ip, corresponde: noEscritorio, observadoEm }),
+  };
 }
 
 export async function GET(request: Request) {
@@ -45,12 +56,16 @@ export async function GET(request: Request) {
     if (error) return Response.json({ error: error.message }, { status: 403 });
     return Response.json({ config: data, corretores: brokers ?? [] });
   }
-  const noEscritorio = await naRedeDoEscritorio(request, a.supabase);
+  const rede = await diagnosticarRedeDoEscritorio(request, a.supabase);
   const { data, error } = await a.supabase.rpc("presenca_status");
   if (error) return Response.json({ error: error.message }, { status: 502 });
 
   const status = data && typeof data === "object" && !Array.isArray(data) ? data : { ativa: false, prompt: false };
-  return Response.json({ ...status, no_escritorio_ip: noEscritorio });
+  return Response.json({
+    ...status,
+    no_escritorio_ip: rede.noEscritorio,
+    diagnostico_ip: rede.diagnostico,
+  });
 }
 
 export async function POST(request: Request) {
