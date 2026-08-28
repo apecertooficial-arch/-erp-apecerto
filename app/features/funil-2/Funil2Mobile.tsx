@@ -35,6 +35,7 @@ import {
   type EtapaConfigFunil2,
   type LeadFunil2,
   type MomentoFunil2,
+  type NegociacaoFunil2,
   type NotaFunil2,
   type TagCatalogoFunil2,
   type TemperaturaLead,
@@ -49,6 +50,7 @@ type PayloadMobile = {
   tagCatalogo?: TagCatalogoFunil2[];
   etapas?: EtapaConfigFunil2[];
   visitas?: VisitaFunil2[];
+  negociacoes?: NegociacaoFunil2[];
   error?: string;
 };
 
@@ -578,6 +580,7 @@ function DescartarMobile({
 function FichaLead({
   abrirNoChat,
   lead,
+  negociacao,
   momento,
   momentos,
   etapas,
@@ -592,6 +595,7 @@ function FichaLead({
 }: {
   abrirNoChat: boolean;
   lead: LeadFunil2;
+  negociacao: NegociacaoFunil2 | null;
   momento: MomentoFunil2 | null;
   momentos: MomentoFunil2[];
   etapas: EtapaConfigFunil2[];
@@ -668,18 +672,17 @@ function FichaLead({
     }
   }
 
-  async function movimentarNegocio(etapaCodigo: string) {
-    const destino = momentos.filter((item) => item.etapa === etapaCodigo).sort((a, b) => a.ordem - b.ordem)[0];
-    if (!destino) {
-      setErroNegocio("Esta etapa ainda não possui um momento ativo para receber o negócio.");
+  async function movimentarNegocio(etapa: NegociacaoFunil2["etapa"]) {
+    if (!negociacao) {
+      setErroNegocio("Crie o negócio para liberar as mudanças de etapa.");
       return;
     }
     setMovendoNegocio(true); setErroNegocio("");
     try {
       const resposta = await fetch("/api/funil2", {
-        method: "PATCH",
+        method: "POST",
         headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "atualizarMomento", id: lead.id, versao: lead.versao, momentoCodigo: destino.codigo, prazoCombinado: null, observacao: "Movido pela ficha do Funil" }),
+        body: JSON.stringify({ action: "salvarNegociacao", id: negociacao.id, leadId: lead.id, titulo: negociacao.titulo, etapa, valor: negociacao.valor, observacao: negociacao.observacao }),
       });
       const json = await resposta.json().catch(() => ({})) as { error?: string };
       if (!resposta.ok) throw new Error(json.error || "Não foi possível mover o negócio.");
@@ -710,7 +713,7 @@ function FichaLead({
 
       {aba === "atividades" && <div className="ape-ficha-painel ape-v3-secao"><header><h3>Atividades</h3><Link href={`/agenda?lead=${encodeURIComponent(String(lead.lead_id || lead.id))}`}>Abrir agenda</Link></header>{visitas.map((visita) => <article key={visita.id}><strong>Visita · {visita.imovel || "Imóvel a confirmar"}</strong><span>{new Date(visita.inicio_em).toLocaleString("pt-BR")} · {visita.status}</span></article>)}{visitas.length === 0 && <p>Nenhuma visita vinculada a esta ficha.</p>}</div>}
 
-      {aba === "negocios" && <div className="ape-ficha-painel ape-v3-secao"><h3>Negócios</h3><article><strong>Negócio de origem #{lead.origem_negocio_id}</strong><span>{nomeEtapa(lead.etapa)} · {momento?.rotulo ?? lead.momento_codigo}</span><em>Em andamento</em><div className="ape-v3-negocio-acoes"><button type="button" disabled={movendoNegocio || lead.etapa === "venda"} onClick={() => void movimentarNegocio("venda")}>Ganho</button><button type="button" disabled={movendoNegocio || lead.etapa === "perdida"} onClick={() => void movimentarNegocio("perdida")}>Perdido</button></div>{erroNegocio && <p role="alert">{erroNegocio}</p>}</article></div>}
+      {aba === "negocios" && <div className="ape-ficha-painel ape-v3-secao"><h3>Negócios</h3><article><strong>{negociacao?.titulo || `Negócio de origem #${lead.origem_negocio_id}`}</strong><span>{negociacao ? `${negociacao.etapa} · ${negociacao.valor ? new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 }).format(negociacao.valor) : "valor não informado"}` : `${nomeEtapa(lead.etapa)} · ${momento?.rotulo ?? lead.momento_codigo}`}</span><em>{negociacao ? "Em andamento" : "Ainda não criado"}</em><div className="ape-v3-negocio-acoes"><button type="button" disabled={movendoNegocio || !negociacao || negociacao.etapa === "venda"} onClick={() => void movimentarNegocio("venda")}>Ganho</button><button type="button" disabled={movendoNegocio || !negociacao || negociacao.etapa === "perdida"} onClick={() => void movimentarNegocio("perdida")}>Perdido</button></div>{!negociacao && <p>Crie o negócio para liberar as mudanças de etapa.</p>}{erroNegocio && <p role="alert">{erroNegocio}</p>}</article></div>}
 
       {aba === "imoveis" && <div className="ape-ficha-painel ape-v3-secao"><h3>Imóveis</h3><dl><div><dt>Interesse principal</dt><dd>{lead.interesse || "Ainda não identificado"}</dd></div><div><dt>Tags relacionadas</dt><dd>{lead.tags?.map((tag) => tag.nome).join(" · ") || "Nenhuma tag associada"}</dd></div></dl><a href="/produtos">Abrir Produtos</a></div>}
 
@@ -943,6 +946,7 @@ export function Funil2Mobile({
     {leadAberto && <FichaLead
       abrirNoChat={abrirNoChat}
       lead={leadAberto}
+      negociacao={dados?.negociacoes?.find((item) => item.funil_lead_id === leadAberto.id) ?? null}
       momento={momentos.find((momento) => momento.codigo === leadAberto.momento_codigo) ?? null}
       momentos={momentos}
       etapas={dados?.etapas ?? []}

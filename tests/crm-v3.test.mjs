@@ -107,9 +107,10 @@ test("ficha desktop replica a arquitetura ampla e compacta aprovada no Claude De
   assert.match(workspace, /Abrir conversa completa/);
   assert.match(workspace, /Comentários e notas/);
   for (const acao of ["Focar", "Mover", "Ganho", "Perdido"]) assert.match(workspace, new RegExp(`>${acao}<`));
-  assert.match(workspace, /onMover=\{\(etapaCodigo\) => movimentar\(\[lead\.id\], etapaCodigo\)\}/);
-  assert.match(mobile, /function movimentarNegocio\(etapaCodigo: string\)/);
-  assert.match(mobile, /observacao: "Movido pela ficha do Funil"/);
+  assert.match(workspace, /onSalvarNegociacao=\{\(etapa\) => negociacaoLead \? executar\("salvarNegociacao"/);
+  assert.match(mobile, /function movimentarNegocio\(etapa: NegociacaoFunil2\["etapa"\]\)/);
+  assert.match(mobile, /action: "salvarNegociacao"/);
+  assert.doesNotMatch(mobile, /momentoCodigo: destino\.codigo/);
   assert.match(mobile, />Ganho<.*>Perdido</s);
   assert.match(css, /\.funil-oficial \.f2-detalhe\{width:min\(86vw,1040px\);min-width:720px/);
   assert.match(css, /\.funil-oficial \.f2-ficha-grade\{[^}]*grid-template-columns:minmax\(220px,32%\) minmax\(0,1fr\)/);

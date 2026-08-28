@@ -222,6 +222,7 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
 
   const lead = leads.find((item) => item.id === selecionado) ?? null;
   const momentoAtual = lead ? momentos.find((m) => m.codigo === lead.momento_codigo) ?? null : null;
+  const negociacaoLead = lead ? negociacoes.find((item) => item.funil_lead_id === lead.id) ?? null : null;
   const leadHistoricoId = lead?.id ?? null;
   const leadHistoricoVersao = lead?.versao ?? null;
   useEffect(() => {
@@ -516,14 +517,14 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
       {modal === "descartar" && lead && <ModalDescartar nome={lead.nome} busy={busy} onFechar={() => setModal(null)} onDescartar={(motivo, detalhe) => { void atualizar("descartar", { motivo, detalhe }).then((ok) => { if (ok) { setModal(null); setSelecionado(null); } }); }} />}
 
       {lead && momentoAtual && <Detalhe key={`${lead.id}:${lead.versao}`}
-        accessToken={accessToken} lead={lead} momento={momentoAtual} momentos={momentosAtivos} etapas={etapasAtivas} eventos={eventosLead} notas={notasLead} visitas={visitas.filter((visita) => visita.funil_lead_id === lead.id)} tagCatalogo={tagCatalogo} busy={busy}
+        accessToken={accessToken} lead={lead} negociacao={negociacaoLead} momento={momentoAtual} momentos={momentosAtivos} etapas={etapasAtivas} eventos={eventosLead} notas={notasLead} visitas={visitas.filter((visita) => visita.funil_lead_id === lead.id)} tagCatalogo={tagCatalogo} busy={busy}
         abrirNoChat={abrirNoChat}
         onFechar={() => { setSelecionado(null); setAbrirNoChat(false); }}
         onMomento={(codigo, prazo, obs) => void atualizar("atualizarMomento", { momentoCodigo: codigo, prazoCombinado: prazo || null, observacao: obs })}
         onTemperatura={(temperatura) => atualizar("atualizarTemperatura", { temperatura })}
         onAgendarVisita={() => setModal("visita")}
         onGerarNegociacao={() => setModal("negociacao")}
-        onMover={(etapaCodigo) => movimentar([lead.id], etapaCodigo)}
+        onSalvarNegociacao={(etapa) => negociacaoLead ? executar("salvarNegociacao", { id: negociacaoLead.id, leadId: lead.id, titulo: negociacaoLead.titulo, etapa, valor: negociacaoLead.valor, observacao: negociacaoLead.observacao }) : Promise.resolve(false)}
         onAbrirEsteira={() => { setSelecionado(null); trocarAba("vendas"); }}
         onDescartar={() => setModal("descartar")}
         onSalvarNota={(texto) => executar("salvarNota", { leadId: lead.id, texto })}
@@ -941,13 +942,13 @@ function Modal({ titulo, texto, onFechar, children }: { titulo:string; texto:str
 }
 
 function Detalhe({
-  abrirNoChat, accessToken, lead, momento, momentos, etapas, eventos, notas, visitas, tagCatalogo, busy, onFechar, onMomento, onTemperatura, onAgendarVisita, onGerarNegociacao, onMover, onAbrirEsteira, onDescartar, onSalvarNota, onTagSalva }: {
+  abrirNoChat, accessToken, lead, negociacao, momento, momentos, etapas, eventos, notas, visitas, tagCatalogo, busy, onFechar, onMomento, onTemperatura, onAgendarVisita, onGerarNegociacao, onSalvarNegociacao, onAbrirEsteira, onDescartar, onSalvarNota, onTagSalva }: {
   accessToken: string;
-  lead: LeadFunil2; momento: MomentoFunil2; momentos: MomentoFunil2[]; etapas: EtapaConfigFunil2[]; eventos: EventoFunil2[]; notas: NotaFunil2[]; visitas: VisitaFunil2[]; tagCatalogo: TagCatalogoFunil2[]; busy: boolean;
+  lead: LeadFunil2; negociacao: NegociacaoFunil2 | null; momento: MomentoFunil2; momentos: MomentoFunil2[]; etapas: EtapaConfigFunil2[]; eventos: EventoFunil2[]; notas: NotaFunil2[]; visitas: VisitaFunil2[]; tagCatalogo: TagCatalogoFunil2[]; busy: boolean;
   onFechar: () => void; onMomento: (codigo: string, prazo: string, obs: string) => void;
   onTemperatura: (temperatura: TemperaturaLead | null) => Promise<boolean>;
   onAgendarVisita: () => void; onGerarNegociacao: () => void; onAbrirEsteira: () => void;
-  onMover: (etapaCodigo: string) => Promise<boolean>;
+  onSalvarNegociacao: (etapa: NegociacaoFunil2["etapa"]) => Promise<boolean>;
   onDescartar: () => void; onSalvarNota: (texto: string) => Promise<boolean>;
   onTagSalva: () => void;
   abrirNoChat?: boolean;
@@ -1076,7 +1077,7 @@ function Detalhe({
 
           {abaDetalhe === "atividades" && <section className="f2-ficha-bloco"><header><h3>Atividades do lead</h3><Link href={`/agenda?lead=${encodeURIComponent(String(lead.lead_id || lead.id))}`}>+ Nova atividade</Link></header><div className="f2-ficha-lista">{visitas.map((visita) => <article key={visita.id}><div><strong>Visita · {visita.imovel || "Imóvel a confirmar"}</strong><span>Visita · negócio #{lead.origem_negocio_id}</span></div><time>{new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short", timeZone: FUSO_OPERACAO }).format(new Date(visita.inicio_em))}</time><em>{visita.status}</em><Link href={`/agenda?lead=${encodeURIComponent(String(lead.lead_id || lead.id))}`}>Abrir na Agenda</Link></article>)}{eventos.slice(0, 8).map((evento) => <article key={evento.id}><div><strong>{evento.titulo}</strong><span>Atualização do lead</span></div><time>{dataCurta(evento.criado_em)}</time><em>registrada</em><button type="button" onClick={() => setAbaDetalhe("historico")}>Ver histórico</button></article>)}{visitas.length === 0 && eventos.length === 0 && <p>Nenhuma atividade vinculada a esta ficha.</p>}</div></section>}
 
-          {abaDetalhe === "negocios" && <section className="f2-ficha-bloco"><header><h3>Negócios deste lead</h3><small>um lead pode ter vários negócios, em pipelines diferentes</small><button type="button" className="f2-secundario" onClick={onGerarNegociacao}>+ Novo negócio</button></header><div className="f2-ficha-negocios"><article><header><strong>Negócio de origem #{lead.origem_negocio_id}</strong><span>Em andamento</span></header><div><span>Comercial · {etapaRotulo}</span><strong>Valor não informado</strong><span>{lead.interesse || "Produto ainda não identificado"}</span><span>{acaoVisivel(lead)}</span></div><footer><button type="button" onClick={onFechar}>Focar</button><details className="f2-ficha-mover"><summary>Mover</summary><div>{etapas.filter((alvo) => alvo.codigo !== lead.etapa && !["atualizar_manual", "legado"].includes(alvo.codigo)).map((alvo) => <button type="button" key={alvo.codigo} disabled={busy} onClick={(evento) => { evento.currentTarget.closest("details")?.removeAttribute("open"); void onMover(alvo.codigo); }}>{alvo.rotulo}</button>)}</div></details><button type="button" disabled={busy || lead.etapa === "venda"} onClick={() => void onMover("venda")}>Ganho</button><button type="button" disabled={busy || lead.etapa === "perdida"} onClick={() => void onMover("perdida")}>Perdido</button></footer></article></div></section>}
+          {abaDetalhe === "negocios" && <section className="f2-ficha-bloco"><header><h3>Negócios deste lead</h3><small>um lead pode ter vários negócios, em pipelines diferentes</small><button type="button" className="f2-secundario" onClick={onGerarNegociacao}>+ Novo negócio</button></header><div className="f2-ficha-negocios"><article><header><strong>{negociacao?.titulo || `Negócio de origem #${lead.origem_negocio_id}`}</strong><span>{negociacao ? "Em andamento" : "Ainda não criado"}</span></header><div><span>Comercial · {negociacao?.etapa ?? etapaRotulo}</span><strong>{negociacao?.valor ? new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 }).format(negociacao.valor) : "Valor não informado"}</strong><span>{lead.interesse || "Produto ainda não identificado"}</span><span>{acaoVisivel(lead)}</span></div><footer><button type="button" onClick={onFechar}>Focar</button><details className="f2-ficha-mover"><summary aria-disabled={!negociacao}>Mover</summary>{negociacao && <div>{([ ["qualificacao", "Qualificação"], ["simulacao", "Simulação"], ["proposta", "Proposta"], ["documentacao", "Documentação"], ["contrato", "Contrato"] ] as const).filter(([codigo]) => codigo !== negociacao.etapa).map(([codigo, rotulo]) => <button type="button" key={codigo} disabled={busy} onClick={(evento) => { evento.currentTarget.closest("details")?.removeAttribute("open"); void onSalvarNegociacao(codigo); }}>{rotulo}</button>)}</div>}</details><button type="button" disabled={busy || !negociacao || negociacao.etapa === "venda"} onClick={() => void onSalvarNegociacao("venda")}>Ganho</button><button type="button" disabled={busy || !negociacao || negociacao.etapa === "perdida"} onClick={() => void onSalvarNegociacao("perdida")}>Perdido</button></footer>{!negociacao && <small>Crie o negócio para liberar as mudanças de etapa.</small>}</article></div></section>}
 
           {abaDetalhe === "imoveis" && <section className="f2-ficha-bloco"><header><h3>Imóveis do negócio em foco</h3><small>valor do negócio: não informado</small><a href="/produtos">+ Vincular imóvel</a></header><div className="f2-ficha-vazio"><strong>Nenhum imóvel vinculado</strong><span>O interesse declarado do lead é {lead.interesse || "ainda não identificado"}. Vincule produtos no catálogo canônico.</span></div><small>Interesse declarado é do lead; imóvel vinculado é do negócio — as duas coisas não se misturam.</small></section>}
 
