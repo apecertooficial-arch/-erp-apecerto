@@ -67,7 +67,6 @@ import "./styles/redesign-apecerto-abordagens.css";
 import "./styles/redesign-apecerto-abordagens-rodape.css";
 import "./styles/redesign-apecerto-abordagens-icones.css";
 import "./styles/redesign-apecerto-menu.css";
-import "./styles/tracking-360.css";
 import "./styles/central-comando.css";
 import "./styles/central-comando-prototype.css";
 import "./styles/redesign-apecerto-disparos.css";

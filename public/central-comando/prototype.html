@@ -109,10 +109,6 @@ button.ape-nav-item[disabled]{opacity:1;color:var(--fg-3);cursor:pointer}
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 11 15-6v14L3 13z"></path><path d="M6 12.5V18a1 1 0 0 0 1 1h2a1 1 0 0 0 1-1v-4"></path><path d="M21 10v4"></path></svg>
       <span class="cc-navlabel">Marketing</span><span class="cc-navlabel" style="margin-left:auto;color:var(--fg-3)">{{ nav.mkt.lock }}</span>
     </button>
-    <button type="button" class="ape-nav-item cc-tip {{ nav.trk.cls }}" style="display:{{ nav.trk.show }}" aria-current="{{ nav.trk.current }}" aria-disabled="{{ nav.trk.disabled }}" data-tip="{{ nav.trk.hint }}" title="{{ nav.trk.hint }}" onClick="{{ nav.trk.onClick }}">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l2.5 7 5-14L17 12h4"></path></svg>
-      <span class="cc-navlabel">Tracking</span><span class="ape-count">{{ nav.trk.badge }}</span><span class="cc-navlabel" style="margin-left:auto;color:var(--fg-3)">{{ nav.trk.lock }}</span>
-    </button>
     <button type="button" class="ape-nav-item cc-tip {{ nav.crm.cls }}" style="display:{{ nav.crm.show }}" aria-current="{{ nav.crm.current }}" aria-disabled="{{ nav.crm.disabled }}" data-tip="{{ nav.crm.hint }}" title="{{ nav.crm.hint }}" onClick="{{ nav.crm.onClick }}">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 5h18l-7 8v6l-4 2v-8z"></path></svg>
       <span class="cc-navlabel">CRM e funil</span><span class="cc-navlabel" style="margin-left:auto;color:var(--fg-3)">{{ nav.crm.lock }}</span>
@@ -698,116 +694,6 @@ button.ape-nav-item[disabled]{opacity:1;color:var(--fg-3);cursor:pointer}
                   </div>
                 </div>
               </div>
-            </div>
-          </section>
-        </div>
-      </sc-if>
-
-      <sc-if value="{{ isTrk }}" hint-placeholder-val="{{ false }}">
-        <div style="display:flex;flex-direction:column;gap:16px;animation:cc-in 200ms var(--ease-out)">
-          <section class="cc-card" style="padding:16px;display:flex;flex-direction:column;gap:14px">
-            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-              <h2 class="ape-section-title" style="margin:0;font-size:16px">Do clique ao corretor</h2>
-              <span class="cc-i" title="O percurso não é linear: depois da conversão o evento segue por três caminhos paralelos e independentes. O CRM não depende do GA4 nem do Meta para criar o lead.">i</span>
-              <span style="margin-left:auto;font-size:11px;color:var(--fg-3)">Último evento há 8 min · latência média até o CRM 42 s</span>
-            </div>
-
-            <div class="cc-scroll" style="display:flex;align-items:center;gap:8px;overflow-x:auto;padding-bottom:4px">
-              <sc-for list="{{ tronco }}" as="t" hint-placeholder-count="3">
-                <button type="button" class="cc-row-link" style="flex:1;min-width:190px;border-radius:14px;padding:12px;background:{{ t.bg }};display:flex;flex-direction:column;gap:3px;box-shadow:var(--shadow-xs)" onClick="{{ t.onClick }}">
-                  <span style="font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--fg-3)">{{ t.etapa }}</span>
-                  <span style="font-size:22px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.15">{{ t.qtd }}</span>
-                  <span style="font-size:12px;font-weight:600;color:{{ t.fg }}">{{ t.delta }}</span>
-                  <span style="font-size:11px;color:var(--fg-3);line-height:1.35">{{ t.nota }}</span>
-                </button>
-                <span style="font-size:16px;color:var(--fg-3);flex:none;display:{{ t.setaShow }}" aria-hidden="true">→</span>
-              </sc-for>
-            </div>
-
-            <div style="display:flex;align-items:center;gap:8px">
-              <span style="height:1px;flex:1;background:var(--border-soft)"></span>
-              <span style="font-size:11px;color:var(--fg-3)">a partir da conversão, três caminhos paralelos</span>
-              <span style="height:1px;flex:1;background:var(--border-soft)"></span>
-            </div>
-
-            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(292px,1fr));gap:12px;align-items:start">
-              <sc-for list="{{ trilhas }}" as="tr" hint-placeholder-count="3">
-                <div style="display:flex;flex-direction:column;gap:8px;padding:12px;border-radius:16px;background:var(--bg-page)">
-                  <div style="display:flex;align-items:center;gap:8px">
-                    <span style="width:6px;height:16px;border-radius:999px;background:{{ tr.cor }};flex:none"></span>
-                    <span style="font-size:13px;font-weight:700">{{ tr.nome }}</span>
-                    <span style="margin-left:auto;font-size:11px;font-weight:600;color:{{ tr.saudeFg }};background:{{ tr.saudeBg }};padding:2px 8px;border-radius:999px">{{ tr.saude }}</span>
-                  </div>
-                  <span style="font-size:11px;color:var(--fg-3);line-height:1.4">{{ tr.nota }}</span>
-                  <sc-for list="{{ tr.etapas }}" as="e" hint-placeholder-count="6">
-                    <button type="button" class="cc-row-link" style="display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:10px;align-items:center;padding:8px 10px;border-radius:12px;background:var(--bg-surface);box-shadow:var(--shadow-xs);min-height:38px" onClick="{{ e.onClick }}">
-                      <span style="display:flex;flex-direction:column;gap:1px;min-width:0">
-                        <span style="font-size:12px;font-weight:600;color:var(--fg-1)">{{ e.nome }}</span>
-                        <span style="font-size:10.5px;color:var(--fg-3)">{{ e.nota }}</span>
-                      </span>
-                      <span style="font-size:13px;font-weight:700;text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap">{{ e.qtd }}</span>
-                      <span style="font-size:11px;font-weight:600;text-align:right;color:{{ e.fg }};white-space:nowrap">{{ e.marca }}</span>
-                    </button>
-                  </sc-for>
-                </div>
-              </sc-for>
-            </div>
-            <span style="font-size:11px;color:var(--fg-3);line-height:1.5">A queda entre sessão e conversão é conversão comercial, não falha de tracking. Falha de tracking é evento que deveria ter sido recebido e não foi — está separado abaixo.</span>
-          </section>
-
-          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(276px,1fr));gap:12px;align-items:start">
-            <sc-for list="{{ trkGrupos }}" as="g" hint-placeholder-count="6">
-              <section class="cc-card" style="padding:14px;display:flex;flex-direction:column;gap:10px">
-                <div style="display:flex;align-items:flex-start;gap:8px">
-                  <span style="width:20px;height:20px;flex:none;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:{{ g.fg }};background:{{ g.bg }}">{{ g.glifo }}</span>
-                  <div style="display:flex;flex-direction:column;gap:2px;min-width:0">
-                    <span style="font-size:13px;font-weight:700;line-height:1.25">{{ g.titulo }}</span>
-                    <span style="font-size:11px;color:var(--fg-3);line-height:1.4">{{ g.nota }}</span>
-                  </div>
-                </div>
-                <sc-for list="{{ g.itens }}" as="i" hint-placeholder-count="3">
-                  <button type="button" class="cc-row-link" style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:12px;background:var(--bg-page);min-height:38px" onClick="{{ i.onClick }}">
-                    <span style="display:flex;flex-direction:column;gap:1px;min-width:0">
-                      <span style="font-size:12px;font-weight:600">{{ i.label }}</span>
-                      <span style="font-size:10.5px;color:var(--fg-3)">{{ i.nota }}</span>
-                    </span>
-                    <span style="margin-left:auto;font-size:14px;font-weight:700;font-variant-numeric:tabular-nums;color:{{ i.fg }}">{{ i.valor }}</span>
-                  </button>
-                </sc-for>
-              </section>
-            </sc-for>
-          </div>
-
-          <section class="cc-card" style="padding:16px;display:flex;flex-direction:column;gap:12px">
-            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-              <h2 class="ape-section-title" style="margin:0;font-size:16px">Falhas técnicas e divergências</h2>
-              <span class="ape-count" style="background:var(--danger-bg);color:var(--cc-risco)">{{ trkAbertos }}</span>
-              <div class="ape-tabs--pill ape-tabs" style="margin-left:auto">
-                <sc-for list="{{ trkFiltros }}" as="t" hint-placeholder-count="4">
-                  <button type="button" class="{{ t.cls }}" onClick="{{ t.onClick }}">{{ t.label }}</button>
-                </sc-for>
-              </div>
-            </div>
-            <div class="cc-tablewrap">
-              <table class="ape-table">
-                <thead>
-                  <tr><th scope="col">Divergência</th><th scope="col">Tipo</th><th scope="col">Origem</th><th scope="col">Detectado</th><th scope="col" class="num" style="text-align:right">Registros</th><th scope="col" class="num" style="text-align:right">Impacto</th><th scope="col">Situação</th></tr>
-                </thead>
-                <tbody>
-                  <sc-for list="{{ trkErros }}" as="e" hint-placeholder-count="6">
-                    <tr class="cc-row-link" onClick="{{ e.onClick }}">
-                      <td><strong>{{ e.titulo }}</strong><span style="display:block;font-size:11px;color:var(--fg-3)">{{ e.detalhe }}</span></td>
-                      <td><span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:999px;color:{{ e.tipoFg }};background:{{ e.tipoBg }}">{{ e.tipo }}</span></td>
-                      <td>{{ e.origem }}</td>
-                      <td>{{ e.quando }}</td>
-                      <td class="num">{{ e.registros }}</td>
-                      <td class="num" style="color:{{ e.fg }};font-weight:600">{{ e.impacto }}</td>
-                      <td><span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:999px;color:{{ e.fg }};background:{{ e.bg }}">{{ e.glifo }} {{ e.situacao }}</span></td>
-                    </tr>
-                  </sc-for>
-                </tbody>
-              </table>
-              <div class="ape-table-empty" style="display:{{ trkVazioShow }}">Nenhuma divergência neste filtro.</div>
             </div>
           </section>
         </div>
@@ -1789,9 +1675,9 @@ class Component extends DCLogic {
     ].map(t => Object.assign({}, t, { onClick: () => this.setState({ page: t.ir, navegou: true, drawer: null }) }));
 
     const siteKpis = [
-      info('Páginas vistas', this.num(n(site.page_views)), 'Tracking 360', null, 'Fonte real: eventos do site.'),
-      info('Sessões', this.num(n(site.sessions)), 'sessões identificadas', null, 'Fonte real: Tracking 360.'),
-      info('Imóveis vistos', this.num(n(site.property_views)), 'páginas de imóveis', 'var(--cc-atencao)', 'Fonte real: Tracking 360.'),
+      info('Páginas vistas', this.num(n(site.page_views)), 'Eventos do site', null, 'Fonte real: eventos do site.'),
+      info('Sessões', this.num(n(site.sessions)), 'sessões identificadas', null, 'Fonte real: eventos próprios do site.'),
+      info('Imóveis vistos', this.num(n(site.property_views)), 'páginas de imóveis', 'var(--cc-atencao)', 'Fonte real: eventos próprios do site.'),
       info('Galeria', this.num(n(site.gallery_interactions)), 'interações nas fotos', null, 'Fonte real: eventos próprios.'),
       info('Cliques no WhatsApp', this.num(n(site.whatsapp_clicks)), 'intenção de contato', 'var(--cc-ok)', 'Fonte real: eventos próprios.'),
       info('Cliques em telefone', unavailable, 'evento ainda não exposto pela API', 'var(--fg-3)', 'A estrutura foi preservada sem inventar leitura.'),
@@ -1861,7 +1747,7 @@ class Component extends DCLogic {
     const noop = () => {};
     const troncoBase = [
       { etapa: 'Clique no anúncio ou origem', qtd: clicks, nota: clicks ? 'Meta e Google no período selecionado' : 'plataformas sem leitura autorizada' },
-      { etapa: 'Sessão no site', qtd: n(site.sessions), nota: 'sessões registradas pelo Tracking 360' },
+      { etapa: 'Sessão no site', qtd: n(site.sessions), nota: 'sessões registradas pelo site' },
       { etapa: 'Conversão no site', qtd: n(site.site_leads), nota: 'leads enviados pelo site ao CRM' }
     ];
     const tronco = troncoBase.map((row, index) => ({ etapa: row.etapa, qtd: this.num(row.qtd), delta: index && troncoBase[index - 1].qtd ? pct(row.qtd, troncoBase[index - 1].qtd) : '—', nota: row.nota, fg: 'var(--fg-3)', bg: 'var(--bg-page)', setaShow: index < 2 ? 'inline' : 'none', onClick: noop }));
@@ -1873,8 +1759,8 @@ class Component extends DCLogic {
         etapa('Clientes aguardando', summary.clientes_aguardando, 'sem resposta registrada', n(summary.clientes_aguardando) ? 'atenção' : 'ok', n(summary.clientes_aguardando) ? 'var(--cc-atencao)' : 'var(--cc-ok)')
       ] },
       { nome: 'Analytics (GA4)', cor: 'var(--chart-2)', saude: payload.ga4 ? 'conectado' : 'indisponível', saudeFg: payload.ga4 ? 'var(--cc-ok)' : 'var(--cc-atencao)', saudeBg: payload.ga4 ? 'var(--success-bg)' : 'var(--warning-bg)', nota: payload.ga4 ? 'Data API com leitura real.' : ((((payload.sources || {}).ga4 || {}).motivo) || 'Leitura comportamental indisponível.'), etapas: [
-        etapa('Páginas vistas', site.page_views, 'Tracking 360', 'real', 'var(--cc-ok)'),
-        etapa('Sessões', site.sessions, 'Tracking 360', 'real', 'var(--cc-ok)'),
+        etapa('Páginas vistas', site.page_views, 'Eventos do site', 'real', 'var(--cc-ok)'),
+        etapa('Sessões', site.sessions, 'Eventos do site', 'real', 'var(--cc-ok)'),
         etapa('Leads do site', site.site_leads, 'entregues ao CRM', 'real', 'var(--ape-purple-700)')
       ] },
       { nome: 'Meta', cor: 'var(--ape-purple)', saude: n(metaTrack.errors) ? this.num(n(metaTrack.errors)) + ' erros' : (n(metaTrack.total) ? 'sem falhas registradas' : 'sem leitura'), saudeFg: n(metaTrack.errors) ? 'var(--cc-risco)' : (n(metaTrack.total) ? 'var(--cc-ok)' : 'var(--cc-atencao)'), saudeBg: n(metaTrack.errors) ? 'var(--danger-bg)' : (n(metaTrack.total) ? 'var(--success-bg)' : 'var(--warning-bg)'), nota: 'Eventos reais devolvidos à plataforma.', etapas: [
@@ -1884,15 +1770,15 @@ class Component extends DCLogic {
       ] }
     ];
     const trkGrupos = [
-      { titulo:'Falha técnica de entrega',nota:'Eventos que deveriam ter sido entregues e retornaram erro.',glifo:'!',fg:n(metaTrack.errors)?'var(--cc-risco)':'var(--cc-ok)',bg:n(metaTrack.errors)?'var(--danger-bg)':'var(--success-bg)',itens:[{label:'Erros de entrega',nota:'Tracking 360',valor:this.num(n(metaTrack.errors)),fg:n(metaTrack.errors)?'var(--cc-risco)':'var(--cc-ok)',onClick:noop}] },
+      { titulo:'Falha técnica de entrega',nota:'Eventos que deveriam ter sido entregues e retornaram erro.',glifo:'!',fg:n(metaTrack.errors)?'var(--cc-risco)':'var(--cc-ok)',bg:n(metaTrack.errors)?'var(--danger-bg)':'var(--success-bg)',itens:[{label:'Erros de entrega',nota:'Integrações de mídia',valor:this.num(n(metaTrack.errors)),fg:n(metaTrack.errors)?'var(--cc-risco)':'var(--cc-ok)',onClick:noop}] },
       { titulo:'Deduplicação de leads no CRM',nota:'A API ainda não separa unificação por telefone e e-mail.',glifo:'⊕',fg:'var(--cc-atencao)',bg:'var(--ape-orange-100)',itens:[{label:'Leads unificados',nota:'fonte ainda não exposta',valor:unavailable,fg:'var(--fg-3)',onClick:noop}] },
       { titulo:'Deduplicação pixel × CAPI',nota:'Exige event_id pareado entre navegador e servidor.',glifo:'⊕',fg:'var(--ape-purple-700)',bg:'var(--ape-purple-100)',itens:[{label:'Eventos casados por event_id',nota:'fonte ainda não exposta',valor:unavailable,fg:'var(--fg-3)',onClick:noop}] },
       { titulo:'Qualidade de correspondência',nota:'Cobertura real de identificadores preservados para atribuição.',glifo:'~',fg:'var(--cc-atencao)',bg:'var(--warning-bg)',itens:[{label:'Cobertura de atribuição',nota:this.num(n(attribution.eligible))+' leads elegíveis',valor:attribution.coverage_percent==null?'—':n(attribution.coverage_percent).toLocaleString('pt-BR',{maximumFractionDigits:1})+'%',fg:'var(--cc-atencao)',onClick:noop}] },
       { titulo:'Atribuição plataforma × CRM',nota:'Cobertura real de leads elegíveis com origem identificada.',glifo:'≠',fg:'var(--cc-atencao)',bg:'var(--warning-bg)',itens:[{label:'Leads atribuídos',nota:this.num(n(attribution.eligible))+' elegíveis',valor:this.num(n(attribution.attributed)),fg:'var(--ape-purple-700)',onClick:noop},{label:'Cobertura de atribuição',nota:'sem estimativa',valor:attribution.coverage_percent==null?'—':n(attribution.coverage_percent).toLocaleString('pt-BR',{maximumFractionDigits:1})+'%',fg:'var(--cc-atencao)',onClick:noop}] },
-      { titulo:'Limitação de medição e privacidade',nota:'Consentimento limita relatórios, mas não impede o lead de entrar no CRM.',glifo:'◐',fg:'var(--ape-purple-700)',bg:'var(--ape-purple-100)',itens:[{label:'Sessões com consentimento de marketing',nota:'Tracking 360',valor:tracking.consent&&tracking.consent.marketing!=null?this.num(n(tracking.consent.marketing)):unavailable,fg:'var(--ape-purple-700)',onClick:noop}] },
+      { titulo:'Limitação de medição e privacidade',nota:'Consentimento limita relatórios, mas não impede o lead de entrar no CRM.',glifo:'◐',fg:'var(--ape-purple-700)',bg:'var(--ape-purple-100)',itens:[{label:'Sessões com consentimento de marketing',nota:'Eventos do site',valor:tracking.consent&&tracking.consent.marketing!=null?this.num(n(tracking.consent.marketing)):unavailable,fg:'var(--ape-purple-700)',onClick:noop}] },
       { titulo:'Conversão comercial',nota:'Resultado de negócio; não é classificado como erro técnico.',glifo:'✓',fg:'var(--cc-ok)',bg:'var(--success-bg)',itens:[{label:'Leads válidos',nota:'CRM',valor:this.num(n(summary.leads_validos)),fg:'var(--fg-1)',onClick:noop},{label:'Vendas',nota:'Financeiro',valor:this.num(n(finance.vendas)),fg:'var(--cc-ok)',onClick:noop}] }
     ];
-    const trkErros = n(metaTrack.errors) ? [{ titulo:'Eventos não entregues à plataforma',detalhe:'O Tracking 360 registrou falhas de entrega neste período.',origem:'Conversions API',quando:'período selecionado',registros:this.num(n(metaTrack.errors)),impacto:'atribuição parcial',situacao:'aberto',fg:'var(--cc-risco)',bg:'var(--danger-bg)',glifo:'!',tipo:'Falha técnica',tipoFg:'var(--cc-risco)',tipoBg:'var(--danger-bg)',onClick:noop }] : [];
+    const trkErros = n(metaTrack.errors) ? [{ titulo:'Eventos não entregues à plataforma',detalhe:'As integrações de mídia registraram falhas de entrega neste período.',origem:'Conversions API',quando:'período selecionado',registros:this.num(n(metaTrack.errors)),impacto:'atribuição parcial',situacao:'aberto',fg:'var(--cc-risco)',bg:'var(--danger-bg)',glifo:'!',tipo:'Falha técnica',tipoFg:'var(--cc-risco)',tipoBg:'var(--danger-bg)',onClick:noop }] : [];
     const siteDispositivos = [{ nome:'Distribuição por dispositivo',pct:'0%',nota:'Indisponível até a conexão da GA4 Data API',cor:'var(--neutral-400)' }];
     const siteProblemas = [];
     const previsao = [{ janela:'Próximos 30 dias',valor:'Indisponível',nota:'o ERP ainda não fornece probabilidade financeira por data' },{ janela:'Próximos 60 dias',valor:'Indisponível',nota:'sem projeção inventada' },{ janela:'Próximos 90 dias',valor:'Indisponível',nota:'sem projeção inventada' }];
@@ -2017,7 +1903,6 @@ class Component extends DCLogic {
   PAGES = {
     ceo: { titulo: 'Visão CEO', sub: 'Saúde da operação · 21 jul – 19 ago 2026 · comparado ao período anterior' },
     mkt: { titulo: 'Marketing', sub: 'Meta Ads e Google Ads · da mídia até a comissão' },
-    trk: { titulo: 'Tracking', sub: 'Percurso do clique ao corretor · integridade dos dados' },
     crm: { titulo: 'CRM e funil', sub: 'Atendimento, SLA, envelhecimento e coortes' },
     eqp: { titulo: 'Equipe e corretores', sub: 'Execução e resultado dos 6 corretores' },
     site: { titulo: 'Site e imóveis', sub: 'Comportamento no site e desempenho por imóvel' },
@@ -2327,9 +2212,9 @@ class Component extends DCLogic {
     const usuarioNome = st.userName || 'Gestão apêcerto';
     const usuarioIniciais = usuarioNome.split(/\s+/).slice(0, 2).map(p => p[0]).join('').toUpperCase();
     const PERM = {
-      'CEO / admin': ['ceo', 'mkt', 'trk', 'crm', 'eqp', 'site', 'fin'],
+      'CEO / admin': ['ceo', 'mkt', 'crm', 'eqp', 'site', 'fin'],
       'Sócio': ['resumo', 'fin'],
-      'Gestor de tráfego': ['ceo', 'mkt', 'trk', 'site'],
+      'Gestor de tráfego': ['ceo', 'mkt', 'site'],
       'Gestor comercial': ['ceo', 'crm', 'eqp', 'fin']
     };
     const isSocio = perfil === 'Sócio';
@@ -2339,7 +2224,6 @@ class Component extends DCLogic {
     const NAV_META = {
       ceo: { badge: this.alertasAbertos(), hint: 'Saúde geral da operação' },
       mkt: { badge: '', hint: 'Campanhas, anúncios e criativos' },
-      trk: { badge: '3', hint: 'Integridade do rastreamento' },
       crm: { badge: '', hint: 'Funil, SLA e coortes' },
       eqp: { badge: '', hint: 'Execução e resultado dos corretores' },
       site: { badge: '', hint: 'Comportamento no site e por imóvel' },
@@ -2348,14 +2232,12 @@ class Component extends DCLogic {
     };
     if (st.realData) {
       const realSummary = ((st.realData.central || {}).summary || {});
-      const realTracking = ((st.realData.tracking || {}).meta || {});
       NAV_META.dia.badge = String(Number(realSummary.acoes_vencidas || 0));
-      NAV_META.trk.badge = Number(realTracking.errors || 0) ? String(Number(realTracking.errors)) : '';
     }
-    const NOME_AREA = { resumo: 'Resumo da operação', ceo: 'Visão CEO', mkt: 'Marketing', trk: 'Tracking', crm: 'CRM e funil', eqp: 'Equipe e corretores', site: 'Site e imóveis', fin: 'Financeiro', dia: 'Meu dia' };
+    const NOME_AREA = { resumo: 'Resumo da operação', ceo: 'Visão CEO', mkt: 'Marketing', crm: 'CRM e funil', eqp: 'Equipe e corretores', site: 'Site e imóveis', fin: 'Financeiro', dia: 'Meu dia' };
     NAV_META.resumo = { badge: '', hint: 'Como a empresa está indo' };
     const nav = {};
-    ['resumo', 'ceo', 'mkt', 'trk', 'crm', 'eqp', 'site', 'fin', 'dia'].forEach(k => {
+    ['resumo', 'ceo', 'mkt', 'crm', 'eqp', 'site', 'fin', 'dia'].forEach(k => {
       const liberado = (k === 'dia' && !isSocio) || permitidas.indexOf(k) >= 0;
       const visivel = k === 'resumo' ? isSocio : (isSocio ? permitidas.indexOf(k) >= 0 : true);
       const quem = Object.keys(PERM).filter(p => PERM[p].indexOf(k) >= 0);
@@ -3251,7 +3133,7 @@ class Component extends DCLogic {
       trkVazioShow: trkErros.length ? 'none' : 'block',
       crmKpis, envelhecimento, heatCols, heatCells, coortes,
       paradoPct: '21%', paradoQualif: '39',
-      isTrk: ok && page === 'trk', isCrm: ok && page === 'crm',
+      isTrk: false, isCrm: ok && page === 'crm',
       isEqpLista: ok && page === 'eqp' && !st.corretorSel,
       isCorretor: ok && page === 'eqp' && !!st.corretorSel,
       isSite: ok && page === 'site', isFin: ok && page === 'fin', isDia: ok && page === 'dia',
@@ -3554,7 +3436,7 @@ class Component extends DCLogic {
         onCta: () => {
           const c = ((st.drawer || {}).cta || '').toLowerCase();
           const destino = /marketing|campanha|gerenciador|criativo|anúncio/.test(c) ? 'mkt'
-            : /tracking|log|lote|reprocessar/.test(c) ? 'trk'
+            : /tracking|log|lote|reprocessar/.test(c) ? 'mkt'
             : /crm|funil|leads da coorte|negócios/.test(c) ? 'crm'
             : /meu dia|tarefas|reagendar|redistribuir/.test(c) ? 'dia'
             : /corretor|camila|equipe/.test(c) ? 'eqp'
