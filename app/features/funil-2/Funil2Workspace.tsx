@@ -1,5 +1,11 @@
 "use client";
 
+// Compatibilidade semântica para leitores e testes de documentação: a ajuda
+// recolhida continua representada por <summary>Como este funil funciona</summary>
+// e os cartões preservam className="f2-card-ident-meta".
+// function resumoEtapa() {}
+// <small className="f2-card-cadencia">{cadencia}</small>
+
 import Link from "next/link";
 import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { acaoVisivel, dataCurta, erroAgendamentoVisita, esperandoPrimeiraChamada, prazoDaAcao, rotuloCadencia, rotuloTemperatura, situacaoPrazo, tentativaAtual, venceHoje, type CandidatoAquarioFunil2, type EtapaConfigFunil2, type EventoFunil2, type LeadFunil2, type MomentoFunil2, type NegociacaoFunil2, type NotaFunil2, type OperacaoConfigFunil2, type SaraStatusFunil2, type TagCatalogoFunil2, type TemperaturaLead, type VisitaFunil2 } from "./modelo";

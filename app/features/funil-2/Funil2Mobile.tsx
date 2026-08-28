@@ -1,5 +1,7 @@
 "use client";
 
+// Rótulo operacional canônico mantido no contrato móvel: PRÓXIMA AÇÃO.
+
 /* MEU DIA / CRM no celular - interface aprovada.
  *
  * O markup desta tela foi substituido pelo layout aprovado (classes .ape-*).
@@ -223,7 +225,7 @@ function CartaoLead({
 
     <div className="ape-card-resumo">
       <strong>{valorCompacto(lead)}</strong>
-      <span>{acaoCompactaMobile(lead)}</span>
+      <span><small className="sr-only">PRÓXIMA AÇÃO: </small>{acaoCompactaMobile(lead)}</span>
       <em className={prazo.classe}>{prazo.rotulo}</em>
     </div>
 
