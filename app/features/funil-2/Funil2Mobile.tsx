@@ -227,10 +227,12 @@ function useFunil2Mobile(accessToken: string) {
    intenção de leitura. */
 function CartaoLead({
   lead,
+  mostrarWhatsappDireto,
   onAbrir,
   onConversa,
 }: {
   lead: LeadFunil2;
+  mostrarWhatsappDireto: boolean;
   onAbrir: () => void;
   onConversa: (origem: HTMLButtonElement) => void;
 }) {
@@ -239,7 +241,9 @@ function CartaoLead({
     <div className="ape-card-topo">
       <div className="ape-quem">
         <strong>{lead.nome}</strong>
-        <span>{lead.interesse ?? lead.instancia_rotulo ?? nomeEtapa(lead.etapa)}</span>
+        <span>{mostrarWhatsappDireto
+          ? `${nomeEtapa(lead.etapa)} · ${lead.corretor_nome ?? "Aguardando responsável"}`
+          : lead.interesse ?? lead.instancia_rotulo ?? nomeEtapa(lead.etapa)}</span>
       </div>
       <b className={`ape-momento temperatura-${temperaturaMobile(lead)}`}><i />{rotuloTemperatura(lead.temperatura) ?? "Aguardando leitura"}</b>
     </div>
@@ -250,10 +254,15 @@ function CartaoLead({
       <em className={prazo.classe}>{prazo.rotulo}</em>
     </div>
 
-    <div className="ape-card-acoes-compactas">
-      <button type="button" aria-label={`Abrir chat de ${lead.nome}`} onKeyDown={(evento) => evento.stopPropagation()} onClick={(evento) => { evento.stopPropagation(); onConversa(evento.currentTarget); }}>Conversa</button>
-      <button type="button" onClick={(evento) => { evento.stopPropagation(); onAbrir(); }}>Abrir</button>
-    </div>
+    {mostrarWhatsappDireto
+      ? <div className="ape-acoes">
+          <BotaoWhatsApp telefone={lead.telefone} negocioId={lead.origem_negocio_id} rotulo="Chamar no WhatsApp" compacto />
+          <button type="button" className="ape-mais" aria-label={`Abrir ficha de ${lead.nome}`} onClick={(evento) => { evento.stopPropagation(); onAbrir(); }}>•••</button>
+        </div>
+      : <div className="ape-card-acoes-compactas">
+          <button type="button" aria-label={`Abrir chat de ${lead.nome}`} onKeyDown={(evento) => evento.stopPropagation()} onClick={(evento) => { evento.stopPropagation(); onConversa(evento.currentTarget); }}>Conversa</button>
+          <button type="button" onClick={(evento) => { evento.stopPropagation(); onAbrir(); }}>Abrir</button>
+        </div>}
   </article>;
 }
 
@@ -863,6 +872,7 @@ export function Funil2Mobile({
   const cartao = (lead: LeadFunil2) => <CartaoLead
     key={lead.id}
     lead={lead}
+    mostrarWhatsappDireto={modo === "inicio"}
     onAbrir={() => { setAbrirNoChat(false); setSelecionado(lead.id); }}
     onConversa={(origem) => { chatOrigemRef.current = origem; setChatDireto(lead); }}
   />;

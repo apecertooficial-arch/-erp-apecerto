@@ -37,6 +37,13 @@ test("Meu Dia entrega o lead e a chamada; a orientação completa fica na ficha"
   assert.ok(MOBILE.includes("esperam você agora"), "a manchete precisa contar quem espera agora");
 });
 
+test("cartão do Meu Dia expõe etapa, corretor e WhatsApp direto", () => {
+  assert.match(MOBILE, /mostrarWhatsappDireto: boolean/);
+  assert.match(MOBILE, /mostrarWhatsappDireto\s*\?\s*`\$\{nomeEtapa\(lead\.etapa\)\} · \$\{lead\.corretor_nome \?\? "Aguardando responsável"\}`/);
+  assert.match(MOBILE, /mostrarWhatsappDireto[\s\S]*<BotaoWhatsApp[^>]*rotulo="Chamar no WhatsApp"/);
+  assert.match(MOBILE, /mostrarWhatsappDireto=\{modo === "inicio"\}/);
+});
+
 test("a ação principal do aplicativo é verde e tem alvo de toque", () => {
   const inicio = CSS_APROVADO.indexOf(".ape-acoes .ncrm-wa-principal");
   const bloco = CSS_APROVADO.slice(inicio, CSS_APROVADO.indexOf("}", inicio));
