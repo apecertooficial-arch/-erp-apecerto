@@ -2314,7 +2314,7 @@ body:has(.funil-oficial .f2-overlay) #sara-fab,body:has(.funil-oficial .f2-overl
   .funil-oficial .ape-ficha-identidade-v3 h2{overflow:hidden;margin:0;color:var(--fg-1);font-size:var(--text-lg);line-height:var(--leading-tight);text-overflow:ellipsis;white-space:nowrap}
   .funil-oficial .ape-ficha-identidade-v3 p{overflow:hidden;margin:var(--space-1) 0 0;color:var(--fg-3);font-size:var(--text-xs);text-overflow:ellipsis;white-space:nowrap}
   .funil-oficial .ape-ficha-identidade-v3 .ape-temperatura-controle{flex:none}
-  .funil-oficial .ape-ficha-identidade-v3 .ape-momento{max-width:136px;min-height:28px;display:flex;align-items:center;gap:var(--space-1);padding:0 var(--space-2);border:0;border-radius:var(--radius-pill);font-size:var(--text-xs);white-space:nowrap}
+  .funil-oficial .ape-ficha-identidade-v3 .ape-momento{max-width:152px;min-height:28px;display:flex;align-items:center;gap:var(--space-1);padding:0 var(--space-2);border:0;border-radius:var(--radius-pill);font-size:var(--text-xs);white-space:nowrap}
   .funil-oficial .ape-ficha-identidade-v3 .ape-momento:not(:focus){overflow:hidden;text-overflow:ellipsis}
   .funil-oficial .ape-ficha-cabecalho-v3 .ape-ficha-abas{margin-top:var(--space-2)}
   .funil-oficial .ape-ficha>.ape-proxima-aprovada{flex:none;margin:var(--space-3) var(--space-4) 0;padding:var(--space-3);border:1px solid var(--ape-orange-100);border-radius:var(--radius-md);background:var(--bg-tint-orange)}
