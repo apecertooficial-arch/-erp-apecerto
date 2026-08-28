@@ -10,6 +10,7 @@ const condoWizard = await readFile("app/features/products/CondominiumWizard.tsx"
 const detailCss = await readFile("app/styles/produtos-v3-detail.css", "utf8");
 const qualityQueue = await readFile("app/features/products/ProductQualityQueue.tsx", "utf8");
 const publicContract = await readFile("supabase/migrations/20260828113000_produtos_contrato_publico_privado.sql", "utf8");
+const legacyResolverHardening = await readFile("supabase/migrations/20260828134000_produtos_resolver_slug_legado_server_only.sql", "utf8");
 
 test("captador abre dados, fotos e exclusão diretamente do próprio imóvel", () => {
   assert.match(products, /type UnitOpenAction = "view" \| "edit" \| "media" \| "delete"/);
@@ -82,4 +83,7 @@ test("contrato público remove identidade interna, ponto exato e paths de mídia
   assert.match(publicContract, /site_midia_token/);
   assert.match(publicContract, /security_invoker = true/);
   assert.match(publicContract, /site_produto_resolver_slug_legado/);
+  assert.match(legacyResolverHardening, /revoke all[\s\S]*from public, anon, authenticated/);
+  assert.match(legacyResolverHardening, /grant execute[\s\S]*to service_role/);
+  assert.doesNotMatch(legacyResolverHardening, /grant execute[\s\S]*to (?:anon|authenticated)/);
 });

@@ -1936,6 +1936,7 @@ body .f2-indicadores button span { font-size:12px; font-weight:600; }
 .funil-oficial .f2-coluna-topo>b{min-width:22px;height:22px;padding:0;border-radius:var(--radius-pill);background:var(--bg-surface);font-size:var(--text-xs);box-shadow:var(--shadow-xs)}
 .funil-oficial .f2-lista{padding:0 var(--space-2) var(--space-2);gap:var(--space-2)}
 .funil-oficial .f2-card{position:relative;padding:var(--space-3);border:1px solid var(--border-soft);border-radius:var(--radius-md);background:var(--bg-surface);box-shadow:var(--shadow-xs)}
+.funil-oficial .f2-card{cursor:pointer}
 .funil-oficial .f2-card:hover,.funil-oficial .f2-card.selecionado,.funil-oficial .f2-card:focus-visible{transform:none;border-color:color-mix(in srgb,var(--ape-orange) 44%,var(--border-soft));box-shadow:var(--shadow-sm)}
 .funil-oficial .f2-card-ident{grid-template-columns:30px minmax(0,1fr);gap:var(--space-2);margin-bottom:var(--space-2)}
 .funil-oficial .f2-card-ident>i{width:30px;height:30px;border-radius:var(--radius-sm);background:var(--bg-tint-purple);color:var(--ape-purple-700);font-size:var(--text-xs)}
@@ -2133,6 +2134,14 @@ body .f2-indicadores button span { font-size:12px; font-weight:600; }
 .funil-oficial .ape-filtros,.funil-oficial .ape-temperatura-filtros{scrollbar-width:none}
 .funil-oficial .ape-filtros button,.funil-oficial .ape-temperatura-filtros button{min-height:40px;border-radius:var(--radius-pill)}
 .funil-oficial .ape-card{border:1px solid var(--border-soft);border-radius:var(--radius-md);box-shadow:var(--shadow-xs)}
+.funil-oficial .ape-card{position:relative}
+.funil-oficial .ape-card{cursor:pointer}
+.funil-oficial .ape-card:focus-visible{outline:2px solid var(--ape-orange);outline-offset:2px}
+.funil-oficial .f2-contrato-pendente,.funil-oficial .ape-contrato-pendente{display:flex;flex-direction:column;gap:var(--space-2);margin-top:var(--space-3);padding:var(--space-3);border:1px solid var(--ape-purple-100);border-radius:var(--radius-md);background:var(--bg-tint-purple);color:var(--fg-2);font-size:var(--text-sm)}
+.funil-oficial .f2-contrato-pendente strong,.funil-oficial .ape-contrato-pendente strong{color:var(--ape-purple-700)}
+.funil-oficial .f2-contrato-pendente button{align-self:flex-start;min-height:36px;padding:0 var(--space-3);border:1px solid var(--ape-purple-200);border-radius:var(--radius-pill);background:var(--bg-surface);color:var(--ape-purple-700);font-weight:var(--weight-semibold)}
+.funil-oficial .f2-aviso-fonte,.funil-oficial .ape-aviso-fonte{display:flex;align-items:center;gap:var(--space-2);margin:0 var(--space-4) var(--space-2);padding:var(--space-2) var(--space-3);border:1px solid var(--ape-orange-100);border-radius:var(--radius-sm);background:var(--bg-tint-orange);color:var(--fg-2);font-size:var(--text-xs)}
+.funil-oficial .f2-aviso-fonte strong,.funil-oficial .ape-aviso-fonte strong{color:var(--fg-1)}
 
 @media(max-width:1100px){
   .funil-oficial .f2-v3-perfil strong{display:none}
@@ -2169,6 +2178,51 @@ body .f2-indicadores button span { font-size:12px; font-weight:600; }
   .funil-oficial .ape-v3-secao dd{margin:var(--space-1) 0 0;font-size:var(--text-sm);font-weight:var(--weight-semibold)}
   .funil-oficial .ape-v3-secao>a,.funil-oficial .ape-v3-secao>button,.funil-oficial .ape-v3-secao header>a{min-height:44px;display:inline-flex;align-items:center;justify-content:center;padding:0 var(--space-3);border:1px solid var(--border-default);border-radius:var(--radius-pill);background:var(--bg-surface);color:var(--fg-2);font-size:var(--text-sm);font-weight:var(--weight-semibold);text-decoration:none}
 }
+
+@media(max-width:720px){
+  .funil-oficial>.ape-funil-acoes-fixas{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .funil-oficial>.ape-funil-acoes-fixas .ape-adicionar-cliente{border:1px solid var(--ape-purple-200,#DDBDEB);background:#fff;color:var(--ape-purple,#8B00CC)}
+}
+
+/* Funções canônicas recuperadas no CRM novo: edição de identidade, cadastro
+   manual reconciliado e solicitação de entrada na Esteira. */
+.funil-oficial .f2-modal-cliente,.funil-oficial .f2-modal-negociacao-canonica{width:min(640px,100%)}
+.funil-oficial .f2-modal-grade{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.funil-oficial .f2-modal-grade label,.funil-oficial .f2-ficha-dados-form label{display:flex;min-width:0;flex-direction:column;gap:6px;color:var(--fg-3,#6E6760);font-size:11px;font-weight:700}
+.funil-oficial .f2-modal-grade label.amplo,.funil-oficial .f2-dados-endereco{grid-column:1/-1}
+.funil-oficial .f2-modal-grade input,.funil-oficial .f2-modal-grade select,.funil-oficial .f2-modal-grade textarea,.funil-oficial .f2-ficha-dados-form input{width:100%;min-height:44px;padding:9px 12px;border:1px solid var(--border-default,#E4DFD9);border-radius:10px;background:#fff;color:var(--fg-1,#1F1C1A);font:500 13px/1.35 var(--font-ui,"Quicksand",sans-serif)}
+.funil-oficial .f2-modal-grade textarea{min-height:84px;resize:vertical}
+.funil-oficial .f2-modal-grade input:focus,.funil-oficial .f2-modal-grade select:focus,.funil-oficial .f2-modal-grade textarea:focus,.funil-oficial .f2-ficha-dados-form input:focus{outline:3px solid color-mix(in srgb,var(--ape-orange,#FF7000) 18%,transparent);border-color:var(--ape-orange,#FF7000)}
+.funil-oficial .f2-modal form>footer,.funil-oficial .f2-dados-acoes{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}
+.funil-oficial .f2-modal form>footer button,.funil-oficial .f2-dados-acoes button,.funil-oficial .f2-modal-reconciliar{min-height:44px;padding:0 16px;border:1px solid var(--border-default,#E4DFD9);border-radius:999px;background:#fff;color:var(--fg-2,#4C4845);font-weight:700}
+.funil-oficial .f2-modal form>footer .f2-modal-primary,.funil-oficial .f2-dados-acoes .f2-modal-primary{width:auto;margin:0;border-color:var(--ape-orange,#FF7000);background:var(--ape-orange,#FF7000);color:#fff;box-shadow:none}
+.funil-oficial .f2-modal-info,.funil-oficial .f2-modal-sucesso,.funil-oficial .f2-duplicado{display:flex;flex-direction:column;gap:4px;margin:12px 0 0;padding:11px 13px;border:1px solid var(--border-default,#E4DFD9);border-radius:11px;background:var(--bg-sunken,#FAF8F6);color:var(--fg-2,#4C4845);font-size:12px}
+.funil-oficial .f2-modal-sucesso{border-color:#BFE5CF;background:#F0FBF5;color:#176B3A}
+.funil-oficial .f2-duplicado{border-color:#F3D69B;background:#FFF9E9;color:#795100}
+.funil-oficial .f2-modal-sucesso button,.funil-oficial .f2-duplicado button{align-self:flex-start;min-height:40px;margin-top:5px;padding:0 12px;border:1px solid currentColor;border-radius:999px;background:#fff;color:inherit;font-weight:700}
+.funil-oficial .f2-modal-carregando{min-height:96px;display:grid;place-items:center;color:var(--fg-3,#6E6760);font-size:13px}
+.funil-oficial .f2-dados-editor{margin:0}
+.funil-oficial .f2-dados-editor>header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:12px}
+.funil-oficial .f2-dados-editor>header h3{margin:0 0 4px}
+.funil-oficial .f2-dados-editor>header small{color:var(--fg-3,#6E6760)}
+.funil-oficial .f2-dados-conflito{display:grid;gap:4px;padding:12px;border:1px solid #f0c36b;border-radius:12px;background:#fff8e8;color:#5d4300}
+.funil-oficial .f2-dados-conflito span{font-size:12px}
+.funil-oficial .f2-dados-conflito button{justify-self:start;min-height:40px;margin-top:4px;padding:0 14px;border:1px solid #d8ab48;border-radius:999px;background:#fff;font-weight:700;cursor:pointer}
+.funil-oficial .ape-mobile-esteira{padding:0 12px 110px;overflow-x:hidden}
+.funil-oficial .ape-mobile-esteira .sales-process>header{align-items:flex-start}
+.funil-oficial .ape-mobile-esteira .sales-head-actions{width:100%}
+.funil-oficial .ape-mobile-esteira .sales-head-actions button{min-height:44px}
+.funil-oficial .f2-ficha-acoes-topo>.f2-iniciar-negociacao{border-color:var(--ape-orange,#FF7000);background:var(--ape-orange,#FF7000);color:#fff}
+
+@media(max-width:900px){
+  .funil-oficial .f2-modal-overlay{padding:8px}
+  .funil-oficial .f2-modal-cliente,.funil-oficial .f2-modal-negociacao-canonica{max-height:calc(100dvh - 16px);padding:16px;border-radius:16px}
+  .funil-oficial .f2-modal-grade,.funil-oficial .f2-ficha-bloco>.f2-ficha-dados-form{grid-template-columns:1fr}
+  .funil-oficial .ape-funil-acoes-fixas{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .funil-oficial .ape-funil-acoes-fixas .ape-adicionar-cliente{border:1px solid var(--ape-purple-200,#DDBDEB);background:#fff;color:var(--ape-purple,#8B00CC)}
+  .funil-oficial .ape-funil-acoes-fixas button{padding:0 6px;font-size:11px}
+  .funil-oficial .ape-ficha-painel>.f2-dados-editor{padding:0;border:0;background:transparent}
+}
 .funil-oficial .f2-sino{width:auto;min-width:92px;display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:0 12px;border-radius:999px;font-size:11px;font-weight:600}
 .funil-oficial .f2-sino>b{position:static;min-width:20px;height:20px;display:grid;place-items:center;padding:0 5px;border-radius:999px;background:var(--bg-tint-danger,#FBE5E5);color:var(--fg-danger,#D93E3E);font-size:11px}
 @media(max-width:720px){
@@ -2179,6 +2233,7 @@ body .f2-indicadores button span { font-size:12px; font-weight:600; }
   .funil-oficial .ape-mobile-funil-titulo .ape-manchete{margin:0;font-size:24px}
   .funil-oficial .ape-mobile-funil-titulo>span{display:flex;align-items:center;gap:8px}
   .funil-oficial .ape-mobile-funil-titulo button{width:44px;height:44px;padding:0;border:1px solid var(--border-default,#E4DFD9);border-radius:12px;background:#fff;color:var(--fg-2,#4C4845)}
+  .funil-oficial .ape-mobile-funil-titulo .ape-sara-avatar{display:grid;place-items:center;border:0;border-radius:999px;background:transparent}
   .funil-oficial .ape-mobile-funil-titulo i{width:32px;height:32px;display:grid;place-items:center;border-radius:999px;background:var(--bg-tint-orange,#FFF3EA);color:var(--ape-orange-700,#CC5800);font-size:11px;font-style:normal;font-weight:700}
   .funil-oficial .ape-mobile-mais-areas{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin-bottom:10px;padding:8px;border:1px solid var(--border-default,#E4DFD9);border-radius:12px;background:#fff;box-shadow:var(--shadow-sm,0 2px 6px rgba(31,28,26,.06))}
   .funil-oficial .ape-mobile-mais-areas button{min-width:0;min-height:44px;padding:0 5px;border:0;border-radius:8px;background:var(--bg-sunken,#FAF8F6);color:var(--fg-2,#4C4845);font-size:11px;font-weight:600}
@@ -2189,7 +2244,7 @@ body .f2-indicadores button span { font-size:12px; font-weight:600; }
   .funil-oficial .ape-filtros-menu>summary::-webkit-details-marker{display:none}
   .funil-oficial .ape-filtros-menu>.ape-temperatura-filtros{position:absolute;z-index:50;right:0;top:50px;width:min(330px,calc(100vw - 28px));display:flex;flex-wrap:wrap;padding:10px;border:1px solid var(--border-default,#E4DFD9);border-radius:12px;background:#fff;box-shadow:var(--shadow-lg,0 16px 40px rgba(31,28,26,.14))}
   .funil-oficial.modo-crm>.ape-filtros{margin:0 -14px 12px;padding:8px 14px;border-block:1px solid var(--border-soft,#F2EFEC);background:var(--bg-surface,#fff)}
-  .funil-oficial.modo-crm>.ape-filtros button{min-height:42px;padding:0 14px;border-radius:999px;background:#fff;font-size:11px}
+  .funil-oficial.modo-crm>.ape-filtros button{min-height:44px;padding:0 14px;border-radius:999px;background:#fff;font-size:11px}
   .funil-oficial.modo-crm>.ape-lista{gap:10px;padding:0}
   .funil-oficial.modo-crm .ape-card{padding:12px;border:1px solid var(--border-soft,#F2EFEC);border-radius:12px;background:#fff;box-shadow:var(--shadow-xs,0 1px 2px rgba(31,28,26,.04))}
   .funil-oficial.modo-crm .ape-card-topo{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:start;gap:8px}
@@ -2309,9 +2364,12 @@ body .f2-indicadores button span { font-size:12px; font-weight:600; }
 .funil-oficial .f2-v3-recorte h2{margin:5px 0 4px;font-size:20px}
 .funil-oficial .f2-v3-recorte p{margin:0;color:var(--fg-3,#6E6760);font-size:12px}
 .funil-oficial .f2-v3-recorte button{min-height:40px;padding:0 16px;border:1px solid var(--border-default,#E4DFD9);border-radius:999px;background:#fff;font-weight:600}
-.funil-oficial .f2-coluna,.funil-oficial .f2-coluna:nth-child(n){flex:0 0 304px;min-width:304px}
-.funil-oficial .f2-coluna-topo{position:relative;grid-template-columns:10px minmax(0,1fr) 28px 26px 28px;gap:8px;align-items:center;min-height:58px}
+.funil-oficial .f2-coluna,.funil-oficial .f2-coluna:nth-child(n){flex:0 0 240px;min-width:240px}
+.funil-oficial .f2-coluna-topo{position:relative;grid-template-columns:8px minmax(0,1fr) auto auto 28px 28px;gap:6px;align-items:center;min-height:48px}
 .funil-oficial .f2-coluna-topo>span{width:8px;height:8px;border-radius:999px;background:var(--ape-orange,#FF7000)}
+.funil-oficial .f2-coluna-topo>h2{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.funil-oficial .f2-coluna-topo>small{max-width:58px;overflow:hidden;color:var(--fg-3,#6E6760);font-size:11px;font-weight:600;text-overflow:ellipsis;white-space:nowrap}
+.funil-oficial .f2-coluna-topo>b{min-width:0;height:auto;padding:0;background:transparent;box-shadow:none;color:var(--fg-3,#6E6760);font-size:11px}
 .funil-oficial .f2-coluna-topo>button,.funil-oficial .f2-coluna-topo>details>summary{width:28px;height:28px;display:grid;place-items:center;padding:0;list-style:none;border:0;border-radius:8px;background:transparent;color:var(--fg-3,#6E6760);cursor:pointer}
 .funil-oficial .f2-coluna-topo>details{position:relative}
 .funil-oficial .f2-coluna-topo>details>summary::-webkit-details-marker{display:none}
@@ -2321,14 +2379,16 @@ body:has(.funil-oficial) #sara-fab{display:none}
 body:has(.funil-oficial) .convite-instalar{display:none}
 body:has(.funil-oficial .f2-overlay) #sara-fab,body:has(.funil-oficial .f2-overlay) #sara-panel{display:none}
 
-/* Dentro do shell oficial, 1440 px deixam cerca de 1200 px úteis. A faixa
-   aprovada passa a duas linhas estáveis sem cortar busca, período ou ações. */
+/* A faixa aprovada permanece em uma linha no desktop. Os controles reduzem
+   com o viewport sem esconder ações nem criar um segundo cabeçalho. */
 @media(max-width:1500px) and (min-width:901px){
-  .funil-oficial .f2-v3-toolbar{flex-wrap:wrap}
-  .funil-oficial .f2-v3-quebra{display:block;flex:0 0 100%;height:0}
-  .funil-oficial .f2-v3-visoes{min-width:0;overflow-x:auto;scrollbar-width:none}
-  .funil-oficial .f2-v3-busca{min-width:180px;max-width:none;margin-left:auto}
-  .funil-oficial .f2-v3-ordenacao select{min-width:180px}
+  .funil-oficial .f2-v3-toolbar{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:thin}
+  .funil-oficial .f2-v3-quebra{display:none}
+  .funil-oficial .f2-v3-visoes{flex:none;min-width:0}
+  .funil-oficial .f2-v3-visoes button{padding:0 8px;font-size:11px}
+  .funil-oficial .f2-v3-busca{min-width:120px;max-width:180px;margin-left:auto}
+  .funil-oficial .f2-v3-ordenacao select{min-width:130px;max-width:135px}
+  .funil-oficial .f2-v3-periodo select{max-width:145px}
 }
 
 @media(max-width:900px){
@@ -2352,8 +2412,9 @@ body:has(.funil-oficial .f2-overlay) #sara-fab,body:has(.funil-oficial .f2-overl
   .funil-oficial .ape-ficha-identidade-v3 h2{overflow:hidden;margin:0;color:var(--fg-1);font-size:var(--text-lg);line-height:var(--leading-tight);text-overflow:ellipsis;white-space:nowrap}
   .funil-oficial .ape-ficha-identidade-v3 p{overflow:hidden;margin:var(--space-1) 0 0;color:var(--fg-3);font-size:var(--text-xs);text-overflow:ellipsis;white-space:nowrap}
   .funil-oficial .ape-ficha-identidade-v3 .ape-temperatura-controle{flex:none}
-  .funil-oficial .ape-ficha-identidade-v3 .ape-momento{max-width:152px;min-height:28px;display:flex;align-items:center;gap:var(--space-1);padding:0 var(--space-2);border:0;border-radius:var(--radius-pill);font-size:var(--text-xs);white-space:nowrap}
+  .funil-oficial .ape-ficha-identidade-v3 .ape-momento{max-width:152px;min-height:44px;display:flex;align-items:center;gap:var(--space-1);padding:0 var(--space-2);border:0;border-radius:var(--radius-pill);font-size:var(--text-xs);white-space:nowrap}
   .funil-oficial .ape-ficha-identidade-v3 .ape-momento:not(:focus){overflow:hidden;text-overflow:ellipsis}
+  .funil-oficial .ape-ficha-identidade-v3 .ape-ficha-mais{width:44px;height:44px;flex:none;display:grid;place-items:center;padding:0;border:1px solid var(--border-soft);border-radius:var(--radius-md);background:var(--bg-surface);color:var(--fg-2);font-size:16px;font-weight:var(--weight-bold)}
   .funil-oficial .ape-ficha-cabecalho-v3 .ape-ficha-abas{margin-top:var(--space-2)}
   .funil-oficial .ape-ficha>.ape-proxima-aprovada{flex:none;margin:var(--space-3) var(--space-4) 0;padding:var(--space-3);border:1px solid var(--ape-orange-100);border-radius:var(--radius-md);background:var(--bg-tint-orange)}
   .funil-oficial .ape-ficha>.ape-proxima-aprovada h3{margin:var(--space-1) 0;font-size:var(--text-base)}
@@ -2374,4 +2435,8 @@ body:has(.funil-oficial .f2-overlay) #sara-fab,body:has(.funil-oficial .f2-overl
   .funil-oficial .ape-ficha-acao-whatsapp .ncrm-wa-principal{border-color:var(--ape-orange);background:var(--ape-orange);color:#fff}
   .funil-oficial .ape-ficha-acao-whatsapp .ncrm-wa-alt{display:none}
   .funil-oficial .ape-ficha-acao-whatsapp>button:disabled{background:var(--bg-sunken);color:var(--fg-muted)}
+}
+@media(max-width:720px){
+  .funil-oficial>.ape-funil-acoes-fixas{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .funil-oficial>.ape-funil-acoes-fixas .ape-adicionar-cliente{border:1px solid var(--ape-purple-200,#DDBDEB);background:#fff;color:var(--ape-purple,#8B00CC)}
 }

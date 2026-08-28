@@ -22,6 +22,7 @@ export function FunilEntry() {
             <Funil2Mobile
               accessToken={accessToken}
               nome={profile?.name ?? "Corretor"}
+              role={role}
               modo="crm"
               onIr={(destino) => router.push(destino)}
             />

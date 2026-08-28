@@ -74,10 +74,12 @@ test("o Funil permanece dentro do shell global do ERP sem shell interno duplicad
 });
 
 test("cartão inteiro abre a ficha correta por mouse e teclado", () => {
-  assert.match(workspace, /className=\{`f2-card[\s\S]*onClick=\{\(\) => \{ if \(modoSelecao\) alternarSelecao\(item\.id\); else setSelecionado\(item\.id\); \}\}/);
-  assert.match(workspace, /if \(e\.key === "Enter" \|\| e\.key === " "\)[\s\S]*setSelecionado\(item\.id\)/);
+  assert.match(workspace, /className=\{`f2-card[\s\S]*onClick=\{\(evento\)[\s\S]*setSelecionado\(item\.id\)/);
+  assert.match(workspace, /onKeyDown=\{\(evento\)[\s\S]*\["Enter", " "\][\s\S]*setSelecionado\(item\.id\)/);
+  assert.doesNotMatch(workspace, /<article[^>]+role="button"[^>]+<button/s);
   assert.match(workspace, /lead=\{lead\}[\s\S]*onFechar=\{\(\) => \{ setSelecionado\(null\)/);
   assert.match(mobile, /onAbrir=\{\(\) => \{ setAbrirNoChat\(false\); setSelecionado\(lead\.id\); \}\}/);
+  assert.match(mobile, /className="ape-card" tabIndex=\{0\} aria-label=\{`Abrir ficha de/);
 });
 
 test("barra principal oferece Pescar lead com autorização canônica", () => {
@@ -137,12 +139,11 @@ test("ficha desktop replica a arquitetura ampla e compacta aprovada no Claude De
   assert.match(workspace, /Responder pelo CRM/);
   assert.match(workspace, /Abrir conversa completa/);
   assert.match(workspace, /Comentários e notas/);
-  for (const acao of ["Focar", "Mover", "Ganho", "Perdido"]) assert.match(workspace, new RegExp(`>${acao}<`));
+  for (const acao of ["Focar", "Mover"]) assert.match(workspace, new RegExp(`>${acao}<`));
+  assert.match(workspace, /Ganho, perda, restauração e Desfazer exigem um contrato transacional/);
   assert.match(workspace, /onSalvarNegociacao=\{\(etapa\) => negociacaoLead \? executar\("salvarNegociacao"/);
-  assert.match(mobile, /function movimentarNegocio\(etapa: NegociacaoFunil2\["etapa"\]\)/);
-  assert.match(mobile, /action: "salvarNegociacao"/);
-  assert.doesNotMatch(mobile, /momentoCodigo: destino\.codigo/);
-  assert.match(mobile, />Ganho<.*>Perdido</s);
+  assert.doesNotMatch(mobile, /function movimentarNegocio/);
+  assert.match(mobile, /Ganho, perda, restauração e Desfazer ainda não possuem contrato transacional seguro/);
   assert.match(css, /\.funil-oficial \.f2-detalhe\{width:min\(86vw,1040px\);min-width:720px/);
   assert.match(css, /\.funil-oficial \.f2-ficha-grade\{[^}]*grid-template-columns:minmax\(220px,32%\) minmax\(0,1fr\)/);
   assert.match(css, /\.funil-oficial \.f2-detalhe-abas\{[^}]*border-bottom:1px solid/);
@@ -159,7 +160,7 @@ test("ficha desktop replica a arquitetura ampla e compacta aprovada no Claude De
 });
 
 test("ficha usa dados canônicos e não coleções vazias ou identidade fixa", () => {
-  assert.match(api, /select\("id,nome,telefone,email,origem,corretor_id,tags,extras"\)/);
+  assert.match(api, /select\("id,nome,telefone,email,origem,corretor_id,tags,extras,atualizado_em"\)/);
   assert.match(api, /from\("f2_negociacao"\)\.select/);
   assert.match(api, /funilLeadIds\.length; inicio \+= 100/);
   assert.doesNotMatch(api, /negociacoes:\s*\[\]/);
@@ -193,11 +194,13 @@ test("navegação aprovada existe em desktop e mobile", () => {
   assert.doesNotMatch(`${workspace}\n${mobile}`, /href=\{?`?\/tarefas(?:\?|["`])/);
 });
 
-test("menu, arrasto e massa convergem no mesmo motor canônico", () => {
+test("menu e arrasto convergem no motor canônico e lote inseguro é bloqueado", () => {
   assert.match(workspace, /async function movimentar\(ids: string\[\], etapaCodigo: string\)/);
+  assert.match(workspace, /validarMovimentoSeguro\(ids\)/);
   assert.match(workspace, /action: "atualizarMomento"/);
   assert.match(workspace, /onDrop=.*movimentar\(\[id\], etapa\.codigo\)/s);
-  assert.match(workspace, /movimentar\(selecionados, destinoMassa\)[^>]*>Mover selecionados/);
+  assert.match(workspace, /Movimento em massa pausado: ainda não existe transação atômica segura/);
+  assert.doesNotMatch(workspace, /Promise\.all\(itens\.map/);
   assert.match(workspace, /movimentar\(\[item\.id\], destino\)[^>]*>[\s\S]*Escolha a etapa/);
   assert.doesNotMatch(workspace, /setLeads\([^)]*etapa/);
 });
@@ -213,7 +216,7 @@ test("perfis, filtros e Design System permanecem explícitos", () => {
   assert.match(workspace, />Triagem <b>/);
   assert.match(workspace, /Últimos 30 dias · movimentação/);
   assert.match(workspace, />Novo negócio<\/button>/);
-  assert.match(css, /flex:0 0 304px/);
+  assert.match(css, /flex:0 0 240px/);
   assert.match(css, /background:var\(--ape-orange\)/);
   assert.match(css, /font-family:var\(--font-body\)/);
   assert.match(css, /min-height:44px/);
@@ -223,5 +226,5 @@ test("perfis, filtros e Design System permanecem explícitos", () => {
   assert.match(css, /body:has\(\.funil-oficial \.f2-overlay\) #sara-fab[^}]*display:none/);
   assert.match(css, /\.funil-oficial\.modo-crm>\.ape-filtros button\.ativo[^}]*background:#FFF3EA[^}]*color:#B84300/);
   assert.match(workspace, />Abrir Sara<\/button>/);
-  assert.match(mobile, />Sara<\/button>/);
+  assert.match(mobile, /className="ape-sara-avatar" aria-label="Abrir a Sara"/);
 });
