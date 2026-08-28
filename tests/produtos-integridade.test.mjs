@@ -73,9 +73,10 @@ test("apartamento pode ser cadastrado sem associação falsa a condomínio", () 
   assert.match(productApi, /produto_definir_publicacao/);
 });
 
-test("fila de aprovação abre completa e filtros avançados ficam recolhidos", () => {
-  assert.match(productsUi, /Central de aprovação/);
-  assert.match(productsUi, /function showApprovalQueue\(\)[\s\S]*setStatus\("Todos"\)[\s\S]*setPuExpandida\(true\)/);
+test("central de decisões reúne aprovação e mantém filtros avançados recolhidos", () => {
+  assert.match(productsUi, /Central de decisões/);
+  assert.match(productsUi, /function chooseSection\(next: ProductsSection\)[\s\S]*setSection\(next\)[\s\S]*setApprovalFilter\(next === "aprovacoes"\)/);
+  assert.match(productsUi, /section === "qualidade"[\s\S]*ProductQualityQueue[\s\S]*approvalTotal/);
   assert.match(productsUi, /Filtros/);
   assert.match(productsUi, /moreFiltersOpen && <section className="pv3-filters"/);
 });
