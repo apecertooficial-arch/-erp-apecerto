@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Builder sintético — drag/drop e rascunho</title>
+  <link rel="stylesheet" href="../../app/styles/automation-builder.css">
+  <link rel="stylesheet" href="../../app/styles/automation-workspace.css">
+  <style>
+    html, body, #builder { width: 100%; height: 100%; margin: 0; }
+    #evidence { position: fixed; right: 12px; bottom: 12px; z-index: 9999; width: 310px;
+      padding: 10px 12px; border: 1px solid #cbd5e1; border-radius: 10px; background: #fff;
+      color: #0f172a; font: 12px/1.4 system-ui, sans-serif; box-shadow: 0 8px 24px #0f172a22; }
+    #evidence strong { display: block; margin-bottom: 4px; }
+  </style>
+</head>
+<body>
+  <div id="builder"></div>
+  <aside id="evidence" aria-live="polite">
+    <strong>Teste local sintético</strong>
+    <div data-ready>Inicializando…</div>
+    <div data-save>Nenhum salvamento.</div>
+    <div data-network>Supabase de produção bloqueado.</div>
+    <button type="button" data-run style="margin-top:8px">Executar drag/drop e salvar</button>
+  </aside>
+  <script type="module">
+    const syntheticOrigin = "http://synthetic.invalid";
+    const initialMap = {
+      editor: { uid: 2, notes: {}, wires: [], blocks: {
+        b1: { id: "b1", fam: "gatilho", sub: "json-http-request-trigger", x: 120, y: 180,
+          note: "", extra: {}, parts: [], ramos: [], noteOpen: false },
+      } },
+      automation: { name: "SINTETICO_BUILDER", provider: "apecerto-erp", anotacoes: [], blocks: [
+        { id: "b1", type: "trigger", options: { triggers: [
+          { name: "json-http-request-trigger", group: "system", options: {} },
+        ], nextBlockId: "" }, presentation: { x: 120, y: 180 } },
+      ] },
+    };
+    const state = window.syntheticState = {
+      ready: false,
+      opened: false,
+      requests: [],
+      unexpectedRequests: [],
+      savedDraft: null,
+      result: null,
+    };
+    const json = (value, status = 200) => new Response(JSON.stringify(value), {
+      status,
+      headers: { "content-type": "application/json" },
+    });
+    window.fetch = async (input, init = {}) => {
+      const url = new URL(typeof input === "string" ? input : input.url, location.href);
+      const method = String(init.method || "GET").toUpperCase();
+      state.requests.push({ method, url: url.href });
+      if (url.origin !== syntheticOrigin) {
+        state.unexpectedRequests.push({ method, url: url.href });
+        throw new Error("Teste bloqueou acesso externo: " + url.origin);
+      }
+      if (url.pathname === "/rest/v1/rpc/automacao_tags") return json([]);
+      if (url.pathname === "/rest/v1/automacoes" && method === "PATCH") {
+        const body = JSON.parse(String(init.body || "{}"));
+        state.savedDraft = body;
+        document.querySelector("[data-save]").textContent =
+          `Rascunho capturado: ${body.mapa_rascunho?.automation?.blocks?.length || 0} blocos; versão publicada intacta.`;
+        return json([{ id: 999 }]);
+      }
+      if (url.pathname === "/rest/v1/automacoes" && url.searchParams.get("id") === "eq.999") {
+        return json([{ id: 999, nome: "SINTETICO_BUILDER", grupo: "Teste local", ativa: false,
+          status: "rascunho", publicado_em: null, arquivada: false, mapa: initialMap,
+          mapa_rascunho: initialMap, titulos: {}, versao_publicada_id: 42,
+          webhook_token: null, webhook_token_enforced: true }]);
+      }
+      if (url.pathname === "/rest/v1/automacoes") {
+        return json([{ id: 999, nome: "SINTETICO_BUILDER", grupo: "Teste local", ativa: false,
+          status: "rascunho", arquivada: false, atualizada_em: "2026-08-28T12:00:00Z" }]);
+      }
+      if (url.pathname === "/rest/v1/motor_execucoes") return json([]);
+      return json([]);
+    };
+    const { default: builder } = await import("../../app/features/automations/automationBuilderRuntime.js");
+    builder.mount(document.getElementById("builder"), {
+      supabaseUrl: syntheticOrigin,
+      publishableKey: "synthetic-public-key",
+      authToken: "synthetic-session",
+      initialAutomationId: 999,
+      onAutomationOpened() {
+        state.opened = true;
+        state.ready = true;
+        document.querySelector("[data-ready]").textContent = "Automação sintética aberta; pronta para drag/drop.";
+      },
+    });
+    document.querySelector("[data-run]").addEventListener("click", async () => {
+      const source = document.querySelector('[data-transfer-type="distribution-simple"]');
+      const target = document.querySelector("#canvas");
+      const before = document.querySelectorAll("#world .node").length;
+      const transfer = new DataTransfer();
+      const fire = (element, type) => element.dispatchEvent(new DragEvent(type, {
+        bubbles: true,
+        cancelable: true,
+        dataTransfer: transfer,
+        clientX: 820,
+        clientY: 470,
+      }));
+      fire(source, "dragstart");
+      fire(target, "dragenter");
+      fire(target, "dragover");
+      fire(target, "drop");
+      fire(source, "dragend");
+      const after = document.querySelectorAll("#world .node").length;
+      document.querySelector("#tbSave").click();
+      for (let attempt = 0; attempt < 50 && !state.savedDraft; attempt += 1) {
+        await new Promise((resolve) => setTimeout(resolve, 20));
+      }
+      state.result = {
+        before,
+        after,
+        savedBlocks: state.savedDraft?.mapa_rascunho?.automation?.blocks?.length || 0,
+        publishedMapSent: Object.hasOwn(state.savedDraft || {}, "mapa"),
+        unexpectedRequests: state.unexpectedRequests.length,
+      };
+      document.querySelector("[data-ready]").textContent =
+        state.result.before === 1 && state.result.after === 2 && state.result.savedBlocks === 2
+          && !state.result.publishedMapSent && state.result.unexpectedRequests === 0
+          ? "PASSOU: drag/drop completo e rascunho salvo sem produção."
+          : "FALHOU: consulte window.syntheticState.result.";
+    });
+  </script>
+</body>
+</html>

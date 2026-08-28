@@ -476,7 +476,7 @@ test('Sara valida evidência por ID real da mensagem do cliente', () => {
   assert.match(sara, /evidencia_ids/);
   assert.match(sara, /entradasPorId/);
   assert.match(sara, /normalizarEvidencia/);
-  assert.match(sara, /contrato:"evidencia-id-v5-revisao-segura"/);
+  assert.match(sara, /contrato:"evidencia-id-v7-inteligencia-hibrida"/);
   assert.match(sara, /Nunca use ID de CORRETOR/);
   assert.match(saraConversationCutoff, /v_lead\.historico_completo/);
   assert.match(saraConversationCutoff, /coalesce\(wm\.enviado_em,wm\.criado_em\)>=v_lead\.corte_conversa_em/);
@@ -773,7 +773,7 @@ test('os fluxos chamam a Sara real e falham fechados sem alterar o lead', () => 
   assert.match(centralCampaignsSara, /jsonb_set\(b,'\{options,agenteId\}','16'::jsonb,true\)/);
   assert.match(centralCampaignsSara, /modelo='gpt-5\.6-sol'/);
   assert.match(centralCampaignsSara, /'reasoning_effort','low'/);
-  assert.match(sara, /evidencia-id-v5-revisao-segura/);
+  assert.match(sara, /evidencia-id-v7-inteligencia-hibrida/);
   assert.match(sara, /confianca:0/);
   assert.match(sara, /cadastro foi preservado para revisao humana/);
   assert.match(iaRouter, /"gpt-5\.6-sol":\{in:4\.00,out:20\.00\}/);

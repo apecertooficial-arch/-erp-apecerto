@@ -67,10 +67,12 @@ test("o construtor reconcilia editor e mapa executável por ID", () => {
   assert.doesNotMatch(runtime, /Object\.keys\(edB\)\.length\?Object\.keys\(edB\)/);
 });
 
-test("modo foco remove a navegação global e preserva somente a navegação do construtor", () => {
+test("modo foco preserva a navegação vertical do construtor aberta por padrão", () => {
   assert.match(builderCss, /body\.automation-builder-focus \.app-shell > \.sidebar/);
   assert.match(builderCss, /grid-template-columns:\s*minmax\(0,\s*1fr\)\s*!important/);
   assert.match(builderCss, /\.app\.sb-collapsed \.sidebar[\s\S]*visibility:\s*hidden/);
+  assert.match(runtime, /initialAutomationId\)\{collapseSidebar\(false\)/);
+  assert.doesNotMatch(runtime, /initialAutomationId\)[\s\S]{0,120}classList\.add\('sb-collapsed'\)/);
 });
 
 test("organização atua no estado aberto e fica pendente de salvar", () => {
@@ -97,6 +99,10 @@ test("o construtor oferece biblioteca pesquisável, importação segura e atalho
   assert.match(runtime, /AUTOMATION_EXPORT_SCHEMA/);
   assert.match(runtime, /Importar JSON/);
   assert.match(runtime, /palette-search/);
+  assert.match(runtime, /function setPaletteOpen\(open\)/);
+  assert.match(runtime, /Biblioteca de módulos/);
+  assert.match(runtime, /setPaletteOpen\(!window\.matchMedia\('\(max-width: 900px\)'\)\.matches\)/);
+  assert.match(runtime, /aria-expanded/);
   assert.match(runtime, /findCollisionFreePosition/);
   assert.match(runtime, /isEditableTarget/);
   assert.match(runtime, /data-transfer-type/);

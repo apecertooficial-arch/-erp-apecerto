@@ -4,6 +4,14 @@
 // Ação explícito no mapa publicado da Central de Automações.
 // @ts-nocheck
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.110.2";
+import {
+  direcaoCliente,
+  direcaoCorretor,
+  deveAplicarCadenciaSemResposta,
+  fatosDaConversa,
+  filtrarCatalogoParaIa,
+  validarSugestaoAutomatica,
+} from "../_shared/sara-policy.mjs";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -46,19 +54,19 @@ function texto(v: unknown, max: number) {
   return typeof v === "string" && v.trim() ? v.trim().slice(0, max) : null;
 }
 
+class IaIndisponivelError extends Error {
+  constructor(public readonly motivo: string) {
+    super("ia_indisponivel");
+    this.name = "IaIndisponivelError";
+  }
+}
+
 function normalizarEvidencia(v: unknown) {
   return String(v ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "")
     .toLowerCase().replace(/[^a-z0-9]+/g, " ").trim().replace(/\s+/g, " ");
 }
 
-function direcaoCliente(v: unknown) {
-  return ["recebida", "entrada", "in", "inbound", "received"].includes(String(v ?? "").toLowerCase());
-}
-function direcaoCorretor(v: unknown) {
-  return ["enviada", "saida", "out", "outbound", "sent"].includes(String(v ?? "").toLowerCase());
-}
-
-function prompt(c: Candidato, catalogo: Catalogo[], mensagens: any[]) {
+function prompt(c: Candidato, catalogo: Catalogo[], mensagens: any[], fatos: ReturnType<typeof fatosDaConversa>) {
   const regras = catalogo.map((m) =>
     `${m.codigo} | etapa=${m.etapa} | ação=${m.acao_codigo} (${m.acao_rotulo}) | prazo=${m.prazo_minutos ?? "data combinada"}min | ${m.descricao}`,
   ).join("\n");
@@ -71,6 +79,9 @@ function prompt(c: Candidato, catalogo: Catalogo[], mensagens: any[]) {
   return `Você é a Sara, supervisora de atendimento imobiliário. Classifique a conversa no catálogo FECHADO do Funil 2.0.
 OBJETIVO: nenhum lead fica parado; etapa organiza, momento explica, ação e prazo movem o trabalho.
 REGRAS OBRIGATÓRIAS:
+- FATOS DO BANCO: cliente_respondeu=${fatos.clienteRespondeu}; corretor_enviou=${fatos.corretorEnviou}; ultima_direcao=${fatos.ultimaDirecao}; recebidas=${fatos.recebidas}; enviadas=${fatos.enviadas}.
+- Envio, resposta, direção da última mensagem e estados registrados de visita são fatos do banco. Não reinterpretar esses fatos.
+- O catálogo abaixo já foi reduzido às transições automáticas permitidas. Não sugira código ausente dele.
 - Cliente nunca respondeu: CADENCIA_SEM_RESPOSTA.
 - Cliente respondeu: nunca use PRIMEIRA_ABORDAGEM nem CADENCIA_SEM_RESPOSTA.
 - Se pediu outro perfil/produto e falta localizar opções: PROCURANDO_PRODUTO.
@@ -127,11 +138,14 @@ async function carregarMensagens(db: any, c: Candidato) {
 
 async function processar(db: any, c: Candidato, catalogo: Catalogo[], agenteSlug: string) {
   const mensagens = await carregarMensagens(db, c);
+  const fatos = fatosDaConversa(mensagens);
+  const catalogoIa = filtrarCatalogoParaIa(c, catalogo, fatos) as Catalogo[];
   const hash = await sha256(JSON.stringify({ lead: c.funil_lead_id, versao: c.versao,
-    contrato:"evidencia-id-v5-revisao-segura",
+    contrato:"evidencia-id-v7-inteligencia-hibrida",
     agente: agenteSlug,
     mensagens: mensagens.map((m: any) => [m.id,m.enviado_em ?? m.criado_em]),
-    catalogo: catalogo.map((m) => [m.codigo,m.etapa,m.acao_codigo,m.prazo_minutos]) }));
+    fatos,
+    catalogo: catalogoIa.map((m) => [m.codigo,m.etapa,m.acao_codigo,m.prazo_minutos]) }));
   if (!mensagens.length) {
     return { id:c.funil_lead_id,versao_base:c.versao,context_hash:hash,
       origem:"deterministica",status:"sem_historico",momento_codigo:null,
@@ -146,6 +160,15 @@ async function processar(db: any, c: Candidato, catalogo: Catalogo[], agenteSlug
   const entradas = mensagens.filter((m: any) => direcaoCliente(m.direcao));
   const saidas = mensagens.filter((m: any) => direcaoCorretor(m.direcao));
   if (!entradas.length && saidas.length) {
+    if (!deveAplicarCadenciaSemResposta(c, fatos)) {
+      return { id:c.funil_lead_id,versao_base:c.versao,context_hash:hash,
+        origem:"deterministica",status:"sem_historico",momento_codigo:null,
+        etapa:null,acao_codigo:null,acao_rotulo:null,prazo_sugerido:null,
+        resumo:"Sem resposta do cliente no recorte atual, mas o card ja esta em uma etapa posterior; estado preservado para evitar regressao automatica.",
+        evidencias:[],confianca:null,mensagens:mensagens.length,qualidade_nota:null,
+        temperatura:null,temperatura_confianca:null,temperatura_evidencias:[],
+        qualidade_resumo:"A qualidade foi preservada porque nao ha resposta do cliente no recorte atual." };
+    }
     const momento = catalogo.find((m) => m.codigo === "CADENCIA_SEM_RESPOSTA");
     if (!momento) throw new Error("catalogo_sem_cadencia");
     return { id:c.funil_lead_id,versao_base:c.versao,context_hash:hash,
@@ -159,8 +182,8 @@ async function processar(db: any, c: Candidato, catalogo: Catalogo[], agenteSlug
   }
 
   const revisaoSegura = (motivo: string) => {
-    const momento = catalogo.find((m) => m.codigo === "CONVERSANDO_QUALIFICANDO")
-      ?? catalogo.find((m) => m.codigo === c.momento_codigo)
+    const momento = catalogo.find((m) => m.codigo === c.momento_codigo)
+      ?? catalogoIa.find((m) => m.codigo === "CONVERSANDO_QUALIFICANDO")
       ?? catalogo[0];
     const ultimaEntrada = entradas.at(-1);
     const evidencia = ultimaEntrada
@@ -181,20 +204,23 @@ async function processar(db: any, c: Candidato, catalogo: Catalogo[], agenteSlug
   };
 
   try {
-  const input = prompt(c,catalogo,mensagens);
+  const input = prompt(c,catalogoIa,mensagens,fatos);
   const response = await fetch(`${SUPABASE_URL}/functions/v1/ia-router`, {
     method:"POST",headers:{apikey:SERVICE_ROLE_KEY,"Content-Type":"application/json"},
     body:JSON.stringify({agente_slug:agenteSlug,input,disable_tools:true,
       override_prompt:"Classifique estritamente pelo catálogo fechado do input. Retorne somente JSON."}),
     signal:AbortSignal.timeout(25000),
   });
-  if (!response.ok) throw new Error(`ia_router_http_${response.status}`);
-  const payload = await response.json();
+  const payload = await response.json().catch(() => null);
+  if (!response.ok) {
+    const motivo = texto(payload?.reason, 80) ?? `ia_router_http_${response.status}`;
+    throw new IaIndisponivelError(motivo);
+  }
   const raw = payload && typeof payload.saida === "object" ? payload.saida : payload?.resposta ?? payload;
   const parsed = objetoJson(raw);
   if (!parsed) throw new Error("ia_json_invalido");
   const codigo = texto(parsed.momento_codigo,50);
-  const momento = catalogo.find((m) => m.codigo===codigo);
+  const momento = catalogoIa.find((m) => m.codigo===codigo);
   const confianca = Number(parsed.confianca);
   const resumoBase = texto(parsed.resumo,550);
   const proxima = texto(parsed.proxima_acao_especifica,220);
@@ -231,6 +257,10 @@ async function processar(db: any, c: Candidato, catalogo: Catalogo[], agenteSlug
     throw new Error("ia_temperatura_alta_sem_confianca");
   const prazo = typeof parsed.prazo_sugerido==="string" && !Number.isNaN(Date.parse(parsed.prazo_sugerido))
     ? new Date(parsed.prazo_sugerido).toISOString() : null;
+  const politica = validarSugestaoAutomatica({
+    candidato:c,momento,fatos,confianca,evidencias,prazoSugerido:prazo,
+  });
+  if (!politica.ok) throw new Error(`ia_${politica.motivo}`);
   const notaRaw = parsed.qualidade_nota;
   const nota = notaRaw === null || notaRaw === undefined ? null : Number(notaRaw);
   if (nota !== null && (!Number.isFinite(nota) || nota < 0 || nota > 10))
@@ -248,6 +278,7 @@ async function processar(db: any, c: Candidato, catalogo: Catalogo[], agenteSlug
     temperatura_evidencias:temperaturaEvidencias,
     qualidade_resumo:qualidadeResumo };
   } catch (e) {
+    if (e instanceof IaIndisponivelError) throw e;
     const motivo = e instanceof Error ? e.message : "ia_falhou";
     console.warn("f2-sara-reclassificar:revisao-segura", motivo.slice(0,80));
     return revisaoSegura(motivo);
@@ -284,11 +315,14 @@ Deno.serve(async (req: Request) => {
       (candidatos ?? []).map((c:Candidato)=>processar(db,c,catalogo,agenteSlug)),
     );
     const ok = resultados.filter((r)=>r.status==="fulfilled").map((r:any)=>r.value);
-    const erros = resultados.filter((r)=>r.status==="rejected").map((r:any)=>String(r.reason?.message ?? "falha").slice(0,80));
+    const rejeitados = resultados.filter((r)=>r.status==="rejected") as PromiseRejectedResult[];
+    const erros = rejeitados.map((r:any)=>r.reason instanceof IaIndisponivelError
+      ? r.reason.motivo : String(r.reason?.message ?? "falha").slice(0,80));
+    const iaIndisponivel = rejeitados.some((r:any)=>r.reason instanceof IaIndisponivelError);
     const resposta = {ok:erros.length===0,executou:true,modo:"direto",somente_analise:true,
       agente_slug:agenteSlug,selecionados:(candidatos??[]).length,processados:ok.length,
       erros:erros.length,resultados:ok,detalhes_erros:erros};
-    return Response.json(resposta,{status:funilLeadId&&erros.length?502:200});
+    return Response.json({...resposta,ia_indisponivel:iaIndisponivel},{status:iaIndisponivel?503:(funilLeadId&&erros.length?502:200)});
   } catch (e) {
     console.error("f2-sara-reclassificar",e instanceof Error?e.message:"falha");
     return Response.json({ok:false,erro:"falha_interna"},{status:500});
