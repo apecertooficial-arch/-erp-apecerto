@@ -23,7 +23,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BotaoWhatsApp } from "./BotaoWhatsApp";
 import { AssociarTagLead } from "./AssociarTagLead";
 import { Funil2ConversationDrawer } from "./Funil2ConversationDrawer";
+import { AdicionarClienteModal } from "./AdicionarClienteModal";
+import { IniciarNegociacaoModal } from "./IniciarNegociacaoModal";
+import { LeadDataEditor } from "./LeadDataEditor";
 import { ModalPescar } from "./Funil2Workspace";
+import { SalesProcessView } from "../sales/SalesProcessWorkspace";
 import { getBrowserSupabaseClient } from "../../lib/supabase/browser";
 import { prepararAberturaWhatsApp } from "../../lib/whatsappNativo";
 import {
@@ -71,7 +75,7 @@ type PayloadMobile = {
 
 type FiltroDia = "agora" | "novos" | "hoje" | "todos";
 type TemperaturaFiltroMobile = TemperaturaLead | "aguardando" | "todas";
-type AreaCrmMobile = "funil" | "leads" | "visitas";
+type AreaCrmMobile = "funil" | "leads" | "visitas" | "esteira";
 
 const TEMPERATURAS_MOBILE: ReadonlyArray<{ codigo: Exclude<TemperaturaFiltroMobile, "todas">; rotulo: string }> = [
   { codigo: "quente", rotulo: "Quente" },
@@ -610,6 +614,7 @@ function FichaLead({
   accessToken,
   onSalvo,
   onRecarregar,
+  onIniciarNegociacao,
   tagCatalogo,
 }: {
   abrirNoChat: boolean;
@@ -629,12 +634,14 @@ function FichaLead({
   accessToken: string;
   onSalvo: () => void;
   onRecarregar: () => void;
+  onIniciarNegociacao: () => void;
   tagCatalogo: TagCatalogoFunil2[];
 }) {
   const [aba, setAba] = useState<"atendimento" | "historico" | "atividades" | "negocios" | "imoveis" | "arquivos" | "dados">("atendimento");
   const [chatAberto, setChatAberto] = useState(abrirNoChat);
   const [maisAcoes, setMaisAcoes] = useState(false);
-  const [acaoMais, setAcaoMais] = useState<"visita" | "negociacao" | "tag" | "descarte" | null>(null);
+  const [acaoMais, setAcaoMais] = useState<"visita" | "tag" | "descarte" | null>(null);
+  const [dadosSujos, setDadosSujos] = useState(false);
   const [temperaturaAberta, setTemperaturaAberta] = useState(false);
   const [salvandoTemperatura, setSalvandoTemperatura] = useState(false);
   const [erroTemperatura, setErroTemperatura] = useState("");
@@ -645,6 +652,9 @@ function FichaLead({
   const temperaturaRotulo = rotuloTemperatura(temperatura) ?? "Aguardando leitura";
   const whatsappPreparo = prepararAberturaWhatsApp(lead.telefone);
   const atividadesCompletas = combinarAtividades(atividades, visitas);
+  const confirmarSaidaDados = useCallback(() => !dadosSujos || window.confirm("Há alterações não salvas nos dados do lead. Deseja descartá-las?"), [dadosSujos]);
+  const fecharFicha = useCallback(() => { if (confirmarSaidaDados()) onFechar(); }, [confirmarSaidaDados, onFechar]);
+  const trocarAba = useCallback((proxima: typeof aba) => { if (proxima === aba || confirmarSaidaDados()) setAba(proxima); }, [aba, confirmarSaidaDados]);
   useEffect(() => {
     focoOrigemRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const quadro = requestAnimationFrame(() => dialogRef.current?.querySelector<HTMLElement>(".ape-voltar")?.focus());
@@ -670,11 +680,11 @@ function FichaLead({
       else if (acaoMais) setAcaoMais(null);
       else if (maisAcoes) setMaisAcoes(false);
       else if (temperaturaAberta) setTemperaturaAberta(false);
-      else onFechar();
+      else fecharFicha();
     };
     document.addEventListener("keydown", fechar);
     return () => document.removeEventListener("keydown", fechar);
-  }, [acaoMais, chatAberto, maisAcoes, onFechar, temperaturaAberta]);
+  }, [acaoMais, chatAberto, fecharFicha, maisAcoes, temperaturaAberta]);
 
   async function atualizarTemperatura(temperaturaNova: TemperaturaLead | null) {
     setSalvandoTemperatura(true); setErroTemperatura("");
@@ -695,15 +705,15 @@ function FichaLead({
     }
   }
 
-  return <div ref={dialogRef} className="ape-folha" role="dialog" aria-modal="true" aria-label={`Atendimento de ${lead.nome}`} onMouseDown={(evento) => { if (evento.target === evento.currentTarget) onFechar(); }}>
+  return <div ref={dialogRef} className="ape-folha" role="dialog" aria-modal="true" aria-label={`Atendimento de ${lead.nome}`} onMouseDown={(evento) => { if (evento.target === evento.currentTarget) fecharFicha(); }}>
     <section className="ape-ficha">
       <header className="ape-ficha-cabecalho-v3">
         <div className="ape-ficha-identidade-v3">
-          <button type="button" className="ape-voltar" onClick={onFechar} aria-label="Voltar"><IconeVoltar /></button>
+          <button type="button" className="ape-voltar" onClick={fecharFicha} aria-label="Voltar"><IconeVoltar /></button>
           <div><h2>{lead.nome}</h2><p>{lead.corretor_nome ?? "Sem responsável"} · negócio #{lead.origem_negocio_id}</p></div>
           <span className="ape-temperatura-controle"><button type="button" className={`ape-momento temperatura-${temperatura ?? "aguardando"}`} aria-expanded={temperaturaAberta} aria-label={`Alterar temperatura. Atual: ${temperaturaRotulo}`} disabled={salvandoTemperatura} onClick={() => setTemperaturaAberta((aberta) => !aberta)}><i />{temperaturaRotulo}<b>⌄</b></button>{temperaturaAberta && <span className="ape-temperatura-popover" role="dialog" aria-label="Alterar temperatura"><strong>Temperatura do lead</strong>{TEMPERATURAS_MOBILE.map((item) => <button type="button" key={item.codigo} disabled={salvandoTemperatura} className={`temperatura-${item.codigo}${temperaturaMobile(lead) === item.codigo ? " ativa" : ""}`} onClick={() => void atualizarTemperatura(item.codigo === "aguardando" ? null : item.codigo)}><i />{item.rotulo}</button>)}{erroTemperatura && <em role="alert">{erroTemperatura}</em>}</span>}</span>
         </div>
-        <nav className="ape-ficha-abas" role="tablist" aria-label="Áreas do atendimento" onKeyDown={(evento) => { if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(evento.key)) return; evento.preventDefault(); const abas = Array.from(evento.currentTarget.querySelectorAll<HTMLButtonElement>('[role="tab"]')); const atual = Math.max(0, abas.indexOf(document.activeElement as HTMLButtonElement)); const proxima = evento.key === "Home" ? 0 : evento.key === "End" ? abas.length - 1 : evento.key === "ArrowRight" ? (atual + 1) % abas.length : (atual - 1 + abas.length) % abas.length; abas[proxima]?.click(); abas[proxima]?.focus(); }}>{([ ["atendimento", "Atendimento"], ["historico", "Histórico"], ["atividades", "Atividades"], ["negocios", "Negócios"], ["imoveis", "Imóveis"], ["arquivos", "Arquivos"], ["dados", "Dados do lead"] ] as const).map(([chave, rotulo]) => <button key={chave} type="button" role="tab" aria-selected={aba === chave} className={aba === chave ? "ativa" : ""} onClick={() => setAba(chave)}>{rotulo}</button>)}</nav>
+        <nav className="ape-ficha-abas" role="tablist" aria-label="Áreas do atendimento" onKeyDown={(evento) => { if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(evento.key)) return; evento.preventDefault(); const abas = Array.from(evento.currentTarget.querySelectorAll<HTMLButtonElement>('[role="tab"]')); const atual = Math.max(0, abas.indexOf(document.activeElement as HTMLButtonElement)); const proxima = evento.key === "Home" ? 0 : evento.key === "End" ? abas.length - 1 : evento.key === "ArrowRight" ? (atual + 1) % abas.length : (atual - 1 + abas.length) % abas.length; abas[proxima]?.click(); abas[proxima]?.focus(); }}>{([ ["atendimento", "Atendimento"], ["historico", "Histórico"], ["atividades", "Atividades"], ["negocios", "Negócios"], ["imoveis", "Imóveis"], ["arquivos", "Arquivos"], ["dados", "Dados do lead"] ] as const).map(([chave, rotulo]) => <button key={chave} type="button" role="tab" aria-selected={aba === chave} className={aba === chave ? "ativa" : ""} onClick={() => trocarAba(chave)}>{rotulo}</button>)}</nav>
       </header>
 
       <section className="ape-ordem ape-proxima-aprovada"><span className="ape-contexto-titulo">Próxima ação</span><h3>{acaoVisivel(lead)}</h3><p>{prazo.rotulo} · {momento?.rotulo ?? lead.momento_codigo}</p></section>
@@ -720,16 +730,16 @@ function FichaLead({
 
       {aba === "arquivos" && <div className="ape-ficha-painel ape-v3-secao"><h3>Arquivos</h3>{arquivosEstado === "erro" ? <p role="alert">A fonte canônica não pôde ser consultada com esta sessão.</p> : arquivos.length ? arquivos.map((arquivo) => <article key={arquivo.id}><strong>{arquivo.nome}</strong><span>{arquivo.status} · negócio #{arquivo.negocio_id}</span></article>) : <p>Nenhum arquivo acessível foi retornado pela Esteira.</p>}</div>}
 
-      {aba === "dados" && <div className="ape-ficha-painel ape-v3-secao"><h3>Dados do lead</h3><dl><div><dt>Nome</dt><dd>{lead.nome}</dd></div><div><dt>Telefone</dt><dd>{lead.telefone || "Sem dado cadastrado"}</dd></div><div><dt>E-mail</dt><dd>{lead.email || "Sem dado cadastrado"}</dd></div><div><dt>CPF/CNPJ</dt><dd>{lead.cpf_cnpj || "Sem dado cadastrado"}</dd></div><div><dt>Origem</dt><dd>{lead.origem_cadastro || "Sem dado cadastrado"}</dd></div><div><dt>Endereço</dt><dd>{lead.endereco || "Sem dado cadastrado"}</dd></div><div><dt>Responsável</dt><dd>{lead.corretor_nome || "Não definido"}</dd></div><div><dt>Canal</dt><dd>{lead.instancia_origem === "indisponivel" ? "Fonte indisponível — recarregue" : lead.instancia_rotulo || "Não identificado"}</dd></div></dl><p>Dados reais em modo de consulta; não existe salvamento simulado.</p></div>}
+      {aba === "dados" && <div className="ape-ficha-painel ape-v3-secao"><LeadDataEditor key={`${lead.id}:${lead.lead_atualizado_em ?? "sem-versao"}`} accessToken={accessToken} lead={lead} onSaved={async () => { onRecarregar(); }} onDirtyChange={setDadosSujos} /></div>}
 
       {!whatsappPreparo.ok && <div className="ape-ficha-alerta-contato" role="alert">WhatsApp indisponível: {whatsappPreparo.explicacao}</div>}
       <div className="ape-ficha-rodape-aprovado"><span className="ape-ficha-acao-whatsapp">{whatsappPreparo.ok ? <BotaoWhatsApp telefone={lead.telefone} negocioId={lead.origem_negocio_id} rotulo="WhatsApp" compacto /> : <button type="button" disabled>WhatsApp</button>}</span><button type="button" onClick={() => setAcaoMais("visita")}>Visita</button><Link href={`/agenda?lead=${encodeURIComponent(String(lead.lead_id || lead.id))}`}>Atividade</Link></div>
 
       {chatAberto && (lead.lead_id > 0 ? <Funil2ConversationDrawer accessToken={accessToken} leadId={lead.id} nome={lead.nome} onClose={() => setChatAberto(false)} /> : <div className="ape-ficha-sheet" onMouseDown={(evento) => { if (evento.target === evento.currentTarget) setChatAberto(false); }}><section><button type="button" onClick={() => setChatAberto(false)}>×</button><p>Este cliente ainda não possui conversa vinculada.</p></section></div>)}
 
-      {maisAcoes && <div className="ape-ficha-sheet" onMouseDown={(evento) => { if (evento.target === evento.currentTarget) setMaisAcoes(false); }}><section role="dialog" aria-label="Mais ações"><i /><button type="button" onClick={() => { setMaisAcoes(false); setAcaoMais("negociacao"); }}>Gerar negociação</button><button type="button" onClick={() => { setMaisAcoes(false); setAcaoMais("tag"); }}>Adicionar tag</button><hr /><button type="button" className="risco" onClick={() => { setMaisAcoes(false); setAcaoMais("descarte"); }}>Descartar lead</button><p>O descarte pede motivo e confirmação antes de concluir.</p></section></div>}
+      {maisAcoes && <div className="ape-ficha-sheet" onMouseDown={(evento) => { if (evento.target === evento.currentTarget) setMaisAcoes(false); }}><section role="dialog" aria-label="Mais ações"><i /><button type="button" onClick={() => { setMaisAcoes(false); onIniciarNegociacao(); }}>Iniciar negociação</button><button type="button" onClick={() => { setMaisAcoes(false); setAcaoMais("tag"); }}>Adicionar tag</button><hr /><button type="button" className="risco" onClick={() => { setMaisAcoes(false); setAcaoMais("descarte"); }}>Descartar lead</button><p>O descarte pede motivo e confirmação antes de concluir.</p></section></div>}
 
-      {acaoMais && <div className="ape-ficha-sheet" onMouseDown={(evento) => { if (evento.target === evento.currentTarget) setAcaoMais(null); }}><section role="dialog" aria-label={acaoMais === "visita" ? "Agendar visita" : acaoMais === "negociacao" ? "Gerar negociação" : acaoMais === "tag" ? "Adicionar tag" : "Descartar lead"}><i />{acaoMais === "visita" && <AgendarVisitaMobile lead={lead} accessToken={accessToken} onSalvo={onSalvo} abertoInicial onFechar={() => setAcaoMais(null)} />}{acaoMais === "negociacao" && <GerarNegociacaoMobile lead={lead} accessToken={accessToken} onSalvo={onRecarregar} abertoInicial onFechar={() => setAcaoMais(null)} />}{acaoMais === "tag" && <AssociarTagLead leadId={lead.id} catalogo={tagCatalogo} tagsAssociadas={(lead.tags ?? []).map((tag) => tag.nome)} accessToken={accessToken} onSalvo={onRecarregar} mobile abertoInicial onFechar={() => setAcaoMais(null)} />}{acaoMais === "descarte" && <DescartarMobile lead={lead} accessToken={accessToken} onDescartado={() => { onSalvo(); onFechar(); }} abertoInicial onFechar={() => setAcaoMais(null)} />}</section></div>}
+      {acaoMais && <div className="ape-ficha-sheet" onMouseDown={(evento) => { if (evento.target === evento.currentTarget) setAcaoMais(null); }}><section role="dialog" aria-label={acaoMais === "visita" ? "Agendar visita" : acaoMais === "tag" ? "Adicionar tag" : "Descartar lead"}><i />{acaoMais === "visita" && <AgendarVisitaMobile lead={lead} accessToken={accessToken} onSalvo={onSalvo} abertoInicial onFechar={() => setAcaoMais(null)} />}{acaoMais === "tag" && <AssociarTagLead leadId={lead.id} catalogo={tagCatalogo} tagsAssociadas={(lead.tags ?? []).map((tag) => tag.nome)} accessToken={accessToken} onSalvo={onRecarregar} mobile abertoInicial onFechar={() => setAcaoMais(null)} />}{acaoMais === "descarte" && <DescartarMobile lead={lead} accessToken={accessToken} onDescartado={() => { onSalvo(); fecharFicha(); }} abertoInicial onFechar={() => setAcaoMais(null)} />}</section></div>}
     </section>
   </div>;
 }
@@ -757,6 +767,8 @@ export function Funil2Mobile({
   const [areaCrm, setAreaCrm] = useState<AreaCrmMobile>("funil");
   const [maisAreas, setMaisAreas] = useState(false);
   const [novoNegocioAberto, setNovoNegocioAberto] = useState(false);
+  const [adicionarClienteAberto, setAdicionarClienteAberto] = useState(false);
+  const [negociacaoCanonicaLeadId, setNegociacaoCanonicaLeadId] = useState<string | null>(null);
   const [novoNegocioLeadId, setNovoNegocioLeadId] = useState("");
   const [selecionado, setSelecionado] = useState<string | null>(null);
   const [abrirNoChat, setAbrirNoChat] = useState(false);
@@ -829,6 +841,7 @@ export function Funil2Mobile({
   const leadPedido = pedidoUrl === null ? null : leads.find((lead) => lead.origem_negocio_id === pedidoUrl) ?? null;
   const leadAberto = selecionado === "__fechado__" ? null : leads.find((lead) => lead.id === selecionado) ?? leadPedido;
   const leadNovoNegocio = leads.find((lead) => lead.id === novoNegocioLeadId) ?? null;
+  const leadNegociacaoCanonica = leads.find((lead) => lead.id === negociacaoCanonicaLeadId) ?? null;
   const aquario = dados?.aquario ?? [];
   const podePescar = dados?.podePescar === true;
   const leadHistoricoId = leadAberto?.id ?? null;
@@ -882,7 +895,7 @@ export function Funil2Mobile({
         <span className="ape-sobrancelha">Meu Dia</span>
         <h1 className="ape-manchete">{esperandoAgora === 1 ? "1 pessoa espera você agora" : `${esperandoAgora} pessoas esperam você agora`}</h1>
       </> : <>
-        <div className="ape-mobile-funil-titulo"><h1 className="ape-manchete">{areaCrm === "funil" ? "Funil" : areaCrm === "leads" ? "Leads" : "Visitas"}</h1><span><button type="button" aria-label="Mais áreas" aria-expanded={maisAreas} onClick={() => setMaisAreas((aberto) => !aberto)}>•••</button><button type="button" className="ape-sara-avatar" aria-label="Abrir a Sara" onClick={() => document.querySelector<HTMLButtonElement>("#sara-fab")?.click()}><i title={nome}>{iniciais(nome)}</i></button></span></div>
+        <div className="ape-mobile-funil-titulo"><h1 className="ape-manchete">{areaCrm === "funil" ? "Funil" : areaCrm === "leads" ? "Leads" : areaCrm === "visitas" ? "Visitas" : "Esteira"}</h1><span><button type="button" aria-label="Mais áreas" aria-expanded={maisAreas} onClick={() => setMaisAreas((aberto) => !aberto)}>•••</button><button type="button" className="ape-sara-avatar" aria-label="Abrir a Sara" onClick={() => document.querySelector<HTMLButtonElement>("#sara-fab")?.click()}><i title={nome}>{iniciais(nome)}</i></button></span></div>
       </>}
       <div className="ape-atualizado">
         <span>Atualizado {horaAgora()}</span>
@@ -890,7 +903,7 @@ export function Funil2Mobile({
       </div>
     </header>
 
-    {modo === "crm" && maisAreas && <nav className="ape-mobile-mais-areas" aria-label="Mais áreas do Funil"><button type="button" disabled title="A Esteira completa está disponível no computador">Esteira de vendas</button>{["admin", "gestor"].includes((role ?? "").toLowerCase()) && <><button type="button" onClick={() => onIr("/inteligencia")}>Painel gerencial</button><button type="button" onClick={() => onIr("/configuracoes")}>Configurações</button><button type="button" disabled={(role ?? "").toLowerCase() !== "admin"} title={(role ?? "").toLowerCase() === "admin" ? undefined : "Disponível para Admin"} onClick={() => { if ((role ?? "").toLowerCase() === "admin") onIr("/auditoria"); }}>Matriz de validação</button></>}</nav>}
+    {modo === "crm" && maisAreas && <nav className="ape-mobile-mais-areas" aria-label="Mais áreas do Funil"><button type="button" onClick={() => { setAreaCrm("esteira"); setMaisAreas(false); }}>Esteira de vendas</button>{["admin", "gestor"].includes((role ?? "").toLowerCase()) && <><button type="button" onClick={() => onIr("/inteligencia")}>Painel gerencial</button><button type="button" onClick={() => onIr("/configuracoes")}>Configurações</button><button type="button" disabled={(role ?? "").toLowerCase() !== "admin"} title={(role ?? "").toLowerCase() === "admin" ? undefined : "Disponível para Admin"} onClick={() => { if ((role ?? "").toLowerCase() === "admin") onIr("/auditoria"); }}>Matriz de validação</button></>}</nav>}
 
     {sucesso && <div className="ape-visita-sucesso" role="status">
       <div><strong>Visita agendada com sucesso</strong><span>{sucesso}</span></div>
@@ -906,7 +919,7 @@ export function Funil2Mobile({
       <article><b>{contagens.hoje}</b><span>para hoje</span></article>
     </section>}
 
-    {modo === "crm" && <div className="ape-busca-linha"><label className="ape-busca">
+    {modo === "crm" && areaCrm !== "esteira" && <div className="ape-busca-linha"><label className="ape-busca">
       <IconeBusca />
       <input type="search" value={busca} onChange={(evento) => setBusca(evento.target.value)} placeholder="Buscar" />
     </label><details className="ape-filtros-menu"><summary>Filtros{temperatura !== "todas" ? " · 1" : ""}</summary><nav className="ape-temperatura-filtros" aria-label="Filtrar por temperatura">
@@ -947,7 +960,7 @@ export function Funil2Mobile({
       <button type="button" onClick={() => onIr("/crm")}>Ver minha carteira</button>
     </div>}
 
-    {dados && !erro && modo === "crm" && visiveis.length === 0 && <div className="ape-estado">
+    {dados && !erro && modo === "crm" && areaCrm !== "esteira" && visiveis.length === 0 && <div className="ape-estado">
       <span className="ape-estado-icone"><IconeCheck /></span>
       <strong>Nenhum cliente neste filtro</strong>
       <p>Troque a etapa ou limpe a busca para ver o restante da carteira.</p>
@@ -961,9 +974,11 @@ export function Funil2Mobile({
           </div>
           <div className="ape-lista">{grupo.leads.map(cartao)}</div>
         </section>)
-      : <section className="ape-lista" aria-label="Atendimentos">{visiveis.slice(0, 60).map(cartao)}</section>}
+      : areaCrm === "esteira"
+        ? <section className="ape-mobile-esteira" aria-label="Esteira de vendas"><SalesProcessView accessToken={accessToken} sessionRole={role ?? "corretor"} /></section>
+        : <section className="ape-lista" aria-label="Atendimentos">{visiveis.slice(0, 60).map(cartao)}</section>}
 
-    {modo === "crm" && areaCrm === "funil" && !leadAberto && <div className="ape-funil-acoes-fixas">{podePescar && <button type="button" className="ape-pescar-lead" disabled={pescaBusy} onClick={() => { setPescaErro(null); setPescaAberta(true); }}>Pescar lead{aquario.length > 0 ? ` · ${aquario.length}` : ""}</button>}<button type="button" className="ape-novo-negocio-fixo" onClick={() => setNovoNegocioAberto(true)}>Novo negócio</button></div>}
+    {modo === "crm" && areaCrm === "funil" && !leadAberto && <div className="ape-funil-acoes-fixas">{podePescar && <button type="button" className="ape-pescar-lead" disabled={pescaBusy} onClick={() => { setPescaErro(null); setPescaAberta(true); }}>Pescar lead{aquario.length > 0 ? ` · ${aquario.length}` : ""}</button>}{["admin", "gestor", "corretor"].includes((role ?? "").toLowerCase()) && <button type="button" className="ape-adicionar-cliente" onClick={() => setAdicionarClienteAberto(true)}>Adicionar cliente</button>}<button type="button" className="ape-novo-negocio-fixo" onClick={() => setNovoNegocioAberto(true)}>Novo negócio</button></div>}
 
     {modo === "crm" && <nav className="ape-crm-v3-nav" aria-label="Navegação do Funil">
       <button type="button" onClick={() => onIr("/inicio")}>Meu Dia</button>
@@ -978,6 +993,10 @@ export function Funil2Mobile({
     </button>}
 
     {novoNegocioAberto && !leadAberto && <div className="ape-ficha-sheet" onMouseDown={(evento) => { if (evento.target === evento.currentTarget) { setNovoNegocioAberto(false); setNovoNegocioLeadId(""); } }}><section role="dialog" aria-label="Novo negócio"><i /><header className="ape-novo-negocio-cab"><div><h3>Novo negócio</h3><p>Escolha o lead para criar a oportunidade na Esteira.</p></div><button type="button" aria-label="Fechar novo negócio" onClick={() => { setNovoNegocioAberto(false); setNovoNegocioLeadId(""); }}>×</button></header><label className="ape-novo-negocio-lead">Lead<select value={novoNegocioLeadId} onChange={(evento) => setNovoNegocioLeadId(evento.target.value)}><option value="">Selecione o lead</option>{leads.map((item) => <option key={item.id} value={item.id}>{item.nome} · #{item.origem_negocio_id}</option>)}</select></label>{leadNovoNegocio && <GerarNegociacaoMobile lead={leadNovoNegocio} accessToken={accessToken} onSalvo={() => { void recarregar(); setNovoNegocioAberto(false); setNovoNegocioLeadId(""); }} abertoInicial onFechar={() => { setNovoNegocioAberto(false); setNovoNegocioLeadId(""); }} />}</section></div>}
+
+    {adicionarClienteAberto && !leadAberto && <AdicionarClienteModal accessToken={accessToken} onClose={() => setAdicionarClienteAberto(false)} onCreated={(funilLeadId) => { setAdicionarClienteAberto(false); recarregar(); setSelecionado(funilLeadId); }} />}
+
+    {leadNegociacaoCanonica && !leadAberto && <IniciarNegociacaoModal accessToken={accessToken} lead={leadNegociacaoCanonica} negocios={(dados?.negociosVinculados ?? []).filter((item) => item.funil_lead_id === leadNegociacaoCanonica.id)} onClose={() => setNegociacaoCanonicaLeadId(null)} onSent={async () => { recarregar(); }} onOpenEsteira={() => { setNegociacaoCanonicaLeadId(null); setAreaCrm("esteira"); }} />}
 
     {pescaAberta && !leadAberto && <ModalPescar candidatos={aquario} busy={pescaBusy} erro={pescaErro} onFechar={() => { if (!pescaBusy) { setPescaAberta(false); setPescaErro(null); } }} onPescar={(negocioId) => void pescar(negocioId)} />}
 
@@ -1002,6 +1021,7 @@ export function Funil2Mobile({
       accessToken={accessToken}
       onSalvo={() => { setSucesso("Ela já está na Agenda, no horário escolhido."); void recarregar(); setSelecionado(null); }}
       onRecarregar={() => { void recarregar(); }}
+      onIniciarNegociacao={() => { setSelecionado("__fechado__"); setNegociacaoCanonicaLeadId(leadAberto.id); limparLeadDaUrl(); }}
     />}
   </main>;
 }

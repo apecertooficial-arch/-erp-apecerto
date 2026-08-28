@@ -13,6 +13,9 @@ import { combinarAtividades, validarMovimentoSeguro } from "./contratos.mjs";
 import { SalesProcessView } from "../sales/SalesProcessWorkspace";
 import { Funil2ConversationDrawer } from "./Funil2ConversationDrawer";
 import { AssociarTagLead } from "./AssociarTagLead";
+import { AdicionarClienteModal } from "./AdicionarClienteModal";
+import { IniciarNegociacaoModal } from "./IniciarNegociacaoModal";
+import { LeadDataEditor } from "./LeadDataEditor";
 import { getBrowserSupabaseClient } from "../../lib/supabase/browser";
 import { dataHoraLocalSaoPaulo, dataIsoSaoPaulo, FUSO_OPERACAO } from "../../lib/timezone";
 
@@ -143,6 +146,8 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
   const [sucesso, setSucesso] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [modal, setModal] = useState<"pescar" | "visita" | "negociacao" | "descartar" | null>(null);
+  const [adicionarClienteAberto, setAdicionarClienteAberto] = useState(false);
+  const [negociacaoCanonicaLeadId, setNegociacaoCanonicaLeadId] = useState<string | null>(null);
   // Aviso nunca abre sozinho: no celular um painel automático encobria o CRM.
   // O corretor abre pelo sino quando quiser e fecha sem perder o contexto.
   const [avisosAbertos, setAvisosAbertos] = useState(false);
@@ -224,6 +229,7 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
          cascata. */
       if (typeof window !== "undefined") {
         const url = new URL(window.location.href);
+        if (url.searchParams.get("vista") === "vendas") setAba("vendas");
         const abrirConversa = Number(url.searchParams.get("chat"));
         const negocioId = Number(url.searchParams.get("lead")) || abrirConversa;
         const destino = Number.isFinite(negocioId) && negocioId > 0
@@ -400,6 +406,7 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
     config: ["Configurações", "Etapas, momentos, prazos e regras da operação."],
   } as const;
   const podeGerir = ["admin", "gestor"].includes(profile.role.toLowerCase());
+  const podeAdicionarCliente = ["admin", "gestor", "corretor"].includes(profile.role.toLowerCase());
   const termoQuadro = buscaQuadro.trim().toLocaleLowerCase("pt-BR");
   const limitePeriodo = periodoQuadro === "todos" ? null : agoraQuadro - Number(periodoQuadro) * 24 * 60 * 60 * 1000;
   const leadsDoPeriodo = leads.filter((item) => limitePeriodo === null || +new Date(item.atualizado_em) >= limitePeriodo);
@@ -431,6 +438,7 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
             {avisosAbertos && <CentralAtencao leads={leads} momentos={momentosAtivos} etapas={etapasAtivas} onAbrir={(id) => { setSelecionado(id); setAvisosAbertos(false); }} onMeuDia={() => { trocarAba("dia"); setAvisosAbertos(false); }} />}
           </div>
           {podePescar && <button type="button" className="f2-pescar-secundario" disabled={busy} onClick={abrirPesca}>Pescar lead{aquario.length > 0 ? ` · ${aquario.length}` : ""}</button>}
+          {podeAdicionarCliente && <button type="button" className="f2-pescar-secundario" disabled={busy} onClick={() => setAdicionarClienteAberto(true)}>Adicionar cliente</button>}
           <button type="button" className="f2-pescar" onClick={() => setModal("negociacao")}>Novo negócio</button>
         </div>
       </header>
@@ -558,6 +566,12 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
       {modal === "visita" && <ModalVisita key={lead?.id ?? "nova-visita"} leads={leads} leadFoco={lead} busy={busy} erroExterno={erro} onFechar={() => setModal(null)} onSalvar={(dados) => executar("salvarVisita", dados)} />}
       {modal === "negociacao" && <ModalNegociacao leads={leads} leadFoco={lead} busy={busy} onFechar={() => setModal(null)} onSalvar={(dados) => void executar("salvarNegociacao", dados)} />}
       {modal === "descartar" && lead && <ModalDescartar nome={lead.nome} busy={busy} onFechar={() => setModal(null)} onDescartar={(motivo, detalhe) => { void atualizar("descartar", { motivo, detalhe }).then((ok) => { if (ok) { setModal(null); setSelecionado(null); } }); }} />}
+      {adicionarClienteAberto && <AdicionarClienteModal accessToken={accessToken} onClose={() => setAdicionarClienteAberto(false)} onCreated={(funilLeadId) => { setAdicionarClienteAberto(false); void carregar().then(() => setSelecionado(funilLeadId)); }} />}
+      {negociacaoCanonicaLeadId && (() => {
+        const leadNegociacao = leads.find((item) => item.id === negociacaoCanonicaLeadId);
+        if (!leadNegociacao) return null;
+        return <IniciarNegociacaoModal accessToken={accessToken} lead={leadNegociacao} negocios={negociosVinculados.filter((item) => item.funil_lead_id === leadNegociacao.id)} onClose={() => setNegociacaoCanonicaLeadId(null)} onSent={carregar} onOpenEsteira={() => { setNegociacaoCanonicaLeadId(null); trocarAba("vendas"); }} />;
+      })()}
 
       {chatDireto && (chatDireto.lead_id > 0 ? <Funil2ConversationDrawer accessToken={accessToken} leadId={chatDireto.id} nome={chatDireto.nome} onClose={fecharChatDireto} /> : <div className="f2-acao-painel-overlay" onMouseDown={(evento) => { if (evento.target === evento.currentTarget) fecharChatDireto(); }}><section className="f2-acao-painel" role="dialog" aria-label={`Chat de ${chatDireto.nome}`}><header><strong>Conversa</strong><button type="button" aria-label="Fechar chat" onClick={fecharChatDireto}>×</button></header><p>Este lead ainda não possui uma conversa vinculada.</p></section></div>)}
 
@@ -568,12 +582,14 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
         onMomento={(codigo, prazo, obs) => void atualizar("atualizarMomento", { momentoCodigo: codigo, prazoCombinado: prazo || null, observacao: obs })}
         onTemperatura={(temperatura) => atualizar("atualizarTemperatura", { temperatura })}
         onAgendarVisita={() => setModal("visita")}
+        onIniciarNegociacao={() => { setSelecionado(null); setNegociacaoCanonicaLeadId(lead.id); }}
         onGerarNegociacao={() => setModal("negociacao")}
         onSalvarNegociacao={(etapa) => negociacaoLead ? executar("salvarNegociacao", { id: negociacaoLead.id, leadId: lead.id, titulo: negociacaoLead.titulo, etapa, valor: negociacaoLead.valor, observacao: negociacaoLead.observacao }) : Promise.resolve(false)}
         onAbrirEsteira={() => { setSelecionado(null); trocarAba("vendas"); }}
         onDescartar={() => setModal("descartar")}
         onSalvarNota={(texto) => executar("salvarNota", { leadId: lead.id, texto })}
         onTagSalva={() => void carregar()}
+        onRecarregar={carregar}
       />}
     </div>
   );
@@ -987,15 +1003,15 @@ function Modal({ titulo, texto, onFechar, children }: { titulo:string; texto:str
 }
 
 function Detalhe({
-  abrirNoChat, accessToken, lead, negociacao, negocios, imoveis, arquivos, arquivosEstado, momento, momentos, etapas, eventos, notas, atividades, visitas, tagCatalogo, busy, onFechar, onMomento, onTemperatura, onAgendarVisita, onGerarNegociacao, onSalvarNegociacao, onAbrirEsteira, onDescartar, onSalvarNota, onTagSalva }: {
+  abrirNoChat, accessToken, lead, negociacao, negocios, imoveis, arquivos, arquivosEstado, momento, momentos, etapas, eventos, notas, atividades, visitas, tagCatalogo, busy, onFechar, onMomento, onTemperatura, onAgendarVisita, onIniciarNegociacao, onGerarNegociacao, onSalvarNegociacao, onAbrirEsteira, onDescartar, onSalvarNota, onTagSalva, onRecarregar }: {
   accessToken: string;
   lead: LeadFunil2; negociacao: NegociacaoFunil2 | null; negocios: NegocioVinculadoFunil2[]; imoveis: ImovelVinculadoFunil2[]; arquivos: ArquivoVinculadoFunil2[]; arquivosEstado: "ok" | "sem_vinculo" | "erro"; momento: MomentoFunil2; momentos: MomentoFunil2[]; etapas: EtapaConfigFunil2[]; eventos: EventoFunil2[]; notas: NotaFunil2[]; atividades: AtividadeFunil2[]; visitas: VisitaFunil2[]; tagCatalogo: TagCatalogoFunil2[]; busy: boolean;
   onFechar: () => void; onMomento: (codigo: string, prazo: string, obs: string) => void;
   onTemperatura: (temperatura: TemperaturaLead | null) => Promise<boolean>;
-  onAgendarVisita: () => void; onGerarNegociacao: () => void; onAbrirEsteira: () => void;
+  onAgendarVisita: () => void; onIniciarNegociacao: () => void; onGerarNegociacao: () => void; onAbrirEsteira: () => void;
   onSalvarNegociacao: (etapa: NegociacaoFunil2["etapa"]) => Promise<boolean>;
   onDescartar: () => void; onSalvarNota: (texto: string) => Promise<boolean>;
-  onTagSalva: () => void;
+  onTagSalva: () => void; onRecarregar: () => Promise<void>;
   abrirNoChat?: boolean;
 }) {
   const [codigo, setCodigo] = useState(lead.momento_codigo);
@@ -1010,6 +1026,7 @@ function Detalhe({
   const [saraAberta, setSaraAberta] = useState(false);
   const [comentarioAberto, setComentarioAberto] = useState(false);
   const [filtroHistorico, setFiltroHistorico] = useState<"todos" | "humanos" | "automaticos">("todos");
+  const [dadosSujos, setDadosSujos] = useState(false);
   const tituloFichaId = useId();
   const painelFichaId = useId();
   const dialogRef = useRef<HTMLElement>(null);
@@ -1029,6 +1046,9 @@ function Detalhe({
     const automatizado = /sara|automa|sistema/i.test(`${evento.titulo} ${evento.detalhe}`);
     return filtroHistorico === "automaticos" ? automatizado : !automatizado;
   });
+  const confirmarSaidaDados = useCallback(() => !dadosSujos || window.confirm("Há alterações não salvas nos dados do lead. Deseja descartá-las?"), [dadosSujos]);
+  const fecharFicha = useCallback(() => { if (confirmarSaidaDados()) onFechar(); }, [confirmarSaidaDados, onFechar]);
+  const trocarAbaDetalhe = useCallback((proxima: typeof abaDetalhe) => { if (proxima === abaDetalhe || confirmarSaidaDados()) setAbaDetalhe(proxima); }, [abaDetalhe, confirmarSaidaDados]);
 
   useEffect(() => {
     focoOrigemRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
@@ -1056,13 +1076,13 @@ function Detalhe({
       else if (tagAberta) setTagAberta(false);
       else if (maisAcoes) setMaisAcoes(false);
       else if (temperaturaAberta) setTemperaturaAberta(false);
-      else onFechar();
+      else fecharFicha();
     };
     document.addEventListener("keydown", fecharComEscape);
     return () => document.removeEventListener("keydown", fecharComEscape);
-  }, [chatAberto, maisAcoes, onFechar, tagAberta, temperaturaAberta]);
+  }, [chatAberto, fecharFicha, maisAcoes, tagAberta, temperaturaAberta]);
 
-  return <div className="f2-overlay" onMouseDown={(evento) => { if (evento.target === evento.currentTarget) onFechar(); }}>
+  return <div className="f2-overlay" onMouseDown={(evento) => { if (evento.target === evento.currentTarget) fecharFicha(); }}>
     <aside ref={dialogRef} className="f2-detalhe" role="dialog" aria-modal="true" aria-labelledby={tituloFichaId} aria-label={`Atendimento de ${lead.nome}`}>
       <header className="f2-ficha-cabecalho">
         <div className="f2-ficha-linha-topo">
@@ -1078,8 +1098,9 @@ function Detalhe({
             {whatsapp ? <a href={whatsapp} target="_blank" rel="noreferrer">WhatsApp</a> : <button type="button" disabled>WhatsApp</button>}
             <button type="button" onClick={onAgendarVisita}>Agendar visita</button>
             <Link href={`/agenda?lead=${encodeURIComponent(String(lead.lead_id || lead.id))}`}>Nova atividade</Link>
-            <span><button type="button" aria-expanded={maisAcoes} onClick={() => setMaisAcoes((valor) => !valor)}>Mais <b>⌄</b></button>{maisAcoes && <div className="f2-mais-menu" role="menu"><button type="button" onClick={() => { setMaisAcoes(false); onGerarNegociacao(); }}>Gerar negociação</button><button type="button" onClick={() => { setMaisAcoes(false); setTagAberta(true); }}>Adicionar tag</button><button type="button" disabled={busy} onClick={() => { setMaisAcoes(false); onMomento(lead.momento_codigo, "", "Momento revalidado pela ficha"); }}>Atualizar prazo do momento</button><hr /><button type="button" className="risco" onClick={() => { setMaisAcoes(false); onDescartar(); }}>Descartar lead</button></div>}</span>
-            <button type="button" className="f2-ficha-fechar" onClick={onFechar} aria-label="Fechar ficha">×</button>
+            <button type="button" className="f2-iniciar-negociacao" onClick={onIniciarNegociacao}>Iniciar negociação</button>
+            <span><button type="button" aria-expanded={maisAcoes} onClick={() => setMaisAcoes((valor) => !valor)}>Mais <b>⌄</b></button>{maisAcoes && <div className="f2-mais-menu" role="menu"><button type="button" onClick={() => { setMaisAcoes(false); onGerarNegociacao(); }}>Novo negócio operacional</button><button type="button" onClick={() => { setMaisAcoes(false); setTagAberta(true); }}>Adicionar tag</button><button type="button" disabled={busy} onClick={() => { setMaisAcoes(false); onMomento(lead.momento_codigo, "", "Momento revalidado pela ficha"); }}>Atualizar prazo do momento</button><hr /><button type="button" className="risco" onClick={() => { setMaisAcoes(false); onDescartar(); }}>Descartar lead</button></div>}</span>
+            <button type="button" className="f2-ficha-fechar" onClick={fecharFicha} aria-label="Fechar ficha">×</button>
           </div>
         </div>
 
@@ -1099,7 +1120,7 @@ function Detalhe({
           abas[proxima]?.click();
           abas[proxima]?.focus();
         }}>
-          {([ ["atendimento", "Atendimento", ""], ["historico", "Histórico", ""], ["atividades", "Atividades", String(contagemAtividades)], ["negocios", "Negócios", String(contagemNegocios)], ["imoveis", "Imóveis", String(imoveis.length)], ["arquivos", "Arquivos", String(arquivos.length)], ["dados", "Dados do lead", ""] ] as const).map(([chave, rotulo, contador]) => <button key={chave} id={`${painelFichaId}-${chave}-tab`} aria-controls={`${painelFichaId}-painel`} type="button" role="tab" aria-selected={abaDetalhe === chave} tabIndex={abaDetalhe === chave ? 0 : -1} className={abaDetalhe === chave ? "ativa" : ""} onClick={() => setAbaDetalhe(chave)}>{rotulo}{contador && <span>{contador}</span>}</button>)}
+          {([ ["atendimento", "Atendimento", ""], ["historico", "Histórico", ""], ["atividades", "Atividades", String(contagemAtividades)], ["negocios", "Negócios", String(contagemNegocios)], ["imoveis", "Imóveis", String(imoveis.length)], ["arquivos", "Arquivos", String(arquivos.length)], ["dados", "Dados do lead", ""] ] as const).map(([chave, rotulo, contador]) => <button key={chave} id={`${painelFichaId}-${chave}-tab`} aria-controls={`${painelFichaId}-painel`} type="button" role="tab" aria-selected={abaDetalhe === chave} tabIndex={abaDetalhe === chave ? 0 : -1} className={abaDetalhe === chave ? "ativa" : ""} onClick={() => trocarAbaDetalhe(chave)}>{rotulo}{contador && <span>{contador}</span>}</button>)}
         </nav>
       </header>
 
@@ -1129,7 +1150,7 @@ function Detalhe({
 
           {abaDetalhe === "arquivos" && <section className="f2-ficha-bloco"><header><h3>Arquivos</h3><button type="button" className="f2-secundario" onClick={onAbrirEsteira}>Abrir Esteira</button></header>{arquivosEstado === "erro" ? <div className="f2-ficha-vazio" role="alert"><strong>Arquivos indisponíveis</strong><span>A fonte canônica não pôde ser consultada com esta sessão.</span></div> : arquivos.length ? <div className="f2-ficha-lista">{arquivos.map((arquivo) => <article key={arquivo.id}><div><strong>{arquivo.nome}</strong><span>Negócio #{arquivo.negocio_id}</span></div><time>{dataCurta(arquivo.criado_em)}</time><em>{arquivo.status}</em></article>)}</div> : <div className="f2-ficha-vazio"><strong>Nenhum arquivo vinculado</strong><span>A Esteira não retornou documento acessível para os negócios desta ficha.</span></div>}</section>}
 
-          {abaDetalhe === "dados" && <section className="f2-ficha-bloco"><h3>Dados do lead</h3><div className="f2-ficha-dados-form"><label>Nome<input readOnly value={lead.nome} /></label><label>Telefone<input readOnly value={lead.telefone || "Sem dado cadastrado"} /></label><label>E-mail<input readOnly value={lead.email || "Sem dado cadastrado"} /></label><label>CPF/CNPJ<input readOnly value={lead.cpf_cnpj || "Sem dado cadastrado"} /></label><label>Origem<input readOnly value={lead.origem_cadastro || "Sem dado cadastrado"} /></label><label>Responsável<input readOnly value={lead.corretor_nome || "Não definido"} /></label><label>Endereço<input readOnly value={lead.endereco || "Sem dado cadastrado"} /></label><label>Negócio de origem<input readOnly value={`#${lead.origem_negocio_id}`} /></label></div><p className="f2-ficha-dados-aviso">Consulta protegida pela permissão atual. A edição exige contrato canônico de auditoria ainda não disponível; nenhum salvamento é simulado.</p><footer><button type="button" className="risco" onClick={onDescartar}>Descartar lead</button></footer></section>}
+          {abaDetalhe === "dados" && <LeadDataEditor key={`${lead.id}:${lead.lead_atualizado_em ?? "sem-versao"}`} accessToken={accessToken} lead={lead} onSaved={onRecarregar} onDirtyChange={setDadosSujos} />}
         </div>
       </div>
 

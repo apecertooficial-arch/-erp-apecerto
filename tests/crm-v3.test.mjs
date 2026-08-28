@@ -160,7 +160,7 @@ test("ficha desktop replica a arquitetura ampla e compacta aprovada no Claude De
 });
 
 test("ficha usa dados canônicos e não coleções vazias ou identidade fixa", () => {
-  assert.match(api, /select\("id,nome,telefone,email,origem,corretor_id,tags,extras"\)/);
+  assert.match(api, /select\("id,nome,telefone,email,origem,corretor_id,tags,extras,atualizado_em"\)/);
   assert.match(api, /from\("f2_negociacao"\)\.select/);
   assert.match(api, /funilLeadIds\.length; inicio \+= 100/);
   assert.doesNotMatch(api, /negociacoes:\s*\[\]/);

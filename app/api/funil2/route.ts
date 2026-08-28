@@ -27,9 +27,13 @@ function textoExtra(extras: unknown, chave: string): string | null {
 }
 
 function enderecoDoLead(extras: unknown): string | null {
-  const partes = ["endereco", "numero", "complemento", "bairro", "cidade", "estado", "cep"]
-    .map((chave) => textoExtra(extras, chave))
-    .filter((valor): valor is string => Boolean(valor));
+  const partes: string[] = [];
+  for (const chave of ["endereco", "numero", "complemento", "bairro", "cidade", "estado", "cep"]) {
+    const valor = textoExtra(extras, chave);
+    if (!valor) continue;
+    const acumulado = partes.join(", ").toLocaleLowerCase("pt-BR");
+    if (!acumulado.includes(valor.toLocaleLowerCase("pt-BR"))) partes.push(valor);
+  }
   return partes.length ? partes.join(", ") : null;
 }
 
@@ -161,7 +165,7 @@ export async function GET(request: Request) {
   }
   const negociosIds = [...new Set((leads ?? []).map((lead) => Number(lead.origem_negocio_id)).filter(Number.isFinite))];
   type NegocioOriginal = { id: number; lead_id: number; pipeline_id: number; stage_id: number | null; empreendimento_id: string | null; unidade_id: string | null; valor: number | null; status: string; criado_em: string; ultima_movimentacao: string | null };
-  type LeadOriginal = { id: number; nome: string | null; telefone: string | null; email: string | null; origem: string | null; corretor_id: number | null; tags: unknown; extras: unknown };
+  type LeadOriginal = { id: number; nome: string | null; telefone: string | null; email: string | null; origem: string | null; corretor_id: number | null; tags: unknown; extras: unknown; atualizado_em: string | null };
   const negocioLead = new Map<number, { leadId: number; valor: number | null }>();
   for (let inicio = 0; inicio < negociosIds.length; inicio += 500) {
     const { data: negocios, error } = await db.from("negocios").select("id,lead_id,valor").in("id", negociosIds.slice(inicio, inicio + 500));
@@ -178,7 +182,7 @@ export async function GET(request: Request) {
   const contextoPorLead = new Map<number, { original: LeadOriginal; tags: TagDoLead[]; interesse: string | null }>();
   const leadsOriginaisIds = [...new Set([...negocioLead.values()].map((negocio) => negocio.leadId))].filter(Number.isFinite);
   for (let inicio = 0; inicio < leadsOriginaisIds.length; inicio += 500) {
-    const { data: originais, error } = await db.from("leads").select("id,nome,telefone,email,origem,corretor_id,tags,extras").in("id", leadsOriginaisIds.slice(inicio, inicio + 500));
+    const { data: originais, error } = await db.from("leads").select("id,nome,telefone,email,origem,corretor_id,tags,extras,atualizado_em").in("id", leadsOriginaisIds.slice(inicio, inicio + 500));
     if (error) return Response.json({ error: "Não foi possível carregar a identidade real dos leads." }, { status: statusErroBanco(error) });
     for (const original of (originais ?? []) as LeadOriginal[]) {
       const tags = normalizarTagsDoLead(original.tags);
@@ -323,6 +327,7 @@ export async function GET(request: Request) {
       cpf_cnpj: textoExtra(original?.extras, "cpf_cnpj"),
       endereco: enderecoDoLead(original?.extras),
       origem_cadastro: original?.origem ?? null,
+      lead_atualizado_em: original?.atualizado_em ?? null,
       interesse: contexto?.interesse ?? null,
       tags: contexto?.tags ?? [],
       instancia_rotulo: instancia?.rotulo ?? null,

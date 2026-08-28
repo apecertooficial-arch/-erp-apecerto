@@ -247,6 +247,8 @@ export type LeadFunil2 = {
   descarte_detalhe?: string | null;
   versao: number;
   atualizado_em: string;
+  /** Versão otimista da identidade em leads, distinta da versão operacional do cartão. */
+  lead_atualizado_em?: string | null;
 };
 
 export type EventoFunil2 = {
