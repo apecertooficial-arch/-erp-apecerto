@@ -97,6 +97,10 @@ test("navegação aprovada existe em desktop e mobile", () => {
   }
   assert.match(mobile, /aria-label="Navegação do Funil"/);
   for (const label of ["Meu Dia", "Funil", "Leads", "Agenda", "Visitas"]) assert.match(mobile, new RegExp(`>${label}<`));
+  assert.match(workspace, /<Link href="\/agenda"><Icone nome="atividades" \/> Atividades/);
+  assert.match(workspace, /href=\{`\/agenda\?lead=/);
+  assert.match(mobile, /href=\{`\/agenda\?lead=/);
+  assert.doesNotMatch(`${workspace}\n${mobile}`, /href=\{?`?\/tarefas(?:\?|["`])/);
 });
 
 test("menu, arrasto e massa convergem no mesmo motor canônico", () => {
