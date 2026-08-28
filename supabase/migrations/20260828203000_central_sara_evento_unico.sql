@@ -172,15 +172,20 @@ begin
   if coalesce(p_source_id,'')='' then raise exception 'SARA_CHECKPOINT_SOURCE_REQUIRED'; end if;
 
   perform pg_advisory_xact_lock(hashtextextended('sara-checkpoint:'||p_funil_lead_id::text,0));
-  select f,coalesce(l.nome,f.nome,'Lead'),coalesce(l.telefone,f.telefone,''),coalesce(l.email,'')
-    into v_lead,v_nome,v_telefone,v_email
+  select f into v_lead
     from public.f2_lead f
-    join public.negocios n on n.id=f.origem_negocio_id
-    left join public.leads l on l.id=n.lead_id
    where f.id=p_funil_lead_id
-   for update of f;
+   for update;
   if not found or not public.f2_sara_evento_elegivel(p_funil_lead_id) then return null; end if;
   if v_lead.versao<>p_lead_version then raise exception 'SARA_CHECKPOINT_STALE_VERSION'; end if;
+
+  select coalesce(l.nome,v_lead.nome,'Lead'),
+         coalesce(l.telefone,v_lead.telefone,''),
+         coalesce(l.email,'')
+    into v_nome,v_telefone,v_email
+    from public.negocios n
+    left join public.leads l on l.id=n.lead_id
+   where n.id=v_lead.origem_negocio_id;
 
   select id into v_id from public.motor_fila
    where automacao_id=49
