@@ -46,7 +46,7 @@ export const rotasModulo: Record<ModuleName, RotaModulo> = {
      o corretor vai encontrar, nao onde ele esta. */
   "Início": { path: "/inicio", slugs: ["dashboard"], classe: "A", rotuloCurto: "Meu Dia", mobile: true },
   "Central de Comando": { path: "/inteligencia", slugs: ["dashboard"], classe: "B", rotuloCurto: "Comando", mobile: false },
-  CRM: { path: "/crm", slugs: ["crm", "leads", "pipeline"], classe: "A", rotuloCurto: "CRM", mobile: true },
+  CRM: { path: "/crm", slugs: ["crm", "leads", "pipeline"], classe: "A", rotuloCurto: "Funil", mobile: true },
   "Calendário": { path: "/agenda", slugs: ["calendario"], classe: "A", rotuloCurto: "Agenda", mobile: true },
   "Notificações": { path: "/notificacoes", slugs: ["notificacoes"], classe: "A", rotuloCurto: "Avisos", mobile: true },
   Produtos: { path: "/produtos", slugs: ["produtos"], classe: "A", rotuloCurto: "Produtos", mobile: true },

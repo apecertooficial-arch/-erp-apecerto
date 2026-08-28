@@ -117,7 +117,7 @@
      Precisa continuar visível -- lead bom já foi descartado por não achar esta
      saída. Mas é plano B: vira uma linha sublinhada sob o botão, não uma caixa
      laranja que pesa mais que a ação principal. Vence a regra `body
-     .ncrm-wa-alt` de funil-2.css por especificidade, sem !important. */
+     .ncrm-wa-alt` de funil.css por especificidade, sem !important. */
   .ape-acoes .ncrm-wa-alt,
   .ape-ficha-acao .ncrm-wa-alt {
     display: block; min-height: 36px; margin-top: 8px; padding: 8px 4px 0;

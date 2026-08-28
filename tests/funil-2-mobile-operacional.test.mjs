@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 
 const ler = (caminho) => readFileSync(new URL(caminho, import.meta.url), "utf8");
 const MOBILE = ler("../app/features/funil-2/Funil2Mobile.tsx");
-const ENTRADA = `${ler("../app/(erp)/crm/page.tsx")}\n${ler("../app/features/funil-2/CrmEntry.tsx")}`;
+const ENTRADA = `${ler("../app/(erp)/crm/page.tsx")}\n${ler("../app/features/funil-2/FunilEntry.tsx")}`;
 const INICIO = ler("../app/features/home/InicioApp.tsx");
 const CSS = ler("../app/styles/app-mobile.css");
 const CSS_APROVADO = ler("../app/styles/app-mobile-aprovado.css");
@@ -51,11 +51,20 @@ test("a folha mobile antiga não mantém estruturas mortas do aplicativo", () =>
 });
 
 test("CRM mobile troca o quadro de desktop por busca, filtros e cartões", () => {
-  assert.match(MOBILE, /placeholder="Buscar cliente ou telefone"/);
+  assert.match(MOBILE, /placeholder="Buscar"/);
+  assert.match(MOBILE, /className="ape-filtros-menu"/);
   for (const etapa of ["Lead novo", "Tentando contato", "Em atendimento", "Pós-visita"]) {
     assert.ok(MOBILE.includes(etapa), `falta filtro ${etapa}`);
   }
   assert.match(MOBILE, /modo: "inicio" \| "crm"/);
+  assert.ok(MOBILE.includes('className="ape-novo-negocio-fixo"'));
+  assert.match(MOBILE, />Novo negócio<\/button>/);
+  assert.match(MOBILE, /GerarNegociacaoMobile lead=\{leadNovoNegocio\}/);
+  assert.match(MOBILE, /valorCompacto\(lead\)/);
+  assert.doesNotMatch(MOBILE, />Ativos<\/button>/);
+  assert.match(MOBILE, /rotuloEtapaMobile/);
+  assert.match(MOBILE, /acaoCompactaMobile/);
+  assert.match(MOBILE, /aria-label="Abrir a Sara"/);
 });
 
 test("WhatsApp continua nativo: a tela não chama endpoint de envio", () => {

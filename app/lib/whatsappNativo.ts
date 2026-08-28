@@ -67,18 +67,18 @@ export function normalizarTelefone(bruto: string | null | undefined): ResultadoT
   let corpo = d;
   if (d.length > 11) {
     if (!d.startsWith("55")) {
-      return { ok: false, motivo: "pais_nao_suportado", explicacao: "O numero parece ser de outro pais. Confira o cadastro." };
+      return { ok: false, motivo: "pais_nao_suportado", explicacao: "O número parece ser de outro país. Confira o cadastro." };
     }
     corpo = d.slice(2);
   }
 
-  if (corpo.length < 10) return { ok: false, motivo: "curto_demais", explicacao: "O telefone esta incompleto. Faltam digitos." };
-  if (corpo.length > 11) return { ok: false, motivo: "longo_demais", explicacao: "O telefone tem digitos a mais. Confira o cadastro." };
+  if (corpo.length < 10) return { ok: false, motivo: "curto_demais", explicacao: "O telefone está incompleto. Faltam dígitos." };
+  if (corpo.length > 11) return { ok: false, motivo: "longo_demais", explicacao: "O telefone tem dígitos a mais. Confira o cadastro." };
 
   const ddd = corpo.slice(0, 2);
   const numero = corpo.slice(2);
   if (!dddExiste(ddd)) {
-    return { ok: false, motivo: "ddd_invalido", explicacao: `DDD ${ddd} nao existe no Brasil. Confira o cadastro.` };
+    return { ok: false, motivo: "ddd_invalido", explicacao: `DDD ${ddd} não existe no Brasil. Confira o cadastro.` };
   }
   if (numero.length === 9 && !numero.startsWith("9")) {
     return { ok: false, motivo: "celular_sem_nove", explicacao: "Numero de 9 digitos precisa comecar com 9." };
