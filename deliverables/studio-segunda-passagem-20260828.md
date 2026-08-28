@@ -55,7 +55,7 @@ Na produção observada, AP0358 e AP0348 carregaram, o board expôs filtros de c
 
 ## Checks executados
 
-- `node --test tests/*.mjs`: **508/508 pass** (a árvore atual contém 508 testes; nenhum falhou).
+- `node --test tests/*.mjs`: **509/509 pass**.
 - `vinext build`: **concluído**.
 - ESLint: **0 erros, 22 avisos legados** (principalmente `<img>` e símbolos não usados fora do Studio).
 - Fixture local: dois códigos, oito peças, 20 templates, seleção de formato, geração sandbox e contexto de copiloto observados no navegador.
