@@ -83,6 +83,7 @@ import "./styles/app-mobile-gestor.css";
 /* Funil: folha canônica única e final. Carregada depois das bases compartilhadas
    porque contém desktop e mobile completos do produto, sem segunda pele. */
 import "./styles/funil.css";
+// Folha anterior removida: import "./styles/funil-2.css" (mantido apenas como referência histórica).
 /* Módulo nativo de produção editorial. Carrega por último porque suas classes
    são totalmente isoladas sob .studio-* e consomem os tokens oficiais. */
 import "./styles/apecerto-studio.css";
