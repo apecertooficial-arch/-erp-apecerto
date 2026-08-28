@@ -9,17 +9,17 @@ const formats: StudioFormat[] = ["feed", "carousel", "story", "reel"];
 const pieceId = (index: number) => `53000000-0000-4000-8000-00000000000${index + 1}`;
 const versionId = (index: number) => `54000000-0000-4000-8000-00000000000${index + 1}`;
 
-const fixture: StudioData = {
+const fixtureBase: StudioData = {
   organizationId: org,
   timezone: "America/Sao_Paulo",
   campaigns: [{
     id: campaignId,
-    nome: "Moema · setembro",
+    nome: "AP0358 · Moema · setembro",
     objetivo: "Gerar interesse qualificado e visitas para um apartamento pronto para morar.",
     periodo_inicio: "2026-09-01",
     periodo_fim: "2026-09-30",
     status: "em_revisao",
-    produto_codigo: "APTESTE-81",
+    produto_codigo: "AP0358",
     produto_alterado_em: null,
     produto_alterado_motivo: null,
     snapshot_atual_id: snapshotId,
@@ -31,7 +31,7 @@ const fixture: StudioData = {
     id: snapshotId,
     campaign_id: campaignId,
     versao: 1,
-    produto_codigo: "APTESTE-81",
+    produto_codigo: "AP0358",
     fatos: { nome: "Apartamento ensolarado", bairro: "Moema", cidade: "São Paulo", area_m2: 87, dormitorios: 2, vagas: 1, preco: 1250000 },
     midias: [
       { storage_path: "homologacao/sala.jpg", is_capa: true },
@@ -113,6 +113,51 @@ const fixture: StudioData = {
     versao_publicada: 1,
     origem: variant === 0 ? "figma" : "design_system",
   }))),
+};
+
+// Dois cenários sanitizados, com os mesmos códigos usados na homologação, sem
+// consultar nem mutar o ERP. O segundo conjunto recebe IDs próprios para que
+// deep links, filtros e versões continuem determinísticos no isolamento.
+const cloneForCampaign = (value: unknown) => {
+  const text = JSON.stringify(value)
+    .replaceAll("51000000-0000-4000-8000-000000000001", "61000000-0000-4000-8000-000000000001")
+    .replaceAll("52000000-0000-4000-8000-000000000001", "62000000-0000-4000-8000-000000000001")
+    .replaceAll("53000000-0000-4000-8000-00000000000", "63000000-0000-4000-8000-00000000000")
+    .replaceAll("54000000-0000-4000-8000-00000000000", "64000000-0000-4000-8000-00000000000")
+    .replaceAll("55000000-0000-4000-8000-000000000001", "65000000-0000-4000-8000-000000000001")
+    .replaceAll("56000000-0000-4000-8000-000000000001", "66000000-0000-4000-8000-000000000001")
+    .replaceAll("57000000-0000-4000-8000-000000000001", "67000000-0000-4000-8000-000000000001")
+    .replaceAll("58000000-0000-4000-8000-", "68000000-0000-4000-8000-");
+  return JSON.parse(text);
+};
+const secondCampaign = cloneForCampaign(fixtureBase.campaigns[0]);
+secondCampaign.id = "61000000-0000-4000-8000-000000000001";
+secondCampaign.nome = "AP0348 · Moema · setembro";
+secondCampaign.produto_codigo = "AP0348";
+secondCampaign.objetivo = "Demonstrar um apartamento de dois dormitórios para famílias que valorizam espaço e mobilidade.";
+const secondSnapshot = cloneForCampaign(fixtureBase.snapshots[0]);
+secondSnapshot.id = "62000000-0000-4000-8000-000000000001";
+secondSnapshot.campaign_id = secondCampaign.id;
+secondSnapshot.produto_codigo = "AP0348";
+secondSnapshot.fatos = { ...secondSnapshot.fatos, nome: "Apartamento familiar ensolarado", dormitorios: 2, area_m2: 92 };
+const secondPieces = cloneForCampaign(fixtureBase.pieces);
+const secondVersions = cloneForCampaign(fixtureBase.versions);
+const secondSchedules = cloneForCampaign(fixtureBase.schedules);
+const secondJobs = cloneForCampaign(fixtureBase.jobs);
+const secondBriefs = cloneForCampaign(fixtureBase.briefs);
+for (const item of [...secondPieces, ...secondVersions, ...secondSchedules, ...secondJobs, ...secondBriefs]) {
+  if ("campaign_id" in item) item.campaign_id = secondCampaign.id;
+  if ("snapshot_id" in item) item.snapshot_id = secondSnapshot.id;
+}
+const fixture: StudioData = {
+  ...fixtureBase,
+  campaigns: [fixtureBase.campaigns[0], secondCampaign],
+  snapshots: [fixtureBase.snapshots[0], secondSnapshot],
+  pieces: [...fixtureBase.pieces, ...secondPieces],
+  versions: [...fixtureBase.versions, ...secondVersions],
+  schedules: [...fixtureBase.schedules, ...secondSchedules],
+  jobs: [...fixtureBase.jobs, ...secondJobs],
+  briefs: [...fixtureBase.briefs, ...secondBriefs],
 };
 
 export default function StudioVisualTestPage() {
