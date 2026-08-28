@@ -14,6 +14,8 @@ const shell = read("../app/features/system/ErpShell.tsx");
 const routes = read("../app/features/system/erp-routes.ts");
 const render = read("../render.yaml");
 const css = read("../app/styles/funil.css");
+const pwa = read("../app/components/RegistroPwa.tsx");
+const identityCss = read("../app/styles/redesign-apecerto.css");
 
 test("/crm possui uma única entrada oficial chamada Funil", () => {
   assert.doesNotMatch(route, /"use client"/);
@@ -89,6 +91,29 @@ test("ficha preserva foco, prende teclado e navega sete abas", () => {
     for (const label of sete) assert.match(source, new RegExp(`"${label}"`));
     assert.doesNotMatch(source, /experience ===|\["notas", "Notas"\]/);
   }
+});
+
+test("ficha desktop replica a arquitetura ampla e compacta aprovada no Claude Design", () => {
+  assert.match(workspace, /className="f2-ficha-identidade"/);
+  assert.match(workspace, /className="f2-ficha-acoes-topo"/);
+  assert.match(workspace, /className="[^"]*f2-ficha-proxima-faixa/);
+  assert.match(workspace, /className="f2-ficha-grade"/);
+  assert.match(workspace, /className="f2-ficha-contexto"/);
+  assert.match(workspace, /className="f2-ficha-painel"/);
+  assert.match(workspace, /Classificação do atendimento/);
+  assert.match(workspace, /onClick=\{onAgendarVisita\}>Agendar visita/);
+  assert.match(workspace, /Descartar sugestão/);
+  assert.match(workspace, /Responder pelo CRM/);
+  assert.match(workspace, /Abrir conversa completa/);
+  assert.match(workspace, /Comentários e notas/);
+  assert.match(css, /\.funil-oficial \.f2-detalhe\{width:min\(86vw,1040px\);min-width:720px/);
+  assert.match(css, /\.funil-oficial \.f2-ficha-grade\{[^}]*grid-template-columns:minmax\(220px,32%\) minmax\(0,1fr\)/);
+  assert.match(css, /\.funil-oficial \.f2-detalhe-abas\{[^}]*border-bottom:1px solid/);
+  assert.match(css, /\.funil-oficial \.f2-ficha-bloco \.f2-secundario\{width:auto;margin-top:0/);
+  assert.match(pwa, /className="erp-update-toast"/);
+  assert.doesNotMatch(pwa, /left: 16, right: 16/);
+  assert.match(identityCss, /body:has\(\[aria-label\^="Atendimento de"\]\) \.erp-update-toast/);
+  assert.match(identityCss, /@media\(max-width:900px\).*body:has\(\[aria-label\^="Atendimento de"\]\) \.erp-update-toast\{display:none\}/);
 });
 
 test("navegação aprovada existe em desktop e mobile", () => {

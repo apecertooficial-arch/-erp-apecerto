@@ -959,24 +959,36 @@ function Detalhe({
   const [maisAcoes, setMaisAcoes] = useState(false);
   const [tagAberta, setTagAberta] = useState(false);
   const [temperaturaAberta, setTemperaturaAberta] = useState(false);
+  const [saraAberta, setSaraAberta] = useState(false);
+  const [comentarioAberto, setComentarioAberto] = useState(false);
+  const [filtroHistorico, setFiltroHistorico] = useState<"todos" | "humanos" | "automaticos">("todos");
+  const tituloFichaId = useId();
+  const painelFichaId = useId();
   const dialogRef = useRef<HTMLElement>(null);
   const focoOrigemRef = useRef<HTMLElement | null>(null);
-  const config = momentos.find((m) => m.codigo === codigo) ?? momento;
   const situacao = situacaoPrazo(lead.proxima_acao_em);
   const tentativa = tentativaAtual(lead);
   const whatsapp = linkWhatsapp(lead.telefone);
   const temperatura = lead.temperatura ?? null;
   const temperaturaRotulo = rotuloTemperatura(temperatura) ?? "Aguardando leitura";
   const etapaRotulo = etapas.find((e) => e.codigo === lead.etapa)?.rotulo ?? lead.etapa;
+  const cadenciaRotulo = rotuloCadencia(lead) ?? "Sem cadência ativa";
+  const contagemAtividades = visitas.length + eventos.length;
+  const contagemNegocios = lead.origem_negocio_id ? 1 : 0;
+  const eventosVisiveis = eventos.filter((evento) => {
+    if (filtroHistorico === "todos") return true;
+    const automatizado = /sara|automa|sistema/i.test(`${evento.titulo} ${evento.detalhe}`);
+    return filtroHistorico === "automaticos" ? automatizado : !automatizado;
+  });
 
   useEffect(() => {
     focoOrigemRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    const quadro = requestAnimationFrame(() => dialogRef.current?.querySelector<HTMLElement>(".f2-ficha-fechar")?.focus());
+    const quadro = requestAnimationFrame(() => dialogRef.current?.querySelector<HTMLElement>(`#${CSS.escape(tituloFichaId)}`)?.focus());
     return () => {
       cancelAnimationFrame(quadro);
       focoOrigemRef.current?.focus();
     };
-  }, []);
+  }, [tituloFichaId]);
 
   useEffect(() => {
     const fecharComEscape = (evento: KeyboardEvent) => {
@@ -1002,33 +1014,32 @@ function Detalhe({
   }, [chatAberto, maisAcoes, onFechar, tagAberta, temperaturaAberta]);
 
   return <div className="f2-overlay" onMouseDown={(evento) => { if (evento.target === evento.currentTarget) onFechar(); }}>
-    <aside ref={dialogRef} className="f2-detalhe" role="dialog" aria-modal="true" aria-label={`Atendimento de ${lead.nome}`}>
+    <aside ref={dialogRef} className="f2-detalhe" role="dialog" aria-modal="true" aria-labelledby={tituloFichaId} aria-label={`Atendimento de ${lead.nome}`}>
       <header className="f2-ficha-cabecalho">
-        <div className="f2-ficha-titulo"><h2>{lead.nome}</h2><p>{lead.corretor_nome ?? "Sem responsável"}{lead.instancia_rotulo ? ` · ${lead.instancia_rotulo}` : ""} · negócio #{lead.origem_negocio_id}</p></div>
-        <button type="button" className="f2-ficha-fechar" onClick={onFechar} aria-label="Fechar ficha">×</button>
-        <div className="f2-ficha-chips">
-          <span className="f2-chip-resumo etapa"><small>Etapa</small>{etapaRotulo}</span>
-          <span className="f2-chip-resumo momento"><small>Momento</small>{momento.rotulo}</span>
+        <div className="f2-ficha-linha-topo">
+          <div className="f2-ficha-identidade"><i>{iniciais(lead.nome)}</i><span><h2 id={tituloFichaId} tabIndex={-1}>{lead.nome}</h2><p>{lead.corretor_nome ?? "Sem responsável"}{lead.instancia_rotulo ? ` · ${lead.instancia_rotulo}` : ""} · negócio #{lead.origem_negocio_id}</p></span></div>
+          <div className="f2-ficha-chips">
           <span className="f2-temperatura-controle">
-            <button type="button" className={`f2-chip-resumo temperatura temperatura-${temperatura ?? "aguardando"}`} aria-expanded={temperaturaAberta} aria-label={`Alterar temperatura. Atual: ${temperaturaRotulo}`} disabled={busy} onClick={() => setTemperaturaAberta((aberta) => !aberta)}><i /><small>Temp.</small>{temperaturaRotulo}<b>⌄</b></button>
+            <button type="button" className={`f2-chip-resumo temperatura temperatura-${temperatura ?? "aguardando"}`} aria-expanded={temperaturaAberta} aria-label={`Alterar temperatura. Atual: ${temperaturaRotulo}`} disabled={busy} onClick={() => setTemperaturaAberta((aberta) => !aberta)}><i />{temperaturaRotulo}<b>⌄</b></button>
             {temperaturaAberta && <div className="f2-temperatura-popover" role="dialog" aria-label="Alterar temperatura"><strong>Temperatura do lead</strong><p>Escolha a leitura que melhor representa a conversa atual.</p>{TEMPERATURAS.map((item) => <button type="button" key={item.codigo} className={`temperatura-${item.codigo}${temperaturaDoLead(lead) === item.codigo ? " ativa" : ""}`} disabled={busy} onClick={() => { const nova = item.codigo === "aguardando" ? null : item.codigo; void onTemperatura(nova).then((ok) => { if (ok) setTemperaturaAberta(false); }); }}><i />{item.rotulo}</button>)}</div>}
           </span>
-          <em className={`f2-chip-resumo prazo ${situacao.classe}`}><small>Prazo</small>{situacao.rotulo}</em>
+          <span className="f2-chip-resumo momento">{momento.rotulo}</span>
+          </div>
+          <div className="f2-ficha-acoes-topo">
+            {whatsapp ? <a href={whatsapp} target="_blank" rel="noreferrer">WhatsApp</a> : <button type="button" disabled>WhatsApp</button>}
+            <button type="button" onClick={onAgendarVisita}>Agendar visita</button>
+            <Link href={`/agenda?lead=${encodeURIComponent(String(lead.lead_id || lead.id))}`}>Nova atividade</Link>
+            <span><button type="button" aria-expanded={maisAcoes} onClick={() => setMaisAcoes((valor) => !valor)}>Mais <b>⌄</b></button>{maisAcoes && <div className="f2-mais-menu" role="menu"><button type="button" onClick={() => { setMaisAcoes(false); onGerarNegociacao(); }}>Gerar negociação</button><button type="button" onClick={() => { setMaisAcoes(false); setTagAberta(true); }}>Adicionar tag</button><button type="button" disabled={busy} onClick={() => { setMaisAcoes(false); onMomento(lead.momento_codigo, "", "Momento revalidado pela ficha"); }}>Atualizar prazo do momento</button><hr /><button type="button" className="risco" onClick={() => { setMaisAcoes(false); onDescartar(); }}>Descartar lead</button></div>}</span>
+            <button type="button" className="f2-ficha-fechar" onClick={onFechar} aria-label="Fechar ficha">×</button>
+          </div>
         </div>
-        <p className="f2-ficha-interesse">Interesse: <b>{lead.interesse ?? "Não identificado"}</b></p>
-      </header>
 
-      <div className="f2-ficha-corpo">
-        <section className="f2-proxima-acao" aria-label="Próxima ação">
-          <div className="f2-proxima-info"><span>Próxima ação</span>{momento.exige_dapi && <details className="f2-dapi-ajuda"><summary aria-label="Como esta tarefa é concluída">i</summary><p>A conclusão vem do D-API: o clique não fecha a tarefa; o envio confirmado no celular é a evidência.</p></details>}<em className={situacao.classe}>{situacao.rotulo}</em></div>
-          <div className="f2-proxima-conteudo"><div><h3>{acaoVisivel(lead)}</h3><p className="f2-proxima-contexto">{momento.descricao}</p></div><div className="f2-proxima-execucao">{whatsapp ? <a href={whatsapp} target="_blank" rel="noreferrer">{tentativa ? `WhatsApp · tentativa ${tentativa}` : "Abrir WhatsApp"}</a> : <button type="button" disabled>Telefone inválido</button>}<small>A confirmação do envio conclui a tarefa</small></div></div>
+        <section className="f2-proxima-acao f2-ficha-proxima-faixa" aria-label="Próxima ação">
+          <div><span>Próxima ação</span><strong>{acaoVisivel(lead)}</strong></div>
+          <em className={situacao.classe}>{situacao.rotulo}</em>
+          {whatsapp ? <a href={whatsapp} target="_blank" rel="noreferrer">{tentativa ? `Confirmar tentativa ${tentativa}` : "Confirmar ação"}</a> : <button type="button" disabled>Telefone inválido</button>}
+          {momento.exige_dapi && <small>A conclusão vem do D-API — o envio confirmado no celular é a evidência.</small>}
         </section>
-
-        <div className="f2-ficha-acoes">
-          <button type="button" onClick={() => setChatAberto(true)}>Chat</button>
-          <button type="button" onClick={onAgendarVisita}>Agendar visita</button>
-          <span><button type="button" aria-expanded={maisAcoes} onClick={() => setMaisAcoes((valor) => !valor)}>Mais ações</button>{maisAcoes && <div className="f2-mais-menu" role="menu"><button type="button" onClick={() => { setMaisAcoes(false); onGerarNegociacao(); }}>Gerar negociação</button><button type="button" onClick={() => { setMaisAcoes(false); setTagAberta(true); }}>Adicionar tag</button><hr /><button type="button" className="risco" onClick={() => { setMaisAcoes(false); onDescartar(); }}>Descartar lead</button></div>}</span>
-        </div>
 
         <nav className="f2-detalhe-abas" aria-label="Áreas do atendimento" role="tablist" onKeyDown={(evento) => {
           if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(evento.key)) return;
@@ -1039,33 +1050,37 @@ function Detalhe({
           abas[proxima]?.click();
           abas[proxima]?.focus();
         }}>
-          {([ ["atendimento", "Atendimento"], ["historico", "Histórico"], ["atividades", "Atividades"], ["negocios", "Negócios"], ["imoveis", "Imóveis"], ["arquivos", "Arquivos"], ["dados", "Dados do lead"] ] as const).map(([chave, rotulo]) => <button key={chave} type="button" role="tab" aria-selected={abaDetalhe === chave} className={abaDetalhe === chave ? "ativa" : ""} onClick={() => setAbaDetalhe(chave)}>{rotulo}</button>)}
+          {([ ["atendimento", "Atendimento", ""], ["historico", "Histórico", ""], ["atividades", "Atividades", String(contagemAtividades)], ["negocios", "Negócios", String(contagemNegocios)], ["imoveis", "Imóveis", ""], ["arquivos", "Arquivos", "0"], ["dados", "Dados do lead", ""] ] as const).map(([chave, rotulo, contador]) => <button key={chave} id={`${painelFichaId}-${chave}-tab`} aria-controls={`${painelFichaId}-painel`} type="button" role="tab" aria-selected={abaDetalhe === chave} tabIndex={abaDetalhe === chave ? 0 : -1} className={abaDetalhe === chave ? "ativa" : ""} onClick={() => setAbaDetalhe(chave)}>{rotulo}{contador && <span>{contador}</span>}</button>)}
         </nav>
+      </header>
 
-        <div className="f2-detalhe-conteudo">
+      <div className="f2-ficha-grade">
+        <aside className="f2-ficha-contexto" aria-label="Contexto do lead">
+          <section><span>Identidade</span><dl><div><dt>Telefone</dt><dd>{lead.telefone || "Não informado"}</dd></div><div><dt>E-mail</dt><dd>Não informado</dd></div><div><dt>CPF/CNPJ</dt><dd>Não informado</dd></div><div><dt>Origem</dt><dd>{lead.instancia_rotulo || "Não identificada"}</dd></div><div><dt>Corretor</dt><dd>{lead.corretor_nome || "Não definido"}</dd></div><div><dt>Endereço</dt><dd>Não informado</dd></div></dl></section>
+          <section><span>Interesse e tags</span><strong>{lead.interesse || "Ainda não identificado"}</strong><div className="f2-ficha-tags">{lead.tags?.map((tag) => <i key={tag.nome}>{tag.nome}</i>)}<button type="button" onClick={() => setTagAberta(true)}>+ tag</button></div></section>
+          <section><span>Cadência</span><strong>{cadenciaRotulo}</strong><small>A data é calculada no banco em dias úteis; a tela mostra o rótulo.</small></section>
+          <section><span>Atendimento</span><dl><div><dt>Etapa</dt><dd><span className="f2-chip-resumo etapa">{etapaRotulo}</span></dd></div><div><dt>Status</dt><dd>{momento.rotulo}</dd></div><div><dt>Última ação</dt><dd>{dataCurta(lead.ultima_acao_confirmada_em)}</dd></div><div><dt>Nota do atendimento</dt><dd>{lead.qualidade_atendimento_nota == null ? "Ainda não avaliado" : `${Number(lead.qualidade_atendimento_nota).toFixed(1)}/10`}</dd></div><div><dt>Canal</dt><dd>{lead.instancia_rotulo || "Não identificado"}</dd></div></dl><button type="button" onClick={() => setChatAberto(true)}>Abrir atendimento</button></section>
+        </aside>
+
+        <div id={`${painelFichaId}-painel`} className="f2-ficha-painel" role="tabpanel" aria-labelledby={`${painelFichaId}-${abaDetalhe}-tab`}>
           {abaDetalhe === "atendimento" && <>
-            <section className="f2-sara-resumo f2-sara-aprovado"><span>LEITURA DA SARA</span><p className="f2-sara-frase">{lead.ultima_reavaliacao_resumo ?? "Ainda não existe uma leitura resumida."}</p>{lead.qualidade_atendimento_resumo ? <details><summary>Ver avaliação do atendimento</summary><small>{lead.qualidade_atendimento_resumo}</small></details> : null}</section>
-            <details className="f2-detalhes-atendimento">
-              <summary>Detalhes do atendimento <span>última ação {dataCurta(lead.ultima_acao_confirmada_em)} · nota {lead.qualidade_atendimento_nota == null ? "ainda não avaliada" : `${Number(lead.qualidade_atendimento_nota).toFixed(1)}/10`}</span></summary>
-              <div className="f2-detalhes-indicadores"><div><span>Última ação confirmada</span><b>{dataCurta(lead.ultima_acao_confirmada_em)}</b></div><div><span>Sara reavaliou</span><b>{dataCurta(lead.ultima_reavaliacao_sara_em)}</b></div><div><span>Nota do atendimento</span><b>{lead.qualidade_atendimento_nota == null ? "Ainda não avaliado" : `${Number(lead.qualidade_atendimento_nota).toFixed(1)}/10`}</b></div></div>
-              <dl className="f2-detalhes-cliente"><div><dt>Telefone</dt><dd>{lead.telefone || "Não informado"}</dd></div><div><dt>Responsável</dt><dd>{lead.corretor_nome || "Não definido"}</dd></div><div><dt>Canal</dt><dd>{lead.instancia_rotulo || "Não identificado"}</dd></div></dl>
-              <div className="f2-dados-tags"><strong>Tags associadas</strong>{lead.tags?.length ? <div>{lead.tags.map((tag) => <span key={tag.nome}><i style={tag.cor ? { backgroundColor: tag.cor } : undefined} />{tag.nome}</span>)}</div> : <p>Nenhuma tag associada.</p>}</div>
-              <p>A Sara confere o histórico, valida o momento oficial e gera a próxima obrigação. A temperatura vem da conversa; quente e negociando exigem evidência e confiança mínima.</p>
-            </details>
-            <section className="f2-atualizar f2-atualizar-aprovado"><h3>O cliente continua aqui ou mudou?</h3><p className="f2-explica">Se nada mudou, confirme o mesmo momento: o prazo reinicia e a atualização fica registrada.</p><div className="f2-atualizar-campos"><label>Momento oficial<select value={codigo} onChange={(e) => setCodigo(e.target.value)}>{momentos.map((m) => <option key={m.codigo} value={m.codigo}>{etapas.find((e) => e.codigo === m.etapa)?.rotulo} · {m.rotulo}</option>)}</select></label>{codigo === "RETORNO_PROGRAMADO" && <label>Data e hora combinadas<input type="datetime-local" value={prazo} onChange={(e) => setPrazo(e.target.value)} /></label>}</div><div className="f2-preview"><span>Próxima ação</span><b>{config.acao_rotulo}</b><small>Prazo padrão: {config.prazo_rotulo}</small></div><label>Observação<textarea value={obs} onChange={(e) => setObs(e.target.value)} placeholder="Por que este é o momento correto?" maxLength={500} /></label><button type="button" className="f2-secundario" disabled={busy} onClick={() => onMomento(codigo, prazo, obs)}>{busy ? "Atualizando…" : codigo === lead.momento_codigo ? "Continua neste momento · atualizar prazo" : "Salvar novo momento e prazo"}</button></section>
+            <section className="f2-ficha-bloco"><h3>Classificação do atendimento</h3><div className="f2-ficha-classificacao"><label>Momento<select value={codigo} disabled={busy} onChange={(e) => { const valor = e.target.value; setCodigo(valor); onMomento(valor, prazo, obs); }}>{momentos.map((m) => <option key={m.codigo} value={m.codigo}>{m.rotulo}</option>)}</select></label><label>Temperatura<select value={temperatura ?? "aguardando"} disabled={busy} onChange={(e) => { const valor = e.target.value; void onTemperatura(valor === "aguardando" ? null : valor as TemperaturaLead); }}>{TEMPERATURAS.map((item) => <option key={item.codigo} value={item.codigo}>{item.rotulo}</option>)}</select></label><label>Prazo da ação<input readOnly value={situacao.rotulo} /></label></div>{codigo === "RETORNO_PROGRAMADO" && <label>Data e hora combinadas<input type="datetime-local" value={prazo} onChange={(e) => setPrazo(e.target.value)} /></label>}<span className="f2-ficha-preserva-operacao">Prazo padrão: {momento.prazo_rotulo} · Continua neste momento · atualizar prazo</span></section>
+            <section className="f2-ficha-bloco sara"><header><span>Sara</span><em>automático</em><button type="button" onClick={() => setSaraAberta((aberta) => !aberta)}>{saraAberta ? "ocultar evidências" : "por que isso?"}</button></header><p>{lead.ultima_reavaliacao_resumo ?? "Ainda não existe uma leitura resumida."}</p>{saraAberta && <div className="f2-ficha-sara-evidencias"><small>{lead.qualidade_atendimento_resumo ?? "A Sara só usa as evidências registradas depois da entrada do lead no Funil."}</small><small>A Sara nunca envia mensagem e não conclui tarefa sem confirmação.</small></div>}<div><button type="button" className="f2-secundario" disabled={busy} onClick={() => onMomento(codigo, prazo, obs)}>Aplicar momento sugerido</button><button type="button" onClick={() => { setCodigo(lead.momento_codigo); setObs(""); setSaraAberta(false); }}>Descartar sugestão</button></div></section>
+            <section className="f2-ficha-bloco"><header><h3>Conversa</h3><small>começa no instante da entrada no funil</small><button type="button" className="f2-secundario" onClick={() => setChatAberto(true)}>Abrir conversa completa</button></header><div className="f2-ficha-resposta"><input aria-label="Responder pelo CRM" placeholder="Responder pelo CRM" readOnly onClick={() => setChatAberto(true)} /><button type="button" onClick={() => setChatAberto(true)}>Enviar</button></div><small>O envio registra a intenção; a conclusão da ação depende da confirmação do D-API.</small></section>
+            <section className="f2-ficha-bloco"><header><h3>Comentários e notas</h3><button type="button" className="f2-secundario" onClick={() => setComentarioAberto((aberto) => !aberto)}>+ Comentário</button></header>{notas.slice(0, 2).map((item) => <article className="f2-ficha-nota" key={item.id}><span>{item.texto}</span><small>{item.autor_nome ?? "Equipe"} · {dataCurta(item.criado_em)} · nota interna</small></article>)}{notas.length === 0 && !comentarioAberto && <p>Nenhuma nota escrita ainda.</p>}{comentarioAberto && <div className="f2-ficha-comentario"><textarea aria-label="Novo comentário" value={nota} onChange={(e) => setNota(e.target.value)} placeholder="Combinado, objeção ou contexto importante." maxLength={2000} /><button type="button" disabled={busy || nota.trim().length < 2} onClick={() => { void onSalvarNota(nota.trim()).then((ok) => { if (ok) { setNota(""); setComentarioAberto(false); } }); }}>{busy ? "Salvando…" : "Salvar comentário"}</button></div>}</section>
           </>}
 
-          {abaDetalhe === "historico" && <div className="f2-v3-ficha-secao"><section className="f2-historico f2-historico-aprovado"><div><Icone nome="historico" /><h3>Histórico de atualizações</h3></div>{eventos.map((evento) => <article key={evento.id}><i /><div><strong>{evento.titulo}</strong><span>{evento.detalhe}</span><small>{dataCurta(evento.criado_em)}</small></div></article>)}{eventos.length === 0 && <p>Nenhuma atualização registrada.</p>}</section><section className="f2-notas f2-notas-aprovado"><h3>Notas do atendimento</h3><p>A conversa guarda mensagens; a nota guarda o combinado.</p><div className="f2-notas-lista">{notas.map((item) => <article key={item.id}><strong>{item.autor_nome ?? "Equipe"}</strong><small>{dataCurta(item.criado_em)}</small><span>{item.texto}</span></article>)}{notas.length === 0 && <p>Nenhuma nota escrita ainda.</p>}</div><label>Nova nota<textarea value={nota} onChange={(e) => setNota(e.target.value)} placeholder="Combinado, objeção ou contexto importante." maxLength={2000} /></label><button type="button" className="f2-secundario" disabled={busy || nota.trim().length < 2} onClick={() => { void onSalvarNota(nota.trim()).then((ok) => { if (ok) setNota(""); }); }}>{busy ? "Salvando…" : "Salvar nota"}</button></section></div>}
+          {abaDetalhe === "historico" && <section className="f2-ficha-bloco"><header><h3>Linha do tempo única</h3><div className="f2-ficha-filtros">{([ ["todos", "Tudo"], ["humanos", "Humano"], ["automaticos", "Sara e D-API"] ] as const).map(([valor, rotulo]) => <button type="button" className={filtroHistorico === valor ? "ativo" : ""} onClick={() => setFiltroHistorico(valor)} key={valor}>{rotulo}</button>)}</div></header><div className="f2-ficha-timeline">{eventosVisiveis.map((evento) => <article key={evento.id}><i /><div><header><strong>{evento.titulo}</strong><em>{/sara|automa|sistema/i.test(`${evento.titulo} ${evento.detalhe}`) ? "Sara · automático" : "humano"}</em><time>{dataCurta(evento.criado_em)}</time></header><span>{evento.detalhe}</span></div></article>)}{eventosVisiveis.length === 0 && <p>Nenhuma atualização neste filtro.</p>}</div></section>}
 
-          {abaDetalhe === "atividades" && <section className="f2-v3-ficha-secao"><header><div><span className="f2-eyebrow">ATIVIDADES</span><h3>Agenda deste lead</h3><p>Visitas e atualizações registradas nos contratos atuais.</p></div><Link href={`/agenda?lead=${encodeURIComponent(String(lead.lead_id || lead.id))}`}>Abrir agenda completa</Link></header><div className="f2-v3-lista-dividida">{visitas.map((visita) => <article key={visita.id}><div><strong>Visita · {visita.imovel || "Imóvel a confirmar"}</strong><span>{new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short", timeZone: FUSO_OPERACAO }).format(new Date(visita.inicio_em))}</span></div><em>{visita.status}</em></article>)}{eventos.slice(0, 8).map((evento) => <article key={evento.id}><div><strong>{evento.titulo}</strong><span>{evento.detalhe}</span></div><em>{dataCurta(evento.criado_em)}</em></article>)}{visitas.length === 0 && eventos.length === 0 && <p>Nenhuma atividade vinculada a esta ficha.</p>}</div></section>}
+          {abaDetalhe === "atividades" && <section className="f2-ficha-bloco"><header><h3>Atividades do lead</h3><Link href={`/agenda?lead=${encodeURIComponent(String(lead.lead_id || lead.id))}`}>+ Nova atividade</Link></header><div className="f2-ficha-lista">{visitas.map((visita) => <article key={visita.id}><div><strong>Visita · {visita.imovel || "Imóvel a confirmar"}</strong><span>Visita · negócio #{lead.origem_negocio_id}</span></div><time>{new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short", timeZone: FUSO_OPERACAO }).format(new Date(visita.inicio_em))}</time><em>{visita.status}</em><Link href={`/agenda?lead=${encodeURIComponent(String(lead.lead_id || lead.id))}`}>Abrir na Agenda</Link></article>)}{eventos.slice(0, 8).map((evento) => <article key={evento.id}><div><strong>{evento.titulo}</strong><span>Atualização do lead</span></div><time>{dataCurta(evento.criado_em)}</time><em>registrada</em><button type="button" onClick={() => setAbaDetalhe("historico")}>Ver histórico</button></article>)}{visitas.length === 0 && eventos.length === 0 && <p>Nenhuma atividade vinculada a esta ficha.</p>}</div></section>}
 
-          {abaDetalhe === "negocios" && <section className="f2-v3-ficha-secao"><header><div><span className="f2-eyebrow">NEGÓCIOS</span><h3>Vínculos comerciais</h3><p>Somente contratos reais associados a este lead.</p></div><button type="button" className="f2-secundario" onClick={onGerarNegociacao}>Novo negócio</button></header><div className="f2-v3-lista-dividida"><article><div><strong>Negócio de origem #{lead.origem_negocio_id}</strong><span>{etapaRotulo} · {momento.rotulo}</span></div><ChipTemperatura lead={lead} /></article></div></section>}
+          {abaDetalhe === "negocios" && <section className="f2-ficha-bloco"><header><h3>Negócios deste lead</h3><small>um lead pode ter vários negócios, em pipelines diferentes</small><button type="button" className="f2-secundario" onClick={onGerarNegociacao}>+ Novo negócio</button></header><div className="f2-ficha-negocios"><article><header><strong>Negócio de origem #{lead.origem_negocio_id}</strong><span>Em andamento</span></header><div><span>Comercial · {etapaRotulo}</span><strong>Valor não informado</strong><span>{lead.interesse || "Produto ainda não identificado"}</span><span>{acaoVisivel(lead)}</span></div><footer><button type="button" onClick={onFechar}>Focar</button><button type="button" onClick={() => setAbaDetalhe("atendimento")}>Atualizar</button></footer></article></div></section>}
 
-          {abaDetalhe === "imoveis" && <section className="f2-v3-ficha-secao"><header><div><span className="f2-eyebrow">IMÓVEIS</span><h3>Interesses identificados</h3><p>Informação real extraída da ficha e das tags.</p></div><a href="/produtos">Abrir Produtos</a></header><dl className="f2-v3-dados"><div><dt>Interesse principal</dt><dd>{lead.interesse || "Ainda não identificado"}</dd></div><div><dt>Tags relacionadas</dt><dd>{lead.tags?.map((tag) => tag.nome).join(" · ") || "Nenhuma tag associada"}</dd></div></dl></section>}
+          {abaDetalhe === "imoveis" && <section className="f2-ficha-bloco"><header><h3>Imóveis do negócio em foco</h3><small>valor do negócio: não informado</small><a href="/produtos">+ Vincular imóvel</a></header><div className="f2-ficha-vazio"><strong>Nenhum imóvel vinculado</strong><span>O interesse declarado do lead é {lead.interesse || "ainda não identificado"}. Vincule produtos no catálogo canônico.</span></div><small>Interesse declarado é do lead; imóvel vinculado é do negócio — as duas coisas não se misturam.</small></section>}
 
-          {abaDetalhe === "arquivos" && <section className="f2-v3-ficha-secao"><span className="f2-eyebrow">ARQUIVOS</span><h3>Documentos do negócio</h3><p>Arquivos comerciais permanecem na Esteira, onde versão, permissão e revisão são controladas.</p><button type="button" className="f2-secundario" onClick={onAbrirEsteira}>Abrir Esteira</button></section>}
+          {abaDetalhe === "arquivos" && <section className="f2-ficha-bloco"><header><h3>Arquivos</h3><button type="button" className="f2-secundario" onClick={onAbrirEsteira}>+ Adicionar arquivo</button></header><div className="f2-ficha-vazio"><strong>Nenhum arquivo vinculado</strong><span>Versão, permissão e revisão continuam controladas na Esteira canônica.</span></div></section>}
 
-          {abaDetalhe === "dados" && <section className="f2-v3-ficha-secao"><span className="f2-eyebrow">DADOS DO LEAD</span><h3>Cadastro e origem</h3><dl className="f2-v3-dados"><div><dt>Nome</dt><dd>{lead.nome}</dd></div><div><dt>Telefone</dt><dd>{lead.telefone || "Não informado"}</dd></div><div><dt>Responsável</dt><dd>{lead.corretor_nome || "Não definido"}</dd></div><div><dt>Canal</dt><dd>{lead.instancia_rotulo || "Não identificado"}</dd></div><div><dt>Negócio de origem</dt><dd>#{lead.origem_negocio_id}</dd></div><div><dt>Etapa atual</dt><dd>{etapaRotulo}</dd></div></dl></section>}
+          {abaDetalhe === "dados" && <section className="f2-ficha-bloco"><h3>Dados do lead</h3><div className="f2-ficha-dados-form"><label>Nome<input readOnly value={lead.nome} /></label><label>Telefone<input readOnly value={lead.telefone || "Não informado"} /></label><label>E-mail<input readOnly value="Não informado" /></label><label>Responsável<input readOnly value={lead.corretor_nome || "Não definido"} /></label><label>Origem<input readOnly value={lead.instancia_rotulo || "Não identificada"} /></label><label>Negócio de origem<input readOnly value={`#${lead.origem_negocio_id}`} /></label></div><footer><button type="button" disabled>Salvar dados</button><button type="button" className="risco" onClick={onDescartar}>Descartar lead</button></footer></section>}
         </div>
       </div>
 
