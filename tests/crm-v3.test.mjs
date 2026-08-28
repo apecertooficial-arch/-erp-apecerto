@@ -101,9 +101,12 @@ test("ficha desktop replica a arquitetura ampla e compacta aprovada no Claude De
   assert.match(workspace, /className="f2-ficha-contexto"/);
   assert.match(workspace, /className="f2-ficha-painel"/);
   assert.match(workspace, /Classificação do atendimento/);
+  assert.match(workspace, /onClick=\{onAgendarVisita\}>Agendar visita/);
+  assert.match(workspace, /Descartar sugestão/);
+  assert.match(workspace, /Responder pelo CRM/);
   assert.match(workspace, /Abrir conversa completa/);
   assert.match(workspace, /Comentários e notas/);
-  assert.match(css, /\.funil-oficial \.f2-detalhe\{width:min\(64vw,1040px\);min-width:640px/);
+  assert.match(css, /\.funil-oficial \.f2-detalhe\{width:min\(86vw,1040px\);min-width:720px/);
   assert.match(css, /\.funil-oficial \.f2-ficha-grade\{[^}]*grid-template-columns:minmax\(220px,32%\) minmax\(0,1fr\)/);
   assert.match(css, /\.funil-oficial \.f2-detalhe-abas\{[^}]*border-bottom:1px solid/);
   assert.match(pwa, /className="erp-update-toast"/);
