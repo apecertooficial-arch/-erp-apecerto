@@ -2414,6 +2414,7 @@ body:has(.funil-oficial .f2-overlay) #sara-fab,body:has(.funil-oficial .f2-overl
   .funil-oficial .ape-ficha-identidade-v3 .ape-temperatura-controle{flex:none}
   .funil-oficial .ape-ficha-identidade-v3 .ape-momento{max-width:152px;min-height:44px;display:flex;align-items:center;gap:var(--space-1);padding:0 var(--space-2);border:0;border-radius:var(--radius-pill);font-size:var(--text-xs);white-space:nowrap}
   .funil-oficial .ape-ficha-identidade-v3 .ape-momento:not(:focus){overflow:hidden;text-overflow:ellipsis}
+  .funil-oficial .ape-ficha-identidade-v3 .ape-ficha-mais{width:44px;height:44px;flex:none;display:grid;place-items:center;padding:0;border:1px solid var(--border-soft);border-radius:var(--radius-md);background:var(--bg-surface);color:var(--fg-2);font-size:16px;font-weight:var(--weight-bold)}
   .funil-oficial .ape-ficha-cabecalho-v3 .ape-ficha-abas{margin-top:var(--space-2)}
   .funil-oficial .ape-ficha>.ape-proxima-aprovada{flex:none;margin:var(--space-3) var(--space-4) 0;padding:var(--space-3);border:1px solid var(--ape-orange-100);border-radius:var(--radius-md);background:var(--bg-tint-orange)}
   .funil-oficial .ape-ficha>.ape-proxima-aprovada h3{margin:var(--space-1) 0;font-size:var(--text-base)}

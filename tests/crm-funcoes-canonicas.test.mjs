@@ -71,6 +71,8 @@ test("Iniciar negociação usa apenas a solicitação pendente da Esteira", () =
   assert.match(negotiation, />Abrir na Esteira</);
   assert.match(mobile, /setAreaCrm\("esteira"\)/);
   assert.match(mobile, /<SalesProcessView/);
+  assert.match(mobile, /aria-label="Mais ações"/);
+  assert.match(mobile, /setMaisAcoes\(true\)/);
   assert.match(negotiation, /aguardando aprovação/);
   assert.doesNotMatch(negotiation, /action: "create"/);
   assert.match(salesApi, /from\("venda_solicitacoes"\)/);
