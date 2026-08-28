@@ -113,6 +113,7 @@ test("ficha desktop replica a arquitetura ampla e compacta aprovada no Claude De
   assert.match(pwa, /className="erp-update-toast"/);
   assert.doesNotMatch(pwa, /left: 16, right: 16/);
   assert.match(identityCss, /body:has\(\[aria-label\^="Atendimento de"\]\) \.erp-update-toast/);
+  assert.match(identityCss, /@media\(max-width:900px\).*body:has\(\[aria-label\^="Atendimento de"\]\) \.erp-update-toast\{display:none\}/);
 });
 
 test("navegação aprovada existe em desktop e mobile", () => {

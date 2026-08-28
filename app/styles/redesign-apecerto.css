@@ -141,4 +141,4 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline:3px 
 .erp-update-toast span{flex:1}
 .erp-update-toast button{min-height:36px;padding:0 var(--space-3);border:0;border-radius:var(--radius-sm);background:var(--ape-orange);color:var(--fg-inverse);font:var(--weight-bold) var(--text-xs)/1 var(--font-ui);cursor:pointer}
 body:has([aria-label^="Atendimento de"]) .erp-update-toast{right:auto;left:var(--space-4);width:196px;flex-direction:column;align-items:stretch}
-@media(max-width:900px){.erp-update-toast{right:var(--space-3);bottom:calc(76px + env(safe-area-inset-bottom));left:var(--space-3);max-width:none}.erp-update-toast span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}}
+@media(max-width:900px){.erp-update-toast{right:var(--space-3);bottom:calc(76px + env(safe-area-inset-bottom));left:var(--space-3);max-width:none}.erp-update-toast span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}body:has([aria-label^="Atendimento de"]) .erp-update-toast{display:none}}
