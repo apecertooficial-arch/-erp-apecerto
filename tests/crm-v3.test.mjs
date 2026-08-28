@@ -109,6 +109,7 @@ test("ficha desktop replica a arquitetura ampla e compacta aprovada no Claude De
   assert.match(css, /\.funil-oficial \.f2-detalhe\{width:min\(86vw,1040px\);min-width:720px/);
   assert.match(css, /\.funil-oficial \.f2-ficha-grade\{[^}]*grid-template-columns:minmax\(220px,32%\) minmax\(0,1fr\)/);
   assert.match(css, /\.funil-oficial \.f2-detalhe-abas\{[^}]*border-bottom:1px solid/);
+  assert.match(css, /\.funil-oficial \.f2-ficha-bloco \.f2-secundario\{width:auto;margin-top:0/);
   assert.match(pwa, /className="erp-update-toast"/);
   assert.doesNotMatch(pwa, /left: 16, right: 16/);
   assert.match(identityCss, /body:has\(\[aria-label\^="Atendimento de"\]\) \.erp-update-toast/);
