@@ -103,6 +103,7 @@ export async function GET(request: Request) {
   const originByUnit = new Map((originRows ?? []).map((row) => [row.unidade_id, row.origem_comercial]));
   const rawUnits = (data ?? []).flatMap((product) => (product.unidades ?? []) as UnitRow[]);
   const rawUnitById = new Map(rawUnits.map((unit) => [unit.id, unit]));
+  const productCreatedAtById = new Map((data ?? []).map((product) => [product.id, product.created_at]));
   const qualityQueue = (qualityRows ?? []).map((row) => ({
     unitId: row.unidade_id,
     productId: row.empreendimento_id,
@@ -112,6 +113,7 @@ export async function GET(request: Request) {
     segment: row.origem_comercial,
     issues: row.problemas,
     capturedBy: corretorNameById.get(rawUnitById.get(row.unidade_id)?.captador_corretor_id ?? -1) ?? null,
+    updatedAt: productCreatedAtById.get(row.empreendimento_id) ?? null,
   }));
   const catalogIds = (data ?? []).map((item) => item.id);
   const { data: leadLinks } = catalogIds.length

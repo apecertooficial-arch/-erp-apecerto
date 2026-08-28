@@ -32,6 +32,7 @@
   --pv3-ink: #282421;
   --pv3-muted: #77716c;
   --pv3-border: #e7e0da;
+  --pv3-surface-soft: #f8f5f2;
   display: grid;
   grid-template-columns: minmax(0, 1fr) 340px;
   width: 100%;
@@ -442,6 +443,48 @@
   color: var(--pv3-orange);
   font-style: normal;
   font-weight: 700;
+}
+
+.pv3-next-answer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 13px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--pv3-surface-soft);
+  font-size: 11px;
+}
+
+.pv3-next-answer strong { color: var(--pv3-ink); }
+.pv3-next-answer span { color: var(--pv3-muted); text-align: right; }
+.pv3-next-list { display: grid; gap: 7px; margin-top: 9px; }
+.pv3-next-list article {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 9px;
+  padding: 9px 10px;
+  border: 1px solid var(--pv3-border);
+  border-radius: 10px;
+  background: #fff;
+}
+.pv3-next-list article > span { display: grid; width: 24px; height: 24px; place-items: center; border-radius: 50%; background: var(--pv3-surface-soft); font-size: 10px; font-weight: 800; }
+.pv3-next-list article > div { display: grid; gap: 2px; }
+.pv3-next-list article em { width: max-content; border-radius: 999px; padding: 2px 6px; background: var(--pv3-green-soft); color: var(--pv3-green); font-size: 8px; font-style: normal; font-weight: 800; text-transform: uppercase; }
+.pv3-next-list article.bloqueador em { background: #fde9e7; color: #a83232; }
+.pv3-next-list article.importante em { background: #fff2d9; color: #8a5200; }
+.pv3-next-list article strong { font-size: 11px; }
+.pv3-next-list article small { color: var(--pv3-muted); font-size: 9px; line-height: 1.35; }
+.pv3-next-list article button { min-height: 32px; border: 1px solid var(--pv3-border); border-radius: 8px; padding: 0 10px; background: #fff; color: var(--pv3-orange); font-size: 9px; font-weight: 800; cursor: pointer; }
+.pv3-next-list article button:disabled { color: var(--pv3-muted); cursor: not-allowed; }
+
+@media (max-width: 620px) {
+  .pv3-next-answer { align-items: flex-start; flex-direction: column; }
+  .pv3-next-answer span { text-align: left; }
+  .pv3-next-list article { grid-template-columns: 24px minmax(0, 1fr); }
+  .pv3-next-list article button { grid-column: 2; justify-self: start; }
 }
 
 .pv3-detail-ready-chips {
