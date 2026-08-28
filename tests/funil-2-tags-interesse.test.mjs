@@ -37,7 +37,7 @@ test("API e as duas interfaces carregam e mostram interesse e tags", () => {
   const rota = ler("../app/api/funil2/route.ts");
   const mobile = ler("../app/features/funil-2/Funil2Mobile.tsx");
   const desktop = ler("../app/features/funil-2/Funil2Workspace.tsx");
-  assert.match(rota, /from\("leads"\)\.select\("id,tags"\)/);
+  assert.match(rota, /from\("leads"\)\.select\("id,nome,telefone,email,origem,corretor_id,tags,extras"\)/);
   assert.match(rota, /interesse:\s*contexto\?\.interesse/);
   assert.match(rota, /tags:\s*contexto\?\.tags/);
   assert.match(mobile, /INTERESSE DO LEAD/);
