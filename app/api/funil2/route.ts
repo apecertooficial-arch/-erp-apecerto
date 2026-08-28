@@ -143,8 +143,8 @@ export async function GET(request: Request) {
   }
   const negociacoes: Array<Record<string, unknown>> = [];
   const funilLeadIds = (leads ?? []).map((lead) => String(lead.id));
-  for (let inicio = 0; inicio < funilLeadIds.length; inicio += 500) {
-    const { data, error } = await db.from("f2_negociacao").select("id,funil_lead_id,titulo,etapa,valor,observacao,atualizado_em").in("funil_lead_id", funilLeadIds.slice(inicio, inicio + 500)).order("atualizado_em", { ascending: false });
+  for (let inicio = 0; inicio < funilLeadIds.length; inicio += 100) {
+    const { data, error } = await db.from("f2_negociacao").select("id,funil_lead_id,titulo,etapa,valor,observacao,atualizado_em").in("funil_lead_id", funilLeadIds.slice(inicio, inicio + 100)).order("atualizado_em", { ascending: false });
     if (error) return Response.json({ error: "Não foi possível carregar as oportunidades do atendimento." }, { status: error.message.toLowerCase().includes("permission") ? 403 : 502 });
     negociacoes.push(...((data ?? []) as Array<Record<string, unknown>>));
   }
@@ -237,8 +237,8 @@ export async function GET(request: Request) {
       const processoNegocio = new Map(processos.map((item) => [String(item.id), Number(item.negocio_id)]));
       const anexos: Array<{ id: string; processo_ref: string; negocio_id: number | null; nome: string; status: string; criado_em: string }> = [];
       const processoIds = [...processoNegocio.keys()];
-      for (let inicio = 0; inicio < processoIds.length; inicio += 500) {
-        const { data, error } = await db.from("esteira_anexos").select("id,processo_ref,negocio_id,nome,status,criado_em").in("processo_ref", processoIds.slice(inicio, inicio + 500));
+      for (let inicio = 0; inicio < processoIds.length; inicio += 100) {
+        const { data, error } = await db.from("esteira_anexos").select("id,processo_ref,negocio_id,nome,status,criado_em").in("processo_ref", processoIds.slice(inicio, inicio + 100));
         if (error) { arquivosEstado = "erro"; break; }
         anexos.push(...((data ?? []) as typeof anexos));
       }
