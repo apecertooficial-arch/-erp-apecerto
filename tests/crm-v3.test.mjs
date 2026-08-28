@@ -106,6 +106,11 @@ test("ficha desktop replica a arquitetura ampla e compacta aprovada no Claude De
   assert.match(workspace, /Responder pelo CRM/);
   assert.match(workspace, /Abrir conversa completa/);
   assert.match(workspace, /Comentários e notas/);
+  for (const acao of ["Focar", "Mover", "Ganho", "Perdido"]) assert.match(workspace, new RegExp(`>${acao}<`));
+  assert.match(workspace, /onMover=\{\(etapaCodigo\) => movimentar\(\[lead\.id\], etapaCodigo\)\}/);
+  assert.match(mobile, /function movimentarNegocio\(etapaCodigo: string\)/);
+  assert.match(mobile, /observacao: "Movido pela ficha do Funil"/);
+  assert.match(mobile, />Ganho<.*>Perdido</s);
   assert.match(css, /\.funil-oficial \.f2-detalhe\{width:min\(86vw,1040px\);min-width:720px/);
   assert.match(css, /\.funil-oficial \.f2-ficha-grade\{[^}]*grid-template-columns:minmax\(220px,32%\) minmax\(0,1fr\)/);
   assert.match(css, /\.funil-oficial \.f2-detalhe-abas\{[^}]*border-bottom:1px solid/);

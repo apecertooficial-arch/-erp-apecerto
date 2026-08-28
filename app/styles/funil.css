@@ -2069,6 +2069,12 @@ body .f2-indicadores button span { font-size:12px; font-weight:600; }
 .funil-oficial .f2-ficha-negocios article header span{padding:var(--space-1) var(--space-2);border-radius:var(--radius-pill);background:var(--bg-tint-success);color:var(--fg-success);font-size:var(--text-xs);font-weight:var(--weight-semibold)}
 .funil-oficial .f2-ficha-negocios article>div span{color:var(--fg-3);font-size:var(--text-xs)}
 .funil-oficial .f2-ficha-negocios article>div strong{font-size:var(--text-sm)}
+.funil-oficial .f2-ficha-mover{position:relative}
+.funil-oficial .f2-ficha-mover>summary{min-height:36px;display:inline-flex;align-items:center;padding:0 var(--space-3);list-style:none;border:1px solid var(--border-default);border-radius:var(--radius-sm);background:var(--bg-surface);color:var(--fg-1);font-size:var(--text-xs);font-weight:var(--weight-semibold);cursor:pointer}
+.funil-oficial .f2-ficha-mover>summary::-webkit-details-marker{display:none}
+.funil-oficial .f2-ficha-mover>div{position:absolute;z-index:40;left:0;top:40px;width:200px;padding:var(--space-1);border:1px solid var(--border-default);border-radius:var(--radius-md);background:var(--bg-surface);box-shadow:var(--shadow-lg)}
+.funil-oficial .f2-ficha-mover>div button{width:100%;min-height:36px;padding:0 var(--space-2);border:0;border-radius:var(--radius-sm);background:transparent;color:var(--fg-1);font-size:var(--text-xs);text-align:left}
+.funil-oficial .f2-ficha-mover>div button:hover,.funil-oficial .f2-ficha-mover>div button:focus-visible{background:var(--bg-tint-orange)}
 .funil-oficial .f2-ficha-vazio{flex-direction:column;align-items:flex-start;padding:var(--space-5);border-radius:var(--radius-md);background:var(--bg-sunken)}
 .funil-oficial .f2-ficha-vazio strong{font-size:var(--text-sm)}
 .funil-oficial .f2-ficha-vazio span{color:var(--fg-3);font-size:var(--text-xs)}
@@ -2128,6 +2134,9 @@ body .f2-indicadores button span { font-size:12px; font-weight:600; }
   .funil-oficial .ape-v3-secao article{display:flex;flex-direction:column;gap:var(--space-1);padding:var(--space-3) 0;border-bottom:1px solid var(--border-soft)}
   .funil-oficial .ape-v3-secao article strong{font-size:var(--text-sm)}
   .funil-oficial .ape-v3-secao article span{color:var(--fg-3);font-size:var(--text-xs)}
+  .funil-oficial .ape-v3-secao article>em{margin-top:var(--space-1);color:var(--ape-purple);font-size:var(--text-xs);font-style:normal;font-weight:var(--weight-semibold)}
+  .funil-oficial .ape-v3-negocio-acoes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--space-2);margin-top:var(--space-2)}
+  .funil-oficial .ape-v3-negocio-acoes button{min-height:44px;border:1px solid var(--border-default);border-radius:var(--radius-md);background:var(--bg-surface);color:var(--fg-1);font-size:var(--text-sm);font-weight:var(--weight-semibold)}
   .funil-oficial .ape-v3-secao dl{margin:0;border-top:1px solid var(--border-soft)}
   .funil-oficial .ape-v3-secao dl>div{padding:var(--space-3) 0;border-bottom:1px solid var(--border-soft)}
   .funil-oficial .ape-v3-secao dt{color:var(--fg-3);font-size:var(--text-xs)}

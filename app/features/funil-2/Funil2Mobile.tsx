@@ -609,6 +609,8 @@ function FichaLead({
   const [temperaturaAberta, setTemperaturaAberta] = useState(false);
   const [salvandoTemperatura, setSalvandoTemperatura] = useState(false);
   const [erroTemperatura, setErroTemperatura] = useState("");
+  const [movendoNegocio, setMovendoNegocio] = useState(false);
+  const [erroNegocio, setErroNegocio] = useState("");
   const dialogRef = useRef<HTMLDivElement>(null);
   const focoOrigemRef = useRef<HTMLElement | null>(null);
   const prazo = situacaoPrazo(lead.proxima_acao_em);
@@ -664,6 +666,29 @@ function FichaLead({
     }
   }
 
+  async function movimentarNegocio(etapaCodigo: string) {
+    const destino = momentos.filter((item) => item.etapa === etapaCodigo).sort((a, b) => a.ordem - b.ordem)[0];
+    if (!destino) {
+      setErroNegocio("Esta etapa ainda não possui um momento ativo para receber o negócio.");
+      return;
+    }
+    setMovendoNegocio(true); setErroNegocio("");
+    try {
+      const resposta = await fetch("/api/funil2", {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "atualizarMomento", id: lead.id, versao: lead.versao, momentoCodigo: destino.codigo, prazoCombinado: null, observacao: "Movido pela ficha do Funil" }),
+      });
+      const json = await resposta.json().catch(() => ({})) as { error?: string };
+      if (!resposta.ok) throw new Error(json.error || "Não foi possível mover o negócio.");
+      onRecarregar();
+    } catch (falha) {
+      setErroNegocio(falha instanceof Error ? falha.message : "Não foi possível mover o negócio.");
+    } finally {
+      setMovendoNegocio(false);
+    }
+  }
+
   return <div ref={dialogRef} className="ape-folha" role="dialog" aria-modal="true" aria-label={`Atendimento de ${lead.nome}`} onMouseDown={(evento) => { if (evento.target === evento.currentTarget) onFechar(); }}>
     <section className="ape-ficha">
       <header className="ape-ficha-cabecalho-v3">
@@ -683,7 +708,7 @@ function FichaLead({
 
       {aba === "atividades" && <div className="ape-ficha-painel ape-v3-secao"><header><h3>Atividades</h3><Link href={`/agenda?lead=${encodeURIComponent(String(lead.lead_id || lead.id))}`}>Abrir agenda</Link></header>{visitas.map((visita) => <article key={visita.id}><strong>Visita · {visita.imovel || "Imóvel a confirmar"}</strong><span>{new Date(visita.inicio_em).toLocaleString("pt-BR")} · {visita.status}</span></article>)}{visitas.length === 0 && <p>Nenhuma visita vinculada a esta ficha.</p>}</div>}
 
-      {aba === "negocios" && <div className="ape-ficha-painel ape-v3-secao"><h3>Negócios</h3><article><strong>Negócio de origem #{lead.origem_negocio_id}</strong><span>{nomeEtapa(lead.etapa)} · {momento?.rotulo ?? lead.momento_codigo}</span></article><button type="button" onClick={() => setAcaoMais("negociacao")}>Novo negócio</button></div>}
+      {aba === "negocios" && <div className="ape-ficha-painel ape-v3-secao"><h3>Negócios</h3><article><strong>Negócio de origem #{lead.origem_negocio_id}</strong><span>{nomeEtapa(lead.etapa)} · {momento?.rotulo ?? lead.momento_codigo}</span><em>Em andamento</em><div className="ape-v3-negocio-acoes"><button type="button" disabled={movendoNegocio || lead.etapa === "venda"} onClick={() => void movimentarNegocio("venda")}>Ganho</button><button type="button" disabled={movendoNegocio || lead.etapa === "perdida"} onClick={() => void movimentarNegocio("perdida")}>Perdido</button></div>{erroNegocio && <p role="alert">{erroNegocio}</p>}</article></div>}
 
       {aba === "imoveis" && <div className="ape-ficha-painel ape-v3-secao"><h3>Imóveis</h3><dl><div><dt>Interesse principal</dt><dd>{lead.interesse || "Ainda não identificado"}</dd></div><div><dt>Tags relacionadas</dt><dd>{lead.tags?.map((tag) => tag.nome).join(" · ") || "Nenhuma tag associada"}</dd></div></dl><a href="/produtos">Abrir Produtos</a></div>}
 
