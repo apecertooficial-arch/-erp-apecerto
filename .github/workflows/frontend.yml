@@ -44,6 +44,9 @@ jobs:
       - name: Testes do frontend
         run: pnpm run test:frontend
 
+      - name: Contratos de privacidade de Produtos
+        run: pnpm run test:products-contract
+
       - name: Typecheck
         run: pnpm exec tsc --noEmit --incremental false
 
