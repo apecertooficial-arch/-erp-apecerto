@@ -120,7 +120,7 @@ export async function GET(request: Request) {
   }
   const [
     { data: leads, error: e1 }, { data: momentos, error: e2 },
-    { data: etapas, error: e4 }, { data: visitas, error: e5 }, { data: negociacoes, error: e6 },
+    { data: etapas, error: e4 }, { data: visitas, error: e5 },
     { data: aquario, error: e7 }, { data: operacao, error: e8 },
     { data: saraModo }, { data: saraRunner }, { data: saraF2Config }, saraF2Analises,
     { data: tagCatalogo, error: e9 },
@@ -129,7 +129,6 @@ export async function GET(request: Request) {
     db.from("f2_momento_config").select("*").order("etapa", { ascending: true }).order("ordem", { ascending: true }),
     db.from("f2_etapa_config").select("codigo,ordem,rotulo,ajuda,ativo").order("ordem", { ascending: true }),
     db.from("f2_visita").select("id,funil_lead_id,inicio_em,fim_em,imovel,status,observacao,empreendimento_id,unidade,com_gerente,gerente_id,feedback_em,feedback_por,atualizado_em").order("inicio_em", { ascending: true }),
-    db.from("f2_negociacao").select("id,funil_lead_id,titulo,etapa,valor,observacao,atualizado_em").order("atualizado_em", { ascending: false }),
     db.rpc("f2_listar_aquario"),
     db.from("f2_operacao_config").select("*").eq("id", true).maybeSingle(),
     db.rpc("ncrm_sara_modo_status"),
@@ -138,9 +137,16 @@ export async function GET(request: Request) {
     db.from("f2_sara_analise").select("id", { count: "exact", head: true }),
     db.from("lead_tag_catalogo").select("id,nome,cor").eq("ativo", true).order("nome"),
   ]);
-  if (e1 || e2 || e4 || e5 || e6 || e7 || e9) {
-    const message = e1?.message || e2?.message || e4?.message || e5?.message || e6?.message || e7?.message || e9?.message || "Falha ao carregar o Funil 2.0.";
+  if (e1 || e2 || e4 || e5 || e7 || e9) {
+    const message = e1?.message || e2?.message || e4?.message || e5?.message || e7?.message || e9?.message || "Falha ao carregar o Funil 2.0.";
     return Response.json({ error: message }, { status: message.toLowerCase().includes("permission") ? 403 : 502 });
+  }
+  const negociacoes: Array<Record<string, unknown>> = [];
+  const funilLeadIds = (leads ?? []).map((lead) => String(lead.id));
+  for (let inicio = 0; inicio < funilLeadIds.length; inicio += 500) {
+    const { data, error } = await db.from("f2_negociacao").select("id,funil_lead_id,titulo,etapa,valor,observacao,atualizado_em").in("funil_lead_id", funilLeadIds.slice(inicio, inicio + 500)).order("atualizado_em", { ascending: false });
+    if (error) return Response.json({ error: "Não foi possível carregar as oportunidades do atendimento." }, { status: error.message.toLowerCase().includes("permission") ? 403 : 502 });
+    negociacoes.push(...((data ?? []) as Array<Record<string, unknown>>));
   }
   const negociosIds = [...new Set((leads ?? []).map((lead) => Number(lead.origem_negocio_id)).filter(Number.isFinite))];
   type NegocioOriginal = { id: number; lead_id: number; pipeline_id: number; stage_id: number | null; empreendimento_id: string | null; unidade_id: string | null; valor: number | null; status: string; criado_em: string; ultima_movimentacao: string | null };

@@ -148,7 +148,8 @@ test("carga inicial evita históricos globais e a migração fecha acessos privi
   assert.doesNotMatch(api, /listarAnalisesSemCorte/);
   assert.match(api, /eventos:\s*\[\]/);
   assert.match(api, /notas:\s*\[\]/);
-  assert.match(api, /negociacoes:\s*\[\]/);
+  assert.match(api, /from\("f2_negociacao"\)\.select\([^\n]+\.in\("funil_lead_id", funilLeadIds/);
+  assert.doesNotMatch(api, /negociacoes:\s*\[\]/);
   assert.match(integridadeMigration, /case when codigo = 'pos_visita' then true/);
   assert.match(integridadeMigration, /revoke execute on function %s from public, anon, authenticated/);
   assert.match(integridadeMigration, /'f2_pode_operar_lead'/);
