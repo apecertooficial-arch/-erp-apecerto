@@ -54,6 +54,17 @@ function texto(v: unknown, max: number) {
   return typeof v === "string" && v.trim() ? v.trim().slice(0, max) : null;
 }
 
+function proximaAcaoContrato(momento: Catalogo, executarEm: string | null) {
+  return {
+    codigo: momento.acao_codigo,
+    tipo: momento.codigo === "CADENCIA_SEM_RESPOSTA" ? "cadencia" : "proxima_acao",
+    responsavel: "corretor_atual",
+    executar_em: executarEm,
+    criterio_conclusao: `Evidencia posterior confirma a conclusao de ${momento.acao_codigo}.`,
+    evidencia_esperada: "mensagem, evento operacional ou atualizacao auditavel posterior a analise",
+  };
+}
+
 class IaIndisponivelError extends Error {
   constructor(public readonly motivo: string) {
     super("ia_indisponivel");
@@ -155,6 +166,7 @@ async function processar(db: any, c: Candidato, catalogo: Catalogo[], agenteSlug
         : "Sem histórico D-API posterior à entrada no Funil 2.0; classificação anterior preservada.",
       evidencias:[],confianca:null,mensagens:0,qualidade_nota:null,
       temperatura:null,temperatura_confianca:null,temperatura_evidencias:[],
+      proxima_acao:null,
       qualidade_resumo:"Sem mensagens suficientes para avaliar o atendimento." };
   }
   const entradas = mensagens.filter((m: any) => direcaoCliente(m.direcao));
@@ -178,6 +190,10 @@ async function processar(db: any, c: Candidato, catalogo: Catalogo[], agenteSlug
       resumo:"O corretor já tentou contato, mas o cliente ainda não respondeu; seguir a cadência oficial.",
       evidencias:[],confianca:1,mensagens:mensagens.length,qualidade_nota:null,
       temperatura:"frio",temperatura_confianca:1,temperatura_evidencias:[],
+      proxima_acao:proximaAcaoContrato(
+        momento,
+        momento.prazo_minutos === null ? null : new Date(Date.now()+momento.prazo_minutos*60000).toISOString(),
+      ),
       qualidade_resumo:"Sem resposta do cliente; a qualidade não foi pontuada automaticamente." };
   }
 
@@ -276,6 +292,11 @@ async function processar(db: any, c: Candidato, catalogo: Catalogo[], agenteSlug
     evidencias,confianca,mensagens:mensagens.length,qualidade_nota:nota,
     temperatura,temperatura_confianca:temperaturaConfianca,
     temperatura_evidencias:temperaturaEvidencias,
+    proxima_acao:proximaAcaoContrato(
+      momento,
+      prazo ?? (momento.prazo_minutos === null
+        ? null : new Date(Date.now()+momento.prazo_minutos*60000).toISOString()),
+    ),
     qualidade_resumo:qualidadeResumo };
   } catch (e) {
     if (e instanceof IaIndisponivelError) throw e;
