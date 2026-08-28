@@ -412,7 +412,7 @@ test('IA processa o card exato com o agente escolhido', () => {
   assert.match(moduleHardening, /'agente_slug',v_ag\.slug/);
   assert.match(moduleHardening, /v_item->>'id'=v_card::text/);
   assert.match(sara, /db\.rpc\("f2_sara_candidato",\{p_funil_lead_id:funilLeadId\}\)/);
-  assert.match(sara, /processar\(db,c,catalogo,agenteSlug\)/);
+  assert.match(sara, /processar\(db,c,catalogo,agenteSlug,evento\)/);
   assert.match(sara, /agente_slug:agenteSlug/);
   assert.match(sara, /agente: agenteSlug/);
   assert.doesNotMatch(sara, /f2_sara_registrar_classificacao/);

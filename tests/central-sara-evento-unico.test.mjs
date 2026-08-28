@@ -12,6 +12,9 @@ const migration = readFileSync(
 const clockBody = migration.match(
   /create or replace function public\.motor_relogio_central\(\)[\s\S]*?as \$function\$([\s\S]*?)\$function\$;/,
 )?.[1] ?? "";
+const publishBody = migration.match(
+  /do \$publicar_contrato\$([\s\S]*?)\$publicar_contrato\$;/,
+)?.[1] ?? "";
 const saraEdge = readFileSync(
   new URL("../supabase/functions/f2-sara-reclassificar/index.ts", import.meta.url),
   "utf8",
@@ -173,8 +176,44 @@ test("relogio preserva a fila e remove polling e checagem diaria da Sara", () =>
 test("arquiva sem excluir somente os fluxos absorvidos ou proibidos", () => {
   assert.match(migration, /where id in \(51,52,58,64,67,69\)/);
   assert.match(migration, /set ativa=false,\s*arquivada=true/);
+  assert.match(migration, /where id in \(49,65,66\)[\s\S]*ativa and status='publicado'/);
   assert.doesNotMatch(migration, /delete from public\.automacoes/i);
   assert.doesNotMatch(migration, /cron\.unschedule|cron\.schedule/);
+});
+
+test("entradas preservadas fazem preflight e ja contem notificacao", () => {
+  assert.match(migration, /\(65::bigint,127::bigint,'43daea7e32c5d6b790ebc5ff4df9c746'/);
+  assert.match(migration, /\(66::bigint,129::bigint,'0c2bf09f895387d254db3456f2647213'/);
+  assert.match(migration, /send-notification-action/);
+});
+
+test("executor entrega contexto do evento e usa elegibilidade propria da Sara", () => {
+  assert.match(migration, /public\.motor_agente\(bigint,text,text,jsonb,bigint,bigint,text\)/);
+  assert.match(migration, /588f997613039524c098690a6af5bb9e/);
+  assert.match(migration, /'event_type',nullif\(p_lead->>'__sara_event_type',''\)/);
+  assert.match(migration, /'source_id',nullif\(p_lead->>'__sara_source_id',''\)/);
+  assert.match(migration, /'execution_id',nullif\(p_lead->>'__motor_execution_id',''\)/);
+  assert.match(migration, /'expected_action',coalesce\(p_lead->'__sara_proxima_acao','null'::jsonb\)/);
+  assert.match(migration, /motor_agente ainda usa corte historico/);
+  assert.match(saraEdge, /lead\.next_action_due/);
+  assert.match(saraEdge, /acao_anterior_executada/);
+  assert.match(saraEdge, /evidenciasPosteriores/);
+});
+
+test("prazo nao executado gera alerta interno no unico bloco de aplicacao", () => {
+  assert.match(migration, /f2_sara_alertar_checkpoint_nao_executado/);
+  assert.match(migration, /sara:acao-vencida:/);
+  assert.match(migration, /motor_aplicar_saida_ia\(jsonb,jsonb\)/);
+  assert.match(migration, /f8a7898a1807fcffc64b445734653579/);
+  assert.match(migration, /ncrm_notificacao/);
+  assert.doesNotMatch(publishBody, /send-notification-action/);
+});
+
+test("cron fica explicitamente marcado como transicao e nao como requisito cumprido", () => {
+  assert.match(clockBody, /compatibilidade_cron_due_at/);
+  assert.match(clockBody, /dispatcher_externo_pendente/);
+  assert.match(clockBody, /public\.motor_processar_fila\(\)/);
+  assert.match(clockBody, /public\.motor_evento_prazo\(150\)/);
 });
 
 test("migracao fecha se mapas ou funcoes divergirem do snapshot auditado", () => {

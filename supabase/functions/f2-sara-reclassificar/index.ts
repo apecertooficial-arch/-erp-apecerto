@@ -18,6 +18,12 @@ const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const CRON_SECRET = Deno.env.get("CRON_SECRET") ?? "";
 const MAX_MENSAGENS = 60;
 const TEMPERATURAS = ["frio", "morno", "quente", "negociando"] as const;
+const EVENTOS_SARA = new Set([
+  "conversation.message_received",
+  "conversation.message_sent",
+  "lead.next_action_due",
+  "lead.cadence_due",
+]);
 
 type Catalogo = {
   codigo: string; etapa: string; rotulo: string; descricao: string;
@@ -27,6 +33,14 @@ type Candidato = {
   funil_lead_id: string; origem_negocio_id: number; lead_id: number; versao: number;
   etapa: string; momento_codigo: string; acao_codigo: string; cadencia_passo: number;
   corte_conversa_em: string; historico_completo: boolean;
+};
+type ContextoEvento = {
+  eventType: string | null;
+  sourceId: string | null;
+  executionId: number | null;
+  expectedAction: Record<string, unknown> | null;
+  analisadoEm: string | null;
+  evidenciasOperacionais: Array<{ id: string; tipo: string; resumo: string; criado_em: string }>;
 };
 
 function segredoIgual(recebido: string | null, esperado: string) {
@@ -77,7 +91,14 @@ function normalizarEvidencia(v: unknown) {
     .toLowerCase().replace(/[^a-z0-9]+/g, " ").trim().replace(/\s+/g, " ");
 }
 
-function prompt(c: Candidato, catalogo: Catalogo[], mensagens: any[], fatos: ReturnType<typeof fatosDaConversa>) {
+function prompt(
+  c: Candidato,
+  catalogo: Catalogo[],
+  mensagens: any[],
+  fatos: ReturnType<typeof fatosDaConversa>,
+  evento: ContextoEvento,
+  evidenciasPosteriores: string[],
+) {
   const regras = catalogo.map((m) =>
     `${m.codigo} | etapa=${m.etapa} | ação=${m.acao_codigo} (${m.acao_rotulo}) | prazo=${m.prazo_minutos ?? "data combinada"}min | ${m.descricao}`,
   ).join("\n");
@@ -109,13 +130,20 @@ REGRAS OBRIGATÓRIAS:
 - QUENTE e NEGOCIANDO exigem fala literal do CLIENTE e confiança mínima de 0.85. Mensagem automática, insistência do corretor, quantidade de mensagens e momento atual nunca tornam um lead quente.
 - Em temperatura_evidencia_ids, devolva apenas IDs de mensagens do CLIENTE que provam a temperatura escolhida.
 - Não invente informação e não crie momento/ação livre. Você não envia mensagem.
+- Quando EVENTO for lead.next_action_due ou lead.cadence_due, avalie se a AÇÃO ESPERADA
+  foi realmente executada usando apenas EVIDÊNCIAS POSTERIORES. Ausência de evidência
+  significa false; não use o estado anterior como prova. Em acao_anterior_evidencia_ids,
+  use somente identificadores canônicos mensagem:<id>, evento:<id> ou visita:<id> listados abaixo.
 CATÁLOGO OFICIAL:
 ${regras}
 ESTADO ATUAL: etapa=${c.etapa}; momento=${c.momento_codigo}; cadência_passo=${c.cadencia_passo}; agora=${new Date().toISOString()}.
+EVENTO: ${evento.eventType ?? "conversation.unspecified"}; source_id=${evento.sourceId ?? "-"}; execution_id=${evento.executionId ?? "-"}.
+AÇÃO ESPERADA: ${JSON.stringify(evento.expectedAction)}.
+EVIDÊNCIAS POSTERIORES À ANÁLISE ANTERIOR: ${JSON.stringify(evidenciasPosteriores)}.
 CONVERSA D-API EM ORDEM CRONOLÓGICA (recorte mais recente, até ${MAX_MENSAGENS} mensagens):
 ${conversa}
 Também avalie a qualidade do atendimento do CORRETOR de 0 a 10. A nota mede clareza, agilidade, condução para o próximo passo e aderência ao que o cliente pediu. Sem mensagens do corretor, use nota null. Não desconte pontos por fatos que não aparecem na conversa.
-Responda SOMENTE JSON válido: {"momento_codigo":"CÓDIGO_DO_CATÁLOGO","resumo":"diagnóstico objetivo em até 2 frases","proxima_acao_especifica":"orientação concreta para o corretor","confianca":0.0,"evidencia_ids":["ID_DA_MENSAGEM_DO_CLIENTE"],"evidencias":["trecho literal do cliente"],"temperatura":"frio|morno|quente|negociando","temperatura_confianca":0.0,"temperatura_evidencia_ids":["ID_DA_MENSAGEM_DO_CLIENTE"],"prazo_sugerido":null,"qualidade_nota":0.0,"qualidade_resumo":"justificativa objetiva da nota"}.`;
+Responda SOMENTE JSON válido: {"momento_codigo":"CÓDIGO_DO_CATÁLOGO","resumo":"diagnóstico objetivo em até 2 frases","proxima_acao_especifica":"orientação concreta para o corretor","confianca":0.0,"evidencia_ids":["ID_DA_MENSAGEM_DO_CLIENTE"],"evidencias":["trecho literal do cliente"],"temperatura":"frio|morno|quente|negociando","temperatura_confianca":0.0,"temperatura_evidencia_ids":["ID_DA_MENSAGEM_DO_CLIENTE"],"prazo_sugerido":null,"qualidade_nota":0.0,"qualidade_resumo":"justificativa objetiva da nota","acao_anterior_executada":null,"acao_anterior_evidencia_ids":[]}.`;
 }
 
 async function carregarMensagens(db: any, c: Candidato) {
@@ -147,8 +175,24 @@ async function carregarMensagens(db: any, c: Candidato) {
     .slice(-MAX_MENSAGENS);
 }
 
-async function processar(db: any, c: Candidato, catalogo: Catalogo[], agenteSlug: string) {
+async function processar(
+  db: any,
+  c: Candidato,
+  catalogo: Catalogo[],
+  agenteSlug: string,
+  evento: ContextoEvento,
+) {
   const mensagens = await carregarMensagens(db, c);
+  const corteAnterior = evento.analisadoEm ? Date.parse(evento.analisadoEm) : Number.NaN;
+  const mensagensPosteriores = mensagens.filter((m: any) =>
+    Number.isNaN(corteAnterior) || Date.parse(m.enviado_em ?? m.criado_em) > corteAnterior
+  );
+  const evidenciasPosteriores = [
+    ...mensagensPosteriores.map((m: any) =>
+      `mensagem:${String(m.id)}:${direcaoCliente(m.direcao) ? "cliente" : "corretor"}`
+    ),
+    ...evento.evidenciasOperacionais.map((e) => `${e.id}:${e.tipo}:${e.resumo}`),
+  ];
   const fatos = fatosDaConversa(mensagens);
   const catalogoIa = filtrarCatalogoParaIa(c, catalogo, fatos) as Catalogo[];
   const hash = await sha256(JSON.stringify({ lead: c.funil_lead_id, versao: c.versao,
@@ -167,11 +211,12 @@ async function processar(db: any, c: Candidato, catalogo: Catalogo[], agenteSlug
       evidencias:[],confianca:null,mensagens:0,qualidade_nota:null,
       temperatura:null,temperatura_confianca:null,temperatura_evidencias:[],
       proxima_acao:null,
+      checkpoint_anterior:null,
       qualidade_resumo:"Sem mensagens suficientes para avaliar o atendimento." };
   }
   const entradas = mensagens.filter((m: any) => direcaoCliente(m.direcao));
   const saidas = mensagens.filter((m: any) => direcaoCorretor(m.direcao));
-  if (!entradas.length && saidas.length) {
+  if (!entradas.length && saidas.length && !evento.eventType?.startsWith("lead.")) {
     if (!deveAplicarCadenciaSemResposta(c, fatos)) {
       return { id:c.funil_lead_id,versao_base:c.versao,context_hash:hash,
         origem:"deterministica",status:"sem_historico",momento_codigo:null,
@@ -179,6 +224,7 @@ async function processar(db: any, c: Candidato, catalogo: Catalogo[], agenteSlug
         resumo:"Sem resposta do cliente no recorte atual, mas o card ja esta em uma etapa posterior; estado preservado para evitar regressao automatica.",
         evidencias:[],confianca:null,mensagens:mensagens.length,qualidade_nota:null,
         temperatura:null,temperatura_confianca:null,temperatura_evidencias:[],
+        checkpoint_anterior:null,
         qualidade_resumo:"A qualidade foi preservada porque nao ha resposta do cliente no recorte atual." };
     }
     const momento = catalogo.find((m) => m.codigo === "CADENCIA_SEM_RESPOSTA");
@@ -194,6 +240,13 @@ async function processar(db: any, c: Candidato, catalogo: Catalogo[], agenteSlug
         momento,
         momento.prazo_minutos === null ? null : new Date(Date.now()+momento.prazo_minutos*60000).toISOString(),
       ),
+      checkpoint_anterior:evento.eventType?.startsWith("lead.") ? {
+        event_type:evento.eventType,source_id:evento.sourceId,
+        expected_action:evento.expectedAction,
+        executada:mensagensPosteriores.some((m:any)=>direcaoCorretor(m.direcao)) ||
+          evento.evidenciasOperacionais.length>0,
+        evidencias:evidenciasPosteriores,
+      } : null,
       qualidade_resumo:"Sem resposta do cliente; a qualidade não foi pontuada automaticamente." };
   }
 
@@ -215,12 +268,16 @@ async function processar(db: any, c: Candidato, catalogo: Catalogo[], agenteSlug
       evidencias:evidencia ? [evidencia] : [],confianca:0,mensagens:mensagens.length,
       qualidade_nota:null,temperatura:"morno",temperatura_confianca:0,
       temperatura_evidencias:evidencia ? [evidencia] : [],
+      checkpoint_anterior:evento.eventType?.startsWith("lead.") ? {
+        event_type:evento.eventType,source_id:evento.sourceId,
+        expected_action:evento.expectedAction,executada:null,evidencias:[],
+      } : null,
       qualidade_resumo:"A avaliacao automatica nao foi aplicada porque faltou uma saida estruturada confiavel.",
       revisao_motivo:motivo.slice(0,80) };
   };
 
   try {
-  const input = prompt(c,catalogoIa,mensagens,fatos);
+  const input = prompt(c,catalogoIa,mensagens,fatos,evento,evidenciasPosteriores);
   const response = await fetch(`${SUPABASE_URL}/functions/v1/ia-router`, {
     method:"POST",headers:{apikey:SERVICE_ROLE_KEY,"Content-Type":"application/json"},
     body:JSON.stringify({agente_slug:agenteSlug,input,disable_tools:true,
@@ -284,6 +341,18 @@ async function processar(db: any, c: Candidato, catalogo: Catalogo[], agenteSlug
   const qualidadeResumo = texto(parsed.qualidade_resumo,500)
     ?? (nota === null ? "Sem mensagens suficientes para avaliar o atendimento." : null);
   if (nota !== null && !qualidadeResumo) throw new Error("ia_qualidade_sem_justificativa");
+  const eventoDue = evento.eventType?.startsWith("lead.") ?? false;
+  const acaoAnteriorExecutada = eventoDue ? parsed.acao_anterior_executada : null;
+  if (eventoDue && typeof acaoAnteriorExecutada !== "boolean")
+    throw new Error("ia_acao_anterior_sem_resultado");
+  const evidenciaIdsPermitidos = new Set(evidenciasPosteriores.map((e) => e.split(":").slice(0,2).join(":")));
+  const evidenciasAcaoAnterior = (Array.isArray(parsed.acao_anterior_evidencia_ids)
+    ? parsed.acao_anterior_evidencia_ids : [])
+    .map((id:unknown)=>String(id).split(":").slice(0,2).join(":"))
+    .filter((id:string)=>evidenciaIdsPermitidos.has(id))
+    .slice(0,10);
+  if (acaoAnteriorExecutada === true && !evidenciasAcaoAnterior.length)
+    throw new Error("ia_acao_anterior_sem_evidencia");
   return { id:c.funil_lead_id,versao_base:c.versao,context_hash:hash,
     origem:"ia",status:"sugestao",momento_codigo:momento.codigo,
     etapa:momento.etapa,acao_codigo:momento.acao_codigo,acao_rotulo:momento.acao_rotulo,
@@ -297,6 +366,11 @@ async function processar(db: any, c: Candidato, catalogo: Catalogo[], agenteSlug
       prazo ?? (momento.prazo_minutos === null
         ? null : new Date(Date.now()+momento.prazo_minutos*60000).toISOString()),
     ),
+    checkpoint_anterior:eventoDue ? {
+      event_type:evento.eventType,source_id:evento.sourceId,
+      expected_action:evento.expectedAction,executada:acaoAnteriorExecutada,
+      evidencias:evidenciasAcaoAnterior,
+    } : null,
     qualidade_resumo:qualidadeResumo };
   } catch (e) {
     if (e instanceof IaIndisponivelError) throw e;
@@ -318,6 +392,16 @@ Deno.serve(async (req: Request) => {
     const agenteSlug = texto(body.agente_slug, 80) ?? "sara";
     if (!/^[a-z0-9][a-z0-9-]{0,79}$/.test(agenteSlug))
       return Response.json({ok:false,erro:"agente_slug_invalido"},{status:400});
+    const eventType = texto(body.event_type, 80);
+    if (eventType && !EVENTOS_SARA.has(eventType))
+      return Response.json({ok:false,erro:"event_type_invalido"},{status:400});
+    const sourceId = texto(body.source_id, 100);
+    const executionRaw = Number(body.execution_id);
+    const executionId = Number.isSafeInteger(executionRaw) && executionRaw > 0 ? executionRaw : null;
+    const expectedAction = body.expected_action && typeof body.expected_action === "object" &&
+      !Array.isArray(body.expected_action) ? body.expected_action as Record<string,unknown> : null;
+    if (eventType?.startsWith("lead.") && (!sourceId || !executionId || !expectedAction))
+      return Response.json({ok:false,erro:"contexto_due_incompleto"},{status:400});
 
     const { data: config, error: ec } = await db.from("f2_sara_config").select("enabled,lote").eq("id",true).maybeSingle();
     if (ec || !config) throw new Error("config_indisponivel");
@@ -332,8 +416,35 @@ Deno.serve(async (req: Request) => {
     if (e1 || e2 || !catalogo?.length) throw new Error("fila_indisponivel");
     if (funilLeadId && !(candidatos ?? []).length)
       return Response.json({ok:false,erro:"card_nao_encontrado",funil_lead_id:funilLeadId},{status:404});
+    let analisadoEm: string | null = null;
+    const evidenciasOperacionais: ContextoEvento["evidenciasOperacionais"] = [];
+    if (eventType?.startsWith("lead.") && sourceId && /^\d+$/.test(sourceId)) {
+      const { data: analise, error: ea } = await db.from("f2_sara_analise")
+        .select("id,funil_lead_id,analisado_em").eq("id",Number(sourceId))
+        .eq("funil_lead_id",funilLeadId).maybeSingle();
+      if (ea || !analise) return Response.json({ok:false,erro:"checkpoint_origem_invalido"},{status:409});
+      analisadoEm = analise.analisado_em;
+      const [{data:eventos,error:ee},{data:visitas,error:ev}] = await Promise.all([
+        db.from("f2_evento").select("id,tipo,titulo,criado_em")
+          .eq("funil_lead_id",funilLeadId).gt("criado_em",analisadoEm).order("criado_em").limit(100),
+        db.from("f2_visita").select("id,status,inicio_em,atualizado_em")
+          .eq("funil_lead_id",funilLeadId).gt("atualizado_em",analisadoEm).order("atualizado_em").limit(100),
+      ]);
+      if (ee || ev) throw new Error("evidencias_operacionais_indisponiveis");
+      for (const e of eventos ?? []) evidenciasOperacionais.push({
+        id:`evento:${String(e.id)}`,tipo:String(e.tipo),resumo:texto(e.titulo,120) ?? "evento operacional",
+        criado_em:String(e.criado_em),
+      });
+      for (const v of visitas ?? []) evidenciasOperacionais.push({
+        id:`visita:${String(v.id)}`,tipo:`visita.${String(v.status)}`,resumo:"estado de visita registrado",
+        criado_em:String(v.atualizado_em ?? v.inicio_em),
+      });
+    }
+    const evento: ContextoEvento = {
+      eventType,sourceId,executionId,expectedAction,analisadoEm,evidenciasOperacionais,
+    };
     const resultados = await Promise.allSettled(
-      (candidatos ?? []).map((c:Candidato)=>processar(db,c,catalogo,agenteSlug)),
+      (candidatos ?? []).map((c:Candidato)=>processar(db,c,catalogo,agenteSlug,evento)),
     );
     const ok = resultados.filter((r)=>r.status==="fulfilled").map((r:any)=>r.value);
     const rejeitados = resultados.filter((r)=>r.status==="rejected") as PromiseRejectedResult[];

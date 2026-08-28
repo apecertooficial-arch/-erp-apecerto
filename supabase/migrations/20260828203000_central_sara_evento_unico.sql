@@ -30,6 +30,19 @@ begin
     raise exception 'FUNCTION_STALE_VERSION: public.motor_evento_prazo mudou: %',md5(v_def);
   end if;
 
+  select pg_get_functiondef(
+    'public.motor_agente(bigint,text,text,jsonb,bigint,bigint,text)'::regprocedure
+  ) into v_def;
+  if md5(v_def)<>'588f997613039524c098690a6af5bb9e' then
+    raise exception 'FUNCTION_STALE_VERSION: public.motor_agente mudou: %',md5(v_def);
+  end if;
+
+  select pg_get_functiondef('public.motor_aplicar_saida_ia(jsonb,jsonb)'::regprocedure)
+    into v_def;
+  if md5(v_def)<>'f8a7898a1807fcffc64b445734653579' then
+    raise exception 'FUNCTION_STALE_VERSION: public.motor_aplicar_saida_ia mudou: %',md5(v_def);
+  end if;
+
   select pg_get_functiondef('public.automacao_validar_mapa(jsonb)'::regprocedure)
     into v_def;
   if md5(v_def)<>'a8dd741d6fb4a8d53c3407d5259154af' then
@@ -57,6 +70,8 @@ begin
       (52::bigint,42::bigint,'c901b513f66c9c19d5db3c4d4f3df8e8'::text),
       (58::bigint,45::bigint,'5f825df13031faf1043aba7bbcf605aa'::text),
       (64::bigint,115::bigint,'5b0b866f0ca6553a8b1a51f8c75591d0'::text),
+      (65::bigint,127::bigint,'43daea7e32c5d6b790ebc5ff4df9c746'::text),
+      (66::bigint,129::bigint,'0c2bf09f895387d254db3456f2647213'::text),
       (67::bigint,91::bigint,'3e6956345c131475dd204429474c8efa'::text),
       (69::bigint,118::bigint,'c3ce46b74852a6891b9484f120198392'::text)
     ) x(id,versao_publicada_id,mapa_md5)
@@ -70,6 +85,16 @@ begin
       raise exception 'AUTOMATION_STALE_VERSION: automacao % divergiu do snapshot auditado',r.id;
     end if;
   end loop;
+  if exists(
+    select 1 from public.automacoes a
+     where a.id in (65,66)
+       and not exists(
+         select 1 from jsonb_array_elements(a.mapa#>'{automation,blocks}') b
+          where b::text like '%send-notification-action%'
+       )
+  ) then
+    raise exception 'AUTOMATION_STALE_VERSION: entrada sem responsabilidade de notificacao';
+  end if;
 end
 $preflight$;
 
@@ -95,6 +120,17 @@ $function$;
 revoke all on function public.f2_sara_evento_elegivel(uuid)
   from public,anon,authenticated;
 grant execute on function public.f2_sara_evento_elegivel(uuid) to service_role;
+
+alter table public.f2_sara_analise
+  add column if not exists evento_tipo text,
+  add column if not exists evento_source_id text,
+  add column if not exists evento_execution_id bigint,
+  add column if not exists acao_anterior jsonb,
+  add column if not exists acao_anterior_executada boolean,
+  add column if not exists acao_anterior_evidencias jsonb not null default '[]'::jsonb;
+
+comment on column public.f2_sara_analise.evento_execution_id is
+  'Correlacao com motor_fila.id; cada prazo e mensagem mantem execution_id auditavel.';
 
 create unique index if not exists motor_fila_sara_checkpoint_ativo_uniq
   on public.motor_fila(automacao_id,(lead->>'__funil_lead_id'))
@@ -242,6 +278,135 @@ begin
 end
 $aplicar_elegibilidade_sara$;
 
+-- O executor existente continua unico, mas passa o contrato de evento completo
+-- para o modulo Sara e persiste o resultado do checkpoint na mesma analise.
+do $patch_motor_agente_evento$
+declare
+  v_def text;
+  v_novo text;
+begin
+  select pg_get_functiondef(
+    'public.motor_agente(bigint,text,text,jsonb,bigint,bigint,text)'::regprocedure
+  ) into v_def;
+  v_novo:=replace(v_def,'public.f2_lead_automatico_elegivel','public.f2_sara_evento_elegivel');
+  if position('public.f2_lead_automatico_elegivel' in v_novo)>0 then
+    raise exception 'FUNCTION_PATCH_FAILED: motor_agente ainda usa corte historico';
+  end if;
+  v_novo:=replace(v_novo,
+    $old$'funil_lead_id',v_card,'agente_slug',v_ag.slug$old$,
+    $new$'funil_lead_id',v_card,'agente_slug',v_ag.slug,
+          'event_type',nullif(p_lead->>'__sara_event_type',''),
+          'source_id',nullif(p_lead->>'__sara_source_id',''),
+          'execution_id',nullif(p_lead->>'__motor_execution_id',''),
+          'expected_action',coalesce(p_lead->'__sara_proxima_acao','null'::jsonb)$new$
+  );
+  if position($needle$'event_type',nullif(p_lead->>'__sara_event_type','')$needle$ in v_novo)=0 then
+    raise exception 'FUNCTION_PATCH_FAILED: motor_agente sem contexto do evento';
+  end if;
+  v_novo:=replace(v_novo,
+    $old$  v_status:=v_reg->>'status';$old$,
+    $new$  if v_item->'checkpoint_anterior' is not null
+     and v_item->'checkpoint_anterior'<>'null'::jsonb then
+    update public.f2_sara_analise
+       set evento_tipo=v_item#>>'{checkpoint_anterior,event_type}',
+           evento_source_id=v_item#>>'{checkpoint_anterior,source_id}',
+           evento_execution_id=nullif(p_lead->>'__motor_execution_id','')::bigint,
+           acao_anterior=v_item#>'{checkpoint_anterior,expected_action}',
+           acao_anterior_executada=(v_item#>>'{checkpoint_anterior,executada}')::boolean,
+           acao_anterior_evidencias=coalesce(v_item#>'{checkpoint_anterior,evidencias}','[]'::jsonb)
+     where id=(v_reg->>'analise_id')::bigint;
+  end if;
+  v_status:=v_reg->>'status';$new$
+  );
+  if v_novo=v_def or position('acao_anterior_executada' in v_novo)=0 then
+    raise exception 'FUNCTION_PATCH_FAILED: motor_agente sem persistencia do checkpoint';
+  end if;
+  execute v_novo;
+end
+$patch_motor_agente_evento$;
+
+create or replace function public.f2_sara_alertar_checkpoint_nao_executado(
+  p_analise_id bigint
+) returns jsonb
+language plpgsql
+security definer
+set search_path=''
+as $function$
+declare
+  v_a public.f2_sara_analise%rowtype;
+  v_f public.f2_lead%rowtype;
+  v_inseridas integer:=0;
+  v_n integer;
+begin
+  select * into v_a from public.f2_sara_analise where id=p_analise_id;
+  if not found or v_a.evento_tipo not in ('lead.next_action_due','lead.cadence_due')
+     or v_a.acao_anterior_executada is distinct from false
+     or v_a.evento_execution_id is null then
+    return jsonb_build_object('ok',true,'alertou',false,'motivo','checkpoint_sem_falha_comprovada');
+  end if;
+  select * into strict v_f from public.f2_lead where id=v_a.funil_lead_id;
+  if v_f.corretor_id is not null then
+    insert into public.ncrm_notificacao(
+      chave,tipo,publico,prioridade,titulo,detalhe,negocio_id,corretor_id,
+      deep_link,repeticoes,execution_id
+    ) values(
+      'sara:acao-vencida:'||v_a.evento_execution_id::text||':corretor',
+      'acao_vencida','corretor',1,'Ação esperada sem evidência',
+      'A Sara reavaliou o prazo e não encontrou evidência posterior de conclusão.',
+      v_f.origem_negocio_id,v_f.corretor_id,
+      case when v_f.origem_negocio_id is null then '/notificacoes'
+        else '/negocio/'||v_f.origem_negocio_id::text end,0,v_a.evento_execution_id
+    ) on conflict (chave) where resolvida_em is null do nothing;
+    get diagnostics v_n=row_count; v_inseridas:=v_inseridas+v_n;
+  end if;
+  insert into public.ncrm_notificacao(
+    chave,tipo,publico,prioridade,titulo,detalhe,negocio_id,corretor_id,
+    deep_link,repeticoes,execution_id
+  ) values(
+    'sara:acao-vencida:'||v_a.evento_execution_id::text||':gestao',
+    'acao_vencida','gestao',1,'Ação esperada sem evidência',
+    'A Sara reavaliou o prazo e não encontrou evidência posterior de conclusão.',
+    v_f.origem_negocio_id,v_f.corretor_id,
+    case when v_f.origem_negocio_id is null then '/notificacoes'
+      else '/negocio/'||v_f.origem_negocio_id::text end,0,v_a.evento_execution_id
+  ) on conflict (chave) where resolvida_em is null do nothing;
+  get diagnostics v_n=row_count; v_inseridas:=v_inseridas+v_n;
+  return jsonb_build_object('ok',true,'alertou',v_inseridas>0,'inseridas',v_inseridas,
+    'execution_id',v_a.evento_execution_id);
+end
+$function$;
+
+revoke all on function public.f2_sara_alertar_checkpoint_nao_executado(bigint)
+  from public,anon,authenticated;
+grant execute on function public.f2_sara_alertar_checkpoint_nao_executado(bigint)
+  to service_role;
+
+do $patch_aplicacao_alerta$
+declare
+  v_def text;
+  v_novo text;
+begin
+  select pg_get_functiondef('public.motor_aplicar_saida_ia(jsonb,jsonb)'::regprocedure)
+    into v_def;
+  v_novo:=replace(v_def,'declare v_id bigint;','declare v_id bigint; v_result jsonb;');
+  v_novo:=replace(v_novo,
+    $old$  return public.f2_sara_aplicar_analise_v2(v_id,$old$,
+    $new$  v_result:=public.f2_sara_aplicar_analise_v2(v_id,$new$
+  );
+  v_novo:=replace(v_novo,$old$true));
+end$old$,$new$true));
+  if coalesce((v_result->>'ok')::boolean,false) and coalesce((v_result->>'aplicado')::boolean,false) then
+    perform public.f2_sara_alertar_checkpoint_nao_executado(v_id);
+  end if;
+  return v_result;
+end$new$);
+  if v_novo=v_def or position('f2_sara_alertar_checkpoint_nao_executado' in v_novo)=0 then
+    raise exception 'FUNCTION_PATCH_FAILED: aplicacao sem alerta de checkpoint';
+  end if;
+  execute v_novo;
+end
+$patch_aplicacao_alerta$;
+
 -- A fila e historica (itens concluidos nao sao apagados). O indice reforca a
 -- idempotencia duravel por automacao, card e mensagem, inclusive sob corrida.
 create unique index if not exists motor_fila_sara_mensagem_uniq
@@ -359,6 +524,8 @@ begin
           '__funil_lead_id',r.card,
           '__motor_priority',0,
           '__motor_evento',v_evento,
+          '__sara_event_type',v_evento,
+          '__sara_source_id',p_mensagem_id,
           '__sara_message_id',p_mensagem_id,
           '__sara_message_at',v_marca
         )
@@ -454,9 +621,10 @@ begin
 end
 $function$;
 
--- O relogio continua transportando fila/retries e rotinas deterministicas. A
--- deteccao de mensagem pertence somente ao trigger AFTER INSERT; a Sara nao
--- possui mais varredura diaria no caminho canonico.
+-- TRANSICAO EXPLICITA: mensagens sao event-driven, mas due_at ainda precisa de
+-- um consumidor. Sem um worker externo persistente ja suportado no projeto, o
+-- relogio continua como compatibilidade cron_due_at e executor da fila/retries.
+-- Isto nao declara atendido o requisito de dispatcher sem cron.
 create or replace function public.motor_relogio_central()
 returns jsonb
 language plpgsql
@@ -497,7 +665,11 @@ begin
   exception when others then
     v_resultado:=v_resultado||jsonb_build_object('cache_mensagens_erro',sqlstate||': '||sqlerrm);
   end;
-  v_resultado:=v_resultado||jsonb_build_object('mensagem','event_driven_trigger');
+  v_resultado:=v_resultado||jsonb_build_object(
+    'mensagem','event_driven_trigger',
+    'due_at_executor','compatibilidade_cron_due_at',
+    'dispatcher','dispatcher_externo_pendente'
+  );
   begin
     insert into public.motor_relogio_estado(chave,ultima_execucao) values('prazo',now())
     on conflict(chave) do update set ultima_execucao=excluded.ultima_execucao
@@ -627,6 +799,16 @@ begin
   select mapa into strict v_mapa
     from public.automacoes
    where id=49 and ativa and status='publicado' and not coalesce(arquivada,false);
+  if (select count(*) from public.automacoes
+       where id in (49,65,66) and ativa and status='publicado'
+         and not coalesce(arquivada,false))<>3 then
+    raise exception 'VERIFY_FAILED: 49/65/66 deveriam ser as tres automacoes ativas';
+  end if;
+  if exists(
+    select 1 from public.automacoes
+     where ativa and status='publicado' and not coalesce(arquivada,false)
+       and id not in (49,65,66)
+  ) then raise exception 'VERIFY_FAILED: existe automacao visivel fora dos dois tipos canonicos'; end if;
 
   select count(*) into v_trigger_count
     from jsonb_array_elements(v_mapa#>'{automation,blocks}') b
@@ -652,6 +834,15 @@ begin
   if position('public.f2_lead_automatico_elegivel' in pg_get_functiondef(
     'public.f2_sara_aplicar_analise_v2(bigint,boolean,boolean,boolean,boolean,boolean)'::regprocedure
   ))>0 then raise exception 'VERIFY_FAILED: aplicacao ainda usa corte historico'; end if;
+  if position('public.f2_lead_automatico_elegivel' in pg_get_functiondef(
+    'public.motor_agente(bigint,text,text,jsonb,bigint,bigint,text)'::regprocedure
+  ))>0 then raise exception 'VERIFY_FAILED: motor_agente ainda usa corte historico'; end if;
+  if position($needle$'event_type',nullif(p_lead->>'__sara_event_type','')$needle$ in pg_get_functiondef(
+    'public.motor_agente(bigint,text,text,jsonb,bigint,bigint,text)'::regprocedure
+  ))=0 then raise exception 'VERIFY_FAILED: motor_agente sem contexto de evento'; end if;
+  if position('f2_sara_alertar_checkpoint_nao_executado' in pg_get_functiondef(
+    'public.motor_aplicar_saida_ia(jsonb,jsonb)'::regprocedure
+  ))=0 then raise exception 'VERIFY_FAILED: aplicacao sem alerta interno de prazo'; end if;
 end
 $verify$;
 
