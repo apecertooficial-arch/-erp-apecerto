@@ -1,0 +1,28 @@
+# Exemplo de blueprint isolado. Nao e consumido pelo render.yaml raiz e nao
+# cria servico sem uma acao explicita no Render.
+services:
+  - type: worker
+    name: apecerto-automations-dispatcher
+    runtime: node
+    region: ohio
+    plan: starter
+    buildCommand: pnpm install --frozen-lockfile
+    startCommand: pnpm run worker:automations
+    numInstances: 1
+    envVars:
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: AUTOMATIONS_DISPATCHER_WORKER_ID
+        sync: false
+      - key: AUTOMATIONS_DISPATCHER_POLL_MS
+        value: "750"
+      - key: AUTOMATIONS_DISPATCHER_HEARTBEAT_MS
+        value: "10000"
+      - key: AUTOMATIONS_DISPATCHER_LEASE_SECONDS
+        value: "90"
+      - key: AUTOMATIONS_DISPATCHER_SHUTDOWN_MS
+        value: "30000"
+      - key: NODE_VERSION
+        value: "22.13.0"
