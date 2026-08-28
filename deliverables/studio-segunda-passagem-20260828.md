@@ -63,4 +63,4 @@ Na produção observada, AP0358 e AP0348 carregaram, o board expôs filtros de c
 
 ## Fechamento
 
-O commit de software `18f0b09` está ativo no Render; o commit posterior `12b8af1` contém apenas documentação. O smoke autenticado somente leitura foi repetido em desktop e mobile, sem erros de console relevantes e sem overflow horizontal. A produção não foi mutada.
+O commit de software está ativo no Render em `b855ea1de3f564b0541d2f121602067a05ea3860` (merge que preserva `bec5a7d` e os commits concorrentes). O smoke autenticado somente leitura foi repetido em desktop e mobile, sem erros de console relevantes e sem overflow horizontal. A produção não foi mutada.
