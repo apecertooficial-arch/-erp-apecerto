@@ -246,6 +246,7 @@ test("dados do proprietário da unidade ficam apenas com o captador e a gestão"
   assert.match(productApi, /isManager: gerenciaProdutosGet/);
   assert.match(productApi, /pode_ver_proprietario: false/);
   assert.match(productApi, /proprietario_nome: null, proprietario_contato: null/);
+  assert.match(productApi, /proprietario_id: podeVerProprietarioProduto \? data\.proprietario_id : null/);
   assert.match(productApi, /canEditUnitOwner \? \{ proprietario_nome: proprietarioNome, proprietario_contato: proprietarioContato \} : \{\}/);
   assert.match(detail, /apenas o captador e a gestão podem consultar ou alterar o proprietário/);
 });
