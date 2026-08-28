@@ -26,7 +26,7 @@ const rolagemEtapas = readFileSync(new URL("../app/styles/esteira-rolagem.css", 
 test("Funil se apresenta como carteira operacional com origens preservadas", () => {
   assert.match(ui, /data-module="funil"/);
   assert.match(ui, /aria-label="Módulos do Funil"/);
-  assert.match(ui, /Capturar lead do Aquário/);
+  assert.match(ui, /Pescar lead/);
   assert.match(promocao, /DROP TRIGGER IF EXISTS f2_lead_limite_dois/);
 });
 
@@ -224,7 +224,7 @@ test("Meu Dia mostra cliente, etapa, momento, tempo e central de atenção", () 
 });
 
 test("Funil entrega áreas operacionais e captura sem tocar nas origens", () => {
-  for (const texto of ["Todos os Leads", "Pipe de Visitas", "Esteira de Vendas", "Configurações da operação", "Capturar lead"]) assert.match(ui, new RegExp(texto));
+  for (const texto of ["Todos os Leads", "Pipe de Visitas", "Esteira de Vendas", "Configurações da operação", "Pescar lead"]) assert.match(ui, new RegExp(texto));
   for (const objeto of ["f2_etapa_config", "f2_visita", "f2_negociacao", "f2_config_audit"]) assert.match(operacao, new RegExp(`CREATE TABLE public\\.${objeto}`));
   assert.match(operacao, /f2_pescar_negocio/);
   assert.doesNotMatch(operacao, /UPDATE public\.(?:ncrm_estado|negocios|leads|visitas|vendas)/);
@@ -232,7 +232,7 @@ test("Funil entrega áreas operacionais e captura sem tocar nas origens", () => 
 });
 
 test("captura é simples para o usuário e reinicia a cópia em primeira abordagem", () => {
-  assert.match(ui, /Capturar lead/);
+  assert.match(ui, /Pescar lead/);
   assert.match(ui, /Lead novo · Primeira abordagem/);
   assert.match(ui, /Prazo de 5 minutos/);
   assert.doesNotMatch(ui, /Cópia a substituir|Substituir cópia e pescar/);

@@ -18,7 +18,7 @@ import { dataHoraLocalSaoPaulo, dataIsoSaoPaulo, FUSO_OPERACAO } from "../../lib
 type Perfil = { userId: string; role: string; name: string };
 type Payload = {
   leads?: LeadFunil2[]; momentos?: MomentoFunil2[]; eventos?: EventoFunil2[]; etapas?: EtapaConfigFunil2[];
-  visitas?: VisitaFunil2[]; negociacoes?: NegociacaoFunil2[]; negociosVinculados?: NegocioVinculadoFunil2[]; imoveisVinculados?: ImovelVinculadoFunil2[]; arquivosVinculados?: ArquivoVinculadoFunil2[]; fontes?: { arquivos?: "ok" | "sem_vinculo" | "erro" }; notas?: NotaFunil2[]; aquario?: CandidatoAquarioFunil2[]; operacao?: OperacaoConfigFunil2 | null; sara?: SaraStatusFunil2; tagCatalogo?: TagCatalogoFunil2[]; error?: string;
+  visitas?: VisitaFunil2[]; negociacoes?: NegociacaoFunil2[]; negociosVinculados?: NegocioVinculadoFunil2[]; imoveisVinculados?: ImovelVinculadoFunil2[]; arquivosVinculados?: ArquivoVinculadoFunil2[]; fontes?: { arquivos?: "ok" | "sem_vinculo" | "erro" }; notas?: NotaFunil2[]; aquario?: CandidatoAquarioFunil2[]; podePescar?: boolean; operacao?: OperacaoConfigFunil2 | null; sara?: SaraStatusFunil2; tagCatalogo?: TagCatalogoFunil2[]; error?: string;
 };
 
 /* Lista fechada, igual a da tabela motivos_descarte. Motivo escrito a mao nao
@@ -108,6 +108,10 @@ function Icone({ nome }: { nome: "quadro" | "dia" | "historico" | "leads" | "vis
   return <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths}</svg>;
 }
 
+function IconeConversa() {
+  return <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.5 9.7 9.7 0 0 1-4-.9L3 21l1.6-4.4A8.3 8.3 0 0 1 3 11.5a8.4 8.4 0 0 1 9-8.5 8.4 8.4 0 0 1 9 8.5Z" /><path d="M8 12h.01M12 12h.01M16 12h.01" /></svg>;
+}
+
 export function Funil2Workspace({ accessToken, profile }: { accessToken: string; profile: Perfil }) {
   const [leads, setLeads] = useState<LeadFunil2[]>([]);
   const [momentos, setMomentos] = useState<MomentoFunil2[]>([]);
@@ -122,10 +126,13 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
   const [arquivosVinculados, setArquivosVinculados] = useState<ArquivoVinculadoFunil2[]>([]);
   const [fontes, setFontes] = useState<Payload["fontes"]>({});
   const [aquario, setAquario] = useState<CandidatoAquarioFunil2[]>([]);
+  const [podePescar, setPodePescar] = useState(false);
   const [operacao, setOperacao] = useState<OperacaoConfigFunil2 | null>(null);
   const [sara, setSara] = useState<SaraStatusFunil2>({ modo: null, runnerAtivo: false, analisesNoLaboratorio: 0, reavaliacaoAutomaticaFunil2: false });
   const [aba, setAba] = useState<"quadro" | "dia" | "leads" | "visitas" | "vendas" | "config">("quadro");
   const [selecionado, setSelecionado] = useState<string | null>(null);
+  const [chatDireto, setChatDireto] = useState<LeadFunil2 | null>(null);
+  const chatOrigemRef = useRef<HTMLButtonElement | null>(null);
   /* Quem clica em "Conversa" quer a conversa, nao a ficha com um botao de chat
      dentro. Guardamos a intencao para a ficha ja abrir no mini chat. */
   const [abrirNoChat, setAbrirNoChat] = useState(false);
@@ -180,6 +187,7 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
     setArquivosVinculados(resposta.json.arquivosVinculados ?? []);
     setFontes(resposta.json.fontes ?? {});
     setAquario(resposta.json.aquario ?? []);
+    setPodePescar(resposta.json.podePescar === true);
     setOperacao(resposta.json.operacao ?? null);
     setSara(resposta.json.sara ?? { modo: null, runnerAtivo: false, analisesNoLaboratorio: 0, reavaliacaoAutomaticaFunil2: false });
   }, [accessToken]);
@@ -204,6 +212,7 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
       setArquivosVinculados(resposta.json.arquivosVinculados ?? []);
       setFontes(resposta.json.fontes ?? {});
       setAquario(resposta.json.aquario ?? []);
+      setPodePescar(resposta.json.podePescar === true);
       setOperacao(resposta.json.operacao ?? null);
       setSara(resposta.json.sara ?? { modo: null, runnerAtivo: false, analisesNoLaboratorio: 0, reavaliacaoAutomaticaFunil2: false });
 
@@ -362,6 +371,14 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
     setSelecionados((atuais) => atuais.includes(id) ? atuais.filter((item) => item !== id) : [...atuais, id]);
   }
 
+  function fecharChatDireto() {
+    setChatDireto(null); requestAnimationFrame(() => chatOrigemRef.current?.focus());
+  }
+
+  function abrirPesca() {
+    setErro(null); setModal("pescar");
+  }
+
   const rotulosAba = {
     quadro: ["Negócios", "Etapa, temperatura, próxima ação e prazo em uma leitura direta."],
     dia: ["Meu Dia", "O que exige ação agora, ordenado pelo prazo real."],
@@ -401,6 +418,7 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
             <button type="button" className="f2-sino" onClick={() => setAvisosAbertos((v) => !v)} aria-label="Abrir avisos"><span>Avisos</span><b>{atrasados + urgentes}</b></button>
             {avisosAbertos && <CentralAtencao leads={leads} momentos={momentosAtivos} etapas={etapasAtivas} onAbrir={(id) => { setSelecionado(id); setAvisosAbertos(false); }} onMeuDia={() => { trocarAba("dia"); setAvisosAbertos(false); }} />}
           </div>
+          {podePescar && <button type="button" className="f2-pescar-secundario" disabled={busy} onClick={abrirPesca}>Pescar lead{aquario.length > 0 ? ` · ${aquario.length}` : ""}</button>}
           <button type="button" className="f2-pescar" onClick={() => setModal("negociacao")}>Novo negócio</button>
         </div>
       </header>
@@ -426,7 +444,7 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
           <label className="f2-v3-periodo"><span>Período</span><select aria-label="Período do quadro" value={periodoQuadro} onChange={(evento) => setPeriodoQuadro(evento.target.value as "30" | "90" | "todos")}><option value="30">Últimos 30 dias · movimentação</option><option value="90">Últimos 90 dias · movimentação</option><option value="todos">Todo o período</option></select></label>
           <span className="f2-v3-separador" aria-hidden="true" />
           <button type="button" className={modoSelecao ? "ativo" : ""} onClick={() => { setModoSelecao((valor) => !valor); setSelecionados([]); }}>Selecionar</button>
-          <details className="f2-v3-mais"><summary aria-label="Mais ações do quadro">•••</summary><div><button type="button" onClick={(evento) => { evento.currentTarget.closest("details")?.removeAttribute("open"); setModal("pescar"); }}>Capturar lead da Triagem</button><button type="button" onClick={() => trocarAba("vendas")}>Abrir Esteira</button><button type="button" onClick={(evento) => { evento.currentTarget.closest("details")?.removeAttribute("open"); document.querySelector<HTMLButtonElement>("#sara-fab")?.click(); }}>Abrir Sara</button></div></details>
+          <details className="f2-v3-mais"><summary aria-label="Mais ações do quadro">•••</summary><div><button type="button" onClick={() => trocarAba("vendas")}>Abrir Esteira</button><button type="button" onClick={(evento) => { evento.currentTarget.closest("details")?.removeAttribute("open"); document.querySelector<HTMLButtonElement>("#sara-fab")?.click(); }}>Abrir Sara</button></div></details>
         </section>
         {selecionados.length > 0 && <section className="f2-v3-bulk" role="region" aria-label="Ações em massa">
           <strong>{selecionados.length} negócio(s) selecionado(s)</strong>
@@ -435,7 +453,7 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
           <button type="button" className="secundario" onClick={() => { setSelecionados([]); setDestinoMassa(""); }}>Cancelar</button>
         </section>}
 
-        {visaoQuadro !== "andamento" && <section className="f2-v3-recorte" aria-live="polite"><div><span>{visaoQuadro === "ganhos" ? "GANHOS" : visaoQuadro === "perdidos" ? "PERDIDOS" : "TRIAGEM"}</span><h2>{visaoQuadro === "ganhos" ? `${ganhos.length} negócios ganhos` : visaoQuadro === "perdidos" ? `${perdidos.length} negócios perdidos` : `${aquario.length} leads aguardando análise`}</h2><p>Este recorte usa os registros canônicos do Funil. Abra a ficha ou a Esteira para consultar todos os detalhes.</p></div>{visaoQuadro === "triagem" && <button type="button" onClick={() => setModal("pescar")}>Capturar lead</button>}{visaoQuadro !== "triagem" && <button type="button" onClick={() => trocarAba("vendas")}>Abrir Esteira</button>}</section>}
+        {visaoQuadro !== "andamento" && <section className="f2-v3-recorte" aria-live="polite"><div><span>{visaoQuadro === "ganhos" ? "GANHOS" : visaoQuadro === "perdidos" ? "PERDIDOS" : "TRIAGEM"}</span><h2>{visaoQuadro === "ganhos" ? `${ganhos.length} negócios ganhos` : visaoQuadro === "perdidos" ? `${perdidos.length} negócios perdidos` : `${aquario.length} leads aguardando análise`}</h2><p>Este recorte usa os registros canônicos do Funil. Abra a ficha ou a Esteira para consultar todos os detalhes.</p></div>{visaoQuadro === "triagem" && podePescar && <button type="button" disabled={busy} onClick={abrirPesca}>Pescar lead</button>}{visaoQuadro !== "triagem" && <button type="button" onClick={() => trocarAba("vendas")}>Abrir Esteira</button>}</section>}
         {visaoQuadro === "andamento" && <section className="f2-board" aria-label="Etapas do Funil">
           {etapasDoQuadro.map((etapa) => {
             const daEtapa = leadsDoPeriodo.filter((l) => l.etapa === etapa.codigo && (temperaturaQuadro === "todas" || temperaturaDoLead(l) === temperaturaQuadro) && (!termoQuadro || `${l.nome} ${l.telefone ?? ""} ${l.origem_negocio_id} ${l.interesse ?? ""}`.toLocaleLowerCase("pt-BR").includes(termoQuadro))).sort((a, b) => ordenacaoQuadro === "nome" ? a.nome.localeCompare(b.nome, "pt-BR") : +new Date(a.proxima_acao_em) - +new Date(b.proxima_acao_em));
@@ -458,14 +476,14 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
                       <details className="f2-card-menu" onClick={(evento) => evento.stopPropagation()}>
                         <summary aria-label={`Ações de ${item.nome}`}>•••</summary>
                         <div>
-                          <button type="button" onClick={() => { setAbrirNoChat(true); setSelecionado(item.id); }}>Abrir conversa</button>
+                          <button type="button" onClick={(evento) => { chatOrigemRef.current = evento.currentTarget; setChatDireto(item); }}>Abrir conversa</button>
                           <button type="button" onClick={() => setSelecionado(item.id)}>Abrir ficha</button>
                           <label><span>Mover para</span><select aria-label={`Mover ${item.nome} para outra etapa`} value="" disabled={busy} onChange={(evento) => { const destino = evento.target.value; evento.currentTarget.closest("details")?.removeAttribute("open"); if (destino) void movimentar([item.id], destino); }}><option value="">Escolha a etapa</option>{etapasDoQuadro.filter((alvo) => alvo.codigo !== item.etapa).map((alvo) => <option key={alvo.codigo} value={alvo.codigo}>{alvo.rotulo}</option>)}</select></label>
                         </div>
                       </details>
                     </div>
                     <div className="f2-card-linha momento"><span aria-hidden="true">◎</span><b><i />{momento?.rotulo ?? item.momento_codigo}</b></div>
-                    <div className="f2-card-linha acao"><span aria-hidden="true">□</span><strong>{tentativa ? `WhatsApp · Tentativa ${tentativa}` : item.acao_rotulo || "Sem próxima atividade"}</strong><button type="button" onClick={(evento) => { evento.stopPropagation(); setAbrirNoChat(true); setSelecionado(item.id); }} aria-label={`Abrir conversa com ${item.nome}`}>○</button></div>
+                    <div className="f2-card-linha acao"><span aria-hidden="true">□</span><strong>{tentativa ? `WhatsApp · Tentativa ${tentativa}` : item.acao_rotulo || "Sem próxima atividade"}</strong><button type="button" className="f2-card-chat" draggable={false} title={`Abrir chat de ${item.nome}`} aria-label={`Abrir chat de ${item.nome}`} onPointerDown={(evento) => evento.stopPropagation()} onMouseDown={(evento) => evento.stopPropagation()} onDragStart={(evento) => evento.stopPropagation()} onKeyDown={(evento) => evento.stopPropagation()} onClick={(evento) => { evento.stopPropagation(); chatOrigemRef.current = evento.currentTarget; setChatDireto(item); }}><IconeConversa /></button></div>
                     <div className="f2-card-linha prazo"><span aria-hidden="true">◷</span><em className={prazo.classe}>{prazo.rotulo}</em>{cadencia && <small>{cadencia}</small>}</div>
                     <div className="f2-card-tags"><span aria-hidden="true">◇</span><InteresseLead lead={item} /></div>
                   </article>;
@@ -523,10 +541,12 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
       {!carregando && aba === "vendas" && <main className="f2-pagina f2-esteira-oficial"><SalesProcessView accessToken={accessToken} sessionRole={profile.role} /></main>}
       {!carregando && aba === "config" && <Configuracoes etapas={etapas} momentos={momentos} operacao={operacao} sara={sara} busy={busy} onEtapa={(dados) => executar("configurarEtapa", dados)} onMomento={(dados) => executar("configurarMomento", dados)} onOperacao={(dados) => executar("configurarOperacao", dados)} />}
 
-      {modal === "pescar" && <ModalPescar candidatos={aquario} busy={busy} onFechar={() => setModal(null)} onPescar={(negocioId) => void executar("pescar", { negocioId })} />}
+      {modal === "pescar" && <ModalPescar candidatos={aquario} busy={busy} erro={erro} onFechar={() => setModal(null)} onPescar={(negocioId) => void executar("pescar", { negocioId })} />}
       {modal === "visita" && <ModalVisita key={lead?.id ?? "nova-visita"} leads={leads} leadFoco={lead} busy={busy} erroExterno={erro} onFechar={() => setModal(null)} onSalvar={(dados) => executar("salvarVisita", dados)} />}
       {modal === "negociacao" && <ModalNegociacao leads={leads} leadFoco={lead} busy={busy} onFechar={() => setModal(null)} onSalvar={(dados) => void executar("salvarNegociacao", dados)} />}
       {modal === "descartar" && lead && <ModalDescartar nome={lead.nome} busy={busy} onFechar={() => setModal(null)} onDescartar={(motivo, detalhe) => { void atualizar("descartar", { motivo, detalhe }).then((ok) => { if (ok) { setModal(null); setSelecionado(null); } }); }} />}
+
+      {chatDireto && (chatDireto.lead_id > 0 ? <Funil2ConversationDrawer accessToken={accessToken} leadId={chatDireto.id} nome={chatDireto.nome} onClose={fecharChatDireto} /> : <div className="f2-acao-painel-overlay" onMouseDown={(evento) => { if (evento.target === evento.currentTarget) fecharChatDireto(); }}><section className="f2-acao-painel" role="dialog" aria-label={`Chat de ${chatDireto.nome}`}><header><strong>Conversa</strong><button type="button" aria-label="Fechar chat" onClick={fecharChatDireto}>×</button></header><p>Este lead ainda não possui uma conversa vinculada.</p></section></div>)}
 
       {lead && momentoAtual && <Detalhe key={`${lead.id}:${lead.versao}`}
         accessToken={accessToken} lead={lead} negociacao={negociacaoLead} negocios={negociosVinculados.filter((item) => item.funil_lead_id === lead.id)} imoveis={imoveisVinculados.filter((item) => item.funil_lead_id === lead.id)} arquivos={arquivosVinculados.filter((item) => item.funil_lead_id === lead.id)} arquivosEstado={fontes?.arquivos ?? "sem_vinculo"} momento={momentoAtual} momentos={momentosAtivos} etapas={etapasAtivas} eventos={eventosLead} notas={notasLead} visitas={visitas.filter((visita) => visita.funil_lead_id === lead.id)} tagCatalogo={tagCatalogo} busy={busy}
@@ -797,9 +817,9 @@ function Configuracoes({ etapas, momentos, operacao, sara, busy, onEtapa, onMome
 
 function CabecalhoPagina({ titulo, texto, acao, onAcao }: { titulo: string; texto: string; acao?: string; onAcao?: () => void }) { return <header className="f2-pagina-cab"><div><span className="f2-eyebrow">FUNIL</span><h2>{titulo}</h2><p>{texto}</p></div>{acao && <button type="button" onClick={onAcao}>{acao}</button>}</header>; }
 
-function ModalPescar({ candidatos, busy, onFechar, onPescar }: { candidatos: CandidatoAquarioFunil2[]; busy: boolean; onFechar: () => void; onPescar: (negocioId: number) => void }) {
+export function ModalPescar({ candidatos, busy, erro, onFechar, onPescar }: { candidatos: CandidatoAquarioFunil2[]; busy: boolean; erro?: string | null; onFechar: () => void; onPescar: (negocioId: number) => void }) {
   const [negocio, setNegocio] = useState(String(candidatos[0]?.negocio_id ?? ""));
-  return <Modal titulo="Capturar lead do Aquário" texto="Negócios abertos e sem corretor disponíveis para sua carteira." onFechar={onFechar}>{candidatos.length > 0 ? <label>Lead disponível<select value={negocio} onChange={(e) => setNegocio(e.target.value)}>{candidatos.map((c) => <option key={c.negocio_id} value={c.negocio_id}>{c.nome} · #{c.negocio_id}</option>)}</select></label> : <div className="f2-sem-resultado"><b>Nenhum lead disponível no Aquário.</b><span>Novas oportunidades aparecerão aqui assim que estiverem disponíveis.</span></div>}<div className="f2-pesca-destino"><span>DESTINO</span><b>Lead novo · Primeira abordagem</b><small>Prazo de 5 minutos. O histórico anterior fica oculto; a conversa começa no instante da captura.</small></div><button type="button" className="f2-modal-primary" disabled={busy || !negocio} onClick={() => onPescar(Number(negocio))}>{busy ? "Capturando…" : "Capturar lead"}</button></Modal>;
+  return <Modal titulo="Pescar lead" texto="Negócios abertos e sem corretor disponíveis para sua carteira." onFechar={onFechar}>{candidatos.length > 0 ? <label>Lead disponível<select value={negocio} disabled={busy} onChange={(e) => setNegocio(e.target.value)}>{candidatos.map((c) => <option key={c.negocio_id} value={c.negocio_id}>{c.nome} · #{c.negocio_id}</option>)}</select></label> : <div className="f2-sem-resultado"><b>Nenhum lead disponível no Aquário.</b><span>Novas oportunidades aparecerão aqui assim que estiverem disponíveis.</span></div>}{erro && <p className="f2-modal-erro" role="alert">{erro}</p>}<div className="f2-pesca-destino"><span>DESTINO</span><b>Lead novo · Primeira abordagem</b><small>Prazo de 5 minutos. O histórico anterior fica oculto; a conversa começa no instante da pesca.</small></div><button type="button" className="f2-modal-primary" disabled={busy || !negocio} onClick={() => onPescar(Number(negocio))}>{busy ? "Pescando…" : "Pescar lead"}</button></Modal>;
 }
 
 /* DESCARTAR É UMA SAÍDA OFICIAL, NÃO UM SUMIÇO.

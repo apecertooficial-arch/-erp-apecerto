@@ -1084,6 +1084,7 @@ body .ncrm-wa-alt:active {background:#ffedd5
 }
 .f2-modal-primary:disabled {cursor:not-allowed;opacity:.5;box-shadow:none
 }
+.funil-oficial .f2-modal-overlay{z-index:95}
 .f2-detalhe-topo>div:first-child {position:relative;min-width:0;flex:1
 }
 .f2-tag-associar {margin-top:9px;border:1px dashed #ff9b60;border-radius:9px;background:#fff7f2;color:#b84200;padding:7px 10px;font-size:11px;font-weight:800;cursor:pointer
@@ -1902,6 +1903,8 @@ body .f2-indicadores button span { font-size:12px; font-weight:600; }
 .funil-oficial .f2-sino{width:40px;height:40px;display:grid;place-items:center;padding:0;border:1px solid var(--border-default);border-radius:var(--radius-pill);background:var(--bg-surface);color:var(--fg-2);box-shadow:none}
 .funil-oficial .f2-topo-acoes .f2-pescar{min-height:40px;padding:0 var(--space-4);border:0;border-radius:var(--radius-pill);background:var(--ape-orange);color:var(--fg-inverse);font-size:var(--text-sm);font-weight:var(--weight-semibold);box-shadow:var(--shadow-xs)}
 .funil-oficial .f2-topo-acoes .f2-pescar:hover{background:var(--ape-orange-600)}
+.funil-oficial .f2-topo-acoes .f2-pescar-secundario{min-height:40px;padding:0 var(--space-4);border:1px solid var(--ape-orange-200,#FFD6BD);border-radius:var(--radius-pill);background:var(--bg-tint-orange,#FFF3EA);color:var(--ape-orange-700,#CC5800);font-size:var(--text-sm);font-weight:var(--weight-semibold);box-shadow:none}
+.funil-oficial .f2-topo-acoes .f2-pescar-secundario:hover,.funil-oficial .f2-topo-acoes .f2-pescar-secundario:focus-visible{border-color:var(--ape-orange);background:#FFE9DA;outline:none;box-shadow:0 0 0 3px color-mix(in srgb,var(--ape-orange) 18%,transparent)}
 
 /* Quadro: controles simples e colunas compactas como no contrato aprovado. */
 .funil-oficial .f2-main{padding:var(--space-4) var(--space-5) var(--space-5);overflow:hidden}
@@ -2200,7 +2203,10 @@ body .f2-indicadores button span { font-size:12px; font-weight:600; }
   .funil-oficial .ape-card-resumo>em{padding:3px 6px;border-radius:999px;font-size:11px;font-style:normal;white-space:nowrap}
   .funil-oficial .ape-card-acoes-compactas{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
   .funil-oficial .ape-card-acoes-compactas button{min-height:44px;border:1px solid var(--border-default,#E4DFD9);border-radius:10px;background:#fff;color:var(--fg-1,#1F1C1A);font-size:12px;font-weight:600}
-  .funil-oficial>.ape-novo-negocio-fixo{position:fixed;z-index:79;right:14px;bottom:calc(70px + env(safe-area-inset-bottom));left:14px;min-height:44px;border:0;border-radius:12px;background:var(--ape-orange,#FF7000);color:#fff;font:600 13px/1 var(--font-ui,"Quicksand",sans-serif);box-shadow:var(--shadow-sm,0 2px 6px rgba(31,28,26,.06))}
+  .funil-oficial>.ape-funil-acoes-fixas{position:fixed;z-index:79;right:14px;bottom:calc(70px + env(safe-area-inset-bottom));left:14px;display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .funil-oficial>.ape-funil-acoes-fixas button{min-height:44px;border-radius:12px;font:600 13px/1 var(--font-ui,"Quicksand",sans-serif);box-shadow:var(--shadow-sm,0 2px 6px rgba(31,28,26,.06))}
+  .funil-oficial>.ape-funil-acoes-fixas .ape-pescar-lead{border:1px solid var(--ape-orange-200,#FFD6BD);background:#fff;color:var(--ape-orange-700,#CC5800)}
+  .funil-oficial>.ape-funil-acoes-fixas .ape-novo-negocio-fixo{border:0;background:var(--ape-orange,#FF7000);color:#fff}
   body:has(.funil-oficial.modo-crm) #sara-fab{bottom:calc(134px + env(safe-area-inset-bottom,0px))}
   body:has(.funil-oficial.modo-crm) #sara-panel{bottom:calc(180px + env(safe-area-inset-bottom,0px))}
   body:has(.funil-oficial>.ape-ficha-sheet) #sara-fab,body:has(.funil-oficial>.ape-ficha-sheet) #sara-panel{display:none}
@@ -2265,7 +2271,9 @@ body .f2-indicadores button span { font-size:12px; font-weight:600; }
 .funil-oficial .f2-card-linha.momento>b{width:max-content;max-width:100%;display:inline-flex;align-items:center;gap:5px;overflow:hidden;padding:3px 7px;border-radius:999px;background:var(--bg-sunken,#FAF8F6);color:var(--fg-2,#4C4845);font-size:11px;font-weight:600;text-overflow:ellipsis;white-space:nowrap}
 .funil-oficial .f2-card-linha.momento>b>i{width:6px;height:6px;flex:none;border-radius:999px;background:var(--ape-orange,#FF7000)}
 .funil-oficial .f2-card-linha.acao>strong{overflow:hidden;font-weight:500;text-overflow:ellipsis;white-space:nowrap}
-.funil-oficial .f2-card-linha.acao>button{width:24px;height:24px;display:grid;place-items:center;padding:0;border:0;border-radius:6px;background:transparent;color:var(--fg-3,#6E6760);font-size:14px}
+.funil-oficial .f2-card-linha.acao>button{width:28px;height:28px;display:grid;place-items:center;padding:0;border:1px solid var(--border-default,#E4DFD9);border-radius:8px;background:#fff;color:var(--ape-purple-700,#66009A);font-size:14px;cursor:pointer}
+.funil-oficial .f2-card-linha.acao>button:hover,.funil-oficial .f2-card-linha.acao>button:focus-visible{border-color:var(--ape-purple,#8B00CC);background:var(--bg-tint-purple,#F7ECFC);outline:none;box-shadow:0 0 0 3px color-mix(in srgb,var(--ape-purple) 14%,transparent)}
+.funil-oficial .f2-card-chat svg{pointer-events:none}
 .funil-oficial .f2-card-linha.prazo>em{width:max-content;max-width:100%;overflow:hidden;padding:3px 7px;border-radius:999px;font-size:11px;font-style:normal;font-weight:600;text-overflow:ellipsis;white-space:nowrap}
 .funil-oficial .f2-card-linha.prazo>small{overflow:hidden;color:var(--fg-muted,#9A938B);font-size:11px;text-overflow:ellipsis;white-space:nowrap}
 .funil-oficial .f2-card-tags{min-height:25px;display:flex;align-items:flex-end;gap:5px;margin-top:4px;padding-top:6px;border-top:1px solid var(--border-soft,#F2EFEC);color:var(--fg-muted,#9A938B);font-size:11px}

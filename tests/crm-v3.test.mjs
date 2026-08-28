@@ -80,6 +80,37 @@ test("cartão inteiro abre a ficha correta por mouse e teclado", () => {
   assert.match(mobile, /onAbrir=\{\(\) => \{ setAbrirNoChat\(false\); setSelecionado\(lead\.id\); \}\}/);
 });
 
+test("barra principal oferece Pescar lead com autorização canônica", () => {
+  assert.match(workspace, /const \[podePescar, setPodePescar\] = useState\(false\)/);
+  assert.match(workspace, /setPodePescar\(resposta\.json\.podePescar === true\)/);
+  assert.match(workspace, /podePescar && <button/);
+  assert.match(workspace, /className="f2-pescar-secundario"/);
+  assert.match(workspace, />Pescar lead\{aquario\.length/);
+  assert.doesNotMatch(workspace, /Capturar lead da Triagem/);
+  assert.match(workspace, /visaoQuadro === "triagem"[\s\S]*>Pescar lead<\/button>/);
+  assert.match(api, /podePescar: true/);
+  assert.match(api, /db\.rpc\("f2_listar_aquario"\)/);
+  assert.match(api, /rpc = "f2_pescar_negocio"/);
+  assert.match(mobile, /className="ape-pescar-lead"[\s\S]*>Pescar lead/);
+  assert.match(mobile, /<ModalPescar candidatos=\{aquario\}/);
+  assert.match(workspace, /<ModalPescar candidatos=\{aquario\} busy=\{busy\} erro=\{erro\}/);
+});
+
+test("cartão abre chat direto e reconhecível sem abrir ficha, seleção ou arrasto", () => {
+  assert.match(workspace, /const \[chatDireto, setChatDireto\] = useState<LeadFunil2 \| null>\(null\)/);
+  assert.match(workspace, /aria-label=\{`Abrir chat de \$\{item\.nome\}`\}/);
+  assert.match(workspace, /title=\{`Abrir chat de \$\{item\.nome\}`\}/);
+  assert.match(workspace, /className="f2-card-chat"/);
+  assert.match(workspace, /<IconeConversa \/>/);
+  assert.match(workspace, /draggable=\{false\}/);
+  assert.match(workspace, /evento\.stopPropagation\(\); chatOrigemRef\.current = evento\.currentTarget; setChatDireto\(item\);/);
+  assert.match(workspace, /chatDireto && \(chatDireto\.lead_id > 0 \? <Funil2ConversationDrawer/);
+  assert.match(workspace, /setChatDireto\(null\); requestAnimationFrame\(\(\) => chatOrigemRef\.current\?\.focus\(\)\)/);
+  assert.doesNotMatch(workspace, /aria-label=\{`Abrir conversa com \$\{item\.nome\}`\}>○<\/button>/);
+  assert.match(mobile, /onConversa=\{\(origem\) => \{ chatOrigemRef\.current = origem; setChatDireto\(lead\); \}\}/);
+  assert.match(mobile, /chatDireto && \(chatDireto\.lead_id > 0 \? <Funil2ConversationDrawer/);
+});
+
 test("ficha preserva foco, prende teclado e navega sete abas", () => {
   const sete = ["Atendimento", "Histórico", "Atividades", "Negócios", "Imóveis", "Arquivos", "Dados do lead"];
   for (const source of [workspace, mobile]) {

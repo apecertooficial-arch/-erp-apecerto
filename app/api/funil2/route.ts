@@ -292,7 +292,12 @@ export async function GET(request: Request) {
   return Response.json({
     leads: leadsComOrigem, momentos: momentos ?? [], eventos: [], etapas: etapas ?? [],
     visitas: visitas ?? [], negociacoes: negociacoes ?? [], negociosVinculados, imoveisVinculados, arquivosVinculados,
-    fontes: { arquivos: arquivosEstado }, aquario: aquario ?? [], operacao: e8 ? null : operacao ?? null,
+    fontes: { arquivos: arquivosEstado }, aquario: aquario ?? [],
+    /* A lista só retorna sem erro quando a própria função canônica reconhece
+       a sessão como admin ou corretor cadastrado. A interface não deduz
+       permissão por rótulo de perfil: ela recebe a capacidade comprovada. */
+    podePescar: true,
+    operacao: e8 ? null : operacao ?? null,
     notas: [], tagCatalogo: tagCatalogo ?? [],
     sara: {
       modo: typeof saraModo === "object" && saraModo !== null && "modo" in saraModo ? String((saraModo as { modo?: unknown }).modo ?? "") || null : null,

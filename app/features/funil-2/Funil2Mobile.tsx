@@ -23,6 +23,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BotaoWhatsApp } from "./BotaoWhatsApp";
 import { AssociarTagLead } from "./AssociarTagLead";
 import { Funil2ConversationDrawer } from "./Funil2ConversationDrawer";
+import { ModalPescar } from "./Funil2Workspace";
 import { getBrowserSupabaseClient } from "../../lib/supabase/browser";
 import { prepararAberturaWhatsApp } from "../../lib/whatsappNativo";
 import {
@@ -33,6 +34,7 @@ import {
   situacaoPrazo,
   venceHoje,
   type ArquivoVinculadoFunil2,
+  type CandidatoAquarioFunil2,
   type EventoFunil2,
   type EtapaConfigFunil2,
   type ImovelVinculadoFunil2,
@@ -58,6 +60,8 @@ type PayloadMobile = {
   negociosVinculados?: NegocioVinculadoFunil2[];
   imoveisVinculados?: ImovelVinculadoFunil2[];
   arquivosVinculados?: ArquivoVinculadoFunil2[];
+  aquario?: CandidatoAquarioFunil2[];
+  podePescar?: boolean;
   fontes?: { arquivos?: "ok" | "sem_vinculo" | "erro" };
   error?: string;
 };
@@ -221,7 +225,7 @@ function CartaoLead({
 }: {
   lead: LeadFunil2;
   onAbrir: () => void;
-  onConversa: () => void;
+  onConversa: (origem: HTMLButtonElement) => void;
 }) {
   const prazo = situacaoPrazo(lead.proxima_acao_em);
   return <article className="ape-card" role="button" tabIndex={0} aria-label={`Abrir ficha de ${lead.nome}`} onClick={onAbrir} onKeyDown={(evento) => { if (evento.key === "Enter" || evento.key === " ") { evento.preventDefault(); onAbrir(); } }}>
@@ -240,7 +244,7 @@ function CartaoLead({
     </div>
 
     <div className="ape-card-acoes-compactas">
-      <button type="button" onClick={(evento) => { evento.stopPropagation(); onConversa(); }}>Conversa</button>
+      <button type="button" aria-label={`Abrir chat de ${lead.nome}`} onKeyDown={(evento) => evento.stopPropagation()} onClick={(evento) => { evento.stopPropagation(); onConversa(evento.currentTarget); }}>Conversa</button>
       <button type="button" onClick={(evento) => { evento.stopPropagation(); onAbrir(); }}>Abrir</button>
     </div>
   </article>;
@@ -774,6 +778,11 @@ export function Funil2Mobile({
   const [novoNegocioLeadId, setNovoNegocioLeadId] = useState("");
   const [selecionado, setSelecionado] = useState<string | null>(null);
   const [abrirNoChat, setAbrirNoChat] = useState(false);
+  const [chatDireto, setChatDireto] = useState<LeadFunil2 | null>(null);
+  const chatOrigemRef = useRef<HTMLButtonElement | null>(null);
+  const [pescaAberta, setPescaAberta] = useState(false);
+  const [pescaBusy, setPescaBusy] = useState(false);
+  const [pescaErro, setPescaErro] = useState<string | null>(null);
   const [sucesso, setSucesso] = useState<string | null>(null);
   const [historicoDetalhe, setHistoricoDetalhe] = useState<{ leadId: string; eventos: EventoFunil2[]; notas: NotaFunil2[] } | null>(null);
   const [pedidoUrl] = useState(lerLeadDaUrl);
@@ -838,6 +847,8 @@ export function Funil2Mobile({
   const leadPedido = pedidoUrl === null ? null : leads.find((lead) => lead.origem_negocio_id === pedidoUrl) ?? null;
   const leadAberto = selecionado === "__fechado__" ? null : leads.find((lead) => lead.id === selecionado) ?? leadPedido;
   const leadNovoNegocio = leads.find((lead) => lead.id === novoNegocioLeadId) ?? null;
+  const aquario = dados?.aquario ?? [];
+  const podePescar = dados?.podePescar === true;
   const leadHistoricoId = leadAberto?.id ?? null;
   const leadHistoricoVersao = leadAberto?.versao ?? null;
   useEffect(() => {
@@ -857,8 +868,31 @@ export function Funil2Mobile({
     key={lead.id}
     lead={lead}
     onAbrir={() => { setAbrirNoChat(false); setSelecionado(lead.id); }}
-    onConversa={() => { setAbrirNoChat(true); setSelecionado(lead.id); }}
+    onConversa={(origem) => { chatOrigemRef.current = origem; setChatDireto(lead); }}
   />;
+
+  const fecharChatDireto = () => {
+    setChatDireto(null); requestAnimationFrame(() => chatOrigemRef.current?.focus());
+  };
+
+  const pescar = async (negocioId: number) => {
+    if (pescaBusy) return;
+    setPescaBusy(true); setPescaErro(null);
+    try {
+      const resposta = await fetch("/api/funil2", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "pescar", negocioId }),
+      });
+      const resultado = await resposta.json().catch(() => ({})) as { error?: string };
+      if (!resposta.ok) { setPescaErro(resultado.error ?? "Não foi possível pescar este lead."); return; }
+      setPescaAberta(false); recarregar();
+    } catch {
+      setPescaErro("Não foi possível falar com o servidor. Tente novamente.");
+    } finally {
+      setPescaBusy(false);
+    }
+  };
 
   return <main className={`ape-app modo-${modo} funil-oficial`} data-module="funil" aria-label={modo === "inicio" ? `Meu Dia de ${primeiroNome}` : "Funil"}>
     <header className="ape-abertura">
@@ -945,7 +979,7 @@ export function Funil2Mobile({
         </section>)
       : <section className="ape-lista" aria-label="Atendimentos">{visiveis.slice(0, 60).map(cartao)}</section>}
 
-    {modo === "crm" && areaCrm === "funil" && !leadAberto && <button type="button" className="ape-novo-negocio-fixo" onClick={() => setNovoNegocioAberto(true)}>Novo negócio</button>}
+    {modo === "crm" && areaCrm === "funil" && !leadAberto && <div className="ape-funil-acoes-fixas">{podePescar && <button type="button" className="ape-pescar-lead" disabled={pescaBusy} onClick={() => { setPescaErro(null); setPescaAberta(true); }}>Pescar lead{aquario.length > 0 ? ` · ${aquario.length}` : ""}</button>}<button type="button" className="ape-novo-negocio-fixo" onClick={() => setNovoNegocioAberto(true)}>Novo negócio</button></div>}
 
     {modo === "crm" && <nav className="ape-crm-v3-nav" aria-label="Navegação do Funil">
       <button type="button" onClick={() => onIr("/inicio")}>Meu Dia</button>
@@ -960,6 +994,10 @@ export function Funil2Mobile({
     </button>}
 
     {novoNegocioAberto && !leadAberto && <div className="ape-ficha-sheet" onMouseDown={(evento) => { if (evento.target === evento.currentTarget) { setNovoNegocioAberto(false); setNovoNegocioLeadId(""); } }}><section role="dialog" aria-label="Novo negócio"><i /><header className="ape-novo-negocio-cab"><div><h3>Novo negócio</h3><p>Escolha o lead para criar a oportunidade na Esteira.</p></div><button type="button" aria-label="Fechar novo negócio" onClick={() => { setNovoNegocioAberto(false); setNovoNegocioLeadId(""); }}>×</button></header><label className="ape-novo-negocio-lead">Lead<select value={novoNegocioLeadId} onChange={(evento) => setNovoNegocioLeadId(evento.target.value)}><option value="">Selecione o lead</option>{leads.map((item) => <option key={item.id} value={item.id}>{item.nome} · #{item.origem_negocio_id}</option>)}</select></label>{leadNovoNegocio && <GerarNegociacaoMobile lead={leadNovoNegocio} accessToken={accessToken} onSalvo={() => { void recarregar(); setNovoNegocioAberto(false); setNovoNegocioLeadId(""); }} abertoInicial onFechar={() => { setNovoNegocioAberto(false); setNovoNegocioLeadId(""); }} />}</section></div>}
+
+    {pescaAberta && !leadAberto && <ModalPescar candidatos={aquario} busy={pescaBusy} erro={pescaErro} onFechar={() => { if (!pescaBusy) { setPescaAberta(false); setPescaErro(null); } }} onPescar={(negocioId) => void pescar(negocioId)} />}
+
+    {chatDireto && (chatDireto.lead_id > 0 ? <Funil2ConversationDrawer accessToken={accessToken} leadId={chatDireto.id} nome={chatDireto.nome} onClose={fecharChatDireto} /> : <div className="ape-ficha-sheet" onMouseDown={(evento) => { if (evento.target === evento.currentTarget) fecharChatDireto(); }}><section role="dialog" aria-label={`Chat de ${chatDireto.nome}`}><button type="button" aria-label="Fechar chat" onClick={fecharChatDireto}>×</button><p>Este cliente ainda não possui conversa vinculada.</p></section></div>)}
 
     {leadAberto && <FichaLead
       abrirNoChat={abrirNoChat}
