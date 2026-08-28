@@ -45,7 +45,7 @@ test("Adicionar cliente fica visível e usa criação canônica reconciliável",
   assert.match(addClient, /buscandoDuplicidade/);
   assert.match(addClient, /response\.status !== 202/);
   assert.match(clientApi, /action !== "criar"/);
-  assert.match(clientApi, /equipe_visao/);
+  assert.match(clientApi, /listar_corretores_transferencia/);
   assert.match(clientApi, /from\("leads"\)\.insert/);
   assert.match(clientApi, /from\("negocios"\)\.insert/);
   assert.match(clientApi, /origem: "manual"/);

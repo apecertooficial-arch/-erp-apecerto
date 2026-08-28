@@ -112,11 +112,13 @@ async function cardDoLead(db: ReturnType<typeof createServerSupabaseClient>, lea
 async function escopoDeCorretor(db: ReturnType<typeof createServerSupabaseClient>, userId: string) {
   const [{ data: proprio }, { data: equipe, error }] = await Promise.all([
     db.from("corretores").select("id,nome").eq("usuario_id", userId).eq("ativo", true).maybeSingle(),
-    db.rpc("equipe_visao"),
+    /* Mesma fonte canônica já usada por Agenda, Chat e Esteira. Ela aplica o
+       escopo do usuário no banco e não depende dos agregados de performance. */
+    db.rpc("listar_corretores_transferencia"),
   ]);
   if (error) return { error, proprio: proprio ?? null, equipe: [] as Array<{ corretor_id: number; nome: string; is_self: boolean }> };
   const vistos = new Map<number, { corretor_id: number; nome: string; is_self: boolean }>();
-  for (const item of equipe ?? []) vistos.set(Number(item.corretor_id), { corretor_id: Number(item.corretor_id), nome: String(item.nome), is_self: item.is_self === true });
+  for (const item of equipe ?? []) vistos.set(Number(item.id), { corretor_id: Number(item.id), nome: String(item.nome), is_self: Number(item.id) === Number(proprio?.id) });
   if (proprio) vistos.set(Number(proprio.id), { corretor_id: Number(proprio.id), nome: String(proprio.nome), is_self: true });
   return { error: null, proprio: proprio ?? null, equipe: [...vistos.values()] };
 }
