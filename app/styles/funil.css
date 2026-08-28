@@ -1936,6 +1936,9 @@ body .f2-indicadores button span { font-size:12px; font-weight:600; }
 .funil-oficial .f2-coluna-topo>b{min-width:22px;height:22px;padding:0;border-radius:var(--radius-pill);background:var(--bg-surface);font-size:var(--text-xs);box-shadow:var(--shadow-xs)}
 .funil-oficial .f2-lista{padding:0 var(--space-2) var(--space-2);gap:var(--space-2)}
 .funil-oficial .f2-card{position:relative;padding:var(--space-3);border:1px solid var(--border-soft);border-radius:var(--radius-md);background:var(--bg-surface);box-shadow:var(--shadow-xs)}
+.funil-oficial .f2-card>:not(.f2-card-abrir){position:relative;z-index:2}
+.funil-oficial .f2-card-abrir{position:absolute;z-index:1;inset:0;width:100%;height:100%;padding:0;border:0;border-radius:inherit;background:transparent;cursor:pointer}
+.funil-oficial .f2-card-abrir:focus-visible{outline:2px solid var(--ape-orange);outline-offset:2px}
 .funil-oficial .f2-card:hover,.funil-oficial .f2-card.selecionado,.funil-oficial .f2-card:focus-visible{transform:none;border-color:color-mix(in srgb,var(--ape-orange) 44%,var(--border-soft));box-shadow:var(--shadow-sm)}
 .funil-oficial .f2-card-ident{grid-template-columns:30px minmax(0,1fr);gap:var(--space-2);margin-bottom:var(--space-2)}
 .funil-oficial .f2-card-ident>i{width:30px;height:30px;border-radius:var(--radius-sm);background:var(--bg-tint-purple);color:var(--ape-purple-700);font-size:var(--text-xs)}
@@ -2133,6 +2136,15 @@ body .f2-indicadores button span { font-size:12px; font-weight:600; }
 .funil-oficial .ape-filtros,.funil-oficial .ape-temperatura-filtros{scrollbar-width:none}
 .funil-oficial .ape-filtros button,.funil-oficial .ape-temperatura-filtros button{min-height:40px;border-radius:var(--radius-pill)}
 .funil-oficial .ape-card{border:1px solid var(--border-soft);border-radius:var(--radius-md);box-shadow:var(--shadow-xs)}
+.funil-oficial .ape-card{position:relative}
+.funil-oficial .ape-card>:not(.ape-card-abrir){position:relative;z-index:2}
+.funil-oficial .ape-card-abrir{position:absolute;z-index:1;inset:0;width:100%;height:100%;padding:0;border:0;border-radius:inherit;background:transparent}
+.funil-oficial .ape-card-abrir:focus-visible{outline:2px solid var(--ape-orange);outline-offset:2px}
+.funil-oficial .f2-contrato-pendente,.funil-oficial .ape-contrato-pendente{display:flex;flex-direction:column;gap:var(--space-2);margin-top:var(--space-3);padding:var(--space-3);border:1px solid var(--ape-purple-100);border-radius:var(--radius-md);background:var(--bg-tint-purple);color:var(--fg-2);font-size:var(--text-sm)}
+.funil-oficial .f2-contrato-pendente strong,.funil-oficial .ape-contrato-pendente strong{color:var(--ape-purple-700)}
+.funil-oficial .f2-contrato-pendente button{align-self:flex-start;min-height:36px;padding:0 var(--space-3);border:1px solid var(--ape-purple-200);border-radius:var(--radius-pill);background:var(--bg-surface);color:var(--ape-purple-700);font-weight:var(--weight-semibold)}
+.funil-oficial .f2-aviso-fonte,.funil-oficial .ape-aviso-fonte{display:flex;align-items:center;gap:var(--space-2);margin:0 var(--space-4) var(--space-2);padding:var(--space-2) var(--space-3);border:1px solid var(--ape-orange-100);border-radius:var(--radius-sm);background:var(--bg-tint-orange);color:var(--fg-2);font-size:var(--text-xs)}
+.funil-oficial .f2-aviso-fonte strong,.funil-oficial .ape-aviso-fonte strong{color:var(--fg-1)}
 
 @media(max-width:1100px){
   .funil-oficial .f2-v3-perfil strong{display:none}
@@ -2189,7 +2201,7 @@ body .f2-indicadores button span { font-size:12px; font-weight:600; }
   .funil-oficial .ape-filtros-menu>summary::-webkit-details-marker{display:none}
   .funil-oficial .ape-filtros-menu>.ape-temperatura-filtros{position:absolute;z-index:50;right:0;top:50px;width:min(330px,calc(100vw - 28px));display:flex;flex-wrap:wrap;padding:10px;border:1px solid var(--border-default,#E4DFD9);border-radius:12px;background:#fff;box-shadow:var(--shadow-lg,0 16px 40px rgba(31,28,26,.14))}
   .funil-oficial.modo-crm>.ape-filtros{margin:0 -14px 12px;padding:8px 14px;border-block:1px solid var(--border-soft,#F2EFEC);background:var(--bg-surface,#fff)}
-  .funil-oficial.modo-crm>.ape-filtros button{min-height:42px;padding:0 14px;border-radius:999px;background:#fff;font-size:11px}
+  .funil-oficial.modo-crm>.ape-filtros button{min-height:44px;padding:0 14px;border-radius:999px;background:#fff;font-size:11px}
   .funil-oficial.modo-crm>.ape-lista{gap:10px;padding:0}
   .funil-oficial.modo-crm .ape-card{padding:12px;border:1px solid var(--border-soft,#F2EFEC);border-radius:12px;background:#fff;box-shadow:var(--shadow-xs,0 1px 2px rgba(31,28,26,.04))}
   .funil-oficial.modo-crm .ape-card-topo{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:start;gap:8px}
@@ -2321,14 +2333,16 @@ body:has(.funil-oficial) #sara-fab{display:none}
 body:has(.funil-oficial) .convite-instalar{display:none}
 body:has(.funil-oficial .f2-overlay) #sara-fab,body:has(.funil-oficial .f2-overlay) #sara-panel{display:none}
 
-/* Dentro do shell oficial, 1440 px deixam cerca de 1200 px úteis. A faixa
-   aprovada passa a duas linhas estáveis sem cortar busca, período ou ações. */
+/* A faixa aprovada permanece em uma linha no desktop. Os controles reduzem
+   com o viewport sem esconder ações nem criar um segundo cabeçalho. */
 @media(max-width:1500px) and (min-width:901px){
-  .funil-oficial .f2-v3-toolbar{flex-wrap:wrap}
-  .funil-oficial .f2-v3-quebra{display:block;flex:0 0 100%;height:0}
+  .funil-oficial .f2-v3-toolbar{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:thin}
+  .funil-oficial .f2-v3-quebra{display:none}
   .funil-oficial .f2-v3-visoes{min-width:0;overflow-x:auto;scrollbar-width:none}
-  .funil-oficial .f2-v3-busca{min-width:180px;max-width:none;margin-left:auto}
-  .funil-oficial .f2-v3-ordenacao select{min-width:180px}
+  .funil-oficial .f2-v3-visoes button{padding:0 8px;font-size:11px}
+  .funil-oficial .f2-v3-busca{min-width:140px;max-width:220px;margin-left:auto}
+  .funil-oficial .f2-v3-ordenacao select{min-width:140px;max-width:150px}
+  .funil-oficial .f2-v3-periodo select{max-width:160px}
 }
 
 @media(max-width:900px){
@@ -2352,7 +2366,7 @@ body:has(.funil-oficial .f2-overlay) #sara-fab,body:has(.funil-oficial .f2-overl
   .funil-oficial .ape-ficha-identidade-v3 h2{overflow:hidden;margin:0;color:var(--fg-1);font-size:var(--text-lg);line-height:var(--leading-tight);text-overflow:ellipsis;white-space:nowrap}
   .funil-oficial .ape-ficha-identidade-v3 p{overflow:hidden;margin:var(--space-1) 0 0;color:var(--fg-3);font-size:var(--text-xs);text-overflow:ellipsis;white-space:nowrap}
   .funil-oficial .ape-ficha-identidade-v3 .ape-temperatura-controle{flex:none}
-  .funil-oficial .ape-ficha-identidade-v3 .ape-momento{max-width:152px;min-height:28px;display:flex;align-items:center;gap:var(--space-1);padding:0 var(--space-2);border:0;border-radius:var(--radius-pill);font-size:var(--text-xs);white-space:nowrap}
+  .funil-oficial .ape-ficha-identidade-v3 .ape-momento{max-width:152px;min-height:44px;display:flex;align-items:center;gap:var(--space-1);padding:0 var(--space-2);border:0;border-radius:var(--radius-pill);font-size:var(--text-xs);white-space:nowrap}
   .funil-oficial .ape-ficha-identidade-v3 .ape-momento:not(:focus){overflow:hidden;text-overflow:ellipsis}
   .funil-oficial .ape-ficha-cabecalho-v3 .ape-ficha-abas{margin-top:var(--space-2)}
   .funil-oficial .ape-ficha>.ape-proxima-aprovada{flex:none;margin:var(--space-3) var(--space-4) 0;padding:var(--space-3);border:1px solid var(--ape-orange-100);border-radius:var(--radius-md);background:var(--bg-tint-orange)}

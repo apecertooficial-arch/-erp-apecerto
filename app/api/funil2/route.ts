@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { createServerSupabaseClient } from "../../lib/supabase/server";
 import { normalizarInstanteSaoPaulo } from "../../lib/timezone";
 import { interesseDasTags, normalizarTagsDoLead, type TagDoLead } from "../../lib/lead-tags";
+import { statusHttpFunil } from "../../features/funil-2/contratos.mjs";
 
 export const dynamic = "force-dynamic";
 
@@ -63,9 +64,7 @@ async function listarLeadsSemCorte(db: SupabaseClient) {
 async function instanciasPorLead(db: SupabaseClient) {
   const mapa = new Map<string, { rotulo: string | null; telefone: string | null; status: string | null }>();
   const { data, error } = await db.rpc("f2_instancia_por_lead");
-  /* Falhar aqui nao pode derrubar o Funil: sem o mapa, cada lead cai no numero
-     padrao do corretor -- exatamente o comportamento anterior. */
-  if (error || !Array.isArray(data)) return mapa;
+  if (error || !Array.isArray(data)) return { mapa, erro: true };
   for (const linha of data as Array<{ funil_lead_id: string; rotulo: string | null; telefone: string | null; status: string | null }>) {
     if (!linha?.funil_lead_id) continue;
     mapa.set(String(linha.funil_lead_id), {
@@ -74,7 +73,7 @@ async function instanciasPorLead(db: SupabaseClient) {
       status: linha.status ? String(linha.status) : null,
     });
   }
-  return mapa;
+  return { mapa, erro: false };
 }
 
 /* Numero padrao do corretor -- usado SO quando o lead ainda nao tem conversa
@@ -82,12 +81,13 @@ async function instanciasPorLead(db: SupabaseClient) {
    mesmo selo em todos os leads e nao sabia por onde falar com cada cliente. */
 async function instanciasPorCorretor(db: SupabaseClient, corretorIds: number[]) {
   const mapa = new Map<number, { rotulo: string | null; telefone: string | null; status: string | null }>();
-  if (!corretorIds.length) return mapa;
-  const { data } = await db
+  if (!corretorIds.length) return { mapa, erro: false };
+  const { data, error } = await db
     .from("wa_instancias")
     .select("corretor_id,rotulo,telefone,status,ultimo_heartbeat")
     .in("corretor_id", corretorIds)
     .order("ultimo_heartbeat", { ascending: false, nullsFirst: false });
+  if (error) return { mapa, erro: true };
   for (const linha of data ?? []) {
     const id = Number(linha.corretor_id);
     if (!Number.isFinite(id) || mapa.has(id)) continue;
@@ -97,7 +97,12 @@ async function instanciasPorCorretor(db: SupabaseClient, corretorIds: number[]) 
       status: linha.status ? String(linha.status) : null,
     });
   }
-  return mapa;
+  return { mapa, erro: false };
+}
+
+function statusErroBanco(error: { code?: string; message?: string } | null | undefined) {
+  if (error?.code === "42501" || /permission|policy|not allowed|acesso negado/i.test(error?.message ?? "")) return 403;
+  return 502;
 }
 
 export async function GET(request: Request) {
@@ -115,14 +120,17 @@ export async function GET(request: Request) {
       db.from("f2_evento").select("id,funil_lead_id,tipo,titulo,detalhe,payload,criado_em").eq("funil_lead_id", historicoLeadId).order("criado_em", { ascending: false }).limit(500),
       db.from("f2_nota").select("id,funil_lead_id,texto,origem,autor_nome,criado_em").eq("funil_lead_id", historicoLeadId).order("criado_em", { ascending: false }).limit(500),
     ]);
-    if (erroEventos || erroNotas) return Response.json({ error: "Não foi possível carregar o histórico deste atendimento." }, { status: 502 });
+    if (erroEventos || erroNotas) return Response.json(
+      { error: "Não foi possível carregar o histórico deste atendimento." },
+      { status: statusErroBanco(erroEventos ?? erroNotas) },
+    );
     return Response.json({ eventos: eventos ?? [], notas: notas ?? [] });
   }
   const [
     { data: leads, error: e1 }, { data: momentos, error: e2 },
     { data: etapas, error: e4 }, { data: visitas, error: e5 },
     { data: aquario, error: e7 }, { data: operacao, error: e8 },
-    { data: saraModo }, { data: saraRunner }, { data: saraF2Config }, saraF2Analises,
+    { data: saraModo, error: erroSaraModo }, { data: saraRunner, error: erroSaraRunner }, { data: saraF2Config, error: erroSaraConfig }, saraF2Analises,
     { data: tagCatalogo, error: e9 },
   ] = await Promise.all([
     listarLeadsSemCorte(db),
@@ -138,14 +146,17 @@ export async function GET(request: Request) {
     db.from("lead_tag_catalogo").select("id,nome,cor").eq("ativo", true).order("nome"),
   ]);
   if (e1 || e2 || e4 || e5 || e7 || e9) {
-    const message = e1?.message || e2?.message || e4?.message || e5?.message || e7?.message || e9?.message || "Falha ao carregar o Funil 2.0.";
-    return Response.json({ error: message }, { status: message.toLowerCase().includes("permission") ? 403 : 502 });
+    const primeiroErro = e1 ?? e2 ?? e4 ?? e5 ?? e7 ?? e9;
+    return Response.json(
+      { error: primeiroErro?.message || "Falha ao carregar o Funil 2.0." },
+      { status: statusErroBanco(primeiroErro) },
+    );
   }
   const negociacoes: Array<Record<string, unknown>> = [];
   const funilLeadIds = (leads ?? []).map((lead) => String(lead.id));
   for (let inicio = 0; inicio < funilLeadIds.length; inicio += 100) {
     const { data, error } = await db.from("f2_negociacao").select("id,funil_lead_id,titulo,etapa,valor,observacao,atualizado_em").in("funil_lead_id", funilLeadIds.slice(inicio, inicio + 100)).order("atualizado_em", { ascending: false });
-    if (error) return Response.json({ error: "Não foi possível carregar as oportunidades do atendimento." }, { status: error.message.toLowerCase().includes("permission") ? 403 : 502 });
+    if (error) return Response.json({ error: "Não foi possível carregar as oportunidades do atendimento." }, { status: statusErroBanco(error) });
     negociacoes.push(...((data ?? []) as Array<Record<string, unknown>>));
   }
   const negociosIds = [...new Set((leads ?? []).map((lead) => Number(lead.origem_negocio_id)).filter(Number.isFinite))];
@@ -154,7 +165,7 @@ export async function GET(request: Request) {
   const negocioLead = new Map<number, { leadId: number; valor: number | null }>();
   for (let inicio = 0; inicio < negociosIds.length; inicio += 500) {
     const { data: negocios, error } = await db.from("negocios").select("id,lead_id,valor").in("id", negociosIds.slice(inicio, inicio + 500));
-    if (error) return Response.json({ error: "Não foi possível vincular o histórico real dos leads." }, { status: 502 });
+    if (error) return Response.json({ error: "Não foi possível vincular o histórico real dos leads." }, { status: statusErroBanco(error) });
     for (const negocio of negocios ?? []) negocioLead.set(Number(negocio.id), {
       leadId: Number(negocio.lead_id),
       valor: negocio.valor == null ? null : Number(negocio.valor),
@@ -168,7 +179,7 @@ export async function GET(request: Request) {
   const leadsOriginaisIds = [...new Set([...negocioLead.values()].map((negocio) => negocio.leadId))].filter(Number.isFinite);
   for (let inicio = 0; inicio < leadsOriginaisIds.length; inicio += 500) {
     const { data: originais, error } = await db.from("leads").select("id,nome,telefone,email,origem,corretor_id,tags,extras").in("id", leadsOriginaisIds.slice(inicio, inicio + 500));
-    if (error) return Response.json({ error: "Não foi possível carregar a identidade real dos leads." }, { status: error.message.toLowerCase().includes("permission") ? 403 : 502 });
+    if (error) return Response.json({ error: "Não foi possível carregar a identidade real dos leads." }, { status: statusErroBanco(error) });
     for (const original of (originais ?? []) as LeadOriginal[]) {
       const tags = normalizarTagsDoLead(original.tags);
       contextoPorLead.set(Number(original.id), { original, tags, interesse: interesseDasTags(tags) });
@@ -178,7 +189,7 @@ export async function GET(request: Request) {
   const negociosOriginais: NegocioOriginal[] = [];
   for (let inicio = 0; inicio < leadsOriginaisIds.length; inicio += 500) {
     const { data, error } = await db.from("negocios").select("id,lead_id,pipeline_id,stage_id,empreendimento_id,unidade_id,valor,status,criado_em,ultima_movimentacao").in("lead_id", leadsOriginaisIds.slice(inicio, inicio + 500));
-    if (error) return Response.json({ error: "Não foi possível carregar os negócios vinculados." }, { status: error.message.toLowerCase().includes("permission") ? 403 : 502 });
+    if (error) return Response.json({ error: "Não foi possível carregar os negócios vinculados." }, { status: statusErroBanco(error) });
     negociosOriginais.push(...((data ?? []) as NegocioOriginal[]));
   }
   const pipelineIds = [...new Set(negociosOriginais.map((item) => item.pipeline_id).filter(Number.isFinite))];
@@ -191,7 +202,10 @@ export async function GET(request: Request) {
     empreendimentoIds.length ? db.from("empreendimentos").select("id,nome,endereco,bairro,cidade,preco").in("id", empreendimentoIds) : Promise.resolve({ data: [], error: null }),
     unidadeIds.length ? db.from("unidades").select("id,numero,tipologia,valor_promo,valor_tabela").in("id", unidadeIds) : Promise.resolve({ data: [], error: null }),
   ]);
-  if (erroPipelines || erroStages || erroEmpreendimentos || erroUnidades) return Response.json({ error: "Não foi possível carregar o contexto imobiliário dos negócios." }, { status: 502 });
+  if (erroPipelines || erroStages || erroEmpreendimentos || erroUnidades) return Response.json(
+    { error: "Não foi possível carregar o contexto imobiliário dos negócios." },
+    { status: statusErroBanco(erroPipelines ?? erroStages ?? erroEmpreendimentos ?? erroUnidades) },
+  );
   const pipelinePorId = new Map((pipelines ?? []).map((item) => [Number(item.id), String(item.nome)]));
   const stagePorId = new Map((stages ?? []).map((item) => [Number(item.id), String(item.nome)]));
   const empreendimentoPorId = new Map((empreendimentos ?? []).map((item) => [String(item.id), item]));
@@ -204,6 +218,32 @@ export async function GET(request: Request) {
     ids.push(String(lead.id));
     funilIdsPorLeadOriginal.set(origem.leadId, ids);
   }
+  type TarefaOriginal = { id: string | number; lead_id: number; negocio_id: number | null; corretor_id: number | null; titulo: string; vencimento: string | null; concluida: boolean; prioridade: string | null };
+  const tarefasOriginais: TarefaOriginal[] = [];
+  for (let inicio = 0; inicio < leadsOriginaisIds.length; inicio += 500) {
+    const { data, error } = await db.from("crm_tarefas")
+      .select("id,lead_id,negocio_id,corretor_id,titulo,vencimento,concluida,prioridade")
+      .in("lead_id", leadsOriginaisIds.slice(inicio, inicio + 500))
+      .order("vencimento", { ascending: true });
+    if (error) return Response.json({ error: "Não foi possível carregar as atividades deste atendimento." }, { status: statusErroBanco(error) });
+    tarefasOriginais.push(...((data ?? []) as TarefaOriginal[]));
+  }
+  const corretorNomePorId = new Map<number, string>();
+  for (const lead of leads ?? []) {
+    const corretorId = Number(lead.corretor_id);
+    if (Number.isFinite(corretorId) && lead.corretor_nome) corretorNomePorId.set(corretorId, String(lead.corretor_nome));
+  }
+  const atividades = tarefasOriginais.flatMap((tarefa) =>
+    (funilIdsPorLeadOriginal.get(Number(tarefa.lead_id)) ?? []).map((funilLeadId) => ({
+      id: String(tarefa.id), funil_lead_id: funilLeadId, lead_id: Number(tarefa.lead_id),
+      negocio_id: tarefa.negocio_id == null ? null : Number(tarefa.negocio_id), tipo: "tarefa" as const,
+      titulo: String(tarefa.titulo || "Atividade sem título"),
+      responsavel: tarefa.corretor_id == null ? null : corretorNomePorId.get(Number(tarefa.corretor_id)) ?? null,
+      prazo_em: tarefa.vencimento ? String(tarefa.vencimento) : null,
+      status: tarefa.concluida ? "concluida" as const : "pendente" as const,
+      prioridade: tarefa.prioridade ? String(tarefa.prioridade) : null,
+    })),
+  );
   const negociosVinculados = negociosOriginais.flatMap((item) =>
     (funilIdsPorLeadOriginal.get(Number(item.lead_id)) ?? []).map((funilLeadId) => ({
       id: Number(item.id), funil_lead_id: funilLeadId,
@@ -257,7 +297,7 @@ export async function GET(request: Request) {
     }
   }
   const corretorIds = [...new Set((leads ?? []).map((lead) => Number(lead.corretor_id)).filter(Number.isFinite))];
-  const [instancias, instanciaDoLead] = await Promise.all([
+  const [instanciasResultado, instanciaDoLeadResultado] = await Promise.all([
     instanciasPorCorretor(db, corretorIds),
     instanciasPorLead(db),
   ]);
@@ -265,8 +305,10 @@ export async function GET(request: Request) {
     /* A conversa manda. O numero padrao do corretor so entra quando o lead
        ainda nao trocou nenhuma mensagem -- ai qualquer numero dele serve, e o
        selo vira uma previsao ("vai sair por aqui") em vez de um fato. */
-    const daConversa = instanciaDoLead.get(String(lead.id));
-    const instancia = daConversa ?? instancias.get(Number(lead.corretor_id));
+    const daConversa = instanciaDoLeadResultado.mapa.get(String(lead.id));
+    const padrao = instanciasResultado.mapa.get(Number(lead.corretor_id));
+    const podeUsarPadrao = !instanciaDoLeadResultado.erro && !instanciasResultado.erro;
+    const instancia = daConversa ?? (podeUsarPadrao ? padrao : null);
     const negocio = negocioLead.get(Number(lead.origem_negocio_id));
     const leadOriginalId = negocio?.leadId ?? 0;
     const contexto = contextoPorLead.get(leadOriginalId);
@@ -286,13 +328,19 @@ export async function GET(request: Request) {
       instancia_rotulo: instancia?.rotulo ?? null,
       instancia_telefone: instancia?.telefone ?? null,
       instancia_status: instancia?.status ?? null,
-      instancia_origem: daConversa ? "conversa" : "padrao",
+      instancia_origem: daConversa ? "conversa" : instancia ? "padrao" : "indisponivel",
     };
   });
   return Response.json({
     leads: leadsComOrigem, momentos: momentos ?? [], eventos: [], etapas: etapas ?? [],
-    visitas: visitas ?? [], negociacoes: negociacoes ?? [], negociosVinculados, imoveisVinculados, arquivosVinculados,
-    fontes: { arquivos: arquivosEstado }, aquario: aquario ?? [],
+    visitas: visitas ?? [], atividades, negociacoes: negociacoes ?? [], negociosVinculados, imoveisVinculados, arquivosVinculados,
+    fontes: {
+      arquivos: arquivosEstado,
+      conversas: instanciaDoLeadResultado.erro ? "erro" : "ok",
+      instanciasPadrao: instanciasResultado.erro ? "erro" : "ok",
+      operacao: e8 ? "erro" : "ok",
+      sara: erroSaraModo || erroSaraRunner || erroSaraConfig || saraF2Analises.error ? "erro" : "ok",
+    }, aquario: aquario ?? [],
     /* A lista só retorna sem erro quando a própria função canônica reconhece
        a sessão como admin ou corretor cadastrado. A interface não deduz
        permissão por rótulo de perfil: ela recebe a capacidade comprovada. */
@@ -329,7 +377,7 @@ export async function POST(request: Request) {
     }
     if (!/^#[0-9A-F]{6}$/.test(cor)) return Response.json({ error: "Escolha uma cor válida." }, { status: 422 });
     const { data, error } = await auth.db.rpc("f2_associar_tag", { p_funil_lead_id: leadId, p_tag_id: tagId, p_cor: cor });
-    if (error) return Response.json({ error: "Não foi possível associar a tag." }, { status: 502 });
+    if (error) return Response.json({ error: "Não foi possível associar a tag." }, { status: statusErroBanco(error) });
     const resultado = (data ?? {}) as { ok?: boolean; erro?: string };
     if (resultado.ok !== true) {
       const mensagens: Record<string, string> = {
@@ -349,7 +397,7 @@ export async function POST(request: Request) {
       p_decisao: decisao,
       p_motivo: String(body.motivo ?? "").trim().slice(0, 500) || null,
     });
-    if (error) return Response.json({ error: "Não foi possível registrar sua decisão." }, { status: 502 });
+    if (error) return Response.json({ error: "Não foi possível registrar sua decisão." }, { status: statusErroBanco(error) });
     const resultado = (data ?? {}) as { ok?: boolean; erro?: string };
     if (resultado.ok !== true) {
       const conflito = ["versao_conflito", "decisao_ja_registrada"].includes(resultado.erro ?? "");
@@ -407,8 +455,18 @@ export async function POST(request: Request) {
     rpc = "f2_salvar_nota";
     args = { p_lead_id: leadId, p_texto: texto.slice(0, 2000) };
   } else if (action === "salvarNegociacao") {
+    const etapaNegociacao = String(body.etapa ?? "qualificacao");
+    if (["venda", "perdida"].includes(etapaNegociacao)) {
+      return Response.json({
+        error: "Ganho e perda precisam atualizar o negócio canônico pela Esteira. O Funil não simula esse fechamento.",
+        erro: "fechamento_sem_contrato_canonico",
+      }, { status: 409 });
+    }
+    if (!["qualificacao", "simulacao", "proposta", "documentacao", "contrato"].includes(etapaNegociacao)) {
+      return Response.json({ error: "Etapa comercial inválida." }, { status: 422 });
+    }
     rpc = "f2_salvar_negociacao";
-    args = { p_id: body.id || null, p_lead_id: body.leadId, p_titulo: String(body.titulo ?? "").slice(0, 120), p_etapa: body.etapa || "qualificacao", p_valor: body.valor === "" || body.valor == null ? null : Number(body.valor), p_observacao: String(body.observacao ?? "").slice(0, 500) || null };
+    args = { p_id: body.id || null, p_lead_id: body.leadId, p_titulo: String(body.titulo ?? "").slice(0, 120), p_etapa: etapaNegociacao, p_valor: body.valor === "" || body.valor == null ? null : Number(body.valor), p_observacao: String(body.observacao ?? "").slice(0, 500) || null };
   } else if (action === "pescar") {
     rpc = "f2_pescar_negocio";
     args = { p_negocio_id: Number(body.negocioId), p_substituir_id: null };
@@ -439,11 +497,11 @@ export async function POST(request: Request) {
   }
 
   const { data, error } = await auth.db.rpc(rpc, args);
-  if (error) return Response.json({ error: error.message }, { status: 502 });
+  if (error) return Response.json({ error: error.message }, { status: statusErroBanco(error) });
   const resultado = (data ?? {}) as { ok?: boolean; erro?: string };
   if (resultado.ok === false) {
     const chave = String(resultado.erro ?? "");
-    return Response.json({ error: RECUSAS[chave] || resultado.erro || "Ação não permitida.", erro: chave }, { status: 409 });
+    return Response.json({ error: RECUSAS[chave] || resultado.erro || "Ação não permitida.", erro: chave }, { status: statusHttpFunil(chave) });
   }
   return Response.json({ ok: true, resultado });
 }
@@ -496,7 +554,7 @@ export async function PATCH(request: Request) {
       .select("momento_codigo")
       .eq("id", id)
       .maybeSingle();
-    if (leadAntesErro) return Response.json({ error: leadAntesErro.message }, { status: 502 });
+    if (leadAntesErro) return Response.json({ error: leadAntesErro.message }, { status: statusErroBanco(leadAntesErro) });
     momentoAnterior = (leadAntes as { momento_codigo?: string } | null)?.momento_codigo ?? null;
     const prazo = body.prazoCombinado ? new Date(String(body.prazoCombinado)) : null;
     if (prazo && Number.isNaN(prazo.getTime())) return Response.json({ error: "Prazo combinado inválido." }, { status: 422 });
@@ -527,33 +585,23 @@ export async function PATCH(request: Request) {
     return Response.json({ error: "Ação desconhecida." }, { status: 400 });
   }
 
-  let { data, error } = await db.rpc(rpc, args);
-  if (error) return Response.json({ error: error.message }, { status: 502 });
-  let resultado = (data ?? {}) as { ok?: boolean; erro?: string };
-
-  /* A Sara reavalia o lead em segundo plano e sobe a versão. Quando isso
-     acontece entre o corretor abrir a ficha e salvar, a versão que a tela
-     mandou fica para trás e a RPC recusa com "versao_conflito", obrigando o
-     corretor a recarregar a página. Em vez disso, relemos a versão atual do
-     lead (o corretor já pode vê-lo por RLS) e reexecutamos a ação UMA vez com
-     a versão correta — a observação/momento é gravada sem refresh manual.
-     Retry único: se conflitar de novo, é disputa real e a recusa segue. */
-  if (resultado.ok === false && resultado.erro === "versao_conflito") {
-    const { data: atual } = await db.from("f2_lead").select("versao").eq("id", id).maybeSingle();
-    const versaoAtual = (atual as { versao?: number } | null)?.versao;
-    if (typeof versaoAtual === "number" && versaoAtual !== versao) {
-      args = { ...args, p_versao: versaoAtual };
-      ({ data, error } = await db.rpc(rpc, args));
-      if (error) return Response.json({ error: error.message }, { status: 502 });
-      resultado = (data ?? {}) as { ok?: boolean; erro?: string };
-    }
-  }
+  const { data, error } = await db.rpc(rpc, args);
+  if (error) return Response.json({ error: error.message }, { status: statusErroBanco(error) });
+  const resultado = (data ?? {}) as { ok?: boolean; erro?: string };
 
   if (resultado.ok === false) {
     const chave = String(resultado.erro ?? "");
     // Devolve também o código cru (erro) para a tela poder reagir a conflitos
     // de versão sem depender do texto traduzido.
-    return Response.json({ error: RECUSAS[chave] || resultado.erro || "Ação não permitida.", erro: chave }, { status: 409 });
+    if (chave === "versao_conflito" || chave === "versao_desatualizada") {
+      const { data: atual } = await db.from("f2_lead").select("versao,momento_codigo,etapa,atualizado_em").eq("id", id).maybeSingle();
+      return Response.json({
+        error: "Este atendimento mudou em outra sessão. Recarregue e revise antes de repetir sua ação.",
+        erro: chave,
+        atual: atual ?? null,
+      }, { status: 409 });
+    }
+    return Response.json({ error: RECUSAS[chave] || resultado.erro || "Ação não permitida.", erro: chave }, { status: statusHttpFunil(chave) });
   }
   let rastreamentoMeta: unknown = null;
   if (action === "atualizarMomento" && momentoAnterior) {
@@ -562,9 +610,16 @@ export async function PATCH(request: Request) {
       p_previous_momento: momentoAnterior,
       p_new_momento: String(args.p_momento_codigo ?? ""),
     });
-    rastreamentoMeta = trackingError
-      ? { ok: false, erro: trackingError.message }
-      : trackingData;
+    const trackingRecusado = trackingData && typeof trackingData === "object" && "ok" in trackingData && (trackingData as { ok?: unknown }).ok === false;
+    if (trackingError || trackingRecusado) {
+      return Response.json({
+        error: "O atendimento foi atualizado, mas a trilha não confirmou. Recarregue antes de repetir.",
+        erro: "rastreamento_nao_confirmado",
+        alteracaoAplicada: true,
+        reconciliacaoNecessaria: true,
+      }, { status: 502 });
+    }
+    rastreamentoMeta = trackingData;
   }
   return Response.json({ ok: true, resultado, rastreamentoMeta });
 }

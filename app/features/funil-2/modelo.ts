@@ -85,6 +85,20 @@ export type VisitaFunil2 = {
   atualizado_em: string;
 };
 
+/** Tarefa canônica do CRM vinculada ao lead original e projetada na ficha. */
+export type AtividadeFunil2 = {
+  id: string;
+  funil_lead_id: string;
+  lead_id: number;
+  negocio_id: number | null;
+  tipo: "tarefa";
+  titulo: string;
+  responsavel: string | null;
+  prazo_em: string | null;
+  status: "pendente" | "concluida";
+  prioridade: string | null;
+};
+
 export type NegociacaoFunil2 = {
   id: string;
   funil_lead_id: string;
@@ -205,6 +219,7 @@ export type LeadFunil2 = {
   instancia_rotulo?: string | null;
   instancia_telefone?: string | null;
   instancia_status?: string | null;
+  instancia_origem?: "conversa" | "padrao" | "indisponivel";
   /** Interesse principal inferido somente das tags reais do lead original. */
   interesse?: string | null;
   /** Tags normalizadas do lead original (produto, anúncio, campanha e origem). */
