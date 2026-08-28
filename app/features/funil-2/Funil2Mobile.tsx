@@ -883,7 +883,7 @@ export function Funil2Mobile({
         <span className="ape-sobrancelha">Meu Dia</span>
         <h1 className="ape-manchete">{esperandoAgora === 1 ? "1 pessoa espera você agora" : `${esperandoAgora} pessoas esperam você agora`}</h1>
       </> : <>
-        <div className="ape-mobile-funil-titulo"><h1 className="ape-manchete">{areaCrm === "funil" ? "Funil" : areaCrm === "leads" ? "Leads" : "Visitas"}</h1><span><button type="button" aria-label="Mais áreas" aria-expanded={maisAreas} onClick={() => setMaisAreas((aberto) => !aberto)}>•••</button><i title={nome}>{iniciais(nome)}</i></span></div>
+        <div className="ape-mobile-funil-titulo"><h1 className="ape-manchete">{areaCrm === "funil" ? "Funil" : areaCrm === "leads" ? "Leads" : "Visitas"}</h1><span><button type="button" aria-label="Mais áreas" aria-expanded={maisAreas} onClick={() => setMaisAreas((aberto) => !aberto)}>•••</button><button type="button" className="ape-sara-avatar" aria-label="Abrir a Sara" onClick={() => document.querySelector<HTMLButtonElement>("#sara-fab")?.click()}><i title={nome}>{iniciais(nome)}</i></button></span></div>
       </>}
       <div className="ape-atualizado">
         <span>Atualizado {horaAgora()}</span>
@@ -891,7 +891,7 @@ export function Funil2Mobile({
       </div>
     </header>
 
-    {modo === "crm" && maisAreas && <nav className="ape-mobile-mais-areas" aria-label="Mais áreas do ERP"><button type="button" onClick={() => onIr("/inicio")}>Meu Dia</button><button type="button" onClick={() => onIr("/agenda")}>Agenda</button><button type="button" onClick={() => onIr("/produtos")}>Produtos</button><button type="button" disabled title="A Esteira completa está disponível no computador">Esteira · computador</button>{["admin", "gestor"].includes((role ?? "").toLowerCase()) && <><button type="button" onClick={() => onIr("/inteligencia")}>Painel</button><button type="button" onClick={() => onIr("/configuracoes")}>Configurações</button></>}{(role ?? "").toLowerCase() === "admin" && <button type="button" onClick={() => onIr("/auditoria")}>Auditoria</button>}<button type="button" aria-label="Abrir a Sara" onClick={() => { setMaisAreas(false); document.querySelector<HTMLButtonElement>("#sara-fab")?.click(); }}>Sara</button></nav>}
+    {modo === "crm" && maisAreas && <nav className="ape-mobile-mais-areas" aria-label="Mais áreas do Funil"><button type="button" disabled title="A Esteira completa está disponível no computador">Esteira de vendas</button>{["admin", "gestor"].includes((role ?? "").toLowerCase()) && <><button type="button" onClick={() => onIr("/inteligencia")}>Painel gerencial</button><button type="button" onClick={() => onIr("/configuracoes")}>Configurações</button><button type="button" disabled={(role ?? "").toLowerCase() !== "admin"} title={(role ?? "").toLowerCase() === "admin" ? undefined : "Disponível para Admin"} onClick={() => { if ((role ?? "").toLowerCase() === "admin") onIr("/auditoria"); }}>Matriz de validação</button></>}</nav>}
 
     {sucesso && <div className="ape-visita-sucesso" role="status">
       <div><strong>Visita agendada com sucesso</strong><span>{sucesso}</span></div>

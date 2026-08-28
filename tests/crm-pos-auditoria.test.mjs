@@ -91,3 +91,12 @@ test("Kanban desktop usa a densidade aprovada sem duplicar contagem no cabeçalh
   assert.match(css, /grid-template-columns:8px minmax\(0,1fr\) auto auto 28px 28px/);
   assert.doesNotMatch(workspace, /\{daEtapa\.length\} negócios ·/);
 });
+
+test("menu Mais mobile replica as quatro áreas aprovadas sem duplicar a navegação inferior", () => {
+  assert.match(mobile, /aria-label="Mais áreas do Funil"/);
+  for (const item of ["Esteira de vendas", "Painel gerencial", "Configurações", "Matriz de validação"]) {
+    assert.match(mobile, new RegExp(`>${item}<`));
+  }
+  const menuMais = mobile.match(/aria-label="Mais áreas do Funil"[\s\S]*?<\/nav>/)?.[0] ?? "";
+  assert.doesNotMatch(menuMais, />Meu Dia<|>Agenda<|>Produtos<|>Sara</);
+});

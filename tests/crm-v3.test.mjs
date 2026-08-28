@@ -225,5 +225,5 @@ test("perfis, filtros e Design System permanecem explícitos", () => {
   assert.match(css, /body:has\(\.funil-oficial \.f2-overlay\) #sara-fab[^}]*display:none/);
   assert.match(css, /\.funil-oficial\.modo-crm>\.ape-filtros button\.ativo[^}]*background:#FFF3EA[^}]*color:#B84300/);
   assert.match(workspace, />Abrir Sara<\/button>/);
-  assert.match(mobile, />Sara<\/button>/);
+  assert.match(mobile, /className="ape-sara-avatar" aria-label="Abrir a Sara"/);
 });

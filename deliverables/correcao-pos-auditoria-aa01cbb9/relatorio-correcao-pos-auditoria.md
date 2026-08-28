@@ -15,7 +15,7 @@ Ambiente de implementação: local; publicação e revalidação serão registra
 4. **Conflito humano:** `versao_conflito` não faz retry silencioso; retorna 409 e o estado atual para revisão humana.
 5. **Erros honestos:** 401/403/409/422 preservam significado. Falha de tracking após mutação retorna reconciliação necessária. Falhas auxiliares de Sara, canal e configuração não são mascaradas como dado vazio.
 6. **Acessibilidade:** o cartão não possui mais controles interativos aninhados; a ação de abrir é um controle irmão com foco visível. Alvos operacionais móveis corrigidos para no mínimo 44 px.
-7. **Navegação mobile:** menu Mais respeita o papel recebido pelo shell e expõe somente destinos compatíveis, sem criar permissão no cliente.
+7. **Navegação mobile:** menu Mais reproduz Esteira de vendas, Painel gerencial, Configurações e Matriz de validação, respeitando o papel recebido pelo shell e sem duplicar Meu Dia/Agenda já presentes na barra inferior.
 8. **Densidade do Kanban:** colunas de 304 px foram reduzidas para 240 px e o cabeçalho foi consolidado em uma linha, exibindo etapa, contagem, valor e ações sem a repetição anterior.
 
 ## Dados e segurança
@@ -45,9 +45,9 @@ Ambiente de implementação: local; publicação e revalidação serão registra
 
 | Gate | Resultado |
 |---|---|
-| Teste pós-auditoria | 11/11 passou |
-| `test:frontend` | 318/318 passou |
-| Suíte local ampliada | 535/535 passou |
+| Teste pós-auditoria | 12/12 passou |
+| `test:frontend` | 319/319 passou |
+| Suíte local ampliada | 536/536 passou |
 | Lint dos arquivos alterados | passou |
 | Build completo | passou |
 | `git diff --check` | passou |
