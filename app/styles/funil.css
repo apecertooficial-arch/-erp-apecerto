@@ -2032,6 +2032,7 @@ body .f2-indicadores button span { font-size:12px; font-weight:600; }
 .funil-oficial .f2-ficha-bloco>div{display:flex;gap:var(--space-2)}
 .funil-oficial .f2-ficha-bloco button{min-height:36px;padding:0 var(--space-3);border:1px solid var(--border-default);border-radius:var(--radius-md);background:var(--bg-surface);color:var(--fg-2);font-size:var(--text-xs);font-weight:var(--weight-semibold)}
 .funil-oficial .f2-ficha-bloco .f2-secundario{width:auto;margin-top:0;background:var(--bg-surface);color:var(--fg-2)}
+.funil-oficial .f2-ficha-bloco>header>a{min-height:36px;display:inline-flex;align-items:center;padding:0 var(--space-3);border:1px solid var(--border-default);border-radius:var(--radius-md);color:var(--fg-2);font-size:var(--text-xs);font-weight:var(--weight-semibold);text-decoration:none}
 .funil-oficial .f2-ficha-classificacao{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--space-3)}
 .funil-oficial .f2-ficha-bloco label{display:flex;flex-direction:column;gap:var(--space-1);color:var(--fg-2);font-size:var(--text-xs);font-weight:var(--weight-semibold)}
 .funil-oficial .f2-ficha-bloco input,.funil-oficial .f2-ficha-bloco select,.funil-oficial .f2-ficha-bloco textarea{width:100%;min-height:40px;padding:0 var(--space-3);border:1px solid var(--border-default);border-radius:var(--radius-md);background:var(--bg-surface);color:var(--fg-1);font:var(--weight-medium) var(--text-xs)/1 var(--font-ui)}
@@ -2042,6 +2043,38 @@ body .f2-indicadores button span { font-size:12px; font-weight:600; }
 .funil-oficial .f2-ficha-preserva-operacao{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}
 .funil-oficial .f2-ficha-sara-evidencias{flex-direction:column;padding:var(--space-3);border-radius:var(--radius-md);background:var(--bg-sunken)}
 .funil-oficial .f2-ficha-sara-evidencias small{color:var(--fg-2);font-size:var(--text-xs)}
+.funil-oficial .f2-ficha-comentario{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:end;gap:var(--space-2)}
+.funil-oficial .f2-ficha-comentario button{min-height:64px}
+.funil-oficial .f2-ficha-filtros{margin-left:auto;display:flex;gap:var(--space-1)}
+.funil-oficial .f2-ficha-filtros button{min-height:30px;border-radius:var(--radius-pill)}
+.funil-oficial .f2-ficha-filtros button.ativo{border-color:var(--ape-orange-100);background:var(--bg-tint-orange);color:var(--ape-orange-700)}
+.funil-oficial .f2-ficha-timeline{display:flex;flex-direction:column}
+.funil-oficial .f2-ficha-timeline>article{display:grid;grid-template-columns:20px minmax(0,1fr);gap:var(--space-2);padding:var(--space-3) 0;border-top:1px solid var(--border-soft)}
+.funil-oficial .f2-ficha-timeline>article>i{width:10px;height:10px;margin-top:var(--space-1);border:2px solid var(--ape-orange);border-radius:var(--radius-pill)}
+.funil-oficial .f2-ficha-timeline article header{display:flex;align-items:center;gap:var(--space-2)}
+.funil-oficial .f2-ficha-timeline article header strong{font-size:var(--text-xs)}
+.funil-oficial .f2-ficha-timeline article header em{padding:var(--space-1) var(--space-2);border-radius:var(--radius-pill);background:var(--bg-sunken);color:var(--fg-3);font-size:var(--text-xs);font-style:normal}
+.funil-oficial .f2-ficha-timeline article header time{margin-left:auto;color:var(--fg-muted);font-size:var(--text-xs)}
+.funil-oficial .f2-ficha-timeline article span{color:var(--fg-2);font-size:var(--text-xs)}
+.funil-oficial .f2-ficha-lista{display:flex;flex-direction:column}
+.funil-oficial .f2-ficha-lista>article{display:grid;grid-template-columns:minmax(0,1.4fr) 124px 88px auto;align-items:center;gap:var(--space-3);padding:var(--space-3) 0;border-top:1px solid var(--border-soft)}
+.funil-oficial .f2-ficha-lista>article>div{display:flex;flex-direction:column}
+.funil-oficial .f2-ficha-lista strong,.funil-oficial .f2-ficha-lista span,.funil-oficial .f2-ficha-lista time,.funil-oficial .f2-ficha-lista em{font-size:var(--text-xs)}
+.funil-oficial .f2-ficha-lista span,.funil-oficial .f2-ficha-lista time{color:var(--fg-3)}
+.funil-oficial .f2-ficha-lista em{padding:var(--space-1) var(--space-2);border-radius:var(--radius-pill);background:var(--bg-sunken);font-style:normal;font-weight:var(--weight-semibold)}
+.funil-oficial .f2-ficha-lista a{min-height:36px;display:inline-flex;align-items:center;color:var(--ape-orange-700);font-size:var(--text-xs);font-weight:var(--weight-semibold);text-decoration:none}
+.funil-oficial .f2-ficha-negocios article{display:flex;flex-direction:column;gap:var(--space-2);padding:var(--space-3) 0;border-top:1px solid var(--border-soft)}
+.funil-oficial .f2-ficha-negocios article header,.funil-oficial .f2-ficha-negocios article>div,.funil-oficial .f2-ficha-negocios article footer{display:flex;align-items:center;gap:var(--space-3);flex-wrap:wrap}
+.funil-oficial .f2-ficha-negocios article header strong{flex:1;font-size:var(--text-sm)}
+.funil-oficial .f2-ficha-negocios article header span{padding:var(--space-1) var(--space-2);border-radius:var(--radius-pill);background:var(--bg-tint-success);color:var(--fg-success);font-size:var(--text-xs);font-weight:var(--weight-semibold)}
+.funil-oficial .f2-ficha-negocios article>div span{color:var(--fg-3);font-size:var(--text-xs)}
+.funil-oficial .f2-ficha-negocios article>div strong{font-size:var(--text-sm)}
+.funil-oficial .f2-ficha-vazio{flex-direction:column;align-items:flex-start;padding:var(--space-5);border-radius:var(--radius-md);background:var(--bg-sunken)}
+.funil-oficial .f2-ficha-vazio strong{font-size:var(--text-sm)}
+.funil-oficial .f2-ficha-vazio span{color:var(--fg-3);font-size:var(--text-xs)}
+.funil-oficial .f2-ficha-dados-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--space-3)}
+.funil-oficial .f2-ficha-bloco>footer{display:flex;gap:var(--space-2)}
+.funil-oficial .f2-ficha-bloco>footer .risco{color:var(--fg-danger)}
 .funil-oficial .f2-ficha-conversa-vazia small,.funil-oficial .f2-ficha-nota small{color:var(--fg-muted);font-size:var(--text-xs)}
 .funil-oficial .f2-ficha-nota{display:flex;flex-direction:column;gap:var(--space-1);padding:var(--space-2) var(--space-3);border-radius:var(--radius-md);background:var(--bg-sunken);font-size:var(--text-xs)}
 .funil-oficial .f2-v3-ficha-secao{margin:0;padding:var(--space-4) 0;border:0;background:transparent}
