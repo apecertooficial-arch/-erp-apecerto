@@ -116,10 +116,37 @@ test("ficha desktop replica a arquitetura ampla e compacta aprovada no Claude De
   assert.match(css, /\.funil-oficial \.f2-ficha-grade\{[^}]*grid-template-columns:minmax\(220px,32%\) minmax\(0,1fr\)/);
   assert.match(css, /\.funil-oficial \.f2-detalhe-abas\{[^}]*border-bottom:1px solid/);
   assert.match(css, /\.funil-oficial \.f2-ficha-bloco \.f2-secundario\{width:auto;margin-top:0/);
+  assert.match(workspace, /className="f2-ficha-atendimento-continuo"/);
+  assert.match(css, /\.funil-oficial \.f2-ficha-atendimento-continuo\{[^}]*border:0/);
+  assert.match(css, /\.funil-oficial \.f2-ficha-atendimento-continuo>section\{[^}]*border-bottom:1px solid/);
+  assert.match(css, /\.funil-oficial \.f2-ficha-bloco>\.f2-ficha-dados-form\{[^}]*grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
+  assert.doesNotMatch(workspace, /<button type="button" disabled>Salvar dados<\/button>/);
   assert.match(pwa, /className="erp-update-toast"/);
   assert.doesNotMatch(pwa, /left: 16, right: 16/);
   assert.match(identityCss, /body:has\(\[aria-label\^="Atendimento de"\]\) \.erp-update-toast/);
   assert.match(identityCss, /@media\(max-width:900px\).*body:has\(\[aria-label\^="Atendimento de"\]\) \.erp-update-toast\{display:none\}/);
+});
+
+test("ficha usa dados canônicos e não coleções vazias ou identidade fixa", () => {
+  assert.match(api, /select\("id,nome,telefone,email,origem,corretor_id,tags,extras"\)/);
+  assert.match(api, /from\("f2_negociacao"\)\.select/);
+  assert.doesNotMatch(api, /negociacoes:\s*\[\]/);
+  assert.match(api, /from\("negocios"\)\.select\("id,lead_id,pipeline_id,stage_id,empreendimento_id,unidade_id,valor,status/);
+  assert.match(api, /from\("empreendimentos"\)\.select/);
+  assert.match(api, /from\("unidades"\)\.select/);
+  assert.match(api, /from\("esteira_anexos"\)\.select/);
+  assert.match(workspace, /lead\.email/);
+  assert.match(workspace, /lead\.cpf_cnpj/);
+  assert.match(workspace, /lead\.endereco/);
+  assert.doesNotMatch(workspace, /<dt>E-mail<\/dt><dd>Não informado<\/dd>/);
+});
+
+test("rodapé móvel preserva WhatsApp, Visita e Atividade mesmo com telefone inválido", () => {
+  assert.match(mobile, /className="ape-ficha-alerta-contato"/);
+  assert.match(mobile, /className="ape-ficha-acao-whatsapp"/);
+  assert.match(mobile, /onClick=\{\(\) => setAcaoMais\("visita"\)\}>Visita/);
+  assert.match(mobile, />Atividade<\/Link>/);
+  assert.match(css, /\.funil-oficial \.ape-ficha-rodape-aprovado\{[^}]*grid-template-columns:repeat\(3,minmax\(0,1fr\)\)/);
 });
 
 test("navegação aprovada existe em desktop e mobile", () => {

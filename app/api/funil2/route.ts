@@ -19,6 +19,19 @@ async function clienteAutenticado(request: Request) {
   return { db: supabase as unknown as SupabaseClient };
 }
 
+function textoExtra(extras: unknown, chave: string): string | null {
+  if (!extras || typeof extras !== "object" || Array.isArray(extras)) return null;
+  const valor = (extras as Record<string, unknown>)[chave];
+  return typeof valor === "string" && valor.trim() ? valor.trim() : null;
+}
+
+function enderecoDoLead(extras: unknown): string | null {
+  const partes = ["endereco", "numero", "complemento", "bairro", "cidade", "estado", "cep"]
+    .map((chave) => textoExtra(extras, chave))
+    .filter((valor): valor is string => Boolean(valor));
+  return partes.length ? partes.join(", ") : null;
+}
+
 /* Lead descartado sai do funil mas continua no banco: o descarte e sempre
    decisao humana e precisa poder ser auditado e resgatado depois. */
 async function listarLeadsSemCorte(db: SupabaseClient) {
@@ -107,7 +120,7 @@ export async function GET(request: Request) {
   }
   const [
     { data: leads, error: e1 }, { data: momentos, error: e2 },
-    { data: etapas, error: e4 }, { data: visitas, error: e5 },
+    { data: etapas, error: e4 }, { data: visitas, error: e5 }, { data: negociacoes, error: e6 },
     { data: aquario, error: e7 }, { data: operacao, error: e8 },
     { data: saraModo }, { data: saraRunner }, { data: saraF2Config }, saraF2Analises,
     { data: tagCatalogo, error: e9 },
@@ -116,6 +129,7 @@ export async function GET(request: Request) {
     db.from("f2_momento_config").select("*").order("etapa", { ascending: true }).order("ordem", { ascending: true }),
     db.from("f2_etapa_config").select("codigo,ordem,rotulo,ajuda,ativo").order("ordem", { ascending: true }),
     db.from("f2_visita").select("id,funil_lead_id,inicio_em,fim_em,imovel,status,observacao,empreendimento_id,unidade,com_gerente,gerente_id,feedback_em,feedback_por,atualizado_em").order("inicio_em", { ascending: true }),
+    db.from("f2_negociacao").select("id,funil_lead_id,titulo,etapa,valor,observacao,atualizado_em").order("atualizado_em", { ascending: false }),
     db.rpc("f2_listar_aquario"),
     db.from("f2_operacao_config").select("*").eq("id", true).maybeSingle(),
     db.rpc("ncrm_sara_modo_status"),
@@ -124,11 +138,13 @@ export async function GET(request: Request) {
     db.from("f2_sara_analise").select("id", { count: "exact", head: true }),
     db.from("lead_tag_catalogo").select("id,nome,cor").eq("ativo", true).order("nome"),
   ]);
-  if (e1 || e2 || e4 || e5 || e7 || e9) {
-    const message = e1?.message || e2?.message || e4?.message || e5?.message || e7?.message || e9?.message || "Falha ao carregar o Funil 2.0.";
+  if (e1 || e2 || e4 || e5 || e6 || e7 || e9) {
+    const message = e1?.message || e2?.message || e4?.message || e5?.message || e6?.message || e7?.message || e9?.message || "Falha ao carregar o Funil 2.0.";
     return Response.json({ error: message }, { status: message.toLowerCase().includes("permission") ? 403 : 502 });
   }
   const negociosIds = [...new Set((leads ?? []).map((lead) => Number(lead.origem_negocio_id)).filter(Number.isFinite))];
+  type NegocioOriginal = { id: number; lead_id: number; pipeline_id: number; stage_id: number | null; empreendimento_id: string | null; unidade_id: string | null; valor: number | null; status: string; criado_em: string; ultima_movimentacao: string | null };
+  type LeadOriginal = { id: number; nome: string | null; telefone: string | null; email: string | null; origem: string | null; corretor_id: number | null; tags: unknown; extras: unknown };
   const negocioLead = new Map<number, { leadId: number; valor: number | null }>();
   for (let inicio = 0; inicio < negociosIds.length; inicio += 500) {
     const { data: negocios, error } = await db.from("negocios").select("id,lead_id,valor").in("id", negociosIds.slice(inicio, inicio + 500));
@@ -142,14 +158,96 @@ export async function GET(request: Request) {
      Voltamos ao lead original pelo negocio e lemos com o MESMO cliente
      autenticado da sessao: as policies de RLS continuam decidindo exatamente
      quais tags o corretor pode ver. */
-  const tagsPorLead = new Map<number, { tags: TagDoLead[]; interesse: string | null }>();
+  const contextoPorLead = new Map<number, { original: LeadOriginal; tags: TagDoLead[]; interesse: string | null }>();
   const leadsOriginaisIds = [...new Set([...negocioLead.values()].map((negocio) => negocio.leadId))].filter(Number.isFinite);
   for (let inicio = 0; inicio < leadsOriginaisIds.length; inicio += 500) {
-    const { data: originais, error } = await db.from("leads").select("id,tags").in("id", leadsOriginaisIds.slice(inicio, inicio + 500));
-    if (error) return Response.json({ error: "Não foi possível carregar as tags de interesse dos leads." }, { status: 502 });
-    for (const original of originais ?? []) {
+    const { data: originais, error } = await db.from("leads").select("id,nome,telefone,email,origem,corretor_id,tags,extras").in("id", leadsOriginaisIds.slice(inicio, inicio + 500));
+    if (error) return Response.json({ error: "Não foi possível carregar a identidade real dos leads." }, { status: error.message.toLowerCase().includes("permission") ? 403 : 502 });
+    for (const original of (originais ?? []) as LeadOriginal[]) {
       const tags = normalizarTagsDoLead(original.tags);
-      tagsPorLead.set(Number(original.id), { tags, interesse: interesseDasTags(tags) });
+      contextoPorLead.set(Number(original.id), { original, tags, interesse: interesseDasTags(tags) });
+    }
+  }
+
+  const negociosOriginais: NegocioOriginal[] = [];
+  for (let inicio = 0; inicio < leadsOriginaisIds.length; inicio += 500) {
+    const { data, error } = await db.from("negocios").select("id,lead_id,pipeline_id,stage_id,empreendimento_id,unidade_id,valor,status,criado_em,ultima_movimentacao").in("lead_id", leadsOriginaisIds.slice(inicio, inicio + 500));
+    if (error) return Response.json({ error: "Não foi possível carregar os negócios vinculados." }, { status: error.message.toLowerCase().includes("permission") ? 403 : 502 });
+    negociosOriginais.push(...((data ?? []) as NegocioOriginal[]));
+  }
+  const pipelineIds = [...new Set(negociosOriginais.map((item) => item.pipeline_id).filter(Number.isFinite))];
+  const stageIds = [...new Set(negociosOriginais.map((item) => item.stage_id).filter((id): id is number => Number.isFinite(id)))];
+  const empreendimentoIds = [...new Set(negociosOriginais.map((item) => item.empreendimento_id).filter((id): id is string => Boolean(id)))];
+  const unidadeIds = [...new Set(negociosOriginais.map((item) => item.unidade_id).filter((id): id is string => Boolean(id)))];
+  const [{ data: pipelines, error: erroPipelines }, { data: stages, error: erroStages }, { data: empreendimentos, error: erroEmpreendimentos }, { data: unidades, error: erroUnidades }] = await Promise.all([
+    pipelineIds.length ? db.from("pipelines").select("id,nome").in("id", pipelineIds) : Promise.resolve({ data: [], error: null }),
+    stageIds.length ? db.from("pipeline_stages").select("id,nome").in("id", stageIds) : Promise.resolve({ data: [], error: null }),
+    empreendimentoIds.length ? db.from("empreendimentos").select("id,nome,endereco,bairro,cidade,preco").in("id", empreendimentoIds) : Promise.resolve({ data: [], error: null }),
+    unidadeIds.length ? db.from("unidades").select("id,numero,tipologia,valor_promo,valor_tabela").in("id", unidadeIds) : Promise.resolve({ data: [], error: null }),
+  ]);
+  if (erroPipelines || erroStages || erroEmpreendimentos || erroUnidades) return Response.json({ error: "Não foi possível carregar o contexto imobiliário dos negócios." }, { status: 502 });
+  const pipelinePorId = new Map((pipelines ?? []).map((item) => [Number(item.id), String(item.nome)]));
+  const stagePorId = new Map((stages ?? []).map((item) => [Number(item.id), String(item.nome)]));
+  const empreendimentoPorId = new Map((empreendimentos ?? []).map((item) => [String(item.id), item]));
+  const unidadePorId = new Map((unidades ?? []).map((item) => [String(item.id), item]));
+  const funilIdsPorLeadOriginal = new Map<number, string[]>();
+  for (const lead of leads ?? []) {
+    const origem = negocioLead.get(Number(lead.origem_negocio_id));
+    if (!origem) continue;
+    const ids = funilIdsPorLeadOriginal.get(origem.leadId) ?? [];
+    ids.push(String(lead.id));
+    funilIdsPorLeadOriginal.set(origem.leadId, ids);
+  }
+  const negociosVinculados = negociosOriginais.flatMap((item) =>
+    (funilIdsPorLeadOriginal.get(Number(item.lead_id)) ?? []).map((funilLeadId) => ({
+      id: Number(item.id), funil_lead_id: funilLeadId,
+      pipeline: pipelinePorId.get(Number(item.pipeline_id)) ?? null,
+      etapa: item.stage_id == null ? null : stagePorId.get(Number(item.stage_id)) ?? null,
+      empreendimento_id: item.empreendimento_id, unidade_id: item.unidade_id,
+      valor: item.valor == null ? null : Number(item.valor), status: String(item.status),
+    })),
+  );
+  const imoveisVinculados = negociosOriginais.filter((item) => item.empreendimento_id || item.unidade_id).flatMap((item) => {
+    const empreendimento = item.empreendimento_id ? empreendimentoPorId.get(item.empreendimento_id) : null;
+    const unidade = item.unidade_id ? unidadePorId.get(item.unidade_id) : null;
+    return (funilIdsPorLeadOriginal.get(Number(item.lead_id)) ?? []).map((funilLeadId) => ({
+      negocio_id: Number(item.id), funil_lead_id: funilLeadId,
+      empreendimento_id: item.empreendimento_id, empreendimento: empreendimento?.nome ? String(empreendimento.nome) : null,
+      unidade_id: item.unidade_id, unidade: unidade?.numero ? String(unidade.numero) : null,
+      valor: unidade?.valor_promo != null ? Number(unidade.valor_promo) : unidade?.valor_tabela != null ? Number(unidade.valor_tabela) : item.valor == null ? null : Number(item.valor),
+    }));
+  });
+
+  let arquivosVinculados: Array<{ id: string; funil_lead_id: string; negocio_id: number; nome: string; status: string; criado_em: string }> = [];
+  let arquivosEstado: "ok" | "sem_vinculo" | "erro" = negociosOriginais.length ? "ok" : "sem_vinculo";
+  if (negociosOriginais.length) {
+    const processos: Array<{ id: string; negocio_id: number }> = [];
+    for (let inicio = 0; inicio < negociosOriginais.length; inicio += 500) {
+      const { data, error } = await db.from("venda_processos").select("id,negocio_id").in("negocio_id", negociosOriginais.slice(inicio, inicio + 500).map((item) => item.id));
+      if (error) { arquivosEstado = "erro"; break; }
+      processos.push(...((data ?? []) as Array<{ id: string; negocio_id: number }>));
+    }
+    if (arquivosEstado !== "erro" && processos.length) {
+      const processoNegocio = new Map(processos.map((item) => [String(item.id), Number(item.negocio_id)]));
+      const anexos: Array<{ id: string; processo_ref: string; negocio_id: number | null; nome: string; status: string; criado_em: string }> = [];
+      const processoIds = [...processoNegocio.keys()];
+      for (let inicio = 0; inicio < processoIds.length; inicio += 500) {
+        const { data, error } = await db.from("esteira_anexos").select("id,processo_ref,negocio_id,nome,status,criado_em").in("processo_ref", processoIds.slice(inicio, inicio + 500));
+        if (error) { arquivosEstado = "erro"; break; }
+        anexos.push(...((data ?? []) as typeof anexos));
+      }
+      const negocioPorId = new Map(negociosOriginais.map((item) => [Number(item.id), item]));
+      if (arquivosEstado !== "erro") arquivosVinculados = anexos.flatMap((item) => {
+        const negocioId = Number(item.negocio_id ?? processoNegocio.get(String(item.processo_ref)));
+        const negocio = negocioPorId.get(negocioId);
+        if (!negocio) return [];
+        return (funilIdsPorLeadOriginal.get(Number(negocio.lead_id)) ?? []).map((funilLeadId) => ({
+          id: String(item.id), funil_lead_id: funilLeadId, negocio_id: negocioId,
+          nome: String(item.nome), status: String(item.status), criado_em: String(item.criado_em),
+        }));
+      });
+    } else if (arquivosEstado !== "erro") {
+      arquivosEstado = "sem_vinculo";
     }
   }
   const corretorIds = [...new Set((leads ?? []).map((lead) => Number(lead.corretor_id)).filter(Number.isFinite))];
@@ -165,11 +263,18 @@ export async function GET(request: Request) {
     const instancia = daConversa ?? instancias.get(Number(lead.corretor_id));
     const negocio = negocioLead.get(Number(lead.origem_negocio_id));
     const leadOriginalId = negocio?.leadId ?? 0;
-    const contexto = tagsPorLead.get(leadOriginalId);
+    const contexto = contextoPorLead.get(leadOriginalId);
+    const original = contexto?.original;
     return {
       ...lead,
       lead_id: leadOriginalId,
       valor: negocio?.valor ?? null,
+      nome: original?.nome?.trim() || lead.nome,
+      telefone: original?.telefone ?? lead.telefone,
+      email: original?.email ?? null,
+      cpf_cnpj: textoExtra(original?.extras, "cpf_cnpj"),
+      endereco: enderecoDoLead(original?.extras),
+      origem_cadastro: original?.origem ?? null,
       interesse: contexto?.interesse ?? null,
       tags: contexto?.tags ?? [],
       instancia_rotulo: instancia?.rotulo ?? null,
@@ -180,7 +285,8 @@ export async function GET(request: Request) {
   });
   return Response.json({
     leads: leadsComOrigem, momentos: momentos ?? [], eventos: [], etapas: etapas ?? [],
-    visitas: visitas ?? [], negociacoes: [], aquario: aquario ?? [], operacao: e8 ? null : operacao ?? null,
+    visitas: visitas ?? [], negociacoes: negociacoes ?? [], negociosVinculados, imoveisVinculados, arquivosVinculados,
+    fontes: { arquivos: arquivosEstado }, aquario: aquario ?? [], operacao: e8 ? null : operacao ?? null,
     notas: [], tagCatalogo: tagCatalogo ?? [],
     sara: {
       modo: typeof saraModo === "object" && saraModo !== null && "modo" in saraModo ? String((saraModo as { modo?: unknown }).modo ?? "") || null : null,

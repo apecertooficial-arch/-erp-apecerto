@@ -95,6 +95,36 @@ export type NegociacaoFunil2 = {
   atualizado_em: string;
 };
 
+export type NegocioVinculadoFunil2 = {
+  id: number;
+  funil_lead_id: string;
+  pipeline: string | null;
+  etapa: string | null;
+  empreendimento_id: string | null;
+  unidade_id: string | null;
+  valor: number | null;
+  status: string;
+};
+
+export type ImovelVinculadoFunil2 = {
+  negocio_id: number;
+  funil_lead_id: string;
+  empreendimento_id: string | null;
+  empreendimento: string | null;
+  unidade_id: string | null;
+  unidade: string | null;
+  valor: number | null;
+};
+
+export type ArquivoVinculadoFunil2 = {
+  id: string;
+  funil_lead_id: string;
+  negocio_id: number;
+  nome: string;
+  status: string;
+  criado_em: string;
+};
+
 export type CandidatoAquarioFunil2 = {
   negocio_id: number;
   nome: string;
@@ -166,6 +196,10 @@ export type LeadFunil2 = {
   lead_id: number;
   nome: string;
   telefone: string | null;
+  email?: string | null;
+  cpf_cnpj?: string | null;
+  endereco?: string | null;
+  origem_cadastro?: string | null;
   corretor_id: number | null;
   corretor_nome: string | null;
   instancia_rotulo?: string | null;
