@@ -1936,9 +1936,7 @@ body .f2-indicadores button span { font-size:12px; font-weight:600; }
 .funil-oficial .f2-coluna-topo>b{min-width:22px;height:22px;padding:0;border-radius:var(--radius-pill);background:var(--bg-surface);font-size:var(--text-xs);box-shadow:var(--shadow-xs)}
 .funil-oficial .f2-lista{padding:0 var(--space-2) var(--space-2);gap:var(--space-2)}
 .funil-oficial .f2-card{position:relative;padding:var(--space-3);border:1px solid var(--border-soft);border-radius:var(--radius-md);background:var(--bg-surface);box-shadow:var(--shadow-xs)}
-.funil-oficial .f2-card>:not(.f2-card-abrir){position:relative;z-index:2}
-.funil-oficial .f2-card-abrir{position:absolute;z-index:1;inset:0;width:100%;height:100%;padding:0;border:0;border-radius:inherit;background:transparent;cursor:pointer}
-.funil-oficial .f2-card-abrir:focus-visible{outline:2px solid var(--ape-orange);outline-offset:2px}
+.funil-oficial .f2-card{cursor:pointer}
 .funil-oficial .f2-card:hover,.funil-oficial .f2-card.selecionado,.funil-oficial .f2-card:focus-visible{transform:none;border-color:color-mix(in srgb,var(--ape-orange) 44%,var(--border-soft));box-shadow:var(--shadow-sm)}
 .funil-oficial .f2-card-ident{grid-template-columns:30px minmax(0,1fr);gap:var(--space-2);margin-bottom:var(--space-2)}
 .funil-oficial .f2-card-ident>i{width:30px;height:30px;border-radius:var(--radius-sm);background:var(--bg-tint-purple);color:var(--ape-purple-700);font-size:var(--text-xs)}
@@ -2137,9 +2135,8 @@ body .f2-indicadores button span { font-size:12px; font-weight:600; }
 .funil-oficial .ape-filtros button,.funil-oficial .ape-temperatura-filtros button{min-height:40px;border-radius:var(--radius-pill)}
 .funil-oficial .ape-card{border:1px solid var(--border-soft);border-radius:var(--radius-md);box-shadow:var(--shadow-xs)}
 .funil-oficial .ape-card{position:relative}
-.funil-oficial .ape-card>:not(.ape-card-abrir){position:relative;z-index:2}
-.funil-oficial .ape-card-abrir{position:absolute;z-index:1;inset:0;width:100%;height:100%;padding:0;border:0;border-radius:inherit;background:transparent}
-.funil-oficial .ape-card-abrir:focus-visible{outline:2px solid var(--ape-orange);outline-offset:2px}
+.funil-oficial .ape-card{cursor:pointer}
+.funil-oficial .ape-card:focus-visible{outline:2px solid var(--ape-orange);outline-offset:2px}
 .funil-oficial .f2-contrato-pendente,.funil-oficial .ape-contrato-pendente{display:flex;flex-direction:column;gap:var(--space-2);margin-top:var(--space-3);padding:var(--space-3);border:1px solid var(--ape-purple-100);border-radius:var(--radius-md);background:var(--bg-tint-purple);color:var(--fg-2);font-size:var(--text-sm)}
 .funil-oficial .f2-contrato-pendente strong,.funil-oficial .ape-contrato-pendente strong{color:var(--ape-purple-700)}
 .funil-oficial .f2-contrato-pendente button{align-self:flex-start;min-height:36px;padding:0 var(--space-3);border:1px solid var(--ape-purple-200);border-radius:var(--radius-pill);background:var(--bg-surface);color:var(--ape-purple-700);font-weight:var(--weight-semibold)}

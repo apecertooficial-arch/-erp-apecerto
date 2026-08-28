@@ -17,6 +17,7 @@ Ambiente de implementação: local; publicação e revalidação serão registra
 6. **Acessibilidade:** o cartão não possui mais controles interativos aninhados; a ação de abrir é um controle irmão com foco visível. Alvos operacionais móveis corrigidos para no mínimo 44 px.
 7. **Navegação mobile:** menu Mais reproduz Esteira de vendas, Painel gerencial, Configurações e Matriz de validação, respeitando o papel recebido pelo shell e sem duplicar Meu Dia/Agenda já presentes na barra inferior.
 8. **Densidade do Kanban:** colunas de 304 px foram reduzidas para 240 px e o cabeçalho foi consolidado em uma linha, exibindo etapa, contagem, valor e ações sem a repetição anterior.
+9. **Cartão acionável:** clique e teclado na superfície do cartão abrem a ficha; conversa, menu e selects continuam independentes, sem botão invisível sobreposto nem `role=button` com controles aninhados.
 
 ## Dados e segurança
 
@@ -45,9 +46,9 @@ Ambiente de implementação: local; publicação e revalidação serão registra
 
 | Gate | Resultado |
 |---|---|
-| Teste pós-auditoria | 12/12 passou |
-| `test:frontend` | 319/319 passou |
-| Suíte local ampliada | 536/536 passou |
+| Teste pós-auditoria | 13/13 passou |
+| `test:frontend` | 320/320 passou |
+| Suíte local ampliada | 537/537 passou |
 | Lint dos arquivos alterados | passou |
 | Build completo | passou |
 | `git diff --check` | passou |

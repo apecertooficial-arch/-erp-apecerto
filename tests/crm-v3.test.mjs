@@ -74,11 +74,12 @@ test("o Funil permanece dentro do shell global do ERP sem shell interno duplicad
 });
 
 test("cartão inteiro abre a ficha correta por mouse e teclado", () => {
-  assert.match(workspace, /className="f2-card-abrir"[\s\S]*setSelecionado\(item\.id\)/);
+  assert.match(workspace, /className=\{`f2-card[\s\S]*onClick=\{\(evento\)[\s\S]*setSelecionado\(item\.id\)/);
+  assert.match(workspace, /onKeyDown=\{\(evento\)[\s\S]*\["Enter", " "\][\s\S]*setSelecionado\(item\.id\)/);
   assert.doesNotMatch(workspace, /<article[^>]+role="button"[^>]+<button/s);
   assert.match(workspace, /lead=\{lead\}[\s\S]*onFechar=\{\(\) => \{ setSelecionado\(null\)/);
   assert.match(mobile, /onAbrir=\{\(\) => \{ setAbrirNoChat\(false\); setSelecionado\(lead\.id\); \}\}/);
-  assert.match(mobile, /className="ape-card-abrir" aria-label=\{`Abrir ficha de/);
+  assert.match(mobile, /className="ape-card" tabIndex=\{0\} aria-label=\{`Abrir ficha de/);
 });
 
 test("barra principal oferece Pescar lead com autorização canônica", () => {

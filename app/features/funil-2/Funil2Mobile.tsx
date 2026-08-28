@@ -231,8 +231,7 @@ function CartaoLead({
   onConversa: (origem: HTMLButtonElement) => void;
 }) {
   const prazo = situacaoPrazo(lead.proxima_acao_em);
-  return <article className="ape-card">
-    <button type="button" className="ape-card-abrir" aria-label={`Abrir ficha de ${lead.nome}`} onClick={onAbrir} />
+  return <article className="ape-card" tabIndex={0} aria-label={`Abrir ficha de ${lead.nome}`} onClick={(evento) => { if (!(evento.target as HTMLElement).closest("button,a,input,select,textarea,summary,details")) onAbrir(); }} onKeyDown={(evento) => { if (evento.target === evento.currentTarget && ["Enter", " "].includes(evento.key)) { evento.preventDefault(); onAbrir(); } }}>
     <div className="ape-card-topo">
       <div className="ape-quem">
         <strong>{lead.nome}</strong>

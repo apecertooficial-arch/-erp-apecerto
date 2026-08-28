@@ -100,3 +100,9 @@ test("menu Mais mobile replica as quatro áreas aprovadas sem duplicar a navega�
   const menuMais = mobile.match(/aria-label="Mais áreas do Funil"[\s\S]*?<\/nav>/)?.[0] ?? "";
   assert.doesNotMatch(menuMais, />Meu Dia<|>Agenda<|>Produtos<|>Sara</);
 });
+
+test("superfície inteira do cartão abre a ficha sem botão invisível sobreposto", () => {
+  assert.match(workspace, /<article key=\{item\.id\}[^>]*tabIndex=\{0\}[^>]*onClick=/);
+  assert.match(mobile, /<article className="ape-card" tabIndex=\{0\}[^>]*onClick=/);
+  assert.doesNotMatch(`${workspace}\n${mobile}`, /card-abrir/);
+});
