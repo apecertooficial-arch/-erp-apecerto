@@ -4,7 +4,7 @@ export const moduleMap = {
     tables: ["leads", "empreendimentos", "wa_conversas", "vendas"],
   },
   "Central de Comando": {
-    description: "Visão executiva consolidada de marketing, tracking, CRM, equipe e resultado financeiro.",
+    description: "Visão executiva consolidada de marketing, CRM, equipe e resultado financeiro.",
     tables: ["f2_lead", "f2_visita", "perf_eventos", "vendas", "recebimentos", "central_alerta_acoes"],
   },
   CRM: {
@@ -22,10 +22,6 @@ export const moduleMap = {
   Financeiro: {
     description: "Lançamentos, recebimentos, vendas e comissões.",
     tables: ["lancamentos_caixa", "recebimentos", "vendas", "comissoes"],
-  },
-  "Tracking 360": {
-    description: "Visão executiva do site, atribuição de mídia, CRM e entregas de conversão.",
-    tables: ["site_events_anon", "lead_attribution", "tracking_delivery_logs", "leads", "negocios"],
   },
   Abordagens: {
     description: "Modelos de abordagem cadastrados para produtos e campanhas.",

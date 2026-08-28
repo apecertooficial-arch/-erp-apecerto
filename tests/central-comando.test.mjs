@@ -14,12 +14,13 @@ test("Central de Comando é uma rota interna e fica restrita à gestão", () => 
   assert.equal(podeVer("Central de Comando", { role: "admin", permissoes: null, carregado: true }), true);
   assert.equal(podeVer("Central de Comando", { role: "gestor", permissoes: { dashboard: ["ver"] }, carregado: true }), true);
   assert.equal(podeVer("Central de Comando", { role: "corretor", permissoes: { dashboard: ["ver"] }, carregado: true }), false);
-  assert.match(wrapper, /src="\/central-comando\/prototype\.html\?v=20260824-8"/);
+  assert.match(wrapper, /src="\/central-comando\/prototype\.html\?v=20260828-1"/);
   assert.doesNotMatch(wrapper, /target=|window\.open/);
 });
 
 test("a fonte integral do Claude Design está embarcada", () => {
-  for (const page of ["Visão CEO", "Marketing", "Tracking", "CRM e funil", "Equipe e corretores", "Site e imóveis", "Financeiro", "Meu dia"]) assert.match(prototype, new RegExp(page));
+  for (const page of ["Visão CEO", "Marketing", "CRM e funil", "Equipe e corretores", "Site e imóveis", "Financeiro", "Meu dia"]) assert.match(prototype, new RegExp(page));
+  assert.doesNotMatch(prototype, /<span class="cc-navlabel">Tracking<\/span>/);
   for (const marker of ["ape-nav", "ape-kpi", "cc-card", "ape-table", "ape-tabs", "cc-kpigrid", "serieLinha", "diaTarefas"]) assert.match(prototype, new RegExp(marker));
   assert.match(prototype, /\.ape-kpi:hover\{box-shadow:var\(--shadow-sm\);transform:translateY\(-2px\)\}/);
   assert.match(prototype, /Canal → campanha → conjunto → anúncio/);
@@ -37,7 +38,10 @@ test("o ERP autoriza o painel sem expor token em URL ou armazenamento", () => {
 
 test("dados reais substituem todas as áreas operacionais", () => {
   assert.match(api, /central_comando_dashboard_v2/);
-  assert.match(api, /tracking_360_dashboard/);
+  assert.match(api, /central_comando_site_marketing/);
+  assert.match(api, /central_comando_atribuicao_marketing/);
+  assert.match(api, /central_comando_qualidade_dados/);
+  assert.doesNotMatch(api, /tracking_360_/);
   assert.match(api, /marketing-ads-read/);
   assert.match(api, /lerGa4/);
   for (const key of ["diaKpis", "crmKpis", "siteKpis", "finKpis", "mktKpis", "tronco", "trilhas", "trkGrupos", "socioKpis"]) assert.match(prototype, new RegExp(`${key}: realView\\.${key}`));
