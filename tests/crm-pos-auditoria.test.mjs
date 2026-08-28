@@ -13,6 +13,7 @@ const read = (path) => readFileSync(new URL(path, import.meta.url), "utf8");
 const api = read("../app/api/funil2/route.ts");
 const workspace = read("../app/features/funil-2/Funil2Workspace.tsx");
 const mobile = read("../app/features/funil-2/Funil2Mobile.tsx");
+const css = read("../app/styles/funil.css");
 
 test("401, 403, 409 e 422 preservam o significado do contrato", () => {
   assert.equal(statusHttpFunil("sessao_necessaria"), 401);
@@ -83,4 +84,10 @@ test("falhas auxiliares ficam visíveis sem inventar um fallback", () => {
   assert.match(workspace, /Sara temporariamente indisponível/);
   assert.match(workspace, /Configuração operacional indisponível/);
   assert.match(mobile, /Sara indisponível/);
+});
+
+test("Kanban desktop usa a densidade aprovada sem duplicar contagem no cabeçalho", () => {
+  assert.match(css, /f2-coluna[^}]*flex:0 0 240px/);
+  assert.match(css, /grid-template-columns:8px minmax\(0,1fr\) auto auto 28px 28px/);
+  assert.doesNotMatch(workspace, /\{daEtapa\.length\} negócios ·/);
 });

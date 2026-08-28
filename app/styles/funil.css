@@ -2321,9 +2321,12 @@ body .f2-indicadores button span { font-size:12px; font-weight:600; }
 .funil-oficial .f2-v3-recorte h2{margin:5px 0 4px;font-size:20px}
 .funil-oficial .f2-v3-recorte p{margin:0;color:var(--fg-3,#6E6760);font-size:12px}
 .funil-oficial .f2-v3-recorte button{min-height:40px;padding:0 16px;border:1px solid var(--border-default,#E4DFD9);border-radius:999px;background:#fff;font-weight:600}
-.funil-oficial .f2-coluna,.funil-oficial .f2-coluna:nth-child(n){flex:0 0 304px;min-width:304px}
-.funil-oficial .f2-coluna-topo{position:relative;grid-template-columns:10px minmax(0,1fr) 28px 26px 28px;gap:8px;align-items:center;min-height:58px}
+.funil-oficial .f2-coluna,.funil-oficial .f2-coluna:nth-child(n){flex:0 0 240px;min-width:240px}
+.funil-oficial .f2-coluna-topo{position:relative;grid-template-columns:8px minmax(0,1fr) auto auto 28px 28px;gap:6px;align-items:center;min-height:48px}
 .funil-oficial .f2-coluna-topo>span{width:8px;height:8px;border-radius:999px;background:var(--ape-orange,#FF7000)}
+.funil-oficial .f2-coluna-topo>h2{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.funil-oficial .f2-coluna-topo>small{max-width:58px;overflow:hidden;color:var(--fg-3,#6E6760);font-size:11px;font-weight:600;text-overflow:ellipsis;white-space:nowrap}
+.funil-oficial .f2-coluna-topo>b{min-width:0;height:auto;padding:0;background:transparent;box-shadow:none;color:var(--fg-3,#6E6760);font-size:11px}
 .funil-oficial .f2-coluna-topo>button,.funil-oficial .f2-coluna-topo>details>summary{width:28px;height:28px;display:grid;place-items:center;padding:0;list-style:none;border:0;border-radius:8px;background:transparent;color:var(--fg-3,#6E6760);cursor:pointer}
 .funil-oficial .f2-coluna-topo>details{position:relative}
 .funil-oficial .f2-coluna-topo>details>summary::-webkit-details-marker{display:none}
@@ -2338,11 +2341,11 @@ body:has(.funil-oficial .f2-overlay) #sara-fab,body:has(.funil-oficial .f2-overl
 @media(max-width:1500px) and (min-width:901px){
   .funil-oficial .f2-v3-toolbar{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:thin}
   .funil-oficial .f2-v3-quebra{display:none}
-  .funil-oficial .f2-v3-visoes{min-width:0;overflow-x:auto;scrollbar-width:none}
+  .funil-oficial .f2-v3-visoes{flex:none;min-width:0}
   .funil-oficial .f2-v3-visoes button{padding:0 8px;font-size:11px}
-  .funil-oficial .f2-v3-busca{min-width:140px;max-width:220px;margin-left:auto}
-  .funil-oficial .f2-v3-ordenacao select{min-width:140px;max-width:150px}
-  .funil-oficial .f2-v3-periodo select{max-width:160px}
+  .funil-oficial .f2-v3-busca{min-width:120px;max-width:180px;margin-left:auto}
+  .funil-oficial .f2-v3-ordenacao select{min-width:130px;max-width:135px}
+  .funil-oficial .f2-v3-periodo select{max-width:145px}
 }
 
 @media(max-width:900px){

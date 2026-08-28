@@ -215,7 +215,7 @@ test("perfis, filtros e Design System permanecem explícitos", () => {
   assert.match(workspace, />Triagem <b>/);
   assert.match(workspace, /Últimos 30 dias · movimentação/);
   assert.match(workspace, />Novo negócio<\/button>/);
-  assert.match(css, /flex:0 0 304px/);
+  assert.match(css, /flex:0 0 240px/);
   assert.match(css, /background:var\(--ape-orange\)/);
   assert.match(css, /font-family:var\(--font-body\)/);
   assert.match(css, /min-height:44px/);
