@@ -262,7 +262,7 @@ function Builder({ data, campaign, campaignId, piece, version, snapshot, pieces,
     </section>
     <aside className="studio-inspector">
       <div className="studio-inspector-head"><div><span className="studio-eyebrow">Revisão</span><h3>Conteúdo da peça</h3></div></div>
-      {sandboxGenerated ? <DemoInspector key={`${piece?.id ?? "none"}-${variant}`} piece={piece} demo={demo} variant={variant} onVariant={() => setVariant((current) => current + 1)} mutate={mutate} /> : version ? <>
+      {sandboxGenerated ? <DemoInspector key={`${piece?.id ?? "none"}-${variant}`} piece={piece} demo={demo} variant={variant} onVariant={() => setVariant((current) => current + 1)} mutate={mutate} /> : version && piece ? <>
         <VersionEditor key={version.id} version={version} busy={busy} mutate={mutate}/>
         <VersionHistory versions={data.versions.filter((item) => item.piece_id === piece.id)} current={version} compareVersionId={compareVersionId} onCompare={setCompareVersionId} busy={busy} mutate={mutate}/>
         <CollaborationPanel piece={piece} version={version} tasks={data.tasks ?? []} comments={data.comments ?? []} members={data.members ?? []} busy={busy} mutate={mutate}/>
