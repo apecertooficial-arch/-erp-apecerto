@@ -373,6 +373,52 @@ export async function POST(request: Request) {
   try { body = await request.json() as Record<string, unknown>; }
   catch { return Response.json({ error: "JSON inválido." }, { status: 400 }); }
   const action = String(body.action ?? "");
+  if (action === "visitaDisponibilidade") {
+    const leadId = String(body.leadId ?? "");
+    const data = String(body.data ?? "");
+    const comGerente = body.comGerente === true;
+    const gerenteId = body.gerenteId == null || body.gerenteId === "" ? null : Number(body.gerenteId);
+    if (!/^[0-9a-f-]{36}$/i.test(leadId) || !/^\d{4}-\d{2}-\d{2}$/.test(data)) {
+      return Response.json({ error: "Lead ou data inválidos." }, { status: 422 });
+    }
+    if (comGerente && (!Number.isSafeInteger(gerenteId) || Number(gerenteId) < 1)) {
+      return Response.json({ error: "Escolha o gerente para consultar os horários." }, { status: 422 });
+    }
+
+    if (comGerente) {
+      const { data: gerente, error: erroGerente } = await auth.db.from("gerentes")
+        .select("id").eq("id", gerenteId as number).eq("ativo", true).maybeSingle();
+      if (erroGerente) return Response.json({ error: "Não foi possível consultar o gerente." }, { status: statusErroBanco(erroGerente) });
+      if (!gerente) return Response.json({ error: "Gerente indisponível." }, { status: 404 });
+    }
+
+    const { data: disponibilidade, error } = await auth.db.rpc("f2_disponibilidade_visitas", {
+      p_lead_id: leadId,
+      p_data: data,
+      p_gerente_id: comGerente ? gerenteId : null,
+    });
+    if (error) return Response.json({ error: "Não foi possível consultar os horários." }, { status: statusErroBanco(error) });
+    const resultado = (disponibilidade ?? {}) as {
+      ok?: boolean;
+      erro?: string;
+      horarios?: Array<{ inicio?: unknown; fim?: unknown; estado?: unknown }>;
+    };
+    if (resultado.ok !== true) {
+      const proibido = resultado.erro === "sem_permissao";
+      const gerenteInvalido = resultado.erro === "gerente_invalido";
+      return Response.json({ error: proibido
+        ? "Este lead não pertence à sua carteira."
+        : gerenteInvalido ? "Gerente indisponível." : "Lead não encontrado." }, { status: proibido ? 403 : gerenteInvalido ? 409 : 404 });
+    }
+    const estados = new Set(["disponivel", "indisponivel", "meu"]);
+    const horarios = (resultado.horarios ?? []).flatMap((horario) => {
+      const inicio = typeof horario.inicio === "string" && /^\d{2}:\d{2}$/.test(horario.inicio) ? horario.inicio : null;
+      const fim = typeof horario.fim === "string" && /^\d{2}:\d{2}$/.test(horario.fim) ? horario.fim : null;
+      const estado = typeof horario.estado === "string" && estados.has(horario.estado) ? horario.estado : null;
+      return inicio && fim && estado ? [{ inicio, fim, estado }] : [];
+    });
+    return Response.json({ ok: true, data, duracao_min: 60, horarios });
+  }
   if (action === "associarTag") {
     const leadId = String(body.leadId ?? "");
     const tagId = String(body.tagId ?? "");
@@ -502,7 +548,15 @@ export async function POST(request: Request) {
   }
 
   const { data, error } = await auth.db.rpc(rpc, args);
-  if (error) return Response.json({ error: error.message }, { status: statusErroBanco(error) });
+  if (error) {
+    const chaveConflito = /horario_ocupado/i.test(error.message ?? "")
+      ? "horario_ocupado"
+      : /gerente_ocupado/i.test(error.message ?? "")
+        ? "gerente_ocupado"
+        : /corretor_ocupado/i.test(error.message ?? "") ? "corretor_ocupado" : null;
+    if (chaveConflito) return Response.json({ error: RECUSAS[chaveConflito], erro: chaveConflito }, { status: 409 });
+    return Response.json({ error: error.message }, { status: statusErroBanco(error) });
+  }
   const resultado = (data ?? {}) as { ok?: boolean; erro?: string };
   if (resultado.ok === false) {
     const chave = String(resultado.erro ?? "");
@@ -516,7 +570,9 @@ export async function POST(request: Request) {
 const RECUSAS: Record<string, string> = {
   sem_permissao: "Você não tem permissão para concluir esta ação.",
   dados_invalidos: "Revise os campos obrigatórios, o prazo e a posição informada.",
+  horario_ocupado: "Esse horário acabou de ficar indisponível. Escolha outro horário.",
   gerente_ocupado: "Esse gerente já tem uma visita nesse horário. Escolha outro horário ou outro gerente.",
+  corretor_ocupado: "Você já tem uma visita nesse horário. Escolha outro horário.",
   ordem_em_uso: "Essa posição está ocupada e não pôde ser reorganizada. Recarregue e tente novamente.",
   etapa_em_uso: "Esta etapa possui leads ou momentos ativos. Edite-a ou mova os itens antes de desativar.",
   momento_em_uso: "Este momento está associado a leads. Edite-o ou reclassifique os leads antes de desativar.",

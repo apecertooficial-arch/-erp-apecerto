@@ -2184,6 +2184,30 @@ body .f2-indicadores button span { font-size:12px; font-weight:600; }
   .funil-oficial>.ape-funil-acoes-fixas .ape-adicionar-cliente{border:1px solid var(--ape-purple-200,#DDBDEB);background:#fff;color:var(--ape-purple,#8B00CC)}
 }
 
+/* Seletor anônimo de disponibilidade. O estado ocupado informa somente que o
+   intervalo não pode ser escolhido; nunca identifica cliente ou corretor. */
+.f2-horarios{min-width:0;margin:14px 0 0;padding:14px;border:1px solid var(--border-default,#E4DFD9);border-radius:14px;background:var(--bg-sunken,#FAF8F6)}
+.f2-horarios legend{padding:0 6px;color:var(--fg-1,#1F1C1A);font-size:12px;font-weight:800}
+.f2-horarios>label{display:flex;flex-direction:column;gap:5px;color:var(--fg-3,#6E6760);font-size:11px;font-weight:800}
+.f2-horarios>label input{width:100%;min-height:44px;padding:9px 12px;border:1px solid var(--border-default,#E4DFD9);border-radius:10px;background:#fff;color:var(--fg-1,#1F1C1A);font:600 14px/1.3 inherit}
+.f2-horarios-grade{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:12px}
+.f2-horarios-grade .f2-horario{min-width:0;min-height:56px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:6px;border:1px solid #D9D4CE;border-radius:10px;background:#F1EFEC;color:#716B65;box-shadow:none;cursor:not-allowed}
+.f2-horarios-grade .f2-horario strong{font-size:13px}
+.f2-horarios-grade .f2-horario small{overflow:hidden;max-width:100%;font-size:9px;font-weight:700;text-overflow:ellipsis;white-space:nowrap}
+.f2-horarios-grade .f2-horario.disponivel{border-color:#90D5AE;background:#ECF9F2;color:#176B3A;cursor:pointer}
+.f2-horarios-grade .f2-horario.disponivel:hover{border-color:#1E9E5A;background:#DDF4E7}
+.f2-horarios-grade .f2-horario.meu{border-color:#F0B08A;background:#FFF4EC;color:#A9470B}
+.f2-horarios-grade .f2-horario.selecionado{outline:3px solid color-mix(in srgb,#1E9E5A 25%,transparent);border-color:#1E9E5A;background:#D6F1E2}
+.f2-horarios-aviso,.f2-horarios-erro{margin:10px 0 0;font-size:11px;line-height:1.4}
+.f2-horarios-aviso{color:var(--fg-3,#6E6760)}
+.f2-horarios-erro{color:#A9322B}
+.f2-horarios-legenda{display:flex;flex-wrap:wrap;gap:10px;margin:10px 0 0;color:var(--fg-3,#6E6760);font-size:10px}
+.f2-horarios-legenda span{display:inline-flex;align-items:center;gap:4px}
+.f2-horarios-legenda i{width:8px;height:8px;border-radius:999px;background:#A9A39C}
+.f2-horarios-legenda i.livre{background:#1E9E5A}
+.f2-horarios-legenda i.meu{background:#ED7A32}
+@media(max-width:520px){.f2-horarios-grade{grid-template-columns:repeat(3,minmax(0,1fr))}}
+
 /* Funções canônicas recuperadas no CRM novo: edição de identidade, cadastro
    manual reconciliado e solicitação de entrada na Esteira. */
 .funil-oficial .f2-modal-cliente,.funil-oficial .f2-modal-negociacao-canonica{width:min(640px,100%)}
