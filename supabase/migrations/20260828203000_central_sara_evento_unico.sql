@@ -172,7 +172,7 @@ begin
   if coalesce(p_source_id,'')='' then raise exception 'SARA_CHECKPOINT_SOURCE_REQUIRED'; end if;
 
   perform pg_advisory_xact_lock(hashtextextended('sara-checkpoint:'||p_funil_lead_id::text,0));
-  select f into v_lead
+  select f.* into v_lead
     from public.f2_lead f
    where f.id=p_funil_lead_id
    for update;

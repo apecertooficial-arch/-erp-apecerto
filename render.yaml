@@ -8,12 +8,30 @@ services:
     # pnpm 11 roda um verify-deps-before-run que falha com os build-scripts
     # nativos ignorados (esbuild/sharp/workerd) e quebrava o deploy.
     buildCommand: pnpm install && ./node_modules/.bin/vinext build
-    startCommand: ./node_modules/.bin/vinext start
+    startCommand: node scripts/start-render-with-automations.mjs
     envVars:
       - key: NEXT_PUBLIC_SUPABASE_URL
         sync: false
       - key: NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
         sync: false
+      - key: SUPABASE_URL
+        value: https://diaegvfveqezispcthwk.supabase.co
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: AUTOMATIONS_DISPATCHER_ENABLED
+        sync: false
+      - key: AUTOMATIONS_DISPATCHER_WORKER_ID
+        value: apecerto-erp-dispatcher
+      - key: AUTOMATIONS_DISPATCHER_POLL_MS
+        value: "750"
+      - key: AUTOMATIONS_DISPATCHER_HEARTBEAT_MS
+        value: "10000"
+      - key: AUTOMATIONS_DISPATCHER_MAINTENANCE_MS
+        value: "30000"
+      - key: AUTOMATIONS_DISPATCHER_LEASE_SECONDS
+        value: "90"
+      - key: AUTOMATIONS_DISPATCHER_SHUTDOWN_MS
+        value: "30000"
       - key: NEXT_PUBLIC_APECERTO_DATA_MODE
         value: production-readonly
       - key: NEXT_PUBLIC_SITE_URL

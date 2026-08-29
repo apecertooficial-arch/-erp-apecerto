@@ -29,6 +29,7 @@ export function environment(source = process.env) {
     workerId,
     pollMs: clamp(source.AUTOMATIONS_DISPATCHER_POLL_MS, 100, 30_000, 750),
     heartbeatMs: clamp(source.AUTOMATIONS_DISPATCHER_HEARTBEAT_MS, 2_000, 30_000, 10_000),
+    maintenanceMs: clamp(source.AUTOMATIONS_DISPATCHER_MAINTENANCE_MS, 10_000, 300_000, 30_000),
     leaseSeconds: clamp(source.AUTOMATIONS_DISPATCHER_LEASE_SECONDS, 30, 300, 90),
     shutdownMs: clamp(source.AUTOMATIONS_DISPATCHER_SHUTDOWN_MS, 5_000, 120_000, 30_000),
   };
@@ -36,6 +37,7 @@ export function environment(source = process.env) {
     workerId: config.workerId,
     pollMs: config.pollMs,
     heartbeatMs: config.heartbeatMs,
+    maintenanceMs: config.maintenanceMs,
     leaseSeconds: config.leaseSeconds,
     shutdownMs: config.shutdownMs,
   });
@@ -76,6 +78,7 @@ export function createDispatcher({
   let active = null;
   let lastHealth = null;
   let lastHeartbeatAt = 0;
+  let lastMaintenanceAt = clock();
 
   async function rpc(name, args) {
     const { data, error } = await db.rpc(name, args);
@@ -99,6 +102,11 @@ export function createDispatcher({
     const health = await heartbeat();
     const mode = health?.modo ?? "cron";
     if (mode !== "worker") return { ok: true, mode, processed: 0 };
+
+    if (clock()-lastMaintenanceAt >= (config.maintenanceMs ?? 30_000)) {
+      await rpc("motor_dispatcher_manutencao_tick", { p_worker_id: config.workerId });
+      lastMaintenanceAt = clock();
+    }
 
     const item = await rpc("motor_dispatcher_claim", {
       p_worker_id: config.workerId,

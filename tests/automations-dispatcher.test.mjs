@@ -37,6 +37,24 @@ const workerEntry = readFileSync(
   new URL("../workers/automations-dispatcher/index.mjs", import.meta.url),
   "utf8",
 );
+const renderSupervisor = readFileSync(
+  new URL("../scripts/start-render-with-automations.mjs", import.meta.url),
+  "utf8",
+);
+const cohostMigration = readFileSync(
+  new URL(
+    "../supabase/migrations/20260829001000_central_dispatcher_cohost_sem_cron.sql",
+    import.meta.url,
+  ),
+  "utf8",
+);
+const checkpointBackfill = readFileSync(
+  new URL(
+    "../supabase/migrations/20260829000000_central_dispatcher_checkpoint_backfill.sql",
+    import.meta.url,
+  ),
+  "utf8",
+);
 const activeRenderBlueprint = readFileSync(
   new URL("../render.yaml", import.meta.url),
   "utf8",
@@ -194,13 +212,43 @@ test("lease e heartbeat sao renovados durante processamento longo", () => {
   assert.match(workerEntry, /AbortController/);
 });
 
-test("servico web ativo nao recebe service role e blueprint do worker fica inerte", () => {
-  assert.doesNotMatch(activeRenderBlueprint, /SUPABASE_SERVICE_ROLE_KEY/);
-  assert.doesNotMatch(activeRenderBlueprint, /automations-dispatcher/);
+test("servico Render existente hospeda o dispatcher sem expor segredo ao cliente", () => {
+  assert.match(activeRenderBlueprint, /SUPABASE_SERVICE_ROLE_KEY/);
+  assert.doesNotMatch(activeRenderBlueprint, /NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY/);
+  assert.match(activeRenderBlueprint, /start-render-with-automations\.mjs/);
+  assert.match(activeRenderBlueprint, /AUTOMATIONS_DISPATCHER_ENABLED/);
+  assert.match(renderSupervisor, /vinext/);
+  assert.match(renderSupervisor, /automations-dispatcher\/index\.mjs/);
+  assert.match(renderSupervisor, /dispatcher_restart_scheduled/);
   assert.match(workerBlueprint, /type: worker/);
   assert.match(workerBlueprint, /SUPABASE_SERVICE_ROLE_KEY/);
   assert.match(workerBlueprint, /numInstances: 1/);
   assert.match(workerBlueprint, /Nao e consumido pelo render\.yaml raiz/);
+});
+
+test("worker substitui o relogio e a presenca antes de remover os crons comerciais", () => {
+  assert.match(runtimeSource, /motor_dispatcher_manutencao_tick/);
+  assert.match(cohostMigration, /motor_reconciliar_mensagens_aceitas/);
+  assert.match(cohostMigration, /motor_reprocessar_mensagens_recusadas/);
+  assert.match(cohostMigration, /presenca_derrubar_expirados/);
+  assert.match(cohostMigration, /presenca_avisar_pendentes/);
+  assert.match(cohostMigration, /cron\.unschedule/);
+  assert.match(cohostMigration, /COHOST_CUTOVER_BLOCKED/);
+  assert.match(cohostMigration, /heartbeat_em<clock_timestamp\(\)-interval '45 seconds'/);
+});
+
+test("backfill cria checkpoints sem replay, mensagem ou exclusao de historico", () => {
+  assert.match(checkpointBackfill, /f2_sara_agendar_checkpoint/);
+  assert.match(checkpointBackfill, /checkpoint_backfill_sem_replay/);
+  assert.doesNotMatch(checkpointBackfill, /motor_rodar\s*\(/);
+  assert.doesNotMatch(checkpointBackfill, /send-message|enviar_mensagem|delete from/i);
+  assert.match(checkpointBackfill, /status='cancelado'/);
+  assert.match(checkpointBackfill, /CHECKPOINT_BACKFILL_FAILED/);
+});
+
+test("agendador carrega o rowtype por colunas e nao como um unico UUID", () => {
+  assert.match(saraMigration, /select f\.\* into v_lead/);
+  assert.doesNotMatch(saraMigration, /select f into v_lead/);
 });
 
 test("SQL reivindica somente due_at vencido, usa SKIP LOCKED e recupera lease expirado", () => {
