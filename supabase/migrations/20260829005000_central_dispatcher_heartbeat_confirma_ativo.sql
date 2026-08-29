@@ -24,3 +24,4 @@ begin
   execute v_new;
 end
 $migration$;
+
