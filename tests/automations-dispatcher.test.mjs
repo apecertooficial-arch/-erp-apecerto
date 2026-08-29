@@ -69,6 +69,13 @@ const actionObservabilityMigration = readFileSync(
   ),
   "utf8",
 );
+const saraCheckpointEventMigration = readFileSync(
+  new URL(
+    "../supabase/migrations/20260829004000_central_sara_evento_checkpoint_permitido.sql",
+    import.meta.url,
+  ),
+  "utf8",
+);
 const activeRenderBlueprint = readFileSync(
   new URL("../render.yaml", import.meta.url),
   "utf8",
@@ -275,6 +282,12 @@ test("falha atomica da acao preserva a causa sem liberar execucao parcial", () =
   assert.match(actionObservabilityMigration, /AUTOMATION_MODULE_FAILED: action:/);
   assert.match(actionObservabilityMigration, /_module_error/);
   assert.doesNotMatch(actionObservabilityMigration, /motor_rodar\(/);
+});
+
+test("historico aceita o evento auditavel do checkpoint da Sara", () => {
+  assert.match(saraCheckpointEventMigration, /sara_reavaliou/);
+  assert.match(saraCheckpointEventMigration, /sara_checkpoint_agendado/);
+  assert.match(saraCheckpointEventMigration, /SARA_EVENT_TYPE_STALE_VERSION/);
 });
 
 test("backfill cria checkpoints sem replay, mensagem ou exclusao de historico", () => {
