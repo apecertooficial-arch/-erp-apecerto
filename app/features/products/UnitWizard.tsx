@@ -5,8 +5,6 @@ import { getBrowserSupabaseClient } from "../../lib/supabase/browser";
 import { MoneyInput } from "./MoneyInput";
 import { PendingMediaClassifier, type PendingMediaItem } from "./PendingMediaClassifier";
 import { applyOfficialWatermark } from "./watermark";
-import { validateProductPrice } from "./quality";
-import { buildMediaAltText } from "./media-editorial";
 
 type UnitWizardProps = { accessToken: string; onClose: () => void; onSaved: () => void; onCreateCondominium?: () => void; onCreateStandalone?: () => void };
 type Building = { id: string; nome: string; bairro: string | null; cidade: string | null; finalidade: string | null; origem: string | null; condominio_id: string | null };
@@ -89,7 +87,6 @@ export function UnitWizard({ accessToken, onClose, onSaved, onCreateCondominium,
           category: kind === "video" ? "Tour" : "Sala",
           preview: URL.createObjectURL(file),
           cover: kind === "foto" && !hasCover && index === firstPhotoIndex,
-          altText: "",
         } satisfies PendingMediaItem;
       });
       return [...current, ...additions];
@@ -115,12 +112,6 @@ export function UnitWizard({ accessToken, onClose, onSaved, onCreateCondominium,
     if (!tipologia.trim()) return "Informe a tipologia da unidade.";
     if (!area.trim() || Number(area) <= 0) return "Informe a área útil da unidade.";
     if (!valorTabela.trim()) return "Informe o valor de tabela da unidade.";
-    const tablePrice = validateProductPrice(Number(valorTabela), "Valor de tabela", selectedPurpose);
-    if (tablePrice.error) return tablePrice.error;
-    if (valorPromo.trim()) {
-      const promoPrice = validateProductPrice(Number(valorPromo), "Valor promocional", selectedPurpose);
-      if (promoPrice.error) return promoPrice.error;
-    }
     if (!proprietarioNome.trim() || !proprietarioContato.trim()) return "Informe nome e contato do proprietário.";
     if (!acessoTipo || !acessoInstrucoes.trim()) return "Informe o tipo e as instruções de acesso.";
     if (acessoTipo === "chave_digital" && !acessoCodigo.trim()) return "Informe o código da chave digital.";
@@ -192,8 +183,7 @@ export function UnitWizard({ accessToken, onClose, onSaved, onCreateCondominium,
         if (uploadError) throw new Error(`Falha ao enviar ${file.name}: ${uploadError.message}`);
         const { error: mediaError } = await supabase.from("midias").insert({
           empreendimento_id: empreendimentoId, unidade_id: unitId, tipo: tipoDaMidia(file),
-          storage_path: storagePath, nome: file.name, categoria: item.category.toLowerCase(), is_capa: Boolean(item.cover), ordem: index,
-          alt_text: tipoDaMidia(file) === "foto" ? (item.altText?.trim() || buildMediaAltText({ category: item.category, propertyName: buildings.find((building) => building.id === empreendimentoId)?.nome, unitNumber: numero })) : null,
+          storage_path: storagePath, nome: file.name, categoria: item.category.toLowerCase(), is_capa: Boolean(item.cover),
         } as never);
         if (mediaError) {
           await supabase.storage.from("empreendimentos").remove([storagePath]);
@@ -243,7 +233,7 @@ export function UnitWizard({ accessToken, onClose, onSaved, onCreateCondominium,
               <label>Área (m²)<input type="number" min="0" step="0.01" value={area} onChange={(event) => setArea(event.target.value)} /></label>
               <label>Vagas<input type="number" min="0" value={vagas} onChange={(event) => setVagas(event.target.value)} /></label>
             </div>
-            <div className="unit-money-grid"><MoneyInput key={`tabela-${moneyMode}`} purpose={selectedPurpose} defaultMode={moneyMode} label={selectedPurpose === "aluguel" ? "Aluguel mensal" : "Valor de tabela"} value={valorTabela} onChange={(value) => setValorTabela(value === null ? "" : String(value))} /><MoneyInput key={`promo-${moneyMode}`} purpose={selectedPurpose} defaultMode={moneyMode} label="Valor promocional" value={valorPromo} onChange={(value) => setValorPromo(value === null ? "" : String(value))} /></div>
+            <div className="unit-money-grid"><MoneyInput key={`tabela-${moneyMode}`} defaultMode={moneyMode} label={selectedPurpose === "aluguel" ? "Aluguel mensal" : "Valor de tabela"} value={valorTabela} onChange={(value) => setValorTabela(value === null ? "" : String(value))} /><MoneyInput key={`promo-${moneyMode}`} defaultMode={moneyMode} label="Valor promocional" value={valorPromo} onChange={(value) => setValorPromo(value === null ? "" : String(value))} /></div>
             <div className="field-grid"><label>Condomínio mensal<input type="number" min="0" value={condominioValor} onChange={(event) => setCondominioValor(event.target.value)} /></label><label>IPTU<input type="number" min="0" value={iptu} onChange={(event) => setIptu(event.target.value)} /></label><label>Outros custos<input type="number" min="0" value={outrosCustos} onChange={(event) => setOutrosCustos(event.target.value)} /></label></div>
             <label className="toggle commercial-toggle"><input type="checkbox" checked={compreJaAlugado} onChange={(event) => setCompreJaAlugado(event.target.checked)} /><span><strong>Compre já alugado</strong><small>O comprador recebe o imóvel com contrato de locação vigente.</small></span></label>
           </div>
@@ -271,7 +261,7 @@ export function UnitWizard({ accessToken, onClose, onSaved, onCreateCondominium,
               <label className="upload-button">＋ Adicionar fotos ou vídeos<input type="file" accept="image/*,video/*" multiple onChange={(event) => { addPhotos(event.target.files); event.currentTarget.value = ""; }} /></label>
               <strong className={photos.length ? "ok" : ""}>{photos.length} mídia{photos.length === 1 ? "" : "s"} selecionada{photos.length === 1 ? "" : "s"}</strong>
             </div>
-            <PendingMediaClassifier items={photos} categories={unitMediaCategories} onCategoryChange={(id, category) => setPhotos((current) => current.map((item) => item.id === id ? { ...item, category } : item))} onAltTextChange={(id, altText) => setPhotos((current) => current.map((item) => item.id === id ? { ...item, altText } : item))} onRemove={removePhoto} onCoverChange={(id) => setPhotos((current) => current.map((item) => ({ ...item, cover: item.id === id })))} />
+            <PendingMediaClassifier items={photos} categories={unitMediaCategories} onCategoryChange={(id, category) => setPhotos((current) => current.map((item) => item.id === id ? { ...item, category } : item))} onRemove={removePhoto} onCoverChange={(id) => setPhotos((current) => current.map((item) => ({ ...item, cover: item.id === id })))} />
           </div>
 
           {saving && photos.length > 0 && <div className="upload-progress"><span style={{ width: `${uploadProgress}%` }} /><strong>Enviando mídias · {uploadProgress}%</strong></div>}

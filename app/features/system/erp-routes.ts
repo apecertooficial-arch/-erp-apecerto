@@ -46,11 +46,10 @@ export const rotasModulo: Record<ModuleName, RotaModulo> = {
      o corretor vai encontrar, nao onde ele esta. */
   "Início": { path: "/inicio", slugs: ["dashboard"], classe: "A", rotuloCurto: "Meu Dia", mobile: true },
   "Central de Comando": { path: "/inteligencia", slugs: ["dashboard"], classe: "B", rotuloCurto: "Comando", mobile: false },
-  CRM: { path: "/crm", slugs: ["crm", "leads", "pipeline"], classe: "A", rotuloCurto: "Funil", mobile: true },
+  CRM: { path: "/crm", slugs: ["crm", "leads", "pipeline"], classe: "A", rotuloCurto: "CRM", mobile: true },
   "Calendário": { path: "/agenda", slugs: ["calendario"], classe: "A", rotuloCurto: "Agenda", mobile: true },
   "Notificações": { path: "/notificacoes", slugs: ["notificacoes"], classe: "A", rotuloCurto: "Avisos", mobile: true },
   Produtos: { path: "/produtos", slugs: ["produtos"], classe: "A", rotuloCurto: "Produtos", mobile: true },
-  "apêcerto Studio": { path: "/studio", slugs: ["studio_social"], classe: "A", rotuloCurto: "Studio", mobile: true },
   /* "projetos" NAO existe no catalogo de permissoes do banco -- conferido na
      homologacao contra /api/permissions. Como podeVer() e fail-closed, um slug
      inexistente escondia Tarefas de TODO mundo que nao fosse admin. Sem
@@ -78,6 +77,7 @@ export const rotasModulo: Record<ModuleName, RotaModulo> = {
      nao e o mesmo que abrir o Financeiro da imobiliaria.
      Quem tem o slug hoje: admin, auditor, diretor, financeiro. */
   Financeiro: { path: "/financeiro", slugs: ["financeiro"], classe: "B", mobile: false },
+  "Tracking 360": { path: "/tracking", slugs: ["auditoria"], classe: "B", rotuloCurto: "Tracking", mobile: true },
   Auditoria: { path: "/auditoria", slugs: ["auditoria"], classe: "B", mobile: false },
 
   "Chat ao Vivo": { path: "/chat", slugs: ["chat"], classe: "C", rotuloCurto: "Chat", mobile: false },

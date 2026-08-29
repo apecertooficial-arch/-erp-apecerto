@@ -129,8 +129,8 @@ export function SalesProcessView({ accessToken, initialCreate = false, sessionRo
   if (!data) return <div className="crm-loading"><span /><strong>Conectando a esteira de vendas…</strong></div>;
   return <section className="sales-process">
     <header><div><span>PÓS-FECHAMENTO</span><h2>Esteira de contrato & documentação</h2><p>Todas as vendas reais ligadas ao negócio, produto, cliente e responsável.</p></div><div className="sales-head-actions">{canManageStages && <button className="crm-secondary" type="button" onClick={() => { setAddingStage(true); setNewStageName(""); }}>＋ Nova etapa</button>}<button className="crm-primary" type="button" onClick={() => setCreating(true)}>＋ Nova venda</button></div></header>
-    {(data?.solicitacoes ?? []).length > 0 && <div className="sales-approvals">
-      <div className="sales-approvals-head"><strong>⏳ {canManageStages ? "Solicitações aguardando sua aprovação" : "Negociações aguardando aprovação"}</strong><span>{(data?.solicitacoes ?? []).length}</span></div>
+    {canManageStages && (data?.solicitacoes ?? []).length > 0 && <div className="sales-approvals">
+      <div className="sales-approvals-head"><strong>⏳ Solicitações aguardando sua aprovação</strong><span>{(data?.solicitacoes ?? []).length}</span></div>
       {(data?.solicitacoes ?? []).map((s) => {
         const deal = (data?.deals ?? []).find((d) => d.id === s.negocio_id);
         const lead = deal ? leadById.get(deal.lead_id) : null;
@@ -138,7 +138,7 @@ export function SalesProcessView({ accessToken, initialCreate = false, sessionRo
         const prod = (data?.products ?? []).find((p) => p.id === s.produto_id);
         return <div className="sales-approval-row" key={s.id}>
           <div className="sales-approval-info"><strong>{lead?.nome || `Negócio #${s.negocio_id}`}</strong><small>{prod?.nome || "Produto"} · {money.format(s.vgv || 0)} · corretor: {broker?.nome || "—"}</small></div>
-          <div className="sales-approval-actions">{canManageStages ? <><button className="crm-primary small" type="button" disabled={busy} onClick={() => void decideSolic(s.id, true)}>Aprovar</button><button type="button" disabled={busy} onClick={() => { const m = window.prompt("Motivo da recusa (opcional):", ""); if (m !== null) void decideSolic(s.id, false, m); }}>Recusar</button></> : <span>Aguardando decisão do gestor</span>}</div>
+          <div className="sales-approval-actions"><button className="crm-primary small" type="button" disabled={busy} onClick={() => void decideSolic(s.id, true)}>Aprovar</button><button type="button" disabled={busy} onClick={() => { const m = window.prompt("Motivo da recusa (opcional):", ""); if (m !== null) void decideSolic(s.id, false, m); }}>Recusar</button></div>
         </div>;
       })}
     </div>}

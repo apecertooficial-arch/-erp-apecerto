@@ -15,15 +15,15 @@ import "../styles/menu-marca-dagua-icone.css";
    pertence a qual grupo; a folha define em que posição aparece. Mexer em um sem
    olhar o outro faz item saltar de lugar.
 
-   Itens aposentados não permanecem nestas listas. */
-const adminMainItems: ModuleName[] = ["Início", "Central de Comando", "CRM", "Produtos", "apêcerto Studio", "Financeiro"];
+   Nenhum item foi removido em relação ao publicado. */
+const adminMainItems: ModuleName[] = ["Início", "Central de Comando", "CRM", "Produtos", "Financeiro", "Tracking 360"];
 const adminToolItems: ModuleName[] = ["Abordagens", "Automações", "Financiamento", "Chat ao Vivo", "Disparos", "Calendário", "Projetos e Tarefas", "Agentes de IA", "Marca d'Água", "Notificações", "Base de conhecimento"];
 const adminSystemItems: ModuleName[] = ["Usuários", "Perfis e Permissões", "Auditoria", "Configurações", "Ajuda"];
-const brokerMainItems: ModuleName[] = ["Início", "CRM", "Produtos", "apêcerto Studio", "Financeiro"];
+const brokerMainItems: ModuleName[] = ["Início", "CRM", "Produtos", "Financeiro"];
 const brokerToolItems: ModuleName[] = ["Chat ao Vivo", "Financiamento", "Disparos", "Calendário", "Marca d'Água", "Notificações"];
 const brokerSystemItems: ModuleName[] = ["Configurações", "Ajuda"];
 
-const rotulosMenu: Partial<Record<ModuleName, string>> = { CRM: "Funil" };
+const rotulosMenu: Partial<Record<ModuleName, string>> = { CRM: "CRM · Meu Dia" };
 
 function NavIcon({ item }: { item: ModuleName }) {
   const common = { width: 19, height: 19, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.8, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
@@ -31,8 +31,8 @@ function NavIcon({ item }: { item: ModuleName }) {
   if (item === "Central de Comando") return <svg {...common}><path d="M4 19V9M10 19V5M16 19v-7M22 19V3" /><path d="M3 21h19" /><circle cx="10" cy="5" r="1.4" /><circle cx="16" cy="12" r="1.4" /><circle cx="22" cy="3" r="1.4" /></svg>;
   if (item === "CRM") return <svg {...common}><path d="M3 4h18l-7 8v7l-4 2v-9Z" /></svg>;
   if (item === "Produtos") return <svg {...common}><path d="M6 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16M3 21h18M10 7h.01M14 7h.01M10 11h.01M14 11h.01M10 15h.01M14 15h.01" /></svg>;
-  if (item === "apêcerto Studio") return <svg {...common}><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M8 15h8M8 11h5M16.5 6.5v3M15 8h3"/></svg>;
   if (item === "Financeiro") return <svg {...common}><rect x="3" y="6" width="18" height="13" rx="2" /><path d="M3 10h18M16 14h.01" /></svg>;
+  if (item === "Tracking 360") return <svg {...common}><path d="M4 19V9M10 19V5M16 19v-7M22 19V3" /><path d="m3 8 7-5 6 7 6-8" /></svg>;
   if (item === "Abordagens" || item === "Disparos") return <svg {...common}><path d="m22 2-7 20-4-9-9-4Z" /><path d="m22 2-11 11" /></svg>;
   if (item === "Automações") return <svg {...common}><path d="m13 2-9 12h8l-1 8 9-12h-8Z" /></svg>;
   if (item === "Financiamento") return <svg {...common}><rect x="4" y="2" width="16" height="20" rx="2" /><path d="M8 6h8M8 10h2M14 10h2M8 14h2M14 14h2M8 18h8" /></svg>;
@@ -60,6 +60,7 @@ function NavGroup({ label, items, activeItem, onNavigate, badges }: { label: str
           <Link className={`nav-item ${item === activeItem ? "active" : ""}`} key={item} href={pathDoModulo(item)} onClick={() => onNavigate(item)} aria-current={item === activeItem ? "page" : undefined}>
             <span className="nav-icon" aria-hidden="true"><NavIcon item={item} /></span>
             <span>{rotulosMenu[item] ?? item}</span>
+            {item === "CRM" && <small>20</small>}
             {item === "Automações" && <small>2</small>}
             {item === "Produtos" && badge > 0 && <small className="nav-badge-pending" title={`${badge} produto(s) aguardando aprovação`}>{badge}</small>}
           </Link>

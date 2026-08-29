@@ -2,13 +2,15 @@
 /* AGENDA NO CELULAR.
  *
  * Leitura: GET /api/agenda (RPC ncrm_agenda_corretor).
- * Escrita: PATCH /api/agenda — `updateVisitStatus` e `updateVisit`. Visitas
- * novas nascem exclusivamente no card do lead; as existentes podem ser
- * reagendadas aqui para atender o corretor que está na rua.
+ * Escrita: PATCH /api/agenda — `updateVisitStatus` (realizada / cancelada),
+ * `updateVisit` (remarcar) e `createVisit` (marcar visita nova). Sao as mesmas
+ * acoes que o desktop usa; nada aqui grava direto em tabela.
  *
- * ESCOPO: a gestão recebe a agenda da equipe; o corretor recebe apenas os seus
- * compromissos. Conflitos alheios nunca aparecem aqui: o CRM os converte em
- * horários indisponíveis anônimos no momento do agendamento.
+ * ESCOPO: a agenda da IMOBILIARIA INTEIRA, com o nome de quem atende. Sem isso,
+ * dois corretores saem para o mesmo empreendimento no mesmo horario sem saber.
+ * O que e meu aparece normal; o dos colegas mostra o nome -- e SO o meu pode ser
+ * editado por aqui: remarcar a visita de um colega pelo celular, sem falar com
+ * ele, e o tipo de poder que ninguem pediu.
  *
  * ABRE NO MES. Marcar e conferir visita e trabalho de mes, nao de dia: o
  * corretor precisa ver onde ha espaco antes de combinar horario. Dia e Semana
@@ -25,9 +27,12 @@ import {
   type Compromisso,
 } from "./telaAgenda.logica";
 import { AppMobileOffline, AppMobileSessaoExpirada } from "../system/AppMobileSystem";
-import { HorariosVisita } from "../funil-2/HorariosVisita";
 
 type PeriodoAgenda = "dia" | "semana" | "mes";
+type LeadAgenda = { id: number; nome: string };
+type NegocioAgenda = { id: number; lead_id: number };
+type ProdutoAgenda = { id: string; nome: string };
+type Catalogo = { leads: LeadAgenda[]; deals: NegocioAgenda[]; products: ProdutoAgenda[] };
 
 /** "agosto de 2026" - minuscula, como o resto do app. */
 function mesPorExtenso(iso: string): string {
@@ -60,17 +65,26 @@ export function TelaAgendaMobile({ accessToken, onAbrirLead }: {
   const [sessaoExpirada, setSessaoExpirada] = useState(false);
   const [atualizadoEm, setAtualizadoEm] = useState<Date | null>(null);
   const [tentativa, setTentativa] = useState(0);
-  const [scope, setScope] = useState<"equipe" | "propria">("propria");
 
-  /* A folha de escrita guarda apenas o compromisso tocado. Novas visitas são
-     criadas no card do lead no CRM. */
+  /* Folhas de escrita. `editando` guarda o compromisso tocado; `criando` abre a
+     folha de visita nova. Uma por vez: duas folhas abertas no celular e um
+     jeito de o dedo confirmar a errada. */
   const [editando, setEditando] = useState<Compromisso | null>(null);
+  const [criando, setCriando] = useState(false);
   const [salvando, setSalvando] = useState(false);
   const [erroEscrita, setErroEscrita] = useState("");
   const [aviso, setAviso] = useState("");
   const [confirmandoCancelamento, setConfirmandoCancelamento] = useState(false);
   const [motivo, setMotivo] = useState("");
-  const [novoHorario, setNovoHorario] = useState("");
+  const [novaData, setNovaData] = useState("");
+  const [novaHora, setNovaHora] = useState("");
+
+  /* Catalogo (clientes com negocio ativo e produtos) so e buscado quando a
+     folha de visita nova abre: sao listas grandes e a agenda nao precisa delas
+     para ser lida. */
+  const [catalogo, setCatalogo] = useState<Catalogo | null>(null);
+  const [leadEscolhido, setLeadEscolhido] = useState("");
+  const [produtoEscolhido, setProdutoEscolhido] = useState("");
 
   const carregar = useCallback(async (sinal: AbortSignal) => {
     const r = await fetch(`/api/agenda?data=${dia}&periodo=${periodo}`, {
@@ -79,10 +93,7 @@ export function TelaAgendaMobile({ accessToken, onAbrirLead }: {
     if (r.status === 401) throw new Error("sessao_expirada");
     if (!r.ok) throw new Error(String(r.status));
     const j = await r.json();
-    return {
-      itens: (j.itens as Compromisso[]) ?? [],
-      scope: j.scope === "equipe" ? "equipe" as const : "propria" as const,
-    };
+    return (j.itens as Compromisso[]) ?? [];
   }, [accessToken, dia, periodo]);
 
   useEffect(() => {
@@ -91,7 +102,7 @@ export function TelaAgendaMobile({ accessToken, onAbrirLead }: {
     /* NAO zeramos a lista aqui: manter o que ja esta na tela enquanto a nova
        chega evita o pisca-e-encolhe ao trocar de aba. */
     carregar(ctrl.signal)
-      .then((resultado) => { if (vivo) { setItens(resultado.itens); setScope(resultado.scope); setErro(false); setSessaoExpirada(false); setAtualizadoEm(new Date()); } })
+      .then((l) => { if (vivo) { setItens(l); setErro(false); setSessaoExpirada(false); setAtualizadoEm(new Date()); } })
       .catch((e) => {
         if (!vivo || e?.name === "AbortError") return;
         if (e instanceof Error && e.message === "sessao_expirada") setSessaoExpirada(true);
@@ -115,13 +126,13 @@ export function TelaAgendaMobile({ accessToken, onAbrirLead }: {
       if (r.status === 401) { setSessaoExpirada(true); return false; }
       const j = await r.json().catch(() => ({})) as { success?: boolean; error?: string };
       if (!r.ok || !j.success) {
-        /* A API converte conflitos e falhas do banco em mensagens seguras. */
+        /* A mensagem do banco nao vai para a tela. */
         console.error("agenda: falha ao gravar", corpo.action, j.error);
-        setErroEscrita(j.error ?? "Não foi possível salvar. Tente de novo em instantes.");
+        setErroEscrita("Não foi possível salvar. Tente de novo em instantes.");
         return false;
       }
-      setEditando(null); setConfirmandoCancelamento(false);
-      setMotivo(""); setNovoHorario("");
+      setEditando(null); setCriando(false); setConfirmandoCancelamento(false);
+      setMotivo(""); setNovaData(""); setNovaHora("");
       setAviso(textoDoAviso);
       recarregar();
       return true;
@@ -135,8 +146,21 @@ export function TelaAgendaMobile({ accessToken, onAbrirLead }: {
 
   const abrirEdicao = useCallback((c: Compromisso) => {
     setEditando(c); setErroEscrita(""); setConfirmandoCancelamento(false);
-    setMotivo(""); setNovoHorario("");
+    setMotivo(""); setNovaData(c.data); setNovaHora(c.hora.slice(0, 5));
   }, []);
+
+  const abrirNovaVisita = useCallback(() => {
+    setCriando(true); setErroEscrita(""); setNovaData(dia); setNovaHora("10:00");
+    setLeadEscolhido(""); setProdutoEscolhido("");
+    if (catalogo) return;
+    void fetch("/api/agenda?workspace=1", { headers: { Authorization: `Bearer ${accessToken}` } })
+      .then(async (r) => {
+        if (!r.ok) throw new Error(String(r.status));
+        const j = await r.json() as { leads?: LeadAgenda[]; deals?: NegocioAgenda[]; products?: ProdutoAgenda[] };
+        setCatalogo({ leads: j.leads ?? [], deals: j.deals ?? [], products: j.products ?? [] });
+      })
+      .catch(() => setErroEscrita("Não foi possível carregar seus clientes agora."));
+  }, [accessToken, catalogo, dia]);
 
   const lista = useMemo(() => itens ?? [], [itens]);
   const prox = useMemo(() => proximo(lista), [lista]);
@@ -158,6 +182,17 @@ export function TelaAgendaMobile({ accessToken, onAbrirLead }: {
   }, [paraListar]);
 
   const celulas = useMemo(() => (periodo === "mes" ? gradeDoMes(dia, lista) : []), [periodo, dia, lista]);
+
+  /* Cliente com negocio ativo: sem negocio, o endpoint recusa a visita. */
+  const clientesDisponiveis = useMemo(() => {
+    if (!catalogo) return [] as Array<{ leadId: number; dealId: number; nome: string }>;
+    const nomePorLead = new Map(catalogo.leads.map((l) => [l.id, l.nome]));
+    const vistos = new Set<number>();
+    return catalogo.deals
+      .filter((d) => nomePorLead.has(d.lead_id) && !vistos.has(d.lead_id) && vistos.add(d.lead_id) !== undefined)
+      .map((d) => ({ leadId: d.lead_id, dealId: d.id, nome: nomePorLead.get(d.lead_id) as string }))
+      .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
+  }, [catalogo]);
 
   const anterior = () => setDia((d) => (periodo === "mes" ? somarMeses(d, -1) : somarDias(d, periodo === "semana" ? -7 : -1)));
   const seguinte = () => setDia((d) => (periodo === "mes" ? somarMeses(d, 1) : somarDias(d, periodo === "semana" ? 7 : 1)));
@@ -259,6 +294,10 @@ export function TelaAgendaMobile({ accessToken, onAbrirLead }: {
         </section>
       )}
 
+      <div className="ape-agenda-acoes-dia">
+        <button type="button" className="ape-agenda-nova" onClick={abrirNovaVisita}>+ Visita</button>
+      </div>
+
       {aviso && <p className="ape-agenda-aviso" role="status">{aviso}</p>}
 
       <p className="ape-agenda-dia">
@@ -313,9 +352,8 @@ export function TelaAgendaMobile({ accessToken, onAbrirLead }: {
                       {!c.meu && <span className="ape-agenda-dono">{c.corretor}</span>}
                       {(realizada || cancelada) && <span className={`ape-agenda-status ${status}`}>{realizada ? "Realizada" : "Cancelada"}</span>}
                     </button>
-                    {/* O corretor edita só a própria visita; a gestão pode
-                        reagendar qualquer visita que aparece no seu escopo. */}
-                    {ehVisita(c) && (c.meu || scope === "equipe") && !cancelada && !realizada && (
+                    {/* Editar so a MINHA visita, e so enquanto ela esta de pe. */}
+                    {ehVisita(c) && c.meu && !cancelada && !realizada && (
                       <button type="button" className="ape-agenda-editar" onClick={() => abrirEdicao(c)}>Editar visita ›</button>
                     )}
                   </div>
@@ -355,28 +393,23 @@ export function TelaAgendaMobile({ accessToken, onAbrirLead }: {
 
               <section className="f2m-agendar">
                 <h3>Remarcar</h3>
-                <p>Escolha um horário disponível. Os compromissos de outros corretores permanecem anônimos.</p>
-                <HorariosVisita
-                  accessToken={accessToken}
-                  visitId={editando.id}
-                  comGerente={false}
-                  gerenteId={null}
-                  value={novoHorario}
-                  initialDate={editando.data}
-                  onChange={setNovoHorario}
-                  disabled={salvando}
-                />
+                <label>Nova data
+                  <input type="date" value={novaData} onChange={(e) => setNovaData(e.target.value)} />
+                </label>
+                <label>Novo horário
+                  <input type="time" value={novaHora} onChange={(e) => setNovaHora(e.target.value)} />
+                </label>
                 <div className="f2m-agendar-acoes">
                   <button
                     type="button"
                     className="f2m-agendar-ok"
-                    disabled={salvando || !novoHorario}
+                    disabled={salvando || !novaData || !novaHora}
                     onClick={() => void gravar(
-                      { action: "updateVisit", visitId: editando.id, date: novoHorario.slice(0, 10), startTime: novoHorario.slice(11, 16) },
+                      { action: "updateVisit", visitId: editando.id, date: novaData, startTime: `${novaHora}:00` },
                       "Visita remarcada.",
                     )}
                   >
-                    {salvando ? "Remarcando…" : "Remarcar visita"}
+                    {salvando ? "Remarcando…" : "Remarcar"}
                   </button>
                 </div>
               </section>
@@ -414,6 +447,69 @@ export function TelaAgendaMobile({ accessToken, onAbrirLead }: {
         </div>
       )}
 
+      {/* ---------- Folha: marcar visita nova ---------- */}
+      {criando && (
+        <div className="ape-folha" role="dialog" aria-modal="true" aria-label="Marcar visita">
+          <section className="ape-ficha">
+            <div className="ape-ficha-topo">
+              <button type="button" className="ape-voltar" onClick={() => setCriando(false)}>‹ Agenda</button>
+            </div>
+            <div className="ape-ficha-nome">
+              <h2>Marcar visita</h2>
+              <p>O endereço vem do empreendimento escolhido.</p>
+            </div>
+
+            {erroEscrita && <p className="ape-agenda-erro-escrita" role="alert">{erroEscrita}</p>}
+
+            <section className="f2m-agendar">
+              <label>Com quem
+                <select value={leadEscolhido} onChange={(e) => setLeadEscolhido(e.target.value)}>
+                  <option value="">{catalogo ? "— escolha o cliente —" : "Carregando seus clientes…"}</option>
+                  {clientesDisponiveis.map((c) => (
+                    <option key={`${c.leadId}-${c.dealId}`} value={`${c.leadId}:${c.dealId}`}>{c.nome}</option>
+                  ))}
+                </select>
+              </label>
+              {catalogo && clientesDisponiveis.length === 0 && (
+                <p className="ape-agenda-erro-escrita">Nenhum cliente com atendimento aberto. Abra o CRM para retomar um cliente antes de marcar a visita.</p>
+              )}
+
+              <label>Empreendimento <small>(opcional)</small>
+                <select value={produtoEscolhido} onChange={(e) => setProdutoEscolhido(e.target.value)}>
+                  <option value="">— sem empreendimento —</option>
+                  {(catalogo?.products ?? []).map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
+                </select>
+              </label>
+
+              <label>Dia
+                <input type="date" value={novaData} onChange={(e) => setNovaData(e.target.value)} />
+              </label>
+              <label>Horário
+                <input type="time" value={novaHora} onChange={(e) => setNovaHora(e.target.value)} />
+              </label>
+
+              <div className="f2m-agendar-acoes">
+                <button type="button" className="f2m-agendar-nao" disabled={salvando} onClick={() => setCriando(false)}>Cancelar</button>
+                <button
+                  type="button"
+                  className="f2m-agendar-ok"
+                  disabled={salvando || !leadEscolhido || !novaData || !novaHora}
+                  onClick={() => {
+                    const [leadId, dealId] = leadEscolhido.split(":").map(Number);
+                    void gravar({
+                      action: "createVisit", leadId, dealId,
+                      date: novaData, startTime: `${novaHora}:00`,
+                      productId: produtoEscolhido || null,
+                    }, "Visita marcada.");
+                  }}
+                >
+                  {salvando ? "Marcando…" : "Marcar visita"}
+                </button>
+              </div>
+            </section>
+          </section>
+        </div>
+      )}
     </div>
   );
 }

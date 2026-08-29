@@ -1,7 +1,6 @@
 import { createServerSupabaseClient } from "../../lib/supabase/server";
 import { assessProductQuality, isPlausibleProductPrice, normalizedKey, validateProductPrice } from "../../features/products/quality";
 import { isProductManagerRole } from "../../features/products/access";
-import type { Json } from "../../lib/supabase/database.types";
 
 export const dynamic = "force-dynamic";
 
@@ -17,8 +16,6 @@ export async function PATCH(request: Request) {
   const supabase = createServerSupabaseClient(accessToken);
   const { data: authData, error: authError } = await supabase.auth.getUser(accessToken);
   if (authError || !authData.user) return Response.json({ error: "Sessão inválida ou expirada." }, { status: 401 });
-  const { data: activeProfile } = await supabase.from("usuarios").select("ativo").eq("id", authData.user.id).maybeSingle();
-  if (activeProfile?.ativo !== true) return Response.json({ error: "Usuário inativo ou sem perfil operacional." }, { status: 403 });
 
   let body: { action?: string; id?: string; motivo?: string };
   try { body = await request.json() as typeof body; } catch { return Response.json({ error: "Dados inválidos." }, { status: 400 }); }
@@ -26,8 +23,8 @@ export async function PATCH(request: Request) {
   const id = String(body.id || "");
   if ((action !== "approve" && action !== "reject") || !id) return Response.json({ error: "Ação ou empreendimento inválido." }, { status: 422 });
   if (action === "approve") {
-    const { data: approver } = await supabase.from("usuarios").select("role,ativo").eq("id", authData.user.id).maybeSingle();
-    if (approver?.ativo !== true || !isProductManagerRole(approver.role)) return Response.json({ error: "Apenas a gestão de Produtos pode aprovar imóveis." }, { status: 403 });
+    const { data: approver } = await supabase.from("usuarios").select("role").eq("id", authData.user.id).maybeSingle();
+    if (!isProductManagerRole(approver?.role)) return Response.json({ error: "Apenas a gestão de Produtos pode aprovar imóveis." }, { status: 403 });
     const { data: product, error: productError } = await supabase
       .from("empreendimentos")
       .select("nome,titulo,slogan,descricao,finalidade,status,preco,area_util,dormitorios,banheiros,vagas,endereco,numero,bairro,cidade,uf,cep,condominio_valor,iptu,outros_custos,lazer,diferenciais,tour_url,unidades(area_m2,valor_tabela,valor_promo,disponivel,aprovacao),midias(tipo,categoria,is_capa,unidade_id)")
@@ -136,19 +133,6 @@ function tokenFrom(request: Request) {
   return authorization?.startsWith("Bearer ") ? authorization.slice(7) : null;
 }
 
-export async function GET(request: Request) {
-  const accessToken = tokenFrom(request);
-  if (!accessToken) return Response.json({ error: "Sessão necessária." }, { status: 401 });
-  const supabase = createServerSupabaseClient(accessToken);
-  const { data: authData, error: authError } = await supabase.auth.getUser(accessToken);
-  if (authError || !authData.user) return Response.json({ error: "Sessão inválida ou expirada." }, { status: 401 });
-  const { data: activeProfile } = await supabase.from("usuarios").select("ativo").eq("id", authData.user.id).maybeSingle();
-  if (activeProfile?.ativo !== true) return Response.json({ error: "Usuário inativo ou sem perfil operacional." }, { status: 403 });
-  const { data, error } = await supabase.rpc("produto_cadastro_rascunho_ler");
-  if (error) return Response.json({ error: error.message }, { status: 502 });
-  return Response.json({ draft: data ?? {} });
-}
-
 function isNonNegative(value: number) {
   return Number.isFinite(value) && value >= 0;
 }
@@ -160,53 +144,24 @@ export async function POST(request: Request) {
   const supabase = createServerSupabaseClient(accessToken);
   const { data: authData, error: authError } = await supabase.auth.getUser(accessToken);
   if (authError || !authData.user) return Response.json({ error: "Sessão inválida ou expirada." }, { status: 401 });
-  const { data: activeProfile } = await supabase.from("usuarios").select("ativo").eq("id", authData.user.id).maybeSingle();
-  if (activeProfile?.ativo !== true) return Response.json({ error: "Usuário inativo ou sem perfil operacional." }, { status: 403 });
 
-  let payload: CapturePayload
-    | { action: "finalize"; id: string }
-    | { action: "saveDraft"; payload: Json; step: number; expectedVersion?: number | null }
-    | { action: "deleteDraft" };
-  try {
-    payload = await request.json() as typeof payload;
-  } catch {
-    return Response.json({ error: "Dados de cadastro inválidos." }, { status: 400 });
-  }
-
-  if (payload.action === "saveDraft") {
-    if (!payload.payload || typeof payload.payload !== "object" || Array.isArray(payload.payload)) {
-      return Response.json({ error: "Rascunho inválido." }, { status: 422 });
-    }
-    if (!Number.isFinite(payload.step) || (payload.expectedVersion != null && (!Number.isSafeInteger(payload.expectedVersion) || payload.expectedVersion < 1))) {
-      return Response.json({ error: "Versão ou etapa do rascunho inválida." }, { status: 422 });
-    }
-    const { data, error } = await supabase.rpc("produto_cadastro_rascunho_salvar", {
-      p_payload: payload.payload,
-      p_etapa: Math.max(0, Math.min(6, Math.trunc(payload.step))),
-      p_versao_esperada: payload.expectedVersion ?? null,
-    });
-    if (error) {
-      const conflict = error.code === "40001" || error.message?.includes("DRAFT_CONFLICT");
-      return Response.json({ error: conflict ? "Este rascunho foi alterado em outra aba. Feche e reabra o cadastro para não perder trabalho." : error.message }, { status: conflict ? 409 : 502 });
-    }
-    return Response.json(data ?? { ok: true });
-  }
-
-  if (payload.action === "deleteDraft") {
-    const { error } = await supabase.rpc("produto_cadastro_rascunho_excluir");
-    if (error) return Response.json({ error: error.message }, { status: 502 });
-    return Response.json({ ok: true });
-  }
-
-  // Toda captação finalizada precisa nascer com um corretor responsável. A
-  // consulta fica depois das ações de rascunho: salvar o progresso não depende
-  // de um vínculo operacional ainda incompleto.
+  // Toda captação precisa nascer com um corretor responsável. Sem este vínculo,
+  // a unidade some de "Minhas captações" e o corretor perde a edição operacional.
+  // Resolver antes de criar condomínio/proprietário também evita registros órfãos
+  // quando um usuário ainda não foi cadastrado na tabela de corretores.
   const { data: broker, error: brokerError } = await supabase
     .from("corretores")
     .select("id")
     .eq("usuario_id", authData.user.id)
     .maybeSingle();
   if (brokerError) return Response.json({ error: brokerError.message }, { status: 502 });
+
+  let payload: CapturePayload | { action: "finalize"; id: string };
+  try {
+    payload = await request.json() as CapturePayload | { action: "finalize"; id: string };
+  } catch {
+    return Response.json({ error: "Dados de cadastro inválidos." }, { status: 400 });
+  }
 
   if (payload.action === "finalize") {
     if (!broker?.id) {
@@ -338,15 +293,19 @@ export async function POST(request: Request) {
   }
 
   let ownerId = owner?.id ?? null;
-  if (payload.propertyType === "terceiro" && owner) {
-    const { data, error } = await supabase.rpc("produto_proprietario_captacao_resolver", {
-      p_proprietario_id: ownerId,
-      p_nome: owner.name.trim(),
-      p_email: owner.email.trim().toLowerCase(),
-      p_telefone: owner.phone.trim(),
-    });
-    if (error) return Response.json({ error: error.message }, { status: error.code === "42501" ? 403 : 400 });
-    ownerId = data;
+  if (payload.propertyType === "terceiro" && owner && !ownerId) {
+    // Anti-duplicata de proprietário por e-mail.
+    const emailN = owner.email.trim().toLowerCase();
+    const { data: existingOwner } = emailN ? await supabase.from("proprietarios").select("id").ilike("email", emailN).limit(1).maybeSingle() : { data: null };
+    if (existingOwner?.id) {
+      ownerId = existingOwner.id;
+    } else {
+      const { data, error } = await supabase.from("proprietarios").insert({
+        nome: owner.name.trim(), email: emailN, telefone: owner.phone.trim(), created_by: authData.user.id,
+      }).select("id").single();
+      if (error) return Response.json({ error: error.message }, { status: 400 });
+      ownerId = data.id;
+    }
   }
 
   const { data: development, error: developmentError } = await supabase.from("empreendimentos").insert({

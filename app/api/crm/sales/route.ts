@@ -123,27 +123,6 @@ async function activeSlugs(auth: Auth) {
 export async function GET(request: Request) {
   const auth = await authClient(request);
   if (!auth) return Response.json({ error: "Sessão inválida ou expirada." }, { status: 401 });
-  const url = new URL(request.url);
-  if (url.searchParams.get("modo") === "prepararSolicitacao") {
-    const negocioIds = (url.searchParams.get("negocioIds") ?? "").split(",")
-      .map((valor) => Number(valor)).filter((valor) => Number.isSafeInteger(valor) && valor > 0).slice(0, 50);
-    if (!negocioIds.length) return Response.json({ error: "Negócio inválido." }, { status: 422 });
-    /* Todas as consultas usam a sessão do usuário. A leitura de negócios é o
-       preflight de escopo: IDs ocultos pelo RLS nunca seguem para o modal. */
-    const { data: negocios, error: negocioError } = await auth.supabase.from("negocios")
-      .select("id").in("id", negocioIds);
-    if (negocioError) return Response.json({ error: negocioError.message }, { status: 502 });
-    const permitidos = (negocios ?? []).map((item) => Number(item.id));
-    if (!permitidos.length) return Response.json({ error: "Negócio não encontrado ou fora do seu acesso." }, { status: 403 });
-    const [products, solicitacoes, processes] = await Promise.all([
-      auth.supabase.from("empreendimentos").select("id,nome,origem,bairro,cidade").order("nome").limit(500),
-      auth.supabase.from("venda_solicitacoes").select("id,negocio_id,produto_id,vgv,status,criado_em").in("negocio_id", permitidos).order("criado_em", { ascending: false }),
-      auth.supabase.from("venda_processos").select("id,negocio_id,aprovacao_status").in("negocio_id", permitidos),
-    ]);
-    const error = products.error ?? solicitacoes.error ?? processes.error;
-    if (error) return Response.json({ error: error.message }, { status: 502 });
-    return Response.json({ products: products.data ?? [], solicitacoes: solicitacoes.data ?? [], processes: processes.data ?? [] });
-  }
   const [sales, processes, deals, leads, products, brokers, stages, etapaDocs, anexos, users, history, verificacoes, solicitacoes, docModelo, condicoes, comissao, comissaoParcelas, observacoes, pipelines, pipelineStages, partes, anexoEventos] = await Promise.all([
     auth.supabase.from("vendas").select("id,created_at,data_venda,data_conclusao,cliente_nome,empreendimento_id,empreendimento_nome,unidade_id,vgv,forma_pgto,status,obs").order("created_at", { ascending: false }),
     auth.supabase.from("venda_processos").select("id,venda_id,negocio_id,etapa,tipo_venda,responsavel_usuario_id,prazo_em,observacoes,criado_em,atualizado_em,aprovacao_status,aprovacao_motivo,solicitado_por"),
@@ -482,36 +461,12 @@ export async function PATCH(request: Request) {
     const dealId = Number(body.dealId);
     const productId = String(body.productId || "");
     const vgv = Number.isFinite(Number(body.vgv)) && Number(body.vgv) > 0 ? Number(body.vgv) : 0;
-    if (!Number.isSafeInteger(dealId) || !productId || vgv <= 0) return Response.json({ error: "Selecione o negócio, o produto e informe um valor maior que zero." }, { status: 422 });
-    const [{ data: deal, error: dealError }, { data: product, error: productError }] = await Promise.all([
-      auth.supabase.from("negocios").select("id").eq("id", dealId).maybeSingle(),
-      auth.supabase.from("empreendimentos").select("id").eq("id", productId).maybeSingle(),
-    ]);
-    if (dealError || productError) return Response.json({ error: dealError?.message || productError?.message }, { status: 502 });
-    if (!deal) return Response.json({ error: "Negócio não encontrado ou fora do seu acesso." }, { status: 403 });
-    if (!product) return Response.json({ error: "Produto não encontrado ou fora do seu acesso." }, { status: 404 });
-    const [{ data: existente, error: existenteError }, { data: processo, error: processoError }] = await Promise.all([
-      auth.supabase.from("venda_solicitacoes").select("id,status,negocio_id,produto_id,vgv,criado_em").eq("negocio_id", dealId).eq("status", "pendente").order("criado_em", { ascending: false }).limit(1).maybeSingle(),
-      auth.supabase.from("venda_processos").select("id,negocio_id,aprovacao_status").eq("negocio_id", dealId).limit(1).maybeSingle(),
-    ]);
-    if (existenteError || processoError) return Response.json({ error: "Não foi possível verificar o estado atual da negociação. Nada foi enviado." }, { status: 502 });
-    if (existente) return Response.json({ error: "Já existe uma solicitação aguardando aprovação para este negócio.", code: "solicitacao_existente", solicitacaoId: existente.id, status: "pendente" }, { status: 409 });
-    if (processo) return Response.json({ error: "Este negócio já possui uma negociação na Esteira.", code: "negociacao_existente", processId: processo.id }, { status: 409 });
+    if (!Number.isSafeInteger(dealId) || !productId) return Response.json({ error: "Selecione o negócio e o produto." }, { status: 422 });
     const { data, error } = await auth.supabase.rpc("solicitar_venda", { p_negocio: dealId, p_produto: productId, p_vgv: vgv, p_forma: String(body.payment || "") || undefined, p_obs: String(body.notes || "") || undefined });
     if (error) return Response.json({ error: error.message }, { status: 502 });
     const r = (data ?? {}) as { ok?: boolean; erro?: string };
-    if (!r.ok) {
-      const conflito = r.erro === "ja_solicitado" || r.erro === "ja_tem_venda";
-      const proibido = r.erro === "sem_permissao_neste_negocio";
-      return Response.json({ error: r.erro === "ja_solicitado" ? "Já existe uma solicitação pendente para este negócio." : r.erro === "ja_tem_venda" ? "Este negócio já virou venda." : proibido ? "Você só pode enviar negócios sob sua responsabilidade." : (r.erro || "Não foi possível solicitar.") }, { status: proibido ? 403 : conflito ? 409 : 422 });
-    }
-    /* O RPC só cria a solicitação. O sucesso da interface depende da releitura
-       do registro pendente; não inferimos aprovação, venda ou processo. */
-    const { data: confirmada, error: confirmacaoError } = await auth.supabase.from("venda_solicitacoes")
-      .select("id,negocio_id,produto_id,vgv,status,criado_em").eq("negocio_id", dealId).eq("status", "pendente")
-      .order("criado_em", { ascending: false }).limit(1).maybeSingle();
-    if (confirmacaoError || !confirmada) return Response.json({ error: "A Esteira não confirmou a solicitação pendente. Confira antes de repetir." }, { status: 502 });
-    return Response.json({ success: true, solicitacaoId: confirmada.id, status: "pendente", solicitacao: confirmada });
+    if (!r.ok) return Response.json({ error: r.erro === "ja_solicitado" ? "Já existe uma solicitação pendente para este negócio." : r.erro === "ja_tem_venda" ? "Este negócio já virou venda." : r.erro === "sem_permissao_neste_negocio" ? "Você só pode enviar negócios sob sua responsabilidade." : (r.erro || "Não foi possível solicitar.") }, { status: 422 });
+    return Response.json({ success: true });
   }
   if (action === "aprovarSolicitacao") {
     const id = String(body.id || "");

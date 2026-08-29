@@ -4,7 +4,7 @@ export const moduleMap = {
     tables: ["leads", "empreendimentos", "wa_conversas", "vendas"],
   },
   "Central de Comando": {
-    description: "Visão executiva consolidada de marketing, CRM, equipe e resultado financeiro.",
+    description: "Visão executiva consolidada de marketing, tracking, CRM, equipe e resultado financeiro.",
     tables: ["f2_lead", "f2_visita", "perf_eventos", "vendas", "recebimentos", "central_alerta_acoes"],
   },
   CRM: {
@@ -15,13 +15,13 @@ export const moduleMap = {
     description: "Catálogo, captação, unidades, proprietários e materiais dos imóveis.",
     tables: ["empreendimentos", "unidades", "midias", "proprietarios", "condominios"],
   },
-  "apêcerto Studio": {
-    description: "Produção, revisão, aprovação, calendário e publicação de conteúdo imobiliário.",
-    tables: ["social_campaigns", "social_product_snapshots", "social_assets", "social_pieces", "social_piece_versions", "social_schedules", "social_publications"],
-  },
   Financeiro: {
     description: "Lançamentos, recebimentos, vendas e comissões.",
     tables: ["lancamentos_caixa", "recebimentos", "vendas", "comissoes"],
+  },
+  "Tracking 360": {
+    description: "Visão executiva do site, atribuição de mídia, CRM e entregas de conversão.",
+    tables: ["site_events_anon", "lead_attribution", "tracking_delivery_logs", "leads", "negocios"],
   },
   Abordagens: {
     description: "Modelos de abordagem cadastrados para produtos e campanhas.",

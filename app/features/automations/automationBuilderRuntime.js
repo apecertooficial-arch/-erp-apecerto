@@ -189,7 +189,7 @@ const FAM2TYPE={}; Object.entries(TYPES).forEach(([t,m])=>FAM2TYPE[m.fam]=t);
 /* Contrato publicado da fase deterministica. Tipos fora desta lista continuam
    legiveis em fluxos antigos, mas nao aparecem na paleta nem podem publicar. */
 const PUBLISHABLE_TYPES=new Set(['trigger','field-operation','condition','action','randomizer','distribution-simple','send-approach','resposta','time','ai-agent']);
-const PUBLISHABLE_TRIGGERS=new Set(['json-http-request-trigger','site-lead-created-trigger','initiated-by-another-automation-trigger','manually-lead-trigger','tag-added-trigger','lead-entered-stage-trigger','lead-moved-stage-trigger','lead-distribuido-trigger','lead-mensagem-recebida-trigger','lead-mensagem-enviada-trigger','sara-ciclo-event-trigger','momento-prazo-vencido-trigger','retomar-na-data-trigger','lead-entrou-momento-trigger','checagem-diaria-trigger']);
+const PUBLISHABLE_TRIGGERS=new Set(['json-http-request-trigger','site-lead-created-trigger','initiated-by-another-automation-trigger','manually-lead-trigger','tag-added-trigger','lead-entered-stage-trigger','lead-moved-stage-trigger','lead-distribuido-trigger','lead-mensagem-recebida-trigger','lead-mensagem-enviada-trigger','momento-prazo-vencido-trigger','retomar-na-data-trigger','lead-entrou-momento-trigger','checagem-diaria-trigger']);
 const PUBLISHABLE_ACTIONS=new Set(['create-lead-action','create-business-action','move-business-action','business-win-action','business-restore-action','business-lose-action','add-attendant-on-business-action','clean-attendant-on-business-action','assign-lead-attendant-action','clean-lead-attendant-action','create-tags-action','add-tag-action','remove-tag-action','set-lead-momento-action','apply-ai-analysis-action','send-notification-action','start-another-automation-action']);
 const PUBLISHABLE_CONDITIONS=new Set(['business-has-attendants','business-no-attendants','business-won','business-lost','business-pending','lead-exists','lead-has-business-on-pipeline','lead-has-business-on-stage','lead-email-exists','lead-name-exists','lead-phone-exists','lead-cpf-exists','lead-has-tag','lead-has-attendant','time-day-hour','lead-respondeu','field-equals','field-contains','field-has-value','field-between']);
 const PUBLISHABLE_WAITS=new Set(['wait-seconds','wait-minutes','wait-hours','wait-days']);
@@ -228,7 +228,7 @@ function esperaMeta(name){for(const c in ESPERAS){const f=ESPERAS[c].find(x=>x[0
 const CAT_ESPERA_ICON={'Tempo':'wait','Mensagens':'message'};
 const ESPERA_SUB={'Tempo':'Adicione espera com base em intervalos de horas','Mensagens':'Adicione espera com base em mensagens'};
 function applyEspera(n,name){const m=esperaMeta(name),cfg=m[3];n.opts.wait_type=name;const durMap={'wait-seconds':'segundos','wait-minutes':'minutos','wait-hours':'horas','wait-days':'dias'};if(cfg.indexOf('dur:')===0){n.opts.unidade=durMap[name]||cfg.slice(4);n.opts.valor=n.opts.valor||5;}}
-const TRIGGERS=[['json-http-request-trigger','Webhook (HTTP)','system'],['site-lead-created-trigger','Lead criado no site','system'],['initiated-by-another-automation-trigger','Iniciada por outra automação','system'],['manually-lead-trigger','Manual','system'],['tag-added-trigger','Tag adicionada','lead'],['lead-entered-stage-trigger','Entrou na etapa','business'],['lead-moved-stage-trigger','Mudou de etapa','business'],['lead-distribuido-trigger','Lead distribuido (entrou no funil)','lead'],['lead-mensagem-recebida-trigger','Chegou mensagem do lead','lead'],['lead-mensagem-enviada-trigger','Corretor enviou mensagem','lead'],['sara-ciclo-event-trigger','Eventos do ciclo de vida Sara','system'],['momento-prazo-vencido-trigger','Venceu o prazo do momento','business'],['retomar-na-data-trigger','Chegou a data de retomar','business'],['lead-entrou-momento-trigger','Entrou no momento','business'],['checagem-diaria-trigger','Relógio de recuperação da Sara','system']];
+const TRIGGERS=[['json-http-request-trigger','Webhook (HTTP)','system'],['site-lead-created-trigger','Lead criado no site','system'],['initiated-by-another-automation-trigger','Iniciada por outra automação','system'],['manually-lead-trigger','Manual','system'],['tag-added-trigger','Tag adicionada','lead'],['lead-entered-stage-trigger','Entrou na etapa','business'],['lead-moved-stage-trigger','Mudou de etapa','business'],['lead-distribuido-trigger','Lead distribuido (entrou no funil)','lead'],['lead-mensagem-recebida-trigger','Chegou mensagem do lead','lead'],['lead-mensagem-enviada-trigger','Corretor enviou mensagem','lead'],['momento-prazo-vencido-trigger','Venceu o prazo do momento','business'],['retomar-na-data-trigger','Chegou a data de retomar','business'],['lead-entrou-momento-trigger','Entrou no momento','business'],['checagem-diaria-trigger','Relógio de recuperação da Sara','system']];
 const CAMPOS=['{nome}','{primeiro_nome}','{telefone}','{email}','{origem}','{corretor}','{corretor_primeiro_nome}','{produto}'];
 // rastreia a posição do cursor no textarea para inserir a variável exatamente onde o usuário parou
 function _trackCaret(ta){if(!ta)return;const upd=()=>{ta._caret=ta.selectionStart;};ta.addEventListener('keyup',upd);ta.addEventListener('click',upd);ta.addEventListener('input',upd);ta.addEventListener('blur',upd);}
@@ -294,9 +294,7 @@ async function boot(){
   try{const [pr,ab]=await Promise.all([sbGet('/produtos?select=id,nome,ativo&order=nome'),sbGet('/abordagens?select=id,produto_id,nome,grupo,ordem,ativo,mensagens&ativo=is.true&order=grupo,ordem,id')]);ref.produtos=pr||[];ref.abordagens=ab||[];}catch(_p){ref.produtos=[];ref.abordagens=[];}
   try{ref.agentes=await sbGet('/agentes_ia?select=id,slug,nome,categoria,ativo&ativo=is.true&order=categoria,nome')||[];}catch(_ag){ref.agentes=[];}
   setStatus('Conectado — '+au.filter(a=>!a.arquivada).length+' disponíveis','#10b981');renderSidebar();
-  // A lista vertical e parte do fluxo de mapeamento: abrir uma automacao nao
-  // pode escondê-la. O usuario ainda pode recolher manualmente quando quiser.
-  if(_ctx&&_ctx.initialAutomationId){collapseSidebar(false);await openAutomacao(+_ctx.initialAutomationId);}
+  if(_ctx&&_ctx.initialAutomationId){const app=ROOT.querySelector('.app');if(app)app.classList.add('sb-collapsed');await openAutomacao(+_ctx.initialAutomationId);}
  }catch(e){console.error(e);setStatus('Falha de conexão','#dc2626');toast('Erro ao conectar: '+e.message,'err');}
 }
 let sbFilter='todas';
@@ -334,7 +332,7 @@ async function openAutomacao(id){
   updateFlowMeta();
   renderSidebar(document.getElementById('sbSearch').value);renderNodes();fitView(true);loadMonitor();historyInit();cancelAutosave();renderStateBadges();renderIntegrityBanner();
   setStatus('Conectado','#10b981');emptyTip.style.display='none';
-  // O construtor abre em modo foco com a lista vertical visivel por padrao.
+  // O construtor abre em modo foco; a lista continua disponível pelo botão de menu.
  }catch(e){console.error(e);setStatus('Erro','#dc2626');toast('Erro ao abrir: '+e.message,'err');}
 }
 function hydrate(row){
@@ -956,9 +954,8 @@ canvasEl.addEventListener('dragleave',e=>{if(!canvasEl.contains(e.relatedTarget)
 canvasEl.addEventListener('drop',e=>{canvasEl.classList.remove('drop-ready');const type=e.dataTransfer&&e.dataTransfer.getData('application/x-apecerto-block');if(!type||!PUBLISHABLE_TYPES.has(type))return;e.preventDefault();if(!cur){toast('Abra ou crie uma automação');return;}const rect=canvasEl.getBoundingClientRect();addNode(type,(e.clientX-rect.left-view.x)/view.scale,(e.clientY-rect.top-view.y)/view.scale);});
 function collapseSidebar(on){const app=ROOT.querySelector('.app');if(!app)return;app.classList.toggle('sb-collapsed',!!on);requestAnimationFrame(()=>requestAnimationFrame(()=>{try{fitView(true);}catch(e){}}));setTimeout(()=>{try{fitView(true);}catch(e){}},240);}
 (function(){const c=document.getElementById('sbCollapse');if(c)c.onclick=()=>collapseSidebar(true);const o=document.getElementById('sbOpen');if(o)o.onclick=()=>collapseSidebar(false);})();
-function setPaletteOpen(open){const palette=document.getElementById('palette'),toggle=document.getElementById('paletteToggle');palette.style.display=open?'block':'none';palette.setAttribute('aria-hidden',open?'false':'true');palette.setAttribute('role','navigation');palette.setAttribute('aria-label','Biblioteca de módulos');toggle.style.display=open?'none':'flex';toggle.setAttribute('aria-controls','palette');toggle.setAttribute('aria-expanded',open?'true':'false');}
-document.getElementById('paletteClose').onclick=()=>setPaletteOpen(false);
-document.getElementById('paletteToggle').onclick=()=>setPaletteOpen(true);
+document.getElementById('paletteClose').onclick=()=>{document.getElementById('palette').style.display='none';document.getElementById('paletteToggle').style.display='flex';};
+document.getElementById('paletteToggle').onclick=()=>{document.getElementById('palette').style.display='block';document.getElementById('paletteToggle').style.display='none';};
 document.getElementById('sbSearch').oninput=e=>renderSidebar(e.target.value);
 async function createAutomation(grupoFixo){
  const nm=prompt('Nome da nova automação:');if(!nm||!nm.trim())return;
@@ -1343,9 +1340,7 @@ function toolbarGroup(label,selectors){const group=document.createElement('div')
 toolbarGroup('Editar',['#tbHide','#tbEdit','#tbDup','#tbNote','#tbDownload','#tbTrash','#tbNext']);
 toolbarGroup('Verificar',['#btnUndo','#btnRedo','.tb-preview','#btnValidate']);
 toolbarGroup('Salvar e publicar',['#tbSave','#btnVersions','#btnPublish']);
-// A biblioteca e parte da leitura do fluxo no desktop. Em telas estreitas ela
-// inicia recolhida para nao cobrir o canvas, mas continua a um toque de distancia.
-setPaletteOpen(!window.matchMedia('(max-width: 900px)').matches);
+document.getElementById('palette').style.display='none';document.getElementById('paletteToggle').style.display='flex';
 boot();
 }
 

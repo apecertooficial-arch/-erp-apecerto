@@ -4,30 +4,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { getBrowserSupabaseClient } from "../../lib/supabase/browser";
 import { liberarAudio, tocarSom } from "../../lib/somAviso";
 
-type DiagnosticoIp = {
-  corresponde: boolean;
-  ip_mascarado: string;
-  observado_em: string;
-  orientacao: string;
-};
-
-function horarioDiagnostico(diagnostico: DiagnosticoIp | null): string {
-  if (!diagnostico?.observado_em) return "";
-  const data = new Date(diagnostico.observado_em);
-  if (Number.isNaN(data.getTime())) return "";
-  return new Intl.DateTimeFormat("pt-BR", {
-    timeZone: "America/Sao_Paulo",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(data);
-}
-
-function textoDiagnostico(diagnostico: DiagnosticoIp | null): string {
-  if (!diagnostico) return "";
-  const horario = horarioDiagnostico(diagnostico);
-  return `Rede observada: ${diagnostico.ip_mascarado}${horario ? ` às ${horario}` : ""}. ${diagnostico.orientacao}`;
-}
-
 /* Batimento de presença do corretor.
    A cada ~20s consulta /api/presenca. Quando o servidor pede confirmação,
    mostra o pop-up com contagem regressiva.
@@ -44,7 +20,6 @@ export function PresenceHeartbeat({ accessToken, initialOnline }: { accessToken:
   const [actionError, setActionError] = useState("");
   const [returning, setReturning] = useState(false);
   const [naRedeDoEscritorio, setNaRedeDoEscritorio] = useState<boolean | null>(null);
-  const [diagnosticoIp, setDiagnosticoIp] = useState<DiagnosticoIp | null>(null);
   const [mostrarAvisoExterno, setMostrarAvisoExterno] = useState(false);
   const jaDerrubou = useRef(false);
   const avisoExternoJaMostrado = useRef(false);
@@ -114,16 +89,10 @@ export function PresenceHeartbeat({ accessToken, initialOnline }: { accessToken:
     const poll = async () => {
       try {
         const res = await fetch("/api/presenca", { headers: { Authorization: `Bearer ${accessToken}` } });
-        const data = await res.json() as {
-          prompt?: boolean;
-          prazo_seg?: number;
-          no_escritorio_ip?: boolean;
-          diagnostico_ip?: DiagnosticoIp;
-        };
+        const data = await res.json() as { prompt?: boolean; prazo_seg?: number; no_escritorio_ip?: boolean };
         if (stopped) return;
         const estaNaRede = data.no_escritorio_ip === true;
         setNaRedeDoEscritorio(estaNaRede);
-        setDiagnosticoIp(data.diagnostico_ip ?? null);
         /* Acesso ao ERP e aptidão para receber lead são estados separados.
            Qualquer aparelho fora do IP continua no sistema, mas sai da fila. */
         if (!estaNaRede) {
@@ -193,7 +162,7 @@ export function PresenceHeartbeat({ accessToken, initialOnline }: { accessToken:
       if (!mostrarAvisoExterno) return null;
       return <div className="presence-external-toast" role="status">
         <span aria-hidden="true">✓</span>
-        <div><strong>Acesso externo liberado</strong><p>{textoDiagnostico(diagnosticoIp) || "Você pode usar agenda e sistema normalmente. Apenas novos leads ficam pausados fora da rede do escritório."}</p></div>
+        <div><strong>Acesso externo liberado</strong><p>Você pode usar agenda e sistema normalmente. Apenas novos leads ficam pausados fora da rede do escritório.</p></div>
         <button type="button" aria-label="Fechar aviso" onClick={() => setMostrarAvisoExterno(false)}>×</button>
       </div>;
     }
@@ -202,7 +171,7 @@ export function PresenceHeartbeat({ accessToken, initialOnline }: { accessToken:
     if (!foraDaFila) return null;
     return <div className="presence-offline-bar" role="status">
       <span>⚠</span>
-      <div><strong>Você saiu da distribuição de leads</strong><p>{actionError || textoDiagnostico(diagnosticoIp) || "A confirmação de presença expirou. Sua conta continua conectada — só a fila de novos leads foi pausada."}</p></div>
+      <div><strong>Você saiu da distribuição de leads</strong><p>{actionError || "A confirmação de presença expirou. Sua conta continua conectada — só a fila de novos leads foi pausada."}</p></div>
       <button type="button" className="presence-yes" disabled={returning} onClick={() => void confirmar()}>{returning ? "Voltando…" : "Voltar a receber leads"}</button>
     </div>;
   }
@@ -218,7 +187,6 @@ export function PresenceHeartbeat({ accessToken, initialOnline }: { accessToken:
       <p>{atrasado
         ? <>Você não confirmou a tempo e parou de receber leads novos há <b>{relogio.replace("-", "")}</b>. Sua conta continua conectada. Clique abaixo para voltar agora — não precisa esperar a próxima rodada.</>
         : <>Confirme sua presença para continuar recebendo leads. Se não confirmar, você sai da fila em <b>{relogio}</b> — sem perder o acesso ao sistema.</>}</p>
-      {diagnosticoIp && <p className="presence-network-diagnostic">{textoDiagnostico(diagnosticoIp)}</p>}
       {actionError && <p role="alert">{actionError}</p>}
       <button type="button" className="presence-yes" disabled={returning} onClick={() => void confirmar()}>
         {returning ? "Confirmando…" : atrasado ? "Voltar a receber leads" : "Sim, estou aqui"}

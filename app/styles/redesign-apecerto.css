@@ -5,7 +5,7 @@
    já existem no produto. Nenhuma estrutura, nenhum dado, nenhuma função
    alterada por este arquivo.
 
-   Ordem de carregamento (layout.tsx): DEPOIS de globals.css e funil.css —
+   Ordem de carregamento (layout.tsx): DEPOIS de globals.css e funil-2.css —
    vence o visual antigo por cascata, sem editar aquelas
    folhas; ANTES de app-mobile-aprovado.css e app-mobile-gestor.css — o
    aplicativo no celular continua exatamente como está hoje.
@@ -71,7 +71,7 @@
 .tabs button.active, .media-tabs button.active, .audit-filters button.active, .team-filters button.active, .tabs button.ativo, .media-tabs button.ativo { background:var(--orange-soft) !important; border:1px solid var(--orange) !important; color:var(--orange-700) !important; box-shadow:none; }
 input:focus-visible, select:focus-visible, textarea:focus-visible { outline:3px solid rgba(255,112,0,.25); outline-offset:1px; }
 
-/* ===== overrides de funil.css ===== */
+/* ===== overrides de funil-2.css ===== */
 .est-cab { display:flex; align-items:flex-end; justify-content:space-between; gap:20px; margin:0 24px 14px; }
 .est-cab h2 { margin:4px 0 3px; font-size:20px; font-weight:700; letter-spacing:-.02em; color:#1F1C1A; }
 .est-cab p { margin:0; font-size:12.5px; color:#6E6760; }
@@ -135,10 +135,3 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline:3px 
 }
 
 /* Configurações do Funil 2.0: listas compactas e edição apenas em modal. */
-
-/* Atualização PWA: região reservada no fluxo do shell; nunca cobre operação. */
-.erp-update-region:not(:empty){position:relative;z-index:39;flex:none;padding:var(--space-2) var(--space-4) 0;background:var(--bg-page)}
-.erp-update-toast{width:min(100%,520px);min-height:44px;display:flex;align-items:center;gap:var(--space-3);margin-left:auto;padding:var(--space-2) var(--space-3);border:1px solid var(--neutral-700);border-radius:var(--radius-md);background:var(--neutral-800);color:var(--fg-inverse);box-shadow:var(--shadow-sm);font:var(--weight-medium) var(--text-xs)/var(--leading-normal) var(--font-ui)}
-.erp-update-toast span{flex:1}
-.erp-update-toast button{min-height:36px;padding:0 var(--space-3);border:0;border-radius:var(--radius-sm);background:var(--ape-orange);color:var(--fg-inverse);font:var(--weight-bold) var(--text-xs)/1 var(--font-ui);cursor:pointer}
-@media(max-width:900px){.erp-update-region:not(:empty){padding:var(--space-2) var(--space-3) 0}.erp-update-toast{width:100%;margin:0}.erp-update-toast span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}}

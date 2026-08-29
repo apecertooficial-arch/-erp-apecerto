@@ -44,7 +44,7 @@ export function BotaoWhatsApp({ telefone, negocioId, rotulo = "Chamar no WhatsAp
   if (!preparo.ok) {
     return (
       <div className="ncrm-wa-erro" role="alert">
-        <strong>Não dá para chamar este cliente</strong>
+        <strong>Nao da para chamar este cliente</strong>
         <span>{preparo.explicacao}</span>
         <span className="ncrm-wa-erro-dica">Corrija o telefone no cadastro do lead para liberar o atendimento.</span>
       </div>

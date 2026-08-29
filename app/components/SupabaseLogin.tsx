@@ -15,36 +15,26 @@ export function SupabaseLogin({ onAuthenticated, preview = false, onClose }: { o
     setLoading(true);
     setMessage("");
 
-    try {
-      const supabase = getBrowserSupabaseClient();
-      const normalizedEmail = email.trim().toLowerCase();
-      const { data, error } = await supabase.auth.signInWithPassword({ email: normalizedEmail, password });
-      if (error || !data.session) {
-        setMessage("Não foi possível entrar. Confira o mesmo e-mail e senha usados no ERP.");
-        return;
-      }
-
-      setPassword("");
-      onAuthenticated(data.session.access_token);
-    } catch {
-      setMessage("Não foi possível conectar agora. Verifique sua internet e tente novamente.");
-    } finally {
+    const supabase = getBrowserSupabaseClient();
+    const normalizedEmail = email.trim().toLowerCase();
+    const { data, error } = await supabase.auth.signInWithPassword({ email: normalizedEmail, password });
+    if (error || !data.session) {
+      setMessage("Não foi possível entrar. Confira o mesmo e-mail e senha usados no ERP.");
       setLoading(false);
+      return;
     }
+
+    setPassword("");
+    onAuthenticated(data.session.access_token);
   }
 
   async function resetPassword() {
     if (!email) { setMessage("Digite seu e-mail para receber a recuperação de senha."); return; }
     setLoading(true); setMessage("");
-    try {
-      const redirectBase = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
-      const { error } = await getBrowserSupabaseClient().auth.resetPasswordForEmail(email.trim().toLowerCase(), { redirectTo: redirectBase });
-      setMessage(error ? "Não foi possível solicitar a recuperação agora." : "Enviamos as instruções de recuperação para o seu e-mail.");
-    } catch {
-      setMessage("Não foi possível conectar agora. Tente novamente em instantes.");
-    } finally {
-      setLoading(false);
-    }
+    const redirectBase = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
+    const { error } = await getBrowserSupabaseClient().auth.resetPasswordForEmail(email, { redirectTo: redirectBase });
+    setMessage(error ? "Não foi possível solicitar a recuperação agora." : "Enviamos as instruções de recuperação para o seu e-mail.");
+    setLoading(false);
   }
 
   return (

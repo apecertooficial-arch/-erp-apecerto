@@ -50,9 +50,9 @@ export async function GET(request: Request) {
   const [central, teamExecution, tracking, attribution, quality, media, ga4, alertActions] = await Promise.all([
     rpc("central_comando_dashboard_v2", { p_days: days }),
     rpc("central_comando_equipe_execucao", { p_days: days }),
-    rpc("central_comando_site_marketing", { p_days: days }),
-    rpc("central_comando_atribuicao_marketing", { p_days: days }),
-    rpc("central_comando_qualidade_dados", { p_days: days }),
+    rpc("tracking_360_dashboard", { p_days: days }),
+    rpc("tracking_360_attribution_scope", { p_days: days }),
+    rpc("tracking_360_quality", { p_days: days }),
     auth.supabase.functions
       .invoke("marketing-ads-read", { body: { days } })
       .catch(() => ({ data: null, error: { message: "Leitura de mídia indisponível." } })),
@@ -100,7 +100,7 @@ export async function GET(request: Request) {
     ga4_configurado: ga4IsConfigured,
     sources: {
       crm: { status: "conectado", motivo: null },
-      site_eventos: { status: "conectado", motivo: null },
+      tracking: { status: "conectado", motivo: null },
       meta: { status: String(metaRecord.status ?? "indisponivel"), motivo: metaRecord.motivo ?? null },
       google: { status: String(googleRecord.status ?? "indisponivel"), motivo: googleRecord.motivo ?? null },
       ga4: ga4

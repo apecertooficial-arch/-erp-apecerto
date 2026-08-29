@@ -46,11 +46,10 @@ export function resolveCommercialOrigin(input: {
 export function canViewUnitOwner(input: {
   viewerBrokerId?: number | null;
   captorBrokerId?: number | null;
-  isManager?: boolean;
 }): boolean {
-  return input.isManager === true || (input.viewerBrokerId != null
+  return input.viewerBrokerId != null
     && input.captorBrokerId != null
-    && input.viewerBrokerId === input.captorBrokerId);
+    && input.viewerBrokerId === input.captorBrokerId;
 }
 
 export function summarizeQualityIssues(issues: readonly string[]): string[] {

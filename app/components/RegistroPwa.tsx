@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createPortal } from "react-dom";
 
 /* Registro do service worker.
  *
@@ -86,20 +85,30 @@ export function RegistroPwa() {
   }, []);
 
   if (!precisaRecarregar) return null;
-  const alvoDoShell = typeof document === "undefined" ? null : document.getElementById("erp-update-region");
 
-  const aviso = (
-    <div className="erp-update-toast" role="status" aria-live="polite">
-      <span>Versão nova instalada.</span>
+  return (
+    <div
+      role="status"
+      style={{
+        position: "fixed", left: 16, right: 16, bottom: "calc(16px + env(safe-area-inset-bottom))",
+        zIndex: 9999, display: "flex", alignItems: "center", gap: 12, padding: "12px 14px",
+        background: "#1d1d1f", color: "#fff", borderRadius: 14, boxShadow: "0 8px 24px rgba(0,0,0,.24)",
+        font: "14px/1.4 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif",
+      }}
+    >
+      <span style={{ flex: 1 }}>Versão nova já instalada.</span>
       <button
         type="button"
         onClick={() => window.location.reload()}
+        style={{
+          padding: "8px 14px", fontWeight: 700, fontSize: 14, color: "#fff",
+          background: "#ff6500", border: 0, borderRadius: 10, cursor: "pointer",
+        }}
       >
         Recarregar
       </button>
     </div>
   );
-  return alvoDoShell ? createPortal(aviso, alvoDoShell) : aviso;
 }
 
 /* Prefixos que pertencem ao ApeCerto. Tudo fora desta lista fica intacto.

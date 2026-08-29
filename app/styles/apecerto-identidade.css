@@ -21,13 +21,11 @@
    não layout. Layout continua em app-mobile.css.
    ===================================================================== */
 
-/* Arquivos oficiais do pacote, já presentes no repositório e conferidos por
-   SHA-256. O ERP não depende da rede para preservar a tipografia da marca. */
-@font-face { font-family:"Quicksand"; src:url("/central-comando/_ds/ap-certo-design-system-019dda47-9a46-7787-a12e-ab06e9fd514d/fonts/Quicksand-Light.ttf") format("truetype"); font-weight:300; font-style:normal; font-display:swap; }
-@font-face { font-family:"Quicksand"; src:url("/central-comando/_ds/ap-certo-design-system-019dda47-9a46-7787-a12e-ab06e9fd514d/fonts/Quicksand-Regular.ttf") format("truetype"); font-weight:400; font-style:normal; font-display:swap; }
-@font-face { font-family:"Quicksand"; src:url("/central-comando/_ds/ap-certo-design-system-019dda47-9a46-7787-a12e-ab06e9fd514d/fonts/Quicksand-Medium.ttf") format("truetype"); font-weight:500; font-style:normal; font-display:swap; }
-@font-face { font-family:"Quicksand"; src:url("/central-comando/_ds/ap-certo-design-system-019dda47-9a46-7787-a12e-ab06e9fd514d/fonts/Quicksand-SemiBold.ttf") format("truetype"); font-weight:600; font-style:normal; font-display:swap; }
-@font-face { font-family:"Quicksand"; src:url("/central-comando/_ds/ap-certo-design-system-019dda47-9a46-7787-a12e-ab06e9fd514d/fonts/Quicksand-Bold.ttf") format("truetype"); font-weight:700; font-style:normal; font-display:swap; }
+/* Quicksand pelo Google Fonts em vez dos .ttf do pacote: fonte servida por
+   CDN chega comprimida em woff2 (cerca de 1/3 do tamanho do ttf), tem cache
+   compartilhado entre sites e não engorda o repositório em 1 MB de binário.
+   O service worker ignora origem externa, então isto não entra no cache do
+   app nem atrapalha o modo offline. */
 :root {
   /* ============================
      MARCA — apê (laranja) e certo (roxo)
@@ -98,28 +96,24 @@
   /* ============================
      TIPOGRAFIA
      ============================ */
-  --font-display: "Quicksand", "Quicksand Fallback", system-ui, -apple-system, sans-serif;
-  --font-body:    "Quicksand", "Quicksand Fallback", system-ui, -apple-system, sans-serif;
-  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  --font-display: "Quicksand", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-body:    "Quicksand", system-ui, -apple-system, "Segoe UI", sans-serif;
 
   --weight-light: 300; --weight-regular: 400; --weight-medium: 500;
   --weight-semibold: 600; --weight-bold: 700;
 
   --text-xs: 12px; --text-sm: 14px; --text-base: 16px; --text-md: 18px;
   --text-lg: 20px; --text-xl: 24px; --text-2xl: 30px; --text-3xl: 38px;
-  --text-4xl: 48px; --text-5xl: 60px; --text-6xl: 76px; --text-7xl: 96px;
 
   --leading-tight: 1.1; --leading-snug: 1.25;
   --leading-normal: 1.45; --leading-relaxed: 1.6;
-  --tracking-tight: -0.02em; --tracking-snug: -0.01em; --tracking-normal: 0;
-  --tracking-wide: 0.04em; --tracking-caps: 0.12em;
+  --tracking-tight: -0.02em; --tracking-snug: -0.01em; --tracking-caps: 0.12em;
 
   /* ============================
      ESPAÇO, RAIO, SOMBRA
      ============================ */
-  --space-0: 0; --space-1: 4px;  --space-2: 8px;  --space-3: 12px; --space-4: 16px;
+  --space-1: 4px;  --space-2: 8px;  --space-3: 12px; --space-4: 16px;
   --space-5: 20px; --space-6: 24px; --space-8: 32px; --space-10: 40px;
-  --space-12: 48px; --space-16: 64px; --space-20: 80px; --space-24: 96px; --space-32: 128px;
 
   --radius-xs: 4px;  --radius-sm: 8px;  --radius-md: 12px;
   --radius-lg: 18px; --radius-xl: 24px; --radius-2xl: 32px; --radius-pill: 999px;
@@ -128,14 +122,10 @@
   --shadow-sm: 0 2px 6px rgba(31,28,26,.06);
   --shadow-md: 0 8px 20px rgba(31,28,26,.08);
   --shadow-lg: 0 16px 40px rgba(31,28,26,.10);
-  --shadow-xl: 0 24px 60px rgba(31,28,26,.14);
   --shadow-brand: 0 12px 28px rgba(255,112,0,.28);
-  --shadow-accent: 0 12px 28px rgba(139,0,204,.24);
 
   --ease-out: cubic-bezier(.2,.8,.2,1);
-  --ease-in-out: cubic-bezier(.65,0,.35,1); --ease-spring: cubic-bezier(.34,1.56,.64,1);
-  --dur-fast: 120ms; --dur-base: 200ms; --dur-slow: 360ms;
-  --container: 1200px; --container-wide: 1440px; --gutter: 24px;
+  --dur-fast: 120ms; --dur-base: 200ms;
 
   /* =====================================================================
      PONTE COM O CÓDIGO ANTIGO

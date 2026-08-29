@@ -351,8 +351,6 @@ export function ProductsModule({ accessToken }: { accessToken: string }) {
   const publishedCount = commercialUnits.filter((product) => product.published).length;
   const offlineCount = commercialUnits.filter((product) => !product.published && product.approval === "aprovado").length;
   const approvalTotal = pendingCount + pendingUnits.length;
-  const immediateRiskCount = qualityQueue.filter((item) => item.issues.some((issue) => ["preco_invalido", "sem_proprietario", "sem_captador"].includes(issue))).length;
-  const staleQualityCount = qualityQueue.filter((item) => item.updatedAt && (atualizadoEm?.getTime() ?? 0) - new Date(item.updatedAt).getTime() > 30 * 86_400_000).length;
 
   function openProduct(product: Product, action: UnitOpenAction = "view") {
     if (!product.id) return;
@@ -402,11 +400,32 @@ export function ProductsModule({ accessToken }: { accessToken: string }) {
     setSection("unidades");
   }
 
+  function showApprovalQueue() {
+    setQuery("");
+    setStatus("Todos");
+    setNeighborhood("Todos");
+    setDeveloper("Todas");
+    setPriceBand("Todas");
+    setBedrooms("Qualquer");
+    setParking("Qualquer");
+    setSegmentFilter("todos");
+    setStockOnly(false);
+    setFavoritesOnly(false);
+    setMineOnly(false);
+    setNoMediaOnly(false);
+    setQualityFilter("Todas");
+    setPublicationFilter("Todos");
+    setCaptadorFilter("Todos");
+    setApprovalFilter(true);
+    setSection("aprovacoes");
+    setPuExpandida(true);
+  }
+
   if (ehCelular === null) return null;
   if (ehCelular && dataState === "auth") return <AppMobileSessaoExpirada />;
   if (ehCelular) return <main className="ape-produtos">
     <AppMobileOffline atualizadoEm={atualizadoEm} />
-    <div className="ape-produto-mobile-actions"><button type="button" className="principal" onClick={() => setUnitWizardOpen(true)}>＋ Cadastrar apartamento</button><button type="button" onClick={() => setCondominiumOpen(true)}>＋ Cadastrar condomínio</button>{myUnits.length > 0 && <button type="button" className={myUnitsOpen ? "ativo" : ""} onClick={() => setMyUnitsOpen(!myUnitsOpen)}>Minhas captações · {myUnits.length}</button>}<button type="button" className={section === "estoque" ? "ativo" : ""} onClick={() => section === "estoque" ? showCatalog() : setSection("estoque")}>Estoque completo · {inventoryUnits.length}</button><button type="button" className={section === "qualidade" ? "ativo" : ""} onClick={() => section === "qualidade" ? showCatalog() : setSection("qualidade")}>{canApprove ? "Central de decisões" : "Qualidade"} · {qualityQueue.length + (canApprove ? pendingCount + pendingUnits.length : 0)}</button></div>
+    <div className="ape-produto-mobile-actions"><button type="button" className="principal" onClick={() => setUnitWizardOpen(true)}>＋ Cadastrar apartamento</button><button type="button" onClick={() => setCondominiumOpen(true)}>＋ Cadastrar condomínio</button>{myUnits.length > 0 && <button type="button" className={myUnitsOpen ? "ativo" : ""} onClick={() => setMyUnitsOpen(!myUnitsOpen)}>Minhas captações · {myUnits.length}</button>}<button type="button" className={section === "estoque" ? "ativo" : ""} onClick={() => section === "estoque" ? showCatalog() : setSection("estoque")}>Estoque completo · {inventoryUnits.length}</button><button type="button" className={section === "qualidade" ? "ativo" : ""} onClick={() => section === "qualidade" ? showCatalog() : setSection("qualidade")}>Qualidade · {qualityQueue.length}</button>{canApprove && <button type="button" className={approvalFilter ? "ativo" : ""} onClick={() => approvalFilter ? showCatalog() : showApprovalQueue()}>Aprovar · {pendingCount + pendingUnits.length}</button>}</div>
     {inventorySummary && <button type="button" className="ape-inventory-truth" aria-label="Abrir estoque completo" onClick={() => setSection("estoque")}><strong>{inventorySummary.totalUnits} unidades no estoque</strong><span>{inventorySummary.catalogUnits} no catálogo · {inventorySummary.publishedUnits} no site</span><span>{inventorySummary.outsideCommercialCatalog} fora do catálogo · {inventorySummary.unavailableUnits} inativas</span></button>}
     <label className="ape-produto-busca">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m20 20-4-4" /></svg>
@@ -487,7 +506,7 @@ export function ProductsModule({ accessToken }: { accessToken: string }) {
       {section !== "aprovacoes" && <section className="pv3-kpis" aria-label="Resumo dos produtos">
         <button type="button" className={publicationFilter === "Todos" ? "orange active" : "orange"} onClick={() => setPublicationFilter("Todos")}><span><Icon name="layers" /></span><b>{commercialUnits.length}</b><em>Catálogo comercial</em></button>
         <button type="button" className={publicationFilter === "site" ? "green active" : "green"} onClick={() => setPublicationFilter(publicationFilter === "site" ? "Todos" : "site")}><span><Icon name="home" /></span><b>{publishedCount}</b><em>No site</em></button>
-        <button type="button" className="purple" onClick={() => chooseSection("qualidade")}><span><Icon name="check" /></span><b>{approvalTotal}</b><em>Decisões pendentes</em></button>
+        <button type="button" className="purple" onClick={() => chooseSection("aprovacoes")}><span><Icon name="check" /></span><b>{approvalTotal}</b><em>Em aprovação</em></button>
         <button type="button" className={publicationFilter === "ready" ? "yellow active" : "yellow"} onClick={() => setPublicationFilter(publicationFilter === "ready" ? "Todos" : "ready")}><span><Icon name="home" /></span><b>{offlineCount}</b><em>Fora do ar no catálogo</em></button>
       </section>}
 
@@ -498,7 +517,8 @@ export function ProductsModule({ accessToken }: { accessToken: string }) {
         <button type="button" className={section === "empreendimentos" ? "active" : ""} onClick={() => chooseSection("empreendimentos")}>Empreendimentos</button>
         <button type="button" className={section === "condominios" ? "active" : ""} onClick={() => chooseSection("condominios")}>Condomínios</button>
         <button type="button" className={section === "estoque" ? "active" : ""} onClick={() => chooseSection("estoque")}>Estoque completo <span>{inventoryUnits.length}</span></button>
-        <button type="button" className={section === "qualidade" ? "active" : ""} onClick={() => chooseSection("qualidade")}>{canApprove ? "Central de decisões" : "Qualidade"} <span>{qualityQueue.length + (canApprove ? approvalTotal : 0)}</span></button>
+        <button type="button" className={section === "qualidade" ? "active" : ""} onClick={() => chooseSection("qualidade")}>Qualidade <span>{qualityQueue.length}</span></button>
+        {canApprove && <button type="button" className={section === "aprovacoes" ? "active" : ""} onClick={() => chooseSection("aprovacoes")}>Aprovações <span>{approvalTotal}</span></button>}
       </nav>
 
       {section !== "aprovacoes" && section !== "qualidade" && <>
@@ -545,11 +565,7 @@ export function ProductsModule({ accessToken }: { accessToken: string }) {
 
       {dataState === "live" && section === "condominios" && <section className="pv3-content"><div className="pv3-section-head"><div><h2><span><Icon name="building" /></span>Condomínios e referências</h2><p>Referências reais dos prédios. Condomínio organiza áreas comuns; cada unidade continua sendo um imóvel independente.</p></div><button type="button" className="pv3-secondary" onClick={() => setCondominiumOpen(true)}><Icon name="plus" /> Novo condomínio</button></div><div className="pv3-condo-grid">{visibleCondominiums.map((condominium) => { const pct = condominium.units ? Math.round((condominium.publishedUnits / condominium.units) * 100) : 0; const referenceProduct = condominium.referenceProductId ? products.find((product) => product.id === condominium.referenceProductId) : null; return <article key={condominium.id} className={referenceProduct ? "" : "pv3-condo-reference-only"} onClick={() => { if (referenceProduct) openProduct(referenceProduct); }}><header><span><Icon name="building" /></span><em>Condomínio de referência</em>{referenceProduct && <Icon name="arrow" />}</header><span className="pv3-ref-ok"><Icon name="check" /> Referência cadastrada</span><h3>{condominium.name}</h3><p>{[condominium.address, condominium.number, condominium.neighborhood, condominium.city].filter(Boolean).join(" · ")}</p><div className="pv3-condo-metrics"><span>{condominium.units} unidades</span><span>{condominium.captures} captações</span><span>{condominium.publishedUnits} publicadas</span></div><footer><span>{condominium.units ? `${pct}% das unidades publicadas` : "Sem unidade vinculada"}</span><i><b style={{ width: `${pct}%` }}/></i></footer></article>; })}</div>{!visibleCondominiums.length && <div className="pv3-empty"><strong>Nenhum condomínio encontrado</strong><p>Ajuste a busca ou cadastre uma nova referência.</p></div>}</section>}
 
-      {dataState === "live" && section === "qualidade" && <div className="pv3-decision-center">
-        {canApprove && <section className="pv3-decision-metrics" aria-label="Resumo das decisões"><button type="button"><b>{immediateRiskCount}</b><span>Risco comercial imediato</span></button><button type="button"><b>{qualityQueue.length}</b><span>Bloqueados para publicar</span></button><button type="button"><b>{staleQualityCount}</b><span>Sem revisão há 30+ dias</span></button><button type="button"><b>{approvalTotal}</b><span>Aguardando decisão</span></button></section>}
-        <ProductQualityQueue items={qualityQueue} onOpen={openQualityItem} manager={canApprove} />
-        {canApprove && <section className="pv3-decision-approvals"><header><div><h2>Aguardando decisão do gestor</h2><p>Abra para revisar ou decida diretamente quando a evidência já for suficiente.</p></div><strong>{pendingUnitsVisiveis.length}</strong></header>{pendingUnitsVisiveis.length ? <div>{pendingUnitsVisiveis.map((unit) => <article key={unit.id}><button type="button" onClick={() => { setInitialUnitId(unit.id); setSelectedProductId(unit.empreendimentoId); }}><span>{unit.codigo || `Unidade ${unit.numero || "s/n"}`}</span><strong>{unit.predio}</strong><small>{unit.indicador || "Sem responsável"}{unit.rejectionReason ? ` · Devolvido: ${unit.rejectionReason}` : " · Pronto para revisão"}</small></button><footer><button type="button" onClick={() => void decideUnitFromList(unit.empreendimentoId, unit.id, false)}>Devolver com motivo</button><button type="button" className="approve" onClick={() => void decideUnitFromList(unit.empreendimentoId, unit.id, true)}>Aprovar</button></footer></article>)}</div> : <div className="pv3-empty"><strong>Nenhuma aprovação pendente</strong><p>A fila está em dia.</p></div>}</section>}
-      </div>}
+      {dataState === "live" && section === "qualidade" && <ProductQualityQueue items={qualityQueue} onOpen={openQualityItem} />}
 
       {dataState === "live" && section === "aprovacoes" && canApprove && <section className="pv3-approval"><header><h2>Central de aprovação</h2><p>Escolha uma requisição para revisar.</p></header><div className="pv3-approval-list"><div className="pv3-approval-list-head"><strong>Requisições pendentes</strong><span>{approvalTotal} na fila · {pendingUnitsVisiveis.filter((u) => u.rejectionReason).length + produtosVisiveis.filter((p) => !p.quality?.readyForSite).length} com bloqueios</span></div>{pendingUnitsVisiveis.map((unit) => <button type="button" key={unit.id} onClick={() => { setInitialUnitId(unit.id); setSelectedProductId(unit.empreendimentoId); }}><div className="pv3-approval-thumb" style={unit.coverUrl ? { backgroundImage: `url(${unit.coverUrl})` } : undefined}>{!unit.coverUrl && <Icon name="home" />}</div><span><strong>{unit.numero ? `Unidade ${unit.numero}` : "Unidade"} · {unit.predio}</strong><small>Unidade individual · {unit.indicador || "Captador não identificado"}</small></span><em className={unit.rejectionReason ? "blocked" : "ready"}>{unit.rejectionReason ? "1 bloqueio" : "Revisar cadastro"}</em><Icon name="arrow" /></button>)}{produtosVisiveis.map((product) => <button type="button" key={product.id} onClick={() => openProduct(product)}><div className="pv3-approval-thumb" style={product.coverUrl ? { backgroundImage: `url(${product.coverUrl})` } : undefined}>{!product.coverUrl && <Icon name="building" />}</div><span><strong>{product.name}</strong><small>{/lan[cç]|obra/i.test(product.status ?? "") ? "Empreendimento" : "Condomínio"} · {product.capturedBy || product.developer || "Equipe ApêCerto"}</small></span><em className={product.quality?.readyForSite ? "ready" : "blocked"}>{product.quality?.readyForSite ? "Pronto para aprovar" : `${product.quality?.blocking.length || 1} bloqueio(s)`}</em><Icon name="arrow" /></button>)}</div>{approvalTotal === 0 && <div className="pv3-empty"><strong>Fila de aprovação vazia</strong><p>Nenhuma solicitação aguarda revisão.</p></div>}</section>}
 

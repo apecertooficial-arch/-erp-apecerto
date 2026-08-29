@@ -85,20 +85,6 @@ export type VisitaFunil2 = {
   atualizado_em: string;
 };
 
-/** Tarefa canônica do CRM vinculada ao lead original e projetada na ficha. */
-export type AtividadeFunil2 = {
-  id: string;
-  funil_lead_id: string;
-  lead_id: number;
-  negocio_id: number | null;
-  tipo: "tarefa";
-  titulo: string;
-  responsavel: string | null;
-  prazo_em: string | null;
-  status: "pendente" | "concluida";
-  prioridade: string | null;
-};
-
 export type NegociacaoFunil2 = {
   id: string;
   funil_lead_id: string;
@@ -107,36 +93,6 @@ export type NegociacaoFunil2 = {
   valor: number | null;
   observacao: string | null;
   atualizado_em: string;
-};
-
-export type NegocioVinculadoFunil2 = {
-  id: number;
-  funil_lead_id: string;
-  pipeline: string | null;
-  etapa: string | null;
-  empreendimento_id: string | null;
-  unidade_id: string | null;
-  valor: number | null;
-  status: string;
-};
-
-export type ImovelVinculadoFunil2 = {
-  negocio_id: number;
-  funil_lead_id: string;
-  empreendimento_id: string | null;
-  empreendimento: string | null;
-  unidade_id: string | null;
-  unidade: string | null;
-  valor: number | null;
-};
-
-export type ArquivoVinculadoFunil2 = {
-  id: string;
-  funil_lead_id: string;
-  negocio_id: number;
-  nome: string;
-  status: string;
-  criado_em: string;
 };
 
 export type CandidatoAquarioFunil2 = {
@@ -204,22 +160,15 @@ export type TagCatalogoFunil2 = {
 export type LeadFunil2 = {
   id: string;
   origem_negocio_id: number;
-  /** Valor canônico do negócio de origem, quando informado. */
-  valor?: number | null;
   /** Lead original. Usado pelo mini-chat oficial para localizar a conversa real. */
   lead_id: number;
   nome: string;
   telefone: string | null;
-  email?: string | null;
-  cpf_cnpj?: string | null;
-  endereco?: string | null;
-  origem_cadastro?: string | null;
   corretor_id: number | null;
   corretor_nome: string | null;
   instancia_rotulo?: string | null;
   instancia_telefone?: string | null;
   instancia_status?: string | null;
-  instancia_origem?: "conversa" | "padrao" | "indisponivel";
   /** Interesse principal inferido somente das tags reais do lead original. */
   interesse?: string | null;
   /** Tags normalizadas do lead original (produto, anúncio, campanha e origem). */
@@ -247,8 +196,6 @@ export type LeadFunil2 = {
   descarte_detalhe?: string | null;
   versao: number;
   atualizado_em: string;
-  /** Versão otimista da identidade em leads, distinta da versão operacional do cartão. */
-  versaoDados?: string | null;
 };
 
 export type EventoFunil2 = {

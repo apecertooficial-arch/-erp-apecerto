@@ -248,27 +248,6 @@ export function parseLocalizedNumber(value: unknown): number | null {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-export function interpretMoneyInput(
-  value: unknown,
-  mode: "milhares" | "reais",
-  purpose?: unknown,
-) {
-  const parsed = parseLocalizedNumber(value);
-  if (parsed === null) return { value: null, mode, inferredFullValue: false } as const;
-  const bounds = productPriceBounds(purpose);
-  // Colar/digitar um valor que já tem a grandeza de preço total não pode virar
-  // 500 milhões só porque o seletor estava em "milhares". Valores curtos
-  // continuam usando a convenção prática: 500 => R$ 500.000 na venda.
-  if (mode === "milhares" && parsed >= bounds.min) {
-    return { value: Math.round(parsed), mode: "reais" as const, inferredFullValue: true };
-  }
-  return {
-    value: Math.round(mode === "milhares" ? parsed * 1_000 : parsed),
-    mode,
-    inferredFullValue: false,
-  } as const;
-}
-
 export function validateProductPrice(value: unknown, field = "Preço", purpose?: unknown) {
   const price = parseLocalizedNumber(value);
   if (price === null) return { value: null, error: `${field} inválido.` };

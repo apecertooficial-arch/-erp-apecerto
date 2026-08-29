@@ -14,6 +14,7 @@ import { canViewUnitOwner } from "../../features/products/product-domain";
 export const dynamic = "force-dynamic";
 
 type ProductUpdate = Database["public"]["Tables"]["empreendimentos"]["Update"];
+type OwnerUpdate = Database["public"]["Tables"]["proprietarios"]["Update"];
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const PUBLICATION_RULE_CODES = new Set([
@@ -45,15 +46,11 @@ function publicationErrorResponse(error: { code?: string; message?: string }) {
         : 502;
   return Response.json({ error: message, code: businessCode }, { status });
 }
-function isActiveProductManager(profile: { role?: string | null; ativo?: boolean | null } | null | undefined) {
-  return profile?.ativo === true && isProductManagerRole(profile.role);
-}
 const productFields = [
   "nome", "titulo", "slogan", "finalidade", "lazer", "diferenciais", "incorporadora", "descricao", "status", "preco", "condominio_valor", "iptu",
   "outros_custos", "area_util", "dormitorios", "suites", "vagas", "banheiros", "endereco",
   "numero", "complemento", "bairro", "cidade", "uf", "cep", "acesso_tipo", "acesso_codigo",
   "acesso_instrucoes", "tour_url",
-  "seo_titulo", "seo_descricao",
 ] as const;
 
 function publicMediaUrl(path: string) {
@@ -68,9 +65,7 @@ async function authenticatedClient(request: Request) {
   if (!token) return null;
   const supabase = createServerSupabaseClient(token);
   const { data, error } = await supabase.auth.getUser(token);
-  if (error || !data.user) return null;
-  const { data: profile, error: profileError } = await supabase.from("usuarios").select("ativo").eq("id", data.user.id).maybeSingle();
-  return profileError || profile?.ativo !== true ? null : { supabase, user: data.user };
+  return error || !data.user ? null : { supabase, user: data.user };
 }
 
 export async function GET(request: Request) {
@@ -84,16 +79,15 @@ export async function GET(request: Request) {
     .select(`
       *,
       condominios (*),
+      proprietarios (*),
       unidades (*),
-      midias (id, tipo, storage_path, categoria, nome, is_capa, ordem, alt_text, created_at, unidade_id)
+      midias (id, tipo, storage_path, categoria, nome, is_capa, created_at, unidade_id)
     `)
     .eq("id", id)
     .single();
 
   if (error) return Response.json({ error: error.message }, { status: error.code === "PGRST116" ? 404 : 502 });
-  const media = (data.midias ?? [])
-    .map((item) => ({ ...item, url: publicMediaUrl(item.storage_path) }))
-    .sort((a, b) => Number(b.is_capa) - Number(a.is_capa) || a.ordem - b.ordem || a.created_at.localeCompare(b.created_at));
+  const media = (data.midias ?? []).map((item) => ({ ...item, url: publicMediaUrl(item.storage_path) }));
   const buildingMedia = media.filter((item) => !item.unidade_id);
   const units = data.unidades ?? [];
   const approvedUnits = units.filter((item) => (item.aprovacao ?? "aprovado") === "aprovado");
@@ -141,11 +135,9 @@ export async function GET(request: Request) {
   const unidadesEnriched = (data.unidades ?? []).map((u) => ({ ...u, captador_nome: corretorNameById.get((u as { captador_corretor_id?: number | null }).captador_corretor_id ?? -1) ?? null }));
   const mine = (data as { captado_por_usuario?: string | null }).captado_por_usuario === auth.user.id
     || (broker?.id != null && captadorCorretorId === broker.id);
-  const { data: meuPerfilGet } = await auth.supabase.from("usuarios").select("role,ativo").eq("id", auth.user.id).maybeSingle();
-  const gerenciaProdutosGet = isActiveProductManager(meuPerfilGet);
+  const { data: meuPerfilGet } = await auth.supabase.from("usuarios").select("role").eq("id", auth.user.id).maybeSingle();
+  const gerenciaProdutosGet = isProductManagerRole((meuPerfilGet as { role?: string } | null)?.role);
   const podeEditar = gerenciaProdutosGet || mine;
-  const { data: productOwners } = await auth.supabase.rpc("produto_proprietario_ler", { p_empreendimento_id: id });
-  const productOwner = productOwners?.[0] ?? null;
   // Todos os corretores autenticados podem consultar a ficha operacional completa.
   // Somente o captador da unidade recebe nome e contato do proprietário.
   const unidadesVisiveis = unidadesEnriched.map((u) => {
@@ -156,16 +148,12 @@ export async function GET(request: Request) {
     const podeEditarUnidade = gerenciaProdutosGet || unidadeMinha;
     const privateOwner = privateOwnerByUnit.get(u.id);
     const ownerComplete = ownerCompleteByUnit.get(u.id) ?? Boolean(u.proprietario_nome && u.proprietario_contato);
-    const podeVerProprietario = canViewUnitOwner({
-      viewerBrokerId: broker?.id,
-      captorBrokerId: (u as { captador_corretor_id?: number | null }).captador_corretor_id,
-      isManager: gerenciaProdutosGet,
-    });
-    return podeVerProprietario
-      ? { ...u, proprietario_nome: privateOwner?.proprietario_nome ?? u.proprietario_nome, proprietario_contato: privateOwner?.proprietario_contato ?? u.proprietario_contato, mine: unidadeMinha, pode_editar: podeEditarUnidade, pode_ver_proprietario: true, owner_complete: ownerComplete }
+    return unidadeMinha
+      ? { ...u, proprietario_nome: privateOwner?.proprietario_nome ?? u.proprietario_nome, proprietario_contato: privateOwner?.proprietario_contato ?? u.proprietario_contato, mine: true, pode_editar: podeEditarUnidade, pode_ver_proprietario: true, owner_complete: ownerComplete }
       : { ...u, mine: false, pode_editar: podeEditarUnidade, pode_ver_proprietario: false, owner_complete: ownerComplete, proprietario_nome: null, proprietario_contato: null };
   });
-  const podeVerProprietarioProduto = gerenciaProdutosGet || mine;
+  const produtoDeTerceiro = data.origem === "terceiros";
+  const podeVerProprietarioProduto = !produtoDeTerceiro || mine;
   const checks: Record<string, boolean> = {
     basics: Boolean(data.nome && (data.preco || unitPrices.length) && (data.area_util || unitAreas.length)),
     location: Boolean(data.endereco && data.bairro && data.cidade),
@@ -184,7 +172,7 @@ export async function GET(request: Request) {
     status: data.status,
     availableApprovedUnits: publishedAvailableUnits.length,
   });
-  return Response.json({ product: { ...data, proprietario_id: podeVerProprietarioProduto ? data.proprietario_id : null, proprietarios: podeVerProprietarioProduto ? productOwner : null, proprietario_nome: null, proprietario_tel: null, proprietario_email: null, site_published: sitePublished, midias: media, unidades: unidadesVisiveis, captado_por_nome: capturedByName, mine, pode_editar: podeEditar, pode_ver_proprietario: podeVerProprietarioProduto, summary_price: summaryPrice, summary_area: summaryArea, is_favorite: Boolean(favorite), leads: (leadOptions ?? []).map((lead) => ({ ...lead, linked: linkedIds.has(lead.id) })), quality, completion: { checks, completed: Object.values(checks).filter(Boolean).length, total: Object.keys(checks).length } } });
+  return Response.json({ product: { ...data, proprietarios: podeVerProprietarioProduto ? data.proprietarios : null, proprietario_nome: null, proprietario_tel: null, proprietario_email: null, site_published: sitePublished, midias: media, unidades: unidadesVisiveis, captado_por_nome: capturedByName, mine, pode_editar: podeEditar, pode_ver_proprietario: podeVerProprietarioProduto, summary_price: summaryPrice, summary_area: summaryArea, is_favorite: Boolean(favorite), leads: (leadOptions ?? []).map((lead) => ({ ...lead, linked: linkedIds.has(lead.id) })), quality, completion: { checks, completed: Object.values(checks).filter(Boolean).length, total: Object.keys(checks).length } } });
 }
 
 export async function PATCH(request: Request) {
@@ -195,10 +183,10 @@ export async function PATCH(request: Request) {
   if (!UUID.test(id)) return Response.json({ error: "Produto inválido." }, { status: 400 });
   const authenticatedSupabase = auth.supabase;
   const authenticatedUserId = auth.user.id;
-  const { data: productContext } = await auth.supabase.from("empreendimentos").select("nome, titulo, descricao, finalidade, origem, condominio_id, captado_por_usuario, captador_corretor_id, aprovacao, publicado, rascunho").eq("id", id).maybeSingle();
+  const { data: productContext } = await auth.supabase.from("empreendimentos").select("nome, finalidade, origem, condominio_id, captado_por_usuario, captador_corretor_id, aprovacao, publicado, rascunho").eq("id", id).maybeSingle();
   const currentPurpose = productContext?.finalidade ?? "venda";
-  const { data: meuPerfilPatch } = await auth.supabase.from("usuarios").select("role,ativo").eq("id", auth.user.id).maybeSingle();
-  const gerenciaProdutos = isActiveProductManager(meuPerfilPatch);
+  const { data: meuPerfilPatch } = await auth.supabase.from("usuarios").select("role").eq("id", auth.user.id).maybeSingle();
+  const gerenciaProdutos = isProductManagerRole((meuPerfilPatch as { role?: string } | null)?.role);
   const { data: brokerContext } = await auth.supabase.from("corretores").select("id").eq("usuario_id", auth.user.id).maybeSingle();
   const souCaptador = (productContext as { captado_por_usuario?: string | null } | null)?.captado_por_usuario === auth.user.id
     || (brokerContext?.id != null && productContext?.captador_corretor_id === brokerContext.id);
@@ -246,16 +234,17 @@ export async function PATCH(request: Request) {
       return { media, canEdit: gerenciaProdutos || souCaptador } as const;
     }
     const [{ data: unit }, { data: broker }] = await Promise.all([
-      authenticatedSupabase.from("unidades").select("captador_corretor_id").eq("id", media.unidade_id).eq("empreendimento_id", id).maybeSingle(),
+      authenticatedSupabase.from("unidades").select("captador_corretor_id,de_terceiros").eq("id", media.unidade_id).eq("empreendimento_id", id).maybeSingle(),
       authenticatedSupabase.from("corretores").select("id").eq("usuario_id", authenticatedUserId).maybeSingle(),
     ]);
-    const ownsUnit = Boolean(broker?.id != null && unit?.captador_corretor_id === broker.id);
+    const ownsUnit = Boolean(unit?.de_terceiros && broker?.id != null && unit.captador_corretor_id === broker.id);
     return { media, canEdit: gerenciaProdutos || ownsUnit } as const;
   }
 
   if (body.action === "publishUnit" || body.action === "unpublishUnit") {
-    const { data: me } = await auth.supabase.from("usuarios").select("role,ativo").eq("id", auth.user.id).maybeSingle();
-    if (!isActiveProductManager(me)) return Response.json({ error: "Apenas a gestão de Produtos pode publicar ou retirar imóveis do site." }, { status: 403 });
+    const { data: me } = await auth.supabase.from("usuarios").select("role").eq("id", auth.user.id).maybeSingle();
+    const role = (me as { role?: string } | null)?.role ?? "corretor";
+    if (!isProductManagerRole(role)) return Response.json({ error: "Apenas a gestão de Produtos pode publicar ou retirar imóveis do site." }, { status: 403 });
     const unidadeId = typeof body.unidadeId === "string" ? body.unidadeId : "";
     if (!UUID.test(unidadeId)) return Response.json({ error: "Unidade inválida." }, { status: 400 });
     const { data: unit, error: unitReadError } = await auth.supabase
@@ -353,12 +342,11 @@ export async function PATCH(request: Request) {
     const unidadeId = typeof body.unidadeId === "string" ? body.unidadeId : "";
     if (!UUID.test(unidadeId)) return Response.json({ error: "Unidade inválida." }, { status: 400 });
     const { data: broker } = await auth.supabase.from("corretores").select("id").eq("usuario_id", auth.user.id).maybeSingle();
-    const { data: currentUnit, error: currentUnitError } = await auth.supabase.from("unidades").select("id,captador_corretor_id,aprovacao,publicado").eq("id", unidadeId).eq("empreendimento_id", id).maybeSingle();
+    const { data: currentUnit, error: currentUnitError } = await auth.supabase.from("unidades").select("id,captador_corretor_id,de_terceiros,aprovacao,publicado").eq("id", unidadeId).eq("empreendimento_id", id).maybeSingle();
     if (currentUnitError) return Response.json({ error: currentUnitError.message }, { status: 502 });
     if (!currentUnit) return Response.json({ error: "Unidade não encontrada." }, { status: 404 });
     const ownsUnit = broker?.id != null && currentUnit.captador_corretor_id === broker.id;
-    const canEditUnitOwner = gerenciaProdutos || ownsUnit;
-    if (!gerenciaProdutos && !ownsUnit) return Response.json({ error: "Você só pode editar a unidade que captou." }, { status: 403 });
+    if (!gerenciaProdutos && (!currentUnit.de_terceiros || !ownsUnit)) return Response.json({ error: "Você só pode editar a unidade que captou." }, { status: 403 });
     const input = (body.unidade && typeof body.unidade === "object" ? body.unidade : {}) as Record<string, unknown>;
     const asString = (value: unknown) => (typeof value === "string" ? value.trim() || null : null);
     const asNumber = (value: unknown) => {
@@ -386,20 +374,18 @@ export async function PATCH(request: Request) {
     }
     const unitCosts = [asNumber(input.condominio_valor), asNumber(input.iptu), asNumber(input.outros_custos)];
     if (unitCosts.some((value) => value != null && value < 0)) return Response.json({ error: "Condomínio, IPTU e outros custos não podem ser negativos." }, { status: 422 });
-    if (canEditUnitOwner && (!proprietarioNome || !proprietarioContato)) return Response.json({ error: "Informe nome e contato do proprietário." }, { status: 422 });
+    if (ownsUnit && (!proprietarioNome || !proprietarioContato)) return Response.json({ error: "Informe nome e contato do proprietário." }, { status: 422 });
     if (!acessoTipo || !acessoInstrucoes) return Response.json({ error: "Informe o tipo e as instruções de acesso." }, { status: 422 });
     if (acessoTipo === "chave_digital" && !acessoCodigo) return Response.json({ error: "Informe o código da chave digital." }, { status: 422 });
     const patch = {
       numero, tipologia, area_m2: area, vagas: asNumber(input.vagas),
-      titulo_comercial: asString(input.titulo_comercial), descricao_comercial: asString(input.descricao_comercial),
-      seo_titulo: asString(input.seo_titulo), seo_descricao: asString(input.seo_descricao),
       valor_tabela: tablePriceCheck.value, valor_promo: valorPromo,
       disponivel: input.disponivel !== false,
       compre_ja_alugado: input.compre_ja_alugado === true,
       condominio_valor: asNumber(input.condominio_valor),
       iptu: asNumber(input.iptu),
       outros_custos: asNumber(input.outros_custos),
-      ...(canEditUnitOwner ? { proprietario_nome: proprietarioNome, proprietario_contato: proprietarioContato } : {}),
+      ...(ownsUnit ? { proprietario_nome: proprietarioNome, proprietario_contato: proprietarioContato } : {}),
       acesso_tipo: acessoTipo, acesso_codigo: acessoCodigo, acesso_instrucoes: acessoInstrucoes,
       ...(gerenciaProdutos ? {} : { aprovacao: "pendente", publicado: false, reprovacao_motivo: null }),
     };
@@ -429,7 +415,7 @@ export async function PATCH(request: Request) {
   if (body.action === "deleteUnit") {
     const unidadeId = typeof body.unidadeId === "string" ? body.unidadeId : "";
     if (!UUID.test(unidadeId)) return Response.json({ error: "Unidade inválida." }, { status: 400 });
-    const { data, error } = await auth.supabase.rpc("produto_unidade_excluir_canonica", {
+    const { data, error } = await auth.supabase.rpc("produto_unidade_excluir", {
       p_empreendimento_id: id,
       p_unidade_id: unidadeId,
     });
@@ -460,14 +446,15 @@ export async function PATCH(request: Request) {
   }
 
   if (body.action === "decideUnit") {
-    const { data: me } = await auth.supabase.from("usuarios").select("role,ativo").eq("id", auth.user.id).maybeSingle();
-    if (!isActiveProductManager(me)) return Response.json({ error: "Apenas a gestão de Produtos pode aprovar unidades." }, { status: 403 });
+    const { data: me } = await auth.supabase.from("usuarios").select("role").eq("id", auth.user.id).maybeSingle();
+    const role = (me as { role?: string } | null)?.role ?? "corretor";
+    if (!isProductManagerRole(role)) return Response.json({ error: "Apenas a gestão de Produtos pode aprovar unidades." }, { status: 403 });
     const unidadeId = typeof body.unidadeId === "string" ? body.unidadeId : "";
     if (!UUID.test(unidadeId)) return Response.json({ error: "Unidade inválida." }, { status: 400 });
     const approve = body.approve === true;
     if (approve) {
       const [{ data: unitToApprove, error: unitReadError }, mediaCount, ownerStatus] = await Promise.all([
-        auth.supabase.from("unidades").select("numero,tipologia,area_m2,valor_tabela,valor_promo,titulo_comercial,descricao_comercial,proprietario_nome,proprietario_contato,acesso_tipo,acesso_codigo,acesso_instrucoes").eq("id", unidadeId).eq("empreendimento_id", id).maybeSingle(),
+        auth.supabase.from("unidades").select("numero,tipologia,area_m2,valor_tabela,valor_promo,proprietario_nome,proprietario_contato,acesso_tipo,acesso_codigo,acesso_instrucoes").eq("id", unidadeId).eq("empreendimento_id", id).maybeSingle(),
         auth.supabase.from("midias").select("id", { count: "exact", head: true }).eq("unidade_id", unidadeId).eq("tipo", "foto"),
         auth.supabase.rpc("produto_unidades_proprietario_status", { p_unidade_ids: [unidadeId] }),
       ]);
@@ -486,9 +473,6 @@ export async function PATCH(request: Request) {
       if (!ownerComplete) blocking.push("Proprietário e contato");
       if (!unitToApprove.acesso_tipo || !unitToApprove.acesso_instrucoes || (unitToApprove.acesso_tipo === "chave_digital" && !unitToApprove.acesso_codigo)) blocking.push("Instruções de acesso");
       if ((mediaCount.count ?? 0) < 1) blocking.push("Ao menos uma foto da unidade");
-      if (!(unitToApprove.titulo_comercial || productContext?.titulo)) blocking.push("Título comercial");
-      const editorialDescription = unitToApprove.descricao_comercial || productContext?.descricao || "";
-      if (editorialDescription.trim().length < 80) blocking.push("Descrição comercial com pelo menos 80 caracteres");
       if (blocking.length) return Response.json({ error: `Complete a unidade antes de aprovar: ${blocking.join("; ")}.`, code: "UNIT_NOT_READY", blocking }, { status: 422 });
       const result = await definePublication(true, unidadeId);
       if ("response" in result) return result.response;
@@ -520,8 +504,9 @@ export async function PATCH(request: Request) {
   }
 
   if (body.action === "publish" || body.action === "unpublish" || body.action === "solicitar") {
-    const { data: me } = await auth.supabase.from("usuarios").select("role,ativo").eq("id", auth.user.id).maybeSingle();
-    const isApprover = isActiveProductManager(me);
+    const { data: me } = await auth.supabase.from("usuarios").select("role").eq("id", auth.user.id).maybeSingle();
+    const role = (me as { role?: string } | null)?.role ?? "corretor";
+    const isApprover = isProductManagerRole(role);
 
     // Corretor (dono) envia solicitação: vira pendente, NÃO vai pro ar. Passa pela alçada de aprovação.
     if (body.action === "solicitar") {
@@ -589,61 +574,23 @@ export async function PATCH(request: Request) {
     if ("error" in context) return context.error;
     if (!context.canEdit) return Response.json({ error: context.media.unidade_id ? "Você só pode editar as imagens da unidade que captou." : "Você só pode editar as imagens do produto que captou." }, { status: 403 });
     if (context.media.tipo !== "foto") return Response.json({ error: "A capa precisa ser uma foto." }, { status: 422 });
-    const { data, error } = await auth.supabase.rpc("produto_midia_definir_capa", {
-      p_empreendimento_id: id,
-      p_unidade_id: context.media.unidade_id,
-      p_media_id: mediaId,
-    });
-    return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json(data ?? { success: true });
+    let clearQuery = auth.supabase.from("midias").update({ is_capa: false }).eq("empreendimento_id", id).eq("tipo", "foto");
+    clearQuery = context.media.unidade_id ? clearQuery.eq("unidade_id", context.media.unidade_id) : clearQuery.is("unidade_id", null);
+    const { error: clearError } = await clearQuery;
+    if (clearError) return Response.json({ error: clearError.message }, { status: 502 });
+    const { error } = await auth.supabase.from("midias").update({ is_capa: true }).eq("id", mediaId).eq("empreendimento_id", id).eq("tipo", "foto");
+    return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
   }
 
   if (body.action === "updateMedia") {
     const mediaId = typeof body.mediaId === "string" ? body.mediaId : "";
     const categoria = typeof body.category === "string" ? body.category.trim() : "";
-    const altText = typeof body.altText === "string" ? body.altText.trim() : undefined;
-    if (!UUID.test(mediaId) || !categoria || (altText !== undefined && (altText.length < 3 || altText.length > 220))) return Response.json({ error: "Mídia, classificação ou descrição acessível inválida." }, { status: 400 });
+    if (!UUID.test(mediaId) || !categoria) return Response.json({ error: "Mídia ou classificação inválida." }, { status: 400 });
     const context = await editableMediaContext(mediaId);
     if ("error" in context) return context.error;
     if (!context.canEdit) return Response.json({ error: context.media.unidade_id ? "Você só pode editar as imagens da unidade que captou." : "Você só pode editar as imagens do produto que captou." }, { status: 403 });
-    const { error } = await auth.supabase.from("midias").update({ categoria, ...(altText !== undefined ? { alt_text: altText } : {}) }).eq("id", mediaId).eq("empreendimento_id", id);
+    const { error } = await auth.supabase.from("midias").update({ categoria }).eq("id", mediaId).eq("empreendimento_id", id);
     return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
-  }
-
-  if (body.action === "reorderMedia") {
-    const mediaId = typeof body.mediaId === "string" ? body.mediaId : "";
-    const mediaIds = Array.isArray(body.mediaIds) ? body.mediaIds.filter((value): value is string => typeof value === "string" && UUID.test(value)) : [];
-    if (!UUID.test(mediaId) || mediaIds.length < 1 || new Set(mediaIds).size !== mediaIds.length) return Response.json({ error: "Ordem de mídia inválida." }, { status: 400 });
-    const context = await editableMediaContext(mediaId);
-    if ("error" in context) return context.error;
-    if (!context.canEdit) return Response.json({ error: context.media.unidade_id ? "Você só pode ordenar as imagens da unidade que captou." : "Você só pode ordenar as imagens do produto que captou." }, { status: 403 });
-    const { data, error } = await auth.supabase.rpc("produto_midias_reordenar", { p_empreendimento_id: id, p_unidade_id: context.media.unidade_id, p_ids: mediaIds });
-    if (error) return Response.json({ error: error.message }, { status: 502 });
-    return Response.json(data ?? { ok: true });
-  }
-
-  if (body.action === "applyPhotoAiSuggestions" || body.action === "restorePhotoAiSuggestions") {
-    const unitId = typeof body.unitId === "string" && body.unitId ? body.unitId : null;
-    const expectedVersion = typeof body.expectedVersion === "string" ? body.expectedVersion : "";
-    const suggestions = Array.isArray(body.suggestions) ? body.suggestions : [];
-    const restoring = body.action === "restorePhotoAiSuggestions";
-    if ((unitId && !UUID.test(unitId)) || !/^[0-9a-f]{32}$/i.test(expectedVersion) || suggestions.length < 1 || (!restoring && suggestions.length > 20)) {
-      return Response.json({ error: "Revisão de fotos inválida." }, { status: 400 });
-    }
-    const { data, error } = await auth.supabase.rpc("produto_midias_aplicar_ia", {
-      p_empreendimento_id: id,
-      p_unidade_id: unitId,
-      p_versao_esperada: expectedVersion,
-      p_sugestoes: suggestions as Database["public"]["Functions"]["produto_midias_aplicar_ia"]["Args"]["p_sugestoes"],
-      p_restaurar: restoring,
-    });
-    if (error) {
-      const message = error.message?.replace(/^[A-Z_]+:\s*/, "") || "Não foi possível aplicar a revisão das fotos.";
-      const status = /MEDIA_AI_CONFLICT/.test(error.message ?? "") ? 409
-        : /MEDIA_AI_FORBIDDEN|permission denied/i.test(error.message ?? "") ? 403
-          : /MEDIA_AI_INVALID/.test(error.message ?? "") ? 422 : 502;
-      return Response.json({ error: message, code: status === 409 ? "MEDIA_AI_CONFLICT" : undefined }, { status });
-    }
-    return Response.json(data ?? { ok: true });
   }
 
   if (body.action === "deleteMedia") {
@@ -667,8 +614,9 @@ export async function PATCH(request: Request) {
   }
 
   if (body.action === "deleteProduct") {
-    const { data: me } = await auth.supabase.from("usuarios").select("role,ativo").eq("id", auth.user.id).maybeSingle();
-    if (!isActiveProductManager(me)) return Response.json({ error: "Apenas a gestão de Produtos pode excluir produtos." }, { status: 403 });
+    const { data: me } = await auth.supabase.from("usuarios").select("role").eq("id", auth.user.id).maybeSingle();
+    const role = (me as { role?: string } | null)?.role ?? "corretor";
+    if (!isProductManagerRole(role)) return Response.json({ error: "Apenas a gestão de Produtos pode excluir produtos." }, { status: 403 });
     const deniedDelete = guard([["produtos", "excluir"]], "Você não tem permissão para excluir produtos.");
     if (deniedDelete) return deniedDelete;
 
@@ -769,19 +717,27 @@ export async function PATCH(request: Request) {
   if (error) return Response.json({ error: error.message }, { status: 502 });
 
   if (body.owner && typeof body.owner === "object") {
-    const ownerInput = body.owner as Record<string, unknown>;
-    const nome = typeof ownerInput.nome === "string" ? ownerInput.nome.trim() : "";
-    const email = typeof ownerInput.email === "string" ? ownerInput.email.trim().toLowerCase() : "";
-    const telefone = typeof ownerInput.telefone === "string" ? ownerInput.telefone.trim() : "";
-    if (nome || email || telefone) {
-      if (!nome || !email || !telefone) return Response.json({ error: "Preencha nome, e-mail e telefone do proprietário." }, { status: 422 });
-      const { error: ownerError } = await auth.supabase.rpc("produto_proprietario_salvar", {
-        p_empreendimento_id: id,
-        p_nome: nome,
-        p_email: email,
-        p_telefone: telefone,
-      });
-      if (ownerError) return Response.json({ error: ownerError.message }, { status: ownerError.code === "42501" ? 403 : 502 });
+    const { data: product } = await auth.supabase.from("empreendimentos").select("proprietario_id").eq("id", id).single();
+    if (product?.proprietario_id) {
+      const ownerInput = body.owner as Record<string, unknown>;
+      const owner: OwnerUpdate = {};
+      for (const field of ["nome", "email", "telefone"] as const) {
+        if (typeof ownerInput[field] === "string") owner[field] = ownerInput[field];
+      }
+      const { error: ownerError } = await auth.supabase.from("proprietarios").update(owner).eq("id", product.proprietario_id);
+      if (ownerError) return Response.json({ error: ownerError.message }, { status: 502 });
+    } else {
+      const ownerInput = body.owner as Record<string, unknown>;
+      const nome = typeof ownerInput.nome === "string" ? ownerInput.nome.trim() : "";
+      const email = typeof ownerInput.email === "string" ? ownerInput.email.trim().toLowerCase() : "";
+      const telefone = typeof ownerInput.telefone === "string" ? ownerInput.telefone.trim() : "";
+      if (nome || email || telefone) {
+        if (!nome || !email || !telefone) return Response.json({ error: "Preencha nome, e-mail e telefone do proprietário." }, { status: 422 });
+        const { data: createdOwner, error: ownerError } = await auth.supabase.from("proprietarios").insert({ nome, email, telefone, created_by: auth.user.id }).select("id").single();
+        if (ownerError) return Response.json({ error: ownerError.message }, { status: 502 });
+        const { error: linkError } = await auth.supabase.from("empreendimentos").update({ proprietario_id: createdOwner.id }).eq("id", id);
+        if (linkError) return Response.json({ error: linkError.message }, { status: 502 });
+      }
     }
   }
 

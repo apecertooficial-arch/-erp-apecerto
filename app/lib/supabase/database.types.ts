@@ -2257,8 +2257,6 @@ export type Database = {
           published_at: string | null
           rascunho: boolean
           reprovacao_motivo: string | null
-          seo_descricao: string | null
-          seo_titulo: string | null
           situacao: string | null
           slogan: string | null
           slug: string | null
@@ -2319,8 +2317,6 @@ export type Database = {
           published_at?: string | null
           rascunho?: boolean
           reprovacao_motivo?: string | null
-          seo_descricao?: string | null
-          seo_titulo?: string | null
           situacao?: string | null
           slogan?: string | null
           slug?: string | null
@@ -2381,8 +2377,6 @@ export type Database = {
           published_at?: string | null
           rascunho?: boolean
           reprovacao_motivo?: string | null
-          seo_descricao?: string | null
-          seo_titulo?: string | null
           situacao?: string | null
           slogan?: string | null
           slug?: string | null
@@ -5456,49 +5450,34 @@ export type Database = {
       }
       midias: {
         Row: {
-          alt_text: string | null
           categoria: string | null
           created_at: string
           empreendimento_id: string
           id: string
-          ia_categoria_sugerida: string | null
-          ia_confianca: number | null
-          ia_revisado_em: string | null
           is_capa: boolean
           nome: string | null
-          ordem: number
           storage_path: string
           tipo: Database["public"]["Enums"]["tipo_midia"]
           unidade_id: string | null
         }
         Insert: {
-          alt_text?: string | null
           categoria?: string | null
           created_at?: string
           empreendimento_id: string
           id?: string
-          ia_categoria_sugerida?: string | null
-          ia_confianca?: number | null
-          ia_revisado_em?: string | null
           is_capa?: boolean
           nome?: string | null
-          ordem?: number
           storage_path: string
           tipo: Database["public"]["Enums"]["tipo_midia"]
           unidade_id?: string | null
         }
         Update: {
-          alt_text?: string | null
           categoria?: string | null
           created_at?: string
           empreendimento_id?: string
           id?: string
-          ia_categoria_sugerida?: string | null
-          ia_confianca?: number | null
-          ia_revisado_em?: string | null
           is_capa?: boolean
           nome?: string | null
-          ordem?: number
           storage_path?: string
           tipo?: Database["public"]["Enums"]["tipo_midia"]
           unidade_id?: string | null
@@ -9715,7 +9694,6 @@ export type Database = {
           compre_ja_alugado: boolean
           condominio_valor: number | null
           de_terceiros: boolean
-          descricao_comercial: string | null
           disponivel: boolean
           empreendimento_id: string
           enquadramento: string | null
@@ -9729,10 +9707,7 @@ export type Database = {
           proprietario_nome: string | null
           publicado: boolean
           reprovacao_motivo: string | null
-          seo_descricao: string | null
-          seo_titulo: string | null
           tipologia: string | null
-          titulo_comercial: string | null
           vagas: number | null
           valor_m2: number | null
           valor_promo: number | null
@@ -9749,7 +9724,6 @@ export type Database = {
           compre_ja_alugado?: boolean
           condominio_valor?: number | null
           de_terceiros?: boolean
-          descricao_comercial?: string | null
           disponivel?: boolean
           empreendimento_id: string
           enquadramento?: string | null
@@ -9763,10 +9737,7 @@ export type Database = {
           proprietario_nome?: string | null
           publicado?: boolean
           reprovacao_motivo?: string | null
-          seo_descricao?: string | null
-          seo_titulo?: string | null
           tipologia?: string | null
-          titulo_comercial?: string | null
           vagas?: number | null
           valor_m2?: number | null
           valor_promo?: number | null
@@ -9783,7 +9754,6 @@ export type Database = {
           compre_ja_alugado?: boolean
           condominio_valor?: number | null
           de_terceiros?: boolean
-          descricao_comercial?: string | null
           disponivel?: boolean
           empreendimento_id?: string
           enquadramento?: string | null
@@ -9797,10 +9767,7 @@ export type Database = {
           proprietario_nome?: string | null
           publicado?: boolean
           reprovacao_motivo?: string | null
-          seo_descricao?: string | null
-          seo_titulo?: string | null
           tipologia?: string | null
-          titulo_comercial?: string | null
           vagas?: number | null
           valor_m2?: number | null
           valor_promo?: number | null
@@ -12214,61 +12181,6 @@ export type Database = {
         }
         Returns: Json
       }
-      produto_cadastro_rascunho_excluir: { Args: never; Returns: boolean }
-      produto_cadastro_rascunho_ler: { Args: never; Returns: Json }
-      produto_cadastro_rascunho_salvar: {
-        Args: { p_etapa: number; p_payload: Json; p_versao_esperada?: number | null }
-        Returns: Json
-      }
-      produto_midia_definir_capa: {
-        Args: { p_empreendimento_id: string; p_media_id: string; p_unidade_id: string | null }
-        Returns: Json
-      }
-      produto_midias_reordenar: {
-        Args: { p_empreendimento_id: string; p_ids: string[]; p_unidade_id: string | null }
-        Returns: Json
-      }
-      produto_midias_versao: {
-        Args: { p_empreendimento_id: string; p_unidade_id?: string | null }
-        Returns: string
-      }
-      produto_midias_aplicar_ia: {
-        Args: {
-          p_empreendimento_id: string
-          p_restaurar?: boolean
-          p_sugestoes: Json
-          p_unidade_id: string | null
-          p_versao_esperada: string
-        }
-        Returns: Json
-      }
-      produto_proprietarios_meus: {
-        Args: never
-        Returns: { email: string; id: string; nome: string; telefone: string }[]
-      }
-      produto_proprietario_ler: {
-        Args: { p_empreendimento_id: string }
-        Returns: { email: string; id: string; nome: string; telefone: string }[]
-      }
-      produto_proprietario_captacao_resolver: {
-        Args: { p_email: string; p_nome: string; p_proprietario_id: string | null; p_telefone: string }
-        Returns: string
-      }
-      produto_proprietario_salvar: {
-        Args: { p_email: string; p_empreendimento_id: string; p_nome: string; p_telefone: string }
-        Returns: string
-      }
-      produto_precos_suspeitos: {
-        Args: never
-        Returns: {
-          entidade: string
-          entidade_id: string
-          codigo: string | null
-          finalidade: string
-          valor: number
-          motivo: string
-        }[]
-      }
       produto_excluir: {
         Args: { p_empreendimento_id: string }
         Returns: Json
@@ -12279,10 +12191,6 @@ export type Database = {
           p_empreendimento_id: string
           p_unidade_id: string
         }
-        Returns: Json
-      }
-      produto_unidade_excluir_canonica: {
-        Args: { p_empreendimento_id: string; p_unidade_id: string }
         Returns: Json
       }
       produto_unidade_excluir: {
