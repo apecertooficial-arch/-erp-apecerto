@@ -76,6 +76,13 @@ const saraCheckpointEventMigration = readFileSync(
   ),
   "utf8",
 );
+const heartbeatActiveMigration = readFileSync(
+  new URL(
+    "../supabase/migrations/20260829005000_central_dispatcher_heartbeat_confirma_ativo.sql",
+    import.meta.url,
+  ),
+  "utf8",
+);
 const activeRenderBlueprint = readFileSync(
   new URL("../render.yaml", import.meta.url),
   "utf8",
@@ -288,6 +295,12 @@ test("historico aceita o evento auditavel do checkpoint da Sara", () => {
   assert.match(saraCheckpointEventMigration, /sara_reavaliou/);
   assert.match(saraCheckpointEventMigration, /sara_checkpoint_agendado/);
   assert.match(saraCheckpointEventMigration, /SARA_EVENT_TYPE_STALE_VERSION/);
+});
+
+test("heartbeat confirma o worker ativo depois de restart gracioso", () => {
+  assert.match(heartbeatActiveMigration, /worker_persistente_ativo/);
+  assert.match(heartbeatActiveMigration, /v_estado\.modo='worker'/);
+  assert.match(heartbeatActiveMigration, /heartbeat_em=clock_timestamp/);
 });
 
 test("backfill cria checkpoints sem replay, mensagem ou exclusao de historico", () => {
