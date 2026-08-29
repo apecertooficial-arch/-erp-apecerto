@@ -9,15 +9,15 @@ select current_setting('server_version') as postgres_version,
        pg_is_in_recovery() as replica;
 
 select 'empreendimentos' as objeto, count(*) as total,
-       encode(extensions.digest(coalesce(string_agg(id::text || '|' || coalesce(preco::text,'') || '|' || coalesce(publicado::text,'') order by id),''),'sha256'),'hex') as fingerprint
+       encode(extensions.digest(coalesce(string_agg(id::text || '|' || coalesce(preco::text,'') || '|' || coalesce(publicado::text,''), '' order by id),''),'sha256'),'hex') as fingerprint
 from public.empreendimentos
 union all
 select 'unidades', count(*),
-       encode(extensions.digest(coalesce(string_agg(id::text || '|' || coalesce(valor_tabela::text,'') || '|' || coalesce(valor_promo::text,'') || '|' || coalesce(publicado::text,'') order by id),''),'sha256'),'hex')
+       encode(extensions.digest(coalesce(string_agg(id::text || '|' || coalesce(valor_tabela::text,'') || '|' || coalesce(valor_promo::text,'') || '|' || coalesce(publicado::text,''), '' order by id),''),'sha256'),'hex')
 from public.unidades
 union all
 select 'midias', count(*),
-       encode(extensions.digest(coalesce(string_agg(id::text || '|' || empreendimento_id::text || '|' || coalesce(unidade_id::text,'') order by id),''),'sha256'),'hex')
+       encode(extensions.digest(coalesce(string_agg(id::text || '|' || empreendimento_id::text || '|' || coalesce(unidade_id::text,''), '' order by id),''),'sha256'),'hex')
 from public.midias;
 
 select count(*) filter (where ordem is null) as ordem_nula,
