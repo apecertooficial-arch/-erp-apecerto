@@ -53,10 +53,13 @@ function somarMeses(iso: string, meses: number): string {
    conhece e o toque terminaria em erro. */
 const ehVisita = (c: Compromisso) => /visita/i.test(c.tipo);
 const statusDaVisita = (c: Compromisso) => (c.status ?? "").toLowerCase();
+const podeEditarVisita = (c: Compromisso) => {
+  const status = statusDaVisita(c);
+  return ehVisita(c) && c.meu && status !== "cancelada" && status !== "realizada";
+};
 
-export function TelaAgendaMobile({ accessToken, onAbrirLead }: {
+export function TelaAgendaMobile({ accessToken }: {
   accessToken: string;
-  onAbrirLead: (negocioId: number) => void;
 }) {
   const [dia, setDia] = useState<string>(() => hojeISO());
   const [periodo, setPeriodo] = useState<PeriodoAgenda>("mes");
@@ -224,14 +227,15 @@ export function TelaAgendaMobile({ accessToken, onAbrirLead }: {
             ) : (
               <span className="ape-agenda-sem-local">Sem endereço cadastrado</span>
             )}
-            <button
-              type="button"
-              className="ape-agenda-btn-vazado"
-              onClick={() => { if (prox.negocio_id) onAbrirLead(prox.negocio_id); }}
-              disabled={!prox.negocio_id}
-            >
-              Ver ficha
-            </button>
+            {podeEditarVisita(prox) && (
+              <button
+                type="button"
+                className="ape-agenda-btn-vazado"
+                onClick={() => abrirEdicao(prox)}
+              >
+                Editar visita
+              </button>
+            )}
           </div>
         </section>
       ) : (
@@ -334,6 +338,7 @@ export function TelaAgendaMobile({ accessToken, onAbrirLead }: {
               const status = statusDaVisita(c);
               const cancelada = status === "cancelada";
               const realizada = status === "realizada";
+              const editavel = podeEditarVisita(c);
               return (
                 <li key={c.id} className={`ape-agenda-item${jaPassou(c) ? " passou" : ""}${c.meu ? " meu" : ""}${cancelada ? " cancelada" : ""}${realizada ? " realizada" : ""}`}>
                   <span className="ape-agenda-hora">{c.hora}</span>
@@ -342,7 +347,8 @@ export function TelaAgendaMobile({ accessToken, onAbrirLead }: {
                     <button
                       type="button"
                       className="ape-agenda-cartao"
-                      onClick={() => { if (c.negocio_id) onAbrirLead(c.negocio_id); }}
+                      onClick={() => { if (editavel) abrirEdicao(c); }}
+                      disabled={!editavel}
                     >
                       <span className="ape-agenda-tipo">{c.tipo}</span>
                       <span className="ape-agenda-cliente">{c.cliente}</span>
@@ -353,7 +359,7 @@ export function TelaAgendaMobile({ accessToken, onAbrirLead }: {
                       {(realizada || cancelada) && <span className={`ape-agenda-status ${status}`}>{realizada ? "Realizada" : "Cancelada"}</span>}
                     </button>
                     {/* Editar so a MINHA visita, e so enquanto ela esta de pe. */}
-                    {ehVisita(c) && c.meu && !cancelada && !realizada && (
+                    {editavel && (
                       <button type="button" className="ape-agenda-editar" onClick={() => abrirEdicao(c)}>Editar visita ›</button>
                     )}
                   </div>

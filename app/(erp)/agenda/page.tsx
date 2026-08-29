@@ -1,13 +1,11 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { CalendarWorkspace } from "../../features/calendar/CalendarWorkspace";
 import { TelaAgendaMobile } from "../../features/calendar/TelaAgendaMobile";
 import { GuardaModulo } from "../../features/system/GuardaModulo";
 import { useEhCelular } from "../../features/system/useFormato";
 
 export default function Pagina() {
-  const router = useRouter();
   /* null na primeira renderização: não dá para saber a largura antes de o
      navegador existir. Enquanto for null não renderizamos nenhuma das duas —
      chutar faria a tela trocar piscando na frente do corretor. */
@@ -18,7 +16,7 @@ export default function Pagina() {
       {(t) => {
         if (ehCelular === null) return null;
         return ehCelular
-          ? <TelaAgendaMobile accessToken={t} onAbrirLead={(id) => router.push(`/crm?lead=${id}`)} />
+          ? <TelaAgendaMobile accessToken={t} />
           : <CalendarWorkspace accessToken={t} />;
       }}
     </GuardaModulo>

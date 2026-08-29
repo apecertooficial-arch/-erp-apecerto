@@ -387,6 +387,10 @@
     background: var(--bg-surface); color: var(--fg-2);
     font-size: var(--text-md); line-height: 1; cursor: pointer;
   }
+  @media (max-width: 370px) {
+    .ape-agenda-barra { flex-wrap: wrap; }
+    .ape-agenda-navega { margin-left: auto; }
+  }
 
   .ape-agenda-dia {
     margin: 0 0 12px; font-size: 10px; font-weight: var(--weight-bold);
