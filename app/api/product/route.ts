@@ -10,6 +10,7 @@ import {
 import { isProductManagerRole } from "../../features/products/access";
 import { isProductPublishedOnSite } from "../../features/products/publication";
 import { canViewUnitOwner } from "../../features/products/product-domain";
+import { signedProductMediaUrls } from "../../lib/products/media-url";
 
 export const dynamic = "force-dynamic";
 
@@ -56,12 +57,6 @@ const productFields = [
   "seo_titulo", "seo_descricao",
 ] as const;
 
-function publicMediaUrl(path: string) {
-  const base = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  if (!base) return null;
-  return `${base}/storage/v1/object/public/empreendimentos/${path.split("/").map(encodeURIComponent).join("/")}`;
-}
-
 async function authenticatedClient(request: Request) {
   const authorization = request.headers.get("authorization");
   const token = authorization?.startsWith("Bearer ") ? authorization.slice(7) : null;
@@ -91,8 +86,9 @@ export async function GET(request: Request) {
     .single();
 
   if (error) return Response.json({ error: error.message }, { status: error.code === "PGRST116" ? 404 : 502 });
+  const signedMedia = await signedProductMediaUrls(auth.supabase, data.midias ?? []);
   const media = (data.midias ?? [])
-    .map((item) => ({ ...item, url: publicMediaUrl(item.storage_path) }))
+    .map(({ storage_path, ...item }) => ({ ...item, url: signedMedia.get(storage_path) ?? null }))
     .sort((a, b) => Number(b.is_capa) - Number(a.is_capa) || a.ordem - b.ordem || a.created_at.localeCompare(b.created_at));
   const buildingMedia = media.filter((item) => !item.unidade_id);
   const units = data.unidades ?? [];
@@ -413,7 +409,7 @@ export async function PATCH(request: Request) {
     const unidadeId = typeof body.unidadeId === "string" ? body.unidadeId : "";
     if (!UUID.test(unidadeId)) return Response.json({ error: "Unidade inválida." }, { status: 400 });
     const disponivel = body.disponivel === true;
-    const { data, error } = await auth.supabase.rpc("produto_unidade_definir_disponibilidade", {
+    const { data, error } = await auth.supabase.rpc("produto_unidade_definir_disponibilidade_canonica", {
       p_empreendimento_id: id,
       p_unidade_id: unidadeId,
       p_disponivel: disponivel,

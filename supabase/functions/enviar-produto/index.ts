@@ -23,10 +23,6 @@ const cors = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers
 const json = (b: unknown, s = 200) => new Response(JSON.stringify(b), { status: s, headers: { ...cors, "Content-Type": "application/json" } });
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-function publicUrl(path: string) {
-  return `${SUPABASE_URL}/storage/v1/object/public/empreendimentos/${path.split("/").map(encodeURIComponent).join("/")}`;
-}
-
 // ordem amigavel: capa -> fachada -> decorado -> lazer -> planta -> sala -> resto
 const ORDEM: Record<string, number> = { fachada: 1, decorado: 2, lazer: 3, planta: 4, sala: 5 };
 
@@ -63,6 +59,11 @@ Deno.serve(async (req) => {
   fotos.sort((a: any, b: any) => (b.is_capa ? 1 : 0) - (a.is_capa ? 1 : 0)
     || (ORDEM[String(a.categoria ?? "").toLowerCase()] ?? 9) - (ORDEM[String(b.categoria ?? "").toLowerCase()] ?? 9));
   fotos = fotos.slice(0, maxFotos);
+  const { data: signedRows, error: signedError } = await admin.storage.from("empreendimentos")
+    .createSignedUrls(fotos.map((m: any) => m.storage_path), 900);
+  if (signedError) return json({ error: "midia_indisponivel" }, 503);
+  const signedByPath = new Map((signedRows ?? []).map((item: any) => [item.path, item.signedUrl]));
+  if (fotos.some((m: any) => !signedByPath.get(m.storage_path))) return json({ error: "midia_indisponivel" }, 503);
 
   const { data: emp } = await admin.from("empreendimentos").select("nome, bairro, cidade, preco").eq("id", empreendimentoId).maybeSingle();
   const legenda = typeof p.legenda === "string" && p.legenda.trim() ? p.legenda.trim()
@@ -72,7 +73,7 @@ Deno.serve(async (req) => {
   const plano = {
     empreendimento: emp?.nome ?? null,
     total_fotos: fotos.length,
-    fotos_urls: fotos.map((m: any) => publicUrl(m.storage_path)),
+    fotos_urls: fotos.map((m: any) => signedByPath.get(m.storage_path)),
     book_url: bookUrl,
     legenda,
   };
@@ -103,7 +104,7 @@ Deno.serve(async (req) => {
   if (bookUrl) { const r = await enviar({ tipo: "document", url: bookUrl, fileName: `${emp?.nome ?? "book"}.pdf` }); resultados.push({ etapa: "book", ok: r.ok }); if (r.ok) enviadas++; else falhas++; await sleep(500); }
 
   for (const m of fotos) {
-    const r = await enviar({ tipo: "image", url: publicUrl(m.storage_path) });
+    const r = await enviar({ tipo: "image", url: signedByPath.get(m.storage_path) });
     if (r.ok) enviadas++; else { falhas++; resultados.push({ foto: m.id, ok: false, motivo: r.body?.motivo ?? r.body }); }
     await sleep(500);
   }

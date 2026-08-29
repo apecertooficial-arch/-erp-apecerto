@@ -18,7 +18,7 @@ export type ChatData = {
   deals: Array<{ id: number; lead_id: number; corretor_id: number | null; stage_id: number | null; empreendimento_id: string | null; valor: number | null; status: string }>;
   brokers: Array<{ id: number; nome: string; usuario_id: string | null; online: boolean }>;
   products: Array<{ id: string; nome: string; bairro: string | null; cidade: string | null; preco: number | null; status: string }>;
-  media: Array<{ id: string; empreendimento_id: string; nome: string | null; tipo: string; categoria: string | null; storage_path: string; is_capa: boolean }>;
+  media: Array<{ id: string; empreendimento_id: string; nome: string | null; tipo: string; categoria: string | null; is_capa: boolean }>;
   activities: Array<{ id: number; lead_id: number | null; tipo: string; texto: string | null; criado_em: string }>;
   approaches: Array<{ id: number; nome: string; mensagens: unknown; produto_id: number | null }>;
   stages?: Array<{ id: number; nome: string; rotulo: string | null; ordem: number | null }>;

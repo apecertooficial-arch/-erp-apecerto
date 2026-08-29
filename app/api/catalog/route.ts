@@ -3,6 +3,7 @@ import { assessProductQuality, isPlausibleProductPrice } from "../../features/pr
 import { isProductManagerRole } from "../../features/products/access";
 import { isProductPublishedOnSite } from "../../features/products/publication";
 import { resolveCommercialOrigin, summarizeInventory } from "../../features/products/product-domain";
+import { signedProductMediaUrls } from "../../lib/products/media-url";
 
 export const dynamic = "force-dynamic";
 
@@ -49,13 +50,6 @@ type CondominiumRow = {
   uf: string;
 };
 
-function publicMediaUrl(path: string) {
-  const base = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  if (!base) return null;
-  const encodedPath = path.split("/").map(encodeURIComponent).join("/");
-  return `${base}/storage/v1/object/public/empreendimentos/${encodedPath}`;
-}
-
 export async function GET(request: Request) {
   const authorization = request.headers.get("authorization");
   const accessToken = authorization?.startsWith("Bearer ") ? authorization.slice(7) : null;
@@ -87,6 +81,9 @@ export async function GET(request: Request) {
   if (error) {
     return Response.json({ error: error.message }, { status: 502 });
   }
+  const allProductMediaRows = (data ?? []).flatMap((item) => item.midias ?? []) as MediaRow[];
+  const mediaById = new Map(allProductMediaRows.map((media) => [media.id, media]));
+  const signedMedia = await signedProductMediaUrls(supabase, allProductMediaRows);
   const { data: favorites } = await supabase.from("produto_favoritos").select("empreendimento_id").eq("usuario_id", authData.user.id);
   const favoriteIds = new Set((favorites ?? []).map((item) => item.empreendimento_id));
   const { data: corretoresList } = await supabase.from("corretores").select("id,nome");
@@ -211,7 +208,7 @@ export async function GET(request: Request) {
       available: availableUnits.length,
       units: approvedUnits.length,
       media: media.length,
-      coverUrl: cover ? publicMediaUrl(cover.storage_path) : null,
+      coverUrl: cover ? (signedMedia.get(cover.storage_path) ?? null) : null,
       draft: item.rascunho,
       approval: (item as { aprovacao?: string }).aprovacao ?? "aprovado",
       rejectionReason: (item as { reprovacao_motivo?: string | null }).reprovacao_motivo ?? null,
@@ -277,8 +274,8 @@ export async function GET(request: Request) {
     const unitIds = (pu ?? []).map((u) => u.id);
     const coverByUnit = new Map<string, string | null>();
     if (unitIds.length) {
-      const { data: um } = await supabase.from("midias").select("unidade_id, storage_path, is_capa, created_at").in("unidade_id", unitIds).eq("tipo", "foto").order("is_capa", { ascending: false }).order("created_at", { ascending: true });
-      for (const m of (um ?? [])) { const uid = (m as { unidade_id?: string }).unidade_id; if (uid && !coverByUnit.has(uid)) coverByUnit.set(uid, publicMediaUrl((m as { storage_path: string }).storage_path)); }
+      const { data: um } = await supabase.from("midias").select("id, unidade_id, is_capa, created_at").in("unidade_id", unitIds).eq("tipo", "foto").order("is_capa", { ascending: false }).order("created_at", { ascending: true });
+      for (const m of (um ?? [])) { const uid = (m as { unidade_id?: string }).unidade_id; if (uid && !coverByUnit.has(uid)) { const original = mediaById.get((m as { id: string }).id); coverByUnit.set(uid, original ? (signedMedia.get(original.storage_path) ?? null) : null); } }
     }
     pendingUnits = (pu ?? []).map((u) => ({
       id: u.id, numero: u.numero, tipologia: u.tipologia,
@@ -305,8 +302,8 @@ export async function GET(request: Request) {
     const mineIds = (mineRows ?? []).map((u) => u.id);
     const coverByMine = new Map<string, string | null>();
     if (mineIds.length) {
-      const { data: mineMedia } = await supabase.from("midias").select("unidade_id, storage_path, is_capa, created_at").in("unidade_id", mineIds).eq("tipo", "foto").order("is_capa", { ascending: false }).order("created_at", { ascending: true });
-      for (const m of mineMedia ?? []) { const uid = (m as { unidade_id?: string }).unidade_id; if (uid && !coverByMine.has(uid)) coverByMine.set(uid, publicMediaUrl((m as { storage_path: string }).storage_path)); }
+      const { data: mineMedia } = await supabase.from("midias").select("id, unidade_id, is_capa, created_at").in("unidade_id", mineIds).eq("tipo", "foto").order("is_capa", { ascending: false }).order("created_at", { ascending: true });
+      for (const m of mineMedia ?? []) { const uid = (m as { unidade_id?: string }).unidade_id; if (uid && !coverByMine.has(uid)) { const original = mediaById.get((m as { id: string }).id); coverByMine.set(uid, original ? (signedMedia.get(original.storage_path) ?? null) : null); } }
     }
     const mineProductIds = [...new Set((mineRows ?? []).map((u) => u.empreendimento_id))];
     const { data: privateOwners } = mineProductIds.length
@@ -372,7 +369,7 @@ export async function GET(request: Request) {
         media: unitMediaCount,
         unitMedia: unitMediaCount,
         referenceMedia: buildingMediaCount,
-        coverUrl: fotoDaUnidade ? publicMediaUrl(fotoDaUnidade.storage_path) : null,
+        coverUrl: fotoDaUnidade ? (signedMedia.get(fotoDaUnidade.storage_path) ?? null) : null,
         capturedBy: corretorNameById.get(u.captador_corretor_id ?? -1) ?? null,
         capturedByScore: u.captador_corretor_id != null ? (captadorScoreById.get(u.captador_corretor_id) ?? null) : null,
         mine: currentBrokerId != null && u.captador_corretor_id === currentBrokerId,
@@ -415,7 +412,7 @@ export async function GET(request: Request) {
       publishedUnits,
       availableUnits: linkedUnits.filter((unit) => unit.disponivel).length,
       referenceProductId: linkedProducts[0]?.id ?? null,
-      coverUrl: cover ? publicMediaUrl(cover.storage_path) : null,
+      coverUrl: cover ? (signedMedia.get(cover.storage_path) ?? null) : null,
     };
   });
 
@@ -455,7 +452,7 @@ export async function GET(request: Request) {
           parking: unit.vagas,
           ownMedia: ownPhotos.length,
           referenceMedia: buildingMediaCount,
-          coverUrl: cover ? publicMediaUrl(cover.storage_path) : null,
+          coverUrl: cover ? (signedMedia.get(cover.storage_path) ?? null) : null,
           segment: resolveCommercialOrigin({
             explicit: explicitOrigin,
             thirdParty: unit.de_terceiros,

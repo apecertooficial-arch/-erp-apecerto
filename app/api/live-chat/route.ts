@@ -126,7 +126,7 @@ export async function GET(request: Request) {
     auth.supabase.from("negocios").select("id,lead_id,corretor_id,stage_id,empreendimento_id,valor,status"),
     auth.supabase.rpc("listar_corretores_transferencia"),
     auth.supabase.from("empreendimentos").select("id,nome,bairro,cidade,preco,status").order("nome"),
-    auth.supabase.from("midias").select("id,empreendimento_id,nome,tipo,categoria,storage_path,is_capa").order("created_at", { ascending: false }).limit(5000),
+    auth.supabase.from("midias").select("id,empreendimento_id,nome,tipo,categoria,is_capa").order("created_at", { ascending: false }).limit(5000),
     auth.supabase.from("crm_atividades").select("id,lead_id,tipo,texto,criado_em").eq("tipo", "observacao").order("criado_em", { ascending: false }).limit(500),
     auth.supabase.from("abordagens").select("id,nome,mensagens,produto_id").eq("ativo", true).order("ordem"),
     auth.supabase.from("pipeline_stages").select("id,nome,rotulo,ordem").order("ordem"),
@@ -203,9 +203,9 @@ export async function POST(request: Request) {
     if (mediaId) {
       const { data: media } = await auth.supabase.from("midias").select("tipo,storage_path,nome").eq("id", mediaId).maybeSingle();
       if (!media) return Response.json({ error: "Material não encontrado." }, { status: 404 });
-      const base = process.env.NEXT_PUBLIC_SUPABASE_URL;
-      const url = `${base}/storage/v1/object/public/empreendimentos/${media.storage_path.split("/").map(encodeURIComponent).join("/")}`;
-      payload = { telefone: phone, instancia_id: instanceId, tipo: media.tipo === "foto" ? "imagem" : media.tipo === "video" ? "video" : "documento", url, legenda: content, nome_arquivo: media.nome || undefined };
+      const { data: signed, error: signedError } = await auth.supabase.storage.from("empreendimentos").createSignedUrl(media.storage_path, 300);
+      if (signedError || !signed?.signedUrl) return Response.json({ error: "Material indisponível." }, { status: 502 });
+      payload = { telefone: phone, instancia_id: instanceId, tipo: media.tipo === "foto" ? "imagem" : media.tipo === "video" ? "video" : "documento", url: signed.signedUrl, legenda: content, nome_arquivo: media.nome || undefined };
     }
     const { data, error } = await auth.supabase.functions.invoke("dapi-enviar", { body: payload });
     const remoteError = providerError(data);

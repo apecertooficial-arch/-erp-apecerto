@@ -12281,6 +12281,14 @@ export type Database = {
         }
         Returns: Json
       }
+      produto_unidade_definir_disponibilidade_canonica: {
+        Args: {
+          p_disponivel: boolean
+          p_empreendimento_id: string
+          p_unidade_id: string
+        }
+        Returns: Json
+      }
       produto_unidade_excluir_canonica: {
         Args: { p_empreendimento_id: string; p_unidade_id: string }
         Returns: Json

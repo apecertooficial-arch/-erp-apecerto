@@ -288,9 +288,18 @@ function FinalFiles({ version }: { version: StudioPieceVersion }) {
   }}><Icon name={file.mime_type === "video/mp4" ? "video" : "image"}/> {String(file.role ?? "arquivo")} {Number(file.index ?? index) + 1} · {String(file.width ?? "—")}×{String(file.height ?? "—")}</button>)}</div>;
 }
 
-function publicMediaUrl(path: unknown) {
-  if (typeof path !== "string" || !process.env.NEXT_PUBLIC_SUPABASE_URL) return null;
-  return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/empreendimentos/${path.split("/").map(encodeURIComponent).join("/")}`;
+function ProductMediaImage({ path, alt }: { path: unknown; alt: string }) {
+  const [src, setSrc] = useState<string | null>(null);
+  const validPath = typeof path === "string" && path ? path : null;
+  useEffect(() => {
+    let active = true;
+    if (!validPath) return () => { active = false; };
+    void getBrowserSupabaseClient().storage.from("empreendimentos").createSignedUrl(validPath, 300)
+      .then(({ data }) => { if (active) setSrc(data?.signedUrl ?? null); })
+      .catch(() => { if (active) setSrc(null); });
+    return () => { active = false; };
+  }, [validPath]);
+  return validPath && src ? <img src={src} alt={alt}/> : <span className="studio-media-placeholder">Sem prévia</span>;
 }
 
 function demoContent(format: StudioFormat, snapshot: StudioData["snapshots"][number] | null, variant: number) {
@@ -324,15 +333,14 @@ function DemoInspector({ piece, demo, variant, onVariant, mutate }: { piece: Stu
 function AssetStrip({ snapshot, selected, onSelect, onPersist }: { snapshot: StudioData["snapshots"][number] | null; selected: number; onSelect: (index: number) => void; onPersist?: () => void }) {
   const media = snapshot?.midias ?? [];
   if (!media.length) return null;
-  return <div className="studio-asset-strip"><strong>Mídias do ERP</strong>{media.slice(0, 12).map((item, index) => { const src = publicMediaUrl(item.storage_path); return <button type="button" key={`${String(item.storage_path)}-${index}`} className={selected === index ? "selected" : ""} onClick={() => onSelect(index)}>{src ? <img src={src} alt={`Mídia ${index + 1}`} /> : <span className="studio-media-placeholder">Sem prévia</span>}<span>{index + 1}</span></button>; })}{onPersist && <button type="button" className="studio-secondary studio-asset-save" onClick={onPersist}>Salvar mídia nesta versão</button>}</div>;
+  return <div className="studio-asset-strip"><strong>Mídias do ERP</strong>{media.slice(0, 12).map((item, index) => <button type="button" key={`${String(item.id ?? index)}-${index}`} className={selected === index ? "selected" : ""} onClick={() => onSelect(index)}><ProductMediaImage path={item.storage_path} alt={`Mídia ${index + 1}`} /><span>{index + 1}</span></button>)}{onPersist && <button type="button" className="studio-secondary studio-asset-save" onClick={onPersist}>Salvar mídia nesta versão</button>}</div>;
 }
 
 function PiecePreview({ piece, version, snapshot, mediaIndex = 0, demoContent }: { piece: StudioPiece; version: StudioPieceVersion | null; snapshot: StudioData["snapshots"][number] | null; mediaIndex?: number; demoContent?: Record<string, unknown> | null }) {
   const content = version?.conteudo ?? demoContent ?? {};
   const media = snapshot?.midias[mediaIndex] ?? snapshot?.midias.find((item) => item.is_capa === true) ?? snapshot?.midias[0];
-  const url = publicMediaUrl(media?.storage_path);
   return <article className={`studio-piece-preview ${piece.formato}`} style={{ aspectRatio: FORMAT_META[piece.formato].ratio }}>
-    {url ? <img src={url} alt="Foto do imóvel usada na peça"/> : <div className="studio-preview-empty"><Icon name={piece.formato === "reel" ? "video" : "image"} size={28}/><span>Produto sem prévia de mídia</span></div>}
+    {media ? <ProductMediaImage path={media.storage_path} alt="Foto do imóvel usada na peça"/> : <div className="studio-preview-empty"><Icon name={piece.formato === "reel" ? "video" : "image"} size={28}/><span>Produto sem prévia de mídia</span></div>}
     <div className="studio-preview-shade"/>
     <img className="studio-preview-logo" src="/brand/logo-apecerto-branco.png" alt="apêcerto"/>
     <div className="studio-preview-copy"><span>{String(snapshot?.fatos.bairro ?? "apê pronto pra morar")}</span><h3>{String(content.headline ?? (version ? piece.titulo : "Sua próxima campanha começa aqui"))}</h3><p>{String(content.cta ?? "Agende sua visita")}</p></div>

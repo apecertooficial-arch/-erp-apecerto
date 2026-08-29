@@ -106,7 +106,7 @@ test("foto herdada do condomínio abre sem fingir que pertence à unidade", () =
   assert.doesNotMatch(detail, /focusedUnitPhotos = focusedUnitUsesReferencePhotos \? focusedUnitReferencePhotos/);
   assert.match(detail, /Ver \{focusedUnitPhotos\.length\} fotos/);
   assert.match(catalog, /referenceMedia: buildingMediaCount/);
-  assert.match(catalog, /coverUrl: fotoDaUnidade \? publicMediaUrl\(fotoDaUnidade\.storage_path\) : null/);
+  assert.match(catalog, /coverUrl: fotoDaUnidade \? \(signedMedia\.get\(fotoDaUnidade\.storage_path\) \?\? null\) : null/);
   assert.match(detail, /setUnitLightbox/);
 });
 
