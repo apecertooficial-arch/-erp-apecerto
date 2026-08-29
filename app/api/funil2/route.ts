@@ -327,7 +327,9 @@ export async function GET(request: Request) {
       cpf_cnpj: textoExtra(original?.extras, "cpf_cnpj"),
       endereco: enderecoDoLead(original?.extras),
       origem_cadastro: original?.origem ?? null,
-      lead_atualizado_em: original?.atualizado_em ?? null,
+      /* Versão canônica dos dados da pessoa, distinta da versão operacional
+         do cartão. É este instante que protege o round-trip do editor. */
+      versaoDados: original?.atualizado_em ?? null,
       interesse: contexto?.interesse ?? null,
       tags: contexto?.tags ?? [],
       instancia_rotulo: instancia?.rotulo ?? null,

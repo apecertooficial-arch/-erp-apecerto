@@ -16,6 +16,9 @@ import { AssociarTagLead } from "./AssociarTagLead";
 import { AdicionarClienteModal } from "./AdicionarClienteModal";
 import { IniciarNegociacaoModal } from "./IniciarNegociacaoModal";
 import { LeadDataEditor } from "./LeadDataEditor";
+import { LeadSearchPicker } from "./LeadSearchPicker";
+import { ChipTemperatura, FiltrosTemperatura, IconeConversa, IconeOperacional, InteresseLead, TEMPERATURAS, temperaturaDoLead, type TemperaturaFiltro } from "./Funil2BoardPrimitives";
+import { Funil2BoardToolbar } from "./Funil2BoardToolbar";
 import { getBrowserSupabaseClient } from "../../lib/supabase/browser";
 import { dataHoraLocalSaoPaulo, dataIsoSaoPaulo, FUSO_OPERACAO } from "../../lib/timezone";
 
@@ -29,45 +32,23 @@ type Payload = {
    vira relatorio: ninguem consegue contar quantos "sem grana" existem. */
 const MOTIVOS_DESCARTE = ["Contato inválido", "Sem interesse", "Sem capacidade financeira", "Fora da região", "Já comprou", "Duplicado", "Pediu para não receber contato", "Produto incompatível"] as const;
 
-type TemperaturaFiltro = TemperaturaLead | "aguardando" | "todas";
-
-const TEMPERATURAS: ReadonlyArray<{ codigo: Exclude<TemperaturaFiltro, "todas">; rotulo: string }> = [
-  { codigo: "quente", rotulo: "Quente" },
-  { codigo: "negociando", rotulo: "Negociando" },
-  { codigo: "morno", rotulo: "Morno" },
-  { codigo: "frio", rotulo: "Frio" },
-  { codigo: "aguardando", rotulo: "Aguardando leitura" },
-];
-
-function temperaturaDoLead(lead: LeadFunil2): Exclude<TemperaturaFiltro, "todas"> {
-  return lead.temperatura ?? "aguardando";
-}
-
-function ChipTemperatura({ lead, className = "", compacto = false }: { lead: LeadFunil2; className?: string; compacto?: boolean }) {
-  const codigo = temperaturaDoLead(lead);
-  const rotulo = rotuloTemperatura(lead.temperatura) ?? (compacto ? "Sem leitura" : "Aguardando leitura");
-  return <span className={`f2-lead-chip temperatura temperatura-${codigo} ${className}`.trim()}><i />{rotulo}</span>;
-}
-
-function FiltrosTemperatura({ leads, valor, onChange, className = "" }: { leads: LeadFunil2[]; valor: TemperaturaFiltro; onChange: (valor: TemperaturaFiltro) => void; className?: string }) {
-  return <div className={`f2-temperatura-filtros ${className}`.trim()} role="group" aria-label="Filtrar por temperatura">
-    <span>TEMPERATURA</span>
-    <button type="button" className={valor === "todas" ? "ativo" : ""} onClick={() => onChange("todas")}>Todas <b>{leads.length}</b></button>
-    {TEMPERATURAS.map((item) => <button type="button" key={item.codigo} className={`${valor === item.codigo ? "ativo " : ""}temperatura-${item.codigo}`} onClick={() => onChange(item.codigo)}><i />{item.rotulo} <b>{leads.filter((lead) => temperaturaDoLead(lead) === item.codigo).length}</b></button>)}
-  </div>;
-}
-
-/* O pipe de visitas nunca teve campo de data nem de imovel, entao nao existe
-   regra de estilo para eles. Ate o CSS ganhar a sua, o campo copia a borda e o
-   espacamento do select que ja mora dentro do mesmo cartao. */
-const CAMPO_VISITA = { width: "100%", marginTop: "7px", padding: "8px", border: "1px solid var(--f2-line)", borderRadius: "9px", background: "#fff", fontSize: "12px" } as const;
+/* Campo legado ainda compartilhado pelo fluxo de visita. Mesmo inline, usa a
+   grade e os tokens do produto para não criar uma exceção visual no CRM. */
+const CAMPO_VISITA = { width: "100%", marginTop: "8px", padding: "8px", border: "1px solid var(--f2-line)", borderRadius: "var(--radius-sm)", background: "var(--bg-surface)", color: "var(--fg-1)", fontSize: "12px" } as const;
 
 async function api(token: string, init?: RequestInit) {
-  const response = await fetch("/api/funil2", {
-    ...init,
-    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json", ...(init?.headers ?? {}) },
-  });
-  return { ok: response.ok, json: await response.json().catch(() => ({})) as Payload & { resultado?: unknown } };
+  try {
+    const response = await fetch("/api/funil2", {
+      ...init,
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json", ...(init?.headers ?? {}) },
+    });
+    return { ok: response.ok, json: await response.json().catch(() => ({})) as Payload & { resultado?: unknown } };
+  } catch {
+    const semConexao = typeof navigator !== "undefined" && navigator.onLine === false;
+    return { ok: false, json: { error: semConexao
+      ? "Sem conexão — nenhum dado em cache está disponível. As ações ficam indisponíveis até reconectar."
+      : "Não foi possível conectar ao Funil. Tente novamente em instantes." } as Payload & { resultado?: unknown } };
+  }
 }
 
 function iniciais(nome: string) {
@@ -78,16 +59,6 @@ function linkWhatsapp(telefone: string | null) {
   const digitos = (telefone ?? "").replace(/\D/g, "");
   if (digitos.length < 10) return null;
   return `https://wa.me/${digitos.startsWith("55") ? digitos : `55${digitos}`}`;
-}
-
-function InteresseLead({ lead, detalhado = false }: { lead: LeadFunil2; detalhado?: boolean }) {
-  if (!lead.interesse && !(lead.tags?.length)) return null;
-  const titulo = (lead.tags ?? []).map((tag) => tag.nome).join(" · ");
-  return <span className={`f2-interesse-lead${detalhado ? " detalhado" : ""}`} title={titulo || undefined}>
-    <b>{lead.interesse ? "Interesse" : "Tags"}</b>
-    <strong>{lead.interesse ?? `${lead.tags?.length ?? 0} associada(s)`}</strong>
-    {(lead.tags?.length ?? 0) > 1 ? <em>{lead.tags!.length} tags</em> : null}
-  </span>;
 }
 
 /* O input datetime-local so entende hora local sem fuso. Sem esta conversao o
@@ -110,10 +81,6 @@ function Icone({ nome }: { nome: "quadro" | "dia" | "historico" | "leads" | "vis
       : nome === "config" ? <><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1l2-1.5-2-3.4-2.3 1A8 8 0 0 0 15 6l-.3-2.5h-4L10.4 6a8 8 0 0 0-1.6 1L6.5 6 4.5 9.5 6.6 11a7 7 0 0 0 0 2L4.5 14.5l2 3.5 2.3-1a8 8 0 0 0 1.6 1l.3 2.5h4L15 18a8 8 0 0 0 1.6-1l2.3 1 2-3.5-2-1.5a7 7 0 0 0 .1-1Z"/></>
       : <><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></>;
   return <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths}</svg>;
-}
-
-function IconeConversa() {
-  return <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.5 9.7 9.7 0 0 1-4-.9L3 21l1.6-4.4A8.3 8.3 0 0 1 3 11.5a8.4 8.4 0 0 1 9-8.5 8.4 8.4 0 0 1 9 8.5Z" /><path d="M8 12h.01M12 12h.01M16 12h.01" /></svg>;
 }
 
 export function Funil2Workspace({ accessToken, profile }: { accessToken: string; profile: Perfil }) {
@@ -157,8 +124,9 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
   const [visaoQuadro, setVisaoQuadro] = useState<"andamento" | "ganhos" | "perdidos" | "triagem">("andamento");
   const [periodoQuadro, setPeriodoQuadro] = useState<"30" | "90" | "todos">("30");
   const [agoraQuadro] = useState(() => Date.now());
-  const [modoSelecao, setModoSelecao] = useState(false);
-  const [selecionados, setSelecionados] = useState<string[]>([]);
+  const [limitesPorEtapa, setLimitesPorEtapa] = useState<Record<string, number>>({});
+  const [menuCardId, setMenuCardId] = useState<string | null>(null);
+  const [filtrosQuadroAbertos, setFiltrosQuadroAbertos] = useState(false);
   const [historicoDetalhe, setHistoricoDetalhe] = useState<{ leadId: string; eventos: EventoFunil2[]; notas: NotaFunil2[] } | null>(null);
   const [limiteDia, setLimiteDia] = useState(50);
   /* Filtro do Meu Dia. Começa em "atrasadas": é o que o corretor tem que
@@ -170,8 +138,7 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
 
   const trocarAba = useCallback((proxima: "quadro" | "dia" | "leads" | "visitas" | "vendas" | "config") => {
     setAba(proxima);
-    setSelecionados([]);
-    setModoSelecao(false);
+    setMenuCardId(null);
   }, []);
 
   const carregar = useCallback(async () => {
@@ -374,7 +341,7 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
         await carregar();
         return false;
       }
-      setSelecionados([]); setModoSelecao(false);
+      setMenuCardId(null);
       await carregar();
       return true;
     } catch {
@@ -383,10 +350,6 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
     } finally {
       setBusy(false);
     }
-  }
-
-  function alternarSelecao(id: string) {
-    setSelecionados((atuais) => atuais.includes(id) ? atuais.filter((item) => item !== id) : [...atuais, id]);
   }
 
   function fecharChatDireto() {
@@ -410,14 +373,24 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
   const termoQuadro = buscaQuadro.trim().toLocaleLowerCase("pt-BR");
   const limitePeriodo = periodoQuadro === "todos" ? null : agoraQuadro - Number(periodoQuadro) * 24 * 60 * 60 * 1000;
   const leadsDoPeriodo = leads.filter((item) => limitePeriodo === null || +new Date(item.atualizado_em) >= limitePeriodo);
+  const codigosDoQuadro = new Set(etapasDoQuadro.map((etapa) => etapa.codigo));
+  const leadsDoQuadro = leadsDoPeriodo.filter((item) => codigosDoQuadro.has(item.etapa));
+  const foraDoQuadro = leadsDoPeriodo.length - leadsDoQuadro.length;
   const ganhos = negociosVinculados.filter((item) => item.status.toLocaleLowerCase("pt-BR") === "ganho");
   const perdidos = negociosVinculados.filter((item) => item.status.toLocaleLowerCase("pt-BR") === "perdido");
+
+  useEffect(() => {
+    if (!menuCardId) return;
+    const fechar = (evento: KeyboardEvent) => { if (evento.key === "Escape") setMenuCardId(null); };
+    document.addEventListener("keydown", fechar);
+    return () => document.removeEventListener("keydown", fechar);
+  }, [menuCardId]);
 
   return (
     <div className="f2-root funil-oficial" data-module="funil">
       <nav className="f2-nav f2-v3-modulos" aria-label="Módulos do Funil">
         <button type="button" className={aba === "dia" ? "ativo" : ""} onClick={() => trocarAba("dia")}><Icone nome="dia" /> Meu Dia <b>{atrasados}</b></button>
-        <button type="button" className={aba === "quadro" ? "ativo" : ""} onClick={() => trocarAba("quadro")}><Icone nome="quadro" /> Negócios <b>{leads.length}</b></button>
+        <button type="button" className={aba === "quadro" ? "ativo" : ""} onClick={() => trocarAba("quadro")}><Icone nome="quadro" /> Negócios <b>{leadsDoQuadro.length}</b></button>
         <button type="button" className={aba === "leads" ? "ativo" : ""} onClick={() => trocarAba("leads")}><Icone nome="leads" /> Leads <b>{leads.length}</b></button>
         <Link href="/agenda"><Icone nome="atividades" /> Atividades</Link>
         <button type="button" className={aba === "visitas" ? "ativo" : ""} onClick={() => trocarAba("visitas")}><Icone nome="visitas" /> Visitas <b>{visitas.length}</b></button>
@@ -438,8 +411,8 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
             {avisosAbertos && <CentralAtencao leads={leads} momentos={momentosAtivos} etapas={etapasAtivas} onAbrir={(id) => { setSelecionado(id); setAvisosAbertos(false); }} onMeuDia={() => { trocarAba("dia"); setAvisosAbertos(false); }} />}
           </div>
           {podePescar && <button type="button" className="f2-pescar-secundario" disabled={busy} onClick={abrirPesca}>Pescar lead{aquario.length > 0 ? ` · ${aquario.length}` : ""}</button>}
-          {podeAdicionarCliente && <button type="button" className="f2-pescar-secundario" disabled={busy} onClick={() => setAdicionarClienteAberto(true)}>Adicionar cliente</button>}
-          <button type="button" className="f2-pescar" onClick={() => setModal("negociacao")}>Novo negócio</button>
+          {podeAdicionarCliente && <button type="button" className="f2-pescar-secundario" disabled={busy || carregando || Boolean(erro)} onClick={() => setAdicionarClienteAberto(true)}>Adicionar cliente</button>}
+          <button type="button" className="f2-pescar" disabled={busy || carregando || Boolean(erro)} onClick={() => setModal("negociacao")}>Novo negócio</button>
         </div>
       </header>
 
@@ -449,67 +422,70 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
       {aba === "config" && fontes?.operacao === "erro" && <div className="f2-aviso-fonte" role="status"><strong>Configuração operacional indisponível.</strong><span>Não altere parâmetros até a leitura ser restabelecida.</span></div>}
       {carregando && <div className="f2-loading">Carregando o Funil…</div>}
 
-      {!carregando && aba === "quadro" && <main className="f2-main">
-        <section className="f2-v3-toolbar" aria-label="Busca, filtros e ações do quadro">
-          <label className="f2-v3-pipeline"><span>Pipeline</span><select aria-label="Pipeline" value="comercial" onChange={() => undefined}><option value="comercial">Comercial</option></select></label>
-          <span className="f2-v3-separador" aria-hidden="true" />
-          <div className="f2-v3-visoes" role="group" aria-label="Situação dos negócios">
-            <button type="button" className={visaoQuadro === "andamento" ? "ativo" : ""} onClick={() => setVisaoQuadro("andamento")}>Em andamento <b>{leadsDoPeriodo.length}</b></button>
-            <button type="button" className={visaoQuadro === "ganhos" ? "ativo" : ""} onClick={() => setVisaoQuadro("ganhos")}>Ganhos <b>{ganhos.length}</b></button>
-            <button type="button" className={visaoQuadro === "perdidos" ? "ativo" : ""} onClick={() => setVisaoQuadro("perdidos")}>Perdidos <b>{perdidos.length}</b></button>
-            <button type="button" className={visaoQuadro === "triagem" ? "ativo" : ""} onClick={() => setVisaoQuadro("triagem")}>Triagem <b>{aquario.length}</b></button>
-          </div>
-          <label className="f2-v3-busca"><span>Buscar</span><input type="search" value={buscaQuadro} onChange={(evento) => setBuscaQuadro(evento.target.value)} placeholder="Lead, telefone, nº ou interesse" /></label>
-          <details className="f2-v3-filtros"><summary>Filtros{temperaturaQuadro !== "todas" ? " · 1" : ""}</summary><FiltrosTemperatura leads={leads} valor={temperaturaQuadro} onChange={setTemperaturaQuadro} /></details>
-          <span className="f2-v3-quebra" aria-hidden="true" />
-          <label className="f2-v3-ordenacao"><span>Ordenação</span><select aria-label="Ordenar negócios" value={ordenacaoQuadro} onChange={(evento) => setOrdenacaoQuadro(evento.target.value as "urgente" | "nome")}><option value="urgente">Atividade mais urgente</option><option value="nome">Nome do lead</option></select></label>
-          <label className="f2-v3-periodo"><span>Período</span><select aria-label="Período do quadro" value={periodoQuadro} onChange={(evento) => setPeriodoQuadro(evento.target.value as "30" | "90" | "todos")}><option value="30">Últimos 30 dias · movimentação</option><option value="90">Últimos 90 dias · movimentação</option><option value="todos">Todo o período</option></select></label>
-          <span className="f2-v3-separador" aria-hidden="true" />
-          <button type="button" className={modoSelecao ? "ativo" : ""} onClick={() => { setModoSelecao((valor) => !valor); setSelecionados([]); }}>Selecionar</button>
-          <details className="f2-v3-mais"><summary aria-label="Mais ações do quadro">•••</summary><div><button type="button" onClick={() => trocarAba("vendas")}>Abrir Esteira</button><button type="button" onClick={(evento) => { evento.currentTarget.closest("details")?.removeAttribute("open"); document.querySelector<HTMLButtonElement>("#sara-fab")?.click(); }}>Abrir Sara</button></div></details>
-        </section>
-        {selecionados.length > 0 && <section className="f2-v3-bulk" role="region" aria-label="Seleção de negócios">
-          <strong>{selecionados.length} negócio(s) selecionado(s)</strong>
-          <span role="status">Movimento em massa pausado: ainda não existe transação atômica segura. Use o menu de cada cartão.</span>
-          <button type="button" className="secundario" onClick={() => setSelecionados([])}>Cancelar</button>
-        </section>}
+      {!carregando && !erro && aba === "quadro" && <main className="f2-main">
+        <Funil2BoardToolbar
+          aquario={aquario.length}
+          busca={buscaQuadro}
+          filtrosAbertos={filtrosQuadroAbertos}
+          ganhos={ganhos.length}
+          leads={leads}
+          negociosVisiveis={leadsDoQuadro.length}
+          ordenacao={ordenacaoQuadro}
+          perdidos={perdidos.length}
+          periodo={periodoQuadro}
+          temperatura={temperaturaQuadro}
+          visao={visaoQuadro}
+          onAbrirEsteira={() => { setFiltrosQuadroAbertos(false); trocarAba("vendas"); }}
+          onAbrirSara={() => { setFiltrosQuadroAbertos(false); document.querySelector<HTMLButtonElement>("#sara-fab")?.click(); }}
+          onBusca={(valor) => { setBuscaQuadro(valor); setLimitesPorEtapa({}); setMenuCardId(null); }}
+          onFiltrosAbertos={setFiltrosQuadroAbertos}
+          onOrdenacao={(valor) => { setOrdenacaoQuadro(valor); setLimitesPorEtapa({}); setMenuCardId(null); }}
+          onPeriodo={(valor) => { setPeriodoQuadro(valor); setLimitesPorEtapa({}); setMenuCardId(null); }}
+          onTemperatura={(valor) => { setTemperaturaQuadro(valor); setLimitesPorEtapa({}); setMenuCardId(null); }}
+          onVisao={setVisaoQuadro}
+        />
+        {foraDoQuadro > 0 && <p className="f2-v3-contagem-honesta" role="status">{foraDoQuadro} negócio(s) deste período estão fora das etapas visíveis. Consulte a área Leads para ver a carteira completa.</p>}
 
         {visaoQuadro !== "andamento" && <section className="f2-v3-recorte" aria-live="polite"><div><span>{visaoQuadro === "ganhos" ? "GANHOS" : visaoQuadro === "perdidos" ? "PERDIDOS" : "TRIAGEM"}</span><h2>{visaoQuadro === "ganhos" ? `${ganhos.length} negócios ganhos` : visaoQuadro === "perdidos" ? `${perdidos.length} negócios perdidos` : `${aquario.length} leads aguardando análise`}</h2><p>Este recorte usa os registros canônicos do Funil. Abra a ficha ou a Esteira para consultar todos os detalhes.</p></div>{visaoQuadro === "triagem" && podePescar && <button type="button" disabled={busy} onClick={abrirPesca}>Pescar lead</button>}{visaoQuadro !== "triagem" && <button type="button" onClick={() => trocarAba("vendas")}>Abrir Esteira</button>}</section>}
         {visaoQuadro === "andamento" && <section className="f2-board" aria-label="Etapas do Funil">
           {etapasDoQuadro.map((etapa) => {
             const daEtapa = leadsDoPeriodo.filter((l) => l.etapa === etapa.codigo && (temperaturaQuadro === "todas" || temperaturaDoLead(l) === temperaturaQuadro) && (!termoQuadro || `${l.nome} ${l.telefone ?? ""} ${l.origem_negocio_id} ${l.interesse ?? ""}`.toLocaleLowerCase("pt-BR").includes(termoQuadro))).sort((a, b) => ordenacaoQuadro === "nome" ? a.nome.localeCompare(b.nome, "pt-BR") : +new Date(a.proxima_acao_em) - +new Date(b.proxima_acao_em));
             const valorEtapa = daEtapa.reduce((total, item) => total + (Number(item.valor) || 0), 0);
+            const limiteDaEtapa = limitesPorEtapa[etapa.codigo] ?? 12;
             return <div key={etapa.codigo} className={`f2-coluna etapa-${etapa.codigo}`} onDragOver={(evento) => evento.preventDefault()} onDrop={(evento) => { evento.preventDefault(); const id = evento.dataTransfer.getData("text/funil2-lead"); if (id) void movimentar([id], etapa.codigo); }}>
-              <div className="f2-coluna-topo"><span aria-hidden="true" /><h2>{etapa.rotulo}</h2><b>{daEtapa.length}</b><small>{valorEtapa > 0 ? new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", notation: "compact", maximumFractionDigits: 1 }).format(valorEtapa) : "—"}</small><button type="button" aria-label={`Criar negócio em ${etapa.rotulo}`} onClick={() => setModal("negociacao")}>＋</button><details><summary aria-label={`Mais opções de ${etapa.rotulo}`}>•••</summary><div><button type="button" onClick={() => setModal("negociacao")}>Novo negócio</button></div></details></div>
+              <div className="f2-coluna-topo"><span aria-hidden="true" /><h2>{etapa.rotulo}</h2><b>{daEtapa.length}</b><small>{valorEtapa > 0 ? new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", notation: "compact", maximumFractionDigits: 1 }).format(valorEtapa) : "—"}</small><button type="button" aria-label={`Criar negócio em ${etapa.rotulo}`} onClick={() => setModal("negociacao")}><IconeOperacional nome="adicionar" /></button><details><summary aria-label={`Mais opções de ${etapa.rotulo}`}><IconeOperacional nome="mais" /></summary><div><button type="button" onClick={() => setModal("negociacao")}>Novo negócio</button></div></details></div>
               <div className="f2-lista">
-                {daEtapa.slice(0, 100).map((item) => {
+                {daEtapa.slice(0, limiteDaEtapa).map((item) => {
                   const momento = momentosAtivos.find((m) => m.codigo === item.momento_codigo);
                   const prazo = prazoDaAcao(item);
-                  const cadencia = rotuloCadencia(item);
-                  const tentativa = tentativaAtual(item);
-                  const marcado = selecionados.includes(item.id);
-                  return <article key={item.id} draggable={!modoSelecao} tabIndex={0} aria-label={`${modoSelecao ? (marcado ? "Remover" : "Adicionar") : "Abrir ficha de"} ${item.nome}`} className={`f2-card ${selecionado === item.id || marcado ? "selecionado" : ""}`} onClick={(evento) => { if ((evento.target as HTMLElement).closest("button,a,input,select,textarea,summary,details")) return; if (modoSelecao) alternarSelecao(item.id); else setSelecionado(item.id); }} onKeyDown={(evento) => { if (evento.target !== evento.currentTarget || !["Enter", " "].includes(evento.key)) return; evento.preventDefault(); if (modoSelecao) alternarSelecao(item.id); else setSelecionado(item.id); }} onDragStart={(evento) => { evento.dataTransfer.setData("text/funil2-lead", item.id); evento.dataTransfer.effectAllowed = "move"; }}>
-                    {modoSelecao && <button type="button" className="f2-v3-check" aria-label={`${marcado ? "Remover" : "Adicionar"} ${item.nome} da seleção`} aria-pressed={marcado} onClick={(evento) => { evento.stopPropagation(); alternarSelecao(item.id); }}>{marcado && <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m5 12 4 4L19 6" /></svg>}</button>}
+                  const proximaAcao = item.acao_rotulo || "Sem próxima atividade";
+                  const papel = profile.role.toLowerCase();
+                  const contexto = papel === "corretor"
+                    ? item.interesse ?? "Interesse ainda não informado"
+                    : item.corretor_nome ? `Corretor · ${item.corretor_nome}` : item.interesse ?? "Corretor ainda não atribuído";
+                  return <article key={item.id} draggable tabIndex={0} aria-label={`Abrir ficha de ${item.nome}. Temperatura ${rotuloTemperatura(item.temperatura)}. Próxima ação: ${proximaAcao}. ${prazo.rotulo}.`} className={`f2-card ${selecionado === item.id ? "selecionado" : ""}`} onClick={(evento) => { if ((evento.target as HTMLElement).closest("button,a,input,select,textarea")) return; setSelecionado(item.id); }} onKeyDown={(evento) => { if (evento.target !== evento.currentTarget || !["Enter", " "].includes(evento.key)) return; evento.preventDefault(); setSelecionado(item.id); }} onDragStart={(evento) => { evento.dataTransfer.setData("text/funil2-lead", item.id); evento.dataTransfer.effectAllowed = "move"; }}>
                     <div className="f2-card-ident">
-                      <i>{iniciais(item.nome)}</i>
-                      <div><strong>{item.nome}</strong><span>{item.instancia_rotulo ?? item.corretor_nome ?? "Sem origem identificada"}</span></div>
-                      <ChipTemperatura lead={item} compacto />
-                      <details className="f2-card-menu" onClick={(evento) => evento.stopPropagation()}>
-                        <summary aria-label={`Ações de ${item.nome}`}>•••</summary>
-                        <div>
+                      <i className="f2-card-avatar" aria-hidden="true">{iniciais(item.nome)}</i>
+                      <div className="f2-card-identidade"><strong>{item.nome}</strong></div>
+                      <div className="f2-card-menu" onClick={(evento) => evento.stopPropagation()}>
+                        <button type="button" aria-label={`Ações de ${item.nome}`} aria-haspopup="menu" aria-expanded={menuCardId === item.id} onClick={() => setMenuCardId((aberto) => aberto === item.id ? null : item.id)}><IconeOperacional nome="mais" /></button>
+                        {menuCardId === item.id && <div role="menu">
                           <button type="button" onClick={(evento) => { chatOrigemRef.current = evento.currentTarget; setChatDireto(item); }}>Abrir conversa</button>
                           <button type="button" onClick={() => setSelecionado(item.id)}>Abrir ficha</button>
-                          <label><span>Mover para</span><select aria-label={`Mover ${item.nome} para outra etapa`} value="" disabled={busy} onChange={(evento) => { const destino = evento.target.value; evento.currentTarget.closest("details")?.removeAttribute("open"); if (destino) void movimentar([item.id], destino); }}><option value="">Escolha a etapa</option>{etapasDoQuadro.filter((alvo) => alvo.codigo !== item.etapa).map((alvo) => <option key={alvo.codigo} value={alvo.codigo}>{alvo.rotulo}</option>)}</select></label>
-                        </div>
-                      </details>
+                          <label><span>Mover para</span><select aria-label={`Mover ${item.nome} para outra etapa`} value="" disabled={busy} onChange={(evento) => { const destino = evento.target.value; setMenuCardId(null); if (destino) void movimentar([item.id], destino); }}><option value="">Escolha a etapa</option>{etapasDoQuadro.filter((alvo) => alvo.codigo !== item.etapa).map((alvo) => <option key={alvo.codigo} value={alvo.codigo}>{alvo.rotulo}</option>)}</select></label>
+                        </div>}
+                      </div>
                     </div>
-                    <div className="f2-card-linha momento"><span aria-hidden="true">◎</span><b><i />{momento?.rotulo ?? item.momento_codigo}</b></div>
-                    <div className="f2-card-linha acao"><span aria-hidden="true">□</span><strong>{tentativa ? `WhatsApp · Tentativa ${tentativa}` : item.acao_rotulo || "Sem próxima atividade"}</strong><button type="button" className="f2-card-chat" draggable={false} title={`Abrir chat de ${item.nome}`} aria-label={`Abrir chat de ${item.nome}`} onPointerDown={(evento) => evento.stopPropagation()} onMouseDown={(evento) => evento.stopPropagation()} onDragStart={(evento) => evento.stopPropagation()} onKeyDown={(evento) => evento.stopPropagation()} onClick={(evento) => { evento.stopPropagation(); chatOrigemRef.current = evento.currentTarget; setChatDireto(item); }}><IconeConversa /></button></div>
-                    <div className="f2-card-linha prazo"><span aria-hidden="true">◷</span><em className={prazo.classe}>{prazo.rotulo}</em>{cadencia && <small>{cadencia}</small>}</div>
-                    <div className="f2-card-tags"><span aria-hidden="true">◇</span><InteresseLead lead={item} /></div>
+                    <span className="f2-card-contexto">{contexto}</span>
+                    <div className="f2-card-sinais" aria-label="Momento e temperatura do lead">
+                      <div className="f2-card-sinal"><span>Momento</span><strong>{momento?.rotulo ?? item.momento_codigo}</strong></div>
+                      <div className="f2-card-sinal"><span>Temperatura</span><ChipTemperatura lead={item} compacto /></div>
+                    </div>
+                    <div className="f2-card-proxima"><span>Próxima ação</span><strong>{proximaAcao}</strong></div>
+                    <footer className="f2-card-rodape"><em className={`f2-card-prazo ${prazo.classe}`}>{prazo.rotulo}</em><button type="button" className="f2-card-chat" draggable={false} title={`Abrir conversa de ${item.nome}`} aria-label={`Abrir conversa de ${item.nome}`} onPointerDown={(evento) => evento.stopPropagation()} onMouseDown={(evento) => evento.stopPropagation()} onDragStart={(evento) => evento.stopPropagation()} onKeyDown={(evento) => evento.stopPropagation()} onClick={(evento) => { evento.stopPropagation(); chatOrigemRef.current = evento.currentTarget; setChatDireto(item); }}><IconeConversa /><span>Conversa</span></button></footer>
                   </article>;
                 })}
-                {daEtapa.length > 100 && <div className="f2-vazio">Mais {daEtapa.length - 100} lead(s) nesta etapa. Consulte “Todos os Leads”.</div>}
+                {daEtapa.length > limiteDaEtapa && <button type="button" className="f2-coluna-mais" onClick={() => setLimitesPorEtapa((atuais) => ({ ...atuais, [etapa.codigo]: limiteDaEtapa + 12 }))}>Mostrar mais 12 · faltam {daEtapa.length - limiteDaEtapa}</button>}
                 {daEtapa.length === 0 && <div className="f2-vazio">Nenhum lead-cópia nesta etapa.</div>}
               </div>
             </div>;
@@ -517,7 +493,7 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
         </section>}
       </main>}
 
-      {!carregando && aba === "dia" && <main className="f2-dia">
+      {!carregando && !erro && aba === "dia" && <main className="f2-dia">
         <section className="f2-dia-controles" aria-label="Filtros do Meu Dia">
           <div className="f2-indicadores">
             <button type="button" className={`vermelho${filtroDia === "atrasadas" ? " f2-ind-ativo" : ""}`} aria-pressed={filtroDia === "atrasadas"} onClick={() => trocarFiltroDia("atrasadas")}><b>{atrasados}</b><span>ações atrasadas</span></button>
@@ -556,15 +532,15 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
         </div>
       </main>}
 
-      {!carregando && aba === "leads" && <TodosLeads leads={leads} momentos={momentosAtivos} etapas={etapasAtivas} accessToken={accessToken} busy={busy} onAbrir={(id) => setSelecionado(id)} onTrazer={(leadId, etapa, momento) => executar("trazerLeadAntigo", { leadId, etapa, momento })} />}
-      {!carregando && aba === "visitas" && <PipeVisitas visitas={visitas} leads={leads} momentos={momentosAtivos} busy={busy} onNova={() => setModal("visita")} onAbrir={setSelecionado} onSalvar={(visita) => void executar("salvarVisita", visita)} />}
+      {!carregando && !erro && aba === "leads" && <TodosLeads leads={leads} momentos={momentosAtivos} etapas={etapasAtivas} accessToken={accessToken} busy={busy} onAbrir={(id) => setSelecionado(id)} onTrazer={(leadId, etapa, momento) => executar("trazerLeadAntigo", { leadId, etapa, momento })} />}
+      {!carregando && !erro && aba === "visitas" && <PipeVisitas visitas={visitas} leads={leads} momentos={momentosAtivos} busy={busy} onNova={() => setModal("visita")} onAbrir={setSelecionado} onSalvar={(visita) => void executar("salvarVisita", visita)} />}
       {/* A Esteira canônica entra como módulo funcional, sem duplicar o Funil. */}
-      {!carregando && aba === "vendas" && <main className="f2-pagina f2-esteira-oficial"><SalesProcessView accessToken={accessToken} sessionRole={profile.role} /></main>}
-      {!carregando && aba === "config" && <Configuracoes etapas={etapas} momentos={momentos} operacao={operacao} sara={sara} busy={busy} onEtapa={(dados) => executar("configurarEtapa", dados)} onMomento={(dados) => executar("configurarMomento", dados)} onOperacao={(dados) => executar("configurarOperacao", dados)} />}
+      {!carregando && !erro && aba === "vendas" && <main className="f2-pagina f2-esteira-oficial"><SalesProcessView accessToken={accessToken} sessionRole={profile.role} /></main>}
+      {!carregando && !erro && aba === "config" && <Configuracoes etapas={etapas} momentos={momentos} operacao={operacao} sara={sara} busy={busy} onEtapa={(dados) => executar("configurarEtapa", dados)} onMomento={(dados) => executar("configurarMomento", dados)} onOperacao={(dados) => executar("configurarOperacao", dados)} />}
 
       {modal === "pescar" && <ModalPescar candidatos={aquario} busy={busy} erro={erro} onFechar={() => setModal(null)} onPescar={(negocioId) => void executar("pescar", { negocioId })} />}
-      {modal === "visita" && <ModalVisita key={lead?.id ?? "nova-visita"} leads={leads} leadFoco={lead} busy={busy} erroExterno={erro} onFechar={() => setModal(null)} onSalvar={(dados) => executar("salvarVisita", dados)} />}
-      {modal === "negociacao" && <ModalNegociacao leads={leads} leadFoco={lead} busy={busy} onFechar={() => setModal(null)} onSalvar={(dados) => void executar("salvarNegociacao", dados)} />}
+      {modal === "visita" && <ModalVisita key={lead?.id ?? "nova-visita"} accessToken={accessToken} leadFoco={lead} busy={busy} erroExterno={erro} onFechar={() => setModal(null)} onSalvar={(dados) => executar("salvarVisita", dados)} />}
+      {modal === "negociacao" && <ModalNegociacao accessToken={accessToken} leads={leads} leadFoco={lead} busy={busy} onFechar={() => setModal(null)} onSalvar={(dados) => void executar("salvarNegociacao", dados)} />}
       {modal === "descartar" && lead && <ModalDescartar nome={lead.nome} busy={busy} onFechar={() => setModal(null)} onDescartar={(motivo, detalhe) => { void atualizar("descartar", { motivo, detalhe }).then((ok) => { if (ok) { setModal(null); setSelecionado(null); } }); }} />}
       {adicionarClienteAberto && <AdicionarClienteModal accessToken={accessToken} onClose={() => setAdicionarClienteAberto(false)} onCreated={(funilLeadId) => { setAdicionarClienteAberto(false); void carregar().then(() => setSelecionado(funilLeadId)); }} />}
       {negociacaoCanonicaLeadId && (() => {
@@ -874,27 +850,8 @@ function ModalDescartar({ nome, busy, onFechar, onDescartar }: { nome: string; b
    campos que o historico prova que eram usados: de 140 visitas, 55 com gerente
    e 53 com produto. Sem gerente escolhido nao ha como checar conflito de
    agenda, e o choque so aparece no dia, com o cliente na porta. */
-function SeletorLead({ leads, value, onChange }: { leads: LeadFunil2[]; value: string; onChange: (id: string) => void }) {
-  const [busca, setBusca] = useState("");
-  const escolhido = leads.find((lead) => lead.id === value) ?? null;
-  const termo = busca.trim().toLocaleLowerCase("pt-BR");
-  const resultados = termo.length >= 2
-    ? leads.filter((lead) => `${lead.nome} ${lead.telefone ?? ""}`.toLocaleLowerCase("pt-BR").includes(termo)).slice(0, 8)
-    : [];
-
-  if (escolhido) return <div className="f2-lead-escolhido"><span>CLIENTE</span><strong>{escolhido.nome}</strong><small>{escolhido.telefone || "Telefone não informado"}</small><button type="button" onClick={() => { onChange(""); setBusca(""); }}>Trocar cliente</button></div>;
-
-  return <div className="f2-lead-picker">
-    <label>Buscar cliente<input type="search" value={busca} onChange={(evento) => setBusca(evento.target.value)} placeholder="Digite nome ou telefone" autoComplete="off" /></label>
-    {termo.length < 2 ? <p>Digite pelo menos dois caracteres para localizar o cliente.</p> : <div className="f2-lead-resultados">
-      {resultados.map((lead) => <button key={lead.id} type="button" onClick={() => onChange(lead.id)}><strong>{lead.nome}</strong><small>{lead.telefone || "Sem telefone"} · {lead.corretor_nome || "Sem responsável"}</small></button>)}
-      {resultados.length === 0 && <p>Nenhum cliente encontrado.</p>}
-    </div>}
-  </div>;
-}
-
-function ModalVisita({ leads, leadFoco, busy, erroExterno, onFechar, onSalvar }: {
-  leads: LeadFunil2[];
+function ModalVisita({ accessToken, leadFoco, busy, erroExterno, onFechar, onSalvar }: {
+  accessToken: string;
   leadFoco?: LeadFunil2 | null;
   busy: boolean;
   erroExterno: string | null;
@@ -947,7 +904,7 @@ function ModalVisita({ leads, leadFoco, busy, erroExterno, onFechar, onSalvar }:
   }
 
   return <Modal titulo="Agendar visita" texto="A visita aparecerá na Agenda sem duplicar o lead." onFechar={onFechar}>
-    {leadFoco ? <div className="f2-lead-escolhido fixo"><span>CLIENTE DESTA VISITA</span><strong>{leadFoco.nome}</strong><small>{leadFoco.telefone || "Telefone não informado"}</small></div> : <SeletorLead leads={leads} value={leadId} onChange={(id) => { setLeadId(id); setErroFormulario(""); }} />}
+    {leadFoco ? <div className="f2-lead-escolhido fixo"><span>CLIENTE DESTA VISITA</span><strong>{leadFoco.nome}</strong><small>{leadFoco.telefone || "Telefone não informado"}</small></div> : <LeadSearchPicker accessToken={accessToken} value={leadId} onChange={(id) => { setLeadId(id); setErroFormulario(""); }} />}
     <label>Produto
       <select value={empreendimento} disabled={carregandoProdutos || Boolean(erroProdutos)} onChange={(e) => { setEmpreendimento(e.target.value); setErroFormulario(""); }}>
         <option value="">{carregandoProdutos ? "Carregando produtos…" : erroProdutos ? "Produtos indisponíveis" : produtos.length === 0 ? "Nenhum produto disponível" : "— escolha o empreendimento —"}</option>
@@ -979,12 +936,12 @@ function ModalVisita({ leads, leadFoco, busy, erroExterno, onFechar, onSalvar }:
   </Modal>;
 }
 
-function ModalNegociacao({ leads, leadFoco, busy, onFechar, onSalvar }: { leads: LeadFunil2[]; leadFoco?: LeadFunil2 | null; busy: boolean; onFechar: () => void; onSalvar: (d: Record<string, unknown>) => void }) {
+function ModalNegociacao({ accessToken, leads, leadFoco, busy, onFechar, onSalvar }: { accessToken: string; leads: LeadFunil2[]; leadFoco?: LeadFunil2 | null; busy: boolean; onFechar: () => void; onSalvar: (d: Record<string, unknown>) => void }) {
   const [leadId, setLeadId] = useState(leadFoco?.id ?? "");
   const [titulo, setTitulo] = useState("");
   const [valor, setValor] = useState("");
   return <Modal titulo="Lançar negociação" texto="A oportunidade nasce vinculada ao cliente e entra na etapa inicial da Esteira de Vendas." onFechar={onFechar}>
-    {leadFoco ? <div className="f2-lead-escolhido fixo"><span>CLIENTE DESTA NEGOCIAÇÃO</span><strong>{leadFoco.nome}</strong><small>{leadFoco.telefone || "Telefone não informado"}</small></div> : <SeletorLead leads={leads} value={leadId} onChange={setLeadId} />}
+    {leadFoco ? <div className="f2-lead-escolhido fixo"><span>CLIENTE DESTA NEGOCIAÇÃO</span><strong>{leadFoco.nome}</strong><small>{leadFoco.telefone || "Telefone não informado"}</small></div> : <LeadSearchPicker accessToken={accessToken} value={leadId} onChange={setLeadId} />}
     <label>Oportunidade<input value={titulo} onChange={(e) => setTitulo(e.target.value)} placeholder="Ex.: Apartamento no Centro" maxLength={120} /></label>
     <label>Valor estimado <small>(opcional)</small><input type="number" min="0" step="0.01" value={valor} onChange={(e) => setValor(e.target.value)} /></label>
     <div className="f2-modal-destino"><span>DESTINO</span><b>Esteira · Qualificação</b><small>Responsável: {leadFoco?.corretor_nome || leads.find((item) => item.id === leadId)?.corretor_nome || "será definido pela equipe"}</small></div>
@@ -1150,7 +1107,7 @@ function Detalhe({
 
           {abaDetalhe === "arquivos" && <section className="f2-ficha-bloco"><header><h3>Arquivos</h3><button type="button" className="f2-secundario" onClick={onAbrirEsteira}>Abrir Esteira</button></header>{arquivosEstado === "erro" ? <div className="f2-ficha-vazio" role="alert"><strong>Arquivos indisponíveis</strong><span>A fonte canônica não pôde ser consultada com esta sessão.</span></div> : arquivos.length ? <div className="f2-ficha-lista">{arquivos.map((arquivo) => <article key={arquivo.id}><div><strong>{arquivo.nome}</strong><span>Negócio #{arquivo.negocio_id}</span></div><time>{dataCurta(arquivo.criado_em)}</time><em>{arquivo.status}</em></article>)}</div> : <div className="f2-ficha-vazio"><strong>Nenhum arquivo vinculado</strong><span>A Esteira não retornou documento acessível para os negócios desta ficha.</span></div>}</section>}
 
-          {abaDetalhe === "dados" && <LeadDataEditor key={`${lead.id}:${lead.lead_atualizado_em ?? "sem-versao"}`} accessToken={accessToken} lead={lead} onSaved={onRecarregar} onDirtyChange={setDadosSujos} />}
+          {abaDetalhe === "dados" && <LeadDataEditor key={`${lead.id}:${lead.versaoDados ?? "sem-versao"}`} accessToken={accessToken} lead={lead} onSaved={onRecarregar} onDirtyChange={setDadosSujos} />}
         </div>
       </div>
 

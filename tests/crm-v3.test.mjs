@@ -7,6 +7,8 @@ const route = read("../app/(erp)/crm/page.tsx");
 const entry = read("../app/features/funil-2/FunilEntry.tsx");
 const workspace = read("../app/features/funil-2/Funil2Workspace.tsx");
 const mobile = read("../app/features/funil-2/Funil2Mobile.tsx");
+const toolbar = read("../app/features/funil-2/Funil2BoardToolbar.tsx");
+const mobileChrome = read("../app/features/funil-2/Funil2MobileChrome.tsx");
 const api = read("../app/api/funil2/route.ts");
 const layout = read("../app/layout.tsx");
 const erpLayout = read("../app/(erp)/layout.tsx");
@@ -63,7 +65,8 @@ test("a apresentação do Funil é uma folha única, sem camada visual antiga", 
   assert.match(css, /\.funil-oficial/);
   assert.doesNotMatch(css, /\.crm-v3-official|CRM_V3_EXPERIENCE/);
   assert.doesNotMatch(css, /!important/);
-  assert.match(css, /@media\s*\(max-width:\s*720px\)/);
+  assert.match(css, /@media\s*\(max-width:\s*900px\)/);
+  assert.doesNotMatch(css.slice(css.indexOf("CRM_CANONICAL_ACTIVE_START")), /@media\s*\(max-width:\s*720px\)/);
 });
 
 test("o Funil permanece dentro do shell global do ERP sem shell interno duplicado", () => {
@@ -100,10 +103,10 @@ test("barra principal oferece Pescar lead com autorização canônica", () => {
 
 test("cartão abre chat direto e reconhecível sem abrir ficha, seleção ou arrasto", () => {
   assert.match(workspace, /const \[chatDireto, setChatDireto\] = useState<LeadFunil2 \| null>\(null\)/);
-  assert.match(workspace, /aria-label=\{`Abrir chat de \$\{item\.nome\}`\}/);
-  assert.match(workspace, /title=\{`Abrir chat de \$\{item\.nome\}`\}/);
+  assert.match(workspace, /aria-label=\{`Abrir conversa de \$\{item\.nome\}`\}/);
+  assert.match(workspace, /title=\{`Abrir conversa de \$\{item\.nome\}`\}/);
   assert.match(workspace, /className="f2-card-chat"/);
-  assert.match(workspace, /<IconeConversa \/>/);
+  assert.match(workspace, /<IconeConversa \/><span>Conversa<\/span>/);
   assert.match(workspace, /draggable=\{false\}/);
   assert.match(workspace, /evento\.stopPropagation\(\); chatOrigemRef\.current = evento\.currentTarget; setChatDireto\(item\);/);
   assert.match(workspace, /chatDireto && \(chatDireto\.lead_id > 0 \? <Funil2ConversationDrawer/);
@@ -154,9 +157,9 @@ test("ficha desktop replica a arquitetura ampla e compacta aprovada no Claude De
   assert.match(css, /\.funil-oficial \.f2-ficha-bloco>\.f2-ficha-dados-form\{[^}]*grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
   assert.doesNotMatch(workspace, /<button type="button" disabled>Salvar dados<\/button>/);
   assert.match(pwa, /className="erp-update-toast"/);
-  assert.doesNotMatch(pwa, /left: 16, right: 16/);
-  assert.match(identityCss, /body:has\(\[aria-label\^="Atendimento de"\]\) \.erp-update-toast/);
-  assert.match(identityCss, /@media\(max-width:900px\).*body:has\(\[aria-label\^="Atendimento de"\]\) \.erp-update-toast\{display:none\}/);
+  assert.match(pwa, /createPortal\(aviso, alvoDoShell\)/);
+  assert.match(identityCss, /\.erp-update-region:not\(:empty\)/);
+  assert.doesNotMatch(identityCss.match(/\.erp-update-toast\{[^}]+\}/)?.[0] ?? "", /position:fixed/);
 });
 
 test("ficha usa dados canônicos e não coleções vazias ou identidade fixa", () => {
@@ -186,20 +189,21 @@ test("navegação aprovada existe em desktop e mobile", () => {
   for (const label of ["Meu Dia", "Negócios", "Leads", "Atividades", "Visitas", "Esteira", "Painel", "Configurações"]) {
     assert.match(workspace, new RegExp(`>${label}<|\\/> ${label}(?: |<)`));
   }
-  assert.match(mobile, /aria-label="Navegação do Funil"/);
-  for (const label of ["Meu Dia", "Funil", "Leads", "Agenda", "Visitas"]) assert.match(mobile, new RegExp(`>${label}<`));
+  assert.match(mobileChrome, /aria-label="Navegação do Funil"/);
+  for (const label of ["Meu Dia", "Funil", "Leads", "Agenda", "Visitas"]) assert.match(mobileChrome, new RegExp(`>${label}<`));
   assert.match(workspace, /<Link href="\/agenda"><Icone nome="atividades" \/> Atividades/);
   assert.match(workspace, /href=\{`\/agenda\?lead=/);
   assert.match(mobile, /href=\{`\/agenda\?lead=/);
   assert.doesNotMatch(`${workspace}\n${mobile}`, /href=\{?`?\/tarefas(?:\?|["`])/);
 });
 
-test("menu e arrasto convergem no motor canônico e lote inseguro é bloqueado", () => {
+test("menu e arrasto convergem no motor canônico e lote inseguro não é oferecido", () => {
   assert.match(workspace, /async function movimentar\(ids: string\[\], etapaCodigo: string\)/);
   assert.match(workspace, /validarMovimentoSeguro\(ids\)/);
   assert.match(workspace, /action: "atualizarMomento"/);
   assert.match(workspace, /onDrop=.*movimentar\(\[id\], etapa\.codigo\)/s);
-  assert.match(workspace, /Movimento em massa pausado: ainda não existe transação atômica segura/);
+  assert.match(workspace, /Movimento em massa indisponível: o banco ainda não oferece transação atômica/);
+  assert.doesNotMatch(workspace, />Selecionar<|f2-v3-bulk|modoSelecao/);
   assert.doesNotMatch(workspace, /Promise\.all\(itens\.map/);
   assert.match(workspace, /movimentar\(\[item\.id\], destino\)[^>]*>[\s\S]*Escolha a etapa/);
   assert.doesNotMatch(workspace, /setLeads\([^)]*etapa/);
@@ -208,15 +212,15 @@ test("menu e arrasto convergem no motor canônico e lote inseguro é bloqueado",
 test("perfis, filtros e Design System permanecem explícitos", () => {
   assert.match(workspace, /sessionRole=\{profile\.role\}/);
   assert.match(workspace, /const podeGerir = \["admin", "gestor"\]\.includes/);
-  assert.match(workspace, /type="search" value=\{buscaQuadro\}/);
+  assert.match(toolbar, /type="search" value=\{props\.busca\}/);
   assert.match(workspace, /temperaturaQuadro === "todas"/);
   assert.match(workspace, /Nenhum sucesso foi presumido/);
-  assert.match(workspace, />Ganhos <b>/);
-  assert.match(workspace, />Perdidos <b>/);
-  assert.match(workspace, />Triagem <b>/);
-  assert.match(workspace, /Últimos 30 dias · movimentação/);
+  assert.match(toolbar, />Ganhos <b>/);
+  assert.match(toolbar, />Perdidos <b>/);
+  assert.match(toolbar, />Triagem <b>/);
+  assert.match(toolbar, /Últimos 30 dias · movimentação/);
   assert.match(workspace, />Novo negócio<\/button>/);
-  assert.match(css, /flex:0 0 240px/);
+  assert.match(css, /flex:0 0 276px/);
   assert.match(css, /background:var\(--ape-orange\)/);
   assert.match(css, /font-family:var\(--font-body\)/);
   assert.match(css, /min-height:44px/);
@@ -224,7 +228,7 @@ test("perfis, filtros e Design System permanecem explícitos", () => {
   assert.match(css, /body:has\(\.funil-oficial\) #sara-fab[^}]*display:none/);
   assert.match(css, /body:has\(\.funil-oficial\) \.convite-instalar[^}]*display:none/);
   assert.match(css, /body:has\(\.funil-oficial \.f2-overlay\) #sara-fab[^}]*display:none/);
-  assert.match(css, /\.funil-oficial\.modo-crm>\.ape-filtros button\.ativo[^}]*background:#FFF3EA[^}]*color:#B84300/);
-  assert.match(workspace, />Abrir Sara<\/button>/);
+  assert.match(css, /\.funil-oficial\.modo-crm>\.ape-filtros button\.ativo[^}]*background:var\(--bg-tint-orange\)[^}]*color:var\(--ape-orange-700\)/);
+  assert.match(toolbar, />Abrir Sara<\/button>/);
   assert.match(mobile, /className="ape-sara-avatar" aria-label="Abrir a Sara"/);
 });

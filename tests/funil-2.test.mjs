@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
-const ui = readFileSync(new URL("../app/features/funil-2/Funil2Workspace.tsx", import.meta.url), "utf8");
+const ui = `${readFileSync(new URL("../app/features/funil-2/Funil2Workspace.tsx", import.meta.url), "utf8")}\n${readFileSync(new URL("../app/features/funil-2/Funil2BoardToolbar.tsx", import.meta.url), "utf8")}`;
 const esteira = readFileSync(new URL("../app/features/sales/SalesProcessWorkspace.tsx", import.meta.url), "utf8");
 const entradaCrm = `${readFileSync(new URL("../app/(erp)/crm/page.tsx", import.meta.url), "utf8")}\n${readFileSync(new URL("../app/features/funil-2/FunilEntry.tsx", import.meta.url), "utf8")}`;
 const migration = readFileSync(new URL("../supabase/migrations/20260810150000_funil_2_isolado.sql", import.meta.url), "utf8");
@@ -180,8 +180,15 @@ test("lead pescado nasce sem expor o histórico anterior no Funil 2.0", () => {
 });
 
 test("card e ficha separam etapa, momento e próxima ação", () => {
-  assert.match(ui, /f2-card-linha momento/);
-  assert.match(ui, /f2-card-linha acao/);
+  /* Momento e temperatura são sinais operacionais próprios; próxima ação fica
+     abaixo, sem misturar os três conceitos. Valor e detalhe ficam na ficha. */
+  assert.match(ui, /f2-card-sinais/);
+  assert.match(ui, /<span>Momento<\/span>/);
+  assert.match(ui, /<span>Temperatura<\/span>/);
+  assert.match(ui, /<ChipTemperatura lead=\{item\} compacto \/>/);
+  assert.match(ui, /f2-card-proxima/);
+  assert.match(ui, /momento\?\.rotulo \?\? item\.momento_codigo/);
+  assert.doesNotMatch(ui.slice(ui.indexOf("{daEtapa.slice(0, limiteDaEtapa).map"), ui.indexOf("{daEtapa.length > limiteDaEtapa")), /f2-card-valor|f2-card-tags/);
   assert.match(ui, /f2-ficha-chips/);
   assert.match(ui, /f2-chip-resumo etapa/);
   assert.match(ui, /f2-chip-resumo momento/);

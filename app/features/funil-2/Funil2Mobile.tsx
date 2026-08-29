@@ -26,6 +26,8 @@ import { Funil2ConversationDrawer } from "./Funil2ConversationDrawer";
 import { AdicionarClienteModal } from "./AdicionarClienteModal";
 import { IniciarNegociacaoModal } from "./IniciarNegociacaoModal";
 import { LeadDataEditor } from "./LeadDataEditor";
+import { LeadSearchPicker } from "./LeadSearchPicker";
+import { Funil2MobileEmpty, Funil2MobileError, Funil2MobileLoading, Funil2MobileNavigation } from "./Funil2MobileChrome";
 import { ModalPescar } from "./Funil2Workspace";
 import { SalesProcessView } from "../sales/SalesProcessWorkspace";
 import { getBrowserSupabaseClient } from "../../lib/supabase/browser";
@@ -113,7 +115,6 @@ const ETAPAS_FALLBACK = [
 const tracos = { fill: "none", stroke: "currentColor", strokeWidth: 2, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
 function IconeAtualizar() { return <svg width="14" height="14" viewBox="0 0 24 24" {...tracos} aria-hidden="true"><path d="M20.5 12a8.5 8.5 0 1 1-2.6-6.1" /><path d="M20.5 3.5v5h-5" /></svg>; }
 function IconeBusca() { return <svg width="18" height="18" viewBox="0 0 24 24" {...tracos} aria-hidden="true"><circle cx="11" cy="11" r="7.5" /><path d="m21 21-4.3-4.3" /></svg>; }
-function IconeCheck({ tamanho = 30 }: { tamanho?: number }) { return <svg width={tamanho} height={tamanho} viewBox="0 0 24 24" {...tracos} strokeWidth={2.4} aria-hidden="true"><path d="M20 6 9 17l-5-5" /></svg>; }
 function IconeAlerta() { return <svg width="28" height="28" viewBox="0 0 24 24" {...tracos} aria-hidden="true"><path d="M10.3 4 2 18a2 2 0 0 0 1.7 3h16.6a2 2 0 0 0 1.7-3L13.7 4a2 2 0 0 0-3.4 0z" /><path d="M12 9.5v4M12 17.2h.01" /></svg>; }
 function IconeVoltar() { return <svg width="19" height="19" viewBox="0 0 24 24" {...tracos} aria-hidden="true"><path d="m15 18-6-6 6-6" /></svg>; }
 
@@ -208,7 +209,9 @@ function useFunil2Mobile(accessToken: string) {
       if (vivo) { setDados(json); setErro(null); }
     }).catch((falha: unknown) => {
       if (vivo && !(falha instanceof DOMException && falha.name === "AbortError")) {
-        setErro(falha instanceof Error ? falha.message : "Não foi possível abrir o CRM.");
+        setErro(typeof navigator !== "undefined" && navigator.onLine === false
+          ? "Sem conexão — nenhum dado em cache está disponível. As ações ficam indisponíveis até reconectar."
+          : falha instanceof Error ? falha.message : "Não foi possível abrir o CRM.");
       }
     });
     return () => { vivo = false; controle.abort(); };
@@ -243,7 +246,7 @@ function CartaoLead({
         <strong>{lead.nome}</strong>
         <span>{mostrarWhatsappDireto
           ? `${nomeEtapa(lead.etapa)} · ${lead.corretor_nome ?? "Aguardando responsável"}`
-          : lead.interesse ?? lead.instancia_rotulo ?? nomeEtapa(lead.etapa)}</span>
+          : lead.endereco ?? "Endereço não informado"}</span>
       </div>
       <b className={`ape-momento temperatura-${temperaturaMobile(lead)}`}><i />{rotuloTemperatura(lead.temperatura) ?? "Aguardando leitura"}</b>
     </div>
@@ -740,7 +743,7 @@ function FichaLead({
 
       {aba === "arquivos" && <div className="ape-ficha-painel ape-v3-secao"><h3>Arquivos</h3>{arquivosEstado === "erro" ? <p role="alert">A fonte canônica não pôde ser consultada com esta sessão.</p> : arquivos.length ? arquivos.map((arquivo) => <article key={arquivo.id}><strong>{arquivo.nome}</strong><span>{arquivo.status} · negócio #{arquivo.negocio_id}</span></article>) : <p>Nenhum arquivo acessível foi retornado pela Esteira.</p>}</div>}
 
-      {aba === "dados" && <div className="ape-ficha-painel ape-v3-secao"><LeadDataEditor key={`${lead.id}:${lead.lead_atualizado_em ?? "sem-versao"}`} accessToken={accessToken} lead={lead} onSaved={async () => { onRecarregar(); }} onDirtyChange={setDadosSujos} /></div>}
+      {aba === "dados" && <div className="ape-ficha-painel ape-v3-secao"><LeadDataEditor key={`${lead.id}:${lead.versaoDados ?? "sem-versao"}`} accessToken={accessToken} lead={lead} onSaved={async () => { onRecarregar(); }} onDirtyChange={setDadosSujos} /></div>}
 
       {!whatsappPreparo.ok && <div className="ape-ficha-alerta-contato" role="alert">WhatsApp indisponível: {whatsappPreparo.explicacao}</div>}
       <div className="ape-ficha-rodape-aprovado"><span className="ape-ficha-acao-whatsapp">{whatsappPreparo.ok ? <BotaoWhatsApp telefone={lead.telefone} negocioId={lead.origem_negocio_id} rotulo="WhatsApp" compacto /> : <button type="button" disabled>WhatsApp</button>}</span><button type="button" onClick={() => setAcaoMais("visita")}>Visita</button><Link href={`/agenda?lead=${encodeURIComponent(String(lead.lead_id || lead.id))}`}>Atividade</Link></div>
@@ -930,7 +933,7 @@ export function Funil2Mobile({
       <article><b>{contagens.hoje}</b><span>para hoje</span></article>
     </section>}
 
-    {modo === "crm" && areaCrm !== "esteira" && <div className="ape-busca-linha"><label className="ape-busca">
+    {modo === "crm" && areaCrm !== "esteira" && !erro && <div className="ape-busca-linha"><label className="ape-busca">
       <IconeBusca />
       <input type="search" value={busca} onChange={(evento) => setBusca(evento.target.value)} placeholder="Buscar" />
     </label><details className="ape-filtros-menu"><summary>Filtros{temperatura !== "todas" ? " · 1" : ""}</summary><nav className="ape-temperatura-filtros" aria-label="Filtrar por temperatura">
@@ -939,24 +942,13 @@ export function Funil2Mobile({
       {TEMPERATURAS_MOBILE.map((item) => <button type="button" key={item.codigo} className={`${temperatura === item.codigo ? "ativo " : ""}temperatura-${item.codigo}`} onClick={() => setTemperatura(item.codigo)}><i />{item.rotulo}</button>)}
     </nav></details></div>}
 
-    {modo === "crm" && areaCrm === "funil" && <nav className="ape-filtros" aria-label="Filtrar atendimentos">
+    {modo === "crm" && areaCrm === "funil" && !erro && <nav className="ape-filtros" aria-label="Filtrar atendimentos">
       {etapas.filter(([chave]) => !["legado", "atualizar_manual"].includes(chave)).map(([chave, rotulo]) => <button key={chave} type="button" className={etapa === chave ? "ativo" : ""} onClick={() => setEtapa(chave)}>{rotuloEtapaMobile(chave, rotulo)} <b>{leads.filter((lead) => lead.etapa === chave).length}</b></button>)}
     </nav>}
 
-    {erro && <div className="ape-estado ruim">
-      <span className="ape-estado-icone"><IconeAlerta /></span>
-      <strong>Não deu pra carregar sua fila</strong>
-      <p>{erro}</p>
-      <button type="button" onClick={recarregar}>Tentar novamente</button>
-    </div>}
+    {erro && <Funil2MobileError mensagem={erro} onRetry={recarregar} />}
 
-    {!dados && !erro && <div className="ape-esqueleto" aria-label="Carregando">
-      {[0, 1, 2].map((i) => <div key={i}>
-        <div className="ape-barra curta" />
-        <div className="ape-barra media" />
-        <div className="ape-barra alta" />
-      </div>)}
-    </div>}
+    {!dados && !erro && <Funil2MobileLoading />}
 
     {dados && pedidoUrl !== null && !leadPedido && <div className="ape-estado ruim">
       <span className="ape-estado-icone"><IconeAlerta /></span>
@@ -964,18 +956,9 @@ export function Funil2Mobile({
       <button type="button" onClick={() => { limparLeadDaUrl(); onIr("/crm"); }}>Voltar ao Funil</button>
     </div>}
 
-    {dados && !erro && modo === "inicio" && totalNoDia === 0 && <div className="ape-estado">
-      <span className="ape-estado-icone"><IconeCheck /></span>
-      <strong>Fila zerada por agora</strong>
-      <p>Você respondeu todo mundo que estava esperando hoje. O restante da carteira está no Funil.</p>
-      <button type="button" onClick={() => onIr("/crm")}>Ver minha carteira</button>
-    </div>}
+    {dados && !erro && modo === "inicio" && totalNoDia === 0 && <Funil2MobileEmpty tipo="dia" onVerCarteira={() => onIr("/crm")} />}
 
-    {dados && !erro && modo === "crm" && areaCrm !== "esteira" && visiveis.length === 0 && <div className="ape-estado">
-      <span className="ape-estado-icone"><IconeCheck /></span>
-      <strong>Nenhum cliente neste filtro</strong>
-      <p>Troque a etapa ou limpe a busca para ver o restante da carteira.</p>
-    </div>}
+    {dados && !erro && modo === "crm" && areaCrm !== "esteira" && visiveis.length === 0 && <Funil2MobileEmpty tipo="filtro" />}
 
     {modo === "inicio"
       ? gruposDoDia.map((grupo) => <section className="ape-grupo" key={grupo.chave} aria-label={grupo.titulo}>
@@ -989,21 +972,16 @@ export function Funil2Mobile({
         ? <section className="ape-mobile-esteira" aria-label="Esteira de vendas"><SalesProcessView accessToken={accessToken} sessionRole={role ?? "corretor"} /></section>
         : <section className="ape-lista" aria-label="Atendimentos">{visiveis.slice(0, 60).map(cartao)}</section>}
 
-    {modo === "crm" && areaCrm === "funil" && !leadAberto && <div className="ape-funil-acoes-fixas">{podePescar && <button type="button" className="ape-pescar-lead" disabled={pescaBusy} onClick={() => { setPescaErro(null); setPescaAberta(true); }}>Pescar lead{aquario.length > 0 ? ` · ${aquario.length}` : ""}</button>}{["admin", "gestor", "corretor"].includes((role ?? "").toLowerCase()) && <button type="button" className="ape-adicionar-cliente" onClick={() => setAdicionarClienteAberto(true)}>Adicionar cliente</button>}<button type="button" className="ape-novo-negocio-fixo" onClick={() => setNovoNegocioAberto(true)}>Novo negócio</button></div>}
+    {modo === "crm" && areaCrm === "funil" && dados && !erro && !leadAberto && <div className="ape-funil-acoes-secundarias">{podePescar && <button type="button" className="ape-pescar-lead" disabled={pescaBusy} onClick={() => { setPescaErro(null); setPescaAberta(true); }}>Pescar lead{aquario.length > 0 ? ` · ${aquario.length}` : ""}</button>}{["admin", "gestor", "corretor"].includes((role ?? "").toLowerCase()) && <button type="button" className="ape-adicionar-cliente" onClick={() => setAdicionarClienteAberto(true)}>Adicionar cliente</button>}</div>}
+    {modo === "crm" && areaCrm === "funil" && dados && !erro && !leadAberto && <div className="ape-funil-acoes-fixas"><button type="button" className="ape-novo-negocio-fixo" onClick={() => setNovoNegocioAberto(true)}>Novo negócio</button></div>}
 
-    {modo === "crm" && <nav className="ape-crm-v3-nav" aria-label="Navegação do Funil">
-      <button type="button" onClick={() => onIr("/inicio")}>Meu Dia</button>
-      <button type="button" className={areaCrm === "funil" ? "ativo" : ""} onClick={() => { setAreaCrm("funil"); setEtapa("novo"); }}>Funil</button>
-      <button type="button" className={areaCrm === "leads" ? "ativo" : ""} onClick={() => { setAreaCrm("leads"); setEtapa("novo"); }}>Leads</button>
-      <button type="button" onClick={() => onIr("/agenda")}>Agenda</button>
-      <button type="button" className={areaCrm === "visitas" ? "ativo" : ""} onClick={() => { setAreaCrm("visitas"); setEtapa("visita"); }}>Visitas</button>
-    </nav>}
+    {modo === "crm" && <Funil2MobileNavigation area={areaCrm as AreaCrmMobile} onIr={onIr} onArea={(area) => { setAreaCrm(area); if (area !== "esteira") setEtapa(area === "visitas" ? "visita" : "novo"); }} />}
 
     {modo === "inicio" && totalNoDia > 0 && <button type="button" className="ape-ver-carteira" onClick={() => onIr("/crm")}>
       Ver minha carteira ({leads.length})
     </button>}
 
-    {novoNegocioAberto && !leadAberto && <div className="ape-ficha-sheet" onMouseDown={(evento) => { if (evento.target === evento.currentTarget) { setNovoNegocioAberto(false); setNovoNegocioLeadId(""); } }}><section role="dialog" aria-label="Novo negócio"><i /><header className="ape-novo-negocio-cab"><div><h3>Novo negócio</h3><p>Escolha o lead para criar a oportunidade na Esteira.</p></div><button type="button" aria-label="Fechar novo negócio" onClick={() => { setNovoNegocioAberto(false); setNovoNegocioLeadId(""); }}>×</button></header><label className="ape-novo-negocio-lead">Lead<select value={novoNegocioLeadId} onChange={(evento) => setNovoNegocioLeadId(evento.target.value)}><option value="">Selecione o lead</option>{leads.map((item) => <option key={item.id} value={item.id}>{item.nome} · #{item.origem_negocio_id}</option>)}</select></label>{leadNovoNegocio && <GerarNegociacaoMobile lead={leadNovoNegocio} accessToken={accessToken} onSalvo={() => { void recarregar(); setNovoNegocioAberto(false); setNovoNegocioLeadId(""); }} abertoInicial onFechar={() => { setNovoNegocioAberto(false); setNovoNegocioLeadId(""); }} />}</section></div>}
+    {novoNegocioAberto && !leadAberto && <div className="ape-ficha-sheet" onMouseDown={(evento) => { if (evento.target === evento.currentTarget) { setNovoNegocioAberto(false); setNovoNegocioLeadId(""); } }}><section role="dialog" aria-label="Novo negócio"><i /><header className="ape-novo-negocio-cab"><div><h3>Novo negócio</h3><p>Escolha o lead para criar a oportunidade na Esteira.</p></div><button type="button" aria-label="Fechar novo negócio" onClick={() => { setNovoNegocioAberto(false); setNovoNegocioLeadId(""); }}>×</button></header><div className="ape-novo-negocio-lead"><LeadSearchPicker accessToken={accessToken} value={novoNegocioLeadId} onChange={setNovoNegocioLeadId} rotulo="Lead" /></div>{leadNovoNegocio && <GerarNegociacaoMobile lead={leadNovoNegocio} accessToken={accessToken} onSalvo={() => { void recarregar(); setNovoNegocioAberto(false); setNovoNegocioLeadId(""); }} abertoInicial onFechar={() => { setNovoNegocioAberto(false); setNovoNegocioLeadId(""); }} />}</section></div>}
 
     {adicionarClienteAberto && !leadAberto && <AdicionarClienteModal accessToken={accessToken} onClose={() => setAdicionarClienteAberto(false)} onCreated={(funilLeadId) => { setAdicionarClienteAberto(false); recarregar(); setSelecionado(funilLeadId); }} />}
 

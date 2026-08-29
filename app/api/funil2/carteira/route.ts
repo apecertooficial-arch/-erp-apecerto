@@ -23,6 +23,20 @@ import { createServerSupabaseClient } from "../../../lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
+const TAMANHO_PAGINA_FUNIL = 20;
+
+function termoSeguroBusca(valor: string) {
+  /* `.or()` recebe a sintaxe de filtro do PostgREST. Aceitamos só caracteres
+     que pertencem à pesquisa humana e retiramos os delimitadores da DSL para
+     que a busca não vire uma segunda linguagem controlada pelo cliente. */
+  return valor.replace(/[,()%*"'\\]/g, " ").replace(/\s+/g, " ").trim().slice(0, 80);
+}
+
+function telefoneMascarado(valor: unknown) {
+  const digitos = String(valor ?? "").replace(/\D/g, "");
+  return digitos.length >= 4 ? `••••${digitos.slice(-4)}` : null;
+}
+
 export async function GET(request: Request) {
   const header = request.headers.get("authorization");
   const token = header?.startsWith("Bearer ") ? header.slice(7) : null;
@@ -31,10 +45,41 @@ export async function GET(request: Request) {
   const { data: user, error: authError } = await db.auth.getUser(token);
   if (authError || !user.user) return Response.json({ error: "Sessão inválida ou expirada." }, { status: 401 });
 
-  const busca = (new URL(request.url).searchParams.get("q") ?? "").trim().slice(0, 80);
+  const url = new URL(request.url);
+  const busca = termoSeguroBusca(url.searchParams.get("q") ?? "");
   /* Menos de 3 caracteres devolve lista vazia em vez de meia carteira: busca de
      uma letra não ajuda ninguém a achar cliente e ainda pesa no banco. */
   if (busca.length < 3) return Response.json({ leads: [], curta: true });
+
+  if (url.searchParams.get("modo") === "buscar-funil") {
+    const pagina = Math.min(1000, Math.max(1, Number(url.searchParams.get("pagina")) || 1));
+    const inicio = (pagina - 1) * TAMANHO_PAGINA_FUNIL;
+    const filtros = [`nome.ilike.*${busca}*`];
+    const digitos = busca.replace(/\D/g, "");
+    /* Telefones canônicos podem estar persistidos com máscara, espaço ou DDI.
+       O curinga entre dígitos preserva a busca sem assumir um formato físico. */
+    if (digitos.length >= 3) filtros.push(`telefone.ilike.*${[...digitos].join("*")}*`);
+    if (/^\d+$/.test(busca)) filtros.push(`origem_negocio_id.eq.${Number(busca)}`);
+
+    /* O cliente autenticado é o mesmo do restante do Funil; portanto, RLS
+       continua sendo a autoridade de quais clientes esta pessoa pode listar. */
+    const { data, error, count } = await db
+      .from("f2_lead")
+      .select("id,nome,telefone,origem_negocio_id,corretor_nome", { count: "exact" })
+      .is("descartado_em", null)
+      .or(filtros.join(","))
+      .order("nome", { ascending: true })
+      .range(inicio, inicio + TAMANHO_PAGINA_FUNIL - 1);
+    if (error) {
+      const semPermissao = error.code === "42501" || /permission|policy|acesso negado/i.test(error.message);
+      return Response.json({ error: semPermissao ? "Acesso negado à carteira." : "Não foi possível pesquisar a carteira." }, { status: semPermissao ? 403 : 502 });
+    }
+    const leads = (data ?? []).map((lead) => ({
+      id: String(lead.id), nome: String(lead.nome), telefoneMascarado: telefoneMascarado(lead.telefone),
+      negocioId: Number(lead.origem_negocio_id), corretorNome: lead.corretor_nome ? String(lead.corretor_nome) : null,
+    }));
+    return Response.json({ leads, pagina, curta: false, temMais: inicio + leads.length < (count ?? 0) });
+  }
 
   /* Mesmo desvio de tipagem que /api/funil2 usa: database.types.ts é gerado e
      ainda não conhece esta função. Regerar o arquivo inteiro por causa de uma

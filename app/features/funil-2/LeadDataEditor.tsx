@@ -23,7 +23,7 @@ export function LeadDataEditor({ accessToken, lead, onSaved, onDirtyChange }: {
 }) {
   const [referencia, setReferencia] = useState<Formulario>(() => formularioDoLead(lead));
   const [form, setForm] = useState<Formulario>(() => formularioDoLead(lead));
-  const [expectedUpdatedAt, setExpectedUpdatedAt] = useState<string | null>(lead.lead_atualizado_em ?? null);
+  const [expectedUpdatedAt, setExpectedUpdatedAt] = useState<string | null>(lead.versaoDados ?? null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [conflito, setConflito] = useState<Formulario | null>(null);

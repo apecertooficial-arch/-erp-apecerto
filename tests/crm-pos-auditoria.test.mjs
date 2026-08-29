@@ -86,10 +86,11 @@ test("falhas auxiliares ficam visíveis sem inventar um fallback", () => {
   assert.match(mobile, /Sara indisponível/);
 });
 
-test("Kanban desktop usa a densidade aprovada sem duplicar contagem no cabeçalho", () => {
-  assert.match(css, /f2-coluna[^}]*flex:0 0 240px/);
+test("Kanban desktop usa largura medida sem duplicar contagem no cabeçalho", () => {
+  assert.match(css, /f2-coluna[^}]*flex:0 0 276px/);
   assert.match(css, /grid-template-columns:8px minmax\(0,1fr\) auto auto 28px 28px/);
   assert.doesNotMatch(workspace, /\{daEtapa\.length\} negócios ·/);
+  assert.match(workspace, /daEtapa\.slice\(0, limiteDaEtapa\)/);
 });
 
 test("menu Mais mobile replica as quatro áreas aprovadas sem duplicar a navegação inferior", () => {

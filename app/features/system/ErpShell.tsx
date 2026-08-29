@@ -134,6 +134,10 @@ export function ErpShell({ children }: { children: ReactNode }) {
         </div>
       </header>
 
+      {/* O aviso de versão entra no fluxo do shell. RegistroPwa usa este alvo
+          para nunca cobrir cartões, formulários ou a barra móvel. */}
+      <div id="erp-update-region" className="erp-update-region" aria-live="polite" />
+
       <div className="app-mobile-scroll">{children}</div>
 
       <nav className="app-bottom-nav" aria-label="Navegação principal">

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 
 /* Registro do service worker.
  *
@@ -85,8 +86,9 @@ export function RegistroPwa() {
   }, []);
 
   if (!precisaRecarregar) return null;
+  const alvoDoShell = typeof document === "undefined" ? null : document.getElementById("erp-update-region");
 
-  return (
+  const aviso = (
     <div className="erp-update-toast" role="status" aria-live="polite">
       <span>Versão nova instalada.</span>
       <button
@@ -97,6 +99,7 @@ export function RegistroPwa() {
       </button>
     </div>
   );
+  return alvoDoShell ? createPortal(aviso, alvoDoShell) : aviso;
 }
 
 /* Prefixos que pertencem ao ApeCerto. Tudo fora desta lista fica intacto.
