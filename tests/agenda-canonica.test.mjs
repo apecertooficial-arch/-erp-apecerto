@@ -19,8 +19,7 @@ test("desktop e mobile consomem somente a API canônica da Agenda", () => {
   assert.doesNotMatch(desktop, /\/api\/crm/);
   assert.match(mobile, /\/api\/agenda\?/);
   assert.doesNotMatch(mobile, /\/api\/crm/);
-  assert.match(chat, /\/api\/agenda/);
-  assert.doesNotMatch(chat, /createVisit[\s\S]{0,500}\/api\/crm/);
+  assert.doesNotMatch(chat, /\/api\/agenda|createVisit/);
 });
 
 test("Agenda do app fica visível no breakpoint mobile", () => {
@@ -31,22 +30,27 @@ test("Agenda do app fica visível no breakpoint mobile", () => {
   assert.doesNotMatch(appMobileCss.slice(agendaVisivel + 120), /\.ape-agenda\s*\{\s*display:\s*none/);
 });
 
-test("escritas de visita existem somente na Agenda; API geral do CRM não existe", () => {
-  for (const action of ["createVisit", "updateVisit", "updateVisitStatus", "gerenteDisponibilidade"]) {
-    assert.match(agendaApi, new RegExp(`action === "${action}"`));
-  }
+test("Agenda administra visitas existentes e a criação fica no card do CRM", () => {
+  assert.match(agendaApi, /action === "updateVisitStatus"/);
+  assert.match(agendaApi, /action === "updateVisit"/);
+  assert.match(agendaApi, /action === "visitAvailability"/);
+  assert.doesNotMatch(agendaApi, /action === "createVisit"|action === "gerenteDisponibilidade"/);
+  assert.match(funilApi, /action === "salvarVisita"/);
+  assert.match(funilApi, /action === "visitaDisponibilidade"/);
+  assert.doesNotMatch(chat, /openQuickAction\("visit"\)|action: "createVisit"/);
   assert.equal(existsSync(new URL("../app/api/crm/route.ts", import.meta.url)), false);
 });
 
-test("nova visita só aceita negócio presente na carteira ativa do Funil 2", () => {
-  assert.match(agendaApi, /from\("f2_lead"\)/);
-  assert.match(agendaApi, /is\("descartado_em", null\)/);
-  assert.match(agendaApi, /O negócio não está ativo no Funil 2\.0\./);
+test("nova visita só aceita lead operável no Funil 2", () => {
+  assert.match(funilApi, /f2_disponibilidade_visitas/);
+  assert.match(funilApi, /p_lead_id: leadId/);
+  assert.match(funilDesktop, /modal === "visita" && lead/);
 });
 
-test("Agenda e CRM 2.0 gravam a mesma visita canônica", () => {
+test("status na Agenda e agendamento no CRM usam a visita canônica", () => {
   const calls = agendaApi.match(/rpc\("f2_salvar_visita"/g) ?? [];
-  assert.equal(calls.length, 3, "criar, editar e alterar status devem passar pela mesma regra do Funil 2.0");
+  assert.equal(calls.length, 1, "alterar status deve passar pela mesma regra do Funil 2.0");
+  assert.match(agendaApi, /rpc\("f2_reagendar_visita"/);
   assert.doesNotMatch(agendaApi, /from\("visitas"\)\.insert/);
   assert.match(agendaApi, /p_lead_id: card\.id/);
   assert.match(agendaApi, /p_id: visitId/);
@@ -88,11 +92,11 @@ test("web e app explicam cada dado ausente antes de tentar agendar", () => {
   );
 });
 
-test("confirmar visita nunca fica silenciosamente bloqueado na web ou no app", () => {
-  assert.match(funilDesktop, /className="f2-modal-primary" disabled=\{busy\}/);
-  assert.doesNotMatch(funilDesktop, /disabled=\{!podeSalvar\}/);
-  assert.match(funilMobile, /disabled=\{salvando\}>\s*\{salvando \? "Agendando…"/);
-  assert.doesNotMatch(funilMobile, /disabled=\{salvando \|\| !quando/);
+test("confirmar visita exige um horário disponível selecionado", () => {
+  assert.match(funilDesktop, /className="f2-modal-primary" disabled=\{busy \|\| !inicio\}/);
+  assert.match(funilMobile, /disabled=\{salvando \|\| !quando\}/);
+  assert.match(funilDesktop, /<HorariosVisita/);
+  assert.match(funilMobile, /<HorariosVisita/);
 });
 
 test("app mostra a mensagem humana da API e os dois formatos confirmam o destino", () => {

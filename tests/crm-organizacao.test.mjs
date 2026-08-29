@@ -14,14 +14,16 @@ const layout = ler("../app/layout.tsx");
 const integridadeMigration = ler("../supabase/migrations/20260825201000_funil_2_integridade_seguranca_performance.sql");
 const modelo = ler("../app/features/funil-2/modelo.ts");
 const temperaturaMigration = ler("../supabase/migrations/20260825150000_funil_2_temperatura_manual_auditavel.sql");
+const boardPrimitives = ler("../app/features/funil-2/Funil2BoardPrimitives.tsx");
 
-test("desktop replica a ficha aprovada em três áreas e abre a conversa sob demanda", () => {
-  for (const rotulo of ["Atendimento", "Notas", "Histórico"]) assert.ok(desktop.includes(rotulo));
+test("desktop replica a ficha aprovada em sete áreas e abre a conversa sob demanda", () => {
+  for (const rotulo of ["Atendimento", "Histórico", "Atividades", "Negócios", "Imóveis", "Arquivos", "Dados do lead"]) assert.ok(desktop.includes(rotulo));
   assert.match(desktop, /role="tablist"/);
   assert.match(desktop, /Chat/);
   assert.match(desktop, /Agendar visita/);
   assert.match(desktop, /Mais ações/);
-  assert.match(desktop, /Gerar negociação/);
+  assert.match(desktop, /Iniciar negociação/);
+  assert.match(desktop, /Novo negócio operacional/);
   assert.match(desktop, /Adicionar tag/);
   assert.match(desktop, /Descartar lead/);
   assert.match(desktop, /Funil2ConversationDrawer/);
@@ -42,10 +44,10 @@ test("temperatura oficial pode ser filtrada e alterada com persistência auditá
   for (const codigo of [desktop, mobile]) {
     assert.match(codigo, /rotuloTemperatura/);
     assert.match(codigo, /Aguardando leitura/);
-    for (const rotulo of ["Quente", "Negociando", "Morno", "Frio", "Aguardando leitura"]) assert.ok(codigo.includes(rotulo));
     assert.match(codigo, /atualizarTemperatura/);
   }
-  assert.match(desktop, /f2-temperatura-filtros/);
+  for (const rotulo of ["Quente", "Negociando", "Morno", "Frio", "Aguardando leitura"]) assert.ok(boardPrimitives.includes(rotulo));
+  assert.match(boardPrimitives, /f2-temperatura-filtros/);
   assert.match(desktop, /f2-temperatura-popover/);
   assert.match(mobile, /ape-temperatura-filtros/);
   assert.match(mobile, /ape-temperatura-popover/);
@@ -62,7 +64,7 @@ test("visita e negociação abertas pela ficha não pedem o cliente de novo", ()
   assert.match(desktop, /leadFoco=\{lead\}/);
   assert.match(desktop, /CLIENTE DESTA VISITA/);
   assert.match(desktop, /CLIENTE DESTA NEGOCIAÇÃO/);
-  assert.match(desktop, /function SeletorLead/);
+  assert.match(desktop, /leadFoco:\s*LeadFunil2/);
   assert.doesNotMatch(desktop, /<label>Lead<select/);
 });
 
@@ -170,7 +172,8 @@ test("funil e listas não repetem frases longas entre ação e prazo", () => {
 test("Meu Dia e Todos os Leads usam temperatura e próxima ação como informação decisória", () => {
   assert.match(desktop, /f2-dia-colunas[\s\S]*Temperatura[\s\S]*Próxima ação[\s\S]*Tempo/);
   assert.match(desktop, /f2-tabela-cab[\s\S]*Temperatura[\s\S]*Próxima ação/);
-  assert.match(desktop, /f2-lead-chip temperatura/);
+  assert.ok((desktop.match(/<ChipTemperatura lead=/g) ?? []).length >= 2);
+  assert.match(boardPrimitives, /f2-lead-chip temperatura/);
 });
 
 test("cartão móvel aprovado é compacto e não despeja metadados técnicos na fila", () => {

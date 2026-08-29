@@ -28,6 +28,7 @@ import { IniciarNegociacaoModal } from "./IniciarNegociacaoModal";
 import { LeadDataEditor } from "./LeadDataEditor";
 import { LeadSearchPicker } from "./LeadSearchPicker";
 import { Funil2MobileEmpty, Funil2MobileError, Funil2MobileLoading, Funil2MobileNavigation } from "./Funil2MobileChrome";
+import { HorariosVisita } from "./HorariosVisita";
 import { ModalPescar } from "./Funil2Workspace";
 import { SalesProcessView } from "../sales/SalesProcessWorkspace";
 import { getBrowserSupabaseClient } from "../../lib/supabase/browser";
@@ -326,8 +327,6 @@ function AgendarVisitaMobile({
         body: JSON.stringify({
           action: "salvarVisita",
           leadId: lead.id,
-          // `datetime-local` não carrega fuso. O servidor converte esta hora
-          // de parede usando America/Sao_Paulo, independentemente do aparelho.
           inicioEm: quando,
           imovel: unidade.trim() || "",
           empreendimentoId: empreendimento || null,
@@ -373,26 +372,32 @@ function AgendarVisitaMobile({
       <input type="text" value={unidade} placeholder="Ex.: apto 402" onChange={(e) => { setUnidade(e.target.value); setErro(""); }} />
     </label>
 
-    <label>Data e hora
-      <input type="datetime-local" value={quando} onChange={(e) => { setQuando(e.target.value); setErro(""); }} />
-    </label>
-
     <label className="f2m-agendar-check">
-      <input type="checkbox" checked={comGerente} onChange={(e) => { setComGerente(e.target.checked); setErro(""); }} />
+      <input type="checkbox" checked={comGerente} onChange={(e) => { setComGerente(e.target.checked); setQuando(""); setErro(""); }} />
       Quero o gerente presente
     </label>
 
     {comGerente && <label>Qual gerente
-      <select value={gerente} onChange={(e) => { setGerente(e.target.value); setErro(""); }}>
+      <select value={gerente} onChange={(e) => { setGerente(e.target.value); setQuando(""); setErro(""); }}>
         <option value="">— escolha —</option>
         {gerentes.map((g) => <option key={g.id} value={g.id}>{g.nome}</option>)}
       </select>
     </label>}
 
+    <HorariosVisita
+      accessToken={accessToken}
+      leadId={lead.id}
+      comGerente={comGerente}
+      gerenteId={gerente ? Number(gerente) : null}
+      value={quando}
+      onChange={(valor) => { setQuando(valor); setErro(""); }}
+      disabled={salvando}
+    />
+
     {erro && <p className="f2m-agendar-erro" role="alert">{erro}</p>}
     <div className="f2m-agendar-acoes">
       <button type="button" className="f2m-agendar-nao" onClick={() => { setAberto(false); onFechar?.(); }} disabled={salvando}>Cancelar</button>
-      <button type="button" className="f2m-agendar-ok" onClick={() => void salvar()} disabled={salvando}>
+      <button type="button" className="f2m-agendar-ok" onClick={() => void salvar()} disabled={salvando || !quando}>
         {salvando ? "Agendando…" : "Confirmar visita"}
       </button>
     </div>

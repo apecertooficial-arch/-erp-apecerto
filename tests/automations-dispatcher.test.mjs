@@ -55,6 +55,34 @@ const checkpointBackfill = readFileSync(
   ),
   "utf8",
 );
+const optionalAlertsMigration = readFileSync(
+  new URL(
+    "../supabase/migrations/20260829002000_central_dispatcher_alertas_opcionais.sql",
+    import.meta.url,
+  ),
+  "utf8",
+);
+const actionObservabilityMigration = readFileSync(
+  new URL(
+    "../supabase/migrations/20260829003000_central_sara_erro_acao_observavel.sql",
+    import.meta.url,
+  ),
+  "utf8",
+);
+const saraCheckpointEventMigration = readFileSync(
+  new URL(
+    "../supabase/migrations/20260829004000_central_sara_evento_checkpoint_permitido.sql",
+    import.meta.url,
+  ),
+  "utf8",
+);
+const heartbeatActiveMigration = readFileSync(
+  new URL(
+    "../supabase/migrations/20260829005000_central_dispatcher_heartbeat_confirma_ativo.sql",
+    import.meta.url,
+  ),
+  "utf8",
+);
 const activeRenderBlueprint = readFileSync(
   new URL("../render.yaml", import.meta.url),
   "utf8",
@@ -212,6 +240,10 @@ test("lease e heartbeat sao renovados durante processamento longo", () => {
   assert.match(workerEntry, /AbortController/);
 });
 
+test("espera ociosa mantem o processo do dispatcher vivo", () => {
+  assert.doesNotMatch(runtimeSource, /timer\.unref/);
+});
+
 test("servico Render existente hospeda o dispatcher sem expor segredo ao cliente", () => {
   assert.match(activeRenderBlueprint, /SUPABASE_SERVICE_ROLE_KEY/);
   assert.doesNotMatch(activeRenderBlueprint, /NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY/);
@@ -235,6 +267,40 @@ test("worker substitui o relogio e a presenca antes de remover os crons comercia
   assert.match(cohostMigration, /cron\.unschedule/);
   assert.match(cohostMigration, /COHOST_CUTOVER_BLOCKED/);
   assert.match(cohostMigration, /heartbeat_em<clock_timestamp\(\)-interval '45 seconds'/);
+});
+
+test("cutover aceita backlog circular somente quando limitado aos fluxos canonicos", () => {
+  assert.match(cutoverMigration, /v_pendentes_due>500/);
+  assert.match(cutoverMigration, /automacao_id not in \(49,65,66\)/);
+  assert.match(cutoverMigration, /v_pendentes_fora_escopo>0/);
+  assert.match(cutoverMigration, /checkpoint-backfill:%/);
+  assert.match(cutoverMigration, /__motor_priority.*50/);
+});
+
+test("dispatcher nao depende da instalacao previa do modulo opcional de alertas", () => {
+  assert.match(infrastructureMigration, /to_regprocedure\('public\.motor_resolver_alerta_fila/);
+  assert.match(infrastructureMigration, /to_regprocedure\('public\.motor_alertar_fila_sem_elegiveis/);
+  assert.match(optionalAlertsMigration, /1708a1ff419d274c28592e6420ba367c/);
+  assert.match(optionalAlertsMigration, /DISPATCHER_ALERT_PATCH_FAILED/);
+});
+
+test("falha atomica da acao preserva a causa sem liberar execucao parcial", () => {
+  assert.match(actionObservabilityMigration, /4c1b3251f4efc73244cf71ef3080a1c7/);
+  assert.match(actionObservabilityMigration, /AUTOMATION_MODULE_FAILED: action:/);
+  assert.match(actionObservabilityMigration, /_module_error/);
+  assert.doesNotMatch(actionObservabilityMigration, /motor_rodar\(/);
+});
+
+test("historico aceita o evento auditavel do checkpoint da Sara", () => {
+  assert.match(saraCheckpointEventMigration, /sara_reavaliou/);
+  assert.match(saraCheckpointEventMigration, /sara_checkpoint_agendado/);
+  assert.match(saraCheckpointEventMigration, /SARA_EVENT_TYPE_STALE_VERSION/);
+});
+
+test("heartbeat confirma o worker ativo depois de restart gracioso", () => {
+  assert.match(heartbeatActiveMigration, /worker_persistente_ativo/);
+  assert.match(heartbeatActiveMigration, /v_estado\.modo='worker'/);
+  assert.match(heartbeatActiveMigration, /heartbeat_em=clock_timestamp/);
 });
 
 test("backfill cria checkpoints sem replay, mensagem ou exclusao de historico", () => {

@@ -57,7 +57,6 @@ function rpcError(name, error) {
 const defaultSleep = (milliseconds, signal) => new Promise((resolve) => {
   if (signal?.aborted) return resolve();
   const timer = setTimeout(resolve, milliseconds);
-  timer.unref?.();
   signal?.addEventListener("abort", () => {
     clearTimeout(timer);
     resolve();

@@ -1,17 +1,17 @@
 /**
  * API canônica da Agenda.
  *
- * Mobile e desktop leem o mesmo endpoint. O modo workspace acrescenta os
- * catálogos necessários para editar visitas; os negócios disponíveis vêm
- * somente da carteira ativa do Funil 2.0, nunca da base histórica de recall.
+ * Mobile e desktop leem o mesmo endpoint. Visitas novas nascem na ficha do
+ * lead no CRM; compromissos existentes podem ser reagendados no calendário.
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createServerSupabaseClient } from "../../lib/supabase/server";
-import type { TablesUpdate } from "../../lib/supabase/database.types";
 import { denyIfCannot, resolveEffectiveAccess } from "../../lib/supabase/authz";
 import { instanteSaoPaulo } from "../../lib/timezone";
 
 export const dynamic = "force-dynamic";
+
+const GESTAO_AGENDA = new Set(["admin", "gestor", "gerente", "diretor", "executivo", "gestor_comercial", "gestor_equipe"]);
 
 type Authenticated = {
   supabase: ReturnType<typeof createServerSupabaseClient>;
@@ -31,11 +31,6 @@ function texto(value: unknown, max = 300) {
   return typeof value === "string" ? value.trim().slice(0, max) : "";
 }
 
-function inteiroPositivo(value: unknown) {
-  const parsed = Number(value);
-  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null;
-}
-
 function lerData(bruto: string | null): string | null {
   if (!bruto || !/^\d{4}-\d{2}-\d{2}$/.test(bruto)) return null;
   return Number.isNaN(Date.parse(bruto)) ? null : bruto;
@@ -51,6 +46,14 @@ export async function GET(request: Request) {
 
   const params = new URL(request.url).searchParams;
   const supabase = auth.supabase as unknown as SupabaseClient;
+  const access = await resolveEffectiveAccess(auth.supabase, auth.user.id);
+  if (!access.resolved) return Response.json({ error: "Perfil operacional não encontrado." }, { status: 403 });
+  const gestao = GESTAO_AGENDA.has(access.role.toLowerCase());
+  const corretorAtual = gestao ? { data: null, error: null } : await auth.supabase.rpc("f2_corretor_atual");
+  const corretorId = corretorAtual.data == null ? null : Number(corretorAtual.data);
+  if (!gestao && (!Number.isSafeInteger(corretorId) || Number(corretorId) < 1)) {
+    return Response.json({ error: "Corretor não vinculado à sessão." }, { status: 403 });
+  }
   const agenda = await supabase.rpc("ncrm_agenda_corretor", {
     p_data: lerData(params.get("data")),
     p_periodo: lerPeriodo(params.get("periodo")),
@@ -61,18 +64,31 @@ export async function GET(request: Request) {
   if (result.ok === false) {
     return Response.json({ ok: false, erro: result.erro }, { status: result.erro === "nao_autenticado" ? 403 : 409 });
   }
-  if (params.get("workspace") !== "1") return Response.json(result);
+  if (params.get("workspace") !== "1") {
+    const itens = Array.isArray(result.itens) ? result.itens as Array<Record<string, unknown>> : [];
+    return Response.json(gestao
+      ? { ...result, scope: "equipe" }
+      : { ok: true, scope: "propria", itens: itens.filter((item) => item.meu === true) });
+  }
 
-  const [cards, brokers, products, visits, tasks, gerentes, profile] = await Promise.all([
-    auth.supabase.from("f2_lead").select("origem_negocio_id").is("descartado_em", null).not("origem_negocio_id", "is", null),
-    auth.supabase.rpc("listar_corretores_transferencia"),
+  const cardsQuery = auth.supabase.from("f2_lead").select("origem_negocio_id")
+    .is("descartado_em", null).not("origem_negocio_id", "is", null);
+  const visitsQuery = auth.supabase.from("visitas")
+    .select("id,lead_id,negocio_id,corretor_id,cliente_nome,produto,empreendimento_id,data,hora_inicio,hora_fim,local,observacoes,com_gerente,gerente_id,status")
+    .order("data").order("hora_inicio");
+  const tasksQuery = auth.supabase.from("crm_tarefas")
+    .select("id,lead_id,corretor_id,titulo,vencimento,concluida,prioridade").order("vencimento");
+  const [cards, brokers, products, visits, tasks, gerentes] = await Promise.all([
+    gestao ? cardsQuery : cardsQuery.eq("corretor_id", corretorId!),
+    gestao
+      ? auth.supabase.rpc("listar_corretores_transferencia")
+      : auth.supabase.from("corretores").select("id,nome").eq("id", corretorId!),
     auth.supabase.from("empreendimentos").select("id,nome").eq("rascunho", false).order("nome").limit(500),
-    auth.supabase.from("visitas").select("id,lead_id,negocio_id,corretor_id,cliente_nome,produto,empreendimento_id,data,hora_inicio,hora_fim,local,observacoes,com_gerente,gerente_id,status").order("data").order("hora_inicio"),
-    auth.supabase.from("crm_tarefas").select("id,lead_id,corretor_id,titulo,vencimento,concluida,prioridade").order("vencimento"),
+    gestao ? visitsQuery : visitsQuery.eq("corretor_id", corretorId!),
+    gestao ? tasksQuery : tasksQuery.eq("corretor_id", corretorId!),
     auth.supabase.from("gerentes").select("id,nome,geral,corretor_id").eq("ativo", true).order("geral", { ascending: false }),
-    auth.supabase.from("usuarios").select("role").eq("id", auth.user.id).maybeSingle(),
   ]);
-  const firstError = [cards, brokers, products, visits, tasks, gerentes, profile].find((item) => item.error)?.error;
+  const firstError = [cards, brokers, products, visits, tasks, gerentes].find((item) => item.error)?.error;
   if (firstError) return Response.json({ error: "Não foi possível carregar os dados da agenda." }, { status: 502 });
 
   const negocioIds = [...new Set((cards.data ?? []).map((item) => Number(item.origem_negocio_id)).filter(Number.isSafeInteger))];
@@ -87,8 +103,13 @@ export async function GET(request: Request) {
     : { data: [], error: null };
   if (leads.error) return Response.json({ error: "Não foi possível carregar os clientes ativos." }, { status: 502 });
 
+  const itensSeguros = gestao
+    ? (Array.isArray(result.itens) ? result.itens : [])
+    : (Array.isArray(result.itens) ? (result.itens as Array<Record<string, unknown>>).filter((item) => item.meu === true) : []);
   return Response.json({
-    ...result,
+    ok: true,
+    itens: itensSeguros,
+    scope: gestao ? "equipe" : "propria",
     brokers: brokers.data ?? [],
     leads: leads.data ?? [],
     deals: deals.data ?? [],
@@ -96,137 +117,102 @@ export async function GET(request: Request) {
     visits: visits.data ?? [],
     tasks: tasks.data ?? [],
     gerentes: gerentes.data ?? [],
-    role: profile.data?.role ?? "",
+    role: access.role,
   });
 }
 
 export async function PATCH(request: Request) {
   const auth = await autenticar(request);
   if (!auth) return Response.json({ error: "Sessão inválida ou expirada." }, { status: 401 });
+  const db = auth.supabase;
+  const rpcDb = db as unknown as SupabaseClient;
   const body = await request.json().catch(() => null) as Record<string, unknown> | null;
   if (!body) return Response.json({ error: "Corpo inválido." }, { status: 400 });
 
   const action = texto(body.action, 60);
   const access = await resolveEffectiveAccess(auth.supabase, auth.user.id);
-  const guard = (verb: "criar" | "editar", message: string) =>
+  if (!access.resolved) return Response.json({ error: "Perfil operacional não encontrado." }, { status: 403 });
+  const guard = (verb: "editar", message: string) =>
     denyIfCannot(access, [["calendario", verb], ["crm", verb]], message);
 
-  if (action === "createVisit") {
-    const leadId = inteiroPositivo(body.leadId);
-    const dealId = inteiroPositivo(body.dealId);
-    const date = texto(body.date, 10);
-    const startTime = texto(body.startTime, 8);
-    const productId = texto(body.productId, 40) || null;
-    if (!leadId || !dealId || !date || !startTime) return Response.json({ error: "Informe data e horário da visita." }, { status: 422 });
-    const denied = guard("criar", "Você não tem permissão para agendar visitas.");
-    if (denied) return denied;
+  async function visitaOperavel(visitId: string) {
+    const { data: visit, error } = await db.from("visitas")
+      .select("id,negocio_id,corretor_id,data,hora_inicio,hora_fim,produto,empreendimento_id,unidade,observacoes,status,com_gerente,gerente_id")
+      .eq("id", visitId).maybeSingle();
+    if (error) return { response: Response.json({ error: "Não foi possível consultar a visita." }, { status: 502 }) };
+    if (!visit) return { response: Response.json({ error: "Visita não encontrada." }, { status: 404 }) };
 
-    const [{ data: lead }, { data: deal }, { data: card }, { data: product }] = await Promise.all([
-      auth.supabase.from("leads").select("nome").eq("id", leadId).maybeSingle(),
-      auth.supabase.from("negocios").select("corretor_id").eq("id", dealId).eq("lead_id", leadId).maybeSingle(),
-      auth.supabase.from("f2_lead").select("id").eq("origem_negocio_id", dealId).is("descartado_em", null).maybeSingle(),
-      productId ? auth.supabase.from("empreendimentos").select("id,nome,endereco,numero,bairro,cidade").eq("id", productId).maybeSingle() : Promise.resolve({ data: null }),
-    ]);
-    if (!lead || !deal || !card) return Response.json({ error: "O negócio não está ativo no Funil 2.0." }, { status: 404 });
-
-    const local = texto(body.local, 300) || (product ? [product.endereco, product.numero, product.bairro, product.cidade].filter(Boolean).join(", ") : null);
-    const comGerente = body.withManager === true;
-    let gerenteId: number | null = null;
-    if (comGerente) {
-      gerenteId = inteiroPositivo(body.gerenteId);
-      if (!gerenteId) {
-        const { data: geral } = await auth.supabase.from("gerentes").select("id").eq("ativo", true).eq("geral", true).maybeSingle();
-        gerenteId = geral?.id ?? null;
+    const gestao = GESTAO_AGENDA.has(access.role.toLowerCase());
+    if (!gestao) {
+      const { data: atual, error: erroAtual } = await db.rpc("f2_corretor_atual");
+      const corretorId = Number(atual);
+      if (erroAtual || !Number.isSafeInteger(corretorId) || corretorId < 1 || visit.corretor_id !== corretorId) {
+        return { response: Response.json({ error: "Você só pode alterar as suas visitas." }, { status: 403 }) };
       }
     }
-    const inicioEm = instanteSaoPaulo(date, startTime);
-    if (!inicioEm) return Response.json({ error: "Data ou horário inválido." }, { status: 422 });
-    const endTime = texto(body.endTime, 8);
-    const fimEm = endTime ? instanteSaoPaulo(date, endTime) : null;
-    const { data: result, error } = await auth.supabase.rpc("f2_salvar_visita", {
-      p_id: null, p_lead_id: card.id, p_inicio_em: inicioEm,
-      p_imovel: product?.nome ?? (texto(body.productName, 180) || local || "Visita"),
-      p_status: "agendada", p_observacao: texto(body.observations, 500) || null,
-      p_empreendimento_id: product?.id ?? null, p_unidade: null,
-      p_com_gerente: comGerente, p_gerente_id: gerenteId, p_fim_em: fimEm,
+    if (!visit.negocio_id) return { response: Response.json({ error: "A visita não está ligada a um negócio." }, { status: 409 }) };
+    const { data: card, error: erroCard } = await db.from("f2_lead").select("id")
+      .eq("origem_negocio_id", visit.negocio_id).is("descartado_em", null).maybeSingle();
+    if (erroCard) return { response: Response.json({ error: "Não foi possível consultar o atendimento." }, { status: 502 }) };
+    if (!card) return { response: Response.json({ error: "A visita não está ligada a um negócio ativo no Funil 2.0." }, { status: 409 }) };
+    return { visit, card };
+  }
+
+  if (action === "visitAvailability") {
+    const visitId = texto(body.visitId, 40);
+    const date = lerData(texto(body.data, 10));
+    if (!visitId || !date) return Response.json({ error: "Visita ou data inválida." }, { status: 422 });
+    const denied = guard("editar", "Você não tem permissão para reagendar visitas.");
+    if (denied) return denied;
+    const lookup = await visitaOperavel(visitId);
+    if ("response" in lookup) return lookup.response;
+    const { data: disponibilidade, error } = await rpcDb.rpc("f2_disponibilidade_visitas", {
+      p_lead_id: lookup.card.id,
+      p_data: date,
+      p_gerente_id: lookup.visit.com_gerente === true ? lookup.visit.gerente_id : null,
+      p_visita_id: visitId,
     } as never);
-    const outcome = result as { ok?: boolean; id?: string; erro?: string } | null;
-    if (error || !outcome?.ok) return Response.json({ error: error?.message ?? `Não foi possível agendar a visita (${outcome?.erro ?? "erro desconhecido"}).` }, { status: 502 });
-    return Response.json({ success: true, visitaId: outcome.id ?? null });
+    if (error) return Response.json({ error: "Não foi possível consultar os horários." }, { status: 502 });
+    const resultado = (disponibilidade ?? {}) as { ok?: boolean; horarios?: Array<{ inicio?: unknown; fim?: unknown; estado?: unknown }> };
+    if (resultado.ok !== true) return Response.json({ error: "Não foi possível consultar os horários." }, { status: 409 });
+    const estados = new Set(["disponivel", "indisponivel", "meu"]);
+    const horarios = (resultado.horarios ?? []).flatMap((horario) => {
+      const inicio = typeof horario.inicio === "string" && /^\d{2}:\d{2}$/.test(horario.inicio) ? horario.inicio : null;
+      const fim = typeof horario.fim === "string" && /^\d{2}:\d{2}$/.test(horario.fim) ? horario.fim : null;
+      const estado = typeof horario.estado === "string" && estados.has(horario.estado) ? horario.estado : null;
+      return inicio && fim && estado ? [{ inicio, fim, estado }] : [];
+    });
+    return Response.json({ ok: true, data: date, duracao_min: 60, horarios });
   }
 
   if (action === "updateVisit") {
     const visitId = texto(body.visitId, 40);
-    if (!visitId) return Response.json({ error: "Visita inválida." }, { status: 400 });
-    const denied = guard("editar", "Você não tem permissão para editar visitas.");
+    const date = lerData(texto(body.date, 10));
+    const startTime = texto(body.startTime, 8);
+    if (!visitId || !date || !/^\d{2}:\d{2}(?::\d{2})?$/.test(startTime)) {
+      return Response.json({ error: "Informe uma data e um horário válidos." }, { status: 422 });
+    }
+    const denied = guard("editar", "Você não tem permissão para reagendar visitas.");
     if (denied) return denied;
-    const { data: current } = await auth.supabase.from("visitas").select("id,negocio_id,data,hora_inicio,hora_fim,produto,empreendimento_id,unidade,observacoes,status,com_gerente,gerente_id").eq("id", visitId).maybeSingle();
-    if (!current) return Response.json({ error: "Visita não encontrada." }, { status: 404 });
-
-    const isManager = access.role === "admin" || access.role === "gestor";
-    const patch: TablesUpdate<"visitas"> = { atualizado_em: new Date().toISOString() };
-    if (typeof body.date === "string" && body.date) patch.data = texto(body.date, 10);
-    if (body.startTime !== undefined) patch.hora_inicio = texto(body.startTime, 8) || null;
-    if (body.endTime !== undefined) patch.hora_fim = texto(body.endTime, 8) || null;
-    if (body.local !== undefined) patch.local = texto(body.local, 300) || null;
-    if (body.observations !== undefined) patch.observacoes = texto(body.observations, 1200) || null;
-    if (body.productId !== undefined) {
-      const productId = texto(body.productId, 40) || null;
-      const { data: product } = productId
-        ? await auth.supabase.from("empreendimentos").select("id,nome,endereco,numero,bairro,cidade").eq("id", productId).maybeSingle()
-        : { data: null };
-      patch.empreendimento_id = product?.id ?? null;
-      patch.produto = product?.nome ?? null;
-      if (!texto(body.local, 300) && product) patch.local = [product.endereco, product.numero, product.bairro, product.cidade].filter(Boolean).join(", ") || null;
+    const lookup = await visitaOperavel(visitId);
+    if ("response" in lookup) return lookup.response;
+    if (!["agendada", "confirmada"].includes(String(lookup.visit.status).toLowerCase())) {
+      return Response.json({ error: "Somente visitas ativas podem ser reagendadas." }, { status: 409 });
     }
-    let comGerente = current.com_gerente === true;
-    if (isManager && body.withManager !== undefined) {
-      comGerente = body.withManager === true;
-      patch.com_gerente = comGerente;
-    }
-    if (comGerente) {
-      const chosen = inteiroPositivo(body.gerenteId);
-      if (isManager && chosen) patch.gerente_id = chosen;
-      else if (current.gerente_id == null) {
-        const { data: geral } = await auth.supabase.from("gerentes").select("id").eq("ativo", true).eq("geral", true).maybeSingle();
-        patch.gerente_id = geral?.id ?? null;
-      }
-    } else patch.gerente_id = null;
-    if (!current.negocio_id) return Response.json({ error: "A visita não está ligada a um negócio." }, { status: 409 });
-    const { data: card } = await auth.supabase.from("f2_lead").select("id").eq("origem_negocio_id", current.negocio_id).is("descartado_em", null).maybeSingle();
-    if (!card) return Response.json({ error: "A visita não está ligada a um negócio ativo no Funil 2.0." }, { status: 409 });
-    const merged = { ...current, ...patch };
-    const { data: result, error } = await auth.supabase.rpc("f2_salvar_visita", {
-      p_id: visitId, p_lead_id: card.id,
-      p_inicio_em: merged.hora_inicio ? instanteSaoPaulo(String(merged.data), String(merged.hora_inicio)) : null,
-      p_fim_em: merged.hora_fim ? instanteSaoPaulo(String(merged.data), String(merged.hora_fim)) : null,
-      p_imovel: merged.produto || "Visita", p_status: merged.status || "agendada",
-      p_observacao: merged.observacoes, p_empreendimento_id: merged.empreendimento_id,
-      p_unidade: merged.unidade, p_com_gerente: merged.com_gerente === true,
-      p_gerente_id: merged.gerente_id,
+    const inicioEm = instanteSaoPaulo(date, startTime);
+    if (!inicioEm) return Response.json({ error: "Data ou horário inválido." }, { status: 422 });
+    const fimEm = new Date(new Date(inicioEm).getTime() + 60 * 60 * 1000).toISOString();
+    const { data: result, error } = await rpcDb.rpc("f2_reagendar_visita", {
+      p_visita_id: visitId,
+      p_inicio_em: inicioEm,
+      p_fim_em: fimEm,
     } as never);
     const outcome = result as { ok?: boolean; erro?: string } | null;
-    return error || !outcome?.ok
-      ? Response.json({ error: error?.message ?? `Não foi possível atualizar a visita (${outcome?.erro ?? "erro desconhecido"}).` }, { status: 502 })
-      : Response.json({ success: true });
-  }
-
-  if (action === "gerenteDisponibilidade") {
-    const corretorId = inteiroPositivo(body.corretorId);
-    const date = texto(body.date, 10);
-    const startTime = texto(body.startTime, 8);
-    if (!corretorId || !date || !startTime) return Response.json({ ok: true, conflitos: [] });
-    let gerenteId = inteiroPositivo(body.gerenteId);
-    if (!gerenteId) {
-      const { data } = await auth.supabase.rpc("corretor_gerente", { p_corretor: corretorId });
-      gerenteId = Number.isSafeInteger(Number(data)) ? Number(data) : null;
-    }
-    if (!gerenteId) return Response.json({ ok: true, gerente_id: null, conflitos: [] });
-    const { data: conflitos } = await auth.supabase.rpc("gerente_conflitos", {
-      p_gerente: gerenteId, p_data: date, p_inicio: startTime,
-      p_fim: texto(body.endTime, 8) || startTime, p_exclude: texto(body.visitId, 40) || undefined,
-    });
-    return Response.json({ ok: true, gerente_id: gerenteId, conflitos: conflitos ?? [] });
+    const conflito = error?.message?.includes("ocupado") || ["horario_ocupado", "corretor_ocupado", "gerente_ocupado"].includes(outcome?.erro ?? "");
+    if (error || !outcome?.ok) return Response.json({
+      error: conflito ? "Esse horário não está mais disponível. Escolha outro." : "Não foi possível reagendar a visita.",
+    }, { status: conflito ? 409 : 502 });
+    return Response.json({ success: true });
   }
 
   if (action === "updateVisitStatus") {
@@ -235,11 +221,9 @@ export async function PATCH(request: Request) {
     if (!visitId || !["agendada", "realizada", "cancelada"].includes(status)) return Response.json({ error: "Visita ou status inválido." }, { status: 400 });
     const denied = guard("editar", "Você não tem permissão para alterar o status de visitas.");
     if (denied) return denied;
-    const { data: visit } = await auth.supabase.from("visitas").select("negocio_id,data,hora_inicio,hora_fim,produto,empreendimento_id,unidade,observacoes,com_gerente,gerente_id").eq("id", visitId).maybeSingle();
-    if (!visit) return Response.json({ error: "Visita não encontrada." }, { status: 404 });
-    if (!visit.negocio_id) return Response.json({ error: "A visita não está ligada a um negócio." }, { status: 409 });
-    const { data: card } = await auth.supabase.from("f2_lead").select("id").eq("origem_negocio_id", visit.negocio_id).is("descartado_em", null).maybeSingle();
-    if (!card) return Response.json({ error: "A visita não está ligada a um negócio ativo no Funil 2.0." }, { status: 409 });
+    const lookup = await visitaOperavel(visitId);
+    if ("response" in lookup) return lookup.response;
+    const { visit, card } = lookup;
     const observation = status === "cancelada" ? (texto(body.reason, 500) || visit.observacoes) : visit.observacoes;
     const { data: result, error } = await auth.supabase.rpc("f2_salvar_visita", {
       p_id: visitId, p_lead_id: card.id,
@@ -250,9 +234,8 @@ export async function PATCH(request: Request) {
       p_com_gerente: visit.com_gerente === true, p_gerente_id: visit.gerente_id,
     } as never);
     const outcome = result as { ok?: boolean; erro?: string } | null;
-    return error || !outcome?.ok
-      ? Response.json({ error: error?.message ?? `Não foi possível alterar a visita (${outcome?.erro ?? "erro desconhecido"}).` }, { status: 502 })
-      : Response.json({ success: true });
+    if (error || !outcome?.ok) return Response.json({ error: "Não foi possível alterar a visita." }, { status: 502 });
+    return Response.json({ success: true });
   }
 
   return Response.json({ error: "Ação de agenda inválida." }, { status: 400 });

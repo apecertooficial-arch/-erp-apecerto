@@ -19,6 +19,7 @@ import { LeadDataEditor } from "./LeadDataEditor";
 import { LeadSearchPicker } from "./LeadSearchPicker";
 import { ChipTemperatura, FiltrosTemperatura, IconeConversa, IconeOperacional, InteresseLead, TEMPERATURAS, temperaturaDoLead, type TemperaturaFiltro } from "./Funil2BoardPrimitives";
 import { Funil2BoardToolbar } from "./Funil2BoardToolbar";
+import { HorariosVisita } from "./HorariosVisita";
 import { getBrowserSupabaseClient } from "../../lib/supabase/browser";
 import { dataHoraLocalSaoPaulo, dataIsoSaoPaulo, FUSO_OPERACAO } from "../../lib/timezone";
 
@@ -533,13 +534,13 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
       </main>}
 
       {!carregando && !erro && aba === "leads" && <TodosLeads leads={leads} momentos={momentosAtivos} etapas={etapasAtivas} accessToken={accessToken} busy={busy} onAbrir={(id) => setSelecionado(id)} onTrazer={(leadId, etapa, momento) => executar("trazerLeadAntigo", { leadId, etapa, momento })} />}
-      {!carregando && !erro && aba === "visitas" && <PipeVisitas visitas={visitas} leads={leads} momentos={momentosAtivos} busy={busy} onNova={() => setModal("visita")} onAbrir={setSelecionado} onSalvar={(visita) => void executar("salvarVisita", visita)} />}
+      {!carregando && !erro && aba === "visitas" && <PipeVisitas visitas={visitas} leads={leads} momentos={momentosAtivos} busy={busy} onAbrir={setSelecionado} onSalvar={(visita) => void executar("salvarVisita", visita)} />}
       {/* A Esteira canônica entra como módulo funcional, sem duplicar o Funil. */}
       {!carregando && !erro && aba === "vendas" && <main className="f2-pagina f2-esteira-oficial"><SalesProcessView accessToken={accessToken} sessionRole={profile.role} /></main>}
       {!carregando && !erro && aba === "config" && <Configuracoes etapas={etapas} momentos={momentos} operacao={operacao} sara={sara} busy={busy} onEtapa={(dados) => executar("configurarEtapa", dados)} onMomento={(dados) => executar("configurarMomento", dados)} onOperacao={(dados) => executar("configurarOperacao", dados)} />}
 
       {modal === "pescar" && <ModalPescar candidatos={aquario} busy={busy} erro={erro} onFechar={() => setModal(null)} onPescar={(negocioId) => void executar("pescar", { negocioId })} />}
-      {modal === "visita" && <ModalVisita key={lead?.id ?? "nova-visita"} accessToken={accessToken} leadFoco={lead} busy={busy} erroExterno={erro} onFechar={() => setModal(null)} onSalvar={(dados) => executar("salvarVisita", dados)} />}
+      {modal === "visita" && lead && <ModalVisita key={lead.id} accessToken={accessToken} leadFoco={lead} busy={busy} erroExterno={erro} onFechar={() => setModal(null)} onSalvar={(dados) => executar("salvarVisita", dados)} />}
       {modal === "negociacao" && <ModalNegociacao accessToken={accessToken} leads={leads} leadFoco={lead} busy={busy} onFechar={() => setModal(null)} onSalvar={(dados) => void executar("salvarNegociacao", dados)} />}
       {modal === "descartar" && lead && <ModalDescartar nome={lead.nome} busy={busy} onFechar={() => setModal(null)} onDescartar={(motivo, detalhe) => { void atualizar("descartar", { motivo, detalhe }).then((ok) => { if (ok) { setModal(null); setSelecionado(null); } }); }} />}
       {adicionarClienteAberto && <AdicionarClienteModal accessToken={accessToken} onClose={() => setAdicionarClienteAberto(false)} onCreated={(funilLeadId) => { setAdicionarClienteAberto(false); void carregar().then(() => setSelecionado(funilLeadId)); }} />}
@@ -716,7 +717,7 @@ function ModalTrazerLeadAntigo({ alvo, etapas, momentos, busy, onFechar, onConfi
   </Modal>;
 }
 
-function PipeVisitas({ visitas, leads, momentos, busy, onNova, onAbrir, onSalvar }: { visitas: VisitaFunil2[]; leads: LeadFunil2[]; momentos: MomentoFunil2[]; busy: boolean; onNova: () => void; onAbrir: (id: string) => void; onSalvar: (v: Record<string, unknown>) => void }) {
+function PipeVisitas({ visitas, leads, momentos, busy, onAbrir, onSalvar }: { visitas: VisitaFunil2[]; leads: LeadFunil2[]; momentos: MomentoFunil2[]; busy: boolean; onAbrir: (id: string) => void; onSalvar: (v: Record<string, unknown>) => void }) {
   const [modo, setModo] = useState<"agenda" | "quadro">("agenda");
   const [agora, setAgora] = useState(() => Date.now());
   useEffect(() => {
@@ -736,7 +737,7 @@ function PipeVisitas({ visitas, leads, momentos, busy, onNova, onAbrir, onSalvar
   ];
   const grupos = modo === "agenda" ? gruposAgenda : colunas.map((coluna) => ({ ...coluna, itens: visitas.filter((visita) => coluna.codigo === "encerrada" ? ["cancelada", "nao_compareceu"].includes(visita.status) : visita.status === coluna.codigo) }));
   const gruposVisiveis = grupos.filter((grupo) => grupo.itens.length > 0);
-  return <main className="f2-pagina"><CabecalhoPagina titulo="Visitas" texto="Agenda e Pipe de Visitas no mesmo lugar: veja primeiro atrasos, compromissos de hoje e próximos horários." acao="+ Nova visita" onAcao={onNova} />
+  return <main className="f2-pagina"><CabecalhoPagina titulo="Visitas" texto="Agenda e Pipe de Visitas no mesmo lugar: veja primeiro atrasos, compromissos de hoje e próximos horários. Novos agendamentos são feitos no card do lead." />
     <div className="f2-visitas-modos" role="group" aria-label="Modo de visualização das visitas"><button type="button" className={modo === "agenda" ? "ativo" : ""} onClick={() => setModo("agenda")}>Agenda</button><button type="button" className={modo === "quadro" ? "ativo" : ""} onClick={() => setModo("quadro")}>Quadro por status</button></div>
     <details className="f2-visita-regra"><summary>Entender o fluxo de visitas</summary><div><b>Fluxo automático</b><span>Agendada → confirmar 24h antes</span><span>Realizada → feedback em até 2h</span><span>Cancelada/faltou → remarcar em até 12h</span></div></details>
     <section className={`f2-pipe ${modo === "agenda" ? "f2-agenda-visitas" : ""}`}>{gruposVisiveis.map((grupo) => <div key={grupo.codigo}><header><h3>{grupo.rotulo}</h3><b>{grupo.itens.length}</b></header>{grupo.itens.map((visita) => { const lead = leads.find((item) => item.id === visita.funil_lead_id); return <VisitaCard key={visita.id} visita={visita} lead={lead} momentoRotulo={momentos.find((momento) => momento.codigo === lead?.momento_codigo)?.rotulo} agora={agora} busy={busy} onAbrir={onAbrir} onSalvar={onSalvar} />; })}</div>)}{gruposVisiveis.length === 0 && <div className="f2-sem-resultado"><b>Nenhuma visita neste recorte.</b><span>Não há pendência para mostrar agora.</span></div>}</section>
@@ -852,13 +853,12 @@ function ModalDescartar({ nome, busy, onFechar, onDescartar }: { nome: string; b
    agenda, e o choque so aparece no dia, com o cliente na porta. */
 function ModalVisita({ accessToken, leadFoco, busy, erroExterno, onFechar, onSalvar }: {
   accessToken: string;
-  leadFoco?: LeadFunil2 | null;
+  leadFoco: LeadFunil2;
   busy: boolean;
   erroExterno: string | null;
   onFechar: () => void;
   onSalvar: (d: Record<string, unknown>) => Promise<boolean>;
 }) {
-  const [leadId, setLeadId] = useState(leadFoco?.id ?? "");
   const [inicio, setInicio] = useState("");
   const [empreendimento, setEmpreendimento] = useState("");
   const [unidade, setUnidade] = useState("");
@@ -884,7 +884,7 @@ function ModalVisita({ accessToken, leadFoco, busy, erroExterno, onFechar, onSal
 
   async function salvar() {
     const mensagem = erroAgendamentoVisita({
-      leadId,
+      leadId: leadFoco.id,
       inicio,
       empreendimentoId: empreendimento,
       unidade,
@@ -894,17 +894,17 @@ function ModalVisita({ accessToken, leadFoco, busy, erroExterno, onFechar, onSal
     if (mensagem) { setErroFormulario(mensagem); return; }
     setErroFormulario("");
     await onSalvar({
-      leadId, inicioEm: inicio,
+      leadId: leadFoco.id, inicioEm: inicio,
       imovel: unidade.trim() || "",
       empreendimentoId: empreendimento || null,
       unidade: unidade.trim() || null,
-      comGerente, gerenteId: gerente ? Number(gerente) : null,
+      comGerente, gerenteId: comGerente && gerente ? Number(gerente) : null,
       status: "agendada",
     });
   }
 
   return <Modal titulo="Agendar visita" texto="A visita aparecerá na Agenda sem duplicar o lead." onFechar={onFechar}>
-    {leadFoco ? <div className="f2-lead-escolhido fixo"><span>CLIENTE DESTA VISITA</span><strong>{leadFoco.nome}</strong><small>{leadFoco.telefone || "Telefone não informado"}</small></div> : <LeadSearchPicker accessToken={accessToken} value={leadId} onChange={(id) => { setLeadId(id); setErroFormulario(""); }} />}
+    <div className="f2-lead-escolhido fixo"><span>CLIENTE DESTA VISITA</span><strong>{leadFoco.nome}</strong><small>{leadFoco.telefone || "Telefone não informado"}</small></div>
     <label>Produto
       <select value={empreendimento} disabled={carregandoProdutos || Boolean(erroProdutos)} onChange={(e) => { setEmpreendimento(e.target.value); setErroFormulario(""); }}>
         <option value="">{carregandoProdutos ? "Carregando produtos…" : erroProdutos ? "Produtos indisponíveis" : produtos.length === 0 ? "Nenhum produto disponível" : "— escolha o empreendimento —"}</option>
@@ -915,22 +915,28 @@ function ModalVisita({ accessToken, leadFoco, busy, erroExterno, onFechar, onSal
     <label>Unidade <small>(opcional)</small>
       <input value={unidade} onChange={(e) => { setUnidade(e.target.value); setErroFormulario(""); }} placeholder="Ex.: apto 402" />
     </label>
-    <label>Data e hora
-      <input type="datetime-local" value={inicio} onChange={(e) => { setInicio(e.target.value); setErroFormulario(""); }} />
-    </label>
-    <label>Gerente <small>(opcional)</small>
-      <select value={gerente} onChange={(e) => { setGerente(e.target.value); setErroFormulario(""); }}>
-        <option value="">— nenhum gerente selecionado —</option>
-        {equipe.map((g) => <option key={g.id} value={g.id}>{g.nome}</option>)}
-      </select>
-    </label>
     <label className="f2-modal-check">
-      <input type="checkbox" checked={comGerente} onChange={(e) => { setComGerente(e.target.checked); setErroFormulario(""); }} />
+      <input type="checkbox" checked={comGerente} onChange={(e) => { setComGerente(e.target.checked); setInicio(""); setErroFormulario(""); }} />
       Gerente estará presente na visita
     </label>
+    {comGerente && <label>Gerente
+      <select value={gerente} onChange={(e) => { setGerente(e.target.value); setInicio(""); setErroFormulario(""); }}>
+        <option value="">— escolha o gerente —</option>
+        {equipe.map((g) => <option key={g.id} value={g.id}>{g.nome}</option>)}
+      </select>
+    </label>}
+    <HorariosVisita
+      accessToken={accessToken}
+      leadId={leadFoco.id}
+      comGerente={comGerente}
+      gerenteId={comGerente && gerente ? Number(gerente) : null}
+      value={inicio}
+      onChange={(valor) => { setInicio(valor); setErroFormulario(""); }}
+      disabled={busy}
+    />
     {erroFormulario && <p className="f2-modal-erro" role="alert">{erroFormulario}</p>}
     {erroExterno && <p className="f2-modal-erro" role="alert">{erroExterno}</p>}
-    <button type="button" className="f2-modal-primary" disabled={busy} onClick={() => void salvar()}>
+    <button type="button" className="f2-modal-primary" disabled={busy || !inicio} onClick={() => void salvar()}>
       {busy ? "Agendando…" : "Confirmar visita"}
     </button>
   </Modal>;
@@ -1056,7 +1062,7 @@ function Detalhe({
             <button type="button" onClick={onAgendarVisita}>Agendar visita</button>
             <Link href={`/agenda?lead=${encodeURIComponent(String(lead.lead_id || lead.id))}`}>Nova atividade</Link>
             <button type="button" className="f2-iniciar-negociacao" onClick={onIniciarNegociacao}>Iniciar negociação</button>
-            <span><button type="button" aria-expanded={maisAcoes} onClick={() => setMaisAcoes((valor) => !valor)}>Mais <b>⌄</b></button>{maisAcoes && <div className="f2-mais-menu" role="menu"><button type="button" onClick={() => { setMaisAcoes(false); onGerarNegociacao(); }}>Novo negócio operacional</button><button type="button" onClick={() => { setMaisAcoes(false); setTagAberta(true); }}>Adicionar tag</button><button type="button" disabled={busy} onClick={() => { setMaisAcoes(false); onMomento(lead.momento_codigo, "", "Momento revalidado pela ficha"); }}>Atualizar prazo do momento</button><hr /><button type="button" className="risco" onClick={() => { setMaisAcoes(false); onDescartar(); }}>Descartar lead</button></div>}</span>
+            <span><button type="button" aria-label="Mais ações" aria-expanded={maisAcoes} onClick={() => setMaisAcoes((valor) => !valor)}>Mais <b>⌄</b></button>{maisAcoes && <div className="f2-mais-menu" role="menu"><button type="button" onClick={() => { setMaisAcoes(false); onGerarNegociacao(); }}>Novo negócio operacional</button><button type="button" onClick={() => { setMaisAcoes(false); setTagAberta(true); }}>Adicionar tag</button><button type="button" disabled={busy} onClick={() => { setMaisAcoes(false); onMomento(lead.momento_codigo, "", "Momento revalidado pela ficha"); }}>Atualizar prazo do momento</button><hr /><button type="button" className="risco" onClick={() => { setMaisAcoes(false); onDescartar(); }}>Descartar lead</button></div>}</span>
             <button type="button" className="f2-ficha-fechar" onClick={fecharFicha} aria-label="Fechar ficha">×</button>
           </div>
         </div>
