@@ -83,7 +83,17 @@ export async function GET(request: Request) {
   }
   const allProductMediaRows = (data ?? []).flatMap((item) => item.midias ?? []) as MediaRow[];
   const mediaById = new Map(allProductMediaRows.map((media) => [media.id, media]));
-  const signedMedia = await signedProductMediaUrls(supabase, allProductMediaRows);
+  const coverMediaRows: MediaRow[] = [];
+  for (const item of data ?? []) {
+    const photos = ((item.midias ?? []) as MediaRow[]).filter((media) => media.tipo === "foto");
+    const scopes = new Map<string, MediaRow[]>();
+    for (const media of photos) {
+      const scope = media.unidade_id ?? "building";
+      scopes.set(scope, [...(scopes.get(scope) ?? []), media]);
+    }
+    for (const scoped of scopes.values()) coverMediaRows.push(scoped.find((media) => media.is_capa) ?? scoped[0]);
+  }
+  const signedMedia = await signedProductMediaUrls(supabase, coverMediaRows);
   const { data: favorites } = await supabase.from("produto_favoritos").select("empreendimento_id").eq("usuario_id", authData.user.id);
   const favoriteIds = new Set((favorites ?? []).map((item) => item.empreendimento_id));
   const { data: corretoresList } = await supabase.from("corretores").select("id,nome");

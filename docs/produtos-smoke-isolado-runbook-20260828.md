@@ -8,12 +8,14 @@ Estado: pronto e validado por mocks; não executado contra banco nesta máquina.
 Executar, somente em Supabase local descartável ou preview comprovadamente
 isolado, a matriz real de visitante, captador, corretor não captador e gestor.
 O smoke cobre proprietário, edição de unidade, edição/capa/ordem de mídia,
-rascunho privado, concorrência otimista e acesso negado.
+rascunho privado, concorrência otimista, perfil inativo, RPC canônica,
+mídia assinada e acesso negado.
 
 O script `scripts/smoke-products-isolated.mjs` normaliza o hostname e bloqueia
 `apecerto-erp.onrender.com`, inclusive com ponto final, antes de qualquer
-requisição. Nenhuma chave
-de serviço é aceita pelo script; ele recebe somente três sessões sintéticas.
+requisição. Além do hostname, exige prova HMAC server-side do hash do project
+ref isolado e recusa o hash de produção. Nenhuma chave de serviço é aceita;
+o segredo da prova fica somente no secret store do preview/runner.
 
 ## Estado encontrado em 28/08/2026
 
@@ -64,12 +66,13 @@ Criar somente:
 - um usuário ativo de papel `corretor`, vinculado ao corretor captador;
 - outro usuário ativo de papel `corretor`, vinculado a corretor diferente;
 - um usuário ativo de papel `gestor`;
+- uma identidade Auth sintética com perfil inativo;
 - um proprietário sintético;
 - um produto sintético, de terceiros, em rascunho e não publicado;
 - uma unidade sintética vinculada ao captador e ao proprietário;
 - duas imagens sintéticas pequenas, próprias da unidade, com categoria, alt
   text restaurável, uma única capa e ordem contígua iniciada em zero;
-- três sessões Auth distintas.
+- quatro sessões Auth distintas.
 
 Produto ou unidade deve conter o `runMarker`, o contato do proprietário deve
 terminar em `.invalid`, a unidade deve estar pendente e fora do ar, e a lista
@@ -91,13 +94,20 @@ store do ambiente:
 APECERTO_ERP_BASE_URL=<origem isolada>
 APECERTO_ISOLATED_APPROVED_ORIGIN=<mesma origem, obrigatório em preview>
 APECERTO_ISOLATION_PROOF=confirmed-isolated-no-real-data
+APECERTO_ISOLATED_PROJECT_REF_SHA256=<sha256 do project ref isolado>
+APECERTO_PRODUCTION_PROJECT_REF_SHA256=<sha256 do project ref de produção>
+APECERTO_ISOLATED_SMOKE_PROOF_SECRET=<segredo aleatório com 32+ caracteres>
+APECERTO_ISOLATED_SUPABASE_URL=<URL do Supabase isolado>
+APECERTO_ISOLATED_SUPABASE_PUBLISHABLE_KEY=<chave publicável do ambiente isolado>
 APECERTO_SMOKE_CONFIRM_SYNTHETIC=true
 APECERTO_CAPTOR_ACCESS_TOKEN=<sessão sintética>
 APECERTO_NON_CAPTOR_ACCESS_TOKEN=<sessão sintética>
 APECERTO_MANAGER_ACCESS_TOKEN=<sessão sintética>
+APECERTO_INACTIVE_ACCESS_TOKEN=<sessão sintética inativa>
 APECERTO_SMOKE_PRODUCT_ID=<uuid sintético>
 APECERTO_SMOKE_UNIT_ID=<uuid sintético>
 APECERTO_SMOKE_MEDIA_IDS=<uuid sintético 1>,<uuid sintético 2>
+APECERTO_SMOKE_FOREIGN_LINKED_MEDIA_PATH=<path sintético criado pelo não captador e hoje vinculado à unidade do captador>
 APECERTO_SMOKE_RUN_MARKER=CODEX_SMOKE_PRODUCTS_<IDENTIFICADOR>
 ```
 
@@ -107,7 +117,7 @@ payload ou UUID.
 
 ## Critérios de aprovação
 
-Todos os 11 checks devem passar:
+Todos os checks devem passar, incluindo:
 
 1. produção bloqueada por construção;
 2. visitante recebe 401 sem proprietário;
@@ -121,6 +131,10 @@ Todos os 11 checks devem passar:
 9. versão obsoleta do rascunho recebe 409;
 10. rascunho sintético é removido;
 11. título, metadados, capa e ordem originais da fixture são restaurados.
+12. perfil inativo não abre Produtos;
+13. disponibilidade canônica é negada ao não captador e restaurada pelo captador;
+14. mídia interna chega por URL assinada e sem `storage_path`.
+15. bucket privado nega acesso direto, aceita upload autorizado, rejeita upload forjado, remove órfão próprio e nega ao antigo uploader a exclusão de mídia já vinculada.
 
 Qualquer owner key em payload do visitante/não captador, qualquer 2xx em edição
 forjada ou qualquer resposta diferente de 409 para conflito interrompe o smoke.

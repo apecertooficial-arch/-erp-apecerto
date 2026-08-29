@@ -4,8 +4,8 @@ Este runbook prepara a execução; não autoriza nem executa produção.
 
 ## Candidata local
 
-- ERP base: `2627627b292fa0b8692e1ab7e6a9b08be2ef539e` (build efetivamente servido).
-- O `origin/main` avançou para `f0a6a991d0923e5a15bbc1cfeaa7b995edfbfd64`; o delta é externo a Produtos (Automações/Sara/Presença) e não entra nesta candidata.
+- ERP base final: `f0a6a991d0923e5a15bbc1cfeaa7b995edfbfd64`, confirmado simultaneamente em `origin/main` e no endpoint público `/api/build`.
+- Candidata integrada: branch local `codex/produtos-remediacao-candidata-20260828`; a branch antiga sobre `2627627` é somente histórico e não pode ser publicada.
 - Migrations: A expansão do contrato; B cutover ACL; C perfil ativo; D RPC canônica/lockdown; E Storage privado.
 - Site: aplicar o commit local do site somente depois de A/B e validar ficha/404.
 
@@ -14,12 +14,12 @@ Este runbook prepara a execução; não autoriza nem executa produção.
 1. Reconfirmar project ref e que o destino é produção imediatamente antes do comando.
 2. Confirmar PITR/backup automático restaurável e registrar responsável e RTO.
 3. Criar backup adicional pelo mecanismo oficial do projeto, com validação de restauração em clone/preview isolado.
-4. Salvar schema-only e snapshots de views, grants, policies, funções, bucket e migration history.
+4. Salvar schema-only e snapshots de views, grants, policies, funções, bucket e migration history. Gerar o SQL de restauração com `psql -XAt -v ON_ERROR_STOP=1 -f supabase/preflight/produtos_remediacao_snapshot_restore.sql > <arquivo-protegido>`; validar o arquivo num clone isolado e registrar SHA-256/caminho no ticket do rollout.
 5. Não prosseguir se não houver restauração comprovada ou se o backup puder sobrescrever escritas legítimas posteriores.
 
 ## Preflight
 
-Executar `supabase/preflight/produtos_remediacao_preflight.sql` em modo read-only. Capturar somente métricas agregadas. Abortar por schema divergente, lock/DDL concorrente, path órfão inexplicado, MIME/tamanho incompatível, PII no contrato, hash divergente ou consumer ainda usando URL pública direta.
+Executar `supabase/preflight/produtos_remediacao_preflight.sql` em modo read-only. Capturar somente métricas agregadas. O snapshot restaurável B/E é obrigatório e deve ser gerado pelo arquivo complementar acima; sem validação em clone e hash registrado, o gate permanece fechado. Abortar por schema divergente, lock/DDL concorrente, path órfão inexplicado, MIME/tamanho incompatível, PII no contrato, hash divergente ou consumer ainda usando URL pública direta.
 
 Fingerprints conhecidos da coauditoria (28/08/2026):
 

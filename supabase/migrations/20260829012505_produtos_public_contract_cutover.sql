@@ -29,6 +29,9 @@ revoke all privileges on table public.vw_produtos_publicos from anon, public;
 grant select on table public.site_produtos, public.site_produtos_catalogo to anon;
 
 do $$
+declare
+  v_site_count bigint;
+  v_catalog_count bigint;
 begin
   if has_column_privilege('anon', 'public.empreendimentos', 'endereco', 'select')
      or has_column_privilege('anon', 'public.empreendimentos', 'latitude', 'select')
@@ -42,5 +45,17 @@ begin
      or not has_table_privilege('anon', 'public.site_produtos', 'select')
      or not has_table_privilege('anon', 'public.site_produtos_catalogo', 'select') then
     raise exception 'PUBLIC_ACL_POSTCHECK: contrato público seguro indisponível.';
+  end if;
+  begin
+    execute 'set local role anon';
+    execute 'select count(*) from public.site_produtos' into v_site_count;
+    execute 'select count(*) from public.site_produtos_catalogo' into v_catalog_count;
+    execute 'reset role';
+  exception when others then
+    execute 'reset role';
+    raise exception 'PUBLIC_ACL_POSTCHECK: execução real como anon falhou: %', sqlerrm;
+  end;
+  if v_site_count is distinct from v_catalog_count then
+    raise exception 'PUBLIC_ACL_POSTCHECK: contagens das views públicas divergiram (%/%).', v_site_count, v_catalog_count;
   end if;
 end $$;

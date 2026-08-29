@@ -1,4 +1,5 @@
 import { pathToFileURL } from "node:url";
+import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const MANAGER_ROLES = new Set(["admin", "gestor", "executivo", "gestor_comercial", "gestor_equipe"]);
@@ -32,6 +33,21 @@ function assertIsolatedOrigin(baseUrl, config) {
   assert(baseUrl.origin === approvedOrigin, "A origem não coincide com o preview isolado aprovado.");
 }
 
+async function verifyEnvironmentProof(fetchImpl, baseUrl, config) {
+  const expectedHash = required(config.expectedProjectRefHash, "APECERTO_ISOLATED_PROJECT_REF_SHA256").toLowerCase();
+  const productionHash = required(config.productionProjectRefHash, "APECERTO_PRODUCTION_PROJECT_REF_SHA256").toLowerCase();
+  const proofSecret = required(config.proofSecret, "APECERTO_ISOLATED_SMOKE_PROOF_SECRET");
+  assert(/^[0-9a-f]{64}$/.test(expectedHash) && /^[0-9a-f]{64}$/.test(productionHash), "Hashes de project ref inválidos.");
+  assert(expectedHash !== productionHash, "O project ref isolado coincide com produção.");
+  assert(proofSecret.length >= 32, "O segredo de prova isolada é inválido.");
+  const challenge = randomBytes(24).toString("hex");
+  const proof = await expectOk(fetchImpl, baseUrl, `/api/products-smoke-environment?challenge=${challenge}`, {}, "prova server-side de isolamento");
+  assert(proof.isolated === true && proof.projectRefHash === expectedHash && /^[0-9a-f]{64}$/.test(proof.signature ?? ""), "Prova server-side de isolamento inválida.");
+  const expectedSignature = createHmac("sha256", proofSecret).update(`${challenge}|${expectedHash}|true`).digest();
+  const receivedSignature = Buffer.from(proof.signature, "hex");
+  assert(receivedSignature.length === expectedSignature.length && timingSafeEqual(receivedSignature, expectedSignature), "Assinatura da prova de isolamento inválida.");
+}
+
 function safeError(status, operation) {
   return new Error(`Smoke isolado recebeu HTTP ${status} em ${operation}.`);
 }
@@ -61,6 +77,64 @@ async function expectOk(fetchImpl, baseUrl, path, options, operation) {
   if (!result.response.ok) throw safeError(result.response.status, operation);
   assert(result.body && typeof result.body === "object", `${operation} recebeu resposta inválida.`);
   return result.body;
+}
+
+async function storageCall(fetchImpl, config, token, path, method, body) {
+  const base = new URL(required(config.supabaseUrl, "APECERTO_ISOLATED_SUPABASE_URL"));
+  const publishableKey = required(config.publishableKey, "APECERTO_ISOLATED_SUPABASE_PUBLISHABLE_KEY");
+  const encoded = path.split("/").map(encodeURIComponent).join("/");
+  return fetchImpl(new URL(`/storage/v1/object/empreendimentos/${encoded}`, base), {
+    method,
+    headers: { apikey: publishableKey, ...(token ? { Authorization: `Bearer ${token}` } : {}), ...(body ? { "Content-Type": "image/png" } : {}) },
+    body,
+    redirect: "error",
+  });
+}
+
+async function storageDelete(fetchImpl, config, token, path) {
+  const base = new URL(required(config.supabaseUrl, "APECERTO_ISOLATED_SUPABASE_URL"));
+  const publishableKey = required(config.publishableKey, "APECERTO_ISOLATED_SUPABASE_PUBLISHABLE_KEY");
+  return fetchImpl(new URL("/storage/v1/object/empreendimentos", base), {
+    method: "DELETE",
+    headers: {
+      apikey: publishableKey,
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ prefixes: [path] }),
+    redirect: "error",
+  });
+}
+
+async function verifyPrivateStorage(fetchImpl, config, sessions, tokens, productId, marker) {
+  const captorUserId = required(sessions.captor.userId, "userId sintético do captador");
+  const nonCaptorUserId = required(sessions.nonCaptor.userId, "userId sintético do não captador");
+  assert(UUID.test(captorUserId) && UUID.test(nonCaptorUserId), "IDs das sessões sintéticas são inválidos.");
+  const suffix = marker.toLowerCase().replace(/[^a-z0-9_-]/g, "-");
+  const orphanPath = `${captorUserId}/${productId}/${suffix}-orphan.png`;
+  const forgedPath = `${nonCaptorUserId}/${productId}/${suffix}-forged.png`;
+  const linkedPath = required(config.foreignLinkedMediaPath, "APECERTO_SMOKE_FOREIGN_LINKED_MEDIA_PATH");
+  assert(linkedPath.startsWith(`${nonCaptorUserId}/${productId}/`) && linkedPath.includes(suffix), "Path vinculado sintético não corresponde ao não captador/produto/marcador.");
+  const png = Uint8Array.from([137,80,78,71,13,10,26,10,0,0,0,13,73,72,68,82,0,0,0,1,0,0,0,1,8,6,0,0,0,31,21,196,137]);
+
+  const direct = await storageCall(fetchImpl, config, null, linkedPath, "GET");
+  assert(!direct.ok, "Bucket privado respondeu diretamente sem sessão.");
+  const allowedUpload = await storageCall(fetchImpl, config, tokens.captor, orphanPath, "POST", png);
+  assert(allowedUpload.ok, `Upload sintético autorizado falhou com HTTP ${allowedUpload.status}.`);
+  const orphanCleanup = await storageDelete(fetchImpl, config, tokens.captor, orphanPath);
+  assert(orphanCleanup.ok, `Cleanup de órfão sintético falhou com HTTP ${orphanCleanup.status}.`);
+
+  const forgedUpload = await storageCall(fetchImpl, config, tokens.nonCaptor, forgedPath, "POST", png);
+  if (forgedUpload.ok) {
+    await storageDelete(fetchImpl, config, tokens.nonCaptor, forgedPath);
+    throw new Error("Upload forjado do não captador foi aceito.");
+  }
+  const linkedBefore = await storageCall(fetchImpl, config, tokens.captor, linkedPath, "GET");
+  assert(linkedBefore.ok, `Mídia vinculada sintética não existia antes do teste (HTTP ${linkedBefore.status}).`);
+  const linkedDelete = await storageDelete(fetchImpl, config, tokens.nonCaptor, linkedPath);
+  assert([400, 403, 404].includes(linkedDelete.status), `Antigo uploader não captador removeu mídia vinculada (HTTP ${linkedDelete.status}).`);
+  const linkedAfter = await storageCall(fetchImpl, config, tokens.captor, linkedPath, "GET");
+  assert(linkedAfter.ok, `Mídia vinculada desapareceu após DELETE negado (HTTP ${linkedAfter.status}).`);
 }
 
 function unitFrom(body, unitId) {
@@ -123,11 +197,13 @@ export async function runProductsIsolatedSmoke(config, { fetchImpl = fetch, log 
   const baseUrl = new URL(required(config.baseUrl, "APECERTO_ERP_BASE_URL"));
   assertIsolatedOrigin(baseUrl, config);
   assert(config.confirmSynthetic === true, "Confirme que todo o ambiente contém somente fixtures sintéticas.");
+  await verifyEnvironmentProof(fetchImpl, baseUrl, config);
 
   const captorToken = required(config.captorToken, "APECERTO_CAPTOR_ACCESS_TOKEN");
   const nonCaptorToken = required(config.nonCaptorToken, "APECERTO_NON_CAPTOR_ACCESS_TOKEN");
   const managerToken = required(config.managerToken, "APECERTO_MANAGER_ACCESS_TOKEN");
-  assert(new Set([captorToken, nonCaptorToken, managerToken]).size === 3, "As três sessões sintéticas precisam ser distintas.");
+  const inactiveToken = required(config.inactiveToken, "APECERTO_INACTIVE_ACCESS_TOKEN");
+  assert(new Set([captorToken, nonCaptorToken, managerToken, inactiveToken]).size === 4, "As quatro sessões sintéticas precisam ser distintas.");
 
   const productId = required(config.productId, "APECERTO_SMOKE_PRODUCT_ID");
   const unitId = required(config.unitId, "APECERTO_SMOKE_UNIT_ID");
@@ -141,6 +217,9 @@ export async function runProductsIsolatedSmoke(config, { fetchImpl = fetch, log 
   const visitor = await expectStatus(fetchImpl, baseUrl, productPath, {}, 401, "bloqueio de visitante");
   assert(visitor?.product == null, "Visitante recebeu produto autenticado.");
   assertNoOwnerValue(visitor);
+  const inactiveSession = await expectOk(fetchImpl, baseUrl, "/api/session", { token: inactiveToken }, "sessão do perfil inativo");
+  assert(inactiveSession.active === false, "A sessão reservada ao perfil inativo aparece ativa.");
+  await expectStatus(fetchImpl, baseUrl, productPath, { token: inactiveToken }, 401, "bloqueio do perfil inativo");
 
   const [captorSession, nonCaptorSession, managerSession] = await Promise.all([
     expectOk(fetchImpl, baseUrl, "/api/session", { token: captorToken }, "sessão do captador"),
@@ -151,6 +230,7 @@ export async function runProductsIsolatedSmoke(config, { fetchImpl = fetch, log 
   assert(nonCaptorSession.active === true && nonCaptorSession.role === "corretor" && nonCaptorSession.brokerId != null, "Não captador sintético inválido.");
   assert(captorSession.brokerId !== nonCaptorSession.brokerId, "Captador e não captador precisam ser corretores diferentes.");
   assert(managerSession.active === true && MANAGER_ROLES.has(managerSession.role), "Gestor sintético inválido.");
+  await verifyPrivateStorage(fetchImpl, config, { captor: captorSession, nonCaptor: nonCaptorSession }, { captor: captorToken, nonCaptor: nonCaptorToken }, productId, marker);
 
   const readProduct = (token, operation) => expectOk(fetchImpl, baseUrl, productPath, { token }, operation);
   let [captorBody, nonCaptorBody, managerBody] = await Promise.all([
@@ -179,6 +259,9 @@ export async function runProductsIsolatedSmoke(config, { fetchImpl = fetch, log 
   assert(unitMedia.length === mediaIds.length && mediaIds.every((id) => unitMedia.some((item) => item.id === id)), "A lista precisa conter todas e somente as mídias da unidade sintética.");
   for (const mediaId of mediaIds) {
     assert(mediaFrom(nonCaptorBody, mediaId) && mediaFrom(managerBody, mediaId), "A galeria operacional não ficou visível aos três perfis.");
+    const media = mediaFrom(captorBody, mediaId);
+    assert(typeof media?.url === "string" && /\/storage\/v1\/object\/sign\/empreendimentos\//.test(media.url), "Mídia interna não recebeu URL assinada.");
+    assert(!/\/storage\/v1\/object\/public\/empreendimentos\//.test(media.url) && !("storage_path" in media), "Mídia interna expôs URL pública ou path físico.");
   }
 
   const [captorDraftBefore, managerDraftBefore] = await Promise.all([
@@ -207,6 +290,15 @@ export async function runProductsIsolatedSmoke(config, { fetchImpl = fetch, log 
   try {
     const nonCaptorUnitBody = { action: "updateUnit", id: productId, unidadeId: unitId, unidade: unitPayload(captorUnit, `${marker}_DENIED`) };
     await expectStatus(fetchImpl, baseUrl, "/api/product", { token: nonCaptorToken, method: "PATCH", body: nonCaptorUnitBody }, 403, "edição negada ao não captador");
+    await expectStatus(fetchImpl, baseUrl, "/api/product", {
+      token: nonCaptorToken, method: "PATCH", body: { action: "setUnitAvailability", id: productId, unidadeId: unitId, disponivel: false },
+    }, 403, "disponibilidade negada ao não captador");
+    await expectOk(fetchImpl, baseUrl, "/api/product", {
+      token: captorToken, method: "PATCH", body: { action: "setUnitAvailability", id: productId, unidadeId: unitId, disponivel: false },
+    }, "inativação canônica pelo captador");
+    await expectOk(fetchImpl, baseUrl, "/api/product", {
+      token: captorToken, method: "PATCH", body: { action: "setUnitAvailability", id: productId, unidadeId: unitId, disponivel: originalUnit.disponivel },
+    }, "restauração canônica de disponibilidade");
 
     await expectOk(fetchImpl, baseUrl, "/api/product", {
       token: captorToken, method: "PATCH", body: { action: "updateUnit", id: productId, unidadeId: unitId, unidade: unitPayload(captorUnit, `${marker}_CAPTOR`) },
@@ -308,10 +400,14 @@ export async function runProductsIsolatedSmoke(config, { fetchImpl = fetch, log 
     productionBlocked: true,
     visitorDenied: true,
     threeSyntheticProfiles: true,
+    inactiveProfileDenied: true,
     ownerPermissionMatrix: true,
     nonCaptorEditDenied: true,
     captorAndManagerEdit: true,
     mediaPermissionAndPersistence: true,
+    privateSignedMedia: true,
+    canonicalAvailability: true,
+    privateStorageMatrix: true,
     draftPrivateAndVersioned: true,
     draftConflict409: true,
     draftCleaned: true,
@@ -326,10 +422,17 @@ function configFromEnvironment(env) {
     baseUrl: env.APECERTO_ERP_BASE_URL,
     approvedIsolatedOrigin: env.APECERTO_ISOLATED_APPROVED_ORIGIN,
     isolationProof: env.APECERTO_ISOLATION_PROOF,
+    expectedProjectRefHash: env.APECERTO_ISOLATED_PROJECT_REF_SHA256,
+    productionProjectRefHash: env.APECERTO_PRODUCTION_PROJECT_REF_SHA256,
+    proofSecret: env.APECERTO_ISOLATED_SMOKE_PROOF_SECRET,
+    supabaseUrl: env.APECERTO_ISOLATED_SUPABASE_URL,
+    publishableKey: env.APECERTO_ISOLATED_SUPABASE_PUBLISHABLE_KEY,
+    foreignLinkedMediaPath: env.APECERTO_SMOKE_FOREIGN_LINKED_MEDIA_PATH,
     confirmSynthetic: env.APECERTO_SMOKE_CONFIRM_SYNTHETIC === "true",
     captorToken: env.APECERTO_CAPTOR_ACCESS_TOKEN,
     nonCaptorToken: env.APECERTO_NON_CAPTOR_ACCESS_TOKEN,
     managerToken: env.APECERTO_MANAGER_ACCESS_TOKEN,
+    inactiveToken: env.APECERTO_INACTIVE_ACCESS_TOKEN,
     productId: env.APECERTO_SMOKE_PRODUCT_ID,
     unitId: env.APECERTO_SMOKE_UNIT_ID,
     mediaIds: (env.APECERTO_SMOKE_MEDIA_IDS || "").split(",").map((value) => value.trim()).filter(Boolean),

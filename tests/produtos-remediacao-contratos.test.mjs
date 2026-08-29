@@ -27,6 +27,15 @@ test("contrato público revoga superfícies sensíveis e preserva views suportad
   assert.match(migrations[1], /revoke all privileges on table public\.empreendimentos, public\.unidades, public\.midias from anon, public/i);
   assert.match(migrations[1], /has_column_privilege\('anon', 'public\.midias', 'storage_path', 'select'\)/);
   assert.match(migrations[1], /grant select on table public\.site_produtos, public\.site_produtos_catalogo to anon/);
+  assert.match(migrations[1], /set local role anon/);
+  assert.match(migrations[1], /select count\(\*\) from public\.site_produtos_catalogo/);
+  const snapshot = read("supabase/preflight/produtos_remediacao_snapshot_restore.sql");
+  assert.match(snapshot, /begin transaction read only/);
+  assert.match(snapshot, /pg_get_expr\(p\.polqual,p\.polrelid\)/);
+  assert.match(snapshot, /from information_schema\.table_privileges/);
+  assert.match(snapshot, /case when grantee='PUBLIC' then 'public'/);
+  assert.match(snapshot, /'vw_produtos_publicos'/);
+  assert.match(snapshot, /update storage\.buckets set public=/);
 });
 
 test("authenticated exige perfil ativo e RPC mutável canônica", () => {
@@ -42,6 +51,10 @@ test("authenticated exige perfil ativo e RPC mutável canônica", () => {
 test("bucket privado e mídia autenticada usam id opaco, sem URL pública direta", () => {
   assert.match(migrations[4], /update storage\.buckets set public = false where id = 'empreendimentos'/);
   assert.match(migrations[4], /\(storage\.foldername\(name\)\)\[1\] = \(select auth\.uid\(\)\)::text/);
+  assert.match(migrations[4], /e\.id::text = \(storage\.foldername\(name\)\)\[2\]/);
+  assert.match(migrations[4], /or e\.captado_por_usuario = \(select auth\.uid\(\)\)/);
+  assert.match(migrations[4], /create policy emp_storage_delete_captador[\s\S]*\(storage\.foldername\(name\)\)\[1\] = \(select auth\.uid\(\)\)::text/);
+  assert.match(migrations[4], /and not exists \(select 1 from public\.midias m where m\.storage_path = storage\.objects\.name\)/);
   const route = read("app/api/product-media/route.ts");
   assert.match(route, /\.from\("midias"\)\.select\("storage_path"\)\.eq\("id", mediaId\)/);
   assert.match(route, /createSignedUrl\(media\.storage_path, 300\)/);
@@ -50,6 +63,23 @@ test("bucket privado e mídia autenticada usam id opaco, sem URL pública direta
     assert.doesNotMatch(read(path), /storage\/v1\/object\/public\/empreendimentos/);
   }
   assert.doesNotMatch(read("app/api/live-chat/route.ts"), /select\("id,empreendimento_id,nome,tipo,categoria,storage_path,is_capa"\)/);
+  const catalog = read("app/api/catalog/route.ts");
+  assert.match(catalog, /const coverMediaRows: MediaRow\[\] = \[\]/);
+  assert.match(catalog, /signedProductMediaUrls\(supabase, coverMediaRows\)/);
+  assert.doesNotMatch(catalog, /signedProductMediaUrls\(supabase, allProductMediaRows\)/);
+});
+
+test("smoke isolado usa prova server-side assinada do project ref", () => {
+  const route = read("app/api/products-smoke-environment/route.ts");
+  const smoke = read("scripts/smoke-products-isolated.mjs");
+  assert.match(route, /PRODUCTS_ISOLATED_PROJECT_REF_SHA256/);
+  assert.match(route, /crypto\.subtle\.sign\("HMAC"/);
+  assert.match(route, /projectRefHash !== expectedHash\.toLowerCase\(\)/);
+  assert.match(smoke, /expectedHash !== productionHash/);
+  assert.match(smoke, /timingSafeEqual/);
+  assert.match(smoke, /verifyPrivateStorage/);
+  assert.match(smoke, /Upload forjado do não captador foi aceito/);
+  assert.doesNotMatch(smoke, /console\.(?:log|error).*proofSecret/);
 });
 
 test("respostas de Produto removem storage_path antes de chegar ao cliente", () => {

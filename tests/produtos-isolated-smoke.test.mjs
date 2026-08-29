@@ -1,13 +1,20 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { runProductsIsolatedSmoke } from "../scripts/smoke-products-isolated.mjs";
+import { createHash, createHmac } from "node:crypto";
 
 const PRODUCT_ID = "11111111-1111-4111-8111-111111111111";
 const UNIT_ID = "22222222-2222-4222-8222-222222222222";
 const OWNER_ID = "33333333-3333-4333-8333-333333333333";
 const MEDIA_IDS = ["44444444-4444-4444-8444-444444444444", "55555555-5555-4555-8555-555555555555"];
-const TOKENS = { captor: "fixture-captor-token", nonCaptor: "fixture-non-captor-token", manager: "fixture-manager-token" };
+const TOKENS = { captor: "fixture-captor-token", nonCaptor: "fixture-non-captor-token", manager: "fixture-manager-token", inactive: "fixture-inactive-token" };
 const MARKER = "CODEX_SMOKE_PRODUCTS_RUN_20260828";
+const PROOF_SECRET = "fixture-isolated-proof-secret-20260828";
+const ISOLATED_REF_HASH = createHash("sha256").update("fixture-isolated-ref").digest("hex");
+const PRODUCTION_REF_HASH = createHash("sha256").update("fixture-production-ref").digest("hex");
+const CAPTOR_USER_ID = "66666666-6666-4666-8666-666666666666";
+const NON_CAPTOR_USER_ID = "77777777-7777-4777-8777-777777777777";
+const LINKED_PATH = `${NON_CAPTOR_USER_ID}/${PRODUCT_ID}/codex_smoke_products_run_20260828-linked.png`;
 
 function response(body, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
@@ -18,6 +25,7 @@ function roleFrom(options) {
   if (token === TOKENS.captor) return "captor";
   if (token === TOKENS.nonCaptor) return "nonCaptor";
   if (token === TOKENS.manager) return "manager";
+  if (token === TOKENS.inactive) return "inactive";
   return "visitor";
 }
 
@@ -50,27 +58,57 @@ function fixtureFetch({ leakOwner = false, leakDraft = false, allowNonCaptorEdit
       publicado: false,
     },
     media: [
-      { id: MEDIA_IDS[0], unidade_id: UNIT_ID, categoria: "sala", alt_text: "Sala sintética", is_capa: true, ordem: 0 },
-      { id: MEDIA_IDS[1], unidade_id: UNIT_ID, categoria: "quarto", alt_text: "Quarto sintético", is_capa: false, ordem: 1 },
+      { id: MEDIA_IDS[0], unidade_id: UNIT_ID, categoria: "sala", alt_text: "Sala sintética", is_capa: true, ordem: 0, url: "https://fixture.supabase.co/storage/v1/object/sign/empreendimentos/opaco-1" },
+      { id: MEDIA_IDS[1], unidade_id: UNIT_ID, categoria: "quarto", alt_text: "Quarto sintético", is_capa: false, ordem: 1, url: "https://fixture.supabase.co/storage/v1/object/sign/empreendimentos/opaco-2" },
     ],
     drafts: new Map(),
+    storage: new Set([LINKED_PATH]),
   };
 
   const fetchImpl = async (url, options) => {
     const role = roleFrom(options);
+
+    if (url.hostname === "fixture.supabase.invalid") {
+      const deleteBody = options.method === "DELETE" ? JSON.parse(options.body ?? "{}") : null;
+      const path = options.method === "DELETE"
+        ? deleteBody?.prefixes?.[0]
+        : decodeURIComponent(url.pathname.replace("/storage/v1/object/empreendimentos/", ""));
+      if (options.method === "GET") return role === "captor" && state.storage.has(path)
+        ? response({ synthetic: true })
+        : response({ error: "privado" }, 400);
+      if (options.method === "POST") {
+        if (role !== "captor") return response({ error: "negado" }, 403);
+        state.storage.add(path); return response({ Key: path });
+      }
+      if (options.method === "DELETE") {
+        if (url.pathname !== "/storage/v1/object/empreendimentos" || !Array.isArray(deleteBody?.prefixes) || deleteBody.prefixes.length !== 1) {
+          return response({ error: "contrato inválido" }, 405);
+        }
+        if (path === LINKED_PATH && role === "nonCaptor") return response({ error: "negado" }, 403);
+        if (!state.storage.has(path)) return response({ error: "ausente" }, 404);
+        state.storage.delete(path); return response({});
+      }
+    }
     const body = options.body ? JSON.parse(options.body) : null;
+
+    if (url.pathname === "/api/products-smoke-environment") {
+      const challenge = url.searchParams.get("challenge");
+      return response({ isolated: true, projectRefHash: ISOLATED_REF_HASH, signature: createHmac("sha256", PROOF_SECRET).update(`${challenge}|${ISOLATED_REF_HASH}|true`).digest("hex") });
+    }
 
     if (url.pathname === "/api/session") {
       if (role === "visitor") return response({ error: "Sessão necessária." }, 401);
       return response({
-        active: true,
+        active: role !== "inactive",
         role: role === "manager" ? "gestor" : "corretor",
         brokerId: role === "captor" ? 10 : role === "nonCaptor" ? 20 : null,
+        userId: role === "captor" ? CAPTOR_USER_ID : role === "nonCaptor" ? NON_CAPTOR_USER_ID : "88888888-8888-4888-8888-888888888888",
       });
     }
 
     if (url.pathname === "/api/product" && options.method === "GET") {
       if (role === "visitor") return response({ error: "Sessão necessária." }, 401);
+      if (role === "inactive") return response({ error: "Sessão inválida ou expirada." }, 401);
       const canSeeOwner = role === "captor" || role === "manager" || (role === "nonCaptor" && leakOwner);
       return response({ product: {
         nome: missingMarker ? "Produto fixture" : MARKER,
@@ -98,6 +136,10 @@ function fixtureFetch({ leakOwner = false, leakDraft = false, allowNonCaptorEdit
       if (body.action === "updateUnit") {
         state.unit = { ...state.unit, ...body.unidade };
         return response({ success: true });
+      }
+      if (body.action === "setUnitAvailability") {
+        state.unit.disponivel = body.disponivel === true;
+        return response({ success: true, unidadeId: UNIT_ID, disponivel: state.unit.disponivel, publicado: false });
       }
       if (body.action === "updateMedia") {
         const media = state.media.find((item) => item.id === body.mediaId);
@@ -144,10 +186,17 @@ function fixtureFetch({ leakOwner = false, leakDraft = false, allowNonCaptorEdit
 const config = {
   baseUrl: "http://127.0.0.1:3001",
   isolationProof: "confirmed-isolated-no-real-data",
+  expectedProjectRefHash: ISOLATED_REF_HASH,
+  productionProjectRefHash: PRODUCTION_REF_HASH,
+  proofSecret: PROOF_SECRET,
+  supabaseUrl: "https://fixture.supabase.invalid",
+  publishableKey: "sb_publishable_fixture",
+  foreignLinkedMediaPath: LINKED_PATH,
   confirmSynthetic: true,
   captorToken: TOKENS.captor,
   nonCaptorToken: TOKENS.nonCaptor,
   managerToken: TOKENS.manager,
+  inactiveToken: TOKENS.inactive,
   productId: PRODUCT_ID,
   unitId: UNIT_ID,
   mediaIds: MEDIA_IDS,
@@ -164,6 +213,7 @@ test("smoke mutável isolado cobre visitante, três perfis, unidade, mídia, ras
   assert.deepEqual(fixture.state.unit, original.unit);
   assert.deepEqual(fixture.state.media, original.media);
   assert.equal(fixture.state.drafts.size, 0);
+  assert.deepEqual([...fixture.state.storage], [LINKED_PATH]);
   assert.equal(logs.length, 1);
   assert.doesNotMatch(logs[0], /fixture-(?:captor|non-captor|manager)-token/);
 });
@@ -195,6 +245,12 @@ test("preview exige origem exata e prova explícita de isolamento", async () => 
     approvedIsolatedOrigin: "https://outro.example.invalid",
     isolationProof: "confirmed-isolated-no-real-data",
   }, { fetchImpl: fixture.fetchImpl }), /não coincide/);
+});
+
+test("smoke exige project ref distinto de produção e prova assinada", async () => {
+  const fixture = fixtureFetch();
+  await assert.rejects(runProductsIsolatedSmoke({ ...config, productionProjectRefHash: ISOLATED_REF_HASH }, { fetchImpl: fixture.fetchImpl }), /coincide com produção/);
+  await assert.rejects(runProductsIsolatedSmoke({ ...config, proofSecret: "segredo-incorreto-com-tamanho-minimo-123" }, { fetchImpl: fixture.fetchImpl }), /Assinatura da prova/);
 });
 
 test("smoke falha fechado se não captador receber proprietário", async () => {

@@ -16,9 +16,10 @@ export async function signedProductMediaUrls(
 ) {
   const paths = [...new Set(rows.map((row) => row.storage_path).filter((path): path is string => Boolean(path)))];
   const result = new Map<string, string>();
-  if (!paths.length) return result;
-  const { data, error } = await supabase.storage.from("empreendimentos").createSignedUrls(paths, 300);
-  if (error) return result;
-  for (const item of data ?? []) if (item.path && item.signedUrl) result.set(item.path, item.signedUrl);
+  for (let offset = 0; offset < paths.length; offset += 100) {
+    const { data, error } = await supabase.storage.from("empreendimentos").createSignedUrls(paths.slice(offset, offset + 100), 300);
+    if (error) continue;
+    for (const item of data ?? []) if (item.path && item.signedUrl) result.set(item.path, item.signedUrl);
+  }
   return result;
 }
