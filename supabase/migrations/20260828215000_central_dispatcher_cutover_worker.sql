@@ -8,6 +8,8 @@ declare
   v_estado private.motor_dispatcher_estado%rowtype;
   v_clock text;
   v_sem_checkpoint integer;
+  v_pendentes_due integer;
+  v_pendentes_fora_escopo integer;
 begin
   select * into strict v_estado
     from private.motor_dispatcher_estado where singleton for update;
@@ -24,7 +26,21 @@ begin
     raise exception 'CUTOVER_BLOCKED: shadow ainda nao completou dois minutos';
   end if;
   if coalesce(v_estado.lag_seconds,0)>60 then
-    raise exception 'CUTOVER_BLOCKED: lag %.3fs excede SLA de 60s',v_estado.lag_seconds;
+    select count(*),count(*) filter(where automacao_id not in (49,65,66))
+      into v_pendentes_due,v_pendentes_fora_escopo
+      from public.motor_fila
+     where status='pendente' and due_at<=clock_timestamp();
+    -- O cron executa o lote inteiro em uma unica transacao. Quando a Sara
+    -- demora varios segundos por analise, o lote pode estourar a janela e
+    -- voltar por completo, impedindo o proprio cron de reduzir o lag. O
+    -- worker corrige isso ao confirmar um item por vez. Permitimos o corte
+    -- nessa recuperacao apenas para uma fila pequena e restrita aos tres
+    -- fluxos canonicos publicados: Sara, Entrada Adelmo e Entrada Miruna.
+    if v_pendentes_due>500 or v_pendentes_fora_escopo>0 then
+      raise exception
+        'CUTOVER_BLOCKED: lag %.3fs com % pendentes (% fora do escopo canonico)',
+        v_estado.lag_seconds,v_pendentes_due,v_pendentes_fora_escopo;
+    end if;
   end if;
   if exists(
     select 1 from public.motor_fila
@@ -55,6 +71,15 @@ begin
      or position('public.motor_evento_prazo(150)' in v_clock)=0 then
     raise exception 'FUNCTION_STALE_VERSION: motor_relogio_central nao e a versao de transicao esperada';
   end if;
+
+  -- Checkpoints criados pela carga inicial sao recuperacao historica, nao
+  -- eventos em tempo real. Eles permanecem duraveis, mas cedem prioridade
+  -- para mensagens novas e entradas de campanha que chegaram durante o corte.
+  update public.motor_fila
+     set lead=jsonb_set(lead,'{__motor_priority}','50'::jsonb,true)
+   where automacao_id=49 and status='pendente'
+     and lead->>'__sara_checkpoint'='true'
+     and lead->>'__sara_source_id' like 'checkpoint-backfill:%';
 
   update private.motor_dispatcher_estado
      set modo='worker',worker_desde=clock_timestamp(),

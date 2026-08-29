@@ -304,7 +304,9 @@ begin
       lease_ate=null,worker_heartbeat_em=null
      where id=r.id and status='processando'
        and (not p_exigir_lease or (worker_id=p_worker_id and lease_token=p_lease_token));
-    perform public.motor_resolver_alerta_fila(r.id,'automacao_inativa');
+    if to_regprocedure('public.motor_resolver_alerta_fila(bigint,text)') is not null then
+      perform public.motor_resolver_alerta_fila(r.id,'automacao_inativa');
+    end if;
     return jsonb_build_object('ok',true,'status','cancelado','fila_id',r.id);
   end if;
 
@@ -324,7 +326,9 @@ begin
        and (not p_exigir_lease or (worker_id=p_worker_id and lease_token=p_lease_token));
     get diagnostics v_claimed=row_count;
     if v_claimed=0 then raise exception 'LEASE_LOST'; end if;
-    perform public.motor_resolver_alerta_fila(r.id,'fila_retomada');
+    if to_regprocedure('public.motor_resolver_alerta_fila(bigint,text)') is not null then
+      perform public.motor_resolver_alerta_fila(r.id,'fila_retomada');
+    end if;
     update private.motor_dispatcher_estado
        set ultimo_sucesso_em=clock_timestamp(),ultimo_erro=null,
            atualizado_em=clock_timestamp() where singleton;
@@ -342,10 +346,12 @@ begin
          and (not p_exigir_lease or (worker_id=p_worker_id and lease_token=p_lease_token));
       get diagnostics v_claimed=row_count;
       if v_claimed=0 then raise exception 'LEASE_LOST'; end if;
-      perform public.motor_alertar_fila_sem_elegiveis(
-        r.id,r.automacao_id,r.automacao_versao_id,r.bloco_id,
-        r.tentativas,v_delay,clock_timestamp()
-      );
+      if to_regprocedure('public.motor_alertar_fila_sem_elegiveis(bigint,bigint,bigint,text,integer,integer,timestamp with time zone)') is not null then
+        perform public.motor_alertar_fila_sem_elegiveis(
+          r.id,r.automacao_id,r.automacao_versao_id,r.bloco_id,
+          r.tentativas,v_delay,clock_timestamp()
+        );
+      end if;
       if r.tentativas=1 or mod(r.tentativas,30)=0 then
         insert into public.motor_execucoes(
           automacao_id,automacao_nome,bloco_id,evento,status,
@@ -374,7 +380,9 @@ begin
          and (not p_exigir_lease or (worker_id=p_worker_id and lease_token=p_lease_token));
       get diagnostics v_claimed=row_count;
       if v_claimed=0 then raise exception 'LEASE_LOST'; end if;
-      perform public.motor_resolver_alerta_fila(r.id,'fila_encerrada_com_erro');
+      if to_regprocedure('public.motor_resolver_alerta_fila(bigint,text)') is not null then
+        perform public.motor_resolver_alerta_fila(r.id,'fila_encerrada_com_erro');
+      end if;
       insert into public.motor_execucoes(
         automacao_id,automacao_nome,bloco_id,evento,status,
         lead_nome,lead_telefone,detalhe
