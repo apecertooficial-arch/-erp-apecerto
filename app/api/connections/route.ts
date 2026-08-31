@@ -21,15 +21,22 @@ function positiveInteger(value: unknown) {
 /**
  * A tela de conexões usa a API do próprio ERP em vez de abrir um segundo
  * fluxo de autenticação Supabase no navegador. O JWT continua sendo o do
- * usuário: wa_v7_painel e dapi-qr mantêm o escopo do corretor no servidor.
+ * usuário: wa_v7_atualizar_painel e dapi-qr mantêm o escopo do corretor no servidor.
  */
 export async function GET(request: Request) {
   const auth = await authenticatedClient(request);
   if (!auth) return Response.json({ error: "Sessão inválida ou expirada." }, { status: 401 });
 
-  const { data, error } = await auth.supabase.rpc("wa_v7_painel");
-  if (error) return Response.json({ error: "Não foi possível consultar suas instâncias." }, { status: 502 });
-  return Response.json({ painel: data }, { headers: { "Cache-Control": "no-store" } });
+  const refreshed = await auth.supabase.rpc("wa_v7_atualizar_painel");
+  if (!refreshed.error) {
+    return Response.json({ painel: refreshed.data }, { headers: { "Cache-Control": "no-store" } });
+  }
+
+  // Se o provedor estiver indisponível, o último snapshot completo continua
+  // útil. Uma falha de atualização nunca deve apagar a tela de Conexões.
+  const fallback = await auth.supabase.rpc("wa_v7_painel");
+  if (fallback.error) return Response.json({ error: "Não foi possível consultar suas instâncias." }, { status: 502 });
+  return Response.json({ painel: fallback.data }, { headers: { "Cache-Control": "no-store" } });
 }
 
 export async function POST(request: Request) {

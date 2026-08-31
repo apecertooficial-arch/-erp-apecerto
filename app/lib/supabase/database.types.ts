@@ -13906,6 +13906,7 @@ export type Database = {
         Args: { p_account?: number }
         Returns: number
       }
+      wa_v7_atualizar_painel: { Args: never; Returns: Json }
       wa_v7_meu_corretor: { Args: never; Returns: number }
       wa_v7_minha_presenca: { Args: never; Returns: Json }
       wa_v7_painel: { Args: never; Returns: Json }

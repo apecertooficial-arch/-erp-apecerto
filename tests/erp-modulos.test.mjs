@@ -203,7 +203,9 @@ test("Configurações possui uma única camada: Conexões", () => {
   assert.match(connections, /AbortSignal\.timeout\(15_000\)/,
     "a tela precisa terminar em dados ou erro acionável, nunca carregar para sempre");
   assert.match(api, /auth\.getUser\(token\)/);
-  assert.match(api, /rpc\("wa_v7_painel"\)/);
+  assert.match(api, /rpc\("wa_v7_atualizar_painel"\)/);
+  assert.match(api, /rpc\("wa_v7_painel"\)/,
+    "se o provedor falhar, Conexões deve preservar o último snapshot completo");
   assert.match(api, /functions\.invoke\("dapi-qr"/);
   assert.doesNotMatch(api, /service.?role/i,
     "o proxy deve preservar o JWT e o escopo do próprio corretor");
