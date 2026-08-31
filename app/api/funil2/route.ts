@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { createServerSupabaseClient } from "../../lib/supabase/server";
 import { normalizarInstanteSaoPaulo } from "../../lib/timezone";
 import { interesseDasTags, normalizarTagsDoLead, type TagDoLead } from "../../lib/lead-tags";
+import { statusHttpFunil } from "../../features/funil-2/contratos.mjs";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +18,23 @@ async function clienteAutenticado(request: Request) {
   const { data, error } = await supabase.auth.getUser(token);
   if (error || !data.user) return { erro: Response.json({ error: "Sessão inválida ou expirada." }, { status: 401 }) };
   return { db: supabase as unknown as SupabaseClient };
+}
+
+function textoExtra(extras: unknown, chave: string): string | null {
+  if (!extras || typeof extras !== "object" || Array.isArray(extras)) return null;
+  const valor = (extras as Record<string, unknown>)[chave];
+  return typeof valor === "string" && valor.trim() ? valor.trim() : null;
+}
+
+function enderecoDoLead(extras: unknown): string | null {
+  const partes: string[] = [];
+  for (const chave of ["endereco", "numero", "complemento", "bairro", "cidade", "estado", "cep"]) {
+    const valor = textoExtra(extras, chave);
+    if (!valor) continue;
+    const acumulado = partes.join(", ").toLocaleLowerCase("pt-BR");
+    if (!acumulado.includes(valor.toLocaleLowerCase("pt-BR"))) partes.push(valor);
+  }
+  return partes.length ? partes.join(", ") : null;
 }
 
 /* Lead descartado sai do funil mas continua no banco: o descarte e sempre
@@ -50,9 +68,7 @@ async function listarLeadsSemCorte(db: SupabaseClient) {
 async function instanciasPorLead(db: SupabaseClient) {
   const mapa = new Map<string, { rotulo: string | null; telefone: string | null; status: string | null }>();
   const { data, error } = await db.rpc("f2_instancia_por_lead");
-  /* Falhar aqui nao pode derrubar o Funil: sem o mapa, cada lead cai no numero
-     padrao do corretor -- exatamente o comportamento anterior. */
-  if (error || !Array.isArray(data)) return mapa;
+  if (error || !Array.isArray(data)) return { mapa, erro: true };
   for (const linha of data as Array<{ funil_lead_id: string; rotulo: string | null; telefone: string | null; status: string | null }>) {
     if (!linha?.funil_lead_id) continue;
     mapa.set(String(linha.funil_lead_id), {
@@ -61,7 +77,7 @@ async function instanciasPorLead(db: SupabaseClient) {
       status: linha.status ? String(linha.status) : null,
     });
   }
-  return mapa;
+  return { mapa, erro: false };
 }
 
 /* Numero padrao do corretor -- usado SO quando o lead ainda nao tem conversa
@@ -69,12 +85,13 @@ async function instanciasPorLead(db: SupabaseClient) {
    mesmo selo em todos os leads e nao sabia por onde falar com cada cliente. */
 async function instanciasPorCorretor(db: SupabaseClient, corretorIds: number[]) {
   const mapa = new Map<number, { rotulo: string | null; telefone: string | null; status: string | null }>();
-  if (!corretorIds.length) return mapa;
-  const { data } = await db
+  if (!corretorIds.length) return { mapa, erro: false };
+  const { data, error } = await db
     .from("wa_instancias")
     .select("corretor_id,rotulo,telefone,status,ultimo_heartbeat")
     .in("corretor_id", corretorIds)
     .order("ultimo_heartbeat", { ascending: false, nullsFirst: false });
+  if (error) return { mapa, erro: true };
   for (const linha of data ?? []) {
     const id = Number(linha.corretor_id);
     if (!Number.isFinite(id) || mapa.has(id)) continue;
@@ -84,7 +101,12 @@ async function instanciasPorCorretor(db: SupabaseClient, corretorIds: number[]) 
       status: linha.status ? String(linha.status) : null,
     });
   }
-  return mapa;
+  return { mapa, erro: false };
+}
+
+function statusErroBanco(error: { code?: string; message?: string } | null | undefined) {
+  if (error?.code === "42501" || /permission|policy|not allowed|acesso negado/i.test(error?.message ?? "")) return 403;
+  return 502;
 }
 
 export async function GET(request: Request) {
@@ -102,14 +124,17 @@ export async function GET(request: Request) {
       db.from("f2_evento").select("id,funil_lead_id,tipo,titulo,detalhe,payload,criado_em").eq("funil_lead_id", historicoLeadId).order("criado_em", { ascending: false }).limit(500),
       db.from("f2_nota").select("id,funil_lead_id,texto,origem,autor_nome,criado_em").eq("funil_lead_id", historicoLeadId).order("criado_em", { ascending: false }).limit(500),
     ]);
-    if (erroEventos || erroNotas) return Response.json({ error: "Não foi possível carregar o histórico deste atendimento." }, { status: 502 });
+    if (erroEventos || erroNotas) return Response.json(
+      { error: "Não foi possível carregar o histórico deste atendimento." },
+      { status: statusErroBanco(erroEventos ?? erroNotas) },
+    );
     return Response.json({ eventos: eventos ?? [], notas: notas ?? [] });
   }
   const [
     { data: leads, error: e1 }, { data: momentos, error: e2 },
     { data: etapas, error: e4 }, { data: visitas, error: e5 },
     { data: aquario, error: e7 }, { data: operacao, error: e8 },
-    { data: saraModo }, { data: saraRunner }, { data: saraF2Config }, saraF2Analises,
+    { data: saraModo, error: erroSaraModo }, { data: saraRunner, error: erroSaraRunner }, { data: saraF2Config, error: erroSaraConfig }, saraF2Analises,
     { data: tagCatalogo, error: e9 },
   ] = await Promise.all([
     listarLeadsSemCorte(db),
@@ -125,32 +150,158 @@ export async function GET(request: Request) {
     db.from("lead_tag_catalogo").select("id,nome,cor").eq("ativo", true).order("nome"),
   ]);
   if (e1 || e2 || e4 || e5 || e7 || e9) {
-    const message = e1?.message || e2?.message || e4?.message || e5?.message || e7?.message || e9?.message || "Falha ao carregar o Funil 2.0.";
-    return Response.json({ error: message }, { status: message.toLowerCase().includes("permission") ? 403 : 502 });
+    const primeiroErro = e1 ?? e2 ?? e4 ?? e5 ?? e7 ?? e9;
+    return Response.json(
+      { error: primeiroErro?.message || "Falha ao carregar o Funil 2.0." },
+      { status: statusErroBanco(primeiroErro) },
+    );
+  }
+  const negociacoes: Array<Record<string, unknown>> = [];
+  const funilLeadIds = (leads ?? []).map((lead) => String(lead.id));
+  for (let inicio = 0; inicio < funilLeadIds.length; inicio += 100) {
+    const { data, error } = await db.from("f2_negociacao").select("id,funil_lead_id,titulo,etapa,valor,observacao,atualizado_em").in("funil_lead_id", funilLeadIds.slice(inicio, inicio + 100)).order("atualizado_em", { ascending: false });
+    if (error) return Response.json({ error: "Não foi possível carregar as oportunidades do atendimento." }, { status: statusErroBanco(error) });
+    negociacoes.push(...((data ?? []) as Array<Record<string, unknown>>));
   }
   const negociosIds = [...new Set((leads ?? []).map((lead) => Number(lead.origem_negocio_id)).filter(Number.isFinite))];
-  const negocioLead = new Map<number, number>();
+  type NegocioOriginal = { id: number; lead_id: number; pipeline_id: number; stage_id: number | null; empreendimento_id: string | null; unidade_id: string | null; valor: number | null; status: string; criado_em: string; ultima_movimentacao: string | null };
+  type LeadOriginal = { id: number; nome: string | null; telefone: string | null; email: string | null; origem: string | null; corretor_id: number | null; tags: unknown; extras: unknown; atualizado_em: string | null };
+  const negocioLead = new Map<number, { leadId: number; valor: number | null }>();
   for (let inicio = 0; inicio < negociosIds.length; inicio += 500) {
-    const { data: negocios, error } = await db.from("negocios").select("id,lead_id").in("id", negociosIds.slice(inicio, inicio + 500));
-    if (error) return Response.json({ error: "Não foi possível vincular o histórico real dos leads." }, { status: 502 });
-    for (const negocio of negocios ?? []) negocioLead.set(Number(negocio.id), Number(negocio.lead_id));
+    const { data: negocios, error } = await db.from("negocios").select("id,lead_id,valor").in("id", negociosIds.slice(inicio, inicio + 500));
+    if (error) return Response.json({ error: "Não foi possível vincular o histórico real dos leads." }, { status: statusErroBanco(error) });
+    for (const negocio of negocios ?? []) negocioLead.set(Number(negocio.id), {
+      leadId: Number(negocio.lead_id),
+      valor: negocio.valor == null ? null : Number(negocio.valor),
+    });
   }
   /* f2_lead e uma copia operacional e, de proposito, nao duplica as tags.
      Voltamos ao lead original pelo negocio e lemos com o MESMO cliente
      autenticado da sessao: as policies de RLS continuam decidindo exatamente
      quais tags o corretor pode ver. */
-  const tagsPorLead = new Map<number, { tags: TagDoLead[]; interesse: string | null }>();
-  const leadsOriginaisIds = [...new Set(negocioLead.values())].filter(Number.isFinite);
+  const contextoPorLead = new Map<number, { original: LeadOriginal; tags: TagDoLead[]; interesse: string | null }>();
+  const leadsOriginaisIds = [...new Set([...negocioLead.values()].map((negocio) => negocio.leadId))].filter(Number.isFinite);
   for (let inicio = 0; inicio < leadsOriginaisIds.length; inicio += 500) {
-    const { data: originais, error } = await db.from("leads").select("id,tags").in("id", leadsOriginaisIds.slice(inicio, inicio + 500));
-    if (error) return Response.json({ error: "Não foi possível carregar as tags de interesse dos leads." }, { status: 502 });
-    for (const original of originais ?? []) {
+    const { data: originais, error } = await db.from("leads").select("id,nome,telefone,email,origem,corretor_id,tags,extras,atualizado_em").in("id", leadsOriginaisIds.slice(inicio, inicio + 500));
+    if (error) return Response.json({ error: "Não foi possível carregar a identidade real dos leads." }, { status: statusErroBanco(error) });
+    for (const original of (originais ?? []) as LeadOriginal[]) {
       const tags = normalizarTagsDoLead(original.tags);
-      tagsPorLead.set(Number(original.id), { tags, interesse: interesseDasTags(tags) });
+      contextoPorLead.set(Number(original.id), { original, tags, interesse: interesseDasTags(tags) });
+    }
+  }
+
+  const negociosOriginais: NegocioOriginal[] = [];
+  for (let inicio = 0; inicio < leadsOriginaisIds.length; inicio += 500) {
+    const { data, error } = await db.from("negocios").select("id,lead_id,pipeline_id,stage_id,empreendimento_id,unidade_id,valor,status,criado_em,ultima_movimentacao").in("lead_id", leadsOriginaisIds.slice(inicio, inicio + 500));
+    if (error) return Response.json({ error: "Não foi possível carregar os negócios vinculados." }, { status: statusErroBanco(error) });
+    negociosOriginais.push(...((data ?? []) as NegocioOriginal[]));
+  }
+  const pipelineIds = [...new Set(negociosOriginais.map((item) => item.pipeline_id).filter(Number.isFinite))];
+  const stageIds = [...new Set(negociosOriginais.map((item) => item.stage_id).filter((id): id is number => Number.isFinite(id)))];
+  const empreendimentoIds = [...new Set(negociosOriginais.map((item) => item.empreendimento_id).filter((id): id is string => Boolean(id)))];
+  const unidadeIds = [...new Set(negociosOriginais.map((item) => item.unidade_id).filter((id): id is string => Boolean(id)))];
+  const [{ data: pipelines, error: erroPipelines }, { data: stages, error: erroStages }, { data: empreendimentos, error: erroEmpreendimentos }, { data: unidades, error: erroUnidades }] = await Promise.all([
+    pipelineIds.length ? db.from("pipelines").select("id,nome").in("id", pipelineIds) : Promise.resolve({ data: [], error: null }),
+    stageIds.length ? db.from("pipeline_stages").select("id,nome").in("id", stageIds) : Promise.resolve({ data: [], error: null }),
+    empreendimentoIds.length ? db.from("empreendimentos").select("id,nome,endereco,bairro,cidade,preco").in("id", empreendimentoIds) : Promise.resolve({ data: [], error: null }),
+    unidadeIds.length ? db.from("unidades").select("id,numero,tipologia,valor_promo,valor_tabela").in("id", unidadeIds) : Promise.resolve({ data: [], error: null }),
+  ]);
+  if (erroPipelines || erroStages || erroEmpreendimentos || erroUnidades) return Response.json(
+    { error: "Não foi possível carregar o contexto imobiliário dos negócios." },
+    { status: statusErroBanco(erroPipelines ?? erroStages ?? erroEmpreendimentos ?? erroUnidades) },
+  );
+  const pipelinePorId = new Map((pipelines ?? []).map((item) => [Number(item.id), String(item.nome)]));
+  const stagePorId = new Map((stages ?? []).map((item) => [Number(item.id), String(item.nome)]));
+  const empreendimentoPorId = new Map((empreendimentos ?? []).map((item) => [String(item.id), item]));
+  const unidadePorId = new Map((unidades ?? []).map((item) => [String(item.id), item]));
+  const funilIdsPorLeadOriginal = new Map<number, string[]>();
+  for (const lead of leads ?? []) {
+    const origem = negocioLead.get(Number(lead.origem_negocio_id));
+    if (!origem) continue;
+    const ids = funilIdsPorLeadOriginal.get(origem.leadId) ?? [];
+    ids.push(String(lead.id));
+    funilIdsPorLeadOriginal.set(origem.leadId, ids);
+  }
+  type TarefaOriginal = { id: string | number; lead_id: number; negocio_id: number | null; corretor_id: number | null; titulo: string; vencimento: string | null; concluida: boolean; prioridade: string | null };
+  const tarefasOriginais: TarefaOriginal[] = [];
+  for (let inicio = 0; inicio < leadsOriginaisIds.length; inicio += 500) {
+    const { data, error } = await db.from("crm_tarefas")
+      .select("id,lead_id,negocio_id,corretor_id,titulo,vencimento,concluida,prioridade")
+      .in("lead_id", leadsOriginaisIds.slice(inicio, inicio + 500))
+      .order("vencimento", { ascending: true });
+    if (error) return Response.json({ error: "Não foi possível carregar as atividades deste atendimento." }, { status: statusErroBanco(error) });
+    tarefasOriginais.push(...((data ?? []) as TarefaOriginal[]));
+  }
+  const corretorNomePorId = new Map<number, string>();
+  for (const lead of leads ?? []) {
+    const corretorId = Number(lead.corretor_id);
+    if (Number.isFinite(corretorId) && lead.corretor_nome) corretorNomePorId.set(corretorId, String(lead.corretor_nome));
+  }
+  const atividades = tarefasOriginais.flatMap((tarefa) =>
+    (funilIdsPorLeadOriginal.get(Number(tarefa.lead_id)) ?? []).map((funilLeadId) => ({
+      id: String(tarefa.id), funil_lead_id: funilLeadId, lead_id: Number(tarefa.lead_id),
+      negocio_id: tarefa.negocio_id == null ? null : Number(tarefa.negocio_id), tipo: "tarefa" as const,
+      titulo: String(tarefa.titulo || "Atividade sem título"),
+      responsavel: tarefa.corretor_id == null ? null : corretorNomePorId.get(Number(tarefa.corretor_id)) ?? null,
+      prazo_em: tarefa.vencimento ? String(tarefa.vencimento) : null,
+      status: tarefa.concluida ? "concluida" as const : "pendente" as const,
+      prioridade: tarefa.prioridade ? String(tarefa.prioridade) : null,
+    })),
+  );
+  const negociosVinculados = negociosOriginais.flatMap((item) =>
+    (funilIdsPorLeadOriginal.get(Number(item.lead_id)) ?? []).map((funilLeadId) => ({
+      id: Number(item.id), funil_lead_id: funilLeadId,
+      pipeline: pipelinePorId.get(Number(item.pipeline_id)) ?? null,
+      etapa: item.stage_id == null ? null : stagePorId.get(Number(item.stage_id)) ?? null,
+      empreendimento_id: item.empreendimento_id, unidade_id: item.unidade_id,
+      valor: item.valor == null ? null : Number(item.valor), status: String(item.status),
+    })),
+  );
+  const imoveisVinculados = negociosOriginais.filter((item) => item.empreendimento_id || item.unidade_id).flatMap((item) => {
+    const empreendimento = item.empreendimento_id ? empreendimentoPorId.get(item.empreendimento_id) : null;
+    const unidade = item.unidade_id ? unidadePorId.get(item.unidade_id) : null;
+    return (funilIdsPorLeadOriginal.get(Number(item.lead_id)) ?? []).map((funilLeadId) => ({
+      negocio_id: Number(item.id), funil_lead_id: funilLeadId,
+      empreendimento_id: item.empreendimento_id, empreendimento: empreendimento?.nome ? String(empreendimento.nome) : null,
+      unidade_id: item.unidade_id, unidade: unidade?.numero ? String(unidade.numero) : null,
+      valor: unidade?.valor_promo != null ? Number(unidade.valor_promo) : unidade?.valor_tabela != null ? Number(unidade.valor_tabela) : item.valor == null ? null : Number(item.valor),
+    }));
+  });
+
+  let arquivosVinculados: Array<{ id: string; funil_lead_id: string; negocio_id: number; nome: string; status: string; criado_em: string }> = [];
+  let arquivosEstado: "ok" | "sem_vinculo" | "erro" = negociosOriginais.length ? "ok" : "sem_vinculo";
+  if (negociosOriginais.length) {
+    const processos: Array<{ id: string; negocio_id: number }> = [];
+    for (let inicio = 0; inicio < negociosOriginais.length; inicio += 500) {
+      const { data, error } = await db.from("venda_processos").select("id,negocio_id").in("negocio_id", negociosOriginais.slice(inicio, inicio + 500).map((item) => item.id));
+      if (error) { arquivosEstado = "erro"; break; }
+      processos.push(...((data ?? []) as Array<{ id: string; negocio_id: number }>));
+    }
+    if (arquivosEstado !== "erro" && processos.length) {
+      const processoNegocio = new Map(processos.map((item) => [String(item.id), Number(item.negocio_id)]));
+      const anexos: Array<{ id: string; processo_ref: string; negocio_id: number | null; nome: string; status: string; criado_em: string }> = [];
+      const processoIds = [...processoNegocio.keys()];
+      for (let inicio = 0; inicio < processoIds.length; inicio += 100) {
+        const { data, error } = await db.from("esteira_anexos").select("id,processo_ref,negocio_id,nome,status,criado_em").in("processo_ref", processoIds.slice(inicio, inicio + 100));
+        if (error) { arquivosEstado = "erro"; break; }
+        anexos.push(...((data ?? []) as typeof anexos));
+      }
+      const negocioPorId = new Map(negociosOriginais.map((item) => [Number(item.id), item]));
+      if (arquivosEstado !== "erro") arquivosVinculados = anexos.flatMap((item) => {
+        const negocioId = Number(item.negocio_id ?? processoNegocio.get(String(item.processo_ref)));
+        const negocio = negocioPorId.get(negocioId);
+        if (!negocio) return [];
+        return (funilIdsPorLeadOriginal.get(Number(negocio.lead_id)) ?? []).map((funilLeadId) => ({
+          id: String(item.id), funil_lead_id: funilLeadId, negocio_id: negocioId,
+          nome: String(item.nome), status: String(item.status), criado_em: String(item.criado_em),
+        }));
+      });
+    } else if (arquivosEstado !== "erro") {
+      arquivosEstado = "sem_vinculo";
     }
   }
   const corretorIds = [...new Set((leads ?? []).map((lead) => Number(lead.corretor_id)).filter(Number.isFinite))];
-  const [instancias, instanciaDoLead] = await Promise.all([
+  const [instanciasResultado, instanciaDoLeadResultado] = await Promise.all([
     instanciasPorCorretor(db, corretorIds),
     instanciasPorLead(db),
   ]);
@@ -158,24 +309,50 @@ export async function GET(request: Request) {
     /* A conversa manda. O numero padrao do corretor so entra quando o lead
        ainda nao trocou nenhuma mensagem -- ai qualquer numero dele serve, e o
        selo vira uma previsao ("vai sair por aqui") em vez de um fato. */
-    const daConversa = instanciaDoLead.get(String(lead.id));
-    const instancia = daConversa ?? instancias.get(Number(lead.corretor_id));
-    const leadOriginalId = negocioLead.get(Number(lead.origem_negocio_id)) ?? 0;
-    const contexto = tagsPorLead.get(leadOriginalId);
+    const daConversa = instanciaDoLeadResultado.mapa.get(String(lead.id));
+    const padrao = instanciasResultado.mapa.get(Number(lead.corretor_id));
+    const podeUsarPadrao = !instanciaDoLeadResultado.erro && !instanciasResultado.erro;
+    const instancia = daConversa ?? (podeUsarPadrao ? padrao : null);
+    const negocio = negocioLead.get(Number(lead.origem_negocio_id));
+    const leadOriginalId = negocio?.leadId ?? 0;
+    const contexto = contextoPorLead.get(leadOriginalId);
+    const original = contexto?.original;
     return {
       ...lead,
       lead_id: leadOriginalId,
+      valor: negocio?.valor ?? null,
+      nome: original?.nome?.trim() || lead.nome,
+      telefone: original?.telefone ?? lead.telefone,
+      email: original?.email ?? null,
+      cpf_cnpj: textoExtra(original?.extras, "cpf_cnpj"),
+      endereco: enderecoDoLead(original?.extras),
+      origem_cadastro: original?.origem ?? null,
+      /* Versão canônica dos dados da pessoa, distinta da versão operacional
+         do cartão. É este instante que protege o round-trip do editor. */
+      versaoDados: original?.atualizado_em ?? null,
       interesse: contexto?.interesse ?? null,
       tags: contexto?.tags ?? [],
       instancia_rotulo: instancia?.rotulo ?? null,
       instancia_telefone: instancia?.telefone ?? null,
       instancia_status: instancia?.status ?? null,
-      instancia_origem: daConversa ? "conversa" : "padrao",
+      instancia_origem: daConversa ? "conversa" : instancia ? "padrao" : "indisponivel",
     };
   });
   return Response.json({
     leads: leadsComOrigem, momentos: momentos ?? [], eventos: [], etapas: etapas ?? [],
-    visitas: visitas ?? [], negociacoes: [], aquario: aquario ?? [], operacao: e8 ? null : operacao ?? null,
+    visitas: visitas ?? [], atividades, negociacoes: negociacoes ?? [], negociosVinculados, imoveisVinculados, arquivosVinculados,
+    fontes: {
+      arquivos: arquivosEstado,
+      conversas: instanciaDoLeadResultado.erro ? "erro" : "ok",
+      instanciasPadrao: instanciasResultado.erro ? "erro" : "ok",
+      operacao: e8 ? "erro" : "ok",
+      sara: erroSaraModo || erroSaraRunner || erroSaraConfig || saraF2Analises.error ? "erro" : "ok",
+    }, aquario: aquario ?? [],
+    /* A lista só retorna sem erro quando a própria função canônica reconhece
+       a sessão como admin ou corretor cadastrado. A interface não deduz
+       permissão por rótulo de perfil: ela recebe a capacidade comprovada. */
+    podePescar: true,
+    operacao: e8 ? null : operacao ?? null,
     notas: [], tagCatalogo: tagCatalogo ?? [],
     sara: {
       modo: typeof saraModo === "object" && saraModo !== null && "modo" in saraModo ? String((saraModo as { modo?: unknown }).modo ?? "") || null : null,
@@ -198,6 +375,52 @@ export async function POST(request: Request) {
   try { body = await request.json() as Record<string, unknown>; }
   catch { return Response.json({ error: "JSON inválido." }, { status: 400 }); }
   const action = String(body.action ?? "");
+  if (action === "visitaDisponibilidade") {
+    const leadId = String(body.leadId ?? "");
+    const data = String(body.data ?? "");
+    const comGerente = body.comGerente === true;
+    const gerenteId = body.gerenteId == null || body.gerenteId === "" ? null : Number(body.gerenteId);
+    if (!/^[0-9a-f-]{36}$/i.test(leadId) || !/^\d{4}-\d{2}-\d{2}$/.test(data)) {
+      return Response.json({ error: "Lead ou data inválidos." }, { status: 422 });
+    }
+    if (comGerente && (!Number.isSafeInteger(gerenteId) || Number(gerenteId) < 1)) {
+      return Response.json({ error: "Escolha o gerente para consultar os horários." }, { status: 422 });
+    }
+
+    if (comGerente) {
+      const { data: gerente, error: erroGerente } = await auth.db.from("gerentes")
+        .select("id").eq("id", gerenteId as number).eq("ativo", true).maybeSingle();
+      if (erroGerente) return Response.json({ error: "Não foi possível consultar o gerente." }, { status: statusErroBanco(erroGerente) });
+      if (!gerente) return Response.json({ error: "Gerente indisponível." }, { status: 404 });
+    }
+
+    const { data: disponibilidade, error } = await auth.db.rpc("f2_disponibilidade_visitas", {
+      p_lead_id: leadId,
+      p_data: data,
+      p_gerente_id: comGerente ? gerenteId : null,
+    });
+    if (error) return Response.json({ error: "Não foi possível consultar os horários." }, { status: statusErroBanco(error) });
+    const resultado = (disponibilidade ?? {}) as {
+      ok?: boolean;
+      erro?: string;
+      horarios?: Array<{ inicio?: unknown; fim?: unknown; estado?: unknown }>;
+    };
+    if (resultado.ok !== true) {
+      const proibido = resultado.erro === "sem_permissao";
+      const gerenteInvalido = resultado.erro === "gerente_invalido";
+      return Response.json({ error: proibido
+        ? "Este lead não pertence à sua carteira."
+        : gerenteInvalido ? "Gerente indisponível." : "Lead não encontrado." }, { status: proibido ? 403 : gerenteInvalido ? 409 : 404 });
+    }
+    const estados = new Set(["disponivel", "indisponivel", "meu"]);
+    const horarios = (resultado.horarios ?? []).flatMap((horario) => {
+      const inicio = typeof horario.inicio === "string" && /^\d{2}:\d{2}$/.test(horario.inicio) ? horario.inicio : null;
+      const fim = typeof horario.fim === "string" && /^\d{2}:\d{2}$/.test(horario.fim) ? horario.fim : null;
+      const estado = typeof horario.estado === "string" && estados.has(horario.estado) ? horario.estado : null;
+      return inicio && fim && estado ? [{ inicio, fim, estado }] : [];
+    });
+    return Response.json({ ok: true, data, duracao_min: 60, horarios });
+  }
   if (action === "associarTag") {
     const leadId = String(body.leadId ?? "");
     const tagId = String(body.tagId ?? "");
@@ -207,7 +430,7 @@ export async function POST(request: Request) {
     }
     if (!/^#[0-9A-F]{6}$/.test(cor)) return Response.json({ error: "Escolha uma cor válida." }, { status: 422 });
     const { data, error } = await auth.db.rpc("f2_associar_tag", { p_funil_lead_id: leadId, p_tag_id: tagId, p_cor: cor });
-    if (error) return Response.json({ error: "Não foi possível associar a tag." }, { status: 502 });
+    if (error) return Response.json({ error: "Não foi possível associar a tag." }, { status: statusErroBanco(error) });
     const resultado = (data ?? {}) as { ok?: boolean; erro?: string };
     if (resultado.ok !== true) {
       const mensagens: Record<string, string> = {
@@ -227,7 +450,7 @@ export async function POST(request: Request) {
       p_decisao: decisao,
       p_motivo: String(body.motivo ?? "").trim().slice(0, 500) || null,
     });
-    if (error) return Response.json({ error: "Não foi possível registrar sua decisão." }, { status: 502 });
+    if (error) return Response.json({ error: "Não foi possível registrar sua decisão." }, { status: statusErroBanco(error) });
     const resultado = (data ?? {}) as { ok?: boolean; erro?: string };
     if (resultado.ok !== true) {
       const conflito = ["versao_conflito", "decisao_ja_registrada"].includes(resultado.erro ?? "");
@@ -285,8 +508,18 @@ export async function POST(request: Request) {
     rpc = "f2_salvar_nota";
     args = { p_lead_id: leadId, p_texto: texto.slice(0, 2000) };
   } else if (action === "salvarNegociacao") {
+    const etapaNegociacao = String(body.etapa ?? "qualificacao");
+    if (["venda", "perdida"].includes(etapaNegociacao)) {
+      return Response.json({
+        error: "Ganho e perda precisam atualizar o negócio canônico pela Esteira. O Funil não simula esse fechamento.",
+        erro: "fechamento_sem_contrato_canonico",
+      }, { status: 409 });
+    }
+    if (!["qualificacao", "simulacao", "proposta", "documentacao", "contrato"].includes(etapaNegociacao)) {
+      return Response.json({ error: "Etapa comercial inválida." }, { status: 422 });
+    }
     rpc = "f2_salvar_negociacao";
-    args = { p_id: body.id || null, p_lead_id: body.leadId, p_titulo: String(body.titulo ?? "").slice(0, 120), p_etapa: body.etapa || "qualificacao", p_valor: body.valor === "" || body.valor == null ? null : Number(body.valor), p_observacao: String(body.observacao ?? "").slice(0, 500) || null };
+    args = { p_id: body.id || null, p_lead_id: body.leadId, p_titulo: String(body.titulo ?? "").slice(0, 120), p_etapa: etapaNegociacao, p_valor: body.valor === "" || body.valor == null ? null : Number(body.valor), p_observacao: String(body.observacao ?? "").slice(0, 500) || null };
   } else if (action === "pescar") {
     rpc = "f2_pescar_negocio";
     args = { p_negocio_id: Number(body.negocioId), p_substituir_id: null };
@@ -317,11 +550,19 @@ export async function POST(request: Request) {
   }
 
   const { data, error } = await auth.db.rpc(rpc, args);
-  if (error) return Response.json({ error: error.message }, { status: 502 });
+  if (error) {
+    const chaveConflito = /horario_ocupado/i.test(error.message ?? "")
+      ? "horario_ocupado"
+      : /gerente_ocupado/i.test(error.message ?? "")
+        ? "gerente_ocupado"
+        : /corretor_ocupado/i.test(error.message ?? "") ? "corretor_ocupado" : null;
+    if (chaveConflito) return Response.json({ error: RECUSAS[chaveConflito], erro: chaveConflito }, { status: 409 });
+    return Response.json({ error: error.message }, { status: statusErroBanco(error) });
+  }
   const resultado = (data ?? {}) as { ok?: boolean; erro?: string };
   if (resultado.ok === false) {
     const chave = String(resultado.erro ?? "");
-    return Response.json({ error: RECUSAS[chave] || resultado.erro || "Ação não permitida.", erro: chave }, { status: 409 });
+    return Response.json({ error: RECUSAS[chave] || resultado.erro || "Ação não permitida.", erro: chave }, { status: statusHttpFunil(chave) });
   }
   return Response.json({ ok: true, resultado });
 }
@@ -331,7 +572,9 @@ export async function POST(request: Request) {
 const RECUSAS: Record<string, string> = {
   sem_permissao: "Você não tem permissão para concluir esta ação.",
   dados_invalidos: "Revise os campos obrigatórios, o prazo e a posição informada.",
+  horario_ocupado: "Esse horário acabou de ficar indisponível. Escolha outro horário.",
   gerente_ocupado: "Esse gerente já tem uma visita nesse horário. Escolha outro horário ou outro gerente.",
+  corretor_ocupado: "Você já tem uma visita nesse horário. Escolha outro horário.",
   ordem_em_uso: "Essa posição está ocupada e não pôde ser reorganizada. Recarregue e tente novamente.",
   etapa_em_uso: "Esta etapa possui leads ou momentos ativos. Edite-a ou mova os itens antes de desativar.",
   momento_em_uso: "Este momento está associado a leads. Edite-o ou reclassifique os leads antes de desativar.",
@@ -374,7 +617,7 @@ export async function PATCH(request: Request) {
       .select("momento_codigo")
       .eq("id", id)
       .maybeSingle();
-    if (leadAntesErro) return Response.json({ error: leadAntesErro.message }, { status: 502 });
+    if (leadAntesErro) return Response.json({ error: leadAntesErro.message }, { status: statusErroBanco(leadAntesErro) });
     momentoAnterior = (leadAntes as { momento_codigo?: string } | null)?.momento_codigo ?? null;
     const prazo = body.prazoCombinado ? new Date(String(body.prazoCombinado)) : null;
     if (prazo && Number.isNaN(prazo.getTime())) return Response.json({ error: "Prazo combinado inválido." }, { status: 422 });
@@ -405,33 +648,23 @@ export async function PATCH(request: Request) {
     return Response.json({ error: "Ação desconhecida." }, { status: 400 });
   }
 
-  let { data, error } = await db.rpc(rpc, args);
-  if (error) return Response.json({ error: error.message }, { status: 502 });
-  let resultado = (data ?? {}) as { ok?: boolean; erro?: string };
-
-  /* A Sara reavalia o lead em segundo plano e sobe a versão. Quando isso
-     acontece entre o corretor abrir a ficha e salvar, a versão que a tela
-     mandou fica para trás e a RPC recusa com "versao_conflito", obrigando o
-     corretor a recarregar a página. Em vez disso, relemos a versão atual do
-     lead (o corretor já pode vê-lo por RLS) e reexecutamos a ação UMA vez com
-     a versão correta — a observação/momento é gravada sem refresh manual.
-     Retry único: se conflitar de novo, é disputa real e a recusa segue. */
-  if (resultado.ok === false && resultado.erro === "versao_conflito") {
-    const { data: atual } = await db.from("f2_lead").select("versao").eq("id", id).maybeSingle();
-    const versaoAtual = (atual as { versao?: number } | null)?.versao;
-    if (typeof versaoAtual === "number" && versaoAtual !== versao) {
-      args = { ...args, p_versao: versaoAtual };
-      ({ data, error } = await db.rpc(rpc, args));
-      if (error) return Response.json({ error: error.message }, { status: 502 });
-      resultado = (data ?? {}) as { ok?: boolean; erro?: string };
-    }
-  }
+  const { data, error } = await db.rpc(rpc, args);
+  if (error) return Response.json({ error: error.message }, { status: statusErroBanco(error) });
+  const resultado = (data ?? {}) as { ok?: boolean; erro?: string };
 
   if (resultado.ok === false) {
     const chave = String(resultado.erro ?? "");
     // Devolve também o código cru (erro) para a tela poder reagir a conflitos
     // de versão sem depender do texto traduzido.
-    return Response.json({ error: RECUSAS[chave] || resultado.erro || "Ação não permitida.", erro: chave }, { status: 409 });
+    if (chave === "versao_conflito" || chave === "versao_desatualizada") {
+      const { data: atual } = await db.from("f2_lead").select("versao,momento_codigo,etapa,atualizado_em").eq("id", id).maybeSingle();
+      return Response.json({
+        error: "Este atendimento mudou em outra sessão. Recarregue e revise antes de repetir sua ação.",
+        erro: chave,
+        atual: atual ?? null,
+      }, { status: 409 });
+    }
+    return Response.json({ error: RECUSAS[chave] || resultado.erro || "Ação não permitida.", erro: chave }, { status: statusHttpFunil(chave) });
   }
   let rastreamentoMeta: unknown = null;
   if (action === "atualizarMomento" && momentoAnterior) {
@@ -440,9 +673,16 @@ export async function PATCH(request: Request) {
       p_previous_momento: momentoAnterior,
       p_new_momento: String(args.p_momento_codigo ?? ""),
     });
-    rastreamentoMeta = trackingError
-      ? { ok: false, erro: trackingError.message }
-      : trackingData;
+    const trackingRecusado = trackingData && typeof trackingData === "object" && "ok" in trackingData && (trackingData as { ok?: unknown }).ok === false;
+    if (trackingError || trackingRecusado) {
+      return Response.json({
+        error: "O atendimento foi atualizado, mas a trilha não confirmou. Recarregue antes de repetir.",
+        erro: "rastreamento_nao_confirmado",
+        alteracaoAplicada: true,
+        reconciliacaoNecessaria: true,
+      }, { status: 502 });
+    }
+    rastreamentoMeta = trackingData;
   }
   return Response.json({ ok: true, resultado, rastreamentoMeta });
 }
