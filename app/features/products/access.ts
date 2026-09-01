@@ -4,6 +4,7 @@ export const PRODUCT_MANAGER_ROLES = new Set([
   "executivo",
   "gestor_comercial",
   "gestor_equipe",
+  "gerente",
 ]);
 
 export function isProductManagerRole(role: string | null | undefined) {

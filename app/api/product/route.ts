@@ -14,8 +14,6 @@ import { canViewUnitOwner } from "../../features/products/product-domain";
 export const dynamic = "force-dynamic";
 
 type ProductUpdate = Database["public"]["Tables"]["empreendimentos"]["Update"];
-type OwnerUpdate = Database["public"]["Tables"]["proprietarios"]["Update"];
-
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const PUBLICATION_RULE_CODES = new Set([
   "PRODUCT_NOT_READY",
@@ -79,7 +77,6 @@ export async function GET(request: Request) {
     .select(`
       *,
       condominios (*),
-      proprietarios (*),
       unidades (*),
       midias (id, tipo, storage_path, categoria, nome, is_capa, created_at, unidade_id)
     `)
@@ -138,6 +135,8 @@ export async function GET(request: Request) {
   const { data: meuPerfilGet } = await auth.supabase.from("usuarios").select("role").eq("id", auth.user.id).maybeSingle();
   const gerenciaProdutosGet = isProductManagerRole((meuPerfilGet as { role?: string } | null)?.role);
   const podeEditar = gerenciaProdutosGet || mine;
+  const { data: productOwners } = await auth.supabase.rpc("produto_proprietario_ler", { p_empreendimento_id: id });
+  const productOwner = productOwners?.[0] ?? null;
   // Todos os corretores autenticados podem consultar a ficha operacional completa.
   // Somente o captador da unidade recebe nome e contato do proprietário.
   const unidadesVisiveis = unidadesEnriched.map((u) => {
@@ -172,7 +171,7 @@ export async function GET(request: Request) {
     status: data.status,
     availableApprovedUnits: publishedAvailableUnits.length,
   });
-  return Response.json({ product: { ...data, proprietarios: podeVerProprietarioProduto ? data.proprietarios : null, proprietario_nome: null, proprietario_tel: null, proprietario_email: null, site_published: sitePublished, midias: media, unidades: unidadesVisiveis, captado_por_nome: capturedByName, mine, pode_editar: podeEditar, pode_ver_proprietario: podeVerProprietarioProduto, summary_price: summaryPrice, summary_area: summaryArea, is_favorite: Boolean(favorite), leads: (leadOptions ?? []).map((lead) => ({ ...lead, linked: linkedIds.has(lead.id) })), quality, completion: { checks, completed: Object.values(checks).filter(Boolean).length, total: Object.keys(checks).length } } });
+  return Response.json({ product: { ...data, proprietarios: podeVerProprietarioProduto ? productOwner : null, proprietario_nome: null, proprietario_tel: null, proprietario_email: null, site_published: sitePublished, midias: media, unidades: unidadesVisiveis, captado_por_nome: capturedByName, mine, pode_editar: podeEditar, pode_ver_proprietario: podeVerProprietarioProduto, summary_price: summaryPrice, summary_area: summaryArea, is_favorite: Boolean(favorite), leads: (leadOptions ?? []).map((lead) => ({ ...lead, linked: linkedIds.has(lead.id) })), quality, completion: { checks, completed: Object.values(checks).filter(Boolean).length, total: Object.keys(checks).length } } });
 }
 
 export async function PATCH(request: Request) {
@@ -717,27 +716,19 @@ export async function PATCH(request: Request) {
   if (error) return Response.json({ error: error.message }, { status: 502 });
 
   if (body.owner && typeof body.owner === "object") {
-    const { data: product } = await auth.supabase.from("empreendimentos").select("proprietario_id").eq("id", id).single();
-    if (product?.proprietario_id) {
-      const ownerInput = body.owner as Record<string, unknown>;
-      const owner: OwnerUpdate = {};
-      for (const field of ["nome", "email", "telefone"] as const) {
-        if (typeof ownerInput[field] === "string") owner[field] = ownerInput[field];
-      }
-      const { error: ownerError } = await auth.supabase.from("proprietarios").update(owner).eq("id", product.proprietario_id);
-      if (ownerError) return Response.json({ error: ownerError.message }, { status: 502 });
-    } else {
-      const ownerInput = body.owner as Record<string, unknown>;
-      const nome = typeof ownerInput.nome === "string" ? ownerInput.nome.trim() : "";
-      const email = typeof ownerInput.email === "string" ? ownerInput.email.trim().toLowerCase() : "";
-      const telefone = typeof ownerInput.telefone === "string" ? ownerInput.telefone.trim() : "";
-      if (nome || email || telefone) {
-        if (!nome || !email || !telefone) return Response.json({ error: "Preencha nome, e-mail e telefone do proprietário." }, { status: 422 });
-        const { data: createdOwner, error: ownerError } = await auth.supabase.from("proprietarios").insert({ nome, email, telefone, created_by: auth.user.id }).select("id").single();
-        if (ownerError) return Response.json({ error: ownerError.message }, { status: 502 });
-        const { error: linkError } = await auth.supabase.from("empreendimentos").update({ proprietario_id: createdOwner.id }).eq("id", id);
-        if (linkError) return Response.json({ error: linkError.message }, { status: 502 });
-      }
+    const ownerInput = body.owner as Record<string, unknown>;
+    const nome = typeof ownerInput.nome === "string" ? ownerInput.nome.trim() : "";
+    const email = typeof ownerInput.email === "string" ? ownerInput.email.trim().toLowerCase() : "";
+    const telefone = typeof ownerInput.telefone === "string" ? ownerInput.telefone.trim() : "";
+    if (nome || email || telefone) {
+      if (!nome || !email || !telefone) return Response.json({ error: "Preencha nome, e-mail e telefone do proprietário." }, { status: 422 });
+      const { error: ownerError } = await auth.supabase.rpc("produto_proprietario_salvar", {
+        p_empreendimento_id: id,
+        p_nome: nome,
+        p_email: email,
+        p_telefone: telefone,
+      });
+      if (ownerError) return Response.json({ error: ownerError.message }, { status: ownerError.code === "42501" ? 403 : 502 });
     }
   }
 

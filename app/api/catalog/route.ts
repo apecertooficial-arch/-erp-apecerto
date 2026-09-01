@@ -297,7 +297,6 @@ export async function GET(request: Request) {
     const { data: mineRows } = await supabase
       .from("unidades")
       .select("id, numero, tipologia, valor_tabela, valor_promo, empreendimento_id, captador_corretor_id, aprovacao, reprovacao_motivo, codigo, publicado, disponivel, empreendimentos(nome)")
-      .eq("de_terceiros", true)
       .eq("captador_corretor_id", currentBrokerId)
       .order("codigo", { ascending: false });
     const mineIds = (mineRows ?? []).map((u) => u.id);

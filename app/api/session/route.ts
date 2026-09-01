@@ -23,7 +23,7 @@ export async function GET(request: Request) {
     const { data: roleProfile } = await supabase.from("perfis").select("permissoes").eq("id", profile.role).maybeSingle();
     effectivePermissions = (roleProfile as { permissoes?: Record<string, string[]> | null } | null)?.permissoes ?? null;
   }
-  const managerRoles = new Set(["gestor", "executivo", "gestor_comercial", "gestor_equipe"]);
+  const managerRoles = new Set(["gestor", "executivo", "gestor_comercial", "gestor_equipe", "gerente"]);
   const role = profile?.role === "admin" ? "admin" : profile?.role && managerRoles.has(profile.role) ? "gestor" : "corretor";
   return Response.json({
     userId: authData.user.id,

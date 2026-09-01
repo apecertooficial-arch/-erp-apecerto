@@ -67,7 +67,7 @@ export function CaptureWizard({ onClose, onSaved, initialStandalone = false }: C
     const supabase = getBrowserSupabaseClient();
     void Promise.all([
       supabase.from("condominios").select("id,nome,cep,endereco,numero,complemento,bairro,cidade,uf").order("nome"),
-      supabase.from("proprietarios").select("id,nome,email,telefone").order("nome"),
+      supabase.rpc("produto_proprietarios_meus"),
     ]).then(([condominiumResult, ownerResult]) => {
       if (condominiumResult.data) setCondominiums(condominiumResult.data);
       if (ownerResult.data) setOwners(ownerResult.data);

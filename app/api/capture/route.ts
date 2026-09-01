@@ -293,19 +293,15 @@ export async function POST(request: Request) {
   }
 
   let ownerId = owner?.id ?? null;
-  if (payload.propertyType === "terceiro" && owner && !ownerId) {
-    // Anti-duplicata de proprietário por e-mail.
-    const emailN = owner.email.trim().toLowerCase();
-    const { data: existingOwner } = emailN ? await supabase.from("proprietarios").select("id").ilike("email", emailN).limit(1).maybeSingle() : { data: null };
-    if (existingOwner?.id) {
-      ownerId = existingOwner.id;
-    } else {
-      const { data, error } = await supabase.from("proprietarios").insert({
-        nome: owner.name.trim(), email: emailN, telefone: owner.phone.trim(), created_by: authData.user.id,
-      }).select("id").single();
-      if (error) return Response.json({ error: error.message }, { status: 400 });
-      ownerId = data.id;
-    }
+  if (payload.propertyType === "terceiro" && owner) {
+    const { data, error } = await supabase.rpc("produto_proprietario_captacao_resolver", {
+      p_proprietario_id: ownerId,
+      p_nome: owner.name.trim(),
+      p_email: owner.email.trim().toLowerCase(),
+      p_telefone: owner.phone.trim(),
+    });
+    if (error) return Response.json({ error: error.message }, { status: error.code === "42501" ? 403 : 400 });
+    ownerId = data;
   }
 
   const { data: development, error: developmentError } = await supabase.from("empreendimentos").insert({
