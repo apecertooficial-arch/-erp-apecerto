@@ -2357,13 +2357,17 @@ class Component extends DCLogic {
       'Sem dados': { glifo: '○', fg: 'var(--fg-3)', bg: 'var(--neutral-100)', eyebrow: 'Sem dados', titulo: 'Nada para mostrar neste período', detalhe: 'Não há leads, investimento ou eventos registrados no recorte selecionado. Amplie o período ou remova filtros para ver o histórico.', cta: 'Ampliar para 90 dias', sec: 'Limpar filtros' },
       'Sem registros': { glifo: '○', fg: 'var(--fg-3)', bg: 'var(--neutral-100)', eyebrow: 'Resultado vazio', titulo: 'Nenhum registro encontrado', detalhe: 'A consulta rodou e voltou vazia. Isso não indica falha de integração — só que nada aconteceu dentro deste recorte.', cta: 'Ampliar para 90 dias', sec: 'Limpar filtros' },
       'Filtro sem resultado': { glifo: '⌕', fg: 'var(--cc-atencao)', bg: 'var(--ape-orange-100)', eyebrow: 'Filtro sem resultado', titulo: 'A combinação de filtros não retorna nada', detalhe: 'O recorte atual cruza canal, corretor e campanha sem interseção. Remova um dos filtros para voltar a ver dados.', cta: 'Limpar filtros', sec: 'Abrir mais filtros' },
-      'Erro na integração': { glifo: '!', fg: 'var(--cc-risco)', bg: 'var(--danger-bg)', eyebrow: 'Erro na integração', titulo: 'Não foi possível carregar os dados de mídia', detalhe: 'A API do Meta Ads respondeu com erro 500 nas últimas 3 tentativas. Os dados do CRM continuam disponíveis; os números de investimento e CPL estão indisponíveis.', cta: 'Tentar novamente', sec: 'Ver registros de erro' },
+      'Erro na integração': { glifo: '!', fg: 'var(--cc-risco)', bg: 'var(--danger-bg)', eyebrow: 'Erro na integração', titulo: 'Não foi possível carregar os dados reais', detalhe: st.realError || 'A Central de Comando não conseguiu concluir a consulta. Tente novamente; se persistir, abra o detalhe técnico.', cta: 'Tentar novamente', sec: 'Ver detalhe técnico' },
       'Integração desconectada': { glifo: '⌁', fg: 'var(--cc-risco)', bg: 'var(--danger-bg)', eyebrow: 'Integração desconectada', titulo: 'A conta do Google Ads foi desconectada', detalhe: 'O token de acesso expirou em 12 ago. Desde então nenhum dado de investimento do Google entra no painel. Reconecte para retomar a coleta.', cta: 'Reconectar Google Ads', sec: 'Ver integrações' },
       'Permissão insuficiente': { glifo: '⌁', fg: 'var(--ape-purple-700)', bg: 'var(--ape-purple-100)', eyebrow: 'Acesso restrito', titulo: 'Esta área não está liberada para o seu perfil', detalhe: 'O perfil ' + perfil + ' não tem acesso a esta área. Peça liberação para um administrador ou volte para uma área permitida.', cta: 'Voltar para área permitida', sec: 'Solicitar acesso' }
     };
     const acoesBloco = {
       'Permissão insuficiente': { onCta: () => this.setState({ page: permitidas[0] }), onSec: () => this.avisar('Pedido enviado', 'Solicitação de acesso à área ' + this.PAGES[page].titulo + ' enviada para os administradores.') },
-      'Filtro sem resultado': { onCta: () => this.setState({ filtros: Object.assign({}, this.VAZIO) }), onSec: () => this.setState({ filtrosAberto: true, rascunho: Object.assign({}, F) }) }
+      'Filtro sem resultado': { onCta: () => this.setState({ filtros: Object.assign({}, this.VAZIO) }), onSec: () => this.setState({ filtrosAberto: true, rascunho: Object.assign({}, F) }) },
+      'Erro na integração': {
+        onCta: () => this.carregarDadosReais(this._centralToken, true, F.periodo),
+        onSec: () => this.avisar('Detalhe técnico', st.realError || 'Falha sem detalhe disponível. Recarregue a página e tente novamente.')
+      }
     };
     const bloco = E[estado] ? Object.assign({
       secShow: 'inline-flex',
@@ -2380,7 +2384,7 @@ class Component extends DCLogic {
     const syncMap = {
       'Dados desatualizados': { texto: 'Sincronizado há 4 h 20 min', fg: 'var(--cc-atencao)', bg: 'var(--warning-bg)', hint: 'Última sincronização completa há mais de 4 horas' },
       'Atualização parcial': { texto: 'CRM em dia · mídia atrasada', fg: 'var(--cc-atencao)', bg: 'var(--warning-bg)', hint: 'CRM há 6 min · Meta e Google há 3 h 40 min' },
-      'Erro na integração': { texto: 'Falha na sincronização', fg: 'var(--cc-risco)', bg: 'var(--danger-bg)', hint: 'Meta Ads respondeu 500 nas últimas 3 tentativas' },
+      'Erro na integração': { texto: 'Falha na sincronização', fg: 'var(--cc-risco)', bg: 'var(--danger-bg)', hint: st.realError || 'A consulta de dados reais falhou' },
       'Integração desconectada': { texto: 'Google Ads desconectado', fg: 'var(--cc-risco)', bg: 'var(--danger-bg)', hint: 'Token expirado em 12 ago' }
     };
     const mediaReal = (st.realData || {}).media || {};

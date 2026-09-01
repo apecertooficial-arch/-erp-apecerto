@@ -14,6 +14,24 @@ function erroSeguro(prefixo: string, status?: number) {
   return `${prefixo}${status ? ` (HTTP ${status})` : ""}`;
 }
 
+function dateInSaoPaulo(value: Date) {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/Sao_Paulo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(value);
+  const get = (type: string) => parts.find((part) => part.type === type)?.value ?? "";
+  return `${get("year")}-${get("month")}-${get("day")}`;
+}
+
+function periodInSaoPaulo(days: number, now = new Date()) {
+  return {
+    until: dateInSaoPaulo(now),
+    since: dateInSaoPaulo(new Date(now.getTime() - (days - 1) * 86_400_000)),
+  };
+}
+
 async function meta(days: number) {
   const token = Deno.env.get("META_ADS_TOKEN") ?? Deno.env.get("META_CAPI_TOKEN") ?? "";
   const configuredAccount = (Deno.env.get("META_AD_ACCOUNT_ID") ?? "").replace(/^act_/, "");
@@ -33,24 +51,32 @@ async function meta(days: number) {
   }
   if (!accountId) return { status: "sem_conta", motivo: "Nenhuma conta de anúncios acessível pelo token existente.", contas: [], anuncios: [] };
 
-  const until = new Date().toISOString().slice(0, 10);
-  const since = new Date(Date.now() - (days - 1) * 86400000).toISOString().slice(0, 10);
+  const { since, until } = periodInSaoPaulo(days);
   const fields = ["campaign_id","campaign_name","adset_id","adset_name","ad_id","ad_name","objective","spend","impressions","reach","clicks","inline_link_clicks","ctr","cpc","actions","cost_per_action_type"].join(",");
-  const filter = encodeURIComponent(JSON.stringify([{ field: "ad.effective_status", operator: "IN", value: ["ACTIVE"] }]));
-  const url = `${GRAPH}/act_${accountId}/insights?level=ad&fields=${fields}&time_range=${encodeURIComponent(JSON.stringify({ since, until }))}&filtering=${filter}&limit=500&access_token=${encodeURIComponent(token)}`;
-  const insightsResponse = await fetch(url);
-  if (!insightsResponse.ok) {
-    const semPermissao = insightsResponse.status === 401 || insightsResponse.status === 403;
-    return {
-      status: semPermissao ? "sem_permissao" : "erro",
-      motivo: semPermissao
-        ? "A conta de anúncios foi identificada, mas o token atual não possui ads_read e acesso a esse ativo da empresa."
-        : erroSeguro("A Meta recusou a leitura das métricas", insightsResponse.status),
-      contas: [{ id: accountId, nome: accountName, moeda: currency }],
-      anuncios: [],
-    };
+  let next: string | null = `${GRAPH}/act_${accountId}/insights?level=ad&fields=${fields}&time_range=${encodeURIComponent(JSON.stringify({ since, until }))}&limit=500&access_token=${encodeURIComponent(token)}`;
+  const data: any[] = [];
+  let pages = 0;
+  while (next && pages < 20) {
+    const insightsResponse = await fetch(next);
+    const payload = await insightsResponse.json().catch(() => ({}));
+    if (!insightsResponse.ok) {
+      const semPermissao = insightsResponse.status === 401 || insightsResponse.status === 403;
+      const graphCode = Number(payload?.error?.code || 0) || null;
+      const graphSubcode = Number(payload?.error?.error_subcode || 0) || null;
+      const codigo = graphCode ? ` · código ${graphCode}${graphSubcode ? `/${graphSubcode}` : ""}` : "";
+      return {
+        status: semPermissao ? "sem_permissao" : "erro",
+        motivo: semPermissao
+          ? "A conta de anúncios foi identificada, mas o token atual não possui ads_read e acesso a esse ativo da empresa."
+          : `${erroSeguro("A Meta recusou a leitura das métricas", insightsResponse.status)}${codigo}`,
+        contas: [{ id: accountId, nome: accountName, moeda: currency }],
+        anuncios: [],
+      };
+    }
+    data.push(...(Array.isArray(payload?.data) ? payload.data : []));
+    next = typeof payload?.paging?.next === "string" ? payload.paging.next : null;
+    pages += 1;
   }
-  const data = (await insightsResponse.json().catch(() => ({})))?.data ?? [];
   const action = (items: any[], keys: string[]) => Number(items?.find((a: any) => keys.includes(a.action_type))?.value ?? 0) || 0;
   const cost = (items: any[], keys: string[]) => Number(items?.find((a: any) => keys.includes(a.action_type))?.value ?? 0) || null;
   return {
@@ -60,7 +86,7 @@ async function meta(days: number) {
     anuncios: data.map((row: any) => ({
       plataforma: "Meta", campanha_id: row.campaign_id, campanha: row.campaign_name,
       conjunto_id: row.adset_id, conjunto: row.adset_name, anuncio_id: row.ad_id, anuncio: row.ad_name,
-      objetivo: row.objective ?? null, status: "ACTIVE", investimento: Number(row.spend ?? 0),
+      objetivo: row.objective ?? null, status: "DELIVERED_IN_PERIOD", investimento: Number(row.spend ?? 0),
       impressoes: Number(row.impressions ?? 0), alcance: Number(row.reach ?? 0),
       cliques: Number(row.inline_link_clicks ?? row.clicks ?? 0), ctr: Number(row.ctr ?? 0), cpc: Number(row.cpc ?? 0),
       leads_plataforma: action(row.actions, ["lead","onsite_conversion.lead_grouped"]),
@@ -92,9 +118,8 @@ async function google(days: number) {
   });
   const access = (await tokenResponse.json().catch(() => ({})))?.access_token;
   if (!tokenResponse.ok || !access) return { status: "erro", motivo: erroSeguro("Falha na autorização do Google Ads", tokenResponse.status), anuncios: [] };
-  const since = new Date(Date.now() - (days - 1) * 86400000).toISOString().slice(0, 10);
-  const until = new Date().toISOString().slice(0, 10);
-  const query = `SELECT campaign.id,campaign.name,campaign.status,ad_group.id,ad_group.name,ad_group.status,ad_group_ad.ad.id,ad_group_ad.ad.name,ad_group_ad.status,metrics.cost_micros,metrics.impressions,metrics.clicks,metrics.ctr,metrics.average_cpc,metrics.conversions,metrics.cost_per_conversion FROM ad_group_ad WHERE segments.date BETWEEN '${since}' AND '${until}' AND campaign.status = 'ENABLED' AND ad_group.status = 'ENABLED' AND ad_group_ad.status = 'ENABLED'`;
+  const { since, until } = periodInSaoPaulo(days);
+  const query = `SELECT campaign.id,campaign.name,campaign.status,ad_group.id,ad_group.name,ad_group.status,ad_group_ad.ad.id,ad_group_ad.ad.name,ad_group_ad.status,metrics.cost_micros,metrics.impressions,metrics.clicks,metrics.ctr,metrics.average_cpc,metrics.conversions,metrics.cost_per_conversion FROM ad_group_ad WHERE segments.date BETWEEN '${since}' AND '${until}'`;
   const headers: Record<string,string> = { Authorization: `Bearer ${access}`, "developer-token": developer, "Content-Type": "application/json" };
   if (login) headers["login-customer-id"] = login;
   const adsResponse = await fetch(`${GOOGLE_ADS}/customers/${customer}/googleAds:searchStream`, { method: "POST", headers, body: JSON.stringify({ query }) });
@@ -104,7 +129,7 @@ async function google(days: number) {
   return { status: "conectado", motivo: null, anuncios: rows.map((row: any) => ({
     plataforma: "Google", campanha_id: row.campaign?.id, campanha: row.campaign?.name,
     conjunto_id: row.adGroup?.id, conjunto: row.adGroup?.name, anuncio_id: row.adGroupAd?.ad?.id,
-    anuncio: row.adGroupAd?.ad?.name ?? `Anúncio ${row.adGroupAd?.ad?.id ?? ""}`, status: "ENABLED",
+    anuncio: row.adGroupAd?.ad?.name ?? `Anúncio ${row.adGroupAd?.ad?.id ?? ""}`, status: row.adGroupAd?.status ?? row.campaign?.status ?? "DELIVERED_IN_PERIOD",
     investimento: Number(row.metrics?.costMicros ?? 0)/1e6, impressoes: Number(row.metrics?.impressions ?? 0),
     cliques: Number(row.metrics?.clicks ?? 0), ctr: Number(row.metrics?.ctr ?? 0)*100,
     cpc: Number(row.metrics?.averageCpc ?? 0)/1e6, leads_plataforma: Number(row.metrics?.conversions ?? 0),
