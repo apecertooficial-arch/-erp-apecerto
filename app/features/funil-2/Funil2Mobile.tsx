@@ -20,6 +20,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { BotaoWhatsApp } from "./BotaoWhatsApp";
 import { AssociarTagLead } from "./AssociarTagLead";
 import { Funil2ConversationDrawer } from "./Funil2ConversationDrawer";
+import { HorariosVisita } from "./HorariosVisita";
 import { getBrowserSupabaseClient } from "../../lib/supabase/browser";
 import {
   acaoVisivel,
@@ -320,26 +321,32 @@ function AgendarVisitaMobile({
       <input type="text" value={unidade} placeholder="Ex.: apto 402" onChange={(e) => { setUnidade(e.target.value); setErro(""); }} />
     </label>
 
-    <label>Data e hora
-      <input type="datetime-local" value={quando} onChange={(e) => { setQuando(e.target.value); setErro(""); }} />
-    </label>
-
     <label className="f2m-agendar-check">
-      <input type="checkbox" checked={comGerente} onChange={(e) => { setComGerente(e.target.checked); setErro(""); }} />
+      <input type="checkbox" checked={comGerente} onChange={(e) => { setComGerente(e.target.checked); setQuando(""); setErro(""); }} />
       Quero o gerente presente
     </label>
 
     {comGerente && <label>Qual gerente
-      <select value={gerente} onChange={(e) => { setGerente(e.target.value); setErro(""); }}>
+      <select value={gerente} onChange={(e) => { setGerente(e.target.value); setQuando(""); setErro(""); }}>
         <option value="">— escolha —</option>
         {gerentes.map((g) => <option key={g.id} value={g.id}>{g.nome}</option>)}
       </select>
     </label>}
 
+    <HorariosVisita
+      accessToken={accessToken}
+      leadId={lead.id}
+      comGerente={comGerente}
+      gerenteId={gerente ? Number(gerente) : null}
+      value={quando}
+      onChange={(valor) => { setQuando(valor); setErro(""); }}
+      disabled={salvando}
+    />
+
     {erro && <p className="f2m-agendar-erro" role="alert">{erro}</p>}
     <div className="f2m-agendar-acoes">
       <button type="button" className="f2m-agendar-nao" onClick={() => { setAberto(false); onFechar?.(); }} disabled={salvando}>Cancelar</button>
-      <button type="button" className="f2m-agendar-ok" onClick={() => void salvar()} disabled={salvando}>
+      <button type="button" className="f2m-agendar-ok" onClick={() => void salvar()} disabled={salvando || !quando}>
         {salvando ? "Agendando…" : "Confirmar visita"}
       </button>
     </div>

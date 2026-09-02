@@ -12,9 +12,13 @@ const seletor = await readFile(new URL("../app/features/funil-2/HorariosVisita.t
 const chat = await readFile(new URL("../app/features/chat/LiveChatWorkspace.tsx", import.meta.url), "utf8");
 
 const migrationsDir = new URL("../supabase/migrations/", import.meta.url);
-const migrationName = (await readdir(migrationsDir)).find((name) => name.endsWith("_visitas_agenda_privada.sql"));
-assert.ok(migrationName, "a trava de concorrencia precisa ser versionada em migration");
-const migration = await readFile(new URL(migrationName, migrationsDir), "utf8");
+const migrationNames = await readdir(migrationsDir);
+const migrationBaseName = migrationNames.find((name) => name.endsWith("_visitas_agenda_privada.sql"));
+const migrationCorrecaoName = migrationNames.find((name) => name.endsWith("_visitas_concorrencia_por_responsavel.sql"));
+assert.ok(migrationBaseName, "a trava de concorrencia precisa ser versionada em migration");
+assert.ok(migrationCorrecaoName, "a concorrencia por corretor e gerente precisa ser versionada em migration");
+const migrationBase = await readFile(new URL(migrationBaseName, migrationsDir), "utf8");
+const migration = await readFile(new URL(migrationCorrecaoName, migrationsDir), "utf8");
 
 test("Calendario nao cria visitas, mas permite reagendar compromissos existentes", () => {
   assert.doesNotMatch(agendaApi, /action === "createVisit"/);
@@ -59,16 +63,21 @@ test("API devolve estados anonimos, nunca dados do compromisso alheio", () => {
   assert.match(seletor, /visitId/);
 });
 
-test("banco serializa e recusa sobreposicao do corretor ou gerente", () => {
+test("banco permite outras duplas e recusa sobreposicao do corretor ou gerente", () => {
   assert.match(migration, /pg_advisory_xact_lock/);
   assert.match(migration, /corretor_ocupado/);
   assert.match(migration, /gerente_ocupado/);
-  assert.match(migration, /horario_ocupado/);
   assert.match(migration, /f2_disponibilidade_visitas/);
   assert.match(migration, /SECURITY DEFINER/);
   assert.match(migration, /tstzrange/);
-  assert.match(migration, /CREATE TRIGGER f2_visita_sem_sobreposicao/);
+  assert.match(migrationBase, /CREATE TRIGGER f2_visita_sem_sobreposicao/);
   assert.match(migration, /origem_visita_id\s+IS DISTINCT FROM p_visita_id/);
   assert.match(migration, /f2_reagendar_visita/);
+  assert.match(migration, /v\.gerente_id=p_gerente_id/);
+  const trigger = migration.slice(
+    migration.indexOf("CREATE OR REPLACE FUNCTION public.f2_bloquear_sobreposicao_visita"),
+    migration.indexOf("CREATE OR REPLACE FUNCTION public.f2_reagendar_visita"),
+  );
+  assert.doesNotMatch(trigger, /MESSAGE='horario_ocupado'/);
   assert.match(funilApi, /corretor_ocupado:/);
 });
