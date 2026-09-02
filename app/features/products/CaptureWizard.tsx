@@ -7,6 +7,7 @@ import { MoneyInput } from "./MoneyInput";
 import { PendingMediaClassifier } from "./PendingMediaClassifier";
 import { applyOfficialWatermark } from "./watermark";
 import { validateProductPrice } from "./quality";
+import { buildProductMediaPath, uploadProductMediaResumable } from "./resumable-upload";
 
 const steps = ["Tipo", "Localização", "Proprietário", "Imóvel", "Acesso", "Mídia", "Revisão"];
 const condominiumStepIndexes = [0, 1, 3, 4, 5, 6];
@@ -18,6 +19,7 @@ type Condominium = { id: string; nome: string; cep: string | null; endereco: str
 type Owner = { id: string; nome: string; email: string; telefone: string };
 type Unit = { id: string; number: string; type: string; area: string; parking: string; price: string; promotionalPrice: string };
 type MediaItem = { id: string; file: File; kind: "foto" | "video"; category: string; cover: boolean; preview: string };
+type CreatedCapture = { id: string; unidadeId: string | null; userId: string; resumed?: boolean };
 
 const emptyCondominium = { name: "", zipCode: "", address: "", number: "", complement: "", neighborhood: "", city: "São Paulo", state: "SP" };
 const emptyOwner = { name: "", email: "", phone: "" };
@@ -57,6 +59,7 @@ export function CaptureWizard({ onClose, onSaved, initialStandalone = false }: C
   const [saving, setSaving] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [mediaUrl, setMediaUrl] = useState("");
+  const [createdCapture, setCreatedCapture] = useState<CreatedCapture | null>(null);
 
   const photos = media.filter((item) => item.kind === "foto");
   const videos = media.filter((item) => item.kind === "video");
@@ -190,10 +193,6 @@ export function CaptureWizard({ onClose, onSaved, initialStandalone = false }: C
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step]);
 
-  function safeFileName(name: string) {
-    return name.normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-zA-Z0-9._-]/g, "-").toLowerCase();
-  }
-
   async function save() {
     setSaving(true);
     setMessage("");
@@ -214,51 +213,66 @@ export function CaptureWizard({ onClose, onSaved, initialStandalone = false }: C
         id: chosenOwner.id, name: chosenOwner.nome, email: chosenOwner.email, phone: chosenOwner.telefone,
       } : { id: null, ...owner }) : null;
 
-      const createResponse = await fetch("/api/capture", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${sessionData.session.access_token}`, "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "create", propertyType, semCondominio, condominium: semCondominio ? { id: null, ...condominium, name: "" } : condominiumPayload, owner: ownerPayload,
-          property: {
-            name: property.name, title: property.title, slogan: property.slogan, description: property.description,
-            purpose: property.purpose, amenities: property.amenities.split(",").map((item) => item.trim()).filter(Boolean),
-            differentiators: property.differentiators.split(",").map((item) => item.trim()).filter(Boolean),
-            developer: property.developer, status: property.status,
-            price: numberValue(property.price), condominiumFee: numberValue(property.condominiumFee), propertyTax: numberValue(property.propertyTax),
-            otherCosts: numberValue(property.otherCosts), area: numberValue(property.area), bedrooms: numberValue(property.bedrooms),
-            suites: numberValue(property.suites), bathrooms: numberValue(property.bathrooms), parking: numberValue(property.parking),
-            alreadyRented: property.alreadyRented,
-          },
-          access: { type: accessType, code: accessCode, instructions: accessInstructions },
-          // Imóvel avulso usa os dados e o preço do próprio imóvel. A unidade
-          // técnica é criada no servidor; nunca envie a linha vazia escondida
-          // do editor de estoque da construtora.
-          units: propertyType === "construtora" ? units.map((unit) => ({ number: unit.number, type: unit.type, area: numberValue(unit.area), parking: numberValue(unit.parking), price: numberValue(unit.price), promotionalPrice: unit.promotionalPrice ? numberValue(unit.promotionalPrice) : null })) : [],
-        }),
-      });
-      const created = await createResponse.json() as { id?: string; unidadeId?: string | null; userId?: string; error?: string };
-      if (!createResponse.ok || !created.id || !created.userId) throw new Error(created.error ?? "Não foi possível criar o rascunho.");
+      let created = createdCapture;
+      if (!created) {
+        const createResponse = await fetch("/api/capture", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${sessionData.session.access_token}`, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "create", propertyType, semCondominio, condominium: semCondominio ? { id: null, ...condominium, name: "" } : condominiumPayload, owner: ownerPayload,
+            property: {
+              name: property.name, title: property.title, slogan: property.slogan, description: property.description,
+              purpose: property.purpose, amenities: property.amenities.split(",").map((item) => item.trim()).filter(Boolean),
+              differentiators: property.differentiators.split(",").map((item) => item.trim()).filter(Boolean),
+              developer: property.developer, status: property.status,
+              price: numberValue(property.price), condominiumFee: numberValue(property.condominiumFee), propertyTax: numberValue(property.propertyTax),
+              otherCosts: numberValue(property.otherCosts), area: numberValue(property.area), bedrooms: numberValue(property.bedrooms),
+              suites: numberValue(property.suites), bathrooms: numberValue(property.bathrooms), parking: numberValue(property.parking),
+              alreadyRented: property.alreadyRented,
+            },
+            access: { type: accessType, code: accessCode, instructions: accessInstructions },
+            // Imóvel avulso usa os dados e o preço do próprio imóvel. A unidade
+            // técnica é criada no servidor; nunca envie a linha vazia escondida
+            // do editor de estoque da construtora.
+            units: propertyType === "construtora" ? units.map((unit) => ({ number: unit.number, type: unit.type, area: numberValue(unit.area), parking: numberValue(unit.parking), price: numberValue(unit.price), promotionalPrice: unit.promotionalPrice ? numberValue(unit.promotionalPrice) : null })) : [],
+          }),
+        });
+        const result = await createResponse.json() as { id?: string; unidadeId?: string | null; userId?: string; resumed?: boolean; error?: string };
+        if (!createResponse.ok || !result.id || !result.userId) throw new Error(result.error ?? "Não foi possível criar o rascunho.");
+        created = { id: result.id, unidadeId: result.unidadeId ?? null, userId: result.userId, resumed: result.resumed };
+        setCreatedCapture(created);
+        if (created.resumed) setMessage("Cadastro incompleto encontrado. Retomando o envio sem duplicar o imóvel.");
+      }
       if (standalone && !created.unidadeId) throw new Error("O imóvel foi iniciado, mas a unidade avulsa não foi criada.");
 
       const coverPhotoId = media.find((entry) => entry.kind === "foto" && entry.cover)?.id
         ?? media.find((entry) => entry.kind === "foto")?.id;
+      const arquivosComFalha: string[] = [];
+      let enviadaComSucesso = 0;
       for (let index = 0; index < media.length; index += 1) {
         const item = media[index];
-        const uploadFile = item.kind === "foto" ? await applyOfficialWatermark(item.file) : item.file;
-        const storagePath = `${created.userId}/${created.id}/${crypto.randomUUID()}-${safeFileName(uploadFile.name)}`;
-        const { error: uploadError } = await supabase.storage.from("empreendimentos").upload(storagePath, uploadFile, { contentType: uploadFile.type, upsert: false });
-        if (uploadError) throw new Error(`Falha ao enviar ${item.file.name}: ${uploadError.message}`);
-
-        const { error: mediaError } = await supabase.from("midias").insert({
-          empreendimento_id: created.id, unidade_id: standalone ? created.unidadeId : null, tipo: item.kind, storage_path: storagePath, nome: item.file.name,
-          categoria: item.category.toLowerCase(), is_capa: item.id === coverPhotoId,
-        });
-        if (mediaError) {
-          await supabase.storage.from("empreendimentos").remove([storagePath]);
-          throw new Error(`Falha ao registrar ${item.file.name}: ${mediaError.message}`);
+        try {
+          const uploadFile = item.kind === "foto" ? await applyOfficialWatermark(item.file) : item.file;
+          const storagePath = await buildProductMediaPath(created.userId, created.id, standalone ? created.unidadeId : null, item.file);
+          await uploadProductMediaResumable({
+            accessToken: sessionData.session.access_token,
+            bucketName: "empreendimentos",
+            file: uploadFile,
+            objectName: storagePath,
+            onProgress: (fileProgress) => setUploadProgress(Math.round(((index + fileProgress / 100) / media.length) * 100)),
+          });
+          const { error: mediaError } = await supabase.from("midias").upsert({
+            empreendimento_id: created.id, unidade_id: standalone ? created.unidadeId : null, tipo: item.kind, storage_path: storagePath, nome: item.file.name,
+            categoria: item.category.toLowerCase(), is_capa: item.id === coverPhotoId,
+          }, { onConflict: "storage_path" });
+          if (mediaError) throw new Error(`Falha ao registrar: ${mediaError.message}`);
+          enviadaComSucesso += 1;
+          setUploadProgress(Math.round(((index + 1) / media.length) * 100));
+        } catch (reason) {
+          arquivosComFalha.push(`${item.file.name}: ${reason instanceof Error ? reason.message : "falha desconhecida"}`);
         }
-        setUploadProgress(Math.round(((index + 1) / media.length) * 100));
       }
+      if (arquivosComFalha.length) throw new Error(`${enviadaComSucesso} arquivo(s) enviado(s). Não chegaram: ${arquivosComFalha.join("; ")}. Toque em Salvar novamente para retomar.`);
 
       const finalizeResponse = await fetch("/api/capture", {
         method: "POST",

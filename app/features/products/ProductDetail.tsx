@@ -9,6 +9,7 @@ import { MoneyInput } from "./MoneyInput";
 import { applyOfficialWatermark } from "./watermark";
 import { sitePropertyUrl } from "./products";
 import { retryProductMediaImage as retryMediaImage } from "./media-image";
+import { buildProductMediaPath, uploadProductMediaResumable } from "./resumable-upload";
 
 type Media = { id: string; tipo: "foto" | "video" | "pdf" | "apresentacao"; storage_path: string; categoria: string | null; nome: string | null; is_capa: boolean; url: string | null; unidade_id?: string | null };
 type Unit = { id: string; codigo?: string | null; numero: string | null; tipologia: string | null; area_m2: number | null; vagas: number | null; valor_tabela: number | null; valor_promo: number | null; condominio_valor?: number | null; iptu?: number | null; outros_custos?: number | null; compre_ja_alugado?: boolean; disponivel: boolean; publicado?: boolean; de_terceiros?: boolean; captador_nome?: string | null; proprietario_nome?: string | null; proprietario_contato?: string | null; acesso_tipo?: string | null; acesso_codigo?: string | null; acesso_instrucoes?: string | null; aprovacao?: string | null; reprovacao_motivo?: string | null; mine?: boolean; pode_editar?: boolean; pode_ver_proprietario?: boolean; owner_complete?: boolean };
@@ -248,19 +249,28 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
     setBusy(true); setMessage("");
     try {
       const supabase = getBrowserSupabaseClient();
-      const { data: auth } = await supabase.auth.getUser();
-      if (!auth.user) throw new Error("Sua sessão expirou.");
+      const { data: sessionData } = await supabase.auth.getSession();
+      const user = sessionData.session?.user;
+      const token = sessionData.session?.access_token ?? accessToken;
+      if (!user || !token) throw new Error("Sua sessão expirou.");
+      const arquivosComFalha: string[] = [];
+      let enviadaComSucesso = 0;
       for (const originalFile of Array.from(files)) {
-        const file = originalFile.type.startsWith("image/") ? await applyOfficialWatermark(originalFile) : originalFile;
-        const safeName = file.name.normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-zA-Z0-9._-]/g, "-");
-        const path = `${auth.user.id}/${productId}/${crypto.randomUUID()}-${safeName}`;
-        const { error: uploadError } = await supabase.storage.from("empreendimentos").upload(path, file, { contentType: file.type, upsert: false });
-        if (uploadError) throw uploadError;
-        const tipo = mediaType(file);
-        const { error: insertError } = await supabase.from("midias").insert({ empreendimento_id: productId, storage_path: path, tipo, categoria: forcedCategory ?? category, nome: file.name, is_capa: tipo === "foto" && photos.length === 0 });
-        if (insertError) throw insertError;
+        try {
+          const file = originalFile.type.startsWith("image/") ? await applyOfficialWatermark(originalFile) : originalFile;
+          const path = await buildProductMediaPath(user.id, productId, null, originalFile);
+          await uploadProductMediaResumable({ accessToken: token, bucketName: "empreendimentos", file, objectName: path });
+          const tipo = mediaType(file);
+          const { error: insertError } = await supabase.from("midias").upsert({ empreendimento_id: productId, storage_path: path, tipo, categoria: forcedCategory ?? category, nome: file.name, is_capa: tipo === "foto" && photos.length + enviadaComSucesso === 0 }, { onConflict: "storage_path" });
+          if (insertError) throw insertError;
+          enviadaComSucesso += 1;
+        } catch (reason) {
+          arquivosComFalha.push(`${originalFile.name}: ${reason instanceof Error ? reason.message : "falha desconhecida"}`);
+        }
       }
-      await load(); onChanged(); setMessage(`${files.length} material(is) adicionado(s).`);
+      await load(); onChanged();
+      if (arquivosComFalha.length) throw new Error(`${enviadaComSucesso} arquivo(s) enviado(s). Não chegaram: ${arquivosComFalha.join("; ")}`);
+      setMessage(`${enviadaComSucesso} material(is) adicionado(s).`);
     } catch (error) { console.error("[produto upload]", error); setMessage(error instanceof Error ? `Falha no upload: ${error.message}` : "Falha no upload."); } finally { setBusy(false); }
   }
 
@@ -344,22 +354,31 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
     setBusy(true); setMessage("");
     try {
       const supabase = getBrowserSupabaseClient();
-      const { data: auth } = await supabase.auth.getUser();
-      if (!auth.user) throw new Error("Sua sessão expirou.");
+      const { data: sessionData } = await supabase.auth.getSession();
+      const user = sessionData.session?.user;
+      const token = sessionData.session?.access_token ?? accessToken;
+      if (!user || !token) throw new Error("Sua sessão expirou.");
       let unitPhotoCount = (product?.midias ?? []).filter((item) => item.unidade_id === unit.id && item.tipo === "foto").length;
+      const arquivosComFalha: string[] = [];
+      let enviadaComSucesso = 0;
       for (const originalFile of Array.from(files)) {
-        const file = originalFile.type.startsWith("image/") ? await applyOfficialWatermark(originalFile) : originalFile;
-        const safeName = file.name.normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-zA-Z0-9._-]/g, "-");
-        const path = `${auth.user.id}/${productId}/${crypto.randomUUID()}-${safeName}`;
-        const { error: uploadError } = await supabase.storage.from("empreendimentos").upload(path, file, { contentType: file.type, upsert: false });
-        if (uploadError) throw uploadError;
-        const tipo = mediaType(file);
-        const isCover = tipo === "foto" && unitPhotoCount === 0;
-        const { error: insertError } = await supabase.from("midias").insert({ empreendimento_id: productId, unidade_id: unit.id, storage_path: path, tipo, categoria: tipo === "foto" ? unitMediaCategory : "Tour", nome: file.name, is_capa: isCover });
-        if (insertError) { await supabase.storage.from("empreendimentos").remove([path]); throw insertError; }
-        if (tipo === "foto") unitPhotoCount += 1;
+        try {
+          const file = originalFile.type.startsWith("image/") ? await applyOfficialWatermark(originalFile) : originalFile;
+          const path = await buildProductMediaPath(user.id, productId, unit.id, originalFile);
+          await uploadProductMediaResumable({ accessToken: token, bucketName: "empreendimentos", file, objectName: path });
+          const tipo = mediaType(file);
+          const isCover = tipo === "foto" && unitPhotoCount === 0;
+          const { error: insertError } = await supabase.from("midias").upsert({ empreendimento_id: productId, unidade_id: unit.id, storage_path: path, tipo, categoria: tipo === "foto" ? unitMediaCategory : "Tour", nome: file.name, is_capa: isCover }, { onConflict: "storage_path" });
+          if (insertError) throw insertError;
+          if (tipo === "foto") unitPhotoCount += 1;
+          enviadaComSucesso += 1;
+        } catch (reason) {
+          arquivosComFalha.push(`${originalFile.name}: ${reason instanceof Error ? reason.message : "falha desconhecida"}`);
+        }
       }
-      await load(); onChanged(); setMessage("Mídia da unidade adicionada com a marca d’água oficial.");
+      await load(); onChanged();
+      if (arquivosComFalha.length) throw new Error(`${enviadaComSucesso} arquivo(s) enviado(s). Não chegaram: ${arquivosComFalha.join("; ")}`);
+      setMessage(`${enviadaComSucesso} mídia(s) da unidade adicionada(s) com a marca d’água oficial.`);
     } catch (error) { setMessage(error instanceof Error ? `Falha no upload: ${error.message}` : "Falha no upload."); } finally { setBusy(false); }
   }
 

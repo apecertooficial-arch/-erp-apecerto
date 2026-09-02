@@ -5,6 +5,7 @@ import { getBrowserSupabaseClient } from "../../lib/supabase/browser";
 import { MoneyInput } from "./MoneyInput";
 import { PendingMediaClassifier, type PendingMediaItem } from "./PendingMediaClassifier";
 import { applyOfficialWatermark } from "./watermark";
+import { buildProductMediaPath, uploadProductMediaResumable } from "./resumable-upload";
 
 type UnitWizardProps = { accessToken: string; onClose: () => void; onSaved: () => void; onCreateCondominium?: () => void; onCreateStandalone?: () => void };
 type Building = { id: string; nome: string; bairro: string | null; cidade: string | null; finalidade: string | null; origem: string | null; condominio_id: string | null };
@@ -18,10 +19,6 @@ const accessOptions: Array<[string, string]> = [
   ["proprietario", "Proprietário"],
 ];
 const unitMediaCategories = ["Sala", "Cozinha", "Quarto", "Suíte", "Banheiro", "Varanda", "Vista", "Planta", "Fachada", "Lazer", "Tour", "Outro"];
-
-function safeFileName(name: string) {
-  return name.replace(/[^\w.\-]+/g, "_");
-}
 
 /* Fotos e vídeos vão para a mesma galeria da unidade; o tipo sai do arquivo
    para o registro em `midias` bater com o player certo depois. */
@@ -163,7 +160,7 @@ export function UnitWizard({ accessToken, onClose, onSaved, onCreateCondominium,
             },
           }),
         });
-        const created = await response.json() as { unidadeId?: string; userId?: string; error?: string };
+        const created = await response.json() as { unidadeId?: string; userId?: string; resumed?: boolean; error?: string };
         if (!response.ok || !created.unidadeId || !created.userId) {
           throw new Error(created.error ?? "Não foi possível cadastrar a unidade.");
         }
@@ -171,27 +168,42 @@ export function UnitWizard({ accessToken, onClose, onSaved, onCreateCondominium,
         userId = created.userId;
         setCreatedUnitId(unitId);
         setCreatedUserId(userId);
+        if (created.resumed) setMessage("Cadastro incompleto encontrado. Retomando o envio sem duplicar a unidade.");
       }
 
+      const arquivosComFalha: string[] = [];
+      let enviadaComSucesso = 0;
       for (let index = 0; index < photos.length; index += 1) {
         const item = photos[index];
         if (completed.has(item.id)) continue;
-        const originalFile = item.file;
-        const file = tipoDaMidia(originalFile) === "foto" ? await applyOfficialWatermark(originalFile) : originalFile;
-        const storagePath = `${userId}/${empreendimentoId}/${crypto.randomUUID()}-${safeFileName(file.name)}`;
-        const { error: uploadError } = await supabase.storage.from("empreendimentos").upload(storagePath, file, { contentType: file.type, upsert: false });
-        if (uploadError) throw new Error(`Falha ao enviar ${file.name}: ${uploadError.message}`);
-        const { error: mediaError } = await supabase.from("midias").insert({
-          empreendimento_id: empreendimentoId, unidade_id: unitId, tipo: tipoDaMidia(file),
-          storage_path: storagePath, nome: file.name, categoria: item.category.toLowerCase(), is_capa: Boolean(item.cover),
-        } as never);
-        if (mediaError) {
-          await supabase.storage.from("empreendimentos").remove([storagePath]);
-          throw new Error(`Falha ao registrar ${file.name}: ${mediaError.message}`);
+        try {
+          const originalFile = item.file;
+          const file = tipoDaMidia(originalFile) === "foto" ? await applyOfficialWatermark(originalFile) : originalFile;
+          const storagePath = await buildProductMediaPath(userId, empreendimentoId, unitId, originalFile);
+          await uploadProductMediaResumable({
+            accessToken: token,
+            bucketName: "empreendimentos",
+            file,
+            objectName: storagePath,
+            onProgress: (fileProgress) => setUploadProgress(Math.round(((completed.size + fileProgress / 100) / photos.length) * 100)),
+          });
+          const { error: mediaError } = await supabase.from("midias").upsert({
+            empreendimento_id: empreendimentoId, unidade_id: unitId, tipo: tipoDaMidia(file),
+            storage_path: storagePath, nome: file.name, categoria: item.category.toLowerCase(), is_capa: Boolean(item.cover),
+          } as never, { onConflict: "storage_path" });
+          if (mediaError) throw new Error(`Falha ao registrar: ${mediaError.message}`);
+          completed.add(item.id);
+          enviadaComSucesso += 1;
+          setUploadedItemIds(Array.from(completed));
+          setUploadProgress(Math.round((completed.size / photos.length) * 100));
+        } catch (reason) {
+          const detail = reason instanceof Error ? reason.message : "falha desconhecida";
+          arquivosComFalha.push(`${item.file.name}: ${detail}`);
         }
-        completed.add(item.id);
-        setUploadedItemIds(Array.from(completed));
-        setUploadProgress(Math.round((completed.size / photos.length) * 100));
+      }
+
+      if (arquivosComFalha.length > 0) {
+        throw new Error(`${enviadaComSucesso} arquivo(s) enviado(s). Não chegaram: ${arquivosComFalha.join("; ")}`);
       }
 
       setMessage("Unidade enviada para aprovação.");

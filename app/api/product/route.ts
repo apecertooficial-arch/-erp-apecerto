@@ -307,6 +307,25 @@ export async function PATCH(request: Request) {
 
     const { data: broker } = await auth.supabase.from("corretores").select("id").eq("usuario_id", auth.user.id).maybeSingle();
     if (!broker?.id && !gerenciaProdutos) return Response.json({ error: "Seu usuário ainda não está vinculado a um corretor ativo." }, { status: 422 });
+    // RESUMABLE_UNIT_LOOKUP: se a conexão caiu depois de criar a unidade, uma
+    // nova tentativa do mesmo captador continua o cadastro existente.
+    const { data: sameBuildingUnits, error: lookupError } = await auth.supabase
+      .from("unidades")
+      .select("id,numero,captador_corretor_id,aprovacao,publicado")
+      .eq("empreendimento_id", id)
+      .eq("de_terceiros", true)
+      .limit(500);
+    if (lookupError) return Response.json({ error: lookupError.message }, { status: 502 });
+    const existingUnit = (sameBuildingUnits ?? []).find((unit) => unit.numero?.trim().toLocaleLowerCase("pt-BR") === numero.toLocaleLowerCase("pt-BR"));
+    if (existingUnit) {
+      const sameOwner = broker?.id != null
+        ? existingUnit.captador_corretor_id === broker.id
+        : gerenciaProdutos && existingUnit.captador_corretor_id == null;
+      if (sameOwner && existingUnit.aprovacao !== "aprovado" && existingUnit.publicado !== true) {
+        return Response.json({ unidadeId: existingUnit.id, userId: auth.user.id, resumed: true });
+      }
+      return Response.json({ error: "Esta unidade já foi cadastrada neste prédio. Abra o imóvel existente para continuar." }, { status: 409 });
+    }
     const unitRow = {
       empreendimento_id: id, de_terceiros: true, aprovacao: "pendente", disponivel: true,
       captador_corretor_id: broker?.id ?? null,

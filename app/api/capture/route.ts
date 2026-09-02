@@ -250,7 +250,7 @@ export async function POST(request: Request) {
   // Evita imóveis repetidos antes de criar qualquer registro auxiliar.
   const { data: possibleDuplicates } = await supabase
     .from("empreendimentos")
-    .select("id,nome,endereco,numero,bairro,cidade")
+    .select("id,nome,endereco,numero,bairro,cidade,captado_por_usuario,captador_corretor_id,rascunho,aprovacao,unidades(id,de_terceiros,captador_corretor_id)")
     .ilike("cidade", condominium.city.trim())
     .limit(80);
   const duplicate = (possibleDuplicates ?? []).find((item) => {
@@ -261,6 +261,21 @@ export async function POST(request: Request) {
     return (sameName && sameNeighborhood) || sameAddress;
   });
   if (duplicate) {
+    const sameCaptor = duplicate.captado_por_usuario === authData.user.id
+      || (broker?.id != null && duplicate.captador_corretor_id === broker.id);
+    if (sameCaptor && (duplicate.rascunho === true || duplicate.aprovacao !== "aprovado")) {
+      const resumableUnit = payload.propertyType === "terceiro"
+        ? (duplicate.unidades ?? []).find((unit) => unit.de_terceiros === true && unit.captador_corretor_id === broker?.id)
+        : null;
+      return Response.json({
+        ok: true,
+        id: duplicate.id,
+        unidadeId: resumableUnit?.id ?? null,
+        userId: authData.user.id,
+        draft: duplicate.rascunho === true,
+        resumed: true,
+      });
+    }
     return Response.json({
       error: `Já existe um produto semelhante: ${duplicate.nome}. Abra o cadastro existente em vez de criar outro.`,
       code: "DUPLICATE_PRODUCT",

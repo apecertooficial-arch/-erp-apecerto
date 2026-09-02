@@ -265,7 +265,7 @@ export async function GET(request: Request) {
   };
 
   // Fila de UNIDADES de indicação pendentes (só para aprovadores).
-  type PendingUnit = { id: string; numero: string | null; tipologia: string | null; valor: number | null; empreendimentoId: string; predio: string; proprietario: string | null; indicador: string | null; coverUrl: string | null; approval: string; rejectionReason: string | null; codigo: string | null };
+  type PendingUnit = { id: string; numero: string | null; tipologia: string | null; valor: number | null; empreendimentoId: string; predio: string; proprietario: string | null; indicador: string | null; coverUrl: string | null; photoCount: number; approval: string; rejectionReason: string | null; codigo: string | null };
   let pendingUnits: PendingUnit[] = [];
   if (canApprove) {
     const { data: pu } = await supabase
@@ -274,9 +274,10 @@ export async function GET(request: Request) {
       .eq("de_terceiros", true).eq("aprovacao", "pendente");
     const unitIds = (pu ?? []).map((u) => u.id);
     const coverByUnit = new Map<string, string | null>();
+    const photoCountByUnit = new Map<string, number>();
     if (unitIds.length) {
       const { data: um } = await supabase.from("midias").select("unidade_id, storage_path, is_capa, created_at").in("unidade_id", unitIds).eq("tipo", "foto").order("is_capa", { ascending: false }).order("created_at", { ascending: true });
-      for (const m of (um ?? [])) { const uid = (m as { unidade_id?: string }).unidade_id; if (uid && !coverByUnit.has(uid)) coverByUnit.set(uid, publicMediaUrl((m as { storage_path: string }).storage_path)); }
+      for (const m of (um ?? [])) { const uid = (m as { unidade_id?: string }).unidade_id; if (uid) { photoCountByUnit.set(uid, (photoCountByUnit.get(uid) ?? 0) + 1); if (!coverByUnit.has(uid)) coverByUnit.set(uid, publicMediaUrl((m as { storage_path: string }).storage_path)); } }
     }
     pendingUnits = (pu ?? []).map((u) => ({
       id: u.id, numero: u.numero, tipologia: u.tipologia,
@@ -286,6 +287,7 @@ export async function GET(request: Request) {
       proprietario: null,
       indicador: corretorNameById.get(u.captador_corretor_id ?? -1) ?? null,
       coverUrl: coverByUnit.get(u.id) ?? null,
+      photoCount: photoCountByUnit.get(u.id) ?? 0,
       approval: u.aprovacao ?? "pendente",
       rejectionReason: u.reprovacao_motivo ?? null,
       codigo: u.codigo ?? null,
@@ -301,9 +303,10 @@ export async function GET(request: Request) {
       .order("codigo", { ascending: false });
     const mineIds = (mineRows ?? []).map((u) => u.id);
     const coverByMine = new Map<string, string | null>();
+    const photoCountByMine = new Map<string, number>();
     if (mineIds.length) {
       const { data: mineMedia } = await supabase.from("midias").select("unidade_id, storage_path, is_capa, created_at").in("unidade_id", mineIds).eq("tipo", "foto").order("is_capa", { ascending: false }).order("created_at", { ascending: true });
-      for (const m of mineMedia ?? []) { const uid = (m as { unidade_id?: string }).unidade_id; if (uid && !coverByMine.has(uid)) coverByMine.set(uid, publicMediaUrl((m as { storage_path: string }).storage_path)); }
+      for (const m of mineMedia ?? []) { const uid = (m as { unidade_id?: string }).unidade_id; if (uid) { photoCountByMine.set(uid, (photoCountByMine.get(uid) ?? 0) + 1); if (!coverByMine.has(uid)) coverByMine.set(uid, publicMediaUrl((m as { storage_path: string }).storage_path)); } }
     }
     const mineProductIds = [...new Set((mineRows ?? []).map((u) => u.empreendimento_id))];
     const { data: privateOwners } = mineProductIds.length
@@ -318,6 +321,7 @@ export async function GET(request: Request) {
       proprietario: privateOwnerByUnit.get(u.id)?.proprietario_nome ?? null,
       indicador: corretorNameById.get(u.captador_corretor_id ?? -1) ?? null,
       coverUrl: coverByMine.get(u.id) ?? null,
+      photoCount: photoCountByMine.get(u.id) ?? 0,
       approval: u.aprovacao ?? "pendente",
       rejectionReason: u.reprovacao_motivo ?? null,
       codigo: u.codigo ?? null,
