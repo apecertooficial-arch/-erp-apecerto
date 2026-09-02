@@ -48,6 +48,18 @@ type PayloadMobile = {
   error?: string;
 };
 
+type LeadCarteiraAntigaMobile = {
+  lead_id: number;
+  negocio_id: number | null;
+  nome: string | null;
+  telefone: string | null;
+  corretor_id: number | null;
+  corretor_nome: string | null;
+  criado_em: string;
+  ultima_mensagem_em: string | null;
+  mensagens: number;
+};
+
 type FiltroDia = "agora" | "novos" | "hoje" | "todos";
 type TemperaturaFiltroMobile = TemperaturaLead | "aguardando" | "todas";
 
@@ -215,6 +227,63 @@ function CartaoLead({
       <button type="button" className="ape-mais" onClick={onAbrir} aria-label={`Abrir ficha de ${lead.nome}`}><IconeMais /></button>
     </div>
   </article>;
+}
+
+/* Cliente preservado da carteira anterior. Ele só vira card depois de o
+   corretor escolher etapa e momento; isso mantém o Meu Dia limpo e evita
+   fingir uma primeira abordagem para uma conversa que já aconteceu. */
+function TrazerLeadAntigoMobile({
+  alvo,
+  etapas,
+  momentos,
+  trazendoLead,
+  erro,
+  onFechar,
+  onConfirmar,
+}: {
+  alvo: LeadCarteiraAntigaMobile;
+  etapas: EtapaConfigFunil2[];
+  momentos: MomentoFunil2[];
+  trazendoLead: boolean;
+  erro: string | null;
+  onFechar: () => void;
+  onConfirmar: (etapa: string, momento: string) => Promise<void>;
+}) {
+  const etapasPermitidas = etapas.filter((item) => item.ativo && item.codigo !== "novo");
+  const [etapa, setEtapa] = useState(etapasPermitidas[0]?.codigo ?? "");
+  const momentosDaEtapa = momentos.filter((m) => m.etapa === etapa && m.codigo !== "PRIMEIRA_ABORDAGEM" && m.ativo !== false);
+  const [momento, setMomento] = useState(momentosDaEtapa[0]?.codigo ?? "");
+
+  function trocarEtapa(codigo: string) {
+    setEtapa(codigo);
+    const primeiro = momentos.find((item) => item.etapa === codigo && item.codigo !== "PRIMEIRA_ABORDAGEM" && item.ativo !== false);
+    setMomento(primeiro?.codigo ?? "");
+  }
+
+  return <div className="ape-trazer-folha" onMouseDown={(evento) => { if (evento.target === evento.currentTarget && !trazendoLead) onFechar(); }}>
+    <section role="dialog" aria-modal="true" aria-label={`Trazer ${alvo.nome ?? "cliente"} para o funil`}>
+      <i />
+      <span className="ape-sobrancelha">CARTEIRA ANTIGA</span>
+      <h2>Trazer para o funil</h2>
+      <p><strong>{alvo.nome ?? "Este cliente"}</strong> volta a aparecer na etapa que você escolher. O histórico da conversa será preservado.</p>
+      <label>Etapa
+        <select value={etapa} disabled={trazendoLead} onChange={(evento) => trocarEtapa(evento.target.value)}>
+          {etapasPermitidas.map((item) => <option value={item.codigo} key={item.codigo}>{item.rotulo}</option>)}
+        </select>
+      </label>
+      <label>Momento
+        <select value={momento} disabled={trazendoLead} onChange={(evento) => setMomento(evento.target.value)}>
+          {momentosDaEtapa.map((item) => <option value={item.codigo} key={item.codigo}>{item.rotulo}</option>)}
+        </select>
+      </label>
+      <small>“Lead novo” não é oferecido porque este cliente já teve atendimento.</small>
+      {erro && <em role="alert">{erro}</em>}
+      <div>
+        <button type="button" className="secundario" disabled={trazendoLead} onClick={onFechar}>Cancelar</button>
+        <button type="button" className="primario" disabled={trazendoLead || !etapa || !momento} onClick={() => void onConfirmar(etapa, momento)}>{trazendoLead ? "Trazendo…" : "Trazer para o funil"}</button>
+      </div>
+    </section>
+  </div>;
 }
 
 function AgendarVisitaMobile({
@@ -685,6 +754,12 @@ export function Funil2Mobile({
   const [busca, setBusca] = useState("");
   const [selecionado, setSelecionado] = useState<string | null>(null);
   const [sucesso, setSucesso] = useState<string | null>(null);
+  const [carteiraAntiga, setCarteiraAntiga] = useState<LeadCarteiraAntigaMobile[]>([]);
+  const [buscandoCarteira, setBuscandoCarteira] = useState(false);
+  const [erroCarteira, setErroCarteira] = useState<string | null>(null);
+  const [alvoCarteira, setAlvoCarteira] = useState<LeadCarteiraAntigaMobile | null>(null);
+  const [trazendoLead, setTrazendoLead] = useState(false);
+  const [avisoCarteira, setAvisoCarteira] = useState<string | null>(null);
   const [historicoDetalhe, setHistoricoDetalhe] = useState<{ leadId: string; eventos: EventoFunil2[]; notas: NotaFunil2[] } | null>(null);
   const [pedidoUrl] = useState(lerLeadDaUrl);
   const [agora] = useState(() => Date.now());
@@ -699,6 +774,57 @@ export function Funil2Mobile({
       ? configuradas.map((item) => [item.codigo, item.rotulo] as const)
       : [...ETAPAS_FALLBACK];
   }, [dados]);
+
+  /* A busca móvel precisa enxergar as duas carteiras. O payload principal
+     continua leve; só consultamos o legado quando há termo suficiente. */
+  useEffect(() => {
+    const termo = busca.trim();
+    if (modo !== "crm" || termo.length < 3) return;
+    const controle = new AbortController();
+    const temporizador = window.setTimeout(() => {
+      setBuscandoCarteira(true);
+      setErroCarteira(null);
+      void fetch(`/api/funil2/carteira?q=${encodeURIComponent(termo)}`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+        signal: controle.signal,
+      }).then(async (resposta) => {
+        const json = await resposta.json().catch(() => ({})) as { leads?: LeadCarteiraAntigaMobile[]; error?: string };
+        if (!resposta.ok) throw new Error(json.error || "Não foi possível pesquisar a carteira antiga.");
+        setCarteiraAntiga(json.leads ?? []);
+      }).catch((falha: unknown) => {
+        if (falha instanceof DOMException && falha.name === "AbortError") return;
+        setCarteiraAntiga([]);
+        setErroCarteira(falha instanceof Error ? falha.message : "Não foi possível pesquisar a carteira antiga.");
+      }).finally(() => {
+        if (!controle.signal.aborted) setBuscandoCarteira(false);
+      });
+    }, 350);
+    return () => { window.clearTimeout(temporizador); controle.abort(); };
+  }, [accessToken, busca, modo]);
+
+  async function trazerLeadDaCarteira(etapaDestino: string, momentoDestino: string) {
+    if (!alvoCarteira || trazendoLead) return;
+    setTrazendoLead(true);
+    setErroCarteira(null);
+    try {
+      const resposta = await fetch("/api/funil2", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "trazerLeadAntigo", leadId: alvoCarteira.lead_id, etapa: etapaDestino, momento: momentoDestino }),
+      });
+      const json = await resposta.json().catch(() => ({})) as { error?: string };
+      if (!resposta.ok) throw new Error(json.error || "Não foi possível trazer o cliente para o funil.");
+      const nomeCliente = alvoCarteira.nome ?? "Cliente";
+      setCarteiraAntiga((atuais) => atuais.filter((item) => item.lead_id !== alvoCarteira.lead_id));
+      setAlvoCarteira(null);
+      setAvisoCarteira(`${nomeCliente} agora está no funil.`);
+      recarregar();
+    } catch (falha) {
+      setErroCarteira(falha instanceof Error ? falha.message : "Não foi possível trazer o cliente para o funil.");
+    } finally {
+      setTrazendoLead(false);
+    }
+  }
 
   const fimHoje = useMemo(() => { const data = new Date(agora); data.setHours(23, 59, 59, 999); return +data; }, [agora]);
   const contagens = useMemo(() => ({
@@ -790,6 +916,11 @@ export function Funil2Mobile({
       <button type="button" className="fechar" aria-label="Fechar confirmação" onClick={() => setSucesso(null)}>×</button>
     </div>}
 
+    {avisoCarteira && <div className="ape-carteira-sucesso" role="status">
+      <span><IconeCheck tamanho={20} /></span><strong>{avisoCarteira}</strong>
+      <button type="button" aria-label="Fechar confirmação" onClick={() => setAvisoCarteira(null)}>×</button>
+    </div>}
+
     {modo === "inicio" && <section className="ape-numeros" aria-label="Resumo do dia">
       <article><b>{contagens.agora}</b><span>aguardando</span></article>
       <article><b>{contagens.novos}</b><span>leads novos</span></article>
@@ -798,7 +929,15 @@ export function Funil2Mobile({
 
     {modo === "crm" && <label className="ape-busca">
       <IconeBusca />
-      <input type="search" value={busca} onChange={(evento) => setBusca(evento.target.value)} placeholder="Buscar cliente ou telefone" />
+      <input type="search" value={busca} onChange={(evento) => {
+        const valor = evento.target.value;
+        setBusca(valor);
+        if (valor.trim().length < 3) {
+          setCarteiraAntiga([]);
+          setBuscandoCarteira(false);
+          setErroCarteira(null);
+        }
+      }} placeholder="Buscar cliente ou telefone" />
     </label>}
 
     {modo === "crm" && <nav className="ape-filtros" aria-label="Filtrar atendimentos">
@@ -840,7 +979,7 @@ export function Funil2Mobile({
       <button type="button" onClick={() => onIr("/crm")}>Ver minha carteira</button>
     </div>}
 
-    {dados && !erro && modo === "crm" && visiveis.length === 0 && <div className="ape-estado">
+    {dados && !erro && modo === "crm" && visiveis.length === 0 && carteiraAntiga.length === 0 && !buscandoCarteira && <div className="ape-estado">
       <span className="ape-estado-icone"><IconeCheck /></span>
       <strong>Nenhum cliente neste filtro</strong>
       <p>Troque a etapa ou limpe a busca para ver o restante da carteira.</p>
@@ -854,7 +993,21 @@ export function Funil2Mobile({
           </div>
           <div className="ape-lista">{grupo.leads.map(cartao)}</div>
         </section>)
-      : <section className="ape-lista" aria-label="Atendimentos">{visiveis.slice(0, 60).map(cartao)}</section>}
+      : <>
+          <section className="ape-lista" aria-label="Atendimentos">{visiveis.slice(0, 60).map(cartao)}</section>
+          {busca.trim().length >= 3 && <section className="ape-carteira-antiga" aria-label="Clientes fora do funil">
+            <header><div><span>CARTEIRA ANTIGA</span><h2>Fora do funil</h2></div><b>{buscandoCarteira ? "Buscando…" : `${carteiraAntiga.length} encontrado(s)`}</b></header>
+            <p>Clientes que você já atendeu e ainda não têm card. Escolha um para retomar o trabalho.</p>
+            {erroCarteira && <em role="alert">{erroCarteira}</em>}
+            <div>
+              {carteiraAntiga.map((item) => <article key={item.lead_id}>
+                <span className="ape-avatar" aria-hidden="true">{iniciais(item.nome ?? "?")}</span>
+                <div><strong>{item.nome ?? "Sem nome"}</strong><small>{item.corretor_nome ?? "Sem responsável"}{item.mensagens > 0 ? ` · ${item.mensagens} mensagens` : " · sem conversa registrada"}</small></div>
+                <button type="button" onClick={() => { setErroCarteira(null); setAlvoCarteira(item); }}>Trazer para o funil</button>
+              </article>)}
+            </div>
+          </section>}
+        </>}
 
     {modo === "inicio" && totalNoDia > 0 && <button type="button" className="ape-ver-carteira" onClick={() => onIr("/crm")}>
       Ver minha carteira ({leads.length})
@@ -872,6 +1025,17 @@ export function Funil2Mobile({
       accessToken={accessToken}
       onSalvo={() => { setSucesso("Ela já está na Agenda, no horário escolhido."); void recarregar(); setSelecionado(null); }}
       onRecarregar={() => { void recarregar(); }}
+    />}
+
+    {alvoCarteira && <TrazerLeadAntigoMobile
+      key={alvoCarteira.lead_id}
+      alvo={alvoCarteira}
+      etapas={dados?.etapas ?? []}
+      momentos={momentos}
+      trazendoLead={trazendoLead}
+      erro={erroCarteira}
+      onFechar={() => { if (!trazendoLead) { setAlvoCarteira(null); setErroCarteira(null); } }}
+      onConfirmar={trazerLeadDaCarteira}
     />}
   </main>;
 }

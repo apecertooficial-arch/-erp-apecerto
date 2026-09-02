@@ -46,6 +46,42 @@
   .ape-busca input { width: 100%; min-width: 0; border: 0; outline: 0; background: transparent; color: #1F1C1A; font-family: inherit; font-size: 16px; font-weight: 500; }
   .ape-busca input::placeholder { color: #B8B0A8; }
 
+  /* A mesma busca encontra também clientes preservados fora do Funil 2.0. */
+  .ape-carteira-antiga { margin-top:18px; padding:15px; border:1px solid #E4DFD9; border-radius:18px; background:#FFF; box-shadow:0 1px 3px rgba(31,28,26,.05); }
+  .ape-carteira-antiga > header { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
+  .ape-carteira-antiga > header span { display:block; color:#FF7000; font-size:9px; font-weight:800; letter-spacing:.12em; }
+  .ape-carteira-antiga > header h2 { margin:3px 0 0; font-size:18px; line-height:1.2; }
+  .ape-carteira-antiga > header b { flex:none; color:#6B635C; font-size:11px; }
+  .ape-carteira-antiga > p { margin:8px 0 12px; color:#6B635C; font-size:12px; line-height:1.45; }
+  .ape-carteira-antiga > em { display:block; margin-bottom:10px; padding:10px; border-radius:10px; background:#FBE5E5; color:#A32C2C; font-size:12px; font-style:normal; }
+  .ape-carteira-antiga > div { display:flex; flex-direction:column; gap:9px; }
+  .ape-carteira-antiga article { display:grid; grid-template-columns:36px minmax(0,1fr); gap:8px 10px; padding:12px; border:1px solid #EEE9E5; border-radius:14px; background:#FAF8F6; }
+  .ape-carteira-antiga article > div { display:flex; min-width:0; flex-direction:column; gap:2px; }
+  .ape-carteira-antiga article strong { overflow:hidden; font-size:14px; text-overflow:ellipsis; white-space:nowrap; }
+  .ape-carteira-antiga article small { overflow:hidden; color:#7A716A; font-size:11px; text-overflow:ellipsis; white-space:nowrap; }
+  .ape-carteira-antiga article button { grid-column:1/-1; min-height:46px; border:0; border-radius:999px; background:#FF7000; color:#FFF; font-family:inherit; font-size:13px; font-weight:750; }
+
+  .ape-carteira-sucesso { position:relative; display:flex; align-items:center; gap:9px; margin:0 0 12px; padding:12px 40px 12px 13px; border:1px solid #B8DFC8; border-radius:14px; background:#ECF9F1; color:#116B3D; }
+  .ape-carteira-sucesso > span { display:grid; place-items:center; flex:none; }
+  .ape-carteira-sucesso strong { font-size:13px; }
+  .ape-carteira-sucesso button { position:absolute; top:5px; right:5px; width:34px; height:34px; border:0; background:transparent; color:#116B3D; font-size:20px; }
+
+  .ape-trazer-folha { position:fixed; inset:0; z-index:110; display:flex; align-items:flex-end; background:rgba(31,28,26,.48); }
+  .ape-trazer-folha > section { width:100%; max-height:92dvh; overflow:auto; padding:10px 20px calc(22px + env(safe-area-inset-bottom,0px)); border-radius:24px 24px 0 0; background:#FFF; animation:ape-sobe 220ms cubic-bezier(.2,.8,.2,1); }
+  .ape-trazer-folha > section > i:first-child { display:block; width:44px; height:4px; margin:4px auto 18px; border-radius:999px; background:#E4DFD9; }
+  .ape-trazer-folha h2 { margin:5px 0 7px; font-size:22px; }
+  .ape-trazer-folha p { margin:0 0 16px; color:#6B635C; font-size:13px; line-height:1.5; }
+  .ape-trazer-folha p strong { color:#1F1C1A; }
+  .ape-trazer-folha label { display:flex; flex-direction:column; gap:6px; margin-top:12px; color:#514A45; font-size:12px; font-weight:750; }
+  .ape-trazer-folha select { width:100%; min-height:50px; padding:0 12px; border:1px solid #D8D0C9; border-radius:12px; background:#FFF; color:#1F1C1A; font-family:inherit; font-size:15px; font-weight:600; }
+  .ape-trazer-folha small { display:block; margin-top:11px; color:#7A716A; font-size:11px; line-height:1.4; }
+  .ape-trazer-folha em[role="alert"] { display:block; margin-top:11px; padding:10px; border-radius:10px; background:#FBE5E5; color:#A32C2C; font-size:12px; font-style:normal; }
+  .ape-trazer-folha section > div:last-child { display:grid; grid-template-columns:1fr 1.4fr; gap:8px; margin-top:18px; }
+  .ape-trazer-folha section > div:last-child button { min-height:50px; border-radius:999px; font-family:inherit; font-size:13px; font-weight:750; }
+  .ape-trazer-folha button.secundario { border:1px solid #D8D0C9; background:#FFF; color:#514A45; }
+  .ape-trazer-folha button.primario { border:0; background:#FF7000; color:#FFF; }
+  .ape-trazer-folha button:disabled { opacity:.55; }
+
   /* ---------- Filtros ---------- */
   .ape-filtros { display: flex; gap: 7px; overflow-x: auto; margin: 0 -20px 14px; padding: 0 20px 3px; scrollbar-width: none; }
   .ape-filtros::-webkit-scrollbar { display: none; }
