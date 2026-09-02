@@ -16,14 +16,46 @@
   p { color:var(--suave); margin:0 0 24px; }
   button { width:100%; padding:14px 20px; font-size:16px; font-weight:600; color:#fff;
            background:var(--laranja); border:0; border-radius:12px; cursor:pointer; }
+  button:disabled { opacity:.72; cursor:wait; }
+  #estado { min-height:21px; margin:12px 0 0; font-size:13px; }
 </style>
 </head>
 <body>
   <div class="caixa">
     <img src="/icons/icone-192-v6.png" alt="ApeCerto" />
-    <h1>Voce esta sem internet</h1>
-    <p>Assim que o sinal voltar, seus clientes aparecem de novo. Nada foi perdido.</p>
-    <button onclick="location.reload()">Tentar de novo</button>
+    <h1>Não foi possível conectar ao ApeCerto</h1>
+    <p>A rede pode ter oscilado por alguns segundos. Vamos reconectar automaticamente. Nada foi perdido.</p>
+    <button id="tentar" type="button">Tentar de novo</button>
+    <p id="estado" role="status" aria-live="polite"></p>
   </div>
+  <script>
+    const botao = document.getElementById("tentar");
+    const estado = document.getElementById("estado");
+    let verificando = false;
+
+    async function tentarDeNovo() {
+      if (verificando) return;
+      verificando = true;
+      botao.disabled = true;
+      botao.textContent = "Reconectando…";
+      estado.textContent = "Verificando a conexão…";
+      try {
+        const resposta = await fetch(`/api/build?recuperar=${Date.now()}`, { cache: "no-store" });
+        if (!resposta.ok) throw new Error("servidor_indisponivel");
+        estado.textContent = "Conexão restabelecida.";
+        location.reload();
+      } catch {
+        estado.textContent = "Ainda não foi possível conectar. Tentaremos novamente.";
+        botao.disabled = false;
+        botao.textContent = "Tentar de novo";
+      } finally {
+        verificando = false;
+      }
+    }
+
+    botao.addEventListener("click", tentarDeNovo);
+    window.addEventListener("online", tentarDeNovo);
+    setInterval(tentarDeNovo, 5000);
+  </script>
 </body>
 </html>

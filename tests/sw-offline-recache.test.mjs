@@ -51,12 +51,15 @@ function criarCaches(buscar) {
 function subirSW() {
   const ouvintes = {};
   const pedidosDeRede = [];
-  const rede = { caiu: false }; // vira true quando quisermos simular estar sem sinal
+  const rede = { caiu: false, falhasRestantes: 0 }; // permite simular queda permanente ou oscilacao curta
 
   const fetchFalso = async (req) => {
     const url = typeof req === "string" ? req : req.url;
     pedidosDeRede.push(url.replace(ORIGEM, ""));
-    if (rede.caiu) throw new TypeError("Failed to fetch");
+    if (rede.caiu || rede.falhasRestantes > 0) {
+      if (rede.falhasRestantes > 0) rede.falhasRestantes -= 1;
+      throw new TypeError("Failed to fetch");
+    }
     return { ok: true, corpo: `da rede: ${url}`, clone() { return { ...this }; } };
   };
 
@@ -78,7 +81,7 @@ function subirSW() {
     },
     caches: caches.api,
     fetch: fetchFalso,
-    URL,
+    URL, setTimeout,
     Promise, console,
   };
   escopo.globalThis = escopo;
@@ -155,6 +158,29 @@ test("sequencia: instala, logout limpa, /offline.html volta, offline serve a pag
   assert.ok(resposta, "sem rede, a navegacao tem que receber alguma resposta");
   assert.match(String(resposta.corpo ?? ""), /offline\.html/,
     "sem rede, a navegacao tem que cair na tela offline");
+});
+
+test("oscilacao curta durante navegacao e absorvida antes de mostrar a tela offline", async () => {
+  const sw = subirSW();
+  const inst = evento();
+  sw.ouvintes.install(inst);
+  await Promise.all(inst.esperas);
+
+  sw.rede.falhasRestantes = 2;
+  const resposta = await pedir(sw, "/produtos", { modo: "navigate" });
+
+  assert.match(String(resposta?.corpo ?? ""), /da rede:/,
+    "a terceira tentativa deve recuperar a navegacao sem exibir o fallback offline");
+  assert.equal(sw.pedidosDeRede.filter((url) => url === "/produtos").length, 3,
+    "as tentativas precisam ser limitadas e espacadas");
+});
+
+test("a pagina offline diferencia indisponibilidade e se recupera automaticamente", () => {
+  const offline = readFileSync(new URL("../public/offline.html", import.meta.url), "utf8");
+  assert.match(offline, /Não foi possível conectar ao ApeCerto/);
+  assert.match(offline, /\/api\/build\?recuperar=/);
+  assert.match(offline, /setInterval\(tentarDeNovo/);
+  assert.match(offline, /addEventListener\("online", tentarDeNovo\)/);
 });
 
 test("recache de /offline.html nao abre porta para dado autenticado", async () => {

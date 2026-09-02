@@ -59,6 +59,30 @@ function ehCodigoDoApp(url) {
   return url.pathname.startsWith("/_next/");
 }
 
+const ATRASOS_NAVEGACAO = [0, 400, 1200];
+
+function esperar(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/* Uma troca de rede, um Wi-Fi oscilando ou a rotação do servidor durante um
+   deploy pode rejeitar duas conexões quase no mesmo instante. Tentativas
+   imediatas repetiam a mesma falha e mostravam a página offline mesmo quando a
+   conexão voltava um segundo depois. Os intervalos abaixo são curtos, finitos e
+   valem apenas para navegação pública; APIs e dados autenticados nunca entram
+   no cache nem são repetidos pelo worker. */
+async function buscarNavegacao(req) {
+  for (const atraso of ATRASOS_NAVEGACAO) {
+    if (atraso > 0) await esperar(atraso);
+    try {
+      return await fetch(req, { cache: "no-store" });
+    } catch {
+      // Tenta de novo depois do próximo intervalo; no fim usa a casca offline.
+    }
+  }
+  return caches.match(OFFLINE);
+}
+
 self.addEventListener("install", (evento) => {
   evento.waitUntil(caches.open(CACHE_ESTATICO).then((c) => c.addAll(PRECACHE)).then(() => self.skipWaiting()));
 });
@@ -111,10 +135,7 @@ self.addEventListener("fetch", (evento) => {
      (no-store) -- HTML velho referencia chunk velho, e era mais um caminho para
      a tela antiga voltar. Sem rede, mostra a tela offline (sem dado nenhum). */
   if (req.mode === "navigate") {
-    evento.respondWith(
-      fetch(req, { cache: "no-store" })
-        .catch(() => fetch(req).catch(() => caches.match(OFFLINE))),
-    );
+    evento.respondWith(buscarNavegacao(req));
   }
 });
 
