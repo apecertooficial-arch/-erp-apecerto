@@ -118,7 +118,13 @@ export async function PATCH(request: Request) {
     const startTime = texto(body.startTime, 8);
     const productId = texto(body.productId, 40) || null;
     if (!leadId || !dealId || !date || !startTime) return Response.json({ error: "Informe data e horário da visita." }, { status: 422 });
-    const denied = guard("criar", "Você não tem permissão para agendar visitas.");
+    /* Agendar uma visita também é uma edição operacional do atendimento já
+       existente. O perfil de corretor historicamente tinha `crm.editar`, mas
+       não `crm.criar`; exigir criação nos dois módulos bloqueava todos os
+       corretores antes mesmo de a regra canônica validar o dono do lead. */
+    const denied = denyIfCannot(access, [
+      ["calendario", "criar"], ["crm", "editar"], ["pipeline", "editar"],
+    ], "Você não tem permissão para agendar visitas.");
     if (denied) return denied;
 
     const [{ data: lead }, { data: deal }, { data: card }, { data: product }] = await Promise.all([

@@ -129,9 +129,11 @@ export function TelaAgendaMobile({ accessToken }: {
       if (r.status === 401) { setSessaoExpirada(true); return false; }
       const j = await r.json().catch(() => ({})) as { success?: boolean; error?: string };
       if (!r.ok || !j.success) {
-        /* A mensagem do banco nao vai para a tela. */
         console.error("agenda: falha ao gravar", corpo.action, j.error);
-        setErroEscrita("Não foi possível salvar. Tente de novo em instantes.");
+        /* A API da Agenda devolve mensagens operacionais já tratadas. Mostrar
+           a causa evita que permissão, conflito de horário e dado inválido
+           pareçam uma queda genérica de internet. */
+        setErroEscrita(j.error?.trim() || "Não foi possível salvar. Tente de novo em instantes.");
         return false;
       }
       setEditando(null); setCriando(false); setConfirmandoCancelamento(false);
