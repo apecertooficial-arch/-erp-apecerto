@@ -37,6 +37,15 @@ test("falha no armazenamento local do Android não impede o envio", () => {
   assert.match(resumableUpload, /Web Crypto indisponível/);
 });
 
+test("falha das rotas TUS usa upload padrão autenticado como contingência", () => {
+  assert.match(resumableUpload, /getBrowserSupabaseClient/);
+  assert.match(resumableUpload, /\.from\(input\.bucketName\)/);
+  assert.match(resumableUpload, /\.upload\(input\.objectName, input\.file/);
+  assert.match(resumableUpload, /upsert:\s*true/);
+  assert.match(resumableUpload, /Upload padrão de contingência indisponível/);
+  assert.match(resumableUpload, /onProgress\?\.\(100\)/);
+});
+
 test("o caminho determinístico e a mídia idempotente impedem duplicação no retry", () => {
   assert.match(resumableUpload, /buildProductMediaPath/);
   assert.match(resumableUpload, /crypto\?\.subtle/);

@@ -1,4 +1,5 @@
 import { Upload } from "tus-js-client";
+import { getBrowserSupabaseClient } from "../../lib/supabase/browser";
 
 type ResumableUploadInput = {
   accessToken: string;
@@ -126,9 +127,29 @@ export async function uploadProductMediaResumable(input: ResumableUploadInput) {
     }
   }
 
+  // Alguns navegadores móveis bloqueiam a criação/retomada da sessão TUS antes
+  // de qualquer byte chegar ao Storage. Nesses aparelhos, usa o upload padrão
+  // autenticado como contingência, preservando o mesmo caminho idempotente.
+  try {
+    const supabase = getBrowserSupabaseClient();
+    const { error } = await supabase.storage
+      .from(input.bucketName)
+      .upload(input.objectName, input.file, {
+        upsert: true,
+        contentType: input.file.type || "application/octet-stream",
+        cacheControl: "3600",
+      });
+    if (error) throw error;
+    input.onProgress?.(100);
+    return;
+  } catch (error) {
+    failures.push(error);
+    console.warn("[produto-upload] Upload padrão de contingência indisponível.", error);
+  }
+
   const lastFailure = failures.at(-1);
   const detail = lastFailure instanceof Error && lastFailure.message
     ? ` (${lastFailure.message})`
     : "";
-  throw new Error(`A conexão com o armazenamento falhou nas duas rotas${detail}. Tente novamente; as fotos já concluídas não serão duplicadas.`);
+  throw new Error(`A conexão com o armazenamento falhou nas rotas disponíveis${detail}. Tente novamente; as fotos já concluídas não serão duplicadas.`);
 }
