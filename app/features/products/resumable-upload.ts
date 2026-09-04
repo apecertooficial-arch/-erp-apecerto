@@ -8,12 +8,14 @@ type ResumableUploadInput = {
   onProgress?: (percentage: number) => void;
 };
 
-function resumableEndpoint(projectUrl: string) {
+function resumableEndpoints(projectUrl: string) {
   const parsed = new URL(projectUrl);
   const directHost = parsed.hostname.endsWith(".supabase.co")
     ? parsed.hostname.replace(".supabase.co", ".storage.supabase.co")
     : parsed.hostname;
-  return `${parsed.protocol}//${directHost}/storage/v1/upload/resumable`;
+  const gateway = `${parsed.protocol}//${parsed.host}/storage/v1/upload/resumable`;
+  const direct = `${parsed.protocol}//${directHost}/storage/v1/upload/resumable`;
+  return Array.from(new Set([gateway, direct]));
 }
 
 function safeFileName(name: string) {
@@ -34,19 +36,30 @@ export async function buildProductMediaPath(userId: string, productId: string, u
   signature.set(metadata);
   signature.set(firstBytes, metadata.length);
   signature.set(lastBytes, metadata.length + firstBytes.length);
-  const digest = await crypto.subtle.digest("SHA-256", signature);
-  const hash = Array.from(new Uint8Array(digest)).slice(0, 12).map((value) => value.toString(16).padStart(2, "0")).join("");
+  let hash = "";
+  try {
+    if (!globalThis.crypto?.subtle) throw new Error("Web Crypto indisponível");
+    const digest = await globalThis.crypto.subtle.digest("SHA-256", signature);
+    hash = Array.from(new Uint8Array(digest)).slice(0, 12).map((value) => value.toString(16).padStart(2, "0")).join("");
+  } catch {
+    // Alguns WebViews Android desabilitam Web Crypto. O hash não precisa ser
+    // criptográfico: ele só mantém o caminho estável para retomar sem duplicar.
+    let first = 0x811c9dc5;
+    let second = 0x9e3779b9;
+    for (const value of signature) {
+      first = Math.imul(first ^ value, 0x01000193) >>> 0;
+      second = Math.imul(second ^ (value + 0x9d), 0x85ebca6b) >>> 0;
+    }
+    hash = `${first.toString(16).padStart(8, "0")}${second.toString(16).padStart(8, "0")}${file.size.toString(16).padStart(8, "0")}`;
+  }
   const scope = unitId ? `unidades/${unitId}` : "produto";
   return `${userId}/${productId}/${scope}/${hash}-${safeFileName(file.name)}`;
 }
 
-export async function uploadProductMediaResumable({ accessToken, bucketName, file, objectName, onProgress }: ResumableUploadInput) {
-  const projectUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  if (!projectUrl) throw new Error("O endereço do armazenamento não está configurado.");
-
+function uploadAtEndpoint(endpoint: string, { accessToken, bucketName, file, objectName, onProgress }: ResumableUploadInput) {
   return new Promise<void>((resolve, reject) => {
     const upload = new Upload(file, {
-      endpoint: resumableEndpoint(projectUrl),
+      endpoint,
       retryDelays: [0, 1000, 3000, 5000, 10000],
       fingerprint: async (inputFile, options) => [
         "apecerto-produto",
@@ -60,7 +73,9 @@ export async function uploadProductMediaResumable({ accessToken, bucketName, fil
         authorization: `Bearer ${accessToken}`,
         "x-upsert": "true",
       },
-      uploadDataDuringCreation: true,
+      // Cria a sessão primeiro e envia o conteúdo em PATCH. Assim uma queda no
+      // meio do primeiro pedido também pode ser retomada no celular.
+      uploadDataDuringCreation: false,
       removeFingerprintOnSuccess: true,
       chunkSize: 6 * 1024 * 1024,
       metadata: {
@@ -77,8 +92,43 @@ export async function uploadProductMediaResumable({ accessToken, bucketName, fil
     });
 
     void upload.findPreviousUploads().then((previousUploads) => {
-      if (previousUploads.length > 0) upload.resumeFromPreviousUpload(previousUploads[0]);
+      const endpointOrigin = new URL(endpoint).origin;
+      const compatibleUpload = previousUploads.find((previous) => {
+        try { return new URL(previous.uploadUrl).origin === endpointOrigin; }
+        catch { return false; }
+      });
+      if (compatibleUpload) upload.resumeFromPreviousUpload(compatibleUpload);
       upload.start();
-    }).catch(reject);
+    }).catch((error) => {
+      // Retomada é uma otimização, não uma condição para enviar. Em alguns
+      // Androids/PWAs o armazenamento local pode estar bloqueado ou corrompido.
+      console.warn("[produto-upload] Retomada local indisponível; iniciando envio novo.", error);
+      upload.start();
+    });
   });
+}
+
+export async function uploadProductMediaResumable(input: ResumableUploadInput) {
+  const projectUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  if (!projectUrl) throw new Error("O endereço do armazenamento não está configurado.");
+
+  const failures: unknown[] = [];
+  for (const endpoint of resumableEndpoints(projectUrl)) {
+    try {
+      await uploadAtEndpoint(endpoint, input);
+      return;
+    } catch (error) {
+      failures.push(error);
+      console.warn("[produto-upload] Endpoint indisponível; tentando rota alternativa.", {
+        endpoint: new URL(endpoint).host,
+        error,
+      });
+    }
+  }
+
+  const lastFailure = failures.at(-1);
+  const detail = lastFailure instanceof Error && lastFailure.message
+    ? ` (${lastFailure.message})`
+    : "";
+  throw new Error(`A conexão com o armazenamento falhou nas duas rotas${detail}. Tente novamente; as fotos já concluídas não serão duplicadas.`);
 }
