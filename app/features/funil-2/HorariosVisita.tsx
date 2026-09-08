@@ -5,6 +5,8 @@ import { useEffect, useMemo, useState } from "react";
 type EstadoHorario = "disponivel" | "indisponivel" | "meu";
 type Horario = { inicio: string; fim: string; estado: EstadoHorario };
 
+const SEM_HORARIOS: Horario[] = [];
+
 type Props = {
   accessToken: string;
   leadId?: string;
@@ -54,7 +56,7 @@ export function HorariosVisita({ accessToken, leadId = "", visitId = "", comGere
   const chaveConsulta = !alvo || (comGerente && !gerenteId) ? "" : `${alvo}:${data}:${comGerente ? gerenteId : "sem-gerente"}`;
   const [resultado, setResultado] = useState<{ chave: string; horarios: Horario[]; erro: boolean }>({ chave: "", horarios: [], erro: false });
   const estado = !chaveConsulta ? "aguardando" : resultado.chave !== chaveConsulta ? "carregando" : resultado.erro ? "erro" : "pronto";
-  const horarios = resultado.chave === chaveConsulta ? resultado.horarios : [];
+  const horarios = resultado.chave === chaveConsulta ? resultado.horarios : SEM_HORARIOS;
   const horarioSelecionado = useMemo(() => value.startsWith(`${data}T`) ? value.slice(11, 16) : "", [data, value]);
 
   useEffect(() => {
@@ -83,16 +85,22 @@ export function HorariosVisita({ accessToken, leadId = "", visitId = "", comGere
     onChange("");
   }
 
+  const dataHoje = hoje();
+  const horariosDisponiveis = useMemo(() => horarios.filter((horario) => {
+    const horarioEncerrado = data === dataHoje && horario.inicio <= horaAgora();
+    return horario.estado === "disponivel" && !horarioEncerrado;
+  }), [data, dataHoje, horarios]);
+  const horariosIndisponiveis = horarios.length - horariosDisponiveis.length;
+
   const grupos = useMemo(() => {
     const mapa = new Map<string, Horario[]>();
-    for (const horario of horarios) {
+    for (const horario of horariosDisponiveis) {
       const periodo = periodoDoHorario(horario.inicio);
       mapa.set(periodo, [...(mapa.get(periodo) ?? []), horario]);
     }
     return [...mapa.entries()];
-  }, [horarios]);
+  }, [horariosDisponiveis]);
 
-  const dataHoje = hoje();
   const dataAmanha = somarDias(dataHoje, 1);
 
   return <fieldset className="f2-horarios" disabled={disabled}>
@@ -110,29 +118,27 @@ export function HorariosVisita({ accessToken, leadId = "", visitId = "", comGere
     {estado === "carregando" && <p className="f2-horarios-aviso" role="status">Consultando horários…</p>}
     {estado === "erro" && <p className="f2-horarios-erro" role="alert">Não foi possível consultar os horários. Tente novamente.</p>}
     {estado === "pronto" && <>
+      {horariosDisponiveis.length === 0 ? <p className="f2-horarios-aviso">Não há horários disponíveis nesta data. Escolha outro dia.</p> : null}
       {grupos.map(([periodo, itens]) => <section className="f2-horarios-periodo" key={periodo}>
-        <h4>{periodo}</h4>
+        <h4>{periodo} · Horários disponíveis</h4>
         <div className="f2-horarios-grade" aria-label={`Horários de ${periodo.toLocaleLowerCase("pt-BR")}`}>
           {itens.map((horario) => {
             const selecionado = horarioSelecionado === horario.inicio;
-            const horarioEncerrado = data === dataHoje && horario.inicio <= horaAgora();
-            const disponivel = horario.estado === "disponivel" && !horarioEncerrado;
-            const estadoVisual = horarioEncerrado ? "indisponivel" : horario.estado;
-            const rotulo = horarioEncerrado ? "Encerrado" : horario.estado === "meu" ? "Sua visita" : disponivel ? "Disponível" : "Indisponível";
             return <button
               key={horario.inicio}
               type="button"
-              className={`f2-horario ${estadoVisual}${selecionado ? " selecionado" : ""}`}
-              disabled={!disponivel || disabled}
+              className={`f2-horario disponivel${selecionado ? " selecionado" : ""}`}
+              disabled={disabled}
               aria-pressed={selecionado}
+              aria-label={`${horario.inicio}, disponível`}
               onClick={() => onChange(`${data}T${horario.inicio}`)}
             >
-              <strong>{horario.inicio}</strong><small>{rotulo}</small>
+              <strong>{horario.inicio}</strong>
             </button>;
           })}
         </div>
       </section>)}
-      <p className="f2-horarios-legenda"><span><i className="livre" />Disponível</span><span><i />Indisponível</span><span><i className="meu" />Sua visita</span></p>
+      {horariosIndisponiveis > 0 ? <p className="f2-horarios-legenda">{horariosIndisponiveis} {horariosIndisponiveis === 1 ? "horário indisponível foi ocultado" : "horários indisponíveis foram ocultados"}.</p> : null}
     </>}
     {horarioSelecionado && <div className="f2-horarios-resumo" role="status">
       <span>DATA E HORÁRIO ESCOLHIDOS</span>

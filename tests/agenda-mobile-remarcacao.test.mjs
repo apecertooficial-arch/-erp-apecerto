@@ -9,6 +9,7 @@ const agendaApi = await readFile(new URL("../app/api/agenda/route.ts", import.me
 const funilMobile = await readFile(new URL("../app/features/funil-2/Funil2Mobile.tsx", import.meta.url), "utf8");
 const cssMobile = await readFile(new URL("../app/styles/app-mobile-aprovado.css", import.meta.url), "utf8");
 const cssAgenda = await readFile(new URL("../app/styles/app-mobile-gestor.css", import.meta.url), "utf8");
+const pwa = await readFile(new URL("../app/components/RegistroPwa.tsx", import.meta.url), "utf8");
 
 test("app agenda e remarca somente em horários disponíveis", () => {
   const usos = agendaMobile.match(/<HorariosVisita/g) ?? [];
@@ -34,6 +35,20 @@ test("seletor deixa data explícita e mostra o horário de Brasília", () => {
   assert.match(seletor, /Noite/);
   assert.match(seletor, /horario\.inicio <= horaAgora\(\)/);
   assert.match(seletor, /Encerrado/);
+  assert.match(seletor, /Horários disponíveis/);
+  assert.match(seletor, /horariosIndisponiveis/);
+});
+
+test("folha da agenda rola e mantém a ação de salvar alcançável no celular", () => {
+  assert.match(cssAgenda, /\.ape-agenda \.ape-folha > \.ape-ficha\s*\{[^}]*overflow-y:\s*auto/s);
+  assert.match(cssAgenda, /\.ape-agenda \.f2m-agendar-acoes\s*\{[^}]*position:\s*sticky[^}]*bottom:\s*0/s);
+  assert.match(cssAgenda, /padding-bottom:\s*calc\([^)]*safe-area-inset-bottom/s);
+});
+
+test("PWA assume a nova versão sozinho quando não há formulário aberto", () => {
+  assert.match(pwa, /podeRecarregarSemPerda/);
+  assert.match(pwa, /querySelector\('\[aria-modal="true"\]'/);
+  assert.match(pwa, /document\.visibilityState === "hidden" \|\| podeRecarregarSemPerda\(\)/);
 });
 
 test("agenda não exibe segundos vindos da API histórica", () => {

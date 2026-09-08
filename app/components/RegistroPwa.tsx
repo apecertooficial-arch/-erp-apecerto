@@ -18,10 +18,10 @@ import { useEffect, useState } from "react";
  *   - pedimos reg.update() ao abrir e ao voltar para a aba, para o navegador
  *     conferir o build sem esperar o ciclo dele.
  *
- * A recarga automatica acontece SO com a aba em segundo plano. Recarregar por
- * cima de quem esta digitando um atendimento perde texto -- e, com o worker novo
- * ja no ar, o proximo F5 da pessoa ja traz tudo novo. Quando a aba esta na frente
- * mostramos um aviso discreto com o botao de recarregar.
+ * A recarga automatica acontece quando nao existe formulario/modal aberto.
+ * Assim uma abertura comum do aplicativo assume a versao publicada sem depender
+ * de a pessoa perceber um aviso. Se houver trabalho em andamento, preservamos os
+ * dados digitados e mostramos o botao de recarregar.
  */
 
 async function buildPublicado() {
@@ -64,12 +64,13 @@ export function RegistroPwa() {
     const conferir = () => { if (document.visibilityState === "visible") void registro?.update(); };
     document.addEventListener("visibilitychange", conferir);
 
+    const podeRecarregarSemPerda = () => !document.querySelector('[aria-modal="true"]');
     let recarregando = false;
     const aoTrocar = () => {
       if (recarregando) return;
-      /* Aba em segundo plano: pode recarregar sem atropelar ninguem.
-         Aba na frente: avisa, e a pessoa recarrega quando quiser. */
-      if (document.visibilityState === "hidden") {
+      /* Sem modal aberto nao existe formulario em andamento: a versao nova pode
+         assumir imediatamente. Com modal, preservamos o que a pessoa digitou. */
+      if (document.visibilityState === "hidden" || podeRecarregarSemPerda()) {
         recarregando = true;
         window.location.reload();
       } else {
