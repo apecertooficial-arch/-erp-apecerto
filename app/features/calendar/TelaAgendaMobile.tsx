@@ -82,6 +82,7 @@ export function TelaAgendaMobile({ accessToken }: {
   const [confirmandoCancelamento, setConfirmandoCancelamento] = useState(false);
   const [motivo, setMotivo] = useState("");
   const [horarioRemarcado, setHorarioRemarcado] = useState("");
+  const [remarcarComGerente, setRemarcarComGerente] = useState(false);
   const [horarioCriacao, setHorarioCriacao] = useState("");
 
   /* Catalogo (clientes com negocio ativo e produtos) so e buscado quando a
@@ -153,6 +154,7 @@ export function TelaAgendaMobile({ accessToken }: {
 
   const abrirEdicao = useCallback((c: Compromisso) => {
     setEditando(c); setErroEscrita(""); setConfirmandoCancelamento(false);
+    setRemarcarComGerente(c.com_gerente === true && c.gerente_id != null);
     setMotivo(""); setHorarioRemarcado(`${c.data}T${c.hora.slice(0, 5)}`);
   }, []);
 
@@ -409,11 +411,31 @@ export function TelaAgendaMobile({ accessToken }: {
               <section className="f2m-agendar">
                 <h3>Remarcar</h3>
                 <p className="ape-agenda-remarcar-ajuda">Troque o dia e toque em um horário disponível. A visita atual permanece intacta até você confirmar.</p>
+                {editando.com_gerente && editando.gerente_id != null ? <div className="ape-agenda-acompanhamento">
+                  <strong>Quem vai à visita?</strong>
+                  <div role="group" aria-label="Acompanhamento da visita">
+                    <button
+                      type="button"
+                      className={remarcarComGerente ? "ativo" : ""}
+                      aria-pressed={remarcarComGerente}
+                      disabled={salvando}
+                      onClick={() => { setRemarcarComGerente(true); setHorarioRemarcado(""); setErroEscrita(""); }}
+                    >Com gerente</button>
+                    <button
+                      type="button"
+                      className={!remarcarComGerente ? "ativo" : ""}
+                      aria-pressed={!remarcarComGerente}
+                      disabled={salvando}
+                      onClick={() => { setRemarcarComGerente(false); setHorarioRemarcado(""); setErroEscrita(""); }}
+                    >Ir sem gerente</button>
+                  </div>
+                  <small>Se o gerente estiver ocupado, escolha “Ir sem gerente” para ver os horários livres do corretor.</small>
+                </div> : null}
                 <HorariosVisita
                   accessToken={accessToken}
                   visitId={editando.id}
-                  comGerente={false}
-                  gerenteId={null}
+                  comGerente={remarcarComGerente}
+                  gerenteId={remarcarComGerente ? editando.gerente_id ?? null : null}
                   value={horarioRemarcado}
                   onChange={(valor) => { setHorarioRemarcado(valor); setErroEscrita(""); }}
                   initialDate={editando.data}
@@ -427,7 +449,7 @@ export function TelaAgendaMobile({ accessToken }: {
                     onClick={() => {
                       const [date, startTime] = horarioRemarcado.split("T");
                       void gravar(
-                        { action: "updateVisit", visitId: editando.id, date, startTime: `${startTime}:00` },
+                        { action: "updateVisit", visitId: editando.id, date, startTime: `${startTime}:00`, withManager: remarcarComGerente },
                         "Visita remarcada com sucesso.",
                       );
                     }}

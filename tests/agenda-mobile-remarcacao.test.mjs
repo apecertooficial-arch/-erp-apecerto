@@ -22,7 +22,23 @@ test("app agenda e remarca somente em horários disponíveis", () => {
 test("remarcação consulta disponibilidade excluindo a própria visita", () => {
   assert.match(agendaApi, /action === "visitAvailability"/);
   assert.match(agendaApi, /p_visita_id: visitId/);
-  assert.match(agendaApi, /p_gerente_id: current\.com_gerente === true \? current\.gerente_id : null/);
+  assert.match(agendaApi, /body\.withManager !== false && current\.com_gerente === true/);
+  assert.match(seletor, /action: "visitAvailability", visitId, data, withManager: comGerente/);
+});
+
+test("corretor pode remarcar sem gerente quando o gerente está ocupado", () => {
+  assert.match(agendaMobile, /Ir sem gerente/);
+  assert.match(agendaMobile, /comGerente=\{remarcarComGerente\}/);
+  assert.match(agendaMobile, /withManager: remarcarComGerente/);
+  assert.match(agendaApi, /body\.withManager === false/);
+  assert.match(agendaApi, /patch\.com_gerente = false/);
+  assert.match(agendaApi, /patch\.gerente_id = null/);
+  assert.match(agendaApi, /O gerente já tem uma visita nesse horário[\s\S]*Ir sem gerente/);
+});
+
+test("remarcação do app mantém o bloco completo de uma hora", () => {
+  assert.match(agendaApi, /if \(body\.endTime !== undefined\)[\s\S]*else if \(body\.startTime !== undefined\)/);
+  assert.match(agendaApi, /patch\.hora_fim = umaHoraDepois/);
 });
 
 test("seletor deixa data explícita e mostra o horário de Brasília", () => {

@@ -66,7 +66,7 @@ export function HorariosVisita({ accessToken, leadId = "", visitId = "", comGere
       method: visitId ? "PATCH" : "POST",
       headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
       body: JSON.stringify(visitId
-        ? { action: "visitAvailability", visitId, data }
+        ? { action: "visitAvailability", visitId, data, withManager: comGerente }
         : { action: "visitaDisponibilidade", leadId, data, comGerente, gerenteId }),
       signal: controlador.signal,
     }).then(async (resposta) => {

@@ -123,7 +123,11 @@
 .calendar-workspace .cal-status.realizada { background: #E4F6EC; color: #127A44; }
 .calendar-workspace .cal-status.cancelada { background: #FBE5E5; color: #D93E3E; }
 .calendar-workspace .audit-empty { border: 0; border-radius: 18px; background: #fff; padding: 26px; box-shadow: 0 2px 6px rgba(31,28,26,0.06); color: #6E6760; font-size: 13px; text-align: center; }
-.calendar-workspace .calendar-notice { border: 0; border-radius: 12px; background: #E4F6EC; color: #127A44; padding: 11px 14px; font-size: 12px; font-weight: 600; }
+.calendar-workspace .calendar-notice { position: fixed; z-index: 260; top: 18px; right: 18px; display: grid; grid-template-columns: 28px minmax(180px,1fr) 32px; align-items: center; gap: 9px; width: min(430px,calc(100vw - 36px)); border: 1px solid #B8DFC8; border-radius: 14px; background: #E4F6EC; color: #127A44; padding: 11px 12px; box-shadow: 0 14px 34px rgba(31,28,26,.18); font-size: 12px; font-weight: 600; }
+.calendar-workspace .calendar-notice > span { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 999px; background: #1E9E5A; color: #fff; }
+.calendar-workspace .calendar-notice > button { width: 32px; height: 32px; border: 0; background: transparent; color: inherit; font-size: 20px; cursor: pointer; }
+.calendar-workspace .calendar-notice.error { border-color: #F3C9C9; background: #FBE5E5; color: #A32C2C; }
+.calendar-workspace .calendar-notice.error > span { background: #D93E3E; }
 
 /* ===== modais: detalhe, agendar, editar ===== */
 .calendar-workspace .calendar-modal-layer { background: rgba(31,28,26,0.32); }
@@ -181,3 +185,6 @@
 .calendar-workspace .calendar-create .cal-disp { border: 0; border-radius: 12px; padding: 11px 14px; background: #FAF8F6; color: #6E6760; font-size: 12px; font-weight: 600; line-height: 1.5; }
 .calendar-workspace .calendar-create .cal-disp.livre { background: #E4F6EC; color: #127A44; }
 .calendar-workspace .calendar-create .cal-disp.conflito { background: #FDF1D9; color: #8A6100; }
+.calendar-workspace .calendar-create .cal-disp.sem-gerente { background: #EEF4FF; color: #315B96; }
+.calendar-workspace .calendar-create .cal-disp.conflito span { display: block; }
+.calendar-workspace .calendar-create .cal-disp.conflito button { margin-top: 9px; min-height: 38px; border: 1px solid #D08A00; border-radius: 999px; background: #fff; padding: 0 14px; color: #8A6100; font: 700 12px/1 inherit; cursor: pointer; }

@@ -36,6 +36,32 @@ function inteiroPositivo(value: unknown) {
   return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null;
 }
 
+function umaHoraDepois(value: unknown) {
+  const partes = typeof value === "string" ? /^(\d{2}):(\d{2})/.exec(value) : null;
+  if (!partes) return null;
+  const total = Number(partes[1]) * 60 + Number(partes[2]) + 60;
+  if (total >= 24 * 60) return null;
+  return `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}:00`;
+}
+
+const mensagensVisita: Record<string, string> = {
+  gerente_ocupado: "O gerente já tem uma visita nesse horário. Escolha ‘Ir sem gerente’ ou outro horário.",
+  corretor_ocupado: "Você já tem uma visita nesse horário. Escolha outro horário.",
+  intervalo_visita_invalido: "O horário final precisa ser depois do horário inicial.",
+  dados_invalidos: "Confira a data, o horário e o imóvel da visita.",
+  sem_permissao: "Esta visita não pertence à sua agenda.",
+};
+
+function falhaDaVisita(error: { message?: string } | null, codigo: string | undefined, fallback: string) {
+  const textoErro = error?.message ?? "";
+  const chave = codigo || Object.keys(mensagensVisita).find((item) => textoErro.includes(item));
+  const mensagem = chave ? mensagensVisita[chave] : null;
+  const status = chave === "sem_permissao" ? 403
+    : chave === "gerente_ocupado" || chave === "corretor_ocupado" ? 409
+      : chave === "intervalo_visita_invalido" || chave === "dados_invalidos" ? 422 : 502;
+  return Response.json({ error: mensagem ?? fallback }, { status });
+}
+
 function lerData(bruto: string | null): string | null {
   if (!bruto || !/^\d{4}-\d{2}-\d{2}$/.test(bruto)) return null;
   return Number.isNaN(Date.parse(bruto)) ? null : bruto;
@@ -61,7 +87,19 @@ export async function GET(request: Request) {
   if (result.ok === false) {
     return Response.json({ ok: false, erro: result.erro }, { status: result.erro === "nao_autenticado" ? 403 : 409 });
   }
-  if (params.get("workspace") !== "1") return Response.json(result);
+  if (params.get("workspace") !== "1") {
+    /* A RPC histórica entrega a agenda inteira, mas não informa o acompanhamento.
+       Enriquecemos somente os IDs já autorizados por ela, sem ampliar o escopo. */
+    const itens = Array.isArray(result.itens) ? result.itens as Array<Record<string, unknown>> : [];
+    const ids = itens.map((item) => String(item.id ?? "")).filter((id) => /^[0-9a-f-]{36}$/i.test(id));
+    if (ids.length > 0) {
+      const detalhes = await auth.supabase.from("visitas").select("id,com_gerente,gerente_id").in("id", ids);
+      if (detalhes.error) return Response.json({ ok: false, error: "Falha ao carregar o acompanhamento das visitas." }, { status: 502 });
+      const porId = new Map((detalhes.data ?? []).map((item) => [String(item.id), item]));
+      result.itens = itens.map((item) => ({ ...item, ...(porId.get(String(item.id)) ?? { com_gerente: false, gerente_id: null }) }));
+    }
+    return Response.json(result);
+  }
 
   const [cards, brokers, products, visits, tasks, gerentes, profile] = await Promise.all([
     auth.supabase.from("f2_lead").select("id,origem_negocio_id").is("descartado_em", null).not("origem_negocio_id", "is", null),
@@ -139,7 +177,7 @@ export async function PATCH(request: Request) {
     const { data: disponibilidade, error } = await auth.supabase.rpc("f2_disponibilidade_visitas", {
       p_lead_id: card.id,
       p_data: date,
-      p_gerente_id: current.com_gerente === true ? current.gerente_id : null,
+      p_gerente_id: body.withManager !== false && current.com_gerente === true ? current.gerente_id : null,
       p_visita_id: visitId,
     } as never);
     if (error) return Response.json({ error: "Não foi possível consultar os horários." }, { status: 502 });
@@ -209,7 +247,7 @@ export async function PATCH(request: Request) {
       p_com_gerente: comGerente, p_gerente_id: gerenteId, p_fim_em: fimEm,
     } as never);
     const outcome = result as { ok?: boolean; id?: string; erro?: string } | null;
-    if (error || !outcome?.ok) return Response.json({ error: error?.message ?? `Não foi possível agendar a visita (${outcome?.erro ?? "erro desconhecido"}).` }, { status: 502 });
+    if (error || !outcome?.ok) return falhaDaVisita(error, outcome?.erro, "Não foi possível agendar a visita.");
     return Response.json({ success: true, visitaId: outcome.id ?? null });
   }
 
@@ -226,6 +264,7 @@ export async function PATCH(request: Request) {
     if (typeof body.date === "string" && body.date) patch.data = texto(body.date, 10);
     if (body.startTime !== undefined) patch.hora_inicio = texto(body.startTime, 8) || null;
     if (body.endTime !== undefined) patch.hora_fim = texto(body.endTime, 8) || null;
+    else if (body.startTime !== undefined) patch.hora_fim = umaHoraDepois(body.startTime);
     if (body.local !== undefined) patch.local = texto(body.local, 300) || null;
     if (body.observations !== undefined) patch.observacoes = texto(body.observations, 1200) || null;
     if (body.productId !== undefined) {
@@ -238,7 +277,14 @@ export async function PATCH(request: Request) {
       if (!texto(body.local, 300) && product) patch.local = [product.endereco, product.numero, product.bairro, product.cidade].filter(Boolean).join(", ") || null;
     }
     let comGerente = current.com_gerente === true;
-    if (isManager && body.withManager !== undefined) {
+    /* Retirar o gerente não amplia acesso: o corretor continua podendo alterar
+       apenas a própria visita, validada por f2_pode_operar_lead. Adicionar ou
+       trocar gerente permanece restrito à gestão. */
+    if (body.withManager === false) {
+      comGerente = false;
+      patch.com_gerente = false;
+      patch.gerente_id = null;
+    } else if (isManager && body.withManager !== undefined) {
       comGerente = body.withManager === true;
       patch.com_gerente = comGerente;
     }
@@ -265,8 +311,8 @@ export async function PATCH(request: Request) {
     } as never);
     const outcome = result as { ok?: boolean; erro?: string } | null;
     return error || !outcome?.ok
-      ? Response.json({ error: error?.message ?? `Não foi possível atualizar a visita (${outcome?.erro ?? "erro desconhecido"}).` }, { status: 502 })
-      : Response.json({ success: true });
+      ? falhaDaVisita(error, outcome?.erro, "Não foi possível atualizar a visita.")
+      : Response.json({ success: true, message: "Visita remarcada com sucesso." });
   }
 
   if (action === "gerenteDisponibilidade") {

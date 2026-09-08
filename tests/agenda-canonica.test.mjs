@@ -47,6 +47,15 @@ test("corretor pode agendar como operação do atendimento e recebe a causa real
   assert.match(mobile, /setErroEscrita\(j\.error\?\.trim\(\) \|\| "Não foi possível salvar/);
 });
 
+test("edição web confirma o reagendamento e oferece saída sem gerente", () => {
+  assert.match(desktop, /Visita remarcada com sucesso\./);
+  assert.match(desktop, /role=\{noticeKind === "error" \? "alert" : "status"\}/);
+  assert.match(desktop, /aria-live=\{noticeKind === "error" \? "assertive" : "polite"\}/);
+  assert.match(desktop, /Ir sem gerente neste horário/);
+  assert.match(desktop, /withManager: editForm\.withManager/);
+  assert.doesNotMatch(desktop, /Pode salvar mesmo assim\./);
+});
+
 test("nova visita só aceita lead operável no Funil 2", () => {
   assert.match(funilApi, /f2_disponibilidade_visitas/);
   assert.match(funilApi, /p_lead_id: leadId/);

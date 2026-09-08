@@ -18,6 +18,8 @@ export type Compromisso = {
   corretor: string;        // quem atende
   meu: boolean;            // é do corretor logado
   faltam_min: number;      // negativo = já passou
+  com_gerente?: boolean;   // agenda histórica é enriquecida pela API
+  gerente_id?: number | null;
 };
 
 /**
