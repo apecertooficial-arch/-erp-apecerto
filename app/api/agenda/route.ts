@@ -64,7 +64,7 @@ export async function GET(request: Request) {
   if (params.get("workspace") !== "1") return Response.json(result);
 
   const [cards, brokers, products, visits, tasks, gerentes, profile] = await Promise.all([
-    auth.supabase.from("f2_lead").select("origem_negocio_id").is("descartado_em", null).not("origem_negocio_id", "is", null),
+    auth.supabase.from("f2_lead").select("id,origem_negocio_id").is("descartado_em", null).not("origem_negocio_id", "is", null),
     auth.supabase.rpc("listar_corretores_transferencia"),
     auth.supabase.from("empreendimentos").select("id,nome").eq("rascunho", false).order("nome").limit(500),
     auth.supabase.from("visitas").select("id,lead_id,negocio_id,corretor_id,cliente_nome,produto,empreendimento_id,data,hora_inicio,hora_fim,local,observacoes,com_gerente,gerente_id,status").order("data").order("hora_inicio"),
@@ -92,6 +92,7 @@ export async function GET(request: Request) {
     brokers: brokers.data ?? [],
     leads: leads.data ?? [],
     deals: deals.data ?? [],
+    cards: cards.data ?? [],
     products: products.data ?? [],
     visits: visits.data ?? [],
     tasks: tasks.data ?? [],
@@ -110,6 +111,57 @@ export async function PATCH(request: Request) {
   const access = await resolveEffectiveAccess(auth.supabase, auth.user.id);
   const guard = (verb: "criar" | "editar", message: string) =>
     denyIfCannot(access, [["calendario", verb], ["crm", verb]], message);
+
+  if (action === "visitAvailability") {
+    const visitId = texto(body.visitId, 40);
+    const date = texto(body.data, 10);
+    if (!/^[0-9a-f-]{36}$/i.test(visitId) || !lerData(date)) {
+      return Response.json({ error: "Visita ou data inválida." }, { status: 422 });
+    }
+    const denied = guard("editar", "Você não tem permissão para remarcar visitas.");
+    if (denied) return denied;
+
+    const { data: current, error: currentError } = await auth.supabase.from("visitas")
+      .select("id,negocio_id,com_gerente,gerente_id")
+      .eq("id", visitId)
+      .maybeSingle();
+    if (currentError) return Response.json({ error: "Não foi possível consultar esta visita." }, { status: 502 });
+    if (!current?.negocio_id) return Response.json({ error: "Visita não encontrada ou sem negócio ativo." }, { status: 404 });
+
+    const { data: card, error: cardError } = await auth.supabase.from("f2_lead")
+      .select("id")
+      .eq("origem_negocio_id", current.negocio_id)
+      .is("descartado_em", null)
+      .maybeSingle();
+    if (cardError) return Response.json({ error: "Não foi possível consultar o atendimento desta visita." }, { status: 502 });
+    if (!card) return Response.json({ error: "O atendimento desta visita não está ativo no Funil 2.0." }, { status: 409 });
+
+    const { data: disponibilidade, error } = await auth.supabase.rpc("f2_disponibilidade_visitas", {
+      p_lead_id: card.id,
+      p_data: date,
+      p_gerente_id: current.com_gerente === true ? current.gerente_id : null,
+      p_visita_id: visitId,
+    } as never);
+    if (error) return Response.json({ error: "Não foi possível consultar os horários." }, { status: 502 });
+    const resultado = (disponibilidade ?? {}) as {
+      ok?: boolean;
+      erro?: string;
+      horarios?: Array<{ inicio?: unknown; fim?: unknown; estado?: unknown }>;
+    };
+    if (resultado.ok !== true) {
+      return Response.json({ error: resultado.erro === "sem_permissao"
+        ? "Esta visita não pertence à sua agenda."
+        : "Não foi possível consultar esta visita." }, { status: resultado.erro === "sem_permissao" ? 403 : 409 });
+    }
+    const estados = new Set(["disponivel", "indisponivel", "meu"]);
+    const horarios = (resultado.horarios ?? []).flatMap((horario) => {
+      const inicio = typeof horario.inicio === "string" && /^\d{2}:\d{2}$/.test(horario.inicio) ? horario.inicio : null;
+      const fim = typeof horario.fim === "string" && /^\d{2}:\d{2}$/.test(horario.fim) ? horario.fim : null;
+      const estado = typeof horario.estado === "string" && estados.has(horario.estado) ? horario.estado : null;
+      return inicio && fim && estado ? [{ inicio, fim, estado }] : [];
+    });
+    return Response.json({ success: true, data: date, duracao_min: 60, horarios });
+  }
 
   if (action === "createVisit") {
     const leadId = inteiroPositivo(body.leadId);

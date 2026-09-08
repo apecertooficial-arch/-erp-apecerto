@@ -111,6 +111,7 @@
   .ape-agenda-item.realizada .ape-agenda-ponto { background: #1E9E5A; }
 
   .ape-agenda-editar-acoes { display: flex; flex-direction: column; gap: 12px; margin: 0 20px; }
+  .ape-agenda-remarcar-ajuda { margin: 0 0 4px; color: #6B635C; font-size: 13px; line-height: 1.45; }
   .ape-agenda-realizada {
     display: flex; align-items: center; justify-content: center; min-height: 52px;
     border: 0; border-radius: 999px; background: #1E9E5A; color: #fff;

@@ -62,6 +62,13 @@ export function somarDias(iso: string, dias: number): string {
 export const hojeISO = (agora: Date = new Date()) =>
   new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(agora);
 
+/** A API histórica devolve tanto HH:mm quanto HH:mm:ss. Na interface do
+ * corretor, segundos são ruído e fazem 10:30 parecer um dado técnico. */
+export function horaCurta(hora: string): string {
+  const correspondencia = /^(\d{2}):(\d{2})/.exec(hora);
+  return correspondencia ? `${correspondencia[1]}:${correspondencia[2]}` : hora;
+}
+
 /** "4 compromissos" / "1 compromisso" / "nada marcado". */
 export function resumoDoDia(total: number): string {
   if (total === 0) return "nada marcado";
