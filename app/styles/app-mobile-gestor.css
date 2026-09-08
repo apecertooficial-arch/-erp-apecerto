@@ -87,9 +87,14 @@
     font-family: inherit; font-size: 14px; font-weight: 600; cursor: pointer;
   }
   .ape-agenda-aviso {
-    display: flex; align-items: center; gap: 8px; margin: 0 0 12px; padding: 11px 12px;
-    border-radius: 12px; background: #E6F5EC; color: #136B3D; font-size: 13px; font-weight: 600;
+    position: fixed; z-index: 140; top: calc(12px + env(safe-area-inset-top, 0px)); left: 50%;
+    display: grid; grid-template-columns: 26px minmax(0, 1fr) 36px; align-items: center; gap: 8px;
+    width: min(calc(100% - 24px), 480px); margin: 0; padding: 12px; transform: translateX(-50%);
+    border: 1px solid #B8DFC8; border-radius: 16px; background: #E6F5EC; color: #136B3D;
+    box-shadow: 0 12px 34px rgba(31, 28, 26, .18); font-size: 13px; font-weight: 600;
   }
+  .ape-agenda-aviso > span { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 999px; background: #1E9E5A; color: #fff; }
+  .ape-agenda-aviso > button { width: 36px; height: 36px; border: 0; background: transparent; color: #136B3D; font: 22px/1 inherit; cursor: pointer; }
   /* O cartao dividiu a coluna com o botao de editar: os dois empilhados dentro
      do mesmo bloco, com a linha do tempo intacta a esquerda. */
   .ape-agenda-bloco { display: flex; flex-direction: column; margin-left: 10px; min-width: 0; }

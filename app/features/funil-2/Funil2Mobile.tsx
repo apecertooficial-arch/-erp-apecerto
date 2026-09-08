@@ -910,7 +910,7 @@ export function Funil2Mobile({
       </div>
     </header>
 
-    {sucesso && <div className="ape-visita-sucesso" role="status">
+    {sucesso && <div className="ape-visita-sucesso" role="status" aria-live="polite" aria-atomic="true">
       <div><strong>Visita agendada com sucesso</strong><span>{sucesso}</span></div>
       <button type="button" onClick={() => { setSucesso(null); onIr("/agenda"); }}>Abrir Agenda</button>
       <button type="button" className="fechar" aria-label="Fechar confirmação" onClick={() => setSucesso(null)}>×</button>

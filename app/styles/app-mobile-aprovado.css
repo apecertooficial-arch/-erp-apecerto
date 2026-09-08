@@ -12,7 +12,7 @@
 .ape-app, .ape-agenda { display: none; }
 
 @media (max-width: 900px) {
-  .ape-visita-sucesso { position:relative; display:grid; grid-template-columns:1fr auto; gap:10px; margin:10px 16px; padding:13px 42px 13px 14px; border:1px solid #B8DFC8; border-radius:16px; background:#ECF9F1; color:#116B3D; }
+  .ape-visita-sucesso { position:fixed; z-index:140; top:calc(12px + env(safe-area-inset-top, 0px)); left:50%; display:grid; grid-template-columns:1fr auto; gap:10px; width:min(calc(100% - 24px),480px); margin:0; padding:13px 42px 13px 14px; transform:translateX(-50%); border:1px solid #B8DFC8; border-radius:16px; background:#ECF9F1; color:#116B3D; box-shadow:0 12px 34px rgba(31,28,26,.18); }
   .ape-visita-sucesso div { display:flex; flex-direction:column; gap:2px; }
   .ape-visita-sucesso strong { font-size:13px; }
   .ape-visita-sucesso span { font-size:11px; line-height:1.35; }

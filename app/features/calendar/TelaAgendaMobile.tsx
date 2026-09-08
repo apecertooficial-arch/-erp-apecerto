@@ -307,7 +307,11 @@ export function TelaAgendaMobile({ accessToken }: {
         <button type="button" className="ape-agenda-nova" onClick={abrirNovaVisita}>+ Visita</button>
       </div>
 
-      {aviso && <p className="ape-agenda-aviso" role="status">{aviso}</p>}
+      {aviso && <div className="ape-agenda-aviso" role="status" aria-live="polite" aria-atomic="true">
+        <span aria-hidden="true">✓</span>
+        <strong>{aviso}</strong>
+        <button type="button" aria-label="Fechar confirmação" onClick={() => setAviso("")}>×</button>
+      </div>}
 
       <p className="ape-agenda-dia">
         {periodo === "semana" ? `semana de ${diaPorExtenso(dia)}` : diaPorExtenso(dia)}
@@ -424,7 +428,7 @@ export function TelaAgendaMobile({ accessToken }: {
                       const [date, startTime] = horarioRemarcado.split("T");
                       void gravar(
                         { action: "updateVisit", visitId: editando.id, date, startTime: `${startTime}:00` },
-                        "Visita remarcada.",
+                        "Visita remarcada com sucesso.",
                       );
                     }}
                   >
@@ -524,7 +528,7 @@ export function TelaAgendaMobile({ accessToken }: {
                       action: "createVisit", leadId, dealId,
                       date, startTime: `${startTime}:00`,
                       productId: produtoEscolhido || null,
-                    }, "Visita marcada.");
+                    }, "Visita agendada com sucesso.");
                   }}
                 >
                   {salvando ? "Marcando…" : "Marcar visita"}
