@@ -11,6 +11,7 @@ const addClient = read("../app/features/funil-2/AdicionarClienteModal.tsx");
 const negotiation = read("../app/features/funil-2/IniciarNegociacaoModal.tsx");
 const clientApi = read("../app/api/funil2/clientes/route.ts");
 const salesApi = read("../app/api/crm/sales/route.ts");
+const cardAtomicoMigration = read("../supabase/migrations/20260908151000_funil2_card_atomico_ao_criar_negocio.sql");
 
 test("a entrega mantém somente o CRM novo e não reativa a interface clássica", () => {
   assert.match(entry, /Funil2Workspace/);
@@ -53,6 +54,16 @@ test("Adicionar cliente fica visível e usa criação canônica reconciliável",
   assert.match(clientApi, /from\("f2_lead"\)/);
   assert.match(clientApi, /status: 202/);
   assert.doesNotMatch(clientApi, /fetch\(|WhatsApp|D-API|service_role/);
+});
+
+test("negócio novo do Funil 2 cria o card visível na mesma transação", () => {
+  assert.match(cardAtomicoMigration, /after insert or update of pipeline_id, stage_id, status, corretor_id/i);
+  assert.match(cardAtomicoMigration, /new\.pipeline_id = public\.f2_pipeline_id\(\)/i);
+  assert.match(cardAtomicoMigration, /new\.status = 'aberto'/i);
+  assert.match(cardAtomicoMigration, /new\.corretor_id is not null/i);
+  assert.match(cardAtomicoMigration, /perform public\.f2_entrada_direta\(new\.id, coalesce\(v_etapa, 'novo'\)\)/i);
+  assert.match(cardAtomicoMigration, /revoke all on function public\.f2_negocio_garantir_card\(\)[\s\S]*from public, anon, authenticated/i);
+  assert.doesNotMatch(cardAtomicoMigration, /cron\.schedule|service_role_key|authorization/i);
 });
 
 test("deduplicação cobre telefone, e-mail e CPF sem retry silencioso", () => {
