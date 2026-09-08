@@ -29,6 +29,8 @@ test("seletor deixa data explícita e mostra o horário de Brasília", () => {
   assert.match(seletor, /Manhã/);
   assert.match(seletor, /Tarde/);
   assert.match(seletor, /Noite/);
+  assert.match(seletor, /horario\.inicio <= horaAgora\(\)/);
+  assert.match(seletor, /Encerrado/);
 });
 
 test("agenda não exibe segundos vindos da API histórica", () => {

@@ -19,6 +19,13 @@ type Props = {
 
 const hoje = () => new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(new Date());
 
+const horaAgora = () => new Intl.DateTimeFormat("pt-BR", {
+  timeZone: "America/Sao_Paulo",
+  hour: "2-digit",
+  minute: "2-digit",
+  hour12: false,
+}).format(new Date());
+
 function somarDias(data: string, quantidade: number) {
   const [ano, mes, dia] = data.split("-").map(Number);
   const resultado = new Date(Date.UTC(ano, mes - 1, dia + quantidade));
@@ -108,12 +115,14 @@ export function HorariosVisita({ accessToken, leadId = "", visitId = "", comGere
         <div className="f2-horarios-grade" aria-label={`Horários de ${periodo.toLocaleLowerCase("pt-BR")}`}>
           {itens.map((horario) => {
             const selecionado = horarioSelecionado === horario.inicio;
-            const disponivel = horario.estado === "disponivel";
-            const rotulo = horario.estado === "meu" ? "Sua visita" : disponivel ? "Disponível" : "Indisponível";
+            const horarioEncerrado = data === dataHoje && horario.inicio <= horaAgora();
+            const disponivel = horario.estado === "disponivel" && !horarioEncerrado;
+            const estadoVisual = horarioEncerrado ? "indisponivel" : horario.estado;
+            const rotulo = horarioEncerrado ? "Encerrado" : horario.estado === "meu" ? "Sua visita" : disponivel ? "Disponível" : "Indisponível";
             return <button
               key={horario.inicio}
               type="button"
-              className={`f2-horario ${horario.estado}${selecionado ? " selecionado" : ""}`}
+              className={`f2-horario ${estadoVisual}${selecionado ? " selecionado" : ""}`}
               disabled={!disponivel || disabled}
               aria-pressed={selecionado}
               onClick={() => onChange(`${data}T${horario.inicio}`)}
