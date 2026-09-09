@@ -14,6 +14,14 @@ const crmCapi = readFileSync(
   new URL("../supabase/functions/crm-capi/index.ts", import.meta.url),
   "utf8",
 );
+const metaCapi = readFileSync(
+  new URL("../supabase/functions/meta-capi/index.ts", import.meta.url),
+  "utf8",
+);
+const marketingAds = readFileSync(
+  new URL("../supabase/functions/marketing-ads-read/index.ts", import.meta.url),
+  "utf8",
+);
 
 test("lead inicial nasce do mesmo bloco explicito que registra a atribuicao Meta", () => {
   assert.match(migration, /create or replace function private\.enqueue_meta_initial_lead_event/i);
@@ -34,6 +42,8 @@ test("outbox aceita Lead e preserva idempotencia pelo leadgen_id", () => {
 });
 
 test("CRM CAPI segue o contrato de Conversion Leads da Meta", () => {
+  assert.match(crmCapi, /graph\.facebook\.com\/v25\.0/);
+  assert.doesNotMatch(crmCapi, /graph\.facebook\.com\/v21\.0/);
   assert.match(crmCapi, /lead:\s*"Lead"/);
   assert.match(crmCapi, /action_source:\s*"system_generated"/);
   assert.match(crmCapi, /lead_event_source:\s*"ApeCerto ERP"/);
@@ -45,6 +55,13 @@ test("CRM CAPI segue o contrato de Conversion Leads da Meta", () => {
   assert.doesNotMatch(crmCapi, /body\.event_time\s*\?\?\s*Date\.now/);
   assert.doesNotMatch(crmCapi, /action_source:\s*"website"/);
   assert.doesNotMatch(crmCapi, /event_source_url:/);
+});
+
+test("integrações Meta usam a mesma versão suportada da Graph API", () => {
+  for (const source of [crmCapi, metaCapi, marketingAds]) {
+    assert.match(source, /graph\.facebook\.com\/v25\.0/);
+    assert.doesNotMatch(source, /graph\.facebook\.com\/v21\.0/);
+  }
 });
 
 test("rollback remove apenas a cobertura inicial e restaura o contrato anterior", () => {
