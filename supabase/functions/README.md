@@ -5,9 +5,10 @@ abaixo são espelhos dos bundles que estavam ativos no projeto Supabase no momen
 da captura. As funções do apêcerto Studio são **fontes novas, somente locais e não
 implantadas**; elas não devem ser confundidas com o estado de produção.
 
-As três funções de WhatsApp foram capturadas em 2026-07-31. `meta-capi` foi
-capturada em 2026-08-21, também pela API de gerenciamento do Supabase. A captura
-não fez redeploy.
+As três funções de WhatsApp foram capturadas em 2026-07-31. As fontes de
+`meta-capi` e `crm-capi` foram reconciliadas e implantadas em 2026-09-09; elas
+também permanecem sincronizadas com as cópias do repositório do site. As duas
+usam Graph API v25 e `verify_jwt=true`.
 
 ## Tabela de proveniência
 
@@ -16,7 +17,8 @@ não fez redeploy.
 | `dapi-enviar` | 13 | `false` | `90b4a70364e2dcf8b4680d01ef4902e8383b5a8154c43c0cd7faa38f4685ddce` | Envio real de WhatsApp pela D-API — texto, áudio, imagem, vídeo e documento. Resolve qual instância usar, tenta as duas formas do 9º dígito e registra a mensagem em `wa_mensagens`. | `enviar-produto` (máquina) e serviços operacionais autorizados. O frontend usa os contratos canônicos de Chat/Funil 2. |
 | `enviar-produto` | 6 | `false` | `ce7225e4065e310e3a357e65be3496f09f5203137d2f998c52c0a7030b10ee39` | Envia o pack de um empreendimento numa única chamada — fotos ordenadas (capa, fachada, decorado, lazer, planta, sala) mais o book em PDF. Delega cada envio a `dapi-enviar`. Aceita `dry_run` para conferir o plano sem disparar nada. | Nenhum caller no repositório. Só automações externas, em modo máquina. |
 | `enviar-whatsapp` | 5 | `true` | `7b1f19b92db00d61c4e7c2ebba20e25a66aae5264173717edbfebd2bfdf8434f` | Envio de texto por uma instancia. A instancia e resolvida no servidor por `ncrm_resolver_envio_autorizado`; o `instancia_id` do body virou apenas um pedido. Consulta a autoridade do piloto antes de enviar. | Nenhum caller conhecido no repositorio. Mantida por precaucao, mas fechada. |
-| `meta-capi` | 7 | `true` | `e11064a8e58705c870d20c8e4cb20e59f6f62215719b5cab6282533b2b727371` | Encaminha eventos consentidos para a Meta CAPI com o mesmo `event_id` do Pixel, deduplicação, hash de identificadores e trilha de entrega. | Site público, para eventos allowlisted como `schedule_complete`, `owner_cta_click` e `financing_open`. |
+| `meta-capi` | 17 | `true` | `67893cf8c1a71a233bccc5bce934139da576f751844fc29e137ad38b405f4cad` | Encaminha eventos consentidos para a Meta CAPI v25 com o mesmo `event_id` do Pixel, hash seguro, URL/custom data sanitizados, `content_ids` por imóvel e trilha de entrega. | Site público, para eventos allowlisted como `view_item`, `generate_lead`, `schedule_complete`, `owner_cta_click` e `financing_open`. |
+| `crm-capi` | 24 | `true` | `bf5e4c199d1487915efc0999847ae47787c62f0f583a045e014041841facb045` | Envia o ciclo canônico do ERP à Meta CAPI v25 com tempo real do fato, idempotência, opt-out, identificadores normalizados e `action_source=system_generated`. | Dispatcher interno do outbox `meta_crm`; chamadas públicas sem entrega canônica são recusadas. |
 
 ## Funções novas do apêcerto Studio — não implantadas
 
