@@ -64,6 +64,15 @@ test("integrações Meta usam a mesma versão suportada da Graph API", () => {
   }
 });
 
+test("cópia da CAPI do site preserva identidade segura e imóvel para remarketing", () => {
+  assert.match(metaCapi, /hashedEmail/);
+  assert.match(metaCapi, /hashedBrazilPhone/);
+  assert.match(metaCapi, /safeEventSourceUrl/);
+  assert.match(metaCapi, /sanitizeMetaCustomData/);
+  assert.match(metaCapi, /customData\.content_ids\s*=\s*\[itemId\]/);
+  assert.match(metaCapi, /customData\.content_type\s*=\s*"product"/);
+});
+
 test("rollback remove apenas a cobertura inicial e restaura o contrato anterior", () => {
   assert.match(rollback, /drop function if exists private\.enqueue_meta_initial_lead_event/i);
   assert.doesNotMatch(rollback, /drop table/i);
